@@ -108,6 +108,8 @@ def generate_canonical_spot(category: dict, rng: random.Random | None = None) ->
     (de _HANDS). Valida cobertura via analyze_preflop (available + scenario bate). Retorna o spot
     stateless (sem resposta) ou None se a categoria não produz spot coberto (caller pula)."""
     rng = rng or random
+    if category.get('kind') == 'postflop':           # Fase 2: catálogo postflop pré-solvado
+        return generate_postflop_spot(category, rng)
     scenario = category['scenario']
     pos      = category['position']
     vs_pos   = category.get('vs_position', '') or ''
@@ -150,6 +152,16 @@ def _norm_action(a: str) -> str:
 def grade_canonical_spot(spot: dict, action: str) -> dict:
     """Avalia a ação NO SERVIDOR via analyze_preflop e devolve no formato que o CoachCard lê
     (gto_strategy = mix por ação; gto_freq = freq da AÇÃO JOGADA; gto_tier = correct/mixed/error)."""
+    if spot.get('kind') == 'postflop' or spot.get('board'):   # Fase 2: lê nó pré-solvado (não solva)
+        g = grade_postflop_spot(spot, action)
+        if g is not None:
+            return g
+        # sem tabela por-mão (não deveria no catálogo validado) → não pune
+        return {'is_correct': True, 'gto_tier': 'correct', 'mixed': False, 'gto_freq': 1.0,
+                'gto_strategy': [], 'best_action': '', 'new_action': _norm_action(action),
+                'recommended': [], 'validation_source': 'gto_solver_postflop', 'xp_value': 0,
+                'new_score': 0.0, 'original_score': 0.0, 'delta': 0.0,
+                'next_drill_at': None, 'srs_interval_days': 0, 'ungradeable': True}
     played = _norm_action(action)
     res = analyze_preflop(
         spot.get('position', ''),
@@ -247,3 +259,135 @@ def next_spot(curriculum: list[dict], session_state: dict | None = None,
         if spot:
             return spot
     return None
+
+
+# ── Fase 2: POSTFLOP (catálogo pré-solvado + validado offline) ────────────────────────────────
+# Spots VALIDADOS por scripts/seed_leaktrainer_postflop.py (hero OOP, ranges reais do GW, exploitability
+# <3%, estratégia POR MÃO coerente). NUNCA solva ao vivo no request path — o grade só LÊ o nó pré-solvado
+# (lookup_gto block_remote=False). Nó/hand_strategy ausente → spot não-gradeável (pulado, nunca servido
+# errado). BB defesa vs BTN open, flop SRP, 40bb, c-bet ~33% (1.65bb).
+_BBDEF_PARAMS = {
+    'position': 'BB', 'vs_position': 'BTN', 'stack_bb': 40.0,
+    'facing_size_bb': 1.65, 'pot_bb': 5.0, 'street': 'flop',
+}
+POSTFLOP_CATALOG = {
+    'bb_defense': [
+        {'board': ['Kd', '7c', '2s'], 'hand': ['Kh', 'Qc']},   # top pair bom kicker
+        {'board': ['Kd', '7c', '2s'], 'hand': ['Kh', 'Ts']},   # top pair fraco
+        {'board': ['Kd', '7c', '2s'], 'hand': ['7h', '6d']},   # par medio
+        {'board': ['Ad', '6c', '3s'], 'hand': ['Kh', 'Qd']},   # overs (air)
+        {'board': ['Ad', '6c', '3s'], 'hand': ['6h', '5d']},   # par medio + gutshot
+        {'board': ['Qd', '7s', '4h'], 'hand': ['Kh', 'Qc']},   # top pair
+        {'board': ['Qd', '7s', '4h'], 'hand': ['Js', 'Td']},   # overs + gutshot
+        {'board': ['Qd', '7s', '4h'], 'hand': ['Ac', '4d']},   # bottom pair + A
+        {'board': ['9h', '8h', '5c'], 'hand': ['Th', '9c']},   # par + draw
+        {'board': ['9h', '8h', '5c'], 'hand': ['Jd', 'Tc']},   # OESD
+        {'board': ['9h', '8h', '5c'], 'hand': ['7d', '6c']},   # straight feita
+        {'board': ['Js', 'Ts', '4c'], 'hand': ['Qh', 'Jd']},   # top pair + OESD
+        {'board': ['Js', 'Ts', '4c'], 'hand': ['Kd', 'Qc']},   # OESD
+        {'board': ['Th', '9d', '6c'], 'hand': ['Qs', 'Jd']},   # OESD
+        {'board': ['Th', '9d', '6c'], 'hand': ['Ah', 'Td']},   # top pair
+        {'board': ['Kc', 'Kd', '4h'], 'hand': ['Js', 'Td']},   # air + gutshot (board pareado)
+    ],
+}
+_POSTFLOP_OPTIONS = ['fold', 'call', 'raise']
+
+
+def _cards_to_objs(cards):
+    return [{'rank': c[0], 'suit': c[1].lower()} for c in cards if len(c) >= 2]
+
+
+def _action_family(label: str) -> str:
+    """Família da ação (agrega sizes): bet/raise/jam/allin → 'raise'; check → 'check'; fold/call iguais."""
+    a = (label or '').strip().lower().split('_')[0]
+    return {'bet': 'raise', 'jam': 'raise', 'allin': 'raise', 'shove': 'raise',
+            'all-in': 'raise'}.get(a, a)
+
+
+def generate_postflop_spot(category: dict, rng: random.Random | None = None) -> dict | None:
+    """Retorna um spot do catálogo postflop (stateless, sem revelar a resposta)."""
+    rng = rng or random
+    spots = POSTFLOP_CATALOG.get(category.get('catalog', 'bb_defense')) or []
+    if not spots:
+        return None
+    s = rng.choice(spots)
+    p = _BBDEF_PARAMS
+    return {
+        'kind':           'postflop',
+        'street':         p['street'],
+        'category':       category['key'],
+        'position':       p['position'],
+        'vs_position':    p['vs_position'],
+        'stack_bb':       p['stack_bb'],
+        'facing_size_bb': p['facing_size_bb'],
+        'pot_bb':         p['pot_bb'],
+        'board':          s['board'],
+        'board_cards':    _cards_to_objs(s['board']),
+        'hand':           ''.join(s['hand']),
+        'hero_hand':      s['hand'],
+        'hero_cards':     _cards_to_objs(s['hand']),
+        'options':        list(_POSTFLOP_OPTIONS),
+        'xp_value':       30,
+    }
+
+
+def grade_from_hand_strategy(hand_strategy: dict, action: str) -> dict:
+    """Gradeia a ação contra a estratégia DA MÃO (hand_strategy do solver). Tolerância de MÃO-FEITA:
+    quando o GTO quase nunca folda (fold<5%), call E raise são ambos corretos (só fold é erro) — o
+    solver capado (1 bet size) tende a estratégias puras (raise 100%), e punir 'call' num top pair seria
+    injusto. Draws/air usam o tier normal (freq≥30% correto · ≥10% aceitável · <10% erro)."""
+    acts = (hand_strategy or {}).get('actions') or {}
+    fam: dict = {}
+    for label, d in acts.items():
+        b = _action_family(label)
+        fam[b] = fam.get(b, 0.0) + float((d or {}).get('frequency') or 0)
+    played = _action_family(action)
+    played_freq = fam.get(played, 0.0)
+    fold_freq = fam.get('fold', 0.0)
+    gto_strategy = [{'action': b, 'freq': round(f, 4)}
+                    for b, f in sorted(fam.items(), key=lambda x: -x[1]) if f > 0.01]
+
+    made_hand = fold_freq < 0.05      # GTO praticamente nunca folda = mão que defende
+    if made_hand and played in ('call', 'raise'):
+        tier, is_correct, mixed = 'correct', True, (played_freq < CORRECT_FREQ)
+    elif played_freq >= CORRECT_FREQ:
+        tier, is_correct, mixed = 'correct', True, False
+    elif played_freq >= MIN_FREQ:
+        tier, is_correct, mixed = 'correct', True, True
+    else:
+        tier, is_correct, mixed = 'error', False, False
+    best = (hand_strategy or {}).get('best_action') or (gto_strategy[0]['action'] if gto_strategy else 'fold')
+    return {
+        'is_correct':        is_correct,
+        'gto_tier':          tier,
+        'mixed':             mixed,
+        'gto_freq':          round(played_freq, 4),
+        'gto_strategy':      gto_strategy,
+        'best_action':       _action_family(best),
+        'new_action':        played,
+        'recommended':       [b for b, _ in sorted(fam.items(), key=lambda x: -x[1])],
+        'validation_source': 'gto_solver_postflop',
+        'xp_value':          30,
+        'new_score':         0.0, 'original_score': 0.0, 'delta': 0.0,
+        'next_drill_at':     None, 'srs_interval_days': 0,
+    }
+
+
+def grade_postflop_spot(spot: dict, action: str) -> dict | None:
+    """Lê o nó pré-solvado (NUNCA solva ao vivo) e gradeia a mão. None se sem tabela por-mão."""
+    from leaklab.gto_solver import lookup_gto
+    res = lookup_gto(
+        street=spot.get('street', 'flop'), position=spot.get('position', 'BB'),
+        board=spot.get('board') or [], hero_hand=spot.get('hero_hand') or [],
+        hero_stack_bb=float(spot.get('stack_bb', 40) or 40),
+        vs_position=spot.get('vs_position', 'BTN'),
+        facing_size_bb=float(spot.get('facing_size_bb', 1.65) or 1.65),
+        pot_bb=float(spot.get('pot_bb', 5.0) or 5.0), bb_chips=1.0,
+        require_hand_aware=True, block_remote=False, allow_remote_solve=False,
+    )
+    hs = res.get('hand_strategy')
+    if not hs or not hs.get('actions'):
+        return None
+    g = grade_from_hand_strategy(hs, action)
+    g['exploitability_pct'] = res.get('exploitability_pct')
+    return g

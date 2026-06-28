@@ -8,7 +8,74 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 from leaklab.leak_trainer import (
     _leak_scenario, _snap_stack, generate_canonical_spot, grade_canonical_spot,
     next_spot, _category_key, CORRECT_FREQ,
+    _action_family, generate_postflop_spot, grade_from_hand_strategy, POSTFLOP_CATALOG,
 )
+
+
+# ── Fase 2: postflop ──────────────────────────────────────────────────────────
+
+def test_action_family():
+    assert _action_family('raise_94pct') == 'raise'
+    assert _action_family('bet_50pct') == 'raise'
+    assert _action_family('jam') == 'raise'
+    assert _action_family('fold') == 'fold'
+    assert _action_family('call') == 'call'
+    print("OK  test_action_family")
+
+
+def test_generate_postflop_spot():
+    import random
+    cat = {'kind': 'postflop', 'catalog': 'bb_defense', 'key': 'pf:bb_defense'}
+    sp = generate_postflop_spot(cat, random.Random(3))
+    assert sp and sp['kind'] == 'postflop' and sp['street'] == 'flop'
+    assert len(sp['board']) == 3 and len(sp['hero_hand']) == 2
+    assert sp['options'] == ['fold', 'call', 'raise']
+    # NÃO vaza a resposta
+    for leak in ('hand_strategy', 'gto_strategy', 'best_action', 'recommended'):
+        assert leak not in sp, f"vazou {leak}"
+    # também roteado via generate_canonical_spot (pelo kind)
+    sp2 = generate_canonical_spot(cat, random.Random(3))
+    assert sp2 and sp2['kind'] == 'postflop'
+    print("OK  test_generate_postflop_spot")
+
+
+def test_grade_made_hand_tolerance():
+    """Mão feita (GTO folda ~0%, raise 100% puro do solver capado): CALL e RAISE = corretos; FOLD = erro."""
+    made = {'actions': {'fold': {'frequency': 0.0}, 'call': {'frequency': 0.0},
+                        'raise_94pct': {'frequency': 1.0}}, 'best_action': 'raise_94pct'}
+    assert grade_from_hand_strategy(made, 'call')['is_correct'] is True   # tolerância: não pune call
+    assert grade_from_hand_strategy(made, 'raise')['is_correct'] is True
+    g_fold = grade_from_hand_strategy(made, 'fold')
+    assert g_fold['is_correct'] is False and g_fold['gto_tier'] == 'error'  # foldar mão feita = erro
+    print("OK  test_grade_made_hand_tolerance")
+
+
+def test_grade_postflop_air_and_draw():
+    air = {'actions': {'fold': {'frequency': 0.8}, 'call': {'frequency': 0.2}}, 'best_action': 'fold'}
+    assert grade_from_hand_strategy(air, 'fold')['is_correct'] is True       # foldar air = ok (freq alta)
+    assert grade_from_hand_strategy(air, 'raise')['is_correct'] is False     # raisar air = erro
+    draw = {'actions': {'fold': {'frequency': 0.31}, 'raise_94pct': {'frequency': 0.47},
+                        'call': {'frequency': 0.22}}, 'best_action': 'raise_94pct'}
+    assert grade_from_hand_strategy(draw, 'fold')['is_correct'] is True      # fold é opção GTO aqui
+    assert grade_from_hand_strategy(draw, 'call')['gto_tier'] == 'correct'   # 22% ≥ MIN → aceitável
+    print("OK  test_grade_postflop_air_and_draw")
+
+
+def test_grade_postflop_contract():
+    made = {'actions': {'fold': {'frequency': 0.0}, 'raise_94pct': {'frequency': 1.0}}}
+    g = grade_from_hand_strategy(made, 'raise')
+    for k in ('is_correct', 'gto_tier', 'mixed', 'gto_freq', 'gto_strategy', 'best_action', 'new_action'):
+        assert k in g, f"falta {k}"
+    assert isinstance(g['gto_strategy'], list)
+    print("OK  test_grade_postflop_contract")
+
+
+def test_postflop_catalog_shape():
+    spots = POSTFLOP_CATALOG['bb_defense']
+    assert len(spots) >= 16
+    for s in spots:
+        assert len(s['board']) == 3 and len(s['hand']) == 2
+    print(f"OK  test_postflop_catalog_shape ({len(spots)} spots)")
 
 
 def test_scenario_mapping():
