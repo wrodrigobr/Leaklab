@@ -71,6 +71,7 @@ def main():
         print("AVISO: GTO_SOLVER_URL não setado — rode no server da API (onde alcança o solver).")
     served, dropped = [], []
     for street, board, hero in CATALOG:
+        tag = ''.join(c[0] for c in board) + ' ' + ''.join(hero)
         try:
             res = lookup_gto(
                 street=street, position='BB', board=board, hero_hand=hero,
@@ -79,11 +80,10 @@ def main():
                 allow_remote_solve=True, block_remote=True,   # live solve (GW-real ranges)
             )
         except Exception as e:
-            dropped.append((board, hero, f"erro: {e}"))
+            dropped.append(('', tag, f"erro: {e}"))
             continue
         ok, why = _validate(res)
-        tag = ''.join(c[0] for c in board) + ' ' + ''.join(hero)
-        (served if ok else dropped).append((res.get('spot_hash', '')[:12], tag, why))
+        (served if ok else dropped).append(((res.get('spot_hash') or '')[:12], tag, why))
 
     print(f"\n=== PILOTO BB-DEFESA — {len(CATALOG)} spots ===")
     print(f"VALIDADOS ({len(served)}):")
