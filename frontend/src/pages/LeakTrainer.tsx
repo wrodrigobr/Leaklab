@@ -19,9 +19,36 @@ const FREQ_COLOR: Record<string, string> = {
   raise: "bg-emerald-500", call: "bg-sky-500", allin: "bg-violet-500", fold: "bg-muted-foreground/40",
 };
 
+/** Postflop (Fase 2): mesa HU BB vs BTN com board + c-bet do vilão. */
+function buildPostflopStep(sp: LeakTrainerSpot, bb: number) {
+  const heroPos = sp.position, vsPos = sp.vs_position;
+  const heroIdx = ORDER.indexOf(heroPos), vsIdx = ORDER.indexOf(vsPos);
+  const stackChips = Math.round((sp.stack_bb || 40) * bb);
+  const seats: Record<string, { player: string; stack: number; pos: string }> = {};
+  const bets: Record<string, number> = {};
+  const folded: string[] = [];
+  ORDER.forEach((pos, i) => {
+    const sn = String(i + 1);
+    const isHero = pos === heroPos;
+    seats[sn] = { player: isHero ? "Hero" : pos, stack: stackChips, pos };
+    if (pos !== heroPos && pos !== vsPos) folded.push(isHero ? "Hero" : pos);
+  });
+  if (vsIdx >= 0) bets[String(vsIdx + 1)] = Math.round((sp.facing_size_bb || 1.65) * bb);  // c-bet
+  const potChips = Math.round((sp.pot_bb || 5) * bb);   // pote já construído no preflop
+  const step = {
+    type: "action", street: sp.street || "flop", seats, bets, folded,
+    pot_bb: potChips / bb, pot: potChips, bb,
+    button: ORDER.indexOf("BTN") + 1, board: sp.board || [],
+    player: "Hero", seat: heroIdx + 1, is_hero: true,
+  } as unknown as ReplayStep;
+  const heroCards = sp.hero_cards.map((c) => `${c.rank}${c.suit}`);
+  return { step, heroCards, bb };
+}
+
 /** Monta um ReplayStep 9-max sintético a partir do spot (mesma lógica do academy preflop). */
 function buildStep(sp: LeakTrainerSpot) {
   const bb = 100;
+  if (sp.kind === "postflop") return buildPostflopStep(sp, bb);
   const heroPos = sp.position, vsPos = sp.vs_position, scen = sp.scenario;
   const heroIdx = ORDER.indexOf(heroPos);
   const vsIdx = vsPos ? ORDER.indexOf(vsPos) : -1;
@@ -99,7 +126,8 @@ export default function LeakTrainer() {
 
   // rótulo humano da categoria de leak (cenário + posições)
   const labelFor = (sp: LeakTrainerSpot) =>
-    sp.scenario === "rfi" ? t("leakTrainer.cat.rfi", { pos: sp.position })
+    sp.kind === "postflop" ? t("leakTrainer.cat.postflopBb", { pos: sp.position, vs: sp.vs_position })
+    : sp.scenario === "rfi" ? t("leakTrainer.cat.rfi", { pos: sp.position })
     : sp.scenario === "vs_rfi" ? t("leakTrainer.cat.vsRfi", { pos: sp.position, vs: sp.vs_position })
     : t("leakTrainer.cat.vs3bet", { pos: sp.position, vs: sp.vs_position });
 
@@ -183,7 +211,7 @@ export default function LeakTrainer() {
 
   // rótulo da ação (raise muda por cenário: 3-Bet vs 4-Bet)
   const actLabel = (a: string) => {
-    if (a === "raise") return spot?.scenario === "vs_3bet" ? t("leakTrainer.act.raise4") : spot?.scenario === "vs_rfi" ? t("leakTrainer.act.raise3") : t("leakTrainer.act.raiseOpen");
+    if (a === "raise") return spot?.kind === "postflop" ? t("leakTrainer.act.raisePost") : spot?.scenario === "vs_3bet" ? t("leakTrainer.act.raise4") : spot?.scenario === "vs_rfi" ? t("leakTrainer.act.raise3") : t("leakTrainer.act.raiseOpen");
     return t(`leakTrainer.act.${a}`, a);
   };
 

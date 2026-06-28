@@ -86,14 +86,16 @@
     "cat": {
       "rfi": "{{pos}} open",
       "vsRfi": "{{pos}} defends vs {{vs}}",
-      "vs3bet": "{{pos}} faces a 3-bet from {{vs}}"
+      "vs3bet": "{{pos}} faces a 3-bet from {{vs}}",
+      "postflopBb": "{{pos}} defends vs c-bet from {{vs}} (flop)"
     },
     "act": {
       "fold": "Fold",
       "call": "Call",
       "raiseOpen": "Raise (open)",
       "raise3": "3-Bet",
-      "raise4": "4-Bet"
+      "raise4": "4-Bet",
+      "raisePost": "Raise"
     }
   },
   "feedback": {

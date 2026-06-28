@@ -967,13 +967,19 @@ export const gtoPreflop = {
 
 // ── Leak Trainer (drill adaptativo de spots GTO canônicos mirado nos leaks do jogador) ──
 export interface LeakTrainerSpot {
-  scenario: "rfi" | "vs_rfi" | "vs_3bet";
+  scenario?: "rfi" | "vs_rfi" | "vs_3bet";
+  kind?: "postflop";                // Fase 2: spot do catálogo postflop (tem board)
   category: string;                 // chave da categoria de leak (ex.: "vs_rfi:BB:CO:30")
   position: string;
   vs_position: string;
   stack_bb: number;
-  facing_size: number;
-  is_3bet_pot: boolean;
+  facing_size?: number;
+  facing_size_bb?: number;
+  is_3bet_pot?: boolean;
+  street?: string;
+  board?: string[];                 // postflop: ['Kd','7c','2s']
+  board_cards?: { rank: string; suit: string }[];
+  pot_bb?: number;
   hand: string;
   hero_cards: { rank: string; suit: string }[];
   options: string[];                // ações limpas (fold/call/raise)

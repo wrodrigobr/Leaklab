@@ -87,9 +87,17 @@ def build_curriculum(user_id: int, days: int = 90) -> list[dict]:
         }
         cat['key'] = _category_key(cat)
         cats.append(cat)
-    if cats:
-        return cats
-    return _fundamentals_curriculum()
+    base = cats if cats else _fundamentals_curriculum()
+    return base + _postflop_pilot_cats()
+
+
+def _postflop_pilot_cats() -> list[dict]:
+    """Fase 2 (piloto): categoria postflop BB-defesa do catálogo validado. Peso modesto — fundamento de
+    defesa OOP útil a todos. O leak-driven postflop (só se o user tem o leak) é refinamento futuro."""
+    cat = {'kind': 'postflop', 'catalog': 'bb_defense', 'scenario': 'pf_bb_defense',
+           'position': 'BB', 'vs_position': 'BTN', 'stack_bb': 40.0,
+           'ev_loss_bb': 0.0, 'n': 0, 'weight': 2.0, 'key': 'pf:bb_defense'}
+    return [cat]
 
 
 def _fundamentals_curriculum() -> list[dict]:
@@ -363,6 +371,7 @@ def grade_from_hand_strategy(hand_strategy: dict, action: str) -> dict:
         'mixed':             mixed,
         'gto_freq':          round(played_freq, 4),
         'gto_strategy':      gto_strategy,
+        'hand_freq':         {b: round(f, 4) for b, f in fam.items() if f > 0.001},
         'best_action':       _action_family(best),
         'new_action':        played,
         'recommended':       [b for b, _ in sorted(fam.items(), key=lambda x: -x[1])],
