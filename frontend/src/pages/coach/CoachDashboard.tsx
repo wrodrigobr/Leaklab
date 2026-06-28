@@ -240,7 +240,7 @@ function AlunosTab() {
         <div className="bg-hud-surface p-4">
           <div className="font-mono text-[10px] uppercase tracking-widest-2 text-muted-foreground">A receber</div>
           <div className="mt-1 font-mono text-2xl font-light tabular-nums text-foreground">{finance ? fmtCents(finance.amount_cents) : "—"}</div>
-          <div className="font-mono text-[10px] text-muted-foreground/70">{finance?.period ?? ""}</div>
+          <div className="font-mono text-[10px] text-muted-foreground/70">{finance?.rate_bps ? `${Math.round(finance.rate_bps / 100)}% por pagamento` : (finance?.period ?? "")}</div>
         </div>
         <div className="bg-hud-surface p-4">
           <div className="font-mono text-[10px] uppercase tracking-widest-2 text-muted-foreground">Próxima faixa</div>
@@ -249,7 +249,7 @@ function AlunosTab() {
               <div className="mt-1 font-mono text-sm font-bold text-amber-400">
                 faltam {finance.next_tier.needed} ativo{finance.next_tier.needed > 1 ? "s" : ""}
               </div>
-              <div className="font-mono text-[10px] text-muted-foreground/70">→ {fmtCents(finance.next_tier.rate_cents)}/aluno</div>
+              <div className="font-mono text-[10px] text-muted-foreground/70">→ {Math.round(finance.next_tier.rate_bps / 100)}% comissão</div>
             </>
           ) : (
             <div className="mt-1 font-mono text-sm font-bold text-primary">faixa máxima ✓</div>

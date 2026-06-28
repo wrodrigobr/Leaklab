@@ -4666,15 +4666,15 @@ def calculate_coach_payout(active_students: int, commission_cents: Optional[int]
     return active_students * rate
 
 
-def coach_next_tier(active_students: int, commission_cents: Optional[int] = None) -> Optional[dict]:
-    """Próxima faixa de payout p/ o motivador do cockpit ("faltam X → R$Y/aluno").
-    None quando já está no topo (30+) ou quando o coach tem taxa flat (Parceiro Fundador)."""
-    if commission_cents is not None:
-        return None   # taxa flat, sem escada
+def coach_next_tier(active_students: int, rate_bps_override: Optional[int] = None) -> Optional[dict]:
+    """Próxima faixa de COMISSÃO % p/ o motivador do cockpit ("faltam X → Y%"). Espelha _coach_rate_bps
+    (o modelo que REALMENTE paga). None no topo (30+) ou quando o coach tem taxa % fixa de parceiro."""
+    if rate_bps_override is not None:
+        return None   # taxa % fixa de parceiro, sem escada
     if active_students < 10:
-        return {'threshold': 10, 'rate_cents': 2000, 'needed': 10 - active_students}
+        return {'threshold': 10, 'rate_bps': 2000, 'needed': 10 - active_students}
     if active_students < 30:
-        return {'threshold': 30, 'rate_cents': 2500, 'needed': 30 - active_students}
+        return {'threshold': 30, 'rate_bps': 2500, 'needed': 30 - active_students}
     return None
 
 
@@ -5058,9 +5058,9 @@ def get_coach_finance_summary(coach_id: int) -> dict:
         referred_count = _fetchone(conn,
             "SELECT COUNT(*) AS n FROM users WHERE coach_id = ? AND invited_via_invite_id IS NOT NULL",
             (coach_id,))['n']
-        # taxa do coach (override flat de Parceiro Fundador; NULL = escada padrão por volume)
-        _cc = _fetchone(conn, "SELECT commission_cents FROM coach_profiles WHERE user_id = ?", (coach_id,))
-        commission_cents = _cc['commission_cents'] if _cc else None
+        # taxa % do coach (override de parceiro em bps; NULL = escada padrão por volume)
+        _cr = _fetchone(conn, "SELECT commission_rate_bps FROM coach_profiles WHERE user_id = ?", (coach_id,))
+        rate_bps_override = _cr['commission_rate_bps'] if _cr else None
         # Pay-while-paying: indicado + pagante + aprovado + não past_due (sem gate de atividade).
         active_students = _fetchone(conn, """
             SELECT COUNT(DISTINCT s.id) AS n
@@ -5070,21 +5070,33 @@ def get_coach_finance_summary(coach_id: int) -> dict:
               AND s.link_status = 'approved'
               AND COALESCE(s.subscription_status,'active') <> 'past_due'
         """, (coach_id,))['n']
-        amount_cents = calculate_coach_payout(active_students, commission_cents)
-        pay = _fetchone(conn, """
-            SELECT id, status, paid_at FROM coach_payments
-            WHERE coach_id = ? AND period = ?
-        """, (coach_id, period))
+        rate_bps = _coach_rate_bps(conn, coach_id, active_students)   # override OU escada por volume
+        # Dinheiro REAL = ledger de comissões (% sobre cada pagamento), NÃO o flat por aluno (legado).
+        now = datetime.datetime.utcnow().isoformat()
+        led = _fetchone(conn, _adapt("""
+            SELECT
+              COALESCE(SUM(CASE WHEN status='pending' AND payable_at <= ? THEN amount_cents ELSE 0 END),0) AS payable_cents,
+              COALESCE(SUM(CASE WHEN status='pending' AND payable_at >  ? THEN amount_cents ELSE 0 END),0) AS held_cents,
+              COALESCE(SUM(CASE WHEN status='paid' THEN amount_cents ELSE 0 END),0) AS paid_cents
+            FROM coach_commissions WHERE coach_id = ?
+        """), (now, now, coach_id))
+        payable_cents = int((led or {}).get('payable_cents') or 0)
+        held_cents    = int((led or {}).get('held_cents') or 0)
+        paid_cents    = int((led or {}).get('paid_cents') or 0)
         monthly_fee_waived = total_students >= 1
         return {
             'period':             period,
             'total_students':     total_students,
             'active_students':    active_students,
             'referred_count':     referred_count,
-            'amount_cents':       amount_cents,
-            'next_tier':          coach_next_tier(active_students, commission_cents),
-            'status':             pay['status'] if pay else 'pending',
-            'paid_at':            pay['paid_at'] if pay else None,
+            'rate_bps':           rate_bps,                       # taxa % atual (1500/2000/2500 ou override)
+            'amount_cents':       payable_cents + held_cents,     # acumulado real ainda não pago (% dos pagamentos)
+            'payable_cents':      payable_cents,                  # pagável (carência de 14d vencida)
+            'held_cents':         held_cents,                     # em carência
+            'paid_cents':         paid_cents,                     # já pago
+            'next_tier':          coach_next_tier(active_students, rate_bps_override),
+            'status':             'paid' if (payable_cents + held_cents == 0 and paid_cents > 0) else 'pending',
+            'paid_at':            None,
             'monthly_fee_waived': monthly_fee_waived,
         }
     finally:

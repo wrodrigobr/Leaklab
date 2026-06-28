@@ -2146,8 +2146,12 @@ export interface CoachFinanceSummary {
   total_students: number;
   active_students: number;
   referred_count?: number;
-  amount_cents: number;
-  next_tier?: { threshold: number; rate_cents: number; needed: number } | null;
+  rate_bps?: number;            // taxa % atual em basis points (2000 = 20%)
+  amount_cents: number;         // acumulado real ainda não pago (% sobre os pagamentos)
+  payable_cents?: number;       // pagável (carência vencida)
+  held_cents?: number;          // em carência (14d)
+  paid_cents?: number;          // já pago
+  next_tier?: { threshold: number; rate_bps: number; needed: number } | null;
   status: string;
   paid_at: string | null;
   monthly_fee_waived: boolean;
