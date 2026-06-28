@@ -110,7 +110,6 @@ from database.repositories import (
     get_phase_analysis, get_texture_analysis, get_tournaments_comparison,
     # Sprint C — BACK-014 + BACK-017: admin panel + revenue share
     get_admin_dashboard_stats, get_all_users, get_all_users_count, update_user_admin, delete_user_admin,
-    get_coaches_with_payout_status, upsert_coach_payment, mark_coach_payment_paid,
     get_coach_finance_summary, get_coach_finance_students, get_coach_finance_history,
     get_admin_activity_logs,
     # Sprint D — BACK-016: WhatsApp
@@ -242,7 +241,7 @@ def _cors_every_response(response):
             response.headers['Access-Control-Allow-Origin'] = origin
             response.headers['Vary'] = 'Origin'
     response.headers.setdefault('Access-Control-Allow-Headers', 'Content-Type, Authorization')
-    response.headers.setdefault('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
+    response.headers.setdefault('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS')
     return response
 
 

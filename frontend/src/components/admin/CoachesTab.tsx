@@ -82,17 +82,17 @@ function CoachDetail({ coach, payout, onClose }: { coach: AdminUser; payout?: Co
         <p className="font-mono text-[9px] uppercase text-muted-foreground">Taxa de comissão (%)</p>
         <p className="mt-1 text-[11px] text-muted-foreground">
           {payout?.commission_rate_bps != null
-            ? <>Fixa: <span className="font-bold text-foreground">{(payout.commission_rate_bps / 100).toFixed(0)}%</span> (Parceiro Fundador)</>
-            : "Escada padrão por volume: 1-9 → 15% · 10-29 → 20% · 30+ → 25%"}
+            ? <>Override: <span className="font-bold text-foreground">{(payout.commission_rate_bps / 100).toFixed(0)}%</span> por pagamento (parceiro)</>
+            : "Padrão: 15% por pagamento (defina um override pra parceiro estratégico)"}
         </p>
         <div className="mt-2 flex items-center gap-2">
           <input
             type="text" inputMode="decimal" value={rateInput}
             onChange={(e) => setRateInput(e.target.value)}
-            placeholder="vazio = escada"
+            placeholder="vazio = 15%"
             className="w-32 rounded-md border border-border bg-hud-surface px-2 py-1 font-mono text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
           />
-          <span className="font-mono text-[10px] text-muted-foreground">% por aluno</span>
+          <span className="font-mono text-[10px] text-muted-foreground">% por pagamento</span>
           <button
             onClick={saveRate}
             disabled={savingRate}

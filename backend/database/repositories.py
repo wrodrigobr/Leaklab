@@ -4063,11 +4063,14 @@ def admin_cockpit_summary(month: str = None) -> dict:
         failed = _fetchone(conn, _adapt(
             f"SELECT COUNT(*) n FROM payments WHERE status='failed' {_na} AND created_at >= ? AND created_at < ?"),
             (start, end))['n']
-        # SAÍDAS (repasses de coach do período + despesas do mês)
+        # SAÍDAS (repasses de coach = ledger % coach_commissions; o flat coach_payments é legado removido).
+        # c = pagável agora (carência vencida, entra no cash_out); pending = total acumulado não pago.
+        from datetime import datetime as _dt_now
+        _now_iso = _dt_now.utcnow().isoformat()
         payouts = _fetchone(conn, _adapt(
-            "SELECT COALESCE(SUM(amount_cents),0) c, "
+            "SELECT COALESCE(SUM(CASE WHEN status='pending' AND payable_at <= ? THEN amount_cents ELSE 0 END),0) c, "
             "COALESCE(SUM(CASE WHEN status='pending' THEN amount_cents ELSE 0 END),0) pending "
-            "FROM coach_payments WHERE period=?"), (month,))
+            "FROM coach_commissions"), (_now_iso,))
         exp_month = _monthly_expense_cents(conn)
         gross_in = int(gin['c'])
         cash_out = int(payouts['c']) + exp_month
