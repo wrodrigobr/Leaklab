@@ -34,18 +34,16 @@ MAX_EXPLOIT = 3.0     # % — bar prático: o grading é por TIER (freq≥30%=co
 # BB defesa OOP vs BTN (hero=BB=player 0, sem flag). facing>0 = enfrenta c-bet. Variedade de
 # board (seco/molhado/pareado) × mão (top pair/par/draw/air) p/ o trainer ter de onde escolher.
 # (street, board, hero, rótulo) — o rótulo é só p/ leitura/coerência na saída.
+# Mãos SEMPRE da CALL range do BB vs BTN (flats): conectores suited, pares baixos 22-44, ases fracos,
+# broadways suited/offsuit que pagam. NÃO usar 55+/AK/AQ/AJ (3-betam → caem em hand_strategy None).
 CATALOG = [
     # ── DRY: K72 rainbow ──
     ('flop', ['Kd', '7c', '2s'], ['Kh', 'Qc'], 'top pair bom kicker'),
     ('flop', ['Kd', '7c', '2s'], ['Kh', 'Ts'], 'top pair fraco'),
     ('flop', ['Kd', '7c', '2s'], ['7h', '6d'], 'par medio'),
-    ('flop', ['Kd', '7c', '2s'], ['8h', '8d'], 'under pair'),
-    ('flop', ['Kd', '7c', '2s'], ['Ac', 'Jd'], 'overs (air)'),
     # ── DRY: A63 rainbow ──
-    ('flop', ['Ad', '6c', '3s'], ['Ah', 'Jc'], 'top pair (A)'),
     ('flop', ['Ad', '6c', '3s'], ['Kh', 'Qd'], 'overs (air)'),
     ('flop', ['Ad', '6c', '3s'], ['6h', '5d'], 'par medio + gutshot'),
-    ('flop', ['Ad', '6c', '3s'], ['9h', '9d'], 'under pair'),
     # ── DRY: Q74 rainbow ──
     ('flop', ['Qd', '7s', '4h'], ['Kh', 'Qc'], 'top pair'),
     ('flop', ['Qd', '7s', '4h'], ['Js', 'Td'], 'overs + gutshot'),
@@ -57,15 +55,33 @@ CATALOG = [
     # ── WET: JT4 two-tone ──
     ('flop', ['Js', 'Ts', '4c'], ['Qh', 'Jd'], 'top pair + OESD'),
     ('flop', ['Js', 'Ts', '4c'], ['Kd', 'Qc'], 'OESD (KQ)'),
-    ('flop', ['Js', 'Ts', '4c'], ['9h', '9d'], 'under pair'),
     # ── WET: T96 two-tone ──
     ('flop', ['Th', '9d', '6c'], ['Qs', 'Jd'], 'OESD (QJ)'),
     ('flop', ['Th', '9d', '6c'], ['Ah', 'Td'], 'top pair'),
-    # ── PAIRED ──
-    ('flop', ['5d', '5s', '2h'], ['Ac', 'Kd'], 'overs (air)'),
-    ('flop', ['5d', '5s', '2h'], ['7h', '7d'], 'overpair (77)'),
-    ('flop', ['Kc', 'Kd', '4h'], ['Ah', 'Qd'], 'overs (air)'),
+    # ── PAIRED: KK4 ──
     ('flop', ['Kc', 'Kd', '4h'], ['Js', 'Td'], 'air + gutshot'),
+    # ── EXPANSÃO ──
+    # two-tone 9h7h2c (flush draw)
+    ('flop', ['9h', '7h', '2c'], ['Th', '8h'], 'OESD + flush draw (T8s)'),
+    ('flop', ['9h', '7h', '2c'], ['Ad', '9c'], 'top pair (A9o)'),
+    # broadway KdQcJs (straights/draws)
+    ('flop', ['Kd', 'Qc', 'Js'], ['Ah', 'Td'], 'straight nut (ATo)'),
+    ('flop', ['Kd', 'Qc', 'Js'], ['Ts', '9s'], 'straight + bdfd (T9s)'),
+    ('flop', ['Kd', 'Qc', 'Js'], ['9c', '8c'], 'gutshot (98s)'),
+    # low connected 7d6s4h
+    ('flop', ['7d', '6s', '4h'], ['8c', '7h'], 'par + OESD (87o)'),
+    ('flop', ['7d', '6s', '4h'], ['Ac', '4d'], 'bottom pair + A (A4o)'),
+    ('flop', ['7d', '6s', '4h'], ['Ts', '9d'], 'overs + gutshot (T9o)'),
+    # paired 9s9d4c (trips/air)
+    ('flop', ['9s', '9d', '4c'], ['Kh', '9c'], 'trips (K9o)'),
+    ('flop', ['9s', '9d', '4c'], ['Ah', '5d'], 'ace high air (A5o)'),
+    # ace two-tone AhTc5h
+    ('flop', ['Ah', 'Tc', '5h'], ['Ad', '8c'], 'top pair (A8o)'),
+    ('flop', ['Ah', 'Tc', '5h'], ['8h', '7h'], 'flush draw (87s)'),
+    ('flop', ['Ah', 'Tc', '5h'], ['Jd', 'Td'], 'mid pair (JTo)'),
+    # middle two-tone 9s7s4d
+    ('flop', ['9s', '7s', '4d'], ['8h', '6h'], 'OESD (86s)'),
+    ('flop', ['9s', '7s', '4d'], ['Kh', '9c'], 'top pair (K9o)'),
 ]
 
 _EXPECTED = {'fold', 'call', 'raise', 'check', 'bet'}
