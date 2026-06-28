@@ -1,7 +1,7 @@
 {
   "eyebrow": "Módulo de Treino",
   "title": "Treinos",
-  "subtitle": "Três formas de transformar seus erros em aprendizado ativo.",
+  "subtitle": "Treine seus leaks e domine os fundamentos.",
   "ghost": {
     "title": "Ghost Table",
     "badge": "Spaced Repetition",
@@ -29,5 +29,26 @@
     "f3": "Três níveis: Iniciante, Intermediário, Avançado",
     "f4": "XP e streak para cada exercício correto",
     "cta": "Acessar Academia"
+  },
+  "trainer": {
+    "title": "Treino de leaks",
+    "subtitle": "Feche seus vazamentos de dois jeitos complementares.",
+    "review": {
+      "title": "Revisar",
+      "desc": "Reveja os erros que você cometeu de verdade. A repetição espaçada traz cada mão de volta na hora certa, até a correção grudar.",
+      "p1": "Suas mãos reais",
+      "p2": "Repetição espaçada (SRS)",
+      "p3": "Fixa a correção na memória",
+      "cta": "Revisar meus erros"
+    },
+    "train": {
+      "title": "Treinar",
+      "desc": "Treine a categoria onde você mais perde EV, com exemplos novos e limpos. A dificuldade se adapta ao seu desempenho.",
+      "p1": "Exemplos novos ilimitados",
+      "p2": "Adaptativo ao seu nível",
+      "p3": "Preflop e postflop GTO",
+      "cta": "Treinar meu ponto fraco"
+    },
+    "hint": "Revisar fixa o que você errou. Treinar constrói o padrão. Os dois juntos fecham o leak."
   }
 }

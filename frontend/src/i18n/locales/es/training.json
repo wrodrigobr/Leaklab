@@ -1,7 +1,7 @@
 {
   "eyebrow": "Módulo de Entrenamiento",
   "title": "Entrenamiento",
-  "subtitle": "Tres formas de convertir tus errores en aprendizaje activo.",
+  "subtitle": "Entrena tus fugas y domina los fundamentos.",
   "ghost": {
     "title": "Ghost Table",
     "badge": "Repetición Espaciada",
@@ -29,5 +29,26 @@
     "f3": "Tres niveles: Principiante, Intermedio, Avanzado",
     "f4": "XP y racha por cada ejercicio correcto",
     "cta": "Ir a la Academia"
+  },
+  "trainer": {
+    "title": "Entrenamiento de fugas",
+    "subtitle": "Cierra tus fugas de dos maneras complementarias.",
+    "review": {
+      "title": "Revisar",
+      "desc": "Repasa los errores que cometiste de verdad. La repetición espaciada trae cada mano de vuelta en el momento justo, hasta que la corrección se fija.",
+      "p1": "Tus manos reales",
+      "p2": "Repetición espaciada (SRS)",
+      "p3": "Fija la corrección en la memoria",
+      "cta": "Revisar mis errores"
+    },
+    "train": {
+      "title": "Entrenar",
+      "desc": "Entrena la categoría donde más EV pierdes, con ejemplos nuevos y limpios. La dificultad se adapta a tu desempeño.",
+      "p1": "Ejemplos nuevos ilimitados",
+      "p2": "Se adapta a tu nivel",
+      "p3": "Preflop y postflop GTO",
+      "cta": "Entrenar mi punto débil"
+    },
+    "hint": "Revisar fija lo que fallaste. Entrenar construye el patrón. Juntos cierran la fuga."
   }
 }
