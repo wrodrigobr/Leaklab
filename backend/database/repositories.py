@@ -4667,14 +4667,8 @@ def calculate_coach_payout(active_students: int, commission_cents: Optional[int]
 
 
 def coach_next_tier(active_students: int, rate_bps_override: Optional[int] = None) -> Optional[dict]:
-    """Próxima faixa de COMISSÃO % p/ o motivador do cockpit ("faltam X → Y%"). Espelha _coach_rate_bps
-    (o modelo que REALMENTE paga). None no topo (30+) ou quando o coach tem taxa % fixa de parceiro."""
-    if rate_bps_override is not None:
-        return None   # taxa % fixa de parceiro, sem escada
-    if active_students < 10:
-        return {'threshold': 10, 'rate_bps': 2000, 'needed': 10 - active_students}
-    if active_students < 30:
-        return {'threshold': 30, 'rate_bps': 2500, 'needed': 30 - active_students}
+    """Sem escada: a comissão padrão é FLAT (15%); a generosidade extra vem do override por coach, não de
+    subir faixa por volume. Mantida por compat — sempre None (não há 'próxima faixa' a alcançar)."""
     return None
 
 
@@ -4715,15 +4709,17 @@ def _coach_paying_referred_count(conn, coach_id: int) -> int:
     """), (coach_id,))['n']
 
 
+_COACH_DEFAULT_RATE_BPS = 1500   # padrão FLAT 15% — a generosidade fica no override seletivo, não no piso
+
+
 def _coach_rate_bps(conn, coach_id: int, count: int) -> int:
-    """Taxa em basis points. Override por coach (commission_rate_bps, ex.: Felipe 3000=30%) ou escada
-    por volume: 1-9 → 15%, 10-29 → 20%, 30+ → 25%."""
+    """Taxa de comissão em basis points. Override por coach (commission_rate_bps, ex.: parceiro fundador
+    3000 = 30%); senão o PADRÃO FLAT de 15% (sem escada por volume — escalar % com volume custava mais
+    justo onde dói; a generosidade extra vai pra parceiros estratégicos via override)."""
     row = _fetchone(conn, _adapt("SELECT commission_rate_bps FROM coach_profiles WHERE user_id = ?"), (coach_id,))
     if row and row.get('commission_rate_bps') is not None:
         return int(row['commission_rate_bps'])
-    if count >= 30: return 2500
-    if count >= 10: return 2000
-    return 1500
+    return _COACH_DEFAULT_RATE_BPS
 
 
 def accrue_coach_commission(student_id: int, payment_ref: str, base_cents: int) -> None:
