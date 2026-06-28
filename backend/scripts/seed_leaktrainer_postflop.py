@@ -27,7 +27,9 @@ from leaklab.gto_solver import lookup_gto
 STACK = 40.0
 POT_BB = 5.0          # SRP: BTN open ~2.2 + BB call → ~5bb
 CBET = 1.65           # c-bet ~33% do pote (em BB)
-MAX_EXPLOIT = 2.0     # % — acima disso o solve não convergiu o bastante p/ servir como verdade
+MAX_EXPLOIT = 3.0     # % — bar prático: o grading é por TIER (freq≥30%=correto), robusto a erro de
+                      # poucos % na freq. 2-3% é "GTO prático" bom. A corretude REAL vem do cross-check
+                      # vs GTO Wizard (a exploitability só prova convergência, não a resposta certa).
 
 # BB defesa OOP vs BTN (hero=BB=player 0, sem flag). facing>0 = enfrenta c-bet. Variedade de
 # board (seco/molhado/pareado) × mão (top pair/par/draw/overs) p/ o trainer ter de onde escolher.
@@ -66,6 +68,19 @@ def _validate(res):
     return True, (f"expl={expl:.2f}% acts={sorted(acts)}" + (" [DEGENERADA — revisar]" if degenerate else ""))
 
 
+def _fmt_strategy(res):
+    """Estratégia legível p/ cross-check vs GW: 'call 52% (+1.20) · fold 31% · raise 17%'."""
+    s = res.get('strategy') or []
+    parts = []
+    for a in sorted(s, key=lambda x: -(x.get('frequency') or 0)):
+        f = a.get('frequency') or 0
+        pct = round(f * 100) if f <= 1.0 else round(f)
+        ev = a.get('ev_bb')
+        ev_s = f" ({ev:+.2f})" if isinstance(ev, (int, float)) else ""
+        parts.append(f"{a.get('action', '?')} {pct}%{ev_s}")
+    return " · ".join(parts) if parts else "(vazia)"
+
+
 def main():
     if not os.environ.get('GTO_SOLVER_URL'):
         print("AVISO: GTO_SOLVER_URL não setado — rode no server da API (onde alcança o solver).")
@@ -80,20 +95,20 @@ def main():
                 allow_remote_solve=True, block_remote=True,   # live solve (GW-real ranges)
             )
         except Exception as e:
-            dropped.append(('', tag, f"erro: {e}"))
+            dropped.append(('', tag, f"erro: {e}", ''))
             continue
         ok, why = _validate(res)
-        (served if ok else dropped).append(((res.get('spot_hash') or '')[:12], tag, why))
+        (served if ok else dropped).append(((res.get('spot_hash') or '')[:12], tag, why, _fmt_strategy(res)))
 
-    print(f"\n=== PILOTO BB-DEFESA — {len(CATALOG)} spots ===")
-    print(f"VALIDADOS ({len(served)}):")
-    for h, tag, why in served:
-        print(f"  ✓ {h}…  {tag:>14}  {why}")
+    print(f"\n=== PILOTO BB-DEFESA (BTN open ~{POT_BB}bb, c-bet {CBET}bb, {int(STACK)}bb) — {len(CATALOG)} spots ===")
+    print(f"VALIDADOS ({len(served)}) — exploitability < {MAX_EXPLOIT}%:")
+    for h, tag, why, strat in served:
+        print(f"  ✓ {tag:>14}  [{why}]\n        {strat}")
     print(f"REPROVADOS ({len(dropped)}):")
-    for h, tag, why in dropped:
-        print(f"  ✗ {h}…  {tag:>14}  {why}")
-    print("\nPróximo passo: cross-check MANUAL de 2-3 validados vs GTO Wizard antes de ligar o branch.")
-    print("Os hashes validados são o que o trainer vai LER (mesmo facing em BB).")
+    for h, tag, why, strat in dropped:
+        print(f"  ✗ {tag:>14}  [{why}]" + (f"\n        {strat}" if strat else ""))
+    print("\nCROSS-CHECK: compare as frequências acima (board+mão BB defendendo vs BTN open, ~40bb) com o")
+    print("GTO Wizard (mesmo spot). Se baterem na DIREÇÃO e ~freq, o pipeline está correto → ligo o branch.")
 
 
 if __name__ == '__main__':
