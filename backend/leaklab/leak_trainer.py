@@ -296,6 +296,22 @@ POSTFLOP_CATALOG = {
         {'board': ['Th', '9d', '6c'], 'hand': ['Qs', 'Jd']},   # OESD
         {'board': ['Th', '9d', '6c'], 'hand': ['Ah', 'Td']},   # top pair
         {'board': ['Kc', 'Kd', '4h'], 'hand': ['Js', 'Td']},   # air + gutshot (board pareado)
+        # ── expansão 2026-06-28 (texturas novas, todas validadas expl<3%, fold 0% nas mãos feitas) ──
+        {'board': ['9h', '7h', '2c'], 'hand': ['Th', '8h']},   # OESD + flush draw
+        {'board': ['9h', '7h', '2c'], 'hand': ['Ad', '9c']},   # top pair
+        {'board': ['Kd', 'Qc', 'Js'], 'hand': ['Ah', 'Td']},   # straight nut (broadway)
+        {'board': ['Kd', 'Qc', 'Js'], 'hand': ['Ts', '9s']},   # straight + bdfd
+        {'board': ['Kd', 'Qc', 'Js'], 'hand': ['9c', '8c']},   # gutshot
+        {'board': ['7d', '6s', '4h'], 'hand': ['8c', '7h']},   # par + OESD (low connected)
+        {'board': ['7d', '6s', '4h'], 'hand': ['Ac', '4d']},   # bottom pair + A
+        {'board': ['7d', '6s', '4h'], 'hand': ['Ts', '9d']},   # overs + gutshot
+        {'board': ['9s', '9d', '4c'], 'hand': ['Kh', '9c']},   # trips (pareado)
+        {'board': ['9s', '9d', '4c'], 'hand': ['Ah', '5d']},   # ace high air
+        {'board': ['Ah', 'Tc', '5h'], 'hand': ['Ad', '8c']},   # top pair (ace two-tone)
+        {'board': ['Ah', 'Tc', '5h'], 'hand': ['8h', '7h']},   # flush draw
+        {'board': ['Ah', 'Tc', '5h'], 'hand': ['Jd', 'Td']},   # mid pair
+        {'board': ['9s', '7s', '4d'], 'hand': ['8h', '6h']},   # OESD (middle two-tone)
+        {'board': ['9s', '7s', '4d'], 'hand': ['Kh', '9c']},   # top pair
     ],
 }
 _POSTFLOP_OPTIONS = ['fold', 'call', 'raise']
