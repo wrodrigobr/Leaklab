@@ -296,16 +296,21 @@ export default function LeakTrainer() {
           <span className="font-mono text-[10px] font-bold text-foreground">{catLabel}</span>
           <span className="font-mono text-[9px] text-muted-foreground">{spot.stack_bb}bb</span>
         </div>
-        {/* topo-direita: stats + ranges */}
-        <div className="absolute top-[calc(0.4rem+env(safe-area-inset-top))] right-[calc(0.5rem+env(safe-area-inset-right))] z-30 flex items-center gap-2.5 rounded-full bg-background/70 px-3 py-1.5 font-mono text-[10px] tabular-nums ring-1 ring-border backdrop-blur">
-          {totalDone > 0 && (<>
-            <span className="text-foreground">{totalDone}</span>
-            <span className={accuracy !== null && accuracy >= 70 ? "text-emerald-400" : "text-amber-400"}>{accuracy}%</span>
-            <span className={streak >= 3 ? "text-amber-400" : "text-muted-foreground"}>{streak}🔥</span>
-          </>)}
-          <button onClick={() => setShowRange(true)} className="text-muted-foreground transition-colors hover:text-amber-400"><LayoutGrid className="size-3.5" aria-hidden /></button>
+        {/* topo-direita: stats + ranges, e o Finalizar como pílula âmbar separada (claramente um botão) */}
+        <div className="absolute top-[calc(0.4rem+env(safe-area-inset-top))] right-[calc(0.5rem+env(safe-area-inset-right))] z-30 flex items-center gap-2">
+          <div className="flex items-center gap-2.5 rounded-full bg-background/70 px-3 py-1.5 font-mono text-[10px] tabular-nums ring-1 ring-border backdrop-blur">
+            {totalDone > 0 && (<>
+              <span className="text-foreground">{totalDone}</span>
+              <span className={accuracy !== null && accuracy >= 70 ? "text-emerald-400" : "text-amber-400"}>{accuracy}%</span>
+              <span className={streak >= 3 ? "text-amber-400" : "text-muted-foreground"}>{streak}🔥</span>
+            </>)}
+            <button onClick={() => setShowRange(true)} className="text-muted-foreground transition-colors hover:text-amber-400"><LayoutGrid className="size-3.5" aria-hidden /></button>
+          </div>
           {totalDone > 0 && (
-            <button onClick={finishSession} className="text-amber-400 transition-colors hover:text-amber-300"><Flag className="size-3.5" aria-hidden /></button>
+            <button onClick={finishSession}
+              className="flex items-center gap-1.5 rounded-full bg-amber-500/15 px-3 py-1.5 font-mono text-[10px] font-bold uppercase tracking-wider text-amber-400 ring-1 ring-amber-500/40 backdrop-blur transition-colors hover:bg-amber-500/25">
+              <Flag className="size-3" aria-hidden /> {t("leakTrainer.finish")}
+            </button>
           )}
         </div>
         {/* botões fold/call/raise — flutuando na base do feltro (safe-area) */}
