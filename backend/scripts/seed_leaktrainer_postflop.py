@@ -32,18 +32,40 @@ MAX_EXPLOIT = 3.0     # % — bar prático: o grading é por TIER (freq≥30%=co
                       # vs GTO Wizard (a exploitability só prova convergência, não a resposta certa).
 
 # BB defesa OOP vs BTN (hero=BB=player 0, sem flag). facing>0 = enfrenta c-bet. Variedade de
-# board (seco/molhado/pareado) × mão (top pair/par/draw/overs) p/ o trainer ter de onde escolher.
+# board (seco/molhado/pareado) × mão (top pair/par/draw/air) p/ o trainer ter de onde escolher.
+# (street, board, hero, rótulo) — o rótulo é só p/ leitura/coerência na saída.
 CATALOG = [
-    ('flop', ['Kd', '7c', '2s'], ['Kh', 'Ts']),   # top pair kicker fraco, board seco
-    ('flop', ['Kd', '7c', '2s'], ['7h', '6h']),   # par médio + bdfd
-    ('flop', ['9h', '8h', '5c'], ['Th', '9c']),   # par + draw, board molhado
-    ('flop', ['9h', '8h', '5c'], ['Ah', 'Jh']),   # overs + nut flush draw
-    ('flop', ['Qd', '7s', '4h'], ['Js', 'Ts']),   # overs + gutshot, board seco
-    ('flop', ['Qd', '7s', '4h'], ['As', '4d']),   # bottom pair top kicker
-    ('flop', ['Ad', '6c', '3s'], ['7h', '7d']),   # under pair
-    ('flop', ['5d', '5s', '2h'], ['Ac', 'Kd']),   # overs em board pareado
-    ('flop', ['Js', 'Ts', '4c'], ['Qh', 'Jd']),   # top pair + gutshot, board conectado
-    ('flop', ['8c', '5d', '2h'], ['Ah', 'Ks']),   # overs (air) em board seco baixo
+    # ── DRY: K72 rainbow ──
+    ('flop', ['Kd', '7c', '2s'], ['Kh', 'Qc'], 'top pair bom kicker'),
+    ('flop', ['Kd', '7c', '2s'], ['Kh', 'Ts'], 'top pair fraco'),
+    ('flop', ['Kd', '7c', '2s'], ['7h', '6d'], 'par medio'),
+    ('flop', ['Kd', '7c', '2s'], ['8h', '8d'], 'under pair'),
+    ('flop', ['Kd', '7c', '2s'], ['Ac', 'Jd'], 'overs (air)'),
+    # ── DRY: A63 rainbow ──
+    ('flop', ['Ad', '6c', '3s'], ['Ah', 'Jc'], 'top pair (A)'),
+    ('flop', ['Ad', '6c', '3s'], ['Kh', 'Qd'], 'overs (air)'),
+    ('flop', ['Ad', '6c', '3s'], ['6h', '5d'], 'par medio + gutshot'),
+    ('flop', ['Ad', '6c', '3s'], ['9h', '9d'], 'under pair'),
+    # ── DRY: Q74 rainbow ──
+    ('flop', ['Qd', '7s', '4h'], ['Kh', 'Qc'], 'top pair'),
+    ('flop', ['Qd', '7s', '4h'], ['Js', 'Td'], 'overs + gutshot'),
+    ('flop', ['Qd', '7s', '4h'], ['Ac', '4d'], 'bottom pair + A'),
+    # ── WET: 985 two-tone ──
+    ('flop', ['9h', '8h', '5c'], ['Th', '9c'], 'par + draw'),
+    ('flop', ['9h', '8h', '5c'], ['Jd', 'Tc'], 'OESD (JT)'),
+    ('flop', ['9h', '8h', '5c'], ['7d', '6c'], 'straight feita (76)'),
+    # ── WET: JT4 two-tone ──
+    ('flop', ['Js', 'Ts', '4c'], ['Qh', 'Jd'], 'top pair + OESD'),
+    ('flop', ['Js', 'Ts', '4c'], ['Kd', 'Qc'], 'OESD (KQ)'),
+    ('flop', ['Js', 'Ts', '4c'], ['9h', '9d'], 'under pair'),
+    # ── WET: T96 two-tone ──
+    ('flop', ['Th', '9d', '6c'], ['Qs', 'Jd'], 'OESD (QJ)'),
+    ('flop', ['Th', '9d', '6c'], ['Ah', 'Td'], 'top pair'),
+    # ── PAIRED ──
+    ('flop', ['5d', '5s', '2h'], ['Ac', 'Kd'], 'overs (air)'),
+    ('flop', ['5d', '5s', '2h'], ['7h', '7d'], 'overpair (77)'),
+    ('flop', ['Kc', 'Kd', '4h'], ['Ah', 'Qd'], 'overs (air)'),
+    ('flop', ['Kc', 'Kd', '4h'], ['Js', 'Td'], 'air + gutshot'),
 ]
 
 _EXPECTED = {'fold', 'call', 'raise', 'check', 'bet'}
@@ -82,8 +104,8 @@ def main():
     if not os.environ.get('GTO_SOLVER_URL'):
         print("AVISO: GTO_SOLVER_URL não setado — rode no server da API (onde alcança o solver).")
     served, dropped = [], []
-    for street, board, hero in CATALOG:
-        tag = ''.join(c[0] for c in board) + ' ' + ''.join(hero)
+    for street, board, hero, label in CATALOG:
+        tag = f"{''.join(c[0] for c in board)} {''.join(hero)} · {label}"
         try:
             res = lookup_gto(
                 street=street, position='BB', board=board, hero_hand=hero,
@@ -101,10 +123,10 @@ def main():
     print(f"\n=== PILOTO BB-DEFESA (BTN open ~{POT_BB}bb, c-bet {CBET}bb, {int(STACK)}bb) — {len(CATALOG)} spots ===")
     print(f"VALIDADOS ({len(served)}) — exploitability < {MAX_EXPLOIT}%:")
     for h, tag, why, strat in served:
-        print(f"  ✓ {tag:>14}  [{why}]\n        {strat}")
+        print(f"  ✓ {tag:<34} [{why}]\n        {strat}")
     print(f"REPROVADOS ({len(dropped)}):")
     for h, tag, why, strat in dropped:
-        print(f"  ✗ {tag:>14}  [{why}]" + (f"\n        {strat}" if strat else ""))
+        print(f"  ✗ {tag:<34} [{why}]" + (f"\n        {strat}" if strat else ""))
     print("\nCROSS-CHECK: compare as frequências acima (board+mão BB defendendo vs BTN open, ~40bb) com o")
     print("GTO Wizard (mesmo spot). Se baterem na DIREÇÃO e ~freq, o pipeline está correto → ligo o branch.")
 
