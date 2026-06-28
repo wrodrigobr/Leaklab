@@ -1,9 +1,11 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { ArrowRight, CheckCircle2, Loader2, RefreshCw, XCircle, Target, Maximize2, Minimize2, LayoutGrid, Flag } from "lucide-react";
+import { ArrowRight, CheckCircle2, Loader2, RefreshCw, XCircle, Target, Maximize2, Minimize2, LayoutGrid, Flag, RotateCw } from "lucide-react";
 import { HudHeader } from "@/components/hud/HudHeader";
 import { PokerTableV3 } from "@/components/hud/PokerTableV3";
 import { RangePanel } from "@/components/replayer/RangePanel";
+import { useTableOrientation } from "@/hooks/use-table-orientation";
+import { useIsLandscapeMobile } from "@/hooks/use-is-landscape-mobile";
 import { leaktrainer } from "@/lib/api";
 import type { LeakTrainerSpot, LeakTrainerGrade, LeakTrainerState, ReplayStep } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -124,6 +126,19 @@ export default function LeakTrainer() {
   }, []);
   const canFull = typeof document !== "undefined" && !!document.documentElement.requestFullscreen;
 
+  // mesmo padrão do Replayer: celular deitado = tela cheia imersiva; em pé = pedir pra girar.
+  const { t: tr } = useTranslation("replayer");        // chaves de rotação reusadas do Replayer
+  const tableOrientation = useTableOrientation();
+  const landscapeMobile = useIsLandscapeMobile();
+  const isStandalone = typeof window !== "undefined" &&
+    (window.matchMedia?.("(display-mode: standalone)").matches || (navigator as { standalone?: boolean }).standalone === true);
+  const goImmersive = async () => {
+    try {
+      await rootRef.current?.requestFullscreen?.();
+      await (screen.orientation as ScreenOrientation & { lock?: (o: string) => Promise<void> })?.lock?.("landscape");
+    } catch { /* iOS / sem API de orientação — a dica de PWA cobre */ }
+  };
+
   // rótulo humano da categoria de leak (cenário + posições)
   const labelFor = (sp: LeakTrainerSpot) =>
     sp.kind === "postflop" ? t("leakTrainer.cat.postflopBb", { pos: sp.position, vs: sp.vs_position })
@@ -220,8 +235,134 @@ export default function LeakTrainer() {
     : [];
   const verdictKind = grade ? (grade.gto_tier === "error" ? "error" : grade.mixed ? "mixed" : "correct") : null;
 
+  // Veredito (cabeçalho + barras + Próximo) — markup ÚNICO reusado no aside (desktop) e no bottom-sheet (mobile).
+  const verdictCard = grade && verdictKind ? (
+    <>
+      <div className={cn(
+        "rounded-xl border p-4 space-y-3",
+        verdictKind === "correct" ? "border-emerald-500/30 bg-emerald-500/5"
+          : verdictKind === "mixed" ? "border-sky-500/30 bg-sky-500/5"
+          : "border-amber-500/30 bg-amber-500/5",
+      )}>
+        <div className="flex items-center gap-2">
+          {verdictKind === "error"
+            ? <XCircle className="size-5 text-amber-400 shrink-0" aria-hidden />
+            : <CheckCircle2 className={cn("size-5 shrink-0", verdictKind === "mixed" ? "text-sky-400" : "text-emerald-400")} aria-hidden />}
+          <span className={cn("font-mono text-xs font-bold uppercase tracking-wider",
+            verdictKind === "correct" ? "text-emerald-400" : verdictKind === "mixed" ? "text-sky-400" : "text-amber-400")}>
+            {verdictKind === "correct" ? t("leakTrainer.vCorrect") : verdictKind === "mixed" ? t("leakTrainer.vMixed") : t("leakTrainer.vError")}
+          </span>
+          {grade.xp_awarded > 0 && (
+            <span className="ml-auto font-mono text-[10px] text-emerald-400">+{grade.xp_awarded} XP</span>
+          )}
+        </div>
+        {freqEntries.length > 0 && (
+          <>
+            <p className="font-mono text-[10px] text-muted-foreground">{t("leakTrainer.gtoPlays", { hand: spot?.hand })}</p>
+            <div className="space-y-1.5">
+              {freqEntries.map(([act, freq]) => (
+                <div key={act} className="flex items-center gap-2">
+                  <span className="font-mono text-[10px] text-muted-foreground w-10 shrink-0">{FREQ_LABEL[act] ?? act}</span>
+                  <div className="relative flex-1 h-1.5 rounded-full bg-border overflow-hidden">
+                    <div className={cn("h-full rounded-full", FREQ_COLOR[act] ?? "bg-primary")} style={{ width: `${Math.min(100, freq * 100)}%` }} />
+                  </div>
+                  <span className="font-mono text-[10px] font-bold tabular-nums w-8 text-right text-foreground">{Math.round(freq * 100)}%</span>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+      </div>
+      <button onClick={loadNext} className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-amber-500 px-4 py-3 font-mono text-sm font-bold uppercase tracking-widest text-black transition-colors hover:bg-amber-400">
+        <ArrowRight className="size-4" aria-hidden /> {t("leakTrainer.next")}
+        <kbd className="hidden rounded border border-black/20 bg-black/10 px-1.5 py-0.5 text-[9px] font-normal md:inline-block">Enter</kbd>
+      </button>
+    </>
+  ) : null;
+
+  // ── CELULAR DEITADO: tela cheia imersiva (mesa preenche, botões/veredito flutuam) ──
+  if (landscapeMobile && (phase === "question" || phase === "feedback") && spot && table) {
+    return (
+      <div ref={rootRef} className="h-dvh relative overflow-hidden hud-scanline"
+        style={{ background: "radial-gradient(ellipse at 50% 45%, #14223a 0%, #080f1c 100%)" }}>
+        <div className="absolute inset-0 flex items-center justify-center p-0.5">
+          <div className="h-full w-auto max-w-full mx-auto" style={{ aspectRatio: "1160 / 710" }}>
+            <PokerTableV3 step={table.step} hero="Hero" heroCards={table.heroCards} bb={table.bb} betUnit="bb" orientation="landscape" fill />
+          </div>
+        </div>
+        {/* topo-esquerda: categoria treinada */}
+        <div className="absolute top-[calc(0.4rem+env(safe-area-inset-top))] left-[calc(0.5rem+env(safe-area-inset-left))] z-30 flex items-center gap-1.5 rounded-full bg-background/70 px-3 py-1.5 ring-1 ring-amber-500/30 backdrop-blur">
+          <Target className="size-3 text-amber-400" aria-hidden />
+          <span className="font-mono text-[10px] font-bold text-foreground">{catLabel}</span>
+          <span className="font-mono text-[9px] text-muted-foreground">{spot.stack_bb}bb</span>
+        </div>
+        {/* topo-direita: stats + ranges */}
+        <div className="absolute top-[calc(0.4rem+env(safe-area-inset-top))] right-[calc(0.5rem+env(safe-area-inset-right))] z-30 flex items-center gap-2.5 rounded-full bg-background/70 px-3 py-1.5 font-mono text-[10px] tabular-nums ring-1 ring-border backdrop-blur">
+          {totalDone > 0 && (<>
+            <span className="text-foreground">{totalDone}</span>
+            <span className={accuracy !== null && accuracy >= 70 ? "text-emerald-400" : "text-amber-400"}>{accuracy}%</span>
+            <span className={streak >= 3 ? "text-amber-400" : "text-muted-foreground"}>{streak}🔥</span>
+          </>)}
+          <button onClick={() => setShowRange(true)} className="text-muted-foreground transition-colors hover:text-amber-400"><LayoutGrid className="size-3.5" aria-hidden /></button>
+          {totalDone > 0 && (
+            <button onClick={finishSession} className="text-amber-400 transition-colors hover:text-amber-300"><Flag className="size-3.5" aria-hidden /></button>
+          )}
+        </div>
+        {/* botões fold/call/raise — flutuando na base do feltro (safe-area) */}
+        {phase === "question" && (
+          <div className="absolute bottom-[calc(0.6rem+env(safe-area-inset-bottom))] left-1/2 z-30 flex -translate-x-1/2 items-center gap-2">
+            {spot.options.map((a) => (
+              <button key={a} onClick={() => submit(a)} disabled={submitting}
+                className="min-w-[88px] rounded-full bg-background/85 px-5 py-3 font-mono text-sm font-bold uppercase tracking-wider text-foreground shadow-lg ring-1 ring-border backdrop-blur transition-all active:scale-95 hover:text-amber-400 hover:ring-amber-500/60 disabled:opacity-40">
+                {actLabel(a)}
+              </button>
+            ))}
+          </div>
+        )}
+        {/* veredito — bottom-sheet deslizante */}
+        {phase === "feedback" && verdictCard && (
+          <div className="absolute inset-x-0 bottom-0 z-40 animate-fade-in">
+            <div className="mx-auto max-w-lg space-y-3 rounded-t-2xl border-t border-border bg-background/95 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] shadow-2xl backdrop-blur">
+              {verdictCard}
+            </div>
+          </div>
+        )}
+        {/* overlay de ranges */}
+        {showRange && table && (
+          <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/70 p-4" onClick={() => setShowRange(false)}>
+            <div className="w-full max-w-lg max-h-[88vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+              <RangePanel step={table.step} hero="Hero" heroCards={table.heroCards} onClose={() => setShowRange(false)} />
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // ── CELULAR EM PÉ: a mesa só funciona deitada → pedir pra girar (mesmo padrão do Replayer) ──
+  if (tableOrientation === "portrait" && (phase === "question" || phase === "feedback") && spot) {
+    return (
+      <div className="h-dvh flex flex-col items-center justify-center gap-5 bg-background hud-scanline px-10 text-center"
+        style={{ background: "radial-gradient(ellipse at 50% 45%, #14223a 0%, #080f1c 100%)" }}>
+        <RotateCw className="size-14 text-amber-400" aria-hidden />
+        <p className="font-mono text-[13px] uppercase tracking-widest text-muted-foreground leading-relaxed">{tr("rotatePrompt")}</p>
+        {canFull && (
+          <button onClick={goImmersive}
+            className="flex items-center gap-2 rounded-full bg-amber-500 px-5 py-2.5 font-mono text-[12px] font-bold uppercase tracking-widest text-black shadow-lg transition-transform active:scale-95">
+            <Maximize2 className="size-4" aria-hidden /> {tr("fullscreenRotate")}
+          </button>
+        )}
+        {!canFull && !isStandalone && (
+          <p className="max-w-[280px] rounded-xl bg-amber-500/10 px-4 py-2.5 font-mono text-[10px] leading-relaxed text-amber-400/90 ring-1 ring-amber-500/20">
+            {tr("iosInstallHint")}
+          </p>
+        )}
+      </div>
+    );
+  }
+
   return (
-    <div ref={rootRef} className="min-h-dvh bg-background hud-scanline flex flex-col">
+    <div ref={rootRef} className="h-dvh overflow-hidden bg-background hud-scanline flex flex-col">
       {!isFull && <HudHeader />}
       <main className="flex-1 min-h-0 mx-auto flex w-full max-w-[1500px] flex-col px-4 py-3 md:px-8 animate-fade-in">
         {/* header compacto + tela cheia (header grande do HudLayout causava scroll) */}
@@ -255,7 +396,7 @@ export default function LeakTrainer() {
           </div>
         </div>
 
-        <div className="flex min-h-0 flex-1 flex-col justify-center">
+        <div className="flex min-h-0 flex-1 flex-col justify-center overflow-y-auto">
 
         {phase === "loading" && (
           <div className="flex flex-col items-center gap-4 py-16">
@@ -325,15 +466,15 @@ export default function LeakTrainer() {
         )}
 
         {(phase === "question" || phase === "feedback") && spot && table && (
-          <div className="flex flex-col lg:flex-row gap-4 items-stretch">
+          <div className="flex min-h-0 flex-1 flex-col gap-4 lg:flex-row lg:items-stretch">
 
-            <div className="flex-1 min-w-0">
-              <div className="w-full aspect-[16/10]">
-                <PokerTableV3 step={table.step} hero="Hero" heroCards={table.heroCards} bb={table.bb} betUnit="bb" />
+            <div className="flex min-h-0 min-w-0 flex-1 items-center justify-center">
+              <div className="aspect-[16/10] h-full max-h-full w-auto max-w-full">
+                <PokerTableV3 step={table.step} hero="Hero" heroCards={table.heroCards} bb={table.bb} betUnit="bb" transparentBg />
               </div>
             </div>
 
-            <aside className="w-full lg:w-72 shrink-0 flex flex-col gap-3">
+            <aside className="flex w-full shrink-0 flex-col gap-3 lg:min-h-0 lg:w-72 lg:overflow-y-auto">
 
               {totalDone > 0 && (
                 <div className="flex items-center justify-around rounded-lg border border-border bg-hud-surface px-3 py-2">
@@ -399,51 +540,8 @@ export default function LeakTrainer() {
                 </div>
               )}
 
-              {phase === "feedback" && grade && verdictKind && (
-                <div className="flex flex-col gap-3">
-                  <div className={cn(
-                    "rounded-xl border p-4 space-y-3",
-                    verdictKind === "correct" ? "border-emerald-500/30 bg-emerald-500/5"
-                      : verdictKind === "mixed" ? "border-sky-500/30 bg-sky-500/5"
-                      : "border-amber-500/30 bg-amber-500/5",
-                  )}>
-                    <div className="flex items-center gap-2">
-                      {verdictKind === "error"
-                        ? <XCircle className="size-5 text-amber-400 shrink-0" aria-hidden />
-                        : <CheckCircle2 className={cn("size-5 shrink-0", verdictKind === "mixed" ? "text-sky-400" : "text-emerald-400")} aria-hidden />}
-                      <span className={cn("font-mono text-xs font-bold uppercase tracking-wider",
-                        verdictKind === "correct" ? "text-emerald-400" : verdictKind === "mixed" ? "text-sky-400" : "text-amber-400")}>
-                        {verdictKind === "correct" ? t("leakTrainer.vCorrect") : verdictKind === "mixed" ? t("leakTrainer.vMixed") : t("leakTrainer.vError")}
-                      </span>
-                      {grade.xp_awarded > 0 && (
-                        <span className="ml-auto font-mono text-[10px] text-emerald-400">+{grade.xp_awarded} XP</span>
-                      )}
-                    </div>
-
-                    {/* "GTO joga {hand} aqui:" + barras de frequência */}
-                    {freqEntries.length > 0 && (
-                      <>
-                        <p className="font-mono text-[10px] text-muted-foreground">{t("leakTrainer.gtoPlays", { hand: spot.hand })}</p>
-                        <div className="space-y-1.5">
-                          {freqEntries.map(([act, freq]) => (
-                            <div key={act} className="flex items-center gap-2">
-                              <span className="font-mono text-[10px] text-muted-foreground w-10 shrink-0">{FREQ_LABEL[act] ?? act}</span>
-                              <div className="relative flex-1 h-1.5 rounded-full bg-border overflow-hidden">
-                                <div className={cn("h-full rounded-full", FREQ_COLOR[act] ?? "bg-primary")} style={{ width: `${Math.min(100, freq * 100)}%` }} />
-                              </div>
-                              <span className="font-mono text-[10px] font-bold tabular-nums w-8 text-right text-foreground">{Math.round(freq * 100)}%</span>
-                            </div>
-                          ))}
-                        </div>
-                      </>
-                    )}
-                  </div>
-
-                  <button onClick={loadNext} className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-amber-500 px-4 py-3 font-mono text-sm font-bold uppercase tracking-widest text-black transition-colors hover:bg-amber-400">
-                    <ArrowRight className="size-4" aria-hidden /> {t("leakTrainer.next")}
-                    <kbd className="hidden rounded border border-black/20 bg-black/10 px-1.5 py-0.5 text-[9px] font-normal md:inline-block">Enter</kbd>
-                  </button>
-                </div>
+              {phase === "feedback" && verdictCard && (
+                <div className="flex flex-col gap-3">{verdictCard}</div>
               )}
             </aside>
           </div>
