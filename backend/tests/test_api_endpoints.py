@@ -658,7 +658,8 @@ def test_leaktrainer_endpoints():
     # NÃO revela a resposta (range fica no servidor)
     for leak in ('best_action', 'gto_strategy', 'hand_freq', 'recommended'):
         assert leak not in sp, f"spot vazou {leak}"
-    assert sp.get('hand') and sp.get('scenario') and sp.get('options'), sp
+    # preflop traz scenario; postflop (Fase 2) traz kind+board — aceita os dois
+    assert sp.get('hand') and (sp.get('scenario') or sp.get('kind')) and sp.get('options'), sp
     # /grade — fold 72o UTG RFI → correto (GTO folda 100%)
     spot = {'position': 'UTG', 'hand': '72o', 'stack_bb': 50, 'facing_size': 0,
             'vs_position': '', 'is_3bet_pot': False, 'xp_value': 20}

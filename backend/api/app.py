@@ -2009,12 +2009,21 @@ def leaktrainer_next():
     O currículo vem dos leaks reais (get_leak_categories); o spot é sintético/limpo; o estado da sessão
     (hits/misses por categoria) é client-side e ecoado. Adulterar o estado não falsifica acerto — o
     grading é server-side e stateless."""
-    from leaklab.leak_trainer import build_curriculum, next_spot
+    from leaklab.leak_trainer import build_curriculum, next_spot, _fundamentals_curriculum
     body          = request.get_json(silent=True) or {}
     session_state = body.get('session_state') or {}
     days          = int(body.get('days', 90) or 90)
-    curriculum    = build_curriculum(g.user_id, days=days)
-    spot          = next_spot(curriculum, session_state)
+    try:
+        curriculum = build_curriculum(g.user_id, days=days)
+        spot       = next_spot(curriculum, session_state)
+    except Exception:
+        # uma categoria/query ruim não pode derrubar a página — cai em fundamentos (preflop, sem DB)
+        app.logger.exception("leaktrainer_next falhou (user=%s) — fallback fundamentos", g.user_id)
+        try:
+            spot = next_spot(_fundamentals_curriculum(), session_state)
+        except Exception:
+            app.logger.exception("leaktrainer_next fallback também falhou")
+            spot = None
     return jsonify({'spot': spot, 'session_state': session_state})
 
 

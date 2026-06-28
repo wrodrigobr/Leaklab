@@ -915,7 +915,7 @@ def get_leak_categories(user_id: int, days: int = 90, last_n: int | None = None,
             SELECT
                 d.position                              AS position,
                 COALESCE(d.vs_position, '')             AS vs_position,
-                COALESCE(d.is_3bet, 0)                  AS is_3bet,
+                CASE WHEN d.is_3bet THEN 1 ELSE 0 END   AS is_3bet,
                 COALESCE(d.preflop_raises_faced, 0)     AS raises_faced,
                 COUNT(*)                                AS n,
                 SUM(d.ev_loss_bb)                       AS total_ev_loss_bb,
