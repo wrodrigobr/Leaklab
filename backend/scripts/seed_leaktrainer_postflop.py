@@ -50,35 +50,32 @@ _EXPECTED = {'fold', 'call', 'raise', 'check', 'bet'}
 
 
 def _validate(res):
-    """Retorna (ok, motivo). Só serve spot com solve convergido + estratégia sã."""
+    """Só serve spot com solve convergido + estratégia DA MÃO (hand_strategy), não o agregado da range."""
     if not res.get('found'):
         return False, f"sem solução ({res.get('source')})"
+    hs = res.get('hand_strategy')
+    if not hs or not hs.get('actions'):
+        return False, "sem tabela por-mão (hand_strategy None — só agregado)"
     expl = res.get('exploitability_pct')
     if expl is None:
         return False, "exploitability None (sem garantia)"
     if expl > MAX_EXPLOIT:
         return False, f"exploitability {expl:.2f}% > {MAX_EXPLOIT}%"
-    strat = res.get('strategy') or []
-    acts = {(s.get('action') or '').split('_')[0] for s in strat}
+    acts = {(k or '').split('_')[0] for k in hs['actions'].keys()}
     if not acts or not acts & _EXPECTED:
         return False, f"ações inesperadas: {acts}"
-    # degenerada: 1 ação ~100% (ok se for fold de lixo, mas sinalizamos p/ revisão manual)
-    top = max((s.get('frequency') or 0) for s in strat) if strat else 0
-    degenerate = top >= 0.985 and len(strat) > 1
-    return True, (f"expl={expl:.2f}% acts={sorted(acts)}" + (" [DEGENERADA — revisar]" if degenerate else ""))
+    return True, f"expl={expl:.2f}% best={hs.get('best_action')}"
 
 
 def _fmt_strategy(res):
-    """Estratégia legível p/ cross-check vs GW: 'call 52% (+1.20) · fold 31% · raise 17%'."""
-    s = res.get('strategy') or []
+    """Estratégia DA MÃO (por-mão, não agregada): 'fold 3% · call 70% · raise 27%'."""
+    acts = (res.get('hand_strategy') or {}).get('actions') or {}
     parts = []
-    for a in sorted(s, key=lambda x: -(x.get('frequency') or 0)):
-        f = a.get('frequency') or 0
+    for label, d in sorted(acts.items(), key=lambda x: -((x[1] or {}).get('frequency') or 0)):
+        f = (d or {}).get('frequency') or 0
         pct = round(f * 100) if f <= 1.0 else round(f)
-        ev = a.get('ev_bb')
-        ev_s = f" ({ev:+.2f})" if isinstance(ev, (int, float)) else ""
-        parts.append(f"{a.get('action', '?')} {pct}%{ev_s}")
-    return " · ".join(parts) if parts else "(vazia)"
+        parts.append(f"{label} {pct}%")
+    return " · ".join(parts) if parts else "(sem hand_table)"
 
 
 def main():
@@ -93,6 +90,7 @@ def main():
                 hero_stack_bb=STACK, vs_position='BTN',
                 facing_size_bb=CBET, pot_bb=POT_BB, bb_chips=1.0,
                 allow_remote_solve=True, block_remote=True,   # live solve (GW-real ranges)
+                require_hand_aware=True,                       # estratégia DA MÃO, não o agregado da range
             )
         except Exception as e:
             dropped.append(('', tag, f"erro: {e}", ''))
