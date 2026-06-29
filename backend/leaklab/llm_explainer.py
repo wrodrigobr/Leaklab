@@ -1468,9 +1468,33 @@ def _resource_is_clean(s: str) -> bool:
     return not any(b in low for b in _STUDY_RESOURCE_BLOCKLIST)
 
 
+# Rótulo de frequência em inglês no começo de um campo (ex.: "Weekly: ..."). É o vazamento de
+# idioma mais visível; o prompt já pede PT, isto é a rede de segurança. Só traduzimos quando é
+# claramente um RÓTULO (seguido de ':'), pra não reordenar adjetivo ("weekly drills" fica pro prompt).
+import re as _re_cad
+_CADENCE_PT = {'weekly': 'Semanal', 'biweekly': 'Quinzenal', 'bi-weekly': 'Quinzenal',
+               'daily': 'Diário', 'monthly': 'Mensal'}
+_CADENCE_RE = _re_cad.compile(r'^\s*(weekly|bi-?weekly|daily|monthly)\s*:\s*', _re_cad.IGNORECASE)
+
+
+def _fix_cadence_label(s: str) -> str:
+    if not isinstance(s, str):
+        return s
+    m = _CADENCE_RE.match(s)
+    if not m:
+        return s
+    return f"{_CADENCE_PT.get(m.group(1).lower().replace('biweekly', 'bi-weekly'), m.group(1))}: " + s[m.end():]
+
+
 def _sanitize_study_resources(plan: dict) -> dict:
-    """Tira títulos/marcas/concorrentes dos recursos de cada card (mantém só tipo+conceito)."""
+    """Saneia o conteúdo do plano: (1) tira títulos/marcas/concorrentes dos recursos (só tipo+
+    conceito); (2) traduz rótulo de frequência em inglês no começo dos campos de texto (Weekly:→Semanal:)."""
     for card in (plan.get('cards') or []):
+        for fld in ('titulo', 'diagnostico', 'exercicio', 'metrica'):
+            if isinstance(card.get(fld), str):
+                card[fld] = _fix_cadence_label(card[fld])
+        if isinstance(card.get('conceitos'), list):
+            card['conceitos'] = [_fix_cadence_label(c) if isinstance(c, str) else c for c in card['conceitos']]
         rec = card.get('recursos')
         if not isinstance(rec, dict):
             continue
@@ -1898,7 +1922,13 @@ _POKER_TERMS_EN = (
     "'deu check', 'deu bet', 'deu check-raise', 'deu call', e os verbos consagrados 'foldou', 'apostou', 'pagou', 'shovou'. "
     "NUNCA invente aportuguesamentos como 'raisando', 'bettando', 'foldando', 'checando', 'callando'. "
     "NUNCA use travessão nem hífen como pontuação separando orações; use vírgula, "
-    "dois-pontos ou ponto. Hífen só em termo composto (ex.: check-raise, pré-flop)."
+    "dois-pontos ou ponto. Hífen só em termo composto (ex.: check-raise, pré-flop). "
+    "FORA esses termos de poker, escreva TODO o resto em português: palavra comum NÃO fica em "
+    "inglês. Ex.: 'semanal' (não 'weekly'), 'diário'/'diariamente' (não 'daily'), 'mensal' (não "
+    "'monthly'), 'aleatório' (não 'random'), 'registrar'/'registrado' (não 'log'/'logged'), "
+    "'sempre'/'misto'/'às vezes' (não 'always'/'mixed'/'sometimes'), 'execução na mesa' (não "
+    "'physical play'). NUNCA comece uma frase ou item com rótulo de frequência em inglês como "
+    "'Weekly:', 'Daily:', 'Monthly:' — use 'Semanal:', 'Diário:', 'Mensal:'."
 )
 
 _LANG_INSTRUCTIONS = {
