@@ -121,7 +121,7 @@ export function RecentTournamentsTable({ tournaments }: Props) {
                   )}>
                     {profit === null ? "—" : `${positive ? "+" : ""}$${Math.abs(profit).toFixed(2).replace(/\.00$/, "")}`}
                   </span>
-                  {analyzed && row.labels_reconciled_at == null ? (
+                  {analyzed && (row.labels_reconciled_at == null || row.solver_analyzing) ? (
                     <Loader2 className="size-3.5 text-warning animate-spin" aria-label={t("table.gtoPending")} />
                   ) : analyzed ? (
                     <CheckCircle2 className="size-3.5 text-primary" aria-label={t("table.analyzed")} />

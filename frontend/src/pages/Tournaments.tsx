@@ -464,7 +464,7 @@ const Tournaments = () => {
                         </td>
                         <td className="whitespace-nowrap px-4 py-3.5">
                           <div className="flex items-center gap-1.5 flex-wrap">
-                            {t.avg_score != null && t.labels_reconciled_at == null ? (
+                            {t.avg_score != null && (t.labels_reconciled_at == null || t.solver_analyzing) ? (
                               <span
                                 className="inline-flex items-center gap-1 rounded-sm bg-warning/10 px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider text-warning ring-1 ring-warning/20"
                                 title={tc("status.gtoPendingTooltip")}
