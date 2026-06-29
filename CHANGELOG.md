@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(leak-trainer): botões de ação menores + "Raise (abrir)" vira "Raise"
+
+> Na mesa do Leak Trainer os botões de ação estavam grandes demais e sobrepondo o pod do Hero. Reduzidos (`px-5 py-3 text-sm min-w-[88px]` → `px-4 py-2 text-xs min-w-[68px]`) e o rótulo redundante "Raise (abrir)" virou só "Raise" (o contexto de abertura já está claro na mesa; 3-Bet/4-Bet seguem rotulados porque a info é útil). 3 locales (PT/EN/ES). tsc 0.
+
 ### chore(mobile): audit de responsividade (FEAT-18) — app está sólido, 2 micro-fixes
 
 > Auditoria estática de mobile (~390px) das rotas principais. **Conclusão: o app está em boa forma mobile** — o drag-and-drop do dashboard usa @dnd-kit `PointerSensor` (funciona no toque) com handle `touch-none` visível no mobile; o header tem bottom-nav (`lg:hidden`); tabelas têm fallback de card-list no mobile (RecentTournamentsTable); modais têm `overflow-y-auto` + botão fechar (CheckoutModal, Support, Onboarding); o drawer do coach tem backdrop-tap + X; Ghost/Replayer/Leak Trainer têm fullscreen landscape e alvos de toque generosos (Leak Trainer `py-3 min-w-[88px]` com safe-area). O sweep heurístico super-flagou: vários "severidade alta" eram falsos positivos (já corretos na inspeção). **Únicos ajustes reais (responsivos, desktop intocado):** alvos de toque dos botões de ação do Ghost Table (`min-h-[44px] sm:min-h-[40px]`) e dos chips de filtro de volume do dashboard (`py-2.5 sm:py-1.5`) — maiores no mobile, idênticos no desktop. tsc 0. **Limite honesto:** o que falta é um pass VISUAL em device/emulador real (renderização/quebra/gesto), que não dá pra fazer headless aqui.

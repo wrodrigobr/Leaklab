@@ -92,7 +92,7 @@
     "act": {
       "fold": "Fold",
       "call": "Call",
-      "raiseOpen": "Raise (abrir)",
+      "raiseOpen": "Raise",
       "raise3": "3-Bet",
       "raise4": "4-Bet",
       "raisePost": "Raise"

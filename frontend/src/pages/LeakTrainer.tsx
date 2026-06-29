@@ -318,7 +318,7 @@ export default function LeakTrainer() {
           <div className="absolute bottom-[calc(0.6rem+env(safe-area-inset-bottom))] left-1/2 z-30 flex -translate-x-1/2 items-center gap-2">
             {spot.options.map((a) => (
               <button key={a} onClick={() => submit(a)} disabled={submitting}
-                className="min-w-[88px] rounded-full bg-background/85 px-5 py-3 font-mono text-sm font-bold uppercase tracking-wider text-foreground shadow-lg ring-1 ring-border backdrop-blur transition-all active:scale-95 hover:text-amber-400 hover:ring-amber-500/60 disabled:opacity-40">
+                className="min-w-[68px] rounded-full bg-background/85 px-4 py-2 font-mono text-xs font-bold uppercase tracking-wider text-foreground shadow-lg ring-1 ring-border backdrop-blur transition-all active:scale-95 hover:text-amber-400 hover:ring-amber-500/60 disabled:opacity-40">
                 {actLabel(a)}
               </button>
             ))}
