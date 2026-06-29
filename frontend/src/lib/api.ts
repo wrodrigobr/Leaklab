@@ -2179,6 +2179,7 @@ export interface CoachPaymentRecord {
 export interface GtoWorkerStatus {
   worker: {
     active: boolean;
+    state?: "working" | "healthy" | "down";
     last_heartbeat: string | null;
   };
   hand_queue: Record<string, number>;

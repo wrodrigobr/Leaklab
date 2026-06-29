@@ -903,6 +903,14 @@ function GtoWorkerTab() {
     ? new Date(data.worker.last_heartbeat).toLocaleString("pt-BR")
     : "—";
 
+  // 3 estados: trabalhando (job agora) / saudável (cron ocioso normal) / parado (caiu de verdade)
+  const WS: Record<string, { label: string; text: string; border: string; bg: string }> = {
+    working: { label: "Trabalhando", text: "text-green-500", border: "border-green-500/30", bg: "bg-green-500/5" },
+    healthy: { label: "Saudável",    text: "text-sky-400",   border: "border-sky-500/30",   bg: "bg-sky-500/5" },
+    down:    { label: "Parado",      text: "text-red-500",   border: "border-red-500/30",   bg: "bg-red-500/5" },
+  };
+  const ws = WS[data.worker.state ?? (data.worker.active ? "working" : "healthy")] ?? WS.healthy;
+
   return (
     <div className="space-y-6">
       {/* Worker health */}
@@ -917,17 +925,12 @@ function GtoWorkerTab() {
 
       {/* KPIs row 1 — worker */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <div className={cn(
-          "rounded-xl border p-5 space-y-2 col-span-2 lg:col-span-1",
-          data.worker.active ? "border-green-500/30 bg-green-500/5" : "border-yellow-500/30 bg-yellow-500/5"
-        )}>
+        <div className={cn("rounded-xl border p-5 space-y-2 col-span-2 lg:col-span-1", ws.border, ws.bg)}>
           <div className="flex items-center justify-between">
             <span className="font-mono text-[10px] font-bold uppercase tracking-widest-2 text-muted-foreground">Worker</span>
-            <CircleDot className={cn("size-4", data.worker.active ? "text-green-500" : "text-yellow-500")} />
+            <CircleDot className={cn("size-4", ws.text)} />
           </div>
-          <p className={cn("text-2xl font-bold", data.worker.active ? "text-green-500" : "text-yellow-500")}>
-            {data.worker.active ? "Ativo" : "Ocioso"}
-          </p>
+          <p className={cn("text-2xl font-bold", ws.text)}>{ws.label}</p>
           <p className="font-mono text-[10px] text-muted-foreground">Último proc: {lastHb}</p>
         </div>
 
@@ -1134,7 +1137,7 @@ const AdminDashboard = () => {
   const openTickets = supportCount?.open ?? 0;
   const pendingCount = pendingApps?.applications?.length ?? 0;
   const financeDot = (dunning?.past_due?.length ?? 0) > 0 || (dunning?.recent_failed?.length ?? 0) > 0;
-  const workerDot = worker ? (!worker.worker.active || worker.recent_errors.length > 0) : false;
+  const workerDot = worker ? (worker.worker.state === "down" || worker.recent_errors.length > 0) : false;
 
   const groups: NavGroup[] = [
     {

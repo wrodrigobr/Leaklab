@@ -7356,9 +7356,32 @@ def admin_gto_worker_status():
     finally:
         conn.close()
 
+    # ── Estado do worker (3 níveis, p/ não confundir "ocioso normal" com "caiu") ──
+    # O worker é CRON (drena de ~5 em 5 min), então fica fora de um job na maior parte do tempo.
+    #   working = processando agora (is_active);
+    #   healthy = ocioso mas saudável (cron rodou < 15 min OU não há trabalho na fila);
+    #   down    = HÁ trabalho parado E sem heartbeat há >15 min → o cron não está drenando.
+    import datetime as _dtw
+    _pending = (solver_counts.get('pending', 0) + solver_counts.get('running', 0)
+                + hand_counts.get('pending', 0) + hand_counts.get('queued', 0))
+    _hb_recent = False
+    if last_heartbeat:
+        try:
+            _hb = _dtw.datetime.fromisoformat(str(last_heartbeat).replace('Z', '+00:00'))
+            _hb_recent = (_dtw.datetime.now(_dtw.timezone.utc) - _hb).total_seconds() < 15 * 60
+        except Exception:
+            _hb_recent = False
+    if is_active:
+        worker_state = 'working'
+    elif _pending > 0 and not _hb_recent:
+        worker_state = 'down'
+    else:
+        worker_state = 'healthy'
+
     return jsonify({
         'worker': {
             'active':         is_active,
+            'state':          worker_state,
             'last_heartbeat': last_heartbeat,
         },
         'hand_queue':   hand_counts,
