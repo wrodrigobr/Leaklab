@@ -132,5 +132,21 @@
   "pagination": {
     "prev": "Página anterior",
     "next": "Próxima página"
+  },
+  "feedback": {
+    "title": "Sugestões e feedback",
+    "subtitle": "O que você quer ver, o que faltou, o que curtiu. Eu leio cada mensagem.",
+    "type": {
+      "suggestion": "Sugestão",
+      "praise": "Elogio",
+      "problem": "Problema"
+    },
+    "placeholder": "Escreva sua sugestão, ideia ou o que faltou...",
+    "rating": "Nota (opcional)",
+    "send": "Enviar",
+    "thanks": "Valeu! Sua mensagem chegou.",
+    "error": "Não foi possível enviar. Tente de novo.",
+    "nudge": "Está curtindo o GrindLab? Manda uma sugestão, eu leio cada uma.",
+    "nudgeCta": "Mandar sugestão"
   }
 }

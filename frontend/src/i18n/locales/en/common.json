@@ -132,5 +132,21 @@
   "pagination": {
     "prev": "Previous page",
     "next": "Next page"
+  },
+  "feedback": {
+    "title": "Suggestions and feedback",
+    "subtitle": "What you want to see, what's missing, what you like. I read every message.",
+    "type": {
+      "suggestion": "Suggestion",
+      "praise": "Praise",
+      "problem": "Problem"
+    },
+    "placeholder": "Write your suggestion, idea, or what was missing...",
+    "rating": "Rating (optional)",
+    "send": "Send",
+    "thanks": "Thanks! Your message came through.",
+    "error": "Could not send. Try again.",
+    "nudge": "Enjoying GrindLab? Send a suggestion, I read every one.",
+    "nudgeCta": "Send a suggestion"
   }
 }
