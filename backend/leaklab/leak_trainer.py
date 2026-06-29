@@ -315,6 +315,10 @@ POSTFLOP_CATALOG = {
     ],
 }
 _POSTFLOP_OPTIONS = ['fold', 'call', 'raise']
+# Rede de segurança em tempo de SERVIÇO: nunca gradear contra um nó exploitável (solve ruim).
+# O seed só persiste nós com expl < 3%; este teto (5%) é uma defesa-em-profundidade — pega um
+# nó patológico/drift sem rejeitar os validados. expl ausente NÃO bloqueia (preserva o legado).
+_MAX_SERVE_EXPLOIT_PCT = 5.0
 
 
 def _cards_to_objs(cards):
@@ -413,6 +417,11 @@ def grade_postflop_spot(spot: dict, action: str) -> dict | None:
     hs = res.get('hand_strategy')
     if not hs or not hs.get('actions'):
         return None
+    # Gate de exploitability (defesa-em-profundidade): nó exploitável demais → não-gradeável
+    # (pulado, nunca pune) em vez de gradear contra um solve ruim. Nós validados (<3%) passam.
+    expl = res.get('exploitability_pct')
+    if expl is not None and float(expl) > _MAX_SERVE_EXPLOIT_PCT:
+        return None
     g = grade_from_hand_strategy(hs, action)
-    g['exploitability_pct'] = res.get('exploitability_pct')
+    g['exploitability_pct'] = expl
     return g

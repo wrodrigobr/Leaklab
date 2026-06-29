@@ -78,6 +78,35 @@ def test_postflop_catalog_shape():
     print(f"OK  test_postflop_catalog_shape ({len(spots)} spots)")
 
 
+def test_grade_postflop_exploitability_gate():
+    """Gate de serviço: nó exploitável demais → não-gradeável (None), nunca pune. Nó bom → gradeia.
+    Nó sem hand_strategy → None. Monkeypatch do lookup_gto (não chama o solver)."""
+    import leaklab.gto_solver as _gs
+    from leaklab.leak_trainer import grade_postflop_spot, _MAX_SERVE_EXPLOIT_PCT
+    _orig = _gs.lookup_gto
+    _node = {'actions': {'fold': {'frequency': 0.0}, 'raise_50pct': {'frequency': 1.0}}}
+    spot = {'street': 'flop', 'position': 'BB', 'board': ['Kd', '7c', '2s'],
+            'hero_hand': ['Kh', 'Qc'], 'stack_bb': 40, 'vs_position': 'BTN',
+            'facing_size_bb': 1.65, 'pot_bb': 5.0}
+    try:
+        # expl alta → gated (None)
+        _gs.lookup_gto = lambda **k: {'hand_strategy': _node, 'exploitability_pct': _MAX_SERVE_EXPLOIT_PCT + 2.0}
+        assert grade_postflop_spot(spot, 'call') is None, "nó exploitável devia ser não-gradeável"
+        # expl baixa → gradeia normal
+        _gs.lookup_gto = lambda **k: {'hand_strategy': _node, 'exploitability_pct': 2.0}
+        g = grade_postflop_spot(spot, 'call')
+        assert g and g['is_correct'] is True and g['exploitability_pct'] == 2.0
+        # expl None → não bloqueia (preserva legado)
+        _gs.lookup_gto = lambda **k: {'hand_strategy': _node, 'exploitability_pct': None}
+        assert grade_postflop_spot(spot, 'call') is not None
+        # sem hand_strategy → None
+        _gs.lookup_gto = lambda **k: {'hand_strategy': None, 'exploitability_pct': 1.0}
+        assert grade_postflop_spot(spot, 'call') is None
+    finally:
+        _gs.lookup_gto = _orig
+    print("OK  test_grade_postflop_exploitability_gate")
+
+
 def test_scenario_mapping():
     assert _leak_scenario(0, 0) == 'rfi'
     assert _leak_scenario(0, 1) == 'vs_rfi'
