@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(tournaments): status "Analisando" por torneio + em todas as telas
+
+> Dois bugs no status de análise dos torneios, fechando um problema que voltava: **(1) sinal global** , o `solver_analyzing` usava `_solver_busy` (fila do solver ocupada globalmente), e como a fila é dedup por `spot_hash` (não liga ao torneio), qualquer upload novo enchia a fila e acendia TODO torneio antigo/estável como "Analisando". Agora é estritamente POR TORNEIO (request não-terminal ou recente ≤24h do próprio torneio); o mesmo no `count_user_pending_solves` (banner). **(2) telas faltando** , o sinal `solver_analyzing` só era renderizado na tabela desktop do dashboard; a página `/tournaments` e a view mobile mostravam "Analisado" mesmo com a API mandando `solver_analyzing:true`. As 3 superfícies agora usam a mesma régua. Régua definitiva documentada na memória pra não regredir.
+
 ### fix(coach): comissão = % real (padrão flat 15% + override), cockpit/admin coerentes, CORS PATCH
 
 > **Auditoria + reconciliação da comissão do coach.** O dinheiro real sempre foi o ledger `coach_commissions` (% sobre cada pagamento), mas o cockpit do coach e o admin mostravam um modelo FLAT legado (R$/aluno, escada 15/20/25%) que não batia com o que era pago. Reconciliado: o cockpit e os KPIs do admin agora leem o ledger % (rate_bps + payable/held/paid); a 4ª tile do cockpit virou "Já pago". **Modelo simplificado:** o padrão deixou de ser escada por volume (15/20/25%, que escalava o custo no volume e era difícil cortar) e virou **flat 15%**; a generosidade fica no **override por coach** (`set_coach_commission_rate`, ex.: 30% parceiro fundador). **Bug crítico corrigido:** `Access-Control-Allow-Methods` não incluía `PATCH` → "Failed to Fetch" em todo PATCH (salvar o % do coach, pagar comissão). **Limpeza:** o import do caminho de payout FLAT foi removido (inalcançável → fim do risco de double-pay); o admin paga só pelo ledger %.
