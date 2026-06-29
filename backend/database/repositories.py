@@ -550,10 +550,18 @@ def get_tournaments(user_id: int, limit: int = 50) -> List[dict]:
             ORDER BY t.imported_at DESC
             LIMIT ?
         """, (_gto_cutoff, _gto_cutoff, user_id, limit)).fetchall()
-        # "Analisando" é POR TORNEIO. NÃO usamos "fila global ocupada": a gto_solver_queue é dedup por
-        # spot_hash (não liga ao torneio), então o sinal global acendia TODO torneio antigo com spot HU
-        # descoberto sempre que um upload novo enchia a fila (cross-contaminação). Usamos só sinais do
-        # PRÓPRIO torneio: request não-terminal (_inflight) OU recente (_recent, age-bound 24h).
+        # "Analisando" é POR TORNEIO, mas a fila (gto_solver_queue) é dedup por spot_hash (sem link de
+        # torneio) E a importação NÃO cria gto_hand_requests — então inflight/recent não disparam em
+        # import novo. Régua: o torneio foi importado RECENTEMENTE (imported_at, sinal que SÓ ele tem,
+        # criado na importação) E a fila está ATIVA (_solver_busy) → está sendo solvado. O gate de
+        # imported_at impede o global de acender torneios ANTIGOS (eles têm imported_at velho).
+        try:
+            _busy_row = conn.execute(
+                "SELECT COUNT(*) AS n FROM gto_solver_queue WHERE status IN ('pending','running')"
+            ).fetchone()
+            _solver_busy = (dict(_busy_row).get('n', 0) or 0) > 0
+        except Exception:
+            _solver_busy = False
         result = []
         for r in rows:
             t = dict(r)
@@ -565,14 +573,16 @@ def get_tournaments(user_id: int, limit: int = 50) -> List[dict]:
             post_t = t.pop('post_total', 0) or 0; post_g = t.pop('post_gto', 0) or 0
             t['preflop_coverage_pct']  = round(pre_g * 100.0 / pre_t, 1) if pre_t else None
             t['postflop_coverage_pct'] = round(post_g * 100.0 / post_t, 1) if post_t else None
-            # "analisando" = há spot HU postflop descoberto NESTE torneio (_solvable_uncov) E o PRÓPRIO
-            # torneio tem request não-terminal (_inflight) OU recente (_recent). Sem o global busy:
-            # torneio antigo/estável não acende só porque a fila está ocupada com uploads novos. Settle
-            # p/ "Analisado" quando o request do torneio termina e envelhece (>24h).
+            # "analisando" = há spot HU postflop descoberto NESTE torneio (_solvable_uncov) E ((foi
+            # importado recentemente E a fila está ativa) OU tem request próprio não-terminal _inflight,
+            # ex.: solve por-mão no replayer). imported_at recente é o que dispara em import novo (a
+            # importação não cria gto_hand_requests); o gate por-torneio impede o global de acender
+            # antigos. Settle p/ "Analisado" quando a fila esvazia (solver terminou) ou imported_at >24h.
             _inflight = t.pop('gto_inflight', 0) or 0
             _solvable_uncov = t.pop('post_solvable_uncov', 0) or 0
-            _recent = t.pop('gto_recent', 0) or 0
-            t['solver_analyzing'] = bool(_solvable_uncov > 0 and (_inflight > 0 or _recent > 0))
+            t.pop('gto_recent', 0)
+            _recent_import = bool(t.get('imported_at') and str(t['imported_at']) > _gto_cutoff)
+            t['solver_analyzing'] = bool(_solvable_uncov > 0 and ((_recent_import and _solver_busy) or _inflight > 0))
             result.append(t)
         return result
     finally:
@@ -3723,12 +3733,18 @@ def count_user_pending_solves(user_id: int) -> int:
         # Solver ativo globalmente? (verdade direta da fila — MESMA régua da lista). Se a fila está ativa,
         # conta todos os spots HU descobertos do usuário (o solver vai cobri-los, mesmo que o request já
         # tenha sido finalizado). Senão, só os de torneios com request recente.
-        # POR TORNEIO (não global): só conta spots HU descobertos de torneios com request RECENTE do
-        # solver. NÃO usa "fila global ocupada" — isso somava TODO torneio antigo quando um upload novo
-        # enchia a fila (cross-contaminação; mesma régua do solver_analyzing per-torneio).
-        gate = ("AND EXISTS (SELECT 1 FROM gto_hand_requests ghr "
-                "            WHERE ghr.tournament_id = t.id AND ghr.created_at > ?)")
-        params = (user_id, _cutoff)
+        # Conta spots HU descobertos dos torneios SENDO solvados agora: importados recentemente E com a
+        # fila ATIVA (a importação não cria gto_hand_requests; imported_at é o sinal por-torneio que
+        # dispara no import). Fila idle = nada sendo solvado → 0. Mesma régua do solver_analyzing.
+        try:
+            _br = conn.execute(
+                "SELECT COUNT(*) AS n FROM gto_solver_queue WHERE status IN ('pending','running')"
+            ).fetchone()
+            _busy = (dict(_br).get('n', 0) or 0) > 0
+        except Exception:
+            _busy = False
+        gate = "AND t.imported_at > ?" if _busy else "AND 1=0"
+        params = (user_id, _cutoff) if _busy else (user_id,)
         row = _fetchone(conn,
             "SELECT COUNT(*) AS n FROM decisions d "
             "JOIN tournaments t ON d.tournament_id = t.id "
