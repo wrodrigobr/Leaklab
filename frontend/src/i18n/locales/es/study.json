@@ -56,6 +56,12 @@
     "weekLabel": "Semana {{week}}",
     "totalHint": "{{weeks}} semanas · ~{{hours}}h totales"
   },
+  "platform": {
+    "title": "Entrena en la plataforma",
+    "subtitle": "Entrenamientos enfocados en tus leaks, sin salir del producto.",
+    "train": "Entrenar mis leaks",
+    "review": "Revisar mis manos"
+  },
   "resources": {
     "title": "Recursos del leak",
     "coachesTitle": "Coaches especializados en este leak",

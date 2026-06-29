@@ -451,6 +451,24 @@ const StudyPlanPage = () => {
               </section>
 
               <aside className="lg:col-span-4 space-y-6">
+                {/* Treine na plataforma — EM DESTAQUE acima dos materiais externos. Os treinos
+                    são mirados nos leaks do jogador (currículo leak-driven), in-product e medidos. */}
+                <section className="rounded-xl border border-primary/30 bg-primary/5 p-5">
+                  <h3 className="mb-1 flex items-center gap-2 text-sm font-bold uppercase tracking-widest-2 text-foreground">
+                    <Target className="size-4 text-primary" aria-hidden />
+                    {t("platform.title")}
+                  </h3>
+                  <p className="mb-4 text-xs text-muted-foreground">{t("platform.subtitle")}</p>
+                  <div className="space-y-2">
+                    <Link to="/leak-trainer" className="flex items-center justify-center gap-2 rounded-md bg-primary px-3 py-2 text-sm font-bold text-primary-foreground hover:bg-primary/90 transition-colors">
+                      <Target className="size-4" aria-hidden /> {t("platform.train")}
+                    </Link>
+                    <Link to="/ghost" className="flex items-center justify-center gap-2 rounded-md border border-primary/40 px-3 py-2 text-sm font-bold text-primary hover:bg-primary/10 transition-colors">
+                      <GraduationCap className="size-4" aria-hidden /> {t("platform.review")}
+                    </Link>
+                  </div>
+                </section>
+
                 <section className="rounded-xl border border-border bg-hud-surface p-5">
                   <header className="mb-4 flex items-center justify-between">
                     <h3 className="flex items-center gap-2 text-sm font-bold uppercase tracking-widest-2 text-foreground">

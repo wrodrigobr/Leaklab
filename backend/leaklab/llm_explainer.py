@@ -1320,6 +1320,7 @@ Responda APENAS com JSON válido, sem texto adicional, no formato:
                 result = json.loads(recovered)
             else:
                 raise
+        result = _sanitize_study_resources(result)
         result['source'] = leak_source
         result_str = json.dumps(result, ensure_ascii=False)
         _cache[mem_key] = result_str
@@ -1447,6 +1448,38 @@ def _build_study_diagnosis_block(leaks: list, evolution: list, icm: dict,
                   "leaks 'confiança baixa' podem ser variância de amostra pequena, NÃO priorize):**\n"
                   + ev_txt)
     return block
+
+
+# Saneamento determinístico dos "recursos" do plano. O modelo às vezes IGNORA o prompt e crava
+# títulos de livros/cursos e marcas de CONCORRENTES (PioSOLVER, Run It Once, GTO Wizard, etc.).
+# O caminho de estudo principal é o TREINO DA PLATAFORMA (CTA em destaque na StudyPlan); aqui
+# removemos nomes específicos/concorrentes, deixando só o TIPO de material + conceito. Rede de
+# segurança sobre o prompt (que já pede o mesmo, mas não basta).
+_STUDY_RESOURCE_BLOCKLIST = (
+    'piosolver', 'pio solver', 'monker', 'gtowizard', 'gto wizard', 'run it once', 'runitonce',
+    'upswing', 'pokercoaching', 'poker coaching', 'jonathan little', 'propokertools', 'pro poker tools',
+    'modern poker theory', 'janda', 'martinelli', "hold'em: theory", 'no limit hold',
+    'snowie', 'simple postflop', 'gtobase', 'gto base', 'icmizer', 'holdem resources', 'deepsolver',
+)
+
+
+def _resource_is_clean(s: str) -> bool:
+    low = (s or '').lower()
+    return not any(b in low for b in _STUDY_RESOURCE_BLOCKLIST)
+
+
+def _sanitize_study_resources(plan: dict) -> dict:
+    """Tira títulos/marcas/concorrentes dos recursos de cada card (mantém só tipo+conceito)."""
+    for card in (plan.get('cards') or []):
+        rec = card.get('recursos')
+        if not isinstance(rec, dict):
+            continue
+        for fld in ('livros', 'videos'):
+            if isinstance(rec.get(fld), list):
+                rec[fld] = [s for s in rec[fld] if isinstance(s, str) and _resource_is_clean(s)]
+        if isinstance(rec.get('curso'), str) and not _resource_is_clean(rec['curso']):
+            rec['curso'] = ''
+    return plan
 
 
 _STUDY_PLAN_CARD_SCHEMA = {
@@ -1595,7 +1628,7 @@ def generate_study_plan_agentic(leaks: list, evolution: list, icm: dict,
                 pass
 
     def _finalize(plan: dict) -> dict:
-        plan = dict(plan)
+        plan = _sanitize_study_resources(dict(plan))
         plan['source'] = leak_source
         result_str = json.dumps(plan, ensure_ascii=False)
         _cache[mem_key] = result_str
@@ -1629,8 +1662,11 @@ def generate_study_plan_agentic(leaks: list, evolution: list, icm: dict,
         "REGRAS: ordene pela ordem do EV PONDERADO (já calculado em código); NÃO force 6 cards "
         "— entregue só os 1-6 leaks ACIONÁVEIS e confiáveis; NÃO gere card de HUD stat marcado "
         "'AMOSTRA INSUFICIENTE' (liste em observar_mais_dados); leaks 'confiança baixa' (amostra "
-        "pequena) vão em nao_focar_agora ou com a incerteza sinalizada; NÃO invente títulos de "
-        "livros/vídeos/URLs (descreva o tipo + conceito); use o 'Nível estimado (ELO)' como "
+        "pequena) vão em nao_focar_agora ou com a incerteza sinalizada; em 'recursos' descreva só "
+        "o TIPO de material + conceito (ex.: 'vídeo sobre pot odds OOP') — NUNCA cite títulos de "
+        "livros, nomes de autores, URLs nem marcas/produtos (PioSOLVER, GTO Wizard, Run It Once, "
+        "Upswing, etc.); o caminho de estudo principal é o TREINO DA PRÓPRIA PLATAFORMA; "
+        "use o 'Nível estimado (ELO)' como "
         "'nivel'. Não invente mãos: ferramenta vazia → use os dados de resumo.\n\n"
         f"Português do Brasil. {_POKER_TERMS_EN}"
     )

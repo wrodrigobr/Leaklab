@@ -122,30 +122,13 @@ function severityFromIndex(i: number): LeakSeverity {
 }
 
 function resourcesFromCard(card: StudyCard): StudyResource[] {
+  // Material externo = só o TIPO/conceito a estudar (saneado no backend, sem títulos nem
+  // marcas/concorrentes). NÃO hiperlinkamos pra fora (antes linkava Run It Once/Upswing/etc.):
+  // o caminho principal de estudo é o treino DA plataforma (CTA em destaque na StudyPlan).
   const out: StudyResource[] = [];
-  const KNOWN_URLS: Record<string, string> = {
-    "Run It Once":      "https://www.runitonce.com",
-    "PokerCoaching":    "https://www.pokercoaching.com",
-    "Upswing Poker":    "https://www.upswingpoker.com",
-    "Jonathan Little":  "https://www.pokercoaching.com",
-  };
-
-  const maybeUrl = (title: string) => {
-    for (const [k, v] of Object.entries(KNOWN_URLS)) {
-      if (title.toLowerCase().includes(k.toLowerCase())) return v;
-    }
-    return undefined;
-  };
-
-  card.recursos?.livros?.forEach((t) =>
-    out.push({ type: "book", title: t, url: maybeUrl(t) })
-  );
-  card.recursos?.videos?.forEach((t) =>
-    out.push({ type: "video", title: t, url: maybeUrl(t) })
-  );
-  if (card.recursos?.curso)
-    out.push({ type: "tool", title: card.recursos.curso });
-
+  card.recursos?.livros?.forEach((t) => out.push({ type: "book", title: t }));
+  card.recursos?.videos?.forEach((t) => out.push({ type: "video", title: t }));
+  if (card.recursos?.curso) out.push({ type: "tool", title: card.recursos.curso });
   return out;
 }
 
