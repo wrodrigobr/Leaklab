@@ -1,11 +1,12 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useParams, Link, useNavigate, useSearchParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import {
   ArrowLeft, Trophy, AlertTriangle, BookOpen, LayoutDashboard,
   ChevronRight, Play, TrendingUp, TrendingDown, Minus,
   CheckCircle2, MessageSquare, PenLine, Trash2, X, Check, Loader2,
-  Activity, Flag, Star, BarChart2, Save, Send, FileText, Search, Clock
+  Activity, Flag, Star, BarChart2, Save, Send, FileText, Search, Clock, Sparkles
 } from "lucide-react";
 import { verdictLevelFromScore, VERDICT_META } from "@/lib/cardLogic";
 import { HudHeader } from "@/components/hud/HudHeader";
@@ -502,10 +503,17 @@ function AnnotationForm({
   onDone: () => void;
 }) {
   const qc = useQueryClient();
+  const { t, i18n } = useTranslation("replayer");
   const [comment, setComment]         = useState(existing?.comment ?? "");
   const [mode, setMode]               = useState<"complement"|"replace">(existing?.mode ?? "complement");
   const [coachAction, setCoachAction] = useState(existing?.coach_action ?? "");
   const [overrideLabel, setOverrideLabel] = useState<CoachOverrideLabel>(existing?.coach_override_label ?? null);
+  // "Melhorar com IA": sugestão não-destrutiva (coach aceita ou descarta). Reusa o endpoint genérico.
+  const [improved, setImproved] = useState<string | null>(null);
+  const improveAnn = useMutation({
+    mutationFn: () => coachDashboard.improveAnnotation(comment.trim(), i18n.language),
+    onSuccess: (r) => setImproved(r.improved || null),
+  });
 
   const save = useMutation({
     mutationFn: () => coachDashboard.upsertAnnotation(studentId, {
@@ -552,6 +560,32 @@ function AnnotationForm({
         placeholder="Sua análise desta decisão…"
         className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/40 resize-none"
       />
+
+      {/* Melhorar com IA: reescreve o texto do coach (clareza/ortografia), sem salvar */}
+      <div className="space-y-2">
+        <button type="button" onClick={() => improveAnn.mutate()} disabled={!comment.trim() || improveAnn.isPending}
+          className="inline-flex items-center gap-1.5 rounded-md border border-primary/40 bg-primary/5 px-2.5 py-1 font-mono text-[10px] font-bold uppercase tracking-widest-2 text-primary hover:bg-primary/10 disabled:opacity-50">
+          {improveAnn.isPending ? <Loader2 className="size-3 animate-spin" /> : <Sparkles className="size-3" />}
+          {t("annotation.improveBtn")}
+        </button>
+        {improveAnn.isError && <p className="text-[11px] text-destructive">{t("annotation.improveError")}</p>}
+        {improved && (
+          <div className="rounded-md border border-primary/30 bg-primary/5 p-2.5 space-y-2">
+            <p className="font-mono text-[9px] uppercase tracking-widest-2 text-primary/80">{t("annotation.improveSuggestion")}</p>
+            <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">{improved}</p>
+            <div className="flex gap-2">
+              <button type="button" onClick={() => { setComment(improved); setImproved(null); }}
+                className="inline-flex items-center gap-1 rounded bg-primary px-2.5 py-1 font-mono text-[10px] font-bold uppercase text-primary-foreground hover:bg-primary/90">
+                <Check className="size-3" /> {t("annotation.improveUse")}
+              </button>
+              <button type="button" onClick={() => setImproved(null)}
+                className="inline-flex items-center gap-1 rounded border border-border px-2.5 py-1 font-mono text-[10px] text-muted-foreground hover:text-foreground">
+                <X className="size-3" /> {t("annotation.improveDiscard")}
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
 
       <div className="grid grid-cols-2 gap-2">
         {/* Coach action — combo */}
