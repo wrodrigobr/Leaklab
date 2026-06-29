@@ -7842,6 +7842,34 @@ def support_mark_read():
         conn.close()
 
 
+@app.route('/support/my-tickets/<int:ticket_id>', methods=['DELETE'])
+@require_auth
+def support_delete_ticket(ticket_id):
+    """Apaga UMA mensagem do próprio usuário (limpar a lista). Guard de dono (só o autor apaga)."""
+    from database.schema import get_conn as _gc
+    conn = _gc()
+    try:
+        conn.execute("DELETE FROM support_tickets WHERE id = ? AND user_id = ?", (ticket_id, g.user_id))
+        conn.commit()
+        return jsonify({'ok': True})
+    finally:
+        conn.close()
+
+
+@app.route('/support/my-tickets', methods=['DELETE'])
+@require_auth
+def support_clear_my_tickets():
+    """Limpa TODAS as mensagens do próprio usuário."""
+    from database.schema import get_conn as _gc
+    conn = _gc()
+    try:
+        conn.execute("DELETE FROM support_tickets WHERE user_id = ?", (g.user_id,))
+        conn.commit()
+        return jsonify({'ok': True})
+    finally:
+        conn.close()
+
+
 @app.errorhandler(500)
 def internal_error(e):
     # Não vazar a mensagem da exceção (pode conter SQL/caminhos/colunas). Loga server-side só.

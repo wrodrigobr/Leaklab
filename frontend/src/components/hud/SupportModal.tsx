@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { X, MessageSquarePlus, CheckCircle2, Inbox, PenLine, Loader2 } from "lucide-react";
+import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
+import { X, MessageSquarePlus, CheckCircle2, Inbox, PenLine, Loader2, Trash2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/lib/auth";
 import { support, MyTicket } from "@/lib/api";
@@ -17,7 +17,8 @@ const CATEGORY_LABEL: Record<string, string> = {
   bug: "Bug", question: "Dúvida", suggestion: "Sugestão", billing: "Cobrança", other: "Outro",
 };
 
-function TicketCard({ ticket }: { ticket: MyTicket }) {
+function TicketCard({ ticket, onDelete }: { ticket: MyTicket; onDelete: () => void }) {
+  const { t } = useTranslation("common");
   const [open, setOpen] = useState(!!ticket.admin_reply);
 
   return (
@@ -41,6 +42,10 @@ function TicketCard({ ticket }: { ticket: MyTicket }) {
         <span className="font-mono text-[10px] text-muted-foreground ml-auto">
           {new Date(ticket.created_at).toLocaleDateString("pt-BR")}
         </span>
+        <button onClick={onDelete} title={t("supportModal.delete")} aria-label={t("supportModal.delete")}
+          className="text-muted-foreground/50 transition-colors hover:text-destructive">
+          <Trash2 className="size-3.5" aria-hidden />
+        </button>
       </div>
 
       {ticket.subject && (
@@ -89,6 +94,15 @@ export function SupportModal({ onClose, initialTab = "new" }: Props) {
   });
   const tickets = ticketsData?.tickets ?? [];
   const repliedCount = tickets.filter(t => t.admin_reply).length;
+
+  const delMut = useMutation({
+    mutationFn: (id: number) => support.deleteTicket(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["my-support-tickets"] }),
+  });
+  const clearMut = useMutation({
+    mutationFn: () => support.clearTickets(),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["my-support-tickets"] }),
+  });
 
   // Mark all replied tickets as read as soon as inbox tab is visible
   useEffect(() => {
@@ -264,9 +278,20 @@ export function SupportModal({ onClose, initialTab = "new" }: Props) {
                   <p className="font-mono text-xs">Nenhuma mensagem enviada ainda.</p>
                 </div>
               ) : (
-                tickets.map((ticket) => (
-                  <TicketCard key={ticket.id} ticket={ticket} />
-                ))
+                <>
+                  <div className="flex justify-end">
+                    <button
+                      onClick={() => { if (window.confirm(t("supportModal.confirmClear"))) clearMut.mutate(); }}
+                      disabled={clearMut.isPending}
+                      className="inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-wider text-muted-foreground transition-colors hover:text-destructive disabled:opacity-40"
+                    >
+                      <Trash2 className="size-3" aria-hidden /> {t("supportModal.clearAll")}
+                    </button>
+                  </div>
+                  {tickets.map((ticket) => (
+                    <TicketCard key={ticket.id} ticket={ticket} onDelete={() => delMut.mutate(ticket.id)} />
+                  ))}
+                </>
               )}
             </div>
           )}

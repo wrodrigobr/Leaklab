@@ -118,7 +118,10 @@
       "suggestion": "Improvement suggestion",
       "billing": "Billing / Subscription",
       "other": "Other"
-    }
+    },
+    "delete": "Delete",
+    "clearAll": "Clear all",
+    "confirmClear": "Delete all your messages? This cannot be undone."
   },
   "messages": {
     "button": "Messages",

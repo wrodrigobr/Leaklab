@@ -118,7 +118,10 @@
       "suggestion": "Sugerencia de mejora",
       "billing": "Facturación / Suscripción",
       "other": "Otro"
-    }
+    },
+    "delete": "Borrar",
+    "clearAll": "Borrar todas",
+    "confirmClear": "¿Borrar todos tus mensajes? No se puede deshacer."
   },
   "messages": {
     "button": "Mensajes",

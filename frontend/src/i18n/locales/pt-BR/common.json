@@ -118,7 +118,10 @@
       "suggestion": "Sugestão de melhoria",
       "billing": "Cobrança / Assinatura",
       "other": "Outro"
-    }
+    },
+    "delete": "Apagar",
+    "clearAll": "Limpar todas",
+    "confirmClear": "Apagar todas as suas mensagens? Isso não pode ser desfeito."
   },
   "messages": {
     "button": "Mensagens",

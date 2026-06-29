@@ -2649,6 +2649,12 @@ export const support = {
   markRead: () =>
     request<{ ok: boolean }>("/support/my-tickets/mark-read", { method: "POST" }),
 
+  deleteTicket: (ticketId: number) =>
+    request<{ ok: boolean }>(`/support/my-tickets/${ticketId}`, { method: "DELETE" }),
+
+  clearTickets: () =>
+    request<{ ok: boolean }>("/support/my-tickets", { method: "DELETE" }),
+
   listTickets: () =>
     request<{ tickets: unknown[] }>("/admin/support-tickets"),
 
