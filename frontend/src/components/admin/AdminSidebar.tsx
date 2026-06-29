@@ -8,6 +8,7 @@ export type AdminSection =
   | "users"
   | "coaches"
   | "support"
+  | "feedback"
   | "candidaturas"
   | "gto-worker"
   | "logs"

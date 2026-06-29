@@ -4,7 +4,7 @@ import {
   Activity, BarChart2, CheckCircle2, Clock,
   LayoutDashboard, Loader2, RefreshCw, Search, Shield, Users,
   GraduationCap, X, Check, MessageSquarePlus, Trash2, AlertTriangle,
-  Cpu, CircleDot
+  Cpu, CircleDot, Lightbulb
 } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
 import { HudHeader } from "@/components/hud/HudHeader";
@@ -719,7 +719,11 @@ interface SupportTicket {
 
 const CATEGORY_LABEL: Record<string, string> = {
   bug: "Bug", question: "Dúvida", suggestion: "Sugestão", billing: "Cobrança", other: "Outro",
+  praise: "Elogio", problem: "Problema",
 };
+
+// Categorias vindas do widget de feedback (vs suporte real: bug/question/billing/other).
+const FEEDBACK_CATEGORIES = new Set(["suggestion", "praise", "problem"]);
 
 const STATUS_STYLE: Record<string, string> = {
   open:    "bg-destructive/10 text-destructive",
@@ -804,15 +808,17 @@ function TicketRow({ ticket, onReplied }: { ticket: SupportTicket; onReplied: ()
   );
 }
 
-function SupportTab() {
+function SupportTab({ kind = "support" }: { kind?: "support" | "feedback" }) {
   const qc = useQueryClient();
+  const isFeedback = kind === "feedback";
   const { data, isLoading } = useQuery({
     queryKey: ["admin-support-tickets"],
     queryFn:  () => support.listTickets(),
     staleTime: 30_000,
   });
 
-  const tickets: SupportTicket[] = (data as { tickets: SupportTicket[] })?.tickets ?? [];
+  const all: SupportTicket[] = (data as { tickets: SupportTicket[] })?.tickets ?? [];
+  const tickets = all.filter((t) => isFeedback ? FEEDBACK_CATEGORIES.has(t.category) : !FEEDBACK_CATEGORIES.has(t.category));
 
   if (isLoading) return (
     <div className="flex items-center justify-center py-24 gap-3 text-muted-foreground">
@@ -823,7 +829,7 @@ function SupportTab() {
 
   if (tickets.length === 0) return (
     <div className="flex items-center justify-center py-24 text-muted-foreground font-mono text-xs uppercase tracking-wider">
-      Nenhuma mensagem de suporte recebida ainda.
+      {isFeedback ? "Nenhum feedback recebido ainda." : "Nenhuma mensagem de suporte recebida ainda."}
     </div>
   );
 
@@ -832,10 +838,10 @@ function SupportTab() {
       <div className="px-4 py-3 border-b border-border bg-hud-elevated/40 flex items-center gap-2">
         <MessageSquarePlus className="size-3.5 text-primary" />
         <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-          Mensagens de Suporte: {tickets.length}
+          {isFeedback ? "Feedback dos jogadores" : "Mensagens de Suporte"}: {tickets.length}
         </span>
         <span className="ml-auto font-mono text-[9px] text-destructive">
-          {tickets.filter(t => t.status === "open").length} abertos
+          {tickets.filter(t => t.status === "open").length} {isFeedback ? "novos" : "abertos"}
         </span>
       </div>
       <div className="divide-y divide-border">
@@ -1094,6 +1100,7 @@ const SECTION_TITLE: Record<AdminSection, { title: string; sub: string }> = {
   users:        { title: "Usuários",       sub: "Gestão de jogadores, planos e suspensões." },
   coaches:      { title: "Coaches",        sub: "Roster de coaches, alunos e repasses." },
   support:      { title: "Tickets",        sub: "Mensagens de suporte dos usuários." },
+  feedback:     { title: "Feedback",       sub: "Sugestões, elogios e problemas dos jogadores." },
   candidaturas: { title: "Candidaturas",   sub: "Pedidos para virar coach." },
   "gto-worker": { title: "GTO Worker",     sub: "Monitoramento do worker e cobertura GTO." },
   logs:         { title: "Logs",           sub: "Últimas importações de torneios." },
@@ -1143,6 +1150,7 @@ const AdminDashboard = () => {
       label: "Suporte",
       items: [
         { id: "support",      label: "Tickets",      icon: MessageSquarePlus, badge: openTickets },
+        { id: "feedback",     label: "Feedback",     icon: Lightbulb },
         { id: "candidaturas", label: "Candidaturas", icon: Shield, badge: pendingCount },
       ],
     },
@@ -1178,6 +1186,7 @@ const AdminDashboard = () => {
             {section === "users"        && <UsersTab />}
             {section === "coaches"      && <CoachesTab />}
             {section === "support"      && <SupportTab />}
+            {section === "feedback"     && <SupportTab kind="feedback" />}
             {section === "candidaturas" && <CandidaturasTab />}
             {section === "gto-worker"   && <GtoWorkerTab />}
             {section === "logs"         && <LogsTab />}
