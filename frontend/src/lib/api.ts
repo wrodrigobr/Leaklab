@@ -1837,6 +1837,13 @@ export const coachDashboard = {
       method: "DELETE",
     }),
 
+  // "Melhorar com IA": reescreve a anotação (clareza/ortografia), sem salvar — o coach revisa.
+  improveAnnotation: (text: string, lang: string) =>
+    request<{ improved: string }>(`/coach/annotations/improve`, {
+      method: "POST",
+      body: JSON.stringify({ text, lang }),
+    }),
+
   impact: (days = 30) =>
     request<CoachImpactResponse>(`/coach/impact?days=${days}`),
 

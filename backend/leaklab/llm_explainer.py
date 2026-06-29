@@ -135,6 +135,53 @@ def _sanitize_player_out(text: str) -> str:
     return _OUT_DASH.sub(', ', text)
 
 
+# ── Melhoria de texto da anotação do coach ("Melhorar com IA") ────────────────
+# O coach escreve a anotação da mão; o botão chama isto pra devolver uma versão mais
+# clara/correta, SEM mudar o sentido nem inventar conselho. Persona de professor;
+# público (coaches e alunos) muitas vezes sem conhecimento avançado de escrita.
+_improve_cache: Dict[str, str] = {}
+
+
+def improve_coach_text(text: str, lang: str = 'pt-BR') -> str:
+    """Reescreve a anotação do coach melhorando ortografia/clareza/didática, preservando o
+    sentido e a recomendação (não inventa nada). Cache por (lang, texto). Levanta em falha de
+    API — o endpoint trata e nunca sobrescreve o original do coach sem ele aceitar."""
+    text = (text or '').strip()
+    if not text:
+        return text
+    key = f"{lang}:{hash(text)}"
+    if key in _improve_cache:
+        return _improve_cache[key]
+    system_prompt = (
+        "Você é um editor que ajuda treinadores de poker a escrever anotações claras para os "
+        "alunos. Reescreva a anotação do treinador MELHORANDO a redação, seguindo estas regras:\n"
+        "- Corrija ortografia, acentuação, pontuação e gramática.\n"
+        "- Deixe a explicação clara, direta e didática, como um bom professor explicando a um "
+        "aluno iniciante ou intermediário. O público NÃO tem conhecimento avançado, então use "
+        "linguagem simples e intuitiva, sem jargão desnecessário.\n"
+        "- Organize o raciocínio numa ordem lógica e fácil de seguir.\n"
+        "- Preserve EXATAMENTE o sentido, a recomendação e a intenção do treinador. NÃO invente "
+        "conceitos, números, cartas, posições ou conselhos que não estejam no texto original. "
+        "Se o texto for vago, mantenha-o vago (melhore só a forma, não o conteúdo).\n"
+        f"{_POKER_TERMS_EN} "
+        "- Responda no MESMO idioma do texto original.\n"
+        "- Devolva SOMENTE o texto reescrito, sem comentários, sem aspas, sem título."
+    )
+    payload = {
+        'model':      'claude-haiku-4-5-20251001',
+        'max_tokens': 800,
+        'system':     system_prompt,
+        'messages':   [{'role': 'user', 'content': text}],
+    }
+    out = (_call_llm_api(payload) or '').strip()
+    # o modelo às vezes embrulha em aspas — tira as externas
+    if len(out) >= 2 and out[0] in '"“' and out[-1] in '"”':
+        out = out[1:-1].strip()
+    out = out or text
+    _improve_cache[key] = out
+    return out
+
+
 def _call_llm_batch(decisions: List[dict]) -> List[str]:
     """
     Faz uma única chamada ao Haiku com todas as decisões com erro.

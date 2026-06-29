@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { ChevronLeft, ChevronRight, Pause, Play, Rewind, FastForward, AlertOctagon, CheckCircle2, Loader2, ArrowLeft, GraduationCap, PenLine, X, Check, Trash2, LayoutGrid, FlaskConical, Clock, Eye, EyeOff, Info, Maximize2, Minimize2, Lock, Users, RotateCw } from "lucide-react";
+import { ChevronLeft, ChevronRight, Pause, Play, Rewind, FastForward, AlertOctagon, CheckCircle2, Loader2, ArrowLeft, GraduationCap, PenLine, X, Check, Trash2, LayoutGrid, FlaskConical, Clock, Eye, EyeOff, Info, Maximize2, Minimize2, Lock, Users, RotateCw, Sparkles } from "lucide-react";
 import logoHorizontal from "@/assets/brand/grindlab_final_horizontal.svg";
 import { useMutation } from "@tanstack/react-query";
 import { HudLayout } from "@/components/hud/HudLayout";
@@ -108,6 +108,16 @@ function SidePanels({
     const next = !prev;
     localStorage.setItem('replayer_show_details', String(next));
     return next;
+  });
+
+  // "Melhorar com IA" na anotação: pede ao LLM uma versão mais clara/correta do texto do
+  // coach (não-destrutivo — vira sugestão que o coach aceita ou descarta). i18n.language
+  // dá o idioma; o backend preserva o sentido e mantém os termos de poker em inglês.
+  const { i18n } = useTranslation();
+  const [improved, setImproved] = useState<string | null>(null);
+  const improveAnn = useMutation({
+    mutationFn: () => coachDashboard.improveAnnotation(annComment.trim(), i18n.language),
+    onSuccess: (r) => setImproved(r.improved || null),
   });
 
   const isPostflop = step.street !== 'preflop';
@@ -1255,6 +1265,31 @@ function SidePanels({
               </div>
               <textarea value={annComment} onChange={(e) => setAnnComment(e.target.value)} rows={3} placeholder={t("annotation.commentPlaceholder")}
                 className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/40 resize-none" />
+              {/* Melhorar com IA: reescreve o texto do coach (clareza/ortografia/didática), sem salvar */}
+              <div className="space-y-2">
+                <button type="button" onClick={() => improveAnn.mutate()} disabled={!annComment.trim() || improveAnn.isPending}
+                  className="inline-flex items-center gap-1.5 rounded-md border border-primary/40 bg-primary/5 px-2.5 py-1 font-mono text-[10px] font-bold uppercase tracking-widest-2 text-primary hover:bg-primary/10 disabled:opacity-50">
+                  {improveAnn.isPending ? <Loader2 className="size-3 animate-spin" /> : <Sparkles className="size-3" />}
+                  {t("annotation.improveBtn")}
+                </button>
+                {improveAnn.isError && <p className="text-[11px] text-destructive">{t("annotation.improveError")}</p>}
+                {improved && (
+                  <div className="rounded-md border border-primary/30 bg-primary/5 p-2.5 space-y-2">
+                    <p className="font-mono text-[9px] uppercase tracking-widest-2 text-primary/80">{t("annotation.improveSuggestion")}</p>
+                    <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">{improved}</p>
+                    <div className="flex gap-2">
+                      <button type="button" onClick={() => { setAnnComment(improved); setImproved(null); }}
+                        className="inline-flex items-center gap-1 rounded bg-primary px-2.5 py-1 font-mono text-[10px] font-bold uppercase text-primary-foreground hover:bg-primary/90">
+                        <Check className="size-3" /> {t("annotation.improveUse")}
+                      </button>
+                      <button type="button" onClick={() => setImproved(null)}
+                        className="inline-flex items-center gap-1 rounded border border-border px-2.5 py-1 font-mono text-[10px] text-muted-foreground hover:text-foreground">
+                        <X className="size-3" /> {t("annotation.improveDiscard")}
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
               <div className="grid grid-cols-2 gap-2">
                 <div className="space-y-1">
                   <label className="font-mono text-[9px] uppercase tracking-widest-2 text-muted-foreground">{t("annotation.correctAction")}</label>

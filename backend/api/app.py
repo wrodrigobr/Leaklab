@@ -3687,6 +3687,30 @@ def coach_hand_annotations_upsert(student_id):
     return jsonify(annotation)
 
 
+@app.route('/coach/annotations/improve', methods=['POST'])
+@require_coach
+def coach_annotation_improve():
+    """Botão "Melhorar com IA": reescreve a anotação do coach (ortografia/clareza/didática),
+    preservando o sentido. NÃO salva nada — devolve a sugestão pro coach revisar e aceitar
+    no front (não-destrutivo). Persona de professor; público sem conhecimento avançado."""
+    d = request.get_json(silent=True) or {}
+    text = (d.get('text') or '').strip()
+    lang = d.get('lang') or 'pt-BR'
+    if not text:
+        return jsonify({'error': 'texto vazio'}), 400
+    is_clean, reason = moderate_text(text)
+    if not is_clean:
+        return jsonify({'error': reason}), 422
+    text = sanitize_llm_input(text, max_len=1000)
+    try:
+        from leaklab.llm_explainer import improve_coach_text
+        improved = improve_coach_text(text, lang)
+    except Exception:
+        app.logger.exception('coach_annotation_improve falhou (user=%s)', g.user_id)
+        return jsonify({'error': 'IA indisponível no momento'}), 502
+    return jsonify({'improved': improved})
+
+
 @app.route('/coach/student/<int:student_id>/hand-annotations/<int:decision_id>', methods=['DELETE'])
 @require_coach
 def coach_hand_annotations_delete(student_id, decision_id):
