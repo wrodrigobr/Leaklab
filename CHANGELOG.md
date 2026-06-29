@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### chore(multiway): spike de medição da "cauda segura" pra gradear multiway (#30)
+
+> Audit read-only (`scripts/audit_multiway_safety.py`, não toca produto) pra dimensionar o #30 antes de construir: como NÃO existe gabarito multiway (solver é HU-only), "seguro pra gradear" = o veredito sobrevive ao **canto adversário** das premissas (range do vilão no extremo + realization tax + folga > ruído do Monte Carlo). Buckets: **SAFE_FOLD** (priced-out mesmo com vilão larguíssimo), **SAFE_VALUE** (valor claro mesmo com vilão apertadíssimo), resto **informativo** (uncovered, como hoje). Em **dev (113 spots)**: ~20% caem na cauda segura (15% fold + 5% valor), e o advisor `is_clear` (29%) prova que ~1/3 do que ele chama de "claro" depende das premissas → gradear por `is_clear` sozinho seria inseguro. Próximo passo: rodar `--prod` (read-only) pra confirmar o % no field real antes de decidir o go/no-go. Sem mudança de produto.
+
 ### feat(admin): status do GTO worker em 3 estados (não confundir "ocioso normal" com "caiu")
 
 > O painel admin mostrava o worker como **Ativo/Ocioso** (binário): como o worker é **cron** (drena a fila de ~5 em 5 min), ele passa a maior parte do tempo "Ocioso" — um estado **saudável** que parecia problema (amarelo) e escondia uma queda real. Agora são **3 estados**: **Trabalhando** (processando agora — `is_active`), **Saudável** (ocioso mas ok — heartbeat < 15 min OU fila vazia) e **Parado** (vermelho — HÁ trabalho na fila E sem heartbeat há > 15 min, ou seja, o cron não está drenando). O backend (`/admin/gto/worker-status`) passa a devolver `worker.state`; o `workerDot` (badge de alerta na nav) acende só em **Parado** ou erros recentes, não mais no ocioso normal. Frontend com fallback p/ `active` quando o campo não vier (compat).
