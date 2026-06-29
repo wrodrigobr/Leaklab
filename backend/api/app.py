@@ -4425,6 +4425,7 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
     """Constrói a timeline completa de replay a partir de uma ParsedHand."""
     import re as _re
     from leaklab.hand_state_builder import _normalize_action
+    from leaklab.parser import SEAT_OUT_OF_HAND_RE
 
     def _parse_summary(raw):
         """Extrai resultado, vencedores e cartas reveladas do SUMMARY."""
@@ -4461,6 +4462,11 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
     seats = {}
     _bounties = getattr(hand, 'bounties', {}) or {}
     for line in hand.raw_text.split('\n'):
+        # Assento "out of hand" (movido de outra mesa, joga só após o botão) não
+        # está nesta mão: incluí-lo na mesa inflava a contagem (HU virava "multiway"
+        # no fallback seats−folded do card) e deslocava as posições do replay.
+        if SEAT_OUT_OF_HAND_RE.search(line):
+            continue
         m = _re.match(r'Seat (\d+): (.+?) \(([0-9.,]+) in chips', line)
         if m:
             player = m.group(2).strip()

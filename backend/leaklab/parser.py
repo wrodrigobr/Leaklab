@@ -71,6 +71,13 @@ SEAT_BOUNTY_GG_RE = re.compile(
 SEAT_BOUNTY_PS2_RE = re.compile(
     r"^Seat \d+: (.+?) \([0-9.,]+ in chips, \$([0-9.]+) bounty\)", re.IGNORECASE
 )
+# Assento que NÃO participa desta mão: jogador movido de outra mesa que só vai
+# jogar depois do botão passar por ele —
+#   "Seat 1: rafaela919 (1500 in chips) out of hand (moved from another table into small blind)"
+# Ele ocupa o assento mas NÃO recebe cartas, NÃO posta blind/ante e NÃO age. Contá-lo
+# como jogador inflava num_players (HU virava "multiway") e deslocava as posições. É
+# excluído de players/seats no parser e da contagem de assentos do cálculo de posição.
+SEAT_OUT_OF_HAND_RE = re.compile(r"\bout of hand\b", re.IGNORECASE)
 # PokerStars bounty collection: "phpro wins $0.25 bounty for eliminating villain"
 BOUNTY_WIN_RE = re.compile(
     r"^(.+?) wins \$([0-9.]+) bounty for eliminating (.+)", re.IGNORECASE
@@ -179,6 +186,10 @@ def parse_hand(raw_text: str, id_re: re.Pattern | None = None) -> ParsedHand:
             board  = _extract_board(line)
             continue
         if line.startswith("Seat ") and ":" in line and "(" in line and "in chips" in line:
+            # Assento "out of hand" (movido de outra mesa, joga só após o botão):
+            # não é jogador desta mão — fora de players/seats/bounties.
+            if SEAT_OUT_OF_HAND_RE.search(line):
+                continue
             name = line.split(":", 1)[1].split("(", 1)[0].strip()
             players.append(name)
             # seat# + stack inicial — base da mesa fiel (Ghost Table visual)

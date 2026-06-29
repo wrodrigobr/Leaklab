@@ -592,10 +592,15 @@ function SidePanels({
           : (pg ? Math.max(0, 1 - (pg.range_pct ?? 0)) : 0);
         const hasFreqs = showAuditPreflop && (callPct > 0 || raisePct > 0 || allinPct > 0 || foldPct > 0);
 
-        // Multiway: jogadores ainda no pote = dealt − foldados (acumulado até o passo).
-        // O solver postflop é resolvido HEADS-UP; em pote 3+ way a estratégia é
-        // aproximação (a equity já é ajustada pelo nº de oponentes). Sinaliza no card.
-        const livePlayers = computeLivePlayers(step.seats as Record<string, unknown> | undefined, step.folded);
+        // Multiway: nº de jogadores no pote. FONTE ÚNICA = n_active_opponents do backend
+        // (conta só quem CONTINUOU voluntariamente; ignora assento sentado FORA da mão, ex.:
+        // jogador "out of hand" movido de outra mesa que nunca foi distribuído nem foldou).
+        // O fallback dealt − foldados contava esse fantasma como vivo → HU virava "multiway".
+        // Só cai no fallback em passo legado sem o campo. Alinha o badge com isMultiwayStep (L117).
+        const _nOpp = step.n_active_opponents;
+        const livePlayers = (_nOpp != null)
+          ? _nOpp + 1
+          : computeLivePlayers(step.seats as Record<string, unknown> | undefined, step.folded);
         const isMultiway = isMultiwayPot(isPostflop, livePlayers);
 
         const indicators = (

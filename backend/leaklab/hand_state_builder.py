@@ -2,6 +2,7 @@ from __future__ import annotations
 import re
 from typing import Optional, List
 from .models import ParsedHand, HandState, ParsedAction
+from .parser import SEAT_OUT_OF_HAND_RE
 
 # ── Board por street ──────────────────────────────────────────────────────────
 # PokerStars/GGPoker têm DOIS formatos de linha de board, ambos válidos:
@@ -103,6 +104,10 @@ def _infer_position(hand: ParsedHand, hero: str) -> str:
     active_seats = []
     for line in hand.raw_text.splitlines():
         if line.startswith('Seat ') and ': ' in line and '(' in line:
+            # Assento "out of hand" (movido de outra mesa) não entra na contagem:
+            # incluí-lo aumentava o tamanho da mesa e deslocava as posições.
+            if SEAT_OUT_OF_HAND_RE.search(line):
+                continue
             try:
                 seat_num = int(line.split()[1].rstrip(':'))
                 active_seats.append(seat_num)
@@ -290,10 +295,18 @@ def extract_decision_points(hand: ParsedHand) -> List[HandState]:
         # O que importa é quando a ação CHEGA no hero: um vilão que foldou ANTES do hero
         # agir (ex.: agressor c-beta, CO folda, hero raise) NÃO conta. Sem isto o spot
         # virava falso multiway (ex.: mão 11: HU no raise, mas contava 2 oponentes).
-        # = todos os distribuídos − quem já foldou até este ponto (actions_before).
+        #
+        # REGRA: só conta como oponente vivo quem JÁ CONTINUOU VOLUNTARIAMENTE (check/call/
+        # bet/raise/all-in) e não foldou. Um jogador que ainda NÃO agiu (sentado atrás do
+        # hero num open RFI, ou que só postou blind) NÃO conta — ele ainda pode foldar.
+        # Sem isto, TODO open/fold preflop virava "multiway" porque os jogadores por agir
+        # eram contados como no pote (bug: jogador "na mão" mesmo tendo foldado em seguida).
+        # Callers/checkers de streets anteriores seguem contando (a ação está em actions_before),
+        # então um pote multiway de verdade que afunila postflop continua correto.
+        _VOLUNTARY = {'checks', 'calls', 'bets', 'raises', 'all-in'}
         folded_so_far = set(a.player for a in actions_before if a.action == 'folds')
-        _dealt = set(a.player for a in hand.actions if a.action not in {'shows', 'mucks'})
-        still_in_now = _dealt - folded_so_far
+        committed = set(a.player for a in actions_before if a.action in _VOLUNTARY)
+        still_in_now = (committed - folded_so_far) | {hero}  # hero está vivo (decide agora)
         n_active_opponents = max(0, len(still_in_now) - 1)  # exclui hero (ainda no pote)
         is_multiway = n_active_opponents >= 2
 
