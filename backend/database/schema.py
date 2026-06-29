@@ -1731,6 +1731,10 @@ def _run_migrations(conn):
                 paid_at       TIMESTAMP
             )""",
             "CREATE INDEX IF NOT EXISTS idx_coach_commissions_coach ON coach_commissions(coach_id)",
+            # #30 multiway (shadow): veredito da cauda segura por decisão. Estava só no
+            # bloco regular (transação única) → um abort anterior pulava o ADD e a coluna
+            # faltava em prod (UndefinedColumn no backfill). Aqui sobrevive com commit isolado.
+            "ALTER TABLE decisions ADD COLUMN IF NOT EXISTS multiway_safe_verdict TEXT",
         ]
         for _stmt in _safe:
             try:
