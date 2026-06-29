@@ -756,7 +756,7 @@ export default function GhostTable() {
                       <button key={action} onClick={() => submitAction(action)}
                         disabled={tableLoading || submitting || timedOut || !legalSet.has(action) || (action === 'jam' && isCallEqualToJam)}
                         title={action === 'jam' && isCallEqualToJam ? t("tooltips.callEquiv") : undefined}
-                        className="min-h-[40px] rounded-lg border border-border bg-hud-surface px-2 py-2 font-mono text-[10px] font-bold uppercase tracking-wider text-foreground ring-1 ring-border hover:border-primary/60 hover:bg-primary/5 hover:text-primary disabled:opacity-40 disabled:cursor-not-allowed transition-all active:scale-95">
+                        className="min-h-[44px] sm:min-h-[40px] rounded-lg border border-border bg-hud-surface px-2 py-2 font-mono text-[10px] font-bold uppercase tracking-wider text-foreground ring-1 ring-border hover:border-primary/60 hover:bg-primary/5 hover:text-primary disabled:opacity-40 disabled:cursor-not-allowed transition-all active:scale-95">
                         {t(`actions.${action}`)}
                       </button>
                     ))}
