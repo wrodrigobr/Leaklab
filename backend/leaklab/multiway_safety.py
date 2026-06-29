@@ -17,6 +17,7 @@ Fonte ÚNICA: o audit (scripts/audit_multiway_safety.py) e o backfill importam d
 """
 from __future__ import annotations
 import math
+import os
 import random
 
 try:
@@ -184,6 +185,31 @@ def classify_safe(hero_cards, board, n_opponents, pot_bb, to_call_bb,
         return out
     out['bucket'] = 'informative'
     return out
+
+
+def grade_safe_tail_enabled() -> bool:
+    """Fase 2: master switch. Lê o env em tempo de chamada (flip exige restart do
+    container, igual TEXAS_HERO_IP; mas testes podem setar/limpar e ver o efeito)."""
+    return os.environ.get('MULTIWAY_GRADE_SAFE_TAIL', '0') == '1'
+
+
+def graded_safe_verdict(hero_cards, board, n_opponents, pot_bb, to_call_bb,
+                        hero_action, street='flop', n_sims=6000):
+    """Fase 2 — veredito GRADEADO da cauda segura, ou None.
+
+    Devolve dict (bucket/recommended/is_leak/eq_hi/eq_lo/required_eq) SOMENTE quando:
+      (a) a flag MULTIWAY_GRADE_SAFE_TAIL está on, E
+      (b) o spot cai na cauda segura (safe_fold/safe_value).
+    Senão None → o chamador mantém o comportamento informativo de hoje (uncovered/≈).
+    `is_leak` = a ação do hero contraria o veredito garantido (continuar num safe_fold,
+    passar num safe_value). Centraliza a checagem da flag p/ todas as superfícies."""
+    if not grade_safe_tail_enabled():
+        return None
+    v = classify_safe(hero_cards, board, n_opponents, pot_bb, to_call_bb,
+                      street=street, n_sims=n_sims)
+    if v['bucket'] not in ('safe_fold', 'safe_value'):
+        return None
+    return {**v, 'is_leak': bool(is_safe_leak(v, hero_action))}
 
 
 def is_safe_leak(verdict, hero_action):

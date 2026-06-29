@@ -7,7 +7,10 @@ quem sobrevive ao canto adversário das premissas. O meio ambíguo fica 'informa
 import sys, os, traceback
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from leaklab.multiway_safety import classify_safe as C, is_safe_leak, _HAS_EVAL7
+import os
+from leaklab.multiway_safety import (
+    classify_safe as C, is_safe_leak, graded_safe_verdict, _HAS_EVAL7,
+)
 
 NS = 4000  # margens da cauda segura são grandes; buckets são estáveis com poucos sims
 
@@ -89,6 +92,68 @@ def test_is_safe_leak_truth_table():
     assert is_safe_leak({'bucket': 'informative'}, 'call') is None   # fora da cauda: defere
     assert is_safe_leak(None, 'call') is None
     print("OK  test_is_safe_leak_truth_table")
+
+
+def _with_flag(val, fn):
+    """Roda fn() com MULTIWAY_GRADE_SAFE_TAIL setado, restaurando depois."""
+    prev = os.environ.get('MULTIWAY_GRADE_SAFE_TAIL')
+    if val is None:
+        os.environ.pop('MULTIWAY_GRADE_SAFE_TAIL', None)
+    else:
+        os.environ['MULTIWAY_GRADE_SAFE_TAIL'] = val
+    try:
+        return fn()
+    finally:
+        if prev is None:
+            os.environ.pop('MULTIWAY_GRADE_SAFE_TAIL', None)
+        else:
+            os.environ['MULTIWAY_GRADE_SAFE_TAIL'] = prev
+
+
+# Spot SAFE_FOLD calibrado: 72o em AKQ enfrentando aposta grande 3-way (priced-out).
+_FOLD = dict(hero_cards='7d2c', board=['Ah', 'Ks', 'Qc'], n_opponents=2,
+             pot_bb=10, to_call_bb=8, street='flop', n_sims=NS)
+# Spot SAFE_VALUE calibrado: trips de 4 em 944 3-way (valor claro).
+_VALUE = dict(hero_cards='4s4c', board=['9c', '4d', '4h'], n_opponents=2,
+              pot_bb=8, to_call_bb=0, street='flop', n_sims=NS)
+
+
+def test_graded_flag_off_returns_none():
+    """Flag OFF (default) → None mesmo na cauda segura → comportamento de hoje intacto."""
+    r = _with_flag(None, lambda: graded_safe_verdict(hero_action='call', **_FOLD))
+    assert r is None, r
+    r0 = _with_flag('0', lambda: graded_safe_verdict(hero_action='call', **_FOLD))
+    assert r0 is None, r0
+    print("OK  test_graded_flag_off_returns_none")
+
+
+def test_graded_safe_fold_continue_is_leak():
+    r = _with_flag('1', lambda: graded_safe_verdict(hero_action='call', **_FOLD))
+    assert r and r['bucket'] == 'safe_fold' and r['is_leak'] is True, r
+    print("OK  test_graded_safe_fold_continue_is_leak")
+
+
+def test_graded_safe_fold_fold_is_ok():
+    r = _with_flag('1', lambda: graded_safe_verdict(hero_action='fold', **_FOLD))
+    assert r and r['bucket'] == 'safe_fold' and r['is_leak'] is False, r
+    print("OK  test_graded_safe_fold_fold_is_ok")
+
+
+def test_graded_safe_value_passive_is_leak():
+    r = _with_flag('1', lambda: graded_safe_verdict(hero_action='check', **_VALUE))
+    assert r and r['bucket'] == 'safe_value' and r['is_leak'] is True, r
+    r2 = _with_flag('1', lambda: graded_safe_verdict(hero_action='bet', **_VALUE))
+    assert r2 and r2['is_leak'] is False, r2
+    print("OK  test_graded_safe_value_passive_is_leak")
+
+
+def test_graded_informative_returns_none():
+    """Flag ON mas spot fora da cauda segura (A2c marginal) → None (não grada)."""
+    marg = dict(hero_cards='Ac2c', board=['9c', '4d', '4h'], n_opponents=2,
+                pot_bb=13, to_call_bb=4, street='flop', n_sims=NS)
+    r = _with_flag('1', lambda: graded_safe_verdict(hero_action='call', **marg))
+    assert r is None, r
+    print("OK  test_graded_informative_returns_none")
 
 
 if __name__ == '__main__':

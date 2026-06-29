@@ -1564,6 +1564,7 @@ def grade_drill_action(row, new_action):
 
     # MULTIWAY (opção A): informativo. Nunca punição dura; expõe a sugestão do advisor.
     mw_advice = None
+    multiway_safe = None   # Fase 2: veredito GRADEADO da cauda segura (flag MULTIWAY_GRADE_SAFE_TAIL)
     if gto_multiway:
         try:
             from leaklab.multiway_advisor import advise_multiway, is_hero_leak, norm_action as _mw_norm
@@ -1586,8 +1587,20 @@ def grade_drill_action(row, new_action):
                 }
         except Exception:
             mw_advice = None
+        # Fase 2: cauda segura tem PRECEDÊNCIA sobre o informativo (flag-gated dentro de graded_safe_verdict).
+        try:
+            from leaklab.multiway_safety import graded_safe_verdict as _gsv
+            multiway_safe = _gsv(
+                row.get('hero_cards'), _b[:_sc], _n_opp,
+                float(row.get('pot_size') or 0), float(row.get('facing_bet') or 0),
+                norm_new, street=(row.get('street') or 'flop').lower())
+        except Exception:
+            multiway_safe = None
 
-    if gto_off_tree or gto_multiway:
+    if multiway_safe:
+        # Cauda segura: veredito REAL (garantido) em vez de 'uncovered'. is_leak → error.
+        gto_tier = 'error' if multiway_safe['is_leak'] else 'correct'
+    elif gto_off_tree or gto_multiway:
         gto_tier = 'uncovered'   # off-tree OU multiway: não crava veredito; nunca penaliza.
     elif top_match or call_jam_equiv:
         gto_tier = 'correct'
@@ -1619,7 +1632,9 @@ def grade_drill_action(row, new_action):
     return {
         'gto_tier': gto_tier, 'is_correct': is_correct, 'best_action': best_action,
         'gto_freqs': gto_freqs, 'validation_source': validation_source,
-        'gto_off_tree': gto_off_tree, 'gto_multiway': gto_multiway, 'multiway_advice': mw_advice,
+        'gto_off_tree': gto_off_tree, 'gto_multiway': gto_multiway,
+        'multiway_advice': (None if multiway_safe else mw_advice),   # cauda segura SUBSTITUI o informativo
+        'multiway_safe': multiway_safe,   # Fase 2: veredito gradeado da cauda segura (None = informativo)
         'new_score': new_score, 'original_score': original_score, 'is_mixed_line': is_mixed_line,
         'player_freq': player_freq, 'gto_strategy': gto_strategy, 'norm_new': norm_new,
         'top_match': top_match, 'call_jam_equiv': call_jam_equiv,
@@ -5199,6 +5214,8 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
         # Substitui a recomendação HU por equity-vs-range (eval7) + pot odds + realização.
         # É ESTIMATIVA honesta (rotulada), tem prioridade sobre o nó HU neste spot.
         multiway_advice = None
+        multiway_safe = None       # Fase 2: veredito GRADEADO da cauda segura (flag MULTIWAY_GRADE_SAFE_TAIL)
+        multiway_safe_label = None
         _mw_spot = False        # spot multiway postflop do hero (solver HU é unreliable aqui)
         _mw_nopp = 0
         if (action.player == hero and action.street != 'preflop' and decision
@@ -5240,6 +5257,32 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
                 is_error = _sev_mw in ('small_mistake', 'clear_mistake')
                 reconciled_best = decision.get('best_action') or reconciled_best
                 gto_action = decision.get('best_action') or gto_action
+
+            # Fase 2 (flag MULTIWAY_GRADE_SAFE_TAIL): a CAUDA SEGURA tem precedência sobre o
+            # informativo. Veredito GARANTIDO (sobrevive ao canto adversário das premissas →
+            # nunca pune jogada defensável): vira erro/correto REAL. Flag off → multiway_safe
+            # None → comportamento de hoje (≈ aproximação) intacto.
+            if _mw_spot:
+                try:
+                    from leaklab.multiway_safety import graded_safe_verdict as _gsv
+                    multiway_safe = _gsv(
+                        ''.join(_di.get('hero_cards') or []),
+                        _spot.get('board') or [],
+                        _nopp_mw,
+                        float(_spot.get('potBb') or 0),
+                        float(_spot.get('facingToBb') or 0),
+                        action.action,
+                        street=action.street,
+                    )
+                except Exception:
+                    multiway_safe = None
+                if multiway_safe:
+                    is_error        = bool(multiway_safe['is_leak'])
+                    reconciled_best = _norm(multiway_safe['recommended'])
+                    gto_action      = multiway_safe['recommended']
+                    live_top_act    = multiway_safe['recommended']
+                    multiway_advice = None   # cauda segura SUBSTITUI o informativo
+                    multiway_safe_label = 'small_mistake' if is_error else 'standard'
 
         # Sizing do OPEN (Fase 1): tamanho do open preflop do hero vs o padrão de teoria
         # (~2bb; SBxBB sobe). O size sai do raw ("raises X to Y" → Y/bb), não do amount (=BY).
@@ -5334,10 +5377,13 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
             # (solver é HU-only, advisor é estimativa) — error_label=None → o card mostra "≈ aproximação"
             # neutro + a sugestão do advisor. B1: fora do multiway, deriva do is_error RECOMPUTADO live
             # (não do label antigo do DB); preserva clear/small; floora small_mistake quando is_error.
-            'error_label':        (None if multiway_advice
+            # Fase 2: cauda segura graduada (multiway_safe_label) tem precedência — veredito
+            # REAL (small_mistake/standard) em vez do None informativo. Senão, lógica de hoje.
+            'error_label':        (multiway_safe_label if multiway_safe_label is not None
+                                   else (None if multiway_advice
                                    else ((decision.get('label') if decision else None)
                                          if (not is_error or (decision and decision.get('label') in ('small_mistake', 'clear_mistake')))
-                                         else 'small_mistake')),
+                                         else 'small_mistake'))),
             'error_score':        round(float(decision.get('score', 0)), 3)         if decision else None,
             'best_action':        reconciled_best                                    if decision else None,
             'engine_best':        engine_best if (gto_engine_conflict or gto_spot_mismatch) else None,
@@ -5358,6 +5404,7 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
             'postflop_texture_sizing': postflop_texture_sizing,   # Fase 3: heurística de textura (sem nó)
             'ev_loss_bb':         (decision.get('ev_loss_bb') if decision else None),  # #24
             'multiway_advice':    multiway_advice,   # fallback multiway: equity-vs-range (estimativa, não GTO HU)
+            'multiway_safe':      multiway_safe,     # Fase 2: veredito GRADEADO da cauda segura (None = informativo)
             # com estimativa multiway ativa, esconde as barras HU (o artefato que estamos
             # substituindo) — o card mostra a estimativa, não "raise 93%" do solver HU.
             'hand_strategy':      (None if _mw_spot else live_hand_strategy),   # Fase 3: freq/EV da MÃO do hero
