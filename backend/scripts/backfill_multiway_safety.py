@@ -21,7 +21,7 @@ if '--prod' in sys.argv:
 else:
     os.environ.pop('DATABASE_URL', None)
 
-from database.schema import get_conn
+from database.schema import get_conn, USE_POSTGRES
 from leaklab.multiway_safety import classify_safe, _HAS_EVAL7
 
 if not _HAS_EVAL7:
@@ -37,10 +37,14 @@ def main():
         limit = int(sys.argv[sys.argv.index('--limit') + 1])
 
     conn = get_conn()   # dispara _run_migrations → garante a coluna
-    try:
-        conn.execute('PRAGMA busy_timeout=30000')
-    except Exception:
-        pass
+    # PRAGMA é SQLite-only; no Postgres é SQL inválido e ABORTA a transação
+    # (o try/except engole o erro Python mas deixa a conexão envenenada →
+    # InFailedSqlTransaction no próximo SELECT). Só no SQLite local.
+    if not USE_POSTGRES:
+        try:
+            conn.execute('PRAGMA busy_timeout=30000')
+        except Exception:
+            pass
 
     rows = conn.execute(
         "SELECT id, hero_cards, board, pot_size, facing_bet, street, "
