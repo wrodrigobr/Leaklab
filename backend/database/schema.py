@@ -442,6 +442,7 @@ def _run_migrations(conn):
             "ALTER TABLE decisions ADD COLUMN IF NOT EXISTS pot_size        REAL",
             "ALTER TABLE decisions ADD COLUMN IF NOT EXISTS facing_bet      REAL",
             "ALTER TABLE decisions ADD COLUMN IF NOT EXISTS n_active_opponents INTEGER",
+            "ALTER TABLE decisions ADD COLUMN IF NOT EXISTS multiway_safe_verdict TEXT",  # #30 shadow: safe_fold|safe_value|NULL
             "ALTER TABLE coach_hand_annotations ADD COLUMN IF NOT EXISTS coach_override_label TEXT",
             # Sprint 9 — BACK-010: quota tracking
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS tournaments_this_month INTEGER NOT NULL DEFAULT 0",
@@ -1130,6 +1131,7 @@ def _run_migrations(conn):
             ("ev_loss_bb",       "ALTER TABLE decisions ADD COLUMN ev_loss_bb       REAL"),
             ("ev_loss_source",   "ALTER TABLE decisions ADD COLUMN ev_loss_source   TEXT"),
             ("n_active_opponents", "ALTER TABLE decisions ADD COLUMN n_active_opponents INTEGER"),
+            ("multiway_safe_verdict", "ALTER TABLE decisions ADD COLUMN multiway_safe_verdict TEXT"),  # #30 shadow
         ]:
             if col not in dec_existing:
                 try: conn.execute(sql)

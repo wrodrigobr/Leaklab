@@ -40,6 +40,7 @@ SUITES = {
                   'test_card_verdict.py',
                   'test_multiway_divergence.py',
                   'test_multiway_advisor.py',
+                  'test_multiway_safety.py',
                   'test_pko_har_parser.py',
                   'test_pko_engine.py',
                   'test_ev_loss.py',
