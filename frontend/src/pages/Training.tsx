@@ -46,7 +46,7 @@ export default function Training() {
 
   return (
     <HudLayout eyebrow={t("eyebrow")} title={t("title")} description={t("subtitle")}>
-      <div className="mx-auto max-w-6xl space-y-4">
+      <div className="space-y-4">
 
         {/* ── Ações de treino — compactas, no topo (a ação principal vem primeiro) ── */}
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
