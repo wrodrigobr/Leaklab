@@ -30,7 +30,7 @@ export default function Training() {
   const unlockedCount = overview?.achievements.filter((a) => a.unlocked).length ?? 0;
   const achKey = (k: string) => k.replace(/:/g, "_");   // ':' é separador de namespace no i18next
   // contagem por tier (visão gamificada da evolução, além das barras)
-  const tierCounts = (["diamond", "gold", "silver", "bronze"] as const).map((tier) => ({
+  const tierCounts = (["bronze", "silver", "gold", "diamond"] as const).map((tier) => ({
     tier, count: overview?.skills.filter((s) => s.tier === tier).length ?? 0,
   }));
   // Jornada: "Aplicar" desbloqueia quando uma habilidade treinada chega ao Ouro (mastery>=70).
@@ -46,7 +46,7 @@ export default function Training() {
 
   return (
     <HudLayout eyebrow={t("eyebrow")} title={t("title")} description={t("subtitle")}>
-      <div className="mx-auto max-w-4xl space-y-6">
+      <div className="mx-auto max-w-6xl space-y-6">
 
         {/* ── A JORNADA — Treinar → Aplicar (gate Ouro) → Provar ───────────────── */}
         {overview && (
@@ -133,6 +133,8 @@ export default function Training() {
               })}
             </div>
 
+            {/* Domínio + Conquistas lado a lado em telas largas (melhor uso do espaço) */}
+            <div className="grid gap-5 lg:grid-cols-2">
             {/* Domínio por habilidade — onde o jogador está */}
             <div>
               <p className="mb-2 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">{t("status.skills")}</p>
@@ -174,6 +176,7 @@ export default function Training() {
                   </div>
                 ))}
               </div>
+            </div>
             </div>
           </div>
         )}
