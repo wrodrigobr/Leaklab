@@ -46,12 +46,12 @@ export default function Training() {
 
   return (
     <HudLayout eyebrow={t("eyebrow")} title={t("title")} description={t("subtitle")}>
-      <div className="mx-auto max-w-6xl space-y-6">
+      <div className="mx-auto max-w-6xl space-y-4">
 
         {/* ── Ações de treino — compactas, no topo (a ação principal vem primeiro) ── */}
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <Link to="/ghost"
-            className="group flex items-center gap-3 rounded-xl border border-primary/30 bg-primary/[0.05] p-4 transition-colors hover:border-primary/50">
+            className="group flex items-center gap-3 rounded-xl border border-primary/30 bg-primary/[0.05] p-3 transition-colors hover:border-primary/50">
             <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 ring-1 ring-primary/30">
               <RotateCw className="size-5 text-primary" aria-hidden />
             </div>
@@ -62,7 +62,7 @@ export default function Training() {
             <ArrowRight className="size-4 shrink-0 text-primary transition-transform group-hover:translate-x-0.5" aria-hidden />
           </Link>
           <Link to="/leak-trainer"
-            className="group flex items-center gap-3 rounded-xl border border-amber-500/30 bg-amber-500/[0.06] p-4 transition-colors hover:border-amber-500/50">
+            className="group flex items-center gap-3 rounded-xl border border-amber-500/30 bg-amber-500/[0.06] p-3 transition-colors hover:border-amber-500/50">
             <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-amber-500/10 ring-1 ring-amber-500/30">
               <Target className="size-5 text-amber-400" aria-hidden />
             </div>
@@ -73,7 +73,7 @@ export default function Training() {
             <ArrowRight className="size-4 shrink-0 text-amber-400 transition-transform group-hover:translate-x-0.5" aria-hidden />
           </Link>
           <Link to="/academy"
-            className="group flex items-center gap-3 rounded-xl border border-violet-500/30 bg-violet-500/[0.06] p-4 transition-colors hover:border-violet-500/50">
+            className="group flex items-center gap-3 rounded-xl border border-violet-500/30 bg-violet-500/[0.06] p-3 transition-colors hover:border-violet-500/50">
             <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-violet-500/10 ring-1 ring-violet-500/30">
               <GraduationCap className="size-5 text-violet-400" aria-hidden />
             </div>
@@ -87,9 +87,9 @@ export default function Training() {
 
         {/* ── A JORNADA — Treinar → Aplicar (gate Ouro) → Provar ───────────────── */}
         {overview && (
-          <div className="rounded-2xl border border-border bg-card/40 p-6 md:p-7">
-            <h2 className="mb-4 flex items-center gap-2 font-heading text-lg font-bold text-foreground">
-              <Map className="size-5 text-primary" aria-hidden /> {t("journey.title")}
+          <div className="rounded-2xl border border-border bg-card/40 p-5">
+            <h2 className="mb-3 flex items-center gap-2 font-heading text-base font-bold text-foreground">
+              <Map className="size-4 text-primary" aria-hidden /> {t("journey.title")}
             </h2>
             <div className="grid grid-cols-3 gap-2">
               {JOURNEY.map(({ key, icon: Icon, status }, i) => {
@@ -137,7 +137,7 @@ export default function Training() {
 
         {/* ── SEU TREINO — status/domínio/conquistas (eixo de gamificação, separado do ELO) ── */}
         {overview && (
-          <div className="space-y-5 rounded-2xl border border-border bg-card/40 p-6 md:p-7">
+          <div className="space-y-4 rounded-2xl border border-border bg-card/40 p-5">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <h2 className="flex items-center gap-2 font-heading text-lg font-bold text-foreground">
                 <Award className="size-5 text-primary" aria-hidden /> {t("status.title")}
@@ -160,7 +160,7 @@ export default function Training() {
               {tierCounts.map(({ tier, count }) => {
                 const tm = TIER[tier];
                 return (
-                  <div key={tier} className={cn("flex flex-col items-center gap-0.5 rounded-xl py-2.5 ring-1",
+                  <div key={tier} className={cn("flex flex-col items-center gap-0.5 rounded-xl py-2 ring-1",
                     count > 0 ? "bg-card/60 ring-border" : "bg-muted/5 opacity-50 ring-border")}>
                     <Trophy className="size-5" style={{ color: tm.ring }} aria-hidden />
                     <span className="font-mono text-base font-bold tabular-nums text-foreground">{count}</span>
