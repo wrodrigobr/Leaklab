@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(training): gamificação de treino estilo Duolingo — Fase 1 (domínio por categoria)
+
+> Início da gamificação de treino **desacoplada do ELO** (spec em `specs/training-gamification.md`): dois eixos honestos — ELO/leaks = quão bom você É (mãos reais); Treino = quanto você PRATICA/domina (drills). Fase 1 = a fundação backend do **domínio por categoria de leak**: tabela `training_skill_progress` (migração PG+SQLite+abort-proof), `record_training_attempt` (mastery = EMA de acerto × fator de volume, exige acerto sustentado + ~20 reps p/ teto, não grind; tiers Bronze/Prata/Ouro/Diamante), `get_training_skills`, e o `/player/leaktrainer/grade` agora registra a tentativa por categoria e devolve o domínio antes→depois (pro veredito da lição). Endpoint `GET /player/training/skills`. Honesto por construção: o treino sintético move só o eixo de treino, nunca finge mexer no ELO. Testes: `test_training_gamification` 6/6, database 134/134. Próximo: frontend (moldura de Lição início/fim/veredito + Finalizar + domínio no recap), depois Fases 2 (missões diárias) e 3 (curso/ligas).
+
 ### fix(leak-trainer): botões de ação menores + "Raise (abrir)" vira "Raise"
 
 > Na mesa do Leak Trainer os botões de ação estavam grandes demais e sobrepondo o pod do Hero. Reduzidos (`px-5 py-3 text-sm min-w-[88px]` → `px-4 py-2 text-xs min-w-[68px]`) e o rótulo redundante "Raise (abrir)" virou só "Raise" (o contexto de abertura já está claro na mesa; 3-Bet/4-Bet seguem rotulados porque a info é útil). 3 locales (PT/EN/ES). tsc 0.

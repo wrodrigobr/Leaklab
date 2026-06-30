@@ -652,6 +652,23 @@ def _run_migrations(conn):
             """)
             conn.execute("CREATE INDEX IF NOT EXISTS idx_drill_user ON drill_sessions(user_id, drilled_at)")
         except Exception: pass
+        # Gamificação de treino (Fase 1): domínio por categoria de leak (Postgres)
+        try:
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS training_skill_progress (
+                    id                SERIAL PRIMARY KEY,
+                    user_id           INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                    category_key      TEXT    NOT NULL,
+                    attempts          INTEGER NOT NULL DEFAULT 0,
+                    correct           INTEGER NOT NULL DEFAULT 0,
+                    mastery_ema       REAL    NOT NULL DEFAULT 0,
+                    mastery           REAL    NOT NULL DEFAULT 0,
+                    last_practiced_at TIMESTAMP,
+                    UNIQUE(user_id, category_key)
+                )
+            """)
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_training_skill_user ON training_skill_progress(user_id)")
+        except Exception: pass
         # Sprint R — FEAT-05: SRS columns on drill_sessions (Postgres)
         try:
             conn.execute("ALTER TABLE drill_sessions ADD COLUMN next_drill_at    TIMESTAMP")
@@ -1290,6 +1307,21 @@ def _run_migrations(conn):
             )
         """)
         conn.execute("CREATE INDEX IF NOT EXISTS idx_drill_user ON drill_sessions(user_id, drilled_at)")
+        # Gamificação de treino (Fase 1): domínio por categoria de leak (SQLite)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS training_skill_progress (
+                id                INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id           INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                category_key      TEXT    NOT NULL,
+                attempts          INTEGER NOT NULL DEFAULT 0,
+                correct           INTEGER NOT NULL DEFAULT 0,
+                mastery_ema       REAL    NOT NULL DEFAULT 0,
+                mastery           REAL    NOT NULL DEFAULT 0,
+                last_practiced_at TEXT,
+                UNIQUE(user_id, category_key)
+            )
+        """)
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_training_skill_user ON training_skill_progress(user_id)")
         # Sprint R — FEAT-05: SRS columns on drill_sessions (SQLite)
         drill_existing = {r[1] for r in conn.execute('PRAGMA table_info(drill_sessions)').fetchall()}
         for col, sql in [
@@ -1731,6 +1763,19 @@ def _run_migrations(conn):
                 paid_at       TIMESTAMP
             )""",
             "CREATE INDEX IF NOT EXISTS idx_coach_commissions_coach ON coach_commissions(coach_id)",
+            # Gamificação de treino (Fase 1): domínio por categoria — abort-proof p/ existir em prod.
+            """CREATE TABLE IF NOT EXISTS training_skill_progress (
+                id                SERIAL PRIMARY KEY,
+                user_id           INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                category_key      TEXT    NOT NULL,
+                attempts          INTEGER NOT NULL DEFAULT 0,
+                correct           INTEGER NOT NULL DEFAULT 0,
+                mastery_ema       REAL    NOT NULL DEFAULT 0,
+                mastery           REAL    NOT NULL DEFAULT 0,
+                last_practiced_at TIMESTAMP,
+                UNIQUE(user_id, category_key)
+            )""",
+            "CREATE INDEX IF NOT EXISTS idx_training_skill_user ON training_skill_progress(user_id)",
             # #30 multiway (shadow): veredito da cauda segura por decisão. Estava só no
             # bloco regular (transação única) → um abort anterior pulava o ADD e a coluna
             # faltava em prod (UndefinedColumn no backfill). Aqui sobrevive com commit isolado.

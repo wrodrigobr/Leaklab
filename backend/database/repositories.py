@@ -5557,6 +5557,73 @@ _ACHIEVEMENT_DEFS = [
 _ACH_META = {k: {'title': t, 'desc': d} for k, t, d in _ACHIEVEMENT_DEFS}
 
 
+# ── Gamificação de treino (Fase 1): domínio por categoria de leak ──────────────
+# Eixo SEPARADO do ELO: mede PRÁTICA/domínio do drill, nunca skill real. Mastery = média
+# móvel de acerto (EMA) × fator de volume (precisa ~20 reps p/ teto) → exige acerto
+# sustentado, não grind. Tiers Bronze/Prata/Ouro/Diamante. Ver specs/training-gamification.md.
+_TRAIN_EMA_ALPHA = 0.2
+_TRAIN_VOLUME_FULL = 20.0   # nº de tentativas p/ o fator de volume saturar em 1.0
+
+
+def _mastery_tier(mastery: float) -> str:
+    if mastery >= 90: return 'diamond'
+    if mastery >= 70: return 'gold'
+    if mastery >= 40: return 'silver'
+    return 'bronze'
+
+
+def record_training_attempt(user_id: int, category_key: str, correct: bool) -> dict:
+    """Registra uma tentativa de drill numa categoria e recomputa o domínio. Devolve o
+    estado pós (mastery/tier/attempts) + o delta de mastery, p/ o veredito da lição."""
+    if not user_id or not category_key:
+        return {}
+    conn = get_conn()
+    try:
+        row = _fetchone(conn, _adapt(
+            "SELECT attempts, correct, mastery_ema, mastery FROM training_skill_progress "
+            "WHERE user_id=? AND category_key=?"), (user_id, category_key))
+        c = 1.0 if correct else 0.0
+        prev_mastery = float(row['mastery']) if row else 0.0
+        if row:
+            attempts  = int(row['attempts']) + 1
+            correct_n = int(row['correct']) + (1 if correct else 0)
+            ema = float(row['mastery_ema']) * (1 - _TRAIN_EMA_ALPHA) + c * _TRAIN_EMA_ALPHA
+        else:
+            attempts, correct_n, ema = 1, (1 if correct else 0), c
+        mastery = round(ema * min(1.0, attempts / _TRAIN_VOLUME_FULL) * 100.0, 1)
+        if row:
+            conn.execute(_adapt(
+                "UPDATE training_skill_progress SET attempts=?, correct=?, mastery_ema=?, "
+                "mastery=?, last_practiced_at=datetime('now') WHERE user_id=? AND category_key=?"),
+                (attempts, correct_n, round(ema, 4), mastery, user_id, category_key))
+        else:
+            conn.execute(_adapt(
+                "INSERT INTO training_skill_progress "
+                "(user_id, category_key, attempts, correct, mastery_ema, mastery, last_practiced_at) "
+                "VALUES (?,?,?,?,?,?,datetime('now'))"),
+                (user_id, category_key, attempts, correct_n, round(ema, 4), mastery))
+        conn.commit()
+        return {'category_key': category_key, 'attempts': attempts, 'correct': correct_n,
+                'mastery': mastery, 'mastery_prev': round(prev_mastery, 1),
+                'mastery_delta': round(mastery - prev_mastery, 1), 'tier': _mastery_tier(mastery)}
+    finally:
+        conn.close()
+
+
+def get_training_skills(user_id: int) -> list:
+    """Domínio do jogador por categoria (pro mapa/curso e pra marcar 'recomendado')."""
+    if not user_id:
+        return []
+    conn = get_conn()
+    try:
+        rows = _fetchall(conn, _adapt(
+            "SELECT category_key, attempts, correct, mastery, last_practiced_at "
+            "FROM training_skill_progress WHERE user_id=? ORDER BY mastery DESC"), (user_id,))
+        return [{**dict(r), 'tier': _mastery_tier(float(r['mastery'] or 0))} for r in rows]
+    finally:
+        conn.close()
+
+
 def add_xp(user_id: int, event_type: str, amount: int | None = None) -> dict:
     """Adiciona XP, atualiza streak e verifica conquistas."""
     from datetime import datetime, timedelta

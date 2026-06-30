@@ -23,7 +23,7 @@ SUITES = {
     'database':  ['test_database.py', 'test_coach_system.py', 'test_notifications.py',
                   'test_solve_quota.py', 'test_coach_adherence_multiway.py', 'test_coach_invites.py',
                   'test_coach_trial.py', 'test_coach_referral.py', 'test_admin_finance.py',
-                  'test_verdict_invariant.py'],
+                  'test_verdict_invariant.py', 'test_training_gamification.py'],
     'llm':       ['test_llm_explainer.py', 'test_study_plan.py'],
     'api':       ['test_api_endpoints.py', 'test_subscription.py', 'test_partygaming_financials.py',
                   'test_stripe_hardening.py'],

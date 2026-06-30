@@ -2068,7 +2068,26 @@ def leaktrainer_grade():
         events = ['leaktrainer_correct']
     result['xp'] = {'events': events, 'gained': xp_gained, 'total': xp_total, 'new_achievements': new_achievements}
     result['xp_awarded'] = xp_gained
+    # Gamificação de treino: registra a tentativa por categoria e devolve o domínio
+    # atualizado (antes→depois) pro veredito da lição. Eixo SEPARADO do ELO.
+    _cat = spot.get('category')
+    if _cat:
+        try:
+            from database.repositories import record_training_attempt
+            result['training'] = record_training_attempt(g.user_id, _cat, bool(result.get('is_correct')))
+        except Exception:
+            app.logger.exception('record_training_attempt falhou (user=%s)', g.user_id)
+            result['training'] = None
     return jsonify(result)
+
+
+@app.route('/player/training/skills', methods=['GET'])
+@require_auth
+def training_skills():
+    """Domínio de treino do jogador por categoria (eixo separado do ELO) — pro mapa/curso
+    e pra marcar 'recomendado' (cruzando com os leaks reais)."""
+    from database.repositories import get_training_skills
+    return jsonify({'skills': get_training_skills(g.user_id)})
 
 
 @app.route('/player/strategic-twin', methods=['GET'])
