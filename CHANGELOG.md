@@ -19,6 +19,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 > O hub de Treino estava preso num corredor estreito (`max-w-4xl`) desperdiçando largura (o HudLayout dá até 1440px). Alargado pra `max-w-6xl` e **domínio por habilidade + conquistas agora lado a lado** em telas largas (`lg:grid-cols-2`), empilhados no mobile. Medalhas por tier reordenadas pra **Bronze → Prata → Ouro → Diamante** (ascendente, esquerda→direita). tsc 0.
 
+### feat(training): lição formal — início → N spots → fim automático (Fase 1 completa)
+
+> O Leak Trainer virou uma **lição fechada** (antes era fluxo aberto, terminava só no botão finalizar): tela de **início** ("Nova lição · N spots · Começar"), **N=10 spots fixos** com **progresso X/10**, e **fim automático** com o veredito comemorativo ao completar (o botão do último spot vira "Ver resultado"; Enter também finaliza). "Continuar" no veredito começa uma nova lição (volta ao início). i18n PT/EN/ES, tsc 0.
+
 ### feat(training): jornada Treinar→Aplicar→Provar com gate de prontidão
 
 > Trilha de 3 etapas no hub de Treino. **Aplicar desbloqueia só quando o jogador atinge "nível bom"** (uma habilidade treinada chega ao **Ouro**, mastery ≥ 70) — aí surge a CTA contextual mirada nesse leak: *"Você dominou {skill} no treino. Jogue um torneio focando nisso e importe."* (→ dashboard/import). É **sugestão, não bloqueio**, e evita nag em quem ainda não praticou (a sugestão é conquistada). **Provar** aparece como etapa "em breve" (é a Fase 4: comparar indicador real antes×depois após o upload). Frontend-only sobre `/player/training/overview` (skills/mastery já existentes); i18n PT/EN/ES; tsc 0. Limiar `READY_TIER=70` tunável.

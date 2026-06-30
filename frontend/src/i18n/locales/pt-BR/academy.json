@@ -101,6 +101,12 @@
       "raise3": "3-Bet",
       "raise4": "4-Bet",
       "raisePost": "Raise"
+    },
+    "lesson": {
+      "title": "Nova lição",
+      "desc": "{{count}} spots mirados nos seus leaks. Vamos lá?",
+      "start": "Começar lição",
+      "seeResult": "Ver resultado"
     }
   },
   "trainAch": {

@@ -12,7 +12,9 @@ import { leaktrainer } from "@/lib/api";
 import type { LeakTrainerSpot, LeakTrainerGrade, LeakTrainerState, ReplayStep } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
-type Phase = "loading" | "question" | "feedback" | "error" | "empty" | "summary";
+type Phase = "intro" | "loading" | "question" | "feedback" | "error" | "empty" | "summary";
+
+const LESSON_SIZE = 10;   // lição fechada: N spots, depois fim automático com veredito
 type SessionStat = { label: string; hits: number; misses: number };
 
 const ORDER = ["UTG", "UTG+1", "UTG+2", "LJ", "HJ", "CO", "BTN", "SB", "BB"];
@@ -110,7 +112,7 @@ export default function LeakTrainer() {
   const { t } = useTranslation("academy");
   const navigate = useNavigate();
 
-  const [phase, setPhase]               = useState<Phase>("loading");
+  const [phase, setPhase]               = useState<Phase>("intro");
   const [spot, setSpot]                 = useState<LeakTrainerSpot | null>(null);
   const [grade, setGrade]               = useState<LeakTrainerGrade | null>(null);
   const [selected, setSelected]         = useState<string | null>(null);
@@ -163,7 +165,7 @@ export default function LeakTrainer() {
   const newSession = () => {
     setSessionStats({}); setTotalDone(0); setTotalCorrect(0); setStreak(0); setXpEarned(0);
     setMasteryByCat({}); setUnlockedAch([]);
-    loadNext();
+    setPhase("intro");   // nova lição começa pela tela de início
   };
 
   const loadNext = useCallback(async () => {
@@ -177,7 +179,9 @@ export default function LeakTrainer() {
     } catch { setPhase("error"); }
   }, []);
 
-  useEffect(() => { loadNext(); }, [loadNext]);
+  // Não auto-inicia: a lição começa pela tela de "intro" (botão Começar → loadNext).
+  const lessonComplete = totalDone >= LESSON_SIZE;
+  const nextOrFinish = () => { if (totalDone >= LESSON_SIZE) setPhase("summary"); else loadNext(); };
 
   const submit = async (action: string) => {
     if (!spot || phase !== "question" || submitting) return;
@@ -233,7 +237,7 @@ export default function LeakTrainer() {
         if (k === "g") { e.preventDefault(); setShowRange((v) => !v); return; }
         if (a && spot.options.includes(a)) { e.preventDefault(); submit(a); }
       } else if (phase === "feedback") {
-        if (e.key === "Enter" || e.key === " " || k === "n") { e.preventDefault(); loadNext(); }
+        if (e.key === "Enter" || e.key === " " || k === "n") { e.preventDefault(); nextOrFinish(); }
       }
     };
     window.addEventListener("keydown", onKey);
@@ -315,8 +319,8 @@ export default function LeakTrainer() {
           </>
         )}
       </div>
-      <button onClick={loadNext} className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-amber-500 px-4 py-3 font-mono text-sm font-bold uppercase tracking-widest text-black transition-colors hover:bg-amber-400">
-        <ArrowRight className="size-4" aria-hidden /> {t("leakTrainer.next")}
+      <button onClick={nextOrFinish} className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-amber-500 px-4 py-3 font-mono text-sm font-bold uppercase tracking-widest text-black transition-colors hover:bg-amber-400">
+        <ArrowRight className="size-4" aria-hidden /> {lessonComplete ? t("leakTrainer.lesson.seeResult") : t("leakTrainer.next")}
         <kbd className="hidden rounded border border-black/20 bg-black/10 px-1.5 py-0.5 text-[9px] font-normal md:inline-block">Enter</kbd>
       </button>
     </>
@@ -342,7 +346,7 @@ export default function LeakTrainer() {
         <div className="absolute top-[calc(0.4rem+env(safe-area-inset-top))] right-[calc(0.5rem+env(safe-area-inset-right))] z-30 flex items-center gap-2">
           <div className="flex items-center gap-2.5 rounded-full bg-background/70 px-3 py-1.5 font-mono text-[10px] tabular-nums ring-1 ring-border backdrop-blur">
             {totalDone > 0 && (<>
-              <span className="text-foreground">{totalDone}</span>
+              <span className="text-foreground">{totalDone}/{LESSON_SIZE}</span>
               <span className={accuracy !== null && accuracy >= 70 ? "text-emerald-400" : "text-amber-400"}>{accuracy}%</span>
               <span className={streak >= 3 ? "text-amber-400" : "text-muted-foreground"}>{streak}🔥</span>
             </>)}
@@ -444,6 +448,22 @@ export default function LeakTrainer() {
         </div>
 
         <div className="flex min-h-0 flex-1 flex-col justify-center overflow-y-auto">
+
+        {phase === "intro" && (
+          <div className="mx-auto flex max-w-md flex-col items-center gap-4 rounded-2xl border border-amber-500/30 bg-gradient-to-b from-amber-500/[0.08] to-transparent p-8 text-center">
+            <div className="flex size-14 items-center justify-center rounded-2xl bg-amber-500/10 ring-1 ring-amber-500/30">
+              <Target className="size-7 text-amber-400" aria-hidden />
+            </div>
+            <div>
+              <h2 className="font-heading text-xl font-bold text-foreground">{t("leakTrainer.lesson.title")}</h2>
+              <p className="mt-1 text-sm text-muted-foreground">{t("leakTrainer.lesson.desc", { count: LESSON_SIZE })}</p>
+            </div>
+            <button onClick={loadNext}
+              className="inline-flex items-center gap-2 rounded-lg bg-amber-500 px-6 py-3 font-mono text-sm font-bold uppercase tracking-widest text-black transition-colors hover:bg-amber-400">
+              <Target className="size-4" aria-hidden /> {t("leakTrainer.lesson.start")}
+            </button>
+          </div>
+        )}
 
         {phase === "loading" && (
           <div className="flex flex-col items-center gap-4 py-16">
@@ -584,7 +604,7 @@ export default function LeakTrainer() {
               {totalDone > 0 && (
                 <div className="flex items-center justify-around rounded-lg border border-border bg-hud-surface px-3 py-2">
                   <div className="text-center">
-                    <p className="font-mono text-base font-bold tabular-nums text-foreground">{totalDone}</p>
+                    <p className="font-mono text-base font-bold tabular-nums text-foreground">{totalDone}/{LESSON_SIZE}</p>
                     <p className="font-mono text-[8px] uppercase tracking-wider text-muted-foreground">{t("stats.done")}</p>
                   </div>
                   <div className="h-6 w-px bg-border" />
