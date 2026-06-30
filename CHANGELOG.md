@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(training): tela de conclusão de lição comemorativa (estilo Duolingo) + Finalizar
+
+> Frontend da Fase 1 (parte 1): a tela de fim de sessão do Leak Trainer virou uma **conclusão de lição comemorativa** no padrão Duolingo — header com troféu, **confete** ao concluir (`canvas-confetti`, mais forte se ≥80% acerto, respeita prefers-reduced-motion), 3 stats grandes (feitos/acerto/XP), e a **barra de DOMÍNIO da categoria antes→depois** com badge de tier (Bronze/Prata/Ouro/Diamante) consumindo o `training` do `/grade` (o eixo de treino, honesto — não finge mexer no ELO). Botões **Continuar** (nova lição) + **Finalizar** (→ dashboard, substitui "Nova sessão" conforme pedido). Copy de loop honesto: "o treino te prepara, jogue e importe pra ver no jogo real" (sem delta forjado de ELO). i18n PT/EN/ES, tsc 0. Próximo: home/mapa de trilha com domínio por skill + missões diárias (Fase 2).
+
 ### feat(training): gamificação de treino estilo Duolingo — Fase 1 (domínio por categoria)
 
 > Início da gamificação de treino **desacoplada do ELO** (spec em `specs/training-gamification.md`): dois eixos honestos — ELO/leaks = quão bom você É (mãos reais); Treino = quanto você PRATICA/domina (drills). Fase 1 = a fundação backend do **domínio por categoria de leak**: tabela `training_skill_progress` (migração PG+SQLite+abort-proof), `record_training_attempt` (mastery = EMA de acerto × fator de volume, exige acerto sustentado + ~20 reps p/ teto, não grind; tiers Bronze/Prata/Ouro/Diamante), `get_training_skills`, e o `/player/leaktrainer/grade` agora registra a tentativa por categoria e devolve o domínio antes→depois (pro veredito da lição). Endpoint `GET /player/training/skills`. Honesto por construção: o treino sintético move só o eixo de treino, nunca finge mexer no ELO. Testes: `test_training_gamification` 6/6, database 134/134. Próximo: frontend (moldura de Lição início/fim/veredito + Finalizar + domínio no recap), depois Fases 2 (missões diárias) e 3 (curso/ligas).

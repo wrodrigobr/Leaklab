@@ -999,6 +999,16 @@ export interface LeakTrainerGrade {
   hand_freq: Record<string, number>;
   xp_awarded: number;
   xp?: { events: string[]; gained: number; total: number | null; new_achievements: string[] };
+  // Gamificação de treino: domínio da categoria atualizado (antes→depois) — eixo separado do ELO.
+  training?: {
+    category_key: string;
+    attempts: number;
+    correct: number;
+    mastery: number;
+    mastery_prev: number;
+    mastery_delta: number;
+    tier: "bronze" | "silver" | "gold" | "diamond";
+  } | null;
 }
 
 export const leaktrainer = {

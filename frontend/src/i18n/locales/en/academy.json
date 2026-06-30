@@ -77,7 +77,11 @@
       "best": "You nailed",
       "tough": "Train more",
       "continue": "Continue",
-      "newSession": "New session"
+      "newSession": "New session",
+      "lessonDone": "Lesson complete!",
+      "mastery": "Category mastery",
+      "finish": "Finish",
+      "loopHint": "Training preps you. Play a tournament and import it to see the effect on your real game."
     },
     "vCorrect": "Correct",
     "vMixed": "Acceptable",

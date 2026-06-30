@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { ArrowRight, CheckCircle2, Loader2, RefreshCw, XCircle, Target, Maximize2, Minimize2, LayoutGrid, Flag, RotateCw } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import confetti from "canvas-confetti";
+import { ArrowRight, CheckCircle2, Loader2, RefreshCw, XCircle, Target, Maximize2, Minimize2, LayoutGrid, Flag, RotateCw, Trophy, Flame, Home } from "lucide-react";
 import { HudHeader } from "@/components/hud/HudHeader";
 import { PokerTableV3 } from "@/components/hud/PokerTableV3";
 import { RangePanel } from "@/components/replayer/RangePanel";
@@ -97,8 +99,16 @@ function loadState(): LeakTrainerState {
   try { return JSON.parse(localStorage.getItem(STATE_KEY) || "{}"); } catch { return {}; }
 }
 
+const _TIER_META: Record<string, { label: string; ring: string; text: string; glow: string }> = {
+  bronze:  { label: "Bronze",   ring: "#b08d57", text: "text-[#d9a86a]", glow: "shadow-[0_0_24px_rgba(176,141,87,0.35)]" },
+  silver:  { label: "Prata",    ring: "#c8d0d8", text: "text-slate-200",  glow: "shadow-[0_0_24px_rgba(200,208,216,0.35)]" },
+  gold:    { label: "Ouro",     ring: "#f5c542", text: "text-amber-300",  glow: "shadow-[0_0_28px_rgba(245,197,66,0.45)]" },
+  diamond: { label: "Diamante", ring: "#5ad1ff", text: "text-cyan-300",   glow: "shadow-[0_0_30px_rgba(90,209,255,0.5)]" },
+};
+
 export default function LeakTrainer() {
   const { t } = useTranslation("academy");
+  const navigate = useNavigate();
 
   const [phase, setPhase]               = useState<Phase>("loading");
   const [spot, setSpot]                 = useState<LeakTrainerSpot | null>(null);
@@ -109,6 +119,8 @@ export default function LeakTrainer() {
   const [totalDone, setTotalDone]       = useState(0);
   const [totalCorrect, setTotalCorrect] = useState(0);
   const [xpEarned, setXpEarned]         = useState(0);
+  // Domínio por categoria nesta sessão (antes→depois) — eixo de treino, p/ o veredito da lição.
+  const [masteryByCat, setMasteryByCat] = useState<Record<string, { start: number; now: number; tier: string }>>({});
   const [sessionStats, setSessionStats] = useState<Record<string, SessionStat>>({});
   const [showRange, setShowRange]       = useState(false);
   const stateRef = useRef<LeakTrainerState>(loadState());
@@ -149,6 +161,7 @@ export default function LeakTrainer() {
   const finishSession = () => setPhase("summary");
   const newSession = () => {
     setSessionStats({}); setTotalDone(0); setTotalCorrect(0); setStreak(0); setXpEarned(0);
+    setMasteryByCat({});
     loadNext();
   };
 
@@ -188,6 +201,14 @@ export default function LeakTrainer() {
         seen: cur.seen + 1,
       };
       try { localStorage.setItem(STATE_KEY, JSON.stringify(st)); } catch { /* quota */ }
+      // domínio da categoria (antes→depois) p/ o veredito da lição — eixo de treino
+      if (g.training) {
+        const tg = g.training;
+        setMasteryByCat((m) => ({
+          ...m,
+          [spot.category]: { start: m[spot.category]?.start ?? tg.mastery_prev, now: tg.mastery, tier: tg.tier },
+        }));
+      }
       if (g.is_correct) { setStreak((s) => s + 1); setTotalCorrect((n) => n + 1); }
       else setStreak(0);
       setPhase("feedback");
@@ -223,6 +244,22 @@ export default function LeakTrainer() {
   const statList = Object.values(sessionStats);
   const bestCat = statList.filter((s) => s.hits > 0).sort((a, b) => b.hits - a.hits)[0];
   const toughCat = statList.filter((s) => s.misses > 0).sort((a, b) => b.misses - a.misses)[0];
+  // categoria PRINCIPAL da lição (mais tentativas) + seu domínio antes→depois (eixo de treino)
+  const primaryCatKey = Object.entries(sessionStats)
+    .sort((a, b) => (b[1].hits + b[1].misses) - (a[1].hits + a[1].misses))[0]?.[0];
+  const primaryMastery = primaryCatKey ? masteryByCat[primaryCatKey] : undefined;
+  const primaryLabel = primaryCatKey ? sessionStats[primaryCatKey]?.label : undefined;
+
+  // comemoração estilo Duolingo ao concluir a lição (confete; mais forte se foi bem)
+  useEffect(() => {
+    if (phase !== "summary" || totalDone === 0) return;
+    const acc = Math.round((totalCorrect / Math.max(1, totalDone)) * 100);
+    const colors = ["#2DD4BF", "#f5c542", "#5ad1ff", "#E3E8EC"];
+    const burst = (particleCount: number, spread: number, y: number) =>
+      confetti({ particleCount, spread, startVelocity: 38, origin: { y }, colors, scalar: 0.9, disableForReducedMotion: true });
+    burst(acc >= 80 ? 150 : 80, 70, 0.5);
+    if (acc >= 80) setTimeout(() => burst(60, 110, 0.55), 220);
+  }, [phase, totalDone, totalCorrect]);
 
   // rótulo da ação (raise muda por cenário: 3-Bet vs 4-Bet)
   const actLabel = (a: string) => {
@@ -427,48 +464,90 @@ export default function LeakTrainer() {
           </div>
         )}
 
-        {phase === "summary" && (
-          <div className="mx-auto w-full max-w-md space-y-5 rounded-2xl border border-amber-500/30 bg-gradient-to-br from-amber-500/[0.08] to-transparent p-7">
-            <div className="flex items-center gap-2">
-              <Target className="size-6 text-amber-400" aria-hidden />
-              <h2 className="font-heading text-xl font-bold text-foreground">{t("leakTrainer.summary.title")}</h2>
-            </div>
-            <div className="grid grid-cols-3 gap-3 text-center">
-              <div>
-                <p className="font-mono text-2xl font-bold tabular-nums text-foreground">{totalDone}</p>
-                <p className="font-mono text-[9px] uppercase tracking-wider text-muted-foreground">{t("stats.done")}</p>
+        {phase === "summary" && (() => {
+          const acc = accuracy ?? 0;
+          const tier = primaryMastery?.tier ?? "bronze";
+          const tm = _TIER_META[tier] ?? _TIER_META.bronze;
+          const mStart = Math.round(primaryMastery?.start ?? 0);
+          const mNow = Math.round(primaryMastery?.now ?? 0);
+          const mGain = Math.max(0, mNow - mStart);
+          return (
+          <div className="mx-auto w-full max-w-md">
+            <div className="relative overflow-hidden rounded-3xl border border-primary/30 bg-gradient-to-b from-primary/[0.10] via-card to-card p-7 shadow-elevated animate-in fade-in zoom-in-95 duration-300">
+              {/* Header comemorativo */}
+              <div className="flex flex-col items-center gap-2 text-center">
+                <div className={cn("flex size-16 items-center justify-center rounded-2xl bg-primary/15 ring-1 ring-primary/40", tm.glow)}>
+                  <Trophy className="size-8 text-primary" aria-hidden />
+                </div>
+                <h2 className="font-heading text-2xl font-bold text-foreground">{t("leakTrainer.summary.lessonDone")}</h2>
+                {primaryLabel && <p className="text-sm text-muted-foreground">{primaryLabel}</p>}
               </div>
-              <div>
-                <p className={cn("font-mono text-2xl font-bold tabular-nums", (accuracy ?? 0) >= 70 ? "text-emerald-400" : "text-amber-400")}>{accuracy ?? 0}%</p>
-                <p className="font-mono text-[9px] uppercase tracking-wider text-muted-foreground">{t("stats.accuracy")}</p>
+
+              {/* 3 stats */}
+              <div className="mt-6 grid grid-cols-3 gap-2">
+                {[
+                  { v: String(totalDone), l: t("stats.done"), c: "text-foreground" },
+                  { v: `${acc}%`, l: t("stats.accuracy"), c: acc >= 70 ? "text-emerald-400" : "text-amber-400" },
+                  { v: `+${xpEarned}`, l: "XP", c: "text-primary" },
+                ].map((s, i) => (
+                  <div key={i} className="rounded-2xl bg-background/60 px-2 py-3 text-center ring-1 ring-border">
+                    <p className={cn("font-mono text-2xl font-bold tabular-nums", s.c)}>{s.v}</p>
+                    <p className="font-mono text-[9px] uppercase tracking-wider text-muted-foreground">{s.l}</p>
+                  </div>
+                ))}
               </div>
-              <div>
-                <p className="font-mono text-2xl font-bold tabular-nums text-emerald-400">+{xpEarned}</p>
-                <p className="font-mono text-[9px] uppercase tracking-wider text-muted-foreground">XP</p>
+
+              {/* DOMÍNIO da categoria (antes→depois) — o eixo de treino, honesto */}
+              {primaryMastery && (
+                <div className="mt-4 space-y-2 rounded-2xl bg-background/60 p-4 ring-1 ring-border">
+                  <div className="flex items-center justify-between">
+                    <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">{t("leakTrainer.summary.mastery")}</span>
+                    <span className={cn("inline-flex items-center gap-1 rounded-full border px-2 py-0.5 font-mono text-[10px] font-bold uppercase", tm.text)} style={{ borderColor: tm.ring }}>
+                      {tm.label}
+                    </span>
+                  </div>
+                  <div className="h-3 w-full overflow-hidden rounded-full bg-muted/30">
+                    <div className="h-full rounded-full transition-[width] duration-700 ease-out" style={{ width: `${mNow}%`, backgroundColor: tm.ring }} />
+                  </div>
+                  <div className="flex items-center justify-between font-mono text-[11px]">
+                    <span className="text-muted-foreground">{mStart}% → <span className="font-bold text-foreground">{mNow}%</span></span>
+                    {mGain > 0 && <span className="font-bold text-emerald-400">+{mGain}</span>}
+                  </div>
+                </div>
+              )}
+
+              {/* streak + categoria mais difícil */}
+              <div className="mt-4 flex items-center gap-2">
+                {streak >= 1 && (
+                  <div className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-amber-500/10 px-3 py-2 ring-1 ring-amber-500/25">
+                    <Flame className="size-4 text-amber-400" aria-hidden />
+                    <span className="font-mono text-xs font-bold text-amber-300">{streak}</span>
+                  </div>
+                )}
+                {toughCat && (
+                  <div className="min-w-0 flex-[2] rounded-xl bg-background/60 px-3 py-2 ring-1 ring-border">
+                    <p className="font-mono text-[9px] uppercase tracking-wider text-muted-foreground">{t("leakTrainer.summary.tough")}</p>
+                    <p className="truncate text-xs font-bold text-foreground">{toughCat.label}</p>
+                  </div>
+                )}
               </div>
-            </div>
-            {bestCat && (
-              <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 px-3 py-2">
-                <p className="font-mono text-[9px] uppercase tracking-wider text-emerald-400">{t("leakTrainer.summary.best")}</p>
-                <p className="text-sm font-bold text-foreground">{bestCat.label}</p>
+
+              {/* CTAs: Continuar (nova lição) + Finalizar (dashboard) */}
+              <div className="mt-6 space-y-2">
+                <button onClick={newSession} className="w-full rounded-xl bg-primary px-4 py-3.5 font-mono text-sm font-bold uppercase tracking-widest text-primary-foreground shadow-lg transition-transform hover:bg-primary/90 active:scale-[0.98]">
+                  {t("leakTrainer.summary.continue")}
+                </button>
+                <button onClick={() => navigate("/dashboard")} className="flex w-full items-center justify-center gap-2 rounded-xl border border-border px-4 py-3 font-mono text-xs font-bold uppercase tracking-wider text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground">
+                  <Home className="size-4" aria-hidden /> {t("leakTrainer.summary.finish")}
+                </button>
               </div>
-            )}
-            {toughCat && (
-              <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 px-3 py-2">
-                <p className="font-mono text-[9px] uppercase tracking-wider text-amber-400">{t("leakTrainer.summary.tough")}</p>
-                <p className="text-sm font-bold text-foreground">{toughCat.label}</p>
-              </div>
-            )}
-            <div className="flex gap-2">
-              <button onClick={() => loadNext()} className="flex-1 rounded-lg border border-border bg-hud-surface px-4 py-3 font-mono text-xs font-bold uppercase tracking-wider text-foreground transition-colors hover:bg-amber-500/5">
-                {t("leakTrainer.summary.continue")}
-              </button>
-              <button onClick={newSession} className="flex-1 rounded-lg bg-amber-500 px-4 py-3 font-mono text-xs font-bold uppercase tracking-widest text-black transition-colors hover:bg-amber-400">
-                {t("leakTrainer.summary.newSession")}
-              </button>
+
+              {/* loop honesto: liga ao jogo real (sem fingir delta de ELO) */}
+              <p className="mt-3 text-center text-[11px] leading-relaxed text-muted-foreground/80">{t("leakTrainer.summary.loopHint")}</p>
             </div>
           </div>
-        )}
+          );
+        })()}
 
         {(phase === "question" || phase === "feedback") && spot && table && (
           <div className="flex min-h-0 flex-1 flex-col gap-4 lg:flex-row lg:items-stretch">

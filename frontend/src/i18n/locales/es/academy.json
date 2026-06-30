@@ -77,7 +77,11 @@
       "best": "Lo clavaste en",
       "tough": "Entrenar más",
       "continue": "Continuar",
-      "newSession": "Nueva sesión"
+      "newSession": "Nueva sesión",
+      "lessonDone": "¡Lección completada!",
+      "mastery": "Dominio de la categoría",
+      "finish": "Finalizar",
+      "loopHint": "El entrenamiento te prepara. Juega un torneo e impórtalo para ver el efecto en tu juego real."
     },
     "vCorrect": "Correcto",
     "vMixed": "Aceptable",
