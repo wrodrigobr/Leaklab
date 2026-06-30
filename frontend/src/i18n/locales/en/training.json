@@ -30,7 +30,7 @@
   "academy": {
     "title": "Academy",
     "badge": "Beginner → Advanced",
-    "desc": "Interactive modules covering game fundamentals, math, hand strength, position, ranges and ICM. Exercises generated from your own history for maximum retention.",
+    "desc": "Fundamentals, from basics to advanced.",
     "f1": "Intuitive math: pot odds, EV and equity",
     "f2": "Hand strength and board texture",
     "f3": "Three levels: Beginner, Intermediate, Advanced",
@@ -42,7 +42,7 @@
     "subtitle": "Close your leaks two complementary ways.",
     "review": {
       "title": "Review",
-      "desc": "Replay the mistakes you actually made. Spaced repetition brings each hand back at the right time, until the fix sticks.",
+      "desc": "Real hands from your history, spaced repetition.",
       "p1": "Your real hands",
       "p2": "Spaced repetition (SRS)",
       "p3": "Locks the fix into memory",
@@ -50,7 +50,7 @@
     },
     "train": {
       "title": "Train",
-      "desc": "Drill the category where you lose the most EV, with fresh clean examples. Difficulty adapts to how you do.",
+      "desc": "Synthetic spots tuned to your leaks.",
       "p1": "Unlimited fresh examples",
       "p2": "Adapts to your level",
       "p3": "Preflop and postflop GTO",

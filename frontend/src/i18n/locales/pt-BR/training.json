@@ -30,7 +30,7 @@
   "academy": {
     "title": "Academia",
     "badge": "Iniciante → Avançado",
-    "desc": "Módulos interativos que cobrem os fundamentos do jogo, matemática, força de mão, posição, ranges e ICM. Exercícios gerados do seu próprio histórico para máxima retenção.",
+    "desc": "Fundamentos do básico ao avançado.",
     "f1": "Matemática intuitiva: pot odds, EV e equity",
     "f2": "Força de mão e textura de board",
     "f3": "Três níveis: Iniciante, Intermediário, Avançado",
@@ -42,7 +42,7 @@
     "subtitle": "Feche seus vazamentos de dois jeitos complementares.",
     "review": {
       "title": "Revisar",
-      "desc": "Reveja os erros que você cometeu de verdade. A repetição espaçada traz cada mão de volta na hora certa, até a correção grudar.",
+      "desc": "Mãos reais do seu histórico, com repetição espaçada.",
       "p1": "Suas mãos reais",
       "p2": "Repetição espaçada (SRS)",
       "p3": "Fixa a correção na memória",
@@ -50,7 +50,7 @@
     },
     "train": {
       "title": "Treinar",
-      "desc": "Treine a categoria onde você mais perde EV, com exemplos novos e limpos. A dificuldade se adapta ao seu desempenho.",
+      "desc": "Spots sintéticos adaptados aos seus leaks.",
       "p1": "Exemplos novos ilimitados",
       "p2": "Adaptativo ao seu nível",
       "p3": "Preflop e postflop GTO",
