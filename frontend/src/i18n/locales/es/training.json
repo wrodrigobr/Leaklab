@@ -57,5 +57,23 @@
       "cta": "Entrenar mi punto débil"
     },
     "hint": "Revisar fija lo que fallaste. Entrenar construye el patrón. Juntos cierran la fuga."
+  },
+  "journey": {
+    "title": "Tu camino",
+    "train": {
+      "title": "Entrenar",
+      "desc": "Domina tus fugas"
+    },
+    "apply": {
+      "title": "Aplicar",
+      "desc": "Juega con el foco correcto"
+    },
+    "prove": {
+      "title": "Probar",
+      "desc": "Mira la mejora real"
+    },
+    "soon": "Próximamente",
+    "readyMsg": "Dominaste {{skill}} en el entrenamiento. Juega un torneo enfocándote en eso e impórtalo para verlo en tu juego real.",
+    "applyCta": "Jugar e importar"
   }
 }

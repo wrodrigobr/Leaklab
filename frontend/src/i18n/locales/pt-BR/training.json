@@ -57,5 +57,23 @@
       "cta": "Treinar meu ponto fraco"
     },
     "hint": "Revisar fixa o que você errou. Treinar constrói o padrão. Os dois juntos fecham o leak."
+  },
+  "journey": {
+    "title": "Sua jornada",
+    "train": {
+      "title": "Treinar",
+      "desc": "Domine seus leaks"
+    },
+    "apply": {
+      "title": "Aplicar",
+      "desc": "Jogue com o foco certo"
+    },
+    "prove": {
+      "title": "Provar",
+      "desc": "Veja a melhora real"
+    },
+    "soon": "Em breve",
+    "readyMsg": "Você dominou {{skill}} no treino. Jogue um torneio focando nisso e importe pra ver no seu jogo real.",
+    "applyCta": "Jogar e importar"
   }
 }

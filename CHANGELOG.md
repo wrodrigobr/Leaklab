@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(training): jornada Treinar→Aplicar→Provar com gate de prontidão
+
+> Trilha de 3 etapas no hub de Treino. **Aplicar desbloqueia só quando o jogador atinge "nível bom"** (uma habilidade treinada chega ao **Ouro**, mastery ≥ 70) — aí surge a CTA contextual mirada nesse leak: *"Você dominou {skill} no treino. Jogue um torneio focando nisso e importe."* (→ dashboard/import). É **sugestão, não bloqueio**, e evita nag em quem ainda não praticou (a sugestão é conquistada). **Provar** aparece como etapa "em breve" (é a Fase 4: comparar indicador real antes×depois após o upload). Frontend-only sobre `/player/training/overview` (skills/mastery já existentes); i18n PT/EN/ES; tsc 0. Limiar `READY_TIER=70` tunável.
+
 ### feat(training): conquistas EXCLUSIVAS do treino + medalhas por tier
 
 > Correção do escopo: o hub estava reusando as conquistas globais (eixo ELO) — agora há um **conjunto próprio de conquistas de treino** (12: volume 50/200/1000 spots, tiers Prata/Ouro/Diamante, 3 no Ouro, 5 habilidades, streaks 3/7/30 dias, primeiro acerto), em tabela separada `training_achievements` (não polui as globais). Critério no backend (`_TRAINING_ACHIEVEMENT_DEFS` = predicado sobre o estado de treino), **copy no i18n do frontend** (`academy:trainAch.<key>.*`, PT/EN/ES) — i18n de verdade. `evaluate_training_achievements` concede no `/grade` e devolve as recém-desbloqueadas → o **veredito da lição comemora** ("Conquista desbloqueada!"). O hub "Seu treino" agora mostra: **faixa de medalhas por tier** (Bronze/Prata/Ouro/Diamante com contagem) + domínio por habilidade + o caminho de conquistas (desbloqueadas/travadas, X de Y). Backend `get_training_achievements` + overview usa as de treino. Testes training_gamification 9/9, tsc 0.

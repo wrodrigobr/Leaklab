@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowRight, CheckCircle2, Dumbbell, GraduationCap, RotateCw, Target, Award, Flame, Star, Trophy, Lock } from "lucide-react";
+import { ArrowRight, CheckCircle2, Dumbbell, GraduationCap, RotateCw, Target, Award, Flame, Star, Trophy, Lock, Map, Play, TrendingUp } from "lucide-react";
 import { HudLayout } from "@/components/hud/HudLayout";
 import { training } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -33,10 +33,70 @@ export default function Training() {
   const tierCounts = (["diamond", "gold", "silver", "bronze"] as const).map((tier) => ({
     tier, count: overview?.skills.filter((s) => s.tier === tier).length ?? 0,
   }));
+  // Jornada: "Aplicar" desbloqueia quando uma habilidade treinada chega ao Ouro (mastery>=70).
+  // skills vêm ordenadas por mastery desc → a 1ª >=70 é a habilidade dominada a sugerir.
+  const READY_TIER = 70;
+  const trained = (overview?.skills.length ?? 0) > 0;
+  const readySkill = overview?.skills.find((s) => s.mastery >= READY_TIER) ?? null;
+  const JOURNEY = [
+    { key: "train", icon: Dumbbell, status: trained ? "done" : "active" },
+    { key: "apply", icon: Play, status: readySkill ? "active" : "locked" },
+    { key: "prove", icon: TrendingUp, status: "soon" },
+  ] as const;
 
   return (
     <HudLayout eyebrow={t("eyebrow")} title={t("title")} description={t("subtitle")}>
       <div className="mx-auto max-w-4xl space-y-6">
+
+        {/* ── A JORNADA — Treinar → Aplicar (gate Ouro) → Provar ───────────────── */}
+        {overview && (
+          <div className="rounded-2xl border border-border bg-card/40 p-6 md:p-7">
+            <h2 className="mb-4 flex items-center gap-2 font-heading text-lg font-bold text-foreground">
+              <Map className="size-5 text-primary" aria-hidden /> {t("journey.title")}
+            </h2>
+            <div className="grid grid-cols-3 gap-2">
+              {JOURNEY.map(({ key, icon: Icon, status }, i) => {
+                const done = status === "done", active = status === "active";
+                const locked = status === "locked", soon = status === "soon";
+                return (
+                  <div key={key} className="flex items-center gap-2">
+                    <div className={cn("flex flex-1 flex-col items-center gap-1.5 rounded-xl p-3 text-center ring-1 transition-colors",
+                      active ? "bg-primary/10 ring-primary/40"
+                      : done ? "bg-emerald-500/10 ring-emerald-500/30"
+                      : "bg-muted/5 opacity-60 ring-border")}>
+                      <div className="relative">
+                        <Icon className={cn("size-6", active ? "text-primary" : done ? "text-emerald-400" : "text-muted-foreground")} aria-hidden />
+                        {done && <CheckCircle2 className="absolute -right-1.5 -top-1.5 size-3.5 text-emerald-400" aria-hidden />}
+                        {(locked || soon) && <Lock className="absolute -right-1.5 -top-1.5 size-3 text-muted-foreground" aria-hidden />}
+                      </div>
+                      <p className={cn("font-mono text-[11px] font-bold uppercase tracking-wider", active ? "text-foreground" : "text-muted-foreground")}>
+                        {t(`journey.${key}.title`)}
+                      </p>
+                      <p className="text-[10px] leading-tight text-muted-foreground">
+                        {soon ? t("journey.soon") : t(`journey.${key}.desc`)}
+                      </p>
+                    </div>
+                    {i < JOURNEY.length - 1 && <ArrowRight className="size-4 shrink-0 text-muted-foreground/50" aria-hidden />}
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* CTA contextual: desbloqueou "Aplicar" (atingiu Ouro num leak treinado) */}
+            {readySkill && (
+              <div className="mt-4 flex flex-col gap-3 rounded-xl bg-primary/[0.08] p-4 ring-1 ring-primary/30 sm:flex-row sm:items-center">
+                <Trophy className="size-6 shrink-0 text-primary" aria-hidden />
+                <p className="flex-1 text-sm text-foreground">
+                  {t("journey.readyMsg", { skill: skillLabel(readySkill.category_key) })}
+                </p>
+                <Link to="/dashboard"
+                  className="flex shrink-0 items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 font-mono text-xs font-bold uppercase tracking-widest text-primary-foreground transition-colors hover:bg-primary/90">
+                  <Play className="size-4" aria-hidden /> {t("journey.applyCta")}
+                </Link>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* ── SEU TREINO — status/domínio/conquistas (eixo de gamificação, separado do ELO) ── */}
         {overview && (

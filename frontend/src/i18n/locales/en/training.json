@@ -57,5 +57,23 @@
       "cta": "Train my weak spot"
     },
     "hint": "Review locks in what you got wrong. Train builds the pattern. Together they close the leak."
+  },
+  "journey": {
+    "title": "Your journey",
+    "train": {
+      "title": "Train",
+      "desc": "Master your leaks"
+    },
+    "apply": {
+      "title": "Apply",
+      "desc": "Play with the right focus"
+    },
+    "prove": {
+      "title": "Prove",
+      "desc": "See the real improvement"
+    },
+    "soon": "Coming soon",
+    "readyMsg": "You mastered {{skill}} in training. Play a tournament focusing on it and import to see it in your real game.",
+    "applyCta": "Play & import"
   }
 }
