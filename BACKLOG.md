@@ -93,6 +93,10 @@ Ao concluir uma sprint, mover os itens para o CHANGELOG com o número da versão
 
 ## Próximas Sprints — Em Aberto
 
+### [PARSER-ACR] — Suporte a Hand History do ACR Poker *(analisado 2026-06-30)*
+
+**Spec + análise completa:** [`specs/acr-parser.md`](specs/acr-parser.md). 3 arquivos de amostra em `backend/HH20260630 SITGOID-G35409697T*.txt` (MESMO torneio #35409697). ACR é dialeto PokerStars-like que QUEBRA o parser atual: header `Game Hand #... - Tournament #...`, assentos `Seat N: nome (29150.00)` **sem "in chips"**, **ações SEM dois-pontos** (`nome raises X to Y`, `... and is all-in`), valores em chips com decimais, linhas `Main pot` extras, summary com wording próprio. **Agrupar os N arquivos por `Tournament #` do header** (não criar torneios separados); buy-in vem do filename (`{FULLSTOP}`=`.`). Faseamento e regexes no spec; testes de regressão com os 3 arquivos reais.
+
 > _(FEAT-17 concluído em v0.83.0 — entrada movida para o roadmap acima. Verificado 2026-06-15: `OnboardingModal.tsx` 4 passos, gate via `ProtectedRoute` (só com user carregado), finish→`/dashboard`→CTA de upload do `EmptyDashboard`, i18n nas 3 locales, endpoint+coluna+repo presentes.)_
 
 ### [PAY] — Frente de pagamentos ✅ ENCERRADA 2026-06-17 (PAY-01 → PAY-04)
