@@ -155,6 +155,33 @@ export default function Training() {
               </div>
             </div>
 
+            {/* Missões de hoje (Fase 2 — motor de hábito) */}
+            {overview.missions.length > 0 && (
+              <div>
+                <p className="mb-2 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">{t("missions.title")}</p>
+                <div className="grid gap-2 sm:grid-cols-3">
+                  {overview.missions.map((m) => {
+                    const pct = Math.min(100, Math.round((m.progress / m.target) * 100));
+                    return (
+                      <div key={m.key} className={cn("rounded-xl p-3 ring-1 transition-colors",
+                        m.completed ? "bg-emerald-500/[0.08] ring-emerald-500/30" : "bg-background/60 ring-border")}>
+                        <div className="flex items-start justify-between gap-2">
+                          <span className="text-[12px] font-bold leading-snug text-foreground">{t(`missions.${m.key}`, { target: m.target })}</span>
+                          {m.completed
+                            ? <CheckCircle2 className="size-4 shrink-0 text-emerald-400" aria-hidden />
+                            : <span className="shrink-0 font-mono text-[10px] font-bold text-primary">+{m.reward}</span>}
+                        </div>
+                        <div className="mt-2 h-2 overflow-hidden rounded-full bg-muted/30">
+                          <div className={cn("h-full rounded-full transition-[width] duration-500", m.completed ? "bg-emerald-400" : "bg-primary")} style={{ width: `${pct}%` }} />
+                        </div>
+                        <p className="mt-1 font-mono text-[10px] text-muted-foreground">{m.progress}/{m.target}</p>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
             {/* Medalhas por tier — visão gamificada da evolução */}
             <div className="grid grid-cols-4 gap-2">
               {tierCounts.map(({ tier, count }) => {

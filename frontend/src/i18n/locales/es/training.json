@@ -75,5 +75,11 @@
     "soon": "Próximamente",
     "readyMsg": "Dominaste {{skill}} en el entrenamiento. Juega un torneo enfocándote en eso e impórtalo para verlo en tu juego real.",
     "applyCta": "Jugar e importar"
+  },
+  "missions": {
+    "title": "Misiones de hoy",
+    "m_lesson": "Completa 1 lección",
+    "m_correct": "Acierta {{target}} decisiones",
+    "m_grind": "Entrena {{target}} spots"
   }
 }

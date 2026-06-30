@@ -682,6 +682,21 @@ def _run_migrations(conn):
             """)
             conn.execute("CREATE INDEX IF NOT EXISTS idx_training_ach_user ON training_achievements(user_id)")
         except Exception: pass
+        # Missões diárias de treino (Fase 2) — contadores do dia + missões resgatadas (Postgres)
+        try:
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS training_daily (
+                    id        SERIAL PRIMARY KEY,
+                    user_id   INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                    day       TEXT    NOT NULL,
+                    spots     INTEGER NOT NULL DEFAULT 0,
+                    correct   INTEGER NOT NULL DEFAULT 0,
+                    claimed   TEXT    NOT NULL DEFAULT '',
+                    UNIQUE(user_id, day)
+                )
+            """)
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_training_daily_user ON training_daily(user_id, day)")
+        except Exception: pass
         # Sprint R — FEAT-05: SRS columns on drill_sessions (Postgres)
         try:
             conn.execute("ALTER TABLE drill_sessions ADD COLUMN next_drill_at    TIMESTAMP")
@@ -1346,6 +1361,19 @@ def _run_migrations(conn):
             )
         """)
         conn.execute("CREATE INDEX IF NOT EXISTS idx_training_ach_user ON training_achievements(user_id)")
+        # Missões diárias de treino (Fase 2) — SQLite
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS training_daily (
+                id        INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id   INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                day       TEXT    NOT NULL,
+                spots     INTEGER NOT NULL DEFAULT 0,
+                correct   INTEGER NOT NULL DEFAULT 0,
+                claimed   TEXT    NOT NULL DEFAULT '',
+                UNIQUE(user_id, day)
+            )
+        """)
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_training_daily_user ON training_daily(user_id, day)")
         # Sprint R — FEAT-05: SRS columns on drill_sessions (SQLite)
         drill_existing = {r[1] for r in conn.execute('PRAGMA table_info(drill_sessions)').fetchall()}
         for col, sql in [
@@ -1809,6 +1837,17 @@ def _run_migrations(conn):
                 UNIQUE(user_id, achievement_key)
             )""",
             "CREATE INDEX IF NOT EXISTS idx_training_ach_user ON training_achievements(user_id)",
+            # Missões diárias de treino — abort-proof p/ existir em prod.
+            """CREATE TABLE IF NOT EXISTS training_daily (
+                id        SERIAL PRIMARY KEY,
+                user_id   INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                day       TEXT    NOT NULL,
+                spots     INTEGER NOT NULL DEFAULT 0,
+                correct   INTEGER NOT NULL DEFAULT 0,
+                claimed   TEXT    NOT NULL DEFAULT '',
+                UNIQUE(user_id, day)
+            )""",
+            "CREATE INDEX IF NOT EXISTS idx_training_daily_user ON training_daily(user_id, day)",
             # #30 multiway (shadow): veredito da cauda segura por decisão. Estava só no
             # bloco regular (transação única) → um abort anterior pulava o ADD e a coluna
             # faltava em prod (UndefinedColumn no backfill). Aqui sobrevive com commit isolado.

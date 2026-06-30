@@ -18,6 +18,7 @@ from database.schema import init_db, get_conn
 from database.repositories import (
     record_training_attempt, get_training_skills, _mastery_tier, get_all_achievements,
     evaluate_training_achievements, get_training_achievements, _TRAINING_ACHIEVEMENT_DEFS,
+    record_daily_mission_progress, get_daily_missions,
 )
 init_db()
 
@@ -27,6 +28,7 @@ def _mk_user():
     c.execute("DELETE FROM users")
     c.execute("DELETE FROM training_skill_progress")
     c.execute("DELETE FROM training_achievements")
+    c.execute("DELETE FROM training_daily")
     c.execute("INSERT INTO users (username,email,password_hash,plan) VALUES (?,?,?,?)",
               ('tg', 'tg@t', 'x', 'free'))
     uid = dict(c.execute("SELECT id FROM users WHERE username='tg'").fetchone())['id']
@@ -146,6 +148,28 @@ def test_training_achievements_tier_and_volume():
     unlocked = {a['key'] for a in get_training_achievements(uid) if a['unlocked']}
     assert 'train:diamond' in unlocked and 'train:reps50' in unlocked
     print("OK  test_training_achievements_tier_and_volume")
+
+
+def test_daily_missions_progress_and_award():
+    """Missões do dia: progresso derivado de spots/correct, auto-resgate, idempotência."""
+    uid = _mk_user()
+    m0 = get_daily_missions(uid)
+    assert {m['key'] for m in m0} == {'m_lesson', 'm_correct', 'm_grind'}
+    assert all(m['progress'] == 0 and not m['completed'] for m in m0)
+    got = []
+    for _ in range(10):                       # 10 spots corretos → m_lesson (10 spots)
+        got += record_daily_mission_progress(uid, True)
+    assert any(m['key'] == 'm_lesson' for m in got), got
+    # idempotente: 11ª não re-concede m_lesson
+    assert all(m['key'] != 'm_lesson' for m in record_daily_mission_progress(uid, True))
+    got2 = []
+    for _ in range(4):                        # correct chega a 15 → m_correct
+        got2 += record_daily_mission_progress(uid, True)
+    assert any(m['key'] == 'm_correct' for m in got2), got2
+    dm = {m['key']: m for m in get_daily_missions(uid)}
+    assert dm['m_lesson']['completed'] and dm['m_correct']['completed']
+    assert not dm['m_grind']['completed']     # 16 < 30 spots
+    print("OK  test_daily_missions_progress_and_award")
 
 
 if __name__ == '__main__':

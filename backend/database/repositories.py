@@ -5702,6 +5702,85 @@ def get_training_achievements(user_id: int) -> list:
             for k, _ in _TRAINING_ACHIEVEMENT_DEFS]
 
 
+# ── Missões diárias de treino (Fase 2) — motor de hábito, eixo de gamificação ──────
+# (key, métrica, alvo, recompensa XP). Métrica derivada dos contadores do dia (spots/correct),
+# então não precisa de evento de "lição completa". Títulos no i18n do front (training:missions.<key>).
+_DAILY_MISSIONS = [
+    ('m_lesson',  'spots',   10, 30),   # 1 lição (10 spots)
+    ('m_correct', 'correct', 15, 40),   # 15 decisões corretas
+    ('m_grind',   'spots',   30, 50),   # 30 spots
+]
+
+
+def _today_str() -> str:
+    from datetime import datetime
+    return datetime.utcnow().strftime('%Y-%m-%d')
+
+
+def _daily_progress(spots: int, correct: int) -> list:
+    out = []
+    for key, metric, target, reward in _DAILY_MISSIONS:
+        val = spots if metric == 'spots' else correct
+        out.append({'key': key, 'target': target, 'reward': reward,
+                    'progress': min(val, target), 'completed': val >= target})
+    return out
+
+
+def record_daily_mission_progress(user_id: int, correct: bool) -> list:
+    """Incrementa os contadores do dia e auto-resgata missões recém-completas (XP via add_xp).
+    Devolve as missões recém-completas (key/reward) — pro veredito/UI comemorar."""
+    if not user_id:
+        return []
+    day = _today_str()
+    conn = get_conn()
+    try:
+        row = _fetchone(conn, _adapt(
+            "SELECT spots, correct, claimed FROM training_daily WHERE user_id=? AND day=?"),
+            (user_id, day))
+        if row:
+            spots = int(row['spots']) + 1
+            corr = int(row['correct']) + (1 if correct else 0)
+            claimed = {c for c in (row['claimed'] or '').split(',') if c}
+        else:
+            spots, corr, claimed = 1, (1 if correct else 0), set()
+        newly = []
+        for key, metric, target, reward in _DAILY_MISSIONS:
+            val = spots if metric == 'spots' else corr
+            if key not in claimed and val >= target:
+                claimed.add(key); newly.append({'key': key, 'reward': reward})
+        claimed_str = ','.join(sorted(claimed))
+        if row:
+            conn.execute(_adapt("UPDATE training_daily SET spots=?, correct=?, claimed=? WHERE user_id=? AND day=?"),
+                         (spots, corr, claimed_str, user_id, day))
+        else:
+            conn.execute(_adapt("INSERT INTO training_daily (user_id, day, spots, correct, claimed) VALUES (?,?,?,?,?)"),
+                         (user_id, day, spots, corr, claimed_str))
+        conn.commit()
+    finally:
+        conn.close()
+    # XP fora da conexão acima (add_xp abre a própria) — evita conexão aninhada no SQLite
+    for m in newly:
+        try:
+            add_xp(user_id, 'daily_mission', m['reward'])
+        except Exception:
+            pass
+    return newly
+
+
+def get_daily_missions(user_id: int) -> list:
+    """Missões do dia com progresso/alvo/completed (pro hub)."""
+    if not user_id:
+        return _daily_progress(0, 0)
+    conn = get_conn()
+    try:
+        row = _fetchone(conn, _adapt(
+            "SELECT spots, correct FROM training_daily WHERE user_id=? AND day=?"),
+            (user_id, _today_str()))
+    finally:
+        conn.close()
+    return _daily_progress(int(row['spots']) if row else 0, int(row['correct']) if row else 0)
+
+
 def add_xp(user_id: int, event_type: str, amount: int | None = None) -> dict:
     """Adiciona XP, atualiza streak e verifica conquistas."""
     from datetime import datetime, timedelta

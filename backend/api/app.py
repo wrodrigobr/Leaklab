@@ -2073,10 +2073,13 @@ def leaktrainer_grade():
     _cat = spot.get('category')
     if _cat:
         try:
-            from database.repositories import record_training_attempt, evaluate_training_achievements
+            from database.repositories import (record_training_attempt, evaluate_training_achievements,
+                                               record_daily_mission_progress)
             result['training'] = record_training_attempt(g.user_id, _cat, bool(result.get('is_correct')))
             # conquistas de treino recém-desbloqueadas (pro veredito da lição comemorar)
             result['training_achievements'] = evaluate_training_achievements(g.user_id)
+            # missões diárias: incrementa contadores + auto-resgata as completas (XP)
+            result['daily_missions'] = record_daily_mission_progress(g.user_id, bool(result.get('is_correct')))
         except Exception:
             app.logger.exception('record_training_attempt falhou (user=%s)', g.user_id)
             result['training'] = None
@@ -2097,11 +2100,12 @@ def training_skills():
 def training_overview():
     """Status do treino do jogador (eixo de gamificação, SEPARADO do ELO): XP+streak,
     domínio por habilidade e o catálogo de conquistas (com unlocked) — pro hub de Treino."""
-    from database.repositories import get_training_skills, get_training_achievements
+    from database.repositories import get_training_skills, get_training_achievements, get_daily_missions
     return jsonify({
         'xp':           get_xp_status(g.user_id),
         'skills':       get_training_skills(g.user_id),
         'achievements': get_training_achievements(g.user_id),   # conquistas de TREINO (não as globais)
+        'missions':     get_daily_missions(g.user_id),          # missões diárias (Fase 2)
     })
 
 

@@ -1040,10 +1040,18 @@ export interface TrainingAchievement {
   unlocked: boolean;
   earned_at: string | null;
 }
+export interface TrainingMission {
+  key: string;        // título no i18n (training:missions.<key>, com {{target}})
+  target: number;
+  reward: number;
+  progress: number;
+  completed: boolean;
+}
 export interface TrainingOverview {
   xp: { xp_total: number; streak: number; last_activity: string | null };
   skills: TrainingSkill[];
   achievements: TrainingAchievement[];
+  missions: TrainingMission[];
 }
 export const training = {
   overview: () => request<TrainingOverview>("/player/training/overview"),
