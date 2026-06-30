@@ -199,17 +199,19 @@ export default function Training() {
                 <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">{t("status.achievements")}</p>
                 <span className="font-mono text-[10px] text-muted-foreground">{unlockedCount} {t("status.of")} {overview.achievements.length}</span>
               </div>
-              <div className="flex flex-wrap gap-2">
-                {overview.achievements.map((a) => (
-                  <div key={a.key} title={ta(`trainAch.${achKey(a.key)}.desc`)}
-                    className={cn("inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 ring-1 transition-colors",
-                      a.unlocked ? "bg-primary/[0.08] ring-primary/30" : "bg-muted/10 opacity-55 ring-border")}>
-                    {a.unlocked
-                      ? <Trophy className="size-3.5 shrink-0 text-primary" aria-hidden />
-                      : <Lock className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />}
-                    <span className={cn("text-[11px] font-bold", a.unlocked ? "text-foreground" : "text-muted-foreground")}>{ta(`trainAch.${achKey(a.key)}.title`)}</span>
-                  </div>
-                ))}
+              {/* Linha do tempo: marcos numerados; nome no tooltip (hover) */}
+              <div className="overflow-x-auto pb-1">
+                <div className="relative flex w-full min-w-[520px] items-center justify-between">
+                  <div className="pointer-events-none absolute inset-x-4 top-1/2 h-0.5 -translate-y-1/2 bg-border" aria-hidden />
+                  {overview.achievements.map((a, i) => (
+                    <div key={a.key}
+                      title={`${ta(`trainAch.${achKey(a.key)}.title`)} · ${ta(`trainAch.${achKey(a.key)}.desc`)}`}
+                      className={cn("relative z-10 flex size-8 cursor-default items-center justify-center rounded-full font-mono text-[11px] font-bold ring-2 transition-transform hover:scale-110",
+                        a.unlocked ? "bg-primary text-primary-foreground ring-primary" : "bg-card text-muted-foreground ring-border")}>
+                      {i + 1}
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           </div>
