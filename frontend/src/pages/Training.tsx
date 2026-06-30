@@ -48,6 +48,32 @@ export default function Training() {
     <HudLayout eyebrow={t("eyebrow")} title={t("title")} description={t("subtitle")}>
       <div className="mx-auto max-w-6xl space-y-6">
 
+        {/* ── Ações de treino — compactas, no topo (a ação principal vem primeiro) ── */}
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <Link to="/ghost"
+            className="group flex items-center gap-3 rounded-xl border border-primary/30 bg-primary/[0.05] p-4 transition-colors hover:border-primary/50">
+            <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 ring-1 ring-primary/30">
+              <RotateCw className="size-5 text-primary" aria-hidden />
+            </div>
+            <div className="min-w-0 flex-1">
+              <h3 className="font-heading text-base font-bold text-foreground">{t("trainer.review.title")}</h3>
+              <p className="truncate text-xs text-muted-foreground">{t("trainer.review.desc")}</p>
+            </div>
+            <ArrowRight className="size-4 shrink-0 text-primary transition-transform group-hover:translate-x-0.5" aria-hidden />
+          </Link>
+          <Link to="/leak-trainer"
+            className="group flex items-center gap-3 rounded-xl border border-amber-500/30 bg-amber-500/[0.06] p-4 transition-colors hover:border-amber-500/50">
+            <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-amber-500/10 ring-1 ring-amber-500/30">
+              <Target className="size-5 text-amber-400" aria-hidden />
+            </div>
+            <div className="min-w-0 flex-1">
+              <h3 className="font-heading text-base font-bold text-foreground">{t("trainer.train.title")}</h3>
+              <p className="truncate text-xs text-muted-foreground">{t("trainer.train.desc")}</p>
+            </div>
+            <ArrowRight className="size-4 shrink-0 text-amber-400 transition-transform group-hover:translate-x-0.5" aria-hidden />
+          </Link>
+        </div>
+
         {/* ── A JORNADA — Treinar → Aplicar (gate Ouro) → Provar ───────────────── */}
         {overview && (
           <div className="rounded-2xl border border-border bg-card/40 p-6 md:p-7">
@@ -180,68 +206,6 @@ export default function Training() {
             </div>
           </div>
         )}
-
-        {/* ── TREINO — um conceito, dois modos complementares ──────────────────── */}
-        <div className="rounded-2xl border border-border bg-gradient-to-br from-primary/[0.06] to-transparent p-6 md:p-7">
-          <div className="flex items-center gap-3">
-            <div className="flex size-12 items-center justify-center rounded-xl bg-primary/10 ring-1 ring-primary/30">
-              <Dumbbell className="size-6 text-primary" aria-hidden />
-            </div>
-            <div>
-              <h2 className="font-heading text-xl font-bold text-foreground">{t("trainer.title")}</h2>
-              <p className="text-sm text-muted-foreground">{t("trainer.subtitle")}</p>
-            </div>
-          </div>
-
-          <div className="mt-5 grid grid-cols-1 gap-4 md:grid-cols-2">
-
-            {/* Modo: Revisar (Ghost Table — SRS, mãos reais) */}
-            <div className="flex flex-col rounded-xl border border-primary/30 bg-primary/[0.04] p-5">
-              <div className="flex items-center gap-2">
-                <RotateCw className="size-5 text-primary" aria-hidden />
-                <h3 className="font-heading text-base font-bold text-foreground">{t("trainer.review.title")}</h3>
-              </div>
-              <p className="mt-2 flex-1 text-sm leading-relaxed text-muted-foreground">{t("trainer.review.desc")}</p>
-              <ul className="mt-3 space-y-1.5">
-                {(["p1", "p2", "p3"] as const).map((k) => (
-                  <li key={k} className="flex items-start gap-2 text-[13px] text-muted-foreground">
-                    <CheckCircle2 className="mt-0.5 size-3.5 shrink-0 text-primary" aria-hidden />
-                    {t(`trainer.review.${k}`)}
-                  </li>
-                ))}
-              </ul>
-              <Link to="/ghost"
-                className="mt-4 flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-5 py-3 font-mono text-sm font-bold uppercase tracking-widest text-primary-foreground transition-colors hover:bg-primary/90">
-                <RotateCw className="size-4" aria-hidden /> {t("trainer.review.cta")}
-              </Link>
-            </div>
-
-            {/* Modo: Treinar (Leak Trainer — adaptativo, sintético) */}
-            <div className="flex flex-col rounded-xl border border-amber-500/30 bg-amber-500/[0.05] p-5">
-              <div className="flex items-center gap-2">
-                <Target className="size-5 text-amber-400" aria-hidden />
-                <h3 className="font-heading text-base font-bold text-foreground">{t("trainer.train.title")}</h3>
-              </div>
-              <p className="mt-2 flex-1 text-sm leading-relaxed text-muted-foreground">{t("trainer.train.desc")}</p>
-              <ul className="mt-3 space-y-1.5">
-                {(["p1", "p2", "p3"] as const).map((k) => (
-                  <li key={k} className="flex items-start gap-2 text-[13px] text-muted-foreground">
-                    <CheckCircle2 className="mt-0.5 size-3.5 shrink-0 text-amber-400" aria-hidden />
-                    {t(`trainer.train.${k}`)}
-                  </li>
-                ))}
-              </ul>
-              <Link to="/leak-trainer"
-                className="mt-4 flex w-full items-center justify-center gap-2 rounded-lg bg-amber-500 px-5 py-3 font-mono text-sm font-bold uppercase tracking-widest text-black transition-colors hover:bg-amber-400">
-                <Target className="size-4" aria-hidden /> {t("trainer.train.cta")}
-              </Link>
-            </div>
-          </div>
-
-          <p className="mt-4 flex items-center gap-1.5 font-mono text-[11px] text-muted-foreground/80">
-            <ArrowRight className="size-3 text-primary" aria-hidden /> {t("trainer.hint")}
-          </p>
-        </div>
 
         {/* ── Academia (fundamentos, à parte do treino de leaks) ───────────────── */}
         <div className="group flex flex-col overflow-hidden rounded-2xl border border-violet-500/30 bg-gradient-to-br from-violet-500/[0.1] to-transparent transition-colors hover:border-violet-500/50 md:flex-row">

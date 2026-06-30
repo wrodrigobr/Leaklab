@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(training): ações Revisar/Treinar compactas e no topo do hub
+
+> Com o status/jornada ocupando o topo, os cards grandes de modo (Revisar/Treinar) ficavam jogados pro fim da página. Viraram uma **linha de ação compacta no topo** (ícone + título + 1 linha + seta, card inteiro clicável, lado a lado), antes da jornada e do status — a ação principal vem primeiro. Removido o bloco grande com os bullets/hint. tsc 0.
+
 ### fix(training): hub usa melhor o espaço horizontal + ordem das medalhas
 
 > O hub de Treino estava preso num corredor estreito (`max-w-4xl`) desperdiçando largura (o HudLayout dá até 1440px). Alargado pra `max-w-6xl` e **domínio por habilidade + conquistas agora lado a lado** em telas largas (`lg:grid-cols-2`), empilhados no mobile. Medalhas por tier reordenadas pra **Bronze → Prata → Ouro → Diamante** (ascendente, esquerda→direita). tsc 0.
