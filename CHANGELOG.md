@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(training): Academia entra na linha de ação compacta (3 ações no topo)
+
+> A linha de ação do topo agora tem **Revisar · Treinar · Academia** (3 cards compactos, `sm:grid-cols-3`); o card grande da Academia embaixo foi removido pra não duplicar. tsc 0.
+
 ### fix(training): ações Revisar/Treinar compactas e no topo do hub
 
 > Com o status/jornada ocupando o topo, os cards grandes de modo (Revisar/Treinar) ficavam jogados pro fim da página. Viraram uma **linha de ação compacta no topo** (ícone + título + 1 linha + seta, card inteiro clicável, lado a lado), antes da jornada e do status — a ação principal vem primeiro. Removido o bloco grande com os bullets/hint. tsc 0.

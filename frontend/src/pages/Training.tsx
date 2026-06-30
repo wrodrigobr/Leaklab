@@ -49,7 +49,7 @@ export default function Training() {
       <div className="mx-auto max-w-6xl space-y-6">
 
         {/* ── Ações de treino — compactas, no topo (a ação principal vem primeiro) ── */}
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <Link to="/ghost"
             className="group flex items-center gap-3 rounded-xl border border-primary/30 bg-primary/[0.05] p-4 transition-colors hover:border-primary/50">
             <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 ring-1 ring-primary/30">
@@ -71,6 +71,17 @@ export default function Training() {
               <p className="truncate text-xs text-muted-foreground">{t("trainer.train.desc")}</p>
             </div>
             <ArrowRight className="size-4 shrink-0 text-amber-400 transition-transform group-hover:translate-x-0.5" aria-hidden />
+          </Link>
+          <Link to="/academy"
+            className="group flex items-center gap-3 rounded-xl border border-violet-500/30 bg-violet-500/[0.06] p-4 transition-colors hover:border-violet-500/50">
+            <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-violet-500/10 ring-1 ring-violet-500/30">
+              <GraduationCap className="size-5 text-violet-400" aria-hidden />
+            </div>
+            <div className="min-w-0 flex-1">
+              <h3 className="font-heading text-base font-bold text-foreground">{t("academy.title")}</h3>
+              <p className="truncate text-xs text-muted-foreground">{t("academy.desc")}</p>
+            </div>
+            <ArrowRight className="size-4 shrink-0 text-violet-400 transition-transform group-hover:translate-x-0.5" aria-hidden />
           </Link>
         </div>
 
@@ -206,28 +217,6 @@ export default function Training() {
             </div>
           </div>
         )}
-
-        {/* ── Academia (fundamentos, à parte do treino de leaks) ───────────────── */}
-        <div className="group flex flex-col overflow-hidden rounded-2xl border border-violet-500/30 bg-gradient-to-br from-violet-500/[0.1] to-transparent transition-colors hover:border-violet-500/50 md:flex-row">
-          <div className="flex-1 space-y-4 p-7">
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex size-14 items-center justify-center rounded-xl bg-violet-500/10 ring-1 ring-violet-500/30">
-                <GraduationCap className="size-7 text-violet-400" aria-hidden />
-              </div>
-              <span className="rounded-full bg-violet-500/10 px-2.5 py-1 font-mono text-[9px] font-bold uppercase tracking-widest text-violet-400 ring-1 ring-violet-500/20">
-                {t("academy.badge")}
-              </span>
-            </div>
-            <div>
-              <h2 className="font-heading text-xl font-bold text-foreground">{t("academy.title")}</h2>
-              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{t("academy.desc")}</p>
-            </div>
-            <Link to="/academy"
-              className="inline-flex items-center justify-center gap-2 rounded-lg bg-violet-500 px-5 py-3 font-mono text-sm font-bold uppercase tracking-widest text-white transition-colors hover:bg-violet-400">
-              <GraduationCap className="size-4" aria-hidden /> {t("academy.cta")}
-            </Link>
-          </div>
-        </div>
 
       </div>
     </HudLayout>
