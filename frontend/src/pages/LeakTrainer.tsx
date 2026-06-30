@@ -121,6 +121,7 @@ export default function LeakTrainer() {
   const [xpEarned, setXpEarned]         = useState(0);
   // Domínio por categoria nesta sessão (antes→depois) — eixo de treino, p/ o veredito da lição.
   const [masteryByCat, setMasteryByCat] = useState<Record<string, { start: number; now: number; tier: string }>>({});
+  const [unlockedAch, setUnlockedAch]   = useState<string[]>([]);   // conquistas de treino da sessão
   const [sessionStats, setSessionStats] = useState<Record<string, SessionStat>>({});
   const [showRange, setShowRange]       = useState(false);
   const stateRef = useRef<LeakTrainerState>(loadState());
@@ -161,7 +162,7 @@ export default function LeakTrainer() {
   const finishSession = () => setPhase("summary");
   const newSession = () => {
     setSessionStats({}); setTotalDone(0); setTotalCorrect(0); setStreak(0); setXpEarned(0);
-    setMasteryByCat({});
+    setMasteryByCat({}); setUnlockedAch([]);
     loadNext();
   };
 
@@ -208,6 +209,10 @@ export default function LeakTrainer() {
           ...m,
           [spot.category]: { start: m[spot.category]?.start ?? tg.mastery_prev, now: tg.mastery, tier: tg.tier },
         }));
+      }
+      if (g.training_achievements?.length) {
+        const got = g.training_achievements;
+        setUnlockedAch((prev) => Array.from(new Set([...prev, ...got])));
       }
       if (g.is_correct) { setStreak((s) => s + 1); setTotalCorrect((n) => n + 1); }
       else setStreak(0);
@@ -531,6 +536,22 @@ export default function LeakTrainer() {
                   </div>
                 )}
               </div>
+
+              {/* Conquistas de treino desbloqueadas nesta lição */}
+              {unlockedAch.length > 0 && (
+                <div className="mt-4 rounded-2xl bg-amber-500/10 p-3 ring-1 ring-amber-500/30">
+                  <p className="mb-2 flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-widest text-amber-400">
+                    <Trophy className="size-3.5" aria-hidden /> {t("leakTrainer.summary.unlocked")}
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {unlockedAch.map((k) => (
+                      <span key={k} className="inline-flex items-center gap-1 rounded-full bg-background/60 px-2.5 py-1 text-[11px] font-bold text-foreground ring-1 ring-amber-500/30">
+                        <Trophy className="size-3 text-amber-400" aria-hidden /> {t(`trainAch.${k.replace(/:/g, "_")}.title`)}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* CTAs: Continuar (nova lição) + Finalizar (dashboard) */}
               <div className="mt-6 space-y-2">

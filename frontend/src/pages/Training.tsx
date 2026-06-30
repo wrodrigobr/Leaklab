@@ -28,6 +28,11 @@ export default function Training() {
     return key;
   };
   const unlockedCount = overview?.achievements.filter((a) => a.unlocked).length ?? 0;
+  const achKey = (k: string) => k.replace(/:/g, "_");   // ':' é separador de namespace no i18next
+  // contagem por tier (visão gamificada da evolução, além das barras)
+  const tierCounts = (["diamond", "gold", "silver", "bronze"] as const).map((tier) => ({
+    tier, count: overview?.skills.filter((s) => s.tier === tier).length ?? 0,
+  }));
 
   return (
     <HudLayout eyebrow={t("eyebrow")} title={t("title")} description={t("subtitle")}>
@@ -51,6 +56,21 @@ export default function Training() {
                   <span className="font-mono text-xs font-bold tabular-nums text-amber-300">{overview.xp.streak}</span>
                 </span>
               </div>
+            </div>
+
+            {/* Medalhas por tier — visão gamificada da evolução */}
+            <div className="grid grid-cols-4 gap-2">
+              {tierCounts.map(({ tier, count }) => {
+                const tm = TIER[tier];
+                return (
+                  <div key={tier} className={cn("flex flex-col items-center gap-0.5 rounded-xl py-2.5 ring-1",
+                    count > 0 ? "bg-card/60 ring-border" : "bg-muted/5 opacity-50 ring-border")}>
+                    <Trophy className="size-5" style={{ color: tm.ring }} aria-hidden />
+                    <span className="font-mono text-base font-bold tabular-nums text-foreground">{count}</span>
+                    <span className={cn("font-mono text-[9px] uppercase tracking-wider", tm.text)}>{tm.label}</span>
+                  </div>
+                );
+              })}
             </div>
 
             {/* Domínio por habilidade — onde o jogador está */}
@@ -84,13 +104,13 @@ export default function Training() {
               </div>
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                 {overview.achievements.map((a) => (
-                  <div key={a.key} title={a.desc}
+                  <div key={a.key} title={ta(`trainAch.${achKey(a.key)}.desc`)}
                     className={cn("flex items-center gap-2 rounded-lg px-3 py-2 ring-1 transition-colors",
                       a.unlocked ? "bg-primary/[0.08] ring-primary/30" : "bg-muted/10 opacity-55 ring-border")}>
                     {a.unlocked
                       ? <Trophy className="size-4 shrink-0 text-primary" aria-hidden />
                       : <Lock className="size-4 shrink-0 text-muted-foreground" aria-hidden />}
-                    <span className={cn("truncate text-[12px] font-bold", a.unlocked ? "text-foreground" : "text-muted-foreground")}>{a.title}</span>
+                    <span className={cn("truncate text-[12px] font-bold", a.unlocked ? "text-foreground" : "text-muted-foreground")}>{ta(`trainAch.${achKey(a.key)}.title`)}</span>
                   </div>
                 ))}
               </div>

@@ -1009,6 +1009,7 @@ export interface LeakTrainerGrade {
     mastery_delta: number;
     tier: "bronze" | "silver" | "gold" | "diamond";
   } | null;
+  training_achievements?: string[];   // keys de conquistas de treino recém-desbloqueadas
 }
 
 export const leaktrainer = {
@@ -1035,9 +1036,7 @@ export interface TrainingSkill {
   last_practiced_at?: string | null;
 }
 export interface TrainingAchievement {
-  key: string;
-  title: string;
-  desc: string;
+  key: string;                 // título/descrição vêm do i18n (trainAch.<key>.*)
   unlocked: boolean;
   earned_at: string | null;
 }

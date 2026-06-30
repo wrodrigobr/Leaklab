@@ -669,6 +669,19 @@ def _run_migrations(conn):
             """)
             conn.execute("CREATE INDEX IF NOT EXISTS idx_training_skill_user ON training_skill_progress(user_id)")
         except Exception: pass
+        # Conquistas EXCLUSIVAS do treino (separadas das globais/ELO) — Postgres
+        try:
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS training_achievements (
+                    id              SERIAL PRIMARY KEY,
+                    user_id         INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                    achievement_key TEXT    NOT NULL,
+                    earned_at       TIMESTAMP NOT NULL DEFAULT NOW(),
+                    UNIQUE(user_id, achievement_key)
+                )
+            """)
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_training_ach_user ON training_achievements(user_id)")
+        except Exception: pass
         # Sprint R — FEAT-05: SRS columns on drill_sessions (Postgres)
         try:
             conn.execute("ALTER TABLE drill_sessions ADD COLUMN next_drill_at    TIMESTAMP")
@@ -1322,6 +1335,17 @@ def _run_migrations(conn):
             )
         """)
         conn.execute("CREATE INDEX IF NOT EXISTS idx_training_skill_user ON training_skill_progress(user_id)")
+        # Conquistas EXCLUSIVAS do treino (separadas das globais/ELO) — SQLite
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS training_achievements (
+                id              INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id         INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                achievement_key TEXT    NOT NULL,
+                earned_at       TEXT    NOT NULL DEFAULT (datetime('now')),
+                UNIQUE(user_id, achievement_key)
+            )
+        """)
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_training_ach_user ON training_achievements(user_id)")
         # Sprint R — FEAT-05: SRS columns on drill_sessions (SQLite)
         drill_existing = {r[1] for r in conn.execute('PRAGMA table_info(drill_sessions)').fetchall()}
         for col, sql in [
@@ -1776,6 +1800,15 @@ def _run_migrations(conn):
                 UNIQUE(user_id, category_key)
             )""",
             "CREATE INDEX IF NOT EXISTS idx_training_skill_user ON training_skill_progress(user_id)",
+            # Conquistas do treino — abort-proof p/ existir em prod.
+            """CREATE TABLE IF NOT EXISTS training_achievements (
+                id              SERIAL PRIMARY KEY,
+                user_id         INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                achievement_key TEXT    NOT NULL,
+                earned_at       TIMESTAMP NOT NULL DEFAULT NOW(),
+                UNIQUE(user_id, achievement_key)
+            )""",
+            "CREATE INDEX IF NOT EXISTS idx_training_ach_user ON training_achievements(user_id)",
             # #30 multiway (shadow): veredito da cauda segura por decisão. Estava só no
             # bloco regular (transação única) → um abort anterior pulava o ADD e a coluna
             # faltava em prod (UndefinedColumn no backfill). Aqui sobrevive com commit isolado.

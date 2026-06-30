@@ -81,7 +81,8 @@
       "lessonDone": "Lesson complete!",
       "mastery": "Category mastery",
       "finish": "Finish",
-      "loopHint": "Training preps you. Play a tournament and import it to see the effect on your real game."
+      "loopHint": "Training preps you. Play a tournament and import it to see the effect on your real game.",
+      "unlocked": "Achievement unlocked!"
     },
     "vCorrect": "Correct",
     "vMixed": "Acceptable",
@@ -100,6 +101,56 @@
       "raise3": "3-Bet",
       "raise4": "4-Bet",
       "raisePost": "Raise"
+    }
+  },
+  "trainAch": {
+    "train_first": {
+      "title": "First correct",
+      "desc": "You nailed your first training spot."
+    },
+    "train_reps50": {
+      "title": "Warmed up",
+      "desc": "50 spots trained."
+    },
+    "train_silver": {
+      "title": "Silver",
+      "desc": "Took a skill to Silver tier."
+    },
+    "train_gold": {
+      "title": "Gold",
+      "desc": "Took a skill to Gold tier."
+    },
+    "train_reps200": {
+      "title": "Dedicated",
+      "desc": "200 spots trained."
+    },
+    "train_explorer": {
+      "title": "Explorer",
+      "desc": "Trained 5 different skills."
+    },
+    "train_gold3": {
+      "title": "Gold triad",
+      "desc": "3 skills at Gold or above."
+    },
+    "train_diamond": {
+      "title": "Diamond",
+      "desc": "Took a skill to Diamond tier."
+    },
+    "train_streak3": {
+      "title": "Picking up",
+      "desc": "3-day training streak."
+    },
+    "train_streak7": {
+      "title": "Consistent",
+      "desc": "7-day training streak."
+    },
+    "train_reps1000": {
+      "title": "Veteran",
+      "desc": "1000 spots trained."
+    },
+    "train_streak30": {
+      "title": "Unstoppable",
+      "desc": "30-day training streak."
     }
   },
   "feedback": {

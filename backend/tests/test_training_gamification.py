@@ -17,6 +17,7 @@ os.environ['LEAKLAB_DB'] = _TMPDB.name
 from database.schema import init_db, get_conn
 from database.repositories import (
     record_training_attempt, get_training_skills, _mastery_tier, get_all_achievements,
+    evaluate_training_achievements, get_training_achievements, _TRAINING_ACHIEVEMENT_DEFS,
 )
 init_db()
 
@@ -25,6 +26,7 @@ def _mk_user():
     c = get_conn()
     c.execute("DELETE FROM users")
     c.execute("DELETE FROM training_skill_progress")
+    c.execute("DELETE FROM training_achievements")
     c.execute("INSERT INTO users (username,email,password_hash,plan) VALUES (?,?,?,?)",
               ('tg', 'tg@t', 'x', 'free'))
     uid = dict(c.execute("SELECT id FROM users WHERE username='tg'").fetchone())['id']
@@ -112,6 +114,38 @@ def test_all_achievements_path_locked_then_unlocked():
     assert len(unlocked) == 1 and unlocked[0]['key'] == key, allac2
     assert len(allac2) == len(allac), "o catálogo não muda de tamanho, só o flag"
     print("OK  test_all_achievements_path_locked_then_unlocked")
+
+
+def test_training_achievements_locked_then_award():
+    """Conquistas de treino começam travadas; acertos/domínio destravam as certas."""
+    uid = _mk_user()
+    ach0 = get_training_achievements(uid)
+    assert len(ach0) == len(_TRAINING_ACHIEVEMENT_DEFS) and all(not a['unlocked'] for a in ach0)
+    # 1 acerto → 'train:first' (e nada de tier ainda, mastery=5)
+    record_training_attempt(uid, 'rfi:BB::50', True)
+    newly = evaluate_training_achievements(uid)
+    assert 'train:first' in newly, newly
+    assert 'train:silver' not in newly and 'train:gold' not in newly, newly
+    # idempotente: avaliar de novo sem progресso não concede nada
+    assert evaluate_training_achievements(uid) == []
+    print("OK  test_training_achievements_locked_then_award")
+
+
+def test_training_achievements_tier_and_volume():
+    """20 acertos → diamante → destrava silver+gold+diamond; reps50 só com 50 tentativas."""
+    uid = _mk_user()
+    for _ in range(20):
+        record_training_attempt(uid, 'rfi:BB::50', True)
+    got = set(evaluate_training_achievements(uid))
+    assert {'train:first', 'train:silver', 'train:gold', 'train:diamond'} <= got, got
+    assert 'train:reps50' not in got, "20 < 50 tentativas"
+    for _ in range(30):
+        record_training_attempt(uid, 'rfi:BB::50', True)   # total 50
+    assert 'train:reps50' in set(evaluate_training_achievements(uid))
+    # catálogo reflete o estado
+    unlocked = {a['key'] for a in get_training_achievements(uid) if a['unlocked']}
+    assert 'train:diamond' in unlocked and 'train:reps50' in unlocked
+    print("OK  test_training_achievements_tier_and_volume")
 
 
 if __name__ == '__main__':

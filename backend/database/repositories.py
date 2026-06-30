@@ -5624,6 +5624,84 @@ def get_training_skills(user_id: int) -> list:
         conn.close()
 
 
+# Conquistas EXCLUSIVAS do treino (eixo de gamificação, separado das globais/ELO). O critério é o
+# predicado sobre o estado de treino; os TÍTULOS/DESCRIÇÕES vivem no i18n do frontend
+# (trainAch.<key>.*), keyed pela key — pra ter PT/EN/ES de verdade. Ordem = ordem do "caminho".
+_TRAINING_ACHIEVEMENT_DEFS = [
+    ('train:first',    lambda s: s['total_correct']  >= 1),
+    ('train:reps50',   lambda s: s['total_attempts'] >= 50),
+    ('train:silver',   lambda s: s['max_mastery']    >= 40),
+    ('train:gold',     lambda s: s['max_mastery']    >= 70),
+    ('train:reps200',  lambda s: s['total_attempts'] >= 200),
+    ('train:explorer', lambda s: s['skills_count']   >= 5),
+    ('train:gold3',    lambda s: s['count_gold']     >= 3),
+    ('train:diamond',  lambda s: s['max_mastery']    >= 90),
+    ('train:streak3',  lambda s: s['streak']         >= 3),
+    ('train:streak7',  lambda s: s['streak']         >= 7),
+    ('train:reps1000', lambda s: s['total_attempts'] >= 1000),
+    ('train:streak30', lambda s: s['streak']         >= 30),
+]
+
+
+def _training_state(user_id: int) -> dict:
+    skills = get_training_skills(user_id)
+    masteries = [float(s.get('mastery') or 0) for s in skills]
+    try:
+        streak = int((get_xp_status(user_id) or {}).get('streak') or 0)
+    except Exception:
+        streak = 0
+    return {
+        'total_attempts': sum(int(s.get('attempts') or 0) for s in skills),
+        'total_correct':  sum(int(s.get('correct') or 0) for s in skills),
+        'max_mastery':    max(masteries) if masteries else 0.0,
+        'count_gold':     sum(1 for m in masteries if m >= 70),
+        'skills_count':   len(skills),
+        'streak':         streak,
+    }
+
+
+def evaluate_training_achievements(user_id: int) -> list:
+    """Concede as conquistas de treino recém-atingidas e devolve as keys novas (pro veredito)."""
+    if not user_id:
+        return []
+    state = _training_state(user_id)
+    conn = get_conn()
+    try:
+        earned = {r['achievement_key'] for r in conn.execute(
+            _adapt("SELECT achievement_key FROM training_achievements WHERE user_id = ?"),
+            (user_id,)).fetchall()}
+        newly = []
+        for key, pred in _TRAINING_ACHIEVEMENT_DEFS:
+            if key in earned:
+                continue
+            try:
+                if pred(state):
+                    conn.execute(_adapt(
+                        "INSERT INTO training_achievements (user_id, achievement_key, earned_at) "
+                        "VALUES (?,?,datetime('now'))"), (user_id, key))
+                    newly.append(key)
+            except Exception:
+                pass  # corrida/duplicado/predicado
+        if newly:
+            conn.commit()
+        return newly
+    finally:
+        conn.close()
+
+
+def get_training_achievements(user_id: int) -> list:
+    """Catálogo de conquistas de TREINO + flag unlocked (ordem do 'caminho') — pro hub."""
+    conn = get_conn()
+    try:
+        earned = {r['achievement_key']: r['earned_at'] for r in conn.execute(
+            _adapt("SELECT achievement_key, earned_at FROM training_achievements WHERE user_id = ?"),
+            (user_id,)).fetchall()}
+    finally:
+        conn.close()
+    return [{'key': k, 'unlocked': k in earned, 'earned_at': earned.get(k)}
+            for k, _ in _TRAINING_ACHIEVEMENT_DEFS]
+
+
 def add_xp(user_id: int, event_type: str, amount: int | None = None) -> dict:
     """Adiciona XP, atualiza streak e verifica conquistas."""
     from datetime import datetime, timedelta

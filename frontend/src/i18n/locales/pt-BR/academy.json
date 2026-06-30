@@ -81,7 +81,8 @@
       "lessonDone": "Lição concluída!",
       "mastery": "Domínio da categoria",
       "finish": "Finalizar",
-      "loopHint": "O treino te prepara. Jogue um torneio e importe pra ver o efeito no seu jogo real."
+      "loopHint": "O treino te prepara. Jogue um torneio e importe pra ver o efeito no seu jogo real.",
+      "unlocked": "Conquista desbloqueada!"
     },
     "vCorrect": "Correto",
     "vMixed": "Aceitável",
@@ -100,6 +101,56 @@
       "raise3": "3-Bet",
       "raise4": "4-Bet",
       "raisePost": "Raise"
+    }
+  },
+  "trainAch": {
+    "train_first": {
+      "title": "Primeiro acerto",
+      "desc": "Você acertou seu primeiro spot de treino."
+    },
+    "train_reps50": {
+      "title": "Aquecido",
+      "desc": "50 spots treinados."
+    },
+    "train_silver": {
+      "title": "Prata",
+      "desc": "Levou uma habilidade ao nível Prata."
+    },
+    "train_gold": {
+      "title": "Ouro",
+      "desc": "Levou uma habilidade ao nível Ouro."
+    },
+    "train_reps200": {
+      "title": "Dedicado",
+      "desc": "200 spots treinados."
+    },
+    "train_explorer": {
+      "title": "Explorador",
+      "desc": "Treinou 5 habilidades diferentes."
+    },
+    "train_gold3": {
+      "title": "Tríade de Ouro",
+      "desc": "3 habilidades no Ouro ou acima."
+    },
+    "train_diamond": {
+      "title": "Diamante",
+      "desc": "Levou uma habilidade ao nível Diamante."
+    },
+    "train_streak3": {
+      "title": "Pegando ritmo",
+      "desc": "3 dias de treino seguidos."
+    },
+    "train_streak7": {
+      "title": "Constante",
+      "desc": "7 dias de treino seguidos."
+    },
+    "train_reps1000": {
+      "title": "Veterano",
+      "desc": "1000 spots treinados."
+    },
+    "train_streak30": {
+      "title": "Imparável",
+      "desc": "30 dias de treino seguidos."
     }
   },
   "feedback": {

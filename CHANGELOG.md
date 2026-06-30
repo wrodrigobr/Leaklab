@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(training): conquistas EXCLUSIVAS do treino + medalhas por tier
+
+> Correção do escopo: o hub estava reusando as conquistas globais (eixo ELO) — agora há um **conjunto próprio de conquistas de treino** (12: volume 50/200/1000 spots, tiers Prata/Ouro/Diamante, 3 no Ouro, 5 habilidades, streaks 3/7/30 dias, primeiro acerto), em tabela separada `training_achievements` (não polui as globais). Critério no backend (`_TRAINING_ACHIEVEMENT_DEFS` = predicado sobre o estado de treino), **copy no i18n do frontend** (`academy:trainAch.<key>.*`, PT/EN/ES) — i18n de verdade. `evaluate_training_achievements` concede no `/grade` e devolve as recém-desbloqueadas → o **veredito da lição comemora** ("Conquista desbloqueada!"). O hub "Seu treino" agora mostra: **faixa de medalhas por tier** (Bronze/Prata/Ouro/Diamante com contagem) + domínio por habilidade + o caminho de conquistas (desbloqueadas/travadas, X de Y). Backend `get_training_achievements` + overview usa as de treino. Testes training_gamification 9/9, tsc 0.
+
 ### feat(training): hub "Seu treino" — status + domínio por habilidade + conquistas
 
 > No hub de Treino (`Training.tsx`), nova seção "Seu treino" no topo (eixo de gamificação, SEPARADO do ELO): **XP + streak** (gamificação, não o nível-ELO), **domínio por habilidade** (barras + tier Bronze/Prata/Ouro/Diamante, rótulos reusando as chaves i18n do Leak Trainer) e **conquistas como caminho** (catálogo completo: desbloqueadas destacadas, travadas esmaecidas com cadeado + "X de Y") — o jogador vê onde está e o que falta conquistar. Backend: `get_all_achievements` (catálogo + flag unlocked) + agregador `GET /player/training/overview` (xp+skills+achievements numa chamada). Honesto: usa XP de gamificação (`/player/xp`), nunca o nível derivado de ELO. Testes: training_gamification 7/7; tsc 0; i18n PT/EN/ES. Próximo: trilha/curso com skills não-iniciadas (catálogo) + missões diárias (Fase 2).
