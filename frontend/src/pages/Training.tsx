@@ -200,7 +200,8 @@ export default function Training() {
                 <span className="font-mono text-[10px] text-muted-foreground">{unlockedCount} {t("status.of")} {overview.achievements.length}</span>
               </div>
               {/* Linha do tempo: marcos numerados; nome no tooltip (hover) */}
-              <div className="overflow-x-auto pb-1">
+              {/* px/py dão folga p/ o ring + hover:scale dos círculos das pontas não serem cortados pelo overflow */}
+              <div className="overflow-x-auto px-2 py-2">
                 <div className="relative flex w-full min-w-[520px] items-center justify-between">
                   <div className="pointer-events-none absolute inset-x-4 top-1/2 h-0.5 -translate-y-1/2 bg-border" aria-hidden />
                   {overview.achievements.map((a, i) => (
