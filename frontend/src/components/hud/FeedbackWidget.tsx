@@ -46,6 +46,17 @@ export function FeedbackWidget() {
     try { localStorage.setItem(NUDGE_KEY, JSON.stringify({ shown: true, count: NUDGE_AFTER })); } catch { /* noop */ }
   };
 
+  // Abrir o modal a partir de fora (ex.: opção "Sugestões e feedback" no sino) — em telas
+  // pequenas o FAB fica escondido, então a entrada é o sino. Desacoplado via evento global.
+  useEffect(() => {
+    const onOpen = () => {
+      setOpen(true); setNudge(false);
+      try { localStorage.setItem(NUDGE_KEY, JSON.stringify({ shown: true, count: NUDGE_AFTER })); } catch { /* noop */ }
+    };
+    window.addEventListener("leaklab:open-feedback", onOpen);
+    return () => window.removeEventListener("leaklab:open-feedback", onOpen);
+  }, []);
+
   if (!user || HIDE_ON.some((p) => pathname.startsWith(p))) return null;
 
   const submit = async () => {
@@ -65,7 +76,7 @@ export function FeedbackWidget() {
     <>
       {/* Nudge proativo */}
       {nudge && !open && (
-        <div className="fixed bottom-[4.5rem] right-4 z-40 max-w-[260px] animate-fade-in rounded-xl border border-amber-500/40 bg-hud-surface p-3 shadow-xl">
+        <div className="fixed bottom-[4.5rem] right-4 z-40 hidden max-w-[260px] animate-fade-in rounded-xl border border-amber-500/40 bg-hud-surface p-3 shadow-xl sm:block">
           <button onClick={markNudgeDone} className="absolute right-2 top-2 text-muted-foreground transition-colors hover:text-foreground"><X className="size-3.5" aria-hidden /></button>
           <p className="pr-4 text-xs leading-relaxed text-foreground">{t("feedback.nudge")}</p>
           <button onClick={() => { markNudgeDone(); setOpen(true); }}
@@ -77,7 +88,7 @@ export function FeedbackWidget() {
 
       {/* FAB */}
       <button onClick={() => { setOpen(true); markNudgeDone(); }} title={t("feedback.title")} aria-label={t("feedback.title")}
-        className="fixed bottom-4 right-4 z-40 inline-flex size-12 items-center justify-center rounded-full bg-amber-500 text-black shadow-lg transition-transform hover:scale-105 active:scale-95">
+        className="fixed bottom-4 right-4 z-40 hidden size-12 items-center justify-center rounded-full bg-amber-500 text-black shadow-lg transition-transform hover:scale-105 active:scale-95 sm:inline-flex">
         <MessageSquarePlus className="size-5" aria-hidden />
       </button>
 

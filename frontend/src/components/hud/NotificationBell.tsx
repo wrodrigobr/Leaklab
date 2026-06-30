@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useCallback, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
-import { Bell, Trash2 } from "lucide-react";
+import { Bell, Trash2, MessageSquarePlus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { notifications as notifApi, NotificationItem } from "@/lib/api";
 
@@ -115,6 +115,14 @@ export function NotificationBell({ renderActions, extraUnread = 0 }: Notificatio
               {renderActions(() => setOpen(false))}
             </div>
           )}
+          {/* Sugestões e feedback (abre o modal do FeedbackWidget via evento global) */}
+          <button
+            onClick={() => { setOpen(false); window.dispatchEvent(new Event("leaklab:open-feedback")); }}
+            className="flex w-full items-center gap-2 border-b border-border px-3 py-2.5 text-left text-[12px] text-foreground transition-colors hover:bg-primary/5"
+          >
+            <MessageSquarePlus className="size-4 shrink-0 text-amber-400" aria-hidden />
+            {t("feedback.title")}
+          </button>
           <div className="flex items-center justify-between px-3 py-2 border-b border-border">
             <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
               {t("notifications.title")}
