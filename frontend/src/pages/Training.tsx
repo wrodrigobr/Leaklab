@@ -170,8 +170,6 @@ export default function Training() {
               })}
             </div>
 
-            {/* Domínio + Conquistas lado a lado em telas largas (melhor uso do espaço) */}
-            <div className="grid gap-5 lg:grid-cols-2">
             {/* Domínio por habilidade — onde o jogador está */}
             <div>
               <p className="mb-2 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">{t("status.skills")}</p>
@@ -201,19 +199,18 @@ export default function Training() {
                 <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">{t("status.achievements")}</p>
                 <span className="font-mono text-[10px] text-muted-foreground">{unlockedCount} {t("status.of")} {overview.achievements.length}</span>
               </div>
-              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+              <div className="flex flex-wrap gap-2">
                 {overview.achievements.map((a) => (
                   <div key={a.key} title={ta(`trainAch.${achKey(a.key)}.desc`)}
-                    className={cn("flex items-center gap-2 rounded-lg px-3 py-2 ring-1 transition-colors",
+                    className={cn("inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 ring-1 transition-colors",
                       a.unlocked ? "bg-primary/[0.08] ring-primary/30" : "bg-muted/10 opacity-55 ring-border")}>
                     {a.unlocked
-                      ? <Trophy className="size-4 shrink-0 text-primary" aria-hidden />
-                      : <Lock className="size-4 shrink-0 text-muted-foreground" aria-hidden />}
-                    <span className={cn("truncate text-[12px] font-bold", a.unlocked ? "text-foreground" : "text-muted-foreground")}>{ta(`trainAch.${achKey(a.key)}.title`)}</span>
+                      ? <Trophy className="size-3.5 shrink-0 text-primary" aria-hidden />
+                      : <Lock className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />}
+                    <span className={cn("text-[11px] font-bold", a.unlocked ? "text-foreground" : "text-muted-foreground")}>{ta(`trainAch.${achKey(a.key)}.title`)}</span>
                   </div>
                 ))}
               </div>
-            </div>
             </div>
           </div>
         )}
