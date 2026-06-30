@@ -57,7 +57,7 @@ export default function Training() {
             </div>
             <div className="min-w-0 flex-1">
               <h3 className="font-heading text-base font-bold text-foreground">{t("trainer.review.title")}</h3>
-              <p className="truncate text-xs text-muted-foreground">{t("trainer.review.desc")}</p>
+              <p className="line-clamp-2 text-xs leading-snug text-muted-foreground">{t("trainer.review.desc")}</p>
             </div>
             <ArrowRight className="size-4 shrink-0 text-primary transition-transform group-hover:translate-x-0.5" aria-hidden />
           </Link>
@@ -68,7 +68,7 @@ export default function Training() {
             </div>
             <div className="min-w-0 flex-1">
               <h3 className="font-heading text-base font-bold text-foreground">{t("trainer.train.title")}</h3>
-              <p className="truncate text-xs text-muted-foreground">{t("trainer.train.desc")}</p>
+              <p className="line-clamp-2 text-xs leading-snug text-muted-foreground">{t("trainer.train.desc")}</p>
             </div>
             <ArrowRight className="size-4 shrink-0 text-amber-400 transition-transform group-hover:translate-x-0.5" aria-hidden />
           </Link>
@@ -79,7 +79,7 @@ export default function Training() {
             </div>
             <div className="min-w-0 flex-1">
               <h3 className="font-heading text-base font-bold text-foreground">{t("academy.title")}</h3>
-              <p className="truncate text-xs text-muted-foreground">{t("academy.desc")}</p>
+              <p className="line-clamp-2 text-xs leading-snug text-muted-foreground">{t("academy.desc")}</p>
             </div>
             <ArrowRight className="size-4 shrink-0 text-violet-400 transition-transform group-hover:translate-x-0.5" aria-hidden />
           </Link>
