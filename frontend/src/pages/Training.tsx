@@ -199,11 +199,11 @@ export default function Training() {
                 <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">{t("status.achievements")}</p>
                 <span className="font-mono text-[10px] text-muted-foreground">{unlockedCount} {t("status.of")} {overview.achievements.length}</span>
               </div>
-              {/* Linha do tempo: marcos numerados; nome no tooltip (hover) */}
-              {/* px/py dão folga p/ o ring + hover:scale dos círculos das pontas não serem cortados pelo overflow */}
-              <div className="overflow-x-auto px-2 py-2">
-                <div className="relative flex w-full min-w-[520px] items-center justify-between">
-                  <div className="pointer-events-none absolute inset-x-4 top-1/2 h-0.5 -translate-y-1/2 bg-border" aria-hidden />
+              {/* Linha do tempo: 1 linha (com a barra) no desktop; no celular vira grade de 2
+                  linhas (6 col), SEM scroll horizontal. px/py dão folga pro ring + hover:scale. */}
+              <div className="px-2 py-2">
+                <div className="relative grid grid-cols-6 justify-items-center gap-y-3 sm:flex sm:w-full sm:items-center sm:justify-between">
+                  <div className="pointer-events-none absolute inset-x-4 top-1/2 hidden h-0.5 -translate-y-1/2 bg-border sm:block" aria-hidden />
                   {overview.achievements.map((a, i) => (
                     <div key={a.key}
                       title={`${ta(`trainAch.${achKey(a.key)}.title`)} · ${ta(`trainAch.${achKey(a.key)}.desc`)}`}
