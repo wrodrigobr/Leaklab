@@ -2,6 +2,13 @@
   "eyebrow": "Training Module",
   "title": "Training",
   "subtitle": "Train your leaks and master the fundamentals.",
+  "status": {
+    "title": "Your training",
+    "skills": "Mastery by skill",
+    "noSkills": "You haven't trained any skill yet. Start a session below.",
+    "achievements": "Achievements",
+    "of": "of"
+  },
   "ghost": {
     "title": "Ghost Table",
     "badge": "Spaced Repetition",

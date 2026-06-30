@@ -2,6 +2,13 @@
   "eyebrow": "Módulo de Treino",
   "title": "Treinos",
   "subtitle": "Treine seus leaks e domine os fundamentos.",
+  "status": {
+    "title": "Seu treino",
+    "skills": "Domínio por habilidade",
+    "noSkills": "Você ainda não treinou nenhuma habilidade. Comece um treino abaixo.",
+    "achievements": "Conquistas",
+    "of": "de"
+  },
   "ghost": {
     "title": "Ghost Table",
     "badge": "Spaced Repetition",

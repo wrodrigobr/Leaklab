@@ -2090,6 +2090,19 @@ def training_skills():
     return jsonify({'skills': get_training_skills(g.user_id)})
 
 
+@app.route('/player/training/overview', methods=['GET'])
+@require_auth
+def training_overview():
+    """Status do treino do jogador (eixo de gamificação, SEPARADO do ELO): XP+streak,
+    domínio por habilidade e o catálogo de conquistas (com unlocked) — pro hub de Treino."""
+    from database.repositories import get_training_skills, get_all_achievements
+    return jsonify({
+        'xp':           get_xp_status(g.user_id),
+        'skills':       get_training_skills(g.user_id),
+        'achievements': get_all_achievements(g.user_id),
+    })
+
+
 @app.route('/player/strategic-twin', methods=['GET'])
 @require_auth
 def player_strategic_twin():

@@ -5702,6 +5702,21 @@ def get_achievements(user_id: int) -> list:
         conn.close()
 
 
+def get_all_achievements(user_id: int) -> list:
+    """Catálogo COMPLETO de conquistas + flag `unlocked` — pro 'caminho' da tela de treino
+    (o jogador vê o que já conquistou E o que falta). Ordem = ordem de definição."""
+    conn = get_conn()
+    try:
+        earned = {r['achievement_key']: r['earned_at'] for r in conn.execute(
+            _adapt("SELECT achievement_key, earned_at FROM achievements WHERE user_id = ?"),
+            (user_id,)).fetchall()}
+    finally:
+        conn.close()
+    return [{'key': k, 'title': title, 'desc': desc,
+             'unlocked': k in earned, 'earned_at': earned.get(k)}
+            for k, title, desc in _ACHIEVEMENT_DEFS]
+
+
 # ── Coach Plan Templates — FEAT-09 ───────────────────────────────────────────
 
 def get_coach_templates(coach_id: int) -> list:

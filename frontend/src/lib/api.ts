@@ -1025,6 +1025,31 @@ export const leaktrainer = {
     }),
 };
 
+// ── Gamificação de treino (status/conquistas) — eixo SEPARADO do ELO ──
+export interface TrainingSkill {
+  category_key: string;
+  attempts: number;
+  correct: number;
+  mastery: number;
+  tier: "bronze" | "silver" | "gold" | "diamond";
+  last_practiced_at?: string | null;
+}
+export interface TrainingAchievement {
+  key: string;
+  title: string;
+  desc: string;
+  unlocked: boolean;
+  earned_at: string | null;
+}
+export interface TrainingOverview {
+  xp: { xp_total: number; streak: number; last_activity: string | null };
+  skills: TrainingSkill[];
+  achievements: TrainingAchievement[];
+}
+export const training = {
+  overview: () => request<TrainingOverview>("/player/training/overview"),
+};
+
 export const sparring = {
   hand: (hand_id?: string, tournament_id?: number, exclude_hand_ids?: string[]) => {
     const q = new URLSearchParams();

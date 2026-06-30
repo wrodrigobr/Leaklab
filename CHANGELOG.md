@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(training): hub "Seu treino" — status + domínio por habilidade + conquistas
+
+> No hub de Treino (`Training.tsx`), nova seção "Seu treino" no topo (eixo de gamificação, SEPARADO do ELO): **XP + streak** (gamificação, não o nível-ELO), **domínio por habilidade** (barras + tier Bronze/Prata/Ouro/Diamante, rótulos reusando as chaves i18n do Leak Trainer) e **conquistas como caminho** (catálogo completo: desbloqueadas destacadas, travadas esmaecidas com cadeado + "X de Y") — o jogador vê onde está e o que falta conquistar. Backend: `get_all_achievements` (catálogo + flag unlocked) + agregador `GET /player/training/overview` (xp+skills+achievements numa chamada). Honesto: usa XP de gamificação (`/player/xp`), nunca o nível derivado de ELO. Testes: training_gamification 7/7; tsc 0; i18n PT/EN/ES. Próximo: trilha/curso com skills não-iniciadas (catálogo) + missões diárias (Fase 2).
+
 ### feat(training): tela de conclusão de lição comemorativa (estilo Duolingo) + Finalizar
 
 > Frontend da Fase 1 (parte 1): a tela de fim de sessão do Leak Trainer virou uma **conclusão de lição comemorativa** no padrão Duolingo — header com troféu, **confete** ao concluir (`canvas-confetti`, mais forte se ≥80% acerto, respeita prefers-reduced-motion), 3 stats grandes (feitos/acerto/XP), e a **barra de DOMÍNIO da categoria antes→depois** com badge de tier (Bronze/Prata/Ouro/Diamante) consumindo o `training` do `/grade` (o eixo de treino, honesto — não finge mexer no ELO). Botões **Continuar** (nova lição) + **Finalizar** (→ dashboard, substitui "Nova sessão" conforme pedido). Copy de loop honesto: "o treino te prepara, jogue e importe pra ver no jogo real" (sem delta forjado de ELO). i18n PT/EN/ES, tsc 0. Próximo: home/mapa de trilha com domínio por skill + missões diárias (Fase 2).

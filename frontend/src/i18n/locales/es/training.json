@@ -2,6 +2,13 @@
   "eyebrow": "Módulo de Entrenamiento",
   "title": "Entrenamiento",
   "subtitle": "Entrena tus fugas y domina los fundamentos.",
+  "status": {
+    "title": "Tu entrenamiento",
+    "skills": "Dominio por habilidad",
+    "noSkills": "Aún no entrenaste ninguna habilidad. Empieza una sesión abajo.",
+    "achievements": "Logros",
+    "of": "de"
+  },
   "ghost": {
     "title": "Ghost Table",
     "badge": "Repetición Espaciada",

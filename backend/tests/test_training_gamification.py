@@ -16,7 +16,7 @@ os.environ['LEAKLAB_DB'] = _TMPDB.name
 
 from database.schema import init_db, get_conn
 from database.repositories import (
-    record_training_attempt, get_training_skills, _mastery_tier,
+    record_training_attempt, get_training_skills, _mastery_tier, get_all_achievements,
 )
 init_db()
 
@@ -95,6 +95,23 @@ def test_isolation_by_category():
     r2 = record_training_attempt(uid, 'pf:bb_defense', True)
     assert r2['attempts'] == 1, r2   # categoria nova começa do zero
     print("OK  test_isolation_by_category")
+
+
+def test_all_achievements_path_locked_then_unlocked():
+    """Catálogo completo de conquistas: tudo travado no início; ao ganhar uma, vira unlocked."""
+    uid = _mk_user()
+    allac = get_all_achievements(uid)
+    assert len(allac) > 0 and all(not a['unlocked'] for a in allac), "tudo travado no início"
+    key = allac[0]['key']
+    c = get_conn()
+    c.execute("INSERT INTO achievements (user_id, achievement_key, earned_at) VALUES (?,?,datetime('now'))",
+              (uid, key))
+    c.commit(); c.close()
+    allac2 = get_all_achievements(uid)
+    unlocked = [a for a in allac2 if a['unlocked']]
+    assert len(unlocked) == 1 and unlocked[0]['key'] == key, allac2
+    assert len(allac2) == len(allac), "o catálogo não muda de tamanho, só o flag"
+    print("OK  test_all_achievements_path_locked_then_unlocked")
 
 
 if __name__ == '__main__':
