@@ -63,10 +63,14 @@ export default function Training() {
   const gatePct = readiness && readiness.total > 0
     ? Math.round((readiness.done / readiness.total) * 100) : 0;
   const gateTierLabel = readiness?.target_tier ? TIER[readiness.target_tier].label : "";
+  // A jornada é SEQUENCIAL: não pode acender um passo à frente sem o anterior concluído.
+  // "Comprovar" só habilita se "Aplicar" foi concluído (gate atingido = ready) E há prova —
+  // subir um torneio sem estar "pronto" (pulando o Aplicar) NÃO libera o Comprovar.
+  const applied = ready && proof.length > 0;
   const JOURNEY = [
     { key: "train", icon: Dumbbell, status: ready ? "done" : "active" },
-    { key: "apply", icon: Play, status: ready ? "active" : "locked" },
-    { key: "prove", icon: TrendingUp, status: proof.length > 0 ? "active" : "soon" },
+    { key: "apply", icon: Play, status: ready ? (proof.length > 0 ? "done" : "active") : "locked" },
+    { key: "prove", icon: TrendingUp, status: applied ? "active" : "soon" },
   ] as const;
 
   return (
@@ -227,8 +231,8 @@ export default function Training() {
           </div>
         )}
 
-        {/* ── PROVAR — loop validado: aderência GTO REAL da categoria antes × depois (Fase 4) ── */}
-        {proof.length > 0 && (
+        {/* ── COMPROVAR — só quando seguiu a jornada (Aplicar concluído = ready + prova). ── */}
+        {applied && (
           <div className="rounded-2xl border border-border bg-card/40 p-5">
             <h2 className="mb-1 flex items-center gap-2 font-heading text-base font-bold text-foreground">
               <TrendingUp className="size-4 text-primary" aria-hidden /> {t("proof.title")}

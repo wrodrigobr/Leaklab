@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(training): jornada sequencial — "Comprovar" só acende com "Aplicar" concluído
+
+> Bug de consistência: "Comprovar" ficava verde sempre que existia prova (`proof.length>0`), independente do "Aplicar" — subir um torneio sem atingir o gate (pular etapa) deixava Treinar verde, Aplicar cinza e Comprovar verde (passo à frente sem o anterior). Agora a jornada é **sequencial**: `applied = ready && proof` (gate atingido E jogou/importou). "Aplicar" fica `done` só quando aplicou; "Comprovar" (passo + card) só habilita quando `applied`. Pular o Aplicar não libera o Comprovar.
+
 ### fix(training): passo "Provar" da jornada renomeado pra "Comprovar" (mais intuitivo)
 
 > O 3º passo da jornada (Treinar → Aplicar → Comprovar) e o título do card mudaram de "Provar" pra **Comprovar** (PT) / **Confirm** (EN) / **Comprobar** (ES) — nome mais claro pro "ver a melhora real no jogo". Só display (i18n `journey.prove.title` + `proof.title`); as chaves internas seguem `prove`/`proof`.
