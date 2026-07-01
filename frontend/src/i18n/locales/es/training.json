@@ -63,23 +63,31 @@
     "title": "Tu camino",
     "train": {
       "title": "Entrenar",
-      "desc": "Domina tus fugas"
+      "desc": "Domina tus fugas",
+      "tip": "Entrena tus puntos de falla con drills GTO hasta dominar cada uno. Es el eje de práctica: da XP, dominio y logros, pero NO toca tu ELO (que viene solo de las manos reales)."
     },
     "apply": {
       "title": "Aplicar",
-      "desc": "Solo con todo en Diamante"
+      "desc": "Cuando domines tus fugas",
+      "tip": "Cuando estés listo, juega un torneo de verdad enfocándote en lo que entrenaste e importa las manos. Aquí la práctica se vuelve juego real."
     },
     "prove": {
       "title": "Probar",
-      "desc": "Mira la mejora real"
+      "desc": "Mira la mejora real",
+      "tip": "La plataforma compara tus indicadores reales antes y después del entrenamiento, para mostrar si la mejora apareció en tu juego real. Próximamente."
     },
     "soon": "Próximamente",
-    "readyMsg": "Dominaste tus {{count}} puntos de falla en Diamante. Ahora juega un torneo e impórtalo para ver la mejora en tu juego real.",
+    "readyMsg": "Dominaste tus fugas prioritarias en el entrenamiento. Ahora juega un torneo e impórtalo para ver la mejora en tu juego real.",
     "applyCta": "Jugar e importar",
     "gateTitle": "Aplicar aún bloqueado",
-    "gateHint": "Lo desbloquearás para jugar solo cuando domines TODOS tus {{count}} puntos de falla en Diamante. Entrenar una sola fuga no basta, el objetivo es cubrir todos los spots.",
-    "morePending": "más aún lejos del Diamante",
-    "keepTraining": "Seguir entrenando"
+    "gateHintDeveloping": "Aún en formación: domina tus {{count}} fugas más costosas en {{tier}} para desbloquear. Empieza por lo que más duele.",
+    "gateHintConsolidated": "Lo desbloquearás para jugar solo cuando domines TODAS tus {{count}} fugas en {{tier}}. Entrenar una sola fuga no basta, el objetivo es cubrir todos los spots.",
+    "morePending": "más aún en camino",
+    "keepTraining": "Seguir entrenando",
+    "beginnerTitle": "Primero, revela tu juego",
+    "beginnerHint": "Juega e importa tus primeros torneos ({{done}}/{{target}}) para que la plataforma mida tus puntos de falla reales. Mientras tanto, entrena los fundamentos.",
+    "tourneysUnit": "torneos",
+    "beginnerTrainCta": "Entrenar fundamentos"
   },
   "missions": {
     "title": "Misiones de hoy",

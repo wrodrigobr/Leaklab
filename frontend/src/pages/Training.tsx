@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowRight, CheckCircle2, Dumbbell, GraduationCap, RotateCw, Target, Award, Flame, Star, Trophy, Lock, Map, Play, TrendingUp, Sparkles, Medal, Gem, Compass, Crown, type LucideIcon } from "lucide-react";
+import { ArrowRight, CheckCircle2, Dumbbell, GraduationCap, RotateCw, Target, Award, Flame, Star, Trophy, Lock, Map, Play, TrendingUp, Sparkles, Medal, Gem, Compass, Crown, Info, type LucideIcon } from "lucide-react";
 import { HudLayout } from "@/components/hud/HudLayout";
 import { training } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -50,13 +50,17 @@ export default function Training() {
   const tierCounts = (["bronze", "silver", "gold", "diamond"] as const).map((tier) => ({
     tier, count: overview?.skills.filter((s) => s.tier === tier).length ?? 0,
   }));
-  // Jornada: "Aplicar" só desbloqueia quando o jogador DOMINOU TODO o currículo no Diamante
-  // (todos os pontos de falha reais, mastery>=90). Régua vem do backend (training_readiness):
-  // cobrir todos os spots do plano, não um leak só. Sem isso, sugerir torneio seria vaidade.
+  // Jornada com GATE escalonado (rampa de onboarding, backend training_readiness):
+  //   iniciante   → meta é jogar/importar (revelar o jogo), não Diamante
+  //   em formação → top-3 leaks no Ouro
+  //   consolidado → todos os leaks no Diamante
+  // A exigência sobe com a maturidade e só mira leaks REAIS quando a amostra é confiável.
   const readiness = overview?.readiness ?? null;
   const ready = readiness?.ready ?? false;
+  const isBeginner = readiness?.stage === "beginner";
   const gatePct = readiness && readiness.total > 0
-    ? Math.round((readiness.diamond / readiness.total) * 100) : 0;
+    ? Math.round((readiness.done / readiness.total) * 100) : 0;
+  const gateTierLabel = readiness?.target_tier ? TIER[readiness.target_tier].label : "";
   const JOURNEY = [
     { key: "train", icon: Dumbbell, status: ready ? "done" : "active" },
     { key: "apply", icon: Play, status: ready ? "active" : "locked" },
@@ -116,10 +120,12 @@ export default function Training() {
                 const locked = status === "locked", soon = status === "soon";
                 return (
                   <div key={key} className="flex items-center gap-2">
-                    <div className={cn("flex flex-1 flex-col items-center gap-1.5 rounded-xl p-3 text-center ring-1 transition-colors",
+                    <div title={t(`journey.${key}.tip`)}
+                      className={cn("relative flex flex-1 cursor-help flex-col items-center gap-1.5 rounded-xl p-3 text-center ring-1 transition-colors",
                       active ? "bg-primary/10 ring-primary/40"
                       : done ? "bg-emerald-500/10 ring-emerald-500/30"
                       : "bg-muted/5 opacity-60 ring-border")}>
+                      <Info className="absolute right-1.5 top-1.5 size-3 text-muted-foreground/40" aria-hidden />
                       <div className="relative">
                         <Icon className={cn("size-6", active ? "text-primary" : done ? "text-emerald-400" : "text-muted-foreground")} aria-hidden />
                         {done && <CheckCircle2 className="absolute -right-1.5 -top-1.5 size-3.5 text-emerald-400" aria-hidden />}
@@ -138,18 +144,41 @@ export default function Training() {
               })}
             </div>
 
-            {/* Gate "Aplicar": comemorativo se DOMINOU TUDO no Diamante; senão, progresso honesto
-                mostrando quantos pontos de falha faltam (abranger TODOS os spots, não um leak só). */}
-            {readiness && readiness.total > 0 && (ready ? (
+            {/* Gate "Aplicar" ESCALONADO: comemorativo se pronto; iniciante → jogar/importar;
+                em formação/consolidado → progresso honesto rumo ao tier alvo do estágio. */}
+            {readiness && (ready ? (
               <div className="mt-4 flex flex-col gap-3 rounded-xl bg-primary/[0.08] p-4 ring-1 ring-primary/30 sm:flex-row sm:items-center">
                 <Trophy className="size-6 shrink-0 text-primary" aria-hidden />
-                <p className="flex-1 text-sm text-foreground">
-                  {t("journey.readyMsg", { count: readiness.total })}
-                </p>
+                <p className="flex-1 text-sm text-foreground">{t("journey.readyMsg")}</p>
                 <Link to="/dashboard"
                   className="flex shrink-0 items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 font-mono text-xs font-bold uppercase tracking-widest text-primary-foreground transition-colors hover:bg-primary/90">
                   <Play className="size-4" aria-hidden /> {t("journey.applyCta")}
                 </Link>
+              </div>
+            ) : isBeginner ? (
+              <div className="mt-4 rounded-xl bg-primary/[0.06] p-4 ring-1 ring-primary/25">
+                <div className="mb-2 flex items-center justify-between gap-2">
+                  <p className="flex items-center gap-2 text-sm font-bold text-foreground">
+                    <Play className="size-4 text-primary" aria-hidden /> {t("journey.beginnerTitle")}
+                  </p>
+                  <span className="shrink-0 font-mono text-xs font-bold tabular-nums text-primary">
+                    {readiness.done}/{readiness.total} <span className="text-muted-foreground">{t("journey.tourneysUnit")}</span>
+                  </span>
+                </div>
+                <div className="h-2 overflow-hidden rounded-full bg-muted/30">
+                  <div className="h-full rounded-full bg-primary transition-[width] duration-500" style={{ width: `${gatePct}%` }} />
+                </div>
+                <p className="mt-2 text-xs leading-snug text-muted-foreground">{t("journey.beginnerHint", { done: readiness.done, target: readiness.total })}</p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <Link to="/dashboard"
+                    className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 font-mono text-xs font-bold uppercase tracking-widest text-primary-foreground transition-colors hover:bg-primary/90">
+                    <Play className="size-4" aria-hidden /> {t("journey.applyCta")}
+                  </Link>
+                  <Link to="/leak-trainer"
+                    className="inline-flex items-center gap-2 rounded-lg bg-amber-500/15 px-4 py-2 font-mono text-xs font-bold uppercase tracking-widest text-amber-300 ring-1 ring-amber-500/30 transition-colors hover:bg-amber-500/25">
+                    <Target className="size-4" aria-hidden /> {t("journey.beginnerTrainCta")}
+                  </Link>
+                </div>
               </div>
             ) : (
               <div className="mt-4 rounded-xl bg-muted/5 p-4 ring-1 ring-border">
@@ -157,14 +186,17 @@ export default function Training() {
                   <p className="flex items-center gap-2 text-sm font-bold text-foreground">
                     <Lock className="size-4 text-muted-foreground" aria-hidden /> {t("journey.gateTitle")}
                   </p>
-                  <span className="shrink-0 font-mono text-xs font-bold tabular-nums text-cyan-300">
-                    {readiness.diamond}/{readiness.total} <span className="text-muted-foreground">{TIER.diamond.label}</span>
+                  <span className={cn("shrink-0 font-mono text-xs font-bold tabular-nums", readiness.target_tier ? TIER[readiness.target_tier].text : "text-foreground")}>
+                    {readiness.done}/{readiness.total} <span className="text-muted-foreground">{gateTierLabel}</span>
                   </span>
                 </div>
                 <div className="h-2 overflow-hidden rounded-full bg-muted/30">
-                  <div className="h-full rounded-full bg-cyan-400 transition-[width] duration-500" style={{ width: `${gatePct}%` }} />
+                  <div className="h-full rounded-full transition-[width] duration-500"
+                    style={{ width: `${gatePct}%`, backgroundColor: readiness.target_tier ? TIER[readiness.target_tier].ring : undefined }} />
                 </div>
-                <p className="mt-2 text-xs leading-snug text-muted-foreground">{t("journey.gateHint", { count: readiness.total })}</p>
+                <p className="mt-2 text-xs leading-snug text-muted-foreground">
+                  {t(readiness.stage === "developing" ? "journey.gateHintDeveloping" : "journey.gateHintConsolidated", { count: readiness.total, tier: gateTierLabel })}
+                </p>
                 {readiness.pending.length > 0 && (
                   <div className="mt-3 space-y-1.5">
                     {readiness.pending.slice(0, 4).map((p) => {

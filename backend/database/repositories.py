@@ -5624,40 +5624,68 @@ def get_training_skills(user_id: int) -> list:
         conn.close()
 
 
-_READY_DIAMOND = 90.0   # gate 'Aplicar': só Diamante conta como ponto de falha DOMINADO
+_READY_GOLD    = 70.0    # tier alvo no estágio "em formação" (amostra ainda pequena)
+_READY_DIAMOND = 90.0    # tier alvo no estágio "consolidado" (leak medido é confiável)
+_READY_BEGINNER_TOURNEYS = 5    # < isso (ou sem leaks reais) → iniciante: meta é JOGAR/importar
+_READY_CONSOLIDATED_TOURNEYS = 15   # >= isso → régua cheia (todos os leaks no Diamante)
+_READY_TOP_N = 3         # em formação: só os N leaks mais custosos (amostra mais firme)
+
 
 def training_readiness(user_id: int) -> dict:
-    """Régua do gate 'Aplicar' da jornada: o jogador só é direcionado a jogar um torneio quando
-    DOMINOU TODO o currículo no Diamante (mastery>=90). O currículo = seus pontos de falha REAIS
-    (leaks mapeados p/ cenários treináveis) + fundamentos/piloto postflop. 'Qualquer um no Ouro'
-    era fraco — a régua honesta cobre TODOS os spots do plano, não um leak só.
-    Devolve {total, diamond, ready, pending:[{category_key, mastery, tier}]} (pending ordenado
-    por mastery desc → mostra primeiro o que está mais perto de fechar)."""
+    """Régua do gate 'Aplicar' da jornada, ESCALONADA pela maturidade do jogador (rampa de onboarding).
+    Pro iniciante o gargalo não é domínio, é FALTA DE DADO — então a meta dele é jogar/importar, não
+    grindar drill. À medida que sobe torneios, a régua endurece e passa a mirar os LEAKS REAIS medidos:
+      • iniciante   (<5 torneios OU sem leaks medidos) → meta = importar os 1ºs torneios (revelar o jogo)
+      • em formação (5–14 torneios)                    → top-3 leaks mais custosos no OURO (amostra p/p)
+      • consolidado (15+ torneios)                     → TODOS os leaks reais no DIAMANTE
+    O piloto postflop e os fundamentos (n=0) NÃO entram no denominador — não são falha medida.
+    Devolve {stage, tournaments, target(=alvo do estágio), total, done, ready,
+             target_tier, pending:[{category_key, mastery, tier}]}."""
     if not user_id:
-        return {'total': 0, 'diamond': 0, 'ready': False, 'pending': []}
+        return {'stage': 'beginner', 'tournaments': 0, 'target': _READY_BEGINNER_TOURNEYS,
+                'total': _READY_BEGINNER_TOURNEYS, 'done': 0, 'ready': False,
+                'target_tier': None, 'pending': []}
+    conn = get_conn()
+    try:
+        row = _fetchone(conn, _adapt("SELECT COUNT(*) AS n FROM tournaments WHERE user_id=?"), (user_id,))
+        tourneys = int((dict(row).get('n') if row else 0) or 0)
+    finally:
+        conn.close()
+    # leaks REAIS medidos = currículo com n>0 (exclui fundamentos-fallback e piloto postflop),
+    # já ordenados por EV perdido desc (o 1º é o que mais custa).
     from leaklab.leak_trainer import build_curriculum
     try:
         curriculum = build_curriculum(user_id)
     except Exception:
         curriculum = []
-    keys, seen = [], set()
+    real_leaks, seen = [], set()
     for c in curriculum:
         k = c.get('key')
-        if k and k not in seen:
-            seen.add(k); keys.append(k)
-    if not keys:
-        return {'total': 0, 'diamond': 0, 'ready': False, 'pending': []}
+        if k and k not in seen and int(c.get('n') or 0) > 0:
+            seen.add(k); real_leaks.append(k)
+    # Estágio INICIANTE: poucos torneios OU nenhum leak medido → meta é jogar/importar (não Diamante).
+    if tourneys < _READY_BEGINNER_TOURNEYS or not real_leaks:
+        return {'stage': 'beginner', 'tournaments': tourneys, 'target': _READY_BEGINNER_TOURNEYS,
+                'total': _READY_BEGINNER_TOURNEYS, 'done': min(tourneys, _READY_BEGINNER_TOURNEYS),
+                'ready': False, 'target_tier': None, 'pending': []}
+    if tourneys < _READY_CONSOLIDATED_TOURNEYS:
+        stage, target, target_tier = 'developing', _READY_GOLD, 'gold'
+        required = real_leaks[:_READY_TOP_N]
+    else:
+        stage, target, target_tier = 'consolidated', _READY_DIAMOND, 'diamond'
+        required = real_leaks
     mastery_by = {s['category_key']: float(s.get('mastery') or 0) for s in get_training_skills(user_id)}
-    diamond, pending = 0, []
-    for k in keys:
+    done, pending = 0, []
+    for k in required:
         m = mastery_by.get(k, 0.0)
-        if m >= _READY_DIAMOND:
-            diamond += 1
+        if m >= target:
+            done += 1
         else:
             pending.append({'category_key': k, 'mastery': round(m, 1), 'tier': _mastery_tier(m)})
     pending.sort(key=lambda p: p['mastery'], reverse=True)
-    return {'total': len(keys), 'diamond': diamond,
-            'ready': diamond == len(keys), 'pending': pending}
+    return {'stage': stage, 'tournaments': tourneys, 'target': target, 'total': len(required),
+            'done': done, 'ready': done == len(required) and len(required) > 0,
+            'target_tier': target_tier, 'pending': pending}
 
 
 # Conquistas EXCLUSIVAS do treino (eixo de gamificação, separado das globais/ELO). O critério é o

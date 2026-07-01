@@ -63,23 +63,31 @@
     "title": "Sua jornada",
     "train": {
       "title": "Treinar",
-      "desc": "Domine seus leaks"
+      "desc": "Domine seus leaks",
+      "tip": "Treine seus pontos de falha com drills GTO até dominar cada um. É o eixo de prática: rende XP, domínio e conquistas, mas NÃO mexe no seu ELO (que vem só das mãos reais)."
     },
     "apply": {
       "title": "Aplicar",
-      "desc": "Só com tudo no Diamante"
+      "desc": "Quando dominar seus leaks",
+      "tip": "Quando estiver pronto, jogue um torneio de verdade com o foco no que treinou e importe as mãos. É aqui que a prática vira jogo real."
     },
     "prove": {
       "title": "Provar",
-      "desc": "Veja a melhora real"
+      "desc": "Veja a melhora real",
+      "tip": "A plataforma compara seus indicadores reais antes e depois do treino, pra mostrar se a melhora apareceu no jogo de verdade. Em breve."
     },
     "soon": "Em breve",
-    "readyMsg": "Você dominou seus {{count}} pontos de falha no Diamante. Agora jogue um torneio e importe pra ver a melhora no seu jogo real.",
+    "readyMsg": "Você dominou seus leaks prioritários no treino. Agora jogue um torneio e importe pra ver a melhora no seu jogo real.",
     "applyCta": "Jogar e importar",
     "gateTitle": "Aplicar ainda bloqueado",
-    "gateHint": "Libere jogando só quando dominar TODOS os seus {{count}} pontos de falha no Diamante. Treinar um leak só não basta, o objetivo é cobrir todos os spots.",
-    "morePending": "outros ainda longe do Diamante",
-    "keepTraining": "Continuar treinando"
+    "gateHintDeveloping": "Ainda em formação: domine seus {{count}} leaks mais custosos no {{tier}} pra liberar. Comece pelo que mais dói.",
+    "gateHintConsolidated": "Libere jogando só quando dominar TODOS os seus {{count}} leaks no {{tier}}. Treinar um leak só não basta, o objetivo é cobrir todos os spots.",
+    "morePending": "outros ainda no caminho",
+    "keepTraining": "Continuar treinando",
+    "beginnerTitle": "Primeiro, revele seu jogo",
+    "beginnerHint": "Jogue e importe seus primeiros torneios ({{done}}/{{target}}) pra plataforma medir seus pontos de falha reais. Enquanto isso, treine os fundamentos.",
+    "tourneysUnit": "torneios",
+    "beginnerTrainCta": "Treinar fundamentos"
   },
   "missions": {
     "title": "Missões de hoje",

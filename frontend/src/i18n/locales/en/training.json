@@ -63,23 +63,31 @@
     "title": "Your journey",
     "train": {
       "title": "Train",
-      "desc": "Master your leaks"
+      "desc": "Master your leaks",
+      "tip": "Train your failure points with GTO drills until you master each one. It's the practice axis: it earns XP, mastery and achievements, but does NOT touch your ELO (which comes only from real hands)."
     },
     "apply": {
       "title": "Apply",
-      "desc": "Only with all at Diamond"
+      "desc": "When you master your leaks",
+      "tip": "When you're ready, play a real tournament focusing on what you trained and import the hands. This is where practice turns into real play."
     },
     "prove": {
       "title": "Prove",
-      "desc": "See the real improvement"
+      "desc": "See the real improvement",
+      "tip": "The platform compares your real metrics before and after training, to show whether the improvement showed up in your actual game. Coming soon."
     },
     "soon": "Coming soon",
-    "readyMsg": "You mastered all {{count}} of your failure points at Diamond. Now play a tournament and import it to see the improvement in your real game.",
+    "readyMsg": "You mastered your priority leaks in training. Now play a tournament and import it to see the improvement in your real game.",
     "applyCta": "Play & import",
     "gateTitle": "Apply still locked",
-    "gateHint": "You'll unlock playing only when you master ALL {{count}} of your failure points at Diamond. Training a single leak isn't enough, the goal is to cover every spot.",
-    "morePending": "more still short of Diamond",
-    "keepTraining": "Keep training"
+    "gateHintDeveloping": "Still developing: master your {{count}} most costly leaks at {{tier}} to unlock. Start with what hurts most.",
+    "gateHintConsolidated": "You'll unlock playing only when you master ALL {{count}} of your leaks at {{tier}}. Training a single leak isn't enough, the goal is to cover every spot.",
+    "morePending": "more still on the way",
+    "keepTraining": "Keep training",
+    "beginnerTitle": "First, reveal your game",
+    "beginnerHint": "Play and import your first tournaments ({{done}}/{{target}}) so the platform can measure your real failure points. Meanwhile, train the fundamentals.",
+    "tourneysUnit": "tournaments",
+    "beginnerTrainCta": "Train fundamentals"
   },
   "missions": {
     "title": "Today's missions",

@@ -7,6 +7,14 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(training): gate "Aplicar" vira rampa de onboarding (3 estágios) + tooltips da jornada
+
+> Evolução do gate: em vez de exigir Diamante em tudo pra todo mundo, a régua agora **escala com a maturidade do jogador** (o gargalo do iniciante é falta de DADO, não domínio). `training_readiness` escolhe o estágio pelo nº de torneios importados: **iniciante** (<5 torneios ou sem leaks medidos) → meta é jogar/importar os 1ºs torneios pra revelar o jogo (progresso torneios/5, CTA jogar + treinar fundamentos); **em formação** (5–14) → top-3 leaks mais custosos no **Ouro**; **consolidado** (15+) → TODOS os leaks reais no **Diamante**. Denominador conta só leaks REAIS medidos (`n>0`), excluindo fundamentos/piloto postflop. Incentiva o iniciante a jogar mais e subir desde o dia 1, e só mira leak quando a amostra é confiável. Frontend: painel do gate muda por estágio; **tooltips explicativos** (Info + title) em Treinar/Aplicar/Provar. i18n PT/EN/ES. Testes de estágio (beginner/developing/consolidated) 13/13, tsc 0.
+
+### fix(training): conquistas viram grade de medalhas (não sequência numerada)
+
+> Os números 1..12 + a linha conectora davam impressão de trilha sequencial, mas as conquistas são gatilhos independentes (dava pra ter a #4 sem a #2). Agora cada conquista tem ÍCONE próprio por natureza (halteres=volume, troféu/medalha/gema=tier, chama=streak), numa grade que quebra linha. Desbloqueada = colorida com brilho; travada = cinza com cadeado. Subtítulo diz que se ganha em qualquer ordem. i18n PT/EN/ES.
+
 ### feat(training): gate "Aplicar" exige TODOS os pontos de falha no Diamante
 
 > A régua da jornada estava fraca: bastava **uma** habilidade no Ouro (mastery≥70) pra sugerir jogar um torneio. Correção do dono: "meia dúzia de exercícios num leak e já indicar torneio é muito pouco; precisamos abranger mais spots, e só direcionar o torneio quando todos os pontos de falha estiverem dominados no Diamante". Agora o gate só libera quando o jogador **dominou TODO o currículo no Diamante** (mastery≥90 em cada categoria). Backend: `training_readiness(user_id)` cruza `build_curriculum` (leaks reais + fundamentos) × domínio de treino → `{total, diamond, ready, pending}`, exposto em `/training/overview.readiness`. Frontend (`Training.tsx`): quando bloqueado, o hub mostra **progresso honesto** (barra X/Y no Diamante + lista das categorias que faltam com seu tier) e CTA "Continuar treinando"; só quando `ready` aparece o convite comemorativo pra jogar/importar. i18n PT/EN/ES. Teste `test_readiness_gate_requires_all_diamond`; training 11/11, database 139/139, tsc 0.

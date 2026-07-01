@@ -1048,9 +1048,13 @@ export interface TrainingMission {
   completed: boolean;
 }
 export interface TrainingReadiness {
-  total: number;       // pontos de falha do currículo (leaks reais + fundamentos)
-  diamond: number;     // quantos já estão dominados no Diamante (mastery>=90)
-  ready: boolean;      // gate 'Aplicar': só true quando diamond === total
+  stage: "beginner" | "developing" | "consolidated";  // rampa de onboarding pela maturidade
+  tournaments: number;                 // torneios importados (define o estágio)
+  target: number;                      // alvo do estágio (torneios p/ iniciante; tier% p/ demais)
+  target_tier: "gold" | "diamond" | null;  // tier exigido no estágio (null no iniciante)
+  total: number;                       // itens do gate (torneios-alvo OU nº de leaks exigidos)
+  done: number;                        // quantos já cumpridos
+  ready: boolean;                      // gate 'Aplicar' liberado
   pending: { category_key: string; mastery: number; tier: "bronze" | "silver" | "gold" | "diamond" }[];
 }
 export interface TrainingOverview {

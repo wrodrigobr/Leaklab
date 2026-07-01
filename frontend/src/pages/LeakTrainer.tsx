@@ -573,12 +573,12 @@ export default function LeakTrainer() {
                 </div>
               )}
 
-              {/* CTAs: Continuar (nova lição) + Finalizar (dashboard) */}
+              {/* CTAs: Continuar (nova lição) + Finalizar (volta ao hub de Treino p/ ver o status pós-treino) */}
               <div className="mt-6 space-y-2">
                 <button onClick={newSession} className="w-full rounded-xl bg-primary px-4 py-3.5 font-mono text-sm font-bold uppercase tracking-widest text-primary-foreground shadow-lg transition-transform hover:bg-primary/90 active:scale-[0.98]">
                   {t("leakTrainer.summary.continue")}
                 </button>
-                <button onClick={() => navigate("/dashboard")} className="flex w-full items-center justify-center gap-2 rounded-xl border border-border px-4 py-3 font-mono text-xs font-bold uppercase tracking-wider text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground">
+                <button onClick={() => navigate("/training")} className="flex w-full items-center justify-center gap-2 rounded-xl border border-border px-4 py-3 font-mono text-xs font-bold uppercase tracking-wider text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground">
                   <Home className="size-4" aria-hidden /> {t("leakTrainer.summary.finish")}
                 </button>
               </div>

@@ -26,6 +26,8 @@ init_db()
 
 def _mk_user():
     c = get_conn()
+    c.execute("DELETE FROM decisions")        # FK: decisions→tournaments→users (limpar antes de users)
+    c.execute("DELETE FROM tournaments")
     c.execute("DELETE FROM users")
     c.execute("DELETE FROM training_skill_progress")
     c.execute("DELETE FROM training_achievements")
@@ -173,28 +175,80 @@ def test_daily_missions_progress_and_award():
     print("OK  test_daily_missions_progress_and_award")
 
 
-def test_readiness_gate_requires_all_diamond():
-    """Gate 'Aplicar': só libera quando TODOS os pontos de falha do currículo estão no Diamante.
-    Um leak no Ouro (ou até no Diamante isolado) NÃO basta — a régua cobre todos os spots."""
+def _seed_leaks(uid, n_tourneys, n_leak_cats):
+    """Cria n_tourneys torneios (imported_at=agora) e mete n_leak_cats categorias de leak RFI
+    distintas (>=2 decisões cada, ev_loss crescente → ordena por custo). Controla o ESTÁGIO
+    (nº de torneios) e o denominador (nº de leaks reais medidos)."""
+    c = get_conn()
+    c.execute("DELETE FROM decisions"); c.execute("DELETE FROM tournaments")
+    c.execute("DELETE FROM training_skill_progress WHERE user_id=?", (uid,))
+    positions = ['UTG', 'HJ', 'CO', 'BTN', 'SB']
+    tids = []
+    for i in range(n_tourneys):
+        c.execute("INSERT INTO tournaments (user_id,tournament_id,hero,raw_text,site,imported_at) "
+                  "VALUES (?,?,?,?,?,datetime('now'))", (uid, f'T{i}', 'H', 'raw', 'pokerstars'))
+        tids.append(dict(c.execute("SELECT id FROM tournaments WHERE tournament_id=? AND user_id=?",
+                                    (f'T{i}', uid)).fetchone())['id'])
+    cols = ("(tournament_id,hand_id,street,action_taken,best_action,position,vs_position,"
+            "is_3bet,preflop_raises_faced,ev_loss_bb,stack_bb,label,score)")
+    hid = 0
+    for ci in range(n_leak_cats):
+        pos = positions[ci % len(positions)]
+        for _ in range(2):                       # >=2 p/ passar no HAVING COUNT>=2
+            hid += 1
+            c.execute(f"INSERT INTO decisions {cols} VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                      (tids[0], f'H{hid}', 'preflop', 'fold', 'raise', pos, '', 0, 0,
+                       1.0 + ci, 50, 'clear_mistake', 0.8))
+    c.commit(); c.close()
+
+
+def test_readiness_beginner_stage():
+    """Iniciante (poucos/nenhum torneio, sem leaks medidos): meta é JOGAR/importar, não Diamante."""
     uid = _mk_user()
-    # user sem decisões → currículo = fundamentos (RFI) + piloto postflop
-    keys = [c['key'] for c in build_curriculum(uid)]
-    assert len(keys) >= 2, keys
-    r0 = training_readiness(uid)
-    assert r0['total'] == len(set(keys)) and r0['diamond'] == 0 and r0['ready'] is False
-    assert len(r0['pending']) == r0['total']
-    # domina TODAS menos uma → ainda bloqueado
-    for k in keys[:-1]:
+    r = training_readiness(uid)
+    assert r['stage'] == 'beginner' and r['ready'] is False
+    assert r['target'] == 5 and r['total'] == 5 and r['done'] == 0
+    assert r['target_tier'] is None and r['pending'] == []
+    # 3 torneios (<5) mas com leaks → ainda iniciante (dado insuficiente)
+    _seed_leaks(uid, n_tourneys=3, n_leak_cats=2)
+    r2 = training_readiness(uid)
+    assert r2['stage'] == 'beginner' and r2['done'] == 3, r2
+    print("OK  test_readiness_beginner_stage")
+
+
+def test_readiness_developing_top3_gold():
+    """Em formação (5–14 torneios): só os TOP-3 leaks mais custosos, no Ouro."""
+    uid = _mk_user()
+    _seed_leaks(uid, n_tourneys=8, n_leak_cats=4)
+    r = training_readiness(uid)
+    assert r['stage'] == 'developing' and r['target_tier'] == 'gold'
+    assert r['total'] == 3 and r['ready'] is False, r      # top-3, não os 4
+    keys = [c['key'] for c in build_curriculum(uid) if int(c.get('n') or 0) > 0]
+    for k in keys[:3]:                                     # domina os 3 principais no Ouro+
         for _ in range(20):
             record_training_attempt(uid, k, True)
-    r1 = training_readiness(uid)
-    assert r1['diamond'] == r1['total'] - 1 and r1['ready'] is False, r1
-    # fecha a última no Diamante → libera
-    for _ in range(20):
+    r2 = training_readiness(uid)
+    assert r2['done'] == 3 and r2['ready'] is True, r2
+    print("OK  test_readiness_developing_top3_gold")
+
+
+def test_readiness_consolidated_all_diamond():
+    """Consolidado (15+ torneios): TODOS os leaks reais no Diamante."""
+    uid = _mk_user()
+    _seed_leaks(uid, n_tourneys=15, n_leak_cats=3)
+    r = training_readiness(uid)
+    assert r['stage'] == 'consolidated' and r['target_tier'] == 'diamond'
+    assert r['total'] == 3 and r['ready'] is False, r
+    keys = [c['key'] for c in build_curriculum(uid) if int(c.get('n') or 0) > 0]
+    for k in keys[:-1]:                                    # todas menos uma → ainda bloqueado
+        for _ in range(20):
+            record_training_attempt(uid, k, True)
+    assert training_readiness(uid)['ready'] is False
+    for _ in range(20):                                    # fecha a última
         record_training_attempt(uid, keys[-1], True)
     r2 = training_readiness(uid)
-    assert r2['diamond'] == r2['total'] and r2['ready'] is True and r2['pending'] == [], r2
-    print("OK  test_readiness_gate_requires_all_diamond")
+    assert r2['done'] == r2['total'] and r2['ready'] is True and r2['pending'] == [], r2
+    print("OK  test_readiness_consolidated_all_diamond")
 
 
 if __name__ == '__main__':
