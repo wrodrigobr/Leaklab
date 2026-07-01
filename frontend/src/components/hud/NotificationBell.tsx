@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useCallback, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { Bell, Trash2, MessageSquarePlus, X } from "lucide-react";
@@ -193,15 +194,17 @@ export function NotificationBell({ renderActions, extraUnread = 0 }: Notificatio
         </div>
       )}
 
-      {/* Modal da mensagem do admin — texto completo (título + corpo), fechar ou dispensar */}
-      {expanded && (() => {
+      {/* Modal da mensagem do admin — via PORTAL no document.body (senão o backdrop-blur/transform
+          do header vira o containing block do `fixed` e o modal "estoura pra cima"). Centralizado,
+          com altura máxima + scroll (mobile-safe). */}
+      {expanded && createPortal((() => {
         const p = expanded.payload as { title?: string; body?: string };
         return (
-          <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-4"
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4"
             onClick={() => setExpanded(null)}>
-            <div className="w-full max-w-md rounded-2xl border border-border bg-hud-surface p-5 shadow-2xl"
+            <div className="flex max-h-[85vh] w-full max-w-md flex-col overflow-hidden rounded-2xl border border-border bg-hud-surface p-5 shadow-2xl"
               onClick={(e) => e.stopPropagation()}>
-              <div className="mb-3 flex items-start gap-2">
+              <div className="mb-3 flex shrink-0 items-start gap-2">
                 <span className="text-xl leading-none">{iconFor(expanded)}</span>
                 <h3 className="flex-1 font-heading text-base font-bold text-foreground">
                   {p.title || t("notifications.adminMessage")}
@@ -211,8 +214,8 @@ export function NotificationBell({ renderActions, extraUnread = 0 }: Notificatio
                   <X className="size-4" />
                 </button>
               </div>
-              {p.body && <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground">{p.body}</p>}
-              <div className="mt-5 flex justify-end gap-2">
+              {p.body && <p className="min-h-0 overflow-y-auto whitespace-pre-wrap text-sm leading-relaxed text-foreground">{p.body}</p>}
+              <div className="mt-5 flex shrink-0 justify-end gap-2">
                 <button onClick={() => setExpanded(null)}
                   className="rounded-lg border border-border px-4 py-2 font-mono text-xs font-bold uppercase tracking-wider text-muted-foreground transition-colors hover:text-foreground">
                   {t("notifications.close")}
@@ -225,7 +228,7 @@ export function NotificationBell({ renderActions, extraUnread = 0 }: Notificatio
             </div>
           </div>
         );
-      })()}
+      })(), document.body)}
     </div>
   );
 }
