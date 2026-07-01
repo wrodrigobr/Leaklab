@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(import+ui): ACR gravado como "rede unknown" + ícones de site menos "emoldurados"
+
+> **Bug "rede unknown":** o `app.py` tinha um `_detect_site` DUPLICADO sem o branch ACR — o torneio ACR parseava certo (parser detecta 'acr') mas era GRAVADO como `site='unknown'`. Corrigido: o `_detect_site` do app agora **delega pro do parser** (fonte única, sem drift). `save_tournament` passou a atualizar `site` no re-import (`site = excluded.site`), e `scripts/backfill_site_from_raw.py` re-detecta o site pelo raw_text dos torneios já importados (corrige os ACR legados sem re-importar; PRAGMA guardado p/ Postgres). Teste `test_app_detect_site_acr`. **Ícone de site (`SiteLogo`):** removida a borda/box largo em volta do favicon (só o fallback de iniciais mantém um chip sutil), padding menor e tamanho 16→18 → o ícone fica mais evidente. Vale em todas as telas que usam SiteLogo.
+
 ### feat(tournaments): arquivo de RESULTADOS do ACR completa a premiação (prize/ROI)
 
 > O ACR tem um Tournament Summary separado do HH (`.ots`, JSON) com place+prêmio por jogador. Agora dá pra subir ele e completar prize/profit/place/buy_in do torneio (que via HH ficavam desconhecidos). Backend: `parse_acr_results` (parser) lê o JSON (`tournament_number`, `tournament_finishes_and_winnings`); endpoint `POST /tournament/results` casa por Tournament #, acha o hero (soma re-entradas + melhor colocação), pega o buy-in TOTAL do filename do summary (`$0.50 + $0.05` = $0.55) e atualiza via `update_tournament_financials` — **prize vem do arquivo real, nunca assumido**. Frontend: botão "Resultado" (âmbar) na coluna de profit dos torneios ACR sem resultado (`Tournaments.tsx`, mobile+desktop), upload `.ots` → banner + reload. Validado com o arquivo real do #35409697 (MusashiBR 6º, prize $1.19, buy-in $0.55, profit +$0.64). i18n PT/EN/ES. Testes `test_parse_acr_results` + `test_acr_results_endpoint_math`; test_acr_parser 8/8.

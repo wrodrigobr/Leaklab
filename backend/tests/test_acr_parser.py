@@ -195,6 +195,16 @@ def test_acr_buyin_from_filename():
     print("OK  test_acr_buyin_from_filename")
 
 
+def test_app_detect_site_acr():
+    """Regressão do bug 'rede unknown': o app.py tinha um _detect_site DUPLICADO sem o branch ACR,
+    então o torneio ACR parseava certo mas era GRAVADO como 'unknown'. Agora delega pro parser."""
+    from api.app import _detect_site as app_detect_site
+    assert app_detect_site(ACR_FOLD_HAND) == 'acr'
+    assert app_detect_site('PokerStars Hand #1: Tournament') == 'pokerstars'
+    assert app_detect_site('Poker Hand #RC1') == 'ggpoker'
+    print("OK  test_app_detect_site_acr")
+
+
 def test_parse_acr_results():
     """Arquivo de resultados (.ots JSON): tournament_id de 'T#...', place+prêmio por jogador."""
     res = parse_acr_results(ACR_RESULTS)

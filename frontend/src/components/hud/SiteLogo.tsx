@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { cn } from "@/lib/utils";
 
 // Favicon via serviço do Google (CORS-friendly, sempre responde, tamanho consistente).
 // Carregar favicon direto do site é frágil (404/CORS/bloqueio) e o GG não aparecia.
@@ -34,22 +35,26 @@ interface Props {
   size?: number;
 }
 
-export function SiteLogo({ site, size = 16 }: Props) {
+export function SiteLogo({ site, size = 18 }: Props) {
   const key  = site.toLowerCase().replace(/\s+/g, "");
   const url  = faviconUrl(key);
   const name = DISPLAY_NAMES[key] ?? site;
   const [failed, setFailed] = useState(false);
+  const showImg = !!url && !failed;
 
   return (
     <TooltipProvider delayDuration={300}>
       <Tooltip>
         <TooltipTrigger asChild>
+          {/* Sem a borda/box largo em volta do favicon (o ícone fica evidente); só o fallback
+              de iniciais mantém um chip sutil pra ser legível. */}
           <span
-            className="inline-flex shrink-0 items-center justify-center rounded-sm bg-secondary ring-1 ring-border"
-            style={{ width: size + 8, height: size + 8 }}
+            className={cn("inline-flex shrink-0 items-center justify-center overflow-hidden rounded-[3px]",
+              !showImg && "bg-secondary ring-1 ring-border")}
+            style={{ width: size + (showImg ? 1 : 6), height: size + (showImg ? 1 : 6) }}
             aria-label={name}
           >
-            {url && !failed ? (
+            {showImg ? (
               <img
                 src={url}
                 alt={name}

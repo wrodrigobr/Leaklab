@@ -382,6 +382,7 @@ def save_tournament(user_id: int, tournament_id: str, hero: str,
             VALUES (?,?,?,?,?,?,datetime('now'),?,?,?,?,?,?,?,?,?,?,?,?,?,?)
             ON CONFLICT(user_id, tournament_id) DO UPDATE SET
               imported_at    = datetime('now'),
+              site           = excluded.site,
               tournament_name= excluded.tournament_name,
               hands_count    = excluded.hands_count,
               decisions_count= excluded.decisions_count,

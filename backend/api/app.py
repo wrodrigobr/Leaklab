@@ -2861,14 +2861,10 @@ def _analyze_hands(hands):
 
 
 def _detect_site(raw: str) -> str:
-    from leaklab.parser import PARTYGAMING_ENABLED  # lê a flag viva (reversível)
-    if 'PokerStars Hand #' in raw: return 'pokerstars'
-    if 'Poker Hand #'      in raw: return 'ggpoker'
-    if PARTYGAMING_ENABLED:
-        # 888 antes de PartyPoker: o header do 888 também contém "Hand History for Game".
-        if '888poker'          in raw: return '888poker'
-        if 'Hand History for Game' in raw: return 'partypoker'
-    return 'unknown'
+    # Delega pro detector do parser (fonte única) — evita drift: tinha uma cópia AQUI sem o branch
+    # ACR, então o torneio ACR parseava certo mas era GRAVADO como site='unknown' (bug "rede unknown").
+    from leaklab.parser import _detect_site as _parser_detect_site
+    return _parser_detect_site(raw)
 
 
 def _extract_tournament_name(raw: str, site: str, buy_in: float | None = None) -> str | None:
