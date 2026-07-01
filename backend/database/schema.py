@@ -1895,6 +1895,10 @@ def _run_migrations(conn):
             # bloco regular (transação única) → um abort anterior pulava o ADD e a coluna
             # faltava em prod (UndefinedColumn no backfill). Aqui sobrevive com commit isolado.
             "ALTER TABLE decisions ADD COLUMN IF NOT EXISTS multiway_safe_verdict TEXT",
+            # Email de comunicado do admin (opt-out). Mesmo motivo: no bloco regular a coluna
+            # ficava atrás do `xp_total` (já existente), que aborta a transação → email_opt_in
+            # nunca era criada em prod e o get_email_recipients dava 500. Commit isolado resolve.
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS email_opt_in INTEGER NOT NULL DEFAULT 1",
         ]
         for _stmt in _safe:
             try:

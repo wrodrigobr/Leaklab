@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(email): coluna `email_opt_in` não era criada no Postgres (500 no envio)
+
+> `get_email_recipients` dava **500** em prod porque a coluna `email_opt_in` ficava só no bloco de migração regular (transação única), atrás do `ALTER ... xp_total` que já existe. No Postgres o primeiro ALTER de coluna existente **aborta a transação**, então os ADDs seguintes falham em cascata e `email_opt_in` nunca era criada (mesmo padrão do bug histórico da `correct`/`multiway_safe_verdict`). Movido pro bloco **abort-proof** (`ADD COLUMN IF NOT EXISTS` + commit isolado por statement). Requer redeploy do backend pra migração rodar. notifications 13/13.
+
 ### fix(admin): busca de jogador na aba Mensagens escondia admins/coaches
 
 > A busca do DM filtrava `role="player"` (match exato), então a própria conta do admin (e coaches) nunca aparecia, retornando "Nenhum jogador encontrado" mesmo com username/email corretos. Removido o filtro de role: o admin pode mandar DM pra qualquer conta, inclusive a própria (pra testar o email). tsc 0.
