@@ -19,6 +19,7 @@ from database.repositories import (
     record_training_attempt, get_training_skills, _mastery_tier, get_all_achievements,
     evaluate_training_achievements, get_training_achievements, _TRAINING_ACHIEVEMENT_DEFS,
     record_daily_mission_progress, get_daily_missions, training_readiness,
+    get_training_proof,
 )
 from leaklab.leak_trainer import build_curriculum
 init_db()
@@ -32,6 +33,8 @@ def _mk_user():
     c.execute("DELETE FROM training_skill_progress")
     c.execute("DELETE FROM training_achievements")
     c.execute("DELETE FROM training_daily")
+    try: c.execute("DELETE FROM training_proof")
+    except Exception: pass
     c.execute("INSERT INTO users (username,email,password_hash,plan) VALUES (?,?,?,?)",
               ('tg', 'tg@t', 'x', 'free'))
     uid = dict(c.execute("SELECT id FROM users WHERE username='tg'").fetchone())['id']
@@ -200,6 +203,57 @@ def _seed_leaks(uid, n_tourneys, n_leak_cats):
                       (tids[0], f'H{hid}', 'preflop', 'fold', 'raise', pos, '', 0, 0,
                        1.0 + ci, 50, 'clear_mistake', 0.8))
     c.commit(); c.close()
+
+
+def _seed_proof_decisions(uid, tournament_id, imported_at, n_correct, n_wrong):
+    """Cria 1 torneio (imported_at controlado) com decisões RFI de UTG (rfi:UTG::*), n_correct
+    alinhadas (gto_correct) + n_wrong erradas (gto_critical), pra medir aderência da categoria."""
+    c = get_conn()
+    c.execute("INSERT INTO tournaments (user_id,tournament_id,hero,raw_text,site,imported_at) "
+              "VALUES (?,?,?,?,?,?)", (uid, tournament_id, 'H', 'raw', 'pokerstars', imported_at))
+    tid = dict(c.execute("SELECT id FROM tournaments WHERE tournament_id=? AND user_id=?",
+                         (tournament_id, uid)).fetchone())['id']
+    cols = ("(tournament_id,hand_id,street,action_taken,best_action,position,vs_position,is_3bet,"
+            "preflop_raises_faced,score,label,gto_label)")
+    hid = 0
+    for lbl, cnt in (('gto_correct', n_correct), ('gto_critical', n_wrong)):
+        for _ in range(cnt):
+            hid += 1
+            c.execute(f"INSERT INTO decisions {cols} VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+                      (tid, f'{tournament_id}H{hid}', 'preflop', 'raise', 'raise', 'UTG', '', 0, 0,
+                       0.0, 'standard', lbl))
+    c.commit(); c.close()
+    return tid
+
+
+def test_training_proof_before_after():
+    """Fase 4: aderência da categoria ANTES (baseline congelado) × DEPOIS (torneio importado após).
+    Só conta torneio pós-baseline; snapshot = o último; delta é comparação honesta."""
+    uid = _mk_user()
+    key = 'rfi:UTG::100'
+    c = get_conn()
+    c.execute("INSERT INTO training_skill_progress (user_id,category_key,attempts,correct,mastery_ema,mastery) "
+              "VALUES (?,?,?,?,?,?)", (uid, key, 5, 3, 0.6, 30.0))
+    c.commit(); c.close()
+    # ANTES: torneio antigo, aderência 25% (1 certo / 3 errados); baseline congelado depois dele
+    _seed_proof_decisions(uid, 'BEFORE', '2020-01-01 00:00:00', n_correct=1, n_wrong=3)
+    c = get_conn()
+    c.execute("INSERT INTO training_proof (user_id,category_key,baseline_pct,baseline_n,baseline_at) "
+              "VALUES (?,?,?,?,?)", (uid, key, 25.0, 4, '2020-06-01 00:00:00'))
+    c.commit(); c.close()
+    # sem torneio novo pós-baseline → ainda não prova
+    assert get_training_proof(uid) == []
+    # DEPOIS: torneio novo (pós-baseline), aderência 100% (12 certos)
+    _seed_proof_decisions(uid, 'AFTER', '2020-12-01 00:00:00', n_correct=12, n_wrong=0)
+    proof = get_training_proof(uid)
+    assert len(proof) == 1, proof
+    p = proof[0]
+    assert p['category_key'] == key
+    assert p['baseline_pct'] == 25.0 and p['baseline_n'] == 4
+    assert p['after_pct'] == 100.0 and p['after_n'] == 12      # só o torneio AFTER
+    assert p['delta'] == 75.0 and p['confident'] is True        # 12 >= _TRAIN_PROOF_MIN_N
+    assert p['snapshot'] and p['snapshot']['tournament_id'] == 'AFTER' and p['snapshot']['pct'] == 100.0
+    print("OK  test_training_proof_before_after")
 
 
 def test_readiness_beginner_stage():

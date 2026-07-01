@@ -94,5 +94,15 @@
     "m_lesson": "Complete 1 lesson",
     "m_correct": "Get {{target}} decisions right",
     "m_grind": "Train {{target}} spots"
+  },
+  "proof": {
+    "title": "Prove",
+    "subtitle": "Your REAL GTO adherence in the category (from your hands, not the drills), before training × after you played and imported.",
+    "before": "Before",
+    "after": "After",
+    "hands": "hands",
+    "thisTournament": "This latest tournament: {{pct}}% ({{n}} hands)",
+    "smallSample": "Small sample, not a trend yet.",
+    "disclaimer": "It's a comparison to your average, not proof the training caused the change. Few hands vary a lot."
   }
 }

@@ -5602,6 +5602,12 @@ def record_training_attempt(user_id: int, category_key: str, correct: bool) -> d
                 "(user_id, category_key, attempts, correct, mastery_ema, mastery, last_practiced_at) "
                 "VALUES (?,?,?,?,?,?,datetime('now'))"),
                 (user_id, category_key, attempts, correct_n, round(ema, 4), mastery))
+            # "Provar" (Fase 4): congela a aderência real da categoria AGORA (o "antes"), antes de
+            # qualquer torneio novo — este é o momento exato em que o treino da categoria começou.
+            try:
+                _ensure_training_baseline(conn, user_id, category_key)
+            except Exception:
+                pass
         conn.commit()
         return {'category_key': category_key, 'attempts': attempts, 'correct': correct_n,
                 'mastery': mastery, 'mastery_prev': round(prev_mastery, 1),
@@ -5686,6 +5692,127 @@ def training_readiness(user_id: int) -> dict:
     return {'stage': stage, 'tournaments': tourneys, 'target': target, 'total': len(required),
             'done': done, 'ready': done == len(required) and len(required) > 0,
             'target_tier': target_tier, 'pending': pending}
+
+
+# ── "Provar" (Fase 4): loop validado treino → jogo → prova ──────────────────────────────────
+# Compara a ADERÊNCIA GTO REAL da categoria (mãos reais, não drill) ANTES × DEPOIS de treinar.
+# Honestidade: aderência é % (estável em amostra pequena); mostra n dos dois lados; é COMPARAÇÃO,
+# nunca "o treino causou X". v1: só cenários preflop mapeáveis (rfi/vs_rfi/vs_3bet).
+_TRAIN_PROOF_MIN_N = 10   # abaixo disso, o "depois" é amostra pequena → não crava tendência
+
+def _category_adherence_filter(category_key: str):
+    """Mapeia uma category_key de treino (scenario:pos:vs:stack) para o filtro SQL das decisões
+    REAIS daquela categoria (d-prefixado). Ignora o stack de propósito (mais amostra, comparação
+    honesta por cenário×posições). Devolve (where_sql, params) ou None (postflop/não-mapeável)."""
+    parts = (category_key or '').split(':')
+    if len(parts) < 4 or parts[0] == 'pf':
+        return None
+    scenario, pos, vs = parts[0], parts[1], parts[2]
+    where = "d.street = 'preflop' AND d.position = ?"
+    params = [pos]
+    is3b = "(CASE WHEN d.is_3bet THEN 1 ELSE 0 END)"   # portável SQLite(int)/Postgres(bool)
+    if scenario == 'rfi':
+        where += f" AND COALESCE(d.preflop_raises_faced,0) = 0 AND {is3b} = 0"
+    elif scenario == 'vs_rfi':
+        where += f" AND COALESCE(d.preflop_raises_faced,0) = 1 AND {is3b} = 0 AND COALESCE(d.vs_position,'') = ?"
+        params.append(vs)
+    elif scenario == 'vs_3bet':
+        where += f" AND ({is3b} = 1 OR COALESCE(d.preflop_raises_faced,0) >= 2) AND COALESCE(d.vs_position,'') = ?"
+        params.append(vs)
+    else:
+        return None
+    return where, params
+
+
+def _category_adherence(conn, user_id, category_key, imported_after=None, only_tournament=None):
+    """Aderência GTO (gto_correct+gto_mixed sobre decisões com gto_label) da categoria, opcionalmente
+    só de torneios importados após `imported_after` (o "depois") ou de um torneio específico (snapshot)."""
+    filt = _category_adherence_filter(category_key)
+    if not filt:
+        return None
+    where, params = filt
+    sql = ("SELECT SUM(CASE WHEN d.gto_label IN ('gto_correct','gto_mixed') THEN 1 ELSE 0 END) AS aligned, "
+           "SUM(CASE WHEN d.gto_label IS NOT NULL AND d.gto_label <> '' THEN 1 ELSE 0 END) AS with_gto "
+           "FROM decisions d JOIN tournaments t ON t.id = d.tournament_id "
+           "WHERE t.user_id = ? AND " + where)
+    args = [user_id] + params
+    if imported_after is not None:
+        sql += " AND t.imported_at > ?"; args.append(imported_after)
+    if only_tournament is not None:
+        sql += " AND t.id = ?"; args.append(only_tournament)
+    row = _fetchone(conn, _adapt(sql), tuple(args))
+    aligned  = int((row or {}).get('aligned') or 0)
+    with_gto = int((row or {}).get('with_gto') or 0)
+    return {'aligned': aligned, 'with_gto': with_gto,
+            'pct': round(aligned * 100.0 / with_gto, 1) if with_gto else 0.0}
+
+
+def _ensure_training_baseline(conn, user_id, category_key):
+    """Congela o "antes": a aderência REAL da categoria no momento em que o jogador começa a treinar
+    (ou na 1ª vez que a prova é consultada, p/ skills legados). Idempotente (UNIQUE user+category)."""
+    if not _category_adherence_filter(category_key):
+        return
+    exists = _fetchone(conn, _adapt(
+        "SELECT 1 AS x FROM training_proof WHERE user_id=? AND category_key=?"), (user_id, category_key))
+    if exists:
+        return
+    base = _category_adherence(conn, user_id, category_key)
+    conn.execute(_adapt(
+        "INSERT INTO training_proof (user_id, category_key, baseline_pct, baseline_n, baseline_at) "
+        "VALUES (?,?,?,?,datetime('now'))"),
+        (user_id, category_key, base['pct'], base['with_gto']))
+
+
+def get_training_proof(user_id: int) -> list:
+    """Fase 4 "Provar": por categoria treinada, compara a aderência GTO real ANTES (congelada no
+    baseline) × DEPOIS (torneios importados após o baseline). Híbrido: `snapshot` = último torneio
+    (amostra 1, honesto) + `after` = janela de todos os pós-baseline. Só lista categorias com dado
+    NOVO (after_n>0). `confident`=False quando a amostra do depois é pequena (< _TRAIN_PROOF_MIN_N)."""
+    if not user_id:
+        return []
+    conn = get_conn()
+    try:
+        skills = _fetchall(conn, _adapt(
+            "SELECT category_key FROM training_skill_progress WHERE user_id=?"), (user_id,))
+        out = []
+        for s in skills:
+            key = s['category_key']
+            filt = _category_adherence_filter(key)
+            if not filt:
+                continue
+            _ensure_training_baseline(conn, user_id, key)
+            pr = _fetchone(conn, _adapt(
+                "SELECT baseline_pct, baseline_n, baseline_at FROM training_proof "
+                "WHERE user_id=? AND category_key=?"), (user_id, key))
+            if not pr or int(pr['baseline_n'] or 0) <= 0:
+                continue   # sem "antes" real medido → não dá pra provar
+            after = _category_adherence(conn, user_id, key, imported_after=pr['baseline_at'])
+            if not after or after['with_gto'] <= 0:
+                continue   # sem torneio novo pós-treino → nada a provar ainda
+            where, wparams = filt
+            last = _fetchone(conn, _adapt(
+                "SELECT t.id, t.tournament_id FROM tournaments t WHERE t.user_id=? AND t.imported_at > ? "
+                "AND EXISTS (SELECT 1 FROM decisions d WHERE d.tournament_id=t.id AND " + where + ") "
+                "ORDER BY t.imported_at DESC LIMIT 1"),
+                tuple([user_id, pr['baseline_at']] + wparams))
+            snap = None
+            if last:
+                sa = _category_adherence(conn, user_id, key, only_tournament=last['id'])
+                snap = {'tournament_id': last['tournament_id'], 'pct': sa['pct'], 'n': sa['with_gto']}
+            base_pct = round(float(pr['baseline_pct'] or 0), 1)
+            out.append({
+                'category_key': key,
+                'baseline_pct': base_pct, 'baseline_n': int(pr['baseline_n'] or 0),
+                'after_pct': after['pct'], 'after_n': after['with_gto'],
+                'delta': round(after['pct'] - base_pct, 1),
+                'snapshot': snap,
+                'confident': after['with_gto'] >= _TRAIN_PROOF_MIN_N,
+            })
+        conn.commit()   # persiste baselines recém-congelados
+        out.sort(key=lambda p: -abs(p['delta']))
+        return out
+    finally:
+        conn.close()
 
 
 # Conquistas EXCLUSIVAS do treino (eixo de gamificação, separado das globais/ELO). O critério é o

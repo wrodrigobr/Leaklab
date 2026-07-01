@@ -697,6 +697,22 @@ def _run_migrations(conn):
             """)
             conn.execute("CREATE INDEX IF NOT EXISTS idx_training_daily_user ON training_daily(user_id, day)")
         except Exception: pass
+        # "Provar" (Fase 4): baseline de aderência REAL da categoria, congelado quando o jogador
+        # começou a treinar — pro loop treino→jogo→prova comparar antes×depois (Postgres).
+        try:
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS training_proof (
+                    id           SERIAL PRIMARY KEY,
+                    user_id      INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                    category_key TEXT    NOT NULL,
+                    baseline_pct REAL    NOT NULL DEFAULT 0,
+                    baseline_n   INTEGER NOT NULL DEFAULT 0,
+                    baseline_at  TIMESTAMP NOT NULL DEFAULT NOW(),
+                    UNIQUE(user_id, category_key)
+                )
+            """)
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_training_proof_user ON training_proof(user_id)")
+        except Exception: pass
         # Sprint R — FEAT-05: SRS columns on drill_sessions (Postgres)
         try:
             conn.execute("ALTER TABLE drill_sessions ADD COLUMN next_drill_at    TIMESTAMP")
@@ -1374,6 +1390,19 @@ def _run_migrations(conn):
             )
         """)
         conn.execute("CREATE INDEX IF NOT EXISTS idx_training_daily_user ON training_daily(user_id, day)")
+        # "Provar" (Fase 4): baseline de aderência REAL da categoria (SQLite)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS training_proof (
+                id           INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id      INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                category_key TEXT    NOT NULL,
+                baseline_pct REAL    NOT NULL DEFAULT 0,
+                baseline_n   INTEGER NOT NULL DEFAULT 0,
+                baseline_at  TEXT    NOT NULL DEFAULT (datetime('now')),
+                UNIQUE(user_id, category_key)
+            )
+        """)
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_training_proof_user ON training_proof(user_id)")
         # Sprint R — FEAT-05: SRS columns on drill_sessions (SQLite)
         drill_existing = {r[1] for r in conn.execute('PRAGMA table_info(drill_sessions)').fetchall()}
         for col, sql in [
@@ -1848,6 +1877,17 @@ def _run_migrations(conn):
                 UNIQUE(user_id, day)
             )""",
             "CREATE INDEX IF NOT EXISTS idx_training_daily_user ON training_daily(user_id, day)",
+            # "Provar" (Fase 4): baseline de aderência da categoria — abort-proof p/ existir em prod.
+            """CREATE TABLE IF NOT EXISTS training_proof (
+                id           SERIAL PRIMARY KEY,
+                user_id      INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                category_key TEXT    NOT NULL,
+                baseline_pct REAL    NOT NULL DEFAULT 0,
+                baseline_n   INTEGER NOT NULL DEFAULT 0,
+                baseline_at  TIMESTAMP NOT NULL DEFAULT NOW(),
+                UNIQUE(user_id, category_key)
+            )""",
+            "CREATE INDEX IF NOT EXISTS idx_training_proof_user ON training_proof(user_id)",
             # #30 multiway (shadow): veredito da cauda segura por decisão. Estava só no
             # bloco regular (transação única) → um abort anterior pulava o ADD e a coluna
             # faltava em prod (UndefinedColumn no backfill). Aqui sobrevive com commit isolado.

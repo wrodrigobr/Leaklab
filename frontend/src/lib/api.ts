@@ -1082,8 +1082,20 @@ export interface TrainingOverview {
   missions: TrainingMission[];
   readiness: TrainingReadiness;
 }
+// Fase 4 "Provar": aderência GTO real da categoria ANTES × DEPOIS de treinar (loop validado)
+export interface TrainingProofItem {
+  category_key: string;
+  baseline_pct: number;                 // "antes" congelado quando começou a treinar
+  baseline_n: number;
+  after_pct: number;                    // janela: torneios importados após o baseline
+  after_n: number;
+  delta: number;                        // after_pct - baseline_pct (comparação, não causa)
+  snapshot: { tournament_id: string; pct: number; n: number } | null;  // último torneio (amostra 1)
+  confident: boolean;                   // after_n >= mínimo → tendência; senão amostra pequena
+}
 export const training = {
   overview: () => request<TrainingOverview>("/player/training/overview"),
+  proof: () => request<{ proof: TrainingProofItem[] }>("/player/training/proof"),
 };
 
 export const sparring = {

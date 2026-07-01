@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowRight, CheckCircle2, Dumbbell, GraduationCap, RotateCw, Target, Award, Flame, Star, Trophy, Lock, Map, Play, TrendingUp, Sparkles, Medal, Gem, Compass, Crown, Info, type LucideIcon } from "lucide-react";
+import { ArrowRight, CheckCircle2, Dumbbell, GraduationCap, RotateCw, Target, Award, Flame, Star, Trophy, Lock, Map, Play, TrendingUp, TrendingDown, Minus, Sparkles, Medal, Gem, Compass, Crown, Info, type LucideIcon } from "lucide-react";
 import { HudLayout } from "@/components/hud/HudLayout";
 import { training } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -34,6 +34,8 @@ export default function Training() {
   const { t } = useTranslation("training");
   const { t: ta } = useTranslation("academy");
   const { data: overview } = useQuery({ queryKey: ["training-overview"], queryFn: training.overview });
+  const { data: proofData } = useQuery({ queryKey: ["training-proof"], queryFn: training.proof });
+  const proof = proofData?.proof ?? [];
 
   // rótulo humano da habilidade a partir da chave de categoria (reusa as chaves do Leak Trainer)
   const skillLabel = (key: string): string => {
@@ -64,7 +66,7 @@ export default function Training() {
   const JOURNEY = [
     { key: "train", icon: Dumbbell, status: ready ? "done" : "active" },
     { key: "apply", icon: Play, status: ready ? "active" : "locked" },
-    { key: "prove", icon: TrendingUp, status: "soon" },
+    { key: "prove", icon: TrendingUp, status: proof.length > 0 ? "active" : "soon" },
   ] as const;
 
   return (
@@ -222,6 +224,46 @@ export default function Training() {
                 </Link>
               </div>
             ))}
+          </div>
+        )}
+
+        {/* ── PROVAR — loop validado: aderência GTO REAL da categoria antes × depois (Fase 4) ── */}
+        {proof.length > 0 && (
+          <div className="rounded-2xl border border-border bg-card/40 p-5">
+            <h2 className="mb-1 flex items-center gap-2 font-heading text-base font-bold text-foreground">
+              <TrendingUp className="size-4 text-primary" aria-hidden /> {t("proof.title")}
+            </h2>
+            <p className="mb-3 text-[11px] leading-snug text-muted-foreground">{t("proof.subtitle")}</p>
+            <div className="space-y-2">
+              {proof.slice(0, 6).map((p) => {
+                const up = p.delta > 0, down = p.delta < 0;
+                const DeltaIcon = up ? TrendingUp : down ? TrendingDown : Minus;
+                const deltaColor = up ? "text-emerald-400" : down ? "text-red-400" : "text-muted-foreground";
+                return (
+                  <div key={p.category_key} className="rounded-xl bg-background/60 p-3 ring-1 ring-border">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="truncate text-[12px] font-bold text-foreground">{skillLabel(p.category_key)}</span>
+                      <span className={cn("flex shrink-0 items-center gap-1 font-mono text-xs font-bold", deltaColor)}>
+                        <DeltaIcon className="size-3.5" aria-hidden />{p.delta > 0 ? "+" : ""}{p.delta}pp
+                      </span>
+                    </div>
+                    <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 font-mono text-[11px]">
+                      <span className="text-muted-foreground">{t("proof.before")} {p.baseline_pct}%</span>
+                      <ArrowRight className="size-3 text-muted-foreground/50" aria-hidden />
+                      <span className="font-bold text-foreground">{t("proof.after")} {p.after_pct}%</span>
+                      <span className="text-muted-foreground">({p.after_n} {t("proof.hands")})</span>
+                    </div>
+                    {p.snapshot && (
+                      <p className="mt-1 text-[10px] text-muted-foreground">
+                        {t("proof.thisTournament", { pct: p.snapshot.pct, n: p.snapshot.n })}
+                      </p>
+                    )}
+                    {!p.confident && <p className="mt-1 text-[10px] text-amber-400/80">{t("proof.smallSample")}</p>}
+                  </div>
+                );
+              })}
+            </div>
+            <p className="mt-3 text-[10px] leading-snug text-muted-foreground">{t("proof.disclaimer")}</p>
           </div>
         )}
 

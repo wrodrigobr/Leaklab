@@ -2151,6 +2151,15 @@ def training_overview():
     })
 
 
+@app.route('/player/training/proof', methods=['GET'])
+@require_auth
+def training_proof():
+    """Fase 4 "Provar": compara a aderência GTO REAL (mãos, não drill) da categoria treinada
+    ANTES × DEPOIS — o loop treino→jogo→prova. Honesto: % + amostra dos dois lados, sem crava causa."""
+    from database.repositories import get_training_proof
+    return jsonify({'proof': get_training_proof(g.user_id)})
+
+
 @app.route('/player/strategic-twin', methods=['GET'])
 @require_auth
 def player_strategic_twin():

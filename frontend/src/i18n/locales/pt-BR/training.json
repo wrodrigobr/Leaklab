@@ -94,5 +94,15 @@
     "m_lesson": "Complete 1 lição",
     "m_correct": "Acerte {{target}} decisões",
     "m_grind": "Treine {{target}} spots"
+  },
+  "proof": {
+    "title": "Provar",
+    "subtitle": "Sua aderência GTO REAL na categoria (das suas mãos, não do treino), antes de treinar × depois que você jogou e importou.",
+    "before": "Antes",
+    "after": "Depois",
+    "hands": "mãos",
+    "thisTournament": "Neste último torneio: {{pct}}% ({{n}} mãos)",
+    "smallSample": "Amostra pequena, ainda não é tendência.",
+    "disclaimer": "É uma comparação com a sua média, não prova que o treino causou a mudança. Poucas mãos variam muito."
   }
 }
