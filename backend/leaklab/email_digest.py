@@ -372,7 +372,7 @@ def build_admin_email_html(username: str, title: str, body: str,
         <!-- Logo -->
         <tr>
           <td align="center" style="padding:36px 40px 28px 40px;background:{_C_BG};border-bottom:1px solid {_C_BORDER};">
-            <img src="{logo_url}" width="196" alt="GrindLab" style="display:block;width:196px;max-width:60%;height:auto;border:0;">
+            <img src="{logo_url}" width="196" alt="GrindLab" style="display:block;width:196px;max-width:60%;height:auto;border:0;color:{_C_LIGHT};font-size:24px;font-weight:800;letter-spacing:.02em;">
           </td>
         </tr>
 
@@ -398,7 +398,7 @@ def build_admin_email_html(username: str, title: str, body: str,
         <tr>
           <td style="padding:26px 40px;background:{_C_BG};border-top:1px solid {_C_BORDER};">
             <p style="margin:0 0 6px 0;font-size:13px;font-weight:700;letter-spacing:.02em;color:{_C_LIGHT};">GrindLab Poker</p>
-            <p style="margin:0 0 14px 0;font-size:12px;line-height:1.6;color:{_C_MUTED};">Treino e análise de poker com IA. Este comunicado foi enviado porque você tem uma conta na plataforma.</p>
+            <p style="margin:0 0 14px 0;font-size:12px;line-height:1.6;color:{_C_MUTED};">A plataforma de treino e evolução para jogadores de torneio. Este comunicado foi enviado porque você tem uma conta na GrindLab.</p>
             <p style="margin:0;font-size:12px;color:{_C_MUTED};">
               <a href="{base_url}" style="color:{_C_MUTED};text-decoration:underline;">grindlabpoker.com</a>
               &nbsp;·&nbsp;
