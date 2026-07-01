@@ -28,7 +28,7 @@ export function UploadZone({ onResult }: Props) {
       setMessage("");
       try {
         const content = await file.text();
-        const result = await tournaments.analyze(content);
+        const result = await tournaments.analyze(content, file.name);
         setStatus("ok");
         setMessage(
           `${result.hero} • ${result.total_hands} mãos importadas`

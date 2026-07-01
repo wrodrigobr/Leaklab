@@ -518,6 +518,7 @@ def _analyze_impl():
     content = _extract_content(request)
     if not content:
         return jsonify({'error': 'Conteúdo ausente'}), 400
+    upload_filename = _extract_upload_filename(request)   # ACR: buy-in vem daqui
 
     try:
         hands = parse_pokerstars_file_from_text(content)
@@ -547,7 +548,7 @@ def _analyze_impl():
     site          = _detect_site(hands[0].raw_text if hasattr(hands[0],'raw_text') else '')
     played_at  = _extract_date(hands[0].raw_text if hasattr(hands[0],'raw_text') else '')
     raw_full   = '\n'.join(h.raw_text for h in hands if hasattr(h,'raw_text'))
-    financials = _extract_financials(raw_full, hero, site)
+    financials = _extract_financials(raw_full, hero, site, upload_filename)
     t_name     = _extract_tournament_name(raw_full, site, financials.get('buy_in'))
 
     # Torneio já importado: o PokerStars QUEBRA a HH de um torneio longo em arquivos por DATA (mesmo
@@ -585,7 +586,7 @@ def _analyze_impl():
         metrics    = build_session_metrics(results)
         leaks      = correlate_leaks(results)
         raw_full   = '\n'.join(h.raw_text for h in hands if hasattr(h, 'raw_text'))
-        financials = _extract_financials(raw_full, hero, site)
+        financials = _extract_financials(raw_full, hero, site, upload_filename)
         t_name     = _extract_tournament_name(raw_full, site, financials.get('buy_in'))
         _merged, _new_hands_n = True, len(_new_hands)
         log.info("analyze: MESCLANDO torneio %s (+%d mãos novas, %d no total)",
@@ -2606,6 +2607,22 @@ def _extract_content(req) -> str | None:
     return req.form.get('content')
 
 
+def _extract_upload_filename(req) -> str | None:
+    """Nome do arquivo enviado (o ACR guarda o buy-in só no filename). O frontend manda o
+    nome no JSON; o upload multipart tem em req.files."""
+    try:
+        if 'file' in req.files and req.files['file'].filename:
+            return req.files['file'].filename
+    except Exception:
+        pass
+    if req.is_json:
+        return (req.get_json(silent=True) or {}).get('filename')
+    try:
+        return req.form.get('filename')
+    except Exception:
+        return None
+
+
 _GENERIC_NOTES = {
     "A decisão deve seguir a estrutura principal esperada para esse spot.",
     "A ação escolhida força uma linha fora da banda mais defensável do range estimado.",
@@ -2842,13 +2859,36 @@ def _extract_tournament_name(raw: str, site: str, buy_in: float | None = None) -
     return None
 
 
-def _extract_financials(raw: str, hero: str, site: str | None = None) -> dict:
+def _acr_buyin_from_filename(filename: str | None) -> float | None:
+    """Buy-in do ACR a partir do NOME DO ARQUIVO: '...TN-$0{FULLSTOP}50 NLH...' → 0.50.
+    O ACR escapa o ponto decimal como '{FULLSTOP}' no filename; o corpo da HH é só em chips."""
+    if not filename:
+        return None
+    import re
+    fn = filename.replace('{FULLSTOP}', '.')
+    m = re.search(r'TN-\$([0-9]+(?:\.[0-9]+)?)', fn)
+    if not m:
+        return None
+    try:
+        return round(float(m.group(1)), 2)
+    except ValueError:
+        return None
+
+
+def _extract_financials(raw: str, hero: str, site: str | None = None, filename: str | None = None) -> dict:
     """
     Extrai buy-in e prêmio do hero do hand history.
-    Suporta PokerStars, GGPoker, 888poker e PartyPoker.
+    Suporta PokerStars, GGPoker, 888poker, PartyPoker e ACR (buy-in via filename).
     """
     import re
     result = {'buy_in': None, 'prize': None, 'profit': None, 'place': None}
+
+    # ── ACR / WPN: corpo da HH é SÓ em chips → buy-in vem do FILENAME. prize/profit/place ficam
+    # DESCONHECIDOS (None): o HH ACR não traz resultado nem payout → NÃO assumir busted (prize=0),
+    # seria prejuízo falso. Só o buy-in (stake) é conhecido. Ver specs/acr-parser.md fase 5.
+    if site == 'acr':
+        result['buy_in'] = _acr_buyin_from_filename(filename)
+        return result
 
     # ── 888poker / PartyPoker (dialeto PartyGaming) ────────────────────────────
     if site in ('888poker', 'partypoker'):

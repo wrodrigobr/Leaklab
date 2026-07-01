@@ -93,9 +93,9 @@ Ao concluir uma sprint, mover os itens para o CHANGELOG com o número da versão
 
 ## Próximas Sprints — Em Aberto
 
-### [PARSER-ACR] — Suporte a Hand History do ACR Poker ✅ PARSER ENTREGUE 2026-07-01 (fase 5 financeiro pendente)
+### [PARSER-ACR] — Suporte a Hand History do ACR Poker ✅ COMPLETO 2026-07-01 (fases 1-6)
 
-**PARSER ENTREGUE:** ACR é o 3º site (branch `site=='acr'` no `leaklab/parser.py`): detecção `Game Hand #`, split próprio, seats sem "in chips" (decimal), antes/ações SEM dois-pontos, `raises X to Y`→total, all-in, board/showdown reusados. Validado nos 3 arquivos reais (86 mãos → 136 decisões com posição); merge por hand_id no import já funciona. Teste `tests/test_acr_parser.py` (5, regression). **FALTA a fase 5 (financeiro):** o corpo é só chips; buy-in vem do FILENAME (`TN-$0{FULLSTOP}50`) → plumbar o filename no `/analyze` + parsear (`{FULLSTOP}`=`.`) pra popular ROI/bankroll; sem isso o torneio importa com financeiro zerado (mas leaks/GTO/ELO funcionam). Ver [`specs/acr-parser.md`](specs/acr-parser.md).
+**COMPLETO:** ACR é o 3º site (branch `site=='acr'` no `leaklab/parser.py`): detecção `Game Hand #`, split próprio, seats sem "in chips" (decimal), antes/ações SEM dois-pontos, `raises X to Y`→total, all-in, board/showdown reusados. **Fase 5 (financeiro) FECHADA:** buy-in vem do FILENAME (`TN-$0{FULLSTOP}50`→$0.50) — o frontend manda o `filename` no `/analyze`, o backend parseia (`_acr_buyin_from_filename`), e o ACR **NÃO assume busted** (prize/profit=None="resultado desconhecido", não inventa prejuízo). Validado nos 3 arquivos reais (86 mãos → 136 decisões com posição); merge por hand_id no import. Testes `tests/test_acr_parser.py` (6, regression). Limitação honesta: prize/ROI ficam desconhecidos (HH ACR não traz resultado); só o stake/buy-in é populado. Ver [`specs/acr-parser.md`](specs/acr-parser.md).
 
 > _(FEAT-17 concluído em v0.83.0 — entrada movida para o roadmap acima. Verificado 2026-06-15: `OnboardingModal.tsx` 4 passos, gate via `ProtectedRoute` (só com user carregado), finish→`/dashboard`→CTA de upload do `EmptyDashboard`, i18n nas 3 locales, endpoint+coluna+repo presentes.)_
 

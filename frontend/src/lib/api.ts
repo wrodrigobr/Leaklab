@@ -395,7 +395,8 @@ export const tournaments = {
       `/history/tournament/${tournamentId}`
     ),
 
-  analyze: (content: string) =>
+  // filename opcional: o ACR guarda o buy-in SÓ no nome do arquivo (o corpo é só em chips)
+  analyze: (content: string, filename?: string) =>
     request<{
       tournament_id: string;
       tournament_db_id: number;
@@ -406,7 +407,7 @@ export const tournaments = {
       hands: Record<string, unknown>;
     }>("/analyze", {
       method: "POST",
-      body: JSON.stringify({ content }),
+      body: JSON.stringify({ content, filename }),
     }),
 
   summary: (dbId: number) =>

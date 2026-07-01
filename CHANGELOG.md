@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(parser): ACR fase 5 — buy-in do filename (financeiro)
+
+> Fecha a fase 5 do ACR: o corpo da HH é só em chips, então o buy-in vem do FILENAME (`TN-$0{FULLSTOP}50` → $0.50). O frontend passou a mandar o `filename` no `/analyze` (`tournaments.analyze(content, file.name)` no UploadQueue e UploadZone); o backend parseia via `_acr_buyin_from_filename` e o `_extract_financials` ganhou branch ACR. **Honestidade:** o ACR NÃO assume busted (prize/profit ficam None = "resultado desconhecido") — o HH ACR não traz resultado nem payout, então inventar prize=0 seria prejuízo falso. Só o stake/buy-in é populado; prize/ROI ficam desconhecidos. Teste `test_acr_buyin_from_filename`; test_acr_parser 6/6.
+
 ### feat(parser): suporte a hand history do ACR / WPN (Americas Cardroom)
 
 > ACR vira o 3º site suportado (PS, GG, ACR). É um dialeto PokerStars-like que quebrava o parser PS: header `Game Hand #... - Tournament #...`, assentos `Seat N: nome (29150.00)` **sem "in chips"** e stack decimal, **ações SEM dois-pontos** (`nome raises X to Y`, `nome calls X`, `... and is all-in`), antes `nome posts ante 150.00`, linhas `Main pot` extras. Header/button/hero/blinds(decimais)/board/showdown reusam os regexes compartilhados; só seats/antes/ações ganharam branch `site=='acr'`. Detecção por `Game Hand #`, split próprio, `raises X to Y` → total Y. Validado nos 3 arquivos reais do torneio #35409697 (86 mãos → 136 decisões com posição via pipeline); os N arquivos do mesmo `Tournament #` mesclam por hand_id no import (lógica já existente). Teste `test_acr_parser.py` (5, suite regression); PS/GG intactos. **Pendente (fase 5):** buy-in vem do FILENAME (`TN-$0{FULLSTOP}50`), não do corpo (só chips) → ROI/bankroll do torneio ficam zerados até plumbar o filename no `/analyze`. Ver `specs/acr-parser.md`.

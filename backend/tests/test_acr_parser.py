@@ -170,6 +170,20 @@ def test_acr_multi_hand_same_tournament_and_pipeline():
     print("OK  test_acr_multi_hand_same_tournament_and_pipeline")
 
 
+def test_acr_buyin_from_filename():
+    """Fase 5: buy-in ACR vem do FILENAME ('TN-$0{FULLSTOP}50' → 0.50; '{FULLSTOP}'='.').
+    prize/profit ficam None (corpo é só chips; não assumir busted = prejuízo falso)."""
+    from api.app import _acr_buyin_from_filename, _extract_financials
+    fn = "HH20260630 SITGOID-G35409697T1 TN-$0{FULLSTOP}50 NLH Turbo - On Demand BUYIN-0.txt"
+    assert _acr_buyin_from_filename(fn) == 0.5
+    assert _acr_buyin_from_filename("HH T39 No Limit Holdem $0.98 + $0.12.txt") is None  # PS ≠ TN-$
+    assert _acr_buyin_from_filename(None) is None
+    fin = _extract_financials(ACR_FOLD_HAND, 'MusashiBR', 'acr', fn)
+    assert fin['buy_in'] == 0.5
+    assert fin['prize'] is None and fin['profit'] is None      # NÃO inventa busted no ACR
+    print("OK  test_acr_buyin_from_filename")
+
+
 if __name__ == '__main__':
     import traceback
     tests = [v for k, v in sorted(globals().items()) if k.startswith('test_')]

@@ -149,7 +149,7 @@ export function useUploadQueue(onAllDone?: () => void) {
       try {
         if (!file) throw new Error("Arquivo não encontrado na fila");
         const content = await file.text();
-        await tournaments.analyze(content);
+        await tournaments.analyze(content, file.name);
         dispatch({ type: "SET_STATUS", id: next.id, status: "done" });
         metrics.addXp("tournament_imported").catch(() => null);
         window.dispatchEvent(new CustomEvent("leaklab:tournament-imported"));
