@@ -73,7 +73,7 @@
       "tip": "Quando estiver pronto, jogue um torneio de verdade com o foco no que treinou e importe as mãos. É aqui que a prática vira jogo real."
     },
     "prove": {
-      "title": "Provar",
+      "title": "Comprovar",
       "desc": "Veja a melhora real",
       "tip": "A plataforma compara seus indicadores reais antes e depois do treino, pra mostrar se a melhora apareceu no jogo de verdade. Em breve."
     },
@@ -97,7 +97,7 @@
     "m_grind": "Treine {{target}} spots"
   },
   "proof": {
-    "title": "Provar",
+    "title": "Comprovar",
     "subtitle": "Sua aderência GTO REAL na categoria (das suas mãos, não do treino), antes de treinar × depois que você jogou e importou.",
     "before": "Antes",
     "after": "Depois",

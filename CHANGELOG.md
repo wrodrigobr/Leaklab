@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(training): passo "Provar" da jornada renomeado pra "Comprovar" (mais intuitivo)
+
+> O 3º passo da jornada (Treinar → Aplicar → Comprovar) e o título do card mudaram de "Provar" pra **Comprovar** (PT) / **Confirm** (EN) / **Comprobar** (ES) — nome mais claro pro "ver a melhora real no jogo". Só display (i18n `journey.prove.title` + `proof.title`); as chaves internas seguem `prove`/`proof`.
+
 ### feat(training): missões diárias com reset no fuso LOCAL + selo de "lição do dia pendente"
 
 > As missões diárias já resetavam por dia, mas à **meia-noite UTC** (21h no Brasil). Agora resetam à **meia-noite LOCAL** do jogador: o frontend manda o `tz_offset` (minutos a leste do UTC) no `/grade` e no `/training/overview`, e o `_today_str(tz)` calcula o dia local (clamp −14h..+14h). **Nudge da lição do dia:** novo endpoint leve `/player/training/daily-status` (`lesson_pending`, fuso local) + **selo âmbar no item "Treino" do nav** (desktop e mobile) quando a lição de hoje ainda não foi feita — some ao completar. Reaproveita o react-query do HudHeader (poll 5min, só player). Teste `test_daily_missions_timezone_aware`; training 17/17, database + api verdes, tsc 0.
