@@ -6625,7 +6625,7 @@ def digest_unsubscribe_link():
     if not verify_unsub_token(user_id, token):
         return jsonify({'error': 'Token inválido'}), 403
     update_digest_subscription(user_id, False)
-    return '<html><body style="font-family:sans-serif;text-align:center;padding:60px"><h2>Inscrição cancelada</h2><p>Você não receberá mais o digest semanal do LeakLabs.</p></body></html>', 200
+    return '<html><body style="font-family:sans-serif;text-align:center;padding:60px"><h2>Inscrição cancelada</h2><p>Você não receberá mais o digest semanal da GrindLab.</p></body></html>', 200
 
 
 @app.route('/player/email/unsubscribe', methods=['GET'])
@@ -6642,7 +6642,7 @@ def email_unsubscribe_link():
     if not verify_email_unsub_token(user_id, token):
         return jsonify({'error': 'Token inválido'}), 403
     update_email_opt_in(user_id, False)
-    return '<html><body style="font-family:sans-serif;text-align:center;padding:60px"><h2>Descadastro concluído</h2><p>Você não receberá mais emails de comunicado do LeakLabs.</p></body></html>', 200
+    return '<html><body style="font-family:sans-serif;text-align:center;padding:60px"><h2>Descadastro concluído</h2><p>Você não receberá mais emails de comunicado da GrindLab.</p></body></html>', 200
 
 
 @app.route('/admin/send-digest', methods=['POST'])
@@ -6669,16 +6669,16 @@ def admin_approve_coach_application(app_id):
     app  = approve_coach_application(app_id, note)
     if not app:
         return jsonify({'error': 'Candidatura não encontrada'}), 404
-    base_url = os.environ.get('APP_BASE_URL', 'https://leaklabs.ai')
+    base_url = os.environ.get('APP_BASE_URL', 'https://grindlabpoker.com')
     html = f"""<!DOCTYPE html><html><body style="font-family:sans-serif;background:#0f1117;color:#f1f5f9;padding:40px">
-<h2 style="color:#6366f1">Candidatura aprovada — LeakLabs.ai</h2>
+<h2 style="color:#2DD4BF">Candidatura aprovada · GrindLab</h2>
 <p>Olá, <strong>{app['username']}</strong>!</p>
 <p>Sua candidatura como coach foi <strong style="color:#22c55e">aprovada</strong>.</p>
 <p>Você já pode fazer login e configurar seu perfil:</p>
 <p><a href="{base_url}/login" style="color:#6366f1">{base_url}/login</a></p>
 {f'<p style="color:#9ca3af">Nota do admin: {note}</p>' if note else ''}
 </body></html>"""
-    send_transactional_email(app['email'], 'Candidatura aprovada — LeakLabs.ai', html)
+    send_transactional_email(app['email'], 'Candidatura aprovada · GrindLab', html)
     return jsonify({'ok': True})
 
 
@@ -6690,15 +6690,15 @@ def admin_reject_coach_application(app_id):
     if not app:
         return jsonify({'error': 'Candidatura não encontrada'}), 404
     if note:
-        base_url = os.environ.get('APP_BASE_URL', 'https://leaklabs.ai')
+        base_url = os.environ.get('APP_BASE_URL', 'https://grindlabpoker.com')
         html = f"""<!DOCTYPE html><html><body style="font-family:sans-serif;background:#0f1117;color:#f1f5f9;padding:40px">
-<h2 style="color:#6366f1">Atualização da candidatura — LeakLabs.ai</h2>
+<h2 style="color:#2DD4BF">Atualização da candidatura · GrindLab</h2>
 <p>Olá, <strong>{app['username']}</strong>.</p>
 <p>Sua candidatura como coach não foi aprovada neste momento.</p>
 <p style="color:#9ca3af">Motivo: {note}</p>
 <p>Você pode entrar em contato pelo site para mais informações.</p>
 </body></html>"""
-        send_transactional_email(app['email'], 'Candidatura — LeakLabs.ai', html)
+        send_transactional_email(app['email'], 'Candidatura · GrindLab', html)
     return jsonify({'ok': True})
 
 

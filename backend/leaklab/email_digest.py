@@ -12,8 +12,8 @@ Variáveis de ambiente requeridas:
   SMTP_PORT        — ex: 587 (default)
   SMTP_USER        — ex: apikey (SendGrid) ou endereço SMTP
   SMTP_PASSWORD    — senha SMTP / API key
-  DIGEST_FROM      — ex: noreply@leaklabs.ai
-  APP_BASE_URL     — ex: https://leaklabs.ai (para links de unsubscribe)
+  DIGEST_FROM      — ex: noreply@grindlabpoker.com
+  APP_BASE_URL     — ex: https://grindlabpoker.com (para links de unsubscribe)
   LEAKLAB_SECRET   — usado para assinar token de unsubscribe
 """
 from __future__ import annotations
@@ -186,7 +186,7 @@ def build_digest_html(username: str, data: dict, unsub_link: str) -> str:
     return f"""<!DOCTYPE html>
 <html lang="pt-BR">
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>Seu resumo semanal — LeakLabs.ai</title></head>
+<title>Seu resumo semanal · GrindLab</title></head>
 <body style="margin:0;padding:0;background:#0f1117;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
   <table width="100%" cellpadding="0" cellspacing="0" style="background:#0f1117;padding:40px 16px;">
     <tr><td align="center">
@@ -195,7 +195,7 @@ def build_digest_html(username: str, data: dict, unsub_link: str) -> str:
         <!-- Header -->
         <tr>
           <td style="padding:24px;background:#1a1f2e;border-bottom:1px solid #1e2433;">
-            <p style="margin:0;font-size:10px;font-family:monospace;text-transform:uppercase;letter-spacing:.12em;color:#6366f1;">LeakLabs.ai</p>
+            <p style="margin:0;font-size:10px;font-family:monospace;text-transform:uppercase;letter-spacing:.12em;color:#2DD4BF;">GrindLab</p>
             <h1 style="margin:6px 0 0 0;font-size:20px;font-weight:700;color:#f1f5f9;">Resumo da semana, {username}</h1>
           </td>
         </tr>
@@ -216,9 +216,9 @@ def build_digest_html(username: str, data: dict, unsub_link: str) -> str:
         <!-- CTA -->
         <tr>
           <td style="padding:24px;text-align:center;">
-            <a href="https://leaklabs.ai/dashboard"
-               style="display:inline-block;background:#6366f1;color:#fff;text-decoration:none;padding:12px 28px;border-radius:8px;font-size:13px;font-weight:600;">
-              Abrir LeakLabs
+            <a href="https://grindlabpoker.com/dashboard"
+               style="display:inline-block;background:#2DD4BF;color:#0A0E1A;text-decoration:none;padding:12px 28px;border-radius:8px;font-size:13px;font-weight:600;">
+              Abrir GrindLab
             </a>
           </td>
         </tr>
@@ -248,8 +248,8 @@ def send_digest_email(to_email: str, username: str, data: dict, user_id: int) ->
     smtp_port = int(os.environ.get("SMTP_PORT", "587"))
     smtp_user = os.environ.get("SMTP_USER", "")
     smtp_pass = os.environ.get("SMTP_PASSWORD", "")
-    from_addr = os.environ.get("DIGEST_FROM", "noreply@leaklabs.ai")
-    base_url  = os.environ.get("APP_BASE_URL", "https://leaklabs.ai")
+    from_addr = os.environ.get("DIGEST_FROM", "noreply@grindlabpoker.com")
+    base_url  = os.environ.get("APP_BASE_URL", "https://grindlabpoker.com")
 
     if not smtp_host or not smtp_user or not smtp_pass:
         log.warning("SMTP não configurado — digest não enviado para %s", to_email)
@@ -260,7 +260,7 @@ def send_digest_email(to_email: str, username: str, data: dict, user_id: int) ->
     html_body = build_digest_html(username, data, unsub_url)
 
     msg = MIMEMultipart("alternative")
-    msg["Subject"] = f"📊 Seu resumo semanal — LeakLabs.ai"
+    msg["Subject"] = "📊 Seu resumo semanal · GrindLab"
     msg["From"]    = from_addr
     msg["To"]      = to_email
     msg.attach(MIMEText(html_body, "html", "utf-8"))
@@ -286,7 +286,7 @@ def send_transactional_email(to_email: str, subject: str, html_body: str) -> boo
     smtp_port = int(os.environ.get("SMTP_PORT", "587"))
     smtp_user = os.environ.get("SMTP_USER", "")
     smtp_pass = os.environ.get("SMTP_PASSWORD", "")
-    from_addr = os.environ.get("DIGEST_FROM", "noreply@leaklabs.ai")
+    from_addr = os.environ.get("DIGEST_FROM", "noreply@grindlabpoker.com")
 
     if not smtp_host or not smtp_user or not smtp_pass:
         log.warning("SMTP não configurado — email transacional não enviado para %s", to_email)
@@ -325,7 +325,7 @@ def build_admin_email_html(username: str, title: str, body: str,
     """HTML do email de comunicado do admin — mesmo visual do digest, com rodapé
     de descadastro (LGPD). `body` pode ter quebras de linha (viram <br>)."""
     emoji, color, cat_label = _CATEGORY_META.get(category, _CATEGORY_META["info"])
-    safe_title = (title or "").strip() or "Comunicado — LeakLabs.ai"
+    safe_title = (title or "").strip() or "Comunicado · GrindLab"
     body_html = (body or "").strip().replace("\n", "<br>")
     return f"""<!DOCTYPE html>
 <html lang="pt-BR">
@@ -349,16 +349,16 @@ def build_admin_email_html(username: str, title: str, body: str,
         </tr>
         <tr>
           <td style="padding:0 24px 24px;text-align:center;">
-            <a href="https://leaklabs.ai/dashboard"
-               style="display:inline-block;background:{color};color:#fff;text-decoration:none;padding:12px 28px;border-radius:8px;font-size:13px;font-weight:600;">
-              Abrir LeakLabs
+            <a href="https://grindlabpoker.com/dashboard"
+               style="display:inline-block;background:{color};color:#0A0E1A;text-decoration:none;padding:12px 28px;border-radius:8px;font-size:13px;font-weight:600;">
+              Abrir GrindLab
             </a>
           </td>
         </tr>
         <tr>
           <td style="padding:16px 24px;border-top:1px solid #1e2433;text-align:center;">
             <p style="margin:0;font-size:11px;color:#6b7280;">
-              Você recebe comunicados da LeakLabs porque tem conta na plataforma.<br>
+              Você recebe comunicados da GrindLab porque tem conta na plataforma.<br>
               <a href="{unsub_link}" style="color:#6b7280;text-decoration:underline;">Não quero mais receber emails</a>
             </p>
           </td>
@@ -373,10 +373,10 @@ def build_admin_email_html(username: str, title: str, body: str,
 def send_admin_email(to_email: str, username: str, user_id: int,
                      title: str, body: str, category: str = "info") -> bool:
     """Envia o comunicado do admin por email (com rodapé de descadastro). True se enviado."""
-    base_url = os.environ.get("APP_BASE_URL", "https://leaklabs.ai")
+    base_url = os.environ.get("APP_BASE_URL", "https://grindlabpoker.com")
     token = _email_unsub_token(user_id)
     unsub_url = f"{base_url}/api/player/email/unsubscribe?uid={user_id}&token={token}"
-    subject = (title or "").strip() or "Comunicado — LeakLabs.ai"
+    subject = (title or "").strip() or "Comunicado · GrindLab"
     html = build_admin_email_html(username, title, body, unsub_url, category)
     return send_transactional_email(to_email, subject, html)
 
