@@ -105,13 +105,11 @@ def _fundamentals_curriculum() -> list[dict]:
     return fundamentals_catalog('rfi')
 
 
-# Cenários que o gerador sintético consegue SERVIR hoje. vs_3bet fica de fora não por falta de
-# range (a range GW v3 vs_3bet[opener][3bettor] EXISTE e analyze_preflop a devolve — 36 pares
-# cobertos) nem de captura (decisions tem is_3bet/preflop_raises_faced), mas por um BUG DE WIRING:
-# generate_canonical_spot/academy chamam analyze_preflop sem hero_was_aggressor=True, então o
-# spot é classificado como vs_rfi e volta available=False. Ligar vs_3bet = passar
-# hero_was_aggressor=True (+ facing_raises<2) no generate E no grade. Backlog. Ver [[reference_external_charts_vs3bet]].
-TRAINABLE_SCENARIOS = ['rfi', 'vs_rfi']
+# Cenários que o gerador sintético serve. vs_3bet LIGADO 2026-06-30 (backlog #31): a range GW v3
+# vs_3bet[opener][3bettor] já existia; faltava passar hero_was_aggressor=True (+ facing_raises=1)
+# no generate E no grade — sem isso o analyze_preflop rotula como vs_rfi e volta indisponível.
+# 36 pares de posição cobertos. Ver [[reference_external_charts_vs3bet]].
+TRAINABLE_SCENARIOS = ['rfi', 'vs_rfi', 'vs_3bet']
 
 
 def fundamentals_catalog(scenario: str, stack: int = 50) -> list[dict]:
@@ -154,12 +152,18 @@ def generate_canonical_spot(category: dict, rng: random.Random | None = None) ->
     facing   = _FACING.get(scenario, 0.0)
     is_3b    = scenario == 'vs_3bet'
     opts     = _OPTIONS.get(scenario, ['fold', 'raise'])
+    # vs_3bet: o HERO abriu e agora enfrenta um 3-bet → precisa de hero_was_aggressor=True +
+    # facing_raises=1 pro analyze_preflop rotear pra vs_3bet[opener][3bettor] (sem isso cai em vs_rfi
+    # e volta indisponível). facing_raises>=2 viraria vs_4bet. Ver [[reference_external_charts_vs3bet]].
+    was_aggr = is_3b
+    raises   = 1 if is_3b else 0
 
     hands = _HANDS[:]
     rng.shuffle(hands)
     for hand in hands[:40]:
         res = analyze_preflop(pos, hand, float(stack), 'fold',
-                              facing_size=facing, vs_position=vs_pos, is_3bet_pot=is_3b)
+                              facing_size=facing, vs_position=vs_pos, is_3bet_pot=is_3b,
+                              hero_was_aggressor=was_aggr, facing_raises=raises)
         if not res.get('available') or res.get('scenario') != scenario:
             continue
         rec = res.get('recommended_actions') or []
@@ -173,6 +177,8 @@ def generate_canonical_spot(category: dict, rng: random.Random | None = None) ->
             'stack_bb':    stack,
             'facing_size': facing,
             'is_3bet_pot': is_3b,
+            'hero_was_aggressor': was_aggr,   # grade reusa (senão reclassifica errado)
+            'facing_raises': raises,
             'hand':        hand,
             'hero_cards':  _hand_to_cards(hand),
             'options':     opts,
@@ -200,6 +206,7 @@ def grade_canonical_spot(spot: dict, action: str) -> dict:
                 'new_score': 0.0, 'original_score': 0.0, 'delta': 0.0,
                 'next_drill_at': None, 'srs_interval_days': 0, 'ungradeable': True}
     played = _norm_action(action)
+    is_3b  = bool(spot.get('is_3bet_pot', False))
     res = analyze_preflop(
         spot.get('position', ''),
         spot.get('hand', ''),
@@ -207,7 +214,10 @@ def grade_canonical_spot(spot: dict, action: str) -> dict:
         played if played != 'allin' else 'allin',
         facing_size=float(spot.get('facing_size', 0) or 0),
         vs_position=spot.get('vs_position', '') or '',
-        is_3bet_pot=bool(spot.get('is_3bet_pot', False)),
+        is_3bet_pot=is_3b,
+        # mesmas flags do generate: sem isto o vs_3bet reclassifica como vs_rfi e a correção mente
+        hero_was_aggressor=bool(spot.get('hero_was_aggressor', is_3b)),
+        facing_raises=int(spot.get('facing_raises', 1 if is_3b else 0) or 0),
     )
     hf = res.get('hand_freq') or {}
     # mix de estratégia (% por ação não-zero), ordenado por freq desc

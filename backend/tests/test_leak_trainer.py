@@ -214,18 +214,30 @@ def test_next_spot_empty_curriculum():
 
 
 def test_fundamentals_catalog_and_trainable():
-    """Seletor: fundamentos por cenário treinável geram spot coberto; vs_3bet fica fora (sem
-    cobertura no motor hoje) pra não oferecer treino que o drill não consegue servir."""
-    assert TRAINABLE_SCENARIOS == ['rfi', 'vs_rfi'], TRAINABLE_SCENARIOS
+    """Seletor: fundamentos por cenário treinável geram spot coberto (rfi/vs_rfi/vs_3bet)."""
+    assert TRAINABLE_SCENARIOS == ['rfi', 'vs_rfi', 'vs_3bet'], TRAINABLE_SCENARIOS
     for scn in TRAINABLE_SCENARIOS:
         cats = fundamentals_catalog(scn)
         assert cats and all(c['scenario'] == scn and int(c.get('n') or 0) == 0 for c in cats)
         sp = next_spot(cats, {}, random.Random(1))
         assert sp is not None and sp['scenario'] == scn, (scn, sp)
-    # rfi = todas as posições menos BB; vs_rfi = pares defensor-posterior
+    # rfi = todas as posições menos BB; vs_rfi/vs_3bet = pares com 3bettor/opener
     assert all(c['vs_position'] == '' for c in fundamentals_catalog('rfi'))
     assert all(c['vs_position'] for c in fundamentals_catalog('vs_rfi'))
     print("OK  test_fundamentals_catalog_and_trainable")
+
+
+def test_vs_3bet_spot_generates_and_grades():
+    """#31: vs_3bet ligado — hero abriu e enfrenta 3-bet. O generate passa hero_was_aggressor+
+    facing_raises (senão cai em vs_rfi), o spot carrega as flags e o grade reusa (correção coerente)."""
+    sp = next_spot(fundamentals_catalog('vs_3bet'), {}, random.Random(3))
+    assert sp and sp['scenario'] == 'vs_3bet'
+    assert sp.get('hero_was_aggressor') is True and sp.get('facing_raises') == 1, sp
+    assert set(sp['options']) == {'fold', 'call', 'raise'}
+    # grada as 3 ações sem erro; ao menos uma é a linha GTO (tier correct/mixed)
+    tiers = {act: grade_canonical_spot(sp, act)['gto_tier'] for act in ('fold', 'call', 'raise')}
+    assert any(t in ('correct', 'mixed') for t in tiers.values()), tiers
+    print("OK  test_vs_3bet_spot_generates_and_grades")
 
 
 if __name__ == '__main__':

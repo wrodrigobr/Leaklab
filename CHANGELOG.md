@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(leaktrainer): treino de vs_3bet ligado (backlog #31)
+
+> vs_3bet entra no seletor (`TRAINABLE_SCENARIOS` agora inclui `vs_3bet`). Não era falta de range (a GW v3 vs_3bet já existia, 36 pares) nem de captura — era um bug de wiring: `generate_canonical_spot`/`grade_canonical_spot` chamavam `analyze_preflop` sem `hero_was_aggressor=True` (+`facing_raises=1`), então o spot classificava como vs_rfi e voltava indisponível. Corrigido nos dois lados (o spot carrega as flags pro grade reusar, senão a correção mentiria). Agora o usuário pode treinar potes de 3-bet (hero abriu e enfrenta o 3-bet) — RFI/vs-open/vs-3bet cobertos. Teste `test_vs_3bet_spot_generates_and_grades`; leak_trainer 18/18.
+
 ### feat(leaktrainer): seletor de tipo de spot (escolher o treino) + fundamentos por cenário
 
 > O treino deixa de ser só aleatório/adaptativo: na tela inicial do Leak Trainer o usuário **escolhe o que treinar** — Adaptativo (recomendado, mira o que mais custa), um **leak real específico** (lista com EV perdido + tier), ou **explorar fundamentos** de um cenário (RFI / Defesa vs open) mesmo sem leak medido. Backend: `focus` no `/next` (`adaptive` | `leak:<key>` | `fund:<scenario>`) filtra o `next_spot`; novo `/leaktrainer/options` lista os leaks servíveis + cenários treináveis; `fundamentals_catalog(scenario)` enumera os pares de posição. **Correção honesta:** `vs_3bet` fica FORA do seletor (`TRAINABLE_SCENARIOS = [rfi, vs_rfi]`) — não por falta de range (a range GW v3 vs_3bet EXISTE, 36 pares cobertos) nem de captura (decisions.is_3bet), mas por um bug de wiring: o gerador sintético chama analyze_preflop sem `hero_was_aggressor=True` → classifica como vs_rfi e volta indisponível (academy também gera 0 vs_3bet). Ligar vs_3bet virou item #31 do backlog. Também explica por que o hub mostrava "só BB defense": a seleção é ponderada por EV perdido e defesa de BB domina (BB vs SB = 11bb). i18n PT/EN/ES. Testes leak_trainer 17/17, tsc 0.
