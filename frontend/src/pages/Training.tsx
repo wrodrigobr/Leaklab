@@ -1,10 +1,27 @@
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowRight, CheckCircle2, Dumbbell, GraduationCap, RotateCw, Target, Award, Flame, Star, Trophy, Lock, Map, Play, TrendingUp } from "lucide-react";
+import { ArrowRight, CheckCircle2, Dumbbell, GraduationCap, RotateCw, Target, Award, Flame, Star, Trophy, Lock, Map, Play, TrendingUp, Sparkles, Medal, Gem, Compass, Crown, type LucideIcon } from "lucide-react";
 import { HudLayout } from "@/components/hud/HudLayout";
 import { training } from "@/lib/api";
 import { cn } from "@/lib/utils";
+
+// Cada conquista tem um ÍCONE próprio (não um número) — pra ler como medalha, não como passo de
+// uma sequência. Agrupado por natureza: volume=halteres, tier=medalha/troféu/gema, streak=chama.
+const ACH_ICON: Record<string, LucideIcon> = {
+  "train:first":    Sparkles,
+  "train:reps50":   Dumbbell,
+  "train:reps200":  Dumbbell,
+  "train:reps1000": Crown,
+  "train:silver":   Medal,
+  "train:gold":     Trophy,
+  "train:gold3":    Trophy,
+  "train:diamond":  Gem,
+  "train:explorer": Compass,
+  "train:streak3":  Flame,
+  "train:streak7":  Flame,
+  "train:streak30": Flame,
+};
 
 const TIER: Record<string, { label: string; ring: string; text: string }> = {
   bronze:  { label: "Bronze",   ring: "#b08d57", text: "text-[#d9a86a]" },
@@ -261,26 +278,33 @@ export default function Training() {
               )}
             </div>
 
-            {/* Conquistas — o caminho (desbloqueadas + travadas) */}
+            {/* Conquistas — COLEÇÃO de medalhas (não sequência): cada uma tem ícone próprio,
+                ganha-se em qualquer ordem. Grade que quebra linha, sem números, sem linha do tempo. */}
             <div>
-              <div className="mb-2 flex items-center justify-between">
+              <div className="mb-1 flex items-center justify-between">
                 <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">{t("status.achievements")}</p>
                 <span className="font-mono text-[10px] text-muted-foreground">{unlockedCount} {t("status.of")} {overview.achievements.length}</span>
               </div>
-              {/* Linha do tempo: 1 linha (com a barra) no desktop; no celular vira grade de 2
-                  linhas (6 col), SEM scroll horizontal. px/py dão folga pro ring + hover:scale. */}
-              <div className="px-2 py-2">
-                <div className="relative grid grid-cols-6 justify-items-center gap-y-3 sm:flex sm:w-full sm:items-center sm:justify-between">
-                  <div className="pointer-events-none absolute inset-x-4 top-1/2 hidden h-0.5 -translate-y-1/2 bg-border sm:block" aria-hidden />
-                  {overview.achievements.map((a, i) => (
+              <p className="mb-3 text-[11px] leading-snug text-muted-foreground">{t("status.achievementsHint")}</p>
+              <div className="flex flex-wrap gap-2.5">
+                {overview.achievements.map((a) => {
+                  const Icon = ACH_ICON[a.key] ?? Award;
+                  return (
                     <div key={a.key}
                       title={`${ta(`trainAch.${achKey(a.key)}.title`)} · ${ta(`trainAch.${achKey(a.key)}.desc`)}`}
-                      className={cn("relative z-10 flex size-8 cursor-default items-center justify-center rounded-full font-mono text-[11px] font-bold ring-2 transition-transform hover:scale-110",
-                        a.unlocked ? "bg-primary text-primary-foreground ring-primary" : "bg-card text-muted-foreground ring-border")}>
-                      {i + 1}
+                      className={cn("relative flex size-11 cursor-default items-center justify-center rounded-xl ring-1 transition-transform hover:scale-110",
+                        a.unlocked
+                          ? "bg-primary/15 ring-primary/40 shadow-[0_0_14px_-3px] shadow-primary/50"
+                          : "bg-muted/10 ring-border")}>
+                      <Icon className={cn("size-5", a.unlocked ? "text-primary" : "text-muted-foreground/40")} aria-hidden />
+                      {!a.unlocked && (
+                        <span className="absolute -bottom-1 -right-1 flex size-4 items-center justify-center rounded-full bg-background ring-1 ring-border">
+                          <Lock className="size-2.5 text-muted-foreground" aria-hidden />
+                        </span>
+                      )}
                     </div>
-                  ))}
-                </div>
+                  );
+                })}
               </div>
             </div>
           </div>

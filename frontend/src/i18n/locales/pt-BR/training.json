@@ -7,6 +7,7 @@
     "skills": "Domínio por habilidade",
     "noSkills": "Você ainda não treinou nenhuma habilidade. Comece um treino abaixo.",
     "achievements": "Conquistas",
+    "achievementsHint": "Medalhas que você ganha treinando, em qualquer ordem, não é uma sequência.",
     "of": "de"
   },
   "ghost": {

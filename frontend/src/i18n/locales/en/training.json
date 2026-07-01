@@ -7,6 +7,7 @@
     "skills": "Mastery by skill",
     "noSkills": "You haven't trained any skill yet. Start a session below.",
     "achievements": "Achievements",
+    "achievementsHint": "Medals you earn by training, in any order, not a sequence.",
     "of": "of"
   },
   "ghost": {
