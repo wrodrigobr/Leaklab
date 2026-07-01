@@ -73,7 +73,7 @@
       "tip": "When you're ready, play a real tournament focusing on what you trained and import the hands. This is where practice turns into real play."
     },
     "prove": {
-      "title": "Confirm",
+      "title": "Validate",
       "desc": "See the real improvement",
       "tip": "The platform compares your real metrics before and after training, to show whether the improvement showed up in your actual game. Coming soon."
     },
@@ -97,7 +97,7 @@
     "m_grind": "Train {{target}} spots"
   },
   "proof": {
-    "title": "Confirm",
+    "title": "Validate learning",
     "subtitle": "Your REAL GTO adherence in the category (from your hands, not the drills), before training × after you played and imported.",
     "before": "Before",
     "after": "After",
