@@ -10,7 +10,7 @@ import { AccountMenu } from "@/components/hud/AccountMenu";
 import { CoachMessagesPanel } from "@/components/hud/CoachMessagesPanel";
 import { SupportModal } from "@/components/hud/SupportModal";
 import { NotificationBell } from "@/components/hud/NotificationBell";
-import { playerMessages, support, coaches } from "@/lib/api";
+import { playerMessages, support, coaches, training } from "@/lib/api";
 
 interface HudHeaderProps {
   onUpload?: () => void;
@@ -23,6 +23,7 @@ type NavItem = {
   icon: React.ElementType;
   end?: boolean;
   activePaths?: string[];
+  dot?: boolean;          // selo de pendência (ex.: lição do dia não feita)
 };
 
 const LANGUAGES = [
@@ -116,6 +117,7 @@ export function HudHeader({ onUpload }: HudHeaderProps) {
       to: "/training",
       icon: Dumbbell,
       activePaths: ["/training", "/ghost"],
+      dot: lessonPending,
     },
     { label: t("nav.coach"),   mobileLabel: t("nav.coach"),   to: "/coach",   icon: Bot },
     ...(hasCoaches
@@ -175,6 +177,15 @@ export function HudHeader({ onUpload }: HudHeaderProps) {
   });
   const supportReplies = supportRepliesData?.replied ?? 0;
 
+  // Nudge da lição do dia: selo no item "Treino" quando a lição de hoje está pendente (fuso local).
+  const { data: dailyStatus } = useQuery({
+    queryKey: ["training-daily-status"],
+    queryFn: training.dailyStatus,
+    refetchInterval: 300_000,
+    enabled: user?.role === "player",
+  });
+  const lessonPending = !!dailyStatus?.lesson_pending;
+
   return (
     <>
       <header className="sticky top-0 z-50 border-b border-border bg-background/85 backdrop-blur-md pt-[env(safe-area-inset-top)]">
@@ -206,6 +217,9 @@ export function HudHeader({ onUpload }: HudHeaderProps) {
                   >
                     <item.icon className="size-3.5" aria-hidden />
                     {item.label}
+                    {item.dot && (
+                      <span className="absolute right-0.5 top-0.5 size-1.5 rounded-full bg-amber-400 ring-2 ring-background" aria-hidden />
+                    )}
                     {isActive && (
                       <span className="absolute -bottom-[17px] left-2 right-2 h-0.5 bg-primary" />
                     )}
@@ -307,12 +321,15 @@ export function HudHeader({ onUpload }: HudHeaderProps) {
                   to={item.to}
                   end={item.end ?? item.to === "/"}
                   className={() =>
-                    `flex flex-col items-center gap-0.5 flex-1 rounded-lg px-1 py-2 min-w-0 transition-colors ${
+                    `relative flex flex-col items-center gap-0.5 flex-1 rounded-lg px-1 py-2 min-w-0 transition-colors ${
                       isActive ? "text-primary" : "text-muted-foreground"
                     }`
                   }
                 >
                   <item.icon className="size-5 shrink-0" aria-hidden />
+                  {item.dot && (
+                    <span className="absolute right-[22%] top-1 size-1.5 rounded-full bg-amber-400 ring-2 ring-background" aria-hidden />
+                  )}
                   <span className="font-mono text-[8px] uppercase tracking-wide truncate w-full text-center leading-none mt-0.5">
                     {item.mobileLabel}
                   </span>

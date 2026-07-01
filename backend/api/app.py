@@ -2162,8 +2162,15 @@ def leaktrainer_grade():
             result['training'] = record_training_attempt(g.user_id, _cat, bool(result.get('is_correct')))
             # conquistas de treino recém-desbloqueadas (pro veredito da lição comemorar)
             result['training_achievements'] = evaluate_training_achievements(g.user_id)
-            # missões diárias: incrementa contadores + auto-resgata as completas (XP)
-            result['daily_missions'] = record_daily_mission_progress(g.user_id, bool(result.get('is_correct')))
+            # missões diárias: incrementa contadores + auto-resgata as completas (XP).
+            # tz_offset (min a leste do UTC, do frontend) → reset à meia-noite LOCAL do jogador.
+            _tz = 0
+            try:
+                _tz = int((request.get_json(silent=True) or {}).get('tz_offset') or 0)
+            except Exception:
+                _tz = 0
+            result['daily_missions'] = record_daily_mission_progress(
+                g.user_id, bool(result.get('is_correct')), _tz)
         except Exception:
             app.logger.exception('record_training_attempt falhou (user=%s)', g.user_id)
             result['training'] = None
@@ -2190,9 +2197,20 @@ def training_overview():
         'xp':           get_xp_status(g.user_id),
         'skills':       get_training_skills(g.user_id),
         'achievements': get_training_achievements(g.user_id),   # conquistas de TREINO (não as globais)
-        'missions':     get_daily_missions(g.user_id),          # missões diárias (Fase 2)
+        'missions':     get_daily_missions(g.user_id, _tz_offset_arg()),   # missões diárias (fuso local)
         'readiness':    training_readiness(g.user_id),          # gate 'Aplicar': todos os leaks no Diamante
     })
+
+
+@app.route('/player/training/daily-status', methods=['GET'])
+@require_auth
+def training_daily_status():
+    """Nudge leve pro nav (selo "lição de hoje pendente"): a missão de lição do dia ainda não foi
+    completa? Fuso LOCAL do jogador (?tz_offset=). Endpoint barato — 1 query."""
+    from database.repositories import get_daily_missions
+    missions = get_daily_missions(g.user_id, _tz_offset_arg())
+    lesson = next((m for m in missions if m.get('key') == 'm_lesson'), None)
+    return jsonify({'lesson_pending': bool(lesson and not lesson.get('completed'))})
 
 
 @app.route('/player/training/proof', methods=['GET'])
@@ -2648,6 +2666,15 @@ def _extract_content(req) -> str | None:
         except Exception:
             return None
     return req.form.get('content')
+
+
+def _tz_offset_arg() -> int:
+    """Minutos a leste do UTC vindos do frontend (query ?tz_offset=). Pro reset diário das missões
+    ser à meia-noite LOCAL do jogador (JS: -new Date().getTimezoneOffset(); Brasil = -180)."""
+    try:
+        return int(request.args.get('tz_offset') or 0)
+    except Exception:
+        return 0
 
 
 def _extract_upload_filename(req) -> str | None:

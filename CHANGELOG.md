@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(training): missões diárias com reset no fuso LOCAL + selo de "lição do dia pendente"
+
+> As missões diárias já resetavam por dia, mas à **meia-noite UTC** (21h no Brasil). Agora resetam à **meia-noite LOCAL** do jogador: o frontend manda o `tz_offset` (minutos a leste do UTC) no `/grade` e no `/training/overview`, e o `_today_str(tz)` calcula o dia local (clamp −14h..+14h). **Nudge da lição do dia:** novo endpoint leve `/player/training/daily-status` (`lesson_pending`, fuso local) + **selo âmbar no item "Treino" do nav** (desktop e mobile) quando a lição de hoje ainda não foi feita — some ao completar. Reaproveita o react-query do HudHeader (poll 5min, só player). Teste `test_daily_missions_timezone_aware`; training 17/17, database + api verdes, tsc 0.
+
 ### fix(ui): ícones de site maiores/nítidos + scroll ao paginar a lista de mãos
 
 > **Ícones de site:** favicon pedido em `sz=128` (era 64) pra não borrar em tamanhos maiores, e os tamanhos de exibição subiram na lista de torneios (RecentTournamentsTable 16→22 / 14→20; Tournaments 18→22). Os ícones vêm do serviço de favicon do Google (resolução limitada pela fonte de cada rede) — pra logos oficiais nítidos em tamanho grande, o caminho é bundlar assets locais (SVG/PNG). **Lista de mãos do torneio:** ao trocar de página, a rolagem agora **sobe pro início da lista** (âncora + `scrollIntoView`) em vez de ficar travada embaixo, onde está o paginador (`TournamentDetail.tsx`).

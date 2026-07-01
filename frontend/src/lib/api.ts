@@ -1049,7 +1049,7 @@ export const leaktrainer = {
   grade: (spot: LeakTrainerSpot, action: string) =>
     request<LeakTrainerGrade>("/player/leaktrainer/grade", {
       method: "POST",
-      body: JSON.stringify({ spot, action }),
+      body: JSON.stringify({ spot, action, tz_offset: tzOffsetMinutes() }),
     }),
 };
 
@@ -1104,9 +1104,12 @@ export interface TrainingProofItem {
   snapshot: { tournament_id: string; pct: number; n: number } | null;  // último torneio (amostra 1)
   confident: boolean;                   // after_n >= mínimo → tendência; senão amostra pequena
 }
+// minutos a leste do UTC (Brasil = -180) — pro reset diário das missões ser à meia-noite LOCAL
+export const tzOffsetMinutes = (): number => -new Date().getTimezoneOffset();
 export const training = {
-  overview: () => request<TrainingOverview>("/player/training/overview"),
+  overview: () => request<TrainingOverview>(`/player/training/overview?tz_offset=${tzOffsetMinutes()}`),
   proof: () => request<{ proof: TrainingProofItem[] }>("/player/training/proof"),
+  dailyStatus: () => request<{ lesson_pending: boolean }>(`/player/training/daily-status?tz_offset=${tzOffsetMinutes()}`),
 };
 
 export const sparring = {

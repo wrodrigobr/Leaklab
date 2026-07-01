@@ -338,6 +338,20 @@ def test_readiness_consolidated_all_diamond():
     print("OK  test_readiness_consolidated_all_diamond")
 
 
+def test_daily_missions_timezone_aware():
+    """Reset das missões à meia-noite LOCAL: record/get usam o dia no fuso do jogador. Um fuso
+    vê o progresso; outro fuso (que está em outra data) vê zerado."""
+    from database.repositories import _today_str
+    assert _today_str(-840) != _today_str(840)          # -14h e +14h nunca no mesmo dia
+    uid = _mk_user()
+    record_daily_mission_progress(uid, True, -840)      # conta no "hoje" do fuso A
+    ma = {m['key']: m for m in get_daily_missions(uid, -840)}
+    mb = {m['key']: m for m in get_daily_missions(uid, 840)}   # fuso B = outra data
+    assert ma['m_lesson']['progress'] == 1, ma
+    assert mb['m_lesson']['progress'] == 0, mb            # não vaza entre dias/fusos
+    print("OK  test_daily_missions_timezone_aware")
+
+
 if __name__ == '__main__':
     import traceback
     tests = [v for k, v in sorted(globals().items()) if k.startswith('test_')]

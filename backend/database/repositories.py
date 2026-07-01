@@ -5975,9 +5975,15 @@ _DAILY_MISSIONS = [
 ]
 
 
-def _today_str() -> str:
-    from datetime import datetime
-    return datetime.utcnow().strftime('%Y-%m-%d')
+def _today_str(tz_offset_min: int = 0) -> str:
+    """Data de HOJE no fuso do jogador (missões diárias resetam à meia-noite LOCAL, não UTC).
+    tz_offset_min = minutos a leste do UTC (JS: -new Date().getTimezoneOffset(); Brasil = -180)."""
+    from datetime import datetime, timedelta
+    try:
+        off = max(-840, min(840, int(tz_offset_min or 0)))   # clamp -14h..+14h
+    except Exception:
+        off = 0
+    return (datetime.utcnow() + timedelta(minutes=off)).strftime('%Y-%m-%d')
 
 
 def _daily_progress(spots: int, correct: int) -> list:
@@ -5989,12 +5995,12 @@ def _daily_progress(spots: int, correct: int) -> list:
     return out
 
 
-def record_daily_mission_progress(user_id: int, correct: bool) -> list:
-    """Incrementa os contadores do dia e auto-resgata missões recém-completas (XP via add_xp).
-    Devolve as missões recém-completas (key/reward) — pro veredito/UI comemorar."""
+def record_daily_mission_progress(user_id: int, correct: bool, tz_offset_min: int = 0) -> list:
+    """Incrementa os contadores do dia (fuso LOCAL do jogador) e auto-resgata missões recém-completas
+    (XP via add_xp). Devolve as missões recém-completas (key/reward) — pro veredito/UI comemorar."""
     if not user_id:
         return []
-    day = _today_str()
+    day = _today_str(tz_offset_min)
     conn = get_conn()
     try:
         row = _fetchone(conn, _adapt(
@@ -6030,15 +6036,15 @@ def record_daily_mission_progress(user_id: int, correct: bool) -> list:
     return newly
 
 
-def get_daily_missions(user_id: int) -> list:
-    """Missões do dia com progresso/alvo/completed (pro hub)."""
+def get_daily_missions(user_id: int, tz_offset_min: int = 0) -> list:
+    """Missões do dia (fuso LOCAL do jogador) com progresso/alvo/completed (pro hub)."""
     if not user_id:
         return _daily_progress(0, 0)
     conn = get_conn()
     try:
         row = _fetchone(conn, _adapt(
             "SELECT spots, correct FROM training_daily WHERE user_id=? AND day=?"),
-            (user_id, _today_str()))
+            (user_id, _today_str(tz_offset_min)))
     finally:
         conn.close()
     return _daily_progress(int(row['spots']) if row else 0, int(row['correct']) if row else 0)
