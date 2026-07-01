@@ -12,6 +12,26 @@ PS_ID_RE     = re.compile(r"PokerStars Hand #(\d+)")
 GG_SPLIT_RE  = re.compile(r"(?=Poker Hand #)")
 GG_ID_RE     = re.compile(r"Poker Hand #(\w+)")
 
+# ── ACR / WPN patterns (Americas Cardroom / Winning Poker Network) ─────────────
+# Dialeto PokerStars-like na estrutura MAS com diferenças que quebram o parser PS:
+#   header "Game Hand #<id> - Tournament #<tid> - Holdem (No Limit) - Level N (sb.00/bb.00) - ... UTC"
+#   assentos "Seat N: nome (29150.00)"  → SEM "in chips", stack decimal
+#   AÇÕES SEM DOIS-PONTOS: "nome raises X to Y", "nome calls X", "nome folds", "... and is all-in"
+#   antes "nome posts ante 150.00" (sem "the"/sem ":"), linhas "Main pot X" extras (ignoradas)
+# Header/button/hero/blinds(decimais)/board/showdown reusam os regexes compartilhados. Ver
+# specs/acr-parser.md. Vários arquivos do MESMO Tournament # = mesmo torneio (merge no import).
+ACR_SPLIT_RE  = re.compile(r"(?=Game Hand #)")
+ACR_ID_RE     = re.compile(r"Game Hand #(\d+)")
+ACR_SEAT_RE   = re.compile(r"^Seat (\d+): (.+?) \(([\d.,]+)\)$")
+ACR_ANTE_RE   = re.compile(r"^(?P<player>.+?) posts (?:the )?ante (?P<amount>[\d.,]+)", re.IGNORECASE)
+# "raises X to Y" (Y=total), "calls X", "bets X", "folds"/"checks", "... and is all-in".
+ACR_ACTION_RE = re.compile(
+    r"^(?P<player>.+?) (?P<action>folds|checks|calls|bets|raises)"
+    r"(?:\s+(?P<amount>[\d.,]+))?(?:\s+to\s+(?P<toamt>[\d.,]+))?"
+    r"(?P<allin>\s+and is all-in)?\s*$",
+    re.IGNORECASE,
+)
+
 # ── PartyGaming dialect (888poker / PartyPoker) ───────────────────────────────
 # Os dois sites compartilham um formato quase idêntico (herança Pacific/PartyGaming),
 # bem diferente do PokerStars/GGPoker. Header e cada linha de ação mudam.
@@ -104,6 +124,8 @@ def _detect_site(text: str) -> str:
         return "pokerstars"
     if "Poker Hand #" in text:
         return "ggpoker"
+    if "Game Hand #" in text:            # ACR/WPN: "Game Hand #... - Tournament #..."
+        return "acr"
     if PARTYGAMING_ENABLED:
         # 888 antes de PartyPoker: o header do 888 também contém "Hand History for Game".
         if "888poker" in text:
@@ -118,6 +140,9 @@ def _split_hands(text: str, site: str) -> List[str]:
     if site == "ggpoker":
         prefix = "Poker Hand #"
         chunks = [c.strip() for c in GG_SPLIT_RE.split(text) if c.strip().startswith(prefix)]
+    elif site == "acr":
+        prefix = "Game Hand #"
+        chunks = [c.strip() for c in ACR_SPLIT_RE.split(text) if c.strip().startswith(prefix)]
     else:
         prefix = "PokerStars Hand #"
         chunks = [c.strip() for c in PS_SPLIT_RE.split(text) if c.strip().startswith(prefix)]
@@ -135,14 +160,15 @@ def parse_hand_history(text: str) -> List[ParsedHand]:
     site = _detect_site(text)
     if site in ("888poker", "partypoker"):
         return _parse_partygaming_hands(text, site)
-    id_re = GG_ID_RE if site == "ggpoker" else PS_ID_RE
+    id_re = ACR_ID_RE if site == "acr" else GG_ID_RE if site == "ggpoker" else PS_ID_RE
     chunks = _split_hands(text, site)
-    return [parse_hand(chunk, id_re) for chunk in chunks]
+    return [parse_hand(chunk, id_re, site) for chunk in chunks]
 
 
-def parse_hand(raw_text: str, id_re: re.Pattern | None = None) -> ParsedHand:
+def parse_hand(raw_text: str, id_re: re.Pattern | None = None, site: str = "pokerstars") -> ParsedHand:
     if id_re is None:
         id_re = PS_ID_RE
+    is_acr = (site == "acr")
 
     hand_id  = _search(id_re, raw_text)
     tourn_id = _search(TOURN_RE, raw_text)
@@ -185,6 +211,19 @@ def parse_hand(raw_text: str, id_re: re.Pattern | None = None) -> ParsedHand:
             street = "river"
             board  = _extract_board(line)
             continue
+        if is_acr:
+            # Assento ACR: "Seat N: nome (29150.00)" — sem "in chips", stack decimal, fim na paren.
+            # (as linhas de summary "Seat N: nome (button) folded..." não terminam em número → não casam)
+            msa = ACR_SEAT_RE.match(line)
+            if msa:
+                name = msa.group(2).strip()
+                players.append(name)
+                try:
+                    seats.append({'seat': int(msa.group(1)), 'name': name,
+                                  'stack': float(msa.group(3).replace(",", ""))})
+                except Exception:
+                    pass
+                continue
         if line.startswith("Seat ") and ":" in line and "(" in line and "in chips" in line:
             # Assento "out of hand" (movido de outra mesa, joga só após o botão):
             # não é jogador desta mão — fora de players/seats/bounties.
@@ -209,7 +248,7 @@ def parse_hand(raw_text: str, id_re: re.Pattern | None = None) -> ParsedHand:
             winner = mw.group(1).strip()
             amount = float(mw.group(2))
             bounties[winner] = bounties.get(winner, 0.0) + amount
-        mant = ANTE_LINE_RE.match(line)
+        mant = (ACR_ANTE_RE if is_acr else ANTE_LINE_RE).match(line)
         if mant:
             _an = mant.group("player").strip()
             try:
@@ -217,6 +256,18 @@ def parse_hand(raw_text: str, id_re: re.Pattern | None = None) -> ParsedHand:
             except Exception:
                 pass
             continue   # ante não é ação; não cai no ACTION_LINE_RE
+        if is_acr:
+            # Ação ACR SEM dois-pontos: "nome raises X to Y" (Y=total), "nome calls X", "nome folds".
+            maa = ACR_ACTION_RE.match(line)
+            if maa:
+                action_str = maa.group("action").lower()
+                amt = maa.group("toamt") or maa.group("amount")   # raise → total 'to'; call/bet → valor
+                if action_str in ("bets", "raises") and maa.group("allin"):
+                    action_str = "all-in"
+                actions.append(ParsedAction(
+                    player=maa.group("player").strip(), street=street, action=action_str,
+                    amount=float(amt.replace(",", "")) if amt else None, raw=line))
+            continue   # ACR não usa o ACTION_LINE_RE (PS/GG, com dois-pontos)
         ma = ACTION_LINE_RE.match(line)
         if ma:
             amount = ma.group("amount")

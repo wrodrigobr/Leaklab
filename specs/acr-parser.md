@@ -1,6 +1,6 @@
 # Spec — Parser de Hand History do ACR Poker (Americas Cardroom / Winning Poker Network)
 
-Status: **BACKLOG** (analisado 2026-06-30). Arquivos de amostra em `backend/HH20260630 SITGOID-G35409697T*.txt` (3 arquivos, MESMO torneio).
+Status: **PARSER ENTREGUE 2026-07-01** (fases 1-4 + 6). Detecção/split/header/seats/antes/ações/board/showdown ACR no `leaklab/parser.py` (branch `site=='acr'`); validado nos 3 arquivos reais (86 mãos → 136 decisões com posição via pipeline). Teste `tests/test_acr_parser.py` (5, suite regression). **Fase 5 (financeiro via filename) PENDENTE** — o corpo da HH ACR é só em chips (sem $ de buy-in/prêmio); o buy-in vem do FILENAME (`TN-$0{FULLSTOP}50`), que o `/analyze` teria que receber e parsear. Sem isso, mãos/decisões/GTO funcionam, mas ROI/bankroll do torneio ficam zerados. Arquivos de amostra em `backend/HH20260630 SITGOID-G35409697T*.txt` (3 arquivos, MESMO torneio #35409697 — merge por hand_id já funciona no import).
 
 ## Objetivo
 Adicionar o ACR como 3º site suportado (hoje: PokerStars, GGPoker) em `leaklab/parser.py`. ACR é dialeto **PokerStars-like na estrutura, mas com diferenças que quebram o parser atual** (sem dois-pontos nas ações, sem "in chips", valores com decimais).

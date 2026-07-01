@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(parser): suporte a hand history do ACR / WPN (Americas Cardroom)
+
+> ACR vira o 3º site suportado (PS, GG, ACR). É um dialeto PokerStars-like que quebrava o parser PS: header `Game Hand #... - Tournament #...`, assentos `Seat N: nome (29150.00)` **sem "in chips"** e stack decimal, **ações SEM dois-pontos** (`nome raises X to Y`, `nome calls X`, `... and is all-in`), antes `nome posts ante 150.00`, linhas `Main pot` extras. Header/button/hero/blinds(decimais)/board/showdown reusam os regexes compartilhados; só seats/antes/ações ganharam branch `site=='acr'`. Detecção por `Game Hand #`, split próprio, `raises X to Y` → total Y. Validado nos 3 arquivos reais do torneio #35409697 (86 mãos → 136 decisões com posição via pipeline); os N arquivos do mesmo `Tournament #` mesclam por hand_id no import (lógica já existente). Teste `test_acr_parser.py` (5, suite regression); PS/GG intactos. **Pendente (fase 5):** buy-in vem do FILENAME (`TN-$0{FULLSTOP}50`), não do corpo (só chips) → ROI/bankroll do torneio ficam zerados até plumbar o filename no `/analyze`. Ver `specs/acr-parser.md`.
+
 ### feat(training): decaimento de domínio (SRS simples) — quem não pratica esquece
 
 > O domínio por habilidade agora DECAI com o tempo sem praticar (antes só subia, o que enfraquecia a régua do gate "Aplicar"). Modelo de retenção: `1.0` na carência (7 dias), depois meia-vida (21 dias) até um piso (0.4) — constantes tunáveis. Aplicado em DOIS pontos: na **leitura** (`get_training_skills` devolve o domínio ATUAL decaído + `mastery_stored` do pico + flag `stale`), então o hub e o gate mostram o valor real e um leak abandonado **re-trava** o gate; e ao **RETOMAR** (`record_training_attempt` decai a EMA antes de aplicar a nova tentativa) — fecha o loophole de restaurar tudo com 1 rep após abandonar. Conquistas usam o pico (`mastery_stored`), nunca se DES-ganha uma medalha. Frontend: ícone "revisar" (âmbar) nas skills decaídas com tooltip. i18n PT/EN/ES. Testes `test_retention_factor_curve` + `test_mastery_decay_read_and_resume`; training 16/16, tsc 0.

@@ -93,9 +93,9 @@ Ao concluir uma sprint, mover os itens para o CHANGELOG com o número da versão
 
 ## Próximas Sprints — Em Aberto
 
-### [PARSER-ACR] — Suporte a Hand History do ACR Poker *(analisado 2026-06-30)*
+### [PARSER-ACR] — Suporte a Hand History do ACR Poker ✅ PARSER ENTREGUE 2026-07-01 (fase 5 financeiro pendente)
 
-**Spec + análise completa:** [`specs/acr-parser.md`](specs/acr-parser.md). 3 arquivos de amostra em `backend/HH20260630 SITGOID-G35409697T*.txt` (MESMO torneio #35409697). ACR é dialeto PokerStars-like que QUEBRA o parser atual: header `Game Hand #... - Tournament #...`, assentos `Seat N: nome (29150.00)` **sem "in chips"**, **ações SEM dois-pontos** (`nome raises X to Y`, `... and is all-in`), valores em chips com decimais, linhas `Main pot` extras, summary com wording próprio. **Agrupar os N arquivos por `Tournament #` do header** (não criar torneios separados); buy-in vem do filename (`{FULLSTOP}`=`.`). Faseamento e regexes no spec; testes de regressão com os 3 arquivos reais.
+**PARSER ENTREGUE:** ACR é o 3º site (branch `site=='acr'` no `leaklab/parser.py`): detecção `Game Hand #`, split próprio, seats sem "in chips" (decimal), antes/ações SEM dois-pontos, `raises X to Y`→total, all-in, board/showdown reusados. Validado nos 3 arquivos reais (86 mãos → 136 decisões com posição); merge por hand_id no import já funciona. Teste `tests/test_acr_parser.py` (5, regression). **FALTA a fase 5 (financeiro):** o corpo é só chips; buy-in vem do FILENAME (`TN-$0{FULLSTOP}50`) → plumbar o filename no `/analyze` + parsear (`{FULLSTOP}`=`.`) pra popular ROI/bankroll; sem isso o torneio importa com financeiro zerado (mas leaks/GTO/ELO funcionam). Ver [`specs/acr-parser.md`](specs/acr-parser.md).
 
 > _(FEAT-17 concluído em v0.83.0 — entrada movida para o roadmap acima. Verificado 2026-06-15: `OnboardingModal.tsx` 4 passos, gate via `ProtectedRoute` (só com user carregado), finish→`/dashboard`→CTA de upload do `EmptyDashboard`, i18n nas 3 locales, endpoint+coluna+repo presentes.)_
 
