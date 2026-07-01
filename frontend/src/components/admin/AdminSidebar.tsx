@@ -10,6 +10,7 @@ export type AdminSection =
   | "support"
   | "feedback"
   | "candidaturas"
+  | "messages"
   | "gto-worker"
   | "logs"
   ;

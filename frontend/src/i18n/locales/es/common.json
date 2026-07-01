@@ -32,6 +32,7 @@
     "studentMessage": "Nuevo mensaje de un alumno",
     "achievement": "¡Logro desbloqueado: {{title}}!",
     "coachAnnotation": "Tu coach anotó una de tus manos",
+    "adminMessage": "Mensaje del equipo",
     "clearAll": "Borrar todas"
   },
   "actions": {

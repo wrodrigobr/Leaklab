@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(admin): mensagens do admin — DM pra 1 jogador + broadcast (#35)
+
+> O admin pode enviar uma mensagem direta a um jogador OU um broadcast (todos os players, ou filtrado por plano). Cai no **sino de notificações** do jogador (reusa toda a infra existente: tabela `notifications` + NotificationBell + rotas de ler/apagar). Backend: `POST /admin/message` (user_id+título+corpo → `create_notification` tipo `admin_message`) e `POST /admin/broadcast` (fan-out via `get_all_user_ids` + `broadcast_notification`, tipo `admin_broadcast`), `@require_admin`. Frontend: nova aba **"Mensagens"** no painel admin (busca de jogador reusando `/admin/users`, ou broadcast com filtro de plano). NotificationBell renderiza os tipos admin com 📣 + título/corpo. Teste `test_admin_message_and_broadcast`; notifications 12/12, tsc 0.
+
 ### feat(training): aviso de "leaks sem treino" — reinicia o ciclo treine→jogue→valide
 
 > Fecha o loop: quando novos torneios revelam leaks que você ainda não treinou, o hub de Treino mostra um aviso âmbar ("N leak(s) no seu jogo ainda sem treino — reinicie o ciclo") com CTA pro Leak Trainer. Backend: `training_readiness` passou a devolver `untrained` (leaks reais do currículo sem nenhuma linha em `training_skill_progress`). Como leaks/gate/jornada já são recalculados dos dados vivos (janela 90d), o ciclo se reinicia sozinho (leak resolvido cai fora, leak novo entra e re-trava o Aplicar); o aviso torna isso legível. Teste `test_readiness_untrained_leaks`; training 18/18, tsc 0.

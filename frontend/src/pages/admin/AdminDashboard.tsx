@@ -4,7 +4,7 @@ import {
   Activity, BarChart2, CheckCircle2, Clock,
   LayoutDashboard, Loader2, RefreshCw, Search, Shield, Users,
   GraduationCap, X, Check, MessageSquarePlus, Trash2, AlertTriangle,
-  Cpu, CircleDot, Lightbulb
+  Cpu, CircleDot, Lightbulb, Send, Megaphone
 } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
 import { HudHeader } from "@/components/hud/HudHeader";
@@ -475,6 +475,117 @@ function UsersTab() {
           onClose={() => setCoachTarget(null)}
         />
       )}
+    </div>
+  );
+}
+
+// ── Mensagens Tab (admin → jogador / broadcast) ───────────────────────────────
+
+function MessagesTab() {
+  const [mode, setMode] = useState<"dm" | "broadcast">("dm");
+  const [search, setSearch] = useState("");
+  const [target, setTarget] = useState<AdminUser | null>(null);
+  const [plan, setPlan] = useState("");            // "" = todos os players
+  const [title, setTitle] = useState("");
+  const [body, setBody] = useState("");
+
+  const { data: results } = useQuery({
+    queryKey: ["admin-msg-users", search],
+    queryFn: () => adminDashboard.users({ search, role: "player", limit: 6 }),
+    enabled: mode === "dm" && search.trim().length >= 2 && !target,
+  });
+
+  const send = useMutation({
+    mutationFn: async () => {
+      const tt = title.trim(), bb = body.trim();
+      if (mode === "dm") {
+        if (!target) throw new Error("Selecione um jogador");
+        return adminDashboard.sendMessage(target.id, tt, bb);
+      }
+      return adminDashboard.broadcast(tt, bb, plan ? { plan } : undefined);
+    },
+    onSuccess: (r) => {
+      toast.success(mode === "dm"
+        ? `Mensagem enviada para ${target?.username}`
+        : `Broadcast enviado para ${(r as { count?: number })?.count ?? "?"} jogador(es)`);
+      setTitle(""); setBody(""); setTarget(null); setSearch("");
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Falha ao enviar"),
+  });
+
+  const canSend = !!(title.trim() || body.trim()) && (mode === "broadcast" || !!target) && !send.isPending;
+  const tabBtn = (m: "dm" | "broadcast", label: string, Icon: typeof Send) => (
+    <button onClick={() => setMode(m)}
+      className={cn("inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 font-mono text-xs font-bold uppercase tracking-wider transition-colors",
+        mode === m ? "bg-primary/15 text-primary ring-1 ring-primary/30" : "text-muted-foreground hover:text-foreground")}>
+      <Icon className="size-3.5" /> {label}
+    </button>
+  );
+
+  return (
+    <div className="max-w-2xl space-y-4">
+      <div className="flex gap-2">
+        {tabBtn("dm", "Jogador", Send)}
+        {tabBtn("broadcast", "Broadcast", Megaphone)}
+      </div>
+
+      {mode === "dm" ? (
+        target ? (
+          <div className="flex items-center justify-between rounded-lg border border-border bg-card px-3 py-2 text-sm">
+            <span className="text-foreground"><b>{target.username}</b> <span className="text-muted-foreground">· {target.email}</span></span>
+            <button onClick={() => setTarget(null)} className="font-mono text-[10px] uppercase text-muted-foreground hover:text-foreground">trocar</button>
+          </div>
+        ) : (
+          <div className="relative">
+            <div className="flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2">
+              <Search className="size-3.5 text-muted-foreground shrink-0" />
+              <input value={search} onChange={e => setSearch(e.target.value)}
+                placeholder="Buscar jogador (username ou email)…"
+                className="w-full bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none" />
+            </div>
+            {results?.users?.length ? (
+              <ul className="absolute z-10 mt-1 w-full overflow-hidden rounded-lg border border-border bg-card shadow-lg">
+                {results.users.map(u => (
+                  <li key={u.id}>
+                    <button onClick={() => { setTarget(u); setSearch(""); }}
+                      className="flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-primary/5">
+                      <span className="text-foreground">{u.username}</span>
+                      <span className="font-mono text-[11px] text-muted-foreground">{u.email}</span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+          </div>
+        )
+      ) : (
+        <select value={plan} onChange={e => setPlan(e.target.value)}
+          className="rounded-md border border-border bg-background px-3 py-1.5 font-mono text-xs text-foreground focus:outline-none">
+          <option value="">Todos os jogadores</option>
+          <option value="free">Só plano Free</option>
+          <option value="pro">Só plano Pro</option>
+        </select>
+      )}
+
+      <input value={title} onChange={e => setTitle(e.target.value)} maxLength={120}
+        placeholder="Título (ex.: Manutenção programada)"
+        className="w-full rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/40" />
+      <textarea value={body} onChange={e => setBody(e.target.value)} maxLength={500} rows={4}
+        placeholder="Mensagem…"
+        className="w-full resize-none rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/40" />
+
+      <div className="flex items-center gap-3">
+        <button disabled={!canSend} onClick={() => send.mutate()}
+          className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 font-mono text-xs font-bold uppercase tracking-widest text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-40">
+          {send.isPending ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}
+          {mode === "dm" ? "Enviar" : "Enviar broadcast"}
+        </button>
+        <span className="text-[11px] text-muted-foreground">
+          {mode === "dm"
+            ? "Cai no sino de notificações do jogador."
+            : `Vai pro sino de todos os jogadores${plan ? ` (plano ${plan})` : ""}.`}
+        </span>
+      </div>
     </div>
   );
 }
@@ -1154,6 +1265,7 @@ const AdminDashboard = () => {
       items: [
         { id: "support",      label: "Tickets",      icon: MessageSquarePlus, badge: openTickets },
         { id: "feedback",     label: "Feedback",     icon: Lightbulb },
+        { id: "messages",     label: "Mensagens",    icon: Send },
         { id: "candidaturas", label: "Candidaturas", icon: Shield, badge: pendingCount },
       ],
     },
@@ -1190,6 +1302,7 @@ const AdminDashboard = () => {
             {section === "coaches"      && <CoachesTab />}
             {section === "support"      && <SupportTab />}
             {section === "feedback"     && <SupportTab kind="feedback" />}
+            {section === "messages"     && <MessagesTab />}
             {section === "candidaturas" && <CandidaturasTab />}
             {section === "gto-worker"   && <GtoWorkerTab />}
             {section === "logs"         && <LogsTab />}

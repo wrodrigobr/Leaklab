@@ -2317,6 +2317,18 @@ export const adminDashboard = {
   coachStudents: (coachId: number) =>
     request<{ students: AdminCoachStudent[] }>(`/admin/coach/${coachId}/students`),
 
+  // Mensagem do admin → 1 jogador (DM) ou broadcast (todos os players, ou filtrado por plan)
+  sendMessage: (userId: number, title: string, body: string, link?: string) =>
+    request<{ ok: boolean }>("/admin/message", {
+      method: "POST",
+      body: JSON.stringify({ user_id: userId, title, body, link }),
+    }),
+  broadcast: (title: string, body: string, opts?: { plan?: string; link?: string }) =>
+    request<{ ok: boolean; count: number }>("/admin/broadcast", {
+      method: "POST",
+      body: JSON.stringify({ title, body, ...opts }),
+    }),
+
   updateUser: (id: number, data: { plan?: string; suspended?: boolean }) =>
     request<{ ok: boolean }>(`/admin/users/${id}`, {
       method: "PATCH",

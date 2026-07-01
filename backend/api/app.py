@@ -6233,6 +6233,43 @@ def admin_users():
     return jsonify({'users': users, 'total': total})
 
 
+@app.route('/admin/message', methods=['POST'])
+@require_admin
+def admin_send_message():
+    """Admin → mensagem direta a UM jogador (cai no sino de notificações via create_notification)."""
+    from database.repositories import create_notification
+    data  = request.get_json(force=True) or {}
+    try:
+        uid = int(data.get('user_id') or 0)
+    except Exception:
+        uid = 0
+    title = (data.get('title') or '').strip()
+    body  = (data.get('body') or '').strip()
+    link  = (data.get('link') or '').strip() or None
+    if not uid or not (title or body):
+        return jsonify({'error': 'user_id e (título ou corpo) são obrigatórios'}), 400
+    create_notification(uid, 'admin_message', {'title': title, 'body': body}, link)
+    return jsonify({'ok': True})
+
+
+@app.route('/admin/broadcast', methods=['POST'])
+@require_admin
+def admin_broadcast():
+    """Admin → broadcast a TODOS os jogadores (ou filtrado por role/plan). Fan-out 1 notif/usuário."""
+    from database.repositories import get_all_user_ids, broadcast_notification
+    data  = request.get_json(force=True) or {}
+    title = (data.get('title') or '').strip()
+    body  = (data.get('body') or '').strip()
+    link  = (data.get('link') or '').strip() or None
+    if not (title or body):
+        return jsonify({'error': 'título ou corpo obrigatório'}), 400
+    role  = (data.get('role') or 'player').strip() or None
+    plan  = (data.get('plan') or '').strip() or None
+    ids   = get_all_user_ids(role=role, plan=plan)
+    n     = broadcast_notification(ids, 'admin_broadcast', {'title': title, 'body': body}, link)
+    return jsonify({'ok': True, 'count': n})
+
+
 @app.route('/admin/coach/<int:coach_id>/students', methods=['GET'])
 @require_admin
 def admin_coach_students(coach_id: int):

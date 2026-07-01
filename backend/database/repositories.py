@@ -7069,6 +7069,44 @@ def create_notification(user_id: int, ntype: str, payload: Optional[dict] = None
         conn.close()
 
 
+def get_all_user_ids(role: str | None = None, plan: str | None = None,
+                     exclude_suspended: bool = True) -> list[int]:
+    """IDs de usuários para o broadcast do admin (filtro opcional por role/plan; exclui suspensos)."""
+    conn = get_conn()
+    try:
+        filters, params = [], []
+        if role:
+            filters.append("role = ?"); params.append(role)
+        if plan:
+            filters.append("plan = ?"); params.append(plan)
+        if exclude_suspended:
+            filters.append("(suspended IS NULL OR suspended = FALSE)" if USE_POSTGRES
+                           else "(suspended IS NULL OR suspended = 0)")
+        where = ("WHERE " + " AND ".join(filters)) if filters else ""
+        rows = _fetchall(conn, _adapt(f"SELECT id FROM users {where}"), tuple(params))
+        return [int(r['id']) for r in rows]
+    finally:
+        conn.close()
+
+
+def broadcast_notification(user_ids: list[int], ntype: str, payload: Optional[dict] = None,
+                           link: Optional[str] = None) -> int:
+    """Insere a MESMA notificação pra vários usuários (broadcast do admin), numa conexão só."""
+    if not user_ids:
+        return 0
+    conn = get_conn()
+    try:
+        pj = json.dumps(payload or {})
+        for uid in user_ids:
+            conn.execute(_adapt(
+                "INSERT INTO notifications (user_id, type, payload, link) VALUES (?,?,?,?)"),
+                (uid, ntype, pj, link))
+        conn.commit()
+        return len(user_ids)
+    finally:
+        conn.close()
+
+
 def get_notifications(user_id: int, limit: int = 30) -> list[dict]:
     conn = get_conn()
     try:

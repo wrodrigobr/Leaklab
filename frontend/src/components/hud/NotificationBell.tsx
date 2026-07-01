@@ -12,6 +12,8 @@ const TYPE_ICON: Record<string, string> = {
   student_message: "💬",
   achievement: "⭐",
   coach_annotation: "✍️",
+  admin_message: "📣",
+  admin_broadcast: "📣",
 };
 
 interface NotificationBellProps {
@@ -80,7 +82,7 @@ export function NotificationBell({ renderActions, extraUnread = 0 }: Notificatio
   };
 
   const renderText = (n: NotificationItem): string => {
-    const p = n.payload as { band?: string; delta?: number; title?: string };
+    const p = n.payload as { band?: string; delta?: number; title?: string; body?: string };
     switch (n.type) {
       case "elo_band_up":    return t("notifications.eloBandUp", { band: p.band, delta: p.delta });
       case "elo_band_down":  return t("notifications.eloBandDown", { band: p.band, delta: p.delta });
@@ -88,8 +90,16 @@ export function NotificationBell({ renderActions, extraUnread = 0 }: Notificatio
       case "student_message":return t("notifications.studentMessage");
       case "achievement":    return t("notifications.achievement", { title: p.title });
       case "coach_annotation": return t("notifications.coachAnnotation");
+      case "admin_message":
+      case "admin_broadcast": return p.title || p.body || t("notifications.adminMessage");
       default:               return n.type;
     }
+  };
+  // corpo opcional (subtítulo) — usado nas mensagens do admin (título + corpo)
+  const renderBody = (n: NotificationItem): string | null => {
+    const p = n.payload as { title?: string; body?: string };
+    if ((n.type === "admin_message" || n.type === "admin_broadcast") && p.title && p.body) return p.body;
+    return null;
   };
 
   return (
@@ -150,7 +160,12 @@ export function NotificationBell({ renderActions, extraUnread = 0 }: Notificatio
                     )}
                   >
                     <span className="text-base leading-none mt-0.5">{TYPE_ICON[n.type] ?? "🔔"}</span>
-                    <span className="flex-1 text-[12px] text-foreground leading-snug">{renderText(n)}</span>
+                    <span className="flex-1 min-w-0">
+                      <span className="block text-[12px] text-foreground leading-snug">{renderText(n)}</span>
+                      {renderBody(n) && (
+                        <span className="mt-0.5 block text-[11px] text-muted-foreground leading-snug">{renderBody(n)}</span>
+                      )}
+                    </span>
                     {!n.read && <span className="size-1.5 rounded-full bg-primary shrink-0 mt-1.5" />}
                   </button>
                 </li>

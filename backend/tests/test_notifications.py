@@ -166,6 +166,26 @@ def test_dismiss_all():
     print("OK  test_dismiss_all")
 
 
+def test_admin_message_and_broadcast():
+    """#35: DM (create_notification admin_message) + broadcast (get_all_user_ids + broadcast_notification)."""
+    a = _new_user("adm_a")
+    b = _new_user("adm_b")
+    ids = repo.get_all_user_ids(role="player")
+    assert a in ids and b in ids
+    n = repo.broadcast_notification([a, b], "admin_broadcast",
+                                    payload={"title": "Aviso", "body": "Manutenção às 22h"}, link="/x")
+    assert n == 2
+    ia = repo.get_notifications(a)
+    assert any(x["type"] == "admin_broadcast" and x["payload"]["title"] == "Aviso" for x in ia), ia
+    # DM com título+corpo
+    repo.create_notification(b, "admin_message", payload={"title": "Oi", "body": "Mensagem direta"})
+    ib = repo.get_notifications(b)
+    assert any(x["type"] == "admin_message" and x["payload"]["body"] == "Mensagem direta" for x in ib), ib
+    # broadcast vazio = 0
+    assert repo.broadcast_notification([], "admin_broadcast", payload={"title": "x"}) == 0
+    print("OK  test_admin_message_and_broadcast")
+
+
 if __name__ == '__main__':
     tests = [v for k, v in sorted(globals().items()) if k.startswith('test_')]
     passed = failed = 0
