@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(auth): verificação de email por código no cadastro (2FA simples anti-bot) + boas-vindas
+
+> Novo cadastro agora **exige um código de 6 dígitos** enviado por email antes de completar, uma barreira barata contra robôs de cadastro. Fluxo: `/auth/register` cria a conta como **não verificada** (sem token) e dispara o código; `/auth/verify-email` valida (expira em 15 min, máx 6 tentativas), marca verificada, **envia o email de boas-vindas** e emite o token (login); `/auth/resend-code` reenvia sem vazar existência de conta. Login fica **bloqueado** (403 `email_unverified`) até confirmar. **Gate:** só liga quando há SMTP configurado (`_email_verification_enabled`), então dev/testes seguem com cadastro instantâneo; `EMAIL_VERIFICATION_DISABLED=1` força desligar. Legados nascem verificados (coluna `email_verified` default 1, abort-proof no Postgres). Emails novos (código + boas-vindas) usam o shell profissional com logo GrindLab. Frontend: tela de código no `Login.tsx` (input 6 dígitos, reenviar, voltar) + i18n PT/EN/ES; erro do backend carrega `code` p/ mapear mensagem traduzida. Testes `test_email_verification.py` (6): pending sem token, login bloqueado, código errado→certo, expiração, excesso de tentativas, resend sem vazar. api 44/44, database 24/24, tsc 0.
+
 ### feat(email): template profissional do comunicado (logo GrindLab + cores da marca)
 
 > O email do comunicado do admin foi redesenhado num visual profissional: **logo GrindLab** no header (crosshair-espada + wordmark), fundo escuro `#0A0E1A`, barra de destaque teal, título forte, corpo com **parágrafos** (linha em branco separa `<p>`), botão CTA teal e rodapé com marca + descadastro + copyright. **Sem ícones/emoji.** O logo é um PNG (`frontend/public/email-logo.png`, servido em `grindlabpoker.com/email-logo.png`) rasterizado do `grindlab_final_horizontal.svg` via PyMuPDF (paths puros, cores exatas da marca). `_body_to_paragraphs` formata o corpo; ano do rodapé calculado em runtime. Requer rebuild do Cloudflare Pages pra servir o logo. notifications 13/13.

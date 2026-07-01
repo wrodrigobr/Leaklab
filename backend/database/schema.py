@@ -735,6 +735,12 @@ def _run_migrations(conn):
             ("digest_subscribed",   "ALTER TABLE users ADD COLUMN digest_subscribed   INTEGER NOT NULL DEFAULT 0"),
             # opt-out de email de comunicado do admin (default 1 = inscrito; unsubscribe via link zera)
             ("email_opt_in",        "ALTER TABLE users ADD COLUMN email_opt_in        INTEGER NOT NULL DEFAULT 1"),
+            # Verificação de email no cadastro (2FA simples anti-bot). default 1 = legados verificados;
+            # novos signups nascem com 0 e só completam com o código enviado por email.
+            ("email_verified",      "ALTER TABLE users ADD COLUMN email_verified      INTEGER NOT NULL DEFAULT 1"),
+            ("verification_code",   "ALTER TABLE users ADD COLUMN verification_code   TEXT"),
+            ("verification_expires_at", "ALTER TABLE users ADD COLUMN verification_expires_at TEXT"),
+            ("verification_attempts",   "ALTER TABLE users ADD COLUMN verification_attempts   INTEGER NOT NULL DEFAULT 0"),
         ]:
             try: conn.execute(_sql)
             except Exception: pass
@@ -1428,6 +1434,10 @@ def _run_migrations(conn):
             ("daily_focus_done_at",   "ALTER TABLE users ADD COLUMN daily_focus_done_at   TEXT"),
             ("digest_subscribed",          "ALTER TABLE users ADD COLUMN digest_subscribed          INTEGER NOT NULL DEFAULT 0"),
             ("email_opt_in",               "ALTER TABLE users ADD COLUMN email_opt_in               INTEGER NOT NULL DEFAULT 1"),
+            ("email_verified",             "ALTER TABLE users ADD COLUMN email_verified             INTEGER NOT NULL DEFAULT 1"),
+            ("verification_code",          "ALTER TABLE users ADD COLUMN verification_code          TEXT"),
+            ("verification_expires_at",    "ALTER TABLE users ADD COLUMN verification_expires_at    TEXT"),
+            ("verification_attempts",      "ALTER TABLE users ADD COLUMN verification_attempts      INTEGER NOT NULL DEFAULT 0"),
             ("birth_year",                "ALTER TABLE users ADD COLUMN birth_year                INTEGER"),
             ("country",                   "ALTER TABLE users ADD COLUMN country                   TEXT"),
             ("state_province",            "ALTER TABLE users ADD COLUMN state_province            TEXT"),
@@ -1899,6 +1909,11 @@ def _run_migrations(conn):
             # ficava atrás do `xp_total` (já existente), que aborta a transação → email_opt_in
             # nunca era criada em prod e o get_email_recipients dava 500. Commit isolado resolve.
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS email_opt_in INTEGER NOT NULL DEFAULT 1",
+            # Verificação de email no cadastro (2FA simples). default 1 = legados verificados.
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified INTEGER NOT NULL DEFAULT 1",
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS verification_code TEXT",
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS verification_expires_at TEXT",
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS verification_attempts INTEGER NOT NULL DEFAULT 0",
         ]
         for _stmt in _safe:
             try:

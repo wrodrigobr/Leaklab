@@ -29,17 +29,31 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
       throw new Error(`Erro do servidor (HTTP ${res.status})`);
     }
   }
-  if (!res.ok) throw new Error((data.error as string) ?? `HTTP ${res.status}`);
+  if (!res.ok) {
+    const err = new Error((data.error as string) ?? `HTTP ${res.status}`) as Error & {
+      code?: string; status?: number; data?: Record<string, unknown>;
+    };
+    err.code = data.code as string | undefined;   // ex.: 'email_unverified', 'coach_pending'
+    err.status = res.status;
+    err.data = data;
+    throw err;
+  }
   return data as T;
 }
 
 // ── Auth ─────────────────────────────────────────────────────────────────────
 
 export interface AuthResponse {
-  token: string;
-  user_id: number;
-  role: string;
+  token?: string;
+  user_id?: number;
+  role?: string;
+  username?: string;
   linked_coach?: string | null;
+  // Fluxo de verificação de email no cadastro (2FA simples): quando ligado, o register
+  // não retorna token — a conta só completa após validar o código enviado por email.
+  pending_verification?: boolean;
+  email?: string;
+  email_sent?: boolean;
 }
 
 export interface UserProfile {
@@ -94,6 +108,19 @@ export const auth = {
     request<AuthResponse>("/auth/login", {
       method: "POST",
       body: JSON.stringify({ email, password }),
+    }),
+
+  // Verificação de email no cadastro: valida o código e, se ok, já loga (retorna token).
+  verifyEmail: (email: string, code: string) =>
+    request<AuthResponse>("/auth/verify-email", {
+      method: "POST",
+      body: JSON.stringify({ email, code }),
+    }),
+
+  resendCode: (email: string) =>
+    request<{ ok: boolean; email_sent: boolean }>("/auth/resend-code", {
+      method: "POST",
+      body: JSON.stringify({ email }),
     }),
 
   me: () => request<UserProfile>("/auth/me"),

@@ -343,76 +343,143 @@ def _body_to_paragraphs(body: str) -> str:
     return "\n            ".join(out)
 
 
-def build_admin_email_html(username: str, title: str, body: str,
-                           unsub_link: str, category: str = "info") -> str:
-    """HTML profissional do comunicado do admin: logo GrindLab, cores da marca,
-    tipografia limpa, sem ícones. Rodapé com descadastro (LGPD). O corpo aceita
-    parágrafos (linha em branco) e quebras simples."""
-    base_url  = os.environ.get("APP_BASE_URL", "https://grindlabpoker.com")
-    logo_url  = f"{base_url}/email-logo.png"
-    eyebrow   = _CATEGORY_LABEL.get(category, _CATEGORY_LABEL["info"])
-    safe_title = (title or "").strip() or "Comunicado da GrindLab"
-    body_html = _body_to_paragraphs(body)
+def _cta_button(label: str, url: str) -> str:
+    return (
+        f'<table role="presentation" cellpadding="0" cellspacing="0" style="margin:12px 0 4px 0;">'
+        f'<tr><td style="border-radius:10px;background:{_C_TEAL};">'
+        f'<a href="{url}" style="display:inline-block;padding:14px 34px;font-size:15px;'
+        f'font-weight:700;color:{_C_BG};text-decoration:none;">{label}</a></td></tr></table>'
+    )
+
+
+def _email_document(*, title: str, inner_html: str, base_url: str,
+                    footer_note: str, unsub_link: str | None = None,
+                    preheader: str = "") -> str:
+    """Shell visual único de todos os emails: logo GrindLab, barra teal, card escuro,
+    conteúdo e rodapé. `inner_html` é o miolo já montado; `unsub_link` só nos comunicados."""
+    logo_url = f"{base_url}/email-logo.png"
     from datetime import datetime
     year = datetime.utcnow().year
+    unsub_html = (
+        f'&nbsp;·&nbsp;<a href="{unsub_link}" style="color:{_C_MUTED};text-decoration:underline;">'
+        f'Cancelar o recebimento de emails</a>' if unsub_link else ""
+    )
     return f"""<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1.0">
   <meta name="color-scheme" content="dark">
-  <title>{safe_title}</title>
+  <title>{title}</title>
 </head>
 <body style="margin:0;padding:0;background:{_C_BG};font-family:{_FONT};-webkit-font-smoothing:antialiased;">
-  <div style="display:none;max-height:0;overflow:hidden;opacity:0;">{safe_title}</div>
+  <div style="display:none;max-height:0;overflow:hidden;opacity:0;">{preheader or title}</div>
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:{_C_BG};padding:32px 16px;">
     <tr><td align="center">
       <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="width:600px;max-width:600px;background:{_C_CARD};border:1px solid {_C_BORDER};border-radius:16px;overflow:hidden;">
-
-        <!-- Logo -->
         <tr>
           <td align="center" style="padding:36px 40px 28px 40px;background:{_C_BG};border-bottom:1px solid {_C_BORDER};">
             <img src="{logo_url}" width="196" alt="GrindLab" style="display:block;width:196px;max-width:60%;height:auto;border:0;color:{_C_LIGHT};font-size:24px;font-weight:800;letter-spacing:.02em;">
           </td>
         </tr>
-
-        <!-- Barra de destaque -->
         <tr><td style="height:3px;background:{_C_TEAL};line-height:3px;font-size:0;">&nbsp;</td></tr>
-
-        <!-- Conteúdo -->
         <tr>
           <td style="padding:40px;">
-            <p style="margin:0 0 10px 0;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.14em;color:{_C_TEAL};">{eyebrow}</p>
-            <h1 style="margin:0 0 24px 0;font-size:26px;line-height:1.25;font-weight:800;color:{_C_LIGHT};">{safe_title}</h1>
-            <p style="margin:0 0 18px 0;font-size:16px;line-height:1.7;color:{_C_BODY};">Olá, {username},</p>
-            {body_html}
-            <table role="presentation" cellpadding="0" cellspacing="0" style="margin:12px 0 4px 0;">
-              <tr><td style="border-radius:10px;background:{_C_TEAL};">
-                <a href="{base_url}/dashboard" style="display:inline-block;padding:14px 34px;font-size:15px;font-weight:700;color:{_C_BG};text-decoration:none;">Acessar a plataforma</a>
-              </td></tr>
-            </table>
+            {inner_html}
           </td>
         </tr>
-
-        <!-- Rodapé -->
         <tr>
           <td style="padding:26px 40px;background:{_C_BG};border-top:1px solid {_C_BORDER};">
             <p style="margin:0 0 6px 0;font-size:13px;font-weight:700;letter-spacing:.02em;color:{_C_LIGHT};">GrindLab Poker</p>
-            <p style="margin:0 0 14px 0;font-size:12px;line-height:1.6;color:{_C_MUTED};">A plataforma de treino e evolução para jogadores de torneio. Este comunicado foi enviado porque você tem uma conta na GrindLab.</p>
+            <p style="margin:0 0 14px 0;font-size:12px;line-height:1.6;color:{_C_MUTED};">{footer_note}</p>
             <p style="margin:0;font-size:12px;color:{_C_MUTED};">
-              <a href="{base_url}" style="color:{_C_MUTED};text-decoration:underline;">grindlabpoker.com</a>
-              &nbsp;·&nbsp;
-              <a href="{unsub_link}" style="color:{_C_MUTED};text-decoration:underline;">Cancelar o recebimento de emails</a>
+              <a href="{base_url}" style="color:{_C_MUTED};text-decoration:underline;">grindlabpoker.com</a>{unsub_html}
             </p>
             <p style="margin:14px 0 0 0;font-size:11px;color:{_C_MUTED};">© {year} GrindLab. Todos os direitos reservados.</p>
           </td>
         </tr>
-
       </table>
     </td></tr>
   </table>
 </body>
 </html>"""
+
+
+def _eyebrow(text: str) -> str:
+    return f'<p style="margin:0 0 10px 0;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.14em;color:{_C_TEAL};">{text}</p>'
+
+
+def _h1(text: str) -> str:
+    return f'<h1 style="margin:0 0 24px 0;font-size:26px;line-height:1.25;font-weight:800;color:{_C_LIGHT};">{text}</h1>'
+
+
+def _greeting(username: str) -> str:
+    return f'<p style="margin:0 0 18px 0;font-size:16px;line-height:1.7;color:{_C_BODY};">Olá, {username},</p>'
+
+
+def build_admin_email_html(username: str, title: str, body: str,
+                           unsub_link: str, category: str = "info") -> str:
+    """HTML profissional do comunicado do admin: logo GrindLab, cores da marca,
+    tipografia limpa, sem ícones. Rodapé com descadastro (LGPD). O corpo aceita
+    parágrafos (linha em branco) e quebras simples."""
+    base_url   = os.environ.get("APP_BASE_URL", "https://grindlabpoker.com")
+    eyebrow    = _CATEGORY_LABEL.get(category, _CATEGORY_LABEL["info"])
+    safe_title = (title or "").strip() or "Comunicado da GrindLab"
+    inner = (
+        _eyebrow(eyebrow) + _h1(safe_title) + _greeting(username)
+        + _body_to_paragraphs(body)
+        + _cta_button("Acessar a plataforma", f"{base_url}/dashboard")
+    )
+    return _email_document(
+        title=safe_title, inner_html=inner, base_url=base_url,
+        footer_note="A plataforma de treino e evolução para jogadores de torneio. "
+                    "Este comunicado foi enviado porque você tem uma conta na GrindLab.",
+        unsub_link=unsub_link,
+    )
+
+
+def build_verification_email_html(username: str, code: str, minutes: int = 15) -> str:
+    """Email de confirmação de conta com o código de verificação em destaque."""
+    base_url = os.environ.get("APP_BASE_URL", "https://grindlabpoker.com")
+    code_box = (
+        f'<table role="presentation" cellpadding="0" cellspacing="0" style="margin:8px 0 22px 0;">'
+        f'<tr><td style="background:{_C_BG};border:1px solid {_C_BORDER};border-radius:12px;padding:22px 40px;">'
+        f'<span style="font-family:\'Courier New\',monospace;font-size:38px;font-weight:800;'
+        f'letter-spacing:.32em;color:{_C_TEAL};">{code}</span></td></tr></table>'
+    )
+    inner = (
+        _eyebrow("Confirmação de conta") + _h1("Confirme seu email") + _greeting(username)
+        + f'<p style="margin:0 0 8px 0;font-size:16px;line-height:1.7;color:{_C_BODY};">'
+          f'Use o código abaixo para concluir seu cadastro na GrindLab:</p>'
+        + code_box
+        + f'<p style="margin:0;font-size:14px;line-height:1.6;color:{_C_MUTED};">'
+          f'O código expira em {minutes} minutos. Se você não criou esta conta, é só ignorar este email.</p>'
+    )
+    return _email_document(
+        title="Seu código de confirmação · GrindLab", inner_html=inner, base_url=base_url,
+        footer_note="Você recebeu este email porque uma conta foi criada com este endereço na GrindLab.",
+        preheader=f"Seu código de confirmação: {code}",
+    )
+
+
+def build_welcome_email_html(username: str) -> str:
+    """Email de boas-vindas enviado após a verificação concluída."""
+    base_url = os.environ.get("APP_BASE_URL", "https://grindlabpoker.com")
+    inner = (
+        _eyebrow("Bem-vindo à GrindLab") + _h1("Sua conta está pronta") + _greeting(username)
+        + f'<p style="margin:0 0 18px 0;font-size:16px;line-height:1.7;color:{_C_BODY};">'
+          f'Sua conta foi confirmada. A partir de agora você pode importar seus torneios, '
+          f'treinar seus spots mais custosos e acompanhar sua evolução mão a mão.</p>'
+        + f'<p style="margin:0 0 18px 0;font-size:16px;line-height:1.7;color:{_C_BODY};">'
+          f'Comece importando um torneio recente. A plataforma analisa cada decisão e mostra '
+          f'onde estão seus leaks e como corrigi-los.</p>'
+        + _cta_button("Começar agora", f"{base_url}/dashboard")
+    )
+    return _email_document(
+        title="Bem-vindo à GrindLab", inner_html=inner, base_url=base_url,
+        footer_note="A plataforma de treino e evolução para jogadores de torneio.",
+        preheader="Sua conta foi confirmada. Bom grind.",
+    )
 
 
 def send_admin_email(to_email: str, username: str, user_id: int,
@@ -440,6 +507,20 @@ def send_admin_email_bulk(recipients: list, title: str, body: str,
             errors += 1
     log.info("Comunicado admin por email: sent=%d errors=%d", sent, errors)
     return {"sent": sent, "errors": errors}
+
+
+# ── Verificação de conta + boas-vindas (transacionais) ───────────────────────
+
+def send_verification_email(to_email: str, username: str, code: str, minutes: int = 15) -> bool:
+    """Envia o código de confirmação de conta. True se enviado."""
+    html = build_verification_email_html(username, code, minutes)
+    return send_transactional_email(to_email, f"Seu código de confirmação: {code}", html)
+
+
+def send_welcome_email(to_email: str, username: str) -> bool:
+    """Envia o email de boas-vindas após a conta ser verificada. True se enviado."""
+    html = build_welcome_email_html(username)
+    return send_transactional_email(to_email, "Bem-vindo à GrindLab", html)
 
 
 # ── Runner (chamado pelo endpoint admin) ──────────────────────────────────────

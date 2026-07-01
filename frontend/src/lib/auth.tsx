@@ -1,11 +1,18 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { auth, UserProfile } from "./api";
 
+export interface RegisterResult {
+  pending: boolean;            // true = precisa validar o código de email antes de completar
+  email?: string;
+  linkedCoach?: string | null;
+}
+
 interface AuthState {
   user: UserProfile | null;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
-  register: (username: string, email: string, password: string, role?: "player" | "coach", ref?: string | null) => Promise<string | null>;
+  register: (username: string, email: string, password: string, role?: "player" | "coach", ref?: string | null) => Promise<RegisterResult>;
+  verifyEmail: (email: string, code: string) => Promise<string | null>;
   logout: () => void;
   refreshUser: () => Promise<void>;
 }
@@ -36,9 +43,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(profile);
   };
 
-  const register = async (username: string, email: string, password: string, role: "player" | "coach" = "player", ref?: string | null) => {
+  const register = async (username: string, email: string, password: string, role: "player" | "coach" = "player", ref?: string | null): Promise<RegisterResult> => {
     const res = await auth.register(username, email, password, role, ref);
-    sessionStorage.setItem("ll_token", res.token);
+    // Verificação de email ligada: não veio token, a conta fica pendente do código.
+    if (res.pending_verification) {
+      return { pending: true, email: res.email, linkedCoach: res.linked_coach ?? null };
+    }
+    sessionStorage.setItem("ll_token", res.token!);
+    const profile = await auth.me();
+    setUser(profile);
+    return { pending: false, linkedCoach: res.linked_coach ?? null };
+  };
+
+  const verifyEmail = async (email: string, code: string): Promise<string | null> => {
+    const res = await auth.verifyEmail(email, code);
+    sessionStorage.setItem("ll_token", res.token!);
     const profile = await auth.me();
     setUser(profile);
     return res.linked_coach ?? null;
@@ -55,7 +74,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, register, logout, refreshUser }}>
+    <AuthContext.Provider value={{ user, isLoading, login, register, verifyEmail, logout, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );

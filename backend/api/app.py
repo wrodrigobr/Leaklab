@@ -74,6 +74,7 @@ from leaklab.report_generator import build_html_report, generate_pdf_bytes
 from leaklab.email_digest import (
     run_weekly_digest, verify_unsub_token, send_transactional_email,
     verify_email_unsub_token, send_admin_email, send_admin_email_bulk,
+    send_verification_email, send_welcome_email,
 )
 
 from database.schema import init_db
@@ -133,6 +134,8 @@ from database.repositories import (
     get_digest_subscribers, update_digest_subscription,
     # Email de comunicado do admin (opt-out)
     get_email_recipients, update_email_opt_in,
+    # Verificação de email no cadastro (2FA simples)
+    set_verification_code, verify_email_code, mark_email_verified,
     # Sprint AH — BACK-018: Coach Application Flow
     create_coach_application, get_coach_applications,
     approve_coach_application, reject_coach_application,
@@ -310,6 +313,37 @@ def _check_advanced_insights(user_id: int):
 
 # ── Auth ──────────────────────────────────────────────────────────────────────
 
+def _email_verification_enabled() -> bool:
+    """Verificação de email por código só é exigida quando há SMTP configurado (prod).
+    Em dev/testes (sem SMTP) o cadastro segue instantâneo, sem quebrar o fluxo local.
+    EMAIL_VERIFICATION_DISABLED=1 força desligar mesmo com SMTP."""
+    if os.environ.get('EMAIL_VERIFICATION_DISABLED', '').strip().lower() in ('1', 'true', 'yes', 'on'):
+        return False
+    return bool(os.environ.get('SMTP_HOST') and os.environ.get('SMTP_USER')
+                and os.environ.get('SMTP_PASSWORD'))
+
+
+def _gen_verification_code() -> str:
+    """Código numérico de 6 dígitos (com zeros à esquerda), gerado com secrets."""
+    import secrets
+    return f"{secrets.randbelow(1000000):06d}"
+
+
+_VERIFICATION_TTL_MIN = 15
+
+def _issue_verification(user_id: int, email: str, username: str) -> bool:
+    """Gera + grava + envia o código de verificação. Retorna se o email saiu."""
+    from datetime import datetime, timedelta
+    code = _gen_verification_code()
+    expires = (datetime.utcnow() + timedelta(minutes=_VERIFICATION_TTL_MIN)).strftime("%Y-%m-%d %H:%M:%S")
+    set_verification_code(user_id, code, expires)
+    try:
+        return send_verification_email(email, username, code, _VERIFICATION_TTL_MIN)
+    except Exception:
+        log.exception("failed sending verification email to %s", email)
+        return False
+
+
 @app.route('/auth/register', methods=['POST'])
 @limiter.limit("10 per minute")
 def register():
@@ -353,17 +387,79 @@ def register():
     _acq = (data.get('acquisition_source') or '').strip().lower()[:40]
     _acq = _re_acq.sub(r'[^a-z0-9_-]', '', _acq) or None
 
+    verify_on = _email_verification_enabled()
     try:
         user_id = create_user(username, email, password, role,
                               coach_id=coach_id, referral_coach_id=referral_coach_id,
                               link_status=link_status, invited_by_key=invited_by_key,
-                              acquisition_source=_acq)
-        token   = generate_token(user_id, role)
+                              acquisition_source=_acq,
+                              email_verified=0 if verify_on else 1)
+        linked = _coach['username'] if (ref and coach_id) else None
+        if verify_on:
+            # Não emite token: a conta só completa depois que o código do email é validado.
+            email_sent = _issue_verification(user_id, email, username)
+            return jsonify({'pending_verification': True, 'email': email,
+                            'email_sent': email_sent, 'linked_coach': linked}), 201
+        token = generate_token(user_id, role)
         return jsonify({'token': token, 'user_id': user_id, 'role': role,
-                        'linked_coach': _coach['username'] if (ref and coach_id) else None}), 201
+                        'linked_coach': linked}), 201
     except Exception as e:
         log.exception("register error for %s", email)
         return jsonify({'error': 'Erro interno ao criar conta'}), 500
+
+
+@app.route('/auth/verify-email', methods=['POST'])
+@limiter.limit("10 per minute")
+def verify_email():
+    """Valida o código de confirmação; ao dar certo verifica a conta, envia boas-vindas
+    e emite o token (login)."""
+    data  = request.get_json(silent=True) or {}
+    email = data.get('email', '').strip().lower()
+    code  = (data.get('code') or '').strip()
+    if not email or not code:
+        return jsonify({'error': 'email e código são obrigatórios'}), 400
+    res = verify_email_code(email, code)
+    st  = res.get('status')
+    if st == 'ok':
+        u = res['user']
+        mark_email_verified(u['id'])
+        try:
+            send_welcome_email(u['email'], u['username'])
+        except Exception:
+            log.exception("welcome email failed for %s", email)
+        linked = None
+        if u.get('coach_id') and u.get('link_status') == 'pending':
+            from database.repositories import get_user_by_id
+            c = get_user_by_id(u['coach_id'])
+            linked = c['username'] if c else None
+        token = generate_token(u['id'], u['role'])
+        return jsonify({'token': token, 'user_id': u['id'], 'username': u['username'],
+                        'role': u['role'], 'linked_coach': linked})
+    if st == 'already':
+        return jsonify({'error': 'Esta conta já está confirmada. É só fazer login.', 'code': 'already'}), 400
+    if st == 'expired':
+        return jsonify({'error': 'Código expirado. Reenvie um novo código.', 'code': 'expired'}), 400
+    if st == 'too_many':
+        return jsonify({'error': 'Muitas tentativas. Reenvie um novo código.', 'code': 'too_many'}), 429
+    if st == 'not_found':
+        return jsonify({'error': 'Cadastro não encontrado.', 'code': 'not_found'}), 404
+    return jsonify({'error': 'Código inválido.', 'code': 'invalid',
+                    'remaining': res.get('remaining')}), 400
+
+
+@app.route('/auth/resend-code', methods=['POST'])
+@limiter.limit("5 per minute")
+def resend_code():
+    """Reenvia o código de confirmação. Não vaza existência de conta: sempre responde ok."""
+    data  = request.get_json(silent=True) or {}
+    email = data.get('email', '').strip().lower()
+    if not email:
+        return jsonify({'error': 'email é obrigatório'}), 400
+    u = get_user_by_email(email)
+    sent = False
+    if u and int(u.get('email_verified') or 0) == 0:
+        sent = _issue_verification(u['id'], email, u['username'])
+    return jsonify({'ok': True, 'email_sent': sent})
 
 
 @app.route('/auth/coach-apply', methods=['POST'])
@@ -416,6 +512,14 @@ def login():
         return jsonify({
             'error': 'Candidatura em análise. Você receberá um email quando for aprovado.',
             'code': 'coach_pending'
+        }), 403
+
+    # Conta pendente de verificação por email (só quando a verificação está ligada).
+    if _email_verification_enabled() and int(user.get('email_verified') or 0) == 0:
+        _issue_verification(user['id'], email, user['username'])
+        return jsonify({
+            'error': 'Confirme seu email para entrar. Enviamos um novo código.',
+            'code': 'email_unverified', 'email': email,
         }), 403
 
     token = generate_token(user['id'], user['role'])

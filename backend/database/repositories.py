@@ -155,23 +155,85 @@ def create_user(username: str, email: str, password: str,
                 referral_coach_id: int | None = None,
                 link_status: str | None = None,
                 invited_by_key: str | None = None,
-                acquisition_source: str | None = None) -> int:
+                acquisition_source: str | None = None,
+                email_verified: int = 1) -> int:
     """Cria usuário. Para signup via LINK REFERRAL do coach, passe coach_id +
     referral_coach_id + link_status='pending' + invited_by_key (a key do link), assim o
-    aluno já nasce vinculado ao coach mas pendente da aprovação dele."""
+    aluno já nasce vinculado ao coach mas pendente da aprovação dele.
+    email_verified=0 marca a conta como pendente de verificação por código (anti-bot)."""
     pw_hash = _hash_password(password)
     conn = get_conn()
     try:
         cur = conn.execute(
             "INSERT INTO users (username, email, password_hash, role, coach_id, "
-            "referral_coach_id, link_status, invited_by_key, acquisition_source) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "referral_coach_id, link_status, invited_by_key, acquisition_source, email_verified) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (username, email, pw_hash, role, coach_id,
              referral_coach_id, link_status or 'approved', invited_by_key,
-             (acquisition_source or None))
+             (acquisition_source or None), int(email_verified))
         )
         conn.commit()
         return cur.lastrowid
+    finally:
+        conn.close()
+
+
+# ── Verificação de email no cadastro (2FA simples anti-bot) ──────────────────
+
+def set_verification_code(user_id: int, code: str, expires_at: str) -> None:
+    """Grava/renova o código de verificação e a expiração; zera o contador de tentativas."""
+    conn = get_conn()
+    try:
+        conn.execute(_adapt(
+            "UPDATE users SET verification_code = ?, verification_expires_at = ?, "
+            "verification_attempts = 0 WHERE id = ?"
+        ), (code, expires_at, user_id))
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def verify_email_code(email: str, code: str) -> dict:
+    """Valida o código de verificação de um usuário.
+    Retorna {'status': ...} onde status ∈
+      not_found | already | expired | too_many | invalid | ok.
+    Em 'ok' inclui 'user' (dict). Em 'invalid' incrementa o contador de tentativas."""
+    from datetime import datetime
+    conn = get_conn()
+    try:
+        row = _fetchone(conn, _adapt("SELECT * FROM users WHERE email = ?"), (email,))
+        if not row:
+            return {'status': 'not_found'}
+        u = dict(row)
+        if int(u.get('email_verified') or 0) == 1:
+            return {'status': 'already', 'user': u}
+        attempts = int(u.get('verification_attempts') or 0)
+        if attempts >= 6:
+            return {'status': 'too_many'}
+        exp = u.get('verification_expires_at')
+        if not exp or _parse_ts(exp) is None or _parse_ts(exp) < datetime.utcnow():
+            return {'status': 'expired'}
+        stored = (u.get('verification_code') or '').strip()
+        if not stored or stored != (code or '').strip():
+            conn.execute(_adapt(
+                "UPDATE users SET verification_attempts = verification_attempts + 1 WHERE id = ?"
+            ), (u['id'],))
+            conn.commit()
+            return {'status': 'invalid', 'remaining': max(0, 6 - (attempts + 1))}
+        return {'status': 'ok', 'user': u}
+    finally:
+        conn.close()
+
+
+def mark_email_verified(user_id: int) -> None:
+    """Marca a conta como verificada e limpa o código."""
+    conn = get_conn()
+    try:
+        conn.execute(_adapt(
+            "UPDATE users SET email_verified = 1, verification_code = NULL, "
+            "verification_expires_at = NULL, verification_attempts = 0 WHERE id = ?"
+        ), (user_id,))
+        conn.commit()
     finally:
         conn.close()
 
