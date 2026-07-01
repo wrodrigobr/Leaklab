@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(admin): reabilita o toggle "enviar também por email" (SMTP configurado)
+
+> Com SMTP + `ADMIN_EMAIL_ENABLED=1` no servidor, o toggle "Enviar também por email" na aba Mensagens volta a ficar **ativo** (estava desabilitado enquanto não havia provedor). O comunicado do admin agora sai de verdade por email pra quem não descadastrou. tsc 0.
+
 ### docs(email): marca GrindLab nos templates de email + guia de setup (Brevo)
 
 > **Marca:** todos os emails que saem (comunicado do admin, digest semanal, candidatura de coach aprovada/rejeitada) e as páginas de descadastro agora dizem **GrindLab** e linkam pra **grindlabpoker.com** (antes: "LeakLabs.ai" / leaklabs.ai hardcoded). Defaults de `DIGEST_FROM`/`APP_BASE_URL` atualizados pro domínio canônico; travessões trocados por `·` na copy (regra de copy do usuário); acento visual alinhado ao teal da marca (#2DD4BF). Nomes internos (env vars, pacotes) intactos. **Guia:** novo `deploy/email-setup.md` com o passo a passo do Brevo (conta, verificação de domínio SPF/DKIM/DMARC na Cloudflare, credenciais SMTP, env vars no `.env` do CX23, reabilitar o toggle, teste). notifications 13/13.
