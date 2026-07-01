@@ -1525,10 +1525,12 @@ def grade_drill_action(row, new_action):
         best_action = 'check'
 
     # MULTIWAY: postflop com 2+ oponentes vivos → solver é HU-only, não cobre.
-    # RC-2: n_active_opponents pode vir NULL (legado) → fallback num_players-1.
+    # n_active_opponents NULL (legado/reimport) → 0 = NÃO multiway (alinha com o drill em ~6812).
+    # NÃO usar num_players-1 de fallback: num_players é o TAMANHO DA MESA (ex.: 9), não os ativos
+    # NA STREET — num pote que afunilou pra HU no turn/river isso marcava multiway falso (bug real:
+    # T#4002072836, mão HU no river virava "≈ multiway"). Melhor não-flag do que marcar HU como multiway.
     _n_opp = row.get('n_active_opponents')
-    _n_opp = (int(row.get('num_players') or 0) - 1) if _n_opp is None else int(_n_opp or 0)
-    _n_opp = max(0, _n_opp)
+    _n_opp = max(0, int(_n_opp or 0))
     gto_multiway = ((row.get('street') or '').lower() != 'preflop' and _n_opp >= 2)
 
     original_score = row['score']

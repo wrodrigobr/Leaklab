@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(replay): HU marcado como "≈ multiway" (fallback errado + backfill que pulava cópias)
+
+> Bug real (T#4002072836, mão HU no river aparecendo "≈ multiway · sugere RAISE"). Duas causas: (1) no `/replay`, quando `n_active_opponents` vinha NULL, o fallback usava `num_players - 1` — mas `num_players` é o TAMANHO DA MESA (9), não os ativos na street; num pote que afunilou pra HU no turn/river isso dava 8 → multiway falso. Corrigido: NULL → 0 (não multiway), alinhado ao caminho do drill. (2) O `n_active_opponents` daquela mão estava NULL porque o `backfill_n_active_opponents` casava por `(hand_id, street, action)` com `LIMIT 1`, SEM `tournament_id` — e hand_id NÃO é único entre usuários (dois jogadores importam o mesmo torneio → mesmo hand_id). Só a cópia de menor id (um usuário) era populada; a do outro ficava NULL. Corrigido: escopar por `tournament_id`. Re-rodado → 0 postflop NULL, cópia antes quebrada agora com flop=4 (multiway real), turn/river=1 (HU). **Não era duplicata:** a trava por jogador (`ON CONFLICT user_id,tournament_id`) já funciona; eram duas contas diferentes com o mesmo arquivo. api 117/117.
+
 ### fix(training): rótulo "Abertura (RFI)" + vs_3bet ligado também na Academia
 
 > **Rótulo:** a categoria RFI aparecia como "Abertura de X" e gerava a dúvida "cadê o RFI?". Passou a "Abertura (RFI) de X" nas 3 telas que usam `leakTrainer.cat.rfi` (lista de domínio, card do drill, seletor) — RFI = abrir o pote (Raise First In). i18n PT/EN/ES. **Academia:** o mesmo bug de wiring do vs_3bet (analyze_preflop sem `hero_was_aggressor`) existia no `academy_gto_preflop` → o quiz gerava 0 questões vs_3bet. Corrigido no generate + grade (mesmas flags, echoadas no spot). Agora o quiz da Academia gera vs_3bet (30/30 no smoke test). tsc 0.

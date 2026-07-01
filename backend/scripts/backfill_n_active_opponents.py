@@ -55,10 +55,14 @@ for row in tournaments:
             nopp = spot.get('nActiveOpponents')
             if nopp is None:
                 continue
+            # ESCOPAR por tournament_id: hand_id NÃO é único entre usuários — dois jogadores que
+            # importam o MESMO torneio têm o mesmo hand_id. Sem o filtro por torneio, o LIMIT 1
+            # casava só a cópia de menor id (um usuário) e a do outro ficava NULL (bug: T#4002072836,
+            # tid 198 do user 13 nunca era populada). Com tid, cada cópia é atualizada.
             r = conn.execute(
                 "SELECT id, n_active_opponents FROM decisions "
-                "WHERE hand_id = ? AND street = ? AND action_taken = ? LIMIT 1",
-                (hand_id, street, act)).fetchone()
+                "WHERE tournament_id = ? AND hand_id = ? AND street = ? AND action_taken = ? LIMIT 1",
+                (tid, hand_id, street, act)).fetchone()
             if not r:
                 continue
             checked += 1
