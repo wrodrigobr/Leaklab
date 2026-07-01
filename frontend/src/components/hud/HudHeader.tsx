@@ -107,6 +107,16 @@ export function HudHeader({ onUpload }: HudHeaderProps) {
   });
   const hasCoaches = (coachDir?.coaches?.length ?? 0) > 0;
 
+  // Nudge da lição do dia: selo no item "Treino" quando a lição de hoje está pendente (fuso local).
+  // Declarado ANTES de playerNavItems (que usa lessonPending no 'dot') — senão dá TDZ.
+  const { data: dailyStatus } = useQuery({
+    queryKey: ["training-daily-status"],
+    queryFn: training.dailyStatus,
+    refetchInterval: 300_000,
+    enabled: user?.role === "player",
+  });
+  const lessonPending = !!dailyStatus?.lesson_pending;
+
   const playerNavItems: NavItem[] = [
     { label: t("nav.dashboard"),   mobileLabel: t("nav.dashboard"),   to: "/dashboard",   icon: LayoutDashboard },
     { label: t("nav.tournaments"), mobileLabel: t("nav.tournaments"), to: "/tournaments", icon: Trophy },
@@ -176,15 +186,6 @@ export function HudHeader({ onUpload }: HudHeaderProps) {
     enabled: !!user && user.role !== "admin",
   });
   const supportReplies = supportRepliesData?.replied ?? 0;
-
-  // Nudge da lição do dia: selo no item "Treino" quando a lição de hoje está pendente (fuso local).
-  const { data: dailyStatus } = useQuery({
-    queryKey: ["training-daily-status"],
-    queryFn: training.dailyStatus,
-    refetchInterval: 300_000,
-    enabled: user?.role === "player",
-  });
-  const lessonPending = !!dailyStatus?.lesson_pending;
 
   return (
     <>
