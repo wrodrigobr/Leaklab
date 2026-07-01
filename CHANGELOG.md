@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### chore(admin): email de comunicado desligado por padrão (kill switch)
+
+> Enquanto não houver provedor SMTP configurado, o disparo de email de comunicado fica **OFF**. Backend: gate `ADMIN_EMAIL_ENABLED` (default off) em `/admin/message` e `/admin/broadcast` — sem a env ligada, o `email:true` é ignorado (0 emails), o sino segue normal. Frontend: o toggle "Enviar também por email" fica **desabilitado** com aviso "SMTP não configurado". Reativar = setar `ADMIN_EMAIL_ENABLED=1` no host + reabilitar o toggle. tsc 0.
+
 ### feat(admin): comunicado do admin também por email (opt-out / LGPD)
 
 > O sistema de mensagens do admin agora **espelha o comunicado por email**, não só no sino. Um toggle "Enviar também por email" na aba Mensagens (DM e broadcast) manda o mesmo título+corpo por email para quem não descadastrou, alcançando quem não abre o app. Reusa a infra SMTP existente (`send_transactional_email`). **Compliance:** nova coluna `email_opt_in` (default 1 = inscrito), rodapé de descadastro em todo email e endpoint `GET /player/email/unsubscribe` (token HMAC, salt próprio) que zera o opt-in. Backend: `get_email_recipients` filtra opt-in + email válido; `build_admin_email_html`/`send_admin_email_bulk` no email_digest; `/admin/message` e `/admin/broadcast` aceitam `email:true` e retornam `emailed`. Sem SMTP configurado o envio é no-op gracioso (o sino continua funcionando). Teste `test_email_recipients_optin_and_unsub_token`; notifications 13/13, api 44/44, tsc 0.

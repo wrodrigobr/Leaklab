@@ -6238,6 +6238,13 @@ def admin_users():
     return jsonify({'users': users, 'total': total})
 
 
+# Kill switch do comunicado por email: OFF por padrão. Enquanto não ligar
+# ADMIN_EMAIL_ENABLED=1 no host, nenhum email de comunicado dispara (o toggle
+# no painel vira no-op e o sino segue funcionando normalmente).
+def _admin_email_enabled() -> bool:
+    return os.environ.get('ADMIN_EMAIL_ENABLED', '').strip().lower() in ('1', 'true', 'yes', 'on')
+
+
 @app.route('/admin/message', methods=['POST'])
 @require_admin
 def admin_send_message():
@@ -6257,9 +6264,9 @@ def admin_send_message():
     if not uid or not (title or body):
         return jsonify({'error': 'user_id e (título ou corpo) são obrigatórios'}), 400
     create_notification(uid, 'admin_message', {'title': title, 'body': body, 'category': cat}, link)
-    # Espelha por email (opt-in respeitado). Só faz sentido com título — email sem assunto é ruim.
+    # Espelha por email (opt-in respeitado). Gated pelo kill switch ADMIN_EMAIL_ENABLED.
     emailed = 0
-    if bool(data.get('email')):
+    if bool(data.get('email')) and _admin_email_enabled():
         recipients = get_email_recipients([uid])
         emailed = send_admin_email_bulk(recipients, title, body, cat).get('sent', 0)
     return jsonify({'ok': True, 'emailed': emailed})
@@ -6284,9 +6291,10 @@ def admin_broadcast():
     ids   = get_all_user_ids(role=role, plan=plan)
     n     = broadcast_notification(ids, 'admin_broadcast',
                                    {'title': title, 'body': body, 'category': cat}, link)
-    # Espelha por email para quem não descadastrou (LGPD via email_opt_in)
+    # Espelha por email para quem não descadastrou (LGPD via email_opt_in).
+    # Gated pelo kill switch ADMIN_EMAIL_ENABLED (OFF por padrão).
     emailed = 0
-    if bool(data.get('email')):
+    if bool(data.get('email')) and _admin_email_enabled():
         recipients = get_email_recipients(ids)
         emailed = send_admin_email_bulk(recipients, title, body, cat).get('sent', 0)
     return jsonify({'ok': True, 'count': n, 'emailed': emailed})

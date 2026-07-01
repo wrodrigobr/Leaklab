@@ -622,13 +622,14 @@ function MessagesTab() {
         placeholder="Mensagem…"
         className="w-full resize-none rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/40" />
 
-      <label className="flex cursor-pointer items-start gap-2.5 rounded-lg border border-border bg-card px-3 py-2.5">
+      <label className="flex items-start gap-2.5 rounded-lg border border-border bg-card px-3 py-2.5 opacity-60">
         <input type="checkbox" checked={alsoEmail} onChange={e => setAlsoEmail(e.target.checked)}
+          disabled
           className="mt-0.5 size-4 shrink-0 accent-primary" />
         <span className="text-sm">
           <span className="flex items-center gap-1.5 text-foreground"><Mail className="size-3.5 text-muted-foreground" /> Enviar também por email</span>
           <span className="mt-0.5 block text-[11px] text-muted-foreground">
-            Alcança quem não abre o app. Respeita quem descadastrou o email; não envie sem título.
+            Desativado por enquanto (SMTP não configurado). Só o sino de notificações é usado.
           </span>
         </span>
       </label>
