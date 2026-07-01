@@ -2317,13 +2317,14 @@ export const adminDashboard = {
   coachStudents: (coachId: number) =>
     request<{ students: AdminCoachStudent[] }>(`/admin/coach/${coachId}/students`),
 
-  // Mensagem do admin → 1 jogador (DM) ou broadcast (todos os players, ou filtrado por plan)
-  sendMessage: (userId: number, title: string, body: string, link?: string) =>
+  // Mensagem do admin → 1 jogador (DM) ou broadcast (todos os players, ou filtrado por plan).
+  // category = info | aviso | novidade (só ícone/cor no sino do jogador).
+  sendMessage: (userId: number, title: string, body: string, opts?: { category?: string; link?: string }) =>
     request<{ ok: boolean }>("/admin/message", {
       method: "POST",
-      body: JSON.stringify({ user_id: userId, title, body, link }),
+      body: JSON.stringify({ user_id: userId, title, body, ...opts }),
     }),
-  broadcast: (title: string, body: string, opts?: { plan?: string; link?: string }) =>
+  broadcast: (title: string, body: string, opts?: { plan?: string; category?: string; link?: string }) =>
     request<{ ok: boolean; count: number }>("/admin/broadcast", {
       method: "POST",
       body: JSON.stringify({ title, body, ...opts }),

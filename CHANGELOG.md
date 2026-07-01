@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(admin): categorias de mensagem (Informação / Aviso / Novidade)
+
+> O admin escolhe a categoria da mensagem (📣 Informação · ⚠️ Aviso · 🎉 Novidade) — muda o ícone no sino/modal do jogador. É a parte de mão única do #38 (a enquete/pergunta interativa fica no backlog). Backend: `category` (validada) no payload de `/admin/message` e `/admin/broadcast`. Frontend: chips de categoria na aba Mensagens; NotificationBell usa o ícone da categoria. tsc 0, api verde.
+
 ### fix(training): clicar na mensagem do admin abre o texto completo + ícones únicos de conquista
 
 > **Mensagem completa:** clicar numa mensagem do admin no sino agora abre um **modal com o texto inteiro** (título + corpo, `whitespace-pre-wrap`) em vez de só dispensar — com botões Fechar (mantém) e Dispensar. Outros tipos de notificação (com link) seguem navegando. **Ícones de conquista:** o grid de medalhas do hub repetia ícones (halteres pra reps50/200, troféu pra gold/gold3, chama pra os 3 streaks). Agora cada uma das 12 conquistas tem ícone ÚNICO (reps200→Repeat, gold3→Award, streak7→Zap, streak30→Rocket, etc.). i18n close/dismiss PT/EN/ES, tsc 0.

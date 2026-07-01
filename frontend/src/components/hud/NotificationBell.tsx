@@ -16,6 +16,15 @@ const TYPE_ICON: Record<string, string> = {
   admin_broadcast: "📣",
 };
 
+// categoria da mensagem do admin (só ícone/cor): info/aviso/novidade
+const CATEGORY_EMOJI: Record<string, string> = { info: "📣", aviso: "⚠️", novidade: "🎉" };
+const iconFor = (n: NotificationItem): string => {
+  const p = n.payload as { category?: string };
+  if ((n.type === "admin_message" || n.type === "admin_broadcast") && p.category && CATEGORY_EMOJI[p.category])
+    return CATEGORY_EMOJI[p.category];
+  return TYPE_ICON[n.type] ?? "🔔";
+};
+
 interface NotificationBellProps {
   /** Atalhos de conversa (chat coach / suporte) renderizados no topo do dropdown.
       Recebe `close` p/ fechar o painel ao abrir um modal/drawer. */
@@ -168,7 +177,7 @@ export function NotificationBell({ renderActions, extraUnread = 0 }: Notificatio
                       !n.read && "bg-primary/[0.04]"
                     )}
                   >
-                    <span className="text-base leading-none mt-0.5">{TYPE_ICON[n.type] ?? "🔔"}</span>
+                    <span className="text-base leading-none mt-0.5">{iconFor(n)}</span>
                     <span className="flex-1 min-w-0">
                       <span className="block text-[12px] text-foreground leading-snug">{renderText(n)}</span>
                       {renderBody(n) && (
@@ -193,7 +202,7 @@ export function NotificationBell({ renderActions, extraUnread = 0 }: Notificatio
             <div className="w-full max-w-md rounded-2xl border border-border bg-hud-surface p-5 shadow-2xl"
               onClick={(e) => e.stopPropagation()}>
               <div className="mb-3 flex items-start gap-2">
-                <span className="text-xl leading-none">{TYPE_ICON[expanded.type] ?? "📣"}</span>
+                <span className="text-xl leading-none">{iconFor(expanded)}</span>
                 <h3 className="flex-1 font-heading text-base font-bold text-foreground">
                   {p.title || t("notifications.adminMessage")}
                 </h3>

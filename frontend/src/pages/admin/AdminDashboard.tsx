@@ -486,8 +486,14 @@ function MessagesTab() {
   const [search, setSearch] = useState("");
   const [target, setTarget] = useState<AdminUser | null>(null);
   const [plan, setPlan] = useState("");            // "" = todos os players
+  const [category, setCategory] = useState("info"); // info | aviso | novidade (só ícone/cor no sino)
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
+  const CATS = [
+    { id: "info", label: "Informação", emoji: "📣" },
+    { id: "aviso", label: "Aviso", emoji: "⚠️" },
+    { id: "novidade", label: "Novidade", emoji: "🎉" },
+  ] as const;
 
   const { data: results } = useQuery({
     queryKey: ["admin-msg-users", search],
@@ -500,9 +506,9 @@ function MessagesTab() {
       const tt = title.trim(), bb = body.trim();
       if (mode === "dm") {
         if (!target) throw new Error("Selecione um jogador");
-        return adminDashboard.sendMessage(target.id, tt, bb);
+        return adminDashboard.sendMessage(target.id, tt, bb, { category });
       }
-      return adminDashboard.broadcast(tt, bb, plan ? { plan } : undefined);
+      return adminDashboard.broadcast(tt, bb, { category, ...(plan ? { plan } : {}) });
     },
     onSuccess: (r) => {
       toast.success(mode === "dm"
@@ -566,6 +572,16 @@ function MessagesTab() {
           <option value="pro">Só plano Pro</option>
         </select>
       )}
+
+      <div className="flex flex-wrap gap-2">
+        {CATS.map(c => (
+          <button key={c.id} onClick={() => setCategory(c.id)}
+            className={cn("inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium ring-1 transition-colors",
+              category === c.id ? "bg-primary/10 text-foreground ring-primary/30" : "text-muted-foreground ring-border hover:text-foreground")}>
+            <span>{c.emoji}</span> {c.label}
+          </button>
+        ))}
+      </div>
 
       <input value={title} onChange={e => setTitle(e.target.value)} maxLength={120}
         placeholder="Título (ex.: Manutenção programada)"

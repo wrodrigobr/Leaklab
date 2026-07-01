@@ -6246,9 +6246,12 @@ def admin_send_message():
     title = (data.get('title') or '').strip()
     body  = (data.get('body') or '').strip()
     link  = (data.get('link') or '').strip() or None
+    cat   = (data.get('category') or 'info').strip() or 'info'
+    if cat not in ('info', 'aviso', 'novidade'):
+        cat = 'info'
     if not uid or not (title or body):
         return jsonify({'error': 'user_id e (título ou corpo) são obrigatórios'}), 400
-    create_notification(uid, 'admin_message', {'title': title, 'body': body}, link)
+    create_notification(uid, 'admin_message', {'title': title, 'body': body, 'category': cat}, link)
     return jsonify({'ok': True})
 
 
@@ -6263,10 +6266,14 @@ def admin_broadcast():
     link  = (data.get('link') or '').strip() or None
     if not (title or body):
         return jsonify({'error': 'título ou corpo obrigatório'}), 400
+    cat   = (data.get('category') or 'info').strip() or 'info'
+    if cat not in ('info', 'aviso', 'novidade'):
+        cat = 'info'
     role  = (data.get('role') or 'player').strip() or None
     plan  = (data.get('plan') or '').strip() or None
     ids   = get_all_user_ids(role=role, plan=plan)
-    n     = broadcast_notification(ids, 'admin_broadcast', {'title': title, 'body': body}, link)
+    n     = broadcast_notification(ids, 'admin_broadcast',
+                                   {'title': title, 'body': body, 'category': cat}, link)
     return jsonify({'ok': True, 'count': n})
 
 
