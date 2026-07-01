@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Activity, BarChart2, CheckCircle2, Clock,
@@ -484,6 +484,8 @@ function UsersTab() {
 function MessagesTab() {
   const [mode, setMode] = useState<"dm" | "broadcast">("dm");
   const [search, setSearch] = useState("");
+  const [debounced, setDebounced] = useState("");   // termo com debounce (evita 1 request por tecla)
+  const [hi, setHi] = useState(0);                   // índice destacado (navegação por teclado)
   const [target, setTarget] = useState<AdminUser | null>(null);
   const [plan, setPlan] = useState("");            // "" = todos os players
   const [category, setCategory] = useState("info"); // info | aviso | novidade (só ícone/cor no sino)
@@ -495,11 +497,29 @@ function MessagesTab() {
     { id: "novidade", label: "Novidade", emoji: "🎉" },
   ] as const;
 
-  const { data: results } = useQuery({
-    queryKey: ["admin-msg-users", search],
-    queryFn: () => adminDashboard.users({ search, role: "player", limit: 6 }),
-    enabled: mode === "dm" && search.trim().length >= 2 && !target,
+  // debounce da busca: só consulta a API 250ms depois da última tecla
+  useEffect(() => {
+    const id = setTimeout(() => setDebounced(search.trim()), 250);
+    return () => clearTimeout(id);
+  }, [search]);
+  useEffect(() => { setHi(0); }, [debounced]);   // reseta o destaque a cada nova busca
+
+  const { data: results, isFetching } = useQuery({
+    queryKey: ["admin-msg-users", debounced],
+    queryFn: () => adminDashboard.users({ search: debounced, role: "player", limit: 6 }),
+    enabled: mode === "dm" && debounced.length >= 2 && !target,
+    placeholderData: (prev) => prev,   // mantém a lista visível enquanto rebusca (sem piscar)
   });
+  const options = results?.users ?? [];
+  const showList = mode === "dm" && !target && debounced.length >= 2;
+
+  const onKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (!showList || !options.length) return;
+    if (e.key === "ArrowDown") { e.preventDefault(); setHi((i) => (i + 1) % options.length); }
+    else if (e.key === "ArrowUp") { e.preventDefault(); setHi((i) => (i - 1 + options.length) % options.length); }
+    else if (e.key === "Enter") { e.preventDefault(); const u = options[hi]; if (u) { setTarget(u); setSearch(""); } }
+    else if (e.key === "Escape") { setSearch(""); }
+  };
 
   const send = useMutation({
     mutationFn: async () => {
@@ -545,23 +565,32 @@ function MessagesTab() {
           <div className="relative">
             <div className="flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2">
               <Search className="size-3.5 text-muted-foreground shrink-0" />
-              <input value={search} onChange={e => setSearch(e.target.value)}
+              <input value={search} onChange={e => setSearch(e.target.value)} onKeyDown={onKeyDown}
+                autoComplete="off" role="combobox" aria-expanded={showList} aria-autocomplete="list"
                 placeholder="Buscar jogador (username ou email)…"
                 className="w-full bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none" />
+              {isFetching && <Loader2 className="size-3.5 shrink-0 animate-spin text-muted-foreground" />}
             </div>
-            {results?.users?.length ? (
-              <ul className="absolute z-10 mt-1 w-full overflow-hidden rounded-lg border border-border bg-card shadow-lg">
-                {results.users.map(u => (
-                  <li key={u.id}>
-                    <button onClick={() => { setTarget(u); setSearch(""); }}
-                      className="flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-primary/5">
-                      <span className="text-foreground">{u.username}</span>
-                      <span className="font-mono text-[11px] text-muted-foreground">{u.email}</span>
-                    </button>
+            {showList && (
+              <ul role="listbox" className="absolute z-10 mt-1 w-full overflow-hidden rounded-lg border border-border bg-card shadow-lg">
+                {options.length ? (
+                  options.map((u, i) => (
+                    <li key={u.id} role="option" aria-selected={i === hi}>
+                      <button onMouseEnter={() => setHi(i)} onClick={() => { setTarget(u); setSearch(""); }}
+                        className={cn("flex w-full items-center justify-between px-3 py-2 text-left text-sm",
+                          i === hi ? "bg-primary/10" : "hover:bg-primary/5")}>
+                        <span className="text-foreground">{u.username}</span>
+                        <span className="font-mono text-[11px] text-muted-foreground">{u.email}</span>
+                      </button>
+                    </li>
+                  ))
+                ) : (
+                  <li className="px-3 py-2.5 text-sm text-muted-foreground">
+                    {isFetching ? "Buscando…" : "Nenhum jogador encontrado"}
                   </li>
-                ))}
+                )}
               </ul>
-            ) : null}
+            )}
           </div>
         )
       ) : (

@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(admin): autocomplete na busca de jogador (aba Mensagens)
+
+> A busca de jogador para DM virou um **autocomplete de verdade**: debounce de 250ms (não dispara 1 request por tecla), spinner de loading no campo, estado vazio ("Nenhum jogador encontrado") e **navegação por teclado** (↑/↓ percorre, Enter seleciona, Esc limpa). A lista fica visível enquanto rebusca (`placeholderData`, sem piscar) e o item destacado acompanha o mouse. tsc 0.
+
 ### feat(admin): categorias de mensagem (Informação / Aviso / Novidade)
 
 > O admin escolhe a categoria da mensagem (📣 Informação · ⚠️ Aviso · 🎉 Novidade) — muda o ícone no sino/modal do jogador. É a parte de mão única do #38 (a enquete/pergunta interativa fica no backlog). Backend: `category` (validada) no payload de `/admin/message` e `/admin/broadcast`. Frontend: chips de categoria na aba Mensagens; NotificationBell usa o ícone da categoria. tsc 0, api verde.
