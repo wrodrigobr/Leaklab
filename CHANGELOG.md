@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(admin): busca de jogador na aba Mensagens escondia admins/coaches
+
+> A busca do DM filtrava `role="player"` (match exato), então a própria conta do admin (e coaches) nunca aparecia, retornando "Nenhum jogador encontrado" mesmo com username/email corretos. Removido o filtro de role: o admin pode mandar DM pra qualquer conta, inclusive a própria (pra testar o email). tsc 0.
+
 ### feat(admin): reabilita o toggle "enviar também por email" (SMTP configurado)
 
 > Com SMTP + `ADMIN_EMAIL_ENABLED=1` no servidor, o toggle "Enviar também por email" na aba Mensagens volta a ficar **ativo** (estava desabilitado enquanto não havia provedor). O comunicado do admin agora sai de verdade por email pra quem não descadastrou. tsc 0.

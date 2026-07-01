@@ -507,7 +507,9 @@ function MessagesTab() {
 
   const { data: results, isFetching } = useQuery({
     queryKey: ["admin-msg-users", debounced],
-    queryFn: () => adminDashboard.users({ search: debounced, role: "player", limit: 6 }),
+    // sem filtro de role: o admin pode mandar DM pra qualquer conta (player, coach ou admin,
+    // inclusive a própria pra testar). Restringir a "player" escondia a própria conta.
+    queryFn: () => adminDashboard.users({ search: debounced, limit: 6 }),
     enabled: mode === "dm" && debounced.length >= 2 && !target,
     placeholderData: (prev) => prev,   // mantém a lista visível enquanto rebusca (sem piscar)
   });
