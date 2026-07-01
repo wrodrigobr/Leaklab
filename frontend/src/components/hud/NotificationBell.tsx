@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useCallback, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
-import { Bell, Trash2, MessageSquarePlus } from "lucide-react";
+import { Bell, Trash2, MessageSquarePlus, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { notifications as notifApi, NotificationItem } from "@/lib/api";
 
@@ -30,6 +30,7 @@ export function NotificationBell({ renderActions, extraUnread = 0 }: Notificatio
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState<NotificationItem[]>([]);
   const [unread, setUnread] = useState(0);
+  const [expanded, setExpanded] = useState<NotificationItem | null>(null);   // mensagem do admin aberta
   const ref = useRef<HTMLDivElement>(null);
 
   const refreshCount = useCallback(() => {
@@ -68,9 +69,17 @@ export function NotificationBell({ renderActions, extraUnread = 0 }: Notificatio
 
   // Clicar numa notificação: navega (se tiver link), dispensa (remove) e tira da lista —
   // assim a lista não cresce indefinidamente.
-  const onItemClick = (n: NotificationItem) => {
+  const dismissItem = (n: NotificationItem) => {
     setItems((prev) => prev.filter((x) => x.id !== n.id));
     notifApi.dismiss(n.id).catch(() => {});
+  };
+  const isAdminMsg = (n: NotificationItem) =>
+    n.type === "admin_message" || n.type === "admin_broadcast";
+  const onItemClick = (n: NotificationItem) => {
+    // Mensagem do admin (sem link, pode ser longa): abre o texto completo num modal em vez
+    // de só dispensar. Outros tipos (têm link) seguem navegando + dispensando.
+    if (isAdminMsg(n)) { setExpanded(n); setOpen(false); return; }
+    dismissItem(n);
     if (n.link) navigate(n.link);
     setOpen(false);
   };
@@ -174,6 +183,40 @@ export function NotificationBell({ renderActions, extraUnread = 0 }: Notificatio
           )}
         </div>
       )}
+
+      {/* Modal da mensagem do admin — texto completo (título + corpo), fechar ou dispensar */}
+      {expanded && (() => {
+        const p = expanded.payload as { title?: string; body?: string };
+        return (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-4"
+            onClick={() => setExpanded(null)}>
+            <div className="w-full max-w-md rounded-2xl border border-border bg-hud-surface p-5 shadow-2xl"
+              onClick={(e) => e.stopPropagation()}>
+              <div className="mb-3 flex items-start gap-2">
+                <span className="text-xl leading-none">{TYPE_ICON[expanded.type] ?? "📣"}</span>
+                <h3 className="flex-1 font-heading text-base font-bold text-foreground">
+                  {p.title || t("notifications.adminMessage")}
+                </h3>
+                <button onClick={() => setExpanded(null)}
+                  className="rounded p-1 text-muted-foreground transition-colors hover:text-foreground" aria-label="Fechar">
+                  <X className="size-4" />
+                </button>
+              </div>
+              {p.body && <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground">{p.body}</p>}
+              <div className="mt-5 flex justify-end gap-2">
+                <button onClick={() => setExpanded(null)}
+                  className="rounded-lg border border-border px-4 py-2 font-mono text-xs font-bold uppercase tracking-wider text-muted-foreground transition-colors hover:text-foreground">
+                  {t("notifications.close")}
+                </button>
+                <button onClick={() => { dismissItem(expanded); setExpanded(null); }}
+                  className="rounded-lg bg-primary px-4 py-2 font-mono text-xs font-bold uppercase tracking-wider text-primary-foreground transition-colors hover:bg-primary/90">
+                  {t("notifications.dismiss")}
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }

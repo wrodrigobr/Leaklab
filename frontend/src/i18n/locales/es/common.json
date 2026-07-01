@@ -33,7 +33,9 @@
     "achievement": "¡Logro desbloqueado: {{title}}!",
     "coachAnnotation": "Tu coach anotó una de tus manos",
     "adminMessage": "Mensaje del equipo",
-    "clearAll": "Borrar todas"
+    "clearAll": "Borrar todas",
+    "close": "Cerrar",
+    "dismiss": "Descartar"
   },
   "actions": {
     "import": "Importar",

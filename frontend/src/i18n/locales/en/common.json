@@ -33,7 +33,9 @@
     "achievement": "Achievement unlocked: {{title}}",
     "coachAnnotation": "Your coach annotated one of your hands",
     "adminMessage": "Message from the team",
-    "clearAll": "Clear all"
+    "clearAll": "Clear all",
+    "close": "Close",
+    "dismiss": "Dismiss"
   },
   "actions": {
     "import": "Import",

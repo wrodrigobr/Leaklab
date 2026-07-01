@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(training): clicar na mensagem do admin abre o texto completo + ícones únicos de conquista
+
+> **Mensagem completa:** clicar numa mensagem do admin no sino agora abre um **modal com o texto inteiro** (título + corpo, `whitespace-pre-wrap`) em vez de só dispensar — com botões Fechar (mantém) e Dispensar. Outros tipos de notificação (com link) seguem navegando. **Ícones de conquista:** o grid de medalhas do hub repetia ícones (halteres pra reps50/200, troféu pra gold/gold3, chama pra os 3 streaks). Agora cada uma das 12 conquistas tem ícone ÚNICO (reps200→Repeat, gold3→Award, streak7→Zap, streak30→Rocket, etc.). i18n close/dismiss PT/EN/ES, tsc 0.
+
 ### feat(admin): mensagens do admin — DM pra 1 jogador + broadcast (#35)
 
 > O admin pode enviar uma mensagem direta a um jogador OU um broadcast (todos os players, ou filtrado por plano). Cai no **sino de notificações** do jogador (reusa toda a infra existente: tabela `notifications` + NotificationBell + rotas de ler/apagar). Backend: `POST /admin/message` (user_id+título+corpo → `create_notification` tipo `admin_message`) e `POST /admin/broadcast` (fan-out via `get_all_user_ids` + `broadcast_notification`, tipo `admin_broadcast`), `@require_admin`. Frontend: nova aba **"Mensagens"** no painel admin (busca de jogador reusando `/admin/users`, ou broadcast com filtro de plano). NotificationBell renderiza os tipos admin com 📣 + título/corpo. Teste `test_admin_message_and_broadcast`; notifications 12/12, tsc 0.

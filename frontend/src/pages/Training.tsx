@@ -1,26 +1,27 @@
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowRight, CheckCircle2, Dumbbell, GraduationCap, RotateCw, Target, Award, Flame, Star, Trophy, Lock, Map, Play, TrendingUp, TrendingDown, Minus, Sparkles, Medal, Gem, Compass, Crown, Info, type LucideIcon } from "lucide-react";
+import { ArrowRight, CheckCircle2, Dumbbell, GraduationCap, RotateCw, Target, Award, Flame, Star, Trophy, Lock, Map, Play, TrendingUp, TrendingDown, Minus, Sparkles, Medal, Gem, Compass, Crown, Info, Repeat, Zap, Rocket, type LucideIcon } from "lucide-react";
 import { HudLayout } from "@/components/hud/HudLayout";
 import { training } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
 // Cada conquista tem um ÍCONE próprio (não um número) — pra ler como medalha, não como passo de
 // uma sequência. Agrupado por natureza: volume=halteres, tier=medalha/troféu/gema, streak=chama.
+// Ícone ÚNICO por conquista (nada repetido) — pra ler como uma coleção de medalhas distintas.
 const ACH_ICON: Record<string, LucideIcon> = {
-  "train:first":    Sparkles,
-  "train:reps50":   Dumbbell,
-  "train:reps200":  Dumbbell,
-  "train:reps1000": Crown,
-  "train:silver":   Medal,
-  "train:gold":     Trophy,
-  "train:gold3":    Trophy,
-  "train:diamond":  Gem,
-  "train:explorer": Compass,
-  "train:streak3":  Flame,
-  "train:streak7":  Flame,
-  "train:streak30": Flame,
+  "train:first":    Sparkles,   // primeiro acerto
+  "train:reps50":   Dumbbell,   // volume
+  "train:reps200":  Repeat,     // mais volume
+  "train:reps1000": Crown,      // volume máximo
+  "train:silver":   Medal,      // tier prata
+  "train:gold":     Trophy,     // tier ouro
+  "train:gold3":    Award,      // 3 habilidades no ouro
+  "train:diamond":  Gem,        // tier diamante
+  "train:explorer": Compass,    // explorar categorias
+  "train:streak3":  Flame,      // streak 3
+  "train:streak7":  Zap,        // streak 7
+  "train:streak30": Rocket,     // streak 30
 };
 
 const TIER: Record<string, { label: string; ring: string; text: string }> = {
