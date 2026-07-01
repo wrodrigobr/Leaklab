@@ -468,6 +468,50 @@ def _parse_partygaming_hand(raw_text: str, site: str) -> ParsedHand:
     )
 
 
+def parse_acr_results(content: str) -> Optional[dict]:
+    """Parseia o arquivo de RESULTADOS do ACR/WPN (Tournament Summary '.ots', JSON): resultado +
+    premiação por jogador (o HH ACR é só chips, sem prize). Devolve
+    {tournament_id, prize_pool, player_count, currency, finishes:[{player, place, prize}]} ou None
+    se não for um arquivo de resultados WPN válido. Complementa a premiação do torneio no import."""
+    import json
+    try:
+        data = json.loads(content)
+    except Exception:
+        return None
+    if not isinstance(data, dict):
+        return None
+    tn = str(data.get('tournament_number') or '')
+    finishes_raw = data.get('tournament_finishes_and_winnings')
+    if not tn or not isinstance(finishes_raw, list):
+        return None
+    m = re.search(r'(\d+)', tn)                 # "T#35409697" → "35409697"
+    if not m:
+        return None
+    finishes = []
+    for f in finishes_raw:
+        if not isinstance(f, dict) or not f.get('player_name'):
+            continue
+        try:
+            place = int(f['finish_position']) if f.get('finish_position') is not None else None
+        except Exception:
+            place = None
+        prize = 0.0
+        for k in ('prize', 'ticket_value'):     # ticket conta como prêmio recebido
+            try:
+                prize += float(f.get(k) or 0)
+            except Exception:
+                pass
+        finishes.append({'player': str(f['player_name']).strip(), 'place': place,
+                         'prize': round(prize, 2)})
+    return {
+        'tournament_id': m.group(1),
+        'prize_pool':    data.get('prize_pool'),
+        'player_count':  data.get('player_count'),
+        'currency':      data.get('currency'),
+        'finishes':      finishes,
+    }
+
+
 def _extract_board(line: str) -> List[str]:
     """Extrai o board completo de uma linha de street.
 

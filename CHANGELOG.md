@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(tournaments): arquivo de RESULTADOS do ACR completa a premiação (prize/ROI)
+
+> O ACR tem um Tournament Summary separado do HH (`.ots`, JSON) com place+prêmio por jogador. Agora dá pra subir ele e completar prize/profit/place/buy_in do torneio (que via HH ficavam desconhecidos). Backend: `parse_acr_results` (parser) lê o JSON (`tournament_number`, `tournament_finishes_and_winnings`); endpoint `POST /tournament/results` casa por Tournament #, acha o hero (soma re-entradas + melhor colocação), pega o buy-in TOTAL do filename do summary (`$0.50 + $0.05` = $0.55) e atualiza via `update_tournament_financials` — **prize vem do arquivo real, nunca assumido**. Frontend: botão "Resultado" (âmbar) na coluna de profit dos torneios ACR sem resultado (`Tournaments.tsx`, mobile+desktop), upload `.ots` → banner + reload. Validado com o arquivo real do #35409697 (MusashiBR 6º, prize $1.19, buy-in $0.55, profit +$0.64). i18n PT/EN/ES. Testes `test_parse_acr_results` + `test_acr_results_endpoint_math`; test_acr_parser 8/8.
+
 ### feat(parser): ACR fase 5 — buy-in do filename (financeiro)
 
 > Fecha a fase 5 do ACR: o corpo da HH é só em chips, então o buy-in vem do FILENAME (`TN-$0{FULLSTOP}50` → $0.50). O frontend passou a mandar o `filename` no `/analyze` (`tournaments.analyze(content, file.name)` no UploadQueue e UploadZone); o backend parseia via `_acr_buyin_from_filename` e o `_extract_financials` ganhou branch ACR. **Honestidade:** o ACR NÃO assume busted (prize/profit ficam None = "resultado desconhecido") — o HH ACR não traz resultado nem payout, então inventar prize=0 seria prejuízo falso. Só o stake/buy-in é populado; prize/ROI ficam desconhecidos. Teste `test_acr_buyin_from_filename`; test_acr_parser 6/6.

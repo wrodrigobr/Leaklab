@@ -421,6 +421,14 @@ export const tournaments = {
       `/history/tournament/${tournamentId}/narrative`
     ),
 
+  // Complementa a premiação com o arquivo de resultados (ACR/WPN '.ots'): prize/profit/place reais
+  uploadResults: (content: string, filename?: string) =>
+    request<{ tournament_id: string; hero: string; place: number | null;
+              prize: number | null; buy_in: number | null; profit: number | null }>(
+      "/tournament/results",
+      { method: "POST", body: JSON.stringify({ content, filename }) },
+    ),
+
   compare: (ids: string[]) =>
     request<{
       items: TournamentComparison[];

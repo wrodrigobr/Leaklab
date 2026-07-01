@@ -15,6 +15,12 @@
   "title": "Tournament History",
   "eyebrow": "Performance Analysis",
   "subtitle": "Review your results, filter by network, and analyze decisions hand-by-hand.",
+  "results": {
+    "upload": "Results",
+    "hint": "Upload the tournament results file (ACR .ots) to complete the payout.",
+    "ok": "Results imported: {{place}} place, prize ${{prize}}.",
+    "error": "Couldn't read the results file."
+  },
   "filters": {
     "all": "All",
     "search": "Search tournament…",

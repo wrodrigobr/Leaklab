@@ -15,6 +15,12 @@
   "title": "Historial de Torneos",
   "eyebrow": "Análisis de Rendimiento",
   "subtitle": "Revisa tus resultados, filtra por red y analiza decisiones mano a mano.",
+  "results": {
+    "upload": "Resultado",
+    "hint": "Sube el archivo de resultados del torneo (ACR .ots) para completar la premiación.",
+    "ok": "Resultado importado: {{place}}º lugar, premio ${{prize}}.",
+    "error": "No se pudo leer el archivo de resultados."
+  },
   "filters": {
     "all": "Todas",
     "search": "Buscar torneo…",

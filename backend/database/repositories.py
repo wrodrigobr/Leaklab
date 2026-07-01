@@ -417,6 +417,28 @@ def save_tournament(user_id: int, tournament_id: str, hero: str,
         conn.close()
 
 
+def update_tournament_financials(user_id: int, tournament_id: str, *, buy_in=None, prize=None,
+                                 profit=None, place=None) -> bool:
+    """Atualiza SÓ o financeiro de um torneio (do arquivo de RESULTADOS ACR/summary — o HH ACR
+    não traz premiação). prize/profit são SOBRESCRITOS (é o dado autoritativo); buy_in/place
+    mantêm o existente se vierem None. Devolve False se o torneio não existe."""
+    conn = get_conn()
+    try:
+        exists = _fetchone(conn, _adapt(
+            "SELECT 1 AS x FROM tournaments WHERE user_id=? AND tournament_id=?"),
+            (user_id, tournament_id))
+        if not exists:
+            return False
+        conn.execute(_adapt(
+            "UPDATE tournaments SET buy_in = COALESCE(?, buy_in), prize = ?, profit = ?, "
+            "place = COALESCE(?, place) WHERE user_id=? AND tournament_id=?"),
+            (buy_in, prize, profit, place, user_id, tournament_id))
+        conn.commit()
+        return True
+    finally:
+        conn.close()
+
+
 def save_decisions(tournament_db_id: int, results: List[dict]):
     """Salva todas as decisões de uma análise. Limpa as antigas primeiro."""
     conn = get_conn()

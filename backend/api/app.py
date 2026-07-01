@@ -510,6 +510,49 @@ def analyze():
         return jsonify({'error': f'Erro ao processar arquivo: {type(e).__name__}: {e}'}), 500
 
 
+@app.route('/tournament/results', methods=['POST'])
+@require_auth
+def tournament_results():
+    """Complementa a premiação de um torneio com o arquivo de RESULTADOS (Tournament Summary).
+    Hoje: ACR/WPN '.ots' (JSON) — o HH ACR é só chips, sem prize. Casa por Tournament #, acha o
+    hero, e atualiza prize/profit/place/buy_in do torneio (sem inventar: prize vem do arquivo real)."""
+    from leaklab.parser import parse_acr_results
+    from database.repositories import get_tournament, update_tournament_financials
+    content  = _extract_content(request)
+    filename = _extract_upload_filename(request)
+    if not content:
+        return jsonify({'error': 'Conteúdo ausente'}), 400
+    res = parse_acr_results(content)
+    if not res or not res.get('tournament_id'):
+        return jsonify({'error': 'Arquivo de resultados não reconhecido. Esperado o Tournament '
+                                 'Summary (.ots) do ACR/WPN.'}), 422
+    tid  = res['tournament_id']
+    tour = get_tournament(g.user_id, tid)
+    if not tour:
+        return jsonify({'error': f'Torneio {tid} não encontrado. Importe as mãos (hand history) '
+                                 f'desse torneio antes de subir o resultado.'}), 404
+    hero = tour.get('hero')
+    mine = [f for f in res['finishes'] if hero and f['player'] == hero]
+    if not mine:
+        return jsonify({'error': f'O jogador "{hero}" não aparece no arquivo de resultados.'}), 422
+    prize = round(sum(f['prize'] for f in mine), 2)                       # soma re-entradas
+    places = [f['place'] for f in mine if f['place'] is not None]
+    place = min(places) if places else None                              # melhor colocação
+    # buy-in total do filename do summary ($X + $Y); fallback: buy_in atual (HH) ou pool/jogadores
+    buy_in = _summary_buyin_from_filename(filename)
+    if buy_in is None:
+        buy_in = tour.get('buy_in')
+    if buy_in is None and res.get('prize_pool') and res.get('player_count'):
+        try:
+            buy_in = round(float(res['prize_pool']) / float(res['player_count']), 2)
+        except Exception:
+            buy_in = None
+    profit = round(prize - buy_in, 2) if buy_in is not None else None
+    update_tournament_financials(g.user_id, tid, buy_in=buy_in, prize=prize, profit=profit, place=place)
+    return jsonify({'tournament_id': tid, 'hero': hero, 'place': place,
+                    'prize': prize, 'buy_in': buy_in, 'profit': profit})
+
+
 def _analyze_impl():
     quota_err = _check_upload_quota(g.user_id)
     if quota_err:
@@ -2873,6 +2916,19 @@ def _acr_buyin_from_filename(filename: str | None) -> float | None:
         return round(float(m.group(1)), 2)
     except ValueError:
         return None
+
+
+def _summary_buyin_from_filename(filename: str | None) -> float | None:
+    """Buy-in TOTAL do filename do arquivo de RESULTADOS ACR: 'TS... $0.50 + $0.05.ots' → 0.55
+    (buy-in + fee, como o PokerStars). Fallback: um único '$X'."""
+    if not filename:
+        return None
+    import re
+    m = re.search(r'\$(\d+(?:\.\d+)?)\s*\+\s*\$(\d+(?:\.\d+)?)', filename)
+    if m:
+        return round(float(m.group(1)) + float(m.group(2)), 2)
+    m = re.search(r'\$(\d+(?:\.\d+)?)', filename)
+    return round(float(m.group(1)), 2) if m else None
 
 
 def _extract_financials(raw: str, hero: str, site: str | None = None, filename: str | None = None) -> dict:

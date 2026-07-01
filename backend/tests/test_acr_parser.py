@@ -9,8 +9,19 @@ try:
 except Exception:
     pass
 
-from leaklab.parser import parse_hand_history, _detect_site, _extract_showdown_result
+from leaklab.parser import (parse_hand_history, _detect_site, _extract_showdown_result,
+                            parse_acr_results)
 from leaklab.pipeline import build_decision_inputs_for_hand
+
+# Arquivo de RESULTADOS ACR/WPN (.ots, JSON) — compacto, com hero (MusashiBR 6º $1.19), um ITM
+# (FIB 7º $1.02) e uma re-entrada (ibslower 2×) pra testar soma de prêmio + melhor colocação.
+ACR_RESULTS = ('{"spec_version":"1.0.0","network_name":"WinningPokerNetwork",'
+               '"tournament_number":"T#35409697","currency":"USD","prize_pool":17,"player_count":34,'
+               '"tournament_finishes_and_winnings":['
+               '{"player_name":"MusashiBR","finish_position":6,"prize":1.19,"ticket_value":0},'
+               '{"player_name":"FIB","finish_position":7,"prize":1.02,"ticket_value":0},'
+               '{"player_name":"ibslower","finish_position":20,"prize":0,"ticket_value":0},'
+               '{"player_name":"ibslower","finish_position":31,"prize":0,"ticket_value":0}]}')
 
 # Mão 1 — preflop, open + fold (hero MusashiBR folda), sem showdown.
 ACR_FOLD_HAND = """Game Hand #2769798195 - Tournament #35409697 - Holdem (No Limit) - Level 4 (750.00/1500.00) - 2026/06/30 21:10:09 UTC
@@ -182,6 +193,37 @@ def test_acr_buyin_from_filename():
     assert fin['buy_in'] == 0.5
     assert fin['prize'] is None and fin['profit'] is None      # NÃO inventa busted no ACR
     print("OK  test_acr_buyin_from_filename")
+
+
+def test_parse_acr_results():
+    """Arquivo de resultados (.ots JSON): tournament_id de 'T#...', place+prêmio por jogador."""
+    res = parse_acr_results(ACR_RESULTS)
+    assert res is not None
+    assert res['tournament_id'] == '35409697'
+    assert res['prize_pool'] == 17 and res['player_count'] == 34 and res['currency'] == 'USD'
+    m = [f for f in res['finishes'] if f['player'] == 'MusashiBR']
+    assert len(m) == 1 and m[0]['place'] == 6 and m[0]['prize'] == 1.19
+    assert parse_acr_results('{"foo":1}') is None      # JSON mas não é results file
+    assert parse_acr_results('não é json') is None
+    print("OK  test_parse_acr_results")
+
+
+def test_acr_results_endpoint_math():
+    """Lógica do /tournament/results: buy-in do filename do summary ($0.50 + $0.05 = 0.55),
+    soma de re-entradas, melhor colocação, profit = prize - buy_in (sem inventar)."""
+    from api.app import _summary_buyin_from_filename
+    fn = "TS20260630 T35409697 E1266263933 NL Hold'em $0.50 + $0.05.ots"
+    assert _summary_buyin_from_filename(fn) == 0.55
+    assert _summary_buyin_from_filename("só $1.10.ots") == 1.10
+    assert _summary_buyin_from_filename(None) is None
+    res = parse_acr_results(ACR_RESULTS)
+    # re-entrada: soma prêmio + melhor (menor) colocação
+    ib = [f for f in res['finishes'] if f['player'] == 'ibslower']
+    assert round(sum(f['prize'] for f in ib), 2) == 0.0 and min(f['place'] for f in ib) == 20
+    hero = [f for f in res['finishes'] if f['player'] == 'MusashiBR']
+    prize = round(sum(f['prize'] for f in hero), 2)
+    assert prize == 1.19 and round(prize - 0.55, 2) == 0.64   # profit
+    print("OK  test_acr_results_endpoint_math")
 
 
 if __name__ == '__main__':

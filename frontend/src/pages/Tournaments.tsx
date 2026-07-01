@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { HudLayout } from "@/components/hud/HudLayout";
-import { Search, Filter, ArrowUpDown, CheckCircle2, Clock, Loader2, Trash2, AlertTriangle, GraduationCap, BarChart2 } from "lucide-react";
+import { Search, Filter, ArrowUpDown, CheckCircle2, Clock, Loader2, Trash2, AlertTriangle, GraduationCap, BarChart2, FileUp } from "lucide-react";
 import { SiteLogo } from "@/components/hud/SiteLogo";
 import { cn } from "@/lib/utils";
 import { tournaments as tournamentsApi, Tournament } from "@/lib/api";
@@ -74,6 +74,39 @@ const Tournaments = () => {
   };
 
   useEffect(() => { reload(); }, []);
+
+  // Arquivo de RESULTADOS (ACR/WPN .ots): complementa a premiação dos torneios sem resultado.
+  // O 't' dentro do .map() das linhas sombreia o i18n → rótulos do botão pré-computados aqui.
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [resultsMsg, setResultsMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const resultsUploadLabel = t("results.upload");
+  const resultsHint = t("results.hint");
+  const onResultsFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    e.target.value = "";
+    if (!f) return;
+    try {
+      const content = await f.text();
+      const r = await tournamentsApi.uploadResults(content, f.name);
+      setResultsMsg({ ok: true, text: t("results.ok", { place: r.place ?? "?", prize: (r.prize ?? 0).toFixed(2) }) });
+      reload();
+    } catch (err) {
+      setResultsMsg({ ok: false, text: (err instanceof Error ? err.message : t("results.error")) });
+    }
+    setTimeout(() => setResultsMsg(null), 6000);
+  };
+  const renderProfitOrUpload = (site: string, profit: number | null, positive: boolean) =>
+    profit === null && site === "acr" ? (
+      <button
+        onClick={(e) => { e.stopPropagation(); fileRef.current?.click(); }}
+        title={resultsHint}
+        className="inline-flex items-center gap-1 rounded-md bg-amber-500/10 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-amber-400 ring-1 ring-amber-500/30 transition-colors hover:bg-amber-500/20"
+      >
+        <FileUp className="size-3" aria-hidden /> {resultsUploadLabel}
+      </button>
+    ) : (
+      <span>{profit === null ? "—" : `${positive ? "+" : ""}$${Math.abs(profit).toFixed(0)}`}</span>
+    );
 
   useEffect(() => {
     const handler = () => reload();
@@ -166,6 +199,14 @@ const Tournaments = () => {
       title={t("title")}
       description={t("subtitle")}
     >
+      {/* input escondido pro upload do arquivo de resultados (ACR/WPN .ots) */}
+      <input ref={fileRef} type="file" accept=".ots,.txt,application/json" onChange={onResultsFile} className="hidden" />
+      {resultsMsg && (
+        <div className={cn("mb-3 rounded-lg px-4 py-2.5 text-sm ring-1",
+          resultsMsg.ok ? "bg-primary/10 text-foreground ring-primary/30" : "bg-destructive/10 text-destructive ring-destructive/30")}>
+          {resultsMsg.text}
+        </div>
+      )}
       {loading ? (
         <div className="flex items-center justify-center py-24 gap-3 text-muted-foreground">
           <Loader2 className="size-5 animate-spin text-primary" />
@@ -339,7 +380,7 @@ const Tournaments = () => {
                         "font-mono text-sm font-medium tabular-nums",
                         profit === null ? "text-muted-foreground" : positive ? "text-primary" : "text-destructive"
                       )}>
-                        {profit === null ? "—" : `${positive ? "+" : ""}$${Math.abs(profit).toFixed(0)}`}
+                        {renderProfitOrUpload(t.site, profit, positive)}
                       </span>
                       <button
                         onClick={(e) => handleDelete(e, t.tournament_id)}
@@ -460,7 +501,7 @@ const Tournaments = () => {
                             : "text-destructive"
                           )}
                         >
-                          {profit === null ? "—" : `${positive ? "+" : ""}$${Math.abs(profit).toFixed(0)}`}
+                          {renderProfitOrUpload(t.site, profit, positive)}
                         </td>
                         <td className="whitespace-nowrap px-4 py-3.5">
                           <div className="flex items-center gap-1.5 flex-wrap">
