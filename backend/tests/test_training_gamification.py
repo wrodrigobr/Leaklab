@@ -256,6 +256,39 @@ def test_training_proof_before_after():
     print("OK  test_training_proof_before_after")
 
 
+def test_retention_factor_curve():
+    """Decaimento: 1.0 na carência, ~0.5 uma meia-vida depois, piso no muito antigo, 1.0 se NULL."""
+    from database.repositories import _retention_factor, _TRAIN_DECAY_FLOOR
+    from datetime import datetime, timedelta
+    now = datetime.utcnow()
+    fmt = lambda d: d.strftime('%Y-%m-%d %H:%M:%S')
+    assert _retention_factor(fmt(now)) == 1.0
+    assert _retention_factor(fmt(now - timedelta(days=3))) == 1.0          # dentro da carência (7d)
+    f28 = _retention_factor(fmt(now - timedelta(days=28)))                 # 7 carência + 21 meia-vida
+    assert abs(f28 - 0.5) < 0.05, f28
+    assert _retention_factor('2000-01-01 00:00:00') == _TRAIN_DECAY_FLOOR  # muito antigo → piso
+    assert _retention_factor(None) == 1.0
+    print("OK  test_retention_factor_curve")
+
+
+def test_mastery_decay_read_and_resume():
+    """Domínio abandonado decai na LEITURA (tira do topo) e ao RETOMAR (1 rep não restaura tudo).
+    Conquistas usam o pico (mastery_stored), não decaem."""
+    uid = _mk_user()
+    c = get_conn()
+    c.execute("INSERT INTO training_skill_progress "
+              "(user_id,category_key,attempts,correct,mastery_ema,mastery,last_practiced_at) "
+              "VALUES (?,?,?,?,?,?,?)", (uid, 'rfi:UTG::100', 25, 25, 1.0, 100.0, '2020-01-01 00:00:00'))
+    c.commit(); c.close()
+    sk = {s['category_key']: s for s in get_training_skills(uid)}['rfi:UTG::100']
+    assert sk['mastery_stored'] == 100.0                    # pico preservado (conquistas)
+    assert sk['mastery'] <= 40.0 and sk['stale'] is True    # leitura decaída ao piso (0.4×100)
+    assert sk['tier'] in ('silver', 'bronze')               # saiu do Diamante → gate re-trava
+    r = record_training_attempt(uid, 'rfi:UTG::100', True)  # retoma: parte do decaído
+    assert r['mastery_prev'] <= 40.0 and r['mastery'] < 100.0, r
+    print("OK  test_mastery_decay_read_and_resume")
+
+
 def test_readiness_beginner_stage():
     """Iniciante (poucos/nenhum torneio, sem leaks medidos): meta é JOGAR/importar, não Diamante."""
     uid = _mk_user()

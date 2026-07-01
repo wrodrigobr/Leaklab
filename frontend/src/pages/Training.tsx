@@ -344,6 +344,7 @@ export default function Training() {
                         <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-muted/30">
                           <div className="h-full rounded-full transition-[width] duration-500" style={{ width: `${Math.round(s.mastery)}%`, backgroundColor: tm.ring }} />
                         </div>
+                        {s.stale && <RotateCw className="size-3 shrink-0 text-amber-400/80" title={t("status.reviewHint")} aria-hidden />}
                         <span className={cn("w-16 shrink-0 text-right font-mono text-[10px] font-bold uppercase", tm.text)}>{tm.label}</span>
                       </div>
                     );

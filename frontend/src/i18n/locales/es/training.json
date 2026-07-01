@@ -8,6 +8,7 @@
     "noSkills": "Aún no entrenaste ninguna habilidad. Empieza una sesión abajo.",
     "achievements": "Logros",
     "achievementsHint": "Medallas que ganas entrenando, en cualquier orden, no es una secuencia.",
+    "reviewHint": "El dominio bajó por falta de práctica. Repasa para recuperarlo.",
     "of": "de"
   },
   "ghost": {

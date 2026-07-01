@@ -1049,7 +1049,9 @@ export interface TrainingSkill {
   category_key: string;
   attempts: number;
   correct: number;
-  mastery: number;
+  mastery: number;                 // domínio ATUAL (decaído pelo tempo sem praticar)
+  mastery_stored?: number;         // pico armazenado (base das conquistas, não decai)
+  stale?: boolean;                 // decaiu por falta de prática → sugerir revisar
   tier: "bronze" | "silver" | "gold" | "diamond";
   last_practiced_at?: string | null;
 }

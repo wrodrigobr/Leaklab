@@ -5563,6 +5563,42 @@ _ACH_META = {k: {'title': t, 'desc': d} for k, t, d in _ACHIEVEMENT_DEFS}
 # sustentado, não grind. Tiers Bronze/Prata/Ouro/Diamante. Ver specs/training-gamification.md.
 _TRAIN_EMA_ALPHA = 0.2
 _TRAIN_VOLUME_FULL = 20.0   # nº de tentativas p/ o fator de volume saturar em 1.0
+# Decaimento de domínio (SRS simples): quem não pratica esquece. Aplicado na LEITURA (o hub e o
+# gate mostram o domínio atual) E ao RETOMAR (senão dava pra restaurar tudo com 1 rep após abandonar,
+# furando o gate). Constantes tunáveis.
+_TRAIN_DECAY_GRACE_DAYS    = 7     # prática recente = fresco, sem decair
+_TRAIN_DECAY_HALFLIFE_DAYS = 21    # meia-vida do domínio após a carência
+_TRAIN_DECAY_FLOOR         = 0.4   # piso: só o tempo nunca zera (não desmotiva); mas tira do Diamante
+
+
+def _parse_ts(ts):
+    """last_practiced_at vem str (SQLite 'YYYY-MM-DD HH:MM:SS') ou datetime (Postgres)."""
+    if ts is None:
+        return None
+    if not isinstance(ts, str):
+        return ts
+    from datetime import datetime
+    try:
+        return datetime.strptime(ts[:19], '%Y-%m-%d %H:%M:%S')
+    except Exception:
+        try:
+            return datetime.strptime(ts[:19], '%Y-%m-%dT%H:%M:%S')
+        except Exception:
+            return None
+
+
+def _retention_factor(last_practiced_at) -> float:
+    """Fator de retenção [piso..1] pelo tempo sem praticar: 1.0 na carência, depois meia-vida até
+    o piso. Multiplica o mastery (equivale a decair a EMA, já que mastery = ema × volume × 100)."""
+    ts = _parse_ts(last_practiced_at)
+    if ts is None:
+        return 1.0
+    from datetime import datetime
+    days = (datetime.utcnow() - ts).total_seconds() / 86400.0
+    if days <= _TRAIN_DECAY_GRACE_DAYS:
+        return 1.0
+    f = 0.5 ** ((days - _TRAIN_DECAY_GRACE_DAYS) / _TRAIN_DECAY_HALFLIFE_DAYS)
+    return max(_TRAIN_DECAY_FLOOR, min(1.0, f))
 
 
 def _mastery_tier(mastery: float) -> str:
@@ -5580,15 +5616,19 @@ def record_training_attempt(user_id: int, category_key: str, correct: bool) -> d
     conn = get_conn()
     try:
         row = _fetchone(conn, _adapt(
-            "SELECT attempts, correct, mastery_ema, mastery FROM training_skill_progress "
+            "SELECT attempts, correct, mastery_ema, mastery, last_practiced_at FROM training_skill_progress "
             "WHERE user_id=? AND category_key=?"), (user_id, category_key))
         c = 1.0 if correct else 0.0
-        prev_mastery = float(row['mastery']) if row else 0.0
         if row:
+            # decai a EMA pelo tempo desde a última prática ANTES de aplicar a nova tentativa —
+            # retomar após abandono começa do domínio decaído (não restaura tudo com 1 rep).
+            f = _retention_factor(row.get('last_practiced_at'))
+            prev_mastery = float(row['mastery']) * f      # o que o jogador via (decaído)
             attempts  = int(row['attempts']) + 1
             correct_n = int(row['correct']) + (1 if correct else 0)
-            ema = float(row['mastery_ema']) * (1 - _TRAIN_EMA_ALPHA) + c * _TRAIN_EMA_ALPHA
+            ema = (float(row['mastery_ema']) * f) * (1 - _TRAIN_EMA_ALPHA) + c * _TRAIN_EMA_ALPHA
         else:
+            prev_mastery = 0.0
             attempts, correct_n, ema = 1, (1 if correct else 0), c
         mastery = round(ema * min(1.0, attempts / _TRAIN_VOLUME_FULL) * 100.0, 1)
         if row:
@@ -5625,7 +5665,15 @@ def get_training_skills(user_id: int) -> list:
         rows = _fetchall(conn, _adapt(
             "SELECT category_key, attempts, correct, mastery, last_practiced_at "
             "FROM training_skill_progress WHERE user_id=? ORDER BY mastery DESC"), (user_id,))
-        return [{**dict(r), 'tier': _mastery_tier(float(r['mastery'] or 0))} for r in rows]
+        out = []
+        for r in rows:
+            stored = float(r['mastery'] or 0)
+            f = _retention_factor(r.get('last_practiced_at'))
+            eff = round(stored * f, 1)                        # domínio ATUAL (decaído pelo tempo)
+            out.append({**dict(r), 'mastery': eff, 'mastery_stored': round(stored, 1),
+                        'tier': _mastery_tier(eff), 'stale': f < 0.999})
+        out.sort(key=lambda s: -s['mastery'])                 # reordena pelo decaído
+        return out
     finally:
         conn.close()
 
@@ -5836,7 +5884,8 @@ _TRAINING_ACHIEVEMENT_DEFS = [
 
 def _training_state(user_id: int) -> dict:
     skills = get_training_skills(user_id)
-    masteries = [float(s.get('mastery') or 0) for s in skills]
+    # conquistas usam o mastery STORED (pico), não o decaído — não se DES-ganha uma conquista.
+    masteries = [float(s.get('mastery_stored', s.get('mastery')) or 0) for s in skills]
     try:
         streak = int((get_xp_status(user_id) or {}).get('streak') or 0)
     except Exception:

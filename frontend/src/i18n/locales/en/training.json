@@ -8,6 +8,7 @@
     "noSkills": "You haven't trained any skill yet. Start a session below.",
     "achievements": "Achievements",
     "achievementsHint": "Medals you earn by training, in any order, not a sequence.",
+    "reviewHint": "Mastery dropped from lack of practice. Review to recover it.",
     "of": "of"
   },
   "ghost": {

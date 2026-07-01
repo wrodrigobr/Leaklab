@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(training): decaimento de domínio (SRS simples) — quem não pratica esquece
+
+> O domínio por habilidade agora DECAI com o tempo sem praticar (antes só subia, o que enfraquecia a régua do gate "Aplicar"). Modelo de retenção: `1.0` na carência (7 dias), depois meia-vida (21 dias) até um piso (0.4) — constantes tunáveis. Aplicado em DOIS pontos: na **leitura** (`get_training_skills` devolve o domínio ATUAL decaído + `mastery_stored` do pico + flag `stale`), então o hub e o gate mostram o valor real e um leak abandonado **re-trava** o gate; e ao **RETOMAR** (`record_training_attempt` decai a EMA antes de aplicar a nova tentativa) — fecha o loophole de restaurar tudo com 1 rep após abandonar. Conquistas usam o pico (`mastery_stored`), nunca se DES-ganha uma medalha. Frontend: ícone "revisar" (âmbar) nas skills decaídas com tooltip. i18n PT/EN/ES. Testes `test_retention_factor_curve` + `test_mastery_decay_read_and_resume`; training 16/16, tsc 0.
+
 ### feat(training): Fase 4 "Provar" — loop validado treino→jogo→prova (honesto)
 
 > Fecha o loop dos dois eixos: depois de treinar uma categoria, jogar e importar um torneio, o hub mostra a **aderência GTO REAL** daquela categoria (das mãos, não do drill) **antes × depois**. Decisões do dono: **híbrido** (snapshot do último torneio + janela de todos os pós-baseline) e métrica **aderência GTO %** (estável em amostra pequena). Backend: tabela `training_proof` (baseline congelado quando começa a treinar a categoria), `_category_adherence_filter` mapeia a category_key → decisões reais (v1 preflop rfi/vs_rfi/vs_3bet, ignora stack p/ amostra), `get_training_proof` + `/player/training/proof`. Frontend: card "Provar" (delta em **pp**, "neste último torneio", aviso de amostra pequena quando <10 mãos, disclaimer "comparação com sua média, NÃO prova que o treino causou"). O passo "Provar" da jornada vira ativo quando há prova. Só aparece com dado novo pós-treino → exige o loop real, nada de vaidade. i18n PT/EN/ES. Testes training 14/14, tsc 0.
