@@ -73,7 +73,7 @@
       "tip": "Train your failure points with GTO drills until you master each one. It's the practice axis: it earns XP, mastery and achievements, but does NOT touch your ELO (which comes only from real hands)."
     },
     "apply": {
-      "title": "Apply",
+      "title": "Play",
       "desc": "When you master your leaks",
       "tip": "When you're ready, play a real tournament focusing on what you trained and import the hands. This is where practice turns into real play."
     },
@@ -85,7 +85,7 @@
     "soon": "Coming soon",
     "readyMsg": "You mastered your priority leaks in training. Now play a tournament and import it to see the improvement in your real game.",
     "applyCta": "Play & import",
-    "gateTitle": "Apply still locked",
+    "gateTitle": "Play still locked",
     "gateHintDeveloping": "Still developing: master your {{count}} most costly leaks at {{tier}} to unlock. Start with what hurts most.",
     "gateHintConsolidated": "You'll unlock playing only when you master ALL {{count}} of your leaks at {{tier}}. Training a single leak isn't enough, the goal is to cover every spot.",
     "morePending": "more still on the way",
