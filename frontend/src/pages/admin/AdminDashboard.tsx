@@ -1231,6 +1231,7 @@ const SECTION_TITLE: Record<AdminSection, { title: string; sub: string }> = {
   coaches:      { title: "Coaches",        sub: "Roster de coaches, alunos e repasses." },
   support:      { title: "Tickets",        sub: "Mensagens de suporte dos usuários." },
   feedback:     { title: "Feedback",       sub: "Sugestões, elogios e problemas dos jogadores." },
+  messages:     { title: "Mensagens",      sub: "Enviar DM a um jogador ou broadcast (com categoria)." },
   candidaturas: { title: "Candidaturas",   sub: "Pedidos para virar coach." },
   "gto-worker": { title: "GTO Worker",     sub: "Monitoramento do worker e cobertura GTO." },
   logs:         { title: "Logs",           sub: "Últimas importações de torneios." },
