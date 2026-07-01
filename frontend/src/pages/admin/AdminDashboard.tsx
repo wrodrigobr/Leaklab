@@ -4,7 +4,7 @@ import {
   Activity, BarChart2, CheckCircle2, Clock,
   LayoutDashboard, Loader2, RefreshCw, Search, Shield, Users,
   GraduationCap, X, Check, MessageSquarePlus, Trash2, AlertTriangle,
-  Cpu, CircleDot, Lightbulb, Send, Megaphone
+  Cpu, CircleDot, Lightbulb, Send, Megaphone, Mail
 } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
 import { HudHeader } from "@/components/hud/HudHeader";
@@ -491,6 +491,7 @@ function MessagesTab() {
   const [category, setCategory] = useState("info"); // info | aviso | novidade (só ícone/cor no sino)
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
+  const [alsoEmail, setAlsoEmail] = useState(false);   // espelhar o comunicado por email
   const CATS = [
     { id: "info", label: "Informação", emoji: "📣" },
     { id: "aviso", label: "Aviso", emoji: "⚠️" },
@@ -526,14 +527,16 @@ function MessagesTab() {
       const tt = title.trim(), bb = body.trim();
       if (mode === "dm") {
         if (!target) throw new Error("Selecione um jogador");
-        return adminDashboard.sendMessage(target.id, tt, bb, { category });
+        return adminDashboard.sendMessage(target.id, tt, bb, { category, email: alsoEmail });
       }
-      return adminDashboard.broadcast(tt, bb, { category, ...(plan ? { plan } : {}) });
+      return adminDashboard.broadcast(tt, bb, { category, email: alsoEmail, ...(plan ? { plan } : {}) });
     },
     onSuccess: (r) => {
+      const emailed = (r as { emailed?: number })?.emailed ?? 0;
+      const emailNote = alsoEmail ? ` · ${emailed} email(s)` : "";
       toast.success(mode === "dm"
-        ? `Mensagem enviada para ${target?.username}`
-        : `Broadcast enviado para ${(r as { count?: number })?.count ?? "?"} jogador(es)`);
+        ? `Mensagem enviada para ${target?.username}${emailNote}`
+        : `Broadcast enviado para ${(r as { count?: number })?.count ?? "?"} jogador(es)${emailNote}`);
       setTitle(""); setBody(""); setTarget(null); setSearch("");
     },
     onError: (e) => toast.error(e instanceof Error ? e.message : "Falha ao enviar"),
@@ -618,6 +621,17 @@ function MessagesTab() {
       <textarea value={body} onChange={e => setBody(e.target.value)} maxLength={500} rows={4}
         placeholder="Mensagem…"
         className="w-full resize-none rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/40" />
+
+      <label className="flex cursor-pointer items-start gap-2.5 rounded-lg border border-border bg-card px-3 py-2.5">
+        <input type="checkbox" checked={alsoEmail} onChange={e => setAlsoEmail(e.target.checked)}
+          className="mt-0.5 size-4 shrink-0 accent-primary" />
+        <span className="text-sm">
+          <span className="flex items-center gap-1.5 text-foreground"><Mail className="size-3.5 text-muted-foreground" /> Enviar também por email</span>
+          <span className="mt-0.5 block text-[11px] text-muted-foreground">
+            Alcança quem não abre o app. Respeita quem descadastrou o email; não envie sem título.
+          </span>
+        </span>
+      </label>
 
       <div className="flex items-center gap-3">
         <button disabled={!canSend} onClick={() => send.mutate()}

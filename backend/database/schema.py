@@ -733,6 +733,8 @@ def _run_migrations(conn):
             ("xp_last_activity",    "ALTER TABLE users ADD COLUMN xp_last_activity    TEXT"),
             ("daily_focus_done_at", "ALTER TABLE users ADD COLUMN daily_focus_done_at TEXT"),
             ("digest_subscribed",   "ALTER TABLE users ADD COLUMN digest_subscribed   INTEGER NOT NULL DEFAULT 0"),
+            # opt-out de email de comunicado do admin (default 1 = inscrito; unsubscribe via link zera)
+            ("email_opt_in",        "ALTER TABLE users ADD COLUMN email_opt_in        INTEGER NOT NULL DEFAULT 1"),
         ]:
             try: conn.execute(_sql)
             except Exception: pass
@@ -1425,6 +1427,7 @@ def _run_migrations(conn):
             ("xp_last_activity",    "ALTER TABLE users ADD COLUMN xp_last_activity    TEXT"),
             ("daily_focus_done_at",   "ALTER TABLE users ADD COLUMN daily_focus_done_at   TEXT"),
             ("digest_subscribed",          "ALTER TABLE users ADD COLUMN digest_subscribed          INTEGER NOT NULL DEFAULT 0"),
+            ("email_opt_in",               "ALTER TABLE users ADD COLUMN email_opt_in               INTEGER NOT NULL DEFAULT 1"),
             ("birth_year",                "ALTER TABLE users ADD COLUMN birth_year                INTEGER"),
             ("country",                   "ALTER TABLE users ADD COLUMN country                   TEXT"),
             ("state_province",            "ALTER TABLE users ADD COLUMN state_province            TEXT"),

@@ -6324,6 +6324,39 @@ def update_digest_subscription(user_id: int, subscribed: bool) -> None:
     conn.close()
 
 
+# ── Email de comunicado do admin (opt-out via email_opt_in) ───────────────────
+
+def get_email_recipients(user_ids: list) -> list:
+    """Dado um conjunto de user_ids, retorna [{id,email,username}] apenas dos que têm
+    email_opt_in=1 e email preenchido. Usado ao espelhar a mensagem do admin por email
+    (respeita o descadastro / LGPD)."""
+    if not user_ids:
+        return []
+    conn = get_conn()
+    try:
+        ids = [int(u) for u in user_ids]
+        ph = ",".join(["?"] * len(ids))
+        rows = _fetchall(conn, _adapt(
+            f"SELECT id, email, username FROM users "
+            f"WHERE id IN ({ph}) AND email_opt_in = 1 "
+            f"AND email IS NOT NULL AND email <> ''"
+        ), tuple(ids))
+        return [dict(r) for r in rows]
+    finally:
+        conn.close()
+
+
+def update_email_opt_in(user_id: int, opt_in: bool) -> None:
+    """Liga/desliga o recebimento de emails de comunicado do admin (unsubscribe zera)."""
+    conn = get_conn()
+    _execute(conn,
+        "UPDATE users SET email_opt_in = ? WHERE id = ?",
+        (1 if opt_in else 0, user_id),
+    )
+    conn.commit()
+    conn.close()
+
+
 # ── Session Goals — FEAT-08 ───────────────────────────────────────────────────
 
 

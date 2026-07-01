@@ -43,6 +43,21 @@ def verify_unsub_token(user_id: int, token: str) -> bool:
     return hmac.compare_digest(_unsub_token(user_id), token)
 
 
+# ── Token de unsubscribe dos comunicados do admin (salt distinto do digest) ───
+
+_EMAIL_UNSUB_SALT = "admin_email_unsub_v1"
+
+
+def _email_unsub_token(user_id: int) -> str:
+    secret = os.environ.get("LEAKLAB_SECRET", "dev-secret")
+    msg = f"{_EMAIL_UNSUB_SALT}:{user_id}"
+    return hmac.new(secret.encode(), msg.encode(), hashlib.sha256).hexdigest()[:32]
+
+
+def verify_email_unsub_token(user_id: int, token: str) -> bool:
+    return hmac.compare_digest(_email_unsub_token(user_id), token)
+
+
 # ── Geração do conteúdo ───────────────────────────────────────────────────────
 
 def _ev_bar(ev_loss: float) -> str:
@@ -294,6 +309,92 @@ def send_transactional_email(to_email: str, subject: str, html_body: str) -> boo
     except Exception as e:
         log.error("Erro ao enviar email transacional para %s: %s", to_email, e)
         return False
+
+
+# ── Email de comunicado do admin (espelha a mensagem in-app) ─────────────────
+
+_CATEGORY_META = {
+    "info":     ("📣", "#6366f1", "Informação"),
+    "aviso":    ("⚠️", "#f59e0b", "Aviso"),
+    "novidade": ("🎉", "#22c55e", "Novidade"),
+}
+
+
+def build_admin_email_html(username: str, title: str, body: str,
+                           unsub_link: str, category: str = "info") -> str:
+    """HTML do email de comunicado do admin — mesmo visual do digest, com rodapé
+    de descadastro (LGPD). `body` pode ter quebras de linha (viram <br>)."""
+    emoji, color, cat_label = _CATEGORY_META.get(category, _CATEGORY_META["info"])
+    safe_title = (title or "").strip() or "Comunicado — LeakLabs.ai"
+    body_html = (body or "").strip().replace("\n", "<br>")
+    return f"""<!DOCTYPE html>
+<html lang="pt-BR">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>{safe_title}</title></head>
+<body style="margin:0;padding:0;background:#0f1117;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#0f1117;padding:40px 16px;">
+    <tr><td align="center">
+      <table width="560" cellpadding="0" cellspacing="0" style="background:#161b27;border-radius:12px;overflow:hidden;border:1px solid #1e2433;">
+        <tr>
+          <td style="padding:24px;background:#1a1f2e;border-bottom:1px solid #1e2433;">
+            <p style="margin:0;font-size:10px;font-family:monospace;text-transform:uppercase;letter-spacing:.12em;color:{color};">{emoji} {cat_label}</p>
+            <h1 style="margin:6px 0 0 0;font-size:20px;font-weight:700;color:#f1f5f9;">{safe_title}</h1>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:24px;">
+            <p style="margin:0 0 16px 0;font-size:14px;color:#cbd5e1;">Olá, {username}.</p>
+            <p style="margin:0;font-size:15px;line-height:1.6;color:#e2e8f0;">{body_html}</p>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:0 24px 24px;text-align:center;">
+            <a href="https://leaklabs.ai/dashboard"
+               style="display:inline-block;background:{color};color:#fff;text-decoration:none;padding:12px 28px;border-radius:8px;font-size:13px;font-weight:600;">
+              Abrir LeakLabs
+            </a>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:16px 24px;border-top:1px solid #1e2433;text-align:center;">
+            <p style="margin:0;font-size:11px;color:#6b7280;">
+              Você recebe comunicados da LeakLabs porque tem conta na plataforma.<br>
+              <a href="{unsub_link}" style="color:#6b7280;text-decoration:underline;">Não quero mais receber emails</a>
+            </p>
+          </td>
+        </tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>"""
+
+
+def send_admin_email(to_email: str, username: str, user_id: int,
+                     title: str, body: str, category: str = "info") -> bool:
+    """Envia o comunicado do admin por email (com rodapé de descadastro). True se enviado."""
+    base_url = os.environ.get("APP_BASE_URL", "https://leaklabs.ai")
+    token = _email_unsub_token(user_id)
+    unsub_url = f"{base_url}/api/player/email/unsubscribe?uid={user_id}&token={token}"
+    subject = (title or "").strip() or "Comunicado — LeakLabs.ai"
+    html = build_admin_email_html(username, title, body, unsub_url, category)
+    return send_transactional_email(to_email, subject, html)
+
+
+def send_admin_email_bulk(recipients: list, title: str, body: str,
+                          category: str = "info") -> dict:
+    """Envia o comunicado para vários destinatários (já filtrados por opt-in).
+    `recipients` = [{id,email,username}]. Retorna {'sent','errors'}."""
+    sent = errors = 0
+    for r in recipients:
+        ok = send_admin_email(r.get("email", ""), r.get("username", ""),
+                              int(r.get("id") or 0), title, body, category)
+        if ok:
+            sent += 1
+        else:
+            errors += 1
+    log.info("Comunicado admin por email: sent=%d errors=%d", sent, errors)
+    return {"sent": sent, "errors": errors}
 
 
 # ── Runner (chamado pelo endpoint admin) ──────────────────────────────────────

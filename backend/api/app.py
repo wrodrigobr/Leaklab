@@ -71,7 +71,10 @@ from leaklab.session_metrics import build_session_metrics
 from leaklab.leak_correlator import correlate_leaks
 from leaklab.llm_explainer import explain_decisions, generate_tournament_summary, generate_tournament_narrative, generate_comparison_narrative, coach_chat_reply
 from leaklab.report_generator import build_html_report, generate_pdf_bytes
-from leaklab.email_digest import run_weekly_digest, verify_unsub_token, send_transactional_email
+from leaklab.email_digest import (
+    run_weekly_digest, verify_unsub_token, send_transactional_email,
+    verify_email_unsub_token, send_admin_email, send_admin_email_bulk,
+)
 
 from database.schema import init_db
 from database.repositories import (
@@ -128,6 +131,8 @@ from database.repositories import (
     get_coach_message_count,
     # Sprint W — FEAT-11: Digest
     get_digest_subscribers, update_digest_subscription,
+    # Email de comunicado do admin (opt-out)
+    get_email_recipients, update_email_opt_in,
     # Sprint AH — BACK-018: Coach Application Flow
     create_coach_application, get_coach_applications,
     approve_coach_application, reject_coach_application,
@@ -6252,7 +6257,12 @@ def admin_send_message():
     if not uid or not (title or body):
         return jsonify({'error': 'user_id e (título ou corpo) são obrigatórios'}), 400
     create_notification(uid, 'admin_message', {'title': title, 'body': body, 'category': cat}, link)
-    return jsonify({'ok': True})
+    # Espelha por email (opt-in respeitado). Só faz sentido com título — email sem assunto é ruim.
+    emailed = 0
+    if bool(data.get('email')):
+        recipients = get_email_recipients([uid])
+        emailed = send_admin_email_bulk(recipients, title, body, cat).get('sent', 0)
+    return jsonify({'ok': True, 'emailed': emailed})
 
 
 @app.route('/admin/broadcast', methods=['POST'])
@@ -6274,7 +6284,12 @@ def admin_broadcast():
     ids   = get_all_user_ids(role=role, plan=plan)
     n     = broadcast_notification(ids, 'admin_broadcast',
                                    {'title': title, 'body': body, 'category': cat}, link)
-    return jsonify({'ok': True, 'count': n})
+    # Espelha por email para quem não descadastrou (LGPD via email_opt_in)
+    emailed = 0
+    if bool(data.get('email')):
+        recipients = get_email_recipients(ids)
+        emailed = send_admin_email_bulk(recipients, title, body, cat).get('sent', 0)
+    return jsonify({'ok': True, 'count': n, 'emailed': emailed})
 
 
 @app.route('/admin/coach/<int:coach_id>/students', methods=['GET'])
@@ -6603,6 +6618,23 @@ def digest_unsubscribe_link():
         return jsonify({'error': 'Token inválido'}), 403
     update_digest_subscription(user_id, False)
     return '<html><body style="font-family:sans-serif;text-align:center;padding:60px"><h2>Inscrição cancelada</h2><p>Você não receberá mais o digest semanal do LeakLabs.</p></body></html>', 200
+
+
+@app.route('/player/email/unsubscribe', methods=['GET'])
+def email_unsubscribe_link():
+    """Descadastro dos comunicados do admin por email (token HMAC, sem JWT)."""
+    uid   = request.args.get('uid', '')
+    token = request.args.get('token', '')
+    if not uid or not token:
+        return jsonify({'error': 'Parâmetros inválidos'}), 400
+    try:
+        user_id = int(uid)
+    except ValueError:
+        return jsonify({'error': 'uid inválido'}), 400
+    if not verify_email_unsub_token(user_id, token):
+        return jsonify({'error': 'Token inválido'}), 403
+    update_email_opt_in(user_id, False)
+    return '<html><body style="font-family:sans-serif;text-align:center;padding:60px"><h2>Descadastro concluído</h2><p>Você não receberá mais emails de comunicado do LeakLabs.</p></body></html>', 200
 
 
 @app.route('/admin/send-digest', methods=['POST'])

@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(admin): comunicado do admin também por email (opt-out / LGPD)
+
+> O sistema de mensagens do admin agora **espelha o comunicado por email**, não só no sino. Um toggle "Enviar também por email" na aba Mensagens (DM e broadcast) manda o mesmo título+corpo por email para quem não descadastrou, alcançando quem não abre o app. Reusa a infra SMTP existente (`send_transactional_email`). **Compliance:** nova coluna `email_opt_in` (default 1 = inscrito), rodapé de descadastro em todo email e endpoint `GET /player/email/unsubscribe` (token HMAC, salt próprio) que zera o opt-in. Backend: `get_email_recipients` filtra opt-in + email válido; `build_admin_email_html`/`send_admin_email_bulk` no email_digest; `/admin/message` e `/admin/broadcast` aceitam `email:true` e retornam `emailed`. Sem SMTP configurado o envio é no-op gracioso (o sino continua funcionando). Teste `test_email_recipients_optin_and_unsub_token`; notifications 13/13, api 44/44, tsc 0.
+
 ### feat(admin): autocomplete na busca de jogador (aba Mensagens)
 
 > A busca de jogador para DM virou um **autocomplete de verdade**: debounce de 250ms (não dispara 1 request por tecla), spinner de loading no campo, estado vazio ("Nenhum jogador encontrado") e **navegação por teclado** (↑/↓ percorre, Enter seleciona, Esc limpa). A lista fica visível enquanto rebusca (`placeholderData`, sem piscar) e o item destacado acompanha o mouse. tsc 0.

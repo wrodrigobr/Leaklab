@@ -186,6 +186,28 @@ def test_admin_message_and_broadcast():
     print("OK  test_admin_message_and_broadcast")
 
 
+def test_email_recipients_optin_and_unsub_token():
+    """Espelho por email respeita opt-out (email_opt_in) e o token de unsubscribe é válido/único."""
+    from leaklab.email_digest import _email_unsub_token, verify_email_unsub_token
+    a = _new_user("mail_a")
+    b = _new_user("mail_b")
+    # ambos começam opt-in (default 1) e com email preenchido
+    recips = {r["id"]: r for r in repo.get_email_recipients([a, b])}
+    assert a in recips and b in recips, recips
+    assert recips[a]["email"] == "mail_a@test.local"
+    # descadastra b → some da lista, a permanece
+    repo.update_email_opt_in(b, False)
+    ids2 = {r["id"] for r in repo.get_email_recipients([a, b])}
+    assert a in ids2 and b not in ids2, ids2
+    # lista vazia = []
+    assert repo.get_email_recipients([]) == []
+    # token HMAC: válido pro próprio uid, inválido cruzado
+    tok_a = _email_unsub_token(a)
+    assert verify_email_unsub_token(a, tok_a)
+    assert not verify_email_unsub_token(b, tok_a)
+    print("OK  test_email_recipients_optin_and_unsub_token")
+
+
 if __name__ == '__main__':
     tests = [v for k, v in sorted(globals().items()) if k.startswith('test_')]
     passed = failed = 0
