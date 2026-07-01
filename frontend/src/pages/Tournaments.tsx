@@ -105,7 +105,7 @@ const Tournaments = () => {
         <FileUp className="size-3" aria-hidden /> {resultsUploadLabel}
       </button>
     ) : (
-      <span>{profit === null ? "—" : `${positive ? "+" : ""}$${Math.abs(profit).toFixed(0)}`}</span>
+      <span>{profit === null ? "—" : `${positive ? "+" : ""}$${Math.abs(profit).toFixed(2).replace(/\.00$/, "")}`}</span>
     );
 
   useEffect(() => {
