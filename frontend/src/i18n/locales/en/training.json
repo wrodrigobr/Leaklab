@@ -66,15 +66,19 @@
     },
     "apply": {
       "title": "Apply",
-      "desc": "Play with the right focus"
+      "desc": "Only with all at Diamond"
     },
     "prove": {
       "title": "Prove",
       "desc": "See the real improvement"
     },
     "soon": "Coming soon",
-    "readyMsg": "You mastered {{skill}} in training. Play a tournament focusing on it and import to see it in your real game.",
-    "applyCta": "Play & import"
+    "readyMsg": "You mastered all {{count}} of your failure points at Diamond. Now play a tournament and import it to see the improvement in your real game.",
+    "applyCta": "Play & import",
+    "gateTitle": "Apply still locked",
+    "gateHint": "You'll unlock playing only when you master ALL {{count}} of your failure points at Diamond. Training a single leak isn't enough, the goal is to cover every spot.",
+    "morePending": "more still short of Diamond",
+    "keepTraining": "Keep training"
   },
   "missions": {
     "title": "Today's missions",

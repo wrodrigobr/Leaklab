@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(training): gate "Aplicar" exige TODOS os pontos de falha no Diamante
+
+> A régua da jornada estava fraca: bastava **uma** habilidade no Ouro (mastery≥70) pra sugerir jogar um torneio. Correção do dono: "meia dúzia de exercícios num leak e já indicar torneio é muito pouco; precisamos abranger mais spots, e só direcionar o torneio quando todos os pontos de falha estiverem dominados no Diamante". Agora o gate só libera quando o jogador **dominou TODO o currículo no Diamante** (mastery≥90 em cada categoria). Backend: `training_readiness(user_id)` cruza `build_curriculum` (leaks reais + fundamentos) × domínio de treino → `{total, diamond, ready, pending}`, exposto em `/training/overview.readiness`. Frontend (`Training.tsx`): quando bloqueado, o hub mostra **progresso honesto** (barra X/Y no Diamante + lista das categorias que faltam com seu tier) e CTA "Continuar treinando"; só quando `ready` aparece o convite comemorativo pra jogar/importar. i18n PT/EN/ES. Teste `test_readiness_gate_requires_all_diamond`; training 11/11, database 139/139, tsc 0.
+
 ### fix(training): Academia entra na linha de ação compacta (3 ações no topo)
 
 > A linha de ação do topo agora tem **Revisar · Treinar · Academia** (3 cards compactos, `sm:grid-cols-3`); o card grande da Academia embaixo foi removido pra não duplicar. tsc 0.

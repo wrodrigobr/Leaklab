@@ -33,14 +33,16 @@ export default function Training() {
   const tierCounts = (["bronze", "silver", "gold", "diamond"] as const).map((tier) => ({
     tier, count: overview?.skills.filter((s) => s.tier === tier).length ?? 0,
   }));
-  // Jornada: "Aplicar" desbloqueia quando uma habilidade treinada chega ao Ouro (mastery>=70).
-  // skills vêm ordenadas por mastery desc → a 1ª >=70 é a habilidade dominada a sugerir.
-  const READY_TIER = 70;
-  const trained = (overview?.skills.length ?? 0) > 0;
-  const readySkill = overview?.skills.find((s) => s.mastery >= READY_TIER) ?? null;
+  // Jornada: "Aplicar" só desbloqueia quando o jogador DOMINOU TODO o currículo no Diamante
+  // (todos os pontos de falha reais, mastery>=90). Régua vem do backend (training_readiness):
+  // cobrir todos os spots do plano, não um leak só. Sem isso, sugerir torneio seria vaidade.
+  const readiness = overview?.readiness ?? null;
+  const ready = readiness?.ready ?? false;
+  const gatePct = readiness && readiness.total > 0
+    ? Math.round((readiness.diamond / readiness.total) * 100) : 0;
   const JOURNEY = [
-    { key: "train", icon: Dumbbell, status: trained ? "done" : "active" },
-    { key: "apply", icon: Play, status: readySkill ? "active" : "locked" },
+    { key: "train", icon: Dumbbell, status: ready ? "done" : "active" },
+    { key: "apply", icon: Play, status: ready ? "active" : "locked" },
     { key: "prove", icon: TrendingUp, status: "soon" },
   ] as const;
 
@@ -119,19 +121,58 @@ export default function Training() {
               })}
             </div>
 
-            {/* CTA contextual: desbloqueou "Aplicar" (atingiu Ouro num leak treinado) */}
-            {readySkill && (
+            {/* Gate "Aplicar": comemorativo se DOMINOU TUDO no Diamante; senão, progresso honesto
+                mostrando quantos pontos de falha faltam (abranger TODOS os spots, não um leak só). */}
+            {readiness && readiness.total > 0 && (ready ? (
               <div className="mt-4 flex flex-col gap-3 rounded-xl bg-primary/[0.08] p-4 ring-1 ring-primary/30 sm:flex-row sm:items-center">
                 <Trophy className="size-6 shrink-0 text-primary" aria-hidden />
                 <p className="flex-1 text-sm text-foreground">
-                  {t("journey.readyMsg", { skill: skillLabel(readySkill.category_key) })}
+                  {t("journey.readyMsg", { count: readiness.total })}
                 </p>
                 <Link to="/dashboard"
                   className="flex shrink-0 items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 font-mono text-xs font-bold uppercase tracking-widest text-primary-foreground transition-colors hover:bg-primary/90">
                   <Play className="size-4" aria-hidden /> {t("journey.applyCta")}
                 </Link>
               </div>
-            )}
+            ) : (
+              <div className="mt-4 rounded-xl bg-muted/5 p-4 ring-1 ring-border">
+                <div className="mb-2 flex items-center justify-between gap-2">
+                  <p className="flex items-center gap-2 text-sm font-bold text-foreground">
+                    <Lock className="size-4 text-muted-foreground" aria-hidden /> {t("journey.gateTitle")}
+                  </p>
+                  <span className="shrink-0 font-mono text-xs font-bold tabular-nums text-cyan-300">
+                    {readiness.diamond}/{readiness.total} <span className="text-muted-foreground">{TIER.diamond.label}</span>
+                  </span>
+                </div>
+                <div className="h-2 overflow-hidden rounded-full bg-muted/30">
+                  <div className="h-full rounded-full bg-cyan-400 transition-[width] duration-500" style={{ width: `${gatePct}%` }} />
+                </div>
+                <p className="mt-2 text-xs leading-snug text-muted-foreground">{t("journey.gateHint", { count: readiness.total })}</p>
+                {readiness.pending.length > 0 && (
+                  <div className="mt-3 space-y-1.5">
+                    {readiness.pending.slice(0, 4).map((p) => {
+                      const tm = TIER[p.tier] ?? TIER.bronze;
+                      return (
+                        <div key={p.category_key} className="flex items-center gap-3">
+                          <span className="w-36 shrink-0 truncate text-[12px] text-foreground sm:w-44">{skillLabel(p.category_key)}</span>
+                          <div className="h-2 flex-1 overflow-hidden rounded-full bg-muted/30">
+                            <div className="h-full rounded-full transition-[width] duration-500" style={{ width: `${Math.round(p.mastery)}%`, backgroundColor: tm.ring }} />
+                          </div>
+                          <span className={cn("w-16 shrink-0 text-right font-mono text-[10px] font-bold uppercase", tm.text)}>{tm.label}</span>
+                        </div>
+                      );
+                    })}
+                    {readiness.pending.length > 4 && (
+                      <p className="pt-0.5 text-[11px] text-muted-foreground">+{readiness.pending.length - 4} {t("journey.morePending")}</p>
+                    )}
+                  </div>
+                )}
+                <Link to="/leak-trainer"
+                  className="mt-3 inline-flex items-center gap-2 rounded-lg bg-amber-500/15 px-4 py-2 font-mono text-xs font-bold uppercase tracking-widest text-amber-300 ring-1 ring-amber-500/30 transition-colors hover:bg-amber-500/25">
+                  <Target className="size-4" aria-hidden /> {t("journey.keepTraining")}
+                </Link>
+              </div>
+            ))}
           </div>
         )}
 

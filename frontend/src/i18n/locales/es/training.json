@@ -66,15 +66,19 @@
     },
     "apply": {
       "title": "Aplicar",
-      "desc": "Juega con el foco correcto"
+      "desc": "Solo con todo en Diamante"
     },
     "prove": {
       "title": "Probar",
       "desc": "Mira la mejora real"
     },
     "soon": "Próximamente",
-    "readyMsg": "Dominaste {{skill}} en el entrenamiento. Juega un torneo enfocándote en eso e impórtalo para verlo en tu juego real.",
-    "applyCta": "Jugar e importar"
+    "readyMsg": "Dominaste tus {{count}} puntos de falla en Diamante. Ahora juega un torneo e impórtalo para ver la mejora en tu juego real.",
+    "applyCta": "Jugar e importar",
+    "gateTitle": "Aplicar aún bloqueado",
+    "gateHint": "Lo desbloquearás para jugar solo cuando domines TODOS tus {{count}} puntos de falla en Diamante. Entrenar una sola fuga no basta, el objetivo es cubrir todos los spots.",
+    "morePending": "más aún lejos del Diamante",
+    "keepTraining": "Seguir entrenando"
   },
   "missions": {
     "title": "Misiones de hoy",

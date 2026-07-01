@@ -66,15 +66,19 @@
     },
     "apply": {
       "title": "Aplicar",
-      "desc": "Jogue com o foco certo"
+      "desc": "Só com tudo no Diamante"
     },
     "prove": {
       "title": "Provar",
       "desc": "Veja a melhora real"
     },
     "soon": "Em breve",
-    "readyMsg": "Você dominou {{skill}} no treino. Jogue um torneio focando nisso e importe pra ver no seu jogo real.",
-    "applyCta": "Jogar e importar"
+    "readyMsg": "Você dominou seus {{count}} pontos de falha no Diamante. Agora jogue um torneio e importe pra ver a melhora no seu jogo real.",
+    "applyCta": "Jogar e importar",
+    "gateTitle": "Aplicar ainda bloqueado",
+    "gateHint": "Libere jogando só quando dominar TODOS os seus {{count}} pontos de falha no Diamante. Treinar um leak só não basta, o objetivo é cobrir todos os spots.",
+    "morePending": "outros ainda longe do Diamante",
+    "keepTraining": "Continuar treinando"
   },
   "missions": {
     "title": "Missões de hoje",

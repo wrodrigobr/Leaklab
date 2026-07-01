@@ -5624,6 +5624,42 @@ def get_training_skills(user_id: int) -> list:
         conn.close()
 
 
+_READY_DIAMOND = 90.0   # gate 'Aplicar': só Diamante conta como ponto de falha DOMINADO
+
+def training_readiness(user_id: int) -> dict:
+    """Régua do gate 'Aplicar' da jornada: o jogador só é direcionado a jogar um torneio quando
+    DOMINOU TODO o currículo no Diamante (mastery>=90). O currículo = seus pontos de falha REAIS
+    (leaks mapeados p/ cenários treináveis) + fundamentos/piloto postflop. 'Qualquer um no Ouro'
+    era fraco — a régua honesta cobre TODOS os spots do plano, não um leak só.
+    Devolve {total, diamond, ready, pending:[{category_key, mastery, tier}]} (pending ordenado
+    por mastery desc → mostra primeiro o que está mais perto de fechar)."""
+    if not user_id:
+        return {'total': 0, 'diamond': 0, 'ready': False, 'pending': []}
+    from leaklab.leak_trainer import build_curriculum
+    try:
+        curriculum = build_curriculum(user_id)
+    except Exception:
+        curriculum = []
+    keys, seen = [], set()
+    for c in curriculum:
+        k = c.get('key')
+        if k and k not in seen:
+            seen.add(k); keys.append(k)
+    if not keys:
+        return {'total': 0, 'diamond': 0, 'ready': False, 'pending': []}
+    mastery_by = {s['category_key']: float(s.get('mastery') or 0) for s in get_training_skills(user_id)}
+    diamond, pending = 0, []
+    for k in keys:
+        m = mastery_by.get(k, 0.0)
+        if m >= _READY_DIAMOND:
+            diamond += 1
+        else:
+            pending.append({'category_key': k, 'mastery': round(m, 1), 'tier': _mastery_tier(m)})
+    pending.sort(key=lambda p: p['mastery'], reverse=True)
+    return {'total': len(keys), 'diamond': diamond,
+            'ready': diamond == len(keys), 'pending': pending}
+
+
 # Conquistas EXCLUSIVAS do treino (eixo de gamificação, separado das globais/ELO). O critério é o
 # predicado sobre o estado de treino; os TÍTULOS/DESCRIÇÕES vivem no i18n do frontend
 # (trainAch.<key>.*), keyed pela key — pra ter PT/EN/ES de verdade. Ordem = ordem do "caminho".

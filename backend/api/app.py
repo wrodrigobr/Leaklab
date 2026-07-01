@@ -2100,12 +2100,14 @@ def training_skills():
 def training_overview():
     """Status do treino do jogador (eixo de gamificação, SEPARADO do ELO): XP+streak,
     domínio por habilidade e o catálogo de conquistas (com unlocked) — pro hub de Treino."""
-    from database.repositories import get_training_skills, get_training_achievements, get_daily_missions
+    from database.repositories import (get_training_skills, get_training_achievements,
+                                        get_daily_missions, training_readiness)
     return jsonify({
         'xp':           get_xp_status(g.user_id),
         'skills':       get_training_skills(g.user_id),
         'achievements': get_training_achievements(g.user_id),   # conquistas de TREINO (não as globais)
         'missions':     get_daily_missions(g.user_id),          # missões diárias (Fase 2)
+        'readiness':    training_readiness(g.user_id),          # gate 'Aplicar': todos os leaks no Diamante
     })
 
 

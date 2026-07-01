@@ -1047,11 +1047,18 @@ export interface TrainingMission {
   progress: number;
   completed: boolean;
 }
+export interface TrainingReadiness {
+  total: number;       // pontos de falha do currículo (leaks reais + fundamentos)
+  diamond: number;     // quantos já estão dominados no Diamante (mastery>=90)
+  ready: boolean;      // gate 'Aplicar': só true quando diamond === total
+  pending: { category_key: string; mastery: number; tier: "bronze" | "silver" | "gold" | "diamond" }[];
+}
 export interface TrainingOverview {
   xp: { xp_total: number; streak: number; last_activity: string | null };
   skills: TrainingSkill[];
   achievements: TrainingAchievement[];
   missions: TrainingMission[];
+  readiness: TrainingReadiness;
 }
 export const training = {
   overview: () => request<TrainingOverview>("/player/training/overview"),

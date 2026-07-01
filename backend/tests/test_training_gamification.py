@@ -18,8 +18,9 @@ from database.schema import init_db, get_conn
 from database.repositories import (
     record_training_attempt, get_training_skills, _mastery_tier, get_all_achievements,
     evaluate_training_achievements, get_training_achievements, _TRAINING_ACHIEVEMENT_DEFS,
-    record_daily_mission_progress, get_daily_missions,
+    record_daily_mission_progress, get_daily_missions, training_readiness,
 )
+from leaklab.leak_trainer import build_curriculum
 init_db()
 
 
@@ -170,6 +171,30 @@ def test_daily_missions_progress_and_award():
     assert dm['m_lesson']['completed'] and dm['m_correct']['completed']
     assert not dm['m_grind']['completed']     # 16 < 30 spots
     print("OK  test_daily_missions_progress_and_award")
+
+
+def test_readiness_gate_requires_all_diamond():
+    """Gate 'Aplicar': só libera quando TODOS os pontos de falha do currículo estão no Diamante.
+    Um leak no Ouro (ou até no Diamante isolado) NÃO basta — a régua cobre todos os spots."""
+    uid = _mk_user()
+    # user sem decisões → currículo = fundamentos (RFI) + piloto postflop
+    keys = [c['key'] for c in build_curriculum(uid)]
+    assert len(keys) >= 2, keys
+    r0 = training_readiness(uid)
+    assert r0['total'] == len(set(keys)) and r0['diamond'] == 0 and r0['ready'] is False
+    assert len(r0['pending']) == r0['total']
+    # domina TODAS menos uma → ainda bloqueado
+    for k in keys[:-1]:
+        for _ in range(20):
+            record_training_attempt(uid, k, True)
+    r1 = training_readiness(uid)
+    assert r1['diamond'] == r1['total'] - 1 and r1['ready'] is False, r1
+    # fecha a última no Diamante → libera
+    for _ in range(20):
+        record_training_attempt(uid, keys[-1], True)
+    r2 = training_readiness(uid)
+    assert r2['diamond'] == r2['total'] and r2['ready'] is True and r2['pending'] == [], r2
+    print("OK  test_readiness_gate_requires_all_diamond")
 
 
 if __name__ == '__main__':
