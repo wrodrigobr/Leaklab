@@ -80,7 +80,7 @@
     "prove": {
       "title": "Validar",
       "desc": "Mira la mejora real",
-      "tip": "La plataforma compara tus indicadores reales antes y después del entrenamiento, para mostrar si la mejora apareció en tu juego real. Próximamente."
+      "tip": "La plataforma compara tus indicadores reales antes y después del entrenamiento, para mostrar si la mejora apareció en tu juego real."
     },
     "soon": "Próximamente",
     "readyMsg": "Dominaste tus fugas prioritarias en el entrenamiento. Ahora juega un torneo e impórtalo para ver la mejora en tu juego real.",

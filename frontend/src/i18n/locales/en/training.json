@@ -80,7 +80,7 @@
     "prove": {
       "title": "Validate",
       "desc": "See the real improvement",
-      "tip": "The platform compares your real metrics before and after training, to show whether the improvement showed up in your actual game. Coming soon."
+      "tip": "The platform compares your real metrics before and after training, to show whether the improvement showed up in your actual game."
     },
     "soon": "Coming soon",
     "readyMsg": "You mastered your priority leaks in training. Now play a tournament and import it to see the improvement in your real game.",

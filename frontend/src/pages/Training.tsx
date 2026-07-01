@@ -70,7 +70,7 @@ export default function Training() {
   const JOURNEY = [
     { key: "train", icon: Dumbbell, status: ready ? "done" : "active" },
     { key: "apply", icon: Play, status: ready ? (proof.length > 0 ? "done" : "active") : "locked" },
-    { key: "prove", icon: TrendingUp, status: applied ? "active" : "soon" },
+    { key: "prove", icon: TrendingUp, status: applied ? "active" : "locked" },
   ] as const;
 
   return (
