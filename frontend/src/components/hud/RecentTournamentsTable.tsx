@@ -107,7 +107,7 @@ export function RecentTournamentsTable({ tournaments }: Props) {
                       {formatDateShort(row.played_at || row.imported_at, lang)}
                     </span>
                     {row.buy_in != null && (
-                      <span className="font-mono text-[10px] text-muted-foreground">· ${row.buy_in}</span>
+                      <span className="font-mono text-[10px] text-muted-foreground">· ${row.buy_in.toFixed(2)}</span>
                     )}
                     {row.place != null && (
                       <span className="font-mono text-[10px] text-muted-foreground">· {row.place}º</span>
@@ -119,7 +119,7 @@ export function RecentTournamentsTable({ tournaments }: Props) {
                     "font-mono text-sm font-medium tabular-nums",
                     profit === null ? "text-muted-foreground" : positive ? "text-primary" : "text-destructive"
                   )}>
-                    {profit === null ? "—" : `${positive ? "+" : ""}$${Math.abs(profit).toFixed(2).replace(/\.00$/, "")}`}
+                    {profit === null ? "—" : `${positive ? "+" : ""}$${Math.abs(profit).toFixed(2)}`}
                   </span>
                   {analyzed && (row.labels_reconciled_at == null || row.solver_analyzing) ? (
                     <Loader2 className="size-3.5 text-warning animate-spin" aria-label={t("table.gtoPending")} />
@@ -178,7 +178,7 @@ export function RecentTournamentsTable({ tournaments }: Props) {
                       </div>
                     </td>
                     <td className="whitespace-nowrap px-4 py-3.5 font-mono text-xs text-foreground">
-                      {row.buy_in != null ? `$${row.buy_in}` : "—"}
+                      {row.buy_in != null ? `$${row.buy_in.toFixed(2)}` : "—"}
                     </td>
                     <td className="whitespace-nowrap px-4 py-3.5 text-xs text-foreground">
                       {row.place != null ? `${row.place}º` : "—"}
@@ -195,7 +195,7 @@ export function RecentTournamentsTable({ tournaments }: Props) {
                     >
                       {profit === null
                         ? "—"
-                        : `${positive ? "+" : ""}$${Math.abs(profit).toFixed(2).replace(/\.00$/, "")}`}
+                        : `${positive ? "+" : ""}$${Math.abs(profit).toFixed(2)}`}
                     </td>
                     <td className="whitespace-nowrap px-4 py-3.5">
                       {analyzed && (row.labels_reconciled_at == null || row.solver_analyzing) ? (

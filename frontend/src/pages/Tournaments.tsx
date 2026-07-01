@@ -105,7 +105,7 @@ const Tournaments = () => {
         <FileUp className="size-3" aria-hidden /> {resultsUploadLabel}
       </button>
     ) : (
-      <span>{profit === null ? "—" : `${positive ? "+" : ""}$${Math.abs(profit).toFixed(2).replace(/\.00$/, "")}`}</span>
+      <span>{profit === null ? "—" : `${positive ? "+" : ""}$${Math.abs(profit).toFixed(2)}`}</span>
     );
 
   useEffect(() => {
@@ -222,10 +222,10 @@ const Tournaments = () => {
           <section className="grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-border bg-border md:grid-cols-4">
             {[
               { label: t("stats.totalEvents"), value: totals.count.toString() },
-              { label: t("stats.invested"), value: `$${totals.inv.toLocaleString()}` },
+              { label: t("stats.invested"), value: `$${totals.inv.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` },
               {
                 label: t("stats.netProfit"),
-                value: `${totals.pnl >= 0 ? "+" : ""}$${totals.pnl.toLocaleString()}`,
+                value: `${totals.pnl >= 0 ? "+" : ""}$${totals.pnl.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
                 accent: totals.pnl >= 0 ? "text-primary" : "text-destructive",
               },
               {
@@ -377,7 +377,7 @@ const Tournaments = () => {
                       </div>
                       <div className="flex items-center gap-2 mt-0.5 font-mono text-[10px] text-muted-foreground">
                         <TournamentDate playedAt={t.played_at} importedAt={t.imported_at} />
-                        {t.buy_in != null && <span>· ${t.buy_in}</span>}
+                        {t.buy_in != null && <span>· ${t.buy_in.toFixed(2)}</span>}
                         {t.hands_count != null && <span>· {t.hands_count}m</span>}
                       </div>
                     </div>
@@ -494,7 +494,7 @@ const Tournaments = () => {
                           <SiteLogo site={t.site} size={22} />
                         </td>
                         <td className="whitespace-nowrap px-4 py-3.5 font-mono text-xs">
-                          {t.buy_in != null ? `$${t.buy_in}` : "—"}
+                          {t.buy_in != null ? `$${t.buy_in.toFixed(2)}` : "—"}
                         </td>
                         <td className="whitespace-nowrap px-4 py-3.5 text-xs">
                           {t.place != null ? tc("labels.place", { place: t.place }) : "—"}
