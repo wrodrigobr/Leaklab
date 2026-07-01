@@ -203,7 +203,7 @@ export default function Training() {
                       const tm = TIER[p.tier] ?? TIER.bronze;
                       return (
                         <div key={p.category_key} className="flex items-center gap-3">
-                          <span className="w-36 shrink-0 truncate text-[12px] text-foreground sm:w-44">{skillLabel(p.category_key)}</span>
+                          <span className="w-40 shrink-0 truncate text-[11px] leading-tight text-foreground sm:w-52">{skillLabel(p.category_key)}</span>
                           <div className="h-2 flex-1 overflow-hidden rounded-full bg-muted/30">
                             <div className="h-full rounded-full transition-[width] duration-500" style={{ width: `${Math.round(p.mastery)}%`, backgroundColor: tm.ring }} />
                           </div>
@@ -298,7 +298,7 @@ export default function Training() {
                     const tm = TIER[s.tier] ?? TIER.bronze;
                     return (
                       <div key={s.category_key} className="flex items-center gap-3">
-                        <span className="w-36 shrink-0 truncate text-[13px] text-foreground sm:w-44">{skillLabel(s.category_key)}</span>
+                        <span className="w-40 shrink-0 truncate text-[11px] leading-tight text-foreground sm:w-52">{skillLabel(s.category_key)}</span>
                         <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-muted/30">
                           <div className="h-full rounded-full transition-[width] duration-500" style={{ width: `${Math.round(s.mastery)}%`, backgroundColor: tm.ring }} />
                         </div>

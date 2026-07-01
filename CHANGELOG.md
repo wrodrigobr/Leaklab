@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(training): rótulo "Abertura (RFI)" + vs_3bet ligado também na Academia
+
+> **Rótulo:** a categoria RFI aparecia como "Abertura de X" e gerava a dúvida "cadê o RFI?". Passou a "Abertura (RFI) de X" nas 3 telas que usam `leakTrainer.cat.rfi` (lista de domínio, card do drill, seletor) — RFI = abrir o pote (Raise First In). i18n PT/EN/ES. **Academia:** o mesmo bug de wiring do vs_3bet (analyze_preflop sem `hero_was_aggressor`) existia no `academy_gto_preflop` → o quiz gerava 0 questões vs_3bet. Corrigido no generate + grade (mesmas flags, echoadas no spot). Agora o quiz da Academia gera vs_3bet (30/30 no smoke test). tsc 0.
+
 ### feat(leaktrainer): treino de vs_3bet ligado (backlog #31)
 
 > vs_3bet entra no seletor (`TRAINABLE_SCENARIOS` agora inclui `vs_3bet`). Não era falta de range (a GW v3 vs_3bet já existia, 36 pares) nem de captura — era um bug de wiring: `generate_canonical_spot`/`grade_canonical_spot` chamavam `analyze_preflop` sem `hero_was_aggressor=True` (+`facing_raises=1`), então o spot classificava como vs_rfi e voltava indisponível. Corrigido nos dois lados (o spot carrega as flags pro grade reusar, senão a correção mentiria). Agora o usuário pode treinar potes de 3-bet (hero abriu e enfrenta o 3-bet) — RFI/vs-open/vs-3bet cobertos. Teste `test_vs_3bet_spot_generates_and_grades`; leak_trainer 18/18.

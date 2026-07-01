@@ -89,7 +89,7 @@
     "vError": "Mistake",
     "gtoPlays": "GTO plays {{hand}} here:",
     "cat": {
-      "rfi": "{{pos}} open",
+      "rfi": "{{pos}} open (RFI)",
       "vsRfi": "{{pos}} defends vs {{vs}}",
       "vs3bet": "{{pos}} faces a 3-bet from {{vs}}",
       "postflopBb": "{{pos}} defends vs c-bet from {{vs}} (flop)"

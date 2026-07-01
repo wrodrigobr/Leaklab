@@ -107,8 +107,11 @@ def generate_gto_preflop_question(scenario_filter: str = 'mixed') -> dict:
         stack    = random.choice(_STACKS)
         pos, vs_pos, facing, is_3b = _random_setup(scenario)
         hand     = random.choice(_HANDS)
+        # vs_3bet: hero abriu e enfrenta 3-bet → precisa de hero_was_aggressor=True + facing_raises=1
+        # (sem isso analyze_preflop rotula vs_rfi e volta indisponível). Ver leak_trainer/backlog #31.
         res = analyze_preflop(pos, hand, float(stack), 'fold',
-                              facing_size=facing, vs_position=vs_pos, is_3bet_pot=is_3b)
+                              facing_size=facing, vs_position=vs_pos, is_3bet_pot=is_3b,
+                              hero_was_aggressor=is_3b, facing_raises=(1 if is_3b else 0))
         if not res.get('available') or res.get('scenario') != scenario:
             continue
         # Evita spots cuja ação dominante (jam) está fora das nossas opções limpas.
@@ -139,6 +142,7 @@ def generate_gto_preflop_question(scenario_filter: str = 'mixed') -> dict:
             'position': pos, 'vs_position': vs_pos, 'stack_bb': stack,
             'facing_size': facing, 'is_3bet_pot': is_3b, 'hand': hand,
             'scenario': scenario,
+            'hero_was_aggressor': is_3b, 'facing_raises': (1 if is_3b else 0),
         },
     }
 
@@ -170,6 +174,7 @@ def _build_explanation(spot: dict, res: dict, action: str) -> str:
 
 def grade_gto_preflop_answer(spot: dict, action: str) -> dict:
     """Avalia a ação escolhida via analyze_preflop. correct/acceptable = acerto."""
+    is_3b = bool(spot.get('is_3bet_pot', False))
     res = analyze_preflop(
         spot.get('position', ''),
         spot.get('hand', ''),
@@ -177,7 +182,10 @@ def grade_gto_preflop_answer(spot: dict, action: str) -> dict:
         (action or '').lower(),
         facing_size=float(spot.get('facing_size', 0) or 0),
         vs_position=spot.get('vs_position', '') or '',
-        is_3bet_pot=bool(spot.get('is_3bet_pot', False)),
+        is_3bet_pot=is_3b,
+        # mesmas flags do generate: sem isto o vs_3bet reclassifica como vs_rfi e a correção mente
+        hero_was_aggressor=bool(spot.get('hero_was_aggressor', is_3b)),
+        facing_raises=int(spot.get('facing_raises', 1 if is_3b else 0) or 0),
     )
     quality    = res.get('action_quality', 'unknown')
     is_correct = quality in ('correct', 'acceptable')
