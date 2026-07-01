@@ -107,6 +107,17 @@
       "desc": "{{count}} spots aimed at your leaks. Ready?",
       "start": "Start lesson",
       "seeResult": "See result"
+    },
+    "picker": {
+      "adaptive": "Adaptive (recommended)",
+      "orChoose": "or choose what to train",
+      "yourLeaks": "Your leaks",
+      "fundamentals": "Explore fundamentals"
+    },
+    "scn": {
+      "rfi": "Open (RFI)",
+      "vs_rfi": "Defense vs open",
+      "vs_3bet": "vs 3-bet"
     }
   },
   "trainAch": {

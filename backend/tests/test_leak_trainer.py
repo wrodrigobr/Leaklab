@@ -9,6 +9,7 @@ from leaklab.leak_trainer import (
     _leak_scenario, _snap_stack, generate_canonical_spot, grade_canonical_spot,
     next_spot, _category_key, CORRECT_FREQ,
     _action_family, generate_postflop_spot, grade_from_hand_strategy, POSTFLOP_CATALOG,
+    fundamentals_catalog, TRAINABLE_SCENARIOS,
 )
 
 
@@ -210,6 +211,21 @@ def test_next_spot_adaptive():
 def test_next_spot_empty_curriculum():
     assert next_spot([], {}, random.Random(0)) is None
     print("OK  test_next_spot_empty_curriculum")
+
+
+def test_fundamentals_catalog_and_trainable():
+    """Seletor: fundamentos por cenário treinável geram spot coberto; vs_3bet fica fora (sem
+    cobertura no motor hoje) pra não oferecer treino que o drill não consegue servir."""
+    assert TRAINABLE_SCENARIOS == ['rfi', 'vs_rfi'], TRAINABLE_SCENARIOS
+    for scn in TRAINABLE_SCENARIOS:
+        cats = fundamentals_catalog(scn)
+        assert cats and all(c['scenario'] == scn and int(c.get('n') or 0) == 0 for c in cats)
+        sp = next_spot(cats, {}, random.Random(1))
+        assert sp is not None and sp['scenario'] == scn, (scn, sp)
+    # rfi = todas as posições menos BB; vs_rfi = pares defensor-posterior
+    assert all(c['vs_position'] == '' for c in fundamentals_catalog('rfi'))
+    assert all(c['vs_position'] for c in fundamentals_catalog('vs_rfi'))
+    print("OK  test_fundamentals_catalog_and_trainable")
 
 
 if __name__ == '__main__':

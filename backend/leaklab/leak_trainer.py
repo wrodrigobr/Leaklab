@@ -102,12 +102,41 @@ def _postflop_pilot_cats() -> list[dict]:
 
 def _fundamentals_curriculum() -> list[dict]:
     """Fallback p/ usuário sem leaks medidos: RFI por posição (fundamentos de abertura)."""
-    cats = []
-    for pos in ['UTG', 'HJ', 'CO', 'BTN', 'SB']:
-        cat = {'scenario': 'rfi', 'position': pos, 'vs_position': '', 'stack_bb': 50,
-               'ev_loss_bb': 0.0, 'n': 0, 'weight': 1.0}
-        cat['key'] = _category_key(cat)
-        cats.append(cat)
+    return fundamentals_catalog('rfi')
+
+
+# Cenários que o gerador sintético consegue SERVIR hoje. vs_3bet fica de fora não por falta de
+# range (a range GW v3 vs_3bet[opener][3bettor] EXISTE e analyze_preflop a devolve — 36 pares
+# cobertos) nem de captura (decisions tem is_3bet/preflop_raises_faced), mas por um BUG DE WIRING:
+# generate_canonical_spot/academy chamam analyze_preflop sem hero_was_aggressor=True, então o
+# spot é classificado como vs_rfi e volta available=False. Ligar vs_3bet = passar
+# hero_was_aggressor=True (+ facing_raises<2) no generate E no grade. Backlog. Ver [[reference_external_charts_vs3bet]].
+TRAINABLE_SCENARIOS = ['rfi', 'vs_rfi']
+
+
+def fundamentals_catalog(scenario: str, stack: int = 50) -> list[dict]:
+    """Catálogo de fundamentos de um CENÁRIO (rfi/vs_rfi/vs_3bet), independente de leak medido —
+    pro seletor "explorar fundamentos" (treinar RFI/vs-3bet mesmo sem o leak nos dados). Enumera os
+    pares de posição válidos (mesmas regras do academy._random_setup); a cobertura GTO real é
+    validada por spot em generate_canonical_spot, e o next_spot pula categoria sem spot coberto."""
+    order = _ACTION_ORDER
+    n = len(order)
+
+    def mk(pos: str, vs: str) -> dict:
+        c = {'scenario': scenario, 'position': pos, 'vs_position': vs, 'stack_bb': stack,
+             'ev_loss_bb': 0.0, 'n': 0, 'weight': 1.0}
+        c['key'] = _category_key(c)
+        return c
+
+    cats: list[dict] = []
+    if scenario == 'rfi':
+        cats = [mk(pos, '') for pos in order[:-1]]                     # todos menos BB
+    elif scenario == 'vs_rfi':
+        cats = [mk(order[di], order[oi]) for oi in range(n - 1)        # defensor em seat posterior
+                for di in range(oi + 1, n)]
+    elif scenario == 'vs_3bet':
+        cats = [mk(order[oi], order[ti]) for oi in range(n - 2)        # hero abriu; vilão 3-betou depois
+                for ti in range(oi + 1, n)]
     return cats
 
 

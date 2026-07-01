@@ -1012,12 +1012,30 @@ export interface LeakTrainerGrade {
   training_achievements?: string[];   // keys de conquistas de treino recém-desbloqueadas
 }
 
+// foco do treino: 'adaptive' (padrão) | 'leak:<category_key>' | 'fund:<scenario>'
+export type LeakTrainerFocus = string;
+export interface LeakTrainerLeakOption {
+  category_key: string;
+  scenario: string;
+  position: string;
+  vs_position: string;
+  stack_bb: number;
+  ev_loss_bb: number;
+  mastery: number;
+  tier: "bronze" | "silver" | "gold" | "diamond";
+}
+export interface LeakTrainerOptions {
+  leaks: LeakTrainerLeakOption[];      // leaks reais medidos (ordenados por EV), servíveis
+  scenarios: string[];                 // cenários de fundamentos treináveis (rfi/vs_rfi)
+}
 export const leaktrainer = {
-  next: (session_state: LeakTrainerState = {}, days = 90) =>
+  next: (session_state: LeakTrainerState = {}, days = 90, focus: LeakTrainerFocus = "adaptive") =>
     request<{ spot: LeakTrainerSpot | null; session_state: LeakTrainerState }>(
       "/player/leaktrainer/next",
-      { method: "POST", body: JSON.stringify({ session_state, days }) },
+      { method: "POST", body: JSON.stringify({ session_state, days, focus }) },
     ),
+
+  options: () => request<LeakTrainerOptions>("/player/leaktrainer/options"),
 
   grade: (spot: LeakTrainerSpot, action: string) =>
     request<LeakTrainerGrade>("/player/leaktrainer/grade", {

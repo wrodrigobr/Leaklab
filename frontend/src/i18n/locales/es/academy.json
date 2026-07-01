@@ -107,6 +107,17 @@
       "desc": "{{count}} spots enfocados en tus fugas. ¿Vamos?",
       "start": "Empezar lección",
       "seeResult": "Ver resultado"
+    },
+    "picker": {
+      "adaptive": "Adaptativo (recomendado)",
+      "orChoose": "o elige qué entrenar",
+      "yourLeaks": "Tus fugas",
+      "fundamentals": "Explorar fundamentos"
+    },
+    "scn": {
+      "rfi": "Apertura (RFI)",
+      "vs_rfi": "Defensa vs open",
+      "vs_3bet": "vs 3-bet"
     }
   },
   "trainAch": {

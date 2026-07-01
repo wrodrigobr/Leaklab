@@ -2023,12 +2023,22 @@ def leaktrainer_next():
     O currículo vem dos leaks reais (get_leak_categories); o spot é sintético/limpo; o estado da sessão
     (hits/misses por categoria) é client-side e ecoado. Adulterar o estado não falsifica acerto — o
     grading é server-side e stateless."""
-    from leaklab.leak_trainer import build_curriculum, next_spot, _fundamentals_curriculum
+    from leaklab.leak_trainer import build_curriculum, next_spot, _fundamentals_curriculum, fundamentals_catalog
     body          = request.get_json(silent=True) or {}
     session_state = body.get('session_state') or {}
     days          = int(body.get('days', 90) or 90)
+    # foco do treino: 'adaptive' (padrão, currículo real ponderado) | 'leak:<key>' (uma categoria real)
+    # | 'fund:<scenario>' (fundamentos de rfi/vs_rfi/vs_3bet, mesmo sem leak medido). O usuário ESCOLHE.
+    focus         = (body.get('focus') or 'adaptive').strip()
     try:
-        curriculum = build_curriculum(g.user_id, days=days)
+        if focus.startswith('fund:'):
+            curriculum = fundamentals_catalog(focus.split(':', 1)[1])
+        elif focus.startswith('leak:'):
+            key = focus.split(':', 1)[1]
+            full = build_curriculum(g.user_id, days=days)
+            curriculum = [c for c in full if c.get('key') == key] or full
+        else:
+            curriculum = build_curriculum(g.user_id, days=days)
         spot       = next_spot(curriculum, session_state)
     except Exception:
         # uma categoria/query ruim não pode derrubar a página — cai em fundamentos (preflop, sem DB)
@@ -2039,6 +2049,34 @@ def leaktrainer_next():
             app.logger.exception("leaktrainer_next fallback também falhou")
             spot = None
     return jsonify({'spot': spot, 'session_state': session_state})
+
+
+@app.route('/player/leaktrainer/options', methods=['GET'])
+@require_auth
+def leaktrainer_options():
+    """Opções do seletor de treino: os LEAKS reais do jogador (com domínio, ordenados por EV) +
+    os CENÁRIOS de fundamentos (rfi/vs_rfi/vs_3bet) pra explorar mesmo sem leak medido. O drill
+    filtra por 'focus' (leak:<key> | fund:<scenario> | adaptive)."""
+    from leaklab.leak_trainer import build_curriculum, TRAINABLE_SCENARIOS
+    from database.repositories import get_training_skills
+    skills = {s['category_key']: s for s in get_training_skills(g.user_id)}
+    leaks = []
+    try:
+        for c in build_curriculum(g.user_id):
+            if int(c.get('n') or 0) <= 0:                        # só leaks REAIS medidos (sem fund./piloto)
+                continue
+            if c.get('scenario') not in TRAINABLE_SCENARIOS:     # só o que o drill consegue servir
+                continue
+            s = skills.get(c['key'])
+            leaks.append({
+                'category_key': c['key'], 'scenario': c.get('scenario'),
+                'position': c.get('position'), 'vs_position': c.get('vs_position', ''),
+                'stack_bb': c.get('stack_bb'), 'ev_loss_bb': round(float(c.get('ev_loss_bb') or 0), 1),
+                'mastery': (s['mastery'] if s else 0.0), 'tier': (s['tier'] if s else 'bronze'),
+            })
+    except Exception:
+        app.logger.exception("leaktrainer_options: build_curriculum falhou (user=%s)", g.user_id)
+    return jsonify({'leaks': leaks, 'scenarios': TRAINABLE_SCENARIOS})
 
 
 @app.route('/player/leaktrainer/grade', methods=['POST'])

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useTranslation } from "react-i18next";
+import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import confetti from "canvas-confetti";
 import { ArrowRight, CheckCircle2, Loader2, RefreshCw, XCircle, Target, Maximize2, Minimize2, LayoutGrid, Flag, RotateCw, Trophy, Flame, Home } from "lucide-react";
@@ -126,6 +127,8 @@ export default function LeakTrainer() {
   const [unlockedAch, setUnlockedAch]   = useState<string[]>([]);   // conquistas de treino da sessão
   const [sessionStats, setSessionStats] = useState<Record<string, SessionStat>>({});
   const [showRange, setShowRange]       = useState(false);
+  const [focus, setFocus]               = useState<string>("adaptive");   // o usuário escolhe o tipo de spot
+  const focusRef = useRef<string>("adaptive");
   const stateRef = useRef<LeakTrainerState>(loadState());
   const rootRef = useRef<HTMLDivElement>(null);
   const [isFull, setIsFull] = useState(false);
@@ -172,12 +175,22 @@ export default function LeakTrainer() {
     setPhase("loading"); setSelected(null); setGrade(null); setShowRange(false);
     try {
       const timeout = new Promise<never>((_, rej) => setTimeout(() => rej(new Error("timeout")), 12000));
-      const r = await Promise.race([leaktrainer.next(stateRef.current), timeout]);
+      const r = await Promise.race([leaktrainer.next(stateRef.current, 90, focusRef.current), timeout]);
       if (!r.spot) { setPhase("empty"); return; }
       setSpot(r.spot);
       setPhase("question");
     } catch { setPhase("error"); }
   }, []);
+
+  // seletor de tipo de spot: fixa o foco e começa a lição (o usuário escolhe, não é só aleatório)
+  const startFocus = (f: string) => { focusRef.current = f; setFocus(f); loadNext(); };
+  const { data: trainOptions } = useQuery({
+    queryKey: ["leaktrainer-options"], queryFn: leaktrainer.options, enabled: phase === "intro",
+  });
+  const leakOptLabel = (l: { scenario: string; position: string; vs_position: string }): string =>
+    l.scenario === "rfi" ? t("leakTrainer.cat.rfi", { pos: l.position })
+    : l.scenario === "vs_rfi" ? t("leakTrainer.cat.vsRfi", { pos: l.position, vs: l.vs_position })
+    : t("leakTrainer.cat.vs3bet", { pos: l.position, vs: l.vs_position });
 
   // Não auto-inicia: a lição começa pela tela de "intro" (botão Começar → loadNext).
   const lessonComplete = totalDone >= LESSON_SIZE;
@@ -450,18 +463,56 @@ export default function LeakTrainer() {
         <div className="flex min-h-0 flex-1 flex-col justify-center overflow-y-auto">
 
         {phase === "intro" && (
-          <div className="mx-auto flex max-w-md flex-col items-center gap-4 rounded-2xl border border-amber-500/30 bg-gradient-to-b from-amber-500/[0.08] to-transparent p-8 text-center">
-            <div className="flex size-14 items-center justify-center rounded-2xl bg-amber-500/10 ring-1 ring-amber-500/30">
-              <Target className="size-7 text-amber-400" aria-hidden />
-            </div>
-            <div>
+          <div className="mx-auto flex w-full max-w-lg flex-col gap-4 rounded-2xl border border-amber-500/30 bg-gradient-to-b from-amber-500/[0.08] to-transparent p-6 sm:p-8">
+            <div className="flex flex-col items-center gap-2 text-center">
+              <div className="flex size-14 items-center justify-center rounded-2xl bg-amber-500/10 ring-1 ring-amber-500/30">
+                <Target className="size-7 text-amber-400" aria-hidden />
+              </div>
               <h2 className="font-heading text-xl font-bold text-foreground">{t("leakTrainer.lesson.title")}</h2>
-              <p className="mt-1 text-sm text-muted-foreground">{t("leakTrainer.lesson.desc", { count: LESSON_SIZE })}</p>
+              <p className="text-sm text-muted-foreground">{t("leakTrainer.lesson.desc", { count: LESSON_SIZE })}</p>
             </div>
-            <button onClick={loadNext}
-              className="inline-flex items-center gap-2 rounded-lg bg-amber-500 px-6 py-3 font-mono text-sm font-bold uppercase tracking-widest text-black transition-colors hover:bg-amber-400">
-              <Target className="size-4" aria-hidden /> {t("leakTrainer.lesson.start")}
+
+            {/* Padrão recomendado: adaptativo (mira o que mais custa) */}
+            <button onClick={() => startFocus("adaptive")}
+              className="flex w-full items-center justify-center gap-2 rounded-xl bg-amber-500 px-6 py-3.5 font-mono text-sm font-bold uppercase tracking-widest text-black transition-colors hover:bg-amber-400">
+              <Target className="size-4" aria-hidden /> {t("leakTrainer.picker.adaptive")}
             </button>
+
+            {/* Seletor: o usuário escolhe o tipo de spot em vez de só aleatório */}
+            <div className="rounded-xl border border-border bg-hud-surface/50 p-3">
+              <p className="mb-2 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">{t("leakTrainer.picker.orChoose")}</p>
+
+              {trainOptions?.leaks && trainOptions.leaks.length > 0 && (
+                <div className="mb-3">
+                  <p className="mb-1.5 text-[11px] font-bold text-foreground">{t("leakTrainer.picker.yourLeaks")}</p>
+                  <div className="grid gap-1.5">
+                    {trainOptions.leaks.slice(0, 6).map((l) => {
+                      const tm = _TIER_META[l.tier] ?? _TIER_META.bronze;
+                      return (
+                        <button key={l.category_key} onClick={() => startFocus(`leak:${l.category_key}`)}
+                          className="flex items-center justify-between gap-2 rounded-lg border border-border bg-background/60 px-3 py-2 text-left transition-colors hover:border-amber-500/40">
+                          <span className="truncate text-[13px] text-foreground">{leakOptLabel(l)}</span>
+                          <span className="flex shrink-0 items-center gap-2">
+                            <span className="font-mono text-[10px] text-muted-foreground">−{l.ev_loss_bb}bb</span>
+                            <span className={`font-mono text-[9px] font-bold uppercase ${tm.text}`}>{tm.label}</span>
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              <p className="mb-1.5 text-[11px] font-bold text-foreground">{t("leakTrainer.picker.fundamentals")}</p>
+              <div className="flex flex-wrap gap-1.5">
+                {(trainOptions?.scenarios ?? ["rfi", "vs_rfi"]).map((scn) => (
+                  <button key={scn} onClick={() => startFocus(`fund:${scn}`)}
+                    className="rounded-lg border border-border bg-background/60 px-3 py-1.5 text-[12px] text-foreground transition-colors hover:border-amber-500/40">
+                    {t(`leakTrainer.scn.${scn}`)}
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
         )}
 

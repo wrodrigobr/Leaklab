@@ -107,6 +107,17 @@
       "desc": "{{count}} spots mirados nos seus leaks. Vamos lá?",
       "start": "Começar lição",
       "seeResult": "Ver resultado"
+    },
+    "picker": {
+      "adaptive": "Adaptativo (recomendado)",
+      "orChoose": "ou escolha o que treinar",
+      "yourLeaks": "Seus leaks",
+      "fundamentals": "Explorar fundamentos"
+    },
+    "scn": {
+      "rfi": "Abertura (RFI)",
+      "vs_rfi": "Defesa vs open",
+      "vs_3bet": "vs 3-bet"
     }
   },
   "trainAch": {
