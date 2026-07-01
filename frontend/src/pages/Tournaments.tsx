@@ -146,6 +146,11 @@ const Tournaments = () => {
   // Volta pra página 1 quando o filtro muda; trava a página dentro do total (ex.: após deletar).
   useEffect(() => { setPage(1); }, [query, network]);
   useEffect(() => { setPage((p) => Math.min(p, pageCount)); }, [pageCount]);
+  const listTopRef = useRef<HTMLDivElement>(null);   // âncora do topo da lista (scroll ao paginar)
+  const goPage = (p: number) => {
+    setPage(p);
+    listTopRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
 
   const totals = useMemo(() => {
     const pnl = data.reduce((s, t) => s + (t.profit ?? 0), 0);
@@ -328,6 +333,7 @@ const Tournaments = () => {
             </div>
           </section>
 
+          <div ref={listTopRef} className="scroll-mt-24" aria-hidden />
           <section className="overflow-hidden rounded-xl border border-border bg-hud-surface">
             {/* ── Mobile card list ────────────────────────────────────────────── */}
             <ul className="md:hidden divide-y divide-border">
@@ -568,7 +574,7 @@ const Tournaments = () => {
               </table>
             </div>
           </section>
-          <Pager page={page} pageCount={pageCount} onPage={setPage} />
+          <Pager page={page} pageCount={pageCount} onPage={goPage} />
         </>
       )}
     </HudLayout>
