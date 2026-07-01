@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { Pager } from "@/components/ui/Pager";
@@ -322,6 +322,11 @@ const TournamentDetail = () => {
   );
   const HANDS_PER_PAGE = 15;
   const [handPage, setHandPage] = useState(1);
+  const handsTopRef = useRef<HTMLDivElement>(null);   // âncora do topo da lista de mãos (scroll ao paginar)
+  const goHandPage = (p: number) => {
+    setHandPage(p);
+    handsTopRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
   const handPageCount = Math.max(1, Math.ceil(filtered.length / HANDS_PER_PAGE));
   const pagedHands = useMemo(
     () => filtered.slice((handPage - 1) * HANDS_PER_PAGE, handPage * HANDS_PER_PAGE),
@@ -721,6 +726,7 @@ const TournamentDetail = () => {
               </button>
             </div>
           )}
+          <div ref={handsTopRef} className="scroll-mt-24" aria-hidden />
           <section className="grid grid-cols-1 gap-3">
             {pagedHands.map((h) => {
               const meta = SEVERITY_META[h.category];
@@ -913,7 +919,7 @@ const TournamentDetail = () => {
                 </p>
               </div>
             )}
-            <Pager page={handPage} pageCount={handPageCount} onPage={setHandPage} />
+            <Pager page={handPage} pageCount={handPageCount} onPage={goHandPage} />
           </section>
         </>
       )}

@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(ui): ícones de site maiores/nítidos + scroll ao paginar a lista de mãos
+
+> **Ícones de site:** favicon pedido em `sz=128` (era 64) pra não borrar em tamanhos maiores, e os tamanhos de exibição subiram na lista de torneios (RecentTournamentsTable 16→22 / 14→20; Tournaments 18→22). Os ícones vêm do serviço de favicon do Google (resolução limitada pela fonte de cada rede) — pra logos oficiais nítidos em tamanho grande, o caminho é bundlar assets locais (SVG/PNG). **Lista de mãos do torneio:** ao trocar de página, a rolagem agora **sobe pro início da lista** (âncora + `scrollIntoView`) em vez de ficar travada embaixo, onde está o paginador (`TournamentDetail.tsx`).
+
 ### fix(import+ui): ACR gravado como "rede unknown" + ícones de site menos "emoldurados"
 
 > **Bug "rede unknown":** o `app.py` tinha um `_detect_site` DUPLICADO sem o branch ACR — o torneio ACR parseava certo (parser detecta 'acr') mas era GRAVADO como `site='unknown'`. Corrigido: o `_detect_site` do app agora **delega pro do parser** (fonte única, sem drift). `save_tournament` passou a atualizar `site` no re-import (`site = excluded.site`), e `scripts/backfill_site_from_raw.py` re-detecta o site pelo raw_text dos torneios já importados (corrige os ACR legados sem re-importar; PRAGMA guardado p/ Postgres). Teste `test_app_detect_site_acr`. **Ícone de site (`SiteLogo`):** removida a borda/box largo em volta do favicon (só o fallback de iniciais mantém um chip sutil), padding menor e tamanho 16→18 → o ícone fica mais evidente. Vale em todas as telas que usam SiteLogo.

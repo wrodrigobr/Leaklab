@@ -356,7 +356,7 @@ const Tournaments = () => {
                         aria-label="Selecionar para comparar"
                       />
                     </div>
-                    <SiteLogo site={t.site} />
+                    <SiteLogo site={t.site} size={22} />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-1.5 flex-wrap">
                         <span className="text-sm font-medium text-foreground truncate">
@@ -485,7 +485,7 @@ const Tournaments = () => {
                           </div>
                         </td>
                         <td className="px-4 py-3.5">
-                          <SiteLogo site={t.site} />
+                          <SiteLogo site={t.site} size={22} />
                         </td>
                         <td className="whitespace-nowrap px-4 py-3.5 font-mono text-xs">
                           {t.buy_in != null ? `$${t.buy_in}` : "—"}

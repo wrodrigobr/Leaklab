@@ -14,7 +14,8 @@ const SITE_DOMAINS: Record<string, string> = {
 };
 const faviconUrl = (key: string): string | undefined => {
   const d = SITE_DOMAINS[key];
-  return d ? `https://www.google.com/s2/favicons?domain=${d}&sz=64` : undefined;
+  // sz=128: pede a maior resolução que o serviço tem, pra não borrar em tamanhos maiores.
+  return d ? `https://www.google.com/s2/favicons?domain=${d}&sz=128` : undefined;
 };
 
 const DISPLAY_NAMES: Record<string, string> = {

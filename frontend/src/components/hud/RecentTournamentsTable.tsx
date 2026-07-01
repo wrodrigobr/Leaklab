@@ -92,7 +92,7 @@ export function RecentTournamentsTable({ tournaments }: Props) {
                 className="flex items-center gap-3 px-4 py-3 hover:bg-primary/5 transition-colors cursor-pointer active:bg-primary/10"
                 onClick={() => navigate(`/tournaments/${row.tournament_id}`)}
               >
-                <SiteLogo site={row.site} size={16} />
+                <SiteLogo site={row.site} size={22} />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1.5 flex-wrap">
                     <span className="text-sm font-medium text-foreground truncate">
@@ -162,7 +162,7 @@ export function RecentTournamentsTable({ tournaments }: Props) {
                     </td>
                     <td className="px-4 py-3.5">
                       <div className="flex items-center gap-2">
-                        <SiteLogo site={row.site} size={14} />
+                        <SiteLogo site={row.site} size={20} />
                         <span className="text-sm font-medium text-foreground">
                           {formatTournamentLabel(row)}
                         </span>
