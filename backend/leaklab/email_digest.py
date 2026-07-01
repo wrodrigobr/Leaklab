@@ -313,56 +313,101 @@ def send_transactional_email(to_email: str, subject: str, html_body: str) -> boo
 
 # ── Email de comunicado do admin (espelha a mensagem in-app) ─────────────────
 
-_CATEGORY_META = {
-    "info":     ("📣", "#6366f1", "Informação"),
-    "aviso":    ("⚠️", "#f59e0b", "Aviso"),
-    "novidade": ("🎉", "#22c55e", "Novidade"),
-}
+# Categoria só define uma eyebrow editorial (texto), sem ícone. Cor de destaque é
+# sempre o teal da marca; a categoria muda apenas o rótulo.
+_CATEGORY_LABEL = {"info": "Comunicado", "aviso": "Aviso importante", "novidade": "Novidade"}
+
+# Paleta GrindLab
+_C_BG      = "#0A0E1A"   # fundo
+_C_CARD    = "#111726"   # card
+_C_BORDER  = "#1F2A3A"
+_C_TEAL    = "#2DD4BF"
+_C_LIGHT   = "#E3E8EC"   # títulos
+_C_BODY    = "#B4C0CC"   # corpo
+_C_MUTED   = "#6B7A8A"   # rodapé
+_FONT      = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif"
+
+
+def _body_to_paragraphs(body: str) -> str:
+    """Converte o corpo em parágrafos: linha em branco separa <p>, quebra simples vira <br>."""
+    text = (body or "").strip()
+    if not text:
+        return ""
+    blocks = [b.strip() for b in text.replace("\r\n", "\n").split("\n\n") if b.strip()]
+    out = []
+    for b in blocks:
+        inner = b.replace("\n", "<br>")
+        out.append(
+            f'<p style="margin:0 0 18px 0;font-size:16px;line-height:1.7;color:{_C_BODY};">{inner}</p>'
+        )
+    return "\n            ".join(out)
 
 
 def build_admin_email_html(username: str, title: str, body: str,
                            unsub_link: str, category: str = "info") -> str:
-    """HTML do email de comunicado do admin — mesmo visual do digest, com rodapé
-    de descadastro (LGPD). `body` pode ter quebras de linha (viram <br>)."""
-    emoji, color, cat_label = _CATEGORY_META.get(category, _CATEGORY_META["info"])
-    safe_title = (title or "").strip() or "Comunicado · GrindLab"
-    body_html = (body or "").strip().replace("\n", "<br>")
+    """HTML profissional do comunicado do admin: logo GrindLab, cores da marca,
+    tipografia limpa, sem ícones. Rodapé com descadastro (LGPD). O corpo aceita
+    parágrafos (linha em branco) e quebras simples."""
+    base_url  = os.environ.get("APP_BASE_URL", "https://grindlabpoker.com")
+    logo_url  = f"{base_url}/email-logo.png"
+    eyebrow   = _CATEGORY_LABEL.get(category, _CATEGORY_LABEL["info"])
+    safe_title = (title or "").strip() or "Comunicado da GrindLab"
+    body_html = _body_to_paragraphs(body)
+    from datetime import datetime
+    year = datetime.utcnow().year
     return f"""<!DOCTYPE html>
 <html lang="pt-BR">
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>{safe_title}</title></head>
-<body style="margin:0;padding:0;background:#0f1117;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background:#0f1117;padding:40px 16px;">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <meta name="color-scheme" content="dark">
+  <title>{safe_title}</title>
+</head>
+<body style="margin:0;padding:0;background:{_C_BG};font-family:{_FONT};-webkit-font-smoothing:antialiased;">
+  <div style="display:none;max-height:0;overflow:hidden;opacity:0;">{safe_title}</div>
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:{_C_BG};padding:32px 16px;">
     <tr><td align="center">
-      <table width="560" cellpadding="0" cellspacing="0" style="background:#161b27;border-radius:12px;overflow:hidden;border:1px solid #1e2433;">
+      <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="width:600px;max-width:600px;background:{_C_CARD};border:1px solid {_C_BORDER};border-radius:16px;overflow:hidden;">
+
+        <!-- Logo -->
         <tr>
-          <td style="padding:24px;background:#1a1f2e;border-bottom:1px solid #1e2433;">
-            <p style="margin:0;font-size:10px;font-family:monospace;text-transform:uppercase;letter-spacing:.12em;color:{color};">{emoji} {cat_label}</p>
-            <h1 style="margin:6px 0 0 0;font-size:20px;font-weight:700;color:#f1f5f9;">{safe_title}</h1>
+          <td align="center" style="padding:36px 40px 28px 40px;background:{_C_BG};border-bottom:1px solid {_C_BORDER};">
+            <img src="{logo_url}" width="196" alt="GrindLab" style="display:block;width:196px;max-width:60%;height:auto;border:0;">
           </td>
         </tr>
+
+        <!-- Barra de destaque -->
+        <tr><td style="height:3px;background:{_C_TEAL};line-height:3px;font-size:0;">&nbsp;</td></tr>
+
+        <!-- Conteúdo -->
         <tr>
-          <td style="padding:24px;">
-            <p style="margin:0 0 16px 0;font-size:14px;color:#cbd5e1;">Olá, {username}.</p>
-            <p style="margin:0;font-size:15px;line-height:1.6;color:#e2e8f0;">{body_html}</p>
+          <td style="padding:40px;">
+            <p style="margin:0 0 10px 0;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.14em;color:{_C_TEAL};">{eyebrow}</p>
+            <h1 style="margin:0 0 24px 0;font-size:26px;line-height:1.25;font-weight:800;color:{_C_LIGHT};">{safe_title}</h1>
+            <p style="margin:0 0 18px 0;font-size:16px;line-height:1.7;color:{_C_BODY};">Olá, {username},</p>
+            {body_html}
+            <table role="presentation" cellpadding="0" cellspacing="0" style="margin:12px 0 4px 0;">
+              <tr><td style="border-radius:10px;background:{_C_TEAL};">
+                <a href="{base_url}/dashboard" style="display:inline-block;padding:14px 34px;font-size:15px;font-weight:700;color:{_C_BG};text-decoration:none;">Acessar a plataforma</a>
+              </td></tr>
+            </table>
           </td>
         </tr>
+
+        <!-- Rodapé -->
         <tr>
-          <td style="padding:0 24px 24px;text-align:center;">
-            <a href="https://grindlabpoker.com/dashboard"
-               style="display:inline-block;background:{color};color:#0A0E1A;text-decoration:none;padding:12px 28px;border-radius:8px;font-size:13px;font-weight:600;">
-              Abrir GrindLab
-            </a>
-          </td>
-        </tr>
-        <tr>
-          <td style="padding:16px 24px;border-top:1px solid #1e2433;text-align:center;">
-            <p style="margin:0;font-size:11px;color:#6b7280;">
-              Você recebe comunicados da GrindLab porque tem conta na plataforma.<br>
-              <a href="{unsub_link}" style="color:#6b7280;text-decoration:underline;">Não quero mais receber emails</a>
+          <td style="padding:26px 40px;background:{_C_BG};border-top:1px solid {_C_BORDER};">
+            <p style="margin:0 0 6px 0;font-size:13px;font-weight:700;letter-spacing:.02em;color:{_C_LIGHT};">GrindLab Poker</p>
+            <p style="margin:0 0 14px 0;font-size:12px;line-height:1.6;color:{_C_MUTED};">Treino e análise de poker com IA. Este comunicado foi enviado porque você tem uma conta na plataforma.</p>
+            <p style="margin:0;font-size:12px;color:{_C_MUTED};">
+              <a href="{base_url}" style="color:{_C_MUTED};text-decoration:underline;">grindlabpoker.com</a>
+              &nbsp;·&nbsp;
+              <a href="{unsub_link}" style="color:{_C_MUTED};text-decoration:underline;">Cancelar o recebimento de emails</a>
             </p>
+            <p style="margin:14px 0 0 0;font-size:11px;color:{_C_MUTED};">© {year} GrindLab. Todos os direitos reservados.</p>
           </td>
         </tr>
+
       </table>
     </td></tr>
   </table>
