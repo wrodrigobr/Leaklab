@@ -5744,7 +5744,7 @@ def training_readiness(user_id: int) -> dict:
     if tourneys < _READY_BEGINNER_TOURNEYS or not real_leaks:
         return {'stage': 'beginner', 'tournaments': tourneys, 'target': _READY_BEGINNER_TOURNEYS,
                 'total': _READY_BEGINNER_TOURNEYS, 'done': min(tourneys, _READY_BEGINNER_TOURNEYS),
-                'ready': False, 'target_tier': None, 'pending': []}
+                'ready': False, 'target_tier': None, 'pending': [], 'untrained': []}
     if tourneys < _READY_CONSOLIDATED_TOURNEYS:
         stage, target, target_tier = 'developing', _READY_GOLD, 'gold'
         required = real_leaks[:_READY_TOP_N]
@@ -5760,9 +5760,12 @@ def training_readiness(user_id: int) -> dict:
         else:
             pending.append({'category_key': k, 'mastery': round(m, 1), 'tier': _mastery_tier(m)})
     pending.sort(key=lambda p: p['mastery'], reverse=True)
+    # Leaks REAIS do jogo que NUNCA foram treinados (sem linha em training_skill_progress) — o sinal
+    # de "novos leaks surgiram, reinicie o ciclo". Cobre todo o real_leaks, não só o required.
+    untrained = [k for k in real_leaks if k not in mastery_by]
     return {'stage': stage, 'tournaments': tourneys, 'target': target, 'total': len(required),
             'done': done, 'ready': done == len(required) and len(required) > 0,
-            'target_tier': target_tier, 'pending': pending}
+            'target_tier': target_tier, 'pending': pending, 'untrained': untrained}
 
 
 # ── "Provar" (Fase 4): loop validado treino → jogo → prova ──────────────────────────────────

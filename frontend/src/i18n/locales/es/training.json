@@ -2,6 +2,11 @@
   "eyebrow": "Módulo de Entrenamiento",
   "title": "Entrenamiento",
   "subtitle": "Entrena tus fugas y domina los fundamentos.",
+  "newLeaks": {
+    "title": "{{count}} fuga(s) de tu juego aún sin entrenar",
+    "desc": "Los torneos nuevos revelan fugas nuevas. Reinicia el ciclo: entrena → juega → valida.",
+    "cta": "Entrenar"
+  },
   "status": {
     "title": "Tu entrenamiento",
     "skills": "Dominio por habilidad",

@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(training): aviso de "leaks sem treino" — reinicia o ciclo treine→jogue→valide
+
+> Fecha o loop: quando novos torneios revelam leaks que você ainda não treinou, o hub de Treino mostra um aviso âmbar ("N leak(s) no seu jogo ainda sem treino — reinicie o ciclo") com CTA pro Leak Trainer. Backend: `training_readiness` passou a devolver `untrained` (leaks reais do currículo sem nenhuma linha em `training_skill_progress`). Como leaks/gate/jornada já são recalculados dos dados vivos (janela 90d), o ciclo se reinicia sozinho (leak resolvido cai fora, leak novo entra e re-trava o Aplicar); o aviso torna isso legível. Teste `test_readiness_untrained_leaks`; training 18/18, tsc 0.
+
 ### fix(training): jornada sequencial — "Comprovar" só acende com "Aplicar" concluído
 
 > Bug de consistência: "Comprovar" ficava verde sempre que existia prova (`proof.length>0`), independente do "Aplicar" — subir um torneio sem atingir o gate (pular etapa) deixava Treinar verde, Aplicar cinza e Comprovar verde (passo à frente sem o anterior). Agora a jornada é **sequencial**: `applied = ready && proof` (gate atingido E jogou/importou). "Aplicar" fica `done` só quando aplicou; "Comprovar" (passo + card) só habilita quando `applied`. Pular o Aplicar não libera o Comprovar.

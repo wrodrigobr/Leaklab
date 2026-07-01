@@ -289,6 +289,19 @@ def test_mastery_decay_read_and_resume():
     print("OK  test_mastery_decay_read_and_resume")
 
 
+def test_readiness_untrained_leaks():
+    """`untrained` = leaks reais do jogo que NUNCA foram treinados (sinal de "novos leaks, reinicie")."""
+    uid = _mk_user()
+    _seed_leaks(uid, n_tourneys=8, n_leak_cats=4)
+    keys = [c['key'] for c in build_curriculum(uid) if int(c.get('n') or 0) > 0]
+    assert len(keys) == 4
+    for k in keys[:2]:                       # treina só 2 dos 4
+        record_training_attempt(uid, k, True)
+    r = training_readiness(uid)
+    assert set(r['untrained']) == set(keys[2:]), r['untrained']   # os 2 não-treinados
+    print("OK  test_readiness_untrained_leaks")
+
+
 def test_readiness_beginner_stage():
     """Iniciante (poucos/nenhum torneio, sem leaks medidos): meta é JOGAR/importar, não Diamante."""
     uid = _mk_user()

@@ -1085,6 +1085,7 @@ export interface TrainingReadiness {
   done: number;                        // quantos já cumpridos
   ready: boolean;                      // gate 'Aplicar' liberado
   pending: { category_key: string; mastery: number; tier: "bronze" | "silver" | "gold" | "diamond" }[];
+  untrained: string[];                 // leaks reais do jogo NUNCA treinados (reiniciar o ciclo)
 }
 export interface TrainingOverview {
   xp: { xp_total: number; streak: number; last_activity: string | null };

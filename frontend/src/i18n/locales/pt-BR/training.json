@@ -2,6 +2,11 @@
   "eyebrow": "Módulo de Treino",
   "title": "Treinos",
   "subtitle": "Treine seus leaks e domine os fundamentos.",
+  "newLeaks": {
+    "title": "{{count}} leak(s) no seu jogo ainda sem treino",
+    "desc": "Novos torneios revelam novos vazamentos. Reinicie o ciclo: treine → jogue → valide.",
+    "cta": "Treinar"
+  },
   "status": {
     "title": "Seu treino",
     "skills": "Domínio por habilidade",

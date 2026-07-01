@@ -2,6 +2,11 @@
   "eyebrow": "Training Module",
   "title": "Training",
   "subtitle": "Train your leaks and master the fundamentals.",
+  "newLeaks": {
+    "title": "{{count}} leak(s) in your game not trained yet",
+    "desc": "New tournaments reveal new leaks. Restart the loop: train → play → validate.",
+    "cta": "Train"
+  },
   "status": {
     "title": "Your training",
     "skills": "Mastery by skill",

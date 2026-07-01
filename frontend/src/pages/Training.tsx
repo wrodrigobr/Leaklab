@@ -114,6 +114,21 @@ export default function Training() {
           </Link>
         </div>
 
+        {/* ── Aviso: leaks do jogo ainda sem treino → reinicie o ciclo (novos leaks surgiram) ── */}
+        {readiness && (readiness.untrained?.length ?? 0) > 0 && (
+          <div className="flex flex-col gap-3 rounded-2xl border border-amber-500/30 bg-amber-500/[0.07] p-4 sm:flex-row sm:items-center">
+            <Sparkles className="size-6 shrink-0 text-amber-400" aria-hidden />
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-bold text-foreground">{t("newLeaks.title", { count: readiness.untrained.length })}</p>
+              <p className="text-xs leading-snug text-muted-foreground">{t("newLeaks.desc")}</p>
+            </div>
+            <Link to="/leak-trainer"
+              className="flex shrink-0 items-center justify-center gap-2 rounded-lg bg-amber-500 px-4 py-2.5 font-mono text-xs font-bold uppercase tracking-widest text-black transition-colors hover:bg-amber-400">
+              <Target className="size-4" aria-hidden /> {t("newLeaks.cta")}
+            </Link>
+          </div>
+        )}
+
         {/* ── A JORNADA — Treinar → Aplicar (gate Ouro) → Provar ───────────────── */}
         {overview && (
           <div className="rounded-2xl border border-border bg-card/40 p-5">
