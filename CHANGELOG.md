@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(landing): seção "Redes compatíveis" na página inicial (antes do cadastro)
+
+> Nova faixa logo abaixo do hero mostrando as redes suportadas (**PokerStars, GGPoker, ACR/WPN**) com logo + nome, pro visitante saber a compatibilidade **antes de se cadastrar**. Reusa `SiteLogo`. i18n `networks.*` nas 3 locales. Também corrigido o `howItWorks.step1Desc` que ainda dizia "(PokerStars ou GGPoker)" → agora inclui ACR. tsc 0.
+
 ### feat(email): win-back de inativos — reengajamento automático escalonado
 
 > Email automático que traz de volta quem sumiu, a frente que de fato reduz churn. **Estágios** por dias de inatividade (7 / 21 / 45), **cooldown** de 7 dias entre envios, e **para** após o 3º (não vira spam). Cada email leva o **gancho pessoal**: o maior leak do jogador (spot + bb perdidos, via `build_digest_data`) ou, sem dados, um nudge pra importar torneio. Template profissional com logo + descadastro (LGPD, respeita `email_opt_in`). **Correção de base:** `last_login` nunca era atualizado no código (quebrava o próprio digest) — agora o login registra atividade via `touch_activity`, que também **reseta o ciclo de win-back** quando o jogador volta. Trigger: `scripts/run_winback.py` (cron, gated por `WINBACK_ENABLED=1` + SMTP) e endpoint `POST /admin/run-winback` (dry-run por padrão) com painel no admin (prévia de quem receberia + enviar). Colunas `winback_stage`/`winback_sent_at` (abort-proof no Postgres). Testes `test_winback.py` (7): elegibilidade por estágio, cooldown, opt-out/não-verificado excluídos, estágio esgotado, envio real marca estágio, atividade reseta. api 44/44, tsc 0.

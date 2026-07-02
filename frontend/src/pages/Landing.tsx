@@ -5,6 +5,7 @@ import {
   Check, Zap, BookOpen, Target, Activity,
 } from "lucide-react";
 import { LEVEL_ICONS } from "@/components/hud/LevelIcons";
+import { SiteLogo } from "@/components/hud/SiteLogo";
 import logoHorizontal from "@/assets/brand/grindlab_final_horizontal.svg";
 
 const LEVELS = ["Iniciante", "Estudante", "Grinder", "Regular", "Sólido", "Expert", "Elite"] as const;
@@ -75,6 +76,33 @@ function HeroSection() {
           >
             {t("hero.ctaHow")} <ChevronRight className="size-4" />
           </a>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function SupportedNetworksSection() {
+  const { t } = useTranslation("landing");
+  const NETWORKS = [
+    { site: "pokerstars", name: "PokerStars" },
+    { site: "ggpoker",    name: "GGPoker" },
+    { site: "acr",        name: "ACR (WPN)" },
+  ];
+  return (
+    <section className="border-y border-border/50 bg-hud-surface/30 py-12 px-6">
+      <div className="mx-auto max-w-4xl text-center">
+        <p className="font-mono text-[10px] uppercase tracking-widest-2 text-primary mb-2">{t("networks.eyebrow")}</p>
+        <h2 className="font-heading text-xl font-bold text-foreground">{t("networks.heading")}</h2>
+        <p className="mx-auto mt-2 max-w-lg text-sm text-muted-foreground leading-relaxed">{t("networks.subtitle")}</p>
+        <div className="mt-7 flex flex-wrap items-center justify-center gap-3">
+          {NETWORKS.map((n) => (
+            <div key={n.site}
+              className="inline-flex items-center gap-2.5 rounded-full border border-border bg-hud-surface px-4 py-2">
+              <SiteLogo site={n.site} size={24} />
+              <span className="font-mono text-sm font-bold text-foreground">{n.name}</span>
+            </div>
+          ))}
         </div>
       </div>
     </section>
@@ -297,6 +325,7 @@ export default function Landing() {
     <div className="min-h-dvh bg-background hud-scanline text-foreground">
       <Navbar />
       <HeroSection />
+      <SupportedNetworksSection />
       <HowItWorksSection />
       <FeaturesSection />
       <PricingSection />

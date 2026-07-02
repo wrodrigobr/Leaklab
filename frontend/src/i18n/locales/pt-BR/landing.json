@@ -12,12 +12,17 @@
     "ctaStart": "Começar grátis",
     "ctaHow": "Ver como funciona"
   },
+  "networks": {
+    "eyebrow": "Redes compatíveis",
+    "heading": "Importe de onde você já joga",
+    "subtitle": "Suporte a hand histories de PokerStars, GGPoker e ACR (WPN). Mais redes em breve."
+  },
   "howItWorks": {
     "eyebrow": "Como funciona",
     "heading": "Do arquivo HH ao diagnóstico preciso",
     "levels": "7 níveis, de Iniciante a Elite",
     "step1Title": "Importe seu histórico",
-    "step1Desc": "Faça upload do arquivo .txt de qualquer torneio (PokerStars ou GGPoker). Suporte a múltiplos arquivos de uma vez.",
+    "step1Desc": "Faça upload do arquivo .txt de qualquer torneio (PokerStars, GGPoker ou ACR). Suporte a múltiplos arquivos de uma vez.",
     "step2Title": "GrindLab prioriza seus erros",
     "step2Desc": "Cada decisão é avaliada por equity, posição e contexto MTT/SNG. O motor de detecção cruza frequência com impacto, e te mostra exatamente o que está custando fichas.",
     "step3Title": "Evolua com foco no que importa",
