@@ -9,6 +9,7 @@ import {
   verdictLevel,
   verdictLevelOrError,
   verdictLevelFromScore,
+  decisionSeverity,
   VERDICT_META,
   VERDICT_LEVELS,
 } from "./cardLogic";
@@ -179,5 +180,27 @@ describe("idealActionSource — prioridade", () => {
   });
   it("sem nada → engine", () => {
     expect(idealActionSource({ ...ctx, isPostflop: true })).toBe("engine");
+  });
+});
+
+// ── decisionSeverity: regra multiway informativo (fix da divergência lista×replay) ──
+describe("decisionSeverity — multiway informativo (igual ao replay)", () => {
+  it("preflop: usa o label cru (não é multiway)", () => {
+    expect(decisionSeverity({ street: "preflop", label: "standard", n_active_opponents: 2 })).toBe("correct");
+    expect(decisionSeverity({ street: "preflop", label: "clear_mistake", n_active_opponents: 2 })).toBe("error");
+  });
+  it("flop multiway (nopp>=2): NÃO pune → correct, mesmo com label de erro (o bug da A7)", () => {
+    expect(decisionSeverity({ street: "flop", label: "small_mistake", n_active_opponents: 2 })).toBe("correct");
+    expect(decisionSeverity({ street: "turn", label: "clear_mistake", n_active_opponents: 3 })).toBe("correct");
+  });
+  it("postflop HU (nopp<2): gradeia normal pelo label", () => {
+    expect(decisionSeverity({ street: "flop", label: "small_mistake", n_active_opponents: 1 })).toBe("error");
+    expect(decisionSeverity({ street: "river", label: "standard", n_active_opponents: 1 })).toBe("correct");
+  });
+  it("multiway COM cauda-segura gravada: volta a gradear pelo label", () => {
+    expect(decisionSeverity({ street: "flop", label: "small_mistake", n_active_opponents: 2, multiway_safe_verdict: "safe_fold" })).toBe("error");
+  });
+  it("sem n_active_opponents: trata como não-multiway (usa label)", () => {
+    expect(decisionSeverity({ street: "flop", label: "small_mistake" })).toBe("error");
   });
 });

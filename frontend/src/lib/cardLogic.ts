@@ -41,6 +41,27 @@ export function verdictLevelOrError(label: string | null | undefined): VerdictLe
   return verdictLevel(label) ?? "error";
 }
 
+/**
+ * Severidade EFETIVA de UMA decisão para o resumo da mão (lista de mãos), honrando a
+ * regra multiway — a MESMA que o card/replay aplica. Postflop com 2+ oponentes ativos é
+ * INFORMATIVO (solver é HU-only): não pune, vira "correct". Exceção: se a cauda segura foi
+ * gravada (`multiway_safe_verdict`), aí o spot É gradeado pelo label. Sem isso a lista lia o
+ * `label` cru (ex.: small_mistake/gto_critical multiway) e mostrava "Erro" onde o replay
+ * mostra "Correto" — a divergência entre as duas telas.
+ */
+export interface DecisionSeverityInput {
+  street: string;
+  label: string | null | undefined;
+  n_active_opponents?: number | null;
+  multiway_safe_verdict?: string | null;
+}
+export function decisionSeverity(d: DecisionSeverityInput): VerdictLevel {
+  const isPostflop = (d.street || "").toLowerCase() !== "preflop";
+  const multiway = isPostflop && d.n_active_opponents != null && d.n_active_opponents >= 2;
+  if (multiway && !d.multiway_safe_verdict) return "correct";  // informativo, não pune
+  return verdictLevelOrError(d.label);
+}
+
 const _AGGRESSIVE_ACTIONS = new Set(["raise", "bet", "jam", "shove", "allin", "all-in", "3bet", "4bet", "reraise"]);
 
 /**

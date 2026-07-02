@@ -239,6 +239,9 @@ export interface TournamentDecision {
   has_annotation?: boolean;
   gto_label: "gto_correct" | "gto_mixed" | "gto_minor_deviation" | "gto_critical" | null;
   gto_action: string | null;
+  // Multiway (postflop com 2+ oponentes ativos) = veredito informativo, não punido (solver HU).
+  n_active_opponents?: number | null;
+  multiway_safe_verdict?: string | null;
   // Aderência coach × sistema (só no endpoint do coach) — marca mãos não-aderentes.
   adherence?: "match_ok" | "match_erro" | "diverge_rigido" | "diverge_perdido" | "comentario" | null;
   coach_comment?: string | null;

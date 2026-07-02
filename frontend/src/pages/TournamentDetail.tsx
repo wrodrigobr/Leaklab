@@ -31,7 +31,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { AiText } from "@/components/ui/AiText";
 import { cn, formatAction } from "@/lib/utils";
 import { tournaments, metrics, coachDashboard, Tournament, TournamentDecision, PhaseData, TextureData, SessionReviewResponse } from "@/lib/api";
-import { verdictLevelOrError, verdictLevelFromScore, VERDICT_META, type VerdictLevel } from "@/lib/cardLogic";
+import { verdictLevelFromScore, decisionSeverity, VERDICT_META, type VerdictLevel } from "@/lib/cardLogic";
 
 // FEAT-20: o veredito visível colapsa em 3 níveis dirigidos pela SEVERIDADE (label),
 // a MESMA régua do card do replayer e do badge de aderência. A frequência (gto_label)
@@ -104,8 +104,6 @@ function parseBoard(json: string): CardData[] {
 }
 
 // standard→correct · marginal→acceptable · small/clear_mistake→error (severidade EV).
-const labelToSeverity = (label: TournamentDecision["label"]): Severity => verdictLevelOrError(label);
-
 function streetDisplay(street: string): Street {
   if (street === "preflop") return "Pré-flop";
   if (street === "flop") return "Flop";
@@ -124,15 +122,21 @@ function groupByHand(decisions: TournamentDecision[]): Hand[] {
 
   let num = 0;
   const hands: Hand[] = [];
+  const _sevRank: Record<VerdictLevel, number> = { correct: 0, acceptable: 1, error: 2 };
   map.forEach((decs, handId) => {
     num++;
-    const worst = [...decs].sort((a, b) => b.score - a.score)[0];
+    // A "pior" decisão é pela severidade EFETIVA (honra a regra multiway = informativo),
+    // igual ao replay — não pelo `label` cru. Desempate pelo score (magnitude).
+    const worstEntry = [...decs]
+      .map((d) => ({ d, sev: decisionSeverity(d) }))
+      .sort((a, b) => (_sevRank[b.sev] - _sevRank[a.sev]) || (b.d.score - a.d.score))[0];
+    const worst = worstEntry.d;
     const cards = parseCards(worst.hero_cards);
     const holeCards: [CardData, CardData] | null =
       cards.length >= 2 ? [cards[0], cards[1]] : null;
     const board = parseBoard(worst.board);
 
-    const category = labelToSeverity(worst.label);
+    const category = worstEntry.sev;
     const street = streetDisplay(worst.street);
 
     // só o draw_profile como tag textual — o veredito (Aceitável/Erro) vem do chip de

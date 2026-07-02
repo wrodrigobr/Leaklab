@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(verdict): lista de mãos mostrava "Erro" em spot multiway que o replay dá como Correto
+
+> Divergência entre a lista de mãos do torneio e o replay: uma mão multiway (ex.: A7 com fold no flop 3-way) aparecia como **"Erro"** na lista mas **"Correto"** no replay. Causa: a lista lia o `label` cru do engine (`small_mistake`/`gto_critical`), enquanto o replay honra a regra do produto de que **multiway é informativo, não punido** (o solver é HU-only, então um "crítico" multiway é falso-erro). Fonte única agora: nova `decisionSeverity` em `cardLogic.ts` aplica a regra multiway (`n_active_opponents >= 2` no postflop → não pune, salvo cauda-segura gravada em `multiway_safe_verdict`), e o `TournamentDetail` escolhe a "pior" decisão pela **severidade efetiva**, não pelo label cru. Backend já devolvia os campos (`SELECT *`), fix frontend-only. Testes `cardLogic.test.ts` +5 (34 no total), tsc 0.
+
 ### fix(quota): re-import do mesmo torneio não consome mais a quota (Free = 2/mês)
 
 > O plano Free permite **2 torneios/mês** (config e landing já batiam). Mas o re-import do mesmo torneio (o PokerStars quebra torneio longo em arquivos por dia → o fluxo mescla) **contava de novo na quota**, gastando os 2 imports grátis num único torneio. Agora a quota só conta/barra **torneio NOVO**: o merge do mesmo `tournament_id` não consome nem é bloqueado (check movido pra depois de saber se é novo). Teste `test_upload_quota.py`: novo conta, merge não dobra, 3º novo é barrado (402), merge no limite passa. api verde.
