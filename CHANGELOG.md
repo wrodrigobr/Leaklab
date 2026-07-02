@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### docs: ACR + nova seção "Modo Treino" (Leak Trainer) na documentação
+
+> **ACR/WPN** entrou na tabela de sites suportados (`/docs`), com a nota de que o buy-in vem do nome do arquivo e o prêmio/ROI vem do arquivo de resultados `.ots`. Nova seção **"Modo Treino"** documenta o Leak Trainer em conceito (regra "explica o quê, não o como interno"): a jornada **Treinar → Jogar → Validar**, o seletor de spot (adaptativo / por leak / fundamentos), os níveis de domínio (Bronze→Prata→Ouro→Diamante) com decaimento por revisão espaçada, as missões diárias no fuso local, e o princípio dos dois eixos (treino é prática, só o jogo real move o ELO). i18n PT/EN/ES, tsc 0.
+
 ### fix(verdict): lista de mãos mostrava "Erro" em spot multiway que o replay dá como Correto
 
 > Divergência entre a lista de mãos do torneio e o replay: uma mão multiway (ex.: A7 com fold no flop 3-way) aparecia como **"Erro"** na lista mas **"Correto"** no replay. Causa: a lista lia o `label` cru do engine (`small_mistake`/`gto_critical`), enquanto o replay honra a regra do produto de que **multiway é informativo, não punido** (o solver é HU-only, então um "crítico" multiway é falso-erro). Fonte única agora: nova `decisionSeverity` em `cardLogic.ts` aplica a regra multiway (`n_active_opponents >= 2` no postflop → não pune, salvo cauda-segura gravada em `multiway_safe_verdict`), e o `TournamentDetail` escolhe a "pior" decisão pela **severidade efetiva**, não pelo label cru. Backend já devolvia os campos (`SELECT *`), fix frontend-only. Testes `cardLogic.test.ts` +5 (34 no total), tsc 0.

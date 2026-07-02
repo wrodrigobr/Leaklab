@@ -19,6 +19,7 @@
     "positions": "GTO Alignment by Position",
     "pressure": "Pressure Collapse",
     "bankroll": "Bankroll Evolution",
+    "training": "Training Mode",
     "ghost": "Ghost Table / Drills",
     "compare": "Tournament Comparison",
     "coaching": "Coaching",
@@ -40,7 +41,9 @@
     "col_where": "Where to get the history",
     "ps_where": "Menu → Hands → Export hand history",
     "gg_where": "Hand History, in the client",
-    "p2": "You can upload multiple files at once. The same tournament is consolidated: when PokerStars splits a long hand history into per-day files (same T#), the new hands are merged automatically."
+    "acr_where": "Hand History in the client (WPN/ACR)",
+    "p2": "You can upload multiple files at once. The same tournament is consolidated: when the site splits a long hand history into per-day files (same T#), the new hands are merged automatically.",
+    "p3": "On <strong>ACR/WPN</strong>, the buy-in comes from the file name. For the prize and ROI, also upload the tournament <strong>results</strong> file (<strong>.ots</strong> format) so profit is computed correctly."
   },
   "rating": {
     "eyebrow": "Documentation",
@@ -230,6 +233,33 @@
     "discipline_calc": "% of decisions classified as standard (= Standard%)",
     "discipline_ref": "> 70% is solid; > 86% is elite",
     "p2": "The combination of the axes produces an <strong>archetype</strong>: Nit, Calling Station, LAG, TAG or Balanced. The archetype is a diagnostic starting point, not a definitive label."
+  },
+  "training": {
+    "title": "Training Mode (Leak Trainer)",
+    "p1": "<strong>Training Mode</strong> turns your real leaks into focused practice, with instant correction against GTO. It's a safe environment: unlike real play, training <strong>never touches your real rating</strong>. It's where you rehearse before taking it to the table.",
+    "journey_title": "The journey has three steps, in order:",
+    "col_step": "Step",
+    "col_meaning": "What it is",
+    "step_train": "Train",
+    "step_train_meaning": "Practice the spots behind your costliest leaks. Starts with fundamentals and gets more demanding as you improve.",
+    "step_play": "Play",
+    "step_play_meaning": "Take what you trained to the real table: import and play your actual tournaments.",
+    "step_validate": "Validate",
+    "step_validate_meaning": "Compares your real GTO adherence BEFORE vs AFTER training, proving that practice turned into results at the table.",
+    "p2": "You choose what to train: <strong>adaptive</strong> mode (the system prioritizes your open leaks), by <strong>specific leak</strong>, or <strong>fundamentals</strong> (opening/RFI, BB defense, vs 3-bet).",
+    "tiers_title": "Each spot category builds a mastery level as you get them right:",
+    "col_tier": "Mastery tier",
+    "col_tier_meaning": "What it means",
+    "tier_bronze": "Bronze",
+    "tier_bronze_meaning": "Getting started, still misses this kind of spot often.",
+    "tier_silver": "Silver",
+    "tier_silver_meaning": "Gets most right, but the pattern isn't consolidated yet.",
+    "tier_gold": "Gold",
+    "tier_gold_meaning": "Consistent, few slips.",
+    "tier_diamond": "Diamond",
+    "tier_diamond_meaning": "Mastered. The pattern is internalized.",
+    "p3": "If you stop practicing, mastery <strong>decays</strong> over time (spaced repetition), flagging what needs a revisit. <strong>Daily missions</strong> are short goals for the day that reset at midnight in your timezone, and a badge tells you when there's a pending lesson.",
+    "p4": "Two-axis principle: training is <strong>practice</strong>, play is <strong>competition</strong>. Training prepares you, but only real play moves your ELO, the two never mix."
   },
   "ghost": {
     "title": "Ghost Table / Drills",

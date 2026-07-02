@@ -4,7 +4,7 @@ import { Link } from "react-router-dom";
 import { HudLayout } from "@/components/hud/HudLayout";
 import { BookOpen, ChevronRight, TrendingUp } from "lucide-react";
 
-const SECTION_IDS = ["import", "scoring", "indicators", "today", "kpis", "gto_method", "coverage", "replayer", "pko_tournaments", "mstacks", "dna", "leaks", "causal_map", "streets", "positions", "pressure", "bankroll", "ghost", "compare", "coaching", "gamification", "ranking", "career", "cognitive", "twin"] as const;
+const SECTION_IDS = ["import", "scoring", "indicators", "today", "kpis", "gto_method", "coverage", "replayer", "pko_tournaments", "mstacks", "dna", "leaks", "causal_map", "streets", "positions", "pressure", "bankroll", "training", "ghost", "compare", "coaching", "gamification", "ranking", "career", "cognitive", "twin"] as const;
 type SectionId = typeof SECTION_IDS[number];
 
 function Badge({ color, children }: { color: string; children: React.ReactNode }) {
@@ -176,9 +176,11 @@ export default function Docs() {
                 rows={[
                   ["PokerStars", "MTT · SNG · Cash", t("import.ps_where")],
                   ["GGPoker",    "MTT · SNG · Spin", t("import.gg_where")],
+                  ["ACR / WPN",  "MTT · SNG",        t("import.acr_where")],
                 ]}
               />
               <p dangerouslySetInnerHTML={{ __html: t("import.p2") }} />
+              <p dangerouslySetInnerHTML={{ __html: t("import.p3") }} />
             </Section>
 
             {/* Scoring */}
@@ -447,6 +449,33 @@ export default function Docs() {
               <p dangerouslySetInnerHTML={{ __html: t("bankroll.p2") }} />
               <p dangerouslySetInnerHTML={{ __html: t("bankroll.p3") }} />
               <p dangerouslySetInnerHTML={{ __html: t("bankroll.p4") }} />
+            </Section>
+
+            {/* Modo Treino (Leak Trainer) */}
+            <Section id="training" title={t("training.title")}>
+              <p dangerouslySetInnerHTML={{ __html: t("training.p1") }} />
+              <p>{t("training.journey_title")}</p>
+              <Table
+                headers={[t("training.col_step"), t("training.col_meaning")]}
+                rows={[
+                  [<strong className="text-foreground">{t("training.step_train")}</strong>,    t("training.step_train_meaning")],
+                  [<strong className="text-foreground">{t("training.step_play")}</strong>,     t("training.step_play_meaning")],
+                  [<strong className="text-foreground">{t("training.step_validate")}</strong>, t("training.step_validate_meaning")],
+                ]}
+              />
+              <p dangerouslySetInnerHTML={{ __html: t("training.p2") }} />
+              <p>{t("training.tiers_title")}</p>
+              <Table
+                headers={[t("training.col_tier"), t("training.col_tier_meaning")]}
+                rows={[
+                  [<Badge color="bg-orange-500/15 text-orange-400">{t("training.tier_bronze")}</Badge>,   t("training.tier_bronze_meaning")],
+                  [<Badge color="bg-slate-400/15 text-slate-300">{t("training.tier_silver")}</Badge>,     t("training.tier_silver_meaning")],
+                  [<Badge color="bg-yellow-500/15 text-yellow-400">{t("training.tier_gold")}</Badge>,     t("training.tier_gold_meaning")],
+                  [<Badge color="bg-sky-500/15 text-sky-300">{t("training.tier_diamond")}</Badge>,        t("training.tier_diamond_meaning")],
+                ]}
+              />
+              <p dangerouslySetInnerHTML={{ __html: t("training.p3") }} />
+              <p dangerouslySetInnerHTML={{ __html: t("training.p4") }} />
             </Section>
 
             {/* Ghost Table */}

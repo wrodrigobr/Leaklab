@@ -19,6 +19,7 @@
     "positions": "Alinhamento GTO por Posição",
     "pressure": "Colapso sob Pressão",
     "bankroll": "Evolução do Bankroll",
+    "training": "Modo Treino",
     "ghost": "Ghost Table / Drills",
     "compare": "Comparativo de Torneios",
     "coaching": "Coaching",
@@ -40,7 +41,9 @@
     "col_where": "Onde obter o histórico",
     "ps_where": "Menu → Mãos → Exportar histórico de mãos",
     "gg_where": "Histórico de Mãos, no cliente",
-    "p2": "Você pode enviar vários arquivos de uma vez. O mesmo torneio é consolidado: quando o PokerStars divide uma HH longa em arquivos por dia (mesmo T#), as mãos novas são mescladas automaticamente."
+    "acr_where": "Hand History no cliente (WPN/ACR)",
+    "p2": "Você pode enviar vários arquivos de uma vez. O mesmo torneio é consolidado: quando o site divide uma HH longa em arquivos por dia (mesmo T#), as mãos novas são mescladas automaticamente.",
+    "p3": "No <strong>ACR/WPN</strong>, o buy-in vem do nome do arquivo. Para o prêmio e o ROI, envie também o arquivo de <strong>resultados</strong> do torneio (formato <strong>.ots</strong>), assim o lucro é calculado corretamente."
   },
   "rating": {
     "eyebrow": "Documentação",
@@ -230,6 +233,33 @@
     "discipline_calc": "% de decisões classificadas como standard (= Standard%)",
     "discipline_ref": "> 70% é sólido; > 86% é elite",
     "p2": "A combinação dos eixos gera um <strong>arquétipo</strong>: Nit, Calling Station, LAG, TAG ou Balanced. O arquétipo é um ponto de partida diagnóstico, não uma classificação definitiva."
+  },
+  "training": {
+    "title": "Modo Treino (Leak Trainer)",
+    "p1": "O <strong>Modo Treino</strong> transforma os seus leaks reais em prática dirigida, com correção imediata contra o GTO. É um ambiente seguro: diferente do jogo, o treino <strong>nunca mexe no seu rating real</strong>. É onde você ensaia antes de levar pra mesa.",
+    "journey_title": "A jornada tem três passos, na ordem:",
+    "col_step": "Passo",
+    "col_meaning": "O que é",
+    "step_train": "Treinar",
+    "step_train_meaning": "Pratica os spots dos seus leaks mais custosos. Começa pelos fundamentos e fica mais exigente conforme você evolui.",
+    "step_play": "Jogar",
+    "step_play_meaning": "Leva o que treinou pra mesa real: importa e joga seus torneios de verdade.",
+    "step_validate": "Validar",
+    "step_validate_meaning": "Compara a sua aderência GTO real ANTES × DEPOIS do treino, pra provar que a prática virou resultado na mesa.",
+    "p2": "Você escolhe o que treinar: modo <strong>adaptativo</strong> (o sistema prioriza seus leaks abertos), por <strong>leak específico</strong>, ou <strong>fundamentos</strong> (abertura/RFI, defesa de BB, vs 3-bet).",
+    "tiers_title": "Cada categoria de spot acumula um nível de domínio conforme você acerta:",
+    "col_tier": "Nível de domínio",
+    "col_tier_meaning": "O que significa",
+    "tier_bronze": "Bronze",
+    "tier_bronze_meaning": "Começando, ainda erra com frequência nesse tipo de spot.",
+    "tier_silver": "Prata",
+    "tier_silver_meaning": "Já acerta a maioria, mas o padrão não está consolidado.",
+    "tier_gold": "Ouro",
+    "tier_gold_meaning": "Consistente, poucos deslizes.",
+    "tier_diamond": "Diamante",
+    "tier_diamond_meaning": "Dominado. O padrão está internalizado.",
+    "p3": "Se você para de praticar, o domínio <strong>decai</strong> com o tempo (revisão espaçada), sinalizando o que precisa revisitar. As <strong>missões diárias</strong> são metas curtas do dia que reiniciam à meia-noite no seu fuso, e um selo avisa quando há lição pendente.",
+    "p4": "Princípio dos dois eixos: treino é <strong>prática</strong>, jogo é <strong>competição</strong>. O treino te prepara, mas só o jogo real move o seu ELO, os dois nunca se misturam."
   },
   "ghost": {
     "title": "Ghost Table / Drills",
