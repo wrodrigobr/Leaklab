@@ -348,7 +348,7 @@ def _cta_button(label: str, url: str) -> str:
         f'<table role="presentation" cellpadding="0" cellspacing="0" style="margin:12px 0 4px 0;">'
         f'<tr><td style="border-radius:10px;background:{_C_TEAL};">'
         f'<a href="{url}" style="display:inline-block;padding:14px 34px;font-size:15px;'
-        f'font-weight:700;color:{_C_BG};text-decoration:none;">{label}</a></td></tr></table>'
+        f'font-weight:700;color:{_C_BG};text-decoration:none;white-space:nowrap;">{label}</a></td></tr></table>'
     )
 
 
@@ -521,6 +521,111 @@ def send_welcome_email(to_email: str, username: str) -> bool:
     """Envia o email de boas-vindas após a conta ser verificada. True se enviado."""
     html = build_welcome_email_html(username)
     return send_transactional_email(to_email, "Bem-vindo à GrindLab", html)
+
+
+# ── Win-back (reengajamento de inativos) ─────────────────────────────────────
+
+# Estágios em dias de inatividade e cooldown mínimo entre envios (dias).
+_WINBACK_STAGE_DAYS = [7, 21, 45]
+_WINBACK_COOLDOWN_DAYS = 7
+
+
+def _parse_dt(v):
+    from datetime import datetime
+    if not v:
+        return None
+    if isinstance(v, datetime):
+        return v
+    s = str(v)
+    for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%dT%H:%M:%S", "%Y-%m-%d %H:%M:%S.%f"):
+        try:
+            return datetime.strptime(s[:26], fmt)
+        except Exception:
+            pass
+    try:
+        return datetime.fromisoformat(s.replace("Z", ""))
+    except Exception:
+        return None
+
+
+def _winback_hook_html(hook) -> str:
+    """Gancho pessoal a partir de build_digest_data (top_leak). Genérico se sem dados."""
+    P = f'margin:0 0 18px 0;font-size:16px;line-height:1.7;color:{_C_BODY};'
+    if hook and hook.get("top_leak"):
+        spot = (hook["top_leak"].get("spot") or "").replace("_", " ")
+        ev = abs(hook["top_leak"].get("ev_loss_bb", 0) or 0)
+        return (f'<p style="{P}">Seu leak mais custoso continua aberto: '
+                f'<strong style="color:{_C_LIGHT};">{spot}</strong> '
+                f'(cerca de {ev:.1f} bb perdidos). Alguns minutos de treino já começam a fechar isso.</p>')
+    return (f'<p style="{P}">Importe um torneio recente e veja onde estão seus leaks. '
+            f'A plataforma analisa cada decisão e mostra exatamente o que corrigir.</p>')
+
+
+def build_winback_email_html(username: str, days: int, hook, unsub_link: str) -> str:
+    """Email de reengajamento: gancho pessoal (maior leak) + CTA de volta. Com descadastro."""
+    base_url = os.environ.get("APP_BASE_URL", "https://grindlabpoker.com")
+    inner = (
+        _eyebrow("Sentimos sua falta") + _h1("Seus torneios continuam esperando") + _greeting(username)
+        + f'<p style="margin:0 0 18px 0;font-size:16px;line-height:1.7;color:{_C_BODY};">'
+          f'Faz {days} dias desde seu último acesso à GrindLab.</p>'
+        + _winback_hook_html(hook)
+        + _cta_button("Voltar a treinar", f"{base_url}/dashboard")
+    )
+    return _email_document(
+        title="Seus torneios continuam esperando · GrindLab", inner_html=inner, base_url=base_url,
+        footer_note="A plataforma de treino e evolução para jogadores de torneio.",
+        unsub_link=unsub_link,
+        preheader="Seu maior leak continua aberto. Volte quando quiser.",
+    )
+
+
+def send_winback_email(to_email: str, username: str, user_id: int, days: int, hook) -> bool:
+    """Envia o email de win-back (com descadastro, respeitando LGPD). True se enviado."""
+    base_url = os.environ.get("APP_BASE_URL", "https://grindlabpoker.com")
+    token = _email_unsub_token(user_id)
+    unsub = f"{base_url}/api/player/email/unsubscribe?uid={user_id}&token={token}"
+    html = build_winback_email_html(username, days, hook, unsub)
+    return send_transactional_email(to_email, "Seus torneios continuam esperando", html)
+
+
+def run_winback(dry_run: bool = False, limit: int | None = None) -> dict:
+    """Varre inativos e envia o email do estágio devido (7/21/45 dias), respeitando
+    cooldown, opt-out e verificação. dry_run=True só devolve a prévia, sem enviar.
+    Retorna {'candidates','sent','skipped','errors'[, 'preview']}."""
+    from database.repositories import get_winback_candidates, mark_winback_sent
+    from datetime import datetime
+    cands = get_winback_candidates(_WINBACK_STAGE_DAYS[0], _WINBACK_COOLDOWN_DAYS)
+    now = datetime.utcnow()
+    sent = skipped = errors = 0
+    preview = []
+    for u in cands:
+        ll = _parse_dt(u.get("last_login"))
+        days = (now - ll).days if ll else 999
+        stage = int(u.get("winback_stage") or 0)
+        if stage >= len(_WINBACK_STAGE_DAYS) or days < _WINBACK_STAGE_DAYS[stage]:
+            skipped += 1
+            continue
+        if dry_run:
+            preview.append({"email": u["email"], "username": u["username"],
+                            "days": days, "next_stage": stage + 1})
+            continue
+        try:
+            hook = build_digest_data(u["id"])
+        except Exception:
+            hook = None
+        ok = send_winback_email(u["email"], u["username"], u["id"], days, hook)
+        if ok:
+            mark_winback_sent(u["id"], stage + 1)
+            sent += 1
+        else:
+            errors += 1
+        if limit and sent >= limit:
+            break
+    res = {"candidates": len(cands), "sent": sent, "skipped": skipped, "errors": errors}
+    if dry_run:
+        res["preview"] = preview[:100]
+    log.info("Win-back run: %s", res)
+    return res
 
 
 # ── Runner (chamado pelo endpoint admin) ──────────────────────────────────────

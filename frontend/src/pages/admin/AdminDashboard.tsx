@@ -4,7 +4,7 @@ import {
   Activity, BarChart2, CheckCircle2, Clock,
   LayoutDashboard, Loader2, RefreshCw, Search, Shield, Users,
   GraduationCap, X, Check, MessageSquarePlus, Trash2, AlertTriangle,
-  Cpu, CircleDot, Lightbulb, Send, Megaphone, Mail
+  Cpu, CircleDot, Lightbulb, Send, Megaphone, Mail, MailCheck
 } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
 import { HudHeader } from "@/components/hud/HudHeader";
@@ -647,6 +647,70 @@ function MessagesTab() {
             : `Vai pro sino de todos os jogadores${plan ? ` (plano ${plan})` : ""}.`}
         </span>
       </div>
+
+      <WinbackPanel />
+    </div>
+  );
+}
+
+// ── Win-back (reengajamento de inativos) ──────────────────────────────────────
+
+function WinbackPanel() {
+  const preview = useMutation({
+    mutationFn: () => adminDashboard.runWinback({ dry_run: true }),
+  });
+  const sendReal = useMutation({
+    mutationFn: () => adminDashboard.runWinback({ dry_run: false }),
+    onSuccess: (r) => toast.success(`Win-back enviado: ${r.sent} email(s)`),
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Falha no win-back"),
+  });
+  const prev = preview.data;
+  const eligible = prev?.preview?.length ?? 0;
+
+  return (
+    <div className="mt-6 rounded-xl border border-border bg-card/50 p-4">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <p className="flex items-center gap-1.5 text-sm font-bold text-foreground">
+            <MailCheck className="size-4 text-primary" /> Win-back de inativos
+          </p>
+          <p className="mt-0.5 text-[11px] text-muted-foreground">
+            Reengaja quem sumiu (7 / 21 / 45 dias) com o gancho do maior leak. Rode a prévia antes de enviar.
+          </p>
+        </div>
+        <button onClick={() => preview.mutate()} disabled={preview.isPending}
+          className="inline-flex shrink-0 items-center gap-2 rounded-lg border border-border px-3 py-1.5 font-mono text-xs font-bold uppercase tracking-wider text-muted-foreground transition-colors hover:text-foreground disabled:opacity-40">
+          {preview.isPending ? <Loader2 className="size-3.5 animate-spin" /> : <RefreshCw className="size-3.5" />}
+          Prévia
+        </button>
+      </div>
+
+      {prev && (
+        <div className="mt-3 rounded-lg border border-border bg-background p-3">
+          <p className="text-xs text-muted-foreground">
+            <b className="text-foreground">{eligible}</b> elegível(is) agora · {prev.candidates} candidato(s) na janela
+          </p>
+          {eligible > 0 && (
+            <ul className="mt-2 max-h-40 space-y-1 overflow-y-auto">
+              {prev.preview!.map((p) => (
+                <li key={p.email} className="flex items-center justify-between text-[11px]">
+                  <span className="text-foreground">{p.username} <span className="text-muted-foreground">· {p.email}</span></span>
+                  <span className="font-mono text-muted-foreground">{p.days}d · estágio {p.next_stage}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+          {eligible > 0 && (
+            <button
+              onClick={() => { if (confirm(`Enviar win-back para ${eligible} jogador(es)?`)) sendReal.mutate(); }}
+              disabled={sendReal.isPending}
+              className="mt-3 inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 font-mono text-xs font-bold uppercase tracking-widest text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-40">
+              {sendReal.isPending ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}
+              Enviar agora ({eligible})
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 }

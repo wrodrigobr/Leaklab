@@ -2341,6 +2341,12 @@ export const adminDashboard = {
     return request<{ users: AdminUser[]; total: number }>(`/admin/users?${q}`);
   },
 
+  // Win-back: dry_run=true devolve a prévia de quem receberia; false envia.
+  runWinback: (opts?: { dry_run?: boolean; limit?: number }) =>
+    request<{ candidates: number; sent: number; skipped: number; errors: number;
+              preview?: { email: string; username: string; days: number; next_stage: number }[] }>(
+      "/admin/run-winback", { method: "POST", body: JSON.stringify(opts ?? { dry_run: true }) }),
+
   coachStudents: (coachId: number) =>
     request<{ students: AdminCoachStudent[] }>(`/admin/coach/${coachId}/students`),
 

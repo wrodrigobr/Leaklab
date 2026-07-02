@@ -74,7 +74,7 @@ from leaklab.report_generator import build_html_report, generate_pdf_bytes
 from leaklab.email_digest import (
     run_weekly_digest, verify_unsub_token, send_transactional_email,
     verify_email_unsub_token, send_admin_email, send_admin_email_bulk,
-    send_verification_email, send_welcome_email,
+    send_verification_email, send_welcome_email, run_winback,
 )
 
 from database.schema import init_db
@@ -136,6 +136,8 @@ from database.repositories import (
     get_email_recipients, update_email_opt_in,
     # Verificação de email no cadastro (2FA simples)
     set_verification_code, verify_email_code, mark_email_verified,
+    # Atividade / win-back
+    touch_activity,
     # Sprint AH — BACK-018: Coach Application Flow
     create_coach_application, get_coach_applications,
     approve_coach_application, reject_coach_application,
@@ -522,6 +524,7 @@ def login():
             'code': 'email_unverified', 'email': email,
         }), 403
 
+    touch_activity(user['id'])   # registra atividade + reseta o ciclo de win-back
     token = generate_token(user['id'], user['role'])
     return jsonify({
         'token':    token,
@@ -6349,6 +6352,13 @@ def _admin_email_enabled() -> bool:
     return os.environ.get('ADMIN_EMAIL_ENABLED', '').strip().lower() in ('1', 'true', 'yes', 'on')
 
 
+def _winback_enabled() -> bool:
+    """Win-back automático (cron) só roda com WINBACK_ENABLED=1 e SMTP configurado.
+    O disparo manual pelo admin não exige a flag (só SMTP)."""
+    return (os.environ.get('WINBACK_ENABLED', '').strip().lower() in ('1', 'true', 'yes', 'on')
+            and bool(os.environ.get('SMTP_HOST')))
+
+
 @app.route('/admin/message', methods=['POST'])
 @require_admin
 def admin_send_message():
@@ -6754,6 +6764,20 @@ def email_unsubscribe_link():
 def admin_send_digest():
     result = run_weekly_digest()
     return jsonify(result)
+
+
+@app.route('/admin/run-winback', methods=['POST'])
+@require_admin
+def admin_run_winback():
+    """Dispara o win-back manualmente. dry_run=True (default) só devolve a prévia de quem
+    receberia, sem enviar. Envio real exige SMTP configurado."""
+    data    = request.get_json(silent=True) or {}
+    dry_run = bool(data.get('dry_run', True))
+    limit   = data.get('limit')
+    limit   = int(limit) if limit else None
+    if not dry_run and not os.environ.get('SMTP_HOST'):
+        return jsonify({'error': 'SMTP não configurado — envio real indisponível'}), 400
+    return jsonify(run_winback(dry_run=dry_run, limit=limit))
 
 
 # ── Admin — Coach Applications (BACK-018) ─────────────────────────────────────

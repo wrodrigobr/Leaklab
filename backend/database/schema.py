@@ -741,6 +741,9 @@ def _run_migrations(conn):
             ("verification_code",   "ALTER TABLE users ADD COLUMN verification_code   TEXT"),
             ("verification_expires_at", "ALTER TABLE users ADD COLUMN verification_expires_at TEXT"),
             ("verification_attempts",   "ALTER TABLE users ADD COLUMN verification_attempts   INTEGER NOT NULL DEFAULT 0"),
+            # Win-back (reengajamento de inativos): estágio já enviado (0..3) + quando saiu o último.
+            ("winback_stage",       "ALTER TABLE users ADD COLUMN winback_stage       INTEGER NOT NULL DEFAULT 0"),
+            ("winback_sent_at",     "ALTER TABLE users ADD COLUMN winback_sent_at     TEXT"),
         ]:
             try: conn.execute(_sql)
             except Exception: pass
@@ -1438,6 +1441,8 @@ def _run_migrations(conn):
             ("verification_code",          "ALTER TABLE users ADD COLUMN verification_code          TEXT"),
             ("verification_expires_at",    "ALTER TABLE users ADD COLUMN verification_expires_at    TEXT"),
             ("verification_attempts",      "ALTER TABLE users ADD COLUMN verification_attempts      INTEGER NOT NULL DEFAULT 0"),
+            ("winback_stage",              "ALTER TABLE users ADD COLUMN winback_stage              INTEGER NOT NULL DEFAULT 0"),
+            ("winback_sent_at",            "ALTER TABLE users ADD COLUMN winback_sent_at            TEXT"),
             ("birth_year",                "ALTER TABLE users ADD COLUMN birth_year                INTEGER"),
             ("country",                   "ALTER TABLE users ADD COLUMN country                   TEXT"),
             ("state_province",            "ALTER TABLE users ADD COLUMN state_province            TEXT"),
@@ -1914,6 +1919,9 @@ def _run_migrations(conn):
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS verification_code TEXT",
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS verification_expires_at TEXT",
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS verification_attempts INTEGER NOT NULL DEFAULT 0",
+            # Win-back de inativos (reengajamento por email escalonado)
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS winback_stage INTEGER NOT NULL DEFAULT 0",
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS winback_sent_at TEXT",
         ]
         for _stmt in _safe:
             try:

@@ -238,6 +238,62 @@ def mark_email_verified(user_id: int) -> None:
         conn.close()
 
 
+# ── Atividade + Win-back (reengajamento de inativos) ─────────────────────────
+
+def touch_activity(user_id: int) -> None:
+    """Registra atividade do usuário (last_login = agora) e RESETA o ciclo de win-back
+    (ele voltou). Chamado de forma throttled (1x/dia) pelo require_auth e no login."""
+    from datetime import datetime
+    now = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+    conn = get_conn()
+    try:
+        conn.execute(_adapt(
+            "UPDATE users SET last_login = ?, winback_stage = 0, winback_sent_at = NULL WHERE id = ?"
+        ), (now, user_id))
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def get_winback_candidates(min_inactive_days: int, cooldown_days: int) -> list:
+    """Jogadores elegíveis a win-back: player, opt-in, verificado, não suspenso, com
+    last_login mais antigo que `min_inactive_days`, que ainda não esgotaram os estágios
+    (winback_stage < 3) e fora do cooldown do último envio. A régua fina de estágio×dias
+    é aplicada no runner (run_winback)."""
+    from datetime import datetime, timedelta
+    now = datetime.utcnow()
+    login_cutoff    = (now - timedelta(days=min_inactive_days)).strftime("%Y-%m-%d %H:%M:%S")
+    cooldown_cutoff = (now - timedelta(days=cooldown_days)).strftime("%Y-%m-%d %H:%M:%S")
+    susp = "(suspended IS NULL OR suspended = FALSE)" if USE_POSTGRES else "(suspended IS NULL OR suspended = 0)"
+    conn = get_conn()
+    try:
+        rows = _fetchall(conn, _adapt(
+            f"SELECT id, email, username, last_login, COALESCE(winback_stage,0) AS winback_stage "
+            f"FROM users "
+            f"WHERE role = 'player' AND email_opt_in = 1 AND email_verified = 1 AND {susp} "
+            f"AND last_login IS NOT NULL AND last_login < ? "
+            f"AND COALESCE(winback_stage,0) < 3 "
+            f"AND (winback_sent_at IS NULL OR winback_sent_at < ?)"
+        ), (login_cutoff, cooldown_cutoff))
+        return [dict(r) for r in rows]
+    finally:
+        conn.close()
+
+
+def mark_winback_sent(user_id: int, stage: int) -> None:
+    """Avança o estágio de win-back e carimba o horário do envio."""
+    from datetime import datetime
+    now = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+    conn = get_conn()
+    try:
+        conn.execute(_adapt(
+            "UPDATE users SET winback_stage = ?, winback_sent_at = ? WHERE id = ?"
+        ), (int(stage), now, user_id))
+        conn.commit()
+    finally:
+        conn.close()
+
+
 def get_user_by_email(email: str) -> Optional[dict]:
     conn = get_conn()
     try:
