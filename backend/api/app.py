@@ -666,10 +666,9 @@ def tournament_results():
 
 
 def _analyze_impl():
-    quota_err = _check_upload_quota(g.user_id)
-    if quota_err:
-        return quota_err
-
+    # A quota é checada só DEPOIS de sabermos se é torneio novo (ver `existing` abaixo):
+    # re-import/merge do mesmo T# (PokerStars quebra torneio longo em arquivos por dia)
+    # não deve consumir nem ser barrado pela quota.
     content = _extract_content(request)
     if not content:
         return jsonify({'error': 'Conteúdo ausente'}), 400
@@ -711,6 +710,11 @@ def _analyze_impl():
     # dedup por hand_id, e re-analisa a UNIÃO (save_decisions abaixo faz DELETE+insert → substitui o
     # torneio com a união consolidada). Só rejeita se o arquivo não trouxer NENHUMA mão nova.
     existing = get_tournament(g.user_id, tournament_id)
+    # Quota só vale pra torneio NOVO. Re-import do mesmo T# (merge) não consome nem é barrado.
+    if not existing:
+        quota_err = _check_upload_quota(g.user_id)
+        if quota_err:
+            return quota_err
     _merged = False
     _new_hands_n = 0
     if existing:
@@ -777,10 +781,12 @@ def _analyze_impl():
                 _upsert_prof(t_db_id, _pname, _prof)
     except Exception:
         log.exception("opponent_profiles: compute falhou (não bloqueia o /analyze)")
-    try:
-        increment_tournament_count(g.user_id)
-    except Exception:
-        pass
+    # Só conta na quota torneio NOVO; re-import/merge do mesmo T# não consome.
+    if not existing:
+        try:
+            increment_tournament_count(g.user_id)
+        except Exception:
+            pass
 
     # Preencher gto_label preflop via ranges estáticos + reconciliar label vs gto_label
     def _preflop_sync_and_reconcile(tid: int) -> None:

@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(quota): re-import do mesmo torneio não consome mais a quota (Free = 2/mês)
+
+> O plano Free permite **2 torneios/mês** (config e landing já batiam). Mas o re-import do mesmo torneio (o PokerStars quebra torneio longo em arquivos por dia → o fluxo mescla) **contava de novo na quota**, gastando os 2 imports grátis num único torneio. Agora a quota só conta/barra **torneio NOVO**: o merge do mesmo `tournament_id` não consome nem é bloqueado (check movido pra depois de saber se é novo). Teste `test_upload_quota.py`: novo conta, merge não dobra, 3º novo é barrado (402), merge no limite passa. api verde.
+
 ### feat(landing): seção "Redes compatíveis" na página inicial (antes do cadastro)
 
 > Nova faixa logo abaixo do hero mostrando as redes suportadas (**PokerStars, GGPoker, ACR/WPN**) com logo + nome, pro visitante saber a compatibilidade **antes de se cadastrar**. Reusa `SiteLogo`. i18n `networks.*` nas 3 locales. Também corrigido o `howItWorks.step1Desc` que ainda dizia "(PokerStars ou GGPoker)" → agora inclui ACR. tsc 0.
