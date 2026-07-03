@@ -8200,11 +8200,14 @@ def admin_reanalyze_preflop_labels():
             raw_row = conn.execute(
                 "SELECT raw_text FROM tournaments WHERE id = ?", (tid,)
             ).fetchone()
-            if not raw_row or not raw_row[0]:
+            # Acesso por chave: no Postgres fetchone() devolve dict (RealDictCursor),
+            # raw_row[0] estoura KeyError.
+            raw_text = raw_row['raw_text'] if raw_row else None
+            if not raw_text:
                 continue
 
             try:
-                hands = parse_hand_history(raw_row[0])
+                hands = parse_hand_history(raw_text)
             except Exception:
                 continue
 
@@ -8300,7 +8303,7 @@ def admin_reanalyze_preflop_labels():
                 if std_row:
                     conn.execute(
                         "UPDATE tournaments SET standard_pct=?, avg_score=? WHERE id=?",
-                        (round(std_row[0], 2), round(std_row[1] or 0, 4), tid)
+                        (round(std_row['s'] or 0, 2), round(std_row['a'] or 0, 4), tid)
                     )
             conn.commit()
 
