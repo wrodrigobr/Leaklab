@@ -75,6 +75,8 @@
     "handCount": "{{count}} mano",
     "handCount_plural": "{{count}} manos",
     "all": "Todas",
+    "pending": "Pendiente",
+    "pendingTip": "Manos postflop esperando el solver. Análisis actual por el engine.",
     "stats": {
       "handsPlayed": "Manos jugadas",
       "criticalLeaks": "Errores",

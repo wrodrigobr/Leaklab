@@ -63,6 +63,7 @@ interface Hand {
   gtoLabel?: string | null;
   gtoAction?: string | null;
   hasPostflop?: boolean;
+  multiway?: boolean;             // algum spot postflop com 2+ oponentes ativos (solver é HU → nunca ganha gto_label)
   divergent?: boolean;            // coach mode: alguma decisão não-aderente (coach × sistema)
   adherence?: string | null;      // categoria representativa (diverge_*/match_*/comentario)
 }
@@ -176,6 +177,7 @@ function groupByHand(decisions: TournamentDecision[]): Hand[] {
       gtoLabel: worst.gto_label ?? null,
       gtoAction: worst.gto_action ?? null,
       hasPostflop: decs.some((d) => d.street === "flop" || d.street === "turn" || d.street === "river"),
+      multiway: decs.some((d) => d.street !== "preflop" && (d.n_active_opponents ?? 0) >= 2),
       divergent: decs.some((d) => d.adherence === "diverge_rigido" || d.adherence === "diverge_perdido"),
       adherence: (decs.find((d) => d.adherence === "diverge_perdido")
         ?? decs.find((d) => d.adherence === "diverge_rigido")
@@ -306,7 +308,9 @@ const TournamentDetail = () => {
           const isCorrect   = h.category === "correct";
           const isAttention = h.category === "acceptable";
           const isError     = h.category === "error";
-          const isPending   = h.hasPostflop && !h.gtoLabel;
+          // "Pendente" = aguardando solver. Multiway NUNCA é solvado (solver é HU), então não é
+          // pendente, é informativo — senão ficaria "pendente" pra sempre.
+          const isPending   = h.hasPostflop && !h.gtoLabel && !h.multiway;
           if (resultFilter === "correct"   && !isCorrect)   return false;
           if (resultFilter === "attention" && !isAttention) return false;
           if (resultFilter === "error"     && !isError)     return false;
@@ -675,18 +679,18 @@ const TournamentDetail = () => {
 
             {/* Resultado unificado — GTO quando disponível, engine como fallback */}
             {(() => {
-              const pendingGto = hands.filter((h) => h.hasPostflop && !h.gtoLabel).length;
+              const pendingGto = hands.filter((h) => h.hasPostflop && !h.gtoLabel && !h.multiway).length;
               type RKey = typeof resultFilter;
               const RESULT_FILTERS: { key: RKey; label: string; cls: string; title?: string }[] = [
-                { key: "all",       label: "Todas",       cls: "text-muted-foreground" },
-                { key: "correct",   label: "✓ Correto",   cls: "text-emerald-400" },
-                { key: "attention", label: "⚠ Atenção",   cls: "text-amber-400" },
-                { key: "error",     label: "✗ Erro",      cls: "text-red-400" },
+                { key: "all",       label: t("detail.all"),                cls: "text-muted-foreground" },
+                { key: "correct",   label: `✓ ${tc("verdict.correct")}`,    cls: "text-emerald-400" },
+                { key: "attention", label: `◎ ${tc("verdict.acceptable")}`, cls: "text-sky-400" },
+                { key: "error",     label: `✗ ${tc("verdict.error")}`,      cls: "text-red-400" },
                 ...(pendingGto > 0 ? [{
                   key: "pending" as RKey,
-                  label: `⏱ Pendente (${pendingGto})`,
+                  label: `⏱ ${t("detail.pending")} (${pendingGto})`,
                   cls: "text-muted-foreground/50",
-                  title: "Mãos postflop aguardando solver, análise atual pelo engine",
+                  title: t("detail.pendingTip"),
                 }] : []),
               ];
               return (

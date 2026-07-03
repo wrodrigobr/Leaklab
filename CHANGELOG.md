@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(tournaments): filtro "Atenção" → "Aceitável" + multiway não fica "Pendente" pra sempre
+
+> O filtro da lista de mãos usava "Atenção" (hardcoded) para o nível que o resto do app chama de **Aceitável**. Alinhado ao veredito de 3 níveis via i18n (`common:verdict.*`), com a cor sky do nível Aceitável (antes amber), e "Todas"/"Pendente" i18n nas 3 locales. **Pendente:** deixava de contar spots **multiway** postflop como pendentes, eles nunca ganham `gto_label` (o solver é HU-only), então ficavam "aguardando solver" pra sempre. Agora multiway é informativo, não pendente. tsc 0.
+
 ### fix(tournaments): KPIs "Leaks críticos/relevantes" → "Erros/Aceitáveis" (alinha ao veredito)
 
 > As duas KPIs do torneio confundiam: "Leaks críticos" (43) e "Leaks relevantes" (30) eram na verdade **contagem de mãos por veredito** (mãos com Erro / mãos Aceitáveis), não leaks, e batiam de frente com a narrativa ("6 erros graves", que é o subconjunto clear_mistake). Renomeadas pro vocabulário de veredito de 3 níveis que o resto do app usa: **"Erros"** (mãos com veredito Erro) e **"Aceitáveis"** (mãos Aceitável), removendo o termo "leak" enganoso ("relevantes" eram decisões OK, não leaks). Cores alinhadas ao `VERDICT_META` (erro=red-400, aceitável=sky-400). i18n PT/EN/ES, tsc 0.
