@@ -1950,7 +1950,13 @@ _METRICS_GUIDE = (
     "reconheça que os fundamentos estão sólidos e NÃO invente um problema. "
     "6) Sob ICM/stack curto: score MENOR = jogou MELHOR sob pressão (elogie); score maior = piorou. "
     "7) Calibre o tom ao desempenho REAL: elogie de verdade quando é bom, cobre quando é ruim. "
-    "NUNCA force um tom preocupante quando os números são bons."
+    "NUNCA force um tom preocupante quando os números são bons. "
+    "8) IMPORTANTE: use os campos abaixo só para RACIOCINAR. No TEXTO final, NUNCA escreva os nomes "
+    "crus dos campos (avg_score, standard_pct, clear_pct, icm_breakdown, low, high, unknown, m_min, etc.). "
+    "Traduza para linguagem natural: avg_score = 'score médio' (ou 'nível de erro'); standard_pct = 'taxa de "
+    "decisões corretas' (ou '% de decisões dentro do padrão'); clear_pct = 'erros graves'; grupos de ICM "
+    "'low'/'high' = 'stack curto'/'stack profundo'; spots 'unknown' = 'spots sem cobertura'. Pode citar os "
+    "NÚMEROS (ex.: '93% de decisões corretas', 'score médio de 0.017'), mas nunca o nome técnico do campo."
 )
 
 _LANG_INSTRUCTIONS = {

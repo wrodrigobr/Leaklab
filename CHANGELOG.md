@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(llm): resumo do torneio não expõe mais nomes de variáveis internas
+
+> O resumo por IA vazava os nomes crus dos campos (`avg_score`, `standard_pct`, `low`/`high`, `unknown`) no texto pro jogador. Regra adicionada ao `_METRICS_GUIDE`: usar os campos só pra raciocinar, e no texto traduzir pra linguagem natural (`avg_score` → "score médio", `standard_pct` → "taxa de decisões corretas", `low`/`high` → "stack curto"/"stack profundo", `unknown` → "spots sem cobertura"). Os números podem aparecer, o nome técnico do campo não. Regera junto com o resumo (`clear_llm_summaries.py`). test_llm_explainer 19/19.
+
 ### fix(llm): resumo do torneio invertia o sentido das métricas (93% virava "preocupante")
 
 > O resumo por IA da sessão avaliava jogadores errado: chamava **93% de Standard% de "padrão preocupante"**, tratava **score baixo como ruim** (é o contrário: score é erro médio, menor = melhor), lia a melhora sob ICM como piora, e culpava o jogador por spots **"unknown"** (que são lacunas da NOSSA cobertura GTO, não erro do jogador). Causa: o prompt do Haiku não ancorava o sentido das métricas e ainda forçava "o principal leak" + "fase de deterioração", empurrando a IA a inventar problema. Novo `_METRICS_GUIDE` injetado nos prompts (`_call_llm_summary` + `_call_llm_narrative`): score menor = melhor, Standard% maior = melhor, zero erros graves = ótimo, "unknown" = limitação de cobertura (não culpar), leak só conta se score > 0.08, e tom calibrado ao desempenho real. Vale pros resumos NOVOS; os já salvos em `tournaments.llm_summary` precisam ser regerados. test_llm_explainer 19/19.
