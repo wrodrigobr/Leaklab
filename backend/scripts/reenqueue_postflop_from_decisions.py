@@ -26,6 +26,10 @@ from database.repositories import get_gto_node, enqueue_solver_spot
 
 _POSTFLOP = ('flop', 'turn', 'river')
 _APPLY = '--apply' in sys.argv
+# --force: enfileira MESMO se já há nó (reseta done→pending no enqueue_solver_spot → re-solve
+# fresco com o código atual). Útil quando o nó existe mas foi solvado com range/params antigos
+# (ex.: MP1 caiu no range wide) e o guard de qualidade do engine o rejeita no lookup.
+_FORCE = '--force' in sys.argv
 
 
 def _arg(flag):
@@ -81,7 +85,7 @@ def main():
                 eff_pot   = _effective_pot_type(spot.get('potType', ''), spot.get('preflopOpener', ''),
                                                 spot.get('preflop3bettor', ''), stack_bb)
                 primary, cov = _covered(street, pos, board, hero, stack_bb, facing_bb, eff_pot)
-                if cov:
+                if cov and not _FORCE:
                     already += 1
                     continue
                 # payload de solve (mesma forma do _enqueue_postflop_spots)
