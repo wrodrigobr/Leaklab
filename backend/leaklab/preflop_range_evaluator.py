@@ -109,11 +109,19 @@ def _recommended_action(cards: str, position: str, facing_size: float = 0.0,
             return "fold" if faces_3bet else "call"
         return "fold"
 
-    # Sem facing ou facing pequeno (steal/limp): lógica RFI/vs_limp original
+    # Sem facing ou facing pequeno (steal/limp): lógica RFI/vs_limp.
     if zone == "core_range":
-        return "raise" if position not in {"BB"} else "call"
+        # Mão forte ISO-raiseia por valor — inclusive na BB sobre um limp. AKs/pares grandes
+        # na BB NÃO dão só check/call num limp; iso-raise é a jogada padrão (era o bug: BB core
+        # recomendava "call", marcando o iso de AKs como erro).
+        return "raise"
     if zone == "borderline_range":
-        return "call" if position in {"BB", "SB"} else "raise"
+        # BB vê o flop de graça num pote limpado (check, não "call" — não há aposta a pagar);
+        # SB completa (call); demais posições abrem (RFI = raise). Um iso light da BB fica como
+        # ALTERNATIVA aceitável (zona borderline), não erro.
+        if position == "BB":
+            return "check"
+        return "call" if position == "SB" else "raise"
     # Mão fraca: BB pode check grátis; demais posições estão escolhendo não abrir — fold é correto.
     if facing_size == 0 and position == "BB":
         return "check"

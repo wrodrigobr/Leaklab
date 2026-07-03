@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(preflop): BB iso-raise sobre limp — mão forte não é mais marcada como erro
+
+> Spot BB vs SB-limp: um iso-raise de mão forte (AKs, pares grandes) na BB era marcado como **erro** porque o heurístico recomendava "call" pra toda BB core (`_recommended_action`). Corrigido: BB com mão core **iso-raiseia** (raise), borderline **checa** (vê o flop de graça, não "call" — não há aposta a pagar), fraca checa. Facing um raise DE VERDADE (≥2bb) segue inalterado. **Sizing:** o `facingLimp` não detectava o **complete do SB** (amount 0,5bb < threshold 0,9bb), então o iso caía na banda de OPEN (2–2,5bb) e flagrava 3bb como "grande demais"; threshold baixado pra 0,4bb (pega open-limp e complete do SB). Validado end-to-end na mão real (best_action raise, label standard, facingLimp True). Teste `test_bb_iso_limp`; decision_engine 33/33, sizing_advisor 29/29, recent_regressions 27/27.
+
 ### fix(gto): blindagem do insert (nunca rebaixa nó bom) + filtro "Pendente" → "Heurística"
 
 > **Blindagem (A):** `insert_gto_nodes` fazia `ON CONFLICT DO UPDATE` incondicional, então um re-solve pior sobrescrevia um nó bom compartilhado (lição do `--force`). Agora o `DO UPDATE` só aplica se o novo for **não-pior**: nunca troca estratégia boa por vazia, nunca rebaixa GTO Wizard (Nash) pra outra fonte, e nunca piora a exploitability. Cobre-se por construção contra perda de cobertura em re-solves. Teste `test_gto_insert_guard`. **Relabel (B):** o filtro da lista de mãos "⏱ Pendente (aguardando solver)" virou **"Heurística"** — postflop sem GTO (multiway, stack curto/push-fold, fora da cobertura) é analisado pelo engine, não está "aguardando", a maioria nunca será solvada por design. Inclui multiway na contagem (antes excluído). i18n PT/EN/ES. api_gto 42/42, gto_enrichment 57/57, tsc 0.

@@ -270,8 +270,12 @@ def extract_decision_points(hand: ParsedHand) -> List[HandState]:
         if street == 'preflop' and preflop_raises_faced == 0 and not hero_was_aggressor:
             bb_amt = (hand.bb or 0) or 1.0
             for a in actions_before:
+                # Num pote SEM raise, qualquer 'calls' de villain é limp/complete: open-limp
+                # (~1bb) OU complete do SB (~0,5bb). O threshold 0,4bb pega os dois (antes 0,9bb
+                # perdia o complete do SB → BB iso sobre SB-limp caía na banda de OPEN, flagrando
+                # 3bb como "grande demais").
                 if (a.street == 'preflop' and a.player != hero
-                        and a.action == 'calls' and (a.amount or 0) >= bb_amt * 0.9):
+                        and a.action == 'calls' and (a.amount or 0) >= bb_amt * 0.4):
                     facing_limp = True
                     break
 
