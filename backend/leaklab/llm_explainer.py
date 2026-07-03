@@ -766,11 +766,13 @@ def _call_llm_summary(ctx: dict, hero: str) -> str:
         "Analise as métricas do torneio abaixo e escreva um resumo em português "
         "de 4 parágrafos completos. "
         "Tom: direto, técnico mas acessível, como um coach falando com o aluno após a sessão. "
-        "Cubra obrigatoriamente estes 4 tópicos, um por parágrafo: "
-        "(1) visão geral da qualidade das decisões, "
-        "(2) o principal leak identificado, "
-        "(3) como o jogador se comportou sob pressão de ICM, "
-        "(4) um conselho concreto de foco para a próxima sessão. "
+        f"{_METRICS_GUIDE} "
+        "Cubra estes 4 tópicos, um por parágrafo: "
+        "(1) visão geral HONESTA da qualidade das decisões (elogie se foi boa, cobre se foi ruim), "
+        "(2) o principal leak SE houver um relevante (score acima de 0.08); se não houver, reconheça "
+        "que os fundamentos estão sólidos em vez de inventar um leak, "
+        "(3) como o jogador se comportou sob pressão de ICM (lembre: score menor = jogou melhor sob pressão), "
+        "(4) um conselho concreto de foco para a próxima sessão, proporcional ao que os números mostram. "
         "É obrigatório terminar o parágrafo 4 com uma frase de encerramento completa. "
         "NÃO use bullet points. Escreva em prosa fluida. "
         f"{_POKER_TERMS_EN} "
@@ -872,8 +874,9 @@ def _call_llm_narrative(ctx: dict) -> str:
         "Você é um coach de poker MTT. "
         "Com base nas métricas abaixo, escreva EXATAMENTE 2 ou 3 frases "
         "descrevendo o arco de qualidade desta sessão. "
-        "Seja específico: cite o padrão dominante de erros, a fase de maior deterioração "
-        "(se houver) e o impacto de ICM se relevante. "
+        f"{_METRICS_GUIDE} "
+        "Seja específico e HONESTO: se a sessão foi boa, diga que foi boa; só cite deterioração se ela "
+        "existir de fato nos números. Mencione o impacto de ICM só se for relevante. "
         "Use linguagem técnica e direta, como um coach falando ao vivo após a sessão. "
         f"{_POKER_TERMS_EN} "
         "NÃO use títulos, bullets ou formatação Markdown. Apenas as frases, ponto final."
@@ -1929,6 +1932,25 @@ _POKER_TERMS_EN = (
     "'sempre'/'misto'/'às vezes' (não 'always'/'mixed'/'sometimes'), 'execução na mesa' (não "
     "'physical play'). NUNCA comece uma frase ou item com rótulo de frequência em inglês como "
     "'Weekly:', 'Daily:', 'Monthly:' — use 'Semanal:', 'Diário:', 'Mensal:'."
+)
+
+# Guia de interpretação das métricas — evita que o modelo INVERTA o sentido dos números
+# (o caso do resumo que chamou 93% de "preocupante" e disse que score menor era pior).
+_METRICS_GUIDE = (
+    "COMO LER AS MÉTRICAS (não inverta o sentido): "
+    "1) 'avg_score'/score é o ERRO MÉDIO por decisão: MENOR é MELHOR (0 = ótimo; até 0.08 = correto; "
+    "0.08 a 0.18 = aceitável; acima de 0.18 = erro). Score baixo é elogio, NUNCA trate score baixo como ruim "
+    "ou como 'margem mínima'. "
+    "2) 'standard_pct' é a % de decisões corretas: MAIOR é MELHOR (>=75% = sessão sólida, 60 a 75% = regular, "
+    "<60% = abaixo do esperado). 93% é uma sessão sólida, não preocupante. "
+    "3) 'clear_pct' é a % de erros GRAVES: zero é EXCELENTE, não um defeito. Não trate 'zero erros graves' como falha. "
+    "4) Spots/leaks rotulados 'unknown' são situações SEM cobertura GTO nossa (limitação do NOSSO sistema), "
+    "NÃO erro do jogador: não culpe o jogador por eles nem os chame de leak. "
+    "5) Um leak só é relevante se o score dele for ALTO (acima de 0.08). Se o maior leak tiver score baixo, "
+    "reconheça que os fundamentos estão sólidos e NÃO invente um problema. "
+    "6) Sob ICM/stack curto: score MENOR = jogou MELHOR sob pressão (elogie); score maior = piorou. "
+    "7) Calibre o tom ao desempenho REAL: elogie de verdade quando é bom, cobre quando é ruim. "
+    "NUNCA force um tom preocupante quando os números são bons."
 )
 
 _LANG_INSTRUCTIONS = {

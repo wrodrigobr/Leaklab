@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(llm): resumo do torneio invertia o sentido das métricas (93% virava "preocupante")
+
+> O resumo por IA da sessão avaliava jogadores errado: chamava **93% de Standard% de "padrão preocupante"**, tratava **score baixo como ruim** (é o contrário: score é erro médio, menor = melhor), lia a melhora sob ICM como piora, e culpava o jogador por spots **"unknown"** (que são lacunas da NOSSA cobertura GTO, não erro do jogador). Causa: o prompt do Haiku não ancorava o sentido das métricas e ainda forçava "o principal leak" + "fase de deterioração", empurrando a IA a inventar problema. Novo `_METRICS_GUIDE` injetado nos prompts (`_call_llm_summary` + `_call_llm_narrative`): score menor = melhor, Standard% maior = melhor, zero erros graves = ótimo, "unknown" = limitação de cobertura (não culpar), leak só conta se score > 0.08, e tom calibrado ao desempenho real. Vale pros resumos NOVOS; os já salvos em `tournaments.llm_summary` precisam ser regerados. test_llm_explainer 19/19.
+
 ### docs: ACR + nova seção "Modo Treino" (Leak Trainer) na documentação
 
 > **ACR/WPN** entrou na tabela de sites suportados (`/docs`), com a nota de que o buy-in vem do nome do arquivo e o prêmio/ROI vem do arquivo de resultados `.ots`. Nova seção **"Modo Treino"** documenta o Leak Trainer em conceito (regra "explica o quê, não o como interno"): a jornada **Treinar → Jogar → Validar**, o seletor de spot (adaptativo / por leak / fundamentos), os níveis de domínio (Bronze→Prata→Ouro→Diamante) com decaimento por revisão espaçada, as missões diárias no fuso local, e o princípio dos dois eixos (treino é prática, só o jogo real move o ELO). i18n PT/EN/ES, tsc 0.
