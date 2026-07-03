@@ -462,6 +462,32 @@ def build_verification_email_html(username: str, code: str, minutes: int = 15) -
     )
 
 
+def build_password_reset_email_html(username: str, code: str, minutes: int = 15) -> str:
+    """Email de redefinição de senha com o código em destaque."""
+    base_url = os.environ.get("APP_BASE_URL", "https://grindlabpoker.com")
+    code_box = (
+        f'<table role="presentation" cellpadding="0" cellspacing="0" style="margin:8px 0 22px 0;">'
+        f'<tr><td style="background:{_C_BG};border:1px solid {_C_BORDER};border-radius:12px;padding:22px 40px;">'
+        f'<span style="font-family:\'Courier New\',monospace;font-size:38px;font-weight:800;'
+        f'letter-spacing:.32em;color:{_C_TEAL};">{code}</span></td></tr></table>'
+    )
+    inner = (
+        _eyebrow("Redefinição de senha") + _h1("Redefina sua senha") + _greeting(username)
+        + f'<p style="margin:0 0 8px 0;font-size:16px;line-height:1.7;color:{_C_BODY};">'
+          f'Recebemos um pedido para redefinir a senha da sua conta GrindLab. '
+          f'Use o código abaixo para criar uma nova senha:</p>'
+        + code_box
+        + f'<p style="margin:0;font-size:14px;line-height:1.6;color:{_C_MUTED};">'
+          f'O código expira em {minutes} minutos. Se você não pediu para redefinir a senha, '
+          f'é só ignorar este email, sua senha atual continua valendo.</p>'
+    )
+    return _email_document(
+        title="Redefinição de senha · GrindLab", inner_html=inner, base_url=base_url,
+        footer_note="Você recebeu este email porque um pedido de redefinição de senha foi feito para esta conta.",
+        preheader=f"Seu código de redefinição: {code}",
+    )
+
+
 def build_welcome_email_html(username: str) -> str:
     """Email de boas-vindas enviado após a verificação concluída."""
     base_url = os.environ.get("APP_BASE_URL", "https://grindlabpoker.com")
@@ -521,6 +547,12 @@ def send_welcome_email(to_email: str, username: str) -> bool:
     """Envia o email de boas-vindas após a conta ser verificada. True se enviado."""
     html = build_welcome_email_html(username)
     return send_transactional_email(to_email, "Bem-vindo à GrindLab", html)
+
+
+def send_password_reset_email(to_email: str, username: str, code: str, minutes: int = 15) -> bool:
+    """Envia o código de redefinição de senha. True se enviado."""
+    html = build_password_reset_email_html(username, code, minutes)
+    return send_transactional_email(to_email, f"Seu código de redefinição: {code}", html)
 
 
 # ── Win-back (reengajamento de inativos) ─────────────────────────────────────

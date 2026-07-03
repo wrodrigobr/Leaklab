@@ -74,7 +74,7 @@ from leaklab.report_generator import build_html_report, generate_pdf_bytes
 from leaklab.email_digest import (
     run_weekly_digest, verify_unsub_token, send_transactional_email,
     verify_email_unsub_token, send_admin_email, send_admin_email_bulk,
-    send_verification_email, send_welcome_email, run_winback,
+    send_verification_email, send_welcome_email, send_password_reset_email, run_winback,
 )
 
 from database.schema import init_db
@@ -591,6 +591,57 @@ def change_password():
     if not change_user_password(g.user_id, current_pw, new_pw):
         return jsonify({'error': 'Senha atual incorreta'}), 403
     return jsonify({'ok': True})
+
+
+@app.route('/auth/forgot-password', methods=['POST'])
+@limiter.limit("5 per hour")
+def forgot_password():
+    """Dispara o código de redefinição de senha por email. Resposta SEMPRE genérica
+    (200) — não vaza quais emails existem (evita enumeração). Só envia de fato se o
+    email existir e houver SMTP configurado; reusa as colunas do 2FA de cadastro."""
+    d = request.get_json(silent=True) or {}
+    email = (d.get('email') or '').strip().lower()
+    generic = jsonify({'ok': True})
+    if not email or not _email_verification_enabled():
+        return generic, 200
+    user = get_user_by_email(email)
+    if user:
+        try:
+            from datetime import datetime, timedelta
+            code = _gen_verification_code()
+            expires = (datetime.utcnow() + timedelta(minutes=_VERIFICATION_TTL_MIN)).strftime("%Y-%m-%d %H:%M:%S")
+            set_verification_code(user['id'], code, expires)
+            send_password_reset_email(email, user.get('username', ''), code, _VERIFICATION_TTL_MIN)
+        except Exception:
+            log.exception("forgot-password: falha ao emitir reset para %s", email)
+    return generic, 200
+
+
+@app.route('/auth/reset-password', methods=['POST'])
+@limiter.limit("10 per hour")
+def reset_password():
+    """Redefine a senha com o código enviado por email. Não revela se o email existe:
+    'not_found' vira o mesmo 'código inválido'."""
+    from database.repositories import reset_password_with_code
+    d = request.get_json(silent=True) or {}
+    email  = (d.get('email') or '').strip().lower()
+    code   = (d.get('code') or '').strip()
+    new_pw = d.get('new_password') or ''
+    if len(new_pw) < 8:
+        return jsonify({'error': 'A nova senha deve ter pelo menos 8 caracteres', 'code': 'weak'}), 400
+    if not email or not code:
+        return jsonify({'error': 'Código inválido', 'code': 'invalid'}), 400
+    res = reset_password_with_code(email, code, new_pw)
+    st = res.get('status')
+    if st == 'ok':
+        return jsonify({'ok': True})
+    errmap = {
+        'expired':  ('O código expirou. Solicite um novo.', 'expired', 400),
+        'too_many': ('Muitas tentativas. Solicite um novo código.', 'too_many', 429),
+    }
+    # not_found e invalid caem no genérico "código inválido" (não vaza inexistência do email)
+    msg, ecode, http = errmap.get(st, ('Código inválido', 'invalid', 400))
+    return jsonify({'error': msg, 'code': ecode}), http
 
 
 @app.route('/student/coach', methods=['DELETE'])

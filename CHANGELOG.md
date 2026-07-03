@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(auth): "esqueci a senha" — reset por código de email (#39 do backlog)
+
+> Faltava recuperação de senha (só existia a troca autenticada em `/auth/change-password`). Agora tem o fluxo "esqueci a senha", **reusando 100% a infra do 2FA de cadastro** (Brevo LIVE + colunas `verification_code`/`expires`/`attempts`, sem migração nova). Backend: `reset_password_with_code(email, code, new_password)` (valida o código, troca a senha, limpa o código e marca o email verificado — o código provou a posse), `build_password_reset_email_html` + `send_password_reset_email`, e os endpoints `POST /auth/forgot-password` (rate-limit 5/h, **resposta SEMPRE genérica 200** — não vaza quais emails existem) e `POST /auth/reset-password` (rate-limit 10/h; `not_found` vira o mesmo "código inválido"). Gate: só dispara com SMTP configurado. Frontend: link "Esqueci a senha" no Login (antes morto) → tela de email → tela de código + nova senha → banner de sucesso; `forgotPassword`/`resetPassword` no api.ts; i18n PT/EN/ES. Código de 6 dígitos (consistente com o 2FA), não link. Testes `test_password_reset` (5). tsc 0, api 44/44.
+
 ### feat(scripts): reprocess_tournament — re-analisa um torneio do raw_text (pós-fix do parser)
 
 > Depois do fix do parser (bb em milhar), as decisões dos 3 torneios GG já gravadas continuam em FICHAS (stack_bb/potBb/hash corrompidos). Novo `scripts/reprocess_tournament.py --tid <T> --apply` re-parseia o `raw_text` guardado com o parser atual, reconstrói as decisões e faz `save_decisions` (DELETE+insert → substitui), depois roda preflop sync + reconcile. Tem sanity gate: aborta se ALGUMA mão ainda ficar sem bb (o formato não é coberto). Dry-run mostra os stacks em BB provando que saíram normalizados. Sequência pós-fix por torneio afetado: `reprocess_tournament --apply` → `reenqueue_postflop_from_decisions --tid` → `drain_solver_queue` → `resync_postflop_gto --apply`. Validado em dev (400 mãos, stacks 25-37bb, sem bb=0).

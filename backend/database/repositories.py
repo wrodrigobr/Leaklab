@@ -238,6 +238,42 @@ def mark_email_verified(user_id: int) -> None:
         conn.close()
 
 
+def reset_password_with_code(email: str, code: str, new_password: str) -> dict:
+    """Reset de senha via código enviado por email ("esqueci a senha"). Reusa as MESMAS
+    colunas do 2FA de cadastro (verification_code/expires/attempts). Valida o código e,
+    se ok, troca a senha, limpa o código e marca o email como verificado (o código provou
+    a posse do email). Retorna {'status': not_found|expired|too_many|invalid|ok}; em
+    'invalid' incrementa o contador de tentativas."""
+    from datetime import datetime
+    conn = get_conn()
+    try:
+        row = _fetchone(conn, _adapt("SELECT * FROM users WHERE email = ?"), (email,))
+        if not row:
+            return {'status': 'not_found'}
+        u = dict(row)
+        attempts = int(u.get('verification_attempts') or 0)
+        if attempts >= 6:
+            return {'status': 'too_many'}
+        exp = u.get('verification_expires_at')
+        if not exp or _parse_ts(exp) is None or _parse_ts(exp) < datetime.utcnow():
+            return {'status': 'expired'}
+        stored = (u.get('verification_code') or '').strip()
+        if not stored or stored != (code or '').strip():
+            conn.execute(_adapt(
+                "UPDATE users SET verification_attempts = verification_attempts + 1 WHERE id = ?"
+            ), (u['id'],))
+            conn.commit()
+            return {'status': 'invalid', 'remaining': max(0, 6 - (attempts + 1))}
+        conn.execute(_adapt(
+            "UPDATE users SET password_hash = ?, email_verified = 1, verification_code = NULL, "
+            "verification_expires_at = NULL, verification_attempts = 0 WHERE id = ?"
+        ), (_hash_password(new_password), u['id']))
+        conn.commit()
+        return {'status': 'ok', 'user': u}
+    finally:
+        conn.close()
+
+
 # ── Atividade + Win-back (reengajamento de inativos) ─────────────────────────
 
 def touch_activity(user_id: int) -> None:

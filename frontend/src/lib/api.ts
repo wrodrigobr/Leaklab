@@ -137,6 +137,19 @@ export const auth = {
       body: JSON.stringify({ current_password, new_password }),
     }),
 
+  // Esqueci a senha: dispara o código por email. Resposta sempre genérica (não vaza email).
+  forgotPassword: (email: string) =>
+    request<{ ok: boolean }>("/auth/forgot-password", {
+      method: "POST",
+      body: JSON.stringify({ email }),
+    }),
+
+  resetPassword: (email: string, code: string, new_password: string) =>
+    request<{ ok: boolean }>("/auth/reset-password", {
+      method: "POST",
+      body: JSON.stringify({ email, code, new_password }),
+    }),
+
   updatePhone: (phone: string | null) =>
     request<{ ok: boolean; phone: string | null }>("/profile/phone", {
       method: "PATCH",

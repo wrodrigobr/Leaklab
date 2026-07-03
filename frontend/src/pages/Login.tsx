@@ -27,6 +27,12 @@ const Login = () => {
   const [code, setCode] = useState("");
   const [resent, setResent] = useState(false);
 
+  // Esqueci a senha: 'email' (pede o email) | 'reset' (código + nova senha) | null.
+  const [forgotMode, setForgotMode] = useState<null | "email" | "reset">(null);
+  const [resetCode, setResetCode] = useState("");
+  const [newPw, setNewPw] = useState("");
+  const [resetDone, setResetDone] = useState(false);
+
   useEffect(() => {
     if (ref) setTab("register");
   }, [ref]);
@@ -99,6 +105,45 @@ const Login = () => {
         already: t("verify.errAlready"),
       };
       setError((e2.code && map[e2.code]) || e2.message || t("verify.errInvalid"));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const submitForgot = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    setLoading(true);
+    try {
+      await authApi.forgotPassword(email);
+    } catch {
+      /* silencioso: a resposta é sempre genérica, não vaza se o email existe */
+    } finally {
+      setLoading(false);
+      setForgotMode("reset"); // sempre avança pra tela do código
+    }
+  };
+
+  const submitReset = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    setLoading(true);
+    try {
+      await authApi.resetPassword(email, resetCode.trim(), newPw);
+      setForgotMode(null);
+      setResetDone(true);
+      setPassword("");
+      setResetCode("");
+      setNewPw("");
+    } catch (err: unknown) {
+      const e2 = err as { code?: string; message?: string };
+      const map: Record<string, string> = {
+        invalid: t("forgot.errInvalid"),
+        expired: t("forgot.errExpired"),
+        too_many: t("forgot.errTooMany"),
+        weak: t("forgot.errWeak"),
+      };
+      setError((e2.code && map[e2.code]) || e2.message || t("forgot.errInvalid"));
     } finally {
       setLoading(false);
     }
@@ -199,6 +244,108 @@ const Login = () => {
               </span>
             </div>
           </div>
+        ) : forgotMode ? (
+          /* ── Esqueci a senha (email → código + nova senha) ──────────────── */
+          <div className="rounded-xl border border-border bg-hud-surface p-6 shadow-elevated">
+            <div className="mb-4 flex flex-col items-center text-center">
+              <span className="mb-3 inline-flex size-11 items-center justify-center rounded-full bg-primary/10 text-primary">
+                <MailCheck className="size-5" />
+              </span>
+              <h2 className="font-heading text-lg font-bold text-foreground">{t("forgot.title")}</h2>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {forgotMode === "email" ? t("forgot.subEmail") : t("forgot.subReset")}
+              </p>
+            </div>
+
+            {forgotMode === "email" ? (
+              <form onSubmit={submitForgot} className="space-y-4">
+                <div className="space-y-1.5">
+                  <label className="font-mono text-[10px] font-bold uppercase tracking-widest-2 text-muted-foreground">
+                    {t("login.email")}
+                  </label>
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="usuario@email.com"
+                    required
+                    autoFocus
+                    autoComplete="email"
+                    className={inputClass}
+                  />
+                </div>
+                {error && (
+                  <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+                    {error}
+                  </p>
+                )}
+                <button
+                  type="submit"
+                  disabled={loading || !email}
+                  className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-md bg-primary font-mono text-xs font-bold uppercase tracking-widest-2 text-primary-foreground transition-all hover:bg-primary-glow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+                >
+                  {loading && <Loader2 className="size-4 animate-spin" aria-hidden />}
+                  {loading ? t("forgot.sending") : t("forgot.sendCode")}
+                </button>
+              </form>
+            ) : (
+              <form onSubmit={submitReset} className="space-y-4">
+                <div className="space-y-1.5">
+                  <label className="font-mono text-[10px] font-bold uppercase tracking-widest-2 text-muted-foreground">
+                    {t("verify.codeLabel")}
+                  </label>
+                  <input
+                    value={resetCode}
+                    onChange={(e) => setResetCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    placeholder="000000"
+                    required
+                    autoFocus
+                    className={`${inputClass} text-center font-mono text-lg tracking-[0.4em]`}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="font-mono text-[10px] font-bold uppercase tracking-widest-2 text-muted-foreground">
+                    {t("forgot.newPassword")}
+                  </label>
+                  <input
+                    type="password"
+                    value={newPw}
+                    onChange={(e) => setNewPw(e.target.value)}
+                    placeholder="••••••••"
+                    required
+                    minLength={8}
+                    autoComplete="new-password"
+                    className={inputClass}
+                  />
+                </div>
+                {error && (
+                  <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+                    {error}
+                  </p>
+                )}
+                <button
+                  type="submit"
+                  disabled={loading || resetCode.length < 6 || newPw.length < 8}
+                  className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-md bg-primary font-mono text-xs font-bold uppercase tracking-widest-2 text-primary-foreground transition-all hover:bg-primary-glow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+                >
+                  {loading && <Loader2 className="size-4 animate-spin" aria-hidden />}
+                  {loading ? t("forgot.resetting") : t("forgot.reset")}
+                </button>
+              </form>
+            )}
+
+            <div className="mt-4 text-[11px]">
+              <button
+                type="button"
+                onClick={() => { setForgotMode(null); setError(""); setResetCode(""); setNewPw(""); }}
+                className="inline-flex items-center gap-1 font-mono uppercase tracking-widest-2 text-muted-foreground hover:text-foreground"
+              >
+                <ArrowLeft className="size-3" /> {t("forgot.backToLogin")}
+              </button>
+            </div>
+          </div>
         ) : (
           /* ── Login / Cadastro ───────────────────────────────────────────── */
           <div className="rounded-xl border border-border bg-hud-surface p-6 shadow-elevated">
@@ -222,6 +369,12 @@ const Login = () => {
             {linkedCoach && (
               <p className="mb-4 rounded-md border border-primary/30 bg-primary/10 px-3 py-2 text-xs text-primary">
                 {t("referral.linkedTo", { coach: linkedCoach })}
+              </p>
+            )}
+
+            {resetDone && (
+              <p className="mb-4 rounded-md border border-primary/30 bg-primary/10 px-3 py-2 text-xs text-primary">
+                {t("forgot.done")}
               </p>
             )}
 
@@ -306,6 +459,17 @@ const Login = () => {
                   autoComplete={tab === "login" ? "current-password" : "new-password"}
                   className={inputClass}
                 />
+                {tab === "login" && (
+                  <div className="text-right">
+                    <button
+                      type="button"
+                      onClick={() => { setForgotMode("email"); setError(""); setResetDone(false); }}
+                      className="font-mono text-[10px] uppercase tracking-widest-2 text-muted-foreground hover:text-primary"
+                    >
+                      {t("login.forgotPassword")}
+                    </button>
+                  </div>
+                )}
               </div>
 
               {error && (
