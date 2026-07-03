@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(scripts): reprocess_tournament — re-analisa um torneio do raw_text (pós-fix do parser)
+
+> Depois do fix do parser (bb em milhar), as decisões dos 3 torneios GG já gravadas continuam em FICHAS (stack_bb/potBb/hash corrompidos). Novo `scripts/reprocess_tournament.py --tid <T> --apply` re-parseia o `raw_text` guardado com o parser atual, reconstrói as decisões e faz `save_decisions` (DELETE+insert → substitui), depois roda preflop sync + reconcile. Tem sanity gate: aborta se ALGUMA mão ainda ficar sem bb (o formato não é coberto). Dry-run mostra os stacks em BB provando que saíram normalizados. Sequência pós-fix por torneio afetado: `reprocess_tournament --apply` → `reenqueue_postflop_from_decisions --tid` → `drain_solver_queue` → `resync_postflop_gto --apply`. Validado em dev (400 mãos, stacks 25-37bb, sem bb=0).
+
 ### fix(parser): GGPoker blind com separador de milhar — RAIZ dos nós GTO degenerados
 
 > **Bug-raiz de toda a saga do "pot em fichas".** GGPoker em níveis altos escreve o blind com separador de milhar: `Level14(1,500/3,000(350))`. O `SB_RE` usava `\d+`, que parava no `1,500` → `sb`/`bb` = `None`. Sem o bb, o pipeline normaliza tudo por `bb or 1` → **potBb, stack_bb e facing_bb ficam em FICHAS** (`pipeline.py:107`), o SPR colapsa e o solver força all-in → **nó GTO degenerado** (exploit≈0.01, ev_bb milhares). E não era só resíduo: **toda análise nova dessas mãos regenerava degenerado** (path ao vivo tem o mesmo cálculo). Diagnóstico em prod (`scripts/diag_missing_bb.py`): **190 mãos sem bb em 3 torneios** (todos GG com blind vírgula). Corrigido: `SB_RE` aceita separador de milhar (vírgula/espaço) e converte via `_pg_num` (mesma normalização já usada nos amounts do GG). Testes `test_gg_blinds_thousands` (3: regex + parser extrai 1500/3000 + potBb fica em BB). Parsers existentes intactos: partygaming 8/8, acr 9/9, bounty 6/6, tournament 9/9, multi_decision 14/14. **Toda vez que entrar parser de novo site, validar a extração de sb/bb (thousands + ante) é obrigatório** — é o que evita a classe inteira do degenerado.
