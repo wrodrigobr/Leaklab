@@ -65,7 +65,10 @@ BOARD_RE        = re.compile(r"\[([^\]]+)\]")
 # Blinds no header: "(10/20)" (PokerStars) e "(400/800(120))" (GGPoker, com ante aninhado antes
 # do ")"). O 3º grupo opcional captura o ante. Sem o ante opcional, o GG não casava → bb=None e o
 # display tratava 400/800 como 4bb/8bb (caía num default bb=100).
-SB_RE           = re.compile(r"\((\d+(?:\.\d+)?)/(\d+(?:\.\d+)?)(?:\((\d+(?:\.\d+)?)\))?\)")
+# Aceita separador de milhar (vírgula/espaço): GG em níveis altos escreve "Level14(1,500/3,000(350))"
+# — sem isto o \d+ parava no "1,500" → bb=None → potBb/stack_bb em FICHAS → nós GTO degenerados.
+# Converter os grupos SEMPRE via _pg_num (tira vírgula/espaço) antes do float.
+SB_RE           = re.compile(r"\((\d[\d, ]*(?:\.\d+)?)/(\d[\d, ]*(?:\.\d+)?)(?:\((\d[\d, ]*(?:\.\d+)?)\))?\)")
 ACTION_LINE_RE  = re.compile(
     r"^(?P<player>[^:]+): (?P<action>folds|checks|calls|bets|raises|all-in|shows|mucks)"
     r"(?: .*?(?P<amount>\d[\d,]*(?:\.\d+)?))?",   # aceita separador de milhar do GG (1,109)
@@ -184,8 +187,8 @@ def parse_hand(raw_text: str, id_re: re.Pattern | None = None, site: str = "poke
     sb = bb = None
     m2 = SB_RE.search(raw_text)
     if m2:
-        sb = float(m2.group(1))
-        bb = float(m2.group(2))
+        sb = _pg_num(m2.group(1))   # _pg_num tira vírgula/espaço de milhar (GG: "1,500" → 1500.0)
+        bb = _pg_num(m2.group(2))
 
     players: List[str] = []
     seats: List[dict] = []
