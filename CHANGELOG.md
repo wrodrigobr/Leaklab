@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(tournaments): KPIs "Leaks críticos/relevantes" → "Erros/Aceitáveis" (alinha ao veredito)
+
+> As duas KPIs do torneio confundiam: "Leaks críticos" (43) e "Leaks relevantes" (30) eram na verdade **contagem de mãos por veredito** (mãos com Erro / mãos Aceitáveis), não leaks, e batiam de frente com a narrativa ("6 erros graves", que é o subconjunto clear_mistake). Renomeadas pro vocabulário de veredito de 3 níveis que o resto do app usa: **"Erros"** (mãos com veredito Erro) e **"Aceitáveis"** (mãos Aceitável), removendo o termo "leak" enganoso ("relevantes" eram decisões OK, não leaks). Cores alinhadas ao `VERDICT_META` (erro=red-400, aceitável=sky-400). i18n PT/EN/ES, tsc 0.
+
 ### fix(llm): resumo do torneio não expõe mais nomes de variáveis internas
 
 > O resumo por IA vazava os nomes crus dos campos (`avg_score`, `standard_pct`, `low`/`high`, `unknown`) no texto pro jogador. Regra adicionada ao `_METRICS_GUIDE`: usar os campos só pra raciocinar, e no texto traduzir pra linguagem natural (`avg_score` → "score médio", `standard_pct` → "taxa de decisões corretas", `low`/`high` → "stack curto"/"stack profundo", `unknown` → "spots sem cobertura"). Os números podem aparecer, o nome técnico do campo não. Regera junto com o resumo (`clear_llm_summaries.py`). test_llm_explainer 19/19.

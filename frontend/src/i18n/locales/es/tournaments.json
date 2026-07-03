@@ -77,8 +77,8 @@
     "all": "Todas",
     "stats": {
       "handsPlayed": "Manos jugadas",
-      "criticalLeaks": "Leaks críticos",
-      "relevantLeaks": "Leaks relevantes",
+      "criticalLeaks": "Errores",
+      "relevantLeaks": "Aceptables",
       "avgScore": "Score promedio"
     },
     "narrative": {

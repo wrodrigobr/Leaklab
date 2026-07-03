@@ -422,8 +422,8 @@ const TournamentDetail = () => {
           <section className="grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-border bg-border md:grid-cols-4">
             {[
               { label: t("detail.stats.handsPlayed"),   value: stats.total.toString() },
-              { label: t("detail.stats.criticalLeaks"), value: stats.critical.toString(), accent: "text-destructive" },
-              { label: t("detail.stats.relevantLeaks"), value: stats.major.toString(),    accent: "text-warning" },
+              { label: t("detail.stats.criticalLeaks"), value: stats.critical.toString(), accent: "text-red-400" },
+              { label: t("detail.stats.relevantLeaks"), value: stats.major.toString(),    accent: "text-sky-400" },
               { label: t("detail.stats.avgScore"),      value: tournament?.avg_score != null ? tournament.avg_score.toFixed(4) : "—", accent: "text-destructive" },
             ].map((s, i) => (
               <div key={i} className="bg-hud-surface p-5">
