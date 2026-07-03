@@ -8229,15 +8229,22 @@ def admin_reanalyze_preflop_labels():
                         continue
                     seen.add(dedup)
 
+                    # Escopar por tournament_id: hand_id NÃO é único entre torneios/usuários
+                    # (dois jogadores importam o mesmo torneio = mesmo hand_id). Sem o escopo,
+                    # o match colide e relabela/reposiciona a decisão de OUTRA conta.
                     db_row = conn.execute(
-                        "SELECT id, label FROM decisions "
-                        "WHERE hand_id = ? AND street = 'preflop' AND action_taken = ? LIMIT 1",
-                        (hand_id, act)
+                        "SELECT id, label, position, vs_position FROM decisions "
+                        "WHERE tournament_id = ? AND hand_id = ? AND street = 'preflop' "
+                        "AND action_taken = ? LIMIT 1",
+                        (tid, hand_id, act)
                     ).fetchone()
                     if not db_row:
                         continue
 
-                    did, old_label = db_row['id'], db_row['label']
+                    did       = db_row['id']
+                    old_label = db_row['label']
+                    old_pos   = db_row['position']
+                    old_vs    = db_row['vs_position']
                     total_checked += 1
 
                     try:
@@ -8246,16 +8253,41 @@ def admin_reanalyze_preflop_labels():
                     except Exception:
                         continue
 
+                    # Posição/vs_position frescos (o pipeline já usa o _infer_position
+                    # corrigido, que exclui o assento "out of hand"). Corrige decisões
+                    # gravadas antes do fix, cuja posição defasada quebrava o lookup GTO
+                    # (ex.: BB defendendo virava "UTG" → caía na heurística).
+                    new_pos = pos or old_pos
+                    new_vs  = (result.get('preflop_gto') or {}).get('vs_position') or old_vs
+
+                    def _real(v):  # posição concreta (ignora vazio/UNKNOWN)
+                        return v and str(v).upper() != 'UNKNOWN'
+                    def _diff(a, b):  # difere de fato (case-insensitive)
+                        return str(a or '').upper() != str(b or '').upper()
+
+                    sets, params = [], []
                     if new_label != old_label:
+                        sets.append("label = ?");       params.append(new_label)
+                    # Só corrige posição/vs para um valor CONCRETO e realmente diferente:
+                    # nunca rebaixa uma posição conhecida para UNKNOWN nem gera churn de caixa.
+                    if _real(new_pos) and _diff(new_pos, old_pos):
+                        sets.append("position = ?");    params.append(new_pos)
+                    if _real(new_vs) and _diff(new_vs, old_vs):
+                        sets.append("vs_position = ?"); params.append(new_vs)
+
+                    if sets:
+                        params.append(did)
                         conn.execute(
-                            "UPDATE decisions SET label = ? WHERE id = ?",
-                            (new_label, did)
+                            f"UPDATE decisions SET {', '.join(sets)} WHERE id = ?",
+                            tuple(params)
                         )
                         total_updated += 1
                         affected_ids.add(tid)
                         changes.append({
-                            'tid': tid, 'hand_id': hand_id,
-                            'action': act, 'old': old_label, 'new': new_label
+                            'tid': tid, 'hand_id': hand_id, 'action': act,
+                            'old': old_label, 'new': new_label,
+                            'pos': f"{old_pos}->{new_pos}" if new_pos != old_pos else old_pos,
+                            'vs':  f"{old_vs}->{new_vs}" if new_vs != old_vs else old_vs,
                         })
 
         if affected_ids:
