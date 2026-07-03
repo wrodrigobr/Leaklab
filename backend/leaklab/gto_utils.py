@@ -28,6 +28,18 @@ RANK_IDX = {r: i for i, r in enumerate(RANKS)}
 
 VALID_POSITIONS = {'UTG', 'UTG1', 'UTG2', 'LJ', 'HJ', 'CO', 'BTN', 'SB', 'BB'}
 
+# Posições de mesa cheia (9/10-max) → canônico do GW/GTO. MESMO mapa do pipeline preflop
+# ('MP1'=4ª ação=LJ). Sem isso, spots postflop com hero em MP1/MP2 eram REJEITADOS no insert
+# do nó (position inválido) e ficavam sem gto_label pra sempre. Só estes 3 (não têm nós
+# existentes → normalizar não muda hash de nó já solvado).
+_POSITION_NORM: dict[str, str] = {'MP1': 'LJ', 'MP2': 'HJ', 'MP': 'LJ'}
+
+
+def normalize_position(pos: str | None) -> str:
+    """Normaliza a posição para o canônico do GTO (MP1→LJ, MP2→HJ, MP→LJ). Idempotente."""
+    p = (pos or '').upper().strip()
+    return _POSITION_NORM.get(p, p)
+
 _ACTION_NORM: dict[str, str] = {
     'shove': 'jam', 'allin': 'jam', 'all-in': 'jam', 'all_in': 'jam', 'all in': 'jam',
     'open': 'raise', 'openraise': 'raise',
@@ -127,7 +139,7 @@ def compute_spot_hash(
     """
     canonical = {
         "street":       street.lower(),
-        "position":     position.upper(),
+        "position":     normalize_position(position),
         "board":        sorted(board),
         "hand":         sorted(normalize_cards(hero_hand)),
         "stack_bucket": stack_bucket(hero_stack_bb),

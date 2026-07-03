@@ -8848,7 +8848,7 @@ def _enqueue_postflop_spots(results: list) -> None:
     Enfileira na gto_solver_queue todos os spots postflop do upload que ainda
     não existam em gto_nodes. Roda em background — não bloqueia a resposta ao usuário.
     """
-    from leaklab.gto_utils import compute_spot_hash
+    from leaklab.gto_utils import compute_spot_hash, normalize_position
     from database.repositories import get_gto_node, enqueue_solver_spot
     import json as _json
 
@@ -8862,7 +8862,7 @@ def _enqueue_postflop_spots(results: list) -> None:
             ctx    = d.get('context', {})
             board  = d.get('board', [])
             hero_h = d.get('hero_cards', [])
-            pos    = spot.get('position', ctx.get('position', '')).upper()
+            pos    = normalize_position(spot.get('position', ctx.get('position', '')))
             stack  = float(spot.get('effectiveStackBb') or ctx.get('heroStackBb') or 20)
             _level_bb = float(d.get('level_bb') or 1) or 1
             facing = round(float(spot.get('facingSize') or 0) / _level_bb, 2)
@@ -8873,7 +8873,7 @@ def _enqueue_postflop_spots(results: list) -> None:
                 continue
 
             from leaklab.gto_solver import _DEFAULT_RANGES, _DEFAULT_RANGE_WIDE, _priority, _solver_params_for_stack
-            vs_pos   = spot.get('villainPosition', ctx.get('vsPosition', '')).upper()
+            vs_pos   = normalize_position(spot.get('villainPosition', ctx.get('vsPosition', '')))
             # pot em BB: potSize vem em FICHAS (igual facingSize) → dividir por _level_bb.
             # Sem isso o pot_bb ficava ~100x inflado → SPR colapsava → o solver forçava
             # all-in (estratégia degenerada + exploitability 0.0% fake). Mesmo /_level_bb

@@ -271,6 +271,21 @@ def test_valid_gto_actions_set():
         _ok(f'valid_action_{act}', act in VALID_GTO_ACTIONS)
 
 
+def test_normalize_position_fullring():
+    """MP1/MP2/MP → canônico (LJ/HJ/LJ) — spots que eram REJEITADOS no insert do nó."""
+    from leaklab.gto_utils import normalize_position, compute_spot_hash
+    _ok('mp1_to_lj', normalize_position('MP1') == 'LJ')
+    _ok('mp2_to_hj', normalize_position('MP2') == 'HJ')
+    _ok('mp_to_lj',  normalize_position('MP') == 'LJ')
+    _ok('mp1_lower', normalize_position(' mp1 ') == 'LJ')       # case/trim
+    _ok('co_unchanged', normalize_position('CO') == 'CO')       # canônico não muda
+    _ok('lj_unchanged', normalize_position('LJ') == 'LJ')
+    # invariante-chave: MP1 e LJ produzem o MESMO spot_hash (enqueue ↔ lookup da decisão)
+    h_mp1 = compute_spot_hash('flop', 'MP1', ['9h', 'Ac', '5h'], ['Ah', 'Kd'], 20.0, 0.0)
+    h_lj  = compute_spot_hash('flop', 'LJ',  ['9h', 'Ac', '5h'], ['Ah', 'Kd'], 20.0, 0.0)
+    _ok('mp1_lj_same_hash', h_mp1 == h_lj)
+
+
 # ── Runner ────────────────────────────────────────────────────────────────────
 
 def run_all():

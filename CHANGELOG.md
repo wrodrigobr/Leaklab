@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(gto): posição MP1/MP2 rejeitada no insert do nó → spots postflop sem cobertura pra sempre
+
+> Spots postflop com o hero em **MP1** (mesa 9-max) eram **rejeitados** no insert do nó GTO ("position inválido: 'MP1'"), então nunca ganhavam `gto_label` e ficavam "Pendente"/heurística **pra sempre** (o `resolve_postflop_orphans` re-solvava mas o nó batia na validação e voltava a rejeitar). Causa: `compute_spot_hash` fazia só `.upper()` e a validação (`_GTO_VALID_POSITIONS`) só aceitava o canônico (LJ/HJ), mas o pipeline postflop passava MP1 cru. Fix: novo `normalize_position` em `gto_utils` (MP1→LJ, MP2→HJ, MP→LJ, o mesmo mapa do preflop) aplicado no `compute_spot_hash` (hash consistente enqueue↔decisão), na validação do insert e no enqueue (range certo). Só esses 3 labels (sem nós existentes → não muda hash de nada solvado). Requer re-rodar `resolve_postflop_orphans --apply` pra os órfãos existentes inserirem. Testes gto_utils 100/100, database 24/24, api_gto 42/42.
+
 ### fix(tournaments): filtro "Atenção" → "Aceitável" + multiway não fica "Pendente" pra sempre
 
 > O filtro da lista de mãos usava "Atenção" (hardcoded) para o nível que o resto do app chama de **Aceitável**. Alinhado ao veredito de 3 níveis via i18n (`common:verdict.*`), com a cor sky do nível Aceitável (antes amber), e "Todas"/"Pendente" i18n nas 3 locales. **Pendente:** deixava de contar spots **multiway** postflop como pendentes, eles nunca ganham `gto_label` (o solver é HU-only), então ficavam "aguardando solver" pra sempre. Agora multiway é informativo, não pendente. tsc 0.

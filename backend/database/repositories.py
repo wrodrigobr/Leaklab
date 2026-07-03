@@ -6975,7 +6975,7 @@ def insert_gto_nodes(nodes: list[dict]) -> int:
     if not nodes:
         return 0
 
-    from leaklab.gto_utils import compute_spot_hash, stack_bucket, normalize_gto_action, VALID_POSITIONS, normalize_cards
+    from leaklab.gto_utils import compute_spot_hash, stack_bucket, normalize_gto_action, VALID_POSITIONS, normalize_cards, normalize_position
 
     conn = get_conn()
     try:
@@ -7000,7 +7000,9 @@ def insert_gto_nodes(nodes: list[dict]) -> int:
 
             # ── Sanity checks universais ──────────────────────────────────────
             street   = (n.get('street') or '').lower().strip()
-            position = (n.get('position') or '').upper().strip()
+            # Normaliza MP1→LJ etc. (mesmo canônico do compute_spot_hash) — senão o hero em MP1
+            # era rejeitado como "position inválido" e o spot ficava sem cobertura pra sempre.
+            position = normalize_position(n.get('position'))
             raw_action = (n.get('gto_action') or '').strip()
             gto_action = normalize_gto_action(raw_action)
             try:
