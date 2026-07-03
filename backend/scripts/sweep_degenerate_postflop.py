@@ -12,6 +12,7 @@ Uso:
     python -m scripts.sweep_degenerate_postflop                 # dry-run (conta recuperáveis vs órfãos)
     python -m scripts.sweep_degenerate_postflop --apply         # deleta+re-solva (exige GTO_SOLVER_URL)
     python -m scripts.sweep_degenerate_postflop --apply --limit 20   # lote de N nós (roda em partes)
+    python -m scripts.sweep_degenerate_postflop --apply --timeout 300  # spot pesado > default 240s
 
 Depois: python -m scripts.resync_postflop_gto --apply   (cola o gto_label nas decisões)
 """
@@ -39,7 +40,7 @@ def _arg(f, default=None):
     return sys.argv[sys.argv.index(f) + 1] if f in sys.argv and sys.argv.index(f) + 1 < len(sys.argv) else default
 
 
-def _resolve_spot(conn, st, pos, vs_pos, board, hero, stack, pot_bb, facing, shash):
+def _resolve_spot(conn, st, pos, vs_pos, board, hero, stack, pot_bb, facing, shash, timeout=240):
     """Deleta o nó degenerado (só este hash) e re-solva com o pot CORRETO. Retorna
     (ok, msg). Se o solve falhar, o nó fica sem cobertura — mas ele já era rejeitado
     pelo engine (degenerado), então não há regressão funcional."""
@@ -59,7 +60,7 @@ def _resolve_spot(conn, st, pos, vs_pos, board, hero, stack, pot_bb, facing, sha
                   'hero_stack_bb': stack, 'facing_size_bb': facing, 'street': st, 'board': board},
     }
     try:
-        res = _call_remote_solver(payload, timeout=90)
+        res = _call_remote_solver(payload, timeout=timeout)
     except Exception as e:
         return False, f"solve ERRO: {e}"
     if not res:
@@ -83,6 +84,7 @@ def _resolve_spot(conn, st, pos, vs_pos, board, hero, stack, pot_bb, facing, sha
 def main():
     apply = '--apply' in sys.argv
     limit = int(_arg('--limit', 0) or 0)
+    timeout = int(_arg('--timeout', 240) or 240)   # solver single-thread chega a ~172s em spots pesados
 
     conn = get_conn()
 
@@ -152,7 +154,7 @@ def main():
         if cur and float(dict(cur).get('exploitability_pct') or 0) > _DEGEN_EXPLOIT:
             skipped += 1; continue
         ok, msg = _resolve_spot(conn, p['st'], p['pos'], p['vs_pos'], p['board'],
-                                p['hero'], p['stack'], p['pot_bb'], p['facing'], hsh)
+                                p['hero'], p['stack'], p['pot_bb'], p['facing'], hsh, timeout=timeout)
         tag = 'OK ' if ok else 'FALHA'
         print(f"[{i}/{len(items)}] {hsh[:10]} {p['st']} {p['pos']} pot={p['pot_bb']:.2f} -> {tag} {msg}")
         if ok:
