@@ -1430,7 +1430,9 @@ def _run_migrations(conn):
             ("mp_subscription_id",  "ALTER TABLE users ADD COLUMN mp_subscription_id  TEXT"),
             ("referral_coach_id",   "ALTER TABLE users ADD COLUMN referral_coach_id   INTEGER REFERENCES users(id)"),
             ("suspended",           "ALTER TABLE users ADD COLUMN suspended            INTEGER NOT NULL DEFAULT 0"),
-            ("whatsapp_phone",      "ALTER TABLE users ADD COLUMN whatsapp_phone       TEXT UNIQUE"),
+            # SQLite NÃO aceita ADD COLUMN ... UNIQUE via ALTER (falha e o except engolia →
+            # coluna nunca criada → 500 ao salvar o telefone). Unicidade garantida no endpoint.
+            ("whatsapp_phone",      "ALTER TABLE users ADD COLUMN whatsapp_phone       TEXT"),
             ("xp_total",            "ALTER TABLE users ADD COLUMN xp_total            INTEGER NOT NULL DEFAULT 0"),
             ("xp_streak",           "ALTER TABLE users ADD COLUMN xp_streak           INTEGER NOT NULL DEFAULT 0"),
             ("xp_last_activity",    "ALTER TABLE users ADD COLUMN xp_last_activity    TEXT"),
@@ -1840,6 +1842,16 @@ def _run_migrations(conn):
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS main_game_type       TEXT",
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS usual_buyin_range    TEXT",
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_completed_at TIMESTAMP",
+            # As demais colunas do perfil + o whatsapp_phone estavam SÓ no bloco regular
+            # (transação única) → um abort anterior as deixava faltando em prod, e salvar o
+            # perfil dava 500 (no such column birth_year/state_province/city/whatsapp_phone).
+            # whatsapp_phone sem UNIQUE aqui de propósito (a unicidade é garantida no endpoint
+            # /profile/phone via get_user_by_phone); IF NOT EXISTS preserva o UNIQUE se já existir.
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS whatsapp_phone         TEXT",
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS birth_year             INTEGER",
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS state_province         TEXT",
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS city                   TEXT",
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS poker_experience_years INTEGER",
             # Atribuição de aquisição: utm_source capturado no cadastro (ex.: 'instagram').
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS acquisition_source   TEXT",
             # Parceria (legado fixo, mantido p/ retrocompat): taxa fixa por aluno em cents.
