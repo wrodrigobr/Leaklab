@@ -32,7 +32,7 @@ import sys, os, argparse
 from collections import defaultdict, Counter
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
-from database.schema import get_conn, init_db
+from database.schema import get_conn, init_db, USE_POSTGRES
 from leaklab.parser import parse_hand_history
 from leaklab.pipeline import build_decision_inputs_for_hand
 from leaklab.decision_engine_v11 import evaluate_decision
@@ -59,10 +59,11 @@ def main():
 
     init_db()
     conn = get_conn()
-    try:
-        conn.execute("PRAGMA busy_timeout=10000")
-    except Exception:
-        pass
+    if not USE_POSTGRES:                      # PRAGMA é SQLite-only; no Postgres aborta a transação
+        try:
+            conn.execute("PRAGMA busy_timeout=10000")
+        except Exception:
+            pass
 
     tournaments = conn.execute(
         "SELECT id FROM tournaments WHERE raw_text IS NOT NULL "
