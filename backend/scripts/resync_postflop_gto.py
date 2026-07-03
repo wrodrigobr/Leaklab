@@ -76,10 +76,12 @@ def main():
     for trow in tournaments:
         tid = dict(trow)['id']
         raw = conn.execute("SELECT raw_text FROM tournaments WHERE id=?", (tid,)).fetchone()
-        if not raw or not raw[0]:
+        # acesso por CHAVE (Postgres usa RealDictCursor → row[0] dá KeyError; SQLite aceita ambos)
+        raw_text = dict(raw).get('raw_text') if raw else None
+        if not raw_text:
             continue
         try:
-            hands = parse_hand_history(raw[0])
+            hands = parse_hand_history(raw_text)
         except Exception:
             continue
 
