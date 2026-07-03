@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(gto): re-chaveia nós MP1 pro hash correto (último elo da cobertura postflop)
+
+> Complemento do fix de posição MP1: os 8 nós órfãos foram inseridos pelo `resolve_postflop_orphans` usando o `spot_hash` **antigo da fila** (computado no import com MP1 cru, antes do fix), mas o lookup da decisão passou a usar o hash **novo** (MP1→LJ normalizado). Nó existia sob o hash errado → a decisão não o encontrava → seguia "Pendente" mesmo solvado. Novo `scripts/rekey_stale_postflop_hashes.py` recomputa o hash correto do `spot_json` e renomeia o nó (cirúrgico: SÓ posições MP1/MP2/MP, não mexe em drift histórico não relacionado). Depois de rodar, o `resync_postflop_gto --apply` cola o gto_label na decisão. dry-run local 0 (sem MP1), guard por posição.
+
 ### fix(gto): posição MP1/MP2 rejeitada no insert do nó → spots postflop sem cobertura pra sempre
 
 > Spots postflop com o hero em **MP1** (mesa 9-max) eram **rejeitados** no insert do nó GTO ("position inválido: 'MP1'"), então nunca ganhavam `gto_label` e ficavam "Pendente"/heurística **pra sempre** (o `resolve_postflop_orphans` re-solvava mas o nó batia na validação e voltava a rejeitar). Causa: `compute_spot_hash` fazia só `.upper()` e a validação (`_GTO_VALID_POSITIONS`) só aceitava o canônico (LJ/HJ), mas o pipeline postflop passava MP1 cru. Fix: novo `normalize_position` em `gto_utils` (MP1→LJ, MP2→HJ, MP→LJ, o mesmo mapa do preflop) aplicado no `compute_spot_hash` (hash consistente enqueue↔decisão), na validação do insert e no enqueue (range certo). Só esses 3 labels (sem nós existentes → não muda hash de nada solvado). Requer re-rodar `resolve_postflop_orphans --apply` pra os órfãos existentes inserirem. Testes gto_utils 100/100, database 24/24, api_gto 42/42.
