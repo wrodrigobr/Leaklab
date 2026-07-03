@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(gto): re-enqueue postflop pelo hash do LOOKUP (fecha os spots que o rekey não cobriu)
+
+> O rekey dos nós MP1 só cobriu parte porque o **enqueue** e o **lookup** calculavam o "facing" de formas diferentes (enqueue: `facingSize/level_bb` em fichas; lookup: `facingToBb` em BB) — quando divergem, o hash do nó ≠ o hash que a decisão procura. Novo `scripts/reenqueue_postflop_from_decisions.py` re-enfileira os spots postflop descobertos usando o **mesmo hash do lookup** (fonte = a própria decisão via `build_decision_inputs_for_hand`), garantindo casamento por construção. Só postflop, nunca preflop/GW. Sequência: re-enqueue → drain → resync. dry-run local do torneio da fixture = 76 já cobertos (a checagem de cobertura usa o hash do lookup, provando o match).
+
 ### fix(gto): re-chaveia nós MP1 pro hash correto (último elo da cobertura postflop)
 
 > Complemento do fix de posição MP1: os 8 nós órfãos foram inseridos pelo `resolve_postflop_orphans` usando o `spot_hash` **antigo da fila** (computado no import com MP1 cru, antes do fix), mas o lookup da decisão passou a usar o hash **novo** (MP1→LJ normalizado). Nó existia sob o hash errado → a decisão não o encontrava → seguia "Pendente" mesmo solvado. Novo `scripts/rekey_stale_postflop_hashes.py` recomputa o hash correto do `spot_json` e renomeia o nó (cirúrgico: SÓ posições MP1/MP2/MP, não mexe em drift histórico não relacionado). Depois de rodar, o `resync_postflop_gto --apply` cola o gto_label na decisão. dry-run local 0 (sem MP1), guard por posição.
