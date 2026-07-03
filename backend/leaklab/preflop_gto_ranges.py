@@ -365,6 +365,21 @@ def _normalize_facing_allin(base: dict, action_taken: str) -> None:
     if not any(a in ('jam', 'shove', 'allin', 'all-in', 'raise') for a in rec):
         return  # GTO não manda agredir (ex.: fold) — pagar o all-in segue leak
     base['recommended_actions'] = ['call']          # facing all-in: a agressão = call
+
+    # Consistência do card: as FREQUÊNCIAS exibidas ("Como GTO joga X") também têm que
+    # falar "call", não "allin"/"raise". Vs um all-in, jam/raise se executam CHAMANDO —
+    # senão o card mostra "GTO recomenda Call" ao lado de "Allin 99.9%" (parece bug).
+    # Dobra allin+raise dentro de call, tanto na freq exata da mão quanto nos agregados.
+    hf = base.get('hand_freq')
+    if isinstance(hf, dict):
+        hf['call'] = round(hf.get('call', 0.0) + hf.get('allin', 0.0) + hf.get('raise', 0.0), 4)
+        hf['allin'] = 0.0
+        hf['raise'] = 0.0
+    for _agg in ('allin_pct', 'raise_pct'):
+        if base.get(_agg):
+            base['call_pct'] = round(float(base.get('call_pct', 0.0) or 0.0) + float(base.get(_agg) or 0.0), 4)
+            base[_agg] = 0.0
+
     if (action_taken or '').lower() in ('call', 'jam', 'shove', 'allin', 'all-in'):
         base['action_quality'] = 'correct'
         base['in_range'] = True
