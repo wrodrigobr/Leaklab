@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(preflop): auditoria da heurística (Fase 1) — BB nunca folda check grátis, matriz de invariantes
+
+> Auditoria sistemática do `_recommended_action` (matriz posição × zona × stack × facing) achou mais um bug da mesma classe: na zona **push/fold** (stack ≤14bb) a **BB num pote limpado** era mandada **foldar**, quando vê o flop **de graça** (nunca se folda uma opção livre). Corrigido: BB facing 0 no push/fold → core isola com **jam**, resto **check**. Confirmado que o "call" do **SB** em facing 0 é legítimo (completar o BB = call). Novo `test_preflop_heuristic_audit` trava os invariantes (sem 'call' em facing 0 fora do SB; BB nunca folda grátis; push/fold binário fora dos blinds; âncoras de teoria). decision_engine 33/33, recent_regressions 27/27.
+
 ### fix(preflop): BB iso-raise sobre limp — mão forte não é mais marcada como erro
 
 > Spot BB vs SB-limp: um iso-raise de mão forte (AKs, pares grandes) na BB era marcado como **erro** porque o heurístico recomendava "call" pra toda BB core (`_recommended_action`). Corrigido: BB com mão core **iso-raiseia** (raise), borderline **checa** (vê o flop de graça, não "call" — não há aposta a pagar), fraca checa. Facing um raise DE VERDADE (≥2bb) segue inalterado. **Sizing:** o `facingLimp` não detectava o **complete do SB** (amount 0,5bb < threshold 0,9bb), então o iso caía na banda de OPEN (2–2,5bb) e flagrava 3bb como "grande demais"; threshold baixado pra 0,4bb (pega open-limp e complete do SB). Validado end-to-end na mão real (best_action raise, label standard, facingLimp True). Teste `test_bb_iso_limp`; decision_engine 33/33, sizing_advisor 29/29, recent_regressions 27/27.

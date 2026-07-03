@@ -77,6 +77,10 @@ def _recommended_action(cards: str, position: str, facing_size: float = 0.0,
     # Push/Fold zone: stack curto → decisão binária jam ou fold
     # Threshold 14bb cobre 10-14bb range padrão MTT (push/fold standard)
     if stack_bb > 0 and stack_bb <= 14.0:
+        # BB num pote limpado (facing 0) vê o flop DE GRAÇA, mesmo curto: NUNCA folda uma opção
+        # livre. Core isola com jam (fold equity + valor); o resto vê o flop (check).
+        if position == "BB" and facing_size == 0:
+            return "jam" if zone == "core_range" else "check"
         if zone == "core_range":
             return "jam"
         if zone == "borderline_range":
