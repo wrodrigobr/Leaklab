@@ -40,8 +40,8 @@ def main():
     # --num: mapeia a posição da lista (ordem do frontend: LENGTH(hand_id), hand_id, id) → hand_id
     if not hand_id and num:
         rows = conn.execute(
-            "SELECT DISTINCT hand_id FROM decisions WHERE tournament_id = ? "
-            "ORDER BY LENGTH(hand_id), hand_id", (t['id'],)).fetchall()
+            "SELECT hand_id FROM decisions WHERE tournament_id = ? "
+            "GROUP BY hand_id ORDER BY LENGTH(hand_id), hand_id", (t['id'],)).fetchall()
         hids = [dict(r)['hand_id'] for r in rows]
         idx = int(num) - 1
         if 0 <= idx < len(hids):
