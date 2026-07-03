@@ -8192,6 +8192,7 @@ def admin_reanalyze_preflop_labels():
 
         total_checked = 0
         total_updated = 0
+        skipped_tournaments = 0
         affected_ids  = set()
         changes       = []
 
@@ -8211,7 +8212,13 @@ def admin_reanalyze_preflop_labels():
             except Exception:
                 continue
 
+            def _real(v):  # posição concreta (ignora vazio/UNKNOWN)
+                return v and str(v).upper() != 'UNKNOWN'
+            def _diff(a, b):  # difere de fato (case-insensitive)
+                return str(a or '').upper() != str(b or '').upper()
+
             seen: set = set()
+            tour_changes = []   # mudanças DESTE torneio, só persistidas se o commit passar
             for hand in hands:
                 try:
                     dis = build_decision_inputs_for_hand(hand)
@@ -8263,11 +8270,6 @@ def admin_reanalyze_preflop_labels():
                     new_pos = pos or old_pos
                     new_vs  = (result.get('preflop_gto') or {}).get('vs_position') or old_vs
 
-                    def _real(v):  # posição concreta (ignora vazio/UNKNOWN)
-                        return v and str(v).upper() != 'UNKNOWN'
-                    def _diff(a, b):  # difere de fato (case-insensitive)
-                        return str(a or '').upper() != str(b or '').upper()
-
                     sets, params = [], []
                     if new_label != old_label:
                         sets.append("label = ?");       params.append(new_label)
@@ -8284,18 +8286,21 @@ def admin_reanalyze_preflop_labels():
                             f"UPDATE decisions SET {', '.join(sets)} WHERE id = ?",
                             tuple(params)
                         )
-                        total_updated += 1
-                        affected_ids.add(tid)
-                        changes.append({
+                        tour_changes.append({
                             'tid': tid, 'hand_id': hand_id, 'action': act,
                             'old': old_label, 'new': new_label,
                             'pos': f"{old_pos}->{new_pos}" if new_pos != old_pos else old_pos,
                             'vs':  f"{old_vs}->{new_vs}" if new_vs != old_vs else old_vs,
                         })
 
-        if affected_ids:
-            conn.commit()
-            for tid in affected_ids:
+            # Commit POR TORNEIO: transação curta evita deadlock com migrações/outros
+            # workers (a versão anterior segurava locks de TODAS as decisões por ~1min
+            # numa transação única → deadlock detected no UPDATE tournaments). Recalcula
+            # o agregado do torneio no mesmo commit. Se der deadlock/erro, faz rollback
+            # e SEGUE (só perde este torneio, não a run inteira).
+            if not tour_changes:
+                continue
+            try:
                 std_row = conn.execute(
                     "SELECT COUNT(CASE WHEN label='standard' THEN 1 END)*100.0/COUNT(*) AS s, "
                     "AVG(score) AS a FROM decisions WHERE tournament_id = ?", (tid,)
@@ -8305,12 +8310,22 @@ def admin_reanalyze_preflop_labels():
                         "UPDATE tournaments SET standard_pct=?, avg_score=? WHERE id=?",
                         (round(std_row['s'] or 0, 2), round(std_row['a'] or 0, 4), tid)
                     )
-            conn.commit()
+                conn.commit()
+                affected_ids.add(tid)
+                changes.extend(tour_changes)
+                total_updated += len(tour_changes)
+            except Exception:
+                try:
+                    conn.rollback()
+                except Exception:
+                    pass
+                skipped_tournaments += 1
 
         return jsonify({
             'checked':  total_checked,
             'updated':  total_updated,
             'affected_tournaments': len(affected_ids),
+            'skipped_tournaments':  skipped_tournaments,
             'changes':  changes,
         })
     finally:
