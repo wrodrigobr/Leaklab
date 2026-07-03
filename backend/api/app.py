@@ -6752,7 +6752,9 @@ def whatsapp_webhook():
 def update_phone():
     """Vincula/desvincula número de WhatsApp ao perfil do usuário logado."""
     data  = request.get_json(force=True, silent=True) or {}
-    phone = data.get('phone', '').strip() or None
+    # data.get('phone', '') NÃO cobre {"phone": null}: a chave existe com None e o default
+    # não entra → None.strip() dava 500. `or ''` normaliza null/ausente pra string vazia.
+    phone = (data.get('phone') or '').strip() or None
     if phone:
         # Normaliza: remove +, espaços e traços
         phone = phone.replace('+', '').replace(' ', '').replace('-', '')

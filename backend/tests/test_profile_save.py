@@ -62,6 +62,19 @@ def test_phone_invalid_is_400_not_500():
     print("OK  test_phone_invalid_is_400_not_500")
 
 
+def test_phone_null_unlinks_no_500():
+    """Campo vazio manda {"phone": null} — data.get('phone','') retornava None e o
+    .strip() dava 500. Deve virar desvincular (200, phone=None)."""
+    h = _auth()
+    r = client.patch('/profile/phone', headers=h, json={'phone': None})
+    assert r.status_code == 200, (r.status_code, r.get_json())
+    assert r.get_json().get('phone') is None
+    # e sem a chave também
+    r2 = client.patch('/profile/phone', headers=h, json={})
+    assert r2.status_code == 200, (r2.status_code, r2.get_json())
+    print("OK  test_phone_null_unlinks_no_500")
+
+
 if __name__ == '__main__':
     tests = [v for k, v in sorted(globals().items()) if k.startswith('test_')]
     passed = failed = 0
