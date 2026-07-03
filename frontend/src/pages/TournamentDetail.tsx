@@ -308,13 +308,14 @@ const TournamentDetail = () => {
           const isCorrect   = h.category === "correct";
           const isAttention = h.category === "acceptable";
           const isError     = h.category === "error";
-          // "Pendente" = aguardando solver. Multiway NUNCA é solvado (solver é HU), então não é
-          // pendente, é informativo — senão ficaria "pendente" pra sempre.
-          const isPending   = h.hasPostflop && !h.gtoLabel && !h.multiway;
+          // "Heurística" = postflop analisado pelo ENGINE, não pelo solver (multiway, stack curto/
+          // push-fold, ou fora da cobertura GTO). NÃO é "aguardando solver": a maioria nunca será
+          // solvada por design (solver é HU e não cobre spots triviais/multiway).
+          const isHeuristic = h.hasPostflop && !h.gtoLabel;
           if (resultFilter === "correct"   && !isCorrect)   return false;
           if (resultFilter === "attention" && !isAttention) return false;
           if (resultFilter === "error"     && !isError)     return false;
-          if (resultFilter === "pending"   && !isPending)   return false;
+          if (resultFilter === "pending"   && !isHeuristic) return false;
         }
         if (query) {
           const q = query.toLowerCase();
@@ -679,18 +680,18 @@ const TournamentDetail = () => {
 
             {/* Resultado unificado — GTO quando disponível, engine como fallback */}
             {(() => {
-              const pendingGto = hands.filter((h) => h.hasPostflop && !h.gtoLabel && !h.multiway).length;
+              const heuristicN = hands.filter((h) => h.hasPostflop && !h.gtoLabel).length;
               type RKey = typeof resultFilter;
               const RESULT_FILTERS: { key: RKey; label: string; cls: string; title?: string }[] = [
                 { key: "all",       label: t("detail.all"),                cls: "text-muted-foreground" },
                 { key: "correct",   label: `✓ ${tc("verdict.correct")}`,    cls: "text-emerald-400" },
                 { key: "attention", label: `◎ ${tc("verdict.acceptable")}`, cls: "text-sky-400" },
                 { key: "error",     label: `✗ ${tc("verdict.error")}`,      cls: "text-red-400" },
-                ...(pendingGto > 0 ? [{
+                ...(heuristicN > 0 ? [{
                   key: "pending" as RKey,
-                  label: `⏱ ${t("detail.pending")} (${pendingGto})`,
+                  label: `${t("detail.heuristic")} (${heuristicN})`,
                   cls: "text-muted-foreground/50",
-                  title: t("detail.pendingTip"),
+                  title: t("detail.heuristicTip"),
                 }] : []),
               ];
               return (

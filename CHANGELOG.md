@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(gto): blindagem do insert (nunca rebaixa nó bom) + filtro "Pendente" → "Heurística"
+
+> **Blindagem (A):** `insert_gto_nodes` fazia `ON CONFLICT DO UPDATE` incondicional, então um re-solve pior sobrescrevia um nó bom compartilhado (lição do `--force`). Agora o `DO UPDATE` só aplica se o novo for **não-pior**: nunca troca estratégia boa por vazia, nunca rebaixa GTO Wizard (Nash) pra outra fonte, e nunca piora a exploitability. Cobre-se por construção contra perda de cobertura em re-solves. Teste `test_gto_insert_guard`. **Relabel (B):** o filtro da lista de mãos "⏱ Pendente (aguardando solver)" virou **"Heurística"** — postflop sem GTO (multiway, stack curto/push-fold, fora da cobertura) é analisado pelo engine, não está "aguardando", a maioria nunca será solvada por design. Inclui multiway na contagem (antes excluído). i18n PT/EN/ES. api_gto 42/42, gto_enrichment 57/57, tsc 0.
+
 ### fix(gto): re-enqueue postflop pelo hash do LOOKUP (fecha os spots que o rekey não cobriu)
 
 > O rekey dos nós MP1 só cobriu parte porque o **enqueue** e o **lookup** calculavam o "facing" de formas diferentes (enqueue: `facingSize/level_bb` em fichas; lookup: `facingToBb` em BB) — quando divergem, o hash do nó ≠ o hash que a decisão procura. Novo `scripts/reenqueue_postflop_from_decisions.py` re-enfileira os spots postflop descobertos usando o **mesmo hash do lookup** (fonte = a própria decisão via `build_decision_inputs_for_hand`), garantindo casamento por construção. Só postflop, nunca preflop/GW. Sequência: re-enqueue → drain → resync. dry-run local do torneio da fixture = 76 já cobertos (a checagem de cobertura usa o hash do lookup, provando o match).

@@ -7084,6 +7084,17 @@ def insert_gto_nodes(nodes: list[dict]) -> int:
                      exploitability_pct=EXCLUDED.exploitability_pct, iterations=EXCLUDED.iterations,
                      source=EXCLUDED.source, strategy_json=EXCLUDED.strategy_json,
                      is_aggregate=EXCLUDED.is_aggregate, tree_hash=EXCLUDED.tree_hash
+                WHERE
+                     -- BLINDAGEM: um re-solve NUNCA rebaixa um nó bom (lição do --force que sobrescreveu
+                     -- nós compartilhados). Só substitui se o novo for válido e não-pior.
+                     -- (1) nunca troca estratégia boa por vazia
+                     (EXCLUDED.strategy_json IS NOT NULL OR gto_nodes.strategy_json IS NULL)
+                     -- (2) nunca rebaixa um nó GTO Wizard (Nash) para outra fonte
+                     AND NOT (COALESCE(gto_nodes.source,'') = 'gto_wizard' AND COALESCE(EXCLUDED.source,'') <> 'gto_wizard')
+                     -- (3) não piora a exploitability (NULL = GW/Nash = melhor)
+                     AND (gto_nodes.exploitability_pct IS NULL
+                          OR EXCLUDED.exploitability_pct IS NULL
+                          OR EXCLUDED.exploitability_pct <= gto_nodes.exploitability_pct)
             """), (
                 spot_hash,
                 street,

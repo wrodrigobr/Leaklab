@@ -75,8 +75,8 @@
     "handCount": "{{count}} hand",
     "handCount_plural": "{{count}} hands",
     "all": "All",
-    "pending": "Pending",
-    "pendingTip": "Postflop hands awaiting the solver. Currently analyzed by the engine.",
+    "heuristic": "Heuristic",
+    "heuristicTip": "Postflop analyzed by the engine heuristic (multiway, short stack, or outside GTO solver coverage). Most are not solved by design.",
     "stats": {
       "handsPlayed": "Hands played",
       "criticalLeaks": "Errors",
