@@ -90,7 +90,14 @@
     "rankDeltaSince": "Change since last snapshot",
     "notListed": "You're not on the public leaderboard",
     "notListedCta": "Turn on participation below to appear.",
-    "myScoreLine": "Score {{score}} · {{elo}} ELO"
+    "myScoreLine": "Score {{score}} · {{elo}} ELO",
+    "skillSubtitle": "Ranked by skill: GTO adherence over time.",
+    "axisSkill": "Skill",
+    "axisEffort": "Effort",
+    "topPlayers": "Top players",
+    "howRankedTitle": "How it is ranked",
+    "participationTitle": "Your participation in both rankings",
+    "you": "you"
   },
   "eyebrow": "Session synced",
   "eyebrowEmpty": "Import tournaments to get started",

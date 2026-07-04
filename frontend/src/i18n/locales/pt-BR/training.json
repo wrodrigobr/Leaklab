@@ -19,7 +19,9 @@
     "notRanked": "Sem rank ainda",
     "joinHint": "Participe do ranking público pra aparecer aqui. Enquanto estiver fora, só você vê sua posição.",
     "join": "Participar",
-    "effortNote": "Ranqueado por acertos no treino da semana (esforço), nunca por ELO. Reseta toda segunda."
+    "effortNote": "Ranqueado por acertos no treino da semana (esforço), nunca por ELO. Reseta toda segunda.",
+    "effortSubtitle": "Ranqueado por esforço: acertos no treino desta semana.",
+    "topGrinders": "Quem mais treinou"
   },
   "status": {
     "title": "Seu treino",

@@ -90,7 +90,14 @@
     "rankDeltaSince": "Variação desde o último registro",
     "notListed": "Você não está no ranking público",
     "notListedCta": "Ative a participação abaixo para aparecer.",
-    "myScoreLine": "Score {{score}} · {{elo}} ELO"
+    "myScoreLine": "Score {{score}} · {{elo}} ELO",
+    "skillSubtitle": "Ranqueado por skill: aderência ao GTO ao longo do tempo.",
+    "axisSkill": "Skill",
+    "axisEffort": "Esforço",
+    "topPlayers": "Top jogadores",
+    "howRankedTitle": "Como é calculado",
+    "participationTitle": "Sua participação nos dois rankings",
+    "you": "você"
   },
   "eyebrow": "Sessão sincronizada",
   "eyebrowEmpty": "Importe torneios para começar",

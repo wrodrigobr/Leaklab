@@ -1,0 +1,128 @@
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
+import { Flame, Loader2, Zap } from "lucide-react";
+import { metrics, leaderboardPrefs, TrainingLeagueEntry, TrainingLeagueMe } from "@/lib/api";
+import { cn } from "@/lib/utils";
+import { AxisHeader, MedalRank, EmptyLine } from "./shared";
+
+/** "Sua posição" (esforço): rank público da semana + acertos + streak. */
+function MyEffort({ me, onJoin, joining }: { me: TrainingLeagueMe; onJoin: () => void; joining: boolean }) {
+  const { t } = useTranslation("training");
+  if (!me.opt_in) {
+    return (
+      <div className="space-y-2 rounded-xl border border-primary/40 bg-primary/[0.06] p-4">
+        <p className="text-xs text-muted-foreground">{t("league.joinHint")}</p>
+        <button
+          onClick={onJoin}
+          disabled={joining}
+          className="inline-flex h-8 items-center gap-2 rounded-md bg-primary px-3 font-mono text-[11px] font-bold uppercase tracking-widest-2 text-primary-foreground transition-all hover:bg-primary-glow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+        >
+          {joining && <Loader2 className="size-3 animate-spin" aria-hidden />}
+          {t("league.join")}
+        </button>
+      </div>
+    );
+  }
+  return (
+    <div className="rounded-xl border border-primary/40 bg-primary/[0.06] p-4">
+      <div className="mb-1 font-mono text-[10px] uppercase tracking-widest-2 text-primary">
+        {t("league.yourPosition")}
+      </div>
+      <div className="flex items-baseline gap-2">
+        <span className="font-heading text-2xl font-bold text-foreground">
+          {me.rank ? `#${me.rank}` : t("league.notRanked")}
+        </span>
+        <span className="font-mono text-[11px] text-muted-foreground">
+          {me.points} {t("league.points")}
+        </span>
+        {me.streak > 0 && (
+          <span className="flex items-center gap-1 font-mono text-[11px] tabular-nums text-amber-400/90">
+            <Flame className="size-3" aria-hidden />
+            {me.streak}
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/** Linha de jogador na liga de esforço (acertos + streak + tentativas). */
+function EffortRow({ e, self }: { e: TrainingLeagueEntry; self?: boolean }) {
+  const { t } = useTranslation("training");
+  return (
+    <div
+      className={cn(
+        "flex items-center gap-3 rounded-xl border p-3",
+        self ? "border-primary/50 bg-primary/[0.04]" : "border-border/40 bg-card/40"
+      )}
+    >
+      <MedalRank rank={e.rank ?? 0} size="sm" />
+      <span className={cn("min-w-0 flex-1 truncate text-sm", self ? "font-bold text-foreground" : "text-foreground")}>
+        {e.display_name}
+        {self && <span className="ml-1.5 font-mono text-[10px] uppercase text-primary">· {t("league.you")}</span>}
+      </span>
+      <span className="flex w-10 items-center justify-end gap-1 font-mono text-[11px] tabular-nums text-muted-foreground">
+        <Flame className="size-3 text-amber-400/70" aria-hidden />
+        {e.streak}
+      </span>
+      <span className="hidden w-20 text-right font-mono text-[11px] tabular-nums text-muted-foreground sm:inline">
+        {e.spots} {t("league.spots")}
+      </span>
+      <span className="w-14 text-right font-mono text-xl font-bold tabular-nums text-primary">{e.points}</span>
+    </div>
+  );
+}
+
+/** Painel do EIXO ESFORÇO — Liga de Treino (#32). Ranking semanal por acertos, nunca por skill. */
+export function EffortLeague() {
+  const { t } = useTranslation("training");
+  const qc = useQueryClient();
+  const { data, isLoading } = useQuery({
+    queryKey: ["training-league"],
+    queryFn: metrics.trainingLeague,
+    staleTime: 60_000,
+  });
+  const optIn = useMutation({
+    mutationFn: () => leaderboardPrefs.set(true, data?.me?.handle ?? null),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["training-league"] }),
+  });
+
+  const me = data?.me;
+  const ranked = data?.ranked ?? [];
+
+  return (
+    <section aria-labelledby="effort-heading" className="flex flex-col gap-3">
+      <AxisHeader
+        id="effort-heading"
+        icon={<Zap className="size-4 text-primary" aria-hidden />}
+        title={t("league.title")}
+        subtitle={t("league.effortSubtitle")}
+        aside={
+          <span className="font-mono text-[10px] uppercase tracking-widest-2 text-muted-foreground">
+            {t("league.thisWeek")}
+          </span>
+        }
+      />
+
+      {isLoading ? (
+        <div className="flex justify-center py-8">
+          <Loader2 className="size-5 animate-spin text-muted-foreground" aria-hidden />
+        </div>
+      ) : (
+        <>
+          {me && <MyEffort me={me} onJoin={() => optIn.mutate()} joining={optIn.isPending} />}
+          {ranked.length === 0 ? (
+            <EmptyLine>{t("league.empty")}</EmptyLine>
+          ) : (
+            <div className="space-y-2">
+              {ranked.map((e) => (
+                <EffortRow key={e.user_id} e={e} self={!!me?.is_self && e.user_id === me.user_id} />
+              ))}
+            </div>
+          )}
+          <p className="font-mono text-[10px] leading-relaxed text-muted-foreground">{t("league.effortNote")}</p>
+        </>
+      )}
+    </section>
+  );
+}
