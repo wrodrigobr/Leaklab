@@ -1414,6 +1414,17 @@ def _run_migrations(conn):
             )
         """)
         conn.execute("CREATE INDEX IF NOT EXISTS idx_training_proof_user ON training_proof(user_id)")
+        # Analytics de uso (MVP): 1 linha por (dia, feature, user) com contador de hits (SQLite).
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS feature_usage (
+                day         TEXT    NOT NULL,
+                feature_key TEXT    NOT NULL,
+                user_id     INTEGER NOT NULL,
+                hits        INTEGER NOT NULL DEFAULT 0,
+                PRIMARY KEY (day, feature_key, user_id)
+            )
+        """)
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_feature_usage_day ON feature_usage(day)")
         # Sprint R — FEAT-05: SRS columns on drill_sessions (SQLite)
         drill_existing = {r[1] for r in conn.execute('PRAGMA table_info(drill_sessions)').fetchall()}
         for col, sql in [
@@ -1934,6 +1945,15 @@ def _run_migrations(conn):
             # Win-back de inativos (reengajamento por email escalonado)
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS winback_stage INTEGER NOT NULL DEFAULT 0",
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS winback_sent_at TEXT",
+            # Analytics de uso (MVP): agregado por (dia, feature, user). Abort-proof p/ existir em prod.
+            """CREATE TABLE IF NOT EXISTS feature_usage (
+                day         TEXT    NOT NULL,
+                feature_key TEXT    NOT NULL,
+                user_id     INTEGER NOT NULL,
+                hits        INTEGER NOT NULL DEFAULT 0,
+                PRIMARY KEY (day, feature_key, user_id)
+            )""",
+            "CREATE INDEX IF NOT EXISTS idx_feature_usage_day ON feature_usage(day)",
         ]
         for _stmt in _safe:
             try:

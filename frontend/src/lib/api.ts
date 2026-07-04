@@ -2456,6 +2456,16 @@ export const adminDashboard = {
     acquisition: Array<{ source: string; n: number }>;
   }>("/admin/demographics"),
 
+  featureUsage: (days = 30) => request<{
+    days: number;
+    features: Array<{ feature_key: string; users: number; hits: number }>;
+    dau: number;
+    wau: number;
+    mau: number;
+    active_window: number;
+    stickiness: number;
+  }>(`/admin/feature-usage?days=${days}`),
+
   gtoWorkerStatus: () => request<GtoWorkerStatus>("/admin/gto/worker-status"),
   gtoHandQueue: () => request<{ queue: GtoHandRequest[]; counts: Record<string, number> }>("/admin/gto/hand-queue"),
   reanalyzeGtoLabels: () => request<{

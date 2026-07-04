@@ -6800,6 +6800,62 @@ def get_demographics_aggregate() -> dict:
         conn.close()
 
 
+# ── Feature usage analytics (MVP) ─────────────────────────────────────────────
+
+def record_feature_usage(user_id: int, feature_key: str) -> None:
+    """Upsert do contador de uso do dia por (feature, user). Agregado — 1 linha por
+    (dia, feature, user), não guarda request cru. Silencioso: nunca quebra a request."""
+    from datetime import datetime
+    day = datetime.utcnow().strftime('%Y-%m-%d')
+    conn = get_conn()
+    try:
+        # ON CONFLICT ... SET hits = hits + 1 funciona em PG e SQLite (3.24+).
+        conn.execute(_adapt(
+            "INSERT INTO feature_usage (day, feature_key, user_id, hits) VALUES (?, ?, ?, 1) "
+            "ON CONFLICT (day, feature_key, user_id) DO UPDATE SET hits = feature_usage.hits + 1"
+        ), (day, feature_key, user_id))
+        conn.commit()
+    except Exception:
+        try: conn.rollback()
+        except Exception: pass
+    finally:
+        conn.close()
+
+
+def get_feature_usage_report(days: int = 30) -> dict:
+    """Relatório de uso p/ o admin: por feature (usuários únicos + acessos) na janela,
+    e DAU/WAU/MAU (usuários distintos que tocaram QUALQUER feature no período)."""
+    from datetime import datetime, timedelta
+    now = datetime.utcnow()
+    cutoff = (now - timedelta(days=days)).strftime('%Y-%m-%d')
+    conn = get_conn()
+    try:
+        feats = conn.execute(_adapt(
+            "SELECT feature_key, COUNT(DISTINCT user_id) AS users, SUM(hits) AS hits "
+            "FROM feature_usage WHERE day >= ? "
+            "GROUP BY feature_key ORDER BY users DESC, hits DESC"
+        ), (cutoff,)).fetchall()
+
+        def _active(since_days: int) -> int:
+            since = (now - timedelta(days=since_days)).strftime('%Y-%m-%d')
+            r = conn.execute(_adapt(
+                "SELECT COUNT(DISTINCT user_id) AS n FROM feature_usage WHERE day >= ?"
+            ), (since,)).fetchone()
+            return int(dict(r)['n'] or 0) if r else 0
+
+        dau, wau, mau = _active(1), _active(7), _active(30)
+        active_window = _active(days)  # denominador de adoção pra janela escolhida
+        return {
+            'days': days,
+            'features': [dict(f) for f in feats],
+            'dau': dau, 'wau': wau, 'mau': mau,
+            'active_window': active_window,
+            'stickiness': round(dau / mau, 3) if mau else 0.0,
+        }
+    finally:
+        conn.close()
+
+
 # ── Dashboard preferences ─────────────────────────────────────────────────────
 
 def get_user_preferences(user_id: int) -> dict:

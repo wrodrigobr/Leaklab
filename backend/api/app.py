@@ -199,6 +199,45 @@ def _before():
     g.request_id = uuid.uuid4().hex[:8]
     g.t0 = time.monotonic()
 
+# Analytics de uso (MVP): rota → funcionalidade. Allowlist CURADO — só rotas que são
+# uma feature de verdade (ignora polling/infra: /health, unread-count, /auth, OPTIONS).
+# Prefixo, primeiro match vence (mais específico antes). Métrica-chave = usuários únicos.
+_FEATURE_MAP = [
+    ('/analyze/guest',             'analyze_guest'),
+    ('/analyze',                   'import_tournament'),
+    ('/player/spots/drill',        'ghost_table'),
+    ('/player/sparring',           'leak_trainer'),
+    ('/player/training',           'leak_trainer'),
+    ('/coach/chat',                'ai_coach_chat'),
+    ('/replay',                    'replayer'),
+    ('/study/plan',                'study_plan'),
+    ('/student/study-plan',        'study_plan'),
+    ('/player/career',             'career_graph'),
+    ('/player/cognitive-failures', 'cognitive_failures'),
+    ('/player/strategic-twin',     'strategic_twin'),
+    ('/player/leak-graph',         'leak_causal_map'),
+    ('/player/leak-roi',           'leak_finder'),
+    ('/player/leak-finder',        'leak_finder'),
+    ('/metrics/leaderboard',       'leaderboard'),
+    ('/player/elo',                'rating_elo'),
+    ('/player/rating',             'rating_elo'),
+    ('/history/tournaments',       'history'),
+    ('/history/evolution',         'history'),
+    ('/preflop-ranges',            'gto_ranges'),
+    ('/gto/strategy',              'gto_ranges'),
+    ('/support',                   'support'),
+    ('/coach/students',            'coach_dashboard'),
+    ('/coach/context',             'coach_dashboard'),
+    ('/tournament',                'tournament_detail'),
+    ('/metrics/player-stats',      'dashboard'),   # âncora: carrega 1x por abertura do dashboard
+]
+
+def _feature_for_path(path: str):
+    for prefix, key in _FEATURE_MAP:
+        if path.startswith(prefix):
+            return key
+    return None
+
 @app.after_request
 def _log_request(response):
     try:
@@ -216,6 +255,17 @@ def _log_request(response):
             },
         )
         response.headers['X-Request-Id'] = g.get('request_id', '')
+    except Exception:
+        pass
+    # Analytics de uso: registra a funcionalidade (agregado por dia). Só request autenticado,
+    # 2xx/3xx, não-OPTIONS, e rota mapeada. Silencioso — nunca afeta a resposta.
+    try:
+        uid = g.get('user_id')
+        if uid and request.method != 'OPTIONS' and response.status_code < 400:
+            fk = _feature_for_path(request.path)
+            if fk:
+                from database.repositories import record_feature_usage
+                record_feature_usage(uid, fk)
     except Exception:
         pass
     return response
@@ -6915,6 +6965,17 @@ def update_player_profile():
 def admin_demographics():
     from database.repositories import get_demographics_aggregate
     return jsonify(get_demographics_aggregate())
+
+
+@app.route('/admin/feature-usage', methods=['GET'])
+@require_admin
+def admin_feature_usage():
+    """Analytics de uso (MVP): ranking de funcionalidades (usuários únicos + acessos)
+    na janela + DAU/WAU/MAU. `?days=` (default 30, 1..365)."""
+    from database.repositories import get_feature_usage_report
+    days = request.args.get('days', 30, type=int) or 30
+    days = max(1, min(days, 365))
+    return jsonify(get_feature_usage_report(days))
 
 
 @app.route('/player/preferences', methods=['GET'])

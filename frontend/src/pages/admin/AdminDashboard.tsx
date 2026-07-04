@@ -4,7 +4,8 @@ import {
   Activity, BarChart2, CheckCircle2, Clock,
   LayoutDashboard, Loader2, RefreshCw, Search, Shield, Users,
   GraduationCap, X, Check, MessageSquarePlus, Trash2, AlertTriangle,
-  Cpu, CircleDot, Lightbulb, Send, Megaphone, Mail, MailCheck
+  Cpu, CircleDot, Lightbulb, Send, Megaphone, Mail, MailCheck,
+  TrendingUp, Zap
 } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
 import { HudHeader } from "@/components/hud/HudHeader";
@@ -43,6 +44,121 @@ function KpiTile({ label, value, sub, icon: Icon, accent }: {
       </div>
       <p className={cn("text-2xl font-bold tabular-nums", accent ? "text-primary" : "text-foreground")}>{value}</p>
       {sub && <p className="font-mono text-[10px] text-muted-foreground">{sub}</p>}
+    </div>
+  );
+}
+
+// ── Usage Tab (analytics de uso) ───────────────────────────────────────────────
+
+const FEATURE_LABELS: Record<string, string> = {
+  dashboard: "Dashboard",
+  import_tournament: "Importar torneio",
+  replayer: "Replayer",
+  ghost_table: "Ghost Table (treino)",
+  leak_trainer: "Leak Trainer",
+  ai_coach_chat: "AI Coach (chat)",
+  study_plan: "Plano de estudo",
+  history: "Histórico / Evolução",
+  leak_finder: "Leak Finder",
+  career_graph: "Career Graph",
+  cognitive_failures: "Falhas cognitivas",
+  strategic_twin: "Gêmeo estratégico",
+  leak_causal_map: "Mapa causal de leaks",
+  leaderboard: "Ranking",
+  rating_elo: "Rating ELO",
+  gto_ranges: "Ranges GTO",
+  tournament_detail: "Detalhe do torneio",
+  support: "Suporte",
+  coach_dashboard: "Painel do coach",
+  analyze_guest: "Análise (convidado)",
+};
+
+function UsageTab() {
+  const [days, setDays] = useState(30);
+  const { data, isLoading } = useQuery({
+    queryKey: ["admin-feature-usage", days],
+    queryFn: () => adminDashboard.featureUsage(days),
+    staleTime: 60_000,
+  });
+
+  const features = data?.features ?? [];
+  const maxUsers = Math.max(1, ...features.map((f) => f.users));
+  const denom = data?.active_window ?? 0;
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center gap-2">
+        {[7, 30, 90].map((d) => (
+          <button
+            key={d}
+            onClick={() => setDays(d)}
+            className={cn(
+              "rounded-md px-3 py-1.5 font-mono text-[11px] font-bold uppercase tracking-widest-2 transition-colors",
+              days === d ? "bg-primary/10 text-primary ring-1 ring-primary/20" : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            {d}d
+          </button>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <KpiTile label="DAU" value={String(data?.dau ?? "—")} sub="ativos hoje" icon={Activity} accent />
+        <KpiTile label="WAU" value={String(data?.wau ?? "—")} sub="últimos 7 dias" icon={Users} />
+        <KpiTile label="MAU" value={String(data?.mau ?? "—")} sub="últimos 30 dias" icon={Users} />
+        <KpiTile label="Stickiness" value={data ? `${Math.round(data.stickiness * 100)}%` : "—"} sub="DAU / MAU" icon={Zap} />
+      </div>
+
+      <div className="rounded-xl border border-border bg-hud-surface">
+        <div className="flex items-center justify-between border-b border-border px-5 py-3">
+          <h3 className="font-mono text-[11px] font-bold uppercase tracking-widest-2 text-foreground">
+            Funcionalidades mais usadas
+          </h3>
+          <span className="font-mono text-[10px] text-muted-foreground">
+            {denom} usuário{denom === 1 ? "" : "s"} ativo{denom === 1 ? "" : "s"} · {days}d
+          </span>
+        </div>
+        {isLoading ? (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="size-5 animate-spin text-muted-foreground" />
+          </div>
+        ) : !features.length ? (
+          <p className="px-5 py-10 text-center text-sm text-muted-foreground">
+            Sem dados de uso ainda. Os acessos passam a ser contados a partir do deploy.
+          </p>
+        ) : (
+          <div className="divide-y divide-border">
+            {features.map((f, i) => {
+              const label = FEATURE_LABELS[f.feature_key] ?? f.feature_key;
+              const pct = denom ? Math.round((f.users / denom) * 100) : 0;
+              return (
+                <div key={f.feature_key} className="flex items-center gap-4 px-5 py-3">
+                  <span className="w-5 shrink-0 text-right font-mono text-[11px] text-muted-foreground tabular-nums">{i + 1}</span>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="truncate text-sm font-medium text-foreground">{label}</span>
+                      <span className="shrink-0 font-mono text-[11px] text-muted-foreground tabular-nums">
+                        {f.users} usuário{f.users === 1 ? "" : "s"} · {f.hits} acessos
+                      </span>
+                    </div>
+                    <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-hud-elevated">
+                      <div className="h-full rounded-full bg-primary" style={{ width: `${Math.round((f.users / maxUsers) * 100)}%` }} />
+                    </div>
+                  </div>
+                  {denom ? (
+                    <span className="w-11 shrink-0 text-right font-mono text-[11px] text-primary tabular-nums">{pct}%</span>
+                  ) : null}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      <p className="font-mono text-[10px] leading-relaxed text-muted-foreground">
+        Usuários únicos = adoção (quantas pessoas usam). Acessos = intensidade. % = fração dos usuários ativos da janela que tocaram a feature.
+        O uso é medido pelas chamadas de backend de cada funcionalidade (agregado por dia, sem guardar conteúdo).
+      </p>
     </div>
   );
 }
@@ -1335,6 +1451,7 @@ function GtoWorkerTab() {
 
 const SECTION_TITLE: Record<AdminSection, { title: string; sub: string }> = {
   overview:     { title: "Visão geral",    sub: "Métricas operacionais e demografia." },
+  usage:        { title: "Uso",            sub: "Funcionalidades mais usadas, adoção e usuários ativos." },
   finance:      { title: "Financeiro",     sub: "Fluxo de caixa, entradas, saídas e cobrança." },
   users:        { title: "Usuários",       sub: "Gestão de jogadores, planos e suspensões." },
   coaches:      { title: "Coaches",        sub: "Roster de coaches, alunos e repasses." },
@@ -1381,6 +1498,7 @@ const AdminDashboard = () => {
       label: "Negócio",
       items: [
         { id: "overview", label: "Visão geral", icon: LayoutDashboard },
+        { id: "usage",    label: "Uso",         icon: TrendingUp },
         { id: "finance",  label: "Financeiro",  icon: BarChart2, dot: financeDot },
         { id: "users",    label: "Usuários",    icon: Users },
         { id: "coaches",  label: "Coaches",     icon: GraduationCap },
@@ -1423,6 +1541,7 @@ const AdminDashboard = () => {
             </header>
 
             {section === "overview"     && <OverviewTab />}
+            {section === "usage"        && <UsageTab />}
             {section === "finance"      && <FinanceCockpit />}
             {section === "users"        && <UsersTab />}
             {section === "coaches"      && <CoachesTab />}

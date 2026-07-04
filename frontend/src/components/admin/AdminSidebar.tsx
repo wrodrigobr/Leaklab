@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 
 export type AdminSection =
   | "overview"
+  | "usage"
   | "finance"
   | "users"
   | "coaches"
