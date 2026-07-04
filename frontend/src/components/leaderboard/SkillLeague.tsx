@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { Award } from "lucide-react";
+import { Award, Check } from "lucide-react";
 import { LeaderboardResponse, LeaderboardEntry, LeaderboardMe } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { AxisHeader, MedalRank, EmptyLine } from "./shared";
@@ -68,10 +68,17 @@ function RankDeltaBadge({ me }: { me: LeaderboardMe }) {
   );
 }
 
-/** "Sua posição" (skill): posição geral entre todos os elegíveis + score + ELO + delta. */
-function MyPosition({ me }: { me: LeaderboardMe }) {
+/** "Sua posição" (skill): se elegível, posição/score/ELO/delta; se não, um CHECKLIST
+ *  do que falta pra entrar (torneios/mãos/decisões GTO) com o progresso do jogador —
+ *  pra ele saber por que não aparece, em vez de procurar o nome à toa. */
+function MyPosition({ me, eligibility }: { me: LeaderboardMe; eligibility: LeaderboardResponse["eligibility"] }) {
   const { t } = useTranslation("dashboard");
   const hasRank = me.overall_rank != null;
+  const reqs = [
+    { label: t("leaderboard.reqTournaments"), have: me.tournaments, need: eligibility.min_tournaments },
+    { label: t("leaderboard.reqHands"), have: me.hands, need: eligibility.min_hands },
+    { label: t("leaderboard.reqGto"), have: me.gto_decisions, need: eligibility.min_gto_decisions },
+  ];
   return (
     <div className="rounded-xl border border-primary/40 bg-primary/[0.06] p-4">
       <div className="mb-1 font-mono text-[10px] uppercase tracking-widest-2 text-primary">
@@ -93,9 +100,31 @@ function MyPosition({ me }: { me: LeaderboardMe }) {
           </div>
         </div>
       ) : (
-        <div className="space-y-0.5">
-          <div className="text-sm text-foreground">{t("leaderboard.notListed")}</div>
-          <div className="text-xs text-muted-foreground">{t("leaderboard.notListedCta")}</div>
+        <div className="space-y-2">
+          <div className="text-sm text-foreground">{t("leaderboard.notEligibleTitle")}</div>
+          <div className="space-y-1.5">
+            {reqs.map((r) => {
+              const done = r.have >= r.need;
+              return (
+                <div key={r.label} className="flex items-center gap-2">
+                  {done ? (
+                    <Check className="size-3.5 shrink-0 text-emerald-400" aria-hidden />
+                  ) : (
+                    <span className="size-3.5 shrink-0 rounded-full border border-muted-foreground/40" aria-hidden />
+                  )}
+                  <span className="flex-1 text-[11px] text-muted-foreground">{r.label}</span>
+                  <span
+                    className={cn(
+                      "font-mono text-[11px] tabular-nums",
+                      done ? "text-emerald-400" : "text-foreground"
+                    )}
+                  >
+                    {r.have.toLocaleString()}/{r.need.toLocaleString()}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
     </div>
@@ -113,7 +142,7 @@ export function SkillLeague({ data }: { data: LeaderboardResponse }) {
         title={t("leaderboard.skillTitle")}
         subtitle={t("leaderboard.skillSubtitle")}
       />
-      {data.me && <MyPosition me={data.me} />}
+      {data.me && <MyPosition me={data.me} eligibility={data.eligibility} />}
       {data.ranked.length === 0 ? (
         <EmptyLine>{t("leaderboard.empty")}</EmptyLine>
       ) : (

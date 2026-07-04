@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(leaderboard): checklist de requisitos pra quem ainda não entra no ranking
+
+> Quando o jogador é inelegível (abaixo do gate do #15: mín. torneios/mãos/decisões GTO), o card "Sua posição" antes só dizia "não listado" — o jogador ficava procurando o nome à toa. Agora mostra um **checklist do que falta** com o progresso dele: Torneios `X/10`, Mãos analisadas `Y/500`, Decisões com solver GTO `Z/100`, cada um com ✓ (verde) quando batido. Usa `me.tournaments/hands/gto_decisions` + `data.eligibility` (já vinham no payload). i18n PT/EN/ES. Só front, tsc 0.
+
 ### fix(auth): bloqueia email no campo de nome de usuário no cadastro
 
 > O campo "nome de usuário" aceitava um email. Agora rejeita `@` no username, no backend (autoritativo, os dois endpoints de registro player + coach → 400 `username_is_email`) e no frontend (check imediato antes de enviar + mapeamento do erro do backend). i18n `errors.usernameEmail` PT/EN/ES. Backend testado (`@`→400, normal→201), tsc 0.
