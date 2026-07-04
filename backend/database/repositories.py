@@ -6856,6 +6856,134 @@ def get_feature_usage_report(days: int = 30) -> dict:
         conn.close()
 
 
+# ── Desafio do Dia (#42) — pool vetado + agenda + tentativas ──────────────────
+
+def add_challenge_candidates(candidates: list) -> int:
+    """Insere candidatos (status='pending') pra curadoria do admin. Retorna quantos."""
+    if not candidates:
+        return 0
+    conn = get_conn()
+    try:
+        for c in candidates:
+            conn.execute(_adapt(
+                "INSERT INTO daily_challenge_pool (spot_json, answer, note, status) "
+                "VALUES (?, ?, ?, 'pending')"
+            ), (c['spot_json'], c['answer'], c.get('note', '')))
+        conn.commit()
+        return len(candidates)
+    finally:
+        conn.close()
+
+
+def list_challenge_candidates(status: Optional[str] = None, limit: int = 100) -> list:
+    """Lista o pool (pra tela do admin). Sem `status` = todos."""
+    conn = get_conn()
+    try:
+        if status:
+            rows = conn.execute(_adapt(
+                "SELECT id, spot_json, answer, note, status, used_on FROM daily_challenge_pool "
+                "WHERE status = ? ORDER BY id DESC LIMIT ?"), (status, limit)).fetchall()
+        else:
+            rows = conn.execute(_adapt(
+                "SELECT id, spot_json, answer, note, status, used_on FROM daily_challenge_pool "
+                "ORDER BY id DESC LIMIT ?"), (limit,)).fetchall()
+        return [dict(r) for r in rows]
+    finally:
+        conn.close()
+
+
+def set_challenge_status(pool_id: int, status: str) -> None:
+    """Admin aprova/rejeita um candidato. Só 'approved' entra no sorteio do dia."""
+    conn = get_conn()
+    try:
+        conn.execute(_adapt("UPDATE daily_challenge_pool SET status = ? WHERE id = ?"),
+                     (status, pool_id))
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def count_approved_challenges(unused_only: bool = False) -> int:
+    conn = get_conn()
+    try:
+        q = "SELECT COUNT(*) AS n FROM daily_challenge_pool WHERE status = 'approved'"
+        if unused_only:
+            q += " AND used_on IS NULL"
+        r = conn.execute(q).fetchone()
+        return int(dict(r)['n'] or 0) if r else 0
+    finally:
+        conn.close()
+
+
+def get_today_challenge(day: str) -> Optional[dict]:
+    """Retorna o spot APROVADO do dia (schedule estável). Se ainda não há agenda pra
+    `day`, sorteia um approved não-usado, agenda e marca como usado. None se o pool
+    aprovado acabou (nunca serve não-aprovado)."""
+    conn = get_conn()
+    try:
+        sch = _fetchone(conn, _adapt("SELECT pool_id FROM daily_challenge_schedule WHERE day = ?"), (day,))
+        pool_id = dict(sch)['pool_id'] if sch else None
+        if pool_id is None:
+            cand = _fetchone(conn, _adapt(
+                "SELECT id FROM daily_challenge_pool WHERE status = 'approved' AND used_on IS NULL "
+                "ORDER BY id ASC LIMIT 1"))
+            if not cand:
+                return None
+            pool_id = dict(cand)['id']
+            conn.execute(_adapt("INSERT INTO daily_challenge_schedule (day, pool_id) VALUES (?, ?)"),
+                         (day, pool_id))
+            conn.execute(_adapt("UPDATE daily_challenge_pool SET used_on = ? WHERE id = ?"), (day, pool_id))
+            conn.commit()
+        row = _fetchone(conn, _adapt(
+            "SELECT id, spot_json, answer FROM daily_challenge_pool WHERE id = ?"), (pool_id,))
+        return dict(row) if row else None
+    finally:
+        conn.close()
+
+
+def get_challenge_attempt(user_id: int, day: str) -> Optional[dict]:
+    conn = get_conn()
+    try:
+        r = _fetchone(conn, _adapt(
+            "SELECT chosen_action, verdict, correct FROM daily_challenge_attempts "
+            "WHERE user_id = ? AND day = ?"), (user_id, day))
+        return dict(r) if r else None
+    finally:
+        conn.close()
+
+
+def record_challenge_attempt(user_id: int, day: str, chosen: str, verdict: str, correct: bool) -> bool:
+    """Grava a tentativa (1 por dia, idempotente). Retorna False se já havia (não regrava)."""
+    conn = get_conn()
+    try:
+        exists = _fetchone(conn, _adapt(
+            "SELECT id FROM daily_challenge_attempts WHERE user_id = ? AND day = ?"), (user_id, day))
+        if exists:
+            return False
+        conn.execute(_adapt(
+            "INSERT INTO daily_challenge_attempts (user_id, day, chosen_action, verdict, correct) "
+            "VALUES (?, ?, ?, ?, ?)"), (user_id, day, chosen, verdict, 1 if correct else 0))
+        conn.commit()
+        return True
+    finally:
+        conn.close()
+
+
+def get_challenge_stats(day: str) -> dict:
+    """Agregado do dia: total de tentativas + % de acerto (pro 'X% acertou hoje')."""
+    conn = get_conn()
+    try:
+        r = conn.execute(_adapt(
+            "SELECT COUNT(*) AS total, SUM(correct) AS correct FROM daily_challenge_attempts WHERE day = ?"
+        ), (day,)).fetchone()
+        d = dict(r) if r else {}
+        total = int(d.get('total') or 0); correct = int(d.get('correct') or 0)
+        return {'total': total, 'correct': correct,
+                'pct': round(correct / total * 100) if total else None}
+    finally:
+        conn.close()
+
+
 # ── Dashboard preferences ─────────────────────────────────────────────────────
 
 def get_user_preferences(user_id: int) -> dict:

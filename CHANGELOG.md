@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(challenge): Desafio do Dia — backend (pool vetado + certeza do gabarito) (#42)
+
+> MVP do "Desafio do Dia" (spot estratégico diário, o jogador escolhe fold/call/raise/allin). **Requisito nº1: não falhar no gabarito.** Só entra no ar spot com **certeza**: `daily_challenge.build_candidates` reusa o gerador do Leak Trainer e só aceita quem tem **resposta DOMINANTE** (ação GTO top ≥ 85%, não coin-flip) **E** a heurística local concorda com o range GW (triangulação). Nada auto-publica: candidatos entram como `pending` num **pool vetado**; o admin **aprova** antes de virar desafio. Serving determinístico por dia (UTC) sorteia SÓ do pool aprovado, 1 tentativa/usuário/dia, veredito + explicação + `% acertou hoje`, e conta no dia de treino (alimenta a Liga #32). Endpoints `GET/POST /player/daily-challenge(/submit)` + admin generate/pool/status. Tabelas (`daily_challenge_pool`/`_schedule`/`_attempts`) no bloco abort-proof (PG) + SQLite. Teste `test_daily_challenge` (3). **Limitação conhecida:** o filtro dominante traz spots óbvios (contraintuitividade fica pra curadoria do admin); auto-score de interesse + voto do LLM + postflop são Fase 2. Falta a UI (card no treino + tela de aprovação admin).
+
 ### feat(admin): botão "limpar apelido" no painel de usuários (fecha a moderação)
 
 > Complemento da moderação de apelido: `get_all_users` passou a expor `leaderboard_handle` e a lista de usuários do admin mostra o apelido do ranking com um botão **"limpar"** (confirmação nativa) → `POST /admin/users/<uid>/clear-handle` (contorna o lock one-time, o usuário depois escolhe outro). É a remediação pra apelido ofensivo que escapar da blocklist. Validado ponta a ponta (listagem expõe, clear zera), tsc 0.

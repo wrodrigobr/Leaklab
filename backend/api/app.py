@@ -2546,6 +2546,108 @@ def player_achievements():
     return jsonify({'achievements': get_achievements(g.user_id)})
 
 
+# ── Desafio do Dia (#42) ──────────────────────────────────────────────────────
+def _challenge_day() -> str:
+    from datetime import datetime
+    return datetime.utcnow().strftime('%Y-%m-%d')
+
+
+@app.route('/player/daily-challenge', methods=['GET'])
+@require_auth
+def player_daily_challenge():
+    """Spot APROVADO do dia (sem a resposta) + tentativa do usuário (se já fez) + stats.
+    Serve SÓ do pool vetado; se não há spot aprovado pro dia, retorna available=False."""
+    from database.repositories import (get_today_challenge, get_challenge_attempt, get_challenge_stats)
+    import json as _json
+    day = _challenge_day()
+    ch = get_today_challenge(day)
+    if not ch:
+        return jsonify({'available': False, 'day': day})
+    spot = _json.loads(ch['spot_json'])
+    attempt = get_challenge_attempt(g.user_id, day)
+    stats = get_challenge_stats(day)
+    out = {
+        'available': True, 'day': day,
+        'spot': {k: spot.get(k) for k in ('scenario', 'position', 'vs_position', 'stack_bb',
+                                          'facing_size', 'hand', 'hero_cards', 'options', 'board')},
+        'answered': attempt is not None,
+        'stats': stats,
+    }
+    if attempt:
+        # já respondeu: devolve o veredito (regrada pra não guardar texto), sem re-registrar
+        from leaklab.daily_challenge import grade_challenge
+        g_res = grade_challenge(ch['spot_json'], attempt['chosen_action'])
+        out['result'] = {'chosen': attempt['chosen_action'], **g_res}
+    return jsonify(out)
+
+
+@app.route('/player/daily-challenge/submit', methods=['POST'])
+@require_auth
+def player_daily_challenge_submit():
+    """Grada a decisão do jogador (1 tentativa/dia), devolve veredito + explicação,
+    e conta no dia de treino (alimenta a Liga #32)."""
+    from database.repositories import (get_today_challenge, get_challenge_attempt,
+                                       record_challenge_attempt, get_challenge_stats,
+                                       record_daily_mission_progress)
+    from leaklab.daily_challenge import grade_challenge
+    day = _challenge_day()
+    ch = get_today_challenge(day)
+    if not ch:
+        return jsonify({'error': 'Sem desafio disponível hoje'}), 404
+    if get_challenge_attempt(g.user_id, day):
+        return jsonify({'error': 'Você já respondeu o desafio de hoje', 'code': 'already_answered'}), 409
+    action = (request.get_json(silent=True) or {}).get('action', '')
+    if not action:
+        return jsonify({'error': 'action obrigatória'}), 400
+    res = grade_challenge(ch['spot_json'], action)
+    record_challenge_attempt(g.user_id, day, res['played'], res.get('gto_tier') or '', res['is_correct'])
+    try:
+        record_daily_mission_progress(g.user_id, bool(res['is_correct']))   # conta no dia → Liga #32
+    except Exception:
+        pass
+    return jsonify({'result': {'chosen': res['played'], **res}, 'stats': get_challenge_stats(day)})
+
+
+@app.route('/admin/daily-challenge/generate', methods=['POST'])
+@require_admin
+def admin_daily_challenge_generate():
+    """Gera N candidatos (filtro de certeza) pro pool, status='pending' pra curadoria."""
+    from leaklab.daily_challenge import build_candidates
+    from database.repositories import add_challenge_candidates
+    n = int((request.get_json(silent=True) or {}).get('n', 10) or 10)
+    n = max(1, min(n, 50))
+    cands = build_candidates(n)
+    added = add_challenge_candidates(cands)
+    return jsonify({'generated': added})
+
+
+@app.route('/admin/daily-challenge/pool', methods=['GET'])
+@require_admin
+def admin_daily_challenge_pool():
+    from database.repositories import list_challenge_candidates, count_approved_challenges
+    import json as _json
+    status = request.args.get('status')
+    rows = list_challenge_candidates(status=status)
+    for r in rows:
+        try:
+            r['spot'] = _json.loads(r.pop('spot_json'))
+        except Exception:
+            r['spot'] = {}
+    return jsonify({'pool': rows,
+                    'approved_unused': count_approved_challenges(unused_only=True)})
+
+
+@app.route('/admin/daily-challenge/<int:pool_id>/status', methods=['POST'])
+@require_admin
+def admin_daily_challenge_status(pool_id):
+    from database.repositories import set_challenge_status
+    status = (request.get_json(silent=True) or {}).get('status', '')
+    if status not in ('approved', 'rejected', 'pending'):
+        return jsonify({'error': 'status inválido'}), 400
+    set_challenge_status(pool_id, status)
+    return jsonify({'ok': True})
+
+
 # ── Session Goals — FEAT-08 ───────────────────────────────────────────────────
 
 

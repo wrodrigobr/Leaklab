@@ -1425,6 +1425,36 @@ def _run_migrations(conn):
             )
         """)
         conn.execute("CREATE INDEX IF NOT EXISTS idx_feature_usage_day ON feature_usage(day)")
+        # Desafio do Dia (#42): pool VETADO de spots + agenda diária + tentativas (SQLite).
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS daily_challenge_pool (
+                id         INTEGER PRIMARY KEY AUTOINCREMENT,
+                spot_json  TEXT    NOT NULL,
+                answer     TEXT    NOT NULL,
+                note       TEXT,
+                status     TEXT    NOT NULL DEFAULT 'pending',
+                used_on    TEXT,
+                created_at TEXT    NOT NULL DEFAULT (datetime('now'))
+            )
+        """)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS daily_challenge_schedule (
+                day     TEXT    PRIMARY KEY,
+                pool_id INTEGER NOT NULL
+            )
+        """)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS daily_challenge_attempts (
+                id            INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id       INTEGER NOT NULL,
+                day           TEXT    NOT NULL,
+                chosen_action TEXT    NOT NULL,
+                verdict       TEXT    NOT NULL,
+                correct       INTEGER NOT NULL DEFAULT 0,
+                created_at    TEXT    NOT NULL DEFAULT (datetime('now')),
+                UNIQUE(user_id, day)
+            )
+        """)
         # Sprint R — FEAT-05: SRS columns on drill_sessions (SQLite)
         drill_existing = {r[1] for r in conn.execute('PRAGMA table_info(drill_sessions)').fetchall()}
         for col, sql in [
@@ -1954,6 +1984,30 @@ def _run_migrations(conn):
                 PRIMARY KEY (day, feature_key, user_id)
             )""",
             "CREATE INDEX IF NOT EXISTS idx_feature_usage_day ON feature_usage(day)",
+            # Desafio do Dia (#42): pool VETADO + agenda + tentativas. Abort-proof p/ existir em prod.
+            """CREATE TABLE IF NOT EXISTS daily_challenge_pool (
+                id         SERIAL PRIMARY KEY,
+                spot_json  TEXT    NOT NULL,
+                answer     TEXT    NOT NULL,
+                note       TEXT,
+                status     TEXT    NOT NULL DEFAULT 'pending',
+                used_on    TEXT,
+                created_at TIMESTAMP NOT NULL DEFAULT NOW()
+            )""",
+            """CREATE TABLE IF NOT EXISTS daily_challenge_schedule (
+                day     TEXT    PRIMARY KEY,
+                pool_id INTEGER NOT NULL
+            )""",
+            """CREATE TABLE IF NOT EXISTS daily_challenge_attempts (
+                id            SERIAL PRIMARY KEY,
+                user_id       INTEGER NOT NULL,
+                day           TEXT    NOT NULL,
+                chosen_action TEXT    NOT NULL,
+                verdict       TEXT    NOT NULL,
+                correct       INTEGER NOT NULL DEFAULT 0,
+                created_at    TIMESTAMP NOT NULL DEFAULT NOW(),
+                UNIQUE(user_id, day)
+            )""",
         ]
         for _stmt in _safe:
             try:
