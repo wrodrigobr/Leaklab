@@ -279,8 +279,14 @@
     "dismiss": "Fechar alerta"
   },
   "pendingGto": {
-    "notice": "{{n}} spot GTO em análise no solver, indicadores do Replayer atualizam quando concluído.",
-    "notice_plural": "{{n}} spots GTO em análise no solver, indicadores do Replayer atualizam quando concluídos."
+    "notice": "{{n}} spot GTO em análise no solver. Suas estatísticas recomputam sozinhas conforme ele valida, {{eta}}.",
+    "notice_plural": "{{n}} spots GTO em análise no solver. Suas estatísticas recomputam sozinhas conforme ele valida, {{eta}}.",
+    "eta": {
+      "minutes": "geralmente em alguns minutos",
+      "halfHour": "geralmente em até ~30 minutos",
+      "hour": "geralmente em até ~1 hora",
+      "hours": "ao longo das próximas horas"
+    }
   },
   "gtoQuality": {
     "title": "Alinhamento GTO",

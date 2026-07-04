@@ -446,7 +446,17 @@ const Index = () => {
             {pendingGto > 0 && (
               <div className="flex items-center gap-2 text-[11px] text-muted-foreground font-mono">
                 <Loader2 className="size-3 animate-spin shrink-0 text-primary/60" />
-                <span>{t(pendingGto === 1 ? "pendingGto.notice" : "pendingGto.notice_plural", { n: pendingGto })}</span>
+                <span>{t(pendingGto === 1 ? "pendingGto.notice" : "pendingGto.notice_plural", {
+                  n: pendingGto,
+                  // ETA como faixa honesta (não promessa): ancorada no throughput do cron
+                  // (~10 spots por ciclo de 5 min). Bucket por N de spots pendentes.
+                  eta: t(
+                    pendingGto <= 10 ? "pendingGto.eta.minutes"
+                    : pendingGto <= 40 ? "pendingGto.eta.halfHour"
+                    : pendingGto <= 100 ? "pendingGto.eta.hour"
+                    : "pendingGto.eta.hours"
+                  ),
+                })}</span>
               </div>
             )}
 
