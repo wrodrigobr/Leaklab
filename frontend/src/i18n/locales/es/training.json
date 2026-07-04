@@ -21,7 +21,9 @@
     "join": "Unirme",
     "effortNote": "Clasificado por aciertos en el entrenamiento de la semana (esfuerzo), nunca por ELO. Se reinicia cada lunes.",
     "effortSubtitle": "Ranqueado por esfuerzo: aciertos en el entrenamiento de esta semana.",
-    "topGrinders": "Quién más entrenó"
+    "topGrinders": "Quién más entrenó",
+    "public": "Visible en el ranking público",
+    "streak": "días"
   },
   "status": {
     "title": "Tu entrenamiento",

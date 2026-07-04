@@ -21,7 +21,9 @@
     "join": "Participar",
     "effortNote": "Ranqueado por acertos no treino da semana (esforço), nunca por ELO. Reseta toda segunda.",
     "effortSubtitle": "Ranqueado por esforço: acertos no treino desta semana.",
-    "topGrinders": "Quem mais treinou"
+    "topGrinders": "Quem mais treinou",
+    "public": "Visível no ranking público",
+    "streak": "dias"
   },
   "status": {
     "title": "Seu treino",

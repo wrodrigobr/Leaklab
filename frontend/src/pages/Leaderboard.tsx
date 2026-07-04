@@ -79,8 +79,8 @@ function Body({
         </div>
       )}
 
-      {/* Secundário (baixo destaque): campeões · inelegíveis. */}
-      <div className="grid gap-4 border-t border-border/40 pt-6 md:grid-cols-2">
+      {/* Secundário: campeões (full-width, com destaque próprio) + inelegíveis. */}
+      <div className="space-y-6 border-t border-border/40 pt-6">
         <HallOfFameCard />
         <IneligibleCard data={data} />
       </div>
@@ -108,11 +108,7 @@ export default function Leaderboard() {
   }, []);
 
   return (
-    <HudLayout
-      eyebrow={t("leaderboard.eyebrow")}
-      title={t("leaderboard.title")}
-      description={t("leaderboard.description")}
-    >
+    <HudLayout eyebrow={t("leaderboard.eyebrow")} title={t("leaderboard.title")}>
       {loading && (
         <div className="grid gap-6 lg:grid-cols-2">
           <LeagueSkeleton />

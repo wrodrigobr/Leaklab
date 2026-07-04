@@ -24,7 +24,7 @@ function Row({ e, self }: { e: LeaderboardEntry; self?: boolean }) {
   return (
     <div
       className={cn(
-        "flex min-h-[6.75rem] flex-col rounded-xl border p-4 transition-colors",
+        "rounded-xl border p-4 transition-colors",
         self ? "border-primary/50 bg-primary/[0.04]" : "border-border/40 bg-card/40"
       )}
     >
@@ -43,7 +43,7 @@ function Row({ e, self }: { e: LeaderboardEntry; self?: boolean }) {
           {e.score.toFixed(1)}
         </span>
       </div>
-      <div className="mt-auto grid grid-cols-1 gap-x-4 gap-y-1 pt-3 sm:grid-cols-2">
+      <div className="mt-3 grid grid-cols-1 gap-x-4 gap-y-1.5 sm:grid-cols-2">
         <MiniBar label={t("leaderboard.dimGto")} pct={e.dimensions.gto} />
         <MiniBar label={t("leaderboard.dimEvolution")} pct={e.dimensions.evolution} />
         <MiniBar label={t("leaderboard.dimEngagement")} pct={e.dimensions.engagement} />
@@ -73,7 +73,7 @@ function MyPosition({ me }: { me: LeaderboardMe }) {
   const { t } = useTranslation("dashboard");
   const hasRank = me.overall_rank != null;
   return (
-    <div className="min-h-[6.5rem] rounded-xl border border-primary/40 bg-primary/[0.06] p-4">
+    <div className="rounded-xl border border-primary/40 bg-primary/[0.06] p-4">
       <div className="mb-1 font-mono text-[10px] uppercase tracking-widest-2 text-primary">
         {t("leaderboard.myPositionTitle")}
       </div>

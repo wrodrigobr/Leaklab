@@ -6,6 +6,7 @@ import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { cn } from "@/lib/utils";
 
 /** Controle de participação (opt-in + apelido) que governa OS DOIS rankings. */
 export function ParticipationBar({ prefs, onSaved }: { prefs: LeaderboardPrefs; onSaved: () => void }) {
@@ -110,31 +111,43 @@ export function HallOfFameCard() {
 
   const fmtMonth = (m: string) => {
     const d = new Date(`${m}-01T00:00:00`);
-    return isNaN(d.getTime()) ? m : d.toLocaleDateString(i18n.language, { month: "short", year: "numeric" });
+    return isNaN(d.getTime()) ? m : d.toLocaleDateString(i18n.language, { month: "long", year: "numeric" });
   };
 
   return (
-    <section aria-labelledby="hof" className="space-y-2">
-      <h3 id="hof" className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-widest-2 text-muted-foreground">
-        <Trophy className="size-3 text-yellow-400" aria-hidden />
-        {t("leaderboard.hofTitle")}
-      </h3>
-      <div className="overflow-hidden rounded-xl border border-border/40 bg-card/40">
-        {champs.map((c) => (
+    <section aria-labelledby="hof" className="space-y-3">
+      <div>
+        <h3 id="hof" className="flex items-center gap-2 font-heading text-sm font-bold text-foreground">
+          <Trophy className="size-4 text-yellow-400" aria-hidden />
+          {t("leaderboard.hofTitle")}
+        </h3>
+        <p className="mt-0.5 text-xs text-muted-foreground">{t("leaderboard.hofSubtitle")}</p>
+      </div>
+      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+        {champs.map((c, i) => (
           <div
             key={c.month}
-            className="flex items-center justify-between border-t border-border/30 px-4 py-2 first:border-t-0"
+            className={cn(
+              "flex items-center gap-3 rounded-xl border p-3",
+              i === 0 ? "border-yellow-400/40 bg-yellow-400/[0.06]" : "border-border/40 bg-card/40"
+            )}
           >
-            <div className="flex min-w-0 items-center gap-2">
-              <span className="shrink-0" aria-hidden>🏆</span>
-              <div className="min-w-0">
-                <div className="truncate text-sm text-foreground">
-                  {c.anonymous ? t("leaderboard.anonymous") : c.champion}
-                </div>
-                <div className="font-mono text-[10px] text-muted-foreground">{fmtMonth(c.month)}</div>
+            <span
+              className={cn(
+                "flex size-9 shrink-0 items-center justify-center rounded-lg text-xl",
+                i === 0 ? "bg-yellow-400/15" : "bg-muted/10"
+              )}
+              aria-hidden
+            >
+              🏆
+            </span>
+            <div className="min-w-0 flex-1">
+              <div className="truncate text-sm font-medium text-foreground">
+                {c.anonymous ? t("leaderboard.anonymous") : c.champion}
               </div>
+              <div className="font-mono text-[10px] capitalize text-muted-foreground">{fmtMonth(c.month)}</div>
             </div>
-            <span className="shrink-0 font-mono text-sm font-bold tabular-nums text-primary">
+            <span className="shrink-0 font-mono text-lg font-bold tabular-nums text-primary">
               {c.score.toFixed(1)}
             </span>
           </div>

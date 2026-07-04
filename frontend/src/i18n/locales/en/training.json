@@ -21,7 +21,9 @@
     "join": "Join",
     "effortNote": "Ranked by correct answers in this week's training (effort), never by ELO. Resets every Monday.",
     "effortSubtitle": "Ranked by effort: correct training answers this week.",
-    "topGrinders": "Who trained the most"
+    "topGrinders": "Who trained the most",
+    "public": "Visible in the public ranking",
+    "streak": "days"
   },
   "status": {
     "title": "Your training",
