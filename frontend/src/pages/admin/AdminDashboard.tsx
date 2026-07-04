@@ -5,7 +5,7 @@ import {
   LayoutDashboard, Loader2, RefreshCw, Search, Shield, Users,
   GraduationCap, X, Check, MessageSquarePlus, Trash2, AlertTriangle,
   Cpu, CircleDot, Lightbulb, Send, Megaphone, Mail, MailCheck,
-  TrendingUp, Zap
+  TrendingUp, Zap, CalendarClock, ThumbsUp, ThumbsDown, Sparkles
 } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
 import { HudHeader } from "@/components/hud/HudHeader";
@@ -851,6 +851,125 @@ function WinbackPanel() {
   );
 }
 
+// ── Desafio do Dia (#42) — curadoria do pool ──────────────────────────────────
+
+function ChallengeTab() {
+  const qc = useQueryClient();
+  const [status, setStatus] = useState<"pending" | "approved" | "rejected">("pending");
+  const [n, setN] = useState(10);
+  const { data, isLoading } = useQuery({
+    queryKey: ["admin-challenge-pool", status],
+    queryFn: () => adminDashboard.challengePool(status),
+  });
+
+  const gen = useMutation({
+    mutationFn: () => adminDashboard.challengeGenerate(n),
+    onSuccess: (r) => {
+      toast.success(`${r.generated} candidato(s) gerado(s)`);
+      setStatus("pending");
+      qc.invalidateQueries({ queryKey: ["admin-challenge-pool"] });
+    },
+    onError: () => toast.error("Falha ao gerar candidatos"),
+  });
+  const setStatusM = useMutation({
+    mutationFn: ({ id, s }: { id: number; s: "approved" | "rejected" | "pending" }) =>
+      adminDashboard.challengeSetStatus(id, s),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["admin-challenge-pool"] }),
+    onError: () => toast.error("Falha ao atualizar status"),
+  });
+
+  const pool = data?.pool ?? [];
+  const approvedUnused = data?.approved_unused ?? 0;
+
+  const ctxLabel = (spot: { scenario: string; position: string; vs_position: string | null; stack_bb: number }) => {
+    const { scenario: sc, position: p, vs_position: vs, stack_bb } = spot;
+    const base = sc === "rfi" ? `${p} abre`
+      : sc === "vs_rfi" ? `${p} vs open de ${vs}`
+      : sc === "vs_3bet" ? `${p} abre, ${vs} dá 3-bet`
+      : sc;
+    return `${base} · ${stack_bb}bb`;
+  };
+
+  return (
+    <div className="space-y-5">
+      {/* Gerar candidatos + fila do pool aprovado */}
+      <div className="flex flex-col gap-3 rounded-2xl border border-border bg-card/40 p-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-3">
+          <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-sky-500/10 ring-1 ring-sky-500/30">
+            <Sparkles className="size-5 text-sky-400" aria-hidden />
+          </div>
+          <div>
+            <p className="text-sm font-bold text-foreground">Gerar candidatos</p>
+            <p className="text-xs text-muted-foreground">Só spots com gabarito DOMINANTE (GTO ≥ 85% + heurística concorda) entram no pool.</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <input type="number" min={1} max={50} value={n}
+            onChange={(e) => setN(Math.max(1, Math.min(50, Number(e.target.value) || 1)))}
+            className="w-16 rounded-lg border border-border bg-background px-2 py-2 text-center font-mono text-sm text-foreground" />
+          <button onClick={() => gen.mutate()} disabled={gen.isPending}
+            className="inline-flex items-center gap-2 rounded-lg bg-sky-500 px-4 py-2 font-mono text-xs font-bold uppercase tracking-widest text-black transition-colors hover:bg-sky-400 disabled:opacity-50">
+            {gen.isPending ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <Sparkles className="size-4" aria-hidden />} Gerar
+          </button>
+        </div>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2">
+        {(["pending", "approved", "rejected"] as const).map((s) => (
+          <button key={s} onClick={() => setStatus(s)}
+            className={cn("rounded-lg px-3 py-1.5 font-mono text-xs font-bold uppercase tracking-wider ring-1 transition-colors",
+              status === s ? "bg-primary/15 text-primary ring-primary/40" : "bg-card/40 text-muted-foreground ring-border hover:text-foreground")}>
+            {s === "pending" ? "Pendentes" : s === "approved" ? "Aprovados" : "Rejeitados"}
+          </button>
+        ))}
+        <span className="ml-auto inline-flex items-center gap-1.5 rounded-lg bg-emerald-500/10 px-3 py-1.5 font-mono text-[11px] text-emerald-300 ring-1 ring-emerald-500/25">
+          <CalendarClock className="size-3.5" aria-hidden /> {approvedUnused} aprovado(s) na fila
+        </span>
+      </div>
+
+      {isLoading ? (
+        <div className="flex justify-center py-12"><Loader2 className="size-6 animate-spin text-muted-foreground" /></div>
+      ) : pool.length === 0 ? (
+        <p className="py-12 text-center text-sm text-muted-foreground">Nenhum spot {status === "pending" ? "pendente" : status === "approved" ? "aprovado" : "rejeitado"}.</p>
+      ) : (
+        <div className="space-y-2">
+          {pool.map((item) => (
+            <div key={item.id} className="flex flex-col gap-3 rounded-xl border border-border bg-background/50 p-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="font-mono text-sm font-bold text-foreground">{item.spot.hand}</span>
+                  <span className="text-xs text-muted-foreground">{ctxLabel(item.spot)}</span>
+                  <span className="rounded bg-emerald-500/10 px-2 py-0.5 font-mono text-[10px] font-bold uppercase text-emerald-300 ring-1 ring-emerald-500/25">
+                    GTO: {item.answer}
+                  </span>
+                  {item.used_on && (
+                    <span className="rounded bg-muted/20 px-2 py-0.5 font-mono text-[10px] text-muted-foreground">usado {fmtDate(item.used_on)}</span>
+                  )}
+                </div>
+                <p className="mt-1 text-[11px] leading-snug text-muted-foreground">{item.note}</p>
+              </div>
+              <div className="flex shrink-0 items-center gap-2">
+                {status !== "approved" && (
+                  <button onClick={() => setStatusM.mutate({ id: item.id, s: "approved" })} disabled={setStatusM.isPending}
+                    className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-500/15 px-3 py-2 font-mono text-[11px] font-bold uppercase tracking-wider text-emerald-300 ring-1 ring-emerald-500/30 transition-colors hover:bg-emerald-500/25 disabled:opacity-50">
+                    <ThumbsUp className="size-3.5" aria-hidden /> Aprovar
+                  </button>
+                )}
+                {status !== "rejected" && (
+                  <button onClick={() => setStatusM.mutate({ id: item.id, s: "rejected" })} disabled={setStatusM.isPending}
+                    className="inline-flex items-center gap-1.5 rounded-lg bg-red-500/15 px-3 py-2 font-mono text-[11px] font-bold uppercase tracking-wider text-red-300 ring-1 ring-red-500/30 transition-colors hover:bg-red-500/25 disabled:opacity-50">
+                    <ThumbsDown className="size-3.5" aria-hidden /> Rejeitar
+                  </button>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Logs Tab ──────────────────────────────────────────────────────────────────
 
 function LogsTab() {
@@ -1480,6 +1599,7 @@ const SECTION_TITLE: Record<AdminSection, { title: string; sub: string }> = {
   messages:     { title: "Mensagens",      sub: "Enviar DM a um jogador ou broadcast (com categoria)." },
   candidaturas: { title: "Candidaturas",   sub: "Pedidos para virar coach." },
   "gto-worker": { title: "GTO Worker",     sub: "Monitoramento do worker e cobertura GTO." },
+  challenge:    { title: "Desafio do Dia", sub: "Curadoria do pool de spots. Só aprovado vai ao ar (gabarito com certeza)." },
   logs:         { title: "Logs",           sub: "Últimas importações de torneios." },
 };
 
@@ -1537,6 +1657,7 @@ const AdminDashboard = () => {
       label: "Operação",
       items: [
         { id: "gto-worker",  label: "GTO Worker",  icon: Cpu, dot: workerDot },
+        { id: "challenge",   label: "Desafio",     icon: CalendarClock },
         { id: "logs",        label: "Logs",        icon: Activity },
       ],
     },
@@ -1570,6 +1691,7 @@ const AdminDashboard = () => {
             {section === "messages"     && <MessagesTab />}
             {section === "candidaturas" && <CandidaturasTab />}
             {section === "gto-worker"   && <GtoWorkerTab />}
+            {section === "challenge"    && <ChallengeTab />}
             {section === "logs"         && <LogsTab />}
           </div>
         </div>

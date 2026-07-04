@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { ArrowRight, CheckCircle2, Dumbbell, GraduationCap, RotateCw, Target, Award, Flame, Star, Trophy, Lock, Map, Play, TrendingUp, TrendingDown, Minus, Sparkles, Medal, Gem, Compass, Crown, Info, Repeat, Zap, Rocket, type LucideIcon } from "lucide-react";
 import { HudLayout } from "@/components/hud/HudLayout";
 import { training } from "@/lib/api";
+import { DailyChallengeCard } from "@/components/training/DailyChallengeCard";
 import { cn } from "@/lib/utils";
 
 // Cada conquista tem um ÍCONE próprio (não um número) — pra ler como medalha, não como passo de
@@ -114,6 +115,9 @@ export default function Training() {
             <ArrowRight className="size-4 shrink-0 text-violet-400 transition-transform group-hover:translate-x-0.5" aria-hidden />
           </Link>
         </div>
+
+        {/* ── Desafio do Dia (#42) — hook diário, some se não há spot aprovado ── */}
+        <DailyChallengeCard />
 
         {/* ── Aviso: leaks do jogo ainda sem treino → reinicie o ciclo (novos leaks surgiram) ── */}
         {readiness && (readiness.untrained?.length ?? 0) > 0 && (

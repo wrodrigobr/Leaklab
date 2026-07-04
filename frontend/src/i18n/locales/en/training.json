@@ -128,5 +128,33 @@
     "thisTournament": "This latest tournament: {{pct}}% ({{n}} hands)",
     "smallSample": "Small sample, not a trend yet.",
     "disclaimer": "It's a comparison to your average, not proof the training caused the change. Few hands vary a lot."
+  },
+  "challenge": {
+    "title": "Daily Challenge",
+    "subtitle": "A spot on the edge of the decision. Pick the best play, you get one try per day.",
+    "prompt": "What do you do?",
+    "todayHit": "got it right",
+    "facing": "facing {{size}}bb",
+    "youPlayed": "You played:",
+    "gtoStrategy": "GTO strategy",
+    "comeBack": "Come back tomorrow for a new challenge.",
+    "ctx": {
+      "rfi": "You are in the {{pos}} and the action folds to you.",
+      "vsRfi": "You are in the {{pos}} and {{vs}} opened the pot.",
+      "vs3bet": "You opened in the {{pos}} and {{vs}} 3-bet."
+    },
+    "act": {
+      "fold": "Fold",
+      "call": "Call",
+      "raiseOpen": "Raise",
+      "raise3": "3-Bet",
+      "raise4": "4-Bet",
+      "allin": "Shove"
+    },
+    "verdict": {
+      "correct": "Correct",
+      "mixed": "Acceptable (GTO mixes here)",
+      "error": "Not the best"
+    }
   }
 }

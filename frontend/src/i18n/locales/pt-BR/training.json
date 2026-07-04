@@ -128,5 +128,33 @@
     "thisTournament": "Neste último torneio: {{pct}}% ({{n}} mãos)",
     "smallSample": "Amostra pequena, ainda não é tendência.",
     "disclaimer": "É uma comparação com a sua média, não prova que o treino causou a mudança. Poucas mãos variam muito."
+  },
+  "challenge": {
+    "title": "Desafio do Dia",
+    "subtitle": "Um spot na borda da decisão. Escolha a melhor jogada, você tem uma tentativa por dia.",
+    "prompt": "O que você faz?",
+    "todayHit": "acertaram",
+    "facing": "enfrenta {{size}}bb",
+    "youPlayed": "Você jogou:",
+    "gtoStrategy": "Estratégia GTO",
+    "comeBack": "Volte amanhã para um novo desafio.",
+    "ctx": {
+      "rfi": "Você está no {{pos}} e a ação chega até você.",
+      "vsRfi": "Você está no {{pos}} e o {{vs}} abriu a aposta.",
+      "vs3bet": "Você abriu no {{pos}} e o {{vs}} deu 3-bet."
+    },
+    "act": {
+      "fold": "Fold",
+      "call": "Call",
+      "raiseOpen": "Raise",
+      "raise3": "3-Bet",
+      "raise4": "4-Bet",
+      "allin": "Shove"
+    },
+    "verdict": {
+      "correct": "Correto",
+      "mixed": "Aceitável (o GTO mistura aqui)",
+      "error": "Não foi a melhor"
+    }
   }
 }

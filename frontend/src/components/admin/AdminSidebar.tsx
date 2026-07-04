@@ -13,6 +13,7 @@ export type AdminSection =
   | "candidaturas"
   | "messages"
   | "gto-worker"
+  | "challenge"
   | "logs"
   ;
 

@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(challenge): Desafio do Dia — UI (card no treino + curadoria admin) (#42)
+
+> Frontend do "Desafio do Dia". No hub de treino, o `DailyChallengeCard` mostra o spot do dia (contexto do cenário + mão do herói em cartas), o jogador escolhe entre as ações válidas (fold/call/raise/shove), recebe o veredito (Correto/Aceitável/Não foi a melhor) + estratégia GTO em barras + explicação + `% acertou hoje`. Uma tentativa por dia, o card some quando não há spot aprovado. No admin, nova seção **Desafio**: gera candidatos (filtro de certeza), lista o pool por status (pendentes/aprovados/rejeitados) com a fila de aprovados na frente, e aprova/rejeita cada spot. i18n PT/EN/ES. Fecha o MVP do #42 (backend já em `bcbd65f`).
+
 ### feat(challenge): Desafio do Dia — backend (pool vetado + certeza do gabarito) (#42)
 
 > MVP do "Desafio do Dia" (spot estratégico diário, o jogador escolhe fold/call/raise/allin). **Requisito nº1: não falhar no gabarito.** Só entra no ar spot com **certeza**: `daily_challenge.build_candidates` reusa o gerador do Leak Trainer e só aceita quem tem **resposta DOMINANTE** (ação GTO top ≥ 85%, não coin-flip) **E** a heurística local concorda com o range GW (triangulação). Nada auto-publica: candidatos entram como `pending` num **pool vetado**; o admin **aprova** antes de virar desafio. Serving determinístico por dia (UTC) sorteia SÓ do pool aprovado, 1 tentativa/usuário/dia, veredito + explicação + `% acertou hoje`, e conta no dia de treino (alimenta a Liga #32). Endpoints `GET/POST /player/daily-challenge(/submit)` + admin generate/pool/status. Tabelas (`daily_challenge_pool`/`_schedule`/`_attempts`) no bloco abort-proof (PG) + SQLite. Teste `test_daily_challenge` (3). **Limitação conhecida:** o filtro dominante traz spots óbvios (contraintuitividade fica pra curadoria do admin); auto-score de interesse + voto do LLM + postflop são Fase 2. Falta a UI (card no treino + tela de aprovação admin).

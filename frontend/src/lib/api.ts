@@ -1238,6 +1238,56 @@ export interface TrainingLeagueResponse {
   me?: TrainingLeagueMe | null;
 }
 
+// Desafio do Dia (#42)
+export interface DailyChallengeSpot {
+  scenario: string;                 // rfi | vs_rfi | vs_3bet
+  position: string;
+  vs_position: string | null;
+  stack_bb: number;
+  facing_size: number | null;
+  hand: string;                     // ex "AKs"
+  hero_cards: { rank: string; suit: string }[] | null;
+  options: string[];                // ações válidas (fold/call/raise/allin)
+  board: string[] | null;
+}
+export interface DailyChallengeStrategyLeg { action: string; freq: number }
+export interface DailyChallengeResult {
+  chosen: string;
+  played: string;
+  is_correct: boolean;
+  gto_tier: string | null;
+  mixed: boolean;
+  best_action: string;
+  gto_strategy: DailyChallengeStrategyLeg[];
+  explanation: string;
+}
+export interface DailyChallengeStats {
+  total: number;
+  correct: number;
+  pct: number | null;
+}
+export interface DailyChallengeResponse {
+  available: boolean;
+  day: string;
+  spot?: DailyChallengeSpot;
+  answered?: boolean;
+  stats?: DailyChallengeStats;
+  result?: DailyChallengeResult;
+}
+// Admin — curadoria do pool
+export interface DailyChallengePoolItem {
+  id: number;
+  spot: DailyChallengeSpot;
+  answer: string;
+  note: string;
+  status: "pending" | "approved" | "rejected";
+  used_on: string | null;
+}
+export interface DailyChallengePoolResponse {
+  pool: DailyChallengePoolItem[];
+  approved_unused: number;
+}
+
 // Campeões mensais (#15 hall of fame)
 export interface HallOfFameEntry {
   month: string;            // YYYY-MM
@@ -1311,6 +1361,14 @@ export const metrics = {
 
   trainingLeague: () =>
     request<TrainingLeagueResponse>(`/metrics/training-league`),
+
+  dailyChallenge: () =>
+    request<DailyChallengeResponse>(`/player/daily-challenge`),
+  dailyChallengeSubmit: (action: string) =>
+    request<{ result: DailyChallengeResult; stats: DailyChallengeStats }>(`/player/daily-challenge/submit`, {
+      method: "POST",
+      body: JSON.stringify({ action }),
+    }),
 
   evolution: (days = 90, lastN?: number) =>
     request<EvolutionResponse>(`/history/evolution?days=${days}${lastN != null ? `&last_n=${lastN}` : ""}`),
@@ -2496,6 +2554,22 @@ export const adminDashboard = {
     active_window: number;
     stickiness: number;
   }>(`/admin/feature-usage?days=${days}`),
+
+  // ── Desafio do Dia (#42) — curadoria ────────────────────────────────────────
+  challengeGenerate: (n = 10) =>
+    request<{ generated: number }>(`/admin/daily-challenge/generate`, {
+      method: "POST",
+      body: JSON.stringify({ n }),
+    }),
+  challengePool: (status?: string) =>
+    request<DailyChallengePoolResponse>(
+      `/admin/daily-challenge/pool${status ? `?status=${status}` : ""}`,
+    ),
+  challengeSetStatus: (id: number, status: "approved" | "rejected" | "pending") =>
+    request<{ ok: boolean }>(`/admin/daily-challenge/${id}/status`, {
+      method: "POST",
+      body: JSON.stringify({ status }),
+    }),
 
   gtoWorkerStatus: () => request<GtoWorkerStatus>("/admin/gto/worker-status"),
   gtoHandQueue: () => request<{ queue: GtoHandRequest[]; counts: Record<string, number> }>("/admin/gto/hand-queue"),
