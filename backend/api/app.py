@@ -2625,14 +2625,19 @@ def admin_daily_challenge_generate():
 @require_admin
 def admin_daily_challenge_pool():
     from database.repositories import list_challenge_candidates, count_approved_challenges
+    from leaklab.daily_challenge import describe_challenge
     import json as _json
     status = request.args.get('status')
     rows = list_challenge_candidates(status=status)
     for r in rows:
         try:
             r['spot'] = _json.loads(r.pop('spot_json'))
+            r['context'] = describe_challenge(r['spot'])   # contexto rico p/ curadoria
         except Exception:
             r['spot'] = {}
+            r['context'] = None
+    # os mais DESAFIADORES primeiro (contraintuitivos / com mistura), pra curar melhor
+    rows.sort(key=lambda x: (x.get('context') or {}).get('challenge_score', 0), reverse=True)
     return jsonify({'pool': rows,
                     'approved_unused': count_approved_challenges(unused_only=True)})
 

@@ -933,37 +933,70 @@ function ChallengeTab() {
         <p className="py-12 text-center text-sm text-muted-foreground">Nenhum spot {status === "pending" ? "pendente" : status === "approved" ? "aprovado" : "rejeitado"}.</p>
       ) : (
         <div className="space-y-2">
-          {pool.map((item) => (
-            <div key={item.id} className="flex flex-col gap-3 rounded-xl border border-border bg-background/50 p-4 sm:flex-row sm:items-center sm:justify-between">
-              <div className="min-w-0">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="font-mono text-sm font-bold text-foreground">{item.spot.hand}</span>
-                  <span className="text-xs text-muted-foreground">{ctxLabel(item.spot)}</span>
-                  <span className="rounded bg-emerald-500/10 px-2 py-0.5 font-mono text-[10px] font-bold uppercase text-emerald-300 ring-1 ring-emerald-500/25">
-                    GTO: {item.answer}
-                  </span>
-                  {item.used_on && (
-                    <span className="rounded bg-muted/20 px-2 py-0.5 font-mono text-[10px] text-muted-foreground">usado {fmtDate(item.used_on)}</span>
+          {pool.map((item) => {
+            const ctx = item.context;
+            const interestMeta = ctx ? ({
+              alto:  { label: "Alto desafio",  cls: "bg-sky-500/15 text-sky-300 ring-sky-500/30" },
+              medio: { label: "Médio",         cls: "bg-amber-500/10 text-amber-300 ring-amber-500/25" },
+              baixo: { label: "Óbvio",         cls: "bg-muted/20 text-muted-foreground ring-border" },
+            } as const)[ctx.interest] : null;
+            return (
+              <div key={item.id} className="flex flex-col gap-3 rounded-xl border border-border bg-background/50 p-4 lg:flex-row lg:items-start lg:justify-between">
+                <div className="min-w-0 space-y-2">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="font-mono text-sm font-bold text-foreground">{item.spot.hand}</span>
+                    {ctx && <span className="text-[11px] text-muted-foreground">({ctx.hand_class})</span>}
+                    <span className="text-xs text-muted-foreground">{ctxLabel(item.spot)}</span>
+                    <span className="rounded bg-emerald-500/10 px-2 py-0.5 font-mono text-[10px] font-bold uppercase text-emerald-300 ring-1 ring-emerald-500/25">
+                      GTO: {item.answer}
+                    </span>
+                    {interestMeta && (
+                      <span className={cn("inline-flex items-center gap-1 rounded px-2 py-0.5 font-mono text-[10px] font-bold uppercase ring-1", interestMeta.cls)}>
+                        {ctx!.counterintuitive && <AlertTriangle className="size-3" aria-hidden />}
+                        {interestMeta.label} · {ctx!.challenge_score}
+                      </span>
+                    )}
+                    {item.used_on && (
+                      <span className="rounded bg-muted/20 px-2 py-0.5 font-mono text-[10px] text-muted-foreground">usado {fmtDate(item.used_on)}</span>
+                    )}
+                  </div>
+
+                  {/* Por que é um desafio (contexto derivado do range, honesto) */}
+                  {ctx?.why && <p className="text-[12px] leading-snug text-foreground/90">{ctx.why}</p>}
+
+                  {/* Mix GTO completo — mostra a tensão (borda da decisão) */}
+                  {ctx && ctx.gto_strategy.length > 0 && (
+                    <div className="flex flex-wrap gap-3">
+                      {ctx.gto_strategy.map((leg) => (
+                        <div key={leg.action} className="flex items-center gap-1.5">
+                          <span className="font-mono text-[10px] font-bold uppercase text-muted-foreground">{leg.action}</span>
+                          <div className="h-1.5 w-20 overflow-hidden rounded-full bg-muted/30">
+                            <div className={cn("h-full rounded-full", leg.action === ctx.best_action ? "bg-emerald-400" : "bg-sky-500/60")} style={{ width: `${Math.round(leg.freq * 100)}%` }} />
+                          </div>
+                          <span className="font-mono text-[10px] tabular-nums text-muted-foreground">{Math.round(leg.freq * 100)}%</span>
+                        </div>
+                      ))}
+                    </div>
                   )}
                 </div>
-                <p className="mt-1 text-[11px] leading-snug text-muted-foreground">{item.note}</p>
+
+                <div className="flex shrink-0 items-center gap-2">
+                  {status !== "approved" && (
+                    <button onClick={() => setStatusM.mutate({ id: item.id, s: "approved" })} disabled={setStatusM.isPending}
+                      className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-500/15 px-3 py-2 font-mono text-[11px] font-bold uppercase tracking-wider text-emerald-300 ring-1 ring-emerald-500/30 transition-colors hover:bg-emerald-500/25 disabled:opacity-50">
+                      <ThumbsUp className="size-3.5" aria-hidden /> Aprovar
+                    </button>
+                  )}
+                  {status !== "rejected" && (
+                    <button onClick={() => setStatusM.mutate({ id: item.id, s: "rejected" })} disabled={setStatusM.isPending}
+                      className="inline-flex items-center gap-1.5 rounded-lg bg-red-500/15 px-3 py-2 font-mono text-[11px] font-bold uppercase tracking-wider text-red-300 ring-1 ring-red-500/30 transition-colors hover:bg-red-500/25 disabled:opacity-50">
+                      <ThumbsDown className="size-3.5" aria-hidden /> Rejeitar
+                    </button>
+                  )}
+                </div>
               </div>
-              <div className="flex shrink-0 items-center gap-2">
-                {status !== "approved" && (
-                  <button onClick={() => setStatusM.mutate({ id: item.id, s: "approved" })} disabled={setStatusM.isPending}
-                    className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-500/15 px-3 py-2 font-mono text-[11px] font-bold uppercase tracking-wider text-emerald-300 ring-1 ring-emerald-500/30 transition-colors hover:bg-emerald-500/25 disabled:opacity-50">
-                    <ThumbsUp className="size-3.5" aria-hidden /> Aprovar
-                  </button>
-                )}
-                {status !== "rejected" && (
-                  <button onClick={() => setStatusM.mutate({ id: item.id, s: "rejected" })} disabled={setStatusM.isPending}
-                    className="inline-flex items-center gap-1.5 rounded-lg bg-red-500/15 px-3 py-2 font-mono text-[11px] font-bold uppercase tracking-wider text-red-300 ring-1 ring-red-500/30 transition-colors hover:bg-red-500/25 disabled:opacity-50">
-                    <ThumbsDown className="size-3.5" aria-hidden /> Rejeitar
-                  </button>
-                )}
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

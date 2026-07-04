@@ -1275,6 +1275,18 @@ export interface DailyChallengeResponse {
   result?: DailyChallengeResult;
 }
 // Admin — curadoria do pool
+export interface DailyChallengeContext {
+  gto_strategy: DailyChallengeStrategyLeg[];
+  hand_class: string;
+  best_action: string;
+  top_freq: number;
+  second_action: string | null;
+  second_freq: number;
+  counterintuitive: boolean;
+  challenge_score: number;      // 0-100, quão desafiador (não quão certo)
+  interest: "alto" | "medio" | "baixo";
+  why: string;
+}
 export interface DailyChallengePoolItem {
   id: number;
   spot: DailyChallengeSpot;
@@ -1282,6 +1294,7 @@ export interface DailyChallengePoolItem {
   note: string;
   status: "pending" | "approved" | "rejected";
   used_on: string | null;
+  context?: DailyChallengeContext | null;
 }
 export interface DailyChallengePoolResponse {
   pool: DailyChallengePoolItem[];

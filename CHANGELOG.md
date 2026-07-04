@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(challenge): contexto rico na curadoria do admin (por que é um desafio) (#42)
+
+> O admin agora vê, por candidato, POR QUE aquele spot é um desafio: `describe_challenge` (determinístico, derivado do range GTO) devolve a classe da mão, o mix GTO completo (a tensão da borda), se é **contraintuitivo** (a aparência da mão contradiz o gabarito, onde o jogador erra), um **score 0-100 de quão desafiador** (não de quão certo, isso o filtro já garante) e um "porquê" em texto. O pool passa a vir ordenado pelos mais desafiadores no topo, e cada item mostra selo de interesse (Alto/Médio/Óbvio), o texto do porquê e as barras do mix. Ataca de frente a limitação registrada (o filtro dominante traz spots óbvios): o score deixa o admin priorizar os contraintuitivos. Sem mudança de schema (contexto calculado on-the-fly no endpoint do pool).
+
 ### feat(challenge): Desafio do Dia — UI (card no treino + curadoria admin) (#42)
 
 > Frontend do "Desafio do Dia". No hub de treino, o `DailyChallengeCard` mostra o spot do dia (contexto do cenário + mão do herói em cartas), o jogador escolhe entre as ações válidas (fold/call/raise/shove), recebe o veredito (Correto/Aceitável/Não foi a melhor) + estratégia GTO em barras + explicação + `% acertou hoje`. Uma tentativa por dia, o card some quando não há spot aprovado. No admin, nova seção **Desafio**: gera candidatos (filtro de certeza), lista o pool por status (pendentes/aprovados/rejeitados) com a fila de aprovados na frente, e aprova/rejeita cada spot. i18n PT/EN/ES. Fecha o MVP do #42 (backend já em `bcbd65f`).
