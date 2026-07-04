@@ -98,9 +98,12 @@ export function ParticipationBar({ prefs, onSaved }: { prefs: LeaderboardPrefs; 
 }
 
 /** Hall of Fame — campeões mensais (#15). Oculto até a série cobrir ≥1 mês. */
+const HOF_PREVIEW = 6; // mostra os N mais recentes; o resto atrás do "ver todos" (backend limita em 12)
+
 export function HallOfFameCard() {
   const { t, i18n } = useTranslation("dashboard");
   const [champs, setChamps] = useState<HallOfFameEntry[]>([]);
+  const [expanded, setExpanded] = useState(false);
   useEffect(() => {
     metrics
       .hallOfFame()
@@ -113,6 +116,7 @@ export function HallOfFameCard() {
     const d = new Date(`${m}-01T00:00:00`);
     return isNaN(d.getTime()) ? m : d.toLocaleDateString(i18n.language, { month: "long", year: "numeric" });
   };
+  const shown = expanded ? champs : champs.slice(0, HOF_PREVIEW);
 
   return (
     <section aria-labelledby="hof" className="space-y-3">
@@ -124,7 +128,7 @@ export function HallOfFameCard() {
         <p className="mt-0.5 text-xs text-muted-foreground">{t("leaderboard.hofSubtitle")}</p>
       </div>
       <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-        {champs.map((c, i) => (
+        {shown.map((c, i) => (
           <div
             key={c.month}
             className={cn(
@@ -153,6 +157,15 @@ export function HallOfFameCard() {
           </div>
         ))}
       </div>
+      {champs.length > HOF_PREVIEW && (
+        <button
+          type="button"
+          onClick={() => setExpanded((v) => !v)}
+          className="font-mono text-[11px] uppercase tracking-widest-2 text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          {expanded ? t("leaderboard.hofShowLess") : t("leaderboard.hofShowAll", { n: champs.length })}
+        </button>
+      )}
     </section>
   );
 }

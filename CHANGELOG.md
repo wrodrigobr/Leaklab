@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(leaderboard): Campeões mensais com preview + "ver todos" (não vira parede com o tempo)
+
+> O hall of fame cresce 1 campeão por mês (backend já limita em 12). Pra não virar uma parede de cards no rodapé com o tempo, o display agora mostra os **6 mais recentes** por padrão + botão **"Ver todos ({{n}})"** / "Ver menos" quando há mais. i18n PT/EN/ES. Só front, tsc 0.
+
 ### refactor(leaderboard): revalidação holística da página (balanço dos eixos, Campeões, header)
 
 > Passada completa de UX (feedback do dono: piecemeal ficou abaixo do esperado). (1) **Balanço real dos dois eixos, sem espaço morto:** o `min-h` forçado tinha criado caixas vazias no eixo Esforço (que tem menos dado). Removido. Agora os dois lados têm **densidade de conteúdo equivalente** por construção: "sua posição" com 3 linhas reais dos dois lados (Skill: rank+delta / score·ELO / visível; Esforço: rank+streak / acertos·spots / visível), e a linha do ranking com o MESMO formato (cabeçalho + barras): Skill = 4 barras de dimensão, Esforço ganhou **2 barras** (Acertos + Volume) espelhando, mesma altura natural sem preencher com vazio. (2) **"Campeões mensais" redesenhado + desambiguado:** antes era uma lista plana que não dizia de QUE ranking eram; agora é um grid de cards de campeão (medalha, nome, mês por extenso, score, o mais recente destacado em ouro) com subtítulo explícito "O nº 1 do ranking de Aderência GTO em cada mês" (são do eixo Skill; o eixo Esforço não tem hall of fame ainda). (3) **Header enxuto:** removida a descrição longa ("Rankeado por APRENDIZADO...") que ocupava espaço à toa; fica eyebrow + título. i18n PT/EN/ES (`league.public/streak`, `leaderboard.hofSubtitle`, `hofTitle` sem emoji). Só front, tsc 0.

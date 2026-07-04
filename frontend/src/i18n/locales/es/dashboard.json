@@ -70,6 +70,8 @@
     "coachRankingNoneEligible": "Ningún alumno elegible aún en el período.",
     "hofTitle": "Campeones del mes",
     "hofSubtitle": "El nº 1 del ranking de Adherencia GTO cada mes.",
+    "hofShowAll": "Ver todos ({{n}})",
+    "hofShowLess": "Ver menos",
     "anonymous": "Anónimo",
     "privacyTitle": "Tu participación",
     "optIn": "Aparecer en el ranking público",
