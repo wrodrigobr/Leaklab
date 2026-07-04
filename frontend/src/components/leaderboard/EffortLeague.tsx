@@ -24,7 +24,7 @@ function MyEffort({ me, onJoin, joining }: { me: TrainingLeagueMe; onJoin: () =>
     );
   }
   return (
-    <div className="rounded-xl border border-primary/40 bg-primary/[0.06] p-4">
+    <div className="min-h-[6.5rem] rounded-xl border border-primary/40 bg-primary/[0.06] p-4">
       <div className="mb-1 font-mono text-[10px] uppercase tracking-widest-2 text-primary">
         {t("league.yourPosition")}
       </div>
@@ -46,29 +46,50 @@ function MyEffort({ me, onJoin, joining }: { me: TrainingLeagueMe; onJoin: () =>
   );
 }
 
-/** Linha de jogador na liga de esforço (acertos + streak + tentativas). */
-function EffortRow({ e, self }: { e: TrainingLeagueEntry; self?: boolean }) {
+/** Barra de esforço relativa ao líder da semana (espelha a MiniBar do eixo skill). */
+function EffortBar({ label, pct }: { label: string; pct: number }) {
+  return (
+    <div className="flex items-center gap-1.5">
+      <span className="w-20 shrink-0 font-mono text-[9px] uppercase text-muted-foreground">{label}</span>
+      <div className="h-1 flex-1 overflow-hidden rounded-full bg-muted/20">
+        <div className="h-full rounded-full bg-primary" style={{ width: `${Math.min(100, pct)}%` }} />
+      </div>
+    </div>
+  );
+}
+
+/** Linha de jogador na liga de esforço. MESMA estrutura/dimensão do eixo skill:
+ *  cabeçalho (rank + nome/meta + acertos em destaque) + barra no rodapé. */
+function EffortRow({ e, self, max }: { e: TrainingLeagueEntry; self?: boolean; max: number }) {
   const { t } = useTranslation("training");
+  const pct = max > 0 ? (e.points / max) * 100 : 0;
   return (
     <div
       className={cn(
-        "flex items-center gap-3 rounded-xl border p-3",
+        "flex min-h-[6.75rem] flex-col rounded-xl border p-4 transition-colors",
         self ? "border-primary/50 bg-primary/[0.04]" : "border-border/40 bg-card/40"
       )}
     >
-      <MedalRank rank={e.rank ?? 0} size="sm" />
-      <span className={cn("min-w-0 flex-1 truncate text-sm", self ? "font-bold text-foreground" : "text-foreground")}>
-        {e.display_name}
-        {self && <span className="ml-1.5 font-mono text-[10px] uppercase text-primary">· {t("league.you")}</span>}
-      </span>
-      <span className="flex w-10 items-center justify-end gap-1 font-mono text-[11px] tabular-nums text-muted-foreground">
-        <Flame className="size-3 text-amber-400/70" aria-hidden />
-        {e.streak}
-      </span>
-      <span className="hidden w-20 text-right font-mono text-[11px] tabular-nums text-muted-foreground sm:inline">
-        {e.spots} {t("league.spots")}
-      </span>
-      <span className="w-14 text-right font-mono text-xl font-bold tabular-nums text-primary">{e.points}</span>
+      <div className="flex items-center gap-4">
+        <MedalRank rank={e.rank ?? 0} />
+        <div className="min-w-0 flex-1">
+          <div className="truncate font-medium text-foreground">
+            {e.display_name}
+            {self && <span className="ml-1.5 font-mono text-[10px] uppercase text-primary">· {t("league.you")}</span>}
+          </div>
+          <div className="flex items-center gap-2 font-mono text-[10px] text-muted-foreground">
+            <span className="flex items-center gap-1">
+              <Flame className="size-3 text-amber-400/70" aria-hidden />
+              {e.streak}
+            </span>
+            <span>· {e.spots} {t("league.spots")}</span>
+          </div>
+        </div>
+        <span className="shrink-0 font-mono text-3xl font-bold tabular-nums text-primary">{e.points}</span>
+      </div>
+      <div className="mt-auto pt-3">
+        <EffortBar label={t("league.points")} pct={pct} />
+      </div>
     </div>
   );
 }
@@ -89,6 +110,7 @@ export function EffortLeague() {
 
   const me = data?.me;
   const ranked = data?.ranked ?? [];
+  const maxPoints = Math.max(1, ...ranked.map((r) => r.points));
 
   return (
     <section aria-labelledby="effort-heading" className="flex flex-col gap-3">
@@ -116,7 +138,7 @@ export function EffortLeague() {
           ) : (
             <div className="space-y-2">
               {ranked.map((e) => (
-                <EffortRow key={e.user_id} e={e} self={!!me?.is_self && e.user_id === me.user_id} />
+                <EffortRow key={e.user_id} e={e} self={!!me?.is_self && e.user_id === me.user_id} max={maxPoints} />
               ))}
             </div>
           )}

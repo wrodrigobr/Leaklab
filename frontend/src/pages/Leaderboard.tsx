@@ -10,7 +10,6 @@ import { EffortLeague } from "@/components/leaderboard/EffortLeague";
 import { LeagueSkeleton } from "@/components/leaderboard/shared";
 import {
   ParticipationBar,
-  HowRankedCard,
   HallOfFameCard,
   IneligibleCard,
 } from "@/components/leaderboard/secondary";
@@ -80,9 +79,8 @@ function Body({
         </div>
       )}
 
-      {/* Secundário (baixo destaque): como é calculado · campeões · inelegíveis. */}
-      <div className="grid gap-4 border-t border-border/40 pt-6 md:grid-cols-3">
-        <HowRankedCard data={data} />
+      {/* Secundário (baixo destaque): campeões · inelegíveis. */}
+      <div className="grid gap-4 border-t border-border/40 pt-6 md:grid-cols-2">
         <HallOfFameCard />
         <IneligibleCard data={data} />
       </div>

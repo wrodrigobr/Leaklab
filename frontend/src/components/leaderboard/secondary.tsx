@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Trophy, Info } from "lucide-react";
+import { Trophy } from "lucide-react";
 import { metrics, leaderboardPrefs, LeaderboardResponse, LeaderboardPrefs, HallOfFameEntry } from "@/lib/api";
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
@@ -93,38 +93,6 @@ export function ParticipationBar({ prefs, onSaved }: { prefs: LeaderboardPrefs; 
         {t("leaderboard.optInHint")} · {t("leaderboard.coachNote")}
       </p>
     </div>
-  );
-}
-
-/** Como é calculado — pesos do score + regra de elegibilidade (#15). */
-export function HowRankedCard({ data }: { data: LeaderboardResponse }) {
-  const { t } = useTranslation("dashboard");
-  const w = data.weights;
-  const g = data.eligibility;
-  return (
-    <section aria-labelledby="how-ranked" className="rounded-xl border border-border/40 bg-card/40 p-4">
-      <h3 id="how-ranked" className="mb-2 flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-widest-2 text-muted-foreground">
-        <Info className="size-3" aria-hidden />
-        {t("leaderboard.howRankedTitle")}
-      </h3>
-      <div className="space-y-1 font-mono text-[10px] text-muted-foreground">
-        <div>
-          {t("leaderboard.weightsNote", {
-            gto: Math.round(w.gto * 100),
-            evo: Math.round(w.evolution * 100),
-            eng: Math.round(w.engagement * 100),
-            vol: Math.round(w.volume * 100),
-          })}
-        </div>
-        <div>
-          {t("leaderboard.gateNote", {
-            hands: g.min_hands,
-            tournaments: g.min_tournaments,
-            gto: g.min_gto_decisions,
-          })}
-        </div>
-      </div>
-    </section>
   );
 }
 
