@@ -7,6 +7,20 @@
     "desc": "Los torneos nuevos revelan fugas nuevas. Reinicia el ciclo: entrena → juega → valida.",
     "cta": "Entrenar"
   },
+  "league": {
+    "title": "Liga de Entrenamiento",
+    "subtitle": "Ranking de esfuerzo de la semana. Cuenta la práctica, no el skill.",
+    "thisWeek": "Esta semana",
+    "empty": "Nadie ha entrenado esta semana todavía. Sé el primero.",
+    "spots": "spots",
+    "points": "aciertos",
+    "you": "tú",
+    "yourPosition": "Tu posición",
+    "notRanked": "Sin rango aún",
+    "joinHint": "Únete al ranking público para aparecer aquí. Mientras estés fuera, solo tú ves tu posición.",
+    "join": "Unirme",
+    "effortNote": "Clasificado por aciertos en el entrenamiento de la semana (esfuerzo), nunca por ELO. Se reinicia cada lunes."
+  },
   "status": {
     "title": "Tu entrenamiento",
     "skills": "Dominio por habilidad",

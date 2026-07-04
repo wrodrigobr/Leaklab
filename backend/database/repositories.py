@@ -7566,6 +7566,41 @@ def set_leaderboard_prefs(user_id: int, opt_in: bool, handle: Optional[str] = No
     return {"opt_in": bool(opt_in), "handle": h}
 
 
+# ── Liga de Treino (#32) — esforço da semana (agregado do training_daily) ──────
+
+def get_training_league(week_start: str, week_end: str) -> list:
+    """Agrega o ESFORÇO de treino da semana [week_start, week_end] (YYYY-MM-DD) por
+    usuário: points = acertos (SUM correct), spots = tentativas (SUM spots), streak.
+    Só quem treinou na janela. Reusa opt_in/handle do #15 (mesma vitrine de privacidade).
+    Feed pra `leaderboard.rank_training_league` + `public_view`."""
+    conn = get_conn()
+    try:
+        rows = conn.execute(_adapt(
+            "SELECT u.id AS user_id, u.username AS username, "
+            "u.leaderboard_handle AS handle, u.leaderboard_opt_in AS opt_in, "
+            "COALESCE(u.xp_streak, 0) AS streak, "
+            "SUM(td.correct) AS points, SUM(td.spots) AS spots "
+            "FROM training_daily td JOIN users u ON u.id = td.user_id "
+            "WHERE td.day >= ? AND td.day <= ? "
+            "GROUP BY u.id, u.username, u.leaderboard_handle, u.leaderboard_opt_in, u.xp_streak"
+        ), (week_start, week_end)).fetchall()
+        out = []
+        for r in rows:
+            d = dict(r)
+            out.append({
+                "user_id":  d["user_id"],
+                "username": d["username"],
+                "handle":   (d.get("handle") or "").strip() or None,
+                "opt_in":   bool(d.get("opt_in")),
+                "streak":   int(d.get("streak") or 0),
+                "points":   int(d.get("points") or 0),
+                "spots":    int(d.get("spots") or 0),
+            })
+        return out
+    finally:
+        conn.close()
+
+
 # ── Snapshots do leaderboard (#15 — histórico de posição + delta) ─────────────
 # Hoje gravados SOB DEMANDA (guard ~1/dia no GET). Falta um cron real (scheduler/
 # hosting) para gravar de forma confiável independente de acesso — ver backlog #15.

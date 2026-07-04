@@ -1215,6 +1215,29 @@ export interface LeaderboardPrefs {
   handle: string | null;
 }
 
+// Liga de Treino (#32) — ranking de ESFORÇO da semana (acertos), não de skill
+export interface TrainingLeagueEntry {
+  user_id: number;
+  display_name: string;
+  rank: number | null;
+  points: number;   // acertos na semana
+  spots: number;    // tentativas na semana
+  streak: number;
+}
+export interface TrainingLeagueMe extends Omit<TrainingLeagueEntry, "rank"> {
+  is_self: boolean;
+  opt_in: boolean;
+  handle: string | null;
+  rank: number | null;         // posição pública, ou null se fora/sem treino
+}
+export interface TrainingLeagueResponse {
+  week_start: string;          // YYYY-MM-DD (segunda)
+  week_end: string;
+  ranked: TrainingLeagueEntry[];
+  ineligible: TrainingLeagueEntry[];
+  me?: TrainingLeagueMe | null;
+}
+
 // Campeões mensais (#15 hall of fame)
 export interface HallOfFameEntry {
   month: string;            // YYYY-MM
@@ -1285,6 +1308,9 @@ export const metrics = {
 
   hallOfFame: (period = 90) =>
     request<{ champions: HallOfFameEntry[] }>(`/metrics/hall-of-fame?period=${period}`),
+
+  trainingLeague: () =>
+    request<TrainingLeagueResponse>(`/metrics/training-league`),
 
   evolution: (days = 90, lastN?: number) =>
     request<EvolutionResponse>(`/history/evolution?days=${days}${lastN != null ? `&last_n=${lastN}` : ""}`),

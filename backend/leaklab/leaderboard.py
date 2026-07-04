@@ -170,3 +170,23 @@ def public_view(result: dict, viewer_id: int | None = None) -> dict:
                 break
 
     return {"ranked": out_ranked, "ineligible": out_ineligible, "me": me}
+
+
+# ── Liga de Treino (#32) — ranking de ESFORÇO, NÃO de skill/ELO ────────────────
+def rank_training_league(players: list[dict]) -> dict:
+    """Liga de Treino: ranqueia pelo ESFORÇO da semana (acertos no treino), NUNCA por
+    ELO/aderência (isso é o ranking #15). Ordem: points desc, spots desc, user_id asc.
+    Quem não acertou nada na semana (points<=0) fica em 'ineligible' — aparece como
+    "treine pra entrar", sem rank. Reusa `public_view` pra opt-in/anonimização/`me`.
+
+    Cada player: {user_id, username, handle, opt_in, points, spots, streak}.
+    """
+    ranked     = [p for p in players if (p.get("points") or 0) > 0]
+    ineligible = [p for p in players if (p.get("points") or 0) <= 0]
+    ranked.sort(key=lambda p: (-(p.get("points") or 0), -(p.get("spots") or 0), p.get("user_id", 0)))
+    for i, p in enumerate(ranked, start=1):
+        p["rank"] = i
+    for p in ineligible:
+        p["eligible"] = False
+        p["reason"] = "no_training_this_week"
+    return {"ranked": ranked, "ineligible": ineligible}

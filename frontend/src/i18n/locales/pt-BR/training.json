@@ -7,6 +7,20 @@
     "desc": "Novos torneios revelam novos vazamentos. Reinicie o ciclo: treine → jogue → valide.",
     "cta": "Treinar"
   },
+  "league": {
+    "title": "Liga de Treino",
+    "subtitle": "Ranking de esforço da semana. Vale prática, não skill.",
+    "thisWeek": "Esta semana",
+    "empty": "Ninguém treinou ainda esta semana. Seja o primeiro.",
+    "spots": "spots",
+    "points": "acertos",
+    "you": "você",
+    "yourPosition": "Sua posição",
+    "notRanked": "Sem rank ainda",
+    "joinHint": "Participe do ranking público pra aparecer aqui. Enquanto estiver fora, só você vê sua posição.",
+    "join": "Participar",
+    "effortNote": "Ranqueado por acertos no treino da semana (esforço), nunca por ELO. Reseta toda segunda."
+  },
   "status": {
     "title": "Seu treino",
     "skills": "Domínio por habilidade",

@@ -7,6 +7,20 @@
     "desc": "New tournaments reveal new leaks. Restart the loop: train → play → validate.",
     "cta": "Train"
   },
+  "league": {
+    "title": "Training League",
+    "subtitle": "This week's effort ranking. Practice counts, not skill.",
+    "thisWeek": "This week",
+    "empty": "Nobody has trained this week yet. Be the first.",
+    "spots": "spots",
+    "points": "correct",
+    "you": "you",
+    "yourPosition": "Your position",
+    "notRanked": "Not ranked yet",
+    "joinHint": "Join the public ranking to show up here. While you're out, only you see your position.",
+    "join": "Join",
+    "effortNote": "Ranked by correct answers in this week's training (effort), never by ELO. Resets every Monday."
+  },
   "status": {
     "title": "Your training",
     "skills": "Mastery by skill",

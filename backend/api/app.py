@@ -2095,6 +2095,45 @@ def leaderboard():
     })
 
 
+@app.route('/metrics/training-league', methods=['GET'])
+@require_auth
+def training_league():
+    """Liga de Treino (#32): ranking de ESFORÇO da semana corrente (seg–dom), por
+    acertos no treino — NÃO por ELO/skill. Opt-in/handle reusam a vitrine do #15.
+    Reset automático (a janela é a semana atual). O próprio usuário sempre vê sua
+    posição (`me`), mesmo sem ter treinado ou sem opt-in."""
+    from datetime import datetime, timedelta
+    from database.repositories import get_training_league, get_leaderboard_prefs, get_xp_status
+    from leaklab.leaderboard import rank_training_league, public_view
+
+    today  = datetime.utcnow().date()
+    monday = today - timedelta(days=today.weekday())
+    sunday = monday + timedelta(days=6)
+    ws, we = monday.strftime('%Y-%m-%d'), sunday.strftime('%Y-%m-%d')
+
+    players = get_training_league(ws, we)
+    # Garante que o viewer aparece (linha zero) mesmo sem treino na semana → `me` existe.
+    if not any(p['user_id'] == g.user_id for p in players):
+        prefs = get_leaderboard_prefs(g.user_id)
+        try:
+            streak = int((get_xp_status(g.user_id) or {}).get('streak') or 0)
+        except Exception:
+            streak = 0
+        players.append({
+            'user_id': g.user_id, 'username': g.user.get('username') if g.get('user') else None,
+            'handle': prefs.get('handle'), 'opt_in': bool(prefs.get('opt_in')),
+            'streak': streak, 'points': 0, 'spots': 0,
+        })
+
+    view = public_view(rank_training_league(players), viewer_id=g.user_id)
+    return jsonify({
+        'week_start': ws, 'week_end': we,
+        'ranked':     view['ranked'],
+        'ineligible': view['ineligible'],
+        'me':         view['me'],
+    })
+
+
 @app.route('/metrics/hall-of-fame', methods=['GET'])
 @require_auth
 def hall_of_fame():

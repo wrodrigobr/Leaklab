@@ -10,6 +10,7 @@ import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { TrainingLeagueCard } from "@/components/training/TrainingLeagueCard";
 
 const RANK_TINT: Record<number, string> = {
   1: "text-yellow-400",
@@ -324,6 +325,13 @@ export default function Leaderboard() {
       )}
       {error && <div className="py-12 text-center text-sm text-destructive">{error}</div>}
       {data && <Body data={data} prefs={prefs} onSaved={loadData} />}
+
+      {/* Liga de Treino (#32): 2º eixo — ESFORÇO da semana, separado do ranking de ELO acima. */}
+      {!loading && (
+        <div className="mt-8">
+          <TrainingLeagueCard />
+        </div>
+      )}
     </HudLayout>
   );
 }
