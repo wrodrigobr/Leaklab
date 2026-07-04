@@ -181,6 +181,20 @@ def test_acr_multi_hand_same_tournament_and_pipeline():
     print("OK  test_acr_multi_hand_same_tournament_and_pipeline")
 
 
+def test_acr_effective_stack_in_bb_not_default():
+    """ACR: stack em BB tem que sair do stack REAL (fichas/bb), não do fallback 20bb.
+    O regex antigo estourava no formato '(30200.00)' (sem 'in chips') → todo ACR virava
+    20bb, corrompendo o stack_bb do spot_hash GTO e o SPR. Hero 30200 fichas, bb 500 → ~60bb."""
+    h = parse_hand_history(ACR_SHOWDOWN_HAND)[0]
+    assert h.bb == 500.0, h.bb
+    dis = build_decision_inputs_for_hand(h)
+    stacks = [float(d.get('spot', {}).get('effectiveStackBb') or 0) for d in dis]
+    assert stacks, "sem decisões"
+    # 30200/500 = 60.4bb (cai um pouco conforme o hero posta/gasta), NUNCA o default 20.0.
+    assert max(stacks) > 40, f"stack em BB não bate (default 20bb?): {stacks}"
+    print("OK  test_acr_effective_stack_in_bb_not_default")
+
+
 def test_acr_buyin_from_filename():
     """Fase 5: buy-in ACR vem do FILENAME ('TN-$0{FULLSTOP}50' → 0.50; '{FULLSTOP}'='.').
     prize/profit ficam None (corpo é só chips; não assumir busted = prejuízo falso)."""

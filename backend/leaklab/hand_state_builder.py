@@ -183,15 +183,19 @@ def _effective_stack(hand: ParsedHand, hero: str,
     """Stack efetivo em BBs estimado subtraindo o que o hero já colocou."""
     bb = hand.bb or 1.0
 
-    # Tentar extrair stack inicial do HH
+    # Tentar extrair stack inicial do HH. Regex robusto: casa PS/GG "(21,280 in chips)"
+    # E ACR "(30200.00)" (sem "in chips", stack decimal terminando em ')'). O método antigo
+    # (split('(')[1].split()[0]) pegava "30200.00)" no ACR → float() estourava → fallback 20bb
+    # em TODA mão ACR, corrompendo stack_bb (que entra no spot_hash GTO) e o SPR.
     initial_stack = None
     for line in hand.raw_text.splitlines():
         if f': {hero} (' in line and line.startswith('Seat '):
-            try:
-                stack_str = line.split('(')[1].split()[0].replace(',', '')
-                initial_stack = float(stack_str)
-            except (IndexError, ValueError):
-                pass
+            m = re.search(r'\(\s*([\d.,]+)', line)
+            if m:
+                try:
+                    initial_stack = float(m.group(1).replace(',', ''))
+                except ValueError:
+                    pass
             break
 
     if initial_stack is None:
