@@ -49,6 +49,7 @@
     "eyebrow": "Comunidade",
     "title": "Ranking de Alunos",
     "description": "Rankeado por APRENDIZADO: aderência GTO, evolução, engajamento e volume. Não por dinheiro.",
+    "skillTitle": "Aderência GTO (skill)",
     "loading": "Carregando ranking…",
     "empty": "Ninguém elegível ainda no período. Continue importando torneios e treinando.",
     "colRank": "#",

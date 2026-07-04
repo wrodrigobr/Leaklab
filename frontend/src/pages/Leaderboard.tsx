@@ -10,6 +10,7 @@ import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { Award } from "lucide-react";
 import { TrainingLeagueCard } from "@/components/training/TrainingLeagueCard";
 
 const RANK_TINT: Record<number, string> = {
@@ -179,55 +180,45 @@ function PrivacyCard({ prefs, onSaved }: { prefs: LeaderboardPrefs; onSaved: () 
   };
 
   return (
-    <div className="rounded-xl border border-border/40 bg-card/40 p-4 space-y-3">
-      <h3 className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
-        {t("leaderboard.privacyTitle")}
-      </h3>
-
-      <div className="flex items-start justify-between gap-3">
-        <Label htmlFor="lb-optin" className="text-sm text-foreground cursor-pointer leading-snug">
-          {t("leaderboard.optIn")}
-          <span className="block font-normal text-[11px] text-muted-foreground mt-0.5">
-            {t("leaderboard.optInHint")}
-          </span>
-        </Label>
-        <Switch
-          id="lb-optin"
-          checked={optIn}
-          onCheckedChange={(v) => { setOptIn(v); setSaved(false); }}
-          className="mt-0.5 shrink-0"
-        />
-      </div>
-
-      {optIn && (
-        <div className="space-y-1">
-          <Label htmlFor="lb-handle" className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
-            {t("leaderboard.handleLabel")}
+    <div className="rounded-xl border border-border/40 bg-card/40 px-4 py-2.5">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+        <div className="flex items-center gap-2">
+          <Switch
+            id="lb-optin"
+            checked={optIn}
+            onCheckedChange={(v) => { setOptIn(v); setSaved(false); }}
+            className="shrink-0"
+          />
+          <Label htmlFor="lb-optin" className="text-sm text-foreground cursor-pointer">
+            {t("leaderboard.optIn")}
           </Label>
+        </div>
+
+        {optIn && (
           <Input
             id="lb-handle"
             value={handle}
             maxLength={24}
             placeholder={t("leaderboard.handlePlaceholder")}
             onChange={(e) => { setHandle(e.target.value); setSaved(false); setError(null); }}
-            className="h-8 text-sm"
+            className="h-8 w-44 text-sm"
           />
-          <p className="text-[11px] text-muted-foreground">{t("leaderboard.handleHint")}</p>
-        </div>
-      )}
-
-      <div className="flex items-center gap-2">
-        <Button size="sm" onClick={save} disabled={saving || !dirty} className="h-7 text-xs">
-          {saving ? t("leaderboard.saving") : t("leaderboard.save")}
-        </Button>
-        {saved && !dirty && (
-          <span className="font-mono text-[11px] text-emerald-400">{t("leaderboard.saved")}</span>
         )}
-        {error && <span className="text-[11px] text-destructive">{error}</span>}
-      </div>
 
-      <p className="text-[10px] text-muted-foreground/80 border-t border-border/30 pt-2">
-        {t("leaderboard.coachNote")}
+        <div className="ml-auto flex items-center gap-2">
+          {saved && !dirty && (
+            <span className="font-mono text-[11px] text-emerald-400">{t("leaderboard.saved")}</span>
+          )}
+          {error && <span className="text-[11px] text-destructive">{error}</span>}
+          {dirty && (
+            <Button size="sm" onClick={save} disabled={saving} className="h-7 text-xs">
+              {saving ? t("leaderboard.saving") : t("leaderboard.save")}
+            </Button>
+          )}
+        </div>
+      </div>
+      <p className="mt-1.5 text-[10px] text-muted-foreground/70">
+        {t("leaderboard.optInHint")} · {t("leaderboard.coachNote")}
       </p>
     </div>
   );
@@ -242,22 +233,34 @@ function Body({ data, prefs, onSaved }:
     code ? t(`leaderboard.reason_${code}`, { defaultValue: code }) : "";
 
   return (
-    <div className="grid gap-6 lg:grid-cols-3">
-      {/* Ranking principal */}
-      <div className="lg:col-span-2 space-y-2">
-        {data.ranked.length === 0 ? (
-          <p className="text-sm text-muted-foreground">{t("leaderboard.empty")}</p>
-        ) : (
-          data.ranked.map((e) => <Row key={e.user_id} e={e} self={e.user_id === data.me?.user_id} />)
-        )}
+    <div className="space-y-6">
+      {/* Participação compacta (opt-in + apelido), uma linha no topo. */}
+      {prefs && <PrivacyCard prefs={prefs} onSaved={onSaved} />}
+
+      {/* Dois rankings LADO A LADO: eixos distintos (skill × esforço). */}
+      <div className="grid gap-6 lg:grid-cols-2">
+        {/* ── Esquerda: Aderência GTO (skill) ── */}
+        <section className="space-y-3">
+          <div className="flex items-center gap-2">
+            <Award className="size-4 text-primary" />
+            <h2 className="font-heading text-sm font-bold text-foreground">{t("leaderboard.skillTitle")}</h2>
+          </div>
+          {data.me && <MyPosition me={data.me} />}
+          {data.ranked.length === 0 ? (
+            <p className="text-sm text-muted-foreground">{t("leaderboard.empty")}</p>
+          ) : (
+            <div className="space-y-2">
+              {data.ranked.map((e) => <Row key={e.user_id} e={e} self={e.user_id === data.me?.user_id} />)}
+            </div>
+          )}
+        </section>
+
+        {/* ── Direita: Liga de Treino (esforço) ── */}
+        <TrainingLeagueCard />
       </div>
 
-      {/* Sidebar — sua posição, participação, como é calculado, inelegíveis */}
-      <aside className="space-y-4">
-        {data.me && <MyPosition me={data.me} />}
-
-        {prefs && <PrivacyCard prefs={prefs} onSaved={onSaved} />}
-
+      {/* Secundário (menos destaque): como é calculado · hall of fame · inelegíveis. */}
+      <div className="grid gap-4 md:grid-cols-3">
         <div className="rounded-xl border border-border/40 bg-card/40 p-4">
           <div className="font-mono text-[10px] text-muted-foreground space-y-1">
             <div>{t("leaderboard.weightsNote", {
@@ -288,7 +291,7 @@ function Body({ data, prefs, onSaved }:
             </div>
           </section>
         )}
-      </aside>
+      </div>
     </div>
   );
 }
@@ -325,13 +328,6 @@ export default function Leaderboard() {
       )}
       {error && <div className="py-12 text-center text-sm text-destructive">{error}</div>}
       {data && <Body data={data} prefs={prefs} onSaved={loadData} />}
-
-      {/* Liga de Treino (#32): 2º eixo — ESFORÇO da semana, separado do ranking de ELO acima. */}
-      {!loading && (
-        <div className="mt-8">
-          <TrainingLeagueCard />
-        </div>
-      )}
     </HudLayout>
   );
 }

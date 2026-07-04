@@ -49,6 +49,7 @@
     "eyebrow": "Community",
     "title": "Student Leaderboard",
     "description": "Ranked by LEARNING: GTO adherence, evolution, engagement and volume. Not by money.",
+    "skillTitle": "GTO Adherence (skill)",
     "loading": "Loading leaderboard…",
     "empty": "Nobody eligible yet in this period. Keep importing tournaments and training.",
     "colRank": "#",

@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### refactor(leaderboard): página de Ranking remodelada — dois eixos lado a lado + opt-in compacto
+
+> A página estava ELO-cêntrica (ranking grande ocupando 2/3 + sidebar pesada com o opt-in vertical) e a Liga de Treino tinha ficado empilhada embaixo. Remodelada: (1) **opt-in compacto** — o `PrivacyCard` virou uma barra horizontal de uma linha no topo (toggle + apelido + salvar, hint numa linha só), no lugar do card vertical grande; (2) **os dois rankings lado a lado** (`grid lg:grid-cols-2`): esquerda = Aderência GTO (skill, com "sua posição"), direita = Liga de Treino (esforço) — os eixos distintos ficam explícitos visualmente; (3) o **secundário** (como é calculado, hall of fame, inelegíveis) desceu pra um grid de 3 colunas menos destacado embaixo. Nova chave `leaderboard.skillTitle` (PT/EN/ES). Só front. tsc 0.
+
 ### feat(leaderboard): Liga de Treino — ranking de ESFORÇO semanal (#32 MVP)
 
 > Ranking estilo Duolingo que premia **prática, não skill**: ranqueia por **acertos no treino da semana** (seg-dom), NUNCA por ELO/aderência (isso é o ranking #15). Reusa 100% a vitrine de privacidade do #15 (opt-in + handle anonimizado, "sua posição" sempre visível mesmo fora/sem treino). Backend: `get_training_league(week_start, week_end)` agrega o `training_daily` (SUM correct=pontos, SUM spots, + streak), `leaderboard.rank_training_league` (points desc, spots desc; quem não acertou nada → "treine pra entrar") reusa o `public_view` do #15, endpoint `GET /metrics/training-league` (semana corrente em UTC, reset automático). Front: `TrainingLeagueCard` na página de **Ranking** (abaixo do ranking de ELO — os dois eixos lado a lado reforçam que esforço ≠ skill), com opt-in inline. i18n PT/EN/ES. Escopo MVP (decisão do user): board semanal, SEM tiers/cohorts/promoção (Fase 2, precisa de escala) e SEM ponderar por dificuldade/domínio (hoje acerto fácil = difícil, registrado). Testes `test_training_league` (4), leaderboard #15 13/13 intacto, tsc 0. Só acumula dado a partir do deploy.
