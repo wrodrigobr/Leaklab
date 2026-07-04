@@ -2273,6 +2273,7 @@ export interface AdminUser {
   coach_id?: number | null;
   display_name: string | null;
   suspended: boolean | number;
+  leaderboard_handle?: string | null;
   billing_standing?: "paying" | "past_due" | "perk" | "free";
   plan_source?: "stripe_sub" | "coach_trial" | "coach_earned" | null;
   subscription_status?: "active" | "past_due" | "canceled" | null;
@@ -2416,6 +2417,10 @@ export const adminDashboard = {
       method: "DELETE",
       body: JSON.stringify({ admin_password: adminPassword }),
     }),
+
+  // Limpa o apelido do ranking (contorna o lock one-time) — remedia apelido ofensivo.
+  clearHandle: (id: number) =>
+    request<{ ok: boolean }>(`/admin/users/${id}/clear-handle`, { method: "POST" }),
 
   coachPayouts: () =>
     request<{ coaches: CoachPayout[]; total_payable_cents: number }>("/admin/finance/coaches"),

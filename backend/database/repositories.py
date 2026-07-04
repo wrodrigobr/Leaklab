@@ -5062,7 +5062,7 @@ def get_all_users(limit: int = 50, offset: int = 0, plan: str = None,
         rows = _fetchall(conn, f"""
             SELECT u.id, u.username, u.email, u.role, u.plan,
                    u.plan_source, u.subscription_status, u.plan_expires_at, u.link_status,
-                   u.created_at, u.last_login, u.suspended,
+                   u.created_at, u.last_login, u.suspended, u.leaderboard_handle,
                    c.username AS coach_username,
                    cp.display_name,
                    (SELECT MAX(imported_at) FROM tournaments WHERE user_id = u.id) AS last_import,

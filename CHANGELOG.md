@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(admin): botão "limpar apelido" no painel de usuários (fecha a moderação)
+
+> Complemento da moderação de apelido: `get_all_users` passou a expor `leaderboard_handle` e a lista de usuários do admin mostra o apelido do ranking com um botão **"limpar"** (confirmação nativa) → `POST /admin/users/<uid>/clear-handle` (contorna o lock one-time, o usuário depois escolhe outro). É a remediação pra apelido ofensivo que escapar da blocklist. Validado ponta a ponta (listagem expõe, clear zera), tsc 0.
+
 ### fix(acr): stack efetivo caía no default 20bb — regex não lia o formato ACR (sem "in chips")
 
 > Validação pedida pelo dono (evitar o problema do GG). O **bug do GG NÃO ocorre no ACR** (o `bb` é extraído certo de `Level 4 (750.00/1500.00)`, e pot/facing já vinham em BB). Mas surgiu **outro** bug: `_effective_stack` extraía o stack com `line.split('(')[1].split()[0]`, que no ACR `Seat 3: nome (30200.00)` (sem "in chips", stack termina em `)`) pegava `30200.00)` → `float()` estourava → **fallback 20bb em TODA mão ACR**. Isso corrompe o `stack_bb` (que entra no `spot_hash` GTO → bucket de stack errado → cobertura errada) e o SPR. Corrigido com regex robusto (`\(\s*([\d.,]+)`) que casa ACR `(30200.00)` E PS/GG `(21,280 in chips)`. Validado: hero 30200 fichas / bb 500 → **60.4bb** (antes 20). Teste `test_acr_effective_stack_in_bb_not_default`; PS/GG intactos (tournament 9/9, multi_decision 14/14, decision_engine 33/33, pipeline 9/9). **Torneios ACR já importados têm stack_bb=20 gravado → precisam de re-análise** (`reprocess_tournament --tid <T>` + reenqueue/drain, mesmo fluxo do fix do GG) pra corrigir a cobertura GTO.

@@ -439,6 +439,12 @@ function UsersTab() {
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["admin-users"] }); toast.success("Usuário atualizado"); },
   });
 
+  // Remedia apelido ofensivo no ranking (contorna o lock one-time).
+  const clearHandleMut = useMutation({
+    mutationFn: (id: number) => adminDashboard.clearHandle(id),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["admin-users"] }); toast.success("Apelido removido"); },
+  });
+
   const allUsers: AdminUser[] = data?.users ?? [];
   // billing_standing filter is applied client-side (not a backend list param).
   const users = billing ? allUsers.filter(u => (u.billing_standing ?? "free") === billing) : allUsers;
@@ -498,6 +504,20 @@ function UsersTab() {
                     <p className="font-medium text-foreground">{u.display_name || u.username}</p>
                     {u.display_name && <p className="font-mono text-[10px] text-muted-foreground">@{u.username}</p>}
                     <p className="font-mono text-[10px] text-muted-foreground">{u.email}</p>
+                    {u.leaderboard_handle && (
+                      <p className="mt-0.5 font-mono text-[10px] text-muted-foreground">
+                        apelido: <span className="text-foreground">{u.leaderboard_handle}</span>
+                        <button
+                          onClick={() => {
+                            if (window.confirm(`Limpar o apelido "${u.leaderboard_handle}" de ${u.username}? O usuário poderá escolher outro.`))
+                              clearHandleMut.mutate(u.id);
+                          }}
+                          className="ml-1.5 text-destructive hover:underline"
+                        >
+                          limpar
+                        </button>
+                      </p>
+                    )}
                   </td>
                   <td className="px-4 py-3 font-mono text-muted-foreground">{u.role}</td>
                   <td className="px-4 py-3">
