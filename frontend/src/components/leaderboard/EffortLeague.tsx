@@ -142,7 +142,6 @@ export function EffortLeague() {
               ))}
             </div>
           )}
-          <p className="font-mono text-[10px] leading-relaxed text-muted-foreground">{t("league.effortNote")}</p>
         </>
       )}
     </section>
