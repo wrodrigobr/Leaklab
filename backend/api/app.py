@@ -4982,7 +4982,8 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
         # no fallback seats−folded do card) e deslocava as posições do replay.
         if SEAT_OUT_OF_HAND_RE.search(line):
             continue
-        m = _re.match(r'Seat (\d+): (.+?) \(([0-9.,]+) in chips', line)
+        # PS/GG: "(1500 in chips)"; ACR: "(29150.00)" — sem "in chips", stack decimal.
+        m = _re.match(r'Seat (\d+): (.+?) \(([0-9.,]+)(?: in chips)?\)', line)
         if m:
             player = m.group(2).strip()
             # GG usa separador de milhar (21,280); tira a vírgula antes de converter.

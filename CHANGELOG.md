@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(replay): torneio ACR mostrava "Sem Dados" — seats não casavam (sem "in chips")
+
+> Abrir o Replayer de uma mão **ACR/WPN** dava "Sem Dados". Causa: o `_build_replay_data` extraía os assentos com um regex que exigia `"... in chips)"` (formato PokerStars/GGPoker), mas o ACR é `Seat N: nome (29150.00)` (stack em parênteses, sem "in chips", decimal). Sem casar, `seats` ficava vazio → `{'error':'Seats não encontrados'}` → o front renderizava "Sem Dados". Regex agora aceita os dois formatos (`(?: in chips)?`). A timeline já vinha de `hand.actions` (o parser é ACR-aware), então só o seat travava. Teste `test_acr_replay` (8 seats, 9 steps na fixture ACR). **Em prod, precisa restart do backend** (o replay tem cache in-memory; reinício limpa o resultado ruim).
+
 ### feat(moderation): filtro de palavras ofensivas em apelido + username
 
 > Apelido do ranking e nome de usuário são públicos, então agora passam por um filtro de conteúdo. Novo `content_moderation.moderate_handle`: normaliza **leetspeak** (`0→o, @→a, 3→e`…) e separadores antes de comparar com uma lista curada PT/EN/ES; termos curtos (<5) só batem no início/igual pra evitar falso-positivo (ex.: "reputacao"/"disputa" contêm "puta", mas passam). Aplicado ao **definir o apelido** (`set_leaderboard_prefs` → `handle_offensive`) e no **cadastro** (username → `username_offensive`, os dois endpoints). Como o apelido é one-time/travado, o admin pode **limpar** um ofensivo que escapar: repo `admin_clear_leaderboard_handle` + `POST /admin/users/<uid>/clear-handle` (contorna o lock → usuário escolhe outro). i18n `leaderboard.handleOffensive` PT/EN/ES. Teste `test_leaderboard_handle_offensive_blocked_and_admin_clear`; test_database 26/26, tsc 0. **Pendente:** botão "limpar apelido" na UI do admin (por ora via endpoint). Lista é extensível, não exaustiva.
