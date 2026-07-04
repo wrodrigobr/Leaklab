@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(challenge): confete ao acertar o Desafio do Dia (#42)
+
+> Quando o jogador acerta o desafio (veredito `is_correct`, inclui o "Aceitável" do GTO misto), dispara a mesma comemoração de confete do fim da lição do Leak Trainer (mesma paleta teal/amber/sky/light, dois bursts). Respeita `prefers-reduced-motion`. Erro não comemora.
+
 ### feat(challenge): explicação didática do veredito gerada na criação (LLM vetado) (#42)
 
 > Ao gerar os candidatos, cada spot já vem com a **explicação do veredito** pronta: `explain_challenge` chama o Haiku com um prompt de "coach de MTT" ancorado nos dados REAIS do spot (cenário, posição, stack, mão, mix GTO completo, se é contraintuitivo) e escreve, em 3-5 frases, POR QUE aquela é a decisão, conectando à profundidade do stack, posição, range do vilão e a armadilha típica. Regras de ancoragem no system (não inventa cartas/números, termos de poker em inglês, sem travessão, PT-BR). Gerada UMA vez, guardada na coluna `explanation` do pool (migração SQLite + PG abort-proof) e **revisada pelo admin antes de aprovar** (mesma lógica de vetar o gabarito, nada ao vivo por request). O admin vê a explicação no card de curadoria ("o jogador verá"); o jogador recebe como `teaching` após responder. Fallback determinístico (o "porquê" do `describe_challenge`) quando o LLM está indisponível. Prompt cacheado por (mão+spot).

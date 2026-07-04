@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import confetti from "canvas-confetti";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { CalendarClock, CheckCircle2, XCircle, Shuffle, Users } from "lucide-react";
 import { metrics, type DailyChallengeResult, type DailyChallengeSpot } from "@/lib/api";
@@ -30,7 +31,15 @@ export function DailyChallengeCard() {
 
   const submit = useMutation({
     mutationFn: (action: string) => metrics.dailyChallengeSubmit(action),
-    onSuccess: () => {
+    onSuccess: (res) => {
+      // acertou → comemoração (mesma paleta/efeito do fim da lição)
+      if (res.result?.is_correct) {
+        const colors = ["#2DD4BF", "#f5c542", "#5ad1ff", "#E3E8EC"];
+        const burst = (particleCount: number, spread: number, y: number) =>
+          confetti({ particleCount, spread, startVelocity: 38, origin: { y }, colors, scalar: 0.9, disableForReducedMotion: true });
+        burst(120, 70, 0.6);
+        setTimeout(() => burst(60, 110, 0.62), 200);
+      }
       // revalida pra trazer stats atualizadas + estado answered
       qc.invalidateQueries({ queryKey: ["daily-challenge"] });
       qc.invalidateQueries({ queryKey: ["training-overview"] });
