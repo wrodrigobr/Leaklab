@@ -84,6 +84,7 @@
     "saved": "Salvo ✓",
     "handleTaken": "Esse apelido já está em uso. Escolha outro.",
     "handleLocked": "O apelido não pode ser alterado depois de definido.",
+    "handleOffensive": "Esse apelido não é permitido. Escolha outro.",
     "handleOnceWarning": "O apelido é definitivo, não poderá ser alterado depois.",
     "saveError": "Não foi possível salvar. Tente novamente.",
     "coachNote": "Seu coach sempre vê seus números, independente desta opção.",

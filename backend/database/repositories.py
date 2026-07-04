@@ -7561,8 +7561,12 @@ def set_leaderboard_prefs(user_id: int, opt_in: bool, handle: Optional[str] = No
         # Travado: já existe apelido e está tentando mudar/remover → recusa.
         if current is not None and h != current:
             raise ValueError("handle_locked")
-        # 1ª definição (current None → h): checa unicidade case-insensitive.
+        # 1ª definição (current None → h): modera (palavras ofensivas) + checa unicidade.
         if h is not None and h != current:
+            from leaklab.content_moderation import moderate_handle
+            clean, _ = moderate_handle(h)
+            if not clean:
+                raise ValueError("handle_offensive")
             taken = _fetchone(conn, _adapt(
                 "SELECT id FROM users WHERE LOWER(leaderboard_handle) = LOWER(?) AND id != ?"
             ), (h, user_id))
@@ -7575,6 +7579,17 @@ def set_leaderboard_prefs(user_id: int, opt_in: bool, handle: Optional[str] = No
     finally:
         conn.close()
     return {"opt_in": bool(opt_in), "handle": h}
+
+
+def admin_clear_leaderboard_handle(user_id: int) -> None:
+    """Admin: limpa o apelido do usuário (contorna o lock one-time). Remedia apelido
+    ofensivo que escapou da moderação — o usuário depois escolhe outro."""
+    conn = get_conn()
+    try:
+        conn.execute(_adapt("UPDATE users SET leaderboard_handle = NULL WHERE id = ?"), (user_id,))
+        conn.commit()
+    finally:
+        conn.close()
 
 
 # ── Liga de Treino (#32) — esforço da semana (agregado do training_daily) ──────

@@ -414,6 +414,9 @@ def register():
         return jsonify({'error': 'username, email e password são obrigatórios'}), 400
     if '@' in username:
         return jsonify({'error': 'Nome de usuário não pode ser um email', 'code': 'username_is_email'}), 400
+    from leaklab.content_moderation import moderate_handle as _mod_handle
+    if not _mod_handle(username)[0]:
+        return jsonify({'error': 'Nome de usuário não permitido', 'code': 'username_offensive'}), 400
     if len(password) < 8:
         return jsonify({'error': 'Senha deve ter pelo menos 8 caracteres'}), 400
     if get_user_by_email(email):
@@ -533,6 +536,9 @@ def coach_apply():
         return jsonify({'error': 'username, email e password são obrigatórios'}), 400
     if '@' in username:
         return jsonify({'error': 'Nome de usuário não pode ser um email', 'code': 'username_is_email'}), 400
+    from leaklab.content_moderation import moderate_handle as _mod_handle
+    if not _mod_handle(username)[0]:
+        return jsonify({'error': 'Nome de usuário não permitido', 'code': 'username_offensive'}), 400
     if len(password) < 8:
         return jsonify({'error': 'Senha deve ter pelo menos 8 caracteres'}), 400
     if get_user_by_email(email):
@@ -6607,6 +6613,18 @@ def admin_delete_user(uid):
         return jsonify({'error': 'Usuário não encontrado'}), 404
     delete_user_admin(uid)
     return jsonify({'ok': True, 'deleted_id': uid})
+
+
+@app.route('/admin/users/<int:uid>/clear-handle', methods=['POST'])
+@require_admin
+def admin_clear_handle(uid):
+    """Limpa o apelido do usuário no ranking (contorna o lock one-time). Remedia
+    apelido ofensivo que escapou da moderação — o usuário depois escolhe outro."""
+    from database.repositories import admin_clear_leaderboard_handle
+    if not get_user_by_id(uid):
+        return jsonify({'error': 'Usuário não encontrado'}), 404
+    admin_clear_leaderboard_handle(uid)
+    return jsonify({'ok': True})
 
 
 @app.route('/admin/finance/coaches', methods=['GET'])

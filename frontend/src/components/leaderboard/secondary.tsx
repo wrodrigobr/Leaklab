@@ -36,7 +36,9 @@ export function ParticipationBar({ prefs, onSaved }: { prefs: LeaderboardPrefs; 
           ? t("leaderboard.handleTaken")
           : msg === "handle_locked"
             ? t("leaderboard.handleLocked")
-            : t("leaderboard.saveError")
+            : msg === "handle_offensive"
+              ? t("leaderboard.handleOffensive")
+              : t("leaderboard.saveError")
       );
     } finally {
       setSaving(false);

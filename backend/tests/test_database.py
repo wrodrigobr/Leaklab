@@ -266,6 +266,25 @@ def test_leaderboard_handle_locked_once():
     print("OK  test_leaderboard_handle_locked_once")
 
 
+def test_leaderboard_handle_offensive_blocked_and_admin_clear():
+    """Apelido ofensivo (com leetspeak) é barrado; admin limpa contornando o lock."""
+    _clean()
+    uid = repo.create_user('lbmod', 'lbmod@t.com', 'p')
+    try:
+        repo.set_leaderboard_prefs(uid, True, "p0rr4"); assert False, "passou ofensivo"
+    except ValueError as e:
+        assert str(e) == "handle_offensive"
+    # limpo entra; fica travado
+    repo.set_leaderboard_prefs(uid, True, "sharky")
+    assert repo.get_leaderboard_prefs(uid)["handle"] == "sharky"
+    # admin limpa (contorna o lock) → usuário pode escolher outro
+    repo.admin_clear_leaderboard_handle(uid)
+    assert repo.get_leaderboard_prefs(uid)["handle"] is None
+    repo.set_leaderboard_prefs(uid, True, "newnick")
+    assert repo.get_leaderboard_prefs(uid)["handle"] == "newnick"
+    print("OK  test_leaderboard_handle_offensive_blocked_and_admin_clear")
+
+
 def test_leaderboard_handle_unique_case_insensitive():
     _clean()
     a = repo.create_user('lbA', 'lba@t.com', 'p')

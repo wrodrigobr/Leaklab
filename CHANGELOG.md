@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(moderation): filtro de palavras ofensivas em apelido + username
+
+> Apelido do ranking e nome de usuário são públicos, então agora passam por um filtro de conteúdo. Novo `content_moderation.moderate_handle`: normaliza **leetspeak** (`0→o, @→a, 3→e`…) e separadores antes de comparar com uma lista curada PT/EN/ES; termos curtos (<5) só batem no início/igual pra evitar falso-positivo (ex.: "reputacao"/"disputa" contêm "puta", mas passam). Aplicado ao **definir o apelido** (`set_leaderboard_prefs` → `handle_offensive`) e no **cadastro** (username → `username_offensive`, os dois endpoints). Como o apelido é one-time/travado, o admin pode **limpar** um ofensivo que escapar: repo `admin_clear_leaderboard_handle` + `POST /admin/users/<uid>/clear-handle` (contorna o lock → usuário escolhe outro). i18n `leaderboard.handleOffensive` PT/EN/ES. Teste `test_leaderboard_handle_offensive_blocked_and_admin_clear`; test_database 26/26, tsc 0. **Pendente:** botão "limpar apelido" na UI do admin (por ora via endpoint). Lista é extensível, não exaustiva.
+
 ### feat(leaderboard): apelido do ranking é ONE-TIME (definido uma vez, depois travado)
 
 > O apelido (handle) podia ser trocado à vontade, e como o nome é resolvido **ao vivo** (no ranking, na Liga de Treino e no Hall of Fame), trocar renomearia campeões/entradas retroativamente e bagunçaria a identidade (trocar-rankeia-troca). Agora é **one-time**: `set_leaderboard_prefs` recusa mudar ou remover um apelido já definido (`ValueError("handle_locked")` → 409); a 1ª definição (null→valor) e o opt-in/opt-out seguem livres. Front: quando já há apelido, o input vira um chip **read-only com cadeado**; antes de definir, aviso âmbar "o apelido é definitivo, não poderá ser alterado depois"; erro `handle_locked` mapeado. i18n PT/EN/ES. Testes `test_leaderboard_handle_locked_once` + roundtrip atualizado; test_database 25/25, leaderboard 13/13, tsc 0.

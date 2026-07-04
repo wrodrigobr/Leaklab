@@ -84,6 +84,7 @@
     "saved": "Saved ✓",
     "handleTaken": "That handle is already taken. Pick another.",
     "handleLocked": "The handle can't be changed once set.",
+    "handleOffensive": "That handle isn't allowed. Pick another.",
     "handleOnceWarning": "The handle is permanent, it can't be changed later.",
     "saveError": "Couldn't save. Please try again.",
     "coachNote": "Your coach always sees your numbers, regardless of this setting.",

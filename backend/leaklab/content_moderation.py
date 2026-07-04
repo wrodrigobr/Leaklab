@@ -91,3 +91,48 @@ def moderate_text(text: str) -> ModerationResult:
             log.warning("Content moderation flag | term='%s' | snippet=%.80s", term, text[:80])
             return False, "Conteúdo não permitido detectado"
     return True, ""
+
+
+# ── Moderação de apelido/username (curto, público) ────────────────────────────
+# Leetspeak → letra base, pra normalizar evasões (f0d@ → foda, sh1t → shit).
+_LEET = str.maketrans({
+    '0': 'o', '1': 'i', '3': 'e', '4': 'a', '5': 's', '7': 't',
+    '8': 'b', '@': 'a', '$': 's', '!': 'i', '|': 'i',
+})
+
+# Termos ofensivos (PT/EN/ES). Curada e extensível — não é exaustiva; o admin
+# consegue limpar o que escapar (o apelido é one-time/travado). Lowercase.
+_OFFENSIVE_TERMS: list[str] = [
+    # PT
+    "caralho", "porra", "buceta", "boceta", "xoxota", "cuzao", "cuzudo",
+    "arrombado", "arrombada", "viado", "viadinho", "corno", "piroca",
+    "punheta", "escroto", "otario", "babaca", "vagabunda", "filhadaputa",
+    "retardado", "mongoloide", "puta", "foda", "fdp", "merda", "bosta",
+    # EN
+    "fuck", "shit", "bitch", "cunt", "asshole", "dick", "pussy", "nigger",
+    "nigga", "faggot", "retard", "whore", "slut", "bastard", "motherfuck",
+    "cocksuck", "dickhead",
+    # ES
+    "mierda", "cabron", "cono", "polla", "joder", "maricon", "pendejo",
+    "verga", "gilipollas", "zorra", "culero",
+    # geral
+    "hitler", "nazista", "nazi",
+]
+
+
+def moderate_handle(handle: str) -> ModerationResult:
+    """Modera apelido/username (curto, público). Normaliza leetspeak + separadores,
+    depois compara com a lista de termos ofensivos. Pra reduzir falso-positivo
+    (ex.: 'reputacao'/'disputa' contêm 'puta'), termos curtos (<5) só batem no INÍCIO
+    ou igual; termos longos batem como substring. Retorna (True,'') se limpo."""
+    if not handle:
+        return True, ""
+    norm = re.sub(r"[^a-z]", "", handle.lower().translate(_LEET))
+    if not norm:
+        return True, ""
+    for term in _OFFENSIVE_TERMS:
+        hit = (term in norm) if len(term) >= 5 else (norm == term or norm.startswith(term))
+        if hit:
+            log.warning("Handle moderation flag | term='%s' | handle=%.40s", term, handle[:40])
+            return False, "Apelido não permitido"
+    return True, ""
