@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Trophy } from "lucide-react";
+import { Trophy, Lock } from "lucide-react";
 import { metrics, leaderboardPrefs, LeaderboardResponse, LeaderboardPrefs, HallOfFameEntry } from "@/lib/api";
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
@@ -17,6 +17,8 @@ export function ParticipationBar({ prefs, onSaved }: { prefs: LeaderboardPrefs; 
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Apelido é ONE-TIME: uma vez definido, fica travado (o input vira read-only).
+  const locked = !!(prefs.handle && prefs.handle.trim());
   const dirty = optIn !== prefs.opt_in || (handle.trim() || null) !== (prefs.handle ?? null);
 
   const save = async () => {
@@ -29,7 +31,13 @@ export function ParticipationBar({ prefs, onSaved }: { prefs: LeaderboardPrefs; 
       onSaved();
     } catch (e) {
       const msg = String((e as Error)?.message ?? e);
-      setError(msg === "handle_taken" ? t("leaderboard.handleTaken") : t("leaderboard.saveError"));
+      setError(
+        msg === "handle_taken"
+          ? t("leaderboard.handleTaken")
+          : msg === "handle_locked"
+            ? t("leaderboard.handleLocked")
+            : t("leaderboard.saveError")
+      );
     } finally {
       setSaving(false);
     }
@@ -56,21 +64,30 @@ export function ParticipationBar({ prefs, onSaved }: { prefs: LeaderboardPrefs; 
           </Label>
         </div>
 
-        {optIn && (
-          <Input
-            id="lb-handle"
-            value={handle}
-            maxLength={24}
-            aria-label={t("leaderboard.handleLabel")}
-            placeholder={t("leaderboard.handlePlaceholder")}
-            onChange={(e) => {
-              setHandle(e.target.value);
-              setSaved(false);
-              setError(null);
-            }}
-            className="h-8 w-44 text-sm"
-          />
-        )}
+        {optIn &&
+          (locked ? (
+            <span
+              className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border/60 bg-muted/10 px-2.5 font-mono text-sm text-foreground"
+              title={t("leaderboard.handleLocked")}
+            >
+              <Lock className="size-3 text-muted-foreground" aria-hidden />
+              {prefs.handle}
+            </span>
+          ) : (
+            <Input
+              id="lb-handle"
+              value={handle}
+              maxLength={24}
+              aria-label={t("leaderboard.handleLabel")}
+              placeholder={t("leaderboard.handlePlaceholder")}
+              onChange={(e) => {
+                setHandle(e.target.value);
+                setSaved(false);
+                setError(null);
+              }}
+              className="h-8 w-44 text-sm"
+            />
+          ))}
 
         <div className="ml-auto flex items-center gap-2">
           {saved && !dirty && (
@@ -92,6 +109,7 @@ export function ParticipationBar({ prefs, onSaved }: { prefs: LeaderboardPrefs; 
       </div>
       <p className="mt-1.5 text-[10px] text-muted-foreground/70">
         {t("leaderboard.optInHint")} · {t("leaderboard.coachNote")}
+        {optIn && !locked && <span className="text-amber-400/80"> · {t("leaderboard.handleOnceWarning")}</span>}
       </p>
     </div>
   );

@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(leaderboard): apelido do ranking é ONE-TIME (definido uma vez, depois travado)
+
+> O apelido (handle) podia ser trocado à vontade, e como o nome é resolvido **ao vivo** (no ranking, na Liga de Treino e no Hall of Fame), trocar renomearia campeões/entradas retroativamente e bagunçaria a identidade (trocar-rankeia-troca). Agora é **one-time**: `set_leaderboard_prefs` recusa mudar ou remover um apelido já definido (`ValueError("handle_locked")` → 409); a 1ª definição (null→valor) e o opt-in/opt-out seguem livres. Front: quando já há apelido, o input vira um chip **read-only com cadeado**; antes de definir, aviso âmbar "o apelido é definitivo, não poderá ser alterado depois"; erro `handle_locked` mapeado. i18n PT/EN/ES. Testes `test_leaderboard_handle_locked_once` + roundtrip atualizado; test_database 25/25, leaderboard 13/13, tsc 0.
+
 ### feat(leaderboard): checklist de requisitos pra quem ainda não entra no ranking
 
 > Quando o jogador é inelegível (abaixo do gate do #15: mín. torneios/mãos/decisões GTO), o card "Sua posição" antes só dizia "não listado" — o jogador ficava procurando o nome à toa. Agora mostra um **checklist do que falta** com o progresso dele: Torneios `X/10`, Mãos analisadas `Y/500`, Decisões com solver GTO `Z/100`, cada um com ✓ (verde) quando batido. Usa `me.tournaments/hands/gto_decisions` + `data.eligibility` (já vinham no payload). i18n PT/EN/ES. Só front, tsc 0.

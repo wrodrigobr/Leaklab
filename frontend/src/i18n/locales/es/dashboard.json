@@ -83,6 +83,8 @@
     "saving": "Guardando…",
     "saved": "Guardado ✓",
     "handleTaken": "Ese alias ya está en uso. Elige otro.",
+    "handleLocked": "El alias no se puede cambiar una vez definido.",
+    "handleOnceWarning": "El alias es definitivo, no podrá cambiarse después.",
     "saveError": "No se pudo guardar. Inténtalo de nuevo.",
     "coachNote": "Tu coach siempre ve tus números, independientemente de esta opción.",
     "myPositionTitle": "Tu posición",

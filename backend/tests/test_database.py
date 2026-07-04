@@ -235,13 +235,35 @@ def test_leaderboard_prefs_default_and_roundtrip():
     repo.set_leaderboard_prefs(uid, True, "  shark_river  ")
     p = repo.get_leaderboard_prefs(uid)
     assert p["opt_in"] is True and p["handle"] == "shark_river"
-    # Handle vazio → NULL (cai pro username quando opta por participar).
-    repo.set_leaderboard_prefs(uid, True, "   ")
-    assert repo.get_leaderboard_prefs(uid) == {"opt_in": True, "handle": None}
-    # Desliga.
-    repo.set_leaderboard_prefs(uid, False, None)
-    assert repo.get_leaderboard_prefs(uid)["opt_in"] is False
+    # Opt-out MANTÉM o apelido (só a participação muda; apelido é one-time).
+    repo.set_leaderboard_prefs(uid, False, "shark_river")
+    assert repo.get_leaderboard_prefs(uid) == {"opt_in": False, "handle": "shark_river"}
+    # Handle vazio → NULL só na PRIMEIRA definição (usuário sem apelido ainda).
+    u2 = repo.create_user('lbprefs2', 'lbprefs2@t.com', 'p')
+    repo.set_leaderboard_prefs(u2, True, "   ")
+    assert repo.get_leaderboard_prefs(u2) == {"opt_in": True, "handle": None}
     print("OK  test_leaderboard_prefs_default_and_roundtrip")
+
+
+def test_leaderboard_handle_locked_once():
+    """Apelido é ONE-TIME: definido uma vez, não pode trocar nem remover (opt-in livre)."""
+    _clean()
+    uid = repo.create_user('lblock', 'lblock@t.com', 'p')
+    repo.set_leaderboard_prefs(uid, True, "sharky")
+    # opt-out mantendo o mesmo apelido → ok
+    repo.set_leaderboard_prefs(uid, False, "sharky")
+    # trocar → handle_locked
+    try:
+        repo.set_leaderboard_prefs(uid, True, "newname"); assert False, "deixou trocar"
+    except ValueError as e:
+        assert str(e) == "handle_locked"
+    # remover → handle_locked
+    try:
+        repo.set_leaderboard_prefs(uid, True, None); assert False, "deixou remover"
+    except ValueError as e:
+        assert str(e) == "handle_locked"
+    assert repo.get_leaderboard_prefs(uid)["handle"] == "sharky"
+    print("OK  test_leaderboard_handle_locked_once")
 
 
 def test_leaderboard_handle_unique_case_insensitive():

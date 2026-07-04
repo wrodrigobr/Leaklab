@@ -7546,12 +7546,23 @@ def set_leaderboard_prefs(user_id: int, opt_in: bool, handle: Optional[str] = No
     efetivas. Não altera nada além da vitrine pública — o coach segue vendo os números.
 
     O handle é **único, case-insensitive** entre os usuários: se já estiver em uso por
-    outro aluno, levanta `ValueError("handle_taken")` (o endpoint mapeia para 409)."""
+    outro aluno, levanta `ValueError("handle_taken")` (o endpoint mapeia para 409).
+
+    O handle é **ONE-TIME**: uma vez definido, não pode ser trocado nem removido (evita
+    trocar-rankeia-troca-de-novo, que renomearia campeões/entradas retroativamente, já que
+    o nome é resolvido ao vivo). Mudar um handle já definido levanta `ValueError("handle_locked")`.
+    O opt-in (participar/sair) segue livre — só a string do apelido é travada."""
     h = (handle or "").strip()
     h = h[:24] if h else None
     conn = get_conn()
     try:
-        if h is not None:
+        cur = _fetchone(conn, _adapt("SELECT leaderboard_handle FROM users WHERE id = ?"), (user_id,))
+        current = ((dict(cur).get("leaderboard_handle") if cur else None) or "").strip() or None
+        # Travado: já existe apelido e está tentando mudar/remover → recusa.
+        if current is not None and h != current:
+            raise ValueError("handle_locked")
+        # 1ª definição (current None → h): checa unicidade case-insensitive.
+        if h is not None and h != current:
             taken = _fetchone(conn, _adapt(
                 "SELECT id FROM users WHERE LOWER(leaderboard_handle) = LOWER(?) AND id != ?"
             ), (h, user_id))
