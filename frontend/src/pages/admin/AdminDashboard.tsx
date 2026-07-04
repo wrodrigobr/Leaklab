@@ -964,6 +964,16 @@ function ChallengeTab() {
                   {/* Por que é um desafio (contexto derivado do range, honesto) */}
                   {ctx?.why && <p className="text-[12px] leading-snug text-foreground/90">{ctx.why}</p>}
 
+                  {/* Explicação didática do veredito (LLM, gerada na criação) — o que o jogador verá */}
+                  {item.explanation && (
+                    <div className="rounded-lg border border-sky-500/20 bg-sky-500/[0.04] p-2.5">
+                      <p className="mb-1 flex items-center gap-1.5 font-mono text-[9px] uppercase tracking-widest text-sky-400/80">
+                        <Sparkles className="size-3" aria-hidden /> Explicação do veredito (o jogador verá)
+                      </p>
+                      <p className="text-[12px] leading-snug text-muted-foreground">{item.explanation}</p>
+                    </div>
+                  )}
+
                   {/* Mix GTO completo — mostra a tensão (borda da decisão) */}
                   {ctx && ctx.gto_strategy.length > 0 && (
                     <div className="flex flex-wrap gap-3">

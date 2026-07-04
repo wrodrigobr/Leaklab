@@ -88,7 +88,93 @@ def _note(spot: dict, answer: str, freq: float) -> str:
     return f"{ctx} · {spot.get('stack_bb')}bb · mão {spot.get('hand')} → GTO {answer} {round(freq*100)}%"
 
 
-def build_candidates(n: int = 10, rng: _random.Random | None = None) -> list[dict]:
+# ── Explicação didática do veredito (gerada na criação, vetada pelo admin) ────────
+# Um "professor de MTT" explicando POR QUE a decisão é essa. Gerada UMA vez por spot,
+# guardada no pool e revisada pelo admin ANTES de ir ao ar (mesma lógica de vetar o
+# gabarito). Ancorada nos dados REAIS (mix GTO + contexto), não inventa números/cartas.
+_EXPLAIN_CACHE: dict = {}
+
+_SCENARIO_PT = {
+    'rfi':     "abertura (RFI): a ação foldou até o herói e ele decide se rouba os blinds",
+    'vs_rfi':  "defesa contra um open (RFI): alguém abriu e o herói decide como reagir",
+    'vs_3bet': "o herói abriu e agora enfrenta um 3-bet",
+}
+
+
+def _explain_prompt(spot: dict, ctx: dict) -> dict:
+    """Monta o payload do LLM. System = persona + regras de ancoragem; user = os fatos
+    REAIS do spot (cenário, posição, stack, mão, mix GTO). O modelo só EXPLICA, não decide."""
+    from leaklab.llm_explainer import _POKER_TERMS_EN
+    mix = ', '.join(f"{l['action']} {round(l['freq'] * 100)}%" for l in ctx.get('gto_strategy') or [])
+    facts = (
+        f"Cenário: {_SCENARIO_PT.get(spot.get('scenario'), spot.get('scenario'))}.\n"
+        f"Posição do herói: {spot.get('position')}.\n"
+        + (f"Posição do vilão: {spot.get('vs_position')}.\n" if spot.get('vs_position') else "")
+        + f"Stack efetivo: {spot.get('stack_bb')}bb.\n"
+        f"Mão do herói: {spot.get('hand')} ({ctx.get('hand_class')}).\n"
+        f"Decisão GTO (gabarito): {ctx.get('best_action')}.\n"
+        f"Estratégia GTO completa (frequências): {mix}.\n"
+        f"É contraintuitivo (a aparência da mão engana): {'sim' if ctx.get('counterintuitive') else 'não'}.\n"
+        f"Resumo estratégico interno (semente, pode reescrever): {ctx.get('why')}"
+    )
+    system = (
+        "Você é um coach de poker de torneios (MTT) de altíssimo nível explicando um spot para "
+        "um aluno intermediário, no tom de um bom professor: claro, direto, motivador e concreto. "
+        "Sua tarefa é EXPLICAR por que a decisão GTO informada é a correta, para o aluno entender "
+        "o RACIOCÍNIO, não só o resultado.\n"
+        "REGRAS DE ANCORAGEM (obrigatórias):\n"
+        "- Use SOMENTE os fatos fornecidos. NUNCA invente cartas, board, posições, números, stack "
+        "ou frequências diferentes dos informados. Você não recebe o board (é preflop).\n"
+        "- Explique o PORQUÊ estratégico com os fatores certos: posição e quantos jogadores faltam "
+        "agir, profundidade do stack (fold equity e playability mudam com a profundidade), força e "
+        "playability da mão, o range do vilão, blockers quando fizer sentido. Conecte à profundidade "
+        "do stack sempre que ela for decisiva (a mesma mão pode mudar de decisão em outro stack).\n"
+        "- Se a estratégia GTO for MISTA (mais de uma ação com frequência relevante), explique a "
+        "tensão: por que o GTO não faz sempre a mesma coisa aqui.\n"
+        "- Se for contraintuitivo, aponte a ARMADILHA: por que a mão engana e o erro típico do "
+        "jogador nesse spot.\n"
+        "CONTEÚDO E FORMA:\n"
+        "- 3 a 5 frases, um único parágrafo corrido. Sem títulos, sem bullets, sem markdown.\n"
+        "- Linguagem intuitiva, sem despejar jargão. Explique o conceito, não a fórmula interna.\n"
+        "- Não comece com 'Correto'/'Erro' nem repita o gabarito seco; vá direto ao raciocínio.\n"
+        f"{_POKER_TERMS_EN} "
+        "Responda em português do Brasil. Devolva SOMENTE o parágrafo, sem aspas."
+    )
+    return {
+        'model':      'claude-haiku-4-5-20251001',
+        'max_tokens': 500,
+        'system':     system,
+        'messages':   [{'role': 'user', 'content': facts}],
+    }
+
+
+def _fallback_explanation(spot: dict, ctx: dict) -> str:
+    """Sem LLM (sem API key / erro): explicação determinística a partir do contexto.
+    Honesta e útil, só menos fluida que a do modelo."""
+    return ctx.get('why') or ''
+
+
+def explain_challenge(spot: dict, ctx: dict | None = None) -> str:
+    """Explicação didática do veredito pro spot (gerada na criação). Cache por (mão+spot).
+    Fallback determinístico se o LLM estiver indisponível. NUNCA levanta."""
+    ctx = ctx or describe_challenge(spot)
+    key = f"{spot.get('scenario')}:{spot.get('position')}:{spot.get('vs_position')}:{spot.get('stack_bb')}:{spot.get('hand')}"
+    if key in _EXPLAIN_CACHE:
+        return _EXPLAIN_CACHE[key]
+    try:
+        from leaklab.llm_explainer import _call_llm_api
+        out = (_call_llm_api(_explain_prompt(spot, ctx)) or '').strip()
+        if len(out) >= 2 and out[0] in '"“' and out[-1] in '"”':
+            out = out[1:-1].strip()
+        out = out or _fallback_explanation(spot, ctx)
+    except Exception:
+        out = _fallback_explanation(spot, ctx)
+    _EXPLAIN_CACHE[key] = out
+    return out
+
+
+def build_candidates(n: int = 10, rng: _random.Random | None = None,
+                     with_explanation: bool = True) -> list[dict]:
     """Gera até `n` candidatos que passam no filtro de certeza. Cada candidato:
     {spot_json, answer, note}. O admin aprova antes de qualquer um virar desafio."""
     rng = rng or _random.Random()
@@ -113,11 +199,15 @@ def build_candidates(n: int = 10, rng: _random.Random | None = None) -> list[dic
         if sig in seen:
             continue
         seen.add(sig)
-        out.append({
+        cand = {
             'spot_json': json.dumps(spot),
             'answer':    answer,
             'note':      _note(spot, answer, freq),
-        })
+        }
+        if with_explanation:
+            # explicação didática gerada JÁ na criação (o admin revisa antes de aprovar)
+            cand['explanation'] = explain_challenge(spot, describe_challenge(spot))
+        out.append(cand)
     return out
 
 

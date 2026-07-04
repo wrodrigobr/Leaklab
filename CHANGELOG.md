@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(challenge): explicação didática do veredito gerada na criação (LLM vetado) (#42)
+
+> Ao gerar os candidatos, cada spot já vem com a **explicação do veredito** pronta: `explain_challenge` chama o Haiku com um prompt de "coach de MTT" ancorado nos dados REAIS do spot (cenário, posição, stack, mão, mix GTO completo, se é contraintuitivo) e escreve, em 3-5 frases, POR QUE aquela é a decisão, conectando à profundidade do stack, posição, range do vilão e a armadilha típica. Regras de ancoragem no system (não inventa cartas/números, termos de poker em inglês, sem travessão, PT-BR). Gerada UMA vez, guardada na coluna `explanation` do pool (migração SQLite + PG abort-proof) e **revisada pelo admin antes de aprovar** (mesma lógica de vetar o gabarito, nada ao vivo por request). O admin vê a explicação no card de curadoria ("o jogador verá"); o jogador recebe como `teaching` após responder. Fallback determinístico (o "porquê" do `describe_challenge`) quando o LLM está indisponível. Prompt cacheado por (mão+spot).
+
 ### feat(challenge): contexto rico na curadoria do admin (por que é um desafio) (#42)
 
 > O admin agora vê, por candidato, POR QUE aquele spot é um desafio: `describe_challenge` (determinístico, derivado do range GTO) devolve a classe da mão, o mix GTO completo (a tensão da borda), se é **contraintuitivo** (a aparência da mão contradiz o gabarito, onde o jogador erra), um **score 0-100 de quão desafiador** (não de quão certo, isso o filtro já garante) e um "porquê" em texto. O pool passa a vir ordenado pelos mais desafiadores no topo, e cada item mostra selo de interesse (Alto/Médio/Óbvio), o texto do porquê e as barras do mix. Ataca de frente a limitação registrada (o filtro dominante traz spots óbvios): o score deixa o admin priorizar os contraintuitivos. Sem mudança de schema (contexto calculado on-the-fly no endpoint do pool).

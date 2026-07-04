@@ -1260,6 +1260,7 @@ export interface DailyChallengeResult {
   best_action: string;
   gto_strategy: DailyChallengeStrategyLeg[];
   explanation: string;
+  teaching?: string;      // explicação didática (LLM, vetada na criação)
 }
 export interface DailyChallengeStats {
   total: number;
@@ -1292,6 +1293,7 @@ export interface DailyChallengePoolItem {
   spot: DailyChallengeSpot;
   answer: string;
   note: string;
+  explanation?: string | null;   // explicação didática do veredito (gerada na criação)
   status: "pending" | "approved" | "rejected";
   used_on: string | null;
   context?: DailyChallengeContext | null;

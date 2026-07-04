@@ -1428,15 +1428,20 @@ def _run_migrations(conn):
         # Desafio do Dia (#42): pool VETADO de spots + agenda diária + tentativas (SQLite).
         conn.execute("""
             CREATE TABLE IF NOT EXISTS daily_challenge_pool (
-                id         INTEGER PRIMARY KEY AUTOINCREMENT,
-                spot_json  TEXT    NOT NULL,
-                answer     TEXT    NOT NULL,
-                note       TEXT,
-                status     TEXT    NOT NULL DEFAULT 'pending',
-                used_on    TEXT,
-                created_at TEXT    NOT NULL DEFAULT (datetime('now'))
+                id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                spot_json   TEXT    NOT NULL,
+                answer      TEXT    NOT NULL,
+                note        TEXT,
+                explanation TEXT,
+                status      TEXT    NOT NULL DEFAULT 'pending',
+                used_on     TEXT,
+                created_at  TEXT    NOT NULL DEFAULT (datetime('now'))
             )
         """)
+        _dcp_cols = {r[1] for r in conn.execute('PRAGMA table_info(daily_challenge_pool)').fetchall()}
+        if 'explanation' not in _dcp_cols:
+            try: conn.execute("ALTER TABLE daily_challenge_pool ADD COLUMN explanation TEXT")
+            except Exception: pass
         conn.execute("""
             CREATE TABLE IF NOT EXISTS daily_challenge_schedule (
                 day     TEXT    PRIMARY KEY,
@@ -1986,14 +1991,16 @@ def _run_migrations(conn):
             "CREATE INDEX IF NOT EXISTS idx_feature_usage_day ON feature_usage(day)",
             # Desafio do Dia (#42): pool VETADO + agenda + tentativas. Abort-proof p/ existir em prod.
             """CREATE TABLE IF NOT EXISTS daily_challenge_pool (
-                id         SERIAL PRIMARY KEY,
-                spot_json  TEXT    NOT NULL,
-                answer     TEXT    NOT NULL,
-                note       TEXT,
-                status     TEXT    NOT NULL DEFAULT 'pending',
-                used_on    TEXT,
-                created_at TIMESTAMP NOT NULL DEFAULT NOW()
+                id          SERIAL PRIMARY KEY,
+                spot_json   TEXT    NOT NULL,
+                answer      TEXT    NOT NULL,
+                note        TEXT,
+                explanation TEXT,
+                status      TEXT    NOT NULL DEFAULT 'pending',
+                used_on     TEXT,
+                created_at  TIMESTAMP NOT NULL DEFAULT NOW()
             )""",
+            "ALTER TABLE daily_challenge_pool ADD COLUMN IF NOT EXISTS explanation TEXT",
             """CREATE TABLE IF NOT EXISTS daily_challenge_schedule (
                 day     TEXT    PRIMARY KEY,
                 pool_id INTEGER NOT NULL

@@ -166,6 +166,12 @@ function VerdictBox({ result, kind, actLabel, t }: {
         </div>
       )}
       <p className="text-[12px] leading-snug text-muted-foreground">{result.explanation}</p>
+      {/* Explicação didática (vetada na criação) — o "porquê" para o jogador entender */}
+      {result.teaching && (
+        <div className="rounded-lg bg-background/40 p-3 ring-1 ring-border">
+          <p className="text-[12px] leading-relaxed text-foreground/90">{result.teaching}</p>
+        </div>
+      )}
       <p className="text-[10px] leading-snug text-muted-foreground">{t("challenge.comeBack")}</p>
     </div>
   );

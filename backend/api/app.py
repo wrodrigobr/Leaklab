@@ -2577,7 +2577,8 @@ def player_daily_challenge():
         # já respondeu: devolve o veredito (regrada pra não guardar texto), sem re-registrar
         from leaklab.daily_challenge import grade_challenge
         g_res = grade_challenge(ch['spot_json'], attempt['chosen_action'])
-        out['result'] = {'chosen': attempt['chosen_action'], **g_res}
+        out['result'] = {'chosen': attempt['chosen_action'], **g_res,
+                         'teaching': ch.get('explanation') or ''}
     return jsonify(out)
 
 
@@ -2605,7 +2606,8 @@ def player_daily_challenge_submit():
         record_daily_mission_progress(g.user_id, bool(res['is_correct']))   # conta no dia → Liga #32
     except Exception:
         pass
-    return jsonify({'result': {'chosen': res['played'], **res}, 'stats': get_challenge_stats(day)})
+    return jsonify({'result': {'chosen': res['played'], **res, 'teaching': ch.get('explanation') or ''},
+                    'stats': get_challenge_stats(day)})
 
 
 @app.route('/admin/daily-challenge/generate', methods=['POST'])

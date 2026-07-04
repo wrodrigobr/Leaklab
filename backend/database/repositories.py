@@ -6866,9 +6866,9 @@ def add_challenge_candidates(candidates: list) -> int:
     try:
         for c in candidates:
             conn.execute(_adapt(
-                "INSERT INTO daily_challenge_pool (spot_json, answer, note, status) "
-                "VALUES (?, ?, ?, 'pending')"
-            ), (c['spot_json'], c['answer'], c.get('note', '')))
+                "INSERT INTO daily_challenge_pool (spot_json, answer, note, explanation, status) "
+                "VALUES (?, ?, ?, ?, 'pending')"
+            ), (c['spot_json'], c['answer'], c.get('note', ''), c.get('explanation', '')))
         conn.commit()
         return len(candidates)
     finally:
@@ -6881,11 +6881,11 @@ def list_challenge_candidates(status: Optional[str] = None, limit: int = 100) ->
     try:
         if status:
             rows = conn.execute(_adapt(
-                "SELECT id, spot_json, answer, note, status, used_on FROM daily_challenge_pool "
+                "SELECT id, spot_json, answer, note, explanation, status, used_on FROM daily_challenge_pool "
                 "WHERE status = ? ORDER BY id DESC LIMIT ?"), (status, limit)).fetchall()
         else:
             rows = conn.execute(_adapt(
-                "SELECT id, spot_json, answer, note, status, used_on FROM daily_challenge_pool "
+                "SELECT id, spot_json, answer, note, explanation, status, used_on FROM daily_challenge_pool "
                 "ORDER BY id DESC LIMIT ?"), (limit,)).fetchall()
         return [dict(r) for r in rows]
     finally:
@@ -6935,7 +6935,7 @@ def get_today_challenge(day: str) -> Optional[dict]:
             conn.execute(_adapt("UPDATE daily_challenge_pool SET used_on = ? WHERE id = ?"), (day, pool_id))
             conn.commit()
         row = _fetchone(conn, _adapt(
-            "SELECT id, spot_json, answer FROM daily_challenge_pool WHERE id = ?"), (pool_id,))
+            "SELECT id, spot_json, answer, explanation FROM daily_challenge_pool WHERE id = ?"), (pool_id,))
         return dict(row) if row else None
     finally:
         conn.close()
