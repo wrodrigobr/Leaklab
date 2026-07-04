@@ -412,6 +412,8 @@ def register():
 
     if not all([username, email, password]):
         return jsonify({'error': 'username, email e password são obrigatórios'}), 400
+    if '@' in username:
+        return jsonify({'error': 'Nome de usuário não pode ser um email', 'code': 'username_is_email'}), 400
     if len(password) < 8:
         return jsonify({'error': 'Senha deve ter pelo menos 8 caracteres'}), 400
     if get_user_by_email(email):
@@ -529,6 +531,8 @@ def coach_apply():
 
     if not all([username, email, password]):
         return jsonify({'error': 'username, email e password são obrigatórios'}), 400
+    if '@' in username:
+        return jsonify({'error': 'Nome de usuário não pode ser um email', 'code': 'username_is_email'}), 400
     if len(password) < 8:
         return jsonify({'error': 'Senha deve ter pelo menos 8 caracteres'}), 400
     if get_user_by_email(email):

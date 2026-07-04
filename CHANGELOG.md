@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(auth): bloqueia email no campo de nome de usuário no cadastro
+
+> O campo "nome de usuário" aceitava um email. Agora rejeita `@` no username, no backend (autoritativo, os dois endpoints de registro player + coach → 400 `username_is_email`) e no frontend (check imediato antes de enviar + mapeamento do erro do backend). i18n `errors.usernameEmail` PT/EN/ES. Backend testado (`@`→400, normal→201), tsc 0.
+
 ### fix(leaderboard): Campeões mensais com preview + "ver todos" (não vira parede com o tempo)
 
 > O hall of fame cresce 1 campeão por mês (backend já limita em 12). Pra não virar uma parede de cards no rodapé com o tempo, o display agora mostra os **6 mais recentes** por padrão + botão **"Ver todos ({{n}})"** / "Ver menos" quando há mais. i18n PT/EN/ES. Só front, tsc 0.

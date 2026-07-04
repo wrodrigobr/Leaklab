@@ -58,6 +58,11 @@ const Login = () => {
       if (tab === "login") {
         await login(email, password);
       } else {
+        if (username.includes("@")) {
+          setError(t("errors.usernameEmail"));
+          setLoading(false);
+          return;
+        }
         const res = await register(username, email, password, role, ref);
         if (res.pending) {
           setPendingCoach(res.linkedCoach ?? null);
@@ -76,7 +81,9 @@ const Login = () => {
         setLoading(false);
         return;
       }
-      if (e2.code === "coach_pending" || (e2.message || "").includes("Candidatura em análise")) {
+      if (e2.code === "username_is_email") {
+        setError(t("errors.usernameEmail"));
+      } else if (e2.code === "coach_pending" || (e2.message || "").includes("Candidatura em análise")) {
         setError(t("errors.coachPending"));
       } else if (err instanceof TypeError) {
         setError(t("errors.invalidCredentials"));
