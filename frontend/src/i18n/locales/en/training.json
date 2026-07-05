@@ -138,6 +138,9 @@
     "youPlayed": "You played:",
     "gtoStrategy": "GTO strategy",
     "comeBack": "Come back tomorrow for a new challenge.",
+    "start": "Start challenge",
+    "close": "Close",
+    "finish": "Done",
     "ctx": {
       "rfi": "You are in the {{pos}} and the action folds to you.",
       "vsRfi": "You are in the {{pos}} and {{vs}} opened the pot.",

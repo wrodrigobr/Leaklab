@@ -2,32 +2,17 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import confetti from "canvas-confetti";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { CalendarClock, CheckCircle2, XCircle, Shuffle, Users } from "lucide-react";
-import { metrics, type DailyChallengeResult, type DailyChallengeSpot } from "@/lib/api";
+import { CalendarClock, CheckCircle2, XCircle, Shuffle, Users, Play, X, Loader2 } from "lucide-react";
+import { PokerTableV3 } from "@/components/hud/PokerTableV3";
+import { buildChallengeStep } from "@/lib/challengeTable";
+import { metrics, type DailyChallengeResult } from "@/lib/api";
 import { cn } from "@/lib/utils";
-
-const SUIT_GLYPH: Record<string, string> = { s: "♠", h: "♥", d: "♦", c: "♣" };
-const SUIT_RED = new Set(["h", "d"]);
-
-/** Carta mini (rank + naipe colorido) — leitura de mão, sem a mesa inteira. */
-function MiniCard({ rank, suit }: { rank: string; suit: string }) {
-  const red = SUIT_RED.has(suit);
-  return (
-    <div className={cn(
-      "flex h-14 w-10 flex-col items-center justify-center rounded-md bg-white font-bold shadow-md ring-1 ring-black/20",
-      red ? "text-red-600" : "text-slate-900",
-    )}>
-      <span className="text-lg leading-none">{rank}</span>
-      <span className="text-base leading-none">{SUIT_GLYPH[suit] ?? suit}</span>
-    </div>
-  );
-}
 
 export function DailyChallengeCard() {
   const { t } = useTranslation("training");
   const qc = useQueryClient();
   const { data, isLoading } = useQuery({ queryKey: ["daily-challenge"], queryFn: metrics.dailyChallenge });
-  const [chosen, setChosen] = useState<string | null>(null);
+  const [open, setOpen] = useState(false);   // mesa em tela cheia
 
   const submit = useMutation({
     mutationFn: (action: string) => metrics.dailyChallengeSubmit(action),
@@ -37,10 +22,9 @@ export function DailyChallengeCard() {
         const colors = ["#2DD4BF", "#f5c542", "#5ad1ff", "#E3E8EC"];
         const burst = (particleCount: number, spread: number, y: number) =>
           confetti({ particleCount, spread, startVelocity: 38, origin: { y }, colors, scalar: 0.9, disableForReducedMotion: true });
-        burst(120, 70, 0.6);
-        setTimeout(() => burst(60, 110, 0.62), 200);
+        burst(140, 70, 0.55);
+        setTimeout(() => burst(70, 110, 0.6), 220);
       }
-      // revalida pra trazer stats atualizadas + estado answered
       qc.invalidateQueries({ queryKey: ["daily-challenge"] });
       qc.invalidateQueries({ queryKey: ["training-overview"] });
     },
@@ -64,7 +48,6 @@ export function DailyChallengeCard() {
     return t(`challenge.act.${a}`, a);
   };
 
-  // frase de contexto legível a partir do cenário
   const context = (() => {
     const pos = spot.position, vs = spot.vs_position;
     if (spot.scenario === "rfi") return t("challenge.ctx.rfi", { pos });
@@ -73,68 +56,139 @@ export function DailyChallengeCard() {
     return `${pos}`;
   })();
 
-  const kind = result ? (result.gto_tier === "error" ? "error" : result.mixed ? "mixed" : "correct") : null;
+  const closeFull = () => setOpen(false);
 
   return (
-    <div className="rounded-2xl border border-sky-500/30 bg-gradient-to-br from-sky-500/[0.08] to-transparent p-5">
-      <div className="mb-3 flex items-center justify-between gap-3">
-        <h2 className="flex items-center gap-2 font-heading text-base font-bold text-foreground">
-          <CalendarClock className="size-4 text-sky-400" aria-hidden /> {t("challenge.title")}
-        </h2>
-        {stats && stats.total > 0 && stats.pct !== null && (
-          <span className="inline-flex items-center gap-1.5 rounded-lg bg-sky-500/10 px-2.5 py-1 ring-1 ring-sky-500/25">
-            <Users className="size-3 text-sky-400" aria-hidden />
-            <span className="font-mono text-[11px] font-bold tabular-nums text-sky-200">{stats.pct}%</span>
-            <span className="font-mono text-[9px] uppercase tracking-wider text-muted-foreground">{t("challenge.todayHit")}</span>
-          </span>
+    <>
+      <div className="rounded-2xl border border-sky-500/30 bg-gradient-to-br from-sky-500/[0.08] to-transparent p-5">
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <h2 className="flex items-center gap-2 font-heading text-base font-bold text-foreground">
+            <CalendarClock className="size-4 text-sky-400" aria-hidden /> {t("challenge.title")}
+          </h2>
+          {stats && stats.total > 0 && stats.pct !== null && (
+            <span className="inline-flex items-center gap-1.5 rounded-lg bg-sky-500/10 px-2.5 py-1 ring-1 ring-sky-500/25">
+              <Users className="size-3 text-sky-400" aria-hidden />
+              <span className="font-mono text-[11px] font-bold tabular-nums text-sky-200">{stats.pct}%</span>
+              <span className="font-mono text-[9px] uppercase tracking-wider text-muted-foreground">{t("challenge.todayHit")}</span>
+            </span>
+          )}
+        </div>
+
+        <p className="mb-4 text-xs leading-snug text-muted-foreground">{t("challenge.subtitle")}</p>
+
+        {!answered ? (
+          <button onClick={() => setOpen(true)}
+            className="flex w-full items-center justify-center gap-2 rounded-xl bg-sky-500 px-4 py-3 font-mono text-sm font-bold uppercase tracking-widest text-black transition-colors hover:bg-sky-400">
+            <Play className="size-4" aria-hidden /> {t("challenge.start")}
+          </button>
+        ) : result && (
+          <VerdictBox result={result} actLabel={actLabel} context={context} spot={spot} t={t} />
         )}
       </div>
 
-      <p className="mb-3 text-xs leading-snug text-muted-foreground">{t("challenge.subtitle")}</p>
+      {/* ── Mesa em TELA CHEIA (ao iniciar o desafio) ── */}
+      {open && (
+        <ChallengeFullscreen
+          spot={spot} context={context} actLabel={actLabel} t={t}
+          result={submit.data?.result} pending={submit.isPending}
+          onSubmit={(a) => submit.mutate(a)} onClose={closeFull}
+        />
+      )}
+    </>
+  );
+}
 
-      {/* Spot: contexto + mão do herói */}
-      <div className="mb-4 flex flex-col gap-3 rounded-xl bg-background/50 p-4 ring-1 ring-border sm:flex-row sm:items-center sm:justify-between">
-        <div className="min-w-0">
-          <p className="text-sm font-bold text-foreground">{context}</p>
-          <p className="mt-0.5 font-mono text-[11px] text-muted-foreground">
-            {spot.stack_bb}bb
-            {spot.facing_size ? ` · ${t("challenge.facing", { size: spot.facing_size })}` : ""}
-          </p>
+/** Overlay imersivo: mesa PokerTableV3 + botões flutuantes + veredito (bottom-sheet). */
+function ChallengeFullscreen({ spot, context, actLabel, t, result, pending, onSubmit, onClose }: {
+  spot: import("@/lib/api").DailyChallengeSpot;
+  context: string;
+  actLabel: (a: string) => string;
+  t: (k: string, o?: Record<string, unknown>) => string;
+  result?: DailyChallengeResult;
+  pending: boolean;
+  onSubmit: (a: string) => void;
+  onClose: () => void;
+}) {
+  const table = buildChallengeStep(spot);
+  return (
+    <div className="fixed inset-0 z-[60] flex flex-col hud-scanline"
+      style={{ background: "radial-gradient(ellipse at 50% 42%, #14223a 0%, #080f1c 100%)" }}>
+      {/* topo: contexto + stack + fechar */}
+      <div className="flex items-center justify-between gap-2 px-[calc(0.75rem+env(safe-area-inset-left))] pt-[calc(0.6rem+env(safe-area-inset-top))]">
+        <div className="flex items-center gap-1.5 rounded-full bg-background/70 px-3 py-1.5 ring-1 ring-sky-500/30 backdrop-blur">
+          <CalendarClock className="size-3.5 text-sky-400" aria-hidden />
+          <span className="font-mono text-[11px] font-bold text-foreground">{t("challenge.title")}</span>
+          <span className="font-mono text-[10px] text-muted-foreground">{spot.stack_bb}bb</span>
         </div>
-        <div className="flex shrink-0 items-center gap-1.5">
-          {(spot.hero_cards ?? []).map((c, i) => <MiniCard key={i} rank={c.rank} suit={c.suit} />)}
+        <button onClick={onClose} aria-label={t("challenge.close")}
+          className="flex size-9 items-center justify-center rounded-full bg-background/70 text-muted-foreground ring-1 ring-border backdrop-blur transition-colors hover:text-foreground">
+          <X className="size-4" aria-hidden />
+        </button>
+      </div>
+
+      {/* contexto da mão (uma linha, clara) */}
+      <p className="px-4 pt-2 text-center text-sm font-bold text-foreground/90">{context}</p>
+
+      {/* mesa */}
+      <div className="flex min-h-0 flex-1 items-center justify-center p-1.5">
+        <div className="h-full max-h-full w-auto max-w-full" style={{ aspectRatio: "16 / 10" }}>
+          <PokerTableV3 step={table.step} hero="Hero" heroCards={table.heroCards} bb={table.bb} betUnit="bb" transparentBg />
         </div>
       </div>
 
-      {!answered ? (
-        <>
-          <p className="mb-2 text-center font-mono text-[11px] uppercase tracking-widest text-muted-foreground">{t("challenge.prompt")}</p>
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-            {spot.options.map((a) => (
-              <button key={a} disabled={submit.isPending}
-                onClick={() => { setChosen(a); submit.mutate(a); }}
-                className={cn(
-                  "rounded-xl bg-card/70 px-4 py-3 font-mono text-sm font-bold uppercase tracking-wider text-foreground ring-1 ring-border transition-all active:scale-95 hover:text-sky-300 hover:ring-sky-500/60 disabled:opacity-40",
-                  submit.isPending && chosen === a && "ring-sky-500/60 text-sky-300",
-                )}>
-                {actLabel(a)}
-              </button>
-            ))}
+      {/* base: botões (perguntando) OU veredito (respondeu) */}
+      {!result ? (
+        <div className="flex flex-wrap items-center justify-center gap-2 px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-2">
+          <p className="w-full text-center font-mono text-[11px] uppercase tracking-widest text-muted-foreground">{t("challenge.prompt")}</p>
+          {spot.options.map((a) => (
+            <button key={a} disabled={pending} onClick={() => onSubmit(a)}
+              className="min-w-[92px] rounded-xl bg-card/80 px-5 py-3 font-mono text-sm font-bold uppercase tracking-wider text-foreground shadow-lg ring-1 ring-border backdrop-blur transition-all active:scale-95 hover:text-sky-300 hover:ring-sky-500/60 disabled:opacity-40">
+              {pending ? <Loader2 className="mx-auto size-4 animate-spin" aria-hidden /> : actLabel(a)}
+            </button>
+          ))}
+        </div>
+      ) : (
+        <div className="mx-auto w-full max-w-lg px-3 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-2">
+          <div className="rounded-2xl border-t border-border bg-background/95 p-4 shadow-2xl backdrop-blur">
+            <VerdictInner result={result} actLabel={actLabel} t={t} />
+            <button onClick={onClose}
+              className="mt-3 w-full rounded-lg bg-sky-500 px-4 py-2.5 font-mono text-xs font-bold uppercase tracking-widest text-black transition-colors hover:bg-sky-400">
+              {t("challenge.finish")}
+            </button>
           </div>
-        </>
-      ) : result && kind && (
-        <VerdictBox result={result} kind={kind} actLabel={actLabel} t={t} />
+        </div>
       )}
     </div>
   );
 }
 
-function VerdictBox({ result, kind, actLabel, t }: {
+/** Veredito no card do hub (quando o jogador já respondeu hoje). */
+function VerdictBox({ result, actLabel, context, spot, t }: {
   result: DailyChallengeResult;
-  kind: "correct" | "mixed" | "error";
+  actLabel: (a: string) => string;
+  context: string;
+  spot: import("@/lib/api").DailyChallengeSpot;
+  t: (k: string, o?: Record<string, unknown>) => string;
+}) {
+  return (
+    <div className="space-y-3">
+      <div className="flex flex-wrap items-center gap-2 rounded-xl bg-background/40 p-3 ring-1 ring-border">
+        <span className="text-sm font-bold text-foreground">{context}</span>
+        <span className="font-mono text-[11px] text-muted-foreground">{spot.hand} · {spot.stack_bb}bb</span>
+      </div>
+      <VerdictInner result={result} actLabel={actLabel} t={t} />
+      <p className="text-[10px] leading-snug text-muted-foreground">{t("challenge.comeBack")}</p>
+    </div>
+  );
+}
+
+/** Corpo do veredito (cabeçalho + mix GTO + explicação) — reusado no hub e na tela cheia. */
+function VerdictInner({ result, actLabel, t }: {
+  result: DailyChallengeResult;
   actLabel: (a: string) => string;
   t: (k: string, o?: Record<string, unknown>) => string;
 }) {
+  const kind = result.gto_tier === "error" ? "error" : result.mixed ? "mixed" : "correct";
   const head = kind === "correct" ? t("challenge.verdict.correct")
     : kind === "mixed" ? t("challenge.verdict.mixed")
     : t("challenge.verdict.error");
@@ -155,7 +209,6 @@ function VerdictBox({ result, kind, actLabel, t }: {
         </span>
       </div>
 
-      {/* Estratégia GTO — barras por ação (a mesma linguagem do Leak Trainer) */}
       {result.gto_strategy.length > 0 && (
         <div className="space-y-1.5">
           <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">{t("challenge.gtoStrategy")}</p>
@@ -175,13 +228,11 @@ function VerdictBox({ result, kind, actLabel, t }: {
         </div>
       )}
       <p className="text-[12px] leading-snug text-muted-foreground">{result.explanation}</p>
-      {/* Explicação didática (vetada na criação) — o "porquê" para o jogador entender */}
       {result.teaching && (
         <div className="rounded-lg bg-background/40 p-3 ring-1 ring-border">
           <p className="text-[12px] leading-relaxed text-foreground/90">{result.teaching}</p>
         </div>
       )}
-      <p className="text-[10px] leading-snug text-muted-foreground">{t("challenge.comeBack")}</p>
     </div>
   );
 }

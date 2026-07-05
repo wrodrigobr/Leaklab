@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(challenge): Desafio do Dia abre a mesa (PokerTableV3) em tela cheia (#42)
+
+> O jogador enxerga o spot na mesa de verdade em vez do card compacto. No hub de treino o card agora tem "Iniciar desafio"; ao iniciar, abre em **tela cheia** (overlay imersivo) com o `PokerTableV3` (a mesma mesa do Leak Trainer) renderizando posições, blinds, aposta do vilão e a mão do herói, com os botões fold/call/raise/shove flutuando na base. Ao responder: veredito em bottom-sheet (cabeçalho + mix GTO + explicação + teaching) e botão Concluir; acerto dispara o confete. O step da mesa vem de um helper isolado (`lib/challengeTable.ts`, espelha o ramo preflop do Leak Trainer, sem acoplar ao estado dele). Quem já jogou hoje vê o veredito no próprio card. i18n PT/EN/ES (start/close/finish).
+
 ### fix(challenge): 500 em prod no /player/daily-challenge (RETURNING id em tabela sem id) (#42)
 
 > Bug de Postgres que escondia o Desafio do Dia mesmo com spot aprovado. O wrapper de INSERT do PG anexa `RETURNING id` automaticamente (pra emular lastrowid), mas `daily_challenge_schedule` tem PK NATURAL (`day`), sem coluna `id` → `psycopg2 UndefinedColumn: column "id" does not exist` → 500 → o front esconde o card silenciosamente. SQLite tolera, por isso os testes não pegaram. Fix: registrar `daily_challenge_schedule` em `_AdaptedConn._NO_ID_TABLES`. Blindagem extra: o GET do desafio agora nunca 500 (degrada pra `available:false` + loga). Teste de regressão que trava a tabela sem-id no set. Precisa redeploy do backend em prod.

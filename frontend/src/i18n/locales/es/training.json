@@ -138,6 +138,9 @@
     "youPlayed": "Jugaste:",
     "gtoStrategy": "Estrategia GTO",
     "comeBack": "Vuelve mañana para un nuevo desafío.",
+    "start": "Iniciar desafío",
+    "close": "Cerrar",
+    "finish": "Listo",
     "ctx": {
       "rfi": "Estás en {{pos}} y la acción llega hasta ti.",
       "vsRfi": "Estás en {{pos}} y {{vs}} abrió el bote.",
