@@ -1,0 +1,46 @@
+{
+  "id": "aula1-conceitos",
+  "titulo": "Conceitos de Poker: Posição",
+  "fps": 30,
+  "width": 1920,
+  "height": 1080,
+  "lang": "pt-BR",
+  "scenes": [
+    {
+      "id": "hook",
+      "seconds": 6,
+      "visual": { "type": "title", "eyebrow": "Módulo 1 · Fundamentos", "title": "A vantagem que não depende das suas cartas", "subtitle": "A posição" },
+      "narration": "Existe uma vantagem no poker que não depende das suas cartas. Ela é grátis, todo profissional a usa, e a maioria dos amadores a ignora. É a posição."
+    },
+    {
+      "id": "ordem",
+      "seconds": 8,
+      "visual": { "type": "seatRow", "highlight": "BTN", "caption": "O botão fala por último, e decide sabendo mais." },
+      "narration": "O botão define quem fala por último. E falar por último é ver o que todos fazem antes de decidir. Informação é poder, e a posição te dá informação de graça em toda mão."
+    },
+    {
+      "id": "ipoop",
+      "seconds": 7,
+      "visual": { "type": "twoPanel", "left": "IN POSITION", "leftDesc": "joga com informação", "right": "OUT OF POSITION", "rightDesc": "joga no escuro", "caption": "As mesmas cartas: lucro de um lado, prejuízo do outro." },
+      "narration": "In position, você joga com informação. Out of position, você joga no escuro. É por isso que as mesmas cartas rendem lucro do botão e prejuízo do UTG."
+    },
+    {
+      "id": "demo",
+      "seconds": 13,
+      "visual": { "type": "rangeCompare", "leftPos": "UTG", "rightPos": "BTN", "hand": "KJo", "caption": "Mesma mão, KJo: fold do UTG, raise do BTN." },
+      "narration": "Olha os dados reais do nosso solver. Do botão, você abre 53 por cento das mãos, e KJ offsuit é abertura tranquila. Do UTG, com oito jogadores pra agir, você abre só 14 por cento, e a mesma KJ offsuit vira fold. Cartas idênticas, decisões opostas, só a posição mudou."
+    },
+    {
+      "id": "exercicio",
+      "seconds": 10,
+      "visual": { "type": "exercise", "question": "A-9 offsuit. Pior lugar pra jogar essa mão?", "options": ["UTG", "BTN"], "answer": "UTG", "explain": "Muita gente pra agir depois, alta chance de estar dominado por AJ, AQ, AK. No BTN, a mesma A-9 é abertura." },
+      "narration": "Sua vez. A-9 offsuit. Pior lugar pra jogar essa mão: UTG ou botão? Pensa. É o UTG. Muita gente pra agir depois, alta chance de estar dominado. No botão, a mesma A-9 é abertura tranquila."
+    },
+    {
+      "id": "recap",
+      "seconds": 7,
+      "visual": { "type": "recap", "bullets": ["O botão fala por último e decide com mais informação.", "IP você joga com dados, OOP no escuro.", "Força de mão é sempre relativa à posição."], "cta": "Comece pela Academia, nível iniciante." },
+      "narration": "Recapitulando: o botão fala por último e decide com mais informação. In position você joga com dados, out of position no escuro. E força de mão é sempre relativa à posição. Agora sinta isso na prática, comece pela Academia, nível iniciante."
+    }
+  ]
+}

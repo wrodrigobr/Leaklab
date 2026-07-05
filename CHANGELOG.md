@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(content): piloto de vídeo-aula por código (Remotion) — Módulo 1, Aula 1 (#curriculum)
+
+> Projeto Remotion standalone em `video/` que renderiza a Aula 1 (Conceitos/Posição) pra MP4 por comando, formato voz+gráficos sem avatar, on-brand. Dirigido por dados REAIS: o range grid 13x13 é colorido pela frequência de abertura real (BTN 53,5% vs UTG 14,4%, KJo abre BTN e folda UTG), extraída do banco por `backend/scripts/build_module1_demos.py`. Cenas: hook, ordem de ação (assentos), IP vs OOP, comparação de ranges com KJo destacado, exercício com timer+revelação, resumo+CTA. Fonte única `aula1_script.json` (narração+timing+visual). Renderiza sem áudio (legendas carregam o conteúdo); `scripts/generate_voiceover.mjs` gera a narração via ElevenLabs quando houver chave, e o `audio_manifest.json` sobrepõe as durações. `npm install && npm run render`.
+
 ### feat(challenge): botão "Retestar" admin-only para responder o desafio de novo (#42)
 
 > Reteste sem mexer no banco. Endpoint `POST /admin/daily-challenge/reset-my-attempt` (admin-only) apaga a tentativa de HOJE do próprio admin; no front, um botão "Retestar" aparece no veredito (no hub e na tela cheia) só para `role === admin`, limpa o estado e volta à pergunta. Jogador comum não vê e não pode furar o 1/dia.
