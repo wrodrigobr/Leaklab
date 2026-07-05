@@ -129,15 +129,28 @@ function ChallengeFullscreen({ spot, context, actLabel, t, result, pending, onSu
       {/* contexto da mão (uma linha, clara) */}
       <p className="px-4 pt-2 text-center text-sm font-bold text-foreground/90">{context}</p>
 
-      {/* mesa */}
-      <div className="flex min-h-0 flex-1 items-center justify-center p-1.5">
+      {/* mesa (sempre em tamanho cheio; o veredito SOBREPÕE, não empurra → mesa não encolhe) */}
+      <div className="relative flex min-h-0 flex-1 items-center justify-center p-1.5">
         <div className="h-full max-h-full w-auto max-w-full" style={{ aspectRatio: "16 / 10" }}>
           <PokerTableV3 step={table.step} hero="Hero" heroCards={table.heroCards} bb={table.bb} betUnit="bb" transparentBg />
         </div>
+
+        {/* respondeu → veredito sobrepõe a mesa (o que importa agora é o veredito, não a mesa) */}
+        {result && (
+          <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/65 p-4 backdrop-blur-sm animate-fade-in">
+            <div className="max-h-full w-full max-w-lg overflow-y-auto rounded-2xl border border-border bg-background/95 p-4 shadow-2xl">
+              <VerdictInner result={result} actLabel={actLabel} t={t} />
+              <button onClick={onClose}
+                className="mt-3 w-full rounded-lg bg-sky-500 px-4 py-2.5 font-mono text-xs font-bold uppercase tracking-widest text-black transition-colors hover:bg-sky-400">
+                {t("challenge.finish")}
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* base: botões (perguntando) OU veredito (respondeu) */}
-      {!result ? (
+      {/* base: botões só na fase de pergunta (some quando o veredito aparece) */}
+      {!result && (
         <div className="flex flex-wrap items-center justify-center gap-2 px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-2">
           <p className="w-full text-center font-mono text-[11px] uppercase tracking-widest text-muted-foreground">{t("challenge.prompt")}</p>
           {spot.options.map((a) => (
@@ -146,16 +159,6 @@ function ChallengeFullscreen({ spot, context, actLabel, t, result, pending, onSu
               {pending ? <Loader2 className="mx-auto size-4 animate-spin" aria-hidden /> : actLabel(a)}
             </button>
           ))}
-        </div>
-      ) : (
-        <div className="mx-auto w-full max-w-lg px-3 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-2">
-          <div className="rounded-2xl border-t border-border bg-background/95 p-4 shadow-2xl backdrop-blur">
-            <VerdictInner result={result} actLabel={actLabel} t={t} />
-            <button onClick={onClose}
-              className="mt-3 w-full rounded-lg bg-sky-500 px-4 py-2.5 font-mono text-xs font-bold uppercase tracking-widest text-black transition-colors hover:bg-sky-400">
-              {t("challenge.finish")}
-            </button>
-          </div>
         </div>
       )}
     </div>

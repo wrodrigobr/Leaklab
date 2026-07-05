@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(challenge): veredito sobrepõe a mesa em vez de encolhê-la (#42)
+
+> Na tela cheia do desafio, o veredito antes ficava embaixo e empurrava a mesa (ela encolhia ao responder). Agora sobrepõe: a mesa fica em tamanho cheio e esmaecida atrás, o veredito aparece num card centralizado por cima (com backdrop-blur). Casa com a prioridade do momento (respondeu → o que importa é o veredito, a mesa vira pano de fundo) e usa um layout só pra desktop e mobile. Avaliado contra a alternativa "ao lado da mesa" (split), descartada por quebrar no mobile e exigir dois layouts.
+
 ### fix(challenge): desafio nunca some com ≥1 aprovado + veredito sem redundância (#42)
 
 > Dois ajustes. (1) **Serving:** cada spot aprovado servia UM dia e "queimava" (`used_on`), então com 1 aprovado consumido ontem, hoje ficava vazio (card sumia na virada de data UTC). Agora `get_today_challenge` prefere os nunca-usados e, se todos já rodaram, **reusa o mais antigo (LRU)**, o desafio nunca some enquanto existir ≥1 aprovado. `ORDER BY (used_on IS NOT NULL), used_on ASC, id ASC` (nulos primeiro em SQLite e PG). Teste de regressão. (2) **Veredito:** saiu o `result.explanation` determinístico que só repetia o cabeçalho + as barras do mix; sobra um único bloco do "porquê" (o teaching do LLM em prod, fallback determinístico em dev).
