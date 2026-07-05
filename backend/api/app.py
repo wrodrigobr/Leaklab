@@ -2560,26 +2560,32 @@ def player_daily_challenge():
     from database.repositories import (get_today_challenge, get_challenge_attempt, get_challenge_stats)
     import json as _json
     day = _challenge_day()
-    ch = get_today_challenge(day)
-    if not ch:
+    # Blindagem: o desafio NUNCA pode derrubar a tela de treino. Qualquer falha (borda de
+    # Postgres, spot corrompido) degrada pra "sem desafio hoje" e loga, em vez de 500.
+    try:
+        ch = get_today_challenge(day)
+        if not ch:
+            return jsonify({'available': False, 'day': day})
+        spot = _json.loads(ch['spot_json'])
+        attempt = get_challenge_attempt(g.user_id, day)
+        stats = get_challenge_stats(day)
+        out = {
+            'available': True, 'day': day,
+            'spot': {k: spot.get(k) for k in ('scenario', 'position', 'vs_position', 'stack_bb',
+                                              'facing_size', 'hand', 'hero_cards', 'options', 'board')},
+            'answered': attempt is not None,
+            'stats': stats,
+        }
+        if attempt:
+            # já respondeu: devolve o veredito (regrada pra não guardar texto), sem re-registrar
+            from leaklab.daily_challenge import grade_challenge
+            g_res = grade_challenge(ch['spot_json'], attempt['chosen_action'])
+            out['result'] = {'chosen': attempt['chosen_action'], **g_res,
+                             'teaching': ch.get('explanation') or ''}
+        return jsonify(out)
+    except Exception:
+        app.logger.exception('daily-challenge GET falhou; degradando para available=False')
         return jsonify({'available': False, 'day': day})
-    spot = _json.loads(ch['spot_json'])
-    attempt = get_challenge_attempt(g.user_id, day)
-    stats = get_challenge_stats(day)
-    out = {
-        'available': True, 'day': day,
-        'spot': {k: spot.get(k) for k in ('scenario', 'position', 'vs_position', 'stack_bb',
-                                          'facing_size', 'hand', 'hero_cards', 'options', 'board')},
-        'answered': attempt is not None,
-        'stats': stats,
-    }
-    if attempt:
-        # já respondeu: devolve o veredito (regrada pra não guardar texto), sem re-registrar
-        from leaklab.daily_challenge import grade_challenge
-        g_res = grade_challenge(ch['spot_json'], attempt['chosen_action'])
-        out['result'] = {'chosen': attempt['chosen_action'], **g_res,
-                         'teaching': ch.get('explanation') or ''}
-    return jsonify(out)
 
 
 @app.route('/player/daily-challenge/submit', methods=['POST'])

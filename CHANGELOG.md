@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(challenge): 500 em prod no /player/daily-challenge (RETURNING id em tabela sem id) (#42)
+
+> Bug de Postgres que escondia o Desafio do Dia mesmo com spot aprovado. O wrapper de INSERT do PG anexa `RETURNING id` automaticamente (pra emular lastrowid), mas `daily_challenge_schedule` tem PK NATURAL (`day`), sem coluna `id` → `psycopg2 UndefinedColumn: column "id" does not exist` → 500 → o front esconde o card silenciosamente. SQLite tolera, por isso os testes não pegaram. Fix: registrar `daily_challenge_schedule` em `_AdaptedConn._NO_ID_TABLES`. Blindagem extra: o GET do desafio agora nunca 500 (degrada pra `available:false` + loga). Teste de regressão que trava a tabela sem-id no set. Precisa redeploy do backend em prod.
+
 ### feat(challenge): confete ao acertar o Desafio do Dia (#42)
 
 > Quando o jogador acerta o desafio (veredito `is_correct`, inclui o "Aceitável" do GTO misto), dispara a mesma comemoração de confete do fim da lição do Leak Trainer (mesma paleta teal/amber/sky/light, dois bursts). Respeita `prefers-reduced-motion`. Erro não comemora.

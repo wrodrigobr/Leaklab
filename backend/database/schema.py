@@ -2066,7 +2066,8 @@ class _AdaptedConn:
         return sql
 
     # Tabelas sem coluna `id` (chave natural): não acrescentar RETURNING id nelas.
-    _NO_ID_TABLES = {'revalidation_llm_cache', 'gto_preflop_capture', 'gto_tree_strategies'}
+    _NO_ID_TABLES = {'revalidation_llm_cache', 'gto_preflop_capture', 'gto_tree_strategies',
+                     'daily_challenge_schedule'}
 
     def _pg_insert_returning(self, sql: str) -> str:
         """Postgres não popula lastrowid. Para INSERTs em tabelas com `id`, acrescenta

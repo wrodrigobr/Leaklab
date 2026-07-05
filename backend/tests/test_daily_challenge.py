@@ -81,6 +81,20 @@ def test_endpoint_flow_generate_approve_play():
     print("OK  test_endpoint_flow_generate_approve_play")
 
 
+def test_schedule_registered_as_no_id_table():
+    """Regressão PG (bug do 500 em prod): daily_challenge_schedule tem PK NATURAL (day),
+    sem coluna `id`. O wrapper de INSERT do Postgres anexa 'RETURNING id' por padrão e
+    quebra nessa tabela (SQLite tolera, por isso os outros testes não pegam). Ela DEVE
+    estar registrada em _NO_ID_TABLES."""
+    conn = repo.get_conn()
+    cols = {r[1] for r in conn.execute("PRAGMA table_info(daily_challenge_schedule)").fetchall()}
+    conn.close()
+    assert 'id' not in cols, "schedule não deveria ter coluna id (PK é day)"
+    assert 'daily_challenge_schedule' in sch._AdaptedConn._NO_ID_TABLES, \
+        "schedule sem id precisa estar em _NO_ID_TABLES senão o INSERT 500 no Postgres"
+    print("OK  test_schedule_registered_as_no_id_table")
+
+
 if __name__ == '__main__':
     tests = [v for k, v in sorted(globals().items()) if k.startswith('test_')]
     passed = failed = 0
