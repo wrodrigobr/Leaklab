@@ -32,6 +32,8 @@ export const RangeGrid: React.FC<{
             const hand = handAt(i, j);
             const freq = grid[hand] ?? 0;
             const isHi = highlight === hand;
+            // anel do destaque conta a história: verde = abre, vermelho = fold
+            const hiColor = freq > 0 ? THEME.teal : THEME.red;
             // ordem de aparição diagonal (i+j), pra "preencher" a grade
             const localAppear = interpolate(appear, [(i + j) / 26, (i + j) / 26 + 0.25], [0, 1], {
               extrapolateLeft: "clamp",
@@ -60,7 +62,7 @@ export const RangeGrid: React.FC<{
                   fontSize: cell * 0.3,
                   color: freq > 0 ? "#04121a" : THEME.muted,
                   fontWeight: 700,
-                  boxShadow: isHi ? `0 0 0 3px ${THEME.amber}, 0 0 18px ${THEME.amber}` : "none",
+                  boxShadow: isHi ? `0 0 0 3px ${hiColor}, 0 0 22px ${hiColor}` : "none",
                   zIndex: isHi ? 5 : 1,
                 }}
               >
