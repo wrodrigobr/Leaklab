@@ -26,28 +26,61 @@ export const TitleScene: React.FC<{ eyebrow: string; title: string; subtitle: st
   );
 };
 
-export const SeatRowScene: React.FC<{ highlight: string }> = ({ highlight }) => {
+// Mesa 8-max oval com as posições dispostas ao redor (como uma mesa de verdade).
+// O BTN acende por último (destaque teal + dealer button), reforçando a ordem de ação.
+export const PokerTableScene: React.FC<{ highlight: string }> = ({ highlight }) => {
   const frame = useCurrentFrame();
+  const cx = 960, cy = 545, rx = 560, ry = 330;
+  const seatW = 150, seatH = 96;
+
   return (
-    <AbsoluteFill style={{ justifyContent: "center", alignItems: "center", gap: 60 }}>
-      <div style={{ display: "flex", gap: 18 }}>
-        {POSITIONS.map((p, idx) => {
-          const on = p === highlight;
-          const reveal = interpolate(frame, [idx * 6, idx * 6 + 14], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
-          return (
-            <div key={p} style={{
-              width: 150, height: 150, borderRadius: 18, display: "flex", flexDirection: "column",
-              alignItems: "center", justifyContent: "center", opacity: reveal,
-              background: on ? "rgba(45,212,191,0.15)" : THEME.bgPanel,
-              border: `2px solid ${on ? THEME.teal : "rgba(255,255,255,0.08)"}`,
-              boxShadow: on ? `0 0 30px ${THEME.teal}` : "none",
-            }}>
-              <div style={{ fontFamily: THEME.heading, fontSize: 30, fontWeight: 700, color: on ? THEME.teal : THEME.light }}>{p}</div>
-              {on && <div style={{ fontFamily: THEME.mono, fontSize: 18, color: THEME.teal, marginTop: 6 }}>fala por último</div>}
-            </div>
-          );
-        })}
-      </div>
+    <AbsoluteFill>
+      {/* feltro oval */}
+      <div style={{
+        position: "absolute", left: cx - rx + 40, top: cy - ry + 40,
+        width: (rx - 40) * 2, height: (ry - 40) * 2, borderRadius: "50%",
+        background: "radial-gradient(ellipse at 50% 42%, #12463c 0%, #0b2a25 70%, #071b18 100%)",
+        border: "10px solid #0a1512", boxShadow: "inset 0 0 60px rgba(0,0,0,0.6), 0 0 40px rgba(45,212,191,0.08)",
+      }} />
+      {/* wordmark discreto no centro */}
+      <div style={{
+        position: "absolute", left: 0, right: 0, top: cy - 30, textAlign: "center",
+        fontFamily: THEME.heading, fontSize: 44, fontWeight: 700, letterSpacing: 4,
+        color: "rgba(227,232,236,0.10)",
+      }}>GRINDLAB</div>
+
+      {POSITIONS.map((p, idx) => {
+        const on = p === highlight;
+        // -90deg no topo, sentido horário; BTN acende por último na sequência de ação
+        const ang = (-90 + idx * 45) * (Math.PI / 180);
+        const x = cx + rx * Math.cos(ang) - seatW / 2;
+        const y = cy + ry * Math.sin(ang) - seatH / 2;
+        const reveal = interpolate(frame, [idx * 8, idx * 8 + 16], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+        // dealer button perto do BTN, puxado pro centro
+        const dbx = cx + (rx - 120) * Math.cos(ang) - 26;
+        const dby = cy + (ry - 120) * Math.sin(ang) - 26;
+        return (
+          <React.Fragment key={p}>
+            <div style={{
+              position: "absolute", left: x, top: y, width: seatW, height: seatH, borderRadius: 16,
+              display: "flex", alignItems: "center", justifyContent: "center", opacity: reveal,
+              background: on ? "rgba(45,212,191,0.16)" : THEME.bgPanel,
+              border: `2px solid ${on ? THEME.teal : "rgba(255,255,255,0.10)"}`,
+              boxShadow: on ? `0 0 34px ${THEME.teal}` : "0 6px 18px rgba(0,0,0,0.4)",
+              fontFamily: THEME.heading, fontSize: 30, fontWeight: 700,
+              color: on ? THEME.teal : THEME.light,
+            }}>{p}</div>
+            {on && (
+              <div style={{
+                position: "absolute", left: dbx, top: dby, width: 52, height: 52, borderRadius: "50%",
+                background: "#E3E8EC", color: "#0A0E1A", display: "flex", alignItems: "center",
+                justifyContent: "center", fontFamily: THEME.heading, fontWeight: 700, fontSize: 26,
+                border: "3px solid #0A0E1A", boxShadow: "0 0 18px rgba(0,0,0,0.5)", opacity: reveal,
+              }}>D</div>
+            )}
+          </React.Fragment>
+        );
+      })}
     </AbsoluteFill>
   );
 };
@@ -87,7 +120,7 @@ export const RangeCompareScene: React.FC<{ leftPos: string; rightPos: string; ha
 export const ExerciseScene: React.FC<{ question: string; options: string[]; answer: string; explain: string }> = ({ question, options, answer, explain }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
-  const revealAt = 5 * fps; // resposta aparece aos 5s
+  const revealAt = 6 * fps; // resposta aparece aos 6s (tempo de pensar)
   const revealed = frame >= revealAt;
   return (
     <AbsoluteFill style={{ justifyContent: "center", alignItems: "center", gap: 40, padding: 100 }}>

@@ -26,8 +26,8 @@ const script = JSON.parse(fs.readFileSync(path.join(ROOT, "src/data/aula1_script
 const outDir = path.join(ROOT, "public/audio");
 fs.mkdirSync(outDir, { recursive: true });
 
-// estimativa de duração (fallback): ~14 caracteres por segundo em PT, +0.8s de respiro.
-const estSeconds = (t) => Math.max(2, Math.round((t.length / 14 + 0.8) * 10) / 10);
+// duração da cena = fala (~14 char/s em PT) + respiro de 2s (ritmo p/ iniciante, não corrido).
+const estSeconds = (t) => Math.max(4, Math.round((t.length / 14 + 2.0) * 10) / 10);
 
 const manifest = {};
 for (const scene of script.scenes) {

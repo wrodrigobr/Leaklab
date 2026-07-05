@@ -3,7 +3,7 @@ import { AbsoluteFill, Series, Audio, staticFile } from "remotion";
 import { THEME } from "../theme";
 import { Caption } from "../components/Caption";
 import {
-  TitleScene, SeatRowScene, TwoPanelScene, RangeCompareScene, ExerciseScene, RecapScene,
+  TitleScene, PokerTableScene, TwoPanelScene, RangeCompareScene, ExerciseScene, RecapScene,
 } from "../components/Scenes";
 import script from "../data/aula1_script.json";
 import audioManifest from "../data/audio_manifest.json";
@@ -21,7 +21,7 @@ function sceneFrames(id: string, seconds: number): number {
 function renderVisual(v: any) {
   switch (v.type) {
     case "title": return <TitleScene eyebrow={v.eyebrow} title={v.title} subtitle={v.subtitle} />;
-    case "seatRow": return <SeatRowScene highlight={v.highlight} />;
+    case "pokerTable": return <PokerTableScene highlight={v.highlight} />;
     case "twoPanel": return <TwoPanelScene left={v.left} leftDesc={v.leftDesc} right={v.right} rightDesc={v.rightDesc} />;
     case "rangeCompare": return <RangeCompareScene leftPos={v.leftPos} rightPos={v.rightPos} hand={v.hand} />;
     case "exercise": return <ExerciseScene question={v.question} options={v.options} answer={v.answer} explain={v.explain} />;

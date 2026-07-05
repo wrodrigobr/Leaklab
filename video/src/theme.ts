@@ -1,4 +1,6 @@
-// Identidade GrindLab (marca): teal, light, bg escuro. Headings Chakra Petch.
+// Identidade GrindLab (marca): teal, light, bg escuro. Fontes reais do site (ver fonts.ts).
+import { FONT_HEADING, FONT_BODY, FONT_MONO } from "./fonts";
+
 export const THEME = {
   teal: "#2DD4BF",
   light: "#E3E8EC",
@@ -8,9 +10,9 @@ export const THEME = {
   amber: "#F5C542",
   sky: "#5AD1FF",
   red: "#F87171",
-  heading: "'Chakra Petch', 'Segoe UI', sans-serif",
-  body: "'Inter', 'Segoe UI', sans-serif",
-  mono: "'JetBrains Mono', 'Consolas', monospace",
+  heading: FONT_HEADING,
+  body: FONT_BODY,
+  mono: FONT_MONO,
 };
 
 export const RANKS = "AKQJT98765432".split("");
