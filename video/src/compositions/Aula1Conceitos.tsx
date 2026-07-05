@@ -30,7 +30,8 @@ function renderVisual(v: any) {
   }
 }
 
-export const Aula1Conceitos: React.FC = () => {
+// hideCaptions=true exporta os clipes SEM a nossa legenda (o HeyGen põe a própria).
+export const Aula1Conceitos: React.FC<{ hideCaptions?: boolean }> = ({ hideCaptions = false }) => {
   return (
     <AbsoluteFill style={{ background: THEME.bg }}>
       {/* leve textura de fundo (scanline sutil da marca) */}
@@ -43,7 +44,7 @@ export const Aula1Conceitos: React.FC = () => {
             <Series.Sequence key={s.id} durationInFrames={sceneFrames(s.id, s.seconds)}>
               <AbsoluteFill>
                 {renderVisual(s.visual)}
-                {cap && <Caption text={cap} />}
+                {!hideCaptions && cap && <Caption text={cap} />}
                 {audio && <Audio src={staticFile(audio.file)} />}
               </AbsoluteFill>
             </Series.Sequence>

@@ -13,6 +13,7 @@ export const RemotionRoot: React.FC = () => {
         fps={script.fps}
         width={script.width}
         height={script.height}
+        defaultProps={{ hideCaptions: false }}
       />
     </>
   );
