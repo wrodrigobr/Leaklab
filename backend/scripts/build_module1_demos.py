@@ -189,6 +189,9 @@ def build():
         'claim': 'A mesma mão (KJ) é abertura do BTN e fold do UTG, só a posição muda.',
         'btn_range_pct': btn['range_pct'], 'utg_range_pct': utg['range_pct'],
         'KJ_by_position': kj,
+        # grids completos (hand->freq) pro range grid do vídeo; fold = ausente/0
+        'btn_grid': {h: d['freq'] for h, d in btn['hands'].items()},
+        'utg_grid': {h: d['freq'] for h, d in utg['hands'].items()},
     }
 
     # ── Aula: RANGES — CO abre, BB defende, board K83: CO tem range advantage ──
