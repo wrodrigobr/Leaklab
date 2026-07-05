@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(challenge): botão "Retestar" admin-only para responder o desafio de novo (#42)
+
+> Reteste sem mexer no banco. Endpoint `POST /admin/daily-challenge/reset-my-attempt` (admin-only) apaga a tentativa de HOJE do próprio admin; no front, um botão "Retestar" aparece no veredito (no hub e na tela cheia) só para `role === admin`, limpa o estado e volta à pergunta. Jogador comum não vê e não pode furar o 1/dia.
+
 ### feat(challenge): veredito sobrepõe a mesa em vez de encolhê-la (#42)
 
 > Na tela cheia do desafio, o veredito antes ficava embaixo e empurrava a mesa (ela encolhia ao responder). Agora sobrepõe: a mesa fica em tamanho cheio e esmaecida atrás, o veredito aparece num card centralizado por cima (com backdrop-blur). Casa com a prioridade do momento (respondeu → o que importa é o veredito, a mesa vira pano de fundo) e usa um layout só pra desktop e mobile. Avaliado contra a alternativa "ao lado da mesa" (split), descartada por quebrar no mobile e exigir dois layouts.

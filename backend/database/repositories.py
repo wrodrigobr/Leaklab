@@ -6971,6 +6971,18 @@ def record_challenge_attempt(user_id: int, day: str, chosen: str, verdict: str, 
         conn.close()
 
 
+def reset_challenge_attempt(user_id: int, day: str) -> int:
+    """Apaga a tentativa do usuário no dia (admin-only, pra reteste). Retorna quantas removeu."""
+    conn = get_conn()
+    try:
+        cur = conn.execute(_adapt(
+            "DELETE FROM daily_challenge_attempts WHERE user_id = ? AND day = ?"), (user_id, day))
+        conn.commit()
+        return cur.rowcount if cur.rowcount is not None else 0
+    finally:
+        conn.close()
+
+
 def get_challenge_stats(day: str) -> dict:
     """Agregado do dia: total de tentativas + % de acerto (pro 'X% acertou hoje')."""
     conn = get_conn()

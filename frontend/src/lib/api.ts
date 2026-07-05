@@ -1384,6 +1384,8 @@ export const metrics = {
       method: "POST",
       body: JSON.stringify({ action }),
     }),
+  dailyChallengeResetMine: () =>
+    request<{ ok: boolean; removed: number }>(`/admin/daily-challenge/reset-my-attempt`, { method: "POST" }),
 
   evolution: (days = 90, lastN?: number) =>
     request<EvolutionResponse>(`/history/evolution?days=${days}${lastN != null ? `&last_n=${lastN}` : ""}`),

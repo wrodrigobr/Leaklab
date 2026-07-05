@@ -140,6 +140,7 @@
     "comeBack": "Vuelve mañana para un nuevo desafío.",
     "start": "Iniciar desafío",
     "close": "Cerrar",
+    "retest": "Reintentar (admin)",
     "finish": "Listo",
     "ctx": {
       "rfi": "Estás en {{pos}} y la acción llega hasta ti.",

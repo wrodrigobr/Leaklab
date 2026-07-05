@@ -2661,6 +2661,16 @@ def admin_daily_challenge_status(pool_id):
     return jsonify({'ok': True})
 
 
+@app.route('/admin/daily-challenge/reset-my-attempt', methods=['POST'])
+@require_admin
+def admin_daily_challenge_reset_my_attempt():
+    """Reteste: apaga a tentativa de HOJE do próprio admin, pra responder o desafio de novo.
+    Admin-only (jogador comum não pode furar o 1/dia)."""
+    from database.repositories import reset_challenge_attempt
+    removed = reset_challenge_attempt(g.user_id, _challenge_day())
+    return jsonify({'ok': True, 'removed': removed})
+
+
 # ── Session Goals — FEAT-08 ───────────────────────────────────────────────────
 
 

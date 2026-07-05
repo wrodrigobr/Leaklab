@@ -2,14 +2,17 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import confetti from "canvas-confetti";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { CalendarClock, CheckCircle2, XCircle, Shuffle, Users, Play, X, Loader2 } from "lucide-react";
+import { CalendarClock, CheckCircle2, XCircle, Shuffle, Users, Play, X, Loader2, RotateCw } from "lucide-react";
 import { PokerTableV3 } from "@/components/hud/PokerTableV3";
 import { buildChallengeStep } from "@/lib/challengeTable";
 import { metrics, type DailyChallengeResult } from "@/lib/api";
+import { useAuth } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 
 export function DailyChallengeCard() {
   const { t } = useTranslation("training");
+  const { user } = useAuth();
+  const isAdmin = user?.role === "admin";
   const qc = useQueryClient();
   const { data, isLoading } = useQuery({ queryKey: ["daily-challenge"], queryFn: metrics.dailyChallenge });
   const [open, setOpen] = useState(false);   // mesa em tela cheia
@@ -29,6 +32,17 @@ export function DailyChallengeCard() {
       qc.invalidateQueries({ queryKey: ["training-overview"] });
     },
   });
+
+  // Reteste (admin-only): apaga a tentativa de hoje e limpa o estado → volta à pergunta.
+  const retest = useMutation({
+    mutationFn: () => metrics.dailyChallengeResetMine(),
+    onSuccess: () => {
+      submit.reset();
+      qc.invalidateQueries({ queryKey: ["daily-challenge"] });
+      qc.invalidateQueries({ queryKey: ["training-overview"] });
+    },
+  });
+  const onRetest = isAdmin ? () => retest.mutate() : undefined;
 
   // Não há desafio aprovado hoje → o card some (nada de placeholder confuso).
   if (isLoading || !data?.available || !data.spot) return null;
@@ -82,7 +96,8 @@ export function DailyChallengeCard() {
             <Play className="size-4" aria-hidden /> {t("challenge.start")}
           </button>
         ) : result && (
-          <VerdictBox result={result} actLabel={actLabel} context={context} spot={spot} t={t} />
+          <VerdictBox result={result} actLabel={actLabel} context={context} spot={spot} t={t}
+            onRetest={onRetest} retesting={retest.isPending} />
         )}
       </div>
 
@@ -92,6 +107,7 @@ export function DailyChallengeCard() {
           spot={spot} context={context} actLabel={actLabel} t={t}
           result={submit.data?.result} pending={submit.isPending}
           onSubmit={(a) => submit.mutate(a)} onClose={closeFull}
+          onRetest={onRetest} retesting={retest.isPending}
         />
       )}
     </>
@@ -99,7 +115,7 @@ export function DailyChallengeCard() {
 }
 
 /** Overlay imersivo: mesa PokerTableV3 + botões flutuantes + veredito (bottom-sheet). */
-function ChallengeFullscreen({ spot, context, actLabel, t, result, pending, onSubmit, onClose }: {
+function ChallengeFullscreen({ spot, context, actLabel, t, result, pending, onSubmit, onClose, onRetest, retesting }: {
   spot: import("@/lib/api").DailyChallengeSpot;
   context: string;
   actLabel: (a: string) => string;
@@ -108,6 +124,8 @@ function ChallengeFullscreen({ spot, context, actLabel, t, result, pending, onSu
   pending: boolean;
   onSubmit: (a: string) => void;
   onClose: () => void;
+  onRetest?: () => void;
+  retesting?: boolean;
 }) {
   const table = buildChallengeStep(spot);
   return (
@@ -140,10 +158,18 @@ function ChallengeFullscreen({ spot, context, actLabel, t, result, pending, onSu
           <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/65 p-4 backdrop-blur-sm animate-fade-in">
             <div className="max-h-full w-full max-w-lg overflow-y-auto rounded-2xl border border-border bg-background/95 p-4 shadow-2xl">
               <VerdictInner result={result} actLabel={actLabel} t={t} />
-              <button onClick={onClose}
-                className="mt-3 w-full rounded-lg bg-sky-500 px-4 py-2.5 font-mono text-xs font-bold uppercase tracking-widest text-black transition-colors hover:bg-sky-400">
-                {t("challenge.finish")}
-              </button>
+              <div className="mt-3 flex gap-2">
+                {onRetest && (
+                  <button onClick={onRetest} disabled={retesting}
+                    className="flex items-center justify-center gap-1.5 rounded-lg bg-amber-500/15 px-4 py-2.5 font-mono text-xs font-bold uppercase tracking-widest text-amber-300 ring-1 ring-amber-500/30 transition-colors hover:bg-amber-500/25 disabled:opacity-50">
+                    {retesting ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <RotateCw className="size-4" aria-hidden />} {t("challenge.retest")}
+                  </button>
+                )}
+                <button onClick={onClose}
+                  className="flex-1 rounded-lg bg-sky-500 px-4 py-2.5 font-mono text-xs font-bold uppercase tracking-widest text-black transition-colors hover:bg-sky-400">
+                  {t("challenge.finish")}
+                </button>
+              </div>
             </div>
           </div>
         )}
@@ -166,12 +192,14 @@ function ChallengeFullscreen({ spot, context, actLabel, t, result, pending, onSu
 }
 
 /** Veredito no card do hub (quando o jogador já respondeu hoje). */
-function VerdictBox({ result, actLabel, context, spot, t }: {
+function VerdictBox({ result, actLabel, context, spot, t, onRetest, retesting }: {
   result: DailyChallengeResult;
   actLabel: (a: string) => string;
   context: string;
   spot: import("@/lib/api").DailyChallengeSpot;
   t: (k: string, o?: Record<string, unknown>) => string;
+  onRetest?: () => void;
+  retesting?: boolean;
 }) {
   return (
     <div className="space-y-3">
@@ -180,7 +208,15 @@ function VerdictBox({ result, actLabel, context, spot, t }: {
         <span className="font-mono text-[11px] text-muted-foreground">{spot.hand} · {spot.stack_bb}bb</span>
       </div>
       <VerdictInner result={result} actLabel={actLabel} t={t} />
-      <p className="text-[10px] leading-snug text-muted-foreground">{t("challenge.comeBack")}</p>
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-[10px] leading-snug text-muted-foreground">{t("challenge.comeBack")}</p>
+        {onRetest && (
+          <button onClick={onRetest} disabled={retesting}
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-amber-500/15 px-3 py-1.5 font-mono text-[10px] font-bold uppercase tracking-wider text-amber-300 ring-1 ring-amber-500/30 transition-colors hover:bg-amber-500/25 disabled:opacity-50">
+            {retesting ? <Loader2 className="size-3.5 animate-spin" aria-hidden /> : <RotateCw className="size-3.5" aria-hidden />} {t("challenge.retest")}
+          </button>
+        )}
+      </div>
     </div>
   );
 }

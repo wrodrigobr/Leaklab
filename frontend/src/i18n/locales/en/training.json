@@ -140,6 +140,7 @@
     "comeBack": "Come back tomorrow for a new challenge.",
     "start": "Start challenge",
     "close": "Close",
+    "retest": "Retest (admin)",
     "finish": "Done",
     "ctx": {
       "rfi": "You are in the {{pos}} and the action folds to you.",
