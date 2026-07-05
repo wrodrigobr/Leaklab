@@ -81,6 +81,22 @@ def test_endpoint_flow_generate_approve_play():
     print("OK  test_endpoint_flow_generate_approve_play")
 
 
+def test_challenge_reuses_when_pool_runs_dry():
+    """Com ≥1 aprovado, o desafio NUNCA some: consumido num dia, o próximo dia REUSA
+    (LRU) em vez de retornar None. Regressão do 'tenho 1 aprovado mas não aparece'."""
+    conn = repo.get_conn()
+    conn.execute("DELETE FROM daily_challenge_pool"); conn.execute("DELETE FROM daily_challenge_schedule")
+    conn.commit(); conn.close()
+    repo.add_challenge_candidates(build_candidates(1, with_explanation=False))
+    pid = repo.list_challenge_candidates('pending')[0]['id']
+    repo.set_challenge_status(pid, 'approved')
+    a = repo.get_today_challenge('2031-01-01')          # consome no dia A
+    assert a and dict(a)['id'] == pid
+    b = repo.get_today_challenge('2031-01-02')          # dia B: sem 'unused', mas reusa
+    assert b and dict(b)['id'] == pid, "desafio sumiu quando o pool 'novo' acabou"
+    print("OK  test_challenge_reuses_when_pool_runs_dry")
+
+
 def test_schedule_registered_as_no_id_table():
     """Regressão PG (bug do 500 em prod): daily_challenge_schedule tem PK NATURAL (day),
     sem coluna `id`. O wrapper de INSERT do Postgres anexa 'RETURNING id' por padrão e

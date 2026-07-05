@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(challenge): desafio nunca some com ≥1 aprovado + veredito sem redundância (#42)
+
+> Dois ajustes. (1) **Serving:** cada spot aprovado servia UM dia e "queimava" (`used_on`), então com 1 aprovado consumido ontem, hoje ficava vazio (card sumia na virada de data UTC). Agora `get_today_challenge` prefere os nunca-usados e, se todos já rodaram, **reusa o mais antigo (LRU)**, o desafio nunca some enquanto existir ≥1 aprovado. `ORDER BY (used_on IS NOT NULL), used_on ASC, id ASC` (nulos primeiro em SQLite e PG). Teste de regressão. (2) **Veredito:** saiu o `result.explanation` determinístico que só repetia o cabeçalho + as barras do mix; sobra um único bloco do "porquê" (o teaching do LLM em prod, fallback determinístico em dev).
+
 ### feat(challenge): Desafio do Dia abre a mesa (PokerTableV3) em tela cheia (#42)
 
 > O jogador enxerga o spot na mesa de verdade em vez do card compacto. No hub de treino o card agora tem "Iniciar desafio"; ao iniciar, abre em **tela cheia** (overlay imersivo) com o `PokerTableV3` (a mesma mesa do Leak Trainer) renderizando posições, blinds, aposta do vilão e a mão do herói, com os botões fold/call/raise/shove flutuando na base. Ao responder: veredito em bottom-sheet (cabeçalho + mix GTO + explicação + teaching) e botão Concluir; acerto dispara o confete. O step da mesa vem de um helper isolado (`lib/challengeTable.ts`, espelha o ramo preflop do Leak Trainer, sem acoplar ao estado dele). Quem já jogou hoje vê o veredito no próprio card. i18n PT/EN/ES (start/close/finish).

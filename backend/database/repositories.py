@@ -6917,16 +6917,18 @@ def count_approved_challenges(unused_only: bool = False) -> int:
 
 def get_today_challenge(day: str) -> Optional[dict]:
     """Retorna o spot APROVADO do dia (schedule estável). Se ainda não há agenda pra
-    `day`, sorteia um approved não-usado, agenda e marca como usado. None se o pool
-    aprovado acabou (nunca serve não-aprovado)."""
+    `day`, escolhe um approved, agenda e marca como usado. Preferência: primeiro os NUNCA
+    usados; se todos já rodaram, reusa o mais antigo (LRU) pra o desafio NUNCA sumir
+    enquanto existir ≥1 aprovado. None só se não há nenhum aprovado (nunca serve
+    não-aprovado). `(used_on IS NOT NULL)` ordena nulos primeiro em SQLite e Postgres."""
     conn = get_conn()
     try:
         sch = _fetchone(conn, _adapt("SELECT pool_id FROM daily_challenge_schedule WHERE day = ?"), (day,))
         pool_id = dict(sch)['pool_id'] if sch else None
         if pool_id is None:
             cand = _fetchone(conn, _adapt(
-                "SELECT id FROM daily_challenge_pool WHERE status = 'approved' AND used_on IS NULL "
-                "ORDER BY id ASC LIMIT 1"))
+                "SELECT id FROM daily_challenge_pool WHERE status = 'approved' "
+                "ORDER BY (used_on IS NOT NULL), used_on ASC, id ASC LIMIT 1"))
             if not cand:
                 return None
             pool_id = dict(cand)['id']

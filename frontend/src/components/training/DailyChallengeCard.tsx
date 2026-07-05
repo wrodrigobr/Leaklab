@@ -227,10 +227,11 @@ function VerdictInner({ result, actLabel, t }: {
           })}
         </div>
       )}
-      <p className="text-[12px] leading-snug text-muted-foreground">{result.explanation}</p>
-      {result.teaching && (
+      {/* Um único bloco do "porquê": o teaching (LLM em prod, fallback em dev). O
+          result.explanation determinístico só repetia o cabeçalho + as barras, então saiu. */}
+      {(result.teaching || result.explanation) && (
         <div className="rounded-lg bg-background/40 p-3 ring-1 ring-border">
-          <p className="text-[12px] leading-relaxed text-foreground/90">{result.teaching}</p>
+          <p className="text-[12px] leading-relaxed text-foreground/90">{result.teaching || result.explanation}</p>
         </div>
       )}
     </div>
