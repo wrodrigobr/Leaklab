@@ -23,6 +23,7 @@ import {
   Sigma,
   Clock,
   Cpu,
+  Clapperboard,
 } from "lucide-react";
 import { HudLayout } from "@/components/hud/HudLayout";
 import { PlayingCard, type CardData } from "@/components/hud/PlayingCard";
@@ -420,6 +421,15 @@ const TournamentDetail = () => {
               >
                 <PlayCircle className="size-3.5" aria-hidden />
                 {t("detail.replay")}
+              </button>
+              {/* Coach Replay (#flagship) — erros mais caros na mesa real */}
+              <button
+                onClick={() => navigate(`/coach-replay/${id}`)}
+                disabled={!hands.length}
+                className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-primary/40 bg-primary/[0.06] px-3 font-mono text-[11px] font-bold uppercase tracking-wider text-primary transition-colors hover:bg-primary/15 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <Clapperboard className="size-3.5" aria-hidden />
+                Coach Replay
               </button>
             </div>
           </div>

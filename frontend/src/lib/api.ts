@@ -1307,6 +1307,26 @@ export interface DailyChallengePoolResponse {
   approved_unused: number;
 }
 
+// Coach Replay (#flagship) — os erros mais caros do torneio, na mesa real
+export interface CoachReplayMistake {
+  hand_id: string;
+  street: string;
+  street_pt: string;
+  position: string;
+  hero_cards: string;         // ex "3d8h"
+  action_taken: string;
+  gto_action: string;
+  ev_loss_bb: number;
+  coach_note: string;
+}
+export interface CoachReplayData {
+  tournament: { id: number; name: string; buy_in: number | null; hands: number };
+  intro: { hands_analyzed: number; mistakes_shown: number; ev_lost_bb: number };
+  mistakes: CoachReplayMistake[];
+  plan: { week: number; focus: string }[];
+  requires_pro?: boolean;
+}
+
 // Campeões mensais (#15 hall of fame)
 export interface HallOfFameEntry {
   month: string;            // YYYY-MM
@@ -1390,6 +1410,9 @@ export const metrics = {
     }),
   dailyChallengeResetMine: () =>
     request<{ ok: boolean; removed: number }>(`/admin/daily-challenge/reset-my-attempt`, { method: "POST" }),
+
+  coachReplay: (tournamentId: string | number) =>
+    request<CoachReplayData>(`/player/coach-replay/${tournamentId}`),
 
   evolution: (days = 90, lastN?: number) =>
     request<EvolutionResponse>(`/history/evolution?days=${days}${lastN != null ? `&last_n=${lastN}` : ""}`),
