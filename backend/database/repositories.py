@@ -3705,13 +3705,19 @@ def get_baseline_comparison(coach_id: int, student_id: int) -> Optional[dict]:
 # Limites por plano. None = ilimitado (mensal). 'advanced_insights' gateia os cards de
 # IA avançada (Strategic Twin, Cognitive Failures, Leak Causal Map, Career). Tetos DIÁRIOS
 # do Pro (ai_chat/dia, solves/dia) entram na fase 2 (fair-use anti-abuso).
+# training_spots_per_day: cap diário de spots de treino no Free (dose ~1 lição). None = ilimitado.
+# leak_targeted: treino MIRADO nos leaks reais do jogador (Pro). Free treina fundamentos genéricos.
+# ghost: Ghost Table / SRS das mãos reais (Pro).
 PLAN_LIMITS: dict = {
     'free':    {'tournaments': 2,   'ai_calls': 15,  'ai_coach_chat': False, 'solves': 5,    'advanced_insights': False,
-                'ai_chat_per_day': 0,  'solves_per_day': None, 'max_pending_solves': 3},
+                'ai_chat_per_day': 0,  'solves_per_day': None, 'max_pending_solves': 3,
+                'training_spots_per_day': 15, 'leak_targeted': False, 'ghost': False},
     'pro':     {'tournaments': 200, 'ai_calls': 300, 'ai_coach_chat': True,  'solves': None, 'advanced_insights': True,
-                'ai_chat_per_day': 50, 'solves_per_day': 20,   'max_pending_solves': 10},
+                'ai_chat_per_day': 50, 'solves_per_day': 20,   'max_pending_solves': 10,
+                'training_spots_per_day': None, 'leak_targeted': True, 'ghost': True},
     'coach':   {'tournaments': None, 'ai_calls': 1500, 'ai_coach_chat': True, 'solves': None, 'advanced_insights': True,
-                'ai_chat_per_day': None, 'solves_per_day': None, 'max_pending_solves': None},  # interno
+                'ai_chat_per_day': None, 'solves_per_day': None, 'max_pending_solves': None,
+                'training_spots_per_day': None, 'leak_targeted': True, 'ghost': True},  # interno
 }
 
 
@@ -6191,6 +6197,20 @@ def record_daily_mission_progress(user_id: int, correct: bool, tz_offset_min: in
         except Exception:
             pass
     return newly
+
+
+def get_training_spots_today(user_id: int, tz_offset_min: int = 0) -> int:
+    """Quantos spots de treino o jogador já fez HOJE (fuso local). Base do cap diário do Free."""
+    if not user_id:
+        return 0
+    conn = get_conn()
+    try:
+        row = _fetchone(conn, _adapt(
+            "SELECT spots FROM training_daily WHERE user_id=? AND day=?"),
+            (user_id, _today_str(tz_offset_min)))
+        return int(row['spots']) if row else 0
+    finally:
+        conn.close()
 
 
 def get_daily_missions(user_id: int, tz_offset_min: int = 0) -> list:

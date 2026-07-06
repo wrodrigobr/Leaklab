@@ -1599,7 +1599,12 @@ def player_results_vs_gto():
 @app.route('/player/spots/drill', methods=['GET'])
 @require_auth
 def player_drill_spots():
-    """Sprint K — Retorna spots de mistakes para o Ghost Table Simulator."""
+    """Sprint K — Retorna spots de mistakes para o Ghost Table Simulator.
+    Ghost (SRS das mãos reais) é Pro: o Free vê o bloqueio com upsell (não trava a página)."""
+    from database.repositories import PLAN_LIMITS
+    plan = (getattr(g, 'user', None) or {}).get('plan', 'free')
+    if not PLAN_LIMITS.get(plan, PLAN_LIMITS['free']).get('ghost', False):
+        return jsonify({'spots': [], 'stats': None, 'requires_pro': True, 'feature': 'ghost'}), 200
     limit  = min(int(request.args.get('limit', 10)), 20)
     street = request.args.get('street') or None
     spot   = request.args.get('spot')   or None
@@ -2338,22 +2343,45 @@ def leaktrainer_next():
     (hits/misses por categoria) é client-side e ecoado. Adulterar o estado não falsifica acerto — o
     grading é server-side e stateless."""
     from leaklab.leak_trainer import build_curriculum, next_spot, _fundamentals_curriculum, fundamentals_catalog
+    from database.repositories import PLAN_LIMITS, get_training_spots_today
     body          = request.get_json(silent=True) or {}
     session_state = body.get('session_state') or {}
     days          = int(body.get('days', 90) or 90)
+    tz_offset     = int(body.get('tz_offset_min', 0) or 0)
     # foco do treino: 'adaptive' (padrão, currículo real ponderado) | 'leak:<key>' (uma categoria real)
     # | 'fund:<scenario>' (fundamentos de rfi/vs_rfi/vs_3bet, mesmo sem leak medido). O usuário ESCOLHE.
     focus         = (body.get('focus') or 'adaptive').strip()
+
+    # ── Gate freemium (média): cap diário + treino mirado é Pro (Free treina fundamentos) ──
+    plan = (getattr(g, 'user', None) or {}).get('plan', 'free')
+    lim  = PLAN_LIMITS.get(plan, PLAN_LIMITS['free'])
+    cap  = lim.get('training_spots_per_day')
+    if cap is not None:
+        used = get_training_spots_today(g.user_id, tz_offset)
+        if used >= cap:
+            return jsonify({'spot': None, 'session_state': session_state,
+                            'limit_reached': True, 'requires_pro': True,
+                            'used': used, 'cap': cap}), 200
+    # Free: sem treino MIRADO (adaptive/leak reais) → cai em fundamentos genéricos (preflop),
+    # que de quebra já exclui postflop. O front mostra o upsell via targeted_locked.
+    targeted_locked = False
+    if not lim.get('leak_targeted', True) and not focus.startswith('fund:'):
+        focus = 'adaptive'          # normaliza; abaixo forçamos fundamentos
+        targeted_locked = True
     try:
-        if focus.startswith('fund:'):
+        if targeted_locked:
+            spot = next_spot(_fundamentals_curriculum(), session_state)
+        elif focus.startswith('fund:'):
             curriculum = fundamentals_catalog(focus.split(':', 1)[1])
+            spot       = next_spot(curriculum, session_state)
         elif focus.startswith('leak:'):
             key = focus.split(':', 1)[1]
             full = build_curriculum(g.user_id, days=days)
             curriculum = [c for c in full if c.get('key') == key] or full
+            spot       = next_spot(curriculum, session_state)
         else:
             curriculum = build_curriculum(g.user_id, days=days)
-        spot       = next_spot(curriculum, session_state)
+            spot       = next_spot(curriculum, session_state)
     except Exception:
         # uma categoria/query ruim não pode derrubar a página — cai em fundamentos (preflop, sem DB)
         app.logger.exception("leaktrainer_next falhou (user=%s) — fallback fundamentos", g.user_id)
@@ -2362,7 +2390,8 @@ def leaktrainer_next():
         except Exception:
             app.logger.exception("leaktrainer_next fallback também falhou")
             spot = None
-    return jsonify({'spot': spot, 'session_state': session_state})
+    return jsonify({'spot': spot, 'session_state': session_state,
+                    'targeted_locked': targeted_locked, 'plan': plan})
 
 
 @app.route('/player/leaktrainer/options', methods=['GET'])

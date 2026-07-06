@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(billing): gate freemium do módulo de treino — Fase 1 backend (média) (#freemium)
+
+> O treino era 100% grátis/ilimitado; agora o Free tem fricção no ponto de intenção (princípio "Free diagnostica, Pro cura"). `PLAN_LIMITS` ganha `training_spots_per_day` (Free 15/dia, Pro ∞), `leak_targeted` (treino mirado nos leaks reais = Pro; Free treina fundamentos genéricos, que de quebra exclui postflop) e `ghost` (Ghost/SRS das mãos reais = Pro). Enforcement: `/player/leaktrainer/next` retorna `limit_reached`/`requires_pro` ao bater o cap e `targeted_locked` quando rebaixa Free pra fundamentos; `/player/spots/drill` (Ghost) devolve `requires_pro` no Free (não trava a página). Desafio do Dia, Academia e Liga seguem livres (ímãs de funil). Helper `get_training_spots_today` sobre `training_daily`. Teste `test_freemium_training` (3). Pendente: paywall/upsell no front (Fase 2) + rampa suave pros Free legados (Fase 3).
+
 ### feat(content): piloto de vídeo-aula por código (Remotion) — Módulo 1, Aula 1 (#curriculum)
 
 > Projeto Remotion standalone em `video/` que renderiza a Aula 1 (Conceitos/Posição) pra MP4 por comando, formato voz+gráficos sem avatar, on-brand. Dirigido por dados REAIS: o range grid 13x13 é colorido pela frequência de abertura real (BTN 53,5% vs UTG 14,4%, KJo abre BTN e folda UTG), extraída do banco por `backend/scripts/build_module1_demos.py`. Cenas: hook, ordem de ação (assentos), IP vs OOP, comparação de ranges com KJo destacado, exercício com timer+revelação, resumo+CTA. Fonte única `aula1_script.json` (narração+timing+visual). Renderiza sem áudio (legendas carregam o conteúdo); `scripts/generate_voiceover.mjs` gera a narração via ElevenLabs quando houver chave, e o `audio_manifest.json` sobrepõe as durações. `npm install && npm run render`.
