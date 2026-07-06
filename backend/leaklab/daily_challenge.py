@@ -287,6 +287,17 @@ def _pt_action(action: str, scenario: str) -> str:
     return _PT_ACT.get(a, a)
 
 
+# Verbo conjugado pra construção "... abre em 85% e folda em 15%" (soa natural em PT).
+_PT_VERB = {'fold': 'folda', 'call': 'paga', 'check': 'dá check', 'allin': 'shova'}
+
+
+def _pt_verb(action: str, scenario: str) -> str:
+    a = _norm(action)
+    if a == 'raise':
+        return {'vs_3bet': 'dá 4-bet', 'vs_rfi': 'dá 3-bet'}.get(scenario, 'abre')
+    return _PT_VERB.get(a, a)
+
+
 def describe_challenge(spot_json) -> dict:
     """Contexto RICO pra curadoria do admin (determinístico, derivado do range GTO):
     mix completo, classe da mão, se é CONTRAINTUITIVO, um score de 'quão desafio é' e
@@ -324,11 +335,14 @@ def describe_challenge(spot_json) -> dict:
            'vs_rfi': f"{spot.get('position')} defende o open de {spot.get('vs_position')}.",
            'vs_3bet': f"{spot.get('position')} abriu e enfrenta o 3-bet de {spot.get('vs_position')}."
            }.get(scenario, scenario)
-    parts = [f"{ctx} O GTO {_pt_action(answer, scenario)} com {hand} ({klass}) "
-             f"em {round(top_freq * 100)}% dos casos."]
     if second and second_freq >= 0.10:
-        parts.append(f"Mas mistura {_pt_action(second['action'], scenario)} em "
-                     f"{round(second_freq * 100)}%, não é automático.")
+        # estratégia mista: "o GTO mistura: abre em 85% e folda nos outros 15%"
+        parts = [f"{ctx} Com {hand} ({klass}), o GTO mistura: {_pt_verb(answer, scenario)} "
+                 f"em {round(top_freq * 100)}% das vezes e {_pt_verb(second['action'], scenario)} "
+                 f"nos outros {round(second_freq * 100)}%."]
+    else:
+        freq_word = "sempre" if top_freq >= 0.97 else "quase sempre"
+        parts = [f"{ctx} O GTO {_pt_verb(answer, scenario)} {hand} ({klass}) {freq_word}."]
     if ci_fold:
         parts.append("A mão parece forte demais pra largar, é aí que o jogador paga demais.")
     elif ci_attack:

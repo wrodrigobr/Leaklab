@@ -33,6 +33,6 @@
     }
   ],
   "best_action": "raise",
-  "why": "Abertura de CO. O GTO abre com 96s (suited) em 85% dos casos. Mas mistura dá fold em 15%, não é automático. A mão parece fraca demais pra atacar, o tipo de linha fina que o jogador evita.",
+  "why": "Abertura de CO. Com 96s (suited), o GTO mistura: abre em 85% das vezes e folda nos outros 15%. A mão parece fraca demais pra atacar, o tipo de linha fina que o jogador evita.",
   "explanation": "Correto. Estratégia GTO: raise 85%, fold 15%."
 }
