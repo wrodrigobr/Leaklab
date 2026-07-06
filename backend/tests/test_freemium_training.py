@@ -6,6 +6,7 @@ import sys, os, tempfile
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 os.environ['LEAKLAB_DB'] = tempfile.mktemp(suffix='.db')
+os.environ['TRAINING_GATE_START'] = '2020-01-01'   # gate ATIVO nos testes (fora da rampa suave)
 
 try:
     import flask_cors  # noqa
@@ -64,6 +65,24 @@ def test_free_daily_cap_blocks_pro_unlimited():
     rp = client.post('/player/leaktrainer/next', headers=hp2, json={'focus': 'adaptive'}).get_json()
     assert not rp.get('limit_reached'), "Pro não deveria ter cap diário"
     print("OK  test_free_daily_cap_blocks_pro_unlimited")
+
+
+def test_grace_period_bypasses_gate():
+    """Rampa suave: durante o período de transição (TRAINING_GATE_START no futuro) o Free
+    treina como Pro (mirado, sem cap) e a resposta traz grace_until pro aviso."""
+    os.environ['TRAINING_GATE_START'] = '2099-01-01'
+    try:
+        fid, hf = _u('free_grace')
+        for _ in range(repo.PLAN_LIMITS['free']['training_spots_per_day'] + 5):
+            repo.record_daily_mission_progress(fid, True)   # passa do cap
+        r = client.post('/player/leaktrainer/next', headers=hf, json={'focus': 'adaptive'}).get_json()
+        assert not r.get('limit_reached'), "na graça não há cap"
+        assert r.get('targeted_locked') is False, "na graça o Free treina mirado"
+        assert r.get('grace_until') == '2099-01-01', r
+        assert not client.get('/player/spots/drill', headers=hf).get_json().get('requires_pro'), "Ghost liberado na graça"
+    finally:
+        os.environ['TRAINING_GATE_START'] = '2020-01-01'
+    print("OK  test_grace_period_bypasses_gate")
 
 
 if __name__ == '__main__':

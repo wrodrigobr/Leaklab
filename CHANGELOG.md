@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(billing): rampa suave do gate de treino — Fase 3 backend (#freemium)
+
+> Transição sem susto pros Free legados. `TRAINING_GATE_START` (ISO `YYYY-MM-DD`, override por env, default `2026-07-20`): antes da data o gate NÃO é aplicado (todos treinam como Pro) e as respostas trazem `grace_until` pro aviso; a partir dela, aplica. Vale pro `leaktrainer/next` (sem cap, treino mirado liberado) e pro Ghost (liberado). Erro na data → aplica (fail-safe). Teste `test_grace_period_bypasses_gate`. Pra ligar o gate: setar `TRAINING_GATE_START` (passado) no `.env`. Pendente: banner de aviso da graça no front + badges Pro nos tiles.
+
 ### feat(billing): paywall/upsell do treino no front — Fase 2 (#freemium)
 
 > O front agora trata os sinais do gate (antes o Free bateria em tela vazia). No **Leak Trainer**: cap diário atingido → fase `paywall` com `ProLockCard` (abre o CheckoutModal) + "voltar"; enquanto treina fundamentos, banner discreto "mirar nos seus leaks (e postflop) é Pro" (via `targeted_locked`). No **Ghost Table**: `requires_pro` → `ProLockCard` no lugar dos drills, sem cair no "nenhum spot". Envia `tz_offset_min` no `next` pra o "hoje" do cap bater com o contador. i18n PT/EN/ES (`academy.leakTrainer.gate.*`, `ghost.gate.ghostFeature`). tsc limpo. Pendente: Fase 3 (rampa suave pros Free legados) + badges Pro nos tiles do hub.

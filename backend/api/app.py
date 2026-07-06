@@ -1603,7 +1603,8 @@ def player_drill_spots():
     Ghost (SRS das mãos reais) é Pro: o Free vê o bloqueio com upsell (não trava a página)."""
     from database.repositories import PLAN_LIMITS
     plan = (getattr(g, 'user', None) or {}).get('plan', 'free')
-    if not PLAN_LIMITS.get(plan, PLAN_LIMITS['free']).get('ghost', False):
+    gate_active, _grace = _training_gate_status()   # rampa: durante a transição, Ghost liberado
+    if gate_active and not PLAN_LIMITS.get(plan, PLAN_LIMITS['free']).get('ghost', False):
         return jsonify({'spots': [], 'stats': None, 'requires_pro': True, 'feature': 'ghost'}), 200
     limit  = min(int(request.args.get('limit', 10)), 20)
     street = request.args.get('street') or None
@@ -2335,6 +2336,20 @@ def academy_gto_preflop_submit():
     return jsonify(result)
 
 
+def _training_gate_status():
+    """Rampa suave do gate freemium de treino: ANTES de TRAINING_GATE_START (ISO YYYY-MM-DD,
+    override por env) o gate NÃO é aplicado (período de transição, todos treinam como Pro) e
+    as respostas trazem grace_until pro aviso. A partir da data, aplica. Erro na data → aplica."""
+    import os as _os
+    from datetime import datetime as _dt
+    start = _os.environ.get('TRAINING_GATE_START', '2026-07-20')
+    try:
+        active = _dt.utcnow().date() >= _dt.strptime(start, '%Y-%m-%d').date()
+    except Exception:
+        active = True
+    return active, (None if active else start)
+
+
 @app.route('/player/leaktrainer/next', methods=['POST'])
 @require_auth
 def leaktrainer_next():
@@ -2354,7 +2369,9 @@ def leaktrainer_next():
 
     # ── Gate freemium (média): cap diário + treino mirado é Pro (Free treina fundamentos) ──
     plan = (getattr(g, 'user', None) or {}).get('plan', 'free')
-    lim  = PLAN_LIMITS.get(plan, PLAN_LIMITS['free'])
+    gate_active, grace_until = _training_gate_status()
+    # rampa suave: durante o período de transição, todo mundo treina como Pro
+    lim  = PLAN_LIMITS.get(plan, PLAN_LIMITS['free']) if gate_active else PLAN_LIMITS['pro']
     cap  = lim.get('training_spots_per_day')
     if cap is not None:
         used = get_training_spots_today(g.user_id, tz_offset)
@@ -2391,7 +2408,7 @@ def leaktrainer_next():
             app.logger.exception("leaktrainer_next fallback também falhou")
             spot = None
     return jsonify({'spot': spot, 'session_state': session_state,
-                    'targeted_locked': targeted_locked, 'plan': plan})
+                    'targeted_locked': targeted_locked, 'plan': plan, 'grace_until': grace_until})
 
 
 @app.route('/player/leaktrainer/options', methods=['GET'])
