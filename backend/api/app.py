@@ -5199,6 +5199,12 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
     seats = {}
     _bounties = getattr(hand, 'bounties', {}) or {}
     for line in hand.raw_text.split('\n'):
+        # PARA no SUMMARY: lá as linhas "Seat N: player showed [..] and won (1,110) with ..."
+        # também casam a regex de assento (o "(1,110)" vira "stack") e SOBRESCREVIAM o roster
+        # com o nome corrompido "player showed ... won" → o lookup ação→assento falhava (seat
+        # None) e a ação do VENCEDOR não renderizava. Só o roster do topo interessa aqui.
+        if line.startswith('*** SUMMARY ***'):
+            break
         # Assento "out of hand" (movido de outra mesa, joga só após o botão) não
         # está nesta mão: incluí-lo na mesa inflava a contagem (HU virava "multiway"
         # no fallback seats−folded do card) e deslocava as posições do replay.

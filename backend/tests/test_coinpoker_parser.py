@@ -3,7 +3,7 @@ Parser CoinPoker: detecção do site (NÃO cair em ggpoker), split, id, e o GATE
 (blinds "(sb/bb/ante)" com barras). Sem bb → potBb/stack em FICHAS → nós GTO degenerados.
 Ver [[reference_parser_bb_extraction_gate]].
 """
-import sys, os
+import sys, os, tempfile
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 from leaklab.parser import parse_hand_history, _detect_site   # noqa: E402
@@ -97,6 +97,36 @@ def test_coinpoker_pipeline_bb_normalized():
     assert 0 < spot.get("effectiveStackBb", 0) < 500, spot.get("effectiveStackBb")
     assert 0 <= spot.get("potBb", 0) < 200, spot.get("potBb")   # BB, não fichas
     print("OK  test_coinpoker_pipeline_bb_normalized")
+
+
+def test_replay_winner_action_has_seat():
+    """Regressão: a linha do SUMMARY 'Seat N: X showed [..] and won (1,110) with ...' também
+    casava a regex de assento (o '(1,110)' virava stack) e SOBRESCREVIA o roster com o nome
+    corrompido → o lookup ação→assento do VENCEDOR dava None e a ação não renderizava na mesa.
+    O parse de seats do replay deve PARAR no *** SUMMARY ***."""
+    import os as _os
+    _os.environ.setdefault('LEAKLAB_DB', tempfile.mktemp(suffix='.db'))
+    try:
+        import flask_cors  # noqa
+    except ImportError:
+        import unittest.mock as _mock
+        sys.modules['flask_cors'] = _mock.MagicMock()
+        sys.modules['flask_cors'].CORS = lambda app, **kw: None
+    import api.app as A
+
+    hands = parse_hand_history(SAMPLE)
+    h1 = hands[1]   # mão 2 tem showdown com vencedor
+    A._apply_alias_to_hand(h1, A._build_gg_alias_map(h1.raw_text, 'Hero'))
+    rd = A._build_replay_data(h1, [])
+    # o roster não pode ter nome corrompido por linha de summary
+    for _s, d in rd['seats'].items():
+        assert 'showed' not in d['player'] and 'won' not in d['player'], (d['player'])
+    # toda ação de showdown/bet de um jogador com assento no roster tem 'seat' resolvido
+    roster_players = {d['player'] for d in rd['seats'].values()}
+    for st in rd['timeline']:
+        if st.get('type') == 'action' and st.get('player') in roster_players:
+            assert st.get('seat') is not None, (st.get('player'), st.get('action'))
+    print("OK  test_replay_winner_action_has_seat")
 
 
 if __name__ == '__main__':

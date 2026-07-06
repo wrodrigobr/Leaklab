@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(replay): ação do VENCEDOR do showdown não renderizava (seat corrompido pelo SUMMARY) (#bug)
+
+> No replayer, o jogador que ganhava no showdown aparecia com as cartas ativas mas SEM ação na mesa. Causa: `_build_replay_data` reparsa o roster de assentos com a regex `Seat (\d+): (.+?) \(([0-9.,]+)...`, e a linha do SUMMARY `Seat 7: X showed [As 5h] and won (1,110) with Two Pair` também casava (o `(1,110)` virava "stack"), sobrescrevendo o roster com o nome corrompido `X showed ... won`. Aí o lookup ação→assento (`seats[s]['player']==action.player`) falhava → `seat=None` → o frontend, que renderiza ação por assento, não mostrava nada. Só afetava o VENCEDOR (a linha de fold do summary, sem `(número)`, não casa). Bug latente de TODOS os sites, escancarado na CoinPoker (nome anônimo aliasado "Vilão N"). Fix: o scan de assentos PARA no `*** SUMMARY ***`. Teste `test_replay_winner_action_has_seat`. (O cache de replay é em memória → o restart do deploy limpa.)
+
 ### chore(dev): solver local (Rust solver_cli) desligado por padrão em dev (#dx)
 
 > Rodar `python api/app.py` em dev iniciava o `gto-solver-worker`, que drenava a fila GTO e disparava `solver_cli.exe` (CPU pesado, derrubava o PC). Agora o worker do solver local fica atrás de `LEAKLAB_LOCAL_SOLVER` (default OFF): `python api/app.py` não solva localmente; `LEAKLAB_LOCAL_SOLVER=1 python api/app.py` liga de propósito. Só afeta dev, o bloco `__main__` nem roda em prod (gunicorn), e o solve de verdade é no servidor dedicado. O `gto-hand-worker` (GW/cloud, leve) segue ligado.
