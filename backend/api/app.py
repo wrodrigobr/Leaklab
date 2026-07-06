@@ -2592,6 +2592,23 @@ def player_achievements():
     return jsonify({'achievements': get_achievements(g.user_id)})
 
 
+# ── Coach Replay interativo — seus erros mais caros, revisados na mesa real ────
+@app.route('/player/coach-replay/<int:tournament_id>', methods=['GET'])
+@require_auth
+def player_coach_replay(tournament_id: int):
+    """Dados do Coach Replay do torneio: erros mais caros (com o que o herói fez × GTO) +
+    plano. O front abre o replay real de cada mão. É a 'cura' → Pro (Free vê o upsell)."""
+    from database.repositories import PLAN_LIMITS
+    from leaklab.coach_replay import build_coach_replay
+    plan = (getattr(g, 'user', None) or {}).get('plan', 'free')
+    if not PLAN_LIMITS.get(plan, PLAN_LIMITS['free']).get('advanced_insights', False):
+        return jsonify({'requires_pro': True, 'feature': 'coach_replay'}), 200
+    data = build_coach_replay(g.user_id, tournament_id)
+    if data is None:
+        return jsonify({'error': 'Torneio não encontrado'}), 404
+    return jsonify(data)
+
+
 # ── Desafio do Dia (#42) ──────────────────────────────────────────────────────
 def _challenge_day() -> str:
     from datetime import datetime

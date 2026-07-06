@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(coach-replay): backend do Coach Replay interativo — seus erros mais caros na mesa real (#flagship)
+
+> Reorienta o Coach Replay do slideshow-resumo pro que o usuário esperava: **os erros mais caros do torneio, pra reassistir na mesa real** (o front abre o Replayer que já existe). `leaklab/coach_replay.build_coach_replay(user_id, tid)` devolve, do torneio do próprio jogador, os top-N `gto_critical` por `ev_loss_bb` com hand_id + o que o herói fez × GTO + nota do coach determinística ("Você deu fold, mas o GTO paga aqui. Custou 17.5bb") + EV total + plano de estudo dos leaks reais. Endpoint `GET /player/coach-replay/<tid>` Pro-gated (é a "cura" → Free vê `requires_pro`) + checagem de dono. Validado no torneio real 151 (MTT $1.10, 396 mãos, 38.7bb, flop AhTs fold vs call 17.5bb). Teste `test_coach_replay` (2). Próximo: página que embute o Replayer por erro, pausando na decisão, com o overlay do coach.
+
 ### feat(content): Short com marca GrindLab + variante enquete IG + narração grounded do Coach Replay (#growth)
 
 > **Short:** cabeçalho com o logo REAL (`grindlab_final_horizontal.svg` de `assets/brand`, nunca recriado) + selo "Desafio Diário". Nova variante `pollMode` (composição `DailyChallengeShortPoll`): esconde os botões chapados e deixa o espaço pro **sticker de Quiz do Instagram Stories** (aceita 4 opções + gabarito, encaixa no fold/call/raise/shove). Variante com botões segue pra Reels/TikTok/Shorts (sem enquete nativa). **Coach Replay narração:** `build_coach_replay_narration.py` = o Script Generator grounded: rascunho determinístico dos fatos do ReplaySpec → (opcional) LLM Haiku poliria a prosa → **validador anti-invenção** que rejeita qualquer número fora dos fatos e cai no determinístico. Prova real: 5 cenas, ~70s, ancorado (396 mãos, EV 4.9/6.2/2.4bb, posições reais), zero invenção.
