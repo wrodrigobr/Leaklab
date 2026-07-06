@@ -24,9 +24,13 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from pathlib import Path
-for _line in Path(os.path.join(os.path.dirname(__file__), '..', '.env')).read_text().splitlines():
-    if '=' in _line and not _line.strip().startswith('#'):
-        _k, _v = _line.split('=', 1); os.environ.setdefault(_k.strip(), _v.strip())
+# .env é conveniência de DEV; em prod (container) não existe — só ler se existir, senão o
+# import deste módulo quebra em prod (é importado pelo solve_attach_postflop_hu_gaps).
+_envp = Path(os.path.join(os.path.dirname(__file__), '..', '.env'))
+if _envp.exists():
+    for _line in _envp.read_text().splitlines():
+        if '=' in _line and not _line.strip().startswith('#'):
+            _k, _v = _line.split('=', 1); os.environ.setdefault(_k.strip(), _v.strip())
 os.environ['TEXAS_HERO_IP'] = '1'
 os.environ['TEXAS_HERO_IP_FACING'] = '1'
 

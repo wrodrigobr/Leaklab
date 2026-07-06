@@ -21,9 +21,13 @@ from pathlib import Path
 from collections import defaultdict, Counter
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-for _l in Path(os.path.join(os.path.dirname(__file__), '..', '.env')).read_text().splitlines():
-    if '=' in _l and not _l.strip().startswith('#'):
-        _k, _v = _l.split('=', 1); os.environ.setdefault(_k.strip(), _v.strip())
+# .env é conveniência de DEV; em prod (container) não existe — as envs já vêm do compose.
+# Ler só se existir, senão o script quebra em prod (FileNotFoundError no /app/.env).
+_envp = Path(os.path.join(os.path.dirname(__file__), '..', '.env'))
+if _envp.exists():
+    for _l in _envp.read_text().splitlines():
+        if '=' in _l and not _l.strip().startswith('#'):
+            _k, _v = _l.split('=', 1); os.environ.setdefault(_k.strip(), _v.strip())
 os.environ['TEXAS_HERO_IP'] = '1'
 os.environ['TEXAS_HERO_IP_FACING'] = '1'
 
