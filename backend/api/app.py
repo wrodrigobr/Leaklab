@@ -3359,6 +3359,11 @@ def _extract_tournament_name(raw: str, site: str, buy_in: float | None = None) -
                 jogadores de mesas quebradas (>9 únicos no arquivo completo).
     """
     import re
+    if site == 'coinpoker':
+        # nome entre aspas: "Tournament '₮1.10 Asia Rapid Fire PKO [Turbo]' '72561'"
+        m = re.search(r"Tournament\s+'([^']+)'", raw)
+        if m:
+            return m.group(1).strip()
     if site == 'ggpoker':
         m = re.search(r'Tournament\s+#\d+,\s+(.+?)\s+Hold\'?em', raw, re.IGNORECASE)
         if m:
@@ -3423,6 +3428,14 @@ def _extract_financials(raw: str, hero: str, site: str | None = None, filename: 
     # seria prejuízo falso. Só o buy-in (stake) é conhecido. Ver specs/acr-parser.md fase 5.
     if site == 'acr':
         result['buy_in'] = _acr_buyin_from_filename(filename)
+        return result
+
+    # ── CoinPoker: buy-in em ₮ (token) no header "Tournament '₮1.10 ...'". prize/place ficam
+    # DESCONHECIDOS (o HH não traz resultado) — não assumir busted (prejuízo falso), igual ao ACR.
+    if site == 'coinpoker':
+        m = re.search(r'₮\s*(\d+(?:\.\d+)?)', raw)
+        if m:
+            result['buy_in'] = round(float(m.group(1)), 2)
         return result
 
     # ── 888poker / PartyPoker (dialeto PartyGaming) ────────────────────────────
@@ -4220,7 +4233,7 @@ def coach_student_replay(student_id, tournament_id, hand_id):
     target = next((h for h in hands if str(h.hand_id) == str(hand_id)), None)
     if not target:
         return jsonify({'error': f'Mão {hand_id} não encontrada'}), 404
-    if (t.get('site') or '').lower() == 'ggpoker':
+    if (t.get('site') or '').lower() in ('ggpoker', 'coinpoker'):   # CoinPoker também anonimiza (hash)
         _apply_alias_to_hand(target, _build_gg_alias_map(raw_text, t.get('hero') or target.hero))
     _db_all_c  = get_decisions(t['id'])
     _db_hand_c = [d for d in _db_all_c if str(d.get('hand_id')) == str(hand_id)]
@@ -5012,8 +5025,8 @@ def get_replay(tournament_id, hand_id):
     if not target:
         return jsonify({'error': f'Mão {hand_id} não encontrada no torneio'}), 404
 
-    # GG anonimiza oponentes (hexa estável por torneio) → 'Vilão N' consistente em todas as mãos.
-    if (t.get('site') or '').lower() == 'ggpoker':
+    # GG e CoinPoker anonimizam oponentes (hash estável por torneio) → 'Vilão N' consistente.
+    if (t.get('site') or '').lower() in ('ggpoker', 'coinpoker'):
         _alias = _build_gg_alias_map(raw_text, t.get('hero') or target.hero)
         _apply_alias_to_hand(target, _alias)
 

@@ -32,6 +32,23 @@ ACR_ACTION_RE = re.compile(
     re.IGNORECASE,
 )
 
+# ── CoinPoker patterns ────────────────────────────────────────────────────────
+# Dialeto PokerStars-like: ações COM dois-pontos ("player: raises 300 to 400"), assentos
+# "Seat N: hash (10,000 in chips)", antes/blinds/streets/showdown padrão. Diferenças que
+# quebram o parser PS:
+#   header 2 linhas: "CoinPoker Hand #<id>: NLH (50/100/15) <data> -05"  (sb/bb/ANTE com BARRAS,
+#     não o ante aninhado do GG "(sb/bb(ante))" → o SB_RE não casa → bb=None → bug das fichas)
+#   torneio na 2a linha: "Tournament '₮1.10 ... PKO [Turbo]' '72561' 7-max Seat #3 is the button"
+#     (id entre aspas, não "Tournament #<id>"); buy-in em ₮ (token), não $; showdown "*** SHOWDOWN ***"
+# Nomes anonimizados (hash), Hero é "Hero". Button/hero/board/showdown reusam os regexes shared.
+COIN_SPLIT_RE  = re.compile(r"(?=CoinPoker Hand #)")
+COIN_ID_RE     = re.compile(r"CoinPoker Hand #(\d+)")
+# blinds do header "(50/100/15)" = sb/bb/ante (o gate do bb). Aceita milhar (vírgula/espaço).
+COIN_BLINDS_RE = re.compile(r"\((\d[\d, ]*(?:\.\d+)?)/(\d[\d, ]*(?:\.\d+)?)/(\d[\d, ]*(?:\.\d+)?)\)")
+# id do torneio entre aspas: "Tournament '<nome>' '<id>' <max>-max"
+COIN_TOURN_RE  = re.compile(r"Tournament\s+'[^']*'\s+'(\w+)'")
+
+
 # ── PartyGaming dialect (888poker / PartyPoker) ───────────────────────────────
 # Os dois sites compartilham um formato quase idêntico (herança Pacific/PartyGaming),
 # bem diferente do PokerStars/GGPoker. Header e cada linha de ação mudam.
@@ -125,6 +142,8 @@ def _detect_site(text: str) -> str:
     """Detecta o site a partir do conteúdo do hand history."""
     if "PokerStars Hand #" in text:
         return "pokerstars"
+    if "CoinPoker Hand #" in text:       # ANTES do GG: "CoinPoker Hand #" contém "Poker Hand #"
+        return "coinpoker"
     if "Poker Hand #" in text:
         return "ggpoker"
     if "Game Hand #" in text:            # ACR/WPN: "Game Hand #... - Tournament #..."
@@ -140,7 +159,10 @@ def _detect_site(text: str) -> str:
 
 def _split_hands(text: str, site: str) -> List[str]:
     """Divide o texto em chunks de mão individuais."""
-    if site == "ggpoker":
+    if site == "coinpoker":
+        prefix = "CoinPoker Hand #"
+        chunks = [c.strip() for c in COIN_SPLIT_RE.split(text) if c.strip().startswith(prefix)]
+    elif site == "ggpoker":
         prefix = "Poker Hand #"
         chunks = [c.strip() for c in GG_SPLIT_RE.split(text) if c.strip().startswith(prefix)]
     elif site == "acr":
@@ -163,7 +185,8 @@ def parse_hand_history(text: str) -> List[ParsedHand]:
     site = _detect_site(text)
     if site in ("888poker", "partypoker"):
         return _parse_partygaming_hands(text, site)
-    id_re = ACR_ID_RE if site == "acr" else GG_ID_RE if site == "ggpoker" else PS_ID_RE
+    id_re = (COIN_ID_RE if site == "coinpoker" else ACR_ID_RE if site == "acr"
+             else GG_ID_RE if site == "ggpoker" else PS_ID_RE)
     chunks = _split_hands(text, site)
     return [parse_hand(chunk, id_re, site) for chunk in chunks]
 
@@ -173,8 +196,10 @@ def parse_hand(raw_text: str, id_re: re.Pattern | None = None, site: str = "poke
         id_re = PS_ID_RE
     is_acr = (site == "acr")
 
+    is_coin = (site == "coinpoker")
+
     hand_id  = _search(id_re, raw_text)
-    tourn_id = _search(TOURN_RE, raw_text)
+    tourn_id = _search(COIN_TOURN_RE if is_coin else TOURN_RE, raw_text)
     button   = _search(BUTTON_RE, raw_text, cast=int)
 
     hero_name  = None
@@ -185,7 +210,9 @@ def parse_hand(raw_text: str, id_re: re.Pattern | None = None, site: str = "poke
         hero_cards = m.group(2).replace(" ", "")
 
     sb = bb = None
-    m2 = SB_RE.search(raw_text)
+    # CoinPoker: blinds "(50/100/15)" = sb/bb/ante com BARRAS (o SB_RE espera ante aninhado
+    # "(sb/bb(ante))" → não casaria → bb=None → potBb/stack em FICHAS → nós GTO degenerados).
+    m2 = COIN_BLINDS_RE.search(raw_text) if is_coin else SB_RE.search(raw_text)
     if m2:
         sb = _pg_num(m2.group(1))   # _pg_num tira vírgula/espaço de milhar (GG: "1,500" → 1500.0)
         bb = _pg_num(m2.group(2))

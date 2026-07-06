@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(parser): suporte à CoinPoker (novo site) (#onboarding)
+
+> Onboarding da CoinPoker seguindo o checklist do gate do bb. É dialeto PokerStars-like (ações com dois-pontos, seats "in chips", antes/streets/showdown padrão), com diferenças tratadas: detecção do site ANTES do GG (`"CoinPoker Hand #"` contém `"Poker Hand #"` → cairia em ggpoker), split/id próprios, e o **GATE crítico do bb**: blinds `(50/100/15)` = sb/bb/**ante com BARRAS** (o `SB_RE` espera ante aninhado `(sb/bb(ante))` → não casaria → bb=None → potBb/stack em FICHAS → nós GTO degenerados) resolvido com `COIN_BLINDS_RE`. Tournament id entre aspas (`'72561'`), buy-in em ₮ (token, prize/place ficam None como no ACR, sem assumir busted), nome do torneio da linha `Tournament '...'`, e alias "Vilão N" pros hashes anônimos (reusa `_build_gg_alias_map`). Validado no arquivo real: 409 mãos, **0 sem bb**, pipeline com `potBb 4.41`/`effectiveStackBb 66.54` (BB, não fichas), PKO/ICM detectados. Teste `test_coinpoker_parser` (3), regression 44/44 zero regressões.
+
 ### feat(coach-replay): backend do Coach Replay interativo — seus erros mais caros na mesa real (#flagship)
 
 > Reorienta o Coach Replay do slideshow-resumo pro que o usuário esperava: **os erros mais caros do torneio, pra reassistir na mesa real** (o front abre o Replayer que já existe). `leaklab/coach_replay.build_coach_replay(user_id, tid)` devolve, do torneio do próprio jogador, os top-N `gto_critical` por `ev_loss_bb` com hand_id + o que o herói fez × GTO + nota do coach determinística ("Você deu fold, mas o GTO paga aqui. Custou 17.5bb") + EV total + plano de estudo dos leaks reais. Endpoint `GET /player/coach-replay/<tid>` Pro-gated (é a "cura" → Free vê `requires_pro`) + checagem de dono. Validado no torneio real 151 (MTT $1.10, 396 mãos, 38.7bb, flop AhTs fold vs call 17.5bb). Teste `test_coach_replay` (2). Próximo: página que embute o Replayer por erro, pausando na decisão, com o overlay do coach.
