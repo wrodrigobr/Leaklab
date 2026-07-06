@@ -1,5 +1,5 @@
 import { useReducer, useEffect, useRef, useCallback } from "react";
-import { CheckCircle2, AlertTriangle, Clock, Loader2, X, UploadCloud } from "lucide-react";
+import { CheckCircle2, AlertTriangle, Clock, Loader2, X, UploadCloud, Info } from "lucide-react";
 import { tournaments, metrics } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
@@ -107,6 +107,18 @@ function QueuePanel({
           </li>
         ))}
       </ul>
+
+      {/* Aviso pós-import: o solver GTO processa as mãos em segundo plano e pode demorar. */}
+      {pending === 0 && items.some((i) => i.status === "done") && (
+        <div className="flex items-start gap-2 border-t border-border bg-primary/[0.05] px-4 py-2.5">
+          <Info className="mt-0.5 size-3.5 shrink-0 text-primary" aria-hidden />
+          <p className="text-[11px] leading-snug text-muted-foreground">
+            As mãos já estão no seu histórico. A <span className="text-foreground">análise GTO</span> roda
+            em segundo plano e pode levar alguns minutos num torneio grande. Pode fechar, os torneios
+            mostram o selo <span className="font-mono text-primary">Analisando</span> até concluir.
+          </p>
+        </div>
+      )}
     </div>
   );
 }
