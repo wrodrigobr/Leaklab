@@ -48,6 +48,10 @@ def main():
     ap.add_argument("--apply", action="store_true")
     ap.add_argument("--street", choices=["preflop", "postflop", "all"],
                     default="postflop")
+    # --fill-only: SÓ 'appeared' (era uncovered, agora tem nó). Nunca remove cobertura (vanished)
+    # nem muda veredito de spot já coberto (label_drift). É o re-lookup seguro pro cron noturno.
+    ap.add_argument("--fill-only", action="store_true",
+                    help="só rotula uncovered que ganhou nó; não mexe no que já tem gto_label")
     args = ap.parse_args()
 
     def _in_scope(st):
@@ -140,14 +144,19 @@ def main():
             if f['gto_action'] != s_ga:       diffs.append('gto_action')
             if not diffs:
                 continue
+            # classifica a natureza da mudança de gto (conta TODOS pra o relatório, inclusive
+            # os que o --fill-only vai pular — assim você vê quantos vanished/drift existem).
+            is_appeared = (not s_gl) and bool(f['gto_label'])   # era uncovered, ganhou nó
+            if s_gl and not f['gto_label']:        kinds['vanished'] += 1
+            elif is_appeared:                      kinds['appeared'] += 1
+            elif s_gl != f['gto_label']:           kinds['label_drift'] += 1
+            elif 'gto_action' in diffs:            kinds['action_only'] += 1
+            # --fill-only: só processa os 'appeared' (nunca remove/muda cobertura existente).
+            if args.fill_only and not is_appeared:
+                continue
             updated += 1
             for d in diffs:
                 changes[d] += 1
-            # classifica a natureza da mudança de gto
-            if s_gl and not f['gto_label']:        kinds['vanished'] += 1
-            elif not s_gl and f['gto_label']:      kinds['appeared'] += 1
-            elif s_gl != f['gto_label']:           kinds['label_drift'] += 1
-            elif 'gto_action' in diffs:            kinds['action_only'] += 1
             if len(examples) < 20:
                 examples.append(
                     f"  t{tid} {key[0]} {key[1]}/{key[2]} | "
