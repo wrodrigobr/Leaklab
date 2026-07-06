@@ -15,7 +15,8 @@
   "networks": {
     "eyebrow": "Redes compatibles",
     "heading": "Importa desde donde ya juegas",
-    "subtitle": "Soporte para hand histories de PokerStars, GGPoker y ACR (WPN). Más redes muy pronto."
+    "subtitle": "Soporte para hand histories de PokerStars, GGPoker y ACR (WPN). Más redes muy pronto.",
+    "new": "Nuevo"
   },
   "howItWorks": {
     "eyebrow": "Cómo funciona",

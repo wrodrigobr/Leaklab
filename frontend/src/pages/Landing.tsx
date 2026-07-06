@@ -88,6 +88,7 @@ function SupportedNetworksSection() {
     { site: "pokerstars", name: "PokerStars" },
     { site: "ggpoker",    name: "GGPoker" },
     { site: "acr",        name: "ACR (WPN)" },
+    { site: "coinpoker",  name: "CoinPoker", isNew: true },
   ];
   return (
     <section className="border-y border-border/50 bg-hud-surface/30 py-12 px-6">
@@ -98,9 +99,15 @@ function SupportedNetworksSection() {
         <div className="mt-7 flex flex-wrap items-center justify-center gap-3">
           {NETWORKS.map((n) => (
             <div key={n.site}
-              className="inline-flex items-center gap-2.5 rounded-full border border-border bg-hud-surface px-4 py-2">
+              className={`inline-flex items-center gap-2.5 rounded-full border px-4 py-2 ${
+                (n as { isNew?: boolean }).isNew ? "border-primary/40 bg-primary/[0.06]" : "border-border bg-hud-surface"}`}>
               <SiteLogo site={n.site} size={24} />
               <span className="font-mono text-sm font-bold text-foreground">{n.name}</span>
+              {(n as { isNew?: boolean }).isNew && (
+                <span className="rounded-full bg-primary px-2 py-0.5 font-mono text-[9px] font-bold uppercase tracking-wider text-primary-foreground">
+                  {t("networks.new")}
+                </span>
+              )}
             </div>
           ))}
         </div>
