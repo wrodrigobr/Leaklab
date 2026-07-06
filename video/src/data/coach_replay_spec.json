@@ -1,0 +1,137 @@
+{
+  "source": "engines reais (get_leak_ranking_gto_first + decisions), sem invenção",
+  "tournament": {
+    "id": 151,
+    "name": "MTT $1.10",
+    "buy_in": 1.1,
+    "hands": 396
+  },
+  "intro": {
+    "hands_analyzed": 396,
+    "leaks_found": 3
+  },
+  "leaks": [
+    {
+      "rank": 1,
+      "spot": "preflop/fold",
+      "title": "Pré-flop: decisões de fold",
+      "occurrences": 44,
+      "severity": 0.375,
+      "trend": "stagnant",
+      "ev_lost_bb": 4.9,
+      "recommendation": "Revisar os ranges por posição e stack: onde o GTO define fold, call, raise ou shove.",
+      "examples": [
+        {
+          "hand_id": "257046008859",
+          "position": "BTN",
+          "hero_cards": "3d8h",
+          "gto_action": "fold",
+          "ev_loss_bb": 3.82,
+          "gto_label": "gto_critical"
+        },
+        {
+          "hand_id": "257048207250",
+          "position": "UTG",
+          "hero_cards": "As6d",
+          "gto_action": "fold",
+          "ev_loss_bb": 0.55,
+          "gto_label": "gto_critical"
+        },
+        {
+          "hand_id": "257047833576",
+          "position": "SB",
+          "hero_cards": "3dTh",
+          "gto_action": "fold",
+          "ev_loss_bb": 0.19,
+          "gto_label": "gto_critical"
+        }
+      ]
+    },
+    {
+      "rank": 2,
+      "spot": "preflop/call",
+      "title": "Pré-flop: decisões de call",
+      "occurrences": 55,
+      "severity": 0.297,
+      "trend": "stagnant",
+      "ev_lost_bb": 6.2,
+      "recommendation": "Revisar os ranges por posição e stack: onde o GTO define fold, call, raise ou shove.",
+      "examples": [
+        {
+          "hand_id": "257047945202",
+          "position": "BB",
+          "hero_cards": "TdKc",
+          "gto_action": "call",
+          "ev_loss_bb": 2.04,
+          "gto_label": "gto_critical"
+        },
+        {
+          "hand_id": "257049062997",
+          "position": "SB",
+          "hero_cards": "7dAd",
+          "gto_action": "call",
+          "ev_loss_bb": 1.57,
+          "gto_label": "gto_critical"
+        },
+        {
+          "hand_id": "257046415747",
+          "position": "BTN",
+          "hero_cards": "9d9s",
+          "gto_action": "call",
+          "ev_loss_bb": 0.59,
+          "gto_label": "gto_critical"
+        }
+      ]
+    },
+    {
+      "rank": 3,
+      "spot": "preflop/raise",
+      "title": "Pré-flop: decisões de raise",
+      "occurrences": 33,
+      "severity": 0.323,
+      "trend": "stagnant",
+      "ev_lost_bb": 2.4,
+      "recommendation": "Revisar os ranges por posição e stack: onde o GTO define fold, call, raise ou shove.",
+      "examples": [
+        {
+          "hand_id": "257047144339",
+          "position": "UTG+2",
+          "hero_cards": "8s8d",
+          "gto_action": "raise",
+          "ev_loss_bb": 1.34,
+          "gto_label": "gto_critical"
+        },
+        {
+          "hand_id": "257048419516",
+          "position": "SB",
+          "hero_cards": "KdJh",
+          "gto_action": "raise",
+          "ev_loss_bb": 0.48,
+          "gto_label": "gto_critical"
+        },
+        {
+          "hand_id": "257045873643",
+          "position": "UTG",
+          "hero_cards": "TdKd",
+          "gto_action": "raise",
+          "ev_loss_bb": 0.36,
+          "gto_label": "gto_critical"
+        }
+      ]
+    }
+  ],
+  "plan": [
+    {
+      "week": 1,
+      "focus": "Pré-flop: decisões de fold"
+    },
+    {
+      "week": 2,
+      "focus": "Pré-flop: decisões de call"
+    },
+    {
+      "week": 3,
+      "focus": "Pré-flop: decisões de raise"
+    }
+  ]
+}

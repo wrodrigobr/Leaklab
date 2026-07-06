@@ -1,0 +1,38 @@
+{
+  "scenario": "rfi",
+  "position": "CO",
+  "vs_position": "",
+  "stack_bb": 50,
+  "hand": "96s",
+  "hero_cards": [
+    {
+      "rank": "9",
+      "suit": "s"
+    },
+    {
+      "rank": "6",
+      "suit": "s"
+    }
+  ],
+  "options": [
+    "fold",
+    "raise"
+  ],
+  "answer": "raise",
+  "hand_class": "suited",
+  "counterintuitive": true,
+  "challenge_score": 100,
+  "gto_strategy": [
+    {
+      "action": "raise",
+      "freq": 0.8514
+    },
+    {
+      "action": "fold",
+      "freq": 0.1486
+    }
+  ],
+  "best_action": "raise",
+  "why": "Abertura de CO. O GTO abre com 96s (suited) em 85% dos casos. Mas mistura dá fold em 15%, não é automático. A mão parece fraca demais pra atacar, o tipo de linha fina que o jogador evita.",
+  "explanation": "Correto. Estratégia GTO: raise 85%, fold 15%."
+}

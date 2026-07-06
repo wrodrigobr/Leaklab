@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(content): Short vertical do Desafio do Dia + prova do Coach Replay (#growth)
+
+> **Growth (topo de funil):** composição Remotion **DailyChallengeShort** (9:16, 1080x1920) que vira o Desafio do Dia num Short pra TikTok/Reels/Shorts: gancho "Spot do dia" → mão + ação → suspense → veredito (mix GTO real) → CTA. Spot 100% real e vetado, escolhido por `build_short_spot.py` (prioriza o contraintuitivo, gancho "você foldaria, mas o GTO abre"): saiu CO 96s 50bb, GTO abre 85%. **Prova do Coach Replay:** `build_coach_replay_spec.py` monta o ReplaySpec de um torneio REAL (151, "MTT $1.10", 396 mãos) 100% ancorado nos engines (leaks reais rankeados por EV + mãos-exemplo reais + EV em bb), zero invenção; a composição **CoachReplay** (16:9) renderiza intro → cena por leak (título + barra de EV + suas mãos reais + recomendação) → plano de estudo. Ambas renderizadas e validadas por still. `CardFace` reusável. Confirma o pipeline "engines → spec → vídeo" do flagship sem fazenda de render pra provar o conceito.
+
 ### feat(billing): rampa suave do gate de treino — Fase 3 backend (#freemium)
 
 > Transição sem susto pros Free legados. `TRAINING_GATE_START` (ISO `YYYY-MM-DD`, override por env, default `2026-07-20`): antes da data o gate NÃO é aplicado (todos treinam como Pro) e as respostas trazem `grace_until` pro aviso; a partir dela, aplica. Vale pro `leaktrainer/next` (sem cap, treino mirado liberado) e pro Ghost (liberado). Erro na data → aplica (fail-safe). Teste `test_grace_period_bypasses_gate`. Pra ligar o gate: setar `TRAINING_GATE_START` (passado) no `.env`. Pendente: banner de aviso da graça no front + badges Pro nos tiles.
