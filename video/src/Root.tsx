@@ -24,6 +24,16 @@ export const RemotionRoot: React.FC = () => {
         fps={30}
         width={1080}
         height={1920}
+        defaultProps={{ pollMode: false }}
+      />
+      <Composition
+        id="DailyChallengeShortPoll"
+        component={DailyChallengeShort}
+        durationInFrames={SHORT_DURATION}
+        fps={30}
+        width={1080}
+        height={1920}
+        defaultProps={{ pollMode: true }}
       />
       <Composition
         id="CoachReplay"

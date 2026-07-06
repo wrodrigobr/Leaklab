@@ -1,0 +1,7 @@
+{
+  "intro": "Olá. Analisamos 396 mãos do seu MTT $1.10 e encontramos 3 padrões que estão custando EV. Vamos direto ao ponto.",
+  "leak1": "Seu leak número 1: Pré-flop: decisões de fold. Foram 44 spots, custando cerca de 4.9 big blinds no torneio. Por exemplo, no BTN o GTO manda fold. Revisar os ranges por posição e stack: onde o GTO define fold, call, raise ou shove.",
+  "leak2": "Seu leak número 2: Pré-flop: decisões de call. Foram 55 spots, custando cerca de 6.2 big blinds no torneio. Por exemplo, no BB o GTO manda call. Revisar os ranges por posição e stack: onde o GTO define fold, call, raise ou shove.",
+  "leak3": "Seu leak número 3: Pré-flop: decisões de raise. Foram 33 spots, custando cerca de 2.4 big blinds no torneio. Por exemplo, no UTG+2 o GTO manda raise. Revisar os ranges por posição e stack: onde o GTO define fold, call, raise ou shove.",
+  "plan": "Seu plano de estudo: Semana 1, Pré-flop: decisões de fold. Semana 2, Pré-flop: decisões de call. Semana 3, Pré-flop: decisões de raise. Comece agora, treine esses spots no GrindLab."
+}

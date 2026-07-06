@@ -1,5 +1,5 @@
 import React from "react";
-import { AbsoluteFill, Series, useCurrentFrame, useVideoConfig, interpolate, spring } from "remotion";
+import { AbsoluteFill, Series, Img, staticFile, useCurrentFrame, interpolate, spring } from "remotion";
 import { THEME } from "../theme";
 import { CardFace } from "../components/CardFace";
 import spot from "../data/short_spot.json";
@@ -59,19 +59,41 @@ const Hook: React.FC = () => {
   );
 };
 
-const Setup: React.FC = () => {
+const Setup: React.FC<{ pollMode?: boolean }> = ({ pollMode }) => {
   const f = useCurrentFrame();
   return (
     <AbsoluteFill style={{ justifyContent: "center", alignItems: "center", gap: 48 }}>
       <div style={{ fontFamily: THEME.mono, fontSize: 40, color: THEME.teal, opacity: fade(f) }}>{ctxLine()}</div>
       <div style={{ opacity: fade(f, 8), transform: `translateY(${interpolate(fade(f, 8), [0, 1], [30, 0])}px)` }}><HeroCards /></div>
       <div style={{ fontFamily: THEME.heading, fontWeight: 700, fontSize: 72, color: THEME.light, opacity: fade(f, 20) }}>O que você faz?</div>
-      <div style={{ display: "flex", flexDirection: "column", gap: 20, opacity: fade(f, 28) }}>
-        {(spot.options as string[]).map((a) => <Chip key={a} label={actLabel(a)} />)}
-      </div>
+      {pollMode ? (
+        // variante Stories: deixa o espaço pro sticker de Quiz nativo do Instagram (fold/call/raise/shove)
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 12, opacity: fade(f, 28) }}>
+          <div style={{ width: 620, height: 200, borderRadius: 24, border: `3px dashed ${THEME.teal}`, opacity: 0.5,
+            display: "flex", alignItems: "center", justifyContent: "center", fontFamily: THEME.mono, fontSize: 30, color: THEME.teal }}>
+            enquete do Instagram aqui
+          </div>
+          <div style={{ fontFamily: THEME.body, fontSize: 34, color: THEME.muted }}>vote e veja se acertou</div>
+        </div>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 20, opacity: fade(f, 28) }}>
+          {(spot.options as string[]).map((a) => <Chip key={a} label={actLabel(a)} />)}
+        </div>
+      )}
     </AbsoluteFill>
   );
 };
+
+// Cabeçalho persistente: logo GrindLab + selo "Desafio Diário" (identidade da marca).
+const Header: React.FC = () => (
+  <div style={{ position: "absolute", top: 90, left: 0, right: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: 20 }}>
+    <Img src={staticFile("brand/logo-horizontal.svg")} style={{ width: 460 }} />
+    <div style={{ padding: "12px 34px", borderRadius: 999, background: "rgba(45,212,191,0.12)", border: `2px solid ${THEME.teal}`,
+      fontFamily: THEME.mono, fontSize: 32, letterSpacing: 4, color: THEME.teal, textTransform: "uppercase" }}>
+      Desafio Diário
+    </div>
+  </div>
+);
 
 const Suspense: React.FC = () => {
   const f = useCurrentFrame();
@@ -129,16 +151,17 @@ const CTA: React.FC = () => {
   );
 };
 
-export const DailyChallengeShort: React.FC = () => (
+export const DailyChallengeShort: React.FC<{ pollMode?: boolean }> = ({ pollMode = false }) => (
   <AbsoluteFill style={{ background: THEME.bg }}>
     <AbsoluteFill style={{ background: "radial-gradient(ellipse at 50% 35%, rgba(45,212,191,0.10), transparent 60%)" }} />
     <Series>
       <Series.Sequence durationInFrames={3 * FPS}><Hook /></Series.Sequence>
-      <Series.Sequence durationInFrames={5 * FPS}><Setup /></Series.Sequence>
+      <Series.Sequence durationInFrames={5 * FPS}><Setup pollMode={pollMode} /></Series.Sequence>
       <Series.Sequence durationInFrames={3 * FPS}><Suspense /></Series.Sequence>
       <Series.Sequence durationInFrames={7 * FPS}><Reveal /></Series.Sequence>
       <Series.Sequence durationInFrames={3 * FPS}><CTA /></Series.Sequence>
     </Series>
+    <Header />
   </AbsoluteFill>
 );
 

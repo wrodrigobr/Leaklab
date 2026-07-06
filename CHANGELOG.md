@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(content): Short com marca GrindLab + variante enquete IG + narração grounded do Coach Replay (#growth)
+
+> **Short:** cabeçalho com o logo REAL (`grindlab_final_horizontal.svg` de `assets/brand`, nunca recriado) + selo "Desafio Diário". Nova variante `pollMode` (composição `DailyChallengeShortPoll`): esconde os botões chapados e deixa o espaço pro **sticker de Quiz do Instagram Stories** (aceita 4 opções + gabarito, encaixa no fold/call/raise/shove). Variante com botões segue pra Reels/TikTok/Shorts (sem enquete nativa). **Coach Replay narração:** `build_coach_replay_narration.py` = o Script Generator grounded: rascunho determinístico dos fatos do ReplaySpec → (opcional) LLM Haiku poliria a prosa → **validador anti-invenção** que rejeita qualquer número fora dos fatos e cai no determinístico. Prova real: 5 cenas, ~70s, ancorado (396 mãos, EV 4.9/6.2/2.4bb, posições reais), zero invenção.
+
 ### feat(content): Short vertical do Desafio do Dia + prova do Coach Replay (#growth)
 
 > **Growth (topo de funil):** composição Remotion **DailyChallengeShort** (9:16, 1080x1920) que vira o Desafio do Dia num Short pra TikTok/Reels/Shorts: gancho "Spot do dia" → mão + ação → suspense → veredito (mix GTO real) → CTA. Spot 100% real e vetado, escolhido por `build_short_spot.py` (prioriza o contraintuitivo, gancho "você foldaria, mas o GTO abre"): saiu CO 96s 50bb, GTO abre 85%. **Prova do Coach Replay:** `build_coach_replay_spec.py` monta o ReplaySpec de um torneio REAL (151, "MTT $1.10", 396 mãos) 100% ancorado nos engines (leaks reais rankeados por EV + mãos-exemplo reais + EV em bb), zero invenção; a composição **CoachReplay** (16:9) renderiza intro → cena por leak (título + barra de EV + suas mãos reais + recomendação) → plano de estudo. Ambas renderizadas e validadas por still. `CardFace` reusável. Confirma o pipeline "engines → spec → vídeo" do flagship sem fazenda de render pra provar o conceito.
