@@ -11,6 +11,7 @@ const SITE_DOMAINS: Record<string, string> = {
   partypoker: "partypoker.com",
   winamax:    "winamax.fr",
   acr:        "americascardroom.eu",
+  coinpoker:  "coinpoker.com",
 };
 const faviconUrl = (key: string): string | undefined => {
   const d = SITE_DOMAINS[key];
@@ -25,6 +26,7 @@ const DISPLAY_NAMES: Record<string, string> = {
   partypoker: "PartyPoker",
   winamax:    "Winamax",
   acr:        "ACR",
+  coinpoker:  "CoinPoker",
 };
 
 function initials(site: string): string {
