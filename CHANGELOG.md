@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### chore(gto): comando de análise do ganho de re-lookup de cobertura (read-only) (#coverage)
+
+> `scripts/analyze_relookup_coverage.py`: estima, sem alterar nada, quantas decisões postflop HU hoje UNCOVERED já teriam um nó no `gto_nodes` se re-consultássemos agora (o ganho de cobertura de graça, sem solvar). Usa o MESMO hash do engine (`compute_spot_hash` + `get_gto_node`, variantes exact/genérico/sem-facing). Multiway fica de fora (teto HU-only); preflop de fora (ranges estáticas). Args `--tid`/`--user-id`/`--limit`. Como o banco de nós de prod é bem maior que o de dev, o número reflete o ambiente onde roda. Base pra decidir/dimensionar o sweep noturno de re-lookup antes de automatizar.
+
 ### fix(replay): ação do VENCEDOR do showdown não renderizava (seat corrompido pelo SUMMARY) (#bug)
 
 > No replayer, o jogador que ganhava no showdown aparecia com as cartas ativas mas SEM ação na mesa. Causa: `_build_replay_data` reparsa o roster de assentos com a regex `Seat (\d+): (.+?) \(([0-9.,]+)...`, e a linha do SUMMARY `Seat 7: X showed [As 5h] and won (1,110) with Two Pair` também casava (o `(1,110)` virava "stack"), sobrescrevendo o roster com o nome corrompido `X showed ... won`. Aí o lookup ação→assento (`seats[s]['player']==action.player`) falhava → `seat=None` → o frontend, que renderiza ação por assento, não mostrava nada. Só afetava o VENCEDOR (a linha de fold do summary, sem `(número)`, não casa). Bug latente de TODOS os sites, escancarado na CoinPoker (nome anônimo aliasado "Vilão N"). Fix: o scan de assentos PARA no `*** SUMMARY ***`. Teste `test_replay_winner_action_has_seat`. (O cache de replay é em memória → o restart do deploy limpa.)
