@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(import): CoinPoker derrubava o /analyze (timeout do worker por anonimização por-mão) (#hotfix)
+
+> "Failed to fetch" ao importar CoinPoker em prod. Causa: a CoinPoker troca o hash do jogador a CADA MÃO (na mão 1 o assento 1 é `a795d8ee`, na 2 é `babf6c02`) — sem identidade entre mãos. O bloco de opponent profiles via então **1782 "jogadores" de 1 mão** (confirmado no arquivo real de 409 mãos) e fazia 1 upsert + 1 conexão Postgres nova pra CADA → estourava o timeout do gunicorn → worker morto (SystemExit, que nem é pego pelo `except Exception`) → conexão cai → "Failed to fetch". Fix: **pular o HUD/perfis de oponente pra CoinPoker** (anonimização por-mão = HUD inútil de qualquer forma) + guard genérico por PROPORÇÃO (`> 3× as mãos` = anonimização por-mão) pra proteger sites futuros SEM punir run profunda de PS/GG (que tem oponentes reais repetidos). O parser em si estava certo (as decisões salvaram antes do crash).
+
 ### feat(parser): suporte à CoinPoker (novo site) (#onboarding)
 
 > Onboarding da CoinPoker seguindo o checklist do gate do bb. É dialeto PokerStars-like (ações com dois-pontos, seats "in chips", antes/streets/showdown padrão), com diferenças tratadas: detecção do site ANTES do GG (`"CoinPoker Hand #"` contém `"Poker Hand #"` → cairia em ggpoker), split/id próprios, e o **GATE crítico do bb**: blinds `(50/100/15)` = sb/bb/**ante com BARRAS** (o `SB_RE` espera ante aninhado `(sb/bb(ante))` → não casaria → bb=None → potBb/stack em FICHAS → nós GTO degenerados) resolvido com `COIN_BLINDS_RE`. Tournament id entre aspas (`'72561'`), buy-in em ₮ (token, prize/place ficam None como no ACR, sem assumir busted), nome do torneio da linha `Tournament '...'`, e alias "Vilão N" pros hashes anônimos (reusa `_build_gg_alias_map`). Validado no arquivo real: 409 mãos, **0 sem bb**, pipeline com `potBb 4.41`/`effectiveStackBb 66.54` (BB, não fichas), PKO/ICM detectados. Teste `test_coinpoker_parser` (3), regression 44/44 zero regressões.

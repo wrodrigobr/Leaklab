@@ -884,14 +884,29 @@ def _analyze_impl():
     # HUD: computa e persiste os perfis de comportamento dos oponentes deste torneio
     # (alimenta as Fases 2-3: perfil do vilão + exploit no card). Bônus — nunca bloqueia
     # o /analyze; try/except garante que um erro aqui não derruba o upload.
-    try:
-        from leaklab.opponent_stats import build_profiles as _build_profiles
-        from database.repositories import upsert_opponent_profile as _upsert_prof
-        for _pname, _prof in _build_profiles(hands).items():
-            if _pname and _pname != hero:
-                _upsert_prof(t_db_id, _pname, _prof)
-    except Exception:
-        log.exception("opponent_profiles: compute falhou (não bloqueia o /analyze)")
+    # CoinPoker troca o hash do jogador a CADA MÃO → sem identidade entre mãos, o HUD é inútil
+    # E o cálculo explode (~milhares de "jogadores" de 1 mão → 1 conexão PG cada → timeout do
+    # worker → "Failed to fetch"). SystemExit do timeout nem é pego pelo except Exception abaixo.
+    # Guard genérico por contagem cobre qualquer site futuro com anonimização por-mão.
+    _profiles = {}
+    if site != 'coinpoker':
+        try:
+            from leaklab.opponent_stats import build_profiles as _build_profiles
+            _profiles = _build_profiles(hands)
+        except Exception:
+            log.exception("opponent_profiles: build falhou (não bloqueia o /analyze)")
+    # Guard anti-explosão (por PROPORÇÃO, não conta absoluta): anonimização por-mão faz os nomes
+    # únicos crescerem ~linear com as mãos (CoinPoker ~4,4 únicos/mão); MTT real repete oponentes
+    # na mesa (~0,2). Só pula quando é claramente por-mão, pra NÃO punir run profunda de PS/GG.
+    _per_hand_anon = len(_profiles) > 60 and len(_profiles) > 3 * max(1, len(hands))
+    if _profiles and not _per_hand_anon:
+        try:
+            from database.repositories import upsert_opponent_profile as _upsert_prof
+            for _pname, _prof in _profiles.items():
+                if _pname and _pname != hero:
+                    _upsert_prof(t_db_id, _pname, _prof)
+        except Exception:
+            log.exception("opponent_profiles: upsert falhou (não bloqueia o /analyze)")
     # Só conta na quota torneio NOVO; re-import/merge do mesmo T# não consome.
     if not existing:
         try:
