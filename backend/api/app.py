@@ -9413,10 +9413,19 @@ def _solver_queue_worker_loop():
 
 
 if __name__ == '__main__':
+    import os as _os
     _worker = threading.Thread(target=_gto_hand_worker_loop, daemon=True, name='gto-hand-worker')
     _worker.start()
-    _solver_worker = threading.Thread(target=_solver_queue_worker_loop, daemon=True, name='gto-solver-worker')
-    _solver_worker.start()
+    # Worker do SOLVER LOCAL (Rust solver_cli): DESLIGADO por padrão em dev — ele drena a fila
+    # e come CPU (derruba o PC). O solve de verdade roda no servidor dedicado (Hetzner). Este
+    # bloco __main__ nem executa em prod (gunicorn). Pra solvar localmente de propósito:
+    #   LEAKLAB_LOCAL_SOLVER=1 python api/app.py
+    if _os.environ.get('LEAKLAB_LOCAL_SOLVER', '').lower() in ('1', 'true', 'yes'):
+        _solver_worker = threading.Thread(target=_solver_queue_worker_loop, daemon=True, name='gto-solver-worker')
+        _solver_worker.start()
+        log.warning("gto-solver-worker LIGADO (LEAKLAB_LOCAL_SOLVER=1) — solve local usa CPU pesado")
+    else:
+        log.info("gto-solver-worker desligado (defina LEAKLAB_LOCAL_SOLVER=1 pra solvar localmente)")
     try:
         from leaklab.gto_wizard_client import start_background_refresher as _gw_start
         _gw_start()

@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### chore(dev): solver local (Rust solver_cli) desligado por padrão em dev (#dx)
+
+> Rodar `python api/app.py` em dev iniciava o `gto-solver-worker`, que drenava a fila GTO e disparava `solver_cli.exe` (CPU pesado, derrubava o PC). Agora o worker do solver local fica atrás de `LEAKLAB_LOCAL_SOLVER` (default OFF): `python api/app.py` não solva localmente; `LEAKLAB_LOCAL_SOLVER=1 python api/app.py` liga de propósito. Só afeta dev, o bloco `__main__` nem roda em prod (gunicorn), e o solve de verdade é no servidor dedicado. O `gto-hand-worker` (GW/cloud, leve) segue ligado.
+
 ### fix(import): CoinPoker derrubava o /analyze (timeout do worker por anonimização por-mão) (#hotfix)
 
 > "Failed to fetch" ao importar CoinPoker em prod. Causa: a CoinPoker troca o hash do jogador a CADA MÃO (na mão 1 o assento 1 é `a795d8ee`, na 2 é `babf6c02`) — sem identidade entre mãos. O bloco de opponent profiles via então **1782 "jogadores" de 1 mão** (confirmado no arquivo real de 409 mãos) e fazia 1 upsert + 1 conexão Postgres nova pra CADA → estourava o timeout do gunicorn → worker morto (SystemExit, que nem é pego pelo `except Exception`) → conexão cai → "Failed to fetch". Fix: **pular o HUD/perfis de oponente pra CoinPoker** (anonimização por-mão = HUD inútil de qualquer forma) + guard genérico por PROPORÇÃO (`> 3× as mãos` = anonimização por-mão) pra proteger sites futuros SEM punir run profunda de PS/GG (que tem oponentes reais repetidos). O parser em si estava certo (as decisões salvaram antes do crash).
