@@ -4248,8 +4248,12 @@ def coach_student_replay(student_id, tournament_id, hand_id):
     target = next((h for h in hands if str(h.hand_id) == str(hand_id)), None)
     if not target:
         return jsonify({'error': f'Mão {hand_id} não encontrada'}), 404
-    if (t.get('site') or '').lower() in ('ggpoker', 'coinpoker'):   # CoinPoker também anonimiza (hash)
-        _apply_alias_to_hand(target, _build_gg_alias_map(raw_text, t.get('hero') or target.hero))
+    _asite = (t.get('site') or '').lower()
+    if _asite in ('ggpoker', 'coinpoker'):   # CoinPoker também anonimiza (hash)
+        # GG: hash estável no torneio → mapa do torneio (Vilão N consistente entre mãos).
+        # CoinPoker: hash muda a cada mão → mapa DA MÃO (Vilão 1-6), senão viraria "Vilão 1547".
+        _asrc = target.raw_text if _asite == 'coinpoker' else raw_text
+        _apply_alias_to_hand(target, _build_gg_alias_map(_asrc, t.get('hero') or target.hero))
     _db_all_c  = get_decisions(t['id'])
     _db_hand_c = [d for d in _db_all_c if str(d.get('hand_id')) == str(hand_id)]
     _gto_idx_c = {
@@ -5040,10 +5044,12 @@ def get_replay(tournament_id, hand_id):
     if not target:
         return jsonify({'error': f'Mão {hand_id} não encontrada no torneio'}), 404
 
-    # GG e CoinPoker anonimizam oponentes (hash estável por torneio) → 'Vilão N' consistente.
-    if (t.get('site') or '').lower() in ('ggpoker', 'coinpoker'):
-        _alias = _build_gg_alias_map(raw_text, t.get('hero') or target.hero)
-        _apply_alias_to_hand(target, _alias)
+    # GG (hash estável no torneio) → mapa do torneio. CoinPoker (hash por-mão) → mapa DA MÃO
+    # (Vilão 1-6), senão o índice global viraria "Vilão 1547".
+    _asite = (t.get('site') or '').lower()
+    if _asite in ('ggpoker', 'coinpoker'):
+        _asrc = target.raw_text if _asite == 'coinpoker' else raw_text
+        _apply_alias_to_hand(target, _build_gg_alias_map(_asrc, t.get('hero') or target.hero))
 
     # Buscar decisões do banco para enriquecer com gto_label/gto_action
     _db_all      = get_decisions(t['id'])
