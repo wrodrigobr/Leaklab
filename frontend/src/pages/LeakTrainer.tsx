@@ -3,17 +3,18 @@ import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import confetti from "canvas-confetti";
-import { ArrowRight, CheckCircle2, Loader2, RefreshCw, XCircle, Target, Maximize2, Minimize2, LayoutGrid, Flag, RotateCw, Trophy, Flame, Home } from "lucide-react";
+import { ArrowRight, CheckCircle2, Loader2, RefreshCw, XCircle, Target, Maximize2, Minimize2, LayoutGrid, Flag, RotateCw, Trophy, Flame, Home, Lock } from "lucide-react";
 import { HudHeader } from "@/components/hud/HudHeader";
 import { PokerTableV3 } from "@/components/hud/PokerTableV3";
 import { RangePanel } from "@/components/replayer/RangePanel";
+import { ProLockCard } from "@/components/hud/ProLockCard";
 import { useTableOrientation } from "@/hooks/use-table-orientation";
 import { useIsLandscapeMobile } from "@/hooks/use-is-landscape-mobile";
 import { leaktrainer } from "@/lib/api";
 import type { LeakTrainerSpot, LeakTrainerGrade, LeakTrainerState, ReplayStep } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
-type Phase = "intro" | "loading" | "question" | "feedback" | "error" | "empty" | "summary";
+type Phase = "intro" | "loading" | "question" | "feedback" | "error" | "empty" | "summary" | "paywall";
 
 const LESSON_SIZE = 10;   // lição fechada: N spots, depois fim automático com veredito
 type SessionStat = { label: string; hits: number; misses: number };
@@ -127,6 +128,8 @@ export default function LeakTrainer() {
   const [unlockedAch, setUnlockedAch]   = useState<string[]>([]);   // conquistas de treino da sessão
   const [sessionStats, setSessionStats] = useState<Record<string, SessionStat>>({});
   const [showRange, setShowRange]       = useState(false);
+  const [targetedLocked, setTargetedLocked] = useState(false);        // Free: treino mirado é Pro
+  const [gateInfo, setGateInfo]         = useState<{ used?: number; cap?: number } | null>(null);
   const [focus, setFocus]               = useState<string>("adaptive");   // o usuário escolhe o tipo de spot
   const focusRef = useRef<string>("adaptive");
   const stateRef = useRef<LeakTrainerState>(loadState());
@@ -176,7 +179,10 @@ export default function LeakTrainer() {
     try {
       const timeout = new Promise<never>((_, rej) => setTimeout(() => rej(new Error("timeout")), 12000));
       const r = await Promise.race([leaktrainer.next(stateRef.current, 90, focusRef.current), timeout]);
+      // Gate freemium: cap diário atingido → paywall (não tela vazia)
+      if (r.limit_reached || r.requires_pro) { setGateInfo({ used: r.used, cap: r.cap }); setPhase("paywall"); return; }
       if (!r.spot) { setPhase("empty"); return; }
+      setTargetedLocked(!!r.targeted_locked);   // Free: treinando fundamentos, mirado é Pro
       setSpot(r.spot);
       setPhase("question");
     } catch { setPhase("error"); }
@@ -530,6 +536,19 @@ export default function LeakTrainer() {
           </div>
         )}
 
+        {/* Gate freemium: cap diário atingido → upsell Pro (treino ilimitado + mirado) */}
+        {phase === "paywall" && (
+          <div className="mx-auto flex max-w-md flex-col items-center gap-4 py-8">
+            <p className="text-center text-sm text-muted-foreground">
+              {t("leakTrainer.gate.capDone", { used: gateInfo?.used ?? gateInfo?.cap ?? "", cap: gateInfo?.cap ?? "" })}
+            </p>
+            <ProLockCard feature={t("leakTrainer.gate.capFeature")} />
+            <button onClick={newSession} className="font-mono text-[11px] uppercase tracking-wider text-muted-foreground hover:text-foreground">
+              {t("leakTrainer.gate.back")}
+            </button>
+          </div>
+        )}
+
         {phase === "error" && (
           <div className="flex flex-col items-center gap-4 rounded-xl border border-destructive/30 bg-destructive/5 p-8">
             <XCircle className="size-10 text-destructive" aria-hidden />
@@ -679,6 +698,16 @@ export default function LeakTrainer() {
                 <p className="text-sm font-bold text-foreground leading-snug">{catLabel}</p>
                 <p className="font-mono text-[10px] text-muted-foreground">{spot.stack_bb}bb</p>
               </div>
+
+              {/* Free: treinando fundamentos genéricos; mirar nos leaks reais é Pro */}
+              {targetedLocked && (
+                <div className="rounded-xl border border-primary/30 bg-primary/[0.06] p-3">
+                  <p className="flex items-center gap-1.5 font-mono text-[10px] font-bold uppercase tracking-wider text-primary">
+                    <Lock className="size-3" aria-hidden /> {t("leakTrainer.gate.targetedTitle")}
+                  </p>
+                  <p className="mt-1 text-[11px] leading-snug text-muted-foreground">{t("leakTrainer.gate.targetedDesc")}</p>
+                </div>
+              )}
 
               {/* Consultar a tabela de ranges (abertura/call/raise) do spot */}
               <button

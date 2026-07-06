@@ -66,6 +66,13 @@
     "title": "Entrena donde pierdes EV",
     "subtitle": "Spots GTO apuntados a tus puntos débiles. Cada spot se adapta a tu desempeño.",
     "empty": "Todavía no tenemos suficientes leaks para armar tu entrenamiento. Importa algunos torneos y vuelve, el entrenador apunta justo donde pierdes EV.",
+    "gate": {
+      "capDone": "Ese fue tu entrenamiento de hoy ({{used}} spots). Vuelve mañana, o entrena sin límite con Pro.",
+      "capFeature": "Entrenamiento ilimitado",
+      "back": "Volver",
+      "targetedTitle": "Fundamentos",
+      "targetedDesc": "Estás entrenando fundamentos genéricos. Apuntar a tus leaks reales (y postflop) es Pro."
+    },
     "weakSpot": "Entrenando tu punto débil",
     "prompt": "¿Cuál es la acción GTO?",
     "next": "Siguiente spot",

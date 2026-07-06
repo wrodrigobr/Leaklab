@@ -125,5 +125,8 @@
     "tournamentId": "ID del torneo",
     "handId": "ID de la mano (copia para evaluar el spot)",
     "callEquiv": "Equivalente a Call (stack cubierto)"
+  },
+  "gate": {
+    "ghostFeature": "Repaso de tus manos reales"
   }
 }

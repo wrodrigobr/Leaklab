@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(billing): paywall/upsell do treino no front — Fase 2 (#freemium)
+
+> O front agora trata os sinais do gate (antes o Free bateria em tela vazia). No **Leak Trainer**: cap diário atingido → fase `paywall` com `ProLockCard` (abre o CheckoutModal) + "voltar"; enquanto treina fundamentos, banner discreto "mirar nos seus leaks (e postflop) é Pro" (via `targeted_locked`). No **Ghost Table**: `requires_pro` → `ProLockCard` no lugar dos drills, sem cair no "nenhum spot". Envia `tz_offset_min` no `next` pra o "hoje" do cap bater com o contador. i18n PT/EN/ES (`academy.leakTrainer.gate.*`, `ghost.gate.ghostFeature`). tsc limpo. Pendente: Fase 3 (rampa suave pros Free legados) + badges Pro nos tiles do hub.
+
 ### feat(billing): gate freemium do módulo de treino — Fase 1 backend (média) (#freemium)
 
 > O treino era 100% grátis/ilimitado; agora o Free tem fricção no ponto de intenção (princípio "Free diagnostica, Pro cura"). `PLAN_LIMITS` ganha `training_spots_per_day` (Free 15/dia, Pro ∞), `leak_targeted` (treino mirado nos leaks reais = Pro; Free treina fundamentos genéricos, que de quebra exclui postflop) e `ghost` (Ghost/SRS das mãos reais = Pro). Enforcement: `/player/leaktrainer/next` retorna `limit_reached`/`requires_pro` ao bater o cap e `targeted_locked` quando rebaixa Free pra fundamentos; `/player/spots/drill` (Ghost) devolve `requires_pro` no Free (não trava a página). Desafio do Dia, Academia e Liga seguem livres (ímãs de funil). Helper `get_training_spots_today` sobre `training_daily`. Teste `test_freemium_training` (3). Pendente: paywall/upsell no front (Fase 2) + rampa suave pros Free legados (Fase 3).

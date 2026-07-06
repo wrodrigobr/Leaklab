@@ -125,5 +125,8 @@
     "tournamentId": "Tournament ID",
     "handId": "Hand ID (copy to evaluate the spot)",
     "callEquiv": "Equivalent to Call (stack covered)"
+  },
+  "gate": {
+    "ghostFeature": "Review of your real hands"
   }
 }

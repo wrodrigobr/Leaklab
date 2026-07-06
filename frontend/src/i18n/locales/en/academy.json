@@ -66,6 +66,13 @@
     "title": "Train where you lose EV",
     "subtitle": "GTO spots aimed at your weak spots. Each spot adapts to how you do.",
     "empty": "We don't have enough leaks yet to build your training. Import a few tournaments and come back, the trainer targets exactly where you lose EV.",
+    "gate": {
+      "capDone": "That's your training for today ({{used}} spots). Come back tomorrow, or train without limits with Pro.",
+      "capFeature": "Unlimited training",
+      "back": "Back",
+      "targetedTitle": "Fundamentals",
+      "targetedDesc": "You're training generic fundamentals. Targeting your real leaks (and postflop) is Pro."
+    },
     "weakSpot": "Training your weak spot",
     "prompt": "What's the GTO action?",
     "next": "Next spot",

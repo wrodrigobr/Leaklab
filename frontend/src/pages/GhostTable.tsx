@@ -29,6 +29,7 @@ import { useTableOrientation } from "@/hooks/use-table-orientation";
 import { useIsLandscapeMobile } from "@/hooks/use-is-landscape-mobile";
 import { GtoStrategyPanel } from "@/components/replayer/GtoStrategyPanel";
 import { GtoMixedBadge } from "@/components/replayer/GtoMixedBadge";
+import { ProLockCard } from "@/components/hud/ProLockCard";
 import { drill, gto } from "@/lib/api";
 import type { DrillSpot, DrillStats, DrillSubmitResult, ReplayStep, GtoStrategyAction, DrillTableState } from "@/lib/api";
 import { cn, formatAction } from "@/lib/utils";
@@ -299,6 +300,7 @@ export default function GhostTable() {
   const [sessionTotal, setSessionTotal]     = useState(0);
   const [loadError, setLoadError]           = useState("");
   const [noSpotsFound, setNoSpotsFound]     = useState(false);
+  const [requiresPro, setRequiresPro]       = useState(false);   // Ghost/SRS é Pro
   const [submitting, setSubmitting]         = useState(false);
   const [analysis, setAnalysis]             = useState<string | null>(null);
   const [analysisLoading, setAnalysisLoading] = useState(false);
@@ -403,6 +405,7 @@ export default function GhostTable() {
     setStreak(0);
     try {
       const data = await drill.spots({ limit: 10 });
+      if (data.requires_pro) { setRequiresPro(true); setPhase("intro"); return; }
       setStats(data.stats);
       if (!data.spots.length) { setNoSpotsFound(true); setPhase("intro"); return; }
       setSpots(data.spots);
@@ -992,7 +995,13 @@ export default function GhostTable() {
       )}
 
       {/* ── INTRO / LOADING ──────────────────────────────────────────────────── */}
-      {(phase === "intro" || phase === "loading") && (
+      {(phase === "intro" || phase === "loading") && requiresPro && (
+        <div className="mx-auto max-w-md py-8">
+          <ProLockCard feature={t("gate.ghostFeature")} />
+        </div>
+      )}
+
+      {(phase === "intro" || phase === "loading") && !requiresPro && (
         <div className="mx-auto max-w-lg space-y-6">
           {stats && (
             <div className="grid grid-cols-3 gap-3">

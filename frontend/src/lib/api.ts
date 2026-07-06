@@ -904,7 +904,7 @@ export const drill = {
     if (params?.street) q.set("street", params.street);
     if (params?.spot)   q.set("spot",   params.spot);
     const qs = q.toString();
-    return request<{ spots: DrillSpot[]; stats: DrillStats }>(`/player/spots/drill${qs ? "?" + qs : ""}`);
+    return request<{ spots: DrillSpot[]; stats: DrillStats | null; requires_pro?: boolean }>(`/player/spots/drill${qs ? "?" + qs : ""}`);
   },
 
   submit: (decision_id: number, new_action: string) =>
@@ -1082,9 +1082,13 @@ export interface LeakTrainerOptions {
 }
 export const leaktrainer = {
   next: (session_state: LeakTrainerState = {}, days = 90, focus: LeakTrainerFocus = "adaptive") =>
-    request<{ spot: LeakTrainerSpot | null; session_state: LeakTrainerState }>(
+    request<{
+      spot: LeakTrainerSpot | null; session_state: LeakTrainerState;
+      targeted_locked?: boolean; limit_reached?: boolean; requires_pro?: boolean;
+      used?: number; cap?: number; plan?: string;
+    }>(
       "/player/leaktrainer/next",
-      { method: "POST", body: JSON.stringify({ session_state, days, focus }) },
+      { method: "POST", body: JSON.stringify({ session_state, days, focus, tz_offset_min: -new Date().getTimezoneOffset() }) },
     ),
 
   options: () => request<LeakTrainerOptions>("/player/leaktrainer/options"),
