@@ -720,8 +720,8 @@ def get_tournaments(user_id: int, limit: int = 50) -> List[dict]:
                    -- atividade recente (qualquer status) — gate do fallback de cobertura.
                    (SELECT COUNT(*) FROM gto_hand_requests ghr
                       WHERE ghr.tournament_id = t.id AND ghr.created_at > ?) AS gto_recent,
-                   -- SINAL PER-TORNEIO (imune a terceiros): um spot DESTE torneio está na fila ativa?
-                   -- Vínculo torneio↔spot_hash gravado na importação (gto_tournament_queue). Substitui
+                   -- SINAL PER-TORNEIO (imune a terceiros): um spot DESTE torneio na fila ativa.
+                   -- Vínculo torneio-spot_hash gravado na importação (gto_tournament_queue). Substitui
                    -- o antigo proxy de "fila GLOBAL ativa", que acendia torneio recente de um usuário
                    -- quando OUTRO subia torneios.
                    (SELECT COUNT(*) FROM gto_tournament_queue m
