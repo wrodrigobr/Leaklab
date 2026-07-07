@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(training): copy do gate do passo "Jogar" mais clara (3 línguas) (#ux)
+
+> O aviso de bloqueio do passo Jogar começava com "Libere jogando só quando dominar TODOS os seus 12 leaks no Diamante", que confundia o nome do passo (Jogar) com o verbo e ficava truncado. Reescrito nomeando o passo e a condição: "Jogar libera quando TODOS os seus {{count}} leaks chegarem ao {{tier}}. Treinar um leak só não basta: a meta é cobrir todos os seus spots." Atualizado em PT/EN/ES, sem travessão. (Só a variante `gateHintConsolidated`; a `gateHintDeveloping` já estava clara.)
+
 ### fix(video): Short do Desafio no Stories vira Quiz nativo em 2 partes (pergunta + resposta) (#social)
 
 > O placeholder "enquete do Instagram aqui" estava cravado no vídeo, e a variante poll continha a resposta (Reveal) no mesmo clipe. Como o sticker de Quiz do Instagram **flutua a story inteira**, ele ficaria por cima da resposta o tempo todo (spoiler + poluição). Reestruturado: a composição única `DailyChallengeShortPoll` foi substituída por **duas stories** dedicadas: `DailyChallengeQuestion` (Hook + spot, segurando na pergunta ~10s, com a área do sticker limpa a duração toda) e `DailyChallengeReveal` (Suspense + veredito GTO + CTA, ~13s, sem sticker, postada em seguida). Removido o placeholder gravado. O `DailyChallengeShort` completo (opções e resposta embutidas) segue pro Reels/feed, onde não há sticker. Renders: `out/desafio-do-dia-pergunta.mp4` e `out/desafio-do-dia-resposta.mp4`.
