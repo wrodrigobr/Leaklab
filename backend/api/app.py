@@ -9501,12 +9501,14 @@ def _solver_queue_worker_loop():
     while True:
         try:
             from database.schema import get_conn as _gc
+            from database.repositories import _fetchone as _f1
             conn = _gc()
             # Reseta spots que ficaram em 'running' > 10 min (backend restart, crash, etc.)
             conn.execute("UPDATE gto_solver_queue SET status='pending' WHERE status='running' AND requested_at < datetime('now', '-10 minutes')")
             conn.commit()
-            _pr = conn.execute("SELECT COUNT(*) FROM gto_solver_queue WHERE status='pending'").fetchone()
-            pending = (_pr[0] if _pr else 0) or 0
+            # acesso por NOME (dict) — em prod (Postgres/RealDictCursor) a linha é dict, não tupla.
+            _pr = _f1(conn, "SELECT COUNT(*) AS n FROM gto_solver_queue WHERE status='pending'")
+            pending = (dict(_pr).get('n', 0) if _pr else 0) or 0
             conn.close()
             if pending > 0:
                 tick += 1
