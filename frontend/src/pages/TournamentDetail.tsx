@@ -23,7 +23,6 @@ import {
   Sigma,
   Clock,
   Cpu,
-  Clapperboard,
 } from "lucide-react";
 import { HudLayout } from "@/components/hud/HudLayout";
 import { PlayingCard, type CardData } from "@/components/hud/PlayingCard";
@@ -421,16 +420,6 @@ const TournamentDetail = () => {
               >
                 <PlayCircle className="size-3.5" aria-hidden />
                 {t("detail.replay")}
-              </button>
-              {/* Revisar com o coach — abre o Replayer em modo coach (pula os folds pré-flop óbvios
-                  e comenta cada mão que vale revisão). O Replayer salta pra 1ª mão que importa. */}
-              <button
-                onClick={() => hands[0] && navigate(`${replayHref(hands[0].id)}&coach=1`)}
-                disabled={!hands.length}
-                className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-primary/40 bg-primary/[0.06] px-3 font-mono text-[11px] font-bold uppercase tracking-wider text-primary transition-colors hover:bg-primary/15 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <Clapperboard className="size-3.5" aria-hidden />
-                Revisar com o coach
               </button>
             </div>
           </div>
