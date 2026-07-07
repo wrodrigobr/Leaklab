@@ -10,6 +10,12 @@ venv/
 *.db
 backend/data/
 
+# Hand histories de teste soltas no working dir (não versionar)
+backend/*.txt
+!backend/requirements*.txt
+backend/*.ots
+frontend/src/assets/logo_ps.png
+
 # Node
 node_modules/
 .vercel/
