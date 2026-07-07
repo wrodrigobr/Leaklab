@@ -1,0 +1,2367 @@
+PokerStars Hand #100000001: Tournament #999999, $1.00+0.10 USD Hold'em No Limit - Level I (40/80) - 2026/06/23 19:55:51 ET
+Table '999999' 8-max Seat #8 is the button
+Seat 1: SB (4000 in chips)
+Seat 2: BB (4000 in chips)
+Seat 3: UTG (4000 in chips)
+Seat 4: UTG+1 (4000 in chips)
+Seat 5: Hero (4000 in chips)
+Seat 6: HJ (4000 in chips)
+Seat 7: CO (4000 in chips)
+Seat 8: BTN (4000 in chips)
+SB: posts small blind 40
+BB: posts big blind 80
+*** HOLE CARDS ***
+Dealt to Hero [Ac Kd]
+UTG: folds
+UTG+1: folds
+Hero: raises 160 to 160
+HJ: folds
+CO: folds
+BTN: calls 160
+SB: folds
+BB: folds
+*** FLOP *** [2d 3s 4h]
+Hero: checks
+BTN: checks
+*** TURN *** [2d 3s 4h] [2h]
+Hero: bets 144
+BTN: raises 432 to 432
+Hero: calls 288
+*** RIVER *** [2d 3s 4h] [2h] [Jd]
+Hero: checks
+BTN: bets 656
+Hero: folds
+BTN collected 1960 from pot
+*** SUMMARY ***
+Total pot 1960 | Rake 0
+Board [2d 3s 4h 2h Jd]
+Seat 1: SB (small blind) folded before Flop (didn't bet)
+Seat 2: BB (big blind) folded before Flop (didn't bet)
+Seat 3: UTG folded before Flop (didn't bet)
+Seat 4: UTG+1 folded before Flop (didn't bet)
+Seat 5: Hero folded before Flop (didn't bet)
+Seat 6: HJ folded before Flop (didn't bet)
+Seat 7: CO folded before Flop (didn't bet)
+Seat 8: BTN (button) collected (1960)
+
+
+PokerStars Hand #100000002: Tournament #999999, $1.00+0.10 USD Hold'em No Limit - Level I (40/80) - 2026/06/23 19:56:49 ET
+Table '999999' 8-max Seat #1 is the button
+Seat 1: BTN (4000 in chips)
+Seat 2: SB (4000 in chips)
+Seat 3: BB (4000 in chips)
+Seat 4: UTG (4000 in chips)
+Seat 5: Hero (4000 in chips)
+Seat 6: UTG+2 (4000 in chips)
+Seat 7: HJ (4000 in chips)
+Seat 8: CO (4000 in chips)
+SB: posts small blind 40
+BB: posts big blind 80
+*** HOLE CARDS ***
+Dealt to Hero [7d 2s]
+UTG: folds
+Hero: folds
+SB: folds
+BB: folds
+UTG+2: folds
+HJ: folds
+CO: folds
+BTN collected 120 from pot
+*** SUMMARY ***
+Total pot 120 | Rake 0
+Seat 1: BTN (button) collected (120)
+Seat 2: SB (small blind) folded before Flop (didn't bet)
+Seat 3: BB (big blind) folded before Flop (didn't bet)
+Seat 4: UTG folded before Flop (didn't bet)
+Seat 5: Hero folded before Flop (didn't bet)
+Seat 6: UTG+2 folded before Flop (didn't bet)
+Seat 7: HJ folded before Flop (didn't bet)
+Seat 8: CO folded before Flop (didn't bet)
+
+
+PokerStars Hand #100000003: Tournament #999999, $1.00+0.10 USD Hold'em No Limit - Level I (40/80) - 2026/06/23 19:59:15 ET
+Table '999999' 8-max Seat #2 is the button
+Seat 1: CO (4000 in chips)
+Seat 2: BTN (4000 in chips)
+Seat 3: SB (4000 in chips)
+Seat 4: BB (4000 in chips)
+Seat 5: Hero (4000 in chips)
+Seat 6: UTG+1 (4000 in chips)
+Seat 7: UTG+2 (4000 in chips)
+Seat 8: HJ (4000 in chips)
+SB: posts small blind 40
+BB: posts big blind 80
+*** HOLE CARDS ***
+Dealt to Hero [Kh Qd]
+Hero: raises 160 to 160
+UTG+1: folds
+UTG+2: folds
+HJ: folds
+CO: folds
+BTN: folds
+SB: folds
+BB: calls 80
+*** FLOP *** [Ks 8d Ts]
+BB: bets 120
+Hero: folds
+BB collected 480 from pot
+*** SUMMARY ***
+Total pot 480 | Rake 0
+Board [Ks 8d Ts]
+Seat 1: CO folded before Flop (didn't bet)
+Seat 2: BTN (button) folded before Flop (didn't bet)
+Seat 3: SB (small blind) folded before Flop (didn't bet)
+Seat 4: BB (big blind) collected (480)
+Seat 5: Hero folded before Flop (didn't bet)
+Seat 6: UTG+1 folded before Flop (didn't bet)
+Seat 7: UTG+2 folded before Flop (didn't bet)
+Seat 8: HJ folded before Flop (didn't bet)
+
+
+PokerStars Hand #100000004: Tournament #999999, $1.00+0.10 USD Hold'em No Limit - Level I (40/80) - 2026/06/23 20:00:07 ET
+Table '999999' 8-max Seat #3 is the button
+Seat 1: HJ (4000 in chips)
+Seat 2: CO (4000 in chips)
+Seat 3: BTN (4000 in chips)
+Seat 4: SB (4000 in chips)
+Seat 5: Hero (4000 in chips)
+Seat 6: UTG (4000 in chips)
+Seat 7: UTG+1 (4000 in chips)
+Seat 8: UTG+2 (4000 in chips)
+SB: posts small blind 40
+Hero: posts big blind 80
+*** HOLE CARDS ***
+Dealt to Hero [9d 5h]
+UTG: folds
+UTG+1: folds
+UTG+2: folds
+HJ: raises 160 to 160
+CO: raises 480 to 480
+BTN: folds
+SB: folds
+Hero: folds
+HJ: folds
+CO collected 760 from pot
+*** SUMMARY ***
+Total pot 760 | Rake 0
+Seat 1: HJ folded before Flop (didn't bet)
+Seat 2: CO collected (760)
+Seat 3: BTN (button) folded before Flop (didn't bet)
+Seat 4: SB (small blind) folded before Flop (didn't bet)
+Seat 5: Hero (big blind) folded before Flop (didn't bet)
+Seat 6: UTG folded before Flop (didn't bet)
+Seat 7: UTG+1 folded before Flop (didn't bet)
+Seat 8: UTG+2 folded before Flop (didn't bet)
+
+
+PokerStars Hand #100000005: Tournament #999999, $1.00+0.10 USD Hold'em No Limit - Level I (40/80) - 2026/06/23 20:02:28 ET
+Table '999999' 8-max Seat #4 is the button
+Seat 1: UTG+2 (4000 in chips)
+Seat 2: HJ (4000 in chips)
+Seat 3: CO (4000 in chips)
+Seat 4: BTN (4000 in chips)
+Seat 5: Hero (4000 in chips)
+Seat 6: BB (4000 in chips)
+Seat 7: UTG (4000 in chips)
+Seat 8: UTG+1 (4000 in chips)
+Hero: posts small blind 40
+BB: posts big blind 80
+*** HOLE CARDS ***
+Dealt to Hero [Ad Qh]
+UTG: raises 200 to 200
+UTG+1: folds
+UTG+2: folds
+HJ: folds
+CO: folds
+BTN: folds
+Hero: calls 160
+BB: folds
+*** FLOP *** [Qs Ks 3h]
+Hero: checks
+UTG: bets 160
+Hero: calls 160
+*** TURN *** [Qs Ks 3h] [9s]
+Hero: checks
+UTG: bets 400
+Hero: folds
+UTG collected 1200 from pot
+*** SUMMARY ***
+Total pot 1200 | Rake 0
+Board [Qs Ks 3h 9s]
+Seat 1: UTG+2 folded before Flop (didn't bet)
+Seat 2: HJ folded before Flop (didn't bet)
+Seat 3: CO folded before Flop (didn't bet)
+Seat 4: BTN (button) folded before Flop (didn't bet)
+Seat 5: Hero (small blind) folded before Flop (didn't bet)
+Seat 6: BB (big blind) folded before Flop (didn't bet)
+Seat 7: UTG collected (1200)
+Seat 8: UTG+1 folded before Flop (didn't bet)
+
+
+PokerStars Hand #100000006: Tournament #999999, $1.00+0.10 USD Hold'em No Limit - Level I (40/80) - 2026/06/23 20:03:38 ET
+Table '999999' 8-max Seat #5 is the button
+Seat 1: UTG+1 (3200 in chips)
+Seat 2: UTG+2 (3200 in chips)
+Seat 3: HJ (3200 in chips)
+Seat 4: CO (3200 in chips)
+Seat 5: Hero (3200 in chips)
+Seat 6: SB (3200 in chips)
+Seat 7: BB (3200 in chips)
+Seat 8: UTG (3200 in chips)
+SB: posts small blind 40
+BB: posts big blind 80
+*** HOLE CARDS ***
+Dealt to Hero [6d 6c]
+UTG: folds
+UTG+1: folds
+UTG+2: folds
+HJ: folds
+CO: raises 200 to 200
+Hero: calls 200
+SB: raises 3200 to 3240 and is all-in
+BB: folds
+CO: folds
+Hero: folds
+SB collected 3720 from pot
+*** SUMMARY ***
+Total pot 3720 | Rake 0
+Seat 1: UTG+1 folded before Flop (didn't bet)
+Seat 2: UTG+2 folded before Flop (didn't bet)
+Seat 3: HJ folded before Flop (didn't bet)
+Seat 4: CO folded before Flop (didn't bet)
+Seat 5: Hero (button) folded before Flop (didn't bet)
+Seat 6: SB (small blind) collected (3720)
+Seat 7: BB (big blind) folded before Flop (didn't bet)
+Seat 8: UTG folded before Flop (didn't bet)
+
+
+PokerStars Hand #100000007: Tournament #999999, $1.00+0.10 USD Hold'em No Limit - Level I (40/80) - 2026/06/23 20:04:16 ET
+Table '999999' 8-max Seat #6 is the button
+Seat 1: UTG (3200 in chips)
+Seat 2: UTG+1 (3200 in chips)
+Seat 3: UTG+2 (3200 in chips)
+Seat 4: HJ (3200 in chips)
+Seat 5: Hero (3200 in chips)
+Seat 6: BTN (3200 in chips)
+Seat 7: SB (3200 in chips)
+Seat 8: BB (3200 in chips)
+SB: posts small blind 40
+BB: posts big blind 80
+*** HOLE CARDS ***
+Dealt to Hero [Kd 5d]
+UTG: folds
+UTG+1: folds
+UTG+2: raises 160 to 160
+HJ: raises 3200 to 3200 and is all-in
+Hero: folds
+SB: folds
+BB: folds
+UTG+2: folds
+BTN: folds
+HJ collected 3480 from pot
+*** SUMMARY ***
+Total pot 3480 | Rake 0
+Seat 1: UTG folded before Flop (didn't bet)
+Seat 2: UTG+1 folded before Flop (didn't bet)
+Seat 3: UTG+2 folded before Flop (didn't bet)
+Seat 4: HJ collected (3480)
+Seat 5: Hero folded before Flop (didn't bet)
+Seat 6: BTN (button) folded before Flop (didn't bet)
+Seat 7: SB (small blind) folded before Flop (didn't bet)
+Seat 8: BB (big blind) folded before Flop (didn't bet)
+
+
+PokerStars Hand #100000008: Tournament #999999, $1.00+0.10 USD Hold'em No Limit - Level I (40/80) - 2026/06/23 20:06:49 ET
+Table '999999' 8-max Seat #7 is the button
+Seat 1: BB (2500 in chips)
+Seat 2: UTG (2500 in chips)
+Seat 3: UTG+1 (2500 in chips)
+Seat 4: UTG+2 (100 in chips)
+Seat 5: Hero (2500 in chips)
+Seat 6: CO (2500 in chips)
+Seat 7: BTN (2500 in chips)
+Seat 8: SB (2500 in chips)
+SB: posts small blind 40
+BB: posts big blind 80
+*** HOLE CARDS ***
+Dealt to Hero [Ac 5c]
+UTG: folds
+UTG+1: folds
+UTG+2: raises 100 to 100 and is all-in
+Hero: raises 200 to 200
+CO: folds
+BTN: folds
+SB: folds
+BB: folds
+*** FLOP *** [9s 8d Ks]
+*** TURN *** [9s 8d Ks] [Ah]
+*** RIVER *** [9s 8d Ks] [Ah] [Qd]
+Hero collected 420 from pot
+*** SUMMARY ***
+Total pot 420 | Rake 0
+Board [9s 8d Ks Ah Qd]
+Seat 1: BB (big blind) folded before Flop (didn't bet)
+Seat 2: UTG folded before Flop (didn't bet)
+Seat 3: UTG+1 folded before Flop (didn't bet)
+Seat 4: UTG+2 mucked
+Seat 5: Hero collected (420)
+Seat 6: CO folded before Flop (didn't bet)
+Seat 7: BTN (button) folded before Flop (didn't bet)
+Seat 8: SB (small blind) folded before Flop (didn't bet)
+
+
+PokerStars Hand #100000009: Tournament #999999, $1.00+0.10 USD Hold'em No Limit - Level I (40/80) - 2026/06/23 20:08:41 ET
+Table '999999' 8-max Seat #4 is the button
+Seat 1: UTG+1 (2300 in chips)
+Seat 2: HJ (2300 in chips)
+Seat 3: CO (2300 in chips)
+Seat 4: BTN (2300 in chips)
+Seat 6: SB (2300 in chips)
+Seat 7: BB (2300 in chips)
+Seat 8: Hero (2300 in chips)
+SB: posts small blind 40
+BB: posts big blind 80
+*** HOLE CARDS ***
+Dealt to Hero [7c 5d]
+BB: folds
+Hero: folds
+BTN: folds
+SB: folds
+UTG+1: folds
+HJ: folds
+CO collected 120 from pot
+*** SUMMARY ***
+Total pot 120 | Rake 0
+Seat 1: UTG+1 folded before Flop (didn't bet)
+Seat 2: HJ folded before Flop (didn't bet)
+Seat 3: CO collected (120)
+Seat 4: BTN (button) folded before Flop (didn't bet)
+Seat 6: SB (small blind) folded before Flop (didn't bet)
+Seat 7: BB (big blind) folded before Flop (didn't bet)
+Seat 8: Hero folded before Flop (didn't bet)
+
+
+PokerStars Hand #100000010: Tournament #999999, $1.00+0.10 USD Hold'em No Limit - Level I (40/80) - 2026/06/23 20:10:18 ET
+Table '999999' 8-max Seat #6 is the button
+Seat 1: UTG (2200 in chips)
+Seat 2: UTG+1 (2200 in chips)
+Seat 3: HJ (2200 in chips)
+Seat 4: CO (2200 in chips)
+Seat 6: BTN (2200 in chips)
+Seat 7: SB (2200 in chips)
+Seat 8: Hero (2200 in chips)
+SB: posts small blind 40
+Hero: posts big blind 80
+*** HOLE CARDS ***
+Dealt to Hero [Kh 7c]
+Hero: folds
+UTG: folds
+UTG+1: folds
+HJ: folds
+CO: folds
+BTN: folds
+SB collected 120 from pot
+*** SUMMARY ***
+Total pot 120 | Rake 0
+Seat 1: UTG folded before Flop (didn't bet)
+Seat 2: UTG+1 folded before Flop (didn't bet)
+Seat 3: HJ folded before Flop (didn't bet)
+Seat 4: CO folded before Flop (didn't bet)
+Seat 6: BTN (button) folded before Flop (didn't bet)
+Seat 7: SB (small blind) collected (120)
+Seat 8: Hero (big blind) folded before Flop (didn't bet)
+
+
+PokerStars Hand #100000011: Tournament #999999, $1.00+0.10 USD Hold'em No Limit - Level I (40/80) - 2026/06/23 20:10:50 ET
+Table '999999' 8-max Seat #6 is the button
+Seat 1: UTG (2200 in chips)
+Seat 2: UTG+1 (2200 in chips)
+Seat 3: HJ (2200 in chips)
+Seat 4: CO (2200 in chips)
+Seat 6: BTN (2200 in chips)
+Seat 7: SB (2200 in chips)
+Seat 8: Hero (2200 in chips)
+SB: posts small blind 40
+Hero: posts big blind 80
+*** HOLE CARDS ***
+Dealt to Hero [9d 6h]
+UTG: folds
+UTG+1: folds
+HJ: folds
+CO: raises 160 to 160
+BTN: folds
+SB: calls 120
+Hero: folds
+SB: folds
+CO collected 400 from pot
+*** SUMMARY ***
+Total pot 400 | Rake 0
+Seat 1: UTG folded before Flop (didn't bet)
+Seat 2: UTG+1 folded before Flop (didn't bet)
+Seat 3: HJ folded before Flop (didn't bet)
+Seat 4: CO collected (400)
+Seat 6: BTN (button) folded before Flop (didn't bet)
+Seat 7: SB (small blind) folded before Flop (didn't bet)
+Seat 8: Hero (big blind) folded before Flop (didn't bet)
+
+
+PokerStars Hand #100000012: Tournament #999999, $1.00+0.10 USD Hold'em No Limit - Level I (40/80) - 2026/06/23 20:11:09 ET
+Table '999999' 8-max Seat #4 is the button
+Seat 1: UTG+1 (2200 in chips)
+Seat 2: HJ (2200 in chips)
+Seat 3: CO (2200 in chips)
+Seat 4: BTN (2200 in chips)
+Seat 6: SB (2200 in chips)
+Seat 7: BB (2200 in chips)
+Seat 8: Hero (2200 in chips)
+SB: posts small blind 40
+BB: posts big blind 80
+*** HOLE CARDS ***
+Dealt to Hero [7c 5d]
+Hero: folds
+SB: folds
+BB: folds
+UTG+1: folds
+HJ: folds
+CO: folds
+BTN collected 120 from pot
+*** SUMMARY ***
+Total pot 120 | Rake 0
+Seat 1: UTG+1 folded before Flop (didn't bet)
+Seat 2: HJ folded before Flop (didn't bet)
+Seat 3: CO folded before Flop (didn't bet)
+Seat 4: BTN (button) collected (120)
+Seat 6: SB (small blind) folded before Flop (didn't bet)
+Seat 7: BB (big blind) folded before Flop (didn't bet)
+Seat 8: Hero folded before Flop (didn't bet)
+
+
+PokerStars Hand #100000013: Tournament #999999, $1.00+0.10 USD Hold'em No Limit - Level I (40/80) - 2026/06/23 20:11:29 ET
+Table '999999' 8-max Seat #4 is the button
+Seat 1: UTG+1 (2200 in chips)
+Seat 2: HJ (2200 in chips)
+Seat 3: CO (2200 in chips)
+Seat 4: BTN (2200 in chips)
+Seat 6: SB (2200 in chips)
+Seat 7: BB (2200 in chips)
+Seat 8: Hero (2200 in chips)
+SB: posts small blind 40
+BB: posts big blind 80
+*** HOLE CARDS ***
+Dealt to Hero [Kh 7c]
+Hero: folds
+SB: folds
+BB: folds
+UTG+1: folds
+CO: folds
+BTN: folds
+HJ collected 120 from pot
+*** SUMMARY ***
+Total pot 120 | Rake 0
+Seat 1: UTG+1 folded before Flop (didn't bet)
+Seat 2: HJ collected (120)
+Seat 3: CO folded before Flop (didn't bet)
+Seat 4: BTN (button) folded before Flop (didn't bet)
+Seat 6: SB (small blind) folded before Flop (didn't bet)
+Seat 7: BB (big blind) folded before Flop (didn't bet)
+Seat 8: Hero folded before Flop (didn't bet)
+
+
+PokerStars Hand #100000014: Tournament #999999, $1.00+0.10 USD Hold'em No Limit - Level I (40/80) - 2026/06/23 20:11:57 ET
+Table '999999' 8-max Seat #6 is the button
+Seat 1: UTG (2200 in chips)
+Seat 2: UTG+1 (2200 in chips)
+Seat 3: HJ (2200 in chips)
+Seat 4: CO (2200 in chips)
+Seat 6: BTN (2200 in chips)
+Seat 7: SB (2200 in chips)
+Seat 8: Hero (2200 in chips)
+SB: posts small blind 40
+Hero: posts big blind 80
+*** HOLE CARDS ***
+Dealt to Hero [9d 6h]
+UTG: folds
+UTG+1: folds
+HJ: folds
+CO: raises 160 to 160
+BTN: folds
+SB: calls 120
+Hero: folds
+SB: folds
+CO collected 400 from pot
+*** SUMMARY ***
+Total pot 400 | Rake 0
+Seat 1: UTG folded before Flop (didn't bet)
+Seat 2: UTG+1 folded before Flop (didn't bet)
+Seat 3: HJ folded before Flop (didn't bet)
+Seat 4: CO collected (400)
+Seat 6: BTN (button) folded before Flop (didn't bet)
+Seat 7: SB (small blind) folded before Flop (didn't bet)
+Seat 8: Hero (big blind) folded before Flop (didn't bet)
+
+
+PokerStars Hand #100000015: Tournament #999999, $1.00+0.10 USD Hold'em No Limit - Level I (40/80) - 2026/06/23 20:12:59 ET
+Table '999999' 8-max Seat #7 is the button
+Seat 1: BB (2200 in chips)
+Seat 2: UTG (2200 in chips)
+Seat 3: UTG+1 (7000 in chips)
+Seat 4: HJ (2200 in chips)
+Seat 6: CO (2200 in chips)
+Seat 7: BTN (2200 in chips)
+Seat 8: Hero (2200 in chips)
+Hero: posts small blind 40
+BB: posts big blind 80
+*** HOLE CARDS ***
+Dealt to Hero [7s 5s]
+UTG: raises 2200 to 2200 and is all-in
+UTG+1: folds
+HJ: folds
+CO: folds
+BTN: folds
+Hero: folds
+BB: folds
+UTG collected 2320 from pot
+*** SUMMARY ***
+Total pot 2320 | Rake 0
+Seat 1: BB (big blind) folded before Flop (didn't bet)
+Seat 2: UTG collected (2320)
+Seat 3: UTG+1 folded before Flop (didn't bet)
+Seat 4: HJ folded before Flop (didn't bet)
+Seat 6: CO folded before Flop (didn't bet)
+Seat 7: BTN (button) folded before Flop (didn't bet)
+Seat 8: Hero (small blind) folded before Flop (didn't bet)
+
+
+PokerStars Hand #100000016: Tournament #999999, $1.00+0.10 USD Hold'em No Limit - Level I (40/80) - 2026/06/23 20:14:02 ET
+Table '999999' 8-max Seat #1 is the button
+Seat 1: BTN (2200 in chips)
+Seat 2: SB (2200 in chips)
+Seat 3: BB (7000 in chips)
+Seat 4: UTG (2200 in chips)
+Seat 6: UTG+1 (2200 in chips)
+Seat 7: HJ (2200 in chips)
+Seat 8: Hero (2200 in chips)
+SB: posts small blind 40
+BB: posts big blind 80
+*** HOLE CARDS ***
+Dealt to Hero [As 4d]
+BB: folds
+UTG: folds
+UTG+1: raises 160 to 160
+HJ: folds
+Hero: folds
+BTN: folds
+SB: folds
+UTG+1 collected 280 from pot
+*** SUMMARY ***
+Total pot 280 | Rake 0
+Seat 1: BTN (button) folded before Flop (didn't bet)
+Seat 2: SB (small blind) folded before Flop (didn't bet)
+Seat 3: BB (big blind) folded before Flop (didn't bet)
+Seat 4: UTG folded before Flop (didn't bet)
+Seat 6: UTG+1 collected (280)
+Seat 7: HJ folded before Flop (didn't bet)
+Seat 8: Hero folded before Flop (didn't bet)
+
+
+PokerStars Hand #100000017: Tournament #999999, $1.00+0.10 USD Hold'em No Limit - Level I (40/80) - 2026/06/23 20:14:50 ET
+Table '999999' 8-max Seat #1 is the button
+Seat 1: BTN (2200 in chips)
+Seat 2: SB (2200 in chips)
+Seat 3: BB (7000 in chips)
+Seat 4: UTG (2200 in chips)
+Seat 5: UTG+1 (2200 in chips)
+Seat 6: UTG+2 (2200 in chips)
+Seat 7: HJ (2200 in chips)
+Seat 8: Hero (2200 in chips)
+SB: posts small blind 40
+BB: posts big blind 80
+*** HOLE CARDS ***
+Dealt to Hero [As 4d]
+UTG: folds
+UTG+1: folds
+UTG+2: raises 160 to 160
+HJ: calls 160
+Hero: folds
+SB: folds
+BB: folds
+HJ: folds
+BTN: folds
+UTG+2 collected 440 from pot
+*** SUMMARY ***
+Total pot 440 | Rake 0
+Seat 1: BTN (button) folded before Flop (didn't bet)
+Seat 2: SB (small blind) folded before Flop (didn't bet)
+Seat 3: BB (big blind) folded before Flop (didn't bet)
+Seat 4: UTG folded before Flop (didn't bet)
+Seat 5: UTG+1 folded before Flop (didn't bet)
+Seat 6: UTG+2 collected (440)
+Seat 7: HJ folded before Flop (didn't bet)
+Seat 8: Hero folded before Flop (didn't bet)
+
+
+PokerStars Hand #100000018: Tournament #999999, $1.00+0.10 USD Hold'em No Limit - Level I (40/80) - 2026/06/23 20:15:09 ET
+Table '999999' 8-max Seat #2 is the button
+Seat 1: CO (2200 in chips)
+Seat 2: BTN (2200 in chips)
+Seat 3: SB (7000 in chips)
+Seat 4: BB (2200 in chips)
+Seat 5: UTG (2200 in chips)
+Seat 6: UTG+1 (2200 in chips)
+Seat 7: UTG+2 (2200 in chips)
+Seat 8: Hero (2200 in chips)
+SB: posts small blind 40
+BB: posts big blind 80
+*** HOLE CARDS ***
+Dealt to Hero [6c 2c]
+UTG: folds
+UTG+1: folds
+UTG+2: folds
+Hero: folds
+BB: folds
+CO: folds
+BTN: folds
+SB collected 120 from pot
+*** SUMMARY ***
+Total pot 120 | Rake 0
+Seat 1: CO folded before Flop (didn't bet)
+Seat 2: BTN (button) folded before Flop (didn't bet)
+Seat 3: SB (small blind) collected (120)
+Seat 4: BB (big blind) folded before Flop (didn't bet)
+Seat 5: UTG folded before Flop (didn't bet)
+Seat 6: UTG+1 folded before Flop (didn't bet)
+Seat 7: UTG+2 folded before Flop (didn't bet)
+Seat 8: Hero folded before Flop (didn't bet)
+
+
+PokerStars Hand #100000019: Tournament #999999, $1.00+0.10 USD Hold'em No Limit - Level I (40/80) - 2026/06/23 20:16:36 ET
+Table '999999' 8-max Seat #4 is the button
+Seat 1: UTG+2 (2200 in chips)
+Seat 2: HJ (2200 in chips)
+Seat 3: CO (7000 in chips)
+Seat 4: BTN (2200 in chips)
+Seat 5: SB (2200 in chips)
+Seat 6: BB (2200 in chips)
+Seat 7: UTG (2200 in chips)
+Seat 8: Hero (2200 in chips)
+SB: posts small blind 40
+BB: posts big blind 80
+*** HOLE CARDS ***
+Dealt to Hero [Ad 6d]
+BB: folds
+UTG: folds
+Hero: folds
+SB: folds
+HJ: folds
+CO: folds
+BTN: folds
+UTG+2 collected 120 from pot
+*** SUMMARY ***
+Total pot 120 | Rake 0
+Seat 1: UTG+2 collected (120)
+Seat 2: HJ folded before Flop (didn't bet)
+Seat 3: CO folded before Flop (didn't bet)
+Seat 4: BTN (button) folded before Flop (didn't bet)
+Seat 5: SB (small blind) folded before Flop (didn't bet)
+Seat 6: BB (big blind) folded before Flop (didn't bet)
+Seat 7: UTG folded before Flop (didn't bet)
+Seat 8: Hero folded before Flop (didn't bet)
+
+
+PokerStars Hand #100000020: Tournament #999999, $1.00+0.10 USD Hold'em No Limit - Level I (40/80) - 2026/06/23 20:16:52 ET
+Table '999999' 8-max Seat #4 is the button
+Seat 1: UTG+2 (2200 in chips)
+Seat 2: HJ (2200 in chips)
+Seat 3: CO (7000 in chips)
+Seat 4: BTN (2200 in chips)
+Seat 5: SB (2200 in chips)
+Seat 6: BB (2200 in chips)
+Seat 7: UTG (2200 in chips)
+Seat 8: Hero (2200 in chips)
+SB: posts small blind 40
+BB: posts big blind 80
+*** HOLE CARDS ***
+Dealt to Hero [5d 2s]
+UTG: folds
+Hero: folds
+SB: folds
+UTG+2: folds
+HJ: folds
+CO: folds
+BTN: folds
+BB collected 120 from pot
+*** SUMMARY ***
+Total pot 120 | Rake 0
+Seat 1: UTG+2 folded before Flop (didn't bet)
+Seat 2: HJ folded before Flop (didn't bet)
+Seat 3: CO folded before Flop (didn't bet)
+Seat 4: BTN (button) folded before Flop (didn't bet)
+Seat 5: SB (small blind) folded before Flop (didn't bet)
+Seat 6: BB (big blind) collected (120)
+Seat 7: UTG folded before Flop (didn't bet)
+Seat 8: Hero folded before Flop (didn't bet)
+
+
+PokerStars Hand #100000021: Tournament #999999, $1.00+0.10 USD Hold'em No Limit - Level I (40/80) - 2026/06/23 20:18:02 ET
+Table '999999' 8-max Seat #4 is the button
+Seat 1: UTG+2 (2200 in chips)
+Seat 2: HJ (2200 in chips)
+Seat 3: CO (7000 in chips)
+Seat 4: BTN (2200 in chips)
+Seat 5: SB (2200 in chips)
+Seat 6: BB (2200 in chips)
+Seat 7: UTG (2200 in chips)
+Seat 8: Hero (2200 in chips)
+SB: posts small blind 40
+BB: posts big blind 80
+*** HOLE CARDS ***
+Dealt to Hero [Ad 6d]
+UTG: raises 160 to 160
+Hero: folds
+SB: folds
+BB: folds
+UTG+2: folds
+HJ: folds
+CO: folds
+BTN: folds
+UTG collected 280 from pot
+*** SUMMARY ***
+Total pot 280 | Rake 0
+Seat 1: UTG+2 folded before Flop (didn't bet)
+Seat 2: HJ folded before Flop (didn't bet)
+Seat 3: CO folded before Flop (didn't bet)
+Seat 4: BTN (button) folded before Flop (didn't bet)
+Seat 5: SB (small blind) folded before Flop (didn't bet)
+Seat 6: BB (big blind) folded before Flop (didn't bet)
+Seat 7: UTG collected (280)
+Seat 8: Hero folded before Flop (didn't bet)
+
+
+PokerStars Hand #100000022: Tournament #999999, $1.00+0.10 USD Hold'em No Limit - Level I (40/80) - 2026/06/23 20:18:26 ET
+Table '999999' 8-max Seat #4 is the button
+Seat 1: UTG+2 (2200 in chips)
+Seat 2: HJ (2200 in chips)
+Seat 3: CO (7000 in chips)
+Seat 4: BTN (2200 in chips)
+Seat 5: SB (2200 in chips)
+Seat 6: BB (2200 in chips)
+Seat 7: UTG (2200 in chips)
+Seat 8: Hero (2200 in chips)
+SB: posts small blind 40
+BB: posts big blind 80
+*** HOLE CARDS ***
+Dealt to Hero [5d 2s]
+UTG: folds
+Hero: folds
+SB: folds
+BB: folds
+UTG+2: folds
+CO: folds
+BTN: folds
+HJ collected 120 from pot
+*** SUMMARY ***
+Total pot 120 | Rake 0
+Seat 1: UTG+2 folded before Flop (didn't bet)
+Seat 2: HJ collected (120)
+Seat 3: CO folded before Flop (didn't bet)
+Seat 4: BTN (button) folded before Flop (didn't bet)
+Seat 5: SB (small blind) folded before Flop (didn't bet)
+Seat 6: BB (big blind) folded before Flop (didn't bet)
+Seat 7: UTG folded before Flop (didn't bet)
+Seat 8: Hero folded before Flop (didn't bet)
+
+
+PokerStars Hand #100000023: Tournament #999999, $1.00+0.10 USD Hold'em No Limit - Level I (40/80) - 2026/06/23 20:19:10 ET
+Table '999999' 8-max Seat #5 is the button
+Seat 1: UTG+1 (2200 in chips)
+Seat 2: UTG+2 (2200 in chips)
+Seat 3: HJ (7000 in chips)
+Seat 4: CO (2200 in chips)
+Seat 5: BTN (2200 in chips)
+Seat 6: SB (2200 in chips)
+Seat 7: BB (2200 in chips)
+Seat 8: Hero (2200 in chips)
+SB: posts small blind 40
+BB: posts big blind 80
+*** HOLE CARDS ***
+Dealt to Hero [Jd 4c]
+Hero: folds
+SB: folds
+BB: folds
+UTG+1: folds
+UTG+2: folds
+CO: folds
+BTN: folds
+HJ collected 120 from pot
+*** SUMMARY ***
+Total pot 120 | Rake 0
+Seat 1: UTG+1 folded before Flop (didn't bet)
+Seat 2: UTG+2 folded before Flop (didn't bet)
+Seat 3: HJ collected (120)
+Seat 4: CO folded before Flop (didn't bet)
+Seat 5: BTN (button) folded before Flop (didn't bet)
+Seat 6: SB (small blind) folded before Flop (didn't bet)
+Seat 7: BB (big blind) folded before Flop (didn't bet)
+Seat 8: Hero folded before Flop (didn't bet)
+
+
+PokerStars Hand #100000024: Tournament #999999, $1.00+0.10 USD Hold'em No Limit - Level I (40/80) - 2026/06/23 20:19:47 ET
+Table '999999' 8-max Seat #6 is the button
+Seat 1: UTG (2200 in chips)
+Seat 2: UTG+1 (2200 in chips)
+Seat 3: UTG+2 (7000 in chips)
+Seat 4: HJ (2200 in chips)
+Seat 5: CO (2200 in chips)
+Seat 6: BTN (2200 in chips)
+Seat 7: SB (2200 in chips)
+Seat 8: Hero (2200 in chips)
+SB: posts small blind 40
+Hero: posts big blind 80
+*** HOLE CARDS ***
+Dealt to Hero [Kh 2c]
+UTG: folds
+UTG+1: folds
+UTG+2: folds
+HJ: folds
+CO: raises 200 to 200
+BTN: folds
+SB: calls 160
+Hero: folds
+SB: folds
+CO collected 480 from pot
+*** SUMMARY ***
+Total pot 480 | Rake 0
+Seat 1: UTG folded before Flop (didn't bet)
+Seat 2: UTG+1 folded before Flop (didn't bet)
+Seat 3: UTG+2 folded before Flop (didn't bet)
+Seat 4: HJ folded before Flop (didn't bet)
+Seat 5: CO collected (480)
+Seat 6: BTN (button) folded before Flop (didn't bet)
+Seat 7: SB (small blind) folded before Flop (didn't bet)
+Seat 8: Hero (big blind) folded before Flop (didn't bet)
+
+
+PokerStars Hand #100000025: Tournament #999999, $1.00+0.10 USD Hold'em No Limit - Level I (40/80) - 2026/06/23 20:20:18 ET
+Table '999999' 8-max Seat #7 is the button
+Seat 1: BB (2200 in chips)
+Seat 2: UTG (2200 in chips)
+Seat 3: UTG+1 (7000 in chips)
+Seat 4: UTG+2 (2200 in chips)
+Seat 5: HJ (2200 in chips)
+Seat 6: CO (2200 in chips)
+Seat 7: BTN (2200 in chips)
+Seat 8: Hero (2200 in chips)
+Hero: posts small blind 40
+BB: posts big blind 80
+*** HOLE CARDS ***
+Dealt to Hero [Qc 7s]
+UTG: folds
+UTG+1: folds
+UTG+2: folds
+HJ: folds
+CO: folds
+BTN: raises 160 to 160
+Hero: folds
+BB: folds
+BTN collected 280 from pot
+*** SUMMARY ***
+Total pot 280 | Rake 0
+Seat 1: BB (big blind) folded before Flop (didn't bet)
+Seat 2: UTG folded before Flop (didn't bet)
+Seat 3: UTG+1 folded before Flop (didn't bet)
+Seat 4: UTG+2 folded before Flop (didn't bet)
+Seat 5: HJ folded before Flop (didn't bet)
+Seat 6: CO folded before Flop (didn't bet)
+Seat 7: BTN (button) collected (280)
+Seat 8: Hero (small blind) folded before Flop (didn't bet)
+
+
+PokerStars Hand #100000026: Tournament #999999, $1.00+0.10 USD Hold'em No Limit - Level I (40/80) - 2026/06/23 20:20:42 ET
+Table '999999' 8-max Seat #8 is the button
+Seat 1: SB (2200 in chips)
+Seat 2: BB (2200 in chips)
+Seat 3: UTG (7000 in chips)
+Seat 4: UTG+1 (2200 in chips)
+Seat 5: UTG+2 (2200 in chips)
+Seat 6: HJ (2200 in chips)
+Seat 7: CO (2200 in chips)
+Seat 8: Hero (2200 in chips)
+SB: posts small blind 40
+BB: posts big blind 80
+*** HOLE CARDS ***
+Dealt to Hero [5h 2d]
+UTG: folds
+UTG+1: folds
+UTG+2: folds
+HJ: folds
+CO: raises 160 to 160
+Hero: folds
+SB: folds
+BB: folds
+CO collected 280 from pot
+*** SUMMARY ***
+Total pot 280 | Rake 0
+Seat 1: SB (small blind) folded before Flop (didn't bet)
+Seat 2: BB (big blind) folded before Flop (didn't bet)
+Seat 3: UTG folded before Flop (didn't bet)
+Seat 4: UTG+1 folded before Flop (didn't bet)
+Seat 5: UTG+2 folded before Flop (didn't bet)
+Seat 6: HJ folded before Flop (didn't bet)
+Seat 7: CO collected (280)
+Seat 8: Hero (button) folded before Flop (didn't bet)
+
+
+PokerStars Hand #100000027: Tournament #999999, $1.00+0.10 USD Hold'em No Limit - Level I (40/80) - 2026/06/23 20:21:11 ET
+Table '999999' 8-max Seat #1 is the button
+Seat 1: BTN (2200 in chips)
+Seat 2: SB (2200 in chips)
+Seat 3: BB (7000 in chips)
+Seat 4: UTG (2200 in chips)
+Seat 5: UTG+1 (2200 in chips)
+Seat 6: UTG+2 (2200 in chips)
+Seat 7: HJ (2200 in chips)
+Seat 8: Hero (2200 in chips)
+SB: posts small blind 40
+BB: posts big blind 80
+*** HOLE CARDS ***
+Dealt to Hero [Jh 8d]
+UTG: folds
+UTG+1: folds
+UTG+2: folds
+HJ: folds
+Hero: folds
+SB: folds
+BB: folds
+BTN collected 120 from pot
+*** SUMMARY ***
+Total pot 120 | Rake 0
+Seat 1: BTN (button) collected (120)
+Seat 2: SB (small blind) folded before Flop (didn't bet)
+Seat 3: BB (big blind) folded before Flop (didn't bet)
+Seat 4: UTG folded before Flop (didn't bet)
+Seat 5: UTG+1 folded before Flop (didn't bet)
+Seat 6: UTG+2 folded before Flop (didn't bet)
+Seat 7: HJ folded before Flop (didn't bet)
+Seat 8: Hero folded before Flop (didn't bet)
+
+
+PokerStars Hand #100000028: Tournament #999999, $1.00+0.10 USD Hold'em No Limit - Level I (40/80) - 2026/06/23 20:21:54 ET
+Table '999999' 8-max Seat #2 is the button
+Seat 1: CO (1500 in chips)
+Seat 2: BTN (1500 in chips)
+Seat 3: SB (1500 in chips)
+Seat 4: BB (1500 in chips)
+Seat 5: UTG (1500 in chips)
+Seat 6: UTG+1 (1500 in chips)
+Seat 7: UTG+2 (1500 in chips)
+Seat 8: Hero (1500 in chips)
+SB: posts small blind 40
+BB: posts big blind 80
+*** HOLE CARDS ***
+Dealt to Hero [Jh 3d]
+UTG: raises 160 to 160
+UTG+1: folds
+UTG+2: calls 160
+Hero: folds
+SB: folds
+BB: folds
+UTG+2: folds
+CO: folds
+BTN: folds
+UTG collected 440 from pot
+*** SUMMARY ***
+Total pot 440 | Rake 0
+Seat 1: CO folded before Flop (didn't bet)
+Seat 2: BTN (button) folded before Flop (didn't bet)
+Seat 3: SB (small blind) folded before Flop (didn't bet)
+Seat 4: BB (big blind) folded before Flop (didn't bet)
+Seat 5: UTG collected (440)
+Seat 6: UTG+1 folded before Flop (didn't bet)
+Seat 7: UTG+2 folded before Flop (didn't bet)
+Seat 8: Hero folded before Flop (didn't bet)
+
+
+PokerStars Hand #100000029: Tournament #999999, $1.00+0.10 USD Hold'em No Limit - Level I (40/80) - 2026/06/23 20:22:47 ET
+Table '999999' 8-max Seat #3 is the button
+Seat 1: HJ (1500 in chips)
+Seat 2: CO (1500 in chips)
+Seat 3: BTN (1500 in chips)
+Seat 4: SB (1500 in chips)
+Seat 5: BB (1500 in chips)
+Seat 6: UTG (1500 in chips)
+Seat 7: UTG+1 (1500 in chips)
+Seat 8: Hero (1500 in chips)
+SB: posts small blind 40
+BB: posts big blind 80
+*** HOLE CARDS ***
+Dealt to Hero [7h 5c]
+UTG: folds
+UTG+1: raises 160 to 160
+Hero: folds
+SB: folds
+BB: folds
+HJ: folds
+CO: folds
+BTN: folds
+UTG+1 collected 280 from pot
+*** SUMMARY ***
+Total pot 280 | Rake 0
+Seat 1: HJ folded before Flop (didn't bet)
+Seat 2: CO folded before Flop (didn't bet)
+Seat 3: BTN (button) folded before Flop (didn't bet)
+Seat 4: SB (small blind) folded before Flop (didn't bet)
+Seat 5: BB (big blind) folded before Flop (didn't bet)
+Seat 6: UTG folded before Flop (didn't bet)
+Seat 7: UTG+1 collected (280)
+Seat 8: Hero folded before Flop (didn't bet)
+
+
+PokerStars Hand #100000030: Tournament #999999, $1.00+0.10 USD Hold'em No Limit - Level I (40/80) - 2026/06/23 20:23:09 ET
+Table '999999' 8-max Seat #4 is the button
+Seat 1: UTG+2 (1500 in chips)
+Seat 2: HJ (1500 in chips)
+Seat 3: CO (1500 in chips)
+Seat 4: BTN (1500 in chips)
+Seat 5: SB (1500 in chips)
+Seat 6: BB (1500 in chips)
+Seat 7: UTG (1500 in chips)
+Seat 8: Hero (1500 in chips)
+SB: posts small blind 40
+BB: posts big blind 80
+*** HOLE CARDS ***
+Dealt to Hero [Qs 6d]
+UTG: folds
+Hero: folds
+BB: folds
+UTG+2: folds
+HJ: folds
+CO: folds
+BTN: folds
+SB collected 120 from pot
+*** SUMMARY ***
+Total pot 120 | Rake 0
+Seat 1: UTG+2 folded before Flop (didn't bet)
+Seat 2: HJ folded before Flop (didn't bet)
+Seat 3: CO folded before Flop (didn't bet)
+Seat 4: BTN (button) folded before Flop (didn't bet)
+Seat 5: SB (small blind) collected (120)
+Seat 6: BB (big blind) folded before Flop (didn't bet)
+Seat 7: UTG folded before Flop (didn't bet)
+Seat 8: Hero folded before Flop (didn't bet)
+
+
+PokerStars Hand #100000031: Tournament #999999, $1.00+0.10 USD Hold'em No Limit - Level I (40/80) - 2026/06/23 20:25:51 ET
+Table '999999' 8-max Seat #5 is the button
+Seat 1: UTG+1 (1500 in chips)
+Seat 2: UTG+2 (1500 in chips)
+Seat 3: HJ (1500 in chips)
+Seat 4: CO (1500 in chips)
+Seat 5: BTN (1500 in chips)
+Seat 6: SB (1500 in chips)
+Seat 7: BB (1500 in chips)
+Seat 8: Hero (1500 in chips)
+SB: posts small blind 40
+BB: posts big blind 80
+*** HOLE CARDS ***
+Dealt to Hero [Th 9h]
+Hero: raises 160 to 160
+UTG+1: folds
+UTG+2: folds
+HJ: folds
+CO: folds
+BTN: folds
+SB: folds
+BB: calls 80
+*** FLOP *** [Js 3h Ah]
+BB: checks
+Hero: bets 120
+BB: raises 360 to 360
+Hero: calls 240
+*** TURN *** [Js 3h Ah] [7h]
+BB: bets 1500 and is all-in
+Hero: calls 1500
+*** RIVER *** [Js 3h Ah] [7h] [5c]
+*** SUMMARY ***
+Total pot 4080 | Rake 0
+Board [Js 3h Ah 7h 5c]
+Seat 1: UTG+1 folded before Flop (didn't bet)
+Seat 2: UTG+2 folded before Flop (didn't bet)
+Seat 3: HJ folded before Flop (didn't bet)
+Seat 4: CO folded before Flop (didn't bet)
+Seat 5: BTN (button) folded before Flop (didn't bet)
+Seat 6: SB (small blind) folded before Flop (didn't bet)
+Seat 7: BB (big blind) mucked
+Seat 8: Hero mucked
+
+
+PokerStars Hand #100000032: Tournament #999999, $1.00+0.10 USD Hold'em No Limit - Level I (40/80) - 2026/06/23 20:26:57 ET
+Table '999999' 8-max Seat #4 is the button
+Seat 1: UTG+1 (3000 in chips)
+Seat 2: HJ (3000 in chips)
+Seat 3: CO (3000 in chips)
+Seat 4: BTN (3000 in chips)
+Seat 5: SB (3000 in chips)
+Seat 6: Hero (3000 in chips)
+Seat 7: UTG (3000 in chips)
+SB: posts small blind 40
+Hero: posts big blind 80
+*** HOLE CARDS ***
+Dealt to Hero [Ts 6d]
+UTG: folds
+UTG+1: folds
+HJ: folds
+CO: raises 160 to 160
+BTN: folds
+SB: calls 120
+Hero: folds
+SB: folds
+CO collected 400 from pot
+*** SUMMARY ***
+Total pot 400 | Rake 0
+Seat 1: UTG+1 folded before Flop (didn't bet)
+Seat 2: HJ folded before Flop (didn't bet)
+Seat 3: CO collected (400)
+Seat 4: BTN (button) folded before Flop (didn't bet)
+Seat 5: SB (small blind) folded before Flop (didn't bet)
+Seat 6: Hero (big blind) folded before Flop (didn't bet)
+Seat 7: UTG folded before Flop (didn't bet)
+
+
+PokerStars Hand #100000033: Tournament #999999, $1.00+0.10 USD Hold'em No Limit - Level I (40/80) - 2026/06/23 20:27:32 ET
+Table '999999' 8-max Seat #6 is the button
+Seat 1: BB (3000 in chips)
+Seat 2: UTG (3000 in chips)
+Seat 3: UTG+1 (3000 in chips)
+Seat 4: HJ (3000 in chips)
+Seat 5: CO (3000 in chips)
+Seat 6: Hero (3000 in chips)
+Seat 7: SB (3000 in chips)
+SB: posts small blind 40
+BB: posts big blind 80
+*** HOLE CARDS ***
+Dealt to Hero [8s 4h]
+UTG: folds
+UTG+1: folds
+HJ: raises 160 to 160
+CO: folds
+Hero: folds
+SB: folds
+BB: folds
+HJ collected 280 from pot
+*** SUMMARY ***
+Total pot 280 | Rake 0
+Seat 1: BB (big blind) folded before Flop (didn't bet)
+Seat 2: UTG folded before Flop (didn't bet)
+Seat 3: UTG+1 folded before Flop (didn't bet)
+Seat 4: HJ collected (280)
+Seat 5: CO folded before Flop (didn't bet)
+Seat 6: Hero (button) folded before Flop (didn't bet)
+Seat 7: SB (small blind) folded before Flop (didn't bet)
+
+
+PokerStars Hand #100000034: Tournament #999999, $1.00+0.10 USD Hold'em No Limit - Level I (40/80) - 2026/06/23 20:28:06 ET
+Table '999999' 8-max Seat #7 is the button
+Seat 1: BB (3000 in chips)
+Seat 2: UTG (3000 in chips)
+Seat 3: UTG+1 (3000 in chips)
+Seat 4: UTG+2 (3000 in chips)
+Seat 5: HJ (3000 in chips)
+Seat 6: Hero (3000 in chips)
+Seat 7: BTN (3000 in chips)
+Seat 8: SB (3000 in chips)
+SB: posts small blind 40
+BB: posts big blind 80
+*** HOLE CARDS ***
+Dealt to Hero [Ad 8s]
+UTG: folds
+UTG+1: folds
+UTG+2: folds
+HJ: raises 160 to 160
+Hero: folds
+SB: folds
+BB: folds
+BTN: folds
+HJ collected 280 from pot
+*** SUMMARY ***
+Total pot 280 | Rake 0
+Seat 1: BB (big blind) folded before Flop (didn't bet)
+Seat 2: UTG folded before Flop (didn't bet)
+Seat 3: UTG+1 folded before Flop (didn't bet)
+Seat 4: UTG+2 folded before Flop (didn't bet)
+Seat 5: HJ collected (280)
+Seat 6: Hero folded before Flop (didn't bet)
+Seat 7: BTN (button) folded before Flop (didn't bet)
+Seat 8: SB (small blind) folded before Flop (didn't bet)
+
+
+PokerStars Hand #100000035: Tournament #999999, $1.00+0.10 USD Hold'em No Limit - Level I (40/80) - 2026/06/23 20:29:34 ET
+Table '999999' 8-max Seat #8 is the button
+Seat 1: SB (3000 in chips)
+Seat 2: BB (3000 in chips)
+Seat 3: UTG (3000 in chips)
+Seat 4: UTG+1 (3000 in chips)
+Seat 5: UTG+2 (3000 in chips)
+Seat 6: Hero (3000 in chips)
+Seat 7: CO (3000 in chips)
+Seat 8: BTN (3000 in chips)
+SB: posts small blind 40
+BB: posts big blind 80
+*** HOLE CARDS ***
+Dealt to Hero [As 7d]
+UTG: folds
+UTG+1: folds
+UTG+2: folds
+Hero: folds
+SB: folds
+CO: folds
+BTN: folds
+BB collected 120 from pot
+*** SUMMARY ***
+Total pot 120 | Rake 0
+Seat 1: SB (small blind) folded before Flop (didn't bet)
+Seat 2: BB (big blind) collected (120)
+Seat 3: UTG folded before Flop (didn't bet)
+Seat 4: UTG+1 folded before Flop (didn't bet)
+Seat 5: UTG+2 folded before Flop (didn't bet)
+Seat 6: Hero folded before Flop (didn't bet)
+Seat 7: CO folded before Flop (didn't bet)
+Seat 8: BTN (button) folded before Flop (didn't bet)
+
+
+PokerStars Hand #100000036: Tournament #999999, $1.00+0.10 USD Hold'em No Limit - Level I (40/80) - 2026/06/23 20:29:48 ET
+Table '999999' 8-max Seat #3 is the button
+Seat 1: HJ (3000 in chips)
+Seat 2: CO (3000 in chips)
+Seat 3: BTN (3000 in chips)
+Seat 4: SB (3000 in chips)
+Seat 5: BB (3000 in chips)
+Seat 6: Hero (3000 in chips)
+Seat 7: UTG+1 (3000 in chips)
+Seat 8: UTG+2 (3000 in chips)
+SB: posts small blind 40
+BB: posts big blind 80
+*** HOLE CARDS ***
+Dealt to Hero [5c 8c]
+Hero: folds
+SB: folds
+BB: folds
+UTG+2: folds
+HJ: folds
+CO: folds
+BTN: folds
+UTG+1 collected 120 from pot
+*** SUMMARY ***
+Total pot 120 | Rake 0
+Seat 1: HJ folded before Flop (didn't bet)
+Seat 2: CO folded before Flop (didn't bet)
+Seat 3: BTN (button) folded before Flop (didn't bet)
+Seat 4: SB (small blind) folded before Flop (didn't bet)
+Seat 5: BB (big blind) folded before Flop (didn't bet)
+Seat 6: Hero folded before Flop (didn't bet)
+Seat 7: UTG+1 collected (120)
+Seat 8: UTG+2 folded before Flop (didn't bet)
+
+
+PokerStars Hand #100000037: Tournament #999999, $1.00+0.10 USD Hold'em No Limit - Level I (40/80) - 2026/06/23 20:30:14 ET
+Table '999999' 8-max Seat #4 is the button
+Seat 1: UTG+1 (3000 in chips)
+Seat 2: HJ (3000 in chips)
+Seat 3: CO (3000 in chips)
+Seat 4: BTN (3000 in chips)
+Seat 6: Hero (3000 in chips)
+Seat 7: BB (3000 in chips)
+Seat 8: UTG (3000 in chips)
+Hero: posts small blind 40
+BB: posts big blind 80
+*** HOLE CARDS ***
+Dealt to Hero [Ah 5d]
+UTG: folds
+UTG+1: raises 160 to 160
+HJ: folds
+CO: folds
+BTN: folds
+Hero: folds
+BB: folds
+UTG+1 collected 280 from pot
+*** SUMMARY ***
+Total pot 280 | Rake 0
+Seat 1: UTG+1 collected (280)
+Seat 2: HJ folded before Flop (didn't bet)
+Seat 3: CO folded before Flop (didn't bet)
+Seat 4: BTN (button) folded before Flop (didn't bet)
+Seat 6: Hero (small blind) folded before Flop (didn't bet)
+Seat 7: BB (big blind) folded before Flop (didn't bet)
+Seat 8: UTG folded before Flop (didn't bet)
+
+
+PokerStars Hand #100000038: Tournament #999999, $1.00+0.10 USD Hold'em No Limit - Level I (40/80) - 2026/06/23 20:30:52 ET
+Table '999999' 8-max Seat #6 is the button
+Seat 1: UTG (2000 in chips)
+Seat 2: UTG+1 (2000 in chips)
+Seat 3: HJ (2000 in chips)
+Seat 4: CO (2000 in chips)
+Seat 6: Hero (2000 in chips)
+Seat 7: SB (2000 in chips)
+Seat 8: BB (2000 in chips)
+SB: posts small blind 40
+BB: posts big blind 80
+*** HOLE CARDS ***
+Dealt to Hero [6c 2d]
+UTG: folds
+UTG+1: raises 2000 to 2000 and is all-in
+HJ: folds
+CO: folds
+Hero: folds
+SB: folds
+BB: folds
+UTG+1 collected 2120 from pot
+*** SUMMARY ***
+Total pot 2120 | Rake 0
+Seat 1: UTG folded before Flop (didn't bet)
+Seat 2: UTG+1 collected (2120)
+Seat 3: HJ folded before Flop (didn't bet)
+Seat 4: CO folded before Flop (didn't bet)
+Seat 6: Hero (button) folded before Flop (didn't bet)
+Seat 7: SB (small blind) folded before Flop (didn't bet)
+Seat 8: BB (big blind) folded before Flop (didn't bet)
+
+
+PokerStars Hand #100000039: Tournament #999999, $1.00+0.10 USD Hold'em No Limit - Level I (40/80) - 2026/06/23 20:31:24 ET
+Table '999999' 8-max Seat #8 is the button
+Seat 1: SB (2000 in chips)
+Seat 2: BB (2000 in chips)
+Seat 3: UTG (2000 in chips)
+Seat 4: UTG+1 (2000 in chips)
+Seat 6: Hero (2000 in chips)
+Seat 7: CO (2000 in chips)
+Seat 8: BTN (2000 in chips)
+SB: posts small blind 40
+BB: posts big blind 80
+*** HOLE CARDS ***
+Dealt to Hero [Jd 3c]
+BB: folds
+UTG: folds
+UTG+1: raises 160 to 160
+Hero: folds
+SB: folds
+CO: folds
+BTN: folds
+UTG+1 collected 280 from pot
+*** SUMMARY ***
+Total pot 280 | Rake 0
+Seat 1: SB (small blind) folded before Flop (didn't bet)
+Seat 2: BB (big blind) folded before Flop (didn't bet)
+Seat 3: UTG folded before Flop (didn't bet)
+Seat 4: UTG+1 collected (280)
+Seat 6: Hero folded before Flop (didn't bet)
+Seat 7: CO folded before Flop (didn't bet)
+Seat 8: BTN (button) folded before Flop (didn't bet)
+
+
+PokerStars Hand #100000040: Tournament #999999, $1.00+0.10 USD Hold'em No Limit - Level I (40/80) - 2026/06/23 20:31:47 ET
+Table '999999' 8-max Seat #8 is the button
+Seat 1: SB (2000 in chips)
+Seat 2: BB (2000 in chips)
+Seat 3: UTG (2000 in chips)
+Seat 4: UTG+1 (2000 in chips)
+Seat 6: Hero (2000 in chips)
+Seat 7: CO (2000 in chips)
+Seat 8: BTN (2000 in chips)
+SB: posts small blind 40
+BB: posts big blind 80
+*** HOLE CARDS ***
+Dealt to Hero [8s 2c]
+UTG: folds
+UTG+1: folds
+Hero: folds
+SB: folds
+CO: folds
+BTN: folds
+BB collected 120 from pot
+*** SUMMARY ***
+Total pot 120 | Rake 0
+Seat 1: SB (small blind) folded before Flop (didn't bet)
+Seat 2: BB (big blind) collected (120)
+Seat 3: UTG folded before Flop (didn't bet)
+Seat 4: UTG+1 folded before Flop (didn't bet)
+Seat 6: Hero folded before Flop (didn't bet)
+Seat 7: CO folded before Flop (didn't bet)
+Seat 8: BTN (button) folded before Flop (didn't bet)
+
+
+PokerStars Hand #100000041: Tournament #999999, $1.00+0.10 USD Hold'em No Limit - Level I (40/80) - 2026/06/23 20:34:56 ET
+Table '999999' 8-max Seat #1 is the button
+Seat 1: BTN (2000 in chips)
+Seat 2: SB (2000 in chips)
+Seat 3: BB (2000 in chips)
+Seat 4: UTG (2000 in chips)
+Seat 6: Hero (2000 in chips)
+Seat 7: HJ (2000 in chips)
+Seat 8: CO (2000 in chips)
+SB: posts small blind 40
+BB: posts big blind 80
+*** HOLE CARDS ***
+Dealt to Hero [Kc Qs]
+UTG: folds
+Hero: raises 160 to 160
+HJ: folds
+CO: folds
+BTN: folds
+SB: folds
+BB: calls 80
+*** FLOP *** [5h Ad 4s]
+BB: checks
+Hero: bets 120
+BB: calls 120
+*** TURN *** [5h Ad 4s] [2c]
+BB: checks
+Hero: checks
+*** RIVER *** [5h Ad 4s] [2c] [Qh]
+BB: bets 200
+Hero: calls 200
+BB collected 1000 from pot
+*** SUMMARY ***
+Total pot 1000 | Rake 0
+Board [5h Ad 4s 2c Qh]
+Seat 1: BTN (button) folded before Flop (didn't bet)
+Seat 2: SB (small blind) folded before Flop (didn't bet)
+Seat 3: BB (big blind) collected (1000)
+Seat 4: UTG folded before Flop (didn't bet)
+Seat 6: Hero mucked
+Seat 7: HJ folded before Flop (didn't bet)
+Seat 8: CO folded before Flop (didn't bet)
+
+
+PokerStars Hand #100000042: Tournament #999999, $1.00+0.10 USD Hold'em No Limit - Level I (40/80) - 2026/06/23 20:38:29 ET
+Table '999999' 8-max Seat #2 is the button
+Seat 1: CO (2000 in chips)
+Seat 2: BTN (2000 in chips)
+Seat 3: SB (2000 in chips)
+Seat 4: BB (2000 in chips)
+Seat 6: Hero (2000 in chips)
+Seat 7: UTG+1 (2000 in chips)
+Seat 8: HJ (2000 in chips)
+SB: posts small blind 40
+BB: posts big blind 80
+*** HOLE CARDS ***
+Dealt to Hero [Qh 7h]
+Hero: folds
+SB: folds
+BB: folds
+UTG+1: folds
+HJ: folds
+CO: folds
+BTN collected 120 from pot
+*** SUMMARY ***
+Total pot 120 | Rake 0
+Seat 1: CO folded before Flop (didn't bet)
+Seat 2: BTN (button) collected (120)
+Seat 3: SB (small blind) folded before Flop (didn't bet)
+Seat 4: BB (big blind) folded before Flop (didn't bet)
+Seat 6: Hero folded before Flop (didn't bet)
+Seat 7: UTG+1 folded before Flop (didn't bet)
+Seat 8: HJ folded before Flop (didn't bet)
+
+
+PokerStars Hand #100000043: Tournament #999999, $1.00+0.10 USD Hold'em No Limit - Level I (40/80) - 2026/06/23 20:38:43 ET
+Table '999999' 8-max Seat #2 is the button
+Seat 1: CO (2000 in chips)
+Seat 2: BTN (2000 in chips)
+Seat 3: SB (2000 in chips)
+Seat 4: BB (2000 in chips)
+Seat 6: Hero (2000 in chips)
+Seat 7: UTG+1 (2000 in chips)
+Seat 8: HJ (2000 in chips)
+SB: posts small blind 40
+BB: posts big blind 80
+*** HOLE CARDS ***
+Dealt to Hero [Qd 4s]
+Hero: folds
+SB: folds
+UTG+1: folds
+HJ: folds
+CO: folds
+BTN: folds
+BB collected 120 from pot
+*** SUMMARY ***
+Total pot 120 | Rake 0
+Seat 1: CO folded before Flop (didn't bet)
+Seat 2: BTN (button) folded before Flop (didn't bet)
+Seat 3: SB (small blind) folded before Flop (didn't bet)
+Seat 4: BB (big blind) collected (120)
+Seat 6: Hero folded before Flop (didn't bet)
+Seat 7: UTG+1 folded before Flop (didn't bet)
+Seat 8: HJ folded before Flop (didn't bet)
+
+
+PokerStars Hand #100000044: Tournament #999999, $1.00+0.10 USD Hold'em No Limit - Level I (40/80) - 2026/06/23 20:39:14 ET
+Table '999999' 8-max Seat #4 is the button
+Seat 1: UTG+2 (2000 in chips)
+Seat 2: HJ (2000 in chips)
+Seat 3: CO (2000 in chips)
+Seat 4: BTN (2000 in chips)
+Seat 5: SB (2000 in chips)
+Seat 6: Hero (2000 in chips)
+Seat 7: UTG (2000 in chips)
+Seat 8: UTG+1 (2000 in chips)
+SB: posts small blind 40
+Hero: posts big blind 80
+*** HOLE CARDS ***
+Dealt to Hero [Jd 6s]
+UTG: folds
+UTG+1: folds
+UTG+2: folds
+HJ: folds
+CO: folds
+BTN: raises 160 to 160
+SB: folds
+Hero: folds
+BTN collected 280 from pot
+*** SUMMARY ***
+Total pot 280 | Rake 0
+Seat 1: UTG+2 folded before Flop (didn't bet)
+Seat 2: HJ folded before Flop (didn't bet)
+Seat 3: CO folded before Flop (didn't bet)
+Seat 4: BTN (button) collected (280)
+Seat 5: SB (small blind) folded before Flop (didn't bet)
+Seat 6: Hero (big blind) folded before Flop (didn't bet)
+Seat 7: UTG folded before Flop (didn't bet)
+Seat 8: UTG+1 folded before Flop (didn't bet)
+
+
+PokerStars Hand #100000045: Tournament #999999, $1.00+0.10 USD Hold'em No Limit - Level I (40/80) - 2026/06/23 20:41:26 ET
+Table '999999' 8-max Seat #5 is the button
+Seat 1: UTG+1 (1000 in chips)
+Seat 2: UTG+2 (1000 in chips)
+Seat 3: HJ (1000 in chips)
+Seat 4: CO (1000 in chips)
+Seat 5: BTN (1000 in chips)
+Seat 6: Hero (1000 in chips)
+Seat 7: BB (1000 in chips)
+Seat 8: UTG (1000 in chips)
+Hero: posts small blind 40
+BB: posts big blind 80
+*** HOLE CARDS ***
+Dealt to Hero [As 9c]
+UTG: folds
+UTG+1: folds
+UTG+2: raises 1000 to 1000 and is all-in
+HJ: folds
+CO: folds
+BTN: folds
+Hero: calls 960
+BB: folds
+*** FLOP *** [9d 4h Jc]
+*** TURN *** [9d 4h Jc] [7s]
+*** RIVER *** [9d 4h Jc] [7s] [Th]
+Hero collected 2080 from pot
+*** SUMMARY ***
+Total pot 2080 | Rake 0
+Board [9d 4h Jc 7s Th]
+Seat 1: UTG+1 folded before Flop (didn't bet)
+Seat 2: UTG+2 mucked
+Seat 3: HJ folded before Flop (didn't bet)
+Seat 4: CO folded before Flop (didn't bet)
+Seat 5: BTN (button) folded before Flop (didn't bet)
+Seat 6: Hero (small blind) collected (2080)
+Seat 7: BB (big blind) folded before Flop (didn't bet)
+Seat 8: UTG folded before Flop (didn't bet)
+
+
+PokerStars Hand #100000046: Tournament #999999, $1.00+0.10 USD Hold'em No Limit - Level I (40/80) - 2026/06/23 20:42:15 ET
+Table '999999' 8-max Seat #6 is the button
+Seat 1: BB (1000 in chips)
+Seat 2: UTG (1000 in chips)
+Seat 3: UTG+1 (1000 in chips)
+Seat 4: HJ (1000 in chips)
+Seat 5: CO (1000 in chips)
+Seat 6: Hero (1000 in chips)
+Seat 8: SB (1000 in chips)
+SB: posts small blind 40
+BB: posts big blind 80
+*** HOLE CARDS ***
+Dealt to Hero [9d 2c]
+UTG: folds
+UTG+1: folds
+HJ: folds
+CO: folds
+Hero: folds
+BB: folds
+SB collected 120 from pot
+*** SUMMARY ***
+Total pot 120 | Rake 0
+Seat 1: BB (big blind) folded before Flop (didn't bet)
+Seat 2: UTG folded before Flop (didn't bet)
+Seat 3: UTG+1 folded before Flop (didn't bet)
+Seat 4: HJ folded before Flop (didn't bet)
+Seat 5: CO folded before Flop (didn't bet)
+Seat 6: Hero (button) folded before Flop (didn't bet)
+Seat 8: SB (small blind) collected (120)
+
+
+PokerStars Hand #100000047: Tournament #999999, $1.00+0.10 USD Hold'em No Limit - Level I (40/80) - 2026/06/23 20:42:36 ET
+Table '999999' 8-max Seat #8 is the button
+Seat 1: SB (1000 in chips)
+Seat 2: BB (1000 in chips)
+Seat 3: UTG (1000 in chips)
+Seat 4: UTG+1 (1000 in chips)
+Seat 5: HJ (1000 in chips)
+Seat 6: Hero (1000 in chips)
+Seat 8: BTN (1000 in chips)
+SB: posts small blind 40
+BB: posts big blind 80
+*** HOLE CARDS ***
+Dealt to Hero [7c 3d]
+UTG: folds
+UTG+1: folds
+HJ: folds
+Hero: folds
+SB: folds
+BTN: folds
+BB collected 120 from pot
+*** SUMMARY ***
+Total pot 120 | Rake 0
+Seat 1: SB (small blind) folded before Flop (didn't bet)
+Seat 2: BB (big blind) collected (120)
+Seat 3: UTG folded before Flop (didn't bet)
+Seat 4: UTG+1 folded before Flop (didn't bet)
+Seat 5: HJ folded before Flop (didn't bet)
+Seat 6: Hero folded before Flop (didn't bet)
+Seat 8: BTN (button) folded before Flop (didn't bet)
+
+
+PokerStars Hand #100000048: Tournament #999999, $1.00+0.10 USD Hold'em No Limit - Level I (40/80) - 2026/06/23 20:42:56 ET
+Table '999999' 8-max Seat #1 is the button
+Seat 1: BTN (1000 in chips)
+Seat 2: SB (1000 in chips)
+Seat 3: BB (1000 in chips)
+Seat 4: UTG (1000 in chips)
+Seat 5: UTG+1 (1000 in chips)
+Seat 6: Hero (1000 in chips)
+Seat 8: CO (1000 in chips)
+SB: posts small blind 40
+BB: posts big blind 80
+*** HOLE CARDS ***
+Dealt to Hero [Kd 3c]
+UTG: folds
+UTG+1: folds
+Hero: folds
+SB: folds
+CO: folds
+BTN: folds
+BB collected 120 from pot
+*** SUMMARY ***
+Total pot 120 | Rake 0
+Seat 1: BTN (button) folded before Flop (didn't bet)
+Seat 2: SB (small blind) folded before Flop (didn't bet)
+Seat 3: BB (big blind) collected (120)
+Seat 4: UTG folded before Flop (didn't bet)
+Seat 5: UTG+1 folded before Flop (didn't bet)
+Seat 6: Hero folded before Flop (didn't bet)
+Seat 8: CO folded before Flop (didn't bet)
+
+
+PokerStars Hand #100000049: Tournament #999999, $1.00+0.10 USD Hold'em No Limit - Level I (40/80) - 2026/06/23 20:44:16 ET
+Table '999999' 8-max Seat #2 is the button
+Seat 1: CO (1000 in chips)
+Seat 2: BTN (1000 in chips)
+Seat 3: SB (1000 in chips)
+Seat 4: BB (6000 in chips)
+Seat 5: UTG (1000 in chips)
+Seat 6: Hero (1000 in chips)
+Seat 8: HJ (1000 in chips)
+SB: posts small blind 40
+BB: posts big blind 80
+*** HOLE CARDS ***
+Dealt to Hero [Jc Tc]
+UTG: folds
+Hero: raises 160 to 160
+HJ: folds
+CO: folds
+BTN: folds
+SB: folds
+BB: raises 6000 to 6080 and is all-in
+Hero: folds
+BB collected 6280 from pot
+*** SUMMARY ***
+Total pot 6280 | Rake 0
+Seat 1: CO folded before Flop (didn't bet)
+Seat 2: BTN (button) folded before Flop (didn't bet)
+Seat 3: SB (small blind) folded before Flop (didn't bet)
+Seat 4: BB (big blind) collected (6280)
+Seat 5: UTG folded before Flop (didn't bet)
+Seat 6: Hero folded before Flop (didn't bet)
+Seat 8: HJ folded before Flop (didn't bet)
+
+
+PokerStars Hand #100000050: Tournament #999999, $1.00+0.10 USD Hold'em No Limit - Level I (40/80) - 2026/06/23 20:45:44 ET
+Table '999999' 8-max Seat #3 is the button
+Seat 1: HJ (2200 in chips)
+Seat 2: CO (2200 in chips)
+Seat 3: BTN (2200 in chips)
+Seat 4: SB (8000 in chips)
+Seat 5: BB (2200 in chips)
+Seat 6: Hero (2200 in chips)
+Seat 8: UTG+1 (2200 in chips)
+SB: posts small blind 40
+BB: posts big blind 80
+*** HOLE CARDS ***
+Dealt to Hero [Ah Kc]
+Hero: raises 160 to 160
+UTG+1: folds
+HJ: folds
+CO: folds
+BTN: folds
+SB: folds
+BB: folds
+Hero collected 280 from pot
+*** SUMMARY ***
+Total pot 280 | Rake 0
+Seat 1: HJ folded before Flop (didn't bet)
+Seat 2: CO folded before Flop (didn't bet)
+Seat 3: BTN (button) folded before Flop (didn't bet)
+Seat 4: SB (small blind) folded before Flop (didn't bet)
+Seat 5: BB (big blind) folded before Flop (didn't bet)
+Seat 6: Hero collected (280)
+Seat 8: UTG+1 folded before Flop (didn't bet)
+
+
+PokerStars Hand #100000051: Tournament #999999, $1.00+0.10 USD Hold'em No Limit - Level I (40/80) - 2026/06/23 20:47:42 ET
+Table '999999' 8-max Seat #4 is the button
+Seat 1: UTG+1 (2200 in chips)
+Seat 2: HJ (2200 in chips)
+Seat 3: CO (2200 in chips)
+Seat 4: BTN (8000 in chips)
+Seat 5: SB (2200 in chips)
+Seat 6: Hero (2200 in chips)
+Seat 8: UTG (2200 in chips)
+SB: posts small blind 40
+Hero: posts big blind 80
+*** HOLE CARDS ***
+Dealt to Hero [As 8c]
+UTG: folds
+UTG+1: folds
+HJ: folds
+CO: folds
+BTN: folds
+SB: calls 40
+Hero: bets 104
+SB: raises 2200 to 2280 and is all-in
+Hero: calls 2176
+*** FLOP *** [Kc 3d 5d]
+*** TURN *** [Kc 3d 5d] [Qd]
+*** RIVER *** [Kc 3d 5d] [Qd] [4c]
+Hero collected 4560 from pot
+*** SUMMARY ***
+Total pot 4560 | Rake 0
+Board [Kc 3d 5d Qd 4c]
+Seat 1: UTG+1 folded before Flop (didn't bet)
+Seat 2: HJ folded before Flop (didn't bet)
+Seat 3: CO folded before Flop (didn't bet)
+Seat 4: BTN (button) folded before Flop (didn't bet)
+Seat 5: SB (small blind) mucked
+Seat 6: Hero (big blind) collected (4560)
+Seat 8: UTG folded before Flop (didn't bet)
+
+
+PokerStars Hand #100000052: Tournament #999999, $1.00+0.10 USD Hold'em No Limit - Level I (40/80) - 2026/06/23 20:50:58 ET
+Table '999999' 8-max Seat #6 is the button
+Seat 1: UTG (3000 in chips)
+Seat 2: UTG+1 (3000 in chips)
+Seat 3: UTG+2 (3000 in chips)
+Seat 4: HJ (3000 in chips)
+Seat 5: CO (3000 in chips)
+Seat 6: Hero (3000 in chips)
+Seat 7: SB (3000 in chips)
+Seat 8: BB (3000 in chips)
+SB: posts small blind 40
+BB: posts big blind 80
+*** HOLE CARDS ***
+Dealt to Hero [Qh 6c]
+UTG: folds
+UTG+1: folds
+UTG+2: folds
+HJ: folds
+CO: calls 80
+Hero: folds
+SB: folds
+CO: folds
+BB collected 200 from pot
+*** SUMMARY ***
+Total pot 200 | Rake 0
+Seat 1: UTG folded before Flop (didn't bet)
+Seat 2: UTG+1 folded before Flop (didn't bet)
+Seat 3: UTG+2 folded before Flop (didn't bet)
+Seat 4: HJ folded before Flop (didn't bet)
+Seat 5: CO folded before Flop (didn't bet)
+Seat 6: Hero (button) folded before Flop (didn't bet)
+Seat 7: SB (small blind) folded before Flop (didn't bet)
+Seat 8: BB (big blind) collected (200)
+
+
+PokerStars Hand #100000053: Tournament #999999, $1.00+0.10 USD Hold'em No Limit - Level I (40/80) - 2026/06/23 20:51:35 ET
+Table '999999' 8-max Seat #7 is the button
+Seat 1: BB (3000 in chips)
+Seat 2: UTG (3000 in chips)
+Seat 3: UTG+1 (3000 in chips)
+Seat 4: UTG+2 (3000 in chips)
+Seat 5: HJ (3000 in chips)
+Seat 6: Hero (3000 in chips)
+Seat 7: BTN (3000 in chips)
+Seat 8: SB (3000 in chips)
+SB: posts small blind 40
+BB: posts big blind 80
+*** HOLE CARDS ***
+Dealt to Hero [9d 8s]
+UTG: folds
+UTG+1: folds
+UTG+2: folds
+HJ: folds
+Hero: folds
+SB: folds
+BTN: folds
+BB collected 120 from pot
+*** SUMMARY ***
+Total pot 120 | Rake 0
+Seat 1: BB (big blind) collected (120)
+Seat 2: UTG folded before Flop (didn't bet)
+Seat 3: UTG+1 folded before Flop (didn't bet)
+Seat 4: UTG+2 folded before Flop (didn't bet)
+Seat 5: HJ folded before Flop (didn't bet)
+Seat 6: Hero folded before Flop (didn't bet)
+Seat 7: BTN (button) folded before Flop (didn't bet)
+Seat 8: SB (small blind) folded before Flop (didn't bet)
+
+
+PokerStars Hand #100000054: Tournament #999999, $1.00+0.10 USD Hold'em No Limit - Level I (40/80) - 2026/06/23 20:54:33 ET
+Table '999999' 8-max Seat #7 is the button
+Seat 2: BB (3000 in chips)
+Seat 3: UTG (3000 in chips)
+Seat 4: UTG+1 (3000 in chips)
+Seat 5: HJ (3000 in chips)
+Seat 6: Hero (3000 in chips)
+Seat 7: BTN (3000 in chips)
+Seat 8: SB (3000 in chips)
+SB: posts small blind 40
+BB: posts big blind 80
+*** HOLE CARDS ***
+Dealt to Hero [Jh 9s]
+UTG: folds
+UTG+1: folds
+HJ: folds
+Hero: raises 160 to 160
+BTN: folds
+SB: folds
+BB: folds
+Hero collected 280 from pot
+*** SUMMARY ***
+Total pot 280 | Rake 0
+Seat 2: BB (big blind) folded before Flop (didn't bet)
+Seat 3: UTG folded before Flop (didn't bet)
+Seat 4: UTG+1 folded before Flop (didn't bet)
+Seat 5: HJ folded before Flop (didn't bet)
+Seat 6: Hero collected (280)
+Seat 7: BTN (button) folded before Flop (didn't bet)
+Seat 8: SB (small blind) folded before Flop (didn't bet)
+
+
+PokerStars Hand #100000055: Tournament #999999, $1.00+0.10 USD Hold'em No Limit - Level I (40/80) - 2026/06/23 20:57:33 ET
+Table '999999' 8-max Seat #8 is the button
+Seat 2: SB (3000 in chips)
+Seat 3: BB (3000 in chips)
+Seat 4: UTG (3000 in chips)
+Seat 5: UTG+1 (3000 in chips)
+Seat 6: Hero (3000 in chips)
+Seat 7: CO (3000 in chips)
+Seat 8: BTN (3000 in chips)
+SB: posts small blind 40
+BB: posts big blind 80
+*** HOLE CARDS ***
+Dealt to Hero [Ad Ts]
+UTG: folds
+UTG+1: folds
+Hero: raises 160 to 160
+CO: folds
+BTN: folds
+SB: folds
+BB: folds
+Hero collected 280 from pot
+*** SUMMARY ***
+Total pot 280 | Rake 0
+Seat 2: SB (small blind) folded before Flop (didn't bet)
+Seat 3: BB (big blind) folded before Flop (didn't bet)
+Seat 4: UTG folded before Flop (didn't bet)
+Seat 5: UTG+1 folded before Flop (didn't bet)
+Seat 6: Hero collected (280)
+Seat 7: CO folded before Flop (didn't bet)
+Seat 8: BTN (button) folded before Flop (didn't bet)
+
+
+PokerStars Hand #100000056: Tournament #999999, $1.00+0.10 USD Hold'em No Limit - Level I (40/80) - 2026/06/23 20:58:33 ET
+Table '999999' 8-max Seat #2 is the button
+Seat 2: BTN (3000 in chips)
+Seat 3: SB (3000 in chips)
+Seat 4: BB (3000 in chips)
+Seat 5: UTG (3000 in chips)
+Seat 6: Hero (3000 in chips)
+Seat 7: HJ (3000 in chips)
+Seat 8: CO (3000 in chips)
+SB: posts small blind 40
+BB: posts big blind 80
+*** HOLE CARDS ***
+Dealt to Hero [Kc 6h]
+UTG: folds
+Hero: folds
+BB: folds
+HJ: folds
+CO: folds
+BTN: folds
+SB collected 120 from pot
+*** SUMMARY ***
+Total pot 120 | Rake 0
+Seat 2: BTN (button) folded before Flop (didn't bet)
+Seat 3: SB (small blind) collected (120)
+Seat 4: BB (big blind) folded before Flop (didn't bet)
+Seat 5: UTG folded before Flop (didn't bet)
+Seat 6: Hero folded before Flop (didn't bet)
+Seat 7: HJ folded before Flop (didn't bet)
+Seat 8: CO folded before Flop (didn't bet)
+
+
+PokerStars Hand #100000057: Tournament #999999, $1.00+0.10 USD Hold'em No Limit - Level I (40/80) - 2026/06/23 20:58:46 ET
+Table '999999' 8-max Seat #3 is the button
+Seat 2: CO (3000 in chips)
+Seat 3: BTN (3000 in chips)
+Seat 4: SB (3000 in chips)
+Seat 5: BB (3000 in chips)
+Seat 6: Hero (3000 in chips)
+Seat 7: UTG+1 (3000 in chips)
+Seat 8: HJ (3000 in chips)
+SB: posts small blind 40
+BB: posts big blind 80
+*** HOLE CARDS ***
+Dealt to Hero [9s 3s]
+Hero: folds
+SB: folds
+BB: folds
+UTG+1: folds
+HJ: folds
+CO: folds
+BTN collected 120 from pot
+*** SUMMARY ***
+Total pot 120 | Rake 0
+Seat 2: CO folded before Flop (didn't bet)
+Seat 3: BTN (button) collected (120)
+Seat 4: SB (small blind) folded before Flop (didn't bet)
+Seat 5: BB (big blind) folded before Flop (didn't bet)
+Seat 6: Hero folded before Flop (didn't bet)
+Seat 7: UTG+1 folded before Flop (didn't bet)
+Seat 8: HJ folded before Flop (didn't bet)
+
+
+PokerStars Hand #100000058: Tournament #999999, $1.00+0.10 USD Hold'em No Limit - Level I (40/80) - 2026/06/23 20:59:37 ET
+Table '999999' 8-max Seat #4 is the button
+Seat 2: HJ (3000 in chips)
+Seat 3: CO (3000 in chips)
+Seat 4: BTN (3000 in chips)
+Seat 5: SB (3000 in chips)
+Seat 6: Hero (3000 in chips)
+Seat 7: UTG (3000 in chips)
+Seat 8: UTG+1 (3000 in chips)
+SB: posts small blind 40
+Hero: posts big blind 80
+*** HOLE CARDS ***
+Dealt to Hero [4h 2s]
+UTG: calls 80
+UTG+1: folds
+HJ: folds
+CO: raises 400 to 400
+BTN: folds
+SB: folds
+Hero: folds
+UTG: folds
+CO collected 600 from pot
+*** SUMMARY ***
+Total pot 600 | Rake 0
+Seat 2: HJ folded before Flop (didn't bet)
+Seat 3: CO collected (600)
+Seat 4: BTN (button) folded before Flop (didn't bet)
+Seat 5: SB (small blind) folded before Flop (didn't bet)
+Seat 6: Hero (big blind) folded before Flop (didn't bet)
+Seat 7: UTG folded before Flop (didn't bet)
+Seat 8: UTG+1 folded before Flop (didn't bet)
+
+
+PokerStars Hand #100000059: Tournament #999999, $1.00+0.10 USD Hold'em No Limit - Level I (40/80) - 2026/06/23 21:01:39 ET
+Table '999999' 8-max Seat #5 is the button
+Seat 2: UTG+1 (3000 in chips)
+Seat 3: HJ (3000 in chips)
+Seat 4: CO (3000 in chips)
+Seat 5: BTN (3000 in chips)
+Seat 6: Hero (3000 in chips)
+Seat 7: BB (3000 in chips)
+Seat 8: UTG (3000 in chips)
+Hero: posts small blind 40
+BB: posts big blind 80
+*** HOLE CARDS ***
+Dealt to Hero [8c 5c]
+UTG: folds
+UTG+1: folds
+HJ: folds
+CO: folds
+BTN: folds
+Hero: calls 40
+BB: folds
+Hero collected 160 from pot
+*** SUMMARY ***
+Total pot 160 | Rake 0
+Seat 2: UTG+1 folded before Flop (didn't bet)
+Seat 3: HJ folded before Flop (didn't bet)
+Seat 4: CO folded before Flop (didn't bet)
+Seat 5: BTN (button) folded before Flop (didn't bet)
+Seat 6: Hero (small blind) collected (160)
+Seat 7: BB (big blind) folded before Flop (didn't bet)
+Seat 8: UTG folded before Flop (didn't bet)
+
+
+PokerStars Hand #100000060: Tournament #999999, $1.00+0.10 USD Hold'em No Limit - Level I (40/80) - 2026/06/23 21:05:42 ET
+Table '999999' 8-max Seat #6 is the button
+Seat 2: UTG (3000 in chips)
+Seat 3: UTG+1 (3000 in chips)
+Seat 4: HJ (3000 in chips)
+Seat 5: CO (3000 in chips)
+Seat 6: Hero (3000 in chips)
+Seat 7: SB (3000 in chips)
+Seat 8: BB (3000 in chips)
+SB: posts small blind 40
+BB: posts big blind 80
+*** HOLE CARDS ***
+Dealt to Hero [5h 3c]
+UTG: folds
+UTG+1: folds
+HJ: folds
+CO: calls 80
+Hero: folds
+SB: folds
+CO: folds
+BB collected 200 from pot
+*** SUMMARY ***
+Total pot 200 | Rake 0
+Seat 2: UTG folded before Flop (didn't bet)
+Seat 3: UTG+1 folded before Flop (didn't bet)
+Seat 4: HJ folded before Flop (didn't bet)
+Seat 5: CO folded before Flop (didn't bet)
+Seat 6: Hero (button) folded before Flop (didn't bet)
+Seat 7: SB (small blind) folded before Flop (didn't bet)
+Seat 8: BB (big blind) collected (200)
+
+
+PokerStars Hand #100000061: Tournament #999999, $1.00+0.10 USD Hold'em No Limit - Level I (40/80) - 2026/06/23 21:06:38 ET
+Table '999999' 8-max Seat #7 is the button
+Seat 2: BB (3000 in chips)
+Seat 3: UTG (3000 in chips)
+Seat 4: UTG+1 (3000 in chips)
+Seat 5: HJ (3000 in chips)
+Seat 6: Hero (3000 in chips)
+Seat 7: BTN (3000 in chips)
+Seat 8: SB (3000 in chips)
+SB: posts small blind 40
+BB: posts big blind 80
+*** HOLE CARDS ***
+Dealt to Hero [7s 6c]
+UTG: folds
+UTG+1: raises 200 to 200
+HJ: folds
+Hero: folds
+SB: folds
+BB: folds
+BTN: folds
+UTG+1 collected 320 from pot
+*** SUMMARY ***
+Total pot 320 | Rake 0
+Seat 2: BB (big blind) folded before Flop (didn't bet)
+Seat 3: UTG folded before Flop (didn't bet)
+Seat 4: UTG+1 collected (320)
+Seat 5: HJ folded before Flop (didn't bet)
+Seat 6: Hero folded before Flop (didn't bet)
+Seat 7: BTN (button) folded before Flop (didn't bet)
+Seat 8: SB (small blind) folded before Flop (didn't bet)
+
+
+PokerStars Hand #100000062: Tournament #999999, $1.00+0.10 USD Hold'em No Limit - Level I (40/80) - 2026/06/23 21:06:53 ET
+Table '999999' 8-max Seat #8 is the button
+Seat 2: SB (3000 in chips)
+Seat 3: BB (3000 in chips)
+Seat 4: UTG (3000 in chips)
+Seat 5: UTG+1 (3000 in chips)
+Seat 6: Hero (3000 in chips)
+Seat 7: CO (3000 in chips)
+Seat 8: BTN (3000 in chips)
+SB: posts small blind 40
+BB: posts big blind 80
+*** HOLE CARDS ***
+Dealt to Hero [Qd 6c]
+UTG: folds
+UTG+1: folds
+Hero: folds
+SB: folds
+CO: folds
+BTN: folds
+BB collected 120 from pot
+*** SUMMARY ***
+Total pot 120 | Rake 0
+Seat 2: SB (small blind) folded before Flop (didn't bet)
+Seat 3: BB (big blind) collected (120)
+Seat 4: UTG folded before Flop (didn't bet)
+Seat 5: UTG+1 folded before Flop (didn't bet)
+Seat 6: Hero folded before Flop (didn't bet)
+Seat 7: CO folded before Flop (didn't bet)
+Seat 8: BTN (button) folded before Flop (didn't bet)
+
+
+PokerStars Hand #100000063: Tournament #999999, $1.00+0.10 USD Hold'em No Limit - Level I (40/80) - 2026/06/23 21:07:08 ET
+Table '999999' 8-max Seat #2 is the button
+Seat 2: BTN (3000 in chips)
+Seat 3: SB (3000 in chips)
+Seat 4: BB (3000 in chips)
+Seat 5: UTG (3000 in chips)
+Seat 6: Hero (3000 in chips)
+Seat 7: HJ (3000 in chips)
+Seat 8: CO (3000 in chips)
+SB: posts small blind 40
+BB: posts big blind 80
+*** HOLE CARDS ***
+Dealt to Hero [8h 4h]
+UTG: folds
+Hero: folds
+SB: folds
+HJ: folds
+CO: folds
+BTN: folds
+BB collected 120 from pot
+*** SUMMARY ***
+Total pot 120 | Rake 0
+Seat 2: BTN (button) folded before Flop (didn't bet)
+Seat 3: SB (small blind) folded before Flop (didn't bet)
+Seat 4: BB (big blind) collected (120)
+Seat 5: UTG folded before Flop (didn't bet)
+Seat 6: Hero folded before Flop (didn't bet)
+Seat 7: HJ folded before Flop (didn't bet)
+Seat 8: CO folded before Flop (didn't bet)
+
+
+PokerStars Hand #100000064: Tournament #999999, $1.00+0.10 USD Hold'em No Limit - Level I (40/80) - 2026/06/23 21:07:23 ET
+Table '999999' 8-max Seat #3 is the button
+Seat 2: CO (3000 in chips)
+Seat 3: BTN (3000 in chips)
+Seat 4: SB (3000 in chips)
+Seat 5: BB (3000 in chips)
+Seat 6: Hero (3000 in chips)
+Seat 7: UTG+1 (3000 in chips)
+Seat 8: HJ (3000 in chips)
+SB: posts small blind 40
+BB: posts big blind 80
+*** HOLE CARDS ***
+Dealt to Hero [8c 4c]
+Hero: folds
+SB: folds
+BB: folds
+HJ: folds
+CO: folds
+BTN: folds
+UTG+1 collected 120 from pot
+*** SUMMARY ***
+Total pot 120 | Rake 0
+Seat 2: CO folded before Flop (didn't bet)
+Seat 3: BTN (button) folded before Flop (didn't bet)
+Seat 4: SB (small blind) folded before Flop (didn't bet)
+Seat 5: BB (big blind) folded before Flop (didn't bet)
+Seat 6: Hero folded before Flop (didn't bet)
+Seat 7: UTG+1 collected (120)
+Seat 8: HJ folded before Flop (didn't bet)
+
+
+PokerStars Hand #100000065: Tournament #999999, $1.00+0.10 USD Hold'em No Limit - Level I (40/80) - 2026/06/23 21:08:27 ET
+Table '999999' 8-max Seat #4 is the button
+Seat 2: HJ (3000 in chips)
+Seat 3: CO (3000 in chips)
+Seat 4: BTN (3000 in chips)
+Seat 5: SB (3000 in chips)
+Seat 6: Hero (3000 in chips)
+Seat 7: UTG (3000 in chips)
+Seat 8: UTG+1 (3000 in chips)
+SB: posts small blind 40
+Hero: posts big blind 80
+*** HOLE CARDS ***
+Dealt to Hero [5c 4c]
+UTG: folds
+UTG+1: folds
+HJ: folds
+CO: folds
+BTN: raises 200 to 200
+SB: folds
+Hero: calls 120
+*** FLOP *** [5d Td 3d]
+Hero: checks
+BTN: bets 144
+Hero: folds
+BTN collected 584 from pot
+*** SUMMARY ***
+Total pot 584 | Rake 0
+Board [5d Td 3d]
+Seat 2: HJ folded before Flop (didn't bet)
+Seat 3: CO folded before Flop (didn't bet)
+Seat 4: BTN (button) collected (584)
+Seat 5: SB (small blind) folded before Flop (didn't bet)
+Seat 6: Hero (big blind) folded before Flop (didn't bet)
+Seat 7: UTG folded before Flop (didn't bet)
+Seat 8: UTG+1 folded before Flop (didn't bet)
+
+
+PokerStars Hand #100000066: Tournament #999999, $1.00+0.10 USD Hold'em No Limit - Level I (40/80) - 2026/06/23 21:14:14 ET
+Table '999999' 8-max Seat #4 is the button
+Seat 1: UTG+2 (3000 in chips)
+Seat 2: HJ (3000 in chips)
+Seat 3: CO (3000 in chips)
+Seat 4: BTN (1330 in chips)
+Seat 5: SB (3000 in chips)
+Seat 6: Hero (1000 in chips)
+Seat 7: UTG (3000 in chips)
+Seat 8: UTG+1 (3000 in chips)
+SB: posts small blind 40
+Hero: posts big blind 80
+*** HOLE CARDS ***
+Dealt to Hero [Kh Qc]
+UTG: folds
+UTG+1: folds
+UTG+2: folds
+HJ: folds
+CO: folds
+BTN: calls 80
+SB: raises 360 to 400
+Hero: folds
+BTN: raises 1330 to 1410 and is all-in
+SB: calls 1010
+*** FLOP *** [3d 5c 4d]
+*** TURN *** [3d 5c 4d] [2s]
+*** RIVER *** [3d 5c 4d] [2s] [6d]
+SB collected 1450 from pot
+BTN collected 1450 from pot
+*** SUMMARY ***
+Total pot 2900 | Rake 0
+Board [3d 5c 4d 2s 6d]
+Seat 1: UTG+2 folded before Flop (didn't bet)
+Seat 2: HJ folded before Flop (didn't bet)
+Seat 3: CO folded before Flop (didn't bet)
+Seat 4: BTN (button) collected (1450)
+Seat 5: SB (small blind) collected (1450)
+Seat 6: Hero (big blind) folded before Flop (didn't bet)
+Seat 7: UTG folded before Flop (didn't bet)
+Seat 8: UTG+1 folded before Flop (didn't bet)
+
+
+PokerStars Hand #100000067: Tournament #999999, $1.00+0.10 USD Hold'em No Limit - Level I (40/80) - 2026/06/23 21:15:02 ET
+Table '999999' 8-max Seat #5 is the button
+Seat 1: UTG+1 (3000 in chips)
+Seat 2: UTG+2 (1254 in chips)
+Seat 3: HJ (3000 in chips)
+Seat 4: CO (1330 in chips)
+Seat 5: BTN (3000 in chips)
+Seat 6: Hero (1000 in chips)
+Seat 7: BB (3000 in chips)
+Seat 8: UTG (3000 in chips)
+Hero: posts small blind 40
+BB: posts big blind 80
+*** HOLE CARDS ***
+Dealt to Hero [Jc 7s]
+UTG+1: raises 3000 to 3000 and is all-in
+UTG+2: folds
+HJ: folds
+CO: folds
+BTN: folds
+Hero: folds
+BB: folds
+UTG: folds
+UTG+1 collected 3120 from pot
+*** SUMMARY ***
+Total pot 3120 | Rake 0
+Seat 1: UTG+1 collected (3120)
+Seat 2: UTG+2 folded before Flop (didn't bet)
+Seat 3: HJ folded before Flop (didn't bet)
+Seat 4: CO folded before Flop (didn't bet)
+Seat 5: BTN (button) folded before Flop (didn't bet)
+Seat 6: Hero (small blind) folded before Flop (didn't bet)
+Seat 7: BB (big blind) folded before Flop (didn't bet)
+Seat 8: UTG folded before Flop (didn't bet)
+
+
+PokerStars Hand #100000068: Tournament #999999, $1.00+0.10 USD Hold'em No Limit - Level I (40/80) - 2026/06/23 21:15:47 ET
+Table '999999' 8-max Seat #7 is the button
+Seat 2: BB (1254 in chips)
+Seat 3: UTG (3000 in chips)
+Seat 4: UTG+1 (1330 in chips)
+Seat 5: HJ (3000 in chips)
+Seat 6: Hero (1000 in chips)
+Seat 7: BTN (3000 in chips)
+Seat 8: SB (3000 in chips)
+SB: posts small blind 40
+BB: posts big blind 80
+*** HOLE CARDS ***
+Dealt to Hero [Tc 6h]
+UTG: folds
+UTG+1: folds
+HJ: folds
+Hero: folds
+BB: folds
+BTN: folds
+SB collected 120 from pot
+*** SUMMARY ***
+Total pot 120 | Rake 0
+Seat 2: BB (big blind) folded before Flop (didn't bet)
+Seat 3: UTG folded before Flop (didn't bet)
+Seat 4: UTG+1 folded before Flop (didn't bet)
+Seat 5: HJ folded before Flop (didn't bet)
+Seat 6: Hero folded before Flop (didn't bet)
+Seat 7: BTN (button) folded before Flop (didn't bet)
+Seat 8: SB (small blind) collected (120)
+
+
+PokerStars Hand #100000069: Tournament #999999, $1.00+0.10 USD Hold'em No Limit - Level I (40/80) - 2026/06/23 21:16:57 ET
+Table '999999' 8-max Seat #1 is the button
+Seat 1: BTN (3000 in chips)
+Seat 2: SB (1254 in chips)
+Seat 3: BB (3000 in chips)
+Seat 4: UTG (1330 in chips)
+Seat 5: UTG+1 (3000 in chips)
+Seat 6: Hero (1000 in chips)
+Seat 7: HJ (3000 in chips)
+Seat 8: CO (3000 in chips)
+SB: posts small blind 40
+BB: posts big blind 80
+*** HOLE CARDS ***
+Dealt to Hero [Ah Th]
+UTG: folds
+UTG+1: folds
+Hero: raises 160 to 160
+HJ: calls 160
+CO: folds
+BTN: calls 160
+SB: folds
+BB: calls 80
+*** FLOP *** [4h 8c 3d]
+BB: bets 224
+Hero: folds
+HJ: folds
+BTN: folds
+BB collected 904 from pot
+*** SUMMARY ***
+Total pot 904 | Rake 0
+Board [4h 8c 3d]
+Seat 1: BTN (button) folded before Flop (didn't bet)
+Seat 2: SB (small blind) folded before Flop (didn't bet)
+Seat 3: BB (big blind) collected (904)
+Seat 4: UTG folded before Flop (didn't bet)
+Seat 5: UTG+1 folded before Flop (didn't bet)
+Seat 6: Hero folded before Flop (didn't bet)
+Seat 7: HJ folded before Flop (didn't bet)
+Seat 8: CO folded before Flop (didn't bet)

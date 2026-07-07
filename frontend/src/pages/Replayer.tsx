@@ -1507,10 +1507,18 @@ const Replayer = () => {
   const tournamentId = params.get("t") ?? "";
   const handId       = params.get("h") ?? "";
   const studentId    = params.get("student") ? Number(params.get("student")) : null;
-  // Coach Replay walkthrough: navega só pelas mãos que valem revisão (playlist filtrada) e
-  // mostra a narração do coach por mão. Ligado por ?walk=1 (a partir da página /coach-replay).
-  const walk         = params.get("walk") === "1";
+  // Modo coach (toggle on/off no próprio Replayer, persistido): filtra a navegação só pras mãos
+  // que valem revisão (pula fold pré-flop correto) e mostra o comentário do coach por mão. Pode
+  // vir ligado pela URL (?coach=1, usado pelo botão "Revisar com o coach" do torneio).
+  const coachParam   = params.get("coach") === "1" || params.get("walk") === "1";
+  const [coachMode, setCoachMode] = useState<boolean>(
+    () => coachParam || localStorage.getItem("replayer_coach") === "true");
   const [walkMap, setWalkMap] = useState<Record<string, CoachReplayHand>>({});
+  const toggleCoach = () => setCoachMode((v) => {
+    const nv = !v;
+    localStorage.setItem("replayer_coach", String(nv));
+    return nv;
+  });
 
   const [replayData, setReplayData] = useState<ReplayData | null>(null);
   const [loading, setLoading]       = useState(false);
@@ -1625,7 +1633,7 @@ const Replayer = () => {
             tournamentData.decisions.forEach((d) => {
               if (d.hand_id && !seen.has(d.hand_id)) { seen.add(d.hand_id); ids.push(d.hand_id); }
             });
-            if (!walk) setHandList(ids);   // no walkthrough a playlist filtrada manda na navegação
+            if (!coachMode) setHandList(ids);   // no modo coach a playlist filtrada manda na navegação
             setDecisions(tournamentData.decisions);
           }
         });
@@ -1654,28 +1662,48 @@ const Replayer = () => {
           tournamentData.decisions.forEach((d) => {
             if (d.hand_id && !seen.has(d.hand_id)) { seen.add(d.hand_id); ids.push(d.hand_id); }
           });
-          if (!walk) setHandList(ids);   // no walkthrough a playlist filtrada manda na navegação
+          if (!coachMode) setHandList(ids);   // no modo coach a playlist filtrada manda na navegação
           setDecisions(tournamentData.decisions);
         }
       })
       .catch((e: unknown) => setError(e instanceof Error ? e.message : "Erro ao carregar replay"))
       .finally(() => setLoading(false));
-  }, [tournamentId, handId, studentId, walk]);
+  }, [tournamentId, handId, studentId, coachMode]);
 
-  // Walkthrough: carrega a playlist da sessão (mãos que valem revisão, em ordem) e restringe a
-  // navegação a ela. Keyed no torneio (não na mão), então NÃO refaz ao avançar → handList estável.
+  // Modo coach LIGADO: carrega a playlist da sessão (mãos que valem revisão, em ordem) e restringe
+  // a navegação a ela. Keyed no torneio (não na mão) → handList estável ao avançar. Se a mão atual
+  // ficou de fora do filtro (ex.: entrou por um fold pré-flop), salta pra primeira mão que vale.
   useEffect(() => {
-    if (!walk || !tournamentId) return;
+    if (!coachMode || !tournamentId) return;
     let alive = true;
     metrics.coachReplay(tournamentId).then((d) => {
       if (!alive || !d?.hands?.length) return;
-      setHandList(d.hands.map((h) => h.hand_id));
+      const ids = d.hands.map((h) => h.hand_id);
+      setHandList(ids);
       const m: Record<string, CoachReplayHand> = {};
       d.hands.forEach((h) => { m[h.hand_id] = h; });
       setWalkMap(m);
+      if (handId && !m[handId]) {
+        navigate(`/replayer?t=${tournamentId}&h=${ids[0]}${studentId ? `&student=${studentId}` : ""}&coach=1`,
+          { replace: true });
+      }
     }).catch(() => {});
     return () => { alive = false; };
-  }, [walk, tournamentId]);
+  }, [coachMode, tournamentId]);
+
+  // Modo coach DESLIGADO: restaura a lista completa do torneio (todas as mãos) a partir das decisões.
+  useEffect(() => {
+    if (coachMode) return;
+    setWalkMap({});
+    if (decisions.length) {
+      const seen = new Set<string>();
+      const ids: string[] = [];
+      decisions.forEach((d) => {
+        if (d.hand_id && !seen.has(d.hand_id)) { seen.add(d.hand_id); ids.push(d.hand_id); }
+      });
+      setHandList(ids);
+    }
+  }, [coachMode, decisions]);
 
   // Prefetch em background: prioriza ADIANTE (o usuário avança) — as próximas PREFETCH_AHEAD mãos +
   // a anterior. Conforme avança, o useEffect re-dispara (handId muda) e a janela desliza, mantendo
@@ -1709,8 +1737,8 @@ const Replayer = () => {
   const nextHand = handIdx >= 0 && handIdx < handList.length - 1 ? handList[handIdx + 1] : null;
   // URL de outra mão do MESMO contexto (preserva coach-student e o modo walkthrough).
   const handHref = (h: string) =>
-    `/replayer?t=${tournamentId}&h=${h}${studentId ? `&student=${studentId}` : ""}${walk ? "&walk=1" : ""}`;
-  const walkCurrent = walk ? walkMap[handId] : undefined;
+    `/replayer?t=${tournamentId}&h=${h}${studentId ? `&student=${studentId}` : ""}${coachMode ? "&coach=1" : ""}`;
+  const walkCurrent = coachMode ? walkMap[handId] : undefined;
 
   // "Voltar" = LISTA DE MÃOS do torneio (/tournaments/:id), não a mão anterior do histórico do browser
   // (navegar entre mãos não deveria empilhar; o voltar leva de volta ao torneio). Coach (student) ou
@@ -2161,6 +2189,21 @@ const Replayer = () => {
                 PKO
               </span>
             )}
+            {/* Modo coach: pula os folds pré-flop óbvios e comenta cada mão que vale revisão. */}
+            {!studentId && (
+              <button
+                onClick={toggleCoach}
+                aria-pressed={coachMode}
+                title={coachMode ? "Desligar modo coach (ver todas as mãos)" : "Ligar modo coach (revisar só as mãos que importam, com comentário)"}
+                className={cn(
+                  "inline-flex items-center gap-1.5 rounded-md px-2 py-1 font-mono text-[10px] uppercase tracking-wider transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                  coachMode ? "bg-primary/15 text-primary ring-1 ring-primary/30"
+                            : "text-muted-foreground hover:bg-secondary hover:text-foreground")}
+              >
+                <GraduationCap className="size-3.5" />
+                <span className="hidden sm:inline">Coach</span>
+              </button>
+            )}
             <button
               onClick={focusMode ? exitFocus : enterFocus}
               aria-label={focusMode ? t("focus.exit") : t("focus.enter")}
@@ -2173,8 +2216,8 @@ const Replayer = () => {
           </div>
         </div>
 
-        {/* ── Coach Replay: barra do walkthrough (narração da mão + voltar à visão geral) ── */}
-        {walk && walkCurrent && (
+        {/* ── Modo coach: comentário do coach pra mão atual (só nas mãos que valem revisão) ── */}
+        {coachMode && walkCurrent && (
           <div className="shrink-0 mb-2 flex items-center gap-3 rounded-xl border border-primary/25 bg-primary/[0.06] px-4 py-2.5">
             <GraduationCap className="size-5 shrink-0 text-primary" aria-hidden />
             <p className="min-w-0 flex-1 truncate text-sm text-foreground">
@@ -2182,11 +2225,14 @@ const Replayer = () => {
               <span className="mx-2 text-muted-foreground">·</span>
               {walkCurrent.narration}
             </p>
-            <button
-              onClick={() => navigate(`/coach-replay/${tournamentId}`)}
-              className="shrink-0 inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 font-mono text-[10px] font-bold uppercase tracking-widest text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground">
-              <LayoutGrid className="size-3.5" aria-hidden /> Visão geral
-            </button>
+            <span className={cn(
+              "shrink-0 rounded-md px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider ring-1",
+              walkCurrent.verdict === "error" ? "bg-red-500/10 text-red-400 ring-red-500/25"
+              : walkCurrent.verdict === "acceptable" ? "bg-sky-500/10 text-sky-400 ring-sky-500/25"
+              : "bg-emerald-500/10 text-emerald-400 ring-emerald-500/20")}>
+              {walkCurrent.verdict === "error" ? "Erro" : walkCurrent.verdict === "acceptable" ? "Aceitável" : "Correto"}
+              {walkCurrent.ev_loss_bb > 0 && ` · -${walkCurrent.ev_loss_bb}bb`}
+            </span>
           </div>
         )}
 
