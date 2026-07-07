@@ -105,7 +105,7 @@
     "applyCta": "Jugar e importar",
     "gateTitle": "Jugar aún bloqueado",
     "gateHintDeveloping": "Aún en formación: domina tus {{count}} fugas más costosas en {{tier}} para desbloquear. Empieza por lo que más duele.",
-    "gateHintConsolidated": "Lo desbloquearás para jugar solo cuando domines TODAS tus {{count}} fugas en {{tier}}. Entrenar una sola fuga no basta, el objetivo es cubrir todos los spots.",
+    "gateHintConsolidated": "Jugar se desbloquea cuando TODAS tus {{count}} fugas lleguen a {{tier}}. Entrenar una sola fuga no basta: el objetivo es cubrir todos tus spots.",
     "morePending": "más aún en camino",
     "keepTraining": "Seguir entrenando",
     "beginnerTitle": "Primero, revela tu juego",

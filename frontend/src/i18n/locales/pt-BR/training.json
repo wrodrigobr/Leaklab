@@ -105,7 +105,7 @@
     "applyCta": "Jogar e importar",
     "gateTitle": "Jogar ainda bloqueado",
     "gateHintDeveloping": "Ainda em formação: domine seus {{count}} leaks mais custosos no {{tier}} pra liberar. Comece pelo que mais dói.",
-    "gateHintConsolidated": "Libere jogando só quando dominar TODOS os seus {{count}} leaks no {{tier}}. Treinar um leak só não basta, o objetivo é cobrir todos os spots.",
+    "gateHintConsolidated": "Jogar libera quando TODOS os seus {{count}} leaks chegarem ao {{tier}}. Treinar um leak só não basta: a meta é cobrir todos os seus spots.",
     "morePending": "outros ainda no caminho",
     "keepTraining": "Continuar treinando",
     "beginnerTitle": "Primeiro, revele seu jogo",
