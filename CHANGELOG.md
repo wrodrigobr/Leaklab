@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(upload): status do upload é "Torneio enviado", não "Analisado" (#ux)
+
+> Ao subir um torneio, a fila mostrava "Analisado ✓" assim que o envio concluía, mas nesse ponto o GTO ainda roda em background (por isso o selo "Analisando" persiste). "Analisado" superprometia. Trocado o label do status `done` da `UploadQueue` para "Torneio enviado ✓", coerente com o aviso de que a análise GTO continua processando. (As chaves i18n `analyzed` do dashboard/lista são outro contexto, torneio já processado, e ficam como estão.)
+
 ### feat(replayer): "modo coach" toggle no Replayer (pula fold pré-flop óbvio + comenta a mão); página Coach Replay removida (#flagship)
 
 > Uma página separada de Coach Replay per-hand não se justificava: era o Replayer com a lista filtrada e uma narração, ambos toggláveis no próprio Replayer. Então **dobramos no Replayer e matamos a tela**. O Replayer ganhou um toggle **"Coach"** (persistido em `localStorage`, ligável pela URL `?coach=1`): quando ligado, restringe a navegação prev/próxima às mãos que valem revisão (backend `coach_replay.py`: mantém a mão se viu o flop, OU tem erro/desvio via `verdict.verdict3` sobre `label`, OU foi all-in pré-flop; pula o grosso dos folds pré-flop corretos e os opens triviais, SNG 65→29, MTT 396→106) e mostra uma barra com o **comentário do coach** da mão (frase determinística, sem LLM, PT sem travessão) + o veredito/EV. Desligado, é o Replayer cru de sempre. Reusa `handList` + o progresso N/M que já existiam; o `coach` propaga na URL entre mãos (helper `handHref`) e salta pra 1ª mão que importa se você entrar por uma mão filtrada. Sem botão de entrada dedicado (dois botões pra mesma tela era redundante): o modo é o próprio toggle "Coach" dentro do Replayer. Removidos: `pages/CoachReplay.tsx`, a rota `/coach-replay/:tid` e o import. O endpoint `/player/coach-replay/<código>` continua (agora consumido pelo toggle).

@@ -42,7 +42,7 @@ const STATUS_ICON: Record<QueueStatus, React.ReactNode> = {
 const STATUS_LABEL: Record<QueueStatus, string> = {
   queued:     "Em fila",
   processing: "Processando…",
-  done:       "Analisado ✓",
+  done:       "Torneio enviado ✓",
   error:      "Erro",
 };
 
