@@ -1486,9 +1486,9 @@ function GtoWorkerTab() {
         const sh = data.solver_health!;
         const fmt = (s: number | null) =>
           s == null ? "—"
-          : s < 60 ? `${Math.round(s)}s`
-          : s < 3600 ? `${Math.floor(s / 60)}m ${Math.round(s % 60)}s`
-          : `${Math.floor(s / 3600)}h ${Math.round((s % 3600) / 60)}m`;
+          : s < 60 ? `${Math.floor(s)}s`
+          : s < 3600 ? `${Math.floor(s / 60)}m ${Math.floor(s % 60)}s`
+          : `${Math.floor(s / 3600)}h ${Math.floor((s % 3600) / 60)}m`;
         const srv = sh.server;
         const backlogHot = (sh.backlog.oldest_pending_age_sec ?? 0) > 1800;   // >30min esperando
         const errHot = sh.error_rate.pct >= 10;
