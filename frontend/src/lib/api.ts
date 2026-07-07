@@ -1307,22 +1307,29 @@ export interface DailyChallengePoolResponse {
   approved_unused: number;
 }
 
-// Coach Replay (#flagship) — os erros mais caros do torneio, na mesa real
-export interface CoachReplayMistake {
+// Coach Replay (#flagship) — o walkthrough da sessão: as mãos que valem revisão, na mesa real
+export type CoachReplayVerdict = "error" | "acceptable" | "correct";
+export interface CoachReplayHand {
+  seq: number;
   hand_id: string;
-  street: string;
-  street_pt: string;
   position: string;
-  hero_cards: string;         // ex "3d8h"
-  action_taken: string;
-  gto_action: string;
+  hero_cards: string;          // ex "3d8h"
+  street_reached: string;      // preflop|flop|turn|river
+  street_reached_pt: string;
+  verdict: CoachReplayVerdict;
   ev_loss_bb: number;
-  coach_note: string;
+  narration: string;
 }
 export interface CoachReplayData {
   tournament: { id: number; code: string | null; name: string; buy_in: number | null; hands: number };
-  intro: { hands_analyzed: number; mistakes_shown: number; ev_lost_bb: number };
-  mistakes: CoachReplayMistake[];
+  intro: {
+    hands_total: number;
+    hands_kept: number;
+    hands_skipped: number;
+    mistakes_count: number;
+    ev_lost_bb: number;
+  };
+  hands: CoachReplayHand[];
   plan: { week: number; focus: string }[];
   requires_pro?: boolean;
 }

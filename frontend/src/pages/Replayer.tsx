@@ -18,7 +18,7 @@ import { computeEffectiveGtoLabel } from "@/lib/gtoUtils";
 import { livePlayers as computeLivePlayers, isMultiwayPot, isPpMuted, idealActionSource, verdictStrategy, verdictLevel, clampVerdict, type VerdictLevel } from "@/lib/cardLogic";
 import { VerdictPill } from "@/components/replayer/VerdictPill";
 import { ACTION_COLORS } from "@/lib/actionColors";
-import { tournaments as tournamentsApi, coachDashboard, ReplayData, ReplayStep, TournamentDecision, CoachAnnotation, CoachOverrideLabel } from "@/lib/api";
+import { tournaments as tournamentsApi, coachDashboard, metrics, ReplayData, ReplayStep, TournamentDecision, CoachAnnotation, CoachOverrideLabel, type CoachReplayHand } from "@/lib/api";
 
 // ── Card parsing ──────────────────────────────────────────────────────────────
 
@@ -1507,6 +1507,10 @@ const Replayer = () => {
   const tournamentId = params.get("t") ?? "";
   const handId       = params.get("h") ?? "";
   const studentId    = params.get("student") ? Number(params.get("student")) : null;
+  // Coach Replay walkthrough: navega só pelas mãos que valem revisão (playlist filtrada) e
+  // mostra a narração do coach por mão. Ligado por ?walk=1 (a partir da página /coach-replay).
+  const walk         = params.get("walk") === "1";
+  const [walkMap, setWalkMap] = useState<Record<string, CoachReplayHand>>({});
 
   const [replayData, setReplayData] = useState<ReplayData | null>(null);
   const [loading, setLoading]       = useState(false);
@@ -1621,7 +1625,7 @@ const Replayer = () => {
             tournamentData.decisions.forEach((d) => {
               if (d.hand_id && !seen.has(d.hand_id)) { seen.add(d.hand_id); ids.push(d.hand_id); }
             });
-            setHandList(ids);
+            if (!walk) setHandList(ids);   // no walkthrough a playlist filtrada manda na navegação
             setDecisions(tournamentData.decisions);
           }
         });
@@ -1650,13 +1654,28 @@ const Replayer = () => {
           tournamentData.decisions.forEach((d) => {
             if (d.hand_id && !seen.has(d.hand_id)) { seen.add(d.hand_id); ids.push(d.hand_id); }
           });
-          setHandList(ids);
+          if (!walk) setHandList(ids);   // no walkthrough a playlist filtrada manda na navegação
           setDecisions(tournamentData.decisions);
         }
       })
       .catch((e: unknown) => setError(e instanceof Error ? e.message : "Erro ao carregar replay"))
       .finally(() => setLoading(false));
-  }, [tournamentId, handId, studentId]);
+  }, [tournamentId, handId, studentId, walk]);
+
+  // Walkthrough: carrega a playlist da sessão (mãos que valem revisão, em ordem) e restringe a
+  // navegação a ela. Keyed no torneio (não na mão), então NÃO refaz ao avançar → handList estável.
+  useEffect(() => {
+    if (!walk || !tournamentId) return;
+    let alive = true;
+    metrics.coachReplay(tournamentId).then((d) => {
+      if (!alive || !d?.hands?.length) return;
+      setHandList(d.hands.map((h) => h.hand_id));
+      const m: Record<string, CoachReplayHand> = {};
+      d.hands.forEach((h) => { m[h.hand_id] = h; });
+      setWalkMap(m);
+    }).catch(() => {});
+    return () => { alive = false; };
+  }, [walk, tournamentId]);
 
   // Prefetch em background: prioriza ADIANTE (o usuário avança) — as próximas PREFETCH_AHEAD mãos +
   // a anterior. Conforme avança, o useEffect re-dispara (handId muda) e a janela desliza, mantendo
@@ -1688,6 +1707,10 @@ const Replayer = () => {
   const handIdx  = handList.indexOf(handId);
   const prevHand = handIdx > 0 ? handList[handIdx - 1] : null;
   const nextHand = handIdx >= 0 && handIdx < handList.length - 1 ? handList[handIdx + 1] : null;
+  // URL de outra mão do MESMO contexto (preserva coach-student e o modo walkthrough).
+  const handHref = (h: string) =>
+    `/replayer?t=${tournamentId}&h=${h}${studentId ? `&student=${studentId}` : ""}${walk ? "&walk=1" : ""}`;
+  const walkCurrent = walk ? walkMap[handId] : undefined;
 
   // "Voltar" = LISTA DE MÃOS do torneio (/tournaments/:id), não a mão anterior do histórico do browser
   // (navegar entre mãos não deveria empilhar; o voltar leva de volta ao torneio). Coach (student) ou
@@ -2042,7 +2065,7 @@ const Replayer = () => {
 
         {/* Controles — extrema inferior-esquerda */}
         <div className="absolute bottom-[calc(0.5rem+env(safe-area-inset-bottom))] left-[calc(0.5rem+env(safe-area-inset-left))] z-30 flex items-center gap-1 rounded-full bg-background/80 backdrop-blur px-2 py-1 ring-1 ring-border shadow-lg">
-          <button onClick={() => { if (stepIdx > 0) setStepIdx(0); else if (prevHand) navigate(`/replayer?t=${tournamentId}&h=${prevHand}${studentId ? `&student=${studentId}` : ""}`, { replace: true }); }}
+          <button onClick={() => { if (stepIdx > 0) setStepIdx(0); else if (prevHand) navigate(handHref(prevHand), { replace: true }); }}
             disabled={stepIdx === 0 && !prevHand}
             className="inline-flex size-9 items-center justify-center rounded-full text-muted-foreground hover:bg-secondary hover:text-foreground disabled:opacity-30"><Rewind className="size-4" /></button>
           <button onClick={() => setStepIdx((i) => Math.max(0, i - 1))} disabled={stepIdx === 0}
@@ -2052,7 +2075,7 @@ const Replayer = () => {
             {playing ? <Pause className="size-4" /> : <Play className="size-4" />}</button>
           <button onClick={() => setStepIdx((i) => Math.min(steps.length - 1, i + 1))} disabled={stepIdx === steps.length - 1}
             className="inline-flex size-9 items-center justify-center rounded-full text-muted-foreground hover:bg-secondary hover:text-foreground disabled:opacity-30"><ChevronRight className="size-5" /></button>
-          <button onClick={() => { if (stepIdx < steps.length - 1) setStepIdx(steps.length - 1); else if (nextHand) navigate(`/replayer?t=${tournamentId}&h=${nextHand}${studentId ? `&student=${studentId}` : ""}`, { replace: true }); }}
+          <button onClick={() => { if (stepIdx < steps.length - 1) setStepIdx(steps.length - 1); else if (nextHand) navigate(handHref(nextHand), { replace: true }); }}
             disabled={stepIdx === steps.length - 1 && !nextHand}
             className="inline-flex size-9 items-center justify-center rounded-full text-muted-foreground hover:bg-secondary hover:text-foreground disabled:opacity-30"><FastForward className="size-4" /></button>
           <span className="px-1.5 font-mono text-[10px] text-muted-foreground tabular-nums">{stepIdx + 1}/{steps.length}</span>
@@ -2150,6 +2173,23 @@ const Replayer = () => {
           </div>
         </div>
 
+        {/* ── Coach Replay: barra do walkthrough (narração da mão + voltar à visão geral) ── */}
+        {walk && walkCurrent && (
+          <div className="shrink-0 mb-2 flex items-center gap-3 rounded-xl border border-primary/25 bg-primary/[0.06] px-4 py-2.5">
+            <GraduationCap className="size-5 shrink-0 text-primary" aria-hidden />
+            <p className="min-w-0 flex-1 truncate text-sm text-foreground">
+              <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-primary">Coach</span>
+              <span className="mx-2 text-muted-foreground">·</span>
+              {walkCurrent.narration}
+            </p>
+            <button
+              onClick={() => navigate(`/coach-replay/${tournamentId}`)}
+              className="shrink-0 inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 font-mono text-[10px] font-bold uppercase tracking-widest text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground">
+              <LayoutGrid className="size-3.5" aria-hidden /> Visão geral
+            </button>
+          </div>
+        )}
+
         {/* ── Main row: table (flex-1) + side panel (w-72, desktop only) ── */}
         {/* Mobile: 3 faixas em h-dvh sem scroll (mesa flex-1); desktop: row de altura fixa */}
         <div className="flex-1 min-h-0 flex flex-col lg:flex-row gap-3">
@@ -2216,7 +2256,7 @@ const Replayer = () => {
                 <button
                   onClick={() => {
                     if (stepIdx > 0) setStepIdx(0);
-                    else if (prevHand) navigate(`/replayer?t=${tournamentId}&h=${prevHand}${studentId ? `&student=${studentId}` : ""}`);
+                    else if (prevHand) navigate(handHref(prevHand));
                   }}
                   disabled={stepIdx === 0 && !prevHand}
                   className="inline-flex size-9 items-center justify-center rounded-md text-muted-foreground hover:bg-secondary hover:text-foreground disabled:opacity-30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -2236,7 +2276,7 @@ const Replayer = () => {
                 <button
                   onClick={() => {
                     if (stepIdx < steps.length - 1) setStepIdx(steps.length - 1);
-                    else if (nextHand) navigate(`/replayer?t=${tournamentId}&h=${nextHand}${studentId ? `&student=${studentId}` : ""}`);
+                    else if (nextHand) navigate(handHref(nextHand));
                   }}
                   disabled={stepIdx === steps.length - 1 && !nextHand}
                   className="inline-flex size-9 items-center justify-center rounded-md text-muted-foreground hover:bg-secondary hover:text-foreground disabled:opacity-30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
