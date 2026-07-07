@@ -455,9 +455,16 @@ docker compose up -d</pre>
     <p><code class="inl">crontab -e</code> (como <code class="inl">deploy</code>) e cole:</p>
     <pre>10 4 * * * cd /home/deploy/app &amp;&amp; /usr/bin/docker compose exec -T web python scripts/expire_subscriptions.py &gt;&gt; /home/deploy/app/cron.log 2&gt;&amp;1
 15 4 * * * cd /home/deploy/app &amp;&amp; /usr/bin/docker compose exec -T web python scripts/expire_coach_trials.py &gt;&gt; /home/deploy/app/cron.log 2&gt;&amp;1
-<span class="c"># Fase 9 — drena a gto_solver_queue (resolve postflop em background). flock evita sobreposição.</span>
-*/5 * * * * /usr/bin/flock -n /tmp/drain.lock sh -c 'cd /home/deploy/app &amp;&amp; /usr/bin/docker compose exec -T web python scripts/drain_solver_queue.py 10' &gt;&gt; /home/deploy/app/solver.log 2&gt;&amp;1</pre>
-    <div class="warn"><b>Importante:</b> use o caminho <b>absoluto</b> <code class="inl">/usr/bin/docker</code> (o cron tem PATH mínimo; um <code class="inl">PATH=</code> no crontab dava "bad minute"). Sem o cron do drain, os spots postflop ficam <b>pendentes pra sempre</b> e a cobertura GTO trava — o gunicorn NÃO roda os worker-threads.</div>
+<span class="c"># O drain do solver NÃO é mais cron — virou o serviço solver-consumer (ver abaixo).</span></pre>
+    <div class="tip"><b>Drain do solver = serviço dedicado (substitui o cron de 5min).</b> O drain virou um <b>consumidor de fila always-on</b> (<code class="inl">run_solver_consumer.py</code>): event-driven (acorda no instante do enqueue), drena até esvaziar e resolve com concorrência = <code class="inl">MAX_SOLVES</code> — sem a ociosidade entre lotes do cron. No <code class="inl">docker-compose.yml</code>, <b>duplique o serviço <code class="inl">web</code></b> (mesmo <code class="inl">build</code>, <code class="inl">env_file</code> e rede), renomeie para <code class="inl">solver-consumer</code> e troque só o comando:
+      <pre>  solver-consumer:
+    build: ./backend          <span class="c"># igual ao web</span>
+    env_file: .env            <span class="c"># igual ao web (DATABASE_URL, GTO_SOLVER_URL)</span>
+    environment:
+      - GTO_SOLVER_CONCURRENCY=2   <span class="c"># = MAX_SOLVES do solver</span>
+    command: python run_solver_consumer.py
+    restart: unless-stopped</pre>
+      Suba com <code class="inl">docker compose up -d --build solver-consumer</code> e <b>remova a linha <code class="inl">*/5 ... drain_solver_queue.py</code> do crontab</b>. <b>Um consumidor só</b> — não rode o serviço e o cron juntos.</div>
     <div class="test"><b>🧪 Teste:</b> rode uma vez na mão e veja a saída sem erro:
       <pre>docker compose exec -T web python scripts/expire_subscriptions.py
 docker compose exec -T web python scripts/drain_solver_queue.py 5   <span class="c"># drena a fila do solver agora</span></pre></div>

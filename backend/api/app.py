@@ -9489,8 +9489,13 @@ def _enqueue_postflop_spots(results: list, tournament_id: int = None) -> None:
 
 
 def _solver_queue_worker_loop():
-    """Worker em background: roda o solver Rust nos spots pendentes da gto_solver_queue a cada 60s."""
-    from leaklab.gto_solver import run_solver_worker
+    """Consumidor da fila do solver: EVENT-DRIVEN (acorda no instante do enqueue) + DRENA ATÉ
+    ESVAZIAR, com CONCORRÊNCIA = GTO_SOLVER_CONCURRENCY (satura os MAX_SOLVES do solver, em vez
+    de 1 solve por vez). Substitui o cron de 5min — sem ociosidade entre lotes. Roda como serviço
+    dedicado em prod (run_solver_consumer.py); em dev, atrás de LEAKLAB_LOCAL_SOLVER."""
+    from leaklab.gto_solver import run_solver_worker_pool
+    import os as _os
+    _conc = max(1, int(_os.environ.get('GTO_SOLVER_CONCURRENCY', '2')))
     time.sleep(15)  # aguardar app inicializar
     tick = 0
     while True:
@@ -9500,19 +9505,19 @@ def _solver_queue_worker_loop():
             # Reseta spots que ficaram em 'running' > 10 min (backend restart, crash, etc.)
             conn.execute("UPDATE gto_solver_queue SET status='pending' WHERE status='running' AND requested_at < datetime('now', '-10 minutes')")
             conn.commit()
-            stats = {r[0]: r[1] for r in conn.execute("SELECT status, COUNT(*) FROM gto_solver_queue GROUP BY status").fetchall()}
+            _pr = conn.execute("SELECT COUNT(*) FROM gto_solver_queue WHERE status='pending'").fetchone()
+            pending = (_pr[0] if _pr else 0) or 0
             conn.close()
-            pending = stats.get('pending', 0)
-            tick += 1
-            log.info("Solver queue [tick %s]: pending=%s running=%s done=%s failed=%s",
-                     tick, pending, stats.get('running', 0), stats.get('done', 0), stats.get('failed', 0))
             if pending > 0:
-                result = run_solver_worker(max_jobs=5)
-                log.info("Solver queue worker resultado: %s", result)
+                tick += 1
+                log.info("Solver queue [tick %s]: pending=%s conc=%s", tick, pending, _conc)
+                result = run_solver_worker_pool(max_jobs=min(pending, 50), concurrency=_conc)
+                log.info("Solver queue pool resultado: %s", result)
+                continue   # re-checa JÁ: drena enquanto houver fila, sem esperar os 60s
         except Exception:
             log.exception("Solver queue worker loop error")
-        # Fase 2 (plano solver): event-driven — o enqueue acorda o worker na hora;
-        # o timeout de 60s vira só varredura de segurança (resets, retries).
+        # Fila vazia → dorme até o próximo enqueue (event-driven); o timeout de 60s é só
+        # varredura de segurança (reset de 'running' preso, retries).
         try:
             from leaklab.solver_signals import solver_queue_event
             solver_queue_event.wait(timeout=60)

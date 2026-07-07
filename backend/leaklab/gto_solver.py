@@ -923,6 +923,44 @@ def run_solver_worker(max_jobs: int = 10) -> dict:
     return {'solved': solved, 'rejected': rejected, 'failed': failed, 'copied': copied}
 
 
+def run_solver_worker_pool(max_jobs: int = 10, concurrency: int = None) -> dict:
+    """Versão CONCORRENTE: roda `concurrency` workers em paralelo, cada um consumindo 1 job por
+    vez (`run_solver_worker(max_jobs=1)`) até a fila esvaziar ou atingir `max_jobs` no total.
+    Satura os slots do solver (MAX_SOLVES) em vez de 1 solve por vez. `concurrency` vem do env
+    GTO_SOLVER_CONCURRENCY (default 2, casar com MAX_SOLVES). Reusa o processador testado por job."""
+    if concurrency is None:
+        concurrency = max(1, int(os.environ.get('GTO_SOLVER_CONCURRENCY', '2')))
+    if concurrency <= 1:
+        return run_solver_worker(max_jobs=max_jobs)
+
+    import threading
+    from concurrent.futures import ThreadPoolExecutor
+    from collections import Counter
+    total = Counter()
+    lock = threading.Lock()
+    remaining = [max_jobs]
+
+    def _worker():
+        while True:
+            with lock:
+                if remaining[0] <= 0:
+                    return
+                remaining[0] -= 1
+            r = run_solver_worker(max_jobs=1)                    # claim + solve de 1 job (atômico no DB)
+            n = sum(r.get(k, 0) for k in ('solved', 'rejected', 'failed', 'copied'))
+            with lock:
+                for k in ('solved', 'rejected', 'failed', 'copied'):
+                    total[k] += r.get(k, 0)
+            if n == 0:
+                return   # fila vazia
+
+    with ThreadPoolExecutor(max_workers=concurrency) as ex:
+        futs = [ex.submit(_worker) for _ in range(concurrency)]
+        for f in futs:
+            f.result()
+    return {k: total[k] for k in ('solved', 'rejected', 'failed', 'copied')}
+
+
 def _requeue_with_more_iterations(spot_hash: str, spot: dict) -> None:
     """
     Recoloca spot na fila com parâmetros relaxados.
