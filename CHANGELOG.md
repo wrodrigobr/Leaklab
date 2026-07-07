@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(video): Short do Desafio no Stories vira Quiz nativo em 2 partes (pergunta + resposta) (#social)
+
+> O placeholder "enquete do Instagram aqui" estava cravado no vídeo, e a variante poll continha a resposta (Reveal) no mesmo clipe. Como o sticker de Quiz do Instagram **flutua a story inteira**, ele ficaria por cima da resposta o tempo todo (spoiler + poluição). Reestruturado: a composição única `DailyChallengeShortPoll` foi substituída por **duas stories** dedicadas: `DailyChallengeQuestion` (Hook + spot, segurando na pergunta ~10s, com a área do sticker limpa a duração toda) e `DailyChallengeReveal` (Suspense + veredito GTO + CTA, ~13s, sem sticker, postada em seguida). Removido o placeholder gravado. O `DailyChallengeShort` completo (opções e resposta embutidas) segue pro Reels/feed, onde não há sticker. Renders: `out/desafio-do-dia-pergunta.mp4` e `out/desafio-do-dia-resposta.mp4`.
+
 ### fix(upload): status do upload é "Torneio enviado", não "Analisado" (#ux)
 
 > Ao subir um torneio, a fila mostrava "Analisado ✓" assim que o envio concluía, mas nesse ponto o GTO ainda roda em background (por isso o selo "Analisando" persiste). "Analisado" superprometia. Trocado o label do status `done` da `UploadQueue` para "Torneio enviado ✓", coerente com o aviso de que a análise GTO continua processando. (As chaves i18n `analyzed` do dashboard/lista são outro contexto, torneio já processado, e ficam como estão.)

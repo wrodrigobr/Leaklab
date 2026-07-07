@@ -67,14 +67,9 @@ const Setup: React.FC<{ pollMode?: boolean }> = ({ pollMode }) => {
       <div style={{ opacity: fade(f, 8), transform: `translateY(${interpolate(fade(f, 8), [0, 1], [30, 0])}px)` }}><HeroCards /></div>
       <div style={{ fontFamily: THEME.heading, fontWeight: 700, fontSize: 72, color: THEME.light, opacity: fade(f, 20) }}>O que você faz?</div>
       {pollMode ? (
-        // variante Stories: deixa o espaço pro sticker de Quiz nativo do Instagram (fold/call/raise/shove)
-        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 12, opacity: fade(f, 28) }}>
-          <div style={{ width: 620, height: 200, borderRadius: 24, border: `3px dashed ${THEME.teal}`, opacity: 0.5,
-            display: "flex", alignItems: "center", justifyContent: "center", fontFamily: THEME.mono, fontSize: 30, color: THEME.teal }}>
-            enquete do Instagram aqui
-          </div>
-          <div style={{ fontFamily: THEME.body, fontSize: 34, color: THEME.muted }}>vote e veja se acertou</div>
-        </div>
+        // variante Stories: NÃO cravar nada aqui. Só reserva o espaço em branco pro sticker de Quiz
+        // nativo do Instagram (fold/call/raise/shove), que você coloca na hora de publicar.
+        <div style={{ width: 620, height: 248 }} />
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 20, opacity: fade(f, 28) }}>
           {(spot.options as string[]).map((a) => <Chip key={a} label={actLabel(a)} />)}
@@ -166,3 +161,37 @@ export const DailyChallengeShort: React.FC<{ pollMode?: boolean }> = ({ pollMode
 );
 
 export const SHORT_DURATION = (3 + 5 + 3 + 7 + 3) * FPS;
+
+const Bg: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+  <AbsoluteFill style={{ background: THEME.bg }}>
+    <AbsoluteFill style={{ background: "radial-gradient(ellipse at 50% 35%, rgba(45,212,191,0.10), transparent 60%)" }} />
+    {children}
+    <Header />
+  </AbsoluteFill>
+);
+
+// ── Variante Stories (Quiz nativo do Instagram) ──────────────────────────────
+// No Stories o sticker de Quiz flutua a DURAÇÃO INTEIRA da story, então o vídeo
+// NÃO pode conter a resposta (ela ficaria embaixo do sticker). Por isso o Quiz é
+// em DUAS stories: 1) a PERGUNTA (segura no spot, área do sticker limpa o tempo
+// todo); 2) a RESPOSTA (Suspense + veredito + CTA), postada em seguida, sem sticker.
+export const DailyChallengeQuestion: React.FC = () => (
+  <Bg>
+    <Series>
+      <Series.Sequence durationInFrames={3 * FPS}><Hook /></Series.Sequence>
+      <Series.Sequence durationInFrames={7 * FPS}><Setup pollMode /></Series.Sequence>
+    </Series>
+  </Bg>
+);
+export const QUESTION_DURATION = (3 + 7) * FPS;
+
+export const DailyChallengeReveal: React.FC = () => (
+  <Bg>
+    <Series>
+      <Series.Sequence durationInFrames={3 * FPS}><Suspense /></Series.Sequence>
+      <Series.Sequence durationInFrames={7 * FPS}><Reveal /></Series.Sequence>
+      <Series.Sequence durationInFrames={3 * FPS}><CTA /></Series.Sequence>
+    </Series>
+  </Bg>
+);
+export const REVEAL_DURATION = (3 + 7 + 3) * FPS;
