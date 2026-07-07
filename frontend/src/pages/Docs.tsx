@@ -483,6 +483,7 @@ export default function Docs() {
               <p dangerouslySetInnerHTML={{ __html: t("ghost.p1") }} />
               <p>{t("ghost.p2")}</p>
               <p>{t("ghost.variety")}</p>
+              <p>{t("ghost.streetFocus")}</p>
               <p>{t("ghost.validation")}</p>
               <Table
                 headers={[t("ghost.col_result"), t("ghost.col_next")]}

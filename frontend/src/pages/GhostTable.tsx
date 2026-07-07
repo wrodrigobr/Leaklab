@@ -300,6 +300,7 @@ export default function GhostTable() {
   const [sessionTotal, setSessionTotal]     = useState(0);
   const [loadError, setLoadError]           = useState("");
   const [noSpotsFound, setNoSpotsFound]     = useState(false);
+  const [streetFilter, setStreetFilter]     = useState<string | null>(null);   // null = todas as streets
   const [requiresPro, setRequiresPro]       = useState(false);   // Ghost/SRS é Pro
   const [submitting, setSubmitting]         = useState(false);
   const [analysis, setAnalysis]             = useState<string | null>(null);
@@ -404,7 +405,7 @@ export default function GhostTable() {
     setNoSpotsFound(false);
     setStreak(0);
     try {
-      const data = await drill.spots({ limit: 10 });
+      const data = await drill.spots({ limit: 10, street: streetFilter ?? undefined });
       if (data.requires_pro) { setRequiresPro(true); setPhase("intro"); return; }
       setStats(data.stats);
       if (!data.spots.length) { setNoSpotsFound(true); setPhase("intro"); return; }
@@ -1018,7 +1019,7 @@ export default function GhostTable() {
           )}
           {(noSpotsFound || (stats && stats.total === 0)) && !loadError && (
             <p className="rounded-lg border border-border bg-hud-surface p-5 text-center text-sm text-muted-foreground">
-              {t("noSpots")}
+              {noSpotsFound && streetFilter ? t("noSpotsStreet", { street: t(`street.${streetFilter}`) }) : t("noSpots")}
             </p>
           )}
           {loadError && (
@@ -1026,6 +1027,32 @@ export default function GhostTable() {
               {loadError}
             </p>
           )}
+
+          {/* Foco por street: treina só os erros da rua escolhida (ex.: turn). Termos de poker
+              (flop/turn/river) não se traduzem; só o rótulo e "Todas" são i18n. */}
+          <div>
+            <p className="mb-2 font-mono text-[10px] uppercase tracking-wider text-muted-foreground">{t("streetFilter.title")}</p>
+            <div className="flex flex-wrap gap-2">
+              {([null, "preflop", "flop", "turn", "river"] as const).map((s) => {
+                const active = streetFilter === s;
+                return (
+                  <button
+                    key={s ?? "all"}
+                    type="button"
+                    onClick={() => setStreetFilter(s)}
+                    className={cn(
+                      "rounded-md border px-3 py-1.5 font-mono text-[11px] font-bold uppercase tracking-wider transition-colors",
+                      active
+                        ? "border-primary bg-primary/15 text-primary"
+                        : "border-border bg-hud-surface text-muted-foreground hover:text-foreground hover:border-border/80"
+                    )}
+                  >
+                    {s === null ? t("streetFilter.all") : t(`street.${s}`)}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
 
           {/* Pressure mode toggle */}
           <button

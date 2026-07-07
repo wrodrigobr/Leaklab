@@ -7,6 +7,11 @@
   "resetConfirmYes": "Yes, reset",
   "resetConfirmNo": "Cancel",
   "noSpots": "No spots available for drill right now. Import more tournaments or wait 7 days to review already-drilled spots.",
+  "noSpotsStreet": "No {{street}} mistakes to drill right now. Pick another street or go back to All.",
+  "streetFilter": {
+    "title": "Focus by street",
+    "all": "All"
+  },
   "done": "Session complete",
   "doneSub": "You've finished all spots in this session.",
   "doneAccuracy": "Accuracy: {{pct}}%",

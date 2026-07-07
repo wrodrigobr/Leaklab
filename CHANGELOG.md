@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(ghost): foco por street no Ghost Table (treinar só os erros do turn, etc.) (#training)
+
+> O treino do Leak Trainer é preflop-only e por posição, então quem via no dashboard que sangra numa rua (ex.: turn) não tinha como treinar aquilo. O Ghost Table já drilla os SEUS erros reais de todas as ruas (críticos + desvios) com repetição espaçada (SRS), e o backend já aceitava filtro de street (`get_drill_spots(street=...)`, o endpoint `/player/spots/drill` também), só não estava exposto. Adicionado um seletor de street na tela inicial do Ghost (Todas · Pré-flop · Flop · Turn · River): escolhe a rua e a sessão vira só os erros daquela street, reincidindo pelo SRS. Zero mudança de backend (só wiring do parâmetro já existente + UI + i18n PT/EN/ES + doc do Ghost). Mensagem de vazio dedicada quando a rua escolhida não tem erro pendente. (Modo street DENTRO do Leak Trainer adaptativo fica como frente maior, depende de fechar a cobertura GTO postflop.)
+
 ### fix(training): copy do gate do passo "Jogar" mais clara (3 línguas) (#ux)
 
 > O aviso de bloqueio do passo Jogar começava com "Libere jogando só quando dominar TODOS os seus 12 leaks no Diamante", que confundia o nome do passo (Jogar) com o verbo e ficava truncado. Reescrito nomeando o passo e a condição: "Jogar libera quando TODOS os seus {{count}} leaks chegarem ao {{tier}}. Treinar um leak só não basta: a meta é cobrir todos os seus spots." Atualizado em PT/EN/ES, sem travessão. (Só a variante `gateHintConsolidated`; a `gateHintDeveloping` já estava clara.)

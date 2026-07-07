@@ -7,6 +7,11 @@
   "resetConfirmYes": "Sí, reiniciar",
   "resetConfirmNo": "Cancelar",
   "noSpots": "No hay spots disponibles para drill en este momento. Importa más torneos o espera 7 días para revisar los spots ya entrenados.",
+  "noSpotsStreet": "No hay errores en el {{street}} para entrenar ahora. Elige otra street o vuelve a Todas.",
+  "streetFilter": {
+    "title": "Enfoque por street",
+    "all": "Todas"
+  },
   "done": "Sesión completada",
   "doneSub": "Has terminado todos los spots de esta sesión.",
   "doneAccuracy": "Precisión: {{pct}}%",

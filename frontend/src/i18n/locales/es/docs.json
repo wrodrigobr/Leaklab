@@ -277,7 +277,8 @@
     "result_miss": "Error",
     "result_mastery": "Mastery",
     "validation": "Cada respuesta se valida contra el GTO Solver. Cuando existe el análisis de tu mano exacta, la corrección usa SU estrategia (sello \"Solver · tu mano\"); si no, la estrategia de la range para el spot (\"Solver · range\"). Sin cobertura del solver, la validación es heurística del engine, y el sello ámbar lo deja explícito. Jugadas dentro del mix del solver cuentan como correctas (línea mixta); fuera del mix, error.",
-    "variety": "Los spots vienen de TUS errores (no manos aleatorias), priorizados por severidad y repetición espaciada (SRS), y cada sesión varía los tipos de spot para que no repitas la misma situación diez veces."
+    "variety": "Los spots vienen de TUS errores (no manos aleatorias), priorizados por severidad y repetición espaciada (SRS), y cada sesión varía los tipos de spot para que no repitas la misma situación diez veces.",
+    "streetFocus": "También puedes enfocar la sesión en una street específica (preflop, flop, turn o river). Útil cuando un indicador muestra que sangras en una calle: revisas y entrenas solo esos errores, de forma recurrente, hasta entender dónde fallaste y cómo deberías haber jugado."
   },
   "compare": {
     "title": "Comparativo de Torneos",

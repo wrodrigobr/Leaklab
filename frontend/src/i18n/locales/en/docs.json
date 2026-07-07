@@ -277,7 +277,8 @@
     "result_miss": "Miss",
     "result_mastery": "Mastery",
     "validation": "Every answer is validated against the GTO Solver. When your exact hand's analysis exists, grading uses ITS strategy (\"Solver · your hand\" badge); otherwise the range strategy for the spot (\"Solver · range\"). Without solver coverage, validation falls back to the engine heuristic, and the amber badge makes that explicit. Plays inside the solver's mix count as correct (mixed line); outside the mix, error.",
-    "variety": "Spots come from YOUR mistakes (not random hands), prioritized by severity and spaced repetition (SRS), and each session varies spot types so you don't repeat the same situation ten times."
+    "variety": "Spots come from YOUR mistakes (not random hands), prioritized by severity and spaced repetition (SRS), and each session varies spot types so you don't repeat the same situation ten times.",
+    "streetFocus": "You can also focus a session on a specific street (preflop, flop, turn or river). Handy when an indicator shows you're bleeding on one street: you review and drill just those mistakes, on repeat, until you understand where you went wrong and how you should have played."
   },
   "compare": {
     "title": "Tournament Comparison",
