@@ -8,7 +8,8 @@
     "render": "remotion render Aula1Conceitos out/aula1-conceitos.mp4",
     "render:pt": "remotion render Aula1Conceitos out/aula1-conceitos-pt.mp4",
     "upgrade": "remotion upgrade",
-    "voiceover": "node scripts/generate_voiceover.mjs"
+    "voiceover": "node scripts/generate_voiceover.mjs",
+    "posts": "node scripts/render-posts.mjs"
   },
   "dependencies": {
     "@remotion/cli": "4.0.484",

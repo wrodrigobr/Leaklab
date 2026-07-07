@@ -16,6 +16,9 @@ backend/*.txt
 backend/*.ots
 frontend/src/assets/logo_ps.png
 
+# Fila transitória dos posts do Desafio do Dia (regenerada pelo curador a cada run)
+video/src/data/challenge_queue/
+
 # Node
 node_modules/
 .vercel/
