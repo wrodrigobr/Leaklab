@@ -965,6 +965,19 @@ def _run_migrations(conn):
         ]:
             try: conn.execute(sql)
             except Exception: pass
+        # gto_tournament_queue (Postgres) — vínculo torneio↔spot enfileirado (ver SQLite acima):
+        # "Analisando" per-torneio (spot deste torneio na fila ativa), imune a upload de terceiros.
+        try:
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS gto_tournament_queue (
+                    tournament_id INTEGER NOT NULL,
+                    spot_hash     TEXT    NOT NULL,
+                    created_at    TIMESTAMP NOT NULL DEFAULT NOW(),
+                    PRIMARY KEY (tournament_id, spot_hash)
+                )
+            """)
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_gtq_hash ON gto_tournament_queue(spot_hash)")
+        except Exception: pass
         # Fase 3 (plano solver): tabela por mão da árvore (Postgres)
         try:
             conn.execute("""
@@ -1750,6 +1763,20 @@ def _run_migrations(conn):
             try: conn.execute("ALTER TABLE gto_solver_queue ADD COLUMN tree_hash TEXT")
             except Exception: pass
 
+        # gto_tournament_queue (SQLite) — vínculo torneio↔spot_hash enfileirado. A fila é global e
+        # dedup por spot_hash (sem dono); sem esse mapa, o sinal "Analisando" tinha de usar a fila
+        # GLOBAL como proxy → o upload de um usuário acendia o torneio recente de outro. Com o mapa,
+        # "Analisando" = um spot DESTE torneio está na fila ativa (per-torneio, imune a terceiros).
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS gto_tournament_queue (
+                tournament_id INTEGER NOT NULL,
+                spot_hash     TEXT    NOT NULL,
+                created_at    TEXT    NOT NULL DEFAULT (datetime('now')),
+                PRIMARY KEY (tournament_id, spot_hash)
+            )
+        """)
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_gtq_hash ON gto_tournament_queue(spot_hash)")
+
         # player_elo_history (SQLite) — snapshots de ELO calculados ao longo do
         # tempo. Cada linha é o estado do ELO do user em um momento (apos
         # processar X decisoes). Permite gráfico de evolução + diff semanal.
@@ -2067,7 +2094,7 @@ class _AdaptedConn:
 
     # Tabelas sem coluna `id` (chave natural): não acrescentar RETURNING id nelas.
     _NO_ID_TABLES = {'revalidation_llm_cache', 'gto_preflop_capture', 'gto_tree_strategies',
-                     'daily_challenge_schedule'}
+                     'daily_challenge_schedule', 'gto_tournament_queue'}
 
     def _pg_insert_returning(self, sql: str) -> str:
         """Postgres não popula lastrowid. Para INSERTs em tabelas com `id`, acrescenta

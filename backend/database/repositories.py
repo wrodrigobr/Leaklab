@@ -719,7 +719,14 @@ def get_tournaments(user_id: int, limit: int = 50) -> List[dict]:
                         AND ghr.created_at > ?) AS gto_inflight,
                    -- atividade recente (qualquer status) — gate do fallback de cobertura.
                    (SELECT COUNT(*) FROM gto_hand_requests ghr
-                      WHERE ghr.tournament_id = t.id AND ghr.created_at > ?) AS gto_recent
+                      WHERE ghr.tournament_id = t.id AND ghr.created_at > ?) AS gto_recent,
+                   -- SINAL PER-TORNEIO (imune a terceiros): um spot DESTE torneio está na fila ativa?
+                   -- Vínculo torneio↔spot_hash gravado na importação (gto_tournament_queue). Substitui
+                   -- o antigo proxy de "fila GLOBAL ativa", que acendia torneio recente de um usuário
+                   -- quando OUTRO subia torneios.
+                   (SELECT COUNT(*) FROM gto_tournament_queue m
+                      JOIN gto_solver_queue q ON q.spot_hash = m.spot_hash
+                      WHERE m.tournament_id = t.id AND q.status IN ('pending','running')) AS gto_tq_busy
             FROM tournaments t
             LEFT JOIN decisions d ON d.tournament_id = t.id
             WHERE t.user_id = ?
@@ -727,18 +734,11 @@ def get_tournaments(user_id: int, limit: int = 50) -> List[dict]:
             ORDER BY t.imported_at DESC
             LIMIT ?
         """, (_gto_cutoff, _gto_cutoff, user_id, limit)).fetchall()
-        # "Analisando" é POR TORNEIO, mas a fila (gto_solver_queue) é dedup por spot_hash (sem link de
-        # torneio) E a importação NÃO cria gto_hand_requests — então inflight/recent não disparam em
-        # import novo. Régua: o torneio foi importado RECENTEMENTE (imported_at, sinal que SÓ ele tem,
-        # criado na importação) E a fila está ATIVA (_solver_busy) → está sendo solvado. O gate de
-        # imported_at impede o global de acender torneios ANTIGOS (eles têm imported_at velho).
-        try:
-            _busy_row = conn.execute(
-                "SELECT COUNT(*) AS n FROM gto_solver_queue WHERE status IN ('pending','running')"
-            ).fetchone()
-            _solver_busy = (dict(_busy_row).get('n', 0) or 0) > 0
-        except Exception:
-            _solver_busy = False
+        # "Analisando" é POR TORNEIO. Antes usava a fila GLOBAL como proxy (_recent_import E fila
+        # ativa), o que acendia o torneio recente de um usuário quando OUTRO subia torneios (a fila
+        # é global, sem dono). Agora o sinal é o vínculo torneio↔spot da importação (gto_tq_busy):
+        # um spot DESTE torneio está na fila ativa → imune a terceiros, e assenta quando os spots
+        # dele terminam.
         result = []
         for r in rows:
             t = dict(r)
@@ -750,16 +750,15 @@ def get_tournaments(user_id: int, limit: int = 50) -> List[dict]:
             post_t = t.pop('post_total', 0) or 0; post_g = t.pop('post_gto', 0) or 0
             t['preflop_coverage_pct']  = round(pre_g * 100.0 / pre_t, 1) if pre_t else None
             t['postflop_coverage_pct'] = round(post_g * 100.0 / post_t, 1) if post_t else None
-            # "analisando" = há spot HU postflop descoberto NESTE torneio (_solvable_uncov) E ((foi
-            # importado recentemente E a fila está ativa) OU tem request próprio não-terminal _inflight,
-            # ex.: solve por-mão no replayer). imported_at recente é o que dispara em import novo (a
-            # importação não cria gto_hand_requests); o gate por-torneio impede o global de acender
-            # antigos. Settle p/ "Analisado" quando a fila esvazia (solver terminou) ou imported_at >24h.
+            # "analisando" = há spot HU postflop descoberto NESTE torneio (_solvable_uncov) E (um spot
+            # DESTE torneio está na fila ativa _tq_busy, disparado na importação, OU tem request próprio
+            # não-terminal _inflight, ex.: solve por-mão no replayer). Tudo per-torneio → o upload de
+            # outro usuário não acende o seu. Assenta p/ "Analisado" quando os spots dele saem da fila.
             _inflight = t.pop('gto_inflight', 0) or 0
             _solvable_uncov = t.pop('post_solvable_uncov', 0) or 0
+            _tq_busy = t.pop('gto_tq_busy', 0) or 0
             t.pop('gto_recent', 0)
-            _recent_import = bool(t.get('imported_at') and str(t['imported_at']) > _gto_cutoff)
-            t['solver_analyzing'] = bool(_solvable_uncov > 0 and ((_recent_import and _solver_busy) or _inflight > 0))
+            t['solver_analyzing'] = bool(_solvable_uncov > 0 and (_tq_busy > 0 or _inflight > 0))
             result.append(t)
         return result
     finally:
@@ -8873,7 +8872,7 @@ def get_ev_summary(user_id: int) -> dict:
 
 
 def enqueue_solver_spot(spot_hash: str, spot_json: str, priority: int = 5,
-                        tree_hash: str = None) -> bool:
+                        tree_hash: str = None, tournament_id: int = None) -> bool:
     """
     Adiciona spot à fila do solver. Retorna True se inserido ou reenfileirado.
     Spots com status done/failed/requeued são resetados para pending (permite
@@ -8892,6 +8891,17 @@ def enqueue_solver_spot(spot_hash: str, spot_json: str, priority: int = 5,
             tree_hash = None
     conn = get_conn()
     try:
+        # vínculo torneio↔spot pro sinal "Analisando" per-torneio (imune a upload de terceiros).
+        # Sempre mapeia (mesmo se o spot já estava na fila): o torneio precisa dele e ele está ativo.
+        if tournament_id is not None:
+            try:
+                conn.execute(_adapt(
+                    "INSERT OR IGNORE INTO gto_tournament_queue (tournament_id, spot_hash) VALUES (?, ?)"),
+                    (tournament_id, spot_hash))
+                conn.commit()
+            except Exception:
+                try: conn.rollback()
+                except Exception: pass
         existing = _fetchone(conn, _adapt("SELECT id, status FROM gto_solver_queue WHERE spot_hash = ?"), (spot_hash,))
         if existing:
             if existing['status'] in ('done', 'failed', 'requeued'):

@@ -944,7 +944,7 @@ def _analyze_impl():
     # Enfileirar spots postflop novos para o solver GTO em background
     threading.Thread(
         target=_enqueue_postflop_spots,
-        args=(results,),
+        args=(results, t_db_id),
         daemon=True,
         name='gto-upload-enqueue',
     ).start()
@@ -9306,10 +9306,12 @@ def _auto_queue_gto_for_tournament(t_db_id: int, results: list, user_id: int) ->
         log.exception("GTO auto-queue falhou para t_db=%d", t_db_id)
 
 
-def _enqueue_postflop_spots(results: list) -> None:
+def _enqueue_postflop_spots(results: list, tournament_id: int = None) -> None:
     """
     Enfileira na gto_solver_queue todos os spots postflop do upload que ainda
     não existam em gto_nodes. Roda em background — não bloqueia a resposta ao usuário.
+    `tournament_id`: grava o vínculo torneio↔spot (gto_tournament_queue) pro sinal
+    "Analisando" ser per-torneio (imune a upload de terceiros).
     """
     from leaklab.gto_utils import compute_spot_hash, normalize_position
     from database.repositories import get_gto_node, enqueue_solver_spot
@@ -9362,7 +9364,7 @@ def _enqueue_postflop_spots(results: list) -> None:
                           'street': d['street'], 'board': board},
             }, sort_keys=True)
 
-            if enqueue_solver_spot(spot_hash, payload, priority=_priority(d['street'])):
+            if enqueue_solver_spot(spot_hash, payload, priority=_priority(d['street']), tournament_id=tournament_id):
                 enqueued += 1
 
             # AUTOMÁTICO DEEP: spot postflop FUNDO (>35bb) → ALÉM do real, enfileira a variante
@@ -9386,7 +9388,7 @@ def _enqueue_postflop_spots(results: list) -> None:
                                   'approx_of_stack': stack, 'deep_approx': True,
                                   'street': d['street'], 'board': board},
                     }, sort_keys=True)
-                    if enqueue_solver_spot(_h30, _pay30, priority=_priority(d['street'])):
+                    if enqueue_solver_spot(_h30, _pay30, priority=_priority(d['street']), tournament_id=tournament_id):
                         enqueued += 1
         except Exception:
             pass
