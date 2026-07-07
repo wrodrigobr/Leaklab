@@ -2468,6 +2468,19 @@ export interface GtoWorkerStatus {
   };
   hand_queue: Record<string, number>;
   solver_queue: Record<string, number>;
+  solver_health?: {
+    resolution: { avg_sec: number | null; p95_sec: number | null; sample: number };
+    throughput: { last_1h: number; last_24h: number };
+    backlog: { pending: number; running: number; oldest_pending_age_sec: number | null };
+    error_rate: { failed: number; done: number; pct: number };
+    server: {
+      url: string | null;
+      reachable: boolean;
+      latency_ms: number | null;
+      status: string | null;
+      gto_wizard: string | null;
+    };
+  };
   throughput: Array<{ hour: string; count: number }>;
   coverage: Record<string, number>;
   recent_errors: Array<{

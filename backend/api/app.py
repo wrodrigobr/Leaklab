@@ -8263,8 +8263,99 @@ def admin_gto_worker_status():
         if not is_active and hand_counts.get('running', 0) > 0:
             is_active = True
 
+        # ── Fase 1: saúde do SOLVER (tempo de resolução, vazão, backlog, taxa de erro) ──
+        # Tudo derivado da gto_solver_queue (requested_at + solved_at) — sem tocar no solver.
+        import datetime as _dtm
+
+        def _to_dt(v):
+            if v is None:
+                return None
+            if hasattr(v, 'isoformat') and not isinstance(v, str):
+                return v if getattr(v, 'tzinfo', None) else v.replace(tzinfo=_dtm.timezone.utc)
+            try:
+                s = str(v).strip().replace(' ', 'T').replace('Z', '')
+                d = _dtm.datetime.fromisoformat(s)
+                return d if d.tzinfo else d.replace(tzinfo=_dtm.timezone.utc)
+            except Exception:
+                return None
+
+        _now_utc = _dtm.datetime.now(_dtm.timezone.utc)
+        _cut1h = (_dtm.datetime.utcnow() - _dtm.timedelta(hours=1)).strftime('%Y-%m-%d %H:%M:%S')
+        _cut24 = (_dtm.datetime.utcnow() - _dtm.timedelta(hours=24)).strftime('%Y-%m-%d %H:%M:%S')
+
+        # tempo de resolução END-TO-END (enfileirado → resolvido) das últimas 24h. Janela recente
+        # de propósito: incluir backlog antigo (spot que ficou semanas na fila) distorce o número,
+        # não reflete a operação atual. Inclui a espera na fila; o solve PURO vem na Fase 3.
+        _res_rows = _fetchall(conn, _adapt(
+            "SELECT requested_at, solved_at FROM gto_solver_queue "
+            "WHERE solved_at IS NOT NULL AND solved_at >= ? ORDER BY solved_at DESC LIMIT 500"), (_cut24,))
+        _durs = []
+        for _r in _res_rows:
+            _a = _to_dt(_r['requested_at']); _b = _to_dt(_r['solved_at'])
+            if _a and _b:
+                _d = (_b - _a).total_seconds()
+                if _d >= 0:
+                    _durs.append(_d)
+        _durs.sort()
+
+        def _pctl(p):
+            if not _durs:
+                return None
+            _i = min(len(_durs) - 1, int(round(p / 100.0 * (len(_durs) - 1))))
+            return round(_durs[_i], 1)
+
+        # vazão (solves concluídos na janela)
+        _tp1 = _fetchone(conn, _adapt("SELECT COUNT(*) AS n FROM gto_solver_queue WHERE solved_at >= ?"), (_cut1h,))
+        _tp24 = _fetchone(conn, _adapt("SELECT COUNT(*) AS n FROM gto_solver_queue WHERE solved_at >= ?"), (_cut24,))
+        # backlog: idade do pendente mais antigo
+        _oldest = _fetchone(conn, _adapt(
+            "SELECT MIN(requested_at) AS ts FROM gto_solver_queue WHERE status = 'pending'"))
+        _oldest_dt = _to_dt(_oldest['ts']) if _oldest else None
+        _oldest_age = round((_now_utc - _oldest_dt).total_seconds()) if _oldest_dt else None
+        # taxa de erro recente (24h)
+        _ef = _fetchone(conn, _adapt(
+            "SELECT SUM(CASE WHEN status='failed' THEN 1 ELSE 0 END) AS f, "
+            "SUM(CASE WHEN status='done' THEN 1 ELSE 0 END) AS d "
+            "FROM gto_solver_queue WHERE requested_at >= ?"), (_cut24,))
+        _fail = (_ef['f'] or 0) if _ef else 0
+        _donec = (_ef['d'] or 0) if _ef else 0
+        _err_pct = round(_fail * 100.0 / (_fail + _donec), 1) if (_fail + _donec) else 0.0
+
+        solver_health = {
+            'resolution': {
+                'avg_sec': round(sum(_durs) / len(_durs), 1) if _durs else None,
+                'p95_sec': _pctl(95),
+                'sample':  len(_durs),
+            },
+            'throughput': {'last_1h': (_tp1['n'] if _tp1 else 0), 'last_24h': (_tp24['n'] if _tp24 else 0)},
+            'backlog': {
+                'pending': solver_counts.get('pending', 0),
+                'running': solver_counts.get('running', 0),
+                'oldest_pending_age_sec': _oldest_age,
+            },
+            'error_rate': {'failed': _fail, 'done': _donec, 'pct': _err_pct},
+        }
+
     finally:
         conn.close()
+
+    # ── Servidor do solver: reachability + latência (ping no /health que já existe) ──
+    _server = {'url': None, 'reachable': False, 'latency_ms': None, 'status': None, 'gto_wizard': None}
+    try:
+        import os as _os3, time as _t3, json as _j3, urllib.request as _u3
+        _surl = (_os3.environ.get('GTO_SOLVER_URL', '') or '').rstrip('/')
+        _server['url'] = _surl or None
+        if _surl:
+            _t0 = _t3.time()
+            with _u3.urlopen(_surl + '/health', timeout=4) as _resp:
+                _body = _j3.loads(_resp.read().decode('utf-8'))
+            _server['latency_ms'] = round((_t3.time() - _t0) * 1000)
+            _server['reachable'] = True
+            _server['status'] = _body.get('status')
+            _server['gto_wizard'] = _body.get('gto_wizard')
+    except Exception:
+        pass
+    solver_health['server'] = _server
 
     # ── Estado do worker (3 níveis, p/ não confundir "ocioso normal" com "caiu") ──
     # O worker é CRON (drena de ~5 em 5 min), então fica fora de um job na maior parte do tempo.
@@ -8296,6 +8387,7 @@ def admin_gto_worker_status():
         },
         'hand_queue':   hand_counts,
         'solver_queue': solver_counts,
+        'solver_health': solver_health,
         'throughput':   throughput,
         'coverage':     coverage,
         'recent_errors': recent_errors,

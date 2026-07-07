@@ -5,7 +5,7 @@ import {
   LayoutDashboard, Loader2, RefreshCw, Search, Shield, Users,
   GraduationCap, X, Check, MessageSquarePlus, Trash2, AlertTriangle,
   Cpu, CircleDot, Lightbulb, Send, Megaphone, Mail, MailCheck,
-  TrendingUp, Zap, CalendarClock, ThumbsUp, ThumbsDown, Sparkles
+  TrendingUp, Zap, CalendarClock, ThumbsUp, ThumbsDown, Sparkles, Timer
 } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
 import { HudHeader } from "@/components/hud/HudHeader";
@@ -1480,6 +1480,49 @@ function GtoWorkerTab() {
         <KpiTile label="Decisions Cobertas"  value={String(coverageTotal)} sub={`nodes: ${(cov['solver_cli'] ?? 0) + (cov['gto_wizard'] ?? 0)} · preflop: ${cov['preflop_ranges'] ?? 0}`} icon={BarChart2} accent={coverageTotal > 0} />
         <KpiTile label="GTO Solver (remoto)"  value={String(coverageWizard)} sub={`solver_cli: ${coverageSolver}`} icon={Activity} />
       </div>
+
+      {/* Saúde do Solver (Fase 1) — tempo, vazão, backlog, erro, servidor */}
+      {data.solver_health && (() => {
+        const sh = data.solver_health!;
+        const fmt = (s: number | null) =>
+          s == null ? "—"
+          : s < 60 ? `${Math.round(s)}s`
+          : s < 3600 ? `${Math.floor(s / 60)}m ${Math.round(s % 60)}s`
+          : `${Math.floor(s / 3600)}h ${Math.round((s % 3600) / 60)}m`;
+        const srv = sh.server;
+        const backlogHot = (sh.backlog.oldest_pending_age_sec ?? 0) > 1800;   // >30min esperando
+        const errHot = sh.error_rate.pct >= 10;
+        return (
+          <div className="space-y-3">
+            <h3 className="font-mono text-[11px] font-bold uppercase tracking-widest-2 text-muted-foreground">
+              Saúde do Solver
+            </h3>
+            <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+              <KpiTile label="Tempo de resolução" value={fmt(sh.resolution.avg_sec)}
+                sub={`p95: ${fmt(sh.resolution.p95_sec)} · fila→ok · n=${sh.resolution.sample}`} icon={Timer} />
+              <KpiTile label="Vazão" value={`${sh.throughput.last_1h}/h`}
+                sub={`24h: ${sh.throughput.last_24h}`} icon={Activity} accent={sh.throughput.last_1h > 0} />
+              <KpiTile label="Backlog" value={String(sh.backlog.pending)}
+                sub={`rodando: ${sh.backlog.running} · espera: ${fmt(sh.backlog.oldest_pending_age_sec)}`} icon={Clock} accent={backlogHot} />
+              <KpiTile label="Taxa de erro (24h)" value={`${sh.error_rate.pct}%`}
+                sub={`falhos: ${sh.error_rate.failed} / ${sh.error_rate.failed + sh.error_rate.done}`} icon={AlertTriangle} accent={errHot} />
+            </div>
+            <div className={cn("flex items-center gap-3 rounded-xl border p-4",
+              srv.reachable ? "border-green-500/30 bg-green-500/5" : "border-red-500/30 bg-red-500/5")}>
+              <CircleDot className={cn("size-4 shrink-0", srv.reachable ? "text-green-500" : "text-red-500")} />
+              <div className="min-w-0">
+                <p className="font-mono text-[11px] font-bold uppercase tracking-wider text-foreground">
+                  Servidor do solver: {srv.reachable ? "no ar" : "inacessível"}
+                </p>
+                <p className="font-mono text-[10px] text-muted-foreground truncate">
+                  {srv.url ?? "GTO_SOLVER_URL não configurada"}
+                  {srv.reachable && ` · ${srv.latency_ms}ms · GW: ${srv.gto_wizard ?? "—"}`}
+                </p>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Throughput chart */}
       <div className="rounded-xl border border-border bg-hud-surface p-5 space-y-3">
