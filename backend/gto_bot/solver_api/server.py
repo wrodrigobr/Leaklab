@@ -62,6 +62,31 @@ RAYON_THREADS = max(1, int(os.environ.get(
 _solve_sem = threading.BoundedSemaphore(MAX_SOLVES)
 REFRESH_SEC = int(os.environ.get('GTO_REFRESH_SEC', '180'))
 
+
+def _server_vitals() -> dict:
+    """Vitais do box do solver pro painel admin (Fase 2). Só stdlib, sem psutil."""
+    v = {'cpu_count': os.cpu_count(), 'max_solves': MAX_SOLVES, 'rayon_threads': RAYON_THREADS}
+    try:
+        v['active_solves'] = MAX_SOLVES - _solve_sem._value   # permits adquiridos = solves rodando
+    except Exception:
+        v['active_solves'] = None
+    try:
+        v['load'] = [round(x, 2) for x in os.getloadavg()]    # Linux
+    except Exception:
+        v['load'] = None
+    try:
+        info = {}
+        with open('/proc/meminfo') as f:
+            for line in f:
+                k, _, rest = line.partition(':')
+                info[k.strip()] = int(rest.strip().split()[0])  # kB
+        total = info.get('MemTotal', 0) // 1024
+        avail = info.get('MemAvailable', info.get('MemFree', 0)) // 1024
+        v['mem'] = {'total_mb': total, 'used_mb': max(0, total - avail)}
+    except Exception:
+        v['mem'] = None
+    return v
+
 GW_APP       = "https://app.gtowizard.com"
 GW_API_BASE  = "https://api.gtowizard.com"
 GW_SPOT_SOL  = f"{GW_API_BASE}/v4/solutions/spot-solution/"
@@ -1259,11 +1284,13 @@ class Handler(BaseHTTPRequestHandler):
         if self.path == '/health':
             with _auth_lock:
                 gw_ok = _auth_ok
-            self._respond(200, {
+            _body = {
                 'status':     'ok',
                 'solver':     os.path.basename(SOLVER_BIN),
                 'gto_wizard': 'ok' if gw_ok else 'degraded',
-            })
+            }
+            _body.update(_server_vitals())   # Fase 2: cpu/load/mem + solves ativos vs MAX_SOLVES
+            self._respond(200, _body)
         elif self.path == '/gw-status':
             with _auth_lock:
                 age = round(time.time() - _last_refresh, 1) if _last_refresh else None

@@ -1411,24 +1411,15 @@ function GtoWorkerTab() {
   if (isLoading) return <Loading />;
   if (!data) return null;
 
-  const hq = data.hand_queue ?? {};
   const sq = data.solver_queue ?? {};
   const cov = data.coverage ?? {};
 
-  const handTotal  = Object.values(hq).reduce((a, b) => a + b, 0);
-  const handDone   = hq['done']    ?? 0;
-  const handPend   = hq['pending'] ?? 0;
-  const handErr    = hq['error']   ?? 0;
-  const handRun    = hq['running'] ?? 0;
-
-  const solverPend = sq['pending'] ?? 0;
   const solverDone = sq['done']    ?? 0;
   const solverFail = sq['failed']  ?? 0;
 
   const coverageTotal = cov['total'] ?? 0;
   const coverageWizard = cov['gto_wizard'] ?? 0;
   const coverageSolver = cov['solver'] ?? (cov['solver_cli'] ?? 0);
-  const coverageRemote = cov['remote_solver'] ?? 0;
 
   const throughput = data.throughput ?? [];
   const throughputMax = Math.max(...throughput.map(t => t.count), 1);
@@ -1457,9 +1448,10 @@ function GtoWorkerTab() {
         </button>
       </div>
 
-      {/* KPIs row 1 — worker */}
+      {/* KPIs — saúde do worker + acumulado do solver + cobertura (limpo: sem os cards mortos
+          do gto_hand_requests, sem o "Solver Pendentes" duplicado do BACKLOG) */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <div className={cn("rounded-xl border p-5 space-y-2 col-span-2 lg:col-span-1", ws.border, ws.bg)}>
+        <div className={cn("rounded-xl border p-5 space-y-2", ws.border, ws.bg)}>
           <div className="flex items-center justify-between">
             <span className="font-mono text-[10px] font-bold uppercase tracking-widest-2 text-muted-foreground">Worker</span>
             <CircleDot className={cn("size-4", ws.text)} />
@@ -1467,18 +1459,9 @@ function GtoWorkerTab() {
           <p className={cn("text-2xl font-bold", ws.text)}>{ws.label}</p>
           <p className="font-mono text-[10px] text-muted-foreground">Último proc: {lastHb}</p>
         </div>
-
-        <KpiTile label="Pendentes"  value={String(handPend)} sub="gto_hand_requests" icon={Clock}        />
-        <KpiTile label="Processados" value={String(handDone)} sub={`total: ${handTotal}`} icon={CheckCircle2} accent={handDone > 0} />
-        <KpiTile label="Erros"      value={String(handErr)}  sub={`em execução: ${handRun}`} icon={AlertTriangle} accent={handErr > 0} />
-      </div>
-
-      {/* KPIs row 2 — solver queue + coverage */}
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <KpiTile label="Solver Pendentes" value={String(solverPend)} sub="gto_solver_queue" icon={Cpu} />
         <KpiTile label="Solver Concluídos" value={String(solverDone)} sub={`falhos: ${solverFail}`} icon={CheckCircle2} accent={solverDone > 0} />
         <KpiTile label="Decisions Cobertas"  value={String(coverageTotal)} sub={`nodes: ${(cov['solver_cli'] ?? 0) + (cov['gto_wizard'] ?? 0)} · preflop: ${cov['preflop_ranges'] ?? 0}`} icon={BarChart2} accent={coverageTotal > 0} />
-        <KpiTile label="GTO Solver (remoto)"  value={String(coverageWizard)} sub={`solver_cli: ${coverageSolver}`} icon={Activity} />
+        <KpiTile label="Nós por fonte"  value={String(coverageWizard)} sub={`GW · solver_cli: ${coverageSolver}`} icon={Activity} />
       </div>
 
       {/* Saúde do Solver (Fase 1) — tempo, vazão, backlog, erro, servidor */}
@@ -1518,6 +1501,20 @@ function GtoWorkerTab() {
                   {srv.url ?? "GTO_SOLVER_URL não configurada"}
                   {srv.reachable && ` · ${srv.latency_ms}ms`}
                 </p>
+                {/* Fase 2: vitais do box (só se o /health estiver enriquecido) */}
+                {srv.reachable && srv.cpu_count != null && (
+                  <p className="mt-0.5 font-mono text-[10px] text-muted-foreground">
+                    <span className={cn(srv.active_solves != null && srv.max_solves != null && srv.active_solves >= srv.max_solves && "text-amber-400")}>
+                      solves {srv.active_solves ?? "?"}/{srv.max_solves ?? "?"}
+                    </span>
+                    {srv.load && (
+                      <span className={cn(srv.load[0] > (srv.cpu_count ?? 99) && "text-amber-400")}>
+                        {" · "}load {srv.load[0]} ({srv.cpu_count} vCPU)
+                      </span>
+                    )}
+                    {srv.mem && ` · RAM ${(srv.mem.used_mb / 1024).toFixed(1)}/${(srv.mem.total_mb / 1024).toFixed(1)} GB`}
+                  </p>
+                )}
               </div>
             </div>
           </div>

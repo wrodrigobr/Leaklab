@@ -2479,6 +2479,12 @@ export interface GtoWorkerStatus {
       latency_ms: number | null;
       status: string | null;
       gto_wizard: string | null;
+      cpu_count?: number | null;
+      load?: number[] | null;
+      mem?: { total_mb: number; used_mb: number } | null;
+      active_solves?: number | null;
+      max_solves?: number | null;
+      rayon_threads?: number | null;
     };
   };
   throughput: Array<{ hour: string; count: number }>;

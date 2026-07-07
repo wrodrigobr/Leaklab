@@ -8340,7 +8340,9 @@ def admin_gto_worker_status():
         conn.close()
 
     # ── Servidor do solver: reachability + latência (ping no /health que já existe) ──
-    _server = {'url': None, 'reachable': False, 'latency_ms': None, 'status': None, 'gto_wizard': None}
+    _server = {'url': None, 'reachable': False, 'latency_ms': None, 'status': None, 'gto_wizard': None,
+               'cpu_count': None, 'load': None, 'mem': None, 'active_solves': None,
+               'max_solves': None, 'rayon_threads': None}
     try:
         import os as _os3, time as _t3, json as _j3, urllib.request as _u3
         _surl = (_os3.environ.get('GTO_SOLVER_URL', '') or '').rstrip('/')
@@ -8351,8 +8353,10 @@ def admin_gto_worker_status():
                 _body = _j3.loads(_resp.read().decode('utf-8'))
             _server['latency_ms'] = round((_t3.time() - _t0) * 1000)
             _server['reachable'] = True
-            _server['status'] = _body.get('status')
-            _server['gto_wizard'] = _body.get('gto_wizard')
+            # Fase 2: vitais do box do solver (presentes só se o /health estiver enriquecido)
+            for _k in ('status', 'gto_wizard', 'cpu_count', 'load', 'mem',
+                       'active_solves', 'max_solves', 'rayon_threads'):
+                _server[_k] = _body.get(_k)
     except Exception:
         pass
     solver_health['server'] = _server
