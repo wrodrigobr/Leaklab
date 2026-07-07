@@ -1516,7 +1516,7 @@ function GtoWorkerTab() {
                 </p>
                 <p className="font-mono text-[10px] text-muted-foreground truncate">
                   {srv.url ?? "GTO_SOLVER_URL não configurada"}
-                  {srv.reachable && ` · ${srv.latency_ms}ms · GW: ${srv.gto_wizard ?? "—"}`}
+                  {srv.reachable && ` · ${srv.latency_ms}ms`}
                 </p>
               </div>
             </div>
