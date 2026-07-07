@@ -104,7 +104,7 @@ export default function CoachReplay() {
 
             {/* Erros mais caros */}
             {data.mistakes.map((m, i) => (
-              <MistakeCard key={m.hand_id + m.street} tid={String(data.tournament.id)} m={m} idx={i} />
+              <MistakeCard key={m.hand_id + m.street} tid={data.tournament.code ?? tid} m={m} idx={i} />
             ))}
 
             {data.mistakes.length === 0 && (

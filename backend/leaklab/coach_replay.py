@@ -33,7 +33,7 @@ def build_coach_replay(user_id: int, tournament_id: int, top_n: int = 3) -> dict
     conn = repo.get_conn()
     try:
         trow = repo._fetchone(conn, repo._adapt(
-            "SELECT id, tournament_name, buy_in, user_id FROM tournaments WHERE id = ?"), (tournament_id,))
+            "SELECT id, tournament_id, tournament_name, buy_in, user_id FROM tournaments WHERE id = ?"), (tournament_id,))
         if not trow:
             return None
         t = dict(trow)
@@ -62,7 +62,8 @@ def build_coach_replay(user_id: int, tournament_id: int, top_n: int = 3) -> dict
 
     total_ev = round(sum(abs(m['ev_loss_bb']) for m in mistakes), 1)
     return {
-        'tournament': {'id': t['id'], 'name': t.get('tournament_name') or f"Torneio #{t['id']}",
+        'tournament': {'id': t['id'], 'code': t.get('tournament_id'),
+                       'name': t.get('tournament_name') or f"Torneio #{t['id']}",
                        'buy_in': t.get('buy_in'), 'hands': n_hands},
         'intro': {'hands_analyzed': n_hands, 'mistakes_shown': len(mistakes), 'ev_lost_bb': total_ev},
         'mistakes': mistakes,

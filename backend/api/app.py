@@ -2608,17 +2608,26 @@ def player_achievements():
 
 
 # ── Coach Replay interativo — seus erros mais caros, revisados na mesa real ────
-@app.route('/player/coach-replay/<int:tournament_id>', methods=['GET'])
+@app.route('/player/coach-replay/<tournament_id>', methods=['GET'])
 @require_auth
-def player_coach_replay(tournament_id: int):
+def player_coach_replay(tournament_id):
     """Dados do Coach Replay do torneio: erros mais caros (com o que o herói fez × GTO) +
-    plano. O front abre o replay real de cada mão. É a 'cura' → Pro (Free vê o upsell)."""
+    plano. O front abre o replay real de cada mão. É a 'cura' → Pro (Free vê o upsell).
+    `tournament_id` é o CÓDIGO do torneio (igual ao resto do app), não o id interno."""
     from database.repositories import PLAN_LIMITS
     from leaklab.coach_replay import build_coach_replay
     plan = (getattr(g, 'user', None) or {}).get('plan', 'free')
     if not PLAN_LIMITS.get(plan, PLAN_LIMITS['free']).get('advanced_insights', False):
         return jsonify({'requires_pro': True, 'feature': 'coach_replay'}), 200
-    data = build_coach_replay(g.user_id, tournament_id)
+    # resolve o código → torneio do usuário (aceita id interno como fallback, p/ compat)
+    t = None
+    if str(tournament_id).isdigit():
+        t = get_tournament_by_db_id(g.user_id, int(tournament_id))
+    if not t:
+        t = get_tournament(g.user_id, tournament_id)
+    if not t:
+        return jsonify({'error': 'Torneio não encontrado'}), 404
+    data = build_coach_replay(g.user_id, t['id'])
     if data is None:
         return jsonify({'error': 'Torneio não encontrado'}), 404
     return jsonify(data)

@@ -1320,7 +1320,7 @@ export interface CoachReplayMistake {
   coach_note: string;
 }
 export interface CoachReplayData {
-  tournament: { id: number; name: string; buy_in: number | null; hands: number };
+  tournament: { id: number; code: string | null; name: string; buy_in: number | null; hands: number };
   intro: { hands_analyzed: number; mistakes_shown: number; ev_lost_bb: number };
   mistakes: CoachReplayMistake[];
   plan: { week: number; focus: string }[];

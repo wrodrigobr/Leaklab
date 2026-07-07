@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(coach-replay): endpoint e deep-link resolvem pelo CÓDIGO do torneio, não pelo id interno (#flagship)
+
+> O Coach Replay abria com o botão de `/tournaments/:id`, e no app inteiro esse `:id` é o CÓDIGO do torneio (`tournament_id`, ex. 3910307458), não o id interno do banco. Mas o endpoint `/player/coach-replay/<int:tournament_id>` estava tipado como `int` e casava o id interno → carregar pelo código dava 404/erro. Agora a rota aceita string e resolve como o resto do app (`get_tournament_by_db_id` por id interno como fallback, senão `get_tournament` pelo código). O payload passou a devolver `tournament.code`, e o botão "Rever na mesa" usa o código no `?t=` (o Replayer casa por código, igual ao `replayHref` do TournamentDetail). Compat: id interno ainda resolve.
+
 ### chore(gto): comando de análise do ganho de re-lookup de cobertura (read-only) (#coverage)
 
 > `scripts/analyze_relookup_coverage.py`: estima, sem alterar nada, quantas decisões postflop HU hoje UNCOVERED já teriam um nó no `gto_nodes` se re-consultássemos agora (o ganho de cobertura de graça, sem solvar). Usa o MESMO hash do engine (`compute_spot_hash` + `get_gto_node`, variantes exact/genérico/sem-facing). Multiway fica de fora (teto HU-only); preflop de fora (ranges estáticas). Args `--tid`/`--user-id`/`--limit`. Como o banco de nós de prod é bem maior que o de dev, o número reflete o ambiente onde roda. Base pra decidir/dimensionar o sweep noturno de re-lookup antes de automatizar.
