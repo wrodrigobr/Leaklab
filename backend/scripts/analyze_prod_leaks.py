@@ -28,6 +28,12 @@ from database.schema import get_conn
 MISTAKE = "label IN ('small_mistake','clear_mistake')"
 # peso de severidade (mesma regua do leak_correlator)
 SEV = "CASE WHEN label='clear_mistake' THEN 1.0 WHEN label='small_mistake' THEN 0.55 ELSE 0 END"
+# EV "suspeito": nos degenerados de pote (bb nao extraido -> pote em fichas -> ev_loss em
+# milhares). Leak real de MTT raramente passa de ~30-40bb. Cutoff conservador de 100bb.
+_SUSPECT_BB = 100.0
+SUSPECT = f"COALESCE(ev_loss_bb,0) >= {_SUSPECT_BB}"
+# soma so o EV "limpo" (exclui os nos suspeitos), mantendo a contagem total intacta.
+EVCLEAN = f"SUM(CASE WHEN COALESCE(ev_loss_bb,0) < {_SUSPECT_BB} THEN COALESCE(ev_loss_bb,0) ELSE 0 END)"
 
 
 def truthy(col):
@@ -65,23 +71,25 @@ def main():
     players = scalar(conn, "SELECT COUNT(DISTINCT user_id) FROM tournaments "
                            "WHERE id IN (SELECT DISTINCT tournament_id FROM decisions)")
     tourns  = scalar(conn, "SELECT COUNT(DISTINCT tournament_id) FROM decisions")
-    evloss  = scalar(conn, f"SELECT SUM(COALESCE(ev_loss_bb,0)) FROM decisions WHERE {MISTAKE}")
+    evclean = scalar(conn, f"SELECT {EVCLEAN} FROM decisions WHERE {MISTAKE}")
+    suspect = scalar(conn, f"SELECT COUNT(*) FROM decisions WHERE {MISTAKE} AND {SUSPECT}")
     rate = (mist / total * 100) if total else 0
     print(f"  decisoes analisadas : {total}")
     print(f"  jogadores           : {players}")
     print(f"  torneios            : {tourns}")
     print(f"  leaks (erros)       : {mist}  ({rate:.1f}% das decisoes)")
     print(f"  erros graves        : {severe}")
-    print(f"  EV perdido (bb)     : {float(evloss or 0):.1f}")
+    print(f"  EV perdido (bb)     : {float(evclean or 0):.1f}  (excluindo suspeitos)")
+    print(f"  leaks c/ EV SUSPEITO: {suspect}  (>= {int(_SUSPECT_BB)}bb, provavel bug de pote em fichas -> EV ignorado)")
 
     print()
     print("=" * 72)
     print("LEAKS POR STREET x ACAO (onde o erro mora)")
     print("=" * 72)
-    print(f"  {'street':8s} {'acao':7s} {'erros':>7s} {'sev.med':>8s} {'EV bb':>9s}")
+    print(f"  {'street':8s} {'acao':7s} {'erros':>7s} {'sev.med':>8s} {'EV bb*':>9s}")
     for r in rows(conn, f"""
         SELECT COALESCE(street,'?') s, COALESCE(action_taken,'?') a, COUNT(*) n,
-               AVG({SEV}) sev, SUM(COALESCE(ev_loss_bb,0)) ev
+               AVG({SEV}) sev, {EVCLEAN} ev
         FROM decisions WHERE {MISTAKE}
         GROUP BY street, action_taken ORDER BY COUNT(*) DESC LIMIT 15"""):
         s, a, n, sev, ev = r[0], r[1], r[2], r[3], r[4]
@@ -130,10 +138,10 @@ def main():
     results = []
     for name, where, module, has in lenses:
         n  = scalar(conn, f"SELECT COUNT(*) FROM decisions WHERE {MISTAKE} AND ({where})")
-        ev = scalar(conn, f"SELECT SUM(COALESCE(ev_loss_bb,0)) FROM decisions WHERE {MISTAKE} AND ({where})")
+        ev = scalar(conn, f"SELECT {EVCLEAN} FROM decisions WHERE {MISTAKE} AND ({where})")
         results.append((int(n or 0), float(ev or 0), name, module, has))
     results.sort(key=lambda x: -x[0])
-    print(f"  {'erros':>7s} {'EV bb':>9s}  lente / modulo")
+    print(f"  {'erros':>7s} {'EV bb*':>9s}  lente / modulo")
     for n, ev, name, module, has in results:
         flag = "" if has else "   <== BURACO DE CONTEUDO"
         print(f"  {n:7d} {ev:9.1f}  {name}")
@@ -151,6 +159,8 @@ def main():
         print("  Nenhum recorte com volume relevante sem aula. Cobertura ok.")
     print()
     print("Obs.: as lentes se sobrepoem (recortes de diagnostico, nao particao).")
+    print(f"      * EV bb exclui nos suspeitos (>= {int(_SUSPECT_BB)}bb, bug de pote em fichas).")
+    print("        Priorize por CONTAGEM de erros; o EV limpo e so um desempate.")
     conn.close()
 
 
