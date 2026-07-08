@@ -16,7 +16,12 @@ As lentes conceituais se SOBREPOEM de proposito (um erro preflop 3-bet tambem co
 em "preflop"): sao recortes de diagnostico, nao uma particao.
 """
 import sys, os
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+# bootstrap: acha o dir que contem 'database/' (roda por arquivo, via stdin ou no container)
+_here = os.path.dirname(os.path.abspath(__file__)) if '__file__' in globals() else os.getcwd()
+for _cand in (os.path.join(_here, '..'), _here, os.getcwd(), '/app/backend', '/app'):
+    if os.path.isdir(os.path.join(_cand, 'database')):
+        sys.path.insert(0, _cand)
+        break
 from database.schema import get_conn
 
 # label = pior erro; usamos small_mistake + clear_mistake como "leak".
