@@ -864,6 +864,11 @@ function SidePanels({
                     {t("card.limpDeadMoney")}
                   </div>
                 )}
+                {pg!.pushfold_widen && (
+                  <div className="font-mono text-[10px] text-amber-300/80" title={t("card.pushfoldWidenTip")}>
+                    {t("card.pushfoldWiden")}
+                  </div>
+                )}
                 {hasFreqs && (
                   <div className="space-y-1">
                     {(() => {

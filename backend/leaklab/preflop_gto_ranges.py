@@ -262,6 +262,42 @@ _PUSHFOLD_BUCKET_STACK = {
     '20bb': ['20bb_pf'],        # só como último fallback para 20bb
 }
 
+# ── Alargamento heurístico do shove em stacks MUITO curtos (≈ aproximação) ──────────
+# O bucket 10bb (RFI v3) é calibrado p/ ~9-10bb (UTG ~16%). Abaixo disso o range CORRETO
+# de shove ALARGA muito (a ~6bb o UTG quase dobra, p/ ~30%). Sem ranges GW numa granular-
+# idade de profundidade fina, reusar o range de ~10bb num stack de 5-7bb marca como leak
+# shoves que estão CORRETOS (A7o/K9o/KTo/QTo do UTG a 6bb). Para não punir jogada certa,
+# usamos a matemática de push/fold: um shove first-in é defensável se a equity da mão vs
+# um range de call plausível cobre um PISO que CAI conforme o stack encurta (menos fichas
+# = mais fold equity = precisa de menos equity de showdown). SÓ RESGATA shoves fora do
+# range estrito (nunca cria leak novo); a mão que clara o piso deixa de ser "erro" e vira
+# "aceitável (≈ aproximação)". Alinha com a régua "nunca punir jogada defensável".
+_PUSHFOLD_WIDEN_MAX_BB = 9.0
+
+# Range de call representativo vs um shove curto (callers são fortes; ~top 18-20%).
+_SHOVE_CALL_RANGE = {h: 1.0 for h in (
+    '22', '33', '44', '55', '66', '77', '88', '99', 'TT', 'JJ', 'QQ', 'KK', 'AA',
+    'A2s', 'A3s', 'A4s', 'A5s', 'A6s', 'A7s', 'A8s', 'A9s', 'ATs', 'AJs', 'AQs', 'AKs',
+    'A9o', 'ATo', 'AJo', 'AQo', 'AKo', 'KTs', 'KJs', 'KQs', 'KJo', 'KQo', 'QJs', 'QTs', 'JTs',
+)}
+
+
+def _widen_floor(stack_bb: float, pos: str) -> float:
+    """Piso de equity (vs range de call) p/ um shove ser defensável a este stack.
+    Ancorado nos dados reais do bucket 10bb (fronteira KTs≈0,40 @10bb) e no slope do
+    artigo (~0,34 @6bb). Posição tardia precisa de menos equity (mais fold equity)."""
+    base = 0.34 + 0.015 * (stack_bb - 6.0)          # 0,325 @5bb .. 0,40 @10bb
+    late = {'CO': -0.01, 'BTN': -0.025, 'SB': -0.03}
+    return base + late.get(pos, 0.0)
+
+
+def _shove_equity(hand_type: str) -> Optional[float]:
+    """Equity da mão vs o range de call representativo (None se a matriz não existe)."""
+    from leaklab import equity as _equity
+    if not _equity.has_matrix():
+        return None
+    return _equity.equity_vs_range(hand_type, _SHOVE_CALL_RANGE)
+
 
 def _norm_pos(position: str, n_players: int | None = None) -> str:
     """Normaliza nome de posição do pipeline/banco para chave do JSON v3 (9-max GW).
@@ -670,6 +706,24 @@ def _analyze_preflop_impl(
         # grave. Rebaixa major_leak→leak quando a mão está no range de complete.
         if (in_complete or in_limp) and action_taken.lower() in ('shove', 'jam', 'allin', 'raise') and quality == 'major_leak':
             quality = 'leak'
+
+        # Alargamento do shove em stack MUITO curto (≈ aproximação). Ver _widen_floor:
+        # abaixo de ~9bb o range de shove alarga muito, e reusar o range de ~10bb marca
+        # como leak shoves que estão certos. SÓ RESGATA (nunca cria leak): a mão fora do
+        # range estrito que clara o piso de equity deixa de ser "erro" e vira "aceitável".
+        pushfold_widen = False
+        if (not (in_rng or in_limp) and stack_bb <= _PUSHFOLD_WIDEN_MAX_BB
+                and action_taken.lower() in ('shove', 'jam', 'allin', 'raise')
+                and quality in ('leak', 'major_leak')):
+            _eqv = _shove_equity(hero_hand_type)
+            if _eqv is not None and _eqv >= _widen_floor(stack_bb, pos):
+                rec        = ['jam']
+                in_rng     = True                 # entra no range ALARGADO (aprox)
+                quality    = 'acceptable'
+                pushfold_widen = True
+                if is_v3:
+                    hand_freq = {'call': 0.0, 'raise': 0.0, 'allin': 1.0, 'fold': 0.0}
+
         # Expõe raise/allin/call/fold pct agregados do range — usados pela
         # barra do Decision Card quando hand_freq específica não existe.
         if is_v3:
@@ -699,8 +753,16 @@ def _analyze_preflop_impl(
             'action_quality': quality,
             'in_limp_range': in_limp,
             'limp_pct': limp_pct,
-            'pro_notes': _rfi_notes(pos, hero_hand_type, stack_bb, pct, in_rng, action_taken,
-                                     in_limp=in_limp, hand_freq=hand_freq),
+            'pushfold_widen': pushfold_widen,   # display: "≈ push/fold curto (aproximação)"
+            'pro_notes': (
+                [f"A {stack_bb:.0f}bb o range de shove alarga muito (bem além do range de ~10bb): "
+                 f"{hero_hand_type} tem equity suficiente para um shove defensável aqui.",
+                 "≈ Aproximação: sem range GTO na profundidade exata, usamos a matemática de "
+                 "push/fold (equity vs range de call). A direção (shove) é confiável."]
+                if pushfold_widen else
+                _rfi_notes(pos, hero_hand_type, stack_bb, pct, in_rng, action_taken,
+                           in_limp=in_limp, hand_freq=hand_freq)
+            ),
         })
 
     # ── vs RFI ───────────────────────────────────────────────────────────────

@@ -248,6 +248,8 @@
     "coachCorrect": "Correct",
     "limpDeadMoney": "≈ push/fold · limp treated as dead money",
     "limpDeadMoneyTip": "Someone limped, but short-stacked a jam/fold over the limp is the SAME push/fold decision (the limp is just dead money, not a new GTO spot). Verdict from your push/fold range.",
+    "pushfoldWiden": "≈ short push/fold (approximation)",
+    "pushfoldWidenTip": "Very short stack (below ~9bb): the shove range widens well beyond the ~10bb range. Without a range at the exact depth, we use push/fold math (your hand's equity vs a calling range). The direction (shove) is reliable, so this shove is not flagged as a mistake.",
     "sizingLabel": "Sizing",
     "sizingAdvice": {
       "open_ok": "standard ({{ideal}})",

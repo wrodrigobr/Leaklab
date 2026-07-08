@@ -248,6 +248,8 @@
     "coachCorrect": "Correto",
     "limpDeadMoney": "≈ push/fold · limp tratado como dead money",
     "limpDeadMoneyTip": "Alguém limpou, mas a stack curto um jam/fold sobre o limp é a MESMA decisão de push/fold (o limp é só dead money, não cria um spot GTO novo). Veredito pelo seu range de push/fold.",
+    "pushfoldWiden": "≈ push/fold curto (aproximação)",
+    "pushfoldWidenTip": "Stack muito curto (abaixo de ~9bb): o range de shove alarga bem além do range de ~10bb. Sem um range na profundidade exata, usamos a matemática de push/fold (equity da mão vs um range de call). A direção (shove) é confiável, por isso este shove não é marcado como erro.",
     "sizingLabel": "Sizing",
     "sizingAdvice": {
       "open_ok": "padrão ({{ideal}})",
