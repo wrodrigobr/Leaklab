@@ -2,9 +2,28 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { Check, X, ChevronRight, Lightbulb, AlertTriangle, KeyRound } from "lucide-react";
-import { PlayingCard, type CardData } from "@/components/hud/PlayingCard";
-import { PokerTable, type Seat } from "@/components/hud/PokerTable";
+import { PokerTableV3 } from "@/components/hud/PokerTableV3";
+import type { ReplayStep } from "@/lib/api";
 import { cn } from "@/lib/utils";
+
+// Baralho ATUAL do produto — os mesmos SVGs que o Replayer/PokerTableV3 usam
+// (public/cards/XX.svg). code = "Ah" | "10s" | "Kd"...  → /cards/AH.svg, 10S.svg, KD.svg
+function deckCardSrc(code: string): string {
+  const rank = code.slice(0, -1).toUpperCase();      // "T" já vira "10" abaixo
+  const suit = code.slice(-1).toUpperCase();
+  return `/cards/${rank === "T" ? "10" : rank}${suit}.svg`;
+}
+
+export function DeckCard({ code, className }: { code: string; className?: string }) {
+  return (
+    <img
+      src={deckCardSrc(code)}
+      alt={code}
+      className={cn("h-16 w-auto rounded-md shadow-md ring-1 ring-black/20", className)}
+      draggable={false}
+    />
+  );
+}
 
 /**
  * LessonKit — blocos de apresentação reutilizáveis para as AULAS da Academia.
@@ -81,37 +100,34 @@ export function LessonTable({ headers, rows }: { headers: string[]; rows: React.
   );
 }
 
-// ── Cena de mesa (PokerTable nossa, dados didáticos) ─────────────────────────────
+// ── Cena de mesa (a mesa ATUAL do produto — PokerTableV3 — com dados didáticos) ───
 
-export function TableScene({
-  seats, community = [], pot, street, betUnit = "bb", bb = 1, caption,
-}: {
-  seats: Seat[]; community?: CardData[]; pot: number; street: string;
-  betUnit?: "chips" | "bb"; bb?: number; caption?: string;
+export function TableScene({ step, hero, heroCards, bb = 1, caption }: {
+  step: ReplayStep; hero: string; heroCards: string[]; bb?: number; caption?: string;
 }) {
   return (
     <figure className="space-y-2">
-      <div className="mx-auto max-w-md">
-        <PokerTable seats={seats} community={community} pot={pot} street={street} betUnit={betUnit} bb={bb} />
+      <div className="mx-auto max-w-lg">
+        <PokerTableV3 step={step} hero={hero} heroCards={heroCards} bb={bb} betUnit="bb" orientation="landscape" />
       </div>
       {caption && <figcaption className="text-center text-xs text-muted-foreground">{caption}</figcaption>}
     </figure>
   );
 }
 
-// ── Linha de cartas (mãos de exemplo) ────────────────────────────────────────────
+// ── Linha de cartas (mãos de exemplo, baralho ATUAL) ─────────────────────────────
 
 export function CardRow({ groups, caption }: {
-  groups: { cards: CardData[]; label: string; tone?: "good" | "bad" }[];
+  groups: { cards: string[]; label: string; tone?: "good" | "bad" }[];
   caption?: string;
 }) {
   return (
     <figure className="space-y-2">
-      <div className="flex flex-wrap items-start justify-center gap-5 rounded-xl border border-dashed border-border bg-hud-surface/50 p-4">
+      <div className="flex flex-wrap items-start justify-center gap-6 rounded-xl border border-dashed border-border bg-hud-surface/50 p-4">
         {groups.map((g, i) => (
           <div key={i} className="flex flex-col items-center gap-1.5">
             <div className="flex gap-1">
-              {g.cards.map((c, j) => <PlayingCard key={j} card={c} size="md" />)}
+              {g.cards.map((c, j) => <DeckCard key={j} code={c} />)}
             </div>
             <span className={cn(
               "font-mono text-[10px] font-bold uppercase tracking-wider",
