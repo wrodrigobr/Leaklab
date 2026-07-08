@@ -11,6 +11,7 @@ import {
   Target,
   TrendingUp,
   Brain,
+  Users,
 } from "lucide-react";
 import { HudLayout } from "@/components/hud/HudLayout";
 import { cn } from "@/lib/utils";
@@ -105,6 +106,15 @@ const MODULES: Module[] = [
     status: "available",
     level: "advanced",
     xpReward: 30,
+  },
+  {
+    id: "multiway",
+    icon: Users,
+    color: "rose",
+    path: "/academy/multiway",
+    status: "available",
+    level: "advanced",
+    xpReward: 25,
   },
 ];
 

@@ -54,6 +54,10 @@
     "ranges_advanced": {
       "title": "GTO Ranges: Full",
       "desc": "Every situation: open, defense (call/3-bet) and vs 3-bet (4-bet/call), across stack depths."
+    },
+    "multiway": {
+      "title": "Multiway Pots (3+ players)",
+      "desc": "When more players enter the hand, the math flips: bluffs die, value tightens, bets shrink. Lesson with table and examples."
     }
   },
   "stats": {
@@ -228,5 +232,63 @@
     "eyebrow": "Academy: Advanced",
     "title": "Tournament Context",
     "subtitle": "SPR, ICM and decisions where chip EV ≠ tournament EV."
+  },
+  "lesson": {
+    "check": "Why"
+  },
+  "lessons": {
+    "multiway": {
+      "eyebrow": "Academy: Advanced",
+      "title": "Pots with 3+ players: why everything changes",
+      "subtitle": "When more players enter the hand, the math flips. Here's what to do, with examples on the table.",
+      "seat_you": "You",
+      "seat_vA": "Opponent A",
+      "seat_vB": "Opponent B",
+      "street_flop": "Flop",
+      "s1_title": "One on one is one thing. Three is another.",
+      "s1_p1": "Almost all the theory you learn early on assumes a <strong>heads-up</strong> pot: you against one opponent. The moment a second player enters the hand (a <strong>multiway</strong> pot), almost everything changes. It isn't just 'a bit harder', it's a different game. The reason is simple: for a play to work against several people, it has to get past <strong>all</strong> of them, not just one.",
+      "scene1_cap": "You and two other players see the flop. Now every decision depends on two opposing hands, not one.",
+      "s2_title": "Bluffing almost dies",
+      "s2_p1": "Bluffing is betting hoping the opponent folds. Against one person you can steal plenty of pots. Against two or three, you need <strong>all</strong> of them to fold at once, and the chance that at least one has a hand to call goes up fast. The result: in a multiway pot, a pure bluff (nothing hand, no draw) almost never turns a profit. If you can't improve, folding cheaply is usually right.",
+      "s2_callout_title": "Practical rule",
+      "s2_callout": "The more players in the pot, the less you bluff. With 3 or more opponents, a pure bluff is essentially zero. Save the chips for when you have a made hand or a strong draw.",
+      "s3_title": "Tighten your value: only strong hands continue",
+      "s3_p1": "The hands that continue also change. That middle pair that would call comfortably against one player becomes a <strong>fold</strong> against three, because now it has to be ahead of several hands at once. Continue with genuinely strong hands and with draws that make the <strong>best</strong> hands (so-called nut draws). Drop the so-so hands: multiway, they cost you.",
+      "cards_good": "Continue: nut draw",
+      "cards_bad": "Fold: middle pair",
+      "cards_cap": "Suited AK on a flop with two cards of that suit is a draw to the best flush: it continues. A middle pair, fine against one opponent, becomes a fold against several.",
+      "s4_title": "Bet smaller",
+      "s4_p1": "With more players in the pot, you don't need to bet as big. The pot is already larger (more players put chips in) and there's a better chance someone calls, so a smaller bet already does the job of getting value and charging the draws. Betting very big without a near-unbeatable hand is usually a trap: you only get paid when you're behind.",
+      "s4_callout_title": "Sizing tip",
+      "s4_callout": "Without a dream hand, bet smaller multiway. An overbet without the nuts is chasing ghosts: whoever calls has already beaten you.",
+      "s5_title": "The middle seat is the worst place",
+      "s5_p1": "There's one spot that bleeds chips: being <strong>in the middle</strong>. Picture someone betting before you while players still act behind you. You're sandwiched: if you call, you can still get raised by someone behind, and you don't know what either of them has. In that seat, play <strong>tight</strong>. Continue only with hands that can take pressure from both sides, and avoid calling wide out of curiosity.",
+      "scene5_cap": "Opponent A has bet, you're in the middle, and Opponent B is still to act. Sandwiched: call with fewer hands than you would in a normal pot.",
+      "s6_title": "Where you see this in GrindLab",
+      "s6_p1": "Our solver handles one-on-one spots. In pots with 3 or more players it doesn't lock a verdict: the card shows the <strong>≈ Approximation</strong> seal with our best estimate, so it doesn't punish a defensible play. In those spots, use the rules from this chapter as your guide.",
+      "takeaways_title": "Lesson recap",
+      "t1": "Pure bluffs <strong>collapse</strong> multiway. No draw, fold cheap.",
+      "t2": "Continue only with <strong>strong hands and nut draws</strong>. Drop the marginals.",
+      "t3": "Bet <strong>smaller</strong> without the nuts. A multiway overbet is a trap.",
+      "t4": "In the <strong>middle</strong> seat, play tight: you're sandwiched.",
+      "quiz_title": "Test what you learned",
+      "q1": "You have a pure bluff (weak hand, no draw) and there are 3 opponents in the pot. What do you do?",
+      "q1a": "Bluff big so everyone folds",
+      "q1b": "Bluff small",
+      "q1c": "Fold cheap",
+      "q1e": "For the bluff to work, all three would have to fold at once, which almost never happens. With no draw, fold and save chips.",
+      "q2": "Multiway, compared to heads-up, your value bet size without the nuts should be:",
+      "q2a": "Bigger, to charge more",
+      "q2b": "The same as heads-up",
+      "q2c": "Smaller",
+      "q2e": "The pot is already bigger and there are more callers, so a smaller bet gets value and charges the draws without exposing you. An overbet without the nuts only gets paid when you're behind.",
+      "q3": "You're in the middle seat (players bet before you and others still act behind). The right posture is:",
+      "q3a": "Call wide so you're not run over",
+      "q3b": "Play tight",
+      "q3c": "Raise as a bluff most of the time",
+      "q3e": "Sandwiched, you can still get raised by someone behind and you face two unknown hands. Continue only with strong hands; calling wide here bleeds chips.",
+      "next_label": "Practice on real spots",
+      "next_sub": "Take this to Training and see how you play the multiway pots from your own game."
+    }
   }
 }

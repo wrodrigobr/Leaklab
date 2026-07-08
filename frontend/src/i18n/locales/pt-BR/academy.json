@@ -54,6 +54,10 @@
     "ranges_advanced": {
       "title": "Ranges GTO: Completo",
       "desc": "Todas as situações: open, defesa (call/3-bet) e vs 3-bet (4-bet/call), nos vários stack depths."
+    },
+    "multiway": {
+      "title": "Pote Multiway (3+ jogadores)",
+      "desc": "Quando entra mais gente na mão, a matemática vira do avesso: blefe cai, valor aperta, aposta encolhe. Aula com mesa e exemplos."
     }
   },
   "stats": {
@@ -228,5 +232,63 @@
     "eyebrow": "Academia: Avançado",
     "title": "Contexto de Torneio",
     "subtitle": "SPR, ICM e decisões onde chip EV ≠ equity de torneio."
+  },
+  "lesson": {
+    "check": "Por quê"
+  },
+  "lessons": {
+    "multiway": {
+      "eyebrow": "Academia: Avançado",
+      "title": "Pote com 3+ jogadores: por que muda tudo",
+      "subtitle": "Quando entra mais gente na mão, a matemática vira do avesso. Aqui está o que fazer, com exemplos na mesa.",
+      "seat_you": "Você",
+      "seat_vA": "Oponente A",
+      "seat_vB": "Oponente B",
+      "street_flop": "Flop",
+      "s1_title": "Um contra um é uma coisa. Três é outra.",
+      "s1_p1": "Quase toda a teoria que você aprende no começo assume um pote <strong>heads-up</strong>: você contra um oponente. Assim que um segundo jogador entra na mão (um pote <strong>multiway</strong>), quase tudo muda. Não é só 'um pouco mais difícil', é um jogo diferente. O motivo é simples: para uma jogada dar certo contra várias pessoas, ela precisa passar por <strong>todas</strong> elas, não só por uma.",
+      "scene1_cap": "Você e mais dois jogadores veem o flop. Agora cada decisão depende de duas mãos adversárias, não de uma.",
+      "s2_title": "O blefe quase morre",
+      "s2_p1": "Blefar é apostar querendo que o oponente desista. Contra uma pessoa, dá para roubar bastante pote. Contra duas ou três, você precisa que <strong>todas</strong> desistam ao mesmo tempo, e a chance de pelo menos uma ter mão para pagar cresce rápido. Resultado: em pote multiway, blefe puro (mão sem nada e sem projeto) quase nunca dá lucro. Se você não tem como melhorar, o certo quase sempre é desistir barato.",
+      "s2_callout_title": "Regra prática",
+      "s2_callout": "Quanto mais gente no pote, menos você blefa. Com 3 ou mais adversários, blefe puro é praticamente zero. Guarde as fichas para quando tiver mão feita ou projeto forte.",
+      "s3_title": "Aperte o valor: só as mãos fortes seguem",
+      "s3_p1": "As mãos que continuam também mudam. Aquele par médio que pagaria tranquilo contra um jogador vira <strong>fold</strong> contra três, porque agora ele precisa estar na frente de várias mãos ao mesmo tempo. Siga com mãos fortes de verdade e com projetos que viram as <strong>melhores</strong> mãos (os chamados nut draws). Largue as mãos meia-boca: no multiway elas custam caro.",
+      "cards_good": "Segue: projeto de nut",
+      "cards_bad": "Larga: par médio",
+      "cards_cap": "AK do mesmo naipe num flop com duas cartas desse naipe é projeto para a melhor cor: continua. Um par médio, que aguentaria um oponente, vira desistência contra vários.",
+      "s4_title": "Aposte menor",
+      "s4_p1": "Com mais gente no pote, você não precisa apostar tão grande. O pote já está maior (mais jogadores colocaram fichas) e há mais chance de alguém pagar, então uma aposta menor já cumpre o papel de extrair valor e cobrar dos projetos. Apostar muito grande sem ter uma mão quase imbatível costuma ser cilada: você só é pago quando está atrás.",
+      "s4_callout_title": "Dica de tamanho",
+      "s4_callout": "Sem uma mão dos sonhos, aposte menor no multiway. Overbet sem os nuts é para caçar fantasma: quem paga já te venceu.",
+      "s5_title": "O assento do meio é o pior lugar",
+      "s5_p1": "Existe um lugar que dá muito prejuízo: estar <strong>no meio</strong>. Imagine que alguém apostou antes de você e ainda há jogadores para agir depois. Você fica ensanduichado: se pagar, ainda pode levar um aumento de quem está atrás, e não sabe o que os dois têm. Nesse assento, jogue <strong>apertado</strong>. Siga só com mãos que aguentam pressão dos dois lados e evite pagar largo só por curiosidade.",
+      "scene5_cap": "O Oponente A apostou, você está no meio e o Oponente B ainda vai agir. Ensanduichado: pague com menos mãos do que pagaria num pote normal.",
+      "s6_title": "Onde você vê isso no GrindLab",
+      "s6_p1": "O nosso solver resolve situações de um contra um. Em potes com 3 ou mais jogadores ele não crava um veredito: o card mostra o selo <strong>≈ Aproximação</strong> com a nossa melhor estimativa, para não te punir por uma jogada defensável. Nesses spots, use as regras deste capítulo como guia.",
+      "takeaways_title": "Resumo da aula",
+      "t1": "Blefe puro <strong>despenca</strong> no multiway. Sem projeto, desista barato.",
+      "t2": "Continue só com <strong>mãos fortes e nut draws</strong>. Largue as marginais.",
+      "t3": "Aposte <strong>menor</strong> sem os nuts. Overbet multiway é cilada.",
+      "t4": "No assento do <strong>meio</strong>, jogue apertado: você está ensanduichado.",
+      "quiz_title": "Teste o que aprendeu",
+      "q1": "Você tem um blefe puro (mão fraca, sem projeto) e há 3 adversários no pote. O que fazer?",
+      "q1a": "Blefar grande para todos desistirem",
+      "q1b": "Blefar pequeno",
+      "q1c": "Desistir barato",
+      "q1e": "Para o blefe dar certo, os três teriam de foldar ao mesmo tempo, o que quase nunca acontece. Sem projeto, desista e economize fichas.",
+      "q2": "No multiway, comparado ao heads-up, seu tamanho de aposta por valor sem os nuts deve ser:",
+      "q2a": "Maior, para cobrar mais",
+      "q2b": "Igual ao heads-up",
+      "q2c": "Menor",
+      "q2e": "O pote já está maior e há mais gente para pagar, então uma aposta menor extrai valor e cobra os projetos sem te expor. Overbet sem os nuts só é pago quando você está atrás.",
+      "q3": "Você está no assento do meio (apostaram antes de você e ainda há gente para agir atrás). A postura correta é:",
+      "q3a": "Pagar largo para não ser roubado",
+      "q3b": "Jogar apertado",
+      "q3c": "Aumentar como blefe na maioria das vezes",
+      "q3e": "Ensanduichado, você ainda pode levar um aumento de quem está atrás e enfrenta duas mãos desconhecidas. Siga só com mãos fortes; pagar largo aqui vaza fichas.",
+      "next_label": "Pratique em spots reais",
+      "next_sub": "Leve isto para o Treino e veja como você joga os potes multiway do seu próprio jogo."
+    }
   }
 }
