@@ -107,7 +107,7 @@ export function TableScene({ step, hero, heroCards, bb = 1, caption }: {
 }) {
   return (
     <figure className="space-y-2">
-      <div className="mx-auto max-w-lg">
+      <div className="w-full">
         <PokerTableV3 step={step} hero={hero} heroCards={heroCards} bb={bb} betUnit="bb" orientation="landscape" />
       </div>
       {caption && <figcaption className="text-center text-xs text-muted-foreground">{caption}</figcaption>}
