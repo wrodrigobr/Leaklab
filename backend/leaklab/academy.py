@@ -2047,3 +2047,154 @@ def generate_exploit_question(user_id: int = None) -> dict:
     if qtype == 'exploit_nit':
         return _exploit_nit_question()
     return _exploit_lag_question()
+
+
+# ── PKO: treino da aula "Torneios de Bounty (PKO)" ───────────────────────────────
+# Só o stack que COBRE captura o bounty; o bounty deixa o call mais largo (vs quem
+# você cobre); afrouxa cedo (caçar bounties), aperta perto do dinheiro (ICM).
+
+def _pko_cover_question() -> dict:
+    return {
+        'type': 'pko_cover',
+        'question': (
+            'Num torneio PKO (bounty), quem leva o prêmio de recompensa (o bounty) ao eliminar '
+            'um jogador?'
+        ),
+        'options': [
+            'Só quem COBRE o eliminado (tinha o stack maior)',
+            'Qualquer jogador que estava na mão',
+            'Quem tinha menos fichas',
+        ],
+        'correct_index': 0,
+        'explanation': (
+            'No PKO, só o jogador que cobre (tem fichas suficientes para eliminar) captura o bounty. '
+            'Se você é o short, não leva o bounty mesmo ganhando a mão; por isso a recompensa favorece '
+            'os stacks maiores.'
+        ),
+        'mental_tip': '**Só o stack que COBRE captura o bounty.**',
+        'context': {}, 'xp_value': 20,
+    }
+
+
+def _pko_power_question() -> dict:
+    return {
+        'type': 'pko_power',
+        'question': (
+            'Você pode eliminar o vilão e capturar o bounty dele (você o cobre). Como isso muda a '
+            'sua decisão de call?'
+        ),
+        'options': [
+            'Pague mais largo: o bounty adiciona valor ao call',
+            'Aperte mais: o bounty é só risco',
+            'Não muda nada',
+        ],
+        'correct_index': 0,
+        'explanation': (
+            'O bounty é dinheiro extra que você ganha ao eliminar o vilão. Isso adiciona valor ao '
+            'call, então você pode pagar mais largo do que num torneio normal, desde que você o cubra.'
+        ),
+        'mental_tip': '**Cobre o vilão? O bounty deixa o call mais largo.**',
+        'context': {}, 'xp_value': 20,
+    }
+
+
+def _pko_stage_question() -> dict:
+    return {
+        'type': 'pko_stage',
+        'question': 'Como ajustar a agressividade num PKO conforme o estágio do torneio?',
+        'options': [
+            'Afrouxe cedo para caçar bounties; aperte perto do dinheiro (ICM)',
+            'Aperte cedo, afrouxe no fim',
+            'Jogue igual o torneio todo',
+        ],
+        'correct_index': 0,
+        'explanation': (
+            'Cedo, os bounties valem muito em relação ao seu stack: afrouxe e cace eliminações. Perto '
+            'do dinheiro, o ICM volta a pesar e você aperta; ali o valor de sobreviver supera o do bounty.'
+        ),
+        'mental_tip': '**PKO: afrouxa cedo (bounties), aperta perto do dinheiro (ICM).**',
+        'context': {}, 'xp_value': 20,
+    }
+
+
+def generate_pko_question(user_id: int = None) -> dict:
+    """Treino da aula de PKO: pko_cover, pko_power, pko_stage."""
+    qtype = random.choice(['pko_cover', 'pko_power', 'pko_stage'])
+    if qtype == 'pko_cover':
+        return _pko_cover_question()
+    if qtype == 'pko_power':
+        return _pko_power_question()
+    return _pko_stage_question()
+
+
+# ── 5 desequilíbrios: treino da aula "Os 5 desequilíbrios" ───────────────────────
+# Polaridade (fortes+blefes), elasticidade (o call muda com o tamanho?), board
+# coverage (ter valor em muitos tipos de board).
+
+def _imb_polarity_question() -> dict:
+    return {
+        'type': 'imb_polarity',
+        'question': 'Uma range de aposta POLARIZADA é composta principalmente de:',
+        'options': [
+            'Mãos muito fortes e blefes, com pouco no meio',
+            'Só mãos médias',
+            'Só mãos fortes de valor',
+        ],
+        'correct_index': 0,
+        'explanation': (
+            'Polarizar é apostar as pontas: mãos muito fortes (valor) e blefes, deixando as mãos '
+            'médias no check. Ranges polarizadas costumam usar tamanhos maiores.'
+        ),
+        'mental_tip': '**Polarizada = fortes + blefes, pouco no meio.**',
+        'context': {}, 'xp_value': 20,
+    }
+
+
+def _imb_elasticity_question() -> dict:
+    return {
+        'type': 'imb_elasticity',
+        'question': (
+            'Contra um vilão INELÁSTICO (paga igual, não importa o tamanho da sua aposta), você deve:'
+        ),
+        'options': [
+            'Apostar MAIOR por valor (o tamanho não muda o call dele)',
+            'Apostar sempre pequeno',
+            'Nunca apostar',
+        ],
+        'correct_index': 0,
+        'explanation': (
+            'Elasticidade mede o quanto o call do vilão muda com o tamanho. Se ele é inelástico (paga '
+            'qualquer tamanho), aposte maior por valor: você cobra mais sem perder o call.'
+        ),
+        'mental_tip': '**Vilão inelástico: aposte maior por valor.**',
+        'context': {}, 'xp_value': 20,
+    }
+
+
+def _imb_board_question() -> dict:
+    return {
+        'type': 'imb_board',
+        'question': "'Board coverage' (cobertura de board) significa:",
+        'options': [
+            'Ter mãos fortes na sua range em vários tipos de board',
+            'Cobrir o pote com fichas',
+            'Só jogar boards secos',
+        ],
+        'correct_index': 0,
+        'explanation': (
+            'Board coverage é ter mãos fortes distribuídas por muitos tipos de flop, para não ficar '
+            "'descoberto' quando o board te desfavorece. Ranges bem construídas cobrem boards altos e baixos."
+        ),
+        'mental_tip': '**Board coverage = ter valor em muitos tipos de flop.**',
+        'context': {}, 'xp_value': 20,
+    }
+
+
+def generate_imbalance_question(user_id: int = None) -> dict:
+    """Treino da aula dos 5 desequilíbrios: imb_polarity, imb_elasticity, imb_board."""
+    qtype = random.choice(['imb_polarity', 'imb_elasticity', 'imb_board'])
+    if qtype == 'imb_polarity':
+        return _imb_polarity_question()
+    if qtype == 'imb_elasticity':
+        return _imb_elasticity_question()
+    return _imb_board_question()

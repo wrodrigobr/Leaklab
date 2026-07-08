@@ -16,6 +16,8 @@ import {
   Ban,
   Eye,
   Crosshair,
+  Coins,
+  Scale,
 } from "lucide-react";
 import { HudLayout } from "@/components/hud/HudLayout";
 import { cn } from "@/lib/utils";
@@ -157,6 +159,24 @@ const MODULES: Module[] = [
     status: "available",
     level: "advanced",
     xpReward: 25,
+  },
+  {
+    id: "pko",
+    icon: Coins,
+    color: "rose",
+    path: "/academy/pko",
+    status: "available",
+    level: "advanced",
+    xpReward: 25,
+  },
+  {
+    id: "imbalances",
+    icon: Scale,
+    color: "rose",
+    path: "/academy/imbalances",
+    status: "available",
+    level: "advanced",
+    xpReward: 30,
   },
   {
     id: "mdf",

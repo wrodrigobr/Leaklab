@@ -223,6 +223,32 @@ class TestAcademyVariety(unittest.TestCase):
         self.assertEqual(seen, {'exploit_station', 'exploit_nit', 'exploit_lag'})
         print("  ✔ exploits drill structure")
 
+    def test_pko_drill_structure(self):
+        """Treino da aula de PKO: cover, power, stage."""
+        seen = set()
+        for _ in range(40):
+            q = acad.generate_pko_question(user_id=1)
+            self.assertIn(q['type'], ('pko_cover', 'pko_power', 'pko_stage'))
+            self.assertEqual(len(q['options']), 3)
+            self.assertEqual(q['correct_index'], 0)
+            self.assertTrue(q['question'] and q['explanation'] and q['mental_tip'])
+            seen.add(q['type'])
+        self.assertEqual(seen, {'pko_cover', 'pko_power', 'pko_stage'})
+        print("  ✔ pko drill structure")
+
+    def test_imbalances_drill_structure(self):
+        """Treino da aula dos 5 desequilíbrios: polarity, elasticity, board."""
+        seen = set()
+        for _ in range(40):
+            q = acad.generate_imbalance_question(user_id=1)
+            self.assertIn(q['type'], ('imb_polarity', 'imb_elasticity', 'imb_board'))
+            self.assertEqual(len(q['options']), 3)
+            self.assertEqual(q['correct_index'], 0)
+            self.assertTrue(q['question'] and q['explanation'] and q['mental_tip'])
+            seen.add(q['type'])
+        self.assertEqual(seen, {'imb_polarity', 'imb_elasticity', 'imb_board'})
+        print("  ✔ imbalances drill structure")
+
     # ── Geradores via dispatcher (mock: sem banco) ─────────────────────────────
 
     def test_math_beginner_variety(self):

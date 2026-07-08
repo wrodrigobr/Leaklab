@@ -2346,6 +2346,46 @@ def academy_exploits_submit():
     return jsonify({'is_correct': is_correct})
 
 
+@app.route('/academy/pko/question', methods=['GET'])
+@require_auth
+def academy_pko_question():
+    from leaklab.academy import generate_pko_question
+    return jsonify(generate_pko_question(g.user_id))
+
+
+@app.route('/academy/pko/submit', methods=['POST'])
+@require_auth
+def academy_pko_submit():
+    body       = request.get_json(force=True) or {}
+    selected   = body.get('selected_index')
+    correct    = body.get('correct_index')
+    xp_value   = int(body.get('xp_value', 20))
+    is_correct = selected == correct
+    if is_correct:
+        add_xp(g.user_id, 'academy_pko_correct', xp_value)
+    return jsonify({'is_correct': is_correct})
+
+
+@app.route('/academy/imbalances/question', methods=['GET'])
+@require_auth
+def academy_imbalances_question():
+    from leaklab.academy import generate_imbalance_question
+    return jsonify(generate_imbalance_question(g.user_id))
+
+
+@app.route('/academy/imbalances/submit', methods=['POST'])
+@require_auth
+def academy_imbalances_submit():
+    body       = request.get_json(force=True) or {}
+    selected   = body.get('selected_index')
+    correct    = body.get('correct_index')
+    xp_value   = int(body.get('xp_value', 20))
+    is_correct = selected == correct
+    if is_correct:
+        add_xp(g.user_id, 'academy_imbalances_correct', xp_value)
+    return jsonify({'is_correct': is_correct})
+
+
 @app.route('/academy/showdown/question', methods=['GET'])
 @require_auth
 def academy_showdown_question():

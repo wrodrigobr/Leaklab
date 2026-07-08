@@ -1097,6 +1097,24 @@ export const academy = {
       method: "POST",
       body: JSON.stringify({ selected_index, correct_index, xp_value }),
     }),
+
+  pkoQuestion: () =>
+    request<AcademyQuestion>("/academy/pko/question"),
+
+  pkoSubmit: (selected_index: number, correct_index: number, xp_value: number) =>
+    request<AcademySubmitResult>("/academy/pko/submit", {
+      method: "POST",
+      body: JSON.stringify({ selected_index, correct_index, xp_value }),
+    }),
+
+  imbalancesQuestion: () =>
+    request<AcademyQuestion>("/academy/imbalances/question"),
+
+  imbalancesSubmit: (selected_index: number, correct_index: number, xp_value: number) =>
+    request<AcademySubmitResult>("/academy/imbalances/submit", {
+      method: "POST",
+      body: JSON.stringify({ selected_index, correct_index, xp_value }),
+    }),
 };
 
 export const gtoPreflop = {
