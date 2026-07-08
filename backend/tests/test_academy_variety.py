@@ -171,6 +171,19 @@ class TestAcademyVariety(unittest.TestCase):
         self.assertEqual(A._combo_blocker_question()['options'][A._combo_blocker_question()['correct_index']], '3')
         print("  ✔ combos drill structure")
 
+    def test_blockers_drill_structure(self):
+        """Treino da aula de Blockers: bluff, catch, unblock."""
+        seen = set()
+        for _ in range(40):
+            q = acad.generate_blocker_question(user_id=1)
+            self.assertIn(q['type'], ('blocker_bluff', 'blocker_catch', 'blocker_unblock'))
+            self.assertEqual(len(q['options']), 3)
+            self.assertEqual(q['correct_index'], 0)  # a opção certa é sempre a 1ª (com o blocker)
+            self.assertTrue(q['question'] and q['explanation'] and q['mental_tip'])
+            seen.add(q['type'])
+        self.assertEqual(seen, {'blocker_bluff', 'blocker_catch', 'blocker_unblock'})
+        print("  ✔ blockers drill structure")
+
     # ── Geradores via dispatcher (mock: sem banco) ─────────────────────────────
 
     def test_math_beginner_variety(self):

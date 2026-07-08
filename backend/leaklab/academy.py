@@ -1755,3 +1755,76 @@ def generate_combo_question(user_id: int = None) -> dict:
     if qtype == 'combo_split':
         return _combo_split_question()
     return _combo_blocker_question()
+
+
+# ── Blockers: treino da aula "Blockers & Unblockers" ─────────────────────────────
+# O melhor blefe BLOQUEIA o valor do vilão e NÃO bloqueia (unblock) os folds dele.
+# Para pagar (bluff-catch), tenha o blocker do valor.
+
+def _blocker_bluff_question() -> dict:
+    draw = random.choice([('cor de copas', 'o Ás de copas', 'a cor máxima'),
+                          ('cor de espadas', 'o Ás de espadas', 'a cor máxima'),
+                          ('sequência', 'uma carta da ponta da sequência', 'a sequência máxima')])
+    board, card, made = draw
+    return {
+        'type': 'blocker_bluff',
+        'question': (
+            f'River num board que completou um projeto de {board}. Você quer blefar. Entre duas '
+            f'mãos fracas, qual blefa melhor?'
+        ),
+        'options': [f'A que tem {card}', 'A que não tem conexão nenhuma com o board', 'Tanto faz'],
+        'correct_index': 0,
+        'explanation': (
+            f'Ter {card} bloqueia {made} do vilão: ele passa a ter menos combos da mão que te paga, '
+            f'então o seu blefe faz ele foldar mais. Blefar com o blocker do valor dele é o blefe melhor.'
+        ),
+        'mental_tip': '**Melhor blefe: o que bloqueia as mãos fortes do vilão.**',
+        'context': {}, 'xp_value': 20,
+    }
+
+
+def _blocker_catch_question() -> dict:
+    return {
+        'type': 'blocker_catch',
+        'question': (
+            'Você tem uma mão média no river e decide se paga um all-in (bluff-catch). Entre duas '
+            'mãos parecidas, qual paga melhor?'
+        ),
+        'options': ['A que bloqueia as mãos de VALOR do vilão', 'A que bloqueia os BLEFES do vilão', 'Tanto faz'],
+        'correct_index': 0,
+        'explanation': (
+            'Bloquear o valor do vilão significa que ele tem menos combos de valor, então é mais '
+            'provável que esteja blefando: melhor para pagar. Bloquear os blefes dele é o contrário, '
+            'pior para pagar.'
+        ),
+        'mental_tip': '**Para pagar (bluff-catch): tenha o blocker do VALOR do vilão.**',
+        'context': {}, 'xp_value': 20,
+    }
+
+
+def _blocker_unblock_question() -> dict:
+    return {
+        'type': 'blocker_unblock',
+        'question': (
+            'Você quer blefar para o vilão foldar as mãos médias dele. É melhor que a sua mão de blefe:'
+        ),
+        'options': ['NÃO tenha as cartas das mãos que ele foldaria', 'Tenha as cartas dos folds dele', 'Tanto faz'],
+        'correct_index': 0,
+        'explanation': (
+            'Se você segura as cartas das mãos que o vilão foldaria, ele tem menos dessas mãos para '
+            'foldar, e o seu blefe funciona menos. O melhor blefe DESbloqueia (unblock) os folds do vilão: '
+            'bloqueia o valor e deixa os folds livres.'
+        ),
+        'mental_tip': '**Bom blefe: bloqueia o valor e NÃO bloqueia os folds do vilão.**',
+        'context': {}, 'xp_value': 20,
+    }
+
+
+def generate_blocker_question(user_id: int = None) -> dict:
+    """Treino da aula de Blockers: blocker_bluff, blocker_catch, blocker_unblock."""
+    qtype = random.choice(['blocker_bluff', 'blocker_catch', 'blocker_unblock'])
+    if qtype == 'blocker_bluff':
+        return _blocker_bluff_question()
+    if qtype == 'blocker_catch':
+        return _blocker_catch_question()
+    return _blocker_unblock_question()

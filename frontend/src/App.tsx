@@ -39,6 +39,7 @@ import AcademyPostflop from "./pages/AcademyPostflop.tsx";
 import AcademyBetSizing from "./pages/AcademyBetSizing.tsx";
 import AcademyMdf from "./pages/AcademyMdf.tsx";
 import AcademyCombos from "./pages/AcademyCombos.tsx";
+import AcademyBlockers from "./pages/AcademyBlockers.tsx";
 import LeakTrainer from "./pages/LeakTrainer.tsx";
 import TournamentCompare from "./pages/TournamentCompare.tsx";
 import CoachApply from "./pages/CoachApply.tsx";
@@ -289,6 +290,7 @@ const App = () => (
             <Route path="/academy/bet-sizing" element={<ProtectedRoute><AcademyBetSizing /></ProtectedRoute>} />
             <Route path="/academy/mdf" element={<ProtectedRoute><AcademyMdf /></ProtectedRoute>} />
             <Route path="/academy/combos" element={<ProtectedRoute><AcademyCombos /></ProtectedRoute>} />
+            <Route path="/academy/blockers" element={<ProtectedRoute><AcademyBlockers /></ProtectedRoute>} />
             <Route path="/leak-trainer" element={<ProtectedRoute><LeakTrainer /></ProtectedRoute>} />
             <Route path="/docs" element={<AuthRoute><Docs /></AuthRoute>} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

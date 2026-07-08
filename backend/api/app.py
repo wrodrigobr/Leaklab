@@ -2326,6 +2326,26 @@ def academy_tournament_submit():
     return jsonify({'is_correct': is_correct})
 
 
+@app.route('/academy/blockers/question', methods=['GET'])
+@require_auth
+def academy_blockers_question():
+    from leaklab.academy import generate_blocker_question
+    return jsonify(generate_blocker_question(g.user_id))
+
+
+@app.route('/academy/blockers/submit', methods=['POST'])
+@require_auth
+def academy_blockers_submit():
+    body       = request.get_json(force=True) or {}
+    selected   = body.get('selected_index')
+    correct    = body.get('correct_index')
+    xp_value   = int(body.get('xp_value', 20))
+    is_correct = selected == correct
+    if is_correct:
+        add_xp(g.user_id, 'academy_blockers_correct', xp_value)
+    return jsonify({'is_correct': is_correct})
+
+
 @app.route('/academy/combos/question', methods=['GET'])
 @require_auth
 def academy_combos_question():

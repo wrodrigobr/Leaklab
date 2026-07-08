@@ -13,6 +13,7 @@ import {
   Brain,
   Users,
   Hash,
+  Ban,
 } from "lucide-react";
 import { HudLayout } from "@/components/hud/HudLayout";
 import { cn } from "@/lib/utils";
@@ -150,6 +151,15 @@ const MODULES: Module[] = [
     icon: Hash,
     color: "amber",
     path: "/academy/combos",
+    status: "available",
+    level: "intermediate",
+    xpReward: 25,
+  },
+  {
+    id: "blockers",
+    icon: Ban,
+    color: "amber",
+    path: "/academy/blockers",
     status: "available",
     level: "intermediate",
     xpReward: 25,

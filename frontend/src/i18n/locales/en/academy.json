@@ -74,6 +74,10 @@
     "combos": {
       "title": "Combinatorics (counting combos)",
       "desc": "How many combos each hand has and how blockers cut the villain's hands. The base for really reading ranges."
+    },
+    "blockers": {
+      "title": "Blockers & Unblockers",
+      "desc": "Why the same weak hand bluffs better or worse depending on what it blocks. The secret to picking great bluffs."
     }
   },
   "stats": {
@@ -228,7 +232,10 @@
     "combo_pair": "Combos: Pair",
     "combo_unpaired": "Combos: Unpaired",
     "combo_split": "Combos: Suited/Offsuit",
-    "combo_blocker": "Combos: Blocker"
+    "combo_blocker": "Combos: Blocker",
+    "blocker_bluff": "Blocker: Bluff",
+    "blocker_catch": "Blocker: Bluff-catch",
+    "blocker_unblock": "Unblock"
   },
   "gtoPreflop": {
     "eyebrow": "Academy: GTO Ranges",
