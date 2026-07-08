@@ -12,6 +12,7 @@ import {
   TrendingUp,
   Brain,
   Users,
+  Hash,
 } from "lucide-react";
 import { HudLayout } from "@/components/hud/HudLayout";
 import { cn } from "@/lib/utils";
@@ -140,6 +141,15 @@ const MODULES: Module[] = [
     icon: Sigma,
     color: "amber",
     path: "/academy/mdf",
+    status: "available",
+    level: "intermediate",
+    xpReward: 25,
+  },
+  {
+    id: "combos",
+    icon: Hash,
+    color: "amber",
+    path: "/academy/combos",
     status: "available",
     level: "intermediate",
     xpReward: 25,

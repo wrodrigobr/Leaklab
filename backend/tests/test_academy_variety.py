@@ -155,6 +155,22 @@ class TestAcademyVariety(unittest.TestCase):
         self.assertEqual(seen, {'mdf', 'alpha'})
         print("  ✔ mdf drill structure")
 
+    def test_combos_drill_structure(self):
+        """Treino da aula de Combinatória: pair(6), unpaired(16), split, blocker(3)."""
+        seen = set()
+        for _ in range(50):
+            q = acad.generate_combo_question(user_id=1)
+            self.assertIn(q['type'], ('combo_pair', 'combo_unpaired', 'combo_split', 'combo_blocker'))
+            self.assertEqual(len(q['options']), 3)
+            self.assertTrue(0 <= q['correct_index'] < 3)
+            self.assertTrue(q['question'] and q['explanation'] and q['mental_tip'])
+            seen.add(q['type'])
+        self.assertEqual(seen, {'combo_pair', 'combo_unpaired', 'combo_split', 'combo_blocker'})
+        import leaklab.academy as A
+        self.assertEqual(A._combo_pair_question()['options'][A._combo_pair_question()['correct_index']], '6')
+        self.assertEqual(A._combo_blocker_question()['options'][A._combo_blocker_question()['correct_index']], '3')
+        print("  ✔ combos drill structure")
+
     # ── Geradores via dispatcher (mock: sem banco) ─────────────────────────────
 
     def test_math_beginner_variety(self):

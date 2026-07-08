@@ -1662,3 +1662,96 @@ def generate_mdf_question(user_id: int = None) -> dict:
         'type': kind, 'question': q, 'options': options, 'correct_index': ci,
         'explanation': expl, 'mental_tip': tip, 'context': {}, 'xp_value': 20,
     }
+
+
+# ── Combinatória: treino da aula "Contar combos e blockers" ──────────────────────
+# Par = 6 combos; não-par = 16 (4 suited + 12 offsuit). Uma carta conhecida bloqueia
+# combos: com um Ás na mão, sobram C(3,2)=3 combos de AA.
+
+_COMBO_PAIRS = ['A', 'K', 'Q', 'J', 'T', '9']
+_COMBO_HI = [('A', 'K'), ('A', 'Q'), ('K', 'Q'), ('K', 'J'), ('Q', 'J')]
+
+
+def _combo_pair_question() -> dict:
+    r = random.choice(_COMBO_PAIRS)
+    return {
+        'type': 'combo_pair',
+        'question': f'Sem nenhuma carta conhecida, quantas combinações uma mão pareada como {r}{r} tem?',
+        'options': ['6', '4', '16'],
+        'correct_index': 0,
+        'explanation': (
+            f'Um par tem 6 combinações: são 4 cartas do valor {r} e você escolhe 2, o que dá '
+            f'C(4,2) = 6. Todo par (AA, KK, 22) tem sempre 6 combos.'
+        ),
+        'mental_tip': '**Par = 6 combos.** Sempre 6, para qualquer par.',
+        'context': {}, 'xp_value': 20,
+    }
+
+
+def _combo_unpaired_question() -> dict:
+    a, b = random.choice(_COMBO_HI)
+    return {
+        'type': 'combo_unpaired',
+        'question': f'Quantas combinações uma mão não-pareada como {a}{b} tem no total (suited + offsuit)?',
+        'options': ['16', '12', '6'],
+        'correct_index': 0,
+        'explanation': (
+            f'Uma mão não-pareada tem 16 combinações: 4 suited (uma por naipe) + 12 offsuit '
+            f'(4 x 3). Todo {a}{b}, AK, KQ e afins tem 16 combos no total.'
+        ),
+        'mental_tip': '**Não-par = 16 combos** (4 suited + 12 offsuit).',
+        'context': {}, 'xp_value': 20,
+    }
+
+
+def _combo_split_question() -> dict:
+    a, b = random.choice(_COMBO_HI)
+    if random.random() < 0.5:
+        return {
+            'type': 'combo_split',
+            'question': f'Das combinações de {a}{b}, quantas são suited (do mesmo naipe)?',
+            'options': ['4', '12', '6'],
+            'correct_index': 0,
+            'explanation': 'São 4 combinações suited, uma para cada naipe (copas, ouros, paus, espadas).',
+            'mental_tip': '**Suited = 4 combos** (um por naipe).',
+            'context': {}, 'xp_value': 20,
+        }
+    return {
+        'type': 'combo_split',
+        'question': f'Das combinações de {a}{b}, quantas são offsuit (naipes diferentes)?',
+        'options': ['12', '4', '16'],
+        'correct_index': 0,
+        'explanation': 'São 12 combinações offsuit: 4 naipes da primeira carta x 3 naipes restantes da segunda.',
+        'mental_tip': '**Offsuit = 12 combos** (4 x 3).',
+        'context': {}, 'xp_value': 20,
+    }
+
+
+def _combo_blocker_question() -> dict:
+    r = random.choice(['A', 'K', 'Q'])
+    return {
+        'type': 'combo_blocker',
+        'question': (
+            f'Você tem um {r} na sua mão. Quantas combinações de {r}{r} o vilão ainda pode ter?'
+        ),
+        'options': ['3', '6', '1'],
+        'correct_index': 0,
+        'explanation': (
+            f'Com um {r} na sua mão, sobram só 3 cartas desse valor no baralho, então o vilão tem '
+            f'C(3,2) = 3 combinações de {r}{r} (em vez das 6 normais). É assim que um blocker corta combos.'
+        ),
+        'mental_tip': '**Segurar 1 carta de um par derruba os combos dele de 6 para 3.**',
+        'context': {}, 'xp_value': 20,
+    }
+
+
+def generate_combo_question(user_id: int = None) -> dict:
+    """Treino da aula de Combinatória: combo_pair, combo_unpaired, combo_split, combo_blocker."""
+    qtype = random.choice(['combo_pair', 'combo_unpaired', 'combo_split', 'combo_blocker'])
+    if qtype == 'combo_pair':
+        return _combo_pair_question()
+    if qtype == 'combo_unpaired':
+        return _combo_unpaired_question()
+    if qtype == 'combo_split':
+        return _combo_split_question()
+    return _combo_blocker_question()

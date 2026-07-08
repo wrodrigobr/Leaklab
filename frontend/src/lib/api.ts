@@ -1052,6 +1052,15 @@ export const academy = {
       method: "POST",
       body: JSON.stringify({ selected_index, correct_index, xp_value }),
     }),
+
+  combosQuestion: () =>
+    request<AcademyQuestion>("/academy/combos/question"),
+
+  combosSubmit: (selected_index: number, correct_index: number, xp_value: number) =>
+    request<AcademySubmitResult>("/academy/combos/submit", {
+      method: "POST",
+      body: JSON.stringify({ selected_index, correct_index, xp_value }),
+    }),
 };
 
 export const gtoPreflop = {

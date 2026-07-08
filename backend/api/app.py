@@ -2326,6 +2326,26 @@ def academy_tournament_submit():
     return jsonify({'is_correct': is_correct})
 
 
+@app.route('/academy/combos/question', methods=['GET'])
+@require_auth
+def academy_combos_question():
+    from leaklab.academy import generate_combo_question
+    return jsonify(generate_combo_question(g.user_id))
+
+
+@app.route('/academy/combos/submit', methods=['POST'])
+@require_auth
+def academy_combos_submit():
+    body       = request.get_json(force=True) or {}
+    selected   = body.get('selected_index')
+    correct    = body.get('correct_index')
+    xp_value   = int(body.get('xp_value', 20))
+    is_correct = selected == correct
+    if is_correct:
+        add_xp(g.user_id, 'academy_combos_correct', xp_value)
+    return jsonify({'is_correct': is_correct})
+
+
 @app.route('/academy/mdf/question', methods=['GET'])
 @require_auth
 def academy_mdf_question():

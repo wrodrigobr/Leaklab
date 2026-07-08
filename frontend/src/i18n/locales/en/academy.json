@@ -70,6 +70,10 @@
     "mdf": {
       "title": "MDF & Alpha (defense & bluffing)",
       "desc": "How much to defend against a bet and how often your bluff must work. The two math rules of balance."
+    },
+    "combos": {
+      "title": "Combinatorics (counting combos)",
+      "desc": "How many combos each hand has and how blockers cut the villain's hands. The base for really reading ranges."
     }
   },
   "stats": {
@@ -220,7 +224,11 @@
     "gto_vs_rfi": "vs Open (Defense)",
     "gto_vs_3bet": "vs 3-Bet",
     "mdf": "MDF (Defense)",
-    "alpha": "Alpha (Bluff)"
+    "alpha": "Alpha (Bluff)",
+    "combo_pair": "Combos: Pair",
+    "combo_unpaired": "Combos: Unpaired",
+    "combo_split": "Combos: Suited/Offsuit",
+    "combo_blocker": "Combos: Blocker"
   },
   "gtoPreflop": {
     "eyebrow": "Academy: GTO Ranges",

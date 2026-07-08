@@ -70,6 +70,10 @@
     "mdf": {
       "title": "MDF y Alpha (defensa y farol)",
       "desc": "Cuánto defender contra una apuesta y con qué frecuencia tu farol debe funcionar. Las dos cuentas del equilibrio."
+    },
+    "combos": {
+      "title": "Combinatoria (contar combos)",
+      "desc": "Cuántos combos tiene cada mano y cómo los blockers cortan las manos del rival. La base para leer ranges de verdad."
     }
   },
   "stats": {
@@ -220,7 +224,11 @@
     "gto_vs_rfi": "vs Open (Defensa)",
     "gto_vs_3bet": "vs 3-Bet",
     "mdf": "MDF (Defensa)",
-    "alpha": "Alpha (Farol)"
+    "alpha": "Alpha (Farol)",
+    "combo_pair": "Combos: Par",
+    "combo_unpaired": "Combos: No-par",
+    "combo_split": "Combos: Suited/Offsuit",
+    "combo_blocker": "Combos: Blocker"
   },
   "gtoPreflop": {
     "eyebrow": "Academia: Ranges GTO",
