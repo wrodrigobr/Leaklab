@@ -200,6 +200,9 @@
     "spr_commitment": "SPR & Commitment",
     "icm_spot": "ICM Spot",
     "bubble_defense": "Bubble Defense",
+    "mw_bluff": "Multiway Bluff",
+    "mw_sizing": "Multiway Sizing",
+    "mw_middle": "Middle Seat",
     "3bet_pot": "3-Bet Pot",
     "gto_rfi": "RFI (Opening)",
     "gto_vs_rfi": "vs Open (Defense)",
@@ -288,7 +291,9 @@
       "q3c": "Raise as a bluff most of the time",
       "q3e": "Sandwiched, you can still get raised by someone behind and you face two unknown hands. Continue only with strong hands; calling wide here bleeds chips.",
       "next_label": "Practice on real spots",
-      "next_sub": "Take this to Training and see how you play the multiway pots from your own game."
+      "next_sub": "Take this to Training and see how you play the multiway pots from your own game.",
+      "drill_title": "Practice now",
+      "drill_sub": "A few quick spots on what you just learned. Each correct answer earns XP."
     }
   }
 }

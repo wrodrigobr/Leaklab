@@ -1347,3 +1347,74 @@ def generate_tournament_question(user_id: int) -> dict:
     if qtype == 'bubble_defense':
         return _bubble_defense_question()
     return _3bet_pot_question()
+
+
+# ── Multiway: treino da aula "Pote com 3+ jogadores" ─────────────────────────────
+# Reforça os 3 conceitos da aula: blefe puro despenca, aposte menor, o assento do meio.
+# PT-only (padrão dos geradores); rótulos de tipo vão pro i18n (qtypes).
+
+def _mw_bluff_question() -> dict:
+    n = random.choice([2, 3, 4])
+    return {
+        'type': 'mw_bluff',
+        'question': (
+            f'Pote multiway com **{n} adversários**. Você tem um blefe puro (mão fraca, '
+            f'sem projeto) e a ação está com você. Qual a jogada?'
+        ),
+        'options': ['Blefar grande', 'Blefar pequeno', 'Desistir (check ou fold)'],
+        'correct_index': 2,
+        'explanation': (
+            f'Para o blefe lucrar, os {n} adversários teriam de foldar ao mesmo tempo, e a '
+            f'chance de pelo menos um pagar cresce rápido com mais gente. Sem projeto, desista barato.'
+        ),
+        'mental_tip': '**Multiway:** quanto mais gente, menos você blefa. Blefe puro 3+ way é ~zero.',
+        'context': {}, 'xp_value': 20,
+    }
+
+
+def _mw_sizing_question() -> dict:
+    n = random.choice([3, 4])
+    return {
+        'type': 'mw_sizing',
+        'question': (
+            f'Você tem uma mão de valor decente (não os nuts) num pote com **{n} jogadores** e '
+            f'quer apostar por valor. Comparado a um pote heads-up, o tamanho ideal é:'
+        ),
+        'options': ['Maior', 'Igual ao heads-up', 'Menor'],
+        'correct_index': 2,
+        'explanation': (
+            'O pote já está maior e há mais gente para pagar, então uma aposta menor extrai '
+            'valor e cobra os projetos sem te expor. Overbet sem os nuts só é pago quando você está atrás.'
+        ),
+        'mental_tip': '**Sem os nuts, aposte menor no multiway.** Grande demais só te paga quem já te venceu.',
+        'context': {}, 'xp_value': 20,
+    }
+
+
+def _mw_middle_question() -> dict:
+    seat = random.choice(['HJ', 'CO', 'LJ'])
+    return {
+        'type': 'mw_middle',
+        'question': (
+            f'Multiway: alguém apostou antes de você, você está no **{seat}** (no meio) e ainda '
+            f'há jogadores para agir depois. Ensanduichado, a postura correta é:'
+        ),
+        'options': ['Pagar largo', 'Jogar apertado', 'Aumentar como blefe quase sempre'],
+        'correct_index': 1,
+        'explanation': (
+            'No meio você ainda pode levar um aumento de quem está atrás e enfrenta duas mãos '
+            'desconhecidas. Siga só com mãos fortes; pagar largo aqui vaza fichas.'
+        ),
+        'mental_tip': '**Assento do meio = o pior lugar.** Aperte: você joga sem informação e sob risco de raise.',
+        'context': {}, 'xp_value': 20,
+    }
+
+
+def generate_multiway_question(user_id: int = None) -> dict:
+    """Treino da aula de Multiway: mw_bluff, mw_sizing, mw_middle."""
+    qtype = random.choice(['mw_bluff', 'mw_sizing', 'mw_middle'])
+    if qtype == 'mw_bluff':
+        return _mw_bluff_question()
+    if qtype == 'mw_sizing':
+        return _mw_sizing_question()
+    return _mw_middle_question()

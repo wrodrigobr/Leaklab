@@ -81,17 +81,18 @@ interface Props {
   challengeSize?: number;
 }
 
-export default function AcademyQuizPage({
-  eyebrow,
-  title,
-  description,
+type QuizRunnerProps = Omit<Props, "eyebrow" | "title" | "description">;
+
+/** Motor de quiz EMBUTÍVEL (sem HudLayout) — usado standalone (AcademyQuizPage)
+ *  e dentro das AULAS da Academia (treino específico dentro do material). */
+export function QuizRunner({
   theme = "emerald",
   Icon,
   loadFn,
   submitFn,
   showCards = false,
   challengeSize,
-}: Props) {
+}: QuizRunnerProps) {
   const { t } = useTranslation("academy");
   const c = THEMES[theme];
 
@@ -153,8 +154,7 @@ export default function AcademyQuizPage({
   const boardCards = question?.board_cards?.map(toCardData) ?? [];
 
   return (
-    <HudLayout eyebrow={eyebrow} title={title} description={description}>
-      <div className="mx-auto max-w-3xl space-y-6">
+    <div className="space-y-6">
 
         {/* Stats bar */}
         {totalDone > 0 && phase !== "complete" && (
@@ -398,6 +398,16 @@ export default function AcademyQuizPage({
             </button>
           </div>
         )}
+    </div>
+  );
+}
+
+/** Página standalone: o motor dentro do HudLayout + largura padrão. */
+export default function AcademyQuizPage({ eyebrow, title, description, ...rest }: Props) {
+  return (
+    <HudLayout eyebrow={eyebrow} title={title} description={description}>
+      <div className="mx-auto max-w-3xl">
+        <QuizRunner {...rest} />
       </div>
     </HudLayout>
   );

@@ -78,6 +78,25 @@ class TestAcademyVariety(unittest.TestCase):
         self.assertTrue(q['explanation'] and q['mental_tip'])
         print("  ✔ bubble_defense structure")
 
+    def test_multiway_drill_structure(self):
+        """Treino da aula de Multiway: 3 tipos, estrutura válida, resposta certa alinhada
+        aos conceitos (blefe→desistir, sizing→menor, meio→apertado)."""
+        seen = set()
+        for _ in range(30):
+            q = acad.generate_multiway_question(user_id=1)
+            self.assertIn(q['type'], ('mw_bluff', 'mw_sizing', 'mw_middle'))
+            self.assertEqual(len(q['options']), 3)
+            self.assertTrue(0 <= q['correct_index'] < 3)
+            self.assertTrue(q['question'] and q['explanation'] and q['mental_tip'])
+            seen.add(q['type'])
+        self.assertEqual(seen, {'mw_bluff', 'mw_sizing', 'mw_middle'})  # os 3 aparecem
+        # respostas certas por conceito
+        import leaklab.academy as A
+        self.assertIn('Desistir', A._mw_bluff_question()['options'][A._mw_bluff_question()['correct_index']])
+        self.assertEqual(A._mw_sizing_question()['options'][A._mw_sizing_question()['correct_index']], 'Menor')
+        self.assertEqual(A._mw_middle_question()['options'][A._mw_middle_question()['correct_index']], 'Jogar apertado')
+        print("  ✔ multiway drill structure")
+
     # ── Geradores via dispatcher (mock: sem banco) ─────────────────────────────
 
     def test_math_beginner_variety(self):

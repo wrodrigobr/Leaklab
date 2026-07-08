@@ -200,6 +200,9 @@
     "spr_commitment": "SPR & Commitment",
     "icm_spot": "Spot ICM",
     "bubble_defense": "Defesa na Bolha",
+    "mw_bluff": "Blefe Multiway",
+    "mw_sizing": "Sizing Multiway",
+    "mw_middle": "Assento do Meio",
     "3bet_pot": "Pote de 3-Bet",
     "gto_rfi": "RFI (Abertura)",
     "gto_vs_rfi": "vs Open (Defesa)",
@@ -282,13 +285,15 @@
       "q2b": "Igual ao heads-up",
       "q2c": "Menor",
       "q2e": "O pote já está maior e há mais gente para pagar, então uma aposta menor extrai valor e cobra os projetos sem te expor. Overbet sem os nuts só é pago quando você está atrás.",
-      "q3": "Você está no assento do meio (apostaram antes de você e ainda há gente para agir atrás). A postura correta é:",
+      "q3": "Você está no assento do meio (apostaram antes de você e ainda há gente para agir depois). A postura correta é:",
       "q3a": "Pagar largo para não ser roubado",
       "q3b": "Jogar apertado",
       "q3c": "Aumentar como blefe na maioria das vezes",
       "q3e": "Ensanduichado, você ainda pode levar um aumento de quem está atrás e enfrenta duas mãos desconhecidas. Siga só com mãos fortes; pagar largo aqui vaza fichas.",
       "next_label": "Pratique em spots reais",
-      "next_sub": "Leve isto para o Treino e veja como você joga os potes multiway do seu próprio jogo."
+      "next_sub": "Leve isto para o Treino e veja como você joga os potes multiway do seu próprio jogo.",
+      "drill_title": "Treino: pratique agora",
+      "drill_sub": "Alguns spots rápidos sobre o que você acabou de aprender. Cada acerto vale XP."
     }
   }
 }

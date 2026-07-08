@@ -200,6 +200,9 @@
     "spr_commitment": "SPR y Compromiso",
     "icm_spot": "Spot ICM",
     "bubble_defense": "Defensa en la Burbuja",
+    "mw_bluff": "Farol Multiway",
+    "mw_sizing": "Sizing Multiway",
+    "mw_middle": "Asiento del Medio",
     "3bet_pot": "Bote de 3-Bet",
     "gto_rfi": "RFI (Apertura)",
     "gto_vs_rfi": "vs Open (Defensa)",
@@ -288,7 +291,9 @@
       "q3c": "Subir como farol la mayoría de las veces",
       "q3e": "En sándwich, aún puedes recibir una subida de quien está detrás y enfrentas dos manos desconocidas. Sigue solo con manos fuertes; pagar amplio aquí sangra fichas.",
       "next_label": "Practica en spots reales",
-      "next_sub": "Lleva esto al Entrenamiento y mira cómo juegas los botes multiway de tu propio juego."
+      "next_sub": "Lleva esto al Entrenamiento y mira cómo juegas los botes multiway de tu propio juego.",
+      "drill_title": "Entrena ahora",
+      "drill_sub": "Algunos spots rápidos sobre lo que acabas de aprender. Cada acierto suma XP."
     }
   }
 }

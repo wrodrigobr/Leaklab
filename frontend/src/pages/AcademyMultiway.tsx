@@ -1,9 +1,12 @@
+import { useCallback } from "react";
 import { useTranslation } from "react-i18next";
+import { Users, Dumbbell } from "lucide-react";
 import { HudLayout } from "@/components/hud/HudLayout";
 import {
-  LessonSection, Prose, Callout, TableScene, CardRow, Takeaways, LessonQuiz, NextStep,
-  type QuizItem,
+  LessonSection, Prose, Callout, TableScene, CardRow, Takeaways, NextStep,
 } from "@/components/academy/LessonKit";
+import { QuizRunner } from "@/components/academy/AcademyQuizPage";
+import { academy } from "@/lib/api";
 import type { ReplayStep, ReplaySeat } from "@/lib/api";
 
 // Monta um ReplayStep didático mínimo para a mesa ATUAL (PokerTableV3).
@@ -20,6 +23,12 @@ export default function AcademyMultiway() {
   const { t } = useTranslation("academy");
   const L = (k: string) => t(`lessons.multiway.${k}`);
   const you = L("seat_you"), vA = L("seat_vA"), vB = L("seat_vB");
+
+  const loadDrill   = useCallback(() => academy.multiwayQuestion(), []);
+  const submitDrill = useCallback(
+    (idx: number, ci: number, xp: number) => { academy.multiwaySubmit(idx, ci, xp).catch(() => {}); },
+    [],
+  );
 
   // Cena 1 — pote 3-way no flop. Herói (BTN) com projeto de nut flush.
   const flopStep = scene({
@@ -44,12 +53,6 @@ export default function AcademyMultiway() {
     hero: you, hero_cards: ["As", "Jd"], board: ["Qh", "7c", "2h"],
     bets: { [vA]: 3 }, pot: 6, pot_bb: 6, button: 3,
   });
-
-  const quiz: QuizItem[] = [
-    { q: L("q1"), options: [L("q1a"), L("q1b"), L("q1c")], correct: 2, explain: L("q1e") },
-    { q: L("q2"), options: [L("q2a"), L("q2b"), L("q2c")], correct: 2, explain: L("q2e") },
-    { q: L("q3"), options: [L("q3a"), L("q3b"), L("q3c")], correct: 1, explain: L("q3e") },
-  ];
 
   return (
     <HudLayout eyebrow={L("eyebrow")} title={L("title")} description={L("subtitle")}>
@@ -92,7 +95,17 @@ export default function AcademyMultiway() {
 
         <Takeaways title={L("takeaways_title")} items={[L("t1"), L("t2"), L("t3"), L("t4")]} />
 
-        <LessonQuiz title={L("quiz_title")} items={quiz} />
+        {/* Treino específico da aula — dentro do próprio material */}
+        <section className="space-y-4 rounded-2xl border border-rose-500/20 bg-rose-500/5 p-5">
+          <div>
+            <div className="flex items-center gap-2 font-mono text-[10px] font-bold uppercase tracking-widest text-rose-300">
+              <Dumbbell className="size-3.5" aria-hidden />
+              {L("drill_title")}
+            </div>
+            <p className="mt-1 text-sm text-muted-foreground">{L("drill_sub")}</p>
+          </div>
+          <QuizRunner theme="violet" Icon={Users} loadFn={loadDrill} submitFn={submitDrill} />
+        </section>
 
         <NextStep to="/training" label={L("next_label")} sub={L("next_sub")} />
       </article>

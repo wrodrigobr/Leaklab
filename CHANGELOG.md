@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(academy): treino DENTRO do material — matéria + drill na mesma página (#academy)
+
+> Ideia do usuário: unir os dois lados da Academia (material de referência × treinos) colocando o treino específico dentro do próprio material. Motor de quiz extraído num componente EMBUTÍVEL: `QuizRunner` (o miolo do antigo `AcademyQuizPage`, sem o `HudLayout`); `AcademyQuizPage` virou um wrapper fino (`HudLayout` + `QuizRunner`), então as páginas standalone (math/board/tournament) seguem idênticas. A aula de **Multiway** agora termina com um **Treino** de verdade embutido (adaptativo, com XP/streak), não mais um quiz estático: novo gerador backend `generate_multiway_question` (`academy.py`: `mw_bluff`/`mw_sizing`/`mw_middle`, reforçando os 3 conceitos da aula) + endpoints `/academy/multiway/question|submit` + `api.academy.multiway*`. Fica o padrão: cada material = aula (LessonKit, visuais atuais) + treino específico (QuizRunner) no mesmo lugar. Também: correção de copy na aula (q3 "há gente para agir atrás" → "depois"). i18n PT/EN/ES (qtypes mw_* + drill_title/sub, 253 chaves idênticas). Testes: 1 estrutural em `test_academy_variety.py` (14/14). tsc + build OK. **Deploy:** frontend (Cloudflare) + `web` (novo endpoint).
+
 ### fix(academy): aula usa a mesa e o baralho ATUAIS do produto (#academy)
 
 > Correção pedida pelo usuário: a 1ª aula (Multiway) tinha sido montada com `PokerTable`/`PlayingCard`, que são as versões ANTIGAS, não a mesa e as cartas que o Replayer usa de verdade. Agora o `TableScene` do kit renderiza a mesa atual **`PokerTableV3`** (a mesma do Replayer, com feltro/perspectiva/marca GrindLab), alimentada por um `ReplayStep` didático mínimo, e o `CardRow` usa o **baralho SVG real** (`public/cards/XX.svg`, 52 cartas, via novo helper `DeckCard`/`deckCardSrc`). A aula de Multiway passou a mostrar duas cenas 3-way na mesa real (pote normal e "ensanduichado") com as cartas oficiais. Sem novo texto. tsc + build OK. Diretriz registrada: toda aula nova usa `PokerTableV3` + `/cards`, nunca os componentes antigos.
