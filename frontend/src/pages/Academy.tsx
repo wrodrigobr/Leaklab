@@ -14,6 +14,7 @@ import {
   Users,
   Hash,
   Ban,
+  Eye,
 } from "lucide-react";
 import { HudLayout } from "@/components/hud/HudLayout";
 import { cn } from "@/lib/utils";
@@ -54,6 +55,15 @@ const MODULES: Module[] = [
     status: "available",
     level: "beginner",
     xpReward: 20,
+  },
+  {
+    id: "showdown",
+    icon: Eye,
+    color: "emerald",
+    path: "/academy/showdown",
+    status: "available",
+    level: "beginner",
+    xpReward: 15,
   },
   {
     id: "position",

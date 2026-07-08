@@ -1904,3 +1904,71 @@ def generate_position_question(user_id: int = None) -> dict:
     if qtype == 'pos_range':
         return _pos_range_question()
     return _pos_realization_question()
+
+
+# ── Showdown value: treino da aula "Showdown Value" ──────────────────────────────
+# Mão média que ganha de blefes no showdown mas perde de valor: geralmente CHECK
+# (controla o pote, chega ao showdown barato); contra agressor, serve de bluff-catch.
+
+def _sdv_action_question() -> dict:
+    return {
+        'type': 'sdv_action',
+        'question': (
+            'Você tem uma mão média que ganha de blefes no showdown, mas perde das mãos de valor. '
+            'Ninguém apostou ainda. Qual a melhor jogada?'
+        ),
+        'options': ['Check, para chegar ao showdown barato', 'Apostar por valor', 'Blefar grande'],
+        'correct_index': 0,
+        'explanation': (
+            'Mãos de showdown value preferem check: você já ganha das mãos que blefariam, e apostar '
+            'só faz as piores foldarem e as melhores pagarem. Check controla o pote e leva você ao '
+            'showdown de graça.'
+        ),
+        'mental_tip': '**Showdown value = check** para ver o showdown barato.',
+        'context': {}, 'xp_value': 20,
+    }
+
+
+def _sdv_why_question() -> dict:
+    return {
+        'type': 'sdv_why',
+        'question': 'Por que geralmente NÃO se aposta uma mão de showdown value?',
+        'options': [
+            'Só as mãos melhores pagam e as piores foldam',
+            'Porque a mão é forte demais para apostar por valor',
+            'Porque ela nunca ganha no showdown',
+        ],
+        'correct_index': 0,
+        'explanation': (
+            'Apostar uma mão média é o pior dos dois mundos: as mãos que te pagam são as que te '
+            'batem, e as que você venceria (os blefes) foldam. Você transforma um showdown ganho '
+            'num pote perdido. Por isso essas mãos preferem check.'
+        ),
+        'mental_tip': '**Apostar SDV = só te paga quem te bate.** Prefira check.',
+        'context': {}, 'xp_value': 20,
+    }
+
+
+def _sdv_catch_question() -> dict:
+    return {
+        'type': 'sdv_catch',
+        'question': 'Contra um jogador que blefa muito, uma mão de showdown value serve principalmente para:',
+        'options': ['Pagar as apostas dele (bluff-catch)', 'Blefar por cima', 'Foldar sempre'],
+        'correct_index': 0,
+        'explanation': (
+            'Se o vilão blefa demais, a sua mão média vira um ótimo bluff-catcher: ela perde de valor, '
+            'mas ganha de todos os blefes dele. Contra um agressor, pagar com showdown value é lucrativo.'
+        ),
+        'mental_tip': '**Contra agressor, SDV vira bluff-catcher:** pague os blefes.',
+        'context': {}, 'xp_value': 20,
+    }
+
+
+def generate_sdv_question(user_id: int = None) -> dict:
+    """Treino da aula de Showdown Value: sdv_action, sdv_why, sdv_catch."""
+    qtype = random.choice(['sdv_action', 'sdv_why', 'sdv_catch'])
+    if qtype == 'sdv_action':
+        return _sdv_action_question()
+    if qtype == 'sdv_why':
+        return _sdv_why_question()
+    return _sdv_catch_question()

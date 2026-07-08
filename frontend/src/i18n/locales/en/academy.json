@@ -78,6 +78,10 @@
     "blockers": {
       "title": "Blockers & Unblockers",
       "desc": "Why the same weak hand bluffs better or worse depending on what it blocks. The secret to picking great bluffs."
+    },
+    "showdown": {
+      "title": "Showdown Value",
+      "desc": "The medium hand that doesn't want to bet: when to check for a cheap showdown and when to call an aggressor."
     }
   },
   "stats": {
@@ -239,7 +243,10 @@
     "pos_order": "Position: Order",
     "pos_best": "Position: Best",
     "pos_range": "Position: Range",
-    "pos_realization": "Position: Realization"
+    "pos_realization": "Position: Realization",
+    "sdv_action": "Showdown: Action",
+    "sdv_why": "Showdown: Why",
+    "sdv_catch": "Showdown: Bluff-catch"
   },
   "gtoPreflop": {
     "eyebrow": "Academy: GTO Ranges",

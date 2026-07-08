@@ -197,6 +197,19 @@ class TestAcademyVariety(unittest.TestCase):
         self.assertEqual(seen, {'pos_order', 'pos_best', 'pos_range', 'pos_realization'})
         print("  ✔ position drill structure")
 
+    def test_showdown_drill_structure(self):
+        """Treino da aula de Showdown Value: action, why, catch."""
+        seen = set()
+        for _ in range(40):
+            q = acad.generate_sdv_question(user_id=1)
+            self.assertIn(q['type'], ('sdv_action', 'sdv_why', 'sdv_catch'))
+            self.assertEqual(len(q['options']), 3)
+            self.assertEqual(q['correct_index'], 0)
+            self.assertTrue(q['question'] and q['explanation'] and q['mental_tip'])
+            seen.add(q['type'])
+        self.assertEqual(seen, {'sdv_action', 'sdv_why', 'sdv_catch'})
+        print("  ✔ showdown drill structure")
+
     # ── Geradores via dispatcher (mock: sem banco) ─────────────────────────────
 
     def test_math_beginner_variety(self):

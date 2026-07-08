@@ -78,6 +78,10 @@
     "blockers": {
       "title": "Blockers y Unblockers",
       "desc": "Por qué la misma mano débil farolea mejor o peor según lo que bloquea. El secreto para elegir buenos faroles."
+    },
+    "showdown": {
+      "title": "Showdown Value",
+      "desc": "La mano media que no quiere apostar: cuándo hacer check para ver el showdown barato y cuándo pagar a un agresor."
     }
   },
   "stats": {
@@ -239,7 +243,10 @@
     "pos_order": "Posición: Orden",
     "pos_best": "Posición: Mejor",
     "pos_range": "Posición: Range",
-    "pos_realization": "Posición: Realización"
+    "pos_realization": "Posición: Realización",
+    "sdv_action": "Showdown: Acción",
+    "sdv_why": "Showdown: Por qué",
+    "sdv_catch": "Showdown: Bluff-catch"
   },
   "gtoPreflop": {
     "eyebrow": "Academia: Ranges GTO",
