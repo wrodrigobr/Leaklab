@@ -62,6 +62,10 @@
     "icm": {
       "title": "ICM: valor de las fichas en torneo",
       "desc": "Por qué sobrevivir vale premio: risk premium, burbuja y mesa final. Clase con mesa y ejemplos."
+    },
+    "postflop": {
+      "title": "Postflop: C-bet y Texturas",
+      "desc": "La apuesta más común del poker: cuándo hacer c-bet, leer board seco vs mojado, el tamaño correcto y cuándo seguir en el turn. Clase con mesa y ejemplos."
     }
   },
   "stats": {

@@ -62,6 +62,10 @@
     "icm": {
       "title": "ICM: chip value in tournaments",
       "desc": "Why surviving is worth a prize: risk premium, bubble and final table. Lesson with table and examples."
+    },
+    "postflop": {
+      "title": "Postflop: C-bet & Textures",
+      "desc": "The most common bet in poker: when to c-bet, reading dry vs wet boards, the right size and when to barrel. Lesson with table and examples."
     }
   },
   "stats": {

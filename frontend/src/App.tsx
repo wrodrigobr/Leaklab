@@ -35,6 +35,7 @@ import AcademyTournament from "./pages/AcademyTournament.tsx";
 import AcademyGtoPreflop from "./pages/AcademyGtoPreflop.tsx";
 import AcademyMultiway from "./pages/AcademyMultiway.tsx";
 import AcademyIcm from "./pages/AcademyIcm.tsx";
+import AcademyPostflop from "./pages/AcademyPostflop.tsx";
 import LeakTrainer from "./pages/LeakTrainer.tsx";
 import TournamentCompare from "./pages/TournamentCompare.tsx";
 import CoachApply from "./pages/CoachApply.tsx";
@@ -281,6 +282,7 @@ const App = () => (
             <Route path="/academy/gto-preflop" element={<ProtectedRoute><AcademyGtoPreflop /></ProtectedRoute>} />
             <Route path="/academy/multiway" element={<ProtectedRoute><AcademyMultiway /></ProtectedRoute>} />
             <Route path="/academy/icm" element={<ProtectedRoute><AcademyIcm /></ProtectedRoute>} />
+            <Route path="/academy/postflop" element={<ProtectedRoute><AcademyPostflop /></ProtectedRoute>} />
             <Route path="/leak-trainer" element={<ProtectedRoute><LeakTrainer /></ProtectedRoute>} />
             <Route path="/docs" element={<AuthRoute><Docs /></AuthRoute>} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

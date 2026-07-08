@@ -88,6 +88,15 @@ const MODULES: Module[] = [
     level: "intermediate",
     xpReward: 25,
   },
+  {
+    id: "postflop",
+    icon: Layers,
+    color: "amber",
+    path: "/academy/postflop",
+    status: "available",
+    level: "intermediate",
+    xpReward: 25,
+  },
   // Advanced
   {
     id: "tournament",

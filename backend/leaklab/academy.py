@@ -1443,3 +1443,97 @@ def generate_icm_question(user_id: int = None) -> dict:
     if random.random() < 0.5:
         return _icm_spot_question()
     return _bubble_defense_question()
+
+
+# ── Postflop: treino da aula "C-bet, barrel e texturas" ──────────────────────────
+
+_DRY_BOARDS = ['K-7-2 arco-íris', 'A-8-3 arco-íris', 'Q-6-2 arco-íris', 'K-9-4 arco-íris']
+_WET_BOARDS = ['9-8-7 de dois naipes', 'J-T-8 de dois naipes', '7-6-5 de dois naipes', 'Q-J-9 de dois naipes']
+
+
+def _cbet_dry_question() -> dict:
+    board = random.choice(_DRY_BOARDS)
+    return {
+        'type': 'cbet_dry',
+        'question': (
+            f'Você abriu no pré (é o agressor) e vê um flop SECO, {board}, heads-up e em '
+            f'posição. Qual a melhor jogada?'
+        ),
+        'options': ['C-bet pequeno, na maioria das mãos', 'Check com quase tudo', 'Overbet só com os nuts'],
+        'correct_index': 0,
+        'explanation': (
+            'Board seco favorece o agressor: você tem mais mãos fortes na sua range e o vilão '
+            'errou muito. C-bet pequeno (cerca de 1/3 do pote) e frequente lucra barato, negando '
+            'equity das cartas altas dele.'
+        ),
+        'mental_tip': '**Seco e você é o agressor:** c-bet pequeno e frequente.',
+        'context': {}, 'xp_value': 20,
+    }
+
+
+def _cbet_wet_question() -> dict:
+    board = random.choice(_WET_BOARDS)
+    return {
+        'type': 'cbet_wet',
+        'question': (
+            f'Flop MOLHADO e conectado, {board}. Você é o agressor. Qual a abordagem certa?'
+        ),
+        'options': [
+            'C-bet em quase tudo, pequeno',
+            'Apostar menos vezes e mais seletivo (maior com valor e projeto)',
+            'Overbet de blefe sempre',
+        ],
+        'correct_index': 1,
+        'explanation': (
+            'Board molhado ajuda o range do vilão (mais pares, dois pares e projetos). Aposte com '
+            'menos frequência e de forma mais polarizada, maior com valor e projetos fortes; boa '
+            'parte das suas mãos prefere check.'
+        ),
+        'mental_tip': '**Molhado favorece quem defende:** c-bet menos e mais seletivo.',
+        'context': {}, 'xp_value': 20,
+    }
+
+
+def _barrel_question() -> dict:
+    if random.random() < 0.5:
+        card = random.choice(['um Ás', 'um Rei', 'uma Dama'])
+        return {
+            'type': 'barrel',
+            'question': (
+                f'Você deu c-bet no flop e o turn traz {card} alto, que combina com o seu range '
+                f'de agressor. Como seguir?'
+            ),
+            'options': ['Apostar de novo (barrel)', 'Checar e desistir', 'Nunca apostar no turn'],
+            'correct_index': 0,
+            'explanation': (
+                'Cartas altas costumam bater mais o range de quem abriu do que o de quem defendeu. '
+                'Seguir apostando (double barrel) pressiona os pares médios do vilão e ganha muitos potes.'
+            ),
+            'mental_tip': '**Turn que ajuda o SEU range:** siga apostando.',
+            'context': {}, 'xp_value': 20,
+        }
+    card = random.choice(['um 5 que fecha projetos', 'um 8 que conecta o board', 'uma carta baixa que completa desenhos'])
+    return {
+        'type': 'barrel',
+        'question': (
+            f'Você deu c-bet no flop e o turn traz {card}, que ajuda mais o range do vilão. Como seguir?'
+        ),
+        'options': ['Apostar grande sempre', 'Frear: apostar menos e controlar o pote', 'Dar all-in de blefe'],
+        'correct_index': 1,
+        'explanation': (
+            'Quando o turn favorece quem defendeu, o seu blefe perde valor e você é pago pelas mãos '
+            'melhores. Freie: aposte com menos frequência, faça mais check e controle o tamanho do pote.'
+        ),
+        'mental_tip': '**Turn que ajuda o vilão:** freie e controle o pote.',
+        'context': {}, 'xp_value': 20,
+    }
+
+
+def generate_postflop_question(user_id: int = None) -> dict:
+    """Treino da aula de Postflop: cbet_dry, cbet_wet, barrel."""
+    qtype = random.choice(['cbet_dry', 'cbet_wet', 'barrel'])
+    if qtype == 'cbet_dry':
+        return _cbet_dry_question()
+    if qtype == 'cbet_wet':
+        return _cbet_wet_question()
+    return _barrel_question()

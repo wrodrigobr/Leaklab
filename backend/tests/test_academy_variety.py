@@ -114,6 +114,21 @@ class TestAcademyVariety(unittest.TestCase):
         self.assertEqual(seen, {'icm_spot', 'bubble_defense'})  # os dois aparecem
         print("  ✔ icm drill structure")
 
+    def test_postflop_drill_structure(self):
+        """Treino da aula de Postflop: cbet_dry, cbet_wet, barrel."""
+        seen = set()
+        for _ in range(40):
+            q = acad.generate_postflop_question(user_id=1)
+            self.assertIn(q['type'], ('cbet_dry', 'cbet_wet', 'barrel'))
+            self.assertEqual(len(q['options']), 3)
+            self.assertTrue(0 <= q['correct_index'] < 3)
+            self.assertTrue(q['question'] and q['explanation'] and q['mental_tip'])
+            seen.add(q['type'])
+        self.assertEqual(seen, {'cbet_dry', 'cbet_wet', 'barrel'})
+        import leaklab.academy as A
+        self.assertIn('C-bet pequeno', A._cbet_dry_question()['options'][A._cbet_dry_question()['correct_index']])
+        print("  ✔ postflop drill structure")
+
     # ── Geradores via dispatcher (mock: sem banco) ─────────────────────────────
 
     def test_math_beginner_variety(self):
