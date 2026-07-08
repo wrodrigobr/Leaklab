@@ -292,7 +292,10 @@
     "mwNway": "{{n}}-way",
     "whyLimped": "Limped pot: the heuristic recommends a passive line. Check is the free option; isolating over the limp is optional.",
     "approxDeep": "≈ Approximation (solver at {{n}}bb): your stack is deeper; the action is reliable, sizing may differ.",
-    "vApprox": "≈ Approximation"
+    "vApprox": "≈ Approximation",
+    "vApproxIcm": "≈ chipEV approximation",
+    "srcIcm": "ICM",
+    "tipIcmApprox": "Near the money, under ICM pressure, folding tight is often worth more than the chip EV suggests. This analysis is in chips (chipEV) and does not measure that risk premium, so a defensible fold here is not flagged as a mistake."
   },
   "controls": {
     "play": "Play",

@@ -292,7 +292,10 @@
     "mwNway": "{{n}}-way",
     "whyLimped": "Pote limpado: a heurística recomenda passivo. Check é a opção grátis; iso-raise sobre o limp é opcional.",
     "approxDeep": "≈ Aproximação (solver a {{n}}bb): seu stack é mais fundo; a ação é confiável, o sizing pode diferir.",
-    "vApprox": "≈ Aproximação"
+    "vApprox": "≈ Aproximação",
+    "vApproxIcm": "≈ Aproximação chipEV",
+    "srcIcm": "ICM",
+    "tipIcmApprox": "Perto do dinheiro, sob pressão de ICM, apertar costuma valer mais do que o EV em fichas sugere. Esta análise é em fichas (chipEV) e não mede esse prêmio de risco, então um fold defensável aqui não é marcado como erro."
   },
   "controls": {
     "play": "Reproduzir",

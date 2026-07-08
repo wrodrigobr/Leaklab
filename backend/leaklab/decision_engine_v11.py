@@ -3,6 +3,8 @@ from typing import Dict, Any
 import logging as _logging
 import os
 
+from leaklab.verdict import icm_zone_softens_fold
+
 _gto_log = _logging.getLogger('leaklab.gto')
 
 _GTO_VALID_POSITIONS = {'UTG', 'UTG1', 'UTG2', 'LJ', 'HJ', 'CO', 'BTN', 'SB', 'BB'}
@@ -1017,6 +1019,19 @@ def evaluate_decision(input_data: Dict[str, Any]) -> Dict[str, Any]:
         label = 'marginal'
         final_score = min(final_score, _LABEL_MAX_SCORE['marginal'])
 
+    # Gate zona-ICM (TERMINAL, só folds): o grading é ChipEV e não modela ICM. Sob ICM
+    # real (pressure alto + mesa curta), foldar uma mão que o ChipEV manda CONTINUAR não
+    # é "Erro" — é aproximação (tight-is-right). Rebaixa Erro→'marginal' e marca a flag
+    # para o card exibir "≈ Aproximação chipEV". NÃO toca agressão (o invariante de direção
+    # acima é ortogonal: lá o hero AGRIDE; aqui ele FOLDA). Ver leaklab/verdict.py.
+    icm_zone_approx = False
+    if label in ('small_mistake', 'clear_mistake') and icm_zone_softens_fold(
+            context.get('icmPressure'), context.get('activePlayers'),
+            input_data.get('player_action'), _best_action):
+        label = 'marginal'
+        final_score = min(final_score, _LABEL_MAX_SCORE['marginal'])
+        icm_zone_approx = True
+
     interpretation = build_interpretation(input_data, label, threshold_pack["adjustedRequiredEquity"])
 
     # Intenção da aposta/raise postflop (value / proteção / semi-blefe / blefe / "o meio").
@@ -1084,6 +1099,7 @@ def evaluate_decision(input_data: Dict[str, Any]) -> Dict[str, Any]:
         },
         "interpretation": interpretation,
         "gto": gto,
+        "icm_zone_approx": icm_zone_approx,   # gate zona-ICM: fold ChipEV-reprovado defensável → "≈ Aproximação chipEV"
         "bet_intent": bet_intent,
         "threebet_intent": threebet_intent,
         "reco_rationale": reco_rationale,

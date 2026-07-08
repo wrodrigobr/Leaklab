@@ -4290,6 +4290,7 @@ def coach_student_replay(student_id, tournament_id, hand_id):
                 'gto_depth_capped': 1 if (gto_data.get('depth_capped') or gto_data.get('gto_depth_capped')) else 0,
                 'bet_intent': r.get('bet_intent'),
                 'reco_rationale': r.get('reco_rationale'),
+                'icm_zone_approx': bool(r.get('icm_zone_approx')),  # gate zona-ICM → "≈ Aproximação chipEV"
             })
         hand_decisions = live_decisions
     except Exception:
@@ -5100,6 +5101,7 @@ def get_replay(tournament_id, hand_id):
                 'bet_intent':   r.get('bet_intent'),
                 'threebet_intent': r.get('threebet_intent'),  # intenção do 3-bet (valor/merge/light)
                 'reco_rationale': r.get('reco_rationale'),
+                'icm_zone_approx': bool(r.get('icm_zone_approx')),  # gate zona-ICM → "≈ Aproximação chipEV"
                 '_di':          di,
             })
         hand_decisions = live_decisions
@@ -6138,6 +6140,9 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
                                    and float(_spot.get('effectiveStackBb') or 0) > 60.0),
             'bet_intent':         (decision.get('bet_intent') if decision else None),  # intenção da aposta (value/blefe/meio)
             'threebet_intent':    (decision.get('threebet_intent') if decision else None),  # intenção do 3-bet (valor/merge/light)
+            # Gate zona-ICM: aperto que o ChipEV reprova mas defensável sob ICM → card mostra
+            # "≈ Aproximação chipEV" (não "Erro"). Só quando NÃO é multiway (lá já há badge próprio).
+            'icm_zone_approx':    (bool(decision.get('icm_zone_approx')) if (decision and not _mw_spot) else False),
             'reco_rationale':     (decision.get('reco_rationale') if decision else None),  # por que a ação recomendada
             'villain_name':       (_di.get('spot', {}).get('villainName') if decision else None),  # HUD: vilão do spot
             'sizing_advice':      sizing_advice,   # Fase 1: análise do tamanho do open

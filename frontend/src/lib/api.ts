@@ -333,6 +333,9 @@ export interface ReplayStep {
     rationale: string;
     confidence: "estimate";
   } | null;
+  // Gate zona-ICM: aperto ChipEV-reprovado mas defensável sob ICM → card mostra
+  // "≈ Aproximação chipEV" em vez de "Erro" (o engine já rebaixou o label).
+  icm_zone_approx?: boolean;
   engine_best?: string | null;  // engine suggestion when it conflicts with GTO reconciliation
   gto_spot_mismatch?: boolean | null;  // GTO action incompatible with game state (e.g. check when facing a bet)
   // Preflop range analysis (preflop hero actions only)

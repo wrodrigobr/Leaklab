@@ -226,6 +226,12 @@ function SidePanels({
     if (step.multiway_advice) {
       return { icon: "≈", label: t("card.vApprox"), cls: "text-amber-300", borderCls: "border-amber-400/30", hdrCls: "bg-amber-400/8", source: _src.name, sourceTooltip: _src.tip };
     }
+    // Gate zona-ICM: o ChipEV reprova o aperto, mas sob ICM (tight-is-right) foldar é
+    // defensável — o grading não modela o risk premium. Mostra "≈ Aproximação chipEV"
+    // em vez de "Erro". O engine já rebaixou o label; aqui é só o rótulo honesto do card.
+    if (step.icm_zone_approx) {
+      return { icon: "≈", label: t("card.vApproxIcm"), cls: "text-amber-300", borderCls: "border-amber-400/30", hdrCls: "bg-amber-400/8", source: t("card.srcIcm"), sourceTooltip: t("card.tipIcmApprox") };
+    }
     // RC-D: clamp de defesa-em-profundidade — sinal de erro (GTO folda ↔ hero agride) NUNCA vira
     // correct/acceptable, mesmo se o label vier brando (não-reconciliado/legado).
     const _lvl: "correct" | "acceptable" | "error" = clampVerdict(

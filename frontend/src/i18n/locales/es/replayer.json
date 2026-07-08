@@ -292,7 +292,10 @@
     "mwNway": "{{n}}-way",
     "whyLimped": "Bote con limp: la heurística recomienda línea pasiva. Check es la opción gratis; aislar sobre el limp es opcional.",
     "approxDeep": "≈ Aproximación (solver a {{n}}bb): tu stack es más profundo; la acción es confiable, el sizing puede diferir.",
-    "vApprox": "≈ Aproximación"
+    "vApprox": "≈ Aproximación",
+    "vApproxIcm": "≈ Aproximación chipEV",
+    "srcIcm": "ICM",
+    "tipIcmApprox": "Cerca del dinero, bajo presión de ICM, apretar suele valer más de lo que sugiere el EV en fichas. Este análisis es en fichas (chipEV) y no mide esa prima de riesgo, así que un fold defendible aquí no se marca como error."
   },
   "controls": {
     "play": "Reproducir",

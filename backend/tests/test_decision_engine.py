@@ -7,6 +7,31 @@ from leaklab.decision_engine_v11 import (
     calc_realization_adjustment, calc_pressure_adjustment,
     calc_adjusted_required_equity, evaluate_decision
 )
+from leaklab.verdict import icm_zone_softens_fold
+
+# ── Gate zona-ICM ─────────────────────────────────────────────────────────────
+def test_icm_gate_softens_tight_fold():
+    # fold que o ChipEV manda continuar (call), sob ICM alto + mesa curta → suaviza
+    assert icm_zone_softens_fold('high', 4, 'fold', 'call') is True
+    assert icm_zone_softens_fold('high', 6, 'fold', 'raise') is True
+    assert icm_zone_softens_fold('high', 3, 'fold', 'shove') is True
+    print("OK  test_icm_gate_softens_tight_fold")
+
+def test_icm_gate_scope_is_narrow():
+    # NUNCA abranda agressão (só fold)
+    assert icm_zone_softens_fold('high', 4, 'call', 'fold') is False
+    assert icm_zone_softens_fold('high', 4, 'raise', 'call') is False
+    # pressão não-alta não é zona-ICM
+    assert icm_zone_softens_fold('medium', 4, 'fold', 'call') is False
+    assert icm_zone_softens_fold('low', 3, 'fold', 'call') is False
+    # mesa cheia (short stack early/mid) NÃO é zona-ICM — leak real, mantém
+    assert icm_zone_softens_fold('high', 8, 'fold', 'call') is False
+    assert icm_zone_softens_fold('high', 9, 'fold', 'raise') is False
+    # best_action também é fold → nada a suavizar (não é aperto contra +cEV)
+    assert icm_zone_softens_fold('high', 4, 'fold', 'fold') is False
+    # active_players ausente não bloqueia (proxy só pela pressão)
+    assert icm_zone_softens_fold('high', None, 'fold', 'call') is True
+    print("OK  test_icm_gate_scope_is_narrow")
 
 # ── Labels ────────────────────────────────────────────────────────────────────
 def test_label_boundaries():
@@ -196,6 +221,18 @@ def test_clear_fold_error():
     r = evaluate_decision(_hand('fold', 'flop', 0.20, 0.42, 'core_range', 'call'))
     assert r['evaluation']['label'] in ('small_mistake', 'clear_mistake')
     print("OK  test_clear_fold_error")
+
+def test_icm_gate_downgrades_error_fold_in_engine():
+    # Mesmo spot do test_clear_fold_error, mas em zona-ICM (pressão alta) → Erro vira
+    # 'marginal' (Aceitável) + flag icm_zone_approx para o card exibir "≈ Aproximação".
+    r = evaluate_decision(_hand('fold', 'flop', 0.20, 0.42, 'core_range', 'call', icm='high'))
+    assert r['evaluation']['label'] == 'marginal', f"Got {r['evaluation']['label']}"
+    assert r['icm_zone_approx'] is True
+    # Controle: ChipEV normal (pressão baixa) mantém o Erro e não marca aproximação.
+    r2 = evaluate_decision(_hand('fold', 'flop', 0.20, 0.42, 'core_range', 'call', icm='low'))
+    assert r2['evaluation']['label'] in ('small_mistake', 'clear_mistake')
+    assert r2['icm_zone_approx'] is False
+    print("OK  test_icm_gate_downgrades_error_fold_in_engine")
 
 def test_bad_call_is_mistake():
     r = evaluate_decision(_hand('call', 'flop', 0.35, 0.26, 'outside_range', 'fold'))
