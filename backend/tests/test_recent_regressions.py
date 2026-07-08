@@ -375,47 +375,6 @@ def test_short_jam_over_limp_uses_pushfold():
     print("OK  test_short_jam_over_limp_uses_pushfold")
 
 
-def test_short_stack_shove_widening_no_false_leak():
-    """Stack MUITO curto (<9bb): o range de shove alarga; reusar o range de ~10bb marcava
-    shoves CORRETOS como major_leak. A heurística de alargamento (equity vs range de call,
-    piso que cai com o stack) RESGATA esses shoves para 'acceptable' sem punir trash nem
-    mexer no range estrito de ~10bb."""
-    def q(stack, pos, hand, act='shove'):
-        return analyze_preflop(stack_bb=stack, position=pos, hero_hand_type=hand,
-                               action_taken=act)
-
-    # 6bb UTG: mãos que o range de ~10bb folda mas que a 6bb são shove defensável.
-    for hand in ('A7o', 'K9o', 'KTo', 'QTo', 'J9s', 'A2o'):
-        r = q(6.0, 'UTG', hand)
-        assert r.get('action_quality') == 'acceptable', \
-            f"6bb UTG {hand} shove deveria ser acceptable, veio {r.get('action_quality')}"
-        assert r.get('pushfold_widen') is True
-        assert 'jam' in r.get('recommended_actions', []), \
-            f"card consistente: rec deve conter jam, veio {r.get('recommended_actions')}"
-
-    # Trash segue major_leak (nunca criamos leak novo, mas não abençoamos lixo).
-    for hand in ('72o', '32o', 'K5o'):
-        r = q(6.0, 'UTG', hand)
-        assert r.get('action_quality') == 'major_leak', \
-            f"6bb UTG {hand} shove deveria seguir major_leak, veio {r.get('action_quality')}"
-        assert r.get('pushfold_widen') is False
-
-    # Range estrito de ~10bb intacto: nada de alargamento em stack >= 9bb.
-    r10 = q(10.0, 'UTG', 'A7o')
-    assert r10.get('pushfold_widen') is False
-    assert r10.get('action_quality') == 'major_leak', \
-        f"10bb UTG A7o shove segue major_leak (range GW ~16%), veio {r10.get('action_quality')}"
-
-    # Nunca punimos o FOLD: foldar mão marginal a 6bb segue correct (não vira leak).
-    rf = q(6.0, 'UTG', 'A7o', 'fold')
-    assert rf.get('action_quality') == 'correct' and rf.get('pushfold_widen') is False
-
-    # Mão dentro do range estrito segue correct (sem alargamento espúrio).
-    ri = q(6.0, 'UTG', 'AJo')
-    assert ri.get('action_quality') == 'correct' and ri.get('pushfold_widen') is False
-    print("OK  test_short_stack_shove_widening_no_false_leak")
-
-
 # ── Runner ──────────────────────────────────────────────────────────────────
 if __name__ == '__main__':
     tests = [v for k, v in sorted(globals().items()) if k.startswith('test_')]

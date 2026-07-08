@@ -372,10 +372,6 @@ export interface ReplayStep {
     // Jam/fold curto sobre limp: usa o range de push/fold (mesma decisão; limp = dead
     // money). Display caveateia "≈ push/fold · limp como dead money".
     limp_dead_money?: boolean;
-    // Shove em stack MUITO curto (<9bb): o range de shove alarga além do range de ~10bb;
-    // a heurística de push/fold (equity vs range de call) resgata o shove como defensável.
-    // Display caveateia "≈ push/fold curto (aproximação)".
-    pushfold_widen?: boolean;
     // #23: vilão abriu OFF-TREE (maior que o GTO). A range de defesa é vs o open mínimo;
     // o card mostra a ressalva e o fold de defesa marginal não é marcado crítico.
     open_size_mismatch?: { facing_bb: number; canonical_bb: number } | null;
