@@ -6024,10 +6024,14 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
 
         # Sizing do OPEN (Fase 1): tamanho do open preflop do hero vs o padrão de teoria
         # (~2bb; SBxBB sobe). O size sai do raw ("raises X to Y" → Y/bb), não do amount (=BY).
+        # Gate: a crítica de open-sizing NÃO se aplica a jam (all-in tem size forçado) nem à zona
+        # push/fold (≤12bb é jam-or-fold; "abra 2-2,5bb" ali é conselho de deep stack, sem sentido).
+        _eff_stack = float(_spot.get('effectiveStackBb') or _ctx.get('heroStackBb') or 99)
         sizing_advice = None
         if (action.player == hero and action.street == 'preflop'
-                and action.action in ('raises', 'all-in') and decision
-                and int(_spot.get('preflopRaisesFaced') or 0) == 0):
+                and action.action == 'raises' and decision
+                and int(_spot.get('preflopRaisesFaced') or 0) == 0
+                and _eff_stack > 12):
             try:
                 import re as _re_sz
                 _mz = _re_sz.search(r'to\s+([\d.]+)', action.raw or '')
