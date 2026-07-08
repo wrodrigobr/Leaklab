@@ -184,6 +184,19 @@ class TestAcademyVariety(unittest.TestCase):
         self.assertEqual(seen, {'blocker_bluff', 'blocker_catch', 'blocker_unblock'})
         print("  ✔ blockers drill structure")
 
+    def test_position_drill_structure(self):
+        """Treino da aula de Posição: order, best, range, realization."""
+        seen = set()
+        for _ in range(40):
+            q = acad.generate_position_question(user_id=1)
+            self.assertIn(q['type'], ('pos_order', 'pos_best', 'pos_range', 'pos_realization'))
+            self.assertEqual(len(q['options']), 3)
+            self.assertEqual(q['correct_index'], 0)  # a 1ª opção é sempre a certa
+            self.assertTrue(q['question'] and q['explanation'] and q['mental_tip'])
+            seen.add(q['type'])
+        self.assertEqual(seen, {'pos_order', 'pos_best', 'pos_range', 'pos_realization'})
+        print("  ✔ position drill structure")
+
     # ── Geradores via dispatcher (mock: sem banco) ─────────────────────────────
 
     def test_math_beginner_variety(self):

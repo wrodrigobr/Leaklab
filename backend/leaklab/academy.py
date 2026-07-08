@@ -1828,3 +1828,79 @@ def generate_blocker_question(user_id: int = None) -> dict:
     if qtype == 'blocker_catch':
         return _blocker_catch_question()
     return _blocker_unblock_question()
+
+
+# ── Posição: treino da aula "Fundamentos de Posição" ─────────────────────────────
+# Em posição = age por último no pós-flop (mais informação). O botão é o melhor
+# assento; os blinds os piores. Perto do botão você abre mais mãos.
+
+def _pos_order_question() -> dict:
+    return {
+        'type': 'pos_order',
+        'question': 'Estar "em posição" no pós-flop significa que você age:',
+        'options': ['Depois do vilão', 'Antes do vilão', 'Ao mesmo tempo que o vilão'],
+        'correct_index': 0,
+        'explanation': (
+            'Em posição você age por último em cada rua do pós-flop: você vê o que o vilão faz '
+            'antes de decidir. Essa informação a mais é o que torna a posição tão valiosa.'
+        ),
+        'mental_tip': '**Em posição = age por último = mais informação.**',
+        'context': {}, 'xp_value': 20,
+    }
+
+
+def _pos_best_question() -> dict:
+    return {
+        'type': 'pos_best',
+        'question': 'Qual é a melhor posição da mesa?',
+        'options': ['Button (BTN)', 'Under the gun (UTG)', 'Big blind (BB)'],
+        'correct_index': 0,
+        'explanation': (
+            'O button (BTN) é o melhor assento: no pós-flop você age sempre por último, com a '
+            'máxima informação. Por isso é de onde se abre mais mãos e se ganha mais dinheiro.'
+        ),
+        'mental_tip': '**O botão (BTN) é o melhor assento da mesa.**',
+        'context': {}, 'xp_value': 20,
+    }
+
+
+def _pos_range_question() -> dict:
+    return {
+        'type': 'pos_range',
+        'question': 'De qual posição você deve abrir MAIS mãos (uma range mais larga)?',
+        'options': ['Do button (BTN)', 'Do under the gun (UTG)', 'Tanto faz'],
+        'correct_index': 0,
+        'explanation': (
+            'Do BTN você abre muito mais mãos que do UTG: há menos gente para agir depois de você e '
+            'você jogará em posição. No UTG, com a mesa inteira atrás, abra apertado.'
+        ),
+        'mental_tip': '**Perto do botão, abra mais; cedo (UTG), abra apertado.**',
+        'context': {}, 'xp_value': 20,
+    }
+
+
+def _pos_realization_question() -> dict:
+    return {
+        'type': 'pos_realization',
+        'question': 'A MESMA mão realiza mais equity (aproveita melhor a sua chance) em posição ou fora dela?',
+        'options': ['Em posição', 'Fora de posição', 'É igual nos dois'],
+        'correct_index': 0,
+        'explanation': (
+            'A mesma mão vale mais em posição: você controla o tamanho do pote, chega ao showdown '
+            'mais barato e blefa com mais eficácia. A equity é a mesma; a realização, não.'
+        ),
+        'mental_tip': '**A mesma mão vale mais em posição** (realiza mais equity).',
+        'context': {}, 'xp_value': 20,
+    }
+
+
+def generate_position_question(user_id: int = None) -> dict:
+    """Treino da aula de Posição: pos_order, pos_best, pos_range, pos_realization."""
+    qtype = random.choice(['pos_order', 'pos_best', 'pos_range', 'pos_realization'])
+    if qtype == 'pos_order':
+        return _pos_order_question()
+    if qtype == 'pos_best':
+        return _pos_best_question()
+    if qtype == 'pos_range':
+        return _pos_range_question()
+    return _pos_realization_question()

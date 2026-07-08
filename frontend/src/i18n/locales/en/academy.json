@@ -235,7 +235,11 @@
     "combo_blocker": "Combos: Blocker",
     "blocker_bluff": "Blocker: Bluff",
     "blocker_catch": "Blocker: Bluff-catch",
-    "blocker_unblock": "Unblock"
+    "blocker_unblock": "Unblock",
+    "pos_order": "Position: Order",
+    "pos_best": "Position: Best",
+    "pos_range": "Position: Range",
+    "pos_realization": "Position: Realization"
   },
   "gtoPreflop": {
     "eyebrow": "Academy: GTO Ranges",
