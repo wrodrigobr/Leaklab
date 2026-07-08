@@ -1621,3 +1621,44 @@ def generate_sizing_question(user_id: int = None) -> dict:
     if qtype == 'threebet_size':
         return _threebet_size_question()
     return _spr_question()
+
+
+# ── MDF & Alpha: treino da aula "Quanto defender vs. quanto blefar" ──────────────
+# MDF = pote / (pote + aposta) = com quanto você defende. Alpha = aposta / (pote + aposta)
+# = fold mínimo que o seu blefe precisa. Aposta menor: defende MAIS, blefa mais barato.
+
+_MDF_ITEMS = [
+    ('mdf', 'o pote inteiro', ['~50%', '~67%', '~33%'], 0,
+     'MDF = pote / (pote + aposta). Com aposta do tamanho do pote, você defende ~50% das mãos '
+     'para o blefe do vilão não lucrar de graça.'),
+    ('mdf', 'meio pote', ['~50%', '~67%', '~40%'], 1,
+     'MDF = pote / (pote + aposta). Com aposta de meio pote, você defende ~67%: apostas menores '
+     'exigem que você defenda MAIS.'),
+    ('mdf', 'dois terços do pote', ['~60%', '~50%', '~75%'], 0,
+     'MDF = pote / (pote + aposta). Com aposta de 2/3 do pote, você defende ~60%.'),
+    ('alpha', 'o pote inteiro', ['~50%', '~33%', '~25%'], 0,
+     'Alpha = aposta / (pote + aposta). Um blefe do tamanho do pote precisa fazer o vilão foldar '
+     '~50% para empatar.'),
+    ('alpha', 'meio pote', ['~50%', '~33%', '~67%'], 1,
+     'Alpha = aposta / (pote + aposta). Um blefe de meio pote precisa de ~33% de fold: apostas '
+     'menores blefam mais barato.'),
+    ('alpha', 'dois terços do pote', ['~40%', '~50%', '~33%'], 0,
+     'Alpha = aposta / (pote + aposta). Um blefe de 2/3 do pote precisa de ~40% de fold.'),
+]
+
+
+def generate_mdf_question(user_id: int = None) -> dict:
+    """Treino da aula de MDF & Alpha: mdf (defesa) e alpha (frequência de blefe)."""
+    kind, size, options, ci, expl = random.choice(_MDF_ITEMS)
+    if kind == 'mdf':
+        q = (f'O vilão aposta {size}. Pela defesa mínima (MDF), com cerca de quantas das suas '
+             f'mãos você deve continuar (call ou raise)?')
+        tip = '**MDF = pote / (pote + aposta).** Aposta menor, você defende mais.'
+    else:
+        q = (f'Você blefa apostando {size}. Para o blefe empatar, ele precisa fazer o vilão foldar '
+             f'pelo menos:')
+        tip = '**Alpha = aposta / (pote + aposta).** É o fold mínimo que o seu blefe precisa.'
+    return {
+        'type': kind, 'question': q, 'options': options, 'correct_index': ci,
+        'explanation': expl, 'mental_tip': tip, 'context': {}, 'xp_value': 20,
+    }

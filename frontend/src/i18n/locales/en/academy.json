@@ -66,6 +66,10 @@
     "postflop": {
       "title": "Postflop: C-bet & Textures",
       "desc": "The most common bet in poker: when to c-bet, reading dry vs wet boards, the right size and when to barrel. Lesson with table and examples."
+    },
+    "mdf": {
+      "title": "MDF & Alpha (defense & bluffing)",
+      "desc": "How much to defend against a bet and how often your bluff must work. The two math rules of balance."
     }
   },
   "stats": {
@@ -214,7 +218,9 @@
     "3bet_pot": "3-Bet Pot",
     "gto_rfi": "RFI (Opening)",
     "gto_vs_rfi": "vs Open (Defense)",
-    "gto_vs_3bet": "vs 3-Bet"
+    "gto_vs_3bet": "vs 3-Bet",
+    "mdf": "MDF (Defense)",
+    "alpha": "Alpha (Bluff)"
   },
   "gtoPreflop": {
     "eyebrow": "Academy: GTO Ranges",

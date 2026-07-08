@@ -135,6 +135,15 @@ const MODULES: Module[] = [
     level: "advanced",
     xpReward: 25,
   },
+  {
+    id: "mdf",
+    icon: Sigma,
+    color: "amber",
+    path: "/academy/mdf",
+    status: "available",
+    level: "intermediate",
+    xpReward: 25,
+  },
 ];
 
 // ── Module card ───────────────────────────────────────────────────────────────

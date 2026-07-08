@@ -66,6 +66,10 @@
     "postflop": {
       "title": "Postflop: C-bet y Texturas",
       "desc": "La apuesta más común del poker: cuándo hacer c-bet, leer board seco vs mojado, el tamaño correcto y cuándo seguir en el turn. Clase con mesa y ejemplos."
+    },
+    "mdf": {
+      "title": "MDF y Alpha (defensa y farol)",
+      "desc": "Cuánto defender contra una apuesta y con qué frecuencia tu farol debe funcionar. Las dos cuentas del equilibrio."
     }
   },
   "stats": {
@@ -214,7 +218,9 @@
     "3bet_pot": "Bote de 3-Bet",
     "gto_rfi": "RFI (Apertura)",
     "gto_vs_rfi": "vs Open (Defensa)",
-    "gto_vs_3bet": "vs 3-Bet"
+    "gto_vs_3bet": "vs 3-Bet",
+    "mdf": "MDF (Defensa)",
+    "alpha": "Alpha (Farol)"
   },
   "gtoPreflop": {
     "eyebrow": "Academia: Ranges GTO",

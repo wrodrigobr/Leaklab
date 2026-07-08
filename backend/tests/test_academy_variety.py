@@ -142,6 +142,19 @@ class TestAcademyVariety(unittest.TestCase):
         self.assertEqual(seen, {'open_size', 'threebet_size', 'spr_size'})
         print("  ✔ sizing drill structure")
 
+    def test_mdf_drill_structure(self):
+        """Treino da aula de MDF & Alpha: tipos mdf e alpha, respostas coerentes."""
+        seen = set()
+        for _ in range(40):
+            q = acad.generate_mdf_question(user_id=1)
+            self.assertIn(q['type'], ('mdf', 'alpha'))
+            self.assertEqual(len(q['options']), 3)
+            self.assertTrue(0 <= q['correct_index'] < 3)
+            self.assertTrue(q['question'] and q['explanation'] and q['mental_tip'])
+            seen.add(q['type'])
+        self.assertEqual(seen, {'mdf', 'alpha'})
+        print("  ✔ mdf drill structure")
+
     # ── Geradores via dispatcher (mock: sem banco) ─────────────────────────────
 
     def test_math_beginner_variety(self):
