@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(admin): KPI "Pendentes" do GTO worker sempre visível (#admin)
+
+> O card com a contagem de pendentes do solver só existia dentro do bloco "Saúde do Solver" (`solver_health.backlog.pending`), que some inteiro se `solver_health` vier nulo (ex.: `GTO_SOLVER_URL` não configurada ou endpoint falho), deixando o admin sem nenhum indicador de fila. Adicionado um KPI **"Pendentes"** no grid superior (sempre visível, lê `solver_queue['pending']` + `running`, independente do bloco de saúde). O card "Backlog" (que duplicava o número) foi reaproveitado para **"Espera na fila"** (headline = idade do pendente mais antigo, sub = pendentes + rodando), sem perder informação. Grid do topo passa a 5 colunas no lg. `AdminDashboard.tsx`, sem backend novo (o endpoint já retornava `solver_queue`). tsc + build OK. **Deploy:** frontend (Cloudflare).
+
 ### chore(scripts): analisador de leaks de prod + cobertura da Academia (#estudos)
 
 > Script read-only `backend/scripts/analyze_prod_leaks.py` que consolida os leaks de TODOS os torneios/jogadores e cruza com o catálogo de módulos da Academia pra achar buracos de conteúdo. Saída: panorama (decisões/jogadores/torneios/taxa de erro/EV perdido), leaks por street×ação, e leaks por "lente conceitual" (RFI, defesa vs open, 3-bet, stack curto ≤12bb, ICM, multiway, flop/turn/river, river call, draws) cada um mapeado ao módulo da Academia + alerta quando NÃO há aula. Portável SQLite(dev)/Postgres(prod) (arredonda em Python, boolean via CAST TEXT). Roda no host onde o `DATABASE_URL` existe (`python scripts/analyze_prod_leaks.py`). Insumo pra decisão de IA "Estudos como hub guiado" (linkar leak→aula). No dev já sinaliza o gap: stack curto ≤12bb (push/fold) sem aula dedicada.

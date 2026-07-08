@@ -1414,8 +1414,10 @@ function GtoWorkerTab() {
   const sq = data.solver_queue ?? {};
   const cov = data.coverage ?? {};
 
-  const solverDone = sq['done']    ?? 0;
-  const solverFail = sq['failed']  ?? 0;
+  const solverDone    = sq['done']    ?? 0;
+  const solverFail    = sq['failed']  ?? 0;
+  const solverPending = sq['pending'] ?? 0;
+  const solverRunning = sq['running'] ?? 0;
 
   const coverageTotal = cov['total'] ?? 0;
   const coverageWizard = cov['gto_wizard'] ?? 0;
@@ -1450,7 +1452,7 @@ function GtoWorkerTab() {
 
       {/* KPIs — saúde do worker + acumulado do solver + cobertura (limpo: sem os cards mortos
           do gto_hand_requests, sem o "Solver Pendentes" duplicado do BACKLOG) */}
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
         <div className={cn("rounded-xl border p-5 space-y-2", ws.border, ws.bg)}>
           <div className="flex items-center justify-between">
             <span className="font-mono text-[10px] font-bold uppercase tracking-widest-2 text-muted-foreground">Worker</span>
@@ -1459,6 +1461,7 @@ function GtoWorkerTab() {
           <p className={cn("text-2xl font-bold", ws.text)}>{ws.label}</p>
           <p className="font-mono text-[10px] text-muted-foreground">Último proc: {lastHb}</p>
         </div>
+        <KpiTile label="Pendentes" value={String(solverPending)} sub={`rodando: ${solverRunning}`} icon={Clock} accent={solverPending > 0} />
         <KpiTile label="Solver Concluídos" value={String(solverDone)} sub={`falhos: ${solverFail}`} icon={CheckCircle2} accent={solverDone > 0} />
         <KpiTile label="Decisions Cobertas"  value={String(coverageTotal)} sub={`nodes: ${(cov['solver_cli'] ?? 0) + (cov['gto_wizard'] ?? 0)} · preflop: ${cov['preflop_ranges'] ?? 0}`} icon={BarChart2} accent={coverageTotal > 0} />
         <KpiTile label="Nós por fonte"  value={String(coverageWizard)} sub={`GW · solver_cli: ${coverageSolver}`} icon={Activity} />
@@ -1485,8 +1488,8 @@ function GtoWorkerTab() {
                 sub={`p95: ${fmt(sh.resolution.p95_sec)} · fila→ok · n=${sh.resolution.sample}`} icon={Timer} />
               <KpiTile label="Vazão" value={`${sh.throughput.last_1h}/h`}
                 sub={`24h: ${sh.throughput.last_24h}`} icon={Activity} accent={sh.throughput.last_1h > 0} />
-              <KpiTile label="Backlog" value={String(sh.backlog.pending)}
-                sub={`rodando: ${sh.backlog.running} · espera: ${fmt(sh.backlog.oldest_pending_age_sec)}`} icon={Clock} accent={backlogHot} />
+              <KpiTile label="Espera na fila" value={fmt(sh.backlog.oldest_pending_age_sec)}
+                sub={`pendentes: ${sh.backlog.pending} · rodando: ${sh.backlog.running}`} icon={Clock} accent={backlogHot} />
               <KpiTile label="Taxa de erro (24h)" value={`${sh.error_rate.pct}%`}
                 sub={`falhos: ${sh.error_rate.failed} / ${sh.error_rate.failed + sh.error_rate.done}`} icon={AlertTriangle} accent={errHot} />
             </div>
