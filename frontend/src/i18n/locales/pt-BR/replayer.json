@@ -157,7 +157,9 @@
     "exploitTitle": "Ajuste vs oponente",
     "exploit": {
       "dont_bluff_station": "Calling station: não blefe aqui. Mesmo que o GTO blefe, contra ele as piores não foldam: o blefe é −EV. Aposte só por valor.",
-      "value_thicker_station": "Calling station: aposte maior e mais fino por valor. Ele paga demais; thin value lucra mais do que contra o GTO.",
+      "value_thicker_station": "Calling station: engorde o value. Ele paga demais, então aposte maior (2/3+ do pote) e mais fino, com todo top de ~60% de equity, e engorde os nutted. Thin value lucra mais do que contra o GTO. Corte os blefes.",
+      "value_thicker_station_icm": "Calling station na zona de ICM: engorde ainda mais o value. Aqui ele paga muito mais, então aposte por valor com muito mais frequência e maior (2/3+ do pote), sem blefe. É onde o thin value mais lucra.",
+      "dont_bluff_station_icm": "Calling station na zona de ICM: blefe zero. Ele quase não folda sob pressão de ICM e o custo de perder fichas perto do pagamento é alto. Aposte só por valor.",
       "station_bets_strength": "Cuidado: jogador passivo apostando costuma ter mão forte. Folde marginais que pagaria contra um agressor.",
       "call_wider_aggro": "Ele agride/blefa muito (AF {{af}}). Pague mais largo e não folde demais à pressão dele.",
       "overfold_nit": "Nit: range de aposta tight, raramente blefa. Folde suas marginais aqui.",

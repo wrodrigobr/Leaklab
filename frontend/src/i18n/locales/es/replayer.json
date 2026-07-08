@@ -157,7 +157,9 @@
     "exploitTitle": "Ajuste vs oponente",
     "exploit": {
       "dont_bluff_station": "Calling station: no farolees aquí. Aunque el GTO farolee, contra él las peores no foldean: el farol es −EV. Apuesta solo por valor.",
-      "value_thicker_station": "Calling station: apuesta más grande y más fino por valor. Paga demasiado; el thin value rinde más que vs GTO.",
+      "value_thicker_station": "Calling station: engorda el value. Paga de más, así que apuesta más grande (2/3+ del bote) y más fino, con todo top de ~60% de equity, y engorda los nutted. El thin value rinde más que vs GTO. Corta los faroles.",
+      "value_thicker_station_icm": "Calling station en la zona de ICM: engorda aún más el value. Aquí paga mucho más, así que apuesta por valor mucho más seguido y más grande (2/3+ del bote), sin faroles. Es donde el thin value más rinde.",
+      "dont_bluff_station_icm": "Calling station en la zona de ICM: cero faroles. Casi no foldea bajo presión de ICM y perder fichas cerca del pago es caro. Apuesta solo por valor.",
       "station_bets_strength": "Cuidado: un jugador pasivo apostando suele tener mano fuerte. Foldea marginales que pagarías vs un agresivo.",
       "call_wider_aggro": "Es muy agresivo / farolea mucho (AF {{af}}). Paga más amplio y no foldees de más a su presión.",
       "overfold_nit": "Nit: rango de apuesta tight, rara vez farolea. Foldea tus marginales aquí.",

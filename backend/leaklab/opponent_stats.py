@@ -309,12 +309,17 @@ def build_profiles(hands) -> dict:
 # ── Fase 3: camada de EXPLOIT (ajuste sobre o GTO conforme o perfil do vilão) ─────
 
 def compute_exploit(*, action: str, best_action: str, bet_intent: Optional[dict],
-                    street: str, profile: Optional[dict]) -> Optional[dict]:
+                    street: str, profile: Optional[dict],
+                    icm_pressure: Optional[str] = None) -> Optional[dict]:
     """Sugere o desvio EXPLOITATIVO vs o vilão do spot — ajuste sobre o veredito GTO,
     nunca um substituto. Retorna {key, params, severity} ou None.
 
     Disciplina (igual ao resto): SÓ dispara com `confidence='high'` (arquétipo confiável)
-    e cada regra carrega o STAT que a justifica. Sem amostra → None (sem palpite)."""
+    e cada regra carrega o STAT que a justifica. Sem amostra → None (sem palpite).
+
+    `icm_pressure` (opcional): na zona de ICM (='high') o desvio vs calling station é mais
+    forte (ele paga ainda mais; o custo de perder fichas perto do pagamento sobe) — a nota
+    ganha variante `_icm` e severidade 'high'. Fonte: GTO Wizard (mastering postflop ICM)."""
     if not profile or profile.get('confidence') != 'high':
         return None
     arch = profile.get('archetype')
@@ -322,21 +327,25 @@ def compute_exploit(*, action: str, best_action: str, bet_intent: Optional[dict]
     act = (action or '').lower().strip()
     best = (best_action or '').lower().strip()
     intent = (bet_intent or {}).get('intent')
+    _icm_zone = (icm_pressure or '').strip().lower() == 'high'
 
     fcb, wtsd, af, vpip = s.get('foldcbet_pct'), s.get('wtsd_pct'), s.get('af'), s.get('vpip_pct')
     is_bluff = intent in ('bluff', 'semi_bluff', 'middle')          # aposta que QUER fold
     is_value = intent in ('value_showdown', 'value_protection')
     facing   = act in ('call', 'calls', 'fold', 'folds') or best in ('call', 'fold')
 
-    # 1. Blefe vs calling station → NÃO blefar (o exploit mais valioso)
+    # 1. Blefe vs calling station → NÃO blefar (o exploit mais valioso). Na zona-ICM, ainda pior.
     if is_bluff and arch == 'calling_station':
+        _k = 'dont_bluff_station_icm' if _icm_zone else 'dont_bluff_station'
         if wtsd is not None:
-            return {'key': 'dont_bluff_station', 'params': {'stat': 'wtsd', 'pct': round(wtsd * 100)}, 'severity': 'high'}
+            return {'key': _k, 'params': {'stat': 'wtsd', 'pct': round(wtsd * 100)}, 'severity': 'high'}
         if fcb is not None:
-            return {'key': 'dont_bluff_station', 'params': {'stat': 'fcb', 'pct': round(fcb * 100)}, 'severity': 'high'}
-    # 2. Mão de valor vs station → apostar maior/mais fino (pagam demais)
+            return {'key': _k, 'params': {'stat': 'fcb', 'pct': round(fcb * 100)}, 'severity': 'high'}
+    # 2. Mão de valor vs station → apostar maior/mais fino (pagam demais). Na zona-ICM, engorde mais.
     if is_value and arch == 'calling_station':
         p = {'pct': round(wtsd * 100)} if wtsd is not None else {}
+        if _icm_zone:
+            return {'key': 'value_thicker_station_icm', 'params': p, 'severity': 'high'}
         return {'key': 'value_thicker_station', 'params': p, 'severity': 'medium'}
     # 3. Enfrentando aposta de station (jogador passivo apostando = força) → overfold
     if facing and arch == 'calling_station':

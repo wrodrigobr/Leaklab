@@ -164,6 +164,26 @@ def test_exploit_dont_bluff_station():
     print("OK  test_exploit_dont_bluff_station")
 
 
+def test_exploit_station_icm_zone_variants():
+    from leaklab.opponent_stats import compute_exploit
+    # Blefe vs station na zona-ICM → variante _icm (severidade high)
+    ex = compute_exploit(action='bet', best_action='check', bet_intent={'intent': 'bluff'},
+                         street='river', profile=_prof('calling_station', wtsd_pct=0.80),
+                         icm_pressure='high')
+    assert ex and ex['key'] == 'dont_bluff_station_icm' and ex['severity'] == 'high'
+    # Valor vs station na zona-ICM → variante _icm, severidade sobe pra high
+    ex2 = compute_exploit(action='bet', best_action='bet', bet_intent={'intent': 'value_showdown'},
+                          street='river', profile=_prof('calling_station', wtsd_pct=0.72),
+                          icm_pressure='high')
+    assert ex2 and ex2['key'] == 'value_thicker_station_icm' and ex2['severity'] == 'high'
+    # Fora da zona-ICM (low) → notas normais, sem _icm
+    ex3 = compute_exploit(action='bet', best_action='bet', bet_intent={'intent': 'value_showdown'},
+                          street='river', profile=_prof('calling_station', wtsd_pct=0.72),
+                          icm_pressure='low')
+    assert ex3 and ex3['key'] == 'value_thicker_station' and ex3['severity'] == 'medium'
+    print("OK  test_exploit_station_icm_zone_variants")
+
+
 def test_exploit_requires_high_confidence():
     from leaklab.opponent_stats import compute_exploit
     ex = compute_exploit(action='bet', best_action='check', bet_intent={'intent': 'middle'},

@@ -4232,7 +4232,7 @@ def _attach_opponent_hud(replay, local_tid):
                 if _st.get('is_hero'):                          # Fase 3: exploit só no step do hero
                     _ex = _exploit(action=_st.get('action'), best_action=_st.get('best_action'),
                                    bet_intent=_st.get('bet_intent'), street=_st.get('street'),
-                                   profile=_prof)
+                                   profile=_prof, icm_pressure=_st.get('icm_pressure'))
                     if _ex:
                         _st['exploit'] = _ex
     except Exception:
