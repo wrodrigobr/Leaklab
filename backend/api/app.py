@@ -2326,6 +2326,26 @@ def academy_tournament_submit():
     return jsonify({'is_correct': is_correct})
 
 
+@app.route('/academy/sizing/question', methods=['GET'])
+@require_auth
+def academy_sizing_question():
+    from leaklab.academy import generate_sizing_question
+    return jsonify(generate_sizing_question(g.user_id))
+
+
+@app.route('/academy/sizing/submit', methods=['POST'])
+@require_auth
+def academy_sizing_submit():
+    body       = request.get_json(force=True) or {}
+    selected   = body.get('selected_index')
+    correct    = body.get('correct_index')
+    xp_value   = int(body.get('xp_value', 20))
+    is_correct = selected == correct
+    if is_correct:
+        add_xp(g.user_id, 'academy_sizing_correct', xp_value)
+    return jsonify({'is_correct': is_correct})
+
+
 @app.route('/academy/postflop/question', methods=['GET'])
 @require_auth
 def academy_postflop_question():

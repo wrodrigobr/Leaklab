@@ -1537,3 +1537,87 @@ def generate_postflop_question(user_id: int = None) -> dict:
     if qtype == 'cbet_wet':
         return _cbet_wet_question()
     return _barrel_question()
+
+
+# ── Bet Sizing: treino da aula "Bet Sizing 101" ──────────────────────────────────
+
+def _open_size_question() -> dict:
+    pos = random.choice(['UTG', 'MP', 'CO', 'BTN'])
+    return {
+        'type': 'open_size',
+        'question': (
+            f'Torneio, stack de ~40 BB. Você vai abrir no {pos}. Qual o tamanho padrão do '
+            f'open (raise inicial)?'
+        ),
+        'options': ['2 a 2,5 BB', '4 a 5 BB', 'All-in'],
+        'correct_index': 0,
+        'explanation': (
+            'Em stacks de torneio (20 a 50 BB), o open padrão é pequeno, cerca de 2 a 2,5 BB. '
+            'Abrir grande arrisca mais fichas sem necessidade e não aumenta o seu fold equity de '
+            'forma proporcional ao custo.'
+        ),
+        'mental_tip': '**Open de torneio:** pequeno, ~2 a 2,5 BB.',
+        'context': {}, 'xp_value': 20,
+    }
+
+
+def _threebet_size_question() -> dict:
+    if random.random() < 0.5:
+        return {
+            'type': 'threebet_size',
+            'question': (
+                'O CO abre para 2,5 BB e você quer dar 3-bet no BTN, em posição. Qual o bom '
+                'tamanho de 3-bet?'
+            ),
+            'options': ['~3x o open (7 a 8 BB)', 'Só um pouco acima (4 BB)', '~6x o open'],
+            'correct_index': 0,
+            'explanation': (
+                'Em posição, o 3-bet padrão é cerca de 3x o open. Menor que isso dá odds boas '
+                'demais para o vilão pagar; muito maior compromete fichas à toa.'
+            ),
+            'mental_tip': '**3-bet em posição:** ~3x o open.',
+            'context': {}, 'xp_value': 20,
+        }
+    return {
+        'type': 'threebet_size',
+        'question': (
+            'O BTN abre para 2,5 BB e você quer dar 3-bet no BB, fora de posição. Qual o bom tamanho?'
+        ),
+        'options': ['~4x o open (10 BB)', '~3x o open (7,5 BB)', 'Min 3-bet (5 BB)'],
+        'correct_index': 0,
+        'explanation': (
+            'Fora de posição você cobra mais: cerca de 4x o open. O tamanho maior compensa a '
+            'desvantagem de jogar as próximas ruas sem posição e nega odds ao vilão.'
+        ),
+        'mental_tip': '**3-bet fora de posição:** ~4x o open (maior que em posição).',
+        'context': {}, 'xp_value': 20,
+    }
+
+
+def _spr_question() -> dict:
+    return {
+        'type': 'spr_size',
+        'question': (
+            'Você chega ao flop com SPR baixo (cerca de 2) segurando top par bom. O que o SPR '
+            'baixo indica?'
+        ),
+        'options': ['Você está comprometido: jogue por stacks', 'Dá para foldar fácil se apostarem', 'Nunca aposte com SPR baixo'],
+        'correct_index': 0,
+        'explanation': (
+            'SPR (relação entre o stack efetivo e o pote) baixo significa que sobra pouco atrás em '
+            'relação ao pote. Com uma mão forte como top par bom e SPR ~2, você está comprometido: '
+            'o plano é colocar as fichas, não desistir de uma aposta.'
+        ),
+        'mental_tip': '**SPR baixo + mão forte = comprometido:** jogue por stacks.',
+        'context': {}, 'xp_value': 20,
+    }
+
+
+def generate_sizing_question(user_id: int = None) -> dict:
+    """Treino da aula de Bet Sizing: open_size, threebet_size, spr_size."""
+    qtype = random.choice(['open_size', 'threebet_size', 'spr_size'])
+    if qtype == 'open_size':
+        return _open_size_question()
+    if qtype == 'threebet_size':
+        return _threebet_size_question()
+    return _spr_question()
