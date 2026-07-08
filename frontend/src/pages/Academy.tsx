@@ -306,7 +306,7 @@ function LevelSection({ level, modules }: { level: Level; modules: Module[] }) {
         <div className="h-px flex-1 bg-border" />
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {modules.map((m) => <ModuleCard key={m.id} mod={m} />)}
       </div>
     </section>
@@ -321,7 +321,7 @@ export default function Academy() {
 
   return (
     <HudLayout eyebrow={t("eyebrow")} title={t("title")} description={t("subtitle")}>
-      <div className="mx-auto max-w-3xl space-y-10">
+      <div className="mx-auto max-w-5xl space-y-10">
         {levels.map((level) => {
           const mods = MODULES.filter((m) => m.level === level);
           if (!mods.length) return null;
