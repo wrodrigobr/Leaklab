@@ -67,6 +67,17 @@ class TestAcademyVariety(unittest.TestCase):
     def test_3bet_pot_variety(self):
         self._assert_diverse("3bet_pot", acad._3bet_pot_question)
 
+    def test_bubble_defense_structure(self):
+        """bubble_defense: espaço pequeno (resposta fixa) → teste estrutural, não de
+        variedade. A cobertura do dispatcher fica no test_tournament_variety."""
+        q = acad._bubble_defense_question()
+        self.assertEqual(q['type'], 'bubble_defense')
+        self.assertEqual(len(q['options']), 3)
+        self.assertEqual(q['correct_index'], 0)
+        self.assertIn('MENOS', q['options'][q['correct_index']])   # over-defense = defender menos
+        self.assertTrue(q['explanation'] and q['mental_tip'])
+        print("  ✔ bubble_defense structure")
+
     # ── Geradores via dispatcher (mock: sem banco) ─────────────────────────────
 
     def test_math_beginner_variety(self):

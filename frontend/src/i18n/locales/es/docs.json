@@ -17,6 +17,7 @@
     "causal_map": "Mapa Causal",
     "streets": "EV Perdido por Street",
     "positions": "Alineamiento GTO por Posición",
+    "icm": "Las fichas no son dinero",
     "pressure": "Colapso bajo Presión",
     "bankroll": "Evolución del Bankroll",
     "training": "Modo Entrenamiento",
@@ -443,6 +444,29 @@
     "p2": "Las posiciones late (BTN, CO) naturalmente tienen más ventaja posicional, se espera mejor rendimiento desde esos asientos. Si BTN o CO aparecen en rojo, eso es un problema serio: no estás aprovechando la ventaja que la posición te ofrece.",
     "p3": "BB y SB defensivos son los spots técnicamente más difíciles. Rendimiento bajo en BB es común y no necesariamente señal de crisis, pero si el delta entre BTN y BB es muy grande, el déficit posicional está costando EV real.",
     "example": "BTN (84%) y CO (79%) aprovechan bien la ventaja posicional. BB (63%) y SB (60%) más débiles, delta de 24pp entre BTN y SB es elevado pero esperado. Por encima de 30pp indica un leak posicional crítico."
+  },
+  "icm": {
+    "title": "Las fichas no son dinero: lo básico de ICM",
+    "p1": "En un cash game cada ficha vale dinero de verdad, siempre igual. En un torneo, no. Cambiaste dinero por fichas al inscribirte, pero solo vuelves a tener dinero si terminas en una posición pagada. De ahí sale una regla que asusta al principio: <strong>la ficha que ganas vale menos que la ficha que pierdes</strong>. Ganar fichas te acerca al premio de a poco; perderlas todas te elimina de golpe. Ese desequilibrio tiene un nombre, <strong>ICM</strong>, y es lo que separa a quien entiende de torneos de quien solo juega fichas.",
+    "p2": "Un ejemplo para fijarlo. Quedan 4 jugadores y pagan a 3, y tú tienes el mayor stack por mucho. Si arriesgas todo en un spot que da una pequeña ganancia en fichas y pierdes, sales 4º sin nada, aun habiendo sido el líder. Si evitas el riesgo, probablemente llegues al dinero solo esperando a que los demás peleen. Aquí, doblar tus fichas casi no cambia tu premio, pero quedar eliminado lo destruye. O sea: a veces lo correcto es <strong>renunciar a una ganancia en fichas para proteger tu lugar en los premios</strong>.",
+    "p3": "En la práctica esto añade una exigencia: cerca del dinero, solo arriesga el stack cuando estés <strong>mucho más seguro</strong> de lo que arriesgarías al inicio. Una mano que sería un call tranquilo contando fichas puede volverse fold cuando cada eliminación mueve tu dinero. Y no es solo la burbuja: el peso del ICM ya aparece cuando buena parte del campo quedó fuera (alrededor de la mitad) y crece hacia la mesa final.",
+    "p4": "Los dos errores clásicos del principiante son opuestos: <strong>apretar demasiado pronto</strong>, cuando el ICM aún no importa y solo necesitabas juntar fichas; y <strong>pagar demasiado amplio en la burbuja</strong>, cuando sobrevivir valía más que tener razón. En GrindLab, cuando foldeas una mano que la cuenta en fichas aprobaría pero que tiene sentido apretar por ICM, el card no marca error: muestra el sello <strong>≈ Aproximación chipEV</strong>. Es el aviso de que ahí nuestra lectura en fichas se queda corta, y tu fold es defendible.",
+    "table": {
+      "col_stage": "Fase del torneo",
+      "col_effect": "Cómo jugar",
+      "early_stage": "Inicio",
+      "early_effect": "El ICM casi no pesa. Junta fichas y toma los spots rentables; apretar por miedo aquí es lo que cuesta dinero.",
+      "mid_stage": "Medio",
+      "mid_effect": "El ICM empieza a contar. Piensa dos veces antes de poner todo el stack en juego.",
+      "bubble_stage": "Burbuja",
+      "bubble_effect": "El momento más tenso. Presiona a los stacks medios (tienen más que perder) y evita chocar con quien puede eliminarte.",
+      "ft_stage": "Mesa final",
+      "ft_effect": "Cada posición paga mucho más que la anterior. Sobrevivir vale oro, sé selectivo."
+    },
+    "example_label": "Cuánta 'certeza' necesitas para pagar un all-in",
+    "example_chipev": "Contando fichas",
+    "example_icm": "Cerca del premio",
+    "example": "Contando solo fichas, pagar un all-in que necesita más o menos 40% de probabilidad de ganar ya es ganancia. Cerca del premio, el mismo call suele exigir un 50%, porque quedar eliminado es caro. Esos ~10 puntos de más son el precio de sobrevivir. Por debajo de eso, foldea, aunque parezca un call justo."
   },
   "pressure": {
     "title": "Colapso bajo Presión",

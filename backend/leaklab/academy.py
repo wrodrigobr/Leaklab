@@ -1236,6 +1236,46 @@ def _icm_spot_question() -> dict:
     }
 
 
+# ── Advanced: Bubble over-defense (o MDF morre sob ICM) ─────────────────────────
+
+def _bubble_defense_question() -> dict:
+    """Defesa na bolha: perto do prêmio você defende o BB MENOS, não mais, porque
+    perder pode significar eliminação. Conceito contra-intuitivo e de alto valor pra
+    iniciante (o instinto é 'não deixar roubar')."""
+    opener   = random.choice(['BTN', 'CO', 'SB'])
+    wide_pct = random.randint(55, 68)   # defesa larga que a conta em fichas pediria
+    return {
+        'type': 'bubble_defense',
+        'question': (
+            f'**Bolha do torneio.** Você está no **BB** com stack médio e o **{opener}** '
+            f'abre um min-raise tentando roubar. Contando só fichas, valeria a pena defender '
+            f'bem largo (uns **{wide_pct}%** das mãos). Considerando o ICM, o que você faz?'
+        ),
+        'options': [
+            'Defendo MENOS: perder aqui pode me eliminar',
+            'Defendo IGUAL: a conta não muda na bolha',
+            'Defendo MAIS: não posso deixar ele roubar',
+        ],
+        'correct_index': 0,
+        'explanation': (
+            'Defender largo só compensa quando perder o pote custa **apenas fichas**. Na bolha, '
+            'perder pode significar sair sem prêmio, então o custo de defender e errar dispara. '
+            'Resultado: você defende **menos** que o normal, não mais. Contra o mesmo min-raise, '
+            'a frequência de fold do BB, que giraria em torno de ~20% contando fichas, sobe para '
+            'perto de ~35% perto do prêmio. Insistir em defender largo na bolha é um dos '
+            'vazamentos mais caros do torneio.'
+        ),
+        'mental_tip': (
+            '**Ideia-chave:** perto do prêmio, sobreviver vale mais do que ter razão. Você folda '
+            'mais, até contra alguém que rouba muito, porque ser eliminado dói mais do que ganhar '
+            'o potinho ajuda. Quanto maior o salto de prêmio à frente, mais você aperta. Única '
+            'exceção: micro-stack já comprometido, aí voltar a caçar fichas faz sentido.'
+        ),
+        'context': {},
+        'xp_value': 25,
+    }
+
+
 # ── Advanced: 3-Bet Pot Equity ──────────────────────────────────────────────────
 
 _3BET_OPEN_SIZES  = [2.0, 2.2, 2.5, 2.5, 2.5, 2.8, 3.0, 3.0, 3.5]   # weighted toward 2.5/3.0
@@ -1294,14 +1334,16 @@ def _3bet_pot_question() -> dict:
 def generate_tournament_question(user_id: int) -> dict:
     """
     Advanced tournament context questions:
-      spr_commitment, icm_spot, 3bet_pot
+      spr_commitment, icm_spot, bubble_defense, 3bet_pot
     """
     qtype = random.choices(
-        ['spr_commitment', 'icm_spot', '3bet_pot'],
-        weights=[0.35, 0.35, 0.30],
+        ['spr_commitment', 'icm_spot', 'bubble_defense', '3bet_pot'],
+        weights=[0.30, 0.25, 0.20, 0.25],
     )[0]
     if qtype == 'spr_commitment':
         return _spr_commitment_question()
     if qtype == 'icm_spot':
         return _icm_spot_question()
+    if qtype == 'bubble_defense':
+        return _bubble_defense_question()
     return _3bet_pot_question()

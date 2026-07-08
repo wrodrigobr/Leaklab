@@ -17,6 +17,7 @@
     "causal_map": "Mapa Causal",
     "streets": "EV Perdido por Street",
     "positions": "Alinhamento GTO por Posição",
+    "icm": "Fichas não são dinheiro",
     "pressure": "Colapso sob Pressão",
     "bankroll": "Evolução do Bankroll",
     "training": "Modo Treino",
@@ -443,6 +444,29 @@
     "p2": "Posições late (BTN, CO) naturalmente têm mais vantagem posicional, espera-se performance melhor nessas cadeiras. Se BTN ou CO aparecerem em vermelho, isso indica problema sério: você não está aproveitando a vantagem que a posição oferece.",
     "p3": "BB e SB defensivos são os spots mais difíceis tecnicamente. Performance ruim em BB é comum e não necessariamente sinal de crise, mas se o delta entre BTN e BB for muito grande, o déficit posicional está custando EV real.",
     "example": "BTN (84%) e CO (79%) aproveitam bem a vantagem posicional. BB (63%) e SB (60%) mais fracos, delta de 24pp entre BTN e SB é alto, mas esperado. Acima de 30pp indica leak posicional crítico."
+  },
+  "icm": {
+    "title": "Fichas não são dinheiro: o básico de ICM",
+    "p1": "Num cash game cada ficha vale dinheiro de verdade, sempre igual. No torneio, não. Você trocou dinheiro por fichas na entrada, mas só volta a ter dinheiro se terminar numa posição paga. Daí sai uma regra que assusta no começo: <strong>a ficha que você ganha vale menos do que a ficha que você perde</strong>. Ganhar fichas te aproxima do prêmio aos poucos; perder todas te elimina de uma vez só. Esse desequilíbrio tem um nome, <strong>ICM</strong>, e é o que separa quem entende torneio de quem só joga fichas.",
+    "p2": "Um exemplo pra fixar. São 4 jogadores e 3 são pagos, e você tem o maior stack de longe. Se arriscar tudo num spot que dá um lucrinho em fichas e perder, você sai em 4º e leva zero, mesmo tendo sido o líder. Se recusar o risco, provavelmente chega ao dinheiro só esperando os outros brigarem. Aqui, dobrar de fichas quase não muda o seu prêmio, mas ser eliminado destrói ele. Ou seja: às vezes o certo é <strong>abrir mão de um lucro em fichas para proteger o seu lugar no prêmio</strong>.",
+    "p3": "Na prática isso vira uma exigência a mais: perto do prêmio, só coloque o stack em risco quando estiver <strong>bem mais seguro</strong> do que arriscaria no início. Uma mão que seria um call tranquilo contando só fichas pode virar fold quando cada eliminação mexe no seu dinheiro. E não é só na bolha: o peso do ICM já aparece quando boa parte do campo foi eliminada (lá pela metade) e vai crescendo até a mesa final.",
+    "p4": "Os dois erros clássicos do iniciante são opostos: <strong>apertar cedo demais</strong>, quando o ICM ainda não importa e você só precisava juntar fichas; e <strong>pagar largo demais na bolha</strong>, quando sobreviver valia mais do que ter razão. No GrindLab, quando você folda uma mão que a conta em fichas aprovaria mas que faz sentido apertar por ICM, o card não marca erro: mostra o selo <strong>≈ Aproximação chipEV</strong>. É o aviso de que ali a nossa análise em fichas fica devendo, e o seu fold é defensável.",
+    "table": {
+      "col_stage": "Fase do torneio",
+      "col_effect": "Como jogar",
+      "early_stage": "Início",
+      "early_effect": "O ICM quase não pesa. Junte fichas e pegue os spots lucrativos; apertar por medo aqui é que custa dinheiro.",
+      "mid_stage": "Meio",
+      "mid_effect": "O ICM começa a contar. Pense duas vezes antes de colocar o stack inteiro em jogo.",
+      "bubble_stage": "Bolha",
+      "bubble_effect": "O momento mais tenso. Pressione os stacks médios (têm mais a perder) e evite brigar com quem pode te eliminar.",
+      "ft_stage": "Mesa final",
+      "ft_effect": "Cada posição paga bem mais que a anterior. Sobreviver vale ouro, seja seletivo."
+    },
+    "example_label": "Quanta 'certeza' você precisa para pagar um all-in",
+    "example_chipev": "Contando fichas",
+    "example_icm": "Perto do prêmio",
+    "example": "Contando só fichas, pagar um all-in que precisa de mais ou menos 40% de chance de ganhar já dá lucro. Perto do prêmio, o mesmo call costuma exigir uns 50%, porque ser eliminado custa caro. Esses ~10 pontos a mais são o preço de sobreviver. Abaixo disso, folde, mesmo que pareça um call justo."
   },
   "pressure": {
     "title": "Colapso sob Pressão",

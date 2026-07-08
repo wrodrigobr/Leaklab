@@ -4,7 +4,7 @@ import { Link } from "react-router-dom";
 import { HudLayout } from "@/components/hud/HudLayout";
 import { BookOpen, ChevronRight, TrendingUp } from "lucide-react";
 
-const SECTION_IDS = ["import", "scoring", "indicators", "today", "kpis", "gto_method", "coverage", "replayer", "pko_tournaments", "mstacks", "dna", "leaks", "causal_map", "streets", "positions", "pressure", "bankroll", "training", "ghost", "compare", "coaching", "gamification", "ranking", "career", "cognitive", "twin"] as const;
+const SECTION_IDS = ["import", "scoring", "indicators", "today", "kpis", "gto_method", "coverage", "replayer", "pko_tournaments", "mstacks", "dna", "leaks", "causal_map", "streets", "positions", "icm", "pressure", "bankroll", "training", "ghost", "compare", "coaching", "gamification", "ranking", "career", "cognitive", "twin"] as const;
 type SectionId = typeof SECTION_IDS[number];
 
 function Badge({ color, children }: { color: string; children: React.ReactNode }) {
@@ -407,6 +407,33 @@ export default function Docs() {
             </Section>
 
             {/* Pressure Collapse */}
+            {/* ICM: fundação (por que as fichas mudam de valor) */}
+            <Section id="icm" title={t("icm.title")}>
+              <p dangerouslySetInnerHTML={{ __html: t("icm.p1") }} />
+              <p dangerouslySetInnerHTML={{ __html: t("icm.p2") }} />
+              <p dangerouslySetInnerHTML={{ __html: t("icm.p3") }} />
+              <Table
+                headers={[t("icm.table.col_stage"), t("icm.table.col_effect")]}
+                rows={[
+                  [t("icm.table.early_stage"),  t("icm.table.early_effect")],
+                  [t("icm.table.mid_stage"),    t("icm.table.mid_effect")],
+                  [t("icm.table.bubble_stage"), t("icm.table.bubble_effect")],
+                  [t("icm.table.ft_stage"),     t("icm.table.ft_effect")],
+                ]}
+              />
+              <p dangerouslySetInnerHTML={{ __html: t("icm.p4") }} />
+              <ExampleBox label={t("exampleLabel")}>
+                <div className="space-y-2">
+                  <p className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground">
+                    {t("icm.example_label")}
+                  </p>
+                  <MiniBar label={t("icm.example_chipev")} pct={40} color="emerald" />
+                  <MiniBar label={t("icm.example_icm")}    pct={50} color="amber" />
+                </div>
+                <p className="text-xs text-muted-foreground">{t("icm.example")}</p>
+              </ExampleBox>
+            </Section>
+
             <Section id="pressure" title={t("pressure.title")}>
               <p dangerouslySetInnerHTML={{ __html: t("pressure.p1") }} />
               <p dangerouslySetInnerHTML={{ __html: t("pressure.p2") }} />

@@ -17,6 +17,7 @@
     "causal_map": "Causal Map",
     "streets": "EV Lost by Street",
     "positions": "GTO Alignment by Position",
+    "icm": "Chips aren't money",
     "pressure": "Pressure Collapse",
     "bankroll": "Bankroll Evolution",
     "training": "Training Mode",
@@ -443,6 +444,29 @@
     "p2": "Late positions (BTN, CO) naturally have more positional advantage, better performance is expected from those seats. If BTN or CO appear red, that is a serious issue: you are not taking advantage of the positional edge you have.",
     "p3": "BB and SB defensive spots are technically the hardest. Poor performance in the BB is common and not necessarily a crisis, but if the delta between BTN and BB is very large, the positional deficit is costing real EV.",
     "example": "BTN (84%) and CO (79%) make good use of positional advantage. BB (63%) and SB (60%) weaker, a 24pp delta between BTN and SB is elevated but expected. Above 30pp indicates a critical positional leak."
+  },
+  "icm": {
+    "title": "Chips aren't money: ICM basics",
+    "p1": "In a cash game every chip is real money, always the same. In a tournament it isn't. You traded money for chips at sign-up, but you only turn them back into money if you finish in a paid spot. That leads to a rule that feels strange at first: <strong>a chip you win is worth less than a chip you lose</strong>. Winning chips inches you toward the prize; losing them all knocks you out in one shot. This imbalance has a name, <strong>ICM</strong>, and it's what separates players who understand tournaments from players who only play chips.",
+    "p2": "A quick example. Four players left, three get paid, and you have the biggest stack by far. If you risk it all in a spot that's a small chip profit and lose, you bust in 4th for nothing, even though you were the leader. If you pass on the risk, you probably reach the money just letting the others fight. Here, doubling your chips barely changes your prize, but busting destroys it. So sometimes the right play is to <strong>give up a chip profit to protect your place in the prizes</strong>.",
+    "p3": "In practice this adds one demand: near the money, only risk your stack when you're <strong>much more sure</strong> than you'd need to be early on. A hand that would be an easy call counting chips can become a fold once each bust-out moves your money. And it isn't only the bubble: ICM already weighs in once a good chunk of the field is gone (around half) and keeps growing toward the final table.",
+    "p4": "The two classic beginner mistakes are opposites: <strong>playing too tight too early</strong>, when ICM doesn't matter yet and you just needed chips; and <strong>calling too wide on the bubble</strong>, when surviving was worth more than being right. In GrindLab, when you fold a hand that the chip math would approve but that makes sense to fold for ICM, the card doesn't flag a mistake: it shows the <strong>≈ chipEV approximation</strong> seal. That's the sign that our chip-based read falls short there, and your fold is defensible.",
+    "table": {
+      "col_stage": "Tournament phase",
+      "col_effect": "How to play",
+      "early_stage": "Early",
+      "early_effect": "ICM barely weighs. Build chips and take profitable spots; folding out of fear here is what costs money.",
+      "mid_stage": "Middle",
+      "mid_effect": "ICM starts to count. Think twice before putting your whole stack on the line.",
+      "bubble_stage": "Bubble",
+      "bubble_effect": "The tensest moment. Pressure medium stacks (they have more to lose) and avoid clashing with anyone who can bust you.",
+      "ft_stage": "Final table",
+      "ft_effect": "Each spot pays much more than the last. Surviving is worth gold, be selective."
+    },
+    "example_label": "How much 'certainty' you need to call an all-in",
+    "example_chipev": "Counting chips",
+    "example_icm": "Near the money",
+    "example": "Counting only chips, calling an all-in that needs about a 40% chance to win is already a profit. Near the money, the same call usually needs around 50%, because busting is costly. Those ~10 extra points are the price of surviving. Below that, fold, even if it looks like a fair call."
   },
   "pressure": {
     "title": "Pressure Collapse",
