@@ -210,6 +210,19 @@ class TestAcademyVariety(unittest.TestCase):
         self.assertEqual(seen, {'sdv_action', 'sdv_why', 'sdv_catch'})
         print("  ✔ showdown drill structure")
 
+    def test_exploits_drill_structure(self):
+        """Treino da aula de Exploits: station, nit, lag."""
+        seen = set()
+        for _ in range(40):
+            q = acad.generate_exploit_question(user_id=1)
+            self.assertIn(q['type'], ('exploit_station', 'exploit_nit', 'exploit_lag'))
+            self.assertEqual(len(q['options']), 3)
+            self.assertEqual(q['correct_index'], 0)
+            self.assertTrue(q['question'] and q['explanation'] and q['mental_tip'])
+            seen.add(q['type'])
+        self.assertEqual(seen, {'exploit_station', 'exploit_nit', 'exploit_lag'})
+        print("  ✔ exploits drill structure")
+
     # ── Geradores via dispatcher (mock: sem banco) ─────────────────────────────
 
     def test_math_beginner_variety(self):

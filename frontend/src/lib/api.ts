@@ -1088,6 +1088,15 @@ export const academy = {
       method: "POST",
       body: JSON.stringify({ selected_index, correct_index, xp_value }),
     }),
+
+  exploitsQuestion: () =>
+    request<AcademyQuestion>("/academy/exploits/question"),
+
+  exploitsSubmit: (selected_index: number, correct_index: number, xp_value: number) =>
+    request<AcademySubmitResult>("/academy/exploits/submit", {
+      method: "POST",
+      body: JSON.stringify({ selected_index, correct_index, xp_value }),
+    }),
 };
 
 export const gtoPreflop = {

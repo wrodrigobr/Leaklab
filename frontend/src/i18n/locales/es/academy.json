@@ -82,6 +82,10 @@
     "showdown": {
       "title": "Showdown Value",
       "desc": "La mano media que no quiere apostar: cuándo hacer check para ver el showdown barato y cuándo pagar a un agresor."
+    },
+    "exploits": {
+      "title": "Exploits y Lecturas",
+      "desc": "Cómo leer el tipo de jugador (station, nit, agresivo) y explotar el error específico de cada uno. El beneficio que el GTO no captura."
     }
   },
   "stats": {
@@ -246,7 +250,10 @@
     "pos_realization": "Posición: Realización",
     "sdv_action": "Showdown: Acción",
     "sdv_why": "Showdown: Por qué",
-    "sdv_catch": "Showdown: Bluff-catch"
+    "sdv_catch": "Showdown: Bluff-catch",
+    "exploit_station": "Exploit: Station",
+    "exploit_nit": "Exploit: Nit",
+    "exploit_lag": "Exploit: Agresivo"
   },
   "gtoPreflop": {
     "eyebrow": "Academia: Ranges GTO",

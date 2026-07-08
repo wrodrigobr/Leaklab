@@ -1972,3 +1972,78 @@ def generate_sdv_question(user_id: int = None) -> dict:
     if qtype == 'sdv_why':
         return _sdv_why_question()
     return _sdv_catch_question()
+
+
+# ── Exploits: treino da aula "Exploits & Leituras (arquétipos)" ──────────────────
+# O desvio explora o erro do vilão: station não folda (blefe zero, value fino);
+# nit folda demais (blefe mais, respeite as apostas); agressor blefa demais (pague largo).
+
+def _exploit_station_question() -> dict:
+    return {
+        'type': 'exploit_station',
+        'question': (
+            'Contra um calling station (paga apostas demais e quase não folda), qual o ajuste certo?'
+        ),
+        'options': [
+            'Blefe zero e aposte só por valor, maior e mais fino',
+            'Blefe mais para expulsá-lo',
+            'Aposte sempre pequeno',
+        ],
+        'correct_index': 0,
+        'explanation': (
+            'O station não folda, então blefe é dinheiro jogado fora. Aposte só por valor, e maior '
+            'e mais fino, porque ele paga com muitas mãos piores que o normal.'
+        ),
+        'mental_tip': '**Vs station: blefe zero, value fino e maior.**',
+        'context': {}, 'xp_value': 20,
+    }
+
+
+def _exploit_nit_question() -> dict:
+    return {
+        'type': 'exploit_nit',
+        'question': 'Contra um nit (joga super apertado e folda demais), qual o ajuste?',
+        'options': [
+            'Blefe e roube mais; mas folde suas marginais quando ELE apostar',
+            'Pague largo todas as apostas dele',
+            'Nunca blefe contra ele',
+        ],
+        'correct_index': 0,
+        'explanation': (
+            'O nit desiste demais, então blefes baratos lucram e você rouba mais os blinds dele. '
+            'Mas quando ELE aposta, é valor de verdade: folde suas mãos marginais.'
+        ),
+        'mental_tip': '**Vs nit: blefe mais, mas respeite as apostas dele.**',
+        'context': {}, 'xp_value': 20,
+    }
+
+
+def _exploit_lag_question() -> dict:
+    return {
+        'type': 'exploit_lag',
+        'question': (
+            'Contra um jogador muito agressivo que blefa demais (LAG ou maníaco), qual o ajuste?'
+        ),
+        'options': [
+            'Pague mais largo (bluff-catch) e não folde demais à pressão dele',
+            'Folde mais para não se expor',
+            'Blefe por cima dele sempre',
+        ],
+        'correct_index': 0,
+        'explanation': (
+            'Se ele blefa demais, as suas mãos médias viram bluff-catchers: pague mais largo e não '
+            'sobre-folde à agressão dele. Deixe-o blefar contra a sua mão em vez de fugir.'
+        ),
+        'mental_tip': '**Vs agressor: pague mais largo, não sobre-folde.**',
+        'context': {}, 'xp_value': 20,
+    }
+
+
+def generate_exploit_question(user_id: int = None) -> dict:
+    """Treino da aula de Exploits: exploit_station, exploit_nit, exploit_lag."""
+    qtype = random.choice(['exploit_station', 'exploit_nit', 'exploit_lag'])
+    if qtype == 'exploit_station':
+        return _exploit_station_question()
+    if qtype == 'exploit_nit':
+        return _exploit_nit_question()
+    return _exploit_lag_question()

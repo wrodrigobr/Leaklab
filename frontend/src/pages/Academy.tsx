@@ -15,6 +15,7 @@ import {
   Hash,
   Ban,
   Eye,
+  Crosshair,
 } from "lucide-react";
 import { HudLayout } from "@/components/hud/HudLayout";
 import { cn } from "@/lib/utils";
@@ -144,6 +145,15 @@ const MODULES: Module[] = [
     icon: Brain,
     color: "rose",
     path: "/academy/icm",
+    status: "available",
+    level: "advanced",
+    xpReward: 25,
+  },
+  {
+    id: "exploits",
+    icon: Crosshair,
+    color: "rose",
+    path: "/academy/exploits",
     status: "available",
     level: "advanced",
     xpReward: 25,

@@ -82,6 +82,10 @@
     "showdown": {
       "title": "Showdown Value",
       "desc": "The medium hand that doesn't want to bet: when to check for a cheap showdown and when to call an aggressor."
+    },
+    "exploits": {
+      "title": "Exploits & Reads",
+      "desc": "How to read the player type (station, nit, aggressor) and exploit each one's specific mistake. The profit GTO doesn't capture."
     }
   },
   "stats": {
@@ -246,7 +250,10 @@
     "pos_realization": "Position: Realization",
     "sdv_action": "Showdown: Action",
     "sdv_why": "Showdown: Why",
-    "sdv_catch": "Showdown: Bluff-catch"
+    "sdv_catch": "Showdown: Bluff-catch",
+    "exploit_station": "Exploit: Station",
+    "exploit_nit": "Exploit: Nit",
+    "exploit_lag": "Exploit: Aggressor"
   },
   "gtoPreflop": {
     "eyebrow": "Academy: GTO Ranges",
