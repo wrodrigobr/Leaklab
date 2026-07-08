@@ -141,6 +141,10 @@ function SidePanels({
   // ("Range de abertura", "Fold X% agregado", chip "no range") — referência errada
   // p/ um call. Aqui o card vira uma decisão de math (equity × pot odds), coerente.
   const isShoveFb = !isPostflop && pg?.scenario === 'vs_shove_fallback' && !!pg?.available;
+  // Spot de SHOVE (stack curto): a range de RFI é jam-dominante (allin_pct > raise_pct). Aí o
+  // enquadramento é "shove", não "abertura" (evita mostrar um all-in de 8-10bb como "open X%").
+  // Por DOMINÂNCIA, não por stack fixo: a ~9bb ainda há min-raise (ex.: AA), que segue "open".
+  const isShoveSpot = !isPostflop && pg?.scenario === 'rfi' && (pg?.allin_pct ?? 0) > (pg?.raise_pct ?? 0);
   const _fbEq  = step.hand_equity ?? null;
   const _fbReq = step.adjusted_required_equity ?? step.pot_odds_equity ?? null;
   const _fbCallEv  = (_fbEq != null && _fbReq != null) ? _fbEq >= _fbReq : null;
@@ -563,7 +567,7 @@ function SidePanels({
           evidence = (
             <div>
               <div className="flex items-center justify-between mb-1">
-                <span className="font-mono text-[10px] uppercase tracking-wide text-muted-foreground">{t(rangeLabelKey[pg.scenario] ?? "card.rangeOpening")}</span>
+                <span className="font-mono text-[10px] uppercase tracking-wide text-muted-foreground">{t(isShoveSpot ? "card.rangeShove" : (rangeLabelKey[pg.scenario] ?? "card.rangeOpening"))}</span>
                 <span className="font-mono text-[13px] font-bold tabular-nums text-foreground">{(pg.range_pct * 100).toFixed(0)}%</span>
               </div>
               <div className="h-1.5 rounded-full bg-border/50 overflow-hidden">
@@ -865,9 +869,10 @@ function SidePanels({
                       const bucketNum = parseFloat(pg!.stack_bucket);
                       const stackRef = (!isNaN(bucketNum) && Math.abs(bucketNum - pg!.stack_bb) > 2)
                         ? `≈${pg!.stack_bucket}` : pg!.stack_bucket;
-                      // Contexto: RFI mostra "abrindo"; vs_RFI/3bet/etc mostra "vs OPENER"
+                      // Contexto: RFI mostra "abrindo" (ou "shove" se a range é jam-dominante);
+                      // vs_RFI/3bet/etc mostra "vs OPENER"
                       const ctxStr = isRFI
-                        ? t("card.ctxOpening", { position: pg!.position, stack: stackRef })
+                        ? t(isShoveSpot ? "card.ctxShoving" : "card.ctxOpening", { position: pg!.position, stack: stackRef })
                         : (validVs ? t("card.ctxVs", { vs: validVs, stack: stackRef })
                                    : t("card.ctxPlain", { position: pg!.position, stack: stackRef }));
                       const title = useHandFreq

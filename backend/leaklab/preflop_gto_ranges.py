@@ -1149,7 +1149,14 @@ def _rfi_notes(pos, hand, stack, pct, in_rng, action, *, in_limp: bool = False,
     pct_s = f"{pct*100:.0f}%"
     act   = action.lower()
     if in_rng:
-        notes.append(f"{label} abre {pct_s} das mãos a {stack:.0f}bb — {hand} está no range de abertura.")
+        # Framing correto: se a mão é shove-dominante (hf_allin > hf_raise), é range de SHOVE,
+        # não "abertura" (stack curto). A ~9bb ainda há min-raise (ex.: AA) que segue "abertura".
+        _hf_r0 = float(hand_freq.get('raise', 0)) if hand_freq else 0.0
+        _hf_a0 = float(hand_freq.get('allin', 0)) if hand_freq else 0.0
+        if _hf_a0 > _hf_r0:
+            notes.append(f"{label} dá shove com {pct_s} das mãos a {stack:.0f}bb. {hand} está no range de shove.")
+        else:
+            notes.append(f"{label} abre {pct_s} das mãos a {stack:.0f}bb — {hand} está no range de abertura.")
         # Pro_note baseado na freq EXATA da ação tomada (vs. dominante)
         hf_fold  = float(hand_freq.get('fold', 0))  if hand_freq else 0.0
         hf_raise = float(hand_freq.get('raise', 0)) if hand_freq else 0.0
