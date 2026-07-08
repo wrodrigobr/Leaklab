@@ -58,6 +58,10 @@
     "multiway": {
       "title": "Multiway Pots (3+ players)",
       "desc": "When more players enter the hand, the math flips: bluffs die, value tightens, bets shrink. Lesson with table and examples."
+    },
+    "icm": {
+      "title": "ICM: chip value in tournaments",
+      "desc": "Why surviving is worth a prize: risk premium, bubble and final table. Lesson with table and examples."
     }
   },
   "stats": {

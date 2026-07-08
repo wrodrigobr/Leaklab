@@ -2326,6 +2326,26 @@ def academy_tournament_submit():
     return jsonify({'is_correct': is_correct})
 
 
+@app.route('/academy/icm/question', methods=['GET'])
+@require_auth
+def academy_icm_question():
+    from leaklab.academy import generate_icm_question
+    return jsonify(generate_icm_question(g.user_id))
+
+
+@app.route('/academy/icm/submit', methods=['POST'])
+@require_auth
+def academy_icm_submit():
+    body       = request.get_json(force=True) or {}
+    selected   = body.get('selected_index')
+    correct    = body.get('correct_index')
+    xp_value   = int(body.get('xp_value', 25))
+    is_correct = selected == correct
+    if is_correct:
+        add_xp(g.user_id, 'academy_icm_correct', xp_value)
+    return jsonify({'is_correct': is_correct})
+
+
 @app.route('/academy/multiway/question', methods=['GET'])
 @require_auth
 def academy_multiway_question():

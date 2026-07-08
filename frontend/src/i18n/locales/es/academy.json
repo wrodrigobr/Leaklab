@@ -58,6 +58,10 @@
     "multiway": {
       "title": "Bote Multiway (3+ jugadores)",
       "desc": "Cuando entra más gente en la mano, la matemática se da vuelta: el farol cae, el valor se aprieta, la apuesta se achica. Clase con mesa y ejemplos."
+    },
+    "icm": {
+      "title": "ICM: valor de las fichas en torneo",
+      "desc": "Por qué sobrevivir vale premio: risk premium, burbuja y mesa final. Clase con mesa y ejemplos."
     }
   },
   "stats": {

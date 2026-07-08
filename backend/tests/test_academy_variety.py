@@ -101,6 +101,19 @@ class TestAcademyVariety(unittest.TestCase):
         self.assertEqual(A._mw_middle_question()['options'][A._mw_middle_question()['correct_index']], 'Jogar apertado')
         print("  ✔ multiway drill structure")
 
+    def test_icm_drill_structure(self):
+        """Treino da aula de ICM: reusa icm_spot + bubble_defense (foco em ICM)."""
+        seen = set()
+        for _ in range(40):
+            q = acad.generate_icm_question(user_id=1)
+            self.assertIn(q['type'], ('icm_spot', 'bubble_defense'))
+            self.assertGreaterEqual(len(q['options']), 2)
+            self.assertTrue(0 <= q['correct_index'] < len(q['options']))
+            self.assertTrue(q['question'] and q['explanation'] and q['mental_tip'])
+            seen.add(q['type'])
+        self.assertEqual(seen, {'icm_spot', 'bubble_defense'})  # os dois aparecem
+        print("  ✔ icm drill structure")
+
     # ── Geradores via dispatcher (mock: sem banco) ─────────────────────────────
 
     def test_math_beginner_variety(self):

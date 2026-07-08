@@ -1435,3 +1435,11 @@ def generate_multiway_question(user_id: int = None) -> dict:
     if qtype == 'mw_sizing':
         return _mw_sizing_question()
     return _mw_middle_question()
+
+
+def generate_icm_question(user_id: int = None) -> dict:
+    """Treino da aula de ICM: reusa os geradores focados em ICM (call/fold sob pressão
+    + defesa na bolha), sem o 3bet_pot do módulo de torneio."""
+    if random.random() < 0.5:
+        return _icm_spot_question()
+    return _bubble_defense_question()

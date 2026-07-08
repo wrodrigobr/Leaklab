@@ -116,6 +116,15 @@ const MODULES: Module[] = [
     level: "advanced",
     xpReward: 25,
   },
+  {
+    id: "icm",
+    icon: Brain,
+    color: "rose",
+    path: "/academy/icm",
+    status: "available",
+    level: "advanced",
+    xpReward: 25,
+  },
 ];
 
 // ── Module card ───────────────────────────────────────────────────────────────
