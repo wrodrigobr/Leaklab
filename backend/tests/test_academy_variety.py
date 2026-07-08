@@ -90,6 +90,10 @@ class TestAcademyVariety(unittest.TestCase):
             self.assertTrue(q['question'] and q['explanation'] and q['mental_tip'])
             seen.add(q['type'])
         self.assertEqual(seen, {'mw_bluff', 'mw_sizing', 'mw_middle'})  # os 3 aparecem
+        # variedade: o pool parametrizado gera muitos enunciados distintos (dedup no
+        # front garante unicidade em sessão; aqui só conferimos que há margem)
+        fps = {_fingerprint(acad.generate_multiway_question(1)) for _ in range(120)}
+        self.assertGreaterEqual(len(fps), 12, f"pool multiway pequeno: {len(fps)} enunciados")
         # respostas certas por conceito
         import leaklab.academy as A
         self.assertIn('Desistir', A._mw_bluff_question()['options'][A._mw_bluff_question()['correct_index']])

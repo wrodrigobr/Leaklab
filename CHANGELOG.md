@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(academy): exercícios do treino não repetem na sessão (#academy)
+
+> Os drills sorteavam questões aleatórias e repetiam. Duas frentes: (1) **dedup no `QuizRunner`** (vale para TODOS os treinos da Academia) — guarda os enunciados já mostrados na sessão (fingerprint = enunciado + resposta) e re-sorteia até vir um inédito, com cap de 8 tentativas para pools pequenos (aí aceita repetir em vez de travar); reseta ao recomeçar um desafio. (2) **Mais variedade no gerador de multiway** (`academy.py`): mãos/posições/oponentes parametrizados → 27 enunciados distintos (era ~3). Assim o dedup tem margem e a sessão não repete. Teste de variedade em `test_academy_variety.py` (14/14). tsc + build OK. **Deploy:** frontend (Cloudflare) + `web`.
+
 ### feat(academy): treino DENTRO do material — matéria + drill na mesma página (#academy)
 
 > Ideia do usuário: unir os dois lados da Academia (material de referência × treinos) colocando o treino específico dentro do próprio material. Motor de quiz extraído num componente EMBUTÍVEL: `QuizRunner` (o miolo do antigo `AcademyQuizPage`, sem o `HudLayout`); `AcademyQuizPage` virou um wrapper fino (`HudLayout` + `QuizRunner`), então as páginas standalone (math/board/tournament) seguem idênticas. A aula de **Multiway** agora termina com um **Treino** de verdade embutido (adaptativo, com XP/streak), não mais um quiz estático: novo gerador backend `generate_multiway_question` (`academy.py`: `mw_bluff`/`mw_sizing`/`mw_middle`, reforçando os 3 conceitos da aula) + endpoints `/academy/multiway/question|submit` + `api.academy.multiway*`. Fica o padrão: cada material = aula (LessonKit, visuais atuais) + treino específico (QuizRunner) no mesmo lugar. Também: correção de copy na aula (q3 "há gente para agir atrás" → "depois"). i18n PT/EN/ES (qtypes mw_* + drill_title/sub, 253 chaves idênticas). Testes: 1 estrutural em `test_academy_variety.py` (14/14). tsc + build OK. **Deploy:** frontend (Cloudflare) + `web` (novo endpoint).

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import {
   ArrowRight,
@@ -105,6 +105,11 @@ export function QuizRunner({
   const [totalCorrect, setTotalCorrect] = useState(0);
   const [xpEarned, setXpEarned]         = useState(0);
   const [showHint, setShowHint]         = useState(false);
+  // Anti-repetição: guarda as questões já mostradas nesta sessão (fingerprint =
+  // enunciado + resposta). loadFn é aleatório, então re-sorteamos até vir uma inédita
+  // (cap p/ pools pequenos — aí aceita repetir em vez de travar).
+  const seenRef = useRef<Set<string>>(new Set());
+  const fp = (q: AcademyQuestion) => `${q.question}|${q.correct_index}`;
 
   const loadQuestion = useCallback(async () => {
     setPhase("loading");
@@ -112,12 +117,20 @@ export function QuizRunner({
     setIsCorrect(null);
     setShowHint(false);
     try {
-      const timeout = new Promise<never>((_, rej) =>
-        setTimeout(() => rej(new Error("timeout")), 12000)
-      );
-      const q = await Promise.race([loadFn(), timeout]);
-      setQuestion(q);
-      setPhase("question");
+      let q: AcademyQuestion | null = null;
+      for (let attempt = 0; attempt < 8; attempt++) {
+        const timeout = new Promise<never>((_, rej) =>
+          setTimeout(() => rej(new Error("timeout")), 12000)
+        );
+        const cand = await Promise.race([loadFn(), timeout]);
+        q = cand;
+        if (!seenRef.current.has(fp(cand))) break;   // inédita → usa
+      }
+      if (q) {
+        seenRef.current.add(fp(q));
+        setQuestion(q);
+        setPhase("question");
+      }
     } catch {
       setPhase("error");
     }
@@ -148,6 +161,7 @@ export function QuizRunner({
   const goNext = () => { if (challengeDone) setPhase("complete"); else loadQuestion(); };
   const restartChallenge = () => {
     setTotalDone(0); setTotalCorrect(0); setStreak(0); setXpEarned(0);
+    seenRef.current.clear();
     loadQuestion();
   };
   const heroCards  = question?.hero_cards?.map(toCardData)  ?? [];

@@ -1353,13 +1353,28 @@ def generate_tournament_question(user_id: int) -> dict:
 # Reforça os 3 conceitos da aula: blefe puro despenca, aposte menor, o assento do meio.
 # PT-only (padrão dos geradores); rótulos de tipo vão pro i18n (qtypes).
 
+_MW_BLUFF_HANDS = [
+    'uma mão fraca sem projeto (tipo J-alto)',
+    'carta alta solta, sem par nem projeto',
+    'um K-7 offsuit que não conectou nada',
+    'uma mão que errou o board, sem projeto de melhora',
+]
+_MW_VALUE_HANDS = [
+    'um par bom, mas longe dos nuts',
+    'top par com kicker médio',
+    'dois pares num board molhado (não é a nut)',
+]
+_MW_OPENERS = ['o UTG', 'o jogador de posição inicial', 'quem abriu na frente']
+
+
 def _mw_bluff_question() -> dict:
     n = random.choice([2, 3, 4])
+    hand = random.choice(_MW_BLUFF_HANDS)
     return {
         'type': 'mw_bluff',
         'question': (
-            f'Pote multiway com **{n} adversários**. Você tem um blefe puro (mão fraca, '
-            f'sem projeto) e a ação está com você. Qual a jogada?'
+            f'Pote multiway com **{n} adversários**. Você tem {hand} e a ação está com você. '
+            f'Qual a jogada?'
         ),
         'options': ['Blefar grande', 'Blefar pequeno', 'Desistir (check ou fold)'],
         'correct_index': 2,
@@ -1374,11 +1389,12 @@ def _mw_bluff_question() -> dict:
 
 def _mw_sizing_question() -> dict:
     n = random.choice([3, 4])
+    hand = random.choice(_MW_VALUE_HANDS)
     return {
         'type': 'mw_sizing',
         'question': (
-            f'Você tem uma mão de valor decente (não os nuts) num pote com **{n} jogadores** e '
-            f'quer apostar por valor. Comparado a um pote heads-up, o tamanho ideal é:'
+            f'Pote com **{n} jogadores**. Você tem {hand} e quer apostar por valor. '
+            f'Comparado a um pote heads-up, o tamanho ideal é:'
         ),
         'options': ['Maior', 'Igual ao heads-up', 'Menor'],
         'correct_index': 2,
@@ -1393,11 +1409,12 @@ def _mw_sizing_question() -> dict:
 
 def _mw_middle_question() -> dict:
     seat = random.choice(['HJ', 'CO', 'LJ'])
+    opener = random.choice(_MW_OPENERS)
     return {
         'type': 'mw_middle',
         'question': (
-            f'Multiway: alguém apostou antes de você, você está no **{seat}** (no meio) e ainda '
-            f'há jogadores para agir depois. Ensanduichado, a postura correta é:'
+            f'Multiway: {opener} apostou, você está no **{seat}** (no meio) e ainda há '
+            f'jogadores para agir depois. Ensanduichado, a postura correta é:'
         ),
         'options': ['Pagar largo', 'Jogar apertado', 'Aumentar como blefe quase sempre'],
         'correct_index': 1,
