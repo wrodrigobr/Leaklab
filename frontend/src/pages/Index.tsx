@@ -30,12 +30,13 @@ import { ProfileCompletionCard } from "@/components/hud/ProfileCompletionCard";
 import { LeakCausalMap } from "@/components/hud/LeakCausalMap";
 import { CareerGraphCard } from "@/components/hud/CareerGraphCard";
 import { CognitiveFailureCard } from "@/components/hud/CognitiveFailureCard";
+import { SessionContextCard } from "@/components/hud/SessionContextCard";
 import { StrategicTwinCard } from "@/components/hud/StrategicTwinCard";
 import { DraggableCard } from "@/components/hud/DraggableCard";
 import { useDashboardLayout, DashSection, SECTION_SPAN } from "@/hooks/useDashboardLayout";
 import { useMasonryRows } from "@/hooks/useMasonryRows";
 import { ProLockCard } from "@/components/hud/ProLockCard";
-import { metrics, tournaments, support, EvolutionResponse, Tournament, PlayerStatsResponse, LeakRoiData, PressureProfile, ConfidenceDrift, PlayerDnaResponse, LeakGraphResponse, CareerProjection, CognitiveFailureData, StrategicTwinProfile, GtoAlignmentData, GtoPositionData, GtoQualityData, ResultsVsGtoData, LeakFinderData } from "@/lib/api";
+import { metrics, tournaments, support, EvolutionResponse, Tournament, PlayerStatsResponse, LeakRoiData, PressureProfile, ConfidenceDrift, PlayerDnaResponse, LeakGraphResponse, CareerProjection, CognitiveFailureData, StrategicTwinProfile, GtoAlignmentData, GtoPositionData, GtoQualityData, ResultsVsGtoData, LeakFinderData, SessionContextData } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 
 // Module-level cache — survives unmount/remount during SPA navigation
@@ -85,6 +86,7 @@ const Index = () => {
   const [careerData, setCareerData]       = useState<CareerProjection | null>(null);
   const [cognitiveData, setCognitiveData] = useState<CognitiveFailureData | null>(null);
   const [twinData, setTwinData]           = useState<StrategicTwinProfile | null>(null);
+  const [sessionData, setSessionData]     = useState<SessionContextData | null>(null);
   const [loading, setLoading]             = useState(true);
   const [tournsLoaded, setTournsLoaded]   = useState(_cachedTourns !== null);
   const [refreshKey, setRefreshKey]       = useState(0);
@@ -111,6 +113,7 @@ const Index = () => {
       metrics.career(i18n.language).then(setCareerData).catch(() => null),
       metrics.cognitiveFailures(i18n.language).then(setCognitiveData).catch(() => null),
       metrics.strategicTwin(i18n.language).then(setTwinData).catch(() => null),
+      metrics.sessionContext().then(setSessionData).catch(() => null),
     ]).finally(() => setLoading(false));
   }, [refreshKey, volumeLimit]);
 
@@ -234,6 +237,9 @@ const Index = () => {
         : v2
           ? <V2CognitiveCard data={cognitiveData ?? { insufficient_data: true, patterns: [], total_decisions: 0 }} />
           : <CognitiveFailureCard data={cognitiveData ?? { insufficient_data: true, patterns: [], total_decisions: 0 }} />;
+      case "session":    return isFree
+        ? <ProLockCard feature={tc("proLock.session")} v2={v2} />
+        : <SessionContextCard data={sessionData ?? { insufficient_data: true, sample: 0, multitabling: [], time_of_day: [], fatigue: [] }} />;
       case "dna":        return <PlayerDnaCard data={dnaData} v2={v2} />;
       case "pressure":   return v2 ? <V2PressureCard data={pressureData} /> : <PressureProfileCard data={pressureData} />;
       case "leaks":      return <LeaksPanel leaks={leakRoi.length > 0 ? leakRoi : evo?.leaks} source={leakRoi.length > 0 ? leakSource : null} />;

@@ -1660,6 +1660,9 @@ export const metrics = {
   cognitiveFailures: (lang = "pt-BR", days = 90) =>
     request<CognitiveFailureData>(`/player/cognitive-failures?lang=${encodeURIComponent(lang)}&days=${days}`),
 
+  sessionContext: () =>
+    request<SessionContextData>(`/player/session-context`),
+
   strategicTwin: (lang = "pt-BR", days = 180) =>
     request<StrategicTwinProfile>(`/player/strategic-twin?lang=${encodeURIComponent(lang)}&days=${days}`),
 
@@ -1754,6 +1757,23 @@ export interface CognitiveFailureData {
   patterns: CognitivePattern[];
   total_decisions: number;
   narrative?: string;
+}
+
+// ── Session Context (multi-tabling / fadiga / horário) ───────────────────────
+
+export interface SessionContextBucket {
+  bucket: string;
+  tournaments: number;
+  decisions: number;
+  avg_score: number;
+}
+
+export interface SessionContextData {
+  insufficient_data: boolean;
+  sample: number;
+  multitabling: SessionContextBucket[];
+  time_of_day: SessionContextBucket[];
+  fatigue: SessionContextBucket[];
 }
 
 // ── Strategic Twin (Sprint AR) ───────────────────────────────────────────────

@@ -6,7 +6,8 @@
     "career": "Strategic Career",
     "cognitive": "Cognitive Failures",
     "causalMap": "Leak Causal Map",
-    "twin": "Strategic Twin"
+    "twin": "Strategic Twin",
+    "session": "Session Context"
   },
   "nav": {
     "dashboard": "Dashboard",

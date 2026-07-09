@@ -601,5 +601,29 @@
     "copy": "Copiar enlace",
     "copied": "Enlace copiado",
     "loading": "Generando tu enlace…"
+  },
+  "sessionContext": {
+    "title": "Contexto de Sesión",
+    "tooltip": "Muestra cómo el multi-tabling, el horario y la duración de la sesión afectan la calidad de tus decisiones. Objetivo, sin autoinforme.",
+    "noData": "Aún no hay torneos suficientes con horario registrado para analizar el contexto de sesión.",
+    "decisions": "{{count}} torneos",
+    "tournamentsShort": "{{count}} trns",
+    "footnote": "Cruza las franjas horarias de tus torneos con la calidad de las decisiones. Barra más corta = mejor.",
+    "groups": {
+      "multitabling": "Multi-tabling",
+      "time_of_day": "Horario",
+      "fatigue": "Duración de sesión"
+    },
+    "units": {
+      "tables": "mesas",
+      "tableOne": "1 mesa"
+    },
+    "tod": {
+      "madrugada": "Madrugada",
+      "manha": "Mañana",
+      "tarde": "Tarde",
+      "noite": "Noche"
+    },
+    "insight": "Juegas un {{pct}}% peor en {{worst}} que en {{best}}."
   }
 }

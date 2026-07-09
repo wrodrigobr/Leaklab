@@ -5,7 +5,7 @@ import { preferences } from "@/lib/api";
 // (ver SECTION_SPAN). Substitui o antigo modelo de 2 colunas {main, sidebar}.
 export type DashSection =
   | "quality" | "position" | "leakfinder" | "results"
-  | "bankroll" | "career" | "cognitive" | "dna"
+  | "bankroll" | "career" | "cognitive" | "session" | "dna"
   | "pressure" | "leaks" | "causal_map" | "twin";
 
 export const DEFAULT_SECTIONS: DashSection[] = [
@@ -13,7 +13,7 @@ export const DEFAULT_SECTIONS: DashSection[] = [
   "quality", "position",
   "leakfinder", "results",
   // Resultado / evolução
-  "bankroll", "career", "cognitive",
+  "bankroll", "career", "cognitive", "session",
   // Perfil / risco
   "dna", "pressure", "leaks", "causal_map", "twin",
 ];
@@ -32,6 +32,7 @@ export const SECTION_SPAN: Record<DashSection, string> = {
   bankroll:   "lg:col-span-6",
   career:     "lg:col-span-6",
   cognitive:  "lg:col-span-6",
+  session:    "lg:col-span-6",
   dna:        "lg:col-span-6",
   pressure:   "lg:col-span-6",
   leaks:      "lg:col-span-6",

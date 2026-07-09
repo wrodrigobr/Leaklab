@@ -6,7 +6,8 @@
     "career": "Carrera Estratégica",
     "cognitive": "Fallos Cognitivos",
     "causalMap": "Mapa Causal de Leaks",
-    "twin": "Gemelo Estratégico"
+    "twin": "Gemelo Estratégico",
+    "session": "Contexto de Sesión"
   },
   "nav": {
     "dashboard": "Panel",

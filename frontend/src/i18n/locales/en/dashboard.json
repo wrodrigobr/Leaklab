@@ -601,5 +601,29 @@
     "copy": "Copy link",
     "copied": "Link copied",
     "loading": "Generating your link…"
+  },
+  "sessionContext": {
+    "title": "Session Context",
+    "tooltip": "Shows how multi-tabling, time of day and session length affect your decision quality. Objective, no self-report.",
+    "noData": "Not enough tournaments with recorded time yet to analyze session context.",
+    "decisions": "{{count}} tournaments",
+    "tournamentsShort": "{{count}} tmts",
+    "footnote": "Cross-references your tournament time windows with decision quality. Shorter bar = better.",
+    "groups": {
+      "multitabling": "Multi-tabling",
+      "time_of_day": "Time of day",
+      "fatigue": "Session length"
+    },
+    "units": {
+      "tables": "tables",
+      "tableOne": "1 table"
+    },
+    "tod": {
+      "madrugada": "Late night",
+      "manha": "Morning",
+      "tarde": "Afternoon",
+      "noite": "Evening"
+    },
+    "insight": "You play {{pct}}% worse at {{worst}} than at {{best}}."
   }
 }
