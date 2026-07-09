@@ -43,6 +43,84 @@ def _norm(v):
     return v if v else None
 
 
+def resync_tournament_postflop(tid, apply=True):
+    """Re-anexa o gto (label/best/gto_label/gto_action) das decisões POSTFLOP de UM torneio,
+    modo FILL-ONLY: só rotula uncovered que ganhou nó ('appeared'); nunca remove nem muda
+    cobertura existente. É o re-attach usado pelo gancho automático quando a fila do torneio
+    drena (corrige a cobertura artificialmente baixa pós-import). Retorna nº de decisões atualizadas.
+
+    Self-contained (abre/fecha a própria conexão) pra ser chamável do worker do solver."""
+    conn = get_conn()
+    if not USE_POSTGRES:
+        try:
+            conn.execute("PRAGMA busy_timeout=10000")
+        except Exception:
+            pass
+    try:
+        raw = conn.execute("SELECT raw_text FROM tournaments WHERE id=?", (tid,)).fetchone()
+        raw_text = dict(raw).get('raw_text') if raw else None
+        if not raw_text:
+            return 0
+        try:
+            hands = parse_hand_history(raw_text)
+        except Exception:
+            return 0
+
+        fresh = defaultdict(list)
+        for hand in hands:
+            try:
+                dis = build_decision_inputs_for_hand(hand)
+            except Exception:
+                continue
+            for di in dis:
+                st = (di.get("street") or "").lower()
+                if st == "preflop" or not st:          # só postflop
+                    continue
+                hid = di.get("hand_id", "")
+                act = (di.get("player_action") or "").lower()
+                if not hid or not act:
+                    continue
+                try:
+                    r = evaluate_decision(di)
+                except Exception:
+                    continue
+                g = r.get("gto") or {}
+                fresh[(hid, st, act)].append({
+                    "label":      (r.get("evaluation") or {}).get("label") or None,
+                    "best":       r.get("bestAction") or None,
+                    "gto_label":  _norm(g.get("gto_label")),
+                    "gto_action": _norm(g.get("gto_action")),
+                })
+
+        stored = defaultdict(list)
+        for r in conn.execute(
+            "SELECT id, hand_id, street, action_taken, label, best_action, gto_label, gto_action "
+            "FROM decisions WHERE tournament_id=? AND lower(street)!='preflop'", (tid,)).fetchall():
+            d = dict(r)
+            stored[(d['hand_id'], (d['street'] or '').lower(),
+                    (d['action_taken'] or '').lower())].append(d)
+
+        updated = 0
+        for key, srows in stored.items():
+            frows = fresh.get(key, [])
+            if len(srows) != 1 or len(frows) != 1:     # multi-decisão ambíguo: pula
+                continue
+            s, f = srows[0], frows[0]
+            # FILL-ONLY: só 'appeared' (era uncovered e ganhou nó). Nunca toca o que já tem gto.
+            if _norm(s['gto_label']) or not f['gto_label']:
+                continue
+            if apply:
+                conn.execute(
+                    "UPDATE decisions SET label=?, best_action=?, gto_label=?, gto_action=? WHERE id=?",
+                    (f['label'], f['best'], f['gto_label'], f['gto_action'], s['id']))
+            updated += 1
+        if apply:
+            conn.commit()
+        return updated
+    finally:
+        conn.close()
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--apply", action="store_true")
@@ -52,6 +130,8 @@ def main():
     # nem muda veredito de spot já coberto (label_drift). É o re-lookup seguro pro cron noturno.
     ap.add_argument("--fill-only", action="store_true",
                     help="só rotula uncovered que ganhou nó; não mexe no que já tem gto_label")
+    ap.add_argument("--tid", type=int, default=None,
+                    help="reconcilia SÓ este torneio (id interno) — rápido, por torneio")
     args = ap.parse_args()
 
     def _in_scope(st):
@@ -69,9 +149,12 @@ def main():
         except Exception:
             pass
 
-    tournaments = conn.execute(
-        "SELECT id FROM tournaments WHERE raw_text IS NOT NULL "
-        "AND tournament_id NOT LIKE 'FAKE-%' ORDER BY id").fetchall()
+    _tq = ("SELECT id FROM tournaments WHERE raw_text IS NOT NULL "
+           "AND tournament_id NOT LIKE 'FAKE-%'")
+    if args.tid:
+        _tq += f" AND id = {int(args.tid)}"
+    _tq += " ORDER BY id"
+    tournaments = conn.execute(_tq).fetchall()
 
     changes = Counter()           # por campo
     kinds = Counter()             # vanished/appeared/label_drift/action_only

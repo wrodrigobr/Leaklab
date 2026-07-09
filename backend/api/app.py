@@ -9761,6 +9761,46 @@ def _enqueue_postflop_spots(results: list, tournament_id: int = None) -> None:
     log.info("Upload GTO enqueue: %s novos spots enfileirados, %s já resolvidos", enqueued, already)
 
 
+def _reconcile_drained_tournaments():
+    """Re-anexa o gto_label das decisões de torneios cuja fila do solver JÁ drenou (todos os
+    spots 'done') e cujo solve é mais novo que a última reconciliação. Corrige a cobertura
+    artificialmente baixa pós-import: o solve termina DEPOIS do import, então as decisões ficam
+    com gto_label NULL até um resync. Guarda o progresso em tournaments.labels_reconciled_at
+    (não reprocessa até um novo solve). Fill-only: nunca remove/muda cobertura existente."""
+    from database.schema import get_conn as _gc
+    from database.repositories import _fetchall as _fa
+    conn = _gc()
+    try:
+        cands = _fa(conn, """
+            SELECT gtq.tournament_id AS tid
+            FROM gto_tournament_queue gtq
+            JOIN gto_solver_queue sq ON sq.spot_hash = gtq.spot_hash
+            JOIN tournaments t ON t.id = gtq.tournament_id
+            GROUP BY gtq.tournament_id, t.labels_reconciled_at
+            HAVING SUM(CASE WHEN sq.status IN ('pending','running') THEN 1 ELSE 0 END) = 0
+               AND SUM(CASE WHEN sq.status = 'done' THEN 1 ELSE 0 END) > 0
+               AND (t.labels_reconciled_at IS NULL OR MAX(sq.solved_at) > t.labels_reconciled_at)
+        """)
+    finally:
+        conn.close()
+    if not cands:
+        return
+    from scripts.resync_postflop_gto import resync_tournament_postflop
+    for r in cands:
+        tid = dict(r)['tid']
+        try:
+            n = resync_tournament_postflop(tid, apply=True)
+            _c2 = _gc()
+            try:
+                _c2.execute("UPDATE tournaments SET labels_reconciled_at = datetime('now') WHERE id = ?", (tid,))
+                _c2.commit()
+            finally:
+                _c2.close()
+            log.info("reconcile: torneio %s re-anexado (%s decisões preenchidas)", tid, n)
+        except Exception:
+            log.exception("reconcile tournament %s falhou", tid)
+
+
 def _solver_queue_worker_loop():
     """Consumidor da fila do solver: EVENT-DRIVEN (acorda no instante do enqueue) + DRENA ATÉ
     ESVAZIAR, com CONCORRÊNCIA = GTO_SOLVER_CONCURRENCY (satura os MAX_SOLVES do solver, em vez
@@ -9791,6 +9831,13 @@ def _solver_queue_worker_loop():
                 continue   # re-checa JÁ: drena enquanto houver fila, sem esperar os 60s
         except Exception:
             log.exception("Solver queue worker loop error")
+        # Fila drenou → re-anexa labels dos torneios que acabaram de ser solvados (corrige a
+        # cobertura artificialmente baixa pós-import). Guardado por labels_reconciled_at, então
+        # é barato quando não há nada novo (query de candidatos volta vazia).
+        try:
+            _reconcile_drained_tournaments()
+        except Exception:
+            log.exception("reconcile drained tournaments error")
         # Fila vazia → dorme até o próximo enqueue (event-driven); o timeout de 60s é só
         # varredura de segurança (reset de 'running' preso, retries).
         try:
