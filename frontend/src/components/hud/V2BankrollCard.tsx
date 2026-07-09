@@ -42,29 +42,43 @@ export function V2BankrollCard() {
     staleTime: 30_000,
   });
 
-  const { pts, ticks } = useMemo(() => {
+  const { pts, ticks, count } = useMemo(() => {
     const evolution = data?.evolution ?? [];
     let running = 0;
-    // x = data de JOGO (played_at) no modo tempo, ou índice do torneio no modo torneio. Pontos sem
-    // data ficam de fora do plot, mas seu lucro entra no acumulado.
-    const pts = evolution
+    // Acumulado POR TORNEIO (modo torneio): x = índice; t = data de jogo. Pontos sem data ficam
+    // fora do plot, mas o lucro entra no acumulado.
+    const cumT = evolution
       .map((e) => ({ t: e.played_at ? new Date(e.played_at).getTime() : NaN, profit: Math.round((running += e.profit ?? 0) * 100) / 100 }))
       .filter((p) => !Number.isNaN(p.t))
-      .map((p, idx) => ({ ...p, i: idx, name: `#${idx + 1}` }));
+      .map((p, idx) => ({ ...p, i: idx }));
+    // Modo TEMPO: 1 ponto por DIA = bankroll acumulado no FIM do dia. Colapsa as mesas paralelas
+    // (um reg que sobe 20-30 torneios/dia vira 1 ponto/dia, sem serrote). Agrupa pelo dia LOCAL do
+    // viewer; como cumT está em ordem cronológica, o último valor do dia é o acumulado de fim de dia.
+    const byDay = new Map<number, number>();
+    for (const p of cumT) {
+      const d = new Date(p.t); d.setHours(0, 0, 0, 0);
+      byDay.set(d.getTime(), p.profit);
+    }
+    const cumD = Array.from(byDay.entries())
+      .sort((a, b) => a[0] - b[0])
+      .map(([t, profit], idx) => ({ t, profit, i: idx }));
+    // Fallback: se o histórico cabe num único dia, o diário teria 1 ponto (não desenha linha) →
+    // usa o por-torneio também no modo tempo.
+    const chosen = mode === "time" ? (cumD.length >= 2 ? cumD : cumT) : cumT;
     let ticks: number[] = [];
-    if (pts.length >= 2) {
-      const t0 = pts[0].t, t1 = pts[pts.length - 1].t, span = (t1 - t0) || 1;
+    if (chosen.length >= 2) {
+      const t0 = chosen[0].t, t1 = chosen[chosen.length - 1].t, span = (t1 - t0) || 1;
       const spanDays = span / 86_400_000;
       const n = days <= 7 ? Math.max(2, Math.min(7, Math.round(spanDays) + 1)) : 6;
       ticks = Array.from({ length: n }, (_, i) => Math.round(t0 + (span * i) / (n - 1)));
     }
-    return { pts, ticks };
-  }, [data, days]);
+    return { pts: chosen, ticks, count: cumT.length };
+  }, [data, days, mode]);
 
   // Só some de vez quando NÃO há histórico nenhum (período "ALL" com <2 torneios).
-  if (pts.length < 2 && period === "ALL") return null;
+  if (count < 2 && period === "ALL") return null;
 
-  const hasData = pts.length >= 2;
+  const hasData = count >= 2;
   const last = hasData ? pts[pts.length - 1].profit : 0;
   const up = last >= 0;
   const stroke = up ? "#2DD4BF" : "#f87171";
