@@ -2648,3 +2648,77 @@ def generate_bankroll_question(user_id: int = None) -> dict:
     if qtype == 'bk_sample':
         return _bk_sample_question()
     return _bk_judge_question()
+
+
+# ── Blind vs Blind: treino da aula "A guerra das blinds" ─────────────────────────
+# BB defende MUITO largo (preço ótimo + posição); SB ataca largo (só enfrenta o BB e
+# já tem dinheiro no pote); o BB tem a vantagem de posição no pós-flop (SB é OOP).
+
+def _bvb_bb_question() -> dict:
+    return {
+        'type': 'bvb_bb',
+        'question': 'No big blind, contra um open do small blind (todos foldaram até ele), o padrão é:',
+        'options': [
+            'Defender MUITO largo: você já tem 1bb no pote, fecha a ação e joga em posição',
+            'Foldar quase tudo, porque você está fora de posição',
+            'Só continuar com mãos premium',
+        ],
+        'correct_index': 0,
+        'explanation': (
+            'No BB você já postou 1bb, então tem um preço ótimo para pagar, e ainda joga em posição contra '
+            'o SB no pós-flop. Os dois fatores mandam você defender larguíssimo. Overfoldar o BB nessa '
+            'situação é um dos leaks mais comuns e mais caros do MTT.'
+        ),
+        'mental_tip': '**BB vs SB: defenda muito largo. Preço ótimo + posição. Overfoldar o BB é leak grande.**',
+        'context': {}, 'xp_value': 20,
+    }
+
+
+def _bvb_sb_question() -> dict:
+    return {
+        'type': 'bvb_sb',
+        'question': 'Você é o small blind e todos foldaram até você. Foldar demais aqui é ruim porque:',
+        'options': [
+            'Você enfrenta só UM jogador (o BB) e já tem dinheiro no pote: dá para atacar largo',
+            'O small blind é a melhor posição da mesa',
+            'O big blind nunca defende, então é fold grátis',
+        ],
+        'correct_index': 0,
+        'explanation': (
+            'Folded to você no SB, resta um só adversário (o BB) e você já tem 0,5bb investido. Isso justifica '
+            'atacar com uma range larga (abrir ou completar). Foldar demais o SB é passivo e entrega os blinds '
+            'sem luta. Cuidado só com o pós-flop, onde você joga fora de posição.'
+        ),
+        'mental_tip': '**SB folded-to-you: ataque largo. Um só vilão + dinheiro no pote. Mas você fica OOP.**',
+        'context': {}, 'xp_value': 20,
+    }
+
+
+def _bvb_position_question() -> dict:
+    return {
+        'type': 'bvb_position',
+        'question': 'No confronto small blind vs big blind, quem tem a vantagem de posição no pós-flop?',
+        'options': [
+            'O big blind: ele age por último no pós-flop (o small blind fica fora de posição)',
+            'O small blind, porque agiu primeiro no preflop',
+            'Ninguém, no BvB a posição é sempre igual',
+        ],
+        'correct_index': 0,
+        'explanation': (
+            'No pós-flop o small blind age primeiro (fora de posição) e o big blind age por último (em posição). '
+            'Por isso o BB pode jogar ainda mais largo, e o SB precisa ser mais seletivo e cuidadoso ao construir '
+            'o pote sem a informação da ação do vilão.'
+        ),
+        'mental_tip': '**BvB: o BB age por último no pós-flop (IP); o SB é OOP. Posição favorece o BB.**',
+        'context': {}, 'xp_value': 20,
+    }
+
+
+def generate_bvb_question(user_id: int = None) -> dict:
+    """Treino da aula de blind vs blind: bvb_bb, bvb_sb, bvb_position."""
+    qtype = random.choice(['bvb_bb', 'bvb_sb', 'bvb_position'])
+    if qtype == 'bvb_bb':
+        return _bvb_bb_question()
+    if qtype == 'bvb_sb':
+        return _bvb_sb_question()
+    return _bvb_position_question()

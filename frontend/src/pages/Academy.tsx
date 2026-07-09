@@ -24,6 +24,7 @@ import {
   Flame,
   BookText,
   Wallet,
+  Sword,
 } from "lucide-react";
 import { HudLayout } from "@/components/hud/HudLayout";
 import { cn } from "@/lib/utils";
@@ -170,6 +171,15 @@ const MODULES: Module[] = [
     icon: Wallet,
     color: "amber",
     path: "/academy/bankroll",
+    status: "available",
+    level: "intermediate",
+    xpReward: 25,
+  },
+  {
+    id: "bvb",
+    icon: Sword,
+    color: "amber",
+    path: "/academy/blind-war",
     status: "available",
     level: "intermediate",
     xpReward: 25,

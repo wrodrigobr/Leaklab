@@ -55,9 +55,12 @@ ACADEMY_MODULES = [
     ("threebet",   "/academy/3bet", [
         "3-bet", "3bet", "3-betar", "re-raise", "rereraise", "reraise", "4-bet", "4bet",
         "3-bet blefe", "3-bet valor", "3-bet pot", "cold call", "flatar", "squeeze"]),
+    ("bvb",        "/academy/blind-war", [
+        "blind vs blind", "bvb", "small blind", "big blind", "guerra das blinds", "sb vs bb",
+        "overfold do bb", "defesa do big blind", "defesa de bb", "bb defense", "defende o bb"]),
     ("ranges",     "/academy/gto-preflop?scenario=rfi", [
         "rfi", "range de abertura", "open-raise", "open raise", "abrir de", "roubar blind",
-        "steal", "defesa de bb", "defesa do bb", "vs open", "abertura preflop"]),
+        "steal", "vs open", "abertura preflop"]),
     ("math",       "/academy/math", [
         "pot odds", "equity", "outs", "regra do 2", "regra 2/4", "probabilidade",
         "odds implicitas", "matematica", "preco do pote"]),
