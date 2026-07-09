@@ -309,7 +309,7 @@ function ModuleCard({ mod }: { mod: Module }) {
 
   const inner = (
     <div className={cn(
-      "group flex flex-col rounded-xl border overflow-hidden transition-all",
+      "group flex h-full flex-col rounded-xl border overflow-hidden transition-all",
       available
         ? `${c.ring} ${c.bg} hover:ring-1 cursor-pointer`
         : "border-border bg-hud-surface/40 opacity-60",
@@ -347,9 +347,9 @@ function ModuleCard({ mod }: { mod: Module }) {
   );
 
   return available && mod.path ? (
-    <Link to={mod.path}>{inner}</Link>
+    <Link to={mod.path} className="block h-full">{inner}</Link>
   ) : (
-    <div>{inner}</div>
+    <div className="h-full">{inner}</div>
   );
 }
 
