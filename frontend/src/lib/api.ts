@@ -1829,6 +1829,7 @@ export interface StudyCard {
   spot: string;
   ev_ponderado?: string;                          // −X bb (EV ponderado do leak)
   confianca_amostra?: "alta" | "média" | "baixa"; // confiança da amostra
+  academy_modules?: { id: string; path: string }[]; // aulas da Academia relevantes (leak→aula)
 }
 export interface StudyObserve { indicador: string; valor_atual?: string; sample_atual?: number; sample_necessario?: number; por_que_esperar?: string; }
 export interface StudySkip { item: string; motivo: string; }

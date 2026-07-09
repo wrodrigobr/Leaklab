@@ -222,6 +222,7 @@ export function buildStudyPlan(backend: StudyPlanResponse): StudyPlan {
     severity:  severityFromIndex(i),
     evLoss:    card.ev_ponderado || "—",
     rationale: card.diagnostico ?? card.conceitos?.join(", ") ?? "",
+    academy:   card.academy_modules ?? [],
   }));
 
   const resourcesByLeak: Record<string, StudyResource[]> = {};

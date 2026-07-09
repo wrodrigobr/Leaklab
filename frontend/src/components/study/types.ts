@@ -7,6 +7,7 @@ export interface LeakRef {
   severity: LeakSeverity;
   evLoss: string;
   rationale: string;
+  academy?: { id: string; path: string }[];   // aulas da Academia relevantes (leak→aula)
 }
 
 export interface StudyResource {

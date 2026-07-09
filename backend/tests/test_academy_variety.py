@@ -262,6 +262,39 @@ class TestAcademyVariety(unittest.TestCase):
         self.assertEqual(seen, {'pf_action', 'pf_position', 'pf_call'})
         print("  ✔ pushfold drill structure")
 
+    def test_leak_to_academy_mapping(self):
+        """Matcher leak→aula: casa o card com o módulo certo, sem falso positivo, máx 2."""
+        from leaklab.academy_catalog import modules_for_card, attach_academy_modules
+        def ids(card):
+            return [m['id'] for m in modules_for_card(card)]
+        # bolha/ICM: 'preflop/fold' NÃO pode puxar postflop ('flop' dentro de 'preflop').
+        icm = ids({'titulo': 'Defesa fraca na bolha',
+                   'diagnostico': 'Sob pressao de ICM voce folda demais perto do pay jump',
+                   'conceitos': ['ICM'], 'spot': 'preflop/fold'})
+        self.assertEqual(icm[0], 'icm')
+        self.assertNotIn('postflop', icm)
+        # stack curto → pushfold em 1º
+        self.assertEqual(ids({'titulo': 'Shove curto errado',
+                              'diagnostico': 'Com stack raso da min-raise em vez de shove',
+                              'conceitos': ['push/fold'], 'spot': 'preflop/raise'})[0], 'pushfold')
+        # multiway
+        self.assertIn('multiway', ids({'titulo': 'Pote multiway', 'diagnostico': 'varios jogadores no pote',
+                                       'conceitos': ['multiway'], 'spot': 'flop/call'}))
+        # no máx 2 módulos, cada um com id+path
+        many = modules_for_card({'titulo': 'c-bet no flop com pot odds e posicao',
+                                 'diagnostico': 'bet sizing ruim, textura de board, equity',
+                                 'conceitos': ['pot odds', 'posicao'], 'spot': 'flop/bet'})
+        self.assertLessEqual(len(many), 2)
+        for m in many:
+            self.assertIn('id', m); self.assertIn('path', m)
+        # attach muta os cards do plano
+        plan = {'cards': [{'titulo': 'ICM na bolha', 'diagnostico': 'icm', 'conceitos': [], 'spot': 'preflop/fold'}]}
+        attach_academy_modules(plan)
+        self.assertEqual(plan['cards'][0]['academy_modules'][0]['id'], 'icm')
+        # card sem sinal → lista vazia (sem link)
+        self.assertEqual(modules_for_card({'titulo': '', 'diagnostico': '', 'conceitos': [], 'spot': ''}), [])
+        print("  ✔ leak→academy mapping")
+
     # ── Geradores via dispatcher (mock: sem banco) ─────────────────────────────
 
     def test_math_beginner_variety(self):

@@ -3,6 +3,7 @@ import { useSearchParams, Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
   Award,
+  BookOpen,
   BrainCircuit,
   CalendarDays,
   CheckCheck,
@@ -166,6 +167,7 @@ type LoadState = "idle" | "loading" | "error";
 const StudyPlanPage = () => {
   const { user } = useAuth();
   const { t } = useTranslation("study");
+  const { t: tAcad } = useTranslation("academy");   // títulos localizados dos módulos (leak→aula)
   const [searchParams]            = useSearchParams();
   const spotParam                 = searchParams.get("spot") ?? "";
   const [plan, setPlan]           = useState<StudyPlan | null>(null);
@@ -467,6 +469,28 @@ const StudyPlanPage = () => {
                       <GraduationCap className="size-4" aria-hidden /> {t("platform.review")}
                     </Link>
                   </div>
+
+                  {/* Leak→aula: aulas da Academia miradas no leak ativo (Estudos como hub guiado). */}
+                  {(activeLeak?.academy?.length ?? 0) > 0 && (
+                    <div className="mt-4 space-y-1.5 border-t border-primary/20 pt-3">
+                      <p className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
+                        {t("platform.academy")}
+                      </p>
+                      {activeLeak!.academy!.map((m) => (
+                        <Link
+                          key={m.id}
+                          to={m.path}
+                          className="flex items-center justify-between gap-2 rounded-md border border-border bg-background px-3 py-2 text-xs font-semibold text-foreground transition-colors hover:border-primary/40 hover:bg-primary/5"
+                        >
+                          <span className="flex items-center gap-2">
+                            <BookOpen className="size-3.5 text-primary" aria-hidden />
+                            {tAcad(`modules.${m.id}.title`)}
+                          </span>
+                          <ChevronRight className="size-3.5 text-muted-foreground" aria-hidden />
+                        </Link>
+                      ))}
+                    </div>
+                  )}
                 </section>
 
                 <section className="rounded-xl border border-border bg-hud-surface p-5">

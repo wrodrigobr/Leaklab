@@ -5002,19 +5002,24 @@ def _gen_study_plan(leaks, evolution, icm, *, hero, user_id, force_new,
     """Plano de estudos: prefere o loop agêntico (investiga cada leak em profundidade),
     cai no single-shot legado em qualquer falha. Flag STUDY_PLAN_AGENTIC=0 desliga."""
     from leaklab.llm_explainer import generate_study_plan
+    from leaklab.academy_catalog import attach_academy_modules
+    plan = None
     if os.getenv('STUDY_PLAN_AGENTIC', '1') == '1':
         try:
             from leaklab.llm_explainer import generate_study_plan_agentic
-            return generate_study_plan_agentic(
+            plan = generate_study_plan_agentic(
                 leaks, evolution, icm, hero=hero, user_id=user_id,
                 force_new=force_new, player_stats=player_stats,
                 leak_source=leak_source, ev_leaks=ev_leaks)
         except Exception:
             log.exception("study_plan agentic error; fallback para single-shot")
-    return generate_study_plan(
-        leaks, evolution, icm, hero=hero, user_id=user_id,
-        force_new=force_new, player_stats=player_stats,
-        leak_source=leak_source, ev_leaks=ev_leaks)
+    if plan is None:
+        plan = generate_study_plan(
+            leaks, evolution, icm, hero=hero, user_id=user_id,
+            force_new=force_new, player_stats=player_stats,
+            leak_source=leak_source, ev_leaks=ev_leaks)
+    # Link leak→aula: anexa os módulos da Academia relevantes a cada card (determinístico).
+    return attach_academy_modules(plan)
 
 
 @app.route('/study/plan', methods=['GET'])
