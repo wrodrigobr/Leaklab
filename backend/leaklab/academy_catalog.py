@@ -67,6 +67,9 @@ ACADEMY_MODULES = [
     ("draws",      "/academy/draws", [
         "projeto", "projetos", "draw", "semi-blefe", "semi blefe", "semiblefe", "flush draw",
         "sequencia aberta", "gutshot", "combo draw", "outs", "fold equity", "chase"]),
+    ("barrels",    "/academy/barrels", [
+        "barrel", "double barrel", "triple barrel", "segundo barril", "barril", "turn", "river",
+        "desistir no turn", "give up", "aposta de river", "polarizado no river", "seguir apostando"]),
 ]
 
 

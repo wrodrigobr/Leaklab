@@ -288,6 +288,19 @@ class TestAcademyVariety(unittest.TestCase):
         self.assertEqual(seen, {'tb_purpose', 'tb_polar', 'tb_blocker'})
         print("  ✔ 3bet drill structure")
 
+    def test_barrels_drill_structure(self):
+        """Treino da aula de turn & river / barrels: turn, giveup, river."""
+        seen = set()
+        for _ in range(40):
+            q = acad.generate_barrel_question(user_id=1)
+            self.assertIn(q['type'], ('tr_turn', 'tr_giveup', 'tr_river'))
+            self.assertEqual(len(q['options']), 3)
+            self.assertEqual(q['correct_index'], 0)
+            self.assertTrue(q['question'] and q['explanation'] and q['mental_tip'])
+            seen.add(q['type'])
+        self.assertEqual(seen, {'tr_turn', 'tr_giveup', 'tr_river'})
+        print("  ✔ barrels drill structure")
+
     def test_leak_to_academy_mapping(self):
         """Matcher leak→aula: casa o card com o módulo certo, sem falso positivo, máx 2."""
         from leaklab.academy_catalog import modules_for_card, attach_academy_modules

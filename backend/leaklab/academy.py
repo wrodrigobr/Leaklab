@@ -2429,3 +2429,79 @@ def generate_3bet_question(user_id: int = None) -> dict:
     if qtype == 'tb_polar':
         return _tb_polar_question()
     return _tb_blocker_question()
+
+
+# ── Turn & River / barrels: treino da aula "Depois do flop" ──────────────────────
+# Double barrel nas cartas que melhoram a SUA range; freia quando ajuda a do vilão;
+# river é polarizado (não há mais carta: valor ou blefe, sem semi-blefe).
+
+def _tr_turn_question() -> dict:
+    return {
+        'type': 'tr_turn',
+        'question': (
+            'Você fez c-bet no flop e foi pago. Qual turn é o melhor para apostar de novo (double barrel)?'
+        ),
+        'options': [
+            'Uma carta que melhora a SUA range (overcard, completa um draw seu), não a do vilão',
+            'Qualquer carta: você já apostou o flop, tem que continuar',
+            'Uma carta que ajuda o vilão, para ele pagar mais',
+        ],
+        'correct_index': 0,
+        'explanation': (
+            'O bom turn para barrelar é o que melhora as suas mãos ou te deixa representar mais valor, e '
+            'que NÃO ajuda a range de call do vilão. Cartas que completam os projetos dele ou dão par às '
+            'mãos que te pagaram são cartas para frear, não para apostar.'
+        ),
+        'mental_tip': '**Double barrel nas cartas que melhoram a SUA range, não a do vilão.**',
+        'context': {}, 'xp_value': 20,
+    }
+
+
+def _tr_giveup_question() -> dict:
+    return {
+        'type': 'tr_giveup',
+        'question': 'Quando é hora de desistir do barril no turn (parar de apostar)?',
+        'options': [
+            'Quando o turn ajuda a range de call do vilão e você não tem equity nem como representar valor',
+            'Nunca: quem aposta o flop tem que apostar todas as ruas',
+            'Sempre que o vilão pagou o flop',
+        ],
+        'correct_index': 0,
+        'explanation': (
+            'Barrelar sem equity e sem uma história crível é só queimar fichas. Se o turn favorece o vilão '
+            'e você não tem draw nem uma carta que represente uma mão forte, freie: pegue o showdown barato '
+            'ou controle o pote. Nem toda mão que apostou o flop deve apostar o turn.'
+        ),
+        'mental_tip': '**Sem equity e sem história, freie o barril. Nem todo flop bet vira turn bet.**',
+        'context': {}, 'xp_value': 20,
+    }
+
+
+def _tr_river_question() -> dict:
+    return {
+        'type': 'tr_river',
+        'question': 'Por que o river muda a natureza da aposta?',
+        'options': [
+            'Não há mais cartas: a aposta vira polarizada (valor ou blefe), o semi-blefe deixa de existir',
+            'Porque o pote está maior',
+            'Porque no river todo mundo folda mais',
+        ],
+        'correct_index': 0,
+        'explanation': (
+            'No flop e no turn você pode semi-blefar: apostar um draw que ainda pode acertar. No river não '
+            'há próxima carta, então a mão é o que é. A aposta fica polarizada: ou você tem valor (quer ser '
+            'pago por pior) ou blefa (sem valor, quer que ele folde). Não existe meio-termo.'
+        ),
+        'mental_tip': '**River é polarizado: valor ou blefe. Sem carta pra vir, o semi-blefe some.**',
+        'context': {}, 'xp_value': 20,
+    }
+
+
+def generate_barrel_question(user_id: int = None) -> dict:
+    """Treino da aula de turn & river / barrels: tr_turn, tr_giveup, tr_river."""
+    qtype = random.choice(['tr_turn', 'tr_giveup', 'tr_river'])
+    if qtype == 'tr_turn':
+        return _tr_turn_question()
+    if qtype == 'tr_giveup':
+        return _tr_giveup_question()
+    return _tr_river_question()

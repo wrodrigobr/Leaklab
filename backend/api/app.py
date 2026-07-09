@@ -2386,6 +2386,26 @@ def academy_imbalances_submit():
     return jsonify({'is_correct': is_correct})
 
 
+@app.route('/academy/barrels/question', methods=['GET'])
+@require_auth
+def academy_barrels_question():
+    from leaklab.academy import generate_barrel_question
+    return jsonify(generate_barrel_question(g.user_id))
+
+
+@app.route('/academy/barrels/submit', methods=['POST'])
+@require_auth
+def academy_barrels_submit():
+    body       = request.get_json(force=True) or {}
+    selected   = body.get('selected_index')
+    correct    = body.get('correct_index')
+    xp_value   = int(body.get('xp_value', 20))
+    is_correct = selected == correct
+    if is_correct:
+        add_xp(g.user_id, 'academy_barrels_correct', xp_value)
+    return jsonify({'is_correct': is_correct})
+
+
 @app.route('/academy/threebet/question', methods=['GET'])
 @require_auth
 def academy_threebet_question():
