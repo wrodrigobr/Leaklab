@@ -79,6 +79,7 @@ const Tournaments = () => {
   // O 't' dentro do .map() das linhas sombreia o i18n → rótulos do botão pré-computados aqui.
   const fileRef = useRef<HTMLInputElement>(null);
   const [resultsMsg, setResultsMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [uploading, setUploading] = useState<{ done: number; total: number } | null>(null);
   const resultsUploadLabel = t("results.upload");
   const resultsHint = t("results.hint");
   // Rótulos do bloco "summary pendente" pré-computados (o `t` é sombreado dentro do .map das linhas).
@@ -88,21 +89,57 @@ const Tournaments = () => {
   // Marca o torneio que ainda não teve o Tournament Summary carregado (sem field_size). PokerStars
   // tem o parser de texto; ACR usa o fluxo próprio (botão na coluna de prêmio).
   const needsSummary = (tt: Tournament) => tt.field_size == null && tt.site === "pokerstars";
+  // Aceita 1 ou VÁRIOS arquivos de uma vez (o backend casa cada um pelo Tournament # de dentro do
+  // arquivo, então a ordem/qual linha foi clicada não importa). Processa em série p/ não martelar
+  // a API e mostra um resumo agregado no fim.
   const onResultsFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const f = e.target.files?.[0];
+    const files = Array.from(e.target.files ?? []);
     e.target.value = "";
-    if (!f) return;
-    try {
-      const content = await f.text();
-      const r = await tournamentsApi.uploadResults(content, f.name);
-      setResultsMsg({ ok: true, text: r.field_size != null
-        ? t("results.okFull", { place: r.place ?? "?", players: r.field_size })
-        : t("results.ok", { place: r.place ?? "?", prize: (r.prize ?? 0).toFixed(2) }) });
-      reload();
-    } catch (err) {
-      setResultsMsg({ ok: false, text: (err instanceof Error ? err.message : t("results.error")) });
+    if (files.length === 0) return;
+
+    if (files.length === 1) {
+      try {
+        const content = await files[0].text();
+        const r = await tournamentsApi.uploadResults(content, files[0].name);
+        setResultsMsg({ ok: true, text: r.field_size != null
+          ? t("results.okFull", { place: r.place ?? "?", players: r.field_size })
+          : t("results.ok", { place: r.place ?? "?", prize: (r.prize ?? 0).toFixed(2) }) });
+        reload();
+      } catch (err) {
+        setResultsMsg({ ok: false, text: (err instanceof Error ? err.message : t("results.error")) });
+      }
+      setTimeout(() => setResultsMsg(null), 6000);
+      return;
     }
-    setTimeout(() => setResultsMsg(null), 6000);
+
+    let ok = 0, notImported = 0, unrecognized = 0;
+    setUploading({ done: 0, total: files.length });
+    for (const f of files) {
+      try {
+        const content = await f.text();
+        await tournamentsApi.uploadResults(content, f.name);
+        ok++;
+      } catch (err) {
+        // 404 = torneio ainda não importado (mãos precisam vir antes); resto = arquivo não
+        // reconhecido / hero ausente. Não é erro do usuário subir uma pasta com summaries de
+        // torneios ainda não importados — só informamos quantos foram ignorados e por quê.
+        const st = (err as { status?: number })?.status;
+        if (st === 404) notImported++; else unrecognized++;
+      }
+      setUploading((u) => (u ? { ...u, done: u.done + 1 } : u));
+    }
+    setUploading(null);
+    reload();
+    // Monta um resumo honesto: casados + (ignorados: não importados / não reconhecidos).
+    const skipped: string[] = [];
+    if (notImported > 0) skipped.push(t("results.batchNotImported", { count: notImported }));
+    if (unrecognized > 0) skipped.push(t("results.batchUnrecognized", { count: unrecognized }));
+    const text = ok > 0
+      ? (skipped.length ? t("results.batchOkSkipped", { ok, skipped: skipped.join(", ") })
+                        : t("results.batchOk", { ok }))
+      : t("results.batchNone", { skipped: skipped.join(", ") });
+    setResultsMsg({ ok: ok > 0, text });
+    setTimeout(() => setResultsMsg(null), 9000);
   };
   const summaryChip = (
     <button
@@ -223,8 +260,14 @@ const Tournaments = () => {
       description={t("subtitle")}
     >
       {/* input escondido pro upload do arquivo de resultados (ACR/WPN .ots) */}
-      <input ref={fileRef} type="file" accept=".ots,.txt,application/json" onChange={onResultsFile} className="hidden" />
-      {resultsMsg && (
+      <input ref={fileRef} type="file" multiple accept=".ots,.txt,application/json" onChange={onResultsFile} className="hidden" />
+      {uploading && (
+        <div className="mb-3 flex items-center gap-2 rounded-lg bg-primary/10 px-4 py-2.5 text-sm text-foreground ring-1 ring-primary/30">
+          <Loader2 className="size-4 animate-spin text-primary" aria-hidden />
+          {t("results.uploading", { done: uploading.done, total: uploading.total })}
+        </div>
+      )}
+      {resultsMsg && !uploading && (
         <div className={cn("mb-3 rounded-lg px-4 py-2.5 text-sm ring-1",
           resultsMsg.ok ? "bg-primary/10 text-foreground ring-primary/30" : "bg-destructive/10 text-destructive ring-destructive/30")}>
           {resultsMsg.text}
@@ -316,7 +359,19 @@ const Tournaments = () => {
               ))}
 
               {data.length > 0 && (
-                <div className="ml-auto">
+                <button
+                  onClick={() => fileRef.current?.click()}
+                  disabled={!!uploading}
+                  title={t("summary.hint")}
+                  className="ml-auto inline-flex items-center gap-1.5 rounded-sm px-2.5 py-1 font-mono text-[10px] font-bold uppercase tracking-wider text-amber-400 hover:bg-amber-500/10 ring-1 ring-amber-500/30 transition-colors disabled:opacity-50"
+                >
+                  <FileUp className="size-3" aria-hidden />
+                  {t("results.bulkUpload")}
+                </button>
+              )}
+
+              {data.length > 0 && (
+                <div>
                   {clearConfirm ? (
                     <div className="flex items-center gap-2">
                       <span className="font-mono text-[10px] text-destructive uppercase tracking-wider flex items-center gap-1">

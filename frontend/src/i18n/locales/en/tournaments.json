@@ -20,7 +20,14 @@
     "hint": "Upload the tournament results file (ACR .ots) to complete the payout.",
     "ok": "Results imported: {{place}} place, prize ${{prize}}.",
     "error": "Couldn't read the results file.",
-    "okFull": "Data completed: {{place}}th place, {{players}} players."
+    "okFull": "Data completed: {{place}}th place, {{players}} players.",
+    "bulkUpload": "Upload summaries",
+    "uploading": "Uploading summaries… {{done}}/{{total}}",
+    "batchOk": "{{ok}} tournaments completed.",
+    "batchOkSkipped": "{{ok}} tournaments completed. Skipped: {{skipped}}.",
+    "batchNone": "No tournaments completed. {{skipped}}.",
+    "batchNotImported": "{{count}} with hands not imported yet",
+    "batchUnrecognized": "{{count}} not recognized"
   },
   "filters": {
     "all": "All",

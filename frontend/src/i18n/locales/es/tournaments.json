@@ -20,7 +20,14 @@
     "hint": "Sube el archivo de resultados del torneo (ACR .ots) para completar la premiación.",
     "ok": "Resultado importado: {{place}}º lugar, premio ${{prize}}.",
     "error": "No se pudo leer el archivo de resultados.",
-    "okFull": "Datos completados: {{place}}º lugar, {{players}} jugadores."
+    "okFull": "Datos completados: {{place}}º lugar, {{players}} jugadores.",
+    "bulkUpload": "Subir summaries",
+    "uploading": "Subiendo summaries… {{done}}/{{total}}",
+    "batchOk": "{{ok}} torneos completados.",
+    "batchOkSkipped": "{{ok}} torneos completados. Ignorados: {{skipped}}.",
+    "batchNone": "Ningún torneo completado. {{skipped}}.",
+    "batchNotImported": "{{count}} aún sin las manos importadas",
+    "batchUnrecognized": "{{count}} no reconocidos"
   },
   "filters": {
     "all": "Todas",
