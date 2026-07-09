@@ -3,6 +3,23 @@ import re
 from typing import List, Optional
 from .models import ParsedHand, ParsedAction
 
+# ── Timestamp da mão (todas as salas): "2025/12/11 14:27:59 ET" / "... -05" / sem TZ ──
+_HAND_TS_RE = re.compile(r"(\d{4})/(\d{2})/(\d{2})\s+(\d{2}):(\d{2}):(\d{2})")
+
+
+def extract_session_times(raw_text: str):
+    """(started_at, ended_at) = timestamp da 1ª e da última mão do torneio, no formato
+    'YYYY-MM-DD HH:MM:SS' (hora LOCAL da sala; o sufixo de fuso é descartado). Serve de base
+    para concorrência (janelas de torneio que se sobrepõem), fadiga (ordem na sessão) e horário.
+    Retorna (None, None) se não houver timestamp. Formato ISO-like ordena cronologicamente."""
+    if not raw_text:
+        return None, None
+    ts = [f"{m[0]}-{m[1]}-{m[2]} {m[3]}:{m[4]}:{m[5]}" for m in _HAND_TS_RE.findall(raw_text)]
+    if not ts:
+        return None, None
+    return min(ts), max(ts)
+
+
 # ── PokerStars patterns ───────────────────────────────────────────────────────
 PS_SPLIT_RE  = re.compile(r"(?=PokerStars Hand #)")
 PS_ID_RE     = re.compile(r"PokerStars Hand #(\d+)")

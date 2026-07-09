@@ -525,6 +525,9 @@ def save_tournament(user_id: int, tournament_id: str, hero: str,
                     is_pko: bool = False) -> int:
     conn = get_conn()
     lp = metrics.get('label_pct', {})
+    # started_at/ended_at: timestamp da 1ª e da última mão (base p/ concorrência/fadiga/horário).
+    from leaklab.parser import extract_session_times
+    started_at, ended_at = extract_session_times(raw_text) if raw_text else (None, None)
     try:
         # Upsert — INSERT ou UPDATE se já existe
         conn.execute("""
@@ -532,8 +535,8 @@ def save_tournament(user_id: int, tournament_id: str, hero: str,
               (user_id, tournament_id, site, tournament_name, hero, played_at, imported_at,
                hands_count, decisions_count, avg_score,
                standard_pct, marginal_pct, small_pct, clear_pct,
-               result, place, buy_in, prize, profit, raw_text, is_pko)
-            VALUES (?,?,?,?,?,?,datetime('now'),?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+               result, place, buy_in, prize, profit, raw_text, is_pko, started_at, ended_at)
+            VALUES (?,?,?,?,?,?,datetime('now'),?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
             ON CONFLICT(user_id, tournament_id) DO UPDATE SET
               imported_at    = datetime('now'),
               site           = excluded.site,
@@ -551,7 +554,9 @@ def save_tournament(user_id: int, tournament_id: str, hero: str,
               prize          = excluded.prize,
               profit         = excluded.profit,
               raw_text       = excluded.raw_text,
-              is_pko         = excluded.is_pko
+              is_pko         = excluded.is_pko,
+              started_at     = excluded.started_at,
+              ended_at       = excluded.ended_at
         """, (
             user_id, tournament_id, site, tournament_name, hero, played_at,
             metrics.get('total_hands', 0),
@@ -559,7 +564,7 @@ def save_tournament(user_id: int, tournament_id: str, hero: str,
             metrics.get('avg_mistake_score'),
             lp.get('standard'), lp.get('marginal'),
             lp.get('small_mistake'), lp.get('clear_mistake'),
-            result, place, buy_in, prize, profit, raw_text, is_pko,
+            result, place, buy_in, prize, profit, raw_text, is_pko, started_at, ended_at,
         ))
         conn.commit()
         # Buscar o ID (seja novo ou existente) — SELECT separado
