@@ -42,7 +42,7 @@ export default function AcademyBoardStrength() {
 
   return (
     <HudLayout eyebrow={L("eyebrow")} title={L("title")} description={L("subtitle")}>
-      <article className="max-w-6xl space-y-12 pb-8">
+      <article className="mx-auto max-w-6xl space-y-12 pb-8">
 
         <LessonSection n={1} title={L("intro_title")}>
           <Prose html={L("intro_p1")} />
