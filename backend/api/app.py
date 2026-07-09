@@ -2071,6 +2071,27 @@ def player_cognitive_failures():
     return jsonify(report)
 
 
+@app.route('/player/session-context', methods=['GET'])
+@require_auth
+def player_session_context():
+    """Contexto de sessão OBJETIVO (multi-tabling, fadiga, horário) × qualidade da decisão.
+    Cruza a janela de tempo de cada torneio (started_at/ended_at) com o avg_score."""
+    gate = _check_advanced_insights(g.user_id)
+    if gate:
+        return gate
+    from leaklab.session_context import analyze_session_context
+    from database.schema import get_conn as _gc
+    from database.repositories import _fetchall, _adapt
+    conn = _gc()
+    try:
+        rows = _fetchall(conn, _adapt(
+            "SELECT started_at, ended_at, avg_score, decisions_count "
+            "FROM tournaments WHERE user_id = ? AND started_at IS NOT NULL"), (g.user_id,))
+    finally:
+        conn.close()
+    return jsonify(analyze_session_context([dict(r) for r in rows]))
+
+
 @app.route('/metrics/leaderboard', methods=['GET'])
 @require_auth
 def leaderboard():
