@@ -249,6 +249,19 @@ class TestAcademyVariety(unittest.TestCase):
         self.assertEqual(seen, {'imb_polarity', 'imb_elasticity', 'imb_board'})
         print("  ✔ imbalances drill structure")
 
+    def test_pushfold_drill_structure(self):
+        """Treino da aula de push/fold: action, position, call."""
+        seen = set()
+        for _ in range(40):
+            q = acad.generate_pushfold_question(user_id=1)
+            self.assertIn(q['type'], ('pf_action', 'pf_position', 'pf_call'))
+            self.assertEqual(len(q['options']), 3)
+            self.assertEqual(q['correct_index'], 0)
+            self.assertTrue(q['question'] and q['explanation'] and q['mental_tip'])
+            seen.add(q['type'])
+        self.assertEqual(seen, {'pf_action', 'pf_position', 'pf_call'})
+        print("  ✔ pushfold drill structure")
+
     # ── Geradores via dispatcher (mock: sem banco) ─────────────────────────────
 
     def test_math_beginner_variety(self):

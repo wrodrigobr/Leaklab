@@ -2198,3 +2198,80 @@ def generate_imbalance_question(user_id: int = None) -> dict:
     if qtype == 'imb_elasticity':
         return _imb_elasticity_question()
     return _imb_board_question()
+
+
+# ── Push/Fold: treino da aula "Stack curto: shove ou fold" ───────────────────────
+# Regras corretas (batem com o solver): em stack curto o min-raise some (shove-or-fold);
+# a POSIÇÃO domina o quão largo se shova (early tight, late largo); paga-se um shove quando
+# a mão ganha de mais da metade do range de shove do vilão.
+
+def _pf_action_question() -> dict:
+    return {
+        'type': 'pf_action',
+        'question': (
+            'Você tem 6bb, primeira a agir com uma mão que quer jogar. Qual a ação padrão a este stack?'
+        ),
+        'options': [
+            'Shove (all-in): curto demais para abrir e foldar depois',
+            'Min-raise para ver o flop barato',
+            'Limpar (call) e jogar pós-flop',
+        ],
+        'correct_index': 0,
+        'explanation': (
+            'A ~6bb não sobra stack para abrir pequeno e desistir depois: um raise já compromete quase '
+            'tudo. O shove resolve tudo de uma vez e ainda maximiza a fold equity (a chance de levar os '
+            'blinds sem disputa). Por isso, em stack curto o padrão é shove ou fold, não min-raise.'
+        ),
+        'mental_tip': '**Stack curto: shove ou fold. O min-raise some.**',
+        'context': {}, 'xp_value': 20,
+    }
+
+
+def _pf_position_question() -> dict:
+    return {
+        'type': 'pf_position',
+        'question': 'A 8bb, de qual posição você pode shovar MAIS mãos?',
+        'options': [
+            'Do botão / posições finais (menos gente atrás = mais fold equity)',
+            'Do UTG (primeira posição)',
+            'É igual em qualquer posição',
+        ],
+        'correct_index': 0,
+        'explanation': (
+            'Quanto mais tarde a sua posição, menos jogadores faltam agir atrás, então é menos provável '
+            'que alguém acorde com uma mão forte. Mais fold equity = você shova mais largo. No UTG, com a '
+            'mesa toda atrás, o range de shove segue apertado mesmo com stack curto.'
+        ),
+        'mental_tip': '**A posição manda: botão shova largo, UTG segue tight.**',
+        'context': {}, 'xp_value': 20,
+    }
+
+
+def _pf_call_question() -> dict:
+    return {
+        'type': 'pf_call',
+        'question': 'Alguém deu shove e a decisão é sua. Você deve pagar quando:',
+        'options': [
+            'Sua mão ganha de mais da metade do range de shove dele',
+            'Você tem qualquer Ás',
+            'Você ainda tem fichas de sobra',
+        ],
+        'correct_index': 0,
+        'explanation': (
+            'Pagar um shove é um confronto direto: a régua é a equity da sua mão contra o range inteiro '
+            'que ele shova. Se você ganha de mais da metade desse range (mais o preço barato do pote), o '
+            'call é lucrativo. "Ter um Ás" não basta: um Ás fraco perde para boa parte de um range de shove.'
+        ),
+        'mental_tip': '**Pague se ganhar de mais da metade do range de shove dele.**',
+        'context': {}, 'xp_value': 20,
+    }
+
+
+def generate_pushfold_question(user_id: int = None) -> dict:
+    """Treino da aula de push/fold: pf_action, pf_position, pf_call."""
+    qtype = random.choice(['pf_action', 'pf_position', 'pf_call'])
+    if qtype == 'pf_action':
+        return _pf_action_question()
+    if qtype == 'pf_position':
+        return _pf_position_question()
+    return _pf_call_question()

@@ -18,6 +18,7 @@ import {
   Crosshair,
   Coins,
   Scale,
+  Zap,
 } from "lucide-react";
 import { HudLayout } from "@/components/hud/HudLayout";
 import { cn } from "@/lib/utils";
@@ -101,6 +102,15 @@ const MODULES: Module[] = [
     icon: BookOpen,
     color: "amber",
     path: "/academy/bet-sizing",
+    status: "available",
+    level: "intermediate",
+    xpReward: 25,
+  },
+  {
+    id: "pushfold",
+    icon: Zap,
+    color: "amber",
+    path: "/academy/push-fold",
     status: "available",
     level: "intermediate",
     xpReward: 25,
