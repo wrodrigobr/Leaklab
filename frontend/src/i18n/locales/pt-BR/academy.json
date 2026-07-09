@@ -44,7 +44,7 @@
       "desc": "Treine só a decisão de abertura: fold ou raise por posição e stack, corrigido contra as ranges do solver."
     },
     "bet_sizing": {
-      "title": "Bet Sizing 101",
+      "title": "Bet Sizing",
       "desc": "Todo bet errado tem um custo invisível. Aprenda os tamanhos corretos e o que cada sizing comunica."
     },
     "tournament": {
@@ -818,7 +818,7 @@
     },
     "bet_sizing": {
       "eyebrow": "Academia: Intermediário",
-      "title": "Bet Sizing 101: quanto apostar e por quê",
+      "title": "Bet Sizing: quanto apostar e por quê",
       "subtitle": "O tamanho da aposta comunica e cobra. Aprenda os tamanhos padrão de open, 3-bet e pós-flop, o que é SPR e como planejar as três streets. Com tabela, mesa e treino.",
       "seat_you": "Você",
       "seat_vil": "Vilão",
@@ -1051,7 +1051,7 @@
       "gl3": "Marca quando você <strong>superestimou</strong> a mão num board que era do vilão.",
       "gl4": "Mede a sua realização de equity <strong>em posição × fora de posição</strong>.",
       "gl5": "Gera exercícios de força de mão a partir dos <strong>seus próprios spots</strong>.",
-      "next_label": "Próximo: Bet Sizing 101",
+      "next_label": "Próximo: Bet Sizing",
       "next_sub": "Agora que você lê a força, aprenda quanto apostar em cada situação."
     },
     "mdf": {

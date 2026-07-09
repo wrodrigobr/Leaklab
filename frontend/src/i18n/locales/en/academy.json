@@ -44,7 +44,7 @@
       "desc": "Train just the opening decision: fold or raise by position and stack, graded against the solver ranges."
     },
     "bet_sizing": {
-      "title": "Bet Sizing 101",
+      "title": "Bet Sizing",
       "desc": "Every wrong bet has an invisible cost. Learn the correct sizings and what each one communicates to opponents."
     },
     "tournament": {
@@ -699,7 +699,7 @@
       "gl3": "Marks when you <strong>overvalued</strong> the hand on a board that was the villain's.",
       "gl4": "Measures your equity realization <strong>in position vs out of position</strong>.",
       "gl5": "Generates hand-strength drills from <strong>your own spots</strong>.",
-      "next_label": "Next: Bet Sizing 101",
+      "next_label": "Next: Bet Sizing",
       "next_sub": "Now that you can read strength, learn how much to bet in each situation."
     },
     "showdown": {
@@ -1379,7 +1379,7 @@
     },
     "bet_sizing": {
       "eyebrow": "Academy: Intermediate",
-      "title": "Bet Sizing 101: how much to bet and why",
+      "title": "Bet Sizing: how much to bet and why",
       "subtitle": "Bet size communicates and charges a price. Learn the standard sizes for open, 3-bet and postflop, what SPR is and how to plan the three streets. With a table, a felt and a drill.",
       "seat_you": "You",
       "seat_vil": "Villain",
