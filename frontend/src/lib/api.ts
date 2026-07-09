@@ -1160,6 +1160,15 @@ export const academy = {
       method: "POST",
       body: JSON.stringify({ selected_index, correct_index, xp_value }),
     }),
+
+  bankrollQuestion: () =>
+    request<AcademyQuestion>("/academy/bankroll/question"),
+
+  bankrollSubmit: (selected_index: number, correct_index: number, xp_value: number) =>
+    request<AcademySubmitResult>("/academy/bankroll/submit", {
+      method: "POST",
+      body: JSON.stringify({ selected_index, correct_index, xp_value }),
+    }),
 };
 
 export const gtoPreflop = {

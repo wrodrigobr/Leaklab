@@ -314,6 +314,19 @@ class TestAcademyVariety(unittest.TestCase):
         self.assertEqual(seen, {'tm_street', 'tm_draw', 'tm_ip'})
         print("  ✔ terms drill structure")
 
+    def test_bankroll_drill_structure(self):
+        """Treino da aula de banca & variância: buyins, sample, judge."""
+        seen = set()
+        for _ in range(40):
+            q = acad.generate_bankroll_question(user_id=1)
+            self.assertIn(q['type'], ('bk_buyins', 'bk_sample', 'bk_judge'))
+            self.assertEqual(len(q['options']), 3)
+            self.assertEqual(q['correct_index'], 0)
+            self.assertTrue(q['question'] and q['explanation'] and q['mental_tip'])
+            seen.add(q['type'])
+        self.assertEqual(seen, {'bk_buyins', 'bk_sample', 'bk_judge'})
+        print("  ✔ bankroll drill structure")
+
     def test_leak_to_academy_mapping(self):
         """Matcher leak→aula: casa o card com o módulo certo, sem falso positivo, máx 2."""
         from leaklab.academy_catalog import modules_for_card, attach_academy_modules

@@ -2574,3 +2574,77 @@ def generate_terms_question(user_id: int = None) -> dict:
     if qtype == 'tm_draw':
         return _tm_draw_question()
     return _tm_ip_question()
+
+
+# ── Banca & Variância: treino da aula de gestão de banca ──────────────────────────
+# MTT exige MUITO mais buy-ins (~100+) que cash; amostra pequena é variância, não skill;
+# julgue pela qualidade da decisão (EV), não pelo resultado do dia.
+
+def _bk_buyins_question() -> dict:
+    return {
+        'type': 'bk_buyins',
+        'question': 'Por que um jogador de MTT precisa de MUITO mais buy-ins de banca que um de cash?',
+        'options': [
+            'A variância do MTT é enorme: você crava raramente e grande, então precisa de ~100+ buy-ins para aguentar os downswings',
+            'Porque os torneios são mais caros que cash',
+            'Não precisa: 20 buy-ins bastam para qualquer formato',
+        ],
+        'correct_index': 0,
+        'explanation': (
+            'No MTT você perde na maioria dos torneios e lucra em poucos, grandes. Isso gera downswings '
+            'longos, sequências ruins que duram centenas de torneios. Uma banca de ~100+ buy-ins existe '
+            'para sobreviver a essas sequências sem quebrar, mesmo sendo um jogador vencedor.'
+        ),
+        'mental_tip': '**MTT tem variância enorme: ~100+ buy-ins de banca, muito mais que cash.**',
+        'context': {}, 'xp_value': 20,
+    }
+
+
+def _bk_sample_question() -> dict:
+    return {
+        'type': 'bk_sample',
+        'question': 'Você está com ROI negativo depois de 200 torneios. O que isso prova?',
+        'options': [
+            'Quase nada: 200 MTTs é uma amostra pequena, dominada por variância, não diz se você ganha no longo prazo',
+            'Que você é um jogador perdedor, hora de parar',
+            'Que você precisa mudar tudo no seu jogo agora',
+        ],
+        'correct_index': 0,
+        'explanation': (
+            'MTT precisa de milhares de torneios para o resultado refletir a sua habilidade real. Em 200, '
+            'a sorte manda: um jogador vencedor pode estar no vermelho e um perdedor pode estar no azul. '
+            'Não tire conclusões, nem sobre o seu jogo nem sobre subir/descer de stake, com amostra pequena.'
+        ),
+        'mental_tip': '**Amostra pequena = variância, não skill. 200 MTTs não provam nada.**',
+        'context': {}, 'xp_value': 20,
+    }
+
+
+def _bk_judge_question() -> dict:
+    return {
+        'type': 'bk_judge',
+        'question': 'Como saber se você jogou BEM numa sessão de torneios?',
+        'options': [
+            'Pela qualidade das suas decisões (EV), não pelo resultado: cravar ou bustar é sorte no curto prazo',
+            'Pelo dinheiro que ganhou ou perdeu no dia',
+            'Pela quantidade de torneios que você cravou',
+        ],
+        'correct_index': 0,
+        'explanation': (
+            'No curto prazo, o resultado é dominado pela sorte: você pode jogar perfeito e bustar, ou jogar '
+            'mal e cravar. Separe a decisão do resultado. Julgue-se pela qualidade das jogadas (o EV), que é '
+            'o que você controla, é exatamente o que a análise de leaks mede.'
+        ),
+        'mental_tip': '**Separe decisão de resultado. Julgue pelo EV, não por cravar ou bustar.**',
+        'context': {}, 'xp_value': 20,
+    }
+
+
+def generate_bankroll_question(user_id: int = None) -> dict:
+    """Treino da aula de banca & variância: bk_buyins, bk_sample, bk_judge."""
+    qtype = random.choice(['bk_buyins', 'bk_sample', 'bk_judge'])
+    if qtype == 'bk_buyins':
+        return _bk_buyins_question()
+    if qtype == 'bk_sample':
+        return _bk_sample_question()
+    return _bk_judge_question()
