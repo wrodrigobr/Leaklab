@@ -84,6 +84,17 @@ _NO_DASH_RULE = (
     "composta (ex.: pré-flop). Travessão soa texto de robô."
 )
 
+# Qualidade do português: evita anglicismos com equivalente em PT, palavras truncadas
+# e erros de ortografia que apareceram na saída do LLM (ex.: "profitáveis", "tournament",
+# "software de solução", "bustá", "commeto").
+_PT_QUALITY_RULE = (
+    " Escreva em português do Brasil CORRETO e fluente: revise a ortografia e NUNCA trunque "
+    "palavras nem gírias (é 'bustar', não 'bustá'). NÃO use anglicismos que têm equivalente "
+    "em PT: escreva 'lucrativo' (não 'profitável'), 'torneio' (não 'tournament'), 'solver' "
+    "(não 'software de solução'). Só o jargão de poker consagrado fica em inglês (equity, ICM, "
+    "range, fold, all-in, push/fold, c-bet, bustar)."
+)
+
 
 def _with_no_dash(payload: dict) -> dict:
     """Acrescenta a regra anti-travessão ao system do payload (copy gerada soa humana).
@@ -1253,7 +1264,7 @@ Cada card deve ter:
 5. Exercício prático: rotina CONCRETA e mensurável, dimensionada pra ~2h/semana de estudo (estimativa)
 6. Métrica de progresso: como saber que melhorou
 
-ESTILO: nos textos (diagnóstico, conceitos, exercício, resumo) NUNCA use travessão (—) nem hífen como pontuação separando orações; use vírgula, dois-pontos ou ponto. Hífen só em palavra composta.
+ESTILO: nos textos (diagnóstico, conceitos, exercício, resumo) NUNCA use travessão (—) nem hífen como pontuação separando orações; use vírgula, dois-pontos ou ponto. Hífen só em palavra composta.{_PT_QUALITY_RULE}
 
 Responda APENAS com JSON válido, sem texto adicional, no formato:
 {{
@@ -1695,7 +1706,7 @@ def generate_study_plan_agentic(leaks: list, evolution: list, icm: dict,
         "Upswing, etc.); o caminho de estudo principal é o TREINO DA PRÓPRIA PLATAFORMA; "
         "use o 'Nível estimado (ELO)' como "
         "'nivel'. Não invente mãos: ferramenta vazia → use os dados de resumo.\n\n"
-        f"Português do Brasil. {_POKER_TERMS_EN}"
+        f"Português do Brasil. {_POKER_TERMS_EN}{_PT_QUALITY_RULE}"
     )
     user_msg = (
         diagnosis +
