@@ -19,7 +19,8 @@
     "upload": "Resultado",
     "hint": "Sube el archivo de resultados del torneo (ACR .ots) para completar la premiación.",
     "ok": "Resultado importado: {{place}}º lugar, premio ${{prize}}.",
-    "error": "No se pudo leer el archivo de resultados."
+    "error": "No se pudo leer el archivo de resultados.",
+    "okFull": "Datos completados: {{place}}º lugar, {{players}} jugadores."
   },
   "filters": {
     "all": "Todas",
@@ -138,5 +139,10 @@
       "engine": "Engine",
       "engineTip": "GTO aún no calculado, análisis por el engine (equity, M-Ratio, ICM)"
     }
+  },
+  "summary": {
+    "pending": "Subir summary",
+    "hint": "Sube el Tournament Summary de PokerStars (.txt) para completar los datos del torneo: nº de jugadores, premios y horario.",
+    "players": "{{count}} jugadores"
   }
 }

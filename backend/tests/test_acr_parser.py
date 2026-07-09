@@ -10,7 +10,7 @@ except Exception:
     pass
 
 from leaklab.parser import (parse_hand_history, _detect_site, _extract_showdown_result,
-                            parse_acr_results)
+                            parse_acr_results, parse_pokerstars_summary)
 from leaklab.pipeline import build_decision_inputs_for_hand
 
 # Arquivo de RESULTADOS ACR/WPN (.ots, JSON) — compacto, com hero (MusashiBR 6º $1.19), um ITM
@@ -248,6 +248,46 @@ def test_acr_results_endpoint_math():
     prize = round(sum(f['prize'] for f in hero), 2)
     assert prize == 1.19 and round(prize - 0.55, 2) == 0.64   # profit
     print("OK  test_acr_results_endpoint_math")
+
+
+PS_SUMMARY = (
+    "PokerStars Tournament #4010515719, No Limit Hold'em\n"
+    "Buy-In: $0.98/$0.12 USD\n"
+    "242 players\n"
+    "Total Prize Pool: $118.58 USD \n"
+    "Tournament started 2026/06/22 8:39:25 ET\n"
+    "\n"
+    "  1: AKQJoey [2] (Switzerland), still playing\n"
+    "  2: Winner1 (Brazil), $30.00\n"
+    "  37: phpro (Brazil), \n"
+    "  242: ocb&van (Austria), \n"
+    "\n"
+    "You finished in 37th place (eliminated at hand #261217644805).\n"
+)
+
+
+def test_parse_pokerstars_summary():
+    """Summary de texto do PokerStars: field size, prize pool, buy-in (soma), started_at, place do hero."""
+    r = parse_pokerstars_summary(PS_SUMMARY)
+    assert r is not None
+    assert r['tournament_id'] == '4010515719'
+    assert r['player_count'] == 242
+    assert r['prize_pool'] == 118.58
+    assert r['buy_in'] == 1.10 and r['rake'] == 0.12
+    assert r['started_at'] == '2026-06-22 08:39:25'
+    assert r['hero_place'] == 37
+    # hero out-of-money aparece na lista com prize 0; casher com $
+    hero = [f for f in r['finishes'] if f['player'] == 'phpro']
+    assert len(hero) == 1 and hero[0]['place'] == 37 and hero[0]['prize'] == 0.0
+    winner = [f for f in r['finishes'] if f['player'] == 'Winner1']
+    assert winner and winner[0]['prize'] == 30.00
+    # re-entrada "[2]" é removida do nick
+    assert any(f['player'] == 'AKQJoey' for f in r['finishes'])
+    # NÃO casa hand history nem ACR JSON
+    assert parse_pokerstars_summary('PokerStars Hand #1: Tournament #99 *** HOLE CARDS ***') is None
+    assert parse_pokerstars_summary(ACR_RESULTS) is None
+    assert parse_pokerstars_summary('') is None
+    print("OK  test_parse_pokerstars_summary")
 
 
 if __name__ == '__main__':

@@ -559,6 +559,94 @@ def parse_acr_results(content: str) -> Optional[dict]:
     }
 
 
+_PS_SUMMARY_HEADER_RE = re.compile(r'PokerStars\s+Tournament\s+#(\d+)', re.IGNORECASE)
+_PS_PLAYERS_RE        = re.compile(r'^\s*(\d+)\s+players\b', re.IGNORECASE | re.MULTILINE)
+_PS_POOL_RE           = re.compile(r'Total\s+Prize\s+Pool:\s*\$?([\d.,]+)', re.IGNORECASE)
+_PS_BUYIN_RE          = re.compile(r'Buy-In:\s*([^\n]+)', re.IGNORECASE)
+_PS_STARTED_RE        = re.compile(r'Tournament\s+started\s+(\d{4})/(\d{2})/(\d{2})\s+(\d{1,2}):(\d{2}):(\d{2})', re.IGNORECASE)
+_PS_FINISHED_RE       = re.compile(r'You\s+finished\s+in\s+(\d+)\s*(?:st|nd|rd|th)\s+place', re.IGNORECASE)
+# linha de colocação: "  37: phpro (Brazil), " ou "  1: Winner (X), $30.00"
+_PS_PLACE_RE          = re.compile(r'^\s*(\d+):\s*(.+?)\s*\(([^)]*)\)\s*,?\s*(.*)$')
+_MONEY_RE             = re.compile(r'\$([\d.,]+)')
+
+
+def _money(s):
+    try:
+        return float(str(s).replace(',', ''))
+    except Exception:
+        return None
+
+
+def parse_pokerstars_summary(content: str) -> Optional[dict]:
+    """Parseia o arquivo Tournament Summary (texto) do PokerStars. O HH traz o resultado do hero,
+    mas NÃO traz o tamanho do field (nº de jogadores) nem o prize pool — que só existem aqui.
+    Devolve {site, tournament_id, player_count, prize_pool, buy_in, rake, started_at, hero_place,
+    finishes:[{player, place, prize}]} ou None se não for um summary do PokerStars.
+
+    Distingue de hand history (que também tem 'Tournament #'): o summary tem a contagem de
+    jogadores e o prize pool e NÃO tem marcadores de mão ('*** HOLE CARDS ***')."""
+    if not content or '*** ' in content:
+        return None
+    mh = _PS_SUMMARY_HEADER_RE.search(content)
+    mp = _PS_PLAYERS_RE.search(content)
+    if not mh or not mp:
+        return None
+
+    tid = mh.group(1)
+    player_count = int(mp.group(1))
+
+    mpool = _PS_POOL_RE.search(content)
+    prize_pool = _money(mpool.group(1)) if mpool else None
+
+    # Buy-In: "$0.98/$0.12 USD" → total = 1.10, rake = última parcela. PKO tem 3 parcelas
+    # ($prize/$bounty/$rake) — total é a soma de todas.
+    buy_in = rake = None
+    mb = _PS_BUYIN_RE.search(content)
+    if mb:
+        parts = [_money(x) for x in _MONEY_RE.findall(mb.group(1))]
+        parts = [x for x in parts if x is not None]
+        if parts:
+            buy_in = round(sum(parts), 2)
+            rake = parts[-1]
+
+    started_at = None
+    ms = _PS_STARTED_RE.search(content)
+    if ms:
+        started_at = f"{ms.group(1)}-{ms.group(2)}-{ms.group(3)} " \
+                     f"{int(ms.group(4)):02d}:{ms.group(5)}:{ms.group(6)}"
+
+    hero_place = None
+    mf = _PS_FINISHED_RE.search(content)
+    if mf:
+        hero_place = int(mf.group(1))
+
+    finishes = []
+    for line in content.splitlines():
+        m = _PS_PLACE_RE.match(line)
+        if not m:
+            continue
+        place = int(m.group(1))
+        player = m.group(2).strip()
+        # nome pode vir com sufixo de re-entrada "[2]" — não faz parte do nick
+        player = re.sub(r'\s*\[\d+\]\s*$', '', player).strip()
+        tail = m.group(4) or ''
+        mm = _MONEY_RE.search(tail)
+        prize = _money(mm.group(1)) if mm else 0.0
+        finishes.append({'player': player, 'place': place, 'prize': prize})
+
+    return {
+        'site':         'pokerstars',
+        'tournament_id': tid,
+        'player_count':  player_count,
+        'prize_pool':    prize_pool,
+        'buy_in':        buy_in,
+        'rake':          rake,
+        'started_at':    started_at,
+        'hero_place':    hero_place,
+        'finishes':      finishes,
+    }
+
+
 def _extract_board(line: str) -> List[str]:
     """Extrai o board completo de uma linha de street.
 

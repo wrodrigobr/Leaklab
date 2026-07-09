@@ -180,6 +180,8 @@ export interface Tournament {
   buy_in: number | null;
   prize: number | null;
   profit: number | null;
+  field_size?: number | null;   // nº de jogadores — só existe após subir o Tournament Summary
+  prize_pool?: number | null;
   llm_summary: string | null;
   coach_reviewed?: boolean;
   labels_reconciled_at?: string | null;
@@ -470,7 +472,8 @@ export const tournaments = {
   // Complementa a premiação com o arquivo de resultados (ACR/WPN '.ots'): prize/profit/place reais
   uploadResults: (content: string, filename?: string) =>
     request<{ tournament_id: string; hero: string; place: number | null;
-              prize: number | null; buy_in: number | null; profit: number | null }>(
+              prize: number | null; buy_in: number | null; profit: number | null;
+              field_size: number | null; prize_pool: number | null }>(
       "/tournament/results",
       { method: "POST", body: JSON.stringify({ content, filename }) },
     ),

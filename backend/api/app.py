@@ -736,44 +736,76 @@ def analyze():
 @app.route('/tournament/results', methods=['POST'])
 @require_auth
 def tournament_results():
-    """Complementa a premiação de um torneio com o arquivo de RESULTADOS (Tournament Summary).
-    Hoje: ACR/WPN '.ots' (JSON) — o HH ACR é só chips, sem prize. Casa por Tournament #, acha o
-    hero, e atualiza prize/profit/place/buy_in do torneio (sem inventar: prize vem do arquivo real)."""
-    from leaklab.parser import parse_acr_results
+    """Complementa os dados de um torneio com o arquivo de RESULTADOS (Tournament Summary).
+    Dois formatos: ACR/WPN '.ots' (JSON) e PokerStars (texto). Casa por Tournament #, acha o hero,
+    e atualiza place/prize/profit/buy_in + field_size/prize_pool (só o summary traz o tamanho do
+    field). Sem inventar: os números vêm do arquivo real."""
+    from leaklab.parser import parse_acr_results, parse_pokerstars_summary
     from database.repositories import get_tournament, update_tournament_financials
     content  = _extract_content(request)
     filename = _extract_upload_filename(request)
     if not content:
         return jsonify({'error': 'Conteúdo ausente'}), 400
+
+    # ACR (.ots JSON) OU PokerStars (texto). parse_acr_results devolve None se não for JSON válido.
     res = parse_acr_results(content)
-    if not res or not res.get('tournament_id'):
+    ps  = None if res else parse_pokerstars_summary(content)
+    if not res and not ps:
         return jsonify({'error': 'Arquivo de resultados não reconhecido. Esperado o Tournament '
-                                 'Summary (.ots) do ACR/WPN.'}), 422
-    tid  = res['tournament_id']
+                                 'Summary do PokerStars (.txt) ou do ACR/WPN (.ots).'}), 422
+
+    tid  = (res or ps)['tournament_id']
     tour = get_tournament(g.user_id, tid)
     if not tour:
         return jsonify({'error': f'Torneio {tid} não encontrado. Importe as mãos (hand history) '
                                  f'desse torneio antes de subir o resultado.'}), 404
     hero = tour.get('hero')
-    mine = [f for f in res['finishes'] if hero and f['player'] == hero]
-    if not mine:
-        return jsonify({'error': f'O jogador "{hero}" não aparece no arquivo de resultados.'}), 422
-    prize = round(sum(f['prize'] for f in mine), 2)                       # soma re-entradas
-    places = [f['place'] for f in mine if f['place'] is not None]
-    place = min(places) if places else None                              # melhor colocação
-    # buy-in total do filename do summary ($X + $Y); fallback: buy_in atual (HH) ou pool/jogadores
-    buy_in = _summary_buyin_from_filename(filename)
-    if buy_in is None:
-        buy_in = tour.get('buy_in')
-    if buy_in is None and res.get('prize_pool') and res.get('player_count'):
-        try:
-            buy_in = round(float(res['prize_pool']) / float(res['player_count']), 2)
-        except Exception:
-            buy_in = None
-    profit = round(prize - buy_in, 2) if buy_in is not None else None
-    update_tournament_financials(g.user_id, tid, buy_in=buy_in, prize=prize, profit=profit, place=place)
-    return jsonify({'tournament_id': tid, 'hero': hero, 'place': place,
-                    'prize': prize, 'buy_in': buy_in, 'profit': profit})
+
+    field_size = (res or ps).get('player_count') if res else ps.get('player_count')
+    prize_pool = (res or ps).get('prize_pool')
+
+    if res:
+        # ── ACR: premiação por jogador no arquivo (soma re-entradas do hero) ──
+        mine = [f for f in res['finishes'] if hero and f['player'] == hero]
+        if not mine:
+            return jsonify({'error': f'O jogador "{hero}" não aparece no arquivo de resultados.'}), 422
+        prize = round(sum(f['prize'] for f in mine), 2)
+        places = [f['place'] for f in mine if f['place'] is not None]
+        place = min(places) if places else None
+        buy_in = _summary_buyin_from_filename(filename)
+        if buy_in is None:
+            buy_in = tour.get('buy_in')
+        if buy_in is None and prize_pool and field_size:
+            try:
+                buy_in = round(float(prize_pool) / float(field_size), 2)
+            except Exception:
+                buy_in = None
+        profit = round(prize - buy_in, 2) if buy_in is not None else None
+        started_at = None
+    else:
+        # ── PokerStars: field_size + prize_pool + buy-in vêm do summary; place do "You finished
+        # in Nth"; prize da linha do hero na ordem de colocação (0 se não cravou ITM) ──
+        place = ps.get('hero_place')
+        mine = [f for f in ps['finishes'] if hero and f['player'] == hero]
+        if place is None and mine:
+            place = min(f['place'] for f in mine if f['place'] is not None)
+        buy_in = ps.get('buy_in') or tour.get('buy_in')
+        # prize: só quando o hero aparece na lista (aí um valor $ = ITM, ausência = 0). Sem o hero
+        # na lista, não sobrescreve (mantém o que o HH tiver).
+        if mine:
+            prize = round(sum(f['prize'] for f in mine), 2)
+            profit = round(prize - buy_in, 2) if buy_in is not None else None
+        else:
+            prize = tour.get('prize')
+            profit = tour.get('profit')
+        started_at = ps.get('started_at')
+
+    update_tournament_financials(g.user_id, tid, buy_in=buy_in, prize=prize, profit=profit,
+                                 place=place, field_size=field_size, prize_pool=prize_pool,
+                                 started_at=started_at)
+    return jsonify({'tournament_id': tid, 'hero': hero, 'place': place, 'prize': prize,
+                    'buy_in': buy_in, 'profit': profit, 'field_size': field_size,
+                    'prize_pool': prize_pool})
 
 
 def _analyze_impl():

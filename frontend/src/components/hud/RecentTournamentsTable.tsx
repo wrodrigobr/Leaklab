@@ -112,6 +112,9 @@ export function RecentTournamentsTable({ tournaments }: Props) {
                     {row.place != null && (
                       <span className="font-mono text-[10px] text-muted-foreground">· {row.place}º</span>
                     )}
+                    {row.field_size != null && (
+                      <span className="font-mono text-[10px] text-muted-foreground">· {t("table.players", { n: row.field_size })}</span>
+                    )}
                   </div>
                 </div>
                 <div className="flex flex-col items-end gap-1 shrink-0">
@@ -174,6 +177,9 @@ export function RecentTournamentsTable({ tournaments }: Props) {
                         {row.tournament_id}
                         {row.hands_count != null && (
                           <span className="ml-2 text-muted-foreground/60">{t("table.hands", { n: row.hands_count })}</span>
+                        )}
+                        {row.field_size != null && (
+                          <span className="ml-2 text-muted-foreground/60">· {t("table.players", { n: row.field_size })}</span>
                         )}
                       </div>
                     </td>

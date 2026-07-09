@@ -81,6 +81,13 @@ const Tournaments = () => {
   const [resultsMsg, setResultsMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const resultsUploadLabel = t("results.upload");
   const resultsHint = t("results.hint");
+  // Rótulos do bloco "summary pendente" pré-computados (o `t` é sombreado dentro do .map das linhas).
+  const summaryPendingLabel = t("summary.pending");
+  const summaryPendingHint = t("summary.hint");
+  const playersLabel = (n: number) => t("summary.players", { count: n });
+  // Marca o torneio que ainda não teve o Tournament Summary carregado (sem field_size). PokerStars
+  // tem o parser de texto; ACR usa o fluxo próprio (botão na coluna de prêmio).
+  const needsSummary = (tt: Tournament) => tt.field_size == null && tt.site === "pokerstars";
   const onResultsFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
     e.target.value = "";
@@ -88,13 +95,24 @@ const Tournaments = () => {
     try {
       const content = await f.text();
       const r = await tournamentsApi.uploadResults(content, f.name);
-      setResultsMsg({ ok: true, text: t("results.ok", { place: r.place ?? "?", prize: (r.prize ?? 0).toFixed(2) }) });
+      setResultsMsg({ ok: true, text: r.field_size != null
+        ? t("results.okFull", { place: r.place ?? "?", players: r.field_size })
+        : t("results.ok", { place: r.place ?? "?", prize: (r.prize ?? 0).toFixed(2) }) });
       reload();
     } catch (err) {
       setResultsMsg({ ok: false, text: (err instanceof Error ? err.message : t("results.error")) });
     }
     setTimeout(() => setResultsMsg(null), 6000);
   };
+  const summaryChip = (
+    <button
+      onClick={(e) => { e.stopPropagation(); fileRef.current?.click(); }}
+      title={summaryPendingHint}
+      className="inline-flex items-center gap-1 rounded-sm bg-amber-500/10 px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider text-amber-400 ring-1 ring-amber-500/30 transition-colors hover:bg-amber-500/20"
+    >
+      <FileUp className="size-3" aria-hidden /> {summaryPendingLabel}
+    </button>
+  );
   const renderProfitOrUpload = (site: string, profit: number | null, positive: boolean) =>
     profit === null && site === "acr" ? (
       <button
@@ -379,7 +397,9 @@ const Tournaments = () => {
                         <TournamentDate playedAt={t.played_at} importedAt={t.imported_at} />
                         {t.buy_in != null && <span>· ${t.buy_in.toFixed(2)}</span>}
                         {t.hands_count != null && <span>· {t.hands_count}m</span>}
+                        {t.field_size != null && <span>· {playersLabel(t.field_size)}</span>}
                       </div>
+                      {needsSummary(t) && <div className="mt-1.5">{summaryChip}</div>}
                     </div>
                     <div className="flex flex-col items-end gap-1.5 shrink-0">
                       <span className={cn(
@@ -488,6 +508,9 @@ const Tournaments = () => {
                             {t.hands_count != null && (
                               <span className="ml-2 text-muted-foreground/60">{tc("labels.hands", { count: t.hands_count })}</span>
                             )}
+                            {t.field_size != null && (
+                              <span className="ml-2 text-muted-foreground/60">· {playersLabel(t.field_size)}</span>
+                            )}
                           </div>
                         </td>
                         <td className="px-4 py-3.5">
@@ -544,6 +567,7 @@ const Tournaments = () => {
                                 {tc("status.coach")}
                               </span>
                             )}
+                            {needsSummary(t) && summaryChip}
                           </div>
                         </td>
                         <td className="px-4 py-3.5">

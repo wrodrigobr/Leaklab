@@ -19,7 +19,8 @@
     "upload": "Results",
     "hint": "Upload the tournament results file (ACR .ots) to complete the payout.",
     "ok": "Results imported: {{place}} place, prize ${{prize}}.",
-    "error": "Couldn't read the results file."
+    "error": "Couldn't read the results file.",
+    "okFull": "Data completed: {{place}}th place, {{players}} players."
   },
   "filters": {
     "all": "All",
@@ -138,5 +139,10 @@
       "engine": "Engine",
       "engineTip": "GTO not computed yet, analysis by the engine (equity, M-Ratio, ICM)"
     }
+  },
+  "summary": {
+    "pending": "Upload summary",
+    "hint": "Upload the PokerStars Tournament Summary (.txt) to complete the tournament data: field size, prize pool and time.",
+    "players": "{{count}} players"
   }
 }

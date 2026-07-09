@@ -215,7 +215,8 @@
     "covPre": "pré {{pct}}%",
     "covPost": "pós {{pct}}%",
     "gtoAnalyzing": "solver GTO analisando",
-    "gtoSplitTooltip": "Cobertura GTO. Preflop usa as ranges do GTO Wizard (cobertura ~imediata). Postflop é resolvido sob demanda no servidor, a cobertura cresce conforme você revisa as mãos."
+    "gtoSplitTooltip": "Cobertura GTO. Preflop usa as ranges do GTO Wizard (cobertura ~imediata). Postflop é resolvido sob demanda no servidor, a cobertura cresce conforme você revisa as mãos.",
+    "players": "{{n}} jogadores"
   },
   "decisions": {
     "title": "Qualidade das Decisões",

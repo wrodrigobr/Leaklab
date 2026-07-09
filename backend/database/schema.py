@@ -433,6 +433,8 @@ def _run_migrations(conn):
             "ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS is_pko BOOLEAN NOT NULL DEFAULT FALSE",
             "ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS started_at TIMESTAMP",
             "ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS ended_at   TIMESTAMP",
+            "ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS field_size INTEGER",
+            "ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS prize_pool REAL",
             "ALTER TABLE decisions ADD COLUMN IF NOT EXISTS position    TEXT",
             "ALTER TABLE decisions ADD COLUMN IF NOT EXISTS num_players INTEGER",
             "ALTER TABLE decisions ADD COLUMN IF NOT EXISTS level_sb    REAL",
@@ -1189,6 +1191,8 @@ def _run_migrations(conn):
             ("is_pko",          "ALTER TABLE tournaments ADD COLUMN is_pko BOOLEAN NOT NULL DEFAULT 0"),
             ("started_at",      "ALTER TABLE tournaments ADD COLUMN started_at TEXT"),
             ("ended_at",        "ALTER TABLE tournaments ADD COLUMN ended_at   TEXT"),
+            ("field_size",      "ALTER TABLE tournaments ADD COLUMN field_size INTEGER"),
+            ("prize_pool",      "ALTER TABLE tournaments ADD COLUMN prize_pool REAL"),
         ]:
             if col not in existing:
                 try: conn.execute(sql)
