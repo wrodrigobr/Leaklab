@@ -27,7 +27,8 @@
     "batchOkSkipped": "{{ok}} tournaments completed. Skipped: {{skipped}}.",
     "batchNone": "No tournaments completed. {{skipped}}.",
     "batchNotImported": "{{count}} with hands not imported yet",
-    "batchUnrecognized": "{{count}} not recognized"
+    "batchUnrecognized": "{{count}} not recognized",
+    "httpError": "Couldn't upload (HTTP {{status}}). Reload and try again; if it persists, the server may be out of date."
   },
   "filters": {
     "all": "All",

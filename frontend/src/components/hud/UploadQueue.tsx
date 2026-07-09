@@ -184,7 +184,11 @@ export function useUploadQueue(onAllDone?: () => void) {
         }
         window.dispatchEvent(new CustomEvent("leaklab:tournament-imported"));
       } catch (e: unknown) {
-        const msg = e instanceof Error ? e.message : "Erro ao processar arquivo";
+        const raw = e instanceof Error ? e.message : "";
+        // Nunca mostra "HTTP 404" cru: usa a msg real do backend, senão um genérico legível.
+        const msg = raw && !/^HTTP \d+$/.test(raw)
+          ? raw
+          : `Não foi possível processar (${raw || "erro"}). Verifique se o servidor está atualizado.`;
         dispatch({ type: "SET_STATUS", id: next.id, status: "error", error: msg });
       } finally {
         processing.current = false;

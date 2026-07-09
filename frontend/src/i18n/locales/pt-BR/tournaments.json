@@ -27,7 +27,8 @@
     "batchOkSkipped": "{{ok}} torneios completados. Ignorados: {{skipped}}.",
     "batchNone": "Nenhum torneio completado. {{skipped}}.",
     "batchNotImported": "{{count}} ainda sem as mãos importadas",
-    "batchUnrecognized": "{{count}} não reconhecidos"
+    "batchUnrecognized": "{{count}} não reconhecidos",
+    "httpError": "Não foi possível enviar (HTTP {{status}}). Recarregue e tente de novo; se persistir, o servidor pode estar desatualizado."
   },
   "filters": {
     "all": "Todas",

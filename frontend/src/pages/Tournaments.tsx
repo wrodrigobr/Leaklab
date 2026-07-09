@@ -89,6 +89,15 @@ const Tournaments = () => {
   // Marca o torneio que ainda não teve o Tournament Summary carregado (sem field_size). PokerStars
   // tem o parser de texto; ACR usa o fluxo próprio (botão na coluna de prêmio).
   const needsSummary = (tt: Tournament) => tt.field_size == null && tt.site === "pokerstars";
+  // Nunca joga "HTTP 404" cru na tela: mostra a mensagem real do backend quando existe (ex.:
+  // "Torneio X não encontrado, importe as mãos antes") e só cai no genérico amigável quando é o
+  // fallback cru "HTTP <n>" (rota ausente / backend desatualizado).
+  const friendlyUploadError = (err: unknown) => {
+    const status = (err as { status?: number })?.status;
+    const raw = err instanceof Error ? err.message : "";
+    if (raw && !/^HTTP \d+$/.test(raw)) return raw;
+    return t("results.httpError", { status: status ?? "?" });
+  };
   // Aceita 1 ou VÁRIOS arquivos de uma vez (o backend casa cada um pelo Tournament # de dentro do
   // arquivo, então a ordem/qual linha foi clicada não importa). Processa em série p/ não martelar
   // a API e mostra um resumo agregado no fim.
@@ -106,7 +115,7 @@ const Tournaments = () => {
           : t("results.ok", { place: r.place ?? "?", prize: (r.prize ?? 0).toFixed(2) }) });
         reload();
       } catch (err) {
-        setResultsMsg({ ok: false, text: (err instanceof Error ? err.message : t("results.error")) });
+        setResultsMsg({ ok: false, text: friendlyUploadError(err) });
       }
       setTimeout(() => setResultsMsg(null), 6000);
       return;

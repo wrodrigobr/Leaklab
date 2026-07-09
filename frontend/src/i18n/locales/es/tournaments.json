@@ -27,7 +27,8 @@
     "batchOkSkipped": "{{ok}} torneos completados. Ignorados: {{skipped}}.",
     "batchNone": "Ningún torneo completado. {{skipped}}.",
     "batchNotImported": "{{count}} aún sin las manos importadas",
-    "batchUnrecognized": "{{count}} no reconocidos"
+    "batchUnrecognized": "{{count}} no reconocidos",
+    "httpError": "No se pudo subir (HTTP {{status}}). Recarga e inténtalo de nuevo; si persiste, el servidor puede estar desactualizado."
   },
   "filters": {
     "all": "Todas",
