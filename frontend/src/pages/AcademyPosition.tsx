@@ -44,7 +44,7 @@ export default function AcademyPosition() {
 
   return (
     <HudLayout eyebrow={L("eyebrow")} title={L("title")} description={L("subtitle")}>
-      <article className="mx-auto max-w-2xl space-y-12 pb-8">
+      <article className="max-w-4xl space-y-12 pb-8">
 
         <LessonSection n={1} title={L("intro_title")}>
           <Prose html={L("intro_p1")} />
