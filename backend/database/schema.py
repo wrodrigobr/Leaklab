@@ -418,6 +418,23 @@ def _init_sqlite(conn):
     """)
 
 
+def _pg_exec_isolated(conn, sql):
+    """Executa 1 DDL de migração no Postgres isolando a falha por SAVEPOINT. Sem isso, um statement
+    que aborta (mesmo com o erro engolido) deixa a transação inteira 'aborted' → TODAS as migrations
+    seguintes viram no-op e nada commita (foi o que segurou started_at/field_size num deploy). Com o
+    SAVEPOINT, o erro faz ROLLBACK só desse statement e a transação (e o advisory lock do boot)
+    segue viva pros próximos."""
+    try:
+        conn.execute("SAVEPOINT _mig_sp")
+        conn.execute(sql)
+        conn.execute("RELEASE SAVEPOINT _mig_sp")
+    except Exception:
+        try:
+            conn.execute("ROLLBACK TO SAVEPOINT _mig_sp")
+        except Exception:
+            pass
+
+
 def _run_migrations(conn):
     if USE_POSTGRES:
         for sql in [
@@ -536,8 +553,7 @@ def _run_migrations(conn):
             # handle único, case-insensitive (só p/ quem definiu) — rede de segurança além da checagem no repo
             "CREATE UNIQUE INDEX IF NOT EXISTS idx_users_lb_handle ON users (LOWER(leaderboard_handle)) WHERE leaderboard_handle IS NOT NULL",
         ]:
-            try: conn.execute(sql)
-            except Exception: pass
+            _pg_exec_isolated(conn, sql)
         # SEC-01: convites single-use do coach (Postgres)
         try:
             conn.execute("""
@@ -836,8 +852,7 @@ def _run_migrations(conn):
             "ALTER TABLE support_tickets ADD COLUMN IF NOT EXISTS replied_at  TIMESTAMP",
             "ALTER TABLE support_tickets ADD COLUMN IF NOT EXISTS read_at     TIMESTAMP",
         ]:
-            try: conn.execute(sql)
-            except Exception: pass
+            _pg_exec_isolated(conn, sql)
         # Notificações in-app (genérico — type + payload JSON, render no frontend) (Postgres)
         try:
             conn.execute("""
@@ -915,8 +930,7 @@ def _run_migrations(conn):
             "ALTER TABLE gto_nodes ADD COLUMN IF NOT EXISTS tree_hash TEXT",
             "CREATE INDEX IF NOT EXISTS idx_gto_nodes_tree ON gto_nodes(tree_hash)",
         ]:
-            try: conn.execute(sql)
-            except Exception: pass
+            _pg_exec_isolated(conn, sql)
         # gto_preflop_ranges (Postgres)
         try:
             conn.execute("""
@@ -946,8 +960,7 @@ def _run_migrations(conn):
             # Remove dados estimados: qualquer row sem exploitability confirmada é deletada
             "DELETE FROM gto_preflop_ranges WHERE exploitability_pct IS NULL",
         ]:
-            try: conn.execute(sql)
-            except Exception: pass
+            _pg_exec_isolated(conn, sql)
         # gto_solver_queue (Postgres)
         try:
             conn.execute("""
@@ -967,8 +980,7 @@ def _run_migrations(conn):
         for sql in [
             "ALTER TABLE gto_solver_queue ADD COLUMN IF NOT EXISTS tree_hash TEXT",
         ]:
-            try: conn.execute(sql)
-            except Exception: pass
+            _pg_exec_isolated(conn, sql)
         # gto_tournament_queue (Postgres) — vínculo torneio↔spot enfileirado (ver SQLite acima):
         # "Analisando" per-torneio (spot deste torneio na fila ativa), imune a upload de terceiros.
         try:
