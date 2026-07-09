@@ -2355,3 +2355,77 @@ def generate_draws_question(user_id: int = None) -> dict:
     if qtype == 'draw_when':
         return _draw_when_question()
     return _draw_combo_question()
+
+
+# ── 3-bet: treino da aula "3-bet: re-raise por valor e blefe" ────────────────────
+# Range de 3-bet é polarizada (valor forte + blefes com blocker); blefes equilibram e
+# disfarçam o valor; A5s/A4s são ótimos blefes (bloqueiam AA/AK e fazem flush/straight).
+
+def _tb_purpose_question() -> dict:
+    return {
+        'type': 'tb_purpose',
+        'question': 'Além das mãos premium, por que incluir alguns blefes no seu range de 3-bet?',
+        'options': [
+            'Para não ficar previsível: com só premium o vilão te lê e desiste; o blefe leva o pote quando ele folda',
+            'Porque blefar é sempre mais lucrativo que apostar por valor',
+            'Para ver mais flops baratos',
+        ],
+        'correct_index': 0,
+        'explanation': (
+            'Se você só 3-beta AA/KK/AK, o vilão percebe e nunca te paga: seu valor não lucra. Adicionar '
+            'blefes deixa o range equilibrado, o vilão precisa continuar com mãos piores, e os blefes ainda '
+            'ganham o pote na hora quando ele desiste.'
+        ),
+        'mental_tip': '**Só 3-betar premium é previsível. Blefes equilibram e disfarçam o valor.**',
+        'context': {}, 'xp_value': 20,
+    }
+
+
+def _tb_polar_question() -> dict:
+    return {
+        'type': 'tb_polar',
+        'question': 'Um bom range de 3-bet costuma ser:',
+        'options': [
+            'Polarizado: mãos fortes (valor) + alguns blefes, com pouca coisa no meio',
+            'Só as mãos premium (AA, KK, AK)',
+            'As 15% melhores mãos, todas juntas',
+        ],
+        'correct_index': 0,
+        'explanation': (
+            'As mãos médias (AQo, TT, AJs) muitas vezes preferem só pagar (call), porque jogam bem num pote '
+            'menor. O 3-bet pega as pontas: o valor forte que quer o pote grande e os blefes com blocker. '
+            'Isso é uma range polarizada.'
+        ),
+        'mental_tip': '**3-bet é polarizado: pontas (valor + blefe); o meio (AQo, TT) muitas vezes só paga.**',
+        'context': {}, 'xp_value': 20,
+    }
+
+
+def _tb_blocker_question() -> dict:
+    return {
+        'type': 'tb_blocker',
+        'question': 'Qual é um ótimo candidato a blefe de 3-bet?',
+        'options': [
+            'A5s: bloqueia os AA/AK do vilão e ainda faz flush e sequência',
+            '72o: é lixo, dá pra blefar com qualquer coisa',
+            'KK: você quer valor com ela, não blefe',
+        ],
+        'correct_index': 0,
+        'explanation': (
+            'Um bom blefe de 3-bet tem blocker (o Ás reduz as combinações de AA e AK do vilão, então ele '
+            'continua menos) e jogabilidade (A5s faz flush e sequência quando é pago). 72o não bloqueia nada '
+            'e joga mal; KK é valor puro.'
+        ),
+        'mental_tip': '**Blefe de 3-bet bom = blocker (A5s bloqueia AA/AK) + jogabilidade, não lixo.**',
+        'context': {}, 'xp_value': 20,
+    }
+
+
+def generate_3bet_question(user_id: int = None) -> dict:
+    """Treino da aula de 3-bet: tb_purpose, tb_polar, tb_blocker."""
+    qtype = random.choice(['tb_purpose', 'tb_polar', 'tb_blocker'])
+    if qtype == 'tb_purpose':
+        return _tb_purpose_question()
+    if qtype == 'tb_polar':
+        return _tb_polar_question()
+    return _tb_blocker_question()

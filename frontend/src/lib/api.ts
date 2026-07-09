@@ -1133,6 +1133,15 @@ export const academy = {
       method: "POST",
       body: JSON.stringify({ selected_index, correct_index, xp_value }),
     }),
+
+  threebetQuestion: () =>
+    request<AcademyQuestion>("/academy/threebet/question"),
+
+  threebetSubmit: (selected_index: number, correct_index: number, xp_value: number) =>
+    request<AcademySubmitResult>("/academy/threebet/submit", {
+      method: "POST",
+      body: JSON.stringify({ selected_index, correct_index, xp_value }),
+    }),
 };
 
 export const gtoPreflop = {

@@ -52,9 +52,12 @@ ACADEMY_MODULES = [
         "pko", "bounty", "recompensa", "knockout", "captura de bounty"]),
     ("tournament", "/academy/tournament", [
         "estagio do torneio", "fase do torneio", "estrutura do torneio", "profundidade media"]),
+    ("threebet",   "/academy/3bet", [
+        "3-bet", "3bet", "3-betar", "re-raise", "rereraise", "reraise", "4-bet", "4bet",
+        "3-bet blefe", "3-bet valor", "3-bet pot", "cold call", "flatar", "squeeze"]),
     ("ranges",     "/academy/gto-preflop?scenario=rfi", [
         "rfi", "range de abertura", "open-raise", "open raise", "abrir de", "roubar blind",
-        "steal", "3-bet", "3bet", "3-bet pot", "defesa de bb", "defesa do bb", "vs open"]),
+        "steal", "defesa de bb", "defesa do bb", "vs open", "abertura preflop"]),
     ("math",       "/academy/math", [
         "pot odds", "equity", "outs", "regra do 2", "regra 2/4", "probabilidade",
         "odds implicitas", "matematica", "preco do pote"]),
