@@ -18,6 +18,7 @@ export default defineConfig(({ mode }) => ({
       "/coach":       { target: "http://127.0.0.1:5000", changeOrigin: true },
       "/student":     { target: "http://127.0.0.1:5000", changeOrigin: true },
       "/tournaments": { target: "http://127.0.0.1:5000", changeOrigin: true },
+      "/tournament/": { target: "http://127.0.0.1:5000", changeOrigin: true },  // barra final: proxia a API /tournament/results (singular) sem capturar a rota SPA /tournaments/:id
       "/history":     { target: "http://127.0.0.1:5000", changeOrigin: true },
       "/replay/":     { target: "http://127.0.0.1:5000", changeOrigin: true },  // barra final: senão o prefixo /replay captura a rota SPA /replayer (404 em load direto/refresh)
       "/metrics":     { target: "http://127.0.0.1:5000", changeOrigin: true },

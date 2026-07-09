@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(dev): proxy do vite faltava `/tournament/` (upload de summary dava HTTP 404 só em dev) (#dev)
+
+> A allowlist de prefixos do proxy do vite tinha `/tournaments` (plural, a lista) mas não `/tournament/results` (singular, o `uploadResults`). Em dev o request caía no próprio dev server (:8080) em vez de ir pro backend (:5000) → 404 de rota (o front mostrava "HTTP 404"). Por isso o import geral (`/analyze`, que estava na lista) funcionava e o botão de summary não. Adicionado `"/tournament/"` com barra final (não captura a rota SPA `/tournaments/:id`). Só afeta dev (prod chama a API direto, sem proxy). **Requer reiniciar o `npm run dev`** (config do vite não pega por HMR).
+
 ### feat(tournaments): Tournament Summary do GGPoker (PKO) — parser + roteamento + chip na lista (#tournaments)
 
 > Fecha o segundo site: agora o Tournament Summary do **GGPoker** também completa os dados (nº de jogadores, prize pool, colocação, horário). Formato bem diferente do PokerStars: header sem "PokerStars", buy-in PKO com `+` (`$0.49+$0.09+$0.5` → 1.08, rake = última parcela), `N Players` (P maiúsculo), prize pool com vírgula de milhar (`$2,197.8`), `You finished the tournament in Nth place`, e lista só a linha do Hero (`622th : Hero, $0.62`), com o prêmio total autoritativo no `received a total of $X` (inclui re-entradas/bounties). Novo `parse_ggpoker_summary` (`parser.py`): mesmo shape do PS + `hero_prize`; distingue de HH (sem `*** `) e de summary do PokerStars (rejeita se tem "pokerstars"). `_apply_tournament_summary` roteia ACR (JSON) → PokerStars → GGPoker (ordem importa: o GG casa "Tournament #" genérico), então funciona tanto no `/tournament/results` quanto no `/analyze` (import geral). Frontend: chip "Enviar summary" passa a aparecer em torneios `ggpoker` sem field_size; hint cita os dois sites. Teste `test_parse_ggpoker_summary` (suite ACR 12/12). tsc + build + API OK. **Deploy:** `web` (CX23) + frontend (Cloudflare). Limitação conhecida (igual PS/ACR): profit usa o buy-in de 1 entrada, não multiplica por re-entradas.
