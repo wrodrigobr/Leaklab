@@ -151,6 +151,7 @@
   "summary": {
     "pending": "Enviar summary",
     "hint": "Envie o Tournament Summary (.txt) do PokerStars ou GGPoker para completar os dados do torneio: nº de jogadores, premiação e horário.",
-    "players": "{{count}} jogadores"
+    "players": "{{count}} jogadores",
+    "reentries": "{{count}} reentradas (buy-in é o total investido)"
   }
 }

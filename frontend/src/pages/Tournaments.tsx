@@ -86,6 +86,17 @@ const Tournaments = () => {
   const summaryPendingLabel = t("summary.pending");
   const summaryPendingHint = t("summary.hint");
   const playersLabel = (n: number) => t("summary.players", { count: n });
+  const reentryLabel = (n: number) => t("summary.reentries", { count: n });
+  // Selo "R" quando houve re-entrada (o buy_in já é o TOTAL investido = entradas × buy-in).
+  const reentryBadge = (n?: number | null) =>
+    n != null && n > 0 ? (
+      <span
+        title={reentryLabel(n)}
+        className="ml-1 inline-flex items-center rounded-sm bg-amber-500/10 px-1 py-0.5 align-middle font-mono text-[8px] font-bold uppercase text-amber-400 ring-1 ring-amber-500/30 cursor-help"
+      >
+        R
+      </span>
+    ) : null;
   // Marca o torneio que ainda não teve o Tournament Summary carregado (sem field_size). PokerStars
   // tem o parser de texto; ACR usa o fluxo próprio (botão na coluna de prêmio).
   const needsSummary = (tt: Tournament) =>
@@ -460,7 +471,7 @@ const Tournaments = () => {
                       </div>
                       <div className="flex items-center gap-2 mt-0.5 font-mono text-[10px] text-muted-foreground">
                         <TournamentDate playedAt={t.played_at} importedAt={t.imported_at} />
-                        {t.buy_in != null && <span>· ${t.buy_in.toFixed(2)}</span>}
+                        {t.buy_in != null && <span className="inline-flex items-center">· ${t.buy_in.toFixed(2)}{reentryBadge(t.re_entries)}</span>}
                         {t.hands_count != null && <span>· {t.hands_count}m</span>}
                         {t.field_size != null && <span>· {playersLabel(t.field_size)}</span>}
                       </div>
@@ -583,6 +594,7 @@ const Tournaments = () => {
                         </td>
                         <td className="whitespace-nowrap px-4 py-3.5 font-mono text-xs">
                           {t.buy_in != null ? `$${t.buy_in.toFixed(2)}` : "—"}
+                          {reentryBadge(t.re_entries)}
                         </td>
                         <td className="whitespace-nowrap px-4 py-3.5 text-xs">
                           {t.place != null ? tc("labels.place", { place: t.place }) : "—"}

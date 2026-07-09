@@ -182,6 +182,7 @@ export interface Tournament {
   profit: number | null;
   field_size?: number | null;   // nº de jogadores — só existe após subir o Tournament Summary
   prize_pool?: number | null;
+  re_entries?: number | null;   // re-entradas do hero (buy_in já é o total investido = 1+re × entrada)
   llm_summary: string | null;
   coach_reviewed?: boolean;
   labels_reconciled_at?: string | null;

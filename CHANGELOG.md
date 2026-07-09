@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(tournaments): profit exato com re-entradas no GGPoker + selo "R" (#tournaments)
+
+> O GG informa "You made N re-entries" no summary. Agora o **profit é exato**: `buy_in` gravado = **total investido** (buy-in de 1 entrada × (1+re-entradas)), então `profit = prêmio − total` e o ROI da lista (soma de buy_in) ficam corretos. Ex.: PKO $1.08 com 1 re-entrada = 2 entradas → buy-in $2.16, prêmio $0.62 → profit **−$1.54** (antes mostrava −$0.46, ignorando a re-entrada). Como não há coluna separada de "total investido", o total vai no `buy_in` (semântica: o que você realmente pôs). Na lista, um selo **"R"** ao lado do buy-in (desktop + mobile) com tooltip "N reentradas (buy-in é o total investido)" deixa claro que é total, não a entrada única. Backend: `parse_ggpoker_summary` extrai `re_entries`; nova coluna `tournaments.re_entries` (SQLite + PG, abort-proof); `update_tournament_financials` + `get_tournaments` + resposta expõem `re_entries`. i18n `summary.reentries` (3 línguas). Só GG reporta re-entradas hoje (PS/ACR seguem 1 entrada). test_parse_ggpoker_summary 12/12 + persistência via HTTP (buy_in 2.16 / profit -1.54 / re_entries 1). tsc + build + API OK. **Deploy:** `web` (CX23, coluna nova) + frontend (Cloudflare).
+
 ### fix(dev): proxy do vite faltava `/tournament/` (upload de summary dava HTTP 404 só em dev) (#dev)
 
 > A allowlist de prefixos do proxy do vite tinha `/tournaments` (plural, a lista) mas não `/tournament/results` (singular, o `uploadResults`). Em dev o request caía no próprio dev server (:8080) em vez de ir pro backend (:5000) → 404 de rota (o front mostrava "HTTP 404"). Por isso o import geral (`/analyze`, que estava na lista) funcionava e o botão de summary não. Adicionado `"/tournament/"` com barra final (não captura a rota SPA `/tournaments/:id`). Só afeta dev (prod chama a API direto, sem proxy). **Requer reiniciar o `npm run dev`** (config do vite não pega por HMR).

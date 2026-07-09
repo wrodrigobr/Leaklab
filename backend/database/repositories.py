@@ -579,7 +579,7 @@ def save_tournament(user_id: int, tournament_id: str, hero: str,
 
 def update_tournament_financials(user_id: int, tournament_id: str, *, buy_in=None, prize=None,
                                  profit=None, place=None, field_size=None, prize_pool=None,
-                                 started_at=None) -> bool:
+                                 started_at=None, re_entries=None) -> bool:
     """Atualiza o financeiro + dados do arquivo de RESULTADOS (Tournament Summary). prize/profit
     são SOBRESCRITOS (dado autoritativo do summary); buy_in/place/field_size/prize_pool/started_at
     mantêm o existente se vierem None (COALESCE). field_size/prize_pool só existem no summary (o HH
@@ -594,9 +594,10 @@ def update_tournament_financials(user_id: int, tournament_id: str, *, buy_in=Non
         conn.execute(_adapt(
             "UPDATE tournaments SET buy_in = COALESCE(?, buy_in), prize = ?, profit = ?, "
             "place = COALESCE(?, place), field_size = COALESCE(?, field_size), "
-            "prize_pool = COALESCE(?, prize_pool), started_at = COALESCE(?, started_at) "
+            "prize_pool = COALESCE(?, prize_pool), started_at = COALESCE(?, started_at), "
+            "re_entries = COALESCE(?, re_entries) "
             "WHERE user_id=? AND tournament_id=?"),
-            (buy_in, prize, profit, place, field_size, prize_pool, started_at,
+            (buy_in, prize, profit, place, field_size, prize_pool, started_at, re_entries,
              user_id, tournament_id))
         conn.commit()
         return True
@@ -705,7 +706,7 @@ def get_tournaments(user_id: int, limit: int = 50) -> List[dict]:
             SELECT t.id, t.tournament_id, t.site, t.tournament_name, t.hero, t.played_at, t.imported_at,
                    t.hands_count, t.decisions_count, t.avg_score,
                    t.standard_pct, t.clear_pct, t.result, t.place, t.llm_summary,
-                   t.buy_in, t.prize, t.profit, t.field_size, t.prize_pool,
+                   t.buy_in, t.prize, t.profit, t.field_size, t.prize_pool, t.re_entries,
                    t.labels_reconciled_at,
                    COUNT(CASE WHEN d.label = 'clear_mistake' THEN 1 END) AS clear_count,
                    COUNT(CASE WHEN d.label = 'small_mistake' THEN 1 END) AS small_count,

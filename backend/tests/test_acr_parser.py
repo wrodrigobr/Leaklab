@@ -316,6 +316,7 @@ def test_parse_ggpoker_summary():
     assert r['started_at'] == '2026-06-22 06:30:00'
     assert r['hero_place'] == 622
     assert r['hero_prize'] == 0.62
+    assert r['re_entries'] == 1                              # "You made 1 re-entries" → 2 entradas
     # não casa PS, ACR nem hand history; e o PS parser não casa GG
     assert parse_ggpoker_summary(PS_SUMMARY) is None
     assert parse_ggpoker_summary(ACR_RESULTS) is None

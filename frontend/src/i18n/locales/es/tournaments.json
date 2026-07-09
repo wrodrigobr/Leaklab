@@ -151,6 +151,7 @@
   "summary": {
     "pending": "Subir summary",
     "hint": "Sube el Tournament Summary (.txt) de PokerStars o GGPoker para completar los datos del torneo: nº de jugadores, premios y horario.",
-    "players": "{{count}} jugadores"
+    "players": "{{count}} jugadores",
+    "reentries": "{{count}} reentradas (el buy-in es el total invertido)"
   }
 }

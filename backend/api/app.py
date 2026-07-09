@@ -762,6 +762,7 @@ def _apply_tournament_summary(user_id, content, filename):
 
     field_size = sm.get('player_count')
     prize_pool = sm.get('prize_pool')
+    re_entries_out = None   # só o GG reporta re-entradas hoje
 
     if res:
         # ── ACR: premiação por jogador no arquivo (soma re-entradas do hero) ──
@@ -803,7 +804,12 @@ def _apply_tournament_summary(user_id, content, filename):
         # ── GGPoker: place do "You finished the tournament in Nth"; prize do "received a total of
         # $X" (inclui re-entradas/bounties, dado autoritativo); buy-in do summary (soma do PKO) ──
         place = gg.get('hero_place')
-        buy_in = gg.get('buy_in') or tour.get('buy_in')
+        # custo REAL = buy-in de 1 entrada × total de entradas (1 + re-entradas). Sem coluna de
+        # "total investido", grava esse total no buy_in → profit e ROI (soma de buy_in) ficam certos.
+        buy_in_single = gg.get('buy_in') or tour.get('buy_in')
+        re_entries_out = int(gg.get('re_entries') or 0)
+        entries = 1 + re_entries_out
+        buy_in = round(buy_in_single * entries, 2) if buy_in_single is not None else tour.get('buy_in')
         prize = gg.get('hero_prize')
         if prize is not None:
             profit = round(prize - buy_in, 2) if buy_in is not None else None
@@ -814,10 +820,10 @@ def _apply_tournament_summary(user_id, content, filename):
 
     update_tournament_financials(user_id, tid, buy_in=buy_in, prize=prize, profit=profit,
                                  place=place, field_size=field_size, prize_pool=prize_pool,
-                                 started_at=started_at)
+                                 started_at=started_at, re_entries=re_entries_out)
     return {'kind': 'summary', 'tournament_id': tid, 'hero': hero, 'place': place, 'prize': prize,
             'buy_in': buy_in, 'profit': profit, 'field_size': field_size,
-            'prize_pool': prize_pool}, 200
+            'prize_pool': prize_pool, 're_entries': re_entries_out}, 200
 
 
 @app.route('/tournament/results', methods=['POST'])

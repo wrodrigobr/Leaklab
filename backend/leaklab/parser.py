@@ -652,6 +652,7 @@ _GG_PLAYERS_RE  = re.compile(r'([\d,]+)\s+Players\b', re.IGNORECASE)
 _GG_FINISHED_RE = re.compile(r'You\s+finished\s+the\s+tournament\s+in\s+(\d+)\s*(?:st|nd|rd|th)?\s+place', re.IGNORECASE)
 _GG_RECEIVED_RE = re.compile(r'received\s+a\s+total\s+of\s+\$([\d.,]+)', re.IGNORECASE)
 _GG_HERO_LINE_RE = re.compile(r'^\s*(\d+)\s*(?:st|nd|rd|th)?\s*:\s*(.+?),\s*\$([\d.,]+)\s*$', re.MULTILINE)
+_GG_REENTRY_RE  = re.compile(r'made\s+(\d+)\s+re-?entr(?:y|ies)', re.IGNORECASE)
 
 
 def parse_ggpoker_summary(content: str) -> Optional[dict]:
@@ -705,6 +706,15 @@ def parse_ggpoker_summary(content: str) -> Optional[dict]:
     if mr:
         hero_prize = _money(mr.group(1))
 
+    # re-entradas: "You made N re-entries" → total de entradas = 1 + N (custo real = buy_in × entradas)
+    re_entries = 0
+    mre = _GG_REENTRY_RE.search(content)
+    if mre:
+        try:
+            re_entries = int(mre.group(1))
+        except Exception:
+            re_entries = 0
+
     finishes = []
     for m in _GG_HERO_LINE_RE.finditer(content):
         place = int(m.group(1))
@@ -725,6 +735,7 @@ def parse_ggpoker_summary(content: str) -> Optional[dict]:
         'started_at':    started_at,
         'hero_place':    hero_place,
         'hero_prize':    hero_prize,
+        're_entries':    re_entries,
         'finishes':      finishes,
     }
 
