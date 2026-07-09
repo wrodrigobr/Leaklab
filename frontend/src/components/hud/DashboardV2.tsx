@@ -9,7 +9,6 @@ import { useMasonryRows } from "@/hooks/useMasonryRows";
 import { formatAction } from "@/lib/utils";
 import { SECTION_SPAN, DashSection } from "@/hooks/useDashboardLayout";
 import { V2EvTrendCard } from "@/components/hud/V2EvTrendCard";
-import { V2CoverageCard } from "@/components/hud/V2CoverageCard";
 import { V2StreetEvCard } from "@/components/hud/V2StreetEvCard";
 import { V2AiInsightsCard, AiInsight } from "@/components/hud/V2AiInsightsCard";
 import { V2QualityCard } from "@/components/hud/V2QualityCard";
@@ -269,7 +268,6 @@ export function DashboardV2({ onUpload, evSummary, hasData, renderCard, gtoQuali
             {/* Masonry de 2 colunas uniformes: TODO card col-span-6 (ver SECTION_SPAN) —
                 larguras mistas reabrem vãos. Hero cards normalizados (eram 8/4/7/5/4/8). */}
             <div className="lg:col-span-6"><V2EvTrendCard evSummary={s} /></div>
-            <div className="lg:col-span-6"><V2CoverageCard evSummary={s} /></div>
             <div className="lg:col-span-6"><V2AiInsightsCard insights={aiInsights} locked={aiLocked} /></div>
             <div className="lg:col-span-6"><V2StreetEvCard evSummary={s} /></div>
             {/* UX-2 onda 3 — medição GTO (anel + barras) e resultado financeiro */}
