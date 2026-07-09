@@ -92,16 +92,18 @@ def main():
         print(f"  {str(r[0]):8s} {int(r[1]):5d}")
 
     print()
-    print("MOTIVO PROVAVEL das nao-cobertas (proxies dos campos gravados):")
+    print("MOTIVO das nao-cobertas (buckets MUTUAMENTE EXCLUSIVOS, em ordem de prioridade):")
     unc = f"{W} AND (gto_label IS NULL OR gto_label = '')"
-    mw   = scalar(conn, f"SELECT COUNT(*) FROM decisions WHERE {unc} AND COALESCE(n_active_opponents,1) >= 2")
-    deep = scalar(conn, f"SELECT COUNT(*) FROM decisions WHERE {unc} AND COALESCE(stack_bb,0) > 60")
+    _MW   = "COALESCE(n_active_opponents,1) >= 2"
+    _DEEP = "COALESCE(stack_bb,0) > 60"
     pf   = scalar(conn, f"SELECT COUNT(*) FROM decisions WHERE {unc} AND street='preflop'")
-    post = scalar(conn, f"SELECT COUNT(*) FROM decisions WHERE {unc} AND street IN ('flop','turn','river')")
-    print(f"  multiway (3+ no pote)      : {mw}")
-    print(f"  stack fundo (>60bb)        : {deep}")
-    print(f"  preflop sem cobertura      : {pf}")
-    print(f"  postflop sem cobertura     : {post}   <- se alto, ver a FILA abaixo")
+    mw   = scalar(conn, f"SELECT COUNT(*) FROM decisions WHERE {unc} AND street<>'preflop' AND {_MW}")
+    deep = scalar(conn, f"SELECT COUNT(*) FROM decisions WHERE {unc} AND street<>'preflop' AND NOT ({_MW}) AND {_DEEP}")
+    hu   = scalar(conn, f"SELECT COUNT(*) FROM decisions WHERE {unc} AND street<>'preflop' AND NOT ({_MW}) AND NOT ({_DEEP})")
+    print(f"  preflop sem cobertura            : {pf}    (limped pot / cenario nao coberto)")
+    print(f"  postflop MULTIWAY (3+)           : {mw}    ESTRUTURAL: solver e HU-only")
+    print(f"  postflop HU fundo (>60bb)        : {deep}    ESTRUTURAL: solver capa ~60bb (ha aprox opcao B)")
+    print(f"  postflop HU raso (<=60bb)        : {hu}    <== ACIONAVEL: deveria ser coberto, investigar")
 
     print()
     print("FILA DO SOLVER para os spots DESTE torneio (gto_tournament_queue -> gto_solver_queue):")
