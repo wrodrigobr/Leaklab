@@ -2505,3 +2505,72 @@ def generate_barrel_question(user_id: int = None) -> dict:
     if qtype == 'tr_giveup':
         return _tr_giveup_question()
     return _tr_river_question()
+
+
+# ── Termos & Conceitos: treino de vocabulário ────────────────────────────────────
+
+def _tm_street_question() -> dict:
+    return {
+        'type': 'tm_street',
+        'question': "No poker, o que é uma 'street'?",
+        'options': [
+            'Cada rodada de apostas: preflop, flop, turn e river',
+            'A ordem em que os jogadores sentam na mesa',
+            'O tamanho padrão de uma aposta',
+        ],
+        'correct_index': 0,
+        'explanation': (
+            'Cada mão tem quatro streets (rodadas de aposta): preflop (antes das cartas comunitárias), '
+            'flop, turn e river. "Jogar as streets" é planejar a mão rodada a rodada.'
+        ),
+        'mental_tip': '**Street = rodada de aposta: preflop, flop, turn, river.**',
+        'context': {}, 'xp_value': 20,
+    }
+
+
+def _tm_draw_question() -> dict:
+    return {
+        'type': 'tm_draw',
+        'question': "O que é um 'draw'?",
+        'options': [
+            'Uma mão que ainda não venceu, mas pode virar a melhor (ex.: flush draw)',
+            'Uma mão feita e já vencedora',
+            'Um empate no showdown',
+        ],
+        'correct_index': 0,
+        'explanation': (
+            'Draw é um projeto: uma mão incompleta que fica forte se a carta certa aparecer, como um '
+            'flush draw (falta uma carta do naipe) ou uma sequência aberta.'
+        ),
+        'mental_tip': '**Draw = mão que ainda não é, mas pode virar (flush draw, straight draw).**',
+        'context': {}, 'xp_value': 20,
+    }
+
+
+def _tm_ip_question() -> dict:
+    return {
+        'type': 'tm_ip',
+        'question': "Estar 'em posição' (IP) significa:",
+        'options': [
+            'Agir por último no pote, com a vantagem de ver o vilão agir antes',
+            'Estar sentado à esquerda do dealer',
+            'Ter o maior stack da mesa',
+        ],
+        'correct_index': 0,
+        'explanation': (
+            'Estar em posição (in position, IP) é agir depois do vilão em todas as streets pós-flop. '
+            'Você decide com mais informação, é uma das maiores vantagens do jogo.'
+        ),
+        'mental_tip': '**Em posição (IP) = você age por último, com mais informação.**',
+        'context': {}, 'xp_value': 20,
+    }
+
+
+def generate_terms_question(user_id: int = None) -> dict:
+    """Treino de vocabulário da aula de Termos & Conceitos: tm_street, tm_draw, tm_ip."""
+    qtype = random.choice(['tm_street', 'tm_draw', 'tm_ip'])
+    if qtype == 'tm_street':
+        return _tm_street_question()
+    if qtype == 'tm_draw':
+        return _tm_draw_question()
+    return _tm_ip_question()

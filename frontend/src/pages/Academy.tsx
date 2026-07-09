@@ -22,6 +22,7 @@ import {
   Waves,
   Swords,
   Flame,
+  BookText,
 } from "lucide-react";
 import { HudLayout } from "@/components/hud/HudLayout";
 import { cn } from "@/lib/utils";
@@ -45,6 +46,15 @@ interface Module {
 
 const MODULES: Module[] = [
   // Beginner
+  {
+    id: "terms",
+    icon: BookText,
+    color: "emerald",
+    path: "/academy/terms",
+    status: "available",
+    level: "beginner",
+    xpReward: 15,
+  },
   {
     id: "math",
     icon: Calculator,
