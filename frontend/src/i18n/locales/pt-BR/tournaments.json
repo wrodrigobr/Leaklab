@@ -150,7 +150,7 @@
   },
   "summary": {
     "pending": "Enviar summary",
-    "hint": "Envie o Tournament Summary do PokerStars (.txt) para completar os dados do torneio: nº de jogadores, premiação e horário.",
+    "hint": "Envie o Tournament Summary (.txt) do PokerStars ou GGPoker para completar os dados do torneio: nº de jogadores, premiação e horário.",
     "players": "{{count}} jogadores"
   }
 }

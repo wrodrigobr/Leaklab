@@ -647,6 +647,88 @@ def parse_pokerstars_summary(content: str) -> Optional[dict]:
     }
 
 
+_GG_HEADER_RE   = re.compile(r'^\s*Tournament\s+#(\d+)', re.IGNORECASE | re.MULTILINE)
+_GG_PLAYERS_RE  = re.compile(r'([\d,]+)\s+Players\b', re.IGNORECASE)
+_GG_FINISHED_RE = re.compile(r'You\s+finished\s+the\s+tournament\s+in\s+(\d+)\s*(?:st|nd|rd|th)?\s+place', re.IGNORECASE)
+_GG_RECEIVED_RE = re.compile(r'received\s+a\s+total\s+of\s+\$([\d.,]+)', re.IGNORECASE)
+_GG_HERO_LINE_RE = re.compile(r'^\s*(\d+)\s*(?:st|nd|rd|th)?\s*:\s*(.+?),\s*\$([\d.,]+)\s*$', re.MULTILINE)
+
+
+def parse_ggpoker_summary(content: str) -> Optional[dict]:
+    """Parseia o Tournament Summary (texto) do GGPoker. Formato distinto do PokerStars: header sem
+    'PokerStars', buy-in com '+' (PKO: prize+bounty+rake), 'N Players' (P maiúsculo), 'You finished
+    the tournament in Nth place', e lista só a linha do Hero ('622th : Hero, $0.62'). Devolve o
+    mesmo shape do parse_pokerstars_summary (+ hero_prize) ou None se não for um summary do GG.
+
+    Distingue de hand history (sem '*** ') e de summary do PokerStars (não tem 'PokerStars')."""
+    if not content or '*** ' in content:
+        return None
+    if 'pokerstars' in content.lower():
+        return None  # é PS — vai pelo parse_pokerstars_summary
+    mh = _GG_HEADER_RE.search(content)
+    mp = _GG_PLAYERS_RE.search(content)
+    # exige os marcadores de summary (contagem de jogadores + pote), pra não casar HH do GG
+    if not mh or not mp or 'prize pool' not in content.lower():
+        return None
+
+    tid = mh.group(1)
+    try:
+        player_count = int(mp.group(1).replace(',', ''))
+    except Exception:
+        player_count = None
+
+    mpool = _PS_POOL_RE.search(content)
+    prize_pool = _money(mpool.group(1)) if mpool else None
+
+    buy_in = rake = None
+    mb = _PS_BUYIN_RE.search(content)      # 'Buy-in:' casa (IGNORECASE); soma as parcelas do '+'
+    if mb:
+        parts = [x for x in (_money(v) for v in _MONEY_RE.findall(mb.group(1))) if x is not None]
+        if parts:
+            buy_in = round(sum(parts), 2)
+            rake = parts[-1]
+
+    started_at = None
+    ms = _PS_STARTED_RE.search(content)
+    if ms:
+        started_at = f"{ms.group(1)}-{ms.group(2)}-{ms.group(3)} " \
+                     f"{int(ms.group(4)):02d}:{ms.group(5)}:{ms.group(6)}"
+
+    hero_place = None
+    mf = _GG_FINISHED_RE.search(content)
+    if mf:
+        hero_place = int(mf.group(1))
+
+    # prêmio total recebido pelo hero (inclui re-entradas/bounties) — dado autoritativo do GG
+    hero_prize = None
+    mr = _GG_RECEIVED_RE.search(content)
+    if mr:
+        hero_prize = _money(mr.group(1))
+
+    finishes = []
+    for m in _GG_HERO_LINE_RE.finditer(content):
+        place = int(m.group(1))
+        player = re.sub(r'\s*\[\d+\]\s*$', '', m.group(2).strip()).strip()
+        finishes.append({'player': player, 'place': place, 'prize': _money(m.group(3)) or 0.0})
+    if hero_place is None and finishes:
+        hero_place = min(f['place'] for f in finishes)
+    if hero_prize is None and finishes:
+        hero_prize = round(sum(f['prize'] for f in finishes), 2)
+
+    return {
+        'site':         'ggpoker',
+        'tournament_id': tid,
+        'player_count':  player_count,
+        'prize_pool':    prize_pool,
+        'buy_in':        buy_in,
+        'rake':          rake,
+        'started_at':    started_at,
+        'hero_place':    hero_place,
+        'hero_prize':    hero_prize,
+        'finishes':      finishes,
+    }
+
+
 def _extract_board(line: str) -> List[str]:
     """Extrai o board completo de uma linha de street.
 

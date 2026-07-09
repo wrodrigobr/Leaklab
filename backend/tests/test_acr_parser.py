@@ -10,7 +10,7 @@ except Exception:
     pass
 
 from leaklab.parser import (parse_hand_history, _detect_site, _extract_showdown_result,
-                            parse_acr_results, parse_pokerstars_summary)
+                            parse_acr_results, parse_pokerstars_summary, parse_ggpoker_summary)
 from leaklab.pipeline import build_decision_inputs_for_hand
 
 # Arquivo de RESULTADOS ACR/WPN (.ots, JSON) — compacto, com hero (MusashiBR 6º $1.19), um ITM
@@ -288,6 +288,40 @@ def test_parse_pokerstars_summary():
     assert parse_pokerstars_summary(ACR_RESULTS) is None
     assert parse_pokerstars_summary('') is None
     print("OK  test_parse_pokerstars_summary")
+
+
+GG_SUMMARY = (
+    "Tournament #292348828, Bounty Hunters Big One $1.08, Hold'em No Limit\n"
+    "Buy-in: $0.49+$0.09+$0.5\n"
+    "2220 Players\n"
+    "Total Prize Pool: $2,197.8\n"
+    "Tournament started 2026/06/22 06:30:00 \n"
+    "622th : Hero, $0.62\n"
+    "You finished the tournament in 622th place.\n"
+    "You made 1 re-entries and received a total of $0.62.\n"
+)
+
+
+def test_parse_ggpoker_summary():
+    """Summary de texto do GGPoker (PKO): field size, prize pool (com vírgula de milhar), buy-in
+    somando as parcelas do '+', place do 'finished the tournament in Nth', prêmio do 'received a
+    total of'."""
+    r = parse_ggpoker_summary(GG_SUMMARY)
+    assert r is not None
+    assert r['site'] == 'ggpoker'
+    assert r['tournament_id'] == '292348828'
+    assert r['player_count'] == 2220
+    assert r['prize_pool'] == 2197.8
+    assert r['buy_in'] == 1.08 and r['rake'] == 0.5          # 0.49 + 0.09 + 0.5
+    assert r['started_at'] == '2026-06-22 06:30:00'
+    assert r['hero_place'] == 622
+    assert r['hero_prize'] == 0.62
+    # não casa PS, ACR nem hand history; e o PS parser não casa GG
+    assert parse_ggpoker_summary(PS_SUMMARY) is None
+    assert parse_ggpoker_summary(ACR_RESULTS) is None
+    assert parse_ggpoker_summary('Poker Hand #1 Tournament #9 *** HOLE CARDS ***') is None
+    assert parse_pokerstars_summary(GG_SUMMARY) is None
+    print("OK  test_parse_ggpoker_summary")
 
 
 if __name__ == '__main__':

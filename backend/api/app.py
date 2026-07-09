@@ -739,16 +739,20 @@ def _apply_tournament_summary(user_id, content, filename):
     field_size/prize_pool (só o summary traz o tamanho do field). Sem inventar: os números vêm do
     arquivo real. Devolve (payload, http_status); (None, None) se o conteúdo NÃO for um summary
     reconhecido (aí o chamador segue como hand history)."""
-    from leaklab.parser import parse_acr_results, parse_pokerstars_summary
+    from leaklab.parser import (parse_acr_results, parse_pokerstars_summary,
+                                 parse_ggpoker_summary)
     from database.repositories import get_tournament, update_tournament_financials
 
-    # ACR (.ots JSON) OU PokerStars (texto). parse_acr_results devolve None se não for JSON válido.
+    # ACR (.ots JSON) OU PokerStars (texto) OU GGPoker (texto). Cada parser devolve None se não for
+    # o seu formato — a ordem importa (PS antes de GG, pq o GG casa 'Tournament #' genérico).
     res = parse_acr_results(content)
     ps  = None if res else parse_pokerstars_summary(content)
-    if not res and not ps:
+    gg  = None if (res or ps) else parse_ggpoker_summary(content)
+    sm  = res or ps or gg
+    if not sm:
         return None, None
 
-    tid  = (res or ps)['tournament_id']
+    tid  = sm['tournament_id']
     tour = get_tournament(user_id, tid)
     if not tour:
         return {'kind': 'summary', 'tournament_id': tid,
@@ -756,8 +760,8 @@ def _apply_tournament_summary(user_id, content, filename):
                          f'torneio antes de subir o resultado.'}, 404
     hero = tour.get('hero')
 
-    field_size = res.get('player_count') if res else ps.get('player_count')
-    prize_pool = (res or ps).get('prize_pool')
+    field_size = sm.get('player_count')
+    prize_pool = sm.get('prize_pool')
 
     if res:
         # ── ACR: premiação por jogador no arquivo (soma re-entradas do hero) ──
@@ -778,7 +782,7 @@ def _apply_tournament_summary(user_id, content, filename):
                 buy_in = None
         profit = round(prize - buy_in, 2) if buy_in is not None else None
         started_at = None
-    else:
+    elif ps:
         # ── PokerStars: field_size + prize_pool + buy-in vêm do summary; place do "You finished
         # in Nth"; prize da linha do hero na ordem de colocação (0 se não cravou ITM) ──
         place = ps.get('hero_place')
@@ -795,6 +799,18 @@ def _apply_tournament_summary(user_id, content, filename):
             prize = tour.get('prize')
             profit = tour.get('profit')
         started_at = ps.get('started_at')
+    else:
+        # ── GGPoker: place do "You finished the tournament in Nth"; prize do "received a total of
+        # $X" (inclui re-entradas/bounties, dado autoritativo); buy-in do summary (soma do PKO) ──
+        place = gg.get('hero_place')
+        buy_in = gg.get('buy_in') or tour.get('buy_in')
+        prize = gg.get('hero_prize')
+        if prize is not None:
+            profit = round(prize - buy_in, 2) if buy_in is not None else None
+        else:
+            prize = tour.get('prize')
+            profit = tour.get('profit')
+        started_at = gg.get('started_at')
 
     update_tournament_financials(user_id, tid, buy_in=buy_in, prize=prize, profit=profit,
                                  place=place, field_size=field_size, prize_pool=prize_pool,

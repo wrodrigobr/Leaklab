@@ -88,7 +88,8 @@ const Tournaments = () => {
   const playersLabel = (n: number) => t("summary.players", { count: n });
   // Marca o torneio que ainda não teve o Tournament Summary carregado (sem field_size). PokerStars
   // tem o parser de texto; ACR usa o fluxo próprio (botão na coluna de prêmio).
-  const needsSummary = (tt: Tournament) => tt.field_size == null && tt.site === "pokerstars";
+  const needsSummary = (tt: Tournament) =>
+    tt.field_size == null && (tt.site === "pokerstars" || tt.site === "ggpoker");
   // Nunca joga "HTTP 404" cru na tela: mostra a mensagem real do backend quando existe (ex.:
   // "Torneio X não encontrado, importe as mãos antes") e só cai no genérico amigável quando é o
   // fallback cru "HTTP <n>" (rota ausente / backend desatualizado).

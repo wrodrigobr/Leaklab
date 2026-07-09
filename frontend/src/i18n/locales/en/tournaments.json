@@ -150,7 +150,7 @@
   },
   "summary": {
     "pending": "Upload summary",
-    "hint": "Upload the PokerStars Tournament Summary (.txt) to complete the tournament data: field size, prize pool and time.",
+    "hint": "Upload the Tournament Summary (.txt) from PokerStars or GGPoker to complete the tournament data: field size, prize pool and time.",
     "players": "{{count}} players"
   }
 }
