@@ -53,9 +53,7 @@ export function LessonSection({ n, title, children }: { n: number; title: string
 // ── Texto (aceita <strong>/<em> via html) ────────────────────────────────────────
 
 export function Prose({ html }: { html: string }) {
-  // Prosa em coluna LEGÍVEL (~80 chars) mesmo com o artigo largo — leitura não deve esticar
-  // com a tela; a largura sobrando é ocupada pelos visuais (mesa, tabelas, listas 2-col).
-  return <p className="max-w-3xl" dangerouslySetInnerHTML={{ __html: html }} />;
+  return <p dangerouslySetInnerHTML={{ __html: html }} />;
 }
 
 // ── Callout (dica / atenção / regra-chave) ───────────────────────────────────────
@@ -73,7 +71,7 @@ export function Callout({ tone, title, children }: { tone: Tone; title: string; 
   };
   const c = cfg[tone];
   return (
-    <div className={cn("max-w-3xl rounded-xl p-4 ring-1", c.ring, c.bg)}>
+    <div className={cn("rounded-xl p-4 ring-1", c.ring, c.bg)}>
       <div className={cn("mb-1 flex items-center gap-2 font-mono text-[10px] font-bold uppercase tracking-widest", c.text)}>
         <c.Icon className="size-3.5" aria-hidden />
         {title}
@@ -307,7 +305,7 @@ export function GrindLabDetects({ title, intro, items }: { title: string; intro:
       <div className="mb-2 flex items-center gap-2 font-mono text-[10px] font-bold uppercase tracking-widest text-primary">
         <Radar className="size-3.5" aria-hidden /> {title}
       </div>
-      <p className="mb-3 max-w-3xl text-sm leading-relaxed text-foreground/90" dangerouslySetInnerHTML={{ __html: intro }} />
+      <p className="mb-3 text-sm leading-relaxed text-foreground/90" dangerouslySetInnerHTML={{ __html: intro }} />
       <ul className="grid gap-x-8 gap-y-2 sm:grid-cols-2">
         {items.map((it, i) => (
           <li key={i} className="flex items-start gap-2 text-sm text-foreground/90">
