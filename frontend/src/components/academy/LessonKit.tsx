@@ -53,7 +53,9 @@ export function LessonSection({ n, title, children }: { n: number; title: string
 // ── Texto (aceita <strong>/<em> via html) ────────────────────────────────────────
 
 export function Prose({ html }: { html: string }) {
-  return <p dangerouslySetInnerHTML={{ __html: html }} />;
+  // Prosa em coluna LEGÍVEL (~80 chars) mesmo com o artigo largo — leitura não deve esticar
+  // com a tela; a largura sobrando é ocupada pelos visuais (mesa, tabelas, listas 2-col).
+  return <p className="max-w-3xl" dangerouslySetInnerHTML={{ __html: html }} />;
 }
 
 // ── Callout (dica / atenção / regra-chave) ───────────────────────────────────────
@@ -71,7 +73,7 @@ export function Callout({ tone, title, children }: { tone: Tone; title: string; 
   };
   const c = cfg[tone];
   return (
-    <div className={cn("rounded-xl p-4 ring-1", c.ring, c.bg)}>
+    <div className={cn("max-w-3xl rounded-xl p-4 ring-1", c.ring, c.bg)}>
       <div className={cn("mb-1 flex items-center gap-2 font-mono text-[10px] font-bold uppercase tracking-widest", c.text)}>
         <c.Icon className="size-3.5" aria-hidden />
         {title}
@@ -158,7 +160,7 @@ export function Takeaways({ title, items }: { title: string; items: string[] }) 
         <KeyRound className="size-3.5" aria-hidden />
         {title}
       </div>
-      <ul className="space-y-2">
+      <ul className="grid gap-x-8 gap-y-2 sm:grid-cols-2">
         {items.map((it, i) => (
           <li key={i} className="flex items-start gap-2 text-sm text-foreground/90">
             <Check className="mt-0.5 size-4 shrink-0 text-emerald-400" aria-hidden />
@@ -178,7 +180,7 @@ export function Objectives({ title, items }: { title: string; items: string[] })
       <div className="mb-3 flex items-center gap-2 font-mono text-[10px] font-bold uppercase tracking-widest text-primary">
         <Target className="size-3.5" aria-hidden /> {title}
       </div>
-      <ul className="space-y-2">
+      <ul className="grid gap-x-8 gap-y-2 sm:grid-cols-2">
         {items.map((it, i) => (
           <li key={i} className="flex items-start gap-2 text-sm text-foreground/90">
             <ChevronRight className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden />
@@ -236,7 +238,7 @@ export function Mistakes({ title, items }: {
       <div className="flex items-center gap-2 font-mono text-[10px] font-bold uppercase tracking-widest text-rose-300">
         <AlertTriangle className="size-3.5" aria-hidden /> {title}
       </div>
-      <ol className="space-y-3">
+      <ol className="grid gap-3 md:grid-cols-2">
         {items.map((m, i) => (
           <li key={i} className="rounded-lg border border-rose-500/15 bg-rose-500/5 p-3">
             <p className="text-sm font-semibold text-foreground">
@@ -265,7 +267,7 @@ export function Checklist({ title, items }: { title: string; items: string[] }) 
       <div className="mb-3 flex items-center gap-2 font-mono text-[10px] font-bold uppercase tracking-widest text-foreground">
         <ClipboardCheck className="size-3.5" aria-hidden /> {title}
       </div>
-      <ul className="space-y-2.5">
+      <ul className="grid gap-x-8 gap-y-2.5 sm:grid-cols-2">
         {items.map((it, i) => (
           <li key={i} className="flex items-start gap-2.5 text-sm text-foreground/90">
             <span className="mt-0.5 size-4 shrink-0 rounded border border-primary/40 bg-primary/5" aria-hidden />
@@ -285,7 +287,7 @@ export function Glossary({ title, terms }: { title: string; terms: { term: strin
       <div className="flex items-center gap-2 font-mono text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
         <BookMarked className="size-3.5" aria-hidden /> {title}
       </div>
-      <dl className="grid gap-2 sm:grid-cols-2">
+      <dl className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
         {terms.map((tm, i) => (
           <div key={i} className="rounded-lg border border-border/60 bg-background/40 px-3 py-2">
             <dt className="text-sm font-bold text-foreground">{tm.term}</dt>
@@ -305,8 +307,8 @@ export function GrindLabDetects({ title, intro, items }: { title: string; intro:
       <div className="mb-2 flex items-center gap-2 font-mono text-[10px] font-bold uppercase tracking-widest text-primary">
         <Radar className="size-3.5" aria-hidden /> {title}
       </div>
-      <p className="mb-3 text-sm leading-relaxed text-foreground/90" dangerouslySetInnerHTML={{ __html: intro }} />
-      <ul className="space-y-2">
+      <p className="mb-3 max-w-3xl text-sm leading-relaxed text-foreground/90" dangerouslySetInnerHTML={{ __html: intro }} />
+      <ul className="grid gap-x-8 gap-y-2 sm:grid-cols-2">
         {items.map((it, i) => (
           <li key={i} className="flex items-start gap-2 text-sm text-foreground/90">
             <Check className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden />
