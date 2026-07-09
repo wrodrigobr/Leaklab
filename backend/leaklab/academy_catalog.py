@@ -61,6 +61,9 @@ ACADEMY_MODULES = [
     ("postflop",   "/academy/postflop", [
         "postflop", "pos-flop", "pos flop", "c-bet", "cbet", "continuation bet",
         "double barrel", "barrel", "flop", "turn", "river", "check-raise", "check raise"]),
+    ("draws",      "/academy/draws", [
+        "projeto", "projetos", "draw", "semi-blefe", "semi blefe", "semiblefe", "flush draw",
+        "sequencia aberta", "gutshot", "combo draw", "outs", "fold equity", "chase"]),
 ]
 
 

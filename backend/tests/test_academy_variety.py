@@ -262,6 +262,19 @@ class TestAcademyVariety(unittest.TestCase):
         self.assertEqual(seen, {'pf_action', 'pf_position', 'pf_call'})
         print("  ✔ pushfold drill structure")
 
+    def test_draws_drill_structure(self):
+        """Treino da aula de projetos/semi-blefe: why, when, combo."""
+        seen = set()
+        for _ in range(40):
+            q = acad.generate_draws_question(user_id=1)
+            self.assertIn(q['type'], ('draw_why', 'draw_when', 'draw_combo'))
+            self.assertEqual(len(q['options']), 3)
+            self.assertEqual(q['correct_index'], 0)
+            self.assertTrue(q['question'] and q['explanation'] and q['mental_tip'])
+            seen.add(q['type'])
+        self.assertEqual(seen, {'draw_why', 'draw_when', 'draw_combo'})
+        print("  ✔ draws drill structure")
+
     def test_leak_to_academy_mapping(self):
         """Matcher leak→aula: casa o card com o módulo certo, sem falso positivo, máx 2."""
         from leaklab.academy_catalog import modules_for_card, attach_academy_modules

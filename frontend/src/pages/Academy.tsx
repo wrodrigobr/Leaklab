@@ -19,6 +19,7 @@ import {
   Coins,
   Scale,
   Zap,
+  Waves,
 } from "lucide-react";
 import { HudLayout } from "@/components/hud/HudLayout";
 import { cn } from "@/lib/utils";
@@ -120,6 +121,15 @@ const MODULES: Module[] = [
     icon: Layers,
     color: "amber",
     path: "/academy/postflop",
+    status: "available",
+    level: "intermediate",
+    xpReward: 25,
+  },
+  {
+    id: "draws",
+    icon: Waves,
+    color: "amber",
+    path: "/academy/draws",
     status: "available",
     level: "intermediate",
     xpReward: 25,

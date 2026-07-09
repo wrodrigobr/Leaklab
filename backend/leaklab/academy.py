@@ -2275,3 +2275,83 @@ def generate_pushfold_question(user_id: int = None) -> dict:
     if qtype == 'pf_position':
         return _pf_position_question()
     return _pf_call_question()
+
+
+# ── Projetos / semi-blefe: treino da aula "Jogar projetos" ───────────────────────
+# O semi-blefe ganha de dois jeitos (fold equity + equity de acertar); rende com fold
+# equity (HU, board assustador) e morre sem ela (multiway/station); combo draw ~15 outs
+# é quase favorito e pode raisar.
+
+def _draw_why_question() -> dict:
+    return {
+        'type': 'draw_why',
+        'question': (
+            'Você tem um flush draw no flop e o vilão aposta. Por que semi-blefar (raisar) '
+            'costuma bater só pagar passivo?'
+        ),
+        'options': [
+            'Ganha de dois jeitos: leva o pote agora se ele foldar, e ainda acerta o flush depois',
+            'Porque raise é sempre melhor que call',
+            'Porque assim você vê as próximas cartas de graça',
+        ],
+        'correct_index': 0,
+        'explanation': (
+            'O semi-blefe tem duas fontes de lucro: a fold equity (o vilão desiste na hora) somada '
+            'à sua equity de acertar o draw se for pago. Só pagar passivo abre mão da primeira e te '
+            'deixa dependente de completar a mão.'
+        ),
+        'mental_tip': '**Semi-blefe = fold equity + equity de acertar. Ganha de dois jeitos.**',
+        'context': {}, 'xp_value': 20,
+    }
+
+
+def _draw_when_question() -> dict:
+    return {
+        'type': 'draw_when',
+        'question': 'O semi-blefe com um projeto rende MAIS quando:',
+        'options': [
+            'Você está heads-up, em board assustador, contra quem folda (há fold equity)',
+            'O pote é multiway contra uma calling station',
+            'Você tem só um gutshot e ninguém vai foldar',
+        ],
+        'correct_index': 0,
+        'explanation': (
+            'O semi-blefe depende de fold equity. Heads-up, board que assusta e vilão que respeita '
+            'apostas = ele desiste muito. Multiway contra quem não folda mata a fold equity: ali o '
+            'projeto quer é PREÇO para pagar, não blefar.'
+        ),
+        'mental_tip': '**Sem fold equity (multiway/station), semi-blefe vira queima. Blefe onde te foldam.**',
+        'context': {}, 'xp_value': 20,
+    }
+
+
+def _draw_combo_question() -> dict:
+    return {
+        'type': 'draw_combo',
+        'question': (
+            'Você tem flush draw + sequência aberta (~15 outs) no flop, heads-up. Diante de uma aposta, você é:'
+        ),
+        'options': [
+            'Quase favorito: dá até para raisar (semi-blefe forte)',
+            'Underdog grande, melhor foldar',
+            'Obrigado a só pagar e torcer',
+        ],
+        'correct_index': 0,
+        'explanation': (
+            '~15 outs no flop valem perto de 55% de equity até o river, você é favorito mesmo se pago. '
+            'Com um monstro-draw desses, raisar é ótimo: muita fold equity E você ainda ganha o showdown '
+            'boa parte das vezes.'
+        ),
+        'mental_tip': '**Combo draw (~15 outs) = quase favorito. Pode raisar, não só pagar.**',
+        'context': {}, 'xp_value': 20,
+    }
+
+
+def generate_draws_question(user_id: int = None) -> dict:
+    """Treino da aula de projetos/semi-blefe: draw_why, draw_when, draw_combo."""
+    qtype = random.choice(['draw_why', 'draw_when', 'draw_combo'])
+    if qtype == 'draw_why':
+        return _draw_why_question()
+    if qtype == 'draw_when':
+        return _draw_when_question()
+    return _draw_combo_question()

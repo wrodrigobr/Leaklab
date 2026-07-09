@@ -46,6 +46,7 @@ import AcademyExploits from "./pages/AcademyExploits.tsx";
 import AcademyPko from "./pages/AcademyPko.tsx";
 import AcademyImbalances from "./pages/AcademyImbalances.tsx";
 import AcademyPushFold from "./pages/AcademyPushFold.tsx";
+import AcademyDraws from "./pages/AcademyDraws.tsx";
 import LeakTrainer from "./pages/LeakTrainer.tsx";
 import TournamentCompare from "./pages/TournamentCompare.tsx";
 import CoachApply from "./pages/CoachApply.tsx";
@@ -303,6 +304,7 @@ const App = () => (
             <Route path="/academy/pko" element={<ProtectedRoute><AcademyPko /></ProtectedRoute>} />
             <Route path="/academy/imbalances" element={<ProtectedRoute><AcademyImbalances /></ProtectedRoute>} />
             <Route path="/academy/push-fold" element={<ProtectedRoute><AcademyPushFold /></ProtectedRoute>} />
+            <Route path="/academy/draws" element={<ProtectedRoute><AcademyDraws /></ProtectedRoute>} />
             <Route path="/leak-trainer" element={<ProtectedRoute><LeakTrainer /></ProtectedRoute>} />
             <Route path="/docs" element={<AuthRoute><Docs /></AuthRoute>} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
