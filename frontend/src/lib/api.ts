@@ -447,12 +447,17 @@ export const tournaments = {
   analyze: (content: string, filename?: string) =>
     request<{
       tournament_id: string;
-      tournament_db_id: number;
-      hero: string;
-      total_hands: number;
-      metrics: Record<string, unknown>;
-      leaks: unknown[];
-      hands: Record<string, unknown>;
+      tournament_db_id?: number;
+      hero?: string;
+      total_hands?: number;
+      metrics?: Record<string, unknown>;
+      leaks?: unknown[];
+      hands?: Record<string, unknown>;
+      // Quando o arquivo era um Tournament Summary (não hand history), o backend o aplica ao
+      // torneio existente e responde com kind:'summary' em vez de mãos.
+      kind?: "summary";
+      field_size?: number | null;
+      place?: number | null;
     }>("/analyze", {
       method: "POST",
       body: JSON.stringify({ content, filename }),

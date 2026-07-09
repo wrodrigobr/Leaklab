@@ -733,42 +733,38 @@ def analyze():
         return jsonify({'error': f'Erro ao processar arquivo: {type(e).__name__}: {e}'}), 500
 
 
-@app.route('/tournament/results', methods=['POST'])
-@require_auth
-def tournament_results():
-    """Complementa os dados de um torneio com o arquivo de RESULTADOS (Tournament Summary).
-    Dois formatos: ACR/WPN '.ots' (JSON) e PokerStars (texto). Casa por Tournament #, acha o hero,
-    e atualiza place/prize/profit/buy_in + field_size/prize_pool (só o summary traz o tamanho do
-    field). Sem inventar: os números vêm do arquivo real."""
+def _apply_tournament_summary(user_id, content, filename):
+    """Aplica um Tournament Summary (ACR/WPN '.ots' JSON ou PokerStars texto) a um torneio JÁ
+    IMPORTADO. Casa por Tournament #, acha o hero, e atualiza place/prize/profit/buy_in +
+    field_size/prize_pool (só o summary traz o tamanho do field). Sem inventar: os números vêm do
+    arquivo real. Devolve (payload, http_status); (None, None) se o conteúdo NÃO for um summary
+    reconhecido (aí o chamador segue como hand history)."""
     from leaklab.parser import parse_acr_results, parse_pokerstars_summary
     from database.repositories import get_tournament, update_tournament_financials
-    content  = _extract_content(request)
-    filename = _extract_upload_filename(request)
-    if not content:
-        return jsonify({'error': 'Conteúdo ausente'}), 400
 
     # ACR (.ots JSON) OU PokerStars (texto). parse_acr_results devolve None se não for JSON válido.
     res = parse_acr_results(content)
     ps  = None if res else parse_pokerstars_summary(content)
     if not res and not ps:
-        return jsonify({'error': 'Arquivo de resultados não reconhecido. Esperado o Tournament '
-                                 'Summary do PokerStars (.txt) ou do ACR/WPN (.ots).'}), 422
+        return None, None
 
     tid  = (res or ps)['tournament_id']
-    tour = get_tournament(g.user_id, tid)
+    tour = get_tournament(user_id, tid)
     if not tour:
-        return jsonify({'error': f'Torneio {tid} não encontrado. Importe as mãos (hand history) '
-                                 f'desse torneio antes de subir o resultado.'}), 404
+        return {'kind': 'summary', 'tournament_id': tid,
+                'error': f'Torneio {tid} não encontrado. Importe as mãos (hand history) desse '
+                         f'torneio antes de subir o resultado.'}, 404
     hero = tour.get('hero')
 
-    field_size = (res or ps).get('player_count') if res else ps.get('player_count')
+    field_size = res.get('player_count') if res else ps.get('player_count')
     prize_pool = (res or ps).get('prize_pool')
 
     if res:
         # ── ACR: premiação por jogador no arquivo (soma re-entradas do hero) ──
         mine = [f for f in res['finishes'] if hero and f['player'] == hero]
         if not mine:
-            return jsonify({'error': f'O jogador "{hero}" não aparece no arquivo de resultados.'}), 422
+            return {'kind': 'summary', 'tournament_id': tid,
+                    'error': f'O jogador "{hero}" não aparece no arquivo de resultados.'}, 422
         prize = round(sum(f['prize'] for f in mine), 2)
         places = [f['place'] for f in mine if f['place'] is not None]
         place = min(places) if places else None
@@ -800,12 +796,28 @@ def tournament_results():
             profit = tour.get('profit')
         started_at = ps.get('started_at')
 
-    update_tournament_financials(g.user_id, tid, buy_in=buy_in, prize=prize, profit=profit,
+    update_tournament_financials(user_id, tid, buy_in=buy_in, prize=prize, profit=profit,
                                  place=place, field_size=field_size, prize_pool=prize_pool,
                                  started_at=started_at)
-    return jsonify({'tournament_id': tid, 'hero': hero, 'place': place, 'prize': prize,
-                    'buy_in': buy_in, 'profit': profit, 'field_size': field_size,
-                    'prize_pool': prize_pool})
+    return {'kind': 'summary', 'tournament_id': tid, 'hero': hero, 'place': place, 'prize': prize,
+            'buy_in': buy_in, 'profit': profit, 'field_size': field_size,
+            'prize_pool': prize_pool}, 200
+
+
+@app.route('/tournament/results', methods=['POST'])
+@require_auth
+def tournament_results():
+    """Complementa os dados de um torneio com o arquivo de RESULTADOS (Tournament Summary).
+    Dois formatos: ACR/WPN '.ots' (JSON) e PokerStars (texto)."""
+    content  = _extract_content(request)
+    filename = _extract_upload_filename(request)
+    if not content:
+        return jsonify({'error': 'Conteúdo ausente'}), 400
+    payload, status = _apply_tournament_summary(g.user_id, content, filename)
+    if status is None:
+        return jsonify({'error': 'Arquivo de resultados não reconhecido. Esperado o Tournament '
+                                 'Summary do PokerStars (.txt) ou do ACR/WPN (.ots).'}), 422
+    return jsonify(payload), status
 
 
 def _analyze_impl():
@@ -824,6 +836,12 @@ def _analyze_impl():
         return jsonify({'error': 'Arquivo inválido ou formato não suportado'}), 422
 
     if not hands:
+        # Sem mãos: pode ser um Tournament Summary jogado no importador principal (fluxo natural do
+        # usuário — ele não distingue os tipos de arquivo). Detecta e roteia pro complemento do
+        # torneio em vez de dar "Nenhuma mão encontrada".
+        payload, status = _apply_tournament_summary(g.user_id, content, upload_filename)
+        if status is not None:
+            return jsonify(payload), status
         return jsonify({'error': 'Nenhuma mão encontrada'}), 422
 
     results, hand_results, errors = _analyze_hands(hands)

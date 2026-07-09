@@ -12,18 +12,19 @@ interface QueueItem {
   name: string;
   status: QueueStatus;
   error?: string;
+  note?: string;   // mensagem positiva (ex.: summary complementado) — não é erro
 }
 
 type Action =
   | { type: "ADD"; items: QueueItem[] }
-  | { type: "SET_STATUS"; id: string; status: QueueStatus; error?: string }
+  | { type: "SET_STATUS"; id: string; status: QueueStatus; error?: string; note?: string }
   | { type: "DISMISS"; id: string }
   | { type: "CLEAR_DONE" };
 
 function reducer(state: QueueItem[], action: Action): QueueItem[] {
   switch (action.type) {
     case "ADD":       return [...state, ...action.items];
-    case "SET_STATUS": return state.map((i) => i.id === action.id ? { ...i, status: action.status, error: action.error } : i);
+    case "SET_STATUS": return state.map((i) => i.id === action.id ? { ...i, status: action.status, error: action.error, note: action.note } : i);
     case "DISMISS":   return state.filter((i) => i.id !== action.id);
     case "CLEAR_DONE": return state.filter((i) => i.status !== "done");
     default:          return state;
@@ -65,6 +66,14 @@ function QueuePanel({
   onClearDone: () => void;
 }) {
   const pending = items.filter((i) => i.status === "queued" || i.status === "processing").length;
+  const anyDone = items.some((i) => i.status === "done");
+  const anyError = items.some((i) => i.status === "error");
+  // Cabeçalho coerente com o resultado: não dizer "concluída" quando tudo falhou (a msg não condiz).
+  const headerLabel = pending > 0
+    ? `Importando ${items.length} arquivo${items.length !== 1 ? "s" : ""}`
+    : anyDone
+      ? (anyError ? "Concluído com avisos" : "Importação concluída")
+      : "Não foi possível importar";
 
   return (
     <div className="fixed bottom-4 right-4 z-50 w-80 rounded-xl border border-border bg-background shadow-2xl">
@@ -72,7 +81,7 @@ function QueuePanel({
         <div className="flex items-center gap-2">
           <UploadCloud className="size-3.5 text-primary" />
           <span className="font-mono text-[11px] font-bold uppercase tracking-widest-2 text-foreground">
-            {pending > 0 ? `Importando ${items.length} arquivo${items.length !== 1 ? "s" : ""}` : "Importação concluída"}
+            {headerLabel}
           </span>
         </div>
         {pending === 0 && (
@@ -92,7 +101,7 @@ function QueuePanel({
             <div className="flex-1 min-w-0">
               <p className="text-xs text-foreground truncate font-medium leading-tight">{item.name}</p>
               <p className={cn("font-mono text-[10px] mt-0.5", STATUS_COLOR[item.status])}>
-                {item.error ?? STATUS_LABEL[item.status]}
+                {item.note ?? item.error ?? STATUS_LABEL[item.status]}
               </p>
             </div>
             {(item.status === "done" || item.status === "error") && (
@@ -108,8 +117,9 @@ function QueuePanel({
         ))}
       </ul>
 
-      {/* Aviso pós-import: o solver GTO processa as mãos em segundo plano e pode demorar. */}
-      {pending === 0 && items.some((i) => i.status === "done") && (
+      {/* Aviso pós-import: o solver GTO processa as mãos em segundo plano e pode demorar. Só quando
+          houve import de MÃOS (item done sem note) — summary complementado não gera análise GTO. */}
+      {pending === 0 && items.some((i) => i.status === "done" && !i.note) && (
         <div className="flex items-start gap-2 border-t border-border bg-primary/[0.05] px-4 py-2.5">
           <Info className="mt-0.5 size-3.5 shrink-0 text-primary" aria-hidden />
           <p className="text-[11px] leading-snug text-muted-foreground">
@@ -161,9 +171,17 @@ export function useUploadQueue(onAllDone?: () => void) {
       try {
         if (!file) throw new Error("Arquivo não encontrado na fila");
         const content = await file.text();
-        await tournaments.analyze(content, file.name);
-        dispatch({ type: "SET_STATUS", id: next.id, status: "done" });
-        metrics.addXp("tournament_imported").catch(() => null);
+        const r = await tournaments.analyze(content, file.name);
+        if (r?.kind === "summary") {
+          // Era um Tournament Summary, não hand history: dados do torneio complementados.
+          const note = r.field_size != null
+            ? `Dados complementados: ${r.field_size} jogadores ✓`
+            : "Dados do torneio complementados ✓";
+          dispatch({ type: "SET_STATUS", id: next.id, status: "done", note });
+        } else {
+          dispatch({ type: "SET_STATUS", id: next.id, status: "done" });
+          metrics.addXp("tournament_imported").catch(() => null);
+        }
         window.dispatchEvent(new CustomEvent("leaklab:tournament-imported"));
       } catch (e: unknown) {
         const msg = e instanceof Error ? e.message : "Erro ao processar arquivo";
