@@ -8,6 +8,7 @@ import { AuthProvider, useAuth } from "@/lib/auth";
 import { FeedbackWidget } from "@/components/hud/FeedbackWidget";
 import { CookieConsent } from "@/components/hud/CookieConsent";
 import Landing from "./pages/Landing.tsx";
+import Privacy from "./pages/Privacy.tsx";
 import Index from "./pages/Index.tsx";
 import Login from "./pages/Login.tsx";
 import Tournaments from "./pages/Tournaments.tsx";
@@ -120,6 +121,7 @@ const App = () => (
         <BrowserRouter>
           <Routes>
             <Route path="/" element={<PublicRoute><Landing /></PublicRoute>} />
+            <Route path="/privacidade" element={<Privacy />} />
             <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
             <Route path="/coach-apply" element={<CoachApply />} />
             <Route

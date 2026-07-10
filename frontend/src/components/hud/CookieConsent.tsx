@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { Cookie } from "lucide-react";
 import { analyticsEnabled, getStoredConsent, setConsent } from "@/lib/analytics";
@@ -23,7 +24,12 @@ export function CookieConsent() {
       <div className="mx-auto flex max-w-3xl flex-col gap-3 rounded-xl border border-border bg-hud-surface/95 p-4 shadow-elevated backdrop-blur sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-start gap-2.5">
           <Cookie className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden />
-          <p className="text-xs leading-relaxed text-muted-foreground">{t("cookies.text")}</p>
+          <p className="text-xs leading-relaxed text-muted-foreground">
+            {t("cookies.text")}{" "}
+            <Link to="/privacidade" className="text-primary underline-offset-2 hover:underline">
+              {t("cookies.more")}
+            </Link>
+          </p>
         </div>
         <div className="flex shrink-0 items-center gap-2">
           <button

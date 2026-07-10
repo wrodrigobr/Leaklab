@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(legal): página de Política de Privacidade (rascunho LGPD) (#growth)
+
+> Fecha o mínimo de LGPD junto do banner de cookies. Nova página **`/privacidade`** (`Privacy.tsx`), pública (logado ou não, sem guard), com 12 seções orientadas à LGPD: quem somos, dados coletados, uso, base legal (contrato/consentimento/legítimo interesse), cookies/analytics, compartilhamento (Stripe/Google/Cloudflare/email/Sentry, sem venda de dados), transferência internacional, retenção, direitos do titular, segurança, menores, contato. Trechos entre [colchetes] são placeholders pro jurídico preencher (razão social, CNPJ, encarregado, email). **É rascunho, não aconselhamento jurídico** — o usuário revisa com quem cuida do legal. Linkada do banner de cookies ("Saiba mais") e do footer da landing ("Privacidade"). i18n dos rótulos (`cookies.more`, `footer.privacy`) nas 3 línguas; o corpo da política é PT (jurisdição BR). tsc + build OK. **Deploy:** frontend (Cloudflare).
+
 ### feat(growth): aviso de cookies (LGPD) + Google Consent Mode v2 (#growth)
 
 > Complemento da fundação de tracking: banner de cookies leve (Aceitar/Recusar) + **Consent Mode v2**. `analytics.ts` agora seta `consent default` NEGADO (`ad_storage`/`analytics_storage`/`ad_user_data`/`ad_personalization` = denied, `wait_for_update: 500`) até o usuário decidir; `setConsent()` grava a escolha em localStorage e faz `consent update` no gtag. Novo `CookieConsent.tsx` (renderizado global no `App`, aparece na landing e no app) que **só aparece quando há tracking configurado** (`analyticsEnabled`) e ainda não houve decisão — em dev (sem IDs) nunca aparece. Enquanto negado, o gtag não grava cookie de análise/anúncio (compat LGPD), só pings sem identificador. i18n `common.cookies` (3 línguas). tsc + build OK. **Deploy:** frontend (Cloudflare). Ainda pendente (task de conteúdo/legal, não código): **página de política de privacidade** descrevendo o uso — o banner não linka porque ela não existe.

@@ -358,12 +358,20 @@ function Footer() {
         <p className="font-mono text-[10px] text-muted-foreground uppercase tracking-widest-2">
           {t("footer.copyright")}
         </p>
-        <Link
-          to="/login"
-          className="font-mono text-[10px] text-muted-foreground hover:text-foreground transition-colors uppercase tracking-widest-2"
-        >
-          {t("footer.login")}
-        </Link>
+        <div className="flex items-center gap-4">
+          <Link
+            to="/privacidade"
+            className="font-mono text-[10px] text-muted-foreground hover:text-foreground transition-colors uppercase tracking-widest-2"
+          >
+            {t("footer.privacy")}
+          </Link>
+          <Link
+            to="/login"
+            className="font-mono text-[10px] text-muted-foreground hover:text-foreground transition-colors uppercase tracking-widest-2"
+          >
+            {t("footer.login")}
+          </Link>
+        </div>
       </div>
     </footer>
   );
