@@ -29,15 +29,15 @@
     "sites": {
       "pokerstars": {
         "name": "PokerStars",
-        "where": "In the client: Menu → Hands → Export hand history."
+        "where": "In the lobby: Settings → Playing History → Hand History → tick 'Save My Hand History' and Apply. Saved by default to C:\\Program Files\\PokerStars\\HandHistory\\. Not available on mobile."
       },
       "ggpoker": {
         "name": "GGPoker",
-        "where": "In the client: Hand History section, then download the file."
+        "where": "In the client, open PokerCraft (top menu). Pick game type, date range and stakes → Show → select the sessions → Download Hand History. Game Summaries (for the results file) are in the same place. GGPoker does not send them by email."
       },
       "acr": {
         "name": "ACR / WPN",
-        "where": "In the client: Hand History. For prize and ROI, also upload the results file (.ots)."
+        "where": "In the client, click the settings gear (top right) → Hand Histories (left menu) → choose the destination folders for Hand Histories and Tournament Summaries → OK. For prize and ROI, also upload the results file (.ots)."
       },
       "coinpoker": {
         "name": "CoinPoker",

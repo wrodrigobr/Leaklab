@@ -40,9 +40,9 @@
     "col_site": "Site",
     "col_formats": "Formatos",
     "col_where": "Onde obter o histórico",
-    "ps_where": "Menu → Mãos → Exportar histórico de mãos",
-    "gg_where": "Histórico de Mãos, no cliente",
-    "acr_where": "Hand History no cliente (WPN/ACR)",
+    "ps_where": "Configurações → Histórico de Jogo → Histórico de Mãos → Salvar Meu Histórico de Mãos",
+    "gg_where": "PokerCraft (no cliente) → Históricos de Mãos → Baixar Histórico",
+    "acr_where": "Engrenagem (canto superior direito) → Hand Histories → escolher a pasta",
     "p2": "Você pode enviar vários arquivos de uma vez. O mesmo torneio é consolidado: quando o site divide uma HH longa em arquivos por dia (mesmo T#), as mãos novas são mescladas automaticamente.",
     "p3": "No <strong>ACR/WPN</strong>, o buy-in vem do nome do arquivo. Para o prêmio e o ROI, envie também o arquivo de <strong>resultados</strong> do torneio (formato <strong>.ots</strong>), assim o lucro é calculado corretamente."
   },

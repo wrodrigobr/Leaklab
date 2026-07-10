@@ -40,9 +40,9 @@
     "col_site": "Site",
     "col_formats": "Formats",
     "col_where": "Where to get the history",
-    "ps_where": "Menu → Hands → Export hand history",
-    "gg_where": "Hand History, in the client",
-    "acr_where": "Hand History in the client (WPN/ACR)",
+    "ps_where": "Settings → Playing History → Hand History → Save My Hand History",
+    "gg_where": "PokerCraft (in the client) → Hand History → Download Hand History",
+    "acr_where": "Settings gear (top right) → Hand Histories → choose the folder",
     "p2": "You can upload multiple files at once. The same tournament is consolidated: when the site splits a long hand history into per-day files (same T#), the new hands are merged automatically.",
     "p3": "On <strong>ACR/WPN</strong>, the buy-in comes from the file name. For the prize and ROI, also upload the tournament <strong>results</strong> file (<strong>.ots</strong> format) so profit is computed correctly."
   },

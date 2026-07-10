@@ -29,15 +29,15 @@
     "sites": {
       "pokerstars": {
         "name": "PokerStars",
-        "where": "No cliente: Menu → Mãos → Exportar histórico de mãos."
+        "where": "No lobby: Configurações → Histórico de Jogo → Histórico de Mãos → marque 'Salvar Meu Histórico de Mãos' e clique em Aplicar. Por padrão salva em C:\\Program Files\\PokerStars\\HandHistory\\. Não funciona no celular."
       },
       "ggpoker": {
         "name": "GGPoker",
-        "where": "No cliente: seção Histórico de Mãos, e baixe o arquivo."
+        "where": "No cliente, abra o PokerCraft (menu superior). Escolha tipo de jogo, período e stakes → Mostrar → selecione as sessões → Baixar Histórico. Os Resumos de Jogo (para o summary) saem no mesmo lugar. A GGPoker não envia por email."
       },
       "acr": {
         "name": "ACR / WPN",
-        "where": "No cliente: Hand History. Para prêmio e ROI, envie também o arquivo de resultados (.ots)."
+        "where": "No cliente, clique na engrenagem (canto superior direito) → Hand Histories (menu à esquerda) → escolha as pastas de Hand Histories e Tournament Summaries → OK. Para prêmio e ROI, envie também o arquivo de resultados (.ots)."
       },
       "coinpoker": {
         "name": "CoinPoker",
