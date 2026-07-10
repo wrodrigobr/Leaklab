@@ -20,7 +20,7 @@
     },
     "ready": {
       "title": "You're all set!",
-      "desc": "Start by importing your first tournament. In under 2 minutes you'll have a complete diagnosis of your game and a personalized study plan."
+      "desc": "Import your first tournament for a full diagnosis, or see a sample analysis now."
     }
   },
   "exportGuide": {
@@ -60,5 +60,7 @@
     "ctaTitle": "This is one hand. You have hundreds.",
     "ctaSub": "Import your history and see all your leaks.",
     "ctaImport": "Import my history"
-  }
+  },
+  "finishImport": "Import now",
+  "finishSample": "See an example first"
 }

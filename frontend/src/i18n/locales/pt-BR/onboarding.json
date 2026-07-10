@@ -20,7 +20,7 @@
     },
     "ready": {
       "title": "Você está pronto!",
-      "desc": "Comece importando seu primeiro torneio. Em menos de 2 minutos você terá um diagnóstico completo do seu jogo e um plano de estudo personalizado."
+      "desc": "Importe seu primeiro torneio para um diagnóstico completo, ou veja uma análise de exemplo agora."
     }
   },
   "exportGuide": {
@@ -60,5 +60,7 @@
     "ctaTitle": "Isto é uma mão. Você tem centenas.",
     "ctaSub": "Importe o seu histórico e veja todos os seus leaks.",
     "ctaImport": "Importar meu histórico"
-  }
+  },
+  "finishImport": "Importar agora",
+  "finishSample": "Ver exemplo primeiro"
 }

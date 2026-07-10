@@ -1,4 +1,5 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { FileUp, ShieldCheck, Target, Sparkles, UploadCloud, HelpCircle, Eye } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -20,6 +21,12 @@ export function EmptyDashboard({ onComplete }: Props) {
   const [showSample, setShowSample] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const { enqueue, panel } = useUploadQueue(onComplete);
+  const [searchParams] = useSearchParams();
+
+  // Deep-link do OnboardingModal ("Ver exemplo primeiro") → /dashboard?onboarding=sample.
+  useEffect(() => {
+    if (searchParams.get("onboarding") === "sample") setShowSample(true);
+  }, [searchParams]);
 
   const MODULES = [
     { code: t("empty.m1code"), title: t("empty.m1title"), description: t("empty.m1desc"), icon: Target },
