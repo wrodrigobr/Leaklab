@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(onboarding): guia "Como exportar suas mãos" por sala (P0 do onboarding didático) (#onboarding)
+
+> Ataca o atrito nº1 de ativação: o jogador não saber onde achar o .txt de hand history. Novo modal **`HandExportGuide`** (por sala: PokerStars, GGPoker, ACR/WPN, CoinPoker, com `SiteLogo`), acionado de **3 pontos do funil**: dropzone do `EmptyDashboard` ("não sabe onde achar?"), passo de upload do `OnboardingModal`, e a seção de redes da **landing deslogada**. Conteúdo conciso e **verificado** (alinhado ao /docs, sem inventar caminhos de menu). Design guiado por um pass de UX (lista acessível de baixa fricção em vez de grade→detalhe, dado que o conteúdo é uma linha por sala): `role="dialog"`, `aria-modal`, Esc fecha, foco inicial no botão fechar, CTA "Abrir upload" quando logado. Também: copy do `OnboardingModal` atualizada pra 4 sites + hint apontando pro guia. i18n bloco `exportGuide` nas 3 línguas. Primeira peça (P0) do plano de onboarding; próximas: landing "mostra o produto" (Decision Card de exemplo), caminho "mão de exemplo" (guest) e polimento do modal. tsc + build OK. **Deploy:** frontend (Cloudflare). Nota: a ferramenta claude.ai/design (DesignSync) exige login interativo indisponível no ambiente; o pass de UX foi feito por agente especialista ancorado no nosso design system.
+
 ### fix(copy): CoinPoker listado nas fontes suportadas do upload (#tournaments)
 
 > O parser já suporta CoinPoker (detecção de site, patterns, IDs, timestamps) e havia torneio coinpoker no banco, mas a copy do upload de hand history listava só PokerStars/GGPoker/ACR. Adicionado **CoinPoker** onde as fontes são mencionadas: `landing.subtitle`, `landing.step1Desc`, o `desc` do EmptyDashboard (dashboard.json) e o array `SUPPORTED` do `UploadZone.tsx` (que também estava sem ACR). 3 línguas. A hint do **Tournament Summary** fica intacta (só PS/GG/ACR têm parser de summary; CoinPoker não tem). Só copy, sem mudança de lógica. tsc + build OK. **Deploy:** frontend (Cloudflare).

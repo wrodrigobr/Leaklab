@@ -1,11 +1,13 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
   Upload, Brain, TrendingUp, ChevronRight,
-  Check, Zap, BookOpen, Target, Activity,
+  Check, Zap, BookOpen, Target, Activity, HelpCircle,
 } from "lucide-react";
 import { LEVEL_ICONS } from "@/components/hud/LevelIcons";
 import { SiteLogo } from "@/components/hud/SiteLogo";
+import { HandExportGuide } from "@/components/hud/HandExportGuide";
 import logoHorizontal from "@/assets/brand/grindlab_final_horizontal.svg";
 
 const LEVELS = ["Iniciante", "Estudante", "Grinder", "Regular", "Sólido", "Expert", "Elite"] as const;
@@ -84,6 +86,8 @@ function HeroSection() {
 
 function SupportedNetworksSection() {
   const { t } = useTranslation("landing");
+  const { t: to } = useTranslation("onboarding");
+  const [showGuide, setShowGuide] = useState(false);
   const NETWORKS = [
     { site: "pokerstars", name: "PokerStars" },
     { site: "ggpoker",    name: "GGPoker" },
@@ -111,7 +115,16 @@ function SupportedNetworksSection() {
             </div>
           ))}
         </div>
+        <button
+          type="button"
+          onClick={() => setShowGuide(true)}
+          className="mt-6 inline-flex items-center gap-1.5 text-xs font-medium text-primary transition-colors hover:text-primary-glow underline-offset-4 hover:underline"
+        >
+          <HelpCircle className="size-3.5" aria-hidden />
+          {to("exportGuide.trigger")}
+        </button>
       </div>
+      <HandExportGuide open={showGuide} onClose={() => setShowGuide(false)} />
     </section>
   );
 }

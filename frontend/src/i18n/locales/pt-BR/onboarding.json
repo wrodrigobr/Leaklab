@@ -11,8 +11,8 @@
     },
     "upload": {
       "title": "Importe sua hand history",
-      "desc": "Exporte um arquivo .txt do PokerStars ou GGPoker e importe aqui. O sistema analisa automaticamente cada decisão, equity, posição, ICM, e gera um relatório completo da sua sessão.",
-      "hint": "Onde encontrar: PokerStars → Menu → Mãos → Exportar histórico; GGPoker → Histórico de Mãos."
+      "desc": "Exporte um arquivo .txt do PokerStars, GGPoker, ACR ou CoinPoker e importe aqui. O sistema analisa automaticamente cada decisão, equity, posição, ICM, e gera um relatório completo da sua sessão.",
+      "hint": "Não sabe onde achar o arquivo? Veja o guia de exportação por site."
     },
     "train": {
       "title": "Treine com Ghost Table & Sparring",
@@ -22,5 +22,32 @@
       "title": "Você está pronto!",
       "desc": "Comece importando seu primeiro torneio. Em menos de 2 minutos você terá um diagnóstico completo do seu jogo e um plano de estudo personalizado."
     }
+  },
+  "exportGuide": {
+    "title": "Como exportar suas mãos",
+    "intro": "Exporte o arquivo .txt de mãos do seu site e faça o upload aqui. O sistema detecta o site automaticamente.",
+    "sites": {
+      "pokerstars": {
+        "name": "PokerStars",
+        "where": "No cliente: Menu → Mãos → Exportar histórico de mãos."
+      },
+      "ggpoker": {
+        "name": "GGPoker",
+        "where": "No cliente: seção Histórico de Mãos, e baixe o arquivo."
+      },
+      "acr": {
+        "name": "ACR / WPN",
+        "where": "No cliente: Hand History. Para prêmio e ROI, envie também o arquivo de resultados (.ots)."
+      },
+      "coinpoker": {
+        "name": "CoinPoker",
+        "where": "No cliente: Histórico de Mãos, exporte o arquivo .txt."
+      }
+    },
+    "note": "Pode enviar vários arquivos de uma vez. O mesmo torneio é consolidado automaticamente quando o site divide a hand history em vários arquivos.",
+    "gotIt": "Entendi",
+    "close": "Fechar",
+    "trigger": "Como exportar suas mãos",
+    "openUpload": "Abrir upload"
   }
 }

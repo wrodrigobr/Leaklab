@@ -11,8 +11,8 @@
     },
     "upload": {
       "title": "Import your hand history",
-      "desc": "Export a .txt file from PokerStars or GGPoker and import it here. The system automatically analyzes every decision, equity, position, ICM, and generates a complete report of your session.",
-      "hint": "Where to find it: PokerStars → Menu → Hands → Export hand history; GGPoker → Hand History."
+      "desc": "Export a .txt file from PokerStars, GGPoker, ACR or CoinPoker and import it here. The system automatically analyzes every decision, equity, position, ICM, and generates a full report of your session.",
+      "hint": "Not sure where to find the file? Check the per-site export guide."
     },
     "train": {
       "title": "Train with Ghost Table & Sparring",
@@ -22,5 +22,32 @@
       "title": "You're all set!",
       "desc": "Start by importing your first tournament. In under 2 minutes you'll have a complete diagnosis of your game and a personalized study plan."
     }
+  },
+  "exportGuide": {
+    "title": "How to export your hands",
+    "intro": "Export the .txt hand history file from your site and upload it here. We detect the site automatically.",
+    "sites": {
+      "pokerstars": {
+        "name": "PokerStars",
+        "where": "In the client: Menu → Hands → Export hand history."
+      },
+      "ggpoker": {
+        "name": "GGPoker",
+        "where": "In the client: Hand History section, then download the file."
+      },
+      "acr": {
+        "name": "ACR / WPN",
+        "where": "In the client: Hand History. For prize and ROI, also upload the results file (.ots)."
+      },
+      "coinpoker": {
+        "name": "CoinPoker",
+        "where": "In the client: Hand History, export the .txt file."
+      }
+    },
+    "note": "You can upload multiple files at once. The same tournament is merged automatically when the site splits the hand history across files.",
+    "gotIt": "Got it",
+    "close": "Close",
+    "trigger": "How to export your hands",
+    "openUpload": "Open upload"
   }
 }

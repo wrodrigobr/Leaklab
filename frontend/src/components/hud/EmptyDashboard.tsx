@@ -1,8 +1,9 @@
 import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { FileUp, ShieldCheck, Target, Sparkles, UploadCloud } from "lucide-react";
+import { FileUp, ShieldCheck, Target, Sparkles, UploadCloud, HelpCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useUploadQueue } from "@/components/hud/UploadQueue";
+import { HandExportGuide } from "@/components/hud/HandExportGuide";
 
 const SUPPORTED = [".txt", ".log"];
 
@@ -12,7 +13,9 @@ interface Props {
 
 export function EmptyDashboard({ onComplete }: Props) {
   const { t } = useTranslation("dashboard");
+  const { t: to } = useTranslation("onboarding");
   const [isDragging, setIsDragging] = useState(false);
+  const [showGuide, setShowGuide] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const { enqueue, panel } = useUploadQueue(onComplete);
 
@@ -35,6 +38,7 @@ export function EmptyDashboard({ onComplete }: Props) {
   return (
     <>
     {panel}
+    <HandExportGuide open={showGuide} onClose={() => setShowGuide(false)} onOpenUpload={() => inputRef.current?.click()} />
     <div className="space-y-4">
       <section className="relative">
         <div className="absolute -top-5 left-0 font-mono text-[10px] uppercase tracking-widest-2 text-muted-foreground">
@@ -102,6 +106,15 @@ export function EmptyDashboard({ onComplete }: Props) {
               <span className="h-3 w-px bg-border" aria-hidden />
               <span>AES-256</span>
             </div>
+
+            <button
+              type="button"
+              onClick={() => setShowGuide(true)}
+              className="mt-4 inline-flex items-center gap-1.5 text-xs font-medium text-primary transition-colors hover:text-primary-glow underline-offset-4 hover:underline"
+            >
+              <HelpCircle className="size-3.5" aria-hidden />
+              {to("exportGuide.trigger")}
+            </button>
           </div>
         </div>
       </section>

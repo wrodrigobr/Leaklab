@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Sparkles, Upload, Swords, Rocket, ChevronLeft, ChevronRight, X } from "lucide-react";
+import { Sparkles, Upload, Swords, Rocket, ChevronLeft, ChevronRight, X, HelpCircle } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { auth as authApi } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
+import { HandExportGuide } from "@/components/hud/HandExportGuide";
 
 const STEPS = ["welcome", "upload", "train", "ready"] as const;
 type Step = typeof STEPS[number];
@@ -25,6 +26,7 @@ export function OnboardingModal({ onClose }: Props) {
   const navigate = useNavigate();
   const [step, setStep] = useState(0);
   const [saving, setSaving] = useState(false);
+  const [showGuide, setShowGuide] = useState(false);
 
   const current = STEPS[step];
   const isLast  = step === STEPS.length - 1;
@@ -46,6 +48,8 @@ export function OnboardingModal({ onClose }: Props) {
   };
 
   return (
+    <>
+    <HandExportGuide open={showGuide} onClose={() => setShowGuide(false)} />
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm p-4">
       <div className="w-full max-w-md rounded-xl border border-border bg-hud-surface shadow-elevated flex flex-col">
 
@@ -94,9 +98,19 @@ export function OnboardingModal({ onClose }: Props) {
           </p>
 
           {current === "upload" && (
-            <p className="text-xs text-muted-foreground/70 bg-muted/40 rounded-lg px-4 py-2.5 leading-relaxed">
-              {t("steps.upload.hint")}
-            </p>
+            <>
+              <p className="text-xs text-muted-foreground/70 bg-muted/40 rounded-lg px-4 py-2.5 leading-relaxed">
+                {t("steps.upload.hint")}
+              </p>
+              <button
+                type="button"
+                onClick={() => setShowGuide(true)}
+                className="inline-flex items-center gap-1.5 text-xs font-medium text-primary transition-colors hover:text-primary-glow underline-offset-4 hover:underline"
+              >
+                <HelpCircle className="size-3.5" aria-hidden />
+                {t("exportGuide.trigger")}
+              </button>
+            </>
           )}
         </div>
 
@@ -140,5 +154,6 @@ export function OnboardingModal({ onClose }: Props) {
         </div>
       </div>
     </div>
+    </>
   );
 }
