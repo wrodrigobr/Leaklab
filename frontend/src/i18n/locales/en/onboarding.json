@@ -41,7 +41,7 @@
       },
       "coinpoker": {
         "name": "CoinPoker",
-        "where": "In the client: Hand History, export the .txt file."
+        "where": "In the client, log in and open PokerIntel (nav menu) → EV Chart page → select the date range → click 'Download Hands' to download your hand history."
       }
     },
     "note": "You can upload multiple files at once. The same tournament is merged automatically when the site splits the hand history across files.",

@@ -44,7 +44,8 @@
     "gg_where": "PokerCraft (en el cliente) → Historial de Manos → Descargar Historial",
     "acr_where": "Engranaje (arriba a la derecha) → Hand Histories → elegir la carpeta",
     "p2": "Puedes subir varios archivos a la vez. El mismo torneo se consolida: cuando el sitio divide un historial largo en archivos por día (mismo T#), las manos nuevas se fusionan automáticamente.",
-    "p3": "En <strong>ACR/WPN</strong>, el buy-in viene del nombre del archivo. Para el premio y el ROI, sube también el archivo de <strong>resultados</strong> del torneo (formato <strong>.ots</strong>), así el beneficio se calcula correctamente."
+    "p3": "En <strong>ACR/WPN</strong>, el buy-in viene del nombre del archivo. Para el premio y el ROI, sube también el archivo de <strong>resultados</strong> del torneo (formato <strong>.ots</strong>), así el beneficio se calcula correctamente.",
+    "coin_where": "PokerIntel → EV Chart → seleccionar período → Download Hands"
   },
   "rating": {
     "eyebrow": "Documentación",

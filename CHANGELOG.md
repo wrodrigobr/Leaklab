@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(onboarding): passo a passo real de exportação do CoinPoker (PokerIntel) + linha no /docs (#onboarding)
+
+> Fecha as 4 salas com fluxo verificado. **CoinPoker:** via **PokerIntel** (login no cliente → menu de navegação → página EV Chart → selecionar período → botão 'Download Hands'). Atualizado o `HandExportGuide` (`onboarding.exportGuide.sites.coinpoker`) e **adicionada a linha do CoinPoker na tabela do /docs** (nova `import.coin_where` + row no `Docs.tsx`, que antes só listava PS/GG/ACR). 3 línguas. tsc + build OK. **Deploy:** frontend (Cloudflare).
+
 ### fix(onboarding): passo a passo real de exportação (PokerStars + GGPoker + ACR) no guia + /docs (#onboarding)
 
 > Os fluxos de exportação no guia estavam genéricos/imprecisos. Atualizados com o passo a passo verificado de cada sala. **PokerStars:** lobby → Configurações → Histórico de Jogo → Histórico de Mãos → 'Salvar Meu Histórico de Mãos' → Aplicar; pasta padrão `C:\Program Files\PokerStars\HandHistory\`; não funciona no celular. **GGPoker:** via **PokerCraft** (menu superior no cliente desktop/mobile) → tipo de jogo, período e stakes → Mostrar → selecionar sessões → Baixar Histórico; os Resumos de Jogo (para o "Enviar summary") saem no mesmo lugar (confirma que o GG **exporta** HH via PokerCraft). **ACR/WPN:** engrenagem (canto superior direito) → Hand Histories (menu à esquerda) → escolher as pastas de Hand Histories e Tournament Summaries → OK; mais o lembrete do arquivo de resultados (.ots) para prêmio/ROI. Atualizado no `HandExportGuide` (`onboarding.exportGuide.sites.*`) e na tabela do `/docs` (`import.*_where`), 3 línguas. Só copy. build OK. **Deploy:** frontend (Cloudflare).

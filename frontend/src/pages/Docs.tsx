@@ -177,6 +177,7 @@ export default function Docs() {
                   ["PokerStars", "MTT · SNG · Cash", t("import.ps_where")],
                   ["GGPoker",    "MTT · SNG · Spin", t("import.gg_where")],
                   ["ACR / WPN",  "MTT · SNG",        t("import.acr_where")],
+                  ["CoinPoker",  "MTT · SNG · Cash", t("import.coin_where")],
                 ]}
               />
               <p dangerouslySetInnerHTML={{ __html: t("import.p2") }} />
