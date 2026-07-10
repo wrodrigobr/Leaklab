@@ -21,6 +21,8 @@ const ADS_PURCHASE_LABEL = (import.meta.env.VITE_ADS_PURCHASE_LABEL as string | 
 const ENABLED = !!(GA_ID || ADS_ID);
 let started = false;
 
+const CONSENT_KEY = "gl_consent";   // "granted" | "denied"
+
 type GtagArgs = [string, ...unknown[]];
 declare global {
   interface Window { dataLayer?: unknown[]; gtag?: (...args: GtagArgs) => void; }
@@ -31,13 +33,49 @@ function gtag(...args: GtagArgs) {
   window.dataLayer.push(args);
 }
 
-/** Carrega o gtag.js uma vez e configura GA4 + Ads. No-op se nada configurado. */
+/** true se há IDs configurados (o banner de cookies só aparece se o tracking existe). */
+export function analyticsEnabled(): boolean {
+  return ENABLED;
+}
+
+/** Decisão de consentimento já registrada, ou null (ainda não decidiu → mostrar banner). */
+export function getStoredConsent(): "granted" | "denied" | null {
+  try {
+    const v = localStorage.getItem(CONSENT_KEY);
+    return v === "granted" || v === "denied" ? v : null;
+  } catch {
+    return null;
+  }
+}
+
+const CONSENT_SIGNALS = ["ad_storage", "analytics_storage", "ad_user_data", "ad_personalization"] as const;
+
+function consentState(granted: boolean): Record<string, string> {
+  const v = granted ? "granted" : "denied";
+  return Object.fromEntries(CONSENT_SIGNALS.map((k) => [k, v]));
+}
+
+/** Grava a decisão e AVISA o gtag (Consent Mode v2). Chamado pelo banner de cookies. */
+export function setConsent(granted: boolean): void {
+  try { localStorage.setItem(CONSENT_KEY, granted ? "granted" : "denied"); } catch { /* ignore */ }
+  if (ENABLED && window.dataLayer) {
+    gtag("consent", "update", consentState(granted));
+  }
+}
+
+/** Carrega o gtag.js uma vez e configura GA4 + Ads, com Consent Mode v2 (default negado até o
+ *  aceite). No-op se nada configurado. */
 export function initAnalytics(): void {
   if (started || !ENABLED || typeof window === "undefined") return;
   started = true;
 
   window.dataLayer = window.dataLayer || [];
   window.gtag = (...args: GtagArgs) => window.dataLayer!.push(args);
+
+  // Consent Mode: default = a decisão salva, ou NEGADO até o usuário aceitar no banner. Com
+  // consentimento negado o gtag não grava cookies (LGPD), só envia pings sem identificador.
+  const granted = getStoredConsent() === "granted";
+  gtag("consent", "default", { ...consentState(granted), wait_for_update: 500 });
 
   const primary = GA_ID || ADS_ID!;
   const s = document.createElement("script");

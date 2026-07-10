@@ -155,5 +155,11 @@
     "error": "No se pudo enviar. Inténtalo de nuevo.",
     "nudge": "¿Disfrutando GrindLab? Manda una sugerencia, leo cada una.",
     "nudgeCta": "Enviar sugerencia"
+  },
+  "cookies": {
+    "title": "Cookies",
+    "text": "Usamos cookies de análisis y publicidad para medir y mejorar la plataforma. Puedes aceptar o rechazar.",
+    "accept": "Aceptar",
+    "reject": "Rechazar"
   }
 }
