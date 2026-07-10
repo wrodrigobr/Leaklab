@@ -3,11 +3,12 @@ import { ArrowLeft } from "lucide-react";
 import logoHorizontal from "@/assets/brand/grindlab_final_horizontal.svg";
 
 /**
- * Política de Privacidade (RASCUNHO, orientada à LGPD). Página pública (logada ou não).
- * Os trechos [entre colchetes] precisam ser preenchidos/validados pelo responsável jurídico
- * antes de publicar (razão social, CNPJ, encarregado/DPO, endereço). O texto é um ponto de
- * partida, não aconselhamento jurídico.
+ * Política de Privacidade (orientada à LGPD). Página pública (logada ou não). Texto genérico e
+ * auto-suficiente (sem placeholders): identifica o produto e usa suporte@grindlabpoker.com + o
+ * canal de suporte da plataforma como contato. É um ponto de partida, não aconselhamento
+ * jurídico; se o negócio for formalizado (CNPJ/encarregado), dá pra especificar depois.
  */
+const CONTACT_EMAIL = "suporte@grindlabpoker.com";
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section className="space-y-2">
@@ -33,16 +34,17 @@ export default function Privacy() {
         <div>
           <h1 className="font-heading text-2xl font-bold text-foreground">Política de Privacidade</h1>
           <p className="mt-2 text-xs text-muted-foreground">
-            Rascunho para revisão. Última atualização: [data]. Em caso de dúvida sobre seus dados,
-            fale com a gente pelo contato abaixo.
+            Esta é a versão vigente. Podemos atualizá-la periodicamente. Em caso de dúvida sobre seus
+            dados, fale com a gente pelo contato no fim da página.
           </p>
         </div>
 
         <Section title="1. Quem somos">
           <p>
-            O GrindLab (&quot;nós&quot;) é uma plataforma de análise e estudo de mãos de poker.
-            O controlador dos dados é [razão social / CNPJ], com contato em [email de privacidade].
-            Perguntas sobre esta política ou sobre seus dados podem ser enviadas a esse endereço.
+            O GrindLab (grindlabpoker.com) é uma plataforma de análise e estudo de mãos de poker, e é
+            o responsável pelo tratamento dos dados descritos aqui. Para falar sobre privacidade ou
+            exercer seus direitos, use o canal de suporte dentro da plataforma ou o email de contato{" "}
+            <a href={`mailto:${CONTACT_EMAIL}`} className="text-primary hover:underline">{CONTACT_EMAIL}</a>.
           </p>
         </Section>
 
@@ -87,9 +89,9 @@ export default function Privacy() {
         <Section title="6. Com quem compartilhamos">
           <p>
             Não vendemos seus dados. Compartilhamos apenas com prestadores que viabilizam o serviço,
-            no limite necessário: pagamento (Stripe), análise e anúncios (Google), hospedagem
-            (Cloudflare, [provedor de servidor]), envio de email ([provedor de email]) e monitoramento
-            de erros (Sentry). Alguns desses provedores processam dados fora do Brasil.
+            no limite necessário: pagamento (Stripe), análise e anúncios (Google), provedores de
+            hospedagem e de infraestrutura, envio de email e monitoramento de erros. Alguns desses
+            provedores processam dados fora do Brasil.
           </p>
         </Section>
 
@@ -117,7 +119,10 @@ export default function Privacy() {
             <li>solicitar a portabilidade;</li>
             <li>revogar o consentimento de cookies de marketing.</li>
           </ul>
-          <p>Para exercer, escreva para [email de privacidade].</p>
+          <p>
+            Para exercer, use o canal de suporte na plataforma ou escreva para{" "}
+            <a href={`mailto:${CONTACT_EMAIL}`} className="text-primary hover:underline">{CONTACT_EMAIL}</a>.
+          </p>
         </Section>
 
         <Section title="10. Segurança">
@@ -137,7 +142,8 @@ export default function Privacy() {
         <Section title="12. Alterações e contato">
           <p>
             Podemos atualizar esta política. Mudanças relevantes serão comunicadas na plataforma.
-            Dúvidas ou solicitações: [email de privacidade].
+            Dúvidas ou solicitações: use o canal de suporte na plataforma ou escreva para{" "}
+            <a href={`mailto:${CONTACT_EMAIL}`} className="text-primary hover:underline">{CONTACT_EMAIL}</a>.
           </p>
         </Section>
       </main>
