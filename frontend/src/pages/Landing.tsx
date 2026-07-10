@@ -8,6 +8,7 @@ import {
 import { LEVEL_ICONS } from "@/components/hud/LevelIcons";
 import { SiteLogo } from "@/components/hud/SiteLogo";
 import { HandExportGuide } from "@/components/hud/HandExportGuide";
+import { SampleDecisionCard } from "@/components/hud/SampleDecisionCard";
 import logoHorizontal from "@/assets/brand/grindlab_final_horizontal.svg";
 
 const LEVELS = ["Iniciante", "Estudante", "Grinder", "Regular", "Sólido", "Expert", "Elite"] as const;
@@ -73,10 +74,10 @@ function HeroSection() {
             {t("hero.ctaStart")} <Zap className="size-4" />
           </Link>
           <a
-            href="#como-funciona"
+            href="#exemplo"
             className="flex items-center gap-2 rounded-md border border-border px-6 py-3 font-mono text-sm text-muted-foreground hover:text-foreground hover:border-primary/50 transition-colors"
           >
-            {t("hero.ctaHow")} <ChevronRight className="size-4" />
+            {t("hero.ctaSample")} <ChevronRight className="size-4" />
           </a>
         </div>
       </div>
@@ -173,6 +174,36 @@ function HowItWorksSection() {
               )}
             </div>
           ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function LandingDemoSection() {
+  const { t } = useTranslation("landing");
+  const bullets = [t("demo.b1"), t("demo.b2"), t("demo.b3")];
+  return (
+    <section id="exemplo" className="py-24 px-6 scroll-mt-16" aria-labelledby="landing-demo-heading">
+      <div className="mx-auto grid max-w-5xl items-center gap-10 lg:grid-cols-2">
+        <div className="order-2 lg:order-1">
+          <p className="font-mono text-[10px] uppercase tracking-widest-2 text-primary mb-2">{t("demo.eyebrow")}</p>
+          <h2 id="landing-demo-heading" className="font-heading text-2xl font-bold text-foreground">{t("demo.heading")}</h2>
+          <p className="mt-3 text-sm text-muted-foreground leading-relaxed">{t("demo.subtitle")}</p>
+          <ul className="mt-6 space-y-3">
+            {bullets.map((b) => (
+              <li key={b} className="flex gap-3 text-sm text-foreground/90">
+                <Check className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden />
+                <span className="leading-snug">{b}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+        <div className="relative order-1 lg:order-2">
+          <span className="absolute -top-2 right-3 z-10 bg-background px-1.5 font-mono text-[10px] uppercase tracking-widest-2 text-muted-foreground">
+            {t("demo.seal")}
+          </span>
+          <SampleDecisionCard />
         </div>
       </div>
     </section>
@@ -347,6 +378,7 @@ export default function Landing() {
       <HeroSection />
       <SupportedNetworksSection />
       <HowItWorksSection />
+      <LandingDemoSection />
       <FeaturesSection />
       <PricingSection />
       <CtaSection />

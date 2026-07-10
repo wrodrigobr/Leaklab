@@ -49,5 +49,16 @@
     "close": "Close",
     "trigger": "How to export your hands",
     "openUpload": "Open upload"
+  },
+  "sample": {
+    "equity": "Equity",
+    "needs": "Needs",
+    "sourceTip": "GTO Solver evaluation for this spot.",
+    "why": "With 34% equity against his range, you need 42% to call. You're 8 points short, so calling burns EV. Fold is correct here.",
+    "seal": "EXAMPLE",
+    "show": "See a sample analysis",
+    "ctaTitle": "This is one hand. You have hundreds.",
+    "ctaSub": "Import your history and see all your leaks.",
+    "ctaImport": "Import my history"
   }
 }

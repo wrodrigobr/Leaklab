@@ -49,5 +49,16 @@
     "close": "Fechar",
     "trigger": "Como exportar suas mãos",
     "openUpload": "Abrir upload"
+  },
+  "sample": {
+    "equity": "Equity",
+    "needs": "Precisa",
+    "sourceTip": "Avaliação do GTO Solver para este spot.",
+    "why": "Com 34% de equity contra a range dele, você precisa de 42% para pagar. Faltam 8 pontos, então o call queima EV. Fold é o certo aqui.",
+    "seal": "EXEMPLO",
+    "show": "Ver exemplo de análise",
+    "ctaTitle": "Isto é uma mão. Você tem centenas.",
+    "ctaSub": "Importe o seu histórico e veja todos os seus leaks.",
+    "ctaImport": "Importar meu histórico"
   }
 }

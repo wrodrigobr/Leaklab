@@ -1,9 +1,10 @@
 import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { FileUp, ShieldCheck, Target, Sparkles, UploadCloud, HelpCircle } from "lucide-react";
+import { FileUp, ShieldCheck, Target, Sparkles, UploadCloud, HelpCircle, Eye } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useUploadQueue } from "@/components/hud/UploadQueue";
 import { HandExportGuide } from "@/components/hud/HandExportGuide";
+import { SampleDecisionCard } from "@/components/hud/SampleDecisionCard";
 
 const SUPPORTED = [".txt", ".log"];
 
@@ -16,6 +17,7 @@ export function EmptyDashboard({ onComplete }: Props) {
   const { t: to } = useTranslation("onboarding");
   const [isDragging, setIsDragging] = useState(false);
   const [showGuide, setShowGuide] = useState(false);
+  const [showSample, setShowSample] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const { enqueue, panel } = useUploadQueue(onComplete);
 
@@ -154,6 +156,41 @@ export function EmptyDashboard({ onComplete }: Props) {
             );
           })}
         </div>
+      </section>
+
+      {/* Caminho de valor instantâneo: ver um Decision Card de exemplo antes de ter dados. */}
+      <section className="pt-1">
+        {!showSample ? (
+          <button
+            type="button"
+            onClick={() => setShowSample(true)}
+            className="inline-flex items-center gap-1.5 text-xs font-medium text-primary transition-colors hover:text-primary-glow underline-offset-4 hover:underline"
+          >
+            <Eye className="size-3.5" aria-hidden />
+            {to("sample.show")}
+          </button>
+        ) : (
+          <div className="grid gap-3 md:grid-cols-2 md:items-start">
+            <div className="relative">
+              <span className="absolute -top-2 right-3 z-10 bg-hud-surface px-1.5 font-mono text-[10px] uppercase tracking-widest-2 text-muted-foreground">
+                {to("sample.seal")}
+              </span>
+              <SampleDecisionCard />
+            </div>
+            <div className="rounded-xl border border-primary/20 bg-primary/5 p-5 text-center">
+              <p className="font-heading text-lg text-foreground">{to("sample.ctaTitle")}</p>
+              <p className="mt-1 text-sm text-muted-foreground leading-relaxed">{to("sample.ctaSub")}</p>
+              <button
+                type="button"
+                onClick={() => inputRef.current?.click()}
+                className="mt-4 inline-flex items-center gap-2 rounded-md bg-primary px-5 py-2.5 font-mono text-xs font-bold uppercase tracking-widest-2 text-primary-foreground transition-colors hover:bg-primary-glow"
+              >
+                <FileUp className="size-3.5" aria-hidden />
+                {to("sample.ctaImport")}
+              </button>
+            </div>
+          </div>
+        )}
       </section>
     </div>
     </>

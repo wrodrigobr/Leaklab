@@ -49,5 +49,16 @@
     "close": "Cerrar",
     "trigger": "Cómo exportar tus manos",
     "openUpload": "Abrir subida"
+  },
+  "sample": {
+    "equity": "Equity",
+    "needs": "Necesita",
+    "sourceTip": "Evaluación del GTO Solver para este spot.",
+    "why": "Con 34% de equity contra su rango, necesitas 42% para pagar. Te faltan 8 puntos, así que pagar quema EV. Fold es lo correcto aquí.",
+    "seal": "EJEMPLO",
+    "show": "Ver un análisis de ejemplo",
+    "ctaTitle": "Esto es una mano. Tienes cientos.",
+    "ctaSub": "Importa tu historial y ve todos tus leaks.",
+    "ctaImport": "Importar mi historial"
   }
 }

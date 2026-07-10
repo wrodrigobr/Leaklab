@@ -10,7 +10,8 @@
     "title2": "en los mismos spots.",
     "subtitle": "Soporte para hand histories de PokerStars, GGPoker, ACR (WPN) y CoinPoker. Más redes muy pronto.",
     "ctaStart": "Empezar gratis",
-    "ctaHow": "Ver cómo funciona"
+    "ctaHow": "Ver cómo funciona",
+    "ctaSample": "Ver un análisis de ejemplo"
   },
   "networks": {
     "eyebrow": "Redes compatibles",
@@ -69,5 +70,14 @@
   "footer": {
     "copyright": "© 2026 GrindLab · Tactical Tournament Intelligence",
     "login": "Iniciar sesión →"
+  },
+  "demo": {
+    "eyebrow": "LO QUE RECIBES",
+    "heading": "Cada decisión, evaluada",
+    "subtitle": "Juegas, GrindLab lo compara con la solución y muestra dónde perdiste EV.",
+    "b1": "Un veredicto claro por mano.",
+    "b2": "La acción recomendada, junto a la tuya.",
+    "b3": "La evidencia del solver, no suposiciones.",
+    "seal": "EJEMPLO"
   }
 }
