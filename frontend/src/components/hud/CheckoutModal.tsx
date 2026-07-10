@@ -4,6 +4,7 @@ import { loadStripe, type Stripe, type StripeElements } from "@stripe/stripe-js"
 import { X, Loader2, CreditCard, CheckCircle2, AlertCircle, Zap } from "lucide-react";
 import { subscription } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
+import { trackPurchase } from "@/lib/analytics";
 import { cn } from "@/lib/utils";
 
 const STRIPE_KEY = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY as string;
@@ -129,6 +130,12 @@ export function CheckoutModal({ plan, onClose, onSuccess }: Props) {
       }
       if (paymentIntent?.status === "succeeded") {
         await subscription.activate(plan, paymentIntent.id, subscriptionId, billing);
+        // Conversão de compra (upgrade Pro). amount vem em centavos da moeda.
+        trackPurchase(
+          plan,
+          typeof paymentIntent.amount === "number" ? paymentIntent.amount / 100 : undefined,
+          (paymentIntent.currency ?? "brl").toUpperCase(),
+        );
         setSuccess(true);
         await refreshUser();
         setTimeout(() => { onSuccess?.(plan); onClose(); }, 2500);

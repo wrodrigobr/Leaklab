@@ -2,11 +2,14 @@ import { createRoot } from "react-dom/client";
 import * as Sentry from "@sentry/react";
 import App from "./App.tsx";
 import { captureAcquisition } from "./lib/acquisition";
+import { initAnalytics } from "./lib/analytics";
 import "./index.css";
 import "./i18n";
 
 // Captura ?utm_source na 1ª carga (antes do router) → guarda na sessão p/ enviar no cadastro.
 captureAcquisition();
+// Carrega GA4/Google Ads (no-op sem IDs configurados) p/ medir conversão de aquisição paga.
+initAnalytics();
 
 const SENTRY_DSN = import.meta.env.VITE_SENTRY_DSN as string | undefined;
 

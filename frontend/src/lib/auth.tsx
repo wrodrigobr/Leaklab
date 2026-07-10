@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { auth, UserProfile } from "./api";
+import { trackSignup } from "./analytics";
 
 export interface RegisterResult {
   pending: boolean;            // true = precisa validar o código de email antes de completar
@@ -52,12 +53,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     sessionStorage.setItem("ll_token", res.token!);
     const profile = await auth.me();
     setUser(profile);
+    trackSignup("email");   // conversão de cadastro (sem 2FA de email)
     return { pending: false, linkedCoach: res.linked_coach ?? null };
   };
 
   const verifyEmail = async (email: string, code: string): Promise<string | null> => {
     const res = await auth.verifyEmail(email, code);
     sessionStorage.setItem("ll_token", res.token!);
+    trackSignup("email");   // conversão de cadastro (fim do fluxo com 2FA de email)
     const profile = await auth.me();
     setUser(profile);
     return res.linked_coach ?? null;
