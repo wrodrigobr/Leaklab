@@ -20,7 +20,7 @@ export function EmptyDashboard({ onComplete }: Props) {
   const [showGuide, setShowGuide] = useState(false);
   const [showSample, setShowSample] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
-  const { enqueue, panel } = useUploadQueue(onComplete);
+  const { enqueue } = useUploadQueue();   // fila global (painel no App, sobrevive à navegação)
   const [searchParams] = useSearchParams();
 
   // Deep-link do OnboardingModal ("Ver exemplo primeiro") → /dashboard?onboarding=sample.
@@ -46,7 +46,6 @@ export function EmptyDashboard({ onComplete }: Props) {
 
   return (
     <>
-    {panel}
     <HandExportGuide open={showGuide} onClose={() => setShowGuide(false)} onOpenUpload={() => inputRef.current?.click()} />
     <div className="space-y-4">
       <section className="relative">

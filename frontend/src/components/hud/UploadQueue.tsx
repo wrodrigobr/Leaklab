@@ -1,4 +1,4 @@
-import { useReducer, useEffect, useRef, useCallback } from "react";
+import { useReducer, useEffect, useRef, useCallback, createContext, useContext } from "react";
 import { CheckCircle2, AlertTriangle, Clock, Loader2, X, UploadCloud, Info } from "lucide-react";
 import { tournaments, metrics } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -133,14 +133,25 @@ function QueuePanel({
   );
 }
 
-// ── Hook ──────────────────────────────────────────────────────────────────────
+// ── Provider GLOBAL ────────────────────────────────────────────────────────────
+// A fila vive no topo do App (nunca desmonta), então o painel de upload SOBREVIVE à navegação:
+// o usuário sobe vários torneios, troca de menu, e continua vendo o progresso/conclusão. Antes a
+// fila vivia no componente (HudHeader/EmptyDashboard) e sumia ao trocar de página.
 
-export function useUploadQueue(onAllDone?: () => void) {
+interface UploadQueueValue {
+  enqueue: (files: FileList | File[]) => void;
+}
+
+const UploadQueueContext = createContext<UploadQueueValue>({ enqueue: () => {} });
+
+export function useUploadQueue(): UploadQueueValue {
+  return useContext(UploadQueueContext);
+}
+
+export function UploadQueueProvider({ children }: { children: React.ReactNode }) {
   const [queue, dispatch] = useReducer(reducer, []);
   const fileMap    = useRef<Map<string, File>>(new Map());
   const processing = useRef(false);
-  const cbRef      = useRef(onAllDone);
-  cbRef.current = onAllDone;
 
   const enqueue = useCallback((files: FileList | File[]) => {
     const arr = Array.from(files);
@@ -196,16 +207,16 @@ export function useUploadQueue(onAllDone?: () => void) {
     })();
   }, [queue]);
 
-  useEffect(() => {
-    if (queue.length === 0) return;
-    const allSettled = queue.every((i) => i.status === "done" || i.status === "error");
-    const anyDone    = queue.some((i) => i.status === "done");
-    if (allSettled && anyDone) cbRef.current?.();
-  }, [queue]);
-
+  // Refresh pós-import é global: o loop dispara `leaklab:tournament-imported` a cada conclusão,
+  // e as telas interessadas (Index, Tournaments) escutam e recarregam. Sem callback por consumidor.
   const panel = queue.length > 0 ? (
     <QueuePanel items={queue} onDismiss={dismiss} onClearDone={clearDone} />
   ) : null;
 
-  return { enqueue, panel };
+  return (
+    <UploadQueueContext.Provider value={{ enqueue }}>
+      {children}
+      {panel}
+    </UploadQueueContext.Provider>
+  );
 }

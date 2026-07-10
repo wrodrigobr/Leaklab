@@ -129,6 +129,14 @@ const Index = () => {
 
   const handleUpload = () => setRefreshKey((k) => k + 1);
 
+  // A fila de upload é global (sobrevive à navegação); ela dispara este evento a cada import
+  // concluído. O dashboard recarrega ao ouvir, no lugar do antigo callback onComplete/onUpload.
+  useEffect(() => {
+    const h = () => setRefreshKey((k) => k + 1);
+    window.addEventListener("leaklab:tournament-imported", h);
+    return () => window.removeEventListener("leaklab:tournament-imported", h);
+  }, []);
+
   // DashboardV2 é o layout PADRÃO (decisão de produto). O clássico abaixo permanece como
   // código latente (não renderizado) — sem toggle. useState mantém dashV2 como variável de
   // runtime (não literal) p/ o branch do clássico não virar código inalcançável no lint.

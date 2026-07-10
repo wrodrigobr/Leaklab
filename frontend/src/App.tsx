@@ -7,6 +7,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/lib/auth";
 import { FeedbackWidget } from "@/components/hud/FeedbackWidget";
 import { CookieConsent } from "@/components/hud/CookieConsent";
+import { UploadQueueProvider } from "@/components/hud/UploadQueue";
 import Landing from "./pages/Landing.tsx";
 import Privacy from "./pages/Privacy.tsx";
 import Index from "./pages/Index.tsx";
@@ -119,6 +120,7 @@ const App = () => (
         <Toaster />
         <Sonner />
         <BrowserRouter>
+          <UploadQueueProvider>
           <Routes>
             <Route path="/" element={<PublicRoute><Landing /></PublicRoute>} />
             <Route path="/privacidade" element={<Privacy />} />
@@ -325,6 +327,7 @@ const App = () => (
           </Routes>
           <FeedbackWidget />
           <CookieConsent />
+          </UploadQueueProvider>
         </BrowserRouter>
       </TooltipProvider>
     </AuthProvider>

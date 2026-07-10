@@ -21,7 +21,8 @@
     "ghost": "Ghost Table",
     "sparring": "Sparring",
     "training": "Entrenamiento",
-    "leaderboard": "Ranking"
+    "leaderboard": "Ranking",
+    "academy": "Academia"
   },
   "notifications": {
     "title": "Notificaciones",

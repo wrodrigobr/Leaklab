@@ -21,7 +21,8 @@
     "ghost": "Ghost Table",
     "sparring": "Sparring",
     "training": "Training",
-    "leaderboard": "Leaderboard"
+    "leaderboard": "Leaderboard",
+    "academy": "Academy"
   },
   "notifications": {
     "title": "Notifications",

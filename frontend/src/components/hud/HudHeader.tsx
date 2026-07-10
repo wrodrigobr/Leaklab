@@ -169,7 +169,7 @@ export function HudHeader({ onUpload }: HudHeaderProps) {
     playerNavItems
   );
 
-  const { enqueue, panel } = useUploadQueue(onUpload);
+  const { enqueue } = useUploadQueue();   // fila global (painel renderizado no App, sobrevive à navegação)
 
   const { data: unreadData } = useQuery({
     queryKey: ["player-messages-unread"],
@@ -351,8 +351,6 @@ export function HudHeader({ onUpload }: HudHeaderProps) {
           <UploadCloud className="size-5" aria-hidden />
         </button>
       )}
-
-      {panel}
 
       {/* ── Support modal ─────────────────────────────────────────────────────── */}
       {supportOpen && (
