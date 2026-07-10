@@ -410,7 +410,7 @@
     "errorTitle": "Error al importar",
     "title": "Inicializa tu base táctica",
     "loadingDesc": "El HUD se llenará cuando termine el análisis.",
-    "desc": "Sube tu archivo de historial de manos (.txt de PokerStars o GGPoker) para calibrar el HUD y exponer los leaks de tu mesa.",
+    "desc": "Sube tu archivo de hand history (.txt de PokerStars, GGPoker, ACR o CoinPoker) para calibrar el HUD y exponer los leaks de tu mesa.",
     "retry": "Intentar de nuevo",
     "import": "Importar Hand History",
     "fileLabel": "Seleccionar archivo de historial de manos",

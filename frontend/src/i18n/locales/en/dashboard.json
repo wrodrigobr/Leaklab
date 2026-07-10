@@ -410,7 +410,7 @@
     "errorTitle": "Import error",
     "title": "Initialize your tactical base",
     "loadingDesc": "The HUD will be populated once the scan is complete.",
-    "desc": "Upload your hand history file (.txt from PokerStars or GGPoker) to calibrate the HUD and expose your table leaks.",
+    "desc": "Upload your hand history file (.txt from PokerStars, GGPoker, ACR or CoinPoker) to calibrate the HUD and expose your table leaks.",
     "retry": "Try again",
     "import": "Import Hand History",
     "fileLabel": "Select hand history file",

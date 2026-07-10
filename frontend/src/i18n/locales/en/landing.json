@@ -8,7 +8,7 @@
     "eyebrow": "Tournament (MTT) specialist",
     "title1": "Stop leaking chips",
     "title2": "in the same spots.",
-    "subtitle": "GrindLab analyzes every decision in your tournaments, ranks your most costly leaks, and builds a study plan from your real data.",
+    "subtitle": "Support for hand histories from PokerStars, GGPoker, ACR (WPN) and CoinPoker. More networks coming soon.",
     "ctaStart": "Start free",
     "ctaHow": "See how it works"
   },
@@ -23,7 +23,7 @@
     "heading": "From HH file to precise diagnosis",
     "levels": "7 levels, from Beginner to Elite",
     "step1Title": "Import your history",
-    "step1Desc": "Upload the .txt file from any tournament (PokerStars, GGPoker or ACR). Multiple files supported at once.",
+    "step1Desc": "Upload the .txt file from any tournament (PokerStars, GGPoker, ACR or CoinPoker). Multiple files supported at once.",
     "step2Title": "GrindLab prioritizes your mistakes",
     "step2Desc": "Each decision is evaluated by equity, position, and MTT/SNG context. The detection engine crosses frequency with impact, and shows you exactly what's costing you chips.",
     "step3Title": "Improve with focus on what matters",

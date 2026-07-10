@@ -8,7 +8,7 @@
     "eyebrow": "Especialista en torneos (MTT)",
     "title1": "Deja de perder fichas",
     "title2": "en los mismos spots.",
-    "subtitle": "GrindLab analiza cada decisión de tus torneos, clasifica tus leaks más costosos y arma un plan de estudio sobre tus datos reales.",
+    "subtitle": "Soporte para hand histories de PokerStars, GGPoker, ACR (WPN) y CoinPoker. Más redes muy pronto.",
     "ctaStart": "Empezar gratis",
     "ctaHow": "Ver cómo funciona"
   },
@@ -23,7 +23,7 @@
     "heading": "Del archivo HH al diagnóstico preciso",
     "levels": "7 niveles, de Principiante a Elite",
     "step1Title": "Importa tu historial",
-    "step1Desc": "Sube el archivo .txt de cualquier torneo (PokerStars, GGPoker o ACR). Soporta múltiples archivos a la vez.",
+    "step1Desc": "Sube el archivo .txt de cualquier torneo (PokerStars, GGPoker, ACR o CoinPoker). Soporta múltiples archivos a la vez.",
     "step2Title": "GrindLab prioriza tus errores",
     "step2Desc": "Cada decisión es evaluada por equity, posición y contexto MTT/SNG. El motor cruza frecuencia con impacto y te muestra exactamente qué te está costando fichas.",
     "step3Title": "Mejora enfocándote en lo que importa",
