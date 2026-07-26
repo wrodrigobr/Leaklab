@@ -386,5 +386,13 @@
   "hudLegend": "Indicadores: VPIP: % de manos jugadas · PFR: % con raise preflop · 3B: % de 3-bet · cb: c-bet (apuesta de continuación) · fcb: fold al c-bet · AF: factor de agresión postflop · wtsd: % que fue al showdown · Nh: manos en la muestra. Valor vacío = muestra insuficiente para el indicador.",
   "hudHands": "manos",
   "fullscreenRotate": "Pantalla completa y girar",
-  "iosInstallHint": "Para pantalla completa en iPhone: toca Compartir y luego \"Añadir a la pantalla de inicio\"."
+  "iosInstallHint": "Para pantalla completa en iPhone: toca Compartir y luego \"Añadir a la pantalla de inicio\".",
+  "filterNav": {
+    "label": "Navegando",
+    "showAll": "Todas las manos",
+    "error": "solo los errores",
+    "attention": "solo las de atención",
+    "correct": "solo las correctas",
+    "pending": "solo las heurísticas"
+  }
 }

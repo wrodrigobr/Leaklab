@@ -386,5 +386,13 @@
   "hudLegend": "Stats: VPIP: % hands played · PFR: % preflop raise · 3B: % 3-bet · cb: c-bet (continuation bet) · fcb: fold to c-bet · AF: postflop aggression factor · wtsd: % went to showdown · Nh: hands in sample. Blank value = insufficient sample for that stat.",
   "hudHands": "hands",
   "fullscreenRotate": "Fullscreen & rotate",
-  "iosInstallHint": "For fullscreen on iPhone: tap Share, then \"Add to Home Screen\"."
+  "iosInstallHint": "For fullscreen on iPhone: tap Share, then \"Add to Home Screen\".",
+  "filterNav": {
+    "label": "Browsing",
+    "showAll": "All hands",
+    "error": "errors only",
+    "attention": "attention only",
+    "correct": "correct only",
+    "pending": "heuristic only"
+  }
 }

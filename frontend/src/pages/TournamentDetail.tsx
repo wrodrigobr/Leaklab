@@ -32,6 +32,7 @@ import { AiText } from "@/components/ui/AiText";
 import { cn, formatAction } from "@/lib/utils";
 import { tournaments, metrics, coachDashboard, Tournament, TournamentDecision, PhaseData, TextureData, SessionReviewResponse } from "@/lib/api";
 import { verdictLevelFromScore, decisionSeverity, VERDICT_META, type VerdictLevel } from "@/lib/cardLogic";
+import { matchesResultFilter, type HandResultFilter } from "@/lib/handFilter";
 
 // FEAT-20: o veredito visível colapsa em 3 níveis dirigidos pela SEVERIDADE (label),
 // a MESMA régua do card do replayer e do badge de aderência. A frequência (gto_label)
@@ -215,8 +216,12 @@ const TournamentDetail = () => {
   const { id } = useParams<{ id: string }>();
   const [searchParams] = useSearchParams();
   const coachStudentId = searchParams.get("student");   // coach revisando o aluno (modo coach)
+  // O filtro ativo viaja na URL (&f=erro/atenção/…) para o Replayer navegar SÓ por essas mãos
+  // (ex.: filtrou "erros" → avançar pula as corretas). `resultFilter` é declarado abaixo; a
+  // função só é chamada no render, depois dos hooks.
   const replayHref = (handId: string) =>
-    `/replayer?t=${id}&h=${handId}${coachStudentId ? `&student=${coachStudentId}` : ""}`;
+    `/replayer?t=${id}&h=${handId}${coachStudentId ? `&student=${coachStudentId}` : ""}`
+    + (resultFilter !== "all" ? `&f=${resultFilter}` : "");
   const navigate = useNavigate();
   const { t } = useTranslation("tournaments");
   const { t: tc } = useTranslation("common");
@@ -244,7 +249,7 @@ const TournamentDetail = () => {
   const [hands, setHands] = useState<Hand[]>([]);
   const [query, setQuery] = useState("");
   const [street, setStreet] = useState<Street | "all">("all");
-  const [resultFilter, setResultFilter] = useState<"all" | "correct" | "attention" | "error" | "pending">("all");
+  const [resultFilter, setResultFilter] = useState<HandResultFilter>("all");
   const [onlyDiverg, setOnlyDiverg] = useState(false);   // coach mode: filtrar mãos não-aderentes
   const [analyses, setAnalyses] = useState<Record<number, string>>({});
   const [analysisLoading, setAnalysisLoading] = useState<Record<number, boolean>>({});
@@ -302,21 +307,11 @@ const TournamentDetail = () => {
       hands.filter((h) => {
         if (onlyDiverg && !h.divergent) return false;   // coach mode: só não-aderentes
         if (street !== "all" && h.street !== street) return false;
-        if (resultFilter !== "all") {
-          // FEAT-20: filtro dirigido pela SEVERIDADE (mesmo veredito do card), não pela
-          // frequência GTO. "Pendente" segue sendo um estado de FONTE (postflop sem solver).
-          const isCorrect   = h.category === "correct";
-          const isAttention = h.category === "acceptable";
-          const isError     = h.category === "error";
-          // "Heurística" = postflop analisado pelo ENGINE, não pelo solver (multiway, stack curto/
-          // push-fold, ou fora da cobertura GTO). NÃO é "aguardando solver": a maioria nunca será
-          // solvada por design (solver é HU e não cobre spots triviais/multiway).
-          const isHeuristic = h.hasPostflop && !h.gtoLabel;
-          if (resultFilter === "correct"   && !isCorrect)   return false;
-          if (resultFilter === "attention" && !isAttention) return false;
-          if (resultFilter === "error"     && !isError)     return false;
-          if (resultFilter === "pending"   && !isHeuristic) return false;
-        }
+        // FEAT-20: filtro dirigido pela SEVERIDADE (mesmo veredito do card), não pela frequência
+        // GTO. A regra vive em lib/handFilter (fonte única) porque o Replayer usa a MESMA para
+        // montar a navegação — se cada tela reimplementasse, o filtro "erros" abriria um replay
+        // pulando mãos diferentes.
+        if (!matchesResultFilter(h, resultFilter)) return false;
         if (query) {
           const q = query.toLowerCase();
           return (
@@ -414,7 +409,9 @@ const TournamentDetail = () => {
                 )}
               </div>
               <button
-                onClick={() => hands[0] && navigate(replayHref(hands[0].id))}
+                // com filtro ativo, começa pela 1ª mão FILTRADA (senão abriria numa mão
+                // que o próprio replay vai pular na navegação)
+                onClick={() => (filtered[0] ?? hands[0]) && navigate(replayHref((filtered[0] ?? hands[0]).id))}
                 disabled={!hands.length}
                 className="inline-flex h-9 items-center justify-center gap-2 rounded-md bg-primary px-3 font-mono text-[11px] font-bold uppercase tracking-wider text-primary-foreground shadow-[0_0_20px_-4px_hsl(var(--primary)/0.5)] transition-colors hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
               >

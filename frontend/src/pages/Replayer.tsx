@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { ChevronLeft, ChevronRight, Pause, Play, Rewind, FastForward, AlertOctagon, CheckCircle2, Loader2, ArrowLeft, GraduationCap, PenLine, X, Check, Trash2, LayoutGrid, FlaskConical, Clock, Eye, EyeOff, Info, Maximize2, Minimize2, Lock, Users, RotateCw, Sparkles } from "lucide-react";
+import { ChevronLeft, ChevronRight, Pause, Play, Rewind, FastForward, AlertOctagon, CheckCircle2, Loader2, ArrowLeft, GraduationCap, PenLine, X, Check, Trash2, LayoutGrid, FlaskConical, Clock, Eye, EyeOff, Info, Maximize2, Minimize2, Lock, Users, RotateCw, Sparkles, Filter } from "lucide-react";
 import logoHorizontal from "@/assets/brand/grindlab_final_horizontal.svg";
 import { useMutation } from "@tanstack/react-query";
 import { HudLayout } from "@/components/hud/HudLayout";
@@ -16,6 +16,15 @@ import { PlayingCard, type CardData } from "@/components/hud/PlayingCard";
 import { cn } from "@/lib/utils";
 import { computeEffectiveGtoLabel } from "@/lib/gtoUtils";
 import { livePlayers as computeLivePlayers, isMultiwayPot, isPpMuted, idealActionSource, verdictStrategy, verdictLevel, clampVerdict, type VerdictLevel } from "@/lib/cardLogic";
+import { filterHandIds, parseResultFilter, type HandResultFilter } from "@/lib/handFilter";
+
+/** Rótulo do filtro de navegação (fallback do i18n — chaves em replayer.filterNav.*). */
+const FILTER_FALLBACK: Record<Exclude<HandResultFilter, "all">, string> = {
+  error:     "só os erros",
+  attention: "só as de atenção",
+  correct:   "só as corretas",
+  pending:   "só as heurísticas",
+};
 import { VerdictPill } from "@/components/replayer/VerdictPill";
 import { ACTION_COLORS } from "@/lib/actionColors";
 import { tournaments as tournamentsApi, coachDashboard, metrics, ReplayData, ReplayStep, TournamentDecision, CoachAnnotation, CoachOverrideLabel, type CoachReplayHand } from "@/lib/api";
@@ -1522,6 +1531,10 @@ const Replayer = () => {
   // que valem revisão (pula fold pré-flop correto) e mostra o comentário do coach por mão. Pode
   // vir ligado pela URL (?coach=1, usado pelo botão "Revisar com o coach" do torneio).
   const coachParam   = params.get("coach") === "1" || params.get("walk") === "1";
+  // Filtro herdado da LISTA de mãos (&f=error/attention/...): a navegação percorre SÓ as mãos
+  // que passam nele — avançar pula as demais (ex.: filtrou "erros" → vai direto pro próximo erro).
+  // A regra de classificação é a MESMA da lista (lib/handFilter), nunca reimplementada aqui.
+  const resultFilter = parseResultFilter(params.get("f"));
   const [coachMode, setCoachMode] = useState<boolean>(
     () => coachParam || localStorage.getItem("replayer_coach") === "true");
   const [walkMap, setWalkMap] = useState<Record<string, CoachReplayHand>>({});
@@ -1639,11 +1652,8 @@ const Replayer = () => {
           : tournamentsApi.get(tournamentId).catch(() => null);
         tournamentFn.then((tournamentData) => {
           if (tournamentData) {
-            const seen = new Set<string>();
-            const ids: string[] = [];
-            tournamentData.decisions.forEach((d) => {
-              if (d.hand_id && !seen.has(d.hand_id)) { seen.add(d.hand_id); ids.push(d.hand_id); }
-            });
+            // filterHandIds respeita o &f= da URL (all → todas, em ordem cronológica)
+            const ids = filterHandIds(tournamentData.decisions, resultFilter);
             if (!coachMode) setHandList(ids);   // no modo coach a playlist filtrada manda na navegação
             setDecisions(tournamentData.decisions);
           }
@@ -1668,11 +1678,7 @@ const Replayer = () => {
         setReplayData(replay);
         replayCacheSet(cacheKey, replay);
         if (tournamentData) {
-          const seen = new Set<string>();
-          const ids: string[] = [];
-          tournamentData.decisions.forEach((d) => {
-            if (d.hand_id && !seen.has(d.hand_id)) { seen.add(d.hand_id); ids.push(d.hand_id); }
-          });
+          const ids = filterHandIds(tournamentData.decisions, resultFilter);
           if (!coachMode) setHandList(ids);   // no modo coach a playlist filtrada manda na navegação
           setDecisions(tournamentData.decisions);
         }
@@ -1706,15 +1712,8 @@ const Replayer = () => {
   useEffect(() => {
     if (coachMode) return;
     setWalkMap({});
-    if (decisions.length) {
-      const seen = new Set<string>();
-      const ids: string[] = [];
-      decisions.forEach((d) => {
-        if (d.hand_id && !seen.has(d.hand_id)) { seen.add(d.hand_id); ids.push(d.hand_id); }
-      });
-      setHandList(ids);
-    }
-  }, [coachMode, decisions]);
+    if (decisions.length) setHandList(filterHandIds(decisions, resultFilter));
+  }, [coachMode, decisions, resultFilter]);
 
   // Prefetch em background: prioriza ADIANTE (o usuário avança) — as próximas PREFETCH_AHEAD mãos +
   // a anterior. Conforme avança, o useEffect re-dispara (handId muda) e a janela desliza, mantendo
@@ -1742,13 +1741,29 @@ const Replayer = () => {
   const steps = replayData?.timeline ?? [];
   const step  = steps[stepIdx] as ReplayStep | undefined;
 
-  // Hand navigation
+  // Hand navigation — handList já vem filtrado (&f=), então avançar pula o que não passa.
   const handIdx  = handList.indexOf(handId);
-  const prevHand = handIdx > 0 ? handList[handIdx - 1] : null;
-  const nextHand = handIdx >= 0 && handIdx < handList.length - 1 ? handList[handIdx + 1] : null;
+  let prevHand = handIdx > 0 ? handList[handIdx - 1] : null;
+  let nextHand = handIdx >= 0 && handIdx < handList.length - 1 ? handList[handIdx + 1] : null;
+  // Mão atual FORA do filtro (ex.: URL montada à mão): sem isso o prev/next morria (idx -1).
+  // Navega pela vizinhança CRONOLÓGICA — a mão filtrada mais próxima antes/depois desta.
+  if (handIdx < 0 && handList.length && decisions.length) {
+    const seenAll = new Set<string>();
+    const allIds: string[] = [];
+    decisions.forEach((d) => {
+      if (d.hand_id && !seenAll.has(d.hand_id)) { seenAll.add(d.hand_id); allIds.push(d.hand_id); }
+    });
+    const pos = allIds.indexOf(handId);
+    if (pos >= 0) {
+      const inFilter = new Set(handList);
+      for (let i = pos - 1; i >= 0; i--) if (inFilter.has(allIds[i])) { prevHand = allIds[i]; break; }
+      for (let i = pos + 1; i < allIds.length; i++) if (inFilter.has(allIds[i])) { nextHand = allIds[i]; break; }
+    }
+  }
   // URL de outra mão do MESMO contexto (preserva coach-student e o modo walkthrough).
   const handHref = (h: string) =>
-    `/replayer?t=${tournamentId}&h=${h}${studentId ? `&student=${studentId}` : ""}${coachMode ? "&coach=1" : ""}`;
+    `/replayer?t=${tournamentId}&h=${h}${studentId ? `&student=${studentId}` : ""}${coachMode ? "&coach=1" : ""}`
+    + (resultFilter !== "all" ? `&f=${resultFilter}` : "");
   const walkCurrent = coachMode ? walkMap[handId] : undefined;
 
   // "Voltar" = LISTA DE MÃOS do torneio (/tournaments/:id), não a mão anterior do histórico do browser
@@ -2244,6 +2259,35 @@ const Replayer = () => {
               {walkCurrent.verdict === "error" ? "Erro" : walkCurrent.verdict === "acceptable" ? "Aceitável" : "Correto"}
               {walkCurrent.ev_loss_bb > 0 && ` · -${walkCurrent.ev_loss_bb}bb`}
             </span>
+          </div>
+        )}
+
+        {/* ── Filtro herdado da lista: deixa EXPLÍCITO que a navegação pula mãos ──
+            Sem isto o usuário avança e "some" mão do meio sem entender por quê. */}
+        {resultFilter !== "all" && (
+          <div className="shrink-0 mb-2 flex items-center gap-3 rounded-xl border border-amber-500/25 bg-amber-500/[0.06] px-4 py-2">
+            <Filter className="size-4 shrink-0 text-amber-400" aria-hidden />
+            <p className="min-w-0 flex-1 text-sm text-foreground">
+              <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-amber-400">
+                {t("filterNav.label", "Navegando")}
+              </span>
+              <span className="mx-2 text-muted-foreground">·</span>
+              {t(`filterNav.${resultFilter}`, FILTER_FALLBACK[resultFilter])}
+              {handList.length > 0 && (
+                <span className="ml-2 font-mono text-[11px] tabular-nums text-muted-foreground">
+                  {handIdx >= 0 ? `${handIdx + 1}/${handList.length}` : `${handList.length}`}
+                </span>
+              )}
+            </p>
+            <button
+              onClick={() => navigate(
+                `/replayer?t=${tournamentId}&h=${handId}`
+                + (studentId ? `&student=${studentId}` : "")
+                + (coachMode ? "&coach=1" : ""))}
+              className="shrink-0 rounded-md px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider text-muted-foreground ring-1 ring-border transition-colors hover:text-foreground hover:ring-amber-500/40"
+            >
+              {t("filterNav.showAll", "Todas as mãos")}
+            </button>
           </div>
         )}
 
