@@ -10,6 +10,50 @@ from leaklab.sizing_advisor import (analyze_open_sizing as A,
                                     _size_label_to_pct as L)
 
 
+# ── Sizing contra o GTO REAL (2026-07-26) ────────────────────────────────────
+# A premissa antiga do módulo ("as ranges do GW só dão quais mãos, não o size") caiu: o
+# código de ação do JSON carrega o tamanho ('R2.1' = raise para 2,1bb). Com stack_bb, o
+# veredito passa a comparar com o tamanho REAL do nó; sem ele, cai na heurística.
+
+def test_open_usa_tamanho_gto_quando_ha_stack():
+    from leaklab.sizing_advisor import gto_open_to_bb
+    assert gto_open_to_bb('UTG', 100) == 2.1
+    assert gto_open_to_bb('SB', 30) == 3.0
+    r = A(to_bb=2.1, position='UTG', stack_bb=100)
+    assert r['key'] == 'open_ok' and r['params']['source'] == 'gto'
+    assert r['params']['ideal'] == '2.1bb'
+    print("OK  test_open_usa_tamanho_gto_quando_ha_stack")
+
+
+def test_open_grande_vs_gto_e_leak():
+    """Abrir 3bb onde o GTO abre 2,1 é +43%: você arrisca mais pra ganhar o mesmo."""
+    r = A(to_bb=3.0, position='UTG', stack_bb=100)
+    assert r['key'] == 'open_big' and r['status'] == 'warn'
+    assert r['params']['ratio'] > 1.35 and r['params']['source'] == 'gto'
+    # 2,5bb (+19%) segue aceitável — a tolerância não pode flagrar arredondamento de mesa
+    assert A(to_bb=2.5, position='UTG', stack_bb=100)['key'] == 'open_ok'
+    print("OK  test_open_grande_vs_gto_e_leak")
+
+
+def test_sb_min_raise_vs_gto_e_pequeno():
+    """SB a 30bb: o GTO abre 3bb; min-raise dá ao BB preço barato demais pra defender."""
+    r = A(to_bb=2.0, position='SB', stack_bb=30)
+    assert r['key'] == 'open_sb_small' and r['status'] == 'warn'
+    assert r['params']['source'] == 'gto'
+    print("OK  test_sb_min_raise_vs_gto_e_pequeno")
+
+
+def test_fallback_heuristico_marca_a_fonte():
+    """Sem stack (ou sem cobertura) a heurística continua — mas o `source` diz que é
+    heurística, pra UI nunca vender banda de teoria como veredito de solver."""
+    r = A(to_bb=3.0, position='UTG')
+    assert r['params']['source'] == 'heuristica'
+    # iso sobre limp não tem nó na árvore → segue heurístico mesmo com stack
+    r2 = A(to_bb=3.5, position='CO', facing_limp=True, stack_bb=50)
+    assert r2['params']['source'] == 'heuristica'
+    print("OK  test_fallback_heuristico_marca_a_fonte")
+
+
 def test_std_open_ok():
     r = A(to_bb=2.2, position='BTN')
     assert r['key'] == 'open_ok' and r['status'] == 'ok'

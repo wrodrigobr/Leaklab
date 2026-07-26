@@ -6569,14 +6569,17 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
                 and int(_spot.get('preflopRaisesFaced') or 0) == 0
                 and _eff_stack > 12):
             try:
-                import re as _re_sz
-                _mz = _re_sz.search(r'to\s+([\d.]+)', action.raw or '')
+                # Total via parser (tolerante a separador de milhar). O regex antigo
+                # `to\s+([\d.]+)` capturava "1" em "to 1,098" (CoinPoker/GG), então o
+                # tamanho saía ~0bb e a análise de sizing sumia sem avisar nesses sites.
+                _tot = _raise_total_from_raw(action.raw)
                 _bbz = float(hand.bb or _ctx.get('levelBb') or 0)
-                if _mz and _bbz > 0:
+                if _tot and _bbz > 0:
                     from leaklab.sizing_advisor import analyze_open_sizing as _szadv
-                    sizing_advice = _szadv(to_bb=float(_mz.group(1)) / _bbz,
+                    sizing_advice = _szadv(to_bb=_tot / _bbz,
                                            position=(_spot.get('position') or ''),
-                                           facing_limp=bool(_spot.get('facingLimp')))
+                                           facing_limp=bool(_spot.get('facingLimp')),
+                                           stack_bb=_eff_stack)
             except Exception:
                 pass
 
@@ -6587,13 +6590,13 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
                 and action.action == 'raises' and decision
                 and int(_spot.get('preflopRaisesFaced') or 0) == 1):
             try:
-                import re as _re_3b
-                _m3 = _re_3b.search(r'to\s+([\d.]+)', action.raw or '')
+                # mesmo bug do milhar do open: usa o parser em vez de regex local
+                _tot3 = _raise_total_from_raw(action.raw)
                 _bb3 = float(hand.bb or _ctx.get('levelBb') or 0)
                 _open_to = _spot.get('facingToBb')
-                if _m3 and _bb3 > 0 and _open_to:
+                if _tot3 and _bb3 > 0 and _open_to:
                     from leaklab.sizing_advisor import analyze_3bet_sizing as _szb
-                    threebet_sizing = _szb(to_bb=float(_m3.group(1)) / _bb3,
+                    threebet_sizing = _szb(to_bb=_tot3 / _bb3,
                                            open_to_bb=float(_open_to),
                                            is_ip=bool(_spot.get('isInPosition')),
                                            squeeze=bool(_spot.get('callerPosition')))

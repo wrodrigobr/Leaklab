@@ -8,30 +8,69 @@ Teoria do open (RFI), MTT/online moderno:
     defende larguíssimo. O SB SOBE (~2,5–3bb) pra negar o complete barato do BB.
   - sobre limpers (iso-raise): sobe mais (~+1bb por limper).
 
-Sem GTO de tamanho no preflop (as ranges do GW só dão quais mãos, não o size), então
-aqui é HEURÍSTICA de teoria — um guia, não um veredito de solver. (Postflop, a Fase 2
-compara com o tamanho do próprio nó GTO.)
+ATUALIZAÇÃO (2026-07-26): a premissa "sem GTO de tamanho no preflop" CAIU. O código de ação
+do JSON de ranges já carrega o sizing ('R2.1' = raise para 2,1bb) — o parser é que o descartava.
+Agora, quando há cobertura, comparamos com o TAMANHO GTO REAL daquele spot e a heurística abaixo
+fica só como fallback (spots sem cobertura). O campo `source` diz qual dos dois foi usado, pra
+UI nunca vender heurística como veredito de solver.
 """
 from typing import Optional
 
-# Bandas de tamanho do open (em bb).
+# Bandas de tamanho do open (em bb) — FALLBACK, usado só sem cobertura GTO.
 _STD_LO, _STD_HI = 2.0, 2.5         # open padrão (qualquer posição exceto SBxBB)
 _SB_LO,  _SB_HI  = 2.5, 3.5         # SBxBB: pode/deve forçar mais
 _TOL = 0.10                          # tolerância pra não flagrar 2,0/2,5 no limite
 
+# Tolerância RELATIVA quando há tamanho GTO: abrir 2,5bb com GTO 2,1 é aceitável (+19%);
+# abrir 3bb com GTO 2,1 (+43%) é leak de verdade — você arrisca mais pra ganhar o mesmo.
+_GTO_BIG_RATIO   = 1.35
+_GTO_SMALL_RATIO = 0.75
+
+
+def gto_open_to_bb(position: str, stack_bb: Optional[float]) -> Optional[float]:
+    """Tamanho GTO do open para (posição, profundidade), em bb. None sem cobertura."""
+    if not position or not stack_bb:
+        return None
+    try:
+        from leaklab.preflop_gto_ranges import _load, _stack_bucket, raise_to_bb_from_node
+        bucket = _stack_bucket(float(stack_bb))
+        node = ((_load().get('ranges', {}).get(bucket, {}) or {}).get('RFI', {}) or {}).get(
+            (position or '').upper().strip())
+        return raise_to_bb_from_node(node) if node else None
+    except Exception:
+        return None
+
 
 def analyze_open_sizing(*, to_bb: Optional[float], position: str,
-                        facing_limp: bool = False) -> Optional[dict]:
+                        facing_limp: bool = False,
+                        stack_bb: Optional[float] = None) -> Optional[dict]:
     """Classifica o tamanho de um OPEN (RFI) do hero. Retorna {key, status, params} ou None.
 
-      key: open_ok | open_big | open_sb_small | open_iso_small
+      key: open_ok | open_big | open_small | open_sb_small | open_iso_small
       status: 'ok' | 'warn'
+      params.source: 'gto' (tamanho real do nó) | 'heuristica' (fallback sem cobertura)
     """
     if to_bb is None or to_bb <= 0:
         return None
     pos = (position or '').upper().strip()
     is_sb = pos == 'SB'
 
+    # ── Caminho GTO: compara com o tamanho REAL do nó (não com uma banda de teoria) ──
+    # Iso sobre limp fica fora: a árvore do JSON não tem nó vs-limp, então ali a heurística
+    # continua sendo o melhor que temos — e o `source` deixa isso explícito.
+    gto_to = None if facing_limp else gto_open_to_bb(pos, stack_bb)
+    if gto_to:
+        ratio = to_bb / gto_to
+        p = {'to': round(to_bb, 1), 'ideal': f'{gto_to:g}bb', 'gto_to': gto_to,
+             'ratio': round(ratio, 2), 'source': 'gto'}
+        if ratio > _GTO_BIG_RATIO:
+            return {'key': 'open_big', 'status': 'warn', 'params': p}
+        if ratio < _GTO_SMALL_RATIO:
+            return {'key': 'open_sb_small' if is_sb else 'open_small',
+                    'status': 'warn', 'params': p}
+        return {'key': 'open_ok', 'status': 'ok', 'params': p}
+
+    # ── Fallback heurístico (sem cobertura GTO deste spot) ──
     if is_sb:
         lo, hi, ideal = _SB_LO, _SB_HI, '2,5–3bb'
     else:
@@ -41,7 +80,8 @@ def analyze_open_sizing(*, to_bb: Optional[float], position: str,
         hi += 2.0
         ideal = '3bb+ (iso sobre limp)'
 
-    p = {'to': round(to_bb, 1), 'ideal': ideal}
+    # `source` explícito: a UI não pode vender banda de teoria como veredito de solver.
+    p = {'to': round(to_bb, 1), 'ideal': ideal, 'source': 'heuristica'}
     if to_bb > hi + _TOL:
         return {'key': 'open_big', 'status': 'warn', 'params': p}
     if is_sb and to_bb < lo - _TOL:
