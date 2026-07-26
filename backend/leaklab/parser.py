@@ -403,6 +403,30 @@ def _pg_num(s: str | None) -> float | None:
         return None
 
 
+# Total de um "raises X to Y" (Y = valor TOTAL colocado na street, não o incremento X).
+# Tolerante a separador de milhar (vírgula/espaço) e à variante sem incremento ("raises to Y").
+#
+# BUG QUE ORIGINOU (prod, 2026-07-25): o /replay reparseava a linha crua com `raises \d+ to (\d+)`.
+# O `\d+` PARA na vírgula → em "raises 798 to 1,098" (CoinPoker/GG usam separador de milhar) ele
+# capturava "1" → o assento mostrava RAISE com 1 ficha (0,003 BB → exibido "0 BB") e o pote não
+# recebia o valor. Centralizado aqui: quem lê linha de hand history é o parser, não a camada de API.
+RAISE_TO_RE = re.compile(
+    r"raises\s+[\d.,\s]*?\s*to\s+(?P<total>\d[\d.,\s]*)",
+    re.IGNORECASE,
+)
+
+
+def raise_total_from_raw(raw_line: str | None) -> float | None:
+    """Extrai o TOTAL de uma linha crua de raise ('raises X to Y' ou 'raises to Y'), em qualquer
+    dialeto, tolerando separador de milhar. Devolve None quando a linha não tem a forma 'to Y'."""
+    if not raw_line:
+        return None
+    m = RAISE_TO_RE.search(raw_line)
+    if not m:
+        return None
+    return _pg_num(m.group("total"))
+
+
 def _pg_cards(s: str) -> List[str]:
     """Normaliza cartas entre colchetes: '8c, Qs' ou '3h Js' → ['8c', '5s']."""
     return [c for c in s.replace(",", " ").split() if c]

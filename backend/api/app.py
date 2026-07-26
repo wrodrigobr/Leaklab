@@ -62,6 +62,7 @@ from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 
 from leaklab.parser import parse_pokerstars_file_from_text
+from leaklab.parser import raise_total_from_raw as _raise_total_from_raw
 from leaklab.pipeline import build_decision_inputs_for_hand
 from leaklab.decision_engine_v11 import evaluate_decision
 from leaklab.mtt_context import build_mtt_context
@@ -5970,15 +5971,19 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
 
         pseat = next((s for s, d in seats.items() if d['player'] == action.player), None)
         amt   = action.amount or 0
+        # Total do "raises X to Y" via parser (fonte única, tolerante a separador de milhar).
+        # O regex inline antigo (`raises \d+ to (\d+)`) parava na vírgula e devolvia 1 ficha em
+        # "raises 798 to 1,098" (CoinPoker/GG) → RAISE aparecia como 0 BB na mesa. Ver parser.
+        total_raise = (_raise_total_from_raw(action.raw)
+                       if action.action in ('raises', 'all-in') else None)
 
-        if action.action in ('calls', 'bets', 'raises', 'all-in') and amt:
+        if action.action in ('calls', 'bets', 'raises', 'all-in') and (amt or total_raise):
             # Para raises: "raises X to Y" — X é o incremento, Y é o total colocado
             # O total que entra no pot é Y (não X), menos o que o jogador já tinha apostado
             # Para all-in: parser converte "bets/raises ... and is all-in" para 'all-in';
-            #   se veio de raise ("raises X to Y"), extrair Y do raw; se de bet, amt é o total.
+            #   se veio de raise ("raises X to Y"), Y é o total; se de bet, amt é o total.
             if action.action == 'raises':
-                m_to = _re.search(r'raises \d+ to (\d+)', action.raw or '')
-                total_placed = int(m_to.group(1)) if m_to else amt
+                total_placed = total_raise if total_raise is not None else amt
                 already_in   = bets_r.get(pseat, 0)
                 real_addition = total_placed - already_in
                 pot += real_addition
@@ -5986,10 +5991,9 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
                     stacks[pseat]  = max(0, stacks[pseat] - real_addition)
                     bets_r[pseat]  = total_placed
             elif action.action == 'all-in':
-                m_to = _re.search(r'raises \d+ to (\d+)', action.raw or '')
-                if m_to:
+                if total_raise is not None:
                     # raise all-in: "raises X to Y and is all-in" — Y é o total colocado
-                    total_placed  = int(m_to.group(1))
+                    total_placed  = total_raise
                     already_in    = bets_r.get(pseat, 0)
                     real_addition = total_placed - already_in
                 else:
