@@ -73,16 +73,46 @@ def test_contraste_no_stack_minimo_sobe():
 
 # ── Plano de sessão ───────────────────────────────────────────────────────────
 
+class _StubDB:
+    """Isola as funções puras do banco: `plan_session` e `missions_with_state` leem tentativas
+    e o trilho lento em runtime. `attempts` = {category_key: [tentativas]}."""
+
+    def __init__(self, curriculum, attempts=None, proofs=None, boom=False):
+        self.curriculum, self.attempts = curriculum, attempts or {}
+        self.proofs, self.boom = proofs or [], boom
+
+    def __enter__(self):
+        import leaklab.progression as prog
+        import database.repositories as repos
+        self._prog, self._repos = prog, repos
+        self._orig = (prog.build_curriculum, repos.get_progression_attempts,
+                      repos.get_training_proof)
+        prog.build_curriculum = lambda uid, days=90: self.curriculum
+
+        def _att_of(uid, key, limit=30):
+            if self.boom:
+                raise RuntimeError("banco fora do ar")
+            return self.attempts.get(key, [])[:limit]
+
+        repos.get_progression_attempts = _att_of
+        repos.get_training_proof = lambda uid, **kw: self.proofs
+        return self
+
+    def __exit__(self, *exc):
+        self._prog.build_curriculum = self._orig[0]
+        self._repos.get_progression_attempts = self._orig[1]
+        self._repos.get_training_proof = self._orig[2]
+        return False
+
+
+def _cat(key, pos, ev, n=28, scenario='rfi', stack=30):
+    return {'key': key, 'scenario': scenario, 'position': pos, 'vs_position': '',
+            'stack_bb': stack, 'ev_loss_bb': ev, 'n': n, 'weight': ev}
+
+
 def _plano_fake(size='curta'):
-    import leaklab.progression as prog
-    fake = [{'key': 'rfi:SB::30', 'scenario': 'rfi', 'position': 'SB', 'vs_position': '',
-             'stack_bb': 30, 'ev_loss_bb': 12.2, 'n': 28, 'weight': 12.2}]
-    orig = prog.build_curriculum
-    prog.build_curriculum = lambda uid, days=90: fake
-    try:
+    with _StubDB([_cat('rfi:SB::30', 'SB', 12.2)]):
         return plan_session(1, size=size)
-    finally:
-        prog.build_curriculum = orig
 
 
 def test_plano_soma_o_tamanho_pedido():
@@ -417,6 +447,76 @@ def test_contraste_conta_pra_missao_nao_pra_vizinha():
             break
     assert achou, "nenhum spot de contraste gerado"
     print("OK  test_contraste_conta_pra_missao_nao_pra_vizinha")
+
+
+# ── Foco: o gate tem que ABRIR A PORTA ────────────────────────────────────────
+# Regressão do bug de 2026-07-26: o gate acendia 5/5 e "Dominado no treino", e o jogador
+# continuava sendo servido o MESMO leak — o foco era `missions[0]` (maior EV) em dois lugares
+# independentes, e nenhum dos dois lia o estado.
+
+def _att_dominado():
+    """Tentativas que passam os 5 critérios (mesma composição do test_gate_completo_domina)."""
+    return (_att(14, stratum='nucleo') + _att(5, stratum='lixo')
+            + _att(5, stratum='fronteira') + _att(4, stratum='nucleo', block='contrast'))
+
+
+def _dois_leaks():
+    return [_cat('rfi:SB::30', 'SB', 12.2), _cat('rfi:UTG::30', 'UTG', 8.0)]
+
+
+def test_foco_avanca_quando_o_leak_e_dominado():
+    from leaklab.progression import missions_with_state
+    with _StubDB(_dois_leaks(), attempts={'rfi:SB::30': _att_dominado()}):
+        est = missions_with_state(1)
+    assert est['ativa']['key'] == 'rfi:UTG::30', est['ativa']['key']
+    assert [d['key'] for d in est['dominadas']] == ['rfi:SB::30']
+    assert est['dominadas'][0]['estado'] == 'dominado_no_treino'
+    assert est['restantes'] == 1
+    print("OK  test_foco_avanca_quando_o_leak_e_dominado")
+
+
+def test_plano_treina_a_missao_ativa_nao_a_de_maior_ev():
+    """O coração do bug: avançar no painel sem avançar no drill seria pior que não avançar."""
+    with _StubDB(_dois_leaks(), attempts={'rfi:SB::30': _att_dominado()}):
+        p = plan_session(1, size='curta')
+    assert p['mission']['key'] == 'rfi:UTG::30', p['mission']['key']
+    assert p['modo'] == 'missao'
+    assert p['blocks'][0]['category']['key'] == 'rfi:UTG::30'
+    print("OK  test_plano_treina_a_missao_ativa_nao_a_de_maior_ev")
+
+
+def test_tudo_dominado_vira_revisao_e_nao_sessao_vazia():
+    """Sem leak em treino a sessão não pode acabar: o selo ainda depende do jogo real e é o
+    SRS que impede o domínio de apodrecer."""
+    att = {c['key']: _att_dominado() for c in _dois_leaks()}
+    with _StubDB(_dois_leaks(), attempts=att):
+        from leaklab.progression import missions_with_state
+        est = missions_with_state(1)
+        p = plan_session(1, size='curta')
+    assert est['ativa'] is None and est['restantes'] == 0
+    assert len(est['dominadas']) == 2
+    assert p['modo'] == 'revisao' and p['total'] == SESSION_SIZES['curta']
+    assert p['mission'] is not None
+    print("OK  test_tudo_dominado_vira_revisao_e_nao_sessao_vazia")
+
+
+def test_falha_de_leitura_nao_derruba_a_sessao():
+    """Banco fora do ar na leitura de tentativas: cair no maior EV é ruim, não abrir sessão
+    nenhuma é pior."""
+    with _StubDB(_dois_leaks(), boom=True):
+        p = plan_session(1, size='curta')
+    assert p['mission']['key'] == 'rfi:SB::30'
+    assert p['total'] == SESSION_SIZES['curta']
+    print("OK  test_falha_de_leitura_nao_derruba_a_sessao")
+
+
+def test_selo_do_jogo_real_aparece_no_estado():
+    proof = [{'category_key': 'rfi:SB::30', 'confident': True, 'delta': 12}]
+    with _StubDB(_dois_leaks(), attempts={'rfi:SB::30': _att_dominado()}, proofs=proof):
+        from leaklab.progression import missions_with_state
+        est = missions_with_state(1)
+    assert est['dominadas'][0]['estado'] == 'comprovado_no_jogo'
+    print("OK  test_selo_do_jogo_real_aparece_no_estado")
 
 
 if __name__ == '__main__':

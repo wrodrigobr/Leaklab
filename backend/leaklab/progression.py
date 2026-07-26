@@ -157,6 +157,57 @@ def build_sizing_missions(user_id: int, days: int = 90) -> list[dict]:
     return missoes
 
 
+# ── Foco: QUAL missão está ativa agora ───────────────────────────────────────────────────────
+# Quantas missões olhar antes de decidir o foco. O painel mostra 3, mas quem domina as 3 precisa
+# ter a 4ª pronta — senão o protocolo trava justamente em quem está evoluindo mais rápido.
+MISSION_POOL = 8
+
+
+def missions_with_state(user_id: int, days: int = 90, pool: int = MISSION_POOL) -> dict:
+    """Fonte ÚNICA do foco: as missões anotadas com estado e QUAL está ativa.
+
+    Existe porque o gate de domínio só vale se ele de fato abrir a porta. Antes desta função o
+    foco era `missions[0]` (maior EV) em dois lugares independentes — painel e plano de sessão —
+    e nenhum dos dois lia o estado: o jogador podia bater os 5/5 critérios e continuar sendo
+    servido o mesmo leak para sempre, com o selo "Dominado no treino" aceso na tela.
+
+    A missão ATIVA é a primeira, na ordem de EV ponderado, que ainda está `em_treino`. Uma
+    missão dominada sai da rotação ativa mas NÃO some: continua viva na fatia de revisão (SRS)
+    e reabre sozinha se a janela móvel de 30 tentativas voltar a falhar — o gate é acumulado,
+    não um carimbo permanente.
+    """
+    from database.repositories import get_progression_attempts, get_training_proof
+
+    missions = build_missions(user_id, days=days, top=pool)
+    try:
+        proofs = {p['category_key']: p for p in (get_training_proof(user_id) or [])}
+    except Exception:
+        proofs = {}
+
+    itens = []
+    for m in missions:
+        try:
+            att = get_progression_attempts(user_id, m['key'], limit=MASTERY_WINDOW)
+        except Exception:
+            att = []
+        ms = mastery_status(att)
+        st = state_for(ms, proofs.get(m['key']))
+        itens.append({**m, 'estado': st, 'estado_label': STATE_LABEL.get(st, st),
+                      'mastery': ms, 'proof': proofs.get(m['key'])})
+
+    em_treino = [i for i in itens if i['estado'] == 'em_treino']
+    dominadas = [i for i in itens if i['estado'] != 'em_treino']
+    ativa = em_treino[0] if em_treino else None
+    return {
+        'ativa':      ativa,
+        # o painel mostra o arco curto: o que vem DEPOIS da ativa, não o backlog inteiro
+        'proximas':   em_treino[1:3],
+        'dominadas':  dominadas,
+        'restantes':  len(em_treino),
+        'items':      itens,
+    }
+
+
 def mission_title(cat: dict) -> str:
     """Nome humano do spot. O jogador tem que reconhecer a situação na hora."""
     pos, vs = cat.get('position', ''), (cat.get('vs_position') or '')
@@ -209,11 +260,26 @@ def plan_session(user_id: int, size: str = DEFAULT_SESSION, days: int = 90,
     """
     rng = rng or random
     n_total = SESSION_SIZES.get(size, SESSION_SIZES[DEFAULT_SESSION])
-    missions = build_missions(user_id, days=days, top=3)
+
+    # O foco vem do ESTADO, não da ordem de EV: quem passou o gate sai da rotação ativa.
+    # Se a leitura de estado falhar, cair no maior EV é melhor que não abrir sessão nenhuma.
+    try:
+        estado = missions_with_state(user_id, days=days)
+    except Exception:
+        estado = None
+    missions = (estado or {}).get('items') or build_missions(user_id, days=days, top=3)
     if not missions:
         return {'size': size, 'total': 0, 'mission': None, 'blocks': [], 'reason': 'sem_leaks'}
 
-    mission = missions[0]                       # UM leak ativo por vez (foco)
+    # UM leak ativo por vez (foco). Com tudo dominado a sessão não acaba: vira REVISÃO — o selo
+    # ainda depende do jogo real, e é o SRS que impede o domínio de apodrecer.
+    modo = 'missao'
+    if estado and estado.get('ativa'):
+        mission = estado['ativa']
+    elif estado and estado.get('dominadas'):
+        mission, modo = estado['dominadas'][0], 'revisao'
+    else:
+        mission = missions[0]
     cats = {c['key']: c for c in build_curriculum(user_id, days=days)}
     active_cat = cats.get(mission['key'])
     if not active_cat:
@@ -249,6 +315,7 @@ def plan_session(user_id: int, size: str = DEFAULT_SESSION, days: int = 90,
         'size':    size,
         'total':   sum(b['n'] for b in blocks),
         'mission': mission,
+        'modo':    modo,
         'blocks':  blocks,
         'mix':     {'active': n_active, 'review': n_review, 'contrast': n_contrast},
     }

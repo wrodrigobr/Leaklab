@@ -207,11 +207,17 @@
       "missionOf": "Misión {{n}} de {{total}}",
       "lostIn": "perdidos aquí, en {{hands}} manos reales",
       "untilMastered": "Para dominar",
+      "keepMastery": "Manteniendo el dominio",
       "needSample": "sin muestra",
       "train": "Entrenar",
+      "review": "Repasar",
+      "reviewMode": "Repaso",
       "nextMissions": "Después de esta",
       "otherModes": "Entrenar otra cosa",
-      "oneAtATime": "Una a la vez: dividir el foco entre leaks hace que no domines ninguno."
+      "oneAtATime": "Una a la vez: dividir el foco entre leaks hace que no domines ninguno.",
+      "mastered": "Dominados",
+      "masteredPending": "Dominarlo en el entrenamiento libera el siguiente leak. El sello de comprobado llega solo cuando tus próximos torneos confirmen la corrección en la mesa.",
+      "masteredProven": "Confirmado en tus torneos: el acierto salió del entrenamiento y llegó a la mesa."
     }
   },
   "trainAch": {

@@ -207,11 +207,17 @@
       "missionOf": "Mission {{n}} of {{total}}",
       "lostIn": "lost here, across {{hands}} real hands",
       "untilMastered": "To master",
+      "keepMastery": "Keeping it sharp",
       "needSample": "no sample",
       "train": "Train",
+      "review": "Review",
+      "reviewMode": "Review",
       "nextMissions": "Up next",
       "otherModes": "Train something else",
-      "oneAtATime": "One at a time: splitting focus across leaks means mastering none."
+      "oneAtATime": "One at a time: splitting focus across leaks means mastering none.",
+      "mastered": "Mastered",
+      "masteredPending": "Mastering it in training unlocks the next leak. The proven seal only lands once your next tournaments confirm the fix at the table.",
+      "masteredProven": "Confirmed in your tournaments: the fix made it out of training and onto the felt."
     }
   },
   "trainAch": {

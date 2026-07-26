@@ -1319,6 +1319,8 @@ export interface ProgressionPlan {
   size: SessionSize;
   total: number;
   mission: ProgressionMission | null;
+  /** `revisao` = todos os leaks medidos já passaram o gate; a sessão mantém o SRS vivo. */
+  modo?: "missao" | "revisao";
   blocks: ProgressionBlock[];
   mix?: { active: number; review: number; contrast: number };
   reason?: string;
@@ -1347,9 +1349,9 @@ export interface MasteryCriterion {
 
 export type ProgressionState = "em_treino" | "dominado_no_treino" | "comprovado_no_jogo";
 
-export interface ProgressionStatusItem {
-  key: string;
-  titulo: string;
+/** Missão + estado na MESMA linha: a tela lia duas listas (missões e status) e assumia que a
+ *  ordem batia. Agora o backend anota a missão com o estado e diz qual está ativa. */
+export interface ProgressionStatusItem extends ProgressionMission {
   estado: ProgressionState;
   estado_label: string;
   mastery: {
@@ -1361,12 +1363,21 @@ export interface ProgressionStatusItem {
   proof?: { delta?: number; confident?: boolean; after_pct?: number; baseline_pct?: number } | null;
 }
 
+/** Foco resolvido pelo backend: `ativa` é a primeira missão que ainda NÃO passou o gate. */
+export interface ProgressionStatus {
+  ativa: ProgressionStatusItem | null;
+  proximas: ProgressionStatusItem[];
+  dominadas: ProgressionStatusItem[];
+  restantes: number;
+  items: ProgressionStatusItem[];
+}
+
 export const progression = {
   missions: (days = 90) =>
     request<{ missions: ProgressionMission[] }>(`/player/progression/missions?days=${days}`),
 
   status: (days = 90) =>
-    request<{ items: ProgressionStatusItem[] }>(`/player/progression/status?days=${days}`),
+    request<ProgressionStatus>(`/player/progression/status?days=${days}`),
 
   startSession: (size: SessionSize, days = 90) =>
     request<{ plan: ProgressionPlan | null; error?: string }>("/player/progression/session", {

@@ -2923,32 +2923,19 @@ def progression_status():
     O gate de PROGRESSÃO é o treino (rápido, amostra infinita); o SELO é o jogo real. Nunca
     dizemos 'corrigido' antes dos uploads confirmarem — é o que separa isto de um simulador.
     Os critérios voltam com progresso porque o gate é transparente de propósito: mistério faz
-    o jogador desistir."""
-    from leaklab.progression import build_missions, mastery_status, state_for, STATE_LABEL
-    from database.repositories import get_progression_attempts, get_training_proof
+    o jogador desistir.
+
+    O foco (`ativa`) sai de `missions_with_state`, a MESMA função que o plano de sessão usa —
+    se a tela e o treino resolvessem o foco por conta própria, avançar de leak no painel não
+    mudaria o que é servido no drill."""
+    from leaklab.progression import missions_with_state
     days = int(request.args.get('days', 90) or 90)
     try:
-        missions = build_missions(g.user_id, days=days)
+        est = missions_with_state(g.user_id, days=days)
     except Exception:
-        app.logger.exception("progression_status: missões falharam (user=%s)", g.user_id)
-        return jsonify({'items': []})
-    # trilho lento (aderência real antes×depois) — indexado por categoria
-    try:
-        proofs = {p['category_key']: p for p in (get_training_proof(g.user_id) or [])}
-    except Exception:
-        proofs = {}
-    itens = []
-    for m in missions:
-        att = get_progression_attempts(g.user_id, m['key'], limit=30)
-        ms  = mastery_status(att)
-        st  = state_for(ms, proofs.get(m['key']))
-        itens.append({
-            'key': m['key'], 'titulo': m['titulo'],
-            'estado': st, 'estado_label': STATE_LABEL.get(st, st),
-            'mastery': ms,
-            'proof': proofs.get(m['key']),
-        })
-    return jsonify({'items': itens})
+        app.logger.exception("progression_status falhou (user=%s)", g.user_id)
+        return jsonify({'items': [], 'ativa': None, 'proximas': [], 'dominadas': [], 'restantes': 0})
+    return jsonify(est)
 
 
 @app.route('/player/progression/session', methods=['POST'])

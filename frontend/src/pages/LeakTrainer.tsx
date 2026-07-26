@@ -558,9 +558,15 @@ export default function LeakTrainer() {
              RECOMENDADO" + 6 leaks + 3 fundamentos), com a MESMA categoria aparecendo duas
              vezes com nomes diferentes e o status do protocolo invisível. Agora: um bloco de
              status com o gate à vista, UMA ação primária, e todo o resto atrás de disclosure. */
-          const st   = statusData?.items?.[0];
-          const miss = missionData?.missions?.[0];
-          const outras = (statusData?.items ?? []).slice(1);
+          /* O foco vem do BACKEND (`ativa` = primeira missão que ainda não passou o gate).
+             Antes a tela fixava `items[0]` e o leak dominado ficava eternamente em foco:
+             o gate acendia 5/5 e nada acontecia. Fallback pro topo da lista só se o backend
+             for antigo (deploy defasado) — nunca deixar a tela vazia por isso. */
+          const st   = statusData?.ativa ?? statusData?.items?.[0];
+          const miss = st ?? missionData?.missions?.[0];
+          const outras = statusData?.proximas ?? (statusData?.items ?? []).slice(1);
+          const dominadas = statusData?.dominadas ?? [];
+          const revisao = !statusData?.ativa && dominadas.length > 0;
           const stateTone = st?.estado === "comprovado_no_jogo"
             ? { text: "text-emerald-400", ring: "ring-emerald-500/30", bg: "bg-emerald-500/10" }
             : st?.estado === "dominado_no_treino"
@@ -575,11 +581,13 @@ export default function LeakTrainer() {
             <div className="rounded-2xl border border-amber-500/30 bg-gradient-to-b from-amber-500/[0.07] to-transparent p-5 sm:p-6 space-y-4">
               <div className="flex items-center justify-between gap-3">
                 <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                  {st ? t("leakTrainer.protocol.missionOf", {
-                          n: 1, total: (statusData?.items?.length ?? 1),
-                          defaultValue: `Missão 1 de ${statusData?.items?.length ?? 1}`,
-                        })
-                     : t("leakTrainer.protocol.mission", "Missão de hoje")}
+                  {revisao
+                    ? t("leakTrainer.protocol.reviewMode", "Revisão")
+                    : st ? t("leakTrainer.protocol.missionOf", {
+                            n: 1, total: statusData?.restantes ?? 1,
+                            defaultValue: `Missão 1 de ${statusData?.restantes ?? 1}`,
+                          })
+                       : t("leakTrainer.protocol.mission", "Missão de hoje")}
                 </span>
                 {st && (
                   <span className={cn("rounded-md px-2 py-0.5 font-mono text-[9px] font-bold uppercase tracking-wider ring-1",
@@ -614,7 +622,8 @@ export default function LeakTrainer() {
                 <div className="rounded-xl border border-border/70 bg-background/40 p-3 space-y-2">
                   <div className="flex items-baseline justify-between">
                     <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                      {t("leakTrainer.protocol.untilMastered", "Até dominar")}
+                      {revisao ? t("leakTrainer.protocol.keepMastery", "Mantendo o domínio")
+                               : t("leakTrainer.protocol.untilMastered", "Até dominar")}
                     </span>
                     <span className="font-mono text-[10px] tabular-nums text-muted-foreground">
                       {feitos}/{totalCrit}
@@ -666,7 +675,9 @@ export default function LeakTrainer() {
                   </div>
                   <button onClick={() => startProtocol(sizeSel)}
                     className="flex w-full items-center justify-center gap-2 rounded-xl bg-amber-500 px-6 py-3.5 font-mono text-sm font-bold uppercase tracking-widest text-black transition-colors hover:bg-amber-400">
-                    <Target className="size-4" aria-hidden /> {t("leakTrainer.protocol.train", "Treinar")}
+                    <Target className="size-4" aria-hidden />{" "}
+                    {revisao ? t("leakTrainer.protocol.review", "Revisar")
+                             : t("leakTrainer.protocol.train", "Treinar")}
                   </button>
                 </div>
               )}
@@ -690,6 +701,38 @@ export default function LeakTrainer() {
                 <p className="mt-2 text-[11px] leading-snug text-muted-foreground/70">
                   {t("leakTrainer.protocol.oneAtATime",
                      "Uma de cada vez: dividir o foco entre leaks faz você não dominar nenhum.")}
+                </p>
+              </div>
+            )}
+
+            {/* ── 2b. O QUE VOCÊ JÁ CONQUISTOU ──
+                Passar o gate tem que APARECER, senão o esforço some da tela e o jogador não vê
+                que avançou. E tem que ser honesto: dominar no treino não é ter corrigido no
+                jogo — o selo só vem quando os uploads confirmarem. */}
+            {dominadas.length > 0 && (
+              <div className="rounded-xl border border-sky-500/25 bg-sky-500/[0.04] p-3">
+                <p className="mb-2 font-mono text-[10px] uppercase tracking-widest text-sky-400/90">
+                  {t("leakTrainer.protocol.mastered", "Dominados")} · {dominadas.length}
+                </p>
+                <div className="space-y-1.5">
+                  {dominadas.map((d) => (
+                    <div key={d.key} className="flex items-center gap-2 text-[12px]">
+                      <CheckCircle2 className={cn("size-3.5 shrink-0",
+                        d.estado === "comprovado_no_jogo" ? "text-emerald-400" : "text-sky-400")} aria-hidden />
+                      <span className="min-w-0 flex-1 truncate text-foreground/90">{d.titulo}</span>
+                      <span className={cn("shrink-0 font-mono text-[9px] uppercase",
+                        d.estado === "comprovado_no_jogo" ? "text-emerald-400" : "text-sky-400/80")}>
+                        {d.estado_label}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+                <p className="mt-2 text-[11px] leading-snug text-muted-foreground/70">
+                  {dominadas.some((d) => d.estado === "dominado_no_treino")
+                    ? t("leakTrainer.protocol.masteredPending",
+                        "Dominado no treino libera o próximo leak. O selo de comprovado só vem quando seus próximos torneios confirmarem a correção na mesa.")
+                    : t("leakTrainer.protocol.masteredProven",
+                        "Confirmado nos seus torneios: o acerto saiu do treino e chegou na mesa.")}
                 </p>
               </div>
             )}
