@@ -239,6 +239,66 @@ def test_sizing_por_cenario_difere():
     print("OK  test_sizing_por_cenario_difere")
 
 
+# ── Leak de SIZING (dimensão própria) ─────────────────────────────────────────
+# Um open de tamanho errado tem a AÇÃO certa, então o ev_loss da range é ~0 e o leak fica
+# invisível ao diagnóstico normal. Estes testes travam os falsos positivos vistos em dado real.
+
+def _mock_sizing_rows(monkeypatch_rows):
+    import leaklab.progression as prog
+    from database import repositories as repo
+    orig = repo.get_open_sizing_rows
+    repo.get_open_sizing_rows = lambda uid, days=90: monkeypatch_rows
+    return orig
+
+
+def test_sizing_mission_exige_padrao_nao_mao_avulsa():
+    """Uma abertura grande é ruído; um HÁBITO é que custa fichas. Abaixo da amostra mínima
+    não vira missão — senão o protocolo mandaria corrigir variância."""
+    from database import repositories as repo
+    from leaklab.progression import build_sizing_missions, SIZING_MIN_N
+    orig = repo.get_open_sizing_rows
+    try:
+        # 3 aberturas monstruosas, mas amostra pequena → NÃO vira missão
+        repo.get_open_sizing_rows = lambda uid, days=90: [
+            {'position': 'UTG', 'stack_bb': 50.0, 'raise_to_bb': 5.0}] * 3
+        assert build_sizing_missions(1) == []
+        # amostra suficiente e padrão consistente → vira missão
+        repo.get_open_sizing_rows = lambda uid, days=90: [
+            {'position': 'UTG', 'stack_bb': 50.0, 'raise_to_bb': 5.0}] * SIZING_MIN_N
+        ms = build_sizing_missions(1)
+        assert len(ms) == 1 and ms[0]['direcao'] == 'grande'
+        assert ms[0]['position'] == 'UTG' and ms[0]['tipo'] == 'sizing'
+        assert 'acima' in ms[0]['diagnostico']
+    finally:
+        repo.get_open_sizing_rows = orig
+    print("OK  test_sizing_mission_exige_padrao_nao_mao_avulsa")
+
+
+def test_sizing_nao_acusa_quem_abre_certo():
+    from database import repositories as repo
+    from leaklab.progression import build_sizing_missions, SIZING_MIN_N
+    orig = repo.get_open_sizing_rows
+    try:
+        repo.get_open_sizing_rows = lambda uid, days=90: [
+            {'position': 'BTN', 'stack_bb': 50.0, 'raise_to_bb': 2.5}] * SIZING_MIN_N
+        assert build_sizing_missions(1) == []
+    finally:
+        repo.get_open_sizing_rows = orig
+    print("OK  test_sizing_nao_acusa_quem_abre_certo")
+
+
+def test_sizing_ignora_shove_e_stack_curto():
+    """Falso positivo visto em dado REAL: 'ACR UTG stack 10,2 abriu 10,14' foi contado como
+    'open 5x maior que o GTO'. Era um SHOVE. E abaixo de ~20bb a decisão é entrar ou sair,
+    não quanto apostar — os dois casos são excluídos na query."""
+    import inspect
+    from database import repositories as repo
+    src = inspect.getsource(repo.get_open_sizing_rows)
+    assert 'raise_to_bb < d.stack_bb * 0.9' in src, "shove não está sendo excluído"
+    assert 'stack_bb >= 22' in src, "stack curto não está sendo excluído"
+    print("OK  test_sizing_ignora_shove_e_stack_curto")
+
+
 def test_contrast_note_explica_a_troca():
     n = contrast_note({'stack_bb': 17, 'contrast_of': 30})
     assert n and '30bb' in n and '17bb' in n

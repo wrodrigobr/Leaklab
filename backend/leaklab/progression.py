@@ -91,6 +91,72 @@ def build_missions(user_id: int, days: int = 90, top: int = 3) -> list[dict]:
     return missions[:top]
 
 
+# ── Leak de SIZING (dimensão própria) ────────────────────────────────────────────────────────
+# Um open de tamanho errado tem a AÇÃO certa, então o ev_loss da range é ~0 e o leak fica
+# invisível ao diagnóstico normal. É outra dimensão: custa EV sem ser "decisão errada".
+SIZING_MIN_N     = 8      # amostra mínima por posição pra falar de padrão (não de uma mão)
+SIZING_OFF_RATIO = 1.35   # mesma régua do sizing_advisor: +35% já é padrão caro
+SIZING_MIN_SHARE = 0.40   # % de aberturas fora do tamanho pra virar missão
+
+
+def build_sizing_missions(user_id: int, days: int = 90) -> list[dict]:
+    """Missões de SIZING: posições em que o hero abre sistematicamente fora do tamanho GTO.
+
+    Reporta PADRÃO, não mão avulsa: exige amostra mínima e uma fatia relevante de aberturas
+    fora do tamanho. Uma abertura grande é ruído; 60% delas é um hábito que custa fichas.
+    """
+    from database.repositories import get_open_sizing_rows
+    from leaklab.sizing_advisor import gto_open_to_bb
+    rows = get_open_sizing_rows(user_id, days=days)
+    por_pos: dict[str, list] = {}
+    for r in rows:
+        por_pos.setdefault((r['position'] or '').upper(), []).append(r)
+
+    missoes = []
+    for pos, lista in por_pos.items():
+        if len(lista) < SIZING_MIN_N:
+            continue
+        fora, ratios, alvo = 0, [], None
+        for r in lista:
+            gto = gto_open_to_bb(pos, r['stack_bb'])
+            if not gto:
+                continue
+            ratio = r['raise_to_bb'] / gto
+            ratios.append(ratio)
+            alvo = gto if alvo is None else alvo
+            if ratio > SIZING_OFF_RATIO or ratio < (1 / SIZING_OFF_RATIO):
+                fora += 1
+        if not ratios or len(ratios) < SIZING_MIN_N:
+            continue
+        share = fora / len(ratios)
+        if share < SIZING_MIN_SHARE:
+            continue
+        medio = sum(ratios) / len(ratios)
+        grande = medio > 1.0
+        missoes.append({
+            'key':        f'sizing:rfi:{pos}',
+            'tipo':       'sizing',
+            'position':   pos,
+            'titulo':     f'Tamanho da abertura de {pos}',
+            'hands':      len(ratios),
+            'fora':       fora,
+            'share':      round(share, 2),
+            'ratio_medio': round(medio, 2),
+            'direcao':    'grande' if grande else 'pequeno',
+            'diagnostico': (
+                f"{fora} das suas {len(ratios)} aberturas de {pos} saíram fora do tamanho GTO "
+                f"(em média {abs(medio - 1) * 100:.0f}% {'acima' if grande else 'abaixo'})."),
+            'porque': (
+                "Abrir maior que o GTO arrisca mais fichas pra ganhar o mesmo pote: quando dá "
+                "errado você perde mais, e quando dá certo ganha igual."
+                if grande else
+                "Abrir menor que o GTO dá preço barato demais pra quem está atrás defender, e "
+                "você joga potes maiores fora de posição com range pior."),
+        })
+    missoes.sort(key=lambda m: (-m['share'], -m['hands']))
+    return missoes
+
+
 def mission_title(cat: dict) -> str:
     """Nome humano do spot. O jogador tem que reconhecer a situação na hora."""
     pos, vs = cat.get('position', ''), (cat.get('vs_position') or '')
@@ -216,14 +282,18 @@ def next_spot_for_plan(plan: dict, done_by_kind: dict | None = None,
         spot['block_label'] = escolhido.get('label')
         if escolhido.get('contrast_of'):
             spot['contrast_of'] = escolhido['contrast_of']
-        # ATRIBUIÇÃO: o spot de contraste pertence à família VIZINHA (outra profundidade), então
-        # `category` é a dela. Mas a tentativa é evidência da MISSÃO — é ela que está sendo
-        # provada ("você não decorou, transfere pra outra profundidade"). Sem este campo, o
-        # critério de Transferência ficava eternamente em 0 porque as tentativas caíam na
-        # categoria vizinha. O gate loga por `mission_key` quando ele existe.
-        mk = (plan.get('mission') or {}).get('key')
-        if mk:
-            spot['mission_key'] = mk
+        # ATRIBUIÇÃO — só o CONTRASTE é reatribuído à missão. Ele pertence à família vizinha
+        # (outra profundidade), mas a tentativa é evidência da MISSÃO: prova que o jogador não
+        # decorou e transfere pra outra profundidade. Sem isso, o critério de Transferência
+        # ficava eternamente em 0 porque as tentativas caíam na categoria vizinha.
+        #
+        # REVISÃO **não** é reatribuída: ela é outro leak, e creditá-la à missão inflaria a
+        # janela com evidência de outra coisa (o jogador "dominaria" A treinando B).
+        # ATIVO não precisa: a categoria dele já É a da missão.
+        if escolhido['kind'] == 'contrast':
+            mk = (plan.get('mission') or {}).get('key')
+            if mk:
+                spot['mission_key'] = mk
     return spot
 
 

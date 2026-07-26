@@ -548,6 +548,10 @@ def _run_migrations(conn):
             # EV-loss (#24): bb perdidos vs a melhor ação, pra a mão do hero (preflop).
             "ALTER TABLE decisions ADD COLUMN IF NOT EXISTS ev_loss_bb REAL",
             "ALTER TABLE decisions ADD COLUMN IF NOT EXISTS ev_loss_source TEXT",
+            # Tamanho do PRÓPRIO raise do hero (raise-to em bb). facing_bet é o do VILÃO; sem
+            # esta coluna o sizing do hero só existia recalculado ao vivo no /replay e não
+            # podia ser agregado ao longo do tempo — logo, não virava leak nem missão.
+            "ALTER TABLE decisions ADD COLUMN IF NOT EXISTS raise_to_bb REAL",
             # #15 leaderboard — opt-in/privacidade: aparecer no ranking público é consentido
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS leaderboard_opt_in BOOLEAN NOT NULL DEFAULT FALSE",
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS leaderboard_handle TEXT",
@@ -1256,6 +1260,7 @@ def _run_migrations(conn):
             ("ev_loss_source",   "ALTER TABLE decisions ADD COLUMN ev_loss_source   TEXT"),
             ("n_active_opponents", "ALTER TABLE decisions ADD COLUMN n_active_opponents INTEGER"),
             ("multiway_safe_verdict", "ALTER TABLE decisions ADD COLUMN multiway_safe_verdict TEXT"),  # #30 shadow
+            ("raise_to_bb",      "ALTER TABLE decisions ADD COLUMN raise_to_bb      REAL"),   # sizing do hero
         ]:
             if col not in dec_existing:
                 try: conn.execute(sql)

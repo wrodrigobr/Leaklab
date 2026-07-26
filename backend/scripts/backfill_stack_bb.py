@@ -24,6 +24,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 from database.schema import get_conn
 from leaklab.parser import parse_hand_history
 from leaklab.mtt_context import build_mtt_context
+from leaklab.hand_state_builder import extract_decision_points
 
 
 def _arg(flag, default=None):
@@ -110,6 +111,23 @@ def main():
                 sb = None
             if sb is not None:
                 stack_by_hand[str(h.hand_id)] = float(sb)
+
+        # (hand_id, ação) → tamanho do raise do hero, pro leak de SIZING. Mesmo passe de
+        # parse, custo ~zero: sem isto o sizing só existiria pra imports novos.
+        if apply_:
+            for h in hands:
+                try:
+                    for st in extract_decision_points(h):
+                        rb = st.metadata.get('hero_raise_to_bb')
+                        if not rb:
+                            continue
+                        conn.execute(
+                            "UPDATE decisions SET raise_to_bb = ? WHERE tournament_id = ? "
+                            "AND hand_id = ? AND street = ? AND raise_to_bb IS NULL",
+                            (float(rb), t_pk, str(h.hand_id), st.street))
+                except Exception:
+                    pass
+            conn.commit()
 
         fix = miss = 0
         updates = []

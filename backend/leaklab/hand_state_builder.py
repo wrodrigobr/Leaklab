@@ -2,7 +2,7 @@ from __future__ import annotations
 import re
 from typing import Optional, List
 from .models import ParsedHand, HandState, ParsedAction
-from .parser import SEAT_OUT_OF_HAND_RE
+from .parser import SEAT_OUT_OF_HAND_RE, raise_total_from_raw
 
 # ── Board por street ──────────────────────────────────────────────────────────
 # PokerStars/GGPoker têm DOIS formatos de linha de board, ambos válidos:
@@ -343,6 +343,14 @@ def extract_decision_points(hand: ParsedHand) -> List[HandState]:
         pot_type = ('limped' if _n_pf_raises == 0 else 'srp' if _n_pf_raises == 1
                     else '3bet' if _n_pf_raises == 2 else '4bet')
 
+        # Tamanho do próprio raise do hero (raise-to em bb) — leitura pelo PARSER, que é a
+        # fonte única de "como ler uma linha de hand history" (tolera separador de milhar).
+        hero_raise_to_bb = None
+        if action.action in ('raises', 'all-in'):
+            _hr_total = raise_total_from_raw(action.raw)
+            if _hr_total and _bb_amt:
+                hero_raise_to_bb = round(_hr_total / _bb_amt, 2)
+
         # Board correto para a street atual
         board_at_street = _board_for_street(
             hand.raw_text if hasattr(hand, 'raw_text') else '',
@@ -378,6 +386,10 @@ def extract_decision_points(hand: ParsedHand) -> List[HandState]:
                 'villain_name': villain_name,   # HUD: nome do vilão do spot (lookup do perfil)
                 'facing_allin': facing_allin,   # hero enfrenta um all-in (call = a agressão)
                 'facing_to_bb': facing_to_bb,  # #23: tamanho do open enfrentado (bb)
+                # Tamanho do PRÓPRIO raise do hero (raise-to em bb). O facing_to_bb acima é o do
+                # VILÃO; sem este, o sizing do hero não podia ser agregado ao longo do tempo (era
+                # recalculado ao vivo no /replay) e por isso não virava leak nem missão.
+                'hero_raise_to_bb': hero_raise_to_bb,
                 'pot_type': pot_type,           # Fase 2: srp|3bet|4bet|limped (ranges do solver)
                 'preflop_opener': preflop_opener,     # posição do 1º raiser
                 'preflop_3bettor': preflop_3bettor,   # posição do 2º raiser (3-bettor)

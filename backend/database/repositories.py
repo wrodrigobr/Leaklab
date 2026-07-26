@@ -665,6 +665,7 @@ def save_decisions(tournament_db_id: int, results: List[dict]):
                 gto.get('ev_loss_bb'),        # #24: bb perdidos vs melhor ação (preflop)
                 gto.get('ev_loss_source'),
                 spot_ctx.get('nActiveOpponents'),   # oponentes vivos no momento da decisão (multiway-aware)
+                spot_ctx.get('heroRaiseToBb'),      # tamanho do PRÓPRIO raise do hero (bb)
             ))
         conn.executemany("""
             INSERT INTO decisions
@@ -675,8 +676,8 @@ def save_decisions(tournament_db_id: int, results: List[dict]):
                level_sb, level_bb, level_num, note, is_3bet, showdown_result,
                pot_size, facing_bet, gto_label, gto_action, gto_depth_capped, estimated_equity,
                vs_position, preflop_raises_faced, hero_won_hand,
-               ev_loss_bb, ev_loss_source, n_active_opponents)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+               ev_loss_bb, ev_loss_source, n_active_opponents, raise_to_bb)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
         """, rows)
         conn.commit()
     finally:
@@ -5139,6 +5140,40 @@ def get_all_users_count(plan: str = None, role: str = None, search: str = None) 
         conn.close()
 
 
+def get_open_sizing_rows(user_id: int, days: int = 90, last_n: int | None = None) -> list:
+    """Aberturas (RFI) do hero COM tamanho, para diagnosticar leak de SIZING.
+
+    Por que query própria e não `get_leak_categories`: um open de tamanho errado tem a AÇÃO
+    certa (raise), então o `ev_loss_bb` da range é ~0 e o leak é invisível ao diagnóstico atual.
+    O erro de tamanho é outra dimensão — custa EV sem aparecer como decisão errada.
+    """
+    tf, tp = _build_tournament_filter(user_id, days, last_n)
+    conn = get_conn()
+    try:
+        rows = conn.execute(_adapt(f"""
+            SELECT d.position, d.stack_bb, d.raise_to_bb
+              FROM decisions d JOIN tournaments t ON t.id = d.tournament_id
+             WHERE {tf}
+               AND d.street = 'preflop'
+               AND d.raise_to_bb IS NOT NULL AND d.raise_to_bb > 0
+               AND d.stack_bb   IS NOT NULL AND d.stack_bb   > 0
+               AND COALESCE(d.preflop_raises_faced, 0) = 0   -- só ABERTURA (RFI), não 3-bet
+               AND d.position IS NOT NULL AND d.position <> ''
+               -- SHOVE não é escolha de tamanho: abrir all-in com 10bb apareceria como
+               -- "open 5x maior que o GTO" (falso positivo visto em dado real).
+               AND d.raise_to_bb < d.stack_bb * 0.9
+               -- Abaixo de ~20bb a decisão é entrar ou sair, não quanto apostar. Sizing só
+               -- é decisão de verdade com stack pra jogar depois do flop.
+               AND d.stack_bb >= 22
+        """), tp).fetchall()
+        return [{'position': r['position'], 'stack_bb': float(r['stack_bb']),
+                 'raise_to_bb': float(r['raise_to_bb'])} for r in rows]
+    except Exception:
+        return []
+    finally:
+        conn.close()
+
+
 def record_progression_attempt(user_id: int, category_key: str, stratum: str,
                                block_kind: str | None, correct: bool) -> None:
     """Loga uma tentativa COM ESTRATO (append-only) — substrato do gate de domínio.
@@ -5153,7 +5188,15 @@ def record_progression_attempt(user_id: int, category_key: str, stratum: str,
             (user_id, category_key, stratum, block_kind or None, 1 if correct else 0))
         conn.commit()
     except Exception:
-        pass
+        # Não derruba a correção do spot (o jogador não pode perder a resposta por causa do
+        # log), mas LOGA: engolir calado tornava "os indicadores não sobem" indiagnosticável.
+        try:
+            import logging
+            logging.getLogger('repositories').exception(
+                "record_progression_attempt falhou (user=%s cat=%s) — indicadores não vão subir",
+                user_id, category_key)
+        except Exception:
+            pass
     finally:
         conn.close()
 
@@ -5171,6 +5214,13 @@ def get_progression_attempts(user_id: int, category_key: str, limit: int = 30) -
         return [{'stratum': r['stratum'], 'block_kind': r['block_kind'],
                  'correct': bool(r['correct'])} for r in rows]
     except Exception:
+        try:
+            import logging
+            logging.getLogger('repositories').exception(
+                "get_progression_attempts falhou (user=%s cat=%s) — o gate vai aparecer zerado",
+                user_id, category_key)
+        except Exception:
+            pass
         return []
     finally:
         conn.close()
