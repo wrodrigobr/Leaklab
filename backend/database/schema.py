@@ -2009,6 +2009,23 @@ def _run_migrations(conn):
                 paid_at       TIMESTAMP
             )""",
             "CREATE INDEX IF NOT EXISTS idx_coach_commissions_coach ON coach_commissions(coach_id)",
+            # Protocolo de Progressão: tentativas COM ESTRATO — abort-proof.
+            # Confirmado em PROD (2026-07-26): a tabela NÃO foi criada pelo bloco regular
+            # (transação abortada por uma migração anterior), e o painel do protocolo ficava
+            # com todos os indicadores zerados — o jogador treinava e nada subia.
+            """CREATE TABLE IF NOT EXISTS progression_attempts (
+                id           SERIAL PRIMARY KEY,
+                user_id      INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                category_key TEXT    NOT NULL,
+                stratum      TEXT    NOT NULL,
+                block_kind   TEXT,
+                correct      INTEGER NOT NULL DEFAULT 0,
+                created_at   TIMESTAMP NOT NULL DEFAULT NOW()
+            )""",
+            "CREATE INDEX IF NOT EXISTS idx_prog_attempt_user_cat "
+            "ON progression_attempts(user_id, category_key, id)",
+            # Sizing do hero (raise-to em bb) — mesma razão: sem ela o leak de tamanho não agrega.
+            "ALTER TABLE decisions ADD COLUMN IF NOT EXISTS raise_to_bb REAL",
             # Gamificação de treino (Fase 1): domínio por categoria — abort-proof p/ existir em prod.
             """CREATE TABLE IF NOT EXISTS training_skill_progress (
                 id                SERIAL PRIMARY KEY,
