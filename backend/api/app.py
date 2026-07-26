@@ -5814,7 +5814,11 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
                             _pf_is_3bet_pot = (_pf_n_raises_before >= 2
                                               or bool(spot.get('is3betPot'))
                                               or bool(di.get('is_3bet', False)))
-                            _pf_result = analyze_preflop(
+                            # Porta única de estratégia preflop (mesma do trainer/engine/replay-verdict).
+                            # `raw` = dict cru do analyze_preflop (dialeto de armazenamento) → o
+                            # frontend consome preflop_gto como antes, sem mudança de contrato.
+                            from leaklab.strategy_provider import preflop_strategy as _pfs_a
+                            _pf_result = _pfs_a(
                                 position       = _pf_pos,
                                 hero_hand_type = h_type,
                                 stack_bb       = _pf_stack_bb,
@@ -5834,7 +5838,7 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
                                 # rebaixar fold de defesa marginal vs open off-tree.
                                 facing_to_bb       = float(spot.get('facingToBb') or 0),
                                 facing_allin       = bool(spot.get('facingAllin', False)),
-                            )
+                            )['raw']
                             # Fallback for call-vs-shove (no vs_3bet data yet):
                             # use RFI range membership as proxy for shove-call quality
                             if (not _pf_result.get('available')
@@ -6316,10 +6320,13 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
             if _hc and _pos:
                 try:
                     from leaklab.preflop_gto_ranges import analyze_preflop as _apf
+                    # Porta única de estratégia preflop (mesma do trainer/engine). `raw` = dict cru
+                    # (dialeto de armazenamento) — o resto da reconciliação segue sem mudança.
+                    from leaklab.strategy_provider import preflop_strategy as _pfs
                     from leaklab.gto_utils import hand_to_type as _h2t
                     _ht = _h2t(_hc)
                     if _ht:
-                        _pf = _apf(
+                        _pf = _pfs(
                             position       = _pos,
                             hero_hand_type = _ht,
                             stack_bb       = _sb,
@@ -6331,7 +6338,7 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
                             facing_raises      = int(_spot.get('preflopRaisesFaced') or 0),
                             hero_was_aggressor = bool(_spot.get('heroWasAggressor')),
                             facing_allin       = bool(_spot.get('facingAllin', False)),
-                        )
+                        )['raw']
                         # Fallback for call-vs-shove: no specific vs_3bet data in ranges yet.
                         # When facing >= 40% of stack with call, use RFI range membership
                         # as proxy: in-range hand calling a shove = correct (KK, AA, AKs, QQ+).

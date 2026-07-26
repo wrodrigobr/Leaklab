@@ -28,6 +28,9 @@ conta própria a partir de constantes/cenário — o menu deriva SEMPRE da estra
 from __future__ import annotations
 
 from leaklab.preflop_gto_ranges import analyze_preflop
+# Normalizador de ARMAZENAMENTO/solver (fonte única de baixo nível): {fold,check,call,bet,raise,jam},
+# colapsa sizes (bet_50pct→bet, raise_119pct→raise) e mapeia limp→call, allin/shove→jam.
+from leaklab.gto_utils import normalize_gto_action
 
 # Ação com frequência GTO ≥ isto é creditável como acerto (espelha leak_trainer.MIN_FREQ) →
 # portanto DEVE ser oferecível. Fonte única do limiar de "linha co-ótima".
@@ -41,14 +44,31 @@ CANONICAL_ACTION_ORDER = ('fold', 'check', 'call', 'raise', 'allin')
 POSTFLOP_FACING_BET_MENU = ('fold', 'call', 'raise')
 
 
-def normalize_action(a: str) -> str:
-    """Normaliza rótulos de ação para a família canônica (jam/shove/all-in/bet→…). Idempotente."""
-    a = (a or '').strip().lower()
-    if a in ('jam', 'shove', 'all-in', 'allin'):
+# ── Bridge de vocabulário (dois dialetos coexistem no código) ───────────────────────────────────
+# ARMAZENAMENTO/solver (gto_nodes, decision_engine, /replay, gto_utils): usa 'jam' e distingue
+#   'bet' de 'raise'. É o dialeto de baixo nível (VALID_GTO_ACTIONS).
+# EXIBIÇÃO/trainer (este provider, frontend FREQ_LABEL): usa 'allin' e colapsa 'bet'→'raise'.
+# Toda travessia entre os dois DEVE passar por estas duas funções — nunca reescrever inline.
+
+def to_storage_action(action: str) -> str:
+    """Dialeto de ARMAZENAMENTO/solver: {fold,check,call,bet,raise,jam}. Ex.: 'allin'→'jam'."""
+    return normalize_gto_action(action)
+
+
+def to_display_action(action: str) -> str:
+    """Dialeto de EXIBIÇÃO/trainer: 'jam'→'allin', 'bet'→'raise' (o front só rotula fold/call/raise/allin)."""
+    s = normalize_gto_action(action)
+    if s == 'jam':
         return 'allin'
-    # sizes vêm como 'raise_94pct', 'bet_50pct', 'R2.1' etc — mas aqui tratamos só rótulos já
-    # em família (fold/check/call/raise/allin). Sizes são colapsados pelo chamador (_action_family).
-    return a
+    if s == 'bet':
+        return 'raise'
+    return s
+
+
+def normalize_action(a: str) -> str:
+    """Normaliza um rótulo de ação para o dialeto de EXIBIÇÃO. Idempotente. Único normalizador
+    de exibição do provider — construído sobre o normalizador de armazenamento (gto_utils)."""
+    return to_display_action(a)
 
 
 def normalize_freq_map(freq: dict | None) -> dict:
@@ -112,27 +132,45 @@ def preflop_base_menu(scenario: str, position: str) -> list[str]:
     return ['fold', 'call', 'raise']
 
 
-def preflop_strategy(position: str, hand: str, stack_bb: float, *,
+def preflop_strategy(position: str, hand: str | None = None, stack_bb: float = 20.0, *,
+                     hero_hand_type: str | None = None, action_taken: str = 'fold',
                      facing_size: float = 0.0, vs_position: str = '',
                      is_3bet_pot: bool = False, hero_was_aggressor: bool = False,
-                     facing_raises: int = 0, action_taken: str = 'fold') -> dict:
-    """Resposta normalizada de estratégia preflop — a porta única para preflop.
+                     facing_raises: int = 0, caller_position: str = '',
+                     n_players: int | None = None, facing_limp: bool = False,
+                     is_pko: bool = False, facing_to_bb: float = 0.0,
+                     facing_allin: bool = False) -> dict:
+    """Resposta normalizada de estratégia preflop — a PORTA ÚNICA para preflop (trainer, academy,
+    decision_engine/HH analyzer, /replay). Encaminha TODA a superfície de parâmetros do
+    `analyze_preflop` (não recalcula nada). `hand`/`hero_hand_type` são sinônimos (ex.: 'A8s').
 
-    Delega a `analyze_preflop` (não recalcula nada) e devolve:
+    Devolve:
       available          — a fonte cobre este spot?
       scenario           — rfi / vs_rfi / vs_3bet / …
-      hand_freq          — {ação_canônica: freq} da MÃO do herói (mista)
-      recommended        — ações recomendadas (normalizadas), ordem de freq desc da fonte
+      hand_freq          — {ação_canônica (dialeto exibição): freq} da MÃO do herói (mista)
+      recommended        — ações recomendadas (dialeto exibição), ordem de freq desc da fonte
       available_actions  — MENU a oferecer (invariante garantido) — use SEMPRE isto p/ os botões
       range_pct          — % do range naquele nó (p/ display)
-      raw                — o dict cru de analyze_preflop (fields extra: action_quality, pro_notes…)
+      raw                — o dict CRU de analyze_preflop (dialeto ARMAZENAMENTO: recommended_actions
+                           com 'jam', action_quality, ev_loss_bb, pro_notes…). O engine/replay
+                           consomem `raw` e seguem no dialeto de armazenamento sem mudança.
     """
     res = analyze_preflop(
-        position, hand, float(stack_bb), action_taken,
-        facing_size=float(facing_size or 0.0), vs_position=vs_position or '',
+        position=position,
+        hero_hand_type=(hero_hand_type if hero_hand_type is not None else hand),
+        stack_bb=float(stack_bb),
+        action_taken=action_taken,
+        facing_size=float(facing_size or 0.0),
+        vs_position=vs_position or '',
         is_3bet_pot=bool(is_3bet_pot),
-        hero_was_aggressor=bool(hero_was_aggressor),
+        caller_position=caller_position or '',
+        n_players=n_players,
         facing_raises=int(facing_raises or 0),
+        hero_was_aggressor=bool(hero_was_aggressor),
+        facing_limp=bool(facing_limp),
+        is_pko=bool(is_pko),
+        facing_to_bb=float(facing_to_bb or 0.0),
+        facing_allin=bool(facing_allin),
     )
     scenario = res.get('scenario')
     hand_freq = normalize_freq_map(res.get('hand_freq'))

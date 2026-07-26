@@ -11,8 +11,9 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 from leaklab.strategy_provider import (
     normalize_action, normalize_freq_map, menu_with_strategy, menu_covers_strategy,
     preflop_base_menu, preflop_strategy, postflop_menu, MIN_STRATEGY_FREQ,
-    CANONICAL_ACTION_ORDER,
+    CANONICAL_ACTION_ORDER, to_storage_action, to_display_action,
 )
+from leaklab.preflop_gto_ranges import analyze_preflop
 
 
 def test_normalize_action():
@@ -136,6 +137,76 @@ def test_academy_gto_consumes_provider_menu():
             nonsb += 1
     assert sb > 0 and nonsb > 0, (sb, nonsb)
     print(f"OK  test_academy_gto_consumes_provider_menu (SB={sb}, nonSB={nonsb})")
+
+
+# ── Stage 0: porta única do FETCH preflop (engine + /replay) + bridge de vocabulário ────────────
+
+def test_bridge_dialects():
+    """jam↔allin e bet→raise: as duas travessias de vocabulário. Armazenamento usa jam/bet;
+    exibição usa allin e colapsa bet→raise."""
+    # armazenamento (solver): allin/shove → jam; sizes colapsam
+    assert to_storage_action('allin') == 'jam'
+    assert to_storage_action('shove') == 'jam'
+    assert to_storage_action('raise_119pct') == 'raise'
+    assert to_storage_action('bet_50pct') == 'bet'
+    assert to_storage_action('limp') == 'call'
+    # exibição (trainer/front): jam → allin, bet → raise
+    assert to_display_action('jam') == 'allin'
+    assert to_display_action('bet') == 'raise'
+    assert to_display_action('bet_33pct') == 'raise'
+    assert to_display_action('call') == 'call'
+    # normalize_action é o dialeto de exibição
+    assert normalize_action('jam') == 'allin' == to_display_action('jam')
+    print("OK  test_bridge_dialects")
+
+
+def test_preflop_strategy_raw_equals_direct_analyze():
+    """A porta única é um pass-through FIEL: strat['raw'] == analyze_preflop(mesmos params). É o que
+    garante que rotear engine/replay pelo provider não muda veredito (Stage 0 behavior-preserving)."""
+    params = dict(position='SB', hero_hand_type='A8s', stack_bb=75.0, action_taken='raise',
+                  facing_size=0.0, vs_position='', is_3bet_pot=False, n_players=6,
+                  facing_raises=0, hero_was_aggressor=False, is_pko=False,
+                  facing_to_bb=0.0, facing_allin=False)
+    direct = analyze_preflop(**params)
+    via_provider = preflop_strategy(**params)['raw']
+    # o raw é o MESMO contrato do analyze_preflop (dialeto de armazenamento intacto)
+    for k in ('available', 'scenario', 'recommended_actions', 'action_quality', 'ev_loss_bb',
+              'in_range', 'range_pct'):
+        assert via_provider.get(k) == direct.get(k), (k, via_provider.get(k), direct.get(k))
+    # e o raw preserva 'jam' (armazenamento), não 'allin' (exibição)
+    print("OK  test_preflop_strategy_raw_equals_direct_analyze")
+
+
+def test_preflop_strategy_full_param_surface():
+    """A porta encaminha TODA a superfície do analyze_preflop (caller_position, facing_limp, is_pko,
+    facing_to_bb…). Um vs_3bet completo deve rotear certo (não cair em vs_rfi)."""
+    s = preflop_strategy(position='CO', hero_hand_type='AQs', stack_bb=50.0, action_taken='raise',
+                         facing_size=8.0, vs_position='BTN', is_3bet_pot=True,
+                         hero_was_aggressor=True, facing_raises=1, n_players=8)
+    assert s['scenario'] == 'vs_3bet', s['scenario']
+    assert s['available'] in (True, False)   # cobertura depende do JSON; o roteamento é o teste
+    print(f"OK  test_preflop_strategy_full_param_surface (scenario={s['scenario']})")
+
+
+def test_enrich_preflop_gto_routes_through_provider():
+    """O HH analyzer (decision_engine._enrich_preflop_gto) agora passa pela porta única e devolve o
+    MESMO dict que o provider (dialeto de armazenamento). Guard de que Stage 0 não mudou o engine."""
+    from leaklab.decision_engine_v11 import _enrich_preflop_gto
+    inp = {'street': 'preflop', 'player_action': 'raise', 'is_3bet': False,
+           'hero_cards': ['Ac', '8c'],   # mesmo naipe → A8s (suited), casa com hero_hand_type abaixo
+           'spot': {'position': 'SB', 'effectiveStackBb': 75, 'facingSize': 0,
+                    'villainPosition': '', 'preflopRaisesFaced': 0, 'heroWasAggressor': False,
+                    'facingToBb': 0, 'facingAllin': False, 'nPlayers': 6},
+           'context': {'heroStackBb': 75, 'isPko': False}}
+    got = _enrich_preflop_gto(inp)
+    exp = preflop_strategy(position='SB', hero_hand_type='A8s', stack_bb=75.0, action_taken='raise',
+                           facing_size=0, vs_position='', is_3bet_pot=False, n_players=6,
+                           facing_raises=0, hero_was_aggressor=False, is_pko=False,
+                           facing_to_bb=0, facing_allin=False)['raw']
+    assert got.get('available') == exp.get('available')
+    assert got.get('recommended_actions') == exp.get('recommended_actions')
+    assert got.get('action_quality') == exp.get('action_quality')
+    print("OK  test_enrich_preflop_gto_routes_through_provider")
 
 
 if __name__ == '__main__':

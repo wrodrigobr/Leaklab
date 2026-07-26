@@ -226,11 +226,14 @@ def _enrich_preflop_gto(input_data: Dict[str, Any]) -> dict:
 
     try:
         from leaklab.gto_utils import hand_to_type
-        from leaklab.preflop_gto_ranges import analyze_preflop
+        # Porta ÚNICA de estratégia preflop (mesma do trainer/academy). Consome `raw` = dict cru do
+        # analyze_preflop (dialeto de armazenamento), então o resto do engine segue sem mudança.
+        # Ver [[project_strategy_provider_single_source]].
+        from leaklab.strategy_provider import preflop_strategy
         h_type = hand_to_type(hero_cards)
         if not h_type:
             return {'available': False}
-        return analyze_preflop(
+        return preflop_strategy(
             position       = spot.get('position', ''),
             hero_hand_type = h_type,
             stack_bb       = float(spot.get('effectiveStackBb') or ctx.get('heroStackBb') or 20),
@@ -244,7 +247,7 @@ def _enrich_preflop_gto(input_data: Dict[str, Any]) -> dict:
             is_pko             = bool(ctx.get('isPko')),
             facing_to_bb       = float(spot.get('facingToBb') or 0),
             facing_allin       = bool(spot.get('facingAllin', False)),
-        )
+        )['raw']
     except Exception as exc:
         _log_gto_miss('preflop', input_data.get('street'), spot.get('position'), str(exc)[:120])
         return {'available': False}
