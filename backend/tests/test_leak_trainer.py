@@ -304,6 +304,25 @@ def test_vs3bet_premise_only_openable_hands():
     print(f"OK  test_vs3bet_premise_only_openable_hands ({served} spots, todos com premissa válida)")
 
 
+def test_postflop_catalog_premise_bb_defends():
+    """Premissa do catálogo postflop: a história é "BB pagou o open de BTN e vê o flop" — TODA mão
+    do catálogo precisa defender (call) no BB vs open de BTN naquele stack. Trava a premissa para
+    adições futuras ao catálogo (o gate do vs_3bet cobre o preflop; este cobre o postflop)."""
+    from leaklab.preflop_gto_ranges import analyze_preflop
+    from leaklab.gto_utils import hand_to_type
+    from leaklab.leak_trainer import _BBDEF_PARAMS as p
+    hands = {tuple(s['hand']) for s in POSTFLOP_CATALOG['bb_defense']}
+    bad = []
+    for h in sorted(hands):
+        ht = hand_to_type(list(h))
+        r = analyze_preflop('BB', ht, float(p['stack_bb']), 'call', facing_size=2.2, vs_position='BTN')
+        callf = float((r.get('hand_freq') or {}).get('call', 0) or 0)
+        if not r.get('available') or callf < 0.05:
+            bad.append((ht, r.get('available'), round(callf, 3)))
+    assert not bad, f"mãos do catálogo com premissa inválida (BB não defende): {bad}"
+    print(f"OK  test_postflop_catalog_premise_bb_defends ({len(hands)} mãos, todas defendem)")
+
+
 def test_menu_covers_every_creditable_action():
     """INVARIANTE ANTI-REGRESSÃO (o guard que teria pego o bug do A8s): em qualquer spot servido,
     toda ação que o grade creditaria (freq ≥ MIN) DEVE estar entre as opções oferecidas. Varre
