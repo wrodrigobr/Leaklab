@@ -130,8 +130,11 @@ def main():
               WHERE d.hero_cards IS NOT NULL AND d.hero_cards <> ''"""
     params = []
     if user:
-        sql += " AND (u.username = ? OR u.email = ?)"
-        params += [user, user]
+        # Casa SEM depender de maiúscula/exatidão: 'CSM96', 'csm96 ' ou parte do email acham.
+        # (a versão anterior usava '=' e devolvia vazio em silêncio quando o login diferia)
+        sql += " AND (LOWER(u.username) LIKE ? OR LOWER(COALESCE(u.email,'')) LIKE ?)"
+        term = f"%{user.lower().strip()}%"
+        params += [term, term]
     if pos:
         sql += " AND d.position = ?"
         params.append(pos)
@@ -166,8 +169,9 @@ def main():
                WHERE t.raw_text IS NOT NULL AND t.raw_text <> ''"""
     tparams = []
     if user:
-        tsql += " AND (u.username = ? OR u.email = ?)"
-        tparams += [user, user]
+        tsql += " AND (LOWER(u.username) LIKE ? OR LOWER(COALESCE(u.email,'')) LIKE ?)"
+        _term = f"%{user.lower().strip()}%"
+        tparams += [_term, _term]
 
     print(f"\n== varredura do raw_text ==")
     total_raw = 0
@@ -191,6 +195,70 @@ def main():
     if not total_raw:
         print("  nenhuma mão com essas cartas no raw_text")
         print("  (torneios importados antes do armazenamento do cru não têm raw_text)")
+
+    # ── 3) nada encontrado: mostra O QUE EXISTE (senão o usuário fica no escuro) ──
+    if not achados and not total_raw:
+        print(f"\n{'='*62}\nNADA ENCONTRADO — inventário do que existe para orientar a busca:")
+
+        if user:
+            us = _rows(conn, """SELECT u.id, u.username, u.email,
+                                       (SELECT COUNT(*) FROM tournaments t WHERE t.user_id = u.id) AS n
+                                  FROM users u
+                                 WHERE LOWER(u.username) LIKE ? OR LOWER(COALESCE(u.email,'')) LIKE ?
+                              """, (f"%{user.lower().strip()}%", f"%{user.lower().strip()}%"))
+            if not us:
+                print(f"\n  ✖ NENHUM usuário casa com {user!r}. Usuários com mais torneios:")
+                for r in _rows(conn, """SELECT u.username, u.email, COUNT(t.id) AS n
+                                          FROM users u JOIN tournaments t ON t.user_id = u.id
+                                      GROUP BY u.id, u.username, u.email
+                                      ORDER BY n DESC LIMIT 10"""):
+                    print(f"      {str(_v(r,'username',0)):<18} {str(_v(r,'email',1)):<28} {_v(r,'n',2)} torneios")
+                print("\n  → repita com o login/e-mail correto (a busca aceita parte do nome).")
+                return
+            for r in us:
+                print(f"\n  usuário: {_v(r,'username',1)} ({_v(r,'email',2)}) — {_v(r,'n',3)} torneio(s)")
+
+        # torneios do usuário + se dá pra buscar neles
+        tsql2 = """SELECT t.id, t.tournament_id, t.site, t.hands_count, u.username,
+                          CASE WHEN t.raw_text IS NULL OR t.raw_text='' THEN 0 ELSE 1 END AS has_raw,
+                          (SELECT COUNT(*) FROM decisions d
+                            WHERE d.tournament_id = t.id AND d.hero_cards IS NOT NULL AND d.hero_cards <> '') AS n_cards
+                     FROM tournaments t JOIN users u ON u.id = t.user_id"""
+        p2 = []
+        if user:
+            tsql2 += " WHERE (LOWER(u.username) LIKE ? OR LOWER(COALESCE(u.email,'')) LIKE ?)"
+            p2 = [f"%{user.lower().strip()}%"] * 2
+        tsql2 += " ORDER BY t.imported_at DESC LIMIT 30"
+        ts = _rows(conn, tsql2, tuple(p2))
+        if not ts:
+            print("  ✖ este usuário não tem nenhum torneio importado.")
+            return
+        print(f"\n  torneios ({len(ts)} mais recentes) — 'raw' e 'cartas' dizem se dá pra achar a mão:")
+        for r in ts:
+            has_raw = _v(r, 'has_raw', 5)
+            n_cards = _v(r, 'n_cards', 6)
+            flag = "" if (has_raw or n_cards) else "   ← invisível à busca (sem raw e sem cartas)"
+            print(f"      #{str(_v(r,'tournament_id',1)):<14} {str(_v(r,'site',2)):<11} "
+                  f"mãos={str(_v(r,'hands_count',3)):<5} raw={'sim' if has_raw else 'NÃO':<3} "
+                  f"decisões-com-cartas={n_cards}{flag}")
+
+        # que cartas ESTE usuário realmente tem (confere se o par procurado existe)
+        csql = """SELECT d.hero_cards, COUNT(*) AS n FROM decisions d
+                    JOIN tournaments t ON t.id = d.tournament_id
+                    JOIN users u ON u.id = t.user_id
+                   WHERE d.hero_cards IS NOT NULL AND d.hero_cards <> ''"""
+        p3 = []
+        if user:
+            csql += " AND (LOWER(u.username) LIKE ? OR LOWER(COALESCE(u.email,'')) LIKE ?)"
+            p3 = [f"%{user.lower().strip()}%"] * 2
+        csql += " GROUP BY d.hero_cards ORDER BY n DESC LIMIT 12"
+        cs = _rows(conn, csql, tuple(p3))
+        if cs:
+            print("\n  amostra de cartas gravadas (formato esperado 'Jd6d'):")
+            print("      " + ", ".join(f"{_v(r,'hero_cards',0)}" for r in cs))
+        else:
+            print("\n  ⚠ NENHUMA decisão deste usuário tem hero_cards preenchido —")
+            print("    a busca pela camada 1 é impossível; só o raw_text acha (veja a coluna 'raw').")
 
 
 if __name__ == '__main__':

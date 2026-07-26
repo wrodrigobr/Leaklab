@@ -89,11 +89,13 @@ def main():
                                 FROM tournaments t JOIN users u ON u.id = t.user_id
                                WHERE t.id = ?""", (tid,))
     else:
+        # Casa SEM depender de maiúscula/exatidão ('CSM96' acha com 'csm96').
         sql = """SELECT t.id, t.tournament_id, t.site, t.tournament_name, t.hero,
                         t.imported_at, t.hands_count, t.raw_text, u.username
                    FROM tournaments t JOIN users u ON u.id = t.user_id
-                  WHERE (u.username = ? OR u.email = ?)"""
-        params = [user, user]
+                  WHERE (LOWER(u.username) LIKE ? OR LOWER(COALESCE(u.email,'')) LIKE ?)"""
+        _term = f"%{user.lower().strip()}%"
+        params = [_term, _term]
         if site:
             sql += " AND t.site = ?"
             params.append(site)

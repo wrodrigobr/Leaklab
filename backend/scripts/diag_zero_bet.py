@@ -67,12 +67,15 @@ def _fetch_tournaments(conn, user, tid):
     if tid:
         return _rows(conn, "SELECT id, tournament_id, site, raw_text FROM tournaments "
                            "WHERE tournament_id = ?", (tid,))
+    # Casa SEM depender de maiúscula/exatidão ('CSM96' acha com 'csm96'), senão a busca
+    # volta vazia em silêncio quando o login difere do que foi digitado.
+    term = f"%{user.lower().strip()}%"
     return _rows(conn, """
         SELECT t.id, t.tournament_id, t.site, t.raw_text
           FROM tournaments t JOIN users u ON u.id = t.user_id
-         WHERE u.username = ? OR u.email = ?
+         WHERE LOWER(u.username) LIKE ? OR LOWER(COALESCE(u.email,'')) LIKE ?
          ORDER BY t.id DESC
-    """, (user, user))
+    """, (term, term))
 
 
 def _val(row, key, idx):
