@@ -261,6 +261,46 @@ def test_open_range_proxy_ambiguous_returns_none():
 
 # ── Gate de PREMISSA (bug do "UTG+1 abriu 84o vs 3-bet") ────────────────────────────────────────
 
+def test_menu_curto_nao_entrega_a_resposta():
+    """ANTI-TELL (o mais importante deste arquivo depois do invariante).
+
+    Antes, o shove só entrava no menu quando a estratégia da mão o creditava (freq ≥10%). Medido
+    em BB vs SB @14bb: nas mãos em que o botão aparecia, o shove era 27-100%; nas que não
+    aparecia, 0%. Ou seja, O MENU ENTREGAVA A RESPOSTA — o jogador aprende a ler o menu em vez
+    de ler o spot, e o treino vira decoreba. Em stack curto o menu tem que ser CONSTANTE."""
+    menus = set()
+    for h in ('A7o', 'A9o', 'KTs', 'T9o', 'QJs', '54s', 'K5o', '22', 'JTo', 'A2s'):
+        s = preflop_strategy('BB', h, 14.0, facing_size=2.2, vs_position='SB', facing_raises=1)
+        menus.add(tuple(s['available_actions']))
+    assert len(menus) == 1, f"o menu varia por mão e vira tell: {menus}"
+    assert 'allin' in next(iter(menus))
+    print("OK  test_menu_curto_nao_entrega_a_resposta")
+
+
+def test_shove_no_menu_so_em_stack_curto():
+    """Shove é decisão real abaixo de ~20bb; acima disso só poluiria o menu."""
+    for st in (10.0, 14.0, 17.0, 20.0):
+        s = preflop_strategy('BB', 'T9o', st, facing_size=2.2, vs_position='SB', facing_raises=1)
+        assert 'allin' in s['available_actions'], (st, s['available_actions'])
+    for st in (25.0, 30.0, 50.0, 100.0):
+        s = preflop_strategy('BB', 'T9o', st, facing_size=2.2, vs_position='SB', facing_raises=1)
+        assert 'allin' not in s['available_actions'], (st, s['available_actions'])
+    print("OK  test_shove_no_menu_so_em_stack_curto")
+
+
+def test_shove_fora_do_gto_e_erro_nao_some_do_menu():
+    """O jogador PODE shovar em modo sobrevivência: a ação existe (realismo + diagnóstico do
+    leak de over-shove). Mas o veredito segue honesto — shove com freq 0 é erro."""
+    from leaklab.leak_trainer import grade_canonical_spot
+    spot = {'position': 'BB', 'hand': 'T9o', 'stack_bb': 14, 'facing_size': 2.2,
+            'vs_position': 'SB', 'is_3bet_pot': False, 'facing_raises': 1}
+    s = preflop_strategy('BB', 'T9o', 14.0, facing_size=2.2, vs_position='SB', facing_raises=1)
+    assert 'allin' in s['available_actions']          # expressável
+    g = grade_canonical_spot(spot, 'allin')
+    assert g['is_correct'] is False and g['gto_tier'] == 'error', g   # e corrigido
+    print("OK  test_shove_fora_do_gto_e_erro_nao_some_do_menu")
+
+
 def test_hand_in_open_range_premise_gate():
     """Mão fora do range de abertura NÃO passa o gate de premissa; mão que abre, passa. O caso
     reportado: 84o em UTG+1 (open freq 0%) sendo servido como 'você abriu e levou 3-bet'."""

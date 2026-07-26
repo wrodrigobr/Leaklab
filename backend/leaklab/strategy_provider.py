@@ -113,7 +113,12 @@ def menu_covers_strategy(menu, freq_map: dict | None) -> list[str]:
     return _order(missing)
 
 
-def preflop_base_menu(scenario: str, position: str) -> list[str]:
+# Profundidade a partir da qual o SHOVE entra no menu SEMPRE, independentemente da estratégia
+# da mão. Ver `preflop_base_menu` — é uma correção de vazamento, não uma preferência.
+SHOVE_MENU_MAX_BB = 20.0
+
+
+def preflop_base_menu(scenario: str, position: str, stack_bb: float | None = None) -> list[str]:
     """Ações legais do spot preflop pela ÁRVORE (independentes da mão do herói).
 
     RFI: fold/raise para todas as posições, MAIS call (complete/limp) quando o herói abre do SB —
@@ -122,14 +127,28 @@ def preflop_base_menu(scenario: str, position: str) -> list[str]:
     ['fold','raise'] no RFI, engolindo o limp do SB. Mesmo aqui, o `menu_with_strategy` faz a
     rede de segurança: qualquer ação creditável da mão entra no menu ainda que a base erre.
     vs_rfi / vs_3bet / squeeze / demais: defensor pode fold/call/raise.
+
+    SHOVE em stack curto (≤20bb): entra SEMPRE, mesmo com frequência GTO zero. Três razões, e a
+    primeira é de correção, não de gosto:
+      1. ANTI-TELL. Se o botão só aparecesse quando o shove é bom, o MENU ENTREGARIA A RESPOSTA.
+         Medido em BB vs SB @14bb: das mãos em que o botão aparecia, o shove era 27-100%; nas
+         que não aparecia, 0%. O jogador aprende a ler o menu em vez de ler o spot.
+      2. REALISMO. Na mesa o shove está sempre disponível abaixo de ~20bb; um menu que o remove
+         treina um conjunto de decisões que não existe.
+      3. DIAGNÓSTICO. "Shovar por sobrevivência" é um leak real de MTT — e sem a ação no menu o
+         trainer não consegue nem detectá-lo, porque o jogador não tem como expressá-lo.
+    Acima de 20bb o shove não entra: ali ele não é decisão de verdade e só polui o menu.
     """
     scn = (scenario or '').lower()
     if scn == 'rfi':
         base = ['fold', 'raise']
         if (position or '').upper() == 'SB':
             base.insert(1, 'call')
-        return base
-    return ['fold', 'call', 'raise']
+    else:
+        base = ['fold', 'call', 'raise']
+    if stack_bb is not None and float(stack_bb) <= SHOVE_MENU_MAX_BB:
+        base.append('allin')
+    return base
 
 
 def preflop_strategy(position: str, hand: str | None = None, stack_bb: float = 20.0, *,
@@ -175,7 +194,7 @@ def preflop_strategy(position: str, hand: str | None = None, stack_bb: float = 2
     scenario = res.get('scenario')
     hand_freq = normalize_freq_map(res.get('hand_freq'))
     recommended = [normalize_action(a) for a in (res.get('recommended_actions') or [])]
-    base = preflop_base_menu(scenario or '', position)
+    base = preflop_base_menu(scenario or '', position, stack_bb)
     available_actions = menu_with_strategy(base, hand_freq)
     return {
         'available':         bool(res.get('available')),
