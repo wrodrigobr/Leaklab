@@ -14,6 +14,7 @@ export type AdminSection =
   | "messages"
   | "gto-worker"
   | "challenge"
+  | "tournaments"
   | "logs"
   ;
 

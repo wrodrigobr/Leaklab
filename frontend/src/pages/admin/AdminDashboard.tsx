@@ -5,7 +5,7 @@ import {
   LayoutDashboard, Loader2, RefreshCw, Search, Shield, Users,
   GraduationCap, X, Check, MessageSquarePlus, Trash2, AlertTriangle,
   Cpu, CircleDot, Lightbulb, Send, Megaphone, Mail, MailCheck,
-  TrendingUp, Zap, CalendarClock, ThumbsUp, ThumbsDown, Sparkles, Timer
+  TrendingUp, Zap, CalendarClock, ThumbsUp, ThumbsDown, Sparkles, Timer, Download
 } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
 import { HudHeader } from "@/components/hud/HudHeader";
@@ -16,6 +16,7 @@ import { AdminSidebar, AdminSection, NavGroup } from "@/components/admin/AdminSi
 import { StatusBadge } from "@/components/admin/StatusBadge";
 import { FinanceCockpit } from "@/components/admin/FinanceCockpit";
 import { CoachesTab } from "@/components/admin/CoachesTab";
+import { TournamentsTab } from "@/components/admin/TournamentsTab";
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
@@ -1686,6 +1687,7 @@ const SECTION_TITLE: Record<AdminSection, { title: string; sub: string }> = {
   candidaturas: { title: "Candidaturas",   sub: "Pedidos para virar coach." },
   "gto-worker": { title: "GTO Worker",     sub: "Monitoramento do worker e cobertura GTO." },
   challenge:    { title: "Desafio do Dia", sub: "Curadoria do pool de spots. Só aprovado vai ao ar (gabarito com certeza)." },
+  tournaments:  { title: "Torneios",       sub: "Torneios de todos os usuários. Baixe o hand history cru (.txt) para reimportar e reproduzir um bug reportado." },
   logs:         { title: "Logs",           sub: "Últimas importações de torneios." },
 };
 
@@ -1744,6 +1746,7 @@ const AdminDashboard = () => {
       items: [
         { id: "gto-worker",  label: "GTO Worker",  icon: Cpu, dot: workerDot },
         { id: "challenge",   label: "Desafio",     icon: CalendarClock },
+        { id: "tournaments", label: "Torneios",    icon: Download },
         { id: "logs",        label: "Logs",        icon: Activity },
       ],
     },
@@ -1778,6 +1781,7 @@ const AdminDashboard = () => {
             {section === "candidaturas" && <CandidaturasTab />}
             {section === "gto-worker"   && <GtoWorkerTab />}
             {section === "challenge"    && <ChallengeTab />}
+            {section === "tournaments"  && <TournamentsTab />}
             {section === "logs"         && <LogsTab />}
           </div>
         </div>

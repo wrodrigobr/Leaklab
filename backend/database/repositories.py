@@ -5120,6 +5120,75 @@ def get_all_users_count(plan: str = None, role: str = None, search: str = None) 
         conn.close()
 
 
+def get_all_tournaments_admin(limit: int = 50, offset: int = 0, site: str = None,
+                              search: str = None, user_id: int = None) -> list:
+    """Admin: torneios de TODOS os usuários (suporte/depuração — ex.: reproduzir na própria conta
+    um bug reportado por um jogador). NÃO devolve o raw_text (pesado); o download é endpoint à
+    parte. `search` casa usuário, id do torneio ou nome do torneio."""
+    conn = get_conn()
+    try:
+        filters, params = [], []
+        if site:
+            filters.append("t.site = ?"); params.append(site)
+        if user_id:
+            filters.append("t.user_id = ?"); params.append(int(user_id))
+        if search:
+            filters.append("(LOWER(u.username) LIKE ? OR LOWER(COALESCE(u.email,'')) LIKE ? "
+                           "OR LOWER(t.tournament_id) LIKE ? OR LOWER(COALESCE(t.tournament_name,'')) LIKE ?)")
+            term = f'%{search.lower()}%'
+            params.extend([term, term, term, term])
+        where = ("WHERE " + " AND ".join(filters)) if filters else ""
+        rows = _fetchall(conn, f"""
+            SELECT t.id, t.tournament_id, t.site, t.tournament_name, t.hero,
+                   t.imported_at, t.hands_count, t.decisions_count, t.place, t.profit,
+                   t.user_id, u.username, u.email,
+                   CASE WHEN t.raw_text IS NULL OR t.raw_text = '' THEN 0 ELSE 1 END AS has_raw
+              FROM tournaments t JOIN users u ON u.id = t.user_id
+              {where}
+             ORDER BY t.imported_at DESC
+             LIMIT ? OFFSET ?
+        """, params + [int(limit), int(offset)])
+        return [dict(r) for r in rows]
+    finally:
+        conn.close()
+
+
+def get_all_tournaments_admin_count(site: str = None, search: str = None, user_id: int = None) -> int:
+    conn = get_conn()
+    try:
+        filters, params = [], []
+        if site:
+            filters.append("t.site = ?"); params.append(site)
+        if user_id:
+            filters.append("t.user_id = ?"); params.append(int(user_id))
+        if search:
+            filters.append("(LOWER(u.username) LIKE ? OR LOWER(COALESCE(u.email,'')) LIKE ? "
+                           "OR LOWER(t.tournament_id) LIKE ? OR LOWER(COALESCE(t.tournament_name,'')) LIKE ?)")
+            term = f'%{search.lower()}%'
+            params.extend([term, term, term, term])
+        where = ("WHERE " + " AND ".join(filters)) if filters else ""
+        return _fetchone(conn, f"""
+            SELECT COUNT(*) AS n FROM tournaments t JOIN users u ON u.id = t.user_id {where}
+        """, params)['n']
+    finally:
+        conn.close()
+
+
+def get_tournament_raw_admin(tournament_db_id: int) -> dict | None:
+    """Admin: raw_text + metadados de UM torneio (para download .txt). Read-only."""
+    conn = get_conn()
+    try:
+        row = _fetchone(conn, """
+            SELECT t.id, t.tournament_id, t.site, t.tournament_name, t.hero, t.raw_text,
+                   u.username
+              FROM tournaments t JOIN users u ON u.id = t.user_id
+             WHERE t.id = ?
+        """, [int(tournament_db_id)])
+        return dict(row) if row else None
+    finally:
+        conn.close()
+
+
 def update_user_admin(user_id: int, plan: str = None, suspended: bool = None) -> None:
     conn = get_conn()
     try:

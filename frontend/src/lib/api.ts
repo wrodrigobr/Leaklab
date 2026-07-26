@@ -2572,6 +2572,24 @@ export interface AdminStats {
   pending_payouts_cents: number;
 }
 
+/** Torneio na visão do admin (todos os usuários). `has_raw` = tem hand history cru pra baixar. */
+export interface AdminTournament {
+  id: number;                      // id do banco (usado no download)
+  tournament_id: string;           // id do torneio na sala
+  site: string;
+  tournament_name: string | null;
+  hero: string;
+  imported_at: string;
+  hands_count: number;
+  decisions_count: number;
+  place: number | null;
+  profit: number | null;
+  user_id: number;
+  username: string;
+  email: string;
+  has_raw: number;
+}
+
 export interface AdminUser {
   id: number;
   username: string;
@@ -2714,6 +2732,42 @@ export const adminDashboard = {
     if (params?.role)           q.set("role",   params.role);
     if (params?.search)         q.set("search", params.search);
     return request<{ users: AdminUser[]; total: number }>(`/admin/users?${q}`);
+  },
+
+  // Torneios de TODOS os usuários (suporte/depuração — reproduzir bug reportado na própria conta)
+  tournaments: (params?: { limit?: number; offset?: number; site?: string; search?: string; user_id?: number }) => {
+    const q = new URLSearchParams();
+    if (params?.limit  != null) q.set("limit",  String(params.limit));
+    if (params?.offset != null) q.set("offset", String(params.offset));
+    if (params?.site)           q.set("site",   params.site);
+    if (params?.search)         q.set("search", params.search);
+    if (params?.user_id != null) q.set("user_id", String(params.user_id));
+    return request<{ tournaments: AdminTournament[]; total: number }>(`/admin/tournaments?${q}`);
+  },
+
+  // Baixa o hand history CRU em .txt. O nome do arquivo vem do backend (padrão único).
+  downloadTournamentRaw: async (dbId: number, fallbackName?: string): Promise<void> => {
+    const t = sessionStorage.getItem("ll_token");
+    const res = await fetch(`${BASE}/admin/tournaments/${dbId}/raw.txt`, {
+      headers: t ? { Authorization: `Bearer ${t}` } : {},
+    });
+    if (!res.ok) {
+      const msg = await res.text().catch(() => `HTTP ${res.status}`);
+      throw new Error(msg);
+    }
+    // filename do Content-Disposition (mesmo padrão do scripts/export_tournament_raw.py)
+    const cd = res.headers.get("content-disposition") ?? "";
+    const m  = /filename="?([^"]+)"?/i.exec(cd);
+    const name = m?.[1] || fallbackName || `torneio-${dbId}.txt`;
+    const blob = await res.blob();
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement("a");
+    a.href = url;
+    a.download = name;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   },
 
   // Win-back: dry_run=true devolve a prévia de quem receberia; false envia.

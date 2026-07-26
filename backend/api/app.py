@@ -7164,6 +7164,56 @@ def admin_users():
     return jsonify({'users': users, 'total': total})
 
 
+@app.route('/admin/tournaments', methods=['GET'])
+@require_admin
+def admin_tournaments():
+    """Torneios de TODOS os usuários (suporte/depuração): reproduzir na própria conta um bug
+    reportado por um jogador. Não devolve o raw_text (pesado) — o download é o endpoint abaixo."""
+    from database.repositories import get_all_tournaments_admin, get_all_tournaments_admin_count
+    limit   = min(int(request.args.get('limit', 50)), 200)
+    offset  = int(request.args.get('offset', 0))
+    site    = request.args.get('site') or None
+    search  = request.args.get('search') or None
+    user_id = request.args.get('user_id') or None
+    return jsonify({
+        'tournaments': get_all_tournaments_admin(limit=limit, offset=offset, site=site,
+                                                 search=search, user_id=user_id),
+        'total':       get_all_tournaments_admin_count(site=site, search=search, user_id=user_id),
+    })
+
+
+def _tournament_raw_filename(site, tournament_id, name) -> str:
+    """Padrão único de nome do .txt (espelhado em scripts/export_tournament_raw.py)."""
+    import re as _re_fn
+    parts = [str(site or 'site'), str(tournament_id or 'sem-id')]
+    if name:
+        slug = _re_fn.sub(r'[^\w\-]+', '-', str(name), flags=_re_fn.UNICODE).strip('-')[:60]
+        if slug:
+            parts.append(slug)
+    return '_'.join(parts) + '.txt'
+
+
+@app.route('/admin/tournaments/<int:tournament_db_id>/raw.txt', methods=['GET'])
+@require_admin
+def admin_tournament_raw(tournament_db_id):
+    """Download do hand history CRU de um torneio (.txt), pra reimportar e reproduzir o bug.
+    Read-only. Acesso restrito a admin (dado de jogador — não expor fora do painel)."""
+    from flask import Response
+    from database.repositories import get_tournament_raw_admin
+    t = get_tournament_raw_admin(tournament_db_id)
+    if not t:
+        return jsonify({'error': 'Torneio não encontrado'}), 404
+    raw = t.get('raw_text')
+    if not raw:
+        return jsonify({'error': 'Torneio sem raw_text (import antigo, antes do armazenamento do cru)'}), 404
+    app.logger.info("admin_tournament_raw: admin=%s baixou torneio db_id=%s (user=%s)",
+                    getattr(g, 'user_id', '?'), tournament_db_id, t.get('username'))
+    fname = _tournament_raw_filename(t.get('site'), t.get('tournament_id'), t.get('tournament_name'))
+    resp = Response(raw, content_type='text/plain; charset=utf-8')
+    resp.headers['Content-Disposition'] = f'attachment; filename="{fname}"'
+    return resp
+
+
 # Kill switch do comunicado por email: OFF por padrão. Enquanto não ligar
 # ADMIN_EMAIL_ENABLED=1 no host, nenhum email de comunicado dispara (o toggle
 # no painel vira no-op e o sino segue funcionando normalmente).
