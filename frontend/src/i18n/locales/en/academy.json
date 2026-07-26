@@ -203,7 +203,15 @@
       "estimated": "(estimated depth)",
       "blockContrast": "Contrast",
       "blockReview": "Review",
-      "progress": "Session"
+      "progress": "Session",
+      "missionOf": "Mission {{n}} of {{total}}",
+      "lostIn": "lost here, across {{hands}} real hands",
+      "untilMastered": "To master",
+      "needSample": "no sample",
+      "train": "Train",
+      "nextMissions": "Up next",
+      "otherModes": "Train something else",
+      "oneAtATime": "One at a time: splitting focus across leaks means mastering none."
     }
   },
   "trainAch": {

@@ -1329,9 +1329,40 @@ export interface SpotConcept {
   nota_mao: string;    // por que ESTA família de mão se comporta assim
 }
 
+/** Um critério do gate de domínio, com progresso — o gate é transparente de propósito. */
+export interface MasteryCriterion {
+  key: "volume" | "precisao" | "amplitude" | "fronteira" | "transferencia";
+  ok: boolean;
+  atual: number;
+  alvo: number;
+  label: string;
+  desc: string;
+  amostra?: number;
+  amostra_min?: number;
+}
+
+export type ProgressionState = "em_treino" | "dominado_no_treino" | "comprovado_no_jogo";
+
+export interface ProgressionStatusItem {
+  key: string;
+  titulo: string;
+  estado: ProgressionState;
+  estado_label: string;
+  mastery: {
+    dominado: boolean;
+    criterios: MasteryCriterion[];
+    faltando: string[];
+    janela: { n: number; acerto_pct: number };
+  };
+  proof?: { delta?: number; confident?: boolean; after_pct?: number; baseline_pct?: number } | null;
+}
+
 export const progression = {
   missions: (days = 90) =>
     request<{ missions: ProgressionMission[] }>(`/player/progression/missions?days=${days}`),
+
+  status: (days = 90) =>
+    request<{ items: ProgressionStatusItem[] }>(`/player/progression/status?days=${days}`),
 
   startSession: (size: SessionSize, days = 90) =>
     request<{ plan: ProgressionPlan | null; error?: string }>("/player/progression/session", {

@@ -137,6 +137,8 @@ export default function LeakTrainer() {
   // Quando `planRef` tem plano, o loadNext puxa do protocolo (intercalando missão/revisão/
   // contraste) em vez do sorteio adaptativo solto. Refs porque o loadNext é useCallback estável.
   const [plan, setPlan]                 = useState<ProgressionPlan | null>(null);
+  const [sizeSel, setSizeSel]           = useState<SessionSize>("media");   // duração escolhida
+  const [showOther, setShowOther]       = useState(false);                  // disclosure: outros modos
   const planRef = useRef<ProgressionPlan | null>(null);
   const doneRef = useRef<Record<string, number>>({});   // spots cumpridos por fatia
   const [contrastNote, setContrastNote] = useState<string | null>(null);
@@ -226,7 +228,13 @@ export default function LeakTrainer() {
     } catch { setPhase("error"); }
   };
 
-  // missões (PIP) — só na tela de início, pra mostrar o vínculo com o jogo real
+  // Status do protocolo (missões + estado + gate de domínio) — a tela de início é sobre
+  // ONDE VOCÊ ESTÁ antes de ser sobre o que clicar.
+  const { data: statusData } = useQuery({
+    queryKey: ["progression-status"],
+    queryFn: () => progression.status(365),
+    enabled: phase === "intro",
+  });
   const { data: missionData } = useQuery({
     queryKey: ["progression-missions"],
     queryFn: () => progression.missions(365),
@@ -535,103 +543,193 @@ export default function LeakTrainer() {
 
         <div className="flex min-h-0 flex-1 flex-col justify-center overflow-y-auto">
 
-        {phase === "intro" && (
-          <div className="mx-auto flex w-full max-w-lg flex-col gap-4 rounded-2xl border border-amber-500/30 bg-gradient-to-b from-amber-500/[0.08] to-transparent p-6 sm:p-8">
-            <div className="flex flex-col items-center gap-2 text-center">
-              <div className="flex size-14 items-center justify-center rounded-2xl bg-amber-500/10 ring-1 ring-amber-500/30">
-                <Target className="size-7 text-amber-400" aria-hidden />
-              </div>
-              <h2 className="font-heading text-xl font-bold text-foreground">{t("leakTrainer.lesson.title")}</h2>
-              <p className="text-sm text-muted-foreground">{t("leakTrainer.lesson.desc", { count: LESSON_SIZE })}</p>
-            </div>
+        {phase === "intro" && (() => {
+          /* ── TELA DE FOCO ────────────────────────────────────────────────────────────────
+             Responde 3 perguntas nesta ordem, em <3s: ONDE ESTOU → O QUE FAÇO → POR QUÊ.
+             A versão anterior tinha 12+ pontos de entrada competindo (3 durações + "adaptativo
+             RECOMENDADO" + 6 leaks + 3 fundamentos), com a MESMA categoria aparecendo duas
+             vezes com nomes diferentes e o status do protocolo invisível. Agora: um bloco de
+             status com o gate à vista, UMA ação primária, e todo o resto atrás de disclosure. */
+          const st   = statusData?.items?.[0];
+          const miss = missionData?.missions?.[0];
+          const outras = (statusData?.items ?? []).slice(1);
+          const stateTone = st?.estado === "comprovado_no_jogo"
+            ? { text: "text-emerald-400", ring: "ring-emerald-500/30", bg: "bg-emerald-500/10" }
+            : st?.estado === "dominado_no_treino"
+              ? { text: "text-sky-400", ring: "ring-sky-500/30", bg: "bg-sky-500/10" }
+              : { text: "text-amber-400", ring: "ring-amber-500/30", bg: "bg-amber-500/10" };
+          const feitos = st?.mastery.criterios.filter((c) => c.ok).length ?? 0;
+          const totalCrit = st?.mastery.criterios.length ?? 5;
 
-            {/* ── PROTOCOLO: a missão do dia + a duração escolhida na hora ──
-                Mostra o vínculo com o JOGO REAL (bb perdidos, nº de mãos) porque é isso que dá
-                sentido ao treino: o jogador precisa saber por que ESTE spot, e não outro. */}
-            {missionData?.missions?.[0] && (
-              <div className="rounded-xl border border-amber-500/40 bg-amber-500/[0.06] p-4 space-y-3">
-                <div className="flex items-baseline justify-between gap-2">
-                  <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-amber-400">
-                    {t("leakTrainer.protocol.mission", "Missão de hoje")}
+          return (
+          <div className="mx-auto flex w-full max-w-xl flex-col gap-3">
+            {/* ── 1. ONDE ESTOU + O QUE FAÇO (o herói da tela) ── */}
+            <div className="rounded-2xl border border-amber-500/30 bg-gradient-to-b from-amber-500/[0.07] to-transparent p-5 sm:p-6 space-y-4">
+              <div className="flex items-center justify-between gap-3">
+                <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                  {st ? t("leakTrainer.protocol.missionOf", {
+                          n: 1, total: (statusData?.items?.length ?? 1),
+                          defaultValue: `Missão 1 de ${statusData?.items?.length ?? 1}`,
+                        })
+                     : t("leakTrainer.protocol.mission", "Missão de hoje")}
+                </span>
+                {st && (
+                  <span className={cn("rounded-md px-2 py-0.5 font-mono text-[9px] font-bold uppercase tracking-wider ring-1",
+                    stateTone.text, stateTone.ring, stateTone.bg)}>
+                    {st.estado_label}
                   </span>
-                  <span className="font-mono text-[9px] uppercase tracking-wider text-muted-foreground">
-                    {t("leakTrainer.protocol.confidence", "confiança")} {missionData.missions[0].confianca}
-                  </span>
-                </div>
-                <p className="text-base font-semibold leading-snug text-foreground">
-                  {missionData.missions[0].titulo}
-                </p>
-                <p className="text-[13px] leading-snug text-muted-foreground">
-                  {t("leakTrainer.protocol.realLink", {
-                    bb: missionData.missions[0].ev_loss_bb,
-                    hands: missionData.missions[0].hands,
-                    defaultValue: `Você perdeu ${missionData.missions[0].ev_loss_bb}bb aqui, em ${missionData.missions[0].hands} mãos reais.`,
-                  })}
-                  {!missionData.missions[0].stack_medido && (
-                    <span className="text-amber-400/80"> {t("leakTrainer.protocol.estimated", "(profundidade estimada)")}</span>
-                  )}
-                </p>
-                <div>
-                  <p className="mb-1.5 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-                    {t("leakTrainer.protocol.pickSize", "Quanto tempo você tem?")}
+                )}
+              </div>
+
+              {miss ? (
+                <div className="space-y-1">
+                  <h2 className="font-heading text-2xl font-bold leading-tight text-foreground">{miss.titulo}</h2>
+                  <p className="text-[13px] leading-snug text-muted-foreground">
+                    <span className="font-semibold text-foreground">{miss.ev_loss_bb}bb</span>{" "}
+                    {t("leakTrainer.protocol.lostIn", { hands: miss.hands,
+                        defaultValue: `perdidos aqui, em ${miss.hands} mãos reais` })}
+                    {!miss.stack_medido && (
+                      <span className="text-amber-400/80"> · {t("leakTrainer.protocol.estimated", "(profundidade estimada)")}</span>
+                    )}
                   </p>
-                  <div className="grid grid-cols-3 gap-2">
-                    {([["curta", "12", "~4 min"], ["media", "24", "~8 min"], ["longa", "40", "~13 min"]] as const).map(
-                      ([sz, n, tempo]) => (
-                        <button key={sz} onClick={() => startProtocol(sz as SessionSize)}
-                          className="flex flex-col items-center gap-0.5 rounded-lg border border-border bg-hud-surface px-2 py-2.5 transition-colors hover:border-amber-500/60 hover:bg-amber-500/5">
-                          <span className="font-mono text-sm font-bold text-foreground">{n}</span>
-                          <span className="font-mono text-[9px] uppercase tracking-wider text-muted-foreground">{tempo}</span>
-                        </button>
-                      ))}
-                  </div>
                 </div>
-              </div>
-            )}
+              ) : (
+                <div className="space-y-1">
+                  <h2 className="font-heading text-xl font-bold text-foreground">{t("leakTrainer.lesson.title")}</h2>
+                  <p className="text-sm text-muted-foreground">{t("leakTrainer.empty")}</p>
+                </div>
+              )}
 
-            {/* Padrão recomendado: adaptativo (mira o que mais custa) */}
-            <button onClick={() => startFocus("adaptive")}
-              className="flex w-full items-center justify-center gap-2 rounded-xl bg-amber-500 px-6 py-3.5 font-mono text-sm font-bold uppercase tracking-widest text-black transition-colors hover:bg-amber-400">
-              <Target className="size-4" aria-hidden /> {t("leakTrainer.picker.adaptive")}
-            </button>
-
-            {/* Seletor: o usuário escolhe o tipo de spot em vez de só aleatório */}
-            <div className="rounded-xl border border-border bg-hud-surface/50 p-3">
-              <p className="mb-2 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">{t("leakTrainer.picker.orChoose")}</p>
-
-              {trainOptions?.leaks && trainOptions.leaks.length > 0 && (
-                <div className="mb-3">
-                  <p className="mb-1.5 text-[11px] font-bold text-foreground">{t("leakTrainer.picker.yourLeaks")}</p>
-                  <div className="grid gap-1.5">
-                    {trainOptions.leaks.slice(0, 6).map((l) => {
-                      const tm = _TIER_META[l.tier] ?? _TIER_META.bronze;
+              {/* ── O GATE, À VISTA ──
+                  Sem isto o jogador treina no escuro: não sabe o que falta nem quando acaba. */}
+              {st && (
+                <div className="rounded-xl border border-border/70 bg-background/40 p-3 space-y-2">
+                  <div className="flex items-baseline justify-between">
+                    <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                      {t("leakTrainer.protocol.untilMastered", "Até dominar")}
+                    </span>
+                    <span className="font-mono text-[10px] tabular-nums text-muted-foreground">
+                      {feitos}/{totalCrit}
+                    </span>
+                  </div>
+                  <div className="space-y-1.5">
+                    {st.mastery.criterios.map((c) => {
+                      const pct = Math.max(0, Math.min(100, c.alvo ? (c.atual / c.alvo) * 100 : 0));
+                      const semAmostra = c.amostra != null && c.amostra_min != null && c.amostra < c.amostra_min;
+                      // Precisão/Fronteira/Transferência são PORCENTAGEM: mostrar "60/85" se lê
+                      // como fração ("60 de 85 spots") e engana. Volume/Amplitude são contagem.
+                      const ehPct = c.key === "precisao" || c.key === "fronteira" || c.key === "transferencia";
+                      const valorTxt = ehPct ? `${c.atual}% / ${c.alvo}%` : `${c.atual}/${c.alvo}`;
                       return (
-                        <button key={l.category_key} onClick={() => startFocus(`leak:${l.category_key}`)}
-                          className="flex items-center justify-between gap-2 rounded-lg border border-border bg-background/60 px-3 py-2 text-left transition-colors hover:border-amber-500/40">
-                          <span className="truncate text-[13px] text-foreground">{leakOptLabel(l)}</span>
-                          <span className="flex shrink-0 items-center gap-2">
-                            <span className="font-mono text-[10px] text-muted-foreground">−{l.ev_loss_bb}bb</span>
-                            <span className={`font-mono text-[9px] font-bold uppercase ${tm.text}`}>{tm.label}</span>
+                        <div key={c.key} className="flex items-center gap-2" title={c.desc}>
+                          <span className={cn("w-24 shrink-0 font-mono text-[10px] uppercase tracking-wide",
+                            c.ok ? "text-emerald-400" : "text-muted-foreground")}>{c.label}</span>
+                          <div className="relative h-1.5 flex-1 overflow-hidden rounded-full bg-border">
+                            <div className={cn("h-full rounded-full transition-all",
+                              c.ok ? "bg-emerald-500" : "bg-amber-500/70")}
+                              style={{ width: `${pct}%` }} />
+                          </div>
+                          <span className={cn("w-24 shrink-0 text-right font-mono text-[10px] tabular-nums",
+                            c.ok ? "text-emerald-400" : "text-muted-foreground")}>
+                            {semAmostra
+                              ? t("leakTrainer.protocol.needSample", "sem amostra")
+                              : c.ok ? "✓" : valorTxt}
                           </span>
-                        </button>
+                        </div>
                       );
                     })}
                   </div>
                 </div>
               )}
 
-              <p className="mb-1.5 text-[11px] font-bold text-foreground">{t("leakTrainer.picker.fundamentals")}</p>
-              <div className="flex flex-wrap gap-1.5">
-                {(trainOptions?.scenarios ?? ["rfi", "vs_rfi"]).map((scn) => (
-                  <button key={scn} onClick={() => startFocus(`fund:${scn}`)}
-                    className="rounded-lg border border-border bg-background/60 px-3 py-1.5 text-[12px] text-foreground transition-colors hover:border-amber-500/40">
-                    {t(`leakTrainer.scn.${scn}`)}
+              {/* ── AÇÃO ÚNICA + duração (segmentado, padrão média) ── */}
+              {miss && (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-1 rounded-lg border border-border bg-hud-surface p-1">
+                    {([["curta", "12", "4"], ["media", "24", "8"], ["longa", "40", "13"]] as const).map(
+                      ([sz, n, min]) => (
+                        <button key={sz} onClick={() => setSizeSel(sz as SessionSize)}
+                          className={cn("flex-1 rounded-md px-2 py-1.5 font-mono text-[11px] font-bold transition-colors",
+                            sizeSel === sz ? "bg-amber-500/15 text-amber-400 ring-1 ring-amber-500/40"
+                                           : "text-muted-foreground hover:text-foreground")}>
+                          {n} <span className="font-normal opacity-70">· {min}min</span>
+                        </button>
+                      ))}
+                  </div>
+                  <button onClick={() => startProtocol(sizeSel)}
+                    className="flex w-full items-center justify-center gap-2 rounded-xl bg-amber-500 px-6 py-3.5 font-mono text-sm font-bold uppercase tracking-widest text-black transition-colors hover:bg-amber-400">
+                    <Target className="size-4" aria-hidden /> {t("leakTrainer.protocol.train", "Treinar")}
                   </button>
-                ))}
+                </div>
+              )}
+            </div>
+
+            {/* ── 2. O ARCO: as próximas missões (por que só uma por vez) ── */}
+            {outras.length > 0 && (
+              <div className="rounded-xl border border-border bg-hud-surface/40 p-3">
+                <p className="mb-2 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+                  {t("leakTrainer.protocol.nextMissions", "Depois desta")}
+                </p>
+                <div className="space-y-1">
+                  {outras.map((o, i) => (
+                    <div key={o.key} className="flex items-center gap-2 text-[12px]">
+                      <span className="w-4 shrink-0 text-center font-mono text-[10px] text-muted-foreground">{i + 2}</span>
+                      <span className="min-w-0 flex-1 truncate text-muted-foreground">{o.titulo}</span>
+                      <span className="shrink-0 font-mono text-[9px] uppercase text-muted-foreground/60">{o.estado_label}</span>
+                    </div>
+                  ))}
+                </div>
+                <p className="mt-2 text-[11px] leading-snug text-muted-foreground/70">
+                  {t("leakTrainer.protocol.oneAtATime",
+                     "Uma de cada vez: dividir o foco entre leaks faz você não dominar nenhum.")}
+                </p>
               </div>
+            )}
+
+            {/* ── 3. OUTROS MODOS (secundário, atrás de disclosure) ── */}
+            <div className="rounded-xl border border-border bg-hud-surface/40">
+              <button onClick={() => setShowOther((v) => !v)}
+                className="flex w-full items-center justify-between px-3 py-2.5 font-mono text-[10px] uppercase tracking-widest text-muted-foreground transition-colors hover:text-foreground">
+                {t("leakTrainer.protocol.otherModes", "Treinar outra coisa")}
+                <span className={cn("transition-transform", showOther && "rotate-180")} aria-hidden>▾</span>
+              </button>
+              {showOther && (
+                <div className="space-y-3 border-t border-border/60 p-3">
+                  <button onClick={() => startFocus("adaptive")}
+                    className="w-full rounded-lg border border-border bg-background/60 px-3 py-2 text-left text-[13px] text-foreground transition-colors hover:border-amber-500/40">
+                    {t("leakTrainer.picker.adaptive")}
+                  </button>
+                  {trainOptions?.leaks && trainOptions.leaks.length > 0 && (
+                    <div>
+                      <p className="mb-1.5 text-[11px] font-bold text-foreground">{t("leakTrainer.picker.yourLeaks")}</p>
+                      <div className="grid gap-1.5">
+                        {trainOptions.leaks.slice(0, 6).map((l) => (
+                          <button key={l.category_key} onClick={() => startFocus(`leak:${l.category_key}`)}
+                            className="flex items-center justify-between gap-2 rounded-lg border border-border bg-background/60 px-3 py-2 text-left transition-colors hover:border-amber-500/40">
+                            <span className="truncate text-[13px] text-foreground">{leakOptLabel(l)}</span>
+                            <span className="shrink-0 font-mono text-[10px] text-muted-foreground">−{l.ev_loss_bb}bb</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  <div>
+                    <p className="mb-1.5 text-[11px] font-bold text-foreground">{t("leakTrainer.picker.fundamentals")}</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {(trainOptions?.scenarios ?? ["rfi", "vs_rfi"]).map((scn) => (
+                        <button key={scn} onClick={() => startFocus(`fund:${scn}`)}
+                          className="rounded-lg border border-border bg-background/60 px-3 py-1.5 text-[12px] text-foreground transition-colors hover:border-amber-500/40">
+                          {t(`leakTrainer.scn.${scn}`)}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
-        )}
+          );
+        })()}
 
         {phase === "loading" && (
           <div className="flex flex-col items-center gap-4 py-16">

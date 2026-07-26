@@ -203,7 +203,15 @@
       "estimated": "(profundidad estimada)",
       "blockContrast": "Contraste",
       "blockReview": "Repaso",
-      "progress": "Sesión"
+      "progress": "Sesión",
+      "missionOf": "Misión {{n}} de {{total}}",
+      "lostIn": "perdidos aquí, en {{hands}} manos reales",
+      "untilMastered": "Para dominar",
+      "needSample": "sin muestra",
+      "train": "Entrenar",
+      "nextMissions": "Después de esta",
+      "otherModes": "Entrenar otra cosa",
+      "oneAtATime": "Una a la vez: dividir el foco entre leaks hace que no domines ninguno."
     }
   },
   "trainAch": {
