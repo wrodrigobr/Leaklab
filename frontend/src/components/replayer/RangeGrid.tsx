@@ -1,4 +1,4 @@
-import { cellHand, cellLabel, getHandFreq, rangeStats, RangeSet } from "@/data/ranges";
+import { cellHand, cellLabel, getHandFreq, rangeActionPresence, rangeStats, RangeSet } from "@/data/ranges";
 import { cn } from "@/lib/utils";
 import { ACTION_COLORS } from "@/lib/actionColors";
 
@@ -56,6 +56,7 @@ function textColor(hand: string, range: RangeSet): string {
 
 export function RangeGrid({ range, heroHand }: Props) {
   const { combos, pct } = rangeStats(range);
+  const present = rangeActionPresence(range);
 
   return (
     <div className="space-y-1.5">
@@ -75,7 +76,7 @@ export function RangeGrid({ range, heroHand }: Props) {
             const tipParts: string[] = [];
             if (f.raise && f.raise > 0.001) tipParts.push(`Raise ${(f.raise*100).toFixed(0)}%`);
             if (f.call  && f.call  > 0.001) tipParts.push(`Call ${(f.call*100).toFixed(0)}%`);
-            if (f.allin && f.allin > 0.001) tipParts.push(`Allin ${(f.allin*100).toFixed(0)}%`);
+            if (f.allin && f.allin > 0.001) tipParts.push(`Shove ${(f.allin*100).toFixed(0)}%`);
             const totalActive = tipParts.length ? ((f.raise ?? 0) + (f.call ?? 0) + (f.allin ?? 0)) : 0;
             if (totalActive < 0.999) tipParts.push(`Fold ${((1-totalActive)*100).toFixed(0)}%`);
             const tooltip = `${hand}: ${tipParts.join(' · ')}`;
@@ -98,25 +99,31 @@ export function RangeGrid({ range, heroHand }: Props) {
         )}
       </div>
 
-      {/* Legenda: cada ação com cor + % global */}
+      {/* Legenda — deriva das ações REALMENTE pintadas na grade (rangeActionPresence, mesma
+          fonte do gradiente). Antes olhava os Sets, que na aba OPEN não trazem `allin`: em
+          push/fold a grade ficava toda vermelha sem legenda de Shove. */}
       <div className="flex items-center justify-between font-mono text-[9px] text-muted-foreground">
         <div className="flex items-center gap-3 flex-wrap">
-          <span className="flex items-center gap-1">
-            <span className="inline-block size-2 rounded-[1px]" style={{ background: COLORS.raise }} />Raise
-          </span>
-          {range.call && range.call.size > 0 && (
+          {present.raise && (
+            <span className="flex items-center gap-1">
+              <span className="inline-block size-2 rounded-[1px]" style={{ background: COLORS.raise }} />Raise
+            </span>
+          )}
+          {present.call && (
             <span className="flex items-center gap-1">
               <span className="inline-block size-2 rounded-[1px]" style={{ background: COLORS.call }} />Call
             </span>
           )}
-          {range.allin && range.allin.size > 0 && (
+          {present.allin && (
             <span className="flex items-center gap-1">
-              <span className="inline-block size-2 rounded-[1px]" style={{ background: COLORS.allin }} />Allin
+              <span className="inline-block size-2 rounded-[1px]" style={{ background: COLORS.allin }} />Shove
             </span>
           )}
-          <span className="flex items-center gap-1">
-            <span className="inline-block size-2 rounded-[1px]" style={{ background: 'rgba(113,113,122,0.4)', border: '1px solid #71717a' }} />Fold
-          </span>
+          {present.fold && (
+            <span className="flex items-center gap-1">
+              <span className="inline-block size-2 rounded-[1px]" style={{ background: 'rgba(113,113,122,0.4)', border: '1px solid #71717a' }} />Fold
+            </span>
+          )}
         </div>
         <span>{pct}% · {combos} combos</span>
       </div>

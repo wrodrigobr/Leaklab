@@ -98,6 +98,35 @@ export function getHandFreq(hand: string, range: RangeSet): HandFreq {
   };
 }
 
+/**
+ * Ações REALMENTE presentes na range — varre as 169 células pela MESMA fonte que
+ * pinta a grade (`getHandFreq`). A legenda DEVE derivar daqui.
+ *
+ * Por quê: a legenda antes olhava os Sets (`range.allin.size`) enquanto as células
+ * pintavam por `frequencies` — fontes diferentes. Na aba OPEN o RangeSet vem sem o
+ * Set `allin` (só `raise` + `frequencies`), então em stack curto (push/fold) a grade
+ * ficava toda VERMELHA (allin) sem nenhuma entrada "Shove" na legenda. Mesmo princípio
+ * do invariante do backend: o que é exibido tem que cobrir o que existe de fato.
+ */
+export function rangeActionPresence(
+  range: RangeSet,
+  minFreq = 0.001,
+): { raise: boolean; call: boolean; allin: boolean; fold: boolean } {
+  const out = { raise: false, call: false, allin: false, fold: false };
+  for (let r = 0; r < 13; r++) {
+    for (let c = 0; c < 13; c++) {
+      const f = getHandFreq(cellHand(r, c), range);
+      if ((f.raise ?? 0) > minFreq) out.raise = true;
+      if ((f.call  ?? 0) > minFreq) out.call  = true;
+      if ((f.allin ?? 0) > minFreq) out.allin = true;
+      const active = (f.raise ?? 0) + (f.call ?? 0) + (f.allin ?? 0);
+      if (1 - active > minFreq) out.fold = true;
+      if (out.raise && out.call && out.allin && out.fold) return out;   // early-out
+    }
+  }
+  return out;
+}
+
 export function rangeStats(range: RangeSet): { combos: number; pct: string } {
   let combos = 0;
   for (let r = 0; r < 13; r++) {
