@@ -11,7 +11,7 @@ from leaklab.leak_trainer import (
     _action_family, generate_postflop_spot, grade_from_hand_strategy, POSTFLOP_CATALOG,
     fundamentals_catalog, TRAINABLE_SCENARIOS,
 )
-from leaklab.strategy_provider import preflop_strategy, menu_covers_strategy
+from leaklab.strategy_provider import preflop_strategy, menu_covers_strategy, hand_in_open_range
 
 
 # ── Fase 2: postflop ──────────────────────────────────────────────────────────
@@ -284,6 +284,24 @@ def test_non_sb_rfi_has_no_phantom_limp():
             assert sp is not None
             assert set(sp['options']) == {'fold', 'raise'}, (pos, sp['options'])
     print("OK  test_non_sb_rfi_has_no_phantom_limp")
+
+
+def test_vs3bet_premise_only_openable_hands():
+    """Bug reportado 2026-07-25: o trainer servia 'UTG+1 abriu 84o e enfrenta 3-bet' — premissa
+    impossível (GTO abre 84o 0%) que induz ao erro. Todo spot vs_3bet servido DEVE ter mão que
+    pertence ao range de abertura da posição (gate de premissa do provider)."""
+    rng = random.Random(17)
+    cats = fundamentals_catalog('vs_3bet')
+    served = 0
+    for _ in range(80):
+        sp = next_spot(cats, {}, rng)
+        if not sp or sp.get('scenario') != 'vs_3bet':
+            continue
+        served += 1
+        assert hand_in_open_range(sp['position'], sp['hand'], float(sp['stack_bb'])), \
+            f"premissa impossível servida: {sp['position']} abriu {sp['hand']} @{sp['stack_bb']}bb"
+    assert served >= 30, f"cobertura fraca do teste ({served} spots vs_3bet)"
+    print(f"OK  test_vs3bet_premise_only_openable_hands ({served} spots, todos com premissa válida)")
 
 
 def test_menu_covers_every_creditable_action():

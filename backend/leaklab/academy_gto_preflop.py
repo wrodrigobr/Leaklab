@@ -16,7 +16,7 @@ import random
 from leaklab.preflop_gto_ranges import analyze_preflop
 # Menu de ações vem da FONTE ÚNICA (deriva da estratégia, nunca de tabela estática) — mesma
 # correção do Leak Trainer. Ver [[project_strategy_provider_single_source]].
-from leaklab.strategy_provider import preflop_strategy, normalize_action
+from leaklab.strategy_provider import preflop_strategy, normalize_action, hand_in_open_range
 
 # Ordem de ação preflop 9-max (early → late). SB abre; BB nunca dá RFI.
 _ACTION_ORDER = ['UTG', 'UTG+1', 'UTG+2', 'LJ', 'HJ', 'CO', 'BTN', 'SB', 'BB']
@@ -120,6 +120,11 @@ def generate_gto_preflop_question(scenario_filter: str = 'mixed') -> dict:
         stack    = random.choice(_STACKS)
         pos, vs_pos, facing, is_3b = _random_setup(scenario)
         hand     = random.choice(_HANDS)
+        # Gate de PREMISSA: no vs_3bet a história é "você abriu e levou 3-bet" — a mão precisa
+        # pertencer ao range de abertura (senão a questão vira "UTG abriu 84o", premissa
+        # impossível que induz ao erro). Mesmo gate do Leak Trainer, fonte única no provider.
+        if is_3b and not hand_in_open_range(pos, hand, float(stack)):
+            continue
         # vs_3bet: hero abriu e enfrenta 3-bet → precisa de hero_was_aggressor=True + facing_raises=1
         # (sem isso analyze_preflop rotula vs_rfi e volta indisponível). Ver leak_trainer/backlog #31.
         # StrategyProvider = fonte única: cobertura, cenário E o MENU de ações (deriva da estratégia,

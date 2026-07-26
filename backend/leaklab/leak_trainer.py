@@ -24,6 +24,7 @@ from leaklab.academy_gto_preflop import _HANDS, _hand_to_cards, _ACTION_ORDER
 # memória do projeto [[project_strategy_provider_single_source]].
 from leaklab.strategy_provider import (
     preflop_strategy, normalize_action, MIN_STRATEGY_FREQ, POSTFLOP_FACING_BET_MENU,
+    hand_in_open_range,
 )
 
 # Tiers de frequência (mesma régua do Ghost Table drill — player_drill_submit).
@@ -160,6 +161,12 @@ def generate_canonical_spot(category: dict, rng: random.Random | None = None) ->
     hands = _HANDS[:]
     rng.shuffle(hands)
     for hand in hands[:40]:
+        # Gate de PREMISSA: no vs_3bet a história é "você abriu e levou 3-bet" — a mão TEM que
+        # pertencer ao range de abertura da posição. Sem isto, o trainer servia "UTG abriu 84o
+        # vs 3-bet" (premissa impossível, induz ao erro). Cobertura sozinha não filtra isso:
+        # analyze_preflop devolve available=True (rec=fold) pra mão fora do open.
+        if is_3b and not hand_in_open_range(pos, hand, float(stack)):
+            continue
         # StrategyProvider = fonte única: cobertura, cenário, freq E o MENU de ações num só lugar.
         # O menu deriva da estratégia (invariante menu ⊇ ações creditáveis) — o que oferece nunca
         # mais diverge do que corrige (o bug do A8s/SB-limp era o menu estático ignorar o call).

@@ -13,6 +13,7 @@ from leaklab.strategy_provider import (
     preflop_base_menu, preflop_strategy, postflop_menu, MIN_STRATEGY_FREQ,
     CANONICAL_ACTION_ORDER, to_storage_action, to_display_action,
     preflop_call_vs_shove_fallback, preflop_open_range_proxy,
+    hand_in_open_range, MIN_PREMISE_OPEN_FREQ,
 )
 from leaklab.preflop_gto_ranges import analyze_preflop
 
@@ -256,6 +257,20 @@ def test_open_range_proxy_ambiguous_returns_none():
     """Ação que não é fold/raise (ex.: call) é ambígua sem árvore vs-limp → None (não chuta)."""
     assert preflop_open_range_proxy('BTN', 'AA', 50.0, action_taken='call') is None
     print("OK  test_open_range_proxy_ambiguous_returns_none")
+
+
+# ── Gate de PREMISSA (bug do "UTG+1 abriu 84o vs 3-bet") ────────────────────────────────────────
+
+def test_hand_in_open_range_premise_gate():
+    """Mão fora do range de abertura NÃO passa o gate de premissa; mão que abre, passa. O caso
+    reportado: 84o em UTG+1 (open freq 0%) sendo servido como 'você abriu e levou 3-bet'."""
+    assert hand_in_open_range('UTG+1', '84o', 50.0) is False   # o caso do bug
+    assert hand_in_open_range('UTG', '72o', 50.0) is False
+    assert hand_in_open_range('UTG+1', 'AQs', 50.0) is True
+    assert hand_in_open_range('BTN', 'A5s', 50.0) is True
+    # limiar: poeira de frequência (<MIN_PREMISE_OPEN_FREQ) não vale como premissa
+    assert 0 < MIN_PREMISE_OPEN_FREQ <= 0.10
+    print("OK  test_hand_in_open_range_premise_gate")
 
 
 if __name__ == '__main__':

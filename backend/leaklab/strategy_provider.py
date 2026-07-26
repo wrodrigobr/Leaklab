@@ -193,6 +193,31 @@ def postflop_menu(freq_map: dict | None = None) -> list[str]:
     return menu_with_strategy(POSTFLOP_FACING_BET_MENU, freq_map)
 
 
+# ── Gate de PREMISSA de cenário ─────────────────────────────────────────────────────────────────
+# Em spots onde o HERÓI JÁ ABRIU (vs_3bet e afins), a história do spot é "você abriu esta mão e
+# levou 3-bet" — logo a mão treinável DEVE pertencer ao range de abertura da posição. Sem este
+# gate, o gerador servia spots com premissa impossível (ex.: "UTG+1 abriu 84o", que o GTO abre
+# 0%), induzindo o jogador ao erro. O bug: analyze_preflop devolve available=True pro vs_3bet de
+# mão fora do open (rec=fold), então "cobertura" sozinha não filtra a premissa.
+# Limiar 5%: mão que o GTO abre ao menos ~1 em 20 vezes é premissa plausível (mãos de fronteira
+# que abrem 10-20% são ótimas didaticamente: "você abre às vezes — e agora vs 3-bet?"). Poeira de
+# frequência (<5%) não conta.
+MIN_PREMISE_OPEN_FREQ = 0.05
+
+
+def hand_in_open_range(position: str, hand: str, stack_bb: float,
+                       min_freq: float = MIN_PREMISE_OPEN_FREQ) -> bool:
+    """A mão pertence ao range de ABERTURA (raise+allin) da posição neste stack? Usado como gate
+    de premissa pelos geradores de spot vs_3bet (trainer/academy/daily). RFI indisponível → False
+    (sem como validar a premissa, não serve o spot)."""
+    res = analyze_preflop(position=position, hero_hand_type=hand, stack_bb=float(stack_bb),
+                          action_taken='raise', facing_size=0.0, vs_position='')
+    if not res.get('available'):
+        return False
+    hf = normalize_freq_map(res.get('hand_freq'))
+    return (hf.get('raise', 0.0) + hf.get('allin', 0.0)) >= min_freq
+
+
 # ── Fallbacks preflop honestos (sem cobertura de árvore) — fonte única p/ o /replay ──────────────
 # Estes eram construídos INLINE no /replay em 2-3 cópias (incl. o hack
 # `recommended_actions: ['call' if _q != 'leak' else 'fold']`). Centralizados aqui pra não divergir.
