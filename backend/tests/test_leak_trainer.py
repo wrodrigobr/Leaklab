@@ -9,7 +9,7 @@ from leaklab.leak_trainer import (
     _leak_scenario, _snap_stack, generate_canonical_spot, grade_canonical_spot,
     next_spot, _category_key, CORRECT_FREQ, MIN_FREQ,
     _action_family, generate_postflop_spot, grade_from_hand_strategy, POSTFLOP_CATALOG,
-    fundamentals_catalog, TRAINABLE_SCENARIOS,
+    fundamentals_catalog, TRAINABLE_SCENARIOS, _STACKS,
 )
 from leaklab.strategy_provider import preflop_strategy, menu_covers_strategy, hand_in_open_range
 
@@ -115,6 +115,36 @@ def test_scenario_mapping():
     assert _leak_scenario(1, 0) == 'vs_3bet'
     assert _leak_scenario(0, 2) == 'vs_3bet'   # squeeze/2 raises = enfrenta 3-bet
     print("OK  test_scenario_mapping")
+
+
+def test_snap_stack_none_is_explicit_fallback():
+    """Categoria SEM profundidade medida cai no fallback explícito (não finge precisão).
+    Regressão do bug em que get_leak_categories devolvia level_bb (o BB em FICHAS) como se
+    fosse stack: o valor vinha na casa dos milhares e TODA categoria snapava pro teto (100bb),
+    treinando 100bb enquanto os leaks aconteciam a 9-36bb."""
+    from leaklab.leak_trainer import _STACK_FALLBACK_BB
+    assert _snap_stack(None) == min(_STACKS, key=lambda s: abs(s - _STACK_FALLBACK_BB))
+    assert _snap_stack(0) == _snap_stack(None)          # 0 também é "sem dado"
+    # profundidade real manda no snap — nunca mais tudo em 100bb
+    assert _snap_stack(12.1) == 30
+    assert _snap_stack(35.9) == 40
+    assert _snap_stack(9.4)  == 30
+    assert _snap_stack(95.0) == 100
+    print("OK  test_snap_stack_none_is_explicit_fallback")
+
+
+def test_curriculum_carries_stack_confidence():
+    """O currículo diz se a profundidade foi MEDIDA. Sem esse sinal o PIP mandaria o jogador
+    treinar um stack chutado como se fosse fato."""
+    cat = {'scenario': 'vs_rfi', 'position': 'BB', 'vs_position': 'SB', 'stack_bb': 30,
+           'ev_loss_bb': 10.0, 'n': 9, 'weight': 10.0, 'stack_measured': True,
+           'stack_coverage': 1.0, 'avg_stack_raw': 12.1}
+    cat['key'] = _category_key(cat)
+    assert cat['key'] == 'vs_rfi:BB:SB:30'
+    # o contrato que o PIP vai consumir
+    for k in ('stack_measured', 'stack_coverage', 'avg_stack_raw'):
+        assert k in cat, f"falta {k}"
+    print("OK  test_curriculum_carries_stack_confidence")
 
 
 def test_snap_stack():

@@ -1109,7 +1109,15 @@ def get_leak_categories(user_id: int, days: int = 90, last_n: int | None = None,
                 COALESCE(d.preflop_raises_faced, 0)     AS raises_faced,
                 COUNT(*)                                AS n,
                 SUM(d.ev_loss_bb)                       AS total_ev_loss_bb,
-                AVG(COALESCE(d.level_bb, d.stack_bb, 50)) AS avg_stack_bb
+                -- Profundidade REAL do leak, em BB. NÃO usar level_bb aqui: ele é o tamanho do
+                -- big blind em FICHAS (ex.: level_bb=40 com stack_bb=3), então entrava como
+                -- "stack" na casa dos milhares e o _snap_stack do trainer jogava TUDO em 100bb
+                -- (medido: 12/12 categorias treinavam a 100bb enquanto os leaks aconteciam a
+                -- 9-36bb). Só stack_bb responde "quantos BB o herói tinha".
+                AVG(d.stack_bb)                         AS avg_stack_bb,
+                -- Quantas decisões da categoria não têm profundidade: sem isto o chamador não
+                -- sabe se o avg_stack_bb representa a categoria ou só uma minoria com dado.
+                SUM(CASE WHEN d.stack_bb IS NULL THEN 1 ELSE 0 END) AS n_sem_stack
             FROM decisions d
             JOIN tournaments t ON t.id = d.tournament_id
             WHERE {tf}
@@ -1121,15 +1129,26 @@ def get_leak_categories(user_id: int, days: int = 90, last_n: int | None = None,
             ORDER BY total_ev_loss_bb DESC
             LIMIT ?
         """), tp + (limit,)).fetchall()
-        return [{
-            'position':          r['position'],
-            'vs_position':       r['vs_position'] or '',
-            'is_3bet':           int(r['is_3bet'] or 0),
-            'raises_faced':      int(r['raises_faced'] or 0),
-            'n':                 r['n'],
-            'total_ev_loss_bb':  round(float(r['total_ev_loss_bb'] or 0), 2),
-            'avg_stack_bb':      round(float(r['avg_stack_bb'] or 50), 1),
-        } for r in rows]
+        out = []
+        for r in rows:
+            n          = int(r['n'] or 0)
+            sem_stack  = int(r['n_sem_stack'] or 0)
+            avg_stack  = r['avg_stack_bb']          # NULL quando NENHUMA decisão tem stack
+            out.append({
+                'position':          r['position'],
+                'vs_position':       r['vs_position'] or '',
+                'is_3bet':           int(r['is_3bet'] or 0),
+                'raises_faced':      int(r['raises_faced'] or 0),
+                'n':                 n,
+                'total_ev_loss_bb':  round(float(r['total_ev_loss_bb'] or 0), 2),
+                # None (não 50) quando não há profundidade medida: o caller decide o fallback
+                # em vez de receber um chute disfarçado de dado.
+                'avg_stack_bb':      (round(float(avg_stack), 1) if avg_stack is not None else None),
+                'n_sem_stack':       sem_stack,
+                # cobertura da profundidade (0..1) — entra na confiança do PIP
+                'stack_coverage':    (round((n - sem_stack) / n, 2) if n else 0.0),
+            })
+        return out
     finally:
         conn.close()
 

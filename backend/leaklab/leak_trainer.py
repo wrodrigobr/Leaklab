@@ -54,9 +54,16 @@ def _leak_scenario(is_3bet: int, raises_faced: int) -> str | None:
     return None
 
 
-def _snap_stack(avg_stack: float) -> int:
-    """Snap pro stack treinável mais próximo (mantém o spot dentro da cobertura limpa)."""
-    return min(_STACKS, key=lambda s: abs(s - (avg_stack or 50)))
+# Profundidade assumida quando a categoria não tem NENHUMA decisão com stack medido.
+# 50bb é o meio da grade treinável — é um chute, e por isso a categoria carrega
+# stack_coverage=0 para o PIP poder dizer "profundidade estimada" em vez de fingir precisão.
+_STACK_FALLBACK_BB = 50
+
+
+def _snap_stack(avg_stack: float | None) -> int:
+    """Snap pro stack treinável mais próximo (mantém o spot dentro da cobertura limpa).
+    `None` = categoria sem profundidade medida → cai no fallback explícito."""
+    return min(_STACKS, key=lambda s: abs(s - (avg_stack if avg_stack else _STACK_FALLBACK_BB)))
 
 
 def _category_key(cat: dict) -> str:
@@ -76,13 +83,21 @@ def build_curriculum(user_id: int, days: int = 90) -> list[dict]:
         if scenario is None:
             continue
         ev = float(r.get('total_ev_loss_bb') or 0)
+        n  = int(r.get('n') or 0)
+        _avg_stack = r.get('avg_stack_bb')          # None = nenhuma decisão com profundidade
         cat = {
             'scenario':    scenario,
             'position':    r['position'],
             'vs_position': (r.get('vs_position') or '') if scenario != 'rfi' else '',
-            'stack_bb':    _snap_stack(float(r.get('avg_stack_bb') or 50)),
+            'stack_bb':    _snap_stack(_avg_stack),
             'ev_loss_bb':  round(ev, 2),
-            'n':           int(r.get('n') or 0),
+            'n':           n,
+            # Profundidade: o valor medido e o quanto dele é confiável. `stack_measured=False`
+            # significa que o stack_bb acima é FALLBACK, não medição — o PIP tem que dizer isso
+            # ao jogador em vez de mandá-lo treinar 50bb como se fosse fato.
+            'stack_measured':  _avg_stack is not None,
+            'stack_coverage':  float(r.get('stack_coverage') or 0.0),
+            'avg_stack_raw':   (round(float(_avg_stack), 1) if _avg_stack is not None else None),
             # peso base = EV perdido (impacto), piso 0.5 p/ não zerar categorias de EV baixo
             'weight':      max(0.5, ev),
         }
