@@ -101,17 +101,16 @@
       "tip": "A plataforma compara seus indicadores reais antes e depois do treino, pra mostrar se a melhora apareceu no jogo de verdade."
     },
     "soon": "Em breve",
-    "readyMsg": "Você dominou seus leaks prioritários no treino. Agora jogue um torneio e importe pra ver a melhora no seu jogo real.",
     "applyCta": "Jogar e importar",
     "gateTitle": "Jogar ainda bloqueado",
-    "gateHintDeveloping": "Ainda em formação: domine seus {{count}} leaks mais custosos no {{tier}} pra liberar. Comece pelo que mais dói.",
-    "gateHintConsolidated": "Jogar libera quando TODOS os seus {{count}} leaks chegarem ao {{tier}}. Treinar um leak só não basta: a meta é cobrir todos os seus spots.",
-    "morePending": "outros ainda no caminho",
     "keepTraining": "Continuar treinando",
     "beginnerTitle": "Primeiro, revele seu jogo",
     "beginnerHint": "Jogue e importe seus primeiros torneios ({{done}}/{{target}}) pra plataforma medir seus pontos de falha reais. Enquanto isso, treine os fundamentos.",
     "tourneysUnit": "torneios",
-    "beginnerTrainCta": "Treinar fundamentos"
+    "beginnerTrainCta": "Treinar fundamentos",
+    "gateHintProtocol": "Os cinco critérios do domínio. Ao completá-los, o próximo leak é liberado.",
+    "allMasteredMsg": "Você dominou {{count}} leak(s) no treino. Agora jogue: o selo de comprovado depende dos seus próximos torneios.",
+    "noLeakYet": "Ainda não há leak medido para treinar. Importe torneios para o diagnóstico encontrar o primeiro."
   },
   "missions": {
     "title": "Missões de hoje",
@@ -121,13 +120,14 @@
   },
   "proof": {
     "title": "Validar aprendizado",
-    "subtitle": "Sua aderência GTO REAL na categoria (das suas mãos, não do treino), antes de treinar × depois que você jogou e importou.",
-    "before": "Antes",
-    "after": "Depois",
+    "subtitle": "Sua taxa de erro REAL nesta situação (das suas mãos, não do treino), antes de treinar × depois que você jogou e importou.",
     "hands": "mãos",
-    "thisTournament": "Neste último torneio: {{pct}}% ({{n}} mãos)",
-    "smallSample": "Amostra pequena, ainda não é tendência.",
-    "disclaimer": "É uma comparação com a sua média, não prova que o treino causou a mudança. Poucas mãos variam muito."
+    "disclaimer": "O veredito só sai quando a diferença resiste ao intervalo de confiança, e o \"antes\" é corrigido para não inflar a melhora. Situações de bolha e mesa final ficam fora da conta. É comparação entre dois períodos, não prova de que o treino causou a mudança.",
+    "noVerdict": "sem veredito",
+    "errorBefore": "Erro antes",
+    "errorAfter": "Erro depois",
+    "needHands": "Faltam {{n}} decisões desta situação nos seus torneios para o veredito.",
+    "needBaseline": "Ainda não há histórico suficiente antes do treino para comparar."
   },
   "challenge": {
     "title": "Desafio do Dia",

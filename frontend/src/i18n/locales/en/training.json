@@ -101,17 +101,16 @@
       "tip": "The platform compares your real metrics before and after training, to show whether the improvement showed up in your actual game."
     },
     "soon": "Coming soon",
-    "readyMsg": "You mastered your priority leaks in training. Now play a tournament and import it to see the improvement in your real game.",
     "applyCta": "Play & import",
     "gateTitle": "Play still locked",
-    "gateHintDeveloping": "Still developing: master your {{count}} most costly leaks at {{tier}} to unlock. Start with what hurts most.",
-    "gateHintConsolidated": "Play unlocks once ALL {{count}} of your leaks reach {{tier}}. Training a single leak isn't enough: the goal is to cover every one of your spots.",
-    "morePending": "more still on the way",
     "keepTraining": "Keep training",
     "beginnerTitle": "First, reveal your game",
     "beginnerHint": "Play and import your first tournaments ({{done}}/{{target}}) so the platform can measure your real failure points. Meanwhile, train the fundamentals.",
     "tourneysUnit": "tournaments",
-    "beginnerTrainCta": "Train fundamentals"
+    "beginnerTrainCta": "Train fundamentals",
+    "gateHintProtocol": "The five mastery criteria. Complete them and the next leak unlocks.",
+    "allMasteredMsg": "You mastered {{count}} leak(s) in training. Now play: the proven seal depends on your next tournaments.",
+    "noLeakYet": "No measured leak to train yet. Import tournaments so the diagnosis can find the first one."
   },
   "missions": {
     "title": "Today's missions",
@@ -121,13 +120,14 @@
   },
   "proof": {
     "title": "Validate learning",
-    "subtitle": "Your REAL GTO adherence in the category (from your hands, not the drills), before training × after you played and imported.",
-    "before": "Before",
-    "after": "After",
+    "subtitle": "Your REAL error rate in this spot (from your hands, not the drills), before training vs after you played and imported.",
     "hands": "hands",
-    "thisTournament": "This latest tournament: {{pct}}% ({{n}} hands)",
-    "smallSample": "Small sample, not a trend yet.",
-    "disclaimer": "It's a comparison to your average, not proof the training caused the change. Few hands vary a lot."
+    "disclaimer": "The verdict only lands when the difference survives the confidence interval, and the \"before\" is corrected so improvement is not inflated. Bubble and final table situations stay out of the count. It is a comparison between two periods, not proof the training caused the change.",
+    "noVerdict": "no verdict",
+    "errorBefore": "Error before",
+    "errorAfter": "Error after",
+    "needHands": "{{n}} more decisions in this spot across your tournaments before there is a verdict.",
+    "needBaseline": "Not enough history before training to compare against."
   },
   "challenge": {
     "title": "Daily Challenge",

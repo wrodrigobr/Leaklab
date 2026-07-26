@@ -1,10 +1,11 @@
 import React, { useRef } from "react";
 import { useTranslation } from "react-i18next";
+import { useQuery } from "@tanstack/react-query";
 import { TrendingDown, Target, Zap, Brain, Loader2 } from "lucide-react";
 import { HudHeader } from "@/components/hud/HudHeader";
 import { EmptyDashboard } from "@/components/hud/EmptyDashboard";
 import { PlayerStatsCard } from "@/components/hud/PlayerStatsCard";
-import { EvSummary, GtoQualityData, GtoPositionData } from "@/lib/api";
+import { EvSummary, GtoQualityData, GtoPositionData, progression } from "@/lib/api";
 import { useMasonryRows } from "@/hooks/useMasonryRows";
 import { formatAction } from "@/lib/utils";
 import { SECTION_SPAN, DashSection } from "@/hooks/useDashboardLayout";
@@ -64,6 +65,22 @@ export function DashboardV2({ onUpload, evSummary, hasData, renderCard, gtoQuali
       ? s.ev_per_100_recent - s.ev_per_100_prev
       : null;
   const topLeak = s?.top_leaks?.[0] ?? null;
+
+  // A AÇÃO do hero é a missão do protocolo, não o leak mais caro.
+  // O leak mais caro é DIAGNÓSTICO e frequentemente é postflop ("flop −65.9bb"); mandar
+  // "treinar agora" a partir dele levava a um hub genérico e prometia treinar algo que o
+  // protocolo (preflop, por família) não treina. O ranking por custo segue logo abaixo,
+  // então nenhuma informação se perde — o que muda é a PROMESSA do botão.
+  const { data: protocolo } = useQuery({
+    queryKey: ["progression-status"],
+    queryFn: () => progression.status(),
+    staleTime: 60_000,
+    retry: false,
+    enabled: hasData,
+  });
+  const missao = protocolo?.ativa ?? null;
+  const gateOk = missao?.mastery.criterios.filter((c) => c.ok).length ?? 0;
+  const gateTot = missao?.mastery.criterios.length ?? 5;
 
   return (
     <div className="min-h-dvh bg-background hud-scanline">
@@ -164,13 +181,25 @@ export function DashboardV2({ onUpload, evSummary, hasData, renderCard, gtoQuali
             )}
           </div>
 
-          {/* CTA: leak mais caro → treinar */}
+          {/* CTA: a MISSÃO do protocolo (fallback: leak mais caro, p/ quem ainda não tem missão) */}
           <div className="rounded-xl ring-1 ring-teal-500/40 bg-teal-500/5 p-4 flex flex-col justify-between">
             <div>
               <div className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-widest text-teal-300">
-                <Zap className="size-3" /> {t("v2.ctaLabel")}
+                <Zap className="size-3" /> {missao ? t("v2.missionLabel") : t("v2.ctaLabel")}
               </div>
-              {topLeak ? (
+              {missao ? (
+                <div className="mt-1">
+                  <div className="text-[13px] font-bold leading-snug text-foreground">{missao.titulo}</div>
+                  <div className="mt-0.5 flex items-center gap-1.5 font-mono text-[11px]">
+                    <span className="text-muted-foreground">{gateOk}/{gateTot}</span>
+                    <div className="h-1 flex-1 overflow-hidden rounded-full bg-border">
+                      <div className="h-full rounded-full bg-teal-400"
+                        style={{ width: `${(gateOk / Math.max(1, gateTot)) * 100}%` }} />
+                    </div>
+                    {missao.reaberto && <span className="shrink-0 text-amber-400">{t("v2.missionReopened")}</span>}
+                  </div>
+                </div>
+              ) : topLeak ? (
                 <div className="mt-1 text-[13px] text-foreground">
                   <span className="font-mono font-bold uppercase">{formatAction(topLeak.action_taken)}</span>
                   <span className="text-muted-foreground"> {t("v2.insteadOf")} </span>
@@ -183,7 +212,7 @@ export function DashboardV2({ onUpload, evSummary, hasData, renderCard, gtoQuali
               )}
             </div>
             <a
-              href="/training"
+              href={missao ? "/leak-trainer" : "/training"}
               className="mt-3 inline-flex items-center justify-center rounded-lg bg-teal-400 px-3 py-2 font-mono text-[11px] font-bold uppercase tracking-wider text-[#06281f] hover:bg-teal-300 transition-colors"
             >
               {t("v2.ctaButton")}

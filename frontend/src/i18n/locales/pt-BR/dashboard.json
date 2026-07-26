@@ -572,7 +572,9 @@
     "causalNoEdges": "Seus leaks ainda aparecem isolados, não se repetem juntos nos mesmos torneios. O mapa de causalidade surge quando os mesmos erros acontecem no mesmo torneio. Por ora, seus pontos de atenção:",
     "causalConclusion": "O que isto significa: seus erros não acontecem isolados, \"{{a}}\" e \"{{b}}\" apareceram nas mesmas mãos {{n}} vezes, sinal de que um desencadeia o outro. O ponto de maior alavancagem é \"{{epi}}\": está ligado a {{deg}} outros leaks, e corrigi-lo tende a derrubar a cadeia inteira.",
     "careerDelta": "{{delta}} vs histórico",
-    "cogDominant": "Padrão dominante"
+    "cogDominant": "Padrão dominante",
+    "missionLabel": "Sua missão",
+    "missionReopened": "reaberto"
   },
   "coachReferral": {
     "referredTitle": "Alunos indicados",
@@ -626,5 +628,11 @@
       "noite": "Noite"
     },
     "insight": "Você joga {{pct}}% pior em {{worst}} do que em {{best}}."
+  },
+  "dailyFocus": {
+    "label": "Foco",
+    "mission": "Missão",
+    "done": "Foco diário concluído",
+    "markDone": "Marcar foco de hoje como concluído"
   }
 }

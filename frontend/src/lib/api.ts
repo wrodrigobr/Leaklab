@@ -1387,6 +1387,8 @@ export interface ProgressionStatus {
   proximas: ProgressionStatusItem[];
   dominadas: ProgressionStatusItem[];
   restantes: number;
+  /** `restantes` bateu no teto do pool — há mais leaks abertos do que os listados */
+  restantes_cap?: boolean;
   items: ProgressionStatusItem[];
 }
 
@@ -1460,6 +1462,11 @@ export interface TrainingProofItem {
   delta: number;                        // after_pct - baseline_pct (comparação, não causa)
   snapshot: { tournament_id: string; pct: number; n: number } | null;  // último torneio (amostra 1)
   confident: boolean;                   // after_n >= mínimo → tendência; senão amostra pequena
+  /** Fase 3 — o veredito HONESTO (taxa de erro binomial, IC na diferença, ICM fora).
+   *  É o que a UI deve mostrar: `delta` acima não tem intervalo de confiança. */
+  validacao?: LeakValidation | null;
+  reopened_at?: string | null;
+  reopen_count?: number;
 }
 // minutos a leste do UTC (Brasil = -180) — pro reset diário das missões ser à meia-noite LOCAL
 export const tzOffsetMinutes = (): number => -new Date().getTimezoneOffset();
@@ -1968,7 +1975,8 @@ export interface SparringHand {
 // ── Daily Focus + XP (Sprint Q) ───────────────────────────────────────────────
 
 export interface DailyFocusAction {
-  type: "leak" | "drill" | "tournament" | "none";
+  /** `mission` = a missão ativa do protocolo (fonte única do foco); os demais são fallback */
+  type: "mission" | "leak" | "drill" | "tournament" | "none";
   label: string;
   description: string;
   link: string;

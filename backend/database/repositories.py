@@ -5814,28 +5814,61 @@ def get_daily_focus(user_id: int) -> dict:
 
     actions: list = []
 
-    # 1. Top GTO leak → primary drill action (fallback to heuristic if no GTO data)
-    gto_leaks  = get_gto_leak_ranking(user_id, days=90)
-    heur_leaks = get_leak_roi_impact(user_id, days=90) if not gto_leaks else None
-    leaks      = gto_leaks or heur_leaks or []
-    if leaks:
-        top   = leaks[0]
-        spot  = top.get('spot', '')
-        label = spot.replace('/', ' / ').replace('_', ' ')
-        n     = top.get('n', 0)
-        ev = top.get('ev_loss_monthly', 0) or 0
-        if gto_leaks:
-            desc = (f'~{ev:.1f} buy-ins/mês de impacto estimado · {n} ocorrências (90 dias)'
-                    if ev > 0 else f'{n} ocorrências com desvio GTO (90 dias)')
+    # 1. A MISSÃO DO PROTOCOLO é a ação primária — não um leak solto.
+    #    Antes o foco do dia era o top leak do ranking mandando pro Ghost Table, sem saber que
+    #    o protocolo existe. O jogador abria o dashboard e era mandado treinar um spot; abria o
+    #    Leak Trainer e via OUTRA missão. Duas respostas para "o que faço agora", e o dashboard
+    #    (a tela mais aberta) dava a errada. Fonte única: `missions_with_state`.
+    try:
+        from leaklab.progression import missions_with_state
+        est   = missions_with_state(user_id)
+        ativa = est.get('ativa') or (est.get('dominadas') or [None])[0]
+    except Exception:
+        log.exception("daily_focus: protocolo indisponível (user=%s) — caindo no ranking", user_id)
+        est, ativa = None, None
+
+    if ativa:
+        falta = len(ativa['mastery'].get('faltando') or [])
+        if ativa['estado'] != 'em_treino':
+            desc = 'Você dominou este leak no treino. Revise para não perder o padrão.'
+        elif ativa.get('reaberto'):
+            desc = 'Reaberto: o erro voltou nos seus torneios. Vale o que você provar daqui pra frente.'
+        elif falta:
+            desc = (f'{ativa["ev_loss_bb"]}bb perdidos nisso em {ativa["hands"]} mãos reais · '
+                    f'faltam {falta} de 5 critérios para dominar')
         else:
-            desc = f'Spot mais frequente — {n} ocorrências nos últimos 90 dias'
+            desc = f'{ativa["ev_loss_bb"]}bb perdidos nisso em {ativa["hands"]} mãos reais'
         actions.append({
-            'type':        'leak',
+            'type':        'mission',
             'priority':    'primary',
-            'label':       f'Drill: {label}',
+            'label':       ativa['titulo'],
             'description': desc,
-            'link':        '/ghost',
+            'link':        '/leak-trainer',
         })
+
+    # 1b. Sem protocolo (jogador novo, sem leak medido): o ranking de leaks vira a ação, como antes.
+    if not actions:
+        gto_leaks  = get_gto_leak_ranking(user_id, days=90)
+        heur_leaks = get_leak_roi_impact(user_id, days=90) if not gto_leaks else None
+        leaks      = gto_leaks or heur_leaks or []
+        if leaks:
+            top   = leaks[0]
+            spot  = top.get('spot', '')
+            label = spot.replace('/', ' / ').replace('_', ' ')
+            n     = top.get('n', 0)
+            ev = top.get('ev_loss_monthly', 0) or 0
+            if gto_leaks:
+                desc = (f'~{ev:.1f} buy-ins/mês de impacto estimado · {n} ocorrências (90 dias)'
+                        if ev > 0 else f'{n} ocorrências com desvio GTO (90 dias)')
+            else:
+                desc = f'Spot mais frequente — {n} ocorrências nos últimos 90 dias'
+            actions.append({
+                'type':        'leak',
+                'priority':    'primary',
+                'label':       f'Drill: {label}',
+                'description': desc,
+                'link':        '/ghost',
+            })
 
     # 2. Most overdue drill spot → secondary
     spots = get_drill_spots(user_id, limit=3)

@@ -1,12 +1,21 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { Target, Flame, ArrowRight, CheckCircle2, Loader2 } from "lucide-react";
 import { metrics, DailyFocusAction } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
+/** ⚠️ NÃO RENDERIZADO HOJE. O único ponto de uso é `Index.tsx`, no ramo do dashboard CLÁSSICO,
+ *  que virou código latente quando o DashboardV2 passou a ser o layout padrão (`if (dashV2)
+ *  return <DashboardV2/>`, com `dashV2` sempre true). O endpoint `/player/daily-focus` também
+ *  não tem outro consumidor. A faixa de ação viva é o CTA do hero do DashboardV2.
+ *
+ *  Mantido correto (a ação primária é a MISSÃO do protocolo, não o top leak mandando pro Ghost)
+ *  para o caso de ser revivido, mas é candidato a remoção junto com o endpoint. */
 export function DailyFocusCard() {
   const navigate    = useNavigate();
   const queryClient = useQueryClient();
+  const { t } = useTranslation("dashboard");
 
   const { data, isLoading } = useQuery({
     queryKey: ["daily-focus"],
@@ -29,7 +38,7 @@ export function DailyFocusCard() {
     return (
       <div className="flex items-center gap-2.5 rounded-lg border border-primary/20 bg-primary/5 px-4 py-2.5">
         <CheckCircle2 className="size-3.5 text-primary shrink-0" />
-        <span className="text-xs font-medium text-foreground">Foco diário concluído</span>
+        <span className="text-xs font-medium text-foreground">{t("dailyFocus.done")}</span>
         {data.streak > 1 && (
           <span className="flex items-center gap-1 font-mono text-[10px] text-amber-400 ml-auto">
             <Flame className="size-3" /> {data.streak}
@@ -50,7 +59,7 @@ export function DailyFocusCard() {
       {/* Label */}
       <Target className="size-3.5 text-primary shrink-0" />
       <span className="font-mono text-[9px] font-bold uppercase tracking-widest text-muted-foreground shrink-0 hidden sm:block">
-        Foco
+        {primary.type === "mission" ? t("dailyFocus.mission") : t("dailyFocus.label")}
       </span>
 
       {/* Ação primária */}
@@ -79,7 +88,7 @@ export function DailyFocusCard() {
         <button
           onClick={() => complete.mutate()}
           disabled={complete.isPending}
-          title="Marcar foco de hoje como concluído"
+          title={t("dailyFocus.markDone")}
           className={cn(
             "flex items-center justify-center size-6 rounded-md border transition-colors",
             "border-border text-muted-foreground/50 hover:border-primary/40 hover:text-primary",

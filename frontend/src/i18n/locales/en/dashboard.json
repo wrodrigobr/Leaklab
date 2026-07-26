@@ -572,7 +572,9 @@
     "causalNoEdges": "Your leaks still show up isolated, they don't repeat together in the same tournaments. The causal map appears once the same mistakes happen in the same tournament. For now, your attention points:",
     "causalConclusion": "What this means: your mistakes don't happen in isolation, \"{{a}}\" and \"{{b}}\" showed up in the same hands {{n}} times, a sign one triggers the other. The highest-leverage point is \"{{epi}}\": it's linked to {{deg}} other leaks, and fixing it tends to bring the whole chain down.",
     "careerDelta": "{{delta}} vs all-time",
-    "cogDominant": "Dominant pattern"
+    "cogDominant": "Dominant pattern",
+    "missionLabel": "Your mission",
+    "missionReopened": "reopened"
   },
   "coachReferral": {
     "referredTitle": "Referred students",
@@ -626,5 +628,11 @@
       "noite": "Evening"
     },
     "insight": "You play {{pct}}% worse at {{worst}} than at {{best}}."
+  },
+  "dailyFocus": {
+    "label": "Focus",
+    "mission": "Mission",
+    "done": "Daily focus completed",
+    "markDone": "Mark today's focus as done"
   }
 }

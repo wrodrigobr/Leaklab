@@ -8,6 +8,7 @@ import { HudHeader } from "@/components/hud/HudHeader";
 import { PokerTableV3 } from "@/components/hud/PokerTableV3";
 import { RangePanel } from "@/components/replayer/RangePanel";
 import { ProLockCard } from "@/components/hud/ProLockCard";
+import { MasteryGate } from "@/components/training/MasteryGate";
 import { useTableOrientation } from "@/hooks/use-table-orientation";
 import { useIsLandscapeMobile } from "@/hooks/use-is-landscape-mobile";
 import { leaktrainer, progression } from "@/lib/api";
@@ -584,7 +585,9 @@ export default function LeakTrainer() {
                   {revisao
                     ? t("leakTrainer.protocol.reviewMode", "Revisão")
                     : st ? t("leakTrainer.protocol.missionOf", {
-                            n: 1, total: statusData?.restantes ?? 1,
+                            n: 1,
+                            // "+" quando o pool saturou: o número é um teto, não o total
+                            total: `${statusData?.restantes ?? 1}${statusData?.restantes_cap ? "+" : ""}`,
                             defaultValue: `Missão 1 de ${statusData?.restantes ?? 1}`,
                           })
                        : t("leakTrainer.protocol.mission", "Missão de hoje")}
@@ -648,33 +651,7 @@ export default function LeakTrainer() {
                       {feitos}/{totalCrit}
                     </span>
                   </div>
-                  <div className="space-y-1.5">
-                    {st.mastery.criterios.map((c) => {
-                      const pct = Math.max(0, Math.min(100, c.alvo ? (c.atual / c.alvo) * 100 : 0));
-                      const semAmostra = c.amostra != null && c.amostra_min != null && c.amostra < c.amostra_min;
-                      // Precisão/Fronteira/Transferência são PORCENTAGEM: mostrar "60/85" se lê
-                      // como fração ("60 de 85 spots") e engana. Volume/Amplitude são contagem.
-                      const ehPct = c.key === "precisao" || c.key === "fronteira" || c.key === "transferencia";
-                      const valorTxt = ehPct ? `${c.atual}% / ${c.alvo}%` : `${c.atual}/${c.alvo}`;
-                      return (
-                        <div key={c.key} className="flex items-center gap-2" title={c.desc}>
-                          <span className={cn("w-24 shrink-0 font-mono text-[10px] uppercase tracking-wide",
-                            c.ok ? "text-emerald-400" : "text-muted-foreground")}>{c.label}</span>
-                          <div className="relative h-1.5 flex-1 overflow-hidden rounded-full bg-border">
-                            <div className={cn("h-full rounded-full transition-all",
-                              c.ok ? "bg-emerald-500" : "bg-amber-500/70")}
-                              style={{ width: `${pct}%` }} />
-                          </div>
-                          <span className={cn("w-24 shrink-0 text-right font-mono text-[10px] tabular-nums",
-                            c.ok ? "text-emerald-400" : "text-muted-foreground")}>
-                            {semAmostra
-                              ? t("leakTrainer.protocol.needSample", "sem amostra")
-                              : c.ok ? "✓" : valorTxt}
-                          </span>
-                        </div>
-                      );
-                    })}
-                  </div>
+                  <MasteryGate criterios={st.mastery.criterios} />
                 </div>
               )}
 

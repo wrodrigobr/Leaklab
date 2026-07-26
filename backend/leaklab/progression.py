@@ -214,6 +214,9 @@ def missions_with_state(user_id: int, days: int = 90, pool: int = MISSION_POOL) 
         'proximas':   em_treino[1:3],
         'dominadas':  dominadas,
         'restantes':  len(em_treino),
+        # o pool é um TETO. Sem este sinal, "Missão 1 de 8" leria como "só faltam 8" quando o
+        # jogador tem 12 leaks medidos — corte silencioso disfarçado de total.
+        'restantes_cap': len(itens) >= pool,
         'items':      itens,
     }
 

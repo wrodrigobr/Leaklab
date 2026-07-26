@@ -3,8 +3,9 @@ import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowRight, CheckCircle2, Dumbbell, GraduationCap, RotateCw, Target, Award, Flame, Star, Trophy, Lock, Map, Play, TrendingUp, TrendingDown, Minus, Sparkles, Medal, Gem, Compass, Crown, Info, Repeat, Zap, Rocket, type LucideIcon } from "lucide-react";
 import { HudLayout } from "@/components/hud/HudLayout";
-import { training } from "@/lib/api";
+import { training, progression } from "@/lib/api";
 import { DailyChallengeCard } from "@/components/training/DailyChallengeCard";
+import { MasteryGate } from "@/components/training/MasteryGate";
 import { cn } from "@/lib/utils";
 
 // Cada conquista tem um ÍCONE próprio (não um número) — pra ler como medalha, não como passo de
@@ -38,6 +39,19 @@ export default function Training() {
   const { data: overview } = useQuery({ queryKey: ["training-overview"], queryFn: training.overview });
   const { data: proofData } = useQuery({ queryKey: ["training-proof"], queryFn: training.proof });
   const proof = proofData?.proof ?? [];
+  // O PROTOCOLO é a jornada. Esta tela tinha uma própria (Treinar → Aplicar → Provar, com gate
+  // por tier ouro/diamante) que media outra coisa e podia contradizer o Leak Trainer sobre o
+  // mesmo leak no mesmo dia. Os tiers continuam existindo como gamificação de ESFORÇO (volume
+  // praticado); quem decide progressão é o gate de domínio.
+  const { data: protocolo } = useQuery({
+    queryKey: ["progression-status"],
+    queryFn: () => progression.status(),
+    staleTime: 60_000,
+    retry: false,
+  });
+  const foco      = protocolo?.ativa ?? null;
+  const dominadas = protocolo?.dominadas ?? [];
+  const provados  = dominadas.filter((d) => d.estado === "comprovado_no_jogo");
 
   // rótulo humano da habilidade a partir da chave de categoria (reusa as chaves do Leak Trainer)
   const skillLabel = (key: string): string => {
@@ -54,25 +68,24 @@ export default function Training() {
   const tierCounts = (["bronze", "silver", "gold", "diamond"] as const).map((tier) => ({
     tier, count: overview?.skills.filter((s) => s.tier === tier).length ?? 0,
   }));
-  // Jornada com GATE escalonado (rampa de onboarding, backend training_readiness):
-  //   iniciante   → meta é jogar/importar (revelar o jogo), não Diamante
-  //   em formação → top-3 leaks no Ouro
-  //   consolidado → todos os leaks no Diamante
-  // A exigência sobe com a maturidade e só mira leaks REAIS quando a amostra é confiável.
+  // A rampa de onboarding (training_readiness) segue viva SÓ pro iniciante, que precisa de uma
+  // meta de volume ("jogue N torneios") antes de existir leak medido. Ela deixou de ser gate de
+  // progressão: quem decide isso é o domínio.
   const readiness = overview?.readiness ?? null;
-  const ready = readiness?.ready ?? false;
   const isBeginner = readiness?.stage === "beginner";
   const gatePct = readiness && readiness.total > 0
     ? Math.round((readiness.done / readiness.total) * 100) : 0;
-  const gateTierLabel = readiness?.target_tier ? TIER[readiness.target_tier].label : "";
-  // A jornada é SEQUENCIAL: não pode acender um passo à frente sem o anterior concluído.
-  // "Comprovar" só habilita se "Aplicar" foi concluído (gate atingido = ready) E há prova —
-  // subir um torneio sem estar "pronto" (pulando o Aplicar) NÃO libera o Comprovar.
-  const applied = ready && proof.length > 0;
+
+  // A JORNADA = os 3 estados do protocolo, aplicados ao leak em foco. Sequencial de verdade:
+  // dominar no treino libera o próximo leak, comprovar exige o jogo real.
+  const estadoFoco = foco?.estado ?? (dominadas.length ? "dominado_no_treino" : null);
   const JOURNEY = [
-    { key: "train", icon: Dumbbell, status: ready ? "done" : "active" },
-    { key: "apply", icon: Play, status: ready ? (proof.length > 0 ? "done" : "active") : "locked" },
-    { key: "prove", icon: TrendingUp, status: applied ? "active" : "locked" },
+    { key: "train", icon: Dumbbell,
+      status: estadoFoco === "em_treino" ? "active" : estadoFoco ? "done" : "active" },
+    { key: "apply", icon: Play,
+      status: dominadas.length ? (proof.length ? "done" : "active") : "locked" },
+    { key: "prove", icon: TrendingUp,
+      status: provados.length ? "done" : dominadas.length && proof.length ? "active" : "locked" },
   ] as const;
 
   return (
@@ -170,18 +183,37 @@ export default function Training() {
               })}
             </div>
 
-            {/* Gate "Aplicar" ESCALONADO: comemorativo se pronto; iniciante → jogar/importar;
-                em formação/consolidado → progresso honesto rumo ao tier alvo do estágio. */}
-            {readiness && (ready ? (
+            {/* GATE — agora é o do protocolo (5 critérios sobre o leak em foco), não o de tier.
+                O de tier media VOLUME praticado e podia dizer "pronto para aplicar" enquanto o
+                Leak Trainer dizia "faltam 3 critérios" sobre o mesmo leak. */}
+            {foco ? (
+              <div className="mt-4 rounded-xl bg-muted/5 p-4 ring-1 ring-border">
+                <div className="mb-2 flex items-center justify-between gap-2">
+                  <p className="flex min-w-0 items-center gap-2 text-sm font-bold text-foreground">
+                    <Target className="size-4 shrink-0 text-amber-400" aria-hidden />
+                    <span className="truncate">{foco.titulo}</span>
+                  </p>
+                  <span className="shrink-0 font-mono text-xs font-bold tabular-nums text-amber-300">
+                    {foco.mastery.criterios.filter((c) => c.ok).length}/{foco.mastery.criterios.length}
+                  </span>
+                </div>
+                <MasteryGate criterios={foco.mastery.criterios} />
+                <p className="mt-2 text-xs leading-snug text-muted-foreground">{t("journey.gateHintProtocol")}</p>
+                <Link to="/leak-trainer"
+                  className="mt-3 inline-flex items-center gap-2 rounded-lg bg-amber-500/15 px-4 py-2 font-mono text-xs font-bold uppercase tracking-widest text-amber-300 ring-1 ring-amber-500/30 transition-colors hover:bg-amber-500/25">
+                  <Target className="size-4" aria-hidden /> {t("journey.keepTraining")}
+                </Link>
+              </div>
+            ) : dominadas.length > 0 ? (
               <div className="mt-4 flex flex-col gap-3 rounded-xl bg-primary/[0.08] p-4 ring-1 ring-primary/30 sm:flex-row sm:items-center">
                 <Trophy className="size-6 shrink-0 text-primary" aria-hidden />
-                <p className="flex-1 text-sm text-foreground">{t("journey.readyMsg")}</p>
+                <p className="flex-1 text-sm text-foreground">{t("journey.allMasteredMsg", { count: dominadas.length })}</p>
                 <Link to="/dashboard"
                   className="flex shrink-0 items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 font-mono text-xs font-bold uppercase tracking-widest text-primary-foreground transition-colors hover:bg-primary/90">
                   <Play className="size-4" aria-hidden /> {t("journey.applyCta")}
                 </Link>
               </div>
-            ) : isBeginner ? (
+            ) : readiness && isBeginner ? (
               <div className="mt-4 rounded-xl bg-primary/[0.06] p-4 ring-1 ring-primary/25">
                 <div className="mb-2 flex items-center justify-between gap-2">
                   <p className="flex items-center gap-2 text-sm font-bold text-foreground">
@@ -208,51 +240,25 @@ export default function Training() {
               </div>
             ) : (
               <div className="mt-4 rounded-xl bg-muted/5 p-4 ring-1 ring-border">
-                <div className="mb-2 flex items-center justify-between gap-2">
-                  <p className="flex items-center gap-2 text-sm font-bold text-foreground">
-                    <Lock className="size-4 text-muted-foreground" aria-hidden /> {t("journey.gateTitle")}
-                  </p>
-                  <span className={cn("shrink-0 font-mono text-xs font-bold tabular-nums", readiness.target_tier ? TIER[readiness.target_tier].text : "text-foreground")}>
-                    {readiness.done}/{readiness.total} <span className="text-muted-foreground">{gateTierLabel}</span>
-                  </span>
-                </div>
-                <div className="h-2 overflow-hidden rounded-full bg-muted/30">
-                  <div className="h-full rounded-full transition-[width] duration-500"
-                    style={{ width: `${gatePct}%`, backgroundColor: readiness.target_tier ? TIER[readiness.target_tier].ring : undefined }} />
-                </div>
-                <p className="mt-2 text-xs leading-snug text-muted-foreground">
-                  {t(readiness.stage === "developing" ? "journey.gateHintDeveloping" : "journey.gateHintConsolidated", { count: readiness.total, tier: gateTierLabel })}
+                <p className="flex items-center gap-2 text-sm font-bold text-foreground">
+                  <Lock className="size-4 text-muted-foreground" aria-hidden /> {t("journey.gateTitle")}
                 </p>
-                {readiness.pending.length > 0 && (
-                  <div className="mt-3 space-y-1.5">
-                    {readiness.pending.slice(0, 4).map((p) => {
-                      const tm = TIER[p.tier] ?? TIER.bronze;
-                      return (
-                        <div key={p.category_key} className="flex items-center gap-3">
-                          <span className="w-40 shrink-0 truncate text-[11px] leading-tight text-foreground sm:w-52">{skillLabel(p.category_key)}</span>
-                          <div className="h-2 flex-1 overflow-hidden rounded-full bg-muted/30">
-                            <div className="h-full rounded-full transition-[width] duration-500" style={{ width: `${Math.round(p.mastery)}%`, backgroundColor: tm.ring }} />
-                          </div>
-                          <span className={cn("w-16 shrink-0 text-right font-mono text-[10px] font-bold uppercase", tm.text)}>{tm.label}</span>
-                        </div>
-                      );
-                    })}
-                    {readiness.pending.length > 4 && (
-                      <p className="pt-0.5 text-[11px] text-muted-foreground">+{readiness.pending.length - 4} {t("journey.morePending")}</p>
-                    )}
-                  </div>
-                )}
+                <p className="mt-1 text-xs leading-snug text-muted-foreground">{t("journey.noLeakYet")}</p>
                 <Link to="/leak-trainer"
                   className="mt-3 inline-flex items-center gap-2 rounded-lg bg-amber-500/15 px-4 py-2 font-mono text-xs font-bold uppercase tracking-widest text-amber-300 ring-1 ring-amber-500/30 transition-colors hover:bg-amber-500/25">
                   <Target className="size-4" aria-hidden /> {t("journey.keepTraining")}
                 </Link>
               </div>
-            ))}
+            )}
           </div>
         )}
 
-        {/* ── COMPROVAR — só quando seguiu a jornada (Aplicar concluído = ready + prova). ── */}
-        {applied && (
+        {/* ── COMPROVAR — o VEREDITO estatístico, não o delta bruto ──
+            Esta seção mostrava `delta` com seta verde/vermelha: aderência antes×depois sem
+            intervalo de confiança. Com 14 mãos "62% → 71%" não significa nada, e o Leak Trainer,
+            sobre o MESMO leak, já dizia "as mãos ainda não distinguem melhora de sorte". Duas
+            telas em contradição. Agora ambas leem `validacao` (leaklab/validation.py). */}
+        {proof.length > 0 && (
           <div className="rounded-2xl border border-border bg-card/40 p-5">
             <h2 className="mb-1 flex items-center gap-2 font-heading text-base font-bold text-foreground">
               <TrendingUp className="size-4 text-primary" aria-hidden /> {t("proof.title")}
@@ -260,29 +266,36 @@ export default function Training() {
             <p className="mb-3 text-[11px] leading-snug text-muted-foreground">{t("proof.subtitle")}</p>
             <div className="space-y-2">
               {proof.slice(0, 6).map((p) => {
-                const up = p.delta > 0, down = p.delta < 0;
-                const DeltaIcon = up ? TrendingUp : down ? TrendingDown : Minus;
-                const deltaColor = up ? "text-emerald-400" : down ? "text-red-400" : "text-muted-foreground";
+                const v = p.validacao;
+                const melhorou = v?.veredito === "melhorou";
+                const piorou   = v?.veredito === "piorou";
+                const VIcon = melhorou ? TrendingUp : piorou ? TrendingDown : Minus;
+                const vColor = melhorou ? "text-emerald-400" : piorou ? "text-red-400" : "text-muted-foreground";
                 return (
                   <div key={p.category_key} className="rounded-xl bg-background/60 p-3 ring-1 ring-border">
                     <div className="flex items-center justify-between gap-2">
                       <span className="truncate text-[12px] font-bold text-foreground">{skillLabel(p.category_key)}</span>
-                      <span className={cn("flex shrink-0 items-center gap-1 font-mono text-xs font-bold", deltaColor)}>
-                        <DeltaIcon className="size-3.5" aria-hidden />{p.delta > 0 ? "+" : ""}{p.delta}pp
+                      <span className={cn("flex shrink-0 items-center gap-1 font-mono text-[10px] font-bold uppercase", vColor)}>
+                        <VIcon className="size-3.5" aria-hidden />
+                        {v ? v.label : t("proof.noVerdict")}
                       </span>
                     </div>
-                    <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 font-mono text-[11px]">
-                      <span className="text-muted-foreground">{t("proof.before")} {p.baseline_pct}%</span>
-                      <ArrowRight className="size-3 text-muted-foreground/50" aria-hidden />
-                      <span className="font-bold text-foreground">{t("proof.after")} {p.after_pct}%</span>
-                      <span className="text-muted-foreground">({p.after_n} {t("proof.hands")})</span>
-                    </div>
-                    {p.snapshot && (
-                      <p className="mt-1 text-[10px] text-muted-foreground">
-                        {t("proof.thisTournament", { pct: p.snapshot.pct, n: p.snapshot.n })}
+                    {/* Os números só aparecem quando o veredito EXISTE. Mostrar "62% → 71%" sob
+                        um veredito de "sem amostra" faria o jogador ler a melhora mesmo assim. */}
+                    {v && v.veredito !== "sem_amostra" && v.taxa_antes != null && v.taxa_depois != null ? (
+                      <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 font-mono text-[11px]">
+                        <span className="text-muted-foreground">{t("proof.errorBefore")} {v.taxa_antes}%</span>
+                        <ArrowRight className="size-3 text-muted-foreground/50" aria-hidden />
+                        <span className="font-bold text-foreground">{t("proof.errorAfter")} {v.taxa_depois}%</span>
+                        <span className="text-muted-foreground">({v.n_depois} {t("proof.hands")})</span>
+                      </div>
+                    ) : (
+                      <p className="mt-1.5 text-[11px] leading-snug text-muted-foreground">
+                        {v?.faltam != null
+                          ? t("proof.needHands", { n: v.faltam })
+                          : t("proof.needBaseline")}
                       </p>
                     )}
-                    {!p.confident && <p className="mt-1 text-[10px] text-amber-400/80">{t("proof.smallSample")}</p>}
                   </div>
                 );
               })}

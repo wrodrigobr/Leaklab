@@ -101,17 +101,16 @@
       "tip": "La plataforma compara tus indicadores reales antes y después del entrenamiento, para mostrar si la mejora apareció en tu juego real."
     },
     "soon": "Próximamente",
-    "readyMsg": "Dominaste tus fugas prioritarias en el entrenamiento. Ahora juega un torneo e impórtalo para ver la mejora en tu juego real.",
     "applyCta": "Jugar e importar",
     "gateTitle": "Jugar aún bloqueado",
-    "gateHintDeveloping": "Aún en formación: domina tus {{count}} fugas más costosas en {{tier}} para desbloquear. Empieza por lo que más duele.",
-    "gateHintConsolidated": "Jugar se desbloquea cuando TODAS tus {{count}} fugas lleguen a {{tier}}. Entrenar una sola fuga no basta: el objetivo es cubrir todos tus spots.",
-    "morePending": "más aún en camino",
     "keepTraining": "Seguir entrenando",
     "beginnerTitle": "Primero, revela tu juego",
     "beginnerHint": "Juega e importa tus primeros torneos ({{done}}/{{target}}) para que la plataforma mida tus puntos de falla reales. Mientras tanto, entrena los fundamentos.",
     "tourneysUnit": "torneos",
-    "beginnerTrainCta": "Entrenar fundamentos"
+    "beginnerTrainCta": "Entrenar fundamentos",
+    "gateHintProtocol": "Los cinco criterios del dominio. Al completarlos, se libera el siguiente leak.",
+    "allMasteredMsg": "Dominaste {{count}} leak(s) en el entrenamiento. Ahora juega: el sello de comprobado depende de tus próximos torneos.",
+    "noLeakYet": "Todavía no hay leak medido para entrenar. Importa torneos para que el diagnóstico encuentre el primero."
   },
   "missions": {
     "title": "Misiones de hoy",
@@ -121,13 +120,14 @@
   },
   "proof": {
     "title": "Validar aprendizaje",
-    "subtitle": "Tu adherencia GTO REAL en la categoría (de tus manos, no del entrenamiento), antes de entrenar × después de jugar e importar.",
-    "before": "Antes",
-    "after": "Después",
+    "subtitle": "Tu tasa de error REAL en esta situación (de tus manos, no del entrenamiento), antes de entrenar vs después de jugar e importar.",
     "hands": "manos",
-    "thisTournament": "Este último torneo: {{pct}}% ({{n}} manos)",
-    "smallSample": "Muestra pequeña, aún no es tendencia.",
-    "disclaimer": "Es una comparación con tu media, no prueba que el entrenamiento causó el cambio. Pocas manos varían mucho."
+    "disclaimer": "El veredicto solo sale cuando la diferencia resiste el intervalo de confianza, y el \"antes\" se corrige para no inflar la mejora. Las situaciones de burbuja y mesa final quedan fuera de la cuenta. Es una comparación entre dos períodos, no prueba de que el entrenamiento causó el cambio.",
+    "noVerdict": "sin veredicto",
+    "errorBefore": "Error antes",
+    "errorAfter": "Error después",
+    "needHands": "Faltan {{n}} decisiones de esta situación en tus torneos para el veredicto.",
+    "needBaseline": "Aún no hay historial suficiente antes del entrenamiento para comparar."
   },
   "challenge": {
     "title": "Desafío del Día",
