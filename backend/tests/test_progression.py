@@ -89,10 +89,11 @@ class _StubDB:
                       repos.get_training_proof)
         prog.build_curriculum = lambda uid, days=90: self.curriculum
 
-        def _att_of(uid, key, limit=30):
+        def _att_of(uid, key, limit=30, since=None):
             if self.boom:
                 raise RuntimeError("banco fora do ar")
-            return self.attempts.get(key, [])[:limit]
+            # `since` (corte de reabertura) zera a janela: o jogador re-prova a partir dali
+            return [] if since else self.attempts.get(key, [])[:limit]
 
         repos.get_progression_attempts = _att_of
         repos.get_training_proof = lambda uid, **kw: self.proofs
@@ -517,6 +518,55 @@ def test_selo_do_jogo_real_aparece_no_estado():
         est = missions_with_state(1)
     assert est['dominadas'][0]['estado'] == 'comprovado_no_jogo'
     print("OK  test_selo_do_jogo_real_aparece_no_estado")
+
+
+# ── Fase 3: o trilho lento manda no estado ────────────────────────────────────
+
+def _proof(key, veredito, **kw):
+    return [{'category_key': key, 'validacao': {'veredito': veredito}, **kw}]
+
+
+def test_so_o_veredito_estatistico_sela():
+    """Com `validacao` presente, a regra antiga (delta > 0 e amostra confiável) não vale mais:
+    `sem_mudanca` é 'a amostra não permite afirmar', e selar isso seria mentir."""
+    from leaklab.progression import missions_with_state
+    for veredito, esperado in [('melhorou', 'comprovado_no_jogo'),
+                               ('sem_mudanca', 'dominado_no_treino'),
+                               ('sem_amostra', 'dominado_no_treino')]:
+        pr = _proof('rfi:SB::30', veredito, confident=True, delta=12)   # delta ótimo de propósito
+        with _StubDB(_dois_leaks(), attempts={'rfi:SB::30': _att_dominado()}, proofs=pr):
+            est = missions_with_state(1)
+        assert est['dominadas'][0]['estado'] == esperado, (veredito, est['dominadas'][0]['estado'])
+    print("OK  test_so_o_veredito_estatistico_sela")
+
+
+def test_regressao_no_jogo_reabre_o_leak_e_devolve_o_foco():
+    """O gate existe pra prever o jogo. Quando o jogo diz o contrário, quem está errado é o
+    gate — o leak volta a ser a missão ativa mesmo com os 5 critérios cumpridos."""
+    from leaklab.progression import missions_with_state
+    pr = _proof('rfi:SB::30', 'piorou', reopen_count=1, reopened_at='2026-07-26 12:00:00')
+    with _StubDB(_dois_leaks(), attempts={'rfi:SB::30': _att_dominado()}, proofs=pr):
+        est = missions_with_state(1)
+    assert est['ativa']['key'] == 'rfi:SB::30', est['ativa']['key']
+    assert est['ativa']['estado'] == 'em_treino'
+    assert est['ativa']['reaberto'] is True
+    assert est['dominadas'] == []
+    print("OK  test_regressao_no_jogo_reabre_o_leak_e_devolve_o_foco")
+
+
+def test_reabertura_zera_a_janela_do_gate():
+    """A armadilha do desenho ingênuo: sem cortar a janela, o leak reabriria e 're-dominaria'
+    no mesmo instante com tentativas que já não valem — ou pior, ficaria preso para sempre
+    sendo reaberto pela mesma evidência antiga. O corte é o que fecha o laço."""
+    from leaklab.progression import missions_with_state
+    pr = _proof('rfi:SB::30', 'sem_amostra', reopen_count=1, reopened_at='2026-07-26 12:00:00')
+    with _StubDB(_dois_leaks(), attempts={'rfi:SB::30': _att_dominado()}, proofs=pr):
+        est = missions_with_state(1)
+    ativa = est['ativa']
+    assert ativa['key'] == 'rfi:SB::30' and ativa['estado'] == 'em_treino'
+    assert ativa['mastery']['janela']['n'] == 0, "as tentativas pré-reabertura não podem contar"
+    assert 'volume' in ativa['mastery']['faltando']
+    print("OK  test_reabertura_zera_a_janela_do_gate")
 
 
 if __name__ == '__main__':

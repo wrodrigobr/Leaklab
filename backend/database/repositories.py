@@ -5201,16 +5201,25 @@ def record_progression_attempt(user_id: int, category_key: str, stratum: str,
         conn.close()
 
 
-def get_progression_attempts(user_id: int, category_key: str, limit: int = 30) -> list:
-    """Tentativas MAIS RECENTES da categoria (janela móvel do gate), da mais nova pra mais velha."""
+def get_progression_attempts(user_id: int, category_key: str, limit: int = 30,
+                             since=None) -> list:
+    """Tentativas MAIS RECENTES da categoria (janela móvel do gate), da mais nova pra mais velha.
+
+    `since` = corte de reabertura: quando o jogo real prova que o leak regrediu, o domínio
+    anterior deixa de valer e o jogador re-prova A PARTIR dali. Sem esse corte, as tentativas
+    antigas manteriam o gate aceso e o leak reabriria e "re-dominaria" no mesmo instante.
+    """
     if not (user_id and category_key):
         return []
     conn = get_conn()
     try:
-        rows = _fetchall(conn, _adapt(
-            "SELECT stratum, block_kind, correct FROM progression_attempts "
-            "WHERE user_id=? AND category_key=? ORDER BY id DESC LIMIT ?"),
-            (user_id, category_key, int(limit)))
+        sql = ("SELECT stratum, block_kind, correct FROM progression_attempts "
+               "WHERE user_id=? AND category_key=?")
+        args = [user_id, category_key]
+        if since is not None:
+            sql += " AND created_at > ?"; args.append(since)
+        rows = _fetchall(conn, _adapt(sql + " ORDER BY id DESC LIMIT ?"),
+                         tuple(args + [int(limit)]))
         return [{'stratum': r['stratum'], 'block_kind': r['block_kind'],
                  'correct': bool(r['correct'])} for r in rows]
     except Exception:
@@ -6166,6 +6175,53 @@ def _category_adherence(conn, user_id, category_key, imported_after=None, only_t
             'pct': round(aligned * 100.0 / with_gto, 1) if with_gto else 0.0}
 
 
+# ── Trilho LENTO (Fase 3): taxa de erro binomial, ICM fora ───────────────────────────────────
+# O "antes" é RECALCULADO a partir de `baseline_at` em vez de ler o `baseline_pct` congelado.
+# Dois motivos: (1) o congelado é percentual, e sem a CONTAGEM de erros não dá pra calcular
+# intervalo de confiança nenhum; (2) recalculando, o filtro de ICM vale para os dois lados —
+# comparar um "antes" com bolha contra um "depois" sem bolha inventaria melhora do nada.
+_ICM_EXCLUDED = 'high'   # zona de ICM: o gabarito é chipEV puro e não vale ali (flag & exclude)
+
+
+def _category_error_counts(conn, user_id, category_key, before=None, after=None):
+    """(erros, n) da família no jogo REAL, fora da zona de ICM.
+
+    `n` conta só decisões COM gabarito; erro é tudo que o gabarito não marcou como alinhado
+    (mesma convenção de `_category_adherence`, pra não existirem duas definições de "erro").
+    """
+    filt = _category_adherence_filter(category_key)
+    if not filt:
+        return None
+    where, params = filt
+    sql = ("SELECT SUM(CASE WHEN d.gto_label NOT IN ('gto_correct','gto_mixed') THEN 1 ELSE 0 END) AS erros, "
+           "SUM(1) AS n "
+           "FROM decisions d JOIN tournaments t ON t.id = d.tournament_id "
+           "WHERE t.user_id = ? AND d.gto_label IS NOT NULL AND d.gto_label <> '' "
+           "AND COALESCE(d.icm_pressure,'') <> ? AND " + where)
+    args = [user_id, _ICM_EXCLUDED] + params
+    if before is not None:
+        sql += " AND t.imported_at <= ?"; args.append(before)
+    if after is not None:
+        sql += " AND t.imported_at > ?"; args.append(after)
+    row = _fetchone(conn, _adapt(sql), tuple(args))
+    return (int((row or {}).get('erros') or 0), int((row or {}).get('n') or 0))
+
+
+def _user_global_error_rate(conn, user_id) -> float:
+    """Taxa de erro preflop do jogador no geral — a âncora do shrinkage do baseline.
+
+    Sem ela o winner's curse passa batido: o leak entrou no plano por ser o pior de uma lista,
+    então parte do "antes" ruim é seleção, não hábito, e o jogador 'melhoraria' sozinho.
+    """
+    row = _fetchone(conn, _adapt(
+        "SELECT SUM(CASE WHEN d.gto_label NOT IN ('gto_correct','gto_mixed') THEN 1 ELSE 0 END) AS erros, "
+        "SUM(1) AS n FROM decisions d JOIN tournaments t ON t.id = d.tournament_id "
+        "WHERE t.user_id = ? AND d.street = 'preflop' AND d.gto_label IS NOT NULL "
+        "AND d.gto_label <> '' AND COALESCE(d.icm_pressure,'') <> ?"), (user_id, _ICM_EXCLUDED))
+    erros, n = int((row or {}).get('erros') or 0), int((row or {}).get('n') or 0)
+    return (erros / n) if n else 0.0
+
+
 def _ensure_training_baseline(conn, user_id, category_key):
     """Congela o "antes": a aderência REAL da categoria no momento em que o jogador começa a treinar
     (ou na 1ª vez que a prova é consultada, p/ skills legados). Idempotente (UNIQUE user+category)."""
@@ -6201,8 +6257,8 @@ def get_training_proof(user_id: int) -> list:
                 continue
             _ensure_training_baseline(conn, user_id, key)
             pr = _fetchone(conn, _adapt(
-                "SELECT baseline_pct, baseline_n, baseline_at FROM training_proof "
-                "WHERE user_id=? AND category_key=?"), (user_id, key))
+                "SELECT baseline_pct, baseline_n, baseline_at, reopened_at, reopen_count "
+                "FROM training_proof WHERE user_id=? AND category_key=?"), (user_id, key))
             if not pr or int(pr['baseline_n'] or 0) <= 0:
                 continue   # sem "antes" real medido → não dá pra provar
             after = _category_adherence(conn, user_id, key, imported_after=pr['baseline_at'])
@@ -6219,6 +6275,32 @@ def get_training_proof(user_id: int) -> list:
                 sa = _category_adherence(conn, user_id, key, only_tournament=last['id'])
                 snap = {'tournament_id': last['tournament_id'], 'pct': sa['pct'], 'n': sa['with_gto']}
             base_pct = round(float(pr['baseline_pct'] or 0), 1)
+            # Trilho LENTO (Fase 3): taxa de erro binomial com IC, ICM fora dos dois lados.
+            # Convive com os campos de aderência acima — a UI antiga segue funcionando; quem
+            # decide estado consome `validacao`, que é a única com honestidade estatística.
+            validacao = None
+            reopened_at  = pr['reopened_at'] if 'reopened_at' in (pr or {}) else None
+            reopen_count = int((pr or {}).get('reopen_count') or 0)
+            try:
+                from leaklab.validation import validate_leak, should_reopen
+                antes  = _category_error_counts(conn, user_id, key, before=pr['baseline_at'])
+                depois = _category_error_counts(conn, user_id, key, after=pr['baseline_at'])
+                if antes and depois:
+                    validacao = validate_leak(antes[0], antes[1], depois[0], depois[1],
+                                              _user_global_error_rate(conn, user_id))
+                # REABERTURA: a regressão foi comprovada — move o baseline e marca o corte da
+                # janela do gate. Sem mover, esta MESMA evidência reabriria o leak em toda
+                # leitura, e o jogador ficaria preso nele para sempre por algo que já pagou.
+                if should_reopen(validacao):
+                    conn.execute(_adapt(
+                        "UPDATE training_proof SET baseline_at = ?, reopened_at = ?, "
+                        "reopen_count = COALESCE(reopen_count,0) + 1 "
+                        "WHERE user_id=? AND category_key=?"),
+                        (_now_str(), _now_str(), user_id, key))
+                    reopened_at, reopen_count = _now_str(), reopen_count + 1
+                    log.info("leak reaberto por regressão no jogo (user=%s cat=%s)", user_id, key)
+            except Exception:
+                log.exception("validate_leak falhou (user=%s cat=%s)", user_id, key)
             out.append({
                 'category_key': key,
                 'baseline_pct': base_pct, 'baseline_n': int(pr['baseline_n'] or 0),
@@ -6226,6 +6308,8 @@ def get_training_proof(user_id: int) -> list:
                 'delta': round(after['pct'] - base_pct, 1),
                 'snapshot': snap,
                 'confident': after['with_gto'] >= _TRAIN_PROOF_MIN_N,
+                'validacao': validacao,
+                'reopened_at': reopened_at, 'reopen_count': reopen_count,
             })
         conn.commit()   # persiste baselines recém-congelados
         out.sort(key=lambda p: -abs(p['delta']))

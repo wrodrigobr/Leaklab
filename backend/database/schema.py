@@ -1535,6 +1535,15 @@ def _run_migrations(conn):
                 UNIQUE(user_id, day)
             )
         """)
+        # Fase 3 (trilho lento): reabertura por regressão no jogo real (SQLite)
+        proof_existing = {r[1] for r in conn.execute('PRAGMA table_info(training_proof)').fetchall()}
+        for col, sql in [
+            ("reopened_at",  "ALTER TABLE training_proof ADD COLUMN reopened_at  TEXT"),
+            ("reopen_count", "ALTER TABLE training_proof ADD COLUMN reopen_count INTEGER NOT NULL DEFAULT 0"),
+        ]:
+            if col not in proof_existing:
+                try: conn.execute(sql)
+                except Exception: pass
         # Sprint R — FEAT-05: SRS columns on drill_sessions (SQLite)
         drill_existing = {r[1] for r in conn.execute('PRAGMA table_info(drill_sessions)').fetchall()}
         for col, sql in [
@@ -2070,6 +2079,11 @@ def _run_migrations(conn):
                 UNIQUE(user_id, category_key)
             )""",
             "CREATE INDEX IF NOT EXISTS idx_training_proof_user ON training_proof(user_id)",
+            # Fase 3 (trilho lento): momento em que o leak REABRIU por regressão comprovada no
+            # jogo. Zera a janela do gate (o jogador re-prova a partir daqui) e move o baseline,
+            # senão a mesma evidência antiga reabriria o leak para sempre.
+            "ALTER TABLE training_proof ADD COLUMN IF NOT EXISTS reopened_at TIMESTAMP",
+            "ALTER TABLE training_proof ADD COLUMN IF NOT EXISTS reopen_count INTEGER NOT NULL DEFAULT 0",
             # #30 multiway (shadow): veredito da cauda segura por decisão. Estava só no
             # bloco regular (transação única) → um abort anterior pulava o ADD e a coluna
             # faltava em prod (UndefinedColumn no backfill). Aqui sobrevive com commit isolado.

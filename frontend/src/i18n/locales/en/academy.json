@@ -217,7 +217,12 @@
       "oneAtATime": "One at a time: splitting focus across leaks means mastering none.",
       "mastered": "Mastered",
       "masteredPending": "Mastering it in training unlocks the next leak. The proven seal only lands once your next tournaments confirm the fix at the table.",
-      "masteredProven": "Confirmed in your tournaments: the fix made it out of training and onto the felt."
+      "masteredProven": "Confirmed in your tournaments: the fix made it out of training and onto the felt.",
+      "reopened": "Leak reopened",
+      "reopenedWhy": "You had mastered this in training, but the error came back in your recent tournaments. The previous mastery was reset: what counts is what you prove from here on.",
+      "needHands": "{{n}} more decisions in this spot across your tournaments before there is a verdict.",
+      "provenDrop": "Error rate dropped from {{antes}}% to {{depois}}% in real hands.",
+      "noDiff": "The hands you have played cannot yet tell improvement apart from luck."
     }
   },
   "trainAch": {

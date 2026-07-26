@@ -492,6 +492,16 @@ export default function Docs() {
                 ]}
               />
               <p dangerouslySetInnerHTML={{ __html: t("training.p2") }} />
+              <p>{t("training.states_title")}</p>
+              <Table
+                headers={[t("training.col_state"), t("training.col_state_meaning")]}
+                rows={[
+                  [<Badge color="bg-amber-500/15 text-amber-400">{t("training.state_training")}</Badge>, t("training.state_training_meaning")],
+                  [<Badge color="bg-sky-500/15 text-sky-300">{t("training.state_mastered")}</Badge>,     t("training.state_mastered_meaning")],
+                  [<Badge color="bg-emerald-500/15 text-emerald-400">{t("training.state_proven")}</Badge>, t("training.state_proven_meaning")],
+                ]}
+              />
+              <p dangerouslySetInnerHTML={{ __html: t("training.p_states") }} />
               <p>{t("training.tiers_title")}</p>
               <Table
                 headers={[t("training.col_tier"), t("training.col_tier_meaning")]}

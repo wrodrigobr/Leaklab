@@ -26,6 +26,7 @@ from leaklab.leak_trainer import (
     build_curriculum, generate_canonical_spot, _STACKS, _leak_scenario,
 )
 from leaklab.strategy_provider import normalize_action
+from leaklab.validation import should_reopen, V_MELHOROU, V_PIOROU
 
 # ── Tamanhos de sessão (o jogador escolhe na hora) ───────────────────────────────────────────
 # Sessão TEM forma: começo, meio e fim. Grind infinito cansa e não melhora retenção.
@@ -186,14 +187,23 @@ def missions_with_state(user_id: int, days: int = 90, pool: int = MISSION_POOL) 
 
     itens = []
     for m in missions:
+        pr = proofs.get(m['key'])
+        # A janela do gate começa na REABERTURA, quando houve: o domínio anterior foi
+        # contradito pelo jogo real e o jogador re-prova a partir dali. Sem esse corte o leak
+        # reabriria e "re-dominaria" no mesmo instante, com tentativas que já não valem.
         try:
-            att = get_progression_attempts(user_id, m['key'], limit=MASTERY_WINDOW)
+            att = get_progression_attempts(user_id, m['key'], limit=MASTERY_WINDOW,
+                                           since=(pr or {}).get('reopened_at'))
         except Exception:
             att = []
         ms = mastery_status(att)
-        st = state_for(ms, proofs.get(m['key']))
+        st = state_for(ms, pr)
         itens.append({**m, 'estado': st, 'estado_label': STATE_LABEL.get(st, st),
-                      'mastery': ms, 'proof': proofs.get(m['key'])})
+                      'mastery': ms, 'proof': pr,
+                      # já reabriu alguma vez: a UI precisa dizer POR QUE o leak voltou, senão
+                      # ele "aparece do nada" e o jogador acha que é bug
+                      'reaberto': int((pr or {}).get('reopen_count') or 0) > 0,
+                      'validacao': (pr or {}).get('validacao')})
 
     em_treino = [i for i in itens if i['estado'] == 'em_treino']
     dominadas = [i for i in itens if i['estado'] != 'em_treino']
@@ -625,12 +635,24 @@ def mastery_status(attempts: list[dict]) -> dict:
 def state_for(mastery: dict, proof: dict | None = None) -> str:
     """Estado do leak. O selo 'comprovado' exige o JOGO REAL — o treino sozinho nunca o concede.
 
-    `proof` vem do trilho lento (aderência antes×depois com amostra confiável). Enquanto a
-    Fase 3 não substitui isso por taxa de erro com intervalo de confiança, exigimos que o
-    trilho lento tenha marcado `confident` E melhora — assim 'comprovado' nunca sai de ruído.
+    Fase 3: o veredito vem de `proof['validacao']` — taxa de erro binomial com intervalo de
+    confiança na diferença e o baseline corrigido pelo winner's curse. Só `melhorou` sela.
+    `sem_mudanca` não é "não melhorou": é "a amostra não permite afirmar", e tratar as duas
+    coisas como iguais seria mentir nas duas direções.
+
+    REABERTURA: regressão comprovada no jogo derruba o domínio de treino. O gate existe pra
+    prever o jogo; quando o jogo diz o contrário, quem está errado é o gate.
+
+    Fallback: sem `validacao` (proof legado, ou falha de cálculo) cai na regra antiga —
+    aderência com amostra confiável. Pior que a nova, melhor que fingir que não há dado.
     """
+    val = (proof or {}).get('validacao')
+    if val and should_reopen(val):
+        return 'em_treino'
     if not mastery.get('dominado'):
         return 'em_treino'
+    if val:
+        return 'comprovado_no_jogo' if val.get('veredito') == V_MELHOROU else 'dominado_no_treino'
     if proof and proof.get('confident') and float(proof.get('delta') or 0) > 0:
         return 'comprovado_no_jogo'
     return 'dominado_no_treino'

@@ -616,6 +616,25 @@ export default function LeakTrainer() {
                 </div>
               )}
 
+              {/* ── REABERTURA ──
+                  Um leak que já estava dominado voltando ao foco parece bug se ninguém explicar.
+                  O motivo é o mais importante do protocolo: o gate serve pra prever o jogo, e o
+                  jogo disse o contrário. */}
+              {st?.reaberto && st.estado === "em_treino" && (
+                <div className="flex gap-2 rounded-xl border border-amber-500/40 bg-amber-500/[0.07] p-3">
+                  <RotateCw className="mt-0.5 size-4 shrink-0 text-amber-400" aria-hidden />
+                  <div className="space-y-0.5">
+                    <p className="font-mono text-[10px] font-bold uppercase tracking-widest text-amber-400">
+                      {t("leakTrainer.protocol.reopened", "Leak reaberto")}
+                    </p>
+                    <p className="text-[12px] leading-snug text-muted-foreground">
+                      {t("leakTrainer.protocol.reopenedWhy",
+                         "Você tinha dominado isto no treino, mas nos seus torneios recentes o erro voltou. O domínio anterior foi zerado: vale o que você provar daqui pra frente.")}
+                    </p>
+                  </div>
+                </div>
+              )}
+
               {/* ── O GATE, À VISTA ──
                   Sem isto o jogador treina no escuro: não sabe o que falta nem quando acaba. */}
               {st && (
@@ -714,18 +733,40 @@ export default function LeakTrainer() {
                 <p className="mb-2 font-mono text-[10px] uppercase tracking-widest text-sky-400/90">
                   {t("leakTrainer.protocol.mastered", "Dominados")} · {dominadas.length}
                 </p>
-                <div className="space-y-1.5">
-                  {dominadas.map((d) => (
-                    <div key={d.key} className="flex items-center gap-2 text-[12px]">
-                      <CheckCircle2 className={cn("size-3.5 shrink-0",
-                        d.estado === "comprovado_no_jogo" ? "text-emerald-400" : "text-sky-400")} aria-hidden />
-                      <span className="min-w-0 flex-1 truncate text-foreground/90">{d.titulo}</span>
-                      <span className={cn("shrink-0 font-mono text-[9px] uppercase",
-                        d.estado === "comprovado_no_jogo" ? "text-emerald-400" : "text-sky-400/80")}>
-                        {d.estado_label}
-                      </span>
-                    </div>
-                  ))}
+                <div className="space-y-2">
+                  {dominadas.map((d) => {
+                    /* O trilho lento em uma linha: ou o veredito estatístico, ou quantas
+                       decisões ainda faltam pra ele existir. Nunca um número solto — "62% → 71%"
+                       com 14 mãos não significa nada e o jogador não tem como saber disso. */
+                    const v = d.validacao;
+                    const falta = v?.veredito === "sem_amostra" ? (v.faltam ?? null) : null;
+                    return (
+                      <div key={d.key} className="space-y-0.5">
+                        <div className="flex items-center gap-2 text-[12px]">
+                          <CheckCircle2 className={cn("size-3.5 shrink-0",
+                            d.estado === "comprovado_no_jogo" ? "text-emerald-400" : "text-sky-400")} aria-hidden />
+                          <span className="min-w-0 flex-1 truncate text-foreground/90">{d.titulo}</span>
+                          <span className={cn("shrink-0 font-mono text-[9px] uppercase",
+                            d.estado === "comprovado_no_jogo" ? "text-emerald-400" : "text-sky-400/80")}>
+                            {d.estado_label}
+                          </span>
+                        </div>
+                        {v && (
+                          <p className="pl-[22px] text-[11px] leading-snug text-muted-foreground/70">
+                            {falta != null
+                              ? t("leakTrainer.protocol.needHands", { n: falta,
+                                  defaultValue: `Faltam ${falta} decisões desta situação nos seus torneios para o veredito.` })
+                              : v.veredito === "melhorou"
+                                ? t("leakTrainer.protocol.provenDrop", {
+                                    antes: v.taxa_antes, depois: v.taxa_depois,
+                                    defaultValue: `Erro caiu de ${v.taxa_antes}% para ${v.taxa_depois}% nas mãos reais.` })
+                                : t("leakTrainer.protocol.noDiff",
+                                    "As mãos que você jogou ainda não distinguem melhora de sorte.")}
+                          </p>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
                 <p className="mt-2 text-[11px] leading-snug text-muted-foreground/70">
                   {dominadas.some((d) => d.estado === "dominado_no_treino")

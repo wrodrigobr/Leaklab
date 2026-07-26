@@ -1351,6 +1351,21 @@ export type ProgressionState = "em_treino" | "dominado_no_treino" | "comprovado_
 
 /** Missão + estado na MESMA linha: a tela lia duas listas (missões e status) e assumia que a
  *  ordem batia. Agora o backend anota a missão com o estado e diz qual está ativa. */
+/** Trilho LENTO (Fase 3): o veredito do JOGO REAL, com os números que o sustentam. */
+export interface LeakValidation {
+  veredito: "sem_amostra" | "melhorou" | "sem_mudanca" | "piorou";
+  label: string;
+  motivo?: "baseline_curto" | "depois_curto";
+  faltam?: number;             // quantas decisões faltam pra abrir o veredito
+  n_antes: number;
+  n_depois: number;
+  taxa_antes: number | null;   // % de erro antes de treinar
+  taxa_depois: number | null;
+  taxa_global: number;
+  taxa_antes_ajustada?: number; // baseline corrigido pelo winner's curse
+  ic_diferenca?: [number, number];
+}
+
 export interface ProgressionStatusItem extends ProgressionMission {
   estado: ProgressionState;
   estado_label: string;
@@ -1361,6 +1376,9 @@ export interface ProgressionStatusItem extends ProgressionMission {
     janela: { n: number; acerto_pct: number };
   };
   proof?: { delta?: number; confident?: boolean; after_pct?: number; baseline_pct?: number } | null;
+  validacao?: LeakValidation | null;
+  /** já reabriu por regressão comprovada no jogo — a UI precisa dizer POR QUE o leak voltou */
+  reaberto?: boolean;
 }
 
 /** Foco resolvido pelo backend: `ativa` é a primeira missão que ainda NÃO passou o gate. */

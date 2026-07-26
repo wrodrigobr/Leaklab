@@ -217,7 +217,12 @@
       "oneAtATime": "Uma de cada vez: dividir o foco entre leaks faz você não dominar nenhum.",
       "mastered": "Dominados",
       "masteredPending": "Dominado no treino libera o próximo leak. O selo de comprovado só vem quando seus próximos torneios confirmarem a correção na mesa.",
-      "masteredProven": "Confirmado nos seus torneios: o acerto saiu do treino e chegou na mesa."
+      "masteredProven": "Confirmado nos seus torneios: o acerto saiu do treino e chegou na mesa.",
+      "reopened": "Leak reaberto",
+      "reopenedWhy": "Você tinha dominado isto no treino, mas nos seus torneios recentes o erro voltou. O domínio anterior foi zerado: vale o que você provar daqui pra frente.",
+      "needHands": "Faltam {{n}} decisões desta situação nos seus torneios para o veredito.",
+      "provenDrop": "Erro caiu de {{antes}}% para {{depois}}% nas mãos reais.",
+      "noDiff": "As mãos que você jogou ainda não distinguem melhora de sorte."
     }
   },
   "trainAch": {
