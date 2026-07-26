@@ -105,13 +105,34 @@ def build_mtt_context(hand: ParsedHand) -> MTTContext:
         active_players = len(_SEAT_STACK_PG_RE.findall(raw))
 
     # ── Stack do hero ─────────────────────────────────────────────────────────
+    # Fonte: os assentos JÁ PARSEADOS (hand.seats), que o parser preenche em todos os
+    # dialetos. NÃO reparsear o raw aqui.
+    #
+    # BUG QUE ORIGINOU (2026-07-26): este bloco tinha um 3º regex próprio,
+    #   r'Seat \d+: <hero> \(([0-9.]+) in chips\)'
+    # que só casava o dialeto PokerStars/GG sem separador de milhar:
+    #   • ACR escreve "Seat 4: nome (29150.00)" — SEM "in chips"      → 100% nulo
+    #   • CoinPoker escreve "(10,000 in chips)" — vírgula             →  98% nulo
+    #   • GG usa milhar só em nível alto                              →  67% nulo
+    # Com stack_bb nulo, o leak não tem profundidade e o treino serve o stack errado.
     hero_stack_chips: Optional[float] = None
-    pattern = re.compile(
-        r'Seat \d+: ' + re.escape(hero) + r' \(([0-9.]+) in chips\)'
-    )
-    mp = pattern.search(raw)
-    if mp:
-        hero_stack_chips = float(mp.group(1))
+    for s in (hand.seats or []):
+        if s.get('name') == hero:
+            try:
+                hero_stack_chips = float(s.get('stack'))
+            except (TypeError, ValueError):
+                hero_stack_chips = None
+            break
+    if hero_stack_chips is None and hero:
+        # Fallback defensivo p/ mãos sem seats parseados (dialeto novo/parcial): aceita
+        # separador de milhar e o formato sem "in chips".
+        mp = re.search(r'Seat \d+: ' + re.escape(hero) + r' \(\s*([\d.,]+)(?:\s+in chips)?\s*[),]',
+                       raw)
+        if mp:
+            try:
+                hero_stack_chips = float(mp.group(1).replace(',', ''))
+            except ValueError:
+                hero_stack_chips = None
 
     hero_stack_bb = (
         round(hero_stack_chips / bb, 1)

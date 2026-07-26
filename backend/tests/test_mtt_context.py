@@ -41,6 +41,49 @@ def _make_hand(raw, hero='phpro'):
     )
 
 
+# ── Stack do hero em TODOS os dialetos (regressão 2026-07-26) ────────────────
+# O bloco do stack tinha um 3º regex próprio exigindo "(N in chips)" sem separador de
+# milhar. Resultado medido em prod: ACR 100% sem stack_bb, CoinPoker 98%, GG 67% — e sem
+# profundidade o leak treina o stack errado. Agora lê hand.seats (o parser já normaliza).
+
+def _hand_with_seats(seats, hero='Hero', bb=200.0):
+    return ParsedHand(hand_id='1', hero=hero, bb=bb, hero_cards='AsKs',
+                      players=[hero], seats=seats, raw_text='', actions=[])
+
+
+def test_hero_stack_from_parsed_seats():
+    """Fonte primária: hand.seats (funciona em qualquer dialeto, inclusive milhar/ACR)."""
+    ctx = build_mtt_context(_hand_with_seats(
+        [{'seat': 1, 'name': 'V1', 'stack': 3000.0},
+         {'seat': 2, 'name': 'Hero', 'stack': 4000.0}]))
+    assert ctx.hero_stack_bb == 20.0, ctx.hero_stack_bb      # 4000 / 200
+    print("OK  test_hero_stack_from_parsed_seats")
+
+
+def test_hero_stack_fallback_dialects():
+    """Fallback (mão sem seats parseados): aceita ACR (sem 'in chips') e milhar com vírgula."""
+    for desc, line, esperado in (
+        ("PokerStars", "Seat 4: Hero (4000 in chips)",     20.0),
+        ("CoinPoker",  "Seat 4: Hero (10,000 in chips)",   50.0),
+        ("ACR",        "Seat 4: Hero (29150.00)",         145.8),   # arredondado a 1 casa
+        ("GG milhar",  "Seat 4: Hero (1,109 in chips)",     5.5),
+    ):
+        raw = ("PokerStars Hand #1: Tournament #1, Hold'em No Limit - Level X (100/200) - 2025/01/01\n"
+               "Table '1 1' 9-max Seat #1 is the button\n" + line + "\n*** HOLE CARDS ***\n")
+        h = ParsedHand(hand_id='1', hero='Hero', bb=200.0, hero_cards='AsKs',
+                       players=['Hero'], seats=[], raw_text=raw, actions=[])
+        got = build_mtt_context(h).hero_stack_bb
+        assert got == esperado, f"{desc}: esperado {esperado}, veio {got}"
+    print("OK  test_hero_stack_fallback_dialects")
+
+
+def test_hero_stack_none_when_absent():
+    """Sem assento do hero, stack fica None (não inventa um número)."""
+    ctx = build_mtt_context(_hand_with_seats([{'seat': 1, 'name': 'Outro', 'stack': 500.0}]))
+    assert ctx.hero_stack_bb is None
+    print("OK  test_hero_stack_none_when_absent")
+
+
 # ── M Ratio ───────────────────────────────────────────────────────────────────
 
 def test_m_ratio_calculation():
