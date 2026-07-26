@@ -2900,6 +2900,67 @@ def leaktrainer_next():
                     'targeted_locked': targeted_locked, 'plan': plan, 'grace_until': grace_until})
 
 
+@app.route('/player/progression/missions', methods=['GET'])
+@require_auth
+def progression_missions():
+    """PIP: os top-3 leaks como MISSÕES, por EV ponderado por confiança (amostra pequena nunca
+    lidera o plano). Cada missão traz o vínculo com o jogo real — é o que dá sentido ao treino."""
+    from leaklab.progression import build_missions
+    days = int(request.args.get('days', 90) or 90)
+    try:
+        missions = build_missions(g.user_id, days=days)
+    except Exception:
+        app.logger.exception("progression_missions falhou (user=%s)", g.user_id)
+        missions = []
+    return jsonify({'missions': missions})
+
+
+@app.route('/player/progression/session', methods=['POST'])
+@require_auth
+def progression_session():
+    """Abre a sessão: escolhe a missão e devolve o PLANO (quantos spots de cada fatia).
+    O plano é stateless — o cliente ecoa o progresso no /next e o servidor nunca confia nele
+    pra nada além de compor a sessão (o gabarito segue server-side)."""
+    from leaklab.progression import plan_session, SESSION_SIZES, DEFAULT_SESSION
+    from database.repositories import get_training_skills
+    body = request.get_json(silent=True) or {}
+    size = (body.get('size') or DEFAULT_SESSION).strip().lower()
+    if size not in SESSION_SIZES:
+        size = DEFAULT_SESSION
+    days = int(body.get('days', 90) or 90)
+    # Revisão = categorias JÁ praticadas (as que têm domínio registrado). Sem histórico o
+    # plano devolve o espaço pra missão em vez de inventar revisão.
+    try:
+        review_keys = [s['category_key'] for s in get_training_skills(g.user_id)
+                       if int(s.get('attempts') or 0) > 0]
+    except Exception:
+        review_keys = []
+    try:
+        plan = plan_session(g.user_id, size=size, days=days, review_keys=review_keys)
+    except Exception:
+        app.logger.exception("progression_session falhou (user=%s)", g.user_id)
+        return jsonify({'plan': None, 'error': 'falha ao montar a sessão'}), 200
+    return jsonify({'plan': plan})
+
+
+@app.route('/player/progression/next', methods=['POST'])
+@require_auth
+def progression_next():
+    """Próximo spot da sessão, respeitando a composição já cumprida (interleaving real).
+    A resposta certa NUNCA vai no /next — só no /grade, como no resto do trainer."""
+    from leaklab.progression import next_spot_for_plan, contrast_note
+    body = request.get_json(silent=True) or {}
+    plan = body.get('plan') or {}
+    done = body.get('done') or {}
+    try:
+        spot = next_spot_for_plan(plan, done)
+    except Exception:
+        app.logger.exception("progression_next falhou (user=%s)", g.user_id)
+        spot = None
+    nota = contrast_note(spot) if spot else None
+    return jsonify({'spot': spot, 'contrast_note': nota})
+
+
 @app.route('/player/leaktrainer/options', methods=['GET'])
 @require_auth
 def leaktrainer_options():
@@ -2937,6 +2998,14 @@ def leaktrainer_grade():
     spot   = body.get('spot') or {}
     action = (body.get('action') or '').lower()
     result = grade_canonical_spot(spot, action)
+    # Camada didática do Protocolo: o GATILHO do spot + a nota da classe de mão. Determinística
+    # (sem LLM no caminho quente) e anexada aqui pra o corretor seguir sendo fonte única.
+    try:
+        from leaklab.progression import concept_for_spot
+        result['concept'] = concept_for_spot(spot, result)
+    except Exception:
+        app.logger.exception("concept_for_spot falhou (user=%s)", g.user_id)
+        result['concept'] = None
     xp_full = int(spot.get('xp_value', 20) or 20)
     # XP por RESULTADO (como o Ghost Table): acerto pleno = cheio; aceitável (linha co-ótima que o GTO
     # mistura) = parcial; erro = 0. add_xp atualiza XP global + streak + conquistas (sino).

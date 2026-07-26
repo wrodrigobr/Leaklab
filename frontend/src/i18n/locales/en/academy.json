@@ -194,6 +194,16 @@
       "rfi": "Open (RFI)",
       "vs_rfi": "Defense vs open",
       "vs_3bet": "vs 3-bet"
+    },
+    "protocol": {
+      "mission": "Today's mission",
+      "confidence": "confidence",
+      "pickSize": "How much time do you have?",
+      "realLink": "You lost {{bb}}bb here, across {{hands}} real hands.",
+      "estimated": "(estimated depth)",
+      "blockContrast": "Contrast",
+      "blockReview": "Review",
+      "progress": "Session"
     }
   },
   "trainAch": {

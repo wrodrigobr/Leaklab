@@ -10,8 +10,9 @@ import { RangePanel } from "@/components/replayer/RangePanel";
 import { ProLockCard } from "@/components/hud/ProLockCard";
 import { useTableOrientation } from "@/hooks/use-table-orientation";
 import { useIsLandscapeMobile } from "@/hooks/use-is-landscape-mobile";
-import { leaktrainer } from "@/lib/api";
-import type { LeakTrainerSpot, LeakTrainerGrade, LeakTrainerState, ReplayStep } from "@/lib/api";
+import { leaktrainer, progression } from "@/lib/api";
+import type { LeakTrainerSpot, LeakTrainerGrade, LeakTrainerState, ReplayStep,
+  ProgressionPlan, SessionSize } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
 type Phase = "intro" | "loading" | "question" | "feedback" | "error" | "empty" | "summary" | "paywall";
@@ -132,6 +133,13 @@ export default function LeakTrainer() {
   const [gateInfo, setGateInfo]         = useState<{ used?: number; cap?: number } | null>(null);
   const [focus, setFocus]               = useState<string>("adaptive");   // o usuário escolhe o tipo de spot
   const focusRef = useRef<string>("adaptive");
+  // ── Protocolo de Progressão: sessão com missão + composição 60/25/15 ──
+  // Quando `planRef` tem plano, o loadNext puxa do protocolo (intercalando missão/revisão/
+  // contraste) em vez do sorteio adaptativo solto. Refs porque o loadNext é useCallback estável.
+  const [plan, setPlan]                 = useState<ProgressionPlan | null>(null);
+  const planRef = useRef<ProgressionPlan | null>(null);
+  const doneRef = useRef<Record<string, number>>({});   // spots cumpridos por fatia
+  const [contrastNote, setContrastNote] = useState<string | null>(null);
   const stateRef = useRef<LeakTrainerState>(loadState());
   const rootRef = useRef<HTMLDivElement>(null);
   const [isFull, setIsFull] = useState(false);
@@ -176,6 +184,18 @@ export default function LeakTrainer() {
 
   const loadNext = useCallback(async () => {
     setPhase("loading"); setSelected(null); setGrade(null); setShowRange(false);
+    setContrastNote(null);
+    // Sessão do Protocolo: o próximo spot vem do PLANO (missão/revisão/contraste intercalados).
+    if (planRef.current) {
+      try {
+        const r = await progression.next(planRef.current, doneRef.current);
+        if (!r.spot) { setPhase("summary"); return; }   // plano cumprido = fim da sessão
+        setSpot(r.spot);
+        setContrastNote(r.contrast_note);
+        setPhase("question");
+      } catch { setPhase("error"); }
+      return;
+    }
     try {
       const timeout = new Promise<never>((_, rej) => setTimeout(() => rej(new Error("timeout")), 12000));
       const r = await Promise.race([leaktrainer.next(stateRef.current, 90, focusRef.current), timeout]);
@@ -189,7 +209,29 @@ export default function LeakTrainer() {
   }, []);
 
   // seletor de tipo de spot: fixa o foco e começa a lição (o usuário escolhe, não é só aleatório)
-  const startFocus = (f: string) => { focusRef.current = f; setFocus(f); loadNext(); };
+  const startFocus = (f: string) => {
+    planRef.current = null; setPlan(null); doneRef.current = {};   // sai do protocolo
+    focusRef.current = f; setFocus(f); loadNext();
+  };
+
+  // Protocolo: abre a sessão com a duração escolhida na hora (curta/média/longa).
+  // Duração variável exige que o gate de domínio seja por ACUMULADO, nunca por sessão.
+  const startProtocol = async (size: SessionSize) => {
+    setPhase("loading");
+    try {
+      const r = await progression.startSession(size, 365);
+      if (!r.plan || !r.plan.mission) { setPhase("empty"); return; }
+      planRef.current = r.plan; setPlan(r.plan); doneRef.current = {};
+      loadNext();
+    } catch { setPhase("error"); }
+  };
+
+  // missões (PIP) — só na tela de início, pra mostrar o vínculo com o jogo real
+  const { data: missionData } = useQuery({
+    queryKey: ["progression-missions"],
+    queryFn: () => progression.missions(365),
+    enabled: phase === "intro",
+  });
   const { data: trainOptions } = useQuery({
     queryKey: ["leaktrainer-options"], queryFn: leaktrainer.options, enabled: phase === "intro",
   });
@@ -199,8 +241,10 @@ export default function LeakTrainer() {
     : t("leakTrainer.cat.vs3bet", { pos: l.position, vs: l.vs_position });
 
   // Não auto-inicia: a lição começa pela tela de "intro" (botão Começar → loadNext).
-  const lessonComplete = totalDone >= LESSON_SIZE;
-  const nextOrFinish = () => { if (totalDone >= LESSON_SIZE) setPhase("summary"); else loadNext(); };
+  // No protocolo o tamanho é o do PLANO (a duração que o jogador escolheu); fora dele, a lição fixa.
+  const sessionSize   = plan?.total ?? LESSON_SIZE;
+  const lessonComplete = totalDone >= sessionSize;
+  const nextOrFinish = () => { if (totalDone >= sessionSize) setPhase("summary"); else loadNext(); };
 
   const submit = async (action: string) => {
     if (!spot || phase !== "question" || submitting) return;
@@ -209,6 +253,9 @@ export default function LeakTrainer() {
       const g = await leaktrainer.grade(spot, action);
       setGrade(g);
       setTotalDone((n) => n + 1);
+      // Protocolo: marca a fatia cumprida pro próximo /next respeitar a composição 60/25/15
+      const bk = (spot as { block_kind?: string }).block_kind;
+      if (bk) doneRef.current = { ...doneRef.current, [bk]: (doneRef.current[bk] ?? 0) + 1 };
       setXpEarned((x) => x + (g.xp_awarded || 0));
       // stats DESTA sessão por categoria (pro recap), separado da adaptação persistida
       const lbl = labelFor(spot);
@@ -270,6 +317,7 @@ export default function LeakTrainer() {
   const table = spot ? buildStep(spot) : null;
 
   const catLabel = spot ? labelFor(spot) : "";
+  const blockKind = (spot as { block_kind?: string } | null)?.block_kind;
 
   // recap: melhor categoria (mais acertos) e a mais difícil (mais erros) desta sessão
   const statList = Object.values(sessionStats);
@@ -324,6 +372,22 @@ export default function LeakTrainer() {
             <span className="ml-auto font-mono text-[10px] text-emerald-400">+{grade.xp_awarded} XP</span>
           )}
         </div>
+        {/* ── Camada didática (Protocolo): o GATILHO + a nota da classe de mão ──
+            Vem ANTES dos números de propósito: o jogador precisa entender POR QUE antes de
+            ver quanto. As frequências abaixo são a camada 2 (a quantidade). */}
+        {grade.concept && (
+          <div className="space-y-1.5 rounded-lg border border-border/60 bg-background/40 px-3 py-2.5">
+            <p className="text-[13px] leading-snug text-foreground">{grade.concept.principio}</p>
+            {grade.concept.nota_mao && (
+              <p className="text-[12px] leading-snug text-muted-foreground">{grade.concept.nota_mao}</p>
+            )}
+            {grade.concept.regra && (
+              <p className="flex items-start gap-1.5 pt-0.5 font-mono text-[10px] uppercase leading-snug tracking-wide text-amber-400/90">
+                <span aria-hidden>▸</span><span className="normal-case tracking-normal">{grade.concept.regra}</span>
+              </p>
+            )}
+          </div>
+        )}
         {freqEntries.length > 0 && (
           <>
             <p className="font-mono text-[10px] text-muted-foreground">{t("leakTrainer.gtoPlays", { hand: spot?.hand })}</p>
@@ -368,7 +432,7 @@ export default function LeakTrainer() {
         <div className="absolute top-[calc(0.4rem+env(safe-area-inset-top))] right-[calc(0.5rem+env(safe-area-inset-right))] z-30 flex items-center gap-2">
           <div className="flex items-center gap-2.5 rounded-full bg-background/70 px-3 py-1.5 font-mono text-[10px] tabular-nums ring-1 ring-border backdrop-blur">
             {totalDone > 0 && (<>
-              <span className="text-foreground">{totalDone}/{LESSON_SIZE}</span>
+              <span className="text-foreground">{totalDone}/{sessionSize}</span>
               <span className={accuracy !== null && accuracy >= 70 ? "text-emerald-400" : "text-amber-400"}>{accuracy}%</span>
               <span className={streak >= 3 ? "text-amber-400" : "text-muted-foreground"}>{streak}🔥</span>
             </>)}
@@ -480,6 +544,50 @@ export default function LeakTrainer() {
               <h2 className="font-heading text-xl font-bold text-foreground">{t("leakTrainer.lesson.title")}</h2>
               <p className="text-sm text-muted-foreground">{t("leakTrainer.lesson.desc", { count: LESSON_SIZE })}</p>
             </div>
+
+            {/* ── PROTOCOLO: a missão do dia + a duração escolhida na hora ──
+                Mostra o vínculo com o JOGO REAL (bb perdidos, nº de mãos) porque é isso que dá
+                sentido ao treino: o jogador precisa saber por que ESTE spot, e não outro. */}
+            {missionData?.missions?.[0] && (
+              <div className="rounded-xl border border-amber-500/40 bg-amber-500/[0.06] p-4 space-y-3">
+                <div className="flex items-baseline justify-between gap-2">
+                  <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-amber-400">
+                    {t("leakTrainer.protocol.mission", "Missão de hoje")}
+                  </span>
+                  <span className="font-mono text-[9px] uppercase tracking-wider text-muted-foreground">
+                    {t("leakTrainer.protocol.confidence", "confiança")} {missionData.missions[0].confianca}
+                  </span>
+                </div>
+                <p className="text-base font-semibold leading-snug text-foreground">
+                  {missionData.missions[0].titulo}
+                </p>
+                <p className="text-[13px] leading-snug text-muted-foreground">
+                  {t("leakTrainer.protocol.realLink", {
+                    bb: missionData.missions[0].ev_loss_bb,
+                    hands: missionData.missions[0].hands,
+                    defaultValue: `Você perdeu ${missionData.missions[0].ev_loss_bb}bb aqui, em ${missionData.missions[0].hands} mãos reais.`,
+                  })}
+                  {!missionData.missions[0].stack_medido && (
+                    <span className="text-amber-400/80"> {t("leakTrainer.protocol.estimated", "(profundidade estimada)")}</span>
+                  )}
+                </p>
+                <div>
+                  <p className="mb-1.5 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+                    {t("leakTrainer.protocol.pickSize", "Quanto tempo você tem?")}
+                  </p>
+                  <div className="grid grid-cols-3 gap-2">
+                    {([["curta", "12", "~4 min"], ["media", "24", "~8 min"], ["longa", "40", "~13 min"]] as const).map(
+                      ([sz, n, tempo]) => (
+                        <button key={sz} onClick={() => startProtocol(sz as SessionSize)}
+                          className="flex flex-col items-center gap-0.5 rounded-lg border border-border bg-hud-surface px-2 py-2.5 transition-colors hover:border-amber-500/60 hover:bg-amber-500/5">
+                          <span className="font-mono text-sm font-bold text-foreground">{n}</span>
+                          <span className="font-mono text-[9px] uppercase tracking-wider text-muted-foreground">{tempo}</span>
+                        </button>
+                      ))}
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Padrão recomendado: adaptativo (mira o que mais custa) */}
             <button onClick={() => startFocus("adaptive")}
@@ -677,7 +785,7 @@ export default function LeakTrainer() {
               {totalDone > 0 && (
                 <div className="flex items-center justify-around rounded-lg border border-border bg-hud-surface px-3 py-2">
                   <div className="text-center">
-                    <p className="font-mono text-base font-bold tabular-nums text-foreground">{totalDone}/{LESSON_SIZE}</p>
+                    <p className="font-mono text-base font-bold tabular-nums text-foreground">{totalDone}/{sessionSize}</p>
                     <p className="font-mono text-[8px] uppercase tracking-wider text-muted-foreground">{t("stats.done")}</p>
                   </div>
                   <div className="h-6 w-px bg-border" />
@@ -693,14 +801,40 @@ export default function LeakTrainer() {
                 </div>
               )}
 
-              {/* Categoria de leak treinada agora */}
+              {/* Categoria de leak treinada agora + a FATIA da sessão (protocolo).
+                  Sem dizer que é contraste, o jogador acha que o sistema se perdeu ao mudar
+                  de profundidade no meio da sessão. */}
               <div className="rounded-xl border border-amber-500/40 bg-amber-500/5 p-3 space-y-1">
                 <span className="inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-widest text-amber-400">
-                  <Target className="size-3" aria-hidden /> {t("leakTrainer.weakSpot")}
+                  <Target className="size-3" aria-hidden />
+                  {blockKind === "contrast" ? t("leakTrainer.protocol.blockContrast", "Contraste")
+                    : blockKind === "review" ? t("leakTrainer.protocol.blockReview", "Revisão")
+                    : t("leakTrainer.weakSpot")}
                 </span>
                 <p className="text-sm font-bold text-foreground leading-snug">{catLabel}</p>
                 <p className="font-mono text-[10px] text-muted-foreground">{spot.stack_bb}bb</p>
+                {contrastNote && (
+                  <p className="pt-1 text-[11px] leading-snug text-amber-400/90">{contrastNote}</p>
+                )}
               </div>
+
+              {/* Progresso da sessão do protocolo (a sessão TEM forma: começo, meio e fim) */}
+              {plan && (
+                <div className="rounded-xl border border-border bg-hud-surface/50 p-3">
+                  <div className="mb-1.5 flex items-baseline justify-between">
+                    <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+                      {t("leakTrainer.protocol.progress", "Sessão")}
+                    </span>
+                    <span className="font-mono text-[10px] tabular-nums text-foreground">
+                      {totalDone}/{sessionSize}
+                    </span>
+                  </div>
+                  <div className="h-1.5 overflow-hidden rounded-full bg-border">
+                    <div className="h-full rounded-full bg-amber-500 transition-all"
+                      style={{ width: `${Math.min(100, (totalDone / Math.max(1, sessionSize)) * 100)}%` }} />
+                  </div>
+                </div>
+              )}
 
               {/* Free: treinando fundamentos genéricos; mirar nos leaks reais é Pro */}
               {targetedLocked && (

@@ -1233,6 +1233,8 @@ export interface LeakTrainerGrade {
   new_action: string;
   hand_freq: Record<string, number>;
   xp_awarded: number;
+  /** Camada didática do Protocolo (o gatilho do spot). Ausente em spots fora do protocolo. */
+  concept?: SpotConcept | null;
   xp?: { events: string[]; gained: number; total: number | null; new_achievements: string[] };
   // Gamificação de treino: domínio da categoria atualizado (antes→depois) — eixo separado do ELO.
   training?: {
@@ -1280,6 +1282,66 @@ export const leaktrainer = {
     request<LeakTrainerGrade>("/player/leaktrainer/grade", {
       method: "POST",
       body: JSON.stringify({ spot, action, tz_offset: tzOffsetMinutes() }),
+    }),
+};
+
+// ── Protocolo de Progressão: missão (PIP) + sessão com composição 60/25/15 ──
+export type SessionSize = "curta" | "media" | "longa";
+
+export interface ProgressionMission {
+  key: string;
+  scenario: string;
+  position: string;
+  vs_position: string;
+  stack_bb: number;
+  ev_loss_bb: number;      // bb perdidos no JOGO REAL nessa família de spot
+  hands: number;           // em quantas mãos
+  ev_por_mao: number;
+  ev_ponderado: number;    // EV × confiança (amostra pequena não lidera o plano)
+  confianca: "alta" | "média" | "baixa";
+  stack_medido: boolean;   // false = profundidade estimada, a UI precisa dizer
+  stack_real: number | null;
+  titulo: string;
+}
+
+export interface ProgressionBlock {
+  kind: "active" | "review" | "contrast";
+  n: number;
+  label: string;
+  contrast_of?: number;
+}
+
+export interface ProgressionPlan {
+  size: SessionSize;
+  total: number;
+  mission: ProgressionMission | null;
+  blocks: ProgressionBlock[];
+  mix?: { active: number; review: number; contrast: number };
+  reason?: string;
+}
+
+/** Camada 1 do feedback: o GATILHO do spot (não repete o gabarito). */
+export interface SpotConcept {
+  gatilho: string;
+  principio: string;   // por que a resposta é essa (o gatilho)
+  regra: string;       // a regra prática pra levar pro jogo
+  classe: string;      // classe da mão (par_baixo, conector_suited, ...)
+  nota_mao: string;    // por que ESTA família de mão se comporta assim
+}
+
+export const progression = {
+  missions: (days = 90) =>
+    request<{ missions: ProgressionMission[] }>(`/player/progression/missions?days=${days}`),
+
+  startSession: (size: SessionSize, days = 90) =>
+    request<{ plan: ProgressionPlan | null; error?: string }>("/player/progression/session", {
+      method: "POST", body: JSON.stringify({ size, days }),
+    }),
+
+  next: (plan: ProgressionPlan, done: Record<string, number>) =>
+    request<{ spot: (LeakTrainerSpot & { block_kind?: string; block_label?: string; contrast_of?: number }) | null;
+              contrast_note: string | null }>("/player/progression/next", {
+      method: "POST", body: JSON.stringify({ plan, done }),
     }),
 };
 
