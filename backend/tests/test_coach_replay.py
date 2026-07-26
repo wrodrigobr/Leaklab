@@ -1,5 +1,5 @@
 """
-Coach Replay: erros mais caros do torneio (o que o herói fez × GTO + EV) + Pro-gate. Via endpoint.
+Coach Replay: walkthrough cronológico do torneio (o que o herói fez × GTO + EV) + Pro-gate. Via endpoint.
 """
 import sys, os, tempfile
 
@@ -26,10 +26,11 @@ def _seed():
     conn = repo.get_conn()
     conn.execute(repo._adapt("INSERT INTO tournaments (id, user_id, tournament_id, hero, tournament_name) VALUES (?,?,?,?,?)"),
                  (9001, uid, 'T9001', 'Hero', 'MTT Teste'))
-    # dois erros criticos com EV diferente (o mais caro vem primeiro)
+    # dois erros críticos: o 1º cronológico (H1) é o MAIS BARATO e o 2º (H2) o mais caro.
+    # De propósito, pra ordem cronológica divergir da ordem por custo e o teste provar qual o endpoint usa.
     for hid, street, pos, cards, taken, gto, ev in [
-        ('H1', 'flop', 'CO', 'AhTs', 'fold', 'call', 17.5),
-        ('H2', 'turn', 'BB', 'JsAs', 'fold', 'call', 9.2),
+        ('H1', 'flop', 'CO', 'AhTs', 'fold', 'call', 9.2),
+        ('H2', 'turn', 'BB', 'JsAs', 'fold', 'call', 17.5),
     ]:
         conn.execute(repo._adapt(
             "INSERT INTO decisions (tournament_id, hand_id, street, position, hero_cards, "
@@ -40,7 +41,7 @@ def _seed():
     return uid
 
 
-def test_coach_replay_costliest_and_pro_gate():
+def test_coach_replay_chronological_and_pro_gate():
     uid = _seed()
     h = {'Authorization': f'Bearer {generate_token(uid, "player")}'}
 
@@ -48,15 +49,17 @@ def test_coach_replay_costliest_and_pro_gate():
     r_free = client.get('/player/coach-replay/9001', headers=h).get_json()
     assert r_free.get('requires_pro') is True and 'mistakes' not in r_free, r_free
 
-    # Pro → os erros, ordenados pelo mais caro, com nota do coach e EV real
+    # Pro → a playlist cronológica das mãos, com narração do coach e EV real por mão
     repo.update_user_plan(uid, 'pro', None)
     r = client.get('/player/coach-replay/9001', headers=h).get_json()
     assert r['tournament']['name'] == 'MTT Teste'
-    assert r['intro']['ev_lost_bb'] == 26.7            # 17.5 + 9.2
-    ms = r['mistakes']
-    assert [m['hand_id'] for m in ms] == ['H1', 'H2'], "erro mais caro primeiro"
-    assert ms[0]['ev_loss_bb'] == 17.5 and 'fold' in ms[0]['coach_note'] and '17.5' in ms[0]['coach_note']
-    print("OK  test_coach_replay_costliest_and_pro_gate")
+    assert r['intro']['ev_lost_bb'] == 26.7            # 9.2 + 17.5
+    ms = r['hands']
+    # ordem cronológica (hand_id asc), NÃO por custo: se fosse por custo, H2 (17.5) viria antes de H1 (9.2)
+    assert [m['hand_id'] for m in ms] == ['H1', 'H2'], "ordem cronológica (hand_id asc)"
+    # o número de EV vive no badge (ev_loss_bb), NÃO no texto da narração (evita número divergente)
+    assert ms[0]['ev_loss_bb'] == 9.2 and 'fold' in ms[0]['narration']
+    print("OK  test_coach_replay_chronological_and_pro_gate")
 
 
 def test_coach_replay_not_owner():
