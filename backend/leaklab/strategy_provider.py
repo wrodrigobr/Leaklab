@@ -191,3 +191,66 @@ def preflop_strategy(position: str, hand: str | None = None, stack_bb: float = 2
 def postflop_menu(freq_map: dict | None = None) -> list[str]:
     """Menu postflop (herói enfrenta aposta) com o invariante aplicado sobre o menu game-tree fixo."""
     return menu_with_strategy(POSTFLOP_FACING_BET_MENU, freq_map)
+
+
+# ── Fallbacks preflop honestos (sem cobertura de árvore) — fonte única p/ o /replay ──────────────
+# Estes eram construídos INLINE no /replay em 2-3 cópias (incl. o hack
+# `recommended_actions: ['call' if _q != 'leak' else 'fold']`). Centralizados aqui pra não divergir.
+# Devolvem um dict no dialeto de ARMAZENAMENTO (recommended_actions com fold/call/raise), como o
+# analyze_preflop. O CHAMADOR decide o GATILHO (ex.: facing ≥ 40% do stack) — estas só constroem.
+
+def preflop_call_vs_shove_fallback(position: str, hero_hand_type: str, stack_bb: float,
+                                   action_taken: str = 'call') -> dict | None:
+    """Fallback call-vs-shove: sem dados vs_3bet/vs_shove na árvore, usa a pertinência ao range de
+    ABERTURA (RFI) como proxy honesto — mão no open que paga um shove = correto; fora do open = leak.
+    Devolve um dict raw-shaped OU None se não há cobertura RFI da posição."""
+    rfi = analyze_preflop(position=position, hero_hand_type=hero_hand_type, stack_bb=float(stack_bb),
+                          action_taken='raise', facing_size=0.0, vs_position='')
+    if not rfi.get('available'):
+        return None
+    rq = rfi.get('action_quality', 'unknown')
+    q  = 'correct' if rq == 'correct' else ('acceptable' if rq == 'acceptable' else 'leak')
+    return {
+        'available':           True,
+        'scenario':            'vs_shove_fallback',
+        'hand_type':           hero_hand_type,
+        'stack_bucket':        rfi.get('stack_bucket', f'{int(stack_bb)}bb'),
+        'stack_bb':            stack_bb,
+        'position':            position,
+        'vs_position':         '',
+        'range_pct':           rfi.get('range_pct', 0),
+        'range_hands':         rfi.get('range_hands', ''),
+        'action_taken':        action_taken,
+        'pro_notes':           rfi.get('pro_notes', []),
+        'recommended_actions': ['call'] if q != 'leak' else ['fold'],
+        'action_quality':      q,
+        'in_range':            rfi.get('in_range', q != 'leak'),
+        'reasoning': (
+            'Mão premium em range de abertura — call de shove correto.'  if q == 'correct'    else
+            'Mão no limite do range — call de shove aceitável.'          if q == 'acceptable' else
+            'Mão fora do range de abertura — fold vs shove recomendado.'
+        ),
+    }
+
+
+def preflop_open_range_proxy(position: str, hero_hand_type: str, stack_bb: float,
+                             action_taken: str) -> dict | None:
+    """Proxy de range de ABERTURA p/ spots preflop SEM cobertura (ex.: vs limp multiway). Usa a
+    pertinência ao RFI da PRÓPRIA ação nas 2 pontas CLARAS: FOLD de mão fora do open = trivialmente
+    correto; RAISE (iso) de mão dentro do open = padrão. Devolve dict raw-shaped OU None (ambíguo)."""
+    if action_taken not in ('fold', 'raise'):
+        return None
+    proxy = analyze_preflop(position=position, hero_hand_type=hero_hand_type, stack_bb=float(stack_bb),
+                            action_taken=action_taken, facing_size=0.0, vs_position='')
+    if not (proxy.get('available') and proxy.get('action_quality') in ('correct', 'acceptable')):
+        return None
+    return {
+        **proxy,
+        'action_taken':    action_taken,
+        'open_range_proxy': True,
+        'reasoning': (
+            'Mão fora da range de abertura: fold é trivial em qualquer pote não-aberto.'
+            if action_taken == 'fold' else
+            'Mão na range de abertura: isolar o limp é o padrão (proxy da range de abertura).'
+        ),
+    }

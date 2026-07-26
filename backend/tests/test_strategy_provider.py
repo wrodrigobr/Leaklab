@@ -12,6 +12,7 @@ from leaklab.strategy_provider import (
     normalize_action, normalize_freq_map, menu_with_strategy, menu_covers_strategy,
     preflop_base_menu, preflop_strategy, postflop_menu, MIN_STRATEGY_FREQ,
     CANONICAL_ACTION_ORDER, to_storage_action, to_display_action,
+    preflop_call_vs_shove_fallback, preflop_open_range_proxy,
 )
 from leaklab.preflop_gto_ranges import analyze_preflop
 
@@ -207,6 +208,54 @@ def test_enrich_preflop_gto_routes_through_provider():
     assert got.get('recommended_actions') == exp.get('recommended_actions')
     assert got.get('action_quality') == exp.get('action_quality')
     print("OK  test_enrich_preflop_gto_routes_through_provider")
+
+
+# ── Stage 1: fallbacks preflop honestos centralizados (antes inline no /replay em 2 cópias) ─────
+
+def test_call_vs_shove_fallback_premium_is_correct():
+    """Mão premium (no range de abertura) pagando um shove = correto; devolve 'call' + reasoning."""
+    r = preflop_call_vs_shove_fallback('BTN', 'AA', 40.0, action_taken='call')
+    assert r is not None
+    assert r['scenario'] == 'vs_shove_fallback'
+    assert r['recommended_actions'] == ['call']
+    assert r['action_quality'] in ('correct', 'acceptable')
+    assert r['in_range'] is True
+    assert 'call de shove' in r['reasoning']
+    # dialeto de armazenamento: recommended com fold/call/raise (não allin)
+    assert r['action_taken'] == 'call'
+    print("OK  test_call_vs_shove_fallback_premium_is_correct")
+
+
+def test_call_vs_shove_fallback_trash_is_leak():
+    """Mão fora do range de abertura pagando um shove = leak; recomenda fold."""
+    r = preflop_call_vs_shove_fallback('UTG', '72o', 40.0, action_taken='call')
+    assert r is not None and r['recommended_actions'] == ['fold']
+    assert r['action_quality'] == 'leak' and r['in_range'] is False
+    assert 'fold vs shove' in r['reasoning']
+    print("OK  test_call_vs_shove_fallback_trash_is_leak")
+
+
+def test_open_range_proxy_fold_out_of_range():
+    """Fold de mão fora do open = trivialmente correto (proxy de range de abertura)."""
+    r = preflop_open_range_proxy('UTG', '72o', 50.0, action_taken='fold')
+    assert r is not None and r['open_range_proxy'] is True
+    assert r['action_quality'] in ('correct', 'acceptable')
+    assert 'fold é trivial' in r['reasoning']
+    print("OK  test_open_range_proxy_fold_out_of_range")
+
+
+def test_open_range_proxy_iso_in_range():
+    """Raise (iso) de mão dentro do open = padrão."""
+    r = preflop_open_range_proxy('BTN', 'AA', 50.0, action_taken='raise')
+    assert r is not None and r['open_range_proxy'] is True
+    assert r['recommended_actions']  # tem recomendação da range de abertura
+    print("OK  test_open_range_proxy_iso_in_range")
+
+
+def test_open_range_proxy_ambiguous_returns_none():
+    """Ação que não é fold/raise (ex.: call) é ambígua sem árvore vs-limp → None (não chuta)."""
+    assert preflop_open_range_proxy('BTN', 'AA', 50.0, action_taken='call') is None
+    print("OK  test_open_range_proxy_ambiguous_returns_none")
 
 
 if __name__ == '__main__':

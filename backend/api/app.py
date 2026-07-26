@@ -5763,7 +5763,6 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
         from leaklab.pipeline import build_decision_inputs_for_hand
         from leaklab.decision_engine_v11 import evaluate_decision
         from leaklab.gto_utils import hand_to_type
-        from leaklab.preflop_gto_ranges import analyze_preflop
         engine_inputs = build_decision_inputs_for_hand(hand)
         for di in engine_inputs:
             r   = evaluate_decision(di)
@@ -5817,7 +5816,9 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
                             # Porta única de estratégia preflop (mesma do trainer/engine/replay-verdict).
                             # `raw` = dict cru do analyze_preflop (dialeto de armazenamento) → o
                             # frontend consome preflop_gto como antes, sem mudança de contrato.
-                            from leaklab.strategy_provider import preflop_strategy as _pfs_a
+                            from leaklab.strategy_provider import (preflop_strategy as _pfs_a,
+                                preflop_call_vs_shove_fallback as _pf_shove_fb,
+                                preflop_open_range_proxy as _pf_open_proxy)
                             _pf_result = _pfs_a(
                                 position       = _pf_pos,
                                 hero_hand_type = h_type,
@@ -5839,71 +5840,24 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
                                 facing_to_bb       = float(spot.get('facingToBb') or 0),
                                 facing_allin       = bool(spot.get('facingAllin', False)),
                             )['raw']
-                            # Fallback for call-vs-shove (no vs_3bet data yet):
-                            # use RFI range membership as proxy for shove-call quality
-                            if (not _pf_result.get('available')
-                                    and di.get('player_action', '') in ('call', 'allin')
-                                    and _pf_facing_bb >= _pf_stack_bb * 0.40):
-                                _rfi_check = analyze_preflop(
-                                    position=_pf_pos, hero_hand_type=h_type,
-                                    stack_bb=_pf_stack_bb, action_taken='raise',
-                                    facing_size=0.0, vs_position='',
-                                )
-                                if _rfi_check.get('available'):
-                                    _rq = _rfi_check.get('action_quality', 'unknown')
-                                    _q  = 'correct' if _rq == 'correct' else ('acceptable' if _rq == 'acceptable' else 'leak')
-                                    _pf_result = {
-                                        'available': True,
-                                        'recommended_actions': ['call' if _q != 'leak' else 'fold'],
-                                        'action_quality': _q,
-                                        'in_range': _rfi_check.get('in_range', False),
-                                        'scenario': 'vs_shove_fallback',
-                                        # Campos completos para frontend renderizar
-                                        'hand_type': h_type,
-                                        'stack_bucket': _rfi_check.get('stack_bucket', f'{int(_pf_stack_bb)}bb'),
-                                        'stack_bb': _pf_stack_bb,
-                                        'position': _pf_pos,
-                                        'vs_position': '',
-                                        'range_pct': _rfi_check.get('range_pct', 0),
-                                        'range_hands': _rfi_check.get('range_hands', ''),
-                                        'action_taken': 'call',
-                                        'pro_notes': _rfi_check.get('pro_notes', []),
-                                        'reasoning': (
-                                            'Mão premium em range de abertura — call de shove correto.'
-                                            if _q == 'correct' else
-                                            'Mão no limite do range — call de shove aceitável.'
-                                            if _q == 'acceptable' else
-                                            'Mão fora do range de abertura — fold vs shove recomendado.'
-                                        ),
-                                    }
-                            # Fallback OPEN-RANGE: spot preflop sem cobertura (ex.: vs limp
-                            # multiway). Usa a range de ABERTURA (RFI, capturada do GW) da posição
-                            # como proxy honesto para as 2 pontas CLARAS:
-                            #   • FOLD de mão FORA do open  → trivialmente correto (qualquer pote
-                            #     não-aberto; multiway só reforça).
-                            #   • RAISE (iso) de mão DENTRO do open → isolar o limp é o padrão.
-                            # Mãos abríveis foldadas, isos leves (fora do open) ou limp-behind
-                            # seguem sem cobertura (ambíguo, sem árvore vs-limp) — não chuta.
+                            # Fallbacks preflop honestos (sem cobertura de árvore) — fonte única no
+                            # strategy_provider (antes construídos INLINE aqui, em cópia do lado do
+                            # veredito). O gatilho fica aqui; a construção do dict, no provider.
                             _uncov_act = di.get('player_action', '')
+                            # (1) call-vs-shove: sem dados vs_shove, proxy pela pertinência ao open (RFI)
+                            if (not _pf_result.get('available')
+                                    and _uncov_act in ('call', 'allin')
+                                    and _pf_facing_bb >= _pf_stack_bb * 0.40):
+                                _fb = _pf_shove_fb(_pf_pos, h_type, _pf_stack_bb, action_taken='call')
+                                if _fb:
+                                    _pf_result = _fb
+                            # (2) open-range proxy: spot sem cobertura (ex.: vs limp multiway) — só as
+                            # 2 pontas claras (fold fora do open / iso dentro do open); resto = ambíguo.
                             if (not _pf_result.get('available')
                                     and _uncov_act in ('fold', 'raise')):
-                                _rfi_proxy = analyze_preflop(
-                                    position=_pf_pos, hero_hand_type=h_type,
-                                    stack_bb=_pf_stack_bb, action_taken=_uncov_act,
-                                    facing_size=0.0, vs_position='',
-                                )
-                                if (_rfi_proxy.get('available')
-                                        and _rfi_proxy.get('action_quality') in ('correct', 'acceptable')):
-                                    _pf_result = {
-                                        **_rfi_proxy,
-                                        'action_taken': _uncov_act,
-                                        'open_range_proxy': True,
-                                        'reasoning': (
-                                            'Mão fora da range de abertura: fold é trivial em qualquer pote não-aberto.'
-                                            if _uncov_act == 'fold' else
-                                            'Mão na range de abertura: isolar o limp é o padrão (proxy da range de abertura).'
-                                        ),
-                                    }
+                                _op = _pf_open_proxy(_pf_pos, h_type, _pf_stack_bb, action_taken=_uncov_act)
+                                if _op:
+                                    _pf_result = _op
                             all_decisions[key]['preflop_gto'] = _pf_result
                     except Exception:
                         pass
@@ -6319,10 +6273,11 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
                 _hc = _raw_hc.split() if ' ' in _raw_hc else [_raw_hc[i:i+2] for i in range(0, len(_raw_hc), 2)]
             if _hc and _pos:
                 try:
-                    from leaklab.preflop_gto_ranges import analyze_preflop as _apf
                     # Porta única de estratégia preflop (mesma do trainer/engine). `raw` = dict cru
-                    # (dialeto de armazenamento) — o resto da reconciliação segue sem mudança.
-                    from leaklab.strategy_provider import preflop_strategy as _pfs
+                    # (dialeto de armazenamento) — o resto da reconciliação segue sem mudança. O
+                    # fallback call-vs-shove também vem do provider (era construído inline aqui).
+                    from leaklab.strategy_provider import (preflop_strategy as _pfs,
+                        preflop_call_vs_shove_fallback as _pf_shove_fb2)
                     from leaklab.gto_utils import hand_to_type as _h2t
                     _ht = _h2t(_hc)
                     if _ht:
@@ -6339,40 +6294,12 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
                             hero_was_aggressor = bool(_spot.get('heroWasAggressor')),
                             facing_allin       = bool(_spot.get('facingAllin', False)),
                         )['raw']
-                        # Fallback for call-vs-shove: no specific vs_3bet data in ranges yet.
-                        # When facing >= 40% of stack with call, use RFI range membership
-                        # as proxy: in-range hand calling a shove = correct (KK, AA, AKs, QQ+).
-                        # Out-of-range hand calling = leak. Pending: add vs_3bet range data.
+                        # Fallback call-vs-shove: sem dados vs_shove, proxy pela pertinência ao open
+                        # (RFI). Fonte única no provider (antes construído inline aqui). Gatilho aqui.
                         if not _pf.get('available') and _norm(action.action) == 'call' and _facing >= _sb * 0.40:
-                            _pf_rfi = _apf(position=_pos, hero_hand_type=_ht, stack_bb=_sb,
-                                           action_taken='raise', facing_size=0.0, vs_position='')
-                            if _pf_rfi.get('available'):
-                                _rfi_quality = _pf_rfi.get('action_quality', 'unknown')
-                                # Base com campos completos para o frontend renderizar
-                                # corretamente (sem isto, hand_type/stack_bucket/range_pct
-                                # ficam vazios e o card aparece sem informação)
-                                _pf_base = {
-                                    'available': True,
-                                    'scenario': 'vs_shove_fallback',
-                                    'hand_type': _ht,
-                                    'stack_bucket': _pf_rfi.get('stack_bucket', f'{int(_sb)}bb'),
-                                    'stack_bb': _sb,
-                                    'position': _pos,
-                                    'vs_position': '',
-                                    'range_pct': _pf_rfi.get('range_pct', 0),
-                                    'range_hands': _pf_rfi.get('range_hands', ''),
-                                    'action_taken': _norm(action.action),
-                                    'pro_notes': _pf_rfi.get('pro_notes', []),
-                                }
-                                if _rfi_quality == 'correct':
-                                    _pf = {**_pf_base, 'recommended_actions': ['call'],
-                                           'action_quality': 'correct', 'in_range': True}
-                                elif _rfi_quality == 'acceptable':
-                                    _pf = {**_pf_base, 'recommended_actions': ['call'],
-                                           'action_quality': 'acceptable', 'in_range': True}
-                                else:
-                                    _pf = {**_pf_base, 'recommended_actions': ['fold'],
-                                           'action_quality': 'leak', 'in_range': False}
+                            _fb = _pf_shove_fb2(_pos, _ht, _sb, action_taken=_norm(action.action))
+                            if _fb:
+                                _pf = _fb
 
                         if _pf.get('available') and _pf.get('recommended_actions'):
                             preflop_override_action = _pf['recommended_actions'][0]
