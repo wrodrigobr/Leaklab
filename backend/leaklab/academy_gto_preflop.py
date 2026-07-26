@@ -14,6 +14,9 @@ from __future__ import annotations
 import random
 
 from leaklab.preflop_gto_ranges import analyze_preflop
+# Menu de ações vem da FONTE ÚNICA (deriva da estratégia, nunca de tabela estática) — mesma
+# correção do Leak Trainer. Ver [[project_strategy_provider_single_source]].
+from leaklab.strategy_provider import preflop_strategy, normalize_action
 
 # Ordem de ação preflop 9-max (early → late). SB abre; BB nunca dá RFI.
 _ACTION_ORDER = ['UTG', 'UTG+1', 'UTG+2', 'LJ', 'HJ', 'CO', 'BTN', 'SB', 'BB']
@@ -32,12 +35,22 @@ _SCENARIOS_BY_FILTER = {
 _TYPE_BY_SCENARIO = {'rfi': 'gto_rfi', 'vs_rfi': 'gto_vs_rfi', 'vs_3bet': 'gto_vs_3bet'}
 _XP_BY_SCENARIO   = {'rfi': 20, 'vs_rfi': 25, 'vs_3bet': 30}
 
-# Rótulo da ação "raise" muda por cenário (3-bet vs 4-bet).
-_OPTIONS = {
-    'rfi':     [('fold', 'Fold'), ('raise', 'Raise (abrir)')],
-    'vs_rfi':  [('fold', 'Fold'), ('call', 'Call'), ('raise', '3-Bet')],
-    'vs_3bet': [('fold', 'Fold'), ('call', 'Call'), ('raise', '4-Bet')],
-}
+# Rótulo da ação "raise" muda por cenário (3-bet vs 4-bet). O CONJUNTO de ações NÃO vem daqui —
+# vem do StrategyProvider (deriva da estratégia). Isto é só o mapa ação→rótulo de exibição.
+_RAISE_LABEL = {'rfi': 'Raise (abrir)', 'vs_rfi': '3-Bet', 'vs_3bet': '4-Bet'}
+
+
+def _option_label(scenario: str, action: str) -> str:
+    """Rótulo PT de exibição para uma ação num cenário (o CONJUNTO de ações vem do provider)."""
+    if action == 'fold':
+        return 'Fold'
+    if action == 'call':
+        return 'Call (limp)' if scenario == 'rfi' else 'Call'   # RFI só tem call via complete do SB
+    if action == 'raise':
+        return _RAISE_LABEL.get(scenario, 'Raise')
+    if action == 'allin':
+        return 'All-in'
+    return action.capitalize()
 
 # Rótulo PT por ação, para a explicação.
 _ACT_LABEL = {
@@ -109,25 +122,26 @@ def generate_gto_preflop_question(scenario_filter: str = 'mixed') -> dict:
         hand     = random.choice(_HANDS)
         # vs_3bet: hero abriu e enfrenta 3-bet → precisa de hero_was_aggressor=True + facing_raises=1
         # (sem isso analyze_preflop rotula vs_rfi e volta indisponível). Ver leak_trainer/backlog #31.
-        res = analyze_preflop(pos, hand, float(stack), 'fold',
-                              facing_size=facing, vs_position=vs_pos, is_3bet_pot=is_3b,
-                              hero_was_aggressor=is_3b, facing_raises=(1 if is_3b else 0))
-        if not res.get('available') or res.get('scenario') != scenario:
+        # StrategyProvider = fonte única: cobertura, cenário E o MENU de ações (deriva da estratégia,
+        # então o limp/complete do SB no RFI vira botão — era o bug do A8s reportado na auditoria).
+        strat = preflop_strategy(pos, hand, float(stack), facing_size=facing, vs_position=vs_pos,
+                                 is_3bet_pot=is_3b, hero_was_aggressor=is_3b,
+                                 facing_raises=(1 if is_3b else 0))
+        if not strat['available'] or strat['scenario'] != scenario:
             continue
-        # Evita spots cuja ação dominante (jam) está fora das nossas opções limpas.
-        opt_actions = {a for a, _ in _OPTIONS[scenario]}
-        rec = res.get('recommended_actions') or []
-        if rec and rec[0] not in opt_actions:
+        # Evita spots cuja ação dominante é all-in (zona push/fold, fora do escopo limpo do treino).
+        rec = strat['recommended'] or []
+        if rec and normalize_action(rec[0]) == 'allin':
             continue
-        chosen = (scenario, stack, pos, vs_pos, facing, is_3b, hand)
+        chosen = (scenario, stack, pos, vs_pos, facing, is_3b, hand, strat['available_actions'])
         break
 
     if chosen is None:
         # Fallback determinístico (spot RFI clássico) — raríssimo.
-        chosen = ('rfi', 50, 'BTN', '', 0.0, False, 'A5s')
+        chosen = ('rfi', 50, 'BTN', '', 0.0, False, 'A5s',
+                  preflop_strategy('BTN', 'A5s', 50.0, facing_size=0.0)['available_actions'])
 
-    scenario, stack, pos, vs_pos, facing, is_3b, hand = chosen
-    opts = _OPTIONS[scenario]
+    scenario, stack, pos, vs_pos, facing, is_3b, hand, actions = chosen
     return {
         'type':       _TYPE_BY_SCENARIO[scenario],
         'scenario':   scenario,
@@ -135,7 +149,7 @@ def generate_gto_preflop_question(scenario_filter: str = 'mixed') -> dict:
         'prompt':     'Qual a ação GTO?',
         'hand':       hand,
         'hero_cards': _hand_to_cards(hand),
-        'options':    [{'action': a, 'label': l} for a, l in opts],
+        'options':    [{'action': a, 'label': _option_label(scenario, a)} for a in actions],
         'xp_value':   _XP_BY_SCENARIO[scenario],
         # Echo do spot — devolvido no /submit para reavaliar no servidor.
         'spot': {

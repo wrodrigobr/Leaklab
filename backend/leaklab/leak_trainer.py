@@ -18,23 +18,23 @@ from __future__ import annotations
 
 import random
 
-from leaklab.preflop_gto_ranges import analyze_preflop
 from leaklab.academy_gto_preflop import _HANDS, _hand_to_cards, _ACTION_ORDER
+# Fonte ÚNICA de estratégia + menu de ações. NÃO montar menu por conta própria aqui: o menu
+# DERIVA da estratégia (invariante menu ⊇ ações creditáveis). Ver strategy_provider e a
+# memória do projeto [[project_strategy_provider_single_source]].
+from leaklab.strategy_provider import (
+    preflop_strategy, normalize_action, MIN_STRATEGY_FREQ, POSTFLOP_FACING_BET_MENU,
+)
 
 # Tiers de frequência (mesma régua do Ghost Table drill — player_drill_submit).
 CORRECT_FREQ = 0.30   # ação jogada com freq GTO ≥ isto → acerto pleno
-MIN_FREQ     = 0.10   # ≥ isto (e < CORRECT) → aceitável (GTO mistura aqui)
+MIN_FREQ     = MIN_STRATEGY_FREQ   # ≥ isto (e < CORRECT) → aceitável (GTO mistura aqui). Fonte única.
 
 # Stacks limpos do treino (evitam o fallback push/fold). Espelha o academy.
 _STACKS = [30, 40, 50, 75, 100]
 
 # facing_size por cenário (espelha academy_gto_preflop._random_setup).
 _FACING = {'rfi': 0.0, 'vs_rfi': 2.2, 'vs_3bet': 8.0}
-_OPTIONS = {
-    'rfi':     ['fold', 'raise'],
-    'vs_rfi':  ['fold', 'call', 'raise'],
-    'vs_3bet': ['fold', 'call', 'raise'],
-}
 _XP_BY_SCENARIO = {'rfi': 20, 'vs_rfi': 25, 'vs_3bet': 30}
 
 
@@ -151,7 +151,6 @@ def generate_canonical_spot(category: dict, rng: random.Random | None = None) ->
     stack    = int(category.get('stack_bb', 50) or 50)
     facing   = _FACING.get(scenario, 0.0)
     is_3b    = scenario == 'vs_3bet'
-    opts     = _OPTIONS.get(scenario, ['fold', 'raise'])
     # vs_3bet: o HERO abriu e agora enfrenta um 3-bet → precisa de hero_was_aggressor=True +
     # facing_raises=1 pro analyze_preflop rotear pra vs_3bet[opener][3bettor] (sem isso cai em vs_rfi
     # e volta indisponível). facing_raises>=2 viraria vs_4bet. Ver [[reference_external_charts_vs3bet]].
@@ -161,14 +160,19 @@ def generate_canonical_spot(category: dict, rng: random.Random | None = None) ->
     hands = _HANDS[:]
     rng.shuffle(hands)
     for hand in hands[:40]:
-        res = analyze_preflop(pos, hand, float(stack), 'fold',
-                              facing_size=facing, vs_position=vs_pos, is_3bet_pot=is_3b,
-                              hero_was_aggressor=was_aggr, facing_raises=raises)
-        if not res.get('available') or res.get('scenario') != scenario:
+        # StrategyProvider = fonte única: cobertura, cenário, freq E o MENU de ações num só lugar.
+        # O menu deriva da estratégia (invariante menu ⊇ ações creditáveis) — o que oferece nunca
+        # mais diverge do que corrige (o bug do A8s/SB-limp era o menu estático ignorar o call).
+        strat = preflop_strategy(pos, hand, float(stack), facing_size=facing, vs_position=vs_pos,
+                                 is_3bet_pot=is_3b, hero_was_aggressor=was_aggr, facing_raises=raises)
+        if not strat['available'] or strat['scenario'] != scenario:
             continue
-        rec = res.get('recommended_actions') or []
-        if rec and rec[0] not in opts:   # ação dominante fora das opções limpas (ex.: jam)
+        rec = strat['recommended'] or []
+        # Trainer preflop-LIMPO: pula spots cuja linha dominante é all-in (zona push/fold, fora do
+        # escopo dos stacks 30-100bb). Independe do menu — é decisão de currículo, não de oferta.
+        if rec and normalize_action(rec[0]) == 'allin':
             continue
+        opts = strat['available_actions']
         return {
             'scenario':    scenario,
             'category':    category['key'],
@@ -207,30 +211,28 @@ def grade_canonical_spot(spot: dict, action: str) -> dict:
                 'next_drill_at': None, 'srs_interval_days': 0, 'ungradeable': True}
     played = _norm_action(action)
     is_3b  = bool(spot.get('is_3bet_pot', False))
-    res = analyze_preflop(
+    # MESMA porta do generate (StrategyProvider) — corretor e gerador leem a MESMA estratégia
+    # normalizada, então o que foi oferecido é exatamente o que é gradeado.
+    strat = preflop_strategy(
         spot.get('position', ''),
         spot.get('hand', ''),
         float(spot.get('stack_bb', 50) or 50),
-        played if played != 'allin' else 'allin',
         facing_size=float(spot.get('facing_size', 0) or 0),
         vs_position=spot.get('vs_position', '') or '',
         is_3bet_pot=is_3b,
         # mesmas flags do generate: sem isto o vs_3bet reclassifica como vs_rfi e a correção mente
         hero_was_aggressor=bool(spot.get('hero_was_aggressor', is_3b)),
         facing_raises=int(spot.get('facing_raises', 1 if is_3b else 0) or 0),
+        action_taken=played if played != 'allin' else 'allin',
     )
-    hf = res.get('hand_freq') or {}
+    hf = strat['hand_freq'] or {}   # chaves já canônicas (fold/call/raise/allin)
     # mix de estratégia (% por ação não-zero), ordenado por freq desc
     gto_strategy = [
-        {'action': ('allin' if k == 'jam' else k), 'freq': round(float(v), 4)}
+        {'action': k, 'freq': round(float(v), 4)}
         for k, v in sorted(hf.items(), key=lambda x: -x[1]) if v and v > 0.01
     ]
-    # freq da AÇÃO JOGADA (normaliza jam→allin pros dois lados)
-    played_freq = 0.0
-    for k, v in hf.items():
-        if _norm_action(k) == played:
-            played_freq = float(v or 0)
-            break
+    # freq da AÇÃO JOGADA (chaves já normalizadas pelo provider)
+    played_freq = float(hf.get(played, 0.0) or 0.0)
     # Contrato do DrillSubmitResult (que o CoachCard consome): gto_tier correct/error + mixed bool.
     # mixed = acerto numa linha co-ótima (freq ≥ MIN mas < CORRECT) — não é a ação #1, mas o GTO mistura.
     if played_freq >= CORRECT_FREQ:
@@ -239,18 +241,18 @@ def grade_canonical_spot(spot: dict, action: str) -> dict:
         tier, is_correct, mixed = 'correct', True, True
     else:
         tier, is_correct, mixed = 'error', False, False
-    rec = res.get('recommended_actions') or ['fold']
+    rec = strat['recommended'] or ['fold']   # já normalizado (jam→allin) pelo provider
     return {
         'is_correct':       is_correct,
         'gto_tier':         tier,
         'mixed':            mixed,
         'gto_freq':         round(played_freq, 4),
         'gto_strategy':     gto_strategy,
-        'best_action':      ('allin' if rec[0] == 'jam' else rec[0]),
+        'best_action':      rec[0],
         'new_action':       played,
         'recommended':      rec,
         'hand_freq':        hf,
-        'range_pct':        res.get('range_pct'),
+        'range_pct':        strat['range_pct'],
         'validation_source': 'gto_range',   # preflop = range GTO (não solver hand-aware)
         'xp_value':         spot.get('xp_value', 20),
         # campos SRS no-op (spot sintético não está em drill_sessions) — só p/ o contrato do CoachCard
@@ -353,7 +355,7 @@ POSTFLOP_CATALOG = {
         {'board': ['9s', '7s', '4d'], 'hand': ['Kh', '9c']},   # top pair
     ],
 }
-_POSTFLOP_OPTIONS = ['fold', 'call', 'raise']
+_POSTFLOP_OPTIONS = list(POSTFLOP_FACING_BET_MENU)   # fonte única (strategy_provider)
 # Rede de segurança em tempo de SERVIÇO: nunca gradear contra um nó exploitável (solve ruim).
 # O seed só persiste nós com expl < 3%; este teto (5%) é uma defesa-em-profundidade — pega um
 # nó patológico/drift sem rejeitar os validados. expl ausente NÃO bloqueia (preserva o legado).

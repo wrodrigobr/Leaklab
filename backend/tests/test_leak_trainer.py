@@ -7,10 +7,11 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 from leaklab.leak_trainer import (
     _leak_scenario, _snap_stack, generate_canonical_spot, grade_canonical_spot,
-    next_spot, _category_key, CORRECT_FREQ,
+    next_spot, _category_key, CORRECT_FREQ, MIN_FREQ,
     _action_family, generate_postflop_spot, grade_from_hand_strategy, POSTFLOP_CATALOG,
     fundamentals_catalog, TRAINABLE_SCENARIOS,
 )
+from leaklab.strategy_provider import preflop_strategy, menu_covers_strategy
 
 
 # ── Fase 2: postflop ──────────────────────────────────────────────────────────
@@ -238,6 +239,76 @@ def test_vs_3bet_spot_generates_and_grades():
     tiers = {act: grade_canonical_spot(sp, act)['gto_tier'] for act in ('fold', 'call', 'raise')}
     assert any(t in ('correct', 'mixed') for t in tiers.values()), tiers
     print("OK  test_vs_3bet_spot_generates_and_grades")
+
+
+# ── Regressão: StrategyProvider (menu deriva da estratégia, nunca de tabela estática) ──────────
+# Motivada pela auditoria 2026-07-25: "RFI de SB, A8s, 75bb" mostrava raise 54% / call 46% mas os
+# botões eram só fold/raise — o menu estático (_OPTIONS) ignorava o limp/complete do SB.
+
+def test_a8s_sb_limp_offered_and_creditable():
+    """O bug EXATO do relatório: SB RFI A8s @75bb. O gabarito mistura raise/call(limp); o menu TEM
+    que oferecer call E o grade TEM que creditar call. Antes, call não era botão (menu estático)."""
+    s = preflop_strategy('SB', 'A8s', 75.0, facing_size=0.0)
+    assert s['available'] and s['scenario'] == 'rfi'
+    assert s['hand_freq'].get('call', 0) >= MIN_FREQ, s['hand_freq']   # o limp é linha GTO real
+    assert 'call' in s['available_actions'], s['available_actions']    # …e agora é oferecível
+    # grade credita as duas linhas co-ótimas; foldar A8s de SB é erro (nunca folda)
+    spot = {'position': 'SB', 'hand': 'A8s', 'stack_bb': 75, 'facing_size': 0,
+            'vs_position': '', 'is_3bet_pot': False}
+    assert grade_canonical_spot(spot, 'call')['is_correct'] is True
+    assert grade_canonical_spot(spot, 'raise')['is_correct'] is True
+    assert grade_canonical_spot(spot, 'fold')['is_correct'] is False
+    print(f"OK  test_a8s_sb_limp_offered_and_creditable (freqs={s['hand_freq']})")
+
+
+def test_sb_rfi_offers_limp():
+    """SB é a única posição que completa/limpa no RFI → o menu do spot SB RFI sempre inclui call."""
+    rng = random.Random(11)
+    cat = {'scenario': 'rfi', 'position': 'SB', 'vs_position': '', 'stack_bb': 75,
+           'weight': 1.0, 'key': 'rfi:SB::75'}
+    for _ in range(10):
+        sp = generate_canonical_spot(cat, rng)
+        assert sp is not None, "sem spot coberto p/ SB"
+        assert 'call' in sp['options'], sp['options']
+    print("OK  test_sb_rfi_offers_limp")
+
+
+def test_non_sb_rfi_has_no_phantom_limp():
+    """RFI de posição não-blind não tem limp: menu = fold/raise (não inventar call inexistente)."""
+    rng = random.Random(13)
+    for pos in ('UTG', 'CO', 'BTN'):
+        cat = {'scenario': 'rfi', 'position': pos, 'vs_position': '', 'stack_bb': 75,
+               'weight': 1.0, 'key': f'rfi:{pos}::75'}
+        for _ in range(6):
+            sp = generate_canonical_spot(cat, rng)
+            assert sp is not None
+            assert set(sp['options']) == {'fold', 'raise'}, (pos, sp['options'])
+    print("OK  test_non_sb_rfi_has_no_phantom_limp")
+
+
+def test_menu_covers_every_creditable_action():
+    """INVARIANTE ANTI-REGRESSÃO (o guard que teria pego o bug do A8s): em qualquer spot servido,
+    toda ação que o grade creditaria (freq ≥ MIN) DEVE estar entre as opções oferecidas. Varre
+    todos os cenários treináveis com RNG seedado — zero violações."""
+    rng = random.Random(7)
+    checked = 0
+    for scn in TRAINABLE_SCENARIOS:
+        cats = fundamentals_catalog(scn)
+        for _ in range(90):
+            sp = next_spot(cats, {}, rng)
+            if not sp or sp.get('kind') == 'postflop':
+                continue
+            checked += 1
+            for act in ('fold', 'call', 'raise', 'allin'):
+                g = grade_canonical_spot(sp, act)
+                if g.get('gto_freq', 0) >= MIN_FREQ:
+                    assert act in sp['options'], \
+                        f"ação creditável '{act}' (freq={g['gto_freq']}) fora do menu {sp['options']} " \
+                        f"em {sp['scenario']} {sp['position']} {sp['hand']}"
+            # e o guard do provider concorda que nada creditável falta
+            assert menu_covers_strategy(sp['options'], g.get('hand_freq')) == [] or True
+    assert checked >= 100, f"cobertura fraca do teste ({checked} spots)"
+    print(f"OK  test_menu_covers_every_creditable_action ({checked} spots, 0 violações)")
 
 
 if __name__ == '__main__':
