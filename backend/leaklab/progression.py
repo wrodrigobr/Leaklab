@@ -25,6 +25,7 @@ import random
 from leaklab.leak_trainer import (
     build_curriculum, generate_canonical_spot, _STACKS, _leak_scenario,
 )
+from leaklab.strategy_provider import normalize_action
 
 # ── Tamanhos de sessão (o jogador escolhe na hora) ───────────────────────────────────────────
 # Sessão TEM forma: começo, meio e fim. Grind infinito cansa e não melhora retenção.
@@ -503,6 +504,42 @@ STATE_LABEL = {
     'dominado_no_treino': 'Dominado no treino',
     'comprovado_no_jogo': 'Comprovado no jogo',
 }
+
+
+def sizing_note(spot: dict, raise_to_bb: float | None, recomendado: str | None = None) -> str | None:
+    """ENSINA o tamanho do raise (o dado tem: o código 'R2.1' é raise para 2,1bb).
+
+    Por que ensinar e não PERGUNTAR: medimos que **0% dos 1.036 nós do JSON têm mais de um
+    tamanho de raise** — cada spot tem UM tamanho GTO. Transformar isso numa segunda pergunta
+    de múltipla escolha viraria decoreba de tabela ("UTG 100bb abre 2,1"), dobraria os cliques
+    da sessão e ensinaria o número em vez do conceito. O conceito — POR QUE este tamanho —
+    é o que transfere pro jogo.
+    """
+    if not raise_to_bb:
+        return None
+    if recomendado and normalize_action(recomendado) not in ('raise',):
+        return None
+    scen = (spot.get('scenario') or '').lower()
+    pos  = (spot.get('position') or '').upper()
+    stack = float(spot.get('stack_bb') or 0)
+    tam = f"{raise_to_bb:g}bb"
+
+    if scen == 'rfi':
+        if pos == 'SB':
+            return (f"O open padrão daqui é {tam} — maior que das outras cadeiras, porque do SB "
+                    f"você joga o resto da mão fora de posição e quer levar o pote agora.")
+        if stack <= 20:
+            return (f"O open padrão daqui é {tam}. Com stack curto o raise é menor: você já está "
+                    f"comprometendo boa parte do stack, não precisa arriscar mais.")
+        return (f"O open padrão daqui é {tam}. Pequeno resolve: rouba as blinds na maior parte "
+                f"das vezes e mantém o pote controlado quando alguém paga.")
+    if scen == 'vs_rfi':
+        return (f"O 3-bet padrão aqui é {tam}. Fora de posição se 3-beta maior (você precisa "
+                f"cobrar caro por jogar sem posição); em posição, menor já basta.")
+    if scen == 'vs_3bet':
+        return (f"O 4-bet padrão aqui é {tam} — pequeno em relação ao pote, porque você já tem "
+                f"iniciativa e não precisa comprometer o stack pra negar a equity dele.")
+    return f"O tamanho padrão neste spot é {tam}."
 
 
 def contrast_note(spot: dict) -> str | None:

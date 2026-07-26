@@ -3037,8 +3037,12 @@ def leaktrainer_grade():
     # Camada didática do Protocolo: o GATILHO do spot + a nota da classe de mão. Determinística
     # (sem LLM no caminho quente) e anexada aqui pra o corretor seguir sendo fonte única.
     try:
-        from leaklab.progression import concept_for_spot, stratum_of
+        from leaklab.progression import concept_for_spot, stratum_of, sizing_note
         result['concept'] = concept_for_spot(spot, result)
+        # ENSINA o tamanho do raise (o dado tem: 'R2.1' = raise para 2,1bb). Não é uma segunda
+        # pergunta: cada nó tem UM tamanho GTO, então perguntar viraria decoreba de tabela.
+        _rec = (result.get('recommended') or [None])[0]
+        result['sizing_note'] = sizing_note(spot, result.get('raise_to_bb'), _rec)
         # Loga a tentativa COM ESTRATO: é o que permite o gate saber se o jogador acerta na
         # fronteira ou só na parte fácil da range (acertar 90% foldando lixo não é domínio).
         # Atribui à MISSÃO quando o spot faz parte de uma sessão do protocolo: o spot de

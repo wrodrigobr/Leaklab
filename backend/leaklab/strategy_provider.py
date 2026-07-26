@@ -203,6 +203,9 @@ def preflop_strategy(position: str, hand: str | None = None, stack_bb: float = 2
         'recommended':       recommended,
         'available_actions': available_actions,
         'range_pct':         res.get('range_pct'),
+        # TAMANHO GTO do raise em bb (do código 'R2.1'). None quando a linha não é raise
+        # (ex.: BB vs SB a 14bb, onde as opções são call ou shove).
+        'raise_to_bb':       res.get('raise_to_bb'),
         'raw':               res,
     }
 

@@ -1235,6 +1235,10 @@ export interface LeakTrainerGrade {
   xp_awarded: number;
   /** Camada didática do Protocolo (o gatilho do spot). Ausente em spots fora do protocolo. */
   concept?: SpotConcept | null;
+  /** Tamanho GTO do raise em bb (do código 'R2.1'). Null quando a linha não é raise. */
+  raise_to_bb?: number | null;
+  /** Ensina o TAMANHO ("o open padrão daqui é 2,1bb porque…"). Null quando não se aplica. */
+  sizing_note?: string | null;
   xp?: { events: string[]; gained: number; total: number | null; new_achievements: string[] };
   // Gamificação de treino: domínio da categoria atualizado (antes→depois) — eixo separado do ELO.
   training?: {

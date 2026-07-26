@@ -205,6 +205,40 @@ def test_conector_suited_curto_perde_implied_odds():
     print("OK  test_conector_suited_curto_perde_implied_odds")
 
 
+def test_sizing_note_ensina_o_tamanho():
+    """O dado carrega o sizing ('R2.1' = raise para 2,1bb) e o parser o descartava. ENSINAMOS o
+    tamanho porque 0% dos 1.036 nós têm mais de um: virar pergunta seria decoreba de tabela."""
+    from leaklab.progression import sizing_note
+    n = sizing_note({'scenario': 'rfi', 'position': 'UTG', 'stack_bb': 100}, 2.1, 'raise')
+    assert '2.1bb' in n and 'blinds' in n
+    # SB abre maior, e o texto explica POR QUÊ (fora de posição), não só o número
+    sb = sizing_note({'scenario': 'rfi', 'position': 'SB', 'stack_bb': 30}, 3.0, 'raise')
+    assert '3bb' in sb and 'fora de posição' in sb
+    assert sb != n
+    print("OK  test_sizing_note_ensina_o_tamanho")
+
+
+def test_sizing_note_ausente_quando_nao_ha_raise():
+    """Sem tamanho a ensinar: fold, shove (a 14bb a linha é all-in, não raise-to) e sem dado."""
+    from leaklab.progression import sizing_note
+    base = {'scenario': 'rfi', 'position': 'BTN', 'stack_bb': 14}
+    assert sizing_note(base, None, 'raise') is None          # sem tamanho no nó
+    assert sizing_note(base, 2.0, 'allin') is None           # a linha é shove
+    assert sizing_note(base, 2.0, 'fold') is None            # a linha é fold
+    print("OK  test_sizing_note_ausente_quando_nao_ha_raise")
+
+
+def test_sizing_por_cenario_difere():
+    """3-bet e 4-bet têm lógicas de tamanho próprias — o texto não pode ser genérico."""
+    from leaklab.progression import sizing_note
+    tres = sizing_note({'scenario': 'vs_rfi', 'position': 'BB', 'stack_bb': 40}, 8.5, 'raise')
+    quatro = sizing_note({'scenario': 'vs_3bet', 'position': 'CO', 'stack_bb': 50}, 14.3, 'raise')
+    assert '3-bet' in tres and '8.5bb' in tres
+    assert '4-bet' in quatro and '14.3bb' in quatro
+    assert tres != quatro
+    print("OK  test_sizing_por_cenario_difere")
+
+
 def test_contrast_note_explica_a_troca():
     n = contrast_note({'stack_bb': 17, 'contrast_of': 30})
     assert n and '30bb' in n and '17bb' in n

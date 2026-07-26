@@ -389,6 +389,14 @@ export default function LeakTrainer() {
             {grade.concept.nota_mao && (
               <p className="text-[12px] leading-snug text-muted-foreground">{grade.concept.nota_mao}</p>
             )}
+            {/* TAMANHO: o dado carrega o sizing ('R2.1' = raise para 2,1bb). Ensinamos aqui em
+                vez de perguntar — cada nó tem UM tamanho GTO, então virar pergunta seria
+                decoreba de tabela. O conceito (por que este tamanho) é o que transfere. */}
+            {grade.sizing_note && (
+              <p className="border-t border-border/50 pt-2 text-[12px] leading-snug text-sky-300/90">
+                {grade.sizing_note}
+              </p>
+            )}
             {grade.concept.regra && (
               <p className="flex items-start gap-1.5 pt-0.5 font-mono text-[10px] uppercase leading-snug tracking-wide text-amber-400/90">
                 <span aria-hidden>▸</span><span className="normal-case tracking-normal">{grade.concept.regra}</span>

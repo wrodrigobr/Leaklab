@@ -283,6 +283,8 @@ def grade_canonical_spot(spot: dict, action: str) -> dict:
         'recommended':      rec,
         'hand_freq':        hf,
         'range_pct':        strat['range_pct'],
+        # tamanho GTO do raise (do código 'R2.1') — a camada didática ENSINA o sizing
+        'raise_to_bb':      strat.get('raise_to_bb'),
         'validation_source': 'gto_range',   # preflop = range GTO (não solver hand-aware)
         'xp_value':         spot.get('xp_value', 20),
         # campos SRS no-op (spot sintético não está em drill_sessions) — só p/ o contrato do CoachCard

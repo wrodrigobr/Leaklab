@@ -335,6 +335,42 @@ def _canonical_open_bb(bk_data: dict, opener_pos: str) -> Optional[float]:
         return None
 
 
+def raise_to_bb_from_node(node: dict, hero_hand_type: str | None = None) -> float | None:
+    """TAMANHO do raise deste nó, em bb — o código de ação já carrega o sizing ('R2.1' = raise
+    para 2,1bb) e o parser o descartava (`code.startswith('R')` → só 'raise').
+
+    Prefere o código da MÃO do hero; se ela não raiseia, cai no código modal do nó. Medição
+    sobre o JSON inteiro: **0% dos 1.036 nós têm mais de um tamanho de raise**, então nó e mão
+    concordam — cada spot tem UM tamanho GTO, não uma mistura de sizings. Por isso o produto
+    ENSINA o tamanho no feedback em vez de perguntá-lo: com um só tamanho por nó, perguntar
+    viraria decoreba de tabela.
+    """
+    if not isinstance(node, dict):
+        return None
+    hfs = node.get('hand_freqs') or {}
+
+    def _size(code: str):
+        try:
+            return float(code[1:])
+        except (ValueError, IndexError):
+            return None
+
+    if hero_hand_type and hero_hand_type in hfs:
+        for code in hfs[hero_hand_type]:
+            if code.startswith('R') and code != 'RAI':
+                s = _size(code)
+                if s:
+                    return s
+    counts: dict[str, int] = {}
+    for hf in hfs.values():
+        for code in hf:
+            if code.startswith('R') and code != 'RAI':
+                counts[code] = counts.get(code, 0) + 1
+    if not counts:
+        return None
+    return _size(max(counts, key=counts.get))
+
+
 # Open ≥ este fator do canônico = off-tree "maior que o GTO" (ex.: 2bb→2.8bb+).
 _OPEN_OVERSIZE_FACTOR = 1.4
 
@@ -688,6 +724,8 @@ def _analyze_preflop_impl(
         base.update({
             'available': True, 'in_range': in_rng or in_limp,
             'range_pct': pct, 'range_hands': hands_str,
+            # TAMANHO GTO do raise (o código 'R2.1' carrega o sizing) — ensinado no feedback
+            'raise_to_bb': raise_to_bb_from_node(rfi, hero_hand_type),
             'hand_freq': hand_freq,  # freq exata da mão hero (para barra Decision Card)
             'range_grid_pct': grid_pct,
             'recommended_actions': rec, 'rfi_pct': pct,
@@ -840,6 +878,7 @@ def _analyze_preflop_impl(
                 'available': True, 'in_range': in_rng,
                 'range_pct':    aggr_pct,
                 'range_hands':  allin_hands or raise_hands or call_hands,
+                'raise_to_bb': raise_to_bb_from_node(defender, hero_hand_type),
                 'recommended_actions': rec, 'action_quality': quality,
                 'fold_pct':   float(defender.get('fold_pct', 0)),
                 'call_pct':   call_pct,
@@ -863,6 +902,7 @@ def _analyze_preflop_impl(
             base.update({
                 'available': True, 'in_range': in_rng,
                 'range_pct': pct_play, 'range_hands': hands_str,
+                'raise_to_bb': raise_to_bb_from_node(defender, hero_hand_type),
                 'recommended_actions': rec, 'action_quality': quality,
                 'pro_notes': _vs_rfi_notes(pos, vs_pos, hero_hand_type, stack_bb,
                                             pct_play, in_rng, action_taken, acoes),
@@ -973,6 +1013,7 @@ def _analyze_preflop_impl(
             'available': True, 'in_range': in_rng,
             'range_pct': pct_continua / 100.0 if pct_continua > 1 else pct_continua,
             'range_hands': f"4bet: {hands_4bet} | call: {hands_call} | jam: {hands_allin}",
+            'raise_to_bb': raise_to_bb_from_node(spot, hero_hand_type),
             'recommended_actions': rec, 'action_quality': quality,
             'hands_4bet': hands_4bet, 'hands_call': hands_call, 'hands_allin': hands_allin,
             # Pcts globais (frontend usa pra stacked bar quando hand_freq não está disponível)
