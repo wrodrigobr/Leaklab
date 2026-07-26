@@ -32,10 +32,32 @@ def _arg(flag, default=None):
 
 
 def _rows(conn, sql, params=()):
+    # NÃO tentar reescrever placeholder aqui: o _AdaptedConn do schema.py já normaliza
+    # '?' → '%s' conforme o backend. Um try/except em volta só mascarava o erro real
+    # (ex.: "no such table" virava um confuso "near %: syntax error").
+    return conn.execute(sql, params).fetchall()
+
+
+def open_db(cmd_exemplo: str):
+    """Abre a conexão dizendo em QUAL banco está falando e falhando CEDO com mensagem clara
+    quando não há dado nenhum. Sem DATABASE_URL o schema.py cai no SQLite local — no host de
+    produção isso é um arquivo vazio (o banco real é o Postgres, cuja env var vive DENTRO do
+    container). Sem este guard, o sintoma era um traceback 'no such table: decisions'."""
+    from database import schema as _sch
+    pg = bool(getattr(_sch, 'USE_POSTGRES', False))
+    print(f"banco: {'PostgreSQL (DATABASE_URL definido)' if pg else f'SQLite ({_sch.SQLITE_PATH})'}")
+    conn = get_conn()
     try:
-        return conn.execute(sql, params).fetchall()
+        conn.execute("SELECT 1 FROM tournaments LIMIT 1").fetchall()
     except Exception:
-        return conn.execute(sql.replace('?', '%s'), params).fetchall()
+        print("\n  ✖ este banco não tem as tabelas da aplicação (está vazio).")
+        if not pg:
+            print("  DATABASE_URL não está definido — em produção o banco real é o PostgreSQL.")
+            print("  Rode DENTRO do container, onde a env var existe:")
+            print(f"      cd ~/app && docker compose exec web {cmd_exemplo}")
+        sys.exit(1)
+    print()
+    return conn
 
 
 def _v(row, key, idx):
@@ -96,7 +118,7 @@ def main():
         print(f"cartas inválidas: {cards!r} (use ex.: Jd6d, J6, J6 --suited)")
         return
     stack_f = float(stack) if stack else None
-    conn = get_conn()
+    conn = open_db("python -m scripts.find_hand --user csm96 --cards Jd6d")
 
     # ── 1) tabela decisions ───────────────────────────────────────────────────
     sql = """SELECT t.id AS tdb, t.tournament_id, t.site, t.tournament_name, u.username,

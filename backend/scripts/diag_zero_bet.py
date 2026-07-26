@@ -37,11 +37,30 @@ def _arg(flag, default=None):
 
 
 def _rows(conn, sql, params=()):
+    # O _AdaptedConn do schema.py já normaliza '?' → '%s' conforme o backend; um try/except
+    # aqui só mascarava o erro real (ex.: "no such table" virava "near %: syntax error").
+    return conn.execute(sql, params).fetchall()
+
+
+def open_db(cmd_exemplo: str):
+    """Abre a conexão dizendo em QUAL banco está falando e falha CEDO com mensagem clara quando
+    o banco está vazio. Sem DATABASE_URL o schema.py cai no SQLite local — em produção o banco
+    real é o PostgreSQL, cuja env var vive DENTRO do container."""
+    from database import schema as _sch
+    pg = bool(getattr(_sch, 'USE_POSTGRES', False))
+    print(f"banco: {'PostgreSQL (DATABASE_URL definido)' if pg else f'SQLite ({_sch.SQLITE_PATH})'}")
+    conn = get_conn()
     try:
-        cur = conn.execute(sql, params)
-    except Exception:                      # PostgreSQL usa %s
-        cur = conn.execute(sql.replace('?', '%s'), params)
-    return cur.fetchall()
+        conn.execute("SELECT 1 FROM tournaments LIMIT 1").fetchall()
+    except Exception:
+        print("\n  ✖ este banco não tem as tabelas da aplicação (está vazio).")
+        if not pg:
+            print("  DATABASE_URL não está definido — em produção o banco real é o PostgreSQL.")
+            print("  Rode DENTRO do container, onde a env var existe:")
+            print(f"      cd ~/app && docker compose exec web {cmd_exemplo}")
+        sys.exit(1)
+    print()
+    return conn
 
 
 def _fetch_tournaments(conn, user, tid):
@@ -71,7 +90,7 @@ def main():
         print(__doc__)
         return
 
-    conn = get_conn()
+    conn = open_db("python -m scripts.diag_zero_bet --user csm96")
     tours = _fetch_tournaments(conn, user, tid)
     if not tours:
         print(f"nenhum torneio encontrado (user={user} tid={tid})")
