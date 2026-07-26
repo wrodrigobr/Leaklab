@@ -25,12 +25,17 @@ import { ResourceList } from "@/components/study/ResourceList";
 import { buildStudyPlan } from "@/components/study/planBuilder";
 import type { StudyPlan } from "@/components/study/types";
 import { cn } from "@/lib/utils";
-import { study, coaches, metrics, PublicCoach } from "@/lib/api";
+import { study, coaches, metrics, progression, PublicCoach } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { toast } from "sonner";
 import { useQuery } from "@tanstack/react-query";
 
-// ── localStorage persistence ──────────────────────────────────────────────────
+// ── Checklist local ───────────────────────────────────────────────────────────
+// O que fica no navegador é SÓ a marcação pessoal do roteiro e dos exercícios desta
+// página. Nível, XP e streak saíram daqui de propósito: eram calculados a partir destes
+// checkboxes (`xp = acertos*50 + dias*100`, `nível = xp/500`) e formavam uma SEGUNDA
+// progressão, que discordava do nível real (derivado do ELO) e dos estados do protocolo.
+// Progresso que some ao limpar o cache do navegador não é progresso — é enfeite.
 
 const STORAGE_KEY = "leaklabs:study-progress";
 
@@ -38,31 +43,23 @@ interface Progress {
   exercisesCorrect: number;
   exercisesTotal:   number;
   daysCompleted:    string[];
-  streak:           number;
-  lastActivity:     string;
 }
 
 const DEFAULT_PROGRESS: Progress = {
   exercisesCorrect: 0,
   exercisesTotal:   0,
   daysCompleted:    [],
-  streak:           1,
-  lastActivity:     "",
 };
 
 function loadProgress(): Progress {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) return { ...DEFAULT_PROGRESS, ...JSON.parse(raw) };
+    if (raw) {
+      const { exercisesCorrect, exercisesTotal, daysCompleted } = JSON.parse(raw);
+      return { ...DEFAULT_PROGRESS, exercisesCorrect, exercisesTotal, daysCompleted };
+    }
   } catch { /* noop */ }
   return DEFAULT_PROGRESS;
-}
-
-function updateStreak(p: Progress): Progress {
-  const today     = new Date().toISOString().slice(0, 10);
-  if (p.lastActivity === today) return p;
-  const yesterday = new Date(Date.now() - 864e5).toISOString().slice(0, 10);
-  return { ...p, streak: p.lastActivity === yesterday ? p.streak + 1 : 1, lastActivity: today };
 }
 
 // ── Coach recommendation strip ────────────────────────────────────────────────
@@ -181,6 +178,23 @@ const StudyPlanPage = () => {
   const [activeTab, setActiveTab] = useState<"diagnosis" | "schedule" | "exercises">("diagnosis");
   const [progress, setProgress]   = useState<Progress>(loadProgress);
 
+  // O status do protocolo e o nível REAL vêm do servidor. É o que fecha a jornada: o
+  // jogador planeja o estudo aqui e precisa ver, no mesmo lugar, qual leak está aberto.
+  const { data: protocolo } = useQuery({
+    queryKey: ["progression-status"],
+    queryFn: () => progression.status(),
+    staleTime: 60_000,
+    retry: false,
+  });
+  const { data: nivel } = useQuery({
+    queryKey: ["player-level"],
+    queryFn: () => metrics.level(),
+    staleTime: 60_000,
+    retry: false,
+  });
+  const foco = protocolo?.ativa ?? protocolo?.items?.[0] ?? null;
+  const dominadas = protocolo?.dominadas?.length ?? 0;
+
   const persist = (next: Progress) => {
     setProgress(next);
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(next)); } catch { /* noop */ }
@@ -228,26 +242,25 @@ const StudyPlanPage = () => {
 
   const toggleDay = (key: string) => {
     const has = progress.daysCompleted.includes(key);
-    persist(updateStreak({
+    persist({
       ...progress,
       daysCompleted: has
         ? progress.daysCompleted.filter((d) => d !== key)
         : [...progress.daysCompleted, key],
-    }));
+    });
   };
 
   const onExerciseProgress = (correct: number, total: number) => {
     const prev = progress.exercisesCorrect;
-    persist(updateStreak({ ...progress, exercisesCorrect: correct, exercisesTotal: total }));
+    persist({ ...progress, exercisesCorrect: correct, exercisesTotal: total });
     if (correct > prev) {
+      // O XP REAL é do servidor. Antes a página também somava um XP próprio no
+      // localStorage e mostrava um nível derivado dele — dois números discordando.
       metrics.addXp("exercise_correct").catch(() => null);
     }
   };
 
   const totalDays     = useMemo(() => plan?.weeks.reduce((a, w) => a + w.days.length, 0) ?? 0, [plan]);
-  const xp            = progress.exercisesCorrect * 50 + progress.daysCompleted.length * 100;
-  const level         = Math.max(1, Math.floor(xp / 500) + 1);
-  const xpInLevel     = xp % 500;
   const completedRatio = totalDays ? progress.daysCompleted.length / totalDays : 0;
   const activeLeak    = plan?.diagnosis.leaks.find((l) => l.id === activeLeakId) ?? plan?.diagnosis.leaks[0];
 
@@ -346,20 +359,28 @@ const StudyPlanPage = () => {
       {/* Loaded */}
       {plan && (
         <>
-          {/* KPIs gamificação */}
+          {/* KPIs — os dois primeiros são do SERVIDOR (protocolo e nível real); os dois
+              últimos são a marcação pessoal desta página, e por isso não viram "nível". */}
           <section className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+            <Link to="/leak-trainer" className="rounded-xl transition-opacity hover:opacity-90">
+              <KpiTile
+                icon={Target}
+                label={t("kpis.focus")}
+                value={foco ? foco.titulo : t("kpis.focusNone")}
+                hint={foco
+                  ? `${foco.estado_label}${dominadas ? ` · ${t("kpis.focusMastered", { count: dominadas })}` : ""}`
+                  : t("kpis.focusNoneHint")}
+                progress={foco
+                  ? foco.mastery.criterios.filter((c) => c.ok).length / Math.max(1, foco.mastery.criterios.length)
+                  : undefined}
+              />
+            </Link>
             <KpiTile
               icon={Award}
               label={t("kpis.level")}
-              value={t("kpis.levelValue", { level })}
-              hint={t("kpis.xpHint", { xp: xpInLevel })}
-              progress={xpInLevel / 500}
-            />
-            <KpiTile
-              icon={Flame}
-              label={t("kpis.streak")}
-              value={t(progress.streak === 1 ? "kpis.streakValue" : "kpis.streakValue_plural", { count: progress.streak })}
-              hint={t("kpis.streakHint")}
+              value={nivel?.level ?? "—"}
+              hint={nivel?.elo != null ? t("kpis.levelElo", { elo: Math.round(nivel.elo) }) : t("kpis.levelNoData")}
+              progress={nivel?.progress}
             />
             <KpiTile
               icon={CheckCheck}
