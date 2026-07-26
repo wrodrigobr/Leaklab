@@ -251,7 +251,10 @@ export default function LeakTrainer() {
       if (e.metaKey || e.ctrlKey || e.altKey) return;
       const k = e.key.toLowerCase();
       if (phase === "question" && spot && !submitting) {
-        const byLetter: Record<string, string> = { f: "fold", c: "call", r: "raise" };
+        // S = shove (stack curto): sem isso o atalho não alcançava a ação que MAIS aparece
+        // abaixo de 20bb. O guard `spot.options.includes(a)` abaixo ignora a tecla quando a
+        // ação não existe naquele spot.
+        const byLetter: Record<string, string> = { f: "fold", c: "call", r: "raise", s: "allin" };
         const a = byLetter[k] || (/^[1-9]$/.test(k) ? spot.options[parseInt(k, 10) - 1] : undefined);
         if (k === "g") { e.preventDefault(); setShowRange((v) => !v); return; }
         if (a && spot.options.includes(a)) { e.preventDefault(); submit(a); }
@@ -737,7 +740,7 @@ export default function LeakTrainer() {
                         <span>{actLabel(a)}</span>
                         {/* hint de tecla só em telas com teclado (escondido em touch/mobile) */}
                         <kbd className="hidden rounded border border-border/60 bg-background/60 px-1.5 py-0.5 font-mono text-[9px] font-normal text-muted-foreground md:inline-block">
-                          {a === "fold" ? "F" : a === "call" ? "C" : "R"}
+                          {a === "fold" ? "F" : a === "call" ? "C" : a === "allin" ? "S" : "R"}
                         </kbd>
                       </button>
                     ))}

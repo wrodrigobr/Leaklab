@@ -175,7 +175,8 @@
       "raiseOpen": "Raise",
       "raise3": "3-Bet",
       "raise4": "4-Bet",
-      "raisePost": "Raise"
+      "raisePost": "Raise",
+      "allin": "Shove"
     },
     "lesson": {
       "title": "Nova lição",

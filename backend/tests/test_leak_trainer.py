@@ -125,10 +125,12 @@ def test_snap_stack_none_is_explicit_fallback():
     from leaklab.leak_trainer import _STACK_FALLBACK_BB
     assert _snap_stack(None) == min(_STACKS, key=lambda s: abs(s - _STACK_FALLBACK_BB))
     assert _snap_stack(0) == _snap_stack(None)          # 0 também é "sem dado"
-    # profundidade real manda no snap — nunca mais tudo em 100bb
-    assert _snap_stack(12.1) == 30
+    # Profundidade real manda no snap — nunca mais tudo em 100bb. Desde a Fase 0.3 o grid
+    # alcança stack curto (10/14/17/20), que é onde está 44% do EV perdido.
+    assert _snap_stack(9.4)  == 10     # antes caía em 30bb (piso do grid antigo)
+    assert _snap_stack(12.1) == 14     # idem
+    assert _snap_stack(17.1) == 17
     assert _snap_stack(35.9) == 40
-    assert _snap_stack(9.4)  == 30
     assert _snap_stack(95.0) == 100
     print("OK  test_snap_stack_none_is_explicit_fallback")
 
@@ -351,6 +353,26 @@ def test_postflop_catalog_premise_bb_defends():
             bad.append((ht, r.get('available'), round(callf, 3)))
     assert not bad, f"mãos do catálogo com premissa inválida (BB não defende): {bad}"
     print(f"OK  test_postflop_catalog_premise_bb_defends ({len(hands)} mãos, todas defendem)")
+
+
+def test_short_stack_spots_are_servable_with_shove():
+    """Fase 0.3: o treino alcança stack curto (onde está 44% do EV perdido) e o SHOVE deixou
+    de ser motivo pra pular o spot. A 10bb o menu tem que oferecer allin — antes o gerador
+    descartava qualquer spot de linha dominante all-in e o grid nem chegava lá."""
+    rng = random.Random(5)
+    achou_allin = 0
+    for stack in (10, 14, 20):
+        for scen, pos, vs in (('rfi', 'BTN', ''), ('vs_rfi', 'BB', 'SB')):
+            cat = {'scenario': scen, 'position': pos, 'vs_position': vs, 'stack_bb': stack,
+                   'weight': 1.0, 'key': f'{scen}:{pos}:{vs}:{stack}'}
+            sp = generate_canonical_spot(cat, rng)
+            assert sp is not None, f"sem spot em {scen} {pos} @{stack}bb"
+            assert sp['stack_bb'] == stack
+            if 'allin' in sp['options']:
+                achou_allin += 1
+    assert achou_allin > 0, "nenhum spot curto ofereceu shove — o grid não está alcançando push/fold"
+    assert 10 in _STACKS and 14 in _STACKS, _STACKS
+    print(f"OK  test_short_stack_spots_are_servable_with_shove ({achou_allin} com shove)")
 
 
 def test_menu_covers_every_creditable_action():

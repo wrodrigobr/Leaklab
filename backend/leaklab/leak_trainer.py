@@ -31,8 +31,16 @@ from leaklab.strategy_provider import (
 CORRECT_FREQ = 0.30   # ação jogada com freq GTO ≥ isto → acerto pleno
 MIN_FREQ     = MIN_STRATEGY_FREQ   # ≥ isto (e < CORRECT) → aceitável (GTO mistura aqui). Fonte única.
 
-# Stacks limpos do treino (evitam o fallback push/fold). Espelha o academy.
-_STACKS = [30, 40, 50, 75, 100]
+# Profundidades treináveis — alinhadas 1:1 aos buckets do JSON de ranges
+# (preflop_gto_ranges._DEFAULT_BUCKETS), pra não treinar num bucket interpolado.
+#
+# Fase 0.3 do Protocolo: o grid começava em 30bb "pra evitar o fallback push/fold", mas
+# medimos que 44% do EV perdido acontece ABAIXO de 30bb — o jogador treinava longe de onde
+# perde. As ranges curtas JÁ existem no JSON (código RAI = all-in): a 10bb o BTN abre AKs
+# 98% all-in, e o BB defendendo vs SB passa de 100% shove (9-14bb) a 98% call (25bb+).
+# Não é preciso popular a seção `push_fold` morta; basta deixar o treino alcançar essas
+# profundidades — que é onde o MTT realmente acontece.
+_STACKS = [10, 14, 17, 20, 30, 40, 50, 75, 100]
 
 # facing_size por cenário (espelha academy_gto_preflop._random_setup).
 _FACING = {'rfi': 0.0, 'vs_rfi': 2.2, 'vs_3bet': 8.0}
@@ -189,11 +197,11 @@ def generate_canonical_spot(category: dict, rng: random.Random | None = None) ->
                                  is_3bet_pot=is_3b, hero_was_aggressor=was_aggr, facing_raises=raises)
         if not strat['available'] or strat['scenario'] != scenario:
             continue
-        rec = strat['recommended'] or []
-        # Trainer preflop-LIMPO: pula spots cuja linha dominante é all-in (zona push/fold, fora do
-        # escopo dos stacks 30-100bb). Independe do menu — é decisão de currículo, não de oferta.
-        if rec and normalize_action(rec[0]) == 'allin':
-            continue
+        # (Fase 0.3) O shove deixou de ser motivo pra pular o spot. Antes o trainer descartava
+        # qualquer spot de linha dominante all-in, porque o grid ia só até 30bb e push/fold era
+        # "fora de escopo". Com o grid alcançando 10-20bb, o shove É o conteúdo: é lá que está
+        # 44% do EV perdido. O menu já inclui 'allin' sozinho — o invariante do provider garante
+        # que toda ação creditável vira botão.
         opts = strat['available_actions']
         return {
             'scenario':    scenario,
