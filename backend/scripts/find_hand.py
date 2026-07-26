@@ -109,12 +109,14 @@ def main():
     pos    = _arg('--pos')
     stack  = _arg('--stack')
     suited = '--suited' in sys.argv
-    if not cards:
+    if not cards and not (pos or stack):
         print(__doc__)
         return
 
-    want = _cards_of(cards)
-    if len(want) < 2:
+    # --cards é OPCIONAL: dá pra buscar só por posição/stack (mais discriminante quando as
+    # cartas do print são difíceis de ler — ex.: "BB com 2,2bb").
+    want = _cards_of(cards) if cards else []
+    if cards and len(want) < 2:
         print(f"cartas inválidas: {cards!r} (use ex.: Jd6d, J6, J6 --suited)")
         return
     stack_f = float(stack) if stack else None
@@ -140,17 +142,26 @@ def main():
         params.append(pos)
     sql += " ORDER BY t.imported_at DESC"
 
-    achados = []
+    achados, sem_stack = [], 0
     for r in _rows(conn, sql, tuple(params)):
-        if not _hand_matches(_v(r, 'hero_cards', 10), want, suited):
+        if want and not _hand_matches(_v(r, 'hero_cards', 10), want, suited):
             continue
         sb = _v(r, 'stack_bb', 8)
-        # stack_bb pode ser NULL — nesse caso NÃO exclui (senão o filtro esconde a mão procurada).
-        if stack_f is not None and sb is not None and abs(float(sb) - stack_f) > 0.6:
-            continue
+        if stack_f is not None:
+            # stack_bb é NULL em boa parte das decisões: não dá pra comparar. Não some com elas
+            # em silêncio (era o que escondia a mão), mas também não polui o resultado — são
+            # contadas à parte e só entram na lista quando as cartas também foram informadas.
+            if sb is None:
+                sem_stack += 1
+                if not want:
+                    continue
+            elif abs(float(sb) - stack_f) > 0.6:
+                continue
         achados.append(r)
 
     print(f"== decisions: {len(achados)} ocorrência(s) ==")
+    if stack_f is not None and sem_stack:
+        print(f"   (+{sem_stack} decisões com stack_bb NULO — não comparáveis com --stack)")
     vistos = set()
     for r in achados:
         key = (_v(r, 'tdb', 0), _v(r, 'hand_id', 5))
@@ -172,6 +183,11 @@ def main():
         tsql += " AND (LOWER(u.username) LIKE ? OR LOWER(COALESCE(u.email,'')) LIKE ?)"
         _term = f"%{user.lower().strip()}%"
         tparams += [_term, _term]
+
+    # sem --cards a varredura do raw_text não discrimina nada (traria todas as mãos) — pula.
+    if not want:
+        print("\n(sem --cards: varredura do raw_text pulada; a busca acima usou posição/stack)")
+        return
 
     print(f"\n== varredura do raw_text ==")
     total_raw = 0
