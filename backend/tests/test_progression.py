@@ -9,6 +9,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 from leaklab.progression import (
     build_missions, mission_title, neighbor_category, plan_session, next_spot_for_plan,
     concept_for_spot, contrast_note, hand_class, SESSION_SIZES, MIX_ACTIVE, MIX_CONTRAST,
+    stratum_of, mastery_status, state_for, MASTERY_MIN_N, MASTERY_WINDOW,
 )
 from leaklab.leak_trainer import _STACKS
 
@@ -209,6 +210,119 @@ def test_contrast_note_explica_a_troca():
     assert n and '30bb' in n and '17bb' in n
     assert contrast_note({'stack_bb': 30}) is None
     print("OK  test_contrast_note_explica_a_troca")
+
+
+# ── Estratos e gate de domínio (Fase 2) ───────────────────────────────────────
+
+def test_stratum_of():
+    """Onde a mão cai na range. Acertar 90% foldando lixo NÃO é domínio — por isso o gate
+    precisa saber o estrato, não só o acerto."""
+    assert stratum_of({'hand_freq': {'raise': 1.0}}) == 'nucleo'
+    assert stratum_of({'hand_freq': {'fold': 0.95, 'raise': 0.05}}) == 'lixo'
+    assert stratum_of({'hand_freq': {'raise': 0.55, 'call': 0.45}}) == 'fronteira'
+    assert stratum_of({'hand_freq': {'allin': 0.9}}) == 'nucleo'
+    assert stratum_of(None) == 'sem_dado'
+    print("OK  test_stratum_of")
+
+
+def _att(n, correct=True, stratum='nucleo', block='active'):
+    return [{'stratum': stratum, 'block_kind': block, 'correct': correct} for _ in range(n)]
+
+
+def test_gate_exige_volume():
+    ms = mastery_status(_att(5))
+    assert not ms['dominado'] and 'volume' in ms['faltando']
+    print("OK  test_gate_exige_volume")
+
+
+def test_gate_exige_amplitude_nao_so_a_parte_facil():
+    """Só lixo, 100% de acerto, volume ok — e MESMO ASSIM não domina: o jogador provou que
+    sabe foldar, não que domina a range."""
+    ms = mastery_status(_att(25, stratum='lixo'))
+    assert not ms['dominado']
+    assert 'amplitude' in ms['faltando'] or 'fronteira' in ms['faltando']
+    print("OK  test_gate_exige_amplitude_nao_so_a_parte_facil")
+
+
+def test_gate_exige_fronteira_e_transferencia():
+    """Núcleo + lixo perfeitos não bastam: falta a fronteira (onde se erra) e o contraste
+    (que prova que não decorou)."""
+    ms = mastery_status(_att(15, stratum='nucleo') + _att(10, stratum='lixo'))
+    assert not ms['dominado']
+    assert 'fronteira' in ms['faltando'] and 'transferencia' in ms['faltando']
+    print("OK  test_gate_exige_fronteira_e_transferencia")
+
+
+def test_gate_completo_domina():
+    att = (_att(14, stratum='nucleo') + _att(5, stratum='lixo')
+           + _att(5, stratum='fronteira') + _att(4, stratum='nucleo', block='contrast'))
+    ms = mastery_status(att)
+    assert ms['dominado'], ms['faltando']
+    assert ms['janela']['n'] >= MASTERY_MIN_N
+    print("OK  test_gate_completo_domina")
+
+
+def test_gate_usa_janela_movel():
+    """A janela é MÓVEL: erro antigo sai de cena quando o jogador melhora (senão o domínio
+    ficaria refém de um dia ruim de semanas atrás)."""
+    # a janela é MASTERY_WINDOW: as recentes têm que preenchê-la inteira pra as antigas saírem
+    recentes = (_att(17, stratum='nucleo') + _att(5, stratum='fronteira')
+                + _att(4, stratum='nucleo', block='contrast') + _att(4, stratum='lixo'))
+    assert len(recentes) == MASTERY_WINDOW
+    antigos  = _att(40, correct=False, stratum='nucleo')
+    ms = mastery_status(recentes + antigos)          # ordem: mais novo → mais velho
+    assert ms['janela']['n'] == MASTERY_WINDOW
+    assert ms['dominado'], ms['faltando']
+    print("OK  test_gate_usa_janela_movel")
+
+
+def test_criterios_sao_transparentes():
+    """O gate mostra o que falta. Barra sem critério visível vira mistério e o jogador desiste."""
+    ms = mastery_status(_att(8))
+    for c in ms['criterios']:
+        assert {'key', 'ok', 'atual', 'alvo', 'label', 'desc'} <= set(c), c
+    assert len(ms['criterios']) == 5
+    print("OK  test_criterios_sao_transparentes")
+
+
+# ── Os 3 estados ──────────────────────────────────────────────────────────────
+
+def test_estado_em_treino():
+    assert state_for({'dominado': False}) == 'em_treino'
+    print("OK  test_estado_em_treino")
+
+
+def test_treino_sozinho_nunca_comprova():
+    """O SELO exige o jogo real. Domínio no treino libera o próximo leak, não declara correção
+    — é o que separa isto de um simulador."""
+    assert state_for({'dominado': True}) == 'dominado_no_treino'
+    assert state_for({'dominado': True}, {'confident': False, 'delta': 30}) == 'dominado_no_treino'
+    # amostra confiável mas SEM melhora também não comprova
+    assert state_for({'dominado': True}, {'confident': True, 'delta': -5}) == 'dominado_no_treino'
+    print("OK  test_treino_sozinho_nunca_comprova")
+
+
+def test_estado_comprovado_exige_jogo_real_com_amostra():
+    assert state_for({'dominado': True}, {'confident': True, 'delta': 12}) == 'comprovado_no_jogo'
+    print("OK  test_estado_comprovado_exige_jogo_real_com_amostra")
+
+
+def test_contraste_conta_pra_missao_nao_pra_vizinha():
+    """Regressão: o spot de contraste é de OUTRA profundidade, então `category` é da família
+    vizinha. Sem `mission_key`, a tentativa caía na categoria errada e o critério de
+    Transferência ficava eternamente em 0."""
+    p = _plano_fake('media')
+    rng = random.Random(9)
+    achou = False
+    for _ in range(p['total']):
+        sp = next_spot_for_plan(p, {}, rng)
+        if sp and sp.get('block_kind') == 'contrast':
+            assert sp.get('mission_key') == p['mission']['key'], sp.get('mission_key')
+            assert sp['category'] != sp['mission_key']     # é mesmo outra família
+            achou = True
+            break
+    assert achou, "nenhum spot de contraste gerado"
+    print("OK  test_contraste_conta_pra_missao_nao_pra_vizinha")
 
 
 if __name__ == '__main__':

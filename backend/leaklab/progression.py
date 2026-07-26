@@ -215,6 +215,14 @@ def next_spot_for_plan(plan: dict, done_by_kind: dict | None = None,
         spot['block_label'] = escolhido.get('label')
         if escolhido.get('contrast_of'):
             spot['contrast_of'] = escolhido['contrast_of']
+        # ATRIBUIÇÃO: o spot de contraste pertence à família VIZINHA (outra profundidade), então
+        # `category` é a dela. Mas a tentativa é evidência da MISSÃO — é ela que está sendo
+        # provada ("você não decorou, transfere pra outra profundidade"). Sem este campo, o
+        # critério de Transferência ficava eternamente em 0 porque as tentativas caíam na
+        # categoria vizinha. O gate loga por `mission_key` quando ele existe.
+        mk = (plan.get('mission') or {}).get('key')
+        if mk:
+            spot['mission_key'] = mk
     return spot
 
 
@@ -393,6 +401,108 @@ def concept_for_spot(spot: dict, grade: dict | None = None) -> dict:
         'classe':    classe,
         'nota_mao':  nota_mao,
     }
+
+
+# ── 4. Estratos e o gate de "DOMINADO NO TREINO" ─────────────────────────────────────────────
+# Os 3 estados do leak:
+#   EM TREINO → (gate) → DOMINADO NO TREINO → (jogo real) → COMPROVADO NO JOGO
+# O gate de PROGRESSÃO é o treino (rápido, amostra infinita); o SELO é o jogo real (lento).
+# Nunca dizemos "corrigido" antes do jogo confirmar — é o que separa isto de um simulador.
+
+MASTERY_WINDOW      = 30     # janela móvel de tentativas (o gate é por ACUMULADO, não por sessão:
+                             # a duração da sessão é escolhida pelo jogador)
+MASTERY_MIN_N       = 20     # volume mínimo na janela
+MASTERY_MIN_ACC     = 0.85   # precisão geral
+MASTERY_MIN_EDGE_N  = 3      # amostra mínima nos estratos que decidem (fronteira/contraste)
+MASTERY_MIN_EDGE    = 0.70   # precisão exigida onde de fato se erra
+
+
+def stratum_of(grade: dict | None) -> str:
+    """Onde a mão cai na range: núcleo (resposta clara de continuar), lixo (fold claro) ou
+    fronteira (o GTO mistura). É o estrato que diz se o jogador domina a range INTEIRA ou só a
+    parte fácil — acertar 90% foldando lixo não é domínio."""
+    hf = (grade or {}).get('hand_freq') or {}
+    if not hf:
+        return 'sem_dado'
+    acao, freq = max(hf.items(), key=lambda x: x[1])
+    if freq >= 0.85:
+        return 'lixo' if acao == 'fold' else 'nucleo'
+    return 'fronteira'
+
+
+def mastery_status(attempts: list[dict]) -> dict:
+    """Avalia o gate a partir das tentativas MAIS RECENTES da categoria (a lista já vem
+    ordenada da mais nova pra mais velha pelo repositório).
+
+    Devolve cada critério com progresso — o gate é TRANSPARENTE de propósito: o jogador tem que
+    saber o que falta pra dominar, senão a barra vira mistério e ele desiste.
+
+    Nota de projeto: NÃO exigimos cota igual por estrato. Medimos a distribuição real e ela é
+    enviesada de formas opostas conforme a categoria (SB RFI 30bb dá 3% de lixo; BB vs SB 14bb
+    dá 8% de fronteira) — exigir cota uniforme faria o domínio levar centenas de spots no
+    estrato raro. Exigimos desempenho ONDE SE APRENDE: fronteira e contraste.
+    """
+    janela = attempts[:MASTERY_WINDOW]
+    n = len(janela)
+    acertos = sum(1 for a in janela if a.get('correct'))
+    acc = (acertos / n) if n else 0.0
+
+    def _slice(pred):
+        s = [a for a in janela if pred(a)]
+        ok = sum(1 for a in s if a.get('correct'))
+        return len(s), (ok / len(s) if s else 0.0)
+
+    n_front, acc_front = _slice(lambda a: a.get('stratum') == 'fronteira')
+    n_contr, acc_contr = _slice(lambda a: a.get('block_kind') == 'contrast')
+    estratos = {a.get('stratum') for a in janela if a.get('stratum') not in (None, 'sem_dado')}
+
+    criterios = [
+        {'key': 'volume',    'ok': n >= MASTERY_MIN_N,
+         'atual': n, 'alvo': MASTERY_MIN_N,
+         'label': 'Volume', 'desc': f'{MASTERY_MIN_N} spots recentes desta situação'},
+        {'key': 'precisao',  'ok': n >= MASTERY_MIN_N and acc >= MASTERY_MIN_ACC,
+         'atual': round(acc * 100), 'alvo': round(MASTERY_MIN_ACC * 100),
+         'label': 'Precisão', 'desc': 'acerto geral na janela'},
+        {'key': 'amplitude', 'ok': len(estratos) >= 2,
+         'atual': len(estratos), 'alvo': 2,
+         'label': 'Amplitude', 'desc': 'praticou mais de uma parte da range, não só a fácil'},
+        {'key': 'fronteira', 'ok': n_front >= MASTERY_MIN_EDGE_N and acc_front >= MASTERY_MIN_EDGE,
+         'atual': round(acc_front * 100) if n_front else 0, 'alvo': round(MASTERY_MIN_EDGE * 100),
+         'amostra': n_front, 'amostra_min': MASTERY_MIN_EDGE_N,
+         'label': 'Fronteira', 'desc': 'as mãos que o GTO mistura — é onde se erra de verdade'},
+        {'key': 'transferencia', 'ok': n_contr >= MASTERY_MIN_EDGE_N and acc_contr >= MASTERY_MIN_EDGE,
+         'atual': round(acc_contr * 100) if n_contr else 0, 'alvo': round(MASTERY_MIN_EDGE * 100),
+         'amostra': n_contr, 'amostra_min': MASTERY_MIN_EDGE_N,
+         'label': 'Transferência', 'desc': 'o mesmo spot noutra profundidade (prova que não decorou)'},
+    ]
+    faltando = [c for c in criterios if not c['ok']]
+    return {
+        'dominado':  not faltando,
+        'criterios': criterios,
+        'faltando':  [c['key'] for c in faltando],
+        'janela':    {'n': n, 'acerto_pct': round(acc * 100, 1)},
+    }
+
+
+def state_for(mastery: dict, proof: dict | None = None) -> str:
+    """Estado do leak. O selo 'comprovado' exige o JOGO REAL — o treino sozinho nunca o concede.
+
+    `proof` vem do trilho lento (aderência antes×depois com amostra confiável). Enquanto a
+    Fase 3 não substitui isso por taxa de erro com intervalo de confiança, exigimos que o
+    trilho lento tenha marcado `confident` E melhora — assim 'comprovado' nunca sai de ruído.
+    """
+    if not mastery.get('dominado'):
+        return 'em_treino'
+    if proof and proof.get('confident') and float(proof.get('delta') or 0) > 0:
+        return 'comprovado_no_jogo'
+    return 'dominado_no_treino'
+
+
+STATE_LABEL = {
+    'em_treino':          'Em treino',
+    'dominado_no_treino': 'Dominado no treino',
+    'comprovado_no_jogo': 'Comprovado no jogo',
+}
 
 
 def contrast_note(spot: dict) -> str | None:

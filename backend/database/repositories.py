@@ -5139,6 +5139,43 @@ def get_all_users_count(plan: str = None, role: str = None, search: str = None) 
         conn.close()
 
 
+def record_progression_attempt(user_id: int, category_key: str, stratum: str,
+                               block_kind: str | None, correct: bool) -> None:
+    """Loga uma tentativa COM ESTRATO (append-only) — substrato do gate de domínio.
+    Silencioso em erro: um log de progresso nunca pode derrubar a correção do spot."""
+    if not (user_id and category_key and stratum):
+        return
+    conn = get_conn()
+    try:
+        conn.execute(_adapt(
+            "INSERT INTO progression_attempts (user_id, category_key, stratum, block_kind, correct) "
+            "VALUES (?,?,?,?,?)"),
+            (user_id, category_key, stratum, block_kind or None, 1 if correct else 0))
+        conn.commit()
+    except Exception:
+        pass
+    finally:
+        conn.close()
+
+
+def get_progression_attempts(user_id: int, category_key: str, limit: int = 30) -> list:
+    """Tentativas MAIS RECENTES da categoria (janela móvel do gate), da mais nova pra mais velha."""
+    if not (user_id and category_key):
+        return []
+    conn = get_conn()
+    try:
+        rows = _fetchall(conn, _adapt(
+            "SELECT stratum, block_kind, correct FROM progression_attempts "
+            "WHERE user_id=? AND category_key=? ORDER BY id DESC LIMIT ?"),
+            (user_id, category_key, int(limit)))
+        return [{'stratum': r['stratum'], 'block_kind': r['block_kind'],
+                 'correct': bool(r['correct'])} for r in rows]
+    except Exception:
+        return []
+    finally:
+        conn.close()
+
+
 def get_all_tournaments_admin(limit: int = 50, offset: int = 0, site: str = None,
                               search: str = None, user_id: int = None) -> list:
     """Admin: torneios de TODOS os usuários (suporte/depuração — ex.: reproduzir na própria conta

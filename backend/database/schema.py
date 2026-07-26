@@ -690,6 +690,23 @@ def _run_migrations(conn):
             """)
             conn.execute("CREATE INDEX IF NOT EXISTS idx_training_skill_user ON training_skill_progress(user_id)")
         except Exception: pass
+        # Protocolo de Progressão: tentativas COM ESTRATO (Postgres). Bloco abort-proof próprio —
+        # em PG uma falha aqui aborta a transação inteira e derruba as migrações seguintes.
+        try:
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS progression_attempts (
+                    id           SERIAL PRIMARY KEY,
+                    user_id      INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                    category_key TEXT    NOT NULL,
+                    stratum      TEXT    NOT NULL,
+                    block_kind   TEXT,
+                    correct      INTEGER NOT NULL DEFAULT 0,
+                    created_at   TIMESTAMP NOT NULL DEFAULT NOW()
+                )
+            """)
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_prog_attempt_user_cat "
+                         "ON progression_attempts(user_id, category_key, id)")
+        except Exception: pass
         # Conquistas EXCLUSIVAS do treino (separadas das globais/ELO) — Postgres
         try:
             conn.execute("""
@@ -1412,6 +1429,24 @@ def _run_migrations(conn):
             )
         """)
         conn.execute("CREATE INDEX IF NOT EXISTS idx_training_skill_user ON training_skill_progress(user_id)")
+        # Protocolo de Progressão: log append-only de tentativas COM ESTRATO (SQLite).
+        # Por que tabela nova e não colunas em training_skill_progress: o gate de domínio é uma
+        # JANELA MÓVEL (últimas N tentativas) e precisa saber ONDE o jogador acertou — na parte
+        # fácil da range ou na fronteira. Contadores acumulados não respondem isso, e a duração
+        # de sessão é variável (o gate tem que ser por acumulado, não por sessão).
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS progression_attempts (
+                id           INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id      INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                category_key TEXT    NOT NULL,
+                stratum      TEXT    NOT NULL,   -- nucleo | fronteira | lixo
+                block_kind   TEXT,               -- active | review | contrast
+                correct      INTEGER NOT NULL DEFAULT 0,
+                created_at   TEXT    NOT NULL DEFAULT (datetime('now'))
+            )
+        """)
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_prog_attempt_user_cat "
+                     "ON progression_attempts(user_id, category_key, id)")
         # Conquistas EXCLUSIVAS do treino (separadas das globais/ELO) — SQLite
         conn.execute("""
             CREATE TABLE IF NOT EXISTS training_achievements (

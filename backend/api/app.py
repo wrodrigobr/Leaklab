@@ -2915,6 +2915,42 @@ def progression_missions():
     return jsonify({'missions': missions})
 
 
+@app.route('/player/progression/status', methods=['GET'])
+@require_auth
+def progression_status():
+    """Estado de cada missão nos 3 níveis: em treino → dominado no treino → comprovado no jogo.
+
+    O gate de PROGRESSÃO é o treino (rápido, amostra infinita); o SELO é o jogo real. Nunca
+    dizemos 'corrigido' antes dos uploads confirmarem — é o que separa isto de um simulador.
+    Os critérios voltam com progresso porque o gate é transparente de propósito: mistério faz
+    o jogador desistir."""
+    from leaklab.progression import build_missions, mastery_status, state_for, STATE_LABEL
+    from database.repositories import get_progression_attempts, get_training_proof
+    days = int(request.args.get('days', 90) or 90)
+    try:
+        missions = build_missions(g.user_id, days=days)
+    except Exception:
+        app.logger.exception("progression_status: missões falharam (user=%s)", g.user_id)
+        return jsonify({'items': []})
+    # trilho lento (aderência real antes×depois) — indexado por categoria
+    try:
+        proofs = {p['category_key']: p for p in (get_training_proof(g.user_id) or [])}
+    except Exception:
+        proofs = {}
+    itens = []
+    for m in missions:
+        att = get_progression_attempts(g.user_id, m['key'], limit=30)
+        ms  = mastery_status(att)
+        st  = state_for(ms, proofs.get(m['key']))
+        itens.append({
+            'key': m['key'], 'titulo': m['titulo'],
+            'estado': st, 'estado_label': STATE_LABEL.get(st, st),
+            'mastery': ms,
+            'proof': proofs.get(m['key']),
+        })
+    return jsonify({'items': itens})
+
+
 @app.route('/player/progression/session', methods=['POST'])
 @require_auth
 def progression_session():
@@ -3001,10 +3037,19 @@ def leaktrainer_grade():
     # Camada didática do Protocolo: o GATILHO do spot + a nota da classe de mão. Determinística
     # (sem LLM no caminho quente) e anexada aqui pra o corretor seguir sendo fonte única.
     try:
-        from leaklab.progression import concept_for_spot
+        from leaklab.progression import concept_for_spot, stratum_of
         result['concept'] = concept_for_spot(spot, result)
+        # Loga a tentativa COM ESTRATO: é o que permite o gate saber se o jogador acerta na
+        # fronteira ou só na parte fácil da range (acertar 90% foldando lixo não é domínio).
+        # Atribui à MISSÃO quando o spot faz parte de uma sessão do protocolo: o spot de
+        # contraste é de outra profundidade, mas a tentativa é evidência da missão em prova.
+        _cat = spot.get('mission_key') or spot.get('category')
+        if _cat:
+            from database.repositories import record_progression_attempt
+            record_progression_attempt(g.user_id, _cat, stratum_of(result),
+                                       spot.get('block_kind'), bool(result.get('is_correct')))
     except Exception:
-        app.logger.exception("concept_for_spot falhou (user=%s)", g.user_id)
+        app.logger.exception("camada de progressão falhou (user=%s)", g.user_id)
         result['concept'] = None
     xp_full = int(spot.get('xp_value', 20) or 20)
     # XP por RESULTADO (como o Ghost Table): acerto pleno = cheio; aceitável (linha co-ótima que o GTO
