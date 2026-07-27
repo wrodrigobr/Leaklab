@@ -297,7 +297,8 @@
     "vApprox": "≈ Approximation",
     "vApproxIcm": "≈ chipEV approximation",
     "srcIcm": "ICM",
-    "tipIcmApprox": "Near the money, under ICM pressure, folding tight is often worth more than the chip EV suggests. This analysis is in chips (chipEV) and does not measure that risk premium, so a defensible fold here is not flagged as a mistake."
+    "tipIcmApprox": "Near the money, under ICM pressure, folding tight is often worth more than the chip EV suggests. This analysis is in chips (chipEV) and does not measure that risk premium, so a defensible fold here is not flagged as a mistake.",
+    "whyNoGtoPreflop": "No pre-computed solver solution for this preflop spot, analysis falls back to the engine heuristic."
   },
   "controls": {
     "play": "Play",

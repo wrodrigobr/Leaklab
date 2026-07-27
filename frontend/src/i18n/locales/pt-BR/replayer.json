@@ -297,7 +297,8 @@
     "vApprox": "≈ Aproximação",
     "vApproxIcm": "≈ Aproximação chipEV",
     "srcIcm": "ICM",
-    "tipIcmApprox": "Perto do dinheiro, sob pressão de ICM, apertar costuma valer mais do que o EV em fichas sugere. Esta análise é em fichas (chipEV) e não mede esse prêmio de risco, então um fold defensável aqui não é marcado como erro."
+    "tipIcmApprox": "Perto do dinheiro, sob pressão de ICM, apertar costuma valer mais do que o EV em fichas sugere. Esta análise é em fichas (chipEV) e não mede esse prêmio de risco, então um fold defensável aqui não é marcado como erro.",
+    "whyNoGtoPreflop": "Sem solução pré-computada do solver para este spot preflop, análise pela heurística do engine."
   },
   "controls": {
     "play": "Reproduzir",

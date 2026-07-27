@@ -465,7 +465,13 @@ function SidePanels({
             ? t("card.whyInRange", { hand: pg.hand_type, scen, pct, bucket: pg.stack_bucket })
             : t("card.whyOutRange", { hand: pg.hand_type, scen, pct, bucket: pg.stack_bucket });
         } else if (!hasGto && step.is_hero) {
-          why = t("card.whyMultiway");
+          // A frase PRECISA respeitar a street: `whyMultiway` afirma "Spot postflop", e este
+          // ramo pega qualquer decisão do hero sem GTO — inclusive PREFLOP. Um jogador
+          // enfrentando um 3-bet lia uma explicação sobre postflop, sobre a mão errada.
+          // O ramo `preflopNoCoverageStrict` acima não cobre este caso porque exige
+          // `pg.coverage_reason` preenchido; quando o spot vem sem bloco GTO nenhum (ou sem
+          // motivo), a cascata chegava aqui.
+          why = t(isPostflop ? "card.whyMultiway" : "card.whyNoGtoPreflop");
         } else if (isPostflop && eq != null) {
           why = eq >= 0.70 ? t("card.whyEqStrong")
               : eq >= 0.50 ? t("card.whyEqFavorable")
