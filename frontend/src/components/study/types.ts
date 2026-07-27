@@ -18,21 +18,6 @@ export interface StudyResource {
   note?: string;
 }
 
-export interface ExerciseChoice {
-  id: string;
-  label: string;
-}
-
-export interface Exercise {
-  id: string;
-  leakId: string;
-  prompt: string;
-  context?: string;
-  choices: ExerciseChoice[];
-  correctChoiceId: string;
-  explanation: string;
-}
-
 export interface StudyDay {
   day: number;
   title: string;
@@ -56,7 +41,6 @@ export interface StudyPlan {
   };
   weeks: StudyWeek[];
   resourcesByLeak: Record<string, StudyResource[]>;
-  exercises: Exercise[];
   observar?: { indicador: string; valor_atual?: string; sample_atual?: number; sample_necessario?: number; por_que_esperar?: string }[];
   naoFocar?: { item: string; motivo: string }[];
 }

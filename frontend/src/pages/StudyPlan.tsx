@@ -7,7 +7,6 @@ import {
   BrainCircuit,
   CalendarDays,
   CheckCheck,
-  Flame,
   GraduationCap,
   Library,
   Loader2,
@@ -20,7 +19,6 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { HudLayout } from "@/components/hud/HudLayout";
-import { ExerciseRunner } from "@/components/study/ExerciseRunner";
 import { ResourceList } from "@/components/study/ResourceList";
 import { buildStudyPlan } from "@/components/study/planBuilder";
 import type { StudyPlan } from "@/components/study/types";
@@ -31,8 +29,8 @@ import { toast } from "sonner";
 import { useQuery } from "@tanstack/react-query";
 
 // ── Checklist local ───────────────────────────────────────────────────────────
-// O que fica no navegador é SÓ a marcação pessoal do roteiro e dos exercícios desta
-// página. Nível, XP e streak saíram daqui de propósito: eram calculados a partir destes
+// O que fica no navegador é SÓ a marcação pessoal do roteiro semanal desta página.
+// Nível, XP e streak saíram daqui de propósito: eram calculados a partir destes
 // checkboxes (`xp = acertos*50 + dias*100`, `nível = xp/500`) e formavam uma SEGUNDA
 // progressão, que discordava do nível real (derivado do ELO) e dos estados do protocolo.
 // Progresso que some ao limpar o cache do navegador não é progresso — é enfeite.
@@ -40,24 +38,15 @@ import { useQuery } from "@tanstack/react-query";
 const STORAGE_KEY = "leaklabs:study-progress";
 
 interface Progress {
-  exercisesCorrect: number;
-  exercisesTotal:   number;
-  daysCompleted:    string[];
+  daysCompleted: string[];
 }
 
-const DEFAULT_PROGRESS: Progress = {
-  exercisesCorrect: 0,
-  exercisesTotal:   0,
-  daysCompleted:    [],
-};
+const DEFAULT_PROGRESS: Progress = { daysCompleted: [] };
 
 function loadProgress(): Progress {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) {
-      const { exercisesCorrect, exercisesTotal, daysCompleted } = JSON.parse(raw);
-      return { ...DEFAULT_PROGRESS, exercisesCorrect, exercisesTotal, daysCompleted };
-    }
+    if (raw) return { ...DEFAULT_PROGRESS, daysCompleted: JSON.parse(raw).daysCompleted };
   } catch { /* noop */ }
   return DEFAULT_PROGRESS;
 }
@@ -175,7 +164,7 @@ const StudyPlanPage = () => {
   const [planSource, setPlanSource]   = useState<'gto' | 'heuristic' | 'empty' | null>(null);
   const hasCoach = !!user?.coach_id;
   const [activeLeakId, setActiveLeakId] = useState<string>("");
-  const [activeTab, setActiveTab] = useState<"diagnosis" | "schedule" | "exercises">("diagnosis");
+  const [activeTab, setActiveTab] = useState<"diagnosis" | "schedule">("diagnosis");
   const [progress, setProgress]   = useState<Progress>(loadProgress);
 
   // O status do protocolo e o nível REAL vêm do servidor. É o que fecha a jornada: o
@@ -248,16 +237,6 @@ const StudyPlanPage = () => {
         ? progress.daysCompleted.filter((d) => d !== key)
         : [...progress.daysCompleted, key],
     });
-  };
-
-  const onExerciseProgress = (correct: number, total: number) => {
-    const prev = progress.exercisesCorrect;
-    persist({ ...progress, exercisesCorrect: correct, exercisesTotal: total });
-    if (correct > prev) {
-      // O XP REAL é do servidor. Antes a página também somava um XP próprio no
-      // localStorage e mostrava um nível derivado dele — dois números discordando.
-      metrics.addXp("exercise_correct").catch(() => null);
-    }
   };
 
   const totalDays     = useMemo(() => plan?.weeks.reduce((a, w) => a + w.days.length, 0) ?? 0, [plan]);
@@ -359,9 +338,9 @@ const StudyPlanPage = () => {
       {/* Loaded */}
       {plan && (
         <>
-          {/* KPIs — os dois primeiros são do SERVIDOR (protocolo e nível real); os dois
-              últimos são a marcação pessoal desta página, e por isso não viram "nível". */}
-          <section className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+          {/* KPIs — os dois primeiros são do SERVIDOR (protocolo e nível real); o último é a
+              marcação pessoal do roteiro desta página, e por isso não vira "nível". */}
+          <section className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <Link to="/leak-trainer" className="rounded-xl transition-opacity hover:opacity-90">
               <KpiTile
                 icon={Target}
@@ -389,13 +368,6 @@ const StudyPlanPage = () => {
               hint={t("kpis.daysCompleted")}
               progress={completedRatio}
             />
-            <KpiTile
-              icon={Target}
-              label={t("kpis.exercises")}
-              value={`${progress.exercisesCorrect}/${plan.exercises.length}`}
-              hint={t("kpis.exercisesHint")}
-              progress={plan.exercises.length ? progress.exercisesCorrect / plan.exercises.length : 0}
-            />
           </section>
 
           {/* Tab bar */}
@@ -403,7 +375,6 @@ const StudyPlanPage = () => {
             {([
               { id: "diagnosis" as const, icon: BrainCircuit, label: t("tabs.diagnosis") },
               { id: "schedule"  as const, icon: CalendarDays, label: t("tabs.schedule")  },
-              { id: "exercises" as const, icon: Flame,         label: t("tabs.exercises") },
             ]).map(({ id, icon: Icon, label }) => (
               <button
                 key={id}
@@ -661,21 +632,6 @@ const StudyPlanPage = () => {
             </article>
           )}
 
-          {/* Tab: Exercícios */}
-          {activeTab === "exercises" && (
-            <section className="space-y-3">
-              <header className="flex items-center justify-between">
-                <h2 className="flex items-center gap-2 text-sm font-bold uppercase tracking-widest-2 text-foreground">
-                  <span className="size-1.5 rounded-full bg-primary animate-pulse" aria-hidden />
-                  {t("exercises.title")}
-                </h2>
-                <span className="font-mono text-[10px] text-muted-foreground">
-                  {t("exercises.hint", { count: plan.exercises.length })}
-                </span>
-              </header>
-              <ExerciseRunner exercises={plan.exercises} onProgressChange={onExerciseProgress} />
-            </section>
-          )}
         </>
       )}
     </HudLayout>

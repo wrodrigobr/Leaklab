@@ -1,7 +1,7 @@
 {
   "eyebrow": "Study Plan · Adaptive",
   "title": "Your personalized tactical roadmap",
-  "subtitle": "Leak diagnosis, weekly roadmap, curated resources, and exercises with automatic correction.",
+  "subtitle": "A diagnosis of your leaks, a weekly roadmap, and resources to study each one.",
   "observe": {
     "title": "Waiting on more data",
     "hands": "hands"
@@ -44,9 +44,7 @@
     "levelElo": "{{elo}} ELO",
     "levelNoData": "Not enough tournaments",
     "roadmap": "Roadmap",
-    "daysCompleted": "Days completed",
-    "exercises": "Exercises",
-    "exercisesHint": "Quiz score"
+    "daysCompleted": "Days completed"
   },
   "diagnosis": {
     "title": "Prioritized diagnosis",
@@ -73,7 +71,7 @@
     "title": "How to use",
     "tip1": "Click a leak to see the corresponding resources in the sidebar.",
     "tip2": "Follow the daily roadmap and mark the day as completed.",
-    "tip3": "Solve the exercises below to reinforce each concept.",
+    "tip3": "Train the leak in focus in the Leak Trainer — graded practice lives there.",
     "tip4": "Re-import your history at the end of the week to measure the delta."
   },
   "day": {
@@ -83,17 +81,6 @@
   },
   "tabs": {
     "diagnosis": "Diagnosis",
-    "schedule": "Roadmap",
-    "exercises": "Exercises"
-  },
-  "exercises": {
-    "title": "Exercise battery",
-    "hint": "Auto-graded · {{count}} questions"
-  },
-  "whatsapp": {
-    "title": "Train on WhatsApp",
-    "description": "Receive a question from this plan directly on WhatsApp. Answer, get it right, and ask the AI Coach to explain the reasoning.",
-    "cta": "Start on WhatsApp →",
-    "hint": "Send any message to get started · save the number on your phone"
+    "schedule": "Roadmap"
   }
 }

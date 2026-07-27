@@ -1,7 +1,7 @@
 {
   "eyebrow": "Plano de Estudos · Adaptive",
   "title": "Seu roteiro tático personalizado",
-  "subtitle": "Diagnóstico de leaks, roteiro semanal, recursos curados e exercícios com correção automática.",
+  "subtitle": "Diagnóstico dos seus leaks, roteiro semanal e recursos para estudar cada um.",
   "observe": {
     "title": "Aguardando mais dados",
     "hands": "mãos"
@@ -44,9 +44,7 @@
     "levelElo": "{{elo}} ELO",
     "levelNoData": "Sem torneios suficientes",
     "roadmap": "Roteiro",
-    "daysCompleted": "Dias concluídos",
-    "exercises": "Exercícios",
-    "exercisesHint": "Acertos no quiz"
+    "daysCompleted": "Dias concluídos"
   },
   "diagnosis": {
     "title": "Diagnóstico priorizado",
@@ -73,7 +71,7 @@
     "title": "Como usar",
     "tip1": "Clique num leak para ver os recursos correspondentes na sidebar.",
     "tip2": "Siga o roteiro diário e marque o dia como concluído.",
-    "tip3": "Resolva os exercícios abaixo para fixar cada conceito.",
+    "tip3": "Treine o leak em foco no Leak Trainer — a prática com correção acontece lá.",
     "tip4": "Re-importe seu histórico ao fim da semana para medir o delta."
   },
   "day": {
@@ -83,17 +81,6 @@
   },
   "tabs": {
     "diagnosis": "Diagnóstico",
-    "schedule": "Roteiro",
-    "exercises": "Exercícios"
-  },
-  "exercises": {
-    "title": "Bateria de exercícios",
-    "hint": "Auto-correção · {{count}} questões"
-  },
-  "whatsapp": {
-    "title": "Treinar no WhatsApp",
-    "description": "Receba uma questão deste plano direto no WhatsApp. Responda, acerte e peça ao AI Coach para explicar o raciocínio.",
-    "cta": "Iniciar no WhatsApp →",
-    "hint": "Envie qualquer mensagem para começar · salve o número no celular"
+    "schedule": "Roteiro"
   }
 }
