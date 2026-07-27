@@ -23,6 +23,24 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 from database.schema import get_conn
 
 
+def _v(row, key, idx):
+    """Lê uma coluna por NOME, com fallback posicional.
+
+    Em PostgreSQL a linha volta como dict (`row[0]` → KeyError: 0); no SQLite é uma tupla/Row.
+    Toda query aqui usa alias explícito justamente para o nome existir nos dois.
+    """
+    try:
+        return row[key]
+    except Exception:
+        return row[idx]
+
+
+def _count(conn) -> int:
+    row = conn.execute(
+        "SELECT COUNT(*) AS n FROM decisions WHERE gto_label = 'wizard_pending'").fetchone()
+    return int(_v(row, 'n', 0)) if row else 0
+
+
 def main():
     aplicar = '--apply' in sys.argv
     conn = get_conn()
@@ -30,32 +48,31 @@ def main():
         from database import schema as _sch
         print(f"banco: {'PostgreSQL' if getattr(_sch, 'USE_POSTGRES', False) else _sch.SQLITE_PATH}\n")
 
-        total = conn.execute(
-            "SELECT COUNT(*) FROM decisions WHERE gto_label = 'wizard_pending'").fetchone()[0]
+        total = _count(conn)
         if not total:
             print("Nada a fazer: nenhuma decisão com wizard_pending.")
             return
 
         por_user = conn.execute("""
-            SELECT t.user_id, COUNT(*) AS n
+            SELECT t.user_id AS user_id, COUNT(*) AS n
             FROM decisions d JOIN tournaments t ON t.id = d.tournament_id
             WHERE d.gto_label = 'wizard_pending'
             GROUP BY t.user_id ORDER BY n DESC
         """).fetchall()
         print(f"{total} decisão(ões) marcadas como wizard_pending:")
         for r in por_user:
-            print(f"   user {r[0]:>5} → {r[1]} spot(s) (era o número que o dashboard exibia)")
+            print(f"   user {str(_v(r, 'user_id', 0)):>5} → {_v(r, 'n', 1)} spot(s) "
+                  f"(era o número que o dashboard exibia)")
 
         if not aplicar:
             print("\nDRY-RUN. Nada foi alterado. Rode com --apply para reclassificar como "
                   "'sem cobertura' (gto_label = NULL).")
             return
 
-        cur = conn.execute("UPDATE decisions SET gto_label = NULL WHERE gto_label = 'wizard_pending'")
+        conn.execute("UPDATE decisions SET gto_label = NULL WHERE gto_label = 'wizard_pending'")
         conn.commit()
-        restante = conn.execute(
-            "SELECT COUNT(*) FROM decisions WHERE gto_label = 'wizard_pending'").fetchone()[0]
-        print(f"\n✔ {getattr(cur, 'rowcount', total)} reclassificadas para NULL (sem cobertura). "
+        restante = _count(conn)
+        print(f"\n✔ {total - restante} reclassificadas para NULL (sem cobertura). "
               f"Restam {restante}.")
     finally:
         conn.close()
