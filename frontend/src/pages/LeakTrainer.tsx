@@ -9,6 +9,7 @@ import { PokerTableV3 } from "@/components/hud/PokerTableV3";
 import { RangePanel } from "@/components/replayer/RangePanel";
 import { ProLockCard } from "@/components/hud/ProLockCard";
 import { MasteryGate } from "@/components/training/MasteryGate";
+import { useSpotLabel } from "@/lib/spotLabel";
 import { useTableOrientation } from "@/hooks/use-table-orientation";
 import { useIsLandscapeMobile } from "@/hooks/use-is-landscape-mobile";
 import { leaktrainer, progression } from "@/lib/api";
@@ -172,11 +173,10 @@ export default function LeakTrainer() {
   };
 
   // rótulo humano da categoria de leak (cenário + posições)
-  const labelFor = (sp: LeakTrainerSpot) =>
-    sp.kind === "postflop" ? t("leakTrainer.cat.postflopBb", { pos: sp.position, vs: sp.vs_position })
-    : sp.scenario === "rfi" ? t("leakTrainer.cat.rfi", { pos: sp.position })
-    : sp.scenario === "vs_rfi" ? t("leakTrainer.cat.vsRfi", { pos: sp.position, vs: sp.vs_position })
-    : t("leakTrainer.cat.vs3bet", { pos: sp.position, vs: sp.vs_position });
+  // Rótulo do spot: fonte ÚNICA e localizada (lib/spotLabel). No spot em treino a profundidade
+  // fica de fora — ela já está na mesa, e repetir polui o cabeçalho.
+  const spotLabel = useSpotLabel();
+  const labelFor = (sp: LeakTrainerSpot) => spotLabel(sp, { stack: false });
 
   const finishSession = () => setPhase("summary");
   const newSession = () => {
@@ -245,9 +245,7 @@ export default function LeakTrainer() {
     queryKey: ["leaktrainer-options"], queryFn: leaktrainer.options, enabled: phase === "intro",
   });
   const leakOptLabel = (l: { scenario: string; position: string; vs_position: string }): string =>
-    l.scenario === "rfi" ? t("leakTrainer.cat.rfi", { pos: l.position })
-    : l.scenario === "vs_rfi" ? t("leakTrainer.cat.vsRfi", { pos: l.position, vs: l.vs_position })
-    : t("leakTrainer.cat.vs3bet", { pos: l.position, vs: l.vs_position });
+    spotLabel(l, { stack: false });
 
   // Não auto-inicia: a lição começa pela tela de "intro" (botão Começar → loadNext).
   // No protocolo o tamanho é o do PLANO (a duração que o jogador escolheu); fora dele, a lição fixa.
@@ -595,14 +593,14 @@ export default function LeakTrainer() {
                 {st && (
                   <span className={cn("rounded-md px-2 py-0.5 font-mono text-[9px] font-bold uppercase tracking-wider ring-1",
                     stateTone.text, stateTone.ring, stateTone.bg)}>
-                    {st.estado_label}
+                    {t(`leakTrainer.state.${st.estado}`, { defaultValue: st.estado_label })}
                   </span>
                 )}
               </div>
 
               {miss ? (
                 <div className="space-y-1">
-                  <h2 className="font-heading text-2xl font-bold leading-tight text-foreground">{miss.titulo}</h2>
+                  <h2 className="font-heading text-2xl font-bold leading-tight text-foreground">{spotLabel(miss, { fallback: miss.titulo })}</h2>
                   <p className="text-[13px] leading-snug text-muted-foreground">
                     <span className="font-semibold text-foreground">{miss.ev_loss_bb}bb</span>{" "}
                     {t("leakTrainer.protocol.lostIn", { hands: miss.hands,
@@ -689,8 +687,8 @@ export default function LeakTrainer() {
                   {outras.map((o, i) => (
                     <div key={o.key} className="flex items-center gap-2 text-[12px]">
                       <span className="w-4 shrink-0 text-center font-mono text-[10px] text-muted-foreground">{i + 2}</span>
-                      <span className="min-w-0 flex-1 truncate text-muted-foreground">{o.titulo}</span>
-                      <span className="shrink-0 font-mono text-[9px] uppercase text-muted-foreground/60">{o.estado_label}</span>
+                      <span className="min-w-0 flex-1 truncate text-muted-foreground">{spotLabel(o, { fallback: o.titulo })}</span>
+                      <span className="shrink-0 font-mono text-[9px] uppercase text-muted-foreground/60">{t(`leakTrainer.state.${o.estado}`, { defaultValue: o.estado_label })}</span>
                     </div>
                   ))}
                 </div>
@@ -722,10 +720,10 @@ export default function LeakTrainer() {
                         <div className="flex items-center gap-2 text-[12px]">
                           <CheckCircle2 className={cn("size-3.5 shrink-0",
                             d.estado === "comprovado_no_jogo" ? "text-emerald-400" : "text-sky-400")} aria-hidden />
-                          <span className="min-w-0 flex-1 truncate text-foreground/90">{d.titulo}</span>
+                          <span className="min-w-0 flex-1 truncate text-foreground/90">{spotLabel(d, { fallback: d.titulo })}</span>
                           <span className={cn("shrink-0 font-mono text-[9px] uppercase",
                             d.estado === "comprovado_no_jogo" ? "text-emerald-400" : "text-sky-400/80")}>
-                            {d.estado_label}
+                            {t(`leakTrainer.state.${d.estado}`, { defaultValue: d.estado_label })}
                           </span>
                         </div>
                         {v && (

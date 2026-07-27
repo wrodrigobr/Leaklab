@@ -6,6 +6,7 @@ import { HudLayout } from "@/components/hud/HudLayout";
 import { training, progression } from "@/lib/api";
 import { DailyChallengeCard } from "@/components/training/DailyChallengeCard";
 import { MasteryGate } from "@/components/training/MasteryGate";
+import { useSpotLabel } from "@/lib/spotLabel";
 import { cn } from "@/lib/utils";
 
 // Cada conquista tem um ÍCONE próprio (não um número) — pra ler como medalha, não como passo de
@@ -53,15 +54,11 @@ export default function Training() {
   const dominadas = protocolo?.dominadas ?? [];
   const provados  = dominadas.filter((d) => d.estado === "comprovado_no_jogo");
 
-  // rótulo humano da habilidade a partir da chave de categoria (reusa as chaves do Leak Trainer)
-  const skillLabel = (key: string): string => {
-    if (key.startsWith("pf:")) return ta("leakTrainer.cat.postflopBb", { pos: "BB", vs: "BTN" });
-    const [scn, pos, vs] = key.split(":");
-    if (scn === "rfi") return ta("leakTrainer.cat.rfi", { pos });
-    if (scn === "vs_rfi") return ta("leakTrainer.cat.vsRfi", { pos, vs });
-    if (scn === "vs_3bet") return ta("leakTrainer.cat.vs3bet", { pos, vs });
-    return key;
-  };
+  // Rótulo do spot a partir da category_key — fonte ÚNICA (lib/spotLabel), a mesma que o
+  // Dashboard, o Plano de Estudo e o Leak Trainer usam. Antes cada tela tinha a sua e o mesmo
+  // leak aparecia com nomes diferentes conforme onde você olhasse.
+  const spotLabel  = useSpotLabel();
+  const skillLabel = (key: string): string => spotLabel(key, { fallback: key });
   const unlockedCount = overview?.achievements.filter((a) => a.unlocked).length ?? 0;
   const achKey = (k: string) => k.replace(/:/g, "_");   // ':' é separador de namespace no i18next
   // contagem por tier (visão gamificada da evolução, além das barras)
@@ -191,7 +188,7 @@ export default function Training() {
                 <div className="mb-2 flex items-center justify-between gap-2">
                   <p className="flex min-w-0 items-center gap-2 text-sm font-bold text-foreground">
                     <Target className="size-4 shrink-0 text-amber-400" aria-hidden />
-                    <span className="truncate">{foco.titulo}</span>
+                    <span className="truncate">{spotLabel(foco, { fallback: foco.titulo })}</span>
                   </p>
                   <span className="shrink-0 font-mono text-xs font-bold tabular-nums text-amber-300">
                     {foco.mastery.criterios.filter((c) => c.ok).length}/{foco.mastery.criterios.length}
@@ -277,7 +274,7 @@ export default function Training() {
                       <span className="truncate text-[12px] font-bold text-foreground">{skillLabel(p.category_key)}</span>
                       <span className={cn("flex shrink-0 items-center gap-1 font-mono text-[10px] font-bold uppercase", vColor)}>
                         <VIcon className="size-3.5" aria-hidden />
-                        {v ? v.label : t("proof.noVerdict")}
+                        {v ? ta(`leakTrainer.verdict.${v.veredito}`, { defaultValue: v.label }) : t("proof.noVerdict")}
                       </span>
                     </div>
                     {/* Os números só aparecem quando o veredito EXISTE. Mostrar "62% → 71%" sob

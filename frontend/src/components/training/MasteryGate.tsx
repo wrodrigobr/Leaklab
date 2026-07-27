@@ -24,10 +24,16 @@ export function MasteryGate({ criterios, className }: { criterios: MasteryCriter
         const pct = Math.max(0, Math.min(100, c.alvo ? (c.atual / c.alvo) * 100 : 0));
         const semAmostra = c.amostra != null && c.amostra_min != null && c.amostra < c.amostra_min;
         const valorTxt = PCT_KEYS.has(c.key) ? `${c.atual}% / ${c.alvo}%` : `${c.atual}/${c.alvo}`;
+        // Rótulo e tooltip vêm da CHAVE, não do texto do servidor: `mastery_status()` monta
+        // 'Precisão'/'Fronteira'/'Transferência' em português, e isso aparecia cru na interface
+        // em inglês e espanhol. O texto do backend fica como fallback.
         return (
-          <div key={c.key} className="flex items-center gap-2" title={c.desc}>
+          <div key={c.key} className="flex items-center gap-2"
+               title={t(`leakTrainer.gate.${c.key}.desc`, { defaultValue: c.desc })}>
             <span className={cn("w-24 shrink-0 font-mono text-[10px] uppercase tracking-wide",
-              c.ok ? "text-emerald-400" : "text-muted-foreground")}>{c.label}</span>
+              c.ok ? "text-emerald-400" : "text-muted-foreground")}>
+              {t(`leakTrainer.gate.${c.key}.label`, { defaultValue: c.label })}
+            </span>
             <div className="relative h-1.5 flex-1 overflow-hidden rounded-full bg-border">
               <div className={cn("h-full rounded-full transition-all",
                 c.ok ? "bg-emerald-500" : "bg-amber-500/70")} style={{ width: `${pct}%` }} />

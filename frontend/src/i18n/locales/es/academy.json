@@ -135,11 +135,26 @@
     "subtitle": "Spots GTO apuntados a tus puntos débiles. Cada spot se adapta a tu desempeño.",
     "empty": "Todavía no tenemos suficientes leaks para armar tu entrenamiento. Importa algunos torneos y vuelve, el entrenador apunta justo donde pierdes EV.",
     "gate": {
-      "capDone": "Ese fue tu entrenamiento de hoy ({{used}} spots). Vuelve mañana, o entrena sin límite con Pro.",
-      "capFeature": "Entrenamiento ilimitado",
-      "back": "Volver",
-      "targetedTitle": "Fundamentos",
-      "targetedDesc": "Estás entrenando fundamentos genéricos. Apuntar a tus leaks reales (y postflop) es Pro."
+      "volume": {
+        "label": "Volumen",
+        "desc": "spots recientes de esta situación"
+      },
+      "precisao": {
+        "label": "Precisión",
+        "desc": "acierto general en la ventana"
+      },
+      "amplitude": {
+        "label": "Amplitud",
+        "desc": "practicaste más de una parte del range, no solo la fácil"
+      },
+      "fronteira": {
+        "label": "Frontera",
+        "desc": "las manos que el GTO mezcla — es donde se falla de verdad"
+      },
+      "transferencia": {
+        "label": "Transferencia",
+        "desc": "el mismo spot a otra profundidad (prueba que no memorizaste)"
+      }
     },
     "weakSpot": "Entrenando tu punto débil",
     "prompt": "¿Cuál es la acción GTO?",
@@ -167,7 +182,8 @@
       "rfi": "Apertura (RFI) de {{pos}}",
       "vsRfi": "{{pos}} defiende vs {{vs}}",
       "vs3bet": "{{pos}} enfrenta 3-bet de {{vs}}",
-      "postflopBb": "{{pos}} defiende vs c-bet de {{vs}} (flop)"
+      "postflopBb": "{{pos}} defiende vs c-bet de {{vs}} (flop)",
+      "withStack": "{{base}} · {{stack}}bb"
     },
     "act": {
       "fold": "Fold",
@@ -223,6 +239,17 @@
       "needHands": "Faltan {{n}} decisiones de esta situación en tus torneos para el veredicto.",
       "provenDrop": "El error bajó de {{antes}}% a {{depois}}% en manos reales.",
       "noDiff": "Las manos que jugaste todavía no distinguen mejora de suerte."
+    },
+    "state": {
+      "em_treino": "En entrenamiento",
+      "dominado_no_treino": "Dominado en el entrenamiento",
+      "comprovado_no_jogo": "Comprobado en el juego"
+    },
+    "verdict": {
+      "sem_amostra": "Aún sin muestra en el juego",
+      "melhorou": "Mejoró en el juego",
+      "sem_mudanca": "Sin diferencia medible",
+      "piorou": "Retrocedió en el juego"
     }
   },
   "trainAch": {

@@ -8,6 +8,7 @@ import { PlayerStatsCard } from "@/components/hud/PlayerStatsCard";
 import { EvSummary, GtoQualityData, GtoPositionData, progression } from "@/lib/api";
 import { useMasonryRows } from "@/hooks/useMasonryRows";
 import { formatAction } from "@/lib/utils";
+import { useSpotLabel } from "@/lib/spotLabel";
 import { SECTION_SPAN, DashSection } from "@/hooks/useDashboardLayout";
 import { V2EvTrendCard } from "@/components/hud/V2EvTrendCard";
 import { V2StreetEvCard } from "@/components/hud/V2StreetEvCard";
@@ -78,6 +79,7 @@ export function DashboardV2({ onUpload, evSummary, hasData, renderCard, gtoQuali
     retry: false,
     enabled: hasData,
   });
+  const spotLabel = useSpotLabel();
   const missao = protocolo?.ativa ?? null;
   const gateOk = missao?.mastery.criterios.filter((c) => c.ok).length ?? 0;
   const gateTot = missao?.mastery.criterios.length ?? 5;
@@ -189,7 +191,7 @@ export function DashboardV2({ onUpload, evSummary, hasData, renderCard, gtoQuali
               </div>
               {missao ? (
                 <div className="mt-1">
-                  <div className="text-[13px] font-bold leading-snug text-foreground">{missao.titulo}</div>
+                  <div className="text-[13px] font-bold leading-snug text-foreground">{spotLabel(missao, { fallback: missao.titulo })}</div>
                   <div className="mt-0.5 flex items-center gap-1.5 font-mono text-[11px]">
                     <span className="text-muted-foreground">{gateOk}/{gateTot}</span>
                     <div className="h-1 flex-1 overflow-hidden rounded-full bg-border">

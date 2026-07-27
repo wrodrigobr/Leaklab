@@ -25,6 +25,7 @@ import type { StudyPlan } from "@/components/study/types";
 import { cn } from "@/lib/utils";
 import { study, coaches, metrics, progression, PublicCoach } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
+import { useSpotLabel } from "@/lib/spotLabel";
 import { toast } from "sonner";
 import { useQuery } from "@tanstack/react-query";
 
@@ -181,6 +182,7 @@ const StudyPlanPage = () => {
     staleTime: 60_000,
     retry: false,
   });
+  const spotLabel = useSpotLabel();
   const foco = protocolo?.ativa ?? protocolo?.items?.[0] ?? null;
   const dominadas = protocolo?.dominadas?.length ?? 0;
 
@@ -345,9 +347,9 @@ const StudyPlanPage = () => {
               <KpiTile
                 icon={Target}
                 label={t("kpis.focus")}
-                value={foco ? foco.titulo : t("kpis.focusNone")}
+                value={foco ? spotLabel(foco, { fallback: foco.titulo }) : t("kpis.focusNone")}
                 hint={foco
-                  ? `${foco.estado_label}${dominadas ? ` · ${t("kpis.focusMastered", { count: dominadas })}` : ""}`
+                  ? `${tAcad(`leakTrainer.state.${foco.estado}`, { defaultValue: foco.estado_label })}${dominadas ? ` · ${t("kpis.focusMastered", { count: dominadas })}` : ""}`
                   : t("kpis.focusNoneHint")}
                 progress={foco
                   ? foco.mastery.criterios.filter((c) => c.ok).length / Math.max(1, foco.mastery.criterios.length)
