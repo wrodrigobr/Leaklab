@@ -1,10 +1,15 @@
 """
-Desafio do Dia (#42) — geração de CANDIDATOS com filtro de CERTEZA.
+Desafio do Dia (#42) — geração de CANDIDATOS por faixa de DIFICULDADE.
 
-Não podemos falhar no gabarito. Um candidato só é proposto (pra aprovação do admin)
-se o GTO tem uma resposta DOMINANTE (não coin-flip) E nossa heurística CONCORDA com
-o range GW. O admin ainda aprova antes de virar desafio (o carimbo final). Coin-flip
-50/50 é descartado de propósito (impossível gradear com certeza).
+O padrão é `dificil`: o desafio existe pra separar quem sabe, e spot de resposta unânime é
+respondido no automático. As faixas saem da frequência da ação líder do GTO (ver DOMINANT_FREQ
+/ MEDIUM_FREQ / HARD_FREQ). O admin aprova cada candidato antes de virar desafio.
+
+O que garante que um spot MISTO ainda vale como pergunta é `_discriminates`: tem que sobrar
+alguma ação claramente errada no menu. Se toda opção fosse creditável, qualquer resposta viraria
+"aceitável" e o desafio ensinaria que tanto faz. Punir a ação de 40% que o solver joga quase
+metade das vezes seria o erro oposto — por isso quem corrige é `grade_challenge`, mixed-aware,
+que responde "Aceitável (o GTO mistura aqui)".
 
 Fase 2 (fora daqui): spots postflop do gto_nodes (#41), voto adversarial do LLM.
 """
@@ -32,6 +37,10 @@ HARD_FREQ      = 0.40    # difícil: abaixo disso nenhuma ação lidera de forma
 MIN_CREDITABLE = 0.10    # mesma régua do StrategyProvider (MIN_STRATEGY_FREQ)
 
 DIFFICULTIES = ('facil', 'medio', 'dificil')
+# Padrão DIFÍCIL: o desafio existe pra separar quem sabe. Spot de resposta unânime
+# ("K5o no BTN vs open do CO") é respondido no automático e não mede nada — o nível
+# fácil segue disponível, mas sob pedido explícito do admin.
+DEFAULT_DIFFICULTY = 'dificil'
 
 # Stack curto entrou: é onde a decisão de MTT vira difícil de verdade (a mesma mão é shove a
 # 12bb e fold a 40bb). A grade antiga só tinha profundidade média, onde quase tudo é padrão.
@@ -84,7 +93,7 @@ def _discriminates(spot: dict, strat: list) -> bool:
     return any(freq.get(a, 0.0) < MIN_CREDITABLE for a in menu)
 
 
-def _certainty(spot: dict, difficulty: str = 'facil'):
+def _certainty(spot: dict, difficulty: str = 'dificil'):
     """Retorna (answer, top_freq, strategy, difficulty) se o spot serve de desafio.
 
     `facil`   — ação top ≥85% E a heurística local concorda (triangulação: é a rede de
@@ -229,7 +238,7 @@ def explain_challenge(spot: dict, ctx: dict | None = None) -> str:
 
 def build_candidates(n: int = 10, rng: _random.Random | None = None,
                      with_explanation: bool = True,
-                     difficulty: str = 'facil') -> list[dict]:
+                     difficulty: str = 'dificil') -> list[dict]:
     """Gera até `n` candidatos da faixa de dificuldade pedida. Cada candidato:
     {spot_json, answer, note, difficulty}. O admin aprova antes de virar desafio.
 
@@ -238,7 +247,7 @@ def build_candidates(n: int = 10, rng: _random.Random | None = None,
     fora do nível fácil.
     """
     if difficulty not in DIFFICULTIES:
-        difficulty = 'facil'
+        difficulty = DEFAULT_DIFFICULTY
     rng = rng or _random.Random()
     out: list[dict] = []
     seen: set = set()

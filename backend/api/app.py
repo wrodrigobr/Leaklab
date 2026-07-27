@@ -3287,17 +3287,17 @@ def player_daily_challenge_submit():
 def admin_daily_challenge_generate():
     """Gera N candidatos pro pool, status='pending' pra curadoria.
 
-    `difficulty` (facil|medio|dificil) escolhe a faixa de frequência do GTO. O padrão segue
-    `facil` pra não mudar o comportamento de quem já usa; o admin pede spot difícil quando quer
-    um desafio que realmente separe quem sabe."""
-    from leaklab.daily_challenge import build_candidates, DIFFICULTIES
+    `difficulty` (facil|medio|dificil) escolhe a faixa de frequência do GTO. O padrão é
+    `dificil`: spot de resposta unânime é respondido no automático e não separa quem sabe.
+    O nível fácil continua disponível, sob pedido explícito."""
+    from leaklab.daily_challenge import build_candidates, DIFFICULTIES, DEFAULT_DIFFICULTY
     from database.repositories import add_challenge_candidates
     body = request.get_json(silent=True) or {}
     n = int(body.get('n', 10) or 10)
     n = max(1, min(n, 50))
-    diff = str(body.get('difficulty') or 'facil').lower()
+    diff = str(body.get('difficulty') or DEFAULT_DIFFICULTY).lower()
     if diff not in DIFFICULTIES:
-        diff = 'facil'
+        diff = DEFAULT_DIFFICULTY
     cands = build_candidates(n, difficulty=diff)
     added = add_challenge_candidates(cands)
     return jsonify({'generated': added, 'difficulty': diff})

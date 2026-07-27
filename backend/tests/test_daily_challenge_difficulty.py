@@ -15,7 +15,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 from leaklab.daily_challenge import (
     build_candidates, _discriminates, _certainty, DIFFICULTIES,
-    DOMINANT_FREQ, MEDIUM_FREQ, HARD_FREQ, MIN_CREDITABLE, _CH_STACKS,
+    DOMINANT_FREQ, MEDIUM_FREQ, HARD_FREQ, MIN_CREDITABLE, _CH_STACKS, DEFAULT_DIFFICULTY,
 )
 
 
@@ -99,10 +99,26 @@ def test_facil_continua_unanime():
     print("OK  test_facil_continua_unanime")
 
 
-def test_faixa_invalida_cai_no_facil():
+def test_padrao_e_dificil():
+    """O desafio existe pra separar quem sabe: resposta unânime é respondida no automático."""
+    assert DEFAULT_DIFFICULTY == 'dificil'
+    c = build_candidates(n=3, rng=random.Random(3), with_explanation=False)
+    assert c and all(x['difficulty'] == 'dificil' for x in c), c
+    print("OK  test_padrao_e_dificil")
+
+
+def test_faixa_invalida_cai_no_padrao():
     c = build_candidates(n=2, rng=random.Random(1), with_explanation=False, difficulty='impossivel')
-    assert all(x['difficulty'] == 'facil' for x in c), c
-    print("OK  test_faixa_invalida_cai_no_facil")
+    assert all(x['difficulty'] == DEFAULT_DIFFICULTY for x in c), c
+    print("OK  test_faixa_invalida_cai_no_padrao")
+
+
+def test_faixa_dificil_rende_o_lote_do_admin():
+    """O admin gera lotes de 10; se a faixa difícil rendesse 2, o pool secaria e o desafio
+    do dia cairia no vazio. Mede o rendimento REAL, não a existência da faixa."""
+    c = build_candidates(n=10, rng=random.Random(11), with_explanation=False, difficulty='dificil')
+    assert len(c) >= 8, f"faixa difícil rendeu só {len(c)} de 10"
+    print(f"OK  test_faixa_dificil_rende_o_lote_do_admin ({len(c)}/10)")
 
 
 if __name__ == '__main__':
