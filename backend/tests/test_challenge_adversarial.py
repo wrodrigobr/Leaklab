@@ -142,6 +142,42 @@ def test_maioria_e_menor_que_o_total():
     print("OK  test_maioria_e_menor_que_o_total")
 
 
+# ── Enquadramento do prompt ───────────────────────────────────────────────────
+
+def test_prompt_avisa_que_a_correcao_e_mixed_aware():
+    """REGRESSÃO da primeira rodada em produção.
+
+    O refutador derrubou um spot 54%/46% (AQs em UTG vs 3-bet do CO a 12bb) dizendo que fold
+    "é claramente insustentável, pois o solver mostra fold em apenas 54% e allin em 46%" — ou
+    seja, refutou por ser MISTO, que o prompt listava como motivo inválido.
+
+    Mas ele estava certo dado o que lhe foi dito: perguntamos "a resposta proposta é correta?"
+    sem informar que a correção é mixed-aware e credita a ação de 46%. Ele julgou "fold é A
+    resposta?" quando a pergunta real é "isto é uma pergunta justa?".
+
+    O prompt precisa carregar esse enquadramento, senão todo spot da faixa difícil (que é
+    mista por definição) vira refutação — e a faixa inteira morre.
+    """
+    p = dc._refute_prompt(_SPOT, dict(_CTX), 'call')
+    sys_txt = p['system'].lower()
+    assert 'mixed-aware' in sys_txt, "o prompt não diz que a correção credita a ação alternativa"
+    assert 'aceitável' in sys_txt or 'aceitavel' in sys_txt
+    assert 'justa' in sys_txt, "o prompt não reformula a pergunta para 'a questão é justa?'"
+    # e a referência não pode ser apresentada como resposta ÚNICA
+    user_txt = p['messages'][0]['content']
+    assert 'REFERÊNCIA' in user_txt and 'como correta' not in user_txt, user_txt
+    print("OK  test_prompt_avisa_que_a_correcao_e_mixed_aware")
+
+
+def test_prompt_carrega_os_fatos_do_spot():
+    """Ancoragem: sem os fatos, o modelo julga um spot imaginário."""
+    p = dc._refute_prompt(_SPOT, dict(_CTX), 'call')
+    u = p['messages'][0]['content']
+    for esperado in ('BB', 'CO', '20bb', 'K8s', 'call 55%', 'fold 45%'):
+        assert esperado in u, f"falta {esperado!r} nos fatos: {u}"
+    print("OK  test_prompt_carrega_os_fatos_do_spot")
+
+
 # ── Integração com o gerador ──────────────────────────────────────────────────
 
 def test_gerador_descarta_refutado():
