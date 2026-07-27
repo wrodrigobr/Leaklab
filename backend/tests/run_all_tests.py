@@ -38,7 +38,7 @@ SUITES = {
                   'test_raise_total_separator.py'],
     'ghost':     ['test_ghost_table_invariants.py', 'test_table_state.py', 'test_drill_preflop_action.py'],
     'academy':   ['test_academy_variety.py'],
-    'challenge': ['test_daily_challenge_difficulty.py'],
+    'challenge': ['test_daily_challenge_difficulty.py', 'test_challenge_adversarial.py'],
     'gto':       ['test_tree_hash.py',
                   'test_hand_view.py',
                   'test_gto_comparison.py',

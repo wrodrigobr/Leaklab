@@ -3285,9 +3285,13 @@ def admin_daily_challenge_generate():
     diff = str(body.get('difficulty') or DEFAULT_DIFFICULTY).lower()
     if diff not in DIFFICULTIES:
         diff = DEFAULT_DIFFICULTY
-    cands = build_candidates(n, difficulty=diff)
+    # `verify` liga o voto adversarial (camada 4): N peritos independentes tentam derrubar o
+    # gabarito antes de o candidato chegar à sua fila de aprovação. Ligado por padrão — o motivo
+    # de cada descarte vai pro log do container.
+    verify = bool(body.get('verify', True))
+    cands = build_candidates(n, difficulty=diff, verify=verify)
     added = add_challenge_candidates(cands)
-    return jsonify({'generated': added, 'difficulty': diff})
+    return jsonify({'generated': added, 'difficulty': diff, 'verified': verify})
 
 
 @app.route('/admin/daily-challenge/pool', methods=['GET'])

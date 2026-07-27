@@ -25,6 +25,18 @@ def _strat(*pares):
     return [{'action': a, 'freq': f} for a, f in pares]
 
 
+def _freq_da_nota(note: str) -> int:
+    """Percentual do GTO na nota, por regex.
+
+    Antes lia a ÚLTIMA palavra (`rsplit(' ')[-1]`), o que quebrou quando a nota ganhou o
+    sufixo `[sem voto do LLM]`. Teste acoplado ao fim de uma string é frágil por construção.
+    """
+    import re
+    m = re.search(r'(\d+)%', note)
+    assert m, f"nota sem percentual: {note}"
+    return int(m.group(1))
+
+
 def test_menu_todo_creditavel_nao_discrimina():
     """Se fold, call e raise são todos ≥10%, qualquer resposta é 'aceitável'. Não é desafio."""
     spot = {'options': ['fold', 'call', 'raise']}
@@ -72,7 +84,7 @@ def test_stack_curto_entrou_na_grade():
 def test_gera_candidatos_em_cada_faixa():
     """Não basta a faixa existir no código: o gerador precisa ACHAR spots nela."""
     for d in DIFFICULTIES:
-        c = build_candidates(n=3, rng=random.Random(7), with_explanation=False, difficulty=d)
+        c = build_candidates(n=3, rng=random.Random(7), with_explanation=False, verify=False, difficulty=d)
         assert c, f"nenhum candidato para {d}"
         assert all(x['difficulty'] == d for x in c), [x['difficulty'] for x in c]
     print("OK  test_gera_candidatos_em_cada_faixa")
@@ -80,21 +92,21 @@ def test_gera_candidatos_em_cada_faixa():
 
 def test_dificil_e_de_fato_misto():
     """O ponto do pedido: spot difícil não pode ser resposta unânime disfarçada."""
-    c = build_candidates(n=4, rng=random.Random(7), with_explanation=False, difficulty='dificil')
+    c = build_candidates(n=4, rng=random.Random(7), with_explanation=False, verify=False, difficulty='dificil')
     assert c
     for x in c:
         # a nota carrega a frequência do GTO — abaixo de MEDIUM_FREQ é mistura de verdade
-        pct = int(x['note'].rsplit(' ', 1)[-1].rstrip('%'))
+        pct = _freq_da_nota(x['note'])
         assert HARD_FREQ * 100 <= pct < MEDIUM_FREQ * 100, x['note']
     print(f"OK  test_dificil_e_de_fato_misto ({len(c)} spots)")
 
 
 def test_facil_continua_unanime():
     """A faixa fácil não pode ter regredido — é a que sustenta a promessa de gabarito certo."""
-    c = build_candidates(n=4, rng=random.Random(7), with_explanation=False, difficulty='facil')
+    c = build_candidates(n=4, rng=random.Random(7), with_explanation=False, verify=False, difficulty='facil')
     assert c
     for x in c:
-        pct = int(x['note'].rsplit(' ', 1)[-1].rstrip('%'))
+        pct = _freq_da_nota(x['note'])
         assert pct >= DOMINANT_FREQ * 100, x['note']
     print("OK  test_facil_continua_unanime")
 
@@ -102,13 +114,13 @@ def test_facil_continua_unanime():
 def test_padrao_e_dificil():
     """O desafio existe pra separar quem sabe: resposta unânime é respondida no automático."""
     assert DEFAULT_DIFFICULTY == 'dificil'
-    c = build_candidates(n=3, rng=random.Random(3), with_explanation=False)
+    c = build_candidates(n=3, rng=random.Random(3), with_explanation=False, verify=False)
     assert c and all(x['difficulty'] == 'dificil' for x in c), c
     print("OK  test_padrao_e_dificil")
 
 
 def test_faixa_invalida_cai_no_padrao():
-    c = build_candidates(n=2, rng=random.Random(1), with_explanation=False, difficulty='impossivel')
+    c = build_candidates(n=2, rng=random.Random(1), with_explanation=False, verify=False, difficulty='impossivel')
     assert all(x['difficulty'] == DEFAULT_DIFFICULTY for x in c), c
     print("OK  test_faixa_invalida_cai_no_padrao")
 
@@ -116,7 +128,7 @@ def test_faixa_invalida_cai_no_padrao():
 def test_faixa_dificil_rende_o_lote_do_admin():
     """O admin gera lotes de 10; se a faixa difícil rendesse 2, o pool secaria e o desafio
     do dia cairia no vazio. Mede o rendimento REAL, não a existência da faixa."""
-    c = build_candidates(n=10, rng=random.Random(11), with_explanation=False, difficulty='dificil')
+    c = build_candidates(n=10, rng=random.Random(11), with_explanation=False, verify=False, difficulty='dificil')
     assert len(c) >= 8, f"faixa difícil rendeu só {len(c)} de 10"
     print(f"OK  test_faixa_dificil_rende_o_lote_do_admin ({len(c)}/10)")
 

@@ -11,11 +11,21 @@ alguma ação claramente errada no menu. Se toda opção fosse creditável, qual
 metade das vezes seria o erro oposto — por isso quem corrige é `grade_challenge`, mixed-aware,
 que responde "Aceitável (o GTO mistura aqui)".
 
-Fase 2 (fora daqui): spots postflop do gto_nodes (#41), voto adversarial do LLM.
+A arquitetura de CERTEZA tem 5 camadas, e nada vai ao ar sem passar por todas:
+  1. nó limpo (filtro anti-degenerado)          — `_certainty` via grade_canonical_spot
+  2. ação com frequência conhecida               — as faixas DOMINANT/MEDIUM/HARD
+  3. concordância entre fontes (só no fácil)     — solver == heurística local
+  4. voto adversarial do LLM (N refutadores)     — `verify_challenge`
+  5. aprovação humana do admin                   — status 'pending' no pool
+
+Fase 2 restante (fora daqui): spots postflop do gto_nodes (#41).
 """
 from __future__ import annotations
 import json
+import logging
 import random as _random
+
+_log = logging.getLogger(__name__)
 
 from leaklab.leak_trainer import generate_canonical_spot, grade_canonical_spot
 from leaklab.preflop_range_evaluator import _recommended_action
@@ -236,21 +246,145 @@ def explain_challenge(spot: dict, ctx: dict | None = None) -> str:
     return out
 
 
+# ── Voto adversarial (camada 4 da arquitetura de certeza) ────────────────────────────────────
+# O gabarito vem do solver e o admin aprova no fim. Entre os dois faltava um perito INDEPENDENTE
+# perguntando "essa resposta é absurda?".
+#
+# A calibragem é o ponto delicado: um refutador agressivo mata justamente o spot DIFÍCIL, que
+# parece errado de propósito. Por isso a barra é alta — só derruba o que é insustentável ou
+# malformado, nunca o que é meramente contraintuitivo. E não pedimos frequência ao modelo (aí ele
+# alucina número): pedimos juízo binário com motivo.
+#
+# N votos INDEPENDENTES com maioria, porque um voto único de LLM é ruidoso demais para vetar.
+REFUTE_VOTES    = 3     # peritos independentes por candidato
+REFUTE_MAJORITY = 2     # refutações necessárias para descartar
+_REFUTE_CACHE: dict = {}
+
+
+def _refute_prompt(spot: dict, ctx: dict, answer: str) -> dict:
+    """Pede um juízo de sanidade sobre o gabarito: o modelo tenta DERRUBAR a resposta proposta.
+    Não escolhe a jogada nem estima frequência — só julga se aquilo é defensável."""
+    from leaklab.llm_explainer import _POKER_TERMS_EN
+    mix = ', '.join(f"{l['action']} {round(l['freq'] * 100)}%" for l in ctx.get('gto_strategy') or [])
+    facts = (
+        f"Cenário: {_SCENARIO_PT.get(spot.get('scenario'), spot.get('scenario'))}.\n"
+        f"Posição do herói: {spot.get('position')}.\n"
+        + (f"Posição do vilão: {spot.get('vs_position')}.\n" if spot.get('vs_position') else "")
+        + f"Stack efetivo: {spot.get('stack_bb')}bb.\n"
+        f"Mão do herói: {spot.get('hand')}.\n"
+        f"Ações disponíveis: {', '.join(spot.get('options') or [])}.\n"
+        f"RESPOSTA PROPOSTA como correta: {answer}.\n"
+        f"Frequências do solver: {mix}."
+    )
+    system = (
+        "Você é um jogador profissional de MTT revisando uma questão de treino ANTES de ir ao ar. "
+        "Sua função é ADVERSARIAL: tentar derrubar a resposta proposta.\n"
+        "BARRA ALTA — refute SOMENTE se: (a) a resposta é claramente insustentável para este "
+        "spot, ou (b) o spot é impossível/malformado (posições incoerentes, stack impossível, "
+        "ação fora do menu).\n"
+        "NÃO refute por: ser contraintuitivo, ser apertado ou largo demais para o seu gosto, o "
+        "GTO misturar entre ações, ou você preferir outra linha defensável. Questão difícil é o "
+        "OBJETIVO: spot que parece errado e não é deve PASSAR.\n"
+        "Na dúvida, NÃO refute — existe revisão humana depois de você, e derrubar questão boa "
+        "custa mais do que deixar passar uma duvidosa.\n"
+        f"{_POKER_TERMS_EN} "
+        'Responda APENAS com JSON, sem markdown: {"refuta": true|false, "motivo": "uma frase"}'
+    )
+    return {
+        'model':      'claude-haiku-4-5-20251001',
+        'max_tokens': 200,
+        'system':     system,
+        'messages':   [{'role': 'user', 'content': facts}],
+    }
+
+
+def _parse_refute(raw: str):
+    """(refuta, motivo) ou None se a resposta não for interpretável.
+
+    Voto ilegível NÃO conta para nenhum lado: some da apuração. Tratar resposta quebrada como
+    veto derrubaria candidato bom por falha de parsing, que é ruído e não avaliação."""
+    import re as _re
+    if not raw:
+        return None
+    m = _re.search(r'\{.*\}', raw, _re.S)
+    if not m:
+        return None
+    try:
+        d = json.loads(m.group(0))
+    except Exception:
+        return None
+    if not isinstance(d, dict) or 'refuta' not in d:
+        return None
+    return bool(d.get('refuta')), str(d.get('motivo') or '')[:180]
+
+
+def verify_challenge(spot: dict, ctx: dict | None = None, answer: str | None = None,
+                     votes: int = REFUTE_VOTES) -> dict:
+    """Roda N peritos independentes contra o gabarito. NUNCA levanta.
+
+    Devolve {'veredito', 'refutacoes', 'votos', 'motivos'}:
+      · 'aprovado'     — nenhuma maioria derrubou
+      · 'refutado'     — maioria derrubou; o candidato não deve ir ao pool
+      · 'indisponivel' — sem LLM (chave ausente/erro/ilegível): NÃO bloqueia
+
+    Fail-open é deliberado: esta é a camada 4 de 5, e a 5 é a aprovação humana. Bloquear a
+    geração inteira por indisponibilidade do modelo seria parar por um motivo que não é de
+    qualidade — e o admin continua revisando cada candidato.
+    """
+    ctx = ctx or describe_challenge(spot)
+    answer = answer or ctx.get('best_action') or ''
+    key = (f"{spot.get('scenario')}:{spot.get('position')}:{spot.get('vs_position')}:"
+           f"{spot.get('stack_bb')}:{spot.get('hand')}:{answer}")
+    if key in _REFUTE_CACHE:
+        return _REFUTE_CACHE[key]
+
+    from leaklab.llm_explainer import _call_llm_api
+    refutacoes = validos = 0
+    motivos: list[str] = []
+    for _ in range(max(1, votes)):
+        try:
+            r = _parse_refute(_call_llm_api(_refute_prompt(spot, ctx, answer)))
+        except Exception:
+            r = None
+        if r is None:
+            continue
+        validos += 1
+        if r[0]:
+            refutacoes += 1
+            if r[1]:
+                motivos.append(r[1])
+
+    if not validos:
+        out = {'veredito': 'indisponivel', 'refutacoes': 0, 'votos': 0, 'motivos': []}
+    elif refutacoes >= min(REFUTE_MAJORITY, validos):
+        out = {'veredito': 'refutado', 'refutacoes': refutacoes, 'votos': validos, 'motivos': motivos}
+    else:
+        out = {'veredito': 'aprovado', 'refutacoes': refutacoes, 'votos': validos, 'motivos': motivos}
+    _REFUTE_CACHE[key] = out
+    return out
+
+
 def build_candidates(n: int = 10, rng: _random.Random | None = None,
                      with_explanation: bool = True,
-                     difficulty: str = 'dificil') -> list[dict]:
+                     difficulty: str = 'dificil',
+                     verify: bool = True) -> list[dict]:
     """Gera até `n` candidatos da faixa de dificuldade pedida. Cada candidato:
     {spot_json, answer, note, difficulty}. O admin aprova antes de virar desafio.
 
     A grade é varrida VÁRIAS vezes com stacks diferentes: um spot só é fácil/médio/difícil
     para uma combinação de mão e profundidade, então uma passada única encontraria pouca coisa
     fora do nível fácil.
+
+    `verify` liga o voto adversarial (camada 4): candidato refutado por maioria dos peritos NÃO
+    entra na lista, e o motivo vai para o log. Custa N chamadas de LLM por candidato — desligue
+    em teste, não em produção.
     """
     if difficulty not in DIFFICULTIES:
         difficulty = DEFAULT_DIFFICULTY
     rng = rng or _random.Random()
     out: list[dict] = []
     seen: set = set()
+    refutados = 0
     # Varre a grade uma vez por stack: sem isso, sortear a profundidade por categoria descarta
     # a maioria das combinações antes de testá-las.
     tentativas = [(c, s) for s in _CH_STACKS for c in _categories()]
@@ -272,16 +406,34 @@ def build_candidates(n: int = 10, rng: _random.Random | None = None,
         if sig in seen:
             continue
         seen.add(sig)
+
+        # Camada 4: peritos independentes tentam derrubar o gabarito ANTES de gastar a chamada
+        # cara da explicação. Refutado por maioria não entra — nem no pool, nem no orçamento.
+        nota = _note(spot, answer, freq)
+        if verify:
+            v = verify_challenge(spot, answer=answer)
+            if v['veredito'] == 'refutado':
+                refutados += 1
+                _log.info("desafio REFUTADO (%s/%s peritos): %s | motivos: %s",
+                          v['refutacoes'], v['votos'], nota, '; '.join(v['motivos'])[:200])
+                continue
+            if v['veredito'] == 'indisponivel':
+                # Marca no que o admin lê: sem o voto, a revisão humana é a única barreira.
+                nota += "  [sem voto do LLM]"
+
         cand = {
             'spot_json':  json.dumps(spot),
             'answer':     answer,
-            'note':       _note(spot, answer, freq),
+            'note':       nota,
             'difficulty': faixa,
         }
         if with_explanation:
             # explicação didática gerada JÁ na criação (o admin revisa antes de aprovar)
             cand['explanation'] = explain_challenge(spot, describe_challenge(spot))
         out.append(cand)
+
+    if verify and refutados:
+        _log.info("build_candidates: %s candidato(s) descartado(s) pelo voto adversarial", refutados)
     return out
 
 
