@@ -6,7 +6,12 @@ bom). NUNCA purga em massa: só toca hash degenerado que uma decisão real cobre
 
 Por que decision-driven: o pot correto (BB) não está no nó (o hash não inclui pot; o valor
 gravado é o errado). Só a decisão, via build_decision_inputs_for_hand, recompõe o potBb certo.
-Nós degenerados ÓRFÃOS (sem decisão que os cubra) não afetam nenhuma tela → deixados como estão.
+Nós degenerados ÓRFÃOS (sem decisão que os cubra) não podem ser re-solvados — o pot correto só
+existe na decisão. E eles NÃO são inofensivos: `get_gto_node` aceita qualquer nó com
+exploitability_pct <= GTO_EXPLOITABILITY_THRESHOLD (10.0 em prod) e o degenerado tem ~0.01, então
+PASSA no filtro e é servido. Uma mão futura que caia nesse hash recebe o veredito falso.
+`--purge-orphans` apaga esses (volta a "sem cobertura", o estado honesto, e o spot re-entra na
+fila do solver). Não é purga em massa: só a assinatura degenerada não coberta.
 
 Uso:
     python -m scripts.sweep_degenerate_postflop                 # dry-run (conta recuperáveis vs órfãos)
@@ -14,6 +19,7 @@ Uso:
     python -m scripts.sweep_degenerate_postflop --apply --limit 20   # lote de N nós (roda em partes)
     python -m scripts.sweep_degenerate_postflop --apply --timeout 300  # spot pesado > default 240s
     python -m scripts.sweep_degenerate_postflop --apply --no-resync    # sem colar os labels
+    python -m scripts.sweep_degenerate_postflop --apply --purge-orphans # + apaga os órfãos degenerados
 
 O `--apply` já roda o `resync_postflop_gto --apply` no fim: re-solvar conserta o NÓ, mas as
 decisões seguem com o gto_label antigo até colarem de novo — como passo separado, era esquecido.
@@ -50,9 +56,13 @@ def _arg(f, default=None):
 
 
 def _resolve_spot(conn, st, pos, vs_pos, board, hero, stack, pot_bb, facing, shash, timeout=240):
-    """Deleta o nó degenerado (só este hash) e re-solva com o pot CORRETO. Retorna
-    (ok, msg). Se o solve falhar, o nó fica sem cobertura — mas ele já era rejeitado
-    pelo engine (degenerado), então não há regressão funcional."""
+    """Deleta o nó degenerado (só este hash) e re-solva com o pot CORRETO. Retorna (ok, msg).
+
+    Se o solve falhar, o spot fica SEM COBERTURA — e isso é melhor que o estado anterior.
+    (Correção de 2026-07-27: este docstring afirmava que o engine "já rejeitava" o nó
+    degenerado. Não rejeita: `get_gto_node` filtra por `exploitability_pct <= 10.0` e o
+    degenerado tem ~0.01, então passava e era SERVIDO, com veredito falso. Sem cobertura é
+    honesto; cobertura errada não.)"""
     conn.execute("DELETE FROM gto_nodes WHERE spot_hash = ?", (shash,))
     conn.commit()
     _p = _solver_params_for_stack(stack)
@@ -144,6 +154,32 @@ def main():
 
     orphans = len(degen) - len(recoverable)
     print(f"cobertos por decisão (recuperáveis): {len(recoverable)} | órfãos (deixados como estão): {orphans}\n")
+
+    # ── Órfãos: sem decisão que os cubra, NÃO dá pra re-solvar (o pot correto só existe na
+    # decisão). Mas eles NÃO são inofensivos: `get_gto_node` aceita qualquer nó com
+    # exploitability_pct <= GTO_EXPLOITABILITY_THRESHOLD (10.0 em prod), e o degenerado tem
+    # ~0.01 — ou seja, PASSA no filtro e é servido. Qualquer mão futura que caia nesse
+    # spot_hash recebe o veredito falso (call-100%, ev_bb absurdo).
+    #
+    # Apagar devolve o spot ao estado honesto ("sem cobertura") e ele volta pra fila do solver
+    # naturalmente. Isto NÃO é purga em massa: só toca hash com a assinatura degenerada
+    # (source='solver_cli' E exploit <= 0.02) que nenhuma decisão cobre.
+    orphan_hashes = sorted(degen - set(recoverable))
+    if '--purge-orphans' in sys.argv:
+        if not apply:
+            print(f"[dry-run] --purge-orphans apagaria {len(orphan_hashes)} nó(s) órfão(s) "
+                  f"degenerado(s). Rode junto com --apply.")
+        else:
+            for h in orphan_hashes:
+                conn.execute("DELETE FROM gto_nodes WHERE spot_hash = ?", (h,))
+            conn.commit()
+            print(f"✔ {len(orphan_hashes)} nó(s) órfão(s) degenerado(s) apagados "
+                  f"(voltam a 'sem cobertura' — estado honesto).\n")
+    elif orphan_hashes:
+        print(f"ⓘ os {len(orphan_hashes)} órfãos seguem no banco e SÃO servidos pelo lookup "
+              f"(exploit 0.01 passa no filtro <= {GTO_EXPLOITABILITY_THRESHOLD}).\n"
+              f"  Uma mão futura que caia num desses hashes recebe veredito falso.\n"
+              f"  Para apagá-los: --apply --purge-orphans\n")
 
     if not apply:
         for i, (hsh, p) in enumerate(list(recoverable.items())[:30], 1):
