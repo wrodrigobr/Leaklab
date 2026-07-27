@@ -6154,39 +6154,19 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
         gto_depth_capped = bool(decision.get('gto_depth_capped')) if decision else False  # opção B: aprox >60bb
         engine_best = decision.get('best_action') if decision else None
 
-        # Detectar incompatibilidade de spot GTO:
-        # "check" não é ação válida quando o hero enfrenta uma aposta (engine diz "call")
-        # "call" não é ação válida quando não há aposta (engine diz "check"/"bet")
-        _FACING_BET  = {'call', 'calls'}
-        _NO_BET      = {'check', 'checks', 'bet', 'bets'}
-        gto_spot_mismatch = False
-        if gto_action and engine_best:
-            gto_n = _norm(gto_action)
-            eng_n = _norm(engine_best)
-            if eng_n in _FACING_BET and gto_n in _NO_BET:
-                gto_spot_mismatch = True   # GTO diz check/bet mas hero enfrenta aposta
-            elif eng_n in _NO_BET and gto_n in _FACING_BET:
-                gto_spot_mismatch = True   # GTO diz call mas hero não enfrenta aposta
-
-        # Calcular best_action e is_error reconciliados
-        if gto_spot_mismatch:
-            # Spot incompatível: ignora recomendação de ação do GTO, usa apenas o engine
-            is_error        = (decision is not None and
-                               decision.get('label', 'standard') in ('clear_mistake', 'small_mistake', 'marginal'))
-            reconciled_best = engine_best
-        elif gto_label in ('gto_correct', 'gto_mixed'):
-            # GTO confirma ação jogada como válida — engine pode ter dado alarme falso
-            is_error        = False
-            reconciled_best = _norm(action.action)
-        elif gto_label in ('gto_minor_deviation', 'gto_critical') and gto_action:
-            # GTO aponta desvio — usa sua recomendação como "ideal"
-            is_error        = True
-            reconciled_best = gto_action
-        else:
-            # Sem dados GTO — confia apenas no engine
-            is_error = (decision is not None and
-                        decision.get('label', 'standard') in ('clear_mistake', 'small_mistake', 'marginal'))
-            reconciled_best = engine_best
+        # CAMADA 1 (leaklab/card_verdict, puro e testado): veredito pelo label ARMAZENADO.
+        # `_norm` local é de propósito — ver a nota sobre normalização em card_verdict.
+        from leaklab.card_verdict import (
+            spot_mismatch as _spot_mismatch, verdict_from_stored as _v_stored,
+        )
+        gto_spot_mismatch = _spot_mismatch(_norm(gto_action), _norm(engine_best))
+        _v1 = _v_stored(
+            gto_label, gto_action, engine_best,
+            decision.get('label', 'standard') if decision is not None else None,
+            _norm(action.action), gto_spot_mismatch,
+        )
+        is_error        = _v1['is_error']
+        reconciled_best = _v1['reconciled_best']
 
         # Detectar conflito engine vs GTO (quando não há mismatch de spot)
         gto_engine_conflict = (
@@ -6411,19 +6391,15 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
 
                         if _pf.get('available') and _pf.get('recommended_actions'):
                             preflop_override_action = _pf['recommended_actions'][0]
-                            _pf_quality = _pf.get('action_quality', 'unknown')
-                            if _pf_quality in ('correct', 'acceptable'):
-                                is_error        = False
-                                reconciled_best = _norm(action.action)
-                                gto_label       = 'gto_correct' if _pf_quality == 'correct' else 'gto_mixed'
-                            elif _pf_quality in ('gto_minor_deviation', 'minor_mistake'):
-                                is_error        = True
-                                reconciled_best = preflop_override_action
-                                gto_label       = 'gto_minor_deviation'
-                            elif _pf_quality in ('leak', 'major_leak'):
-                                is_error        = True
-                                reconciled_best = preflop_override_action
-                                gto_label       = 'gto_critical'
+                            # CAMADA 3 (card_verdict, puro): qualidade desconhecida devolve None
+                            # e a camada anterior fica de pé.
+                            from leaklab.card_verdict import verdict_from_preflop as _v_pf
+                            _v3 = _v_pf(_pf.get('action_quality', 'unknown'),
+                                        preflop_override_action, _norm(action.action))
+                            if _v3:
+                                is_error        = _v3['is_error']
+                                reconciled_best = _v3['reconciled_best']
+                                gto_label       = _v3['gto_label']
                             # Persiste os valores corretos de preflop no banco.
                             # Sobrescreve qualquer lixo que gto_nodes agregados possam ter gravado.
                             try:
@@ -6502,21 +6478,25 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
                 # Só SOBREPÕE com ALTA confiança (is_clear). Decisão próxima → defere ao engine.
                 if multiway_advice and not multiway_advice.get('is_clear'):
                     multiway_advice = None
+            # CAMADA 4 (card_verdict, puro): multiway tem prioridade sobre o nó heads-up.
+            from leaklab.card_verdict import (
+                verdict_from_multiway_advice as _v_mw_adv,
+                verdict_from_multiway_engine as _v_mw_eng,
+            )
             if multiway_advice:
                 from leaklab.multiway_advisor import is_hero_leak as _mw_leak
-                _adv_mw   = _norm(multiway_advice['action'])
-                is_error        = bool(_mw_leak(multiway_advice, action.action))
-                reconciled_best = _adv_mw
-                gto_action      = multiway_advice['action']
-                live_top_act    = multiway_advice['action']
+                _v4 = _v_mw_adv(multiway_advice['action'], _norm(multiway_advice['action']),
+                                _mw_leak(multiway_advice, action.action))
+                is_error, reconciled_best = _v4['is_error'], _v4['reconciled_best']
+                gto_action, live_top_act  = _v4['gto_action'], _v4['live_top_act']
             elif _mw_spot:
-                # Multiway onde o advisor DEFERIU: o solver HU não é confiável aqui, então o
-                # veredito vem da SEVERIDADE do engine (label EV-capado) — NÃO do gto_label de
-                # frequência HU (que diria 'crítico' num spot que o coach aprova). Card = badge.
-                _sev_mw = decision.get('label')
-                is_error = _sev_mw in ('small_mistake', 'clear_mistake')
-                reconciled_best = decision.get('best_action') or reconciled_best
-                gto_action = decision.get('best_action') or gto_action
+                # Advisor DEFERIU: o solver HU não é confiável aqui, então o veredito vem da
+                # SEVERIDADE do engine (label EV-capado) — NÃO do gto_label de frequência HU
+                # (que diria 'crítico' num spot que o coach aprova). Card = badge.
+                _v4 = _v_mw_eng(decision.get('label'), decision.get('best_action'),
+                                reconciled_best, gto_action)
+                is_error, reconciled_best = _v4['is_error'], _v4['reconciled_best']
+                gto_action = _v4['gto_action']
 
             # Fase 2 (flag MULTIWAY_GRADE_SAFE_TAIL): a CAUDA SEGURA tem precedência sobre o
             # informativo. Veredito GARANTIDO (sobrevive ao canto adversário das premissas →
@@ -6537,12 +6517,14 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
                 except Exception:
                     multiway_safe = None
                 if multiway_safe:
-                    is_error        = bool(multiway_safe['is_leak'])
-                    reconciled_best = _norm(multiway_safe['recommended'])
-                    gto_action      = multiway_safe['recommended']
-                    live_top_act    = multiway_safe['recommended']
-                    multiway_advice = None   # cauda segura SUBSTITUI o informativo
-                    multiway_safe_label = 'small_mistake' if is_error else 'standard'
+                    from leaklab.card_verdict import verdict_from_multiway_safe as _v_mw_safe
+                    _v4 = _v_mw_safe(multiway_safe['recommended'],
+                                     _norm(multiway_safe['recommended']),
+                                     multiway_safe['is_leak'])
+                    is_error, reconciled_best = _v4['is_error'], _v4['reconciled_best']
+                    gto_action, live_top_act  = _v4['gto_action'], _v4['live_top_act']
+                    multiway_advice     = None   # cauda segura SUBSTITUI o informativo
+                    multiway_safe_label = _v4['safe_label']
 
         # Sizing do OPEN (Fase 1): tamanho do open preflop do hero vs o padrão de teoria
         # (~2bb; SBxBB sobe). O size sai do raw ("raises X to Y" → Y/bb), não do amount (=BY).

@@ -7,7 +7,123 @@ Casos pontuais + invariantes sobre matriz determinística.
 import sys, os, traceback
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from leaklab.card_verdict import reconcile_verdict, norm_action, label_for_freq
+from leaklab.card_verdict import (
+    reconcile_verdict, norm_action, label_for_freq,
+    spot_mismatch, verdict_from_stored, verdict_from_preflop,
+    verdict_from_multiway_advice, verdict_from_multiway_engine, verdict_from_multiway_safe,
+)
+
+
+# ── Camadas 1/3/4, extraídas do /replay (antes inline numa função de 1000 linhas) ─────────────
+#
+# Cada camada sobrescreve a anterior. Testá-las isoladamente é o que permite mexer na ORDEM
+# depois sabendo o que cada uma faz sozinha.
+
+def test_mismatch_check_quando_hero_enfrenta_aposta():
+    """O nó respondeu a um spot em que ninguém apostou; o hero está pagando. Nó de outro spot."""
+    assert spot_mismatch('check', 'call') is True
+    assert spot_mismatch('bet', 'call') is True
+    print("OK  test_mismatch_check_quando_hero_enfrenta_aposta")
+
+
+def test_mismatch_call_quando_nao_ha_aposta():
+    assert spot_mismatch('call', 'check') is True
+    assert spot_mismatch('call', 'bet') is True
+    print("OK  test_mismatch_call_quando_nao_ha_aposta")
+
+
+def test_mismatch_falso_quando_compativel_ou_vazio():
+    assert spot_mismatch('raise', 'call') is False    # ambos enfrentando aposta
+    assert spot_mismatch('check', 'bet') is False     # ambos sem aposta
+    assert spot_mismatch('', 'call') is False         # sem dado não inventa incompatibilidade
+    assert spot_mismatch('call', '') is False
+    print("OK  test_mismatch_falso_quando_compativel_ou_vazio")
+
+
+def test_stored_gto_confirma_derruba_alarme_do_engine():
+    """Solver diz que a jogada é válida: o engine pode ter dado alarme falso e perde."""
+    v = verdict_from_stored('gto_correct', 'raise', 'fold', 'clear_mistake', 'call', False)
+    assert v['is_error'] is False
+    assert v['reconciled_best'] == 'call'      # a própria jogada vira a referência
+    print("OK  test_stored_gto_confirma_derruba_alarme_do_engine")
+
+
+def test_stored_gto_aponta_desvio():
+    v = verdict_from_stored('gto_critical', 'raise', 'fold', 'standard', 'call', False)
+    assert v['is_error'] is True and v['reconciled_best'] == 'raise'
+    print("OK  test_stored_gto_aponta_desvio")
+
+
+def test_stored_sem_gto_o_engine_decide():
+    assert verdict_from_stored(None, None, 'fold', 'small_mistake', 'call', False)['is_error'] is True
+    assert verdict_from_stored(None, None, 'fold', 'standard', 'call', False)['is_error'] is False
+    print("OK  test_stored_sem_gto_o_engine_decide")
+
+
+def test_stored_sem_decisao_nao_e_erro():
+    """Sem decisão do engine (ação sem análise), nada pode ser chamado de erro."""
+    v = verdict_from_stored(None, None, None, None, 'call', False)
+    assert v['is_error'] is False
+    print("OK  test_stored_sem_decisao_nao_e_erro")
+
+
+def test_stored_mismatch_ignora_o_gto_inteiro():
+    """Com spot incompatível a recomendação do GTO não é corrigida — é descartada."""
+    v = verdict_from_stored('gto_critical', 'check', 'call', 'standard', 'call', True)
+    assert v['reconciled_best'] == 'call'      # engine_best, não o 'check' do nó errado
+    assert v['is_error'] is False
+    print("OK  test_stored_mismatch_ignora_o_gto_inteiro")
+
+
+def test_preflop_qualidade_desconhecida_nao_mexe():
+    """'unknown' devolve None de propósito: a camada anterior continua valendo."""
+    assert verdict_from_preflop('unknown', 'raise', 'call') is None
+    assert verdict_from_preflop(None, 'raise', 'call') is None
+    print("OK  test_preflop_qualidade_desconhecida_nao_mexe")
+
+
+def test_preflop_mapeia_as_seis_qualidades():
+    esperado = {'correct': (False, 'gto_correct'), 'acceptable': (False, 'gto_mixed'),
+                'gto_minor_deviation': (True, 'gto_minor_deviation'),
+                'minor_mistake': (True, 'gto_minor_deviation'),
+                'leak': (True, 'gto_critical'), 'major_leak': (True, 'gto_critical')}
+    for q, (err, label) in esperado.items():
+        v = verdict_from_preflop(q, 'raise', 'call')
+        assert v['is_error'] is err and v['gto_label'] == label, (q, v)
+        # acerto → a referência é a própria jogada; erro → a recomendada
+        assert v['reconciled_best'] == ('raise' if err else 'call'), (q, v)
+    print("OK  test_preflop_mapeia_as_seis_qualidades")
+
+
+def test_multiway_advice_mantem_cru_e_normalizado_separados():
+    """`reconciled_best` sai normalizado e `gto_action` cru. A diferença aparece na tela."""
+    v = verdict_from_multiway_advice('folds', 'fold', True)
+    assert v['reconciled_best'] == 'fold'
+    assert v['gto_action'] == 'folds' and v['live_top_act'] == 'folds'
+    assert v['is_error'] is True
+    print("OK  test_multiway_advice_mantem_cru_e_normalizado_separados")
+
+
+def test_multiway_engine_usa_DUAS_severidades_nao_tres():
+    """REGRESSÃO de leitura: a camada 1 chama 'marginal' de erro, o ramo multiway NÃO.
+    A diferença é deliberada — multiway já é aproximação, marginal ali não vira erro."""
+    assert verdict_from_multiway_engine('marginal', 'call', 'x', 'y')['is_error'] is False
+    assert verdict_from_multiway_engine('small_mistake', 'call', 'x', 'y')['is_error'] is True
+    assert verdict_from_multiway_engine('clear_mistake', 'call', 'x', 'y')['is_error'] is True
+    print("OK  test_multiway_engine_usa_DUAS_severidades_nao_tres")
+
+
+def test_multiway_engine_preserva_valor_anterior_sem_best():
+    """Sem best_action do engine, o que a camada anterior decidiu permanece."""
+    v = verdict_from_multiway_engine('standard', None, 'anterior', 'gto_anterior')
+    assert v['reconciled_best'] == 'anterior' and v['gto_action'] == 'gto_anterior'
+    print("OK  test_multiway_engine_preserva_valor_anterior_sem_best")
+
+
+def test_multiway_safe_rotula_severidade():
+    assert verdict_from_multiway_safe('folds', 'fold', True)['safe_label'] == 'small_mistake'
+    assert verdict_from_multiway_safe('folds', 'fold', False)['safe_label'] == 'standard'
+    print("OK  test_multiway_safe_rotula_severidade")
 
 
 # ── caso-âncora: mão 5 (A2s) — range folda 63%, mas a mão LEVANTA 93% ──────────
