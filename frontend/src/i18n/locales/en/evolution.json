@@ -1,0 +1,27 @@
+{
+  "eyebrow": "Report",
+  "title": "Your progress",
+  "subtitle": "Where you improved, where you slipped, and what it cost in bb.",
+  "empty": "No tournaments with graded decisions yet. Import your hands and the report starts.",
+  "perTournament": "bb / tournament",
+  "vsPrevious": "vs previous half",
+  "heroHint": "Average over your {{n}} most recent tournaments, against the earlier half. Bubble and final table are left out.",
+  "costly": {
+    "title": "The spots that cost the most",
+    "subtitle": "In tournaments a few hands decide the result. These are yours. Click to review.",
+    "played": "You played {{action}} — the reference was {{best}}",
+    "open": "open hand"
+  },
+  "matrix": {
+    "title": "Position × stack depth",
+    "subtitle": "The same open is a different game at 12bb and at 50bb. An empty cell means no sample, not a clean record.",
+    "legend": "bb lost per 100 decisions · smaller number = decisions measured",
+    "empty": "—"
+  },
+  "proof": {
+    "title": "Before and after training",
+    "subtitle": "Here the measure is error rate, not cost: that is what separates improvement from luck.",
+    "disclaimer": "A verdict only appears when the difference survives the confidence interval, and the \"before\" is corrected so improvement is not inflated. This compares two periods; it does not prove the training caused the change."
+  },
+  "backToTraining": "Back to training"
+}

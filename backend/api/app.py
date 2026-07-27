@@ -1631,6 +1631,16 @@ def player_elo_curve():
     })
 
 
+@app.route('/player/evolution', methods=['GET'])
+@require_auth
+def player_evolution():
+    """Relatório de evolução: EV perdido por torneio, spots mais caros e a matriz posição ×
+    profundidade. Ranqueia por CUSTO — a validação estatística (melhorou?) vem do
+    `/player/training-proof`, que mede taxa de erro. São perguntas diferentes de propósito."""
+    from database.repositories import get_evolution_report
+    return jsonify(get_evolution_report(g.user_id))
+
+
 @app.route('/player/pending-gto-count', methods=['GET'])
 @require_auth
 def player_pending_gto_count():

@@ -6319,6 +6319,100 @@ def _ensure_training_baseline(conn, user_id, category_key):
         (user_id, category_key, base['pct'], base['with_gto']))
 
 
+def _stack_bucket_case(col: str = 'd.stack_bb') -> str:
+    """CASE SQL derivado de `gto_utils.STACK_BUCKETS` — as MESMAS faixas que o solver usa.
+
+    Reusar em vez de inventar um terceiro esquema é deliberado: já existem dois bucketings nesta
+    base (pontos discretos das ranges preflop × faixas largas do hash do nó) e um teste documenta
+    por que unificá-los seria bug. Um terceiro, só para o relatório, seria a mesma armadilha de
+    novo — e aqui as faixas do solver são exatamente o que um mapa de calor quer, porque cada
+    célula passa a corresponder a uma profundidade que o solver trata como uma só."""
+    from leaklab.gto_utils import STACK_BUCKETS
+    partes = []
+    for lo, hi, label in STACK_BUCKETS:
+        cond = f"{col} >= {lo}" if hi == float('inf') else f"{col} >= {lo} AND {col} < {hi}"
+        partes.append(f"WHEN {cond} THEN '{label}'")
+    return "CASE " + " ".join(partes) + " END"
+
+
+def get_evolution_report(user_id: int, limite_torneios: int = 40) -> dict:
+    """Matéria-prima do relatório de evolução: custo, não acurácia.
+
+    A separação que estrutura tudo: **bb perdidos ranqueia** (no que mexer agora) e **taxa de erro
+    valida** (melhorou?). São perguntas diferentes e medidas diferentes — errar 29% de um spot que
+    custa 0,08bb importa menos que errar 6% de um que custa 4bb, e um relatório ordenado por
+    frequência manda o jogador para o lugar errado.
+
+    Fora da conta, dos dois lados: a zona de ICM (`icm_pressure='high'`), porque o gabarito é
+    chipEV puro e o EV perdido medido ali não descreve a decisão. Mesmo critério da validação.
+    """
+    if not user_id:
+        return {}
+    bucket = _stack_bucket_case()
+    base = ("FROM decisions d JOIN tournaments t ON t.id = d.tournament_id "
+            "WHERE t.user_id = ? AND d.gto_label IS NOT NULL AND d.gto_label <> '' "
+            "AND COALESCE(d.icm_pressure,'') <> ?")
+    args = [user_id, _ICM_EXCLUDED]
+    conn = get_conn()
+    try:
+        # ── linha do tempo: custo por torneio, na ordem em que entraram ──────────────────
+        linhas = _fetchall(conn, _adapt(
+            "SELECT t.id AS tid, t.tournament_id AS ext, t.imported_at AS imported_at, "
+            "       SUM(COALESCE(d.ev_loss_bb,0)) AS bb, COUNT(*) AS n "
+            + base + " GROUP BY t.id, t.tournament_id, t.imported_at "
+            "ORDER BY t.imported_at DESC LIMIT ?"), tuple(args + [limite_torneios]))
+        timeline = [{
+            'tournament_id': r['tid'], 'ext': r['ext'], 'imported_at': str(r['imported_at']),
+            'bb': round(float(r['bb'] or 0), 2), 'n': int(r['n'] or 0),
+        } for r in reversed(linhas)]
+
+        # ── resumo: metade recente × metade anterior ────────────────────────────────────
+        # Meio a meio em vez de "últimos 10": com poucos torneios um corte fixo compara 10 com 2
+        # e a variação vira ruído de amostra apresentado como tendência.
+        resumo = {'n_torneios': len(timeline)}
+        if timeline:
+            meio = len(timeline) // 2
+            recente, antigo = timeline[meio:], timeline[:meio]
+            med = lambda xs: round(sum(x['bb'] for x in xs) / len(xs), 2) if xs else None
+            resumo['bb_por_torneio'] = med(recente)
+            resumo['anterior'] = med(antigo)
+            if resumo['anterior'] is not None and resumo['bb_por_torneio'] is not None:
+                resumo['delta'] = round(resumo['bb_por_torneio'] - resumo['anterior'], 2)
+
+        # ── os spots mais caros: a cauda pesada, que a média esconde ─────────────────────
+        caros = _fetchall(conn, _adapt(
+            "SELECT t.tournament_id AS ext, d.hand_id AS hand_id, d.street AS street, "
+            "       d.position AS position, d.vs_position AS vs_position, d.stack_bb AS stack_bb, "
+            "       d.action_taken AS action_taken, d.best_action AS best_action, "
+            "       d.gto_label AS gto_label, COALESCE(d.ev_loss_bb,0) AS ev "
+            + base + " AND COALESCE(d.ev_loss_bb,0) > 0 "
+            "ORDER BY COALESCE(d.ev_loss_bb,0) DESC LIMIT 5"), tuple(args))
+        top_spots = [{
+            'ext': r['ext'], 'hand_id': r['hand_id'], 'street': r['street'],
+            'position': r['position'], 'vs_position': r['vs_position'],
+            'stack_bb': round(float(r['stack_bb'] or 0), 1),
+            'action': r['action_taken'], 'best_action': r['best_action'],
+            'gto_label': r['gto_label'], 'ev_loss_bb': round(float(r['ev'] or 0), 2),
+        } for r in caros]
+
+        # ── matriz posição × profundidade ───────────────────────────────────────────────
+        # bb por 100 decisões (não total): sem normalizar, a célula mais escura seria só a que você
+        # mais jogou.
+        cells = _fetchall(conn, _adapt(
+            f"SELECT d.position AS pos, {bucket} AS bucket, COUNT(*) AS n, "
+            "       SUM(COALESCE(d.ev_loss_bb,0)) AS bb "
+            + base + " AND d.position IS NOT NULL AND d.position <> '' AND d.stack_bb IS NOT NULL "
+            f"GROUP BY d.position, {bucket}"), tuple(args))
+        matriz = [{
+            'position': r['pos'], 'bucket': r['bucket'], 'n': int(r['n'] or 0),
+            'bb_100': round(float(r['bb'] or 0) / int(r['n']) * 100, 1) if int(r['n'] or 0) else None,
+        } for r in cells if r['bucket']]
+
+        return {'resumo': resumo, 'timeline': timeline, 'top_spots': top_spots, 'matriz': matriz}
+    finally:
+        conn.close()
+
+
 def get_training_proof(user_id: int) -> list:
     """Fase 4 "Provar": por categoria treinada, compara a aderência GTO real ANTES (congelada no
     baseline) × DEPOIS (torneios importados após o baseline). Híbrido: `snapshot` = último torneio

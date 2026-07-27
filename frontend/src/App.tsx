@@ -31,6 +31,7 @@ import PublicCoachProfile from "./pages/PublicCoachProfile.tsx";
 import AdminDashboard from "./pages/admin/AdminDashboard.tsx";
 import GhostTable from "./pages/GhostTable.tsx";
 import Training from "./pages/Training.tsx";
+import Evolution from "./pages/Evolution.tsx";
 import Academy from "./pages/Academy.tsx";
 import AcademyMath from "./pages/AcademyMath.tsx";
 import AcademyBoardStrength from "./pages/AcademyBoardStrength.tsx";
@@ -304,6 +305,7 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
+            <Route path="/evolucao" element={<ProtectedRoute><Evolution /></ProtectedRoute>} />
             <Route path="/academy" element={<ProtectedRoute><Academy /></ProtectedRoute>} />
             <Route path="/academy/math" element={<ProtectedRoute><AcademyMath /></ProtectedRoute>} />
             <Route path="/academy/math/intermediate" element={<ProtectedRoute><AcademyMathIntermediate /></ProtectedRoute>} />

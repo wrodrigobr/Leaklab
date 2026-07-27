@@ -1478,6 +1478,25 @@ export const training = {
   dailyStatus: () => request<{ lesson_pending: boolean }>(`/player/training/daily-status?tz_offset=${tzOffsetMinutes()}`),
 };
 
+/** Relatório de evolução — ranqueia por CUSTO (bb perdidos). A validação estatística
+ *  ("melhorou?") vem de `training.proof`, que mede taxa de erro. Perguntas diferentes,
+ *  medidas diferentes: errar muito num spot barato importa menos que errar pouco num caro. */
+export interface EvolutionSpot {
+  ext: string; hand_id: string; street: string;
+  position: string | null; vs_position: string | null; stack_bb: number;
+  action: string; best_action: string | null; gto_label: string | null; ev_loss_bb: number;
+}
+export interface EvolutionReport {
+  resumo: { n_torneios: number; bb_por_torneio?: number | null; anterior?: number | null; delta?: number };
+  timeline: { tournament_id: number; ext: string; imported_at: string; bb: number; n: number }[];
+  top_spots: EvolutionSpot[];
+  matriz: { position: string; bucket: string; n: number; bb_100: number | null }[];
+}
+
+export const evolution = {
+  report: () => request<EvolutionReport>("/player/evolution"),
+};
+
 export const sparring = {
   hand: (hand_id?: string, tournament_id?: number, exclude_hand_ids?: string[]) => {
     const q = new URLSearchParams();

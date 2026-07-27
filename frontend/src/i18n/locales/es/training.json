@@ -127,7 +127,16 @@
     "errorBefore": "Error antes",
     "errorAfter": "Error después",
     "needHands": "Faltan {{n}} decisiones de esta situación en tus torneos para el veredicto.",
-    "needBaseline": "Aún no hay historial suficiente antes del entrenamiento para comparar."
+    "needBaseline": "Aún no hay historial suficiente antes del entrenamiento para comparar.",
+    "seeReport": "Ver informe completo",
+    "reopened": "Un leak volvió a aparecer en tu juego y se reabrió para entrenamiento.",
+    "reopened_plural": "{{count}} leaks volvieron a aparecer en tu juego y se reabrieron para entrenamiento.",
+    "count": {
+      "provados": "Probados en el juego",
+      "reopened": "Reabiertos",
+      "validating": "En validación",
+      "noSample": "Sin muestra aún"
+    }
   },
   "challenge": {
     "title": "Desafío del Día",

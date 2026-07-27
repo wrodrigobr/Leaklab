@@ -1,0 +1,27 @@
+{
+  "eyebrow": "Informe",
+  "title": "Tu evolución",
+  "subtitle": "Dónde mejoraste, dónde empeoraste, y cuánto costó en bb.",
+  "empty": "Aún no hay torneos con decisiones evaluadas. Importa tus manos y el informe empieza.",
+  "perTournament": "bb / torneo",
+  "vsPrevious": "vs mitad anterior",
+  "heroHint": "Promedio de tus {{n}} torneos más recientes, contra la mitad anterior. La burbuja y la mesa final quedan fuera.",
+  "costly": {
+    "title": "Los spots que más costaron",
+    "subtitle": "En torneo, pocas manos deciden el resultado. Estas son las tuyas. Haz clic para revisarlas.",
+    "played": "Jugaste {{action}} — la referencia indicaba {{best}}",
+    "open": "ver mano"
+  },
+  "matrix": {
+    "title": "Posición × profundidad de stack",
+    "subtitle": "La misma apertura es otro juego a 12bb y a 50bb. Una celda vacía significa sin muestra, no acierto.",
+    "legend": "bb perdidos por 100 decisiones · número menor = decisiones medidas",
+    "empty": "—"
+  },
+  "proof": {
+    "title": "Antes y después del entrenamiento",
+    "subtitle": "Aquí la medida es la tasa de error, no el costo: es la que distingue mejora de suerte.",
+    "disclaimer": "El veredicto solo aparece cuando la diferencia resiste el intervalo de confianza, y el \"antes\" se corrige para no inflar la mejora. Compara dos períodos; no prueba que el entrenamiento causó el cambio."
+  },
+  "backToTraining": "Volver al entrenamiento"
+}

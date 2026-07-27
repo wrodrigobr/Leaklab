@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowRight, CheckCircle2, Dumbbell, GraduationCap, RotateCw, Target, Award, Flame, Star, Trophy, Lock, Map, Play, TrendingUp, TrendingDown, Minus, Sparkles, Medal, Gem, Compass, Crown, Info, Repeat, Zap, Rocket, type LucideIcon } from "lucide-react";
+import { ArrowRight, CheckCircle2, Dumbbell, GraduationCap, RotateCw, Target, Award, Flame, Star, Trophy, Lock, Map, Play, TrendingUp, TrendingDown, Sparkles, Medal, Gem, Compass, Crown, Info, Repeat, Zap, Rocket, type LucideIcon } from "lucide-react";
 import { HudLayout } from "@/components/hud/HudLayout";
 import { training, progression } from "@/lib/api";
 import { DailyChallengeCard } from "@/components/training/DailyChallengeCard";
@@ -250,56 +250,67 @@ export default function Training() {
           </div>
         )}
 
-        {/* ── COMPROVAR — o VEREDITO estatístico, não o delta bruto ──
-            Esta seção mostrava `delta` com seta verde/vermelha: aderência antes×depois sem
-            intervalo de confiança. Com 14 mãos "62% → 71%" não significa nada, e o Leak Trainer,
-            sobre o MESMO leak, já dizia "as mãos ainda não distinguem melhora de sorte". Duas
-            telas em contradição. Agora ambas leem `validacao` (leaklab/validation.py). */}
-        {proof.length > 0 && (
-          <div className="rounded-2xl border border-border bg-card/40 p-5">
-            <h2 className="mb-1 flex items-center gap-2 font-heading text-base font-bold text-foreground">
-              <TrendingUp className="size-4 text-primary" aria-hidden /> {t("proof.title")}
-            </h2>
-            <p className="mb-3 text-[11px] leading-snug text-muted-foreground">{t("proof.subtitle")}</p>
-            <div className="space-y-2">
-              {proof.slice(0, 6).map((p) => {
-                const v = p.validacao;
-                const melhorou = v?.veredito === "melhorou";
-                const piorou   = v?.veredito === "piorou";
-                const VIcon = melhorou ? TrendingUp : piorou ? TrendingDown : Minus;
-                const vColor = melhorou ? "text-emerald-400" : piorou ? "text-red-400" : "text-muted-foreground";
-                return (
-                  <div key={p.category_key} className="rounded-xl bg-background/60 p-3 ring-1 ring-border">
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="truncate text-[12px] font-bold text-foreground">{skillLabel(p.category_key)}</span>
-                      <span className={cn("flex shrink-0 items-center gap-1 font-mono text-[10px] font-bold uppercase", vColor)}>
-                        <VIcon className="size-3.5" aria-hidden />
-                        {v ? ta(`leakTrainer.verdict.${v.veredito}`, { defaultValue: v.label }) : t("proof.noVerdict")}
-                      </span>
+        {/* ── COMPROVAR — placar, não lista ────────────────────────────────────────────
+            Antes isto renderizava `proof.slice(0, 6)` como cards. Três defeitos que a saída de
+            produção expôs (60 famílias no banco de um jogador real):
+
+            1. cortava em 6 SEM dizer que cortou, e a ordem não era por relevância — as seis
+               visíveis podiam ser justamente as sem veredito;
+            2. mostrava DUPLICATAS como leaks distintos: o filtro de categoria ignora o stack de
+               propósito, então `rfi:BTN::14/::20/::50` medem a MESMA população e apareciam como
+               três leaks de botão onde existe um;
+            3. enterrava a única notícia urgente — leak REABERTO por regressão tinha o mesmo peso
+               visual de "sem amostra".
+
+            A tela de treino é superfície de AÇÃO ("o que faço agora"). O detalhe é superfície de
+            reflexão e mora no relatório. Aqui fica o placar e a porta de entrada — e a regressão,
+            que é a única coisa aqui que exige reação imediata, sobe como alerta. */}
+        {proof.length > 0 && (() => {
+          const verdicts = proof.map((p) => p.validacao?.veredito);
+          const provados  = verdicts.filter((v) => v === "melhorou").length;
+          const reabertos = verdicts.filter((v) => v === "piorou").length;
+          const emValidacao = verdicts.filter((v) => v === "sem_mudanca").length;
+          const semAmostra  = proof.length - provados - reabertos - emValidacao;
+          return (
+            <div className="rounded-2xl border border-border bg-card/40 p-5">
+              <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                <h2 className="flex items-center gap-2 font-heading text-base font-bold text-foreground">
+                  <TrendingUp className="size-4 text-primary" aria-hidden /> {t("proof.title")}
+                </h2>
+                <Link to="/evolucao"
+                  className="flex items-center gap-1 text-[11px] font-bold text-primary hover:underline">
+                  {t("proof.seeReport")} <ArrowRight className="size-3" aria-hidden />
+                </Link>
+              </div>
+
+              {reabertos > 0 && (
+                <div className="mb-3 flex items-start gap-2 rounded-xl bg-red-500/10 p-3 ring-1 ring-red-500/30">
+                  <TrendingDown className="mt-0.5 size-4 shrink-0 text-red-400" aria-hidden />
+                  <p className="text-[12px] leading-snug text-foreground">
+                    {t("proof.reopened", { count: reabertos })}
+                  </p>
+                </div>
+              )}
+
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                {([
+                  ["provados", provados, "text-emerald-400"],
+                  ["reopened", reabertos, reabertos > 0 ? "text-red-400" : "text-muted-foreground"],
+                  ["validating", emValidacao, "text-foreground"],
+                  ["noSample", semAmostra, "text-muted-foreground"],
+                ] as const).map(([key, n, color]) => (
+                  <div key={key} className="rounded-xl bg-background/60 p-3 ring-1 ring-border">
+                    <div className={cn("font-mono text-xl font-bold tabular-nums", color)}>{n}</div>
+                    <div className="text-[11px] leading-snug text-muted-foreground">
+                      {t(`proof.count.${key}`)}
                     </div>
-                    {/* Os números só aparecem quando o veredito EXISTE. Mostrar "62% → 71%" sob
-                        um veredito de "sem amostra" faria o jogador ler a melhora mesmo assim. */}
-                    {v && v.veredito !== "sem_amostra" && v.taxa_antes != null && v.taxa_depois != null ? (
-                      <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 font-mono text-[11px]">
-                        <span className="text-muted-foreground">{t("proof.errorBefore")} {v.taxa_antes}%</span>
-                        <ArrowRight className="size-3 text-muted-foreground/50" aria-hidden />
-                        <span className="font-bold text-foreground">{t("proof.errorAfter")} {v.taxa_depois}%</span>
-                        <span className="text-muted-foreground">({v.n_depois} {t("proof.hands")})</span>
-                      </div>
-                    ) : (
-                      <p className="mt-1.5 text-[11px] leading-snug text-muted-foreground">
-                        {v?.faltam != null
-                          ? t("proof.needHands", { n: v.faltam })
-                          : t("proof.needBaseline")}
-                      </p>
-                    )}
                   </div>
-                );
-              })}
+                ))}
+              </div>
+              <p className="mt-3 text-[10px] leading-snug text-muted-foreground">{t("proof.disclaimer")}</p>
             </div>
-            <p className="mt-3 text-[10px] leading-snug text-muted-foreground">{t("proof.disclaimer")}</p>
-          </div>
-        )}
+          );
+        })()}
 
         {/* ── SEU TREINO — status/domínio/conquistas (eixo de gamificação, separado do ELO) ── */}
         {overview && (

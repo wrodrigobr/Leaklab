@@ -127,7 +127,16 @@
     "errorBefore": "Error before",
     "errorAfter": "Error after",
     "needHands": "{{n}} more decisions in this spot across your tournaments before there is a verdict.",
-    "needBaseline": "Not enough history before training to compare against."
+    "needBaseline": "Not enough history before training to compare against.",
+    "seeReport": "See full report",
+    "reopened": "A leak came back in your play and was reopened for training.",
+    "reopened_plural": "{{count}} leaks came back in your play and were reopened for training.",
+    "count": {
+      "provados": "Proven in play",
+      "reopened": "Reopened",
+      "validating": "Validating",
+      "noSample": "No sample yet"
+    }
   },
   "challenge": {
     "title": "Daily Challenge",
