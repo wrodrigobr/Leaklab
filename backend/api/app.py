@@ -9711,18 +9711,49 @@ def _mark_failed_solver_jobs_as_wizard_pending() -> int:
     return 0
 
 
+_HAND_RECHECK_SEC = 300   # cadência da re-checagem de 'solver_queued' — a do cron que ela substituiu
+
+
 def _gto_hand_worker_loop():
-    """Worker em background: processa gto_hand_requests pendentes a cada 30s.
-    A cada ciclo também varre jobs falhos do cloud solver e marca as decisões
-    correspondentes como wizard_pending para fallback automático ao GTO Wizard.
+    """Worker em background: drena `gto_hand_requests`.
+
+    DUAS cadências, e a distinção não é cosmética:
+
+      · pedido NOVO ('pending') → processa no ciclo seguinte, que é o valor de ser always-on;
+      · pedido já com o solver ('solver_queued') → re-checa só a cada `_HAND_RECHECK_SEC`.
+
+    Por que separar: a re-checagem existe para virar 'done' depois que o solver termina, e foi
+    desenhada para um cron de 5 minutos. Rodando a cada ciclo de um loop always-on, o pedido volta
+    na lista enquanto o solver não termina e é reprocessado a cada poucos segundos. E como
+    `enqueue_solver_spot` RESSUSCITA spot 'done'/'failed' para 'pending', cada volta reenfileirava
+    o mesmo spot — um spot que falha virava esteira de re-solve. Foi o que aconteceu em produção
+    assim que este worker passou a rodar lá: `req_id=8` reprocessado a cada 6 segundos.
+
+    O age-out fecha o outro lado: spot que o solver não resolve (multiway, deep, árvore rejeitada)
+    manteria o pedido queued para sempre. Passado `_GTO_STALE_HOURS`, ele é encerrado — 'sem
+    cobertura' é terminal, 'em andamento' há três dias não é.
     """
     from database.repositories import (
         get_pending_gto_hand_requests, update_gto_hand_request,
+        expire_stale_gto_hand_requests,
     )
     time.sleep(10)  # aguardar app inicializar
+    _proximo_recheck = 0.0
     while True:
         try:
-            pending = get_pending_gto_hand_requests(limit=10)
+            _agora = time.monotonic()
+            _rechecar = _agora >= _proximo_recheck
+            if _rechecar:
+                _proximo_recheck = _agora + _HAND_RECHECK_SEC
+                try:
+                    _expirados = expire_stale_gto_hand_requests()
+                    if _expirados:
+                        log.info("GTO hand worker: %d pedido(s) encerrado(s) por idade "
+                                 "(spots sem cobertura do solver)", _expirados)
+                except Exception:
+                    log.exception("GTO hand worker: falha ao expirar pedidos antigos")
+
+            pending = get_pending_gto_hand_requests(limit=10, include_queued=_rechecar)
             for req in pending:
                 log.info("GTO hand worker: processando req_id=%s hand=%s", req['id'], req['hand_id'])
                 status, err, n_done, n_queued = _process_gto_hand_request(dict(req))
@@ -9738,8 +9769,10 @@ def _gto_hand_worker_loop():
             # "sem cobertura" (gto_label NULL) — estado honesto — em vez de wizard_pending
             # eterno (que fazia o indicador "processando" mentir pra sempre).
 
-            # Intervalo adaptativo: ciclo rápido se havia pendentes, normal se fila vazia
-            time.sleep(5 if pending else 30)
+            # Ciclo rápido só quando havia trabalho NOVO. Medir por `pending` não-vazio faria o
+            # ciclo de re-checagem (que sempre traz os queued) acelerar o loop sem ter o que fazer.
+            _havia_novo = any((r.get('status') or '') == 'pending' for r in pending)
+            time.sleep(5 if _havia_novo else 30)
         except Exception:
             log.exception("GTO hand worker loop error")
             time.sleep(30)

@@ -9390,19 +9390,64 @@ def get_gto_hand_request_status(hand_id: str, user_id: int) -> Optional[dict]:
         conn.close()
 
 
-def get_pending_gto_hand_requests(limit: int = 5) -> list:
-    # Inclui 'solver_queued': depois que o drain resolve os spots, o request precisa ser RE-CHECADO
-    # pra virar 'done' — senão fica 'solver_queued' eterno (em prod o worker-loop não roda em gunicorn,
-    # só o cron do drain, que agora finaliza via este conjunto). created_at p/ o age-out de não-solváveis.
+def get_pending_gto_hand_requests(limit: int = 5, include_queued: bool = True) -> list:
+    """Pedidos a trabalhar. `include_queued` decide se entram os que já estão com o solver.
+
+    'solver_queued' entra na lista porque, depois que o solver resolve os spots, o pedido precisa
+    ser RE-CHECADO para virar 'done' — senão fica queued para sempre. Esse desenho nasceu para um
+    cron de 5 minutos, e a re-checagem é barata NESSA cadência.
+
+    Num loop always-on ela vira problema: o pedido continua queued enquanto o solver não termina,
+    então volta na lista a cada ciclo e é reprocessado a cada poucos segundos. Pior que o
+    desperdício, `enqueue_solver_spot` RESSUSCITA spot 'done'/'failed' de volta para 'pending' —
+    ou seja, cada volta reenfileirava o mesmo spot, e um spot que falha vira esteira de re-solve.
+
+    Por isso o chamador escolhe: `include_queued=False` no caminho rápido (só o que é novo) e
+    `True` de tempos em tempos, na cadência do cron original. Ver `_gto_hand_worker_loop`."""
+    estados = ('pending', 'solver_queued', 'processing') if include_queued else ('pending',)
+    marcas = ','.join('?' for _ in estados)
     conn = get_conn()
     try:
-        return _fetchall(conn, _adapt("""
+        return _fetchall(conn, _adapt(f"""
             SELECT id, tournament_id, hand_id, requested_by, status, created_at
             FROM gto_hand_requests
-            WHERE status IN ('pending', 'solver_queued', 'processing')
+            WHERE status IN ({marcas})
             ORDER BY created_at ASC
             LIMIT ?
-        """), (limit,))
+        """), (*estados, limit))
+    finally:
+        conn.close()
+
+
+def expire_stale_gto_hand_requests(hours: int = _GTO_STALE_HOURS) -> int:
+    """Encerra pedidos presos com o solver há mais de `hours`. Devolve quantos.
+
+    Sem isto, um spot que o solver não consegue resolver (multiway, deep demais, árvore rejeitada)
+    mantém o pedido em 'solver_queued' para sempre — e como a re-checagem reenfileira, ele é
+    re-solvado até o fim dos tempos, sem nunca concluir.
+
+    'sem cobertura' é um estado honesto e TERMINAL; 'em andamento' há três dias não é. Mesmo
+    princípio que aposentou o `wizard_pending`: prometer que vai concluir algo que não vai é pior
+    do que dizer que não há resposta."""
+    from datetime import datetime, timedelta
+    # Corte calculado em Python, como o resto do arquivo: `_adapt` só traduz
+    # `datetime('now','-N hours')` com o intervalo LITERAL no SQL; por parâmetro ele passaria cru
+    # e o Postgres não tem `datetime()`. (Testes rodam em SQLite, produção em PG — este é o tipo
+    # de diferença que só aparece lá.)
+    corte = (datetime.utcnow() - timedelta(hours=int(hours))).strftime('%Y-%m-%d %H:%M:%S')
+    conn = get_conn()
+    try:
+        cur = conn.execute(_adapt("""
+            UPDATE gto_hand_requests
+            SET status       = 'done',
+                processed_at = datetime('now'),
+                error_msg    = COALESCE(error_msg, 'encerrado por idade: spots sem cobertura do solver')
+            WHERE status IN ('solver_queued', 'processing')
+              AND created_at < ?
+        """), (corte,))
+        n = (cur.rowcount or 0)
+        conn.commit()
+        return max(n, 0)
     finally:
         conn.close()
 
