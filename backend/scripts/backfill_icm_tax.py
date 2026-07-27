@@ -5,8 +5,12 @@ O `icm_tax_pct` (chip% − equity ICM%) é contexto a **nível de mão** — igu
 todas as decisões da mesma mão, pois `build_mtt_context` roda uma vez por mão. Este
 script recomputa esse contexto a partir de `tournaments.raw_text` (mesmo caminho que
 o /analyze persiste: `build_mtt_context` → `context_to_dict`) e atualiza todas as
-decisões daquela mão. Só mãos de mesa final (2..9 jogadores) produzem valor; as
-demais ficam NULL (e são ignoradas pelo detector de leak ICM).
+decisões daquela mão.
+
+Só produzem valor os torneios PROVADAMENTE de mesa única (`field_size` conhecido e ≤ 9), porque
+o ICM real exige que a mesa seja o torneio. Os demais ficam NULL e são ignorados pelo detector de
+leak ICM. Antes de 2026-07-27 o critério era "2..9 jogadores na mesa", o que num MTT 9-max é toda
+mão — ver `scripts/clear_bogus_icm_tax.py`, que limpa o que foi gravado sob aquele critério.
 
 Idempotente: só toca linhas com `icm_tax_pct IS NULL`.
 
@@ -33,8 +37,12 @@ def backfill(dry_run: bool = False, limit: int = 0):
         except Exception:
             pass
 
+        # `field_size` entra na consulta porque é ele que AUTORIZA o cálculo: ICM real só vale
+        # quando a mesa É o torneio. Sem isso, este script repõe exatamente o número fabricado que
+        # `clear_bogus_icm_tax.py` acabou de limpar.
         q = """
-            SELECT DISTINCT d.tournament_id AS tid, t.raw_text AS raw_text
+            SELECT DISTINCT d.tournament_id AS tid, t.raw_text AS raw_text,
+                   t.field_size AS field_size
             FROM decisions d
             JOIN tournaments t ON t.id = d.tournament_id
             WHERE d.icm_tax_pct IS NULL AND t.raw_text IS NOT NULL
@@ -49,6 +57,7 @@ def backfill(dry_run: bool = False, limit: int = 0):
         for row in rows:
             tid     = row["tid"]
             raw_txt = row["raw_text"]
+            fsize   = row["field_size"]
             try:
                 hands = parse_hand_history(raw_txt)
             except Exception as e:
@@ -59,12 +68,12 @@ def backfill(dry_run: bool = False, limit: int = 0):
             for h in hands:
                 total_hands += 1
                 try:
-                    ctx = context_to_dict(build_mtt_context(h))
+                    ctx = context_to_dict(build_mtt_context(h, field_size=fsize))
                 except Exception:
                     continue
                 tax = ctx.get("icmTaxPct")
                 if tax is None:
-                    continue  # mão fora da mesa final → permanece NULL
+                    continue  # torneio não provadamente de mesa única → permanece NULL
                 ft_hands += 1
                 if not dry_run:
                     cur = conn.execute(
