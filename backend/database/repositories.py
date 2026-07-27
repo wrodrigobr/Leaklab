@@ -1346,13 +1346,39 @@ def get_pressure_profile(user_id: int, days: int = 90) -> dict:
         conn.close()
 
 
+# ── Drift de confiança: parâmetros ───────────────────────────────────────────────────────────
+# A versão original marcava toda sessão 30% acima da MÉDIA da própria janela. Três defeitos
+# encadeados faziam o alerta disparar para qualquer jogador:
+#   1. a média inclui as sessões ruins que estamos tentando detectar — elas puxam o baseline
+#      pra cima e, ainda assim, ficam acima dele (medido no banco: 2 de 17 sessões marcadas
+#      num jogador perfeitamente uniforme);
+#   2. limiar puramente RELATIVO: 30% acima de um número pequeno é ruído, não tilt;
+#   3. bastava a sessão ter 3 decisões — média de 3 mãos não é média de nada.
+# Um aviso que aparece sempre treina o jogador a ignorar avisos, e aí o dia em que ele importa
+# de verdade também passa batido.
+DRIFT_MIN_SESSIONS  = 5      # sem janela mínima não existe baseline com que comparar
+DRIFT_MIN_DECISIONS = 10     # abaixo disso a média da sessão é ruído
+DRIFT_REL           = 1.50   # 50% acima da MEDIANA (robusta ao outlier que queremos achar)
+DRIFT_MIN_ABS       = 0.02   # piso ABSOLUTO de degradação — mata o "30% de quase nada"
+DRIFT_MAX_SHARE     = 0.40   # se quase tudo é "anômalo", o anômalo é o baseline, não a sessão
+
+
 def get_confidence_drift(user_id: int, days: int = 30) -> dict:
-    """PERF-005 — Detecta sessões com degradação técnica (possível tilt)."""
+    """PERF-005 — Detecta sessões com degradação técnica (possível tilt).
+
+    Uma sessão só é marcada se passar nas TRÊS peneiras: amostra suficiente, distância
+    relativa da mediana e distância absoluta. E o conjunto todo é descartado quando marca
+    demais — ver DRIFT_MAX_SHARE.
+    """
     from datetime import datetime, timedelta
+    import statistics as _st
     since = (datetime.utcnow() - timedelta(days=days)).strftime('%Y-%m-%d %H:%M:%S')
     conn = get_conn()
     try:
-        # Per-tournament avg_score
+        vazio = {'drift_detected': False, 'affected_sessions': 0, 'severity': None,
+                 'sessions': [], 'latest_flagged_id': 0}
+        # Per-tournament avg_score. O mínimo de decisões subiu de 3 para DRIFT_MIN_DECISIONS:
+        # uma sessão de 3 mãos vira "tilt" com um único spot ruim.
         tourn_rows = conn.execute(_adapt("""
             SELECT
                 t.id              AS tournament_id,
@@ -1364,20 +1390,24 @@ def get_confidence_drift(user_id: int, days: int = 30) -> dict:
             JOIN tournaments t ON t.id = d.tournament_id
             WHERE t.user_id = ? AND t.imported_at >= ?
             GROUP BY t.id
-            HAVING COUNT(d.id) >= 3
+            HAVING COUNT(d.id) >= ?
             ORDER BY t.played_at DESC
-        """), (user_id, since)).fetchall()
+        """), (user_id, since, DRIFT_MIN_DECISIONS)).fetchall()
 
         if not tourn_rows:
-            return {'drift_detected': False, 'affected_sessions': 0, 'severity': None, 'sessions': []}
+            return dict(vazio)
 
         # cast Decimal→float (Postgres AVG vem Decimal; float*Decimal/jsonify quebram)
         scores = [float(r['avg_score']) for r in tourn_rows if r['avg_score'] is not None]
-        if not scores:
-            return {'drift_detected': False, 'affected_sessions': 0, 'severity': None, 'sessions': []}
+        # Sem sessões suficientes não há do que tirar baseline: calar é mais honesto que chutar.
+        if len(scores) < DRIFT_MIN_SESSIONS:
+            return dict(vazio)
 
-        baseline = sum(scores) / len(scores)
-        threshold = baseline * 1.30
+        # MEDIANA, não média: a média é puxada pelas próprias sessões que queremos detectar.
+        baseline = _st.median(scores)
+        if baseline <= 0:
+            return dict(vazio)
+        threshold = baseline * DRIFT_REL
 
         flagged = [
             {
@@ -1385,11 +1415,18 @@ def get_confidence_drift(user_id: int, days: int = 30) -> dict:
                 'name':          r['name'],
                 'played_at':     r['played_at'],
                 'avg_score':     round(float(r['avg_score']), 4),
-                'delta_pct':     round((float(r['avg_score']) - baseline) / baseline * 100, 1) if baseline else 0,
+                'delta_pct':     round((float(r['avg_score']) - baseline) / baseline * 100, 1),
             }
             for r in tourn_rows
-            if r['avg_score'] is not None and r['avg_score'] > threshold
+            if r['avg_score'] is not None
+            and float(r['avg_score']) > threshold                      # distância relativa
+            and float(r['avg_score']) - baseline >= DRIFT_MIN_ABS      # distância absoluta
         ]
+
+        # Marcar metade da janela não é detectar tilt: é dizer que o jogador é irregular, o que
+        # o alerta de "possível tilt ou fadiga" não descreve. Nesse caso não afirmamos nada.
+        if len(flagged) > len(scores) * DRIFT_MAX_SHARE:
+            return dict(vazio)
 
         n = len(flagged)
         severity = None
