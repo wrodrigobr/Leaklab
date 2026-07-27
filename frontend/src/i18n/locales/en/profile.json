@@ -95,7 +95,7 @@
       "mid": "Mid ($30 – $200)",
       "high": "High (> $200)"
     },
-    "phone": "Phone / WhatsApp",
+    "phone": "Contact phone",
     "phonePlaceholder": "+1 555 000 0000",
     "completion": "{{n}}/5 core fields filled",
     "completionDone": "Profile complete",

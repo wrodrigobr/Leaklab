@@ -338,7 +338,7 @@ export default function PublicCoachProfile() {
                 {c.contact_link && (
                   <a href={c.contact_link} target="_blank" rel="noopener noreferrer"
                     className="flex items-center gap-2 text-xs text-primary hover:underline">
-                    <ExternalLink className="size-3.5" /> Contato / WhatsApp
+                    <ExternalLink className="size-3.5" /> {t("profile.contact")}
                   </a>
                 )}
                 <div className="flex gap-3 pt-1">

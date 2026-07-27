@@ -7639,49 +7639,15 @@ def coach_finance_history():
     return jsonify({'payments': history})
 
 
-# ── WhatsApp Webhook — BACK-016 ───────────────────────────────────────────────
-
-WA_PHONE_NUMBER_ID = os.environ.get('WHATSAPP_PHONE_NUMBER_ID', '')
-WA_VERIFY_TOKEN   = os.environ.get('WHATSAPP_VERIFY_TOKEN', 'leaklab_wh_verify_2026')
-
-
-@app.route('/whatsapp/webhook', methods=['GET'])
-def whatsapp_verify():
-    """Verificação do webhook pelo Meta Developer Portal."""
-    mode      = request.args.get('hub.mode')
-    token     = request.args.get('hub.verify_token')
-    challenge = request.args.get('hub.challenge')
-    if mode == 'subscribe' and token == WA_VERIFY_TOKEN:
-        log.info("WhatsApp webhook verified")
-        return challenge, 200
-    return jsonify({'error': 'Forbidden'}), 403
-
-
-@app.route('/whatsapp/webhook', methods=['POST'])
-def whatsapp_webhook():
-    """Recebe eventos de mensagem da Meta e despacha para o bot."""
-    from leaklab.whatsapp_bot import handle_incoming
-    try:
-        body = request.get_json(force=True, silent=True) or {}
-        for entry in body.get('entry', []):
-            for change in entry.get('changes', []):
-                value = change.get('value', {})
-                phone_number_id = value.get('metadata', {}).get('phone_number_id', WA_PHONE_NUMBER_ID)
-                for msg in value.get('messages', []):
-                    from_number  = msg.get('from', '')
-                    message_text = (msg.get('text') or {}).get('body', '')
-                    if from_number and message_text:
-                        handle_incoming(phone_number_id, from_number, message_text)
-    except Exception as exc:
-        log.error("WhatsApp webhook error: %s", exc)
-    # Meta exige 200 imediato — sempre
-    return jsonify({'status': 'ok'}), 200
-
-
 @app.route('/profile/phone', methods=['PATCH'])
 @require_auth
 def update_phone():
-    """Vincula/desvincula número de WhatsApp ao perfil do usuário logado."""
+    """Atualiza o telefone de contato do perfil (opcional, único por usuário).
+
+    A coluna se chama `whatsapp_phone` por herança do bot de drills (BACK-016), removido em
+    v0.45.x por nunca ter saído do rascunho. O campo continua vivo como contato simples: o
+    nome interno fica, o produto não promete nada de WhatsApp.
+    """
     data  = request.get_json(force=True, silent=True) or {}
     # data.get('phone', '') NÃO cobre {"phone": null}: a chave existe com None e o default
     # não entra → None.strip() dava 500. `or ''` normaliza null/ausente pra string vazia.

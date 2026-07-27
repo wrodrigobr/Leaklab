@@ -95,7 +95,7 @@
       "mid": "Mid ($30 – $200)",
       "high": "High (> $200)"
     },
-    "phone": "Teléfono / WhatsApp",
+    "phone": "Teléfono de contacto",
     "phonePlaceholder": "+54 11 9999-9999",
     "completion": "{{n}}/5 campos esenciales completados",
     "completionDone": "Perfil completo",
