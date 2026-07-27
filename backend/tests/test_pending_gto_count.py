@@ -108,6 +108,28 @@ def test_fila_de_outro_usuario_nao_vaza():
     print("OK  test_fila_de_outro_usuario_nao_vaza")
 
 
+def test_ninguem_mais_grava_wizard_pending():
+    """O rótulo está aposentado — e voltou a ser gravado depois de aposentado.
+
+    O fallback do GTO Wizard foi descontinuado; `_mark_failed_solver_jobs_as_wizard_pending` virou
+    no-op e existe `scripts/clear_wizard_pending.py` para limpar as linhas legadas. Mesmo assim o
+    processador de `gto_hand_requests` continuava marcando decisões como `wizard_pending` sempre
+    que o solver local não cobria o spot — recriando exatamente o que a limpeza apaga, e devolvendo
+    o "processando" eterno que motivou a aposentadoria.
+
+    Ler `wizard_pending` continua legítimo (há filtros defensivos para as linhas antigas). O que
+    não pode voltar é ESCREVER."""
+    import re, pathlib
+    raiz = pathlib.Path(__file__).resolve().parent.parent
+    alvos = list(raiz.glob('api/*.py')) + list(raiz.glob('database/*.py')) + list(raiz.glob('leaklab/*.py'))
+    escrita = re.compile(r"set\s+gto_label\s*=\s*['\"]wizard_pending", re.I)
+    ofensores = [p.name for p in alvos if escrita.search(p.read_text(encoding='utf-8'))]
+    assert not ofensores, (
+        f"{ofensores} voltou a gravar gto_label='wizard_pending'. Sem cobertura é NULL — estado "
+        f"terminal e honesto. Marcar como pendente promete uma conclusão que não existe mais.")
+    print("OK  test_ninguem_mais_grava_wizard_pending")
+
+
 if __name__ == '__main__':
     tests = [(k, v) for k, v in sorted(globals().items()) if k.startswith('test_')]
     passed = failed = 0

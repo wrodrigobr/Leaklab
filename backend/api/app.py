@@ -9665,29 +9665,33 @@ def _process_gto_hand_request(req: dict) -> tuple[str, str | None]:
                 if not already_analyzed:
                     done += 1
             else:
-                # Spot não está na base — lookup_gto enfileirou para o solver local
-                # se is_simple_spot=False (stack alto, turn/river), marcar para
-                # fallback ao GTO Wizard (processado via fallback_gto_wizard.py)
+                # Spot sem dado GTO. A pergunta que decide o destino do PEDIDO é: o solver local
+                # vai resolver isto algum dia? `is_simple_spot` já responde — e o código antigo
+                # ignorava a resposta, contando como "enfileirado" mesmo o que ele acabara de
+                # classificar como fora do alcance. O pedido ficava 'solver_queued' esperando algo
+                # que ninguém ia fazer (sintoma em produção: req_id=8 parado com a fila do solver
+                # VAZIA — não havia nada em andamento, e não haveria).
+                #
+                # Sem cobertura é TERMINAL e honesto: `gto_label` fica NULL e o card mostra o
+                # motivo real. Só conta como enfileirado o que o solver de fato vai pegar.
+                #
+                # Removido daqui o UPDATE que marcava a decisão para o fallback do GTO Wizard: ele
+                # foi descontinuado, `_mark_failed_solver_jobs_as_wizard_pending` já é no-op pelo
+                # mesmo motivo, e existe um script (`clear_wizard_pending.py`) para limpar as
+                # linhas legadas — este caminho recriava exatamente o que ele apaga.
                 _facing2  = float(db_dec.get('facing_bet', 0) or 0)
                 _stack2   = float(spot.get('effectiveStackBb') or ctx.get('heroStackBb') or 20)
                 _street2  = di.get('street', 'flop')
+                _solvavel = True
                 try:
                     from leaklab.gto_solver import is_simple_spot as _is_simple
-                    _board2 = spot.get('board', [])
-                    if not _is_simple(_street2, _board2, _stack2, _facing2):
-                        # Solver local não vai resolver → marca para fallback wizard
-                        conn_flag = get_conn()
-                        try:
-                            conn_flag.execute(_adapt("""
-                                UPDATE decisions SET gto_label = 'wizard_pending'
-                                WHERE id = ?
-                            """), (db_dec['id'],))
-                            conn_flag.commit()
-                        finally:
-                            conn_flag.close()
+                    _solvavel = bool(_is_simple(_street2, spot.get('board', []), _stack2, _facing2))
                 except Exception:
-                    pass
-                queued += 1
+                    # Na dúvida, conta como enfileirado: o age-out fecha depois. Melhor esperar
+                    # por algo solvável do que declarar sem cobertura o que talvez tivesse.
+                    log.exception("GTO hand worker: is_simple_spot falhou (dec_id=%s)", db_dec.get('id'))
+                if _solvavel:
+                    queued += 1
 
         # ENQUANTO HOUVER spot enfileirado (queued>0), o request NÃO está pronto — fica 'solver_queued'
         # mesmo que tenha resolvido alguns agora (done>0). O 'and done==0' antigo marcava 'done'
