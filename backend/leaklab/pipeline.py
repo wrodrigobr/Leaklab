@@ -153,16 +153,19 @@ def build_decision_input(state: HandState, hand: 'ParsedHand | None' = None) -> 
     }
 
 
-def build_decision_inputs_for_hand(hand: ParsedHand) -> List[dict]:
+def build_decision_inputs_for_hand(hand: ParsedHand, field_size: int | None = None) -> List[dict]:
     """
     Retorna lista de decision inputs — um por cada decisão do hero na mão.
     Injeta contexto MTT real (M ratio, stage, ICM pressure) em cada decisão.
+
+    `field_size` (inscritos no torneio, vindo do resumo) habilita o ICM contínuo quando o torneio
+    é de mesa única. Sem ele, só o bucket heurístico — ver `mtt_context._ICM_MAX_PLAYERS`.
     """
     states = extract_decision_points(hand)
 
     # Calcular MTT context uma vez por mão e injetar em todos os estados
     try:
-        mtt = build_mtt_context(hand)
+        mtt = build_mtt_context(hand, field_size=field_size)
         ctx = context_to_dict(mtt)
     except Exception:
         ctx = {'tournamentStage': 'unknown', 'icmPressure': 'low',

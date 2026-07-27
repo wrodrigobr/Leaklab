@@ -867,7 +867,8 @@ def _analyze_impl():
             return jsonify(payload), status
         return jsonify({'error': 'Nenhuma mão encontrada'}), 422
 
-    results, hand_results, errors = _analyze_hands(hands)
+    results, hand_results, errors = _analyze_hands(
+        hands, field_size=_field_size_for(g.user_id, hands[0].tournament_id))
     if not results:
         return jsonify({'error': 'Nenhuma decisão encontrada'}), 422
 
@@ -3875,12 +3876,25 @@ def _detect_hand_won(raw_text: str, hero: str) -> bool | None:
     return bool(re.search(r'\b' + re.escape(hero) + r'\s+collected\b', raw_text))
 
 
-def _analyze_hands(hands):
+def _field_size_for(user_id, tournament_id):
+    """Inscritos no torneio, se já soubermos. Só o resumo (arquivo TS) traz esse número — o hand
+    history não. Quando o resumo ainda não subiu, devolve None e o ICM contínuo fica de fora
+    (ver `mtt_context._ICM_MAX_PLAYERS`): re-analisar depois do TS o habilita."""
+    if not tournament_id:
+        return None
+    try:
+        t = get_tournament(user_id, str(tournament_id))
+        return (t or {}).get('field_size')
+    except Exception:
+        return None
+
+
+def _analyze_hands(hands, field_size=None):
     results, hand_results, errors = [], {}, []
     for hand in hands:
         try:
-            mtt    = build_mtt_context(hand)
-            inputs = build_decision_inputs_for_hand(hand)
+            mtt    = build_mtt_context(hand, field_size=field_size)
+            inputs = build_decision_inputs_for_hand(hand, field_size=field_size)
             hero   = hand.hero or 'Hero'
             sd_result = _detect_showdown(hand.raw_text or '', hero)
             hero_won  = _detect_hand_won(hand.raw_text or '', hero)

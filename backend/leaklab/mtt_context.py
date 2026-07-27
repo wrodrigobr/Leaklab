@@ -20,7 +20,20 @@ from .icm import hero_icm_equity
 _SEAT_STACK_PSGG_RE = re.compile(r'^Seat \d+: (.+?) \(([0-9.]+) in chips\)', re.MULTILINE)
 _SEAT_STACK_PG_RE   = re.compile(r'^Seat \d+: (.+?) \(\s*\$?([0-9,]+(?:\.[0-9]+)?)\s*\)\s*$', re.MULTILINE)
 
-# Só calcula ICM em estágios de mesa final (custo combinatório + relevância).
+# ICM real exige que A MESA SEJA O TORNEIO — só aí os stacks visíveis representam todo o prize
+# pool. Esta constante é o tamanho máximo de um torneio de mesa única.
+#
+# BUG QUE ORIGINOU (2026-07-27, relatado pelo usuário): o gate era `active_players <= 9`, e
+# `active_players` conta ASSENTOS NA MESA. Num MTT 9-max isso é verdade em toda mão, então o ICM
+# era calculado sempre — e o card anunciava "Mesa final: stacks equilibrados" no nível 3 de
+# blinds, com centenas de jogadores vivos. Não era só a frase: `hero_icm_equity` calculava equity
+# de premiação tratando aqueles 8 stacks como o torneio inteiro, e esse número entrava no ajuste
+# de pressão da nota (`calc_pressure_adjustment`) em toda mão.
+#
+# O hand history NÃO informa quantos jogadores restam no torneio, e o histórico do hero só enxerga
+# a própria mesa — não há como inferir mesa final de MTT a partir de uma mão. Por isso o gate
+# passou a exigir prova externa: `field_size` (vem do resumo do torneio). Sem prova, sem ICM real;
+# o bucket heurístico `icm_pressure` continua valendo e não afirma nada falso.
 _ICM_MAX_PLAYERS = 9
 
 # ── Regex ─────────────────────────────────────────────────────────────────────
@@ -79,8 +92,12 @@ class MTTContext:
     icm_tax_pct:    Optional[float] = None   # chip% − equity% (prêmio de risco/sobrevivência)
 
 
-def build_mtt_context(hand: ParsedHand) -> MTTContext:
-    """Extrai contexto MTT completo de uma mão."""
+def build_mtt_context(hand: ParsedHand, field_size: int | None = None) -> MTTContext:
+    """Extrai contexto MTT completo de uma mão.
+
+    `field_size` = número de inscritos no torneio (vem do resumo, não do hand history). É o que
+    autoriza o cálculo de ICM real: só quando a mesa É o torneio os stacks visíveis representam
+    todo o prize pool. Sem esse dado, o ICM contínuo fica de fora — ver `_ICM_MAX_PLAYERS`."""
     raw = hand.raw_text
     hero = hand.hero or ''
 
@@ -156,9 +173,13 @@ def build_mtt_context(hand: ParsedHand) -> MTTContext:
     # Artigo GW: bubble factors menores para covering players em PKO.
     icm_pressure = _detect_icm_pressure(m_ratio, active_players, is_pko=is_pko)
 
-    # ── ICM equity real (mesa final) ─────────────────────────────────────────
+    # ── ICM equity real (só quando a mesa É o torneio) ───────────────────────
+    # `field_size` conhecido e ≤ mesa única é a única prova que temos de que os stacks visíveis
+    # são o torneio todo. `active_players` sozinho NÃO serve: são assentos da mesa, e num MTT
+    # 9-max isso vale em toda mão (ver o comentário de _ICM_MAX_PLAYERS).
     icm_equity_pct = icm_chip_pct = icm_tax_pct = None
-    if 2 <= active_players <= _ICM_MAX_PLAYERS:
+    _mesa_e_o_torneio = field_size is not None and 2 <= int(field_size) <= _ICM_MAX_PLAYERS
+    if _mesa_e_o_torneio and 2 <= active_players <= _ICM_MAX_PLAYERS:
         stacks, hero_idx = _extract_all_stacks(raw, hero)
         if hero_idx is not None and len(stacks) >= 2 and all(s > 0 for s in stacks):
             eq = hero_icm_equity(stacks, hero_idx)

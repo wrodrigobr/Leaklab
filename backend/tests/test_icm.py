@@ -64,25 +64,85 @@ def test_hero_icm_equity_guards():
     print("OK  test_hero_icm_equity_guards")
 
 
+_STT_FIELD = 4   # torneio de mesa única: a mesa É o torneio, então o ICM vale
+
+
 def test_mtt_context_icm_final_table():
-    """Na mesa final (PartyPoker STT), o ICM é calculado e exposto no contexto."""
+    """Em torneio de MESA ÚNICA (PartyPoker STT), o ICM é calculado e exposto no contexto.
+
+    `field_size` agora é obrigatório para isso: é a única prova de que os stacks visíveis são o
+    torneio inteiro. Sem ela o ICM contínuo não sai — ver `test_sem_field_size_nao_ha_icm`."""
     raw = open(os.path.join(FIX, 'partypoker_tourney_stt.txt'), encoding='utf-8', errors='ignore').read()
     hands = parse_hand_history(raw)
     # 1ª mão: 4 jogadores com 500 cada → equity ≈ chip% ≈ 25%, tax ≈ 0
-    c0 = build_mtt_context(hands[0])
+    c0 = build_mtt_context(hands[0], field_size=_STT_FIELD)
     assert c0.active_players == 4
     assert c0.icm_equity_pct is not None
     assert _approx(c0.icm_chip_pct, 25.0, 0.5)
     assert _approx(c0.icm_tax_pct, 0.0, 0.5)
     # heads-up: hero chip leader → tax > 0 (paga o prêmio de risco)
-    hu = next(h for h in hands if build_mtt_context(h).active_players == 2)
-    chu = build_mtt_context(hu)
+    hu = next(h for h in hands
+              if build_mtt_context(h, field_size=_STT_FIELD).active_players == 2)
+    chu = build_mtt_context(hu, field_size=_STT_FIELD)
     assert chu.icm_equity_pct is not None and chu.icm_tax_pct > 0
     # exposto no dict + não quebrou icm_pressure heurístico
     d = context_to_dict(chu)
     assert d['icmEquityPct'] == chu.icm_equity_pct
     assert d['icmPressure'] in ('low', 'medium', 'high')
     print("OK  test_mtt_context_icm_final_table")
+
+
+def _mao_mtt(n_assentos: int, nivel: str = 'III', blinds: str = '25/50'):
+    """Mão de MTT com N assentos ocupados — o cenário do bug relatado."""
+    seats = "\n".join(f"Seat {i}: P{i} (2000 in chips)" for i in range(1, n_assentos + 1))
+    raw = (
+        f"PokerStars Hand #1: Tournament #999, Hold'em No Limit - Level {nivel} ({blinds})"
+        " - 2025/01/01 12:00:00 ET\nTable '999 1' 9-max Seat #1 is the button\n"
+        + seats + "\nDealt to P1 [Jh Ts]\n"
+    )
+    return parse_hand_history(raw)[0]
+
+
+def test_mesa_de_mtt_nao_e_mesa_final():
+    """REGRESSÃO do bug relatado: nível 3 de blinds, 8 jogadores na mesa, MTT de 500 inscritos —
+    e o card anunciava "Mesa final: stacks equilibrados".
+
+    A causa era o gate `active_players <= 9`, com `active_players` contando ASSENTOS DA MESA. Num
+    MTT 9-max isso é verdade em TODA mão, então o ICM saía sempre. Não era só a frase: a equity de
+    premiação era calculada como se aqueles 8 stacks fossem o torneio inteiro, e o número entrava
+    no ajuste da nota."""
+    c = build_mtt_context(_mao_mtt(8), field_size=500)
+    assert c.active_players == 8
+    assert c.icm_equity_pct is None and c.icm_tax_pct is None, (
+        "MTT com 8 na mesa não é mesa final — ICM real exige que a mesa SEJA o torneio")
+    print("OK  test_mesa_de_mtt_nao_e_mesa_final")
+
+
+def test_sem_field_size_nao_ha_icm():
+    """O hand history não diz quantos restam no torneio. Sem prova externa, não afirmamos."""
+    c = build_mtt_context(_mao_mtt(6))
+    assert c.icm_tax_pct is None
+    print("OK  test_sem_field_size_nao_ha_icm")
+
+
+def test_narrativa_nao_fala_em_mesa_final_sem_icm():
+    """O efeito que o usuário vê: sem ICM contínuo, a interpretação cai no bucket heurístico e
+    NÃO menciona mesa final. Era esta frase que aparecia no nível 3 de blinds."""
+    from leaklab.decision_engine_v11 import build_interpretation
+    ctx = context_to_dict(build_mtt_context(_mao_mtt(8), field_size=500))
+    assert ctx.get('icmTaxPct') is None
+    # `build_interpretation` devolve DICT. A primeira versão deste teste fazia
+    # `'Mesa final' not in texto` sobre o dict — o que checa as CHAVES e passa sempre. Ler a
+    # string certa é o que faz este teste existir.
+    texto = build_interpretation(
+        {'context': ctx, 'spot': {}, 'math': {}, 'street': 'preflop'},
+        'standard', 0.4)['strategicExplanation']
+    assert 'Mesa final' not in texto, texto
+    print("OK  test_narrativa_nao_fala_em_mesa_final_sem_icm")
+
+# O contrapeso ("o texto AINDA aparece onde deve") é `test_icm_interpretation_directional`, que
+# injeta os quatro valores de icmTaxPct e exige a frase nos três casos de mesa final. Sem ele,
+# apagar a frase de vez também passaria no teste acima.
 
 
 def test_mtt_context_no_icm_for_large_field():
