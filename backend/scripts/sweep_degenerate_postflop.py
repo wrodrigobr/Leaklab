@@ -10,11 +10,20 @@ Nós degenerados ÓRFÃOS (sem decisão que os cubra) não afetam nenhuma tela �
 
 Uso:
     python -m scripts.sweep_degenerate_postflop                 # dry-run (conta recuperáveis vs órfãos)
-    python -m scripts.sweep_degenerate_postflop --apply         # deleta+re-solva (exige GTO_SOLVER_URL)
+    python -m scripts.sweep_degenerate_postflop --apply         # TUDO + resync no fim (exige GTO_SOLVER_URL)
     python -m scripts.sweep_degenerate_postflop --apply --limit 20   # lote de N nós (roda em partes)
     python -m scripts.sweep_degenerate_postflop --apply --timeout 300  # spot pesado > default 240s
+    python -m scripts.sweep_degenerate_postflop --apply --no-resync    # sem colar os labels
 
-Depois: python -m scripts.resync_postflop_gto --apply   (cola o gto_label nas decisões)
+O `--apply` já roda o `resync_postflop_gto --apply` no fim: re-solvar conserta o NÓ, mas as
+decisões seguem com o gto_label antigo até colarem de novo — como passo separado, era esquecido.
+
+Cada nó leva de dezenas de segundos a alguns minutos (solve remoto). Com muitos nós isso passa
+de uma hora, então rode DESTACADO pra uma queda de SSH não matar no meio (é resumível, mas você
+perde o progresso do lote em curso):
+
+    docker compose exec -d web python -m scripts.sweep_degenerate_postflop --apply
+    docker compose logs -f web        # acompanhar
 """
 import sys, os
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
@@ -146,6 +155,8 @@ def main():
 
     solved = failed = skipped = 0
     items = list(recoverable.items())
+    import time as _time
+    _t0 = _time.time()
     for i, (hsh, p) in enumerate(items, 1):
         if limit and solved >= limit:
             print(f"\n[limit {limit} atingido — pare/continue depois; é resumível]"); break
@@ -156,14 +167,31 @@ def main():
         ok, msg = _resolve_spot(conn, p['st'], p['pos'], p['vs_pos'], p['board'],
                                 p['hero'], p['stack'], p['pot_bb'], p['facing'], hsh, timeout=timeout)
         tag = 'OK ' if ok else 'FALHA'
-        print(f"[{i}/{len(items)}] {hsh[:10]} {p['st']} {p['pos']} pot={p['pot_bb']:.2f} -> {tag} {msg}")
+        # ETA pela média corrida: o solve remoto varia MUITO por spot (dezenas de segundos a
+        # minutos), então é a única estimativa honesta. Sem ela não dá pra saber se isso sai em
+        # 10 minutos ou em 3 horas — e a decisão de deixar rodando destacado depende disso.
+        _feitos = solved + failed + 1
+        _resta = (len(items) - i) * ((_time.time() - _t0) / max(1, _feitos)) / 60
+        print(f"[{i}/{len(items)}] {hsh[:10]} {p['st']} {p['pos']} pot={p['pot_bb']:.2f} "
+              f"-> {tag} {msg}  (~{_resta:.0f} min restantes)")
         if ok:
             solved += 1
         else:
             failed += 1
 
-    print(f"\nFIM: {solved} re-solvados, {failed} falhos, {skipped} já bons (pulados). "
-          f"Rode resync_postflop_gto --apply pra colar os labels.")
+    print(f"\nFIM: {solved} re-solvados, {failed} falhos, {skipped} já bons (pulados).")
+
+    # O resync é o passo que faz a correção CHEGAR NA TELA: re-solvar conserta o nó, mas as
+    # decisões seguem com o gto_label antigo até colarem de novo. Como passo separado ele era
+    # esquecido — e aí o sweep "não funcionou". Agora encadeia sozinho quando algo mudou.
+    if solved and '--no-resync' not in sys.argv:
+        print("\n→ colando os labels nas decisões (resync_postflop_gto --apply)...")
+        import subprocess
+        _script = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'resync_postflop_gto.py')
+        subprocess.run([sys.executable, _script, '--apply'], check=False)
+    elif solved:
+        print("\n[--no-resync] rode `python -m scripts.resync_postflop_gto --apply` pra colar "
+              "os labels, senão as telas seguem com o veredito velho.")
 
 
 if __name__ == '__main__':
