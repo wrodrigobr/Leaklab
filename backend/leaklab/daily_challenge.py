@@ -15,9 +15,27 @@ import random as _random
 from leaklab.leak_trainer import generate_canonical_spot, grade_canonical_spot
 from leaklab.preflop_range_evaluator import _recommended_action
 
-# Resposta dominante: a ação top do GTO com freq ≥ isto → temos certeza do gabarito.
-DOMINANT_FREQ = 0.85
-_CH_STACKS = [30, 40, 50]
+# ── Dificuldade ──────────────────────────────────────────────────────────────────────────────
+# O desafio nascia sempre FÁCIL por construção: só entrava spot com a ação top ≥85% E com a
+# heurística local concordando com a range. Sobreviviam os spots mais óbvios do jogo.
+#
+# O medo original ("coin-flip é impossível gradear com certeza") está obsoleto: `grade_challenge`
+# já é mixed-aware e responde "Aceitável (o GTO mistura aqui)". Dá pra usar spot misto sem punir
+# quem escolhe a ação de 40%.
+#
+# O que um spot misto AINDA precisa ter pra valer como desafio: uma ação claramente ERRADA no
+# menu. Se todas as opções são creditáveis, qualquer resposta é "aceitável" e a pergunta não
+# mede nada. É esse o filtro que substitui a exigência de unanimidade.
+DOMINANT_FREQ  = 0.85    # fácil: resposta praticamente unânime
+MEDIUM_FREQ    = 0.60    # médio: existe uma ação líder, mas o GTO mistura de verdade
+HARD_FREQ      = 0.40    # difícil: abaixo disso nenhuma ação lidera de forma útil
+MIN_CREDITABLE = 0.10    # mesma régua do StrategyProvider (MIN_STRATEGY_FREQ)
+
+DIFFICULTIES = ('facil', 'medio', 'dificil')
+
+# Stack curto entrou: é onde a decisão de MTT vira difícil de verdade (a mesma mão é shove a
+# 12bb e fold a 40bb). A grade antiga só tinha profundidade média, onde quase tudo é padrão.
+_CH_STACKS = [12, 17, 20, 30, 40, 50]
 
 
 def _norm(a: str) -> str:
@@ -52,10 +70,33 @@ def _cards_str(hero_cards) -> str:
         return str(hero_cards or '')
 
 
-def _certainty(spot: dict):
-    """Retorna (answer, top_freq, strategy) se o spot tem gabarito CERTO:
-    GTO dominante (top freq ≥ DOMINANT_FREQ) E heurística concorda com o range.
-    Senão None (descarta — não temos certeza)."""
+def _discriminates(spot: dict, strat: list) -> bool:
+    """O menu oferece ao menos uma ação claramente ERRADA?
+
+    É o que faz um spot misto continuar valendo como pergunta. Se todas as opções são
+    creditáveis (freq ≥ MIN_CREDITABLE), qualquer resposta vira "aceitável" e o desafio não
+    mede nada — pior, ensina que tanto faz.
+    """
+    freq = {_norm(s.get('action')): float(s.get('freq') or 0) for s in strat}
+    menu = [_norm(a) for a in (spot.get('options') or [])]
+    if not menu:
+        return False
+    return any(freq.get(a, 0.0) < MIN_CREDITABLE for a in menu)
+
+
+def _certainty(spot: dict, difficulty: str = 'facil'):
+    """Retorna (answer, top_freq, strategy, difficulty) se o spot serve de desafio.
+
+    `facil`   — ação top ≥85% E a heurística local concorda (triangulação: é a rede de
+                segurança da promessa "não erramos o gabarito").
+    `medio`   — 60-85%: existe líder, mas o GTO mistura; a alternativa é creditada como
+                aceitável pelo grader.
+    `dificil` — 40-60%: nenhuma ação domina. Só entra se ainda houver ação claramente errada.
+
+    Nos níveis médio/difícil a triangulação com a heurística NÃO é exigida: o gabarito é o
+    StrategyProvider (fonte única). Exigir que uma segunda fonte concorde é justamente o que
+    varria do pool todo spot interessante.
+    """
     g = grade_canonical_spot(spot, 'fold')          # grade só pra ler a estratégia GTO
     strat = g.get('gto_strategy') or []
     if not strat:
@@ -63,21 +104,31 @@ def _certainty(spot: dict):
     top = strat[0]
     top_action = _norm(top.get('action'))
     top_freq = float(top.get('freq') or 0)
-    if top_freq < DOMINANT_FREQ:                     # coin-flip / misto → sem certeza
+
+    faixa = ('facil'   if top_freq >= DOMINANT_FREQ
+             else 'medio'   if top_freq >= MEDIUM_FREQ
+             else 'dificil' if top_freq >= HARD_FREQ
+             else None)
+    if faixa is None or faixa != difficulty:
         return None
-    # Heurística tem que concordar (triangulação: range GW == heurística local).
-    try:
-        h = _norm(_recommended_action(
-            _cards_str(spot.get('hero_cards')), spot.get('position', ''),
-            float(spot.get('facing_size', 0) or 0),
-            stack_bb=float(spot.get('stack_bb', 50) or 50),
-            faces_3bet=bool(spot.get('is_3bet_pot')),
-        ))
-    except Exception:
+    # Sem ação errada no menu, a pergunta não discrimina — vale para qualquer faixa.
+    if not _discriminates(spot, strat):
         return None
-    if h != top_action:
-        return None
-    return top_action, round(top_freq, 4), strat
+
+    if difficulty == 'facil':
+        # Triangulação: range GW == heurística local. Só no nível fácil.
+        try:
+            h = _norm(_recommended_action(
+                _cards_str(spot.get('hero_cards')), spot.get('position', ''),
+                float(spot.get('facing_size', 0) or 0),
+                stack_bb=float(spot.get('stack_bb', 50) or 50),
+                faces_3bet=bool(spot.get('is_3bet_pot')),
+            ))
+        except Exception:
+            return None
+        if h != top_action:
+            return None
+    return top_action, round(top_freq, 4), strat, faixa
 
 
 def _note(spot: dict, answer: str, freq: float) -> str:
@@ -85,7 +136,10 @@ def _note(spot: dict, answer: str, freq: float) -> str:
     sc = spot.get('scenario'); pos = spot.get('position'); vs = spot.get('vs_position')
     ctx = {'rfi': f"{pos} abre", 'vs_rfi': f"{pos} vs open de {vs}",
            'vs_3bet': f"{pos} abre e enfrenta 3-bet de {vs}"}.get(sc, sc)
-    return f"{ctx} · {spot.get('stack_bb')}bb · mão {spot.get('hand')} → GTO {answer} {round(freq*100)}%"
+    faixa = ('fácil' if freq >= DOMINANT_FREQ
+             else 'médio' if freq >= MEDIUM_FREQ else 'difícil')
+    return (f"[{faixa}] {ctx} · {spot.get('stack_bb')}bb · mão {spot.get('hand')} "
+            f"→ GTO {answer} {round(freq*100)}%")
 
 
 # ── Explicação didática do veredito (gerada na criação, vetada pelo admin) ────────
@@ -174,35 +228,46 @@ def explain_challenge(spot: dict, ctx: dict | None = None) -> str:
 
 
 def build_candidates(n: int = 10, rng: _random.Random | None = None,
-                     with_explanation: bool = True) -> list[dict]:
-    """Gera até `n` candidatos que passam no filtro de certeza. Cada candidato:
-    {spot_json, answer, note}. O admin aprova antes de qualquer um virar desafio."""
+                     with_explanation: bool = True,
+                     difficulty: str = 'facil') -> list[dict]:
+    """Gera até `n` candidatos da faixa de dificuldade pedida. Cada candidato:
+    {spot_json, answer, note, difficulty}. O admin aprova antes de virar desafio.
+
+    A grade é varrida VÁRIAS vezes com stacks diferentes: um spot só é fácil/médio/difícil
+    para uma combinação de mão e profundidade, então uma passada única encontraria pouca coisa
+    fora do nível fácil.
+    """
+    if difficulty not in DIFFICULTIES:
+        difficulty = 'facil'
     rng = rng or _random.Random()
-    cats = _categories()
-    rng.shuffle(cats)
     out: list[dict] = []
     seen: set = set()
-    for cat in cats:
+    # Varre a grade uma vez por stack: sem isso, sortear a profundidade por categoria descarta
+    # a maioria das combinações antes de testá-las.
+    tentativas = [(c, s) for s in _CH_STACKS for c in _categories()]
+    rng.shuffle(tentativas)
+    for cat, stack in tentativas:
         if len(out) >= n:
             break
         c = dict(cat)
-        c['stack_bb'] = rng.choice(_CH_STACKS)
+        c['stack_bb'] = stack
         spot = generate_canonical_spot(c, rng)
         if not spot:
             continue
-        cert = _certainty(spot)
+        cert = _certainty(spot, difficulty)
         if not cert:
             continue
-        answer, freq, _strat = cert
+        answer, freq, _strat, faixa = cert
         sig = (spot.get('scenario'), spot.get('position'), spot.get('vs_position'),
                spot.get('stack_bb'), spot.get('hand'))
         if sig in seen:
             continue
         seen.add(sig)
         cand = {
-            'spot_json': json.dumps(spot),
-            'answer':    answer,
-            'note':      _note(spot, answer, freq),
+            'spot_json':  json.dumps(spot),
+            'answer':     answer,
+            'note':       _note(spot, answer, freq),
+            'difficulty': faixa,
         }
         if with_explanation:
             # explicação didática gerada JÁ na criação (o admin revisa antes de aprovar)

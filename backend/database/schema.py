@@ -1517,6 +1517,9 @@ def _run_migrations(conn):
         if 'explanation' not in _dcp_cols:
             try: conn.execute("ALTER TABLE daily_challenge_pool ADD COLUMN explanation TEXT")
             except Exception: pass
+        if 'difficulty' not in _dcp_cols:
+            try: conn.execute("ALTER TABLE daily_challenge_pool ADD COLUMN difficulty TEXT NOT NULL DEFAULT 'facil'")
+            except Exception: pass
         conn.execute("""
             CREATE TABLE IF NOT EXISTS daily_challenge_schedule (
                 day     TEXT    PRIMARY KEY,
@@ -2121,6 +2124,9 @@ def _run_migrations(conn):
                 created_at  TIMESTAMP NOT NULL DEFAULT NOW()
             )""",
             "ALTER TABLE daily_challenge_pool ADD COLUMN IF NOT EXISTS explanation TEXT",
+            # Dificuldade do desafio (facil|medio|dificil). Coluna nova → bloco de commit
+            # isolado, senão um abort anterior a engole em silêncio (ver expenses/progression).
+            "ALTER TABLE daily_challenge_pool ADD COLUMN IF NOT EXISTS difficulty TEXT NOT NULL DEFAULT 'facil'",
             """CREATE TABLE IF NOT EXISTS daily_challenge_schedule (
                 day     TEXT    PRIMARY KEY,
                 pool_id INTEGER NOT NULL

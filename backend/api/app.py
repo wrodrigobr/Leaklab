@@ -3285,14 +3285,22 @@ def player_daily_challenge_submit():
 @app.route('/admin/daily-challenge/generate', methods=['POST'])
 @require_admin
 def admin_daily_challenge_generate():
-    """Gera N candidatos (filtro de certeza) pro pool, status='pending' pra curadoria."""
-    from leaklab.daily_challenge import build_candidates
+    """Gera N candidatos pro pool, status='pending' pra curadoria.
+
+    `difficulty` (facil|medio|dificil) escolhe a faixa de frequência do GTO. O padrão segue
+    `facil` pra não mudar o comportamento de quem já usa; o admin pede spot difícil quando quer
+    um desafio que realmente separe quem sabe."""
+    from leaklab.daily_challenge import build_candidates, DIFFICULTIES
     from database.repositories import add_challenge_candidates
-    n = int((request.get_json(silent=True) or {}).get('n', 10) or 10)
+    body = request.get_json(silent=True) or {}
+    n = int(body.get('n', 10) or 10)
     n = max(1, min(n, 50))
-    cands = build_candidates(n)
+    diff = str(body.get('difficulty') or 'facil').lower()
+    if diff not in DIFFICULTIES:
+        diff = 'facil'
+    cands = build_candidates(n, difficulty=diff)
     added = add_challenge_candidates(cands)
-    return jsonify({'generated': added})
+    return jsonify({'generated': added, 'difficulty': diff})
 
 
 @app.route('/admin/daily-challenge/pool', methods=['GET'])

@@ -7193,9 +7193,11 @@ def add_challenge_candidates(candidates: list) -> int:
     try:
         for c in candidates:
             conn.execute(_adapt(
-                "INSERT INTO daily_challenge_pool (spot_json, answer, note, explanation, status) "
-                "VALUES (?, ?, ?, ?, 'pending')"
-            ), (c['spot_json'], c['answer'], c.get('note', ''), c.get('explanation', '')))
+                "INSERT INTO daily_challenge_pool "
+                "(spot_json, answer, note, explanation, difficulty, status) "
+                "VALUES (?, ?, ?, ?, ?, 'pending')"
+            ), (c['spot_json'], c['answer'], c.get('note', ''), c.get('explanation', ''),
+                c.get('difficulty', 'facil')))
         conn.commit()
         return len(candidates)
     finally:
@@ -7208,11 +7210,11 @@ def list_challenge_candidates(status: Optional[str] = None, limit: int = 100) ->
     try:
         if status:
             rows = conn.execute(_adapt(
-                "SELECT id, spot_json, answer, note, explanation, status, used_on FROM daily_challenge_pool "
+                "SELECT id, spot_json, answer, note, explanation, difficulty, status, used_on FROM daily_challenge_pool "
                 "WHERE status = ? ORDER BY id DESC LIMIT ?"), (status, limit)).fetchall()
         else:
             rows = conn.execute(_adapt(
-                "SELECT id, spot_json, answer, note, explanation, status, used_on FROM daily_challenge_pool "
+                "SELECT id, spot_json, answer, note, explanation, difficulty, status, used_on FROM daily_challenge_pool "
                 "ORDER BY id DESC LIMIT ?"), (limit,)).fetchall()
         return [dict(r) for r in rows]
     finally:
