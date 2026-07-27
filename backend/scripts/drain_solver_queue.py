@@ -81,6 +81,27 @@ def _finalize_hand_requests(max_reqs: int = 100):
     print(f"drain_solver_queue: finalize hand_requests -> {fin}/{len(reqs)} done")
 
 
+def _reconcile_tournaments():
+    """Re-anexa o gto_label das decisões de torneios cuja fila do solver JÁ drenou, e carimba
+    `tournaments.labels_reconciled_at`.
+
+    Mesmo motivo do `_finalize_hand_requests` acima: em prod o `_solver_queue_worker_loop` (que
+    chama isto) NÃO roda sob gunicorn — só no `__main__`. Sem este passo o carimbo nunca é posto
+    e o torneio fica com o selo "Análise GTO em andamento" PARA SEMPRE, mesmo com a fila vazia e
+    todos os spots resolvidos. Alguém já tinha remendado a finalização dos hand_requests aqui e
+    deixou a reconciliação de fora."""
+    try:
+        from api.app import _reconcile_drained_tournaments
+    except Exception as e:
+        print(f"drain_solver_queue: reconcile indisponível: {e}")
+        return
+    try:
+        _reconcile_drained_tournaments()
+        print("drain_solver_queue: reconcile de torneios drenados OK")
+    except Exception as e:
+        print(f"drain_solver_queue: reconcile falhou: {e}")
+
+
 def main():
     max_jobs = int(sys.argv[1]) if len(sys.argv) > 1 else 20
     _reset_stale_running()
@@ -92,6 +113,9 @@ def main():
     # Finaliza os hand_requests (resolvidos → done; não-solváveis velhos → done). SEMPRE roda — é o
     # que tira o "solver_queued eterno" em prod, independente de ter resolvido spot novo neste ciclo.
     _finalize_hand_requests()
+    # Carimba labels_reconciled_at nos torneios já drenados. SEMPRE roda, pelo mesmo motivo: é o
+    # que tira o selo "Análise GTO em andamento" eterno da lista de torneios.
+    _reconcile_tournaments()
 
 
 if __name__ == "__main__":
