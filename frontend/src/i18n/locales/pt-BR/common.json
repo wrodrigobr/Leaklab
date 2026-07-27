@@ -163,5 +163,24 @@
     "accept": "Aceitar",
     "reject": "Recusar",
     "more": "Saiba mais"
+  },
+  "uploadQueue": {
+    "importing": "Importando {{count}} arquivo",
+    "importing_plural": "Importando {{count}} arquivos",
+    "doneWithWarnings": "Concluído com avisos",
+    "done": "Importação concluída",
+    "failed": "Não foi possível importar",
+    "close": "Fechar",
+    "remove": "Remover",
+    "statusQueued": "Em fila",
+    "statusProcessing": "Processando…",
+    "statusDone": "Torneio enviado ✓",
+    "statusError": "Erro",
+    "summaryWithField": "Dados complementados: {{n}} jogadores ✓",
+    "summaryPlain": "Dados do torneio complementados ✓",
+    "fileMissing": "Arquivo não encontrado na fila",
+    "genericError": "Não foi possível processar ({{raw}}). Verifique se o servidor está atualizado.",
+    "errorFallback": "erro",
+    "gtoNotice": "As mãos já estão no seu histórico. A <1>análise GTO</1> roda em segundo plano e pode levar alguns minutos num torneio grande. Pode fechar, os torneios mostram o selo <2>Analisando</2> até concluir."
   }
 }

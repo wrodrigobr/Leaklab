@@ -1,4 +1,5 @@
 import { useReducer, useEffect, useRef, useCallback, createContext, useContext } from "react";
+import { useTranslation, Trans } from "react-i18next";
 import { CheckCircle2, AlertTriangle, Clock, Loader2, X, UploadCloud, Info } from "lucide-react";
 import { tournaments, metrics } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -40,11 +41,12 @@ const STATUS_ICON: Record<QueueStatus, React.ReactNode> = {
   error:      <AlertTriangle className="size-3.5 text-destructive" />,
 };
 
-const STATUS_LABEL: Record<QueueStatus, string> = {
-  queued:     "Em fila",
-  processing: "Processando…",
-  done:       "Torneio enviado ✓",
-  error:      "Erro",
+// CHAVES, não texto: o rótulo é resolvido na render, com o idioma do usuário.
+const STATUS_KEY: Record<QueueStatus, string> = {
+  queued:     "uploadQueue.statusQueued",
+  processing: "uploadQueue.statusProcessing",
+  done:       "uploadQueue.statusDone",
+  error:      "uploadQueue.statusError",
 };
 
 const STATUS_COLOR: Record<QueueStatus, string> = {
@@ -65,15 +67,16 @@ function QueuePanel({
   onDismiss: (id: string) => void;
   onClearDone: () => void;
 }) {
+  const { t } = useTranslation("common");
   const pending = items.filter((i) => i.status === "queued" || i.status === "processing").length;
   const anyDone = items.some((i) => i.status === "done");
   const anyError = items.some((i) => i.status === "error");
   // Cabeçalho coerente com o resultado: não dizer "concluída" quando tudo falhou (a msg não condiz).
   const headerLabel = pending > 0
-    ? `Importando ${items.length} arquivo${items.length !== 1 ? "s" : ""}`
+    ? t("uploadQueue.importing", { count: items.length })
     : anyDone
-      ? (anyError ? "Concluído com avisos" : "Importação concluída")
-      : "Não foi possível importar";
+      ? (anyError ? t("uploadQueue.doneWithWarnings") : t("uploadQueue.done"))
+      : t("uploadQueue.failed");
 
   return (
     <div className="fixed bottom-4 right-4 z-50 w-80 rounded-xl border border-border bg-background shadow-2xl">
@@ -89,7 +92,7 @@ function QueuePanel({
             onClick={onClearDone}
             className="font-mono text-[10px] text-muted-foreground hover:text-foreground transition-colors"
           >
-            Fechar
+            {t("uploadQueue.close")}
           </button>
         )}
       </div>
@@ -101,14 +104,14 @@ function QueuePanel({
             <div className="flex-1 min-w-0">
               <p className="text-xs text-foreground truncate font-medium leading-tight">{item.name}</p>
               <p className={cn("font-mono text-[10px] mt-0.5", STATUS_COLOR[item.status])}>
-                {item.note ?? item.error ?? STATUS_LABEL[item.status]}
+                {item.note ?? item.error ?? t(STATUS_KEY[item.status])}
               </p>
             </div>
             {(item.status === "done" || item.status === "error") && (
               <button
                 onClick={() => onDismiss(item.id)}
                 className="text-muted-foreground hover:text-foreground shrink-0 transition-colors"
-                aria-label="Remover"
+                aria-label={t("uploadQueue.remove")}
               >
                 <X className="size-3" />
               </button>
@@ -123,9 +126,9 @@ function QueuePanel({
         <div className="flex items-start gap-2 border-t border-border bg-primary/[0.05] px-4 py-2.5">
           <Info className="mt-0.5 size-3.5 shrink-0 text-primary" aria-hidden />
           <p className="text-[11px] leading-snug text-muted-foreground">
-            As mãos já estão no seu histórico. A <span className="text-foreground">análise GTO</span> roda
-            em segundo plano e pode levar alguns minutos num torneio grande. Pode fechar, os torneios
-            mostram o selo <span className="font-mono text-primary">Analisando</span> até concluir.
+            <Trans i18nKey="uploadQueue.gtoNotice" ns="common"
+              components={{ 1: <span className="text-foreground" />,
+                            2: <span className="font-mono text-primary" /> }} />
           </p>
         </div>
       )}
@@ -149,6 +152,7 @@ export function useUploadQueue(): UploadQueueValue {
 }
 
 export function UploadQueueProvider({ children }: { children: React.ReactNode }) {
+  const { t } = useTranslation("common");
   const [queue, dispatch] = useReducer(reducer, []);
   const fileMap    = useRef<Map<string, File>>(new Map());
   const processing = useRef(false);
@@ -180,14 +184,14 @@ export function UploadQueueProvider({ children }: { children: React.ReactNode })
 
     (async () => {
       try {
-        if (!file) throw new Error("Arquivo não encontrado na fila");
+        if (!file) throw new Error(t("uploadQueue.fileMissing"));
         const content = await file.text();
         const r = await tournaments.analyze(content, file.name);
         if (r?.kind === "summary") {
           // Era um Tournament Summary, não hand history: dados do torneio complementados.
           const note = r.field_size != null
-            ? `Dados complementados: ${r.field_size} jogadores ✓`
-            : "Dados do torneio complementados ✓";
+            ? t("uploadQueue.summaryWithField", { n: r.field_size })
+            : t("uploadQueue.summaryPlain");
           dispatch({ type: "SET_STATUS", id: next.id, status: "done", note });
         } else {
           dispatch({ type: "SET_STATUS", id: next.id, status: "done" });
@@ -199,12 +203,16 @@ export function UploadQueueProvider({ children }: { children: React.ReactNode })
         // Nunca mostra "HTTP 404" cru: usa a msg real do backend, senão um genérico legível.
         const msg = raw && !/^HTTP \d+$/.test(raw)
           ? raw
-          : `Não foi possível processar (${raw || "erro"}). Verifique se o servidor está atualizado.`;
+          : t("uploadQueue.genericError", { raw: raw || t("uploadQueue.errorFallback") });
         dispatch({ type: "SET_STATUS", id: next.id, status: "error", error: msg });
       } finally {
         processing.current = false;
       }
     })();
+    // `t` fica FORA das dependências de propósito: ele só compõe mensagens de erro dentro do
+    // callback, e sua identidade muda ao trocar de idioma — incluí-lo re-dispararia o loop de
+    // upload no meio de um envio. O idioma da mensagem é o do momento em que ela é gerada.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [queue]);
 
   // Refresh pós-import é global: o loop dispara `leaklab:tournament-imported` a cada conclusão,
