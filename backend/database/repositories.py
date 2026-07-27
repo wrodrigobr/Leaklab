@@ -1403,6 +1403,11 @@ def get_confidence_drift(user_id: int, days: int = 30) -> dict:
             'severity':         severity,
             'baseline_score':   round(baseline, 4),
             'sessions':         flagged[:5],
+            # Maior id entre TODAS as marcadas (não só as 5 exibidas) — é a marca d'água que o
+            # cliente usa pra decidir se há detecção NOVA depois do último dispensar. Precisa vir
+            # do conjunto completo: uma sessão recém-importada mas jogada há muito tempo cai fora
+            # das 5 mais recentes por `played_at` e o alerta nunca reapareceria por ela.
+            'latest_flagged_id': max((f['tournament_id'] for f in flagged), default=0),
         }
     finally:
         conn.close()

@@ -798,6 +798,8 @@ export interface ConfidenceDrift {
   severity: "mild" | "moderate" | "severe" | null;
   baseline_score: number;
   sessions: { tournament_id: number; name: string; played_at: string; avg_score: number; delta_pct: number }[];
+  /** maior id entre TODAS as sessões marcadas (não só as 5 exibidas) — marca d'água do dismiss */
+  latest_flagged_id?: number;
 }
 
 export interface DrillSpot {

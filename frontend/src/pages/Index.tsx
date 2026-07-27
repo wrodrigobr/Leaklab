@@ -38,6 +38,7 @@ import { useMasonryRows } from "@/hooks/useMasonryRows";
 import { ProLockCard } from "@/components/hud/ProLockCard";
 import { metrics, tournaments, support, EvolutionResponse, Tournament, PlayerStatsResponse, LeakRoiData, PressureProfile, ConfidenceDrift, PlayerDnaResponse, LeakGraphResponse, CareerProjection, CognitiveFailureData, StrategicTwinProfile, GtoAlignmentData, GtoPositionData, GtoQualityData, ResultsVsGtoData, LeakFinderData, SessionContextData } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
+import { shouldShowDrift, readDriftSeen, writeDriftSeen } from "@/lib/driftDismiss";
 
 // Module-level cache — survives unmount/remount during SPA navigation
 let _cachedTourns: Tournament[] | null = null;
@@ -68,19 +69,11 @@ const Index = () => {
   const [pressureData, setPressureData]   = useState<PressureProfile | null>(null);
   const [driftData, setDriftData]         = useState<ConfidenceDrift | null>(null);
 
-  // Persiste o dismiss em localStorage com um fingerprint ESTÁVEL: o maior tournament_id das sessões em
-  // drift. Só muda quando entra um torneio MAIS NOVO (= novo import) — NÃO muda quando a janela de 30
-  // dias desliza e a contagem (affected_sessions) cai. Antes a chave usava affected_sessions, então o
-  // banner voltava sozinho ao envelhecer uma sessão, mesmo sem o usuário importar nada.
-  const driftFingerprint = driftData?.sessions?.length
-    ? Math.max(...driftData.sessions.map((s) => s.tournament_id))
-    : 0;
-  const driftKey = user?.id && driftData?.drift_detected
-    ? `leaklab_drift_dismissed_${user.id}_${driftFingerprint}`
-    : null;
-  const [driftDismissed, setDriftDismissed] = useState(
-    () => driftKey ? localStorage.getItem(driftKey) === "1" : false
-  );
+  // Dismiss por MARCA D'ÁGUA (ver lib/driftDismiss): guarda o maior id de sessão em drift já
+  // dispensado e só reabre com um id MAIOR. A chave por fingerprint anterior mudava sozinha
+  // quando a janela de 30 dias deslizava e a composição das sessões marcadas mudava — o jogador
+  // fechava e o alerta voltava sem nada ter sido detectado.
+  const [driftSeen, setDriftSeen] = useState(() => readDriftSeen(user?.user_id));
   const [dnaData, setDnaData]             = useState<PlayerDnaResponse | null>(null);
   const [leakGraph, setLeakGraph]         = useState<LeakGraphResponse | null>(null);
   const [careerData, setCareerData]       = useState<CareerProjection | null>(null);
@@ -92,11 +85,15 @@ const Index = () => {
   const [refreshKey, setRefreshKey]       = useState(0);
   const [volumeLimit, setVolumeLimit]     = useState<number | null>(null); // null = Todos
 
-  // Reset dismiss state whenever fresh data arrives (new upload)
-  useEffect(() => {
-    if (!driftKey) return;
-    setDriftDismissed(localStorage.getItem(driftKey) === "1");
-  }, [driftKey]);
+  // A marca d'água é por USUÁRIO (não por detecção), então só precisa reler quando o usuário muda.
+  useEffect(() => { setDriftSeen(readDriftSeen(user?.user_id)); }, [user?.user_id]);
+
+  const showDrift = shouldShowDrift(
+    !!driftData?.drift_detected, driftData?.latest_flagged_id, driftSeen);
+  const dismissDrift = () => {
+    writeDriftSeen(user?.user_id, driftData?.latest_flagged_id);
+    setDriftSeen(readDriftSeen(user?.user_id));
+  };
 
   useEffect(() => {
     setLoading(true);
@@ -280,13 +277,10 @@ const Index = () => {
         showEmpty={tournsLoaded && !hasData}
         kpis={{ roi, itmPct, totalEvents, totalHands, roiLowSample, netProfit }}
         playerStats={playerStats}
-        drift={driftData?.drift_detected && !driftDismissed
+        drift={showDrift && driftData
           ? { detected: true, sessions: driftData.affected_sessions }
           : null}
-        onDismissDrift={() => {
-          if (driftKey) localStorage.setItem(driftKey, "1");
-          setDriftDismissed(true);
-        }}
+        onDismissDrift={dismissDrift}
         aiLocked={isFree}
         aiInsights={[
           twinData?.narrative      && { key: "twin",      title: t("v2.aiTwin"),      text: twinData.narrative },
@@ -378,7 +372,7 @@ const Index = () => {
           )}
         </section>
 
-        {driftData?.drift_detected && !driftDismissed && (
+        {showDrift && driftData && (
           <div className="flex items-start justify-between gap-3 rounded-lg border border-yellow-500/30 bg-yellow-500/5 px-4 py-3">
             <div className="flex items-start gap-2">
               <Brain className="size-4 text-yellow-400 shrink-0 mt-0.5" aria-hidden />
@@ -390,10 +384,7 @@ const Index = () => {
               </div>
             </div>
             <button
-              onClick={() => {
-                if (driftKey) localStorage.setItem(driftKey, "1");
-                setDriftDismissed(true);
-              }}
+              onClick={dismissDrift}
               className="shrink-0 font-mono text-[10px] text-muted-foreground hover:text-foreground transition-colors"
               aria-label={t("drift.dismiss")}
             >
