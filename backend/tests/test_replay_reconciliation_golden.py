@@ -63,12 +63,25 @@ def _fingerprint(client, headers, tid, hand_ids):
             if not t.get('is_hero'):
                 continue
             pg = t.get('preflop_gto') or {}
+            # Campos AMPLIADOS (pré-requisito do Stage 3): a rede antiga capturava o veredito
+            # final, mas não os sinais que as 4 camadas de reconciliação usam pra chegar nele.
+            # Sem eles, um refactor podia trocar o CAMINHO (ex.: passar a ler a estratégia do
+            # range agregado em vez da mão) e o golden continuar verde porque o resultado
+            # coincidia nas mãos deste fixture. Continua tudo DISCRETO — nada de float de EV.
             fp.append([
                 hid, t.get('street'), t.get('action'),
                 t.get('best_action'), t.get('gto_action'), t.get('gto_label'),
                 bool(t.get('is_error')), t.get('gto_coverage'),
                 pg.get('scenario'), pg.get('action_quality'),
                 (pg.get('recommended_actions') or [None])[0],
+                # sinais de ENTRADA da reconciliação
+                bool(t.get('gto_spot_mismatch')), bool(pg.get('available')),
+                pg.get('coverage_reason'), pg.get('in_range'), pg.get('hand_type'),
+                pg.get('stack_bucket'),
+                t.get('equity_source'),
+                bool(t.get('multiway_advice')),
+                # quais ações o solver creditou (ordem estável), não as frequências
+                sorted(a.get("action", "") for a in (t.get("gto_strategy") or [])),   # lista: tupla não sobrevive ao round-trip do JSON
             ])
     return fp
 

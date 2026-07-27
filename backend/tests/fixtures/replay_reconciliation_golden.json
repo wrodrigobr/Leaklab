@@ -10,7 +10,16 @@
   null,
   "vs_rfi",
   "correct",
-  "fold"
+  "fold",
+  false,
+  true,
+  null,
+  false,
+  "Q9o",
+  "40bb",
+  "vs_range",
+  false,
+  []
  ],
  [
   "257045867083",
@@ -23,7 +32,16 @@
   null,
   "rfi",
   "correct",
-  "fold"
+  "fold",
+  false,
+  true,
+  null,
+  false,
+  "97o",
+  "40bb",
+  "vs_random",
+  false,
+  []
  ],
  [
   "257045873643",
@@ -36,7 +54,16 @@
   null,
   "rfi",
   "major_leak",
-  "raise"
+  "raise",
+  false,
+  true,
+  null,
+  true,
+  "KTs",
+  "30bb",
+  "vs_random",
+  false,
+  []
  ],
  [
   "257045883935",
@@ -49,7 +76,16 @@
   null,
   "squeeze",
   "unknown",
-  null
+  null,
+  false,
+  false,
+  null,
+  false,
+  "54s",
+  "30bb",
+  "vs_random",
+  false,
+  []
  ],
  [
   "257045898300",
@@ -62,7 +98,16 @@
   null,
   "vs_rfi",
   "correct",
-  "fold"
+  "fold",
+  false,
+  true,
+  null,
+  false,
+  "43o",
+  "30bb",
+  "vs_range",
+  false,
+  []
  ],
  [
   "257045912047",
@@ -75,7 +120,16 @@
   null,
   "vs_rfi",
   "correct",
-  "fold"
+  "fold",
+  false,
+  true,
+  null,
+  false,
+  "73o",
+  "30bb",
+  "vs_range",
+  false,
+  []
  ],
  [
   "257045919085",
@@ -88,7 +142,16 @@
   null,
   "vs_rfi",
   "correct",
-  "call"
+  "call",
+  false,
+  true,
+  null,
+  true,
+  "88",
+  "30bb",
+  "vs_range",
+  false,
+  []
  ],
  [
   "257045919085",
@@ -101,7 +164,16 @@
   "multiway",
   null,
   null,
-  null
+  null,
+  false,
+  false,
+  null,
+  null,
+  null,
+  null,
+  "vs_random",
+  false,
+  []
  ],
  [
   "257045919085",
@@ -114,7 +186,16 @@
   "multiway",
   null,
   null,
-  null
+  null,
+  false,
+  false,
+  null,
+  null,
+  null,
+  null,
+  "vs_random",
+  false,
+  []
  ],
  [
   "257045919085",
@@ -127,7 +208,16 @@
   "multiway",
   null,
   null,
-  null
+  null,
+  false,
+  false,
+  null,
+  null,
+  null,
+  null,
+  "vs_random",
+  false,
+  []
  ],
  [
   "257045919085",
@@ -140,7 +230,16 @@
   null,
   null,
   null,
-  null
+  null,
+  false,
+  false,
+  null,
+  null,
+  null,
+  null,
+  null,
+  false,
+  []
  ],
  [
   "257045933884",
@@ -153,7 +252,16 @@
   null,
   "vs_rfi",
   "correct",
-  "fold"
+  "fold",
+  false,
+  true,
+  null,
+  false,
+  "QJo",
+  "20bb",
+  "vs_range",
+  false,
+  []
  ],
  [
   "257045940964",
@@ -166,7 +274,16 @@
   null,
   "vs_rfi",
   "correct",
-  "call"
+  "call",
+  false,
+  true,
+  null,
+  true,
+  "KQo",
+  "20bb",
+  "vs_range",
+  false,
+  []
  ],
  [
   "257045940964",
@@ -179,7 +296,16 @@
   null,
   "squeeze",
   "unknown",
-  null
+  null,
+  false,
+  false,
+  null,
+  false,
+  "KQo",
+  "20bb",
+  "vs_random",
+  false,
+  []
  ],
  [
   "257045958227",
@@ -192,7 +318,16 @@
   null,
   "rfi",
   "correct",
-  "fold"
+  "fold",
+  false,
+  true,
+  null,
+  false,
+  "T4o",
+  "20bb",
+  "vs_random",
+  false,
+  []
  ],
  [
   "257045965983",
@@ -205,7 +340,16 @@
   null,
   "rfi",
   "correct",
-  "raise"
+  "raise",
+  false,
+  true,
+  null,
+  true,
+  "AJo",
+  "17bb",
+  "vs_random",
+  false,
+  []
  ],
  [
   "257045965983",
@@ -218,7 +362,16 @@
   null,
   "vs_3bet",
   "major_leak",
-  "fold"
+  "fold",
+  false,
+  true,
+  null,
+  false,
+  "AJo",
+  "17bb",
+  "vs_range",
+  false,
+  []
  ],
  [
   "257045965983",
@@ -231,7 +384,16 @@
   "pending",
   null,
   null,
-  null
+  null,
+  false,
+  false,
+  null,
+  null,
+  null,
+  null,
+  "vs_random",
+  false,
+  []
  ],
  [
   "257045965983",
@@ -244,7 +406,16 @@
   "pending",
   null,
   null,
-  null
+  null,
+  false,
+  false,
+  null,
+  null,
+  null,
+  null,
+  "vs_random",
+  false,
+  []
  ],
  [
   "257045965983",
@@ -257,7 +428,16 @@
   "pending",
   null,
   null,
-  null
+  null,
+  false,
+  false,
+  null,
+  null,
+  null,
+  null,
+  "vs_random",
+  false,
+  []
  ],
  [
   "257045965983",
@@ -270,7 +450,16 @@
   "pending",
   null,
   null,
-  null
+  null,
+  false,
+  false,
+  null,
+  null,
+  null,
+  null,
+  "vs_random",
+  false,
+  []
  ],
  [
   "257045965983",
@@ -283,7 +472,16 @@
   null,
   null,
   null,
-  null
+  null,
+  false,
+  false,
+  null,
+  null,
+  null,
+  null,
+  null,
+  false,
+  []
  ],
  [
   "257045975775",
@@ -296,7 +494,16 @@
   null,
   "rfi",
   "correct",
-  "fold"
+  "fold",
+  false,
+  true,
+  null,
+  true,
+  "A8o",
+  "10bb",
+  "vs_random",
+  false,
+  []
  ],
  [
   "257045989172",
@@ -309,7 +516,16 @@
   null,
   "squeeze",
   "unknown",
-  null
+  null,
+  false,
+  false,
+  null,
+  false,
+  "K8o",
+  "10bb",
+  "vs_random",
+  false,
+  []
  ],
  [
   "257045999912",
@@ -322,7 +538,16 @@
   null,
   "vs_rfi",
   "correct",
-  "fold"
+  "fold",
+  false,
+  true,
+  null,
+  false,
+  "96o",
+  "10bb",
+  "vs_range",
+  false,
+  []
  ],
  [
   "257046008859",
@@ -335,7 +560,16 @@
   null,
   "rfi",
   "leak",
-  "fold"
+  "fold",
+  false,
+  true,
+  null,
+  false,
+  "83o",
+  "10bb",
+  "vs_random",
+  false,
+  []
  ],
  [
   "257046008859",
@@ -348,7 +582,16 @@
   null,
   "vs_3bet",
   "leak",
-  "fold"
+  "fold",
+  false,
+  true,
+  null,
+  false,
+  "83o",
+  "10bb",
+  "vs_range",
+  false,
+  []
  ],
  [
   "257046008859",
@@ -361,7 +604,16 @@
   null,
   null,
   null,
-  null
+  null,
+  false,
+  false,
+  null,
+  null,
+  null,
+  null,
+  null,
+  false,
+  []
  ],
  [
   "257046025443",
@@ -374,7 +626,16 @@
   null,
   "vs_rfi",
   "correct",
-  "fold"
+  "fold",
+  false,
+  true,
+  null,
+  false,
+  "73s",
+  "30bb",
+  "vs_range",
+  false,
+  []
  ],
  [
   "257046040965",
@@ -387,7 +648,16 @@
   null,
   "rfi",
   "correct",
-  "fold"
+  "fold",
+  false,
+  true,
+  null,
+  false,
+  "A2o",
+  "20bb",
+  "vs_random",
+  false,
+  []
  ],
  [
   "257046046366",
@@ -400,7 +670,16 @@
   null,
   "vs_rfi",
   "correct",
-  "fold"
+  "fold",
+  false,
+  true,
+  null,
+  true,
+  "85o",
+  "20bb",
+  "vs_range",
+  false,
+  []
  ],
  [
   "257046050855",
@@ -413,7 +692,16 @@
   null,
   "vs_rfi",
   "correct",
-  "fold"
+  "fold",
+  false,
+  true,
+  null,
+  false,
+  "43o",
+  "20bb",
+  "vs_range",
+  false,
+  []
  ],
  [
   "257046057865",
@@ -426,7 +714,16 @@
   null,
   "faces_squeeze",
   "correct",
-  "fold"
+  "fold",
+  false,
+  true,
+  null,
+  false,
+  "95s",
+  "17bb",
+  "vs_random",
+  false,
+  []
  ],
  [
   "257046063823",
@@ -439,7 +736,16 @@
   null,
   "vs_rfi",
   "correct",
-  "fold"
+  "fold",
+  false,
+  true,
+  null,
+  false,
+  "93o",
+  "17bb",
+  "vs_range",
+  false,
+  []
  ],
  [
   "257046068384",
@@ -452,7 +758,16 @@
   null,
   "rfi",
   "correct",
-  "fold"
+  "fold",
+  false,
+  true,
+  null,
+  false,
+  "K5o",
+  "17bb",
+  "vs_random",
+  false,
+  []
  ],
  [
   "257046076063",
@@ -465,7 +780,16 @@
   null,
   "rfi",
   "correct",
-  "fold"
+  "fold",
+  false,
+  true,
+  null,
+  false,
+  "Q5o",
+  "17bb",
+  "vs_random",
+  false,
+  []
  ],
  [
   "257046087436",
@@ -478,7 +802,16 @@
   null,
   "rfi",
   "correct",
-  "fold"
+  "fold",
+  false,
+  true,
+  null,
+  false,
+  "72s",
+  "17bb",
+  "vs_random",
+  false,
+  []
  ],
  [
   "257046096561",
@@ -491,7 +824,16 @@
   null,
   "rfi",
   "correct",
-  "fold"
+  "fold",
+  false,
+  true,
+  null,
+  false,
+  "A8o",
+  "17bb",
+  "vs_random",
+  false,
+  []
  ],
  [
   "257046105639",
@@ -504,7 +846,16 @@
   null,
   "vs_rfi",
   "acceptable",
-  "call"
+  "call",
+  false,
+  true,
+  null,
+  true,
+  "75o",
+  "17bb",
+  "vs_range",
+  false,
+  []
  ],
  [
   "257046110112",
@@ -517,7 +868,16 @@
   null,
   "vs_rfi",
   "correct",
-  "fold"
+  "fold",
+  false,
+  true,
+  null,
+  false,
+  "94o",
+  "17bb",
+  "vs_range",
+  false,
+  []
  ],
  [
   "257046118426",
@@ -530,7 +890,16 @@
   null,
   "vs_rfi",
   "correct",
-  "fold"
+  "fold",
+  false,
+  true,
+  null,
+  false,
+  "J6o",
+  "17bb",
+  "vs_range",
+  false,
+  []
  ],
  [
   "257046129434",
@@ -543,7 +912,16 @@
   null,
   "vs_rfi",
   "correct",
-  "fold"
+  "fold",
+  false,
+  true,
+  null,
+  false,
+  "52o",
+  "17bb",
+  "vs_range",
+  false,
+  []
  ],
  [
   "257046134164",
@@ -556,6 +934,15 @@
   null,
   "rfi",
   "major_leak",
-  "raise"
+  "raise",
+  false,
+  true,
+  null,
+  true,
+  "A9o",
+  "17bb",
+  "vs_random",
+  false,
+  []
  ]
 ]
