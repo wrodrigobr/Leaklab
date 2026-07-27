@@ -628,11 +628,5 @@
       "noite": "Noite"
     },
     "insight": "Você joga {{pct}}% pior em {{worst}} do que em {{best}}."
-  },
-  "dailyFocus": {
-    "label": "Foco",
-    "mission": "Missão",
-    "done": "Foco diário concluído",
-    "markDone": "Marcar foco de hoje como concluído"
   }
 }

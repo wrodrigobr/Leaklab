@@ -25,7 +25,6 @@ import { OnboardingModal } from "@/components/hud/OnboardingModal";
 import { SupportModal } from "@/components/hud/SupportModal";
 import { PressureProfileCard } from "@/components/hud/PressureProfileCard";
 import { PlayerDnaCard } from "@/components/hud/PlayerDnaCard";
-import { DailyFocusCard } from "@/components/hud/DailyFocusCard";
 import { ProfileCompletionCard } from "@/components/hud/ProfileCompletionCard";
 import { LeakCausalMap } from "@/components/hud/LeakCausalMap";
 import { CareerGraphCard } from "@/components/hud/CareerGraphCard";
@@ -393,7 +392,6 @@ const Index = () => {
           </div>
         )}
 
-        {hasData && <DailyFocusCard />}
 
         {user?.role === "player" && <ProfileCompletionCard />}
 

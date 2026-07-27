@@ -628,11 +628,5 @@
       "noite": "Evening"
     },
     "insight": "You play {{pct}}% worse at {{worst}} than at {{best}}."
-  },
-  "dailyFocus": {
-    "label": "Focus",
-    "mission": "Mission",
-    "done": "Daily focus completed",
-    "markDone": "Mark today's focus as done"
   }
 }

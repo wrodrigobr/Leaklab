@@ -1810,11 +1810,7 @@ export const metrics = {
   strategicTwin: (lang = "pt-BR", days = 180) =>
     request<StrategicTwinProfile>(`/player/strategic-twin?lang=${encodeURIComponent(lang)}&days=${days}`),
 
-  dailyFocus: () =>
-    request<DailyFocusData>(`/player/daily-focus`),
 
-  completeDailyFocus: () =>
-    request<{ ok: boolean }>(`/player/daily-focus/complete`, { method: "POST" }),
 
   xpStatus: () =>
     request<XpStatus>(`/player/xp`),
@@ -1975,22 +1971,6 @@ export interface SparringHand {
 }
 
 // ── Daily Focus + XP (Sprint Q) ───────────────────────────────────────────────
-
-export interface DailyFocusAction {
-  /** `mission` = a missão ativa do protocolo (fonte única do foco); os demais são fallback */
-  type: "mission" | "leak" | "drill" | "tournament" | "none";
-  label: string;
-  description: string;
-  link: string;
-}
-
-export interface DailyFocusData {
-  primary: DailyFocusAction;
-  secondary: DailyFocusAction[];
-  valid_until: string;
-  completed: boolean;
-  streak: number;
-}
 
 export interface XpStatus {
   xp_total: number;

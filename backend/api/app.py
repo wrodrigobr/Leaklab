@@ -120,7 +120,7 @@ from database.repositories import (
     # Sprint D — BACK-016: WhatsApp
     get_user_by_phone, update_user_phone,
     # Sprint Q — FEAT-02 + FEAT-03: Daily Focus + XP Server-Side
-    get_daily_focus, mark_daily_focus_done, reset_drill_sessions,
+    reset_drill_sessions,
     add_xp, get_xp_status, get_achievements,
     # Sprint S — FEAT-06: Leak Causal Graph
     get_leak_graph_data,
@@ -3143,19 +3143,6 @@ def player_strategic_twin():
     if not profile.get("insufficient_data") and profile.get("costly_spots"):
         profile["narrative"] = generate_twin_narrative(profile, lang=lang)
     return jsonify(profile)
-
-
-@app.route('/player/daily-focus', methods=['GET'])
-@require_auth
-def player_daily_focus():
-    return jsonify(get_daily_focus(g.user_id))
-
-
-@app.route('/player/daily-focus/complete', methods=['POST'])
-@require_auth
-def player_daily_focus_complete():
-    mark_daily_focus_done(g.user_id)
-    return jsonify({'ok': True})
 
 
 @app.route('/player/drill-sessions/reset', methods=['DELETE'])

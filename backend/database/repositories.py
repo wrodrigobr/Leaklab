@@ -5841,7 +5841,13 @@ def get_player_dna(user_id: int, days: int = 90) -> dict:
 # ── Sprint Q — FEAT-02: Daily Focus ──────────────────────────────────────────
 
 def get_daily_focus(user_id: int) -> dict:
-    """Retorna 1 ação primária + até 2 secundárias para o foco do dia. Zero LLM."""
+    """ÓRFÃ desde 2026-07-27: as rotas /player/daily-focus foram removidas junto com o
+    DailyFocusCard, que nunca era renderizado (o dashboard V2 substituiu o layout clássico
+    e o ramo antigo virou código latente). Mantida porque a lógica de "1 ação primária +
+    2 secundárias" é reaproveitável se a faixa de foco voltar; hoje quem cumpre esse papel
+    é o CTA do hero do DashboardV2, alimentado pelo protocolo.
+
+    Retorna 1 ação primária + até 2 secundárias para o foco do dia. Zero LLM."""
     from datetime import datetime
     today = datetime.now().date().isoformat()
     conn = get_conn()
