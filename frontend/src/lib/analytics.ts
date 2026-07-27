@@ -9,8 +9,8 @@
 //   VITE_ADS_SIGNUP_LABEL    rótulo da conversão de cadastro   (o AW-.../<label>)
 //   VITE_ADS_PURCHASE_LABEL  rótulo da conversão de compra
 //
-// LGPD: rodar isto para tráfego BR/EU exige um banner de consentimento (Consent Mode). Ver o
-// follow-up de consentimento antes de ligar campanhas.
+// LGPD: o consentimento já está resolvido — `CookieConsent` (montado no App) pergunta antes de
+// qualquer coleta e o Consent Mode entra NEGADO por padrão. Não há bloqueio para ligar campanhas.
 import { getAcquisition } from "./acquisition";
 
 const GA_ID = (import.meta.env.VITE_GA_MEASUREMENT_ID as string | undefined)?.trim() || null;
