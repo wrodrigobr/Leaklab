@@ -181,6 +181,11 @@ def _fingerprint(client, headers, tid, hand_ids):
                 bool(t.get('multiway_advice')),
                 # quais ações o solver creditou (ordem estável), não as frequências
                 sorted(a.get("action", "") for a in (t.get("gto_strategy") or [])),   # lista: tupla não sobrevive ao round-trip do JSON
+                # QUAL camada decidiu. Sem isto o golden protege o resultado mas não o caminho:
+                # um refactor podia trocar quem decide e passar verde porque as duas camadas
+                # concordavam nas mãos deste fixture. Última posição de propósito, para que
+                # acrescentá-la fosse verificável como "só apendou coluna".
+                t.get('verdict_layer'),
             ])
     return fp
 

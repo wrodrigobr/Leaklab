@@ -5753,7 +5753,19 @@ def _apply_alias_to_hand(hand, alias):
 
 
 def _build_replay_data(hand, decisions_db, hero_override=None):
-    """Constrói a timeline completa de replay a partir de uma ParsedHand."""
+    """Constrói a timeline completa de replay a partir de uma ParsedHand.
+
+    SOMENTE LEITURA: o veredito é derivado a cada requisição e NÃO é gravado. Havia dois blocos
+    que diziam persistir o resultado da reconciliação (`update_decision_gto`), mas nenhum dos
+    dois jamais executou — referenciavam `_db_hand`, local de `get_replay`, e o `except: pass`
+    engolia o NameError. Removidos, porque comentário que descreve o contrário do que o código
+    faz é pior que ausência de código.
+
+    Consequência a conhecer: o `gto_label` gravado em `decisions` é o do IMPORT, não o
+    reconciliado que o card mostra. Tudo que lê a coluna (cobertura, scoring de leak, plano de
+    estudo) enxerga o valor do import. Ligar a persistência é decisão de produto, não de
+    refactor: mudaria agregados que o usuário já vê. Enquanto não for decidido, o invariante
+    é este, e `test_replay_nao_grava.py` o mantém."""
     import re as _re
     from leaklab.hand_state_builder import _normalize_action
     from leaklab.parser import SEAT_OUT_OF_HAND_RE
@@ -6157,16 +6169,19 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
         # CAMADA 1 (leaklab/card_verdict, puro e testado): veredito pelo label ARMAZENADO.
         # `_norm` local é de propósito — ver a nota sobre normalização em card_verdict.
         from leaklab.card_verdict import (
-            spot_mismatch as _spot_mismatch, verdict_from_stored as _v_stored,
+            spot_mismatch as _spot_mismatch, verdict_from_stored as _v_stored, VerdictChain,
         )
         gto_spot_mismatch = _spot_mismatch(_norm(gto_action), _norm(engine_best))
-        _v1 = _v_stored(
+        # A cadeia carrega o veredito pelas 4 camadas e registra qual delas decidiu. A ordem é
+        # declarada em card_verdict.LAYERS — aplicar fora dela levanta erro.
+        _vc = VerdictChain(gto_label=gto_label, gto_action=gto_action, live_top_act=None)
+        _vc.apply('stored', _v_stored(
             gto_label, gto_action, engine_best,
             decision.get('label', 'standard') if decision is not None else None,
             _norm(action.action), gto_spot_mismatch,
-        )
-        is_error        = _v1['is_error']
-        reconciled_best = _v1['reconciled_best']
+        ))
+        is_error        = _vc['is_error']
+        reconciled_best = _vc['reconciled_best']
 
         # Detectar conflito engine vs GTO (quando não há mismatch de spot)
         gto_engine_conflict = (
@@ -6316,27 +6331,12 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
                 gto_action,
             )
             if _v:
-                live_top_act    = _v['live_top_act']
-                is_error        = _v['is_error']
-                reconciled_best = _v['reconciled_best']
-                gto_label       = _v['gto_label']
-                gto_action      = _v['gto_action']
-                # Persiste o veredicto do solver — ele tem prioridade sobre RegLife.
-                # Preflop usa analyze_preflop (ranges estáticos), nunca gto_nodes agregados.
-                # O bloco preflop_override abaixo persiste os valores corretos para preflop.
-                if action.street != 'preflop':
-                    try:
-                        from database.repositories import update_decision_gto as _upd_gto
-                        _dec_id = next(
-                            (d.get('id') for d in _db_hand
-                             if _norm(d.get('street','')) == _norm(action.street)
-                             and _norm(d.get('action_taken','')) == acted_norm),
-                            None,
-                        )
-                        if _dec_id:
-                            _upd_gto(_dec_id, gto_label, live_top_act)
-                    except Exception:
-                        pass
+                is_error, reconciled_best, gto_label, gto_action, live_top_act = \
+                    _vc.apply('live', _v).unpack()
+                # (Havia aqui um bloco que dizia persistir o veredito do solver. Ele nunca
+                #  executou: referenciava `_db_hand`, que é local de `get_replay` e não existe
+                #  neste escopo, e o `except: pass` engolia o NameError. Removido — ver a nota
+                #  sobre /replay ser somente-leitura no topo desta função.)
 
         # Preflop override: aggregate nodes give misleading fold recommendation for in-range hands.
         # Use analyze_preflop with the specific hero hand to get the correct recommendation.
@@ -6394,27 +6394,13 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
                             # CAMADA 3 (card_verdict, puro): qualidade desconhecida devolve None
                             # e a camada anterior fica de pé.
                             from leaklab.card_verdict import verdict_from_preflop as _v_pf
-                            _v3 = _v_pf(_pf.get('action_quality', 'unknown'),
-                                        preflop_override_action, _norm(action.action))
-                            if _v3:
-                                is_error        = _v3['is_error']
-                                reconciled_best = _v3['reconciled_best']
-                                gto_label       = _v3['gto_label']
-                            # Persiste os valores corretos de preflop no banco.
-                            # Sobrescreve qualquer lixo que gto_nodes agregados possam ter gravado.
-                            try:
-                                from database.repositories import update_decision_gto as _upd_gto_pf
-                                _pf_acted_norm = _norm(action.action)
-                                _pf_dec_id = next(
-                                    (d.get('id') for d in _db_hand
-                                     if _norm(d.get('street', '')) == 'preflop'
-                                     and _norm(d.get('action_taken', '')) == _pf_acted_norm),
-                                    None,
-                                )
-                                if _pf_dec_id:
-                                    _upd_gto_pf(_pf_dec_id, gto_label, preflop_override_action)
-                            except Exception:
-                                pass
+                            is_error, reconciled_best, gto_label, gto_action, live_top_act = \
+                                _vc.apply('preflop', _v_pf(
+                                    _pf.get('action_quality', 'unknown'),
+                                    preflop_override_action, _norm(action.action))).unpack()
+                            # (Bloco de persistência do preflop removido pelo mesmo motivo do
+                            #  postflop: `_db_hand` não existe neste escopo e o NameError era
+                            #  engolido. Nunca gravou nada.)
                 except Exception:
                     pass
 
@@ -6485,18 +6471,18 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
             )
             if multiway_advice:
                 from leaklab.multiway_advisor import is_hero_leak as _mw_leak
-                _v4 = _v_mw_adv(multiway_advice['action'], _norm(multiway_advice['action']),
-                                _mw_leak(multiway_advice, action.action))
-                is_error, reconciled_best = _v4['is_error'], _v4['reconciled_best']
-                gto_action, live_top_act  = _v4['gto_action'], _v4['live_top_act']
+                is_error, reconciled_best, gto_label, gto_action, live_top_act = \
+                    _vc.apply('multiway_advice', _v_mw_adv(
+                        multiway_advice['action'], _norm(multiway_advice['action']),
+                        _mw_leak(multiway_advice, action.action))).unpack()
             elif _mw_spot:
                 # Advisor DEFERIU: o solver HU não é confiável aqui, então o veredito vem da
                 # SEVERIDADE do engine (label EV-capado) — NÃO do gto_label de frequência HU
                 # (que diria 'crítico' num spot que o coach aprova). Card = badge.
-                _v4 = _v_mw_eng(decision.get('label'), decision.get('best_action'),
-                                reconciled_best, gto_action)
-                is_error, reconciled_best = _v4['is_error'], _v4['reconciled_best']
-                gto_action = _v4['gto_action']
+                is_error, reconciled_best, gto_label, gto_action, live_top_act = \
+                    _vc.apply('multiway_engine', _v_mw_eng(
+                        decision.get('label'), decision.get('best_action'),
+                        reconciled_best, gto_action)).unpack()
 
             # Fase 2 (flag MULTIWAY_GRADE_SAFE_TAIL): a CAUDA SEGURA tem precedência sobre o
             # informativo. Veredito GARANTIDO (sobrevive ao canto adversário das premissas →
@@ -6521,8 +6507,8 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
                     _v4 = _v_mw_safe(multiway_safe['recommended'],
                                      _norm(multiway_safe['recommended']),
                                      multiway_safe['is_leak'])
-                    is_error, reconciled_best = _v4['is_error'], _v4['reconciled_best']
-                    gto_action, live_top_act  = _v4['gto_action'], _v4['live_top_act']
+                    is_error, reconciled_best, gto_label, gto_action, live_top_act = \
+                        _vc.apply('multiway_safe', _v4).unpack()
                     multiway_advice     = None   # cauda segura SUBSTITUI o informativo
                     multiway_safe_label = _v4['safe_label']
 
@@ -6664,6 +6650,9 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
             'gto_approx_stack':   (None if _mw_spot else _lk_approx_stack),   # MVP deep: ≈ aproximação a Xbb
 
             'gto_spot_mismatch':  gto_spot_mismatch if gto_label else None,
+            # Qual das 4 camadas teve a última palavra neste card. Diagnóstico: até aqui, para
+            # saber por que um card diz o que diz era preciso depurar o handler inteiro.
+            'verdict_layer':      _vc.layer,
             'preflop_gto':        decision.get('preflop_gto') if decision else None,
             'desc':           f"{action.player}: {_normalize_action(action.action)}"
                                 + (f' {int(amt)}' if amt else ''),

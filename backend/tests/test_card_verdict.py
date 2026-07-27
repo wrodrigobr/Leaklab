@@ -11,6 +11,7 @@ from leaklab.card_verdict import (
     reconcile_verdict, norm_action, label_for_freq,
     spot_mismatch, verdict_from_stored, verdict_from_preflop,
     verdict_from_multiway_advice, verdict_from_multiway_engine, verdict_from_multiway_safe,
+    VerdictChain, LAYERS,
 )
 
 
@@ -124,6 +125,76 @@ def test_multiway_safe_rotula_severidade():
     assert verdict_from_multiway_safe('folds', 'fold', True)['safe_label'] == 'small_mistake'
     assert verdict_from_multiway_safe('folds', 'fold', False)['safe_label'] == 'standard'
     print("OK  test_multiway_safe_rotula_severidade")
+
+
+# ── VerdictChain: a precedência virou dado ───────────────────────────────────────────────────
+
+def test_chain_camada_posterior_vence():
+    c = VerdictChain()
+    c.apply('stored', {'is_error': False, 'reconciled_best': 'call'})
+    c.apply('live',   {'is_error': True,  'reconciled_best': 'raise'})
+    assert c['is_error'] is True and c['reconciled_best'] == 'raise'
+    assert c.layer == 'live'
+    print("OK  test_chain_camada_posterior_vence")
+
+
+def test_chain_camada_que_nao_opina_nao_vira_dona():
+    """None = a camada não teve o que dizer. Ela não pode sobrescrever NEM assinar o veredito —
+    senão `verdict_layer` mentiria sobre quem decidiu."""
+    c = VerdictChain()
+    c.apply('stored', {'is_error': True, 'reconciled_best': 'fold'})
+    c.apply('preflop', None)
+    assert c['is_error'] is True and c.layer == 'stored'
+    assert c.trail == ['stored']
+    print("OK  test_chain_camada_que_nao_opina_nao_vira_dona")
+
+
+def test_chain_preserva_campo_que_a_camada_nao_decide():
+    """A camada 1 não mexe em gto_label; ele tem que atravessar intacto."""
+    c = VerdictChain(gto_label='gto_correct', gto_action='raise', live_top_act=None)
+    c.apply('stored', {'is_error': False, 'reconciled_best': 'call'})
+    assert c.unpack() == (False, 'call', 'gto_correct', 'raise', None)
+    print("OK  test_chain_preserva_campo_que_a_camada_nao_decide")
+
+
+def test_chain_ignora_campo_de_diagnostico():
+    """As funções devolvem também dados de diagnóstico (`source`, `played_freq`, `safe_label`).
+    Nada disso pode virar campo do veredito por acidente."""
+    c = VerdictChain()
+    c.apply('live', {'is_error': False, 'reconciled_best': 'call',
+                     'source': 'hand', 'played_freq': 0.9, 'top_freq': 0.9})
+    assert 'source' not in c.data and 'played_freq' not in c.data, c.data
+    print("OK  test_chain_ignora_campo_de_diagnostico")
+
+
+def test_chain_fora_de_ordem_levanta():
+    """O ponto da ordem declarada: aplicar ao contrário é erro de programação e tem que doer.
+    Só pode acontecer por edição de código — nunca por dado —, então falhar alto é seguro."""
+    c = VerdictChain()
+    c.apply('preflop', {'is_error': True})
+    for tarde in ('stored', 'live', 'preflop'):
+        try:
+            c.apply(tarde, {'is_error': False})
+        except ValueError:
+            continue
+        raise AssertionError(f"aplicar {tarde!r} depois de 'preflop' deveria levantar")
+    print("OK  test_chain_fora_de_ordem_levanta")
+
+
+def test_chain_camada_desconhecida_levanta():
+    try:
+        VerdictChain().apply('inventada', {'is_error': True})
+    except ValueError:
+        print("OK  test_chain_camada_desconhecida_levanta")
+        return
+    raise AssertionError("camada fora de LAYERS deveria levantar")
+
+
+def test_chain_ordem_declarada_bate_com_as_camadas_reais():
+    """Se alguém acrescentar uma camada ao /replay sem declarar aqui, isto quebra."""
+    assert LAYERS == ('stored', 'live', 'preflop',
+                      'multiway_advice', 'multiway_engine', 'multiway_safe'), LAYERS
+    print("OK  test_chain_ordem_declarada_bate_com_as_camadas_reais")
 
 
 # ── caso-âncora: mão 5 (A2s) — range folda 63%, mas a mão LEVANTA 93% ──────────

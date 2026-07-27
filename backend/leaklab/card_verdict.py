@@ -44,6 +44,67 @@ def label_for_freq(freq: float) -> str:
     return 'gto_critical'
 
 
+# ── Precedência DECLARADA das camadas ─────────────────────────────────────────────────────────
+#
+# Antes disto a precedência era a ordem das instruções dentro de uma função de 1012 linhas: para
+# responder "num spot multiway postflop, quem decide — o solver ou a severidade do engine?" era
+# preciso ler 390 linhas de cima para baixo e simular. A resposta certa estava lá, e até
+# comentada, mas expressa como layout de arquivo.
+#
+# Agora a ordem é um dado. Quem vem depois vence, e aplicar fora de ordem levanta erro em vez de
+# passar silenciosamente — o que só pode acontecer por edição de código, nunca por dado.
+LAYERS = (
+    'stored',           # 1   label gravado na decisão (o que o import concluiu)
+    'live',             # 2   estratégia viva do solver; a da MÃO manda sobre a do RANGE
+    'preflop',          # 3   ranges estáticas — nó agregado engana no preflop
+    'multiway_advice',  # 4a  advisor multiway com alta confiança
+    'multiway_engine',  # 4b  advisor deferiu → severidade do engine, não frequência HU
+    'multiway_safe',    # 4c  cauda segura: veredito que sobrevive ao canto adversário
+)
+
+# Só estes campos atravessam a cadeia. Filtrar é o que garante que uma camada não escreva por
+# acidente um campo que ela não decide (as funções devolvem também dados de diagnóstico).
+_CHAIN_FIELDS = ('is_error', 'reconciled_best', 'gto_label', 'gto_action', 'live_top_act')
+
+
+class VerdictChain:
+    """Acumula o veredito registrando QUEM decidiu.
+
+    Vale tanto pelo que impede quanto pelo que guarda: `layer` responde, para cada card, qual
+    camada teve a última palavra — pergunta que antes não tinha resposta sem depurar."""
+
+    __slots__ = ('data', 'layer', 'trail')
+
+    def __init__(self, **seed):
+        self.data  = dict(seed)
+        self.layer = None
+        self.trail = []
+
+    def apply(self, layer: str, verdict) -> 'VerdictChain':
+        """Aplica uma camada por cima das anteriores. `verdict` None = a camada não opinou."""
+        if layer not in LAYERS:
+            raise ValueError(f"camada desconhecida: {layer!r} (esperado uma de {LAYERS})")
+        if self.layer is not None and LAYERS.index(layer) <= LAYERS.index(self.layer):
+            raise ValueError(
+                f"camada {layer!r} aplicada depois de {self.layer!r} — fora da ordem declarada. "
+                f"Se a precedência mudou de propósito, mude LAYERS, não a ordem das chamadas.")
+        if verdict is None:
+            return self          # não opinou: nem sobrescreve nem vira dona do veredito
+        self.data.update({k: v for k, v in verdict.items() if k in _CHAIN_FIELDS})
+        self.layer = layer
+        self.trail.append(layer)
+        return self
+
+    def unpack(self):
+        """Os 5 campos na ordem em que o /replay os usa."""
+        d = self.data
+        return (d.get('is_error'), d.get('reconciled_best'), d.get('gto_label'),
+                d.get('gto_action'), d.get('live_top_act'))
+
+    def __getitem__(self, k):
+        return self.data.get(k)
+
+
 # ── Camada 1: label ARMAZENADO no banco ───────────────────────────────────────────────────────
 #
 # As 4 camadas de reconciliação do /replay rodam em sequência e cada uma sobrescreve a anterior
