@@ -17,6 +17,7 @@ import { cn } from "@/lib/utils";
 import { computeEffectiveGtoLabel } from "@/lib/gtoUtils";
 import { livePlayers as computeLivePlayers, isMultiwayPot, isPpMuted, idealActionSource, verdictStrategy, verdictLevel, clampVerdict, type VerdictLevel } from "@/lib/cardLogic";
 import { filterHandIds, parseResultFilter, type HandResultFilter } from "@/lib/handFilter";
+import { selectWhy } from "@/lib/replayWhy";
 
 /** Rótulo do filtro de navegação (fallback do i18n — chaves em replayer.filterNav.*). */
 const FILTER_FALLBACK: Record<Exclude<HandResultFilter, "all">, string> = {
@@ -420,82 +421,34 @@ function SidePanels({
         const hasEngineGtoConflict = !step.gto_spot_mismatch && step.engine_best && step.gto_action &&
                                      step.engine_best !== step.gto_action && isError;
 
-        // ──────── Why (1 frase dominante, prioridade descendente) ────────
-        let why = "";
-        if (step.multiway_advice) {
-          // Estimativa multiway: o why HU (ex.: "Call lucrativo 37% ≥ 24%") usa a equity
-          // vs aleatória/HU e CONTRADIZ o fold. A frase aqui é a da estimativa multiway.
-          why = t("card.whyMultiwayEstimate");
-        } else if (limpedPotHeuristic) {
-          // Pote limpado creditado: a heurística recomenda passivo (opção grátis); a frase
-          // explica o conceito sem fingir GTO.
-          why = t("card.whyLimped");
-        } else if (equityNotRangeAware) {
-          // Vem ANTES do ramo de cobertura (que zera a frase): sem esta linha o card ficaria
-          // com o veredito nu, sem dizer de onde ele veio depois de omitir a barra de equity.
-          why = t("card.whyRangeNotPrice");
-        } else if (preflopNoCoverageStrict) {
-          // Sem cobertura GTO (não-limped): a tag de cobertura abaixo já explica o motivo;
-          // não inventar frase de "porquê" baseada em dado stale.
-          why = "";
-        } else if (step.gto_spot_mismatch) {
-          why = step.engine_best === "call"
-            ? t("card.whyMismatchFacing")
-            : t("card.whyMismatchNoBet");
-        } else if (isPfZone) {
-          why = t("card.whyPushfold", { stack: step.hero_stack_bb!.toFixed(1) });
-        } else if (hasEngineGtoConflict) {
-          why = t("card.whyEngineConflict", { engine: fmtAction(step.engine_best!), gto: fmtAction(step.gto_action!) });
-        } else if (hasMathEvidence) {
-          // Frase descreve a AÇÃO TOMADA pelo hero, não a alternativa.
-          // "Call lucrativo" quando hero foldou confunde — soa como crítica oposta ao verdict.
-          const eqPct = Math.round(eq! * 100);
-          const reqPct = Math.round(req! * 100);
-          const margin = eqPct - reqPct;
-          const heroAct = (step.action ?? '').toLowerCase();
-          // "necessário" usa adjusted_required quando disponível (engine ajusta por realization
-          // e pressão ICM). Quando não há ajuste relevante, é pot odds bruto.
-          const reqLabel = requiredIsAdjusted ? t("card.reqLabelAdjusted") : t("card.reqLabelPotOdds");
-          if (heroAct === 'fold') {
-            why = profitable
-              ? (margin <= 3
-                  ? t("card.whyFoldBreakeven", { eqPct, reqLabel, reqPct })
-                  : t("card.whyFoldLeftEv", { eqPct, reqLabel, reqPct }))
-              : t("card.whyFoldCorrect", { eqPct, reqPct, reqLabel });
-          } else if (heroAct === 'call') {
-            why = profitable
-              ? t("card.whyCallProfit", { eqPct, reqLabel, reqPct })
-              : t("card.whyCallLose", { eqPct, reqPct, reqLabel });
-          } else if (heroAct === 'check') {
-            why = t("card.whyCheck", { eqPct, reqLabel, reqPct });
-          } else {
-            // bet/raise/shove
-            why = profitable
-              ? t("card.whyAggrProfit", { act: fmtAction(heroAct), eqPct, reqLabel, reqPct })
-              : t("card.whyAggrRisk", { act: fmtAction(heroAct), eqPct, reqLabel, reqPct });
-          }
-        } else if (!isPostflop && pg?.available) {
-          const scen = scenarioLabel[pg.scenario] ?? pg.scenario;
-          const pct  = pg.range_pct > 0 ? ` (${(pg.range_pct * 100).toFixed(0)}%)` : '';
-          why = pg.in_range
-            ? t("card.whyInRange", { hand: pg.hand_type, scen, pct, bucket: pg.stack_bucket })
-            : t("card.whyOutRange", { hand: pg.hand_type, scen, pct, bucket: pg.stack_bucket });
-        } else if (!hasGto && step.is_hero) {
-          // A frase PRECISA respeitar a street: `whyMultiway` afirma "Spot postflop", e este
-          // ramo pega qualquer decisão do hero sem GTO — inclusive PREFLOP. Um jogador
-          // enfrentando um 3-bet lia uma explicação sobre postflop, sobre a mão errada.
-          // O ramo `preflopNoCoverageStrict` acima não cobre este caso porque exige
-          // `pg.coverage_reason` preenchido; quando o spot vem sem bloco GTO nenhum (ou sem
-          // motivo), a cascata chegava aqui.
-          why = t(isPostflop ? "card.whyMultiway" : "card.whyNoGtoPreflop");
-        } else if (isPostflop && eq != null) {
-          why = eq >= 0.70 ? t("card.whyEqStrong")
-              : eq >= 0.50 ? t("card.whyEqFavorable")
-              : eq >= 0.35 ? t("card.whyEqUnfavorable")
-              : t("card.whyEqWeak");
-        } else {
-          why = t("card.whyContext");
-        }
+        // ──────── Why (1 frase dominante) ────────
+        // A ESCOLHA da frase mora em lib/replayWhy (função pura, testada). Aqui fica só a
+        // tradução: cascata de prioridade não testada é onde bug se esconde — cada `else if`
+        // novo pode roubar o caso de outro sem ninguém perceber, e já mentiu duas vezes
+        // (street errada, e evidência contradizendo o veredito).
+        const whyChoice = selectWhy({
+          isPostflop, isError,
+          heroAction: (step.action ?? "").toLowerCase(),
+          hasMultiwayAdvice: !!step.multiway_advice,
+          limpedPotHeuristic, equityNotRangeAware, preflopNoCoverageStrict,
+          gtoSpotMismatch: !!step.gto_spot_mismatch,
+          isPfZone, heroStackBb: step.hero_stack_bb,
+          hasEngineGtoConflict, engineBest: step.engine_best, gtoAction: step.gto_action,
+          hasMathEvidence, requiredIsAdjusted, eq, req, profitable,
+          hasGto, isHero: !!step.is_hero, pg,
+        });
+        const why = whyChoice.key
+          ? t(whyChoice.key, {
+              ...(whyChoice.params ?? {}),
+              // params indiretos: a chave do rótulo e o cenário viram texto AQUI, na view
+              ...(whyChoice.params?.reqLabelKey
+                ? { reqLabel: t(whyChoice.params.reqLabelKey as string) } : {}),
+              ...(whyChoice.params?.scenKey
+                ? { scen: scenarioLabel[whyChoice.params.scenKey as string] ?? whyChoice.params.scenKey } : {}),
+              ...Object.fromEntries(
+                Object.entries(whyChoice.actionParams ?? {}).map(([k, v]) => [k, fmtAction(v)])),
+            })
+          : "";
 
         // ──────── Evidence (1 widget, escolhido por contexto) ────────
         let evidence: React.ReactNode = null;
