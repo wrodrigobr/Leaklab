@@ -146,12 +146,28 @@
       "solver": "Solver",
       "engine": "Engine",
       "engineTip": "GTO aún no calculado, análisis por el engine (equity, M-Ratio, ICM)"
-    }
+    },
+    "coachReplayCta": "Coach Replay"
   },
   "summary": {
     "pending": "Subir summary",
     "hint": "Sube el Tournament Summary (.txt) de PokerStars o GGPoker para completar los datos del torneo: nº de jugadores, premios y horario.",
     "players": "{{count}} jugadores",
     "reentries": "{{count}} reentradas (el buy-in es el total invertido)"
+  },
+  "coachReplay": {
+    "eyebrow": "Revisión guiada",
+    "title": "Coach Replay",
+    "subtitle": "Tus manos más caras de este torneo, en orden, con el porqué de cada una.",
+    "loading": "Armando la revisión…",
+    "error": "No se pudo cargar esta revisión.",
+    "proFeature": "Coach Replay",
+    "intro": "{{kept}} de {{total}} manos seleccionadas por costo, {{mistakes}} con error. El resto se saltó porque no cambia tu resultado.",
+    "evLost": "EV perdido",
+    "skipped": "Manos saltadas",
+    "noHands": "Ninguna mano de este torneo necesitó revisión.",
+    "planTitle": "Qué hacer con esto",
+    "week": "Semana {{n}}",
+    "trainCta": "Entrenar estos leaks"
   }
 }

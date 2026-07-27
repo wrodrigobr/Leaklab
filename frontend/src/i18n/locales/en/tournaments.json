@@ -146,12 +146,28 @@
       "solver": "Solver",
       "engine": "Engine",
       "engineTip": "GTO not computed yet, analysis by the engine (equity, M-Ratio, ICM)"
-    }
+    },
+    "coachReplayCta": "Coach Replay"
   },
   "summary": {
     "pending": "Upload summary",
     "hint": "Upload the Tournament Summary (.txt) from PokerStars or GGPoker to complete the tournament data: field size, prize pool and time.",
     "players": "{{count}} players",
     "reentries": "{{count}} re-entries (buy-in is the total invested)"
+  },
+  "coachReplay": {
+    "eyebrow": "Guided review",
+    "title": "Coach Replay",
+    "subtitle": "Your costliest hands from this tournament, in order, with the reason for each.",
+    "loading": "Building the review…",
+    "error": "Could not load this review.",
+    "proFeature": "Coach Replay",
+    "intro": "{{kept}} of {{total}} hands picked by cost, {{mistakes}} with a mistake. The rest was skipped because it does not change your result.",
+    "evLost": "EV lost",
+    "skipped": "Hands skipped",
+    "noHands": "No hand from this tournament needed a review.",
+    "planTitle": "What to do about it",
+    "week": "Week {{n}}",
+    "trainCta": "Train these leaks"
   }
 }

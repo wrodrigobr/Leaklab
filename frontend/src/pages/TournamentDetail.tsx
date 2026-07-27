@@ -374,6 +374,17 @@ const TournamentDetail = () => {
               {t("detail.backToList")}
             </Link>
             <div className="flex flex-wrap items-center gap-2">
+              {/* Porta de entrada do Coach Replay: o endpoint existia há tempos sem tela nenhuma
+                  apontando pra ele. Aqui é o lugar natural — você acabou de olhar o torneio. */}
+              {id && (
+                <Link
+                  to={`/coach-replay/${encodeURIComponent(id)}`}
+                  className="inline-flex items-center gap-2 rounded-lg border border-primary/40 bg-primary/10 px-3 py-2 font-mono text-[11px] font-bold uppercase tracking-widest text-primary transition-colors hover:bg-primary/20"
+                >
+                  <GraduationCap className="size-3.5" aria-hidden />
+                  {t("detail.coachReplayCta")}
+                </Link>
+              )}
               {tournament && (
                 <TournamentAiReport
                   tournamentName={tournamentLabel}

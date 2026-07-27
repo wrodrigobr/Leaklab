@@ -15,6 +15,7 @@ import Login from "./pages/Login.tsx";
 import Tournaments from "./pages/Tournaments.tsx";
 import TournamentDetail from "./pages/TournamentDetail.tsx";
 import Replayer from "./pages/Replayer.tsx";
+import CoachReplay from "./pages/CoachReplay.tsx";
 import Rating from "./pages/Rating.tsx";
 import DocsRating from "./pages/DocsRating.tsx";
 import Leaderboard from "./pages/Leaderboard.tsx";
@@ -164,6 +165,14 @@ const App = () => (
                 <AuthRoute>
                   <Replayer />
                 </AuthRoute>
+              }
+            />
+            <Route
+              path="/coach-replay/:tournamentId"
+              element={
+                <ProtectedRoute>
+                  <CoachReplay />
+                </ProtectedRoute>
               }
             />
             <Route

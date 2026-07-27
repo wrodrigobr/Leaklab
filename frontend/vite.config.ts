@@ -15,7 +15,10 @@ export default defineConfig(({ mode }) => ({
       "/auth":        { target: "http://127.0.0.1:5000", changeOrigin: true },
       "/analyze":     { target: "http://127.0.0.1:5000", changeOrigin: true },
       "/study":       { target: "http://127.0.0.1:5000", changeOrigin: true },
-      "/coach":       { target: "http://127.0.0.1:5000", changeOrigin: true },
+      // barra final: senão o prefixo /coach captura a rota SPA /coach-replay/:id
+      // (mesma pegadinha de /replay/ e /tournament/ acima). Não existe rota de API
+      // exatamente "/coach", só "/coach/...", então a barra é segura.
+      "/coach/":      { target: "http://127.0.0.1:5000", changeOrigin: true },
       "/student":     { target: "http://127.0.0.1:5000", changeOrigin: true },
       "/tournaments": { target: "http://127.0.0.1:5000", changeOrigin: true },
       "/tournament/": { target: "http://127.0.0.1:5000", changeOrigin: true },  // barra final: proxia a API /tournament/results (singular) sem capturar a rota SPA /tournaments/:id
