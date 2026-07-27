@@ -2192,8 +2192,15 @@ class _AdaptedConn:
         return sql
 
     # Tabelas sem coluna `id` (chave natural): não acrescentar RETURNING id nelas.
+    #
+    # ⚠️ Esquecer uma tabela aqui quebra TODO INSERT nela — mas SÓ em Postgres, e com
+    # `UndefinedColumn: column "id" does not exist`. Em SQLite passa liso, então o bug só
+    # aparece em produção. Foi o que manteve o painel de Uso zerado: `feature_usage` ficou
+    # de fora, cada INSERT falhava e o `except: pass` do gravador engolia o erro.
+    # `tests/test_no_id_tables.py` audita esta lista contra o schema real — se você criar uma
+    # tabela de chave natural e esquecer daqui, o teste cai antes de ir pra prod.
     _NO_ID_TABLES = {'revalidation_llm_cache', 'gto_preflop_capture', 'gto_tree_strategies',
-                     'daily_challenge_schedule', 'gto_tournament_queue'}
+                     'daily_challenge_schedule', 'gto_tournament_queue', 'feature_usage'}
 
     def _pg_insert_returning(self, sql: str) -> str:
         """Postgres não popula lastrowid. Para INSERTs em tabelas com `id`, acrescenta
