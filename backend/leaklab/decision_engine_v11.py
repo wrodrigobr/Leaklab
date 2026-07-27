@@ -1167,7 +1167,21 @@ def build_interpretation(input_data: Dict[str, Any], label: str, adjusted_requir
         if req_pct is not None:
             diff = round(eq_pct - req_pct, 1)
             if action == "call" and best == "fold":
-                parts.append(f"Equity de {eq_pct}% ficou {abs(diff)}pp abaixo dos {req_pct}% exigidos — sem valor para continuar no pot.")
+                # A frase NÃO pode assumir a premissa do veredito. Este ramo escrevia "ficou
+                # X pp abaixo" com abs(diff) fixo; quando a equity está ACIMA do exigido (o
+                # caso de fold recomendado por RANGE, não por preço — ex.: cold-call de 3-bet
+                # fora de posição), o texto afirmava o contrário do próprio número exibido no
+                # card, que mostra "+19.9pp". Dizer que o preço não fecha quando ele fecha é
+                # pior que não explicar: destrói a confiança no resto da análise.
+                parts.append(
+                    f"Equity de {eq_pct}% ficou {abs(diff)}pp abaixo dos {req_pct}% exigidos — "
+                    f"sem valor para continuar no pot."
+                    if diff < 0 else
+                    f"O preço fechava ({eq_pct}% de equity contra {req_pct}% exigidos), mas o fold "
+                    f"vem da RANGE, não do preço: nesta situação a mão fica dominada com "
+                    f"frequência alta e fora de posição, e a equity bruta superestima o que "
+                    f"você realiza no pot."
+                )
             elif action == "fold" and best == "call":
                 parts.append(f"Com equity de {eq_pct}% vs {req_pct}% exigidos pelo pot, o call tinha valor positivo (+{abs(diff)}pp).")
             elif action == "fold" and best in ("raise", "shove", "jam", "bet"):

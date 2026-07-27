@@ -17,6 +17,7 @@ SUITES = {
                   'test_preflop_gto_quality.py', 'test_recent_regressions.py', 'test_icm.py',
                   'test_elo_engine.py', 'test_leaderboard.py', 'test_invariants.py',
                   'test_leak_trainer.py', 'test_strategy_provider.py', 'test_progression.py',
+                  'test_interpretation_sign.py',
                   'test_validation.py',
                   'test_equity_range_aware.py', 'test_preflop_open_size.py',
                   'test_bet_intent.py', 'test_opponent_stats.py', 'test_sizing_advisor.py',
