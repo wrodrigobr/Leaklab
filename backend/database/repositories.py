@@ -9370,11 +9370,22 @@ def update_gto_hand_request(request_id: int, status: str,
 
 
 def get_user_pending_gto_count(user_id: int) -> int:
-    """Retorna quantos spots GTO ainda estão pendentes para o usuário.
+    """Quantos spots do usuário estão MESMO na fila do solver.
 
-    Conta duas fontes:
-    - gto_hand_requests com status='pending' para o usuário
-    - decisions com gto_label='wizard_pending' nos torneios do usuário
+    Só conta `gto_hand_requests` com status='pending' — a fila real, a mesma que o painel do
+    admin mostra. Antes somava também as decisões com `gto_label='wizard_pending'`, e daí vinha
+    a contradição relatada: o admin via 0 na fila e o dashboard do jogador anunciava "3 spots
+    ainda sendo validados pelo solver".
+
+    `wizard_pending` marcava spots que o solver local não cobre, para caírem no fallback do GTO
+    Wizard — que foi DESCONTINUADO. A função que criava essas marcas já está aposentada (ver
+    `_mark_failed_solver_jobs_as_wizard_pending`, no-op, cujo próprio comentário diz que isso
+    deixava "o indicador 'processando' preso pra sempre"), mas as linhas antigas continuaram no
+    banco e seguiam contando. O aviso prometia recomputar "conforme concluem" algo que nunca vai
+    concluir: não há mais para onde esses spots irem. Sem cobertura é o estado honesto, e ele
+    não é "em andamento".
+
+    Limpeza das linhas legadas: `scripts/clear_wizard_pending.py`.
     """
     conn = get_conn()
     try:
@@ -9382,13 +9393,7 @@ def get_user_pending_gto_count(user_id: int) -> int:
             SELECT COUNT(*) AS n FROM gto_hand_requests
             WHERE requested_by = ? AND status = 'pending'
         """), (user_id,))
-        wizard_row = _fetchone(conn, _adapt("""
-            SELECT COUNT(*) AS n
-            FROM decisions d
-            JOIN tournaments t ON t.id = d.tournament_id
-            WHERE t.user_id = ? AND d.gto_label = 'wizard_pending'
-        """), (user_id,))
-        return (req_row['n'] if req_row else 0) + (wizard_row['n'] if wizard_row else 0)
+        return int(req_row['n']) if req_row else 0
     finally:
         conn.close()
 
