@@ -30,7 +30,7 @@ SUITES = {
                   'test_training_gamification.py',
                   'test_pending_gto_count.py', 'test_confidence_drift.py',
                   'test_no_id_tables.py', 'test_hand_request_cadence.py',
-                  'test_clear_bogus_icm_tax.py'],
+                  'test_clear_bogus_icm_tax.py', 'test_diag_validacao.py'],
     'llm':       ['test_llm_explainer.py', 'test_study_plan.py'],
     'api':       ['test_api_endpoints.py', 'test_subscription.py', 'test_partygaming_financials.py',
                   'test_stripe_hardening.py', 'test_worker_entrypoints.py'],
