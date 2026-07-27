@@ -7172,6 +7172,11 @@ def get_demographics_aggregate() -> dict:
 
 # ── Feature usage analytics (MVP) ─────────────────────────────────────────────
 
+# Uma linha de log por processo: `record_feature_usage` roda em TODA request autenticada,
+# então um erro persistente encheria o log em minutos.
+_FEATURE_USAGE_WARNED = False
+
+
 def record_feature_usage(user_id: int, feature_key: str) -> None:
     """Upsert do contador de uso do dia por (feature, user). Agregado — 1 linha por
     (dia, feature, user), não guarda request cru. Silencioso: nunca quebra a request."""
@@ -7188,6 +7193,15 @@ def record_feature_usage(user_id: int, feature_key: str) -> None:
     except Exception:
         try: conn.rollback()
         except Exception: pass
+        # LOGA (uma vez por processo, pra não inundar: isto roda em TODA request autenticada).
+        # Engolir calado é o que fazia o painel de Uso ficar zerado sem ninguém saber por quê —
+        # mesma lição do record_progression_attempt.
+        global _FEATURE_USAGE_WARNED
+        if not _FEATURE_USAGE_WARNED:
+            _FEATURE_USAGE_WARNED = True
+            log.exception("record_feature_usage falhou (user=%s feature=%s) — o painel de Uso "
+                          "vai ficar ZERADO. Diagnóstico: scripts/diag_feature_usage.py",
+                          user_id, feature_key)
     finally:
         conn.close()
 
