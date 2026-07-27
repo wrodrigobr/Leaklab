@@ -402,6 +402,18 @@ function SidePanels({
         const spr = (step.hero_stack_bb != null && step.pot_bb != null && step.pot_bb > 0)
                     ? step.hero_stack_bb / step.pot_bb : null;
         const hasMathEvidence = (isPostflop || isShoveFb) && eq != null && req != null && req > 0;
+
+        // ──────── Equity que NÃO serve de evidência ────────
+        // Preflop, quando o hero enfrenta uma aposta e a equity é `vs_random`, a conta
+        // equity × pot odds não descreve o spot: `pipeline.py` só injeta a range real do vilão
+        // quando `preflop_raises_faced == 1`, então num 3-bet a equity exibida é contra uma mão
+        // ALEATÓRIA. Caso real: AQs no SB pagando 3-bet aparecia como "66.3% vs 46.4% · +19.9pp"
+        // ao lado de "ERRO / RECOMENDADO FOLD" — a evidência apontava para o lado oposto do
+        // veredito (que estava certo: contra a range real AQs tem ~30%). Um número que
+        // contradiz o veredito ensina o jogador a desconfiar da análise inteira.
+        // Push/fold fica FORA: ali a equity vem da range de shove e o preço É o enquadramento.
+        const equityNotRangeAware = !isPostflop && !isVsRange && !isShoveFb
+                                    && eq != null && req != null && req > 0;
         const requiredIsAdjusted = step.adjusted_required_equity != null &&
                                    poRaw != null &&
                                    Math.abs(step.adjusted_required_equity - poRaw) >= 0.005;
@@ -418,6 +430,10 @@ function SidePanels({
           // Pote limpado creditado: a heurística recomenda passivo (opção grátis); a frase
           // explica o conceito sem fingir GTO.
           why = t("card.whyLimped");
+        } else if (equityNotRangeAware) {
+          // Vem ANTES do ramo de cobertura (que zera a frase): sem esta linha o card ficaria
+          // com o veredito nu, sem dizer de onde ele veio depois de omitir a barra de equity.
+          why = t("card.whyRangeNotPrice");
         } else if (preflopNoCoverageStrict) {
           // Sem cobertura GTO (não-limped): a tag de cobertura abaixo já explica o motivo;
           // não inventar frase de "porquê" baseada em dado stale.
@@ -949,7 +965,7 @@ function SidePanels({
             )}
             {/* SPR/Sizing/Equity/Mín.EV de postflop migraram pro bloco de 3 (acima).
                 Aqui ficam só os de PREFLOP (gated !isPostflop). */}
-            {!isPostflop && eq != null && (
+            {!isPostflop && eq != null && !equityNotRangeAware && (
               <div className="flex items-center gap-2 font-mono text-[11px] flex-wrap"
                 title={showAuditPreflop ? (isVsRange ? t("card.reqVsRangeTip") : t("card.reqVsRandomTip")) : t("card.equityTip")}>
                 <span className="w-14 shrink-0 text-muted-foreground uppercase text-[10px]">Equity</span>
@@ -966,7 +982,7 @@ function SidePanels({
                 </span>
               </div>
             )}
-            {!isPostflop && ((req != null && req > 0) || reqImplicit != null) && (() => {
+            {!isPostflop && !equityNotRangeAware && ((req != null && req > 0) || reqImplicit != null) && (() => {
               const reqShown = (req != null && req > 0) ? req : reqImplicit!;
               const isImplicit = !(req != null && req > 0);
               const tooltip = isImplicit

@@ -298,7 +298,8 @@
     "vApproxIcm": "≈ chipEV approximation",
     "srcIcm": "ICM",
     "tipIcmApprox": "Near the money, under ICM pressure, folding tight is often worth more than the chip EV suggests. This analysis is in chips (chipEV) and does not measure that risk premium, so a defensible fold here is not flagged as a mistake.",
-    "whyNoGtoPreflop": "No pre-computed solver solution for this preflop spot, analysis falls back to the engine heuristic."
+    "whyNoGtoPreflop": "No pre-computed solver solution for this preflop spot, analysis falls back to the engine heuristic.",
+    "whyRangeNotPrice": "The verdict comes from the RANGE, not the price. The equity vs pot odds math is deliberately omitted here: it would be against a random hand, not against the villain's real range, and would point the wrong way."
   },
   "controls": {
     "play": "Play",
