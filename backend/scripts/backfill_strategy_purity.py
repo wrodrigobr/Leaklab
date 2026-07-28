@@ -25,17 +25,11 @@ import sys, os, argparse
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from database.schema import get_conn
+from database.schema import get_conn, init_db
 from database.repositories import _adapt, _fetchall, _fetchone
 from leaklab.parser import parse_hand_history
 from leaklab.pipeline import build_decision_inputs_for_hand
 from leaklab.decision_engine_v11 import evaluate_decision, strategy_purity
-
-
-def _norm(a) -> str:
-    a = (a or '').strip().lower()
-    a = a[:-1] if a.endswith('s') else a
-    return 'allin' if a in ('all-in', 'allin', 'jam', 'shove') else a
 
 
 def main():
@@ -44,8 +38,24 @@ def main():
     ap.add_argument('--limit', type=int, default=0, help='no máximo N torneios')
     args = ap.parse_args()
 
+    # Aplica a migration (idempotente) — MESMA convenção de `backfill_hero_won_hand` e
+    # `backfill_coach_trials`. Sem isto o script estourava `UndefinedColumn` cru do psycopg2: o
+    # `init_db` só é disparado no import de `api.app`, e um script que fala com o banco direto
+    # nunca o importa. Erro de driver não diz a quem opera o servidor o que fazer.
+    init_db()
+
     conn = get_conn()
     try:
+        # Rede para o caso que o init_db NÃO resolve: container com código antigo, onde a
+        # migration nem existe. Aí a orientação é outra.
+        try:
+            conn.execute(_adapt("SELECT gto_top_freq FROM decisions LIMIT 1"))
+        except Exception:
+            print("A coluna `gto_top_freq` continua ausente depois do init_db.\n"
+                  "O container está com código antigo — falta `git pull && "
+                  "docker compose up -d --build`.")
+            return
+
         pend = _fetchone(conn, _adapt(
             "SELECT COUNT(*) AS n FROM decisions WHERE gto_top_freq IS NULL"))
         total = _fetchone(conn, _adapt("SELECT COUNT(*) AS n FROM decisions"))
