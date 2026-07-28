@@ -4,9 +4,9 @@ import { useQuery } from "@tanstack/react-query";
 // `Map as MapIcon` NÃO é preferência de estilo: importar `Map` cru sombreia o construtor global,
 // e o `new Map(...)` do heatmap vira "TypeError: Map is not a constructor" — em RUNTIME, com a
 // tela em branco. Nem o `tsc` nem o build pegam, porque o nome é válido nos dois mundos.
-import { TrendingDown, TrendingUp, Minus, ArrowRight, ArrowLeft, Camera, Map as MapIcon } from "lucide-react";
+import { TrendingDown, TrendingUp, Minus, ArrowRight, ArrowLeft, ChevronRight, Camera, Map as MapIcon } from "lucide-react";
 import { HudLayout } from "@/components/hud/HudLayout";
-import { evolution, training, type EvolutionReport } from "@/lib/api";
+import { evolution, training, type EvolutionReport, type TrainingProofItem } from "@/lib/api";
 import { useSpotLabel } from "@/lib/spotLabel";
 import { formatApiDate } from "@/lib/apiDate";
 import { cn } from "@/lib/utils";
@@ -174,28 +174,9 @@ export default function Evolution() {
             <div className="space-y-2">
               {proof
                 .filter((p) => p.validacao && p.validacao.veredito !== "sem_amostra")
-                .map((p) => {
-                  const v = p.validacao!;
-                  const melhorou = v.veredito === "melhorou";
-                  const piorou = v.veredito === "piorou";
-                  return (
-                    <div key={p.category_key}
-                      className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-background/60 p-3 ring-1 ring-border">
-                      <span className="text-[12px] font-bold text-foreground">
-                        {spotLabel(p.category_key, { fallback: p.category_key })}
-                      </span>
-                      <span className="flex items-center gap-3 font-mono text-[11px]">
-                        <span className="text-muted-foreground">{v.taxa_antes}%</span>
-                        <ArrowRight className="size-3 text-muted-foreground/50" aria-hidden />
-                        <span className={cn("font-bold",
-                          melhorou ? "text-emerald-400" : piorou ? "text-red-400" : "text-foreground")}>
-                          {v.taxa_depois}%
-                        </span>
-                        <span className="text-muted-foreground">({v.n_depois})</span>
-                      </span>
-                    </div>
-                  );
-                })}
+                .map((p) => (
+                  <LinhaProva key={p.category_key} p={p} spotLabel={spotLabel} />
+                ))}
             </div>
             <p className="mt-3 text-[10px] leading-snug text-muted-foreground">{t("proof.disclaimer")}</p>
           </div>
@@ -215,6 +196,99 @@ export default function Evolution() {
         )}
       </div>
     </HudLayout>
+  );
+}
+
+/**
+ * Uma linha de antes/depois, com o detalhe atrás de um expansor.
+ *
+ * Duas coisas que o número sozinho não conta, e que a auditoria da tela expôs:
+ *
+ * 1. **O rótulo não cita profundidade.** A `category_key` carrega o stack em que o TREINO
+ *    acontece, mas o filtro da MEDIÇÃO o ignora — rotular "Abertura de UTG+1 · 50bb" para um
+ *    número medido em todas as profundidades é afirmar precisão que não existe.
+ *
+ * 2. **A taxa agregada dilui.** Em RFI ~84% das decisões são folds triviais. Um "8,1% → 0%"
+ *    verdadeiro pode significar "acertei 50 folds óbvios" enquanto o limp de posição inicial erra
+ *    3 de 3. A quebra por ação é o que transforma o número em diagnóstico, e é justamente o que
+ *    faz o jogador confiar quando o resultado o surpreende.
+ *
+ * Expansor e não tooltip: o conteúdo é rico demais para um `title`, e tooltip não existe no toque.
+ */
+function LinhaProva({ p, spotLabel }: {
+  p: TrainingProofItem;
+  spotLabel: ReturnType<typeof useSpotLabel>;
+}) {
+  const { t } = useTranslation("evolution");
+  const v = p.validacao!;
+  const melhorou = v.veredito === "melhorou";
+  const piorou = v.veredito === "piorou";
+  const acoes = (p.acoes ?? []).filter((a) => a.n > 0);
+  const naoFold = acoes.filter((a) => a.acao !== "fold");
+  const nAtivas = naoFold.reduce((s, a) => s + a.n, 0);
+  const errosAtivos = naoFold.reduce((s, a) => s + a.erros, 0);
+  const ic = v.ic_diferenca;
+
+  return (
+    <details className="group rounded-xl bg-background/60 ring-1 ring-border">
+      <summary className="flex cursor-pointer list-none flex-wrap items-center justify-between gap-2 p-3">
+        <span className="flex items-center gap-1.5 text-[12px] font-bold text-foreground">
+          <ChevronRight className="size-3.5 shrink-0 text-muted-foreground transition-transform group-open:rotate-90" aria-hidden />
+          {/* `familia` (sem stack) é a chave que a medição usa; a category_key fica de reserva. */}
+          {spotLabel(p.familia ?? p.category_key, { stack: false, fallback: p.category_key })}
+        </span>
+        <span className="flex items-center gap-3 font-mono text-[11px]">
+          <span className="text-muted-foreground">{v.taxa_antes}%</span>
+          <ArrowRight className="size-3 text-muted-foreground/50" aria-hidden />
+          <span className={cn("font-bold",
+            melhorou ? "text-emerald-400" : piorou ? "text-red-400" : "text-foreground")}>
+            {v.taxa_depois}%
+          </span>
+          <span className="text-muted-foreground">({v.n_depois})</span>
+        </span>
+      </summary>
+
+      <div className="space-y-3 border-t border-border px-3 pb-3 pt-2.5 text-[11px] leading-snug">
+        <p className="text-muted-foreground">
+          {t(`proof.explain.${v.veredito}`, {
+            antes: v.taxa_antes, ajustado: v.taxa_antes_ajustada ?? v.taxa_antes,
+            depois: v.taxa_depois, n: v.n_depois,
+            lo: ic?.[0], hi: ic?.[1],
+          })}
+        </p>
+
+        {!!acoes.length && (
+          <div>
+            <p className="mb-1 font-mono text-[10px] uppercase tracking-wide text-muted-foreground">
+              {t("proof.byAction")}
+            </p>
+            <div className="space-y-1">
+              {acoes.map((a) => {
+                const pct = a.n ? Math.round((a.erros / a.n) * 100) : 0;
+                return (
+                  <div key={a.acao} className="flex items-center justify-between gap-2 font-mono">
+                    <span className="text-foreground">{t(`proof.action.${a.acao}`, { defaultValue: a.acao })}</span>
+                    <span className={cn("tabular-nums",
+                      a.erros === 0 ? "text-muted-foreground"
+                        : pct >= 50 ? "text-red-400" : "text-amber-400")}>
+                      {a.erros}/{a.n} {a.erros > 0 && `· ${pct}%`}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+            {nAtivas > 0 && (
+              <p className="mt-2 text-muted-foreground">
+                {t("proof.activeHint", {
+                  n: nAtivas, erros: errosAtivos,
+                  pct: Math.round((errosAtivos / nAtivas) * 100),
+                })}
+              </p>
+            )}
+          </div>
+        )}
+      </div>
+    </details>
   );
 }
 

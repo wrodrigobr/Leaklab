@@ -22,7 +22,22 @@
   "proof": {
     "title": "Antes y después del entrenamiento",
     "subtitle": "Aquí la medida es la tasa de error, no el costo: es la que distingue mejora de suerte.",
-    "disclaimer": "El veredicto solo aparece cuando la diferencia resiste el intervalo de confianza, y el \"antes\" se corrige para no inflar la mejora. Compara dos períodos; no prueba que el entrenamiento causó el cambio."
+    "disclaimer": "El veredicto solo aparece cuando la diferencia resiste el intervalo de confianza, y el \"antes\" se corrige para no inflar la mejora. Compara dos períodos; no prueba que el entrenamiento causó el cambio.",
+    "byAction": "Por acción, en el período",
+    "activeHint": "Cuando ACTÚAS aquí (sin contar los folds): {{erros}} errores en {{n}} decisiones, {{pct}}%. Aquí está el trabajo, porque el fold correcto es la mayoría y no cuesta esfuerzo.",
+    "action": {
+      "fold": "Fold",
+      "raise": "Raise",
+      "call": "Call (limp, al ser el primero en actuar)",
+      "allin": "Shove",
+      "check": "Check",
+      "bet": "Bet"
+    },
+    "explain": {
+      "melhorou": "Errabas {{antes}}% (ajustado a {{ajustado}}% porque este leak entró al plan por ser el peor de una lista, y parte de ese mal resultado era suerte). Ahora {{depois}}% en {{n}} decisiones. El intervalo del 95% de la caída es [{{lo}} · {{hi}}] y no toca el cero, así que la diferencia resiste al azar. Compara dos períodos; no prueba que el entrenamiento la causó.",
+      "piorou": "Errabas {{antes}}% (ajustado a {{ajustado}}%) y ahora {{depois}}% en {{n}} decisiones. El intervalo del 95% es [{{lo}} · {{hi}}], entero del lado negativo, así que el retroceso no es ruido. El leak se reabrió para entrenamiento.",
+      "sem_mudanca": "De {{antes}}% (ajustado a {{ajustado}}%) a {{depois}}% en {{n}} decisiones. El intervalo del 95% es [{{lo}} · {{hi}}] y cruza el cero, así que la diferencia aún no se distingue del azar. Esto NO significa que no mejoraste: significa que estos datos aún no permiten afirmarlo."
+    }
   },
   "history": {
     "title": "Informes anteriores",

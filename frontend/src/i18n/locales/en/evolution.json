@@ -22,7 +22,22 @@
   "proof": {
     "title": "Before and after training",
     "subtitle": "Here the measure is error rate, not cost: that is what separates improvement from luck.",
-    "disclaimer": "A verdict only appears when the difference survives the confidence interval, and the \"before\" is corrected so improvement is not inflated. This compares two periods; it does not prove the training caused the change."
+    "disclaimer": "A verdict only appears when the difference survives the confidence interval, and the \"before\" is corrected so improvement is not inflated. This compares two periods; it does not prove the training caused the change.",
+    "byAction": "By action, in the period",
+    "activeHint": "When you ACT here (folds excluded): {{erros}} errors in {{n}} decisions, {{pct}}%. This is where the work is, because correct folds are the majority and cost no effort.",
+    "action": {
+      "fold": "Fold",
+      "raise": "Raise",
+      "call": "Call (limp, when first to act)",
+      "allin": "Shove",
+      "check": "Check",
+      "bet": "Bet"
+    },
+    "explain": {
+      "melhorou": "You used to err {{antes}}% (adjusted to {{ajustado}}% because this leak entered the plan for being the worst of a list, and part of that bad result was luck). Now {{depois}}% over {{n}} decisions. The 95% interval of the drop is [{{lo}} · {{hi}}] and does not touch zero, so the difference survives chance. This compares two periods; it does not prove training caused it.",
+      "piorou": "You used to err {{antes}}% (adjusted to {{ajustado}}%) and now err {{depois}}% over {{n}} decisions. The 95% interval is [{{lo}} · {{hi}}], entirely negative, so the regression is not noise. The leak was reopened for training.",
+      "sem_mudanca": "From {{antes}}% (adjusted to {{ajustado}}%) to {{depois}}% over {{n}} decisions. The 95% interval is [{{lo}} · {{hi}}] and crosses zero, so the difference is still indistinguishable from chance. This does NOT mean you did not improve: it means this data cannot say yet."
+    }
   },
   "history": {
     "title": "Previous reports",

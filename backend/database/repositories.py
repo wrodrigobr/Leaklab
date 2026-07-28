@@ -6280,6 +6280,43 @@ def _category_adherence(conn, user_id, category_key, imported_after=None, only_t
 _ICM_EXCLUDED = 'high'   # zona de ICM: o gabarito é chipEV puro e não vale ali (flag & exclude)
 
 
+def familia_medida(category_key: str) -> str:
+    """A chave que a MEDIÇÃO realmente usa: `scenario:pos:vs`, SEM a profundidade.
+
+    `_category_adherence_filter` ignora o stack de propósito (mais amostra). A `category_key`,
+    porém, carrega a profundidade em que o TREINO acontece — e as duas coisas foram confundidas na
+    tela: o jogador via "Abertura de UTG+1 · 50bb" para um número medido em TODAS as profundidades,
+    e via a mesma medição repetida seis vezes (`rfi:BTN::14`, `::20`, `::50`…) como se fossem seis
+    leaks. Precisão inventada primeiro, contagem inflada depois."""
+    partes = (category_key or '').split(':')
+    return ':'.join(partes[:3]) if len(partes) >= 3 else (category_key or '')
+
+
+def _category_action_breakdown(conn, user_id, category_key, after=None) -> list:
+    """Erros por AÇÃO na família — o detalhe que a taxa agregada esconde.
+
+    Motivo: em RFI, ~84% das decisões são folds triviais (72o em UTG+1 folda e ninguém erra). A
+    taxa agregada dilui, e um "0% de erro" pode significar "acertei 50 folds óbvios" enquanto o
+    limp de posição inicial erra 3 de 3. É a diferença entre um número tranquilizador e o
+    diagnóstico."""
+    filt = _category_adherence_filter(category_key)
+    if not filt:
+        return []
+    where, params = filt
+    sql = ("SELECT d.action_taken AS act, COUNT(*) AS n, "
+           "SUM(CASE WHEN d.gto_label NOT IN ('gto_correct','gto_mixed') THEN 1 ELSE 0 END) AS erros "
+           "FROM decisions d JOIN tournaments t ON t.id = d.tournament_id "
+           "WHERE t.user_id = ? AND d.gto_label IS NOT NULL AND d.gto_label <> '' "
+           "AND COALESCE(d.icm_pressure,'') <> ? AND " + where)
+    args = [user_id, _ICM_EXCLUDED] + params
+    if after is not None:
+        sql += " AND t.imported_at > ?"
+        args.append(after)
+    sql += " GROUP BY d.action_taken ORDER BY COUNT(*) DESC"
+    return [{'acao': _norm_acao(r['act']), 'n': int(r['n'] or 0), 'erros': int(r['erros'] or 0)}
+            for r in _fetchall(conn, _adapt(sql), tuple(args))]
+
+
 def _category_error_counts(conn, user_id, category_key, before=None, after=None):
     """(erros, n) da família no jogo REAL, fora da zona de ICM.
 
@@ -6721,9 +6758,30 @@ def get_training_proof(user_id: int) -> list:
                 'snapshot': snap,
                 'confident': after['with_gto'] >= _TRAIN_PROOF_MIN_N,
                 'validacao': validacao,
+                'familia': familia_medida(key),
+                'acoes': _category_action_breakdown(conn, user_id, key, after=pr['baseline_at']),
                 'reopened_at': reopened_at, 'reopen_count': reopen_count,
             })
         conn.commit()   # persiste baselines recém-congelados
+
+        # DEDUPLICAÇÃO pela chave que a medição usa. Sem isto a lista mostrava 60 linhas para 39
+        # famílias — `rfi:BTN` seis vezes, com números IDÊNTICOS e rótulos de profundidade
+        # diferentes. Não é só ruído visual: inflava o placar ("13 em validação") e vendia como
+        # seis leaks o que é um.
+        #
+        # Entre as duplicatas fica a de MAIOR amostra no depois: elas medem a mesma população e o
+        # que difere é a data em que cada uma congelou o baseline, então a mais informativa é a
+        # que teve mais jogo desde o corte.
+        melhor = {}
+        for p in out:
+            atual = melhor.get(p['familia'])
+            n_novo = (p.get('validacao') or {}).get('n_depois') or p.get('after_n') or 0
+            n_atual = (atual.get('validacao') or {}).get('n_depois') or atual.get('after_n') or 0 \
+                if atual else -1
+            if n_novo > n_atual:
+                melhor[p['familia']] = p
+        out = list(melhor.values())
+
         out.sort(key=lambda p: -abs(p['delta']))
         return out
     finally:

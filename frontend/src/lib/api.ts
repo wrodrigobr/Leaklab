@@ -1467,6 +1467,14 @@ export interface TrainingProofItem {
   /** Fase 3 — o veredito HONESTO (taxa de erro binomial, IC na diferença, ICM fora).
    *  É o que a UI deve mostrar: `delta` acima não tem intervalo de confiança. */
   validacao?: LeakValidation | null;
+  /** Chave que a MEDIÇÃO usa: `scenario:pos:vs`, sem profundidade. A `category_key` carrega o
+   *  stack em que o TREINO acontece, mas o filtro de medição o ignora — rotular com ele afirmava
+   *  uma precisão inexistente ("Abertura de UTG+1 · 50bb" para um número de todas as
+   *  profundidades) e duplicava a mesma família até seis vezes na lista. */
+  familia?: string;
+  /** Erros por ação no período "depois". A taxa agregada dilui: em RFI ~84% das decisões são
+   *  folds triviais, e um "0% de erro" pode esconder um limp que erra 3 de 3. */
+  acoes?: { acao: string; n: number; erros: number }[];
   reopened_at?: string | null;
   reopen_count?: number;
 }
