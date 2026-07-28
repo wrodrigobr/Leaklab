@@ -1763,8 +1763,8 @@ def _resolve_best_action_from_node(row: dict, return_strategy: bool = False):
     except Exception:
         board = []
 
-    _street_cards = {'preflop': 0, 'flop': 3, 'turn': 4, 'river': 5}
-    board_for_hash = board[:_street_cards.get(street, len(board))]
+    from leaklab.gto_utils import board_for_street
+    board_for_hash = board_for_street(board, street)
 
     hand_raw = row.get('hero_cards') or ''
     if isinstance(hand_raw, str) and hand_raw.strip():
@@ -7965,9 +7965,10 @@ def get_decision_gto(decision_id):
     else:
         hero_hand = []
 
-    # Truncate board to street-appropriate length (DB stores full board; hashes use street slice)
-    _street_cards = {'preflop': 0, 'flop': 3, 'turn': 4, 'river': 5}
-    board_for_hash = board[:_street_cards.get(street, len(board))]
+    # O banco guarda o board COMPLETO; o hash usa a fatia da street. Fonte única em gto_utils:
+    # a cópia local desta regra é o que faltou no enfileiramento e produziu hashes que nunca casavam.
+    from leaklab.gto_utils import board_for_street
+    board_for_hash = board_for_street(board, street)
 
     player_action = (dec.get('action_taken') or '').lower()
 
@@ -10038,7 +10039,7 @@ def _enqueue_postflop_spots(results: list, tournament_id: int = None) -> None:
     `tournament_id`: grava o vínculo torneio↔spot (gto_tournament_queue) pro sinal
     "Analisando" ser per-torneio (imune a upload de terceiros).
     """
-    from leaklab.gto_utils import compute_spot_hash, normalize_position
+    from leaklab.gto_utils import compute_spot_hash, normalize_position, board_for_street
     from database.repositories import get_gto_node, enqueue_solver_spot
     import json as _json
 
@@ -10050,7 +10051,10 @@ def _enqueue_postflop_spots(results: list, tournament_id: int = None) -> None:
         try:
             spot   = d.get('spot', {})
             ctx    = d.get('context', {})
-            board  = d.get('board', [])
+            # FATIADO na street, igual ao lookup. Sem isto o spot de flop era gravado com as cinco
+            # cartas do river: o hash nunca casava com o que o lookup procura, e o solver ainda
+            # recebia `street: flop` com o board completo. Ver `board_for_street`.
+            board  = board_for_street(d.get('board', []), d.get('street'))
             hero_h = d.get('hero_cards', [])
             pos    = normalize_position(spot.get('position', ctx.get('position', '')))
             stack  = float(spot.get('effectiveStackBb') or ctx.get('heroStackBb') or 20)

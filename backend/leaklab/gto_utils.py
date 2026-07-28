@@ -118,6 +118,32 @@ def normalize_cards(hand) -> list[str]:
     return [str(x) for x in cards]
 
 
+_CARTAS_POR_STREET = {'preflop': 0, 'flop': 3, 'turn': 4, 'river': 5}
+
+
+def board_for_street(board, street: str) -> list:
+    """Board CORTADO na street da decisão. Use sempre isto antes de `compute_spot_hash`.
+
+    O banco guarda o board COMPLETO da mão em toda decisão, inclusive nas de preflop e flop: a
+    linha da 14260 (flop) carrega `["Qd","Th","7h","7s","3h"]`, as cinco cartas do river. Quem
+    consome precisa cortar, e a regra vivia copiada em cada chamador.
+
+    Foi assim que o bug de 2026-07-28 nasceu. Os dois lookups cortavam; o ENFILEIRAMENTO não. O
+    spot de flop era gravado com o board de cinco cartas e procurado com o de três, então os
+    hashes nunca coincidiam: o solve ficava guardado sob uma chave que ninguém consultava, e o
+    pedido rechecava de cinco em cinco minutos até morrer de idade, sem nunca poder concluir.
+
+    E o dano não parava no hash. O payload enviado ao solver levava o mesmo board inteiro, ou
+    seja, ele recebia `street: flop` com cinco cartas na mesa. Mesmo que os hashes casassem, o nó
+    gravado descreveria outra decisão.
+
+    Por isso a fatia mora aqui, ao lado do hash que ela alimenta, e não em cada chamador.
+    """
+    if not board:
+        return []
+    return list(board)[:_CARTAS_POR_STREET.get((street or '').lower(), len(board))]
+
+
 def compute_spot_hash(
     street: str,
     position: str,
