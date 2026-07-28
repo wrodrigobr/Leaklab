@@ -9352,12 +9352,16 @@ def get_missing_gto_spots(limit: int = 100) -> list[dict]:
             ORDER BY frequency DESC
             LIMIT ?
         """), (limit,))
-        from leaklab.gto_utils import compute_spot_hash
+        from leaklab.gto_utils import compute_spot_hash, board_for_street
         result = []
         seen_hashes: set[str] = set()
         for row in rows:
             try:
-                board = json.loads(row['board']) if row['board'] else []
+                # FATIADO na street. `d.board` guarda o board completo da mão em TODA decisão, então
+                # sem o corte um spot de flop era identificado pelas cinco cartas do river — hash que
+                # nenhum lookup procura, e lista de "faltando" que nunca fecharia.
+                board = board_for_street(
+                    json.loads(row['board']) if row['board'] else [], row['street'])
                 hand  = row['hero_cards'].split() if row['hero_cards'] else []
                 bb    = float(row['stack_bb']) if row['stack_bb'] else 30.0
                 h = compute_spot_hash(

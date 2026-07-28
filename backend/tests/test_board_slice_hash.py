@@ -27,9 +27,34 @@ import sys, os, ast
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
-_APP = os.path.join(os.path.dirname(__file__), '..', 'api', 'app.py')
+_BACKEND = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 _FATIA = 'board_for_street'
 _HASH = 'compute_spot_hash'
+
+# ── O ALCANCE, e por que ele é este ───────────────────────────────────────────────────────────
+#
+# Existem DUAS fontes de board nesta base, e só uma é perigosa:
+#
+#   · board COMPLETO da mão — `decisions.board` no banco e `hand.board` no pipeline. Guarda as
+#     cinco cartas em TODA decisão, inclusive nas de preflop. Quem lê daqui PRECISA cortar.
+#   · board da STREET — `spot['board']`, que o parser acumula carta a carta conforme a mão anda
+#     ("board só traz a(s) carta(s) nova(s), então acumulamos"). Já chega certo.
+#
+# O bug de 12/05 foi exatamente misturar as duas: o enfileiramento lia `d['board']` (completo) e
+# o lookup do worker lia `spot['board']` (da street). Mesma decisão, dois hashes.
+#
+# Por isso o teste cobre os arquivos que leem da fonte PERIGOSA. `gto_solver.lookup_gto` e
+# `strategy_provider` ficam de fora de propósito: lá o board é PARÂMETRO, entregue por um chamador
+# que já está coberto aqui. Incluí-los produziria dez falsos positivos, e teste que grita onde não
+# há problema é teste que alguém desliga.
+_ARQUIVOS = [
+    os.path.join('api', 'app.py'),
+    os.path.join('database', 'repositories.py'),
+]
+
+# Recebe o board pronto de quem chama, pelo contrato acima. `insert_gto_nodes` ingere o RESULTADO
+# do solver e as importações de range, e nos dois casos o board já vem na street correta.
+_RECEBE_PRONTO = {'insert_gto_nodes'}
 
 
 def _nome_da_func(no):
@@ -37,42 +62,63 @@ def _nome_da_func(no):
     return f.attr if isinstance(f, ast.Attribute) else getattr(f, 'id', None)
 
 
-def test_todo_hash_do_app_recebe_board_fatiado():
-    """Percorre cada função do app: nomes vindos de `board_for_street` são os únicos boards
-    aceitáveis como 3º argumento de `compute_spot_hash`."""
-    arvore = ast.parse(open(_APP, encoding='utf-8').read())
+def _arg_board(no):
+    """3º posicional ou o keyword `board` — a chamada existe nas duas formas na base."""
+    if len(no.args) >= 3:
+        return no.args[2]
+    for kw in no.keywords:
+        if kw.arg == 'board':
+            return kw.value
+    return None
+
+
+def test_todo_hash_recebe_board_fatiado():
+    """Percorre cada função: nomes vindos de `board_for_street` são os únicos boards aceitáveis
+    como argumento `board` de `compute_spot_hash`."""
     violacoes = []
     vistos = 0
 
-    for func in [n for n in ast.walk(arvore)
-                 if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))]:
-        # nomes que RECEBERAM a fatia dentro desta função
-        fatiados = set()
-        for no in ast.walk(func):
-            if isinstance(no, ast.Assign) and isinstance(no.value, ast.Call) \
-                    and _nome_da_func(no.value) == _FATIA:
-                fatiados.update(a.id for a in no.targets if isinstance(a, ast.Name))
+    for rel in _ARQUIVOS:
+        caminho = os.path.join(_BACKEND, rel)
+        if not os.path.exists(caminho):
+            continue
+        arvore = ast.parse(open(caminho, encoding='utf-8').read())
 
-        for no in ast.walk(func):
-            if not (isinstance(no, ast.Call) and _nome_da_func(no) == _HASH):
+        for func in [n for n in ast.walk(arvore)
+                     if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))]:
+            if func.name in _RECEBE_PRONTO:
                 continue
-            vistos += 1
-            if len(no.args) < 3:
-                continue                      # chamada por keyword: fora do alcance desta regra
-            arg = no.args[2]
-            if isinstance(arg, ast.Name) and arg.id in fatiados:
-                continue
-            # lista literal (teste/constante) é explícita e não vem do banco
-            if isinstance(arg, (ast.List, ast.Tuple)):
-                continue
-            violacoes.append(f"{func.name}() linha {no.lineno}: board "
-                             f"'{getattr(arg, 'id', ast.dump(arg)[:40])}' não passou por {_FATIA}()")
+            # nomes que RECEBERAM a fatia dentro desta função
+            fatiados = set()
+            for no in ast.walk(func):
+                if isinstance(no, ast.Assign) and isinstance(no.value, ast.Call) \
+                        and _nome_da_func(no.value) == _FATIA:
+                    fatiados.update(a.id for a in no.targets if isinstance(a, ast.Name))
 
-    assert vistos >= 3, f"esperava achar chamadas de {_HASH} no app; achei {vistos}"
+            for no in ast.walk(func):
+                if not (isinstance(no, ast.Call) and _nome_da_func(no) == _HASH):
+                    continue
+                vistos += 1
+                arg = _arg_board(no)
+                if arg is None:
+                    continue
+                if isinstance(arg, ast.Name) and arg.id in fatiados:
+                    continue
+                # chamada aninhada direta: compute_spot_hash(..., board_for_street(b, s), ...)
+                if isinstance(arg, ast.Call) and _nome_da_func(arg) == _FATIA:
+                    continue
+                # lista literal (constante no código) é explícita e não vem do banco
+                if isinstance(arg, (ast.List, ast.Tuple)):
+                    continue
+                violacoes.append(
+                    f"{rel}:{no.lineno} em {func.name}(): board "
+                    f"'{getattr(arg, 'id', ast.dump(arg)[:44])}' não passou por {_FATIA}()")
+
+    assert vistos >= 6, f"esperava achar chamadas de {_HASH}; achei {vistos}"
     assert not violacoes, (
         "board NÃO fatiado indo para o hash — grava com uma chave e procura com outra:\n  "
         + "\n  ".join(violacoes))
-    print(f"OK  test_todo_hash_do_app_recebe_board_fatiado ({vistos} chamadas)")
+    print(f"OK  test_todo_hash_recebe_board_fatiado ({vistos} chamadas, {len(_ARQUIVOS)} arquivos)")
 
 
 def test_fatia_corta_por_street():
@@ -104,7 +150,7 @@ def test_board_inteiro_produz_hash_DIFERENTE_do_fatiado():
 
 if __name__ == '__main__':
     falhas = 0
-    for t in (test_todo_hash_do_app_recebe_board_fatiado,
+    for t in (test_todo_hash_recebe_board_fatiado,
               test_fatia_corta_por_street,
               test_board_inteiro_produz_hash_DIFERENTE_do_fatiado):
         try:
