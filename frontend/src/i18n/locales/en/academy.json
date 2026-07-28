@@ -3073,5 +3073,9 @@
       "next_label": "Continue to Position",
       "next_sub": "The advantage that decides the blind war and the rest of the game."
     }
+  },
+  "poolDone": {
+    "title": "You completed every exercise in this lesson",
+    "hint": "This lesson has a fixed number of exercises and you went through all of them. Repeating the same ones would waste your time without teaching anything new. For real variety, use the Leak Trainer or Ghost Table: there the spots come from your own hands."
   }
 }

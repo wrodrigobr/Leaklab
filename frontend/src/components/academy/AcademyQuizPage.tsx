@@ -105,6 +105,9 @@ export function QuizRunner({
   const [totalCorrect, setTotalCorrect] = useState(0);
   const [xpEarned, setXpEarned]         = useState(0);
   const [showHint, setShowHint]         = useState(false);
+  // Aula finita: acabaram os exercícios inéditos. Diferente de `challengeDone`, que é a meta de
+  // um desafio de N questões — aqui o limite é o PRÓPRIO conteúdo da aula.
+  const [poolEsgotado, setPoolEsgotado]  = useState(false);
   // Anti-repetição: guarda as questões já mostradas nesta sessão (fingerprint =
   // enunciado + resposta). loadFn é aleatório, então re-sorteamos até vir uma inédita
   // (cap p/ pools pequenos — aí aceita repetir em vez de travar).
@@ -118,13 +121,27 @@ export function QuizRunner({
     setShowHint(false);
     try {
       let q: AcademyQuestion | null = null;
+      let inedita = false;
       for (let attempt = 0; attempt < 8; attempt++) {
         const timeout = new Promise<never>((_, rej) =>
           setTimeout(() => rej(new Error("timeout")), 12000)
         );
         const cand = await Promise.race([loadFn(), timeout]);
         q = cand;
-        if (!seenRef.current.has(fp(cand))) break;   // inédita → usa
+        if (!seenRef.current.has(fp(cand))) { inedita = true; break; }
+      }
+      // Pool esgotado. Antes daqui o código ACEITAVA a repetição ("cap p/ pools pequenos"), e o
+      // resultado era a aula servindo as mesmas 3 perguntas para sempre — doze aulas desta
+      // Academia têm só perguntas fixas, então o caso não é raro, é o normal.
+      //
+      // Repetir em silêncio gasta o tempo do jogador e ensina que o treino não tem fim nem
+      // progresso. Encerrar é mais honesto: a aula tem N exercícios, você fez os N. E deixa
+      // visível o que estava escondido — que N é pequeno demais, o que é problema de conteúdo,
+      // não de mecânica.
+      if (!inedita && totalDone > 0) {
+        setPoolEsgotado(true);
+        setPhase("complete");
+        return;
       }
       if (q) {
         seenRef.current.add(fp(q));
@@ -161,6 +178,7 @@ export function QuizRunner({
   const goNext = () => { if (challengeDone) setPhase("complete"); else loadQuestion(); };
   const restartChallenge = () => {
     setTotalDone(0); setTotalCorrect(0); setStreak(0); setXpEarned(0);
+    setPoolEsgotado(false);
     seenRef.current.clear();
     loadQuestion();
   };
@@ -386,12 +404,21 @@ export function QuizRunner({
           <div className="mx-auto max-w-md flex flex-col items-center gap-5 rounded-xl border border-border bg-hud-surface p-8 text-center">
             <div className={cn("flex size-14 items-center justify-center rounded-2xl text-2xl", c.icon)}>🏆</div>
             <div>
-              <p className="text-lg font-semibold text-foreground">{t("challenge.title")}</p>
-              <p className="mt-1 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">{challengeSize} {t("stats.done")}</p>
+              <p className="text-lg font-semibold text-foreground">
+                {poolEsgotado ? t("poolDone.title") : t("challenge.title")}
+              </p>
+              <p className="mt-1 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+                {poolEsgotado ? totalDone : challengeSize} {t("stats.done")}
+              </p>
+              {poolEsgotado && (
+                <p className="mt-2 max-w-xs text-[11px] leading-snug text-muted-foreground">
+                  {t("poolDone.hint")}
+                </p>
+              )}
             </div>
             <div className="grid w-full grid-cols-3 gap-5">
               <div>
-                <p className="font-mono text-xl font-bold tabular-nums text-foreground">{totalCorrect}/{challengeSize}</p>
+                <p className="font-mono text-xl font-bold tabular-nums text-foreground">{totalCorrect}/{poolEsgotado ? totalDone : challengeSize}</p>
                 <p className="font-mono text-[9px] uppercase tracking-wider text-muted-foreground">{t("challenge.correct")}</p>
               </div>
               <div>

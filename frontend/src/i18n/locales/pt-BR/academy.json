@@ -3073,5 +3073,9 @@
       "next_label": "Continue para Posição",
       "next_sub": "A vantagem que decide a guerra das blinds e o resto do jogo."
     }
+  },
+  "poolDone": {
+    "title": "Você fez todos os exercícios desta aula",
+    "hint": "Esta aula tem um número fixo de exercícios, e você passou por todos. Repetir os mesmos gastaria seu tempo sem ensinar nada novo. Para treinar com variedade real, use o Leak Trainer ou o Ghost Table: lá os spots vêm das suas próprias mãos."
   }
 }
