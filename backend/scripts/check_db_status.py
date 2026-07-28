@@ -1,5 +1,6 @@
 import sqlite3, os, sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from database.rowutil import first_value
 
 db_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'data', 'leaklab.db')
 print(f'DB: {db_path}')
@@ -15,6 +16,6 @@ for r in c.fetchall():
 print('\n=== gto_solver_queue ===')
 for status in ('pending', 'running', 'done', 'failed'):
     c.execute(f"SELECT COUNT(*) FROM gto_solver_queue WHERE status=?", (status,))
-    print(f'  {status}: {c.fetchone()[0]}')
+    print(f'  {status}: {first_value(c.fetchone())}')
 
 conn.close()

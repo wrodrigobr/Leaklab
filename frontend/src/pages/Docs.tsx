@@ -4,7 +4,7 @@ import { Link } from "react-router-dom";
 import { HudLayout } from "@/components/hud/HudLayout";
 import { BookOpen, ChevronRight, TrendingUp } from "lucide-react";
 
-const SECTION_IDS = ["import", "scoring", "indicators", "today", "kpis", "gto_method", "coverage", "replayer", "pko_tournaments", "mstacks", "dna", "leaks", "causal_map", "streets", "positions", "icm", "pressure", "bankroll", "training", "ghost", "compare", "coaching", "gamification", "ranking", "career", "cognitive", "twin"] as const;
+const SECTION_IDS = ["import", "scoring", "indicators", "today", "kpis", "gto_method", "coverage", "replayer", "pko_tournaments", "mstacks", "dna", "leaks", "causal_map", "streets", "positions", "icm", "pressure", "bankroll", "training", "ghost", "compare", "evolution", "coaching", "gamification", "ranking", "career", "cognitive", "twin"] as const;
 type SectionId = typeof SECTION_IDS[number];
 
 function Badge({ color, children }: { color: string; children: React.ReactNode }) {
@@ -547,6 +547,61 @@ export default function Docs() {
                 <li>{t("compare.bullet_narrative")}</li>
               </ul>
               <p dangerouslySetInnerHTML={{ __html: t("compare.p2") }} />
+            </Section>
+
+            {/* Relatório de Evolução.
+                Fica DEPOIS do comparativo e ANTES do coaching porque a ordem da doc segue a do uso:
+                comparar torneios e ler a evolução são a mesma família (olhar para trás), e o coach
+                entra quando você já sabe o que quer discutir.
+                Conceitos, nunca a lógica interna: o que é cada bloco e como interpretá-lo. Duas
+                coisas entram porque são as que o jogador lê ERRADO sozinho — quadrante vazio não é
+                acerto, e "ainda não dá para afirmar" não é "você não melhorou". */}
+            <Section id="evolution" title={t("evolution.title")}>
+              <p dangerouslySetInnerHTML={{ __html: t("evolution.p1") }} />
+              <p dangerouslySetInnerHTML={{ __html: t("evolution.p2") }} />
+
+              <h3 className="pt-2 font-semibold text-foreground">{t("evolution.hero_title")}</h3>
+              <p>{t("evolution.hero_p")}</p>
+              <p>{t("evolution.hero_p2")}</p>
+
+              <h3 className="pt-2 font-semibold text-foreground">{t("evolution.costly_title")}</h3>
+              <p>{t("evolution.costly_p")}</p>
+
+              <h3 className="pt-2 font-semibold text-foreground">{t("evolution.matrix_title")}</h3>
+              <p>{t("evolution.matrix_p")}</p>
+              <Table
+                headers={[t("evolution.col_cell"), t("evolution.col_cell_meaning")]}
+                rows={[
+                  [<Badge color="bg-primary/15 text-primary">{t("evolution.cell_top")}</Badge>,    t("evolution.cell_top_meaning")],
+                  [<Badge color="bg-slate-400/15 text-slate-300">{t("evolution.cell_bottom")}</Badge>, t("evolution.cell_bottom_meaning")],
+                  [<Badge color="bg-amber-500/15 text-amber-400">{t("evolution.cell_empty")}</Badge>,  t("evolution.cell_empty_meaning")],
+                ]}
+              />
+
+              <h3 className="pt-2 font-semibold text-foreground">{t("evolution.proof_title")}</h3>
+              <p>{t("evolution.proof_p")}</p>
+              <p dangerouslySetInnerHTML={{ __html: t("evolution.proof_p2") }} />
+              <p>{t("evolution.proof_p3")}</p>
+
+              <h3 className="pt-2 font-semibold text-foreground">{t("evolution.purity_title")}</h3>
+              <p>{t("evolution.purity_p")}</p>
+              <p dangerouslySetInnerHTML={{ __html: t("evolution.purity_p2") }} />
+
+              <h3 className="pt-2 font-semibold text-foreground">{t("evolution.snapshot_title")}</h3>
+              <p>{t("evolution.snapshot_p")}</p>
+
+              <h3 className="pt-2 font-semibold text-foreground">{t("evolution.download_title")}</h3>
+              <p>{t("evolution.download_p")}</p>
+
+              <h3 className="pt-2 font-semibold text-foreground">{t("evolution.out_title")}</h3>
+              <Table
+                headers={[t("evolution.col_out"), t("evolution.col_out_why")]}
+                rows={[
+                  [t("evolution.out_nogto"), t("evolution.out_nogto_why")],
+                  [t("evolution.out_ev"),    t("evolution.out_ev_why")],
+                  [t("evolution.out_icm"),   t("evolution.out_icm_why")],
+                ]}
+              />
             </Section>
 
             {/* Coaching */}

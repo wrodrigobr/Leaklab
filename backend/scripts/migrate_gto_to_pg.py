@@ -27,6 +27,7 @@ import argparse
 import sqlite3
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from database.rowutil import first_value
 
 # (tabela, coluna_de_conflito, colunas_a_ignorar_na_origem)
 TABLES = [
@@ -77,7 +78,7 @@ def main():
         # contagem atual no destino
         cur = pg.cursor()
         cur.execute(f"SELECT COUNT(*) FROM {table}")
-        before = cur.fetchone()[0]
+        before = first_value(cur.fetchone())
         if not rows:
             print(f"{table:24s} origem vazia ({before} no destino) — nada a fazer"); continue
         if args.dry_run:
@@ -99,7 +100,7 @@ def main():
         execute_values(cur, f"INSERT INTO {table} ({collist}) VALUES %s {conflict_sql}", rows, page_size=500)
         pg.commit()
         cur.execute(f"SELECT COUNT(*) FROM {table}")
-        after = cur.fetchone()[0]
+        after = first_value(cur.fetchone())
         inserted = after - before
         total += inserted
         print(f"{table:24s} {len(rows):>6} na origem · +{inserted} inseridas (destino: {before}→{after})")

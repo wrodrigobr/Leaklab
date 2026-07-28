@@ -19,6 +19,7 @@ from leaklab.parser import parse_hand_history
 from leaklab.pipeline import build_decision_inputs_for_hand
 from leaklab.preflop_gto_ranges import analyze_preflop
 from leaklab.gto_utils import hand_to_type
+from database.rowutil import first_value
 
 
 def _is_limp(di) -> bool:
@@ -56,7 +57,7 @@ def main():
     # (hand_id, action) das decisões de pote limpado
     limp_keys = set()
     for tid in tids:
-        raw = c.execute('SELECT raw_text FROM tournaments WHERE id=?', (tid,)).fetchone()[0]
+        raw = first_value(c.execute('SELECT raw_text FROM tournaments WHERE id=?', (tid,)).fetchone())
         if not raw:
             continue
         try:

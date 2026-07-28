@@ -15,6 +15,7 @@ import sys, json, argparse, logging
 sys.path.insert(0, '.')
 
 from database.schema import get_conn
+from database.rowutil import first_value
 
 logging.basicConfig(level=logging.INFO, format='%(levelname)s  %(message)s')
 log = logging.getLogger('audit_gto')
@@ -104,7 +105,7 @@ def run_audit(fix: bool = False) -> dict:
     bad_pos = [r[0] for r in all_pos if r[0] not in _VALID_POSITIONS]
     c4_count = 0
     for p in bad_pos:
-        cnt = conn.execute('SELECT COUNT(*) FROM gto_nodes WHERE position=?', (p,)).fetchone()[0]
+        cnt = first_value(conn.execute('SELECT COUNT(*) FROM gto_nodes WHERE position=?', (p,)).fetchone())
         c4_count += cnt
         log.error('[C4] position desconhecida: %r (%d nós)', p, cnt)
     results['C4_invalid_position'] = c4_count
@@ -114,24 +115,24 @@ def run_audit(fix: bool = False) -> dict:
     bad_streets = [r[0] for r in all_streets if r[0] not in _VALID_STREETS]
     c5_count = 0
     for s in bad_streets:
-        cnt = conn.execute('SELECT COUNT(*) FROM gto_nodes WHERE street=?', (s,)).fetchone()[0]
+        cnt = first_value(conn.execute('SELECT COUNT(*) FROM gto_nodes WHERE street=?', (s,)).fetchone())
         c5_count += cnt
         log.error('[C5] street desconhecida: %r (%d nós)', s, cnt)
     results['C5_invalid_street'] = c5_count
 
     # ── C6: gto_freq fora de [0,1] ────────────────────────────────────────────
-    cnt_c6 = conn.execute(
+    cnt_c6 = first_value(conn.execute(
         'SELECT COUNT(*) FROM gto_nodes WHERE gto_freq < 0 OR gto_freq > 1.0'
-    ).fetchone()[0]
+    ).fetchone())
     results['C6_freq_out_of_range'] = cnt_c6
     if cnt_c6:
         log.error('[C6] %d nós com gto_freq fora de [0,1]', cnt_c6)
 
     # ── C7: decisions com gto_label mas sem gto_action ────────────────────────
     try:
-        cnt_c7 = conn.execute(
+        cnt_c7 = first_value(conn.execute(
             'SELECT COUNT(*) FROM decisions WHERE gto_label IS NOT NULL AND gto_action IS NULL'
-        ).fetchone()[0]
+        ).fetchone())
         results['C7_decisions_label_no_action'] = cnt_c7
         if cnt_c7:
             log.warning('[C7] %d decisions com gto_label sem gto_action', cnt_c7)
@@ -141,9 +142,9 @@ def run_audit(fix: bool = False) -> dict:
     # ── C8: decisions com gto_action inválido ─────────────────────────────────
     try:
         invalid_actions_sql = "gto_action NOT IN ('fold','check','call','bet','raise','jam','allin','shove','all-in','jam')"
-        cnt_c8 = conn.execute(
+        cnt_c8 = first_value(conn.execute(
             f'SELECT COUNT(*) FROM decisions WHERE {invalid_actions_sql} AND gto_action IS NOT NULL'
-        ).fetchone()[0]
+        ).fetchone())
         results['C8_decisions_invalid_action'] = cnt_c8
         if cnt_c8:
             log.error('[C8] %d decisions com gto_action inválido', cnt_c8)
@@ -151,10 +152,10 @@ def run_audit(fix: bool = False) -> dict:
         results['C8_decisions_invalid_action'] = 'N/A'
 
     # ── C9: nós preflop com fold como top action sem hero_hand (bug tipo KK) ──
-    cnt_c9 = conn.execute(
+    cnt_c9 = first_value(conn.execute(
         "SELECT COUNT(*) FROM gto_nodes WHERE street='preflop' AND gto_action='fold' "
         "AND (hero_hand IS NULL OR hero_hand='[]')"
-    ).fetchone()[0]
+    ).fetchone())
     results['C9_preflop_fold_aggregate'] = cnt_c9
     if cnt_c9:
         log.warning('[C9] %d nós preflop agregados com gto_action=fold (potencial KK-bug)', cnt_c9)

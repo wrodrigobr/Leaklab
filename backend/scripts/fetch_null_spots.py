@@ -35,6 +35,7 @@ from leaklab.preflop_gto_ranges import analyze_preflop, _stack_bucket # noqa: E4
 from leaklab.gto_utils import hand_to_type                            # noqa: E402
 from leaklab import gto_wizard_client as gw                           # noqa: E402
 from leaklab.gw_action_encoder import find_hero_preflop_decisions     # noqa: E402
+from database.rowutil import first_value
 
 SEED_DIR = BACKEND / "docs" / "gw_preflop_seed"
 
@@ -93,7 +94,7 @@ def main():
 
     out = {}; fetched = ok = 0; per_bk = {}; seen = set(); misaligned = 0
     for tid in tids:
-        raw = conn.execute("SELECT raw_text FROM tournaments WHERE id=?", (tid,)).fetchone()[0]
+        raw = first_value(conn.execute("SELECT raw_text FROM tournaments WHERE id=?", (tid,)).fetchone())
         try:
             hands = parse_hand_history(raw)
         except Exception:

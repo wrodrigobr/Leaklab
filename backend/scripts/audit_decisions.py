@@ -12,6 +12,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 from database.schema import get_conn
 from leaklab.preflop_range_evaluator import _classify_range_zone, _recommended_action
+from database.rowutil import first_value
 
 # -----------------------------------------------------------------------------
 # Helpers
@@ -161,7 +162,7 @@ def check_label_score_consistency(conn):
 def print_overview(conn):
     section("VISÃO GERAL DO BANCO")
 
-    total = conn.execute("SELECT COUNT(*) FROM decisions").fetchone()[0]
+    total = first_value(conn.execute("SELECT COUNT(*) FROM decisions").fetchone())
     print(f"  Total de decisões: {total}")
     print()
 
@@ -181,9 +182,9 @@ def print_overview(conn):
 
     print()
     print("  facing_bet:")
-    null_c = conn.execute("SELECT COUNT(*) FROM decisions WHERE facing_bet IS NULL").fetchone()[0]
-    pos_c  = conn.execute("SELECT COUNT(*) FROM decisions WHERE facing_bet > 0").fetchone()[0]
-    zero_c = conn.execute("SELECT COUNT(*) FROM decisions WHERE facing_bet = 0").fetchone()[0]
+    null_c = first_value(conn.execute("SELECT COUNT(*) FROM decisions WHERE facing_bet IS NULL").fetchone())
+    pos_c  = first_value(conn.execute("SELECT COUNT(*) FROM decisions WHERE facing_bet > 0").fetchone())
+    zero_c = first_value(conn.execute("SELECT COUNT(*) FROM decisions WHERE facing_bet = 0").fetchone())
     print(f"    NULL (sem aposta registrada): {null_c:5}  ({pct(null_c, total)})")
     print(f"    0 (aposta zero):              {zero_c:5}  ({pct(zero_c, total)})")
     print(f"    > 0 (aposta real):            {pos_c:5}  ({pct(pos_c, total)})")
@@ -202,7 +203,7 @@ def main():
 
     header("AUDITORIA DE DECISÕES — FASE 1")
 
-    total = conn.execute("SELECT COUNT(*) FROM decisions").fetchone()[0]
+    total = first_value(conn.execute("SELECT COUNT(*) FROM decisions").fetchone())
     print_overview(conn)
 
     issues = []  # lista de (categoria, gravidade, count)
@@ -280,12 +281,12 @@ def main():
     print()
 
     # Quantas linhas nao-BB sao afetadas pelo guard incorreto:
-    guard_affected = conn.execute("""
+    guard_affected = first_value(conn.execute("""
         SELECT COUNT(*) FROM decisions
         WHERE position NOT IN ('BB')
           AND (facing_bet IS NULL OR facing_bet = 0)
           AND best_action = 'fold'
-    """).fetchone()[0]
+    """).fetchone())
     print(f"  Decisoes nao-BB afetadas pelo guard incorreto: {guard_affected}")
     print(f"  Dessas, o guard troca fold->check incorretamente em serve-time.")
     issues.append(("Guard fold->check muito abrangente", "CRITICO", guard_affected))

@@ -15,6 +15,7 @@ from dataclasses import dataclass, field
 from typing import Optional
 
 from database.schema import get_conn
+from database.rowutil import first_value
 
 _SAMPLE = 20  # ids de amostra por padrão
 
@@ -114,10 +115,10 @@ def scan_patterns(scope, exclude_seed: bool = True) -> list[PatternFinding]:
         for key, title, severity, remediation, cond in _CHECKS:
             where = f"({real_where}) AND ({cond})"
             try:
-                cnt = conn.execute(
+                cnt = first_value(conn.execute(
                     "SELECT COUNT(*) FROM decisions d "
                     "JOIN tournaments t ON t.id = d.tournament_id "
-                    f"WHERE {where}", base_params).fetchone()[0]
+                    f"WHERE {where}", base_params).fetchone())
                 ids = []
                 if cnt:
                     rows = conn.execute(
@@ -147,8 +148,8 @@ def scan_patterns(scope, exclude_seed: bool = True) -> list[PatternFinding]:
                 f"WHERE {real_where} GROUP BY d.tournament_id, d.hand_id, d.street, "
                 "d.action_taken, d.pot_size, d.facing_bet HAVING COUNT(*) > 1 "
                 f"LIMIT {_SAMPLE}", base_params).fetchall()
-            dup_cnt = conn.execute(f"SELECT COUNT(*) FROM ({_dupgrp}) x",
-                                   base_params).fetchone()[0]
+            dup_cnt = first_value(conn.execute(f"SELECT COUNT(*) FROM ({_dupgrp}) x",
+                                   base_params).fetchone())
             samples = [f"t{dict(r)['tournament_id']}/{dict(r)['hand_id']}/{dict(r)['street']}"
                        for r in dup_rows]
             out.append(PatternFinding(
@@ -162,9 +163,9 @@ def scan_patterns(scope, exclude_seed: bool = True) -> list[PatternFinding]:
 
         # Seed FAKE (leaderboard) — NÃO é dado real; polui métricas de auditoria.
         try:
-            seed_cnt = conn.execute(
+            seed_cnt = first_value(conn.execute(
                 "SELECT COUNT(*) FROM decisions d JOIN tournaments t ON t.id = d.tournament_id "
-                f"WHERE ({base_where}) AND t.tournament_id LIKE 'FAKE-%'", base_params).fetchone()[0]
+                f"WHERE ({base_where}) AND t.tournament_id LIKE 'FAKE-%'", base_params).fetchone())
         except Exception:
             seed_cnt = 0
         out.append(PatternFinding(
@@ -174,13 +175,13 @@ def scan_patterns(scope, exclude_seed: bool = True) -> list[PatternFinding]:
 
         # PKO com ranges Classic — CAVEAT (aproximacao documentada, nao divergencia)
         try:
-            pko_cnt = conn.execute(
+            pko_cnt = first_value(conn.execute(
                 "SELECT COUNT(*) FROM decisions d "
                 "JOIN tournaments t ON t.id = d.tournament_id "
                 # `is_pko` é BOOLEAN no Postgres: `COALESCE(bool,0)=1` estoura lá e passa no
                 # SQLite. O idioma portável desta base é o CASE (ver `_category_adherence_filter`).
                 f"WHERE ({base_where}) AND (CASE WHEN t.is_pko THEN 1 ELSE 0 END) = 1",
-                base_params).fetchone()[0]
+                base_params).fetchone())
         except Exception:
             pko_cnt = 0
         out.append(PatternFinding(

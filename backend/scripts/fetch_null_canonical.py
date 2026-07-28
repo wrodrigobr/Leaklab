@@ -45,6 +45,7 @@ from leaklab.pipeline import build_decision_inputs_for_hand           # noqa: E4
 from leaklab.preflop_gto_ranges import analyze_preflop, _stack_bucket, _norm_pos  # noqa: E402
 from leaklab.gto_utils import hand_to_type                            # noqa: E402
 from leaklab import gto_wizard_client as gw                           # noqa: E402
+from database.rowutil import first_value
 
 SEED_DIR = BACKEND / "docs" / "gw_preflop_seed"
 SEATS = ["UTG", "UTG+1", "UTG+2", "LJ", "HJ", "CO", "BTN", "SB", "BB"]   # GW 9-max action order
@@ -133,7 +134,7 @@ def collect_pairs():
         d = dict(row); nullkeys.add((d["tournament_id"], d["hand_id"], (d["action_taken"] or "").lower()))
     pairs = {}; seen = set()
     for tid in tids:
-        raw = conn.execute("SELECT raw_text FROM tournaments WHERE id=?", (tid,)).fetchone()[0]
+        raw = first_value(conn.execute("SELECT raw_text FROM tournaments WHERE id=?", (tid,)).fetchone())
         try:
             hands = parse_hand_history(raw)
         except Exception:

@@ -14,18 +14,18 @@ conn = get_conn()
 cur = conn.execute(
     "SELECT COUNT(*) FROM decisions WHERE street IN ('flop','turn','river') AND gto_label IS NULL AND hero_cards IS NOT NULL"
 )
-total_decisions = cur.fetchone()[0]
+total_decisions = first_value(cur.fetchone())
 
 cur = conn.execute(
     "SELECT COUNT(DISTINCT hand_id) FROM decisions WHERE street IN ('flop','turn','river') AND gto_label IS NULL AND hero_cards IS NOT NULL"
 )
-total_hands = cur.fetchone()[0]
+total_hands = first_value(cur.fetchone())
 
 cur = conn.execute("SELECT COUNT(*) FROM gto_hand_requests WHERE status = 'pending'")
-pending = cur.fetchone()[0]
+pending = first_value(cur.fetchone())
 
 cur = conn.execute("SELECT COUNT(*) FROM gto_hand_requests")
-total_reqs = cur.fetchone()[0]
+total_reqs = first_value(cur.fetchone())
 
 print(f"Hero postflop decisions without gto_label: {total_decisions}")
 print(f"Distinct hands without gto_label:          {total_hands}")
@@ -47,6 +47,7 @@ conn.close()
 
 # Group by (tournament_id, user_id)
 from collections import defaultdict
+from database.rowutil import first_value
 groups = defaultdict(lambda: {'user_id': None, 'hand_ids': []})
 for tournament_id, hand_id, user_id in rows:
     key = tournament_id

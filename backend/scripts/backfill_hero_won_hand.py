@@ -10,6 +10,7 @@ import sys, re
 sys.path.insert(0, ".")
 from database.schema import get_conn, init_db
 from leaklab.parser import parse_hand_history
+from database.rowutil import first_value
 
 
 def _won(raw: str, hero: str):
@@ -29,7 +30,7 @@ def main():
         "SELECT id FROM tournaments WHERE raw_text IS NOT NULL").fetchall()]
     updated = won = lost = none = 0
     for tid in tids:
-        raw = conn.execute("SELECT raw_text FROM tournaments WHERE id=?", (tid,)).fetchone()[0]
+        raw = first_value(conn.execute("SELECT raw_text FROM tournaments WHERE id=?", (tid,)).fetchone())
         try:
             hands = parse_hand_history(raw)
         except Exception:

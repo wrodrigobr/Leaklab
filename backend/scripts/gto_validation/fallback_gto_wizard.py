@@ -22,6 +22,7 @@ from pathlib import Path
 SCRIPTS_DIR = Path(__file__).resolve().parent
 BACKEND_DIR = SCRIPTS_DIR.parent.parent
 sys.path.insert(0, str(BACKEND_DIR))
+from database.rowutil import first_value
 sys.path.insert(0, str(SCRIPTS_DIR))  # para importar playwright_compare direto
 
 DB_PATH = BACKEND_DIR / "data" / "leaklab.db"
@@ -314,10 +315,10 @@ def main():
     # Status final
     import sqlite3
     conn = sqlite3.connect(str(DB_PATH))
-    remaining = conn.execute("""
+    remaining = first_value(conn.execute("""
         SELECT COUNT(*) n FROM decisions
         WHERE street IN ('flop','turn','river') AND gto_label IS NULL
-    """).fetchone()[0]
+    """).fetchone())
     conn.close()
     print(f"Decisoes ainda sem GTO:          {remaining}")
 
