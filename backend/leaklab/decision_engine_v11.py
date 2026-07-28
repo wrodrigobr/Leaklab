@@ -310,6 +310,44 @@ _LABEL_MAX_SCORE = {'standard': 0.08, 'marginal': 0.18, 'small_mistake': 0.35, '
 
 _EV_RELIABLE_SOURCES = ('gw_har', 'solver_hand', 'gto_tree', 'hand_aware')
 
+# Teto de calibração: acima disto o EV em bb não é confiável como QUANTIDADE.
+#
+# Medido em produção (2026-07-27), EV postflop `solver_hand` por profundidade:
+#     <20bb  n=30  média 1,56  máx 17,5
+#     20-40  n=54  média 2,07  máx 28,2
+#     40-60  n=18  média 1,76  máx 14,8
+#     60-100 n=15  média 0,39  máx  1,2     ← a faixa MAIS comportada; o cap funciona aqui
+#     100+   n= 3  média 30,4  máx 90,3     ← três decisões produzindo toda a distorção
+#
+# A causa: acima de 100bb o lookup usa 100bb como profundidade efetiva. A AÇÃO transfere (é o que
+# a aproximação promete e o que está documentado), mas o EV volta na escala do solve de 100bb
+# enquanto o stack real é outro. Ninguém prometeu que o número em bb transferia — e ele não.
+#
+# O sintoma que denunciou: "-90,3bb num FOLD" no relatório de evolução. Foldar não pode custar
+# 90bb; o que você abre mão é limitado pelo pote. E não era só cosmético: `_ev_severity_ceiling`
+# usa esse número como PISO de severidade, então um fold defensável virava erro no card do
+# jogador — a guarda de lá ("nunca em nó aproximado") não pega este caso, porque a fonte
+# `solver_hand` É confiável; o que não é confiável é a PROFUNDIDADE.
+_EV_TRUST_MAX_BB = 100.0
+
+
+def ev_loss_trustworthy(ev_loss_bb, stack_bb, ev_loss_source) -> bool:
+    """O EV em bb pode ser usado como quantidade (ranking, soma, severidade)?
+
+    O veredito e a ação do nó continuam valendo quando isto devolve False — o que se descarta é o
+    NÚMERO, não a recomendação. Fonte única desta regra: quem for somar, ranquear ou pesar EV
+    precisa passar por aqui, senão volta a existir duas noções de 'EV confiável' no código."""
+    if ev_loss_bb is None:
+        return False
+    if (ev_loss_source or '') not in _EV_RELIABLE_SOURCES:
+        return False
+    try:
+        if stack_bb is not None and float(stack_bb) > _EV_TRUST_MAX_BB:
+            return False
+    except (TypeError, ValueError):
+        return False
+    return True
+
 
 def _ev_severity_ceiling(label: str, ev_loss_bb: float | None, ev_loss_source: str | None = None) -> str:
     if ev_loss_bb is None:
@@ -992,7 +1030,14 @@ def evaluate_decision(input_data: Dict[str, Any]) -> Dict[str, Any]:
     # que custa ~0 = spot misto, não erro grave). gto_label fica intacto.
     _eff_ev = gto.get('ev_loss_bb') if gto.get('available') else None
     _label_pre_ceil = label
-    label = _ev_severity_ceiling(label, _eff_ev, gto.get('ev_loss_source') if gto.get('available') else None)
+    # A FONTE só é passada adiante quando o EV serve como quantidade. É ela que liga o PISO de
+    # severidade em `_ev_severity_ceiling` — e acima do teto de calibração o número é fantasia
+    # (ver `_EV_TRUST_MAX_BB`), então um fold defensável virava erro. O teto para baixo continua
+    # valendo: rebaixar veredito grave de custo ínfimo é seguro em qualquer profundidade.
+    _ev_src = gto.get('ev_loss_source') if gto.get('available') else None
+    label = _ev_severity_ceiling(
+        label, _eff_ev,
+        _ev_src if ev_loss_trustworthy(_eff_ev, _hero_stack_bb, _ev_src) else None)
     if label != _label_pre_ceil:
         final_score = min(final_score, _LABEL_MAX_SCORE[label])
 

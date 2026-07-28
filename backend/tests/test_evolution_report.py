@@ -35,14 +35,16 @@ repo.get_conn = _conn
 schema.init_db()
 
 _COLS = ("tournament_id,hand_id,street,action_taken,best_action,label,score,math_penalty,"
-         "range_penalty,is_3bet,position,vs_position,stack_bb,ev_loss_bb,gto_label,icm_pressure")
-_VALS = "(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
+         "range_penalty,is_3bet,position,vs_position,stack_bb,ev_loss_bb,gto_label,icm_pressure,"
+         "ev_loss_source")
+_VALS = "(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
+_FONTE_OK = 'solver_hand'   # está em _EV_RELIABLE_SOURCES
 
 
-def _dec(c, tid, hand, pos, stack, ev, icm='low', vs=None):
+def _dec(c, tid, hand, pos, stack, ev, icm='low', vs=None, src=_FONTE_OK):
     c.execute(f"INSERT INTO decisions ({_COLS}) VALUES {_VALS}",
               (tid, hand, 'preflop', 'calls', 'raises', 'standard', 0.5, 0, 0, 0,
-               pos, vs, stack, ev, 'gto_critical' if ev > 0.2 else 'gto_correct', icm))
+               pos, vs, stack, ev, 'gto_critical' if ev > 0.2 else 'gto_correct', icm, src))
 
 
 def _setup(linhas, n_torneios=4):
@@ -168,6 +170,65 @@ def test_timeline_em_ordem_cronologica():
     assert [x['ext'] for x in tl] == ['T1', 'T2', 'T3', 'T4'], tl
     assert [x['bb'] for x in tl] == [1.0, 2.0, 3.0, 4.0], tl
     print("OK  test_timeline_em_ordem_cronologica")
+
+
+# ── 6 · EV confiável ──────────────────────────────────────────────────────────────────────────
+
+def test_ev_acima_do_teto_de_calibracao_nao_entra():
+    """O bug que originou, medido em produção: um FOLD com -90,3bb a 139bb efetivos.
+
+    Foldar não pode custar 90bb — o que você abre mão é limitado pelo pote. Acima de 100bb o
+    lookup usa 100bb como profundidade efetiva: a AÇÃO transfere (é o que a aproximação promete),
+    mas o EV volta na escala do solve de 100bb. Três decisões assim dominavam o ranking inteiro e
+    faziam a manchete anunciar uma melhora de 12bb/torneio que era só a metade antiga conter um
+    número inventado."""
+    _setup([
+        (1, 'FUNDO',  'CO',  139.3, 90.3),
+        (1, 'NORMAL', 'BTN',  25.0,  2.0),
+    ])
+    r = repo.get_evolution_report(1)
+    ids = [s['hand_id'] for s in r['top_spots']]
+    assert 'FUNDO' not in ids, ids
+    assert ids == ['NORMAL'], ids
+    assert all(c['position'] != 'CO' for c in r['matriz']), r['matriz']
+    print("OK  test_ev_acima_do_teto_de_calibracao_nao_entra")
+
+
+def test_fonte_desconhecida_nao_entra():
+    """EV sem fonte declarada não é 'EV pequeno', é EV de origem desconhecida. Somá-lo é dar peso
+    a um número que ninguém assinou."""
+    _setup([
+        (1, 'SEM_FONTE', 'CO',  30.0, 5.0, 'low', None, None),
+        (1, 'HEURISTIC', 'BTN', 30.0, 5.0, 'low', None, 'heuristic'),
+        (1, 'OK',        'SB',  30.0, 1.0),
+    ])
+    ids = [s['hand_id'] for s in repo.get_evolution_report(1)['top_spots']]
+    assert ids == ['OK'], ids
+    print("OK  test_fonte_desconhecida_nao_entra")
+
+
+def test_no_limite_exato_ainda_conta():
+    """100bb é o teto de calibração, não o começo do problema — a faixa 60-100 foi a mais
+    comportada de todas na medição. Cortar em `<` em vez de `<=` jogaria fora dado bom."""
+    _setup([(1, 'LIMITE', 'CO', 100.0, 3.0)])
+    ids = [s['hand_id'] for s in repo.get_evolution_report(1)['top_spots']]
+    assert ids == ['LIMITE'], ids
+    print("OK  test_no_limite_exato_ainda_conta")
+
+
+def test_regra_e_a_mesma_do_engine():
+    """O relatório expressa em SQL a regra que o engine aplica em Python. Se as duas divergirem,
+    o card e o relatório discordam sobre a mesma mão — e essa é a classe de bug que mais custou
+    tempo neste projeto."""
+    from leaklab.decision_engine_v11 import (
+        ev_loss_trustworthy, _EV_TRUST_MAX_BB, _EV_RELIABLE_SOURCES)
+    assert ev_loss_trustworthy(2.0, 30.0, 'solver_hand') is True
+    assert ev_loss_trustworthy(90.3, 139.3, 'solver_hand') is False   # fundo demais
+    assert ev_loss_trustworthy(2.0, 30.0, 'heuristic') is False       # fonte não confiável
+    assert ev_loss_trustworthy(None, 30.0, 'solver_hand') is False
+    assert ev_loss_trustworthy(2.0, _EV_TRUST_MAX_BB, 'solver_hand') is True
+    assert _FONTE_OK in _EV_RELIABLE_SOURCES
+    print("OK  test_regra_e_a_mesma_do_engine")
 
 
 def test_sem_dado_nao_quebra():

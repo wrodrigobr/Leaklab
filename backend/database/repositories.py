@@ -6348,11 +6348,20 @@ def get_evolution_report(user_id: int, limite_torneios: int = 40) -> dict:
     """
     if not user_id:
         return {}
+    from leaklab.decision_engine_v11 import _EV_TRUST_MAX_BB, _EV_RELIABLE_SOURCES
     bucket = _stack_bucket_case()
+    # O EV só entra como QUANTIDADE quando é confiável — mesma régua de
+    # `decision_engine_v11.ev_loss_trustworthy`, expressa em SQL a partir das MESMAS constantes.
+    # Sem isto, três decisões acima do teto de calibração (média 30bb, máx 90bb) dominavam o
+    # ranking, a matriz e a manchete: o relatório anunciava "melhorou 12bb por torneio" porque a
+    # metade antiga continha um fold com -90bb que não existe.
+    fontes = ','.join('?' for _ in _EV_RELIABLE_SOURCES)
+    confiavel = (f"AND d.ev_loss_source IN ({fontes}) "
+                 f"AND COALESCE(d.stack_bb, 0) <= {_EV_TRUST_MAX_BB}")
     base = ("FROM decisions d JOIN tournaments t ON t.id = d.tournament_id "
             "WHERE t.user_id = ? AND d.gto_label IS NOT NULL AND d.gto_label <> '' "
-            "AND COALESCE(d.icm_pressure,'') <> ?")
-    args = [user_id, _ICM_EXCLUDED]
+            "AND COALESCE(d.icm_pressure,'') <> ? " + confiavel)
+    args = [user_id, _ICM_EXCLUDED, *_EV_RELIABLE_SOURCES]
     conn = get_conn()
     try:
         # ── linha do tempo: custo por torneio, na ordem em que entraram ──────────────────
