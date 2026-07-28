@@ -41,7 +41,30 @@ Resolvido no `nginx.conf` com `resolver 127.0.0.11` + `proxy_pass $backend$reque
 detalhes que fazem funcionar estão comentados lá; o mais fácil de errar é omitir o `$request_uri`,
 porque o nginx descarta a URI quando o `proxy_pass` usa variável, e aí toda rota cai na raiz.
 
-**Fallback**, se algum dia o proxy voltar a servir 502 depois de um deploy:
+### Ao TROCAR o nginx.conf: recrie o container, não recarregue
+
+Bind mount de **arquivo único** prende o **inode**, não o caminho. `git pull` (ou qualquer edição
+que substitua o arquivo em vez de editá-lo no lugar) cria um inode novo, e o container continua
+enxergando o antigo.
+
+A consequência é traiçoeira: `nginx -t` e `nginx -s reload` rodam **dentro** do container, leem a
+config VELHA, respondem "syntax ok" e recarregam o que já estava lá. Parece aplicado e não está.
+
+```bash
+cd ~/app && docker compose up -d --force-recreate nginx
+```
+
+Confirme sempre lendo de dentro, nunca do host:
+
+```bash
+cd ~/app && docker compose exec nginx grep -n "resolver\|proxy_pass" /etc/nginx/conf.d/default.conf
+```
+
+Foi assim que o fix do `resolver` ficou dois dias no disco sem estar carregado, enquanto o login
+caía a cada deploy e o `nginx -s reload` "resolvia" — o que resolvia era o reload re-resolver o
+DNS naquele instante, não a config nova.
+
+**Fallback**, se o proxy servir 502 depois de um deploy:
 
 ```bash
 cd ~/app && docker compose restart nginx
