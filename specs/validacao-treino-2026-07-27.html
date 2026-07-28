@@ -1,0 +1,343 @@
+<!--
+  SNAPSHOT ESTÁTICO. Nenhum código gera este arquivo. É uma leitura manual da saída de
+  backend/scripts/diag_validacao.py sobre a base de produção em 2026-07-27, montada para
+  responder a uma pergunta só: o treino aparece no jogo?
+
+  Não é relatório de usuário e não tem rota. Se um dia virar tela, a fonte de verdade é o
+  diag_validacao (intervalo de Newcombe para a diferença + shrinkage contra a taxa global),
+  nunca os números daqui, que envelhecem a cada torneio novo.
+-->
+<title>Validação do treino — 27/07/2026</title>
+
+<style>
+  :root {
+    --bg:        #0A0E1A;
+    --surface:   #111726;
+    --surface-2: #161E30;
+    --line:      #222C42;
+    --ink:       #E3E8EC;
+    --ink-2:     #9AA8BC;
+    --ink-3:     #6B7A91;
+    --accent:    #2DD4BF;
+    --good:      #2DD4BF;
+    --warn:      #F5A524;
+    --bad:       #F0616D;
+    --neutral:   #5C6B84;
+    --radius: 10px;
+    --sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --mono: ui-monospace, "SF Mono", "Cascadia Mono", "Roboto Mono", Consolas, monospace;
+  }
+  @media (prefers-color-scheme: light) {
+    :root {
+      --bg: #F4F7F9; --surface: #FFFFFF; --surface-2: #EDF1F5; --line: #D6DEE7;
+      --ink: #0F1724; --ink-2: #4A5A70; --ink-3: #75859B;
+      --accent: #0E9384; --good: #0E9384; --warn: #B06A00; --bad: #C6394A;
+      --neutral: #8A99AE;
+    }
+  }
+  :root[data-theme="light"] {
+    --bg: #F4F7F9; --surface: #FFFFFF; --surface-2: #EDF1F5; --line: #D6DEE7;
+    --ink: #0F1724; --ink-2: #4A5A70; --ink-3: #75859B;
+    --accent: #0E9384; --good: #0E9384; --warn: #B06A00; --bad: #C6394A;
+    --neutral: #8A99AE;
+  }
+  :root[data-theme="dark"] {
+    --bg: #0A0E1A; --surface: #111726; --surface-2: #161E30; --line: #222C42;
+    --ink: #E3E8EC; --ink-2: #9AA8BC; --ink-3: #6B7A91;
+    --accent: #2DD4BF; --good: #2DD4BF; --warn: #F5A524; --bad: #F0616D;
+    --neutral: #5C6B84;
+  }
+
+  body { background: var(--bg); color: var(--ink); font-family: var(--sans);
+         line-height: 1.55; -webkit-font-smoothing: antialiased; }
+  .wrap { max-width: 1000px; margin: 0 auto; padding: 40px 20px 72px;
+          display: flex; flex-direction: column; gap: 34px; }
+
+  .eyebrow { font-size: 11px; letter-spacing: .16em; text-transform: uppercase;
+             color: var(--accent); font-weight: 700; }
+  h1 { font-size: clamp(26px, 4vw, 36px); line-height: 1.15; margin: 6px 0 10px;
+       letter-spacing: -.02em; font-weight: 800; text-wrap: balance; }
+  h2 { font-size: 17px; letter-spacing: -.01em; font-weight: 700; margin: 0 0 4px; }
+  .sub { color: var(--ink-2); font-size: 14px; max-width: 65ch; }
+  .meta { display: flex; flex-wrap: wrap; gap: 8px 18px; margin-top: 14px;
+          font-family: var(--mono); font-size: 12.5px; color: var(--ink-3); }
+  .meta b { color: var(--ink); font-weight: 600; }
+
+  section { display: flex; flex-direction: column; gap: 14px; }
+  .card { background: var(--surface); border: 1px solid var(--line);
+          border-radius: var(--radius); padding: 20px; }
+
+  /* KPIs */
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+  .kpi { background: var(--surface); border: 1px solid var(--line);
+         border-radius: var(--radius); padding: 14px 16px;
+         display: flex; flex-direction: column; gap: 3px; position: relative; overflow: hidden; }
+  .kpi::before { content: ""; position: absolute; inset: 0 auto 0 0; width: 3px; background: var(--bar); }
+  .kpi .n { font-family: var(--mono); font-size: 27px; font-weight: 700;
+            font-variant-numeric: tabular-nums; line-height: 1.1; color: var(--fg, var(--ink)); }
+  .kpi .l { font-size: 12px; color: var(--ink-2); }
+  .kpi .h { font-size: 11.5px; color: var(--ink-3); }
+
+  /* achados */
+  .findings { display: flex; flex-direction: column; gap: 0; }
+  .finding { display: grid; grid-template-columns: 26px 1fr; gap: 14px;
+             padding: 15px 0; border-bottom: 1px solid var(--line); }
+  .finding:last-child { border-bottom: 0; padding-bottom: 0; }
+  .finding:first-child { padding-top: 0; }
+  .glyph { font-family: var(--mono); font-size: 15px; font-weight: 700; line-height: 1.6; }
+  .finding p { margin: 4px 0 0; color: var(--ink-2); font-size: 14px; max-width: 66ch; }
+  .finding strong { color: var(--ink); font-weight: 650; }
+  .finding .t { font-weight: 700; font-size: 14.5px; }
+
+  /* gráfico */
+  .legend { display: flex; gap: 16px; font-size: 12px; color: var(--ink-2); margin-bottom: 4px; }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .swatch { width: 10px; height: 10px; border-radius: 2px; }
+  .rows { display: flex; flex-direction: column; gap: 11px; }
+  .row { display: grid; grid-template-columns: 62px 1fr; gap: 12px; align-items: center; }
+  .pos { font-family: var(--mono); font-size: 12.5px; color: var(--ink-2); text-align: right; }
+  .pair { display: flex; flex-direction: column; gap: 3px; }
+  .track { position: relative; height: 11px; background: var(--surface-2); border-radius: 3px; }
+  .fill { position: absolute; inset: 0 auto 0 0; border-radius: 3px; }
+  .fill.antes  { background: var(--neutral); }
+  .fill.depois { background: var(--accent); }
+  .val { position: absolute; top: 50%; transform: translateY(-50%);
+         font-family: var(--mono); font-size: 11px; font-variant-numeric: tabular-nums;
+         color: var(--ink-2); white-space: nowrap; padding-left: 7px; }
+  .refline { position: relative; height: 0; }
+  .ref { position: absolute; top: -6px; bottom: 0; border-left: 1px dashed var(--ink-3); }
+  .reflabel { font-family: var(--mono); font-size: 11px; color: var(--ink-3); margin-top: 6px; }
+
+  /* tabela */
+  .scroll { overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; font-size: 13px; min-width: 620px; }
+  th { text-align: left; font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase;
+       color: var(--ink-3); font-weight: 700; padding: 0 12px 9px 0; border-bottom: 1px solid var(--line); }
+  td { padding: 9px 12px 9px 0; border-bottom: 1px solid var(--line); vertical-align: top; }
+  tr:last-child td { border-bottom: 0; }
+  td.num { font-family: var(--mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  td.key { font-family: var(--mono); font-size: 12px; color: var(--ink-2); }
+  .grp td { background: var(--surface-2); font-weight: 700; font-size: 11px;
+            letter-spacing: .09em; text-transform: uppercase; color: var(--ink-2); padding: 8px 12px; }
+  .pill { display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px;
+          font-weight: 650; padding: 2px 8px; border-radius: 20px; white-space: nowrap;
+          border: 1px solid currentColor; }
+  .pill i { font-style: normal; font-family: var(--mono); }
+  .p-good { color: var(--good); }
+  .p-flat { color: var(--ink-3); }
+  .p-none { color: var(--ink-3); opacity: .8; }
+  .p-bad  { color: var(--bad); }
+  .dup { color: var(--warn); font-family: var(--mono); font-size: 11px; }
+
+  .note { font-size: 13px; color: var(--ink-2); max-width: 68ch; }
+  .note + .note { margin-top: 10px; }
+  .note b { color: var(--ink); font-weight: 650; }
+  code { font-family: var(--mono); font-size: .93em; background: var(--surface-2);
+         padding: 1px 5px; border-radius: 4px; color: var(--ink); }
+  footer { color: var(--ink-3); font-size: 12px; border-top: 1px solid var(--line);
+           padding-top: 18px; }
+</style>
+
+<div class="wrap">
+
+  <header>
+    <div class="eyebrow">Protocolo de progressão · trilho lento</div>
+    <h1>O treino apareceu no jogo?</h1>
+    <p class="sub">Comparação da sua taxa de erro por família de spot, antes e depois de cada
+       leak entrar em treino. Só conta decisão com gabarito, e a zona de ICM fica de fora.</p>
+    <div class="meta">
+      <span>jogador <b>wrodrigo</b></span>
+      <span>27/07/2026</span>
+      <span>taxa de erro global <b>13,1%</b></span>
+      <span>mínimos: <b>8</b> antes · <b>12</b> depois</span>
+    </div>
+  </header>
+
+  <section>
+    <div class="kpis">
+      <div class="kpi" style="--bar: var(--good)"><span class="n" style="color: var(--good)">1</span>
+        <span class="l">Melhorou no jogo</span><span class="h">sobrevive ao intervalo</span></div>
+      <div class="kpi" style="--bar: var(--bad)"><span class="n">0</span>
+        <span class="l">Regrediu</span><span class="h">nenhum leak reaberto</span></div>
+      <div class="kpi" style="--bar: var(--neutral)"><span class="n">13</span>
+        <span class="l">Sem diferença mensurável</span><span class="h">≠ "não melhorou"</span></div>
+      <div class="kpi" style="--bar: var(--line)"><span class="n">26</span>
+        <span class="l">Ainda sem amostra</span><span class="h">falta jogar</span></div>
+      <div class="kpi" style="--bar: var(--line)"><span class="n">20</span>
+        <span class="l">Sem baseline</span><span class="h">treinado, "antes" não congelado</span></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Leitura em três pontos</h2>
+    <div class="card findings">
+      <div class="finding">
+        <div class="glyph" style="color: var(--good)">✔</div>
+        <div>
+          <div class="t">Uma melhora real: abertura de UTG+1</div>
+          <p>De <strong>8,1%</strong> de erro (5 em 62) para <strong>zero</strong> em 50 decisões novas.
+             O intervalo da queda é <strong>[0,8 · 17,5]</strong> pontos e não toca o zero — é o único
+             resultado do lote que a estatística sustenta. Cinquenta decisões limpas não é sorte.</p>
+        </div>
+      </div>
+      <div class="finding">
+        <div class="glyph" style="color: var(--warn)">▲</div>
+        <div>
+          <div class="t">O leak que importa não se mexeu: aberturas de BTN e SB</div>
+          <p>Você erra <strong>29%</strong> das aberturas de botão e <strong>31%</strong> das de small blind,
+             contra <strong>13,1%</strong> no seu jogo geral. É mais que o dobro, e é onde está o EV.
+             Depois do treino: BTN em <strong>31,8%</strong> e SB em <strong>24,1%</strong> — nenhum dos dois
+             se afasta do ruído. O SB dá sinal de queda; o BTN não dá nenhum.</p>
+        </div>
+      </div>
+      <div class="finding">
+        <div class="glyph" style="color: var(--ink-3)">=</div>
+        <div>
+          <div class="t">Quase tudo ainda é "não dá para dizer"</div>
+          <p>46 das 60 linhas não têm amostra suficiente ou não têm baseline. <strong>"Sem diferença
+             mensurável" não é "não melhorou"</strong> — é a plataforma se recusando a afirmar com o dado
+             que tem. Para virar veredito, faltam decisões com gabarito, não mais treino.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Onde você erra ao abrir</h2>
+    <p class="sub">Taxa de erro por posição no RFI, antes e depois do treino. A linha tracejada é a sua
+       taxa global de 13,1% — tudo à direita dela é acima da sua própria média.</p>
+    <div class="card">
+      <div class="legend">
+        <span><i class="swatch" style="background: var(--neutral)"></i> antes do treino</span>
+        <span><i class="swatch" style="background: var(--accent)"></i> depois</span>
+      </div>
+      <div class="rows" id="chart"></div>
+      <div class="refline"><span class="ref" id="refline"></span></div>
+      <div class="reflabel">— sua taxa global: 13,1%</div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Todas as famílias</h2>
+    <p class="sub">Ordenado por quanto pesa: primeiro o que tem veredito, depois o que ainda não tem.</p>
+    <div class="card scroll">
+      <table>
+        <thead>
+          <tr><th>Família</th><th>Veredito</th><th>Antes</th><th>Depois</th><th>IC 95% da queda</th></tr>
+        </thead>
+        <tbody id="tabela"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <h2>Como ler, e onde não confiar</h2>
+    <div class="card">
+      <p class="note"><b>O corte é a data de importação, não a de jogo.</b> Se algum torneio que você
+         subiu agora foi jogado antes do treino, ele conta como "depois" e puxa o resultado para baixo.</p>
+      <p class="note"><b>O "antes" aparece ajustado.</b> O leak entrou no plano por ser o pior de uma
+         lista, então parte daquele número ruim era azar e não hábito. O ajuste puxa o baseline na
+         direção da sua taxa global — sem ele, você "melhoraria" sozinho por regressão à média.</p>
+      <p class="note"><b>Linhas repetidas são a mesma medição.</b> O stack no nome da família
+         (<code>::14</code>, <code>::20</code>, <code>::50</code>) <b>não filtra</b> as decisões reais —
+         só cenário e posições filtram. Então <code>rfi:BTN::14</code>, <code>::20</code> e
+         <code>::50</code> medem exatamente a mesma população; o que muda entre elas é a data em que
+         cada uma congelou o baseline. Marcadas com <span class="dup">↺</span> na tabela.</p>
+      <p class="note"><b>Sem baseline não é erro.</b> São famílias que você treinou mas cujo "antes"
+         nunca foi congelado — quase todas de <code>vs_3bet</code>, onde você tem pouquíssima decisão
+         real com gabarito.</p>
+    </div>
+  </section>
+
+  <footer>
+    Gerado por <code>scripts/diag_validacao.py</code> — somente leitura, nenhum leak foi reaberto por
+    esta consulta. Taxa de erro binomial com intervalo de Newcombe na diferença, baseline com
+    shrinkage e zona de ICM excluída dos dois lados.
+  </footer>
+</div>
+
+<script>
+  const ESCALA = 35;
+  const posicoes = [
+    { pos: "SB",    a: 31.5, an: "23/73",  d: 24.1, dn: "7/29"  },
+    { pos: "BTN",   a: 29.4, an: "32/109", d: 31.8, dn: "14/44" },
+    { pos: "CO",    a: 14.6, an: "12/82",  d: 15.7, dn: "11/70" },
+    { pos: "UTG+2", a:  8.6, an: "3/35",   d: 20.0, dn: "4/20"  },
+    { pos: "UTG+1", a:  8.1, an: "5/62",   d:  0.0, dn: "0/50", win: true },
+    { pos: "UTG",   a:  7.3, an: "14/192", d:  3.8, dn: "1/26"  },
+    { pos: "HJ",    a:  6.5, an: "9/139",  d: null, dn: "sem amostra" },
+  ];
+
+  const pct = v => v.toFixed(1).replace(".", ",") + "%";
+  const chart = document.getElementById("chart");
+  for (const p of posicoes) {
+    const row = document.createElement("div");
+    row.className = "row";
+    const depois = p.d === null
+      ? `<div class="track"><span class="val" style="left:0">${p.dn}</span></div>`
+      : `<div class="track"><span class="fill depois" style="width:${(p.d / ESCALA) * 100}%"></span>
+           <span class="val" style="left:${(p.d / ESCALA) * 100}%">${pct(p.d)} · ${p.dn}</span></div>`;
+    row.innerHTML = `
+      <div class="pos">${p.pos}</div>
+      <div class="pair">
+        <div class="track"><span class="fill antes" style="width:${(p.a / ESCALA) * 100}%"></span>
+          <span class="val" style="left:${(p.a / ESCALA) * 100}%">${pct(p.a)} · ${p.an}</span></div>
+        ${depois}
+      </div>`;
+    chart.appendChild(row);
+  }
+  document.getElementById("refline").style.left =
+    `calc(62px + 12px + (100% - 74px) * ${13.1 / ESCALA})`;
+
+  const PILL = {
+    good: '<span class="pill p-good"><i>✔</i> Melhorou</span>',
+    flat: '<span class="pill p-flat"><i>=</i> Sem diferença</span>',
+    none: '<span class="pill p-none"><i>·</i> Sem amostra</span>',
+    base: '<span class="pill p-none"><i>·</i> Sem baseline</span>',
+  };
+  const linhas = [
+    ["grp", "Com veredito"],
+    ["good", "rfi:UTG+1::50",     "8,1% → 9,3% aj.", "0,0% (0/50)",  "[0,8 · 17,5]", false],
+    ["flat", "rfi:BTN::100",      "27,7% → 24,3% aj.", "31,8% (14/44)", "[-24,3 · 8,0]", false],
+    ["flat", "rfi:BTN::14 ::20 ::50", "29,2% → 26,3% aj.", "30,0% (6/20)", "[-26,8 · 14,1]", true],
+    ["flat", "rfi:SB::100 ::50",  "31,4% → 26,2% aj.", "24,1% (7/29)", "[-17,9 · 18,5]", true],
+    ["flat", "rfi:CO::50",        "14,6% → 14,3% aj.", "15,7% (11/70)", "[-13,0 · 9,1]", false],
+    ["flat", "rfi:UTG::100",      "7,2% → 8,0% aj.",  "6,2% (5/80)",  "[-6,5 · 8,1]", false],
+    ["flat", "rfi:UTG::17 ::50",  "7,3% → 7,8% aj.",  "3,8% (1/26)",  "[-11,3 · 9,4]", true],
+    ["flat", "rfi:UTG+2::100 ::50", "8,6% → 10,2% aj.", "20,0% (4/20)", "[-32,1 · 6,3]", true],
+    ["flat", "vs_rfi:BTN:CO:100", "0,0% → 5,6% aj.",  "0,0% (0/13)",  "[-17,6 · 16,1]", false],
+    ["grp", "Perto de fechar amostra"],
+    ["none", "vs_rfi:SB:BTN:100", "0,0% (0/19)",  "0,0% (0/10)",  "faltam 2", false],
+    ["none", "rfi:SB::17 ::30",   "31,4% (22/70)", "10,0% (1/10)", "faltam 2", true],
+    ["none", "vs_rfi:BB:BTN:100", "34,8% (8/23)", "10,0% (1/10)", "faltam 2", false],
+    ["none", "vs_rfi:BB:CO:100",  "23,5% (4/17)", "22,2% (2/9)",  "faltam 3", false],
+    ["none", "vs_rfi:BB:SB:100",  "27,3% (3/11)", "22,2% (2/9)",  "faltam 3", false],
+    ["none", "vs_rfi:SB:CO:100",  "26,3% (5/19)", "0,0% (0/8)",   "faltam 4", false],
+    ["none", "rfi:SB::14 ::20",   "31,5% (23/73)", "0,0% (0/7)",  "faltam 5", true],
+    ["none", "vs_rfi:SB:CO:30",   "23,8% (5/21)", "0,0% (0/6)",   "faltam 6", false],
+    ["none", "vs_rfi:BB:SB:14 :20", "20,0% (3/15)", "40,0% (2/5)", "faltam 7", true],
+    ["grp", "Ainda longe"],
+    ["none", "vs_rfi:BB:BTN:17 :30", "30,0% (9/30)", "0,0% (0/3)", "faltam 9", true],
+    ["none", "vs_rfi:BB:HJ:30",   "44,4% (4/9)",  "0,0% (0/2)",   "faltam 10", false],
+    ["none", "rfi:BTN::17 ::30",  "29,4% (32/109)", "sem decisão", "faltam 12", true],
+    ["none", "rfi:HJ::50",        "6,5% (9/139)", "sem decisão",  "faltam 12", false],
+    ["none", "vs_rfi:BB:CO:20 :40", "23,1% (6/26)", "sem decisão", "faltam 12", true],
+    ["none", "vs_rfi:BB:LJ:100",  "25,0% (2/8)",  "sem decisão",  "faltam 12", false],
+    ["grp", "Treinadas sem baseline congelado — 20 famílias"],
+    ["base", "rfi:LJ::50 · vs_3bet (19 famílias)", "—", "—",
+     "o “antes” nunca foi medido", false],
+  ];
+
+  const tb = document.getElementById("tabela");
+  for (const l of linhas) {
+    const tr = document.createElement("tr");
+    if (l[0] === "grp") { tr.className = "grp"; tr.innerHTML = `<td colspan="5">${l[1]}</td>`; }
+    else {
+      const [tipo, key, antes, depois, ic, dup] = l;
+      tr.innerHTML = `<td class="key">${key}${dup ? ' <span class="dup" title="mesma população, baselines diferentes">↺</span>' : ""}</td>
+        <td>${PILL[tipo]}</td><td class="num">${antes}</td>
+        <td class="num">${depois}</td><td class="num">${ic}</td>`;
+    }
+    tb.appendChild(tr);
+  }
+</script>

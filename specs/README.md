@@ -32,6 +32,19 @@ conserte o spec ou apague-o.
 | [`decision-pipeline.md`](decision-pipeline.md) | Como uma decisão é avaliada e salva; os paths que devem concordar |
 | [`glossary.md`](glossary.md) | Termos (label vs gto_label, cenários, buckets, classificações) |
 
+## Mockups e snapshots (HTML estático)
+
+Nenhum deles é gerado por código, e **os números dentro são congelados à mão**. Servem como
+registro da decisão de layout, nunca como fonte de dado. Se um número aqui contradiz a tela, a
+tela vence.
+
+| Arquivo | Serviu para | Implementação viva |
+|---|---|---|
+| [`relatorio-evolucao-mockup.html`](relatorio-evolucao-mockup.html) | Layout do relatório de evolução | `frontend/src/pages/Evolution.tsx` |
+| [`validacao-treino-2026-07-27.html`](validacao-treino-2026-07-27.html) | Responder "o treino aparece no jogo?" | nenhuma — leitura manual de `backend/scripts/diag_validacao.py` |
+| [`coach-dashboard-v2.html`](coach-dashboard-v2.html) | Coach Command Center V2 | `frontend/src/pages/CoachDashboard.tsx` |
+| [`ux-proposal-2026.html`](ux-proposal-2026.html) | DecisionCard V2 (custo em bb como manchete) | `DecisionCardV2` |
+
 ## Fontes complementares (não duplicar aqui)
 
 - **`CHANGELOG.md`** — histórico e *rationale* de cada mudança.
