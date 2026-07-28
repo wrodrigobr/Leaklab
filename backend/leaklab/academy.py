@@ -10,6 +10,10 @@ possível — spots familiares têm retenção pedagógica muito maior.
 """
 from __future__ import annotations
 
+# Exercicios novos (auditoria 2026-07-28): 44 que exigem decidir, nao lembrar.
+# Em modulo proprio porque este arquivo ja passa de 2900 linhas.
+from leaklab import academy_questions as _AQ
+
 import json
 import random
 from collections import Counter
@@ -1895,15 +1899,19 @@ def _pos_realization_question() -> dict:
 
 
 def generate_position_question(user_id: int = None) -> dict:
-    """Treino da aula de Posição: pos_order, pos_best, pos_range, pos_realization."""
-    qtype = random.choice(['pos_order', 'pos_best', 'pos_range', 'pos_realization'])
-    if qtype == 'pos_order':
-        return _pos_order_question()
-    if qtype == 'pos_best':
-        return _pos_best_question()
-    if qtype == 'pos_range':
-        return _pos_range_question()
-    return _pos_realization_question()
+    """Treino da aula: 4 exercícios originais + 4 novos,
+    que exigem decidir em vez de lembrar (ver leaklab/academy_questions.py)."""
+    _mapa = {
+        'pos_order': _pos_order_question,
+        'pos_best': _pos_best_question,
+        'pos_range': _pos_range_question,
+        'pos_realization': _pos_realization_question,
+        'pos_realization_gap': _AQ.pos_realization_gap,
+        'pos_coldcall': _AQ.pos_coldcall,
+        'pos_steal_target': _AQ.pos_steal_target,
+        'pos_oop_bluff': _AQ.pos_oop_bluff,
+    }
+    return _mapa[random.choice(list(_mapa))]()
 
 
 # ── Showdown value: treino da aula "Showdown Value" ──────────────────────────────
@@ -1965,13 +1973,18 @@ def _sdv_catch_question() -> dict:
 
 
 def generate_sdv_question(user_id: int = None) -> dict:
-    """Treino da aula de Showdown Value: sdv_action, sdv_why, sdv_catch."""
-    qtype = random.choice(['sdv_action', 'sdv_why', 'sdv_catch'])
-    if qtype == 'sdv_action':
-        return _sdv_action_question()
-    if qtype == 'sdv_why':
-        return _sdv_why_question()
-    return _sdv_catch_question()
+    """Treino da aula: 3 exercícios originais + 4 novos,
+    que exigem decidir em vez de lembrar (ver leaklab/academy_questions.py)."""
+    _mapa = {
+        'sdv_action': _sdv_action_question,
+        'sdv_why': _sdv_why_question,
+        'sdv_catch': _sdv_catch_question,
+        'sdv_bluff_pick': _AQ.sdv_bluff_pick,
+        'sdv_thin_value': _AQ.sdv_thin_value,
+        'sdv_bluffcatch': _AQ.sdv_bluffcatch,
+        'sdv_protect': _AQ.sdv_protect,
+    }
+    return _mapa[random.choice(list(_mapa))]()
 
 
 # ── Exploits: treino da aula "Exploits & Leituras (arquétipos)" ──────────────────
@@ -2040,13 +2053,18 @@ def _exploit_lag_question() -> dict:
 
 
 def generate_exploit_question(user_id: int = None) -> dict:
-    """Treino da aula de Exploits: exploit_station, exploit_nit, exploit_lag."""
-    qtype = random.choice(['exploit_station', 'exploit_nit', 'exploit_lag'])
-    if qtype == 'exploit_station':
-        return _exploit_station_question()
-    if qtype == 'exploit_nit':
-        return _exploit_nit_question()
-    return _exploit_lag_question()
+    """Treino da aula: 3 exercícios originais + 4 novos,
+    que exigem decidir em vez de lembrar (ver leaklab/academy_questions.py)."""
+    _mapa = {
+        'exploit_station': _exploit_station_question,
+        'exploit_nit': _exploit_nit_question,
+        'exploit_lag': _exploit_lag_question,
+        'exploit_sample': _AQ.exploit_sample,
+        'exploit_overfolder': _AQ.exploit_overfolder,
+        'exploit_cost': _AQ.exploit_cost,
+        'exploit_limper': _AQ.exploit_limper,
+    }
+    return _mapa[random.choice(list(_mapa))]()
 
 
 # ── PKO: treino da aula "Torneios de Bounty (PKO)" ───────────────────────────────
@@ -2118,13 +2136,18 @@ def _pko_stage_question() -> dict:
 
 
 def generate_pko_question(user_id: int = None) -> dict:
-    """Treino da aula de PKO: pko_cover, pko_power, pko_stage."""
-    qtype = random.choice(['pko_cover', 'pko_power', 'pko_stage'])
-    if qtype == 'pko_cover':
-        return _pko_cover_question()
-    if qtype == 'pko_power':
-        return _pko_power_question()
-    return _pko_stage_question()
+    """Treino da aula: 3 exercícios originais + 4 novos,
+    que exigem decidir em vez de lembrar (ver leaklab/academy_questions.py)."""
+    _mapa = {
+        'pko_cover': _pko_cover_question,
+        'pko_power': _pko_power_question,
+        'pko_stage': _pko_stage_question,
+        'pko_call_gap': _AQ.pko_call_gap,
+        'pko_bounty_size': _AQ.pko_bounty_size,
+        'pko_target': _AQ.pko_target,
+        'pko_late': _AQ.pko_late,
+    }
+    return _mapa[random.choice(list(_mapa))]()
 
 
 # ── 5 desequilíbrios: treino da aula "Os 5 desequilíbrios" ───────────────────────
@@ -2191,13 +2214,18 @@ def _imb_board_question() -> dict:
 
 
 def generate_imbalance_question(user_id: int = None) -> dict:
-    """Treino da aula dos 5 desequilíbrios: imb_polarity, imb_elasticity, imb_board."""
-    qtype = random.choice(['imb_polarity', 'imb_elasticity', 'imb_board'])
-    if qtype == 'imb_polarity':
-        return _imb_polarity_question()
-    if qtype == 'imb_elasticity':
-        return _imb_elasticity_question()
-    return _imb_board_question()
+    """Treino da aula: 3 exercícios originais + 4 novos,
+    que exigem decidir em vez de lembrar (ver leaklab/academy_questions.py)."""
+    _mapa = {
+        'imb_polarity': _imb_polarity_question,
+        'imb_elasticity': _imb_elasticity_question,
+        'imb_board': _imb_board_question,
+        'imb_capped': _AQ.imb_capped,
+        'imb_overbet': _AQ.imb_overbet,
+        'imb_bluff_ratio': _AQ.imb_bluff_ratio,
+        'imb_check_range': _AQ.imb_check_range,
+    }
+    return _mapa[random.choice(list(_mapa))]()
 
 
 # ── Push/Fold: treino da aula "Stack curto: shove ou fold" ───────────────────────
@@ -2267,14 +2295,204 @@ def _pf_call_question() -> dict:
     }
 
 
+# ── Push/fold: exercícios que exigem decidir, não lembrar ────────────────────────────────────
+#
+# Os três originais (pf_action, pf_position, pf_call) tinham distratores que se descartam sozinhos
+# ("você tem qualquer Ás", "é igual em qualquer posição"). Testam leitura, não poker.
+#
+# Os daqui seguem outra régua: cada alternativa errada é uma crença que jogador real tem, e a
+# resposta certa costuma ser a contraintuitiva. Se dá para acertar sem saber a matéria, o
+# exercício não vale a vaga.
+
+def _pf_odds_question() -> dict:
+    """DINÂMICO: pot odds reais de pagar um shove, com ante. Variedade infinita e conta de verdade.
+
+    Os distratores são os dois erros que a gente vê na prática: esquecer que o BB já está no pote
+    (infla a equity exigida) e ignorar o ante (mesma coisa, em menor grau). Errar aqui é o motivo
+    de tanta gente foldar BB com preço melhor do que imagina."""
+    shove = random.choice([9, 10, 11, 12, 13, 14, 15, 16, 18])
+    ante = random.choice([1.0, 1.5, 2.0, 2.5])          # ante agregado, em bb
+    pago = shove - 1                                     # o BB já tem 1bb lá dentro
+    pote_final = 2 * shove + 0.5 + ante
+    certa = pago / pote_final
+    sem_bb = shove / pote_final                          # esqueceu o próprio BB investido
+    sem_ante = pago / (2 * shove + 0.5)                  # ignorou o ante
+    pc = lambda x: f"{x * 100:.1f}%"
+    return {
+        'type': 'pf_odds',
+        'question': (
+            f'Você está no BB. Um jogador dá shove de {shove}bb e todos foldam até você. '
+            f'Há {ante:g}bb de antes no pote e o SB folda. '
+            f'De quanta equity você precisa contra o range dele para o call empatar?'
+        ),
+        'options': [pc(certa), pc(sem_bb), pc(sem_ante)],
+        'correct_index': 0,
+        'explanation': (
+            f'Você paga {pago:g}bb, não {shove}bb: o bb que você postou já não é seu, é do pote. '
+            f'O pote final fica em {pote_final:g}bb, contando o shove dele, o seu call, o SB e os '
+            f'{ante:g}bb de antes. Então a conta é {pago:g} dividido por {pote_final:g}, ou seja '
+            f'{pc(certa)}. Quem esquece o bb já investido chega a {pc(sem_bb)} e folda mãos que '
+            f'pagam com folga; quem ignora o ante chega a {pc(sem_ante)}. O ante é o que mais '
+            'alarga a defesa de BB em MTT, e é justamente o que passa despercebido.'
+        ),
+        'mental_tip': '**O bb que você postou já é do pote. Você paga o resto, não o total.**',
+        'context': {}, 'xp_value': 25,
+    }
+
+
+def _pf_gap_question() -> dict:
+    """A assimetria shove/call, que separa nível. Quase todo jogador paga largo demais."""
+    return {
+        'type': 'pf_gap',
+        'question': (
+            'A 12bb você shovaria K9o do botão sem pensar. O botão dá shove de 12bb e você está '
+            'no BB com K9o. Por que pagar aqui é bem pior do que shovar era?'
+        ),
+        'options': [
+            'Shovar ganha de dois jeitos, todos foldarem ou você vencer o showdown. Pagar só ganha '
+            'de um, e ainda contra um range que já se declarou',
+            'Porque no BB você está fora de posição no pós-flop',
+            'Porque K9o é uma mão pior no BB do que no botão',
+        ],
+        'correct_index': 0,
+        'explanation': (
+            'Quando você shova, parte do lucro vem de ninguém pagar: é fold equity, e ela não '
+            'existe quando você é quem paga. Ao pagar, a única forma de ganhar é vencer no '
+            'showdown, contra um range que já mostrou disposição de ir ao all-in. Por isso o range '
+            'de call é sempre mais apertado que o de shove, na mesma profundidade e na mesma '
+            'posição. Fora de posição não é o ponto, o pote vai a showdown de qualquer jeito.'
+        ),
+        'mental_tip': '**Seu range de call é mais apertado que o de shove. Sempre, e por causa da fold equity.**',
+        'context': {}, 'xp_value': 25,
+    }
+
+
+def _pf_ante_question() -> dict:
+    """O ante muda tudo, e quem aprendeu range sem ante shova apertado demais a vida inteira."""
+    return {
+        'type': 'pf_ante',
+        'question': (
+            'A mesma mesa, o mesmo stack de 10bb, a mesma posição. A única diferença é que agora '
+            'entrou ante. O que acontece com o seu range de shove?'
+        ),
+        'options': [
+            'Alarga, porque há mais fichas mortas no pote e o shove precisa funcionar menos vezes',
+            'Não muda, porque o ante afeta todo mundo igualmente',
+            'Aperta, porque com ante os oponentes pagam mais largo',
+        ],
+        'correct_index': 0,
+        'explanation': (
+            'O ante põe fichas no pote que não pertencem a ninguém. Isso melhora o preço do seu '
+            'shove: você arrisca o mesmo stack para ganhar um pote maior, então ele precisa dar '
+            'certo menos vezes para valer a pena. É verdade que os oponentes também pagam mais '
+            'largo, mas o efeito no atacante é maior, porque ele fatura o pote inteiro toda vez '
+            'que todos foldam. Ignorar isso é o motivo clássico de jogar apertado demais em MTT.'
+        ),
+        'mental_tip': '**Com ante, shove mais largo. Fichas mortas no pote pagam o seu risco.**',
+        'context': {}, 'xp_value': 25,
+    }
+
+
+def _pf_behind_question() -> dict:
+    """Os stacks ATRÁS mudam a decisão, e quase ninguém olha para eles."""
+    return {
+        'type': 'pf_behind',
+        'question': (
+            'Você tem 11bb no botão e quer shovar. Em qual cenário o seu range deve ser mais '
+            'APERTADO?'
+        ),
+        'options': [
+            'SB com 40bb e BB com 35bb, ambos confortáveis',
+            'SB com 3bb e BB com 4bb, ambos quase sem fichas',
+            'É indiferente, o que importa é o seu stack',
+        ],
+        'correct_index': 1,
+        'explanation': (
+            'Stack curto atrás paga larguíssimo: com 3bb ou 4bb o jogador já está praticamente '
+            'comprometido, e o preço que ele recebe torna correto pagar com quase qualquer coisa. '
+            'A sua fold equity, que é metade do lucro do shove, evapora. Contra stacks confortáveis '
+            'acontece o oposto, eles têm o que preservar e foldam mais, então você shova mais '
+            'largo. Olhar só o próprio stack é o erro mais comum em push/fold.'
+        ),
+        'mental_tip': '**Stack curto atrás mata a sua fold equity. Aperte contra quem não tem como foldar.**',
+        'context': {}, 'xp_value': 25,
+    }
+
+
+def _pf_reshove_question() -> dict:
+    """Reshove não é o mesmo jogo que open-shove, e tratar igual custa caro."""
+    return {
+        'type': 'pf_reshove',
+        'question': (
+            'Você tem 13bb no BB. O CO abre para 2,2bb e todos foldam. Comparado a dar shove de '
+            'primeira com os mesmos 13bb, o seu range de reshove aqui é:'
+        ),
+        'options': [
+            'Diferente: há dinheiro morto no pote e um só adversário definido, então mãos que '
+            'dominam o range de abertura dele sobem de valor',
+            'O mesmo, porque o stack é o mesmo',
+            'Sempre mais largo, porque o open dele mostra fraqueza',
+        ],
+        'correct_index': 0,
+        'explanation': (
+            'Duas coisas mudaram. Primeiro, o open dele já pôs fichas no pote que você fatura se '
+            'ele foldar, o que melhora o preço do seu risco. Segundo, você deixou de enfrentar a '
+            'mesa inteira e passou a enfrentar um range conhecido: mãos como A8o ou KTo, medíocres '
+            'para abrir de primeira, ficam boas quando dominam o que ele abre. Não é "mais largo" '
+            'por reflexo, é outro formato de range.'
+        ),
+        'mental_tip': '**Reshove tem dinheiro morto e alvo definido. Não é o mesmo range do open-shove.**',
+        'context': {}, 'xp_value': 25,
+    }
+
+
+def _pf_icm_gap_question() -> dict:
+    """Perto da bolha os dois ranges apertam, mas não na mesma medida."""
+    return {
+        'type': 'pf_icm_gap',
+        'question': (
+            'Mesa final, perto de um salto grande de premiação. Comparado ao chipEV puro, o que '
+            'aperta MAIS?'
+        ),
+        'options': [
+            'O range de call, porque ser eliminado custa mais do que as fichas ganhas valem',
+            'O range de shove, porque arriscar o torneio é o que pesa',
+            'Os dois na mesma proporção, é só multiplicar por um fator',
+        ],
+        'correct_index': 0,
+        'explanation': (
+            'Sob ICM, a ficha ganha vale menos que a ficha perdida, e quem paga é quem aceita o '
+            'risco de eliminação sem a compensação de levar o pote sem disputa. O range de call '
+            'aperta muito. O de shove, ao contrário, muitas vezes ALARGA contra adversários que '
+            'não podem pagar, porque a fold equity sobe justamente quando os outros têm medo de '
+            'quebrar. Tratar os dois com o mesmo fator é o erro que faz o jogador desistir de '
+            'pressão exatamente quando ela vale mais.'
+        ),
+        'mental_tip': '**ICM aperta o call. O shove muitas vezes alarga, porque o medo dos outros é seu lucro.**',
+        'context': {}, 'xp_value': 30,
+    }
+
+
 def generate_pushfold_question(user_id: int = None) -> dict:
-    """Treino da aula de push/fold: pf_action, pf_position, pf_call."""
-    qtype = random.choice(['pf_action', 'pf_position', 'pf_call'])
-    if qtype == 'pf_action':
-        return _pf_action_question()
-    if qtype == 'pf_position':
-        return _pf_position_question()
-    return _pf_call_question()
+    """Treino da aula de push/fold.
+
+    Nove tipos, sendo um DINÂMICO (`pf_odds`, com números novos a cada chamada). Os três
+    originais ficam por serem o básico verdadeiro; os seis novos exigem decidir, não lembrar."""
+    qtype = random.choice([
+        'pf_action', 'pf_position', 'pf_call',
+        'pf_odds', 'pf_gap', 'pf_ante', 'pf_behind', 'pf_reshove', 'pf_icm_gap',
+    ])
+    return {
+        'pf_action':  _pf_action_question,
+        'pf_position': _pf_position_question,
+        'pf_call':    _pf_call_question,
+        'pf_odds':    _pf_odds_question,
+        'pf_gap':     _pf_gap_question,
+        'pf_ante':    _pf_ante_question,
+        'pf_behind':  _pf_behind_question,
+        'pf_reshove': _pf_reshove_question,
+        'pf_icm_gap': _pf_icm_gap_question,
+    }[qtype]()
 
 
 # ── Projetos / semi-blefe: treino da aula "Jogar projetos" ───────────────────────
@@ -2348,13 +2566,18 @@ def _draw_combo_question() -> dict:
 
 
 def generate_draws_question(user_id: int = None) -> dict:
-    """Treino da aula de projetos/semi-blefe: draw_why, draw_when, draw_combo."""
-    qtype = random.choice(['draw_why', 'draw_when', 'draw_combo'])
-    if qtype == 'draw_why':
-        return _draw_why_question()
-    if qtype == 'draw_when':
-        return _draw_when_question()
-    return _draw_combo_question()
+    """Treino da aula: 3 exercícios originais + 4 novos,
+    que exigem decidir em vez de lembrar (ver leaklab/academy_questions.py)."""
+    _mapa = {
+        'draw_why': _draw_why_question,
+        'draw_when': _draw_when_question,
+        'draw_combo': _draw_combo_question,
+        'draw_odds': _AQ.draw_odds,
+        'draw_implied_fake': _AQ.draw_implied_fake,
+        'draw_which_bluff': _AQ.draw_which_bluff,
+        'draw_multiway': _AQ.draw_multiway,
+    }
+    return _mapa[random.choice(list(_mapa))]()
 
 
 # ── 3-bet: treino da aula "3-bet: re-raise por valor e blefe" ────────────────────
@@ -2422,13 +2645,18 @@ def _tb_blocker_question() -> dict:
 
 
 def generate_3bet_question(user_id: int = None) -> dict:
-    """Treino da aula de 3-bet: tb_purpose, tb_polar, tb_blocker."""
-    qtype = random.choice(['tb_purpose', 'tb_polar', 'tb_blocker'])
-    if qtype == 'tb_purpose':
-        return _tb_purpose_question()
-    if qtype == 'tb_polar':
-        return _tb_polar_question()
-    return _tb_blocker_question()
+    """Treino da aula: 3 exercícios originais + 4 novos,
+    que exigem decidir em vez de lembrar (ver leaklab/academy_questions.py)."""
+    _mapa = {
+        'tb_purpose': _tb_purpose_question,
+        'tb_polar': _tb_polar_question,
+        'tb_blocker': _tb_blocker_question,
+        'tb_size': _AQ.tb_size,
+        'tb_flat': _AQ.tb_flat,
+        'tb_squeeze': _AQ.tb_squeeze,
+        'tb_vs4bet': _AQ.tb_vs4bet,
+    }
+    return _mapa[random.choice(list(_mapa))]()
 
 
 # ── Turn & River / barrels: treino da aula "Depois do flop" ──────────────────────
@@ -2498,13 +2726,18 @@ def _tr_river_question() -> dict:
 
 
 def generate_barrel_question(user_id: int = None) -> dict:
-    """Treino da aula de turn & river / barrels: tr_turn, tr_giveup, tr_river."""
-    qtype = random.choice(['tr_turn', 'tr_giveup', 'tr_river'])
-    if qtype == 'tr_turn':
-        return _tr_turn_question()
-    if qtype == 'tr_giveup':
-        return _tr_giveup_question()
-    return _tr_river_question()
+    """Treino da aula: 3 exercícios originais + 4 novos,
+    que exigem decidir em vez de lembrar (ver leaklab/academy_questions.py)."""
+    _mapa = {
+        'tr_turn': _tr_turn_question,
+        'tr_giveup': _tr_giveup_question,
+        'tr_river': _tr_river_question,
+        'tr_card_choice': _AQ.tr_card_choice,
+        'tr_giveup_choice': _AQ.tr_giveup_choice,
+        'tr_sizing_polar': _AQ.tr_sizing_polar,
+        'tr_range_advantage': _AQ.tr_range_advantage,
+    }
+    return _mapa[random.choice(list(_mapa))]()
 
 
 # ── Termos & Conceitos: treino de vocabulário ────────────────────────────────────
@@ -2567,13 +2800,18 @@ def _tm_ip_question() -> dict:
 
 
 def generate_terms_question(user_id: int = None) -> dict:
-    """Treino de vocabulário da aula de Termos & Conceitos: tm_street, tm_draw, tm_ip."""
-    qtype = random.choice(['tm_street', 'tm_draw', 'tm_ip'])
-    if qtype == 'tm_street':
-        return _tm_street_question()
-    if qtype == 'tm_draw':
-        return _tm_draw_question()
-    return _tm_ip_question()
+    """Treino da aula: 3 exercícios originais + 4 novos,
+    que exigem decidir em vez de lembrar (ver leaklab/academy_questions.py)."""
+    _mapa = {
+        'tm_street': _tm_street_question,
+        'tm_draw': _tm_draw_question,
+        'tm_ip': _tm_ip_question,
+        'tm_spr_apply': _AQ.tm_spr_apply,
+        'tm_mdf_apply': _AQ.tm_mdf_apply,
+        'tm_range_thinking': _AQ.tm_range_thinking,
+        'tm_ev_apply': _AQ.tm_ev_apply,
+    }
+    return _mapa[random.choice(list(_mapa))]()
 
 
 # ── Banca & Variância: treino da aula de gestão de banca ──────────────────────────
@@ -2641,13 +2879,18 @@ def _bk_judge_question() -> dict:
 
 
 def generate_bankroll_question(user_id: int = None) -> dict:
-    """Treino da aula de banca & variância: bk_buyins, bk_sample, bk_judge."""
-    qtype = random.choice(['bk_buyins', 'bk_sample', 'bk_judge'])
-    if qtype == 'bk_buyins':
-        return _bk_buyins_question()
-    if qtype == 'bk_sample':
-        return _bk_sample_question()
-    return _bk_judge_question()
+    """Treino da aula: 3 exercícios originais + 4 novos,
+    que exigem decidir em vez de lembrar (ver leaklab/academy_questions.py)."""
+    _mapa = {
+        'bk_buyins': _bk_buyins_question,
+        'bk_sample': _bk_sample_question,
+        'bk_judge': _bk_judge_question,
+        'bk_downswing': _AQ.bk_downswing,
+        'bk_roi_sample': _AQ.bk_roi_sample,
+        'bk_shot': _AQ.bk_shot,
+        'bk_variance_stakes': _AQ.bk_variance_stakes,
+    }
+    return _mapa[random.choice(list(_mapa))]()
 
 
 # ── Blind vs Blind: treino da aula "A guerra das blinds" ─────────────────────────
@@ -2715,10 +2958,66 @@ def _bvb_position_question() -> dict:
 
 
 def generate_bvb_question(user_id: int = None) -> dict:
-    """Treino da aula de blind vs blind: bvb_bb, bvb_sb, bvb_position."""
-    qtype = random.choice(['bvb_bb', 'bvb_sb', 'bvb_position'])
-    if qtype == 'bvb_bb':
-        return _bvb_bb_question()
-    if qtype == 'bvb_sb':
-        return _bvb_sb_question()
-    return _bvb_position_question()
+    """Treino da aula: 3 exercícios originais + 4 novos,
+    que exigem decidir em vez de lembrar (ver leaklab/academy_questions.py)."""
+    _mapa = {
+        'bvb_bb': _bvb_bb_question,
+        'bvb_sb': _bvb_sb_question,
+        'bvb_position': _bvb_position_question,
+        'bvb_postflop_position': _AQ.bvb_postflop_position,
+        'bvb_defense_price': _AQ.bvb_defense_price,
+        'bvb_limp': _AQ.bvb_limp,
+        'bvb_3bet': _AQ.bvb_3bet,
+    }
+    return _mapa[random.choice(list(_mapa))]()
+
+
+# ── Embaralhamento das alternativas ───────────────────────────────────────────────────────────
+#
+# BUG QUE ORIGINOU (auditado 2026-07-28): 54 das 59 perguntas escritas à mão tinham
+# `correct_index: 0`, e a UI não embaralha. O quiz inteiro da Academia era vencível clicando
+# sempre na primeira opção, sem ler o enunciado — o que torna o XP e a acurácia medidas de nada,
+# e ensina ao jogador que o treino é decorativo.
+#
+# A correção fica AQUI, num só lugar, e é aplicada por varredura do módulo em vez de edição de
+# cada gerador: são 22 geradores, e um esquecido mantém o viés justamente onde ninguém olha.
+# Também tem efeito colateral bom: a mesma pergunta servida duas vezes vem em ordem diferente,
+# então memorizar posição não substitui entender.
+
+def shuffle_options(q: dict) -> dict:
+    """Embaralha `options` remapeando `correct_index`. Devolve o MESMO dict (mutado)."""
+    if not isinstance(q, dict):
+        return q
+    opcoes = q.get('options')
+    idx = q.get('correct_index')
+    if not isinstance(opcoes, list) or len(opcoes) < 2 or not isinstance(idx, int):
+        return q
+    if not (0 <= idx < len(opcoes)):
+        return q
+    certa = opcoes[idx]
+    embaralhadas = list(opcoes)
+    random.shuffle(embaralhadas)
+    q['options'] = embaralhadas
+    # `index` pela IDENTIDADE do texto: se houver alternativas repetidas o primeiro índice serve
+    # igual, porque o texto é o mesmo que o jogador lê.
+    q['correct_index'] = embaralhadas.index(certa)
+    return q
+
+
+def _com_alternativas_embaralhadas(fn):
+    import functools
+
+    @functools.wraps(fn)
+    def _wrapper(*args, **kwargs):
+        return shuffle_options(fn(*args, **kwargs))
+    return _wrapper
+
+
+# Varre o módulo e embrulha TODO gerador público. Explícito seria melhor estilo, mas aqui a
+# garantia de cobertura vale mais: o custo de esquecer um é um quiz que continua gameável.
+for _nome in list(globals()):
+    if _nome.startswith('generate_') and _nome.endswith('_question'):
+        _alvo = globals()[_nome]
+        if callable(_alvo) and not getattr(_alvo, '__wrapped__', None):
+            globals()[_nome] = _com_alternativas_embaralhadas(_alvo)
+del _nome
