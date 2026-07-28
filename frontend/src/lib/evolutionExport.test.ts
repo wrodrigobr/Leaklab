@@ -109,7 +109,7 @@ describe("relatório de evolução em HTML", () => {
     // misto: 3/34 = 9% — este número NÃO pode aparecer como taxa em lugar nenhum.
     expect(html).not.toContain("9%");
     // e a ressalva do porquê tem que viajar junto
-    expect(html).toContain("NÃO se compara");
+    expect(html).toContain("Não compare esse número com o de cima");
   });
 
   it("célula sem amostra fica vazia, nunca zero", () => {
@@ -130,14 +130,14 @@ describe("relatório de evolução em HTML", () => {
     expect(posChave).toBeGreaterThan(-1);
     expect(posChave).toBeLessThan(posGrade);
     expect(html).toContain("bb perdidos a cada 100 decisões");
-    expect(html).toContain("quantas decisões medidas ali");
-    expect(html).toContain("não é acerto");     // o vazio explicado junto
+    expect(html).toContain("quantas decisões foram medidas ali");
+    expect(html).toContain("Não quer dizer que você acertou");   // o vazio explicado junto
   });
 
   it("declara o recorte: sem gabarito, EV não confiável e zona de ICM ficam de fora", () => {
     const html = montar();
-    expect(html).toContain("gabarito");
-    expect(html).toContain("confiabilidade");
+    expect(html).toContain("o solver sabe avaliar");
+    expect(html).toContain("estimativas confiáveis");
     expect(html).toContain("ICM");
     // "piso" é a palavra que impede ler o custo como total exato
     expect(html).toContain("piso");
@@ -206,6 +206,35 @@ describe("relatório de evolução em HTML", () => {
     expect(html).toContain("Shove");
     expect(html).not.toContain("allin");
     expect(html).not.toContain("jam");
+  });
+
+  // Quem lê este relatório está EVOLUINDO, não auditando. A versão anterior abria com "De 14.6%
+  // (ajustado para 14.3%) para 16% em 75 decisões. O intervalo de 95% é [-13 · 8.8] e cruza o
+  // zero": quatro números e dois termos de estatística antes de qualquer significado. O veredito
+  // tem que vir em primeiro, em português comum; a conta desce para quem quiser conferir.
+  it("abre com o veredito em linguagem comum, com a estatística separada", () => {
+    const html = montar();
+    const paragrafos = [...html.matchAll(/<p>([^<]+)<\/p>/g)].map((m) => m[1].trim());
+    const veredito = paragrafos.find((p) => p.includes("Melhorou"));
+    expect(veredito).toBeDefined();
+    expect(veredito!.startsWith("Melhorou de verdade")).toBe(true);
+    // o jargão sai do texto principal
+    expect(veredito).not.toContain("intervalo");
+    expect(veredito).not.toContain("[");
+    // mas não se perde: fica no rodapé técnico, marcado como tal
+    const tecnico = html.match(/<p class="tecnico">([^<]+)<\/p>/)?.[1] ?? "";
+    expect(tecnico).toContain("intervalo de confiança de 95%");
+    expect(tecnico).toContain("1.2");
+    expect(tecnico).toContain("11.5");
+  });
+
+  // Regra do projeto: travessão em copy soa a texto de máquina.
+  it("não usa travessão em nenhum texto visível", () => {
+    const visivel = montar().replace(/<style>[\s\S]*?<\/style>/g, "").replace(/<svg[\s\S]*?<\/svg>/g, "");
+    // O alvo é o travessão de PROSA (" texto — texto "), que é o que soa a texto de máquina.
+    // O travessão sozinho continua valendo como símbolo: é o marcador de célula sem amostra.
+    expect(visivel).not.toMatch(/\S\s—\s\S/);
+    expect(visivel).not.toContain("&mdash;");
   });
 
   it("traz os mesmos números que a tela mostra", () => {

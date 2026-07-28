@@ -71,8 +71,20 @@ const escapar = (v: unknown): string =>
 
 const ORDEM_POSICOES = ["UTG", "UTG+1", "UTG+2", "LJ", "HJ", "CO", "BTN", "SB", "BB"];
 
-/** Teal da marca em literal: um arquivo solto não tem as variáveis de tema do app. */
-const teal = (alpha: number) => `rgba(45, 212, 191, ${alpha.toFixed(3)})`;
+/**
+ * Preenchimento da célula, a partir da posição na rampa (0 a 1).
+ *
+ * O DESTINO da rampa muda com o tema, e isso não é estética. O teal da marca (#2DD4BF) é uma cor
+ * CLARA: no tema escuro, a célula clareia conforme o spot encarece, e a tinta clara em cima dela
+ * colapsa — medi 2,27:1 no número grande e 1,77:1 no pequeno na célula mais cara, ou seja, o dado
+ * sumia exatamente onde ele mais importa. Não é problema da cor do texto, é da rampa: nenhuma
+ * tinta funciona numa faixa que atravessa o meio da escala de luminância.
+ *
+ * Então o tema escuro escurece em direção a um teal PROFUNDO, e o claro segue clareando em direção
+ * ao teal da marca. Nos dois casos a célula anda para longe da tinta, nunca na direção dela.
+ */
+const preenchimento = (p: number) =>
+  `color-mix(in oklab, var(--cel-alvo) ${(8 + p * 84).toFixed(1)}%, transparent)`;
 
 const pct = (x: { n: number; erros: number }): number | null =>
   x.n ? Math.round((x.erros / x.n) * 100) : null;
@@ -158,8 +170,7 @@ export function buildEvolutionHtml(input: EvolutionExportInput): string {
           const c = grade.get(`${p}|${b}`);
           // Célula sem dado NUNCA vira 0 — a regra que o mapa de calor mais convida a quebrar.
           if (!c || c.bb_100 == null) return `<td class="vaz">${escapar(t("matrix.empty"))}</td>`;
-          const alpha = 0.08 + Math.min(c.bb_100 / max, 1) * 0.72;
-          return `<td style="background:${teal(alpha)}">
+          return `<td style="background:${preenchimento(Math.min(c.bb_100 / max, 1))}">
                     <b>${c.bb_100.toFixed(1)}</b><i>${c.n}</i>
                   </td>`;
         }).join("")}
@@ -172,7 +183,7 @@ export function buildEvolutionHtml(input: EvolutionExportInput): string {
     const chave = `
       <div class="chave">
         <div class="chave-item">
-          <div class="chave-cel" style="background:${teal(0.53)}"><b>5.2</b><i>66</i></div>
+          <div class="chave-cel" style="background:${preenchimento(0.55)}"><b>5.2</b><i>66</i></div>
           <div class="chave-txt">
             <div><b>5.2</b> &middot; ${escapar(t("matrix.keyTop"))}</div>
             <div><b>66</b> &middot; ${escapar(t("matrix.keyBottom"))}</div>
@@ -228,10 +239,17 @@ export function buildEvolutionHtml(input: EvolutionExportInput): string {
               <span class="n">(${v.n_depois})</span>
             </span>
           </header>
+          ${/* Veredito em linguagem comum primeiro; o intervalo de confiança desce para o rodapé
+                técnico. Quem lê este relatório está evoluindo, não auditando: precisa saber antes
+                de tudo se melhorou, e só depois com que evidência. */""}
           <p>${escapar(t(`proof.explain.${v.veredito}`, {
             antes: v.taxa_antes, ajustado: v.taxa_antes_ajustada ?? v.taxa_antes,
-            depois: v.taxa_depois, n: v.n_depois, lo: ic?.[0], hi: ic?.[1],
+            depois: v.taxa_depois, n: v.n_depois,
           }))}</p>
+          ${ic ? `<p class="tecnico">${escapar(t("proof.technical", {
+            lo: ic[0], hi: ic[1], n: v.n_depois,
+            ajustado: v.taxa_antes_ajustada ?? v.taxa_antes,
+          }))}</p>` : ""}
 
           ${/* PURO como taxa. MISTO nunca como taxa — ver o cabeçalho deste arquivo. */ ""}
           ${puro.n > 0 ? `
@@ -278,14 +296,14 @@ export function buildEvolutionHtml(input: EvolutionExportInput): string {
   :root {
     --bg:#0A0E1A; --surface:#111726; --line:#222C42; --ink:#E3E8EC; --ink-2:#9AA8BC;
     --ink-3:#6B7A91; --accent:#2DD4BF; --bom:#2DD4BF; --alerta:#F5A524; --ruim:#F0616D;
-    --logo-ink:#E3E8EC; --logo-sub:#2A4652;
+    --logo-ink:#E3E8EC; --logo-sub:#2A4652; --cel-alvo:#0B6B61;
     --sans:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
     --mono:ui-monospace,"SF Mono","Cascadia Mono",Consolas,monospace;
   }
   @media (prefers-color-scheme: light) {
     :root { --bg:#F4F7F9; --surface:#FFF; --line:#D6DEE7; --ink:#0F1724; --ink-2:#4A5A70;
             --ink-3:#75859B; --accent:#0E9384; --bom:#0E9384; --alerta:#B06A00; --ruim:#C6394A;
-            --logo-ink:#0F1724; --logo-sub:#4A5A70; }
+            --logo-ink:#0F1724; --logo-sub:#4A5A70; --cel-alvo:#2DD4BF; }
   }
 
   /* O LOGOTIPO SEGUE O FUNDO, e o asset da marca continua intocado.
@@ -343,7 +361,13 @@ export function buildEvolutionHtml(input: EvolutionExportInput): string {
                           text-align:right; padding-right:6px; width:56px; }
   .matriz td { border-radius:6px; text-align:center; padding:7px 4px; }
   .matriz td b { display:block; font-family:var(--mono); font-size:12px; font-weight:700; color:var(--ink); }
-  .matriz td i { display:block; font-family:var(--mono); font-size:9px; font-style:normal; color:var(--ink-2); }
+  /* Tinta principal com opacidade, e NÃO a secundária: o cinza de --ink-2 é calibrado contra o
+     fundo da PÁGINA, e estes números moram sobre um preenchimento teal. Com ele o contraste caía
+     para perto de 1,3:1, e piorava conforme a célula escurece — o tamanho da amostra sumia
+     justamente nos spots mais caros, que são os que mais precisam dele para se saber se a leitura
+     tem lastro. (Nenhuma crase em comentário daqui: tudo isto vive dentro de um template literal.) */
+  .matriz td i { display:block; font-family:var(--mono); font-size:9px; font-style:normal;
+                 color:var(--ink); opacity:.85; }
   .matriz td.vaz { border:1px dashed var(--line); font-family:var(--mono); font-size:10px; color:var(--ink-3); }
 
   .chave { display:flex; flex-wrap:wrap; gap:10px 26px; background:var(--bg); border-radius:9px;
@@ -351,7 +375,8 @@ export function buildEvolutionHtml(input: EvolutionExportInput): string {
   .chave-item { display:flex; align-items:center; gap:10px; }
   .chave-cel { width:54px; padding:6px 0; border-radius:6px; text-align:center; flex:none; }
   .chave-cel b { display:block; font-family:var(--mono); font-size:12px; color:var(--ink); }
-  .chave-cel i { display:block; font-family:var(--mono); font-size:9px; font-style:normal; color:var(--ink-2); }
+  .chave-cel i { display:block; font-family:var(--mono); font-size:9px; font-style:normal;
+                 color:var(--ink); opacity:.85; }
   .chave-cel.vaz { border:1px dashed var(--line); font-family:var(--mono); font-size:10px;
                    color:var(--ink-3); padding:11px 0; }
   .chave-txt { font-size:10.5px; line-height:1.4; color:var(--ink-2); max-width:34ch; }
@@ -364,6 +389,7 @@ export function buildEvolutionHtml(input: EvolutionExportInput): string {
   .taxas .depois { font-weight:700; color:var(--ink); }
   .taxas .depois.bom { color:var(--bom); } .taxas .depois.ruim { color:var(--ruim); }
   .prova p { font-size:12px; color:var(--ink-2); margin:0 0 7px; }
+  .prova p.tecnico { font-family:var(--mono); font-size:10px; color:var(--ink-3); }
   .puro { display:flex; align-items:baseline; flex-wrap:wrap; gap:8px; background:var(--bg);
           border:1px solid var(--line); border-radius:8px; padding:10px; margin:0 0 7px; }
   .puro-num { font-family:var(--mono); font-size:22px; font-weight:800; font-variant-numeric:tabular-nums; }
@@ -385,7 +411,7 @@ export function buildEvolutionHtml(input: EvolutionExportInput): string {
   /* Impressão: fundo claro, sem quebrar bloco no meio. Relatório guardado costuma virar papel. */
   @media print {
     :root { --bg:#FFF; --surface:#FFF; --line:#CBD5E1; --ink:#0F1724; --ink-2:#3E4C61; --ink-3:#64748B;
-            --logo-ink:#0F1724; --logo-sub:#4A5A70; }
+            --logo-ink:#0F1724; --logo-sub:#4A5A70; --cel-alvo:#2DD4BF; }
     body { background:#FFF; }
     .wrap { padding:0; max-width:none; }
     .card, .prova { break-inside:avoid; page-break-inside:avoid; }

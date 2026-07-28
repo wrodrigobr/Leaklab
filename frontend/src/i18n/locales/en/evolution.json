@@ -6,28 +6,28 @@
   "empty": "No tournaments with graded decisions yet. Import your hands and the report starts.",
   "perTournament": "bb / tournament",
   "vsPrevious": "vs previous half",
-  "heroHint": "Average over your {{n}} most recent tournaments, against the earlier half. Bubble and final table are left out.",
+  "heroHint": "This is how much you lose, on average, per tournament. It compares your {{n}} most recent tournaments with the ones before them. Bubble and final table are left out, because the right play there changes because of the prize.",
   "costly": {
     "title": "The spots that cost the most",
-    "subtitle": "In tournaments a few hands decide the result. These are yours. Click to review.",
-    "played": "You played {{action}} — the reference was {{best}}",
+    "subtitle": "In tournaments a few hands decide the result. These were the most expensive of the period. Click any of them to review the whole hand.",
+    "played": "You played {{action}}, and the indicated play was {{best}}",
     "open": "open hand"
   },
   "matrix": {
     "title": "Position × stack depth",
-    "subtitle": "The same open is a different game at 12bb and at 50bb. An empty cell means no sample, not a clean record.",
+    "subtitle": "The same hand is played one way with 12bb and another way with 50bb. This map crosses your seat at the table with your stack size, to show whether the problem is the position, the depth, or the two combined.",
     "keyTitle": "How to read each cell",
-    "keyTop": "bb lost per 100 decisions — the higher, the more expensive",
-    "keyBottom": "how many decisions were measured there — few decisions, fragile reading",
-    "keyEmpty": "no sample for that combination (not a clean sheet)",
-    "legend": "Colour follows the top number: the darker it is, the more that position costs at that depth.",
+    "keyTop": "bb lost per 100 decisions. The bigger, the more expensive.",
+    "keyBottom": "how many decisions were measured there. Few decisions, fragile reading.",
+    "keyEmpty": "no sample for that combination. It does not mean you got it right.",
+    "legend": "Colour follows the top number: the stronger it is, the more that position costs at that depth.",
     "empty": "—"
   },
   "proof": {
     "title": "Before and after training",
-    "subtitle": "Here the measure is error rate, not cost: that is what separates improvement from luck.",
-    "disclaimer": "A verdict only appears when the difference survives the confidence interval, and the \"before\" is corrected so improvement is not inflated. This compares two periods; it does not prove the training caused the change.",
-    "byAction": "By action, in the period",
+    "subtitle": "Here the question changes. Above you saw where you lose the most chips. Here you see whether what you trained actually changed your game, and to answer that the right measure is the error rate.",
+    "disclaimer": "A verdict only appears when the difference is large enough that luck cannot explain it, and your starting point is corrected so the improvement is not inflated. Even so, this compares two periods of your game: it shows that something changed, it does not prove why.",
+    "byAction": "Mistakes by type of play",
     "action": {
       "fold": "Fold",
       "raise": "Raise",
@@ -37,18 +37,19 @@
       "bet": "Bet"
     },
     "explain": {
-      "melhorou": "You used to err {{antes}}% (adjusted to {{ajustado}}% because this leak entered the plan for being the worst of a list, and part of that bad result was luck). Now {{depois}}% over {{n}} decisions. The 95% interval of the drop is [{{lo}} · {{hi}}] and does not touch zero, so the difference survives chance. This compares two periods; it does not prove training caused it.",
-      "piorou": "You used to err {{antes}}% (adjusted to {{ajustado}}%) and now err {{depois}}% over {{n}} decisions. The 95% interval is [{{lo}} · {{hi}}], entirely negative, so the regression is not noise. The leak was reopened for training.",
-      "sem_mudanca": "From {{antes}}% (adjusted to {{ajustado}}%) to {{depois}}% over {{n}} decisions. The 95% interval is [{{lo}} · {{hi}}] and crosses zero, so the difference is still indistinguishable from chance. This does NOT mean you did not improve: it means this data cannot say yet."
+      "melhorou": "You genuinely improved, and it was not luck. You used to get this kind of spot wrong {{antes}}% of the time and now you get it wrong {{depois}}%, over {{n}} decisions. The maths was done the hard way: we compared against {{ajustado}}%, not {{antes}}%, because when a leak enters your plan for being your worst one, part of that bad result is usually luck and would improve on its own. Even then the difference held up.",
+      "piorou": "It got worse, and the difference is too large to be bad luck. You used to get this kind of spot wrong {{antes}}% of the time and now you get it wrong {{depois}}%, over {{n}} decisions. That is why it went back into your training. This is not a punishment, it is the report pointing at where the work needs to go now.",
+      "sem_mudanca": "There is no telling yet. You used to get it wrong {{antes}}% and now {{depois}}%, but that was measured over {{n}} decisions, and with that many a difference this size still fits inside what luck alone explains. This does NOT mean you did not improve. It means there are not enough hands to say so. Keep playing and training this spot: the more decisions, the sooner the maths settles."
     },
-    "actingBadge": "acting: {{pct}}%",
+    "technical": "For anyone who wants to check the maths: the 95% confidence interval for the difference runs from {{lo}} to {{hi}} percentage points, measured over {{n}} decisions. Corrected starting point: {{ajustado}}%.",
+    "actingBadge": "when acting: {{pct}}%",
     "purity": {
-      "pure": "error rate in spots where GTO plays almost always the same thing, i.e. where there is ONE right answer"
+      "pure": "error rate in the spots that have only one right answer, the ones where the correct play is almost always the same"
     },
-    "purityHint": "Zero here is expected, not a merit: in these spots getting it right is range memory, not reading. What measures play is the mixed spots.",
-    "purityHintErrs": "Each of these is a play GTO makes less than 10% of the time, in a spot with a single answer. That is an unmemorized range, not a hard decision, and it is the cheapest kind of leak to fix.",
-    "commission": "Acting: {{agindo}}% ({{nAgindo}} decisions) · Passing: {{passando}}% ({{nPassando}})",
-    "mixedNote": "In mixed spots you had {{erros}} errors over {{n}} decisions. That number does NOT compare to the one above: there GTO accepts more than one action, so erring requires picking a third it never plays. It is harder to err by construction, not because the spot is easier."
+    "purityHint": "Zero here is normal, not a merit. In these spots you get it right from memory, not from reading: either you know the range or you do not. What really measures your game are the spots where more than one answer is good.",
+    "purityHintErrs": "Every mistake here is a play that is almost never the right one, in a spot that has a single answer. This is not a hard decision, it is a range you have yet to memorise. And that is the best news in the report: it can be fixed by studying the chart, without playing more.",
+    "commission": "When you acted (bet, call or raise): {{agindo}}% mistakes over {{nAgindo}} decisions. When you folded: {{passando}}% over {{nPassando}}.",
+    "mixedNote": "In the spots where more than one answer is good you made {{erros}} mistakes over {{n}} decisions. Do not compare that number with the one above. Up there only one answer is right. Here GTO itself alternates between two or more, so to be wrong you would have to pick a third one, which it never plays. It is harder to be wrong by construction, not because the spot is easier."
   },
   "history": {
     "title": "Previous reports",
@@ -74,9 +75,9 @@
     "snapshotOf": "Frozen snapshot from {{date}}",
     "openApp": "Open the current report on GrindLab",
     "notesTitle": "How to read this file, and what was left out",
-    "noteScope": "Only decisions with a solver answer are counted. A hand with no coverage shows up neither as correct nor as a mistake, so the totals here are smaller than the number of hands you played.",
-    "noteEv": "The bb cost uses only EV that passes the reliability test. An out-of-scale estimate is discarded rather than added, which makes this number a floor: the real cost is equal or higher.",
-    "noteIcm": "The ICM zone (bubble and final table) is excluded from both sides. The reference there is pure chipEV, and the EV measured does not describe the decision you actually faced.",
-    "noteFrozen": "These numbers are from the moment the file was generated and do not update. For today's reading, open the report on the site."
+    "noteScope": "Only the decisions the solver can grade are counted. A hand with no coverage shows up neither as correct nor as a mistake, so the totals here are smaller than the number of hands you played.",
+    "noteEv": "The bb cost uses only the reliable estimates. When the EV figure comes out off scale it is discarded rather than added. So this number is a floor: the real cost is equal or higher.",
+    "noteIcm": "Bubble and final table, what is called the ICM zone, are left out. The right play there changes because of the prize, and the reference we use is in chips, not in money.",
+    "noteFrozen": "These numbers are from the moment the file was generated and do not update on their own. For today's reading, open the report on the site."
   }
 }

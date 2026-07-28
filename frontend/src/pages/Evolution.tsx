@@ -307,13 +307,26 @@ function LinhaProva({ p, spotLabel }: {
       </summary>
 
       <div className="space-y-3 border-t border-border px-3 pb-3 pt-2.5 text-[11px] leading-snug">
+        {/* O veredito em PORTUGUÊS COMUM, e o intervalo de confiança fora dele.
+            A versão anterior abria com "De 14.6% (ajustado para 14.3%) para 16% em 75 decisões. O
+            intervalo de 95% é [-13 · 8.8] e cruza o zero" — quatro números e dois termos de
+            estatística antes de qualquer significado. Quem lê este relatório está evoluindo, não
+            auditando: precisa saber PRIMEIRO se melhorou, e só depois com que evidência. A conta
+            não some, desce para o rodapé técnico, para quem quiser conferir. */}
         <p className="text-muted-foreground">
           {t(`proof.explain.${v.veredito}`, {
             antes: v.taxa_antes, ajustado: v.taxa_antes_ajustada ?? v.taxa_antes,
             depois: v.taxa_depois, n: v.n_depois,
-            lo: ic?.[0], hi: ic?.[1],
           })}
         </p>
+        {ic && (
+          <p className="font-mono text-[10px] leading-snug text-muted-foreground/70">
+            {t("proof.technical", {
+              lo: ic[0], hi: ic[1], n: v.n_depois,
+              ajustado: v.taxa_antes_ajustada ?? v.taxa_antes,
+            })}
+          </p>
+        )}
 
         {/* PUREZA primeiro: é o corte que muda a conduta.
             Errar spot puro significa não conhecer a range — grave, e o mais barato de consertar.
@@ -441,10 +454,20 @@ function Matriz({ matriz }: { matriz: EvolutionReport["matriz"] }) {
   const max = Math.max(...matriz.map((c) => c.bb_100 ?? 0), 1);
 
   const tom = (v: number) => {
-    // Escala sequencial de UMA cor (o teal da marca), clara → escura. Nunca arco-íris: aqui a
-    // cor codifica magnitude, e magnitude tem ordem.
+    // Escala sequencial de UMA cor. Nunca arco-íris: aqui a cor codifica magnitude, e magnitude
+    // tem ordem.
+    //
+    // O destino da rampa NÃO é o teal da marca, e isso não é escolha estética. `--primary` é uma
+    // cor CLARA (hsl 172 66% 50%): num tema escuro a célula clareava conforme o spot encarecia, e
+    // a tinta clara em cima dela colapsava — medido em 2,27:1 no número grande e 1,77:1 no
+    // pequeno na célula mais cara. Ou seja, o dado sumia exatamente onde ele mais importa, e o
+    // tamanho da amostra, que é o que diz se a leitura tem lastro, sumia primeiro.
+    //
+    // Trocar a cor do texto não resolveria: nenhuma tinta funciona numa rampa que atravessa o
+    // meio da escala de luminância. Quem tem que mudar é a rampa, que agora ESCURECE em direção a
+    // um teal profundo — a célula anda para longe da tinta, nunca na direção dela.
     const p = Math.min(v / max, 1);
-    return { background: `color-mix(in oklab, hsl(var(--primary)) ${8 + p * 72}%, transparent)` };
+    return { background: `color-mix(in oklab, #0B6B61 ${8 + p * 84}%, transparent)` };
   };
 
   return (
@@ -464,7 +487,7 @@ function Matriz({ matriz }: { matriz: EvolutionReport["matriz"] }) {
           <div style={tom(max * 0.62)}
             className="flex aspect-[1.9] w-[54px] shrink-0 flex-col items-center justify-center rounded-md">
             <span className="font-mono text-[12px] font-bold text-foreground">5.2</span>
-            <span className="font-mono text-[9px] text-muted-foreground">66</span>
+            <span className="font-mono text-[9px] text-foreground/85">66</span>
           </div>
           <div className="text-[10px] leading-tight text-muted-foreground">
             <div><span className="font-mono font-bold text-foreground">5.2</span> · {t("matrix.keyTop")}</div>
@@ -511,7 +534,13 @@ function FragmentRow({ pos, buckets, grade, tom, vazio }: {
             title={`${pos} · ${b} · ${c.bb_100}bb/100 · ${c.n} decisões`}
             className="flex aspect-[1.9] flex-col items-center justify-center rounded-md">
             <span className="font-mono text-[12px] font-bold text-foreground">{c.bb_100.toFixed(1)}</span>
-            <span className="font-mono text-[9px] text-muted-foreground">{c.n}</span>
+            {/* `foreground/70` e NÃO `muted-foreground`: aquele cinza (L 47%) é calibrado contra o
+                fundo da PÁGINA, e aqui o fundo é um preenchimento teal. O contraste ficava perto
+                de 1,3:1, e piorava justamente onde a célula é mais escura — ou seja, o tamanho da
+                amostra sumia nos spots mais caros, que são os que mais precisam dele para se saber
+                se a leitura tem lastro. Texto sobre cor sólida herda a tinta do texto principal,
+                com opacidade para a hierarquia. */}
+            <span className="font-mono text-[9px] text-foreground/85">{c.n}</span>
           </div>
         ) : (
           <div key={b} className="flex aspect-[1.9] items-center justify-center rounded-md border border-dashed border-border">

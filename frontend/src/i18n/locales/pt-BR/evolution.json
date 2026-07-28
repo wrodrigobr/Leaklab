@@ -6,28 +6,28 @@
   "empty": "Ainda não há torneios com decisões avaliadas. Importe suas mãos para o relatório começar.",
   "perTournament": "bb / torneio",
   "vsPrevious": "vs metade anterior",
-  "heroHint": "Média dos {{n}} torneios mais recentes, comparada com a metade anterior. Zona de bolha e mesa final ficam fora da conta.",
+  "heroHint": "É quanto você perde, em média, por torneio. A conta compara seus {{n}} torneios mais recentes com os anteriores. Bolha e mesa final ficam de fora, porque lá a jogada certa muda por causa do prêmio.",
   "costly": {
     "title": "Os spots que mais custaram",
-    "subtitle": "Em torneio, poucas mãos decidem o resultado. Estas são as suas. Clique para rever.",
-    "played": "Jogou {{action}} — o gabarito indicava {{best}}",
+    "subtitle": "Em torneio, poucas mãos decidem o resultado. Estas foram as mais caras do período. Clique em qualquer uma para rever a mão inteira.",
+    "played": "Você jogou {{action}}, e a jogada indicada era {{best}}",
     "open": "ver mão"
   },
   "matrix": {
     "title": "Posição × profundidade de stack",
-    "subtitle": "A mesma abertura é um jogo diferente a 12bb e a 50bb. Célula vazia significa sem amostra, não acerto.",
+    "subtitle": "A mesma mão se joga de um jeito com 12bb e de outro com 50bb. Este mapa cruza a sua posição na mesa com o tamanho do seu stack, para mostrar se o problema é a posição, a profundidade, ou a combinação das duas.",
     "keyTitle": "Como ler cada quadrante",
-    "keyTop": "bb perdidos a cada 100 decisões — quanto mais alto, mais caro",
-    "keyBottom": "quantas decisões medidas ali — poucas decisões, leitura frágil",
-    "keyEmpty": "sem amostra nessa combinação (não é acerto)",
-    "legend": "A cor acompanha o número de cima: quanto mais escura, mais cara é a posição naquela profundidade.",
+    "keyTop": "bb perdidos a cada 100 decisões. Quanto maior, mais caro.",
+    "keyBottom": "quantas decisões foram medidas ali. Poucas decisões, leitura frágil.",
+    "keyEmpty": "sem amostra nessa combinação. Não quer dizer que você acertou.",
+    "legend": "A cor acompanha o número de cima: quanto mais forte, mais cara é aquela posição naquela profundidade.",
     "empty": "—"
   },
   "proof": {
     "title": "Antes e depois do treino",
-    "subtitle": "Aqui a medida é taxa de erro, não custo: é ela que distingue melhora de sorte.",
-    "disclaimer": "O veredito só sai quando a diferença resiste ao intervalo de confiança, e o \"antes\" é corrigido para não inflar a melhora. É comparação entre dois períodos, não prova de que o treino causou a mudança.",
-    "byAction": "Por ação, no período",
+    "subtitle": "Aqui a pergunta muda. Acima você viu onde perde mais fichas. Aqui você vê se o que treinou mudou mesmo o seu jogo, e para responder isso a medida certa é a porcentagem de erro.",
+    "disclaimer": "Só aparece um veredito quando a diferença é grande o bastante para não ser explicada por sorte, e o seu ponto de partida é corrigido para não inflar a melhora. Ainda assim, isto compara dois períodos do seu jogo: mostra que mudou, não prova o motivo.",
+    "byAction": "Erros por tipo de jogada",
     "action": {
       "fold": "Fold",
       "raise": "Raise",
@@ -37,18 +37,19 @@
       "bet": "Bet"
     },
     "explain": {
-      "melhorou": "Você errava {{antes}}% (ajustado para {{ajustado}}% porque este leak entrou no plano por ser o pior de uma lista, e parte do resultado ruim era azar). Agora erra {{depois}}% em {{n}} decisões. O intervalo de 95% da queda é [{{lo}} · {{hi}}] e não toca o zero, então a diferença resiste ao acaso. Isso compara dois períodos: não prova que o treino causou a melhora.",
-      "piorou": "Você errava {{antes}}% (ajustado para {{ajustado}}%) e agora erra {{depois}}% em {{n}} decisões. O intervalo de 95% é [{{lo}} · {{hi}}], inteiro do lado negativo, então a piora não é ruído. O leak foi reaberto para treino.",
-      "sem_mudanca": "De {{antes}}% (ajustado para {{ajustado}}%) para {{depois}}% em {{n}} decisões. O intervalo de 95% é [{{lo}} · {{hi}}] e cruza o zero, então a diferença ainda não se distingue do acaso. Isso NÃO quer dizer que você não melhorou: quer dizer que estes dados ainda não permitem afirmar."
+      "melhorou": "Melhorou de verdade, e não foi sorte. Você errava {{antes}}% das vezes neste tipo de spot e agora erra {{depois}}%, em {{n}} decisões. A conta foi feita pelo caminho mais duro: comparamos com {{ajustado}}%, e não com {{antes}}%, porque quando um leak entra no plano por ser o seu pior, parte daquele resultado ruim costuma ser azar e melhoraria sozinho. Mesmo assim a diferença se manteve.",
+      "piorou": "Piorou, e a diferença é grande demais para ser azar. Você errava {{antes}}% neste tipo de spot e agora erra {{depois}}%, em {{n}} decisões. Por isso ele voltou para o seu treino. Isso não é punição, é o relatório apontando para onde o trabalho precisa ir agora.",
+      "sem_mudanca": "Ainda não dá para dizer. Você errava {{antes}}% e agora erra {{depois}}%, mas isso foi medido em {{n}} decisões, e com essa quantidade uma diferença desse tamanho ainda cabe dentro do que a sorte explica sozinha. Isto NÃO significa que você não melhorou. Significa que ainda faltam mãos para afirmar. Continue jogando e treinando este spot: quanto mais decisões, mais cedo a conta se resolve."
     },
-    "actingBadge": "agindo: {{pct}}%",
+    "technical": "Para quem quiser conferir a conta: o intervalo de confiança de 95% para a diferença vai de {{lo}} a {{hi}} pontos percentuais, medido sobre {{n}} decisões. Ponto de partida corrigido: {{ajustado}}%.",
+    "actingBadge": "quando agiu: {{pct}}%",
     "purity": {
-      "pure": "de erro em spots onde o GTO joga quase sempre a mesma coisa, ou seja, onde existe UMA resposta certa"
+      "pure": "de erro nos spots que têm uma resposta certa só, aqueles em que a jogada correta é quase sempre a mesma"
     },
-    "purityHint": "Zero aqui é o esperado, não um mérito: nestes spots o acerto é memória de range, não leitura. O que mede jogo são os spots mistos.",
-    "purityHintErrs": "Cada erro destes é uma jogada que o GTO faz menos de 10% das vezes, num spot com uma resposta só. Isso é range não memorizada, não decisão difícil, e é o tipo de leak mais barato de corrigir.",
-    "commission": "Agindo: {{agindo}}% ({{nAgindo}} decisões) · Passando: {{passando}}% ({{nPassando}})",
-    "mixedNote": "Nos spots mistos você teve {{erros}} erros em {{n}} decisões. Esse número NÃO se compara ao de cima: ali o GTO aceita mais de uma ação, então errar exige escolher uma terceira que ele nunca faz. É mais difícil errar por construção, não porque o spot seja mais fácil."
+    "purityHint": "Zero aqui é o normal, não um mérito. Nestes spots você acerta de memória, não de leitura: ou sabe a range, ou não sabe. O que mede o seu jogo de verdade são os spots em que existe mais de uma resposta boa.",
+    "purityHintErrs": "Cada erro aqui é uma jogada que quase nunca é a certa, num spot que só tem uma resposta. Não é decisão difícil, é range que ainda falta memorizar. E essa é a melhor notícia do relatório: dá para corrigir estudando a tabela, sem precisar jogar mais.",
+    "commission": "Quando você agiu (bet, call ou raise): {{agindo}}% de erro em {{nAgindo}} decisões. Quando você foldou: {{passando}}% em {{nPassando}}.",
+    "mixedNote": "Nos spots em que existe mais de uma resposta boa você teve {{erros}} erros em {{n}} decisões. Não compare esse número com o de cima. Lá existe uma resposta certa só. Aqui o próprio GTO alterna entre duas ou mais, então para errar você precisaria escolher uma terceira, que ele nunca joga. É mais difícil errar por construção, e não porque o spot seja mais fácil."
   },
   "history": {
     "title": "Relatórios anteriores",
@@ -74,9 +75,9 @@
     "snapshotOf": "Retrato congelado de {{date}}",
     "openApp": "Abrir o relatório atual no GrindLab",
     "notesTitle": "Como ler este arquivo, e o que ficou de fora",
-    "noteScope": "Só entram decisões com gabarito. Mão sem cobertura do solver não aparece nem como acerto nem como erro, então o total daqui é menor que o número de mãos que você jogou.",
-    "noteEv": "O custo em bb usa apenas o EV que passa no teste de confiabilidade. Estimativa fora de escala é descartada em vez de somada, o que torna este número um piso: o prejuízo real é igual ou maior.",
-    "noteIcm": "A zona de ICM (bolha e mesa final) fica fora dos dois lados da conta. O gabarito ali é chipEV puro, e o EV medido não descreve a decisão que você realmente enfrentou.",
-    "noteFrozen": "Os números são do momento em que o arquivo foi gerado e não se atualizam. Para a leitura de hoje, abra o relatório no site."
+    "noteScope": "Só entram as decisões que o solver sabe avaliar. Uma mão sem cobertura não conta nem como acerto nem como erro, então o total daqui é menor que o número de mãos que você jogou.",
+    "noteEv": "O custo em bb usa só as estimativas confiáveis. Quando a conta de EV sai fora de escala, ela é descartada em vez de somada. Ou seja, este número é um piso: o prejuízo real é igual ou maior.",
+    "noteIcm": "Bolha e mesa final, o que se chama de zona de ICM, ficam fora da conta. Lá a jogada certa muda por causa do prêmio, e a referência que usamos é de fichas, não de dinheiro.",
+    "noteFrozen": "Os números são do momento em que o arquivo foi gerado e não se atualizam sozinhos. Para a leitura de hoje, abra o relatório no site."
   }
 }
