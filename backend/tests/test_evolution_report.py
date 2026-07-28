@@ -216,6 +216,78 @@ def test_no_limite_exato_ainda_conta():
     print("OK  test_no_limite_exato_ainda_conta")
 
 
+def test_fold_nao_pode_custar_mais_que_a_aritmetica_do_proprio_engine():
+    """OS CASOS REAIS que expuseram o bug (produção, 2026-07-27).
+
+    `ev_loss_bb` do solver vem na escala do POTE COM QUE O NÓ FOI SOLVADO, e `compute_spot_hash`
+    não inclui o tamanho do pote. Um nó de pote pequeno servido a um pote grande devolve número
+    de outra escala — às vezes 4x para cima, às vezes metade, às vezes com o sinal invertido.
+
+    O que o teto pega é a contradição SEM SAÍDA: equity 33,0% contra 46,6% exigidos, **quase
+    all-in** (sobram 5,9bb atrás), então não há street futura que justifique. Ainda assim o
+    sistema cobrou 28,2bb e marcou gto_critical.
+
+    O que ele NÃO pega, de propósito: o mesmo tipo de contradição onde ainda há stack atrás.
+    Na primeira análise eu contei dois casos de direção invertida; recalculando com implied odds,
+    só um sobrevive — no outro sobravam 19,3bb num flop, e 30,8% de equity com esse stack por trás
+    é call defensável. Apertar o teto para pegá-lo apagaria leak real."""
+    from leaklab.decision_engine_v11 import ev_loss_trustworthy as ok
+
+    # quase all-in: 5,9bb atrás → sem implied odds → a aritmética é fechada
+    assert ok(28.2, 33.7, 'solver_hand', action='fold',
+              equity=0.330, pot_bb=31.8, facing_bb=27.8) is False
+    # mesma equity baixa, mas 19,3bb atrás num flop → implied odds reais → passa
+    assert ok(5.1, 29.1, 'solver_hand', action='fold',
+              equity=0.308, pot_bb=16.3, facing_bb=9.8) is True
+    print("OK  test_fold_nao_pode_custar_mais_que_a_aritmetica_do_proprio_engine")
+
+
+def test_fold_caro_de_verdade_continua_valendo():
+    """O contrapeso, e ele importa: um teto agressivo demais apagaria leak real.
+
+    River, equity 72%, precisa 41,2% — pagar vale +27,5bb pela aritmética, e o solver gravou
+    14,8bb. Subestimar é seguro; o teto não pode derrubar isto."""
+    from leaklab.decision_engine_v11 import ev_loss_trustworthy as ok
+    assert ok(14.8, 55.6, 'solver_hand', action='fold',
+              equity=0.720, pot_bb=52.5, facing_bb=36.8) is True
+    print("OK  test_fold_caro_de_verdade_continua_valendo")
+
+
+def test_teto_so_vale_para_fold():
+    """Em call/raise o EV depende do resto da árvore e não há aritmética simples com a qual
+    comparar. Desconfiar dessas por heurística seria trocar um erro por outro."""
+    from leaklab.decision_engine_v11 import ev_loss_trustworthy as ok
+    assert ok(28.2, 33.7, 'solver_hand', action='call',
+              equity=0.330, pot_bb=31.8, facing_bb=27.8) is True
+    print("OK  test_teto_so_vale_para_fold")
+
+
+def test_sem_equity_o_ev_passa():
+    """Sem os números da conta não há do que discordar. Bloquear aqui jogaria fora todo o
+    preflop, que não computa equity-vs-range e cujo EV é justamente o mais comportado
+    (média 0,29bb, máximo 3,8bb em produção)."""
+    from leaklab.decision_engine_v11 import ev_loss_trustworthy as ok
+    assert ok(2.0, 30.0, 'gw_har', action='fold', equity=None, pot_bb=None, facing_bb=None) is True
+    print("OK  test_sem_equity_o_ev_passa")
+
+
+def test_fold_implausivel_sai_do_relatorio():
+    """O efeito de ponta a ponta: o spot de -28,2bb some do ranking e da matriz."""
+    _setup([
+        (1, 'IMPLAUSIVEL', 'CO',  33.7, 28.2),
+        (1, 'REAL',        'BTN', 30.0,  3.0),
+    ])
+    c = _conn()
+    c.execute("UPDATE decisions SET action_taken='fold', estimated_equity=0.330, "
+              "pot_size=31.8, facing_bet=27.8 WHERE hand_id='IMPLAUSIVEL'")
+    c.execute("UPDATE decisions SET action_taken='call' WHERE hand_id='REAL'")
+    c.commit(); c.close()
+    r = repo.get_evolution_report(1)
+    assert [s['hand_id'] for s in r['top_spots']] == ['REAL'], r['top_spots']
+    assert all(x['position'] != 'CO' for x in r['matriz']), r['matriz']
+    print("OK  test_fold_implausivel_sai_do_relatorio")
+
+
 def test_regra_e_a_mesma_do_engine():
     """O relatório expressa em SQL a regra que o engine aplica em Python. Se as duas divergirem,
     o card e o relatório discordam sobre a mesma mão — e essa é a classe de bug que mais custou

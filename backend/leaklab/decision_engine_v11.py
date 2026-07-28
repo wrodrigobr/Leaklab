@@ -331,21 +331,76 @@ _EV_RELIABLE_SOURCES = ('gw_har', 'solver_hand', 'gto_tree', 'hand_aware')
 _EV_TRUST_MAX_BB = 100.0
 
 
-def ev_loss_trustworthy(ev_loss_bb, stack_bb, ev_loss_source) -> bool:
+# Implied odds no teto de plausibilidade: quanto do que sobra atrás pode entrar no pote depois.
+# 2x é generoso de propósito — o teto existe para pegar número IMPOSSÍVEL, não para discutir com
+# o solver sobre spots apertados. Se ele passa nem desta régua, não está descrevendo este spot.
+_IMPLIED_ODDS_MULT = 2.0
+_FOLD_ACTIONS = ('fold', 'folds')
+
+
+def ev_loss_fold_ceiling(equity, pot_bb, facing_bb, stack_bb):
+    """Teto do que FOLDAR pode custar, pela aritmética de pot odds do próprio engine.
+
+    Existe porque `ev_loss_bb` do solver vem na escala do POTE COM QUE O NÓ FOI SOLVADO, e
+    `compute_spot_hash` NÃO inclui o tamanho do pote — só street, posição, board, mão, bucket de
+    stack, facing e tipo de pote. Um nó solvado num pote de 5bb pode ser servido a um spot com
+    pote de 31,8bb, e o número volta numa escala que não é a daquele spot. O pote solvado não é
+    gravado em lugar nenhum, então não há como reescalar; o que dá é conferir.
+
+    Medido em produção (2026-07-27), com a equity que o PRÓPRIO engine gravou:
+
+        equity 33,0% · precisa 46,6% → foldar está CERTO → o engine marcou −28,2bb e gto_critical
+        equity 30,8% · precisa 37,5% → foldar está CERTO → o engine marcou  −5,1bb
+
+    Duas contradições de direção em dez decisões. Nas demais o valor gravado ia de 2x a 8x a
+    aritmética — e em duas era METADE dela. Não erra para um lado só, o que descarta escala fixa.
+
+    Devolve None quando falta dado para a conta (aí não há do que discordar, e o EV passa)."""
+    try:
+        if equity is None or pot_bb is None or facing_bb is None:
+            return None
+        eq, pot, facing = float(equity), float(pot_bb), float(facing_bb)
+        stack = float(stack_bb) if stack_bb is not None else facing
+        if pot < 0 or facing < 0:
+            return None
+        call = min(facing, stack) if stack > 0 else facing
+        atras = max(0.0, stack - call)
+        ganho_max = pot + call + _IMPLIED_ODDS_MULT * atras
+        return max(0.0, eq * ganho_max - call)
+    except (TypeError, ValueError):
+        return None
+
+
+def ev_loss_trustworthy(ev_loss_bb, stack_bb, ev_loss_source, *,
+                        action=None, equity=None, pot_bb=None, facing_bb=None) -> bool:
     """O EV em bb pode ser usado como quantidade (ranking, soma, severidade)?
 
     O veredito e a ação do nó continuam valendo quando isto devolve False — o que se descarta é o
     NÚMERO, não a recomendação. Fonte única desta regra: quem for somar, ranquear ou pesar EV
-    precisa passar por aqui, senão volta a existir duas noções de 'EV confiável' no código."""
+    precisa passar por aqui, senão volta a existir duas noções de 'EV confiável' no código.
+
+    Três razões para desconfiar, todas medidas em produção:
+      · fonte não declarada / não confiável;
+      · profundidade acima do teto de calibração (ver `_EV_TRUST_MAX_BB`);
+      · o número contradiz a própria aritmética do engine num FOLD (ver `ev_loss_fold_ceiling`).
+
+    O teto de fold só se aplica a fold porque ali a conta é fechada: você abre mão do pote e não
+    investe nada. Para call/raise o EV depende do resto da árvore e não há aritmética simples com
+    a qual comparar — desconfiar dessas por heurística seria trocar um erro por outro."""
     if ev_loss_bb is None:
         return False
     if (ev_loss_source or '') not in _EV_RELIABLE_SOURCES:
         return False
     try:
+        ev = float(ev_loss_bb)
         if stack_bb is not None and float(stack_bb) > _EV_TRUST_MAX_BB:
             return False
     except (TypeError, ValueError):
         return False
+    if (action or '').strip().lower() in _FOLD_ACTIONS:
+        teto = ev_loss_fold_ceiling(equity, pot_bb, facing_bb, stack_bb)
+        if teto is not None and ev > teto:
+            return False
     return True
 
 
@@ -1035,9 +1090,14 @@ def evaluate_decision(input_data: Dict[str, Any]) -> Dict[str, Any]:
     # (ver `_EV_TRUST_MAX_BB`), então um fold defensável virava erro. O teto para baixo continua
     # valendo: rebaixar veredito grave de custo ínfimo é seguro em qualquer profundidade.
     _ev_src = gto.get('ev_loss_source') if gto.get('available') else None
-    label = _ev_severity_ceiling(
-        label, _eff_ev,
-        _ev_src if ev_loss_trustworthy(_eff_ev, _hero_stack_bb, _ev_src) else None)
+    _ev_ok = ev_loss_trustworthy(
+        _eff_ev, _hero_stack_bb, _ev_src,
+        action=input_data.get('player_action'),
+        equity=math.get('estimatedHandEquity'),
+        pot_bb=spot.get('potBb'),
+        facing_bb=_facing_bb,
+    )
+    label = _ev_severity_ceiling(label, _eff_ev, _ev_src if _ev_ok else None)
     if label != _label_pre_ceil:
         final_score = min(final_score, _LABEL_MAX_SCORE[label])
 

@@ -6348,74 +6348,96 @@ def get_evolution_report(user_id: int, limite_torneios: int = 40) -> dict:
     """
     if not user_id:
         return {}
-    from leaklab.decision_engine_v11 import _EV_TRUST_MAX_BB, _EV_RELIABLE_SOURCES
-    bucket = _stack_bucket_case()
-    # O EV só entra como QUANTIDADE quando é confiável — mesma régua de
-    # `decision_engine_v11.ev_loss_trustworthy`, expressa em SQL a partir das MESMAS constantes.
-    # Sem isto, três decisões acima do teto de calibração (média 30bb, máx 90bb) dominavam o
-    # ranking, a matriz e a manchete: o relatório anunciava "melhorou 12bb por torneio" porque a
-    # metade antiga continha um fold com -90bb que não existe.
-    fontes = ','.join('?' for _ in _EV_RELIABLE_SOURCES)
-    confiavel = (f"AND d.ev_loss_source IN ({fontes}) "
-                 f"AND COALESCE(d.stack_bb, 0) <= {_EV_TRUST_MAX_BB}")
-    base = ("FROM decisions d JOIN tournaments t ON t.id = d.tournament_id "
-            "WHERE t.user_id = ? AND d.gto_label IS NOT NULL AND d.gto_label <> '' "
-            "AND COALESCE(d.icm_pressure,'') <> ? " + confiavel)
-    args = [user_id, _ICM_EXCLUDED, *_EV_RELIABLE_SOURCES]
+    from leaklab.decision_engine_v11 import ev_loss_trustworthy
+    from leaklab.gto_utils import stack_bucket
+
+    # UMA query, agregação em Python — e isto é decisão de design, não preguiça.
+    #
+    # A primeira versão filtrava "EV confiável" em SQL, replicando as constantes do engine, com um
+    # teste garantindo a equivalência. Funcionava enquanto a regra era simples (fonte + teto de
+    # profundidade). Quando ela passou a incluir o teto de plausibilidade do fold — que precisa de
+    # equity, pote, facing e mínimo/máximo entre colunas —, manter a cópia em SQL exigiria
+    # `LEAST`/`GREATEST`, que o Postgres tem e o SQLite não, e `_adapt` não traduz. Ou seja: a
+    # duplicação só se sustentava enquanto a regra fosse trivial, que é exatamente quando ela não
+    # importa. Chamar a MESMA função é a única forma de o card e o relatório não discordarem.
+    #
+    # Custo real: ~500 linhas por jogador (medido em produção: 532 decisões com EV > 0).
     conn = get_conn()
     try:
-        # ── linha do tempo: custo por torneio, na ordem em que entraram ──────────────────
-        linhas = _fetchall(conn, _adapt(
+        rows = _fetchall(conn, _adapt(
             "SELECT t.id AS tid, t.tournament_id AS ext, t.imported_at AS imported_at, "
-            "       SUM(COALESCE(d.ev_loss_bb,0)) AS bb, COUNT(*) AS n "
-            + base + " GROUP BY t.id, t.tournament_id, t.imported_at "
-            "ORDER BY t.imported_at DESC LIMIT ?"), tuple(args + [limite_torneios]))
-        timeline = [{
-            'tournament_id': r['tid'], 'ext': r['ext'], 'imported_at': str(r['imported_at']),
-            'bb': round(float(r['bb'] or 0), 2), 'n': int(r['n'] or 0),
-        } for r in reversed(linhas)]
+            "       d.hand_id AS hand_id, d.street AS street, d.position AS position, "
+            "       d.vs_position AS vs_position, d.stack_bb AS stack_bb, "
+            "       d.action_taken AS action_taken, d.best_action AS best_action, "
+            "       d.gto_label AS gto_label, d.ev_loss_bb AS ev, d.ev_loss_source AS src, "
+            "       d.estimated_equity AS equity, d.pot_size AS pot, d.facing_bet AS facing "
+            "FROM decisions d JOIN tournaments t ON t.id = d.tournament_id "
+            "WHERE t.user_id = ? AND d.gto_label IS NOT NULL AND d.gto_label <> '' "
+            "  AND COALESCE(d.icm_pressure,'') <> ? "
+            "ORDER BY t.imported_at ASC"), (user_id, _ICM_EXCLUDED))
+
+        confiaveis, por_torneio, celulas = [], {}, {}
+        for r in rows:
+            ok = ev_loss_trustworthy(
+                r['ev'], r['stack_bb'], r['src'],
+                action=r['action_taken'], equity=r['equity'],
+                pot_bb=r['pot'], facing_bb=r['facing'])
+            # `n` conta só decisão MENSURÁVEL. Contar a não-mensurável e somar 0 de EV produziria
+            # "0,0 bb perdidos" onde o certo é "não sei" — a mentira mais fácil de contar num mapa
+            # de calor, e a mesma que o teste da célula vazia já protege.
+            #
+            # O torneio, por outro lado, entra na linha do tempo mesmo sem nada mensurável: ele
+            # aconteceu, e sumir do gráfico esconderia que você jogou. Quem distingue é o `n`.
+            t = por_torneio.setdefault(
+                r['tid'], {'tournament_id': r['tid'], 'ext': r['ext'],
+                           'imported_at': str(r['imported_at']), 'bb': 0.0, 'n': 0})
+            if not ok:
+                continue
+            ev = float(r['ev'] or 0)
+            t['bb'] += ev
+            t['n'] += 1
+            if r['position'] and r['stack_bb'] is not None:
+                c = celulas.setdefault((r['position'], stack_bucket(float(r['stack_bb']))),
+                                       {'bb': 0.0, 'n': 0})
+                c['bb'] += ev
+                c['n'] += 1
+            if ev > 0:
+                confiaveis.append((ev, r))
+
+        timeline = [{**t, 'bb': round(t['bb'], 2)}
+                    for t in list(por_torneio.values())[-limite_torneios:]]
 
         # ── resumo: metade recente × metade anterior ────────────────────────────────────
         # Meio a meio em vez de "últimos 10": com poucos torneios um corte fixo compara 10 com 2
         # e a variação vira ruído de amostra apresentado como tendência.
-        resumo = {'n_torneios': len(timeline)}
-        if timeline:
-            meio = len(timeline) // 2
-            recente, antigo = timeline[meio:], timeline[:meio]
+        # Torneio sem nada mensurável fica de fora da MÉDIA (continua no gráfico): incluí-lo como
+        # zero puxaria o custo médio para baixo e viraria "melhora" que ninguém jogou.
+        medidos = [x for x in timeline if x['n'] > 0]
+        resumo = {'n_torneios': len(medidos)}
+        if medidos:
+            meio = len(medidos) // 2
             med = lambda xs: round(sum(x['bb'] for x in xs) / len(xs), 2) if xs else None
-            resumo['bb_por_torneio'] = med(recente)
-            resumo['anterior'] = med(antigo)
+            resumo['bb_por_torneio'] = med(medidos[meio:])
+            resumo['anterior'] = med(medidos[:meio])
             if resumo['anterior'] is not None and resumo['bb_por_torneio'] is not None:
                 resumo['delta'] = round(resumo['bb_por_torneio'] - resumo['anterior'], 2)
 
         # ── os spots mais caros: a cauda pesada, que a média esconde ─────────────────────
-        caros = _fetchall(conn, _adapt(
-            "SELECT t.tournament_id AS ext, d.hand_id AS hand_id, d.street AS street, "
-            "       d.position AS position, d.vs_position AS vs_position, d.stack_bb AS stack_bb, "
-            "       d.action_taken AS action_taken, d.best_action AS best_action, "
-            "       d.gto_label AS gto_label, COALESCE(d.ev_loss_bb,0) AS ev "
-            + base + " AND COALESCE(d.ev_loss_bb,0) > 0 "
-            "ORDER BY COALESCE(d.ev_loss_bb,0) DESC LIMIT 5"), tuple(args))
+        confiaveis.sort(key=lambda x: x[0], reverse=True)
         top_spots = [{
             'ext': r['ext'], 'hand_id': r['hand_id'], 'street': r['street'],
             'position': r['position'], 'vs_position': r['vs_position'],
             'stack_bb': round(float(r['stack_bb'] or 0), 1),
             'action': r['action_taken'], 'best_action': r['best_action'],
-            'gto_label': r['gto_label'], 'ev_loss_bb': round(float(r['ev'] or 0), 2),
-        } for r in caros]
+            'gto_label': r['gto_label'], 'ev_loss_bb': round(ev, 2),
+        } for ev, r in confiaveis[:5]]
 
         # ── matriz posição × profundidade ───────────────────────────────────────────────
         # bb por 100 decisões (não total): sem normalizar, a célula mais escura seria só a que você
         # mais jogou.
-        cells = _fetchall(conn, _adapt(
-            f"SELECT d.position AS pos, {bucket} AS bucket, COUNT(*) AS n, "
-            "       SUM(COALESCE(d.ev_loss_bb,0)) AS bb "
-            + base + " AND d.position IS NOT NULL AND d.position <> '' AND d.stack_bb IS NOT NULL "
-            f"GROUP BY d.position, {bucket}"), tuple(args))
-        matriz = [{
-            'position': r['pos'], 'bucket': r['bucket'], 'n': int(r['n'] or 0),
-            'bb_100': round(float(r['bb'] or 0) / int(r['n']) * 100, 1) if int(r['n'] or 0) else None,
-        } for r in cells if r['bucket']]
+        matriz = [{'position': pos, 'bucket': bk, 'n': c['n'],
+                   'bb_100': round(c['bb'] / c['n'] * 100, 1) if c['n'] else None}
+                  for (pos, bk), c in celulas.items()]
 
         return {'resumo': resumo, 'timeline': timeline, 'top_spots': top_spots, 'matriz': matriz}
     finally:
