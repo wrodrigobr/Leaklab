@@ -161,6 +161,54 @@ def _captured_3bet_ranges(opener: str, threebettor: str, stack_bb: float):
         return None, None
 
 
+def resolve_solver_ranges(hero_pos: str, vs_pos: str, hero_stack_bb: float,
+                          pot_type: str = '', opener: str = '', threebettor: str = ''):
+    """Ranges do solve atribuídas aos jogadores CERTOS. Devolve (ip_range, oop_range, hero_is_ip).
+
+    ── Por que isto é uma função, e não código dentro do `lookup_gto` ─────────────────────────
+
+    Existiam DOIS caminhos montando payload para o mesmo solver, e só um estava certo.
+
+    O `lookup_gto` calculava quem é IP, pegava as ranges REAIS capturadas do GW e mandava a flag
+    `hero_is_ip`. O enfileiramento do upload (`_enqueue_postflop_spots`) fazia, em três linhas
+    soltas, o seguinte:
+
+        oop_range = _DEFAULT_RANGES[vilão]      # range do vilão no lugar do OOP
+        ip_range  = _DEFAULT_RANGES[herói]      # range do herói no lugar do IP
+
+    O solver devolve o player 0, que é o OOP, e por isso o produto só serve spots em que o HERÓI
+    é OOP. Ou seja, naquele caminho **cada jogador recebia a range do outro**, e o gabarito
+    descrevia o confronto espelhado. Junto disso vinham as genéricas de 6-max num produto de
+    9-max, com UTG+1, UTG+2 e LJ caindo na range mais LARGA do arquivo quando deveriam ser as
+    mais estreitas — o que também alimentava os estouros de memória do solver ("reduza as ranges").
+
+    Estava inerte por acidente: aqueles nós eram gravados sob um hash que ninguém consultava (o
+    bug do board). Consertar o hash tornou o caminho alcançável, então a inversão passou a
+    importar. Por isso a resolução mora aqui, num lugar só, e os dois caminhos a chamam.
+    """
+    hero = (hero_pos or '').upper().strip()
+    vilao = (vs_pos or '').upper().strip()
+    hero_ip = _postflop_hero_is_ip(hero, vilao)
+    # Quem age por último é IP. O herói só é IP quando age depois do vilão.
+    ip_pos, oop_pos = (hero, vilao) if hero_ip else (vilao, hero)
+
+    eff_pot = _effective_pot_type(pot_type, opener, threebettor, hero_stack_bb)
+    if eff_pot == '3bet':
+        # Pote 3-bet: quem 3-betou recebe a range de 3-bet; o opener que pagou recebe a de
+        # call-vs-3bet, que é capada e mais forte que a RFI larga do SRP.
+        r3b, rcall = _captured_3bet_ranges(opener, threebettor, hero_stack_bb)
+        por_pos = {(opener or '').upper(): rcall, (threebettor or '').upper(): r3b}
+        ip_range = por_pos.get(ip_pos) or _DEFAULT_RANGES.get(ip_pos, _DEFAULT_RANGE_WIDE)
+        oop_range = por_pos.get(oop_pos) or _DEFAULT_RANGES.get(oop_pos, _DEFAULT_RANGE_WIDE)
+    else:
+        # SRP: o IP abriu (RFI) e o OOP pagou (call vs RFI).
+        ip_range = (_captured_range_str(ip_pos, hero_stack_bb, 'rfi')
+                    or _DEFAULT_RANGES.get(ip_pos, _DEFAULT_RANGE_WIDE))
+        oop_range = (_captured_range_str(oop_pos, hero_stack_bb, 'call_vs_rfi', opener=ip_pos)
+                     or _DEFAULT_RANGES.get(oop_pos, _DEFAULT_RANGE_WIDE))
+    return ip_range, oop_range, hero_ip
+
+
 def _effective_pot_type(pot_type: str, opener: str, threebettor: str, stack_bb: float) -> str:
     """pot_type EFETIVO pro hash/ranges: '3bet' só quando é pote 3-bet E há ranges 3-bet
     capturadas pros dois jogadores; senão '' (comporta-se como SRP — hash legado). 4bet e
@@ -539,25 +587,11 @@ def lookup_gto(
     # Ranges atribuídas aos jogadores CORRETOS (hero=OOP, vilão=IP) e, quando há cobertura,
     # REAIS do GW (2.3): HU SRP típico → o vilão IP abriu (RFI) e o hero OOP pagou (call vs
     # RFI). Fallback pras _DEFAULT_RANGES genéricas quando o GW não cobre o cenário.
-    if _hero_ip:
-        # hero é IP (opener/c-bettor); vilão é OOP (caller/defender)
-        ip_pos, oop_pos = position_u, _vs
-    else:
-        # hero é OOP (caller/defender); vilão é IP (opener)
-        ip_pos, oop_pos = _vs, position_u
-
-    if _eff_pot == '3bet':
-        # Pote 3-bet (Fase 2): o 3-bettor recebe a range de 3-bet; o opener que pagou recebe
-        # a range de call-vs-3bet (capada, mais forte que a RFI larga do SRP). Mapeia por posição.
-        _r3b, _rcall = _captured_3bet_ranges(opener, threebettor, hero_stack_bb)
-        _by_pos = {(opener or '').upper(): _rcall, (threebettor or '').upper(): _r3b}
-        ip_range  = _by_pos.get(ip_pos)  or _DEFAULT_RANGES.get(ip_pos,  _DEFAULT_RANGE_WIDE)
-        oop_range = _by_pos.get(oop_pos) or _DEFAULT_RANGES.get(oop_pos, _DEFAULT_RANGE_WIDE)
-    else:
-        ip_range  = (_captured_range_str(ip_pos, hero_stack_bb, 'rfi')
-                     or _DEFAULT_RANGES.get(ip_pos, _DEFAULT_RANGE_WIDE))                   # IP = opener (RFI)
-        oop_range = (_captured_range_str(oop_pos, hero_stack_bb, 'call_vs_rfi', opener=ip_pos)
-                     or _DEFAULT_RANGES.get(oop_pos, _DEFAULT_RANGE_WIDE))                  # OOP = caller (call vs RFI)
+    # Fonte ÚNICA da atribuição de ranges: o enfileiramento do upload chama a MESMA função.
+    # Antes, ele montava as suas próprias três linhas e trocava os jogadores de lugar.
+    ip_range, oop_range, _ = resolve_solver_ranges(
+        position_u, _vs, hero_stack_bb,
+        pot_type=pot_type, opener=opener, threebettor=threebettor)
     effective_pot = pot_bb if pot_bb > 0 else max(_facing_solver_bb * 2 + 2, 4.0)
 
     # Read-only: quem chama com allow_remote_solve=False (ex.: /replay) NÃO dispara um

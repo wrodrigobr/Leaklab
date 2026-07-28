@@ -9658,23 +9658,34 @@ def _process_gto_hand_request(req: dict) -> tuple[str, str | None]:
                     )
                     # Enfileira o spot correto (com facing real) para o solver resolver
                     try:
-                        from leaklab.gto_utils import compute_spot_hash as _csh
-                        from leaklab.gto_solver import _DEFAULT_RANGES, _DEFAULT_RANGE_WIDE, _priority, _solver_params_for_stack
+                        from leaklab.gto_utils import compute_spot_hash, board_for_street
+                        from leaklab.gto_solver import _priority, _solver_params_for_stack, resolve_solver_ranges
                         import json as _json2
                         _spot2 = di.get('spot', {})
                         _ctx2  = di.get('context', {})
-                        _board2 = di.get('board', []) or _spot2.get('board', [])
+                        # Fatiado na street: `di['board']`, quando existe, é o board COMPLETO da
+                        # mão. Se já vier da street, o corte é inócuo; se não, ele evita gravar
+                        # sob uma chave que nenhum lookup procura.
+                        _board2 = board_for_street(
+                            di.get('board', []) or _spot2.get('board', []), di['street'])
                         _pos2   = (_spot2.get('position') or _ctx2.get('position') or '').upper()
                         _vs2    = (_spot2.get('villainPosition') or _ctx2.get('vsPosition') or '').upper()
                         _stack2 = float(_spot2.get('effectiveStackBb') or _ctx2.get('heroStackBb') or 20)
                         _hand2  = di.get('hero_cards', [])
-                        _hash2  = _csh(di['street'], _pos2, _board2, _hand2, _stack2, _facing)
+                        _hash2  = compute_spot_hash(di['street'], _pos2, _board2, _hand2, _stack2, _facing)
                         _params2 = _solver_params_for_stack(_stack2)
+                        # Mesma resolução de ranges do lookup: aqui também estavam trocadas.
+                        _ipr2, _oopr2, _hip2 = resolve_solver_ranges(
+                            _pos2, _vs2, _stack2,
+                            pot_type=_spot2.get('potType', ''),
+                            opener=_spot2.get('preflopOpener', ''),
+                            threebettor=_spot2.get('preflop3bettor', ''))
                         _payload2 = _json2.dumps({
                             'street': di['street'], 'board': _board2, 'position': _pos2,
                             'hero_hand': _hand2, 'hero_stack_bb': _stack2, 'facing_size_bb': _facing,
-                            'oop_range': _DEFAULT_RANGES.get(_vs2, _DEFAULT_RANGE_WIDE),
-                            'ip_range':  _DEFAULT_RANGES.get(_pos2, _DEFAULT_RANGE_WIDE),
+                            'oop_range': _oopr2,
+                            'ip_range':  _ipr2,
+                            'hero_is_ip': _hip2,
                             'pot_bb': float(_spot2.get('potSize') or _facing * 2 + 2 or 4.0),
                             'effective_stack_bb':        _params2['effective_stack_bb'],
                             'max_iterations':            _params2['max_iterations'],
@@ -10066,8 +10077,19 @@ def _enqueue_postflop_spots(results: list, tournament_id: int = None) -> None:
                 already += 1
                 continue
 
-            from leaklab.gto_solver import _DEFAULT_RANGES, _DEFAULT_RANGE_WIDE, _priority, _solver_params_for_stack
+            from leaklab.gto_solver import _priority, _solver_params_for_stack, resolve_solver_ranges
             vs_pos   = normalize_position(spot.get('villainPosition', ctx.get('vsPosition', '')))
+            # Ranges pela MESMA função que o lookup usa. Aqui havia duas linhas próprias que
+            # punham a range do herói no lugar do IP e a do vilão no lugar do OOP — e o solver
+            # devolve o player 0, que é o OOP, então cada jogador recebia a range do outro.
+            # Também ignoravam as ranges REAIS capturadas e as genéricas de 6-max deixavam
+            # UTG+1, UTG+2 e LJ na range mais larga do arquivo, justo as que deviam ser as mais
+            # estreitas. Era inerte enquanto o hash do board estava errado; deixou de ser.
+            _ip_range, _oop_range, _hero_ip = resolve_solver_ranges(
+                pos, vs_pos, stack,
+                pot_type=spot.get('potType', ''),
+                opener=spot.get('preflopOpener', ''),
+                threebettor=spot.get('preflop3bettor', ''))
             # pot em BB: potSize vem em FICHAS (igual facingSize) → dividir por _level_bb.
             # Sem isso o pot_bb ficava ~100x inflado → SPR colapsava → o solver forçava
             # all-in (estratégia degenerada + exploitability 0.0% fake). Mesmo /_level_bb
@@ -10082,8 +10104,9 @@ def _enqueue_postflop_spots(results: list, tournament_id: int = None) -> None:
                 'hero_hand':                 hero_h,
                 'hero_stack_bb':             stack,
                 'facing_size_bb':            facing,
-                'oop_range':                 _DEFAULT_RANGES.get(vs_pos, _DEFAULT_RANGE_WIDE),
-                'ip_range':                  _DEFAULT_RANGES.get(pos,    _DEFAULT_RANGE_WIDE),
+                'oop_range':                 _oop_range,
+                'ip_range':                  _ip_range,
+                'hero_is_ip':                _hero_ip,   # main.rs lê player 1 quando IP
                 'pot_bb':                    pot_bb,
                 'effective_stack_bb':        _params['effective_stack_bb'],  # capped for tree size
                 'max_iterations':            _params['max_iterations'],
@@ -10104,11 +10127,20 @@ def _enqueue_postflop_spots(results: list, tournament_id: int = None) -> None:
                 _h30 = compute_spot_hash(d['street'], pos, board, hero_h, _DEEP_APPROX_STACK_BB, facing)
                 if not get_gto_node(_h30):
                     _p30 = _solver_params_for_stack(_DEEP_APPROX_STACK_BB)
+                    # Ranges do stack CAPADO, não do real: as capturadas são por faixa de stack,
+                    # e este solve acontece a 30bb. Pedir a range de 60bb para um solve de 30bb
+                    # descreveria um confronto que não é o que está sendo resolvido.
+                    _ipr30, _oopr30, _hip30 = resolve_solver_ranges(
+                        pos, vs_pos, _DEEP_APPROX_STACK_BB,
+                        pot_type=spot.get('potType', ''),
+                        opener=spot.get('preflopOpener', ''),
+                        threebettor=spot.get('preflop3bettor', ''))
                     _pay30 = _json.dumps({
                         'street': d['street'], 'board': board, 'position': pos, 'hero_hand': hero_h,
                         'hero_stack_bb': _DEEP_APPROX_STACK_BB, 'facing_size_bb': facing,
-                        'oop_range': _DEFAULT_RANGES.get(vs_pos, _DEFAULT_RANGE_WIDE),
-                        'ip_range':  _DEFAULT_RANGES.get(pos,    _DEFAULT_RANGE_WIDE),
+                        'oop_range': _oopr30,
+                        'ip_range':  _ipr30,
+                        'hero_is_ip': _hip30,
                         'pot_bb': pot_bb,
                         'effective_stack_bb':        _p30['effective_stack_bb'],
                         'max_iterations':            _p30['max_iterations'],

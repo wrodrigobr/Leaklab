@@ -80,8 +80,7 @@ def main():
     executar = '--exec' in args
     email = next((a for a in args if not a.startswith('--')), None)
 
-    from leaklab.gto_solver import (_DEFAULT_RANGES, _DEFAULT_RANGE_WIDE,
-                                    _solver_params_for_stack)
+    from leaklab.gto_solver import _solver_params_for_stack, resolve_solver_ranges
 
     conn = get_conn()
     try:
@@ -144,6 +143,11 @@ def main():
                 continue
 
             vs_pos = normalize_position(r['vs_position'] or '')
+            # MESMA resolução do lookup. A primeira versão deste script copiou as duas linhas do
+            # enfileiramento, que trocavam as ranges entre os jogadores, então ele estava mandando
+            # o solver resolver o confronto espelhado. Aqui não há `potType` no banco por decisão,
+            # então cai em SRP, que é o caso comum e o mesmo comportamento do legado.
+            _ip_range, _oop_range, _hero_ip = resolve_solver_ranges(pos, vs_pos, stack)
             lvl = float(r['level_bb'] or 1) or 1
             pot_chips = float(r['pot'] or 0)
             pot_bb = round(pot_chips / lvl, 2) if pot_chips > 0 else (facing * 2 + 2 or 4.0)
@@ -151,8 +155,9 @@ def main():
             payload = json.dumps({
                 'street': street, 'board': cortado, 'position': pos, 'hero_hand': mao,
                 'hero_stack_bb': stack, 'facing_size_bb': facing,
-                'oop_range': _DEFAULT_RANGES.get(vs_pos, _DEFAULT_RANGE_WIDE),
-                'ip_range':  _DEFAULT_RANGES.get(pos,    _DEFAULT_RANGE_WIDE),
+                'oop_range': _oop_range,
+                'ip_range':  _ip_range,
+                'hero_is_ip': _hero_ip,
                 'pot_bb': pot_bb,
                 'effective_stack_bb': p['effective_stack_bb'],
                 'max_iterations': p['max_iterations'],

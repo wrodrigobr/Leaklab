@@ -10134,7 +10134,13 @@ def resync_gto_labels_for_node(spot_hash: str) -> int:
         affected_tournaments: set = set()
         for d in candidates:
             try:
-                d_board = json.loads(d['board'] or '[]') if d['board'] else []
+                # FATIADO na street. `decisions.board` guarda as cinco cartas da mão em TODA
+                # decisão, então sem o corte esta função procurava o nó de um spot de flop pela
+                # chave do river e nunca casava — ou seja, o passo que ESCREVE o veredito ficava
+                # cego justamente para os nós recém-solvados.
+                from leaklab.gto_utils import board_for_street as _fatia
+                d_board = _fatia(
+                    json.loads(d['board'] or '[]') if d['board'] else [], street)
                 d_hand  = json.loads(d['hero_cards'] or '[]') if d['hero_cards'] else []
                 d_stack = float(d['stack_bb'] or 20.0)
                 d_face  = float(d['facing_bet'] or 0.0)

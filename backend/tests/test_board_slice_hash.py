@@ -57,6 +57,23 @@ _ARQUIVOS = [
 _RECEBE_PRONTO = {'insert_gto_nodes'}
 
 
+def _apelidos(arvore, alvo):
+    """Nomes locais que apontam para `alvo`, incluindo `import X as _y`.
+
+    O teste original casava só o nome literal, e por isso não viu
+    `from leaklab.gto_utils import compute_spot_hash as _csh` dentro do worker por mão — uma
+    chamada com board não fatiado, no mesmo arquivo que o teste já varria. Guarda que se
+    contorna com um apelido de duas letras não guarda nada.
+    """
+    nomes = {alvo}
+    for no in ast.walk(arvore):
+        if isinstance(no, (ast.Import, ast.ImportFrom)):
+            for a in no.names:
+                if a.name == alvo and a.asname:
+                    nomes.add(a.asname)
+    return nomes
+
+
 def _nome_da_func(no):
     f = no.func
     return f.attr if isinstance(f, ast.Attribute) else getattr(f, 'id', None)
@@ -83,6 +100,8 @@ def test_todo_hash_recebe_board_fatiado():
         if not os.path.exists(caminho):
             continue
         arvore = ast.parse(open(caminho, encoding='utf-8').read())
+        nomes_hash  = _apelidos(arvore, _HASH)
+        nomes_fatia = _apelidos(arvore, _FATIA)
 
         for func in [n for n in ast.walk(arvore)
                      if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))]:
@@ -92,11 +111,11 @@ def test_todo_hash_recebe_board_fatiado():
             fatiados = set()
             for no in ast.walk(func):
                 if isinstance(no, ast.Assign) and isinstance(no.value, ast.Call) \
-                        and _nome_da_func(no.value) == _FATIA:
+                        and _nome_da_func(no.value) in nomes_fatia:
                     fatiados.update(a.id for a in no.targets if isinstance(a, ast.Name))
 
             for no in ast.walk(func):
-                if not (isinstance(no, ast.Call) and _nome_da_func(no) == _HASH):
+                if not (isinstance(no, ast.Call) and _nome_da_func(no) in nomes_hash):
                     continue
                 vistos += 1
                 arg = _arg_board(no)
@@ -105,7 +124,7 @@ def test_todo_hash_recebe_board_fatiado():
                 if isinstance(arg, ast.Name) and arg.id in fatiados:
                     continue
                 # chamada aninhada direta: compute_spot_hash(..., board_for_street(b, s), ...)
-                if isinstance(arg, ast.Call) and _nome_da_func(arg) == _FATIA:
+                if isinstance(arg, ast.Call) and _nome_da_func(arg) in nomes_fatia:
                     continue
                 # lista literal (constante no código) é explícita e não vem do banco
                 if isinstance(arg, (ast.List, ast.Tuple)):
