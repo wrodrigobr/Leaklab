@@ -2,6 +2,7 @@
   "eyebrow": "Informe",
   "title": "Tu evolución",
   "subtitle": "Dónde mejoraste, dónde empeoraste, y cuánto costó en bb.",
+  "back": "Volver",
   "empty": "Aún no hay torneos con decisiones evaluadas. Importa tus manos y el informe empieza.",
   "perTournament": "bb / torneo",
   "vsPrevious": "vs mitad anterior",

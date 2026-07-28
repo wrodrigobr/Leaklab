@@ -2,6 +2,7 @@
   "eyebrow": "Report",
   "title": "Your progress",
   "subtitle": "Where you improved, where you slipped, and what it cost in bb.",
+  "back": "Back",
   "empty": "No tournaments with graded decisions yet. Import your hands and the report starts.",
   "perTournament": "bb / tournament",
   "vsPrevious": "vs previous half",

@@ -4,10 +4,11 @@ import { useQuery } from "@tanstack/react-query";
 // `Map as MapIcon` NÃO é preferência de estilo: importar `Map` cru sombreia o construtor global,
 // e o `new Map(...)` do heatmap vira "TypeError: Map is not a constructor" — em RUNTIME, com a
 // tela em branco. Nem o `tsc` nem o build pegam, porque o nome é válido nos dois mundos.
-import { TrendingDown, TrendingUp, Minus, ArrowRight, Map as MapIcon } from "lucide-react";
+import { TrendingDown, TrendingUp, Minus, ArrowRight, ArrowLeft, Map as MapIcon } from "lucide-react";
 import { HudLayout } from "@/components/hud/HudLayout";
 import { evolution, training, type EvolutionReport } from "@/lib/api";
 import { useSpotLabel } from "@/lib/spotLabel";
+import { formatApiDate } from "@/lib/apiDate";
 import { cn } from "@/lib/utils";
 
 /**
@@ -42,6 +43,14 @@ export default function Evolution() {
   return (
     <HudLayout eyebrow={t("eyebrow")} title={t("title")} description={t("subtitle")}>
       <div className="space-y-4">
+
+        {/* Voltar no TOPO. O link para o treino já existia no rodapé, mas esta é uma tela longa
+            (quatro blocos e uma tabela): quem entra pelo dashboard e quer sair precisa rolar tudo
+            até achar a saída. Saída de tela longa fica onde a pessoa já está olhando. */}
+        <Link to="/training"
+          className="inline-flex items-center gap-1.5 font-mono text-xs text-primary hover:underline">
+          <ArrowLeft className="size-3.5" aria-hidden /> {t("back")}
+        </Link>
 
         {/* ── 1 · O número que resume o período ─────────────────────────────────────
             bb por torneio, e não acurácia: é a métrica que o jogador compara com o próprio
@@ -90,7 +99,7 @@ export default function Evolution() {
             <div className="divide-y divide-border">
               {data.top_spots.map((s, i) => (
                 <Link key={`${s.ext}-${s.hand_id}`}
-                  to={`/replay?t=${encodeURIComponent(s.ext)}&h=${encodeURIComponent(s.hand_id)}`}
+                  to={`/replayer?t=${encodeURIComponent(s.ext)}&h=${encodeURIComponent(s.hand_id)}`}
                   className="group flex items-center gap-3 py-2.5 transition-colors hover:bg-background/40">
                   <span className="w-5 shrink-0 text-center font-mono text-[11px] text-muted-foreground">{i + 1}</span>
                   <span className="min-w-0 flex-1">
@@ -192,7 +201,7 @@ function Historico() {
         {reports.map((r) => (
           <div key={r.id} className="flex flex-wrap items-center justify-between gap-2 py-2.5">
             <span className="font-mono text-[12px] text-foreground">
-              {new Date(r.created_at.replace(" ", "T") + "Z").toLocaleDateString()}
+              {formatApiDate(r.created_at) ?? "—"}
             </span>
             <span className="flex items-center gap-3">
               <span className="rounded-full border border-border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
