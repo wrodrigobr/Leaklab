@@ -35,5 +35,10 @@
       "mensal": "monthly"
     }
   },
+  "snapshot": {
+    "back": "Back to reports",
+    "banner": "Frozen snapshot from {{date}}. These numbers are from that day, not today's.",
+    "viewLive": "View current"
+  },
   "backToTraining": "Back to training"
 }

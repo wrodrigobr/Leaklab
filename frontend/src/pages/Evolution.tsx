@@ -1,10 +1,10 @@
-import { Link } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 // `Map as MapIcon` NÃO é preferência de estilo: importar `Map` cru sombreia o construtor global,
 // e o `new Map(...)` do heatmap vira "TypeError: Map is not a constructor" — em RUNTIME, com a
 // tela em branco. Nem o `tsc` nem o build pegam, porque o nome é válido nos dois mundos.
-import { TrendingDown, TrendingUp, Minus, ArrowRight, ArrowLeft, Map as MapIcon } from "lucide-react";
+import { TrendingDown, TrendingUp, Minus, ArrowRight, ArrowLeft, Camera, Map as MapIcon } from "lucide-react";
 import { HudLayout } from "@/components/hud/HudLayout";
 import { evolution, training, type EvolutionReport } from "@/lib/api";
 import { useSpotLabel } from "@/lib/spotLabel";
@@ -32,9 +32,28 @@ export default function Evolution() {
   // Fonte ÚNICA do rótulo do spot, a mesma do Training — se cada tela montasse o seu, o mesmo
   // leak apareceria com nomes diferentes em lugares diferentes.
   const spotLabel = useSpotLabel();
-  const { data, isLoading } = useQuery({ queryKey: ["evolution"], queryFn: evolution.report });
-  const { data: proofData } = useQuery({ queryKey: ["training-proof"], queryFn: training.proof });
-  const proof = proofData?.proof ?? [];
+
+  // `/evolucao/:reportId` mostra um RETRATO CONGELADO com a MESMA tela do relatório vivo. Renderizar
+  // o passado num layout próprio seria o erro: comparar julho com agosto exige que os dois tenham a
+  // mesma forma, senão a diferença que salta aos olhos é a do desenho, não a do jogo.
+  const { reportId } = useParams();
+  const congelado = !!reportId;
+
+  const vivo = useQuery({
+    queryKey: ["evolution"], queryFn: evolution.report, enabled: !congelado,
+  });
+  const proofVivo = useQuery({
+    queryKey: ["training-proof"], queryFn: training.proof, enabled: !congelado,
+  });
+  const retrato = useQuery({
+    queryKey: ["evolution-snapshot", reportId],
+    queryFn: () => evolution.snapshot(Number(reportId)),
+    enabled: congelado,
+  });
+
+  const data = congelado ? retrato.data?.snapshot : vivo.data;
+  const proof = (congelado ? retrato.data?.snapshot?.proof : proofVivo.data?.proof) ?? [];
+  const isLoading = congelado ? retrato.isLoading : vivo.isLoading;
 
   const resumo = data?.resumo;
   const delta = resumo?.delta;
@@ -47,10 +66,25 @@ export default function Evolution() {
         {/* Voltar no TOPO. O link para o treino já existia no rodapé, mas esta é uma tela longa
             (quatro blocos e uma tabela): quem entra pelo dashboard e quer sair precisa rolar tudo
             até achar a saída. Saída de tela longa fica onde a pessoa já está olhando. */}
-        <Link to="/training"
+        <Link to={congelado ? "/evolucao" : "/training"}
           className="inline-flex items-center gap-1.5 font-mono text-xs text-primary hover:underline">
-          <ArrowLeft className="size-3.5" aria-hidden /> {t("back")}
+          <ArrowLeft className="size-3.5" aria-hidden />
+          {congelado ? t("snapshot.back") : t("back")}
         </Link>
+
+        {/* Faixa de retrato congelado. Sem ela, a tela mostraria números antigos com a cara do
+            relatório atual — e o jogador tomaria decisão sobre dado velho achando que é de hoje. */}
+        {congelado && retrato.data && (
+          <div className="flex flex-wrap items-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/[0.07] px-4 py-2.5">
+            <Camera className="size-4 shrink-0 text-amber-400" aria-hidden />
+            <span className="text-[12px] leading-snug text-foreground">
+              {t("snapshot.banner", { date: formatApiDate(retrato.data.created_at) ?? "—" })}
+            </span>
+            <Link to="/evolucao" className="ml-auto text-[11px] font-bold text-primary hover:underline">
+              {t("snapshot.viewLive")}
+            </Link>
+          </div>
+        )}
 
         {/* ── 1 · O número que resume o período ─────────────────────────────────────
             bb por torneio, e não acurácia: é a métrica que o jogador compara com o próprio
@@ -171,12 +205,14 @@ export default function Evolution() {
             O valor de congelar é poder comparar julho com agosto: um número que muda sozinho não
             serve para comparação. Some quando não há histórico — um bloco vazio dizendo "nenhum
             relatório ainda" só ocupa espaço numa tela que já é longa. */}
-        <Historico />
+        {!congelado && <Historico />}
 
-        <Link to="/training"
-          className="flex items-center justify-center gap-1.5 rounded-2xl border border-border bg-card/40 p-4 text-[12px] font-bold text-primary transition-colors hover:border-primary/40">
-          <MapIcon className="size-4" aria-hidden /> {t("backToTraining")}
-        </Link>
+        {!congelado && (
+          <Link to="/training"
+            className="flex items-center justify-center gap-1.5 rounded-2xl border border-border bg-card/40 p-4 text-[12px] font-bold text-primary transition-colors hover:border-primary/40">
+            <MapIcon className="size-4" aria-hidden /> {t("backToTraining")}
+          </Link>
+        )}
       </div>
     </HudLayout>
   );
@@ -199,7 +235,8 @@ function Historico() {
       <p className="mb-3 text-[11px] leading-snug text-muted-foreground">{t("history.subtitle")}</p>
       <div className="divide-y divide-border">
         {reports.map((r) => (
-          <div key={r.id} className="flex flex-wrap items-center justify-between gap-2 py-2.5">
+          <Link key={r.id} to={`/evolucao/${r.id}`}
+            className="group flex flex-wrap items-center justify-between gap-2 py-2.5 transition-colors hover:bg-background/40">
             <span className="font-mono text-[12px] text-foreground">
               {formatApiDate(r.created_at) ?? "—"}
             </span>
@@ -210,8 +247,9 @@ function Historico() {
               <span className="font-mono text-[11px] tabular-nums text-muted-foreground">
                 {r.n_decisoes} {t("history.decisions")}
               </span>
+              <ArrowRight className="size-3.5 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-primary" aria-hidden />
             </span>
-          </div>
+          </Link>
         ))}
       </div>
     </div>

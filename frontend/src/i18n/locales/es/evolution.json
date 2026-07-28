@@ -35,5 +35,10 @@
       "mensal": "mensual"
     }
   },
+  "snapshot": {
+    "back": "Volver a los informes",
+    "banner": "Retrato congelado del {{date}}. Los números son de ese día, no los de ahora.",
+    "viewLive": "Ver el actual"
+  },
   "backToTraining": "Volver al entrenamiento"
 }

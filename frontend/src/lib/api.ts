@@ -1502,8 +1502,10 @@ export interface EvolutionSnapshotRow {
 export const evolution = {
   report: () => request<EvolutionReport>("/player/evolution"),
   history: () => request<{ reports: EvolutionSnapshotRow[] }>("/player/evolution/reports"),
+  /** O snapshot carrega o relatório INTEIRO mais o `proof` do momento em que foi congelado —
+   *  é o que permite a tela do retrato ser a mesma tela do relatório vivo. */
   snapshot: (id: number) =>
-    request<EvolutionSnapshotRow & { snapshot: EvolutionReport & { proof?: unknown[] } }>(
+    request<EvolutionSnapshotRow & { snapshot: EvolutionReport & { proof?: TrainingProofItem[] } }>(
       `/player/evolution/reports/${id}`),
 };
 

@@ -306,6 +306,9 @@ const App = () => (
               }
             />
             <Route path="/evolucao" element={<ProtectedRoute><Evolution /></ProtectedRoute>} />
+            {/* Retrato congelado — MESMA tela, dado de outro dia. Comparar meses exige a mesma
+                forma, senão o que salta aos olhos é a diferença do desenho, não a do jogo. */}
+            <Route path="/evolucao/:reportId" element={<ProtectedRoute><Evolution /></ProtectedRoute>} />
             <Route path="/academy" element={<ProtectedRoute><Academy /></ProtectedRoute>} />
             <Route path="/academy/math" element={<ProtectedRoute><AcademyMath /></ProtectedRoute>} />
             <Route path="/academy/math/intermediate" element={<ProtectedRoute><AcademyMathIntermediate /></ProtectedRoute>} />
