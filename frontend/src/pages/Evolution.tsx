@@ -290,29 +290,39 @@ function LinhaProva({ p, spotLabel }: {
             Errar spot puro significa não conhecer a range — grave, e o mais barato de consertar.
             Errar spot misto é defensável, porque o próprio GTO mistura ali. Acertar spot puro não
             mede nada, e é a maioria das decisões de RFI. */}
-        {(puro.n > 0 || misto.n > 0) && (
-          <div className="grid grid-cols-2 gap-2">
-            {([
-              ["pure", puro, "text-red-400"],
-              ["mixed", misto, "text-amber-400"],
-            ] as const).map(([k, x, cor]) => (
-              <div key={k} className="rounded-lg bg-card/60 p-2.5 ring-1 ring-border">
-                <div className={cn("font-mono text-lg font-bold tabular-nums",
-                  x.n === 0 ? "text-muted-foreground/50"
-                    : x.erros === 0 ? "text-muted-foreground" : cor)}>
-                  {pct(x) === null ? "—" : `${pct(x)}%`}
-                </div>
-                <div className="text-[11px] leading-snug text-muted-foreground">
-                  {t(`proof.purity.${k}`)}
-                </div>
-                <div className="font-mono text-[10px] text-muted-foreground">{x.erros}/{x.n}</div>
-              </div>
-            ))}
+        {/* PUREZA — e deliberadamente NÃO dois números lado a lado.
+            A primeira versão desta tela mostrava as duas TAXAS em cartões gêmeos, e isso convida
+            uma comparação que não se sustenta: "erro" é `played_freq < 0.25`, então num spot misto
+            (55/45) AS DUAS ações passam e errar exige escolher uma terceira que o GTO nunca faz.
+            O spot misto tem chance estruturalmente menor de ser marcado como erro. Ler "8,8% no
+            misto contra 14,6% no puro" como "sou melhor no difícil" é confundir a régua com o
+            resultado — e foi o que a tela sugeria.
+            Agora só a taxa do PURO é apresentada como taxa (ali existe UMA resposta certa, e a
+            medida é limpa). O misto vira contagem, com a explicação do porquê. */}
+        {puro.n > 0 && (
+          <div className="rounded-lg bg-card/60 p-3 ring-1 ring-border">
+            <div className="flex items-baseline gap-2">
+              <span className={cn("font-mono text-2xl font-bold tabular-nums",
+                puro.erros === 0 ? "text-muted-foreground" : "text-red-400")}>
+                {pct(puro)}%
+              </span>
+              <span className="font-mono text-[11px] text-muted-foreground">
+                {puro.erros}/{puro.n}
+              </span>
+            </div>
+            <div className="mt-0.5 text-[11px] leading-snug text-muted-foreground">
+              {t("proof.purity.pure")}
+            </div>
           </div>
         )}
         <p className="text-muted-foreground">
           {t(puro.erros > 0 ? "proof.purityHintErrs" : "proof.purityHint")}
         </p>
+        {misto.n > 0 && (
+          <p className="text-muted-foreground">
+            {t("proof.mixedNote", { erros: misto.erros, n: misto.n })}
+          </p>
+        )}
 
         {/* Comissão × omissão — a segunda leitura, mais discreta. */}
         {(agindo.n > 0 || passando.n > 0) && (

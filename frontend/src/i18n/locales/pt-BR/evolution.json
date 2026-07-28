@@ -39,12 +39,12 @@
     },
     "actingBadge": "agindo: {{pct}}%",
     "purity": {
-      "pure": "em spot PURO (o GTO joga ~sempre a mesma coisa)",
-      "mixed": "em spot MISTO (o GTO mistura ali)"
+      "pure": "de erro em spots onde o GTO joga quase sempre a mesma coisa, ou seja, onde existe UMA resposta certa"
     },
-    "purityHint": "Acertar spot puro não mede habilidade: todo mundo folda 72o em posição inicial, e é a maioria das suas decisões. O que mede é o spot misto, onde existe escolha de verdade.",
-    "purityHintErrs": "Erro em spot puro é o mais grave e o mais barato de consertar: significa que a range ainda não está memorizada, não que a decisão era difícil. Comece por aí.",
-    "commission": "Agindo: {{agindo}}% ({{nAgindo}} decisões) · Passando: {{passando}}% ({{nPassando}})"
+    "purityHint": "Zero aqui é o esperado, não um mérito: nestes spots o acerto é memória de range, não leitura. O que mede jogo são os spots mistos.",
+    "purityHintErrs": "Cada erro destes é uma jogada que o GTO faz menos de 10% das vezes, num spot com uma resposta só. Isso é range não memorizada, não decisão difícil, e é o tipo de leak mais barato de corrigir.",
+    "commission": "Agindo: {{agindo}}% ({{nAgindo}} decisões) · Passando: {{passando}}% ({{nPassando}})",
+    "mixedNote": "Nos spots mistos você teve {{erros}} erros em {{n}} decisões. Esse número NÃO se compara ao de cima: ali o GTO aceita mais de uma ação, então errar exige escolher uma terceira que ele nunca faz. É mais difícil errar por construção, não porque o spot seja mais fácil."
   },
   "history": {
     "title": "Relatórios anteriores",

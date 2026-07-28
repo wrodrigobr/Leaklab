@@ -39,12 +39,12 @@
     },
     "actingBadge": "acting: {{pct}}%",
     "purity": {
-      "pure": "in PURE spots (GTO plays ~always the same)",
-      "mixed": "in MIXED spots (GTO mixes there)"
+      "pure": "error rate in spots where GTO plays almost always the same thing, i.e. where there is ONE right answer"
     },
-    "purityHint": "Getting pure spots right measures nothing: everyone folds 72o from early position, and that is most of your decisions. What measures you is the mixed spot, where a real choice exists.",
-    "purityHintErrs": "An error in a pure spot is the most serious and the cheapest to fix: it means the range is not memorized yet, not that the decision was hard. Start there.",
-    "commission": "Acting: {{agindo}}% ({{nAgindo}} decisions) · Passing: {{passando}}% ({{nPassando}})"
+    "purityHint": "Zero here is expected, not a merit: in these spots getting it right is range memory, not reading. What measures play is the mixed spots.",
+    "purityHintErrs": "Each of these is a play GTO makes less than 10% of the time, in a spot with a single answer. That is an unmemorized range, not a hard decision, and it is the cheapest kind of leak to fix.",
+    "commission": "Acting: {{agindo}}% ({{nAgindo}} decisions) · Passing: {{passando}}% ({{nPassando}})",
+    "mixedNote": "In mixed spots you had {{erros}} errors over {{n}} decisions. That number does NOT compare to the one above: there GTO accepts more than one action, so erring requires picking a third it never plays. It is harder to err by construction, not because the spot is easier."
   },
   "history": {
     "title": "Previous reports",

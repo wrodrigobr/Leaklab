@@ -39,12 +39,12 @@
     },
     "actingBadge": "actuando: {{pct}}%",
     "purity": {
-      "pure": "en spot PURO (el GTO juega ~siempre lo mismo)",
-      "mixed": "en spot MIXTO (el GTO mezcla ahí)"
+      "pure": "de error en spots donde el GTO juega casi siempre lo mismo, es decir, donde hay UNA respuesta correcta"
     },
-    "purityHint": "Acertar un spot puro no mide habilidad: todo el mundo foldea 72o en posición inicial, y es la mayoría de tus decisiones. Lo que mide es el spot mixto, donde hay elección de verdad.",
-    "purityHintErrs": "Un error en spot puro es el más grave y el más barato de corregir: significa que el rango aún no está memorizado, no que la decisión fuera difícil. Empieza por ahí.",
-    "commission": "Actuando: {{agindo}}% ({{nAgindo}} decisiones) · Pasando: {{passando}}% ({{nPassando}})"
+    "purityHint": "Cero aquí es lo esperado, no un mérito: en estos spots acertar es memoria de rango, no lectura. Lo que mide el juego son los spots mixtos.",
+    "purityHintErrs": "Cada uno de estos es una jugada que el GTO hace menos del 10% de las veces, en un spot con una sola respuesta. Eso es rango sin memorizar, no decisión difícil, y es el leak más barato de corregir.",
+    "commission": "Actuando: {{agindo}}% ({{nAgindo}} decisiones) · Pasando: {{passando}}% ({{nPassando}})",
+    "mixedNote": "En spots mixtos tuviste {{erros}} errores en {{n}} decisiones. Ese número NO se compara con el de arriba: allí el GTO acepta más de una acción, así que errar exige elegir una tercera que nunca juega. Es más difícil errar por construcción, no porque el spot sea más fácil."
   },
   "history": {
     "title": "Informes anteriores",
