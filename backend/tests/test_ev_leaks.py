@@ -26,16 +26,20 @@ def _seed():
     c.execute("INSERT INTO tournaments (user_id,tournament_id,hero,raw_text,site) VALUES (?,?,?,?,?)",
               (uid, 'TEV', 'H', 'raw', 'pokerstars'))
     tid = dict(c.execute("SELECT id FROM tournaments WHERE tournament_id='TEV'").fetchone())['id']
-    cols = "(tournament_id,hand_id,street,action_taken,best_action,position,label,score,ev_loss_bb)"
+    # `ev_loss_source` é obrigatório desde que o ranking passou a exigir EV confiável: o plano de
+    # estudos é ordenado por este número, e antes disso ele somava qualquer coisa — inclusive o
+    # fold de −90bb que o relatório de evolução expôs.
+    cols = ("(tournament_id,hand_id,street,action_taken,best_action,position,label,score,"
+            "ev_loss_bb,ev_loss_source,stack_bb)")
     rows = [
-        (tid, 'H1', 'preflop', 'fold', 'call', 'BB', 'clear_mistake', 0.8, 2.5),
-        (tid, 'H2', 'preflop', 'fold', 'call', 'BB', 'clear_mistake', 0.8, 1.5),
-        (tid, 'H3', 'preflop', 'raise', 'fold', 'BTN', 'clear_mistake', 0.8, 0.5),
-        (tid, 'H4', 'preflop', 'raise', 'raise', 'UTG', 'standard', 0.0, 0.0),   # correto: ignorado
-        (tid, 'H5', 'flop', 'call', 'fold', 'CO', 'clear_mistake', 0.8, None),   # postflop sem EV
+        (tid, 'H1', 'preflop', 'fold', 'call', 'BB', 'clear_mistake', 0.8, 2.5, 'gw_har', 30),
+        (tid, 'H2', 'preflop', 'fold', 'call', 'BB', 'clear_mistake', 0.8, 1.5, 'gw_har', 30),
+        (tid, 'H3', 'preflop', 'raise', 'fold', 'BTN', 'clear_mistake', 0.8, 0.5, 'gw_har', 30),
+        (tid, 'H4', 'preflop', 'raise', 'raise', 'UTG', 'standard', 0.0, 0.0, 'gw_har', 30),  # correto: ignorado
+        (tid, 'H5', 'flop', 'call', 'fold', 'CO', 'clear_mistake', 0.8, None, None, 30),      # postflop sem EV
     ]
     for r in rows:
-        c.execute(f"INSERT INTO decisions {cols} VALUES (?,?,?,?,?,?,?,?,?)", r)
+        c.execute(f"INSERT INTO decisions {cols} VALUES (?,?,?,?,?,?,?,?,?,?,?)", r)
     c.commit(); c.close()
     return uid
 
@@ -75,12 +79,46 @@ def test_consolidated_report_severity():
     # threshold: total >= 5 = high. Reforça um spot grande:
     c = get_conn()
     tid = dict(c.execute("SELECT id FROM tournaments WHERE tournament_id='TEV'").fetchone())['id']
-    c.execute("INSERT INTO decisions (tournament_id,hand_id,street,action_taken,best_action,position,label,score,ev_loss_bb) "
-              "VALUES (?,?,?,?,?,?,?,?,?)", (tid, 'H6', 'preflop', 'fold', 'jam', 'UTG', 'clear_mistake', 0.8, 6.0))
+    c.execute("INSERT INTO decisions (tournament_id,hand_id,street,action_taken,best_action,position,"
+              "label,score,ev_loss_bb,ev_loss_source,stack_bb) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+              (tid, 'H6', 'preflop', 'fold', 'jam', 'UTG', 'clear_mistake', 0.8, 6.0, 'gw_har', 30))
     c.commit(); c.close()
     r2 = get_consolidated_leak_report(uid, days=3650)
     assert r2['top_leak']['position'] == 'UTG' and r2['top_leak']['severity'] == 'high'
     print("OK  test_consolidated_report_severity")
+
+
+def test_plano_nao_ranqueia_por_ev_nao_confiavel():
+    """REGRESSÃO: o plano de estudos é ordenado por `get_ev_leaks`, e ela não filtrava nada.
+
+    O fold de −90,3bb que o relatório de evolução expôs (EV na escala do pote SOLVADO, ver
+    `ev_loss_trustworthy`) estava dentro deste ranking, definindo o que o jogador estudaria
+    primeiro. Um plano ordenado por ficção é pior que nenhum plano: manda trabalhar no lugar
+    errado com a autoridade de quem mediu."""
+    uid = _seed()
+    c = get_conn()
+    tid = dict(c.execute("SELECT id FROM tournaments WHERE tournament_id='TEV'").fetchone())['id']
+    cols = ("(tournament_id,hand_id,street,action_taken,best_action,position,label,score,"
+            "ev_loss_bb,ev_loss_source,stack_bb,estimated_equity,pot_size,facing_bet,icm_pressure)")
+    # 1) fundo demais: acima do teto de calibração, o EV volta noutra escala
+    c.execute(f"INSERT INTO decisions {cols} VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+              (tid, 'FUNDO', 'flop', 'fold', 'call', 'CO', 'clear_mistake', 0.9,
+               90.3, 'solver_hand', 139.3, 0.40, 60.0, 20.0, 'low'))
+    # 2) fold impossível pela aritmética do próprio engine (equity 33% × 46,6% exigidos, quase all-in)
+    c.execute(f"INSERT INTO decisions {cols} VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+              (tid, 'IMPLAUS', 'flop', 'fold', 'call', 'HJ', 'clear_mistake', 0.9,
+               28.2, 'solver_hand', 33.7, 0.330, 31.8, 27.8, 'low'))
+    # 3) zona de ICM: gabarito chipEV puro não vale ali
+    c.execute(f"INSERT INTO decisions {cols} VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+              (tid, 'ICM', 'preflop', 'fold', 'call', 'SB', 'clear_mistake', 0.9,
+               50.0, 'gw_har', 20.0, None, None, None, 'high'))
+    c.commit(); c.close()
+
+    posicoes = [l['position'] for l in get_ev_leaks(uid, days=3650)['leaks']]
+    for intruso in ('CO', 'HJ', 'SB'):
+        assert intruso not in posicoes, f"{intruso} entrou no ranking com EV não confiável: {posicoes}"
+    assert posicoes and posicoes[0] == 'BB', posicoes   # o leak REAL segue no topo
+    print("OK  test_plano_nao_ranqueia_por_ev_nao_confiavel")
 
 
 if __name__ == '__main__':

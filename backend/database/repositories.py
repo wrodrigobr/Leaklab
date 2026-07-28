@@ -1057,37 +1057,53 @@ def get_ev_leaks(user_id: int, days: int = 90, last_n: int | None = None, limit:
     tem ev_loss hoje. Devolve {leaks:[...], total_ev_loss_bb, n_leaks}."""
     tf, tp = _build_tournament_filter(user_id, days, last_n)
     conn = get_conn()
+    # O plano de estudos é ranqueado por este número, então ele precisa da MESMA régua de
+    # confiança do relatório — senão o jogador recebe uma fila de trabalho ordenada por ficção.
+    # Antes desta correção não havia filtro NENHUM aqui: nem fonte, nem teto de profundidade, nem
+    # o teto de plausibilidade do fold, nem exclusão da zona de ICM. O fold de −90bb que o
+    # relatório de evolução expôs estava dentro deste ranking, definindo o que estudar primeiro.
+    #
+    # Agregação em Python pelo mesmo motivo do `get_evolution_report`: a regra precisa de
+    # equity/pote/facing e de mínimo entre colunas, e replicá-la em SQL exigiria `LEAST`/`GREATEST`
+    # (que o `_adapt` não traduz) além de criar uma segunda noção de "EV confiável".
+    from leaklab.decision_engine_v11 import ev_loss_trustworthy
     try:
         rows = conn.execute(_adapt(f"""
-            SELECT
-                d.position                    AS position,
-                d.street                      AS street,
-                d.best_action                 AS ideal_action,
-                COUNT(*)                      AS n,
-                SUM(d.ev_loss_bb)             AS total_ev_loss_bb,
-                AVG(d.ev_loss_bb)             AS avg_ev_loss_bb
+            SELECT d.position AS position, d.street AS street, d.best_action AS ideal_action,
+                   d.action_taken AS action_taken, d.ev_loss_bb AS ev, d.ev_loss_source AS src,
+                   d.stack_bb AS stack_bb, d.estimated_equity AS equity,
+                   d.pot_size AS pot, d.facing_bet AS facing
             FROM decisions d
             JOIN tournaments t ON t.id = d.tournament_id
             WHERE {tf}
               AND d.ev_loss_bb IS NOT NULL AND d.ev_loss_bb > 0.05
-            GROUP BY position, street, ideal_action
-            ORDER BY total_ev_loss_bb DESC
-            LIMIT ?
-        """), tp + (limit,)).fetchall()
-        tot = conn.execute(_adapt(f"""
-            SELECT SUM(d.ev_loss_bb) AS tot, COUNT(*) AS n
-            FROM decisions d
-            JOIN tournaments t ON t.id = d.tournament_id
-            WHERE {tf} AND d.ev_loss_bb IS NOT NULL AND d.ev_loss_bb > 0.05
-        """), tp).fetchone()
-        return {
-            # arredonda no Python (ROUND(real,n) não existe no Postgres; e mantém float)
-            'leaks': [{**dict(r), 'position': (r['position'] or '?'),
-                       'total_ev_loss_bb': round(float(r['total_ev_loss_bb'] or 0), 2),
-                       'avg_ev_loss_bb':   round(float(r['avg_ev_loss_bb'] or 0), 3)} for r in rows],
-            'total_ev_loss_bb': round(float(tot['tot'] or 0), 2) if tot else 0.0,
-            'n_leaks':          (tot['n'] or 0) if tot else 0,
-        }
+              AND COALESCE(d.icm_pressure,'') <> '{_ICM_EXCLUDED}'
+        """), tp).fetchall()
+
+        grupos, tot_bb, tot_n = {}, 0.0, 0
+        for r in rows:
+            if not ev_loss_trustworthy(r['ev'], r['stack_bb'], r['src'],
+                                       action=r['action_taken'], equity=r['equity'],
+                                       pot_bb=r['pot'], facing_bb=r['facing']):
+                continue
+            ev = float(r['ev'])
+            g = grupos.setdefault((r['position'] or '?', r['street'], r['ideal_action']),
+                                  {'n': 0, 'bb': 0.0})
+            g['n'] += 1
+            g['bb'] += ev
+            tot_bb += ev
+            tot_n += 1
+
+        leaks = sorted(
+            ({'position': pos, 'street': st, 'ideal_action': ia, 'n': g['n'],
+              'total_ev_loss_bb': round(g['bb'], 2),
+              'avg_ev_loss_bb': round(g['bb'] / g['n'], 3)}
+             for (pos, st, ia), g in grupos.items()),
+            key=lambda x: x['total_ev_loss_bb'], reverse=True)[:limit]
+
+        return {'leaks': leaks,
+                'total_ev_loss_bb': round(tot_bb, 2),
+                'n_leaks': tot_n}
     finally:
         conn.close()
 
