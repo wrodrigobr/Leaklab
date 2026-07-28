@@ -72,7 +72,7 @@ def main():
     email = next((a for a in args if not a.startswith('--')), None)
 
     from leaklab.gto_solver import (_DEFAULT_RANGES, _DEFAULT_RANGE_WIDE,
-                                    _solver_params_for_stack, is_simple_spot)
+                                    _solver_params_for_stack)
 
     conn = get_conn()
     try:
@@ -100,7 +100,6 @@ def main():
         print(f'== {modo} == {len(rows)} decisões candidatas\n')
 
         por_hash = {}
-        pulados_nao_solvaveis = 0
         for r in rows:
             street = (r['street'] or '').lower()
             completo = _board(r['board'])
@@ -118,11 +117,17 @@ def main():
             # O solve tem que existir na chave ERRADA — é o que define "perdida pelo bug".
             if not _acha_no(street, pos, completo, mao, stack, facing):
                 continue
-            # E o solver precisa ser capaz de resolver: enfileirar o que ele rejeita recria a
-            # esteira de pedido que nunca fecha.
-            if not is_simple_spot(street, cortado, stack, facing):
-                pulados_nao_solvaveis += 1
-                continue
+            # NÃO existe filtro por `is_simple_spot` aqui, e a primeira versão tinha.
+            #
+            # Aquela função responde "dá para resolver SINCRONAMENTE, em menos de 30s?" — a própria
+            # docstring diz que `False` significa "enfileira imediatamente sem bloquear o request".
+            # Ou seja: `False` é o pedido para vir PARA CÁ, não uma recusa. Usá-la como gate de
+            # capacidade descartava 133 dos 238 spots em produção, justamente os mais pesados, que
+            # são o motivo da fila existir. O caminho assíncrono tem 1800s de orçamento, não 30.
+            #
+            # Quem recusa o que é genuinamente impossível é o próprio solver, marcando o item como
+            # `rejected`/`unsupported` na fila. Melhor ele decidir com a árvore na mão do que este
+            # script decidir por heurística.
 
             h = compute_spot_hash(street, pos, cortado, mao, stack, facing)
             if h in por_hash:
@@ -153,7 +158,6 @@ def main():
         n_dec = sum(v['decisoes'] for v in por_hash.values())
         print(f'spots ÚNICOS a re-solvar ....... {len(por_hash)}')
         print(f'decisões que eles destravam .... {n_dec}')
-        print(f'pulados (solver não resolve) ... {pulados_nao_solvaveis}')
         if por_hash:
             m = max(v['decisoes'] for v in por_hash.values())
             print(f'melhor caso: um único spot destrava {m} decisões')
