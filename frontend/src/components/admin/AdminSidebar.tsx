@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Menu, X } from "lucide-react";
+import { Menu as MenuIcon, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export type AdminSection =
@@ -115,7 +115,7 @@ export function AdminSidebar({
         onClick={() => setMobileOpen(true)}
         className="lg:hidden inline-flex items-center gap-2 rounded-md border border-border bg-hud-surface px-3 py-2 font-mono text-[11px] font-bold uppercase tracking-widest-2 text-foreground"
       >
-        <Menu className="size-4" /> Menu
+        <MenuIcon className="size-4" /> Menu
       </button>
 
       {/* Mobile drawer */}

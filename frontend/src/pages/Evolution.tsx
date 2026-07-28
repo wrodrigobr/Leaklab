@@ -1,7 +1,10 @@
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
-import { TrendingDown, TrendingUp, Minus, ArrowRight, Map } from "lucide-react";
+// `Map as MapIcon` NÃO é preferência de estilo: importar `Map` cru sombreia o construtor global,
+// e o `new Map(...)` do heatmap vira "TypeError: Map is not a constructor" — em RUNTIME, com a
+// tela em branco. Nem o `tsc` nem o build pegam, porque o nome é válido nos dois mundos.
+import { TrendingDown, TrendingUp, Minus, ArrowRight, Map as MapIcon } from "lucide-react";
 import { HudLayout } from "@/components/hud/HudLayout";
 import { evolution, training, type EvolutionReport } from "@/lib/api";
 import { useSpotLabel } from "@/lib/spotLabel";
@@ -163,7 +166,7 @@ export default function Evolution() {
 
         <Link to="/training"
           className="flex items-center justify-center gap-1.5 rounded-2xl border border-border bg-card/40 p-4 text-[12px] font-bold text-primary transition-colors hover:border-primary/40">
-          <Map className="size-4" aria-hidden /> {t("backToTraining")}
+          <MapIcon className="size-4" aria-hidden /> {t("backToTraining")}
         </Link>
       </div>
     </HudLayout>

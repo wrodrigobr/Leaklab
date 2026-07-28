@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowRight, CheckCircle2, Dumbbell, GraduationCap, RotateCw, Target, Award, Flame, Star, Trophy, Lock, Map, Play, TrendingUp, TrendingDown, Sparkles, Medal, Gem, Compass, Crown, Info, Repeat, Zap, Rocket, type LucideIcon } from "lucide-react";
+import { ArrowRight, CheckCircle2, Dumbbell, GraduationCap, RotateCw, Target, Award, Flame, Star, Trophy, Lock, Map as MapIcon, Play, TrendingUp, TrendingDown, Sparkles, Medal, Gem, Compass, Crown, Info, Repeat, Zap, Rocket, type LucideIcon } from "lucide-react";
 import { HudLayout } from "@/components/hud/HudLayout";
 import { training, progression } from "@/lib/api";
 import { DailyChallengeCard } from "@/components/training/DailyChallengeCard";
@@ -148,7 +148,7 @@ export default function Training() {
         {overview && (
           <div className="rounded-2xl border border-border bg-card/40 p-5">
             <h2 className="mb-3 flex items-center gap-2 font-heading text-base font-bold text-foreground">
-              <Map className="size-4 text-primary" aria-hidden /> {t("journey.title")}
+              <MapIcon className="size-4 text-primary" aria-hidden /> {t("journey.title")}
             </h2>
             <div className="grid grid-cols-3 gap-2">
               {JOURNEY.map(({ key, icon: Icon, status }, i) => {
