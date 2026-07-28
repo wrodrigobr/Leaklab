@@ -28,6 +28,8 @@ _WORKERS_OBRIGATORIOS = {
     '_solver_queue_worker_loop': 'fila do solver postflop (gto_solver_queue)',
     '_gto_hand_worker_loop':     'fila de pedidos por mão (gto_hand_requests) — o aviso '
                                  '"spots sendo validados" no dashboard depende dela',
+    '_evolution_report_worker_loop': 'congela os retratos datados do relatório de evolução; '
+                                     'sem ela a cadência automática nunca dispara',
 }
 
 

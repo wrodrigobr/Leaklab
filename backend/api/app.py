@@ -1641,6 +1641,29 @@ def player_evolution():
     return jsonify(get_evolution_report(g.user_id))
 
 
+@app.route('/player/evolution/reports', methods=['GET'])
+@require_auth
+def player_evolution_reports():
+    """Histórico de retratos datados. O valor de congelar é poder comparar julho com agosto —
+    um número que muda sozinho não serve para comparação."""
+    from database.repositories import list_evolution_reports
+    return jsonify({'reports': list_evolution_reports(g.user_id)})
+
+
+@app.route('/player/evolution/reports/<int:report_id>', methods=['GET'])
+@require_auth
+def player_evolution_report(report_id):
+    from database.repositories import get_evolution_report_by_id
+    r = get_evolution_report_by_id(g.user_id, report_id)
+    if not r:
+        return jsonify({'error': 'Relatório não encontrado'}), 404
+    try:
+        r['snapshot'] = json.loads(r['snapshot'])
+    except Exception:
+        pass
+    return jsonify(r)
+
+
 @app.route('/player/pending-gto-count', methods=['GET'])
 @require_auth
 def player_pending_gto_count():
@@ -9737,6 +9760,32 @@ def _mark_failed_solver_jobs_as_wizard_pending() -> int:
     honesto. Antes, esta função re-marcava esses jobs falhos como wizard_pending a cada
     ciclo do worker, deixando o indicador "processando" preso pra sempre. No-op agora."""
     return 0
+
+
+_REPORT_SWEEP_SEC = 3600   # varredura de cadência do relatório: de hora em hora basta, porque o
+                           # gatilho mais rápido (veredito mudou) só muda quando o jogador importa
+
+
+def _evolution_report_worker_loop():
+    """Congela um retrato do relatório de evolução para quem cruzou um gatilho.
+
+    Roda aqui, no serviço que já está de pé, e não num cron: cron pendente é o que já falhou nesta
+    operação — o de `drain_hand_requests` nunca executou porque redirecionava log para /var/log,
+    onde o usuário `deploy` não pode criar arquivo, e o shell do cron falhava antes do comando.
+    Sem rastro, porque o rastro era justamente o arquivo.
+
+    A decisão de gerar é `repositories.decidir_cadencia_relatorio` (pura e testada); aqui só há o
+    relógio e o log."""
+    from database.repositories import gerar_relatorios_pendentes
+    time.sleep(60)   # deixa o app e as filas assentarem antes da primeira varredura
+    while True:
+        try:
+            feitos = gerar_relatorios_pendentes()
+            for uid, motivo, rid in feitos:
+                log.info("relatório de evolução gerado: user_id=%s motivo=%s id=%s", uid, motivo, rid)
+        except Exception:
+            log.exception("evolution report worker loop error")
+        time.sleep(_REPORT_SWEEP_SEC)
 
 
 _HAND_RECHECK_SEC = 300   # cadência da re-checagem de 'solver_queued' — a do cron que ela substituiu

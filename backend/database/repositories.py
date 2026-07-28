@@ -6355,6 +6355,61 @@ def _stack_bucket_case(col: str = 'd.stack_bb') -> str:
 # padrão viraria "você folda muito", que é verdade para qualquer jogador de torneio.
 _EV_PADRAO_MIN_BB = 1.0
 
+# ── Cadência do relatório de evolução ─────────────────────────────────────────────────────────
+#
+# A unidade é AMOSTRA, não calendário. Relatório por calendário treina o jogador a ignorar
+# relatório: quem jogou 3 torneios no mês recebe um documento dizendo "sem amostra" em tudo, e
+# depois de duas dessas ele para de abrir.
+#
+# Ordem de força dos gatilhos:
+#   1. MUDOU UM VEREDITO — um leak virou provado, ou reabriu. É o único momento em que o relatório
+#      tem algo a dizer que o jogador não sabia. Dispara na hora.
+#   2. VOLUME NOVO — decisões suficientes para os intervalos de confiança se moverem de verdade.
+#   3. PISO MENSAL — mantém o hábito quando houve atividade, mesmo sem novidade.
+# Com teto semanal em todos, para não virar spam em quem joga muito.
+_REPORT_MIN_DECISOES = 400   # ~8 a 12 torneios
+_REPORT_TETO_DIAS    = 7     # nunca mais de um por semana
+_REPORT_PISO_DIAS    = 30    # com atividade, pelo menos um por mês
+
+
+def _verdicts_do_snapshot(snapshot) -> dict:
+    """{categoria: veredito} de um snapshot salvo. Tolerante a formato antigo/ausente."""
+    try:
+        if isinstance(snapshot, str):
+            snapshot = json.loads(snapshot)
+        return {p.get('category_key'): (p.get('validacao') or {}).get('veredito')
+                for p in (snapshot or {}).get('proof', []) if p.get('category_key')}
+    except Exception:
+        return {}
+
+
+def decidir_cadencia_relatorio(ultimo: dict | None, agora_n_decisoes: int,
+                               verdicts_agora: dict, dias_desde_ultimo: float | None,
+                               houve_atividade: bool) -> str | None:
+    """Motivo pelo qual gerar um relatório agora, ou None para não gerar.
+
+    PURA de propósito: é ela que decide mandar (ou não) uma notificação para o jogador, e essa
+    decisão precisa ser testável sem banco, sem relógio e sem worker."""
+    if ultimo is None:
+        # Primeiro relatório: exige amostra, senão nasce dizendo "sem dados" e queima a estreia.
+        return 'primeiro' if agora_n_decisoes >= _REPORT_MIN_DECISOES else None
+
+    if dias_desde_ultimo is not None and dias_desde_ultimo < _REPORT_TETO_DIAS:
+        return None                                     # teto semanal vence qualquer gatilho
+
+    antes = _verdicts_do_snapshot(ultimo.get('snapshot'))
+    for cat, v in verdicts_agora.items():
+        if v in ('melhorou', 'piorou') and antes.get(cat) != v:
+            return 'veredito_mudou'
+
+    if agora_n_decisoes - int(ultimo.get('n_decisoes') or 0) >= _REPORT_MIN_DECISOES:
+        return 'volume'
+
+    if houve_atividade and dias_desde_ultimo is not None and dias_desde_ultimo >= _REPORT_PISO_DIAS:
+        return 'mensal'
+
+    return None
+
 
 def _norm_acao(a) -> str:
     """'folds' → 'fold', 'all-in'/'jam'/'shove' → 'allin'. Só para agrupar o padrão."""
@@ -6482,6 +6537,117 @@ def get_evolution_report(user_id: int, limite_torneios: int = 40) -> dict:
                 'matriz': matriz, 'acoes_caras': acoes_caras}
     finally:
         conn.close()
+
+
+def get_last_evolution_report(user_id: int) -> dict | None:
+    conn = get_conn()
+    try:
+        r = _fetchone(conn, _adapt(
+            "SELECT id, motivo, snapshot, n_decisoes, created_at FROM evolution_reports "
+            "WHERE user_id = ? ORDER BY created_at DESC LIMIT 1"), (user_id,))
+        return dict(r) if r else None
+    finally:
+        conn.close()
+
+
+def list_evolution_reports(user_id: int, limit: int = 12) -> list:
+    """Histórico para comparar meses. Sem o snapshot — a lista não precisa carregar tudo."""
+    conn = get_conn()
+    try:
+        return [dict(r) for r in _fetchall(conn, _adapt(
+            "SELECT id, motivo, n_decisoes, created_at FROM evolution_reports "
+            "WHERE user_id = ? ORDER BY created_at DESC LIMIT ?"), (user_id, limit))]
+    finally:
+        conn.close()
+
+
+def get_evolution_report_by_id(user_id: int, report_id: int) -> dict | None:
+    """Anti-IDOR: o user_id entra na cláusula, não é conferido depois."""
+    conn = get_conn()
+    try:
+        r = _fetchone(conn, _adapt(
+            "SELECT id, motivo, snapshot, n_decisoes, created_at FROM evolution_reports "
+            "WHERE id = ? AND user_id = ?"), (report_id, user_id))
+        return dict(r) if r else None
+    finally:
+        conn.close()
+
+
+def save_evolution_report(user_id: int, motivo: str, snapshot: dict, n_decisoes: int) -> int | None:
+    conn = get_conn()
+    try:
+        conn.execute(_adapt(
+            "INSERT INTO evolution_reports (user_id, motivo, snapshot, n_decisoes) "
+            "VALUES (?, ?, ?, ?)"),
+            (user_id, motivo, json.dumps(snapshot, ensure_ascii=False, default=str), n_decisoes))
+        conn.commit()
+        r = _fetchone(conn, _adapt(
+            "SELECT id AS id FROM evolution_reports WHERE user_id = ? "
+            "ORDER BY created_at DESC LIMIT 1"), (user_id,))
+        return int(r['id']) if r else None
+    finally:
+        conn.close()
+
+
+def _contexto_cadencia(conn, user_id: int) -> tuple:
+    """(n_decisoes_gradeadas, houve_atividade_recente) — o que a decisão de cadência precisa."""
+    from datetime import datetime, timedelta
+    n = _fetchone(conn, _adapt(
+        "SELECT COUNT(*) AS n FROM decisions d JOIN tournaments t ON t.id = d.tournament_id "
+        "WHERE t.user_id = ? AND d.gto_label IS NOT NULL AND d.gto_label <> ''"), (user_id,))
+    corte = (datetime.utcnow() - timedelta(days=_REPORT_PISO_DIAS)).strftime('%Y-%m-%d %H:%M:%S')
+    a = _fetchone(conn, _adapt(
+        "SELECT COUNT(*) AS n FROM tournaments WHERE user_id = ? AND imported_at > ?"),
+        (user_id, corte))
+    return int((n or {}).get('n') or 0), int((a or {}).get('n') or 0) > 0
+
+
+def gerar_relatorios_pendentes(limite_usuarios: int = 50) -> list:
+    """Varre quem cruzou um gatilho e congela o retrato. Devolve [(user_id, motivo, id)].
+
+    Roda no `solver-consumer`, o serviço que já está de pé — e não num cron, porque cron pendente
+    é o que já falhou aqui (o de `drain_hand_requests` nunca executou: escrevia log em /var/log,
+    onde o usuário `deploy` não pode criar arquivo, e o shell falhava antes do comando)."""
+    from datetime import datetime
+    conn = get_conn()
+    try:
+        usuarios = [int(r['id']) for r in _fetchall(conn, _adapt(
+            "SELECT DISTINCT u.id AS id FROM users u JOIN tournaments t ON t.user_id = u.id "
+            "ORDER BY u.id LIMIT ?"), (limite_usuarios,))]
+    finally:
+        conn.close()
+
+    feitos = []
+    for uid in usuarios:
+        try:
+            conn = get_conn()
+            try:
+                n_dec, atividade = _contexto_cadencia(conn, uid)
+            finally:
+                conn.close()
+            ultimo = get_last_evolution_report(uid)
+            dias = None
+            if ultimo and ultimo.get('created_at'):
+                try:
+                    dt = ultimo['created_at']
+                    if isinstance(dt, str):
+                        dt = datetime.strptime(dt[:19], '%Y-%m-%d %H:%M:%S')
+                    dias = (datetime.utcnow() - dt).total_seconds() / 86400.0
+                except Exception:
+                    dias = None
+            proof = get_training_proof(uid)
+            verdicts = {p['category_key']: (p.get('validacao') or {}).get('veredito')
+                        for p in proof if p.get('category_key')}
+            motivo = decidir_cadencia_relatorio(ultimo, n_dec, verdicts, dias, atividade)
+            if not motivo:
+                continue
+            snapshot = get_evolution_report(uid)
+            snapshot['proof'] = proof
+            rid = save_evolution_report(uid, motivo, snapshot, n_dec)
+            feitos.append((uid, motivo, rid))
+        except Exception:
+            log.exception("relatório de evolução: falhou para user_id=%s", uid)
+    return feitos
 
 
 def get_training_proof(user_id: int) -> list:

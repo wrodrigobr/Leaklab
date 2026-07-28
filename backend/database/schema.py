@@ -1538,6 +1538,19 @@ def _run_migrations(conn):
                 UNIQUE(user_id, day)
             )
         """)
+        # Retratos datados do relatório de evolução (espelha o bloco PG à prova de abort).
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS evolution_reports (
+                id         INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id    INTEGER NOT NULL,
+                motivo     TEXT    NOT NULL,
+                snapshot   TEXT    NOT NULL,
+                n_decisoes INTEGER NOT NULL DEFAULT 0,
+                created_at TEXT    NOT NULL DEFAULT (datetime('now'))
+            )
+        """)
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_evolution_reports_user "
+                     "ON evolution_reports(user_id, created_at DESC)")
         # Fase 3 (trilho lento): reabertura por regressão no jogo real (SQLite)
         proof_existing = {r[1] for r in conn.execute('PRAGMA table_info(training_proof)').fetchall()}
         for col, sql in [
@@ -2141,6 +2154,19 @@ def _run_migrations(conn):
                 created_at    TIMESTAMP NOT NULL DEFAULT NOW(),
                 UNIQUE(user_id, day)
             )""",
+            # Retratos datados do relatório de evolução. Guarda os NÚMEROS, não o HTML: o visual
+            # pode melhorar sem invalidar relatório antigo, e comparar julho com agosto continua
+            # válido porque compara dados, não páginas.
+            """CREATE TABLE IF NOT EXISTS evolution_reports (
+                id           SERIAL PRIMARY KEY,
+                user_id      INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                motivo       TEXT    NOT NULL,
+                snapshot     TEXT    NOT NULL,
+                n_decisoes   INTEGER NOT NULL DEFAULT 0,
+                created_at   TIMESTAMP NOT NULL DEFAULT NOW()
+            )""",
+            "CREATE INDEX IF NOT EXISTS idx_evolution_reports_user "
+            "ON evolution_reports(user_id, created_at DESC)",
         ]
         for _stmt in _safe:
             try:
