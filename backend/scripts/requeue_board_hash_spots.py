@@ -28,7 +28,8 @@ uma mesma chave costuma servir várias decisões, então o número de solves é 
 decisões.
 
 Enfileira com prioridade BAIXA de propósito: isto é dívida, não pedido de usuário esperando na
-tela, e não deve passar na frente de quem acabou de subir um torneio.
+tela, e não deve passar na frente de quem acabou de subir um torneio. A fila atende MAIOR
+primeiro (), então baixo aqui significa número pequeno.
 """
 import os, sys, json
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -37,7 +38,15 @@ from database.schema import get_conn
 from database.repositories import _fetchall, _adapt, get_gto_node, enqueue_solver_spot
 from leaklab.gto_utils import compute_spot_hash, board_for_street, normalize_cards, normalize_position
 
-_PRIORIDADE_DIVIDA = 9   # maior = depois; upload de usuário usa prioridade menor
+# A fila é drenada com "ORDER BY priority DESC": número MAIOR é atendido PRIMEIRO.
+#
+# A primeira versão usava 9, com o comentário "maior = depois", exatamente ao contrário. E 9 é o
+# valor mais alto que existe na base (a função de prioridade do produto vai de 5 a 8), então a
+# dívida furava a fila de TODO MUNDO, inclusive de quem tinha acabado de subir um torneio. Foi
+# para produção assim e só apareceu ao conferir a ordenação real da fila.
+#
+# 1 fica atrás de qualquer coisa que o produto enfileire, que era a intenção desde o começo.
+_PRIORIDADE_DIVIDA = 1
 
 
 def _board(bruto):
@@ -174,7 +183,8 @@ def main():
                     n += 1
             except Exception as exc:
                 print(f'  falhou {h[:12]}: {exc}')
-        print(f'\nenfileirados: {n} spots (prioridade {_PRIORIDADE_DIVIDA}, atrás dos uploads)')
+        print(f'\nenfileirados: {n} spots com prioridade {_PRIORIDADE_DIVIDA}. A fila atende o número')
+        print('MAIOR primeiro, então este valor os deixa atrás de qualquer upload de usuário.')
         print('Acompanhe com: scripts/diag_board_hash_impact.py — o número de perdidas cai')
         print('conforme o solver drena a fila.')
     finally:
