@@ -16,7 +16,11 @@
   "matrix": {
     "title": "Position × stack depth",
     "subtitle": "The same open is a different game at 12bb and at 50bb. An empty cell means no sample, not a clean record.",
-    "legend": "bb lost per 100 decisions · smaller number = decisions measured",
+    "keyTitle": "How to read each cell",
+    "keyTop": "bb lost per 100 decisions — the higher, the more expensive",
+    "keyBottom": "how many decisions were measured there — few decisions, fragile reading",
+    "keyEmpty": "no sample for that combination (not a clean sheet)",
+    "legend": "Colour follows the top number: the darker it is, the more that position costs at that depth.",
     "empty": "—"
   },
   "proof": {
@@ -62,5 +66,17 @@
     "banner": "Frozen snapshot from {{date}}. These numbers are from that day, not today's.",
     "viewLive": "View current"
   },
-  "backToTraining": "Back to training"
+  "backToTraining": "Back to training",
+  "export": {
+    "button": "Download as HTML",
+    "docTitle": "GrindLab · Evolution report",
+    "generatedAt": "Generated on {{date}}",
+    "snapshotOf": "Frozen snapshot from {{date}}",
+    "openApp": "Open the current report on GrindLab",
+    "notesTitle": "How to read this file, and what was left out",
+    "noteScope": "Only decisions with a solver answer are counted. A hand with no coverage shows up neither as correct nor as a mistake, so the totals here are smaller than the number of hands you played.",
+    "noteEv": "The bb cost uses only EV that passes the reliability test. An out-of-scale estimate is discarded rather than added, which makes this number a floor: the real cost is equal or higher.",
+    "noteIcm": "The ICM zone (bubble and final table) is excluded from both sides. The reference there is pure chipEV, and the EV measured does not describe the decision you actually faced.",
+    "noteFrozen": "These numbers are from the moment the file was generated and do not update. For today's reading, open the report on the site."
+  }
 }

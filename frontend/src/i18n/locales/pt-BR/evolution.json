@@ -16,7 +16,11 @@
   "matrix": {
     "title": "Posição × profundidade de stack",
     "subtitle": "A mesma abertura é um jogo diferente a 12bb e a 50bb. Célula vazia significa sem amostra, não acerto.",
-    "legend": "bb perdidos por 100 decisões · número menor = decisões medidas",
+    "keyTitle": "Como ler cada quadrante",
+    "keyTop": "bb perdidos a cada 100 decisões — quanto mais alto, mais caro",
+    "keyBottom": "quantas decisões medidas ali — poucas decisões, leitura frágil",
+    "keyEmpty": "sem amostra nessa combinação (não é acerto)",
+    "legend": "A cor acompanha o número de cima: quanto mais escura, mais cara é a posição naquela profundidade.",
     "empty": "—"
   },
   "proof": {
@@ -62,5 +66,17 @@
     "banner": "Retrato congelado de {{date}}. Os números são daquele dia, não os de agora.",
     "viewLive": "Ver o atual"
   },
-  "backToTraining": "Voltar para o treino"
+  "backToTraining": "Voltar para o treino",
+  "export": {
+    "button": "Baixar em HTML",
+    "docTitle": "GrindLab · Relatório de evolução",
+    "generatedAt": "Gerado em {{date}}",
+    "snapshotOf": "Retrato congelado de {{date}}",
+    "openApp": "Abrir o relatório atual no GrindLab",
+    "notesTitle": "Como ler este arquivo, e o que ficou de fora",
+    "noteScope": "Só entram decisões com gabarito. Mão sem cobertura do solver não aparece nem como acerto nem como erro, então o total daqui é menor que o número de mãos que você jogou.",
+    "noteEv": "O custo em bb usa apenas o EV que passa no teste de confiabilidade. Estimativa fora de escala é descartada em vez de somada, o que torna este número um piso: o prejuízo real é igual ou maior.",
+    "noteIcm": "A zona de ICM (bolha e mesa final) fica fora dos dois lados da conta. O gabarito ali é chipEV puro, e o EV medido não descreve a decisão que você realmente enfrentou.",
+    "noteFrozen": "Os números são do momento em que o arquivo foi gerado e não se atualizam. Para a leitura de hoje, abra o relatório no site."
+  }
 }

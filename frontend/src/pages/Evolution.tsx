@@ -4,12 +4,13 @@ import { useQuery } from "@tanstack/react-query";
 // `Map as MapIcon` NÃO é preferência de estilo: importar `Map` cru sombreia o construtor global,
 // e o `new Map(...)` do heatmap vira "TypeError: Map is not a constructor" — em RUNTIME, com a
 // tela em branco. Nem o `tsc` nem o build pegam, porque o nome é válido nos dois mundos.
-import { TrendingDown, TrendingUp, Minus, ArrowRight, ArrowLeft, ChevronRight, Camera, Map as MapIcon } from "lucide-react";
+import { TrendingDown, TrendingUp, Minus, ArrowRight, ArrowLeft, ChevronRight, Camera, Download, Map as MapIcon } from "lucide-react";
 import { HudLayout } from "@/components/hud/HudLayout";
 import { evolution, training, type EvolutionReport, type TrainingProofItem } from "@/lib/api";
 import { useSpotLabel } from "@/lib/spotLabel";
 import { formatApiDate } from "@/lib/apiDate";
-import { cn } from "@/lib/utils";
+import { buildEvolutionHtml, evolutionFileName, baixarHtml } from "@/lib/evolutionExport";
+import { cn, formatAction } from "@/lib/utils";
 
 /**
  * Relatório de evolução — a superfície de REFLEXÃO.
@@ -28,7 +29,7 @@ import { cn } from "@/lib/utils";
  * e a pergunta é outra ("melhorei?", não "no que mexo?").
  */
 export default function Evolution() {
-  const { t } = useTranslation("evolution");
+  const { t, i18n } = useTranslation("evolution");
   // Fonte ÚNICA do rótulo do spot, a mesma do Training — se cada tela montasse o seu, o mesmo
   // leak apareceria com nomes diferentes em lugares diferentes.
   const spotLabel = useSpotLabel();
@@ -66,11 +67,33 @@ export default function Evolution() {
         {/* Voltar no TOPO. O link para o treino já existia no rodapé, mas esta é uma tela longa
             (quatro blocos e uma tabela): quem entra pelo dashboard e quer sair precisa rolar tudo
             até achar a saída. Saída de tela longa fica onde a pessoa já está olhando. */}
-        <Link to={congelado ? "/evolucao" : "/training"}
-          className="inline-flex items-center gap-1.5 font-mono text-xs text-primary hover:underline">
-          <ArrowLeft className="size-3.5" aria-hidden />
-          {congelado ? t("snapshot.back") : t("back")}
-        </Link>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <Link to={congelado ? "/evolucao" : "/training"}
+            className="inline-flex items-center gap-1.5 font-mono text-xs text-primary hover:underline">
+            <ArrowLeft className="size-3.5" aria-hidden />
+            {congelado ? t("snapshot.back") : t("back")}
+          </Link>
+
+          {/* O arquivo sai dos MESMOS objetos que a tela acabou de renderizar (`data` e `proof`),
+              e por isso não pode divergir dela. Só aparece com dado medido: um HTML com "—" em
+              tudo não é relatório, é frustração com nome de arquivo. */}
+          {!isLoading && data?.resumo?.bb_por_torneio != null && (
+            <button type="button"
+              onClick={() => baixarHtml(
+                buildEvolutionHtml({
+                  data, proof, t, spotLabel,
+                  origin: window.location.origin,
+                  geradoEm: new Date(),
+                  congeladoEm: congelado ? formatApiDate(retrato.data?.created_at) : null,
+                  locale: i18n.language,
+                }),
+                evolutionFileName(new Date()))}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 font-mono text-[11px] font-bold text-muted-foreground transition-colors hover:border-primary/40 hover:text-primary">
+              <Download className="size-3.5" aria-hidden />
+              {t("export.button")}
+            </button>
+          )}
+        </div>
 
         {/* Faixa de retrato congelado. Sem ela, a tela mostraria números antigos com a cara do
             relatório atual — e o jogador tomaria decisão sobre dado velho achando que é de hoje. */}
@@ -138,7 +161,13 @@ export default function Evolution() {
                   <span className="w-5 shrink-0 text-center font-mono text-[11px] text-muted-foreground">{i + 1}</span>
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-[13px] font-semibold text-foreground">
-                      {t("costly.played", { action: s.action, best: s.best_action ?? "—" })}
+                      {/* O banco guarda "allin"; o vocabulário visível do produto é "Shove". Esta
+                          tela era a única que renderizava o valor cru — `formatAction` é a fonte
+                          única do rótulo, e onze outros arquivos já a usavam. */}
+                      {t("costly.played", {
+                        action: formatAction(s.action),
+                        best: s.best_action ? formatAction(s.best_action) : "—",
+                      })}
                     </span>
                     <span className="block truncate font-mono text-[11px] text-muted-foreground">
                       {s.street} · {s.position}{s.vs_position ? ` vs ${s.vs_position}` : ""} · {s.stack_bb}bb
@@ -422,6 +451,34 @@ function Matriz({ matriz }: { matriz: EvolutionReport["matriz"] }) {
     <div className="rounded-2xl border border-border bg-card/40 p-5">
       <h2 className="mb-1 font-heading text-base font-bold text-foreground">{t("matrix.title")}</h2>
       <p className="mb-3 text-[11px] leading-snug text-muted-foreground">{t("matrix.subtitle")}</p>
+
+      {/* CHAVE DE LEITURA, acima da grade e não no rodapé.
+          Cada quadrante traz DOIS números e nada dizia o que era cada um. A legenda existia, mas
+          embaixo, em cinza pequeno, e dizia "número menor" — que tanto lê como "o de valor menor"
+          quanto "o de baixo". Num mapa de calor a pessoa interpreta os números ANTES de chegar ao
+          rodapé, então a chave precisa vir antes, e apontar para uma célula de verdade em vez de
+          descrever com palavras. O quadrante vazio entra na chave pelo mesmo motivo: sem amostra e
+          jogo perfeito são coisas diferentes, e é a confusão mais fácil de cometer aqui. */}
+      <div className="mb-3 flex flex-wrap items-center gap-x-6 gap-y-3 rounded-xl bg-background/50 p-3">
+        <div className="flex items-center gap-2.5">
+          <div style={tom(max * 0.62)}
+            className="flex aspect-[1.9] w-[54px] shrink-0 flex-col items-center justify-center rounded-md">
+            <span className="font-mono text-[12px] font-bold text-foreground">5.2</span>
+            <span className="font-mono text-[9px] text-muted-foreground">66</span>
+          </div>
+          <div className="text-[10px] leading-tight text-muted-foreground">
+            <div><span className="font-mono font-bold text-foreground">5.2</span> · {t("matrix.keyTop")}</div>
+            <div className="mt-0.5"><span className="font-mono font-bold text-foreground">66</span> · {t("matrix.keyBottom")}</div>
+          </div>
+        </div>
+        <div className="flex items-center gap-2.5">
+          <div className="flex aspect-[1.9] w-[54px] shrink-0 items-center justify-center rounded-md border border-dashed border-border">
+            <span className="font-mono text-[10px] text-muted-foreground/60">{t("matrix.empty")}</span>
+          </div>
+          <span className="max-w-[22ch] text-[10px] leading-tight text-muted-foreground">{t("matrix.keyEmpty")}</span>
+        </div>
+      </div>
+
       <div className="overflow-x-auto">
         <div className="grid gap-1"
           style={{ gridTemplateColumns: `60px repeat(${buckets.length}, minmax(58px, 1fr))`, minWidth: 420 }}>

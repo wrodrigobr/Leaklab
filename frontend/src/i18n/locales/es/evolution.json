@@ -16,7 +16,11 @@
   "matrix": {
     "title": "Posición × profundidad de stack",
     "subtitle": "La misma apertura es otro juego a 12bb y a 50bb. Una celda vacía significa sin muestra, no acierto.",
-    "legend": "bb perdidos por 100 decisiones · número menor = decisiones medidas",
+    "keyTitle": "Cómo leer cada cuadrante",
+    "keyTop": "bb perdidos cada 100 decisiones — cuanto más alto, más caro",
+    "keyBottom": "cuántas decisiones se midieron ahí — pocas decisiones, lectura frágil",
+    "keyEmpty": "sin muestra en esa combinación (no es acierto)",
+    "legend": "El color sigue al número de arriba: cuanto más oscuro, más cara es la posición en esa profundidad.",
     "empty": "—"
   },
   "proof": {
@@ -62,5 +66,17 @@
     "banner": "Retrato congelado del {{date}}. Los números son de ese día, no los de ahora.",
     "viewLive": "Ver el actual"
   },
-  "backToTraining": "Volver al entrenamiento"
+  "backToTraining": "Volver al entrenamiento",
+  "export": {
+    "button": "Descargar en HTML",
+    "docTitle": "GrindLab · Informe de evolución",
+    "generatedAt": "Generado el {{date}}",
+    "snapshotOf": "Retrato congelado del {{date}}",
+    "openApp": "Abrir el informe actual en GrindLab",
+    "notesTitle": "Cómo leer este archivo, y qué quedó fuera",
+    "noteScope": "Solo entran decisiones con respuesta del solver. Una mano sin cobertura no aparece ni como acierto ni como error, así que el total de aquí es menor que la cantidad de manos que jugaste.",
+    "noteEv": "El costo en bb usa solo el EV que pasa la prueba de confiabilidad. Una estimación fuera de escala se descarta en vez de sumarse, lo que convierte este número en un piso: la pérdida real es igual o mayor.",
+    "noteIcm": "La zona de ICM (burbuja y mesa final) queda fuera de los dos lados de la cuenta. La referencia allí es chipEV puro, y el EV medido no describe la decisión que realmente enfrentaste.",
+    "noteFrozen": "Los números son del momento en que se generó el archivo y no se actualizan. Para la lectura de hoy, abre el informe en el sitio."
+  }
 }
