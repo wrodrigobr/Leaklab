@@ -23,5 +23,16 @@
     "subtitle": "Aqui a medida é taxa de erro, não custo: é ela que distingue melhora de sorte.",
     "disclaimer": "O veredito só sai quando a diferença resiste ao intervalo de confiança, e o \"antes\" é corrigido para não inflar a melhora. É comparação entre dois períodos, não prova de que o treino causou a mudança."
   },
+  "history": {
+    "title": "Relatórios anteriores",
+    "subtitle": "Retratos congelados: comparar meses só funciona com números que não mudam depois.",
+    "decisions": "decisões",
+    "motivo": {
+      "primeiro": "primeiro",
+      "veredito_mudou": "veredito mudou",
+      "volume": "volume novo",
+      "mensal": "mensal"
+    }
+  },
   "backToTraining": "Voltar para o treino"
 }

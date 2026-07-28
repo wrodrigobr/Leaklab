@@ -1493,8 +1493,18 @@ export interface EvolutionReport {
   matriz: { position: string; bucket: string; n: number; bb_100: number | null }[];
 }
 
+/** Retrato datado. A lista NÃO traz o snapshot — comparar meses precisa da data e do motivo,
+ *  não do payload inteiro de cada um. */
+export interface EvolutionSnapshotRow {
+  id: number; motivo: string; n_decisoes: number; created_at: string;
+}
+
 export const evolution = {
   report: () => request<EvolutionReport>("/player/evolution"),
+  history: () => request<{ reports: EvolutionSnapshotRow[] }>("/player/evolution/reports"),
+  snapshot: (id: number) =>
+    request<EvolutionSnapshotRow & { snapshot: EvolutionReport & { proof?: unknown[] } }>(
+      `/player/evolution/reports/${id}`),
 };
 
 export const sparring = {

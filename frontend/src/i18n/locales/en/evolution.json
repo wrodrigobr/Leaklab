@@ -23,5 +23,16 @@
     "subtitle": "Here the measure is error rate, not cost: that is what separates improvement from luck.",
     "disclaimer": "A verdict only appears when the difference survives the confidence interval, and the \"before\" is corrected so improvement is not inflated. This compares two periods; it does not prove the training caused the change."
   },
+  "history": {
+    "title": "Previous reports",
+    "subtitle": "Frozen snapshots: comparing months only works with numbers that stop moving.",
+    "decisions": "decisions",
+    "motivo": {
+      "primeiro": "first",
+      "veredito_mudou": "verdict changed",
+      "volume": "new volume",
+      "mensal": "monthly"
+    }
+  },
   "backToTraining": "Back to training"
 }

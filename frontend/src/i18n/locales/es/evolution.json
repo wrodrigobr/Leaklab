@@ -23,5 +23,16 @@
     "subtitle": "Aquí la medida es la tasa de error, no el costo: es la que distingue mejora de suerte.",
     "disclaimer": "El veredicto solo aparece cuando la diferencia resiste el intervalo de confianza, y el \"antes\" se corrige para no inflar la mejora. Compara dos períodos; no prueba que el entrenamiento causó el cambio."
   },
+  "history": {
+    "title": "Informes anteriores",
+    "subtitle": "Retratos congelados: comparar meses solo funciona con números que ya no cambian.",
+    "decisions": "decisiones",
+    "motivo": {
+      "primeiro": "primero",
+      "veredito_mudou": "veredicto cambió",
+      "volume": "volumen nuevo",
+      "mensal": "mensual"
+    }
+  },
   "backToTraining": "Volver al entrenamiento"
 }
