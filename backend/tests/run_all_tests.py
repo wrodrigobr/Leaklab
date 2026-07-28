@@ -32,7 +32,7 @@ SUITES = {
                   'test_no_id_tables.py', 'test_hand_request_cadence.py',
                   'test_clear_bogus_icm_tax.py', 'test_diag_validacao.py',
                   'test_evolution_report.py'],
-    'llm':       ['test_llm_explainer.py', 'test_study_plan.py'],
+    'llm':       ['test_llm_explainer.py', 'test_study_plan.py', 'test_study_patterns.py'],
     'api':       ['test_api_endpoints.py', 'test_subscription.py', 'test_partygaming_financials.py',
                   'test_stripe_hardening.py', 'test_worker_entrypoints.py'],
     'regression':['test_tournament.py', 'test_multi_decision.py', 'test_partygaming_parser.py',

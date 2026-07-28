@@ -6351,6 +6351,18 @@ def _stack_bucket_case(col: str = 'd.stack_bb') -> str:
     return "CASE " + " ".join(partes) + " END"
 
 
+# Piso para uma decisão contar no padrão de AÇÃO. Abaixo disto todo mundo tem de tudo, e o
+# padrão viraria "você folda muito", que é verdade para qualquer jogador de torneio.
+_EV_PADRAO_MIN_BB = 1.0
+
+
+def _norm_acao(a) -> str:
+    """'folds' → 'fold', 'all-in'/'jam'/'shove' → 'allin'. Só para agrupar o padrão."""
+    a = (a or '').strip().lower()
+    a = a[:-1] if a.endswith('s') else a
+    return 'allin' if a in ('all-in', 'allin', 'jam', 'shove') else (a or '?')
+
+
 def get_evolution_report(user_id: int, limite_torneios: int = 40) -> dict:
     """Matéria-prima do relatório de evolução: custo, não acurácia.
 
@@ -6392,7 +6404,7 @@ def get_evolution_report(user_id: int, limite_torneios: int = 40) -> dict:
             "  AND COALESCE(d.icm_pressure,'') <> ? "
             "ORDER BY t.imported_at ASC"), (user_id, _ICM_EXCLUDED))
 
-        confiaveis, por_torneio, celulas = [], {}, {}
+        confiaveis, por_torneio, celulas, acoes = [], {}, {}, {}
         for r in rows:
             ok = ev_loss_trustworthy(
                 r['ev'], r['stack_bb'], r['src'],
@@ -6419,6 +6431,13 @@ def get_evolution_report(user_id: int, limite_torneios: int = 40) -> dict:
                 c['n'] += 1
             if ev > 0:
                 confiaveis.append((ev, r))
+            # Padrão de AÇÃO nos erros caros: quatro folds entre os cinco spots mais caros é
+            # diagnóstico de DISPOSIÇÃO, não de range — e muda o tipo de treino. Sem agregar
+            # isto, o padrão só existe se alguém olhar a lista com olho de coach.
+            if ev >= _EV_PADRAO_MIN_BB:
+                a = acoes.setdefault(_norm_acao(r['action_taken']), {'n': 0, 'bb': 0.0})
+                a['n'] += 1
+                a['bb'] += ev
 
         timeline = [{**t, 'bb': round(t['bb'], 2)}
                     for t in list(por_torneio.values())[-limite_torneios:]]
@@ -6455,7 +6474,12 @@ def get_evolution_report(user_id: int, limite_torneios: int = 40) -> dict:
                    'bb_100': round(c['bb'] / c['n'] * 100, 1) if c['n'] else None}
                   for (pos, bk), c in celulas.items()]
 
-        return {'resumo': resumo, 'timeline': timeline, 'top_spots': top_spots, 'matriz': matriz}
+        acoes_caras = sorted(
+            ({'action': a, 'n': v['n'], 'bb': round(v['bb'], 2)} for a, v in acoes.items()),
+            key=lambda x: x['n'], reverse=True)
+
+        return {'resumo': resumo, 'timeline': timeline, 'top_spots': top_spots,
+                'matriz': matriz, 'acoes_caras': acoes_caras}
     finally:
         conn.close()
 

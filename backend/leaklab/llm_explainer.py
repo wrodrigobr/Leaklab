@@ -1220,6 +1220,18 @@ def generate_study_plan(leaks: list, evolution: list, icm: dict,
     # --- HUD stats section (se disponível) ---
     hud_txt = _format_hud_stats_for_prompt(player_stats) if player_stats else ''
 
+    # --- Mapa posição × profundidade + padrões + já dominado ---
+    # O eixo de profundidade não existia no prompt, então "36-60bb é a faixa cara em quase toda
+    # posição" era invisível — e é a conclusão que mais muda o plano. Falha em silêncio: sem
+    # relatório o prompt fica igual ao de antes.
+    patterns_txt = ''
+    if user_id is not None:
+        try:
+            from database.repositories import get_evolution_report
+            patterns_txt = _format_study_patterns(get_evolution_report(user_id))
+        except Exception:
+            patterns_txt = ''
+
     # Indicar fonte dos leaks ao Claude para contextualizar o nível de confiança
     source_note = {
         'gto': '\n(Leaks identificados via análise GTO — comparação direta com solver. Alta confiança.)',
@@ -1244,13 +1256,16 @@ Analise os dados de performance abaixo e gere um plano de estudos DETALHADO e PE
 {('''
 **Vazamentos por EV PONDERADO (já ranqueado em CÓDIGO — siga ESTA ordem; "confiança baixa" = amostra pequena, possível variância, NÃO priorize):**
 ''' + ev_txt) if ev_txt else ''}
-
+{patterns_txt}
 ## Instrução de Coach
 
 Use os HUD Stats comportamentais para enriquecer o diagnóstico: se VPIP alto + PFR baixo, o jogador é loose-passive; se AF abaixo de 2x, o postflop é passivo demais; se Open Limp% acima de 5%, há problema de fold equity pré-flop; se BB Defense baixa, o jogador está sendo exploitado no big blind. Cruze os HUD Stats com os Leaks identificados para gerar módulos muito mais específicos e personalizados.
 
 REGRAS DE PRIORIZAÇÃO E AMOSTRA (siga à risca):
 - Ordene os cards pela ordem do "EV PONDERADO" acima (já calculado em código). NÃO recalcule nem reordene por bb bruto.
+- PADRÃO ANTES DE SPOT: quando houver "PADRÕES JÁ EXTRAÍDOS" acima, o card de prioridade p1 deve atacar o PADRÃO (a faixa de profundidade, a posição ou a ação recorrente), não um spot isolado. Estudar seis spots que compartilham a mesma causa é seis vezes o mesmo estudo, e o jogador abandona no terceiro.
+- NÃO gere card para nada listado em "JÁ DOMINADO", mesmo que apareça nos leaks: é assunto encerrado, e reabrir custa a confiança do jogador no plano. Cite no resumo como consolidado.
+- Célula do mapa marcada "—" é SEM AMOSTRA, nunca acerto. Não conclua nada dela, em nenhuma direção.
 - GATE: NÃO gere card de correção para HUD stats marcados "AMOSTRA INSUFICIENTE". Liste-os em "observar_mais_dados" (sample atual vs necessário + por que esperar).
 - NÃO force 6 cards. Se só há N leaks acionáveis e CONFIÁVEIS, entregue N (entre 1 e 6). NÃO invente leaks que os dados não mostram.
 - Leaks marcados "confiança baixa" (amostra pequena): se incluir, sinalize a incerteza no diagnóstico e rebaixe a prioridade. Itens fracos/ruidosos vão em "nao_focar_agora".
@@ -1416,10 +1431,127 @@ def _format_ev_leaks_weighted(ev_leaks: list | None) -> str:
     )
 
 
+# ── Padrões do mapa posição × profundidade ────────────────────────────────────────────────────
+#
+# Por que isto existe: o prompt recebia leaks como linhas soltas (posição × street × ação ideal) e
+# NENHUM eixo de profundidade. Um coach olhando o mesmo dado diz "36-60bb é a faixa cara em quase
+# toda posição" e "as aberturas já estão resolvidas, ficam de fora" — duas conclusões que mudam o
+# plano inteiro e que eram estruturalmente invisíveis ali.
+#
+# A saída NÃO é pedir o padrão ao modelo. É o mesmo princípio que o prompt já aplica ao ranking de
+# EV ("já ranqueado em CÓDIGO — siga ESTA ordem"): calcula-se o padrão aqui, determinístico e
+# testável, e entrega-se pronto. Pedir ao LLM que infira tendência de uma tabela é como ele
+# inventa número.
+_DOMINADO_MAX_BB100 = 2.5   # abaixo disto, com amostra, é assunto encerrado — não vira card
+_DOMINADO_MIN_N     = 30    # decisões mínimas na posição para chamar de dominado
+_PADRAO_MIN_N       = 25    # amostra mínima de uma faixa/posição para ela virar afirmação
+
+
+def extract_study_patterns(report: dict | None) -> dict:
+    """Extrai do relatório de evolução o que um coach leria: faixa cara, posição cara, ação
+    recorrente e o que já está dominado.
+
+    Função PURA (recebe o dict, não toca banco) porque é ela que decide o topo do plano de estudos
+    — e decisão de plano precisa ser testável sem subir um servidor."""
+    matriz = (report or {}).get('matriz') or []
+    if not matriz:
+        return {'matriz': [], 'padroes': [], 'dominados': []}
+
+    def _media(chave):
+        """bb/100 médio ponderado por nº de decisões, agrupado por `chave`."""
+        acc = {}
+        for c in matriz:
+            if c.get('bb_100') is None:
+                continue
+            g = acc.setdefault(c[chave], {'bb': 0.0, 'n': 0})
+            g['bb'] += c['bb_100'] * c['n']
+            g['n'] += c['n']
+        return {k: {'bb100': v['bb'] / v['n'], 'n': v['n']}
+                for k, v in acc.items() if v['n'] >= _PADRAO_MIN_N}
+
+    por_faixa = _media('bucket')
+    por_pos   = _media('position')
+    padroes = []
+
+    if len(por_faixa) >= 2:
+        pior = max(por_faixa.items(), key=lambda x: x[1]['bb100'])
+        resto = [v['bb100'] for k, v in por_faixa.items() if k != pior[0]]
+        media_resto = sum(resto) / len(resto)
+        # Só afirma quando a diferença é grande o bastante para não ser leitura de ruído.
+        if pior[1]['bb100'] >= media_resto * 1.5:
+            padroes.append(
+                f"faixa de profundidade mais cara: {pior[0]} "
+                f"({pior[1]['bb100']:.1f} bb/100 contra {media_resto:.1f} nas demais)")
+
+    if por_pos:
+        pior_pos = max(por_pos.items(), key=lambda x: x[1]['bb100'])
+        # "cara em TODA profundidade" é afirmação mais forte que "cara na média", e é a que separa
+        # problema ESTRUTURAL de spot pontual. A régua é a média do PRÓPRIO jogador, não o limiar
+        # de domínio: contra 2,5 bb/100 quase toda posição pareceria cara em todo lugar, e a
+        # afirmação forte perderia o sentido (foi o que a primeira versão fez com o SB, que é caro
+        # só a 35-60bb).
+        medidas = [c for c in matriz if c.get('bb_100') is not None]
+        n_total = sum(c['n'] for c in medidas) or 1
+        media_jogador = sum(c['bb_100'] * c['n'] for c in medidas) / n_total
+        celulas = [c for c in medidas if c['position'] == pior_pos[0]]
+        em_todas = len(celulas) >= 3 and all(c['bb_100'] > media_jogador for c in celulas)
+        padroes.append(
+            f"posição mais cara: {pior_pos[0]} ({pior_pos[1]['bb100']:.1f} bb/100"
+            + (", e em TODAS as profundidades medidas" if em_todas else "") + ")")
+
+    acoes = (report or {}).get('acoes_caras') or []
+    if acoes:
+        total = sum(a['n'] for a in acoes)
+        top = acoes[0]
+        if total >= 5 and top['n'] / total >= 0.5:
+            padroes.append(
+                f"ação recorrente nos erros caros: {top['action']} "
+                f"({top['n']} de {total} decisões acima de 1bb)")
+
+    dominados = sorted(
+        k for k, v in por_pos.items()
+        if v['bb100'] <= _DOMINADO_MAX_BB100 and v['n'] >= _DOMINADO_MIN_N)
+
+    return {'matriz': matriz, 'padroes': padroes, 'dominados': dominados}
+
+
+def _format_study_patterns(report: dict | None) -> str:
+    """Blocos de mapa/padrões/dominado para o prompt. String vazia quando não há o que afirmar."""
+    p = extract_study_patterns(report)
+    if not p['matriz']:
+        return ''
+    buckets, linhas = [], []
+    for c in p['matriz']:
+        if c['bucket'] not in buckets:
+            buckets.append(c['bucket'])
+    buckets.sort(key=lambda b: int(''.join(ch for ch in b.split('-')[0] if ch.isdigit()) or 0))
+    grade = {(c['position'], c['bucket']): c for c in p['matriz']}
+    for pos in sorted({c['position'] for c in p['matriz']}):
+        celulas = []
+        for b in buckets:
+            c = grade.get((pos, b))
+            celulas.append(f"{b} {c['bb_100']} ({c['n']})" if c and c.get('bb_100') is not None
+                           else f"{b} —")
+        linhas.append(f"  {pos:<5s}: " + " · ".join(celulas))
+
+    out = ("\n**MAPA POSIÇÃO × PROFUNDIDADE (bb perdidos por 100 decisões, n entre parênteses):**\n"
+           + "\n".join(linhas)
+           + "\n  (célula com — = SEM AMOSTRA, não é acerto; não gere card sobre ela)\n")
+    if p['padroes']:
+        out += ("\n**PADRÕES JÁ EXTRAÍDOS EM CÓDIGO — use como diagnóstico, NÃO recalcule:**\n"
+                + "\n".join(f"  - {x}" for x in p['padroes']) + "\n")
+    if p['dominados']:
+        out += ("\n**JÁ DOMINADO — NÃO gere card; cite no resumo como consolidado:**\n"
+                + f"  - {', '.join(p['dominados'])} "
+                  f"(abaixo de {_DOMINADO_MAX_BB100} bb/100 com amostra suficiente)\n")
+    return out
+
+
 def _build_study_diagnosis_block(leaks: list, evolution: list, icm: dict,
                                  hero: str, player_stats: dict | None,
                                  leak_source: str, ev_leaks: list | None,
-                                 level_label: str | None = None) -> str:
+                                 level_label: str | None = None,
+                                 user_id: int | None = None) -> str:
     """Monta o bloco de diagnóstico (dados do jogador) compartilhado pelo prompt."""
     total_dec  = sum((e.get('decisions_count') or 0) for e in evolution) or 1
     avg_score  = sum((e.get('avg_score') or 0) * (e.get('decisions_count') or 0)
@@ -1461,6 +1593,15 @@ def _build_study_diagnosis_block(leaks: list, evolution: list, icm: dict,
         block += ("\n\n**Vazamentos por EV PONDERADO (já ranqueado em CÓDIGO — siga ESTA ordem; "
                   "leaks 'confiança baixa' podem ser variância de amostra pequena, NÃO priorize):**\n"
                   + ev_txt)
+    # Mapa/padrões/dominado — o mesmo do caminho não-agêntico. Os dois prompts precisam enxergar
+    # o mesmo jogador; se só um tivesse o eixo de profundidade, o plano mudaria de forma conforme
+    # a rota, que é o tipo de divergência impossível de depurar depois.
+    if user_id is not None:
+        try:
+            from database.repositories import get_evolution_report
+            block += _format_study_patterns(get_evolution_report(user_id))
+        except Exception:
+            pass
     return block
 
 
@@ -1688,7 +1829,8 @@ def generate_study_plan_agentic(leaks: list, evolution: list, icm: dict,
             level_label = None
 
     diagnosis = _build_study_diagnosis_block(
-        leaks, evolution, icm, hero, player_stats, leak_source, ev_leaks, level_label=level_label)
+        leaks, evolution, icm, hero, player_stats, leak_source, ev_leaks,
+        level_label=level_label, user_id=user_id)
 
     system = (
         "Você é um coach profissional de poker MTT com 15+ anos de experiência, "
