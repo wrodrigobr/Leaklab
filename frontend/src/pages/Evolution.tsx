@@ -224,10 +224,28 @@ function LinhaProva({ p, spotLabel }: {
   const melhorou = v.veredito === "melhorou";
   const piorou = v.veredito === "piorou";
   const acoes = (p.acoes ?? []).filter((a) => a.n > 0);
-  const naoFold = acoes.filter((a) => a.acao !== "fold");
-  const nAtivas = naoFold.reduce((s, a) => s + a.n, 0);
-  const errosAtivos = naoFold.reduce((s, a) => s + a.erros, 0);
   const ic = v.ic_diferenca;
+
+  // AGINDO × PASSANDO, e deliberadamente NÃO "trivial × real".
+  //
+  // Fold não é sinônimo de trivial: 4 dos 128 folds de UTG+1 eram mãos que deviam abrir — leak de
+  // aperto, erro de verdade. E foldar A5s numa profundidade limítrofe é decisão, não automatismo.
+  // Separar por pureza da estratégia (100% × mista) seria o critério certo, mas o banco só guarda
+  // `gto_label`, que é a faixa de frequência da AÇÃO JOGADA, não a pureza do spot.
+  //
+  // Então o corte é pelo que os dados sustentam: onde você AGIU (comissão) e onde PASSOU
+  // (omissão). São erros diferentes, pedem treino diferente, e nenhum dos dois é descartável.
+  const somar = (f: (a: { acao: string }) => boolean) =>
+    acoes.filter(f).reduce((s, a) => ({ n: s.n + a.n, erros: s.erros + a.erros }), { n: 0, erros: 0 });
+  const agindo = somar((a) => a.acao !== "fold");
+  const passando = somar((a) => a.acao === "fold");
+  const pct = (x: { n: number; erros: number }) => (x.n ? Math.round((x.erros / x.n) * 100) : null);
+  const pctAgindo = pct(agindo);
+
+  // Só destaca no cabeçalho quando a diferença muda a leitura — senão vira ruído em toda linha.
+  const destacaAgindo =
+    pctAgindo !== null && agindo.n >= 5 && v.taxa_depois != null &&
+    pctAgindo - v.taxa_depois >= 10;
 
   return (
     <details className="group rounded-xl bg-background/60 ring-1 ring-border">
@@ -245,6 +263,12 @@ function LinhaProva({ p, spotLabel }: {
             {v.taxa_depois}%
           </span>
           <span className="text-muted-foreground">({v.n_depois})</span>
+          {/* O número que muda a decisão do jogador, quando o agregado o esconde. */}
+          {destacaAgindo && (
+            <span className="rounded-full border border-amber-500/40 px-2 py-0.5 text-[10px] font-bold text-amber-400">
+              {t("proof.actingBadge", { pct: pctAgindo })}
+            </span>
+          )}
         </span>
       </summary>
 
@@ -256,6 +280,30 @@ function LinhaProva({ p, spotLabel }: {
             lo: ic?.[0], hi: ic?.[1],
           })}
         </p>
+
+        {/* Os dois números que importam, lado a lado e antes do detalhe. */}
+        {!!acoes.length && (agindo.n > 0 || passando.n > 0) && (
+          <div className="grid grid-cols-2 gap-2">
+            {([
+              ["acting", agindo, "text-amber-400"],
+              ["passing", passando, "text-muted-foreground"],
+            ] as const).map(([k, x, cor]) => (
+              <div key={k} className="rounded-lg bg-card/60 p-2.5 ring-1 ring-border">
+                <div className={cn("font-mono text-lg font-bold tabular-nums",
+                  x.erros === 0 ? "text-muted-foreground" : cor)}>
+                  {pct(x) ?? "—"}{pct(x) !== null && "%"}
+                </div>
+                <div className="text-[11px] leading-snug text-muted-foreground">
+                  {t(`proof.split.${k}`)}
+                </div>
+                <div className="font-mono text-[10px] text-muted-foreground">
+                  {x.erros}/{x.n}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+        <p className="text-muted-foreground">{t("proof.splitHint")}</p>
 
         {!!acoes.length && (
           <div>
@@ -277,14 +325,6 @@ function LinhaProva({ p, spotLabel }: {
                 );
               })}
             </div>
-            {nAtivas > 0 && (
-              <p className="mt-2 text-muted-foreground">
-                {t("proof.activeHint", {
-                  n: nAtivas, erros: errosAtivos,
-                  pct: Math.round((errosAtivos / nAtivas) * 100),
-                })}
-              </p>
-            )}
           </div>
         )}
       </div>

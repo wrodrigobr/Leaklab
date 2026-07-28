@@ -24,7 +24,6 @@
     "subtitle": "Aqui a medida é taxa de erro, não custo: é ela que distingue melhora de sorte.",
     "disclaimer": "O veredito só sai quando a diferença resiste ao intervalo de confiança, e o \"antes\" é corrigido para não inflar a melhora. É comparação entre dois períodos, não prova de que o treino causou a mudança.",
     "byAction": "Por ação, no período",
-    "activeHint": "Quando você AGE nesta situação (sem contar os folds): {{erros}} erros em {{n}} decisões, {{pct}}%. É aqui que mora o trabalho, porque fold correto é a maioria e não custa esforço.",
     "action": {
       "fold": "Fold",
       "raise": "Raise",
@@ -37,7 +36,13 @@
       "melhorou": "Você errava {{antes}}% (ajustado para {{ajustado}}% porque este leak entrou no plano por ser o pior de uma lista, e parte do resultado ruim era azar). Agora erra {{depois}}% em {{n}} decisões. O intervalo de 95% da queda é [{{lo}} · {{hi}}] e não toca o zero, então a diferença resiste ao acaso. Isso compara dois períodos: não prova que o treino causou a melhora.",
       "piorou": "Você errava {{antes}}% (ajustado para {{ajustado}}%) e agora erra {{depois}}% em {{n}} decisões. O intervalo de 95% é [{{lo}} · {{hi}}], inteiro do lado negativo, então a piora não é ruído. O leak foi reaberto para treino.",
       "sem_mudanca": "De {{antes}}% (ajustado para {{ajustado}}%) para {{depois}}% em {{n}} decisões. O intervalo de 95% é [{{lo}} · {{hi}}] e cruza o zero, então a diferença ainda não se distingue do acaso. Isso NÃO quer dizer que você não melhorou: quer dizer que estes dados ainda não permitem afirmar."
-    }
+    },
+    "actingBadge": "agindo: {{pct}}%",
+    "split": {
+      "acting": "quando você AGE (raise, call, shove)",
+      "passing": "quando você PASSA (fold)"
+    },
+    "splitHint": "São erros diferentes e pedem treino diferente: agindo você põe fichas no lugar errado; passando você deixa valor na mesa. Nenhum dos dois é descartável, e o fold ser a maioria não o torna irrelevante."
   },
   "history": {
     "title": "Relatórios anteriores",
