@@ -57,8 +57,11 @@ def run_audit(fix: bool = False) -> dict:
         if fix:
             ids = [r[0] for r in rows]
             conn.execute(
-                'UPDATE gto_nodes SET is_aggregate=1 WHERE id IN (%s)' % ','.join('?' * len(ids)),
-                ids
+                # Valor por PARÂMETRO: `SET is_aggregate=1` estoura no Postgres (coluna BOOLEAN
+                # recebendo integer) e passa no SQLite. Com `?` o driver converte — psycopg2 manda
+                # True como boolean, sqlite3 manda como 1.
+                'UPDATE gto_nodes SET is_aggregate=? WHERE id IN (%s)' % ','.join('?' * len(ids)),
+                [True] + list(ids)
             )
             log.info('[C1 FIX] %d nós marcados como is_aggregate=1', len(ids))
 
@@ -157,8 +160,8 @@ def run_audit(fix: bool = False) -> dict:
         log.warning('[C9] %d nós preflop agregados com gto_action=fold (potencial KK-bug)', cnt_c9)
         if fix:
             conn.execute(
-                "UPDATE gto_nodes SET is_aggregate=1 WHERE street='preflop' AND gto_action='fold' "
-                "AND (hero_hand IS NULL OR hero_hand='[]')"
+                "UPDATE gto_nodes SET is_aggregate=? WHERE street='preflop' AND gto_action='fold' "
+                "AND (hero_hand IS NULL OR hero_hand='[]')", (True,)
             )
             log.info('[C9 FIX] nós C9 marcados como is_aggregate=1')
 

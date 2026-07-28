@@ -177,7 +177,10 @@ def scan_patterns(scope, exclude_seed: bool = True) -> list[PatternFinding]:
             pko_cnt = conn.execute(
                 "SELECT COUNT(*) FROM decisions d "
                 "JOIN tournaments t ON t.id = d.tournament_id "
-                f"WHERE ({base_where}) AND COALESCE(t.is_pko,0)=1", base_params).fetchone()[0]
+                # `is_pko` é BOOLEAN no Postgres: `COALESCE(bool,0)=1` estoura lá e passa no
+                # SQLite. O idioma portável desta base é o CASE (ver `_category_adherence_filter`).
+                f"WHERE ({base_where}) AND (CASE WHEN t.is_pko THEN 1 ELSE 0 END) = 1",
+                base_params).fetchone()[0]
         except Exception:
             pko_cnt = 0
         out.append(PatternFinding(
