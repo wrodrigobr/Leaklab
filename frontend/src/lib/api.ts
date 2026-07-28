@@ -1475,6 +1475,11 @@ export interface TrainingProofItem {
   /** Erros por ação no período "depois". A taxa agregada dilui: em RFI ~84% das decisões são
    *  folds triviais, e um "0% de erro" pode esconder um limp que erra 3 de 3. */
   acoes?: { acao: string; n: number; erros: number }[];
+  /** Erros em spot PURO (estratégia ~100%, decisão automática) × MISTO (o GTO mistura ali).
+   *  Errar puro = não conhecer a range: grave e barato de consertar. Errar misto é defensável.
+   *  Ausente para decisões sem `gto_top_freq` — elas ficam fora dos dois lados, não viram "puro"
+   *  por omissão. */
+  pureza?: { puro?: { n: number; erros: number }; misto?: { n: number; erros: number } };
   reopened_at?: string | null;
   reopen_count?: number;
 }

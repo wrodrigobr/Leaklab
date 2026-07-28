@@ -605,6 +605,16 @@ def update_tournament_financials(user_id: int, tournament_id: str, *, buy_in=Non
         conn.close()
 
 
+def _purity(r: dict) -> tuple:
+    """Frequências (jogada, modal) da decisão. Delega ao engine — a definição de 'frequência' mora
+    lá, e ter uma segunda aqui é o erro que este projeto já pagou caro várias vezes."""
+    try:
+        from leaklab.decision_engine_v11 import strategy_purity
+        return strategy_purity(r)
+    except Exception:
+        return (None, None)
+
+
 def save_decisions(tournament_db_id: int, results: List[dict]):
     """Salva todas as decisões de uma análise. Limpa as antigas primeiro."""
     conn = get_conn()
@@ -666,6 +676,7 @@ def save_decisions(tournament_db_id: int, results: List[dict]):
                 gto.get('ev_loss_source'),
                 spot_ctx.get('nActiveOpponents'),   # oponentes vivos no momento da decisão (multiway-aware)
                 spot_ctx.get('heroRaiseToBb'),      # tamanho do PRÓPRIO raise do hero (bb)
+                *_purity(r),                        # (freq da ação jogada, freq da modal)
             ))
         conn.executemany("""
             INSERT INTO decisions
@@ -676,8 +687,9 @@ def save_decisions(tournament_db_id: int, results: List[dict]):
                level_sb, level_bb, level_num, note, is_3bet, showdown_result,
                pot_size, facing_bet, gto_label, gto_action, gto_depth_capped, estimated_equity,
                vs_position, preflop_raises_faced, hero_won_hand,
-               ev_loss_bb, ev_loss_source, n_active_opponents, raise_to_bb)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+               ev_loss_bb, ev_loss_source, n_active_opponents, raise_to_bb,
+               gto_played_freq, gto_top_freq)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
         """, rows)
         conn.commit()
     finally:
@@ -6317,6 +6329,43 @@ def _category_action_breakdown(conn, user_id, category_key, after=None) -> list:
             for r in _fetchall(conn, _adapt(sql), tuple(args))]
 
 
+def _category_purity_breakdown(conn, user_id, category_key, after=None) -> dict:
+    """Erros em spot PURO × MISTO — o diagnóstico que `gto_label` sozinho não dá.
+
+    `gto_top_freq` é a frequência da ação modal, ou seja, a pureza do spot. Acima de
+    `PURE_STRATEGY_MIN_FREQ` a decisão é automática: todo mundo folda 72o em UTG+1, e acertar isso
+    não mede habilidade. Abaixo, o GTO mistura, e a escolha é legítima decisão.
+
+    A leitura muda conforme o lado:
+      · erro em spot PURO  → você não conhece a range. Grave, e o mais barato de consertar.
+      · erro em spot MISTO → o próprio GTO mistura ali; a escolha é defensável.
+      · acerto em spot PURO → não mede nada, e é a maioria das decisões de RFI.
+
+    Decisão sem `gto_top_freq` (sem cobertura, ou anterior ao backfill) fica FORA dos dois lados —
+    não vira "puro" por omissão."""
+    filt = _category_adherence_filter(category_key)
+    if not filt:
+        return {}
+    from leaklab.decision_engine_v11 import PURE_STRATEGY_MIN_FREQ
+    where, params = filt
+    sql = ("SELECT CASE WHEN d.gto_top_freq >= ? THEN 'puro' ELSE 'misto' END AS faixa, "
+           "COUNT(*) AS n, "
+           "SUM(CASE WHEN d.gto_label NOT IN ('gto_correct','gto_mixed') THEN 1 ELSE 0 END) AS erros "
+           "FROM decisions d JOIN tournaments t ON t.id = d.tournament_id "
+           "WHERE t.user_id = ? AND d.gto_label IS NOT NULL AND d.gto_label <> '' "
+           "AND d.gto_top_freq IS NOT NULL "
+           "AND COALESCE(d.icm_pressure,'') <> ? AND " + where)
+    args = [PURE_STRATEGY_MIN_FREQ, user_id, _ICM_EXCLUDED] + params
+    if after is not None:
+        sql += " AND t.imported_at > ?"
+        args.append(after)
+    sql += " GROUP BY 1"
+    out = {}
+    for r in _fetchall(conn, _adapt(sql), tuple(args)):
+        out[r['faixa']] = {'n': int(r['n'] or 0), 'erros': int(r['erros'] or 0)}
+    return out
+
+
 def _category_error_counts(conn, user_id, category_key, before=None, after=None):
     """(erros, n) da família no jogo REAL, fora da zona de ICM.
 
@@ -6760,6 +6809,7 @@ def get_training_proof(user_id: int) -> list:
                 'validacao': validacao,
                 'familia': familia_medida(key),
                 'acoes': _category_action_breakdown(conn, user_id, key, after=pr['baseline_at']),
+                'pureza': _category_purity_breakdown(conn, user_id, key, after=pr['baseline_at']),
                 'reopened_at': reopened_at, 'reopen_count': reopen_count,
             })
         conn.commit()   # persiste baselines recém-congelados

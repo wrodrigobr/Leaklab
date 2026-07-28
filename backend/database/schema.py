@@ -1261,6 +1261,10 @@ def _run_migrations(conn):
             ("n_active_opponents", "ALTER TABLE decisions ADD COLUMN n_active_opponents INTEGER"),
             ("multiway_safe_verdict", "ALTER TABLE decisions ADD COLUMN multiway_safe_verdict TEXT"),  # #30 shadow
             ("raise_to_bb",      "ALTER TABLE decisions ADD COLUMN raise_to_bb      REAL"),   # sizing do hero
+            # Pureza da estratégia — espelha o bloco PG à prova de abort. `gto_top_freq` é o que
+            # separa decisão AUTOMÁTICA (modal ~100%) de decisão de VERDADE (estratégia mista).
+            ("gto_played_freq",  "ALTER TABLE decisions ADD COLUMN gto_played_freq  REAL"),
+            ("gto_top_freq",     "ALTER TABLE decisions ADD COLUMN gto_top_freq     REAL"),
         ]:
             if col not in dec_existing:
                 try: conn.execute(sql)
@@ -2154,6 +2158,14 @@ def _run_migrations(conn):
                 created_at    TIMESTAMP NOT NULL DEFAULT NOW(),
                 UNIQUE(user_id, day)
             )""",
+            # PUREZA da estratégia. `gto_label` só diz a FAIXA de frequência da ação JOGADA, então
+            # um fold `gto_correct` pode ser 100% (decisão automática, ninguém erra) ou 65%
+            # (decisão de verdade). Sem distinguir, a taxa de erro de RFI dilui: ~84% das decisões
+            # são folds óbvios e um "0% de erro" pode esconder um limp que erra 3 de 3.
+            #   gto_played_freq = frequência GTO da ação que o jogador escolheu
+            #   gto_top_freq    = frequência da ação modal → é ELA que mede a pureza do spot
+            "ALTER TABLE decisions ADD COLUMN IF NOT EXISTS gto_played_freq REAL",
+            "ALTER TABLE decisions ADD COLUMN IF NOT EXISTS gto_top_freq REAL",
             # Retratos datados do relatório de evolução. Guarda os NÚMEROS, não o HTML: o visual
             # pode melhorar sem invalidar relatório antigo, e comparar julho com agosto continua
             # válido porque compara dados, não páginas.

@@ -371,6 +371,44 @@ def ev_loss_fold_ceiling(equity, pot_bb, facing_bb, stack_bb):
         return None
 
 
+# Acima disto a estratégia é PURA: a decisão é automática e acertá-la não mede habilidade.
+# 0,90 e não 1,00 porque o solver raramente crava 100% — uma frequência de 0,97 com 3% de blefe
+# ainda é "todo mundo folda essa mão".
+PURE_STRATEGY_MIN_FREQ = 0.90
+
+
+def strategy_purity(result: dict) -> tuple:
+    """(freq da ação JOGADA, freq da ação MODAL) da decisão — ou (None, None) sem cobertura.
+
+    A segunda é o que importa e é o que não existia: `gto_label` só diz a faixa de frequência do
+    que o jogador fez, então um fold `gto_correct` pode ser 100% (decisão automática) ou 65%
+    (decisão de verdade). Sem separar as duas, a taxa de erro de RFI dilui — ~84% das decisões são
+    folds óbvios, e um "0% de erro" pode conviver com um limp que erra 3 de 3.
+
+    Fonte única: preflop lê o mapa de frequências da MÃO (`hand_freq`, do StrategyProvider) e
+    postflop lê o que `_enrich_gto` já calculou. Recalcular em outro lugar criaria a segunda
+    definição de "frequência" que este projeto já pagou caro para não ter."""
+    gto = result.get('gto') or {}
+    if gto.get('available'):
+        played = gto.get('played_freq')
+        top = gto.get('gto_freq')
+        if played is not None or top is not None:
+            return (float(played) if played is not None else None,
+                    float(top) if top is not None else None)
+
+    pf = result.get('preflop_gto') or {}
+    hf = pf.get('hand_freq') if pf.get('available') else None
+    if isinstance(hf, dict) and hf:
+        try:
+            from leaklab.strategy_provider import normalize_action, normalize_freq_map
+            mapa = normalize_freq_map(hf)
+            agida = normalize_action(result.get('actionTaken') or result.get('action_taken') or '')
+            return (float(mapa.get(agida, 0.0)), float(max(mapa.values())))
+        except Exception:
+            return (None, None)
+    return (None, None)
+
+
 def ev_loss_trustworthy(ev_loss_bb, stack_bb, ev_loss_source, *,
                         action=None, equity=None, pot_bb=None, facing_bb=None) -> bool:
     """O EV em bb pode ser usado como quantidade (ranking, soma, severidade)?

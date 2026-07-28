@@ -38,11 +38,13 @@
       "sem_mudanca": "De {{antes}}% (ajustado a {{ajustado}}%) a {{depois}}% en {{n}} decisiones. El intervalo del 95% es [{{lo}} · {{hi}}] y cruza el cero, así que la diferencia aún no se distingue del azar. Esto NO significa que no mejoraste: significa que estos datos aún no permiten afirmarlo."
     },
     "actingBadge": "actuando: {{pct}}%",
-    "split": {
-      "acting": "cuando ACTÚAS (raise, call, shove)",
-      "passing": "cuando PASAS (fold)"
+    "purity": {
+      "pure": "en spot PURO (el GTO juega ~siempre lo mismo)",
+      "mixed": "en spot MIXTO (el GTO mezcla ahí)"
     },
-    "splitHint": "Son errores distintos y piden entrenamiento distinto: actuando pones fichas en el lugar equivocado; pasando dejas valor en la mesa. Ninguno es descartable, y que el fold sea mayoría no lo vuelve irrelevante."
+    "purityHint": "Acertar un spot puro no mide habilidad: todo el mundo foldea 72o en posición inicial, y es la mayoría de tus decisiones. Lo que mide es el spot mixto, donde hay elección de verdad.",
+    "purityHintErrs": "Un error en spot puro es el más grave y el más barato de corregir: significa que el rango aún no está memorizado, no que la decisión fuera difícil. Empieza por ahí.",
+    "commission": "Actuando: {{agindo}}% ({{nAgindo}} decisiones) · Pasando: {{passando}}% ({{nPassando}})"
   },
   "history": {
     "title": "Informes anteriores",

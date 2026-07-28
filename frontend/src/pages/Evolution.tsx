@@ -242,6 +242,11 @@ function LinhaProva({ p, spotLabel }: {
   const pct = (x: { n: number; erros: number }) => (x.n ? Math.round((x.erros / x.n) * 100) : null);
   const pctAgindo = pct(agindo);
 
+  // PUREZA — o corte que muda a conduta. Vazio para decisões sem `gto_top_freq` (sem cobertura
+  // ou anteriores ao backfill): elas ficam fora dos dois lados em vez de virar "puro" por omissão.
+  const puro = p.pureza?.puro ?? { n: 0, erros: 0 };
+  const misto = p.pureza?.misto ?? { n: 0, erros: 0 };
+
   // Só destaca no cabeçalho quando a diferença muda a leitura — senão vira ruído em toda linha.
   const destacaAgindo =
     pctAgindo !== null && agindo.n >= 5 && v.taxa_depois != null &&
@@ -281,29 +286,43 @@ function LinhaProva({ p, spotLabel }: {
           })}
         </p>
 
-        {/* Os dois números que importam, lado a lado e antes do detalhe. */}
-        {!!acoes.length && (agindo.n > 0 || passando.n > 0) && (
+        {/* PUREZA primeiro: é o corte que muda a conduta.
+            Errar spot puro significa não conhecer a range — grave, e o mais barato de consertar.
+            Errar spot misto é defensável, porque o próprio GTO mistura ali. Acertar spot puro não
+            mede nada, e é a maioria das decisões de RFI. */}
+        {(puro.n > 0 || misto.n > 0) && (
           <div className="grid grid-cols-2 gap-2">
             {([
-              ["acting", agindo, "text-amber-400"],
-              ["passing", passando, "text-muted-foreground"],
+              ["pure", puro, "text-red-400"],
+              ["mixed", misto, "text-amber-400"],
             ] as const).map(([k, x, cor]) => (
               <div key={k} className="rounded-lg bg-card/60 p-2.5 ring-1 ring-border">
                 <div className={cn("font-mono text-lg font-bold tabular-nums",
-                  x.erros === 0 ? "text-muted-foreground" : cor)}>
-                  {pct(x) ?? "—"}{pct(x) !== null && "%"}
+                  x.n === 0 ? "text-muted-foreground/50"
+                    : x.erros === 0 ? "text-muted-foreground" : cor)}>
+                  {pct(x) === null ? "—" : `${pct(x)}%`}
                 </div>
                 <div className="text-[11px] leading-snug text-muted-foreground">
-                  {t(`proof.split.${k}`)}
+                  {t(`proof.purity.${k}`)}
                 </div>
-                <div className="font-mono text-[10px] text-muted-foreground">
-                  {x.erros}/{x.n}
-                </div>
+                <div className="font-mono text-[10px] text-muted-foreground">{x.erros}/{x.n}</div>
               </div>
             ))}
           </div>
         )}
-        <p className="text-muted-foreground">{t("proof.splitHint")}</p>
+        <p className="text-muted-foreground">
+          {t(puro.erros > 0 ? "proof.purityHintErrs" : "proof.purityHint")}
+        </p>
+
+        {/* Comissão × omissão — a segunda leitura, mais discreta. */}
+        {(agindo.n > 0 || passando.n > 0) && (
+          <p className="font-mono text-[10px] text-muted-foreground">
+            {t("proof.commission", {
+              agindo: pct(agindo) ?? "—", nAgindo: agindo.n,
+              passando: pct(passando) ?? "—", nPassando: passando.n,
+            })}
+          </p>
+        )}
 
         {!!acoes.length && (
           <div>
