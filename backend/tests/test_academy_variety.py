@@ -185,16 +185,23 @@ class TestAcademyVariety(unittest.TestCase):
         print("  ✔ blockers drill structure")
 
     def test_position_drill_structure(self):
-        """Treino da aula de Posição: order, best, range, realization."""
+        """Treino da aula de Posição, incluindo os exercícios de LARGURA de range.
+
+        150 sorteios, e não 40: com 10 tipos no rodízio, 40 dá ~14% de chance de algum não sair
+        e o teste piscar sem nada estar quebrado. Teste que falha sozinho ensina a ignorar falha.
+        """
         seen = set()
-        for _ in range(40):
+        for _ in range(150):
             q = acad.generate_position_question(user_id=1)
-            self.assertIn(q['type'], ('pos_order', 'pos_best', 'pos_range', 'pos_realization', 'pos_realization_gap', 'pos_coldcall', 'pos_steal_target', 'pos_oop_bluff'))
+            self.assertIn(q['type'], ('pos_order', 'pos_best', 'pos_range', 'pos_realization', 'pos_realization_gap', 'pos_coldcall', 'pos_steal_target', 'pos_oop_bluff',
+                                    'range_width', 'range_width_compare', 'range_width_conceito'))
             self.assertEqual(len(q['options']), 3)
             self.assertTrue(q['options'][q['correct_index']])
             self.assertTrue(q['question'] and q['explanation'] and q['mental_tip'])
             seen.add(q['type'])
-        self.assertEqual(seen, {'pos_order', 'pos_best', 'pos_range', 'pos_realization', 'pos_realization_gap', 'pos_coldcall', 'pos_steal_target', 'pos_oop_bluff'})
+        self.assertEqual(seen, {'pos_order', 'pos_best', 'pos_range', 'pos_realization',
+                                'pos_realization_gap', 'pos_coldcall', 'pos_steal_target',
+                                'pos_oop_bluff', 'range_width', 'range_width_compare'})
         print("  ✔ position drill structure")
 
     def test_showdown_drill_structure(self):
@@ -526,6 +533,80 @@ class TestAlternativasEmbaralhadas(unittest.TestCase):
                 self.assertEqual(len(set(q['options'])), len(q['options']),
                                  f'{aula}: alternativas duplicadas tornam o gabarito ambíguo')
         print("  ✔ embaralhamento preserva o gabarito")
+
+
+
+# ── Largura de range: a pergunta não pode ensinar número errado ───────────────────────────────
+#
+# Estes exercícios afirmam um NÚMERO ao jogador ("UTG abre cerca de 20%"). Diferente de uma
+# pergunta conceitual, aqui existe uma fonte de verdade — as ranges capturadas — e o exercício
+# tem que concordar com ela. Número inventado num exercício é pior que exercício nenhum: ele é
+# memorizado com confiança e depois aplicado na mesa.
+
+class TestLarguraDeRange(unittest.TestCase):
+
+    def _larguras(self):
+        from leaklab.academy_questions import _larguras_por_posicao
+        return _larguras_por_posicao(30.0)
+
+    def test_a_resposta_certa_bate_com_a_range_real(self):
+        """A alternativa correta tem que ser a largura REAL da posição citada na pergunta."""
+        from leaklab.academy_questions import range_width_question, _faixa
+        larguras = self._larguras()
+        if len(larguras) < 4:
+            self.skipTest('ranges capturadas indisponíveis neste ambiente')
+        for _ in range(40):
+            q = range_width_question()
+            if q['type'] != 'range_width':
+                continue
+            pos = next((p for p in larguras if q['question'].startswith(p + ' ')), None)
+            self.assertIsNotNone(pos, f'pergunta não cita posição conhecida: {q["question"][:60]}')
+            esperado = _faixa(larguras[pos])
+            self.assertEqual(q['options'][q['correct_index']], esperado,
+                             f'{pos}: exercício diz {q["options"][q["correct_index"]]}, '
+                             f'range real é {esperado}')
+
+    def test_alternativas_nao_colidem(self):
+        """Duas opções que arredondam para o mesmo valor tornam a pergunta impossível."""
+        from leaklab.academy_questions import range_width_question
+        if len(self._larguras()) < 4:
+            self.skipTest('ranges capturadas indisponíveis')
+        for _ in range(40):
+            q = range_width_question()
+            if q['type'] != 'range_width':
+                continue
+            self.assertEqual(len(set(q['options'])), len(q['options']),
+                             f'opções repetidas: {q["options"]}')
+
+    def test_comparacao_aponta_a_posicao_mais_larga(self):
+        from leaklab.academy_questions import range_width_compare_question
+        larguras = self._larguras()
+        if len(larguras) < 2:
+            self.skipTest('ranges capturadas indisponíveis')
+        for _ in range(40):
+            q = range_width_compare_question()
+            if q['type'] != 'range_width_compare':
+                continue
+            certa = q['options'][q['correct_index']]
+            a, b = q['question'].split('Quem abre MAIS mãos: ')[1].rstrip('?').split(' ou ')
+            mais_larga = a if larguras.get(a, 0) >= larguras.get(b, 0) else b
+            self.assertTrue(certa.startswith(mais_larga),
+                            f'{a} ({larguras.get(a)}) vs {b} ({larguras.get(b)}): '
+                            f'resposta certa diz "{certa[:30]}"')
+
+    def test_contagem_de_combos(self):
+        """Par = 6, suited = 4, offsuit = 12. Errar isso desloca todas as larguras."""
+        from leaklab.academy_questions import _combos_da_notacao
+        self.assertEqual(_combos_da_notacao('AA'), 6)
+        self.assertEqual(_combos_da_notacao('AKs'), 4)
+        self.assertEqual(_combos_da_notacao('AKo'), 12)
+        self.assertEqual(_combos_da_notacao('AA,AKs,AKo'), 22)
+        self.assertEqual(_combos_da_notacao(''), 0)
+        # 13 pares + 78 suited + 78 offsuit = 1326, o baralho inteiro
+        todas = ','.join(['AA'] * 13 + ['AKs'] * 78 + ['AKo'] * 78)
+        self.assertEqual(_combos_da_notacao(todas), 1326)
+
+
 
 if __name__ == '__main__':
     print("Academia LeakLab — Teste de Variedade de Exercícios")

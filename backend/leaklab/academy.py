@@ -1910,6 +1910,11 @@ def generate_position_question(user_id: int = None) -> dict:
         'pos_coldcall': _AQ.pos_coldcall,
         'pos_steal_target': _AQ.pos_steal_target,
         'pos_oop_bluff': _AQ.pos_oop_bluff,
+        # Largura de range: a pergunta que vem ANTES de olhar as próprias cartas. Os números saem
+        # das ranges REAIS capturadas, e os distratores são larguras reais de outras posições —
+        # então errar também ensina, porque toda alternativa é um valor que existe na mesa.
+        'range_width': _AQ.range_width_question,
+        'range_width_compare': _AQ.range_width_compare_question,
     }
     return _mapa[random.choice(list(_mapa))]()
 

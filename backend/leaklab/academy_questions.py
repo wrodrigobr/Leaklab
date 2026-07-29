@@ -820,3 +820,152 @@ def tm_ev_apply() -> dict:
         'em poker.',
         '**Uma mão não avalia uma decisão. EV é média, e média precisa de volume.**',
         xp=30)
+
+
+# ── Largura de range por posição ──────────────────────────────────────────────────────────────
+#
+# "Quantas mãos ele abre daqui?" — a pergunta que o jogador precisa se fazer ANTES de olhar as
+# próprias cartas, e que quase ninguém se faz. Sem estimar a largura do vilão não há como saber
+# se a sua mão é forte relativamente: força de mão é uma comparação, não um atributo.
+#
+# Os números NÃO são inventados: saem das ranges REAIS capturadas, contando combinações. E os
+# distratores são as larguras reais de OUTRAS posições, para que toda alternativa seja um valor
+# plausível e o erro ensine a estrutura de faixas:
+#
+#     UTG · UTG+1 · UTG+2 · LJ ....  20% a 27%   (as quatro primeiras são quase a mesma range)
+#     HJ · CO .....................  33% a 40%
+#     BTN · SB ....................  54% a 69%
+#
+# São TRÊS faixas, não oito listas — e é isso que o exercício constrói na cabeça do jogador.
+
+_LARGURA_ORDEM = ['UTG', 'UTG+1', 'UTG+2', 'LJ', 'HJ', 'CO', 'BTN', 'SB']
+
+
+def _combos_da_notacao(nota: str) -> int:
+    """Combinações reais de uma notação de range. Par = 6, suited = 4, offsuit = 12."""
+    total = 0
+    for h in (nota or '').split(','):
+        h = h.strip()
+        if not h:
+            continue
+        if len(h) == 2 and h[0] == h[1]:
+            total += 6
+        elif h.endswith('s'):
+            total += 4
+        elif h.endswith('o'):
+            total += 12
+        else:
+            total += 1
+    return total
+
+
+def _larguras_por_posicao(stack: float) -> dict:
+    """{posição: % das 1326 combinações} a partir das ranges capturadas. {} se indisponível."""
+    from leaklab.gto_solver import _captured_range_str
+    out = {}
+    for pos in _LARGURA_ORDEM:
+        try:
+            nota = _captured_range_str(pos, stack, 'rfi')
+        except Exception:
+            nota = None
+        if not nota:
+            continue
+        pct = _combos_da_notacao(nota) * 100.0 / 1326
+        if pct > 0:
+            out[pos] = pct
+    return out
+
+
+def _faixa(pct: float) -> str:
+    return f'cerca de {int(round(pct / 5.0) * 5)}%'
+
+
+def range_width_question() -> dict:
+    """Estimar a largura de abertura de uma posição. Dinâmica: números vêm das ranges reais.
+
+    Cai para uma versão conceitual se as ranges capturadas não estiverem disponíveis — melhor
+    uma pergunta a menos no rodízio do que uma pergunta com número inventado.
+    """
+    larguras = _larguras_por_posicao(30.0)
+    if len(larguras) < 4:
+        return _range_width_conceitual()
+
+    alvo = random.choice(list(larguras))
+    certa = larguras[alvo]
+
+    # Distratores = larguras REAIS de outras posições, separadas o bastante para a pergunta não
+    # virar cara ou coroa. Sem essa distância, duas alternativas arredondariam para o mesmo valor.
+    #
+    # DOIS distratores, não três: a aula inteira usa 3 alternativas, e há um teste estrutural que
+    # trava isso. Uniformidade de layout vale mais que o ponto extra de discriminação — e o guarda
+    # que reclamou estava certo em reclamar.
+    candidatos = sorted((p for p in larguras if p != alvo), key=lambda p: abs(larguras[p] - certa))
+    escolhidos, usados = [], [certa]
+    for p in reversed(candidatos):
+        if all(abs(larguras[p] - u) >= 8 for u in usados):
+            escolhidos.append(larguras[p])
+            usados.append(larguras[p])
+        if len(escolhidos) == 2:
+            break
+    while len(escolhidos) < 2:                       # mesa pequena: completa por deslocamento
+        extra = certa + (len(escolhidos) + 1) * 15
+        escolhidos.append(extra if extra < 95 else max(5.0, certa - (len(escolhidos) + 1) * 15))
+
+    opcoes = [_faixa(certa)] + [_faixa(v) for v in escolhidos]
+    return _q(
+        'range_width',
+        f'{alvo} é o primeiro a agir e abre. Sem olhar suas cartas: que fatia das mãos '
+        f'ele está abrindo daqui?',
+        opcoes, 0,
+        f'{alvo} abre {_faixa(certa)} das mãos. A conta que vale a pena guardar não é posição '
+        f'por posição, são TRÊS faixas: as quatro primeiras posições (UTG até LJ) abrem entre um '
+        f'quinto e um quarto das mãos e são quase iguais entre si; HJ e CO ficam perto de um '
+        f'terço; BTN e SB vão de metade a dois terços. Estimar a largura do vilão vem ANTES de '
+        f'olhar a própria mão, porque força de mão é comparação, não atributo.',
+        '**Três faixas, não oito listas: um quinto no início, um terço no meio, metade ou mais no fim.**',
+        xp=30)
+
+
+def _range_width_conceitual() -> dict:
+    """Sem as ranges capturadas, ensina a mesma estrutura sem afirmar número específico."""
+    return _q(
+        'range_width_conceito',
+        'Você está no BB. Comparando um open do UTG com um open do BTN, o que muda mais na sua '
+        'decisão de defender?',
+        ['A largura da range dele: o BTN abre mais que o dobro de mãos que o UTG',
+         'O tamanho do open, que costuma ser maior no BTN',
+         'A sua posição, que é a mesma nos dois casos'],
+        0,
+        'O UTG abre cerca de um quinto das mãos; o BTN, mais da metade. É a MESMA mão sua contra '
+        'dois conjuntos muito diferentes, e é por isso que você defende bem mais largo contra o '
+        'BTN. O tamanho do open muda pouco entre posições, e a sua posição é idêntica nos dois '
+        'casos: quem muda é ele.',
+        '**Contra quem abre largo, você defende largo. A range dele é o que muda.**',
+        xp=25)
+
+
+def range_width_compare_question() -> dict:
+    """Qual das duas posições abre mais? Treina a ORDEM, que é o que se reconstrói na mesa."""
+    larguras = _larguras_por_posicao(30.0)
+    if len(larguras) < 2:
+        return _range_width_conceitual()
+    pares = [(a, b) for a in larguras for b in larguras
+             if a != b and larguras[a] - larguras[b] >= 10]
+    if not pares:
+        return _range_width_conceitual()
+    largo, estreito = random.choice(pares)
+    dif = larguras[largo] - larguras[estreito]
+    return _q(
+        'range_width_compare',
+        f'Quem abre MAIS mãos: {largo} ou {estreito}?',
+        [f'{largo}, e a diferença é grande: cerca de {int(round(dif))} pontos percentuais',
+         f'{estreito}, porque age antes e precisa compensar',
+         'Praticamente iguais: a posição quase não muda a largura da abertura'],
+        0,
+        f'{largo} abre {_faixa(larguras[largo])} e {estreito} abre {_faixa(larguras[estreito])}. '
+        f'Quanto mais tarde você age, menos gente resta para te enfrentar, e mais largo dá para '
+        f'abrir. Não é preferência de estilo: é aritmética de quantos adversários faltam. Por isso '
+        f'a mesma mão que é fold numa posição é open na seguinte, e é justamente nessa borda que '
+        f'mora quase todo o erro de abertura.',
+        '**Abre-se mais tarde porque sobra menos gente para agir depois de você.**',
+        xp=25)
