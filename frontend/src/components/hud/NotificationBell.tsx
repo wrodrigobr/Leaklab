@@ -15,6 +15,11 @@ const TYPE_ICON: Record<string, string> = {
   coach_annotation: "✍️",
   admin_message: "📣",
   admin_broadcast: "📣",
+  // Cobrança e próximo passo (spec cobranca-proximo-passo.md): treino prescrito pós-upload,
+  // leak reaberto pelo jogo real, relatório de evolução pronto.
+  treino_prescrito: "🎯",
+  leak_reaberto: "🔄",
+  relatorio_gerado: "📈",
 };
 
 // categoria da mensagem do admin (só ícone/cor): info/aviso/novidade
@@ -109,6 +114,15 @@ export function NotificationBell({ renderActions, extraUnread = 0 }: Notificatio
       case "student_message":return t("notifications.studentMessage");
       case "achievement":    return t("notifications.achievement", { title: p.title });
       case "coach_annotation": return t("notifications.coachAnnotation");
+      // O título do passo vem do servidor (PT, como as missões); o rótulo em volta é i18n.
+      case "treino_prescrito": {
+        const passo = (n.payload as { passo?: { titulo?: string } }).passo;
+        return passo?.titulo
+          ? t("notifications.treinoPrescrito", { titulo: passo.titulo })
+          : t("notifications.treinoPrescritoGenerico");
+      }
+      case "leak_reaberto":   return t("notifications.leakReaberto");
+      case "relatorio_gerado": return t("notifications.relatorioGerado");
       case "admin_message":
       case "admin_broadcast": return p.title || p.body || t("notifications.adminMessage");
       default:               return n.type;

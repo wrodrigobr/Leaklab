@@ -1575,6 +1575,11 @@ def _run_migrations(conn):
         """)
         conn.execute("CREATE INDEX IF NOT EXISTS idx_range_card_due "
                      "ON range_card_srs(user_id, due_at)")
+        # Origem da tentativa (espelha a lista SAVEPOINT do PG)
+        pa_cols = {r[1] for r in conn.execute('PRAGMA table_info(progression_attempts)').fetchall()}
+        if 'origem' not in pa_cols:
+            try: conn.execute("ALTER TABLE progression_attempts ADD COLUMN origem TEXT")
+            except Exception: pass
         # Fase 3 (trilho lento): reabertura por regressão no jogo real (SQLite)
         proof_existing = {r[1] for r in conn.execute('PRAGMA table_info(training_proof)').fetchall()}
         for col, sql in [
@@ -2069,6 +2074,10 @@ def _run_migrations(conn):
                 UNIQUE (user_id, card_key)
             )""",
             "CREATE INDEX IF NOT EXISTS idx_range_card_due ON range_card_srs(user_id, due_at)",
+            # Origem da tentativa (dashboard/sino/email/pos_upload/espontanea) — métrica 1 da
+            # spec de cobrança: % de sessões iniciadas por trigger. Na lista SAVEPOINT pela
+            # mesma razão da tabela acima: try/except no meio da transação não é abort-proof.
+            "ALTER TABLE progression_attempts ADD COLUMN IF NOT EXISTS origem TEXT",
             # Comissão por PAGAMENTO (accrual): 1 linha por cobrança comissionável.
             """CREATE TABLE IF NOT EXISTS coach_commissions (
                 id            SERIAL PRIMARY KEY,

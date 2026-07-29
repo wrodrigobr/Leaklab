@@ -448,6 +448,9 @@ export const tournaments = {
   analyze: (content: string, filename?: string) =>
     request<{
       tournament_id: string;
+      /** A prescrição pós-upload (spec cobranca-proximo-passo.md §3): a dor e o remédio na
+       *  mesma tela. Sempre presente quando há passo; a notificação é que só sai se mudou. */
+      proximo_passo?: ProximoPasso | null;
       tournament_db_id?: number;
       hero?: string;
       total_hands?: number;
@@ -1202,6 +1205,29 @@ export const gtoPreflop = {
     }),
 };
 
+// ── Próximo passo (spec cobranca-proximo-passo.md): a prescrição única de treino ──
+// Toda superfície (dashboard, sino, resposta do upload) renderiza ESTE shape. Recalcular
+// precedência no cliente é proibido pela spec: superfícies que decidem sozinhas divergem.
+export interface ProximoPasso {
+  tipo: "leak_reaberto" | "revisao_vencida" | "missao" | "carta_nova" | "desafio_diario";
+  titulo: string;
+  porque: string;
+  custo_min: number;
+  cta_url: string;
+  ev_loss_bb: number | null;
+  n_maos: number | null;
+}
+export interface ProximoPassoResposta {
+  passo: ProximoPasso | null;      // null = em dia; a UI mostra descanso, nunca inventa urgência
+  fila: ProximoPasso[];            // os 2 seguintes, para contexto
+  meta_semanal: { prometidas: number; feitas: number } | null;   // Fase 3
+}
+
+export const proximoPasso = {
+  get: (origem: string) =>
+    request<ProximoPassoResposta>(`/player/proximo-passo?origem=${encodeURIComponent(origem)}`),
+};
+
 // ── Leak Trainer (drill adaptativo de spots GTO canônicos mirado nos leaks do jogador) ──
 export interface LeakTrainerSpot {
   scenario?: "rfi" | "vs_rfi" | "vs_3bet";
@@ -1340,10 +1366,11 @@ export const leaktrainer = {
 
   options: () => request<LeakTrainerOptions>("/player/leaktrainer/options"),
 
-  grade: (spot: LeakTrainerSpot, action: string) =>
+  /** `origem` = o trigger que originou a sessão (métrica 1 da spec de cobrança). */
+  grade: (spot: LeakTrainerSpot, action: string, origem?: string) =>
     request<LeakTrainerGrade>("/player/leaktrainer/grade", {
       method: "POST",
-      body: JSON.stringify({ spot, action, tz_offset: tzOffsetMinutes() }),
+      body: JSON.stringify({ spot, action, origem, tz_offset: tzOffsetMinutes() }),
     }),
   /** Correção da marcação de família. Chamada SEPARADA porque a resposta é um conjunto de mãos,
    *  não uma ação — e o retorno tem outro formato. Espremer os dois na mesma função obrigaria

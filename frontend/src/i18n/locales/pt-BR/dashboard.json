@@ -628,5 +628,16 @@
       "noite": "Noite"
     },
     "insight": "Você joga {{pct}}% pior em {{worst}} do que em {{best}}."
+  },
+  "proximoPasso": {
+    "emDia": "Treino em dia. Suba torneios novos: são eles que provam a correção na mesa.",
+    "cta": "Começar · {{min}} min",
+    "eyebrow": {
+      "leak_reaberto": "Leak reaberto",
+      "revisao_vencida": "Revisão vencida",
+      "missao": "Seu próximo passo",
+      "carta_nova": "Memorizar range",
+      "desafio_diario": "Desafio do dia"
+    }
   }
 }

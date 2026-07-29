@@ -855,6 +855,16 @@ def _analyze_impl():
         return jsonify({'error': 'Conteúdo ausente'}), 400
     upload_filename = _extract_upload_filename(request)   # ACR: buy-in vem daqui
 
+    # A prescrição ANTES do upload: é o termo de comparação do gate anti-ruído da notificação
+    # pós-análise (spec cobranca-proximo-passo.md §3 — só notifica se o diagnóstico MUDOU).
+    # Lida antes do parse porque depois do processamento o currículo já é o novo.
+    _missao_antes = None
+    try:
+        from leaklab.proximo_passo import montar_proximo_passo as _mpp
+        _missao_antes = ((_mpp(g.user_id).get('passo') or {}).get('titulo'))
+    except Exception:
+        pass
+
     try:
         hands = parse_pokerstars_file_from_text(content)
     except Exception as e:
@@ -1081,9 +1091,29 @@ def _analyze_impl():
             for d in hand['decisions']:
                 d['explanation'] = explanations.get(_key(d), '')
 
+    # ── O contrato pós-upload (spec §3): a prescrição nasce AQUI, na tela do prejuízo ──
+    # O bloco vai SEMPRE (a tela de resultado mostra a dor e o remédio juntos); a NOTIFICAÇÃO
+    # só quando o diagnóstico mudou — evento, não calendário. `missao_antes` foi lida no início
+    # do processamento; o get_training_proof que roda dentro de missions_with_state é também o
+    # detector de reabertura, então "mudou" cobre leak novo no topo E reaberto.
+    _passo_pos_upload = None
+    try:
+        from leaklab.proximo_passo import montar_proximo_passo
+        _pp = montar_proximo_passo(g.user_id, origem='pos_upload')
+        _passo_pos_upload = _pp.get('passo')
+        _missao_depois = (_passo_pos_upload or {}).get('titulo')
+        if _passo_pos_upload and _missao_depois != _missao_antes:
+            from database.repositories import create_notification
+            create_notification(g.user_id, 'treino_prescrito',
+                                {'passo': _passo_pos_upload},
+                                _passo_pos_upload.get('cta_url'))
+    except Exception:
+        log.exception('proximo passo pós-upload falhou (user=%s)', g.user_id)
+
     import uuid
     return jsonify({
         'session_id':       str(uuid.uuid4()),
+        'proximo_passo':    _passo_pos_upload,
         'tournament_db_id': t_db_id,
         'hero':             hero,
         'tournament_id':    tournament_id,
@@ -3040,6 +3070,17 @@ def progression_next():
     return jsonify({'spot': spot, 'contrast_note': nota})
 
 
+@app.route('/player/proximo-passo', methods=['GET'])
+@require_auth
+def player_proximo_passo():
+    """A prescrição única de treino (spec cobranca-proximo-passo.md §2). Dashboard, sino e
+    resposta do upload consomem ISTO — recalcular precedência no cliente é proibido pela spec,
+    porque superfícies que decidem sozinhas divergem."""
+    from leaklab.proximo_passo import montar_proximo_passo
+    origem = (request.args.get('origem') or 'api').strip()[:24]
+    return jsonify(montar_proximo_passo(g.user_id, origem=origem))
+
+
 @app.route('/player/leaktrainer/options', methods=['GET'])
 @require_auth
 def leaktrainer_options():
@@ -3123,8 +3164,11 @@ def leaktrainer_grade():
         _cat = spot.get('mission_key') or spot.get('category')
         if _cat:
             from database.repositories import record_progression_attempt
+            # `origem` = por onde o aluno CHEGOU (dashboard/sino/email/pos_upload/espontanea).
+            # É a métrica 1 da spec de cobrança: sem ela, "o trigger funciona?" vira opinião.
             record_progression_attempt(g.user_id, _cat, stratum_of(result),
-                                       spot.get('block_kind'), bool(result.get('is_correct')))
+                                       spot.get('block_kind'), bool(result.get('is_correct')),
+                                       origem=(body.get('origem') or None))
     except Exception:
         app.logger.exception("camada de progressão falhou (user=%s)", g.user_id)
         result['concept'] = None
@@ -9856,6 +9900,14 @@ def _evolution_report_worker_loop():
             feitos = gerar_relatorios_pendentes()
             for uid, motivo, rid in feitos:
                 log.info("relatório de evolução gerado: user_id=%s motivo=%s id=%s", uid, motivo, rid)
+                # O relatório era gerado EM SILÊNCIO — o desperdício mais óbvio que a spec de
+                # cobrança mediu: o sistema produzia a notícia e não contava a ninguém.
+                try:
+                    from database.repositories import create_notification
+                    create_notification(uid, 'relatorio_gerado',
+                                        {'motivo': motivo, 'report_id': rid}, '/evolucao')
+                except Exception:
+                    log.exception('sino de relatório falhou (user=%s)', uid)
         except Exception:
             log.exception("evolution report worker loop error")
         time.sleep(_REPORT_SWEEP_SEC)

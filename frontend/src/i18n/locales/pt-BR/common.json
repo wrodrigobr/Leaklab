@@ -37,7 +37,11 @@
     "adminMessage": "Mensagem da equipe",
     "clearAll": "Limpar todas",
     "close": "Fechar",
-    "dismiss": "Dispensar"
+    "dismiss": "Dispensar",
+    "treinoPrescrito": "Sua análise apontou o treino: {{titulo}}",
+    "treinoPrescritoGenerico": "Sua análise apontou um treino novo",
+    "leakReaberto": "Um leak que você dominava voltou nos seus torneios. A sessão de correção te espera.",
+    "relatorioGerado": "Seu relatório de evolução está pronto"
   },
   "actions": {
     "import": "Importar",

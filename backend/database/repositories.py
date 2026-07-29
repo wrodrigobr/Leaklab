@@ -5245,7 +5245,8 @@ def get_open_sizing_rows(user_id: int, days: int = 90, last_n: int | None = None
 
 
 def record_progression_attempt(user_id: int, category_key: str, stratum: str,
-                               block_kind: str | None, correct: bool) -> None:
+                               block_kind: str | None, correct: bool,
+                               origem: str | None = None) -> None:
     """Loga uma tentativa COM ESTRATO (append-only) — substrato do gate de domínio.
     Silencioso em erro: um log de progresso nunca pode derrubar a correção do spot."""
     if not (user_id and category_key and stratum):
@@ -5253,9 +5254,10 @@ def record_progression_attempt(user_id: int, category_key: str, stratum: str,
     conn = get_conn()
     try:
         conn.execute(_adapt(
-            "INSERT INTO progression_attempts (user_id, category_key, stratum, block_kind, correct) "
-            "VALUES (?,?,?,?,?)"),
-            (user_id, category_key, stratum, block_kind or None, 1 if correct else 0))
+            "INSERT INTO progression_attempts (user_id, category_key, stratum, block_kind, correct, origem) "
+            "VALUES (?,?,?,?,?,?)"),
+            (user_id, category_key, stratum, block_kind or None, 1 if correct else 0,
+             (origem or None)))
         conn.commit()
     except Exception:
         # Não derruba a correção do spot (o jogador não pode perder a resposta por causa do
@@ -6797,6 +6799,15 @@ def get_training_proof(user_id: int) -> list:
                         (_now_str(), _now_str(), user_id, key))
                     reopened_at, reopen_count = _now_str(), reopen_count + 1
                     log.info("leak reaberto por regressão no jogo (user=%s cat=%s)", user_id, key)
+                    # O evento MAIS urgente do produto (precedência 1 do próximo passo) não
+                    # pode existir só num log que ninguém lê. Vira sino aqui, no único ponto
+                    # onde a reabertura acontece — produzir noutro lugar dessincronizaria.
+                    try:
+                        create_notification(user_id, 'leak_reaberto',
+                                            {'category_key': key},
+                                            '/leak-trainer?origem=sino')
+                    except Exception:
+                        log.exception('sino de leak reaberto falhou (user=%s)', user_id)
             except Exception:
                 log.exception("validate_leak falhou (user=%s cat=%s)", user_id, key)
             out.append({
@@ -10469,3 +10480,63 @@ def resumo_das_cartas_de_range(user_id: int) -> dict:
         'vencidas':  int((row['vencidas'] if row else 0) or 0),
         'dominadas': int((row['dominadas'] if row else 0) or 0),
     }
+
+
+def contar_revisoes_vencidas(user_id: int) -> dict:
+    """Quantas revisões de SRS venceram (drills do Ghost Table + cartas de range), e a mais
+    antiga. Alimenta a precedência 2 do próximo passo — o número que transforma o "Volta em
+    3 dias" de promessa em cobrança.
+
+    Drill vencido = a ÚLTIMA linha de drill da decisão tem next_drill_at no passado (mesmo
+    padrão de "última por decisão" do get_drill_spots — reimplementar diferente aqui faria as
+    duas superfícies discordarem sobre o que está vencido).
+    """
+    from datetime import datetime
+    agora = datetime.utcnow().isoformat()
+    conn = get_conn()
+    try:
+        row = _fetchone(conn, _adapt("""
+            SELECT COUNT(*) AS n, MIN(ds1.next_drill_at) AS antiga
+              FROM drill_sessions ds1
+             WHERE ds1.user_id = ?
+               AND ds1.drilled_at = (
+                   SELECT MAX(ds2.drilled_at) FROM drill_sessions ds2
+                    WHERE ds2.decision_id = ds1.decision_id AND ds2.user_id = ds1.user_id)
+               AND ds1.next_drill_at IS NOT NULL AND ds1.next_drill_at <= ?
+        """), (user_id, agora))
+        drills, antiga_d = (int(row['n'] or 0), row['antiga']) if row else (0, None)
+
+        row = _fetchone(conn, _adapt(
+            "SELECT COUNT(*) AS n, MIN(due_at) AS antiga FROM range_card_srs "
+            "WHERE user_id = ? AND due_at IS NOT NULL AND due_at <= ?"), (user_id, agora))
+        ranges, antiga_r = (int(row['n'] or 0), row['antiga']) if row else (0, None)
+    finally:
+        conn.close()
+
+    def _iso(v):
+        return v.isoformat() if hasattr(v, 'isoformat') else v
+    antigas = [a for a in (_iso(antiga_d), _iso(antiga_r)) if a]
+    return {'drills': drills, 'ranges': ranges,
+            'mais_antiga': (min(antigas) if antigas else None)}
+
+
+def listar_reaberturas(user_id: int) -> list:
+    """As linhas CRUAS de reabertura — para o próximo passo, que precisa delas na hora.
+
+    Não reusa get_training_proof de propósito: aquela função só lista categoria com torneio
+    novo pós-baseline, e a reabertura MOVE o baseline para agora — o leak recém-reaberto
+    ficava invisível até o upload seguinte, que é exatamente quando o passo mais precisa
+    dele. Pego forjando uma reabertura num banco descartável: o endpoint devolveu "missao".
+    """
+    conn = get_conn()
+    try:
+        rows = conn.execute(_adapt(
+            "SELECT category_key, reopened_at, reopen_count FROM training_proof "
+            "WHERE user_id = ? AND reopened_at IS NOT NULL AND COALESCE(reopen_count,0) > 0"),
+            (user_id,)).fetchall()
+    finally:
+        conn.close()
+    def _iso(v):
+        return v.isoformat() if hasattr(v, 'isoformat') else v
+    return [{'category_key': r['category_key'], 'reopened_at': _iso(r['reopened_at']),
+             'reopen_count': int(r['reopen_count'] or 0)} for r in rows]

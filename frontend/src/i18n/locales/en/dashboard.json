@@ -628,5 +628,16 @@
       "noite": "Evening"
     },
     "insight": "You play {{pct}}% worse at {{worst}} than at {{best}}."
+  },
+  "proximoPasso": {
+    "emDia": "Training up to date. Upload new tournaments: they are what proves the fix at the table.",
+    "cta": "Start · {{min}} min",
+    "eyebrow": {
+      "leak_reaberto": "Leak reopened",
+      "revisao_vencida": "Review due",
+      "missao": "Your next step",
+      "carta_nova": "Memorise range",
+      "desafio_diario": "Daily challenge"
+    }
   }
 }

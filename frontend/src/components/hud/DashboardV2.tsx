@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { TrendingDown, Target, Zap, Brain, Loader2 } from "lucide-react";
 import { HudHeader } from "@/components/hud/HudHeader";
 import { EmptyDashboard } from "@/components/hud/EmptyDashboard";
+import { ProximoPassoBanner } from "@/components/hud/ProximoPassoBanner";
 import { PlayerStatsCard } from "@/components/hud/PlayerStatsCard";
 import { EvSummary, GtoQualityData, GtoPositionData, progression } from "@/lib/api";
 import { useMasonryRows } from "@/hooks/useMasonryRows";
@@ -100,6 +101,10 @@ export function DashboardV2({ onUpload, evSummary, hasData, renderCard, gtoQuali
           <EmptyDashboard onComplete={onUpload} />
         ) : (
         <>
+
+        {/* A prescrição lidera a primeira dobra (spec cobranca-proximo-passo.md §4). Usuário
+            sem upload não a vê: o EmptyDashboard acima já faz o CTA certo (subir torneio). */}
+        <ProximoPassoBanner />
 
         {/* ── Alerta de drift cognitivo (mesma detecção do clássico, visual V2) ── */}
         {drift?.detected && (

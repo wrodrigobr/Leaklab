@@ -37,7 +37,11 @@
     "adminMessage": "Message from the team",
     "clearAll": "Clear all",
     "close": "Close",
-    "dismiss": "Dismiss"
+    "dismiss": "Dismiss",
+    "treinoPrescrito": "Your analysis points to training: {{titulo}}",
+    "treinoPrescritoGenerico": "Your analysis points to new training",
+    "leakReaberto": "A leak you had mastered came back in your tournaments. The correction session is waiting.",
+    "relatorioGerado": "Your evolution report is ready"
   },
   "actions": {
     "import": "Import",

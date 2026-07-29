@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import confetti from "canvas-confetti";
 import { ArrowRight, CheckCircle2, Loader2, RefreshCw, XCircle, Target, Maximize2, Minimize2, LayoutGrid, Flag, RotateCw, Trophy, Flame, Home, Lock } from "lucide-react";
 import { HudHeader } from "@/components/hud/HudHeader";
@@ -157,6 +157,12 @@ export default function LeakTrainer() {
   const doneRef = useRef<Record<string, number>>({});   // spots cumpridos por fatia
   const [contrastNote, setContrastNote] = useState<string | null>(null);
   const stateRef = useRef<LeakTrainerState>(loadState());
+  // Por onde o aluno CHEGOU (dashboard/sino/email/pos_upload). Lida UMA vez e congelada em
+  // ref: o parâmetro some da URL na primeira navegação interna, mas a sessão inteira pertence
+  // ao trigger que a originou — é a métrica 1 da spec de cobrança.
+  const [urlParams] = useSearchParams();
+  const origemRef = useRef<string>(urlParams.get("origem") || "espontanea");
+  const focoInicialRef = useRef<string | null>(urlParams.get("foco"));
   const rootRef = useRef<HTMLDivElement>(null);
   const [isFull, setIsFull] = useState(false);
 
@@ -267,6 +273,15 @@ export default function LeakTrainer() {
   const leakOptLabel = (l: { scenario: string; position: string; vs_position: string }): string =>
     spotLabel(l, { stack: false });
 
+  // Deep link do próximo passo (?foco=fund:range_grid): quem veio de um CTA cai DIRETO no
+  // exercício prescrito. Obrigar a reencontrar o botão dentro de "Treinar outra coisa" seria
+  // cobrar e esconder o caixa. Roda uma vez; sem foco na URL, o fluxo é o de sempre.
+  useEffect(() => {
+    const f = focoInicialRef.current;
+    if (f) { focoInicialRef.current = null; startFocus(f); }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Não auto-inicia: a lição começa pela tela de "intro" (botão Começar → loadNext).
   // No protocolo o tamanho é o do PLANO (a duração que o jogador escolheu); fora dele, a lição fixa.
   const sessionSize   = plan?.total ?? LESSON_SIZE;
@@ -277,7 +292,7 @@ export default function LeakTrainer() {
     if (!spot || phase !== "question" || submitting) return;
     setSelected(action); setSubmitting(true);
     try {
-      const g = await leaktrainer.grade(spot, action);
+      const g = await leaktrainer.grade(spot, action, origemRef.current);
       setGrade(g);
       setTotalDone((n) => n + 1);
       // Protocolo: marca a fatia cumprida pro próximo /next respeitar a composição 60/25/15
