@@ -10342,3 +10342,130 @@ def get_opponent_profiles(tournament_id: int, min_hands: int = 0) -> list:
         } for r in rows]
     finally:
         conn.close()
+
+
+# ── SRS das cartas de memorização de range ──────────────────────────────────────
+#
+# A carta é (posição × família × profundidade) — não é uma decisão do jogador, então não cabe em
+# `drill_sessions`, que é chaveada por `decision_id`.
+#
+# Os intervalos são os MESMOS do drill (`_SRS_INTERVALS`), reusados e não recopiados: dois
+# calendários de revisão no mesmo produto seria o jogador revisando em ritmos que não conversam,
+# e a segunda cópia envelheceria sozinha.
+
+
+def cartas_de_range_do_usuario(user_id: int, limite: int = 200) -> list:
+    """Estado de SRS das cartas que o jogador JÁ viu, das mais atrasadas para as menos.
+
+    Carta nunca vista não tem linha aqui. Quem decide entre servir carta nova e servir revisão é
+    o chamador, porque isso é didática e não banco.
+    """
+    conn = get_conn()
+    try:
+        rows = conn.execute(_adapt("""
+            SELECT card_key, position, familia, stack_bb, interval_days,
+                   due_at, streak, seen, last_ok
+              FROM range_card_srs
+             WHERE user_id = ?
+             ORDER BY due_at ASC
+             LIMIT ?
+        """), (user_id, limite)).fetchall()
+    finally:
+        conn.close()
+    return [{
+        'card_key':      r['card_key'],
+        'position':      r['position'],
+        'familia':       r['familia'],
+        'stack_bb':      r['stack_bb'],
+        'interval_days': r['interval_days'],
+        'due_at':        _iso_ou_texto(r['due_at']),
+        'streak':        r['streak'],
+        'seen':          r['seen'],
+        'last_ok':       r['last_ok'],
+    } for r in rows]
+
+
+def _iso_ou_texto(v):
+    """PG devolve datetime, SQLite devolve texto. O chamador compara strings ISO."""
+    return v.isoformat() if hasattr(v, 'isoformat') else v
+
+
+def registrar_carta_de_range(user_id: int, card_key: str, position: str, familia: str,
+                             stack_bb: int, acertou: bool) -> dict:
+    """Grava o resultado e reagenda. Acerto avança um degrau; erro volta para o primeiro.
+
+    Erro RESETA em vez de recuar um degrau porque range é memorização: quem errou a fronteira do
+    LJ não a sabe "um pouco menos", não a sabe. Espaçar mesmo assim é agendar o esquecimento.
+    """
+    from datetime import datetime, timedelta
+    agora = datetime.utcnow()
+    conn = get_conn()
+    try:
+        row = conn.execute(_adapt("""
+            SELECT interval_days, streak, seen FROM range_card_srs
+             WHERE user_id = ? AND card_key = ?
+        """), (user_id, card_key)).fetchone()
+
+        atual  = int((row['interval_days'] if row else 0) or 0)
+        streak = int((row['streak'] if row else 0) or 0)
+        seen   = int((row['seen'] if row else 0) or 0)
+
+        if acertou:
+            if atual in _SRS_INTERVALS:
+                i = _SRS_INTERVALS.index(atual)
+                novo = _SRS_INTERVALS[min(i + 1, len(_SRS_INTERVALS) - 1)]
+            else:
+                novo = _SRS_INTERVALS[0]
+            streak += 1
+        else:
+            novo, streak = _SRS_INTERVALS[0], 0
+
+        due = (agora + timedelta(days=novo)).isoformat()
+        if row:
+            conn.execute(_adapt("""
+                UPDATE range_card_srs
+                   SET interval_days = ?, due_at = ?, streak = ?, seen = ?,
+                       last_ok = ?, updated_at = ?
+                 WHERE user_id = ? AND card_key = ?
+            """), (novo, due, streak, seen + 1, 1 if acertou else 0,
+                   agora.isoformat(), user_id, card_key))
+        else:
+            conn.execute(_adapt("""
+                INSERT INTO range_card_srs
+                       (user_id, card_key, position, familia, stack_bb,
+                        interval_days, due_at, streak, seen, last_ok, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)
+            """), (user_id, card_key, position, familia, int(stack_bb),
+                   novo, due, streak, 1 if acertou else 0, agora.isoformat()))
+        conn.commit()
+    finally:
+        conn.close()
+    return {'card_key': card_key, 'interval_days': novo, 'due_at': due,
+            'streak': streak, 'seen': seen + 1}
+
+
+def resumo_das_cartas_de_range(user_id: int) -> dict:
+    """Quantas cartas o jogador domina, quantas venceram e quantas já viu.
+
+    `dominadas` = chegou ao último degrau do SRS. É o número que dá sentido ao esforço: sem ele o
+    jogador marca grades para sempre sem saber se está indo a algum lugar.
+    """
+    from datetime import datetime
+    agora = datetime.utcnow().isoformat()
+    conn = get_conn()
+    try:
+        # Alias em TODO agregado: sem ele a leitura vira posicional e quebra em PG.
+        row = conn.execute(_adapt("""
+            SELECT COUNT(*)                                            AS vistas,
+                   SUM(CASE WHEN due_at <= ? THEN 1 ELSE 0 END)        AS vencidas,
+                   SUM(CASE WHEN interval_days >= ? THEN 1 ELSE 0 END) AS dominadas
+              FROM range_card_srs
+             WHERE user_id = ?
+        """), (agora, _SRS_INTERVALS[-1], user_id)).fetchone()
+    finally:
+        conn.close()
+    return {
+        'vistas':    int((row['vistas'] if row else 0) or 0),
+        'vencidas':  int((row['vencidas'] if row else 0) or 0),
+        'dominadas': int((row['dominadas'] if row else 0) or 0),
+    }

@@ -23,7 +23,7 @@ import { ResourceList } from "@/components/study/ResourceList";
 import { buildStudyPlan } from "@/components/study/planBuilder";
 import type { StudyPlan } from "@/components/study/types";
 import { cn } from "@/lib/utils";
-import { study, coaches, metrics, progression, PublicCoach } from "@/lib/api";
+import { study, coaches, metrics, progression, PublicCoach, type MemorizacaoSugestao } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { useSpotLabel } from "@/lib/spotLabel";
 import { toast } from "sonner";
@@ -162,6 +162,9 @@ const StudyPlanPage = () => {
   const [errorMsg, setErrorMsg]   = useState("");
   const [generating, setGenerating] = useState(false);
   const [coachManaged, setCoachManaged] = useState(false);
+  // Treino interno sugerido pelos leaks reais. Vem do servidor, nunca do texto do plano: o texto
+  // é gerado por LLM e um destino clicável não pode depender de o modelo ter escrito o nome certo.
+  const [treinoSugerido, setTreinoSugerido] = useState<MemorizacaoSugestao | null>(null);
   const [planSource, setPlanSource]   = useState<'gto' | 'heuristic' | 'empty' | null>(null);
   const hasCoach = !!user?.coach_id;
   const [activeLeakId, setActiveLeakId] = useState<string>("");
@@ -204,6 +207,7 @@ const StudyPlanPage = () => {
         return;
       }
       setCoachManaged(data.coach_managed ?? false);
+      setTreinoSugerido(data.treino_sugerido ?? null);
       setPlanSource(data.source ?? null);
       const built = buildStudyPlan(data);
       setPlan(built);
@@ -397,6 +401,31 @@ const StudyPlanPage = () => {
           </div>
 
           {/* Tab: Diagnóstico */}
+          {/* Treino que o plano APONTA, e não só descreve.
+              O plano diz "revise suas ranges de abertura" desde sempre; quem lê isso e não sabe
+              por onde começar não começa. Aqui o conselho vira um destino, mirado na posição que
+              os torneios dele mostram sangrando. */}
+          {activeTab === "diagnosis" && treinoSugerido && (
+            <Link to="/leak-trainer"
+              className="mb-6 flex items-center gap-3 rounded-xl border border-amber-500/30 bg-amber-500/[0.05] p-4 transition-colors hover:border-amber-500/60">
+              <Target className="size-5 shrink-0 text-amber-400" aria-hidden />
+              <div className="min-w-0 flex-1">
+                <p className="font-mono text-[10px] uppercase tracking-widest text-amber-400">
+                  {t("memo.eyebrow", "Treino recomendado")}
+                </p>
+                <p className="mt-0.5 text-[13px] leading-snug text-foreground">
+                  {treinoSugerido.de_quem === "vilao"
+                    ? t("memo.villain", { pos: treinoSugerido.position, bb: treinoSugerido.ev_loss_bb,
+                        hands: treinoSugerido.hands,
+                        defaultValue: `Memorize a range de abertura do ${treinoSugerido.position}: você perdeu ${treinoSugerido.ev_loss_bb}bb enfrentando aberturas dele, em ${treinoSugerido.hands} mãos.` })
+                    : t("memo.hero", { pos: treinoSugerido.position, bb: treinoSugerido.ev_loss_bb,
+                        hands: treinoSugerido.hands,
+                        defaultValue: `Memorize a sua range de abertura do ${treinoSugerido.position}: você perdeu ${treinoSugerido.ev_loss_bb}bb abrindo daí, em ${treinoSugerido.hands} mãos.` })}
+                </p>
+              </div>
+            </Link>
+          )}
+
           {activeTab === "diagnosis" && (
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
               <section className="lg:col-span-8 space-y-6">

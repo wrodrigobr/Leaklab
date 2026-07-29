@@ -667,33 +667,127 @@ _FAMILIAS = [
     ('broadway_off', 'Broadways offsuit',  ['KQo', 'KJo', 'KTo', 'QJo', 'QTo', 'JTo']),
 ]
 
+# ── Os três estratos, por FREQUÊNCIA ────────────────────────────────────────────────
+#
+# A primeira versão deste exercício era binária: `hand_in_open_range`, cujo corte é
+# MIN_PREMISE_OPEN_FREQ = 0.05. Serve ao propósito para o qual foi escrita (validar a PREMISSA de
+# um spot vs_3bet: "o vilão podia ter aberto isto?") e é péssima como gabarito.
+#
+# Medido no UTG a 50bb, família conectores: quem marcava exatamente as mãos que o GTO abre >=90%
+# das vezes (JTs, T9s) era REPROVADO, e o exercício cobrava 98s/87s/76s/65s/54s como faltantes.
+# 54s o UTG abre 12% das vezes. Ou seja: o exercício reprovava a resposta certa e ensinava uma
+# range mais larga que a real — num produto cujo veredito é de 3 níveis justamente para não
+# chamar frequência mista de erro.
+#
+# Agora são três faixas, a mesma régua do resto do sistema (`_discriminates` usa 10% como "ação
+# claramente errada"; `_LIMIAR_MISTO`, 90% como "resposta clara"):
+#
+#   núcleo    >= 90%  — tem que marcar. Não marcar é erro de verdade.
+#   fronteira 10–90%  — o GTO MISTURA. Marcar ou não, ambas passam; a frequência aparece no
+#                       feedback, e é ali que está o aprendizado.
+#   lixo      < 10%   — não pode marcar. Marcar é erro de verdade.
+#
+# A fronteira em palavras deixou de ser "a mão mais fraca que entra com >=5%" e passou a ser a
+# mais fraca do NÚCLEO. É uma afirmação que o jogador pode levar para a mesa sem ressalva.
+POSICOES_DE_ABERTURA = ['UTG', 'UTG+1', 'UTG+2', 'LJ', 'HJ', 'CO', 'BTN', 'SB']
+
+# Profundidades treinadas. A range de abertura MUDA com a profundidade (a 20bb o BTN abre bem
+# mais que a 75bb), entao o mesmo par posicao/familia em stacks diferentes sao cartas DISTINTAS
+# de memorizacao, nao repeticao.
+STACKS_DE_ABERTURA = [20, 30, 50, 75]
+
+
+def card_key_de_range(pos: str, familia: str, stack) -> str:
+    """Identidade da carta no SRS. Fonte unica: o gerador, o agendador e a correcao tem que
+    concordar em o que e a mesma carta, senao o intervalo e gravado numa chave e procurado
+    noutra (o mesmo defeito que custou tres meses no hash de board)."""
+    return 'grid:%s:%s:%d' % (pos, familia, int(float(stack)))
+
+
+_FREQ_NUCLEO = 0.90
+_FREQ_LIXO   = 0.10
+
+_ACOES_DE_ENTRADA = ('raise', 'allin')
+
 
 def familias_de_range() -> list[dict]:
     """Catálogo das famílias treináveis (para o front listar, se precisar)."""
     return [{'key': k, 'label': lab, 'hands': hs} for k, lab, hs in _FAMILIAS]
 
 
-def generate_range_grid_spot(rng: random.Random | None = None,
-                             position: str | None = None,
-                             stack: int = 50) -> dict | None:
-    """Spot de marcação: uma família, uma posição, e quais mãos dela entram no open.
+def _freq_de_entrada(pos: str, hand: str, stack: float):
+    """Com que frequência o GTO coloca esta mão na range. None = sem cobertura (a mão sai do
+    exercício em vez de virar um 'fora' falso)."""
+    from leaklab.preflop_gto_ranges import analyze_preflop
+    from leaklab.strategy_provider import normalize_freq_map
+    try:
+        res = analyze_preflop(position=pos, hero_hand_type=hand, stack_bb=float(stack),
+                              action_taken='raise', facing_size=0.0, vs_position='')
+    except Exception:
+        return None
+    if not res.get('available'):
+        return None
+    hf = normalize_freq_map(res.get('hand_freq'))
+    return sum(hf.get(a, 0.0) for a in _ACOES_DE_ENTRADA)
+
+
+def _estratos(pos: str, hands: list, stack: float) -> dict:
+    """Classifica a família inteira. O gerador e o corretor usam a MESMA função — senão o
+    gerador escolhe a família por um critério e o corretor cobra por outro."""
+    nucleo, fronteira, lixo, freqs = [], [], [], {}
+    for h in hands:
+        f = _freq_de_entrada(pos, h, stack)
+        if f is None:
+            continue
+        freqs[h] = round(f, 3)
+        if f >= _FREQ_NUCLEO:
+            nucleo.append(h)
+        elif f >= _FREQ_LIXO:
+            fronteira.append(h)
+        else:
+            lixo.append(h)
+    return {'nucleo': nucleo, 'fronteira': fronteira, 'lixo': lixo, 'freqs': freqs}
+
+
+def generate_range_grid_spot(rng=None,
+                             position: str = None,
+                             stack: int = 50,
+                             familia: str = None):
+    """Spot de marcação: uma família, uma posição, e quais mãos dela entram na range.
 
     A resposta NÃO viaja no spot — o cliente marca e o servidor corrige, igual ao resto do
     trainer. Mandar o gabarito junto tornaria o exercício decorativo.
     """
     rng = rng or random
-    pos = position or rng.choice(['UTG', 'UTG+1', 'UTG+2', 'LJ', 'HJ', 'CO', 'BTN'])
-    key, label, hands = rng.choice(_FAMILIAS)
+    pos = position or rng.choice(POSICOES_DE_ABERTURA)
 
-    # Só serve a família se a fronteira estiver DENTRO dela. Família 100% dentro ou 100% fora não
-    # ensina fronteira nenhuma: vira "marque tudo" ou "marque nada", e o jogador acerta sem saber.
-    dentro = [h for h in hands if _abre(pos, h, float(stack))]
-    if not dentro or len(dentro) == len(hands):
+    escolhidas = [f for f in _FAMILIAS if f[0] == familia] if familia else list(_FAMILIAS)
+    if not escolhidas:
+        return None
+    key, label, hands = rng.choice(escolhidas)
+
+    # Só serve a família se a fronteira estiver DENTRO dela. Família toda no núcleo ou toda no
+    # lixo não ensina fronteira nenhuma: vira "marque tudo" ou "marque nada", e o jogador acerta
+    # sem saber. A régua é o NÚCLEO, a mesma que a correção cobra.
+    est = _estratos(pos, hands, float(stack))
+    if not est['freqs'] or not est['nucleo'] or len(est['nucleo']) == len(est['freqs']):
+        return None
+
+    # E a família não pode ser MAJORITARIAMENTE mista. Visto na tela: um exercício saiu com 6 de
+    # 9 mãos misturando (JTs 57%, T9s 59%, 98s 83%, 87s 87%, 65s 66%, 32s 55%) — sobravam 3
+    # células com resposta e o feedback virava um muro de percentuais. Não há fronteira a
+    # memorizar onde quase tudo é "tanto faz".
+    #
+    # A régua é só "mistas não dominam", e não um mínimo de núcleo E de lixo: medido, a regra
+    # dura deixaria 81 cartas contra 122, e apagaria SB e BTN quase inteiros — posições cuja
+    # range o jogador precisa saber tanto quanto as outras.
+    if len(est['fronteira']) > len(est['nucleo']) + len(est['lixo']):
         return None
 
     return {
         'kind': 'range_grid',
-        'category': f'grid:{pos}:{key}:{stack}',
+        'category': card_key_de_range(pos, key, stack),
+        'card_key': card_key_de_range(pos, key, stack),
         'position': pos,
         'stack_bb': stack,
         'familia': key,
@@ -703,45 +797,190 @@ def generate_range_grid_spot(rng: random.Random | None = None,
     }
 
 
-def _abre(pos: str, hand: str, stack: float) -> bool:
-    try:
-        return bool(hand_in_open_range(pos, hand, stack))
-    except Exception:
-        return False
-
-
 def grade_range_grid_spot(spot: dict, marcadas: list) -> dict:
-    """Corrige a marcação. Reporta o que faltou e o que sobrou, não uma porcentagem.
+    """Corrige a marcação. Reporta o que faltou, o que sobrou e onde o GTO mistura.
 
-    Porcentagem de células certas é enganosa aqui: numa família em que a posição abre 5 de 12,
-    quem não marca nada 'acerta' 58%. O jogador otimizaria para não responder.
+    NÃO é porcentagem de células certas: numa família em que a posição abre 5 de 12, quem não
+    marca nada 'acerta' 58% — o número premiaria não responder.
+
+    E NÃO cobra a fronteira. Mão que o GTO abre 37% das vezes não tem resposta certa; exigi-la
+    seria punir a jogada defensável, que é o erro que este produto evita em toda superfície.
     """
-    pos   = spot.get('position') or ''
-    stack = float(spot.get('stack_bb') or 50)
-    hands = list(spot.get('hands') or [])
+    pos      = spot.get('position') or ''
+    stack    = float(spot.get('stack_bb') or 50)
+    hands    = list(spot.get('hands') or [])
     if not pos or not hands:
         return {'erro': 'spot invalido'}
 
-    certas   = {h for h in hands if _abre(pos, h, stack)}
+    est      = _estratos(pos, hands, stack)
+    nucleo   = set(est['nucleo'])
+    lixo     = set(est['lixo'])
     marcadas = {h for h in (marcadas or []) if h in hands}
 
-    faltaram = sorted(certas - marcadas, key=hands.index)
-    sobraram = sorted(marcadas - certas, key=hands.index)
+    faltaram = sorted(nucleo - marcadas, key=hands.index)        # núcleo esquecido = erro
+    sobraram = sorted(marcadas & lixo,    key=hands.index)       # lixo marcado     = erro
     acertou  = not faltaram and not sobraram
 
-    # A fronteira em palavras: a mão MAIS FRACA que ainda entra. É o fato que se memoriza, e o
-    # que o jogador leva desta pergunta mesmo quando erra.
+    # A fronteira em palavras: a mão mais fraca que o GTO joga SEMPRE. É o fato âncora, e agora
+    # é uma afirmação sem ressalva — antes apontava uma mão de 12% de frequência.
     fronteira = None
     for h in reversed(hands):
-        if h in certas:
+        if h in nucleo:
             fronteira = h
             break
 
+    # As mistas viajam com a frequência: é o que transforma "errei" em "aqui não há resposta".
+    mistas = [{'hand': h, 'freq': est['freqs'].get(h, 0.0)} for h in est['fronteira']]
+
     return {
         'acertou': acertou,
-        'certas': sorted(certas, key=hands.index),
+        'certas': sorted(nucleo, key=hands.index),
         'faltaram': faltaram,
         'sobraram': sobraram,
+        'mistas': mistas,
         'fronteira': fronteira,
         'xp': spot.get('xp_value', 30) if acertou else 0,
     }
+
+
+# ── Agendamento SRS das cartas de range ────────────────────────────────────────
+#
+# Range é MEMORIZAÇÃO, e memorização sem reencontro programado é só exposição. Sorteio solto,
+# que era o comportamento anterior, tem dois defeitos que se somam: repete o que o jogador já
+# sabe (a chance de cair na mesma carta é igual para a dominada e para a que ele nunca viu) e
+# nunca traz de volta o que ele errou na hora em que estaria esquecendo.
+#
+# A ordem de serviço é, nesta prioridade:
+#   1. VENCIDAS — a mais atrasada primeiro. É o único jeito de o esquecimento ser combatido.
+#   2. NOVAS — começando pelas do alvo (a posição em que os torneios dele mostram erro).
+#   3. A mais próxima de vencer — para uma sessão longa não terminar em beco quando o jogador
+#      já viu tudo e nada venceu ainda.
+#
+# Dentro da mesma sessão nada se repete: `servidas` chega do cliente. Não dá para deduzir isso do
+# banco, porque a carta só ganha linha DEPOIS de corrigida — e servir de novo a mesma carta que
+# ainda está na tela seria o defeito mais óbvio possível.
+
+
+def universo_de_cartas() -> list:
+    """Todas as combinações (posição × família × profundidade) que o exercício pode servir.
+
+    Não filtra por ensinabilidade aqui: isso custa uma consulta de range por mão, e o filtro real
+    acontece ao montar a carta (família sem fronteira devolve None e a próxima é tentada).
+    """
+    return [(pos, fam, st)
+            for pos in POSICOES_DE_ABERTURA
+            for fam, _lab, _hs in _FAMILIAS
+            for st in STACKS_DE_ABERTURA]
+
+
+def proximo_card_de_range(user_id: int, servidas=None, alvo: str = None,
+                          rng=None) -> dict:
+    """A próxima carta de memorização, pelo SRS. None se nenhuma combinação for ensinável."""
+    from datetime import datetime
+    from database.repositories import cartas_de_range_do_usuario
+
+    rng      = rng or random
+    servidas = set(servidas or [])
+    agora    = datetime.utcnow().isoformat()
+
+    estado   = {c['card_key']: c for c in cartas_de_range_do_usuario(user_id)}
+    universo = [c for c in universo_de_cartas()
+                if card_key_de_range(c[0], c[1], c[2]) not in servidas]
+    if not universo:
+        return None
+
+    def chave(c):
+        return card_key_de_range(c[0], c[1], c[2])
+
+    vencidas = [c for c in universo
+                if chave(c) in estado and (estado[chave(c)]['due_at'] or '') <= agora]
+    vencidas.sort(key=lambda c: estado[chave(c)]['due_at'] or '')
+
+    novas = [c for c in universo if chave(c) not in estado]
+    # Alvo primeiro: se os torneios dele mostram erro abrindo do LJ, a carta nova a servir é do
+    # LJ, e não uma sorteada entre 192. O resto embaralha para não virar sempre a mesma ordem.
+    rng.shuffle(novas)
+    if alvo:
+        novas.sort(key=lambda c: 0 if c[0] == alvo else 1)
+
+    resto = [c for c in universo if chave(c) in estado and c not in vencidas]
+    resto.sort(key=lambda c: estado[chave(c)]['due_at'] or '')
+
+    for pos, fam, st in (vencidas + novas + resto):
+        spot = generate_range_grid_spot(position=pos, familia=fam, stack=st)
+        if spot:
+            info = estado.get(card_key_de_range(pos, fam, st))
+            spot['srs'] = {
+                'revisao':  bool(info),
+                'seen':     (info or {}).get('seen', 0),
+                'interval': (info or {}).get('interval_days', 0),
+            }
+            return spot
+    return None
+
+
+# ── Quando o produto SUGERE memorizar range ────────────────────────────────────
+#
+# O exercício estava escondido atrás de "Treinar outra coisa", o que o deixava disponível para
+# quem já sabe que precisa dele — exatamente quem menos precisa. Quem erra a abertura do LJ não
+# sabe que o problema é não ter a range na cabeça; ele acha que errou aquela mão.
+#
+# SÓ sugere para leak PREFLOP, e a mira depende do cenário:
+#   rfi     → a posição DELE. Ele abre errado do LJ, então o que falta é a range do LJ.
+#   vs_rfi  → a posição do VILÃO. Ele defende mal contra o open do LJ; o que falta é saber O QUE
+#             O LJ ABRE. Sugerir a range dele próprio aí seria a ferramenta errada.
+#
+# Não sugere por leak postflop: marcar a range de abertura não conserta um c-bet ruim, e sugerir
+# ali seria ruído com cara de conselho.
+_MIN_MAOS_PARA_SUGERIR = 6
+
+
+def sugerir_memorizacao_de_range(user_id: int, days: int = 90) -> dict:
+    """O jogador precisa memorizar alguma range? Devolve o alvo, ou None.
+
+    A amostra mínima existe porque duas mãos ruins não são um buraco de conhecimento; são duas
+    mãos ruins. Sugerir estudo a partir de ruído gasta a credibilidade da sugestão.
+    """
+    try:
+        cats = build_curriculum(user_id, days=days)
+    except Exception:
+        return None
+
+    candidatos = []
+    for c in cats:
+        if c.get('kind') == 'postflop':
+            continue
+        cen = c.get('scenario')
+        if cen == 'rfi':
+            alvo = c.get('position') or ''
+        elif cen == 'vs_rfi':
+            alvo = c.get('vs_position') or ''      # a range que falta é a de QUEM ABRIU
+        else:
+            continue
+        if not alvo or alvo not in POSICOES_DE_ABERTURA:
+            continue
+        if int(c.get('n') or 0) < _MIN_MAOS_PARA_SUGERIR or float(c.get('ev_loss_bb') or 0) <= 0:
+            continue
+        candidatos.append((float(c.get('ev_loss_bb') or 0), alvo, cen, c))
+
+    if not candidatos:
+        return None
+    ev, alvo, cen, cat = max(candidatos, key=lambda x: x[0])
+    return {
+        'position':   alvo,
+        'scenario':   cen,
+        'ev_loss_bb': round(ev, 2),
+        'hands':      int(cat.get('n') or 0),
+        'stack_bb':   int(_snap_para_treino(cat.get('stack_bb'))),
+        # De quem é a range: muda a frase na tela ("você abre" vs "o LJ abre").
+        'de_quem':    'heroi' if cen == 'rfi' else 'vilao',
+    }
+
+
+def _snap_para_treino(stack) -> int:
+    """A profundidade medida cai na mais próxima das treinadas — a carta tem que existir."""
+    try:
+        s = float(stack or 50)
+    except (TypeError, ValueError):
+        s = 50.0
+    return min(STACKS_DE_ABERTURA, key=lambda x: abs(x - s))

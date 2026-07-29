@@ -116,8 +116,14 @@ export function RangeFamilyDrill({ spot, onDone, rodape }: {
     }
   };
 
+  // As mistas têm COR PRÓPRIA. Pintar de verde ou vermelho seria mentir nas duas direções: o
+  // GTO abre 87s 31% das vezes, então nem marcar nem deixar em branco é erro, e nenhuma das
+  // duas é "a resposta". É a única célula em que o número, e não o veredito, é o ensinamento.
+  const freqMista = new Map((grade?.mistas ?? []).map((m) => [m.hand, m.freq]));
+
   const estadoDaCelula = (h: string) => {
     if (!grade) return marcadas.has(h) ? "marcada" : "livre";
+    if (freqMista.has(h)) return "mista";
     const certa = grade.certas.includes(h);
     if (certa && marcadas.has(h)) return "acerto";
     if (certa) return "faltou";
@@ -183,6 +189,7 @@ export function RangeFamilyDrill({ spot, onDone, rodape }: {
                     e === "acerto"  && "border-emerald-500/70 bg-emerald-500/20 text-emerald-200",
                     e === "faltou"  && "border-dashed border-emerald-500/70 bg-emerald-500/5 text-emerald-400/80",
                     e === "sobrou"  && "border-red-500/70 bg-red-500/20 text-red-200",
+                    e === "mista"   && "border-sky-500/60 bg-sky-500/15 text-sky-200",
                   )}>
                   {rotulo}
                   {sufixo && <span className="ml-[0.5px] text-[0.72em] opacity-70">{sufixo}</span>}
@@ -205,8 +212,11 @@ export function RangeFamilyDrill({ spot, onDone, rodape }: {
 
       <aside className="w-full shrink-0 space-y-4 md:w-[240px] lg:w-[260px]">
         <div className="text-center md:text-left">
-          <p className="font-mono text-[10px] uppercase tracking-widest text-amber-400">
-            {t("leakTrainer.grid.eyebrow")}
+          <p className={cn("font-mono text-[10px] uppercase tracking-widest",
+            spot.srs?.revisao ? "text-sky-400" : "text-amber-400")}>
+            {spot.srs?.revisao
+              ? t("leakTrainer.grid.reviewEyebrow", "Revisão")
+              : t("leakTrainer.grid.eyebrow")}
           </p>
           <h2 className="mt-1.5 font-heading text-[15px] font-bold leading-snug text-foreground">
             {t("leakTrainer.grid.question", {
@@ -256,6 +266,21 @@ export function RangeFamilyDrill({ spot, onDone, rodape }: {
               total: totalFamilia.combos,
             })}
           </p>
+          {/* Onde o GTO mistura, dito em número. Sem isto o jogador vê células azuis e conclui
+              que errou — quando o fato a aprender é justamente que ali não há resposta única. */}
+          {grade.mistas?.length > 0 && (
+            <p className="rounded-lg border border-sky-500/25 bg-sky-500/[0.06] px-2.5 py-2 text-center text-[11px] leading-snug text-sky-200/90">
+              {t("leakTrainer.grid.mixedNote", { n: grade.mistas.length,
+                  maos: grade.mistas.map((m) => `${m.hand} ${Math.round(m.freq * 100)}%`).join(" · "),
+                  defaultValue: `Em azul, o GTO mistura: ${grade.mistas.map((m) => `${m.hand} ${Math.round(m.freq * 100)}%`).join(" · ")}. Marcar ou não, as duas passam.` })}
+            </p>
+          )}
+          {grade.srs && (
+            <p className="text-center font-mono text-[10px] text-muted-foreground/70">
+              {t("leakTrainer.grid.nextReview", { dias: grade.srs.interval_days,
+                  defaultValue: `Volta em ${grade.srs.interval_days} dias` })}
+            </p>
+          )}
           {rodape}
         </div>
       )}

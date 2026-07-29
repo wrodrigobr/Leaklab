@@ -207,10 +207,17 @@ def test_correcao_reporta_o_que_faltou_e_o_que_sobrou():
     assert not g['acertou'] and g['faltaram'] == [certas[-1]] and not g['sobraram']
     assert g['xp'] == 0
 
-    # sobrando uma
-    if fora:
-        g = grade_range_grid_spot(sp, certas + [fora[0]])
-        assert not g['acertou'] and g['sobraram'] == [fora[0]] and not g['faltaram']
+    # sobrando uma — e tem que ser do LIXO, não da fronteira.
+    #
+    # Este teste dizia `fora[0]`, ou seja, "qualquer mão que não seja obrigatória é erro marcar".
+    # Isso era verdade quando a correção era binária, e virou falso quando ela passou a ter três
+    # estratos: mão que o GTO abre 37% das vezes não tem resposta certa, e cobrá-la seria punir
+    # jogada defensável. O teste estava travando o defeito no lugar.
+    from leaklab.leak_trainer import _estratos
+    lixo = _estratos(sp['position'], sp['hands'], float(sp['stack_bb']))['lixo']
+    if lixo:
+        g = grade_range_grid_spot(sp, certas + [lixo[0]])
+        assert not g['acertou'] and g['sobraram'] == [lixo[0]] and not g['faltaram']
     print('OK  test_correcao_reporta_o_que_faltou_e_o_que_sobrou')
 
 

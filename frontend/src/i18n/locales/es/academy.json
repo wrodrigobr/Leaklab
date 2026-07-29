@@ -266,7 +266,20 @@
       "almost": "Casi.",
       "boundary": "{{pos}} abre {{familia}} hasta {{hand}} — son {{combos}} combinaciones de las {{total}} de la familia, o {{pct}}% de todas las manos. La frontera es lo que vale memorizar: el centro lo aciertas sin pensar.",
       "dragHint": "Clic y arrastra para marcar varias de una vez",
-      "onlyFamily": "Solo las celdas de {{familia}} están activas · s = suited (arriba de la diagonal), o = offsuit"
+      "onlyFamily": "Solo las celdas de {{familia}} están activas · s = suited (arriba de la diagonal), o = offsuit",
+      "reviewEyebrow": "Repaso",
+      "mixedNote": "En azul, el GTO mezcla: {{maos}}. Marcar o no, las dos valen.",
+      "nextReview": "Vuelve en {{dias}} días"
+    },
+    "memo": {
+      "eyebrow": "Memorizar rango",
+      "dueEyebrow": "{{n}} rangos para repasar",
+      "dueWhy": "Ya estudiaste estos y llegó el momento de reencontrarlos. Lo que fija es el reencuentro en el momento justo, no repetirlos seguidos.",
+      "whyVillain": "Perdiste {{bb}}bb enfrentando aperturas del {{pos}}, en {{hands}} manos. Para decidir contra él hay que ver qué abre el {{pos}}.",
+      "whyHero": "Perdiste {{bb}}bb abriendo del {{pos}}, en {{hands}} manos. Marcar hasta dónde llega el rango es lo que fija la frontera.",
+      "cta": "Memorizar el rango del {{pos}}",
+      "ctaReview": "Repasar rangos",
+      "score": "{{vistas}} estudiados · {{dominadas}} en la memoria"
     }
   },
   "trainAch": {

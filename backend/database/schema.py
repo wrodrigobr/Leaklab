@@ -711,6 +711,34 @@ def _run_migrations(conn):
             conn.execute("CREATE INDEX IF NOT EXISTS idx_prog_attempt_user_cat "
                          "ON progression_attempts(user_id, category_key, id)")
         except Exception: pass
+        # SRS das cartas de MEMORIZACAO de range (posicao x familia x profundidade). Bloco
+        # abort-proof proprio: em PG uma falha aqui aborta a transacao e derruba as migracoes
+        # seguintes, caladas.
+        #
+        # Tabela propria, e nao `drill_sessions`: aquela e chaveada por `decision_id`, uma decisao
+        # REAL de uma mao do jogador. A carta de range nao e uma decisao, e uma posicao/familia/
+        # profundidade — nao tem decision_id e nunca teria.
+        try:
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS range_card_srs (
+                    id             SERIAL PRIMARY KEY,
+                    user_id        INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                    card_key       TEXT    NOT NULL,
+                    position       TEXT    NOT NULL,
+                    familia        TEXT    NOT NULL,
+                    stack_bb       INTEGER NOT NULL,
+                    interval_days  INTEGER NOT NULL DEFAULT 0,
+                    due_at         TIMESTAMP,
+                    streak         INTEGER NOT NULL DEFAULT 0,
+                    seen           INTEGER NOT NULL DEFAULT 0,
+                    last_ok        INTEGER,
+                    updated_at     TIMESTAMP NOT NULL DEFAULT NOW(),
+                    UNIQUE (user_id, card_key)
+                )
+            """)
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_range_card_due "
+                         "ON range_card_srs(user_id, due_at)")
+        except Exception: pass
         # Conquistas EXCLUSIVAS do treino (separadas das globais/ELO) — Postgres
         try:
             conn.execute("""
@@ -1555,6 +1583,26 @@ def _run_migrations(conn):
         """)
         conn.execute("CREATE INDEX IF NOT EXISTS idx_evolution_reports_user "
                      "ON evolution_reports(user_id, created_at DESC)")
+        # SRS das cartas de memorizacao de range (espelha o bloco PG a prova de abort).
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS range_card_srs (
+                id             INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id        INTEGER NOT NULL,
+                card_key       TEXT    NOT NULL,
+                position       TEXT    NOT NULL,
+                familia        TEXT    NOT NULL,
+                stack_bb       INTEGER NOT NULL,
+                interval_days  INTEGER NOT NULL DEFAULT 0,
+                due_at         TEXT,
+                streak         INTEGER NOT NULL DEFAULT 0,
+                seen           INTEGER NOT NULL DEFAULT 0,
+                last_ok        INTEGER,
+                updated_at     TEXT    NOT NULL DEFAULT (datetime('now')),
+                UNIQUE (user_id, card_key)
+            )
+        """)
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_range_card_due "
+                     "ON range_card_srs(user_id, due_at)")
         # Fase 3 (trilho lento): reabertura por regressão no jogo real (SQLite)
         proof_existing = {r[1] for r in conn.execute('PRAGMA table_info(training_proof)').fetchall()}
         for col, sql in [

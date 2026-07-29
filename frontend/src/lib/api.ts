@@ -1229,6 +1229,12 @@ export interface LeakTrainerSpot {
    *  inviável e, pior, dilui: a maioria delas é fold óbvio. A resposta É a fronteira. */
   familia?: string;
   familia_label?: string;
+  /** Identidade da carta no SRS (posição × família × profundidade). O servidor grava a revisão
+   *  por esta chave — o cliente só a devolve, nunca a inventa. */
+  card_key?: string;
+  /** Estado de repetição espaçada desta carta. `revisao` distingue "você já viu isto" de "carta
+   *  nova", que muda o que a tela diz e o que o jogador espera de si. */
+  srs?: { revisao: boolean; seen: number; interval: number };
   hands?: string[];
   /** Sondagem de range, quando presente: pergunta a fatia de mãos do vilão ANTES de revelar as
    *  cartas do herói. Existe só em cenário com vilão a ler (nunca em `rfi`, onde o herói age
@@ -1288,25 +1294,48 @@ export interface LeakTrainerLeakOption {
 export interface LeakTrainerOptions {
   leaks: LeakTrainerLeakOption[];      // leaks reais medidos (ordenados por EV), servíveis
   scenarios: string[];                 // cenários de fundamentos treináveis (rfi/vs_rfi)
+  /** Memorização de range: a sugestão vinda dos leaks REAIS e o placar do SRS. Null quando não
+   *  há motivo para sugerir — o produto não empurra estudo a partir de ruído. */
+  memorizacao?: { sugestao: MemorizacaoSugestao | null; placar: MemorizacaoPlacar } | null;
 }
 export interface RangeGridGrade {
   acertou: boolean;
   certas: string[];
   faltaram: string[];
   sobraram: string[];
+  /** Onde o GTO MISTURA: marcar ou não são as duas defensáveis, e a frequência é o ensinamento.
+   *  Não entram em `faltaram` nem em `sobraram` — cobrá-las seria punir jogada defensável. */
+  mistas: { hand: string; freq: number }[];
   fronteira: string | null;
   xp: number;
+  /** Reagendamento: quando esta carta volta. */
+  srs?: { card_key: string; interval_days: number; due_at: string; streak: number; seen: number };
 }
 
+/** Por que o produto está sugerindo memorizar uma range, e qual. */
+export interface MemorizacaoSugestao {
+  position: string;
+  scenario: "rfi" | "vs_rfi";
+  ev_loss_bb: number;
+  hands: number;
+  stack_bb: number;
+  /** De quem é a range: no leak de RFI é a do próprio jogador; no de vs_RFI é a de quem abriu. */
+  de_quem: "heroi" | "vilao";
+}
+export interface MemorizacaoPlacar { vistas: number; vencidas: number; dominadas: number; }
+
 export const leaktrainer = {
-  next: (session_state: LeakTrainerState = {}, days = 90, focus: LeakTrainerFocus = "adaptive") =>
+  /** `servidas`: card_keys já servidos NESTA sessão. Vai do cliente porque a carta só ganha
+   *  linha no banco depois de corrigida — sem isto a mesma carta poderia voltar na sequência. */
+  next: (session_state: LeakTrainerState = {}, days = 90, focus: LeakTrainerFocus = "adaptive",
+         servidas: string[] = []) =>
     request<{
       spot: LeakTrainerSpot | null; session_state: LeakTrainerState;
       targeted_locked?: boolean; limit_reached?: boolean; requires_pro?: boolean;
       used?: number; cap?: number; plan?: string;
     }>(
       "/player/leaktrainer/next",
-      { method: "POST", body: JSON.stringify({ session_state, days, focus, tz_offset_min: -new Date().getTimezoneOffset() }) },
+      { method: "POST", body: JSON.stringify({ session_state, days, focus, servidas, tz_offset_min: -new Date().getTimezoneOffset() }) },
     ),
 
   options: () => request<LeakTrainerOptions>("/player/leaktrainer/options"),
@@ -2121,6 +2150,9 @@ export interface StudyPlanResponse {
   source?: 'gto' | 'heuristic' | 'empty';
   error?: string;
   coach_managed?: boolean;
+  /** Treino INTERNO sugerido a partir dos leaks reais. Calculado no servidor e nunca pedido ao
+   *  LLM: é um fato sobre os torneios do jogador, e fato em prompt volta alucinado. */
+  treino_sugerido?: MemorizacaoSugestao | null;
 }
 
 export const study = {

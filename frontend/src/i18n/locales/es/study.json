@@ -82,5 +82,10 @@
   "tabs": {
     "diagnosis": "Diagnóstico",
     "schedule": "Hoja de ruta"
+  },
+  "memo": {
+    "eyebrow": "Entrenamiento recomendado",
+    "villain": "Memoriza el rango de apertura del {{pos}}: perdiste {{bb}}bb enfrentando sus aperturas, en {{hands}} manos.",
+    "hero": "Memoriza tu rango de apertura del {{pos}}: perdiste {{bb}}bb abriendo desde ahí, en {{hands}} manos."
   }
 }

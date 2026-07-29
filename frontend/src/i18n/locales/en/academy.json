@@ -266,7 +266,20 @@
       "almost": "Close.",
       "boundary": "{{pos}} opens {{familia}} down to {{hand}} — that is {{combos}} of the family’s {{total}} combinations, or {{pct}}% of all hands. The boundary is what is worth memorising: the middle you get right without thinking.",
       "dragHint": "Click and drag to mark several at once",
-      "onlyFamily": "Only the {{familia}} cells are active · s = suited (above the diagonal), o = offsuit"
+      "onlyFamily": "Only the {{familia}} cells are active · s = suited (above the diagonal), o = offsuit",
+      "reviewEyebrow": "Review",
+      "mixedNote": "In blue, GTO mixes: {{maos}}. Marking or not, both are fine.",
+      "nextReview": "Back in {{dias}} days"
+    },
+    "memo": {
+      "eyebrow": "Memorise range",
+      "dueEyebrow": "{{n}} ranges to review",
+      "dueWhy": "You have studied these and it is time to meet them again. What makes it stick is the return at the right moment, not repeating them back to back.",
+      "whyVillain": "You lost {{bb}}bb facing opens from {{pos}}, across {{hands}} hands. To decide against them you first have to see what {{pos}} opens.",
+      "whyHero": "You lost {{bb}}bb opening from {{pos}}, across {{hands}} hands. Marking how far the range goes is what fixes the boundary.",
+      "cta": "Memorise the {{pos}} range",
+      "ctaReview": "Review ranges",
+      "score": "{{vistas}} studied · {{dominadas}} committed to memory"
     }
   },
   "trainAch": {

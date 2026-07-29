@@ -125,6 +125,9 @@ export default function LeakTrainer() {
   const [phase, setPhase]               = useState<Phase>("intro");
   const [spot, setSpot]                 = useState<LeakTrainerSpot | null>(null);
   const [spotSeq, setSpotSeq]           = useState(0);
+  // Cartas de memorizacao ja servidas NESTA sessao. Ref e nao state: so alimenta a proxima
+  // requisicao, nunca a renderizacao — como state provocaria um render por spot, a troco de nada.
+  const servidasRef                     = useRef<string[]>([]);
   const [grade, setGrade]               = useState<LeakTrainerGrade | null>(null);
   const [selected, setSelected]         = useState<string | null>(null);
   const [submitting, setSubmitting]     = useState(false);
@@ -215,11 +218,13 @@ export default function LeakTrainer() {
     }
     try {
       const timeout = new Promise<never>((_, rej) => setTimeout(() => rej(new Error("timeout")), 12000));
-      const r = await Promise.race([leaktrainer.next(stateRef.current, 90, focusRef.current), timeout]);
+      const r = await Promise.race([
+        leaktrainer.next(stateRef.current, 90, focusRef.current, servidasRef.current), timeout]);
       // Gate freemium: cap diário atingido → paywall (não tela vazia)
       if (r.limit_reached || r.requires_pro) { setGateInfo({ used: r.used, cap: r.cap }); setPhase("paywall"); return; }
       if (!r.spot) { setPhase("empty"); return; }
       setTargetedLocked(!!r.targeted_locked);   // Free: treinando fundamentos, mirado é Pro
+      if (r.spot?.card_key) servidasRef.current = [...servidasRef.current, r.spot.card_key];
       setSpot(r.spot);
       setPhase(r.spot.range_probe ? "probe" : "question");
     } catch { setPhase("error"); }
@@ -228,6 +233,7 @@ export default function LeakTrainer() {
   // seletor de tipo de spot: fixa o foco e começa a lição (o usuário escolhe, não é só aleatório)
   const startFocus = (f: string) => {
     planRef.current = null; setPlan(null); doneRef.current = {};   // sai do protocolo
+    servidasRef.current = [];                                      // sessao nova, baralho cheio
     focusRef.current = f; setFocus(f); loadNext();
   };
 
@@ -857,6 +863,62 @@ export default function LeakTrainer() {
                 </p>
               </div>
             )}
+
+            {/* ── 2c. MEMORIZAR RANGE ──
+                Estava só atrás de "Treinar outra coisa", o que o deixava disponível para quem já
+                sabe que precisa dele — exatamente quem menos precisa. Quem erra a abertura do LJ
+                não pensa "não tenho a range na cabeça"; pensa que errou aquela mão.
+
+                Aparece por DOIS motivos distintos, e a ordem importa: revisão vencida primeiro
+                (é o que o SRS existe para forçar), sugestão de leak depois. Sem motivo, não
+                aparece — sugerir estudo sem evidência gasta a credibilidade de toda sugestão. */}
+            {(() => {
+              const memo = trainOptions?.memorizacao;
+              const sug = memo?.sugestao;
+              const vencidas = memo?.placar?.vencidas ?? 0;
+              if (!sug && vencidas <= 0) return null;
+              return (
+                <div className="rounded-xl border border-amber-500/30 bg-amber-500/[0.05] p-3">
+                  <p className="mb-1.5 font-mono text-[10px] uppercase tracking-widest text-amber-400">
+                    {vencidas > 0
+                      ? t("leakTrainer.memo.dueEyebrow", { n: vencidas,
+                          defaultValue: `${vencidas} range${vencidas > 1 ? "s" : ""} para revisar` })
+                      : t("leakTrainer.memo.eyebrow", "Memorizar range")}
+                  </p>
+                  <p className="text-[12px] leading-snug text-muted-foreground">
+                    {vencidas > 0
+                      ? t("leakTrainer.memo.dueWhy",
+                          "Você já estudou estas e chegou a hora de reencontrá-las. É o reencontro no tempo certo que fixa, não a repetição seguida.")
+                      : sug!.de_quem === "vilao"
+                        /* Leak de vs_RFI: a range que falta é a de QUEM ABRIU. Mandá-lo memorizar
+                           a range dele mesmo aqui seria a ferramenta errada com cara de conselho. */
+                        ? t("leakTrainer.memo.whyVillain", {
+                            pos: sug!.position, bb: sug!.ev_loss_bb, hands: sug!.hands,
+                            defaultValue: `Você perdeu ${sug!.ev_loss_bb}bb enfrentando aberturas do ${sug!.position}, em ${sug!.hands} mãos. Para decidir contra ele é preciso enxergar o que o ${sug!.position} abre.` })
+                        : t("leakTrainer.memo.whyHero", {
+                            pos: sug!.position, bb: sug!.ev_loss_bb, hands: sug!.hands,
+                            defaultValue: `Você perdeu ${sug!.ev_loss_bb}bb abrindo do ${sug!.position}, em ${sug!.hands} mãos. Marcar a range até onde ela vai é o que fixa a fronteira.` })}
+                  </p>
+                  <button onClick={() => startFocus("fund:range_grid")}
+                    className="mt-2.5 flex w-full items-center justify-center gap-2 rounded-lg bg-amber-500/15 px-4 py-2.5 font-mono text-[11px] font-bold uppercase tracking-wider text-amber-400 ring-1 ring-amber-500/40 transition-colors hover:bg-amber-500/25">
+                    <Target className="size-3.5" aria-hidden />
+                    {vencidas > 0
+                      ? t("leakTrainer.memo.ctaReview", "Revisar ranges")
+                      : t("leakTrainer.memo.cta", { pos: sug!.position,
+                          defaultValue: `Memorizar a range do ${sug!.position}` })}
+                  </button>
+                  {/* O placar dá sentido ao esforço: sem ele o jogador marca grades para sempre
+                      sem saber se está indo a algum lugar. */}
+                  {(memo?.placar?.vistas ?? 0) > 0 && (
+                    <p className="mt-1.5 text-center font-mono text-[10px] text-muted-foreground/70">
+                      {t("leakTrainer.memo.score", {
+                          vistas: memo!.placar.vistas, dominadas: memo!.placar.dominadas,
+                          defaultValue: `${memo!.placar.vistas} estudadas · ${memo!.placar.dominadas} na memória` })}
+                    </p>
+                  )}
+                </div>
+              );
+            })()}
 
             {/* ── 3. OUTROS MODOS (secundário, atrás de disclosure) ── */}
             <div className="rounded-xl border border-border bg-hud-surface/40">

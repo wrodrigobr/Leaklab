@@ -2918,12 +2918,21 @@ def leaktrainer_next():
             # Treino de FRONTEIRA na grade: marcar uma família inteira (Áses suited, pares…).
             # Não passa por next_spot/currículo: não é um spot de decisão, é de memorização, e
             # o adaptativo por categoria de leak não se aplica.
-            from leaklab.leak_trainer import generate_range_grid_spot
-            spot = None
-            for _ in range(12):                       # famílias 100% dentro/fora são descartadas
-                spot = generate_range_grid_spot()
-                if spot:
-                    break
+            #
+            # Quem escolhe a carta é o SRS, e não o sorteio: sorteio dá a mesma chance à carta
+            # que ele domina e à que nunca viu, e nunca traz de volta o erro na hora em que ele
+            # estaria esquecendo. `servidas` chega do cliente porque a carta só ganha linha no
+            # banco DEPOIS de corrigida — sem isso a mesma carta poderia voltar na sequência.
+            from leaklab.leak_trainer import proximo_card_de_range, sugerir_memorizacao_de_range
+            _alvo = None
+            try:
+                _sug = sugerir_memorizacao_de_range(g.user_id, days=days)
+                _alvo = (_sug or {}).get('position')
+            except Exception:
+                logger.exception('falha ao mirar a carta de range')
+            spot = proximo_card_de_range(g.user_id,
+                                         servidas=(body.get('servidas') or []),
+                                         alvo=_alvo)
         elif focus.startswith('fund:'):
             curriculum = fundamentals_catalog(focus.split(':', 1)[1])
             spot       = next_spot(curriculum, session_state)
@@ -3056,7 +3065,20 @@ def leaktrainer_options():
             })
     except Exception:
         app.logger.exception("leaktrainer_options: build_curriculum falhou (user=%s)", g.user_id)
-    return jsonify({'leaks': leaks, 'scenarios': TRAINABLE_SCENARIOS})
+    # Memorizacao de range: a SUGESTAO (a partir dos leaks reais) e o placar do SRS. Sem isto o
+    # exercicio so aparece para quem abre "Treinar outra coisa" e ja sabe que precisa dele — que
+    # e exatamente quem menos precisa. Quem erra a abertura do LJ acha que errou aquela mao.
+    memorizacao = None
+    try:
+        from leaklab.leak_trainer import sugerir_memorizacao_de_range
+        from database.repositories import resumo_das_cartas_de_range
+        memorizacao = {
+            'sugestao': sugerir_memorizacao_de_range(g.user_id),
+            'placar':   resumo_das_cartas_de_range(g.user_id),
+        }
+    except Exception:
+        app.logger.exception("leaktrainer_options: memorizacao falhou (user=%s)", g.user_id)
+    return jsonify({'leaks': leaks, 'scenarios': TRAINABLE_SCENARIOS, 'memorizacao': memorizacao})
 
 
 @app.route('/player/leaktrainer/grade', methods=['POST'])
@@ -3071,7 +3093,19 @@ def leaktrainer_grade():
     # dentro de grade_canonical_spot porque o formato da resposta é outro — enfiar os dois na
     # mesma função obrigaria cada chamador a saber qual dos dois contratos está em jogo.
     if spot.get('kind') == 'range_grid':
-        return jsonify(grade_range_grid_spot(spot, body.get('marcadas') or []))
+        res = grade_range_grid_spot(spot, body.get('marcadas') or [])
+        # Agenda a revisao. Range e MEMORIZACAO: sem reencontro programado o exercicio vira
+        # exposicao, e o jogador reencontra por sorteio o que ja sabe enquanto esquece o resto.
+        try:
+            from database.repositories import registrar_carta_de_range
+            ck = spot.get('card_key') or spot.get('category') or ''
+            if ck and not res.get('erro'):
+                res['srs'] = registrar_carta_de_range(
+                    g.user_id, ck, spot.get('position') or '', spot.get('familia') or '',
+                    int(float(spot.get('stack_bb') or 50)), bool(res.get('acertou')))
+        except Exception:
+            logger.exception('falha ao agendar revisao da carta de range')
+        return jsonify(res)
     result = grade_canonical_spot(spot, action)
     # Camada didática do Protocolo: o GATILHO do spot + a nota da classe de mão. Determinística
     # (sem LLM no caminho quente) e anexada aqui pra o corretor seguir sendo fonte única.
@@ -5476,6 +5510,15 @@ def study_plan():
                 pass
 
         plan['coach_managed'] = coach_managed
+        # Treino INTERNO sugerido a partir dos leaks reais, calculado no servidor e NUNCA pedido
+        # ao LLM: é um fato sobre os torneios dele (qual posição sangra e quanto), e fato em
+        # prompt volta alucinado. O plano ganha um destino clicável em vez de só um conselho.
+        try:
+            from leaklab.leak_trainer import sugerir_memorizacao_de_range
+            plan['treino_sugerido'] = sugerir_memorizacao_de_range(g.user_id)
+        except Exception:
+            app.logger.exception('falha ao sugerir memorizacao de range no plano')
+            plan['treino_sugerido'] = None
         # plan['source'] já é setado por generate_study_plan com leak_source
         return jsonify(plan)
 
