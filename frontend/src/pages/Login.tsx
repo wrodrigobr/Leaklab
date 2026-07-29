@@ -5,6 +5,7 @@ import logoHorizontal from "@/assets/brand/grindlab_final_horizontal.svg";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/lib/auth";
 import { auth as authApi } from "@/lib/api";
+import { destinoSeguro } from "@/lib/destinoAposLogin";
 
 const Login = () => {
   const [tab, setTab] = useState<"login" | "register">("login");
@@ -37,15 +38,23 @@ const Login = () => {
     if (ref) setTab("register");
   }, [ref]);
 
+  // Para onde ir depois de autenticar. O `?next=` chega dos guardas de rota e é o que faz o
+  // clique de e-mail terminar NO TREINO prescrito em vez de no dashboard genérico. Validado
+  // contra open redirect em `destinoSeguro` — `?next=` cru é phishing usando o nosso domínio.
+  const destino = destinoSeguro(searchParams.get("next"));
+  const paraOndeIr = (papel: string | null | undefined) =>
+    destino ?? (papel === "coach" ? "/coach-dashboard" : "/dashboard");
+
   useEffect(() => {
     if (linkedCoach) return; // não redireciona antes de mostrar a confirmação de vínculo
-    if (user) navigate(user.role === "coach" ? "/coach-dashboard" : "/dashboard", { replace: true });
-  }, [user, navigate, linkedCoach]);
+    if (user) navigate(paraOndeIr(user.role), { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, navigate, linkedCoach, destino]);
 
   const routeAfterAuth = (coach: string | null) => {
     if (coach) {
       setLinkedCoach(coach);
-      setTimeout(() => navigate(role === "coach" ? "/coach-dashboard" : "/dashboard", { replace: true }), 2500);
+      setTimeout(() => navigate(paraOndeIr(role), { replace: true }), 2500);
     }
     // sem coach: o useEffect(user) redireciona sozinho
   };

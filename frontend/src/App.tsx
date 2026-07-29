@@ -1,6 +1,7 @@
 import { ReactNode } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Navigate, Route, Routes, useLocation } from "react-router-dom";
+import { urlDeLoginPara, destinoSeguro } from "@/lib/destinoAposLogin";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -74,44 +75,74 @@ const LoadingScreen = () => (
   </div>
 );
 
-/** Rota pública: redireciona usuários já logados para o dashboard. */
+/**
+ * Rota pública: redireciona usuários já logados.
+ *
+ * É ESTE o guarda que decide para onde a pessoa vai depois de autenticar — ele envolve o
+ * `/login` e dispara no instante em que a sessão nasce, vencendo a navegação da própria página.
+ * Consertar só os guardas privados deixava o `?next=` sem efeito: verificado no navegador, o
+ * clique de e-mail chegava ao login com o destino preservado e terminava em `/admin` mesmo
+ * assim. Cinco lugares decidiam destino; o teste unitário passava e o fluxo real não.
+ */
 function PublicRoute({ children }: { children: ReactNode }) {
   const { user, isLoading } = useAuth();
+  const loc = useLocation();
   if (isLoading) return <LoadingScreen />;
-  if (user) return <Navigate to={user.role === "admin" ? "/admin" : user.role === "coach" ? "/coach-dashboard" : "/dashboard"} replace />;
+  if (user) {
+    const destino = destinoSeguro(new URLSearchParams(loc.search).get("next"));
+    const porPapel = user.role === "admin" ? "/admin"
+      : user.role === "coach" ? "/coach-dashboard" : "/dashboard";
+    return <Navigate to={destino ?? porPapel} replace />;
+  }
   return <>{children}</>;
 }
 
 // COACH-02 P2: o coach é dual-role (aluno + coach). Passou a ter acesso pleno às
 // rotas de aluno (upload/treino/dashboard) — não é mais redirecionado p/ o cockpit.
 // `allowCoachWithStudent` virou no-op (mantido p/ compat das chamadas existentes).
+/**
+ * Para onde mandar quem não está autenticado, PRESERVANDO o destino.
+ *
+ * Os quatro guardas faziam `<Navigate to="/login" replace />` e o destino era descartado — o que
+ * quebrava todo CTA de e-mail, já que o token vive em `sessionStorage` (por aba) e link de
+ * e-mail abre aba nova. Regra do projeto: mesma regra em N lugares vira função.
+ */
+function useLoginComDestino() {
+  const loc = useLocation();
+  return urlDeLoginPara(loc.pathname, loc.search);
+}
+
 function ProtectedRoute({ children }: { children: ReactNode; allowCoachWithStudent?: boolean }) {
   const { user, isLoading } = useAuth();
+  const paraLogin = useLoginComDestino();
   if (isLoading) return <LoadingScreen />;
-  if (!user) return <Navigate to="/login" replace />;
+  if (!user) return <Navigate to={paraLogin} replace />;
   return <>{children}</>;
 }
 
 function CoachRoute({ children }: { children: ReactNode }) {
   const { user, isLoading } = useAuth();
+  const paraLogin = useLoginComDestino();
   if (isLoading) return <LoadingScreen />;
-  if (!user) return <Navigate to="/login" replace />;
+  if (!user) return <Navigate to={paraLogin} replace />;
   if (user.role !== "coach") return <Navigate to="/dashboard" replace />;
   return <>{children}</>;
 }
 
 function AdminRoute({ children }: { children: ReactNode }) {
   const { user, isLoading } = useAuth();
+  const paraLogin = useLoginComDestino();
   if (isLoading) return <LoadingScreen />;
-  if (!user) return <Navigate to="/login" replace />;
+  if (!user) return <Navigate to={paraLogin} replace />;
   if (user.role !== "admin") return <Navigate to="/dashboard" replace />;
   return <>{children}</>;
 }
 
 function AuthRoute({ children }: { children: ReactNode }) {
   const { user, isLoading } = useAuth();
+  const paraLogin = useLoginComDestino();
   if (isLoading) return <LoadingScreen />;
-  if (!user) return <Navigate to="/login" replace />;
+  if (!user) return <Navigate to={paraLogin} replace />;
   return <>{children}</>;
 }
 
