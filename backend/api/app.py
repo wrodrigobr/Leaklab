@@ -9670,6 +9670,57 @@ def method_not_allowed(_): return jsonify({'error': 'Método não permitido'}), 
 def not_found(_): return jsonify({'error': 'Rota não encontrada'}), 404
 
 
+def _enfileirar_spot_da_decisao(di: dict, facing: float, tournament_db_id=None) -> bool:
+    """Enfileira o spot postflop desta decisão no solver. True se ele está de fato na fila.
+
+    Existe porque o contador `queued` do processador de pedidos MENTIA. O ramo do mismatch
+    enfileirava e contava; o ramo de "ainda sem cobertura" apenas CONTAVA, apoiado em
+    `is_simple_spot` — que responde "dá para solvar em menos de 30s", e não "alguém pediu o
+    solve". Resultado medido em produção: o pedido 13 do torneio 123 ficou 2h relatando
+    `done=0 queued=1` com a fila do solver VAZIA, e o selo "Análise GTO em andamento" mentiu
+    até o age-out de 24h. A decisão nunca ganharia veredito.
+
+    Agora o enfileiramento é UM lugar só, e quem conta pergunta a ele se deu certo.
+    """
+    import json as _json
+    from leaklab.gto_utils import compute_spot_hash, board_for_street
+    from leaklab.gto_solver import (_priority, _solver_params_for_stack, resolve_solver_ranges,
+                                    vale_enfileirar_postflop)
+    from database.repositories import enqueue_solver_spot
+    try:
+        spot = di.get('spot', {}) or {}
+        ctx  = di.get('context', {}) or {}
+        street = di.get('street', '')
+        pos = (spot.get('position') or ctx.get('position') or '').upper()
+        vs  = (spot.get('villainPosition') or ctx.get('vsPosition') or '').upper()
+        # O mesmo gate do enfileiramento do upload: nó que o produto não usaria não deve
+        # virar promessa de "em andamento".
+        if not vale_enfileirar_postflop(pos, vs, facing):
+            return False
+        board = board_for_street(di.get('board', []) or spot.get('board', []), street)
+        stack = float(spot.get('effectiveStackBb') or ctx.get('heroStackBb') or 20)
+        hand  = di.get('hero_cards', [])
+        h     = compute_spot_hash(street, pos, board, hand, stack, facing)
+        prm   = _solver_params_for_stack(stack)
+        ipr, oopr, hip = resolve_solver_ranges(
+            pos, vs, stack, pot_type=spot.get('potType', ''),
+            opener=spot.get('preflopOpener', ''), threebettor=spot.get('preflop3bettor', ''))
+        payload = _json.dumps({
+            'street': street, 'board': board, 'position': pos,
+            'hero_hand': hand, 'hero_stack_bb': stack, 'facing_size_bb': facing,
+            'oop_range': oopr, 'ip_range': ipr, 'hero_is_ip': hip,
+            'pot_bb': float(spot.get('potSize') or facing * 2 + 2 or 4.0),
+            'effective_stack_bb':        prm['effective_stack_bb'],
+            'max_iterations':            prm['max_iterations'],
+            'target_exploitability_pct': prm['target_exploitability_pct'],
+        }, sort_keys=True)
+        return bool(enqueue_solver_spot(h, payload, priority=_priority(street),
+                                        tournament_id=tournament_db_id))
+    except Exception:
+        log.exception('falha ao enfileirar spot da decisao (street=%s)', di.get('street'))
+        return False
+
+
 def _process_gto_hand_request(req: dict) -> tuple[str, str | None]:
     """
     Processa um item da gto_hand_requests: busca decisões da mão, roda lookup_gto
@@ -9788,46 +9839,12 @@ def _process_gto_hand_request(req: dict) -> tuple[str, str | None]:
                         "GTO mismatch descartado: dec=%s engine=%s gto=%s facing=%.1f",
                         db_dec['id'], engine_best, gto_action, _facing,
                     )
-                    # Enfileira o spot correto (com facing real) para o solver resolver
-                    try:
-                        from leaklab.gto_utils import compute_spot_hash, board_for_street
-                        from leaklab.gto_solver import _priority, _solver_params_for_stack, resolve_solver_ranges
-                        import json as _json2
-                        _spot2 = di.get('spot', {})
-                        _ctx2  = di.get('context', {})
-                        # Fatiado na street: `di['board']`, quando existe, é o board COMPLETO da
-                        # mão. Se já vier da street, o corte é inócuo; se não, ele evita gravar
-                        # sob uma chave que nenhum lookup procura.
-                        _board2 = board_for_street(
-                            di.get('board', []) or _spot2.get('board', []), di['street'])
-                        _pos2   = (_spot2.get('position') or _ctx2.get('position') or '').upper()
-                        _vs2    = (_spot2.get('villainPosition') or _ctx2.get('vsPosition') or '').upper()
-                        _stack2 = float(_spot2.get('effectiveStackBb') or _ctx2.get('heroStackBb') or 20)
-                        _hand2  = di.get('hero_cards', [])
-                        _hash2  = compute_spot_hash(di['street'], _pos2, _board2, _hand2, _stack2, _facing)
-                        _params2 = _solver_params_for_stack(_stack2)
-                        # Mesma resolução de ranges do lookup: aqui também estavam trocadas.
-                        _ipr2, _oopr2, _hip2 = resolve_solver_ranges(
-                            _pos2, _vs2, _stack2,
-                            pot_type=_spot2.get('potType', ''),
-                            opener=_spot2.get('preflopOpener', ''),
-                            threebettor=_spot2.get('preflop3bettor', ''))
-                        _payload2 = _json2.dumps({
-                            'street': di['street'], 'board': _board2, 'position': _pos2,
-                            'hero_hand': _hand2, 'hero_stack_bb': _stack2, 'facing_size_bb': _facing,
-                            'oop_range': _oopr2,
-                            'ip_range':  _ipr2,
-                            'hero_is_ip': _hip2,
-                            'pot_bb': float(_spot2.get('potSize') or _facing * 2 + 2 or 4.0),
-                            'effective_stack_bb':        _params2['effective_stack_bb'],
-                            'max_iterations':            _params2['max_iterations'],
-                            'target_exploitability_pct': _params2['target_exploitability_pct'],
-                        }, sort_keys=True)
-                        from database.repositories import enqueue_solver_spot as _enq2
-                        _enq2(_hash2, _payload2, priority=_priority(di['street']))
-                    except Exception:
-                        pass
-                    queued += 1  # trata como pendente — spot correto enfileirado para o solver
+                    # Enfileira o spot correto (com facing real) pelo MESMO caminho do outro
+                    # ramo: este bloco era uma segunda cópia da montagem do payload, e a cópia
+                    # que ficou para trás foi justamente a que esqueceu de enfileirar.
+                    _entrou = _enfileirar_spot_da_decisao(di, _facing, req.get('tournament_id'))
+                    if _entrou:
+                        queued += 1   # só conta o que entrou na fila de verdade
                     continue
 
                 if played_freq >= 0.60:
@@ -9881,7 +9898,11 @@ def _process_gto_hand_request(req: dict) -> tuple[str, str | None]:
                     # Na dúvida, conta como enfileirado: o age-out fecha depois. Melhor esperar
                     # por algo solvável do que declarar sem cobertura o que talvez tivesse.
                     log.exception("GTO hand worker: is_simple_spot falhou (dec_id=%s)", db_dec.get('id'))
-                if _solvavel:
+                # Conta como enfileirado SÓ o que entrou na fila. `is_simple_spot` responde
+                # "dá para solvar rápido", não "alguém pediu o solve" — usá-la como prova de
+                # enfileiramento foi o que fez o pedido 13 esperar 24h por nada.
+                if _solvavel and _enfileirar_spot_da_decisao(di, _facing2,
+                                                             req.get('tournament_id')):
                     queued += 1
 
         # ENQUANTO HOUVER spot enfileirado (queued>0), o request NÃO está pronto — fica 'solver_queued'
