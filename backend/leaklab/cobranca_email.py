@@ -111,7 +111,13 @@ def coletar_eventos(user_id: int, agora: str) -> list:
             except Exception:
                 att = []
             if not att:
-                eventos.append({'tipo': 'leak_reaberto', 'dados': r})
+                # O título vem resolvido AQUI, pela mesma função da Fase 1: `listar_reaberturas`
+                # devolve `category_key`, e o e-mail que chegou na caixa do usuário dizia
+                # "um leak que você já tinha dominado" em vez de nomear o leak. Cobrança que
+                # não diz O QUE cobrar é pior que nenhuma.
+                from leaklab.proximo_passo import _titulo_da_categoria
+                eventos.append({'tipo': 'leak_reaberto',
+                                'dados': {**r, 'titulo': _titulo_da_categoria(r['category_key'])}})
                 break        # um por varredura: o e-mail cobra UMA coisa
     except Exception:
         pass
@@ -164,7 +170,11 @@ def montar_email(tipo: str, dados: dict, username: str, base_url: str,
     from leaklab.email_digest import _email_document, _eyebrow, _h1, _greeting, _cta_button
 
     if tipo == 'leak_reaberto':
-        titulo = dados.get('titulo') or 'um leak que você já tinha dominado'
+        # Fallback CURTO de propósito. O anterior era "um leak que você já tinha dominado", que
+        # encaixado na frase abaixo produzia "Você já tinha dominado um leak que você já tinha
+        # dominado no treino" — reportado pelo usuário na caixa dele. Texto de reserva tem que
+        # caber na frase que o hospeda, não ser uma frase inteira.
+        titulo = dados.get('titulo') or 'este leak'
         assunto = 'Um leak que você dominava voltou'
         inner = (
             _eyebrow('Leak reaberto')

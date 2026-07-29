@@ -124,6 +124,54 @@ def test_os_quatro_tipos_montam_corpo_em_PT_com_unsubscribe():
         assert '—' not in html, f'{tipo} tem travessão na copy (regra do projeto)'
 
 
+def test_o_COLETOR_entrega_o_que_o_corpo_precisa():
+    """O defeito que chegou na caixa do usuário: `listar_reaberturas` devolve `category_key` e o
+    corpo esperava `titulo`, então o e-mail dizia "um leak que você já tinha dominado" em vez de
+    nomear o leak.
+
+    Passou porque o fixture desta suíte era MAIS OTIMISTA QUE A REALIDADE: eu escrevi
+    {'titulo': ...} à mão, e o coletor nunca produziu essa chave. Este teste cobra o CONTRATO
+    entre coletor e corpo, com dado que veio do banco de verdade.
+    """
+    os.environ.pop('DATABASE_URL', None)
+    from datetime import datetime
+    from database.schema import init_db, get_conn
+    from database.repositories import _adapt
+    from leaklab.cobranca_email import coletar_eventos
+    init_db()
+    u, key = 990022, 'rfi:HJ::50'
+    c = get_conn()
+    try:
+        c.execute(_adapt('INSERT INTO users (id, email, username, password_hash) VALUES (?,?,?,?)'),
+                  (u, 'colet@t.local', 'colet', 'x'))
+    except Exception:
+        pass
+    c.execute(_adapt('DELETE FROM training_proof WHERE user_id = ?'), (u,))
+    c.execute(_adapt('DELETE FROM progression_attempts WHERE user_id = ?'), (u,))
+    c.execute(_adapt('INSERT INTO training_proof (user_id, category_key, baseline_pct, '
+                     'baseline_n, baseline_at, reopened_at, reopen_count) VALUES (?,?,80.0,30,?,?,1)'),
+              (u, key, '2026-07-28T00:00:00', '2026-07-28T00:00:00'))
+    c.commit(); c.close()
+
+    ev = next((e for e in coletar_eventos(u, datetime.utcnow().isoformat())
+               if e['tipo'] == 'leak_reaberto'), None)
+    assert ev, 'a reabertura forjada não virou evento'
+    titulo = (ev['dados'] or {}).get('titulo')
+    assert titulo, 'o coletor não entregou o título; o e-mail sairia genérico'
+    assert titulo != key, 'o título não pode ser a chave crua'
+    assert 'HJ' in titulo, titulo
+
+
+def test_fallback_sem_titulo_NAO_repete_a_frase():
+    """Reportado pelo usuário lendo o e-mail: "Você já tinha dominado um leak que você já tinha
+    dominado no treino". O texto de reserva era uma frase inteira encaixada dentro de outra."""
+    import re
+    _, html = montar_email('leak_reaberto', {}, 'p', 'https://x.test', 'https://x.test/u')
+    texto = re.sub(r'<[^>]+>', '', html)
+    assert texto.count('tinha dominado') == 1, texto[:300]
+    assert 'dominado um leak que' not in texto
+
+
 def test_o_numero_em_bb_aparece_quando_existe():
     """A primeira linha tem que carregar o FATO. 'Você tem treinos pendentes' é ruído."""
     _, html = montar_email('inatividade', _E_INATIVO['dados'], 'phpro',
@@ -216,6 +264,8 @@ if __name__ == '__main__':
               test_data_ilegivel_nao_trava_o_aluno_para_sempre,
               test_desligado_por_padrao,
               test_os_quatro_tipos_montam_corpo_em_PT_com_unsubscribe,
+              test_o_COLETOR_entrega_o_que_o_corpo_precisa,
+              test_fallback_sem_titulo_NAO_repete_a_frase,
               test_o_numero_em_bb_aparece_quando_existe,
               test_singular_e_plural_da_revisao,
               test_tipo_sem_corpo_devolve_None,
