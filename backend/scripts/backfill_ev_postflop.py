@@ -63,7 +63,7 @@ def main() -> int:
     try:
         alvos = conn.execute(_adapt(
             "SELECT id, street, position, board, hero_cards, stack_bb, facing_bet, "
-            "       action_taken, gto_label, pot_size "
+            "       action_taken, gto_label, pot_size, estimated_equity "
             "  FROM decisions "
             " WHERE street IN (?,?,?) AND gto_label IS NOT NULL AND ev_loss_bb IS NULL "
             " ORDER BY id DESC LIMIT ?"),
@@ -72,7 +72,7 @@ def main() -> int:
         conn.close()
 
     n = len(alvos)
-    sem_no = sem_tabela = sem_acao = desconfiado = recuperado = 0
+    sem_no = sem_tabela = sem_acao = desconfiado = recuperado = impossivel = 0
     escritos = 0
     amostra = []
 
@@ -131,10 +131,25 @@ def main() -> int:
             sem_acao += 1
             continue
 
+        # A EQUITY É OBRIGATÓRIA aqui. `ev_loss_fold_ceiling` devolve None quando ela falta
+        # ("não há do que discordar, e o EV passa"), então chamar o filtro sem ela desliga o
+        # teto de fold em silêncio. Foi o que aconteceu na primeira rodada deste script: 439
+        # linhas escritas com o guarda desarmado, e uma delas dizia que foldar custou 103,6bb
+        # com um stack de 72,9bb.
         if not ev_loss_trustworthy(ev, d.get('stack_bb'), 'solver_hand',
-                                   action=d.get('action_taken'), pot_bb=d.get('pot_size'),
+                                   action=d.get('action_taken'),
+                                   equity=d.get('estimated_equity'),
+                                   pot_bb=d.get('pot_size'),
                                    facing_bb=d.get('facing_bet')):
             desconfiado += 1
+            continue
+
+        # Guarda ABSOLUTO, que não depende de nenhum dado auxiliar: ninguém perde mais bb do que
+        # tem na mesa. É aritmética, não calibração — e é o tipo de checagem que sobrevive a
+        # qualquer buraco nos parâmetros dos guardas mais finos.
+        _stk = d.get('stack_bb')
+        if _stk and float(ev) > float(_stk):
+            impossivel += 1
             continue
 
         # Guarda de coerência: EV alto num veredito de acerto (ou zero num crítico) significa que
@@ -166,6 +181,7 @@ def main() -> int:
     print('  no sem tabela por mao              : %d' % sem_tabela)
     print('  acao jogada fora da tabela         : %d' % sem_acao)
     print('  EV recuperado mas NAO confiavel    : %d  (filtro ev_loss_trustworthy)' % desconfiado)
+    print('  EV MAIOR que o proprio stack       : %d  (impossivel por aritmetica)' % impossivel)
     print('  RECUPERAVEL                        : %d' % recuperado)
     print('  escritos                           : %d%s' % (escritos, '' if args.escrever else '  (modo seco)'))
     if amostra:
