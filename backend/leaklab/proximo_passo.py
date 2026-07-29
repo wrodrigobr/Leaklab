@@ -54,12 +54,17 @@ def decidir_proximo_passo(agora: str, *,
     pendentes = [r for r in (reabertos or []) if not r.get('treinou_depois')]
     # Empate dentro do nível: maior EV perdido primeiro (mesma régua do PIP).
     for r in sorted(pendentes, key=lambda x: -(x.get('ev_loss_bb') or 0)):
+        # O CTA leva ao treino DESTA categoria (?foco=leak:<key>), nunca à intro genérica:
+        # a intro lidera com a missão ativa, que é ordenada por EV e pode ser OUTRO leak —
+        # reportado na tela: a faixa prometia "HJ · 50bb" e o clique entregava "SB · 20bb".
+        # Prometer um treino e entregar outro é o jeito mais rápido de o aluno parar de
+        # clicar na faixa.
         fila.append(_passo(
             'leak_reaberto', r.get('titulo') or r.get('category_key', ''),
             # O porquê nomeia o FATO, não a bronca: o jogo desmentiu o domínio.
             f"Seus torneios recentes mostraram o erro de volta. O domínio foi zerado; "
             f"vale o que você provar daqui pra frente.",
-            4, '/leak-trainer?origem={origem}',
+            4, f"/leak-trainer?foco=leak:{r.get('category_key', '')}" + '&origem={origem}',
             r.get('ev_loss_bb'), r.get('n')))
 
     # 2 ── Revisão vencida: é o único jeito de o SRS cumprir a promessa do "Volta em 3 dias".

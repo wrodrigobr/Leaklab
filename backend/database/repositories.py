@@ -6805,7 +6805,7 @@ def get_training_proof(user_id: int) -> list:
                     try:
                         create_notification(user_id, 'leak_reaberto',
                                             {'category_key': key},
-                                            '/leak-trainer?origem=sino')
+                                            f'/leak-trainer?foco=leak:{key}&origem=sino')
                     except Exception:
                         log.exception('sino de leak reaberto falhou (user=%s)', user_id)
             except Exception:

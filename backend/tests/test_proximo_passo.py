@@ -92,6 +92,15 @@ def test_empate_de_reabertos_decide_por_EV():
     assert fila[0]['n_maos'] == b['n'] and fila[0]['ev_loss_bb'] == 19.0
 
 
+def test_cta_do_reaberto_mira_a_PROPRIA_categoria():
+    """Reportado na tela: a faixa prometia o leak reaberto (HJ 50bb) e o clique entregava a
+    missao ativa (SB 20bb), porque o CTA caia na intro generica. O destino tem que treinar a
+    categoria prometida — prometer um treino e entregar outro mata a faixa."""
+    fila = decidir_proximo_passo(AGORA, reabertos=[_REABERTO], missao=_MISSAO)
+    assert fila[0]['tipo'] == 'leak_reaberto'
+    assert 'foco=leak:rfi:UTG::50' in fila[0]['cta_url'], fila[0]['cta_url']
+
+
 def test_cta_aponta_para_a_superficie_do_tipo():
     """Revisão majoritária de RANGE vai para a grade; majoritária de DRILL vai para o Ghost
     Table. Mandar o aluno para a superfície errada é cobrar e não deixar pagar."""
@@ -176,6 +185,7 @@ if __name__ == '__main__':
               test_carta_nova_apos_missao_e_desafio_como_ultimo_recurso,
               test_fila_vazia_e_resposta_valida,
               test_empate_de_reabertos_decide_por_EV,
+              test_cta_do_reaberto_mira_a_PROPRIA_categoria,
               test_cta_aponta_para_a_superficie_do_tipo,
               test_todo_passo_tem_o_shape_do_contrato,
               test_reabertura_recem_criada_e_visivel_no_banco_real,

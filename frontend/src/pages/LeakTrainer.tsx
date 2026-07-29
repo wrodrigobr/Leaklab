@@ -701,7 +701,13 @@ export default function LeakTrainer() {
           const totalCrit = st?.mastery.criterios.length ?? 5;
 
           return (
-          <div className="mx-auto flex w-full max-w-xl flex-col gap-3">
+          /* Uma coluna estreita empilhava herói + arco + dominados + memorizar e estourava a
+             dobra no desktop (reportado: barra de rolagem vertical com metade da tela vazia dos
+             lados). Em telas largas vira duas colunas: o herói (a AÇÃO) à esquerda, o contexto
+             (arco, conquistas, memorização, outros modos) à direita. Estreito segue empilhado —
+             ali a rolagem é inevitável e correta. */
+          <div className="mx-auto w-full max-w-xl lg:grid lg:max-w-4xl lg:grid-cols-2 lg:items-start lg:gap-5">
+          <div className="flex w-full flex-col gap-3">
             {/* ── 1. ONDE ESTOU + O QUE FAÇO (o herói da tela) ── */}
             <div className="rounded-2xl border border-amber-500/30 bg-gradient-to-b from-amber-500/[0.07] to-transparent p-5 sm:p-6 space-y-4">
               <div className="flex items-center justify-between gap-3">
@@ -803,6 +809,9 @@ export default function LeakTrainer() {
               )}
             </div>
 
+          </div>
+
+          <div className="mt-3 flex w-full flex-col gap-3 lg:mt-0">
             {/* ── 2. O ARCO: as próximas missões (por que só uma por vez) ── */}
             {outras.length > 0 && (
               <div className="rounded-xl border border-border bg-hud-surface/40 p-3">
@@ -983,6 +992,7 @@ export default function LeakTrainer() {
                 </div>
               )}
             </div>
+          </div>
           </div>
           );
         })()}
