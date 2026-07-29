@@ -53,6 +53,11 @@ if __name__ == '__main__':
         # ENGAGEMENT_EMAIL_ENABLED, então ligar a flag não exige lembrar de um restart.
         threading.Thread(target=_cobranca_email_worker_loop, daemon=True,
                          name='cobranca-email').start()
+        # Anuncia que subiu, como as outras duas. Sem esta linha, "a thread está viva?" não tem
+        # resposta nos logs — e a primeira pista só apareceria 90s depois, na varredura. Estado
+        # silencioso é precisamente o que já custou caro nesta operação.
+        log.info("solver-consumer: worker da COBRANÇA por e-mail iniciado (envio gated por "
+                 "ENGAGEMENT_EMAIL_ENABLED)")
         log.info("solver-consumer: worker do RELATÓRIO de evolução iniciado")
 
     if os.environ.get('GTO_HAND_WORKER', '1') != '0':
