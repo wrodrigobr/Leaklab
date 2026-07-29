@@ -240,17 +240,24 @@ Reabertura e selo (`comprovado_no_jogo`) hoje só aparecem dentro do trainer.
 
 ## 10. Fases de entrega
 
-### Fase 1 — Ignição (maior retorno; todas as peças existem)
-- [ ] `decidir_proximo_passo` pura + testes (falsificar: forjar cada precedência e
-      exigir a ordem; quebrar de propósito uma vez)
-- [ ] `GET /player/proximo-passo`
-- [ ] Card líder no dashboard (com replanejamento do grid ANTES, pela regra)
-- [ ] Bloco `proximo_passo` na resposta do `/analyze` + notificação `treino_prescrito`
-- [ ] Sino: produtores novos `leak_reaberto`, `relatorio_gerado`
-- [ ] Origem da sessão (`?origem=`) gravada para a métrica 1
-- **Pronto quando:** as 3 superfícies consomem o mesmo endpoint; forjar um leak
-  reaberto num banco descartável faz o passo aparecer no dashboard, no sino e na
-  resposta de upload; suítes verdes; guardas quebrados de propósito uma vez.
+### Fase 1 — Ignição · **ENTREGUE 2026-07-29** (commit `c63047a`)
+- [x] `decidir_proximo_passo` pura + 12 testes; sabotada de propósito (missão na
+      frente de reaberto), 2 testes acusam
+- [x] `GET /player/proximo-passo`
+- [x] Faixa líder no dashboard (`ProximoPassoBanner`, irmã do alerta de drift —
+      plano de grid: nenhum card do masonry mudou; a ação ganhou a primeira dobra)
+- [x] Bloco `proximo_passo` na resposta do `/analyze` (sempre) + notificação
+      `treino_prescrito` (só quando o diagnóstico mudou)
+- [x] Sino: `leak_reaberto` (no próprio ponto da reabertura), `relatorio_gerado`
+      (no worker que antes só logava)
+- [x] `progression_attempts.origem` (lista SAVEPOINT) + `?origem=` lido no trainer
+      e enviado no grade; deep link `?foco=` cai direto no exercício prescrito
+- **Verificado:** reabertura FORJADA em banco descartável apareceu nas 4 superfícies
+  (endpoint, dashboard, sino, upload). **O forjamento pegou um bug real antes da
+  entrega:** o loader lia reabertura via `get_training_proof`, que exige torneio
+  pós-baseline — e a reabertura move o baseline, então o leak recém-reaberto era
+  invisível até o upload seguinte. Corrigido com `listar_reaberturas` (tabela crua)
+  e travado em `test_reabertura_recem_criada_e_visivel_no_banco_real`.
 
 ### Fase 2 — Cobrança por e-mail
 - [ ] Tabela `engagement_emails` (bloco SAVEPOINT; catraca já protege)
