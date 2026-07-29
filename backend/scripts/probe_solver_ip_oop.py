@@ -92,26 +92,34 @@ def main():
             saidas[flag] = None
             continue
         acao, freq, obs = _resumo(r)
-        saidas[flag] = json.dumps(r.get('strategy') or r.get('primary_action'), sort_keys=True)
+        combos = r.get('total_combos')
+        saidas[flag] = combos
+        dono = ('OOP, o das AA' if combos == 6 else
+                'IP, o das 32o' if combos == 12 else f'INDEFINIDO ({combos})')
+        print(f'  total_combos   : {combos}   ->  a resposta é do {dono}')
+        print(f'  EV             : {r.get("ev")}')
         print(f'  ação dominante : {acao} ({freq})  {obs}')
         print(f'  exploitability : {r.get("exploitability") or r.get("exploitability_pct")}')
-        print(f'  chaves da resposta: {sorted(r.keys())[:12]}\n')
+        print(f'  ações          : {r.get("actions")}\n')
 
     print('=' * 68)
     a, b = saidas.get(False), saidas.get(True)
     if a is None or b is None:
         print('INCONCLUSIVO: o solver não respondeu nas duas chamadas.')
         return
+    print(f'hero_is_ip=False -> {a} combos   |   hero_is_ip=True -> {b} combos\n')
     if a == b:
-        print('A FLAG É IGNORADA: as duas respostas são idênticas.')
-        print('  → o binário na VM é o antigo. Manter TEXAS_HERO_IP desligada e NÃO enfileirar')
-        print('    spot de herói-IP: o nó viria com a estratégia do vilão.')
+        print('A FLAG É IGNORADA: o solver devolveu o MESMO jogador nas duas chamadas.')
+        print('  -> binário antigo. Manter TEXAS_HERO_IP desligada e NÃO enfileirar spot de')
+        print('     herói-IP: o nó viria com a estratégia do vilão.')
+    elif a == 6 and b == 12:
+        print('A FLAG É HONRADA, e na direção CERTA.')
+        print('  -> false devolveu o OOP (6 combos de AA) e true devolveu o IP (12 de 32o),')
+        print('     exatamente como a aplicação assume. Dá para ligar TEXAS_HERO_IP.')
     else:
-        print('A FLAG É HONRADA: as respostas diferem.')
-        print('  → o binário suporta hero_is_ip. Dá para ligar TEXAS_HERO_IP e passar a cobrir')
-        print('    spots de herói-IP, que hoje ficam sem cobertura de propósito.')
-    print('\nLeitura das ações: agressiva (bet/raise) = jogador com AA = OOP.')
-    print('                   passiva (check/fold)   = jogador com 32o = IP.')
+        print('A FLAG MUDA A RESPOSTA, mas NÃO na direção esperada.')
+        print('  -> não ligue nada até entender. Esperado: false=6 (OOP/AA), true=12 (IP/32o).')
+        print('     Flag que muda na direção errada é pior que flag ignorada: parece funcionar.')
 
 
 if __name__ == '__main__':
