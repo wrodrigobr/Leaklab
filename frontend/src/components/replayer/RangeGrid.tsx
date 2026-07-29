@@ -68,6 +68,8 @@ export function RangeGrid({ range, heroHand }: Props) {
           Array.from({ length: 13 }, (_, col) => {
             const hand    = cellHand(row, col);
             const label   = cellLabel(row, col);
+            // `cellHand` já carrega o naipe ("AKs"/"AKo"); pares não têm sufixo.
+            const suffix  = hand.endsWith('s') ? 's' : hand.endsWith('o') ? 'o' : '';
             const isHero  = heroHand === hand;
             const gradient = buildGradient(hand, range);
             const txtColor = textColor(hand, range);
@@ -87,12 +89,26 @@ export function RangeGrid({ range, heroHand }: Props) {
                 className={cn(
                   'aspect-square flex items-center justify-center rounded-[2px]',
                   'font-mono leading-none select-none transition-colors',
-                  'text-[6px] sm:text-[7px]',
+                  'text-[7px] sm:text-[9px]',
+                  // Contorno na diagonal: separa visualmente os dois triângulos. Sem isto, saber
+                  // se uma célula é suited ou offsuit dependia de contar a distância até a
+                  // diagonal, que ninguém faz olhando.
+                  row === col && 'ring-1 ring-inset ring-white/25',
                   isHero && 'ring-2 ring-yellow-400 ring-offset-[1px] ring-offset-background relative z-10',
                 )}
                 style={{ background: gradient, color: txtColor }}
               >
                 {label}
+                {/* O SUFIXO `s`/`o` na própria célula.
+                    A grade mostrava "AK" nas DUAS células e o `cellLabel` até documenta o
+                    descarte ("no suit suffix"): a única pista era a posição em relação à
+                    diagonal, explicada num rodapé de 8px a 60% de opacidade. Célula que não
+                    se descreve obriga a decorar a convenção da grade antes de ler o conteúdo.
+                    Vem menor e mais apagado de propósito: o par de cartas continua sendo a
+                    informação principal, o naipe é a qualificação. */}
+                {suffix && (
+                  <span className="ml-[0.5px] text-[0.72em] opacity-70">{suffix}</span>
+                )}
               </div>
             );
           })
@@ -128,8 +144,14 @@ export function RangeGrid({ range, heroHand }: Props) {
         <span>{pct}% · {combos} combos</span>
       </div>
 
-      <p className="font-mono text-[8px] text-muted-foreground/60 text-center">
-        Superior-dir: suited · Inferior-esq: offsuit · Diagonal: pares · Hover na célula vê freq por ação
+      {/* Legenda de LEITURA da grade, não de cores.
+          Era 8px a 60% de opacidade, e carregava sozinha a única indicação de suited × offsuit.
+          Agora a célula se descreve, então esta linha volta a ser o que deveria: um lembrete da
+          geometria, legível. */}
+      <p className="font-mono text-[10px] leading-relaxed text-muted-foreground text-center">
+        <span className="text-foreground">s</span> = suited (acima da diagonal) ·{' '}
+        <span className="text-foreground">o</span> = offsuit (abaixo) ·{' '}
+        diagonal = pares
       </p>
     </div>
   );

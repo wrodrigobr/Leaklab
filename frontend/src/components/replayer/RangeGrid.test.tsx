@@ -51,3 +51,52 @@ describe("RangeGrid — legenda renderizada", () => {
     expect(container.textContent).not.toMatch(/\bjam\b/i);
   });
 });
+
+/**
+ * A grade tem que dizer, na própria célula, se a mão é suited ou offsuit.
+ *
+ * Antes, `cellLabel` descartava o naipe de propósito — o comentário dele dizia "no suit suffix" —
+ * e "AK" aparecia em DUAS células diferentes com cores diferentes. A única pista era a posição
+ * em relação à diagonal, explicada num rodapé de 8px a 60% de opacidade.
+ *
+ * Isso importa mais do que parece: a range cresce SUITED primeiro e offsuit por último (medido
+ * nas ranges capturadas: de UTG para HJ entram 16 suited contra 9 offsuit). Quem não distingue
+ * os dois triângulos não consegue enxergar o padrão que precisa memorizar.
+ */
+describe("RangeGrid — suited × offsuit legível na célula", () => {
+  it("marca s e o nas células, e não marca nada nos pares", () => {
+    const { container } = render(<RangeGrid range={PUSH_FOLD_OPEN} />);
+    const celulas = Array.from(container.querySelectorAll("div.aspect-square"));
+    expect(celulas.length).toBe(169);
+
+    const comS = celulas.filter((c) => c.textContent?.endsWith("s"));
+    const comO = celulas.filter((c) => c.textContent?.endsWith("o"));
+    // 13x13: 13 pares na diagonal, 78 suited e 78 offsuit.
+    expect(comS.length).toBe(78);
+    expect(comO.length).toBe(78);
+
+    // O par não recebe sufixo: "AA" e não "AAs".
+    const pares = celulas.filter((c) => /^([2-9TJQKA])\1$/.test(c.textContent ?? ""));
+    expect(pares.length).toBe(13);
+  });
+
+  it("a MESMA dupla de cartas aparece distinguível nas duas células", () => {
+    const { container } = render(<RangeGrid range={PUSH_FOLD_OPEN} />);
+    const textos = Array.from(container.querySelectorAll("div.aspect-square"))
+      .map((c) => c.textContent ?? "");
+    // O bug era exatamente este: "AK" duas vezes, indistinguível.
+    expect(textos.filter((t) => t === "AK").length).toBe(0);
+    expect(textos).toContain("AKs");
+    expect(textos).toContain("AKo");
+  });
+
+  it("a legenda explica a geometria em tamanho legível", () => {
+    const { container } = render(<RangeGrid range={PUSH_FOLD_OPEN} />);
+    const legenda = Array.from(container.querySelectorAll("p"))
+      .find((p) => p.textContent?.includes("suited"));
+    expect(legenda).toBeTruthy();
+    // 8px a 60% de opacidade era o mesmo que não existir.
+    expect(legenda?.className).not.toMatch(/text-\[8px\]|text-\[6px\]/);
+    expect(legenda?.className).not.toMatch(/muted-foreground\/\d/);
+  });
+});
