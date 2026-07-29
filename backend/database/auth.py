@@ -19,7 +19,31 @@ from .repositories import get_user_by_id
 SECRET_KEY = os.environ.get('LEAKLAB_SECRET', '')
 TOKEN_DAYS  = int(os.environ.get('TOKEN_DAYS', 7))
 
-_PROD = bool(os.environ.get('RENDER') or os.environ.get('LEAKLAB_PROD'))
+def is_production() -> bool:
+    """Estamos em produção? FONTE ÚNICA — importe daqui, não recrie a condição.
+
+    Existiam duas versões desta pergunta no código, e a mais importante era a estreita. O
+    fail-safe do JWT olhava só `RENDER` e `LEAKLAB_PROD`; o webhook do Stripe olhava também
+    `ENVIRONMENT` e `DATABASE_URL`. **Produção não é Render**: o runbook de deploy escreve
+    `ENVIRONMENT=production` e `DATABASE_URL` no `.env`, e nenhum arquivo do repositório escreve
+    `RENDER` ou `LEAKLAB_PROD` em lugar nenhum.
+
+    Ou seja, o `_PROD` do JWT era SEMPRE falso no host real. Se `LEAKLAB_SECRET` faltasse ou
+    viesse curto — container recriado, variável perdida numa migração, typo — o app não recusava
+    subir: emitia um warning e assumia a chave literal que está versionada num repositório
+    público. Qualquer pessoa assinaria `{"user_id": 1, "role": "admin"}` e entraria como admin.
+
+    O fail-safe existia e estava desarmado por uma condição estreita demais. Achado pela revisão
+    de segurança de 2026-07-28, e a mesma classe do `TEXAS_HERO_IP` perdido na migração: variável
+    de ambiente não viaja com o código, e quem depende dela precisa perguntar de forma ampla.
+    """
+    return bool(os.environ.get('RENDER')
+                or os.environ.get('LEAKLAB_PROD')
+                or os.environ.get('ENVIRONMENT') == 'production'
+                or os.environ.get('DATABASE_URL'))
+
+
+_PROD = is_production()
 if not SECRET_KEY or len(SECRET_KEY) < 32:
     if _PROD:
         raise RuntimeError(

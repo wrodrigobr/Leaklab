@@ -14,6 +14,60 @@ PokerLeakLab — an AI-powered poker coaching platform. Users upload PokerStars 
 - **Headings:** Chakra Petch Bold.
 - **Rebranding é VISUAL apenas.** NÃO alterar: nomes de variáveis internas, schema de banco, rotas de API, nomes de pacotes/repositório (`leaklab`, `LEAKLAB_SECRET`, `leaklab-solver`, etc.), lógica de negócio. Só o que o usuário VÊ vira "GrindLab".
 
+## Definição de pronto
+
+Regras nascidas de falhas reais. Cada uma tem, ao lado, o caso que a originou — não são
+princípios gerais, são cicatrizes. Valem para tarefa complexa (mudança de motor, migração,
+conserto em produção), não para ajuste trivial.
+
+**1. Diagnóstico precisa PROVAR que detecta.**
+Forje o caso que ele deveria achar, numa cópia descartável do banco, e exija que o número se
+mexa. *Em 28/07 quatro diagnósticos imprimiram números confiantes e falsos. Um deles reportou
+"zero perdidas" porque eu fazia `split()` num `hero_cards` gravado colado (`'5h5d'`), e todo
+hash saía errado. **Zero tranquilizador é o pior resultado possível numa ferramenta de medição**,
+porque encerra a investigação.*
+
+**2. Guarda estrutural precisa ser quebrado de propósito, uma vez.**
+Desfaça o conserto, confirme que o teste acusa, restaure. *Um teste com
+`assertEqual(correct_index, 0)` e o comentário "a opção certa é sempre a 1ª" congelou por meses
+um quiz vencível sem ler. Teste que não falha quando deveria conta como cobertura sem dar
+cobertura.*
+
+**3. Nunca concluir de número colhido com processo em andamento.**
+*Vi "62 solves prontos, só 14 decisões cobertas" com a fila ainda drenando e levantei a hipótese
+de não ter acertado a raiz. Eram dois números de instantes diferentes. Aconteceu duas vezes no
+mesmo dia.*
+
+**4. Confirmar que a mudança está NO AMBIENTE antes de concluir que não funcionou.**
+O código é *baked* na imagem: `git pull` no host não muda o container. *Um `nginx -t` rodou
+dentro do container, onde o bind mount ainda apontava para o inode antigo, e eu declarei o
+conserto verificado.* Ver [Deploy NÃO aplica sozinho](#deployment).
+
+**5. Regra aplicada em N lugares vira função, com teste que varre os N+1.**
+*O corte do board por street vivia copiado: dois lookups cortavam, o enfileiramento não. Três
+meses gravando com uma chave e procurando com outra. No mesmo dia o mesmo padrão apareceu em
+ranges (4 caminhos) e em leitura de coluna por posição (29 pontos).*
+
+**6. Operação que pode falhar em silêncio precisa de conferência explícita.**
+`str.replace` que não casa devolve a string intacta. `except: pass` engole `NameError`. Migração
+em PG aborta a transação e os `ALTER` seguintes falham calados. *Um commit meu alterou só a
+docstring e eu li "10 insertions" como sucesso.*
+
+**7. Antes de "consertar", perguntar se o conserto pode causar dano que o bug não causava.**
+*O bug do board **escondia** respostas; meu conserto **trocou** respostas, e 90 vereditos errados
+foram para a tela. Re-chavear nó órfão teria sido pior ainda: estratégia de river em decisão de
+flop.* Bug que some com a resposta é honesto; conserto que a troca não é.
+
+**8. Comentário não é evidência.**
+*"Só vale depois do deploy do main.rs" manteve `TEXAS_HERO_IP` desligada por sete semanas. O
+binário já suportava — a flag tinha se perdido numa migração de infra. O comentário descrevia
+junho e virou explicação plausível para um estado com outra causa.* Quando a decisão depende do
+comportamento de um sistema externo, **pergunte ao sistema**.
+
+**Só declare entregue quando:** os testes das suítes afetadas passam, o guarda novo foi
+verificado quebrando-o, o que roda em produção foi confirmado no ambiente, e o CHANGELOG diz
+**por que**, não só o quê.
+
 ## Commands
 
 ### Running the backend

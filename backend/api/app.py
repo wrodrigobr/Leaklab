@@ -312,7 +312,10 @@ def _security_headers(response):
     response.headers['X-Frame-Options'] = 'DENY'
     response.headers['X-XSS-Protection'] = '1; mode=block'
     response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
-    if os.environ.get('RENDER') or os.environ.get('LEAKLAB_PROD'):
+    # `is_production()` e nao a condicao estreita: com RENDER/LEAKLAB_PROD, que nenhum arquivo
+    # do repositorio escreve, o HSTS NUNCA era emitido em producao.
+    from database.auth import is_production as _e_prod
+    if _e_prod():
         response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
     return response
 
@@ -7015,8 +7018,8 @@ def subscription_webhook():
     if not STRIPE_WEBHOOK_SECRET:
         # Em produção, RECUSAR webhook não assinado: sem o secret, um atacante POSTa um evento
         # forjado (payment_intent.succeeded com metadata arbitrária) e se auto-concede Pro.
-        if (os.environ.get('RENDER') or os.environ.get('LEAKLAB_PROD')
-                or os.environ.get('ENVIRONMENT') == 'production' or os.environ.get('DATABASE_URL')):
+        from database.auth import is_production as _e_prod2
+        if _e_prod2():
             log.error("STRIPE_WEBHOOK_SECRET ausente em produção — webhook recusado")
             return jsonify({'error': 'Webhook not configured'}), 503
         # Dev sem secret — aceita sem validar
