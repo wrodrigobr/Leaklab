@@ -711,34 +711,6 @@ def _run_migrations(conn):
             conn.execute("CREATE INDEX IF NOT EXISTS idx_prog_attempt_user_cat "
                          "ON progression_attempts(user_id, category_key, id)")
         except Exception: pass
-        # SRS das cartas de MEMORIZACAO de range (posicao x familia x profundidade). Bloco
-        # abort-proof proprio: em PG uma falha aqui aborta a transacao e derruba as migracoes
-        # seguintes, caladas.
-        #
-        # Tabela propria, e nao `drill_sessions`: aquela e chaveada por `decision_id`, uma decisao
-        # REAL de uma mao do jogador. A carta de range nao e uma decisao, e uma posicao/familia/
-        # profundidade — nao tem decision_id e nunca teria.
-        try:
-            conn.execute("""
-                CREATE TABLE IF NOT EXISTS range_card_srs (
-                    id             SERIAL PRIMARY KEY,
-                    user_id        INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-                    card_key       TEXT    NOT NULL,
-                    position       TEXT    NOT NULL,
-                    familia        TEXT    NOT NULL,
-                    stack_bb       INTEGER NOT NULL,
-                    interval_days  INTEGER NOT NULL DEFAULT 0,
-                    due_at         TIMESTAMP,
-                    streak         INTEGER NOT NULL DEFAULT 0,
-                    seen           INTEGER NOT NULL DEFAULT 0,
-                    last_ok        INTEGER,
-                    updated_at     TIMESTAMP NOT NULL DEFAULT NOW(),
-                    UNIQUE (user_id, card_key)
-                )
-            """)
-            conn.execute("CREATE INDEX IF NOT EXISTS idx_range_card_due "
-                         "ON range_card_srs(user_id, due_at)")
-        except Exception: pass
         # Conquistas EXCLUSIVAS do treino (separadas das globais/ELO) — Postgres
         try:
             conn.execute("""
@@ -2071,6 +2043,32 @@ def _run_migrations(conn):
             # Parceria (modelo %): taxa de comissão POR COACH em basis points (3000 = 30%).
             # NULL = escada por volume (15%/20%/25%). Parceiro Fundador (Felipe) = 3000.
             "ALTER TABLE coach_profiles ADD COLUMN IF NOT EXISTS commission_rate_bps INTEGER",
+            # SRS das cartas de MEMORIZAÇÃO de range (posição × família × profundidade).
+            #
+            # Mora AQUI, na lista isolada por SAVEPOINT, e não num `try/except` no meio das
+            # migrações. Eu tinha posto lá primeiro, copiando o formato dos vizinhos que se
+            # descrevem como "bloco abort-proof próprio" — e o deploy provou que não são: o
+            # `CREATE` é válido (roda sozinho em produção), mas a transação já chegava abortada
+            # e o `except` engolia o erro. A tabela simplesmente não existia, calada.
+            #
+            # Tabela própria e não `drill_sessions`: aquela é chaveada por `decision_id`, uma
+            # decisão REAL de uma mão do jogador. A carta de range não é uma decisão.
+            """CREATE TABLE IF NOT EXISTS range_card_srs (
+                id             SERIAL PRIMARY KEY,
+                user_id        INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                card_key       TEXT    NOT NULL,
+                position       TEXT    NOT NULL,
+                familia        TEXT    NOT NULL,
+                stack_bb       INTEGER NOT NULL,
+                interval_days  INTEGER NOT NULL DEFAULT 0,
+                due_at         TIMESTAMP,
+                streak         INTEGER NOT NULL DEFAULT 0,
+                seen           INTEGER NOT NULL DEFAULT 0,
+                last_ok        INTEGER,
+                updated_at     TIMESTAMP NOT NULL DEFAULT NOW(),
+                UNIQUE (user_id, card_key)
+            )""",
+            "CREATE INDEX IF NOT EXISTS idx_range_card_due ON range_card_srs(user_id, due_at)",
             # Comissão por PAGAMENTO (accrual): 1 linha por cobrança comissionável.
             """CREATE TABLE IF NOT EXISTS coach_commissions (
                 id            SERIAL PRIMARY KEY,

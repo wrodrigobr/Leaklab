@@ -19,6 +19,7 @@ SUITES = {
                   'test_leak_trainer.py', 'test_strategy_provider.py', 'test_progression.py',
                   'test_drill_fronteira.py',
                   'test_memorizacao_range.py',
+                  'test_pg_migration_isolation.py',
                   'test_interpretation_sign.py',
                   'test_validation.py',
                   'test_equity_range_aware.py', 'test_preflop_open_size.py',
