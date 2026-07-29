@@ -162,6 +162,60 @@ def fundamentals_catalog(scenario: str, stack: int = 50) -> list[dict]:
     return cats
 
 
+# ── Amostragem de FRONTEIRA ───────────────────────────────────────────────────────────────────
+#
+# O sorteio era uniforme (`rng.shuffle(_HANDS)`), então a maioria das perguntas era trivial:
+# foldar 32o de UTG não ensina nada, consome uma pergunta e ainda paga XP. O sinal por pergunta
+# é baixíssimo, e o jogador aprende a clicar no automático.
+#
+# O que ensina é a FRONTEIRA — onde a range para. Uma mão é de fronteira quando:
+#
+#   · o próprio GTO MISTURA nela (frequência da ação dominante abaixo do limiar). Aqui não existe
+#     resposta única, e é onde mora a decisão de verdade; ou
+#   · ela MUDA de lado entre posições vizinhas: abre do CO e não do UTG. É o "quase", e é
+#     exatamente o que o jogador precisa memorizar, porque o miolo ele acerta de olhos fechados.
+#
+# Não é filtro, é VIÉS. Cem por cento de fronteira seria um treino brutal e sem calibragem: o
+# jogador precisa de algumas fáceis para sentir a régua e para não desistir. `_COTA_FRONTEIRA`
+# governa a mistura.
+_LIMIAR_MISTO = 0.90     # acima disto a estratégia é pura → a mão é memorização, não decisão
+_COTA_FRONTEIRA = 0.75   # fatia das perguntas que vem da borda
+
+
+def _posicao_vizinha(pos: str, passo: int) -> str:
+    """Assento `passo` casas depois (mais tarde na ordem de ação). Fora da mesa → ''."""
+    try:
+        i = _ACTION_ORDER.index(pos)
+    except ValueError:
+        return ''
+    j = i + passo
+    return _ACTION_ORDER[j] if 0 <= j < len(_ACTION_ORDER) - 1 else ''   # BB não abre
+
+
+def e_mao_de_fronteira(pos: str, hand: str, stack: float, hand_freq: dict) -> bool:
+    """A mão está na borda da decisão, em vez de no miolo óbvio?"""
+    freqs = [float(v or 0) for v in (hand_freq or {}).values()]
+    if freqs and max(freqs) < _LIMIAR_MISTO:
+        return True                       # o GTO mistura: é decisão, não memória
+
+    # Muda de lado entre assentos vizinhos? Compara com a posição UMA casa depois (que abre mais
+    # largo) e UMA antes (que abre mais estreito). Divergência = a mão está na borda desta posição.
+    try:
+        aqui = hand_in_open_range(pos, hand, stack)
+    except Exception:
+        return False
+    for passo in (1, -1):
+        viz = _posicao_vizinha(pos, passo)
+        if not viz:
+            continue
+        try:
+            if hand_in_open_range(viz, hand, stack) != aqui:
+                return True
+        except Exception:
+            continue
+    return False
+
+
 def generate_canonical_spot(category: dict, rng: random.Random | None = None) -> dict | None:
     """Gera um spot canônico da categoria: FIXA position/vs_position/stack e randomiza só a MÃO
     (de _HANDS). Valida cobertura via analyze_preflop (available + scenario bate). Retorna o spot
@@ -183,6 +237,11 @@ def generate_canonical_spot(category: dict, rng: random.Random | None = None) ->
 
     hands = _HANDS[:]
     rng.shuffle(hands)
+    # Esta rodada quer uma mão de borda? A cota mistura fáceis de propósito (ver o bloco sobre
+    # amostragem de fronteira). `reserva` guarda a primeira mão VÁLIDA porém trivial, para não
+    # devolver `None` quando as 40 sorteadas não tiverem nenhuma de borda.
+    quer_fronteira = rng.random() < _COTA_FRONTEIRA
+    reserva: tuple | None = None
     for hand in hands[:40]:
         # Gate de PREMISSA: no vs_3bet a história é "você abriu e levou 3-bet" — a mão TEM que
         # pertencer ao range de abertura da posição. Sem isto, o trainer servia "UTG abriu 84o
@@ -203,21 +262,40 @@ def generate_canonical_spot(category: dict, rng: random.Random | None = None) ->
         # 44% do EV perdido. O menu já inclui 'allin' sozinho — o invariante do provider garante
         # que toda ação creditável vira botão.
         opts = strat['available_actions']
-        return {
-            'scenario':    scenario,
-            'category':    category['key'],
-            'position':    pos,
-            'vs_position': vs_pos,
-            'stack_bb':    stack,
-            'facing_size': facing,
-            'is_3bet_pot': is_3b,
-            'hero_was_aggressor': was_aggr,   # grade reusa (senão reclassifica errado)
-            'facing_raises': raises,
-            'hand':        hand,
-            'hero_cards':  _hand_to_cards(hand),
-            'options':     opts,
-            'xp_value':    _XP_BY_SCENARIO.get(scenario, 20),
-        }
+
+        def _monta(_hand, _opts, _fronteira):
+            return {
+                'fronteira':   _fronteira,   # observável: dá para medir se o viés funciona
+                'scenario':    scenario,
+                'category':    category['key'],
+                'position':    pos,
+                'vs_position': vs_pos,
+                'stack_bb':    stack,
+                'facing_size': facing,
+                'is_3bet_pot': is_3b,
+                'hero_was_aggressor': was_aggr,   # grade reusa (senão reclassifica errado)
+                'facing_raises': raises,
+                'hand':        _hand,
+                'hero_cards':  _hand_to_cards(_hand),
+                'options':     _opts,
+                'xp_value':    _XP_BY_SCENARIO.get(scenario, 20),
+            }
+
+        # Nesta rodada queremos borda? Então mão trivial NÃO serve: guarda a primeira como
+        # reserva e segue procurando. A primeira versão condicionava o `continue` a
+        # `reserva is None`, então só a PRIMEIRA trivial era adiada e da segunda em diante
+        # passava direto — o viés media 39% contra a cota de 75%.
+        _fronteira = e_mao_de_fronteira(pos, hand, float(stack), strat.get('hand_freq') or {})
+        if quer_fronteira and not _fronteira:
+            if reserva is None:
+                reserva = (hand, opts)
+            continue
+        return _monta(hand, opts, _fronteira)
+
+    # Nenhuma das 40 sorteadas era de borda. Serve a reserva: melhor spot fácil que spot nenhum.
+    if reserva is not None:
+        _h, _o = reserva
+        return _monta(_h, _o, False)
     return None
 
 
