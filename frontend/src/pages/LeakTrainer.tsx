@@ -330,6 +330,77 @@ export default function LeakTrainer() {
 
   const accuracy = totalDone > 0 ? Math.round((totalCorrect / totalDone) * 100) : null;
   const table = spot ? buildStep(spot) : null;
+  // Cartas do herói só aparecem DEPOIS da sondagem. É o conteúdo do exercício: estimar a range
+  // do vilão com a mesa à vista (posições, stacks, ação) mas sem saber a própria mão. A mesa
+  // desenha verso no assento do herói quando recebe lista vazia.
+  const cartasVisiveis = phase === "probe" ? [] : (table?.heroCards ?? []);
+
+  /* ── Sondagem de range: painel LATERAL, com a mesa à vista ───────────────────────────────
+     A primeira versão era sobreposição de tela cheia, e estava errada de conceito: pedia para
+     estimar a range do vilão ESCONDENDO a mesa — sem posições, stacks nem a ação que aconteceu,
+     que é exatamente o contexto de onde a estimativa sai. Perguntar "quanto o LJ abre" sem
+     mostrar quem é o LJ e o que ele fez transforma o exercício em decoreba de tabela.
+
+     Agora a mesa fica visível, com o assento do herói de VERSO (a mesa desenha o verso quando
+     recebe lista de cartas vazia), e a pergunta ocupa a coluna lateral. No celular vira folha
+     inferior, porque coluna lateral em tela estreita esmaga as duas coisas.
+
+     O nome do vilão e a fatia vêm prontos do backend, da MESMA contagem que a Academia usa: a
+     tela não calcula largura de range, senão existiriam duas fontes e uma hora divergiriam. */
+  const sondagem = spot?.range_probe;
+  const montaSondagem = (compacto: boolean) => {
+    if (phase !== "probe" || !sondagem) return null;
+    const respondeu = probePick !== null;
+    const opcoes = (
+      <div className={cn(compacto ? "flex flex-wrap justify-center gap-2" : "space-y-2")}>
+        {sondagem.opcoes.map((op, i) => {
+          const certa = i === sondagem.correta;
+          return (
+            <button key={op} disabled={respondeu} onClick={() => setProbePick(i)}
+              className={cn(
+                "rounded-xl border font-mono transition-colors",
+                compacto ? "px-4 py-2 text-xs" : "w-full px-4 py-2.5 text-sm",
+                !respondeu && "border-border text-foreground hover:border-amber-500/60 hover:text-amber-400",
+                respondeu && certa && "border-emerald-500/60 bg-emerald-500/10 text-emerald-400",
+                respondeu && !certa && i === probePick && "border-red-500/60 bg-red-500/10 text-red-400",
+                respondeu && !certa && i !== probePick && "border-border/40 text-muted-foreground/50",
+              )}>
+              {op}
+            </button>
+          );
+        })}
+      </div>
+    );
+    return (
+      <div className={cn(
+        "w-full rounded-2xl border border-amber-500/30 bg-background/95 shadow-xl backdrop-blur",
+        compacto ? "px-4 py-3" : "p-4 lg:w-[340px] lg:shrink-0",
+      )}>
+        <p className={cn("font-mono uppercase tracking-widest text-amber-400",
+                         compacto ? "text-[9px] text-center" : "text-[10px]")}>
+          {t("leakTrainer.probe.eyebrow")}
+        </p>
+        <h2 className={cn("font-heading font-bold leading-snug text-foreground",
+                          compacto ? "mt-1 text-center text-[13px]" : "mt-2 text-[15px]")}>
+          {sondagem.pergunta}
+        </h2>
+        <div className={compacto ? "mt-2.5" : "mt-4"}>{opcoes}</div>
+        {respondeu && (
+          <div className={cn("animate-fade-in", compacto ? "mt-2.5 space-y-2" : "mt-4 space-y-3")}>
+            <p className={cn("leading-snug text-muted-foreground",
+                             compacto ? "text-[11px] text-center" : "text-[12px]")}>
+              {sondagem.explicacao}
+            </p>
+            <button onClick={() => setPhase("question")}
+              className="w-full rounded-xl bg-amber-500/15 px-4 py-2.5 font-mono text-xs font-bold uppercase tracking-wider text-amber-400 ring-1 ring-amber-500/40 transition-colors hover:bg-amber-500/25">
+              {t("leakTrainer.probe.reveal")}
+            </button>
+          </div>
+        )}
+      </div>
+    );
+  };
+  const painelSondagem = montaSondagem(false);
 
   const catLabel = spot ? labelFor(spot) : "";
   const blockKind = (spot as { block_kind?: string } | null)?.block_kind;
@@ -436,15 +507,24 @@ export default function LeakTrainer() {
   ) : null;
 
   // ── CELULAR DEITADO: tela cheia imersiva (mesa preenche, botões/veredito flutuam) ──
-  if (landscapeMobile && (phase === "question" || phase === "feedback") && spot && table) {
+  if (landscapeMobile && (phase === "probe" || phase === "question" || phase === "feedback") && spot && table) {
     return (
       <div ref={rootRef} className="h-dvh relative overflow-hidden hud-scanline"
         style={{ background: "radial-gradient(ellipse at 50% 45%, #14223a 0%, #080f1c 100%)" }}>
         <div className="absolute inset-0 flex items-center justify-center p-0.5">
           <div className="h-full w-auto max-w-full mx-auto" style={{ aspectRatio: "1160 / 710" }}>
-            <PokerTableV3 step={table.step} hero="Hero" heroCards={table.heroCards} bb={table.bb} betUnit="bb" orientation="landscape" fill />
+            <PokerTableV3 step={table.step} hero="Hero" heroCards={cartasVisiveis} bb={table.bb} betUnit="bb" orientation="landscape" fill />
           </div>
         </div>
+        {/* Sondagem no modo imersivo: faixa INFERIOR, não lateral.
+            Ancorada à direita, ela cobria o assento do vilão — justamente aquele sobre quem a
+            pergunta é feita, o que esvazia o exercício. Embaixo ela ocupa a faixa que fica vazia
+            (os botões de ação não existem nesta fase) e nenhum assento é escondido. */}
+        {phase === "probe" && sondagem && (
+          <div className="absolute bottom-[calc(0.4rem+env(safe-area-inset-bottom))] left-1/2 z-40 w-[min(620px,96vw)] -translate-x-1/2">
+            {montaSondagem(true)}
+          </div>
+        )}
         {/* topo-esquerda: categoria treinada */}
         <div className="absolute top-[calc(0.4rem+env(safe-area-inset-top))] left-[calc(0.5rem+env(safe-area-inset-left))] z-30 flex items-center gap-1.5 rounded-full bg-background/70 px-3 py-1.5 ring-1 ring-amber-500/30 backdrop-blur">
           <Target className="size-3 text-amber-400" aria-hidden />
@@ -522,62 +602,10 @@ export default function LeakTrainer() {
   }
 
 
-  /* ── Sondagem de range: pergunta ANTES de revelar as cartas ──────────────────────────────
-     Sobreposição, e não um bloco dentro do layout, porque existem DOIS layouts (retrato e
-     celular deitado) e a pergunta tem que aparecer nos dois. Um bloco inline exigiria duplicar
-     a mesma coisa em dois lugares — que é o padrão de duplicação que este projeto já pagou
-     várias vezes.
 
-     O nome do vilão e a fatia vêm prontos do backend, da MESMA contagem que a Academia usa.
-     A tela não calcula largura de range: se calculasse, existiriam duas fontes e elas
-     divergiriam. */
-  const sondagem = spot?.range_probe;
-  const overlaySondagem = phase === "probe" && sondagem ? (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/95 px-5 backdrop-blur-sm">
-      <div className="w-full max-w-md space-y-5 text-center">
-        <p className="font-mono text-[10px] uppercase tracking-widest text-amber-400">
-          {t("leakTrainer.probe.eyebrow")}
-        </p>
-        <h2 className="font-heading text-lg font-bold leading-snug text-foreground">
-          {sondagem.pergunta}
-        </h2>
-
-        <div className="space-y-2">
-          {sondagem.opcoes.map((op, i) => {
-            const respondeu = probePick !== null;
-            const certa = i === sondagem.correta;
-            return (
-              <button key={op} disabled={respondeu}
-                onClick={() => setProbePick(i)}
-                className={cn(
-                  "w-full rounded-xl border px-4 py-3 font-mono text-sm transition-colors",
-                  !respondeu && "border-border text-foreground hover:border-amber-500/60 hover:text-amber-400",
-                  respondeu && certa && "border-emerald-500/60 bg-emerald-500/10 text-emerald-400",
-                  respondeu && !certa && i === probePick && "border-red-500/60 bg-red-500/10 text-red-400",
-                  respondeu && !certa && i !== probePick && "border-border/40 text-muted-foreground/50",
-                )}>
-                {op}
-              </button>
-            );
-          })}
-        </div>
-
-        {probePick !== null && (
-          <div className="space-y-4 animate-fade-in">
-            <p className="text-[13px] leading-snug text-muted-foreground">{sondagem.explicacao}</p>
-            <button onClick={() => setPhase("question")}
-              className="w-full rounded-xl bg-amber-500/15 px-4 py-3 font-mono text-xs font-bold uppercase tracking-wider text-amber-400 ring-1 ring-amber-500/40 transition-colors hover:bg-amber-500/25">
-              {t("leakTrainer.probe.reveal")}
-            </button>
-          </div>
-        )}
-      </div>
-    </div>
-  ) : null;
 
   return (
     <div ref={rootRef} className="h-dvh overflow-hidden bg-background hud-scanline flex flex-col">
-      {overlaySondagem}
       {!isFull && <HudHeader />}
       <main className="flex-1 min-h-0 mx-auto flex w-full max-w-[1500px] flex-col px-4 py-3 md:px-8 animate-fade-in">
         {/* header compacto + tela cheia (header grande do HudLayout causava scroll) */}
@@ -999,16 +1027,17 @@ export default function LeakTrainer() {
           );
         })()}
 
-        {(phase === "question" || phase === "feedback") && spot && table && (
+        {(phase === "probe" || phase === "question" || phase === "feedback") && spot && table && (
           <div className="flex min-h-0 flex-1 flex-col gap-4 lg:flex-row lg:items-stretch">
 
             <div className="flex min-h-0 min-w-0 flex-1 items-center justify-center">
               <div className="aspect-[16/10] h-full max-h-full w-auto max-w-full">
-                <PokerTableV3 step={table.step} hero="Hero" heroCards={table.heroCards} bb={table.bb} betUnit="bb" transparentBg />
+                <PokerTableV3 step={table.step} hero="Hero" heroCards={cartasVisiveis} bb={table.bb} betUnit="bb" transparentBg />
               </div>
             </div>
 
             <aside className="flex w-full shrink-0 flex-col gap-3 lg:min-h-0 lg:w-72 lg:overflow-y-auto">
+              {painelSondagem}
 
               {totalDone > 0 && (
                 <div className="flex items-center justify-around rounded-lg border border-border bg-hud-surface px-3 py-2">

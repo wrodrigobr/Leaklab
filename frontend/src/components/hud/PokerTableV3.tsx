@@ -398,6 +398,16 @@ function renderSeatsAndChips(
       const cardY = by - Math.round(ch * 0.67);
       html += cardSVG(heroCards[0], pos.x - cw - cg / 2, cardY, cw, ch);
       html += cardSVG(heroCards[1], pos.x + cg / 2, cardY, cw, ch);
+    } else if (isHero && !isFolded) {
+      // Herói SEM cartas informadas → verso, e não vazio.
+      //
+      // A sondagem de range mostra a mesa antes de revelar a mão: o jogador precisa ver posições,
+      // stacks e a ação para estimar a range do vilão, mas não pode ver as próprias cartas ainda.
+      // Sem este ramo, o assento do herói aparecia sem carta NENHUMA — e cadeira vazia lê como
+      // "esse jogador saiu", que é uma informação errada sobre a mão.
+      const cardY = by - Math.round(ch * 0.67);
+      html += cardSVG(null, pos.x - cw - cg / 2, cardY, cw, ch, true);
+      html += cardSVG(null, pos.x + cg / 2, cardY, cw, ch, true);
     } else if (!isHero && !isFolded) {
       const vw = cw, vh = ch;
       const vcY = by - Math.round(vh * 0.67);
