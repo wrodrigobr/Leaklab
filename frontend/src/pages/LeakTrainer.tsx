@@ -373,14 +373,19 @@ export default function LeakTrainer() {
     );
     return (
       <div className={cn(
-        "w-full rounded-2xl border border-amber-500/30 bg-background/95 shadow-xl backdrop-blur",
-        compacto ? "px-4 py-3" : "p-4 lg:w-[340px] lg:shrink-0",
+        // `min-w-0` + sem largura própria: o painel PREENCHE a coluna, nunca a define.
+        // A primeira versão trazia `lg:w-[340px]` e vivia dentro de um `aside` de `lg:w-72`
+        // (288px) — 340 dentro de 288 estourava e a coluna ganhava barra de rolagem horizontal,
+        // com a pergunta cortada no meio. Componente que fixa a própria largura só funciona
+        // enquanto ninguém o coloca noutro lugar.
+        "w-full min-w-0 rounded-2xl border border-amber-500/30 bg-background/95 shadow-xl backdrop-blur",
+        compacto ? "px-4 py-3" : "p-4",
       )}>
         <p className={cn("font-mono uppercase tracking-widest text-amber-400",
                          compacto ? "text-[9px] text-center" : "text-[10px]")}>
           {t("leakTrainer.probe.eyebrow")}
         </p>
-        <h2 className={cn("font-heading font-bold leading-snug text-foreground",
+        <h2 className={cn("font-heading font-bold leading-snug text-foreground [overflow-wrap:anywhere]",
                           compacto ? "mt-1 text-center text-[13px]" : "mt-2 text-[15px]")}>
           {sondagem.pergunta}
         </h2>
