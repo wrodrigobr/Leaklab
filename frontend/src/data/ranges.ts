@@ -127,6 +127,25 @@ export function rangeActionPresence(
   return out;
 }
 
+/** Combinações de uma LISTA de mãos em notação ("AKs", "77", "QJo").
+ *
+ *  Par = 6, suited = 4, offsuit = 12 — a mesma regra que `rangeStats` aplica varrendo a grade.
+ *  Existe separada porque o treino de fronteira trabalha com uma lista de mãos, não com um
+ *  `RangeSet`, e converter só para contar seria caro e indireto.
+ *
+ *  O percentual é sobre as 1326 combinações do baralho, e NÃO sobre a família: é o que liga este
+ *  exercício à noção de largura de range ("UTG abre ~20%"). Percentual da família diria "marquei
+ *  metade dos Áses suited", que não se conecta a nada que o jogador use na mesa. */
+export function combosDeMaos(hands: string[]): { combos: number; pct: string } {
+  let combos = 0;
+  for (const h of hands) {
+    if (h.length === 2 && h[0] === h[1]) combos += 6;
+    else if (h.endsWith('s')) combos += 4;
+    else if (h.endsWith('o')) combos += 12;
+  }
+  return { combos, pct: (combos / 1326 * 100).toFixed(1) };
+}
+
 export function rangeStats(range: RangeSet): { combos: number; pct: string } {
   let combos = 0;
   for (let r = 0; r < 13; r++) {

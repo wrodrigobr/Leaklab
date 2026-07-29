@@ -209,7 +209,8 @@
     "scn": {
       "rfi": "Apertura (RFI)",
       "vs_rfi": "Defensa vs open",
-      "vs_3bet": "vs 3-bet"
+      "vs_3bet": "vs 3-bet",
+      "range_grid": "Memorizar rangos"
     },
     "protocol": {
       "mission": "Misión de hoy",
@@ -254,6 +255,17 @@
     "probe": {
       "eyebrow": "Primero, su rango",
       "reveal": "Ver mi mano"
+    },
+    "grid": {
+      "eyebrow": "Hasta dónde llega el rango",
+      "question": "{{pos}} abre con {{stack}}bb. Marca cuáles {{familia}} entran en el rango de apertura.",
+      "marked": "marcadas",
+      "ofDeck": "de la baraja",
+      "check": "Comprobar",
+      "right": "Exacto.",
+      "almost": "Casi.",
+      "boundary": "{{pos}} abre {{familia}} hasta {{hand}} — son {{combos}} combinaciones de las {{total}} de la familia, o {{pct}}% de todas las manos. La frontera es lo que vale memorizar: el centro lo aciertas sin pensar.",
+      "onlyFamily": "Solo las celdas de {{familia}} están activas · s = suited (arriba de la diagonal), o = offsuit"
     }
   },
   "trainAch": {

@@ -158,6 +158,97 @@ def test_a_resposta_certa_nao_fica_sempre_na_mesma_posicao():
     print(f'OK  test_a_resposta_certa_nao_fica_sempre_na_mesma_posicao ({sorted(set(idx))})')
 
 
+# ── Marcação de família (treino de fronteira na grade) ────────────────────────────────────────
+
+def _spot_grid(semente=11):
+    from leaklab.leak_trainer import generate_range_grid_spot
+    rng = random.Random(semente)
+    for _ in range(30):
+        s = generate_range_grid_spot(rng)
+        if s:
+            return s
+    return None
+
+
+def test_familia_servida_tem_a_fronteira_dentro():
+    """Família 100% dentro ou 100% fora não ensina fronteira: vira 'marque tudo' ou 'marque nada',
+    e o jogador acerta sem saber. O gerador tem que descartá-las."""
+    from leaklab.leak_trainer import generate_range_grid_spot, grade_range_grid_spot
+    rng = random.Random(3)
+    checados = 0
+    for _ in range(60):
+        sp = generate_range_grid_spot(rng)
+        if not sp:
+            continue
+        g = grade_range_grid_spot(sp, [])
+        n_certas, n_total = len(g['certas']), len(sp['hands'])
+        assert 0 < n_certas < n_total, (
+            f"{sp['position']} / {sp['familia_label']}: {n_certas} de {n_total} — "
+            'família sem fronteira não deveria ser servida')
+        checados += 1
+    assert checados > 10, f'poucos spots gerados ({checados})'
+    print(f'OK  test_familia_servida_tem_a_fronteira_dentro ({checados} spots)')
+
+
+def test_correcao_reporta_o_que_faltou_e_o_que_sobrou():
+    from leaklab.leak_trainer import grade_range_grid_spot
+    sp = _spot_grid()
+    assert sp, 'nenhum spot de grade gerado'
+    certas = grade_range_grid_spot(sp, [])['certas']
+    fora = [h for h in sp['hands'] if h not in certas]
+
+    # marcação perfeita
+    g = grade_range_grid_spot(sp, certas)
+    assert g['acertou'] and not g['faltaram'] and not g['sobraram']
+    assert g['xp'] > 0, 'acerto pleno tem que pagar XP'
+
+    # faltando uma
+    g = grade_range_grid_spot(sp, certas[:-1])
+    assert not g['acertou'] and g['faltaram'] == [certas[-1]] and not g['sobraram']
+    assert g['xp'] == 0
+
+    # sobrando uma
+    if fora:
+        g = grade_range_grid_spot(sp, certas + [fora[0]])
+        assert not g['acertou'] and g['sobraram'] == [fora[0]] and not g['faltaram']
+    print('OK  test_correcao_reporta_o_que_faltou_e_o_que_sobrou')
+
+
+def test_nao_marcar_nada_NAO_conta_como_acerto():
+    """A armadilha do formato: numa família em que a posição abre 5 de 12, 'porcentagem de células
+    certas' daria 58% para quem não responde. Por isso a correção é faltou/sobrou, e nunca um
+    placar que premie o silêncio."""
+    from leaklab.leak_trainer import grade_range_grid_spot
+    sp = _spot_grid()
+    g = grade_range_grid_spot(sp, [])
+    assert not g['acertou'] and g['xp'] == 0
+    assert g['faltaram'], 'não marcar nada tem que reportar tudo como faltando'
+    print('OK  test_nao_marcar_nada_NAO_conta_como_acerto')
+
+
+def test_a_fronteira_e_a_mao_mais_fraca_que_entra():
+    """É o fato âncora que o jogador leva mesmo errando."""
+    from leaklab.leak_trainer import grade_range_grid_spot
+    sp = _spot_grid()
+    g = grade_range_grid_spot(sp, [])
+    ordem = sp['hands']
+    assert g['fronteira'] in g['certas']
+    mais_fraca = max((h for h in g['certas']), key=ordem.index)
+    assert g['fronteira'] == mais_fraca, f"{g['fronteira']} não é a mais fraca de {g['certas']}"
+    print(f"OK  test_a_fronteira_e_a_mao_mais_fraca_que_entra ({sp['familia_label']}: {g['fronteira']})")
+
+
+def test_marcacao_fora_da_familia_e_ignorada():
+    """O cliente não define o gabarito: mão que não pertence à família servida não conta como
+    'sobrou' nem envenena a correção."""
+    from leaklab.leak_trainer import grade_range_grid_spot
+    sp = _spot_grid()
+    certas = grade_range_grid_spot(sp, [])['certas']
+    g = grade_range_grid_spot(sp, certas + ['AA', 'ZZs', ''])
+    assert g['acertou'], f"marcação estranha vazou para a correção: {g['sobraram']}"
+    print('OK  test_marcacao_fora_da_familia_e_ignorada')
+
+
 if __name__ == '__main__':
     falhas = 0
     testes = (test_a_maioria_das_perguntas_vem_da_borda, test_ainda_serve_algumas_faceis,
@@ -166,7 +257,12 @@ if __name__ == '__main__':
               test_sondagem_nunca_aparece_em_rfi, test_sondagem_aparece_onde_ha_vilao,
               test_a_fatia_afirmada_bate_com_a_range_real,
               test_alternativas_da_sondagem_nao_colidem,
-              test_a_resposta_certa_nao_fica_sempre_na_mesma_posicao)
+              test_a_resposta_certa_nao_fica_sempre_na_mesma_posicao,
+              test_familia_servida_tem_a_fronteira_dentro,
+              test_correcao_reporta_o_que_faltou_e_o_que_sobrou,
+              test_nao_marcar_nada_NAO_conta_como_acerto,
+              test_a_fronteira_e_a_mao_mais_fraca_que_entra,
+              test_marcacao_fora_da_familia_e_ignorada)
     for t in testes:
         try:
             t()

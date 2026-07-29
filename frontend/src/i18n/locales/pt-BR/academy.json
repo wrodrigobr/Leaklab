@@ -209,7 +209,8 @@
     "scn": {
       "rfi": "Abertura (RFI)",
       "vs_rfi": "Defesa vs open",
-      "vs_3bet": "vs 3-bet"
+      "vs_3bet": "vs 3-bet",
+      "range_grid": "Memorizar ranges"
     },
     "protocol": {
       "mission": "Missão de hoje",
@@ -254,6 +255,17 @@
     "probe": {
       "eyebrow": "Primeiro, a range dele",
       "reveal": "Ver minha mão"
+    },
+    "grid": {
+      "eyebrow": "Até onde vai a range",
+      "question": "{{pos}} abre com {{stack}}bb. Marque quais {{familia}} entram na range de abertura.",
+      "marked": "marcadas",
+      "ofDeck": "do baralho",
+      "check": "Conferir",
+      "right": "Exato.",
+      "almost": "Quase.",
+      "boundary": "{{pos}} abre {{familia}} até {{hand}} — são {{combos}} combinações das {{total}} da família, ou {{pct}}% de todas as mãos. A fronteira é o que vale memorizar: o miolo você acerta sem pensar.",
+      "onlyFamily": "Só as células de {{familia}} estão ativas · s = suited (acima da diagonal), o = offsuit"
     }
   },
   "trainAch": {

@@ -642,3 +642,106 @@ def grade_postflop_spot(spot: dict, action: str) -> dict | None:
     g = grade_from_hand_strategy(hs, action)
     g['exploitability_pct'] = expl
     return g
+
+
+# ── Treino de FRONTEIRA na grade: marcar a família inteira ────────────────────────────────────
+#
+# Os outros exercícios perguntam "o que você faz com ESTA mão". Este pergunta "até onde vai a
+# range" — recordação ativa da fronteira, que é o fato âncora que dá para memorizar. Reconhecer
+# uma mão servida é bem mais fácil que reconstruir onde a linha para.
+#
+# UMA FAMÍLIA POR VEZ, e não a grade inteira. Marcar 169 células é inviável na prática e, pior,
+# dilui: 130 delas são fold óbvio em qualquer posição. Uma família tem 12 ou 13 casas e a
+# resposta É a fronteira ("o UTG abre Ás suited até onde?").
+#
+# A correção NÃO é porcentagem de células certas. Numa família em que o UTG abre 5 de 12, marcar
+# nada acerta 58% — o número premiaria não responder. O que o exercício reporta é o que FALTOU e
+# o que SOBROU, que é o formato em que o erro se corrige.
+
+_FAMILIAS = [
+    ('as_suited',    'Áses suited',        [f'A{r}s' for r in 'KQJT98765432']),
+    ('as_offsuit',   'Áses offsuit',       [f'A{r}o' for r in 'KQJT98765432']),
+    ('reis_suited',  'Reis suited',        [f'K{r}s' for r in 'QJT98765432']),
+    ('pares',        'Pares',              [f'{r}{r}' for r in 'AKQJT98765432']),
+    ('conectores',   'Conectores suited',  ['JTs', 'T9s', '98s', '87s', '76s', '65s', '54s', '43s', '32s']),
+    ('broadway_off', 'Broadways offsuit',  ['KQo', 'KJo', 'KTo', 'QJo', 'QTo', 'JTo']),
+]
+
+
+def familias_de_range() -> list[dict]:
+    """Catálogo das famílias treináveis (para o front listar, se precisar)."""
+    return [{'key': k, 'label': lab, 'hands': hs} for k, lab, hs in _FAMILIAS]
+
+
+def generate_range_grid_spot(rng: random.Random | None = None,
+                             position: str | None = None,
+                             stack: int = 50) -> dict | None:
+    """Spot de marcação: uma família, uma posição, e quais mãos dela entram no open.
+
+    A resposta NÃO viaja no spot — o cliente marca e o servidor corrige, igual ao resto do
+    trainer. Mandar o gabarito junto tornaria o exercício decorativo.
+    """
+    rng = rng or random
+    pos = position or rng.choice(['UTG', 'UTG+1', 'UTG+2', 'LJ', 'HJ', 'CO', 'BTN'])
+    key, label, hands = rng.choice(_FAMILIAS)
+
+    # Só serve a família se a fronteira estiver DENTRO dela. Família 100% dentro ou 100% fora não
+    # ensina fronteira nenhuma: vira "marque tudo" ou "marque nada", e o jogador acerta sem saber.
+    dentro = [h for h in hands if _abre(pos, h, float(stack))]
+    if not dentro or len(dentro) == len(hands):
+        return None
+
+    return {
+        'kind': 'range_grid',
+        'category': f'grid:{pos}:{key}:{stack}',
+        'position': pos,
+        'stack_bb': stack,
+        'familia': key,
+        'familia_label': label,
+        'hands': hands,
+        'xp_value': 30,
+    }
+
+
+def _abre(pos: str, hand: str, stack: float) -> bool:
+    try:
+        return bool(hand_in_open_range(pos, hand, stack))
+    except Exception:
+        return False
+
+
+def grade_range_grid_spot(spot: dict, marcadas: list) -> dict:
+    """Corrige a marcação. Reporta o que faltou e o que sobrou, não uma porcentagem.
+
+    Porcentagem de células certas é enganosa aqui: numa família em que a posição abre 5 de 12,
+    quem não marca nada 'acerta' 58%. O jogador otimizaria para não responder.
+    """
+    pos   = spot.get('position') or ''
+    stack = float(spot.get('stack_bb') or 50)
+    hands = list(spot.get('hands') or [])
+    if not pos or not hands:
+        return {'erro': 'spot invalido'}
+
+    certas   = {h for h in hands if _abre(pos, h, stack)}
+    marcadas = {h for h in (marcadas or []) if h in hands}
+
+    faltaram = sorted(certas - marcadas, key=hands.index)
+    sobraram = sorted(marcadas - certas, key=hands.index)
+    acertou  = not faltaram and not sobraram
+
+    # A fronteira em palavras: a mão MAIS FRACA que ainda entra. É o fato que se memoriza, e o
+    # que o jogador leva desta pergunta mesmo quando erra.
+    fronteira = None
+    for h in reversed(hands):
+        if h in certas:
+            fronteira = h
+            break
+
+    return {
+        'acertou': acertou,
+        'certas': sorted(certas, key=hands.index),
+        'faltaram': faltaram,
+        'sobraram': sobraram,
+        'fronteira': fronteira,
+        'xp': spot.get('xp_value', 30) if acertou else 0,
+    }

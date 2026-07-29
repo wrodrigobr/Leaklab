@@ -1205,7 +1205,7 @@ export const gtoPreflop = {
 // ── Leak Trainer (drill adaptativo de spots GTO canônicos mirado nos leaks do jogador) ──
 export interface LeakTrainerSpot {
   scenario?: "rfi" | "vs_rfi" | "vs_3bet";
-  kind?: "postflop";                // Fase 2: spot do catálogo postflop (tem board)
+  kind?: "postflop" | "range_grid";  // postflop = catálogo pré-solvado; range_grid = marcar família
   category: string;                 // chave da categoria de leak (ex.: "vs_rfi:BB:CO:30")
   position: string;
   vs_position: string;
@@ -1224,6 +1224,12 @@ export interface LeakTrainerSpot {
   /** Viés de amostragem: a mão está na BORDA da range (o GTO mistura, ou ela muda de lado entre
    *  assentos vizinhos) em vez de no miolo óbvio. Só observabilidade — não muda a tela. */
   fronteira?: boolean;
+  /** Treino de fronteira na grade: marcar quais mãos da FAMÍLIA entram no open da posição.
+   *  Uma família por vez (Áses suited, pares, conectores…) porque marcar as 169 células é
+   *  inviável e, pior, dilui: a maioria delas é fold óbvio. A resposta É a fronteira. */
+  familia?: string;
+  familia_label?: string;
+  hands?: string[];
   /** Sondagem de range, quando presente: pergunta a fatia de mãos do vilão ANTES de revelar as
    *  cartas do herói. Existe só em cenário com vilão a ler (nunca em `rfi`, onde o herói age
    *  primeiro e não há range de ninguém para estimar). */
@@ -1283,6 +1289,15 @@ export interface LeakTrainerOptions {
   leaks: LeakTrainerLeakOption[];      // leaks reais medidos (ordenados por EV), servíveis
   scenarios: string[];                 // cenários de fundamentos treináveis (rfi/vs_rfi)
 }
+export interface RangeGridGrade {
+  acertou: boolean;
+  certas: string[];
+  faltaram: string[];
+  sobraram: string[];
+  fronteira: string | null;
+  xp: number;
+}
+
 export const leaktrainer = {
   next: (session_state: LeakTrainerState = {}, days = 90, focus: LeakTrainerFocus = "adaptive") =>
     request<{
@@ -1300,6 +1315,14 @@ export const leaktrainer = {
     request<LeakTrainerGrade>("/player/leaktrainer/grade", {
       method: "POST",
       body: JSON.stringify({ spot, action, tz_offset: tzOffsetMinutes() }),
+    }),
+  /** Correção da marcação de família. Chamada SEPARADA porque a resposta é um conjunto de mãos,
+   *  não uma ação — e o retorno tem outro formato. Espremer os dois na mesma função obrigaria
+   *  cada chamador a saber qual dos contratos está em jogo. */
+  gradeGrid: (spot: LeakTrainerSpot, marcadas: string[]) =>
+    request<RangeGridGrade>("/player/leaktrainer/grade", {
+      method: "POST",
+      body: JSON.stringify({ spot, marcadas, tz_offset: tzOffsetMinutes() }),
     }),
 };
 

@@ -2914,6 +2914,16 @@ def leaktrainer_next():
     try:
         if targeted_locked:
             spot = next_spot(_fundamentals_curriculum(), session_state)
+        elif focus == 'fund:range_grid':
+            # Treino de FRONTEIRA na grade: marcar uma família inteira (Áses suited, pares…).
+            # Não passa por next_spot/currículo: não é um spot de decisão, é de memorização, e
+            # o adaptativo por categoria de leak não se aplica.
+            from leaklab.leak_trainer import generate_range_grid_spot
+            spot = None
+            for _ in range(12):                       # famílias 100% dentro/fora são descartadas
+                spot = generate_range_grid_spot()
+                if spot:
+                    break
         elif focus.startswith('fund:'):
             curriculum = fundamentals_catalog(focus.split(':', 1)[1])
             spot       = next_spot(curriculum, session_state)
@@ -3053,10 +3063,15 @@ def leaktrainer_options():
 @require_auth
 def leaktrainer_grade():
     """Corrige a ação NO SERVIDOR via analyze_preflop — a range nunca sai do servidor. XP por acerto."""
-    from leaklab.leak_trainer import grade_canonical_spot
+    from leaklab.leak_trainer import grade_canonical_spot, grade_range_grid_spot
     body   = request.get_json(force=True) or {}
     spot   = body.get('spot') or {}
     action = (body.get('action') or '').lower()
+    # Marcação de família: a resposta é um CONJUNTO de mãos, não uma ação. Corrigido aqui e não
+    # dentro de grade_canonical_spot porque o formato da resposta é outro — enfiar os dois na
+    # mesma função obrigaria cada chamador a saber qual dos dois contratos está em jogo.
+    if spot.get('kind') == 'range_grid':
+        return jsonify(grade_range_grid_spot(spot, body.get('marcadas') or []))
     result = grade_canonical_spot(spot, action)
     # Camada didática do Protocolo: o GATILHO do spot + a nota da classe de mão. Determinística
     # (sem LLM no caminho quente) e anexada aqui pra o corretor seguir sendo fonte única.

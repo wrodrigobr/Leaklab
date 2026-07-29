@@ -5,6 +5,7 @@ import { useNavigate } from "react-router-dom";
 import confetti from "canvas-confetti";
 import { ArrowRight, CheckCircle2, Loader2, RefreshCw, XCircle, Target, Maximize2, Minimize2, LayoutGrid, Flag, RotateCw, Trophy, Flame, Home, Lock } from "lucide-react";
 import { HudHeader } from "@/components/hud/HudHeader";
+import { RangeFamilyDrill } from "@/components/hud/RangeFamilyDrill";
 import { PokerTableV3 } from "@/components/hud/PokerTableV3";
 import { RangePanel } from "@/components/replayer/RangePanel";
 import { ProLockCard } from "@/components/hud/ProLockCard";
@@ -329,7 +330,10 @@ export default function LeakTrainer() {
   }, [phase, spot, submitting, loadNext]);
 
   const accuracy = totalDone > 0 ? Math.round((totalCorrect / totalDone) * 100) : null;
-  const table = spot ? buildStep(spot) : null;
+  // O spot de grade NÃO tem mesa: sem assentos, sem cartas do herói. `buildStep` acessa
+  // `sp.hero_cards.map(...)` e estourava — a página inteira caía no boundary de erro com
+  // "Algo deu errado", sem pista do motivo.
+  const table = spot && spot.kind !== "range_grid" ? buildStep(spot) : null;
   // Cartas do herói só aparecem DEPOIS da sondagem. É o conteúdo do exercício: estimar a range
   // do vilão com a mesa à vista (posições, stacks, ação) mas sem saber a própria mão. A mesa
   // desenha verso no assento do herói quando recebe lista vazia.
@@ -885,6 +889,13 @@ export default function LeakTrainer() {
                           {t(`leakTrainer.scn.${scn}`)}
                         </button>
                       ))}
+                      {/* Memorização, não decisão: marcar até onde a range vai. Fica junto dos
+                          fundamentos porque é o alicerce dos outros exercícios — sem saber a
+                          fronteira, acertar um spot é reconhecimento, não conhecimento. */}
+                      <button onClick={() => startFocus("fund:range_grid")}
+                        className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-1.5 text-[12px] text-amber-300 transition-colors hover:border-amber-500/70">
+                        {t("leakTrainer.scn.range_grid")}
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -1032,7 +1043,20 @@ export default function LeakTrainer() {
           );
         })()}
 
-        {(phase === "probe" || phase === "question" || phase === "feedback") && spot && table && (
+        {/* Treino de fronteira: não tem mesa nem botões de ação, então curto-circuita o bloco
+            de spot normal. `table` nem é montado para este kind (o spot não tem posições de
+            assento), e por isso a condição abaixo já o exclui naturalmente. */}
+        {(phase === "question" || phase === "feedback") && spot?.kind === "range_grid" && (
+          <div className="flex min-h-0 flex-1 items-start justify-center overflow-y-auto py-4">
+            <RangeFamilyDrill spot={spot}
+              onDone={(acertou, xp) => {
+                setTotalDone((n) => n + 1);
+                if (acertou) { setTotalCorrect((n) => n + 1); setXpEarned((x) => x + xp); }
+                setPhase("feedback");
+              }} />
+          </div>
+        )}
+        {(phase === "probe" || phase === "question" || phase === "feedback") && spot && spot.kind !== "range_grid" && table && (
           <div className="flex min-h-0 flex-1 flex-col gap-4 lg:flex-row lg:items-stretch">
 
             <div className="flex min-h-0 min-w-0 flex-1 items-center justify-center">
