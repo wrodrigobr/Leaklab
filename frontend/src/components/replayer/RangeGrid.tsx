@@ -1,4 +1,5 @@
-import { cellHand, cellLabel, getHandFreq, rangeActionPresence, rangeStats, RangeSet } from "@/data/ranges";
+import { cellHand, getHandFreq, rangeActionPresence, rangeStats, RangeSet } from "@/data/ranges";
+import { HandCellLabel, CLASSE_FONTE_CELULA } from '@/components/HandCellLabel';
 import { cn } from "@/lib/utils";
 import { ACTION_COLORS } from "@/lib/actionColors";
 
@@ -67,9 +68,7 @@ export function RangeGrid({ range, heroHand }: Props) {
         {Array.from({ length: 13 }, (_, row) =>
           Array.from({ length: 13 }, (_, col) => {
             const hand    = cellHand(row, col);
-            const label   = cellLabel(row, col);
-            // `cellHand` já carrega o naipe ("AKs"/"AKo"); pares não têm sufixo.
-            const suffix  = hand.endsWith('s') ? 's' : hand.endsWith('o') ? 'o' : '';
+
             const isHero  = heroHand === hand;
             const gradient = buildGradient(hand, range);
             const txtColor = textColor(hand, range);
@@ -89,7 +88,7 @@ export function RangeGrid({ range, heroHand }: Props) {
                 className={cn(
                   'aspect-square flex items-center justify-center rounded-[2px]',
                   'font-mono leading-none select-none transition-colors',
-                  'text-[7px] sm:text-[9px]',
+                  CLASSE_FONTE_CELULA,
                   // Contorno na diagonal: separa visualmente os dois triângulos. Sem isto, saber
                   // se uma célula é suited ou offsuit dependia de contar a distância até a
                   // diagonal, que ninguém faz olhando.
@@ -98,17 +97,7 @@ export function RangeGrid({ range, heroHand }: Props) {
                 )}
                 style={{ background: gradient, color: txtColor }}
               >
-                {label}
-                {/* O SUFIXO `s`/`o` na própria célula.
-                    A grade mostrava "AK" nas DUAS células e o `cellLabel` até documenta o
-                    descarte ("no suit suffix"): a única pista era a posição em relação à
-                    diagonal, explicada num rodapé de 8px a 60% de opacidade. Célula que não
-                    se descreve obriga a decorar a convenção da grade antes de ler o conteúdo.
-                    Vem menor e mais apagado de propósito: o par de cartas continua sendo a
-                    informação principal, o naipe é a qualificação. */}
-                {suffix && (
-                  <span className="ml-[0.5px] text-[0.72em] opacity-70">{suffix}</span>
-                )}
+                <HandCellLabel row={row} col={col} hand={hand} />
               </div>
             );
           })

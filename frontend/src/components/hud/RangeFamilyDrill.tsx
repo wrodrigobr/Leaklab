@@ -2,7 +2,8 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Check, X } from "lucide-react";
 import { leaktrainer, type LeakTrainerSpot, type RangeGridGrade } from "@/lib/api";
-import { cellHand, cellLabel, combosDeMaos } from "@/data/ranges";
+import { cellHand, combosDeMaos } from "@/data/ranges";
+import { HandCellLabel, CLASSE_FONTE_CELULA } from "@/components/HandCellLabel";
 import { PositionMap } from "@/components/hud/PositionMap";
 import { cn } from "@/lib/utils";
 
@@ -163,8 +164,6 @@ export function RangeFamilyDrill({ spot, onDone, rodape }: {
             Array.from({ length: 13 }, (_, col) => {
               const h = cellHand(row, col);
               const naFamilia = hands.includes(h);
-              const rotulo = cellLabel(row, col);
-              const sufixo = h.endsWith("s") ? "s" : h.endsWith("o") ? "o" : "";
               const e = naFamilia ? estadoDaCelula(h) : "inerte";
               return (
                 <button key={`${row}-${col}`}
@@ -178,7 +177,7 @@ export function RangeFamilyDrill({ spot, onDone, rodape }: {
                   title={naFamilia ? h : undefined}
                   className={cn(
                     "relative flex aspect-square items-center justify-center rounded-[3px] border font-mono leading-none transition-colors",
-                    "text-[8px] sm:text-[10px]",
+                    CLASSE_FONTE_CELULA,
                     row === col && "ring-1 ring-inset ring-white/15",
                     // Inativa, mas VISÍVEL. Com borda transparente e texto a 25%, a matriz
                     // sumia e sobrava só a diagonal — o exercício perdia justamente o que ele
@@ -191,8 +190,7 @@ export function RangeFamilyDrill({ spot, onDone, rodape }: {
                     e === "sobrou"  && "border-red-500/70 bg-red-500/20 text-red-200",
                     e === "mista"   && "border-sky-500/60 bg-sky-500/15 text-sky-200",
                   )}>
-                  {rotulo}
-                  {sufixo && <span className="ml-[0.5px] text-[0.72em] opacity-70">{sufixo}</span>}
+                  <HandCellLabel row={row} col={col} hand={h} />
                   {e === "faltou" && <Check className="absolute -right-0.5 -top-0.5 size-2.5 text-emerald-400" aria-hidden />}
                   {e === "sobrou" && <X className="absolute -right-0.5 -top-0.5 size-2.5 text-red-400" aria-hidden />}
                 </button>

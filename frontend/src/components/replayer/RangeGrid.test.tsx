@@ -99,4 +99,35 @@ describe("RangeGrid — suited × offsuit legível na célula", () => {
     expect(legenda?.className).not.toMatch(/text-\[8px\]|text-\[6px\]/);
     expect(legenda?.className).not.toMatch(/muted-foreground\/\d/);
   });
+
+  it("o sufixo s/o e legivel, e nao um risco de 7px", () => {
+    // Reportado pelo usuario olhando a tela: "o s e o o estao muito pequenos e com dificil
+    // leitura". Medido na celula de 40px: rank a 10px e sufixo a 7,2px com 70% de opacidade.
+    //
+    // A intencao original estava certa (o par de cartas e a informacao principal, o naipe e a
+    // qualificacao) e a execucao nao: hierarquia se faz com diferenca perceptivel, nao com uma
+    // que apaga o texto. Este teste existe porque o numero ja encolheu uma vez em silencio.
+    const { container } = render(<RangeGrid range={PUSH_FOLD_OPEN} />);
+    const sufixos = Array.from(container.querySelectorAll("span"))
+      .filter((sp) => sp.textContent === "s" || sp.textContent === "o");
+    expect(sufixos.length).toBeGreaterThan(50);
+    for (const sp of sufixos.slice(0, 5)) {
+      const em = sp.className.match(/text-\[([\d.]+)em\]/);
+      expect(em, `sufixo sem tamanho relativo: ${sp.className}`).toBeTruthy();
+      expect(Number(em![1])).toBeGreaterThanOrEqual(0.8);
+      const op = sp.className.match(/opacity-(\d+)/);
+      expect(Number(op?.[1] ?? 100)).toBeGreaterThanOrEqual(85);
+    }
+  });
+
+  it("a celula nao volta a ter fonte ilegivel", () => {
+    // O corte e 8px, e nao "qualquer valor de um digito": `text-[9px]` e a base deliberada de
+    // telas estreitas, onde a celula tem uns 26px e 12px ficaria apertado. O que este teste
+    // impede e a volta ao 7px que originou o relato.
+    const { container } = render(<RangeGrid range={PUSH_FOLD_OPEN} />);
+    const classes = container.querySelector("div.aspect-square")?.className ?? "";
+    const tamanhos = Array.from(classes.matchAll(/text-\[(\d+)px\]/g)).map((m) => Number(m[1]));
+    expect(tamanhos.length).toBeGreaterThan(0);
+    for (const t of tamanhos) expect(t).toBeGreaterThanOrEqual(9);
+  });
 });
