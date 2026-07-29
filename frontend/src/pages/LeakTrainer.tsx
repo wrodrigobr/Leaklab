@@ -124,6 +124,7 @@ export default function LeakTrainer() {
 
   const [phase, setPhase]               = useState<Phase>("intro");
   const [spot, setSpot]                 = useState<LeakTrainerSpot | null>(null);
+  const [spotSeq, setSpotSeq]           = useState(0);
   const [grade, setGrade]               = useState<LeakTrainerGrade | null>(null);
   const [selected, setSelected]         = useState<string | null>(null);
   const [submitting, setSubmitting]     = useState(false);
@@ -194,6 +195,10 @@ export default function LeakTrainer() {
   };
 
   const loadNext = useCallback(async () => {
+    // Sobe a cada exercício carregado. Serve de `key` para os drills que guardam estado próprio:
+    // a categoria sozinha não serve porque ela REPETE (são ~40 combinações de posição/família), e
+    // num repique o React reusaria a instância e o exercício novo nasceria já corrigido.
+    setSpotSeq((n) => n + 1);
     setPhase("loading"); setSelected(null); setGrade(null); setShowRange(false);
     setProbePick(null);
     setContrastNote(null);
@@ -1048,12 +1053,27 @@ export default function LeakTrainer() {
             assento), e por isso a condição abaixo já o exclui naturalmente. */}
         {(phase === "question" || phase === "feedback") && spot?.kind === "range_grid" && (
           <div className="flex min-h-0 flex-1 items-start justify-center overflow-y-auto py-4">
-            <RangeFamilyDrill spot={spot}
+            {/* `key` pelo spot: sem ela o React REUSA a instância entre exercícios e o estado
+                interno (marcações e correção) atravessa — o spot novo aparecia já corrigido, com
+                as células do anterior pintadas. Remontar é o certo aqui: cada exercício é uma
+                rodada independente, não uma continuação. */}
+            <RangeFamilyDrill key={spotSeq} spot={spot}
               onDone={(acertou, xp) => {
                 setTotalDone((n) => n + 1);
                 if (acertou) { setTotalCorrect((n) => n + 1); setXpEarned((x) => x + xp); }
                 setPhase("feedback");
-              }} />
+              }}
+              /* O avanço mora AQUI porque este kind não passa pelo painel de spot normal, que é
+                 quem carrega o botão de próximo. Sem ele o exercício terminava num beco: o
+                 atalho de teclado funcionava, mas na tela só sobrava "finalizar sessão". */
+              rodape={
+                <button onClick={nextOrFinish}
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-amber-500 px-4 py-3 font-mono text-sm font-bold uppercase tracking-widest text-black transition-colors hover:bg-amber-400">
+                  <ArrowRight className="size-4" aria-hidden />
+                  {lessonComplete ? t("leakTrainer.lesson.seeResult") : t("leakTrainer.next")}
+                  <kbd className="hidden rounded border border-black/20 bg-black/10 px-1.5 py-0.5 text-[9px] font-normal md:inline-block">Enter</kbd>
+                </button>
+              } />
           </div>
         )}
         {(phase === "probe" || phase === "question" || phase === "feedback") && spot && spot.kind !== "range_grid" && table && (

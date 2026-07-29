@@ -265,6 +265,7 @@
       "right": "Exacto.",
       "almost": "Casi.",
       "boundary": "{{pos}} abre {{familia}} hasta {{hand}} — son {{combos}} combinaciones de las {{total}} de la familia, o {{pct}}% de todas las manos. La frontera es lo que vale memorizar: el centro lo aciertas sin pensar.",
+      "dragHint": "Clic y arrastra para marcar varias de una vez",
       "onlyFamily": "Solo las celdas de {{familia}} están activas · s = suited (arriba de la diagonal), o = offsuit"
     }
   },

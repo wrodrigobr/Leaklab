@@ -265,6 +265,7 @@
       "right": "Exato.",
       "almost": "Quase.",
       "boundary": "{{pos}} abre {{familia}} até {{hand}} — são {{combos}} combinações das {{total}} da família, ou {{pct}}% de todas as mãos. A fronteira é o que vale memorizar: o miolo você acerta sem pensar.",
+      "dragHint": "Clique e arraste para marcar várias de uma vez",
       "onlyFamily": "Só as células de {{familia}} estão ativas · s = suited (acima da diagonal), o = offsuit"
     }
   },

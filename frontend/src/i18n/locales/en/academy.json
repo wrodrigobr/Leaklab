@@ -265,6 +265,7 @@
       "right": "Exactly right.",
       "almost": "Close.",
       "boundary": "{{pos}} opens {{familia}} down to {{hand}} — that is {{combos}} of the family’s {{total}} combinations, or {{pct}}% of all hands. The boundary is what is worth memorising: the middle you get right without thinking.",
+      "dragHint": "Click and drag to mark several at once",
       "onlyFamily": "Only the {{familia}} cells are active · s = suited (above the diagonal), o = offsuit"
     }
   },
