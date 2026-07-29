@@ -39,7 +39,7 @@ import os, sys, json
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from database.schema import get_conn
-from database.repositories import _fetchall, _adapt, get_gto_node
+from database.repositories import _fetchall, _adapt
 from leaklab.gto_utils import compute_spot_hash, board_for_street, normalize_cards, normalize_position
 
 
@@ -57,16 +57,31 @@ def _board(bruto):
     return list(bruto)
 
 
-def _acha_no(street, pos, board, mao, stack, facing):
-    for _mao, _f in ((mao, facing), ([], facing), ([], 0.0)):
-        if _f != facing and facing != 0:
-            continue
-        try:
-            if get_gto_node(compute_spot_hash(street, pos, board, _mao, stack, _f)):
-                return True
-        except Exception:
-            pass
-    return False
+def _o_produto_serviria(street, pos, vs_pos, board, mao, stack, facing):
+    """Pergunta ao `lookup_gto`, o MESMO caminho que serve o jogador. Read-only.
+
+    ── Por que não reimplementar a busca aqui ────────────────────────────────────────────────
+
+    A primeira versão deste script montava o hash por conta própria e perguntava direto à tabela
+    `gto_nodes`. Ela contava 13 "órfãs" e concluía que algo estava travado — mas o resync rodou
+    nos oito torneios e reconciliou ZERO, porque ele passa por `evaluate_decision` → `lookup_gto`,
+    que aplica portões que a minha busca ignorava: `pot_type` dentro do hash, recusa de spot com
+    o herói IP (o solver só devolve o player 0, que é o OOP) e facing não conversível.
+
+    Ou seja, "existe linha na tabela" não é "o produto deveria estar servindo". Reimplementar a
+    consulta produziu um número que parecia denúncia e era ruído — o mesmo erro que este projeto
+    já pagou várias vezes, e desta vez cometido dentro da própria ferramenta de diagnóstico.
+    """
+    from leaklab.gto_solver import lookup_gto
+    try:
+        r = lookup_gto(street=street, position=pos, board=board, hero_hand=mao,
+                       hero_stack_bb=stack, vs_position=vs_pos, facing_size_bb=facing,
+                       block_remote=True, allow_remote_solve=False) or {}
+    except Exception as exc:
+        return False, f'erro: {str(exc)[:40]}'
+    if r.get('gto_action') or r.get('strategy'):
+        return True, 'serviria'
+    return False, (r.get('reason') or r.get('source') or 'sem no servivel')
 
 
 def main():
@@ -85,7 +100,8 @@ def main():
 
         rows = _fetchall(conn, _adapt(f"""
             SELECT d.id AS id, d.tournament_id AS tid, d.hand_id AS hand_id,
-                   d.street AS street, d.position AS position, d.board AS board,
+                   d.street AS street, d.position AS position, d.vs_position AS vs_position,
+                   d.board AS board,
                    d.hero_cards AS hero_cards, d.stack_bb AS stack_bb, d.facing_bet AS facing
             FROM decisions d JOIN tournaments t ON t.id = d.tournament_id
             WHERE lower(d.street) IN ('flop','turn','river')
@@ -96,6 +112,7 @@ def main():
         """), tuple(params))
 
         orfas, por_torneio, reprovaria_gate = [], {}, 0
+        motivos = {}
         for r in rows:
             street = (r['street'] or '').lower()
             completo = _board(r['board'])
@@ -106,15 +123,24 @@ def main():
             stack = float(r['stack_bb'] or 30)
             facing = float(r['facing'] or 0)
             pos = normalize_position(r['position'] or '')
-            if not _acha_no(street, pos, cortado, mao, stack, facing):
+            vs = normalize_position(r.get('vs_position') or '')
+            serve, motivo = _o_produto_serviria(street, pos, vs, cortado, mao, stack, facing)
+            if not serve:
+                # O produto NÃO serviria este spot nem com o nó no banco. Não é órfã: é recusa
+                # deliberada (herói IP, facing não conversível, pot_type sem cobertura).
+                motivos[motivo] = motivos.get(motivo, 0) + 1
                 continue
             orfas.append(r)
             por_torneio[r['tid']] = por_torneio.get(r['tid'], 0) + 1
             if not is_simple_spot(street, cortado, stack, facing):
                 reprovaria_gate += 1
 
-        print('── SEÇÃO 1 · decisões com NÓ no banco e SEM veredito escrito ──')
-        print(f'  órfãs: {len(orfas)}  em {len(por_torneio)} torneio(s)')
+        print('── SEÇÃO 1 · decisões que o PRODUTO serviria e que estão sem veredito ──')
+        print(f'  órfãs de verdade: {len(orfas)}  em {len(por_torneio)} torneio(s)')
+        if motivos:
+            print('\n  recusadas pelo lookup (NÃO são órfãs, o produto declina de propósito):')
+            for m, n in sorted(motivos.items(), key=lambda x: -x[1]):
+                print(f'    {n:5d}  {m}')
         if not orfas:
             print('  nada pendente. A reconciliação está em dia.')
             return
