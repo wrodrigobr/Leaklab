@@ -168,6 +168,61 @@ def test_vitoria_sem_showdown_tambem_conclui():
     assert vencedores == ['PlayerA'], vencedores
 
 
+def test_ggpoker_showed_e_won_SEM_a_descricao_da_mao():
+    """Achado varrendo produção depois do fix da ACR: a GGPoker às vezes escreve so 'showed [2s]
+    and won (46,800)', sem o 'with a description' — mesma familia de bug, outro site. Sem o "?"
+    no final do regex essa linha nunca casava e a conclusao ficava tao ausente quanto na ACR."""
+    raw_gg = """Poker Hand #TM1: Tournament #1, Test - Level1(100/200) - 2026/07/01 00:00:00 ET
+Table '1' 6-max Seat #1 is the button
+Seat 1: Hero (10000 in chips)
+Seat 2: Vilao (10000 in chips)
+Hero: posts small blind 100
+Vilao: posts big blind 200
+*** HOLE CARDS ***
+Dealt to Hero [Ah Kh]
+Vilao: folds
+Uncalled bet (0) returned to Hero
+*** SHOW DOWN ***
+Hero: shows [Ah Kh]
+Hero collected 400 from pot
+*** SUMMARY ***
+Total pot 400
+Seat 1: Hero showed [Ah Kh] and won (400)
+Seat 2: Vilao folded before Flop
+"""
+    replay = _replay_de(raw_gg, 'Hero')
+    sd = next((f for f in replay['timeline'] if f['type'] == 'showdown'), None)
+    assert sd, 'GGPoker sem "with" nao gerou conclusao'
+    assert sd['summary']['winners'][0]['player'] == 'Hero'
+    assert sd['summary']['winners'][0]['won'] == 400
+
+
+def test_coinpoker_ganhou_preflop_sem_board_e_sem_descricao():
+    """Achado no mesmo sweep: 'Board [  ]' (preflop, sem carta nenhuma) + 'showed [...] and won
+    (X)' sem descricao. As duas ausencias juntas nao podem derrubar a conclusao."""
+    raw_coin = """CoinPoker Hand #1: NLH (10/20) 2026/07/01
+Tournament '1' '1' 6-max Seat #1 is the button
+Seat 1: Hero (2000 in chips)
+Seat 2: Vilao (2000 in chips)
+Hero: posts small blind 10
+Vilao: posts big blind 20
+*** HOLE CARDS ***
+Dealt to Hero [Ac 6s]
+Vilao: folds
+Uncalled bet (10) returned to Hero
+Hero collected 40 from pot
+*** SUMMARY ***
+Total pot 40
+Board [  ]
+Seat 1: Hero showed [Ac 6s] and won (40)
+Seat 2: Vilao folded before Flop
+"""
+    replay = _replay_de(raw_coin, 'Hero')
+    sd = next((f for f in replay['timeline'] if f['type'] == 'showdown'), None)
+    assert sd, 'CoinPoker sem board + sem descricao nao gerou conclusao'
+    assert sd['summary']['winners'][0]['player'] == 'Hero'
+
+
 def test_formato_pokerstars_com_parenteses_continua_funcionando():
     """Regressao: o formato antigo (valor entre parenteses, sem centavos) nao pode quebrar."""
     from api.app import _build_replay_data as _brd
@@ -187,6 +242,8 @@ if __name__ == '__main__':
               test_a_rua_sem_acao_ganha_o_proprio_frame,
               test_o_frame_de_conclusao_existe_e_revela_as_DUAS_maos,
               test_vitoria_sem_showdown_tambem_conclui,
+              test_ggpoker_showed_e_won_SEM_a_descricao_da_mao,
+              test_coinpoker_ganhou_preflop_sem_board_e_sem_descricao,
               test_formato_pokerstars_com_parenteses_continua_funcionando)
     for t in testes:
         try:

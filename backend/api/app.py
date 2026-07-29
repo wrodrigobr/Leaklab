@@ -5975,11 +5975,15 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
         # forma, ACR a segunda.
         _AMT = r'\(?([\d,]+(?:\.\d+)?)\)?'
         for line in s.split('\n'):
-            m = _re.match(r'Seat (\d+): (.+?) (?:\(.*?\) )?showed \[([^\]]+)\] and won ' + _AMT + r' with (.+)', line)
+            # A descrição da mão ("with a pair of Aces") é OPCIONAL: a GGPoker às vezes escreve
+            # só "showed [2s] and won (46,800)", sem o "with ...", quando os demais já foldaram
+            # e não há mão adversária pra comparar. Sem o "?", essa linha nunca casava e a
+            # conclusão da mão ficava tão ausente quanto o bug original da ACR.
+            m = _re.match(r'Seat (\d+): (.+?) (?:\(.*?\) )?showed \[([^\]]+)\] and won ' + _AMT + r'(?: with (.+))?', line)
             if m:
                 result['seats'].append({'seat':int(m.group(1)),'player':m.group(2).strip(),
                     'cards':m.group(3).split(),'won':int(float(m.group(4).replace(',', ''))),
-                    'hand_desc':m.group(5).strip(),'outcome':'won'}); continue
+                    'hand_desc':(m.group(5) or '').strip(),'outcome':'won'}); continue
             # Perdedor revelado (chamou e perdeu no showdown). Sem este caso as cartas do
             # vilão perdedor nunca chegavam ao replay em NENHUM site — só o vencedor entrava.
             m = _re.match(r'Seat (\d+): (.+?) (?:\(.*?\) )?showed \[([^\]]+)\] and lost(?: with (.+))?', line)
