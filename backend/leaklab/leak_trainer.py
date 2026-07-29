@@ -707,7 +707,17 @@ def card_key_de_range(pos: str, familia: str, stack) -> str:
 _FREQ_NUCLEO = 0.90
 _FREQ_LIXO   = 0.10
 
-_ACOES_DE_ENTRADA = ('raise', 'allin')
+# "Entrar na range" e NAO FOLDAR, e nao "raise+allin".
+#
+# Reportado na tela: o exercicio dizia que o SB abre AKo so 19% das vezes a 20bb, tratando a mao
+# como fronteira, enquanto cobrava A2o como obrigatoria. Medido, o SB faz AKo `call` 81% /
+# `raise` 19% — e `call` sem aposta na frente e o LIMP. A mao esta 100% na range; o que varia e
+# a ACAO. Somar so raise+allin classificava a mao mais forte da familia como duvidosa e a mais
+# fraca como certa, ou seja, ensinava o inverso da verdade.
+#
+# So o SB limpa (medido: 47 a 62 maos por profundidade; nenhuma outra posicao tem `call` com
+# facing 0), entao a mudanca nao mexe em nenhuma das outras 7 posicoes.
+_ACOES_DE_ENTRADA = ('raise', 'allin', 'call')
 
 
 def familias_de_range() -> list[dict]:
@@ -728,7 +738,12 @@ def _freq_de_entrada(pos: str, hand: str, stack: float):
     if not res.get('available'):
         return None
     hf = normalize_freq_map(res.get('hand_freq'))
-    return sum(hf.get(a, 0.0) for a in _ACOES_DE_ENTRADA)
+    # Calculado como 1 - fold, e nao como a soma das acoes: se a arvore ganhar uma acao nova
+    # (ou renomear uma), a soma passa a subestimar em silencio e o exercicio volta a punir. O
+    # complemento do fold nao tem como ficar desatualizado.
+    entra = 1.0 - hf.get('fold', 0.0)
+    soma  = sum(hf.get(a, 0.0) for a in _ACOES_DE_ENTRADA)
+    return max(entra, soma)
 
 
 def _estratos(pos: str, hands: list, stack: float) -> dict:

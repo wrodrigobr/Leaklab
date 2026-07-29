@@ -149,7 +149,7 @@
       },
       "fronteira": {
         "label": "Frontera",
-        "desc": "las manos que el GTO mezcla — es donde se falla de verdad"
+        "desc": "las manos que el GTO mezcla, que es donde se falla de verdad"
       },
       "transferencia": {
         "label": "Transferencia",
@@ -264,11 +264,11 @@
       "check": "Comprobar",
       "right": "Exacto.",
       "almost": "Casi.",
-      "boundary": "{{pos}} abre {{familia}} hasta {{hand}} — son {{combos}} combinaciones de las {{total}} de la familia, o {{pct}}% de todas las manos. La frontera es lo que vale memorizar: el centro lo aciertas sin pensar.",
+      "boundary": "{{pos}} abre {{familia}} hasta {{hand}}, siempre. Son {{combos}} combinaciones de las {{total}} de la familia, o {{pct}}% de todas las manos. La frontera es lo que vale memorizar: el centro lo aciertas sin pensar.",
       "dragHint": "Clic y arrastra para marcar varias de una vez",
       "onlyFamily": "Solo las celdas de {{familia}} están activas · s = suited (arriba de la diagonal), o = offsuit",
       "reviewEyebrow": "Repaso",
-      "mixedNote": "En azul, el GTO mezcla: {{maos}}. Marcar o no, las dos valen.",
+      "mixedNote": "En azul, el GTO abre solo parte de las veces: {{maos}}. El porcentaje es cuánto abre, el resto lo foldea. Ahí no hay respuesta correcta, así que marcar o no, las dos valen.",
       "nextReview": "Vuelve en {{dias}} días"
     },
     "memo": {

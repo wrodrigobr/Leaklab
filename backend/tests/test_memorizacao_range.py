@@ -247,6 +247,36 @@ def test_a_chave_da_carta_e_fonte_unica():
     assert sp['card_key'] == card_key_de_range('LJ', 'pares', 30) == sp['category']
 
 
+def test_limp_do_SB_conta_como_estar_na_range():
+    """Reportado na tela: o exercicio dizia que o SB abre AKo so 19% das vezes a 20bb, tratando a
+    mao mais forte da familia como duvidosa enquanto cobrava A2o como obrigatoria.
+
+    O SB faz AKo `call` 81% / `raise` 19%, e `call` sem aposta na frente e o LIMP: a mao esta
+    100% na range, o que varia e a ACAO. Somar so raise+allin ensinava o inverso da verdade.
+    """
+    from leaklab.leak_trainer import _freq_de_entrada
+    for h in ('AKo', 'AQo', 'AJo', 'ATo'):
+        f = _freq_de_entrada('SB', h, 20.0)
+        assert f is not None and f >= 0.99, f'SB 20bb {h}: entrada medida em {f}, deveria ser 1.0'
+
+
+def test_nenhuma_posicao_sem_limp_muda_de_comportamento():
+    """A correcao do SB nao pode alterar as outras 7 posicoes. Medido: so o SB tem `call` com
+    facing 0; se a conta mudasse para as demais, seria efeito colateral e nao conserto."""
+    from leaklab.leak_trainer import _freq_de_entrada
+    from leaklab.preflop_gto_ranges import analyze_preflop
+    from leaklab.strategy_provider import normalize_freq_map
+    for pos in ('UTG', 'LJ', 'CO', 'BTN'):
+        for h in ('AKo', 'T9s', '72o' if False else '32s'):
+            r = analyze_preflop(position=pos, hero_hand_type=h, stack_bb=50.0,
+                                action_taken='raise', facing_size=0.0, vs_position='')
+            if not r.get('available'):
+                continue
+            hf = normalize_freq_map(r.get('hand_freq'))
+            soma = hf.get('raise', 0) + hf.get('allin', 0)
+            assert abs(_freq_de_entrada(pos, h, 50.0) - soma) < 0.02, f'{pos}/{h} mudou'
+
+
 def test_familia_majoritariamente_mista_NAO_e_servida():
     """Visto na tela: um exercicio saiu com 6 de 9 maos misturando, sobrando 3 celulas com
     resposta e um muro de percentuais no feedback. Nao ha fronteira a memorizar onde quase tudo
@@ -267,7 +297,10 @@ def test_o_universo_tem_tamanho_de_curriculo():
                   if generate_range_grid_spot(position=c[0], familia=c[1], stack=c[2])]
     assert len(ensinaveis) >= 100, f'só {len(ensinaveis)} cartas ensináveis'
     posicoes = {c[0] for c in ensinaveis}
-    assert posicoes >= set(POSICOES_DE_ABERTURA) - {'BTN'}, posicoes
+    # O SB fica de fora, e por um motivo, não por acidente: nas profundidades treinadas ele quase
+    # não folda (limpa o que não abre), então nenhuma família tem fronteira para ensinar. Antes
+    # da correção do limp ele aparecia com 6 cartas, todas ensinando o inverso da verdade.
+    assert posicoes == set(POSICOES_DE_ABERTURA) - {'SB'}, posicoes
 
 
 if __name__ == '__main__':
@@ -291,6 +324,8 @@ if __name__ == '__main__':
               test_acerto_espaca_e_erro_reseta,
               test_a_carta_recem_agendada_nao_volta_na_sequencia,
               test_a_chave_da_carta_e_fonte_unica,
+              test_limp_do_SB_conta_como_estar_na_range,
+              test_nenhuma_posicao_sem_limp_muda_de_comportamento,
               test_familia_majoritariamente_mista_NAO_e_servida,
               test_o_universo_tem_tamanho_de_curriculo)
     for t in testes:

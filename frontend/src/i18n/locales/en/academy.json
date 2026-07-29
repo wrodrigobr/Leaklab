@@ -149,7 +149,7 @@
       },
       "fronteira": {
         "label": "Edge",
-        "desc": "the hands GTO mixes — where the real mistakes happen"
+        "desc": "the hands GTO mixes, which is where the real mistakes happen"
       },
       "transferencia": {
         "label": "Transfer",
@@ -264,11 +264,11 @@
       "check": "Check",
       "right": "Exactly right.",
       "almost": "Close.",
-      "boundary": "{{pos}} opens {{familia}} down to {{hand}} — that is {{combos}} of the family’s {{total}} combinations, or {{pct}}% of all hands. The boundary is what is worth memorising: the middle you get right without thinking.",
+      "boundary": "{{pos}} always opens {{familia}} down to {{hand}}. That is {{combos}} of the family’s {{total}} combinations, or {{pct}}% of all hands. The boundary is what is worth memorising: the middle you get right without thinking.",
       "dragHint": "Click and drag to mark several at once",
       "onlyFamily": "Only the {{familia}} cells are active · s = suited (above the diagonal), o = offsuit",
       "reviewEyebrow": "Review",
-      "mixedNote": "In blue, GTO mixes: {{maos}}. Marking or not, both are fine.",
+      "mixedNote": "In blue, GTO opens only part of the time: {{maos}}. The percentage is how often it opens, the rest it folds. There is no right answer there, so marking or not, both are fine.",
       "nextReview": "Back in {{dias}} days"
     },
     "memo": {
