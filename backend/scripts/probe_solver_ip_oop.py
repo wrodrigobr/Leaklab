@@ -19,19 +19,23 @@ o portão que o lookup aplica.
 
 ── Como a resposta se denuncia sozinha ───────────────────────────────────────────────────────
 
-O truque é dar aos dois jogadores ranges de TAMANHO diferente, num board seco:
+Ranges opostas ao extremo num board seco, e o discriminador é o **EV**:
 
-    board = A♥ 7♦ 2♣
-    OOP   = só AA      →  6 combinações
-    IP    = só 32o     → 12 combinações
+    board = A♥ 7♦ 2♣  ·  pote 6bb
+    OOP   = só AA      → trinca máxima: leva o pote quase inteiro, EV perto de 6
+    IP    = só 32o     → nada, e sem projeto: EV perto de 0
 
-E o discriminador é `total_combos`, não a ação. A primeira versão deste teste lia "agressiva =
-AA = OOP, passiva = 32o = IP", e isso NÃO funciona: com AA contra uma range que é só 32o, apostar
-não extrai nada, porque o vilão nunca paga. Os dois jogadores passam, as duas respostas vêm
-`check`, e a leitura não decide nada. Critério que colapsa nos dois lados não é critério.
+Duas tentativas anteriores de critério falharam, e as duas merecem ficar registradas:
 
-`total_combos` não colapsa: ou o solver devolveu o dono das 6 combinações, ou o das 12. A mesma
-pergunta é feita com `hero_is_ip` false e true, e o número diz de quem é cada resposta.
+  1. **Pela AÇÃO** ("agressiva = AA, passiva = 32o"). Não funciona: com AA contra uma range que
+     é só 32o, apostar não extrai nada, porque o vilão nunca paga. Os dois jogadores passam, as
+     duas respostas vêm `check`, e a leitura não decide nada. Critério que colapsa nos dois lados
+     não é critério.
+  2. **Por `total_combos`** (esperando 6 e 12, as combinações cruas). Voltou 27.0 e 19.69 —
+     FRACIONÁRIO, porque é contagem ponderada por alcance e bloqueadores, não contagem crua.
+
+O EV separa sem ambiguidade: em produção deu 5.94 contra 0.08, num pote de 6bb. Não existe
+leitura intermediária entre "levou o pote" e "não levou nada".
 
 Não altera nada no banco: fala direto com o solver.
 """
@@ -43,6 +47,7 @@ from leaklab.gto_solver import _call_remote_solver, _remote_url, _TEXAS_HERO_IP
 BOARD = ['Ah', '7d', '2c']
 RANGE_MONSTRO = 'AA'      # trinca máxima neste board
 RANGE_LIXO = '32o'        # nada, e sem projeto
+POT_BB = 6.0              # o EV do dono das AA tende ao pote; o das 32o, a zero
 
 
 def _spot(hero_is_ip):
@@ -51,7 +56,7 @@ def _spot(hero_is_ip):
         'board': BOARD,
         'oop_range': RANGE_MONSTRO,
         'ip_range': RANGE_LIXO,
-        'pot_bb': 6.0,
+        'pot_bb': POT_BB,
         'facing_size_bb': 0.0,
         'hero_stack_bb': 20.0,
         'effective_stack_bb': 20.0,
@@ -92,12 +97,16 @@ def main():
             saidas[flag] = None
             continue
         acao, freq, obs = _resumo(r)
-        combos = r.get('total_combos')
-        saidas[flag] = combos
-        dono = ('OOP, o das AA' if combos == 6 else
-                'IP, o das 32o' if combos == 12 else f'INDEFINIDO ({combos})')
-        print(f'  total_combos   : {combos}   ->  a resposta é do {dono}')
-        print(f'  EV             : {r.get("ev")}')
+        ev = float(r.get('ev') or 0)
+        saidas[flag] = ev
+        # O EV é o discriminador. `total_combos` NÃO serve: voltou 27.0 e 19.69 em produção,
+        # fracionário, porque é contagem ponderada por alcance e bloqueadores — não as 6 e 12
+        # combinações cruas que eu esperava. Fica impresso só como contexto.
+        dono = ('OOP, o das AA (leva o pote)' if ev > POT_BB * 0.6 else
+                'IP, o das 32o (não leva nada)' if ev < POT_BB * 0.2 else
+                f'INDEFINIDO: EV {ev} não é nem perto de {POT_BB} nem perto de 0')
+        print(f'  EV             : {ev}   ->  a resposta é do {dono}')
+        print(f'  total_combos   : {r.get("total_combos")}   (ponderado; só contexto)')
         print(f'  ação dominante : {acao} ({freq})  {obs}')
         print(f'  exploitability : {r.get("exploitability") or r.get("exploitability_pct")}')
         print(f'  ações          : {r.get("actions")}\n')
@@ -107,18 +116,22 @@ def main():
     if a is None or b is None:
         print('INCONCLUSIVO: o solver não respondeu nas duas chamadas.')
         return
-    print(f'hero_is_ip=False -> {a} combos   |   hero_is_ip=True -> {b} combos\n')
-    if a == b:
-        print('A FLAG É IGNORADA: o solver devolveu o MESMO jogador nas duas chamadas.')
+    print(f'hero_is_ip=False -> EV {a}   |   hero_is_ip=True -> EV {b}   (pote {POT_BB})\n')
+    if abs(a - b) < POT_BB * 0.2:
+        print('A FLAG É IGNORADA: os dois EVs são praticamente iguais, então o solver devolveu')
+        print('o MESMO jogador nas duas chamadas.')
         print('  -> binário antigo. Manter TEXAS_HERO_IP desligada e NÃO enfileirar spot de')
         print('     herói-IP: o nó viria com a estratégia do vilão.')
-    elif a == 6 and b == 12:
+    elif a > POT_BB * 0.6 and b < POT_BB * 0.2:
         print('A FLAG É HONRADA, e na direção CERTA.')
-        print('  -> false devolveu o OOP (6 combos de AA) e true devolveu o IP (12 de 32o),')
-        print('     exatamente como a aplicação assume. Dá para ligar TEXAS_HERO_IP.')
+        print('  -> false devolveu o dono das AA (EV ~ pote inteiro) = OOP, e true devolveu o')
+        print('     dono das 32o (EV ~ 0) = IP. É exatamente o que a aplicação assume.')
+        print('  -> DÁ para ligar TEXAS_HERO_IP. NÃO liga TEXAS_HERO_IP_FACING com base neste')
+        print('     teste: aqui o facing é 0, e o caminho de IP enfrentando aposta é outro')
+        print('     (navigate_to_ip_facing_bet), que este probe não exercitou.')
     else:
         print('A FLAG MUDA A RESPOSTA, mas NÃO na direção esperada.')
-        print('  -> não ligue nada até entender. Esperado: false=6 (OOP/AA), true=12 (IP/32o).')
+        print(f'  -> não ligue nada até entender. Esperado: false ~ {POT_BB} (OOP/AA), true ~ 0 (IP/32o).')
         print('     Flag que muda na direção errada é pior que flag ignorada: parece funcionar.')
 
 
