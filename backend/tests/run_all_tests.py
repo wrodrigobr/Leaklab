@@ -22,6 +22,7 @@ SUITES = {
                   'test_proximo_passo.py',
                   'test_cobranca_email.py',
                   'test_meta_semanal.py',
+                  'test_replay_acr_summary.py',
                   'test_pg_migration_isolation.py',
                   'test_interpretation_sign.py',
                   'test_validation.py',

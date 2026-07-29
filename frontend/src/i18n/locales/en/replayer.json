@@ -182,7 +182,7 @@
     },
     "noCoverageTitle": "No GTO coverage",
     "noCoverage": {
-      "multiway": "Multiway pot: even when you open the action, you're betting into 2+ players, equity and responses are multiway. The solver is heads-up and can't model that, so the verdict here is heuristic, with equity adjusted for the number of opponents.",
+      "multiway": "Multiway pot: two or more players remain in the hand besides you. Every poker solver resolves heads up, meaning two players, because each extra player doesn't grow the decision tree, it explodes it, and no commercial solver handles that in practice. Specialized software attacks pieces of the problem, and even those rely on heavy approximations. The verdict here is heuristic, with equity adjusted for the number of opponents.",
       "deep": "Stack above 200bb: extreme depth, beyond even the solver's approximation. Heuristic verdict until we have a larger server.",
       "ip_facing_bet": "You're in position facing a bet: the solver's IP support only covers the c-bet (when the action reaches you with no bet). Heuristic verdict here.",
       "no_villain": "No defined villain to build the opposing range, the verdict is heuristic."
@@ -195,7 +195,7 @@
     "multiwaySolverTip": "Multiway pot ({{n}} players in the pot). The solver strategy is solved heads-up, multiway it's an approximation: frequencies and ranges shift with more opponents. Equity is already adjusted for multiway.",
     "multiwayTip": "Multiway pot ({{n}} players in the pot). Equity is adjusted for the number of opponents; the verdict here is heuristic (pot odds).",
     "limpedPot": "{{pos}} vs Limp · limped pot · heuristic (no GTO range)",
-    "limpedPotTip": "Limped pot (limp with no raise): a tree outside GTO coverage (we only cover raise-first spots: RFI/vs-RFI/3bet/squeeze). The verdict here comes from the engine heuristic (passive OK, isolating marginal), not the solver.",
+    "limpedPotTip": "Limped pot (limp with no raise): a tree outside GTO coverage (we only cover raise-first spots: RFI/vs-RFI/3bet/squeeze). A limped pot usually turns multiway with deep stacks, which no solver handles in practice. The verdict here comes from the engine heuristic (passive OK, isolating marginal), not the solver.",
     "sprTip": "SPR (Stack-to-Pot Ratio): effective stack ÷ pot. < 2 = committed; 2–5 = medium; > 5 = deep",
     "sprCommitted": "committed",
     "sprMid": "medium",
@@ -299,7 +299,8 @@
     "srcIcm": "ICM",
     "tipIcmApprox": "Near the money, under ICM pressure, folding tight is often worth more than the chip EV suggests. This analysis is in chips (chipEV) and does not measure that risk premium, so a defensible fold here is not flagged as a mistake.",
     "whyNoGtoPreflop": "No pre-computed solver solution for this preflop spot, analysis falls back to the engine heuristic.",
-    "whyRangeNotPrice": "The verdict comes from the RANGE, not the price. The equity vs pot odds math is deliberately omitted here: it would be against a random hand, not against the villain's real range, and would point the wrong way."
+    "whyRangeNotPrice": "The verdict comes from the RANGE, not the price. The equity vs pot odds math is deliberately omitted here: it would be against a random hand, not against the villain's real range, and would point the wrong way.",
+    "evUnavailable": "No EV in bb: this decision needs a hand-specific solve we don't have for this node yet. The verdict above is already reliable."
   },
   "controls": {
     "play": "Play",

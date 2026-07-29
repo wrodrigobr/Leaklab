@@ -5950,31 +5950,59 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
     from leaklab.parser import SEAT_OUT_OF_HAND_RE
 
     def _parse_summary(raw):
-        """Extrai resultado, vencedores e cartas reveladas do SUMMARY."""
+        """Extrai resultado, vencedores e cartas reveladas do SUMMARY.
+
+        Reportado pelo usuário: mãos da ACR paravam antes do fim no replay (às vezes no turn,
+        às vezes no river) — a conclusão (cartas reveladas + vencedor) nunca aparecia. Causa:
+        os regexes abaixo foram escritos só contra o formato PokerStars/GGPoker
+        ("and won (1,110)", valor entre parênteses, sem centavos). A ACR escreve
+        "and won 1110.00", sem parênteses e com centavos, e tem duas linhas de SUMMARY que
+        não existiam aqui: "did not show and won X" (ganhou sem showdown) e
+        "showed [...] and lost with ..." (perdedor revelado, que nenhum site tinha).
+        Sem nenhuma linha reconhecida, result['winners'] e result['seats'] ficavam vazios,
+        a condição que dispara o frame de conclusão nunca era verdadeira, e o replay
+        terminava na última ação — que podia ser antes do river ser sequer mostrado.
+        """
         start = raw.find('*** SUMMARY ***')
         if start < 0: return {}
         s = raw[start:]
         result = {'winners':[], 'seats':[], 'board':[], 'total_pot':None}
-        m = _re.search(r'Total pot ([\d,]+)', s)
-        if m: result['total_pot'] = int(m.group(1).replace(',', ''))
+        m = _re.search(r'Total pot ([\d,]+(?:\.\d+)?)', s)
+        if m: result['total_pot'] = int(float(m.group(1).replace(',', '')))
         m = _re.search(r'Board \[([^\]]+)\]', s)
         if m: result['board'] = m.group(1).split()
+        # Valor com OU sem parênteses, com OU sem centavos: PokerStars/GG usam a primeira
+        # forma, ACR a segunda.
+        _AMT = r'\(?([\d,]+(?:\.\d+)?)\)?'
         for line in s.split('\n'):
-            m = _re.match(r'Seat (\d+): (.+?) (?:\(.*?\) )?showed \[([^\]]+)\] and won \(([\d,]+)\) with (.+)', line)
+            m = _re.match(r'Seat (\d+): (.+?) (?:\(.*?\) )?showed \[([^\]]+)\] and won ' + _AMT + r' with (.+)', line)
             if m:
                 result['seats'].append({'seat':int(m.group(1)),'player':m.group(2).strip(),
-                    'cards':m.group(3).split(),'won':int(m.group(4).replace(',', '')),
+                    'cards':m.group(3).split(),'won':int(float(m.group(4).replace(',', ''))),
                     'hand_desc':m.group(5).strip(),'outcome':'won'}); continue
+            # Perdedor revelado (chamou e perdeu no showdown). Sem este caso as cartas do
+            # vilão perdedor nunca chegavam ao replay em NENHUM site — só o vencedor entrava.
+            m = _re.match(r'Seat (\d+): (.+?) (?:\(.*?\) )?showed \[([^\]]+)\] and lost(?: with (.+))?', line)
+            if m:
+                result['seats'].append({'seat':int(m.group(1)),'player':m.group(2).strip(),
+                    'cards':m.group(3).split(),'won':0,
+                    'hand_desc':(m.group(4) or '').strip(),'outcome':'lost'}); continue
             m = _re.match(r'Seat (\d+): (.+?) (?:\(.*?\) )?mucked \[([^\]]+)\]', line)
             if m:
                 result['seats'].append({'seat':int(m.group(1)),'player':m.group(2).strip(),
                     'cards':m.group(3).split(),'won':0,
                     'hand_desc':'mucked','outcome':'lost'}); continue
-            m = _re.match(r'Seat (\d+): (.+?) (?:\(.*?\) )?collected \(([\d,]+)\)', line)
+            m = _re.match(r'Seat (\d+): (.+?) (?:\(.*?\) )?collected ' + _AMT, line)
             if m:
                 result['seats'].append({'seat':int(m.group(1)),'player':m.group(2).strip(),
-                    'cards':[],'won':int(m.group(3).replace(',', '')),
-                    'hand_desc':'collected','outcome':'won'})
+                    'cards':[],'won':int(float(m.group(3).replace(',', ''))),
+                    'hand_desc':'collected','outcome':'won'}); continue
+            # ACR: ganhou sem disputa (todo mundo foldou) — "did not show and won X.XX".
+            m = _re.match(r'Seat (\d+): (.+?) (?:\(.*?\) )?did not show and won ' + _AMT, line)
+            if m:
+                result['seats'].append({'seat':int(m.group(1)),'player':m.group(2).strip(),
+                    'cards':[],'won':int(float(m.group(3).replace(',', ''))),
+                    'hand_desc':'did not show','outcome':'won'})
         result['winners'] = [s for s in result['seats'] if s['outcome']=='won']
         return result
 
@@ -6180,12 +6208,12 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
     # Pre-scan for "Uncalled bet (X) returned to Player" lines
     # These appear after all actions when an all-in isn't fully called
     # GG usa separador de milhar (5,000); aceita vírgula e remove antes de converter.
-    UNCALLED_RE = _re.compile(r'Uncalled bet \(([\d,]+)\) returned to (.+)')
+    UNCALLED_RE = _re.compile(r'Uncalled bet \(([\d,]+(?:\.\d+)?)\) returned to (.+)')
     uncalled_returns = []
     for line in (hand.raw_text or '').split('\n'):
         _mu = UNCALLED_RE.match(line.strip())
         if _mu:
-            uncalled_returns.append({'amount': int(_mu.group(1).replace(',', '')), 'player': _mu.group(2).strip()})
+            uncalled_returns.append({'amount': int(float(_mu.group(1).replace(',', ''))), 'player': _mu.group(2).strip()})
 
     current_revealed = {}  # seat_str -> [cards], accumulates as shows happen
 
@@ -6838,6 +6866,21 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
             'revealed_cards': dict(current_revealed) if current_revealed else None,
             **tech,
         }))
+
+    # Ruas sem NENHUMA acao (all-in cedo: ninguem mais decide, mas o board continua sendo
+    # dealt) nunca disparavam o "if action.street != street" acima, entao o replay parava no
+    # ultimo street COM acao mesmo que a mao tivesse ido a showdown. Reportado pelo usuario:
+    # mao parava as vezes no turn, as vezes no river, dependendo de onde o ultimo jogador foi
+    # all-in. hand.board e o board FINAL, extraido das linhas "*** TURN/RIVER ***" independente
+    # de acao (o parser atualiza ao ver o MARCADOR, nao uma decisao) -- fonte confiavel de
+    # quantas cartas realmente sairam. Preenche os frames que faltaram, na mesma forma da
+    # transicao normal (bets_r zera: ninguem tem ficha "na mesa" apos o all-in ser resolvido).
+    for _rua, _n in (('flop', 3), ('turn', 4), ('river', 5)):
+        if len(hand.board or []) >= _n and len(board) < _n:
+            street = _rua
+            board  = list(hand.board[:_n])
+            bets_r = {s: 0 for s in seats}
+            timeline.append(snap({'type': 'street', 'desc': _rua.upper(), 'revealed_cards': None}))
 
     # Apply uncalled bet returns — correct pot/stacks/bets before showdown.
     # Em maos uncontested (so o jogador do uncalled vai coletar o pot), pular

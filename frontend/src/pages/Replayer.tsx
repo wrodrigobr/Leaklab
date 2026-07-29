@@ -1020,6 +1020,16 @@ function SidePanels({
                     <span className={cn("font-mono text-sm font-bold uppercase tracking-wide", verdict.cls)}>
                       {verdict.icon} {verdict.label}
                     </span>
+                    {/* Ausência de EV explicada, não silenciosa: o selo simplesmente sumir deixava
+                        o jogador sem saber se ele não perdeu nada ou se o produto não sabe. Só em
+                        postflop com erro/aceitável — em 'correto' o EV perto de zero não precisa
+                        de explicação, e em preflop o EV quase sempre existe (fonte gw_har). */}
+                    {step.ev_loss_bb == null && isPostflop && !isActionOk && (
+                      <span className="inline-flex items-center rounded-md bg-muted/20 px-1.5 py-0.5 font-mono text-[9px] text-muted-foreground/70 ring-1 ring-border/50 cursor-help"
+                        title={t("card.evUnavailable")}>
+                        EV ?
+                      </span>
+                    )}
                     {step.ev_loss_bb != null && step.ev_loss_bb > 0.05 && (
                       <span className={cn(
                         "inline-flex items-center rounded-md px-1.5 py-0.5 font-mono text-[10px] font-bold tracking-wide ring-1",
