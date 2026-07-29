@@ -172,6 +172,45 @@ def test_fallback_sem_titulo_NAO_repete_a_frase():
     assert 'dominado um leak que' not in texto
 
 
+def test_TODA_reserva_de_texto_cabe_na_frase_que_a_hospeda():
+    """A mesma família do bug que o usuário pegou lendo o e-mail, varrida nos quatro modelos.
+
+    O texto de reserva da inatividade aparecia em DUAS posições (meio e começo da frase) e a
+    mesma string servia às duas: no começo saía em minúscula e ainda repetia "leak" duas vezes
+    ("seu leak principal segue como o leak que mais te custa"). Reserva não é uma constante, é
+    uma por posição.
+    """
+    import re
+    combinacoes = [
+        ('inatividade', {'missao': {'titulo': 'BB vs LJ · 30bb', 'ev_loss_bb': 14.4, 'hands': 21}}),
+        ('inatividade', {'missao': {'ev_loss_bb': 9.0, 'hands': 12}}),      # sem título
+        ('inatividade', {'missao': {'titulo': 'BB vs LJ · 30bb'}}),          # sem números
+        ('inatividade', {}),                                                 # nada
+        ('leak_reaberto', {'titulo': 'Abertura de HJ · 50bb'}),
+        ('leak_reaberto', {}),
+    ]
+    for tipo, dados in combinacoes:
+        m = montar_email(tipo, dados, 'phpro', 'https://x.test', 'https://x.test/u')
+        assert m, (tipo, dados)
+        texto = re.sub(r'<[^>]+>', ' ', m[1])
+        corpo = re.search(r'Olá, phpro,(.{0,200})', texto, re.S)
+        assert corpo, (tipo, dados)
+        frase = re.sub(r'\s+', ' ', corpo.group(1)).strip()
+        # começa com maiúscula: reserva encaixada no início da frase saía minúscula
+        assert frase[:1].isupper(), f'{tipo} {dados}: frase começa minúscula → {frase[:60]!r}'
+        # nenhuma palavra do jargão repetida na MESMA oração
+        primeira = frase.split('.')[0].lower()
+        for palavra in ('leak', 'dominado'):
+            assert primeira.count(palavra) <= 1,                 f'{tipo} {dados}: "{palavra}" repetida → {primeira!r}'
+
+
+def test_revisao_com_zero_nao_monta_email():
+    """"0 revisões te esperando" é absurdo, e e-mail absurdo custa mais que e-mail não enviado.
+    O coletor só cria o evento com n > 0, então isto é cinto de segurança."""
+    assert montar_email('revisao_vencida', {}, 'p', 'https://x.test', 'https://x.test/u') is None
+    assert montar_email('revisao_vencida', {'total': 0}, 'p', 'https://x.test', 'https://x.test/u') is None
+
+
 def test_o_numero_em_bb_aparece_quando_existe():
     """A primeira linha tem que carregar o FATO. 'Você tem treinos pendentes' é ruído."""
     _, html = montar_email('inatividade', _E_INATIVO['dados'], 'phpro',
@@ -266,6 +305,8 @@ if __name__ == '__main__':
               test_os_quatro_tipos_montam_corpo_em_PT_com_unsubscribe,
               test_o_COLETOR_entrega_o_que_o_corpo_precisa,
               test_fallback_sem_titulo_NAO_repete_a_frase,
+              test_TODA_reserva_de_texto_cabe_na_frase_que_a_hospeda,
+              test_revisao_com_zero_nao_monta_email,
               test_o_numero_em_bb_aparece_quando_existe,
               test_singular_e_plural_da_revisao,
               test_tipo_sem_corpo_devolve_None,

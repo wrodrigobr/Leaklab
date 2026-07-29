@@ -199,6 +199,11 @@ def montar_email(tipo: str, dados: dict, username: str, base_url: str,
         )
     elif tipo == 'revisao_vencida':
         n = int(dados.get('total') or 0)
+        # O coletor só cria o evento com n > 0, então isto é estado impossível por construção.
+        # Uma linha para que nunca saia "0 revisões te esperando" se alguém montar o e-mail por
+        # outro caminho: e-mail absurdo custa mais caro que e-mail não enviado.
+        if n <= 0:
+            return None
         assunto = f'{n} revisão te esperando' if n == 1 else f'{n} revisões te esperando'
         inner = (
             _eyebrow('Revisão vencida')
@@ -211,14 +216,23 @@ def montar_email(tipo: str, dados: dict, username: str, base_url: str,
             + _cta_button('Revisar', f'{base_url}/leak-trainer?origem=email')
         )
     elif tipo == 'inatividade':
+        # Mesma família do bug do leak reaberto: o texto de reserva tem que caber na frase que o
+        # hospeda. Aqui ele aparecia em DUAS posições diferentes (meio e começo), e no começo
+        # saía em minúscula — "seu leak principal segue como o leak que mais te custa", que
+        # ainda por cima repetia "leak" duas vezes. Duas reservas, uma para cada posição.
         missao = dados.get('missao') or {}
         ev = missao.get('ev_loss_bb')
         maos = missao.get('hands')
-        titulo = missao.get('titulo') or 'seu leak principal'
+        titulo = missao.get('titulo')
         assunto = 'Seu leak continua custando'
-        custo = (f'Você perdeu <strong>{ev}bb</strong> em <strong>{titulo}</strong>, '
-                 f'em {maos} mãos reais.' if ev and maos
-                 else f'<strong>{_esc(titulo)}</strong> segue como o leak que mais te custa.')
+        if ev and maos:
+            onde = f'<strong>{_esc(titulo)}</strong>' if titulo else 'no seu leak principal'
+            emest = f' em {onde}' if titulo else f' {onde}'
+            custo = (f'Você perdeu <strong>{ev}bb</strong>{emest}, em {maos} mãos reais.')
+        elif titulo:
+            custo = f'<strong>{_esc(titulo)}</strong> segue sendo o que mais te custa.'
+        else:
+            custo = 'Seu leak principal segue aberto, e continua custando nas suas mãos.'
         inner = (
             _eyebrow('Sua missão continua aberta')
             + _h1('O leak não some sozinho')
