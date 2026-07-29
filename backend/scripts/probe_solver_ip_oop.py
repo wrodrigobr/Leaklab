@@ -19,15 +19,19 @@ o portão que o lookup aplica.
 
 ── Como a resposta se denuncia sozinha ───────────────────────────────────────────────────────
 
-O truque é dar aos dois jogadores ranges opostas ao extremo, num board seco:
+O truque é dar aos dois jogadores ranges de TAMANHO diferente, num board seco:
 
     board = A♥ 7♦ 2♣
-    OOP   = só AA      → trinca máxima: aposta quase sempre
-    IP    = só 32o     → nada: desiste quase sempre
+    OOP   = só AA      →  6 combinações
+    IP    = só 32o     → 12 combinações
 
-Aí não é preciso interpretar nada. Se a estratégia devolvida for agressiva, ela é do jogador com
-AA (o OOP). Se for passiva, é do jogador com 32o (o IP). E a mesma pergunta é feita duas vezes,
-com `hero_is_ip` false e true: se as duas respostas forem IDÊNTICAS, a flag está sendo ignorada.
+E o discriminador é `total_combos`, não a ação. A primeira versão deste teste lia "agressiva =
+AA = OOP, passiva = 32o = IP", e isso NÃO funciona: com AA contra uma range que é só 32o, apostar
+não extrai nada, porque o vilão nunca paga. Os dois jogadores passam, as duas respostas vêm
+`check`, e a leitura não decide nada. Critério que colapsa nos dois lados não é critério.
+
+`total_combos` não colapsa: ou o solver devolveu o dono das 6 combinações, ou o das 12. A mesma
+pergunta é feita com `hero_is_ip` false e true, e o número diz de quem é cada resposta.
 
 Não altera nada no banco: fala direto com o solver.
 """
