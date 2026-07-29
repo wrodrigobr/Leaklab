@@ -88,11 +88,85 @@ def test_nunca_devolve_None_por_falta_de_borda():
     print('OK  test_nunca_devolve_None_por_falta_de_borda')
 
 
+# ── Sondagem de range ─────────────────────────────────────────────────────────────────────────
+#
+# A sondagem AFIRMA um número ao jogador ("CO tem cerca de 40% das mãos"). Se o número estiver
+# errado, ele é memorizado com confiança e aplicado na mesa — o pior tipo de dano deste produto.
+
+def _spots(cenario, n=120, semente=5):
+    cats = fundamentals_catalog(cenario, 50)
+    rng = random.Random(semente)
+    return [s for s in (generate_canonical_spot(rng.choice(cats), rng) for _ in range(n)) if s]
+
+
+def test_sondagem_nunca_aparece_em_rfi():
+    """Em `rfi` o herói age PRIMEIRO: não existe range de vilão para estimar. Servir a pergunta
+    ali seria inventar uma sem resposta."""
+    com = [s for s in _spots('rfi') if s.get('range_probe')]
+    assert not com, f'{len(com)} spots de rfi vieram com sondagem'
+    print('OK  test_sondagem_nunca_aparece_em_rfi')
+
+
+def test_sondagem_aparece_onde_ha_vilao():
+    spots = _spots('vs_rfi')
+    com = [s for s in spots if s.get('range_probe')]
+    assert com, 'nenhuma sondagem em vs_rfi — o recurso não está ativo'
+    # É tempero, não prato: a maioria dos spots continua sendo a tela normal.
+    assert len(com) < len(spots) * 0.7, 'sondagem em quase todo spot; era para ser minoria'
+    print(f'OK  test_sondagem_aparece_onde_ha_vilao ({len(com)}/{len(spots)})')
+
+
+def test_a_fatia_afirmada_bate_com_a_range_real():
+    """O número da alternativa correta tem que ser a largura REAL da posição do vilão."""
+    from leaklab.academy_questions import _larguras_por_posicao, _faixa
+    larguras = _larguras_por_posicao(50.0)
+    if len(larguras) < 3:
+        print('OK  test_a_fatia_afirmada_bate_com_a_range_real (ranges indisponíveis, pulado)')
+        return
+    checados = 0
+    for s in _spots('vs_rfi'):
+        p = s.get('range_probe')
+        if not p:
+            continue
+        vs = s['vs_position']
+        if vs not in larguras:
+            continue
+        assert p['opcoes'][p['correta']] == _faixa(larguras[vs]), (
+            f'{vs}: sondagem diz {p["opcoes"][p["correta"]]}, range real é {_faixa(larguras[vs])}')
+        checados += 1
+    assert checados > 0, 'nenhuma sondagem verificável'
+    print(f'OK  test_a_fatia_afirmada_bate_com_a_range_real ({checados} conferidas)')
+
+
+def test_alternativas_da_sondagem_nao_colidem():
+    for s in _spots('vs_rfi'):
+        p = s.get('range_probe')
+        if not p:
+            continue
+        assert len(set(p['opcoes'])) == len(p['opcoes']), f'opções repetidas: {p["opcoes"]}'
+        assert 0 <= p['correta'] < len(p['opcoes'])
+    print('OK  test_alternativas_da_sondagem_nao_colidem')
+
+
+def test_a_resposta_certa_nao_fica_sempre_na_mesma_posicao():
+    """A sondagem embaralha por conta própria (não passa pelo sweep da Academia). Sem isto, o
+    jogador aprende a clicar sempre no primeiro botão — foi exatamente o bug do quiz."""
+    idx = [s['range_probe']['correta'] for s in _spots('vs_rfi', n=200, semente=3)
+           if s.get('range_probe')]
+    assert len(idx) >= 10, f'amostra pequena demais ({len(idx)})'
+    assert len(set(idx)) > 1, f'resposta certa sempre na posição {idx[0]}'
+    print(f'OK  test_a_resposta_certa_nao_fica_sempre_na_mesma_posicao ({sorted(set(idx))})')
+
+
 if __name__ == '__main__':
     falhas = 0
     testes = (test_a_maioria_das_perguntas_vem_da_borda, test_ainda_serve_algumas_faceis,
               test_classificador_reconhece_mao_mista, test_todo_spot_declara_se_e_borda,
-              test_nunca_devolve_None_por_falta_de_borda)
+              test_nunca_devolve_None_por_falta_de_borda,
+              test_sondagem_nunca_aparece_em_rfi, test_sondagem_aparece_onde_ha_vilao,
+              test_a_fatia_afirmada_bate_com_a_range_real,
+              test_alternativas_da_sondagem_nao_colidem,
+              test_a_resposta_certa_nao_fica_sempre_na_mesma_posicao)
     for t in testes:
         try:
             t()

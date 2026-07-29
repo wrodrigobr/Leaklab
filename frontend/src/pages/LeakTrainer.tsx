@@ -17,7 +17,11 @@ import type { LeakTrainerSpot, LeakTrainerGrade, LeakTrainerState, ReplayStep,
   ProgressionPlan, SessionSize } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
-type Phase = "intro" | "loading" | "question" | "feedback" | "error" | "empty" | "summary" | "paywall";
+// `probe` = sondagem de range: a tela pergunta a fatia de mãos do VILÃO antes de revelar as
+// cartas do herói. A ordem da informação é o conteúdo aqui — quem vê a própria mão primeiro
+// já decidiu antes de considerar o adversário, e força de mão vira atributo em vez de
+// comparação. Só aparece quando o backend manda `range_probe` (nunca em `rfi`).
+type Phase = "intro" | "loading" | "probe" | "question" | "feedback" | "error" | "empty" | "summary" | "paywall";
 
 const LESSON_SIZE = 10;   // lição fechada: N spots, depois fim automático com veredito
 type SessionStat = { label: string; hits: number; misses: number };
@@ -131,6 +135,9 @@ export default function LeakTrainer() {
   const [unlockedAch, setUnlockedAch]   = useState<string[]>([]);   // conquistas de treino da sessão
   const [sessionStats, setSessionStats] = useState<Record<string, SessionStat>>({});
   const [showRange, setShowRange]       = useState(false);
+  // Resposta do jogador na sondagem. `null` = ainda não respondeu; um índice = já respondeu e
+  // a tela mostra o acerto antes de revelar as cartas.
+  const [probePick, setProbePick]       = useState<number | null>(null);
   const [targetedLocked, setTargetedLocked] = useState(false);        // Free: treino mirado é Pro
   const [gateInfo, setGateInfo]         = useState<{ used?: number; cap?: number } | null>(null);
   const [focus, setFocus]               = useState<string>("adaptive");   // o usuário escolhe o tipo de spot
@@ -187,6 +194,7 @@ export default function LeakTrainer() {
 
   const loadNext = useCallback(async () => {
     setPhase("loading"); setSelected(null); setGrade(null); setShowRange(false);
+    setProbePick(null);
     setContrastNote(null);
     // Sessão do Protocolo: o próximo spot vem do PLANO (missão/revisão/contraste intercalados).
     if (planRef.current) {
@@ -195,7 +203,7 @@ export default function LeakTrainer() {
         if (!r.spot) { setPhase("summary"); return; }   // plano cumprido = fim da sessão
         setSpot(r.spot);
         setContrastNote(r.contrast_note);
-        setPhase("question");
+        setPhase(r.spot.range_probe ? "probe" : "question");
       } catch { setPhase("error"); }
       return;
     }
@@ -207,7 +215,7 @@ export default function LeakTrainer() {
       if (!r.spot) { setPhase("empty"); return; }
       setTargetedLocked(!!r.targeted_locked);   // Free: treinando fundamentos, mirado é Pro
       setSpot(r.spot);
-      setPhase("question");
+      setPhase(r.spot.range_probe ? "probe" : "question");
     } catch { setPhase("error"); }
   }, []);
 
@@ -513,8 +521,63 @@ export default function LeakTrainer() {
     );
   }
 
+
+  /* ── Sondagem de range: pergunta ANTES de revelar as cartas ──────────────────────────────
+     Sobreposição, e não um bloco dentro do layout, porque existem DOIS layouts (retrato e
+     celular deitado) e a pergunta tem que aparecer nos dois. Um bloco inline exigiria duplicar
+     a mesma coisa em dois lugares — que é o padrão de duplicação que este projeto já pagou
+     várias vezes.
+
+     O nome do vilão e a fatia vêm prontos do backend, da MESMA contagem que a Academia usa.
+     A tela não calcula largura de range: se calculasse, existiriam duas fontes e elas
+     divergiriam. */
+  const sondagem = spot?.range_probe;
+  const overlaySondagem = phase === "probe" && sondagem ? (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/95 px-5 backdrop-blur-sm">
+      <div className="w-full max-w-md space-y-5 text-center">
+        <p className="font-mono text-[10px] uppercase tracking-widest text-amber-400">
+          {t("leakTrainer.probe.eyebrow")}
+        </p>
+        <h2 className="font-heading text-lg font-bold leading-snug text-foreground">
+          {sondagem.pergunta}
+        </h2>
+
+        <div className="space-y-2">
+          {sondagem.opcoes.map((op, i) => {
+            const respondeu = probePick !== null;
+            const certa = i === sondagem.correta;
+            return (
+              <button key={op} disabled={respondeu}
+                onClick={() => setProbePick(i)}
+                className={cn(
+                  "w-full rounded-xl border px-4 py-3 font-mono text-sm transition-colors",
+                  !respondeu && "border-border text-foreground hover:border-amber-500/60 hover:text-amber-400",
+                  respondeu && certa && "border-emerald-500/60 bg-emerald-500/10 text-emerald-400",
+                  respondeu && !certa && i === probePick && "border-red-500/60 bg-red-500/10 text-red-400",
+                  respondeu && !certa && i !== probePick && "border-border/40 text-muted-foreground/50",
+                )}>
+                {op}
+              </button>
+            );
+          })}
+        </div>
+
+        {probePick !== null && (
+          <div className="space-y-4 animate-fade-in">
+            <p className="text-[13px] leading-snug text-muted-foreground">{sondagem.explicacao}</p>
+            <button onClick={() => setPhase("question")}
+              className="w-full rounded-xl bg-amber-500/15 px-4 py-3 font-mono text-xs font-bold uppercase tracking-wider text-amber-400 ring-1 ring-amber-500/40 transition-colors hover:bg-amber-500/25">
+              {t("leakTrainer.probe.reveal")}
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  ) : null;
+
   return (
     <div ref={rootRef} className="h-dvh overflow-hidden bg-background hud-scanline flex flex-col">
+      {overlaySondagem}
       {!isFull && <HudHeader />}
       <main className="flex-1 min-h-0 mx-auto flex w-full max-w-[1500px] flex-col px-4 py-3 md:px-8 animate-fade-in">
         {/* header compacto + tela cheia (header grande do HudLayout causava scroll) */}

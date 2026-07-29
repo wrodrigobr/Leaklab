@@ -250,6 +250,10 @@
       "melhorou": "Improved in play",
       "sem_mudanca": "No measurable difference",
       "piorou": "Regressed in play"
+    },
+    "probe": {
+      "eyebrow": "First, his range",
+      "reveal": "Show my hand"
     }
   },
   "trainAch": {

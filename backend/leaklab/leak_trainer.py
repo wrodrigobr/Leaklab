@@ -216,6 +216,66 @@ def e_mao_de_fronteira(pos: str, hand: str, stack: float, hand_freq: dict) -> bo
     return False
 
 
+# ── Sondagem de RANGE, antes de revelar a mão ─────────────────────────────────────────────────
+#
+# A ordem em que o jogador recebe a informação decide como ele pensa. Hoje ele vê as próprias
+# cartas primeiro e já decidiu antes de considerar o vilão — força de mão vira atributo ("AJo é
+# forte") em vez de comparação ("AJo é forte CONTRA ISTO").
+#
+# A sondagem inverte: mostra o spot SEM as cartas, pergunta que fatia das mãos o vilão tem, e só
+# então revela. Duas perguntas, na ordem certa.
+#
+# Só existe onde HÁ range de vilão para estimar: em `rfi` o herói é o primeiro a agir e não há
+# ninguém para ler. Servir a sondagem ali seria inventar uma pergunta sem resposta.
+_COTA_SONDAGEM = 0.30    # fatia dos spots elegíveis que vem com sondagem — é tempero, não prato
+
+
+def _sondagem_de_range(vs_pos: str, stack: float, rng: random.Random) -> dict | None:
+    """Pergunta de largura sobre o vilão do spot. `None` quando não há como afirmar o número.
+
+    Reusa a MESMA contagem da Academia (`_larguras_por_posicao`), que lê as ranges capturadas.
+    Duas superfícies afirmando larguras diferentes para a mesma posição seria pior que não ter
+    a sondagem: o jogador não saberia em qual acreditar.
+    """
+    if not vs_pos:
+        return None
+    try:
+        from leaklab.academy_questions import _larguras_por_posicao, _faixa
+    except Exception:
+        return None
+    larguras = _larguras_por_posicao(float(stack))
+    certa = larguras.get(vs_pos)
+    if certa is None or len(larguras) < 3:
+        return None
+
+    # Distratores: larguras REAIS de outras posições, afastadas o bastante para não colidirem no
+    # arredondamento. Sem a distância, duas alternativas viram o mesmo texto.
+    outras = sorted((v for p, v in larguras.items() if p != vs_pos),
+                    key=lambda v: -abs(v - certa))
+    escolhidas, usadas = [], [certa]
+    for v in outras:
+        if all(abs(v - u) >= 8 for u in usadas):
+            escolhidas.append(v)
+            usadas.append(v)
+        if len(escolhidas) == 2:
+            break
+    if len(escolhidas) < 2:
+        return None
+
+    opcoes = [_faixa(certa)] + [_faixa(v) for v in escolhidas]
+    ordem = list(range(len(opcoes)))
+    rng.shuffle(ordem)
+    return {
+        'pergunta': f'Antes de ver suas cartas: que fatia das mãos {vs_pos} tem aqui?',
+        'opcoes': [opcoes[i] for i in ordem],
+        'correta': ordem.index(0),
+        'explicacao': (
+            f'{vs_pos} chega aqui com {_faixa(certa)} das mãos. Estimar isso ANTES de olhar a sua '
+            f'mão é o que transforma força em comparação: a mesma mão é forte contra uma range '
+            f'estreita e marginal contra uma larga.'),
+    }
+
+
 def generate_canonical_spot(category: dict, rng: random.Random | None = None) -> dict | None:
     """Gera um spot canônico da categoria: FIXA position/vs_position/stack e randomiza só a MÃO
     (de _HANDS). Valida cobertura via analyze_preflop (available + scenario bate). Retorna o spot
@@ -264,8 +324,14 @@ def generate_canonical_spot(category: dict, rng: random.Random | None = None) ->
         opts = strat['available_actions']
 
         def _monta(_hand, _opts, _fronteira):
+            # Sondagem só em cenário COM vilão a ler (vs_rfi / vs_3bet). Em `rfi` o herói é o
+            # primeiro a agir: não há range de ninguém para estimar.
+            _sonda = None
+            if scenario != 'rfi' and vs_pos and rng.random() < _COTA_SONDAGEM:
+                _sonda = _sondagem_de_range(vs_pos, float(stack), rng)
             return {
                 'fronteira':   _fronteira,   # observável: dá para medir se o viés funciona
+                'range_probe': _sonda,       # None = tela normal; presente = pergunta antes das cartas
                 'scenario':    scenario,
                 'category':    category['key'],
                 'position':    pos,

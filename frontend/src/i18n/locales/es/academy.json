@@ -250,6 +250,10 @@
       "melhorou": "Mejoró en el juego",
       "sem_mudanca": "Sin diferencia medible",
       "piorou": "Retrocedió en el juego"
+    },
+    "probe": {
+      "eyebrow": "Primero, su rango",
+      "reveal": "Ver mi mano"
     }
   },
   "trainAch": {

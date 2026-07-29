@@ -250,6 +250,10 @@
       "melhorou": "Melhorou no jogo",
       "sem_mudanca": "Sem diferença mensurável",
       "piorou": "Regrediu no jogo"
+    },
+    "probe": {
+      "eyebrow": "Primeiro, a range dele",
+      "reveal": "Ver minha mão"
     }
   },
   "trainAch": {

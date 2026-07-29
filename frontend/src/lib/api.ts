@@ -1221,6 +1221,18 @@ export interface LeakTrainerSpot {
   hero_cards: { rank: string; suit: string }[];
   options: string[];                // ações limpas (fold/call/raise)
   xp_value: number;
+  /** Viés de amostragem: a mão está na BORDA da range (o GTO mistura, ou ela muda de lado entre
+   *  assentos vizinhos) em vez de no miolo óbvio. Só observabilidade — não muda a tela. */
+  fronteira?: boolean;
+  /** Sondagem de range, quando presente: pergunta a fatia de mãos do vilão ANTES de revelar as
+   *  cartas do herói. Existe só em cenário com vilão a ler (nunca em `rfi`, onde o herói age
+   *  primeiro e não há range de ninguém para estimar). */
+  range_probe?: {
+    pergunta: string;
+    opcoes: string[];
+    correta: number;
+    explicacao: string;
+  } | null;
 }
 // Estado da sessão (client-side): por categoria, hits/misses/seen. Adulterar não falsifica acerto
 // (o grading é server-side e stateless).
