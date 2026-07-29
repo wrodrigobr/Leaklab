@@ -43,12 +43,16 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(mess
 if __name__ == '__main__':
     # Importa os loops do app (define as rotas no import, mas o bloco __main__ do app NÃO roda).
     from api.app import (_solver_queue_worker_loop, _gto_hand_worker_loop,
-                         _evolution_report_worker_loop)
+                         _evolution_report_worker_loop, _cobranca_email_worker_loop)
     log = logging.getLogger(__name__)
 
     if os.environ.get('EVOLUTION_REPORT_WORKER', '1') != '0':
         threading.Thread(target=_evolution_report_worker_loop, daemon=True,
                          name='evolution-report').start()
+        # Cobrança por e-mail (Fase 2). Sobe sempre; o envio é gated por
+        # ENGAGEMENT_EMAIL_ENABLED, então ligar a flag não exige lembrar de um restart.
+        threading.Thread(target=_cobranca_email_worker_loop, daemon=True,
+                         name='cobranca-email').start()
         log.info("solver-consumer: worker do RELATÓRIO de evolução iniciado")
 
     if os.environ.get('GTO_HAND_WORKER', '1') != '0':

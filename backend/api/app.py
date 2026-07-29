@@ -9913,6 +9913,66 @@ def _evolution_report_worker_loop():
         time.sleep(_REPORT_SWEEP_SEC)
 
 
+_COBRANCA_SWEEP_SEC = 6 * 3600   # varredura da cobrança por e-mail: 4x/dia basta, porque o teto
+                                 # é semanal — varrer de hora em hora só gastaria banco
+
+
+def _cobranca_email_worker_loop():
+    """E-mail de cobrança por evento (Fase 2 da spec cobranca-proximo-passo.md).
+
+    Roda no serviço que já está de pé, e não num cron — mesma razão do worker de relatórios.
+
+    DESLIGADO por padrão (`ENGAGEMENT_EMAIL_ENABLED`): subir código é reversível, e-mail enviado
+    não é. O loop levanta mesmo desligado e apenas não envia, para que ligar a flag não dependa
+    de um restart lembrado.
+
+    A DECISÃO é da função pura `decidir_email_cobranca`; aqui só há o relógio, o SMTP e o log.
+    """
+    from leaklab.cobranca_email import (emails_habilitados, coletar_eventos,
+                                        decidir_email_cobranca, montar_email)
+    from leaklab.email_digest import send_transactional_email, _email_unsub_token
+    from database.repositories import (alunos_para_varredura_de_cobranca,
+                                       ultimo_email_de_cobranca, registrar_email_de_cobranca)
+    from datetime import datetime
+    time.sleep(90)   # deixa o app assentar; e não compete com a primeira varredura do relatório
+    base_url = os.environ.get('APP_BASE_URL', 'https://grindlabpoker.com')
+    while True:
+        try:
+            if not emails_habilitados():
+                log.info('cobrança por e-mail: desligada (ENGAGEMENT_EMAIL_ENABLED)')
+            else:
+                agora = datetime.utcnow().isoformat()
+                enviados = 0
+                # A lista já vem filtrada por opt-in/verificado (o opt-out mora na origem, para
+                # que nenhum caminho novo possa esquecer de checá-lo).
+                for aluno in alunos_para_varredura_de_cobranca():
+                    uid = int(aluno['id'])
+                    try:
+                        escolhido = decidir_email_cobranca(
+                            agora, coletar_eventos(uid, agora), ultimo_email_de_cobranca(uid))
+                        if not escolhido:
+                            continue
+                        token = _email_unsub_token(uid)
+                        unsub = f"{base_url}/api/player/email/unsubscribe?uid={uid}&token={token}"
+                        montado = montar_email(escolhido['tipo'], escolhido.get('dados') or {},
+                                               aluno.get('username') or '', base_url, unsub)
+                        if not montado:
+                            continue
+                        assunto, html = montado
+                        # Registra SÓ depois do SMTP aceitar: gravar antes transformaria uma
+                        # falha de envio em silêncio de uma semana inteira para aquele aluno.
+                        if send_transactional_email(aluno['email'], assunto, html):
+                            registrar_email_de_cobranca(uid, escolhido['tipo'])
+                            enviados += 1
+                            log.info('cobrança enviada: user=%s tipo=%s', uid, escolhido['tipo'])
+                    except Exception:
+                        log.exception('cobrança por e-mail falhou (user=%s)', uid)
+                log.info('varredura de cobrança concluída: %d e-mail(s)', enviados)
+        except Exception:
+            log.exception('cobranca email worker loop error')
+        time.sleep(_COBRANCA_SWEEP_SEC)
+
+
 _HAND_RECHECK_SEC = 300   # cadência da re-checagem de 'solver_queued' — a do cron que ela substituiu
 
 

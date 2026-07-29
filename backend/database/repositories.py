@@ -10540,3 +10540,86 @@ def listar_reaberturas(user_id: int) -> list:
         return v.isoformat() if hasattr(v, 'isoformat') else v
     return [{'category_key': r['category_key'], 'reopened_at': _iso(r['reopened_at']),
              'reopen_count': int(r['reopen_count'] or 0)} for r in rows]
+
+
+# ── E-mail de cobrança: histórico de envios (o teto semanal mora aqui) ────────────────────────
+
+def ultimo_email_de_cobranca(user_id: int) -> str | None:
+    """ISO do último e-mail de cobrança enviado a este aluno, de QUALQUER tipo.
+
+    Qualquer tipo de propósito: o teto é por pessoa, não por assunto. Fosse por tipo, quatro
+    gatilhos dariam quatro e-mails na mesma semana e o teto seria decorativo.
+    """
+    conn = get_conn()
+    try:
+        row = _fetchone(conn, _adapt(
+            "SELECT MAX(enviado_em) AS ultimo FROM engagement_emails WHERE user_id = ?"),
+            (user_id,))
+    finally:
+        conn.close()
+    v = (dict(row).get('ultimo') if row else None)
+    return v.isoformat() if hasattr(v, 'isoformat') else v
+
+
+def registrar_email_de_cobranca(user_id: int, tipo: str) -> None:
+    """Registra o envio. Só é chamado DEPOIS do SMTP aceitar: gravar antes transformaria uma
+    falha de envio em silêncio de uma semana."""
+    conn = get_conn()
+    try:
+        conn.execute(_adapt(
+            "INSERT INTO engagement_emails (user_id, tipo) VALUES (?, ?)"), (user_id, tipo))
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def ultimo_relatorio_de_evolucao(user_id: int) -> dict | None:
+    """O retrato mais recente do relatório de evolução (id, motivo, data), sem o snapshot."""
+    conn = get_conn()
+    try:
+        row = _fetchone(conn, _adapt(
+            "SELECT id, motivo, created_at FROM evolution_reports "
+            "WHERE user_id = ? ORDER BY created_at DESC LIMIT 1"), (user_id,))
+    finally:
+        conn.close()
+    if not row:
+        return None
+    d = dict(row)
+    ca = d.get('created_at')
+    return {'id': d.get('id'), 'motivo': d.get('motivo'),
+            'created_at': ca.isoformat() if hasattr(ca, 'isoformat') else ca}
+
+
+def ultima_tentativa_de_treino(user_id: int) -> str | None:
+    """Quando o aluno treinou pela última vez (qualquer categoria). None = nunca treinou.
+
+    None é tratado como inatividade pelo chamador — mas só vira e-mail se houver missão aberta,
+    senão o aluno que nunca treinou receberia cobrança antes de conhecer o produto.
+    """
+    conn = get_conn()
+    try:
+        row = _fetchone(conn, _adapt(
+            "SELECT MAX(created_at) AS ultima FROM progression_attempts WHERE user_id = ?"),
+            (user_id,))
+    finally:
+        conn.close()
+    v = (dict(row).get('ultima') if row else None)
+    return v.isoformat() if hasattr(v, 'isoformat') else v
+
+
+def alunos_para_varredura_de_cobranca(limite: int = 200) -> list:
+    """Quem o worker examina: player, com e-mail, verificado e OPT-IN.
+
+    O opt-out é filtrado aqui, na origem, e não no momento do envio: assim nenhum caminho novo
+    pode esquecer de checá-lo.
+    """
+    conn = get_conn()
+    try:
+        rows = conn.execute(_adapt(
+            "SELECT id, email, username FROM users "
+            "WHERE role = 'player' AND email_opt_in = 1 AND email_verified = 1 "
+            "  AND email IS NOT NULL AND email != '' "
+            "ORDER BY id LIMIT ?"), (limite,)).fetchall()
+    finally:
+        conn.close()
+    return [{'id': r['id'], 'email': r['email'], 'username': r['username']} for r in rows]

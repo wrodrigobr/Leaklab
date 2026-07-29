@@ -204,6 +204,7 @@ CORS origins are controlled by the `ALLOWED_ORIGINS` env var (comma-separated). 
 | `STRIPE_WEBHOOK_SECRET` | Stripe webhook signing secret |
 | `SENTRY_DSN` | Sentry DSN para error tracking no backend (opcional — sem a var, Sentry é no-op) |
 | `ENVIRONMENT` | `production` / `development` — usado pelo Sentry para separar ambientes |
+| `ENGAGEMENT_EMAIL_ENABLED` | Liga a cobrança por e-mail (Fase 2). **OFF por padrão** — sem ela o worker sobe e não envia nada |
 
 ## Deployment
 

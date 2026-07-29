@@ -259,13 +259,17 @@ Reabertura e selo (`comprovado_no_jogo`) hoje só aparecem dentro do trainer.
   invisível até o upload seguinte. Corrigido com `listar_reaberturas` (tabela crua)
   e travado em `test_reabertura_recem_criada_e_visivel_no_banco_real`.
 
-### Fase 2 — Cobrança por e-mail
-- [ ] Tabela `engagement_emails` (bloco SAVEPOINT; catraca já protege)
-- [ ] `decidir_email_cobranca` pura + testes dos dois sentidos
-- [ ] 4 gatilhos do §5.2 no worker existente
-- [ ] i18n: corpo só PT (regra do projeto)
-- **Pronto quando:** e-mail de relatório dispara no dia da geração num caso forjado;
-  teto semanal segura o segundo evento; opt-out respeitado.
+### Fase 2 — Cobrança por e-mail · **ENTREGUE 2026-07-29** (`ENGAGEMENT_EMAIL_ENABLED` OFF)
+- [x] Tabela `engagement_emails` na lista SAVEPOINT (a catraca conferiu)
+- [x] `decidir_email_cobranca` pura + 15 testes nos DOIS sentidos; sabotada (teto
+      removido + interruptor ligado por padrão), 4 testes acusam
+- [x] 4 gatilhos do §5.2 em `_cobranca_email_worker_loop`, no `solver-consumer`
+- [x] Corpo só PT, sem travessão, com descadastro em todos e `origem=email` no CTA
+- **Verificado:** ensaio do percurso completo com SMTP interceptado — relatório forjado
+  virou e-mail (3502 bytes, assunto certo) e a segunda varredura na mesma semana calou.
+- **Interruptor:** `ENGAGEMENT_EMAIL_ENABLED` nasce OFF e o worker sobe mesmo assim
+  (ligar a flag não exige lembrar de um restart). Subir código é reversível; e-mail
+  enviado não é.
 
 ### Fase 3 — Compromisso
 - [ ] `users.weekly_training_goal` (bloco SAVEPOINT)

@@ -20,6 +20,7 @@ SUITES = {
                   'test_drill_fronteira.py',
                   'test_memorizacao_range.py',
                   'test_proximo_passo.py',
+                  'test_cobranca_email.py',
                   'test_pg_migration_isolation.py',
                   'test_interpretation_sign.py',
                   'test_validation.py',

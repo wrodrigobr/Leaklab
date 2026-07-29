@@ -1575,6 +1575,17 @@ def _run_migrations(conn):
         """)
         conn.execute("CREATE INDEX IF NOT EXISTS idx_range_card_due "
                      "ON range_card_srs(user_id, due_at)")
+        # Envios de e-mail de cobrança (espelha a lista SAVEPOINT do PG)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS engagement_emails (
+                id         INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id    INTEGER NOT NULL,
+                tipo       TEXT    NOT NULL,
+                enviado_em TEXT    NOT NULL DEFAULT (datetime('now'))
+            )
+        """)
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_engagement_email_user "
+                     "ON engagement_emails(user_id, enviado_em DESC)")
         # Origem da tentativa (espelha a lista SAVEPOINT do PG)
         pa_cols = {r[1] for r in conn.execute('PRAGMA table_info(progression_attempts)').fetchall()}
         if 'origem' not in pa_cols:
@@ -2078,6 +2089,20 @@ def _run_migrations(conn):
             # spec de cobrança: % de sessões iniciadas por trigger. Na lista SAVEPOINT pela
             # mesma razão da tabela acima: try/except no meio da transação não é abort-proof.
             "ALTER TABLE progression_attempts ADD COLUMN IF NOT EXISTS origem TEXT",
+            # Envios de e-mail de COBRANÇA (Fase 2 da spec). Na lista SAVEPOINT pela regra dura:
+            # try/except no meio da transação não sobrevive a um abort (custou `range_card_srs`
+            # não existir em produção depois de um deploy verde).
+            #
+            # A tabela É o teto semanal: sem ela, "já cobrei este aluno?" não tem resposta e o
+            # sistema manda e-mail a cada varredura do worker.
+            """CREATE TABLE IF NOT EXISTS engagement_emails (
+                id         SERIAL PRIMARY KEY,
+                user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                tipo       TEXT    NOT NULL,
+                enviado_em TIMESTAMP NOT NULL DEFAULT NOW()
+            )""",
+            "CREATE INDEX IF NOT EXISTS idx_engagement_email_user "
+            "ON engagement_emails(user_id, enviado_em DESC)",
             # Comissão por PAGAMENTO (accrual): 1 linha por cobrança comissionável.
             """CREATE TABLE IF NOT EXISTS coach_commissions (
                 id            SERIAL PRIMARY KEY,
