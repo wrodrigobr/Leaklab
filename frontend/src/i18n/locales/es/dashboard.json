@@ -638,6 +638,8 @@
       "missao": "Tu próximo paso",
       "carta_nova": "Memorizar rango",
       "desafio_diario": "Desafío del día"
-    }
+    },
+    "meta": "{{feitas}} de {{prometidas}} días",
+    "metaTitulo": "Tu compromiso de esta semana"
   }
 }

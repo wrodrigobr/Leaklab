@@ -280,6 +280,12 @@
       "cta": "Memorizar el rango del {{pos}}",
       "ctaReview": "Repasar rangos",
       "score": "{{vistas}} estudiados · {{dominadas}} en la memoria"
+    },
+    "meta": {
+      "eyebrow": "Tu compromiso",
+      "pergunta": "¿Cuántos días por semana puedes entrenar?",
+      "porque": "Sirve para que midas tu propio ritmo. Puedes cambiarlo cuando quieras.",
+      "depois": "Después"
     }
   },
   "trainAch": {

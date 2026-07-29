@@ -1217,15 +1217,33 @@ export interface ProximoPasso {
   ev_loss_bb: number | null;
   n_maos: number | null;
 }
+export interface MetaSemanal {
+  prometidas: number;   // dias por semana que o aluno DECLAROU
+  feitas: number;       // dias distintos com treino nesta semana
+  cumprida: boolean;
+}
 export interface ProximoPassoResposta {
   passo: ProximoPasso | null;      // null = em dia; a UI mostra descanso, nunca inventa urgência
   fila: ProximoPasso[];            // os 2 seguintes, para contexto
-  meta_semanal: { prometidas: number; feitas: number } | null;   // Fase 3
+  /** null = o aluno ainda NÃO declarou meta, e é esse null que dispara a pergunta na tela.
+   *  Zero diria "meta zero", que é outra coisa. */
+  meta_semanal: MetaSemanal | null;
 }
 
 export const proximoPasso = {
+  /** `tz_offset_min` decide a fronteira da semana da meta no fuso do ALUNO: quem treina 21h no
+   *  Brasil está em outro dia no UTC, e na virada de domingo está em outra semana. */
   get: (origem: string) =>
-    request<ProximoPassoResposta>(`/player/proximo-passo?origem=${encodeURIComponent(origem)}`),
+    request<ProximoPassoResposta>(
+      `/player/proximo-passo?origem=${encodeURIComponent(origem)}` +
+      `&tz_offset_min=${-new Date().getTimezoneOffset()}`),
+
+  /** O aluno declara em quantos DIAS por semana se compromete a treinar. */
+  definirMeta: (dias: number) =>
+    request<{ ok: boolean; meta_semanal: MetaSemanal | null }>("/player/meta-semanal", {
+      method: "POST",
+      body: JSON.stringify({ dias, tz_offset_min: -new Date().getTimezoneOffset() }),
+    }),
 };
 
 // ── Leak Trainer (drill adaptativo de spots GTO canônicos mirado nos leaks do jogador) ──

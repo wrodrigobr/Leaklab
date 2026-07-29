@@ -10623,3 +10623,59 @@ def alunos_para_varredura_de_cobranca(limite: int = 200) -> list:
     finally:
         conn.close()
     return [{'id': r['id'], 'email': r['email'], 'username': r['username']} for r in rows]
+
+
+# ── Meta semanal declarada (Fase 3) ──────────────────────────────────────────────────────────
+
+def get_meta_semanal(user_id: int):
+    """Em quantos dias por semana o aluno se comprometeu a treinar. None = nunca respondeu."""
+    conn = get_conn()
+    try:
+        row = _fetchone(conn, _adapt(
+            "SELECT weekly_training_goal AS meta FROM users WHERE id = ?"), (user_id,))
+    finally:
+        conn.close()
+    v = (dict(row).get('meta') if row else None)
+    return int(v) if v else None
+
+
+def set_meta_semanal(user_id: int, dias) -> bool:
+    """Grava a meta. Ajustar NUNCA apaga histórico: `progression_attempts` é append-only e a
+    contagem se recalcula, então baixar a meta não vira uma semana retroativamente cumprida por
+    decreto — ela passa a ser cumprida porque o número de dias já treinados alcança a meta nova,
+    que é honesto."""
+    from leaklab.meta_semanal import normalizar_meta
+    v = normalizar_meta(dias)
+    if v is None:
+        return False
+    conn = get_conn()
+    try:
+        conn.execute(_adapt("UPDATE users SET weekly_training_goal = ? WHERE id = ?"),
+                     (v, user_id))
+        conn.commit()
+    finally:
+        conn.close()
+    return True
+
+
+def carimbos_de_treino_recentes(user_id: int, dias: int = 14) -> list:
+    """Carimbos das tentativas dos últimos N dias, para a contagem semanal.
+
+    Devolve os carimbos CRUS e deixa o recorte da semana para a função pura: fazer o corte em
+    SQL amarraria a regra de semana ao dialeto do banco e a tornaria intestável sem banco.
+    """
+    from datetime import datetime, timedelta
+    desde = (datetime.utcnow() - timedelta(days=dias)).isoformat()
+    conn = get_conn()
+    try:
+        rows = conn.execute(_adapt(
+            "SELECT created_at FROM progression_attempts "
+            "WHERE user_id = ? AND created_at >= ? ORDER BY created_at"),
+            (user_id, desde)).fetchall()
+    finally:
+        conn.close()
+    out = []
+    for r in rows:
+        v = dict(r).get('created_at')
+        out.append(v.isoformat() if hasattr(v, 'isoformat') else str(v))
+    return out

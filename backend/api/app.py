@@ -3078,7 +3078,34 @@ def player_proximo_passo():
     porque superfícies que decidem sozinhas divergem."""
     from leaklab.proximo_passo import montar_proximo_passo
     origem = (request.args.get('origem') or 'api').strip()[:24]
-    return jsonify(montar_proximo_passo(g.user_id, origem=origem))
+    # tz do ALUNO: a semana da meta vira segunda 00:00 no fuso dele, não no do servidor. Sem
+    # isto, quem treina 21h no Brasil conta o dia (e às vezes a semana) errado.
+    try:
+        tz = int(request.args.get('tz_offset_min') or 0)
+    except ValueError:
+        tz = 0
+    return jsonify(montar_proximo_passo(g.user_id, origem=origem, tz_offset_min=tz))
+
+
+@app.route('/player/meta-semanal', methods=['POST'])
+@require_auth
+def player_meta_semanal():
+    """O aluno declara em quantos dias por semana se compromete a treinar (Fase 3).
+
+    A pergunta é em DIAS e a medida é em dias: `progression_attempts` não tem identidade de
+    sessão, então "sessões por semana" seria um número que não responde à pergunta feita.
+    """
+    from database.repositories import set_meta_semanal
+    from leaklab.meta_semanal import OPCOES
+    body = request.get_json(silent=True) or {}
+    if not set_meta_semanal(g.user_id, body.get('dias')):
+        return jsonify({'error': 'meta inválida', 'opcoes': list(OPCOES)}), 400
+    from leaklab.proximo_passo import meta_semanal_de
+    try:
+        tz = int(body.get('tz_offset_min') or 0)
+    except (TypeError, ValueError):
+        tz = 0
+    return jsonify({'ok': True, 'meta_semanal': meta_semanal_de(g.user_id, tz)})
 
 
 @app.route('/player/leaktrainer/options', methods=['GET'])

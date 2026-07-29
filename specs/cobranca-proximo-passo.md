@@ -271,12 +271,20 @@ Reabertura e selo (`comprovado_no_jogo`) hoje só aparecem dentro do trainer.
   (ligar a flag não exige lembrar de um restart). Subir código é reversível; e-mail
   enviado não é.
 
-### Fase 3 — Compromisso
-- [ ] `users.weekly_training_goal` (bloco SAVEPOINT)
-- [ ] Pergunta única no primeiro acesso ao trainer
-- [ ] `meta_semanal` no payload + card + e-mail de inatividade
-- **Pronto quando:** a contagem semanal bate com `progression_attempts` num caso
-  forjado com datas conhecidas.
+### Fase 3 — Compromisso · **ENTREGUE 2026-07-29**
+- [x] `users.weekly_training_goal` na lista SAVEPOINT
+- [x] Pergunta única na intro do trainer (`MetaSemanalPrompt`), com saída "Depois"
+- [x] `meta_semanal` no payload + selo na faixa do dashboard + frase no e-mail de
+      inatividade ("você se comprometeu a treinar 3 dias por semana; esta semana foram 1")
+- [x] `POST /player/meta-semanal`, aceitando só 2/3/5
+- **DESVIO da spec, consciente:** a spec pedia "sessões por semana". `progression_attempts`
+  não tem identidade de sessão, só carimbos — perguntar em sessões e contar dias devolveria
+  um número que não responde à pergunta feita. **Pergunta e medida são ambas em DIAS**, e dia
+  é a unidade melhor: 3 sessões numa terça é pior que 3 dias espalhados, que é a tese do SRS.
+- **Verificado:** 10 testes, incluindo o fuso do aluno (quem treina 21h no Brasil está em outro
+  dia no UTC, e na virada de domingo em outra SEMANA) e a fronteira de segunda 00:00. Sabotado
+  (fuso ignorado), 3 testes acusam. No navegador: pergunta aparece, some ao responder, servidor
+  confirma 3/1 e o selo "1 de 3 dias" chega na faixa do dashboard.
 
 ---
 

@@ -6,6 +6,8 @@ import confetti from "canvas-confetti";
 import { ArrowRight, CheckCircle2, Loader2, RefreshCw, XCircle, Target, Maximize2, Minimize2, LayoutGrid, Flag, RotateCw, Trophy, Flame, Home, Lock } from "lucide-react";
 import { HudHeader } from "@/components/hud/HudHeader";
 import { RangeFamilyDrill } from "@/components/hud/RangeFamilyDrill";
+import { MetaSemanalPrompt } from "@/components/hud/MetaSemanalPrompt";
+import { proximoPasso } from "@/lib/api";
 import { PokerTableV3 } from "@/components/hud/PokerTableV3";
 import { RangePanel } from "@/components/replayer/RangePanel";
 import { ProLockCard } from "@/components/hud/ProLockCard";
@@ -267,6 +269,15 @@ export default function LeakTrainer() {
     queryFn: () => progression.missions(365),
     enabled: phase === "intro",
   });
+  // A meta declarada vem do MESMO endpoint que a faixa do dashboard consome: `meta_semanal`
+  // null significa "ainda não perguntamos", e é ele que decide mostrar a pergunta.
+  const { data: passoData } = useQuery({
+    queryKey: ["proximo-passo", "trainer"],
+    queryFn: () => proximoPasso.get("trainer"),
+    enabled: phase === "intro",
+  });
+  const [metaAdiada, setMetaAdiada] = useState(false);
+
   const { data: trainOptions } = useQuery({
     queryKey: ["leaktrainer-options"], queryFn: leaktrainer.options, enabled: phase === "intro",
   });
@@ -708,6 +719,15 @@ export default function LeakTrainer() {
              ali a rolagem é inevitável e correta. */
           <div className="mx-auto w-full max-w-xl lg:grid lg:max-w-4xl lg:grid-cols-2 lg:items-start lg:gap-5">
           <div className="flex w-full flex-col gap-3">
+            {/* ── 0. O COMPROMISSO (uma vez só) ──
+                Aparece antes da missão porque é a pergunta que dá sentido a toda cobrança
+                seguinte. Some para sempre assim que responder — e "Depois" também a esconde
+                nesta visita, porque exigir resposta para treinar transformaria a primeira tela
+                numa cobrança, o oposto do que a Fase 3 quer. */}
+            {passoData && passoData.meta_semanal === null && !metaAdiada && (
+              <MetaSemanalPrompt onPular={() => setMetaAdiada(true)} />
+            )}
+
             {/* ── 1. ONDE ESTOU + O QUE FAÇO (o herói da tela) ── */}
             <div className="rounded-2xl border border-amber-500/30 bg-gradient-to-b from-amber-500/[0.07] to-transparent p-5 sm:p-6 space-y-4">
               <div className="flex items-center justify-between gap-3">

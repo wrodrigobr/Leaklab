@@ -1575,6 +1575,11 @@ def _run_migrations(conn):
         """)
         conn.execute("CREATE INDEX IF NOT EXISTS idx_range_card_due "
                      "ON range_card_srs(user_id, due_at)")
+        # Meta semanal declarada (espelha a lista SAVEPOINT do PG)
+        _ucols = {r[1] for r in conn.execute('PRAGMA table_info(users)').fetchall()}
+        if 'weekly_training_goal' not in _ucols:
+            try: conn.execute("ALTER TABLE users ADD COLUMN weekly_training_goal INTEGER")
+            except Exception: pass
         # Envios de e-mail de cobrança (espelha a lista SAVEPOINT do PG)
         conn.execute("""
             CREATE TABLE IF NOT EXISTS engagement_emails (
@@ -2103,6 +2108,10 @@ def _run_migrations(conn):
             )""",
             "CREATE INDEX IF NOT EXISTS idx_engagement_email_user "
             "ON engagement_emails(user_id, enviado_em DESC)",
+            # Meta semanal DECLARADA pelo aluno (Fase 3): em quantos dias por semana ele se
+            # compromete a treinar. NULL = ainda não perguntamos, e é esse NULL que dispara a
+            # pergunta na tela. Na lista SAVEPOINT pela regra dura das colunas novas.
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS weekly_training_goal INTEGER",
             # Comissão por PAGAMENTO (accrual): 1 linha por cobrança comissionável.
             """CREATE TABLE IF NOT EXISTS coach_commissions (
                 id            SERIAL PRIMARY KEY,

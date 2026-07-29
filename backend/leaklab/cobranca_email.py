@@ -149,8 +149,10 @@ def coletar_eventos(user_id: int, agora: str) -> list:
             from leaklab.progression import missions_with_state
             ativa = (missions_with_state(user_id) or {}).get('ativa')
             if ativa:
+                from leaklab.proximo_passo import meta_semanal_de
                 eventos.append({'tipo': 'inatividade',
                                 'dados': {'missao': ativa,
+                                          'meta_semanal': meta_semanal_de(user_id),
                                           'dias': int(_dias_entre(agora, ultima))
                                           if ultima else INATIVIDADE_DIAS}})
     except Exception:
@@ -216,6 +218,10 @@ def montar_email(tipo: str, dados: dict, username: str, base_url: str,
             + _cta_button('Revisar', f'{base_url}/leak-trainer?origem=email')
         )
     elif tipo == 'inatividade':
+        # A meta DECLARADA entra aqui (Fase 3): a cobrança deixa de ser contra um ideal nosso e
+        # passa a ser contra o compromisso dele. "Você prometeu 3, treinou em 1" é o espelho;
+        # "treine mais" é o app opinando. Sem meta declarada, a frase simplesmente não aparece.
+        meta = dados.get('meta_semanal') or {}
         # Mesma família do bug do leak reaberto: o texto de reserva tem que caber na frase que o
         # hospeda. Aqui ele aparecia em DUAS posições diferentes (meio e começo), e no começo
         # saía em minúscula — "seu leak principal segue como o leak que mais te custa", que
@@ -238,6 +244,9 @@ def montar_email(tipo: str, dados: dict, username: str, base_url: str,
             + _h1('O leak não some sozinho')
             + _greeting(username)
             + _p(custo)
+            + (_p(f"Você se comprometeu a treinar <strong>{meta['prometidas']} dias por semana</strong>. "
+                  f"Esta semana foram {meta['feitas']}.")
+               if meta.get('prometidas') and not meta.get('cumprida') else '')
             + _p('A sessão que ataca exatamente isso leva uns 4 minutos e continua te esperando.')
             + _cta_button('Treinar', f'{base_url}/leak-trainer?origem=email')
         )

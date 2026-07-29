@@ -122,7 +122,8 @@ def _titulo_da_categoria(key: str) -> str:
         return key
 
 
-def montar_proximo_passo(user_id: int, origem: str = 'api') -> dict:
+def montar_proximo_passo(user_id: int, origem: str = 'api',
+                         tz_offset_min: int = 0) -> dict:
     """Carrega os fatos do banco e decide. É o ÚNICO lugar que junta as fontes — endpoint,
     resposta do /analyze e e-mails chamam isto, nunca remontam a precedência.
 
@@ -194,4 +195,24 @@ def montar_proximo_passo(user_id: int, origem: str = 'api') -> dict:
         p['cta_url'] = p['cta_url'].replace('{origem}', origem)
 
     return {'passo': (fila[0] if fila else None), 'fila': fila[1:3],
-            'meta_semanal': None}   # Fase 3 da spec
+            'meta_semanal': meta_semanal_de(user_id, tz_offset_min)}
+
+
+def meta_semanal_de(user_id: int, tz_offset_min: int = 0) -> dict | None:
+    """O compromisso do aluno e o quanto dele já foi cumprido esta semana.
+
+    None quando ele nunca declarou meta — e é esse None que a tela usa para saber que ainda
+    precisa perguntar. Um zero aqui diria "meta zero", que é outra coisa.
+    """
+    from database.repositories import get_meta_semanal, carimbos_de_treino_recentes
+    from leaklab.meta_semanal import dias_treinados_na_semana, progresso_semanal
+    from datetime import datetime
+    try:
+        meta = get_meta_semanal(user_id)
+        if not meta:
+            return None
+        dias = dias_treinados_na_semana(carimbos_de_treino_recentes(user_id),
+                                        datetime.utcnow().isoformat(), tz_offset_min)
+        return progresso_semanal(meta, dias)
+    except Exception:
+        return None

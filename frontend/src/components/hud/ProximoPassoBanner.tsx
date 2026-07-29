@@ -38,6 +38,19 @@ export function ProximoPassoBanner() {
 
   if (!data) return null;               // carregando: sem skeleton — a faixa entra quando sabe
   const passo = data.passo;
+  const meta = data.meta_semanal;
+
+  /* O compromisso, quando existe: "2 de 3 dias". Fica ao lado do passo em vez de virar card
+     próprio porque é contexto da mesma decisão — e some quando a meta não foi declarada, em
+     vez de mostrar zero (zero diria "meta zero", que é outra coisa). */
+  const selo = meta ? (
+    <span className={cn(
+      "hidden shrink-0 rounded-lg px-2.5 py-1.5 font-mono text-[10px] font-bold sm:inline-block",
+      meta.cumprida ? "bg-emerald-500/15 text-emerald-400" : "bg-muted/40 text-muted-foreground",
+    )} title={t("proximoPasso.metaTitulo")}>
+      {t("proximoPasso.meta", { feitas: meta.feitas, prometidas: meta.prometidas })}
+    </span>
+  ) : null;
 
   if (!passo) {
     // Em dia É um estado, não uma ausência: sem isto o aluno que fez tudo abre o dashboard e
@@ -45,7 +58,8 @@ export function ProximoPassoBanner() {
     return (
       <div className="flex items-center gap-2.5 rounded-xl ring-1 ring-emerald-500/25 bg-emerald-500/[0.04] px-4 py-3">
         <CheckCircle2 className="size-4 shrink-0 text-emerald-400" aria-hidden />
-        <p className="text-sm text-muted-foreground">{t("proximoPasso.emDia")}</p>
+        <p className="flex-1 text-sm text-muted-foreground">{t("proximoPasso.emDia")}</p>
+        {selo}
       </div>
     );
   }
@@ -70,6 +84,7 @@ export function ProximoPassoBanner() {
         <p className="mt-0.5 truncate text-sm font-medium text-foreground">{passo.titulo}</p>
         <p className="mt-0.5 line-clamp-2 text-xs leading-snug text-muted-foreground">{passo.porque}</p>
       </div>
+      {selo}
       <span className={cn(
         "inline-flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-2 font-mono text-[11px] font-bold uppercase tracking-wider",
         urgente ? "bg-amber-500 text-black group-hover:bg-amber-400"

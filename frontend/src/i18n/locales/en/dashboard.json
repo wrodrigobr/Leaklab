@@ -638,6 +638,8 @@
       "missao": "Your next step",
       "carta_nova": "Memorise range",
       "desafio_diario": "Daily challenge"
-    }
+    },
+    "meta": "{{feitas}} of {{prometidas}} days",
+    "metaTitulo": "Your commitment this week"
   }
 }
