@@ -80,7 +80,8 @@ def main():
     executar = '--exec' in args
     email = next((a for a in args if not a.startswith('--')), None)
 
-    from leaklab.gto_solver import _solver_params_for_stack, resolve_solver_ranges
+    from leaklab.gto_solver import (_solver_params_for_stack, resolve_solver_ranges,
+                                    vale_enfileirar_postflop)
 
     conn = get_conn()
     try:
@@ -147,6 +148,9 @@ def main():
             # enfileiramento, que trocavam as ranges entre os jogadores, então ele estava mandando
             # o solver resolver o confronto espelhado. Aqui não há `potType` no banco por decisão,
             # então cai em SRP, que é o caso comum e o mesmo comportamento do legado.
+            # Mesmo gate do upload: nao produz no de heroi-IP enquanto o binario nao suportar.
+            if not vale_enfileirar_postflop(pos, vs_pos, facing):
+                continue
             _ip_range, _oop_range, _hero_ip = resolve_solver_ranges(pos, vs_pos, stack)
             lvl = float(r['level_bb'] or 1) or 1
             pot_chips = float(r['pot'] or 0)

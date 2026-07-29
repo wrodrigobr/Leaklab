@@ -161,6 +161,28 @@ def _captured_3bet_ranges(opener: str, threebettor: str, stack_bb: float):
         return None, None
 
 
+def vale_enfileirar_postflop(hero_pos: str, vs_pos: str, facing_size_bb: float = 0.0) -> bool:
+    """False para spot que o produto NÃO vai servir — não adianta solvar, e solvar faz mal.
+
+    O `lookup_gto` recusa spot com o herói IP enquanto `TEXAS_HERO_IP` estiver desligada, porque
+    o binário antigo do solver ignora a flag `hero_is_ip` e devolve o player 0, que é o OOP: a
+    estratégia do VILÃO, no lugar da do herói.
+
+    Só que recusar no lookup não basta. `insert_gto_nodes` dispara `resync_gto_labels_for_node`
+    para todo nó novo, e essa função escreve o `gto_label` casando por hash, SEM aplicar esse
+    portão. Ou seja, um nó de herói-IP gravado por engano vira veredito na decisão do jogador
+    por um caminho que ninguém está vigiando — conselho errado, não ausência de conselho.
+
+    Enquanto a flag estiver desligada, o estado honesto para esses spots é "sem cobertura". Este
+    gate existe para que o enfileiramento não produza o nó em primeiro lugar.
+    """
+    if not _postflop_hero_is_ip(hero_pos, vs_pos):
+        return True                       # herói OOP: é o caso que o solver serve nativamente
+    if not _TEXAS_HERO_IP:
+        return False                      # herói IP sem o binário novo: não solve
+    return facing_size_bb == 0.0 or _TEXAS_HERO_IP_FACING
+
+
 def resolve_solver_ranges(hero_pos: str, vs_pos: str, hero_stack_bb: float,
                           pot_type: str = '', opener: str = '', threebettor: str = ''):
     """Ranges do solve atribuídas aos jogadores CERTOS. Devolve (ip_range, oop_range, hero_is_ip).

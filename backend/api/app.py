@@ -10077,8 +10077,14 @@ def _enqueue_postflop_spots(results: list, tournament_id: int = None) -> None:
                 already += 1
                 continue
 
-            from leaklab.gto_solver import _priority, _solver_params_for_stack, resolve_solver_ranges
+            from leaklab.gto_solver import (_priority, _solver_params_for_stack,
+                                            resolve_solver_ranges, vale_enfileirar_postflop)
             vs_pos   = normalize_position(spot.get('villainPosition', ctx.get('vsPosition', '')))
+            # Não enfileira o que o produto não vai servir. Spot de herói-IP com a flag desligada
+            # produziria um nó com a estratégia do VILÃO, e o resync automático o transformaria em
+            # veredito sem passar pelo portão do lookup. Ver `vale_enfileirar_postflop`.
+            if not vale_enfileirar_postflop(pos, vs_pos, facing):
+                continue
             # Ranges pela MESMA função que o lookup usa. Aqui havia duas linhas próprias que
             # punham a range do herói no lugar do IP e a do vilão no lugar do OOP — e o solver
             # devolve o player 0, que é o OOP, então cada jogador recebia a range do outro.
