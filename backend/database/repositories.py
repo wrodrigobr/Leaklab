@@ -686,6 +686,8 @@ def _chaves(r: dict) -> tuple:
             hero_cards  = r.get('hero_cards'),
             facing_bet  = spot.get('facingToBb'),
             pot_type    = spot.get('potType') or '',
+            raises_faced= r.get('preflop_raises_faced') if r.get('preflop_raises_faced') is not None
+                          else spot.get('preflopRaisesFaced'),
         )
     except Exception:
         return (None, None)

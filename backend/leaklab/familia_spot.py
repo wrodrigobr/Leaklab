@@ -88,14 +88,28 @@ def bucket_de_agregacao(stack_bb: float | None) -> str | None:
 
 
 def cenario_largo(street: str | None, vs_position: str | None,
-                  is_3bet: bool | None = None, facing_bet: float | None = None) -> str:
+                  is_3bet: bool | None = None, facing_bet: float | None = None,
+                  raises_faced: int | None = None) -> str:
     """Cenario da decisao, na granularidade LARGA que a medicao elegeu.
 
     Preflop: `rfi` (ninguem abriu antes) / `vs_rfi` (respondendo a uma abertura) / `vs_3bet`.
     Postflop: `agressor` (ninguem apostou antes de mim) / `defendendo` (estou diante de aposta).
 
-    A posicao do vilao NAO entra: medido, incluir ela derruba as familias validaveis do user 28 de
-    11 para 1. Ela vive no spot canonico, onde a amostra do drill aguenta a granularidade.
+    A posicao do vilao NAO entra na chave: medido, incluir ela derruba as familias validaveis do
+    user 28 de 11 para 1. Ela vive no spot canonico, onde a amostra do drill aguenta.
+
+    ── Por que `vs_position` nao serve NEM para saber se houve open ───────────────────────────────
+
+    Era o que esta funcao usava, e estava errado de um jeito que nao aparecia em teste: **a coluna
+    nunca vem vazia** — quando ninguem abriu, ela vem com a string `'unknown'`, que e truthy. Medido
+    em producao: das 6507 decisoes preflop, **ZERO tem `vs_position` vazio e 3584 tem
+    `preflop_raises_faced = 0`**. Ou seja, 55% das decisoes preflop foram rotuladas `vs_rfi` quando
+    sao RFI, e a familia juntava "eu abro primeiro" com "eu enfrento uma abertura" — o mesmo tipo de
+    erro do postflop, cometido de novo.
+
+    O sinal certo e `preflop_raises_faced`, e quem o interpreta e `leak_trainer._leak_scenario`, que
+    ja monta o curriculo com essa mesma regra. Delegar e obrigatorio: se as duas divergirem, a
+    missao e a validacao passam a falar de spots diferentes com o mesmo nome.
 
     ── Por que o postflop nao e simplesmente o street ─────────────────────────────────────────────
 
@@ -114,14 +128,22 @@ def cenario_largo(street: str | None, vs_position: str | None,
     st = (street or '').strip().lower()
     if st and st != 'preflop':
         return 'defendendo' if (facing_bet or 0) > 0 else 'agressor'
+    # Preflop: quem decide e `preflop_raises_faced`, via `leak_trainer._leak_scenario` — a mesma
+    # funcao que ja monta o curriculo. Ver o bloco abaixo sobre por que `vs_position` NAO serve.
+    from leaklab.leak_trainer import _leak_scenario
+    cen = _leak_scenario(1 if is_3bet else 0, int(raises_faced if raises_faced is not None else -1))
+    if cen:
+        return cen
+    # Sem `raises_faced` (chamada legada), cai no sinal fraco. Continua imperfeito e por isso a
+    # coluna materializada SEMPRE passa `raises_faced`.
     if is_3bet:
         return 'vs_3bet'
-    return 'vs_rfi' if vs_position else 'rfi'
+    return 'vs_rfi' if (vs_position and str(vs_position).lower() != 'unknown') else 'rfi'
 
 
 def familia_de(street: str | None, position: str | None, stack_bb: float | None,
                vs_position: str | None = None, is_3bet: bool | None = None,
-               facing_bet: float | None = None) -> str | None:
+               facing_bet: float | None = None, raises_faced: int | None = None) -> str | None:
     """Chave canonica da familia: `street|cenario|posicao|bucket`.
 
     Devolve None quando falta qualquer componente. Falhar FECHADO e obrigatorio: uma familia com
@@ -134,7 +156,7 @@ def familia_de(street: str | None, position: str | None, stack_bb: float | None,
     bucket = bucket_de_agregacao(stack_bb)
     if not st or not pos or not bucket:
         return None
-    return f'{st}|{cenario_largo(street, vs_position, is_3bet, facing_bet)}|{pos}|{bucket}'
+    return f'{st}|{cenario_largo(street, vs_position, is_3bet, facing_bet, raises_faced)}|{pos}|{bucket}'
 
 
 def winsorizar_ev(ev_loss_bb: float | None,
@@ -171,7 +193,7 @@ def familias_validaveis(contagem_por_familia: dict) -> list:
 
 def chaves_de_decisao(street=None, position=None, stack_bb=None, vs_position=None,
                       is_3bet=None, board=None, hero_cards=None,
-                      facing_bet=None, pot_type='') -> tuple:
+                      facing_bet=None, pot_type='', raises_faced=None) -> tuple:
     """(spot_family_key, spot_hash) de uma decisao. Um caminho so, para gravacao E backfill.
 
     Ter duas rotinas — uma que grava e outra que preenche o passado — e como a base fica com duas
@@ -187,7 +209,8 @@ def chaves_de_decisao(street=None, position=None, stack_bb=None, vs_position=Non
     O hash sai None quando falta insumo, em vez de um hash de dado vazio: hash de nada casaria com
     hash de nada e agruparia decisoes sem relacao nenhuma.
     """
-    familia = familia_de(street, position, stack_bb, vs_position, is_3bet, facing_bet)
+    familia = familia_de(street, position, stack_bb, vs_position, is_3bet, facing_bet,
+                         raises_faced)
 
     spot_hash = None
     try:

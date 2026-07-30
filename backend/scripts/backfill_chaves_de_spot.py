@@ -62,6 +62,7 @@ def main() -> int:
     lim = f' LIMIT {int(args.limite)}' if args.limite else ''
     rows = conn.execute(
         'SELECT id, street, position, stack_bb, vs_position, is_3bet, board, hero_cards, '
+        'preflop_raises_faced, '
         f'facing_bet FROM decisions {onde} ORDER BY id{lim}').fetchall()
 
     print(f'decisoes a processar: {len(rows)}'
@@ -74,7 +75,7 @@ def main() -> int:
             street=r['street'], position=r['position'], stack_bb=r['stack_bb'],
             vs_position=r['vs_position'], is_3bet=r['is_3bet'],
             board=_board(r['board']), hero_cards=r['hero_cards'],
-            facing_bet=r['facing_bet'],
+            facing_bet=r['facing_bet'], raises_faced=r['preflop_raises_faced'],
         )
         # Falha FECHADA e o comportamento certo, mas precisa ser CONTADA E ATRIBUIDA: "sem
         # familia" sozinho nao diz o que consertar, e diagnostico inacionavel encerra a

@@ -66,15 +66,55 @@ def test_stack_acima_do_teto_nao_perde_bucket():
 # ── A eleicao do cenario ───────────────────────────────────────────────────────────────────────
 
 def test_cenario_preflop_distingue_rfi_de_vs_rfi_de_vs_3bet():
+    """Quem decide e `preflop_raises_faced`, via `leak_trainer._leak_scenario` — a mesma funcao que
+    monta o curriculo. Se as duas divergirem, missao e validacao falam de spots diferentes com o
+    mesmo nome."""
+    assert cenario_largo('preflop', 'unknown', raises_faced=0) == 'rfi'
+    assert cenario_largo('preflop', 'BTN', raises_faced=1) == 'vs_rfi'
+    assert cenario_largo('preflop', 'BTN', raises_faced=1, is_3bet=True) == 'vs_3bet'
+    assert cenario_largo('preflop', 'BTN', raises_faced=2) == 'vs_3bet'
+
+
+def test_vs_position_UNKNOWN_nao_pode_virar_vs_rfi():
+    """O defeito que a coluna materializada carregava. `vs_position` NUNCA vem vazio: quando
+    ninguem abriu, ela vem com a string 'unknown', que e truthy.
+
+    Medido em producao: das 6507 decisoes preflop, ZERO tem `vs_position` vazio e 3584 tem
+    `preflop_raises_faced = 0`. Ou seja, 55% eram rotuladas `vs_rfi` sendo RFI, e a familia juntava
+    "eu abro primeiro" com "eu enfrento uma abertura". Mesmo tipo de erro do postflop, cometido de
+    novo — e invisivel em teste ate alguem olhar o dado real."""
+    assert cenario_largo('preflop', 'unknown', raises_faced=0) == 'rfi'
+    assert familia_de('preflop', 'SB', 22, vs_position='unknown', raises_faced=0)         == 'preflop|rfi|SB|20-35bb'
+
+
+def test_o_FALLBACK_legado_tambem_trata_unknown():
+    """Caminho de chamador antigo, sem `raises_faced`. Ele nao pode ser melhor que o principal, mas
+    tambem nao pode repetir o defeito: 'unknown' nao e uma abertura.
+
+    Este teste existe porque a sabotagem do fallback NAO foi acusada na primeira falsificacao —
+    todos os testes passavam `raises_faced`, entao o ramo nunca era exercitado. Guarda que nao roda
+    e cobertura sem dar cobertura."""
+    assert cenario_largo('preflop', 'unknown') == 'rfi'
+    assert cenario_largo('preflop', 'UNKNOWN') == 'rfi'
     assert cenario_largo('preflop', None) == 'rfi'
     assert cenario_largo('preflop', 'BTN') == 'vs_rfi'
-    assert cenario_largo('preflop', 'BTN', is_3bet=True) == 'vs_3bet'
+
+
+def test_delega_ao_mesmo_cenario_do_CURRICULO():
+    """Guarda de fonte unica: a familia e o curriculo tem que concordar no cenario para todo
+    (is_3bet, raises_faced)."""
+    from leaklab.leak_trainer import _leak_scenario
+    for is3 in (0, 1):
+        for rf in (0, 1, 2, 3):
+            esperado = _leak_scenario(is3, rf)
+            assert cenario_largo('preflop', 'BTN', is_3bet=bool(is3), raises_faced=rf) == esperado, (is3, rf)
 
 
 def test_cenario_NAO_carrega_a_posicao_do_vilao():
     """Medido: incluir a posicao do vilao derruba as familias validaveis do user 28 de 11 para 1.
     Ela vive no spot canonico, onde a amostra do drill aguenta."""
-    assert cenario_largo('preflop', 'BTN') == cenario_largo('preflop', 'CO') == 'vs_rfi'
+    assert (cenario_largo('preflop', 'BTN', raises_faced=1)
+            == cenario_largo('preflop', 'CO', raises_faced=1) == 'vs_rfi')
 
 
 def test_postflop_distingue_AGRESSOR_de_DEFENDENDO():
@@ -100,12 +140,13 @@ def test_postflop_nao_repete_o_street_no_cenario():
 # ── A chave, e o falhar fechado ────────────────────────────────────────────────────────────────
 
 def test_familia_e_estavel_e_legivel():
-    assert familia_de('preflop', 'btn', 19) == 'preflop|rfi|BTN|10-20bb'
+    assert familia_de('preflop', 'btn', 19, raises_faced=0) == 'preflop|rfi|BTN|10-20bb'
     assert familia_de('flop', 'BB', 45, vs_position='CO', facing_bet=3) == 'flop|defendendo|BB|35-60bb'
 
 
 def test_familia_ignora_caixa_e_espaco():
-    assert familia_de('  PREFLOP ', ' btn ', 19) == familia_de('preflop', 'BTN', 19)
+    assert (familia_de('  PREFLOP ', ' btn ', 19, raises_faced=0)
+            == familia_de('preflop', 'BTN', 19, raises_faced=0))
 
 
 def test_familia_falha_FECHADA_com_componente_faltando():
