@@ -17,7 +17,9 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 >
 > **Um falso positivo meu, encontrado no meio.** O teste de gravacao nao era idempotente e estourava `UNIQUE users.email` na segunda execucao contra o banco de dev. Durante a sabotagem do guarda de gravacao, o teste "falhou" por causa desse estouro e eu quase li isso como o guarda tendo acusado. Corrigido e rodado 3x seguidas antes de refazer a falsificacao — aí sim ela acusou pelo motivo certo.
 >
-> 25 testes, 6 guardas verificados quebrando (corte de board removido, normalizacao de cartas removida, hash de vazio liberado, gravacao desligada em dois pontos). Verde: engine, database, gto e api.
+> **Correcao encontrada ao conferir a coluna contra a medicao manual.** As contagens por usuario batiam (59/47/9/5/0), mas comparar as duas expos um defeito do meu desenho: o cenario postflop era o proprio street, entao a chave saia `flop|flop|BTN|...`. Alem de redundante (o street ja e o primeiro campo), a familia juntava "eu apostei" com "eu paguei uma aposta" — serie de EV virando media de DUAS habilidades, quando a propria spec da "c-bet em SRP como agressor" como exemplo de familia. Corrigido para `agressor`/`defendendo`. Custo medido antes de aplicar: os dois usuarios com mais volume perdem 12% das familias validaveis (59→52, 47→41) e os tres com pouco volume nao perdem nada (9, 5, 0) — bom negocio por familias que significam alguma coisa.
+>
+> 26 testes, 8 guardas verificados quebrando (corte de board removido, normalizacao de cartas removida, hash de vazio liberado, gravacao desligada em dois pontos, cenario postflop revertido de duas formas). Verde: engine, database, gto e api.
 
 
 ### feat(progressao): Fase 0 — a chave de familia, e as duas escolhas que a medicao decidiu (#protocolo-progressao)

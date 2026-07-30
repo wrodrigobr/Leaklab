@@ -88,25 +88,40 @@ def bucket_de_agregacao(stack_bb: float | None) -> str | None:
 
 
 def cenario_largo(street: str | None, vs_position: str | None,
-                  is_3bet: bool | None = None) -> str:
+                  is_3bet: bool | None = None, facing_bet: float | None = None) -> str:
     """Cenario da decisao, na granularidade LARGA que a medicao elegeu.
 
     Preflop: `rfi` (ninguem abriu antes) / `vs_rfi` (respondendo a uma abertura) / `vs_3bet`.
-    Postflop: o proprio street, que ja e a distincao que importa numa familia larga.
+    Postflop: `agressor` (ninguem apostou antes de mim) / `defendendo` (estou diante de aposta).
 
     A posicao do vilao NAO entra: medido, incluir ela derruba as familias validaveis do user 28 de
     11 para 1. Ela vive no spot canonico, onde a amostra do drill aguenta a granularidade.
+
+    ── Por que o postflop nao e simplesmente o street ─────────────────────────────────────────────
+
+    Era o que esta funcao fazia na primeira versao, e estava errado por duas razoes. A primeira e
+    cosmetica: o street ja e o primeiro campo da chave, entao a familia saia `flop|flop|BTN|...`,
+    com o cenario carregando zero informacao. A segunda e de conteudo, e e a que importa: uma
+    familia que junta "eu apostei" com "eu paguei uma aposta" tem uma serie de EV que e a media de
+    DUAS habilidades diferentes. A propria spec (§3) da como exemplo de familia larga "c-bet em SRP
+    como agressor" — o papel na mao E a distincao.
+
+    Custo medido em producao ao separar: as familias validaveis dos dois usuarios com mais volume
+    caem de 59 para 52 e de 47 para 41 (-12%); os tres usuarios com pouco volume nao perdem nada
+    (9, 5 e 0 antes e depois). Trocar 12% de contagem nos usuarios que tem sobra por familias que
+    significam alguma coisa e um bom negocio.
     """
     st = (street or '').strip().lower()
     if st and st != 'preflop':
-        return st
+        return 'defendendo' if (facing_bet or 0) > 0 else 'agressor'
     if is_3bet:
         return 'vs_3bet'
     return 'vs_rfi' if vs_position else 'rfi'
 
 
 def familia_de(street: str | None, position: str | None, stack_bb: float | None,
-               vs_position: str | None = None, is_3bet: bool | None = None) -> str | None:
+               vs_position: str | None = None, is_3bet: bool | None = None,
+               facing_bet: float | None = None) -> str | None:
     """Chave canonica da familia: `street|cenario|posicao|bucket`.
 
     Devolve None quando falta qualquer componente. Falhar FECHADO e obrigatorio: uma familia com
@@ -119,7 +134,7 @@ def familia_de(street: str | None, position: str | None, stack_bb: float | None,
     bucket = bucket_de_agregacao(stack_bb)
     if not st or not pos or not bucket:
         return None
-    return f'{st}|{cenario_largo(street, vs_position, is_3bet)}|{pos}|{bucket}'
+    return f'{st}|{cenario_largo(street, vs_position, is_3bet, facing_bet)}|{pos}|{bucket}'
 
 
 def winsorizar_ev(ev_loss_bb: float | None,
@@ -172,7 +187,7 @@ def chaves_de_decisao(street=None, position=None, stack_bb=None, vs_position=Non
     O hash sai None quando falta insumo, em vez de um hash de dado vazio: hash de nada casaria com
     hash de nada e agruparia decisoes sem relacao nenhuma.
     """
-    familia = familia_de(street, position, stack_bb, vs_position, is_3bet)
+    familia = familia_de(street, position, stack_bb, vs_position, is_3bet, facing_bet)
 
     spot_hash = None
     try:

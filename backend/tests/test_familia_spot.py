@@ -77,17 +77,31 @@ def test_cenario_NAO_carrega_a_posicao_do_vilao():
     assert cenario_largo('preflop', 'BTN') == cenario_largo('preflop', 'CO') == 'vs_rfi'
 
 
-def test_postflop_o_cenario_e_o_street():
+def test_postflop_distingue_AGRESSOR_de_DEFENDENDO():
+    """A distincao que a primeira versao desta funcao nao tinha, e sem a qual a familia junta "eu
+    apostei" com "eu paguei uma aposta" — serie de EV virando media de DUAS habilidades.
+
+    Custo medido ao separar: os dois usuarios com mais volume perdem 12% das familias validaveis
+    (59->52, 47->41); os tres com pouco volume nao perdem nada (9, 5, 0)."""
     for st in ('flop', 'turn', 'river'):
-        assert cenario_largo(st, 'BTN') == st
-        assert cenario_largo(st, None) == st
+        assert cenario_largo(st, 'BTN', facing_bet=0) == 'agressor'
+        assert cenario_largo(st, 'BTN', facing_bet=2.5) == 'defendendo'
+        assert cenario_largo(st, None) == 'agressor'
+
+
+def test_postflop_nao_repete_o_street_no_cenario():
+    """A familia saia `flop|flop|BTN|...`: o street ja e o primeiro campo, e o cenario carregava
+    zero informacao."""
+    f = familia_de('flop', 'BTN', 25, facing_bet=0)
+    assert f == 'flop|agressor|BTN|20-35bb', f
+    assert f.split('|')[0] != f.split('|')[1]
 
 
 # ── A chave, e o falhar fechado ────────────────────────────────────────────────────────────────
 
 def test_familia_e_estavel_e_legivel():
     assert familia_de('preflop', 'btn', 19) == 'preflop|rfi|BTN|10-20bb'
-    assert familia_de('flop', 'BB', 45, vs_position='CO') == 'flop|flop|BB|35-60bb'
+    assert familia_de('flop', 'BB', 45, vs_position='CO', facing_bet=3) == 'flop|defendendo|BB|35-60bb'
 
 
 def test_familia_ignora_caixa_e_espaco():
@@ -204,7 +218,7 @@ def test_sem_insumo_o_hash_e_None_e_nao_hash_de_vazio():
     from leaklab.familia_spot import chaves_de_decisao
     fam, h = chaves_de_decisao(street='flop', position='BTN', stack_bb=25, hero_cards=None)
     assert h is None
-    assert fam == 'flop|flop|BTN|20-35bb'   # a familia nao depende das cartas e continua saindo
+    assert fam == 'flop|agressor|BTN|20-35bb'   # a familia nao depende das cartas e continua saindo
 
 
 def test_familia_sai_mesmo_quando_o_hash_nao_sai():
@@ -243,7 +257,7 @@ def test_save_decisions_GRAVA_as_duas_colunas():
     finally:
         conn.close()
     assert r is not None, 'a decisao nem gravou'
-    assert r['spot_family_key'] == 'flop|flop|BTN|20-35bb', r['spot_family_key']
+    assert r['spot_family_key'] == 'flop|agressor|BTN|20-35bb', r['spot_family_key']
     assert r['spot_hash'], 'spot_hash gravado vazio'
 
 

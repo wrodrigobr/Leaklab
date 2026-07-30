@@ -436,6 +436,17 @@ Convenção do `schema.py` (multi-backend SQLite/PG, migrações abort-proof).
    > no largo. Por isso a família usa cenário largo e a posição do vilão fica
    > fora dela (vive no spot canônico, onde a amostra do drill aguenta).
    >
+   > **Correção do cenário postflop (2026-07-30, depois da materialização).** A
+   > primeira versão fazia o cenário postflop ser o próprio street, e isso estava
+   > errado duas vezes: a chave saía `flop|flop|BTN|...` (o street já é o primeiro
+   > campo, então o cenário não carregava informação), e — o que importa — a
+   > família juntava "eu apostei" com "eu paguei uma aposta", ou seja, a série de
+   > EV virava média de DUAS habilidades. A §3 desta spec já dava "c-bet em SRP
+   > como agressor" como exemplo de família: o papel na mão É a distinção.
+   > Corrigido para `agressor`/`defendendo` por `facing_bet`. Custo medido em
+   > produção: os dois usuários com mais volume perdem 12% das famílias validáveis
+   > (59→52 e 47→41); os três com pouco volume não perdem nada (9, 5 e 0).
+   >
    > **Limite honesto a comunicar, não esconder:** quem tem 258 decisões tem ZERO
    > família validável. O selo "comprovado no jogo" é inalcançável para a maior
    > parte da base hoje, e a superfície precisa dizer "ainda não dá para afirmar"
