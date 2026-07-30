@@ -223,6 +223,63 @@ Seat 2: Vilao folded before Flop
     assert sd['summary']['winners'][0]['player'] == 'Hero'
 
 
+def test_antes_e_blinds_da_ACR_aparecem_no_frame_inicial():
+    """Reportado pelo usuario: "eu estou no BB e nao apareceu; a SB so apareceu depois que o D
+    pagou". Medido numa mao 3-handed da ACR: o frame inicial vinha com pot=0, blinds_total=0 e
+    ZERO fichas em todos os assentos. As unicas fichas na mesa eram das ACOES, entao o pote
+    parecia nascer do nada e o blind do hero nunca era desenhado.
+
+    Causa: os regexes exigiam DOIS-PONTOS ("Hero: posts the ante 40"), e a ACR escreve sem ":"
+    e sem o "the" no ante ("Hero posts ante 40.00"). Nada era capturado.
+    """
+    replay = _replay_de(_MAO_ACR_ALLIN_TURN, 'MusashiBR')
+    f0 = replay['timeline'][0]
+    assert f0['antes_total'] == 1200, f0.get('antes_total')      # 8 x 150
+    assert f0['blinds_total'] == 2250, f0.get('blinds_total')    # 750 + 1500
+    assert f0['pot'] == 3450, f0['pot']
+    # A ficha do blind fica no assento CERTO: 2 = SB (750), 3 = BB (1500).
+    posicoes = {s: v['pos'] for s, v in f0['seats'].items()}
+    sb = next(s for s, p in posicoes.items() if p == 'SB')
+    bb = next(s for s, p in posicoes.items() if p == 'BB')
+    assert f0['bets'][sb] == 750, (sb, f0['bets'])
+    assert f0['bets'][bb] == 1500, (bb, f0['bets'])
+    # e ninguem mais tem ficha na mesa antes de qualquer acao
+    assert sum(v for k, v in f0['bets'].items() if k not in (sb, bb)) == 0, f0['bets']
+
+
+def test_o_dialeto_com_dois_pontos_continua_funcionando():
+    """Regressao: PokerStars/GG usam "Hero: posts the ante 40" (com dois-pontos, sem centavos)."""
+    raw_ps = """PokerStars Hand #1: Tournament #1, $1.00+$0.10 USD Hold'em No Limit - Level I (10/20) - 2026/07/01 0:00:00 ET
+Table '1' 6-max Seat #1 is the button
+Seat 1: Botao (2000 in chips)
+Seat 2: Peq (2000 in chips)
+Seat 3: Grande (2000 in chips)
+Botao: posts the ante 5
+Peq: posts the ante 5
+Grande: posts the ante 5
+Peq: posts small blind 10
+Grande: posts big blind 20
+*** HOLE CARDS ***
+Dealt to Grande [Ah Kh]
+Botao: folds
+Peq: folds
+Uncalled bet (10) returned to Grande
+Grande collected 45 from pot
+*** SUMMARY ***
+Total pot 45
+Seat 1: Botao (button) folded before Flop
+Seat 2: Peq (small blind) folded before Flop
+Seat 3: Grande (big blind) collected (45)
+"""
+    f0 = _replay_de(raw_ps, 'Grande')['timeline'][0]
+    assert f0['antes_total'] == 15, f0.get('antes_total')
+    assert f0['blinds_total'] == 30, f0.get('blinds_total')
+    posicoes = {s: v['pos'] for s, v in f0['seats'].items()}
+    sb = next(s for s, p in posicoes.items() if p == 'SB')
+    bb = next(s for s, p in posicoes.items() if p == 'BB')
+    assert f0['bets'][sb] == 10 and f0['bets'][bb] == 20, f0['bets']
+
+
 def test_formato_pokerstars_com_parenteses_continua_funcionando():
     """Regressao: o formato antigo (valor entre parenteses, sem centavos) nao pode quebrar."""
     from api.app import _build_replay_data as _brd
@@ -244,6 +301,8 @@ if __name__ == '__main__':
               test_vitoria_sem_showdown_tambem_conclui,
               test_ggpoker_showed_e_won_SEM_a_descricao_da_mao,
               test_coinpoker_ganhou_preflop_sem_board_e_sem_descricao,
+              test_antes_e_blinds_da_ACR_aparecem_no_frame_inicial,
+              test_o_dialeto_com_dois_pontos_continua_funcionando,
               test_formato_pokerstars_com_parenteses_continua_funcionando)
     for t in testes:
         try:

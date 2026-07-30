@@ -4122,6 +4122,52 @@ def _detect_site(raw: str) -> str:
     return _parser_detect_site(raw)
 
 
+def jogadores_do_roster(raw: str) -> set:
+    """Nomes distintos que APARECERAM SENTADOS, lendo só o roster do topo de cada mão.
+
+    Fonte única deste sinal: usado para distinguir SNG de MTT no nome do torneio e para a
+    detecção de mesa final. Num SnG só existem N pessoas; num MTT chegam jogadores de mesas
+    que quebraram, então o número de nomes distintos cresce.
+
+    A parte difícil é NÃO contar as linhas de `*** SUMMARY ***`, que também começam com
+    "Seat N:" — e a armadilha é mais fina do que parece. O PokerStars escreve
+    "Seat 4: phpro (small blind) collected (1500)": um regex que aceite "(número)" no fim casa
+    o VALOR COLETADO e devolve o nome "phpro (small blind) collected" como se fosse outro
+    jogador. Medido num SnG de 9: a leitura ingênua devolvia 27 a 30 nomes, e todo SnG era
+    rotulado MTT por estourar o limite de 9.
+
+    Por isso o corte é estrutural (pular a seção de summary), não por regex mais esperto: o
+    mesmo critério que `_build_replay_data` já usa quando lê o roster de uma mão só.
+    """
+    import re as _r
+    nomes = set()
+    em_summary = False
+    for linha in (raw or '').splitlines():
+        l = linha.strip()
+        if l.startswith('*** SUMMARY ***'):
+            em_summary = True
+            continue
+        # Cabeçalho de mão nova encerra o summary anterior (cobre os dialetos: "PokerStars Hand
+        # #", "Poker Hand #TM", "Game Hand #" da ACR, "CoinPoker Hand #").
+        if 'Hand #' in l:
+            em_summary = False
+            continue
+        if em_summary:
+            continue
+        # Formatos do stack no parêntese, por dialeto:
+        #   PS/GG          "(1500 in chips)"
+        #   ACR            "(29150.00)"
+        #   888/PartyPoker "( $3,548 )"   — espaços internos E cifrão; a primeira versão deste
+        #                                   regex exigia dígito logo após o "(" e quebrou a suíte
+        #                                   do 888, que é a única a cobrir esse dialeto.
+        # Pode ser permissivo com o número porque quem exclui as linhas de resultado é o corte
+        # ESTRUTURAL do summary acima, não este padrão.
+        m = _r.match(r'^Seat \d+: (.+?) \(\s*\$?[\d.,]+\s*(?:in chips)?\s*\)', l)
+        if m:
+            nomes.add(m.group(1).strip())
+    return nomes
+
+
 def _extract_tournament_name(raw: str, site: str, buy_in: float | None = None) -> str | None:
     """
     Extrai nome/descrição amigável do torneio para exibição na lista.
@@ -4150,9 +4196,23 @@ def _extract_tournament_name(raw: str, site: str, buy_in: float | None = None) -
             # cash (sem id de torneio na mesa) ou sem nome → cai no heurístico abaixo
         if buy_in is None or buy_in <= 0:
             return None
-        # Contar jogadores únicos listados nos assentos para distinguir SNG de MTT
-        seats = re.findall(r'^Seat \d+: (.+?) \(', raw, re.MULTILINE)
-        unique_players = len(set(seats))
+        # Contar jogadores únicos listados nos assentos para distinguir SNG de MTT.
+        #
+        # Reportado pelo usuário: "os nomes dos torneios ficam como MTT $1.00 mesmo para um Sit
+        # and Go de 9 jogadores". Causa: o regex antigo (`^Seat \d+: (.+?) \(`) casava TAMBÉM as
+        # linhas do SUMMARY, onde o parêntese vem depois de texto de resultado — e o nome
+        # capturado virava "Alan_xavi collected", "Alan_xavi showed [Ad 8d] and won",
+        # "Alan_xavi folded before Flop". O MESMO jogador contava várias vezes: num SnG de 9,
+        # medido, o regex antigo devolvia 30 nomes, então TODO SnG estourava o limite de 9 e era
+        # rotulado MTT.
+        #
+        # Agora só o ROSTER do topo conta, exigindo o stack no parêntese: "(1500 in chips)"
+        # (PokerStars/GG) ou "(29150.00)" (ACR). Linha de SUMMARY não tem stack ali e não casa.
+        unique_players = len(jogadores_do_roster(raw))
+        # Sem roster reconhecido, não afirma formato nenhum: um nome errado é pior que nome
+        # genérico, porque o usuário usa isso pra achar o torneio na lista.
+        if unique_players == 0:
+            return None
         fmt = 'SNG' if unique_players <= 9 else 'MTT'
         return f'{fmt} ${buy_in:.2f}'
     return None
@@ -6222,17 +6282,35 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
     current_revealed = {}  # seat_str -> [cards], accumulates as shows happen
 
     # Extrair antes e blinds do raw_text (parser não os captura em hand.actions)
+    #
+    # Reportado pelo usuário: "eu estou no BB e não apareceu; a SB só apareceu depois que o D
+    # pagou". Medido numa mão 3-handed da ACR: o frame inicial vinha com pot=0, blinds_total=0 e
+    # ZERO fichas em todos os assentos — nenhum ante e nenhum blind era capturado. As fichas que
+    # apareciam na mesa eram só as das AÇÕES, então o pote parecia nascer do nada quando alguém
+    # agia, e o blind do hero nunca era desenhado.
+    #
+    # Duas incompatibilidades com o dialeto ACR, ambas neste regex:
+    #   · DOIS-PONTOS: PokerStars/GG escrevem "Hero: posts the ante 40"; a ACR escreve
+    #     "Hero posts ante 40.00", sem ":" (é a diferença central do dialeto, já documentada no
+    #     parser). `(.+): posts` nunca casava.
+    #   · "the" OPCIONAL no ante: a ACR usa "posts ante", sem o artigo.
+    # Os decimais (`.00`) também: `[\d,]+` parava antes do ponto e, num valor como "0.50", leria
+    # zero. Agora o grupo aceita a parte decimal e a conversão passa por float.
     antes   = []
     blinds  = []
+    _ANTE_ANY  = _re.compile(r'^(.+?):? posts (?:the )?ante ([\d,]+(?:\.\d+)?)')
+    _BLIND_ANY = _re.compile(r'^(.+?):? posts (?:the )?(small|big) blind ([\d,]+(?:\.\d+)?)')
     for line in hand.raw_text.split('\n'):
-        m_ante  = _re.match(r'(.+): posts the ante ([\d,]+)', line)
-        m_blind = _re.match(r'(.+): posts (small|big) blind ([\d,]+)', line)
+        line = line.strip()
+        m_ante  = _ANTE_ANY.match(line)
+        m_blind = _BLIND_ANY.match(line)
         if m_ante:
-            antes.append({'player': m_ante.group(1).strip(), 'amount': int(m_ante.group(2).replace(',', ''))})
+            antes.append({'player': m_ante.group(1).strip(),
+                          'amount': int(float(m_ante.group(2).replace(',', '')))})
         elif m_blind:
             blinds.append({'player': m_blind.group(1).strip(),
                            'type':   m_blind.group(2),
-                           'amount': int(m_blind.group(3).replace(',', ''))})
+                           'amount': int(float(m_blind.group(3).replace(',', '')))})
 
     # Aplicar antes ao pot (sem ficha individual)
     for a in antes:
