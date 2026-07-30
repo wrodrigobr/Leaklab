@@ -155,6 +155,98 @@ def test_entrada_vazia_nao_estoura():
     assert familias_validaveis({}) == [] and familias_validaveis(None) == []
 
 
+# ── As chaves materializadas, e as duas armadilhas conhecidas ──────────────────────────────────
+
+def test_hash_de_preflop_IGNORA_o_board_guardado():
+    """O teste que prova o corte por street, e ele reproduz o bug de 3 meses.
+
+    O banco guarda o board COMPLETO da mao em TODA decisao, inclusive nas de preflop. Se o corte
+    nao for aplicado, a decisao de preflop e chaveada com 5 cartas na mesa e nunca casa com o no
+    que o solver gravou. Foi assim que 74,6% das decisoes postflop ficaram sem cobertura: gravava
+    com 5 cartas e procurava com 3.
+    """
+    from leaklab.familia_spot import chaves_de_decisao
+    _, com_board = chaves_de_decisao(street='preflop', position='BTN', stack_bb=25,
+                                     board=['Qd', 'Th', '7h', '7s', '3h'], hero_cards='AhKh')
+    _, sem_board = chaves_de_decisao(street='preflop', position='BTN', stack_bb=25,
+                                     board=[], hero_cards='AhKh')
+    assert com_board is not None
+    assert com_board == sem_board, (com_board, sem_board)
+
+
+def test_hash_de_flop_usa_TRES_cartas_e_nao_cinco():
+    from leaklab.familia_spot import chaves_de_decisao
+    _, cinco = chaves_de_decisao(street='flop', position='BTN', stack_bb=25,
+                                 board=['Qd', 'Th', '7h', '7s', '3h'], hero_cards='AhKh')
+    _, tres = chaves_de_decisao(street='flop', position='BTN', stack_bb=25,
+                                board=['Qd', 'Th', '7h'], hero_cards='AhKh')
+    assert cinco == tres, (cinco, tres)
+    # e turn (4 cartas) tem que ser um spot DIFERENTE de flop
+    _, turn = chaves_de_decisao(street='turn', position='BTN', stack_bb=25,
+                                board=['Qd', 'Th', '7h', '7s', '3h'], hero_cards='AhKh')
+    assert turn != tres
+
+
+def test_hero_cards_COLADO_nao_vira_lixo():
+    """`hero_cards` aparece na base colado ('5h5d'). Um `split()` ingenuo devolve
+    ['5','h','5','d'] e todo hash sai errado — foi o que fez um diagnostico reportar
+    'zero perdidas', o resultado tranquilizador e falso."""
+    from leaklab.familia_spot import chaves_de_decisao
+    _, colado = chaves_de_decisao(street='flop', position='BTN', stack_bb=25,
+                                  board=['Qd', 'Th', '7h'], hero_cards='5h5d')
+    _, lista = chaves_de_decisao(street='flop', position='BTN', stack_bb=25,
+                                 board=['Qd', 'Th', '7h'], hero_cards=['5h', '5d'])
+    assert colado is not None and colado == lista, (colado, lista)
+
+
+def test_sem_insumo_o_hash_e_None_e_nao_hash_de_vazio():
+    """Hash de nada casaria com hash de nada, agrupando decisoes sem relacao nenhuma."""
+    from leaklab.familia_spot import chaves_de_decisao
+    fam, h = chaves_de_decisao(street='flop', position='BTN', stack_bb=25, hero_cards=None)
+    assert h is None
+    assert fam == 'flop|flop|BTN|20-35bb'   # a familia nao depende das cartas e continua saindo
+
+
+def test_familia_sai_mesmo_quando_o_hash_nao_sai():
+    """Sao chaves independentes: a familia agrega, o hash localiza o no GTO. Uma decisao sem
+    cartas registradas ainda conta na serie temporal da familia."""
+    from leaklab.familia_spot import chaves_de_decisao
+    fam, h = chaves_de_decisao(street='preflop', position='SB', stack_bb=8, hero_cards='')
+    assert fam == 'preflop|rfi|SB|0-10bb' and h is None
+
+
+def test_save_decisions_GRAVA_as_duas_colunas():
+    """Regra 1 do CLAUDE.md: o diagnostico precisa PROVAR que detecta. Grava de verdade e exige
+    que as colunas saiam preenchidas — sem isto, uma coluna que nunca popula passaria despercebida
+    exatamente como o `10 insertions` que so alterava a docstring."""
+    from database.schema import init_db, get_conn
+    from database.repositories import save_decisions, save_tournament, create_user
+    init_db()
+    # Idempotente de proposito: a suite roda repetidas vezes contra o MESMO banco de dev, e a
+    # primeira versao disto estourava `UNIQUE users.email` na segunda execucao. Pior que o erro:
+    # aquele estouro fazia o teste "falhar" durante uma sabotagem e eu quase li isso como o guarda
+    # tendo acusado.
+    from database.repositories import get_user_by_email
+    u = get_user_by_email('fam@teste.local')
+    uid = u['id'] if u else create_user('fam_teste', 'fam@teste.local', 'senha-de-teste-123')
+    tid = save_tournament(uid, 'T-FAM-1', 'hero', {})
+    save_decisions(tid, [{
+        'handId': 'h1', 'street': 'flop', 'position': 'BTN', 'stack_bb': 25.0,
+        'hero_cards': 'AhKh', 'board': ['Qd', 'Th', '7h', '7s', '3h'],
+        'actionTaken': 'bet', 'evaluation': {'label': 'correct', 'mistakeScore': 0},
+        'spot': {'facingToBb': 0.0},
+    }])
+    conn = get_conn()
+    try:
+        r = conn.execute("SELECT spot_family_key, spot_hash FROM decisions "
+                         "WHERE tournament_id = ?", (tid,)).fetchone()
+    finally:
+        conn.close()
+    assert r is not None, 'a decisao nem gravou'
+    assert r['spot_family_key'] == 'flop|flop|BTN|20-35bb', r['spot_family_key']
+    assert r['spot_hash'], 'spot_hash gravado vazio'
+
+
 if __name__ == '__main__':
     falhas = 0
     testes = [v for k, v in sorted(globals().items()) if k.startswith('test_')]

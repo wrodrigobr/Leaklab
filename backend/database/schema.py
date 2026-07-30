@@ -1575,6 +1575,15 @@ def _run_migrations(conn):
         """)
         conn.execute("CREATE INDEX IF NOT EXISTS idx_range_card_due "
                      "ON range_card_srs(user_id, due_at)")
+        # Chaves de agregacao da decisao (espelha a lista SAVEPOINT do PG)
+        for _sql in ("ALTER TABLE decisions ADD COLUMN spot_family_key TEXT",
+                     "ALTER TABLE decisions ADD COLUMN spot_hash TEXT"):
+            try:
+                conn.execute(_sql)
+            except Exception:
+                pass   # SQLite nao tem IF NOT EXISTS em ADD COLUMN
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_dec_family ON decisions(spot_family_key)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_dec_spot_hash ON decisions(spot_hash)")
         # Colocacao final por jogador (espelha a lista SAVEPOINT do PG)
         conn.execute("""
             CREATE TABLE IF NOT EXISTS tournament_finishes (
@@ -2120,6 +2129,15 @@ def _run_migrations(conn):
             )""",
             "CREATE INDEX IF NOT EXISTS idx_engagement_email_user "
             "ON engagement_emails(user_id, enviado_em DESC)",
+            # Chaves de agregacao da decisao (Protocolo de Progressao, Fase 0):
+            #   spot_family_key = chave GROSSA da validacao no jogo real (leaklab/familia_spot.py)
+            #   spot_hash       = chave FINA do no GTO (gto_utils.compute_spot_hash)
+            # Materializadas porque a serie temporal por familia agrupa por elas em toda consulta,
+            # e recalcular por linha exigiria reparsear board + cartas a cada query.
+            "ALTER TABLE decisions ADD COLUMN IF NOT EXISTS spot_family_key TEXT",
+            "ALTER TABLE decisions ADD COLUMN IF NOT EXISTS spot_hash TEXT",
+            "CREATE INDEX IF NOT EXISTS idx_dec_family ON decisions(spot_family_key)",
+            "CREATE INDEX IF NOT EXISTS idx_dec_spot_hash ON decisions(spot_hash)",
             # Colocacao final de CADA jogador do torneio (vem do arquivo de resumo, nao do hand
             # history). E o que permite detectar MESA FINAL de MTT: quando restam S jogadores no
             # torneio, as colocacoes deles sao exatamente 1..S — entao a mesa e a final quando a

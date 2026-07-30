@@ -668,6 +668,29 @@ def get_tournament_finishes(tournament_db_id: int) -> dict:
         conn.close()
 
 
+def _chaves(r: dict) -> tuple:
+    """(spot_family_key, spot_hash) de um resultado de análise, no formato do pipeline.
+
+    Delega a `familia_spot.chaves_de_decisao` — a definição de família mora lá, e ter uma segunda
+    aqui é o erro que este projeto já pagou várias vezes."""
+    try:
+        from leaklab.familia_spot import chaves_de_decisao
+        spot = r.get('spot', {}) or {}
+        return chaves_de_decisao(
+            street      = r.get('street'),
+            position    = r.get('position') or spot.get('position'),
+            stack_bb    = r.get('stack_bb') or spot.get('heroStackBb'),
+            vs_position = r.get('vs_position') or spot.get('villainPosition'),
+            is_3bet     = r.get('is_3bet') or spot.get('isThreeBet'),
+            board       = r.get('board'),
+            hero_cards  = r.get('hero_cards'),
+            facing_bet  = spot.get('facingToBb'),
+            pot_type    = spot.get('potType') or '',
+        )
+    except Exception:
+        return (None, None)
+
+
 def _purity(r: dict) -> tuple:
     """Frequências (jogada, modal) da decisão. Delega ao engine — a definição de 'frequência' mora
     lá, e ter uma segunda aqui é o erro que este projeto já pagou caro várias vezes."""
@@ -740,6 +763,9 @@ def save_decisions(tournament_db_id: int, results: List[dict]):
                 spot_ctx.get('nActiveOpponents'),   # oponentes vivos no momento da decisão (multiway-aware)
                 spot_ctx.get('heroRaiseToBb'),      # tamanho do PRÓPRIO raise do hero (bb)
                 *_purity(r),                        # (freq da ação jogada, freq da modal)
+                # Chaves de agregação (Protocolo de Progressão, Fase 0). Calculadas pelo MESMO
+                # caminho que o backfill usa — ver `familia_spot.chaves_de_decisao`.
+                *_chaves(r),
             ))
         conn.executemany("""
             INSERT INTO decisions
@@ -751,8 +777,8 @@ def save_decisions(tournament_db_id: int, results: List[dict]):
                pot_size, facing_bet, gto_label, gto_action, gto_depth_capped, estimated_equity,
                vs_position, preflop_raises_faced, hero_won_hand,
                ev_loss_bb, ev_loss_source, n_active_opponents, raise_to_bb,
-               gto_played_freq, gto_top_freq)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+               gto_played_freq, gto_top_freq, spot_family_key, spot_hash)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
         """, rows)
         conn.commit()
     finally:

@@ -153,3 +153,43 @@ def familias_validaveis(contagem_por_familia: dict) -> list:
     return sorted([f for f, n in (contagem_por_familia or {}).items()
                    if (n or 0) >= MIN_DECISOES_VALIDACAO],
                   key=lambda f: -contagem_por_familia[f])
+
+def chaves_de_decisao(street=None, position=None, stack_bb=None, vs_position=None,
+                      is_3bet=None, board=None, hero_cards=None,
+                      facing_bet=None, pot_type='') -> tuple:
+    """(spot_family_key, spot_hash) de uma decisao. Um caminho so, para gravacao E backfill.
+
+    Ter duas rotinas — uma que grava e outra que preenche o passado — e como a base fica com duas
+    populacoes de chave que nao casam. Foi literalmente o bug do board no hash: gravava com 5
+    cartas e procurava com 3, e 74,6% das decisoes postflop ficaram sem cobertura por tres meses.
+
+    Duas armadilhas ja conhecidas, e por isso NADA aqui e feito na mao:
+      · o board guardado e o COMPLETO da mao, inclusive numa decisao de preflop — cortar por
+        street e obrigatorio, e quem corta e `gto_utils.board_for_street`;
+      · `hero_cards` aparece na base colado ('5h5d'), e um `split()` ingenuo devolve lixo —
+        quem normaliza e `gto_utils.normalize_cards`.
+
+    O hash sai None quando falta insumo, em vez de um hash de dado vazio: hash de nada casaria com
+    hash de nada e agruparia decisoes sem relacao nenhuma.
+    """
+    familia = familia_de(street, position, stack_bb, vs_position, is_3bet)
+
+    spot_hash = None
+    try:
+        from leaklab.gto_utils import compute_spot_hash, board_for_street, normalize_cards
+        cartas = normalize_cards(hero_cards)
+        st = (street or '').strip().lower()
+        if st and position and stack_bb is not None and cartas:
+            spot_hash = compute_spot_hash(
+                street=st,
+                position=position,
+                board=board_for_street(board or [], st),
+                hero_hand=cartas,
+                hero_stack_bb=float(stack_bb),
+                facing_size_bb=float(facing_bet or 0.0),
+                pot_type=pot_type or '',
+            )
+    except Exception:
+        spot_hash = None   # chave ausente e honesta; chave errada contamina a agregacao
+
+    return familia, spot_hash

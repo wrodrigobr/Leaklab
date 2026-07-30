@@ -7,6 +7,19 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(progressao): Fase 0 — chaves de spot materializadas em `decisions` (#protocolo-progressao)
+
+> `spot_family_key` e `spot_hash` agora sao colunas, gravadas na analise e preenchidas no passado pelo **mesmo caminho** (`familia_spot.chaves_de_decisao`). Ter uma rotina que grava o presente e outra que preenche o passado e como a base fica com duas populacoes de chave que nao casam — foi literalmente o bug do board no hash. Colunas e indices no bloco SAVEPOINT isolado do PG, com espelho SQLite.
+>
+> **Duas armadilhas conhecidas, e nenhuma tratada a mao.** O board guardado e o COMPLETO da mao, inclusive numa decisao de preflop — quem corta e `gto_utils.board_for_street`; e `hero_cards` aparece colado na base (`'5h5d'`), onde um `split()` devolve lixo — quem normaliza e `normalize_cards`. O teste que trava isso e o que reproduz o bug: **uma decisao de preflop gravada com board de 5 cartas tem que dar o MESMO hash de uma com board vazio**. Sem o corte, ela nao da, e foi assim que 74,6% das decisoes postflop ficaram tres meses sem cobertura.
+>
+> **Falha fechada, com o motivo ATRIBUIDO.** Sem insumo o hash sai `None` em vez de virar hash de dado vazio, que casaria com outros vazios e agruparia decisoes sem relacao. Mas "sem familia" sozinho e diagnostico inacionavel, entao o script diz qual componente falta. Medido no dev: das 2306 decisoes sem chave, **579 falham por `stack_bb` ausente e mais nada** — as outras 1727 so estavam esperando o backfill. Aplicado e conferido RELENDO o banco (1727/2306), porque `UPDATE` que nao casa linha nenhuma nao da erro, apenas nao faz nada.
+>
+> **Um falso positivo meu, encontrado no meio.** O teste de gravacao nao era idempotente e estourava `UNIQUE users.email` na segunda execucao contra o banco de dev. Durante a sabotagem do guarda de gravacao, o teste "falhou" por causa desse estouro e eu quase li isso como o guarda tendo acusado. Corrigido e rodado 3x seguidas antes de refazer a falsificacao — aí sim ela acusou pelo motivo certo.
+>
+> 25 testes, 6 guardas verificados quebrando (corte de board removido, normalizacao de cartas removida, hash de vazio liberado, gravacao desligada em dois pontos). Verde: engine, database, gto e api.
+
+
 ### feat(progressao): Fase 0 — a chave de familia, e as duas escolhas que a medicao decidiu (#protocolo-progressao)
 
 > Primeiro passo do Protocolo de Progressao v2 (`specs/protocolo-progressao.md` §12.0). `leaklab/familia_spot.py` e fonte unica da chave de familia, do bucket de agregacao e da winsorizacao do EV. Tudo aqui e delta sobre o sistema live, nunca sistema paralelo.
