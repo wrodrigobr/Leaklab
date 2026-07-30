@@ -9805,38 +9805,29 @@ def _enfileirar_spot_da_decisao(di: dict, facing: float, tournament_db_id=None) 
 
     Agora o enfileiramento é UM lugar só, e quem conta pergunta a ele se deu certo.
     """
-    import json as _json
-    from leaklab.gto_utils import compute_spot_hash, board_for_street
-    from leaklab.gto_solver import (_priority, _solver_params_for_stack, resolve_solver_ranges,
-                                    vale_enfileirar_postflop)
+    from leaklab.gto_solver import _priority, montar_payload_postflop
     from database.repositories import enqueue_solver_spot
     try:
         spot = di.get('spot', {}) or {}
         ctx  = di.get('context', {}) or {}
         street = di.get('street', '')
-        pos = (spot.get('position') or ctx.get('position') or '').upper()
-        vs  = (spot.get('villainPosition') or ctx.get('vsPosition') or '').upper()
-        # O mesmo gate do enfileiramento do upload: nó que o produto não usaria não deve
-        # virar promessa de "em andamento".
-        if not vale_enfileirar_postflop(pos, vs, facing):
+        # Gate, corte de board, ranges e parametros moram em `montar_payload_postflop` — era a
+        # TERCEIRA copia da mesma montagem, e as copias ja discordaram (ranges trocadas).
+        montado = montar_payload_postflop(
+            street      = street,
+            position    = spot.get('position') or ctx.get('position') or '',
+            vs_position = spot.get('villainPosition') or ctx.get('vsPosition') or '',
+            board       = di.get('board', []) or spot.get('board', []),
+            hero_cards  = di.get('hero_cards', []),
+            stack_bb    = spot.get('effectiveStackBb') or ctx.get('heroStackBb') or 20,
+            facing_bb   = facing,
+            pot_bb      = spot.get('potSize'),
+            pot_type    = spot.get('potType', ''),
+            opener      = spot.get('preflopOpener', ''),
+            threebettor = spot.get('preflop3bettor', ''))
+        if not montado:
             return False
-        board = board_for_street(di.get('board', []) or spot.get('board', []), street)
-        stack = float(spot.get('effectiveStackBb') or ctx.get('heroStackBb') or 20)
-        hand  = di.get('hero_cards', [])
-        h     = compute_spot_hash(street, pos, board, hand, stack, facing)
-        prm   = _solver_params_for_stack(stack)
-        ipr, oopr, hip = resolve_solver_ranges(
-            pos, vs, stack, pot_type=spot.get('potType', ''),
-            opener=spot.get('preflopOpener', ''), threebettor=spot.get('preflop3bettor', ''))
-        payload = _json.dumps({
-            'street': street, 'board': board, 'position': pos,
-            'hero_hand': hand, 'hero_stack_bb': stack, 'facing_size_bb': facing,
-            'oop_range': oopr, 'ip_range': ipr, 'hero_is_ip': hip,
-            'pot_bb': float(spot.get('potSize') or facing * 2 + 2 or 4.0),
-            'effective_stack_bb':        prm['effective_stack_bb'],
-            'max_iterations':            prm['max_iterations'],
-            'target_exploitability_pct': prm['target_exploitability_pct'],
-        }, sort_keys=True)
+        h, payload = montado
         return bool(enqueue_solver_spot(h, payload, priority=_priority(street),
                                         tournament_id=tournament_db_id))
     except Exception:

@@ -183,6 +183,57 @@ def vale_enfileirar_postflop(hero_pos: str, vs_pos: str, facing_size_bb: float =
     return facing_size_bb == 0.0 or _TEXAS_HERO_IP_FACING
 
 
+def montar_payload_postflop(street, position, vs_position, board, hero_cards,
+                            stack_bb, facing_bb, pot_bb=None, pot_type='',
+                            opener='', threebettor=''):
+    """(spot_hash, payload_json) de um solve postflop. FONTE UNICA. None quando o gate recusa.
+
+    ── Por que isto virou funcao ──────────────────────────────────────────────────────────────
+
+    A montagem deste payload existia em TRES lugares: `_enfileirar_spot_da_decisao` (api/app.py),
+    o `lookup_gto`, e o script `reenfileirar_sem_tabela_por_mao.py` — cujo docstring afirma usar
+    "o MESMO caminho de payload" e na verdade remonta tudo inline. Comentario nao e evidencia.
+
+    E o custo de divergirem nao e teorico. Este mesmo payload ja teve duas versoes discordando
+    antes: uma mandava as ranges trocadas (range do vilao no lugar do OOP) e a outra as ranges
+    certas, e o resultado foi no de solver descrevendo a decisao de outro jogador. Aqui tambem
+    mora o corte de board por street — quem esquecer dele grava sob uma chave que ninguem
+    consulta, que foi o bug de tres meses.
+
+    O gate (`vale_enfileirar_postflop`) esta DENTRO: um chamador novo nao consegue enfileirar um
+    spot que o produto nao serviria so por ter esquecido de checar.
+    """
+    import json as _json
+    from leaklab.gto_utils import compute_spot_hash, board_for_street, normalize_cards
+
+    pos = (position or '').upper()
+    vs = (vs_position or '').upper()
+    st = (street or '').strip().lower()
+    facing = float(facing_bb or 0.0)
+    hero = normalize_cards(hero_cards)
+    if not st or not pos or not hero:
+        return None
+    if not vale_enfileirar_postflop(pos, vs, facing):
+        return None
+
+    b = board_for_street(board or [], st)
+    stack = float(stack_bb or 0) or 20.0
+    h = compute_spot_hash(st, pos, b, hero, stack, facing)
+    prm = _solver_params_for_stack(stack)
+    ipr, oopr, hip = resolve_solver_ranges(pos, vs, stack, pot_type=pot_type or '',
+                                           opener=opener or '', threebettor=threebettor or '')
+    payload = _json.dumps({
+        'street': st, 'board': b, 'position': pos,
+        'hero_hand': hero, 'hero_stack_bb': stack, 'facing_size_bb': facing,
+        'oop_range': oopr, 'ip_range': ipr, 'hero_is_ip': hip,
+        'pot_bb': float(pot_bb or facing * 2 + 2 or 4.0),
+        'effective_stack_bb':        prm['effective_stack_bb'],
+        'max_iterations':            prm['max_iterations'],
+        'target_exploitability_pct': prm['target_exploitability_pct'],
+    }, sort_keys=True)
+    return h, payload
+
+
 def resolve_solver_ranges(hero_pos: str, vs_pos: str, hero_stack_bb: float,
                           pot_type: str = '', opener: str = '', threebettor: str = ''):
     """Ranges do solve atribuídas aos jogadores CERTOS. Devolve (ip_range, oop_range, hero_is_ip).
