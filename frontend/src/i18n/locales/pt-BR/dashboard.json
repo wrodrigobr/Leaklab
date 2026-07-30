@@ -574,7 +574,15 @@
     "careerDelta": "{{delta}} vs histórico",
     "cogDominant": "Padrão dominante",
     "missionLabel": "Sua missão",
-    "missionReopened": "reaberto"
+    "missionReopened": "reaberto",
+    "trendNoSample": "Ainda não dá para afirmar se você está melhorando: são necessários mais torneios com EV medido.",
+    "trendBetter": "Você está melhorando: {{rec}}bb/100 nos últimos 5 torneios, contra {{ant}}bb/100 nos 5 anteriores. São {{delta}}bb/100 a menos.",
+    "trendWorse": "Você está perdendo mais: {{rec}}bb/100 nos últimos 5 torneios, contra {{ant}}bb/100 nos 5 anteriores. São {{delta}}bb/100 a mais.",
+    "trendStable": "Estável em {{rec}}bb/100 nos últimos 5 torneios. A diferença é pequena demais para ser direção.",
+    "trendAvgLabel": "Tendência",
+    "trendRawLabel": "Cada torneio",
+    "trendAvgRef": "sua média: {{medio}}bb",
+    "trendHintUp": "linha subindo = melhorando"
   },
   "coachReferral": {
     "referredTitle": "Alunos indicados",
