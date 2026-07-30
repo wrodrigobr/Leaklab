@@ -8,6 +8,13 @@ evidencia nao sustenta.
 
 ── O que este arquivo trava ───────────────────────────────────────────────────────────────────────
 
+0. **Que este modulo NAO reimplemente a estatistica.** A primeira versao dele reimplementou Wilson,
+   shrinkage e comparacao, que ja viviam em `leaklab/validation.py` desde antes desta fase — a
+   duplicata exata que este projeto pune mais, e pior: comparava o intervalo da janela recente
+   contra um PONTO, ignorando a incerteza do baseline, quando `validation.newcombe_diff` compara as
+   duas proporcoes corretamente. Aqui ficou so a PONTE: decisoes → contagens, com a politica de
+   cobertura aplicada.
+
 1. **Wilson, e nao a normal.** Com n pequeno a aproximacao normal colapsa para largura ZERO quando
    k=0 ou k=n — afirmaria certeza absoluta a partir de 5 observacoes. Wilson nunca faz isso.
 
@@ -30,14 +37,57 @@ import os, sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
-from leaklab.progressao import (wilson, encolher_taxa, taxa_de_erro, melhorou_de_verdade,
-                                progresso_de_coleta, FORCA_DO_PRIOR)
+from leaklab.progressao import (wilson, taxa_de_erro, comparar_janelas,
+                                progresso_de_coleta, shrink, SHRINK_PSEUDO_N)
+from leaklab.validation import V_MELHOROU, V_PIOROU, V_SEM_AMOSTRA, V_SEM_MUDANCA
+
+
+def encolher_taxa(k, n, taxa_populacional, forca=None):
+    """Fachada de teste sobre `validation.shrink`, que devolve (k_ajustado, n_ajustado)."""
+    ka, na = shrink(k, n, taxa_populacional)
+    return ka / na if na else float(taxa_populacional or 0.0)
+
+
+FORCA_DO_PRIOR = SHRINK_PSEUDO_N
 
 
 def _dec(label='standard', ev=None, stack=None):
     """Decisao no universo de medicao (com gabarito e com familia)."""
     return {'gto_label': 'covered', 'label': label, 'spot_family_key': 'f',
             'ev_loss_bb': ev, 'stack_bb': stack}
+
+
+def test_a_estatistica_tem_UM_dono_e_nao_e_este_modulo():
+    """Guarda contra a duplicata que eu ja criei uma vez.
+
+    `validation.py` e o dono de Wilson, shrinkage, Newcombe e vereditos, e governa o estado do leak
+    em `progression.state_for` desde antes desta fase. Se alguem reimplementar qualquer uma dessas
+    aqui, os dois numeros divergem em silencio — que e como o card e o badge ja discordaram antes.
+    """
+    import leaklab.progressao as prog
+    import leaklab.validation as val
+    # as constantes tem que ser AS MESMAS, nao copias com o mesmo valor
+    assert prog.SHRINK_PSEUDO_N is val.SHRINK_PSEUDO_N
+    assert prog.V_MELHOROU is val.V_MELHOROU
+    # e a comparacao tem que passar por validate_leak, nao por regra propria
+    fonte = open(prog.__file__, encoding='utf-8').read()
+    assert 'validate_leak(' in fonte, 'comparar_janelas deixou de delegar'
+    # procura DEFINICAO, nao mencao: a primeira versao deste assert casou com o proprio comentario
+    # que explica a delegacao, e falhou sem que nada estivesse errado.
+    for nome in ('newcombe_diff', 'shrink', 'validate_leak', 'should_reopen'):
+        assert f'def {nome}' not in fonte, f'{nome} reimplementado aqui'
+
+
+def test_comparacao_usa_o_intervalo_da_DIFERENCA():
+    """A versao antiga comparava o Wilson da janela recente contra o baseline como PONTO. O teste
+    correto entre duas proporcoes leva em conta a incerteza das DUAS, e e o que `validate_leak`
+    faz — por isso a saida traz `ic_diferenca`."""
+    d = lambda l: {'gto_label': 'c', 'label': l, 'spot_family_key': 'f'}
+    b = taxa_de_erro([d('clear_mistake')] * 30 + [d('standard')] * 30)
+    r = taxa_de_erro([d('clear_mistake')] * 2 + [d('standard')] * 58)
+    out = comparar_janelas(b, r, 0.10)
+    assert out['veredito'] == V_MELHOROU, out
+    assert 'ic_diferenca' in out and out['ic_diferenca'][0] > 0, out
 
 
 # ── Wilson ─────────────────────────────────────────────────────────────────────────────────────
@@ -147,8 +197,8 @@ def test_familia_vazia_nao_inventa_taxa():
 def test_melhora_REAL_e_reconhecida():
     base = taxa_de_erro([_dec('clear_mistake')] * 30 + [_dec('standard')] * 30)   # 50%
     rec = taxa_de_erro([_dec('clear_mistake')] * 2 + [_dec('standard')] * 58)     # 3,3%
-    v, motivo = melhorou_de_verdade(base, rec, taxa_populacional=0.30)
-    assert v == 'melhorou', (v, motivo)
+    out = comparar_janelas(base, rec, 0.30)
+    assert out['veredito'] == V_MELHOROU, out
 
 
 def test_melhora_de_SORTEIO_nao_e_creditada():
@@ -156,8 +206,8 @@ def test_melhora_de_SORTEIO_nao_e_creditada():
     janela recente que parece melhor mas cujo intervalo ainda cobre o baseline encolhido."""
     base = taxa_de_erro([_dec('clear_mistake')] * 8 + [_dec('standard')] * 2)     # 80% em n=10
     rec = taxa_de_erro([_dec('clear_mistake')] * 8 + [_dec('standard')] * 12)     # 40% em n=20
-    v, motivo = melhorou_de_verdade(base, rec, taxa_populacional=0.30)
-    assert v == 'indefinido', (v, motivo)
+    out = comparar_janelas(base, rec, 0.30)
+    assert out['veredito'] == V_SEM_MUDANCA, out
 
 
 def test_SEM_ENCOLHIMENTO_o_sorteio_passaria():
@@ -174,44 +224,44 @@ def test_amostra_insuficiente_e_INDEFINIDO_e_nunca_piorou():
     """"Ainda estou coletando" nao e "voce nao melhorou". Colapsar as duas mente em silencio."""
     base = taxa_de_erro([_dec('clear_mistake')] * 30 + [_dec('standard')] * 30)
     rec = taxa_de_erro([_dec('standard')] * 3)
-    v, motivo = melhorou_de_verdade(base, rec)
-    assert v == 'indefinido' and 'amostra' in motivo, (v, motivo)
+    out = comparar_janelas(base, rec, 0.10)
+    assert out['veredito'] == V_SEM_AMOSTRA and out['motivo'] == 'depois_curto', out
 
 
 def test_piora_tambem_e_detectada():
     """A reabertura de leak depende disto: e o gatilho de "o EV real da familia regrediu"."""
     base = taxa_de_erro([_dec('clear_mistake')] * 3 + [_dec('standard')] * 57)    # 5%
     rec = taxa_de_erro([_dec('clear_mistake')] * 40 + [_dec('standard')] * 20)    # 67%
-    v, motivo = melhorou_de_verdade(base, rec, taxa_populacional=0.05)
-    assert v == 'piorou', (v, motivo)
+    out = comparar_janelas(base, rec, 0.05)
+    assert out['veredito'] == V_PIOROU, out
 
 
 def test_sem_baseline_nao_afirma():
     rec = taxa_de_erro([_dec('standard')] * 40)
-    assert melhorou_de_verdade(None, rec)[0] == 'indefinido'
-    assert melhorou_de_verdade(taxa_de_erro([]), rec)[0] == 'indefinido'
+    assert comparar_janelas(None, rec, 0.10)['veredito'] == V_SEM_AMOSTRA
+    assert comparar_janelas(taxa_de_erro([]), rec, 0.10)['veredito'] == V_SEM_AMOSTRA
 
 
-def test_encolhimento_e_OPT_IN_e_sem_ele_o_baseline_nao_muda():
-    """Sem `taxa_populacional`, o baseline encolhe em direcao a SI MESMO, ou seja, nao encolhe.
+def test_o_shrinkage_so_vale_para_familia_SELECIONADA_por_ser_extrema():
+    """O encolhimento corrige winner's curse, e winner's curse so existe quando a familia foi
+    escolhida POR SER extrema. `validate_leak` sempre encolhe em direcao a taxa global do jogador,
+    o que esta certo para o leak do plano — e vira distorcao se aplicado a toda familia.
 
-    Isso nao e detalhe de API. O encolhimento corrige winner's curse, e winner's curse so existe
-    quando a familia foi SELECIONADA por ser extrema. Medido varrendo as 504 familias dos dois
-    usuarios com mais volume em producao, com encolhimento aplicado em TODAS: 12 "piorou" contra
-    3 "melhorou". O mecanismo e simetrico — encolher puxa baseline baixo para cima (facilita
-    "piorou") e baseline alto para baixo (dificulta "melhorou"). Numa familia nao selecionada por
-    extremidade, a correcao vira distorcao.
+    Medido varrendo as 504 familias dos dois usuarios com mais volume em producao, validando
+    TODAS: **12 "piorou" contra 3 "melhorou"**. O mecanismo esta abaixo em forma executavel — para
+    uma familia cujo baseline esta ABAIXO da taxa global, o encolhimento SOBE o baseline, e uma
+    piora fica mais facil de declarar do que deveria.
+
+    Consequencia para a Fase 2: validar so as familias que estao no plano, nunca varrer todas.
     """
-    base = taxa_de_erro([_dec('clear_mistake')] * 2 + [_dec('standard')] * 38)    # 5% em n=40
-    rec = taxa_de_erro([_dec('clear_mistake')] * 8 + [_dec('standard')] * 32)     # 20% em n=40
-
-    # Sem populacional: compara contra os 5% observados.
-    sem, _ = melhorou_de_verdade(base, rec)
-    # Com populacional alta: o baseline de 5% e puxado PARA CIMA, e a mesma piora fica mais dificil
-    # de declarar — a prova de que o parametro muda o veredito e por isso precisa ser deliberado.
-    com, _ = melhorou_de_verdade(base, rec, taxa_populacional=0.30)
-    assert sem == 'piorou', sem
-    assert com == 'indefinido', com
+    # familia "boa": 5% de erro, contra uma taxa global de 30%
+    base_bom = encolher_taxa(2, 40, taxa_populacional=0.30)
+    assert base_bom > 0.05, base_bom      # o encolhimento SOBE o baseline dela
+    # familia "ruim": 80% de erro, mesma taxa global
+    base_ruim = encolher_taxa(32, 40, taxa_populacional=0.30)
+    assert base_ruim < 0.80, base_ruim    # e DESCE o baseline dela
+    # a assimetria e essa: subir baseline baixo facilita "piorou"; descer baseline alto dificulta
+    # "melhorou". Correto quando a familia entrou no plano por ser extrema; vies quando nao entrou.
 
 
 # ── Barra de coleta ────────────────────────────────────────────────────────────────────────────

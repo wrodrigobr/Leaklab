@@ -5,6 +5,22 @@ ESPINHA DE MEDICAO DO TRILHO LENTO — Protocolo de Progressao, Fase 1.
 `specs/protocolo-progressao.md` §5 e §12.1. A propria spec diz: "se isto nao funcionar, nada do
 resto importa". E o que decide se o produto pode dizer "voce melhorou NO JOGO REAL".
 
+── ESTE MODULO NAO FAZ ESTATISTICA. Ele PREPARA os numeros para `leaklab/validation.py` ───────────
+
+A regra estatistica (Wilson, shrinkage de winner's curse, intervalo de Newcombe na diferenca,
+vereditos, `should_reopen`) mora em `leaklab/validation.py` e ja estava viva antes desta fase. A
+primeira versao deste arquivo reimplementou tudo aquilo — a duplicata exata que este projeto pune
+mais, e pior: comparava o intervalo da janela recente contra um PONTO, ignorando a incerteza do
+proprio baseline, quando `validation.newcombe_diff` compara as duas proporcoes corretamente.
+
+A divisao ficou assim, e ela e a razao de os dois arquivos existirem:
+
+    validation.py  — so matematica. Recebe CONTAGENS (erros/n antes e depois) e devolve veredito.
+                     Nao toca banco, nao sabe o que e um leak.
+    progressao.py  — a ponte. Converte DECISOES em contagens, aplicando a politica de cobertura
+                     (`familia_spot`), e devolve tambem o que a contagem nao diz: cobertura de EV,
+                     EV medio winsorizado, e quantas decisoes ficaram de fora por qual motivo.
+
 ── Metrica primaria: taxa de erro, nao media de EV ────────────────────────────────────────────────
 
 EV perdido por decisao e zero-inflado e de cauda pesada: a maioria das decisoes custa ~0 e poucas
@@ -48,49 +64,24 @@ from __future__ import annotations
 
 import math
 
-# z de 95%. Nao e configuravel de proposito: um z frouxo transformaria ruido em "comprovado", e a
-# escolha do nivel de confianca nao deve ser um parametro que cada superficie ajusta ao seu gosto.
-Z_95 = 1.959963985
-
-# Forca do prior no encolhimento (pseudo-observacoes). Com 20 decisoes — o minimo de validacao — o
-# baseline fica meio a meio entre o observado e a media populacional. E um freio deliberado: a
-# familia mediana tem MUITO menos que isso, e sem freio cada usuario novo pareceria um caso extremo.
-FORCA_DO_PRIOR = 20.0
+# Wilson, shrinkage e comparacao vem de `validation.py`. Reexportados aqui por conveniencia de
+# quem ja importa este modulo — mas o dono e la, e nao ha uma segunda implementacao.
+from leaklab.validation import (wilson as _wilson_lcs, shrink, validate_leak,  # noqa: F401
+                                should_reopen, V_MELHOROU, V_PIOROU,
+                                V_SEM_AMOSTRA, V_SEM_MUDANCA, VERDICT_LABEL,
+                                SHRINK_PSEUDO_N, VALIDATION_MIN_N, BASELINE_MIN_N)
 
 
-def wilson(k: int, n: int, z: float = Z_95) -> tuple:
-    """Intervalo de Wilson para uma proporcao. Devolve (baixo, alto), ambos em [0, 1].
+def wilson(k: int, n: int) -> tuple:
+    """(baixo, alto) de Wilson. Fachada sobre `validation.wilson`, que devolve (baixo, centro, alto).
 
-    Wilson e nao a aproximacao normal porque com n pequeno (que e o caso majoritario aqui) a normal
-    produz intervalos que saem de [0,1] e que colapsam para largura ZERO quando k=0 ou k=n — ou
-    seja, afirmaria certeza absoluta a partir de 5 acertos. Wilson nunca faz isso.
-
-    n = 0 devolve (0.0, 1.0): nao saber nada e um intervalo que cobre tudo, nao um zero.
+    Existe so porque a serie temporal quer a banda e nao o centro. `n=0` devolve (0.0, 1.0): nao
+    saber nada e o intervalo inteiro, nunca um zero — familia vazia nao pode parecer perfeita.
     """
     if not n:
         return 0.0, 1.0
-    p = k / n
-    d = 1 + z * z / n
-    centro = (p + z * z / (2 * n)) / d
-    meia = (z / d) * math.sqrt(p * (1 - p) / n + z * z / (4 * n * n))
-    return max(0.0, centro - meia), min(1.0, centro + meia)
-
-
-def encolher_taxa(k: int, n: int, taxa_populacional: float,
-                  forca: float = FORCA_DO_PRIOR) -> float:
-    """Taxa encolhida em direcao a media populacional (empirical Bayes).
-
-    `(k + forca*pop) / (n + forca)`. Com n pequeno o resultado tende a `taxa_populacional`; com n
-    grande tende a `k/n`.
-
-    Existe por causa do winner's curse: o leak entrou no Top-3 porque o numero dele estava extremo,
-    e comparar a melhora contra aquele extremo credita regressao a media como progresso. Sem isto,
-    o Top-3 recompensa variancia por construcao.
-    """
-    pop = min(max(float(taxa_populacional or 0.0), 0.0), 1.0)
-    if n <= 0:
-        return pop
-    return (k + forca * pop) / (n + forca)
+    baixo, _centro, alto = _wilson_lcs(k, n)
+    return baixo, alto
 
 
 def taxa_de_erro(decisoes, taxa_populacional: float | None = None) -> dict:
@@ -134,7 +125,8 @@ def taxa_de_erro(decisoes, taxa_populacional: float | None = None) -> dict:
         'taxa': round(erros / n, 4) if n else None,
         'wilson_baixo': round(baixo, 4),
         'wilson_alto': round(alto, 4),
-        'taxa_encolhida': (round(encolher_taxa(erros, n, taxa_populacional), 4)
+        'taxa_encolhida': (round(shrink(erros, n, taxa_populacional)[0]
+                                 / shrink(erros, n, taxa_populacional)[1], 4)
                            if taxa_populacional is not None else None),
         'n_com_ev': len(com_ev),
         'cobertura_ev_pct': round(100.0 * len(com_ev) / n, 1) if n else None,
@@ -144,53 +136,22 @@ def taxa_de_erro(decisoes, taxa_populacional: float | None = None) -> dict:
     }
 
 
-def melhorou_de_verdade(baseline: dict, recente: dict,
-                        taxa_populacional: float | None = None) -> tuple:
-    """A familia melhorou ALEM do ruido? Devolve (veredito, motivo).
+def comparar_janelas(baseline: dict, recente: dict, taxa_global: float) -> dict:
+    """Veredito do trilho lento entre duas janelas. Delega a `validation.validate_leak`.
 
-    Tres condicoes, e todas tem que valer:
+    Nao ha regra estatistica aqui de proposito. A primeira versao desta funcao tinha a sua propria
+    (comparava o intervalo de Wilson da janela recente contra o baseline encolhido como PONTO), e
+    isso era duplicata E pior: ignorava a incerteza do baseline. `validate_leak` usa o intervalo de
+    Newcombe sobre a DIFERENCA, que e o teste correto entre duas proporcoes, e ja governa o estado
+    do leak em `progression.state_for` desde antes desta fase.
 
-      1. A janela recente tem amostra (`pode_afirmar`). Sem isso nao ha o que comparar.
-      2. O baseline foi ENCOLHIDO para a media populacional antes da comparacao (winner's curse).
-      3. O teto do intervalo de Wilson da janela recente fica ABAIXO do baseline encolhido. Comparar
-         ponto contra ponto declararia melhora em metade dos casos por sorteio; exigir que o
-         intervalo INTEIRO esteja abaixo e o que separa sinal de variancia.
-
-    Devolve `('indefinido', motivo)` quando nao da para afirmar — nunca `False` disfarcado de
-    "nao melhorou". As duas coisas sao diferentes e a tela precisa distingui-las: "ainda estou
-    coletando" nao e "voce nao melhorou".
-
-    ── QUANDO passar `taxa_populacional`, e por que isso NAO e detalhe ────────────────────────────
-
-    Passe **somente quando a familia foi SELECIONADA por ser extrema** — o leak do Top-3, o que
-    esta em validacao. E para esse caso que o encolhimento existe: o baseline dele esta inflado por
-    construcao, e comparar contra o extremo credita regressao a media como progresso.
-
-    Aplicar em TODA familia introduz vies, e ele foi medido. Varrendo as 504 familias dos dois
-    usuarios com mais volume, com encolhimento em todas: **12 "piorou" contra 3 "melhorou"**. O
-    mecanismo e simetrico e obvio depois de visto: o encolhimento puxa baseline BAIXO para cima
-    (facilitando "piorou") e baseline ALTO para baixo (dificultando "melhorou"). Numa familia que
-    nao foi escolhida por extremidade, nao ha winner's curse para corrigir, e a correcao vira
-    distorcao.
-
-    Sem `taxa_populacional`, o baseline encolhe em direcao a si mesmo, ou seja, nao encolhe — que e
-    o comportamento certo para monitoramento geral.
+    `taxa_global` e a taxa de erro do jogador no geral — a ancora do shrinkage de winner's curse.
     """
-    if not recente or not recente.get('pode_afirmar'):
-        return 'indefinido', 'amostra insuficiente na janela recente'
-    if not baseline or not baseline.get('n'):
-        return 'indefinido', 'sem baseline para comparar'
-
-    pop = taxa_populacional if taxa_populacional is not None else baseline.get('taxa')
-    base_encolhida = encolher_taxa(baseline['n_erros'], baseline['n'], pop)
-
-    if recente['wilson_alto'] < base_encolhida:
-        return 'melhorou', (f"teto do intervalo recente ({recente['wilson_alto']:.1%}) abaixo do "
-                            f"baseline encolhido ({base_encolhida:.1%})")
-    if recente['wilson_baixo'] > base_encolhida:
-        return 'piorou', (f"piso do intervalo recente ({recente['wilson_baixo']:.1%}) acima do "
-                          f"baseline encolhido ({base_encolhida:.1%})")
-    return 'indefinido', 'o intervalo recente ainda cobre o baseline encolhido'
+    b = baseline or {}
+    r = recente or {}
+    return validate_leak(int(b.get('n_erros') or 0), int(b.get('n') or 0),
+                         int(r.get('n_erros') or 0), int(r.get('n') or 0),
+                         float(taxa_global or 0.0))
 
 
 def progresso_de_coleta(n_atual: int, minimo: int | None = None) -> dict:

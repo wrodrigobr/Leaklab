@@ -7,6 +7,21 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(progressao): desfiz uma duplicata que eu mesmo criei na Fase 1 (#protocolo-progressao)
+
+> Ao comecar a Fase 2 fui ler o que ja estava vivo, como a spec manda ("o maior risco novo e ignorar o que esta live e duplicar"), e encontrei **`leaklab/validation.py`**, que ja implementava Wilson, shrinkage de winner's curse, comparacao entre janelas e `should_reopen` — e ja governava o estado do leak em `progression.state_for` desde antes desta fase. Eu tinha reimplementado tudo aquilo no `progressao.py` da Fase 1.
+>
+> **E a minha versao era pior no ponto que mais importa.** Ela comparava o intervalo de Wilson da janela recente contra o baseline encolhido tratado como PONTO, ignorando a incerteza do proprio baseline. `validation.newcombe_diff` compara as duas proporcoes pelo intervalo da DIFERENCA, que e o teste correto.
+>
+> **A divisao agora e explicita e cada arquivo tem um motivo para existir:** `validation.py` e so matematica (recebe contagens, devolve veredito, nao toca banco); `progressao.py` e a ponte que converte DECISOES em contagens aplicando a politica de cobertura, e devolve o que a contagem nao diz — cobertura de EV, EV medio winsorizado, e quantas ficaram de fora por qual motivo. Wilson, shrinkage e vereditos sao reexportados, nao reimplementados.
+>
+> **Guarda contra a reincidencia:** um teste afirma que as constantes sao AS MESMAS (`is`, nao igualdade de valor) e que nenhuma das quatro funcoes tem `def` neste modulo. A primeira versao desse guarda procurava a palavra "newcombe" no arquivo e casou com o proprio comentario que explica a delegacao — falso positivo do meu proprio guarda, corrigido para procurar a DEFINICAO.
+>
+> **O que sobreviveu da Fase 1, porque nao era duplicata:** a conversao decisoes→contagens com politica de cobertura, a cobertura de EV declarada em separado, a winsorizacao, e a barra de COLETA. E a medicao do vies: validando TODAS as 504 familias dos dois usuarios com mais volume, 12 "piorou" contra 3 "melhorou" — o encolhimento sobe baseline baixo e desce baseline alto, o que e correto para familia escolhida por ser extrema e vira distorcao fora disso. **Consequencia direta para a Fase 2: validar so as familias que estao no plano, nunca varrer todas.**
+>
+> 25 testes, 3 guardas verificados quebrando.
+
+
 ### feat(progressao): Fase 1 — a espinha de medicao do trilho lento (#protocolo-progressao)
 
 > A propria spec diz "se isto nao funcionar, nada do resto importa": e o que autoriza o produto a dizer "voce melhorou NO JOGO REAL". `leaklab/progressao.py` — taxa de erro por familia com intervalo de Wilson, encolhimento de baseline, cobertura declarada e barra de coleta. Nada persiste: `progression_snapshots` e materializacao, nao logica.
