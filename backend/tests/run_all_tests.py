@@ -26,6 +26,7 @@ SUITES = {
                   'test_roster_e_formato.py',
                   'test_mesa_final.py',
                   'test_posicoes.py',
+                  'test_familia_spot.py',
                   'test_pg_migration_isolation.py',
                   'test_interpretation_sign.py',
                   'test_validation.py',

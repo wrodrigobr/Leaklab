@@ -403,6 +403,43 @@ Convenção do `schema.py` (multi-backend SQLite/PG, migrações abort-proof).
    query; **eleger e unificar o esquema de stack bucket**; definir política de
    cobertura (o que entra no universo de medição); materializar
    `spot_family_key` (e `spot_hash`) em `decisions`.
+
+   > **EM EXECUÇÃO desde 2026-07-30.** Entregue: `backend/leaklab/familia_spot.py`
+   > (fonte única da chave de família, do bucket de agregação e da winsorização)
+   > + `tests/test_familia_spot.py`, 19 testes, 6 guardas verificados quebrando.
+   >
+   > **Correção que a medição impôs a este item.** "Eleger e unificar UM esquema
+   > de stack bucket" está errado como literalmente escrito: os dois esquemas não
+   > são versões rivais da mesma coisa. `_DEFAULT_BUCKETS`
+   > (10/14/17/20/30/40/50/75/100bb) é **chave de lookup** — cada label é uma
+   > profundidade para a qual EXISTE solução no arquivo de ranges; colapsá-la nas
+   > faixas grossas faria um stack de 19bb procurar a solução de 10bb.
+   > `STACK_BUCKETS` (0-10/10-20/20-35/35-60/60+) é **partição de agregação**.
+   > O que se elege é qual serve a **chave de família**, e a resposta é o grosso.
+   > Medido em produção (9216 decisões): grosso → 910 famílias, mediana 3,
+   > 118 (13,0%) com ≥20 decisões; fino → 1391 famílias, mediana 2, 90 (6,5%).
+   > O fino cortaria as famílias validáveis em 24%. Existe ainda um **terceiro**
+   > esquema, em `scripts/gto_validation/spot_extractor.py`, que a spec não
+   > listava (lista de snap `[10,13,15,17,20,25,30,40,50,75,100]`, com 13/15/25
+   > que o de lookup não tem) — divergência a fechar.
+   >
+   > **Descoberta que esta spec não previu, e pesa mais que o bucket.** A
+   > validação é POR USUÁRIO, e nesse denominador a granularidade do **cenário**
+   > domina. Famílias com ≥20 decisões por usuário, medido em produção:
+   >
+   > | cenário | user 3 | user 43 | user 28 | user 26 |
+   > |---|---|---|---|---|
+   > | por posição do vilão | 48 | 28 | 1 | 0 |
+   > | largo (`rfi`/`vs_rfi`/`vs_3bet`) | 59 | 47 | **11** | **5** |
+   >
+   > Usuários com ao menos uma família validável: 3 de 8 no cenário fino, 4 de 8
+   > no largo. Por isso a família usa cenário largo e a posição do vilão fica
+   > fora dela (vive no spot canônico, onde a amostra do drill aguenta).
+   >
+   > **Limite honesto a comunicar, não esconder:** quem tem 258 decisões tem ZERO
+   > família validável. O selo "comprovado no jogo" é inalcançável para a maior
+   > parte da base hoje, e a superfície precisa dizer "ainda não dá para afirmar"
+   > em vez de renderizar vazio ou zero.
 1. **Espinha de medição do trilho lento.** Query/snapshot de taxa de erro por
    família × janela, Wilson, shrinkage de baseline, flag ICM excluindo,
    cobertura explícita. Curva com banda. Usa só dados existentes. **Se isto

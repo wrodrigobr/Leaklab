@@ -7,6 +7,23 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(progressao): Fase 0 — a chave de familia, e as duas escolhas que a medicao decidiu (#protocolo-progressao)
+
+> Primeiro passo do Protocolo de Progressao v2 (`specs/protocolo-progressao.md` §12.0). `leaklab/familia_spot.py` e fonte unica da chave de familia, do bucket de agregacao e da winsorizacao do EV. Tudo aqui e delta sobre o sistema live, nunca sistema paralelo.
+>
+> **Correcao que a medicao impos a propria spec.** A Fase 0 pedia "eleger e unificar UM esquema de stack bucket". Errado como literalmente escrito: os dois esquemas nao sao versoes rivais da mesma coisa. `_DEFAULT_BUCKETS` (10/14/17/20/30/40/50/75/100bb) e chave de **LOOKUP** — cada label e uma profundidade para a qual EXISTE solucao no arquivo de ranges, e colapsa-la nas faixas grossas faria um stack de 19bb procurar a solucao de 10bb. `STACK_BUCKETS` (0-10/10-20/20-35/35-60/60+) e particao de **AGREGACAO**. O que se elege e qual serve a chave de familia, e a resposta e o grosso, por numero: medido em producao (9216 decisoes), grosso da 910 familias / mediana 3 / 118 (13,0%) com >=20 decisoes, e fino da 1391 / mediana 2 / 90 (6,5%) — o fino cortaria as familias validaveis em 24%. Achei tambem um **terceiro** esquema que a spec nao listava (`scripts/gto_validation/spot_extractor.py`, com 13/15/25bb que o de lookup nao tem), registrado como divergencia a fechar.
+>
+> **Descoberta que a spec nao previu, e pesa mais que o bucket.** A validacao e POR USUARIO, e nesse denominador a granularidade do CENARIO domina. Familias com >=20 decisoes, medido em producao: com cenario por posicao do vilao, user 3 tem 48, user 43 tem 28, user 28 tem 1 e user 26 tem 0; com cenario largo (`rfi`/`vs_rfi`/`vs_3bet`), viram 59, 47, **11** e **5**. Usuarios com ao menos uma familia validavel: 3 de 8 no fino, 4 de 8 no largo. Por isso a familia usa cenario largo e a posicao do vilao fica FORA dela — ela vive no spot canonico, onde a amostra do drill aguenta a granularidade fina.
+>
+> **Limite honesto, para o produto dizer em vez de esconder:** quem tem 258 decisoes tem ZERO familia validavel. O selo "comprovado no jogo" nao e alcancavel para a maior parte da base hoje. `familias_validaveis` devolve so as que passam do minimo, e familia sem amostra fica FORA em vez de virar 0 — celula sem dado virando zero e erro que o relatorio de evolucao ja documenta.
+>
+> **Winsorizacao com DOIS tetos, o mais apertado vence:** o absoluto (25bb) e o stack do heroi quando conhecido. So o absoluto nao basta — uma perda de 20bb num stack de 11,7bb passaria, e continua impossivel. E o mesmo erro que meu backfill de EV cometeu 439 vezes ao chamar o guarda sem `equity`, com o teto de fold devolvendo None em silencio (pior caso: 41604bb num stack de 11,7bb). A winsorizacao capa em vez de descartar: descartar esconderia a decisao, capar mantem ela contando como erro grande sem deixar um valor absurdo definir a media da familia.
+>
+> **19 testes, 6 guardas verificados quebrando** — inclusive uma sabotagem SEMANTICA da eleicao de bucket (particao fina no mesmo formato de tupla), porque a primeira tentativa acusou por `TypeError` de formato e nao provava que o guarda le o conteudo. Verde: engine 649, gto 327, database 230.
+>
+> **Falta na Fase 0:** materializar `spot_family_key`/`spot_hash` em `decisions`, concluir a limpeza dos nos degenerados residuais, e a politica de cobertura.
+
+
 ### fix(mesa-final+posicao): ICM real nunca ligava em mesa final de MTT, e em heads-up o rotulo da big blind desaparecia (#replay #icm)
 
 > **Duas coisas que o usuario reportou, e a segunda ele reportou sem saber que era outra.**
