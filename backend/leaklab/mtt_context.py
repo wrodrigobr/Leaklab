@@ -37,6 +37,8 @@ _SEAT_STACK_PG_RE   = re.compile(r'^Seat \d+: (.+?) \(\s*\$?([0-9,]+(?:\.[0-9]+)
 _ICM_MAX_PLAYERS = 9
 
 # ── Regex ─────────────────────────────────────────────────────────────────────
+from leaklab.mesa_final import mesa_e_o_torneio, nomes_sentados
+
 _LEVEL_RE  = re.compile(r'Level\s+([IVXLCDM]+)\s+\((\d+)/(\d+)\)')
 
 _ROMAN = {'I':1,'V':5,'X':10,'L':50,'C':100,'D':500,'M':1000}
@@ -90,14 +92,25 @@ class MTTContext:
     icm_equity_pct: Optional[float] = None   # equity ICM do hero (% do prize pool)
     icm_chip_pct:   Optional[float] = None   # fração de fichas do hero (%)
     icm_tax_pct:    Optional[float] = None   # chip% − equity% (prêmio de risco/sobrevivência)
+    # POR QUE o ICM real ligou (ou nao): 'colocacoes' (mesa final de MTT provada pelas
+    # colocacoes do resumo), 'mesa_unica' (torneio de ate 9 inscritos), ou o motivo da
+    # recusa. Sem isso o numero apareceria na tela sem explicacao — e a pergunta do usuario
+    # foi literalmente "como detectamos a mesa final?".
+    icm_prova:      Optional[str] = None
 
 
-def build_mtt_context(hand: ParsedHand, field_size: int | None = None) -> MTTContext:
+def build_mtt_context(hand: ParsedHand, field_size: int | None = None,
+                     colocacoes: dict | None = None) -> MTTContext:
     """Extrai contexto MTT completo de uma mão.
 
-    `field_size` = número de inscritos no torneio (vem do resumo, não do hand history). É o que
-    autoriza o cálculo de ICM real: só quando a mesa É o torneio os stacks visíveis representam
-    todo o prize pool. Sem esse dado, o ICM contínuo fica de fora — ver `_ICM_MAX_PLAYERS`."""
+    ICM real só sai quando a mesa É o torneio (aí os stacks visíveis representam todo o prize
+    pool). Quem decide isso é `mesa_final.mesa_e_o_torneio`, com duas provas possíveis:
+
+      `field_size`  = inscritos no torneio (do resumo) — prova de torneio de MESA ÚNICA.
+      `colocacoes`  = {nome: colocação final} do torneio (do resumo) — prova posicional, é a que
+                      cobre MESA FINAL DE MTT, onde `field_size` nunca abre o gate.
+
+    Sem nenhuma das duas, o ICM contínuo fica de fora e só o bucket heurístico vale."""
     raw = hand.raw_text
     hero = hand.hero or ''
 
@@ -113,13 +126,11 @@ def build_mtt_context(hand: ParsedHand, field_size: int | None = None) -> MTTCon
     ante = float(antes[0]) if antes else 0.0
 
     # ── Jogadores ativos ──────────────────────────────────────────────────────
-    active_players = sum(
-        1 for line in raw.splitlines()
-        if _SEAT_RE.match(line.strip())
-    )
-    if active_players == 0:
-        # Fallback dialeto PartyGaming (888/PartyPoker): "Seat 4: Hero ( 500 )"
-        active_players = len(_SEAT_STACK_PG_RE.findall(raw))
+    # Mesma leitura de assento que prova a mesa final (`mesa_final.nomes_sentados`), e não um
+    # regex próprio: era a TERCEIRA cópia da mesma regra. O padrão local `_SEAT_RE` exige
+    # "in chips", que a ACR não escreve — a contagem só não zerava porque caía no fallback do
+    # dialeto 888 por coincidência de formato. Regra em N lugares vira função.
+    active_players = len(nomes_sentados(raw))
 
     # ── Stack do hero ─────────────────────────────────────────────────────────
     # Fonte: os assentos JÁ PARSEADOS (hand.seats), que o parser preenche em todos os
@@ -174,11 +185,12 @@ def build_mtt_context(hand: ParsedHand, field_size: int | None = None) -> MTTCon
     icm_pressure = _detect_icm_pressure(m_ratio, active_players, is_pko=is_pko)
 
     # ── ICM equity real (só quando a mesa É o torneio) ───────────────────────
-    # `field_size` conhecido e ≤ mesa única é a única prova que temos de que os stacks visíveis
-    # são o torneio todo. `active_players` sozinho NÃO serve: são assentos da mesa, e num MTT
-    # 9-max isso vale em toda mão (ver o comentário de _ICM_MAX_PLAYERS).
+    # `active_players` sozinho NÃO serve como prova: são assentos da mesa, e num MTT 9-max isso
+    # vale em toda mão (ver o comentário de _ICM_MAX_PLAYERS). A prova mora em `mesa_final`, que
+    # aceita colocações (cobre mesa final de MTT) ou field_size (cobre torneio de mesa única).
     icm_equity_pct = icm_chip_pct = icm_tax_pct = None
-    _mesa_e_o_torneio = field_size is not None and 2 <= int(field_size) <= _ICM_MAX_PLAYERS
+    _mesa_e_o_torneio, _prova_icm = mesa_e_o_torneio(
+        nomes_sentados(raw), field_size=field_size, colocacoes=colocacoes)
     if _mesa_e_o_torneio and 2 <= active_players <= _ICM_MAX_PLAYERS:
         stacks, hero_idx = _extract_all_stacks(raw, hero)
         if hero_idx is not None and len(stacks) >= 2 and all(s > 0 for s in stacks):
@@ -206,6 +218,7 @@ def build_mtt_context(hand: ParsedHand, field_size: int | None = None) -> MTTCon
         icm_equity_pct=icm_equity_pct,
         icm_chip_pct=icm_chip_pct,
         icm_tax_pct=icm_tax_pct,
+        icm_prova=_prova_icm,
     )
 
 
@@ -297,4 +310,5 @@ def context_to_dict(ctx: MTTContext) -> dict:
         'icmEquityPct':    ctx.icm_equity_pct,
         'icmChipPct':      ctx.icm_chip_pct,
         'icmTaxPct':       ctx.icm_tax_pct,
+        'icmProva':        ctx.icm_prova,
     }

@@ -825,9 +825,26 @@ def _apply_tournament_summary(user_id, content, filename):
     update_tournament_financials(user_id, tid, buy_in=buy_in, prize=prize, profit=profit,
                                  place=place, field_size=field_size, prize_pool=prize_pool,
                                  started_at=started_at, re_entries=re_entries_out)
+
+    # Colocacao de CADA jogador — e o que habilita ICM real em mesa final de MTT (o gate antigo,
+    # `field_size <= 9`, nunca abria ali). Ver `leaklab.mesa_final`. So vale para importacao nova:
+    # o texto do resumo nao e guardado, entao torneio antigo nao da backfill.
+    _finishes = (res or ps or gg or {}).get('finishes') or []
+    _n_finishes = 0
+    if _finishes:
+        try:
+            from database.repositories import get_tournament, save_tournament_finishes
+            _t = get_tournament(user_id, tid)
+            if _t:
+                _n_finishes = save_tournament_finishes(_t['id'], _finishes)
+        except Exception as _e:
+            # Nao pode derrubar a importacao do resumo (o financeiro ja foi gravado). Sem
+            # colocacoes o ICM real fica desligado, que e o comportamento seguro.
+            app.logger.warning('colocacoes nao gravadas para %s: %s', tid, _e)
     return {'kind': 'summary', 'tournament_id': tid, 'hero': hero, 'place': place, 'prize': prize,
             'buy_in': buy_in, 'profit': profit, 'field_size': field_size,
-            'prize_pool': prize_pool, 're_entries': re_entries_out}, 200
+            'prize_pool': prize_pool, 're_entries': re_entries_out,
+            'finishes_gravadas': _n_finishes}, 200
 
 
 @app.route('/tournament/results', methods=['POST'])
@@ -881,7 +898,8 @@ def _analyze_impl():
         return jsonify({'error': 'Nenhuma mão encontrada'}), 422
 
     results, hand_results, errors = _analyze_hands(
-        hands, field_size=_field_size_for(g.user_id, hands[0].tournament_id))
+        hands, field_size=_field_size_for(g.user_id, hands[0].tournament_id),
+        colocacoes=_colocacoes_for(g.user_id, hands[0].tournament_id))
     if not results:
         return jsonify({'error': 'Nenhuma decisão encontrada'}), 422
 
@@ -4045,12 +4063,29 @@ def _field_size_for(user_id, tournament_id):
         return None
 
 
-def _analyze_hands(hands, field_size=None):
+def _colocacoes_for(user_id, tournament_id):
+    """{nome: colocacao final} do torneio, se o resumo ja subiu. E a prova que liga ICM real numa
+    MESA FINAL DE MTT — `field_size` nunca serve para isso, porque num MTT ele continua sendo o
+    total de inscritos para sempre. Ver `leaklab.mesa_final`."""
+    if not tournament_id:
+        return None
+    try:
+        from database.repositories import get_tournament, get_tournament_finishes
+        t = get_tournament(user_id, str(tournament_id))
+        if not t:
+            return None
+        return get_tournament_finishes(t['id']) or None
+    except Exception:
+        return None
+
+
+def _analyze_hands(hands, field_size=None, colocacoes=None):
     results, hand_results, errors = [], {}, []
     for hand in hands:
         try:
-            mtt    = build_mtt_context(hand, field_size=field_size)
-            inputs = build_decision_inputs_for_hand(hand, field_size=field_size)
+            mtt    = build_mtt_context(hand, field_size=field_size, colocacoes=colocacoes)
+            inputs = build_decision_inputs_for_hand(hand, field_size=field_size,
+                                                    colocacoes=colocacoes)
             hero   = hand.hero or 'Hero'
             sd_result = _detect_showdown(hand.raw_text or '', hero)
             hero_won  = _detect_hand_won(hand.raw_text or '', hero)
@@ -4123,49 +4158,14 @@ def _detect_site(raw: str) -> str:
 
 
 def jogadores_do_roster(raw: str) -> set:
-    """Nomes distintos que APARECERAM SENTADOS, lendo só o roster do topo de cada mão.
+    """Nomes distintos que APARECERAM SENTADOS, lendo so o roster do topo de cada mao.
 
-    Fonte única deste sinal: usado para distinguir SNG de MTT no nome do torneio e para a
-    detecção de mesa final. Num SnG só existem N pessoas; num MTT chegam jogadores de mesas
-    que quebraram, então o número de nomes distintos cresce.
-
-    A parte difícil é NÃO contar as linhas de `*** SUMMARY ***`, que também começam com
-    "Seat N:" — e a armadilha é mais fina do que parece. O PokerStars escreve
-    "Seat 4: phpro (small blind) collected (1500)": um regex que aceite "(número)" no fim casa
-    o VALOR COLETADO e devolve o nome "phpro (small blind) collected" como se fosse outro
-    jogador. Medido num SnG de 9: a leitura ingênua devolvia 27 a 30 nomes, e todo SnG era
-    rotulado MTT por estourar o limite de 9.
-
-    Por isso o corte é estrutural (pular a seção de summary), não por regex mais esperto: o
-    mesmo critério que `_build_replay_data` já usa quando lê o roster de uma mão só.
+    Delega a `leaklab.mesa_final.nomes_sentados` — a leitura de assento vive LA porque a prova de
+    mesa final depende do mesmo sinal, e este projeto ja pagou caro por ter a mesma regra copiada
+    em dois lugares. Este nome fica como fachada porque os testes e o nome do torneio o usam.
     """
-    import re as _r
-    nomes = set()
-    em_summary = False
-    for linha in (raw or '').splitlines():
-        l = linha.strip()
-        if l.startswith('*** SUMMARY ***'):
-            em_summary = True
-            continue
-        # Cabeçalho de mão nova encerra o summary anterior (cobre os dialetos: "PokerStars Hand
-        # #", "Poker Hand #TM", "Game Hand #" da ACR, "CoinPoker Hand #").
-        if 'Hand #' in l:
-            em_summary = False
-            continue
-        if em_summary:
-            continue
-        # Formatos do stack no parêntese, por dialeto:
-        #   PS/GG          "(1500 in chips)"
-        #   ACR            "(29150.00)"
-        #   888/PartyPoker "( $3,548 )"   — espaços internos E cifrão; a primeira versão deste
-        #                                   regex exigia dígito logo após o "(" e quebrou a suíte
-        #                                   do 888, que é a única a cobrir esse dialeto.
-        # Pode ser permissivo com o número porque quem exclui as linhas de resultado é o corte
-        # ESTRUTURAL do summary acima, não este padrão.
-        m = _r.match(r'^Seat \d+: (.+?) \(\s*\$?[\d.,]+\s*(?:in chips)?\s*\)', l)
-        if m:
-            nomes.add(m.group(1).strip())
-    return nomes
+    from leaklab.mesa_final import nomes_sentados
+    return nomes_sentados(raw)
 
 
 def _extract_tournament_name(raw: str, site: str, buy_in: float | None = None) -> str | None:
@@ -6114,21 +6114,19 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
     seat_nums = sorted(seats.keys())
     n         = len(seat_nums)
     btn_idx   = seat_nums.index(hand.button_seat) if hand.button_seat in seat_nums else 0
-    # Posição autoritativa = mesma derivação do engine (_infer_position) e do builder:
+    # Posição autoritativa: delegada a `leaklab.posicoes` — ver o comentário abaixo.
     # ordena CLOCKWISE a partir do SB (assento depois do button) e nomeia por índice.
     # A antiga tabela "forward" (BTN,SB,BB,UTG,UTG+1,...) só batia em 9-max e rotulava
     # errado o miolo das mesas menores (6-max dava UTG+1/UTG+2 em vez de HJ/CO).
     # 'LJ' (não 'MP1') p/ casar com o Decision Card / GTO Solver.
     ordered = [seat_nums[(btn_idx + 1 + k) % n] for k in range(n)]  # [SB, BB, ..., BTN]
-    _pn = {0: 'SB', 1: 'BB', n - 1: 'BTN'}
-    if n >= 4: _pn[n - 2] = 'CO'
-    if n >= 6: _pn[n - 3] = 'HJ'
-    _seq = ['UTG', 'UTG+1', 'UTG+2', 'LJ', 'MP2', 'MP3']
-    _si = 0
-    for k in range(2, n):
-        if k not in _pn:
-            _pn[k] = _seq[_si] if _si < len(_seq) else f'P{k}'
-            _si += 1
+    # FONTE UNICA (leaklab.posicoes). Esta era uma COPIA, e o comentario acima afirmava ser "a
+    # mesma derivacao do builder" sem ser: faltava o caso de HEADS-UP. Com n=2 o dict
+    # {0:'SB', 1:'BB', n-1:'BTN'} tinha n-1 == 1, entao 'BTN' sobrescrevia 'BB' e o rotulo da big
+    # blind DESAPARECIA — enquanto o SB aparecia sobre o jogador errado. Reportado pelo usuario
+    # como "as blinds nao estao sendo exibidas".
+    from leaklab.posicoes import nomes_de_posicao
+    _pn = nomes_de_posicao(n, miolo='LJ')
     positions = {ordered[k]: _pn[k] for k in range(n)}
 
     # Mapear erros por (street, action_taken) — inclui dados matemáticos do engine

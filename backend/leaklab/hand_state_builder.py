@@ -53,29 +53,15 @@ def _normalize_action(action: Optional[str]) -> str:
 
 
 def _position_names(n: int) -> dict:
-    """Nomes de posição padrão para mesa de n jogadores.
-    ordered[0]=SB, ordered[1]=BB, ..., ordered[n-1]=BTN.
+    """Nomes de posicao para mesa de n jogadores. ordered[0]=SB, ordered[1]=BB, ordered[n-1]=BTN.
+
+    Delega a `leaklab.posicoes` — a mesma regra vivia aqui e em `_build_replay_data`, e a copia
+    de la nao tinha o caso de heads-up (o rotulo da big blind desaparecia). `miolo='MP1'` mantem
+    o vocabulario historico deste caminho: o replay usa 'LJ' para casar com o Decision Card e o
+    GTO Solver, e trocar o daqui mexeria em lookup de range.
     """
-    names: dict = {0: 'SB', 1: 'BB'}
-    if n == 2:
-        # HEADS-UP: o botão É o small blind. Como `ordered` põe o botão por ÚLTIMO
-        # (ordered[n-1]=botão), o índice 1 (botão) tem de ser SB e o índice 0 (não-botão)
-        # o BB. Sem isto o SB/botão era rotulado BB (best=check impossível pro SB pré-flop,
-        # falso small_mistake ao foldar, e spot sem cobertura GTO).
-        return {0: 'BB', 1: 'SB'}
-    names[n - 1] = 'BTN'
-    if n >= 4:
-        names[n - 2] = 'CO'
-    if n >= 6:
-        names[n - 3] = 'HJ'
-    # Preenche do UTG para o centro
-    utg_seq = ['UTG', 'UTG+1', 'UTG+2', 'MP1', 'MP2', 'MP3']
-    utg_i = 0
-    for i in range(2, n):
-        if i not in names:
-            names[i] = utg_seq[utg_i] if utg_i < len(utg_seq) else f'MP{utg_i + 1}'
-            utg_i += 1
-    return names
+    from leaklab.posicoes import nomes_de_posicao
+    return nomes_de_posicao(n, miolo='MP1')
 
 
 def _infer_position(hand: ParsedHand, hero: str) -> str:

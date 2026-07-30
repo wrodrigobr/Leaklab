@@ -605,6 +605,69 @@ def update_tournament_financials(user_id: int, tournament_id: str, *, buy_in=Non
         conn.close()
 
 
+def save_tournament_finishes(tournament_db_id: int, finishes: list) -> int:
+    """Grava a colocacao final de CADA jogador (vem do arquivo de resumo).
+
+    E o unico dado que permite detectar MESA FINAL de MTT — ver `leaklab.mesa_final`. Sem isso o
+    ICM real nunca ligava numa mesa final, porque o unico gate era `field_size <= 9` e o
+    `field_size` de um MTT continua sendo o total de inscritos para sempre.
+
+    Reescreve o conjunto do torneio (o resumo e autoritativo e pode ser reenviado). Devolve
+    quantas linhas gravou. Nomes sem colocacao sao DESCARTADOS: uma linha com place NULL nao prova
+    nada e faria a regra falhar aberto (ver o comentario em `mesa_e_o_torneio`).
+    """
+    # RE-ENTRADA da ao mesmo jogador DUAS colocacoes: uma por entrada. Medido no torneio 35598158
+    # da ACR — 28 linhas de finish para 24 jogadores, e Yachtman aparece como 3o E 25o (a 25a foi a
+    # primeira entrada, que quebrou; a 3a foi a re-entrada, onde ele realmente parou).
+    #
+    # A colocacao que interessa e a MELHOR (a menor), porque e ali que a pessoa saiu do torneio, e
+    # e ela que sustenta a aritmetica da prova de mesa final. A primeira versao deste codigo
+    # guardava a primeira linha que aparecesse — dependia da ordem do arquivo, e no torneio real
+    # guardou o 25o lugar de Yachtman, fazendo a mesa final de 3 ser RECUSADA. Falha calada
+    # classica: nao dava erro, so devolvia o veredito errado.
+    melhor = {}
+    for f in (finishes or []):
+        nome = str((f or {}).get('player') or '').strip()
+        place = (f or {}).get('place')
+        if not nome or place is None:
+            continue
+        place = int(place)
+        anterior = melhor.get(nome)
+        if anterior is None or place < anterior[0]:
+            melhor[nome] = (place, float(f.get('prize') or 0.0))
+    limpo = [(tournament_db_id, nome, place, prize)
+             for nome, (place, prize) in melhor.items()]
+    if not limpo:
+        return 0
+    conn = get_conn()
+    try:
+        conn.execute(_adapt("DELETE FROM tournament_finishes WHERE tournament_id=?"),
+                     (tournament_db_id,))
+        for row in limpo:
+            conn.execute(_adapt("INSERT INTO tournament_finishes "
+                                "(tournament_id, player, place, prize) VALUES (?,?,?,?)"), row)
+        conn.commit()
+        return len(limpo)
+    finally:
+        conn.close()
+
+
+def get_tournament_finishes(tournament_db_id: int) -> dict:
+    """{nome: colocacao} do torneio. Vazio quando o resumo nunca foi enviado."""
+    conn = get_conn()
+    try:
+        rows = conn.execute(_adapt(
+            "SELECT player, place FROM tournament_finishes WHERE tournament_id=?"),
+            (tournament_db_id,)).fetchall()
+        return {r['player']: r['place'] for r in rows}
+    except Exception:
+        # Tabela ausente (migracao ainda nao rodou) nao pode derrubar a analise: sem colocacoes
+        # o gate cai no critério antigo e o ICM real fica desligado, que e o comportamento seguro.
+        return {}
+    finally:
+        conn.close()
+
+
 def _purity(r: dict) -> tuple:
     """Frequências (jogada, modal) da decisão. Delega ao engine — a definição de 'frequência' mora
     lá, e ter uma segunda aqui é o erro que este projeto já pagou caro várias vezes."""

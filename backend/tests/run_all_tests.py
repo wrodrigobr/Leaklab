@@ -24,6 +24,8 @@ SUITES = {
                   'test_meta_semanal.py',
                   'test_replay_acr_summary.py',
                   'test_roster_e_formato.py',
+                  'test_mesa_final.py',
+                  'test_posicoes.py',
                   'test_pg_migration_isolation.py',
                   'test_interpretation_sign.py',
                   'test_validation.py',

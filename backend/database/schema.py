@@ -1575,6 +1575,18 @@ def _run_migrations(conn):
         """)
         conn.execute("CREATE INDEX IF NOT EXISTS idx_range_card_due "
                      "ON range_card_srs(user_id, due_at)")
+        # Colocacao final por jogador (espelha a lista SAVEPOINT do PG)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS tournament_finishes (
+                id            INTEGER PRIMARY KEY AUTOINCREMENT,
+                tournament_id INTEGER NOT NULL,
+                player        TEXT    NOT NULL,
+                place         INTEGER,
+                prize         REAL,
+                UNIQUE (tournament_id, player)
+            )
+        """)
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_tfinish_tour ON tournament_finishes(tournament_id)")
         # Meta semanal declarada (espelha a lista SAVEPOINT do PG)
         _ucols = {r[1] for r in conn.execute('PRAGMA table_info(users)').fetchall()}
         if 'weekly_training_goal' not in _ucols:
@@ -2108,6 +2120,24 @@ def _run_migrations(conn):
             )""",
             "CREATE INDEX IF NOT EXISTS idx_engagement_email_user "
             "ON engagement_emails(user_id, enviado_em DESC)",
+            # Colocacao final de CADA jogador do torneio (vem do arquivo de resumo, nao do hand
+            # history). E o que permite detectar MESA FINAL de MTT: quando restam S jogadores no
+            # torneio, as colocacoes deles sao exatamente 1..S — entao a mesa e a final quando a
+            # MAIOR colocacao entre os sentados iguala o numero de sentados.
+            #
+            # Ideia do usuario: "no summary tem a colocacao do torneio, poderiamos detectar
+            # quando os 8 ou 9 jogadores vencedores estao na mesma mesa". Antes disso o unico
+            # gate era `field_size <= 9`, que so abre em torneio de mesa unica e NUNCA numa mesa
+            # final de MTT (o field_size continua sendo o total de inscritos para sempre).
+            """CREATE TABLE IF NOT EXISTS tournament_finishes (
+                id            SERIAL PRIMARY KEY,
+                tournament_id INTEGER NOT NULL REFERENCES tournaments(id) ON DELETE CASCADE,
+                player        TEXT    NOT NULL,
+                place         INTEGER,
+                prize         REAL,
+                UNIQUE (tournament_id, player)
+            )""",
+            "CREATE INDEX IF NOT EXISTS idx_tfinish_tour ON tournament_finishes(tournament_id)",
             # Meta semanal DECLARADA pelo aluno (Fase 3): em quantos dias por semana ele se
             # compromete a treinar. NULL = ainda não perguntamos, e é esse NULL que dispara a
             # pergunta na tela. Na lista SAVEPOINT pela regra dura das colunas novas.
