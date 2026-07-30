@@ -7,6 +7,21 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(progressao): Fase 1 — a espinha de medicao do trilho lento (#protocolo-progressao)
+
+> A propria spec diz "se isto nao funcionar, nada do resto importa": e o que autoriza o produto a dizer "voce melhorou NO JOGO REAL". `leaklab/progressao.py` — taxa de erro por familia com intervalo de Wilson, encolhimento de baseline, cobertura declarada e barra de coleta. Nada persiste: `progression_snapshots` e materializacao, nao logica.
+>
+> **Correcao 1 na spec: o erro e HERDADO do veredito, nao redefinido.** A §5 pedia "proporcao com `ev_loss_bb > limiar`". Medido: `label` existe nas **9216** decisoes de producao e `ev_loss_bb` em **5780 (62,7%)** — um limiar de EV jogaria fora um terco da evidencia, justamente na metrica que mais precisa de amostra. E o aluno JA VE aquele veredito no card, entao uma segunda regua criaria dois numeros discordando na cara dele. O EV medio segue exibido para magnitude, winsorizado, com a cobertura ao lado (sao coberturas diferentes, 85,8% contra 62,7%, e junta-las num numero so esconderia isso).
+>
+> **Correcao 2 na spec: o encolhimento tem que ser OPT-IN, e o vies foi medido.** Ele corrige winner's curse, que so existe quando a familia foi SELECIONADA por ser extrema. Varrendo as 504 familias dos dois usuarios com mais volume com encolhimento em TODAS: **12 "piorou" contra 3 "melhorou"**. O mecanismo e simetrico e obvio depois de visto — encolher puxa baseline baixo para cima (facilita "piorou") e alto para baixo (dificulta "melhorou"). Numa familia nao escolhida por extremidade nao ha curse para corrigir, e a correcao vira distorcao.
+>
+> **Wilson e nao a normal**, porque com n pequeno a normal colapsa para largura ZERO em k=0 ou k=n — afirmaria certeza absoluta a partir de 5 observacoes. `n=0` devolve `(0,1)`: nao saber nada e o intervalo inteiro, nunca um zero. **"Melhorou" exige o intervalo INTEIRO abaixo do baseline** (ponto contra ponto declararia melhora em metade dos casos por sorteio), e **"indefinido" nunca vira "nao melhorou"** — "ainda estou coletando" e outra coisa, e colapsar as duas mente em silencio.
+>
+> **Funciona nos dados reais.** User 3: baseline 9,9% [9,0%, 10,9%] sobre 3865 decisoes, cobertura de EV 82,2%, **47 de 270 familias podem afirmar**. Maior leak: `preflop|vs_rfi|SB|0-10bb`, 31,6% de erro [21,0%, 44,5%], encolhido para 25,9% — defender SB curto contra abertura, um leak reconhecivel e ensinavel. Comparacao temporal metade contra metade: 257 indefinido, 11 piorou, 2 melhorou. Os ~95% de "indefinido" sao o resultado HONESTO para este volume, e sao exatamente a razao de a barra exibida ser a de COLETA e nao a de resultado.
+>
+> 23 testes, 6 guardas verificados quebrando (Wilson trocado pela normal, `n=0` devolvendo zero, encolhimento removido, comparacao ponto a ponto, amostra insuficiente afirmando, erro redefinido por limiar de EV).
+
+
 ### feat(progressao): Fase 0 fechada — politica de cobertura, e o gate de ICM que a spec pedia nao servia (#protocolo-progressao)
 
 > Ultimo item da Fase 0: **o que conta como evidencia sobre o jogo do aluno**. Errar aqui contamina tudo que vem depois — taxa de erro, serie de EV, reabertura de leak, cobranca. Tres exclusoes, cada uma com razao que nao e conveniencia.

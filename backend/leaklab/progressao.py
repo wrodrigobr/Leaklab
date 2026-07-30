@@ -159,6 +159,22 @@ def melhorou_de_verdade(baseline: dict, recente: dict,
     Devolve `('indefinido', motivo)` quando nao da para afirmar — nunca `False` disfarcado de
     "nao melhorou". As duas coisas sao diferentes e a tela precisa distingui-las: "ainda estou
     coletando" nao e "voce nao melhorou".
+
+    ── QUANDO passar `taxa_populacional`, e por que isso NAO e detalhe ────────────────────────────
+
+    Passe **somente quando a familia foi SELECIONADA por ser extrema** — o leak do Top-3, o que
+    esta em validacao. E para esse caso que o encolhimento existe: o baseline dele esta inflado por
+    construcao, e comparar contra o extremo credita regressao a media como progresso.
+
+    Aplicar em TODA familia introduz vies, e ele foi medido. Varrendo as 504 familias dos dois
+    usuarios com mais volume, com encolhimento em todas: **12 "piorou" contra 3 "melhorou"**. O
+    mecanismo e simetrico e obvio depois de visto: o encolhimento puxa baseline BAIXO para cima
+    (facilitando "piorou") e baseline ALTO para baixo (dificultando "melhorou"). Numa familia que
+    nao foi escolhida por extremidade, nao ha winner's curse para corrigir, e a correcao vira
+    distorcao.
+
+    Sem `taxa_populacional`, o baseline encolhe em direcao a si mesmo, ou seja, nao encolhe — que e
+    o comportamento certo para monitoramento geral.
     """
     if not recente or not recente.get('pode_afirmar'):
         return 'indefinido', 'amostra insuficiente na janela recente'

@@ -192,6 +192,28 @@ def test_sem_baseline_nao_afirma():
     assert melhorou_de_verdade(taxa_de_erro([]), rec)[0] == 'indefinido'
 
 
+def test_encolhimento_e_OPT_IN_e_sem_ele_o_baseline_nao_muda():
+    """Sem `taxa_populacional`, o baseline encolhe em direcao a SI MESMO, ou seja, nao encolhe.
+
+    Isso nao e detalhe de API. O encolhimento corrige winner's curse, e winner's curse so existe
+    quando a familia foi SELECIONADA por ser extrema. Medido varrendo as 504 familias dos dois
+    usuarios com mais volume em producao, com encolhimento aplicado em TODAS: 12 "piorou" contra
+    3 "melhorou". O mecanismo e simetrico — encolher puxa baseline baixo para cima (facilita
+    "piorou") e baseline alto para baixo (dificulta "melhorou"). Numa familia nao selecionada por
+    extremidade, a correcao vira distorcao.
+    """
+    base = taxa_de_erro([_dec('clear_mistake')] * 2 + [_dec('standard')] * 38)    # 5% em n=40
+    rec = taxa_de_erro([_dec('clear_mistake')] * 8 + [_dec('standard')] * 32)     # 20% em n=40
+
+    # Sem populacional: compara contra os 5% observados.
+    sem, _ = melhorou_de_verdade(base, rec)
+    # Com populacional alta: o baseline de 5% e puxado PARA CIMA, e a mesma piora fica mais dificil
+    # de declarar — a prova de que o parametro muda o veredito e por isso precisa ser deliberado.
+    com, _ = melhorou_de_verdade(base, rec, taxa_populacional=0.30)
+    assert sem == 'piorou', sem
+    assert com == 'indefinido', com
+
+
 # ── Barra de coleta ────────────────────────────────────────────────────────────────────────────
 
 def test_progresso_mostra_COLETA_e_nao_resultado():

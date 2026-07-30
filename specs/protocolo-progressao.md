@@ -468,7 +468,34 @@ Convenção do `schema.py` (multi-backend SQLite/PG, migrações abort-proof).
    > família validável. O selo "comprovado no jogo" é inalcançável para a maior
    > parte da base hoje, e a superfície precisa dizer "ainda não dá para afirmar"
    > em vez de renderizar vazio ou zero.
-1. **Espinha de medição do trilho lento.** Query/snapshot de taxa de erro por
+1. **Espinha de medição do trilho lento.**
+
+   > **ENTREGUE 2026-07-30.** `backend/leaklab/progressao.py` + `tests/test_progressao.py`
+   > (23 testes, 6 guardas verificados quebrando). Nada persiste: `progression_snapshots`
+   > é materialização, não lógica.
+   >
+   > **Correção 1 — o erro é HERDADO do veredito, não redefinido.** A §5 dizia
+   > "proporção com `ev_loss_bb > limiar`". Medido: `label` existe nas **9216**
+   > decisões de produção; `ev_loss_bb` existe em **5780 (62,7%)**. Um limiar de
+   > EV jogaria fora um terço da evidência, justamente na métrica que mais precisa
+   > de amostra. E o aluno já vê aquele veredito no card, então uma segunda régua
+   > criaria dois números discordando na cara dele. O EV médio continua exibido
+   > para magnitude, winsorizado e com a cobertura declarada ao lado.
+   >
+   > **Correção 2 — o encolhimento tem que ser OPT-IN.** Ele corrige winner's
+   > curse, que só existe quando a família foi *selecionada por ser extrema*.
+   > Medido varrendo as 504 famílias dos dois usuários com mais volume, com
+   > encolhimento em todas: **12 "piorou" contra 3 "melhorou"**. O mecanismo é
+   > simétrico: encolher puxa baseline baixo para cima (facilita "piorou") e alto
+   > para baixo (dificulta "melhorou"). Passe `taxa_populacional` só para o leak
+   > em validação; para monitoramento geral, não passe.
+   >
+   > **Funciona nos dados reais.** User 3: baseline de 9,9% [9,0%, 10,9%] sobre
+   > 3865 decisões, cobertura de EV 82,2%, **47 de 270 famílias podem afirmar**.
+   > Maior leak: `preflop|vs_rfi|SB|0-10bb`, 31,6% de erro [21,0%, 44,5%],
+   > encolhido para 25,9%. Comparação temporal (metade × metade): 257 indefinido,
+   > 11 piorou, 2 melhorou — ~95% de "indefinido" é o resultado honesto para este
+   > volume, e é por isso que a barra exibida é a de COLETA. Query/snapshot de taxa de erro por
    família × janela, Wilson, shrinkage de baseline, flag ICM excluindo,
    cobertura explícita. Curva com banda. Usa só dados existentes. **Se isto
    não funcionar, nada do resto importa.**
