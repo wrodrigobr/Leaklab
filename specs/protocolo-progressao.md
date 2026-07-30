@@ -501,6 +501,31 @@ Convenção do `schema.py` (multi-backend SQLite/PG, migrações abort-proof).
    não funcionar, nada do resto importa.**
 2. **PIP mínimo.** Top 3 com baseline encolhido, 1 ativo, estados da §1 (sem
    exame ainda: gate provisório = critério atual do Leak Trainer).
+
+   > **MEDIDO 2026-07-30: esta fase JÁ ESTÁ VIVA.** Esta spec foi escrita sem
+   > registrar o que já tinha sido entregue. O que existe hoje, ponta a ponta:
+   > `progression.missions_with_state` devolve `ativa` (1 leak por vez, foco
+   > Kumon), `proximas` (o arco curto), `dominadas`, `restantes_cap` (o sinal de
+   > fila oculta) e `estado` por missão; `progression.state_for` implementa os 3
+   > estados da §1 com reabertura por regressão comprovada; `validation.py` faz
+   > Wilson + shrinkage de winner's curse + intervalo de Newcombe na diferença;
+   > `mastery_status` é o gate provisório. O frontend consome em 5 arquivos
+   > (`DashboardV2`, `LeakTrainer`, `StudyPlan`, `Training`, `api.ts`).
+   >
+   > **Não migrar a validação para a chave de família.** Era o caminho óbvio e a
+   > medição o desmente: o filtro vivo (`_category_adherence_filter`) descarta o
+   > stack de propósito e rende MAIS amostra que a família nas categorias que
+   > realmente aparecem no Top-3. Medido, decisões por categoria, vivo × família:
+   > `rfi:SB::20` 257×68, `rfi:BTN::30` 125×26, `rfi:SB::30` 89×16, `rfi:CO::40`
+   > 46×18. A família ganha só em `vs_rfi` (97×89, 82×68, 46×37). São dois
+   > recortes com trocas opostas (o vivo larga o stack e guarda o vilão; a família
+   > larga o vilão e guarda a faixa de stack), e nenhum domina.
+   >
+   > **"Top 3 com baseline encolhido" não deve virar ranking por taxa encolhida.**
+   > Medido, isso mudaria o Top-3 dos 4 usuários. Mas contradiz uma decisão já
+   > tomada e viva: **bb perdidos RANQUEIA, taxa de erro VALIDA** — perguntas
+   > diferentes, medidas diferentes. O encolhimento já entra onde deve, na
+   > comparação de janelas dentro de `validate_leak`.
 3. **Corpus + exame de mastery.** Pipeline do corpus no Leak Trainer; exame
    estratificado com discriminação; estados `drill_mastered` reais.
 4. **Composição de sessão + SRS + reabertura.** 60/25/15; revisões
