@@ -261,6 +261,78 @@ def test_save_decisions_GRAVA_as_duas_colunas():
     assert r['spot_hash'], 'spot_hash gravado vazio'
 
 
+# ── Politica de cobertura: o que conta como evidencia ──────────────────────────────────────────
+
+def test_decisao_SEM_GABARITO_fica_fora():
+    """`uncovered` significa que NOS nao sabemos a resposta, nao que o aluno acertou. Deixa-la
+    dentro faria a taxa de erro de uma familia parecer MELHOR quanto MENOR fosse a cobertura dela
+    — incentivo exatamente invertido. Medido em prod: 1307 de 9216 decisoes estao nesse estado."""
+    from leaklab.familia_spot import no_universo_de_medicao
+    assert no_universo_de_medicao(gto_label='uncovered', spot_family_key='f') == (False, 'sem_gabarito')
+    assert no_universo_de_medicao(gto_label=None, spot_family_key='f') == (False, 'sem_gabarito')
+    assert no_universo_de_medicao(gto_label='', spot_family_key='f') == (False, 'sem_gabarito')
+
+
+def test_zona_de_ICM_PROVADA_fica_fora_e_a_heuristica_nao_serve():
+    """Decisao da spec (§9): flag & exclude. Mas o SINAL nao pode ser `icm_pressure`, e isso
+    corrige a spec — medido antes de adotar: `icm_pressure='high'` cobre 54,9% de TODAS as
+    decisoes (5056 de 9216), com stack medio de 44,1bb e maximo de 216,7bb. Um stack de 216bb nao
+    esta sob pressao de ICM. Usar a heuristica apagaria metade do universo e levaria dois dos
+    quatro usuarios com familia validavel a ZERO (52->33, 41->15, 9->0, 5->0).
+
+    Sem prova, a decisao ENTRA: o custo de incluir uma decisao de ICM e um pouco de ruido, e o de
+    excluir metade da base e nao ter loop nenhum."""
+    from leaklab.familia_spot import no_universo_de_medicao
+    assert no_universo_de_medicao(gto_label='error', zona_icm_provada=True,
+                                  spot_family_key='f') == (False, 'zona_icm')
+    assert no_universo_de_medicao(gto_label='error', zona_icm_provada=False,
+                                  spot_family_key='f')[0] is True
+    assert no_universo_de_medicao(gto_label='error', zona_icm_provada=None,
+                                  spot_family_key='f')[0] is True
+
+
+def test_decisao_sem_familia_fica_fora():
+    from leaklab.familia_spot import no_universo_de_medicao
+    assert no_universo_de_medicao(gto_label='correct', spot_family_key=None) == (False, 'sem_familia')
+
+
+def test_decisao_com_gabarito_entra():
+    from leaklab.familia_spot import no_universo_de_medicao
+    for lab in ('correct', 'error', 'gto_minor_deviation'):
+        assert no_universo_de_medicao(gto_label=lab, spot_family_key='f') == (True, None), lab
+
+
+def test_cobertura_reporta_o_denominador_e_o_MOTIVO():
+    """Taxa de erro de 10% sobre 4 decisoes cobertas de 40 nao e a mesma coisa que sobre 40 de 40.
+    Mostrar so a taxa esconde isso, e "ficou de fora" sem explicacao e indistinguivel de "o sistema
+    esqueceu dela"."""
+    from leaklab.familia_spot import cobertura_da_familia
+    r = cobertura_da_familia(
+        [{'gto_label': 'correct', 'spot_family_key': 'f'}] * 22
+        + [{'gto_label': 'uncovered', 'spot_family_key': 'f'}] * 8
+        + [{'gto_label': 'error', 'zona_icm_provada': True, 'spot_family_key': 'f'}] * 5)
+    assert r['n_total'] == 35 and r['n_no_universo'] == 22
+    assert r['fora_por_motivo'] == {'sem_gabarito': 8, 'zona_icm': 5}, r['fora_por_motivo']
+    assert r['cobertura_pct'] == 62.9, r['cobertura_pct']
+    assert r['pode_afirmar'] is True
+
+
+def test_familia_com_muita_decisao_mas_pouca_COBERTA_nao_pode_afirmar():
+    """O caso perigoso: 100 decisoes parecem amostra de sobra, mas se so 5 tem gabarito nao ha o
+    que afirmar. Contar o total em vez do coberto e o erro que este guarda impede."""
+    from leaklab.familia_spot import cobertura_da_familia
+    r = cobertura_da_familia([{'gto_label': 'correct', 'spot_family_key': 'f'}] * 5
+                             + [{'gto_label': 'uncovered', 'spot_family_key': 'f'}] * 95)
+    assert r['n_total'] == 100 and r['n_no_universo'] == 5
+    assert r['pode_afirmar'] is False, 'afirmou com 5 decisoes cobertas de 100'
+
+
+def test_cobertura_vazia_nao_estoura_nem_inventa_zero():
+    from leaklab.familia_spot import cobertura_da_familia
+    r = cobertura_da_familia([])
+    assert r['n_total'] == 0 and r['cobertura_pct'] is None and r['pode_afirmar'] is False
+
+
 if __name__ == '__main__':
     falhas = 0
     testes = [v for k, v in sorted(globals().items()) if k.startswith('test_')]

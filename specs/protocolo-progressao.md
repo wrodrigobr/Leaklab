@@ -447,6 +447,23 @@ Convenção do `schema.py` (multi-backend SQLite/PG, migrações abort-proof).
    > produção: os dois usuários com mais volume perdem 12% das famílias validáveis
    > (59→52 e 47→41); os três com pouco volume não perdem nada (9, 5 e 0).
    >
+   > **Política de cobertura definida (2026-07-30), e ela corrige a §9.** Três
+   > exclusões: sem gabarito GTO, zona de ICM, e sem chave de família. A do ICM
+   > **não pode usar `icm_pressure`**, que era a implementação óbvia: medido antes
+   > de adotar, `icm_pressure='high'` cobre **54,9% de TODAS as decisões** (5056 de
+   > 9216), com stack médio de 44,1bb e máximo de **216,7bb**. Um stack de 216bb
+   > não está sob pressão de ICM; aquele bucket é heurística de `m_ratio` ×
+   > jogadores, útil na tela e inútil como gate. Usá-lo apagaria metade do universo
+   > e levaria dois dos quatro usuários com família validável a ZERO
+   > (52→33, 41→15, 9→0, 5→0). O sinal passa a ser **prova**: mesa final detectada
+   > por colocação (`leaklab.mesa_final`). Sem prova, a decisão ENTRA — falhar para
+   > dentro é o certo aqui, porque incluir uma decisão de ICM custa ruído e excluir
+   > metade da base custa o loop inteiro.
+   >
+   > **Universo de medição resultante, medido em produção:** 7909 de 9216 decisões
+   > (85,8%); as 1307 de fora são todas por falta de gabarito GTO. Famílias
+   > validáveis por usuário: 47, 32, 8, 5, 0, 0.
+   >
    > **Limite honesto a comunicar, não esconder:** quem tem 258 decisões tem ZERO
    > família validável. O selo "comprovado no jogo" é inalcançável para a maior
    > parte da base hoje, e a superfície precisa dizer "ainda não dá para afirmar"

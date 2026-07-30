@@ -7,6 +7,25 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(progressao): Fase 0 fechada — politica de cobertura, e o gate de ICM que a spec pedia nao servia (#protocolo-progressao)
+
+> Ultimo item da Fase 0: **o que conta como evidencia sobre o jogo do aluno**. Errar aqui contamina tudo que vem depois — taxa de erro, serie de EV, reabertura de leak, cobranca. Tres exclusoes, cada uma com razao que nao e conveniencia.
+>
+> **Sem gabarito.** `gto_label` nulo ou `uncovered` significa que NOS nao sabemos a resposta, nao que o aluno acertou. Deixar dentro faria a taxa de erro de uma familia parecer melhor quanto MENOR fosse a cobertura dela — incentivo exatamente invertido. Sao 1307 de 9216 decisoes (14,2%): flop 728, turn 318, preflop 241, river 20.
+>
+> **Zona de ICM, e aqui a spec estava errada.** A implementacao obvia era `icm_pressure == 'high'`, e medi antes de adotar: ela cobre **54,9% de TODAS as decisoes** (5056 de 9216), com stack medio de 44,1bb e maximo de **216,7bb**. Um stack de 216bb nao esta sob pressao de ICM — aquele bucket e heuristica de `m_ratio` × jogadores, boa como leitura na tela e inutil como gate. Adota-la teria apagado metade do universo de medicao e levado dois dos quatro usuarios com familia validavel a ZERO (52→33, 41→15, 9→0, 5→0). O sinal passou a ser **prova**: mesa final detectada por colocacao (`leaklab.mesa_final`, entregue hoje). Sem prova a decisao ENTRA — falhar para dentro e o certo, porque incluir uma decisao de ICM custa ruido e excluir metade da base custa o loop inteiro.
+>
+> **Sem familia.** Sem chave nao ha onde agregar.
+>
+> **A cobertura vem junto com o denominador e o motivo.** Taxa de erro de 10% sobre 4 decisoes cobertas de 40 nao e a mesma coisa que sobre 40 de 40, e `pode_afirmar` olha o COBERTO, nunca o total — o guarda que impede "100 decisoes, das quais 5 com gabarito" virar amostra de sobra.
+>
+> **Universo de medicao resultante, medido em producao:** 7909 de 9216 decisoes (85,8%). Familias validaveis por usuario: 47, 32, 8, 5, 0, 0.
+>
+> 33 testes, 13 guardas verificados quebrando ao todo na Fase 0 — inclusive o gate de ICM nas DUAS direcoes (deixar de excluir, e excluir o que nao sabe). Verde: engine.
+>
+> **Fase 0 fechada, com uma ressalva declarada:** os 13 nos GTO degenerados residuais (`|ev_diff|` de ate 5116) continuam no banco. Medido: ZERO decisoes hoje mostram `|ev_loss_bb| > 200`, ou seja, eles nao contaminam nada que o usuario veja, e a winsorizacao ja protege a agregacao. Apagar no em producao e destrutivo e fica como decisao do usuario.
+
+
 ### feat(progressao): Fase 0 — chaves de spot materializadas em `decisions` (#protocolo-progressao)
 
 > `spot_family_key` e `spot_hash` agora sao colunas, gravadas na analise e preenchidas no passado pelo **mesmo caminho** (`familia_spot.chaves_de_decisao`). Ter uma rotina que grava o presente e outra que preenche o passado e como a base fica com duas populacoes de chave que nao casam — foi literalmente o bug do board no hash. Colunas e indices no bloco SAVEPOINT isolado do PG, com espelho SQLite.

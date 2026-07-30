@@ -208,3 +208,91 @@ def chaves_de_decisao(street=None, position=None, stack_bb=None, vs_position=Non
         spot_hash = None   # chave ausente e honesta; chave errada contamina a agregacao
 
     return familia, spot_hash
+
+# ── Politica de cobertura: o que entra no universo de medicao ──────────────────────────────────
+#
+# Fase 0 da spec. A pergunta e "o que conta como evidencia sobre o jogo do aluno", e errar aqui
+# contamina TUDO que vem depois — taxa de erro, serie de EV, reabertura de leak, cobranca.
+#
+# A regra que governa: uma decisao so entra se o produto TEM resposta para ela. Decisao sem
+# cobertura GTO nao e "sem leak", e "sem gabarito" — conta-la como acerto seria o zero
+# tranquilizador que a regra 1 do CLAUDE.md proibe, e conta-la como erro puniria o aluno por uma
+# lacuna nossa.
+
+MOTIVOS_FORA = {
+    'sem_gabarito':   'sem cobertura GTO — o produto nao tem resposta para este spot',
+    'zona_icm':       'mesa final PROVADA — o grading e chipEV puro e nao modela ICM (spec §9)',
+    'sem_familia':    'sem chave de familia (falta street, posicao ou stack)',
+}
+
+
+def no_universo_de_medicao(gto_label=None, zona_icm_provada=None,
+                           spot_family_key=None) -> tuple:
+    """A decisao conta como evidencia? Devolve (entra, motivo_se_nao).
+
+    Tres exclusoes, e cada uma tem uma razao que nao e conveniencia:
+
+    **Sem gabarito.** `gto_label` nulo ou 'uncovered' significa que NOS nao sabemos a resposta.
+    Medido em producao em 2026-07-30: 1307 de 9216 decisoes (14,2%) estao nesse estado — flop 728,
+    turn 318, preflop 241, river 20. Deixa-las dentro faria a taxa de erro de uma familia parecer
+    melhor quanto MENOR fosse a cobertura dela, que e o incentivo exatamente invertido.
+
+    **Zona de ICM.** Decisao da spec (§9): flag & exclude, nao "auditar antes". O grading e chipEV
+    puro; cobrar um aluno por um fold correto sob pressao de ICM seria escalar erro do motor, e as
+    ranges ICM proprias estao bloqueadas (sem fonte desde que GTO Wizard e GCP foram
+    descontinuados).
+
+    **O sinal aqui NAO pode ser `icm_pressure`, e isso corrige a spec.** Era a implementacao
+    obvia e foi medida antes de ser adotada: `icm_pressure='high'` cobre **54,9% de TODAS as
+    decisoes** (5056 de 9216), com stack medio de 44,1bb e maximo de 216,7bb. Um stack de 216bb
+    nao esta sob pressao de ICM — aquele bucket e uma heuristica de `m_ratio` × jogadores, util
+    como leitura na tela e inutil como gate. Usa-lo apagaria metade do universo de medicao e
+    levaria dois dos quatro usuarios com familia validavel a ZERO (52→33, 41→15, 9→0, 5→0).
+
+    Por isso o parametro e `zona_icm_provada`: prova, nao heuristica. Hoje a prova disponivel e a
+    mesa final detectada por colocacao (`leaklab.mesa_final`), que exige o arquivo de resumo. Sem
+    resumo nao ha prova, e sem prova a decisao ENTRA no universo — falhar para dentro aqui e o
+    certo, porque o custo de incluir uma decisao de ICM e um pouco de ruido, e o de excluir metade
+    da base e nao ter loop nenhum.
+
+    **Sem familia.** Sem chave nao ha onde agregar. Medido no dev: as unicas que caem aqui sao as
+    que estao sem `stack_bb`.
+
+    O motivo volta junto porque a superficie precisa poder dizer POR QUE a decisao ficou de fora.
+    "Ficou de fora" sem explicacao e indistinguivel de "o sistema esqueceu dela".
+    """
+    if not spot_family_key:
+        return False, 'sem_familia'
+    if not gto_label or str(gto_label).lower() == 'uncovered':
+        return False, 'sem_gabarito'
+    if zona_icm_provada:
+        return False, 'zona_icm'
+    return True, None
+
+
+def cobertura_da_familia(decisoes) -> dict:
+    """Resumo honesto de uma familia: quantas entraram, quantas ficaram de fora e por que.
+
+    `n_no_universo` e o denominador de TUDO. `cobertura_pct` sobre o total e o numero que diz se
+    a familia pode ou nao sustentar afirmacao — e ele aparece explicitamente porque uma taxa de
+    erro de 10% sobre 4 decisoes cobertas de 40 nao e a mesma coisa que sobre 40 de 40, e mostrar
+    so a taxa esconderia isso.
+    """
+    from collections import Counter
+    dentro, fora = 0, Counter()
+    for d in (decisoes or []):
+        ok, motivo = no_universo_de_medicao(
+            gto_label=d.get('gto_label'), zona_icm_provada=d.get('zona_icm_provada'),
+            spot_family_key=d.get('spot_family_key'))
+        if ok:
+            dentro += 1
+        else:
+            fora[motivo] += 1
+    total = dentro + sum(fora.values())
+    return {
+        'n_total': total,
+        'n_no_universo': dentro,
+        'fora_por_motivo': dict(fora),
+        'cobertura_pct': round(100.0 * dentro / total, 1) if total else None,
+        'pode_afirmar': dentro >= MIN_DECISOES_VALIDACAO,
+    }
