@@ -649,5 +649,28 @@
     },
     "meta": "{{feitas}} of {{prometidas}} days",
     "metaTitulo": "Your commitment this week"
+  },
+  "primeiroAcesso": {
+    "eyebrow": "First run",
+    "titulo": "Three steps to your first diagnosis",
+    "subtitulo": "GrindLab reads the files your poker site already saves. Nothing is typed by hand.",
+    "p1": {
+      "titulo": "Find your hand history file",
+      "escolhaSite": "Pick your site",
+      "ligarPrimeiro": "On {{site}}, turn on hand history saving in the settings before you play. Without it the file does not exist.",
+      "pasta": "The folder is usually this one:",
+      "copiar": "Copy the path",
+      "semCaminho": "On {{site}}, look for the hand history export option inside the client. If you cannot find it, contact support and we will help."
+    },
+    "p2": {
+      "titulo": "Drop the file here",
+      "desc": "You can drop several at once. Parsing runs in the background and you can keep browsing."
+    },
+    "p3": {
+      "titulo": "What shows up next",
+      "agora": "From the first tournament: your mistakes hand by hand, what GTO would do and what it cost.",
+      "depois": "With more tournaments: ranked leaks, the study plan and your bankroll curve.",
+      "honestidade": "One thing takes patience: proving you actually improved needs sample. The product only claims it when the difference survives chance, and says \"not enough to tell yet\" until it does. That is on purpose."
+    }
   }
 }

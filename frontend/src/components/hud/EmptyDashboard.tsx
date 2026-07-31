@@ -3,6 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { FileUp, ShieldCheck, Target, Sparkles, UploadCloud, HelpCircle, Eye } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { PrimeiroAcesso } from "@/components/hud/PrimeiroAcesso";
 import { useUploadQueue } from "@/components/hud/UploadQueue";
 import { HandExportGuide } from "@/components/hud/HandExportGuide";
 import { SampleDecisionCard } from "@/components/hud/SampleDecisionCard";
@@ -46,6 +47,8 @@ export function EmptyDashboard({ onComplete }: Props) {
 
   return (
     <>
+      <PrimeiroAcesso className="mb-4" />
+      <>
     <HandExportGuide open={showGuide} onClose={() => setShowGuide(false)} onOpenUpload={() => inputRef.current?.click()} />
     <div className="space-y-4">
       <section className="relative">
@@ -199,6 +202,7 @@ export function EmptyDashboard({ onComplete }: Props) {
         )}
       </section>
     </div>
+    </>
     </>
   );
 }

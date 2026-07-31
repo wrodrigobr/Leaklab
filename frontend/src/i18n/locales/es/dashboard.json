@@ -649,5 +649,28 @@
     },
     "meta": "{{feitas}} de {{prometidas}} días",
     "metaTitulo": "Tu compromiso de esta semana"
+  },
+  "primeiroAcesso": {
+    "eyebrow": "Primer acceso",
+    "titulo": "Tres pasos hasta tu primer diagnóstico",
+    "subtitulo": "GrindLab lee los archivos que tu sala de poker ya guarda. Nada se escribe a mano.",
+    "p1": {
+      "titulo": "Encuentra el archivo de tus manos",
+      "escolhaSite": "Elige tu sala",
+      "ligarPrimeiro": "En {{site}}, activa el guardado del historial en las opciones antes de jugar. Sin eso el archivo no existe.",
+      "pasta": "La carpeta suele ser esta:",
+      "copiar": "Copiar la ruta",
+      "semCaminho": "En {{site}}, busca la opción de exportar historial de manos dentro del cliente. Si no la encuentras, escribe al soporte y te ayudamos."
+    },
+    "p2": {
+      "titulo": "Arrastra el archivo aquí",
+      "desc": "Puedes soltar varios a la vez. La lectura corre en segundo plano y puedes seguir navegando."
+    },
+    "p3": {
+      "titulo": "Qué aparece después",
+      "agora": "Ya en el primer torneo: tus errores mano a mano, qué haría el GTO y cuánto costó.",
+      "depois": "Con más torneos: los leaks ordenados, el plan de estudio y la evolución de la banca.",
+      "honestidade": "Una cosa exige paciencia: probar que mejoraste de verdad necesita muestra. El producto solo lo afirma cuando la diferencia resiste al azar, y dice \"todavía no se puede afirmar\" mientras no resista. Es a propósito."
+    }
   }
 }

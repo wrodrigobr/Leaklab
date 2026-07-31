@@ -649,5 +649,28 @@
     },
     "meta": "{{feitas}} de {{prometidas}} dias",
     "metaTitulo": "Seu compromisso desta semana"
+  },
+  "primeiroAcesso": {
+    "eyebrow": "Primeiro acesso",
+    "titulo": "Três passos até o seu primeiro diagnóstico",
+    "subtitulo": "O GrindLab lê os arquivos que o seu site de poker já grava. Nada é digitado à mão.",
+    "p1": {
+      "titulo": "Ache o arquivo das suas mãos",
+      "escolhaSite": "Escolha o seu site",
+      "ligarPrimeiro": "No {{site}}, ligue a gravação do histórico nas configurações antes de jogar. Sem isso o arquivo não existe.",
+      "pasta": "A pasta costuma ser esta:",
+      "copiar": "Copiar o caminho",
+      "semCaminho": "No {{site}}, procure a opção de exportar histórico de mãos dentro do próprio cliente. Se não achar, fale com o suporte e a gente te ajuda."
+    },
+    "p2": {
+      "titulo": "Arraste o arquivo aqui",
+      "desc": "Pode soltar vários de uma vez. A leitura roda em segundo plano e você pode navegar enquanto isso."
+    },
+    "p3": {
+      "titulo": "O que aparece depois",
+      "agora": "Já no primeiro torneio: seus erros mão a mão, com o que o GTO faria e quanto custou.",
+      "depois": "Com mais torneios: os leaks ranqueados, o plano de estudo e a evolução da banca.",
+      "honestidade": "Uma coisa exige paciência: provar que você melhorou de verdade precisa de amostra. O produto só afirma isso quando a diferença resiste ao acaso, e diz \"ainda não dá para afirmar\" enquanto não resiste. É proposital."
+    }
   }
 }
