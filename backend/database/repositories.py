@@ -6943,20 +6943,37 @@ def get_training_proof(user_id: int) -> list:
 # Conquistas EXCLUSIVAS do treino (eixo de gamificação, separado das globais/ELO). O critério é o
 # predicado sobre o estado de treino; os TÍTULOS/DESCRIÇÕES vivem no i18n do frontend
 # (trainAch.<key>.*), keyed pela key — pra ter PT/EN/ES de verdade. Ordem = ordem do "caminho".
+#
+# Cada linha é (key, CAMPO do estado, ALVO). O predicado é DERIVADO daqui, não escrito à parte.
+#
+# Antes cada linha era um lambda. Funcionava para conceder, e não servia para mais nada: a tela só
+# sabia dizer "bloqueada", nunca QUANTO falta. O usuário reportou exatamente isso — "o jogador
+# precisa saber o que falta pra conquistar". Com o critério declarado como dado, o progresso sai
+# da MESMA fonte que a concessão, então os dois não podem divergir. Com dois lugares, um dia a
+# barra diria 199/200 numa conquista já concedida.
 _TRAINING_ACHIEVEMENT_DEFS = [
-    ('train:first',    lambda s: s['total_correct']  >= 1),
-    ('train:reps50',   lambda s: s['total_attempts'] >= 50),
-    ('train:silver',   lambda s: s['max_mastery']    >= 40),
-    ('train:gold',     lambda s: s['max_mastery']    >= 70),
-    ('train:reps200',  lambda s: s['total_attempts'] >= 200),
-    ('train:explorer', lambda s: s['skills_count']   >= 5),
-    ('train:gold3',    lambda s: s['count_gold']     >= 3),
-    ('train:diamond',  lambda s: s['max_mastery']    >= 90),
-    ('train:streak3',  lambda s: s['streak']         >= 3),
-    ('train:streak7',  lambda s: s['streak']         >= 7),
-    ('train:reps1000', lambda s: s['total_attempts'] >= 1000),
-    ('train:streak30', lambda s: s['streak']         >= 30),
+    ('train:first',    'total_correct',  1),
+    ('train:reps50',   'total_attempts', 50),
+    ('train:silver',   'max_mastery',    40),
+    ('train:gold',     'max_mastery',    70),
+    ('train:reps200',  'total_attempts', 200),
+    ('train:explorer', 'skills_count',   5),
+    ('train:gold3',    'count_gold',     3),
+    ('train:diamond',  'max_mastery',    90),
+    ('train:streak3',  'streak',         3),
+    ('train:streak7',  'streak',         7),
+    ('train:reps1000', 'total_attempts', 1000),
+    ('train:streak30', 'streak',         30),
 ]
+
+
+def _achievement_progress(state: dict, campo: str, alvo: float) -> tuple:
+    """(atual, alvo) da conquista, com o atual CAPADO no alvo.
+
+    Capar importa: sem isso uma conquista de 50 spots mostraria "1.240 de 50" para quem já tem
+    volume, o que lê como erro. O que interessa depois de atingido é o alvo, não o excesso."""
+    atual = float(state.get(campo) or 0)
+    return (round(min(atual, alvo), 1), alvo)
 
 
 def _training_state(user_id: int) -> dict:
@@ -6988,11 +7005,11 @@ def evaluate_training_achievements(user_id: int) -> list:
             _adapt("SELECT achievement_key FROM training_achievements WHERE user_id = ?"),
             (user_id,)).fetchall()}
         newly = []
-        for key, pred in _TRAINING_ACHIEVEMENT_DEFS:
+        for key, campo, alvo in _TRAINING_ACHIEVEMENT_DEFS:
             if key in earned:
                 continue
             try:
-                if pred(state):
+                if float(state.get(campo) or 0) >= alvo:
                     conn.execute(_adapt(
                         "INSERT INTO training_achievements (user_id, achievement_key, earned_at) "
                         "VALUES (?,?,datetime('now'))"), (user_id, key))
@@ -7007,7 +7024,13 @@ def evaluate_training_achievements(user_id: int) -> list:
 
 
 def get_training_achievements(user_id: int) -> list:
-    """Catálogo de conquistas de TREINO + flag unlocked (ordem do 'caminho') — pro hub."""
+    """Catálogo de conquistas de TREINO + unlocked + PROGRESSO (ordem do 'caminho') — pro hub.
+
+    O progresso vem junto porque a tela precisa dizer quanto falta numa conquista bloqueada, e
+    calcular isso no cliente exigiria replicar os alvos lá — a segunda cópia que este projeto já
+    pagou caro várias vezes.
+    """
+    state = _training_state(user_id)
     conn = get_conn()
     try:
         earned = {r['achievement_key']: r['earned_at'] for r in conn.execute(
@@ -7015,8 +7038,19 @@ def get_training_achievements(user_id: int) -> list:
             (user_id,)).fetchall()}
     finally:
         conn.close()
-    return [{'key': k, 'unlocked': k in earned, 'earned_at': earned.get(k)}
-            for k, _ in _TRAINING_ACHIEVEMENT_DEFS]
+    saida = []
+    for k, campo, alvo in _TRAINING_ACHIEVEMENT_DEFS:
+        atual, _ = _achievement_progress(state, campo, alvo)
+        unlocked = k in earned
+        saida.append({
+            'key': k, 'unlocked': unlocked, 'earned_at': earned.get(k),
+            # Conquista já ganha mostra o alvo cheio: o critério do domínio usa o pico armazenado,
+            # e o estado do momento pode ter decaído. Mostrar 62 de 70 numa medalha já conquistada
+            # faria a tela contradizer a própria medalha.
+            'progress': alvo if unlocked else atual,
+            'target':   alvo,
+        })
+    return saida
 
 
 # ── Missões diárias de treino (Fase 2) — motor de hábito, eixo de gamificação ──────

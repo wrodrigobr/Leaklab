@@ -34,7 +34,12 @@
     "reviewHint": "Domínio caiu por falta de prática. Revise pra recuperar.",
     "of": "de",
     "medalAria": "{{title}}. Medalha {{tier}}, conquistada.",
-    "medalAriaLocked": "{{title}}. Medalha {{tier}}, ainda bloqueada."
+    "medalAriaLocked": "{{title}}. Medalha {{tier}}, ainda bloqueada.",
+    "unlocked": "Desbloqueada",
+    "locked": "Bloqueada",
+    "progressOf": "{{atual}} de {{alvo}}",
+    "selectHint": "Toque numa medalha para ver o que ela exige.",
+    "missing": "Falta"
   },
   "ghost": {
     "title": "Ghost Table",

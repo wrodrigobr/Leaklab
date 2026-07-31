@@ -29,6 +29,10 @@ import { TIER_COLORS, type MedalTier } from "@/lib/medalTiers";
 export const MEDAL_EMBLEMS = [
   "spade", "heart", "diamond", "club", "chip", "streak",
   "range", "bluff", "shield", "bankroll", "clock", "crown",
+  // Etapas da jornada (Treinar / Jogar / Validar). São emblemas PRÓPRIOS, e não reaproveitamento
+  // dos de conquista: uma etapa não é uma medalha, e usar o mesmo desenho nas duas coisas
+  // recriaria a colisão de vocabulário que a escala de tier já teve.
+  "target", "cards", "seal",
 ] as const;
 export type MedalEmblem = (typeof MEDAL_EMBLEMS)[number];
 
@@ -96,9 +100,49 @@ function Emblem({ emblem, color }: { emblem: MedalEmblem; color: string }) {
       );
     case "crown":
       return <path d="M13.5 31.5 12 16l6.5 5 5.5-8 5.5 8 6.5-5-1.5 15.5Z" fill={color} />;
+    case "target":
+      return (
+        <g {...line}>
+          <circle cx="24" cy="24" r="10.5" />
+          <circle cx="24" cy="24" r="5.2" />
+          <circle cx="24" cy="24" r="1.4" fill={color} stroke="none" />
+        </g>
+      );
+    case "cards":
+      return (
+        <g {...line}>
+          <rect x="14" y="16" width="12" height="17" rx="2.2" transform="rotate(-11 20 24.5)" />
+          <rect x="22" y="15" width="12" height="17" rx="2.2" transform="rotate(9 28 23.5)" />
+        </g>
+      );
+    case "seal":
+      return (
+        <g {...line}>
+          <circle cx="24" cy="21.5" r="8.2" />
+          <path d="m20.6 21.4 2.6 2.6 4.2-4.6" />
+          <path d="M19.6 28.6 18 36l6-2.6L30 36l-1.6-7.4" />
+        </g>
+      );
     default:
       return null;
   }
+}
+
+/**
+ * EmblemIcon — o glifo gravado SEM o disco da medalha.
+ *
+ * Existe para dar consistência de traço a superfícies que não são conquistas (as etapas da
+ * jornada, por exemplo). Herda a cor do texto por padrão, como um ícone comum, então o estado
+ * (ativa, concluída, bloqueada) continua sendo governado por classe CSS e não por prop de cor.
+ */
+export function EmblemIcon({
+  emblem, size = 20, color = "currentColor", className,
+}: { emblem: MedalEmblem; size?: number; color?: string; className?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 48 48" aria-hidden className={cn("shrink-0", className)}>
+      <Emblem emblem={emblem} color={color} />
+    </svg>
+  );
 }
 
 export function AchievementMedal({
@@ -125,11 +169,15 @@ export function AchievementMedal({
       width={size}
       height={size}
       viewBox="0 0 48 48"
-      role="img"
-      aria-label={label}
+      // Sem `<title>` DE PROPÓSITO. Ele vira tooltip nativo e SEQUESTRA o `title` do elemento pai:
+      // a tela passou a mostrar o texto de acessibilidade ("Medalha prata, conquistada") no lugar
+      // da descrição da conquista, e foi assim que o usuário viu. `aria-label` com `role="img"`
+      // basta para leitor de tela, e quem descreve a conquista é o painel de seleção.
+      role={label ? "img" : undefined}
+      aria-label={label || undefined}
+      aria-hidden={label ? undefined : true}
       className={cn("shrink-0", locked && "opacity-40 saturate-[0.15]", className)}
     >
-      <title>{label}</title>
       <defs>
         <linearGradient id={`metal-${uid}`} x1="0" y1="0" x2="0.9" y2="1">
           <stop offset="0%" stopColor={light} />

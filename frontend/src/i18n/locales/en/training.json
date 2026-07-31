@@ -34,7 +34,12 @@
     "reviewHint": "Mastery dropped from lack of practice. Review to recover it.",
     "of": "of",
     "medalAria": "{{title}}. {{tier}} medal, unlocked.",
-    "medalAriaLocked": "{{title}}. {{tier}} medal, still locked."
+    "medalAriaLocked": "{{title}}. {{tier}} medal, still locked.",
+    "unlocked": "Unlocked",
+    "locked": "Locked",
+    "progressOf": "{{atual}} of {{alvo}}",
+    "selectHint": "Tap a medal to see what it takes.",
+    "missing": "Missing"
   },
   "ghost": {
     "title": "Ghost Table",

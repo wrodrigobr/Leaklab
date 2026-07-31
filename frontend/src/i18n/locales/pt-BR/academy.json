@@ -290,35 +290,35 @@
   },
   "trainAch": {
     "train_first": {
-      "title": "Primeiro acerto",
+      "title": "Primeira ficha",
       "desc": "Você acertou seu primeiro spot de treino."
     },
     "train_reps50": {
-      "title": "Aquecido",
+      "title": "Mão quente",
       "desc": "50 spots treinados."
     },
     "train_silver": {
-      "title": "Prata",
+      "title": "Base sólida",
       "desc": "Levou uma habilidade ao nível Prata."
     },
     "train_gold": {
-      "title": "Ouro",
+      "title": "Mão firme",
       "desc": "Levou uma habilidade ao nível Ouro."
     },
     "train_reps200": {
-      "title": "Dedicado",
+      "title": "Grinder",
       "desc": "200 spots treinados."
     },
     "train_explorer": {
-      "title": "Explorador",
+      "title": "Cartógrafo",
       "desc": "Treinou 5 habilidades diferentes."
     },
     "train_gold3": {
-      "title": "Tríade de Ouro",
+      "title": "Tríade de ouro",
       "desc": "3 habilidades no Ouro ou acima."
     },
     "train_diamond": {
-      "title": "Diamante",
+      "title": "Lapidado",
       "desc": "Levou uma habilidade ao nível Diamante."
     },
     "train_streak3": {
@@ -326,11 +326,11 @@
       "desc": "3 dias de treino seguidos."
     },
     "train_streak7": {
-      "title": "Constante",
+      "title": "Sangue frio",
       "desc": "7 dias de treino seguidos."
     },
     "train_reps1000": {
-      "title": "Veterano",
+      "title": "Veterano de mesa",
       "desc": "1000 spots treinados."
     },
     "train_streak30": {

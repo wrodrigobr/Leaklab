@@ -290,52 +290,52 @@
   },
   "trainAch": {
     "train_first": {
-      "title": "First correct",
+      "title": "First chip",
       "desc": "You nailed your first training spot."
     },
     "train_reps50": {
-      "title": "Warmed up",
+      "title": "Hot hand",
       "desc": "50 spots trained."
     },
     "train_silver": {
-      "title": "Silver",
-      "desc": "Took a skill to Silver tier."
+      "title": "Solid base",
+      "desc": "Took a skill to Silver."
     },
     "train_gold": {
-      "title": "Gold",
-      "desc": "Took a skill to Gold tier."
+      "title": "Steady hand",
+      "desc": "Took a skill to Gold."
     },
     "train_reps200": {
-      "title": "Dedicated",
+      "title": "Grinder",
       "desc": "200 spots trained."
     },
     "train_explorer": {
-      "title": "Explorer",
+      "title": "Cartographer",
       "desc": "Trained 5 different skills."
     },
     "train_gold3": {
-      "title": "Gold triad",
+      "title": "Golden triad",
       "desc": "3 skills at Gold or above."
     },
     "train_diamond": {
-      "title": "Diamond",
-      "desc": "Took a skill to Diamond tier."
+      "title": "Polished",
+      "desc": "Took a skill to Diamond."
     },
     "train_streak3": {
-      "title": "Picking up",
-      "desc": "3-day training streak."
+      "title": "Finding rhythm",
+      "desc": "3 days of training in a row."
     },
     "train_streak7": {
-      "title": "Consistent",
-      "desc": "7-day training streak."
+      "title": "Cold blood",
+      "desc": "7 days of training in a row."
     },
     "train_reps1000": {
-      "title": "Veteran",
+      "title": "Table veteran",
       "desc": "1000 spots trained."
     },
     "train_streak30": {
       "title": "Unstoppable",
-      "desc": "30-day training streak."
+      "desc": "30 days of training in a row."
     }
   },
   "feedback": {

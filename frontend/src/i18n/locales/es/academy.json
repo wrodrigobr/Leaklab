@@ -290,52 +290,52 @@
   },
   "trainAch": {
     "train_first": {
-      "title": "Primer acierto",
+      "title": "Primera ficha",
       "desc": "Acertaste tu primer spot de entrenamiento."
     },
     "train_reps50": {
-      "title": "En calor",
+      "title": "Mano caliente",
       "desc": "50 spots entrenados."
     },
     "train_silver": {
-      "title": "Plata",
-      "desc": "Llevaste una habilidad al nivel Plata."
+      "title": "Base sólida",
+      "desc": "Llevó una habilidad al nivel Plata."
     },
     "train_gold": {
-      "title": "Oro",
-      "desc": "Llevaste una habilidad al nivel Oro."
+      "title": "Mano firme",
+      "desc": "Llevó una habilidad al nivel Oro."
     },
     "train_reps200": {
-      "title": "Dedicado",
+      "title": "Grinder",
       "desc": "200 spots entrenados."
     },
     "train_explorer": {
-      "title": "Explorador",
-      "desc": "Entrenaste 5 habilidades distintas."
+      "title": "Cartógrafo",
+      "desc": "Entrenó 5 habilidades diferentes."
     },
     "train_gold3": {
-      "title": "Tríada de Oro",
-      "desc": "3 habilidades en Oro o más."
+      "title": "Tríada de oro",
+      "desc": "3 habilidades en Oro o superior."
     },
     "train_diamond": {
-      "title": "Diamante",
-      "desc": "Llevaste una habilidad al nivel Diamante."
+      "title": "Pulido",
+      "desc": "Llevó una habilidad al nivel Diamante."
     },
     "train_streak3": {
       "title": "Tomando ritmo",
-      "desc": "Racha de 3 días entrenando."
+      "desc": "3 días de entrenamiento seguidos."
     },
     "train_streak7": {
-      "title": "Constante",
-      "desc": "Racha de 7 días entrenando."
+      "title": "Sangre fría",
+      "desc": "7 días de entrenamiento seguidos."
     },
     "train_reps1000": {
-      "title": "Veterano",
+      "title": "Veterano de mesa",
       "desc": "1000 spots entrenados."
     },
     "train_streak30": {
       "title": "Imparable",
-      "desc": "Racha de 30 días entrenando."
+      "desc": "30 días de entrenamiento seguidos."
     }
   },
   "feedback": {

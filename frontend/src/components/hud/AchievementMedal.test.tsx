@@ -72,7 +72,6 @@ describe("AchievementMedal — acessibilidade", () => {
     const svg = container.querySelector("svg")!;
     expect(svg.getAttribute("role")).toBe("img");
     expect(svg.getAttribute("aria-label")).toContain("bloqueada");
-    expect(svg.querySelector("title")?.textContent).toContain("bloqueada");
   });
 
   it("o componente NÃO monta frase — o texto vem pronto do chamador", () => {
@@ -81,6 +80,24 @@ describe("AchievementMedal — acessibilidade", () => {
       <AchievementMedal tier="bronze" emblem="spade" label="TEXTO EXATO" />,
     );
     expect(container.querySelector("svg")!.getAttribute("aria-label")).toBe("TEXTO EXATO");
+  });
+});
+
+describe("AchievementMedal — o tooltip não pode ser sequestrado", () => {
+  it("não emite <title>, que viraria tooltip nativo por cima do pai", () => {
+    // Regressão real, vista pelo usuário: com `<title>` dentro do SVG, passar o mouse na medalha
+    // mostrava o texto de ACESSIBILIDADE ("Constante. Medalha prata, conquistada") em vez da
+    // descrição da conquista, porque o `<title>` do SVG vence o `title` do elemento pai.
+    const { container } = render(<AchievementMedal tier="silver" emblem="clock" label="qualquer" />);
+    expect(container.querySelector("svg title")).toBeNull();
+  });
+
+  it("medalha decorativa (sem label) sai escondida do leitor de tela", () => {
+    // No painel de detalhe o texto ao lado já diz tudo; anunciar a medalha de novo seria repetição.
+    const { container } = render(<AchievementMedal tier="gold" emblem="club" label="" />);
+    const svg = container.querySelector("svg")!;
+    expect(svg.getAttribute("aria-hidden")).toBe("true");
+    expect(svg.getAttribute("aria-label")).toBeNull();
   });
 });
 

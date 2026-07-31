@@ -1537,6 +1537,10 @@ export interface TrainingAchievement {
   key: string;                 // título/descrição vêm do i18n (trainAch.<key>.*)
   unlocked: boolean;
   earned_at: string | null;
+  // Progresso rumo ao critério. Vem do BACKEND porque os alvos moram lá
+  // (_TRAINING_ACHIEVEMENT_DEFS); replicá-los aqui seria a segunda cópia.
+  progress?: number;
+  target?: number;
 }
 export interface TrainingMission {
   key: string;        // título no i18n (training:missions.<key>, com {{target}})

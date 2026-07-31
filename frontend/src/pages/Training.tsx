@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
@@ -8,19 +9,18 @@ import { DailyChallengeCard } from "@/components/training/DailyChallengeCard";
 import { MasteryGate } from "@/components/training/MasteryGate";
 import { useSpotLabel } from "@/lib/spotLabel";
 import { cn } from "@/lib/utils";
-import { AchievementMedal } from "@/components/hud/AchievementMedal";
+import { AchievementMedal, EmblemIcon } from "@/components/hud/AchievementMedal";
 import { ACHIEVEMENT_MEDALS } from "@/lib/achievementMedals";
+import { TIER_COLORS, type MedalTier } from "@/lib/medalTiers";
 
 
-const TIER: Record<string, { label: string; ring: string; text: string }> = {
-  bronze:  { label: "Bronze",   ring: "#b08d57", text: "text-[#d9a86a]" },
-  silver:  { label: "Prata",    ring: "#c8d0d8", text: "text-slate-200" },
-  gold:    { label: "Ouro",     ring: "#f5c542", text: "text-amber-300" },
-  diamond: { label: "Diamante", ring: "#5ad1ff", text: "text-cyan-300" },
-};
+// A escala de tier é UMA só (lib/medalTiers): as mesmas cores que as medalhas usam. Este mapa
+// local tinha um segundo jogo de cores e os rótulos em PT fixo — duas escalas homônimas na mesma
+// tela, e uma delas sem i18n.
 
 export default function Training() {
   const { t } = useTranslation("training");
+  const [selecionada, setSelecionada] = useState<string | null>(null);
   const { t: ta } = useTranslation("academy");
   const { data: overview } = useQuery({ queryKey: ["training-overview"], queryFn: training.overview });
   const { data: proofData } = useQuery({ queryKey: ["training-proof"], queryFn: training.proof });
@@ -61,12 +61,14 @@ export default function Training() {
   // A JORNADA = os 3 estados do protocolo, aplicados ao leak em foco. Sequencial de verdade:
   // dominar no treino libera o próximo leak, comprovar exige o jogo real.
   const estadoFoco = foco?.estado ?? (dominadas.length ? "dominado_no_treino" : null);
+  // Emblemas gravados, o mesmo traço das medalhas. Etapa NÃO é medalha, então vai o glifo sem o
+  // disco (`EmblemIcon`): consistência de desenho sem confundir os dois vocabulários.
   const JOURNEY = [
-    { key: "train", icon: Dumbbell,
+    { key: "train", emblem: "target" as const,
       status: estadoFoco === "em_treino" ? "active" : estadoFoco ? "done" : "active" },
-    { key: "apply", icon: Play,
+    { key: "apply", emblem: "cards" as const,
       status: dominadas.length ? (proof.length ? "done" : "active") : "locked" },
-    { key: "prove", icon: TrendingUp,
+    { key: "prove", emblem: "seal" as const,
       status: provados.length ? "done" : dominadas.length && proof.length ? "active" : "locked" },
   ] as const;
 
@@ -136,7 +138,7 @@ export default function Training() {
               <MapIcon className="size-4 text-primary" aria-hidden /> {t("journey.title")}
             </h2>
             <div className="grid grid-cols-3 gap-2">
-              {JOURNEY.map(({ key, icon: Icon, status }, i) => {
+              {JOURNEY.map(({ key, emblem, status }, i) => {
                 const done = status === "done", active = status === "active";
                 const locked = status === "locked", soon = status === "soon";
                 return (
@@ -148,7 +150,7 @@ export default function Training() {
                       : "bg-muted/5 opacity-60 ring-border")}>
                       <Info className="absolute right-1.5 top-1.5 size-3 text-muted-foreground/40" aria-hidden />
                       <div className="relative">
-                        <Icon className={cn("size-6", active ? "text-primary" : done ? "text-emerald-400" : "text-muted-foreground")} aria-hidden />
+                        <EmblemIcon emblem={emblem} size={26} className={cn(active ? "text-primary" : done ? "text-emerald-400" : "text-muted-foreground")} />
                         {done && <CheckCircle2 className="absolute -right-1.5 -top-1.5 size-3.5 text-emerald-400" aria-hidden />}
                         {(locked || soon) && <Lock className="absolute -right-1.5 -top-1.5 size-3 text-muted-foreground" aria-hidden />}
                       </div>
@@ -346,17 +348,19 @@ export default function Training() {
 
             {/* Medalhas por tier — visão gamificada da evolução */}
             <div className="grid grid-cols-4 gap-2">
-              {tierCounts.map(({ tier, count }) => {
-                const tm = TIER[tier];
-                return (
-                  <div key={tier} className={cn("flex flex-col items-center gap-0.5 rounded-xl py-2 ring-1",
-                    count > 0 ? "bg-card/60 ring-border" : "bg-muted/5 opacity-50 ring-border")}>
-                    <Trophy className="size-5" style={{ color: tm.ring }} aria-hidden />
-                    <span className="font-mono text-base font-bold tabular-nums text-foreground">{count}</span>
-                    <span className={cn("font-mono text-[9px] uppercase tracking-wider", tm.text)}>{tm.label}</span>
-                  </div>
-                );
-              })}
+              {tierCounts.map(({ tier, count }) => (
+                <div key={tier} className={cn("flex flex-col items-center gap-1 rounded-xl py-2.5 ring-1",
+                  count > 0 ? "bg-card/60 ring-border" : "bg-muted/5 opacity-50 ring-border")}>
+                  {/* Medalha, não troféu: é a MESMA linguagem das conquistas, e o contador de
+                      habilidades num tier é o mesmo conceito de nível. Emblema fixo (`chip`) para
+                      que a única diferença entre os quatro seja a COR, que é o que o contador diz. */}
+                  <AchievementMedal tier={tier as MedalTier} emblem="chip" size={30}
+                                    label={t(`tiers.${tier}`)} />
+                  <span className="font-mono text-base font-bold tabular-nums text-foreground">{count}</span>
+                  <span className="font-mono text-[9px] uppercase tracking-wider"
+                        style={{ color: TIER_COLORS[tier as MedalTier]?.light }}>{t(`tiers.${tier}`)}</span>
+                </div>
+              ))}
             </div>
 
             {/* Domínio por habilidade — onde o jogador está */}
@@ -367,15 +371,15 @@ export default function Training() {
               ) : (
                 <div className="space-y-2">
                   {overview.skills.slice(0, 6).map((s) => {
-                    const tm = TIER[s.tier] ?? TIER.bronze;
+                    const cor = (TIER_COLORS[s.tier as MedalTier] ?? TIER_COLORS.bronze).light;
                     return (
                       <div key={s.category_key} className="flex items-center gap-3">
                         <span className="w-40 shrink-0 truncate text-[11px] leading-tight text-foreground sm:w-52">{skillLabel(s.category_key)}</span>
                         <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-muted/30">
-                          <div className="h-full rounded-full transition-[width] duration-500" style={{ width: `${Math.round(s.mastery)}%`, backgroundColor: tm.ring }} />
+                          <div className="h-full rounded-full transition-[width] duration-500" style={{ width: `${Math.round(s.mastery)}%`, backgroundColor: cor }} />
                         </div>
                         {s.stale && <RotateCw className="size-3 shrink-0 text-amber-400/80" title={t("status.reviewHint")} aria-hidden />}
-                        <span className={cn("w-16 shrink-0 text-right font-mono text-[10px] font-bold uppercase", tm.text)}>{tm.label}</span>
+                        <span className="w-16 shrink-0 text-right font-mono text-[10px] font-bold uppercase" style={{ color: cor }}>{t(`tiers.${s.tier}`)}</span>
                       </div>
                     );
                   })}
@@ -391,28 +395,91 @@ export default function Training() {
                 <span className="font-mono text-[10px] text-muted-foreground">{unlockedCount} {t("status.of")} {overview.achievements.length}</span>
               </div>
               <p className="mb-3 text-[11px] leading-snug text-muted-foreground">{t("status.achievementsHint")}</p>
-              <div className="flex flex-wrap gap-3">
+              <div className="flex flex-wrap gap-3" role="list">
                 {overview.achievements.map((a) => {
                   // Medalha por conquista, do mapa ÚNICO. Sem fallback silencioso: uma conquista
-                  // fora do mapa vira bronze genérico e fica indistinguível de uma que É bronze —
-                  // `achievementMedals.test.ts` exige cobertura das 12.
+                  // fora do mapa viraria bronze genérico, indistinguível de uma que É bronze.
                   const medal = ACHIEVEMENT_MEDALS[a.key];
                   if (!medal) return null;
-                  const titulo = ta(`trainAch.${achKey(a.key)}.title`);
-                  const desc   = ta(`trainAch.${achKey(a.key)}.desc`);
-                  const tierNome = t(`tiers.${medal.tier}`);
+                  const sel = selecionada === a.key;
                   return (
-                    <div key={a.key} title={`${titulo} · ${desc}`}
-                         className="cursor-default transition-transform duration-200 hover:scale-110">
+                    <button key={a.key} type="button" role="listitem"
+                      onClick={() => setSelecionada(sel ? null : a.key)}
+                      aria-pressed={sel}
+                      className={cn("rounded-xl p-1 transition-transform duration-200 hover:scale-110",
+                                    sel && "scale-110 ring-1 ring-primary/60")}>
                       <AchievementMedal
                         tier={medal.tier} emblem={medal.emblem} locked={!a.unlocked} size={52}
-                        label={t(a.unlocked ? "status.medalAria" : "status.medalAriaLocked",
-                                 { title: titulo, tier: tierNome })}
+                        label={t(a.unlocked ? "status.medalAria" : "status.medalAriaLocked", {
+                          title: ta(`trainAch.${achKey(a.key)}.title`),
+                          tier: t(`tiers.${medal.tier}`),
+                        })}
                       />
-                    </div>
+                    </button>
                   );
                 })}
               </div>
+
+              {/* Painel da medalha selecionada.
+                  Por que painel e não tooltip: tooltip nativo não existe no toque, e o que o
+                  usuário pediu é justamente saber O QUE FALTA — informação que precisa caber com
+                  barra e número, não numa linha de hover. O `<title>` que eu tinha posto dentro do
+                  SVG ainda por cima SEQUESTRAVA o tooltip do pai e mostrava o texto de
+                  acessibilidade ("Medalha prata, conquistada") no lugar da descrição. */}
+              {(() => {
+                const a = overview.achievements.find((x) => x.key === selecionada);
+                const medal = a ? ACHIEVEMENT_MEDALS[a.key] : null;
+                if (!a || !medal) {
+                  return (
+                    <p className="mt-3 text-[11px] italic text-muted-foreground">{t("status.selectHint")}</p>
+                  );
+                }
+                const alvo  = a.target ?? 0;
+                const atual = a.progress ?? 0;
+                const pct   = alvo > 0 ? Math.min(100, Math.round((atual / alvo) * 100)) : 0;
+                const cor   = TIER_COLORS[medal.tier].light;
+                return (
+                  <div className="mt-3 flex items-start gap-3 rounded-xl bg-card/60 p-3 ring-1 ring-border">
+                    <AchievementMedal tier={medal.tier} emblem={medal.emblem} locked={!a.unlocked}
+                                      size={44} label="" className="mt-0.5" />
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-baseline gap-x-2">
+                        <span className="text-sm font-medium text-foreground">
+                          {ta(`trainAch.${achKey(a.key)}.title`)}
+                        </span>
+                        <span className="font-mono text-[9px] uppercase tracking-wider" style={{ color: cor }}>
+                          {t(`tiers.${medal.tier}`)}
+                        </span>
+                      </div>
+                      <p className="mt-0.5 text-[12px] leading-snug text-muted-foreground">
+                        {ta(`trainAch.${achKey(a.key)}.desc`)}
+                      </p>
+                      {a.unlocked ? (
+                        <p className="mt-1.5 font-mono text-[10px] uppercase tracking-widest" style={{ color: cor }}>
+                          {t("status.unlocked")}
+                        </p>
+                      ) : alvo > 0 ? (
+                        <div className="mt-2">
+                          <div className="mb-1 flex items-center justify-between font-mono text-[10px]">
+                            <span className="uppercase tracking-widest text-muted-foreground">{t("status.locked")}</span>
+                            <span className="tabular-nums text-foreground">
+                              {t("status.progressOf", { atual, alvo })}
+                            </span>
+                          </div>
+                          <div className="h-1.5 overflow-hidden rounded-full bg-muted/30">
+                            <div className="h-full rounded-full transition-[width] duration-500"
+                                 style={{ width: `${pct}%`, backgroundColor: cor }} />
+                          </div>
+                        </div>
+                      ) : (
+                        <p className="mt-1.5 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+                          {t("status.locked")}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
           </div>
         )}
