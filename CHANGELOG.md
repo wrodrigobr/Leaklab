@@ -7,6 +7,37 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(onboarding): o modal de primeiro acesso nunca chegou ao DOM (#onboarding)
+
+> **A causa nao era a que estava no diagnostico anterior.** A hipotese registrada era o inicializador
+> congelado do `useState`. Fui olhar: o guarda de rota so monta o dashboard com o `user` ja carregado,
+> entao o inicializador acertava — `showOnboarding` era `true`. O modal simplesmente **nao era
+> renderizado**.
+>
+> `Index.tsx` tem dois `return`: o do `DashboardV2` e o do dashboard classico. `dashV2` e fixo em
+> `true` (o classico e codigo latente, por decisao de produto), e `{showOnboarding && <OnboardingModal
+> />}` vivia **so no return do classico**. Desde que o V2 virou padrao, todo jogador novo caiu num
+> dashboard vazio sem uma palavra de orientacao. Estado certo, caminho de renderizacao morto.
+>
+> Os modais globais sairam de dentro dos dois `return` e viraram um `modaisGlobais` unico, renderizado
+> nos dois ramos. Quem adicionar modal novo poe ali.
+>
+> **O inicializador mudou mesmo assim, na direcao contraria da hipotese antiga.** Ele era
+> `!user?.onboarding_completed`, que com `user` ainda nulo da `true` — abriria o onboarding para um
+> perfil que nem chegou. Agora comeca em `false` e quem decide e um efeito que depende do BOOLEANO,
+> nao do objeto: um `refreshUser` que devolva o mesmo estado nao reabre o modal que o jogador acabou
+> de fechar.
+>
+> O teste monta a pagina INTEIRA e olha o DOM, e nao o estado: um teste de `showOnboarding` teria
+> passado com o bug no ar. Tres casos (novo, ja completou, `user` chegando depois da primeira
+> renderizacao), os dois guardas verificados quebrando — sem o modal no ramo V2 caem 2 de 3; sem o
+> efeito cai o caso do `user` tardio. Verde: 189 testes no frontend, tsc limpo em `Index`.
+> Conferido no app rodando com usuario recem-cadastrado: modal abre, "Pular" fecha e o reload
+> nao reabre.
+>
+> **Fica registrado:** o banner "vincular coach" tem o mesmo defeito. O `setShowLinkCoach(true)` so
+> existe dentro do return classico, entao ele e inalcancavel no V2. Nao mexi — e outro escopo.
+
 ### feat(treino): catalogo de perguntas de range, e o ciclo da jornada volta a reiniciar (#treino)
 
 > **Duas coisas reportadas pelo usuario.**

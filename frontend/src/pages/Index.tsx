@@ -50,8 +50,20 @@ const Index = () => {
   // Insights avançados de IA são exclusivos do Pro (espelha o gate do backend). Free vê lock.
   const isFree = (user?.plan || "free") === "free";
   const [showLinkCoach, setShowLinkCoach]   = useState(false);
-  const [showOnboarding, setShowOnboarding] = useState(() => !user?.onboarding_completed);
+  const [showOnboarding, setShowOnboarding] = useState(false);
   const [showSupport, setShowSupport]       = useState(false);
+
+  // Quem decide o modal de primeiro acesso é o efeito, não o inicializador do useState: o
+  // inicializador congela o valor da PRIMEIRA renderização, e `!user?.onboarding_completed`
+  // com `user` ainda nulo dá `true` — abriria o onboarding para um perfil que ainda não
+  // chegou. Começar em `false` erra para o lado de não mostrar nada até saber quem é.
+  // O efeito depende do BOOLEANO (não do objeto): um refreshUser que devolva o mesmo estado
+  // não reabre o modal que o jogador acabou de fechar. `null` = ainda não sei, não decide.
+  const onboardingDone = user ? !!user.onboarding_completed : null;
+  useEffect(() => {
+    if (onboardingDone === null) return;
+    setShowOnboarding(!onboardingDone);
+  }, [onboardingDone]);
 
   const { data: supportCount } = useQuery({
     queryKey: ["admin-support-count"],
@@ -266,8 +278,21 @@ const Index = () => {
     }
   };
 
+  // Modais globais do dashboard: ficam FORA do ramo V2/clássico.
+  // `dashV2` é fixo em true (o clássico é código latente), e os modais viviam só no return do
+  // clássico — o do primeiro acesso nunca chegou ao DOM desde que o V2 virou padrão. Quem
+  // renderizar um modal novo põe AQUI, não dentro de um dos dois returns.
+  const modaisGlobais = (
+    <>
+      {showLinkCoach   && <AcceptCoachModal  onClose={() => setShowLinkCoach(false)} />}
+      {showOnboarding  && <OnboardingModal   onClose={() => setShowOnboarding(false)} />}
+    </>
+  );
+
   if (dashV2) {
     return (
+      <>
+      {modaisGlobais}
       <DashboardV2
         onUpload={handleUpload}
         evSummary={evSummary ?? null}
@@ -291,6 +316,7 @@ const Index = () => {
           leakGraph?.narrative     && { key: "causal",    title: t("v2.aiCausal"),    text: leakGraph.narrative },
         ].filter(Boolean) as { key: string; title: string; text: string }[]}
       />
+      </>
     );
   }
 
@@ -298,8 +324,7 @@ const Index = () => {
     <div className="min-h-dvh bg-background hud-scanline">
       <HudHeader onUpload={handleUpload} />
 
-      {showLinkCoach   && <AcceptCoachModal  onClose={() => setShowLinkCoach(false)} />}
-      {showOnboarding  && <OnboardingModal   onClose={() => setShowOnboarding(false)} />}
+      {modaisGlobais}
 
       <main className="mx-auto max-w-[1440px] space-y-8 px-4 pt-8 pb-28 md:px-8 md:pb-8 animate-fade-in">
         {user?.role === "player" && !user?.coach_id && (
