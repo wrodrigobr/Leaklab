@@ -258,6 +258,22 @@ export default function Training() {
           const reabertos = verdicts.filter((v) => v === "piorou").length;
           const emValidacao = verdicts.filter((v) => v === "sem_mudanca").length;
           const semAmostra  = proof.length - provados - reabertos - emValidacao;
+          // NOMEAR os leaks, e nao so conta-los. O usuario reportou: "aqui so falamos que ele
+          // provou algo em jogo, mas nao falamos qual foi o leak". Um placar sem nome nao vira
+          // memoria nem orgulho, e no caso da regressao nao vira acao.
+          //
+          // O rotulo sai de `familia` (sem profundidade), NUNCA de `category_key`: a chave de
+          // treino carrega o stack e a medicao o ignora, entao rotular por ela afirmaria uma
+          // precisao inexistente ("Abertura de UTG+1 · 50bb" para um numero de todas as
+          // profundidades) e duplicaria a mesma familia ate seis vezes. Mesma regra que a pagina
+          // de evolucao ja usa.
+          const nomes = (v: string) => proof
+            .filter((p) => p.validacao?.veredito === v)
+            .map((p) => spotLabel(p.familia ?? p.category_key,
+                                  { stack: false, fallback: p.category_key }))
+            .filter((x, i, arr) => x && arr.indexOf(x) === i);
+          const nomesProvados  = nomes("melhorou");
+          const nomesReabertos = nomes("piorou");
           return (
             <div className="rounded-2xl border border-border bg-card/40 p-5">
               <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
@@ -273,9 +289,16 @@ export default function Training() {
               {reabertos > 0 && (
                 <div className="mb-3 flex items-start gap-2 rounded-xl bg-red-500/10 p-3 ring-1 ring-red-500/30">
                   <TrendingDown className="mt-0.5 size-4 shrink-0 text-red-400" aria-hidden />
-                  <p className="text-[12px] leading-snug text-foreground">
-                    {t("proof.reopened", { count: reabertos })}
-                  </p>
+                  <div className="min-w-0">
+                    <p className="text-[12px] leading-snug text-foreground">
+                      {t("proof.reopened", { count: reabertos })}
+                    </p>
+                    {nomesReabertos.length > 0 && (
+                      <p className="mt-0.5 text-[12px] font-medium leading-snug text-red-300">
+                        {nomesReabertos.join(" · ")}
+                      </p>
+                    )}
+                  </div>
                 </div>
               )}
 
@@ -294,6 +317,36 @@ export default function Training() {
                   </div>
                 ))}
               </div>
+              {nomesProvados.length > 0 && (
+                <div className="mt-3 rounded-xl bg-emerald-500/[0.07] p-3 ring-1 ring-emerald-500/25">
+                  <p className="font-mono text-[10px] uppercase tracking-widest text-emerald-400">
+                    {t("proof.provedTitle", { count: nomesProvados.length })}
+                  </p>
+                  <ul className="mt-1.5 space-y-1">
+                    {proof
+                      .filter((p) => p.validacao?.veredito === "melhorou")
+                      .map((p) => (
+                        <li key={p.category_key} className="flex flex-wrap items-baseline gap-x-2 text-[12px]">
+                          <span className="font-medium text-foreground">
+                            {spotLabel(p.familia ?? p.category_key,
+                                       { stack: false, fallback: p.category_key })}
+                          </span>
+                          {/* O numero ao lado do nome: sem ele o aluno le "provado" e nao sabe o
+                              que melhorou nem quanto. Vem da validacao (taxa de erro com intervalo),
+                              nao do `delta` cru, que nao tem intervalo de confianca. */}
+                          {p.validacao && (
+                            <span className="font-mono tabular-nums text-muted-foreground">
+                              {t("proof.fromTo", {
+                                antes: p.validacao.taxa_antes_ajustada ?? p.validacao.taxa_antes,
+                                depois: p.validacao.taxa_depois,
+                              })}
+                            </span>
+                          )}
+                        </li>
+                      ))}
+                  </ul>
+                </div>
+              )}
               <p className="mt-3 text-[10px] leading-snug text-muted-foreground">{t("proof.disclaimer")}</p>
             </div>
           );

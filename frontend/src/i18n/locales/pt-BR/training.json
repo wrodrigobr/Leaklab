@@ -143,7 +143,9 @@
       "reopened": "Reabertos",
       "validating": "Em validação",
       "noSample": "Sem amostra ainda"
-    }
+    },
+    "provedTitle": "Comprovado no jogo ({{count}})",
+    "fromTo": "erro {{antes}}% → {{depois}}%"
   },
   "challenge": {
     "title": "Desafio do Dia",

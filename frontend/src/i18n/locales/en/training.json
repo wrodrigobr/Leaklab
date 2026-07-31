@@ -143,7 +143,9 @@
       "reopened": "Reopened",
       "validating": "Validating",
       "noSample": "No sample yet"
-    }
+    },
+    "provedTitle": "Proven in play ({{count}})",
+    "fromTo": "error {{antes}}% → {{depois}}%"
   },
   "challenge": {
     "title": "Daily Challenge",
