@@ -1068,7 +1068,14 @@ def evaluate_decision(input_data: Dict[str, Any]) -> Dict[str, Any]:
         _bb_chips = float(input_data.get('context', {}).get('levelBb') or 0)
         _facing_bb = (_facing_chips / _bb_chips) if _bb_chips > 0 else 0.0
     _hero_stack_bb = float(spot.get('effectiveStackBb') or input_data.get('context', {}).get('heroStackBb') or 0)
-    if (_best_action in ('raise', 'jam') and _facing_bb > 0 and _hero_stack_bb > 0
+    # Dispara em DOIS casos, e o segundo foi o da mao reportada:
+    #   · o melhor lance era raise/jam e ele e impossivel (o facing cobre o stack), ou
+    #   · nao ha cobertura GTO nenhuma. Ai o unico "melhor lance" disponivel vem da heuristica, que
+    #     no preflop nao computa equity-vs-range: ela recomendou FOLD com AK e 8,6bb contra 37,5bb.
+    #     Sem base, o produto nao acusa — a mesma regra que vale no resto dele.
+    _sem_gabarito = not preflop_gto.get('available')
+    if ((_best_action in ('raise', 'jam') or _sem_gabarito)
+            and _facing_bb > 0 and _hero_stack_bb > 0
             and _facing_bb >= _hero_stack_bb * 0.95):
         _eq  = math.get('estimatedHandEquity')
         _req = threshold_pack.get('adjustedRequiredEquity')
