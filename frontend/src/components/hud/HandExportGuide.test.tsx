@@ -38,6 +38,19 @@ describe("guia de exportação — o caminho do PokerStars", () => {
   });
 });
 
+describe("o modal de boas-vindas também pede os dois arquivos", () => {
+  it("o passo de upload cita o resumo, e não só as mãos", () => {
+    // Mesmo gap, em segundo lugar: o guia por sala passou a pedir o resumo, mas o modal que o
+    // usuário vê PRIMEIRO continuava falando de um arquivo só. Quem segue o modal e não abre o
+    // guia sobe metade do necessário e perde colocação, prêmio, ROI e mesa final.
+    for (const loc of LOCALES) {
+      const j = JSON.parse(readFileSync(`src/i18n/locales/${loc}/onboarding.json`, "utf-8"));
+      const d = (j.steps.upload.desc as string).toLowerCase();
+      expect(d, `${loc}: modal nao cita o resumo`).toMatch(/resumo|summary|resumen/);
+    }
+  });
+});
+
 describe("guia de exportação — o resumo do torneio", () => {
   it("todo site pede o resumo, não só a ACR", () => {
     for (const loc of LOCALES) {

@@ -11,8 +11,8 @@
     },
     "upload": {
       "title": "Importa tu hand history",
-      "desc": "Exporta un archivo .txt de PokerStars, GGPoker, ACR o CoinPoker e impórtalo aquí. El sistema analiza automáticamente cada decisión, equity, posición, ICM, y genera un informe completo de tu sesión.",
-      "hint": "¿No sabes dónde está el archivo? Mira la guía de exportación por sala."
+      "desc": "Exporta de PokerStars, GGPoker, ACR o CoinPoker DOS archivos: el historial de manos y el resumen del torneo. El historial trae cada decision; el resumen trae colocacion, premio, ROI y el numero de inscritos, y es lo que permite detectar la mesa final. Puedes soltar los dos a la vez.",
+      "hint": "No sabes donde estan los archivos? Consulta la guia de exportacion por sala."
     },
     "train": {
       "title": "Entrénate con Ghost Table & Sparring",
