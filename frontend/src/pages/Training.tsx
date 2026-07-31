@@ -1,31 +1,16 @@
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowRight, CheckCircle2, Dumbbell, GraduationCap, RotateCw, Target, Award, Flame, Star, Trophy, Lock, Map as MapIcon, Play, TrendingUp, TrendingDown, Sparkles, Medal, Gem, Compass, Crown, Info, Repeat, Zap, Rocket, type LucideIcon } from "lucide-react";
+import { ArrowRight, CheckCircle2, Dumbbell, GraduationCap, RotateCw, Target, Award, Flame, Star, Trophy, Lock, Map as MapIcon, Play, TrendingUp, TrendingDown, Sparkles, Info } from "lucide-react";
 import { HudLayout } from "@/components/hud/HudLayout";
 import { training, progression } from "@/lib/api";
 import { DailyChallengeCard } from "@/components/training/DailyChallengeCard";
 import { MasteryGate } from "@/components/training/MasteryGate";
 import { useSpotLabel } from "@/lib/spotLabel";
 import { cn } from "@/lib/utils";
+import { AchievementMedal } from "@/components/hud/AchievementMedal";
+import { ACHIEVEMENT_MEDALS } from "@/lib/achievementMedals";
 
-// Cada conquista tem um ÍCONE próprio (não um número) — pra ler como medalha, não como passo de
-// uma sequência. Agrupado por natureza: volume=halteres, tier=medalha/troféu/gema, streak=chama.
-// Ícone ÚNICO por conquista (nada repetido) — pra ler como uma coleção de medalhas distintas.
-const ACH_ICON: Record<string, LucideIcon> = {
-  "train:first":    Sparkles,   // primeiro acerto
-  "train:reps50":   Dumbbell,   // volume
-  "train:reps200":  Repeat,     // mais volume
-  "train:reps1000": Crown,      // volume máximo
-  "train:silver":   Medal,      // tier prata
-  "train:gold":     Trophy,     // tier ouro
-  "train:gold3":    Award,      // 3 habilidades no ouro
-  "train:diamond":  Gem,        // tier diamante
-  "train:explorer": Compass,    // explorar categorias
-  "train:streak3":  Flame,      // streak 3
-  "train:streak7":  Zap,        // streak 7
-  "train:streak30": Rocket,     // streak 30
-};
 
 const TIER: Record<string, { label: string; ring: string; text: string }> = {
   bronze:  { label: "Bronze",   ring: "#b08d57", text: "text-[#d9a86a]" },
@@ -406,22 +391,24 @@ export default function Training() {
                 <span className="font-mono text-[10px] text-muted-foreground">{unlockedCount} {t("status.of")} {overview.achievements.length}</span>
               </div>
               <p className="mb-3 text-[11px] leading-snug text-muted-foreground">{t("status.achievementsHint")}</p>
-              <div className="flex flex-wrap gap-2.5">
+              <div className="flex flex-wrap gap-3">
                 {overview.achievements.map((a) => {
-                  const Icon = ACH_ICON[a.key] ?? Award;
+                  // Medalha por conquista, do mapa ÚNICO. Sem fallback silencioso: uma conquista
+                  // fora do mapa vira bronze genérico e fica indistinguível de uma que É bronze —
+                  // `achievementMedals.test.ts` exige cobertura das 12.
+                  const medal = ACHIEVEMENT_MEDALS[a.key];
+                  if (!medal) return null;
+                  const titulo = ta(`trainAch.${achKey(a.key)}.title`);
+                  const desc   = ta(`trainAch.${achKey(a.key)}.desc`);
+                  const tierNome = t(`tiers.${medal.tier}`);
                   return (
-                    <div key={a.key}
-                      title={`${ta(`trainAch.${achKey(a.key)}.title`)} · ${ta(`trainAch.${achKey(a.key)}.desc`)}`}
-                      className={cn("relative flex size-11 cursor-default items-center justify-center rounded-xl ring-1 transition-transform hover:scale-110",
-                        a.unlocked
-                          ? "bg-primary/15 ring-primary/40 shadow-[0_0_14px_-3px] shadow-primary/50"
-                          : "bg-muted/10 ring-border")}>
-                      <Icon className={cn("size-5", a.unlocked ? "text-primary" : "text-muted-foreground/40")} aria-hidden />
-                      {!a.unlocked && (
-                        <span className="absolute -bottom-1 -right-1 flex size-4 items-center justify-center rounded-full bg-background ring-1 ring-border">
-                          <Lock className="size-2.5 text-muted-foreground" aria-hidden />
-                        </span>
-                      )}
+                    <div key={a.key} title={`${titulo} · ${desc}`}
+                         className="cursor-default transition-transform duration-200 hover:scale-110">
+                      <AchievementMedal
+                        tier={medal.tier} emblem={medal.emblem} locked={!a.unlocked} size={52}
+                        label={t(a.unlocked ? "status.medalAria" : "status.medalAriaLocked",
+                                 { title: titulo, tier: tierNome })}
+                      />
                     </div>
                   );
                 })}

@@ -32,7 +32,9 @@
     "achievements": "Conquistas",
     "achievementsHint": "Medalhas que você ganha treinando, em qualquer ordem, não é uma sequência.",
     "reviewHint": "Domínio caiu por falta de prática. Revise pra recuperar.",
-    "of": "de"
+    "of": "de",
+    "medalAria": "{{title}}. Medalha {{tier}}, conquistada.",
+    "medalAriaLocked": "{{title}}. Medalha {{tier}}, ainda bloqueada."
   },
   "ghost": {
     "title": "Ghost Table",
@@ -169,5 +171,11 @@
       "mixed": "Aceitável (o GTO mistura aqui)",
       "error": "Não foi a melhor"
     }
+  },
+  "tiers": {
+    "bronze": "Bronze",
+    "silver": "Prata",
+    "gold": "Ouro",
+    "diamond": "Diamante"
   }
 }

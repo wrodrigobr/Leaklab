@@ -32,7 +32,9 @@
     "achievements": "Achievements",
     "achievementsHint": "Medals you earn by training, in any order, not a sequence.",
     "reviewHint": "Mastery dropped from lack of practice. Review to recover it.",
-    "of": "of"
+    "of": "of",
+    "medalAria": "{{title}}. {{tier}} medal, unlocked.",
+    "medalAriaLocked": "{{title}}. {{tier}} medal, still locked."
   },
   "ghost": {
     "title": "Ghost Table",
@@ -169,5 +171,11 @@
       "mixed": "Acceptable (GTO mixes here)",
       "error": "Not the best"
     }
+  },
+  "tiers": {
+    "bronze": "Bronze",
+    "silver": "Silver",
+    "gold": "Gold",
+    "diamond": "Diamond"
   }
 }

@@ -7,6 +7,23 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(treino): medalhas de conquista, e o bug da referencia que nao foi copiado (#gamificacao)
+
+> As conquistas de treino eram 12 icones lucide, todos na MESMA cor primaria, dentro de quadrados iguais. Liam como uma lista de itens, nao como uma colecao de medalhas. Agora cada conquista tem medalha propria com tier e emblema.
+>
+> **O bug da referencia, e por que reescrevi em vez de copiar.** O componente gerado dava `id` unico a tres dos quatro gradientes e deixava o quarto fixo: `id="engrave"`. `id` em SVG e global do DOCUMENTO. Numa grade de 12 medalhas, todo `url(#engrave)` resolve para o PRIMEIRO do documento, entao **os 12 emblemas sairiam pintados com as cores da primeira medalha**. E um defeito que passa em revisao e passa isolado no Storybook: so aparece com mais de uma medalha na pagina, que e o unico jeito que a tela usa. O `uid` da referencia (`tier-emblem-locked`) tambem colidia entre conquistas de mesmo tier e mesmo emblema. Aqui o id vem de `useId()`.
+>
+> **Uma escala, nao duas com o mesmo nome.** As quatro palavras de tier ja apareciam nas barras de "dominio por habilidade". Duas tabelas de cor homonimas fariam o aluno assumir que a barra dourada e a medalha dourada medem a mesma coisa. `lib/medalTiers` e a fonte unica, com as MESMAS cores que as barras usavam. E a regra do tier ficou declarada: **peso do marco na trilha de esforco, nao raridade** — raridade exigiria saber quantos alunos desbloquearam cada uma, dado que nao temos e que mudaria o tier de uma conquista ja ganha. As tres conquistas cujo criterio E atingir um tier de dominio recebem exatamente aquele tier, senao a conquista "Ouro" poderia sair com medalha de prata e a tela se contradiria sozinha.
+>
+> **Legibilidade medida, nao estimada.** A referencia pintava o emblema com gradiente claro→profundo sobre um nucleo quase preto, e desenhava o brilho especular DEPOIS dele. Contraste WCAG do tom profundo do bronze contra o nucleo: **3,70:1**, no limite para traco fino. Com o tom claro cheio e o brilho ANTES do emblema: **8,95:1** (prata 15,30, ouro 11,87, diamante 12,84). Ha teste travando os dois lados: exige >=4,5:1 no tom claro E afirma que o profundo NAO passaria, para que reintroduzir o gradiente falhe.
+>
+> **i18n e acessibilidade.** A referencia devolvia rotulos em PT hardcoded e montava `"Medalha " + tier` no `aria-label`, com a mesma frase para conquista ganha e bloqueada. Agora o componente **nao monta frase**: recebe o texto pronto do chamador, e as chaves existem em PT/EN/ES. O estado bloqueado e anunciado.
+>
+> 14 testes, 4 guardas verificados quebrando (uid da referencia, gradiente com id fixo, brilho por cima do emblema, emblema que deixa de desenhar). Verde: 160 testes, tsc e build.
+>
+> **Erro meu no caminho:** o script que podou os imports mortos pegou o PRIMEIRO `import {` do arquivo em vez do do lucide e destruiu o bloco inteiro. Quem acusou foi um guarda que ja existia, o `iconShadowing.test.ts`.
+
+
 ### fix(progressao): desfiz uma duplicata que eu mesmo criei na Fase 1 (#protocolo-progressao)
 
 > Ao comecar a Fase 2 fui ler o que ja estava vivo, como a spec manda ("o maior risco novo e ignorar o que esta live e duplicar"), e encontrei **`leaklab/validation.py`**, que ja implementava Wilson, shrinkage de winner's curse, comparacao entre janelas e `should_reopen` — e ja governava o estado do leak em `progression.state_for` desde antes desta fase. Eu tinha reimplementado tudo aquilo no `progressao.py` da Fase 1.
