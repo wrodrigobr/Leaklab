@@ -63,7 +63,7 @@ def _embaralhar(rng, opcoes: list, idx_certa: int) -> tuple:
 
 # ── BASICA: a mao entra na range? ─────────────────────────────────────────────────────────────────
 
-def p_mao_entra(rng, pos: str, stack: float):
+def p_mao_entra(rng, pos: str, stack: float, excluir_mao: str | None = None):
     """Reconhecimento puro. Usa so maos do NUCLEO (>=90%) ou do LIXO (<10%): perguntar 'entra?'
     sobre uma mao mista nao tem resposta certa, e cobrar uma seria ensinar errado."""
     from leaklab.leak_trainer import _estratos, _HANDS
@@ -71,7 +71,10 @@ def p_mao_entra(rng, pos: str, stack: float):
     if not est or len(est.get('nucleo') or []) < 1 or len(est.get('lixo') or []) < 1:
         return None
     entra = rng.random() < 0.5
-    mao = rng.choice(est['nucleo'] if entra else est['lixo'])
+    pool = [h for h in (est['nucleo'] if entra else est['lixo']) if h != excluir_mao]
+    if not pool:
+        return None
+    mao = rng.choice(pool)
     opcoes, certa = _embaralhar(rng, ['Sim, quase sempre', 'Nao, folda quase sempre'],
                                 0 if entra else 1)
     return {
@@ -141,7 +144,7 @@ def p_efeito_do_stack(rng, pos: str, stack_a: float, stack_b: float):
 
 # ── AVANCADA: nucleo x fronteira ──────────────────────────────────────────────────────────────────
 
-def p_qual_e_mista(rng, pos: str, stack: float):
+def p_qual_e_mista(rng, pos: str, stack: float, excluir_mao: str | None = None):
     """O conceito que separa quem decorou range de quem entendeu range: a mao que o GTO joga de
     dois jeitos. Sem ele, o aluno le toda range como uma lista de sim/nao."""
     from leaklab.leak_trainer import _estratos, _HANDS
@@ -150,6 +153,11 @@ def p_qual_e_mista(rng, pos: str, stack: float):
         return None
     fronteira, nucleo, lixo = est.get('fronteira') or [], est.get('nucleo') or [], est.get('lixo') or []
     if not fronteira or len(nucleo) < 1 or len(lixo) < 1:
+        return None
+    fronteira = [h for h in fronteira if h != excluir_mao]
+    nucleo    = [h for h in nucleo if h != excluir_mao]
+    lixo      = [h for h in lixo if h != excluir_mao]
+    if not fronteira or not nucleo or not lixo:
         return None
     mista = rng.choice(fronteira)
     freq = (est.get('freqs') or {}).get(mista)
@@ -168,18 +176,24 @@ def p_qual_e_mista(rng, pos: str, stack: float):
 
 
 def gerar(rng: random.Random | None = None, dificuldade: str | None = None,
-          pos: str | None = None, stack: float = 30.0, tentativas: int = 6):
+          pos: str | None = None, stack: float = 30.0, tentativas: int = 6,
+          excluir_mao: str | None = None):
     """Uma pergunta de range, opcionalmente filtrando por dificuldade.
 
     Tenta varias vezes porque geradora sem cobertura devolve None de proposito. Devolve None se
     nenhuma produzir — o chamador cai no exercicio antigo em vez de mostrar pergunta inventada.
+
+    `excluir_mao` e OBRIGATORIO quando a pergunta antecede um exercicio sobre a mesma posicao: sem
+    ele, um spot "UTG a 30bb, o que voce faz com KTo?" poderia vir precedido de "UTG abre KTo a
+    30bb?", que E a resposta. A pergunta que da a resposta do proprio exercicio nao e so inutil,
+    ela ensina que o produto nao presta atencao.
     """
     rng = rng or random
     candidatas = [
-        ('basica',        lambda: p_mao_entra(rng, pos or rng.choice(_POSICOES), stack)),
+        ('basica',        lambda: p_mao_entra(rng, pos or rng.choice(_POSICOES), stack, excluir_mao)),
         ('basica',        lambda: p_quem_abre_mais(rng, stack)),
         ('intermediaria', lambda: p_efeito_do_stack(rng, pos or rng.choice(_POSICOES), 20.0, 50.0)),
-        ('avancada',      lambda: p_qual_e_mista(rng, pos or rng.choice(_POSICOES), stack)),
+        ('avancada',      lambda: p_qual_e_mista(rng, pos or rng.choice(_POSICOES), stack, excluir_mao)),
     ]
     if dificuldade:
         candidatas = [c for c in candidatas if c[0] == dificuldade]

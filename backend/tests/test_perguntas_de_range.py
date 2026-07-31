@@ -127,6 +127,79 @@ def test_dificuldade_inexistente_nao_estoura():
     assert gerar(random.Random(2), dificuldade='impossivel') is None
 
 
+# ── Ligacao no fluxo do treino ─────────────────────────────────────────────────────────────────
+
+def test_o_catalogo_chega_no_SPOT_do_treino():
+    """Sem isto, o catalogo existiria e ninguem o veria — o modo mais silencioso de nao entregar."""
+    import random as _r, collections
+    from leaklab.leak_trainer import generate_canonical_spot
+    rng = _r.Random(4)
+    cat = {'kind': 'preflop', 'scenario': 'rfi', 'position': 'UTG',
+           'vs_position': '', 'stack_bb': 30, 'key': 'rfi:UTG::30'}
+    tipos = collections.Counter()
+    for _ in range(120):
+        sp = generate_canonical_spot(cat, rng)
+        if sp and sp.get('range_probe'):
+            tipos[sp['range_probe'].get('tipo')] += 1
+    # `rfi` NAO tinha pergunta nenhuma antes: a sondagem exige vilao a ler
+    assert sum(tipos.values()) > 0, 'spot rfi continua sem pergunta'
+    assert len(tipos) >= 2, tipos
+
+
+def test_excluir_mao_e_DETERMINISTICO():
+    """A armadilha da ligacao: um spot "UTG a 30bb, o que fazer com KTo?" precedido de "UTG abre
+    KTo a 30bb?" da a resposta de graca.
+
+    A primeira versao deste teste gerava 150 spots e conferia se a mao do spot aparecia na
+    pergunta. Ele passava mesmo com `excluir_mao` DESLIGADO, porque a colisao depende de o
+    catalogo sortear exatamente aquela mao entre dezenas — ou seja, dependia de sorte. Guarda que
+    depende de sorte nao e guarda. Agora exclui uma mao especifica e exige que ela NUNCA saia.
+    """
+    from leaklab.leak_trainer import _estratos, _HANDS
+    pos = 'UTG'
+    est = _estratos(pos, list(_HANDS), 30)
+    assert est, 'sem cobertura para UTG a 30bb — o teste nao provaria nada'
+    # Um alvo por estrato basta: o que se testa e o FILTRO, e ele nao distingue estrato. Mais
+    # alvos so multiplicariam o custo do `_estratos`, que reanalisa cada mao.
+    alvos = [g[0] for g in (est.get('nucleo'), est.get('lixo'), est.get('fronteira')) if g]
+    assert alvos, est
+    for alvo in alvos:
+        rng = random.Random(21)
+        for _ in range(25):
+            for q in (p_mao_entra(rng, pos, 30, excluir_mao=alvo),
+                      p_qual_e_mista(rng, pos, 30, excluir_mao=alvo)):
+                if not q:
+                    continue
+                assert alvo not in q['pergunta'].split(), (alvo, q['pergunta'])
+                assert alvo not in q['opcoes'], (alvo, q['opcoes'])
+
+
+def test_o_treino_PASSA_a_mao_do_spot_para_a_exclusao():
+    """O outro lado: a funcao aceita `excluir_mao`, mas alguem precisa passar. Sem esta linha o
+    parametro existiria sem nunca ser usado."""
+    fonte = open('leaklab/leak_trainer.py', encoding='utf-8').read()
+    assert 'excluir_mao=_hand' in fonte, 'o treino nao esta passando a mao do spot'
+
+
+def test_a_sondagem_antiga_continua_existindo_e_identificavel():
+    """Ela e a mais forte pedagogicamente (fala da mao que o aluno vai jogar). O catalogo entrou
+    para SOMAR, nao para substituir. E agora ela carrega `tipo`, senao qualquer contagem a
+    confundia com "nenhuma pergunta" — foi o que aconteceu na minha primeira medicao."""
+    import random as _r
+    from leaklab.leak_trainer import generate_canonical_spot
+    rng = _r.Random(4)
+    cat = {'kind': 'preflop', 'scenario': 'vs_rfi', 'position': 'BB',
+           'vs_position': 'BTN', 'stack_bb': 30, 'key': 'k'}
+    vistos = set()
+    for _ in range(150):
+        sp = generate_canonical_spot(cat, rng)
+        rp = (sp or {}).get('range_probe')
+        if rp:
+            vistos.add(rp.get('tipo'))
+    assert 'largura_do_vilao' in vistos, vistos
+    assert None not in vistos, 'pergunta sem `tipo` (invisivel em contagem)'
+
+
 if __name__ == '__main__':
     falhas = 0
     testes = [v for k, v in sorted(globals().items()) if k.startswith('test_')]

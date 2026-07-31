@@ -266,6 +266,9 @@ def _sondagem_de_range(vs_pos: str, stack: float, rng: random.Random) -> dict | 
     ordem = list(range(len(opcoes)))
     rng.shuffle(ordem)
     return {
+        # `tipo`/`dificuldade` para a saida ser observavel junto com o catalogo novo. Sem eles a
+        # sondagem era indistinguivel de "nenhuma pergunta" em qualquer contagem.
+        'tipo': 'largura_do_vilao', 'dificuldade': 'intermediaria',
         'pergunta': f'Antes de ver suas cartas: que fatia das mãos {vs_pos} tem aqui?',
         'opcoes': [opcoes[i] for i in ordem],
         'correta': ordem.index(0),
@@ -326,9 +329,30 @@ def generate_canonical_spot(category: dict, rng: random.Random | None = None) ->
         def _monta(_hand, _opts, _fronteira):
             # Sondagem só em cenário COM vilão a ler (vs_rfi / vs_3bet). Em `rfi` o herói é o
             # primeiro a agir: não há range de ninguém para estimar.
+            # Duas fontes, e a ordem importa.
+            #
+            # A sondagem ESPECIFICA DO SPOT ("que fatia das maos o vilao tem AQUI?") e a mais forte
+            # pedagogicamente, porque fala da mao que o aluno esta prestes a jogar. Ela so existe em
+            # cenario com vilao a ler.
+            #
+            # O catalogo (`perguntas_de_range`) entra nos dois casos que a sondagem nao cobria: os
+            # spots `rfi`, que ate agora NAO tinham pergunta nenhuma, e a variedade nos demais — o
+            # usuario reportou que a sondagem sozinha "ficou basica e repetitiva", e a medicao
+            # confirmou: era um molde so.
+            #
+            # `excluir_mao` e obrigatorio: sem ele um spot "UTG a 30bb, o que fazer com KTo?"
+            # poderia vir precedido de "UTG abre KTo a 30bb?", que E a resposta.
             _sonda = None
-            if scenario != 'rfi' and vs_pos and rng.random() < _COTA_SONDAGEM:
-                _sonda = _sondagem_de_range(vs_pos, float(stack), rng)
+            if rng.random() < _COTA_SONDAGEM:
+                if scenario != 'rfi' and vs_pos and rng.random() < 0.5:
+                    _sonda = _sondagem_de_range(vs_pos, float(stack), rng)
+                if _sonda is None:
+                    try:
+                        from leaklab.perguntas_de_range import gerar as _gerar_pergunta
+                        _sonda = _gerar_pergunta(rng, pos=(vs_pos or pos), stack=float(stack),
+                                                 excluir_mao=_hand)
+                    except Exception:
+                        _sonda = None
             return {
                 'fronteira':   _fronteira,   # observável: dá para medir se o viés funciona
                 'range_probe': _sonda,       # None = tela normal; presente = pergunta antes das cartas
