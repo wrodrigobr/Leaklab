@@ -66,10 +66,17 @@ export default function Training() {
   const JOURNEY = [
     { key: "train", emblem: "target" as const,
       status: estadoFoco === "em_treino" ? "active" : estadoFoco ? "done" : "active" },
+    // O cadeado do "jogar" e RECOMENDACAO DE ESTUDO, nunca bloqueio: o aluno pode jogar e importar
+    // quando quiser, e a tela diz isso. O que ele comunica e onde o foco de ESTUDO deveria estar.
+    //
+    // O bug que o usuario achou: a condicao era `dominadas.length`, ou seja, ter dominado UM leak
+    // na vida destravava o passo PARA SEMPRE. Cinco leaks novos podiam aparecer que ele nunca mais
+    // fechava — "o ciclo nunca reiniciava". Agora depende de haver leak EM TREINO agora, entao
+    // leak novo fecha o ciclo de novo, que e o comportamento pedido.
     { key: "apply", emblem: "cards" as const,
-      status: dominadas.length ? (proof.length ? "done" : "active") : "locked" },
+      status: foco ? "locked" : (proof.length ? "done" : "active") },
     { key: "prove", emblem: "seal" as const,
-      status: provados.length ? "done" : dominadas.length && proof.length ? "active" : "locked" },
+      status: provados.length ? "done" : (!foco && proof.length) ? "active" : "locked" },
   ] as const;
 
   return (
@@ -166,6 +173,14 @@ export default function Training() {
                 );
               })}
             </div>
+            {foco && (
+              // O cadeado precisa dizer que NAO bloqueia. Sem esta linha ele lê como "pare de
+              // jogar até treinar", que é o oposto do que o produto quer: sem torneio novo não há
+              // amostra, e sem amostra não há validação.
+              <p className="mt-2 text-[11px] leading-snug text-muted-foreground">
+                {t("journey.lockNote")}
+              </p>
+            )}
 
             {/* GATE — agora é o do protocolo (5 critérios sobre o leak em foco), não o de tier.
                 O de tier media VOLUME praticado e podia dizer "pronto para aplicar" enquanto o

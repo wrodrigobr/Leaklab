@@ -7,6 +7,23 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(treino): catalogo de perguntas de range, e o ciclo da jornada volta a reiniciar (#treino)
+
+> **Duas coisas reportadas pelo usuario.**
+>
+> **1. "Os desafios de range estao muito basicos e repetitivos."** Medido antes de propor: existia **UM tipo so**, "que fatia das maos {pos} tem aqui?", com tres percentuais. Ele variava posicao e stack, mas a FORMA era sempre a mesma, entao a segunda vez ja era reconhecivel. Repetitivo por construcao, nao por acaso.
+>
+> `leaklab/perguntas_de_range.py` traz quatro tipos em tres niveis: **basica** ("UTG abre KTo a 30bb?" e "quem abre mais, UTG+1 ou BTN?"), **intermediaria** ("a range de BTN e mais larga a 20bb ou a 50bb?") e **avancada** ("qual destas UTG+1 joga de DOIS jeitos?", que e o conceito de frequencia — o que separa quem decorou range de quem entendeu range). Todas saem de dado REAL das ranges capturadas e todas trazem explicacao, que foi pedido explicito: sem ela o exercicio vira sorteio com feedback binario.
+>
+> Dois guardas que importam. A pergunta "a mao entra?" **nunca** usa mao de fronteira, porque uma mao mista nao tem resposta certa e cobrar uma ensinaria errado. E ha teste medindo a distribuicao da alternativa correta em 120 geracoes, porque este projeto ja congelou por meses um quiz vencivel sem ler, com o comentario "a opcao certa e sempre a 1a" DENTRO do teste. Sem cobertura, a geradora devolve None e o chamador tenta outra: alternativa falsa nao e exercicio ruim, e exercicio que mente.
+>
+> **2. "O ciclo nunca reiniciava."** A condicao do passo "jogar" era `dominadas.length ? ... : "locked"`, e `dominadas` e o historico. Ou seja, **ter dominado um leak na vida destravava o passo para sempre**: cinco leaks novos podiam aparecer que ele nunca mais fechava. Agora depende de haver leak EM TREINO agora (`foco`), entao leak novo repoe o foco e o ciclo fecha de novo.
+>
+> **O cadeado e recomendacao de ESTUDO, nunca bloqueio**, e a tela passa a dizer isso. Eu tinha proposto remove-lo; o usuario manteve com um argumento melhor (sugerir foco de estudo e legitimo) e a decisao e dele. O que faltava era a nota: sem ela o cadeado le como "pare de jogar ate treinar", que desincentiva exatamente o que alimenta o sistema, porque sem torneio novo nao ha amostra e sem amostra nao ha validacao.
+>
+> 10 testes de perguntas + 4 da jornada, 4 guardas verificados quebrando. Verde: engine, 178 no frontend, tsc e build.
+
+
 ### fix(llm): revisor de saida, porque o prompt sozinho nao segurou (#texto-gerado)
 
 > **Reportado pelo usuario**, colando um texto do desafio do dia: *"ir straight para o shove"*, *"ruas de decisao"*, *"se shover toda vez"*. Tres problemas diferentes: termo de poker usado como palavra comum (o leitor procura a MAO), termo tecnico traduzido, e conjugacao inventada.

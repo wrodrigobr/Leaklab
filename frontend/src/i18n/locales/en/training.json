@@ -99,7 +99,7 @@
     },
     "apply": {
       "title": "Play",
-      "desc": "When you master your leaks",
+      "desc": "Master your leaks first",
       "tip": "When you're ready, play a real tournament focusing on what you trained and import the hands. This is where practice turns into real play."
     },
     "prove": {
@@ -117,7 +117,8 @@
     "beginnerTrainCta": "Train fundamentals",
     "gateHintProtocol": "The five mastery criteria. Complete them and the next leak unlocks.",
     "allMasteredMsg": "You mastered {{count}} leak(s) in training. Now play: the proven seal depends on your next tournaments.",
-    "noLeakYet": "No measured leak to train yet. Import tournaments so the diagnosis can find the first one."
+    "noLeakYet": "No measured leak to train yet. Import tournaments so the diagnosis can find the first one.",
+    "lockNote": "You can play and import any time. The lock only marks where your STUDY should be right now."
   },
   "missions": {
     "title": "Today's missions",

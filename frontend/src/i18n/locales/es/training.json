@@ -99,7 +99,7 @@
     },
     "apply": {
       "title": "Jugar",
-      "desc": "Cuando domines tus fugas",
+      "desc": "Domina tus leaks primero",
       "tip": "Cuando estés listo, juega un torneo de verdad enfocándote en lo que entrenaste e importa las manos. Aquí la práctica se vuelve juego real."
     },
     "prove": {
@@ -117,7 +117,8 @@
     "beginnerTrainCta": "Entrenar fundamentos",
     "gateHintProtocol": "Los cinco criterios del dominio. Al completarlos, se libera el siguiente leak.",
     "allMasteredMsg": "Dominaste {{count}} leak(s) en el entrenamiento. Ahora juega: el sello de comprobado depende de tus próximos torneos.",
-    "noLeakYet": "Todavía no hay leak medido para entrenar. Importa torneos para que el diagnóstico encuentre el primero."
+    "noLeakYet": "Todavía no hay leak medido para entrenar. Importa torneos para que el diagnóstico encuentre el primero.",
+    "lockNote": "Puedes jugar e importar cuando quieras. El candado solo marca dónde debería estar tu ESTUDIO ahora."
   },
   "missions": {
     "title": "Misiones de hoy",
