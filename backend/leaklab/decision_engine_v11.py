@@ -238,7 +238,12 @@ def _enrich_preflop_gto(input_data: Dict[str, Any]) -> dict:
             hero_hand_type = h_type,
             stack_bb       = float(spot.get('effectiveStackBb') or ctx.get('heroStackBb') or 20),
             action_taken   = input_data.get('player_action', ''),
-            facing_size    = float(spot.get('facingSize') or 0),
+            # `facingSize` vem em FICHAS e as vezes vem VAZIO; `facingToBb` e o valor que o
+            # pipeline calcula e no qual o resto do produto confia. A consulta roteia por
+            # `facing_size`, entao com ele em 0 a cobertura SOME mesmo havendo no GTO — medido:
+            # BB vs SB a 8,6bb responde `jam` com facing preenchido e `indisponivel` sem ele.
+            # Foi o que fez a mao 2790343346 ficar "sem cobertura" tendo o numero certo ao lado.
+            facing_size    = float(spot.get('facingSize') or spot.get('facingToBb') or 0),
             vs_position    = spot.get('villainPosition', ''),
             is_3bet_pot    = bool(input_data.get('is_3bet', False)),
             n_players      = spot.get('nPlayers'),
