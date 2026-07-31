@@ -1055,9 +1055,18 @@ def evaluate_decision(input_data: Dict[str, Any]) -> Dict[str, Any]:
     # IMPORTANTE: spot.facingSize está em FICHAS; effectiveStackBb em BB. Converter
     # o facing para bb via levelBb antes de comparar (sem isso o guard disparava
     # espúrio — ex.: facing 250 fichas tratado como 250bb — e rebaixava jam do GTO).
-    _facing_chips = float(spot.get('facingSize') or 0)
-    _bb_chips = float(input_data.get('context', {}).get('levelBb') or 0)
-    _facing_bb = (_facing_chips / _bb_chips) if _bb_chips > 0 else 0.0
+    # PREFERE `facingToBb`, que o pipeline ja calcula em BB. Recalcular a partir de fichas exige
+    # `levelBb`, e quando ele falta o facing vira 0 e este guarda PULA EM SILENCIO — foi o que
+    # aconteceu com a mao 2790343346: hero com 10,6bb enfrentando 37,5bb teve o call marcado como
+    # erro com recomendacao de shove, sendo que o call DELE ja era o all-in. Mesma familia do bug
+    # do no de replay, que usava facing_bet(=0) em vez de facingToBb.
+    _facing_to_bb = spot.get('facingToBb')
+    if _facing_to_bb is not None:
+        _facing_bb = float(_facing_to_bb or 0)
+    else:
+        _facing_chips = float(spot.get('facingSize') or 0)
+        _bb_chips = float(input_data.get('context', {}).get('levelBb') or 0)
+        _facing_bb = (_facing_chips / _bb_chips) if _bb_chips > 0 else 0.0
     _hero_stack_bb = float(spot.get('effectiveStackBb') or input_data.get('context', {}).get('heroStackBb') or 0)
     if (_best_action in ('raise', 'jam') and _facing_bb > 0 and _hero_stack_bb > 0
             and _facing_bb >= _hero_stack_bb * 0.95):
