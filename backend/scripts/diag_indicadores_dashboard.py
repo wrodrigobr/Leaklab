@@ -61,7 +61,7 @@ def _assinatura(payload):
 # script o marca como NAO PARAMETRIZAVEL em vez de fingir que testou.
 ENDPOINTS = [
     ('player-stats',        '/metrics/player-stats',      'last_n=3&days=3650',   'days=3650'),
-    ('evolucao',            '/metrics/evolution',         'last_n=3&days=3650',   'days=3650'),
+    ('evolucao',            '/player/evolution',          None,                   None),
     ('gto-quality',         '/player/gto-quality',        'last_n=3',             ''),
     ('gto-alignment',       '/player/gto-alignment',      'last_n=3',             ''),
     ('gto-position',        '/player/gto-position',       'last_n=3',             ''),
@@ -163,6 +163,32 @@ def main() -> int:
         (reage if _assinatura(a) != _assinatura(b) else congelado).append(rotulo)
         if args.verboso and _assinatura(a) == _assinatura(b):
             print(f'    [{rotulo}] identico: {_assinatura(a)[:220]}')
+
+    # ── O TESTE QUE RESPONDE A PERGUNTA DE VERDADE ────────────────────────────────────────────
+    #
+    # "3 torneios x todos" prova que o indicador olha ALGUMA amostra. Nao prova que ele continua
+    # se mexendo quando voce joga MAIS UM — um indicador com teto interno (ORDER BY id DESC
+    # LIMIT 120, por exemplo) passaria naquele teste e ficaria parado neste. Foi exatamente esse
+    # vies que me fez reportar "85% do EV e recuperavel" quando o numero real era 37%.
+    print(f'
+{"="*66}
+O ULTIMO TORNEIO MUDA O INDICADOR? ({n_t} x {n_t - 1} torneios)
+{"="*66}')
+    mexe, parado = [], []
+    for rotulo, caminho, q_peq, q_cheio in ENDPOINTS:
+        if q_peq is None or 'last_n' not in q_peq:
+            continue
+        base = 'days=3650&' if 'days' in (q_cheio or '') or 'days' in q_peq else ''
+        a2, s2a = chamar(caminho, f'{base}last_n={n_t}')
+        b2, s2b = chamar(caminho, f'{base}last_n={n_t - 1}')
+        if s2a != 200 or s2b != 200:
+            continue
+        (mexe if _assinatura(a2) != _assinatura(b2) else parado).append(rotulo)
+    print(f'  muda ao tirar o ultimo torneio ({len(mexe)}): ' + (', '.join(mexe) or '-'))
+    print(f'  NAO muda ({len(parado)}): ' + (', '.join(parado) or '-'))
+    if parado:
+        print('  ^ investigar: teto interno, cache, ou o torneio mais novo nao tem decisao do tipo')
+    print()
 
     print(f'REAGE a mais amostra ({len(reage)}):')
     for r in reage:
