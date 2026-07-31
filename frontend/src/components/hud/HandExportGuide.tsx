@@ -75,13 +75,21 @@ export function HandExportGuide({ open, onClose, onOpenUpload }: Props) {
                 <div className="min-w-0">
                   <p className="font-heading text-sm text-foreground">{t(`exportGuide.sites.${s}.name`)}</p>
                   <p className="mt-0.5 text-xs leading-snug text-muted-foreground">{t(`exportGuide.sites.${s}.where`)}</p>
+                  {/* O RESUMO do torneio e um arquivo SEPARADO das maos, e o guia so cobria isso na
+                      ACR. Sem ele nao ha colocacao, premio, ROI nem field size — e, desde
+                      2026-07-30, tambem nao ha deteccao de MESA FINAL, que e onde o ICM muda a
+                      decisao certa. */}
+                  <p className="mt-1.5 text-xs leading-snug text-primary/90">
+                    <span className="font-medium">{t("exportGuide.summaryTitle")}: </span>
+                    {t(`exportGuide.sites.${s}.summary`)}
+                  </p>
                 </div>
               </li>
             ))}
           </ul>
 
           <p className="border-t border-border/50 pt-3 text-[11px] leading-relaxed text-muted-foreground/70">
-            {t("exportGuide.note")}
+            {t("exportGuide.summaryWhy")}{" "}{t("exportGuide.note")}
           </p>
         </div>
 

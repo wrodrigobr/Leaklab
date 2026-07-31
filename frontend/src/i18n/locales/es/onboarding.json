@@ -29,26 +29,32 @@
     "sites": {
       "pokerstars": {
         "name": "PokerStars",
-        "where": "En el lobby: Configuración → Historial de Juego → Historial de Manos → marca 'Guardar Mi Historial de Manos' y aplica. Por defecto se guarda en C:\\Program Files\\PokerStars\\HandHistory\\. No funciona en el móvil."
+        "where": "En el lobby: Configuracion > Historial de Juego > Historial de Manos > marca 'Guardar Mi Historial de Manos' y haz clic en Aplicar. Suele guardarse en C:\\Users\\<tu usuario>\\AppData\\Local\\PokerStars\\HandHistory\\<tu nick>. No funciona en el movil.",
+        "summary": "En la misma pantalla, marca \"Guardar Mis Resumenes de Torneo\". Suele guardarse en C:\\Users\\<tu usuario>\\AppData\\Local\\PokerStars\\TournSummary\\<tu nick>."
       },
       "ggpoker": {
         "name": "GGPoker",
-        "where": "En el cliente, abre PokerCraft (menú superior). Elige tipo de juego, rango de fechas y stakes → Mostrar → selecciona las sesiones → Descargar Historial. Los Resúmenes de Juego (para el summary) están en el mismo sitio. GGPoker no los envía por email."
+        "where": "En el cliente, abre PokerCraft (menú superior). Elige tipo de juego, rango de fechas y stakes → Mostrar → selecciona las sesiones → Descargar Historial. Los Resúmenes de Juego (para el summary) están en el mismo sitio. GGPoker no los envía por email.",
+        "summary": "En PokerCraft, los Resumenes de Juego salen del mismo lugar que el historial. Descarga los dos."
       },
       "acr": {
         "name": "ACR / WPN",
-        "where": "En el cliente, haz clic en el engranaje (arriba a la derecha) → Hand Histories (menú izquierdo) → elige las carpetas de Hand Histories y Tournament Summaries → OK. Para premio y ROI, sube también el archivo de resultados (.ots)."
+        "where": "En el cliente, haz clic en el engranaje (arriba a la derecha) → Hand Histories (menú izquierdo) → elige las carpetas de Hand Histories y Tournament Summaries → OK. Para premio y ROI, sube también el archivo de resultados (.ots).",
+        "summary": "Marca tambien la carpeta de Tournament Summaries y envia el archivo .ots. Suele estar en C:\\ACR Poker\\TournamentSummary\\<tu nick>."
       },
       "coinpoker": {
         "name": "CoinPoker",
-        "where": "En el cliente, inicia sesión y abre PokerIntel (menú de navegación) → página EV Chart → selecciona el rango de fechas → haz clic en 'Download Hands' para descargar el historial."
+        "where": "En el cliente, inicia sesión y abre PokerIntel (menú de navegación) → página EV Chart → selecciona el rango de fechas → haz clic en 'Download Hands' para descargar el historial.",
+        "summary": "Descarga tambien el resumen del torneo en la misma pantalla, si tu cliente lo ofrece."
       }
     },
     "note": "Puedes subir varios archivos a la vez. El mismo torneo se consolida automáticamente cuando la sala divide el historial en varios archivos.",
     "gotIt": "Entendido",
     "close": "Cerrar",
     "trigger": "Cómo exportar tus manos",
-    "openUpload": "Abrir subida"
+    "openUpload": "Abrir subida",
+    "summaryTitle": "Envia tambien el resumen del torneo",
+    "summaryWhy": "El resumen es un archivo aparte de las manos, y de el salen la colocacion, el premio, el ROI y el numero de inscritos. Sin el la plataforma tampoco puede detectar la mesa final, que es donde el ICM cambia la decision correcta."
   },
   "sample": {
     "equity": "Equity",

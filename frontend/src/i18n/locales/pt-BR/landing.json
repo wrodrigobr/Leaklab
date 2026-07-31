@@ -8,7 +8,7 @@
     "eyebrow": "Especialista em torneios (MTT)",
     "title1": "Pare de vazar fichas",
     "title2": "nos mesmos spots.",
-    "subtitle": "Suporte a hand histories de PokerStars, GGPoker, ACR (WPN) e CoinPoker. Mais redes em breve.",
+    "subtitle": "A única ferramenta que prova que você melhorou no jogo real, e não num simulador. Ela lê os seus torneios, aponta onde o EV vazou e volta depois para conferir se parou de vazar.",
     "ctaStart": "Começar grátis",
     "ctaHow": "Ver como funciona",
     "ctaSample": "Ver análise de exemplo"
@@ -80,5 +80,17 @@
     "b2": "A ação recomendada, lado a lado com a sua.",
     "b3": "A evidência do solver, não achismo.",
     "seal": "EXEMPLO"
+  },
+  "prova": {
+    "eyebrow": "O diferencial",
+    "heading": "Todo trainer mede acerto no exercício. Nós medimos na mesa.",
+    "sub": "Acertar num drill não prova nada: você aprende que ali a resposta é fold, não quando foldar. O que importa é o que acontece no torneio seguinte.",
+    "c1Title": "Mede no seu jogo, não no simulador",
+    "c1Desc": "Depois que você treina um leak, a plataforma acompanha as mãos daquele tipo nos torneios que você importar e compara com o seu histórico anterior.",
+    "c2Title": "Só afirma quando resiste ao acaso",
+    "c2Desc": "A melhora só vira \"comprovado\" quando a diferença sobrevive ao intervalo de confiança. Enquanto não sobrevive, a tela diz que ainda não dá para afirmar. É proposital.",
+    "c3Title": "Reabre sozinho se você regredir",
+    "c3Desc": "Se o erro voltar nas suas mãos reais, o leak reabre mesmo que você continue gabaritando o treino. É o caso que denuncia decoreba sem transferência.",
+    "nota": "Nada disso é opinião de IA sobre o seu jogo. É contagem de erro no seu próprio histórico, com o intervalo de confiança visível."
   }
 }

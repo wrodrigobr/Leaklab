@@ -8,7 +8,7 @@
     "eyebrow": "Especialista en torneos (MTT)",
     "title1": "Deja de perder fichas",
     "title2": "en los mismos spots.",
-    "subtitle": "Soporte para hand histories de PokerStars, GGPoker, ACR (WPN) y CoinPoker. Más redes muy pronto.",
+    "subtitle": "La única herramienta que prueba que mejoraste en juego real, no en un simulador. Lee tus torneos, señala dónde se fugó el EV y vuelve después para comprobar si dejó de fugarse.",
     "ctaStart": "Empezar gratis",
     "ctaHow": "Ver cómo funciona",
     "ctaSample": "Ver un análisis de ejemplo"
@@ -80,5 +80,17 @@
     "b2": "La acción recomendada, junto a la tuya.",
     "b3": "La evidencia del solver, no suposiciones.",
     "seal": "EJEMPLO"
+  },
+  "prova": {
+    "eyebrow": "El diferencial",
+    "heading": "Todo trainer mide acierto en el ejercicio. Nosotros medimos en la mesa.",
+    "sub": "Acertar en un drill no prueba nada: aprendes que ahí la respuesta es fold, no cuándo foldear. Lo que importa es lo que pasa en el torneo siguiente.",
+    "c1Title": "Mide en tu juego, no en el simulador",
+    "c1Desc": "Después de entrenar un leak, la plataforma sigue las manos de ese tipo en los torneos que importes y las compara con tu historial anterior.",
+    "c2Title": "Solo lo afirma cuando resiste al azar",
+    "c2Desc": "La mejora se vuelve \"comprobada\" solo cuando la diferencia sobrevive al intervalo de confianza. Mientras no sobreviva, la pantalla dice que todavía no se puede afirmar. Es a propósito.",
+    "c3Title": "Se reabre solo si retrocedes",
+    "c3Desc": "Si el error vuelve en tus manos reales, el leak se reabre aunque sigas acertando el entrenamiento. Es el caso que delata memorizar sin transferir.",
+    "nota": "Nada de esto es una opinión de IA sobre tu juego. Es conteo de errores en tu propio historial, con el intervalo de confianza a la vista."
   }
 }

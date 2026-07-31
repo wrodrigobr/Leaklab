@@ -29,26 +29,32 @@
     "sites": {
       "pokerstars": {
         "name": "PokerStars",
-        "where": "In the lobby: Settings → Playing History → Hand History → tick 'Save My Hand History' and Apply. Saved by default to C:\\Program Files\\PokerStars\\HandHistory\\. Not available on mobile."
+        "where": "In the lobby: Settings > Game Play > Hand History > tick 'Save My Hand History' and click Apply. It usually saves to C:\\Users\\<your user>\\AppData\\Local\\PokerStars\\HandHistory\\<your nick>. Not available on mobile.",
+        "summary": "On the same screen, tick \"Save My Tournament Summaries\". It usually saves to C:\\Users\\<your user>\\AppData\\Local\\PokerStars\\TournSummary\\<your nick>."
       },
       "ggpoker": {
         "name": "GGPoker",
-        "where": "In the client, open PokerCraft (top menu). Pick game type, date range and stakes → Show → select the sessions → Download Hand History. Game Summaries (for the results file) are in the same place. GGPoker does not send them by email."
+        "where": "In the client, open PokerCraft (top menu). Pick game type, date range and stakes → Show → select the sessions → Download Hand History. Game Summaries (for the results file) are in the same place. GGPoker does not send them by email.",
+        "summary": "In PokerCraft, Game Summaries come from the same place as the history. Download both."
       },
       "acr": {
         "name": "ACR / WPN",
-        "where": "In the client, click the settings gear (top right) → Hand Histories (left menu) → choose the destination folders for Hand Histories and Tournament Summaries → OK. For prize and ROI, also upload the results file (.ots)."
+        "where": "In the client, click the settings gear (top right) → Hand Histories (left menu) → choose the destination folders for Hand Histories and Tournament Summaries → OK. For prize and ROI, also upload the results file (.ots).",
+        "summary": "Also tick the Tournament Summaries folder and send the .ots file. It usually sits in C:\\ACR Poker\\TournamentSummary\\<your nick>."
       },
       "coinpoker": {
         "name": "CoinPoker",
-        "where": "In the client, log in and open PokerIntel (nav menu) → EV Chart page → select the date range → click 'Download Hands' to download your hand history."
+        "where": "In the client, log in and open PokerIntel (nav menu) → EV Chart page → select the date range → click 'Download Hands' to download your hand history.",
+        "summary": "Download the tournament summary on the same screen too, if your client offers it."
       }
     },
     "note": "You can upload multiple files at once. The same tournament is merged automatically when the site splits the hand history across files.",
     "gotIt": "Got it",
     "close": "Close",
     "trigger": "How to export your hands",
-    "openUpload": "Open upload"
+    "openUpload": "Open upload",
+    "summaryTitle": "Send the tournament summary too",
+    "summaryWhy": "The summary is a separate file from the hands, and it is where finish place, prize, ROI and field size come from. Without it the platform also cannot detect the final table, which is where ICM changes the right decision."
   },
   "sample": {
     "equity": "Equity",

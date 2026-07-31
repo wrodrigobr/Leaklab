@@ -8,7 +8,7 @@
     "eyebrow": "Tournament (MTT) specialist",
     "title1": "Stop leaking chips",
     "title2": "in the same spots.",
-    "subtitle": "Support for hand histories from PokerStars, GGPoker, ACR (WPN) and CoinPoker. More networks coming soon.",
+    "subtitle": "The only tool that proves you improved in real play, not in a simulator. It reads your tournaments, shows where EV leaked, and comes back later to check whether it stopped.",
     "ctaStart": "Start free",
     "ctaHow": "See how it works",
     "ctaSample": "See a sample analysis"
@@ -80,5 +80,17 @@
     "b2": "The recommended action, side by side with yours.",
     "b3": "The solver's evidence, not guesswork.",
     "seal": "EXAMPLE"
+  },
+  "prova": {
+    "eyebrow": "What sets it apart",
+    "heading": "Every trainer measures drill accuracy. We measure at the table.",
+    "sub": "Getting a drill right proves little: you learn that the answer there is fold, not when to fold. What matters is what happens in your next tournament.",
+    "c1Title": "Measured in your play, not in a simulator",
+    "c1Desc": "After you train a leak, the platform tracks hands of that type in the tournaments you import and compares them with your earlier history.",
+    "c2Title": "Only claims it when it survives chance",
+    "c2Desc": "Improvement becomes \"proven\" only when the difference survives the confidence interval. Until it does, the screen says it cannot tell yet. That is on purpose.",
+    "c3Title": "Reopens by itself if you regress",
+    "c3Desc": "If the mistake returns in your real hands, the leak reopens even if you keep acing the drill. That is the case that exposes memorising without transfer.",
+    "nota": "None of this is an AI opinion about your game. It is error counting on your own history, with the confidence interval in plain sight."
   }
 }
