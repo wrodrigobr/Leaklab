@@ -7,6 +7,21 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(dashboard): quatro indicadores nao recarregavam apos o upload (#dashboard)
+
+> **Reportado pelo usuario:** *"por mais que eu esteja jogando torneios, nem todos os indicadores estao sendo modificados"*. Era percepcao correta.
+>
+> **A auditoria.** Varri as 174 queries do app. As 19 do `Index` estavam certas (7 com `useQuery` carregam uma chave de refresh, e as 12 do efeito dependem dela). O problema estava nos componentes-filhos, que buscam por conta propria: **quatro chaves derivadas de torneio nao escutavam o import** — `bankroll-evolution` (o grafico de banca, o mais visivel de todos), `progression-status` (o leak em foco), `proximo-passo` (a faixa do dashboard) e `training-daily-status` (o HUD). Todas com `staleTime` de 30 a 60 segundos, e como o React Query nao refaz sozinho sem foco ou remontagem, quem subia um torneio e continuava na tela via os quatro parados.
+>
+> **O conserto tambem corta carga, e por isso e um so.** A recarga agora acontece quando a fila ESVAZIA, nao por arquivo. Medido: um ciclo completo do dashboard custa **~17s de backend** (tres endpoints levam de 3 a 5s cada), e em 28/07 houve **14 uploads** — por arquivo eram 14 ciclos. Agora e um.
+>
+> **Catraca contra a reincidencia.** `lib/refreshOnImport` declara as duas listas (deriva de torneio / nao deriva) e `refreshOnImport.test.ts` varre o codigo exigindo que TODA queryKey esteja classificada. Chave nova sem classificacao FALHA o teste, e o autor e obrigado a responder: o numero que ela mostra muda quando o jogador sobe um torneio? Lista simples envelheceria calada — o proximo card criado repetiria o bug, que e exatamente o que aconteceu com os seis componentes achados. O teste tambem acusa o outro lado: chave que sumiu do codigo e ficou na lista, fazendo a invalidacao mirar em nada.
+>
+> **Antes disso**, um diagnostico de API (`scripts/diag_indicadores_dashboard.py`, com controle positivo e negativo obrigatorios) provou que os 13 indicadores parametrizaveis reagem a mais amostra e que os 7 que aceitam recorte mudam ao tirar o ultimo torneio. Ou seja: o backend estava certo o tempo todo, o bug era de vitrine — o padrao que este projeto ja documentou como "validamos o MOTOR mas nao a VITRINE".
+>
+> 168 testes, tsc e build limpos.
+
+
 ### feat(treino): medalhas de conquista, e o bug da referencia que nao foi copiado (#gamificacao)
 
 > As conquistas de treino eram 12 icones lucide, todos na MESMA cor primaria, dentro de quadrados iguais. Liam como uma lista de itens, nao como uma colecao de medalhas. Agora cada conquista tem medalha propria com tier e emblema.

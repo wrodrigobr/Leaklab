@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { EVENTO_LOTE } from "@/lib/refreshOnImport";
 import { useQuery } from "@tanstack/react-query";
 import { Coins, Layers, Percent, Target, GraduationCap, Brain, RotateCcw, Loader2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -128,9 +129,11 @@ const Index = () => {
   // A fila de upload é global (sobrevive à navegação); ela dispara este evento a cada import
   // concluído. O dashboard recarrega ao ouvir, no lugar do antigo callback onComplete/onUpload.
   useEffect(() => {
+    // Escuta o LOTE, não cada arquivo. Antes era por arquivo, e um dia de 14 uploads disparava 14
+    // ciclos completos do dashboard, ~17s de backend cada. Ver `lib/refreshOnImport`.
     const h = () => setRefreshKey((k) => k + 1);
-    window.addEventListener("leaklab:tournament-imported", h);
-    return () => window.removeEventListener("leaklab:tournament-imported", h);
+    window.addEventListener(EVENTO_LOTE, h);
+    return () => window.removeEventListener(EVENTO_LOTE, h);
   }, []);
 
   // DashboardV2 é o layout PADRÃO (decisão de produto). O clássico abaixo permanece como

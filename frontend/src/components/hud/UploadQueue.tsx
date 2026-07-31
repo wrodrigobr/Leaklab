@@ -1,4 +1,6 @@
 import { useReducer, useEffect, useRef, useCallback, createContext, useContext } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { EVENTO_LOTE, invalidarAposImport } from "@/lib/refreshOnImport";
 import { useTranslation, Trans } from "react-i18next";
 import { CheckCircle2, AlertTriangle, Clock, Loader2, X, UploadCloud, Info } from "lucide-react";
 import { tournaments, metrics } from "@/lib/api";
@@ -169,6 +171,35 @@ export function UploadQueueProvider({ children }: { children: React.ReactNode })
 
     dispatch({ type: "ADD", items });
   }, []);
+
+  // ── Recarga do LOTE ─────────────────────────────────────────────────────────────────────────
+  //
+  // Dispara UMA vez quando a fila esvazia, e não por arquivo. Duas razões, as duas medidas:
+  //
+  //   · corretude — quatro chaves derivadas de torneio (`bankroll-evolution`,
+  //     `progression-status`, `proximo-passo`, `training-daily-status`) viviam em componentes que
+  //     buscam por conta própria e não escutavam nada. Quem subia um torneio e ficava na tela via
+  //     o gráfico de banca parado. Ver `lib/refreshOnImport`.
+  //   · custo — um ciclo completo do dashboard custa ~17s de backend (três endpoints levam de 3 a
+  //     5s cada). Em 28/07 houve 14 uploads: por arquivo seriam 14 ciclos.
+  //
+  // O `leaklab:tournament-imported` (por arquivo) continua existindo para quem quer saber de cada
+  // import, como a lista de torneios.
+  const qc = useQueryClient();
+  const tinhaFila = useRef(false);
+  useEffect(() => {
+    const emAndamento = queue.some((i) => i.status === "queued" || i.status === "processing");
+    const importou = queue.some((i) => i.status === "done");
+    if (emAndamento) {
+      tinhaFila.current = true;
+      return;
+    }
+    if (tinhaFila.current && importou) {
+      tinhaFila.current = false;
+      invalidarAposImport(qc);
+      window.dispatchEvent(new CustomEvent(EVENTO_LOTE));
+    }
+  }, [queue, qc]);
 
   const dismiss   = useCallback((id: string) => { fileMap.current.delete(id); dispatch({ type: "DISMISS", id }); }, []);
   const clearDone = useCallback(() => { queue.forEach((i) => { if (i.status === "done") fileMap.current.delete(i.id); }); dispatch({ type: "CLEAR_DONE" }); }, [queue]);
