@@ -11,8 +11,8 @@
     },
     "upload": {
       "title": "Importa tu hand history",
-      "desc": "Exporta de PokerStars, GGPoker, ACR o CoinPoker DOS archivos: el historial de manos y el resumen del torneo. El historial trae cada decision; el resumen trae colocacion, premio, ROI y el numero de inscritos, y es lo que permite detectar la mesa final. Puedes soltar los dos a la vez.",
-      "hint": "No sabes donde estan los archivos? Consulta la guia de exportacion por sala."
+      "desc": "Exporta de PokerStars, GGPoker, ACR o CoinPoker DOS archivos: el historial de manos y el resumen del torneo. El historial trae cada decisión; el resumen trae colocación, premio, ROI y el número de inscritos, y es lo que permite detectar la mesa final. Puedes soltar los dos a la vez.",
+      "hint": "¿No sabes dónde están los archivos? Consulta la guía de exportación por sala."
     },
     "train": {
       "title": "Entrénate con Ghost Table & Sparring",
@@ -29,23 +29,23 @@
     "sites": {
       "pokerstars": {
         "name": "PokerStars",
-        "where": "En el lobby: Configuracion > Historial de Juego > Historial de Manos > marca 'Guardar Mi Historial de Manos' y haz clic en Aplicar. Suele guardarse en C:\\Users\\<tu usuario>\\AppData\\Local\\PokerStars\\HandHistory\\<tu nick>. No funciona en el movil.",
-        "summary": "En la misma pantalla, marca \"Guardar Mis Resumenes de Torneo\". Suele guardarse en C:\\Users\\<tu usuario>\\AppData\\Local\\PokerStars\\TournSummary\\<tu nick>."
+        "where": "En el lobby: Configuración → Historial de Juego → Historial de Manos → marca 'Guardar Mi Historial de Manos' y haz clic en Aplicar. Suele guardarse en C:\\Users\\<tu usuario>\\AppData\\Local\\PokerStars\\HandHistory\\<tu nick>. No funciona en el móvil.",
+        "summary": "En la misma pantalla, marca \"Guardar Mis Resúmenes de Torneo\". Suele guardarse en C:\\Users\\<tu usuario>\\AppData\\Local\\PokerStars\\TournSummary\\<tu nick>."
       },
       "ggpoker": {
         "name": "GGPoker",
         "where": "En el cliente, abre PokerCraft (menú superior). Elige tipo de juego, rango de fechas y stakes → Mostrar → selecciona las sesiones → Descargar Historial. Los Resúmenes de Juego (para el summary) están en el mismo sitio. GGPoker no los envía por email.",
-        "summary": "En PokerCraft, los Resumenes de Juego salen del mismo lugar que el historial. Descarga los dos."
+        "summary": "En PokerCraft, los Resúmenes de Juego salen del mismo lugar que el historial. Descarga los dos."
       },
       "acr": {
         "name": "ACR / WPN",
         "where": "En el cliente, haz clic en el engranaje (arriba a la derecha) → Hand Histories (menú izquierdo) → elige las carpetas de Hand Histories y Tournament Summaries → OK. Para premio y ROI, sube también el archivo de resultados (.ots).",
-        "summary": "Marca tambien la carpeta de Tournament Summaries y envia el archivo .ots. Suele estar en C:\\ACR Poker\\TournamentSummary\\<tu nick>."
+        "summary": "Marca también la carpeta de Tournament Summaries y envía el archivo .ots. Suele estar en C:\\ACR Poker\\TournamentSummary\\<tu nick>."
       },
       "coinpoker": {
         "name": "CoinPoker",
         "where": "En el cliente, inicia sesión y abre PokerIntel (menú de navegación) → página EV Chart → selecciona el rango de fechas → haz clic en 'Download Hands' para descargar el historial.",
-        "summary": "Descarga tambien el resumen del torneo en la misma pantalla, si tu cliente lo ofrece."
+        "summary": "Descarga también el resumen del torneo en la misma pantalla, si tu cliente lo ofrece."
       }
     },
     "note": "Puedes subir varios archivos a la vez. El mismo torneo se consolida automáticamente cuando la sala divide el historial en varios archivos.",
@@ -53,8 +53,8 @@
     "close": "Cerrar",
     "trigger": "Cómo exportar tus manos",
     "openUpload": "Abrir subida",
-    "summaryTitle": "Envia tambien el resumen del torneo",
-    "summaryWhy": "El resumen es un archivo aparte de las manos, y de el salen la colocacion, el premio, el ROI y el numero de inscritos. Sin el la plataforma tampoco puede detectar la mesa final, que es donde el ICM cambia la decision correcta."
+    "summaryTitle": "Envía también el resumen del torneo",
+    "summaryWhy": "El resumen es un archivo aparte de las manos, y de él salen la colocación, el premio, el ROI y el número de inscritos. Sin él la plataforma tampoco puede detectar la mesa final, que es donde el ICM cambia la decisión correcta."
   },
   "sample": {
     "equity": "Equity",
