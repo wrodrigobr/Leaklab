@@ -305,10 +305,6 @@
       "title": "Mão firme",
       "desc": "Levou uma habilidade ao nível Ouro."
     },
-    "train_reps200": {
-      "title": "Grinder",
-      "desc": "200 spots treinados."
-    },
     "train_explorer": {
       "title": "Cartógrafo",
       "desc": "Treinou 5 habilidades diferentes."
@@ -325,10 +321,6 @@
       "title": "Pegando ritmo",
       "desc": "3 dias de treino seguidos."
     },
-    "train_streak7": {
-      "title": "Sangue frio",
-      "desc": "7 dias de treino seguidos."
-    },
     "train_reps1000": {
       "title": "Veterano de mesa",
       "desc": "1000 spots treinados."
@@ -336,6 +328,22 @@
     "train_streak30": {
       "title": "Imparável",
       "desc": "30 dias de treino seguidos."
+    },
+    "train_cycle": {
+      "title": "Ciclo fechado",
+      "desc": "Treinou, jogou e importou: já há amostra real para medir."
+    },
+    "train_proved": {
+      "title": "Comprovado",
+      "desc": "Um leak seu melhorou no jogo real, com margem que resiste ao acaso."
+    },
+    "train_reconquered": {
+      "title": "De volta ao ringue",
+      "desc": "Um leak reabriu e você o comprovou de novo."
+    },
+    "train_proved2": {
+      "title": "Prova dobrada",
+      "desc": "Dois leaks comprovados no jogo real."
     }
   },
   "feedback": {

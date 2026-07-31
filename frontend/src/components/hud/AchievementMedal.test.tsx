@@ -155,12 +155,32 @@ describe("mapa de conquistas", () => {
     // As chaves vêm de `_TRAINING_ACHIEVEMENT_DEFS` (database/repositories.py). Uma conquista fora
     // do mapa não renderiza — e o teste falha aqui em vez de a medalha sumir na tela em silêncio.
     const doBackend = [
-      "train:first", "train:reps50", "train:silver", "train:gold", "train:reps200",
-      "train:explorer", "train:gold3", "train:diamond", "train:streak3", "train:streak7",
+      "train:first", "train:reps50", "train:silver", "train:gold",
+      "train:explorer", "train:gold3", "train:diamond", "train:streak3",
       "train:reps1000", "train:streak30",
+      // trilha de PROVA NO JOGO, aberta em 2026-07-31
+      "train:cycle", "train:proved", "train:reconquered", "train:proved2",
     ];
     doBackend.forEach((k) => expect(ACHIEVEMENT_MEDALS[k], `sem medalha: ${k}`).toBeTruthy());
     expect(Object.keys(ACHIEVEMENT_MEDALS).sort()).toEqual(doBackend.sort());
+  });
+
+  it("a trilha de PROVA NO JOGO existe e nao e so uma medalha", () => {
+    // O diagnostico que motivou a mudanca: sete das doze conquistas premiavam volume ou sequencia,
+    // e ZERO premiava provar no jogo real, que e o que o produto diz ser o diferencial. Um refactor
+    // que remova esta trilha desfaz a decisao.
+    const prova = ["train:cycle", "train:proved", "train:reconquered", "train:proved2"];
+    prova.forEach((k) => expect(ACHIEVEMENT_MEDALS[k], k).toBeTruthy());
+    // e volume nao pode voltar a dominar: no maximo 2 conquistas de repeticao
+    const volume = Object.keys(ACHIEVEMENT_MEDALS).filter((k) => k.startsWith("train:reps"));
+    expect(volume.length, volume.join(", ")).toBeLessThanOrEqual(2);
+  });
+
+  it("os emblemas da prova reusam os das etapas da jornada", () => {
+    // Deliberado: a medalha reforca a jornada em vez de criar um segundo vocabulario visual.
+    expect(ACHIEVEMENT_MEDALS["train:proved"].emblem).toBe("seal");    // passo Validar
+    expect(ACHIEVEMENT_MEDALS["train:cycle"].emblem).toBe("cards");    // passo Jogar
+    expect(ACHIEVEMENT_MEDALS["train:reconquered"].emblem).toBe("target"); // passo Treinar
   });
 
   it("as conquistas de TIER recebem o tier correspondente", () => {

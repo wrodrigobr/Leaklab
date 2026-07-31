@@ -6956,14 +6956,19 @@ _TRAINING_ACHIEVEMENT_DEFS = [
     ('train:reps50',   'total_attempts', 50),
     ('train:silver',   'max_mastery',    40),
     ('train:gold',     'max_mastery',    70),
-    ('train:reps200',  'total_attempts', 200),
+
     ('train:explorer', 'skills_count',   5),
     ('train:gold3',    'count_gold',     3),
     ('train:diamond',  'max_mastery',    90),
     ('train:streak3',  'streak',         3),
-    ('train:streak7',  'streak',         7),
     ('train:reps1000', 'total_attempts', 1000),
     ('train:streak30', 'streak',         30),
+    # Trilha de PROVA NO JOGO (2026-07-31). `reps200` e `streak7` sairam: cada uma era o degrau do
+    # MEIO de uma escada de tres, e o meio e o que menos comunica. Ficaram as pontas.
+    ('train:cycle',       'count_com_amostra',    1),
+    ('train:proved',      'count_provados',       1),
+    ('train:reconquered', 'count_reconquistados', 1),
+    ('train:proved2',     'count_provados',       2),
 ]
 
 
@@ -6984,6 +6989,27 @@ def _training_state(user_id: int) -> dict:
         streak = int((get_xp_status(user_id) or {}).get('streak') or 0)
     except Exception:
         streak = 0
+    # Trilha de PROVA NO JOGO. Ate 2026-07-31 nenhuma conquista premiava isto, que e justamente o
+    # que o produto diz ser o diferencial: o aluno podia comprovar tres leaks nas mesas e nao ganhar
+    # medalha nenhuma, enquanto ganhava por clicar 200 vezes no treino. Sete das doze conquistas
+    # eram volume ou sequencia.
+    provados = reconquistados = com_amostra = 0
+    try:
+        for pr in (get_training_proof(user_id) or []):
+            v = (pr.get('validacao') or {}).get('veredito')
+            if v and v != 'sem_amostra':
+                # Ciclo fechado = amostra COLETADA depois de treinar, mesmo sem veredito ainda.
+                # Distinto de "comprovado" de proposito: se as duas medissem a mesma coisa,
+                # desbloqueariam no mesmo instante e uma delas seria decoracao.
+                com_amostra += 1
+            if v == 'melhorou':
+                provados += 1
+                if int(pr.get('reopen_count') or 0) > 0:
+                    # Reabriu e voltou. Premiar isso e como a spec manda comunicar a reabertura:
+                    # feature de confianca, nao vergonha.
+                    reconquistados += 1
+    except Exception:
+        pass
     return {
         'total_attempts': sum(int(s.get('attempts') or 0) for s in skills),
         'total_correct':  sum(int(s.get('correct') or 0) for s in skills),
@@ -6991,6 +7017,9 @@ def _training_state(user_id: int) -> dict:
         'count_gold':     sum(1 for m in masteries if m >= 70),
         'skills_count':   len(skills),
         'streak':         streak,
+        'count_provados':       provados,
+        'count_reconquistados': reconquistados,
+        'count_com_amostra':    com_amostra,
     }
 
 

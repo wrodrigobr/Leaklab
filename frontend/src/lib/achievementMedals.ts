@@ -30,8 +30,6 @@ export const ACHIEVEMENT_MEDALS: Record<string, { tier: MedalTier; emblem: Medal
   "train:explorer":  { tier: "bronze",  emblem: "range" },
   "train:streak3":   { tier: "bronze",  emblem: "streak" },
   // Consistência
-  "train:reps200":   { tier: "silver",  emblem: "bankroll" },
-  "train:streak7":   { tier: "silver",  emblem: "clock" },
   "train:silver":    { tier: "silver",  emblem: "shield" },
   // Domínio
   "train:gold":      { tier: "gold",    emblem: "club" },
@@ -40,6 +38,17 @@ export const ACHIEVEMENT_MEDALS: Record<string, { tier: MedalTier; emblem: Medal
   // Topo
   "train:reps1000":  { tier: "diamond", emblem: "crown" },
   "train:diamond":   { tier: "diamond", emblem: "diamond" },
+  // Prova no jogo real. Trilha aberta em 2026-07-31: ate entao NENHUMA conquista premiava o que o
+  // produto diz ser o diferencial. O aluno podia comprovar tres leaks nas mesas e nao ganhar nada,
+  // enquanto ganhava por clicar 200 vezes no treino.
+  //
+  // Os emblemas sao DE PROPOSITO os mesmos das etapas da jornada: `cards` e o passo Jogar, `seal` e
+  // o passo Validar, `target` e o passo Treinar. A medalha reforca a jornada em vez de criar um
+  // segundo vocabulario visual para a mesma ideia.
+  "train:cycle":      { tier: "silver",  emblem: "cards" },
+  "train:proved":     { tier: "gold",    emblem: "seal" },
+  "train:reconquered":{ tier: "silver",  emblem: "target" },
+  "train:proved2":    { tier: "diamond", emblem: "bankroll" },
 };
 
 /** Chave de conquista → chave de i18n (`trainAch.<key>.*`). O backend usa `:`, o i18n usa `_`. */

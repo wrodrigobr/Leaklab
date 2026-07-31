@@ -305,10 +305,6 @@
       "title": "Steady hand",
       "desc": "Took a skill to Gold."
     },
-    "train_reps200": {
-      "title": "Grinder",
-      "desc": "200 spots trained."
-    },
     "train_explorer": {
       "title": "Cartographer",
       "desc": "Trained 5 different skills."
@@ -325,10 +321,6 @@
       "title": "Finding rhythm",
       "desc": "3 days of training in a row."
     },
-    "train_streak7": {
-      "title": "Cold blood",
-      "desc": "7 days of training in a row."
-    },
     "train_reps1000": {
       "title": "Table veteran",
       "desc": "1000 spots trained."
@@ -336,6 +328,22 @@
     "train_streak30": {
       "title": "Unstoppable",
       "desc": "30 days of training in a row."
+    },
+    "train_cycle": {
+      "title": "Loop closed",
+      "desc": "Trained, played and imported: there is real sample to measure."
+    },
+    "train_proved": {
+      "title": "Proven",
+      "desc": "One of your leaks improved in real play, beyond chance."
+    },
+    "train_reconquered": {
+      "title": "Back in the ring",
+      "desc": "A leak reopened and you proved it again."
+    },
+    "train_proved2": {
+      "title": "Double proof",
+      "desc": "Two leaks proven in real play."
     }
   },
   "feedback": {
