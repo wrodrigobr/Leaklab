@@ -170,10 +170,10 @@ def main() -> int:
     # se mexendo quando voce joga MAIS UM — um indicador com teto interno (ORDER BY id DESC
     # LIMIT 120, por exemplo) passaria naquele teste e ficaria parado neste. Foi exatamente esse
     # vies que me fez reportar "85% do EV e recuperavel" quando o numero real era 37%.
-    print(f'
-{"="*66}
-O ULTIMO TORNEIO MUDA O INDICADOR? ({n_t} x {n_t - 1} torneios)
-{"="*66}')
+    print('')
+    print('=' * 66)
+    print(f'O ULTIMO TORNEIO MUDA O INDICADOR? ({n_t} x {n_t - 1} torneios)')
+    print('=' * 66)
     mexe, parado = [], []
     for rotulo, caminho, q_peq, q_cheio in ENDPOINTS:
         if q_peq is None or 'last_n' not in q_peq:
