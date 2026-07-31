@@ -1079,10 +1079,17 @@ def evaluate_decision(input_data: Dict[str, Any]) -> Dict[str, Any]:
             # de commit. Sem isso o guard caía em fold por equity=None (preflop não
             # computa equity-vs-range), rebaixando calls triviais (AK/AJ vs shove).
             _best_action = 'call'
-        elif _eq is not None and _req is not None and _eq >= _req:
-            _best_action = 'call'
+        elif _eq is not None and _req is not None:
+            _best_action = 'call' if _eq >= _req else 'fold'
         else:
-            _best_action = 'fold'
+            # SEM GTO e SEM equity nao ha base para acusar. O ramo antigo caia em 'fold' aqui, e
+            # com isso um call que JA E all-in virava erro por AUSENCIA DE DADO — o oposto da
+            # regra que vale no resto do produto (sem gabarito nao e erro; a decisao sai da conta
+            # em vez de virar acusacao).
+            #
+            # Reportado numa mao real: hero com 10,6bb enfrentando 37,5bb deu call e recebeu
+            # `small_mistake` com recomendacao de shove, sendo que o call dele ERA o shove.
+            _best_action = _norm_gto_action(input_data.get('player_action')) or 'call'
         # Reclassifica: score foi computado contra 'raise' invalido. Se player
         # matched o novo best_action, e standard. Caso contrario, mantem severidade.
         if _norm_gto_action(input_data["player_action"]) == _norm_gto_action(_best_action):

@@ -1,38 +1,28 @@
 # -*- coding: utf-8 -*-
 """
-REPRODUCAO DE BUG ABERTO — call que ja e all-in marcado como erro.
-
-*** ESTE ARQUIVO FALHA DE PROPOSITO E NAO ESTA NO RUNNER. ***
-Ele documenta um bug REAL ainda nao consertado. Registra-lo assim e melhor que descrever em
-prosa: quem for consertar tem o caso reproduzido e sabe quando terminou.
+Call que JA e all-in nao pode ser marcado como erro com recomendacao de shove.
 
 ── A mao reportada ────────────────────────────────────────────────────────────────────────────────
 
 Torneio 35611776, mao 2790343346. Hero no BB com 10,6bb enfrenta aposta de 37,5bb, da CALL, e o
-produto marcou `small_mistake` / `gto_critical` recomendando `jam`.
-
-Com stack menor que a aposta, o call E o all-in: nao existe shove maior que isso. O produto
-recomendou exatamente o que o jogador fez e cobrou por isso.
+produto marcou `small_mistake` / `gto_critical` recomendando `jam`. Com stack menor que a aposta, o
+call E o all-in: nao existe shove maior que isso. O produto recomendou exatamente o que o jogador
+fez e cobrou por isso.
 
 Medido em producao: 3 decisoes com esse padrao, 2 marcadas como erro.
 
-── O que ja foi feito ─────────────────────────────────────────────────────────────────────────────
+── Eram DOIS defeitos, e o segundo so apareceu ao instrumentar ────────────────────────────────────
 
-O guarda existe (`decision_engine_v11`, ~linha 1060) e a REGRA dele esta certa: colapsa jam em call
-quando o facing cobre o stack. Ele recalculava o facing como `facingSize / levelBb`, e faltando
-qualquer um dos dois o facing virava 0 e o guarda pulava em silencio. Isso foi corrigido: agora ele
-prefere `facingToBb`, que o pipeline ja calcula (mesma familia do bug do no de replay, que usava
-`facing_bet(=0)` em vez de `facingToBb`).
+1. **Fonte errada do facing.** O guarda ja existia e a regra estava certa, mas recalculava o facing
+   como `facingSize / levelBb`. Faltando qualquer um dos dois o facing virava 0 e o guarda PULAVA
+   EM SILENCIO. Agora prefere `facingToBb`, que o pipeline ja calcula — mesma familia do bug do no
+   de replay, que usava `facing_bet(=0)` no lugar dele.
 
-── O que FALTA, e e por isso que o teste ainda falha ──────────────────────────────────────────────
-
-Mesmo com o facing certo, o veredito continua `small_mistake` neste fixture. Ou seja, existe uma
-SEGUNDA condicao no caminho que nao foi satisfeita — provavelmente o ramo que escolhe entre
-'call' e 'fold' quando o GTO nao esta disponivel ou a equity vem None (preflop nao computa
-equity-vs-range). Nao investiguei ate o fim.
-
-Proximo passo para quem pegar: instrumentar o bloco do guarda com o fixture abaixo e ver qual das
-tres ramificacoes ele toma.
+2. **Acusava por AUSENCIA DE DADO.** Com o facing certo o guarda passou a disparar, e a
+   instrumentacao mostrou que ele caia no ramo final: sem GTO disponivel e sem equity (preflop nao
+   computa equity-vs-range), ele definia o melhor lance como `fold` — e o call all-in virava erro
+   porque o motor NAO SABIA, nao porque estivesse errado. E o oposto da regra que vale no resto do
+   produto: sem gabarito nao e erro, a decisao sai da conta em vez de virar acusacao.
 """
 import os, sys
 
@@ -76,6 +66,25 @@ def test_o_guarda_funciona_SEM_levelBb():
     d = _decisao(facing_to_bb=37.5, stack_bb=10.6, level_bb=0.0)
     r = evaluate_decision(d)
     assert (r.get('evaluation') or {}).get('label') == 'standard', r.get('evaluation')
+
+
+def test_com_GTO_disponivel_o_call_all_in_e_correto():
+    """A condicao REAL da mao reportada: o GTO tinha cobertura e recomendava jam. Com o facing
+    lido da fonte certa, o guarda colapsa jam em call e o veredito sai correto."""
+    from leaklab.decision_engine_v11 import evaluate_decision
+    d = _decisao(facing_to_bb=37.5, stack_bb=10.6)
+    d['preflop_gto'] = {'available': True, 'recommended_actions': ['jam']}
+    r = evaluate_decision(d)
+    assert (r.get('evaluation') or {}).get('label') == 'standard', r.get('evaluation')
+
+
+def test_ausencia_de_dado_NAO_vira_acusacao():
+    """O segundo defeito. Sem GTO e sem equity o motor nao tem base, e o ramo antigo respondia
+    'fold' — transformando desconhecimento em erro do jogador."""
+    from leaklab.decision_engine_v11 import evaluate_decision
+    r = evaluate_decision(_decisao(facing_to_bb=37.5, stack_bb=10.6))
+    ev = r.get('evaluation') or {}
+    assert ev.get('label') == 'standard', ev
 
 
 def test_call_que_NAO_e_all_in_continua_sendo_julgado():

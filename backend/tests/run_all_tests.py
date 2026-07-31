@@ -28,6 +28,7 @@ SUITES = {
                   'test_posicoes.py',
                   'test_familia_spot.py',
                   'test_perguntas_de_range.py',
+                  'test_call_ja_allin.py',
                   'test_progressao.py',
                   'test_pg_migration_isolation.py',
                   'test_interpretation_sign.py',
