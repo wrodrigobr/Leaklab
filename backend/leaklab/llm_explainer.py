@@ -110,8 +110,22 @@ def _with_no_dash(payload: dict) -> dict:
     return payload
 
 
-def _call_llm_api(payload: dict) -> str:
-    """Chama a API do Claude com um payload já construído. Retorna texto bruto."""
+def _call_llm_api(payload: dict, _revisar: bool = True) -> str:
+    """Chama a API do Claude com um payload já construído. Retorna texto bruto.
+
+    ── A revisão de saída, e por que ela não é só prompt ──────────────────────────────────────
+
+    O `_POKER_TERMS_EN` diz textualmente "NUNCA use 'rua' ou 'ruas'", e o modelo escreveu "ruas de
+    decisão" num texto que foi para a tela do usuário. Instrução no prompt é esperança; a regra
+    deste projeto é que guarda precisa ser verificável. Então a checagem acontece DEPOIS da
+    geração, sobre o texto que vai ser exibido.
+
+    O que é substituição inequívoca (rua→street, travessão→vírgula) sai corrigido direto. O que
+    exigiria reescrever a oração ("se shover toda vez") dispara UMA segunda tentativa citando o
+    trecho exato — "evite anglicismos" o modelo já recebeu e ignorou; "você escreveu X, corrija" é
+    acionável. Se a segunda também falhar, devolve a melhor versão e registra: texto com um termo
+    torto é melhor que exceção na cara do usuário, e o log é o que permite medir a frequência.
+    """
     import requests as _req
     payload = _with_no_dash(payload)
     resp = _req.post(
@@ -130,7 +144,29 @@ def _call_llm_api(payload: dict) -> str:
         block['text'] for block in data.get('content', [])
         if block.get('type') == 'text'
     ).strip()
-    return _sanitize_player_out(text)
+    saida = _sanitize_player_out(text)
+    if not _revisar:
+        return saida
+    from leaklab.revisor_pt import revisar as _revisar_pt, instrucao_de_correcao
+    saida, graves = _revisar_pt(saida)
+    if not graves:
+        return saida
+    try:
+        retry = dict(payload)
+        retry['messages'] = list(payload.get('messages') or []) + [
+            {'role': 'assistant', 'content': saida},
+            {'role': 'user', 'content': instrucao_de_correcao(graves)},
+        ]
+        segunda = _call_llm_api(retry, _revisar=False)
+        nova, graves2 = _revisar_pt(segunda)
+        if segunda and len(graves2) < len(graves):
+            return nova
+    except Exception:
+        pass
+    import logging as _lg
+    _lg.getLogger('llm_guard').warning('revisor_pt: texto publicado com %d problema(s): %s',
+                                       len(graves), '; '.join(p['trecho'] for p in graves)[:200])
+    return saida
 
 
 # Trava determinística de saída player-facing: troca travessão/meia-risca usados como pontuação
@@ -144,6 +180,11 @@ def _sanitize_player_out(text: str) -> str:
     if not text:
         return text
     return _OUT_DASH.sub(', ', text)
+
+
+# NOTA: a regra do travessão vive aqui E em `revisor_pt._TRAVESSAO`. As duas concordam e há teste
+# varrendo isso (`test_revisor_pt`), porque esta roda em TODA saída e a de lá roda também na
+# revisão de textos que não passaram por aqui (ex.: conteúdo importado).
 
 
 # ── Melhoria de texto da anotação do coach ("Melhorar com IA") ────────────────

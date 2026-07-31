@@ -7,6 +7,21 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(llm): revisor de saida, porque o prompt sozinho nao segurou (#texto-gerado)
+
+> **Reportado pelo usuario**, colando um texto do desafio do dia: *"ir straight para o shove"*, *"ruas de decisao"*, *"se shover toda vez"*. Tres problemas diferentes: termo de poker usado como palavra comum (o leitor procura a MAO), termo tecnico traduzido, e conjugacao inventada.
+>
+> **O que torna isto um guarda e nao mais uma instrucao.** O `_POKER_TERMS_EN` ja diz textualmente "NUNCA use 'rua' ou 'ruas', sempre 'street' ou 'streets'", e o modelo escreveu "ruas de decisao" mesmo assim, num texto que foi para a tela. Instrucao no prompt e esperanca; a regra deste projeto e que guarda precisa ser verificavel. Entao `leaklab/revisor_pt.py` roda DEPOIS da geracao, sobre o texto que vai ser exibido, no ponto unico (`_call_llm_api`) por onde toda saida passa.
+>
+> **Corrige o inequivoco, ACUSA o resto.** `rua`→`street` e substituicao 1 para 1 e nao mexe na frase. Ja "se shover toda vez" exigiria reescrever a oracao, e remendo cego produz portugues quebrado — pior que o termo torto, porque o termo o leitor contorna e a frase nao. O que exige reescrita dispara UMA segunda tentativa citando o trecho exato ("voce escreveu X, corrija" e acionavel; "evite anglicismos" o modelo ja recebeu e ignorou). Se a segunda tambem falhar, publica a melhor versao e registra em log, porque texto com termo torto e melhor que excecao na cara do usuario e o log e o que permite medir a frequencia.
+>
+> **A ancora do teste e o paragrafo REAL que o usuario recebeu**, inteiro e sem recorte. Um revisor testado so com frases que eu inventei provaria que ele acha o que eu previ, e nao o que o modelo de fato escreve.
+>
+> **Codigo morto que eu quase deixei passar.** A primeira versao tinha uma lista de excecao (`{'shovou', 'foldou', ...}`) para nao acusar as formas consagradas. Ela NUNCA era consultada: a lista de terminacoes nao inclui `-ou`, entao aquelas formas nem chegavam ao teste da excecao. O teste que "protegia as consagradas" passava por esse motivo, e nao porque a protecao funcionava — descobri sabotando a excecao e vendo o teste continuar verde. Removida, e no lugar entrou um teste do MECANISMO: se alguem adicionar `-ou` as terminacoes achando que amplia a deteccao, as formas certas passam a ser acusadas e o teste cai.
+>
+> 12 testes, 3 guardas verificados quebrando. Verde: suite llm.
+
+
 ### fix(dashboard): quatro indicadores nao recarregavam apos o upload (#dashboard)
 
 > **Reportado pelo usuario:** *"por mais que eu esteja jogando torneios, nem todos os indicadores estao sendo modificados"*. Era percepcao correta.
