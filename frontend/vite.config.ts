@@ -30,6 +30,7 @@ export default defineConfig(({ mode }) => ({
       "/health":      { target: "http://127.0.0.1:5000", changeOrigin: true },
       "/player":      { target: "http://127.0.0.1:5000", changeOrigin: true },
       "/support":     { target: "http://127.0.0.1:5000", changeOrigin: true },
+      "/sample":      { target: "http://127.0.0.1:5000", changeOrigin: true },  // decisão de exemplo (pública)
       "/academy":     { target: "http://127.0.0.1:5000", changeOrigin: true },
       "/profile":     { target: "http://127.0.0.1:5000", changeOrigin: true },
       "/preflop-ranges": { target: "http://127.0.0.1:5000", changeOrigin: true },

@@ -3829,6 +3829,38 @@ def coach_student_history(student_id):
 
 # ── Util endpoints (sem auth — para o frontend offline) ──────────────────────
 
+# Decisão de exemplo da landing / dashboard vazio.
+#
+# É uma análise REAL, produzida pela mesma pipeline do /replay sobre uma mão jogada de verdade,
+# congelada por `scripts/gerar_decisao_exemplo.py`. O que existia antes era um card escrito à
+# mão: números plausíveis e uma frase. Quem via aquilo não via o produto, via uma maquete dele.
+#
+# Por que congelada e não ao vivo: a landing é pública e deslogada. Servir ao vivo a mão de um
+# jogador expõe dado dele a cada visita, sem que ele tenha pedido. A fixture não tem nick, id de
+# mão nem id de torneio — a lista de campos que entra nela é BRANCA, no gerador.
+#
+# O preço, declarado: mudou o motor, o exemplo não acompanha sozinho. Rode o gerador de novo.
+_DECISAO_EXEMPLO_PATH = _BASE / 'fixtures' / 'decisao_exemplo.json'
+_decisao_exemplo_cache: dict | None = None
+
+
+@app.route('/sample/decision', methods=['GET'])
+@limiter.limit("60 per minute")
+def sample_decision():
+    """Uma decisão real e anonimizada, no formato que o Decision Card já consome."""
+    global _decisao_exemplo_cache
+    if _decisao_exemplo_cache is None:
+        try:
+            with open(_DECISAO_EXEMPLO_PATH, encoding='utf-8') as f:
+                _decisao_exemplo_cache = json.load(f)
+        except (OSError, ValueError) as e:
+            # 404 e não 500: a ausência da fixture não é erro do cliente nem incidente de
+            # servidor, e o frontend trata como "sem exemplo" sem quebrar a landing.
+            log.warning('decisao de exemplo indisponivel: %s', e)
+            return jsonify({'error': 'exemplo indisponível'}), 404
+    return jsonify({'decision': _decisao_exemplo_cache})
+
+
 @app.route('/health', methods=['GET'])
 def health():
     db_ok = False

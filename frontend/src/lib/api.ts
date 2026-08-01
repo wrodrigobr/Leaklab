@@ -3450,6 +3450,19 @@ export interface DashboardLayoutData {
   sidebar?: string[];
 }
 
+/**
+ * Decisão de exemplo da landing / dashboard vazio.
+ *
+ * É uma análise REAL, congelada pelo backend a partir de uma mão jogada, no MESMO formato
+ * (`ReplayStep`) que o painel de análise já consome. Público: a landing é deslogada.
+ *
+ * 404 quando a fixture não está lá. Quem chama trata como "sem exemplo" e não quebra a página:
+ * é uma vitrine, não um caminho crítico.
+ */
+export const sample = {
+  decision: () => request<{ decision: ReplayStep }>("/sample/decision"),
+};
+
 export const preferences = {
   get: () =>
     request<{ dashboard_layout: DashboardLayoutData | null }>("/player/preferences"),

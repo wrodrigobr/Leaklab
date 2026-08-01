@@ -7,6 +7,47 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(onboarding): o exemplo de analise virou uma analise de verdade (#onboarding)
+
+> **Pedido do usuario:** "o exemplo de analise tem que ser algo mais real", com o print de um card
+> real ao lado. Ele estava certo: o exemplo era uma maquete do produto, nao o produto.
+>
+> O card antigo usava o componente certo, mas com o miolo escrito a mao: equity 34% contra 42%,
+> uma frase, e nada da evidencia que a analise produz — sem range de defesa, sem cenario, sem as
+> frequencias de como o GTO joga a mao, sem ICM.
+>
+> **Agora sao duas coisas reais ao mesmo tempo.** O DADO sai de uma mao jogada, analisada pela
+> mesma pipeline do `/replay` e congelada em `backend/fixtures/decisao_exemplo.json`
+> (`GET /sample/decision`, publico). E a VITRINE e o mesmo `SidePanels` que renderiza a analise no
+> Replayer — nao uma copia. A segunda parte e a que envelhece bem: copia da apresentacao passa a
+> mentir sozinha no dia em que o card real muda, e ninguem percebe porque nada quebra.
+>
+> Para isso, `SidePanels` saiu de dentro de `pages/Replayer.tsx` (1393 linhas) para
+> `components/replayer/SidePanels.tsx`. **Movido, nao reescrito** — uma linha sequer.
+>
+> **A escolha da mao mudou por causa de um guarda, e vale registrar.** A primeira eleita tinha o
+> maior EV perdido da amostra (A2s no BB, 2,0bb) e foi DESCARTADA: vinha com `open_size_mismatch`,
+> o vilao abriu 17bb onde o GTO abre 3bb. A range de "defenda 76%" e vs open MINIMO, entao ela nao
+> descrevia o spot enfrentado. No replay a analise segue honesta, porque o card avisa; como
+> vitrine, seria uma analise com asterisco. A escolhida e KJo no SB vs open do CO a 26bb, com
+> estrategia MISTA (Raise 66% / Call 34%), que mostra mais do produto do que uma barra de 100%.
+>
+> **Congelada e nao ao vivo, de proposito:** a landing e publica e deslogada, e servir ao vivo a
+> mao de um jogador expoe dado dele a cada visita sem que ele tenha pedido. A fixture nao tem
+> nick, id de mao nem id de torneio — a lista de campos que entra nela e BRANCA. O preco esta
+> declarado no gerador: mudou o motor, o exemplo nao acompanha sozinho.
+>
+> Dois achados de caminho: `backend/data/` e ignorado pelo git, entao a fixture ali nunca chegaria
+> a producao e o endpoint responderia vazio sem falhar no dev (movida para `backend/fixtures/`); e
+> `/sample` faltava no proxy do vite.
+>
+> **Medicoes:** 8 testes de backend (4 guardas verificados quebrando) + 5 de frontend (2
+> verificados quebrando), suite api 128/128. O `tsc` foi comparado contra o HEAD para provar que a
+> mudanca de arquivo nao introduziu erro: **74 antes, 74 depois**, distribuicao identica. E o
+> Replayer foi conferido no navegador contra o HEAD em duas larguras, com o mesmo resultado nas
+> duas. Conferido no app rodando: o exemplo mostra veredito, acao, range 29%, Raise 65.5% /
+> Call 34.5%, equity 51.6% vs 54.0% necessarios, e o rodape com stack, M e ICM.
+
 ### fix(onboarding): o dropzone citava UMA sala e exibia um selo de seguranca sem lastro (#onboarding)
 
 > **Reportado pelo usuario**, olhando a linha de chips do dropzone: `.txt · .log · PokerStars ·
