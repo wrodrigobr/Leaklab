@@ -3840,25 +3840,56 @@ def coach_student_history(student_id):
 # mão nem id de torneio — a lista de campos que entra nela é BRANCA, no gerador.
 #
 # O preço, declarado: mudou o motor, o exemplo não acompanha sozinho. Rode o gerador de novo.
-_DECISAO_EXEMPLO_PATH = _BASE / 'fixtures' / 'decisao_exemplo.json'
-_decisao_exemplo_cache: dict | None = None
+_FIXTURES_DEMO = _BASE / 'fixtures'
+_fixtures_demo_cache: dict[str, dict] = {}
+
+
+def _fixture_demo(nome: str):
+    """Carrega e memoiza uma fixture de demonstração. Devolve `None` quando nao ha arquivo.
+
+    Duas rotas publicas leem fixture do mesmo jeito (decisao e dashboard), entao a leitura vive
+    aqui: a terceira nasce sem copiar o tratamento de erro, que e onde a copia costuma divergir.
+    """
+    if nome not in _fixtures_demo_cache:
+        try:
+            with open(_FIXTURES_DEMO / f'{nome}.json', encoding='utf-8') as f:
+                _fixtures_demo_cache[nome] = json.load(f)
+        except (OSError, ValueError) as e:
+            log.warning('fixture de demonstracao "%s" indisponivel: %s', nome, e)
+            return None
+    return _fixtures_demo_cache[nome]
 
 
 @app.route('/sample/decision', methods=['GET'])
 @limiter.limit("60 per minute")
 def sample_decision():
     """Uma decisão real e anonimizada, no formato que o Decision Card já consome."""
-    global _decisao_exemplo_cache
-    if _decisao_exemplo_cache is None:
-        try:
-            with open(_DECISAO_EXEMPLO_PATH, encoding='utf-8') as f:
-                _decisao_exemplo_cache = json.load(f)
-        except (OSError, ValueError) as e:
-            # 404 e não 500: a ausência da fixture não é erro do cliente nem incidente de
-            # servidor, e o frontend trata como "sem exemplo" sem quebrar a landing.
-            log.warning('decisao de exemplo indisponivel: %s', e)
-            return jsonify({'error': 'exemplo indisponível'}), 404
-    return jsonify({'decision': _decisao_exemplo_cache})
+    dados = _fixture_demo('decisao_exemplo')
+    if dados is None:
+        # 404 e não 500: a ausência da fixture não é erro do cliente nem incidente de
+        # servidor, e o frontend trata como "sem exemplo" sem quebrar a landing.
+        return jsonify({'error': 'exemplo indisponível'}), 404
+    return jsonify({'decision': dados})
+
+
+@app.route('/sample/dashboard', methods=['GET'])
+@limiter.limit("60 per minute")
+def sample_dashboard():
+    """Dashboard de DEMONSTRAÇÃO: os 19 payloads que a tela consome, de um jogador real.
+
+    Existe porque o tour guiado precisa de uma tela POVOADA para apontar. Rodá-lo sobre o
+    dashboard de quem acabou de se cadastrar seria apontar para cards vazios — e um tour que
+    aponta para cards vazios ensina que o produto é vazio.
+
+    Os números vêm da mesma pipeline dos endpoints reais (`scripts/gerar_dashboard_demo.py` bate
+    neles via test client), o que garante duas coisas: a FORMA bate com o que o frontend espera,
+    e os 13 cards são COERENTES entre si — o leak prioritário conversa com o EV perdido, que
+    conversa com a cobertura GTO. Fabricar isso à mão erraria em silêncio.
+    """
+    dados = _fixture_demo('dashboard_demo')
+    if dados is None:
+        return jsonify({'error': 'demonstração indisponível'}), 404
+    return jsonify(dados)
 
 
 @app.route('/health', methods=['GET'])

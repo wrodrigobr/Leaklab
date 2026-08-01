@@ -121,16 +121,17 @@ def test_fixture_sem_descasamento_de_sizing():
 def test_fixture_ausente_vira_404():
     """404 e não 500: falta de exemplo não é incidente, e o frontend precisa distinguir."""
     import api.app as app_mod
-    original_path, original_cache = app_mod._DECISAO_EXEMPLO_PATH, app_mod._decisao_exemplo_cache
-    app_mod._DECISAO_EXEMPLO_PATH = original_path.parent / 'nao_existe_de_proposito.json'
-    app_mod._decisao_exemplo_cache = None
+    original_dir, original_cache = app_mod._FIXTURES_DEMO, dict(app_mod._fixtures_demo_cache)
+    app_mod._FIXTURES_DEMO = original_dir / 'nao_existe_de_proposito'
+    app_mod._fixtures_demo_cache.clear()
     try:
         r = _client().get('/sample/decision')
         assert r.status_code == 404, f'esperava 404, veio {r.status_code}'
         assert 'error' in r.get_json()
     finally:
-        app_mod._DECISAO_EXEMPLO_PATH = original_path
-        app_mod._decisao_exemplo_cache = original_cache
+        app_mod._FIXTURES_DEMO = original_dir
+        app_mod._fixtures_demo_cache.clear()
+        app_mod._fixtures_demo_cache.update(original_cache)
     print('OK  test_fixture_ausente_vira_404')
 
 

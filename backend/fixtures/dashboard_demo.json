@@ -1,0 +1,1949 @@
+{
+  "career": {
+    "blocking_leaks": [
+      {
+        "avg_score": 0.19,
+        "n": 58,
+        "spot": "preflop/call"
+      },
+      {
+        "avg_score": 0.21,
+        "n": 54,
+        "spot": "preflop/raise"
+      },
+      {
+        "avg_score": 0.26,
+        "n": 50,
+        "spot": "preflop/fold"
+      }
+    ],
+    "current_avg": 1699.7,
+    "current_elo": 1699.7,
+    "current_level": "Grinder",
+    "current_level_slug": "grinder",
+    "insufficient_data": false,
+    "level_max": 1710,
+    "level_min": 1647,
+    "level_progress": 0.837,
+    "metric": "elo",
+    "milestones": [
+      {
+        "level_name": "Regular",
+        "level_slug": "regular",
+        "reachable": false,
+        "threshold": 1710
+      },
+      {
+        "level_name": "Sólido",
+        "level_slug": "solid",
+        "reachable": false,
+        "threshold": 1816
+      },
+      {
+        "level_name": "Expert",
+        "level_slug": "expert",
+        "reachable": false,
+        "threshold": 1924
+      },
+      {
+        "level_name": "Elite",
+        "level_slug": "elite",
+        "reachable": false,
+        "threshold": 2053
+      }
+    ],
+    "narrative": "Você está em trajetória **declinante** (-1 ELO/torneio) e mantendo esse ritmo levará aproximadamente 2-3 anos para atingir o próximo nível (Regular). O vazamento crítico a corrigir imediatamente é a **gestão de ranges em preflop calls**: você está entrando em muitos potes marginais que drenam sua stack e deterioram sua posição no late-game; focalize em tighten suas calls out-of-position e ser mais agressivo com suas raising ranges para recuperar iniciativa.",
+    "next_milestone": null,
+    "series_history": [
+      1734.0,
+      1743.8,
+      1807.7,
+      1847.2,
+      1797.9,
+      1803.0,
+      1801.1,
+      1704.7,
+      1709.4,
+      1776.8,
+      1788.0,
+      1827.6,
+      1834.5,
+      1854.4,
+      1824.9,
+      1665.6,
+      1699.7
+    ],
+    "series_projection": [
+      1768.5,
+      1767.5,
+      1766.4,
+      1765.4,
+      1764.4
+    ],
+    "slope_per_tournament": -1.0208,
+    "tournament_count": 17,
+    "tourns_per_month": 7.2
+  },
+  "cognitiveFailures": {
+    "insufficient_data": false,
+    "narrative": "Você está sentindo que sua boa sequência vai continuar e que a mesa respeita seu jogo, então perde a disciplina nas decisões criticamente importantes.\n\nVocê empurra ficha com mãos fracas na final table, ignorando que cada chip vale muito mais quando restam poucos jogadores e os saltos de prêmio são grandes.\n\nNa próxima sessão, quando chegar na final table, pause dois segundos antes de cada decisão grande e pergunte em voz baixa: \"Essa mão vale arriscar tudo aqui?\" — força seu cérebro a calcular valor real.",
+    "patterns": [
+      {
+        "count": 14,
+        "frequency": 0.156,
+        "severity": "low",
+        "type": "icm_blindness"
+      },
+      {
+        "count": 8,
+        "frequency": 0.056,
+        "severity": "low",
+        "type": "entitlement_tilt"
+      },
+      {
+        "count": 4,
+        "frequency": 0.026,
+        "severity": "low",
+        "type": "revenge_aggression"
+      },
+      {
+        "count": 3,
+        "frequency": 0.003,
+        "severity": "low",
+        "type": "compensation_call"
+      }
+    ],
+    "total_decisions": 2200
+  },
+  "confidenceDrift": {
+    "affected_sessions": 0,
+    "drift_detected": false,
+    "latest_flagged_id": 0,
+    "sessions": [],
+    "severity": null
+  },
+  "dna": {
+    "dna": {
+      "aggression_index": 37.8,
+      "archetype": "TAG",
+      "discipline": 81.5,
+      "fold_frequency": 55.9,
+      "icm_awareness": null,
+      "positional_awareness": 52.2,
+      "three_bet_pct": 3.2
+    },
+    "sample_size": 2200
+  },
+  "evSummary": {
+    "by_street": [
+      {
+        "count": 177,
+        "loss_bb": 93.8,
+        "street": "preflop"
+      },
+      {
+        "count": 28,
+        "loss_bb": 77.9,
+        "street": "flop"
+      },
+      {
+        "count": 30,
+        "loss_bb": 53.6,
+        "street": "turn"
+      },
+      {
+        "count": 16,
+        "loss_bb": 11.2,
+        "street": "river"
+      }
+    ],
+    "coverage": {
+      "postflop_pct": 68.0,
+      "preflop_pct": 95.7
+    },
+    "decisions_with_ev": 1620,
+    "ev_per_100": 14.7,
+    "ev_per_100_prev": 13.7,
+    "ev_per_100_recent": 8.9,
+    "has_data": true,
+    "series": [
+      {
+        "ev_per_100": 34.5,
+        "name": "MTT $1.10",
+        "tournament_id": 150
+      },
+      {
+        "ev_per_100": 17.2,
+        "name": "MTT $1.10",
+        "tournament_id": 151
+      },
+      {
+        "ev_per_100": null,
+        "name": "SNG $1.00",
+        "tournament_id": 198
+      },
+      {
+        "ev_per_100": 15.3,
+        "name": "SNG $1.00",
+        "tournament_id": 199
+      },
+      {
+        "ev_per_100": 16.1,
+        "name": "",
+        "tournament_id": 388
+      },
+      {
+        "ev_per_100": 1.3,
+        "name": "Bounty Hunters Big One $",
+        "tournament_id": 418
+      },
+      {
+        "ev_per_100": 5.5,
+        "name": "",
+        "tournament_id": 419
+      },
+      {
+        "ev_per_100": 0.2,
+        "name": "MTT $1.10",
+        "tournament_id": 420
+      },
+      {
+        "ev_per_100": 4.1,
+        "name": "MTT $1.00",
+        "tournament_id": 421
+      },
+      {
+        "ev_per_100": 5.6,
+        "name": "",
+        "tournament_id": 426
+      },
+      {
+        "ev_per_100": 12.9,
+        "name": "₮1.10 Asia Rapid Fire PK",
+        "tournament_id": 429
+      },
+      {
+        "ev_per_100": 3.0,
+        "name": "MTT $1.00",
+        "tournament_id": 434
+      }
+    ],
+    "standard_pct": 81.5,
+    "top_leaks": [
+      {
+        "action_taken": "fold",
+        "best_action": "call",
+        "count": 3,
+        "loss_bb": 65.9,
+        "share_pct": 28,
+        "street": "flop"
+      },
+      {
+        "action_taken": "fold",
+        "best_action": "call",
+        "count": 86,
+        "loss_bb": 39.5,
+        "share_pct": 17,
+        "street": "preflop"
+      },
+      {
+        "action_taken": "fold",
+        "best_action": "call",
+        "count": 5,
+        "loss_bb": 25.2,
+        "share_pct": 11,
+        "street": "turn"
+      },
+      {
+        "action_taken": "fold",
+        "best_action": "raise",
+        "count": 35,
+        "loss_bb": 23.4,
+        "share_pct": 10,
+        "street": "preflop"
+      },
+      {
+        "action_taken": "fold",
+        "best_action": "jam",
+        "count": 14,
+        "loss_bb": 14.4,
+        "share_pct": 6,
+        "street": "preflop"
+      }
+    ],
+    "total_loss_bb": 236.5
+  },
+  "evolution": {
+    "evolution": [
+      {
+        "avg_score": 0.0576,
+        "buy_in": 1.1,
+        "clear_pct": 1.28,
+        "decisions_count": 78,
+        "hands_count": 68,
+        "imported_at": "2026-05-16 17:04:59",
+        "place": 59,
+        "played_at": "2026-05-06",
+        "prize": 0.0,
+        "profit": -1.1,
+        "result": null,
+        "site": "pokerstars",
+        "standard_pct": 85.9,
+        "tournament_id": "3998218354"
+      },
+      {
+        "avg_score": 0.1063,
+        "buy_in": 1.0,
+        "clear_pct": 7.62,
+        "decisions_count": 105,
+        "hands_count": 65,
+        "imported_at": "2026-05-21 02:15:55",
+        "place": 1,
+        "played_at": "2026-05-20",
+        "prize": 3.83,
+        "profit": 2.83,
+        "result": "itm",
+        "site": "pokerstars",
+        "standard_pct": 77.14,
+        "tournament_id": "4002072836"
+      },
+      {
+        "avg_score": 0.0687,
+        "buy_in": 1.0,
+        "clear_pct": 0.0,
+        "decisions_count": 45,
+        "hands_count": 28,
+        "imported_at": "2026-05-22 01:46:39",
+        "place": 5,
+        "played_at": "2026-05-21",
+        "prize": 0.0,
+        "profit": -1.0,
+        "result": null,
+        "site": "pokerstars",
+        "standard_pct": 75.56,
+        "tournament_id": "4002336128"
+      },
+      {
+        "avg_score": 0.0575,
+        "buy_in": null,
+        "clear_pct": 1.74,
+        "decisions_count": 345,
+        "hands_count": 123,
+        "imported_at": "2026-06-10 14:24:46",
+        "place": null,
+        "played_at": "2026-06-09",
+        "prize": 189120.0,
+        "profit": null,
+        "result": "itm",
+        "site": "pokerstars",
+        "standard_pct": 80.87,
+        "tournament_id": "27"
+      },
+      {
+        "avg_score": 0.0555,
+        "buy_in": 2.16,
+        "clear_pct": 2.94,
+        "decisions_count": 34,
+        "hands_count": 19,
+        "imported_at": "2026-06-23 19:42:54",
+        "place": 622,
+        "played_at": "2026-06-22",
+        "prize": 0.62,
+        "profit": -1.54,
+        "result": null,
+        "site": "ggpoker",
+        "standard_pct": 85.29,
+        "tournament_id": "292348828"
+      },
+      {
+        "avg_score": 0.0473,
+        "buy_in": null,
+        "clear_pct": 1.1,
+        "decisions_count": 91,
+        "hands_count": 69,
+        "imported_at": "2026-06-24 00:18:29",
+        "place": null,
+        "played_at": "2026-06-23",
+        "prize": null,
+        "profit": null,
+        "result": null,
+        "site": "pokerstars",
+        "standard_pct": 89.01,
+        "tournament_id": "999999"
+      },
+      {
+        "avg_score": 0.0683,
+        "buy_in": 1.1,
+        "clear_pct": 4.69,
+        "decisions_count": 64,
+        "hands_count": 44,
+        "imported_at": "2026-06-26 23:16:20",
+        "place": 143,
+        "played_at": "2026-06-26",
+        "prize": 0.0,
+        "profit": -1.1,
+        "result": null,
+        "site": "pokerstars",
+        "standard_pct": 81.25,
+        "tournament_id": "4010762312"
+      },
+      {
+        "avg_score": 0.0451,
+        "buy_in": 1.0,
+        "clear_pct": 1.49,
+        "decisions_count": 67,
+        "hands_count": 51,
+        "imported_at": "2026-06-29 02:13:59",
+        "place": 15,
+        "played_at": "2026-06-28",
+        "prize": 0.0,
+        "profit": -1.0,
+        "result": null,
+        "site": "pokerstars",
+        "standard_pct": 94.03,
+        "tournament_id": "4012159146"
+      },
+      {
+        "avg_score": 0.0445,
+        "buy_in": 0.55,
+        "clear_pct": 0.74,
+        "decisions_count": 136,
+        "hands_count": 86,
+        "imported_at": "2026-07-01 11:10:04",
+        "place": 6,
+        "played_at": "2026-06-30",
+        "prize": 1.19,
+        "profit": 0.64,
+        "result": null,
+        "site": "acr",
+        "standard_pct": 83.09,
+        "tournament_id": "35409697"
+      },
+      {
+        "avg_score": 0.0679,
+        "buy_in": 1.1,
+        "clear_pct": 0.28,
+        "decisions_count": 351,
+        "hands_count": 325,
+        "imported_at": "2026-07-06 15:51:03",
+        "place": null,
+        "played_at": "2026-07-03",
+        "prize": null,
+        "profit": null,
+        "result": null,
+        "site": "coinpoker",
+        "standard_pct": 70.94,
+        "tournament_id": "72561"
+      },
+      {
+        "avg_score": 0.0507,
+        "buy_in": 1.0,
+        "clear_pct": 1.05,
+        "decisions_count": 95,
+        "hands_count": 51,
+        "imported_at": "2026-07-27 01:07:47",
+        "place": 4,
+        "played_at": "2026-07-26",
+        "prize": 0.0,
+        "profit": -1.0,
+        "result": null,
+        "site": "pokerstars",
+        "standard_pct": 83.16,
+        "tournament_id": "4019075794"
+      }
+    ],
+    "icm": {
+      "high": {
+        "avg_score": 0.06541235827664399,
+        "icm_pressure": "high",
+        "n": 882,
+        "standard_rate": 0.7687074829931972
+      },
+      "low": {
+        "avg_score": 0.05175496183206107,
+        "icm_pressure": "low",
+        "n": 917,
+        "standard_rate": 0.8538713195201745
+      },
+      "medium": {
+        "avg_score": 0.06551147132169576,
+        "icm_pressure": "medium",
+        "n": 401,
+        "standard_rate": 0.830423940149626
+      }
+    },
+    "leak_source": "gto",
+    "leaks": [
+      {
+        "avg_buy_in": 0.9130000000000001,
+        "avg_score": 0.363,
+        "drill_accuracy": null,
+        "drill_count": 0,
+        "ev_loss_monthly": 1.1,
+        "n": 100,
+        "priority_rank": 1,
+        "priority_score": 36.3,
+        "spot": "preflop/call",
+        "trend": "regressing"
+      },
+      {
+        "avg_buy_in": 0.9173611111111113,
+        "avg_score": 0.39166666666666666,
+        "drill_accuracy": null,
+        "drill_count": 0,
+        "ev_loss_monthly": 0.86,
+        "n": 72,
+        "priority_rank": 2,
+        "priority_score": 28.2,
+        "spot": "preflop/raise",
+        "trend": "regressing"
+      },
+      {
+        "avg_buy_in": 0.9188235294117647,
+        "avg_score": 0.38529411764705884,
+        "drill_accuracy": null,
+        "drill_count": 0,
+        "ev_loss_monthly": 0.6,
+        "n": 51,
+        "priority_rank": 3,
+        "priority_score": 19.650000000000002,
+        "spot": "preflop/fold",
+        "trend": "stagnant"
+      },
+      {
+        "avg_buy_in": 1.0609756097560976,
+        "avg_score": 0.31097560975609756,
+        "drill_accuracy": null,
+        "drill_count": 0,
+        "ev_loss_monthly": 0.45,
+        "n": 41,
+        "priority_rank": 4,
+        "priority_score": 12.75,
+        "spot": "preflop/jam",
+        "trend": "regressing"
+      },
+      {
+        "avg_buy_in": 1.0866666666666667,
+        "avg_score": 0.33,
+        "drill_accuracy": null,
+        "drill_count": 0,
+        "ev_loss_monthly": 0.18,
+        "n": 15,
+        "priority_rank": 5,
+        "priority_score": 4.95,
+        "spot": "flop/check",
+        "trend": "stagnant"
+      },
+      {
+        "avg_buy_in": 0.9230769230769231,
+        "avg_score": 0.2653846153846154,
+        "drill_accuracy": null,
+        "drill_count": 0,
+        "ev_loss_monthly": 0.11,
+        "n": 13,
+        "priority_rank": 6,
+        "priority_score": 3.45,
+        "spot": "turn/check",
+        "trend": "new"
+      },
+      {
+        "avg_buy_in": 0.42000000000000004,
+        "avg_score": 0.39,
+        "drill_accuracy": null,
+        "drill_count": 0,
+        "ev_loss_monthly": 0.03,
+        "n": 5,
+        "priority_rank": 7,
+        "priority_score": 1.9500000000000002,
+        "spot": "turn/fold",
+        "trend": "new"
+      },
+      {
+        "avg_buy_in": 0.44000000000000006,
+        "avg_score": 0.39,
+        "drill_accuracy": null,
+        "drill_count": 0,
+        "ev_loss_monthly": 0.03,
+        "n": 5,
+        "priority_rank": 8,
+        "priority_score": 1.9500000000000002,
+        "spot": "river/check",
+        "trend": "new"
+      },
+      {
+        "avg_buy_in": 0.55,
+        "avg_score": 0.45,
+        "drill_accuracy": null,
+        "drill_count": 0,
+        "ev_loss_monthly": 0.03,
+        "n": 4,
+        "priority_rank": 9,
+        "priority_score": 1.8,
+        "spot": "turn/call",
+        "trend": "new"
+      },
+      {
+        "avg_buy_in": 0.8800000000000001,
+        "avg_score": 0.32999999999999996,
+        "drill_accuracy": null,
+        "drill_count": 0,
+        "ev_loss_monthly": 0.05,
+        "n": 5,
+        "priority_rank": 10,
+        "priority_score": 1.65,
+        "spot": "flop/fold",
+        "trend": "new"
+      }
+    ]
+  },
+  "gtoAlignment": {
+    "by_street": [
+      {
+        "aligned_pct": 82.9,
+        "correct_pct": 79.4,
+        "coverage_pct": 95.7,
+        "critical_pct": 12.4,
+        "minor_pct": 4.7,
+        "mixed_pct": 3.5,
+        "street": "preflop",
+        "total": 1610,
+        "with_gto": 1541
+      },
+      {
+        "aligned_pct": 80.9,
+        "correct_pct": 48.9,
+        "coverage_pct": 60.1,
+        "critical_pct": 9.0,
+        "minor_pct": 10.1,
+        "mixed_pct": 31.9,
+        "street": "flop",
+        "total": 313,
+        "with_gto": 188
+      },
+      {
+        "aligned_pct": 81.8,
+        "correct_pct": 52.3,
+        "coverage_pct": 74.6,
+        "critical_pct": 10.6,
+        "minor_pct": 7.6,
+        "mixed_pct": 29.5,
+        "street": "turn",
+        "total": 177,
+        "with_gto": 132
+      },
+      {
+        "aligned_pct": 87.7,
+        "correct_pct": 46.9,
+        "coverage_pct": 81.0,
+        "critical_pct": 7.4,
+        "minor_pct": 4.9,
+        "mixed_pct": 40.7,
+        "street": "river",
+        "total": 100,
+        "with_gto": 81
+      }
+    ],
+    "overall_aligned_pct": 82.8,
+    "overall_coverage_pct": 88.3,
+    "total_decisions": 2200,
+    "total_with_gto": 1942
+  },
+  "gtoPosition": {
+    "by_position": [
+      {
+        "aligned_pct": 80.3,
+        "correct_pct": 71.3,
+        "coverage_pct": 91.7,
+        "critical_pct": 15.5,
+        "minor_pct": 4.2,
+        "mixed_pct": 9.0,
+        "position": "BTN",
+        "total": 338,
+        "with_gto": 310
+      },
+      {
+        "aligned_pct": 84.4,
+        "correct_pct": 77.9,
+        "coverage_pct": 94.8,
+        "critical_pct": 12.3,
+        "minor_pct": 3.3,
+        "mixed_pct": 6.5,
+        "position": "CO",
+        "total": 291,
+        "with_gto": 276
+      },
+      {
+        "aligned_pct": 89.2,
+        "correct_pct": 83.5,
+        "coverage_pct": 94.6,
+        "critical_pct": 4.6,
+        "minor_pct": 6.2,
+        "mixed_pct": 5.7,
+        "position": "HJ",
+        "total": 205,
+        "with_gto": 194
+      },
+      {
+        "aligned_pct": 92.9,
+        "correct_pct": 82.8,
+        "coverage_pct": 94.3,
+        "critical_pct": 3.0,
+        "minor_pct": 4.0,
+        "mixed_pct": 10.1,
+        "position": "UTG+2",
+        "total": 105,
+        "with_gto": 99
+      },
+      {
+        "aligned_pct": 88.4,
+        "correct_pct": 84.5,
+        "coverage_pct": 95.1,
+        "critical_pct": 7.7,
+        "minor_pct": 3.9,
+        "mixed_pct": 3.9,
+        "position": "UTG+1",
+        "total": 163,
+        "with_gto": 155
+      },
+      {
+        "aligned_pct": 87.1,
+        "correct_pct": 83.2,
+        "coverage_pct": 93.9,
+        "critical_pct": 7.8,
+        "minor_pct": 5.2,
+        "mixed_pct": 3.9,
+        "position": "UTG",
+        "total": 247,
+        "with_gto": 232
+      },
+      {
+        "aligned_pct": 75.6,
+        "correct_pct": 62.5,
+        "coverage_pct": 85.4,
+        "critical_pct": 17.7,
+        "minor_pct": 6.7,
+        "mixed_pct": 13.1,
+        "position": "SB",
+        "total": 384,
+        "with_gto": 328
+      },
+      {
+        "aligned_pct": 78.2,
+        "correct_pct": 60.3,
+        "coverage_pct": 74.2,
+        "critical_pct": 13.6,
+        "minor_pct": 8.2,
+        "mixed_pct": 17.9,
+        "position": "BB",
+        "total": 445,
+        "with_gto": 330
+      },
+      {
+        "aligned_pct": 88.9,
+        "correct_pct": 77.8,
+        "coverage_pct": 81.8,
+        "critical_pct": 5.6,
+        "minor_pct": 5.6,
+        "mixed_pct": 11.1,
+        "position": "MP1",
+        "total": 22,
+        "with_gto": 18
+      }
+    ],
+    "overall_aligned_pct": 82.8,
+    "overall_coverage_pct": 88.3,
+    "total_decisions": 2200,
+    "total_with_gto": 1942
+  },
+  "gtoQuality": {
+    "aligned_pct": 82.8,
+    "coverage_pct": 88.3,
+    "gto_correct_pct": 73.2,
+    "gto_critical_pct": 11.7,
+    "gto_minor_pct": 5.5,
+    "gto_mixed_pct": 9.6,
+    "total_with_gto": 1942
+  },
+  "leakFinder": {
+    "has_ev": true,
+    "leaks": [
+      {
+        "avg_ev_loss_bb": 20.2,
+        "ideal_action": "call",
+        "n": 1,
+        "position": "CO",
+        "severity": "high",
+        "street": "flop",
+        "total_ev_loss_bb": 20.2
+      },
+      {
+        "avg_ev_loss_bb": 0.431,
+        "ideal_action": "call",
+        "n": 19,
+        "position": "BB",
+        "severity": "high",
+        "street": "preflop",
+        "total_ev_loss_bb": 8.19
+      },
+      {
+        "avg_ev_loss_bb": 8.14,
+        "ideal_action": "jam",
+        "n": 1,
+        "position": "UTG+1",
+        "severity": "high",
+        "street": "turn",
+        "total_ev_loss_bb": 8.14
+      },
+      {
+        "avg_ev_loss_bb": 3.285,
+        "ideal_action": "call",
+        "n": 2,
+        "position": "BTN",
+        "severity": "high",
+        "street": "turn",
+        "total_ev_loss_bb": 6.57
+      },
+      {
+        "avg_ev_loss_bb": 2.72,
+        "ideal_action": "fold",
+        "n": 2,
+        "position": "CO",
+        "severity": "high",
+        "street": "turn",
+        "total_ev_loss_bb": 5.44
+      },
+      {
+        "avg_ev_loss_bb": 2.408,
+        "ideal_action": "jam",
+        "n": 2,
+        "position": "BB",
+        "severity": "medium",
+        "street": "preflop",
+        "total_ev_loss_bb": 4.82
+      }
+    ],
+    "n_leaks": 114,
+    "top_leak": {
+      "avg_ev_loss_bb": 20.2,
+      "ideal_action": "call",
+      "n": 1,
+      "position": "CO",
+      "severity": "high",
+      "street": "flop",
+      "total_ev_loss_bb": 20.2
+    },
+    "total_ev_loss_bb": 97.1
+  },
+  "leakGraph": {
+    "edges": [
+      {
+        "co_occurrences": 5,
+        "correlation": 1.0,
+        "source": "SB|preflop/call",
+        "target": "SB|preflop/fold"
+      },
+      {
+        "co_occurrences": 5,
+        "correlation": 1.0,
+        "source": "BB|preflop/jam",
+        "target": "SB|preflop/call"
+      },
+      {
+        "co_occurrences": 5,
+        "correlation": 1.0,
+        "source": "BB|turn/check",
+        "target": "SB|preflop/call"
+      },
+      {
+        "co_occurrences": 4,
+        "correlation": 1.0,
+        "source": "CO|flop/check",
+        "target": "SB|preflop/call"
+      },
+      {
+        "co_occurrences": 4,
+        "correlation": 1.0,
+        "source": "BB|preflop/call",
+        "target": "BB|preflop/raise"
+      },
+      {
+        "co_occurrences": 3,
+        "correlation": 1.0,
+        "source": "BB|preflop/call",
+        "target": "CO|flop/call"
+      },
+      {
+        "co_occurrences": 4,
+        "correlation": 1.0,
+        "source": "BB|preflop/raise",
+        "target": "SB|preflop/call"
+      },
+      {
+        "co_occurrences": 3,
+        "correlation": 1.0,
+        "source": "CO|flop/call",
+        "target": "SB|preflop/call"
+      },
+      {
+        "co_occurrences": 3,
+        "correlation": 1.0,
+        "source": "CO|flop/call",
+        "target": "UTG|preflop/raise"
+      },
+      {
+        "co_occurrences": 3,
+        "correlation": 1.0,
+        "source": "BB|preflop/call",
+        "target": "BTN|preflop/jam"
+      },
+      {
+        "co_occurrences": 3,
+        "correlation": 1.0,
+        "source": "BB|preflop/call",
+        "target": "CO|preflop/call"
+      },
+      {
+        "co_occurrences": 3,
+        "correlation": 1.0,
+        "source": "BTN|preflop/jam",
+        "target": "HJ|preflop/fold"
+      }
+    ],
+    "narrative": "Você está pagando muito wide no SB contra raises do botão ou cutoff, e quando entra nesses pots comprometido com chips ruins, acaba ou foldando quando deveria pagar, ou shuvando cego no BB sem ter mão de verdade.\n\nA raiz é você não ter um critério claro de range para pagar raise em SB: você está improvisando quais mãos merecem call dependendo do stack ou do humor, em vez de decidir antes da mão.\n\nNa próxima sessão, escreva três linhas com exatamente quais mãos você vai pagar e quais vai foldear quando leva raise em SB com seu stack médio, e siga à risca; isso vai parar o sangramento.",
+    "nodes": [
+      {
+        "avg_score": 0.215,
+        "degree": 2,
+        "id": "BB|preflop/raise",
+        "label": "BB PF Raise",
+        "n": 4,
+        "severity": "minor"
+      },
+      {
+        "avg_score": 0.169,
+        "degree": 2,
+        "id": "BTN|preflop/jam",
+        "label": "BTN PF Shove",
+        "n": 3,
+        "severity": "minor"
+      },
+      {
+        "avg_score": 0.186,
+        "degree": 1,
+        "id": "UTG|preflop/raise",
+        "label": "UTG PF Raise",
+        "n": 6,
+        "severity": "minor"
+      },
+      {
+        "avg_score": 0.302,
+        "degree": 1,
+        "id": "SB|preflop/fold",
+        "label": "SB PF Fold",
+        "n": 5,
+        "severity": "minor"
+      },
+      {
+        "avg_score": 0.191,
+        "degree": 1,
+        "id": "BB|turn/check",
+        "label": "BB TN Check",
+        "n": 5,
+        "severity": "minor"
+      },
+      {
+        "avg_score": 0.208,
+        "degree": 1,
+        "id": "HJ|preflop/fold",
+        "label": "HJ PF Fold",
+        "n": 5,
+        "severity": "minor"
+      },
+      {
+        "avg_score": 0.751,
+        "degree": 1,
+        "id": "CO|flop/check",
+        "label": "CO FL Check",
+        "n": 4,
+        "severity": "critical"
+      },
+      {
+        "avg_score": 0.23,
+        "degree": 1,
+        "id": "CO|preflop/call",
+        "label": "CO PF Call",
+        "n": 3,
+        "severity": "minor"
+      },
+      {
+        "avg_score": 0.291,
+        "degree": 0,
+        "id": "BTN|preflop/fold",
+        "label": "BTN PF Fold",
+        "n": 8,
+        "severity": "minor"
+      },
+      {
+        "avg_score": 0.157,
+        "degree": 0,
+        "id": "UTG+1|preflop/raise",
+        "label": "UTG+1 PF Raise",
+        "n": 6,
+        "severity": "minor"
+      }
+    ]
+  },
+  "leakRoi": {
+    "leaks": [
+      {
+        "avg_buy_in": 0.9130000000000001,
+        "avg_score": 0.363,
+        "drill_accuracy": null,
+        "drill_count": 0,
+        "ev_loss_monthly": 1.1,
+        "n": 100,
+        "priority_rank": 1,
+        "priority_score": 36.3,
+        "spot": "preflop/call",
+        "trend": "regressing"
+      },
+      {
+        "avg_buy_in": 0.9173611111111113,
+        "avg_score": 0.39166666666666666,
+        "drill_accuracy": null,
+        "drill_count": 0,
+        "ev_loss_monthly": 0.86,
+        "n": 72,
+        "priority_rank": 2,
+        "priority_score": 28.2,
+        "spot": "preflop/raise",
+        "trend": "regressing"
+      },
+      {
+        "avg_buy_in": 0.9188235294117647,
+        "avg_score": 0.38529411764705884,
+        "drill_accuracy": null,
+        "drill_count": 0,
+        "ev_loss_monthly": 0.6,
+        "n": 51,
+        "priority_rank": 3,
+        "priority_score": 19.650000000000002,
+        "spot": "preflop/fold",
+        "trend": "stagnant"
+      },
+      {
+        "avg_buy_in": 1.0609756097560976,
+        "avg_score": 0.31097560975609756,
+        "drill_accuracy": null,
+        "drill_count": 0,
+        "ev_loss_monthly": 0.45,
+        "n": 41,
+        "priority_rank": 4,
+        "priority_score": 12.75,
+        "spot": "preflop/jam",
+        "trend": "regressing"
+      },
+      {
+        "avg_buy_in": 1.0866666666666667,
+        "avg_score": 0.33,
+        "drill_accuracy": null,
+        "drill_count": 0,
+        "ev_loss_monthly": 0.18,
+        "n": 15,
+        "priority_rank": 5,
+        "priority_score": 4.95,
+        "spot": "flop/check",
+        "trend": "stagnant"
+      },
+      {
+        "avg_buy_in": 0.9230769230769231,
+        "avg_score": 0.2653846153846154,
+        "drill_accuracy": null,
+        "drill_count": 0,
+        "ev_loss_monthly": 0.11,
+        "n": 13,
+        "priority_rank": 6,
+        "priority_score": 3.45,
+        "spot": "turn/check",
+        "trend": "new"
+      },
+      {
+        "avg_buy_in": 0.42000000000000004,
+        "avg_score": 0.39,
+        "drill_accuracy": null,
+        "drill_count": 0,
+        "ev_loss_monthly": 0.03,
+        "n": 5,
+        "priority_rank": 7,
+        "priority_score": 1.9500000000000002,
+        "spot": "turn/fold",
+        "trend": "new"
+      },
+      {
+        "avg_buy_in": 0.44000000000000006,
+        "avg_score": 0.39,
+        "drill_accuracy": null,
+        "drill_count": 0,
+        "ev_loss_monthly": 0.03,
+        "n": 5,
+        "priority_rank": 8,
+        "priority_score": 1.9500000000000002,
+        "spot": "river/check",
+        "trend": "new"
+      },
+      {
+        "avg_buy_in": 0.55,
+        "avg_score": 0.45,
+        "drill_accuracy": null,
+        "drill_count": 0,
+        "ev_loss_monthly": 0.03,
+        "n": 4,
+        "priority_rank": 9,
+        "priority_score": 1.8,
+        "spot": "turn/call",
+        "trend": "new"
+      },
+      {
+        "avg_buy_in": 0.8800000000000001,
+        "avg_score": 0.32999999999999996,
+        "drill_accuracy": null,
+        "drill_count": 0,
+        "ev_loss_monthly": 0.05,
+        "n": 5,
+        "priority_rank": 10,
+        "priority_score": 1.65,
+        "spot": "flop/fold",
+        "trend": "new"
+      }
+    ],
+    "source": "gto"
+  },
+  "pendingGtoCount": {
+    "pending": 0
+  },
+  "playerStats": {
+    "af": 1.78,
+    "bb_defense": 29.4,
+    "cbet_pct": 46.6,
+    "flags": {
+      "af": {
+        "band": "healthy",
+        "flag": null,
+        "healthy": [
+          2,
+          3
+        ]
+      },
+      "cbet_pct": {
+        "band": "below",
+        "flag": "só value",
+        "healthy": [
+          55,
+          75
+        ]
+      },
+      "fold_to_3bet": {
+        "band": "healthy",
+        "flag": null,
+        "healthy": [
+          50,
+          60
+        ]
+      },
+      "gap": {
+        "band": "healthy",
+        "flag": null,
+        "healthy": [
+          3,
+          5
+        ],
+        "value": 8.5
+      },
+      "pfr": {
+        "band": "below",
+        "flag": "passivo",
+        "healthy": [
+          15,
+          21
+        ]
+      },
+      "steal_pct": {
+        "band": "below",
+        "flag": "passivo",
+        "healthy": [
+          30,
+          40
+        ]
+      },
+      "three_bet": {
+        "band": "healthy",
+        "flag": null,
+        "healthy": [
+          5,
+          10
+        ]
+      },
+      "vpip": {
+        "band": "healthy",
+        "flag": null,
+        "healthy": [
+          18,
+          24
+        ]
+      },
+      "w_at_sd": {
+        "band": "low_sample",
+        "flag": null,
+        "healthy": [
+          49,
+          54
+        ]
+      },
+      "wtsd": {
+        "band": "above",
+        "flag": "station",
+        "healthy": [
+          25,
+          30
+        ]
+      }
+    },
+    "fold_to_3bet": 55.6,
+    "fold_to_flop_bet": 42.9,
+    "open_limp_pct": 4.4,
+    "pfr": 12.9,
+    "steal_pct": 24.1,
+    "three_bet": 7.5,
+    "three_bet_opp": 694,
+    "total_hands": 1473,
+    "vpip": 21.4,
+    "w_at_sd": 61.3,
+    "wtsd": 37.9
+  },
+  "pressureProfile": {
+    "baseline_score": 0.0597,
+    "by_pressure": {
+      "high": {
+        "avg_score": 0.06541235827664399,
+        "n": 882,
+        "pressure": "high",
+        "standard_rate": 0.7687074829931972
+      },
+      "low": {
+        "avg_score": 0.05175496183206107,
+        "n": 917,
+        "pressure": "low",
+        "standard_rate": 0.8538713195201745
+      },
+      "medium": {
+        "avg_score": 0.06551147132169576,
+        "n": 401,
+        "pressure": "medium",
+        "standard_rate": 0.830423940149626
+      }
+    },
+    "collapse_delta": null,
+    "has_collapse": false
+  },
+  "resultsVsGto": {
+    "pct_critical_hidden": 18.9,
+    "pct_won_were_critical": 10.1,
+    "result_coverage_pct": 100.0,
+    "top_spots": [
+      {
+        "action": "call",
+        "n": 3,
+        "position": "CO",
+        "street": "preflop"
+      },
+      {
+        "action": "call",
+        "n": 3,
+        "position": "HJ",
+        "street": "preflop"
+      },
+      {
+        "action": "call",
+        "n": 3,
+        "position": "SB",
+        "street": "preflop"
+      },
+      {
+        "action": "shove",
+        "n": 3,
+        "position": "SB",
+        "street": "preflop"
+      },
+      {
+        "action": "bet",
+        "n": 2,
+        "position": "BB",
+        "street": "flop"
+      },
+      {
+        "action": "call",
+        "n": 2,
+        "position": "BB",
+        "street": "preflop"
+      }
+    ],
+    "total_critical": 228,
+    "total_evaluated": 1942,
+    "won_critical": 43,
+    "won_evaluated": 424
+  },
+  "sessionContext": {
+    "fatigue": [
+      {
+        "avg_score": 0.0608,
+        "bucket": "0-1h",
+        "decisions": 1952,
+        "tournaments": 15
+      }
+    ],
+    "insufficient_data": false,
+    "multitabling": [
+      {
+        "avg_score": 0.0608,
+        "bucket": "1",
+        "decisions": 1952,
+        "tournaments": 15
+      }
+    ],
+    "sample": 15,
+    "time_of_day": [
+      {
+        "avg_score": 0.0573,
+        "bucket": "manha",
+        "decisions": 519,
+        "tournaments": 2
+      },
+      {
+        "avg_score": 0.0805,
+        "bucket": "tarde",
+        "decisions": 250,
+        "tournaments": 4
+      },
+      {
+        "avg_score": 0.0541,
+        "bucket": "noite",
+        "decisions": 832,
+        "tournaments": 8
+      }
+    ]
+  },
+  "strategicTwin": {
+    "costly_spots": [
+      {
+        "best_action": "fold",
+        "delta_from_avg": 0.488,
+        "error_rate": 0.6,
+        "icm_pressure": "medium",
+        "mistakes": 3,
+        "street": "turn",
+        "total": 5
+      },
+      {
+        "best_action": "call",
+        "delta_from_avg": 0.388,
+        "error_rate": 0.5,
+        "icm_pressure": "high",
+        "mistakes": 50,
+        "street": "preflop",
+        "total": 100
+      },
+      {
+        "best_action": "raise",
+        "delta_from_avg": 0.381,
+        "error_rate": 0.494,
+        "icm_pressure": "high",
+        "mistakes": 39,
+        "street": "preflop",
+        "total": 79
+      },
+      {
+        "best_action": "fold",
+        "delta_from_avg": 0.263,
+        "error_rate": 0.375,
+        "icm_pressure": "medium",
+        "mistakes": 3,
+        "street": "flop",
+        "total": 8
+      },
+      {
+        "best_action": "check",
+        "delta_from_avg": 0.173,
+        "error_rate": 0.286,
+        "icm_pressure": "medium",
+        "mistakes": 2,
+        "street": "river",
+        "total": 7
+      }
+    ],
+    "high_volume_spots": [
+      {
+        "best_action": "fold",
+        "delta_from_avg": -0.069,
+        "error_rate": 0.044,
+        "icm_pressure": "high",
+        "mistakes": 19,
+        "street": "preflop",
+        "total": 435
+      },
+      {
+        "best_action": "fold",
+        "delta_from_avg": -0.064,
+        "error_rate": 0.048,
+        "icm_pressure": "low",
+        "mistakes": 18,
+        "street": "preflop",
+        "total": 375
+      },
+      {
+        "best_action": "fold",
+        "delta_from_avg": -0.046,
+        "error_rate": 0.066,
+        "icm_pressure": "medium",
+        "mistakes": 13,
+        "street": "preflop",
+        "total": 197
+      },
+      {
+        "best_action": "call",
+        "delta_from_avg": -0.057,
+        "error_rate": 0.055,
+        "icm_pressure": "low",
+        "mistakes": 6,
+        "street": "preflop",
+        "total": 109
+      },
+      {
+        "best_action": "raise",
+        "delta_from_avg": 0.01,
+        "error_rate": 0.123,
+        "icm_pressure": "low",
+        "mistakes": 13,
+        "street": "preflop",
+        "total": 106
+      }
+    ],
+    "insufficient_data": false,
+    "narrative": "Meu spot mais custoso é o fold na turn sob pressão média de ICM, onde cometo erros em 60% das vezes—revelando que eu subestimo sistematicamente a força relativa das minhas ranges nessas situações e tendo a preservar fichas de forma excessivamente passiva quando deveria explorar meus outs e equity com mais agressividade. Essa tendência expõe uma desconexão entre meu entendimento teórico de ICM e minha execução prática, particularmente na calibração de quando defendem linhas ativas versus passivas dependendo da profundidade de stack e posicionamento. Meu ajuste concreto é mapear 5-10 cenários específicos de turn (3-4bb, 5-6bb, posição variada) onde meu fold é mecanicamente errado segundo simples cálculos de equity-versus-ICM, depois praticar shoves e jams nesses spots até que minha ação padrão seja o check-raise ou jam automático em vez de fold reflex",
+    "player_avg_error_rate": 0.112,
+    "total_decisions": 2200
+  },
+  "tournaments": {
+    "tournaments": [
+      {
+        "avg_score": 0.0507,
+        "buy_in": 1.0,
+        "clear_count": 1,
+        "clear_pct": 1.05,
+        "coach_reviewed": false,
+        "decisions_count": 95,
+        "field_size": null,
+        "gto_coverage_pct": 52.6,
+        "hands_count": 51,
+        "id": 434,
+        "imported_at": "2026-07-27 01:07:47",
+        "labels_reconciled_at": "2026-07-27 01:07:48",
+        "llm_summary": null,
+        "place": 4,
+        "played_at": "2026-07-26",
+        "postflop_coverage_pct": 2.4,
+        "preflop_coverage_pct": 92.5,
+        "prize": 0.0,
+        "prize_pool": null,
+        "profit": -1.0,
+        "re_entries": null,
+        "result": null,
+        "site": "pokerstars",
+        "small_count": 13,
+        "solver_analyzing": true,
+        "standard_pct": 83.16,
+        "tournament_id": "100001",
+        "tournament_name": "Torneio 1"
+      },
+      {
+        "avg_score": 0.0679,
+        "buy_in": 1.1,
+        "clear_count": 1,
+        "clear_pct": 0.28,
+        "coach_reviewed": false,
+        "decisions_count": 351,
+        "field_size": null,
+        "gto_coverage_pct": 88.6,
+        "hands_count": 325,
+        "id": 429,
+        "imported_at": "2026-07-06 15:51:03",
+        "labels_reconciled_at": "2026-07-06 15:52:04",
+        "llm_summary": null,
+        "place": null,
+        "played_at": "2026-07-03",
+        "postflop_coverage_pct": 16.7,
+        "preflop_coverage_pct": 93.9,
+        "prize": null,
+        "prize_pool": null,
+        "profit": null,
+        "re_entries": null,
+        "result": null,
+        "site": "coinpoker",
+        "small_count": 93,
+        "solver_analyzing": false,
+        "standard_pct": 70.94,
+        "tournament_id": "100002",
+        "tournament_name": "Torneio 2"
+      },
+      {
+        "avg_score": 0.0445,
+        "buy_in": 0.55,
+        "clear_count": 1,
+        "clear_pct": 0.74,
+        "coach_reviewed": false,
+        "decisions_count": 136,
+        "field_size": null,
+        "gto_coverage_pct": 69.1,
+        "hands_count": 86,
+        "id": 426,
+        "imported_at": "2026-07-01 11:10:04",
+        "labels_reconciled_at": "2026-07-01 11:10:06",
+        "llm_summary": null,
+        "place": 6,
+        "played_at": "2026-06-30",
+        "postflop_coverage_pct": 20.0,
+        "preflop_coverage_pct": 93.4,
+        "prize": 1.19,
+        "prize_pool": null,
+        "profit": 0.64,
+        "re_entries": null,
+        "result": null,
+        "site": "acr",
+        "small_count": 13,
+        "solver_analyzing": false,
+        "standard_pct": 83.09,
+        "tournament_id": "100003",
+        "tournament_name": "Torneio 3"
+      },
+      {
+        "avg_score": 0.0451,
+        "buy_in": 1.0,
+        "clear_count": 0,
+        "clear_pct": 1.49,
+        "coach_reviewed": false,
+        "decisions_count": 67,
+        "field_size": 32,
+        "gto_coverage_pct": 85.1,
+        "hands_count": 51,
+        "id": 421,
+        "imported_at": "2026-06-29 02:13:59",
+        "labels_reconciled_at": "2026-06-29 02:14:00",
+        "llm_summary": null,
+        "place": 15,
+        "played_at": "2026-06-28",
+        "postflop_coverage_pct": 38.5,
+        "preflop_coverage_pct": 96.3,
+        "prize": 0.0,
+        "prize_pool": 28.8,
+        "profit": -1.0,
+        "re_entries": null,
+        "result": null,
+        "site": "pokerstars",
+        "small_count": 2,
+        "solver_analyzing": false,
+        "standard_pct": 94.03,
+        "tournament_id": "100004",
+        "tournament_name": "Torneio 4"
+      },
+      {
+        "avg_score": 0.0683,
+        "buy_in": 1.1,
+        "clear_count": 1,
+        "clear_pct": 4.69,
+        "coach_reviewed": false,
+        "decisions_count": 64,
+        "field_size": 524,
+        "gto_coverage_pct": 75.0,
+        "hands_count": 44,
+        "id": 420,
+        "imported_at": "2026-06-26 23:16:20",
+        "labels_reconciled_at": "2026-06-27 03:00:39",
+        "llm_summary": null,
+        "place": 143,
+        "played_at": "2026-06-26",
+        "postflop_coverage_pct": 11.1,
+        "preflop_coverage_pct": 100.0,
+        "prize": 0.0,
+        "prize_pool": 251.52,
+        "profit": -1.1,
+        "re_entries": null,
+        "result": null,
+        "site": "pokerstars",
+        "small_count": 5,
+        "solver_analyzing": false,
+        "standard_pct": 81.25,
+        "tournament_id": "100005",
+        "tournament_name": "Torneio 5"
+      },
+      {
+        "avg_score": 0.0473,
+        "buy_in": null,
+        "clear_count": 0,
+        "clear_pct": 1.1,
+        "coach_reviewed": false,
+        "decisions_count": 91,
+        "field_size": null,
+        "gto_coverage_pct": 83.5,
+        "hands_count": 69,
+        "id": 419,
+        "imported_at": "2026-06-24 00:18:29",
+        "labels_reconciled_at": "2026-06-27 03:00:39",
+        "llm_summary": null,
+        "place": null,
+        "played_at": "2026-06-23",
+        "postflop_coverage_pct": 36.8,
+        "preflop_coverage_pct": 95.8,
+        "prize": null,
+        "prize_pool": null,
+        "profit": null,
+        "re_entries": null,
+        "result": null,
+        "site": "pokerstars",
+        "small_count": 3,
+        "solver_analyzing": false,
+        "standard_pct": 89.01,
+        "tournament_id": "100006",
+        "tournament_name": "Torneio 6"
+      },
+      {
+        "avg_score": 0.0555,
+        "buy_in": 2.16,
+        "clear_count": 0,
+        "clear_pct": 2.94,
+        "coach_reviewed": false,
+        "decisions_count": 34,
+        "field_size": 2220,
+        "gto_coverage_pct": 64.7,
+        "hands_count": 19,
+        "id": 418,
+        "imported_at": "2026-06-23 19:42:54",
+        "labels_reconciled_at": "2026-06-27 03:00:39",
+        "llm_summary": null,
+        "place": 622,
+        "played_at": "2026-06-22",
+        "postflop_coverage_pct": 20.0,
+        "preflop_coverage_pct": 100.0,
+        "prize": 0.62,
+        "prize_pool": 2197.8,
+        "profit": -1.54,
+        "re_entries": 1,
+        "result": null,
+        "site": "ggpoker",
+        "small_count": 0,
+        "solver_analyzing": false,
+        "standard_pct": 85.29,
+        "tournament_id": "100007",
+        "tournament_name": "Torneio 7"
+      },
+      {
+        "avg_score": 0.0575,
+        "buy_in": null,
+        "clear_count": 6,
+        "clear_pct": 1.74,
+        "coach_reviewed": true,
+        "decisions_count": 345,
+        "field_size": null,
+        "gto_coverage_pct": 88.1,
+        "hands_count": 123,
+        "id": 388,
+        "imported_at": "2026-06-10 14:24:46",
+        "labels_reconciled_at": "2026-06-27 03:00:39",
+        "llm_summary": null,
+        "place": null,
+        "played_at": "2026-06-09",
+        "postflop_coverage_pct": 84.2,
+        "preflop_coverage_pct": 93.7,
+        "prize": 189120.0,
+        "prize_pool": null,
+        "profit": null,
+        "re_entries": null,
+        "result": "itm",
+        "site": "pokerstars",
+        "small_count": 24,
+        "solver_analyzing": false,
+        "standard_pct": 80.87,
+        "tournament_id": "100008",
+        "tournament_name": "Torneio 8"
+      },
+      {
+        "avg_score": 0.0687,
+        "buy_in": 1.0,
+        "clear_count": 0,
+        "clear_pct": 0.0,
+        "coach_reviewed": false,
+        "decisions_count": 45,
+        "field_size": null,
+        "gto_coverage_pct": 93.3,
+        "hands_count": 28,
+        "id": 199,
+        "imported_at": "2026-05-22 01:46:39",
+        "labels_reconciled_at": "2026-06-27 03:00:39",
+        "llm_summary": null,
+        "place": 5,
+        "played_at": "2026-05-21",
+        "postflop_coverage_pct": 83.3,
+        "preflop_coverage_pct": 97.0,
+        "prize": 0.0,
+        "prize_pool": null,
+        "profit": -1.0,
+        "re_entries": null,
+        "result": null,
+        "site": "pokerstars",
+        "small_count": 8,
+        "solver_analyzing": false,
+        "standard_pct": 75.56,
+        "tournament_id": "100009",
+        "tournament_name": "Torneio 9"
+      },
+      {
+        "avg_score": 0.1063,
+        "buy_in": 1.0,
+        "clear_count": 4,
+        "clear_pct": 7.62,
+        "coach_reviewed": false,
+        "decisions_count": 105,
+        "field_size": null,
+        "gto_coverage_pct": 87.6,
+        "hands_count": 65,
+        "id": 198,
+        "imported_at": "2026-05-21 02:15:55",
+        "labels_reconciled_at": "2026-06-27 03:00:39",
+        "llm_summary": null,
+        "place": 1,
+        "played_at": "2026-05-20",
+        "postflop_coverage_pct": 83.3,
+        "preflop_coverage_pct": 89.9,
+        "prize": 3.83,
+        "prize_pool": null,
+        "profit": 2.83,
+        "re_entries": null,
+        "result": "itm",
+        "site": "pokerstars",
+        "small_count": 8,
+        "solver_analyzing": false,
+        "standard_pct": 77.14,
+        "tournament_id": "100010",
+        "tournament_name": "Torneio 10"
+      },
+      {
+        "avg_score": 0.0574,
+        "buy_in": 1.1,
+        "clear_count": 6,
+        "clear_pct": 1.24,
+        "coach_reviewed": false,
+        "decisions_count": 485,
+        "field_size": null,
+        "gto_coverage_pct": 98.8,
+        "hands_count": 396,
+        "id": 151,
+        "imported_at": "2026-05-16 17:05:04",
+        "labels_reconciled_at": "2026-06-27 03:00:39",
+        "llm_summary": null,
+        "place": 3,
+        "played_at": "2025-07-22",
+        "postflop_coverage_pct": 100.0,
+        "preflop_coverage_pct": 98.5,
+        "prize": 23.29,
+        "prize_pool": null,
+        "profit": 22.19,
+        "re_entries": null,
+        "result": "itm",
+        "site": "pokerstars",
+        "small_count": 32,
+        "solver_analyzing": false,
+        "standard_pct": 82.47,
+        "tournament_id": "100011",
+        "tournament_name": "Torneio 11"
+      },
+      {
+        "avg_score": 0.0576,
+        "buy_in": 1.1,
+        "clear_count": 1,
+        "clear_pct": 1.28,
+        "coach_reviewed": false,
+        "decisions_count": 78,
+        "field_size": null,
+        "gto_coverage_pct": 96.2,
+        "hands_count": 68,
+        "id": 150,
+        "imported_at": "2026-05-16 17:04:59",
+        "labels_reconciled_at": "2026-06-27 03:00:39",
+        "llm_summary": null,
+        "place": 59,
+        "played_at": "2026-05-06",
+        "postflop_coverage_pct": 100.0,
+        "preflop_coverage_pct": 95.7,
+        "prize": 0.0,
+        "prize_pool": null,
+        "profit": -1.1,
+        "re_entries": null,
+        "result": null,
+        "site": "pokerstars",
+        "small_count": 5,
+        "solver_analyzing": false,
+        "standard_pct": 85.9,
+        "tournament_id": "100012",
+        "tournament_name": "Torneio 12"
+      },
+      {
+        "avg_score": 0.0547,
+        "buy_in": 1.0,
+        "clear_count": 1,
+        "clear_pct": 2.78,
+        "coach_reviewed": false,
+        "decisions_count": 36,
+        "field_size": null,
+        "gto_coverage_pct": 94.4,
+        "hands_count": 26,
+        "id": 149,
+        "imported_at": "2026-05-16 17:04:58",
+        "labels_reconciled_at": "2026-06-27 03:00:39",
+        "llm_summary": null,
+        "place": 6,
+        "played_at": "2026-04-26",
+        "postflop_coverage_pct": 88.9,
+        "preflop_coverage_pct": 96.3,
+        "prize": 0.0,
+        "prize_pool": null,
+        "profit": -1.0,
+        "re_entries": null,
+        "result": null,
+        "site": "pokerstars",
+        "small_count": 2,
+        "solver_analyzing": false,
+        "standard_pct": 86.11,
+        "tournament_id": "100013",
+        "tournament_name": "Torneio 13"
+      },
+      {
+        "avg_score": 0.0512,
+        "buy_in": 1.1,
+        "clear_count": 3,
+        "clear_pct": 1.82,
+        "coach_reviewed": false,
+        "decisions_count": 165,
+        "field_size": null,
+        "gto_coverage_pct": 95.8,
+        "hands_count": 123,
+        "id": 148,
+        "imported_at": "2026-05-16 17:04:56",
+        "labels_reconciled_at": "2026-06-27 03:00:38",
+        "llm_summary": null,
+        "place": 176,
+        "played_at": "2025-12-12",
+        "postflop_coverage_pct": 94.9,
+        "preflop_coverage_pct": 96.0,
+        "prize": 0.0,
+        "prize_pool": null,
+        "profit": -1.1,
+        "re_entries": null,
+        "result": null,
+        "site": "pokerstars",
+        "small_count": 6,
+        "solver_analyzing": false,
+        "standard_pct": 89.09,
+        "tournament_id": "100014",
+        "tournament_name": "Torneio 14"
+      },
+      {
+        "avg_score": 0.0519,
+        "buy_in": 2.2,
+        "clear_count": 1,
+        "clear_pct": 1.2,
+        "coach_reviewed": false,
+        "decisions_count": 83,
+        "field_size": null,
+        "gto_coverage_pct": 97.6,
+        "hands_count": 56,
+        "id": 147,
+        "imported_at": "2026-05-16 17:04:54",
+        "labels_reconciled_at": "2026-06-27 03:00:38",
+        "llm_summary": null,
+        "place": null,
+        "played_at": "2025-12-12",
+        "postflop_coverage_pct": 96.2,
+        "preflop_coverage_pct": 98.2,
+        "prize": 0.0,
+        "prize_pool": null,
+        "profit": -2.2,
+        "re_entries": null,
+        "result": null,
+        "site": "pokerstars",
+        "small_count": 3,
+        "solver_analyzing": false,
+        "standard_pct": 90.36,
+        "tournament_id": "100015",
+        "tournament_name": "Torneio 15"
+      },
+      {
+        "avg_score": 0.0362,
+        "buy_in": 1.1,
+        "clear_count": 0,
+        "clear_pct": 0.0,
+        "coach_reviewed": false,
+        "decisions_count": 3,
+        "field_size": null,
+        "gto_coverage_pct": 100.0,
+        "hands_count": 2,
+        "id": 146,
+        "imported_at": "2026-05-16 17:04:50",
+        "labels_reconciled_at": "2026-06-27 03:00:38",
+        "llm_summary": null,
+        "place": null,
+        "played_at": "2025-12-11",
+        "postflop_coverage_pct": null,
+        "preflop_coverage_pct": 100.0,
+        "prize": 0.0,
+        "prize_pool": null,
+        "profit": -1.1,
+        "re_entries": null,
+        "result": null,
+        "site": "pokerstars",
+        "small_count": 0,
+        "solver_analyzing": false,
+        "standard_pct": 100.0,
+        "tournament_id": "100016",
+        "tournament_name": "Torneio 16"
+      },
+      {
+        "avg_score": 0.1121,
+        "buy_in": null,
+        "clear_count": 0,
+        "clear_pct": 0.0,
+        "coach_reviewed": false,
+        "decisions_count": 17,
+        "field_size": null,
+        "gto_coverage_pct": 94.1,
+        "hands_count": 10,
+        "id": 145,
+        "imported_at": "2026-05-16 17:04:49",
+        "labels_reconciled_at": "2026-06-27 03:00:38",
+        "llm_summary": null,
+        "place": null,
+        "played_at": "2026-04-24",
+        "postflop_coverage_pct": 100.0,
+        "preflop_coverage_pct": 91.7,
+        "prize": 20.0,
+        "prize_pool": null,
+        "profit": null,
+        "re_entries": null,
+        "result": "itm",
+        "site": "ggpoker",
+        "small_count": 4,
+        "solver_analyzing": false,
+        "standard_pct": 64.71,
+        "tournament_id": "100017",
+        "tournament_name": "Torneio 17"
+      }
+    ]
+  }
+}
