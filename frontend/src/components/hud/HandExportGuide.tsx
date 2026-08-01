@@ -93,12 +93,21 @@ export function HandExportGuide({ open, onClose, onOpenUpload }: Props) {
           </p>
         </div>
 
-        {/* Footer */}
-        <div className="flex items-center justify-end gap-3 border-t border-border px-6 py-4">
+        {/* Footer
+            Quem abre este guia e, por definicao, quem AINDA NAO TEM o arquivo — o proximo passo
+            real dele e sair daqui e exportar na sala. Por isso o botao de destaque e o de sair, e
+            nao o de abrir upload. A inversao anterior era pior do que parecia: `onOpenUpload` so
+            chega do EmptyDashboard (e la ele abre o seletor de arquivos, para quem acabou de ler
+            que precisa exportar antes). Nos outros dois pontos de entrada (landing e modal de
+            boas-vindas) o rodape tem UM botao so, e ele estava desenhado como secundario. */}
+        {/* flex-wrap: medido a 375px, o rodape cabia com 1px de folga. A copy do primario tem
+            tamanhos diferentes nas 3 locales, entao a folga nao e garantia — melhor quebrar a
+            linha do que estourar a largura do painel. */}
+        <div className="flex flex-wrap items-center justify-end gap-3 border-t border-border px-6 py-4">
           {onOpenUpload && (
             <button
               onClick={() => { onClose(); onOpenUpload(); }}
-              className="inline-flex h-10 items-center gap-2 rounded-md bg-primary px-5 font-mono text-xs font-bold uppercase tracking-widest-2 text-primary-foreground transition-colors hover:bg-primary-glow"
+              className="inline-flex h-10 items-center gap-2 rounded-md border border-border px-4 text-sm text-muted-foreground transition-colors hover:text-foreground"
             >
               <FileDown className="size-3.5" aria-hidden />
               {t("exportGuide.openUpload")}
@@ -106,7 +115,7 @@ export function HandExportGuide({ open, onClose, onOpenUpload }: Props) {
           )}
           <button
             onClick={onClose}
-            className="inline-flex h-10 items-center rounded-md border border-border px-4 text-sm text-muted-foreground transition-colors hover:text-foreground"
+            className="inline-flex h-10 items-center rounded-md bg-primary px-5 font-mono text-xs font-bold uppercase tracking-widest-2 text-primary-foreground transition-colors hover:bg-primary-glow"
           >
             {t("exportGuide.gotIt")}
           </button>

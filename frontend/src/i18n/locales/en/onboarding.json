@@ -49,7 +49,7 @@
       }
     },
     "note": "You can upload multiple files at once. The same tournament is merged automatically when the site splits the hand history across files.",
-    "gotIt": "Got it",
+    "gotIt": "Got it, I'll export",
     "close": "Close",
     "trigger": "How to export your hands",
     "openUpload": "Open upload",

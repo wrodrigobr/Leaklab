@@ -7,6 +7,29 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(onboarding): o guia de exportacao destacava o botao errado (#onboarding)
+
+> Quem abre "Como exportar suas maos" e, por definicao, quem **ainda nao tem** o arquivo. O proximo
+> passo real dele e sair da plataforma e exportar na sala. O rodape dizia o contrario: "ABRIR
+> UPLOAD" era o botao preenchido e o de sair ficava apagado.
+>
+> **Era pior do que parecia**, e so da para ver olhando os tres pontos de entrada. `onOpenUpload`
+> so chega do `EmptyDashboard` — e la ele abre o SELETOR DE ARQUIVOS, para quem acabou de ler que
+> precisa exportar antes. Nos outros dois (landing e modal de boas-vindas) a prop nem e passada,
+> entao o rodape tem **um botao so**, e ele estava desenhado como secundario: a unica acao da tela
+> parecia a menos importante dela.
+>
+> Enfase invertida, e a copy de sair passou a nomear o proximo passo nas 3 locales ("Entendi, vou
+> exportar" / "Got it, I'll export" / "Entendido, voy a exportar") — "Entendi" sozinho num botao de
+> destaque nao diz o que fazer em seguida.
+>
+> O rodape ganhou `flex-wrap`: medido a 375px, cabia com **1px de folga**, e a copy tem tamanhos
+> diferentes por locale. Melhor quebrar a linha do que estourar a largura do painel.
+>
+> Os testes olham a CLASSE, porque e ela que carrega a enfase — conferir so a presenca dos dois
+> botoes passaria com a hierarquia invertida, que era o defeito. Tres guardas, os tres verificados
+> quebrando. Conferido no app rodando: desktop numa linha, 375px em duas, sem overflow.
+
 ### fix(onboarding): o modal de primeiro acesso nunca chegou ao DOM (#onboarding)
 
 > **A causa nao era a que estava no diagnostico anterior.** A hipotese registrada era o inicializador

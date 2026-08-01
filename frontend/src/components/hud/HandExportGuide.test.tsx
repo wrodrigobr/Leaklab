@@ -1,5 +1,12 @@
-import { describe, it, expect } from "vitest";
+// @vitest-environment jsdom
+import { describe, it, expect, vi, afterEach } from "vitest";
 import { readFileSync } from "node:fs";
+import { render, screen, cleanup } from "@testing-library/react";
+import { HandExportGuide } from "./HandExportGuide";
+
+vi.mock("react-i18next", () => ({
+  useTranslation: () => ({ t: (k: string) => k, i18n: { language: "pt-BR" } }),
+}));
 
 /**
  * Guia "Como exportar suas mãos": o caminho tem que estar certo e o RESUMO tem que ser pedido.
@@ -81,5 +88,52 @@ describe("guia de exportação — o resumo do torneio", () => {
     const src = readFileSync("src/components/hud/HandExportGuide.tsx", "utf-8");
     expect(src).toContain("exportGuide.summaryTitle");
     expect(src).toMatch(/exportGuide\.sites\.\$\{s\}\.summary/);
+  });
+});
+
+/**
+ * Hierarquia do rodapé: quem abre este guia é quem AINDA NÃO TEM o arquivo.
+ *
+ * "Abrir upload" era o botão de destaque e o de sair ficava apagado — exatamente ao contrário do
+ * próximo passo real, que é sair da plataforma e exportar na sala. E `onOpenUpload` só chega do
+ * EmptyDashboard: na landing e no modal de boas-vindas o rodapé tem UM botão só, que estava
+ * desenhado como secundário.
+ *
+ * O teste olha a CLASSE porque é ela que carrega a ênfase — é o mecanismo, não um detalhe de
+ * implementação. Um teste que só conferisse a presença dos dois botões passaria com a hierarquia
+ * invertida, que era justamente o defeito.
+ */
+const botao = (nome: string) =>
+  screen.getAllByRole("button").find((b) => b.textContent?.includes(nome));
+
+afterEach(() => cleanup());
+
+describe("guia de exportação — hierarquia do rodapé", () => {
+  it("o botão de sair é o primário e 'abrir upload' é o secundário", () => {
+    render(<HandExportGuide open onClose={() => {}} onOpenUpload={() => {}} />);
+
+    const sair   = botao("exportGuide.gotIt")!;
+    const upload = botao("exportGuide.openUpload")!;
+
+    expect(sair.className, "o botao de sair deveria ser o primario").toContain("bg-primary");
+    expect(upload.className, "abrir upload deveria ser secundario").not.toContain("bg-primary");
+  });
+
+  it("sem onOpenUpload o único botão do rodapé é o primário", () => {
+    // Landing e modal de boas-vindas. Antes, o rodapé inteiro era um botão apagado.
+    render(<HandExportGuide open onClose={() => {}} />);
+
+    expect(botao("exportGuide.openUpload")).toBeUndefined();
+    expect(botao("exportGuide.gotIt")!.className).toContain("bg-primary");
+  });
+
+  it("a copy de sair nomeia o próximo passo, nas 3 locales", () => {
+    // "Entendi" sozinho num botão de destaque não diz o que fazer em seguida. O passo seguinte
+    // acontece FORA da plataforma, então a copy precisa dizer isso.
+    for (const loc of LOCALES) {
+      const g = JSON.parse(readFileSync(`src/i18n/locales/${loc}/onboarding.json`, "utf-8"));
+      expect(g.exportGuide.gotIt, `${loc}: copy de sair sem o proximo passo`)
+        .toMatch(/export/i);
+    }
   });
 });
