@@ -7,6 +7,33 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(landing): a secao do diferencial saiu do JSON e chegou a tela (#onboarding)
+
+> A copy do diferencial (medimos na mesa, nao no drill) estava escrita nas 3 locales desde
+> 2026-07-31 e **nunca foi renderizada**. Nada quebrou, nenhum teste caiu, e a landing ficou pela
+> metade sem sinal nenhum. Copy escrita e nao renderizada e trabalho que nao chegou a ninguem.
+>
+> **Antes de por na tela, conferi se o produto faz o que a copy promete** — nao e zelo abstrato:
+> esta mesma landing exibia um selo "AES-256" sem uma linha de cifragem por tras. As tres
+> afirmacoes tem lastro:
+> - "mede no seu jogo" → `_category_error_counts` compara as maos importadas contra o historico
+>   anterior ao baseline (`repositories.py`);
+> - "so afirma quando resiste ao intervalo" → `validate_leak` (Wilson + Newcombe + shrinkage,
+>   `validation.py`);
+> - "reabre sozinho se voce regredir" → `should_reopen` move o baseline, incrementa `reopen_count`
+>   e dispara o sino.
+>
+> Se alguma delas sair do produto, a secao sai da landing junto, e o comentario no codigo diz isso.
+>
+> **Posicao:** depois do exemplo e antes das features, que e onde a pergunta nasce — o visitante
+> acabou de ver uma analise real e pensa "por que voce, se eu ja uso um trainer?". Enterrar isto
+> depois das features genericas seria responder tarde.
+>
+> O guarda varre TODOS os grupos de `landing.json` em vez de conferir so o novo: o proximo grupo
+> orfao se denuncia sozinho. Quando quebrado de proposito, ele reporta exatamente `['prova']`, que
+> era o bug. Tres guardas verificados quebrando. Conferido no app: a secao entra entre o exemplo e
+> as features, e a 375px os tres cards empilham sem overflow.
+
 ### feat(onboarding): o exemplo de analise virou uma analise de verdade (#onboarding)
 
 > **Pedido do usuario:** "o exemplo de analise tem que ser algo mais real", com o print de um card

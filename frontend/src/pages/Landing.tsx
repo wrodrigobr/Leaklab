@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import {
   Upload, Brain, TrendingUp, ChevronRight,
   Check, Zap, BookOpen, Target, Activity, HelpCircle,
+  ClipboardCheck, Sigma, RotateCcw,
 } from "lucide-react";
 import { LEVEL_ICONS } from "@/components/hud/LevelIcons";
 import { SiteLogo } from "@/components/hud/SiteLogo";
@@ -210,6 +211,66 @@ function LandingDemoSection() {
   );
 }
 
+/**
+ * O DIFERENCIAL. Vem logo depois do exemplo e antes das features, que é onde a pergunta nasce:
+ * o visitante acabou de ver uma análise real e pensa "e por que você, se eu já uso um trainer?".
+ * Enterrar isto depois das features genéricas seria responder tarde.
+ *
+ * As três afirmações foram conferidas no código antes de irem para a tela, e não é zelo abstrato:
+ * esta mesma landing exibia um selo "AES-256" sem uma linha de cifragem por trás.
+ *   • "mede no seu jogo"        → `_category_error_counts` compara as mãos importadas contra o
+ *                                 histórico anterior ao baseline (repositories.py);
+ *   • "só afirma quando resiste" → `validate_leak` (Wilson + Newcombe + shrinkage, validation.py);
+ *   • "reabre sozinho"           → `should_reopen` move o baseline e dispara o sino.
+ * Se alguma delas sair do produto, esta seção sai da landing junto.
+ */
+function DiferencialSection() {
+  const { t } = useTranslation("landing");
+  const cards = [
+    { icon: Activity,       title: t("prova.c1Title"), desc: t("prova.c1Desc") },
+    { icon: Sigma,          title: t("prova.c2Title"), desc: t("prova.c2Desc") },
+    { icon: RotateCcw,      title: t("prova.c3Title"), desc: t("prova.c3Desc") },
+  ];
+  return (
+    <section
+      className="border-y border-border/50 bg-hud-surface/30 py-24 px-6"
+      aria-labelledby="landing-prova-heading"
+    >
+      <div className="mx-auto max-w-5xl">
+        <div className="text-center mb-14">
+          <p className="font-mono text-[10px] uppercase tracking-widest-2 text-primary mb-2">
+            {t("prova.eyebrow")}
+          </p>
+          <h2 id="landing-prova-heading" className="font-heading text-2xl font-bold text-foreground">
+            {t("prova.heading")}
+          </h2>
+          <p className="mx-auto mt-3 max-w-2xl text-sm text-muted-foreground leading-relaxed">
+            {t("prova.sub")}
+          </p>
+        </div>
+
+        <div className="grid sm:grid-cols-3 gap-8">
+          {cards.map((c) => (
+            <div key={c.title} className="rounded-xl border border-border bg-hud-surface p-6 space-y-4">
+              <div className="flex size-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                <c.icon className="size-5" aria-hidden />
+              </div>
+              <h3 className="font-semibold text-foreground">{c.title}</h3>
+              <p className="text-sm text-muted-foreground leading-relaxed">{c.desc}</p>
+            </div>
+          ))}
+        </div>
+
+        {/* O fecho é o que separa isto de marketing: diz de onde o número sai. */}
+        <p className="mx-auto mt-10 flex max-w-2xl items-start justify-center gap-2 text-center text-sm text-muted-foreground leading-relaxed">
+          <ClipboardCheck className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden />
+          <span>{t("prova.nota")}</span>
+        </p>
+      </div>
+    </section>
+  );
+}
+
 function FeaturesSection() {
   const { t } = useTranslation("landing");
   const features = [
@@ -387,6 +448,7 @@ export default function Landing() {
       <SupportedNetworksSection />
       <HowItWorksSection />
       <LandingDemoSection />
+      <DiferencialSection />
       <FeaturesSection />
       <PricingSection />
       <CtaSection />
