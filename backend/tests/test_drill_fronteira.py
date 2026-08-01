@@ -99,12 +99,30 @@ def _spots(cenario, n=120, semente=5):
     return [s for s in (generate_canonical_spot(rng.choice(cats), rng) for _ in range(n)) if s]
 
 
-def test_sondagem_nunca_aparece_em_rfi():
+def test_pergunta_de_vilao_nunca_aparece_em_rfi():
     """Em `rfi` o herói age PRIMEIRO: não existe range de vilão para estimar. Servir a pergunta
-    ali seria inventar uma sem resposta."""
-    com = [s for s in _spots('rfi') if s.get('range_probe')]
-    assert not com, f'{len(com)} spots de rfi vieram com sondagem'
-    print('OK  test_sondagem_nunca_aparece_em_rfi')
+    ali seria inventar uma sem resposta.
+
+    O teste passou a olhar o TIPO, não a mera presença de `range_probe`. Motivo: o campo carrega
+    duas coisas diferentes desde que o catálogo (`perguntas_de_range`) entrou. A sondagem
+    `largura_do_vilao` fala do vilão do spot e continua proibida aqui; as perguntas do catálogo
+    falam da range de UMA posição em abstrato ("UTG abre KTo a 30bb?") e foram ligadas no `rfi` de
+    propósito, porque ali não havia pergunta nenhuma.
+
+    A versão anterior cobrava ausência TOTAL e passou a falhar quando o catálogo chegou. Ela
+    estava certa sobre o perigo e errada sobre o alvo: o que não pode existir é afirmação sobre
+    vilão inexistente, não pergunta.
+    """
+    spots = _spots('rfi')
+    do_vilao = [s for s in spots
+                if (s.get('range_probe') or {}).get('tipo') == 'largura_do_vilao']
+    assert not do_vilao, f'{len(do_vilao)} spots de rfi afirmam range de um vilão que não existe'
+
+    # Guarda do outro lado: sem isto, o catálogo poderia se desligar do `rfi` sem ninguém notar,
+    # e o teste continuaria verde por ausência — o zero tranquilizador de sempre.
+    do_catalogo = [s for s in spots if s.get('range_probe')]
+    assert do_catalogo, 'nenhuma pergunta em rfi — o catálogo saiu do fluxo'
+    print(f'OK  test_pergunta_de_vilao_nunca_aparece_em_rfi ({len(do_catalogo)} do catálogo)')
 
 
 def test_sondagem_aparece_onde_ha_vilao():
@@ -117,7 +135,14 @@ def test_sondagem_aparece_onde_ha_vilao():
 
 
 def test_a_fatia_afirmada_bate_com_a_range_real():
-    """O número da alternativa correta tem que ser a largura REAL da posição do vilão."""
+    """O número da alternativa correta tem que ser a largura REAL da posição do vilão.
+
+    Vale SÓ para a sondagem `largura_do_vilao`, cuja resposta é uma faixa percentual. O catálogo
+    responde outras coisas no mesmo campo (uma pergunta como "quem abre mais, UTG+1 ou BTN?" tem
+    uma POSIÇÃO por resposta), e a versão anterior deste teste comparava qualquer probe contra uma
+    faixa — daí o `UTG+2: sondagem diz CO, range real é cerca de 25%`, que não era erro de número,
+    era erro de alvo.
+    """
     from leaklab.academy_questions import _larguras_por_posicao, _faixa
     larguras = _larguras_por_posicao(50.0)
     if len(larguras) < 3:
@@ -126,7 +151,7 @@ def test_a_fatia_afirmada_bate_com_a_range_real():
     checados = 0
     for s in _spots('vs_rfi'):
         p = s.get('range_probe')
-        if not p:
+        if not p or p.get('tipo') != 'largura_do_vilao':
             continue
         vs = s['vs_position']
         if vs not in larguras:
@@ -261,7 +286,7 @@ if __name__ == '__main__':
     testes = (test_a_maioria_das_perguntas_vem_da_borda, test_ainda_serve_algumas_faceis,
               test_classificador_reconhece_mao_mista, test_todo_spot_declara_se_e_borda,
               test_nunca_devolve_None_por_falta_de_borda,
-              test_sondagem_nunca_aparece_em_rfi, test_sondagem_aparece_onde_ha_vilao,
+              test_pergunta_de_vilao_nunca_aparece_em_rfi, test_sondagem_aparece_onde_ha_vilao,
               test_a_fatia_afirmada_bate_com_a_range_real,
               test_alternativas_da_sondagem_nao_colidem,
               test_a_resposta_certa_nao_fica_sempre_na_mesma_posicao,

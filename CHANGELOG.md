@@ -7,6 +7,39 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(ci): dois testes guardavam o significado ANTIGO da sondagem e travaram todo deploy de backend (#treino)
+
+> **O CI estava vermelho nos ultimos 20 runs**, o mais antigo de 31/07 as 21:23. Como
+> `deploy-backend` tem `needs: test`, ele foi PULADO em todos: nenhuma mudanca de backend chegou a
+> producao desde entao. O frontend continuou subindo, porque o Cloudflare Pages nao passa pelo CI —
+> entao producao rodava front novo contra back velho, e foi isso que produziu o erro de CORS que o
+> usuario reportou.
+>
+> **Causa:** `e30e3ae` (catalogo de perguntas de range) ampliou de proposito o que `range_probe`
+> carrega. O campo passou a levar duas coisas: a sondagem `largura_do_vilao`, que fala do vilao
+> DAQUELE spot, e as perguntas do catalogo, que falam da range de uma posicao em abstrato e foram
+> ligadas no `rfi` justamente porque ali nao havia pergunta nenhuma. Dois testes antigos seguiam
+> cobrando o significado estreito:
+>
+> - `test_sondagem_nunca_aparece_em_rfi` exigia ausencia TOTAL de probe no `rfi`;
+> - `test_a_fatia_afirmada_bate_com_a_range_real` comparava QUALQUER probe contra uma faixa
+>   percentual, dai o `UTG+2: sondagem diz CO, range real e cerca de 25%` — nao era erro de
+>   numero, era erro de alvo.
+>
+> **Conserto e so nos testes, e de proposito.** O comportamento novo esta documentado no codigo e
+> foi pedido pelo usuario ("os desafios de range estao muito basicos e repetitivos"). O que os
+> testes protegiam continua protegido, agora dito com precisao: o discriminador `tipo` ja existia
+> nos dois produtores e nenhum dos dois usava. O primeiro virou
+> `test_pergunta_de_vilao_nunca_aparece_em_rfi` e proibe so o tipo `largura_do_vilao`; o segundo
+> confere so os probes desse tipo.
+>
+> O primeiro ganhou um guarda do outro lado: se o catalogo se desligar do `rfi`, ele falha por
+> ausencia. Sem isso, afrouxar a regra teria criado o zero tranquilizador de sempre.
+>
+> Os dois foram verificados quebrando: sondagem de vilao vazando para o `rfi` acusa 14 spots, e
+> resposta corrompida acusa `BTN: sondagem diz cerca de 20%, range real e cerca de 55%`.
+> Suite completa do backend: 1709 testes.
+
 ### fix(landing): a chamada do exemplo disparava preflight e virava erro de CORS (#onboarding)
 
 > **Reportado pelo usuario, em producao:** `Access to fetch at '.../sample/decision' from origin
