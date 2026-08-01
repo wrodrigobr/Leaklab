@@ -131,7 +131,7 @@ export default function Docs() {
 
   return (
     <HudLayout>
-      <div className="mx-auto max-w-[1440px] px-4 pt-8 pb-28 md:px-8 md:pb-12">
+      <div className="mx-auto max-w-[1440px] px-4 pt-8 pb-28 md:px-8 lg:pb-12">
         <div className="mb-8">
           <div className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-widest-2 text-primary mb-3">
             <BookOpen className="size-3.5" />

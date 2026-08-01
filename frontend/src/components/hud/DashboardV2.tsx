@@ -88,7 +88,7 @@ export function DashboardV2({ onUpload, evSummary, hasData, renderCard, gtoQuali
   return (
     <div className="min-h-dvh bg-background hud-scanline">
       <HudHeader onUpload={onUpload} />
-      <main className="mx-auto max-w-[1440px] space-y-6 px-4 pt-6 pb-28 md:px-8 md:pb-8 animate-fade-in">
+      <main className="mx-auto max-w-[1440px] space-y-6 px-4 pt-6 pb-28 md:px-8 lg:pb-8 animate-fade-in">
 
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-widest-2 text-primary">

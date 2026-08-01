@@ -7,6 +7,32 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(layout): o fim da pagina ficava atras da barra de navegacao entre 768px e 1023px (#onboarding)
+
+> **O sintoma reportado era um link so:** "Ver exemplo de analise", no dashboard de quem ainda nao
+> subiu arquivo nenhum, escondido atras da barra de navegacao. Ele e a SAIDA de quem nao tem dado
+> algum, e estava escondido justamente dela.
+>
+> **A causa nao era do link.** A barra e `fixed bottom-0` e some so no `lg`. Os containers de pagina
+> escreviam `pb-28 md:pb-8`: o recuo caia para 32px a partir de **768px**, mas a barra (57px, mais
+> o safe-area do aparelho) continua na tela ate **1023px**. Nessa faixa, o fim de QUALQUER pagina
+> fica atras dela. Nao era um ajuste de espacamento num componente, era um breakpoint trocado.
+>
+> Medido no app rodando a 820x700, com a pagina rolada ate o fim: o link ocupava y=646..662 e a
+> barra comecava em y=643 — coberto inteiro. Depois do conserto, 61px de folga. Conferido tambem
+> a 375x812 (62px de folga, sem colisao com o FAB) e a 1100px (barra ausente, recuo volta a 32px).
+>
+> **O par de classes vivia copiado em CINCO arquivos** (`DashboardV2`, `HudLayout`, `Index`, `Docs`,
+> `AdminDashboard`), entao o guarda varre a arvore em vez de conferir os cinco: o sexto container
+> nasce coberto. Ele tambem afirma que a barra continua `lg:hidden`, que e o que amarra a regra —
+> se ela mudar de breakpoint, o teste falha e obriga a revisita em vez de deixar os dois valores
+> divergirem em silencio.
+>
+> A varredura exige achar pelo menos 5 containers antes de aprovar. Sem isso, um seletor quebrado
+> devolveria "zero ofensores" e passaria dizendo o contrario do que mediu.
+>
+> Dois guardas, os dois verificados quebrando.
+
 ### fix(onboarding): o guia de exportacao destacava o botao errado (#onboarding)
 
 > Quem abre "Como exportar suas maos" e, por definicao, quem **ainda nao tem** o arquivo. O proximo

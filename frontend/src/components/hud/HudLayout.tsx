@@ -29,7 +29,7 @@ export function HudLayout({
   return (
     <div className="min-h-dvh bg-background hud-scanline">
       <HudHeader />
-      <main className="mx-auto max-w-[1440px] space-y-8 px-4 pt-8 pb-28 md:px-8 md:pb-8 animate-fade-in">
+      <main className="mx-auto max-w-[1440px] space-y-8 px-4 pt-8 pb-28 md:px-8 lg:pb-8 animate-fade-in">
         {back && (
           <Link
             to={back.to}

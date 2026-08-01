@@ -1757,7 +1757,7 @@ const AdminDashboard = () => {
   return (
     <div className="min-h-dvh bg-background hud-scanline">
       <HudHeader />
-      <main className="mx-auto max-w-[1440px] px-4 pt-8 pb-28 md:px-8 md:pb-8 animate-fade-in">
+      <main className="mx-auto max-w-[1440px] px-4 pt-8 pb-28 md:px-8 lg:pb-8 animate-fade-in">
         <div className="flex flex-col gap-6 lg:flex-row lg:gap-8">
           <AdminSidebar groups={groups} active={section} onSelect={setSection} />
 

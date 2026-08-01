@@ -326,7 +326,7 @@ const Index = () => {
 
       {modaisGlobais}
 
-      <main className="mx-auto max-w-[1440px] space-y-8 px-4 pt-8 pb-28 md:px-8 md:pb-8 animate-fade-in">
+      <main className="mx-auto max-w-[1440px] space-y-8 px-4 pt-8 pb-28 md:px-8 lg:pb-8 animate-fade-in">
         {user?.role === "player" && !user?.coach_id && (
           <div className="flex items-center justify-between rounded-lg border border-primary/20 bg-primary/5 px-4 py-3">
             <div className="flex items-center gap-2 text-sm text-foreground">
