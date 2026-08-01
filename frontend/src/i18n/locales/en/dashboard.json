@@ -679,5 +679,30 @@
     "cta": "Start free",
     "indisponivel": "The demo is unavailable right now.",
     "voltar": "Back to home"
+  },
+  "tour": {
+    "fechar": "Close the tour",
+    "proximo": "Next",
+    "fim": "Done",
+    "voltar": "Back",
+    "botao": "Guided tour",
+    "p1code": "Step 01 // Prescription",
+    "p1title": "What to do now",
+    "p1desc": "The platform does not hand you a panel and let you guess the next move: it names the leak to attack first, and why. Everything below is evidence for that call.",
+    "p2code": "Step 02 // Lead metric",
+    "p2title": "How much EV you lost",
+    "p2desc": "EV lost per 100 decisions is the thermometer. From about 200 decisions the direction is readable; comparing periods only becomes a claim once it survives the confidence interval.",
+    "p3code": "Step 03 // Results",
+    "p3title": "ROI, ITM and volume",
+    "p3desc": "ROI percentage is only representative from 30 tournaments with a known buy-in: below that a single cash distorts it, and the screen shows absolute profit instead.",
+    "p4code": "Step 04 // Leaks",
+    "p4title": "Where the EV leaked",
+    "p4desc": "Your mistakes grouped by spot and ranked by cost, not by frequency. This is what feeds the study plan and the drills, with nothing for you to choose.",
+    "p5code": "Step 05 // Coverage",
+    "p5title": "Where the verdict comes from",
+    "p5desc": "The share of your decisions with a solver answer, and how closely you matched it. When a spot has no coverage the screen says so instead of inventing a verdict.",
+    "p6code": "Step 06 // Training",
+    "p6title": "The leak becomes a drill",
+    "p6desc": "Every leak found turns into spaced-repetition drills. And validation does not happen in the drill: the platform goes back to your real hands to check whether you stopped leaking."
   }
 }

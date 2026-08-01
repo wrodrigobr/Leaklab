@@ -679,5 +679,30 @@
     "cta": "Empezar gratis",
     "indisponivel": "La demostración no está disponible ahora.",
     "voltar": "Volver al inicio"
+  },
+  "tour": {
+    "fechar": "Cerrar el tour",
+    "proximo": "Siguiente",
+    "fim": "Fin",
+    "voltar": "Atrás",
+    "botao": "Tour guiado",
+    "p1code": "Paso 01 // Prescripción",
+    "p1title": "Qué hacer ahora",
+    "p1desc": "La plataforma no te entrega un panel para que adivines el siguiente paso: te dice qué leak atacar primero y por qué. Todo lo de abajo es la evidencia de esa recomendación.",
+    "p2code": "Paso 02 // Métrica líder",
+    "p2title": "Cuánto EV perdiste",
+    "p2desc": "El EV perdido por 100 decisiones es el termómetro. Desde unas 200 decisiones la dirección ya se lee; comparar periodos solo se afirma cuando resiste al intervalo de confianza.",
+    "p3code": "Paso 03 // Resultado",
+    "p3title": "ROI, ITM y volumen",
+    "p3desc": "El ROI porcentual solo es representativo a partir de 30 torneos con buy-in conocido: por debajo, un solo cash lo distorsiona y la pantalla muestra el beneficio absoluto.",
+    "p4code": "Paso 04 // Leaks",
+    "p4title": "Dónde se fue el EV",
+    "p4desc": "Tus errores agrupados por spot y ordenados por coste, no por frecuencia. De aquí sale el plan de estudio y el entrenamiento, sin que tengas que elegir nada.",
+    "p5code": "Paso 05 // Cobertura",
+    "p5title": "De dónde sale el veredicto",
+    "p5desc": "La parte de tus decisiones con respuesta del solver, y cuánto te alineaste. Cuando un spot no tiene cobertura, la pantalla lo dice en vez de inventar un veredicto.",
+    "p6code": "Paso 06 // Entrenamiento",
+    "p6title": "El leak se vuelve ejercicio",
+    "p6desc": "Cada leak encontrado se convierte en drills con repetición espaciada. Y la validación no ocurre en el ejercicio: la plataforma vuelve a tus manos reales para comprobar si dejaste de filtrar."
   }
 }

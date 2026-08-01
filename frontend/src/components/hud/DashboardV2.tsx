@@ -6,7 +6,7 @@ import { HudHeader } from "@/components/hud/HudHeader";
 import { EmptyDashboard } from "@/components/hud/EmptyDashboard";
 import { ProximoPassoBanner } from "@/components/hud/ProximoPassoBanner";
 import { PlayerStatsCard } from "@/components/hud/PlayerStatsCard";
-import { EvSummary, GtoQualityData, GtoPositionData, progression } from "@/lib/api";
+import { EvSummary, GtoQualityData, GtoPositionData, progression, type EvolutionResponse } from "@/lib/api";
 import { useMasonryRows } from "@/hooks/useMasonryRows";
 import { formatAction } from "@/lib/utils";
 import { useSpotLabel } from "@/lib/spotLabel";
@@ -40,6 +40,9 @@ interface Props {
   aiLocked?: boolean;
   /** onboarding sem dados (tournsLoaded && !hasData) — mesmo EmptyDashboard do clássico */
   showEmpty?: boolean;
+  /** Série de evolução já pronta. Só a tela de DEMONSTRAÇÃO passa: o dashboard do jogador deixa
+      o card buscar por conta própria (ele tem o próprio filtro de período). */
+  evolution?: EvolutionResponse;
   kpis?: { roi: number | null; itmPct: number | null; totalEvents: number; totalHands: number; roiLowSample?: boolean; netProfit?: number };
   playerStats?: React.ComponentProps<typeof PlayerStatsCard>["stats"];
   drift?: { detected: boolean; sessions: number } | null;
@@ -55,7 +58,7 @@ const CARD_ORDER = [
   "results", "dna", "twin", "pressure", "cognitive", "career", "causal_map",
 ];
 
-export function DashboardV2({ onUpload, evSummary, hasData, renderCard, gtoQuality = null, gtoPosition = null, pendingGto = 0, aiInsights = [], aiLocked = false, showEmpty = false, kpis, playerStats = null, drift = null, onDismissDrift }: Props) {
+export function DashboardV2({ onUpload, evSummary, hasData, renderCard, gtoQuality = null, gtoPosition = null, pendingGto = 0, aiInsights = [], aiLocked = false, showEmpty = false, evolution, kpis, playerStats = null, drift = null, onDismissDrift }: Props) {
   const { t } = useTranslation("dashboard");
   // Masonry real (mesmo hook do dashboard clássico): cards curtos liberam o vão
   // vertical e o grid-flow-dense empacota — sem blocos vazios na grade.
@@ -104,7 +107,7 @@ export function DashboardV2({ onUpload, evSummary, hasData, renderCard, gtoQuali
 
         {/* A prescrição lidera a primeira dobra (spec cobranca-proximo-passo.md §4). Usuário
             sem upload não a vê: o EmptyDashboard acima já faz o CTA certo (subir torneio). */}
-        <ProximoPassoBanner />
+        <div data-tour="proximo-passo"><ProximoPassoBanner /></div>
 
         {/* ── Alerta de drift cognitivo (mesma detecção do clássico, visual V2) ── */}
         {drift?.detected && (
@@ -144,7 +147,7 @@ export function DashboardV2({ onUpload, evSummary, hasData, renderCard, gtoQuali
         )}
 
         {/* ── HERO "Hoje" ───────────────────────────────────────────────── */}
-        <section className="grid gap-3 md:grid-cols-3">
+        <section data-tour="hero" className="grid gap-3 md:grid-cols-3">
           {/* EV perdido /100 — a métrica-líder */}
           <div className="rounded-xl ring-1 ring-border bg-card/60 p-4">
             <div className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
@@ -229,7 +232,7 @@ export function DashboardV2({ onUpload, evSummary, hasData, renderCard, gtoQuali
 
         {/* ── KPIs secundários (ROI / ITM / volume) — chips compactos ───── */}
         {kpis && hasData && (
-          <section className="grid grid-cols-3 gap-3">
+          <section data-tour="kpis" className="grid grid-cols-3 gap-3">
             <div className="rounded-xl ring-1 ring-border bg-card/60 px-4 py-2.5">
               <div className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground">{kpis.roiLowSample ? t("kpis.netProfit") : t("kpis.roi")}</div>
               <div className={`font-mono text-lg font-bold tabular-nums ${
@@ -261,7 +264,7 @@ export function DashboardV2({ onUpload, evSummary, hasData, renderCard, gtoQuali
 
         {/* ── Leaks por custo ──────────────────────────────────────────── */}
         {s?.top_leaks && s.top_leaks.length > 0 && (
-          <section className="rounded-xl ring-1 ring-border bg-card/60 p-4">
+          <section data-tour="leaks" className="rounded-xl ring-1 ring-border bg-card/60 p-4">
             <div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground mb-3">
               {t("v2.leaksTitle")}
             </div>
@@ -307,9 +310,9 @@ export function DashboardV2({ onUpload, evSummary, hasData, renderCard, gtoQuali
             <div className="lg:col-span-6"><V2AiInsightsCard insights={aiInsights} locked={aiLocked} /></div>
             <div className="lg:col-span-6"><V2StreetEvCard evSummary={s} /></div>
             {/* UX-2 onda 3 — medição GTO (anel + barras) e resultado financeiro */}
-            <div className="lg:col-span-6"><V2QualityCard data={gtoQuality} pendingGto={pendingGto} /></div>
+            <div data-tour="qualidade" className="lg:col-span-6"><V2QualityCard data={gtoQuality} pendingGto={pendingGto} /></div>
             <div className="lg:col-span-6"><V2PositionCard data={gtoPosition} /></div>
-            <div className="lg:col-span-6"><V2BankrollCard /></div>
+            <div className="lg:col-span-6"><V2BankrollCard data={evolution} /></div>
             {CARD_ORDER.map((id) => {
               const card = renderCard(id, { v2: true });
               return card ? (

@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import {
   Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from "recharts";
-import { metrics } from "@/lib/api";
+import { metrics, type EvolutionResponse } from "@/lib/api";
 
 /**
  * V2BankrollCard — lucro acumulado num AreaChart recharts, com eixo X TEMPORAL (data de jogo) e
@@ -30,17 +30,32 @@ function fmtDate(t: number, days: number, locale: string): string {
   }
 }
 
-export function V2BankrollCard() {
+interface Props {
+  /**
+   * Série já pronta. Quando vem, o card NÃO busca nada.
+   *
+   * Existe para a tela de demonstração (`/demo`), que é pública. Sem isto o card buscava a
+   * evolução de quem estava VISITANDO — deslogado, vazia — e exibia "sem torneios suficientes"
+   * no meio de um dashboard povoado. Foi encontrado olhando a tela, não pelo teste: a varredura
+   * procurava card VAZIO, e um estado-vazio com texto passa por cheio.
+   */
+  data?: EvolutionResponse;
+}
+
+export function V2BankrollCard({ data: dataFixa }: Props = {}) {
   const { t, i18n } = useTranslation("dashboard");
   const [period, setPeriod] = useState<PeriodKey>("6M");
   const [mode, setMode] = useState<"time" | "tournament">("time");  // eixo X por tempo ou por torneio
   const days = PERIODS.find((p) => p.key === period)!.days;
 
-  const { data } = useQuery({
+  const { data: dataBuscada } = useQuery({
     queryKey: ["bankroll-evolution", days],
     queryFn: () => metrics.evolution(days),
     staleTime: 30_000,
+    enabled: dataFixa === undefined,
   });
+
+  const data = dataFixa ?? dataBuscada;
 
   const { pts, ticks, count } = useMemo(() => {
     const evolution = data?.evolution ?? [];

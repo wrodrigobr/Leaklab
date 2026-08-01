@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { ChevronRight, Loader2, Eye } from "lucide-react";
+import { ChevronRight, Compass, Loader2, Eye } from "lucide-react";
 import { DashboardV2 } from "@/components/hud/DashboardV2";
 import { makeRenderCard } from "@/components/hud/dashboardCards";
+import { GuidedTour, type TourStep } from "@/components/hud/GuidedTour";
 import { sample, type DashboardDemo } from "@/lib/api";
 
 /**
@@ -26,6 +27,7 @@ export default function Demo() {
   const { t: tc } = useTranslation("common");
   const [dados, setDados] = useState<DashboardDemo | null>(null);
   const [falhou, setFalhou] = useState(false);
+  const [tourAberto, setTourAberto] = useState(false);
 
   useEffect(() => {
     let vivo = true;
@@ -53,6 +55,15 @@ export default function Demo() {
       </div>
     );
   }
+
+  const passos: TourStep[] = [
+    { target: "proximo-passo", code: t("tour.p1code"), title: t("tour.p1title"), description: t("tour.p1desc") },
+    { target: "hero",          code: t("tour.p2code"), title: t("tour.p2title"), description: t("tour.p2desc") },
+    { target: "kpis",          code: t("tour.p3code"), title: t("tour.p3title"), description: t("tour.p3desc") },
+    { target: "leaks",         code: t("tour.p4code"), title: t("tour.p4title"), description: t("tour.p4desc") },
+    { target: "qualidade",     code: t("tour.p5code"), title: t("tour.p5title"), description: t("tour.p5desc") },
+    { target: "treino",        code: t("tour.p6code"), title: t("tour.p6title"), description: t("tour.p6desc") },
+  ];
 
   const tors = dados.tournaments.tournaments;
   const avaliados = tors.filter((x) => (x.buy_in ?? 0) > 0);
@@ -89,9 +100,17 @@ export default function Demo() {
           {t("demo.selo")}
         </span>
         <span className="hidden text-xs text-muted-foreground sm:inline">{t("demo.explicacao")}</span>
+        <button
+          type="button"
+          onClick={() => setTourAberto(true)}
+          className="ml-auto inline-flex shrink-0 items-center gap-1.5 rounded-md border border-primary/40 px-3 py-1 font-mono text-[10px] uppercase tracking-widest-2 text-primary transition-colors hover:bg-primary hover:text-primary-foreground"
+        >
+          <Compass className="size-3" aria-hidden />
+          {t("tour.botao")}
+        </button>
         <Link
           to="/login"
-          className="ml-2 inline-flex shrink-0 items-center gap-1 rounded-md bg-primary px-3 py-1 font-mono text-[10px] font-bold uppercase tracking-widest-2 text-primary-foreground transition-colors hover:bg-primary-glow"
+          className="inline-flex shrink-0 items-center gap-1 rounded-md bg-primary px-3 py-1 font-mono text-[10px] font-bold uppercase tracking-widest-2 text-primary-foreground transition-colors hover:bg-primary-glow"
         >
           {t("demo.cta")} <ChevronRight className="size-3" aria-hidden />
         </Link>
@@ -107,6 +126,7 @@ export default function Demo() {
           gtoPosition={dados.gtoPosition}
           pendingGto={0}
           showEmpty={false}
+          evolution={dados.evolution}
           kpis={{
             roi:          investido > 0 ? (lucro / investido) * 100 : null,
             itmPct:       tors.length > 0 ? (itm / tors.length) * 100 : null,
@@ -126,6 +146,8 @@ export default function Demo() {
           ].filter(Boolean) as { key: string; title: string; text: string }[]}
         />
       </div>
+
+      <GuidedTour steps={passos} open={tourAberto} onClose={() => setTourAberto(false)} />
     </div>
   );
 }

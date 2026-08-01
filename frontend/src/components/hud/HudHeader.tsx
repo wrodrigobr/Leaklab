@@ -209,6 +209,9 @@ export function HudHeader({ onUpload }: HudHeaderProps) {
                   <NavLink
                     key={item.to}
                     to={item.to}
+                    /* Âncora do tour: só o item de treino. `data-tour` é NOME, não seletor — se o
+                       item sair do menu, o passo se auto-pula em vez de apontar para o vazio. */
+                    data-tour={item.to === "/training" ? "treino" : undefined}
                     end={item.end ?? item.to === "/"}
                     className={() =>
                       `relative flex shrink-0 items-center gap-2 whitespace-nowrap rounded-md px-3 py-1.5 text-xs font-medium tracking-wide uppercase transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${

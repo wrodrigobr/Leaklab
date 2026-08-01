@@ -49,6 +49,28 @@ describe("tela de demonstração — nenhum card nasce vazio", () => {
     expect(DEFAULT_SECTIONS.length, "o bento encolheu — regenerar a fixture?").toBeGreaterThanOrEqual(13);
   });
 
+  it("nenhum card do dashboard busca os próprios dados sem aceitar dado pronto", () => {
+    /**
+     * O guarda que faltava, e a história dele importa.
+     *
+     * A primeira versão do teste procurava card VAZIO. O `V2BankrollCard` passou: ele buscava a
+     * evolução de quem estava VISITANDO (deslogado, vazia) e renderizava "sem torneios
+     * suficientes" — um estado-vazio COM TEXTO, que passa por cheio em qualquer contagem de
+     * caracteres. Foi encontrado olhando a tela, não pelo teste.
+     *
+     * A regra que sobrou: card que chama `metrics.` tem que aceitar `data` por prop e desligar a
+     * própria busca com `enabled`. Sem isso ele mente na demonstração.
+     */
+    const suspeitos = ["BankrollChart", "V2BankrollCard"];
+    for (const nome of suspeitos) {
+      const src = readFileSync(`src/components/hud/${nome}.tsx`, "utf-8");
+      expect(src, `${nome}: busca própria sem aceitar dado pronto`).toMatch(/data\?:\s*EvolutionResponse/);
+      expect(src, `${nome}: não desliga a busca quando recebe dado`).toMatch(/enabled:\s*dataFixa === undefined/);
+    }
+    // E a demonstração precisa realmente passar a série adiante.
+    expect(readFileSync("src/pages/Demo.tsx", "utf-8")).toContain("evolution={dados.evolution}");
+  });
+
   it("com o gate Free ligado os cards Pro viram cadeado, e a demonstração NÃO usa isso", () => {
     // Guarda de sentido: prova que `isFree` muda o resultado, senão o teste acima passaria mesmo
     // se o mapa ignorasse o parâmetro — e a demonstração mostra o produto completo de propósito.

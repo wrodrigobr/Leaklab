@@ -120,10 +120,18 @@ O passo 01 do protótipo ("é o termômetro rápido") é exatamente o texto que 
 
 ---
 
-## 7. Persistência
+## 7. Persistência — RESOLVIDO: não existe
 
-Server-side, junto de `onboarding_completed`. O protótipo usa `localStorage` (`leaklabs:tour-done`),
-que zera em outro navegador, não sobrevive a logout e usa a marca antiga.
+A spec previa estado server-side junto de `onboarding_completed`. Ao implementar, a necessidade
+**desapareceu**: o tour roda na `/demo`, que é PÚBLICA, e um visitante deslogado não tem estado no
+servidor para consultar.
+
+Como o tour nunca abre sozinho (§4: só por clique), não há nada a lembrar. Sem migração, sem
+coluna nova, sem `localStorage`. O botão fica sempre disponível, que é o comportamento certo de
+qualquer jeito: rever tem que ser barato.
+
+Se um dia o tour rodar sobre o dashboard do próprio jogador e precisar abrir sozinho, aí sim
+volta a decisão de persistir — e aí é server-side.
 
 ---
 
@@ -157,3 +165,9 @@ que zera em outro navegador, não sobrevive a logout e usa a marca antiga.
 
 As fases 1-2 já entregam valor sozinhas: uma tela que mostra o produto povoado é útil mesmo sem
 tour nenhum, e é o que falta hoje para quem chega do Instagram.
+
+**Fases 1 a 4 ENTREGUES em 2026-08-01.** Da fase 5 entrou só o gatilho da própria `/demo` (botão
+"Tour guiado" no selo); a persistência deixou de existir por não ser mais necessária (§7).
+
+Faltam os outros dois gatilhos do §4: o CTA no 3º passo do `OnboardingModal` e o link no
+`EmptyDashboard`. Ambos são um `Link to="/demo"` — nenhum deles depende de código novo.

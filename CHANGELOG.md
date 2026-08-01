@@ -7,6 +7,42 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(onboarding): tour guiado sobre a tela de demonstracao (fases 3 e 4)
+
+> Fecha o pedido do usuario: *"eu gosto do tour guiado, podemos ter uma tela de exemplo com dados
+> ficticios para mostrar o que e cada coisa"*. A tela veio nas fases 1-2; aqui vem o tour.
+>
+> **A regra que governa o componente:** passo sem alvo no DOM e **PULADO, nunca apontado**. O
+> dashboard mostra card conforme o volume de dados, entao o mesmo tour roda sobre telas
+> diferentes; apontar para alvo ausente e exatamente o defeito que fez a tela de demonstracao
+> existir. Medido no navegador: removidas duas ancoras, o tour reabre com **4 pontos em vez de 6**.
+>
+> **A ancora e um NOME (`data-tour`), nao um seletor CSS** — ideia aproveitada do prototipo que o
+> usuario enviou. Seletor de classe quebra calado quando alguem mexe no layout; `data-tour` some
+> junto com o elemento e o passo se auto-pula.
+>
+> **Os passos do prototipo foram remapeados**, porque ele mirava um layout que nao existe mais
+> (`kpis/upload/bankroll/tournaments/leaks` numa grade 8+4). Sao 6, na ordem da pergunta que o
+> jogador faz e nao na ordem do DOM, comecando pelo **Proximo Passo** — o motor de prescricao do
+> produto. Comecar por ele evita criar um segundo eixo de "o que fazer agora".
+>
+> **Cada indicador declara o volume que exige** (~200 decisoes para a direcao do EV, 30 torneios
+> para o ROI percentual). Sem isso o jogador sobe um torneio, le "ainda nao da para afirmar" e
+> conclui que o produto nao funciona — a segunda restricao registrada do onboarding, que o
+> prototipo ignorava.
+>
+> **A persistencia sumiu, e isso e resultado, nao esquecimento.** A spec previa estado server-side.
+> Ao implementar, a necessidade desapareceu: o tour roda na `/demo`, que e publica, e nunca abre
+> sozinho. Sem migracao, sem coluna nova, sem `localStorage`.
+>
+> Um defeito encontrado OLHANDO a tela, nao pelo teste: o `V2BankrollCard` exibia "sem torneios
+> suficientes" no meio do dashboard povoado — ele buscava a evolucao de quem estava visitando. A
+> varredura procurava card VAZIO, e um estado-vazio COM TEXTO passa por cheio. O guarda foi
+> reescrito: card que chama `metrics.` tem de aceitar dado por prop e desligar a propria busca.
+>
+> 8 testes do tour + 1 do bankroll, 3 guardas verificados quebrando. 222 testes no frontend, build
+> verde, `tsc` no baseline (74 pre-existentes).
+
 ### feat(demo): tela publica de demonstracao em `/demo`, com o dashboard povoado (fases 1 e 2)
 
 > Primeiras duas fases de `specs/tour-guiado-e-demo.md`. O usuario pediu tour guiado e resolveu a
