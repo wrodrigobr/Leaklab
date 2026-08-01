@@ -3456,11 +3456,23 @@ export interface DashboardLayoutData {
  * É uma análise REAL, congelada pelo backend a partir de uma mão jogada, no MESMO formato
  * (`ReplayStep`) que o painel de análise já consome. Público: a landing é deslogada.
  *
- * 404 quando a fixture não está lá. Quem chama trata como "sem exemplo" e não quebra a página:
- * é uma vitrine, não um caminho crítico.
+ * **NÃO usa o `request()` comum, e o motivo é CORS.** Aquele helper manda sempre
+ * `Content-Type: application/json` (e `Authorization`, se houver sessão), o que torna a chamada
+ * "não-simples" e força um **preflight OPTIONS**. Num GET sem corpo o cabeçalho não serve para
+ * nada, e o preço dele é alto: se a rota não responder — backend ainda não deployado, por
+ * exemplo — o preflight falha e o navegador cospe um erro de CORS em vez de um 404 comum.
+ * Aconteceu em produção: o Cloudflare Pages publica o frontend a cada push sem esperar o deploy
+ * do backend, então existe uma janela em que a rota não existe ainda.
+ *
+ * Sem cabeçalho nenhum, o navegador faz um GET simples: sem preflight, e a falha vira um 404
+ * que o chamador trata como "sem exemplo". É vitrine, não caminho crítico.
  */
 export const sample = {
-  decision: () => request<{ decision: ReplayStep }>("/sample/decision"),
+  decision: async (): Promise<{ decision: ReplayStep }> => {
+    const res = await fetch(`${BASE}/sample/decision`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return res.json();
+  },
 };
 
 export const preferences = {

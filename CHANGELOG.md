@@ -7,6 +7,31 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(landing): a chamada do exemplo disparava preflight e virava erro de CORS (#onboarding)
+
+> **Reportado pelo usuario, em producao:** `Access to fetch at '.../sample/decision' from origin
+> 'https://grindlabpoker.com' has been blocked by CORS policy: Response to preflight request
+> doesn't pass access control check`.
+>
+> **O CORS nao estava quebrado.** Medido na hora: `GET` e `OPTIONS` em `/sample/decision` davam
+> 404, e o mesmo `OPTIONS` numa rota existente (`/health`) dava 200. A rota simplesmente ainda nao
+> existia em producao — o Cloudflare Pages publica o frontend a cada push **sem esperar** o deploy
+> do backend, entao existe uma janela em que o front novo fala com o back velho.
+>
+> **Mas havia um defeito por tras, e e esse o conserto.** A chamada passava pelo `request()`
+> comum, que manda sempre `Content-Type: application/json` (e `Authorization`, se houver sessao).
+> Num GET sem corpo esse cabecalho nao serve para nada, e torna a requisicao "nao-simples": o
+> navegador manda um `OPTIONS` antes. Com a rota ausente, o preflight falha e o console cospe um
+> erro de CORS — que aponta para o lugar errado e faz parecer configuracao quebrada, quando era
+> so um deploy em andamento.
+>
+> Agora e um `fetch` sem cabecalho nenhum: GET simples, sem preflight, e a ausencia da rota volta
+> a ser um 404 que o componente trata em silencio (ele ja sai de cena quando nao ha exemplo).
+>
+> Tres guardas, os tres verificados quebrando. O segundo cobre a pior variante: usuario LOGADO
+> visitando a landing mandaria `Authorization` e traria o preflight de volta so para ele, que e o
+> bug que nao reproduz deslogado.
+
 ### feat(landing): a secao do diferencial saiu do JSON e chegou a tela (#onboarding)
 
 > A copy do diferencial (medimos na mesa, nao no drill) estava escrita nas 3 locales desde
