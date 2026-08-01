@@ -7,6 +7,46 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(demo): tela publica de demonstracao em `/demo`, com o dashboard povoado (fases 1 e 2)
+
+> Primeiras duas fases de `specs/tour-guiado-e-demo.md`. O usuario pediu tour guiado e resolveu a
+> objecao central com uma tela de exemplo: *"podemos ter uma tela de exemplo com dados ficticios
+> para mostrar o que e cada coisa"*.
+>
+> **O problema:** o produto so diz algo depois do primeiro upload, e antes disso o dashboard e
+> vazio por construcao. Quem chega da divulgacao nao tem como ver o que a ferramenta entrega, e um
+> tour guiado sobre a tela vazia apontaria para cards sem numero — o que ensina que o produto e
+> vazio.
+>
+> **Os dados sao DERIVADOS de um jogador real, nao fabricados.** O dashboard tem 13 cards com
+> numeros interdependentes: o leak prioritario conversa com o EV perdido, que conversa com a
+> cobertura GTO, que conversa com a projecao de carreira. Fabricar esse conjunto a mao erra em
+> silencio, e um card contradizendo outro e pior que card nenhum, porque ensina errado. O gerador
+> bate nos endpoints REAIS via test client, entao a forma do payload e por construcao a mesma que
+> o frontend espera. 19 payloads, 17 torneios, 2200 decisoes, 6 leaks, tudo anonimizado.
+>
+> **Rota separada, e nao dados de exemplo injetados no dashboard do jogador:** injetar cria um
+> estado em que a tela mente sobre de quem e aquele ROI. Rota propria elimina a classe inteira de
+> bug. Selo PERMANENTE no topo, nao so na primeira dobra: quem cai no meio da pagina precisa saber
+> de que tela se trata.
+>
+> **O mapa de cards saiu do `Index.tsx` para `dashboardCards.tsx`** e agora serve as duas telas. A
+> alternativa era copiar o mapa, e copia de vitrine passa a mentir sozinha no dia em que um card
+> muda, sem quebrar nada. O `BankrollChart` — unico card que buscava os proprios dados — ganhou
+> prop opcional: sem ela, mostraria a evolucao de quem esta VISITANDO (deslogado, vazia) no meio
+> de um dashboard povoado.
+>
+> **Guarda central, dos dois lados:** a conferencia exige SUBSTANCIA, nao presenca.
+> `insufficient_data: true` passa em qualquer teste de "nao-vazio" e produziria uma demonstracao
+> inteira dizendo "ainda nao da para afirmar" — o pior resultado possivel numa tela cujo trabalho
+> e mostrar o que a ferramenta entrega.
+>
+> Medido no navegador: 13 cards renderizados, **zero vazios**, **zero ocorrencias** de "sem dado
+> suficiente". 8 testes de backend + 5 de frontend, 6 guardas verificados quebrando. 213 testes no
+> frontend, build verde, `tsc` no baseline (74 erros pre-existentes, zero nos arquivos novos).
+>
+> Falta a fase 3 em diante: o `GuidedTour` em si.
+
 ### fix(deploy): o deploy usava `git pull` e morria quando a historia era reescrita (#infra)
 
 > **Deploy manual de 2026-08-01**, com o Actions bloqueado por cobranca. O backend estava parado

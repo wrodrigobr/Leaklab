@@ -3467,9 +3467,39 @@ export interface DashboardLayoutData {
  * Sem cabeçalho nenhum, o navegador faz um GET simples: sem preflight, e a falha vira um 404
  * que o chamador trata como "sem exemplo". É vitrine, não caminho crítico.
  */
+/** Os 19 payloads que o dashboard consome, congelados de um jogador real. Ver `/demo`. */
+export interface DashboardDemo {
+  evolution:         EvolutionResponse;
+  playerStats:       PlayerStatsResponse;
+  leakRoi:           { leaks: LeakRoiData[]; source: "gto" | "heuristic" };
+  pressureProfile:   PressureProfile;
+  confidenceDrift:   ConfidenceDrift;
+  dna:               PlayerDnaResponse;
+  leakGraph:         LeakGraphResponse;
+  career:            CareerProjection;
+  cognitiveFailures: CognitiveFailureData;
+  strategicTwin:     StrategicTwinProfile;
+  sessionContext:    SessionContextData;
+  evSummary:         EvSummary;
+  pendingGtoCount:   { pending: number };
+  gtoAlignment:      GtoAlignmentData;
+  gtoPosition:       GtoPositionData;
+  gtoQuality:        GtoQualityData;
+  resultsVsGto:      ResultsVsGtoData;
+  leakFinder:        LeakFinderData;
+  tournaments:       TournamentsResponse;
+}
+
 export const sample = {
   decision: async (): Promise<{ decision: ReplayStep }> => {
     const res = await fetch(`${BASE}/sample/decision`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return res.json();
+  },
+
+  /** Mesma regra do `decision`: sem cabeçalho, para ser requisição simples e não gerar preflight. */
+  dashboard: async (): Promise<DashboardDemo> => {
+    const res = await fetch(`${BASE}/sample/dashboard`);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return res.json();
   },

@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { Loader2 } from "lucide-react";
-import { metrics } from "@/lib/api";
+import { metrics, type EvolutionResponse } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { HudTooltip } from "./HudTooltip";
 
@@ -48,18 +48,32 @@ function buildPath(points: number[]) {
   return { path, area, max, min };
 }
 
-export function BankrollChart() {
+interface Props {
+  /**
+   * Série já pronta. Quando vem, o card NÃO busca nada.
+   *
+   * Existe para a tela de demonstração (`/demo`), que é pública: sem isto o card buscaria a
+   * evolução de quem está VISITANDO — deslogado, vazia — no meio de um dashboard povoado.
+   * O dashboard do jogador continua chamando sem prop e buscando por conta própria.
+   */
+  data?: EvolutionResponse;
+}
+
+export function BankrollChart({ data: dataFixa }: Props = {}) {
   const { t, i18n } = useTranslation("dashboard");
   const [period, setPeriod] = useState<PeriodKey>("6M");
 
   const days = PERIODS.find((p) => p.key === period)!.days;
 
-  const { data, isFetching } = useQuery({
+  const { data: dataBuscada, isFetching: buscando } = useQuery({
     queryKey: ["bankroll-evolution", days],
     queryFn: () => metrics.evolution(days),
     staleTime: 30_000,
+    enabled: dataFixa === undefined,
   });
 
+  const data = dataFixa ?? dataBuscada;
+  const isFetching = dataFixa === undefined && buscando;
   const evolution = data?.evolution;
 
   const { path, area, max, min, isDemo, ticks } = useMemo(() => {

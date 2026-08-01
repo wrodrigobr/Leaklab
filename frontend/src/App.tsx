@@ -16,6 +16,7 @@ import Login from "./pages/Login.tsx";
 import Tournaments from "./pages/Tournaments.tsx";
 import TournamentDetail from "./pages/TournamentDetail.tsx";
 import Replayer from "./pages/Replayer.tsx";
+import Demo from "./pages/Demo.tsx";
 import CoachReplay from "./pages/CoachReplay.tsx";
 import Rating from "./pages/Rating.tsx";
 import DocsRating from "./pages/DocsRating.tsx";
@@ -157,6 +158,8 @@ const App = () => (
           <Routes>
             <Route path="/" element={<PublicRoute><Landing /></PublicRoute>} />
             <Route path="/privacidade" element={<Privacy />} />
+            {/* Demonstração pública: sem login, para quem ainda não tem dado nenhum. */}
+            <Route path="/demo" element={<Demo />} />
             <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
             <Route path="/coach-apply" element={<CoachApply />} />
             <Route

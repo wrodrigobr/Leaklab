@@ -672,5 +672,12 @@
       "depois": "Con más torneos: los leaks ordenados, el plan de estudio y la evolución de la banca.",
       "honestidade": "Una cosa exige paciencia: probar que mejoraste de verdad necesita muestra. El producto solo lo afirma cuando la diferencia resiste al azar, y dice \"todavía no se puede afirmar\" mientras no resista. Es a propósito."
     }
+  },
+  "demo": {
+    "selo": "Demostración",
+    "explicacao": "Datos reales de un jugador, anonimizados. No es tu cuenta.",
+    "cta": "Empezar gratis",
+    "indisponivel": "La demostración no está disponible ahora.",
+    "voltar": "Volver al inicio"
   }
 }

@@ -8,34 +8,16 @@ import { SortableContext, rectSortingStrategy, arrayMove, sortableKeyboardCoordi
 import { HudHeader } from "@/components/hud/HudHeader";
 import { DashboardV2 } from "@/components/hud/DashboardV2";
 import { KpiCard } from "@/components/hud/KpiCard";
-import { LeaksPanel } from "@/components/hud/LeaksPanel";
-import { BankrollChart } from "@/components/hud/BankrollChart";
 import { EmptyDashboard } from "@/components/hud/EmptyDashboard";
-import { GtoPositionCard } from "@/components/hud/GtoPositionCard";
 import { PlayerStatsCard } from "@/components/hud/PlayerStatsCard";
-import { ResultsVsGtoCard } from "@/components/hud/ResultsVsGtoCard";
-import { V2ResultsCard } from "@/components/hud/V2ResultsCard";
-import { V2PressureCard } from "@/components/hud/V2PressureCard";
-import { V2CognitiveCard } from "@/components/hud/V2CognitiveCard";
-import { V2TwinCard } from "@/components/hud/V2TwinCard";
-import { V2CausalMapCard } from "@/components/hud/V2CausalMapCard";
-import { LeakFinderCard } from "@/components/hud/LeakFinderCard";
-import { GtoQualityCard } from "@/components/hud/GtoQualityCard";
 import { AcceptCoachModal } from "@/components/hud/AcceptCoachModal";
 import { OnboardingModal } from "@/components/hud/OnboardingModal";
 import { SupportModal } from "@/components/hud/SupportModal";
-import { PressureProfileCard } from "@/components/hud/PressureProfileCard";
-import { PlayerDnaCard } from "@/components/hud/PlayerDnaCard";
 import { ProfileCompletionCard } from "@/components/hud/ProfileCompletionCard";
-import { LeakCausalMap } from "@/components/hud/LeakCausalMap";
-import { CareerGraphCard } from "@/components/hud/CareerGraphCard";
-import { CognitiveFailureCard } from "@/components/hud/CognitiveFailureCard";
-import { SessionContextCard } from "@/components/hud/SessionContextCard";
-import { StrategicTwinCard } from "@/components/hud/StrategicTwinCard";
 import { DraggableCard } from "@/components/hud/DraggableCard";
 import { useDashboardLayout, DashSection, SECTION_SPAN } from "@/hooks/useDashboardLayout";
 import { useMasonryRows } from "@/hooks/useMasonryRows";
-import { ProLockCard } from "@/components/hud/ProLockCard";
+import { makeRenderCard } from "@/components/hud/dashboardCards";
 import { metrics, tournaments, support, EvolutionResponse, Tournament, PlayerStatsResponse, LeakRoiData, PressureProfile, ConfidenceDrift, PlayerDnaResponse, LeakGraphResponse, CareerProjection, CognitiveFailureData, StrategicTwinProfile, GtoAlignmentData, GtoPositionData, GtoQualityData, ResultsVsGtoData, LeakFinderData, SessionContextData } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { shouldShowDrift, readDriftSeen, writeDriftSeen } from "@/lib/driftDismiss";
@@ -239,44 +221,14 @@ const Index = () => {
     staleTime: 120_000,
   });
 
-  // Bento: cada card individual (achatado). null → não renderiza (ex.: causal_map sem grafo).
-  // opts.v2: no V2 as narrativas de IA já vivem no carrossel (V2AiInsightsCard) —
-  // os cards completos escondem o texto duplicado e mostram só o detalhe único.
-  const renderCard = (id: DashSection, opts?: { v2?: boolean }) => {
-    const v2 = opts?.v2 ?? false;
-    switch (id) {
-      case "quality":    return <GtoQualityCard data={gtoQualityData} pendingGto={pendingGto} />;
-      case "position":   return <GtoPositionCard data={gtoPositionData} pendingGto={pendingGto} />;
-      case "leakfinder": return <LeakFinderCard data={leakFinderData} />;
-      case "results":    return v2 ? <V2ResultsCard data={resultsVsGtoData} /> : <ResultsVsGtoCard data={resultsVsGtoData} />;
-      case "bankroll":   return <BankrollChart />;
-      case "career":     return isFree ? <ProLockCard feature={tc("proLock.career")} v2={v2} /> : <CareerGraphCard data={careerData ?? { insufficient_data: true, tournament_count: 0 }} hideNarrative={v2} v2={v2} />;
-      case "cognitive":  return isFree
-        ? <ProLockCard feature={tc("proLock.cognitive")} v2={v2} />
-        : v2
-          ? <V2CognitiveCard data={cognitiveData ?? { insufficient_data: true, patterns: [], total_decisions: 0 }} />
-          : <CognitiveFailureCard data={cognitiveData ?? { insufficient_data: true, patterns: [], total_decisions: 0 }} />;
-      case "session":    return isFree
-        ? <ProLockCard feature={tc("proLock.session")} v2={v2} />
-        : <SessionContextCard data={sessionData ?? { insufficient_data: true, sample: 0, multitabling: [], time_of_day: [], fatigue: [] }} />;
-      case "dna":        return <PlayerDnaCard data={dnaData} v2={v2} />;
-      case "pressure":   return v2 ? <V2PressureCard data={pressureData} /> : <PressureProfileCard data={pressureData} />;
-      case "leaks":      return <LeaksPanel leaks={leakRoi.length > 0 ? leakRoi : evo?.leaks} source={leakRoi.length > 0 ? leakSource : null} />;
-      case "causal_map": return isFree
-        ? <ProLockCard feature={tc("proLock.causalMap")} v2={v2} />
-        : (leakGraph && leakGraph.nodes.length >= 1)
-          ? v2
-            ? <V2CausalMapCard nodes={leakGraph.nodes} edges={leakGraph.edges} />
-            : <LeakCausalMap nodes={leakGraph.nodes} edges={leakGraph.edges} narrative={leakGraph.narrative} />
-          : null;
-      case "twin":       return isFree
-        ? <ProLockCard feature={tc("proLock.twin")} v2={v2} />
-        : v2
-          ? <V2TwinCard data={twinData ?? { insufficient_data: true, total_decisions: 0 }} />
-          : <StrategicTwinCard data={twinData ?? { insufficient_data: true, total_decisions: 0 }} />;
-      default:           return null;
-    }
-  };
+  // O mapa de cards vive em `dashboardCards` desde que a tela de demonstração passou a precisar
+  // dos MESMOS cards com dados de outra origem. Cópia de vitrine mente sozinha quando um card
+  // muda, sem quebrar nada.
+  const renderCard = makeRenderCard({
+    evo, leakRoi, leakSource, pressureData, dnaData, leakGraph, careerData, cognitiveData,
+    twinData, sessionData, gtoQualityData, gtoPositionData, resultsVsGtoData, leakFinderData,
+    pendingGto,
+  }, { isFree, tc });
 
   // Modais globais do dashboard: ficam FORA do ramo V2/clássico.
   // `dashV2` é fixo em true (o clássico é código latente), e os modais viviam só no return do

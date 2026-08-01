@@ -672,5 +672,12 @@
       "depois": "With more tournaments: ranked leaks, the study plan and your bankroll curve.",
       "honestidade": "One thing takes patience: proving you actually improved needs sample. The product only claims it when the difference survives chance, and says \"not enough to tell yet\" until it does. That is on purpose."
     }
+  },
+  "demo": {
+    "selo": "Demo",
+    "explicacao": "Real data from one player, anonymised. This is not your account.",
+    "cta": "Start free",
+    "indisponivel": "The demo is unavailable right now.",
+    "voltar": "Back to home"
   }
 }

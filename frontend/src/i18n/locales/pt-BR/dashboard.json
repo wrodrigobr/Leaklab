@@ -672,5 +672,12 @@
       "depois": "Com mais torneios: os leaks ranqueados, o plano de estudo e a evolução da banca.",
       "honestidade": "Uma coisa exige paciência: provar que você melhorou de verdade precisa de amostra. O produto só afirma isso quando a diferença resiste ao acaso, e diz \"ainda não dá para afirmar\" enquanto não resiste. É proposital."
     }
+  },
+  "demo": {
+    "selo": "Demonstração",
+    "explicacao": "Dados reais de um jogador, anonimizados. Não é a sua conta.",
+    "cta": "Começar grátis",
+    "indisponivel": "A demonstração está indisponível no momento.",
+    "voltar": "Voltar ao início"
   }
 }
