@@ -7,6 +7,33 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(deploy): o deploy usava `git pull` e morria quando a historia era reescrita (#infra)
+
+> **Deploy manual de 2026-08-01**, com o Actions bloqueado por cobranca. O backend estava parado
+> em `a9697f37` desde 31/07 as 22:18, e o `git pull origin main` do servidor abortou com
+> *"You have divergent branches and need to specify how to reconcile them"*.
+>
+> **Causa:** o commit `a9697f37` foi reescrito (amend → `8883927`) e force-pushado. O servidor
+> ficou com a versao PRE-amend, que nao existe mais no remoto, e o `pull` viu duas historias
+> divergentes. Conferido antes de tocar em qualquer coisa: `git diff a9697f37 8883927` **vazio**
+> (arvores identicas) e `8883927` ancestral de `origin/main` — ou seja, o servidor nao tinha uma
+> linha que o remoto ja nao tivesse.
+>
+> O passo de deploy passou de `git pull origin main` para `git fetch origin main` +
+> `git reset --hard origin/main`. O servidor e um ESPELHO do remoto, nao um clone de trabalho: nao
+> tem commit proprio a preservar, merge ali nao faz sentido, e `reset --hard` e imune a reescrita
+> de historia. Arquivos nao versionados (docker-compose.yml, .env, confs do nginx) sobrevivem,
+> porque o reset so mexe no que o git rastreia.
+>
+> **O que estava travado, e o motivo real:** o job `Testes` falhava em 3 segundos, com ZERO passos
+> executados e `runner_name` vazio. A anotacao do proprio GitHub: *"The job was not started because
+> your account is locked due to a billing issue."* Nao era codigo. Como `deploy-backend` tem
+> `needs: test`, nenhum deploy de backend saiu desde 31/07 — enquanto o frontend continuou subindo
+> pelo Cloudflare Pages, que nao passa pelo Actions. Producao rodava front novo contra back velho.
+>
+> Verificado em producao depois do deploy: `/health` 200, `/sample/decision` 200 com a decisao
+> real, preflight `OPTIONS` 200, e o card do exemplo renderizando em `grindlabpoker.com`.
+
 ### fix(ci): dois testes guardavam o significado ANTIGO da sondagem e travaram todo deploy de backend (#treino)
 
 > **O CI estava vermelho nos ultimos 20 runs**, o mais antigo de 31/07 as 21:23. Como

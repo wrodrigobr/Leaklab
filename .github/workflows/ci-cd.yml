@@ -98,7 +98,19 @@ jobs:
           script: |
             set -e
             cd ~/app
-            git pull origin main
+            # `fetch` + `reset --hard`, e NAO `git pull`. O servidor e um ESPELHO do remoto, nao
+            # um clone de trabalho: ele nao tem commit proprio a preservar, e merge ali nao faz
+            # sentido nenhum.
+            #
+            # O `pull` quebrou de verdade em 2026-08-01: um commit foi reescrito (amend) e
+            # force-pushado, o servidor ficou com a versao pre-amend, e o pull morreu com
+            # "You have divergent branches and need to specify how to reconcile them" — deploy
+            # parado, sem nada no ar dizendo isso. `reset --hard` e imune a reescrita de historia.
+            #
+            # Arquivos NAO versionados (docker-compose.yml, .env, confs do nginx) sobrevivem: o
+            # reset so mexe no que o git rastreia.
+            git fetch origin main
+            git reset --hard origin/main
             docker compose up -d --build web
             docker image prune -f
 
