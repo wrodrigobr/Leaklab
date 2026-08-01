@@ -7,8 +7,6 @@ import { useUploadQueue } from "@/components/hud/UploadQueue";
 import { HandExportGuide } from "@/components/hud/HandExportGuide";
 import { SampleDecisionCard } from "@/components/hud/SampleDecisionCard";
 
-const SUPPORTED = [".txt", ".log"];
-
 interface Props {
   onComplete?: () => void;
 }
@@ -102,18 +100,13 @@ export function EmptyDashboard({ onComplete }: Props) {
               aria-label={t("empty.fileLabel")}
             />
 
-            <div className="mt-5 flex flex-wrap justify-center items-center gap-3 font-mono text-[10px] uppercase tracking-widest-2 text-muted-foreground">
-              {SUPPORTED.map((ext, i) => (
-                <span key={ext} className="flex items-center gap-3">
-                  {i > 0 && <span className="h-3 w-px bg-border" aria-hidden />}
-                  {ext}
-                </span>
-              ))}
-              <span className="h-3 w-px bg-border" aria-hidden />
-              <span>PokerStars</span>
-              <span className="h-3 w-px bg-border" aria-hidden />
-              <span>AES-256</span>
-            </div>
+            {/* A linha de chips que ficava aqui (".txt · .log · PokerStars · AES-256") saiu.
+                Três problemas, e o do meio era o pior: repetia a extensão que a frase acima já
+                diz; citava UMA sala enquanto a mesma frase lista quatro, o que faz um jogador
+                de GGPoker concluir que o produto não serve para ele; e exibia "AES-256", um
+                selo de segurança sem nada por trás — não há uma linha de cifragem no backend.
+                Alegação que não se sustenta é passivo, não reforço. As extensões aceitas
+                passaram para a frase, que é onde a informação já estava. */}
 
             <button
               type="button"

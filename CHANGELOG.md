@@ -7,6 +7,30 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(onboarding): o dropzone citava UMA sala e exibia um selo de seguranca sem lastro (#onboarding)
+
+> **Reportado pelo usuario**, olhando a linha de chips do dropzone: `.txt · .log · PokerStars ·
+> AES-256`. "Estranho ter so o nome PokerStars aqui, e o AES-256." Estava certo nos dois, e havia
+> um terceiro problema que fecha o caso.
+>
+> **1. Citava uma sala so.** A frase logo acima ja lista as quatro (PokerStars, GGPoker, ACR,
+> CoinPoker). Um jogador de GGPoker que lesse os chips concluiria que o produto nao serve para ele
+> — na tela cujo unico trabalho e convence-lo a subir o arquivo.
+>
+> **2. "AES-256" nao tinha lastro.** `grep -i "aes|encrypt"` no backend inteiro: **zero
+> ocorrencias**. Nao ha uma linha de cifragem no produto. Alegacao de seguranca que nao se
+> sustenta e passivo, nao reforco, e um dropzone nao e lugar de selo.
+>
+> **3. Repetia a extensao** que a frase acima ja dizia.
+>
+> A linha saiu inteira. O `.log`, unica informacao que so existia ali, passou para a frase nas 3
+> locales — sem isso teria sumido junto com os chips (o input aceita `.txt` E `.log`).
+>
+> Tres guardas: a copy tem de nomear TODAS as salas suportadas, e a lista sai do
+> `HandExportGuide` (fonte unica — sala nova cobra a copy sozinha); a copy tem de citar todas as
+> extensoes do `accept` do input; e a tela nao pode voltar a cravar sala nem exibir selo. Os tres
+> verificados quebrando. 197 testes verdes. Conferido no app rodando.
+
 ### fix(layout): o fim da pagina ficava atras da barra de navegacao entre 768px e 1023px (#onboarding)
 
 > **O sintoma reportado era um link so:** "Ver exemplo de analise", no dashboard de quem ainda nao
