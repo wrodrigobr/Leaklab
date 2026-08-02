@@ -188,6 +188,46 @@ def test_contraste_fala_de_profundidade():
     print("OK  test_contraste_fala_de_profundidade")
 
 
+# Reportado pelo jogador: o texto do contraste dizia "Mesmo spot, 10bb em vez de 17bb" e "a mesma
+# mão pede outra linha". Ele leu como continuidade do exercício ANTERIOR, que não era parecido, e
+# estranhou. As duas afirmações são falsas: a sessão é INTERCALADA (o anterior pode ser revisão de
+# outra família) e a mão é sorteada de novo. O que de fato se repete é o CENÁRIO.
+_CONTINUIDADE_PROIBIDA = ('mesmo spot', 'mesma mão', 'mesma mao', 'spot anterior',
+                          'exercício anterior', 'exercicio anterior', 'como antes',
+                          'de novo aquele', 'a mesma situação de antes')
+
+
+def _sem_promessa_de_continuidade(texto: str, onde: str):
+    baixo = (texto or '').lower()
+    for frase in _CONTINUIDADE_PROIBIDA:
+        assert frase not in baixo, (
+            f'{onde} promete continuidade com o exercício anterior ("{frase}"), '
+            f'e a sessão é intercalada: {texto!r}')
+
+
+def test_contraste_nao_promete_continuidade_com_o_anterior():
+    """Varre os DOIS textos do contraste e as duas ramificações de cada um.
+
+    Nasceu de uma queixa concreta, e vale como regra: o contraste compartilha o cenário com a
+    missão, e só isso. Prometer "mesmo spot" ou "a mesma mão" é afirmar algo que a ordem
+    intercalada e o sorteio da mão não garantem.
+    """
+    spot = {'scenario': 'rfi', 'position': 'SB', 'stack_bb': 10, 'hand': '87s',
+            'block_kind': 'contrast', 'contrast_of': 17}
+    vistos = 0
+    for grade in ({}, {'hand_freq': {'allin': 1.0}}, {'hand_freq': {'allin': 0.1}}):
+        c = concept_for_spot(dict(spot), grade)
+        _sem_promessa_de_continuidade(c['principio'], 'principio do contraste')
+        vistos += 1
+    nota = contrast_note(dict(spot))
+    assert nota, 'contrast_note devolveu vazio: o teste passaria sem ler nada'
+    _sem_promessa_de_continuidade(nota, 'contrast_note')
+    # e o texto continua dizendo o que PRECISA dizer: as duas profundidades
+    assert '10bb' in nota and '17bb' in nota, nota
+    assert vistos == 3
+    print("OK  test_contraste_nao_promete_continuidade_com_o_anterior")
+
+
 def test_stack_curto_manda_no_gatilho():
     c = concept_for_spot({'scenario': 'vs_rfi', 'position': 'BB', 'vs_position': 'SB',
                           'stack_bb': 12, 'hand': 'A7o'}, {'hand_freq': {'allin': 1.0}})

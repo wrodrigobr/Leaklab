@@ -465,15 +465,20 @@ def concept_for_spot(spot: dict, grade: dict | None = None) -> dict:
 
     # (a) Spot de CONTRASTE: a lição é a profundidade, não a posição. Se aqui o texto falasse
     # de posição, o jogador não entenderia por que o spot mudou de stack no meio da sessão.
+    # O contraste compartilha CENÁRIO (scenario/position/vs_position) com a missão, e só isso.
+    # A mão é sorteada de novo, e a ordem da sessão é intercalada: o exercício anterior pode ser
+    # de outra família. Reportado pelo jogador: o texto dizia "mesmo spot" e "a mesma mão", e ele
+    # leu como continuidade do exercício que tinha acabado de fazer, que não era parecido. Fale
+    # do CENÁRIO, que é o que de fato se repete.
     if is_contraste:
         gatilho = 'stack'
         outro = spot.get('contrast_of')
         if shove_dominante:
-            principio = (f"Mudou só a profundidade ({outro}bb → {stack:.0f}bb) e a resposta virou: "
-                         f"aqui já não dá pra jogar pós-flop, a mão se resolve antes.")
+            principio = (f"Você treina este cenário a {outro}bb. A {stack:.0f}bb ele nem chega ao "
+                         f"pós-flop: a mão se resolve antes.")
         else:
-            principio = (f"Mesmo spot, {stack:.0f}bb em vez de {outro}bb. Repare no que muda: "
-                         f"com outra profundidade, a mesma mão pede outra linha.")
+            principio = (f"Este é o cenário que você treina, só que a {stack:.0f}bb em vez de "
+                         f"{outro}bb. A profundidade muda a linha antes de a mão mudar.")
         regra = "O stack é gatilho antes da mão. Leia a profundidade primeiro."
 
     # (b) profundidade curta: é o gatilho mais forte e o mais ignorado
@@ -710,5 +715,6 @@ def contrast_note(spot: dict) -> str | None:
     outro = spot.get('contrast_of')
     if not outro:
         return None
-    return (f"Mesmo spot, profundidade diferente ({outro}bb → {spot.get('stack_bb')}bb). "
-            f"É aqui que se aprende o gatilho: se a resposta mudou, o stack é que manda.")
+    return (f"Você está treinando este cenário a {outro}bb, e aqui ele vem a "
+            f"{spot.get('stack_bb')}bb. É comparando as duas profundidades que se aprende o "
+            f"gatilho: quando a resposta muda, quem manda é o stack.")
