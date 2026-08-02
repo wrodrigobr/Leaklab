@@ -1616,7 +1616,7 @@ def get_drill_spots(user_id: int, limit: int = 10, street: str = None, spot: str
                 d.action_taken, d.best_action, d.label, d.score,
                 d.m_ratio, d.icm_pressure, d.stack_bb, d.position,
                 d.num_players, d.is_3bet, d.level_bb, d.note, d.draw_profile,
-                d.pot_size, d.facing_bet,
+                d.pot_size, d.facing_bet, d.n_active_opponents,
                 d.gto_action, d.gto_label,
                 t.tournament_name, t.tournament_id, t.played_at, t.buy_in,
                 ds_last.next_drill_at, ds_last.srs_interval_days
@@ -1638,6 +1638,10 @@ def get_drill_spots(user_id: int, limit: int = 10, street: str = None, spot: str
               AND d.hero_cards IS NOT NULL AND d.hero_cards != ''
               AND d.gto_label IN ('gto_minor_deviation', 'gto_critical')
               AND d.gto_action IS NOT NULL AND d.gto_action != ''
+              -- Multiway postflop NAO entra: o solver e heads-up e a correcao devolveria
+              -- 'uncovered'. Spot que nao pode ser corrigido nao e exercicio, e ruido — e ainda
+              -- ocupa uma das vagas da sessao. Medido: custa 3% do pool.
+              AND NOT (d.street != 'preflop' AND COALESCE(d.n_active_opponents, 0) >= 2)
               {street_filter}
               {spot_filter}
             ORDER BY

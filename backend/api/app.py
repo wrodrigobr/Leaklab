@@ -1769,6 +1769,34 @@ def player_results_vs_gto():
     return jsonify(get_results_vs_gto(g.user_id, last_n=last_n))
 
 
+
+def _spot_sem_veredito(row: dict) -> bool:
+    """O drill serviria este spot e a correcao devolveria 'uncovered'?
+
+    Existe porque a SELECAO usava o `gto_label` GRAVADO no import e a CORRECAO faz uma consulta
+    AO VIVO — e as duas discordam. O jogador recebia um exercicio, respondia, e levava "fora da
+    cobertura" sem acao recomendada. Reportado com dois exemplos, de causas diferentes: mao fora
+    da range solvada e pote multiway.
+
+    A regra e a MESMA do gradeamento (`gto_off_tree` la embaixo): postflop resolvido por range
+    AGREGADA nunca e hand-aware, entao nunca crava veredito. Repetir a expressao aqui seria
+    convidar as duas a divergirem de novo — por isso a definicao e uma so, e o teste cobra que
+    o que passa por este filtro nao volta 'uncovered'.
+
+    Multiway ja sai no SQL da selecao; sobra o off-tree, que exige o lookup ao vivo.
+    """
+    street = (row.get('street') or '').lower()
+    if street == 'preflop':
+        return False
+    if (row.get('n_active_opponents') or 0) >= 2:
+        return True
+    try:
+        _b, _f, fonte = _resolve_best_action_from_node(row, return_strategy=True)
+    except Exception:
+        return False   # falha de lookup nao vira exclusao: perder spot e pior que arriscar um
+    return fonte in ('gto_range', 'gto_stored')
+
+
 @app.route('/player/spots/drill', methods=['GET'])
 @require_auth
 def player_drill_spots():
@@ -1782,7 +1810,11 @@ def player_drill_spots():
     limit  = min(int(request.args.get('limit', 10)), 20)
     street = request.args.get('street') or None
     spot   = request.args.get('spot')   or None
-    spots  = get_drill_spots(g.user_id, limit=limit, street=street, spot=spot)
+    # Pede FOLGA e descarta o que voltaria sem veredito. A ordem do SRS e preservada: filtrar
+    # nao reordena, so remove. Medido no acervo real: o descarte custa 8,5% do pool (3% multiway,
+    # 5,5% off-tree) e deixa 183 spots — muito acima dos 10 de uma sessao.
+    brutos = get_drill_spots(g.user_id, limit=limit * 3, street=street, spot=spot)
+    spots  = [s for s in brutos if not _spot_sem_veredito(s)][:limit]
     stats  = get_drill_stats(g.user_id, days=30)
     return jsonify({'spots': spots, 'stats': stats})
 
