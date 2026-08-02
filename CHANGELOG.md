@@ -7,6 +7,40 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(solver): o enfileiramento mandava o pote em FICHAS, e o solver degenerava em all-in (#gto)
+
+> Ultimo achado da auditoria. A montagem do payload postflop ja foi TRES copias divergentes e foi
+> extraida para `montar_payload_postflop` justamente por isso — **e o chamador que sobrou ficou com
+> a versao errada**: `_enfileirar_spot_da_decisao` passava `spot['potSize']` (FICHAS) como `pot_bb`,
+> enquanto os outros dois pontos do mesmo arquivo dividiam pelo `level_bb` e explicavam o motivo no
+> comentario.
+>
+> Consequencia: pote ~100x inflado → SPR colapsa → o solver forca all-in e devolve estrategia
+> degenerada com exploitability 0.0% FALSA.
+>
+> **Medido em producao antes do conserto:** 135 nos (2,6% do postflop) com pote maior que 2,5x o
+> stack, 9 deles all-in a 100% e 11 com exploitability <= 0,05%. O treino ja peneirava esses nos
+> desde hoje de manha, mas o `/replay` nao peneira: **63 decisoes de 4 jogadores apontam para eles,
+> e 4 receberam veredito `gto_critical`** — "voce errou feio" calculado sobre um pote inflado.
+>
+> O pote agora sai de `potBb`, que o pipeline ja converte ao lado do `potSize`. E entrou uma peneira
+> de sanidade: pote fora da faixa NAO e enfileirado. Isso e a regra 7 do CLAUDE.md aplicada — no
+> degenerado e PIOR que no ausente, porque o ausente vira "sem cobertura" na tela e o degenerado
+> vira veredito confiante e errado.
+>
+> 6 casos em `test_enqueue_pot_unit.py`, com um varredor que cobra os N+1 pontos do arquivo (regra
+> 5). **O varredor acusou codigo CERTO duas vezes antes de ficar bom:** cortar na virgula escondia a
+> divisao (`... / _lvl_bb, 2)` tem virgula no meio) e `potSize` aparece em COMENTARIO de fim de linha
+> na chamada que ja usava `potBb`. A regra que ficou e a mais simples: `potSize` so pode virar
+> `pot_bb` se houver divisao na mesma linha.
+>
+> **Fica ABERTO, e e decisao do usuario:** os 135 nos ja gravados continuam la. Apaga-los
+> transformaria os 4 vereditos errados em "sem cobertura" (que e o estado honesto), mas e mudanca
+> destrutiva em dado de producao. Re-chavear esta FORA de questao — [[project_board_hash_bug]].
+>
+> Suite: 1782 testes, zero falhas.
+
+
 ### fix(treino): o postflop NAO gravava tentativa nenhuma na progressao, e nada denunciava (#treino)
 
 > Achado por auditoria de codigo, disparada depois de o usuario reportar cinco defeitos parecidos

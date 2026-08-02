@@ -53,7 +53,7 @@ SUITES = {
     'api':       ['test_api_endpoints.py', 'test_subscription.py', 'test_partygaming_financials.py',
                   'test_stripe_hardening.py', 'test_worker_entrypoints.py',
                   'test_decisao_exemplo.py', 'test_dashboard_demo.py',
-                  'test_email_confirmacao.py'],
+                  'test_email_confirmacao.py', 'test_enqueue_pot_unit.py'],
     'regression':['test_tournament.py', 'test_multi_decision.py', 'test_partygaming_parser.py',
                   'test_acr_parser.py', 'test_coinpoker_parser.py',
                   'test_raise_total_separator.py'],

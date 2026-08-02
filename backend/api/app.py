@@ -9934,15 +9934,38 @@ def _enfileirar_spot_da_decisao(di: dict, facing: float, tournament_db_id=None) 
         street = di.get('street', '')
         # Gate, corte de board, ranges e parametros moram em `montar_payload_postflop` — era a
         # TERCEIRA copia da mesma montagem, e as copias ja discordaram (ranges trocadas).
+        # `potSize` vem em FICHAS. Este chamador passava ele CRU como `pot_bb` enquanto os outros
+        # dois pontos do arquivo dividiam pelo `level_bb` e explicavam por quê: pote ~100x inflado
+        # → SPR colapsa → o solver força all-in e devolve estratégia degenerada com exploitability
+        # 0.0% falsa. Medido em produção: **135 nós (2,6%) nasceram assim**, 9 deles all-in a 100%
+        # e 11 com exploitability ≤ 0,05%. O treino peneira esses nós desde hoje, mas o `/replay`
+        # não peneira — eles continuavam virando veredito.
+        #
+        # `potBb` já vem convertido do pipeline, ao lado do `potSize`. A peneira abaixo existe
+        # porque o próprio `potBb` divide por `(bb or 1)`: quando o parser não extrai a BB, ele
+        # sai igual ao valor em fichas. Ver [[reference_parser_bb_extraction_gate]].
+        _stack = float(spot.get('effectiveStackBb') or ctx.get('heroStackBb') or 20)
+        _pot_bb = spot.get('potBb')
+        try:
+            _pot_bb = float(_pot_bb) if _pot_bb is not None else None
+        except (TypeError, ValueError):
+            _pot_bb = None
+        if _pot_bb is not None and (_pot_bb <= 0 or _pot_bb > _stack * 2.5):
+            # Pote maior que os dois stacks somados não existe em heads-up. NÃO enfileira: nó
+            # degenerado é pior que nó ausente, porque o ausente vira "sem cobertura" e o
+            # degenerado vira veredito confiante e errado.
+            log.warning('spot NAO enfileirado: pote implausivel (%.1fbb com stack %.1fbb, street=%s)',
+                        _pot_bb, _stack, street)
+            return False
         montado = montar_payload_postflop(
             street      = street,
             position    = spot.get('position') or ctx.get('position') or '',
             vs_position = spot.get('villainPosition') or ctx.get('vsPosition') or '',
             board       = di.get('board', []) or spot.get('board', []),
             hero_cards  = di.get('hero_cards', []),
-            stack_bb    = spot.get('effectiveStackBb') or ctx.get('heroStackBb') or 20,
+            stack_bb    = _stack,
             facing_bb   = facing,
-            pot_bb      = spot.get('potSize'),
+            pot_bb      = _pot_bb,
             pot_type    = spot.get('potType', ''),
             opener      = spot.get('preflopOpener', ''),
             threebettor = spot.get('preflop3bettor', ''))
