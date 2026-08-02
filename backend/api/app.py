@@ -3325,6 +3325,19 @@ def training_overview():
     })
 
 
+@app.route('/player/training/catalog', methods=['GET'])
+@require_auth
+def training_catalog():
+    """Os treinos com NOME, para o jogador escolher o que praticar, com o histórico dele em cada um.
+
+    Só apresentação: o foco de cada item é um valor que `/player/leaktrainer/next` já aceitava e que
+    a tela já sabia abrir por `?foco=`. O que faltava era vitrine — a chave interna é
+    `vs_3bet:HJ:BTN:50`, que ninguém pede em voz alta.
+    """
+    from leaklab.trainer_catalog import catalogo_do_jogador
+    return jsonify({'drills': catalogo_do_jogador(g.user_id)})
+
+
 @app.route('/player/training/daily-status', methods=['GET'])
 @require_auth
 def training_daily_status():

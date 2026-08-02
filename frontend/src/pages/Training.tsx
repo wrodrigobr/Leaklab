@@ -6,6 +6,7 @@ import { ArrowRight, CheckCircle2, Dumbbell, GraduationCap, RotateCw, Target, Aw
 import { HudLayout } from "@/components/hud/HudLayout";
 import { training, progression } from "@/lib/api";
 import { DailyChallengeCard } from "@/components/training/DailyChallengeCard";
+import { TrainingCatalog } from "@/components/training/TrainingCatalog";
 import { MasteryGate } from "@/components/training/MasteryGate";
 import { useSpotLabel } from "@/lib/spotLabel";
 import { cn } from "@/lib/utils";
@@ -158,6 +159,11 @@ export default function Training() {
             <ArrowRight className="size-4 shrink-0 text-violet-400 transition-transform group-hover:translate-x-0.5" aria-hidden />
           </Link>
         </div>
+
+        {/* ── Catálogo: o jogador ESCOLHE o que treinar ────────────────────────
+            Vem logo abaixo dos atalhos e acima do resto porque é a pergunta que ele chega
+            fazendo. O motor já aceitava o foco; o que faltava era ele conseguir pedir. */}
+        <TrainingCatalog />
 
         {/* ── Desafio do Dia (#42) — hook diário, some se não há spot aprovado ── */}
         <DailyChallengeCard />

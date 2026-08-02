@@ -186,5 +186,34 @@
     "silver": "Silver",
     "gold": "Gold",
     "diamond": "Diamond"
+  },
+  "catalog": {
+    "title": "Choose what to train",
+    "subtitle": "Or let the system pick what you get wrong most.",
+    "never": "—",
+    "hands": "hands",
+    "start": "Train",
+    "drills": {
+      "meus_leaks": {
+        "name": "My leaks",
+        "desc": "The system picks from what you get wrong in your own hands. This is the recommended path."
+      },
+      "abrir": {
+        "name": "Opening the pot",
+        "desc": "Which hands to open from each position, by stack depth."
+      },
+      "defender": {
+        "name": "Defending vs open",
+        "desc": "Someone opened before you. Call, 3-bet or fold."
+      },
+      "vs_3bet": {
+        "name": "Facing a 3-bet",
+        "desc": "You opened and got raised. The decision that costs the most chips."
+      },
+      "ranges": {
+        "name": "Memorize ranges",
+        "desc": "Mark the whole range on the grid, by hand family."
+      }
+    }
   }
 }

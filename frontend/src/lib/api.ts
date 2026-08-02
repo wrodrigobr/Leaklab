@@ -1602,7 +1602,17 @@ export interface TrainingProofItem {
 }
 // minutos a leste do UTC (Brasil = -180) — pro reset diário das missões ser à meia-noite LOCAL
 export const tzOffsetMinutes = (): number => -new Date().getTimezoneOffset();
+/** Um treino NOMEADO do catálogo. `maos` e `acerto` vêm `null` quando nunca foi praticado — a tela
+ *  mostra "—", nunca "0%": zero é uma afirmação sobre desempenho, ausência de dado é outra coisa. */
+export interface TrainingDrill {
+  id: string;
+  foco: string;          // valor que /leak-trainer?foco= já sabia abrir
+  destaque: boolean;
+  maos: number | null;
+  acerto: number | null;
+}
 export const training = {
+  catalog: () => request<{ drills: TrainingDrill[] }>("/player/training/catalog"),
   overview: () => request<TrainingOverview>(`/player/training/overview?tz_offset=${tzOffsetMinutes()}`),
   proof: () => request<{ proof: TrainingProofItem[] }>("/player/training/proof"),
   dailyStatus: () => request<{ lesson_pending: boolean }>(`/player/training/daily-status?tz_offset=${tzOffsetMinutes()}`),

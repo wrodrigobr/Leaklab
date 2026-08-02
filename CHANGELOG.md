@@ -7,6 +7,39 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(treino): os treinos ganharam NOME, e o jogador passou a poder escolher (#treino)
+
+> O usuario mandou a tela de Drills do GTO Wizard e pediu a comparacao. A diferenca principal nao
+> era de capacidade: **era de AGENCIA**. O motor sempre aceitou um foco (`adaptive` /
+> `fund:<cenario>` / `leak:<chave>`) e a tela sempre soube abrir por `?foco=` — mas quem chegava
+> sabendo o que queria treinar hoje nao tinha como pedir, porque a chave interna e
+> `vs_3bet:HJ:BTN:50`, que ninguem pede em voz alta.
+>
+> Entrou uma vitrine com cinco treinos nomeados na linguagem do jogador (Meus leaks · Abrir o pote ·
+> Defender do open · Enfrentar 3-bet · Memorizar ranges), cada um com o historico dele: quantas maos
+> e quanto de acerto. **Zero motor novo** — se houvesse, seria a segunda fonte de verdade sobre o
+> que e treinavel, e este projeto ja pagou caro por segundas fontes.
+>
+> **"Meus leaks" e o primeiro e fica em destaque, e isso e decisao de produto, nao de layout.** O
+> catalogo e a porta para quem ja sabe o que quer; a prescricao pelo leak medido e o que ele
+> encontra quando nao sabe. Se o catalogo virasse a entrada principal, o produto trocaria
+> fisioterapeuta por academia — e academia com as maquinas etiquetadas qualquer um tem.
+>
+> **Treino nunca praticado mostra `—`, nunca `0%`.** Zero e uma afirmacao sobre desempenho;
+> ausencia de dado e outra coisa. Mesma regua do relatorio de evolucao. O teste cobra os DOIS
+> lados: nunca praticado vira `None`, e quem praticou 10 e errou 10 vira `0.0` de verdade — se o
+> codigo confundisse os dois, esconderia justamente o pior caso.
+>
+> 7 casos em `test_trainer_catalog.py`. Verificados quebrando 6 guardas: nunca-praticado virando
+> 0%, virando 0 maos, prefixo misturando `rfi:` com `vs_rfi:`, foco que o motor nao aceita,
+> adaptativo perdendo o destaque, e banco fora do ar derrubando a vitrine.
+>
+> **O que NAO entrou, e por que.** Autoria de treino ("Meus treinos" deles) fica para depois: e o
+> mais caro e o menos alinhado com a tese — o valor aqui e o sistema saber o que o jogador precisa,
+> nao ele configurar filtro. E o modo grind de mao inteira nasce como ITEM deste catalogo, nao como
+> tela separada, que e como o proprio GTO Wizard trata ("Full Hand" e um drill, nao um modo).
+
+
 ### feat(treino): o postflop passou a mirar o leak REAL, e nao uma categoria unica igual para todos (#41 #treino)
 
 > Segunda metade do #41. O encanamento do acervo ja estava de pe, mas a selecao mirava variedade,

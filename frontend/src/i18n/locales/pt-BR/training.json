@@ -186,5 +186,34 @@
     "silver": "Prata",
     "gold": "Ouro",
     "diamond": "Diamante"
+  },
+  "catalog": {
+    "title": "Escolha o que treinar",
+    "subtitle": "Ou deixe o sistema escolher pelo que você mais erra.",
+    "never": "—",
+    "hands": "mãos",
+    "start": "Treinar",
+    "drills": {
+      "meus_leaks": {
+        "name": "Meus leaks",
+        "desc": "O sistema escolhe pelo que você mais erra nas suas mãos. É o caminho recomendado."
+      },
+      "abrir": {
+        "name": "Abrir o pote",
+        "desc": "Com que mãos abrir de cada posição, por profundidade."
+      },
+      "defender": {
+        "name": "Defender do open",
+        "desc": "Alguém abriu antes de você. Pagar, 3-betar ou foldar."
+      },
+      "vs_3bet": {
+        "name": "Enfrentar 3-bet",
+        "desc": "Você abriu e levou raise. A decisão que mais custa fichas."
+      },
+      "ranges": {
+        "name": "Memorizar ranges",
+        "desc": "Marcar a range inteira na grade, por família de mão."
+      }
+    }
   }
 }
