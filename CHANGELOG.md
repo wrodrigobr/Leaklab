@@ -7,6 +7,49 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(infra): 22GB de cache de build esquecidos, e o deploy duplicado que os escondia (#infra)
+
+> **Sintoma:** o disco do servidor subia a cada deploy e o `docker image prune` do passo de
+> limpeza reportava "0B reclaimed" tres vezes seguidas. Estava em 81%, com 7,1GB livres.
+>
+> **Causa:** `docker image prune` **nao toca no cache do buildkit**. Medido: 80 entradas somando
+> **24,5GB, todas inativas**, contra 4,7GB de imagens de verdade. Cada build acrescentava camadas
+> que ninguem removia.
+>
+> `docker builder prune -f` liberou **22GB**: de 29G usados para 8,1G, de **81% para 23%**, com os
+> tres containers de pe e a API respondendo (`/health`, `/sample/dashboard`, `/sample/decision`
+> todos 200).
+>
+> **Para nao voltar:** teto de 5GB no cache (`--max-used-space`, o nome do flag no Docker 29+),
+> aplicado em todo deploy. Mantem o build incremental rapido e impede o crescimento sem fim.
+>
+> **E a razao de ninguem ter visto:** o procedimento de deploy vivia DUPLICADO, no job do Actions
+> e no SSH manual. Os passos agora moram em `deploy/deploy.sh`, que os dois chamam. A
+> sincronizacao do git fica de fora do script de proposito: `git reset --hard` reescreveria o
+> proprio arquivo em execucao, e o bash le script em pedacos.
+
+### fix(mobile): o botao do rodape ficava sob a barra de navegacao, e os botoes do topo comiam a tela (#mobile)
+
+> **Reportado no celular.** Dois defeitos na tela do treinador, os dois medidos a 375x812.
+>
+> **1. O botao amarelo do rodape aparecia pela metade, e a rolagem "nao descia".** O botao ia de
+> 740 a 784 e a barra de navegacao comeca em **755**: 29 dos seus 44px cobertos. E `scrollMax` era
+> **0** — nao havia mais rolagem porque o conteudo nao era maior, ele estava DEBAIXO da barra.
+>
+> Esta tela e uma casca `h-dvh` com rolagem propria, entao o recuo dos containers de pagina
+> (`mobileNavClearance`) nao a alcanca, e ninguem reservava o espaco da barra. Com `pb-20 lg:pb-0`:
+> verificado com o conteudo transbordando de verdade (`scrollMax: 367`), o ultimo elemento termina
+> em 720 contra a barra em 755 — zero coberto.
+>
+> **2. "Finalizar sessao" e "tela cheia" comiam o cabecalho.** So o "tela cheia" ocupava **113px,
+> 33% da largura**. Os rotulos passaram a aparecer a partir do `md`; no celular ficam em
+> `aria-label` e `title`.
+>
+> **Um tropeco no meio, que vale registrar:** sem rotulo o botao caiu para 36x32px — **abaixo do
+> minimo de toque de 44px**. Seria trocar um defeito por outro, justo depois de medir exatamente
+> isso nas celulas da matriz. Fixado 44x44 no celular: 113px → **44px**, 33% → **13%**, com o alvo
+> de toque respeitado e o rotulo intacto no desktop.
+
 ### fix(landing): "Assinar Pro" abria o cliente de email em vez da assinatura (#billing)
 
 > **Reportado pelo usuario.** O botao do plano pago era um `mailto:` para o e-mail PESSOAL do dono,

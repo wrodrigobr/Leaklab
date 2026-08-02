@@ -111,8 +111,11 @@ jobs:
             # reset so mexe no que o git rastreia.
             git fetch origin main
             git reset --hard origin/main
-            docker compose up -d --build web
-            docker image prune -f
+            # Os passos seguintes vivem em `deploy/deploy.sh`, que o deploy manual por SSH também
+            # chama. Duplicar aqui foi o que deixou 22GB de cache do buildkit crescerem sem que
+            # ninguém visse: este passo limpava só imagens soltas. A sincronização fica FORA do
+            # script porque o `reset --hard` acima reescreveria o próprio arquivo em execução.
+            bash deploy/deploy.sh
 
   # ── Deploy Frontend → Cloudflare Pages ────────────────────────────────────────
   # SEM job aqui de propósito: o Cloudflare Pages está conectado ao repositório e publica

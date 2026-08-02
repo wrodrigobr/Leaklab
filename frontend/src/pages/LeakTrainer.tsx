@@ -673,19 +673,26 @@ export default function LeakTrainer() {
             {totalDone > 0 && phase !== "summary" && (
               <button
                 onClick={finishSession}
-                className="inline-flex items-center gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 font-mono text-[10px] font-bold uppercase tracking-wider text-amber-400 transition-colors hover:bg-amber-500/20"
+                aria-label={t("leakTrainer.finish")}
+                title={t("leakTrainer.finish")}
+                className="inline-flex items-center gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 size-11 justify-center md:h-auto md:w-auto md:px-3 md:py-2 font-mono text-[10px] font-bold uppercase tracking-wider text-amber-400 transition-colors hover:bg-amber-500/20"
               >
                 <Flag className="size-3.5" aria-hidden />
-                {t("leakTrainer.finish")}
+                {/* Rótulo só a partir do `md`. No celular os dois botões desta barra somavam mais
+                    de 75% da largura e espremiam o título: medido, "TELA CHEIA" sozinho ocupava
+                    113px de 343. O ícone carrega a ação; `aria-label`/`title` seguram o resto. */}
+                <span className="hidden md:inline">{t("leakTrainer.finish")}</span>
               </button>
             )}
             {canFull && (
               <button
                 onClick={toggleFull}
-                className="inline-flex items-center gap-2 rounded-lg border border-border bg-hud-surface px-3 py-2 font-mono text-[10px] font-bold uppercase tracking-wider text-muted-foreground transition-colors hover:border-amber-500/50 hover:text-amber-400"
+                aria-label={isFull ? t("leakTrainer.exitFull") : t("leakTrainer.fullscreen")}
+                title={isFull ? t("leakTrainer.exitFull") : t("leakTrainer.fullscreen")}
+                className="inline-flex items-center gap-2 rounded-lg border border-border bg-hud-surface size-11 justify-center md:h-auto md:w-auto md:px-3 md:py-2 font-mono text-[10px] font-bold uppercase tracking-wider text-muted-foreground transition-colors hover:border-amber-500/50 hover:text-amber-400"
               >
                 {isFull ? <Minimize2 className="size-3.5" aria-hidden /> : <Maximize2 className="size-3.5" aria-hidden />}
-                {isFull ? t("leakTrainer.exitFull") : t("leakTrainer.fullscreen")}
+                <span className="hidden md:inline">{isFull ? t("leakTrainer.exitFull") : t("leakTrainer.fullscreen")}</span>
               </button>
             )}
           </div>
@@ -699,7 +706,14 @@ export default function LeakTrainer() {
             Medido a 375x812: conteúdo de 801px numa área visível de 668px, com os 133px de
             excesso inalcançáveis. Com `m-auto` o filho continua centralizado quando SOBRA
             espaço, e ancora no topo quando falta, que é o comportamento correto nos dois casos. */}
-        <div className="flex min-h-0 flex-1 flex-col justify-start overflow-y-auto [&>*]:m-auto">
+        {/* `pb-20 lg:pb-0`: a barra de navegação do mobile é `fixed bottom-0` e some só no `lg`.
+            Esta tela é uma casca `h-dvh` com rolagem PRÓPRIA, então o recuo dos containers de
+            página (ver `mobileNavClearance`) não a alcança — e ninguém reservava o espaço dela.
+            Medido a 375x812: o botão "próximo spot" ia de 740 a 784 e a barra começa em 755, com
+            29 dos seus 44px cobertos. E `scrollMax` era 0: não havia mais rolagem porque o
+            conteúdo não era maior, ele estava DEBAIXO da barra — daí a sensação de que a rolagem
+            não desce até o fim. 80px cobrem os 57px da barra e o safe-area do aparelho. */}
+        <div className="flex min-h-0 flex-1 flex-col justify-start overflow-y-auto pb-20 lg:pb-0 [&>*]:m-auto">
 
         {phase === "intro" && (() => {
           /* ── TELA DE FOCO ────────────────────────────────────────────────────────────────
