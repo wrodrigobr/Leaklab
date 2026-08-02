@@ -7,6 +7,44 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(treino): a mesa desenhava uma aposta que nao existia, e o rotulo descrevia outro spot (#treino)
+
+> Tres defeitos num print so, todos expostos pelo acervo de nos solvados que entrou hoje (#41).
+>
+> **1. Aposta fantasma — um `||` com zero.** `sp.facing_size_bb || 1.65`: quando ninguem apostou,
+> `facing_size_bb` e `0`, o JavaScript trata zero como falso, e o fallback de 1,65bb entrava. A
+> mesa mostrava fichas do vilao no pote e o menu oferecia "check ou bet" — o jogador concluiu que o
+> MENU estava errado. Era a mesa. Ficou invisivel por meses porque o catalogo estatico tinha
+> SEMPRE 1,65; o acervo trouxe nos sem aposta na mesa e o zero virou visivel. Zero bb enfrentados e
+> um valor VALIDO, nao ausencia de valor.
+>
+> **2. O rotulo descrevia o spot que foi PEDIDO, nao o que foi servido.** Quando o leak nao tem no
+> no acervo, a selecao cai para outro recorte — e eu sobrescrevia a categoria do spot com a chave
+> pedida de qualquer jeito. Resultado: painel anunciando "BB defende vs c-bet de CO (flop)" com um
+> board de TURN na mesa. Agora so herda o rotulo quando street e posicao batem.
+>
+> **3. Profundidade crua na tela.** O acervo guarda o stack efetivo como float (`38.2975`) e ele
+> chegava assim ao jogador. Uma casa basta: ninguem decide diferente entre 38,29 e 38,3 BB, e o
+> digito a mais so faz o numero parecer defeito.
+>
+> Guarda em `leakTrainerTable.test.ts`, de TEXTO porque jsdom nao desenha mesa: o que da para
+> travar e o operador, e o operador e a causa. Verificado restaurando o `||`: acusa.
+
+### fix(treino): o `m-auto` do conserto de ontem estourava a largura no desktop (#treino)
+
+> Regressao minha, do mesmo dia. O conserto do "nao consigo subir ate o topo" no celular usou
+> `[&>*]:m-auto`, que aplica margem automatica nos DOIS eixos — e margem horizontal automatica
+> cancela o `align-items: stretch` do flex-column. Sem o stretch, a largura da linha passou a ser
+> calculada pela mesa (`aspect-[16/10]` x altura): estourava a viewport, empurrava o painel de
+> acoes para fora da tela e criava barra de rolagem horizontal.
+>
+> `my-auto` faz o que o conserto precisava (centrar quando SOBRA espaco, ancorar no topo quando
+> falta) sem tocar no eixo horizontal.
+>
+> O guarda cobre as TRES coisas que mexi neste container hoje: `justify-start` (topo alcancavel),
+> `pb-20 lg:pb-0` (barra do mobile) e `my-auto` (largura). Verificado quebrando as tres.
+
+
 ### feat(treino): os treinos ganharam NOME, e o jogador passou a poder escolher (#treino)
 
 > O usuario mandou a tela de Drills do GTO Wizard e pediu a comparacao. A diferenca principal nao

@@ -37,6 +37,12 @@ const FREQ_COLOR: Record<string, string> = {
   raise: "bg-emerald-500", call: "bg-sky-500", allin: "bg-violet-500", fold: "bg-muted-foreground/40",
 };
 
+/** Profundidade para LEITURA. O acervo de nós solvados guarda o stack efetivo cru
+ *  (`38.2975`), e ele chegava assim na tela. Uma casa basta: ninguém decide diferente
+ *  entre 38,29 e 38,3 BB, e o dígito a mais só faz o número parecer defeito. */
+const fmtBb = (v: number | null | undefined): string =>
+  v == null ? "?" : (Math.round(v * 10) / 10).toString();
+
 /** Postflop (Fase 2): mesa HU BB vs BTN com board + c-bet do vilão. */
 function buildPostflopStep(sp: LeakTrainerSpot, bb: number) {
   const heroPos = sp.position, vsPos = sp.vs_position;
@@ -51,7 +57,13 @@ function buildPostflopStep(sp: LeakTrainerSpot, bb: number) {
     seats[sn] = { player: isHero ? "Hero" : pos, stack: stackChips, pos };
     if (pos !== heroPos && pos !== vsPos) folded.push(isHero ? "Hero" : pos);
   });
-  if (vsIdx >= 0) bets[String(vsIdx + 1)] = Math.round((sp.facing_size_bb || 1.65) * bb);  // c-bet
+  // `??` e não `||`: com `||`, um `facing_size_bb` de **0** (ninguém apostou) caía no fallback e a
+  // mesa DESENHAVA uma aposta de 1,65bb que não existia — o jogador via fichas do vilão no pote e
+  // um menu de check/bet, e concluía que o menu estava errado. Era o menu que estava certo.
+  // Passou despercebido enquanto o catálogo estático tinha sempre 1,65; o acervo de nós solvados
+  // trouxe spots sem aposta na mesa e o zero virou visível.
+  const facing = sp.facing_size_bb ?? 1.65;
+  if (vsIdx >= 0 && facing > 0) bets[String(vsIdx + 1)] = Math.round(facing * bb);  // c-bet
   const potChips = Math.round((sp.pot_bb || 5) * bb);   // pote já construído no preflop
   const step = {
     type: "action", street: sp.street || "flop", seats, bets, folded,
@@ -575,7 +587,7 @@ export default function LeakTrainer() {
         <div className="absolute top-[calc(0.4rem+env(safe-area-inset-top))] left-[calc(0.5rem+env(safe-area-inset-left))] z-30 flex items-center gap-1.5 rounded-full bg-background/70 px-3 py-1.5 ring-1 ring-amber-500/30 backdrop-blur">
           <Target className="size-3 text-amber-400" aria-hidden />
           <span className="font-mono text-[10px] font-bold text-foreground">{catLabel}</span>
-          <span className="font-mono text-[9px] text-muted-foreground">{spot.stack_bb}bb</span>
+          <span className="font-mono text-[9px] text-muted-foreground">{fmtBb(spot.stack_bb)}bb</span>
         </div>
         {/* topo-direita: stats + ranges, e o Finalizar como pílula âmbar separada (claramente um botão) */}
         <div className="absolute top-[calc(0.4rem+env(safe-area-inset-top))] right-[calc(0.5rem+env(safe-area-inset-right))] z-30 flex items-center gap-2">
@@ -713,7 +725,13 @@ export default function LeakTrainer() {
             29 dos seus 44px cobertos. E `scrollMax` era 0: não havia mais rolagem porque o
             conteúdo não era maior, ele estava DEBAIXO da barra — daí a sensação de que a rolagem
             não desce até o fim. 80px cobrem os 57px da barra e o safe-area do aparelho. */}
-        <div className="flex min-h-0 flex-1 flex-col justify-start overflow-y-auto pb-20 lg:pb-0 [&>*]:m-auto">
+        {/* `my-auto`, e NÃO `m-auto`. A diferença quebrou o desktop: margem automática também no
+            eixo HORIZONTAL cancela o `align-items: stretch` do flex-column, e o filho passa a ter
+            a largura do próprio conteúdo. Como a mesa é `aspect-[16/10] h-full w-auto`, a largura
+            virava altura × 1,6 — estourava a viewport, empurrava o painel de ações para fora e
+            criava barra de rolagem horizontal. Só o eixo vertical resolve o que este conserto
+            existia para resolver: centrar quando SOBRA espaço, ancorar no topo quando falta. */}
+        <div className="flex min-h-0 flex-1 flex-col justify-start overflow-y-auto pb-20 lg:pb-0 [&>*]:my-auto">
 
         {phase === "intro" && (() => {
           /* ── TELA DE FOCO ────────────────────────────────────────────────────────────────
@@ -1253,7 +1271,7 @@ export default function LeakTrainer() {
                     : t("leakTrainer.weakSpot")}
                 </span>
                 <p className="text-sm font-bold text-foreground leading-snug">{catLabel}</p>
-                <p className="font-mono text-[10px] text-muted-foreground">{spot.stack_bb}bb</p>
+                <p className="font-mono text-[10px] text-muted-foreground">{fmtBb(spot.stack_bb)}bb</p>
                 {contrastNote && (
                   <p className="pt-1 text-[11px] leading-snug text-amber-400/90">{contrastNote}</p>
                 )}

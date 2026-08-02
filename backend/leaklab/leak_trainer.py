@@ -665,7 +665,14 @@ def generate_postflop_spot(category: dict, rng: random.Random | None = None,
                          category.get('street'), category.get('position'))
                 s = _pool(rng=rng, evitar=servidos or set())
             if s:
-                s['category'] = category.get('key') or s.get('category')
+                # Só herda o rótulo da categoria quando o spot REALMENTE é dela. O fallback acima
+                # pode servir outro recorte, e sobrescrever a chave fazia o painel anunciar
+                # "BB defende vs c-bet de CO (flop)" com um board de turn na mesa. Rótulo que não
+                # descreve o que está na tela é pior que rótulo genérico: o jogador confia nele.
+                mesma = (not category.get('street') or s.get('street') == category.get('street')) \
+                    and (not category.get('position') or s.get('position') == category.get('position'))
+                if mesma:
+                    s['category'] = category.get('key') or s.get('category')
                 return s
         except Exception:
             log.exception('acervo de treino postflop indisponível; caindo no catálogo estático')

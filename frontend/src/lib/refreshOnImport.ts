@@ -62,6 +62,9 @@ export const CHAVES_DE_TORNEIO = [
  * e o teste não sabe distinguir esquecimento de decisão a menos que a decisão esteja escrita.
  */
 export const CHAVES_NAO_DERIVADAS = [
+  // catálogo de treinos: os números vêm de `training_skill_progress`, que só muda quando o jogador
+  // PRATICA. Importar torneio não move nenhum deles — recarregar aqui seria custo sem mudança.
+  "training-catalog",
   // conta, perfil, mensagens, suporte
   "me", "player-profile", "my-demographics", "player-messages-unread", "player-coach-messages",
   "my-support-tickets", "my-support-unread", "admin-support-count",
