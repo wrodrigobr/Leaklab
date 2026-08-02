@@ -626,7 +626,13 @@ export default function LeakTrainer() {
   }
 
   // ── CELULAR EM PÉ: a mesa só funciona deitada → pedir pra girar (mesmo padrão do Replayer) ──
-  if (tableOrientation === "portrait" && (phase === "question" || phase === "feedback") && spot) {
+  //
+  // `kind !== "range_grid"` é o que faltava. O gate olhava só a FASE, e o exercício de memorizar
+  // range entra na mesma fase sem ter mesa alguma (ver `table` acima: ele é o único `kind` que
+  // não constrói step). Resultado: quem abria "memorizar a range" no celular em pé levava um
+  // "vire o celular" para ver uma GRADE — a tela que o pedido de girar existe para não mostrar.
+  if (tableOrientation === "portrait" && (phase === "question" || phase === "feedback")
+      && spot && spot.kind !== "range_grid") {
     return (
       <div className="h-dvh flex flex-col items-center justify-center gap-5 bg-background hud-scanline px-10 text-center"
         style={{ background: "radial-gradient(ellipse at 50% 45%, #14223a 0%, #080f1c 100%)" }}>
@@ -685,7 +691,15 @@ export default function LeakTrainer() {
           </div>
         </div>
 
-        <div className="flex min-h-0 flex-1 flex-col justify-center overflow-y-auto">
+        {/* `justify-start` + `m-auto` no filho, e NÃO `justify-center`.
+            Parecem a mesma coisa e não são: quando o conteúdo transborda um flex container
+            CENTRALIZADO, o excesso de cima fica FORA do alcance da rolagem — o navegador não
+            rola para antes do início da caixa. Era o "não consigo subir até o topo do
+            componente" reportado no celular.
+            Medido a 375x812: conteúdo de 801px numa área visível de 668px, com os 133px de
+            excesso inalcançáveis. Com `m-auto` o filho continua centralizado quando SOBRA
+            espaço, e ancora no topo quando falta, que é o comportamento correto nos dois casos. */}
+        <div className="flex min-h-0 flex-1 flex-col justify-start overflow-y-auto [&>*]:m-auto">
 
         {phase === "intro" && (() => {
           /* ── TELA DE FOCO ────────────────────────────────────────────────────────────────
