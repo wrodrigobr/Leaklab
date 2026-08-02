@@ -34,7 +34,10 @@ export function TrainingCatalog() {
           : drills.map((d) => (
               <Link
                 key={d.id}
-                to={`/leak-trainer?foco=${encodeURIComponent(d.foco)}`}
+                /* Item com ROTA própria (mão completa) vai para a tela dele; o resto abre o Leak
+                   Trainer no foco. Sem honrar a rota, o cartão levaria o jogador ao treino de spot
+                   solto anunciando "mão completa" — rótulo que não descreve o destino. */
+                to={d.rota ? d.rota : `/leak-trainer?foco=${encodeURIComponent(d.foco)}`}
                 className={cn(
                   "group flex items-center gap-3 rounded-xl border p-3 transition-colors",
                   d.destaque

@@ -218,7 +218,52 @@
       "ranges": {
         "name": "Memorize ranges",
         "desc": "Mark the whole range on the grid, by hand family."
+      },
+      "grind": {
+        "name": "Full hand",
+        "desc": "Walk a real hand from preflop to river, deciding on every street."
       }
+    }
+  },
+  "grind": {
+    "eyebrow": "Grind mode",
+    "title": "The whole hand",
+    "subtitle": "A real hand, decision by decision, preflop to river.",
+    "step": "{{atual}} of {{total}}",
+    "pot": "pot",
+    "facing": "facing",
+    "villainBet": "{{pos}} bet {{bb}} BB",
+    "villainCheck": "{{pos}} checked",
+    "right": "Correct",
+    "wrong": "GTO plays this differently",
+    "noVerdict": "This spot has no reference answer, so it does not count.",
+    "next": "Next decision",
+    "finishHand": "See the hand result",
+    "handDone": "Hand complete",
+    "hits": "correct",
+    "hands": "hands",
+    "nextHand": "Next hand",
+    "finish": "Finish",
+    "skipped": "{{n}} decision was left out of the score for lack of a reference answer.",
+    "street": {
+      "preflop": "preflop",
+      "flop": "flop",
+      "turn": "turn",
+      "river": "river"
+    },
+    "act": {
+      "fold": "Fold",
+      "call": "Call",
+      "raise": "Raise",
+      "check": "Check",
+      "bet": "Bet",
+      "allin": "Shove"
+    },
+    "disclaimer": "This hand really happened and is anonymized: you see position and stack, never who played it. The board and the villain's cards are already decided — you answer what GTO would do, and the hand follows the path it took.",
+    "empty": {
+      "title": "No hand available right now",
+      "desc": "The pool grows as more tournaments are solved.",
+      "back": "Back to training"
     }
   }
 }

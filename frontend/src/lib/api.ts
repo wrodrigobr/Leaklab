@@ -1607,10 +1607,47 @@ export const tzOffsetMinutes = (): number => -new Date().getTimezoneOffset();
 export interface TrainingDrill {
   id: string;
   foco: string;          // valor que /leak-trainer?foco= já sabia abrir
+  /** rota própria, quando o item NÃO abre o Leak Trainer (ex.: a mão completa) */
+  rota?: string | null;
   destaque: boolean;
   maos: number | null;
   acerto: number | null;
 }
+/** Um passo da mão no MODO GRIND: o que a tela desenha, sem nada da resposta.
+ *  Anonimizado por construção — posição e stack em BB, e nada mais. */
+export interface GrindPasso {
+  street: string;
+  board: string[];
+  hero_hand: string[];
+  position: string;
+  vs_position: string;
+  stack_bb: number;
+  pot_bb: number;
+  facing_size_bb: number;
+  options: string[];
+  tree_hash?: string | null;
+  /** o que o vilão fez ANTES deste passo (deduzido do pote), para o pote não crescer sozinho */
+  vilao_antes?: { tipo: string; bb: number } | null;
+}
+export interface GrindMao {
+  /** identificador OPACO. Não carrega torneio, mão, jogador nem data. */
+  token: string;
+  passos: GrindPasso[];
+  total: number;
+}
+export const grind = {
+  /** `vistas` = tokens já jogados nesta sessão, para não repetir a mão. */
+  hand: (vistas: string[], minDecisoes = 2) =>
+    request<{ mao: GrindMao | null; esgotou: boolean }>("/player/grind/hand", {
+      method: "POST", body: JSON.stringify({ vistas, min_decisoes: minDecisoes }),
+    }),
+  /** A resposta certa só existe no servidor: o passo vai e volta, o veredito nasce lá. */
+  grade: (passo: GrindPasso, acao: string) =>
+    request<{ resultado: LeakTrainerGrade | null; sem_veredito: boolean }>("/player/grind/grade", {
+      method: "POST", body: JSON.stringify({ passo, acao }),
+    }),
+};
+
 export const training = {
   catalog: () => request<{ drills: TrainingDrill[] }>("/player/training/catalog"),
   overview: () => request<TrainingOverview>(`/player/training/overview?tz_offset=${tzOffsetMinutes()}`),

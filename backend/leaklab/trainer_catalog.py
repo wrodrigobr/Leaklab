@@ -30,8 +30,12 @@ from typing import Optional
 # O `prefixo` é como o treino reencontra o que o jogador já praticou: as chaves gravadas são
 # `rfi:UTG::50`, `vs_rfi:SB:BTN:100`, `vs_3bet:HJ:BTN:50`. Prefixo `None` = soma tudo (o adaptativo
 # cobre qualquer categoria); prefixo `''` = não há histórico agregável para este treino.
+# `rota` só aparece em item que NÃO abre o Leak Trainer. O modo grind é uma tela própria porque o
+# laço é outro (percorrer os passos de uma mão), mas entra como ITEM do catálogo e não como modo à
+# parte — é como o próprio GTO Wizard trata: "Full Hand" é um drill, não um modo.
 CATALOGO = [
     {'id': 'meus_leaks', 'foco': 'adaptive',        'prefixo': None,      'destaque': True},
+    {'id': 'grind',      'foco': 'grind',           'prefixo': '',        'rota': '/grind'},
     {'id': 'abrir',      'foco': 'fund:rfi',        'prefixo': 'rfi:'},
     {'id': 'defender',   'foco': 'fund:vs_rfi',     'prefixo': 'vs_rfi:'},
     {'id': 'vs_3bet',    'foco': 'fund:vs_3bet',    'prefixo': 'vs_3bet:'},
@@ -76,6 +80,7 @@ def catalogo_do_jogador(user_id: Optional[int]) -> list[dict]:
         fora.append({
             'id':      item['id'],
             'foco':    item['foco'],
+            'rota':    item.get('rota'),
             'destaque': bool(item.get('destaque')),
             # None, e não 0: nunca praticado não é desempenho zero
             'maos':    tent or None,

@@ -7,6 +7,33 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(treino): modo grind na tela — a mao inteira, decisao por decisao (#treino) [frontend]
+
+> Fecha o modo. `/grind` percorre os passos da mao: linha da mao no topo (onde voce esta dentro
+> dela), a acao do vilao ANTES de cada passo (sem isso o pote cresce sozinho na tela), a mesa, o
+> menu que acompanha haver aposta, o veredito com a mistura do GTO, e o resumo no fim.
+>
+> **Entra como ITEM do catalogo, nao como modo a parte** — e como o proprio GTO Wizard trata
+> ("Full Hand" e um drill). O catalogo ganhou o conceito de ROTA propria: item com rota vai para a
+> tela dele, o resto abre o Leak Trainer no foco. Sem isso, o cartao anunciaria "mao completa" e
+> levaria ao treino de spot solto.
+>
+> **Passo sem gabarito NAO vira "errou".** O servidor devolve `sem_veredito` e a tela diz isso, em
+> vez de pontuar contra o jogador. E a decisao fica FORA do denominador: contar "2/3" quando um dos
+> tres nao tinha resposta pune o jogador por uma lacuna nossa.
+>
+> **A tela avisa que e REPLAY.** O board e as cartas do vilao ja estao decididos; o jogador responde
+> o que o GTO faria e a mao segue o caminho que seguiu. Omitir isso venderia simulacao — e o aviso
+> tem teste proprio, porque copy que explica limite e a primeira a sumir num refactor.
+>
+> A montagem da mesa herda as travas que custaram caro hoje: `??` e nao `||` (0 bb enfrentados e
+> valor valido, nao ausencia), e nada e desenhado quando a posicao esta fora do vocabulario de 9
+> assentos.
+>
+> 4 casos em `grind.test.tsx`, verificados quebrando 3 guardas. Backend 1790, frontend 247, zero
+> falhas.
+
+
 ### feat(treino): modo grind — a mao REAL inteira, decisao por decisao (#treino) [backend]
 
 > Pedido depois de o usuario ver o Practice do GTO Wizard: em vez de um spot solto, a mao roda do

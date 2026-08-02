@@ -218,7 +218,52 @@
       "ranges": {
         "name": "Memorizar rangos",
         "desc": "Marcar el rango entero en la grilla, por familia de mano."
+      },
+      "grind": {
+        "name": "Mano completa",
+        "desc": "Recorre una mano real del preflop al river, decidiendo en cada street."
       }
+    }
+  },
+  "grind": {
+    "eyebrow": "Modo grind",
+    "title": "La mano completa",
+    "subtitle": "Una mano real, decisión por decisión, del preflop al river.",
+    "step": "{{atual}} de {{total}}",
+    "pot": "bote",
+    "facing": "enfrentando",
+    "villainBet": "El {{pos}} apostó {{bb}} BB",
+    "villainCheck": "El {{pos}} hizo check",
+    "right": "Correcto",
+    "wrong": "El GTO juega distinto aquí",
+    "noVerdict": "Este spot no tiene respuesta de referencia, así que no cuenta.",
+    "next": "Siguiente decisión",
+    "finishHand": "Ver el resultado de la mano",
+    "handDone": "Mano completada",
+    "hits": "aciertos",
+    "hands": "manos",
+    "nextHand": "Siguiente mano",
+    "finish": "Terminar",
+    "skipped": "{{n}} decisión quedó fuera de la nota por no tener respuesta de referencia.",
+    "street": {
+      "preflop": "preflop",
+      "flop": "flop",
+      "turn": "turn",
+      "river": "river"
+    },
+    "act": {
+      "fold": "Fold",
+      "call": "Call",
+      "raise": "Raise",
+      "check": "Check",
+      "bet": "Bet",
+      "allin": "Shove"
+    },
+    "disclaimer": "Esta mano ocurrió de verdad y está anonimizada: ves posición y stack, nunca quién la jugó. El board y las cartas del rival ya están decididos — respondes lo que haría el GTO, y la mano sigue el camino que siguió.",
+    "empty": {
+      "title": "No hay mano disponible ahora",
+      "desc": "El acervo crece a medida que se resuelven más torneos.",
+      "back": "Volver al entrenamiento"
     }
   }
 }

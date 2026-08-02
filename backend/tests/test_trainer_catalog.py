@@ -43,6 +43,12 @@ def test_todo_foco_do_catalogo_e_aceito_pelo_motor():
     from leaklab.leak_trainer import TRAINABLE_SCENARIOS, fundamentals_catalog
     for item in TC.CATALOGO:
         foco = item['foco']
+        if item.get('rota'):
+            # Item com TELA PROPRIA (o modo grind) nao passa pelo Leak Trainer, entao o
+            # `foco` dele nao precisa ser um foco do motor. O que ele precisa e de ROTA:
+            # sem ela o cartao nao leva a lugar nenhum e o jogador clica no vazio.
+            assert str(item['rota']).startswith('/'), f"rota invalida em {item['id']}"
+            continue
         if foco == 'adaptive':
             continue
         assert foco.startswith('fund:'), f'foco fora do contrato: {foco}'
