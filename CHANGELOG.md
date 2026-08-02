@@ -7,6 +7,29 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### chore(gto): script de limpeza dos nos que nasceram com pote em fichas (#gto)
+
+> Complemento do conserto da fonte. A fonte parou de produzir; este script trata os 135 que ja
+> ficaram gravados.
+>
+> **Apaga, nao re-chaveia.** No degenerado produz veredito CONFIANTE e ERRADO; apagar transforma
+> isso em "sem cobertura", que e o estado honesto. Re-chavear (apontar a decisao para outro no) e
+> exatamente o erro que o bug do board ensinou: bug que some com a resposta e honesto, conserto que
+> a TROCA nao e.
+>
+> **Nao re-enfileira**, de proposito: o `spot_json` guardado tem o pote errado, entao re-enfileirar
+> reproduziria o bug. Os spots voltam a fila sozinhos pelo caminho ja corrigido.
+>
+> Dry-run e o PADRAO. Toca so `gto_nodes`, `gto_solver_queue` e as colunas de veredito GTO das
+> decisoes afetadas — cartas, acao, veredito do motor, score e label ficam intactos. Nunca usa
+> `cleanup --tournament`, que purga global.
+>
+> **Provado num banco DESCARTAVEL antes de ir a producao:** copia do SQLite local, 55 nos removidos,
+> 26 decisoes limpas, e rodando de novo achou zero. As decisoes limpas mantiveram todo o resto.
+> Depois de aplicar, o script levanta de novo e EXIGE zero, saindo com erro se sobrar — operacao que
+> pode falhar em silencio precisa provar que fez.
+
+
 ### fix(solver): o enfileiramento mandava o pote em FICHAS, e o solver degenerava em all-in (#gto)
 
 > Ultimo achado da auditoria. A montagem do payload postflop ja foi TRES copias divergentes e foi
