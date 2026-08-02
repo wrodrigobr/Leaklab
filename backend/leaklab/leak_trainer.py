@@ -16,7 +16,11 @@ gradear → adaptar) já é desenhada para encaixar postflop só adicionando o b
 """
 from __future__ import annotations
 
+import logging
+import os
 import random
+
+log = logging.getLogger(__name__)
 
 from leaklab.academy_gto_preflop import _HANDS, _hand_to_cards, _ACTION_ORDER
 # Fonte ÚNICA de estratégia + menu de ações. NÃO montar menu por conta própria aqui: o menu
@@ -398,6 +402,20 @@ def grade_canonical_spot(spot: dict, action: str) -> dict:
     """Avalia a ação NO SERVIDOR via analyze_preflop e devolve no formato que o CoachCard lê
     (gto_strategy = mix por ação; gto_freq = freq da AÇÃO JOGADA; gto_tier = correct/mixed/error)."""
     if spot.get('kind') == 'postflop' or spot.get('board'):   # Fase 2: lê nó pré-solvado (não solva)
+        # Spot do ACERVO (#41) corrige pelo próprio nó, e não por `lookup_gto`: o lookup re-deriva
+        # o hash a partir dos parâmetros, e a reconstrução não reproduz o mesmo nó — no teste ele
+        # resolveu OUTRO e respondeu "o certo era fold" numa tela que oferecia check/bet.
+        if spot.get('origem') == 'pool' and spot.get('tree_hash'):
+            from leaklab.trainer_pool import corrigir as _corrige_pool
+            g = _corrige_pool(spot, action)
+            if g is not None:
+                return g
+            # nó deixou de ser gradeável entre servir e corrigir: não pune
+            return {'is_correct': True, 'gto_tier': 'correct', 'mixed': False, 'gto_freq': 1.0,
+                    'gto_strategy': [], 'best_action': '', 'new_action': _norm_action(action),
+                    'recommended': [], 'validation_source': 'gto_pool_postflop', 'xp_value': 0,
+                    'new_score': 0.0, 'original_score': 0.0, 'delta': 0.0,
+                    'next_drill_at': None, 'srs_interval_days': 0, 'ungradeable': True}
         g = grade_postflop_spot(spot, action)
         if g is not None:
             return g
@@ -573,9 +591,31 @@ def _action_family(label: str) -> str:
             'all-in': 'raise'}.get(a, a)
 
 
-def generate_postflop_spot(category: dict, rng: random.Random | None = None) -> dict | None:
-    """Retorna um spot do catálogo postflop (stateless, sem revelar a resposta)."""
+def generate_postflop_spot(category: dict, rng: random.Random | None = None,
+                           servidos: set | None = None) -> dict | None:
+    """Retorna um spot postflop (stateless, sem revelar a resposta).
+
+    **Backlog #41:** tenta primeiro o ACERVO de nós já solvados (`trainer_pool`) e só cai no
+    catálogo estático se ele não render. O catálogo tem 31 spots com parâmetros fixos (BB vs BTN,
+    40bb, flop); o acervo tinha 5.139 nós servíveis quando isto foi escrito, e cresce sozinho a
+    cada torneio mandado solvar.
+
+    A ordem é essa e não o contrário: o catálogo é o PISO, não a fonte. Se o acervo falhar por
+    qualquer razão, o treino continua funcionando com o que sempre funcionou — e por isso a
+    exceção é engolida aqui, não propagada.
+
+    Desligável sem deploy por `TRAINER_POOL_POSTFLOP=0`, porque a qualidade do acervo depende de
+    dado que entra sozinho e a válvula precisa existir antes de precisarmos dela.
+    """
     rng = rng or random
+    if os.getenv('TRAINER_POOL_POSTFLOP', '1') != '0':
+        try:
+            from leaklab.trainer_pool import proximo_spot as _pool
+            s = _pool(rng=rng, evitar=servidos or set())
+            if s:
+                return s
+        except Exception:
+            log.exception('acervo de treino postflop indisponível; caindo no catálogo estático')
     spots = POSTFLOP_CATALOG.get(category.get('catalog', 'bb_defense')) or []
     if not spots:
         return None

@@ -7,6 +7,58 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(treino): o postflop do Leak Trainer passou de 31 spots fixos para o acervo solvado (#41 #treino)
+
+> Backlog #41. O treino postflop servia UM catalogo estatico: uma categoria (`pf:bb_defense`), **31
+> spots**, todos com os mesmos parametros (BB vs BTN, 40bb, flop, c-bet de 1,65bb num pote de 5). O
+> jogador esgota isso e passa a reconhecer o board em vez de ler o board.
+>
+> Enquanto isso `gto_nodes` cresce sozinho a cada torneio mandado solvar. Medido em producao:
+> **6.065 nos postflop, 5.762 sadios, 5.139 servíveis** — 165 vezes o catalogo, sem curadoria
+> manual.
+>
+> **A medicao mudou o desenho antes da primeira linha.** A distribuicao da resposta e torta: check
+> 2.894 (56%), fold 1.014 (20%), call 802 (16%), o resto abaixo. Servindo no ao acaso, **quem
+> responder "check" sempre acerta 56%** e "check ou fold" cobre 76%. Seria um quiz vencivel sem ler
+> o board, que e a cicatriz nº2 do CLAUDE.md. Por isso a selecao **sorteia a ACAO primeiro** e so
+> depois um no que a tenha como resposta. Medido nos servidos: nenhuma resposta constante passa de
+> **32%**.
+>
+> **Dois erros meus no caminho, os dois pegos medindo.**
+>
+> O primeiro: tentei gradear por `lookup_gto`, que e a porta unica do GTO no projeto. Ele re-deriva
+> o hash a partir dos parametros, e a reconstrucao a partir do `spot_json` **nao reproduz o mesmo
+> no**. Resultado no teste: menu oferecendo check/bet e veredito respondendo "o certo era fold",
+> com fold fora da tela. Veredito sobre outro no e pior do que veredito nenhum. A correcao le a
+> `hand_table` da propria arvore.
+>
+> O segundo, ao voltar para a leitura direta: **34% dos nos tem a mao do heroi fora da tabela**.
+> `gto_tree_strategies` tem UMA tabela por arvore (5.986 linhas, 5.986 `tree_hash` distintos), do
+> range de um jogador so — parente do bug do jogador errado no postflop. Nao ha segunda tabela: o
+> no simplesmente nao e gradeavel, e o lugar de descobrir isso e a SELECAO. Sobram ~3.400, ainda
+> 110 vezes o catalogo.
+>
+> **Coisas que so aparecem olhando o dado real:** `gto_nodes.board` vem ORDENADO, e num river isso
+> troca qual carta foi o turn e qual foi o river (a ordem verdadeira esta no `spot_json`); e o
+> normalizador do trainer manda todo `bet_50pct` para 'raise', porque o catalogo antigo so tinha
+> spots ENFRENTANDO aposta — no acervo ha nos sem aposta na mesa, e ali oferecer "raise" e pedir
+> que o jogador aumente uma aposta que ninguem fez.
+>
+> **E um teste meu nasceu incapaz de falhar, pela quarta vez hoje.** A checagem de coerencia entre
+> menu e veredito passava verde mesmo desligada, porque todo no sintetico era coerente por
+> construcao. Virou um caso que existe de verdade no acervo: oferecer FOLD sem ninguem ter apostado,
+> ou CHECK com aposta na mesa. Nenhuma das duas e jogada possivel, e servir uma delas ensina uma
+> regra falsa antes de ensinar estrategia.
+>
+> O catalogo estatico continua como PISO, nao como fonte: se o acervo falhar por qualquer motivo, o
+> treino segue com o que sempre funcionou. Desligavel sem deploy por `TRAINER_POOL_POSTFLOP=0`.
+>
+> 11 casos em `test_trainer_pool.py`, com nos sinteticos de proposito (teste que depende do acervo
+> passa a medir o banco, nao o codigo). Verificados quebrando 8 guardas: board ordenado, menu com
+> raise sem aposta, coerencia desligada, mao ausente usando a linha de outra mao, selecao herdando o
+> mix do acervo, memoria da sessao, menu de uma opcao e o filtro anti-degenerado.
+
+
 ### feat(academia): os dois sub-tipos de bet sizing que estavam no piso (#academia)
 
 > `open_size` e `range_shape` tinham 4 enunciados cada, exatamente no minimo que o guarda exige.
