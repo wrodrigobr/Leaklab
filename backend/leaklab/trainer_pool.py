@@ -52,6 +52,17 @@ _MIX_ALVO = [('check', 30), ('fold', 25), ('call', 25), ('bet', 20)]
 
 _STREETS = ('flop', 'turn', 'river')
 
+# Assinatura do nó degenerado, em LISTA e não em LIKE.
+#
+# Era `LIKE '%all%'`, e isso **quebrou em produção da forma mais cara possível**: no Postgres o `%`
+# é placeholder, então a consulta só explodia QUANDO havia parâmetros — ou seja, exatamente quando
+# o treino filtrava por street/posição, que é o caminho do treino mirado. Sem parâmetro, passava.
+# O `except` do chamador engolia o erro e caía no catálogo estático, então a feature inteira ficava
+# desligada em silêncio, com a tela funcionando normalmente. Só apareceu porque a verificação foi
+# feita DENTRO do container, com um usuário real.
+_ALLIN = ('allin', 'all-in', 'all in', 'jam', 'shove')
+_ALLIN_SQL = "(" + ", ".join(f"'{a}'" for a in _ALLIN) + ")"
+
 # Teto de candidatos testados por spot servido. Existe porque `_coerente` lê a árvore a cada
 # tentativa: sem teto, um acervo que degradasse transformaria uma requisição de treino em varredura
 # do banco inteiro, e o jogador veria a tela pendurada em vez de um erro.
@@ -79,7 +90,7 @@ def _sql_base() -> str:
          WHERE LOWER(g.street) IN ('flop','turn','river')
            AND g.exploitability_pct > {EXPLOIT_MIN}
            AND g.exploitability_pct <= {EXPLOIT_MAX}
-           AND NOT (g.gto_freq >= 0.99 AND LOWER(g.gto_action) LIKE '%all%')
+           AND NOT (g.gto_freq >= 0.99 AND LOWER(g.gto_action) IN {_ALLIN_SQL})
     """
 
 

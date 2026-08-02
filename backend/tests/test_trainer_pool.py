@@ -262,8 +262,26 @@ def test_no_degenerado_e_no_com_exploitability_fora_da_faixa_ficam_de_fora():
     sql = TP._sql_base()
     assert 'exploitability_pct > 0.05' in sql, 'sumiu o piso de exploitability'
     assert 'exploitability_pct <= 3.0' in sql, 'sumiu o teto de exploitability'
-    assert "gto_freq >= 0.99" in sql and "LIKE '%all%'" in sql, 'sumiu o filtro anti-degenerado'
+    assert 'gto_freq >= 0.99' in sql, 'sumiu o filtro anti-degenerado'
+    assert all(f"'{a}'" in sql for a in TP._ALLIN), 'a lista de all-in nao esta na consulta'
     print('OK  test_no_degenerado_e_no_com_exploitability_fora_da_faixa_ficam_de_fora')
+
+
+def test_a_consulta_nao_tem_porcentagem_solta():
+    """`%` na SQL quebra no Postgres QUANDO ha parametros, e so entao.
+
+    Foi assim que a selecao por leak nasceu quebrada em producao: a consulta usava
+    `LIKE '%all%'`, e no Postgres o `%` e placeholder. Sem parametro a consulta passava; com
+    parametro — ou seja, exatamente no caminho do treino mirado, que filtra street e posicao — ela
+    explodia. O `except` do chamador engolia e caia no catalogo estatico, entao a feature ficava
+    desligada em silencio com a tela funcionando normalmente.
+
+    Os testes deste arquivo usam conexao falsa e nunca veriam um problema de dialeto. Este guarda
+    e sobre o TEXTO da consulta, que e o que atravessa o driver.
+    """
+    sql = TP._sql_base() + " AND LOWER(g.street) = ? AND g.position = ?"
+    assert '%' not in sql, f'a consulta tem % solto e vai quebrar no Postgres com parametros: {sql}'
+    print('OK  test_a_consulta_nao_tem_porcentagem_solta')
 
 
 def test_spot_ja_servido_nao_volta_na_mesma_sessao():
