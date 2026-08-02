@@ -1566,6 +1566,10 @@ export interface TrainingOverview {
   achievements: TrainingAchievement[];
   missions: TrainingMission[];
   readiness: TrainingReadiness;
+  // A prova vem JUNTO porque o overview já a calcula por dentro (as conquistas contam provados e
+  // reconquistados). Buscá-la de novo em `/player/training/proof` dobrava o trabalho do banco só
+  // para desenhar a mesma tela. O endpoint separado continua existindo.
+  proof?: TrainingProofItem[];
 }
 // Fase 4 "Provar": aderência GTO real da categoria ANTES × DEPOIS de treinar (loop validado)
 export interface TrainingProofItem {

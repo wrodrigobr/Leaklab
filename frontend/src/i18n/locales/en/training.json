@@ -2,6 +2,7 @@
   "eyebrow": "Training Module",
   "title": "Training",
   "subtitle": "Train your leaks and master the fundamentals.",
+  "loading": "Loading your training…",
   "newLeaks": {
     "title": "{{count}} leak(s) in your game not trained yet",
     "desc": "New tournaments reveal new leaks. Restart the loop: train → play → validate.",

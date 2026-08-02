@@ -3307,13 +3307,21 @@ def training_overview():
     """Status do treino do jogador (eixo de gamificação, SEPARADO do ELO): XP+streak,
     domínio por habilidade e o catálogo de conquistas (com unlocked) — pro hub de Treino."""
     from database.repositories import (get_training_skills, get_training_achievements,
-                                        get_daily_missions, training_readiness)
+                                        get_daily_missions, training_readiness,
+                                        get_training_proof)
+    # A prova sai UMA vez e serve os dois consumidores: as conquistas (que contam provados,
+    # reconquistados e com_amostra) e a tela. Medido antes: este endpoint fazia 115 idas ao banco,
+    # 104 delas para recalcular exatamente esta prova lá dentro, e a tela ainda pedia `/proof` numa
+    # segunda requisição — 219 idas para desenhar uma página. Ela vai no corpo porque quem já pagou
+    # o cálculo devolvê-lo é de graça; `/player/training/proof` continua existindo.
+    prova = get_training_proof(g.user_id)
     return jsonify({
         'xp':           get_xp_status(g.user_id),
         'skills':       get_training_skills(g.user_id),
-        'achievements': get_training_achievements(g.user_id),   # conquistas de TREINO (não as globais)
+        'achievements': get_training_achievements(g.user_id, proof=prova),  # conquistas de TREINO
         'missions':     get_daily_missions(g.user_id, _tz_offset_arg()),   # missões diárias (fuso local)
         'readiness':    training_readiness(g.user_id),          # gate 'Aplicar': todos os leaks no Diamante
+        'proof':        prova,
     })
 
 

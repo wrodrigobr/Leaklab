@@ -6985,7 +6985,14 @@ def _achievement_progress(state: dict, campo: str, alvo: float) -> tuple:
     return (round(min(atual, alvo), 1), alvo)
 
 
-def _training_state(user_id: int) -> dict:
+def _training_state(user_id: int, *, proof=None) -> dict:
+    """`proof` entra pronto quando quem chama JÁ o calculou.
+
+    Medido em `/player/training/overview`: 115 idas ao banco, das quais **104 eram esta prova**,
+    recalculada aqui só para somar três inteiros. Em produção o banco é remoto, então cada ida
+    custa ida-e-volta de rede, e a tela ficava com os três atalhos e mais nada por segundos.
+    Não é cache: é não pedir duas vezes na mesma requisição o que já está na mão.
+    """
     skills = get_training_skills(user_id)
     # conquistas usam o mastery STORED (pico), não o decaído — não se DES-ganha uma conquista.
     masteries = [float(s.get('mastery_stored', s.get('mastery')) or 0) for s in skills]
@@ -6999,7 +7006,7 @@ def _training_state(user_id: int) -> dict:
     # eram volume ou sequencia.
     provados = reconquistados = com_amostra = 0
     try:
-        for pr in (get_training_proof(user_id) or []):
+        for pr in ((get_training_proof(user_id) if proof is None else proof) or []):
             v = (pr.get('validacao') or {}).get('veredito')
             if v and v != 'sem_amostra':
                 # Ciclo fechado = amostra COLETADA depois de treinar, mesmo sem veredito ainda.
@@ -7056,14 +7063,14 @@ def evaluate_training_achievements(user_id: int) -> list:
         conn.close()
 
 
-def get_training_achievements(user_id: int) -> list:
+def get_training_achievements(user_id: int, *, proof=None) -> list:
     """Catálogo de conquistas de TREINO + unlocked + PROGRESSO (ordem do 'caminho') — pro hub.
 
     O progresso vem junto porque a tela precisa dizer quanto falta numa conquista bloqueada, e
     calcular isso no cliente exigiria replicar os alvos lá — a segunda cópia que este projeto já
     pagou caro várias vezes.
     """
-    state = _training_state(user_id)
+    state = _training_state(user_id, proof=proof)
     conn = get_conn()
     try:
         earned = {r['achievement_key']: r['earned_at'] for r in conn.execute(

@@ -7,6 +7,139 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### perf(treino): a pagina de treino fazia 219 idas ao banco, e metade era trabalho repetido (#treino #perf)
+
+> **Reportado:** "primeiro ela carrega so os 3 botoes de revisao, treino e academia, e so depois
+> carrega as outras coisas (...) parece que nao tem mais nada na pagina (...) isso pode direcionar
+> o usuario a clicar em algo antes de ver o conteudo".
+>
+> **Sao dois defeitos, e o segundo e o que da o susto.**
+>
+> **1. A pagina nao dizia que estava carregando.** TODO o conteudo abaixo dos atalhos estava atras
+> de `{overview && ...}`, com fallbacks `?? []`. Sem `overview`, a tela renderizava tres links e
+> mais nada — e tres links e mais nada e indistinguivel de uma pagina que TERMINOU de carregar.
+> Entrou um esqueleto com as medidas dos blocos reais: esqueleto menor que o conteudo empurra a
+> pagina quando os dados chegam, e o clique cai noutro lugar, que e a versao pior do que ele
+> relatou.
+>
+> **2. Contei as idas ao banco em vez de supor, e o numero explicou o resto.** `/training/overview`
+> fazia **115 queries**, das quais **104 eram `get_training_proof` recalculada por dentro** — so
+> para somar tres inteiros (provados, reconquistados, com_amostra) para as conquistas. E a tela
+> ainda pedia `/training/proof` numa SEGUNDA requisicao, que refazia as mesmas 104. **219 idas ao
+> banco para desenhar uma pagina**, e em producao o banco e remoto, entao cada ida custa
+> ida-e-volta de rede.
+>
+> A prova agora sai uma vez e serve os dois: as conquistas recebem `proof=` pronto, e o overview
+> devolve o campo no corpo. Medido depois: **115 queries, numa requisicao so**. `/training/proof`
+> continua existindo — `Evolution.tsx` consome.
+>
+> **O que NAO fiz, de proposito.** `get_training_proof` e um N+1 de verdade: um laco por categoria,
+> ~8 queries cada. Reescrever em SQL de conjunto mexeria numa funcao que REABRE leak, move baseline
+> e dispara sino — um erro ali troca o estado do treino do jogador, que e dano pior do que o bug
+> causa. Fica registrado com numero, nao com adjetivo.
+>
+> `Training.loading.test.tsx` monta a pagina com a consulta PENDENTE e cobra o esqueleto no DOM.
+> Testar `isPending === true` nao serviria: o estado sempre esteve certo, faltava alguem renderizar
+> algo a partir dele. Verificado quebrando duas vezes: sem esqueleto (acusa) e com esqueleto
+> reduzido a um traco fino (acusa). Suites api (142) e database (230) verdes.
+
+### fix(academia): o exercicio repetia porque o acervo era pequeno, nao porque o sorteio era ruim (#academia)
+
+> **Reportado em `/academy/bet-sizing`:** "repetimos MUITAS vezes os exercicios de bet-sizing, nao
+> sei se isto acontece para outros temas".
+>
+> **Medi antes de mexer, e a intuicao estava certa.** Em 300 sorteios de bet sizing sairam **7
+> enunciados distintos**, e **38% deles eram a MESMA pergunta** — a do SPR, que era um texto fixo,
+> sem um numero sequer variando. O sorteio sempre foi uniforme; o acervo e que nao dava para
+> tanto. Varri os 22 geradores: 10 tinham 7 enunciados ou menos (o pior, blockers, com 5) e 4
+> passavam de 100.
+>
+> **Duas frentes, porque uma so nao resolve.**
+>
+> **Acervo.** Bet sizing foi de 3 tipos e 7 enunciados para 6 tipos e ~335. O `spr_size` deixou de
+> recitar e passou a calcular (pote e stack sorteados, faixa derivada do SPR); o `threebet_size`
+> aplica o multiplo a um open sorteado em vez de trazer dois textos fixos; entraram `price_size`
+> (equity necessaria = aposta / (pote + 2×aposta)), `cbet_texture` (board seco pede pequeno e
+> sempre, coordenado pede grande e seletivo) e `range_shape` (polarizado aposta grande, condensado
+> aposta pequeno).
+>
+> **Guarda.** Re-sorteia enquanto o enunciado ainda estiver na janela recente do jogador, por tema.
+> Aplicado por varredura do modulo, na mesma linha em que o embaralhamento de alternativas ja era:
+> sao 22 geradores e um esquecido mantem o defeito onde ninguem olha.
+>
+> **Errei a garantia na primeira versao, e a medicao me corrigiu.** Prometi "nada repete ate
+> esgotar o acervo". E impossivel com sorteio aleatorio: fechar a rodada e o problema do
+> colecionador de figurinhas e o ULTIMO item quase nunca sai. Medido: com acervo de 20 e 20
+> re-sorteios, ainda dava 572 repeticoes indevidas em 300 sessoes. Nao era constante mal escolhida,
+> era a distribuicao. A garantia que ficou e de JANELA, e a janela e **metade do acervo observado**
+> (teto 8) — a metade mantem a chance de fracasso desprezivel, e o acervo e APRENDIDO, entao nenhum
+> tema precisa declarar tamanho. Medido depois: **zero violacoes em 148 mil sorteios**, para todo
+> acervo de 2 a 50. Acervo de 1 e fail-open, e repetir e a unica saida honesta.
+>
+> **Dois testes meus nasceram incapazes de falhar, e as quebras deliberadas mostraram.** O da
+> janela recalculava `min(_JANELA_MAX, len(acervo)//2)` por conta propria e continuava verde com a
+> janela do codigo travada em 1 — passou a medir a DISTANCIA observada entre repeticoes. E o de
+> variedade do tema nao pegava um sub-tipo congelado: com 6 tipos, um deles fixo ainda deixa o
+> agregado diverso, que e exatamente como a queixa nasceu. Virou piso por TIPO, e ele imediatamente
+> acusou o `threebet_size`, que tinha 2 enunciados — expandido em vez de baixar a regua.
+>
+> 49 casos em `test_academy_variety.py`. Verifiquei quebrando 7 guardas: geradores fora do guarda,
+> janela travada em 1, uma tentativa so, memoria sem teto, SPR estatico de volta, formula do preco
+> trocada pelo erro classico (`pote + aposta`), acervo de sizing de volta aos 3 tipos.
+
+### fix(treino): o texto do contraste prometia continuidade que a sessao nao tem (#treino)
+
+> **Reportado:** "o texto explicativo nao deveria ter isso de 'mesmo spot'". A explicacao dizia
+> *"Mesmo spot, 10bb em vez de 17bb (...) a mesma mao pede outra linha"*, e o jogador leu como
+> continuidade do exercicio ANTERIOR, que nao era parecido.
+>
+> **Ele estava certo, e as duas afirmacoes eram falsas.** A sessao e INTERCALADA de proposito (o
+> exercicio anterior pode ser revisao de outra familia, e o teste de interleaving cobra isso), e a
+> mao e sorteada de novo a cada spot. O que o spot de contraste compartilha com a missao e o
+> CENARIO — scenario, posicao e vs_position —, e so isso. O texto afirmava duas coisas que a
+> mecanica nao garante.
+>
+> Os dois textos (`concept_for_spot` e `contrast_note`) agora falam do cenario e das duas
+> profundidades, sem citar exercicio anterior nem "a mesma mao". O selo "Contraste" na tela ja
+> explicava a troca de bloco.
+>
+> Guarda em `test_progression.py` varre as duas funcoes e as tres ramificacoes atras de promessa
+> de continuidade. Verificado restaurando o texto antigo nos dois pontos: acusa nos dois.
+
+### fix(drill): o Ghost Table servia spot que ele proprio nao sabia corrigir (#drill #gto)
+
+> **Reportado com dois prints, de causas diferentes.** O jogador revisou a mao, indicou shove, e
+> recebeu "≈ Fora da cobertura" sem acao recomendada. Um print trazia o selo `≈ APROXIMACAO` (mao
+> fora da range solvada), o outro `≈ MULTIWAY` (o solver e heads-up e nao resolve pote 3-way).
+>
+> **A causa nao era falta de gabarito — era duas fontes discordando.** A SELECAO do drill lia o
+> `gto_label` GRAVADO no import; o GRADEAMENTO faz um lookup AO VIVO. Um spot rotulado como
+> coberto na importacao podia deixar de ser resolvivel depois. O jogador respondia o exercicio e
+> levava um veredito que nao era veredito — e o spot ainda ocupava uma das 10 vagas da sessao.
+>
+> **Medi antes de filtrar, porque filtro em pool pequeno e pior que o bug.** Dos 200 spots
+> servidos no acervo real: 6 multiway (3,0%) e 11 off-tree (5,5%). O corte custa 8,5% e deixa
+> 183 — muito acima dos 10 de uma sessao. Depois do filtro, dos 60 candidatos consultados, 20
+> servidos, **zero sem veredito**, e a mistura de streets se manteve (9 preflop, 5 flop, 4 turn,
+> 2 river): o postflop nao foi esvaziado.
+>
+> **A primeira medicao mentiu, e o erro era meu.** Reportou "multiway: 0". A coluna
+> `n_active_opponents` nao estava no `SELECT` de `get_drill_spots`, entao o campo vinha vazio em
+> toda linha e o contador nunca subia. Zero tranquilizador, exatamente o caso da regra 1. O numero
+> real e 3,0%.
+>
+> O corte tem duas camadas por motivo pratico: o multiway sai no SQL (senao consumiria a folga da
+> selecao), e o off-tree exige o lookup ao vivo, entao sai em Python — a selecao passou a pedir
+> `limit * 3` candidatos para poder descartar sem encurtar a sessao.
+>
+> **Falha de lookup NAO exclui, de proposito.** Fail-open: quem tem pouco volume ficaria sem
+> treino nenhum por um erro transitorio de consulta. Perder um spot bom e pior que arriscar um
+> duvidoso.
+>
+> `tests/test_drill_sem_veredito.py`, 7 casos. Verifiquei quebrando os guardas um a um: predicado
+> sempre-falso (2 acusam), preflop excluido por engano (1), fail-closed no lookup (1), SQL sem o
+> filtro multiway (1), selecao sem folga (1). Cinco quebras, cinco acusacoes.
+
 ### fix(onboarding): quatro pontas soltas, e a que mais custava era o convite de coach (#onboarding)
 
 > Lote de itens pequenos e independentes, todos ja diagnosticados.

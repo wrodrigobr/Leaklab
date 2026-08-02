@@ -18,13 +18,52 @@ import { TIER_COLORS, type MedalTier } from "@/lib/medalTiers";
 // local tinha um segundo jogo de cores e os rótulos em PT fixo — duas escalas homônimas na mesma
 // tela, e uma delas sem i18n.
 
+/** Ocupa o espaço que o conteúdo vai ocupar, com as MESMAS medidas dos blocos reais (jornada de
+ *  3 colunas e o painel de status). Esqueleto menor que o conteúdo empurra a página quando os
+ *  dados chegam, e o clique do jogador cai noutro lugar — que é a versão pior do problema que ele
+ *  relatou. */
+function EsqueletoTreino({ rotulo }: { rotulo: string }) {
+  return (
+    <div className="space-y-4" aria-busy="true" aria-live="polite">
+      <span className="sr-only">{rotulo}</span>
+      <div className="rounded-2xl border border-border bg-card/40 p-5">
+        <div className="mb-3 h-4 w-40 animate-pulse rounded bg-muted/40" />
+        <div className="grid grid-cols-3 gap-2">
+          {[0, 1, 2].map((i) => (
+            <div key={i} className="h-24 animate-pulse rounded-xl bg-muted/25 ring-1 ring-border/50" />
+          ))}
+        </div>
+      </div>
+      <div className="space-y-4 rounded-2xl border border-border bg-card/40 p-5">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="h-5 w-36 animate-pulse rounded bg-muted/40" />
+          <div className="h-7 w-28 animate-pulse rounded-lg bg-muted/30" />
+        </div>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          {[0, 1, 2, 3].map((i) => (
+            <div key={i} className="h-16 animate-pulse rounded-xl bg-muted/25" />
+          ))}
+        </div>
+        <div className="h-20 animate-pulse rounded-xl bg-muted/20" />
+      </div>
+    </div>
+  );
+}
+
 export default function Training() {
   const { t } = useTranslation("training");
   const [selecionada, setSelecionada] = useState<string | null>(null);
   const { t: ta } = useTranslation("academy");
-  const { data: overview } = useQuery({ queryKey: ["training-overview"], queryFn: training.overview });
-  const { data: proofData } = useQuery({ queryKey: ["training-proof"], queryFn: training.proof });
-  const proof = proofData?.proof ?? [];
+  // `isPending` importa tanto quanto `data`: TODO o conteúdo abaixo dos 3 atalhos depende deste
+  // overview, então enquanto ele não chega a página fica com os atalhos e mais nada. Reportado:
+  // "parece que não tem mais nada na página (...) isso pode direcionar o usuário a clicar em algo
+  // antes de ver o conteúdo". Página vazia é uma afirmação, e era a afirmação errada.
+  const { data: overview, isPending: carregandoOverview } =
+    useQuery({ queryKey: ["training-overview"], queryFn: training.overview });
+  // A prova vem no próprio overview: ele já a calculava por dentro para as conquistas, e pedi-la
+  // de novo era a segunda metade das ~219 idas ao banco que essa tela fazia. O `?? []` no fim é a
+  // ponte para um backend antigo que ainda não devolva o campo.
+  const proof = overview?.proof ?? [];
   // O PROTOCOLO é a jornada. Esta tela tinha uma própria (Treinar → Aplicar → Provar, com gate
   // por tier ouro/diamante) que media outra coisa e podia contradizer o Leak Trainer sobre o
   // mesmo leak no mesmo dia. Os tiers continuam existindo como gamificação de ESFORÇO (volume
@@ -122,6 +161,10 @@ export default function Training() {
 
         {/* ── Desafio do Dia (#42) — hook diário, some se não há spot aprovado ── */}
         <DailyChallengeCard />
+
+        {/* Enquanto o overview não chega, a página precisa DIZER que ainda está carregando. Sem
+            isto ela mostra três atalhos e um vazio, que se lê como "acabou". */}
+        {carregandoOverview && <EsqueletoTreino rotulo={t("loading", "Carregando seu treino…")} />}
 
         {/* ── Aviso: leaks do jogo ainda sem treino → reinicie o ciclo (novos leaks surgiram) ── */}
         {readiness && (readiness.untrained?.length ?? 0) > 0 && (
