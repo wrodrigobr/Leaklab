@@ -282,6 +282,35 @@ def test_spot_ja_servido_nao_volta_na_mesma_sessao():
     print('OK  test_spot_ja_servido_nao_volta_na_mesma_sessao')
 
 
+def test_selecao_honra_o_leak_pedido():
+    """O filtro de street/posição tem que CHEGAR na consulta.
+
+    A primeira versão aceitava os parâmetros e servia o acervo inteiro do mesmo jeito: o treino
+    dizia mirar o leak do jogador e sorteava de qualquer recorte. Vazamento silencioso, do tipo que
+    só aparece quando alguém compara o que foi servido com o que foi pedido.
+    """
+    capturado = {}
+    nos = [_no(hash_='x1', street='turn', pos='CO')]
+
+    class _Espia(_ConnFalsa):
+        def execute(self, sql, params=None):
+            if 'gto_nodes' in sql:
+                capturado['sql'] = sql
+                capturado['params'] = params
+            return super().execute(sql, params)
+
+    original = TP.get_conn
+    TP.get_conn = lambda: _Espia(nos)
+    try:
+        TP.proximo_spot(rng=random.Random(1), street='turn', position='CO')
+        assert 'LOWER(g.street) = ' in capturado['sql'], 'street não foi para a consulta'
+        assert 'g.position = ' in capturado['sql'], 'posição não foi para a consulta'
+        assert capturado['params'] == ('turn', 'CO'), capturado['params']
+    finally:
+        TP.get_conn = original
+    print('OK  test_selecao_honra_o_leak_pedido')
+
+
 def test_menu_de_uma_opcao_so_nao_vira_exercicio():
     orig = _com_nos([_no(acoes=['check'],
                          tabela_mao=[{'hand': 'JsTd', 'weight': 9, 'freqs': [1.0], 'evs': [1]}])])

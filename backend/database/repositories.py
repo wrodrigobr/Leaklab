@@ -1211,6 +1211,62 @@ def get_ev_leaks(user_id: int, days: int = 90, last_n: int | None = None, limit:
         conn.close()
 
 
+def get_postflop_leak_categories(user_id: int, days: int = 90, last_n: int | None = None,
+                                 limit: int = 8, min_n: int = 10) -> list:
+    """Categorias de leak POSTFLOP para o treino: agrupa por (street × posição) e ranqueia.
+
+    O irmão preflop (`get_leak_categories`) ranqueia por EV perdido, que é a régua do projeto.
+    **Aqui o ranking é por NÚMERO DE ERROS, e a divergência é deliberada:** medido em produção,
+    `ev_loss_bb` cobre 1.254 das 2.716 decisões postflop (46%), enquanto `gto_label` cobre 2.390
+    (88%). Ranquear por EV escolheria o que TEM EV medido, não o que mais dói — e o viés seria
+    invisível, porque o número sairia com cara de EV.
+
+    Erro ABSOLUTO e não taxa: taxa de erro alta em 12 decisões manda o jogador treinar ruído.
+    Quem decide o que treinar é volume × erro, que é o que ele vai reencontrar na mesa.
+
+    `avg_stack_bb` sai junto porque o acervo é indexado por faixa de stack: sem ele, o treino
+    serviria o leak certo na profundidade errada.
+    """
+    tf, tp = _build_tournament_filter(user_id, days, last_n)
+    conn = get_conn()
+    try:
+        rows = conn.execute(_adapt(f"""
+            SELECT d.street                                   AS street,
+                   d.position                                 AS position,
+                   COUNT(*)                                   AS n,
+                   SUM(CASE WHEN d.gto_label IN ('gto_critical','gto_minor_deviation')
+                            THEN 1 ELSE 0 END)                AS erros,
+                   AVG(d.stack_bb)                            AS avg_stack_bb
+              FROM decisions d
+              JOIN tournaments t ON t.id = d.tournament_id
+             WHERE {tf}
+               AND d.street IN ('flop','turn','river')
+               AND d.gto_label IS NOT NULL AND d.gto_label <> ''
+               AND d.position IS NOT NULL AND d.position <> ''
+             GROUP BY d.street, d.position
+            HAVING COUNT(*) >= ?
+             ORDER BY erros DESC
+             LIMIT ?
+        """), tp + (min_n, limit)).fetchall()
+        out = []
+        for r in rows:
+            erros = int(r['erros'] or 0)
+            if erros <= 0:
+                continue           # sem erro medido não é leak, é cobertura
+            n = int(r['n'] or 0)
+            out.append({
+                'street':       r['street'],
+                'position':     r['position'],
+                'n':            n,
+                'erros':        erros,
+                'taxa':         round(erros / n, 4) if n else 0.0,
+                'avg_stack_bb': (float(r['avg_stack_bb']) if r['avg_stack_bb'] is not None else None),
+            })
+        return out
+    finally:
+        conn.close()
+
+
 def get_leak_categories(user_id: int, days: int = 90, last_n: int | None = None,
                         limit: int = 12) -> list:
     """Categorias de leak PREFLOP para o Leak Trainer: agrupa por (posição × vs_posição × is_3bet ×

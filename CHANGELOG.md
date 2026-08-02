@@ -7,6 +7,32 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(treino): o postflop passou a mirar o leak REAL, e nao uma categoria unica igual para todos (#41 #treino)
+
+> Segunda metade do #41. O encanamento do acervo ja estava de pe, mas a selecao mirava variedade,
+> nao vazamento: existia **uma** categoria postflop, `pf:bb_defense`, igual para todo mundo.
+>
+> **O postflop nunca teve categoria de leak alimentando o treino.** `get_leak_categories` filtra
+> `street = 'preflop'` — o irmao postflop simplesmente nao existia. Entrou
+> `get_postflop_leak_categories`, que agrupa por (street × posicao).
+>
+> **Ranquear por ERRO, e nao por EV, e uma divergencia deliberada da regra do projeto.** A regra e
+> "bb perdidos RANQUEIA, taxa de erro VALIDA". Medido em producao: `ev_loss_bb` cobre 1.254 das
+> 2.716 decisoes postflop (46%), enquanto `gto_label` cobre 2.390 (88%). Ranquear por EV escolheria
+> **o que TEM EV medido**, nao o que mais doi, e o vies sairia com cara de EV. Erro ABSOLUTO e nao
+> taxa: taxa alta em 12 decisoes manda o jogador treinar ruido.
+>
+> **Medi a cobertura antes de ligar o filtro, porque filtrar sem acervo e pior que nao filtrar.**
+> Os 12 pares de leak postflop mais frequentes tem de **149 a 1.026 nos** no acervo. Nenhum passa
+> fome. E quando um leak nao encontra no, o treino serve de outro recorte em vez de nao servir — e
+> registra, porque leak sem spot e buraco de cobertura, e buraco silencioso nao vira trabalho.
+>
+> O guarda novo cobre o vazamento mais provavel: a selecao ACEITAVA street/posicao e servia o
+> acervo inteiro do mesmo jeito. Verificado tirando o filtro da consulta.
+>
+> 12 casos em `test_trainer_pool.py`. Suite completa: 1761 testes, zero falhas.
+
+
 ### feat(treino): o postflop do Leak Trainer passou de 31 spots fixos para o acervo solvado (#41 #treino)
 
 > Backlog #41. O treino postflop servia UM catalogo estatico: uma categoria (`pf:bb_defense`), **31

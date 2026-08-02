@@ -116,16 +116,58 @@ def build_curriculum(user_id: int, days: int = 90) -> list[dict]:
         cat['key'] = _category_key(cat)
         cats.append(cat)
     base = cats if cats else _fundamentals_curriculum()
-    return base + _postflop_pilot_cats()
+    # Postflop MIRADO no leak real; só cai no piloto único quando não há leak postflop medido.
+    pf = postflop_leak_cats(user_id, days=days)
+    return base + (pf if pf else _postflop_pilot_cats())
 
 
 def _postflop_pilot_cats() -> list[dict]:
     """Fase 2 (piloto): categoria postflop BB-defesa do catálogo validado. Peso modesto — fundamento de
-    defesa OOP útil a todos. O leak-driven postflop (só se o user tem o leak) é refinamento futuro."""
+    defesa OOP útil a todos. Serve de PISO quando o jogador ainda não tem leak postflop medido."""
     cat = {'kind': 'postflop', 'catalog': 'bb_defense', 'scenario': 'pf_bb_defense',
            'position': 'BB', 'vs_position': 'BTN', 'stack_bb': 40.0,
            'ev_loss_bb': 0.0, 'n': 0, 'weight': 2.0, 'key': 'pf:bb_defense'}
     return [cat]
+
+
+def postflop_leak_cats(user_id: int, days: int = 90) -> list[dict]:
+    """Categorias postflop MIRADAS no leak real do jogador (#41, 2ª metade).
+
+    Antes existia uma categoria postflop só, igual para todo mundo (BB defesa vs BTN, 40bb, flop) —
+    ou seja, o treino postflop ignorava onde o jogador de fato erra. Agora cada par (street ×
+    posição) com erro medido vira uma categoria, e o acervo é filtrado por ela.
+
+    Medido em produção antes de ligar: os 12 pares de leak postflop mais frequentes têm de 149 a
+    1.026 nós no acervo. Mirar por leak não passa fome — que era o risco real de filtrar.
+
+    Peso = número de ERROS, na mesma moeda em que a categoria foi ranqueada. Piso 0.5 para uma
+    categoria de erro baixo não sumir da rotação.
+    """
+    try:
+        from database.repositories import get_postflop_leak_categories
+        brutos = get_postflop_leak_categories(user_id, days=days)
+    except Exception:
+        log.exception('leaks postflop indisponíveis; treino postflop cai no piloto')
+        return []
+    cats = []
+    for r in brutos:
+        stack = r.get('avg_stack_bb')
+        cats.append({
+            'kind':        'postflop',
+            'catalog':     'bb_defense',           # piso, se o acervo não render
+            'scenario':    'pf_leak',
+            'street':      r['street'],
+            'position':    r['position'],
+            'vs_position': '',
+            'stack_bb':    _snap_stack(stack),
+            'stack_measured': stack is not None,
+            'ev_loss_bb':  0.0,
+            'n':           int(r.get('n') or 0),
+            'erros':       int(r.get('erros') or 0),
+            'weight':      max(0.5, float(r.get('erros') or 0)),
+            'key':         f"pf:{r['street']}:{r['position']}",
+        })
+    return cats
 
 
 def _fundamentals_curriculum() -> list[dict]:
@@ -611,8 +653,19 @@ def generate_postflop_spot(category: dict, rng: random.Random | None = None,
     if os.getenv('TRAINER_POOL_POSTFLOP', '1') != '0':
         try:
             from leaklab.trainer_pool import proximo_spot as _pool
-            s = _pool(rng=rng, evitar=servidos or set())
+            # Mira o LEAK: street e posição vêm da categoria. Se a categoria não os traz (o piloto
+            # antigo não traz), cai no acervo inteiro — que é o comportamento anterior, não um erro.
+            s = _pool(rng=rng, evitar=servidos or set(),
+                      street=category.get('street'), position=category.get('position'))
+            if s is None and (category.get('street') or category.get('position')):
+                # Leak sem nó no acervo: melhor um spot postflop de outro recorte do que nenhum.
+                # Registrado porque um leak que nunca encontra spot é buraco de cobertura, e
+                # buraco silencioso não vira trabalho.
+                log.info('acervo sem nó para o leak %s/%s; servindo de outro recorte',
+                         category.get('street'), category.get('position'))
+                s = _pool(rng=rng, evitar=servidos or set())
             if s:
+                s['category'] = category.get('key') or s.get('category')
                 return s
         except Exception:
             log.exception('acervo de treino postflop indisponível; caindo no catálogo estático')
