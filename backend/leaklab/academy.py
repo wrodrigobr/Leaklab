@@ -1681,9 +1681,10 @@ def _preco_do_size_question() -> dict:
     nome, fr = random.choice(_PRECOS)
     aposta = pote * fr
     certa = _pct_necessaria(fr)
-    distratores = sorted({_pct_necessaria(f) for _, f in _PRECOS} - {certa})
-    outras = random.sample(distratores, 2)
-    opcoes = [f'~{certa}%'] + [f'~{v}%' for v in outras]
+    # Monta pelo MESMO helper da MDF. Este bloco tinha a própria seleção de distratores e servia
+    # `['~25%', '~33%', '~20%']` — 5 pontos entre duas alternativas. O guarda de separação nasceu
+    # noutro tema e pegou aqui: regra que vale em dois lugares tem que morar num só.
+    opcoes = _alternativas_pct(certa, {_pct_necessaria(f) for _, f in _PRECOS})
     return {
         'type': 'price_size',
         'question': (
@@ -1801,41 +1802,221 @@ def generate_sizing_question(user_id: int = None) -> dict:
 # MDF = pote / (pote + aposta) = com quanto você defende. Alpha = aposta / (pote + aposta)
 # = fold mínimo que o seu blefe precisa. Aposta menor: defende MAIS, blefa mais barato.
 
-_MDF_ITEMS = [
-    ('mdf', 'o pote inteiro', ['~50%', '~67%', '~33%'], 0,
-     'MDF = pote / (pote + aposta). Com aposta do tamanho do pote, você defende ~50% das mãos '
-     'para o blefe do vilão não lucrar de graça.'),
-    ('mdf', 'meio pote', ['~50%', '~67%', '~40%'], 1,
-     'MDF = pote / (pote + aposta). Com aposta de meio pote, você defende ~67%: apostas menores '
-     'exigem que você defenda MAIS.'),
-    ('mdf', 'dois terços do pote', ['~60%', '~50%', '~75%'], 0,
-     'MDF = pote / (pote + aposta). Com aposta de 2/3 do pote, você defende ~60%.'),
-    ('alpha', 'o pote inteiro', ['~50%', '~33%', '~25%'], 0,
-     'Alpha = aposta / (pote + aposta). Um blefe do tamanho do pote precisa fazer o vilão foldar '
-     '~50% para empatar.'),
-    ('alpha', 'meio pote', ['~50%', '~33%', '~67%'], 1,
-     'Alpha = aposta / (pote + aposta). Um blefe de meio pote precisa de ~33% de fold: apostas '
-     'menores blefam mais barato.'),
-    ('alpha', 'dois terços do pote', ['~40%', '~50%', '~33%'], 0,
-     'Alpha = aposta / (pote + aposta). Um blefe de 2/3 do pote precisa de ~40% de fold.'),
+# Eram 6 enunciados FIXOS, tres de MDF e tres de alpha, sobre tres tamanhos de aposta. O jogador
+# via a mesma frase com o mesmo numero e decorava o par "meio pote → 67%" sem nunca fazer a conta.
+# Agora as quatro familias calculam a partir de um tamanho sorteado, e a razao de blefe entra
+# porque e a MESMA aritmetica vista do outro lado da mesa: alpha e o quanto o vilao precisa foldar,
+# a razao de blefe e o quanto da SUA range de aposta pode ser blefe.
+_TAMANHOS_MDF = [
+    ('um quarto do pote',    0.25),
+    ('um terço do pote',     1 / 3),
+    ('metade do pote',       0.5),
+    ('dois terços do pote',  2 / 3),
+    ('três quartos do pote', 0.75),
+    ('o pote inteiro',       1.0),
+    ('1,25× o pote',         1.25),
+    ('1,5× o pote',          1.5),
+    ('2× o pote',            2.0),
 ]
 
 
-def generate_mdf_question(user_id: int = None) -> dict:
-    """Treino da aula de MDF & Alpha: mdf (defesa) e alpha (frequência de blefe)."""
-    kind, size, options, ci, expl = random.choice(_MDF_ITEMS)
-    if kind == 'mdf':
-        q = (f'O vilão aposta {size}. Pela defesa mínima (MDF), com cerca de quantas das suas '
-             f'mãos você deve continuar (call ou raise)?')
-        tip = '**MDF = pote / (pote + aposta).** Aposta menor, você defende mais.'
-    else:
-        q = (f'Você blefa apostando {size}. Para o blefe empatar, ele precisa fazer o vilão foldar '
-             f'pelo menos:')
-        tip = '**Alpha = aposta / (pote + aposta).** É o fold mínimo que o seu blefe precisa.'
+def _pct_mdf(fr: float) -> int:
+    """Defesa mínima: pote / (pote + aposta) = 1 / (1 + fração)."""
+    return round(100 / (1 + fr))
+
+
+def _pct_alpha(fr: float) -> int:
+    """Fold mínimo que o blefe precisa: aposta / (pote + aposta) = fração / (1 + fração)."""
+    return round(fr / (1 + fr) * 100)
+
+
+def _pct_blefe(fr: float) -> int:
+    """Fração da range de aposta que pode ser blefe no river: aposta / (pote + 2×aposta).
+
+    É a mesma conta da equity que o call precisa — e não é coincidência: o tamanho que deixa o
+    vilão indiferente entre pagar e foldar é o mesmo dos dois lados.
+    """
+    return round(fr / (1 + 2 * fr) * 100)
+
+
+# 4 pontos, e não mais: a tabela canônica de pot odds (20 / 25 / 29 / 33 / 38%) tem degraus de 4 a
+# 5, e exigir mais expulsaria justamente os distratores que ENSINAM — confundir dois tamanhos reais
+# é o erro que vale corrigir. O que a regra mata é o par indistinguível (73 contra 74), onde
+# acertar vira sorteio.
+_SEPARACAO_MIN_PCT = 4
+
+
+def _alternativas_pct(certa: int, universo) -> list:
+    """3 alternativas em %, com a certa na posição 0 (o embaralhamento global reposiciona).
+
+    Os distratores saem dos OUTROS tamanhos da mesma tabela: erro plausível é confundir dois
+    tamanhos, não chutar número aleatório.
+
+    **Mas eles precisam estar LONGE o bastante.** A primeira versão pegava os valores mais
+    PRÓXIMOS e produziu `['~69%', '~73%', '~74%']`: MDF é aproximação, ninguém distingue 73 de 74,
+    e o exercício vira sorteio. Alternativa indistinguível não mede conhecimento nenhum, só
+    frustra. Daí a separação mínima entre quaisquer duas.
+    """
+    candidatos = sorted({v for v in universo
+                         if abs(v - certa) >= _SEPARACAO_MIN_PCT}, key=lambda v: abs(v - certa))
+    random.shuffle(candidatos)
+    escolhidas = []
+    for v in candidatos:
+        if all(abs(v - j) >= _SEPARACAO_MIN_PCT for j in escolhidas):
+            escolhidas.append(v)
+        if len(escolhidas) == 2:
+            break
+    for delta in (9, -9, 15, -15, 21, -21, 27):
+        if len(escolhidas) >= 2:
+            break
+        cand = max(2, min(98, certa + delta))
+        if all(abs(cand - j) >= _SEPARACAO_MIN_PCT for j in escolhidas + [certa]):
+            escolhidas.append(cand)
+    return [f'~{certa}%'] + [f'~{v}%' for v in escolhidas[:2]]
+
+
+_POTES_BB = [6, 8, 9, 10, 12, 14, 15, 16, 18, 20, 24, 28, 30, 36]
+
+
+def _mesa_mdf() -> tuple:
+    """(pote, aposta) em BB, ambos inteiros, com a fração implícita num tamanho real.
+
+    A conta sai dos NÚMEROS mostrados, nunca da fração que os gerou: arredondar a aposta para
+    inteiro move a fração, e calcular pela fração original marcaria como certa uma resposta que
+    não fecha com o enunciado que o jogador está lendo.
+    """
+    pote = random.choice(_POTES_BB)
+    for _ in range(12):
+        _, fr = random.choice(_TAMANHOS_MDF)
+        aposta = round(pote * fr)
+        if aposta >= 1:
+            return pote, aposta
+    return pote, max(1, round(pote / 2))
+
+
+def _mdf_question() -> dict:
+    pote, aposta = _mesa_mdf()
+    certa = round(pote / (pote + aposta) * 100)
+    universo = {round(p / (p + max(1, round(p * f))) * 100)
+                for p in _POTES_BB for _, f in _TAMANHOS_MDF}
     return {
-        'type': kind, 'question': q, 'options': options, 'correct_index': ci,
-        'explanation': expl, 'mental_tip': tip, 'context': {}, 'xp_value': 20,
+        'type': 'mdf',
+        'question': (f'O pote tem {pote} BB e o vilão aposta {aposta} BB. Pela defesa mínima '
+                     f'(MDF), com cerca de quantas das suas mãos você precisa continuar '
+                     f'(call ou raise)?'),
+        'options': _alternativas_pct(certa, universo),
+        'correct_index': 0,
+        'explanation': (
+            f'MDF = pote ÷ (pote + aposta) = {pote} ÷ ({pote} + {aposta}) = {pote} ÷ '
+            f'{pote + aposta} ≈ {certa}%. Defender menos que isso faz o blefe dele lucrar sozinho, '
+            f'sem precisar acertar mão nenhuma.'
+        ),
+        'mental_tip': '**MDF = pote ÷ (pote + aposta).** Aposta menor, você defende MAIS.',
+        'context': {'pot_bb': pote, 'bet_bb': aposta}, 'xp_value': 20,
     }
+
+
+def _alpha_question() -> dict:
+    pote, aposta = _mesa_mdf()
+    certa = round(aposta / (pote + aposta) * 100)
+    universo = {round(max(1, round(p * f)) / (p + max(1, round(p * f))) * 100)
+                for p in _POTES_BB for _, f in _TAMANHOS_MDF}
+    return {
+        'type': 'alpha',
+        'question': (f'O pote tem {pote} BB e você blefa apostando {aposta} BB. Para esse blefe '
+                     f'empatar, o vilão precisa foldar pelo menos:'),
+        'options': _alternativas_pct(certa, universo),
+        'correct_index': 0,
+        'explanation': (
+            f'Alpha = aposta ÷ (pote + aposta) = {aposta} ÷ {pote + aposta} ≈ {certa}%. Você '
+            f'arrisca {aposta} BB para ganhar {pote} BB. Blefe maior arrisca mais pelo mesmo pote, '
+            f'então precisa de mais fold; blefe pequeno é barato justamente porque exige pouco.'
+        ),
+        'mental_tip': '**Alpha = aposta ÷ (pote + aposta).** É o fold mínimo que o blefe precisa.',
+        'context': {'pot_bb': pote, 'bet_bb': aposta}, 'xp_value': 20,
+    }
+
+
+def _mdf_combos_question() -> dict:
+    """MDF em COMBOS, não em porcentagem: é assim que ela vira decisão na mesa."""
+    nome, fr = random.choice(_TAMANHOS_MDF)
+    total = random.choice([40, 48, 60, 72, 84, 96, 120])
+    pct = _pct_mdf(fr)
+    certa = round(total * pct / 100)
+    universo = {round(total * _pct_mdf(f) / 100) for _, f in _TAMANHOS_MDF}
+    return {
+        'type': 'mdf_combos',
+        'question': (f'Sua range no river tem {total} combos e o vilão aposta {nome}. Quantos '
+                     f'combos você precisa continuar, pela defesa mínima?'),
+        'options': _alternativas_combos(certa, universo),
+        'correct_index': 0,
+        'explanation': (
+            f'A MDF contra {nome} é ≈{pct}%, e {pct}% de {total} combos dá ≈{certa}. Pensar em '
+            f'combos, e não em porcentagem, é o que transforma a MDF em decisão: você olha a sua '
+            f'range e conta até chegar lá, começando pelas mãos mais fortes.'
+        ),
+        'mental_tip': '**MDF em combos:** % de defesa × tamanho da sua range.',
+        'context': {'combos': total}, 'xp_value': 20,
+    }
+
+
+def _alternativas_combos(certa: int, universo) -> list:
+    """Mesma regra de separação das porcentagens, em escala de combos: alternativas coladas
+    transformam o exercício em sorteio."""
+    sep = max(2, round(certa * 0.12))
+    candidatos = sorted({v for v in universo if v >= 0 and abs(v - certa) >= sep},
+                        key=lambda v: abs(v - certa))
+    random.shuffle(candidatos)
+    escolhidas = []
+    for v in candidatos:
+        if all(abs(v - j) >= sep for j in escolhidas):
+            escolhidas.append(v)
+        if len(escolhidas) == 2:
+            break
+    for delta in (sep + 1, -(sep + 1), 2 * sep + 1, -(2 * sep + 1), 3 * sep + 2):
+        if len(escolhidas) >= 2:
+            break
+        cand = max(0, certa + delta)
+        if all(abs(cand - j) >= sep for j in escolhidas + [certa]):
+            escolhidas.append(cand)
+    return [str(certa)] + [str(v) for v in escolhidas[:2]]
+
+
+def _razao_blefe_question() -> dict:
+    pote, aposta = _mesa_mdf()
+    certa = round(aposta / (pote + 2 * aposta) * 100)
+    universo = {round(max(1, round(p * f)) / (p + 2 * max(1, round(p * f))) * 100)
+                for p in _POTES_BB for _, f in _TAMANHOS_MDF}
+    return {
+        'type': 'bluff_ratio',
+        'question': (f'River, pote de {pote} BB, e você aposta {aposta} BB com uma range '
+                     f'polarizada. Que fatia dessa range de aposta pode ser blefe, para o vilão '
+                     f'ficar indiferente entre pagar e foldar?'),
+        'options': _alternativas_pct(certa, universo),
+        'correct_index': 0,
+        'explanation': (
+            f'A fatia de blefe é aposta ÷ (pote + 2×aposta) = {aposta} ÷ ({pote} + {2*aposta}) ≈ '
+            f'{certa}%. É a MESMA conta da equity que o call dele precisa, e não é coincidência: o '
+            f'tamanho que deixa o vilão indiferente é o mesmo visto dos dois lados da mesa. Na '
+            f'prática, aqui você precisa de cerca de {(100 - certa) / max(certa, 1):.1f} mãos de '
+            f'valor para cada blefe.'
+        ),
+        'mental_tip': '**Aposta maior aguenta MAIS blefe.** Pote inteiro no river: 2 de valor : 1 de blefe.',
+        'context': {'pot_bb': pote, 'bet_bb': aposta}, 'xp_value': 20,
+    }
+
+
+_MDF_TIPOS = ['mdf', 'alpha', 'mdf_combos', 'bluff_ratio']
+
+
+def generate_mdf_question(user_id: int = None) -> dict:
+    """Treino da aula de MDF & Alpha: defesa mínima, fold necessário e razão de blefe."""
+    return {
+        'mdf':         _mdf_question,
+        'alpha':       _alpha_question,
+        'mdf_combos':  _mdf_combos_question,
+        'bluff_ratio': _razao_blefe_question,
+    }[random.choice(_MDF_TIPOS)]()
 
 
 # ── Combinatória: treino da aula "Contar combos e blockers" ──────────────────────
@@ -1936,72 +2117,244 @@ def generate_combo_question(user_id: int = None) -> dict:
 # Para pagar (bluff-catch), tenha o blocker do valor.
 
 def _blocker_bluff_question() -> dict:
-    draw = random.choice([('cor de copas', 'o Ás de copas', 'a cor máxima'),
-                          ('cor de espadas', 'o Ás de espadas', 'a cor máxima'),
-                          ('sequência', 'uma carta da ponta da sequência', 'a sequência máxima')])
-    board, card, made = draw
+    """Escolher entre DUAS MÃOS concretas, que é a decisão real na mesa.
+
+    O `blocker_nuts` pede a carta; este pede a mão. Parece o mesmo e não é: na mesa você não
+    escolhe uma carta, você olha duas mãos fracas que já tem e decide qual delas vira blefe.
+    """
+    board, nuts, chave, _e1, _e2 = _board_com_maximo()
+    # `chave` vem como "o A♠" (naipe junto) ou "a ponta T" (só o rank); a carta é a última palavra
+    carta = chave.split()[-1]
+    usadas = set(board.split())
+    def carta_livre(ranks):
+        for _ in range(30):
+            c = f'{random.choice(ranks)}{random.choice(_NAIPES)}'
+            if c not in usadas and c != carta:
+                usadas.add(c)
+                return c
+        return f'2{_NAIPES[0]}'
+    bloqueadora = carta if len(carta) > 1 else carta_livre([carta])   # dá naipe à ponta da sequência
+    usadas.add(bloqueadora)
+    # A mão RUIM não pode conter o rank bloqueador nem parear o board: se contivesse, a alternativa
+    # "errada" seria tão boa quanto a certa (ou melhor), e o exercício marcaria certo como errado.
+    ranks_board = {c[0] for c in board.split()}
+    proibidos = ranks_board | {carta[0]}
+    neutros = [r for r in ['A', 'K', 'Q', 'J', 'T', '9', '8', '7', '6', '5', '4', '3', '2']
+               if r not in proibidos]
+    kicker = carta_livre([r for r in ['7', '6', '5', '4', '3'] if r in neutros] or neutros)
+    mao_boa = f'{bloqueadora} {kicker}'
+    mao_ruim = f'{carta_livre(neutros[:6])} {carta_livre(neutros[-6:])}'
     return {
         'type': 'blocker_bluff',
-        'question': (
-            f'River num board que completou um projeto de {board}. Você quer blefar. Entre duas '
-            f'mãos fracas, qual blefa melhor?'
-        ),
-        'options': [f'A que tem {card}', 'A que não tem conexão nenhuma com o board', 'Tanto faz'],
+        'question': (f'Board {board}, river. Você tem duas mãos fracas e vai blefar com uma. '
+                     f'Qual delas blefa melhor?'),
+        'options': [mao_boa, mao_ruim, 'As duas blefam igual: as duas perdem no showdown'],
         'correct_index': 0,
         'explanation': (
-            f'Ter {card} bloqueia {made} do vilão: ele passa a ter menos combos da mão que te paga, '
-            f'então o seu blefe faz ele foldar mais. Blefar com o blocker do valor dele é o blefe melhor.'
+            f'As duas perdem se forem pagas, então o showdown não separa nada. O que separa é '
+            f'quanto cada uma tira da mão que PAGA: {mao_boa} segura {carta} e bloqueia {nuts}, '
+            f'e {mao_ruim} não bloqueia nada. Mesmo blefe, mesma aposta, e um passa mais vezes.'
         ),
-        'mental_tip': '**Melhor blefe: o que bloqueia as mãos fortes do vilão.**',
-        'context': {}, 'xp_value': 20,
+        'mental_tip': '**Entre duas mãos que perdem no showdown, blefa a que bloqueia o valor dele.**',
+        'context': {'board': board}, 'xp_value': 20,
     }
 
 
 def _blocker_catch_question() -> dict:
+    """Bluff-catch com board na mesa, e não no abstrato.
+
+    Era um texto único: "entre duas mãos parecidas, qual paga melhor?". A regra é a mesma de
+    sempre, mas quem lê a regra sem um board na frente não a aplica na mesa.
+    """
+    board, nuts, chave, _e1, _e2 = _board_com_maximo()
     return {
         'type': 'blocker_catch',
-        'question': (
-            'Você tem uma mão média no river e decide se paga um all-in (bluff-catch). Entre duas '
-            'mãos parecidas, qual paga melhor?'
-        ),
-        'options': ['A que bloqueia as mãos de VALOR do vilão', 'A que bloqueia os BLEFES do vilão', 'Tanto faz'],
+        'question': (f'Board {board}. Você tem uma mão média e o vilão vai de all-in no river. '
+                     f'Entre dois bluff-catchers do mesmo valor, qual paga melhor?'),
+        'options': [f'O que tem {chave}',
+                    'O que tem a carta que ele blefaria com mais frequência',
+                    'Tanto faz: mão média é mão média'],
         'correct_index': 0,
         'explanation': (
-            'Bloquear o valor do vilão significa que ele tem menos combos de valor, então é mais '
-            'provável que esteja blefando: melhor para pagar. Bloquear os blefes dele é o contrário, '
-            'pior para pagar.'
+            f'Segurar {chave} tira combos de {nuts} da mão dele. Com menos valor possível, sobra '
+            f'proporcionalmente mais blefe no que ele pode ter, e o mesmo bluff-catch passa a '
+            f'pagar melhor. Segurar a carta dos BLEFES dele faz o contrário: reduz o blefe e '
+            f'deixa o valor intacto.'
         ),
-        'mental_tip': '**Para pagar (bluff-catch): tenha o blocker do VALOR do vilão.**',
-        'context': {}, 'xp_value': 20,
+        'mental_tip': '**Para pagar: tenha o blocker do VALOR dele.** Bloquear blefe é pagar pior.',
+        'context': {'board': board}, 'xp_value': 20,
     }
 
 
 def _blocker_unblock_question() -> dict:
+    """O lado que quase todo mundo esquece: o bom blefe DESbloqueia os folds."""
+    board, nuts, chave, _e1, _e2 = _board_com_maximo()
+    fraca = random.choice(['um par baixo do board', 'uma mão de showdown fraco',
+                           'um projeto que não completou', 'uma carta alta sem par'])
     return {
         'type': 'blocker_unblock',
-        'question': (
-            'Você quer blefar para o vilão foldar as mãos médias dele. É melhor que a sua mão de blefe:'
-        ),
-        'options': ['NÃO tenha as cartas das mãos que ele foldaria', 'Tenha as cartas dos folds dele', 'Tanto faz'],
+        'question': (f'Board {board}. Você quer blefar e precisa que o vilão folde {fraca}. '
+                     f'Qual mão de blefe funciona melhor?'),
+        'options': [f'A que tem {chave} e NÃO tem as cartas de {fraca}',
+                    f'A que tem as cartas de {fraca}',
+                    'A que não tem relação nenhuma com o board'],
         'correct_index': 0,
         'explanation': (
-            'Se você segura as cartas das mãos que o vilão foldaria, ele tem menos dessas mãos para '
-            'foldar, e o seu blefe funciona menos. O melhor blefe DESbloqueia (unblock) os folds do vilão: '
-            'bloqueia o valor e deixa os folds livres.'
+            f'São duas coisas ao mesmo tempo, e a segunda quase todo mundo esquece. Segurar '
+            f'{chave} bloqueia {nuts}, o que ele pagaria. Mas segurar as cartas de {fraca} '
+            f'bloqueia o que ele FOLDARIA: ele simplesmente tem menos dessas mãos para largar, e '
+            f'o seu blefe encontra menos folds. Bom blefe bloqueia o valor e deixa os folds livres.'
         ),
-        'mental_tip': '**Bom blefe: bloqueia o valor e NÃO bloqueia os folds do vilão.**',
+        'mental_tip': '**Bloqueie o valor, NÃO bloqueie os folds.** As duas contam.',
+        'context': {'board': board}, 'xp_value': 20,
+    }
+
+
+# ── Blockers, a versão que se conta ─────────────────────────────────────────────
+# Eram 5 enunciados no total, dois deles estáticos, e a aula inteira falava em "bloqueia mais" no
+# abstrato. Blocker é combinatória: o efeito de segurar uma carta é um número de combos que some
+# da range do vilão, e é esse número que decide se o blefe passa. As famílias abaixo CONTAM.
+
+_NAIPES = ['♠', '♥', '♦', '♣']
+_RANKS_ALTOS = ['A', 'K', 'Q', 'J', 'T']
+
+
+def _combos_restantes(nota: str, vistas: str) -> int:
+    """Combos de `nota` que ainda cabem, descontadas as cartas já visíveis.
+
+    Par XX: C(4-n, 2). Não-par XY: (4-nx) × (4-ny), e a metade suited/offsuit sai daí. `vistas` é
+    a string de cartas do board mais as do herói, no formato 'A♠K♦'.
+    """
+    def quantas(rank):
+        return sum(1 for i in range(0, len(vistas), 2) if vistas[i] == rank)
+    if len(nota) == 2 and nota[0] == nota[1]:
+        n = max(0, 4 - quantas(nota[0]))
+        return n * (n - 1) // 2
+    a = max(0, 4 - quantas(nota[0]))
+    b = max(0, 4 - quantas(nota[1]))
+    return a * b
+
+
+def _blocker_combos_question() -> dict:
+    """Quantos combos sobram para o vilão. Conta fechada, e o jogador vê o desconto acontecer."""
+    par = random.random() < 0.4
+    if par:
+        r = random.choice(_RANKS_ALTOS)
+        nota, nome = r + r, f'{r}{r}'
+        naipes = random.sample(_NAIPES, 2)
+        minhas = f'{r}{naipes[0]}{random.choice(["9","8","7","6","5"])}{naipes[1]}'
+        vistas = minhas
+        contexto = f'você tem {minhas[:2]} e {minhas[2:]}'
+    else:
+        r1, r2 = random.sample(_RANKS_ALTOS, 2)
+        nota, nome = r1 + r2, f'{r1}{r2}'
+        n1, n2 = random.sample(_NAIPES, 2)
+        minhas = f'{r1}{n1}{r2}{n2}'
+        vistas = minhas
+        contexto = f'você tem {r1}{n1} e {r2}{n2}'
+    certa = _combos_restantes(nota, vistas)
+    cheio = _combos_restantes(nota, '')
+    universo = {cheio, certa, max(0, certa - 3), certa + 3, cheio - certa}
+    return {
+        'type': 'blocker_combos',
+        'question': (f'O vilão pode ter {nome}. Sabendo que {contexto}, quantos combos de {nome} '
+                     f'ainda sobram para ele?'),
+        'options': _alternativas_combos(certa, universo),
+        'correct_index': 0,
+        'explanation': (
+            f'{nome} tem {cheio} combos com o baralho intacto. Cada carta sua desse rank tira '
+            f'combos da mão dele, e aqui sobram {certa}. Isso é o blocker em número: você não '
+            f'"sente" que ele tem menos, você CONTA quanto menos.'
+        ),
+        'mental_tip': f'**{nome} = {cheio} combos.** Segurar uma das cartas derruba esse número.',
         'context': {}, 'xp_value': 20,
     }
 
 
+def _board_com_maximo() -> tuple:
+    """(board, descrição do máximo, carta que o bloqueia, alternativa errada 1, errada 2).
+
+    UMA função porque três exercícios precisam do mesmo board, e as garantias abaixo são o que
+    separa "board sorteado" de "board que valida a resposta". Sem elas a alternativa CERTA deixa
+    de ser certa:
+
+    - nenhum rank se repete: board pareado abre full house, e aí a cor não é mais o máximo;
+    - as três cartas do naipe não cabem numa janela de 5 ranks: se coubessem, o vilão faria
+      straight flush e o Ás do naipe não bloquearia o máximo;
+    - no board de sequência, os três naipes são distintos: três do mesmo naipe abrem cor;
+    - a 4ª carta não é adjacente à sequência, senão o board vira quatro cartas seguidas e passa
+      a existir mais de uma ponta bloqueadora.
+
+    Gerador de board que não checa isso ensina errado, que é pior do que repetir.
+    """
+    ordem = ['2', '3', '4', '5', '6', '7', '8', '9', 'T', 'J', 'Q', 'K', 'A']
+    if random.random() < 0.5:
+        naipe = random.choice(_NAIPES)
+        outro = random.choice([n for n in _NAIPES if n != naipe])
+        # As três cartas do naipe NÃO podem caber numa janela de 5 ranks: se coubessem, duas cartas
+        # do mesmo naipe na mão do vilão fariam straight flush, e aí o A do naipe não bloqueia o
+        # máximo — a resposta "certa" estaria errada.
+        while True:
+            trio = random.sample(['K', 'Q', 'J', 'T', '9', '8', '7', '6', '5', '4'], 3)
+            idx = sorted(ordem.index(r) for r in trio)
+            if idx[-1] - idx[0] >= 5:
+                break
+        r1, r2, r3 = trio
+        r4 = random.choice([r for r in ['2', '3'] if r not in trio])
+        board = f'{r1}{naipe} {r2}{naipe} {r3}{naipe} {r4}{outro}'
+        nuts, chave = f'a cor máxima (cor de Ás de {naipe})', f'o A{naipe}'
+        errada1, errada2 = 'O Ás de outro naipe', 'A carta mais alta do board'
+    else:
+        alto = random.choice(['9', 'T', 'J', 'Q'])
+        base = {'9': ['5', '6', '7'], 'T': ['6', '7', '8'],
+                'J': ['7', '8', '9'], 'Q': ['8', '9', 'T']}[alto]
+        naipes = random.sample(_NAIPES, 3)          # três naipes distintos: sem cor no board
+        board = ' '.join(f'{c}{n}' for c, n in zip(base, naipes))
+        # a 4a carta não pode ser adjacente à sequência, senão o board vira 4 cartas seguidas e a
+        # ponta que bloqueia deixa de ser só uma.
+        abaixo = ordem[ordem.index(base[0]) - 1]
+        r4 = random.choice([r for r in ['2', '3', '4'] if r not in base and r != abaixo])
+        board += f' {r4}{random.choice(_NAIPES)}'
+        nuts, chave = f'a sequência máxima (terminando em {alto})', f'a ponta {alto}'
+        errada1, errada2 = 'A carta da ponta de baixo da sequência', 'Um par do board'
+    return board, nuts, chave, errada1, errada2
+
+
+def _blocker_nuts_question() -> dict:
+    board, nuts, chave, errada1, errada2 = _board_com_maximo()
+    return {
+        'type': 'blocker_nuts',
+        'question': (f'Board {board}. Você quer blefar de river. Qual carta na sua mão faz o '
+                     f'melhor blefe?'),
+        'options': [chave.capitalize(), errada1, errada2],
+        'correct_index': 0,
+        'explanation': (
+            f'Segurar {chave} bloqueia {nuts}: o vilão passa a ter menos combos exatamente da mão '
+            f'que pagaria a sua aposta. Blefar com o blocker do valor dele é o que faz o mesmo '
+            f'blefe passar mais vezes, sem você mudar mais nada.'
+        ),
+        'mental_tip': '**Melhor blefe: o que bloqueia a mão MÁXIMA do vilão naquele board.**',
+        'context': {'board': board}, 'xp_value': 20,
+    }
+
+
+_BLOCKER_TIPOS = ['blocker_bluff', 'blocker_catch', 'blocker_unblock',
+                  'blocker_combos', 'blocker_nuts']
+
+
 def generate_blocker_question(user_id: int = None) -> dict:
-    """Treino da aula de Blockers: blocker_bluff, blocker_catch, blocker_unblock."""
-    qtype = random.choice(['blocker_bluff', 'blocker_catch', 'blocker_unblock'])
-    if qtype == 'blocker_bluff':
-        return _blocker_bluff_question()
-    if qtype == 'blocker_catch':
-        return _blocker_catch_question()
-    return _blocker_unblock_question()
+    """Treino da aula de Blockers.
+
+    Eram 3 tipos e 5 enunciados, dois deles estáticos. Agora são 5 tipos, e os dois novos contam
+    combos em vez de falar em "bloqueia mais" no abstrato.
+    """
+    return {
+        'blocker_bluff':   _blocker_bluff_question,
+        'blocker_catch':   _blocker_catch_question,
+        'blocker_unblock': _blocker_unblock_question,
+        'blocker_combos':  _blocker_combos_question,
+        'blocker_nuts':    _blocker_nuts_question,
+    }[random.choice(_BLOCKER_TIPOS)]()
 
 
 # ── Posição: treino da aula "Fundamentos de Posição" ─────────────────────────────

@@ -202,17 +202,162 @@ class TestAcademyVariety(unittest.TestCase):
         self.assertGreater(n, 20, "amostra de price_size pequena demais para concluir")
         print(f"  ✔ preço calculado: {n} casos coerentes")
 
-    def test_mdf_drill_structure(self):
-        """Treino da aula de MDF & Alpha: tipos mdf e alpha, respostas coerentes."""
-        seen = set()
-        for _ in range(40):
+    # ── Acervo por TIPO nos temas que foram expandidos ────────────────────────
+    # A variedade do TEMA esconde tipo estático: com 5 tipos, um congelado num texto só ainda
+    # deixa o agregado diverso. Foi assim que a queixa do bet sizing nasceu.
+    _PISO_POR_TIPO = 4
+
+    def _assert_piso_por_tipo(self, nome, fn, tipos_esperados, n=1500):
+        import collections
+        por = collections.defaultdict(set)
+        for _ in range(n):
+            q = fn(user_id=1)
+            por[q['type']].add(q['question'][:160])
+        self.assertEqual(set(por), set(tipos_esperados), f'{nome}: tipos servidos mudaram')
+        magros = {t: len(v) for t, v in por.items() if len(v) < self._PISO_POR_TIPO}
+        self.assertEqual(magros, {}, f'{nome}: tipos com acervo pobre demais: {magros}')
+        print(f"  ✔ {nome} por tipo: {({t: len(v) for t, v in sorted(por.items())})}")
+
+    def test_nenhum_tipo_de_blocker_e_pergunta_unica(self):
+        """Blockers tinha 5 enunciados no total, DOIS deles estáticos."""
+        self._assert_piso_por_tipo('blockers', acad.generate_blocker_question, acad._BLOCKER_TIPOS)
+
+    def test_nenhum_tipo_de_mdf_e_pergunta_unica(self):
+        """MDF tinha 6 enunciados FIXOS sobre três tamanhos de aposta."""
+        self._assert_piso_por_tipo('mdf', acad.generate_mdf_question, acad._MDF_TIPOS)
+
+    def test_mdf_bate_com_as_contas(self):
+        """MDF + alpha = 100% para qualquer tamanho, e as duas saem dos NÚMEROS do enunciado.
+
+        Calcular pela fração que gerou os números, e não pelos números mostrados, marcaria como
+        certa uma resposta que não fecha com o enunciado que o jogador está lendo — o arredondamento
+        da aposta para BB inteiro move a fração.
+        """
+        import re
+        vistos = set()
+        for _ in range(1500):
             q = acad.generate_mdf_question(user_id=1)
-            self.assertIn(q['type'], ('mdf', 'alpha'))
+            dito = q['options'][q['correct_index']]
+            if q['type'] in ('mdf', 'alpha', 'bluff_ratio'):
+                pote = int(re.search(r'pote (?:tem|de) (\d+) BB', q['question']).group(1))
+                ap = int(re.search(r'aposta(?:ndo)? (\d+) BB', q['question']).group(1))
+                esperado = {'mdf':         round(pote / (pote + ap) * 100),
+                            'alpha':       round(ap / (pote + ap) * 100),
+                            'bluff_ratio': round(ap / (pote + 2 * ap) * 100)}[q['type']]
+                self.assertEqual(dito, f'~{esperado}%', f'{q["type"]}: {q["question"]}')
+                vistos.add(q['type'])
+        self.assertEqual(vistos, {'mdf', 'alpha', 'bluff_ratio'}, 'nem todos os tipos foram conferidos')
+        for _, fr in acad._TAMANHOS_MDF:
+            self.assertEqual(acad._pct_mdf(fr) + acad._pct_alpha(fr), 100,
+                             f'MDF + alpha deixou de fechar em 100% para fração {fr}')
+        print("  ✔ mdf/alpha/bluff_ratio: conta fecha com os números do enunciado")
+
+    def test_alternativas_numericas_nao_ficam_coladas(self):
+        """Alternativa indistinguível não mede conhecimento, só frustra.
+
+        A primeira versão pegava os valores mais PRÓXIMOS como distratores e produziu
+        `['~69%', '~73%', '~74%']`. MDF é aproximação: ninguém separa 73 de 74, e o exercício
+        vira sorteio.
+        """
+        import re
+        conferidos = 0
+        for fn in (acad.generate_mdf_question, acad.generate_sizing_question):
+            for _ in range(1200):
+                q = fn(user_id=1)
+                nums = [int(m.group(1)) for m in
+                        (re.fullmatch(r'~?(\d+)%', o.strip()) for o in q['options']) if m]
+                if len(nums) != 3:
+                    continue
+                conferidos += 1
+                nums.sort()
+                menor = min(nums[1] - nums[0], nums[2] - nums[1])
+                # LITERAL, não `acad._SEPARACAO_MIN_PCT`: ler a constante que se está testando é o
+                # mesmo vício do teste da janela — baixar a constante para 0 deixava este teste
+                # verde com as alternativas coladas na tela.
+                self.assertGreaterEqual(menor, 4,
+                                        f'{q["type"]}: alternativas coladas {q["options"]}')
+        self.assertGreater(conferidos, 300, 'amostra pequena demais para concluir')
+        self.assertGreaterEqual(acad._SEPARACAO_MIN_PCT, 4,
+                                'a constante de separação foi afrouxada abaixo do que este teste cobra')
+        print(f"  ✔ separação das alternativas: {conferidos} perguntas conferidas")
+
+    def test_board_de_blocker_e_sempre_jogavel(self):
+        """O board é sorteado, e um board ilegal ou de textura errada faz a resposta CERTA deixar
+        de ser certa. Quatro coisas travadas, cada uma com o motivo:
+
+        - carta repetida: board impossível;
+        - board pareado: abre full house, e a cor deixa de ser o máximo;
+        - três cartas do naipe dentro de uma janela de 5 ranks: abre straight flush, e o Ás do
+          naipe deixa de bloquear o máximo;
+        - quatro cartas seguidas: passa a existir mais de uma ponta bloqueadora.
+        """
+        import collections
+        ordem = '23456789TJQKA'
+        vistos = 0
+        for _ in range(3000):
+            q = acad.generate_blocker_question(user_id=1)
+            board = (q.get('context') or {}).get('board')
+            if not board:
+                continue
+            vistos += 1
+            cartas = board.split()
+            self.assertEqual(len(set(cartas)), 4, f'carta repetida: {board}')
+            ranks = [c[0] for c in cartas]
+            self.assertEqual(len(set(ranks)), 4, f'board pareado: {board}')
+            naipes = collections.Counter(c[1] for c in cartas)
+            if 'cor máxima' in q['explanation']:
+                self.assertEqual(max(naipes.values()), 3, f'sem 3 do naipe: {board}')
+                s = [n for n, c in naipes.items() if c == 3][0]
+                idx = sorted(ordem.index(c[0]) for c in cartas if c[1] == s)
+                self.assertGreaterEqual(idx[-1] - idx[0], 5, f'straight flush possível: {board}')
+            else:
+                self.assertLessEqual(max(naipes.values()), 2, f'3 do mesmo naipe: {board}')
+                i = sorted(ordem.index(r) for r in ranks)
+                corrida = melhor = 1
+                for a, b in zip(i, i[1:]):
+                    corrida = corrida + 1 if b == a + 1 else 1
+                    melhor = max(melhor, corrida)
+                self.assertLessEqual(melhor, 3, f'4 cartas seguidas: {board}')
+        self.assertGreater(vistos, 500, 'poucos boards para concluir')
+        print(f"  ✔ boards de blocker: {vistos} conferidos, todos jogáveis")
+
+    def test_mao_errada_do_blocker_nao_carrega_o_bloqueador(self):
+        """Se a mão 'ruim' sortear o rank bloqueador, a alternativa ERRADA fica tão boa quanto a
+        certa — e o exercício marca certo como errado. Aconteceu: o sorteio dela incluía o rank
+        da ponta da sequência."""
+        import re
+        vistos = 0
+        for _ in range(3000):
+            q = acad.generate_blocker_question(user_id=1)
+            if q['type'] != 'blocker_bluff':
+                continue
+            vistos += 1
+            m = re.search(r'segura (\S+) e bloqueia', q['explanation'])
+            self.assertIsNotNone(m, f'não achei a carta-chave na explicação: {q["explanation"]}')
+            chave = m.group(1)[0]
+            board = set(q['context']['board'].split())
+            maos = [o for o in q['options'] if re.fullmatch(r'[2-9TJQKA].\s[2-9TJQKA].', o.strip())]
+            self.assertEqual(len(maos), 2, f'esperava 2 mãos nas alternativas: {q["options"]}')
+            com_chave = [h for h in maos if any(c[0] == chave for c in h.split())]
+            self.assertEqual(len(com_chave), 1,
+                             f'o bloqueador {chave} aparece em {len(com_chave)} mãos: {q["options"]}')
+            for h in maos:
+                self.assertFalse(board & set(h.split()), f'mão usa carta do board: {h} / {board}')
+        self.assertGreater(vistos, 300, 'poucos casos de blocker_bluff para concluir')
+        print(f"  ✔ blocker_bluff: {vistos} casos, só uma mão carrega o bloqueador")
+
+    def test_mdf_drill_structure(self):
+        """Treino da aula de MDF & Alpha: os 4 tipos aparecem e nenhum sai malformado."""
+        seen = set()
+        for _ in range(200):
+            q = acad.generate_mdf_question(user_id=1)
+            self.assertIn(q['type'], tuple(acad._MDF_TIPOS))
             self.assertEqual(len(q['options']), 3)
+            self.assertEqual(len(set(q['options'])), 3, f"alternativas repetidas: {q['options']}")
             self.assertTrue(0 <= q['correct_index'] < 3)
             self.assertTrue(q['question'] and q['explanation'] and q['mental_tip'])
             seen.add(q['type'])
-        self.assertEqual(seen, {'mdf', 'alpha'})
+        self.assertEqual(seen, set(acad._MDF_TIPOS))
         print("  ✔ mdf drill structure")
 
     def test_combos_drill_structure(self):
@@ -232,16 +377,16 @@ class TestAcademyVariety(unittest.TestCase):
         print("  ✔ combos drill structure")
 
     def test_blockers_drill_structure(self):
-        """Treino da aula de Blockers: bluff, catch, unblock."""
+        """Treino da aula de Blockers: os 5 tipos aparecem e nenhum sai malformado."""
         seen = set()
-        for _ in range(40):
+        for _ in range(200):
             q = acad.generate_blocker_question(user_id=1)
-            self.assertIn(q['type'], ('blocker_bluff', 'blocker_catch', 'blocker_unblock'))
+            self.assertIn(q['type'], tuple(acad._BLOCKER_TIPOS))
             self.assertEqual(len(q['options']), 3)
             self.assertTrue(q['options'][q['correct_index']])
             self.assertTrue(q['question'] and q['explanation'] and q['mental_tip'])
             seen.add(q['type'])
-        self.assertEqual(seen, {'blocker_bluff', 'blocker_catch', 'blocker_unblock'})
+        self.assertEqual(seen, set(acad._BLOCKER_TIPOS))
         print("  ✔ blockers drill structure")
 
     def test_position_drill_structure(self):

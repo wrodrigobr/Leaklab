@@ -7,6 +7,54 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(academia): blockers e MDF sairam de 5 e 6 exercicios para 6.600 e 435 (#academia)
+
+> Continuacao direta do conserto do bet sizing: eram os dois temas mais magros do acervo, medidos
+> na mesma varredura. **Blockers tinha 5 enunciados, dois deles estaticos. MDF tinha 6 fixos**,
+> sobre tres tamanhos de aposta, com o jogador decorando o par "meio pote → 67%" sem nunca fazer a
+> conta.
+>
+> **MDF virou aritmetica sobre numeros concretos.** Quatro familias: defesa minima, fold necessario
+> (alpha), MDF em COMBOS (que e como ela vira decisao na mesa) e razao de blefe. O enunciado traz
+> pote e aposta em BB, e a resposta sai desses numeros — nunca da fracao que os gerou, porque
+> arredondar a aposta para BB inteiro move a fracao e marcaria como certa uma resposta que nao
+> fecha com o que o jogador esta lendo. MDF + alpha continua fechando em 100% para todo tamanho, e
+> tem teste cobrando.
+>
+> **Blockers virou combinatoria.** Blocker nao e "bloqueia mais", e um numero de combos que some da
+> range do vilao. Cinco familias: contar combos restantes, achar a carta que bloqueia o maximo,
+> escolher entre duas MAOS concretas, bluff-catch com board na mesa e o lado que quase todo mundo
+> esquece (bom blefe bloqueia o valor e NAO bloqueia os folds).
+>
+> **O risco aqui nao era repetir, era ENSINAR ERRADO.** Board sorteado sem checagem produz posicao
+> em que a alternativa certa deixa de ser certa, e isso e pior do que o bug original. Quatro
+> garantias, cada uma com o motivo: rank repetido (board pareado abre full house e a cor deixa de
+> ser o maximo); tres cartas do naipe dentro de uma janela de 5 ranks (abre straight flush e o As
+> do naipe deixa de bloquear o maximo); tres naipes iguais no board de sequencia (abre cor); quarta
+> carta adjacente a sequencia (passa a existir mais de uma ponta bloqueadora). E a mao ERRADA nao
+> pode carregar o rank bloqueador — sorteava, e a alternativa errada ficava tao boa quanto a certa.
+> 5.861 boards conferidos, zero invalidos.
+>
+> **Um guarda novo pegou codigo que eu mesmo escrevi hoje de manha.** A regra de separacao minima
+> entre alternativas nasceu aqui, porque a primeira versao escolhia os distratores mais PROXIMOS e
+> serviu `['~69%', '~73%', '~74%']`: MDF e aproximacao, ninguem separa 73 de 74, e acertar vira
+> sorteio. Ao varrer, a mesma regra reprovou o `price_size` do bet sizing, que montava as proprias
+> alternativas. Regra que vale em dois lugares passou a morar num so.
+>
+> **E o mesmo vicio de teste apareceu pela terceira vez no dia.** O teste de separacao lia
+> `acad._SEPARACAO_MIN_PCT` para decidir o limite, entao baixar a constante para 0 o deixava verde
+> com as alternativas coladas na tela. Passou a cobrar um literal, e a checar a constante a parte.
+>
+> Piso por TIPO agora vale para os tres temas expandidos. 55 casos em `test_academy_variety.py`,
+> verificados quebrando 6 guardas: straight flush liberado, board de sequencia monocolor, mao ruim
+> com o bloqueador, MDF calculada fora dos numeros do enunciado, separacao afrouxada e
+> `mdf_combos` congelado num total fixo.
+>
+> Ficam magros, e fica dito: 12 temas ainda tem pelo menos um sub-tipo com enunciado unico
+> (3bet, bankroll, barrel, bvb, draws, exploits, imbalances, pko, position, pushfold, showdown,
+> terms). Eles tem 7 a 10 tipos cada, entao o agregado nao doi como doia no bet sizing, mas e o
+> mesmo trabalho quando a vez chegar.
+
 ### perf(treino): a pagina de treino fazia 219 idas ao banco, e metade era trabalho repetido (#treino #perf)
 
 > **Reportado:** "primeiro ela carrega so os 3 botoes de revisao, treino e academia, e so depois
