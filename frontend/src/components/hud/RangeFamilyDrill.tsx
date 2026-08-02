@@ -5,6 +5,7 @@ import { leaktrainer, type LeakTrainerSpot, type RangeGridGrade } from "@/lib/ap
 import { cellHand, combosDeMaos } from "@/data/ranges";
 import { HandCellLabel, CLASSE_FONTE_CELULA } from "@/components/HandCellLabel";
 import { PositionMap } from "@/components/hud/PositionMap";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 
 /**
@@ -37,6 +38,7 @@ export function RangeFamilyDrill({ spot, onDone, rodape }: {
   rodape?: ReactNode;
 }) {
   const { t } = useTranslation("academy");
+  const retrato = useIsMobile();
   const [marcadas, setMarcadas] = useState<Set<string>>(new Set());
   const [grade, setGrade] = useState<RangeGridGrade | null>(null);
   const [enviando, setEnviando] = useState(false);
@@ -156,10 +158,19 @@ export function RangeFamilyDrill({ spot, onDone, rodape }: {
       {/* Encolhe (sem `shrink-0`): em paisagem de celular as duas colunas somam mais que a tela e
           a matriz vazava pela borda esquerda, cortando a coluna dos Áses. O `max-w` já a segura
           no desktop, então deixar encolher só ajuda. */}
-      <div className="w-full min-w-0 max-w-[560px]">
-        <div className="grid touch-none select-none gap-[3px]"
+      {/* No RETRATO a matriz vira MAPA: mesma grade, sem clique, e a marcação desce para a
+          fileira da família logo abaixo.
+
+          A razão é aritmética, não estética. A 375px a célula fica com 23,6px e a fonte com 9px;
+          o mínimo de alvo tocável é 44px, e 13 colunas com 44px pedem 572px de largura — um
+          celular em pé nunca vai ter. Encolher mais só piora.
+
+          O que a matriz ensina, porém, continua valendo: a memória é ESPACIAL, é saber ONDE a
+          mão fica. Por isso ela não sai da tela, só para de ser o alvo do dedo. */}
+      <div className={cn("w-full min-w-0 max-w-[560px]", retrato && "max-w-[300px]")}>
+        <div className={cn("grid select-none gap-[3px]", !retrato && "touch-none")}
              style={{ gridTemplateColumns: "repeat(13, minmax(0, 1fr))" }}
-             onPointerMove={(e) => arrastaSobre(e.clientX, e.clientY)}>
+             onPointerMove={retrato ? undefined : (e) => arrastaSobre(e.clientX, e.clientY)}>
           {Array.from({ length: 13 }, (_, row) =>
             Array.from({ length: 13 }, (_, col) => {
               const h = cellHand(row, col);
@@ -167,13 +178,13 @@ export function RangeFamilyDrill({ spot, onDone, rodape }: {
               const e = naFamilia ? estadoDaCelula(h) : "inerte";
               return (
                 <button key={`${row}-${col}`}
-                  data-mao={naFamilia ? h : undefined}
-                  onPointerDown={() => inicia(h)}
+                  data-mao={naFamilia && !retrato ? h : undefined}
+                  onPointerDown={retrato ? undefined : () => inicia(h)}
                   // Teclado continua funcionando: `onPointerDown` não é acionado por Enter/Espaço.
                   onKeyDown={(ev) => {
                     if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); alterna(h); }
                   }}
-                  disabled={!naFamilia || !!grade}
+                  disabled={retrato || !naFamilia || !!grade}
                   title={naFamilia ? h : undefined}
                   className={cn(
                     "relative flex aspect-square items-center justify-center rounded-[3px] border font-mono leading-none transition-colors",
@@ -198,10 +209,38 @@ export function RangeFamilyDrill({ spot, onDone, rodape }: {
             })
           )}
         </div>
+        {/* A FILEIRA: um botão por mão da família, em tamanho de dedo.
+            Botão por MÃO, e não um controle de "até onde entra": medido nas ranges reais, 115 dos
+            121 exercícios têm resposta em prefixo contíguo, mas 6 têm furo no meio — os ases da
+            wheel (A5s A4s A3s entram, A6s não). Um seletor de corte tornaria esses impossíveis de
+            acertar E ensinaria que range é monotônica, que é falso justamente onde importa saber. */}
+        {retrato && (
+          <div className="mt-4">
+            <div className="grid grid-cols-4 gap-2 sm:grid-cols-6">
+              {hands.map((h) => {
+                const e = estadoDaCelula(h);
+                return (
+                  <button key={h} type="button" onClick={() => alterna(h)} disabled={!!grade}
+                    className={cn(
+                      "flex h-14 items-center justify-center rounded-lg border font-mono text-sm transition-colors",
+                      e === "livre"   && "border-amber-500/40 bg-amber-500/[0.06] text-foreground active:bg-amber-500/15",
+                      e === "marcada" && "border-amber-500/70 bg-amber-500/20 text-amber-200",
+                      e === "acerto"  && "border-emerald-500/70 bg-emerald-500/20 text-emerald-200",
+                      e === "faltou"  && "border-dashed border-emerald-500/70 bg-emerald-500/5 text-emerald-400/80",
+                      e === "sobrou"  && "border-red-500/70 bg-red-500/20 text-red-200",
+                      e === "mista"   && "border-sky-500/60 bg-sky-500/15 text-sky-200",
+                    )}>
+                    {h}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
         <p className="mt-2 text-center font-mono text-[10px] text-muted-foreground">
           {t("leakTrainer.grid.onlyFamily", { familia: spot.familia_label })}
         </p>
-        {!grade && (
+        {!grade && !retrato && (
           <p className="mt-1 text-center font-mono text-[10px] text-amber-400/70">
             {t("leakTrainer.grid.dragHint")}
           </p>
