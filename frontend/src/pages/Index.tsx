@@ -230,6 +230,25 @@ const Index = () => {
     pendingGto,
   }, { isFree, tc });
 
+  /* O convite para vincular coach tinha o MESMO defeito do modal de primeiro acesso: o
+     `setShowLinkCoach(true)` só existia dentro do return clássico, que nunca roda desde que o
+     V2 virou padrão. O modal `AcceptCoachModal` já estava nos dois ramos; faltava quem o
+     abrisse. Agora o gatilho mora aqui, junto dos modais, e serve os dois. */
+  const convitePraCoach = user?.role === "player" && !user?.coach_id ? (
+    <div className="flex items-center justify-between gap-3 rounded-lg border border-primary/20 bg-primary/5 px-4 py-3">
+      <div className="flex items-center gap-2 text-sm text-foreground">
+        <GraduationCap className="size-4 shrink-0 text-primary" />
+        <span>{t("linkCoach.message")}</span>
+      </div>
+      <button
+        onClick={() => setShowLinkCoach(true)}
+        className="shrink-0 font-mono text-[10px] font-bold uppercase tracking-widest-2 text-primary hover:underline"
+      >
+        {t("linkCoach.action")}
+      </button>
+    </div>
+  ) : null;
+
   // Modais globais do dashboard: ficam FORA do ramo V2/clássico.
   // `dashV2` é fixo em true (o clássico é código latente), e os modais viviam só no return do
   // clássico — o do primeiro acesso nunca chegou ao DOM desde que o V2 virou padrão. Quem
@@ -245,6 +264,9 @@ const Index = () => {
     return (
       <>
       {modaisGlobais}
+      {convitePraCoach && (
+        <div className="mx-auto max-w-[1440px] px-4 pt-6 md:px-8">{convitePraCoach}</div>
+      )}
       <DashboardV2
         onUpload={handleUpload}
         evSummary={evSummary ?? null}
@@ -279,20 +301,7 @@ const Index = () => {
       {modaisGlobais}
 
       <main className="mx-auto max-w-[1440px] space-y-8 px-4 pt-8 pb-28 md:px-8 lg:pb-8 animate-fade-in">
-        {user?.role === "player" && !user?.coach_id && (
-          <div className="flex items-center justify-between rounded-lg border border-primary/20 bg-primary/5 px-4 py-3">
-            <div className="flex items-center gap-2 text-sm text-foreground">
-              <GraduationCap className="size-4 text-primary" />
-              <span>{t("linkCoach.message")}</span>
-            </div>
-            <button
-              onClick={() => setShowLinkCoach(true)}
-              className="font-mono text-[10px] font-bold uppercase tracking-widest-2 text-primary hover:underline"
-            >
-              {t("linkCoach.action")}
-            </button>
-          </div>
-        )}
+        {convitePraCoach}
 
         <section className="flex flex-col gap-3">
           <div className="flex items-center justify-between">

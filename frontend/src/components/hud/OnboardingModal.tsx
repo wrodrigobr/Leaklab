@@ -34,7 +34,7 @@ export function OnboardingModal({ onClose }: Props) {
   const isFirst = step === 0;
 
   // completeOnboarding roda em QUALQUER saída (X, Esc, os 2 CTAs) → não reabre no próximo login.
-  const complete = async (dest?: "import" | "sample") => {
+  const complete = async (dest?: "import" | "sample" | "demo") => {
     if (saving) return;
     setSaving(true);
     try {
@@ -47,6 +47,7 @@ export function OnboardingModal({ onClose }: Props) {
     }
     onClose();
     if (dest === "import") navigate("/dashboard");
+    else if (dest === "demo") navigate("/demo");
     else if (dest === "sample") navigate("/dashboard?onboarding=sample");
   };
 
@@ -144,12 +145,12 @@ export function OnboardingModal({ onClose }: Props) {
               {t("finishImport")}
             </button>
             <button
-              onClick={() => complete("sample")}
+              onClick={() => complete("demo")}
               disabled={saving}
               className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-md border border-border px-5 text-sm text-muted-foreground transition-colors hover:text-foreground disabled:opacity-50"
             >
               <Eye className="size-4" />
-              {t("finishSample")}
+              {t("finishDemo")}
             </button>
             <button
               onClick={() => setStep((s) => s - 1)}

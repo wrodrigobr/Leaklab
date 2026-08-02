@@ -65,8 +65,10 @@
     "show": "See a sample analysis",
     "ctaTitle": "This is one hand. You have hundreds.",
     "ctaSub": "Import your history and see all your leaks.",
-    "ctaImport": "Import my history"
+    "ctaImport": "Import my history",
+    "demoLink": "See the system with data"
   },
   "finishImport": "Import now",
-  "finishSample": "See an example first"
+  "finishSample": "See an example first",
+  "finishDemo": "See the system from the inside"
 }

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { FileUp, ShieldCheck, Target, Sparkles, UploadCloud, HelpCircle, Eye } from "lucide-react";
+import { FileUp, ShieldCheck, Target, Sparkles, UploadCloud, HelpCircle, Eye, LayoutDashboard } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useUploadQueue } from "@/components/hud/UploadQueue";
 import { HandExportGuide } from "@/components/hud/HandExportGuide";
@@ -160,6 +160,7 @@ export function EmptyDashboard({ onComplete }: Props) {
       {/* Caminho de valor instantâneo: ver um Decision Card de exemplo antes de ter dados. */}
       <section className="pt-1">
         {!showSample ? (
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
           <button
             type="button"
             onClick={() => setShowSample(true)}
@@ -168,6 +169,16 @@ export function EmptyDashboard({ onComplete }: Props) {
             <Eye className="size-3.5" aria-hidden />
             {to("sample.show")}
           </button>
+          {/* O exemplo acima e UMA mao; a demonstracao e o produto inteiro povoado. Quem nao tem
+              dado nenhum precisa dos dois caminhos, e o segundo responde melhor "o que eu ganho". */}
+          <Link
+            to="/demo"
+            className="inline-flex items-center gap-1.5 text-xs font-medium text-primary transition-colors hover:text-primary-glow underline-offset-4 hover:underline"
+          >
+            <LayoutDashboard className="size-3.5" aria-hidden />
+            {to("sample.demoLink")}
+          </Link>
+          </div>
         ) : (
           <div className="grid gap-3 md:grid-cols-2 md:items-start">
             <div className="relative">

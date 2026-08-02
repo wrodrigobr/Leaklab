@@ -7,6 +7,37 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(onboarding): quatro pontas soltas, e a que mais custava era o convite de coach (#onboarding)
+
+> Lote de itens pequenos e independentes, todos ja diagnosticados.
+>
+> **1. O convite para vincular coach era INALCANCAVEL.** Mesmo defeito do modal de primeiro
+> acesso: o `setShowLinkCoach(true)` so existia dentro do `return` do dashboard classico, que
+> nunca roda desde que o V2 virou padrao. O `AcceptCoachModal` ja estava nos dois ramos — faltava
+> quem o abrisse. O banner virou um pedaco unico, ao lado dos modais globais, e serve os dois
+> ramos. Enquanto durou, nenhum jogador conseguia vincular um coach pelo dashboard.
+>
+> **2. Os dois gatilhos que faltavam do tour.** O 3o passo do modal de boas-vindas passou a levar
+> a `/demo` (o produto POVOADO) em vez do exemplo de uma mao, que e um subconjunto dela; e o
+> dashboard vazio ganhou o link ao lado do exemplo. Fecha a fase 5 de
+> `specs/tour-guiado-e-demo.md`.
+>
+> **3. Copy morta `plans.manualActivation`** — "planos pagos ativados manualmente via e-mail em
+> ate 24h". Nao renderizava, mas era da mesma era do `mailto:` consertado hoje: se alguem a
+> reativasse, a pagina voltaria a contradizer o Stripe.
+>
+> **4. O overflow horizontal do Decision Card a 375px NAO reproduz mais.** Medido hoje cedo como
+> `scrollWidth > clientWidth`; re-medido agora a 375px e a 320px, com zero elementos estourando e
+> sem overflow na pagina. Foi resolvido de lado, quando o selo saiu de um wrapper `relative` da
+> pagina e passou para dentro do card. Registrado como observado, nao como conserto deliberado.
+>
+> **Um erro proprio no caminho:** enfiei o link novo como irmao dentro de um ramo de ternario, que
+> so aceita um elemento — erro de sintaxe que derrubou a pagina inteira. O log do vite apontou a
+> linha; virou um wrapper `flex`. Vale como lembrete de que o navegador aberto ao lado e o que
+> transforma "compilou" em "funciona".
+>
+> 229 testes, build verde, `tsc` no baseline.
+
 ### feat(landing): hero em duas colunas, com a analise real na primeira dobra (#landing)
 
 > **Reportado pelo usuario:** *"a pagina inicial e mais propaganda do que mostra o que o sistema
