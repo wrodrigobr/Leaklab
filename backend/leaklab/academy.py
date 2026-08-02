@@ -14,6 +14,7 @@ from __future__ import annotations
 # Em modulo proprio porque este arquivo ja passa de 2900 linhas.
 from leaklab import academy_questions as _AQ
 
+import hashlib
 import json
 import random
 from collections import Counter
@@ -1565,66 +1566,235 @@ def _open_size_question() -> dict:
     }
 
 
+# Eram DUAS perguntas fixas, uma IP e uma OOP, e o guarda de acervo por tipo pegou. Agora o
+# múltiplo (3x em posição, 4x fora) é aplicado a um open sorteado, então o jogador faz a conta
+# em vez de reconhecer o número.
+_MESAS_3BET = [
+    ('UTG', 'MP'), ('UTG', 'CO'), ('UTG', 'BTN'), ('MP', 'CO'), ('MP', 'BTN'),
+    ('CO', 'BTN'), ('LJ', 'CO'), ('LJ', 'BTN'),
+]
+_MESAS_3BET_OOP = [('MP', 'SB'), ('CO', 'BB'), ('BTN', 'BB'), ('BTN', 'SB'),
+                   ('CO', 'SB'), ('LJ', 'BB'), ('UTG', 'BB'), ('MP', 'BB')]
+
+
 def _threebet_size_question() -> dict:
-    if random.random() < 0.5:
-        return {
-            'type': 'threebet_size',
-            'question': (
-                'O CO abre para 2,5 BB e você quer dar 3-bet no BTN, em posição. Qual o bom '
-                'tamanho de 3-bet?'
-            ),
-            'options': ['~3x o open (7 a 8 BB)', 'Só um pouco acima (4 BB)', '~6x o open'],
-            'correct_index': 0,
-            'explanation': (
-                'Em posição, o 3-bet padrão é cerca de 3x o open. Menor que isso dá odds boas '
-                'demais para o vilão pagar; muito maior compromete fichas à toa.'
-            ),
-            'mental_tip': '**3-bet em posição:** ~3x o open.',
-            'context': {}, 'xp_value': 20,
-        }
+    ip = random.random() < 0.5
+    abre, eu = random.choice(_MESAS_3BET if ip else _MESAS_3BET_OOP)
+    open_bb = random.choice([2.0, 2.2, 2.5, 2.8, 3.0])
+    mult = 3 if ip else 4
+    certo = open_bb * mult
+    opcoes = [f'~{certo:.1f} BB ({mult}x o open)',
+              f'~{open_bb * (mult - 1):.1f} BB ({mult-1}x o open)',
+              f'~{open_bb * (mult + 2):.1f} BB ({mult+2}x o open)']
     return {
         'type': 'threebet_size',
         'question': (
-            'O BTN abre para 2,5 BB e você quer dar 3-bet no BB, fora de posição. Qual o bom tamanho?'
+            f'O {abre} abre para {open_bb:.1f} BB e você quer dar 3-bet no {eu}, '
+            f'{"em posição" if ip else "fora de posição"}. Qual o bom tamanho?'
         ),
-        'options': ['~4x o open (10 BB)', '~3x o open (7,5 BB)', 'Min 3-bet (5 BB)'],
+        'options': opcoes,
         'correct_index': 0,
         'explanation': (
-            'Fora de posição você cobra mais: cerca de 4x o open. O tamanho maior compensa a '
-            'desvantagem de jogar as próximas ruas sem posição e nega odds ao vilão.'
+            f'Em posição o 3-bet padrão é ~3x o open: {open_bb:.1f} × 3 ≈ {certo:.1f} BB. Menor '
+            f'que isso dá odds boas demais para o vilão pagar, e muito maior compromete fichas à toa.'
+            if ip else
+            f'Fora de posição você cobra mais: ~4x o open, ou seja {open_bb:.1f} × 4 ≈ {certo:.1f} '
+            f'BB. O tamanho maior compensa jogar as próximas ruas sem posição e nega odds ao vilão.'
         ),
-        'mental_tip': '**3-bet fora de posição:** ~4x o open (maior que em posição).',
-        'context': {}, 'xp_value': 20,
+        'mental_tip': ('**3-bet em posição:** ~3x o open.' if ip else
+                       '**3-bet fora de posição:** ~4x o open, maior que em posição.'),
+        'context': {'open_bb': open_bb}, 'xp_value': 20,
     }
+
+
+_SPR_FAIXAS = [
+    (0, 3.5,  'Comprometido: com essa mão o plano é colocar as fichas'),
+    (3.5, 8,  'Dá para apostar uma ou duas ruas e ainda desistir se levar muita pressão'),
+    (8, 999,  'Top par não joga por stacks aqui: para isso você precisa de mão bem mais forte'),
+]
 
 
 def _spr_question() -> dict:
+    """SPR CALCULADO, não decorado.
+
+    Era uma pergunta estática — um único texto que respondia por 38% de todos os sorteios de bet
+    sizing e virou a queixa do jogador. As três alternativas são sempre as mesmas de propósito:
+    o que o exercício treina é mapear o NÚMERO na faixa certa, e para isso o número precisa mudar.
+    """
+    pote  = random.choice([4, 5, 6, 7, 8, 9, 10, 12, 14, 16])
+    faixa = random.randrange(3)
+    lo, hi, _ = _SPR_FAIXAS[faixa]
+    alvo  = random.uniform(max(lo, 1.2), min(hi, 14))
+    stack = round(pote * alvo)
+    if stack < 2:
+        stack = 2
+    spr = stack / pote
+    certa = next(i for i, (a, b, _) in enumerate(_SPR_FAIXAS) if a <= spr < b)
     return {
         'type': 'spr_size',
         'question': (
-            'Você chega ao flop com SPR baixo (cerca de 2) segurando top par bom. O que o SPR '
-            'baixo indica?'
+            f'Flop, pote de {pote} BB e {stack} BB efetivos atrás. Você tem top par bom. '
+            f'Com SPR de ~{spr:.1f}, o que isso indica?'
         ),
-        'options': ['Você está comprometido: jogue por stacks', 'Dá para foldar fácil se apostarem', 'Nunca aposte com SPR baixo'],
+        'options': [t for _, _, t in _SPR_FAIXAS],
+        'correct_index': certa,
+        'explanation': (
+            f'SPR = stack efetivo ÷ pote = {stack} ÷ {pote} ≈ {spr:.1f}. ' + (
+                'Abaixo de ~3,5 sobra pouco atrás em relação ao pote: com uma mão forte você já '
+                'está comprometido, e o plano é ir até o fim.'
+                if certa == 0 else
+                'Entre ~4 e ~8 ainda cabem uma ou duas apostas antes dos stacks: dá para apostar '
+                'por valor e ainda ter espaço para desistir.'
+                if certa == 1 else
+                'Acima de ~8 sobram muitas fichas atrás. Top par é forte demais para foldar cedo, '
+                'mas fraco demais para gastar um stack inteiro.'
+            )
+        ),
+        'mental_tip': '**SPR = stack ÷ pote.** Quanto menor, mais cedo você se compromete.',
+        'context': {'pot_bb': pote, 'stack_bb': stack}, 'xp_value': 20,
+    }
+
+
+# ── Preço que o SEU tamanho oferece ao vilão ───────────────────────────────────
+# equity necessária para o call = aposta / (pote + 2×aposta). É a razão de existir o sizing:
+# o tamanho não é estética, é o preço que você cobra.
+_PRECOS = [
+    ('um terço do pote',   1/3),
+    ('metade do pote',     1/2),
+    ('dois terços do pote', 2/3),
+    ('o pote inteiro',     1.0),
+    ('1,5× o pote',        1.5),
+]
+
+
+def _pct_necessaria(fr: float) -> int:
+    """equity necessária, em %, para pagar uma aposta de `fr`× o pote. Só depende da FRAÇÃO.
+
+    Uma função só para a certa e para os distratores: calcular as duas por caminhos diferentes
+    deixaria a resposta certa reaparecer como distrator por diferença de arredondamento.
+    """
+    return round(fr / (1 + 2 * fr) * 100)
+
+
+def _preco_do_size_question() -> dict:
+    pote = random.choice([6, 8, 10, 12, 15, 18, 20, 24])
+    nome, fr = random.choice(_PRECOS)
+    aposta = pote * fr
+    certa = _pct_necessaria(fr)
+    distratores = sorted({_pct_necessaria(f) for _, f in _PRECOS} - {certa})
+    outras = random.sample(distratores, 2)
+    opcoes = [f'~{certa}%'] + [f'~{v}%' for v in outras]
+    return {
+        'type': 'price_size',
+        'question': (
+            f'Pote de {pote} BB e você aposta {nome} ({aposta:.1f} BB). De quanta equity o vilão '
+            f'precisa para o call dele empatar?'
+        ),
+        'options': opcoes,
         'correct_index': 0,
         'explanation': (
-            'SPR (relação entre o stack efetivo e o pote) baixo significa que sobra pouco atrás em '
-            'relação ao pote. Com uma mão forte como top par bom e SPR ~2, você está comprometido: '
-            'o plano é colocar as fichas, não desistir de uma aposta.'
+            f'Equity necessária = aposta ÷ (pote + 2×aposta) = {aposta:.1f} ÷ '
+            f'({pote} + {2*aposta:.1f}) ≈ {certa}%. Apostar maior cobra mais caro: exige '
+            f'mais equity do vilão para ele continuar, e é por isso que o tamanho escolhe QUEM '
+            f'consegue te pagar.'
         ),
-        'mental_tip': '**SPR baixo + mão forte = comprometido:** jogue por stacks.',
+        'mental_tip': '**Aposta ÷ (pote + 2×aposta)** = o preço que você está cobrando.',
+        'context': {'pot_bb': pote}, 'xp_value': 20,
+    }
+
+
+# ── C-bet por textura ──────────────────────────────────────────────────────────
+_BOARDS_SECOS = ['K♠ 7♦ 2♣', 'A♥ 8♣ 3♦', 'Q♣ 6♥ 2♠', 'K♦ 5♣ 2♥', 'A♠ 7♣ 4♦',
+                 'J♥ 5♠ 3♣', 'A♣ 9♦ 2♠', 'Q♠ 8♦ 3♣']
+_BOARDS_MOLHADOS = ['9♠ 8♠ 6♥', 'T♥ 9♥ 7♣', 'J♦ T♦ 8♠', '7♣ 6♣ 5♦', 'Q♥ J♥ 9♠',
+                    '8♦ 7♦ 6♣', 'T♠ 8♠ 7♥', 'K♣ Q♣ T♦']
+
+_CBET_OPCOES = [
+    'Pequena (~1/3 do pote), apostando com frequência alta',
+    'Grande (~2/3 ou mais), e apostando bem mais seletivo',
+    'O mesmo tamanho nos dois casos: textura não muda o sizing',
+]
+
+
+def _cbet_textura_question() -> dict:
+    seco = random.random() < 0.5
+    board = random.choice(_BOARDS_SECOS if seco else _BOARDS_MOLHADOS)
+    return {
+        'type': 'cbet_texture',
+        'question': (
+            f'Você abriu preflop e o BB pagou. O flop vem {board}. Como fica a sua c-bet?'
+        ),
+        'options': list(_CBET_OPCOES),
+        'correct_index': 0 if seco else 1,
+        'explanation': (
+            f'{board} é um board seco e desconectado, que favorece o range de quem abriu. Você '
+            f'pode apostar quase todo o range por pouco: não há muito o que proteger e o vilão '
+            f'tem poucas continuações fortes.'
+            if seco else
+            f'{board} é coordenado: conecta com o range que pagou e dá muitos draws. Aqui você '
+            f'aposta menos vezes, mas maior — para cobrar caro dos projetos e proteger as mãos '
+            f'feitas que ainda podem ser ultrapassadas.'
+        ),
+        'mental_tip': '**Board seco: pequeno e sempre. Board coordenado: grande e seletivo.**',
+        'context': {'board': board}, 'xp_value': 20,
+    }
+
+
+# ── Formato do range escolhe o tamanho ─────────────────────────────────────────
+_FORMA_OPCOES = [
+    'Grande, até overbet: o range está polarizado',
+    'Pequeno, cerca de 1/3: o range está condensado',
+    'Médio em qualquer caso, para não dar informação',
+]
+
+
+def _forma_range_question() -> dict:
+    polar = random.random() < 0.5
+    rua = random.choice(['turn', 'river'])
+    desc = ('só as mãos muito fortes e os blefes — as intermediárias você já deu check'
+            if polar else
+            'quase só mãos medianas: pares bons, mas quase nenhuma mão de topo e poucos blefes')
+    return {
+        'type': 'range_shape',
+        'question': (
+            f'No {rua}, o seu range nesta linha é {desc}. Qual tamanho combina com ele?'
+        ),
+        'options': list(_FORMA_OPCOES),
+        'correct_index': 0 if polar else 1,
+        'explanation': (
+            'Range polarizado (nuts + blefes, sem meio) aguenta tamanho grande: as mãos fortes '
+            'querem construir o pote e os blefes ficam mais baratos por fold equity. O overbet só '
+            'faz sentido com essa forma.'
+            if polar else
+            'Range condensado (muita mão mediana, pouco topo) não aguenta tamanho grande: você '
+            'não tem com o que continuar se levar raise, e o pote grande transforma valor em '
+            'risco. Aposta pequena mantém o vilão pagando com pior.'
+        ),
+        'mental_tip': '**Polarizado aposta grande, condensado aposta pequeno.** A forma decide.',
         'context': {}, 'xp_value': 20,
     }
 
 
+_SIZING_TIPOS = ['open_size', 'threebet_size', 'spr_size',
+                 'price_size', 'cbet_texture', 'range_shape']
+
+
 def generate_sizing_question(user_id: int = None) -> dict:
-    """Treino da aula de Bet Sizing: open_size, threebet_size, spr_size."""
-    qtype = random.choice(['open_size', 'threebet_size', 'spr_size'])
-    if qtype == 'open_size':
-        return _open_size_question()
-    if qtype == 'threebet_size':
-        return _threebet_size_question()
-    return _spr_question()
+    """Treino da aula de Bet Sizing.
+
+    Eram 3 tipos e 7 enunciados no total, com 38% dos sorteios caindo numa única pergunta
+    estática. Reportado pelo jogador. Agora são 6 tipos, e os quatro numéricos calculam a
+    resposta em vez de recitá-la.
+    """
+    qtype = random.choice(_SIZING_TIPOS)
+    return {
+        'open_size':     _open_size_question,
+        'threebet_size': _threebet_size_question,
+        'spr_size':      _spr_question,
+        'price_size':    _preco_do_size_question,
+        'cbet_texture':  _cbet_textura_question,
+        'range_shape':   _forma_range_question,
+    }[qtype]()
 
 
 # ── MDF & Alpha: treino da aula "Quanto defender vs. quanto blefar" ──────────────
@@ -3009,6 +3179,91 @@ def shuffle_options(q: dict) -> dict:
     return q
 
 
+# ── Guarda de repetição ─────────────────────────────────────────────────────────
+# Reportado pelo jogador em /academy/bet-sizing: "repetimos MUITAS vezes os exercícios".
+# Medido: o sorteio é uniforme, mas o acervo é pequeno. Em 300 sorteios de bet sizing saíram
+# 7 textos distintos, e 38% deles eram A MESMA pergunta (a do SPR, que era estática). Sorteio
+# uniforme sobre acervo pequeno devolve repetição perto o bastante para irritar: com 7 itens,
+# a chance de repetir dentro de 3 sorteios é ~40%.
+#
+# O acervo cresce à parte (é o conserto de verdade). Este guarda é o teto.
+#
+# **A garantia é de JANELA, e a janela se adapta ao acervo.** Tentei antes prometer "nada repete
+# até esgotar o acervo" e a promessa é impossível: com sorteio aleatório, fechar a rodada é o
+# problema do colecionador de figurinhas, e o ÚLTIMO item quase nunca sai. Medido: com acervo de
+# 20 e 20 re-sorteios, ainda dava 572 repetições indevidas em 300 sessões. Não é ajuste de
+# constante, é a distribuição.
+#
+# O que dá para prometer, e cumprir: o enunciado não volta enquanto estiver na janela. A janela é
+# metade do acervo observado (teto _JANELA_MAX) — a metade é o que mantém a chance de fracasso
+# desprezível: acertar um item fora da janela é uma moeda, e 20 moedas seguidas não dão coroa.
+# Janela fixa quebrava justamente no acervo pequeno, que é onde a queixa nasceu.
+#
+# O acervo é APRENDIDO: começa em zero e cresce com o que já saiu, então a janela se abre sozinha
+# conforme o tema mostra do que é capaz. Nada precisa declarar tamanho de acervo.
+#
+# Fail-open: nenhum caminho aqui deixa o jogador sem exercício.
+
+_TENTATIVAS = 20             # re-sorteios; só custam onde o acervo é pequeno, e lá não há banco
+_JANELA_MAX = 8              # teto da janela: um treino de 12 exercícios não repete perto
+_TETO_ACERVO = 24            # amostra guardada para estimar o acervo; passou disso, janela no teto
+_TETO_MEMORIA = 2000         # pares (jogador, tema) guardados; evita crescer sem limite em prod
+
+_recentes: 'OrderedDict[tuple, dict]' = __import__('collections').OrderedDict()
+
+
+def _impressao(q: dict) -> str:
+    """Identidade do exercício para o jogador: o ENUNCIADO. As opções são embaralhadas na
+    entrega, então ordem de alternativa não distingue nada.
+
+    Guardado como digest curto: são até 2000 jogadores × 24 enunciados em memória de processo, e
+    o texto inteiro transformaria o guarda num vazamento lento."""
+    if not isinstance(q, dict):
+        return ''
+    txt = (q.get('question') or '')[:160]
+    return hashlib.blake2b(txt.encode('utf-8'), digest_size=8).hexdigest() if txt else ''
+
+
+def _estado(chave: tuple) -> dict:
+    st = _recentes.get(chave)
+    if st is None:
+        if len(_recentes) >= _TETO_MEMORIA:
+            _recentes.popitem(last=False)
+        st = {'janela': [], 'acervo': set()}
+        _recentes[chave] = st
+    _recentes.move_to_end(chave)
+    return st
+
+
+def _sem_repetir(fn):
+    """Re-sorteia enquanto o enunciado ainda estiver na janela recente do jogador."""
+    import functools
+
+    @functools.wraps(fn)
+    def _wrapper(*args, **kwargs):
+        uid = kwargs.get('user_id', args[0] if args else None)
+        st = _estado((uid, fn.__name__))
+        janela, acervo = st['janela'], st['acervo']
+        largura = min(_JANELA_MAX, max(1, len(acervo) // 2))
+        escolhida = None
+        for _ in range(_TENTATIVAS):
+            q = fn(*args, **kwargs)
+            imp = _impressao(q)
+            if not imp:
+                return q                       # gerador sem enunciado: nada a comparar
+            if len(acervo) < _TETO_ACERVO:
+                acervo.add(imp)
+            escolhida = (q, imp)
+            if imp not in janela[-largura:]:
+                break
+        q, imp = escolhida                     # fail-open: colidiu em tudo, serve mesmo assim
+        janela.append(imp)
+        del janela[:-_JANELA_MAX]
+        return q
+    _wrapper._guarda_repeticao = True   # marca explícita: `functools.wraps` copia o __qualname__
+    return _wrapper                     # do original, então o nome do wrapper não serve de prova
+
+
 def _com_alternativas_embaralhadas(fn):
     import functools
 
@@ -3024,5 +3279,5 @@ for _nome in list(globals()):
     if _nome.startswith('generate_') and _nome.endswith('_question'):
         _alvo = globals()[_nome]
         if callable(_alvo) and not getattr(_alvo, '__wrapped__', None):
-            globals()[_nome] = _com_alternativas_embaralhadas(_alvo)
+            globals()[_nome] = _com_alternativas_embaralhadas(_sem_repetir(_alvo))
 del _nome

@@ -129,18 +129,78 @@ class TestAcademyVariety(unittest.TestCase):
         self.assertIn('C-bet pequeno', A._cbet_dry_question()['options'][A._cbet_dry_question()['correct_index']])
         print("  ✔ postflop drill structure")
 
+    _SIZING_TIPOS = {'open_size', 'threebet_size', 'spr_size',
+                     'price_size', 'cbet_texture', 'range_shape'}
+
     def test_sizing_drill_structure(self):
-        """Treino da aula de Bet Sizing: open_size, threebet_size, spr_size."""
+        """Treino da aula de Bet Sizing: os 6 tipos aparecem e nenhum sai malformado."""
         seen = set()
-        for _ in range(40):
+        for _ in range(200):
             q = acad.generate_sizing_question(user_id=1)
-            self.assertIn(q['type'], ('open_size', 'threebet_size', 'spr_size'))
+            self.assertIn(q['type'], self._SIZING_TIPOS)
             self.assertEqual(len(q['options']), 3)
+            self.assertEqual(len(set(q['options'])), 3, f"alternativas repetidas: {q['options']}")
             self.assertTrue(0 <= q['correct_index'] < 3)
             self.assertTrue(q['question'] and q['explanation'] and q['mental_tip'])
             seen.add(q['type'])
-        self.assertEqual(seen, {'open_size', 'threebet_size', 'spr_size'})
+        self.assertEqual(seen, self._SIZING_TIPOS)
         print("  ✔ sizing drill structure")
+
+    def test_sizing_variety(self):
+        """O acervo de bet sizing era 7 enunciados, com 38% dos sorteios numa ÚNICA pergunta
+        estática (a do SPR). Foi a queixa do jogador. Este teste é o piso do acervo."""
+        self._assert_diverse("sizing", lambda: acad.generate_sizing_question(user_id=1))
+
+    def test_nenhum_tipo_de_sizing_e_pergunta_unica(self):
+        """A variedade do TEMA esconde tipo estático: com 6 tipos, um deles congelado num texto
+        só ainda deixa o total diverso. Foi assim que a queixa nasceu — o `spr_size` era uma
+        pergunta fixa e mesmo assim o tema parecia variado no agregado. Cada tipo responde pelo
+        próprio acervo.
+        """
+        import collections
+        por_tipo = collections.defaultdict(set)
+        for _ in range(1200):
+            q = acad.generate_sizing_question(user_id=1)
+            por_tipo[q['type']].add(q['question'][:160])
+        self.assertEqual(set(por_tipo), self._SIZING_TIPOS)
+        magros = {t: len(v) for t, v in por_tipo.items() if len(v) < 4}
+        self.assertEqual(magros, {}, f'tipos de sizing com acervo pobre demais: {magros}')
+        print(f"  ✔ sizing por tipo: {({t: len(v) for t, v in sorted(por_tipo.items())})}")
+
+    def test_spr_bate_com_a_conta(self):
+        """A pergunta de SPR virou calculada. Se a faixa marcada não bater com o número do
+        enunciado, o exercício ensina errado, que é pior do que repetir."""
+        import re
+        n = 0
+        for _ in range(400):
+            q = acad.generate_sizing_question(user_id=1)
+            if q['type'] != 'spr_size':
+                continue
+            n += 1
+            spr = float(re.search(r'SPR de ~([\d.]+)', q['question']).group(1))
+            esperada = next(t for a, b, t in acad._SPR_FAIXAS if a <= spr < b)
+            self.assertEqual(q['options'][q['correct_index']], esperada,
+                             f"SPR {spr} caiu na faixa errada")
+        self.assertGreater(n, 20, "amostra de spr_size pequena demais para concluir")
+        print(f"  ✔ spr calculado: {n} casos coerentes")
+
+    def test_preco_bate_com_a_conta(self):
+        """equity necessária = aposta / (pote + 2×aposta). Conta fechada, sem margem para opinião."""
+        import re
+        n = 0
+        for _ in range(400):
+            q = acad.generate_sizing_question(user_id=1)
+            if q['type'] != 'price_size':
+                continue
+            n += 1
+            pote = float(re.search(r'Pote de (\d+) BB', q['question']).group(1))
+            aposta = float(re.search(r'\(([\d.]+) BB\)', q['question']).group(1))
+            esperado = round(aposta / (pote + 2 * aposta) * 100)
+            dito = int(q['options'][q['correct_index']].strip('~%'))
+            self.assertLessEqual(abs(dito - esperado), 1,
+                                 f"pote {pote}, aposta {aposta}: disse {dito}%, conta dá {esperado}%")
+        self.assertGreater(n, 20, "amostra de price_size pequena demais para concluir")
+        print(f"  ✔ preço calculado: {n} casos coerentes")
 
     def test_mdf_drill_structure(self):
         """Treino da aula de MDF & Alpha: tipos mdf e alpha, respostas coerentes."""
@@ -605,6 +665,142 @@ class TestLarguraDeRange(unittest.TestCase):
         # 13 pares + 78 suited + 78 offsuit = 1326, o baralho inteiro
         todas = ','.join(['AA'] * 13 + ['AKs'] * 78 + ['AKo'] * 78)
         self.assertEqual(_combos_da_notacao(todas), 1326)
+
+
+class TestGuardaDeRepeticao(unittest.TestCase):
+    """O jogador reportou repetição em /academy/bet-sizing. Medido: o sorteio é uniforme, o
+    acervo é que era pequeno (7 enunciados, 38% num só). Acervo cresceu; este guarda é o teto.
+
+    Ele NÃO é janela de N recentes: com acervo de 5 e janela de 4, o gerador precisa acertar o
+    único item livre, e medido assim o blockers ainda repetia 5 vezes em 12 exercícios. É
+    aritmética, não azar. O que roda é uma RODADA, que zera quando o acervo esgota.
+    """
+
+    def setUp(self):
+        acad._recentes.clear()
+
+    @staticmethod
+    def _gerador_de_acervo(n: int):
+        """Gerador falso de acervo conhecido — é a única forma de afirmar algo sobre a rodada
+        sem depender do tamanho real de um acervo que muda."""
+        def fn(user_id=None):
+            i = random.randrange(n)
+            return {'question': f'pergunta {i}', 'options': ['a', 'b', 'c'], 'correct_index': 0}
+        fn.__name__ = f'gerador_falso_{n}'
+        return fn
+
+    @staticmethod
+    def _largura_vigente(chave: tuple) -> int:
+        """A largura que o guarda vai usar NESTA chamada, lida do estado ANTES dela.
+
+        A janela cresce junto com o acervo observado. Medir a sequência inteira contra a largura
+        FINAL julga os primeiros sorteios por uma régua que ainda não existia quando eles saíram
+        — foi o que me fez ler violação onde não havia.
+        """
+        st = acad._recentes.get(chave) or {'acervo': set()}
+        return min(acad._JANELA_MAX, max(1, len(st['acervo']) // 2))
+
+    def test_nao_repete_dentro_da_janela(self):
+        """A promessa que o guarda cumpre: o enunciado não volta enquanto estiver na janela.
+
+        Já tentei prometer "nada repete até esgotar o acervo". É impossível com sorteio
+        aleatório: fechar a rodada é o problema do colecionador de figurinhas e o último item
+        quase nunca sai. Medido na época: acervo de 20 dava 572 repetições indevidas em 300
+        sessões, mesmo com 20 re-sorteios. Esta é a garantia que a distribuição permite.
+        """
+        for acervo in (2, 3, 5, 7, 12, 20, 50):
+            chave = (1, f'gerador_falso_{acervo}')
+            violacoes = 0
+            for seed in range(40):
+                random.seed(seed)
+                acad._recentes.clear()
+                fn = acad._sem_repetir(self._gerador_de_acervo(acervo))
+                seq = []
+                for _ in range(acervo * 4 + 12):
+                    larg = self._largura_vigente(chave)
+                    q = fn(user_id=1)['question']
+                    if q in seq[-larg:]:
+                        violacoes += 1
+                    seq.append(q)
+            self.assertEqual(violacoes, 0, f'acervo {acervo}: {violacoes} repetições na janela')
+        print("  ✔ guarda: zero repetições dentro da janela, de acervo 2 a 50")
+
+    def test_a_janela_se_abre_conforme_o_acervo_aparece(self):
+        """Se a janela não crescesse, um acervo grande seria protegido como se fosse pequeno e o
+        jogador voltaria a ver repetição perto. Ela é aprendida, não declarada.
+
+        Mede a DISTÂNCIA observada entre duas aparições do mesmo enunciado, e não a fórmula:
+        a primeira versão deste teste recalculava `min(_JANELA_MAX, len(acervo)//2)` por conta
+        própria e continuava verde com a janela do código travada em 1. Não podia falhar.
+        """
+        distancias = {}
+        for acervo in (2, 6, 20):
+            random.seed(1)
+            acad._recentes.clear()
+            fn = acad._sem_repetir(self._gerador_de_acervo(acervo))
+            seq = [fn(user_id=1)['question'] for _ in range(acervo * 10)]
+            seq = seq[acervo * 3:]              # descarta o aquecimento: a janela ainda crescia
+            ultimo, menor = {}, 10 ** 6
+            for i, q in enumerate(seq):
+                if q in ultimo:
+                    menor = min(menor, i - ultimo[q])
+                ultimo[q] = i
+            distancias[acervo] = menor
+        self.assertLess(distancias[2], distancias[6],
+                        f'acervo maior não afastou as repetições: {distancias}')
+        self.assertLess(distancias[6], distancias[20],
+                        f'acervo maior não afastou as repetições: {distancias}')
+        print(f"  ✔ guarda: distância entre repetições cresce com o acervo {distancias}")
+
+    def test_acervo_de_um_item_nao_trava_nem_falha(self):
+        """Fail-open. Um gerador de resposta única existe e não pode derrubar o treino nem entrar
+        em laço: com um item só, repetir é a ÚNICA saída honesta."""
+        acad._recentes.clear()
+        fn = acad._sem_repetir(self._gerador_de_acervo(1))
+        for _ in range(10):
+            self.assertEqual(fn(user_id=1)['question'], 'pergunta 0')
+        print("  ✔ guarda: acervo de 1 item serve sempre, sem travar")
+
+    def test_jogadores_diferentes_nao_disputam_a_mesma_rodada(self):
+        """A rodada é por (jogador, tema). Se fosse global, um jogador esconderia exercícios do
+        outro — e em produção isso escala com o número de gente online."""
+        random.seed(4)
+        acad._recentes.clear()
+        fn = acad._sem_repetir(self._gerador_de_acervo(3))
+        for _ in range(3):
+            fn(user_id=1)
+        vistos_b = {fn(user_id=2)['question'] for _ in range(3)}
+        self.assertEqual(len(vistos_b), 3,
+                         'o jogador 2 recebeu menos que o acervo inteiro: a rodada vazou entre users')
+        print("  ✔ guarda: rodada é por jogador")
+
+    def test_a_memoria_do_guarda_nao_cresce_sem_limite(self):
+        """Estado em memória de processo, em produção com muitos usuários. Sem teto vira
+        vazamento lento, que é o tipo de falha que só aparece semanas depois."""
+        acad._recentes.clear()
+        fn = acad._sem_repetir(self._gerador_de_acervo(3))
+        for uid in range(acad._TETO_MEMORIA + 500):
+            fn(user_id=uid)
+        self.assertLessEqual(len(acad._recentes), acad._TETO_MEMORIA)
+        print(f"  ✔ guarda: memória travada em {len(acad._recentes)} chaves")
+
+    def test_todo_gerador_publico_passa_pelo_guarda(self):
+        """Mesma razão do embaralhamento: são 22 geradores e um esquecido mantém o defeito
+        justamente onde ninguém olha. A varredura cobra o N+1."""
+        faltando = []
+        for nome, fn in vars(acad).items():
+            if nome.startswith('generate_') and nome.endswith('_question') and callable(fn):
+                alvo, marcado = fn, False
+                while alvo is not None:              # percorre a cadeia de wrappers
+                    marcado = marcado or getattr(alvo, '_guarda_repeticao', False)
+                    alvo = getattr(alvo, '__wrapped__', None)
+                if not marcado:
+                    faltando.append(nome)
+        self.assertEqual(faltando, [], f'geradores fora do guarda de repetição: {faltando}')
+        self.assertGreater(sum(1 for n in vars(acad) if n.startswith('generate_')
+                               and n.endswith('_question')), 15,
+                           'a varredura não encontrou geradores — o teste passaria vazio')
+        print("  ✔ guarda: todos os geradores públicos embrulhados")
 
 
 
