@@ -7,6 +7,100 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(treino): o postflop NAO gravava tentativa nenhuma na progressao, e nada denunciava (#treino)
+
+> Achado por auditoria de codigo, disparada depois de o usuario reportar cinco defeitos parecidos
+> testando a mao. **E o mais caro do dia, e era invisivel.**
+>
+> `hand_class` foi escrita para hand_type (`'A5s'`, `'77'`), mas TODO spot postflop grava a mao em
+> CARTAS CONCRETAS (`'KhQc'`). O segundo caractere vira naipe, `ordem.index('H')` levanta
+> `ValueError`, e `concept_for_spot` explode junto.
+>
+> **O estrago nao era o texto sumindo da tela.** Em `/player/leaktrainer/grade` a excecao aborta o
+> bloco inteiro, e `record_progression_attempt` fica DEPOIS dela: **nenhuma tentativa de postflop
+> era gravada**, e o gate ficava parado enquanto o jogador treinava. O XP e dado FORA do `try`,
+> entao a tela parecia funcionar perfeitamente. Um `except Exception` generico manteve isso em
+> silencio — o zero tranquilizador da regra 1, em forma de excecao engolida.
+>
+> Nao e bug novo do acervo (o catalogo estatico ja gravava `'KhQc'`), mas ficou muito mais caro
+> agora que o postflop deixou de ser 31 spots.
+>
+> `_para_hand_type` converte cartas concretas em hand_type, e `hand_class` passou a **nunca
+> levantar** — quem a chama esta no caminho quente da correcao. Verificado quebrando as duas
+> coisas: a conversao e a promessa de nao levantar.
+
+### fix(treino): o rotulo dizia "(flop)" e "c-bet" para qualquer spot postflop (#treino)
+
+> A street e a existencia de aposta estavam HARDCODED na copy (`"{{pos}} defende vs c-bet de {{vs}}
+> (flop)"`), heranca de quando havia uma categoria postflop so. O acervo serve flop, turn e river, e
+> serve spots SEM aposta na mesa — o cabecalho anunciava "vs c-bet (flop)" com 5 cartas no board e
+> nenhuma ficha do vilao.
+>
+> Junto, tres primos do mesmo lote:
+>
+> - **`parseCategoryKey` devolvia BB vs BTN fixo** para qualquer chave `pf:`. Hoje o backend produz
+>   `pf:<street>:<pos>`, entao as tres habilidades postflop apareciam com o MESMO nome na lista de
+>   dominio, com barras diferentes e nada distinguindo, e a de river dizia "(flop)".
+> - **`check` e `bet` nao existiam no i18n**: os botoes saiam em minusculas ao lado de "Fold" e
+>   "Call", em PT, EN e ES.
+> - **o atalho de teclado anunciava "R" para check e para bet**, e "R" submete `raise`, que nao esta
+>   no menu desses spots — o guard engolia a tecla e o atalho nao fazia nada. Agora sao `X` e `B`.
+
+
+### fix(treino): dominio passou a ser medido por CENARIO, e o gate voltou a poder abrir (#treino)
+
+> Decisao do usuario depois de duas medicoes, uma delas derrubando a hipotese anterior.
+>
+> **O problema.** "Acertei tudo, mas ficou como bronze": a pratica e INTERCALADA de proposito (o
+> protocolo de progressao manda variar), cada licao de 10 spots espalha as respostas por ~10
+> chaves, e o dominio satura em 20 tentativas POR CHAVE. Medido em producao: **54 categorias para
+> 205 tentativas, 3,8 por categoria**. O gate exige Ouro. **Ele nao abria por construcao** — e gate
+> que nao abre nao e rigor, e defeito.
+>
+> **A hipotese anterior (familia) foi medida e descartada.** `cenario:posicao:vs`, sem a
+> profundidade, colapsava 54 chaves em 49 — quase nada, porque o que fragmenta a pratica sao os
+> PARES DE POSICAO, nao o stack. E onde houve fusao, DILUIU: 4 ouros e 1 diamante viravam 5 pratas.
+>
+> **Por cenario, as mesmas 54 chaves viram 4 unidades com 68, 100, 30 e 7 tentativas.** Volume real.
+> O dominio passa a ser medido assim no veredito da licao, nas conquistas, no gate e no hub — as
+> quatro superficies na mesma unidade, porque duas superficies com o mesmo nome e numeros
+> diferentes e a familia de bug que ja custou caro aqui.
+>
+> **O custo esta aceito e escrito:** "dominio de vs_rfi" junta BB vs UTG com BTN vs CO, que sao
+> habilidades diferentes. O gate ficou mais grosso. Vale porque a PROVA continua sendo o jogo real,
+> nao o treino.
+>
+> **Duas coisas que a medicao obrigou a NAO fazer:**
+>
+> - `untrained` continua por CHAVE EXATA. A pergunta ali nao e "voce domina?", e "voce ja praticou
+>   ISTO alguma vez" — por cenario, um leak novo numa familia ja treinada nunca apareceria, e o
+>   sinal de "surgiram leaks novos, reinicie o ciclo" deixaria de acender quando importa.
+> - a street FICA no postflop (`pf:flop` != `pf:river`). Colapsar deixaria o gate do river abrir por
+>   dominio de flop.
+>
+> Dois testes de readiness mudaram de contrato de proposito, com o motivo escrito no proprio teste.
+> Entrou tambem `test_cenarios_sao_gateados_INDEPENDENTEMENTE`: sem ele, "medir por cenario" poderia
+> degenerar em "medir por jogador" sem ninguem perceber. Verificado quebrando 4 guardas — e um
+> deles, o do postflop, so existe porque uma quebra deliberada NAO acusou.
+
+### fix(treino): o acervo servia mesa sem adversario, posicao inexistente e pote em fichas (#treino)
+
+> Reportado com print: "nao tem mais ninguem na mao", rotulo saindo como "SB defende vs c-bet de
+> (flop)" e todos os assentos foldados.
+>
+> Tres defeitos de dado, todos com a mesma consequencia na tela — `indexOf() == -1`:
+>
+> - **20% do acervo nao guarda `vs_position`.** Sem saber quem e o adversario, o vilao nunca entra
+>   na mao, nenhuma ficha de aposta e desenhada e o enunciado sai com buraco.
+> - **posicao fora do vocabulario da mesa** (`MP1`, de captura antiga): o assento do heroi some.
+> - **pote em FICHAS** (`pot_bb` de 3500 com stack de 40), residuo do bug de fichas→BB do postflop.
+>   Um pote maior que os dois stacks somados nao existe em heads-up, e isso peneira sem precisar
+>   adivinhar a origem do numero.
+>
+> Os tres viraram filtro de SELECAO. Medido depois: 120 spots servidos, zero problemas, streets
+> preservadas (65 flop, 42 turn, 13 river). 3 guardas novos, verificados um a um.
+
+
 ### fix(treino): "acertei tudo e ficou bronze" — a tela anunciava 1 resposta como se fossem 10 (#treino)
 
 > Reportado com print: 10 feitos, 100% de acerto, e "DOMÍNIO DA CATEGORIA 0% → 5%, BRONZE". A

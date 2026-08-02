@@ -6252,6 +6252,10 @@ def record_training_attempt(user_id: int, category_key: str, correct: bool) -> d
     estado pós (mastery/tier/attempts) + o delta de mastery, p/ o veredito da lição."""
     if not user_id or not category_key:
         return {}
+    # ANTES de gravar. O delta tem que comparar o cenário consigo mesmo — subtrair o valor velho da
+    # CHAVE do valor novo do CENÁRIO seriam duas unidades no mesmo subtrator.
+    cen = cenario_medido(category_key)
+    cen_antes = float(((dominio_por_cenario(user_id) or {}).get(cen) or {}).get('mastery') or 0.0)
     conn = get_conn()
     try:
         row = _fetchone(conn, _adapt(
@@ -6288,11 +6292,87 @@ def record_training_attempt(user_id: int, category_key: str, correct: bool) -> d
             except Exception:
                 pass
         conn.commit()
-        return {'category_key': category_key, 'attempts': attempts, 'correct': correct_n,
-                'mastery': mastery, 'mastery_prev': round(prev_mastery, 1),
-                'mastery_delta': round(mastery - prev_mastery, 1), 'tier': _mastery_tier(mastery)}
     finally:
         conn.close()
+
+    # O veredito fala do CENÁRIO: a chave recebe UMA tentativa por lição (prática intercalada), e
+    # anunciar "domínio da categoria: 0% → 5%" depois de 10 acertos descrevia 1 resposta como se
+    # fosse o resultado das 10. Ver `cenario_medido`.
+    depois = (dominio_por_cenario(user_id) or {}).get(cen) or {}
+    m_cen = float(depois.get('mastery') or 0.0)
+    return {'category_key': category_key, 'cenario': cen,
+            'attempts': attempts, 'correct': correct_n,
+            'attempts_cenario': int(depois.get('attempts') or attempts),
+            'mastery': m_cen, 'mastery_prev': round(cen_antes, 1),
+            'mastery_delta': round(m_cen - cen_antes, 1), 'tier': _mastery_tier(m_cen),
+            # a chave exata continua disponível para seleção e depuração, fora da tela
+            'mastery_chave': mastery, 'mastery_chave_prev': round(prev_mastery, 1)}
+
+
+def cenario_medido(category_key: str) -> str:
+    """A unidade em que o DOMÍNIO é medido: o cenário, sem posição nem profundidade.
+
+    **Por que o cenário, e o que isso custa.** Reportado pelo jogador: "acertei tudo, mas ficou
+    como bronze" — 10 de 10 numa lição, domínio de 0% para 5%. A prática é INTERCALADA de propósito
+    (é o que o protocolo de progressão manda), então cada lição espalha as 10 respostas por ~10
+    chaves e cada uma recebe UMA tentativa. O domínio satura em 20 tentativas POR CHAVE: prática
+    intercalada mais volume por chave é conta que nunca fecha, e o gate de progressão, que exige
+    Ouro, ficava inalcançável por construção.
+
+    **Antes disto tentei medir por FAMÍLIA (`cenário:posição:vs`) e a medição derrubou a
+    hipótese:** colapsava 54 chaves em 49 famílias, porque o que fragmenta a prática são os PARES
+    DE POSIÇÃO, não o stack — e onde houve fusão ela DILUIU, trocando 4 ouros por pratas. Medido
+    por cenário, as mesmas 54 chaves viram 4 unidades com 68, 100, 30 e 7 tentativas: volume real.
+
+    **O custo é honesto e vale dizer:** "domínio de vs_rfi" junta BB vs UTG com BTN vs CO, que são
+    habilidades diferentes. O gate ficou mais grosso. Aceitamos porque um gate que nunca abre não é
+    rigor, é defeito — e a PROVA de verdade continua sendo o jogo real, não o treino.
+
+    A `category_key` segue sendo o que o treino GRAVA e SELECIONA (o currículo precisa dela para
+    escolher o próximo spot). O cenário é o que o jogador VÊ e o que o gate cobra.
+    """
+    partes = (category_key or '').split(':')
+    if not partes or not partes[0]:
+        return category_key or ''
+    # postflop: a street é parte da habilidade (`pf:flop` ≠ `pf:river`), a posição não
+    return ':'.join(partes[:2]) if partes[0] == 'pf' else partes[0]
+
+
+def dominio_por_cenario(user_id: int) -> dict:
+    """{cenário: {attempts, correct, mastery, tier, chaves}} — ver `cenario_medido`.
+
+    A EMA do cenário é a média das EMAs das chaves **ponderada por tentativas**, cada uma já
+    decaída pelo tempo da sua própria última prática. Somar acerto/tentativa cru descartaria a
+    recência, que é exatamente o que a EMA existe para guardar.
+    """
+    if not user_id:
+        return {}
+    conn = get_conn()
+    try:
+        rows = _fetchall(conn, _adapt(
+            "SELECT category_key, attempts, correct, mastery_ema, last_practiced_at "
+            "FROM training_skill_progress WHERE user_id=?"), (user_id,))
+    finally:
+        conn.close()
+    grupos: dict = {}
+    for r in rows:
+        cen = cenario_medido(r['category_key'])
+        g = grupos.setdefault(cen, {'attempts': 0, 'correct': 0, '_num': 0.0, 'chaves': []})
+        tent = int(r['attempts'] or 0)
+        g['attempts'] += tent
+        g['correct'] += int(r['correct'] or 0)
+        g['_num'] += float(r['mastery_ema'] or 0) * _retention_factor(r.get('last_practiced_at')) * tent
+        g['chaves'].append(r['category_key'])
+    fora = {}
+    for cen, g in grupos.items():
+        tent = g['attempts']
+        ema = (g['_num'] / tent) if tent else 0.0
+        mastery = round(ema * min(1.0, tent / _TRAIN_VOLUME_FULL) * 100.0, 1)
+        fora[cen] = {'category_key': cen, 'cenario': cen, 'attempts': tent,
+                     'correct': g['correct'], 'mastery': mastery,
+                     'mastery_stored': mastery, 'tier': _mastery_tier(mastery),
+                     'stale': False, 'chaves': sorted(g['chaves'])}
+    return fora
 
 
 def get_training_skills(user_id: int) -> list:
@@ -6367,10 +6447,14 @@ def training_readiness(user_id: int) -> dict:
     else:
         stage, target, target_tier = 'consolidated', _READY_DIAMOND, 'diamond'
         required = real_leaks
-    mastery_by = {s['category_key']: float(s.get('mastery') or 0) for s in get_training_skills(user_id)}
+    # O gate cobra o CENÁRIO. Cobrando a chave exata ele não abria: alvo Ouro (70%), saturação em
+    # 20 tentativas por chave, e prática intercalada dando ~4 por chave. Gate que não abre não é
+    # rigor, é defeito. Ver `cenario_medido` para o custo aceito.
+    fams = dominio_por_cenario(user_id) or {}
+    mastery_by = {k: float(v.get('mastery') or 0) for k, v in fams.items()}
     done, pending = 0, []
     for k in required:
-        m = mastery_by.get(k, 0.0)
+        m = mastery_by.get(cenario_medido(k), 0.0)
         if m >= target:
             done += 1
         else:
@@ -6378,7 +6462,15 @@ def training_readiness(user_id: int) -> dict:
     pending.sort(key=lambda p: p['mastery'], reverse=True)
     # Leaks REAIS do jogo que NUNCA foram treinados (sem linha em training_skill_progress) — o sinal
     # de "novos leaks surgiram, reinicie o ciclo". Cobre todo o real_leaks, não só o required.
-    untrained = [k for k in real_leaks if k not in mastery_by]
+    # `untrained` continua por CHAVE EXATA, e isso não é inconsistência: a pergunta aqui não é
+    # "você domina?", é "você já praticou ISTO alguma vez". Por cenário, um leak novinho numa
+    # família já treinada nunca apareceria — e o sinal de "surgiram leaks novos, reinicie o ciclo"
+    # deixaria de acender justamente quando ele importa. Domínio é grosso de propósito; presença
+    # não pode ser.
+    treinadas = set()
+    for v in fams.values():
+        treinadas.update(v.get('chaves') or [])
+    untrained = [k for k in real_leaks if k not in treinadas]
     return {'stage': stage, 'tournaments': tourneys, 'target': target, 'total': len(required),
             'done': done, 'ready': done == len(required) and len(required) > 0,
             'target_tier': target_tier, 'pending': pending, 'untrained': untrained}
@@ -7050,8 +7142,10 @@ def _training_state(user_id: int, *, proof=None) -> dict:
     Não é cache: é não pedir duas vezes na mesma requisição o que já está na mão.
     """
     skills = get_training_skills(user_id)
-    # conquistas usam o mastery STORED (pico), não o decaído — não se DES-ganha uma conquista.
-    masteries = [float(s.get('mastery_stored', s.get('mastery')) or 0) for s in skills]
+    # Conquistas medem DOMÍNIO, e domínio é por CENÁRIO (ver `cenario_medido`): por chave exata,
+    # 205 tentativas viravam 54 categorias de 3,8 e ninguém passava de Bronze — a conquista de Ouro
+    # era inalcançável por unidade de medida, não por dificuldade.
+    masteries = [float(c.get('mastery') or 0) for c in (dominio_por_cenario(user_id) or {}).values()]
     try:
         streak = int((get_xp_status(user_id) or {}).get('streak') or 0)
     except Exception:

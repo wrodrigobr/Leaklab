@@ -211,6 +211,65 @@ def test_menu_impossivel_na_mesa_nao_e_servido():
     print('OK  test_menu_impossivel_na_mesa_nao_e_servido')
 
 
+def test_no_sem_adversario_nao_e_servido():
+    """Sem saber QUEM é o vilão não dá para desenhar a mesa nem escrever o enunciado.
+
+    Reportado com print: "não tem mais ninguém na mão", rótulo saindo como
+    "SB defende vs c-bet de (flop)" e TODOS os assentos foldados. A causa: o nó não trazia
+    `vs_position`, e `indexOf('')` é -1 — o vilão nunca entrava na mão e nenhuma ficha de aposta
+    era desenhada. Medido: 20% do acervo não guarda essa informação.
+    """
+    n = _no()
+    sj = json.loads(n['spot_json']); sj['_meta'] = {}
+    n['spot_json'] = json.dumps(sj)
+    orig = _com_nos([n])
+    try:
+        assert TP.proximo_spot(rng=random.Random(1)) is None, 'serviu no sem vs_position'
+    finally:
+        TP.get_conn = orig
+    print('OK  test_no_sem_adversario_nao_e_servido')
+
+
+def test_posicao_fora_do_vocabulario_da_mesa_nao_e_servida():
+    """A mesa desenha 9 assentos NOMEADOS. `MP1` (de captura antiga) vira `indexOf() == -1` e o
+    assento do herói some da tela."""
+    for campo, valor in (('position', 'MP1'), ('vs', 'MP1')):
+        n = _no(pos=('MP1' if campo == 'position' else 'BB'))
+        if campo == 'vs':
+            sj = json.loads(n['spot_json']); sj['_meta'] = {'vs_position': 'MP1'}
+            n['spot_json'] = json.dumps(sj)
+        orig = _com_nos([n])
+        try:
+            assert TP.proximo_spot(rng=random.Random(1)) is None, f'serviu {campo}=MP1'
+        finally:
+            TP.get_conn = orig
+    print('OK  test_posicao_fora_do_vocabulario_da_mesa_nao_e_servida')
+
+
+def test_pote_em_fichas_nao_e_servido():
+    """Parte do acervo guarda o pote em FICHAS (medido: `pot_bb` de 3500 com stack de 40) — resíduo
+    do bug de fichas→BB do postflop. Um pote maior que os dois stacks somados não existe em
+    heads-up, e serve de peneira sem precisar adivinhar a origem do número."""
+    n = _no()
+    sj = json.loads(n['spot_json']); sj['pot_bb'] = 3500.0   # stack do fixture e 40
+    n['spot_json'] = json.dumps(sj)
+    orig = _com_nos([n])
+    try:
+        assert TP.proximo_spot(rng=random.Random(1)) is None, 'serviu pote em fichas'
+    finally:
+        TP.get_conn = orig
+    # e o pote zero tambem nao passa: postflop sem pote nao existe
+    n2 = _no()
+    sj2 = json.loads(n2['spot_json']); sj2['pot_bb'] = 0
+    n2['spot_json'] = json.dumps(sj2)
+    orig = _com_nos([n2])
+    try:
+        assert TP.proximo_spot(rng=random.Random(1)) is None, 'serviu pote zero'
+    finally:
+        TP.get_conn = orig
+    print('OK  test_pote_em_fichas_nao_e_servido')
+
+
 def test_no_sem_a_mao_na_tabela_nao_e_servido():
     """34% do acervo real tem a mão do herói fora da `hand_table` — uma tabela por árvore, do
     range de UM jogador. O lugar de descobrir isso é a seleção, não a correção."""

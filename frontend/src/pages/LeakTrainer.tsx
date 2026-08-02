@@ -208,7 +208,10 @@ export default function LeakTrainer() {
   // Rótulo do spot: fonte ÚNICA e localizada (lib/spotLabel). No spot em treino a profundidade
   // fica de fora — ela já está na mesa, e repetir polui o cabeçalho.
   const spotLabel = useSpotLabel();
-  const labelFor = (sp: LeakTrainerSpot) => spotLabel(sp, { stack: false });
+  // `street` e `facing` vão para o rótulo porque a copy postflop os presumia: dizia sempre
+  // "(flop)" e sempre "vs c-bet", inclusive num river sem aposta na mesa.
+  const labelFor = (sp: LeakTrainerSpot) =>
+    spotLabel({ ...sp, facing: Number(sp.facing_size_bb ?? 0) > 0 }, { stack: false });
 
   const finishSession = () => setPhase("summary");
   const newSession = () => {
@@ -366,7 +369,13 @@ export default function LeakTrainer() {
         // S = shove (stack curto): sem isso o atalho não alcançava a ação que MAIS aparece
         // abaixo de 20bb. O guard `spot.options.includes(a)` abaixo ignora a tecla quando a
         // ação não existe naquele spot.
-        const byLetter: Record<string, string> = { f: "fold", c: "call", r: "raise", s: "allin" };
+        // `x` e `b` entraram com o acervo de nós solvados, que serve spots SEM aposta na mesa:
+        // ali o menu é check/bet, e as duas ações não tinham tecla nenhuma. Pior, o hint da tela
+        // anunciava "R" para as duas e "R" submetia `raise`, que não está no menu desses spots —
+        // o guard abaixo engolia a tecla e o atalho não fazia nada.
+        const byLetter: Record<string, string> = {
+          f: "fold", c: "call", r: "raise", s: "allin", x: "check", b: "bet",
+        };
         const a = byLetter[k] || (/^[1-9]$/.test(k) ? spot.options[parseInt(k, 10) - 1] : undefined);
         if (k === "g") { e.preventDefault(); setShowRange((v) => !v); return; }
         if (a && spot.options.includes(a)) { e.preventDefault(); submit(a); }
@@ -1365,7 +1374,8 @@ export default function LeakTrainer() {
                         <span>{actLabel(a)}</span>
                         {/* hint de tecla só em telas com teclado (escondido em touch/mobile) */}
                         <kbd className="hidden rounded border border-border/60 bg-background/60 px-1.5 py-0.5 font-mono text-[9px] font-normal text-muted-foreground md:inline-block">
-                          {a === "fold" ? "F" : a === "call" ? "C" : a === "allin" ? "S" : "R"}
+                          {a === "fold" ? "F" : a === "call" ? "C" : a === "allin" ? "S"
+                            : a === "check" ? "X" : a === "bet" ? "B" : "R"}
                         </kbd>
                       </button>
                     ))}

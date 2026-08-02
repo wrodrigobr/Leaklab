@@ -182,8 +182,14 @@
       "rfi": "Apertura (RFI) de {{pos}}",
       "vsRfi": "{{pos}} defiende vs {{vs}}",
       "vs3bet": "{{pos}} enfrenta 3-bet de {{vs}}",
-      "postflopBb": "{{pos}} defiende vs c-bet de {{vs}} (flop)",
-      "withStack": "{{base}} · {{stack}}bb"
+      "postflopBb": "{{pos}} defiende vs apuesta de {{vs}} ({{street}})",
+      "withStack": "{{base}} · {{stack}}bb",
+      "postflopNoBet": "{{pos}} vs {{vs}} en el {{street}}",
+      "street": {
+        "flop": "flop",
+        "turn": "turn",
+        "river": "river"
+      }
     },
     "act": {
       "fold": "Fold",
@@ -192,7 +198,9 @@
       "raise3": "3-Bet",
       "raise4": "4-Bet",
       "raisePost": "Raise",
-      "allin": "Shove"
+      "allin": "Shove",
+      "check": "Check",
+      "bet": "Bet"
     },
     "lesson": {
       "title": "Nueva lección",

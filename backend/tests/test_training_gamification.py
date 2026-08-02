@@ -17,6 +17,7 @@ os.environ['LEAKLAB_DB'] = _TMPDB.name
 from database.schema import init_db, get_conn
 from database.repositories import (
     record_training_attempt, get_training_skills, _mastery_tier, get_all_achievements,
+    cenario_medido,
     evaluate_training_achievements, get_training_achievements, _TRAINING_ACHIEVEMENT_DEFS,
     record_daily_mission_progress, get_daily_missions, training_readiness,
     get_training_proof,
@@ -289,6 +290,28 @@ def test_mastery_decay_read_and_resume():
     print("OK  test_mastery_decay_read_and_resume")
 
 
+def test_cenario_medido_mantem_a_street_no_postflop():
+    """`pf:flop` e `pf:river` são habilidades diferentes, e colapsá-las deixaria o gate do river
+    abrir por domínio de flop.
+
+    Nasceu de uma quebra deliberada que NÃO acusou: trocar `':'.join(partes[:2])` por `partes[0]`
+    juntava todo o postflop num "pf" só e a suíte inteira continuava verde. Cobertura sem cobrir.
+    """
+    assert cenario_medido('rfi:UTG::50') == 'rfi'
+    assert cenario_medido('vs_rfi:BB:CO:50') == 'vs_rfi'
+    assert cenario_medido('vs_3bet:HJ:BTN:50') == 'vs_3bet'
+    # a street FICA; a posição sai
+    assert cenario_medido('pf:flop:BB') == 'pf:flop'
+    assert cenario_medido('pf:river:SB') == 'pf:river'
+    assert cenario_medido('pf:flop:BB') != cenario_medido('pf:river:BB')
+    # chave legada de uma parte só continua sendo ela mesma
+    assert cenario_medido('pf:bb_defense') == 'pf:bb_defense'
+    # entrada degenerada não explode
+    assert cenario_medido('') == ''
+    assert cenario_medido(None) == ''
+    print("OK  test_cenario_medido_mantem_a_street_no_postflop")
+
+
 def test_readiness_untrained_leaks():
     """`untrained` = leaks reais do jogo que NUNCA foram treinados (sinal de "novos leaks, reinicie")."""
     uid = _mk_user()
@@ -332,23 +355,67 @@ def test_readiness_developing_top3_gold():
     print("OK  test_readiness_developing_top3_gold")
 
 
-def test_readiness_consolidated_all_diamond():
-    """Consolidado (15+ torneios): TODOS os leaks reais no Diamante."""
+def test_readiness_consolidated_cobra_o_CENARIO_dos_leaks():
+    """Consolidado (15+ torneios): o gate cobra o CENÁRIO de cada leak real, não a chave exata.
+
+    **Este teste mudou de contrato de propósito, em 2026-08-02.** Ele exigia que CADA chave
+    chegasse ao Diamante. Reportado pelo jogador: "acertei tudo, mas ficou como bronze" — a prática
+    é intercalada (é o que o protocolo manda), cada lição espalha 10 respostas por ~10 chaves, e o
+    domínio satura em 20 tentativas POR CHAVE. Medido em produção: 54 categorias para 205
+    tentativas, 3,8 por categoria. **O gate não abria por construção**, e gate que não abre não é
+    rigor, é defeito.
+
+    O custo é real e está aceito: os leaks semeados aqui são todos de RFI, então dominar RFI fecha
+    os três de uma vez. O gate ficou mais grosso — a PROVA continua sendo o jogo real, não o treino.
+    Ver `cenario_medido` em repositories.
+    """
     uid = _mk_user()
     _seed_leaks(uid, n_tourneys=15, n_leak_cats=3)
     r = training_readiness(uid)
     assert r['stage'] == 'consolidated' and r['target_tier'] == 'diamond'
     assert r['total'] == 3 and r['ready'] is False, r
     keys = [c['key'] for c in build_curriculum(uid) if int(c.get('n') or 0) > 0]
-    for k in keys[:-1]:                                    # todas menos uma → ainda bloqueado
-        for _ in range(20):
-            record_training_attempt(uid, k, True)
-    assert training_readiness(uid)['ready'] is False
-    for _ in range(20):                                    # fecha a última
-        record_training_attempt(uid, keys[-1], True)
+    assert len({cenario_medido(k) for k in keys}) == 1, 'o fixture deixou de ser de um cenário só'
+    for _ in range(5):                       # pouco volume: cenário ainda longe do Diamante
+        record_training_attempt(uid, keys[0], True)
+    assert training_readiness(uid)['ready'] is False, 'abriu com 5 tentativas'
+    for _ in range(20):                      # volume que satura o cenário
+        record_training_attempt(uid, keys[0], True)
     r2 = training_readiness(uid)
     assert r2['done'] == r2['total'] and r2['ready'] is True and r2['pending'] == [], r2
-    print("OK  test_readiness_consolidated_all_diamond")
+    print("OK  test_readiness_consolidated_cobra_o_CENARIO_dos_leaks")
+
+
+def test_cenarios_sao_gateados_INDEPENDENTEMENTE():
+    """O gate ficou mais grosso, mas não virou um número global: dominar RFI não abre vs_RFI.
+
+    Sem este teste, "medir por cenário" poderia degenerar em "medir por jogador" sem ninguém
+    perceber — e aí o gate abriria para leaks que o jogador nunca tocou.
+    """
+    uid = _mk_user()
+    _seed_leaks(uid, n_tourneys=15, n_leak_cats=2)
+    # acrescenta um leak de OUTRO cenário (vs_rfi): mesmo torneio, com raise enfrentado
+    c = get_conn()
+    t = dict(c.execute("SELECT id FROM tournaments WHERE user_id=? LIMIT 1", (uid,)).fetchone())['id']
+    for i in range(2):
+        c.execute("INSERT INTO decisions (tournament_id,hand_id,street,action_taken,best_action,"
+                  "position,vs_position,is_3bet,preflop_raises_faced,ev_loss_bb,stack_bb,label,score) "
+                  "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                  (t, f'V{i}', 'preflop', 'fold', 'call', 'BB', 'CO', 0, 1, 9.0, 50, 'clear_error', 0.0))
+    c.commit(); c.close()
+
+    keys = [k['key'] for k in build_curriculum(uid) if int(k.get('n') or 0) > 0]
+    rfi = [k for k in keys if cenario_medido(k) == 'rfi']
+    vsr = [k for k in keys if cenario_medido(k) == 'vs_rfi']
+    assert rfi and vsr, f'fixture nao produziu os dois cenarios: {keys}'
+    for _ in range(25):
+        record_training_attempt(uid, rfi[0], True)      # domina RFI e SÓ RFI
+    r = training_readiness(uid)
+    pendentes = {cenario_medido(p['category_key']) for p in r['pending']}
+    assert 'vs_rfi' in pendentes, f'vs_rfi abriu sozinho: {r}'
+    assert 'rfi' not in pendentes, f'rfi nao fechou apesar do volume: {r}'
+    assert r['ready'] is False, r
+    print("OK  test_cenarios_sao_gateados_INDEPENDENTEMENTE")
 
 
 def test_daily_missions_timezone_aware():

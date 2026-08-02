@@ -24,12 +24,25 @@ export interface SpotLabelInput {
   stack_bb?: number | null;
   /** `postflop` tem rótulo próprio (o cenário preflop não descreve a situação) */
   kind?: string | null;
+  /** street do spot postflop: a copy não pode presumir "flop" */
+  street?: string | null;
+  /** há aposta na mesa? sem isso o rótulo anuncia "vs c-bet" num spot de check/bet */
+  facing?: boolean | null;
 }
 
 /** Quebra a `category_key` (`scenario:pos:vs:stack`) — a ÚNICA taxonomia persistida. */
 export function parseCategoryKey(key: string): SpotLabelInput {
   if (!key) return {};
-  if (key.startsWith("pf:")) return { kind: "postflop", position: "BB", vs_position: "BTN" };
+  // `pf:` já foi UMA categoria só (BB vs BTN no flop). Hoje o backend produz `pf:<street>:<pos>`
+  // e agrupa domínio em `pf:flop` / `pf:turn` / `pf:river`. Devolver BB vs BTN fixo fazia as três
+  // habilidades postflop aparecerem com o MESMO nome na lista de domínio, e a de river anunciar
+  // "(flop)". Sem posição conhecida, é melhor não inventar uma.
+  if (key.startsWith("pf:")) {
+    const [, a, b] = key.split(":");
+    const streets = ["flop", "turn", "river"];
+    if (a && streets.includes(a)) return { kind: "postflop", street: a, position: b || "", vs_position: "" };
+    return { kind: "postflop", position: "BB", vs_position: "BTN", street: "flop" };  // `pf:bb_defense` legado
+  }
   const [scenario, position, vs_position, stack] = key.split(":");
   const n = Number(stack);
   return { scenario, position, vs_position, stack_bb: Number.isFinite(n) && n > 0 ? n : null };
@@ -50,7 +63,15 @@ export function useSpotLabel() {
     if (!pos) return fallback;
 
     const base =
-      s.kind === "postflop" ? t("leakTrainer.cat.postflopBb", { pos, vs })
+      // A street e a existência de aposta vinham HARDCODED na copy ("... vs c-bet de X (flop)"),
+      // herança de quando havia uma categoria postflop só. O acervo serve flop, turn e river, e
+      // serve spots SEM aposta na mesa — o rótulo anunciava "vs c-bet (flop)" com 5 cartas no
+      // board e nenhuma ficha do vilão.
+      s.kind === "postflop"
+        ? (vs
+            ? t(s.facing ? "leakTrainer.cat.postflopBb" : "leakTrainer.cat.postflopNoBet",
+                { pos, vs, street: t(`leakTrainer.cat.street.${s.street || "flop"}`, s.street || "flop") })
+            : t(`leakTrainer.cat.street.${s.street || "flop"}`, s.street || "flop"))
       : s.scenario === "rfi"     ? t("leakTrainer.cat.rfi", { pos })
       : s.scenario === "vs_rfi"  ? t("leakTrainer.cat.vsRfi", { pos, vs })
       : s.scenario === "vs_3bet" ? t("leakTrainer.cat.vs3bet", { pos, vs })

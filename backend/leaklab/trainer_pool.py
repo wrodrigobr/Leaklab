@@ -52,6 +52,16 @@ _MIX_ALVO = [('check', 30), ('fold', 25), ('call', 25), ('bet', 20)]
 
 _STREETS = ('flop', 'turn', 'river')
 
+# A mesa do treino desenha 9 assentos NOMEADOS. Nó com posição fora deste vocabulário (o acervo tem
+# `MP1`, de captura antiga) cai em `indexOf() == -1` na tela: o assento do herói some, o vilão nunca
+# entra na mão, e o jogador vê uma mesa onde ninguém está jogando. Reportado exatamente assim.
+POSICOES = ('UTG', 'UTG+1', 'UTG+2', 'LJ', 'HJ', 'CO', 'BTN', 'SB', 'BB')
+
+# Teto de sanidade do pote, em BB. Parte do acervo guarda o pote em FICHAS (medido: `pot_bb` de
+# 3500 com stack de 40) — é o resíduo do bug de fichas→BB do postflop. Um pote maior que os dois
+# stacks somados não existe em heads-up, então serve de peneira sem precisar adivinhar a origem.
+_POTE_MAX_EM_STACKS = 2.5
+
 # Assinatura do nó degenerado, em LISTA e não em LIKE.
 #
 # Era `LIKE '%all%'`, e isso **quebrou em produção da forma mais cara possível**: no Postgres o `%`
@@ -146,6 +156,20 @@ def _monta_spot(r: dict) -> Optional[dict]:
     board = list(board)[:n_board]
 
     stack = float(sj.get('effective_stack_bb') or sj.get('hero_stack_bb') or 0) or None
+    if not stack:
+        return None
+
+    # Sem saber QUEM é o adversário não dá para desenhar a mesa nem escrever o enunciado: o
+    # rótulo sai como "SB defende vs c-bet de (flop)" e todos os assentos ficam foldados.
+    # Medido: 20% do acervo não guarda `vs_position`.
+    vs = (meta.get('vs_position') or sj.get('vs_position') or '').strip()
+    if vs not in POSICOES or (r['position'] or '') not in POSICOES:
+        return None
+
+    pote = float(sj.get('pot_bb') or 0)
+    if pote <= 0 or pote > stack * _POTE_MAX_EM_STACKS:
+        return None                       # pote em fichas, ou incoerente com a profundidade
+
     return {
         'kind':           'postflop',
         'origem':         'pool',          # rastro: separa do catálogo estático nas métricas
@@ -154,10 +178,10 @@ def _monta_spot(r: dict) -> Optional[dict]:
         'street':         street,
         'category':       f"pool:{street}",
         'position':       r['position'],
-        'vs_position':    meta.get('vs_position') or '',
+        'vs_position':    vs,
         'stack_bb':       stack,
         'facing_size_bb': float(sj.get('facing_size_bb') or 0),
-        'pot_bb':         float(sj.get('pot_bb') or 0),
+        'pot_bb':         pote,
         'board':          board,
         'board_cards':    _cards_to_objs(board),
         'hand':           ''.join(mao),

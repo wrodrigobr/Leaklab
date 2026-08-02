@@ -386,16 +386,53 @@ _SHORT_BB   = 15.0    # abaixo disso a mão é decidida antes do flop
 _DEEP_BB    = 45.0    # acima disso o pós-flop domina a decisão
 
 
+_NAIPES_CARTA = ('h', 'd', 'c', 's')
+
+
+def _para_hand_type(h: str) -> str:
+    """`'KhQc'` → `'KQo'`, `'5h5d'` → `'55'`, `'AhKh'` → `'AKs'`. Já vem hand_type? Devolve igual.
+
+    **Esta função existe por um bug que ficou invisível por meses.** `hand_class` foi escrita para
+    hand_type (`'A5s'`, `'77'`), mas TODO spot postflop grava a mão em CARTAS CONCRETAS
+    (`''.join(['Kh','Qc'])` = `'KhQc'`). O segundo caractere vira o naipe, `ordem.index('H')`
+    levanta `ValueError`, e `concept_for_spot` explode junto.
+
+    O estrago não era o texto que sumia. No `/player/leaktrainer/grade`, a exceção aborta o bloco
+    inteiro — e `record_progression_attempt` fica DEPOIS dela. Ou seja: **nenhuma tentativa de
+    postflop era gravada na progressão**, e o gate ficava parado em 0/5 enquanto o jogador treinava.
+    O XP é dado fora do `try`, então a tela parecia funcionar. Um `except Exception` genérico
+    engolindo o erro é o que manteve isso em silêncio.
+
+    Achado por auditoria de código depois de o usuário reportar cinco defeitos parecidos na mão.
+    """
+    h = (h or '').strip()
+    # 4 caracteres com naipe minúsculo nas posições 1 e 3 = cartas concretas
+    if len(h) == 4 and h[1].lower() in _NAIPES_CARTA and h[3].lower() in _NAIPES_CARTA:
+        r1, r2 = h[0].upper(), h[2].upper()
+        if r1 == r2:
+            return r1 + r2
+        ordem = "23456789TJQKA"
+        if ordem.find(r1) < ordem.find(r2):
+            r1, r2 = r2, r1                      # rank alto primeiro, como no hand_type
+        return f"{r1}{r2}{'s' if h[1].lower() == h[3].lower() else 'o'}"
+    return h
+
+
 def hand_class(hand: str) -> str:
     """Classe da mão a partir do hand_type ('A5s', '77', 'KQo'). Serve pro feedback falar da
     FAMÍLIA de mão, que é o que transfere: o jogador não vai reencontrar 94s, vai reencontrar
-    'suited gapper fraco'."""
-    h = (hand or '').strip()
+    'suited gapper fraco'.
+
+    Aceita também cartas concretas ('KhQc'), que é como o postflop grava — ver `_para_hand_type`.
+    """
+    h = _para_hand_type(hand)
     if len(h) < 2:
         return 'desconhecida'
     r1, r2 = h[0].upper(), h[1].upper()
     suited = h.endswith('s')
     ordem  = "23456789TJQKA"
+    if r1 not in ordem or r2 not in ordem:
+        return 'desconhecida'                    # nunca levanta: quem chama está no caminho quente
     if r1 == r2:
         return 'par_alto' if ordem.index(r1) >= ordem.index('T') else 'par_baixo'
     hi, lo = max(ordem.index(r1), ordem.index(r2)), min(ordem.index(r1), ordem.index(r2))

@@ -25,9 +25,26 @@ describe("parseCategoryKey", () => {
     });
   });
 
-  it("postflop tem rótulo próprio (o cenário preflop não descreve a situação)", () => {
-    expect(parseCategoryKey("pf:qualquer:coisa")).toEqual({
-      kind: "postflop", position: "BB", vs_position: "BTN",
+  it("postflop lê a STREET da chave em vez de presumir flop", () => {
+    // `pf:` já foi UMA categoria só (BB vs BTN no flop) e a função devolvia isso fixo. Hoje o
+    // backend produz `pf:<street>:<pos>` e agrupa domínio em `pf:flop` / `pf:turn` / `pf:river`:
+    // com o valor fixo, as três habilidades apareciam com o MESMO nome na lista de domínio e a de
+    // river anunciava "(flop)".
+    expect(parseCategoryKey("pf:flop:BB")).toEqual({
+      kind: "postflop", street: "flop", position: "BB", vs_position: "",
+    });
+    expect(parseCategoryKey("pf:river:SB")).toEqual({
+      kind: "postflop", street: "river", position: "SB", vs_position: "",
+    });
+    // e as três são DISTINGUÍVEIS entre si, que é o ponto
+    expect(parseCategoryKey("pf:flop:BB").street)
+      .not.toBe(parseCategoryKey("pf:river:BB").street);
+  });
+
+  it("chave postflop legada continua entendida", () => {
+    // `pf:bb_defense` é do catálogo estático e ainda existe no banco de quem treinou antes.
+    expect(parseCategoryKey("pf:bb_defense")).toEqual({
+      kind: "postflop", position: "BB", vs_position: "BTN", street: "flop",
     });
   });
 

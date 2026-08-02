@@ -3308,7 +3308,7 @@ def training_overview():
     domínio por habilidade e o catálogo de conquistas (com unlocked) — pro hub de Treino."""
     from database.repositories import (get_training_skills, get_training_achievements,
                                         get_daily_missions, training_readiness,
-                                        get_training_proof)
+                                        get_training_proof, dominio_por_cenario)
     # A prova sai UMA vez e serve os dois consumidores: as conquistas (que contam provados,
     # reconquistados e com_amostra) e a tela. Medido antes: este endpoint fazia 115 idas ao banco,
     # 104 delas para recalcular exatamente esta prova lá dentro, e a tela ainda pedia `/proof` numa
@@ -3317,7 +3317,12 @@ def training_overview():
     prova = get_training_proof(g.user_id)
     return jsonify({
         'xp':           get_xp_status(g.user_id),
-        'skills':       get_training_skills(g.user_id),
+        # O hub mostra DOMÍNIO, e domínio é por cenário: exibir as 54 chaves exatas (todas em
+        # Bronze, ~4 tentativas cada) contradizia o veredito da lição, que fala do cenário. Duas
+        # superfícies com o mesmo nome e números diferentes é a família de bug que já custou caro
+        # aqui. A chave exata segue em `/player/training/skills`, para seleção e depuração.
+        'skills':       sorted((dominio_por_cenario(g.user_id) or {}).values(),
+                               key=lambda c: -float(c.get('mastery') or 0)),
         'achievements': get_training_achievements(g.user_id, proof=prova),  # conquistas de TREINO
         'missions':     get_daily_missions(g.user_id, _tz_offset_arg()),   # missões diárias (fuso local)
         'readiness':    training_readiness(g.user_id),          # gate 'Aplicar': todos os leaks no Diamante

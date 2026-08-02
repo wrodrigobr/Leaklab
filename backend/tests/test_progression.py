@@ -178,6 +178,49 @@ def test_sb_rfi_nao_fala_de_jogadores_atras():
     print("OK  test_sb_rfi_nao_fala_de_jogadores_atras")
 
 
+def test_mao_postflop_nao_derruba_a_camada_de_progressao():
+    """O bug mais caro do dia, e ele era invisível.
+
+    `hand_class` foi escrita para hand_type (`'A5s'`, `'77'`), mas TODO spot postflop grava a mão
+    em CARTAS CONCRETAS (`'KhQc'`). O segundo caractere vira naipe, `ordem.index('H')` levanta
+    `ValueError`, e `concept_for_spot` explode junto.
+
+    O estrago não era o texto sumindo da tela. Em `/player/leaktrainer/grade` a exceção aborta o
+    bloco inteiro, e `record_progression_attempt` fica DEPOIS dela: **nenhuma tentativa de postflop
+    era gravada na progressão**, e o gate ficava parado enquanto o jogador treinava. O XP é dado
+    fora do `try`, então a tela parecia funcionar. Um `except Exception` genérico manteve isso em
+    silêncio — é o zero tranquilizador da regra 1 do CLAUDE.md, em forma de exceção engolida.
+
+    Por isso este teste cobra as duas coisas: a classificação certa E a promessa de nunca levantar.
+    """
+    # cartas concretas viram a família certa
+    assert hand_class('KhQc') == hand_class('KQo') == 'broadway_offsuit'
+    assert hand_class('5h5d') == hand_class('55') == 'par_baixo'
+    assert hand_class('AhKh') == hand_class('AKs') == 'ace_suited'
+    assert hand_class('QsJs') == 'broadway_suited'
+    # ordem das cartas não importa: o rank alto vem primeiro
+    assert hand_class('QcKh') == hand_class('KhQc')
+    # e NUNCA levanta, seja qual for a entrada: quem chama está no caminho quente da correção
+    for lixo in ('', None, 'x', 'xx', 'KhQ', 'ZZZZ', '10h9c', 'KhQcJd'):
+        hand_class(lixo)
+    print("OK  test_mao_postflop_nao_derruba_a_camada_de_progressao")
+
+
+def test_concept_for_spot_sobrevive_a_spot_postflop():
+    """`concept_for_spot` é chamado ANTES de gravar a tentativa. Se ele levanta, o gate não anda —
+    e nada na tela denuncia."""
+    spot = {'kind': 'postflop', 'street': 'flop', 'position': 'BB', 'vs_position': 'BTN',
+            'stack_bb': 40, 'hand': 'KhQc', 'board': ['Ks', '6c', '7d']}
+    c = concept_for_spot(spot, {'gto_tier': 'correct'})
+    assert c and c.get('principio'), c
+    # e para toda street e mão que o acervo serve
+    for street in ('flop', 'turn', 'river'):
+        for mao in ('KhQc', '5h5d', 'AhKh', '2d7c'):
+            r = concept_for_spot({**spot, 'street': street, 'hand': mao}, {})
+            assert r and r.get('principio'), (street, mao, r)
+    print("OK  test_concept_for_spot_sobrevive_a_spot_postflop")
+
+
 def test_contraste_fala_de_profundidade():
     """No spot de contraste a lição é o STACK. Se falasse de posição, o jogador não entenderia
     por que a profundidade mudou no meio da sessão."""
