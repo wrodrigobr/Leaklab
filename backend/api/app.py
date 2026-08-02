@@ -3330,6 +3330,45 @@ def training_overview():
     })
 
 
+@app.route('/player/grind/hand', methods=['POST'])
+@require_auth
+def grind_proxima_mao():
+    """Modo grind: uma MÃO REAL inteira, heads-up, para ser percorrida decisão a decisão.
+
+    O que sai daqui é ANONIMIZADO por construção: posição e stack em BB, e nada mais. Sem nick, sem
+    torneio, sem data — o identificador é um token opaco. As mãos são do acervo de todos, então
+    isso é requisito de entrada e não acabamento de tela.
+    """
+    from leaklab.grind_mode import proxima_mao
+    body = request.get_json(silent=True) or {}
+    vistas = set(body.get('vistas') or [])
+    try:
+        mao = proxima_mao(evitar=vistas, min_decisoes=int(body.get('min_decisoes', 2) or 2))
+    except Exception:
+        app.logger.exception('grind: falha ao montar mão (user=%s)', g.user_id)
+        mao = None
+    return jsonify({'mao': mao, 'esgotou': mao is None})
+
+
+@app.route('/player/grind/grade', methods=['POST'])
+@require_auth
+def grind_corrigir():
+    """Corrige UM passo da mão. A resposta nunca sai do servidor antes disto."""
+    from leaklab.grind_mode import corrigir_passo
+    body = request.get_json(force=True) or {}
+    passo = body.get('passo') or {}
+    acao = (body.get('acao') or '').lower()
+    try:
+        res = corrigir_passo(passo, acao)
+    except Exception:
+        app.logger.exception('grind: falha ao corrigir passo (user=%s)', g.user_id)
+        res = None
+    if res is None:
+        # Sem veredito possível: NÃO inventa. O front avança sem pontuar, e diz isso.
+        return jsonify({'resultado': None, 'sem_veredito': True})
+    return jsonify({'resultado': res, 'sem_veredito': False})
+
+
 @app.route('/player/training/catalog', methods=['GET'])
 @require_auth
 def training_catalog():

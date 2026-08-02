@@ -7,6 +7,46 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(treino): modo grind — a mao REAL inteira, decisao por decisao (#treino) [backend]
+
+> Pedido depois de o usuario ver o Practice do GTO Wizard: em vez de um spot solto, a mao roda do
+> preflop ao river, uma decisao por vez, com veredito a cada uma.
+>
+> **Uma mao real monta COMPLETA.** Exemplo do acervo: BB vs BTN a 147,8bb com J♠T♦ — call preflop
+> enfrentando 3bb, check no flop, call enfrentando 1,9, check no turn, call enfrentando 5,5 (o GTO
+> mandava fold, CRITICO), check no river, fold enfrentando 27,1. **Sete decisoes numa mao so**, com
+> a linha do vilao deduzida entre elas.
+>
+> **E replay de mao real, nao simulacao, e isso precisa estar claro na tela.** O GTO Wizard reparte
+> cartas novas porque tem a arvore inteira pre-computada; aqui so existe no onde alguem mandou
+> solvar. O jogador percorre uma mao que ACONTECEU, contra o que o vilao de fato fez. Para a tese do
+> produto isso e melhor (a linha do vilao e humana), mas vender como simulacao seria mentir.
+>
+> **Anonimizacao e requisito de ENTRADA.** As maos vem do acervo de TODOS, entao o payload sai com
+> posicao e stack em BB e nada mais: sem nick, sem `tournament_id`, sem `hand_id`, sem data. O
+> identificador e um token opaco com segredo — sem ele, quem soubesse (torneio, mao) reproduziria o
+> token e enumeraria o acervo, e ids de torneio sao sequenciais.
+>
+> **O acervo real e MENOR do que o levantamento inicial sugeria, e o numero honesto e 138.** Eram
+> 336 maos com >=2 decisoes postflop, mas o SQL garante que existe NO SOLVADO, e isso nao e o mesmo
+> que GRADEAVEL: medido, **30% dos passos postflop voltavam sem veredito** porque a mao do heroi nao
+> esta na `hand_table` daquela arvore. Num spot solto isso e um spot pulado; numa mao inteira, o
+> jogador percorre metade e trava no meio. O filtro custou 59% do acervo e vale.
+>
+> Duas armadilhas que o dado real cobrou: a coluna `board` traz as 5 cartas em TODA linha, inclusive
+> no preflop (mostrar assim entregaria o river antes de o jogador decidir no flop), e `hero_cards` e
+> gravado COLADO enquanto `board` e JSON — duas colunas vizinhas com formatos diferentes, a mesma
+> familia do bug que ja custou meses aqui.
+>
+> 8 casos em `test_grind_mode.py`. Verificados quebrando 6 guardas: vazar o `hand_id`, board completo
+> em toda street, token sem segredo, passos fora de ordem, fold sem aposta na mesa, e o filtro de
+> gradeabilidade. **O do token nao acusou na primeira tentativa** — o teste conferia que os tokens
+> eram distintos e estaveis, o que continua verdade sem segredo nenhum. Passou a cobrar que o
+> segredo PARTICIPA do calculo.
+>
+> Falta a tela. Suite: 1790 testes, zero falhas.
+
+
 ### chore(gto): script de limpeza dos nos que nasceram com pote em fichas (#gto)
 
 > Complemento do conserto da fonte. A fonte parou de produzir; este script trata os 135 que ja
