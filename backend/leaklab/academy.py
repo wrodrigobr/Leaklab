@@ -1546,23 +1546,72 @@ def generate_postflop_question(user_id: int = None) -> dict:
 
 # ── Bet Sizing: treino da aula "Bet Sizing 101" ──────────────────────────────────
 
+# Eram 4 enunciados, variando só o nome da posição — e a posição nem entrava na resposta, que era
+# sempre "2 a 2,5 BB". Variação cosmética: o jogador lia quatro textos e decorava uma frase.
+# Agora a PROFUNDIDADE entra na resposta (a 9 BB não existe open pequeno, é shove ou fold) e a
+# segunda forma cobra a conversão para fichas, que é o que trava na mesa de verdade.
+_POSICOES_OPEN = ['UTG', 'UTG+1', 'MP', 'LJ', 'HJ', 'CO', 'BTN']
+_NIVEIS_BLIND = [(100, 200), (150, 300), (200, 400), (250, 500), (300, 600), (400, 800),
+                 (500, 1000), (600, 1200), (800, 1600), (1000, 2000), (1500, 3000),
+                 (2000, 4000), (2500, 5000), (3000, 6000)]
+
+
 def _open_size_question() -> dict:
-    pos = random.choice(['UTG', 'MP', 'CO', 'BTN'])
+    pos = random.choice(_POSICOES_OPEN)
+    if random.random() < 0.45:
+        # Conversão BB → fichas. Trivial no papel e é onde mais se erra na mesa, porque o nível
+        # sobe e o jogador continua abrindo o valor do nível anterior.
+        # O distrator NÃO pode ser o min-raise: 2 BB contra 2,2 BB não é resposta errada, é a
+        # mesma resposta com outro arredondamento, e o exercício marcaria certo como errado.
+        # O distrator bom é o erro que a pergunta existe para corrigir: continuar abrindo o valor
+        # do nível ANTERIOR depois que o blind subiu. Recua mais um nível enquanto os dois valores
+        # não estiverem a pelo menos meia BB de distância.
+        i = random.randrange(2, len(_NIVEIS_BLIND))
+        sb, bb = _NIVEIS_BLIND[i]
+        certa = round(2.2 * bb / 100) * 100
+        j = i - 1
+        while j > 0 and abs(certa - round(2.2 * _NIVEIS_BLIND[j][1] / 100) * 100) < bb * 0.5:
+            j -= 1
+        antigo = round(2.2 * _NIVEIS_BLIND[j][1] / 100) * 100
+        grande = round(4.5 * bb / 100) * 100
+        return {
+            'type': 'open_size',
+            'question': (f'Blinds {sb}/{bb} e você abre no {pos} com ~35 BB. Quanto é um open '
+                         f'padrão, em fichas?'),
+            'options': [f'{certa}', f'{antigo}', f'{grande}'],
+            'correct_index': 0,
+            'explanation': (
+                f'O open padrão de torneio é ~2,2 BB, e a BB aqui vale {bb}: 2,2 × {bb} ≈ {certa} '
+                f'fichas. {antigo} era o open de um nível atrás, e é o erro mais comum quando o '
+                f'blind sobe: você continua abrindo o mesmo valor, que já virou um open pequeno '
+                f'demais. {grande} é o exagero do outro lado, arriscando fichas sem comprar fold '
+                f'equity na mesma proporção.'
+            ),
+            'mental_tip': '**Converta na hora que o nível sobe.** O open é 2,2 × a BB NOVA.',
+            'context': {'bb': bb}, 'xp_value': 20,
+        }
+    stack = random.choice([8, 9, 10, 22, 25, 28, 30, 35, 40, 45, 50, 60])
+    curto = stack <= 10
     return {
         'type': 'open_size',
-        'question': (
-            f'Torneio, stack de ~40 BB. Você vai abrir no {pos}. Qual o tamanho padrão do '
-            f'open (raise inicial)?'
-        ),
-        'options': ['2 a 2,5 BB', '4 a 5 BB', 'All-in'],
+        'question': (f'Torneio, {stack} BB efetivos. Você vai abrir no {pos}. Qual o tamanho '
+                     f'padrão do open?'),
+        'options': ['Não existe open pequeno aqui: é shove ou fold' if curto else '2 a 2,5 BB',
+                    '2 a 2,5 BB' if curto else '4 a 5 BB',
+                    '4 a 5 BB' if curto else 'All-in'],
         'correct_index': 0,
         'explanation': (
-            'Em stacks de torneio (20 a 50 BB), o open padrão é pequeno, cerca de 2 a 2,5 BB. '
-            'Abrir grande arrisca mais fichas sem necessidade e não aumenta o seu fold equity de '
-            'forma proporcional ao custo.'
+            f'A {stack} BB o open pequeno te deixa comprometido de qualquer jeito: você abre 2 BB, '
+            f'leva um shove e paga com quase tudo. Sem espaço para jogar pós-flop, a mão se '
+            f'resolve agora, e o shove ganha as blinds sem te dar chance de errar depois.'
+            if curto else
+            f'A {stack} BB você está na faixa em que dá para jogar pós-flop, e o open padrão é '
+            f'pequeno: 2 a 2,5 BB. Abrir grande arrisca mais fichas sem aumentar o seu fold equity '
+            f'na mesma proporção, e ainda infla o pote nas mãos em que você fica sem posição.'
         ),
-        'mental_tip': '**Open de torneio:** pequeno, ~2 a 2,5 BB.',
-        'context': {}, 'xp_value': 20,
+        'mental_tip': ('**Stack curto não abre pequeno.** Entre com força ou saia.' if curto else
+                       '**Open de torneio:** pequeno, ~2 a 2,5 BB.'),
+        'context': {'stack_bb': stack}, 'xp_value': 20,
     }
 
 
@@ -1749,12 +1798,30 @@ _FORMA_OPCOES = [
 ]
 
 
+# Eram 4 enunciados (2 formas × 2 ruas). O conceito é bom e a descrição era uma só, então o
+# jogador reconhecia a FRASE em vez de ler o range. Agora a forma é descrita de vários jeitos, que
+# é como ela aparece de verdade: ninguém pensa "meu range está polarizado", pensa "eu só cheguei
+# aqui com nuts e com blefe".
+_FORMAS_POLARIZADAS = [
+    'só as mãos muito fortes e os blefes, porque as intermediárias você já deu check',
+    'nuts ou nada: ou você trincou, ou está com um projeto que não completou',
+    'as duas pontas, sem meio: o topo do seu range e as mãos que só ganham blefando',
+    'mão feita grande ou ar, porque com par médio você teria dado check no turn',
+    'só o que ganha muito e o que não ganha nada, sem nenhum bluff-catcher',
+]
+_FORMAS_CONDENSADAS = [
+    'quase só mãos medianas: pares bons, quase nenhuma mão de topo e poucos blefes',
+    'muito par médio e top pair fraco, sem nenhuma mão que aguente um raise',
+    'condensado no meio: você tem showdown, mas não tem o topo nem blefe sobrando',
+    'todo ele de mãos que ganham no showdown contra blefe e perdem contra qualquer valor',
+    'segundo par e top pair com kicker ruim, sem trinca nem projeto nenhum',
+]
+
+
 def _forma_range_question() -> dict:
     polar = random.random() < 0.5
     rua = random.choice(['turn', 'river'])
-    desc = ('só as mãos muito fortes e os blefes — as intermediárias você já deu check'
-            if polar else
-            'quase só mãos medianas: pares bons, mas quase nenhuma mão de topo e poucos blefes')
+    desc = random.choice(_FORMAS_POLARIZADAS if polar else _FORMAS_CONDENSADAS)
     return {
         'type': 'range_shape',
         'question': (

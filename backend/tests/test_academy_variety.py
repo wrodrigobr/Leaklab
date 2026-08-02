@@ -157,15 +157,11 @@ class TestAcademyVariety(unittest.TestCase):
         pergunta fixa e mesmo assim o tema parecia variado no agregado. Cada tipo responde pelo
         próprio acervo.
         """
-        import collections
-        por_tipo = collections.defaultdict(set)
-        for _ in range(1200):
-            q = acad.generate_sizing_question(user_id=1)
-            por_tipo[q['type']].add(q['question'][:160])
-        self.assertEqual(set(por_tipo), self._SIZING_TIPOS)
-        magros = {t: len(v) for t, v in por_tipo.items() if len(v) < 4}
-        self.assertEqual(magros, {}, f'tipos de sizing com acervo pobre demais: {magros}')
-        print(f"  ✔ sizing por tipo: {({t: len(v) for t, v in sorted(por_tipo.items())})}")
+        # Usa o MESMO helper dos outros dois temas. Esta versão nasceu antes dele, com o piso 4
+        # embutido, e por isso continuava verde com o `range_shape` congelado numa descrição só
+        # (1 × 2 formas × 2 ruas = 4). Dois pisos com o mesmo nome e valores diferentes é como o
+        # trabalho de hoje seria desfeito sem ninguém ver.
+        self._assert_piso_por_tipo('sizing', acad.generate_sizing_question, self._SIZING_TIPOS)
 
     def test_spr_bate_com_a_conta(self):
         """A pergunta de SPR virou calculada. Se a faixa marcada não bater com o número do
@@ -205,7 +201,11 @@ class TestAcademyVariety(unittest.TestCase):
     # ── Acervo por TIPO nos temas que foram expandidos ────────────────────────
     # A variedade do TEMA esconde tipo estático: com 5 tipos, um congelado num texto só ainda
     # deixa o agregado diverso. Foi assim que a queixa do bet sizing nasceu.
-    _PISO_POR_TIPO = 4
+    # 10, e não 4: com piso 4 dava para congelar o `range_shape` numa descrição só (1 × 2 formas
+    # × 2 ruas = 4) e o teste seguia verde — o piso permitia desfazer o trabalho todo. O menor
+    # tipo dos três temas expandidos tem 16, então 10 é folga real e não número escolhido para
+    # passar.
+    _PISO_POR_TIPO = 10
 
     def _assert_piso_por_tipo(self, nome, fn, tipos_esperados, n=1500):
         import collections
@@ -217,6 +217,58 @@ class TestAcademyVariety(unittest.TestCase):
         magros = {t: len(v) for t, v in por.items() if len(v) < self._PISO_POR_TIPO}
         self.assertEqual(magros, {}, f'{nome}: tipos com acervo pobre demais: {magros}')
         print(f"  ✔ {nome} por tipo: {({t: len(v) for t, v in sorted(por.items())})}")
+
+    def test_open_em_fichas_converte_certo_e_o_distrator_e_errado_de_verdade(self):
+        """A conversão BB → fichas, e o distrator que quase entrou errado.
+
+        A primeira versão usava o MIN-RAISE como alternativa errada: 2 BB contra os 2,2 BB
+        corretos. Isso não é resposta errada, é a mesma resposta com outro arredondamento (1200
+        contra 1300 numa BB de 600), e o exercício marcaria certo como errado. O distrator que
+        ficou é o erro que a pergunta existe para corrigir: seguir abrindo o valor do nível
+        ANTERIOR depois que o blind subiu.
+        """
+        import re
+        vistos = 0
+        for _ in range(2000):
+            q = acad.generate_sizing_question(user_id=1)
+            if q['type'] != 'open_size' or 'fichas' not in q['question']:
+                continue
+            vistos += 1
+            bb = int(re.search(r'Blinds \d+/(\d+)', q['question']).group(1))
+            certa = int(q['options'][q['correct_index']])
+            self.assertEqual(certa, round(2.2 * bb / 100) * 100,
+                             f'conversão errada com BB={bb}: {q["options"]}')
+            nums = sorted(int(o) for o in q['options'])
+            menor = min(nums[1] - nums[0], nums[2] - nums[1])
+            self.assertGreaterEqual(menor, bb * 0.5,
+                                    f'alternativas a menos de meia BB de distância: {q["options"]}')
+        self.assertGreater(vistos, 100, 'poucos casos de conversão para concluir')
+        print(f"  ✔ open em fichas: {vistos} conversões conferidas")
+
+    def test_open_curto_nao_ensina_open_pequeno(self):
+        """A profundidade tem que ENTRAR na resposta, senão a variação é cosmética.
+
+        Era esse o defeito: quatro enunciados que só trocavam o nome da posição, e a posição nem
+        aparecia na resposta, sempre "2 a 2,5 BB". O jogador lia quatro textos e decorava uma frase.
+        """
+        import re
+        curtos = fundos = 0
+        for _ in range(2000):
+            q = acad.generate_sizing_question(user_id=1)
+            m = re.search(r'Torneio, (\d+) BB efetivos', q['question'] or '')
+            if not m:
+                continue
+            stack = int(m.group(1))
+            certa = q['options'][q['correct_index']]
+            if stack <= 10:
+                curtos += 1
+                self.assertIn('shove ou fold', certa, f'{stack} BB ensinando open pequeno: {certa}')
+            else:
+                fundos += 1
+                self.assertIn('2 a 2,5 BB', certa, f'{stack} BB deveria abrir pequeno: {certa}')
+        self.assertGreater(curtos, 30, 'stacks curtos quase não apareceram')
+        self.assertGreater(fundos, 100, 'stacks profundos quase não apareceram')
+        print(f"  ✔ open por profundidade: {curtos} curtos, {fundos} fundos, respostas distintas")
 
     def test_nenhum_tipo_de_blocker_e_pergunta_unica(self):
         """Blockers tinha 5 enunciados no total, DOIS deles estáticos."""

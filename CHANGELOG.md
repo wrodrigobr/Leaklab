@@ -7,6 +7,36 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(academia): os dois sub-tipos de bet sizing que estavam no piso (#academia)
+
+> `open_size` e `range_shape` tinham 4 enunciados cada, exatamente no minimo que o guarda exige.
+> Eram o que sobrou do conserto anterior.
+>
+> **`open_size` era variacao COSMETICA, o pior tipo.** Quatro textos que so trocavam o nome da
+> posicao, e a posicao nem entrava na resposta: era sempre "2 a 2,5 BB". O jogador lia quatro
+> enunciados e decorava uma frase. Agora a PROFUNDIDADE entra na resposta (a 9 BB nao existe open
+> pequeno, e shove ou fold) e entrou a conversao BB → fichas, que e onde se erra na mesa de
+> verdade: o nivel sobe e o jogador continua abrindo o valor do nivel anterior. 4 → ~134.
+>
+> **`range_shape` tinha o conceito certo e uma descricao so**, entao o jogador reconhecia a FRASE
+> em vez de ler o range. Cinco descricoes de cada forma, no jeito como ela realmente aparece:
+> ninguem pensa "meu range esta polarizado", pensa "so cheguei aqui com nuts e com blefe". 4 → 20.
+>
+> **Um distrator quase entrou sendo a propria resposta certa.** A conversao para fichas usava o
+> min-raise como alternativa errada: 2 BB contra os 2,2 BB corretos, ou seja 1200 contra 1300 numa
+> BB de 600. Nao e resposta errada, e a mesma resposta com outro arredondamento — o exercicio
+> marcaria certo como errado. O distrator que ficou e o erro que a pergunta existe para corrigir:
+> o open do nivel ANTERIOR, com meia BB de folga garantida.
+>
+> **E o piso permitia desfazer o trabalho.** Congelar o `range_shape` numa descricao so devolve
+> exatamente 4 (1 × 2 formas × 2 ruas), e o guarda passava. Pior: havia DOIS pisos com o mesmo
+> nome, porque o teste do sizing nasceu de manha com o 4 embutido e nao usava o helper que os
+> outros dois temas passaram a usar. Unificado num so, e subido para 10 — o menor tipo dos tres
+> temas expandidos tem 16, entao e folga real, nao numero escolhido para passar.
+>
+> 57 casos. Verificados quebrando 4 guardas: min-raise de volta como distrator, profundidade fora
+> da resposta, `range_shape` numa descricao so e `open_size` variando so a posicao.
+
 ### feat(academia): blockers e MDF sairam de 5 e 6 exercicios para 6.600 e 435 (#academia)
 
 > Continuacao direta do conserto do bet sizing: eram os dois temas mais magros do acervo, medidos
