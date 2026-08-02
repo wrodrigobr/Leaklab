@@ -324,7 +324,14 @@ function PricingSection() {
       badge: t("plans.grinder") as string | null,
       features: [t("plans.proF1"), t("plans.proF2"), t("plans.proF7"), t("plans.proF3"), t("plans.proF4"), t("plans.proF5"), t("plans.proF6")],
       cta: t("plans.ctaSubscribe", { name: "Pro" }),
-      href: "mailto:rodrigo.phpro@gmail.com?subject=Assinar%20GrindLab%20Pro",
+      // Era um `mailto:` para o e-mail pessoal do dono — sobra de quando a assinatura ainda não
+      // existia. Desde 2026-06-17 o Stripe está no ar, e o botão mandava o interessado escrever
+      // um e-mail em vez de assinar: o pior lugar possível para perder alguém que já decidiu
+      // pagar. De quebra, publicava um endereço pessoal na landing.
+      //
+      // `?next=` porque `/subscription` exige login: sem ele o visitante cai no login e a
+      // intenção de assinar se perde no caminho.
+      href: "/login?next=%2Fsubscription",
     },
   ];
   return (
@@ -368,8 +375,11 @@ function PricingSection() {
                   </li>
                 ))}
               </ul>
-              <a
-                href={plan.href}
+              {/* `Link`, e não `<a href>`: os dois planos apontam para dentro do app desde que o
+                  `mailto:` saiu daqui. Com âncora, assinar recarregava a página inteira — e o
+                  destino escapava da varredura de links internos (`routeLinks.test.ts`). */}
+              <Link
+                to={plan.href}
                 className={`flex items-center justify-center gap-1.5 w-full rounded-md py-2.5 font-mono text-xs font-bold uppercase tracking-widest-2 transition-colors ${
                   plan.highlight
                     ? "bg-primary text-primary-foreground hover:bg-primary/90"
@@ -377,7 +387,7 @@ function PricingSection() {
                 }`}
               >
                 {plan.cta} <ChevronRight className="size-3.5" />
-              </a>
+              </Link>
             </div>
           ))}
         </div>

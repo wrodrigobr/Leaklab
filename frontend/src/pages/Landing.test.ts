@@ -46,6 +46,30 @@ describe("landing — copy escrita chega à tela", () => {
     }
   });
 
+  it("os CTAs de plano levam para dentro do produto, não para um email", () => {
+    /**
+     * O botão "Assinar Pro" apontava para `mailto:` com o e-mail PESSOAL do dono — sobra de
+     * quando a assinatura ainda não existia. O Stripe está no ar desde 2026-06-17, e o botão
+     * mandava escrever um e-mail: o pior lugar possível para perder alguém que já decidiu pagar.
+     * De quebra, publicava um endereço pessoal na landing.
+     *
+     * O guarda é da CLASSE, não do caso: nenhum destino da landing pode ser `mailto:`, e nenhum
+     * e-mail pessoal pode aparecer no arquivo.
+     */
+    // Sem comentários: o comentário que EXPLICA a remoção cita os termos proibidos, e o teste
+    // passaria a falhar por causa da própria documentação do conserto.
+    const src = fonte().replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "");
+    expect(src, "CTA da landing saindo para email").not.toContain("mailto:");
+    expect(src, "endereço pessoal publicado na landing").not.toMatch(/[\w.+-]+@(?!grindlabpoker)[\w.-]+\.\w+/);
+
+    // E o plano pago tem de preservar a intenção: `/subscription` exige login, então sem `next=`
+    // o visitante cai no login e o motivo de ter clicado se perde.
+    const assinar = src.match(/ctaSubscribe[\s\S]{0,400}?href:\s*"([^"]+)"/);
+    expect(assinar, "não achei o destino do plano pago").toBeTruthy();
+    expect(assinar![1]).toContain("next=");
+    expect(decodeURIComponent(assinar![1])).toContain("/subscription");
+  });
+
   it("nenhum grupo de copy da landing ficou órfão", () => {
     // A varredura inteira, não só o grupo novo. Um grupo é considerado usado quando a página
     // cita qualquer chave dele — seções montam o texto por partes, e exigir chave a chave aqui

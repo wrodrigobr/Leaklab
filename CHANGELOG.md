@@ -7,6 +7,24 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(landing): "Assinar Pro" abria o cliente de email em vez da assinatura (#billing)
+
+> **Reportado pelo usuario.** O botao do plano pago era um `mailto:` para o e-mail PESSOAL do dono,
+> sobra de quando a assinatura ainda nao existia. O Stripe esta no ar desde 2026-06-17: o botao
+> mandava escrever um e-mail justamente para quem ja tinha decidido pagar. E, de quebra, publicava
+> um endereco pessoal na landing.
+>
+> Passou a apontar para `/login?next=%2Fsubscription`. O `next=` importa: `/subscription` exige
+> login, e sem ele o visitante cai na tela de login e o motivo de ter clicado se perde no caminho.
+>
+> Virou `Link` em vez de `<a href>`: com os dois planos apontando para dentro do app, a ancora
+> recarregava a pagina inteira e o destino ainda escapava da varredura de links internos
+> (`routeLinks.test.ts`), que so enxerga `to=`.
+>
+> **O guarda e da CLASSE, nao do caso:** nenhum destino da landing pode ser `mailto:` e nenhum
+> e-mail pessoal pode aparecer no arquivo. Verificado quebrando. Conferido no navegador: o clique
+> chega ao login com a intencao preservada.
+
 ### fix(auth): quem perdia a tela do codigo ficava sem cadastro e sem saida (#onboarding)
 
 > **Reportado pelo usuario, caso real:** cadastrou-se pelo celular, saiu sem querer da tela de
