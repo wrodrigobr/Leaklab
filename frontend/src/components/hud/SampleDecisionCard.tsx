@@ -25,6 +25,7 @@ import { sample, type ReplayData, type ReplayStep } from "@/lib/api";
  */
 export function SampleDecisionCard() {
   const { t } = useTranslation("replayer");
+  const { t: to } = useTranslation("onboarding");
   const [step, setStep] = useState<ReplayStep | null>(null);
   const [falhou, setFalhou] = useState(false);
 
@@ -51,6 +52,13 @@ export function SampleDecisionCard() {
   }
 
   return (
+    /* O selo vive AQUI, e não em quem chama, porque só este componente sabe se há card. Quando o
+       exemplo não carrega ele sai de cena em silêncio — e o selo, renderizado por fora, ficava
+       flutuando sozinho na página. Aconteceu no hero da landing com a API fora do ar. */
+    <div className="relative">
+      <span className="absolute -top-2 right-3 z-10 bg-background px-1.5 font-mono text-[10px] uppercase tracking-widest-2 text-muted-foreground">
+        {to("sample.seal")}
+      </span>
     <SidePanels
       step={step}
       isError={!!step.is_error}
@@ -81,5 +89,6 @@ export function SampleDecisionCard() {
       tournamentId=""
       handId=""
     />
+    </div>
   );
 }

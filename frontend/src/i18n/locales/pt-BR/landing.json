@@ -8,10 +8,10 @@
     "eyebrow": "Especialista em torneios (MTT)",
     "title1": "Pare de vazar fichas",
     "title2": "nos mesmos spots.",
-    "subtitle": "A única ferramenta que prova que você melhorou no jogo real, e não num simulador. Ela lê os seus torneios, aponta onde o EV vazou e volta depois para conferir se parou de vazar.",
+    "subtitle": "Você repete os mesmos erros e não sabe quais são. O GrindLab lê os seus torneios, mostra onde o EV vazou em cada decisão e volta depois, nas suas mãos reais, para conferir se você parou.",
     "ctaStart": "Começar grátis",
-    "ctaHow": "Ver como funciona",
-    "ctaSample": "Ver análise de exemplo"
+    "ctaDemo": "Ver o sistema por dentro",
+    "risco": "Grátis para sempre no plano Free · Sem cartão · Funciona no navegador"
   },
   "networks": {
     "eyebrow": "Redes compatíveis",
@@ -73,13 +73,9 @@
     "privacy": "Privacidade"
   },
   "demo": {
-    "eyebrow": "O QUE VOCÊ RECEBE",
-    "heading": "Cada decisão, avaliada",
-    "subtitle": "Você joga, o GrindLab compara com a solução e mostra onde vazou EV.",
     "b1": "Veredito claro por mão.",
     "b2": "A ação recomendada, lado a lado com a sua.",
-    "b3": "A evidência do solver, não achismo.",
-    "seal": "EXEMPLO"
+    "b3": "A evidência do solver, não achismo."
   },
   "prova": {
     "eyebrow": "O diferencial",

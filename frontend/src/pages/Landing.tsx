@@ -43,10 +43,23 @@ function Navbar() {
   );
 }
 
+/**
+ * Hero em DUAS COLUNAS: a promessa à esquerda, a análise real à direita.
+ *
+ * O anterior era `min-h-dvh` com um bloco de 349px centralizado: numa janela de 1280x720 sobravam
+ * 371px vazios (52% da primeira tela) e o texto ocupava 45% da largura. Pior que o vazio: a
+ * primeira evidência do produto ficava a **2,3 telas** de distância, então a página pedia
+ * confiança antes de mostrar qualquer coisa.
+ *
+ * O card à direita é o mesmo Decision Card do produto, com dados de uma mão real. Ele estava na
+ * página, só que enterrado — subiu para cá e a seção `#exemplo` deixou de existir, para não
+ * aparecer duas vezes.
+ */
 function HeroSection() {
   const { t } = useTranslation("landing");
+  const bullets = [t("demo.b1"), t("demo.b2"), t("demo.b3")];
   return (
-    <section className="relative flex min-h-dvh flex-col items-center justify-center px-6 pt-24 pb-16 text-center overflow-hidden">
+    <section className="relative overflow-hidden px-6 pt-28 pb-20">
       <div
         className="pointer-events-none absolute inset-0 opacity-[0.03]"
         style={{
@@ -54,33 +67,55 @@ function HeroSection() {
           backgroundSize: "40px 40px",
         }}
       />
-      <div className="pointer-events-none absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 size-[520px] rounded-full bg-primary/8 blur-3xl" />
+      <div className="pointer-events-none absolute -top-24 left-1/4 size-[520px] rounded-full bg-primary/8 blur-3xl" />
 
-      <div className="relative mx-auto max-w-3xl space-y-6">
-        <p className="font-mono text-[10px] uppercase tracking-widest-2 text-primary">
-          {t("hero.eyebrow")}
-        </p>
-        <h1 className="font-heading text-4xl sm:text-6xl font-bold tracking-tight text-foreground leading-[1.05]">
-          {t("hero.title1")}<br />
-          <span className="text-primary">{t("hero.title2")}</span>
-        </h1>
-        <p className="text-base sm:text-lg text-muted-foreground max-w-xl mx-auto leading-relaxed">
-          {t("hero.subtitle")}
-        </p>
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-3">
-          <Link
-            to="/login"
-            className="flex items-center gap-2 rounded-md bg-primary px-6 py-3 font-mono text-sm font-bold uppercase tracking-widest-2 text-primary-foreground hover:bg-primary/90 transition-colors shadow-glow"
-          >
-            {t("hero.ctaStart")} <Zap className="size-4" />
-          </Link>
-          <a
-            href="#exemplo"
-            className="flex items-center gap-2 rounded-md border border-border px-6 py-3 font-mono text-sm text-muted-foreground hover:text-foreground hover:border-primary/50 transition-colors"
-          >
-            {t("hero.ctaSample")} <ChevronRight className="size-4" />
-          </a>
+      <div className="relative mx-auto grid max-w-6xl items-center gap-12 lg:grid-cols-2">
+        <div className="space-y-6 text-center lg:text-left">
+          <p className="font-mono text-[10px] uppercase tracking-widest-2 text-primary">
+            {t("hero.eyebrow")}
+          </p>
+          <h1 className="font-heading text-4xl sm:text-5xl font-bold tracking-tight text-foreground leading-[1.06]">
+            {t("hero.title1")}<br />
+            <span className="text-primary">{t("hero.title2")}</span>
+          </h1>
+          <p className="mx-auto max-w-xl text-base text-muted-foreground leading-relaxed lg:mx-0">
+            {t("hero.subtitle")}
+          </p>
+
+          <ul className="mx-auto max-w-md space-y-2 lg:mx-0">
+            {bullets.map((b) => (
+              <li key={b} className="flex gap-2.5 text-sm text-foreground/90">
+                <Check className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden />
+                <span className="leading-snug text-left">{b}</span>
+              </li>
+            ))}
+          </ul>
+
+          <div className="flex flex-col items-center gap-3 pt-1 sm:flex-row lg:justify-start">
+            <Link
+              to="/login"
+              className="flex w-full items-center justify-center gap-2 rounded-md bg-primary px-6 py-3 font-mono text-sm font-bold uppercase tracking-widest-2 text-primary-foreground shadow-glow transition-colors hover:bg-primary/90 sm:w-auto"
+            >
+              {t("hero.ctaStart")} <Zap className="size-4" />
+            </Link>
+            {/* Leva ao produto POVOADO, não a um exemplo de uma mão. É a coisa mais forte que
+                temos para mostrar a quem ainda não tem dado nenhum. */}
+            <Link
+              to="/demo"
+              className="flex w-full items-center justify-center gap-2 rounded-md border border-border px-6 py-3 font-mono text-sm text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground sm:w-auto"
+            >
+              {t("hero.ctaDemo")} <ChevronRight className="size-4" />
+            </Link>
+          </div>
+
+          {/* Responde as três objeções antes de elas nascerem. A terceira é vantagem direta sobre
+              concorrente que só roda em desktop. */}
+          <p className="font-mono text-[10px] uppercase tracking-widest-2 text-muted-foreground/70">
+            {t("hero.risco")}
+          </p>
         </div>
+
+        <SampleDecisionCard />
       </div>
     </section>
   );
@@ -181,48 +216,18 @@ function HowItWorksSection() {
   );
 }
 
-function LandingDemoSection() {
-  const { t } = useTranslation("landing");
-  const bullets = [t("demo.b1"), t("demo.b2"), t("demo.b3")];
-  return (
-    <section id="exemplo" className="py-24 px-6 scroll-mt-16" aria-labelledby="landing-demo-heading">
-      <div className="mx-auto grid max-w-5xl items-center gap-10 lg:grid-cols-2">
-        <div className="order-2 lg:order-1">
-          <p className="font-mono text-[10px] uppercase tracking-widest-2 text-primary mb-2">{t("demo.eyebrow")}</p>
-          <h2 id="landing-demo-heading" className="font-heading text-2xl font-bold text-foreground">{t("demo.heading")}</h2>
-          <p className="mt-3 text-sm text-muted-foreground leading-relaxed">{t("demo.subtitle")}</p>
-          <ul className="mt-6 space-y-3">
-            {bullets.map((b) => (
-              <li key={b} className="flex gap-3 text-sm text-foreground/90">
-                <Check className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden />
-                <span className="leading-snug">{b}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-        <div className="relative order-1 lg:order-2">
-          <span className="absolute -top-2 right-3 z-10 bg-background px-1.5 font-mono text-[10px] uppercase tracking-widest-2 text-muted-foreground">
-            {t("demo.seal")}
-          </span>
-          <SampleDecisionCard />
-        </div>
-      </div>
-    </section>
-  );
-}
-
 /**
- * O DIFERENCIAL. Vem logo depois do exemplo e antes das features, que é onde a pergunta nasce:
- * o visitante acabou de ver uma análise real e pensa "e por que você, se eu já uso um trainer?".
- * Enterrar isto depois das features genéricas seria responder tarde.
+ * O DIFERENCIAL. Vem logo depois do exemplo e antes das features, que Ã© onde a pergunta nasce:
+ * o visitante acabou de ver uma anÃ¡lise real e pensa "e por que vocÃª, se eu jÃ¡ uso um trainer?".
+ * Enterrar isto depois das features genÃ©ricas seria responder tarde.
  *
- * As três afirmações foram conferidas no código antes de irem para a tela, e não é zelo abstrato:
- * esta mesma landing exibia um selo "AES-256" sem uma linha de cifragem por trás.
- *   • "mede no seu jogo"        → `_category_error_counts` compara as mãos importadas contra o
- *                                 histórico anterior ao baseline (repositories.py);
- *   • "só afirma quando resiste" → `validate_leak` (Wilson + Newcombe + shrinkage, validation.py);
- *   • "reabre sozinho"           → `should_reopen` move o baseline e dispara o sino.
- * Se alguma delas sair do produto, esta seção sai da landing junto.
+ * As trÃªs afirmaÃ§Ãµes foram conferidas no cÃ³digo antes de irem para a tela, e nÃ£o Ã© zelo abstrato:
+ * esta mesma landing exibia um selo "AES-256" sem uma linha de cifragem por trÃ¡s.
+ *   â€¢ "mede no seu jogo"        â†’ `_category_error_counts` compara as mÃ£os importadas contra o
+ *                                 histÃ³rico anterior ao baseline (repositories.py);
+ *   â€¢ "sÃ³ afirma quando resiste" â†’ `validate_leak` (Wilson + Newcombe + shrinkage, validation.py);
+ *   â€¢ "reabre sozinho"           â†’ `should_reopen` move o baseline e dispara o sino.
+ * Se alguma delas sair do produto, esta seÃ§Ã£o sai da landing junto.
  */
 function DiferencialSection() {
   const { t } = useTranslation("landing");
@@ -261,7 +266,7 @@ function DiferencialSection() {
           ))}
         </div>
 
-        {/* O fecho é o que separa isto de marketing: diz de onde o número sai. */}
+        {/* O fecho Ã© o que separa isto de marketing: diz de onde o nÃºmero sai. */}
         <p className="mx-auto mt-10 flex max-w-2xl items-start justify-center gap-2 text-center text-sm text-muted-foreground leading-relaxed">
           <ClipboardCheck className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden />
           <span>{t("prova.nota")}</span>
@@ -457,7 +462,6 @@ export default function Landing() {
       <HeroSection />
       <SupportedNetworksSection />
       <HowItWorksSection />
-      <LandingDemoSection />
       <DiferencialSection />
       <FeaturesSection />
       <PricingSection />

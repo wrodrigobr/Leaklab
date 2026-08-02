@@ -171,9 +171,6 @@ export function EmptyDashboard({ onComplete }: Props) {
         ) : (
           <div className="grid gap-3 md:grid-cols-2 md:items-start">
             <div className="relative">
-              <span className="absolute -top-2 right-3 z-10 bg-hud-surface px-1.5 font-mono text-[10px] uppercase tracking-widest-2 text-muted-foreground">
-                {to("sample.seal")}
-              </span>
               <SampleDecisionCard />
             </div>
             <div className="rounded-xl border border-primary/20 bg-primary/5 p-5 text-center">

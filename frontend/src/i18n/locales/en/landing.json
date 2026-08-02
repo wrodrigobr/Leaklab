@@ -8,10 +8,10 @@
     "eyebrow": "Tournament (MTT) specialist",
     "title1": "Stop leaking chips",
     "title2": "in the same spots.",
-    "subtitle": "The only tool that proves you improved in real play, not in a simulator. It reads your tournaments, shows where EV leaked, and comes back later to check whether it stopped.",
+    "subtitle": "You repeat the same mistakes and you do not know which ones. GrindLab reads your tournaments, shows where EV leaked in each decision, then comes back to your real hands to check whether you stopped.",
     "ctaStart": "Start free",
-    "ctaHow": "See how it works",
-    "ctaSample": "See a sample analysis"
+    "ctaDemo": "See the system from the inside",
+    "risco": "Free forever on the Free plan · No card · Runs in your browser"
   },
   "networks": {
     "eyebrow": "Supported networks",
@@ -73,13 +73,9 @@
     "privacy": "Privacy"
   },
   "demo": {
-    "eyebrow": "WHAT YOU GET",
-    "heading": "Every decision, graded",
-    "subtitle": "You play, GrindLab compares it to the solution and shows where you leaked EV.",
     "b1": "A clear verdict per hand.",
     "b2": "The recommended action, side by side with yours.",
-    "b3": "The solver's evidence, not guesswork.",
-    "seal": "EXAMPLE"
+    "b3": "The solver's evidence, not guesswork."
   },
   "prova": {
     "eyebrow": "What sets it apart",

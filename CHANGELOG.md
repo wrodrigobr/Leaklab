@@ -7,6 +7,34 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(landing): hero em duas colunas, com a analise real na primeira dobra (#landing)
+
+> **Reportado pelo usuario:** *"a pagina inicial e mais propaganda do que mostra o que o sistema
+> realmente e"*. Medido a 1280x720, o numero explicava a sensacao: o hero era `min-h-dvh` com um
+> bloco de 349px centralizado — **371px vazios, 52% da primeira tela** — e o texto ocupava **45%
+> da largura**. Pior que o vazio: a primeira evidencia do produto ficava a **2,3 telas**, entao a
+> pagina pedia confianca antes de mostrar qualquer coisa.
+>
+> Benchmark com o concorrente (grindpihub.com), medido no mesmo tamanho de janela: hero de 551px
+> para 551px de conteudo (zero vazio), 99% da largura, e o painel do produto DENTRO da primeira
+> tela. A pagina inteira deles tem metade da nossa e diz mais.
+>
+> Agora: copy a esquerda, o Decision Card real a direita. **90% da largura** contra 45%, e a
+> analise de uma mao de verdade na primeira dobra. A secao `#exemplo` deixou de existir — o card
+> subiu para o hero e apareceria duas vezes.
+>
+> O subtitulo tambem mudou de estrategia: comecava com *"a unica ferramenta que prova..."*, um
+> superlativo antes de termos ganho qualquer confianca. Passou a nomear a dor primeiro.
+>
+> **O guarda de copy orfa pegou uma regressao real durante o trabalho:** ao remover a secao do
+> exemplo, a fatia levou junto a **secao do diferencial**, que ficava entre ela e as features. A
+> landing teria ido ao ar sem ela, e nada quebraria. Restaurada.
+>
+> **E um defeito proprio, consertado:** o selo "EXEMPLO" era renderizado pela PAGINA, fora do
+> card. Quando o exemplo nao carrega ele sai de cena em silencio — e o selo ficava flutuando
+> sozinho. Aconteceu no hero com a API fora do ar. Passou para dentro do card, que e quem sabe se
+> ha o que selar, e isso valia tambem para o dashboard vazio.
+
 ### fix(infra): 22GB de cache de build esquecidos, e o deploy duplicado que os escondia (#infra)
 
 > **Sintoma:** o disco do servidor subia a cada deploy e o `docker image prune` do passo de
