@@ -470,8 +470,20 @@ export default function LeakTrainer() {
   // categoria PRINCIPAL da lição (mais tentativas) + seu domínio antes→depois (eixo de treino)
   const primaryCatKey = Object.entries(sessionStats)
     .sort((a, b) => (b[1].hits + b[1].misses) - (a[1].hits + a[1].misses))[0]?.[0];
-  const primaryMastery = primaryCatKey ? masteryByCat[primaryCatKey] : undefined;
   const primaryLabel = primaryCatKey ? sessionStats[primaryCatKey]?.label : undefined;
+  /* Quantas SITUAÇÕES a lição tocou, e quanto dela ficou na principal.
+     Reportado: "acertei tudo, mas ficou como bronze". Não era a tela mentindo sozinha — a lição
+     de 10 spots se espalha por ~10 categorias diferentes (a prática é intercalada de propósito),
+     cada uma recebe UMA tentativa, e o domínio de uma tentativa é 5%. A tela mostrava o domínio
+     da categoria do ÚLTIMO spot e o apresentava como o resultado das 10 respostas.
+     Medido em produção: 54 categorias para 205 tentativas, 3,8 por categoria.
+     O bloco de domínio só aparece quando a lição REALMENTE se concentrou — senão ele descreve
+     1 resposta como se fossem 10. Quando espalhou, a tela diz que espalhou. */
+  const catsTreinadas = statList.length;
+  const respostasNaPrincipal = primaryCatKey
+    ? (sessionStats[primaryCatKey]?.hits ?? 0) + (sessionStats[primaryCatKey]?.misses ?? 0) : 0;
+  const licaoConcentrada = totalDone > 0 && respostasNaPrincipal / totalDone >= 0.6;
+  const primaryMastery = (licaoConcentrada && primaryCatKey) ? masteryByCat[primaryCatKey] : undefined;
 
   // comemoração estilo Duolingo ao concluir a lição (confete; mais forte se foi bem)
   useEffect(() => {
@@ -1116,7 +1128,13 @@ export default function LeakTrainer() {
                   <Trophy className="size-8 text-primary" aria-hidden />
                 </div>
                 <h2 className="font-heading text-2xl font-bold text-foreground">{t("leakTrainer.summary.lessonDone")}</h2>
-                {primaryLabel && <p className="text-sm text-muted-foreground">{primaryLabel}</p>}
+                {licaoConcentrada && primaryLabel
+                  ? <p className="text-sm text-muted-foreground">{primaryLabel}</p>
+                  : catsTreinadas > 1 && (
+                      <p className="text-sm text-muted-foreground">
+                        {t("leakTrainer.summary.spread", { count: catsTreinadas })}
+                      </p>
+                    )}
               </div>
 
               {/* 3 stats */}
@@ -1149,6 +1167,20 @@ export default function LeakTrainer() {
                     <span className="text-muted-foreground">{mStart}% → <span className="font-bold text-foreground">{mNow}%</span></span>
                     {mGain > 0 && <span className="font-bold text-emerald-400">+{mGain}</span>}
                   </div>
+                </div>
+              )}
+
+              {/* Espalhou: em vez da barra de UMA categoria, diz onde as respostas foram parar.
+                  Barra de domínio aqui responderia a pergunta errada — o jogador quer saber como
+                  foi a LIÇÃO, e o domínio de uma categoria não é isso. */}
+              {!licaoConcentrada && catsTreinadas > 1 && (
+                <div className="mt-4 rounded-2xl bg-background/60 p-4 ring-1 ring-border">
+                  <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+                    {t("leakTrainer.summary.spreadTitle")}
+                  </p>
+                  <p className="mt-1 text-xs leading-snug text-muted-foreground">
+                    {t("leakTrainer.summary.spreadDesc", { count: catsTreinadas })}
+                  </p>
                 </div>
               )}
 

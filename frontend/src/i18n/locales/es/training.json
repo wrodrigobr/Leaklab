@@ -58,7 +58,12 @@
     "f1": "Currículo armado a partir de tus leaks reales",
     "f2": "Corrección en el servidor contra el rango GTO, al instante",
     "f3": "Se adapta: fallas un tipo de spot, entrenas más de él",
-    "cta": "Abrir Leak Trainer"
+    "cta": "Abrir Leak Trainer",
+    "summary": {
+      "spread": "{{count}} situaciones diferentes",
+      "spreadTitle": "Lo que entrenaste",
+      "spreadDesc": "Esta lección pasó por {{count}} situaciones diferentes, una o dos respuestas en cada una. Variar es a propósito: así el aprendizaje se transfiere a la mesa. El dominio de cada una sube despacio, con repetición a lo largo de los días."
+    }
   },
   "academy": {
     "title": "Academia",

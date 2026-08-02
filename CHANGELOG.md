@@ -7,6 +7,40 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(treino): "acertei tudo e ficou bronze" — a tela anunciava 1 resposta como se fossem 10 (#treino)
+
+> Reportado com print: 10 feitos, 100% de acerto, e "DOMÍNIO DA CATEGORIA 0% → 5%, BRONZE". A
+> leitura do jogador estava certa: acertar tudo não moveu nada.
+>
+> **Nao era so a tela.** A licao de 10 spots se espalha por ~10 categorias diferentes — a pratica e
+> INTERCALADA de proposito, e o que o protocolo de progressao manda fazer — e cada categoria recebe
+> UMA tentativa. O dominio de uma tentativa e exatamente 5%. A tela pegava a categoria do ULTIMO
+> spot e a anunciava como o desfecho das dez respostas. Medido em producao: **54 categorias para
+> 205 tentativas, 3,8 por categoria**.
+>
+> **A hipotese do conserto foi DERRUBADA pela medicao, e por isso ela nao subiu.** O plano era
+> medir dominio por FAMILIA (`cenario:posicao:vs`, sem a profundidade) — cheguei a implementar nas
+> conquistas e no gate. Ao medir nos dados reais: **colapsa 54 chaves em 49 familias**, quase nada,
+> porque o que fragmenta a pratica sao os PARES DE POSICAO (8 de RFI, 36 de vs_RFI), nao o stack. E
+> onde houve fusao ela DILUIU: 4 ouros e 1 diamante por chave viravam 5 pratas e 44 bronzes. A
+> mudanca pioraria exatamente o numero da queixa. Revertida inteira.
+>
+> **O que subiu e o conserto honesto:** a barra de dominio so aparece quando a licao REALMENTE se
+> concentrou (60% das respostas na mesma categoria). Quando espalhou, a tela diz que espalhou, e
+> explica por que — variar e deliberado, e o dominio de cada situacao sobe devagar, com repeticao
+> ao longo dos dias. Uma barra de UMA categoria responderia a pergunta errada: o jogador quer saber
+> como foi a LICAO.
+>
+> **Fica ABERTO, e e decisao de produto:** o gate de progressao exige Ouro (70%) por chave, o
+> dominio satura em 20 tentativas por chave, e a pratica intercalada da ~4. O gate nao abre por
+> construcao. As saidas sao medir por CENARIO (grosso, mas com volume real), concentrar a licao
+> numa categoria (briga com o interleaving), ou baixar o volume de saturacao. Nenhuma e obvia, e
+> nenhuma e minha para escolher.
+>
+> 3 casos em `leakTrainerSummary.test.ts`, verificados fazendo a barra voltar a aparecer sempre.
+> Frontend: 242 testes, zero falhas.
+
+
 ### fix(treino): a mesa desenhava uma aposta que nao existia, e o rotulo descrevia outro spot (#treino)
 
 > Tres defeitos num print so, todos expostos pelo acervo de nos solvados que entrou hoje (#41).

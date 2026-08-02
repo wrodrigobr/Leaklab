@@ -58,7 +58,12 @@
     "f1": "Curriculum built from your real leaks",
     "f2": "Server-side grading against the GTO range, instantly",
     "f3": "Adapts: miss a spot type, train more of it",
-    "cta": "Open Leak Trainer"
+    "cta": "Open Leak Trainer",
+    "summary": {
+      "spread": "{{count}} different situations",
+      "spreadTitle": "What you trained",
+      "spreadDesc": "This lesson covered {{count}} different situations, one or two answers each. Varying is deliberate: that is how learning transfers to the table. Mastery in each one rises slowly, with repetition across days."
+    }
   },
   "academy": {
     "title": "Academy",
