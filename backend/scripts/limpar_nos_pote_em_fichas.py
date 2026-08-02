@@ -132,14 +132,31 @@ def executar(hashes: list[str]) -> dict:
     ph = ','.join(['?'] * len(hashes))
     feito = {}
     with get_conn() as conn:
+        # Quais `ev_loss_source` das decisões afetadas vieram do GTO. Resolvido em PYTHON, e não com
+        # `LIKE '%gto%'`, por uma razão que este projeto já pagou duas vezes no mesmo dia: no
+        # Postgres o `%` é placeholder, então a query só quebra QUANDO há parâmetros — e quebra com
+        # `IndexError`, não com erro de SQL. A primeira versão deste script tinha o LIKE, imprimiu
+        # "APLICANDO..." e não escreveu NADA. Só apareceu porque a conferência do fim exige zero.
+        fontes = [r['ev_loss_source'] for r in conn.execute(_adapt(
+            f"SELECT DISTINCT ev_loss_source FROM decisions WHERE spot_hash IN ({ph})"),
+            tuple(hashes)).fetchall() if r['ev_loss_source']]
+        do_gto = [f for f in fontes if 'gto' in str(f).lower()]
+
         # 1. limpa o VEREDITO das decisões (o dado da mão fica intacto)
         sets = ', '.join(f'{c} = NULL' for c in _COLUNAS_VEREDITO)
-        cur = conn.execute(_adapt(
-            f"UPDATE decisions SET {sets}, gto_depth_capped = 0, spot_hash = NULL, "
-            f"ev_loss_bb = CASE WHEN ev_loss_source LIKE '%gto%' THEN NULL ELSE ev_loss_bb END, "
-            f"ev_loss_source = CASE WHEN ev_loss_source LIKE '%gto%' THEN NULL ELSE ev_loss_source END "
-            f"WHERE spot_hash IN ({ph})"), tuple(hashes))
+        if do_gto:
+            phf = ','.join(['?'] * len(do_gto))
+            cur = conn.execute(_adapt(
+                f"UPDATE decisions SET {sets}, gto_depth_capped = 0, spot_hash = NULL, "
+                f"ev_loss_bb = CASE WHEN ev_loss_source IN ({phf}) THEN NULL ELSE ev_loss_bb END, "
+                f"ev_loss_source = CASE WHEN ev_loss_source IN ({phf}) THEN NULL ELSE ev_loss_source END "
+                f"WHERE spot_hash IN ({ph})"), tuple(do_gto) + tuple(do_gto) + tuple(hashes))
+        else:
+            cur = conn.execute(_adapt(
+                f"UPDATE decisions SET {sets}, gto_depth_capped = 0, spot_hash = NULL "
+                f"WHERE spot_hash IN ({ph})"), tuple(hashes))
         feito['decisoes_limpas'] = getattr(cur, 'rowcount', -1)
+        feito['fontes_ev_do_gto'] = do_gto
         # 2. some com a linha da fila, senão o payload errado volta a ser processado
         cur = conn.execute(_adapt(f"DELETE FROM gto_solver_queue WHERE spot_hash IN ({ph})"),
                            tuple(hashes))
@@ -206,6 +223,7 @@ def main():
 
     print('APLICANDO...')
     feito = executar(hashes)
+    print(f"  fontes de ev_loss tratadas como GTO: {feito.get('fontes_ev_do_gto')}")
     print(f"  decisões limpas : {feito.get('decisoes_limpas')}")
     print(f"  fila removida   : {feito.get('fila_removida')}")
     print(f"  nós removidos   : {feito.get('nos_removidos')}")
