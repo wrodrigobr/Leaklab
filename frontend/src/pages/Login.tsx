@@ -18,7 +18,7 @@ const Login = () => {
   const { login, register, verifyEmail, user } = useAuth();
   const navigate = useNavigate();
   const { t } = useTranslation("auth");
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const ref = searchParams.get("ref");
   const [linkedCoach, setLinkedCoach] = useState<string | null>(null);
 
@@ -27,6 +27,37 @@ const Login = () => {
   const [pendingCoach, setPendingCoach] = useState<string | null>(null);
   const [code, setCode] = useState("");
   const [resent, setResent] = useState(false);
+
+  /**
+   * A tela do código vivia SÓ na memória: sair dela (trocar de app no celular basta) perdia o
+   * estado e não havia como voltar. Aconteceu com um usuário real, que ficou com o código na mão
+   * e sem onde digitar.
+   *
+   * Agora o e-mail pendente vive na URL (`?verificar=`), então recarregar e o voltar do navegador
+   * devolvem a tela. E o link do e-mail traz `?codigo=`, que preenche e envia sozinho.
+   */
+  useEffect(() => {
+    const alvoEmail = searchParams.get("verificar");
+    if (!alvoEmail || pendingEmail) return;
+    setPendingEmail(alvoEmail);
+    setEmail(alvoEmail);
+    const codigo = searchParams.get("codigo");
+    if (codigo) setCode(codigo);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
+
+  // Envio automático quando o código veio pelo link. Roda uma vez: `autoEnviado` impede que um
+  // código recusado entre em laço de reenvio.
+  const [autoEnviado, setAutoEnviado] = useState(false);
+  useEffect(() => {
+    if (autoEnviado || !pendingEmail || !code || !searchParams.get("codigo")) return;
+    setAutoEnviado(true);
+    // Tira o código da URL ANTES de enviar: ele não pode ficar no histórico do navegador nem
+    // vazar por Referer. O `verificar` fica, porque é ele que devolve a tela num recarregamento.
+    setSearchParams({ verificar: pendingEmail }, { replace: true });
+    void submitCode();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingEmail, code, autoEnviado]);
 
   // Esqueci a senha: 'email' (pede o email) | 'reset' (código + nova senha) | null.
   const [forgotMode, setForgotMode] = useState<null | "email" | "reset">(null);
@@ -76,6 +107,7 @@ const Login = () => {
         if (res.pending) {
           setPendingCoach(res.linkedCoach ?? null);
           setPendingEmail(res.email ?? email);
+          setSearchParams({ verificar: res.email ?? email }, { replace: true });
           setLoading(false);
           return;
         }
@@ -87,6 +119,7 @@ const Login = () => {
       if (e2.code === "email_unverified") {
         // conta existe mas não confirmada: cai na tela do código (backend já reenviou)
         setPendingEmail(email);
+        setSearchParams({ verificar: email }, { replace: true });
         setLoading(false);
         return;
       }
@@ -104,13 +137,14 @@ const Login = () => {
     }
   };
 
-  const submitCode = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const submitCode = async (e?: React.FormEvent) => {
+    e?.preventDefault();
     setError("");
     setLoading(true);
     try {
       const coach = await verifyEmail(pendingEmail!, code.trim());
       setPendingEmail(null);
+      setSearchParams({}, { replace: true });
       routeAfterAuth(coach ?? pendingCoach ?? null);
     } catch (err: unknown) {
       const e2 = err as { code?: string; message?: string };
@@ -176,6 +210,27 @@ const Login = () => {
       /* silencioso: o endpoint nunca vaza existência de conta */
       setResent(true);
     }
+  };
+
+  /**
+   * Saída VISÍVEL para quem se cadastrou e perdeu a tela do código.
+   *
+   * O caminho já existia — tentar entrar com a conta não confirmada devolve `email_unverified` e
+   * reenvia o código — mas nada na tela dizia isso, então ninguém descobria sozinho. Era uma
+   * recuperação que só acontecia por acidente.
+   */
+  const recuperarConfirmacao = async () => {
+    const alvo = email.trim();
+    if (!alvo) { setError(t("verify.recoverNoEmail")); return; }
+    setError("");
+    setPendingEmail(alvo);
+    setSearchParams({ verificar: alvo }, { replace: true });
+    try {
+      await authApi.resendCode(alvo);
+    } catch {
+      /* silencioso: o endpoint nunca vaza existência de conta */
+    }
+    setResent(true);
   };
 
   const inputClass =
@@ -476,11 +531,20 @@ const Login = () => {
                   className={inputClass}
                 />
                 {tab === "login" && (
-                  <div className="text-right">
+                  <div className="flex items-center justify-between gap-3">
+                    {/* Saída para quem se cadastrou e perdeu a tela do código. Sem isto a
+                        recuperação só acontecia por acidente, ao tentar entrar. */}
+                    <button
+                      type="button"
+                      onClick={recuperarConfirmacao}
+                      className="text-left font-mono text-[10px] uppercase tracking-widest-2 text-muted-foreground hover:text-primary"
+                    >
+                      {t("verify.recoverLink")}
+                    </button>
                     <button
                       type="button"
                       onClick={() => { setForgotMode("email"); setError(""); setResetDone(false); }}
-                      className="font-mono text-[10px] uppercase tracking-widest-2 text-muted-foreground hover:text-primary"
+                      className="shrink-0 font-mono text-[10px] uppercase tracking-widest-2 text-muted-foreground hover:text-primary"
                     >
                       {t("login.forgotPassword")}
                     </button>

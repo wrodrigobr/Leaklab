@@ -438,19 +438,43 @@ def build_admin_email_html(username: str, title: str, body: str,
     )
 
 
-def build_verification_email_html(username: str, code: str, minutes: int = 15) -> str:
-    """Email de confirmação de conta com o código de verificação em destaque."""
+def build_verification_email_html(username: str, code: str, minutes: int = 15,
+                                  email: str | None = None) -> str:
+    """Email de confirmação de conta: BOTÃO que conclui num clique + código para digitar.
+
+    Os dois caminhos existem porque um deles falha na hora errada. A tela do código vivia só na
+    memória da página: quem saía dela — trocar de app no celular basta — perdia o estado e não
+    tinha como voltar. Aconteceu com um usuário real, que ficou com o código na mão e sem onde
+    digitá-lo.
+
+    O botão leva o MESMO código na URL, e a tela envia sozinha. Não é credencial nova no email: o
+    código já viajava aqui, segue com validade curta e uso único. É diferente de um "magic link"
+    que autentica por si, que aí sim seria material novo exposto.
+    """
+    from urllib.parse import quote
     base_url = os.environ.get("APP_BASE_URL", "https://grindlabpoker.com")
+    link = (f'{base_url}/login?verificar={quote(email)}&codigo={quote(code)}'
+            if email else None)
     code_box = (
         f'<table role="presentation" cellpadding="0" cellspacing="0" style="margin:8px 0 22px 0;">'
         f'<tr><td style="background:{_C_BG};border:1px solid {_C_BORDER};border-radius:12px;padding:22px 40px;">'
         f'<span style="font-family:\'Courier New\',monospace;font-size:38px;font-weight:800;'
         f'letter-spacing:.32em;color:{_C_TEAL};">{code}</span></td></tr></table>'
     )
+    botao = (
+        f'<table role="presentation" cellpadding="0" cellspacing="0" style="margin:4px 0 26px 0;">'
+        f'<tr><td style="background:{_C_TEAL};border-radius:10px;">'
+        f'<a href="{link}" style="display:inline-block;padding:14px 30px;font-family:Arial,sans-serif;'
+        f'font-size:15px;font-weight:700;color:#0A0E1A;text-decoration:none;">'
+        f'Confirmar meu email</a></td></tr></table>'
+    ) if link else ''
     inner = (
         _eyebrow("Confirmação de conta") + _h1("Confirme seu email") + _greeting(username)
         + f'<p style="margin:0 0 8px 0;font-size:16px;line-height:1.7;color:{_C_BODY};">'
-          f'Use o código abaixo para concluir seu cadastro na GrindLab:</p>'
+          f'Clique no botão para concluir seu cadastro na GrindLab:</p>'
+        + botao
+        + f'<p style="margin:0 0 4px 0;font-size:14px;line-height:1.6;color:{_C_MUTED};">'
+          f'Prefere digitar? Use este código na tela de confirmação:</p>'
         + code_box
         + f'<p style="margin:0;font-size:14px;line-height:1.6;color:{_C_MUTED};">'
           f'O código expira em {minutes} minutos. Se você não criou esta conta, é só ignorar este email.</p>'
@@ -539,7 +563,7 @@ def send_admin_email_bulk(recipients: list, title: str, body: str,
 
 def send_verification_email(to_email: str, username: str, code: str, minutes: int = 15) -> bool:
     """Envia o código de confirmação de conta. True se enviado."""
-    html = build_verification_email_html(username, code, minutes)
+    html = build_verification_email_html(username, code, minutes, email=to_email)
     return send_transactional_email(to_email, f"Seu código de confirmação: {code}", html)
 
 

@@ -7,6 +7,38 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(auth): quem perdia a tela do codigo ficava sem cadastro e sem saida (#onboarding)
+
+> **Reportado pelo usuario, caso real:** cadastrou-se pelo celular, saiu sem querer da tela de
+> confirmacao e ficou com o codigo na mao, sem onde digitar. Um amigo dele caiu no mesmo buraco no
+> mesmo dia.
+>
+> **A tela do codigo vivia SO na memoria da pagina.** No celular, trocar de app ou abrir o email em
+> outra aba ja derrubava. E o email so trazia o codigo, sem link nenhum.
+>
+> **A saida existia e era invisivel.** Tentar entrar com a conta nao confirmada devolve
+> `email_unverified` e reenvia o codigo — mas nada na interface dizia isso. Era uma recuperacao que
+> so acontecia por acidente. Medido no fluxo real, e o detalhe que faz a pessoa achar que continua
+> quebrado: **o codigo novo invalida o anterior**, entao quem digita o que ja tinha leva "invalido".
+>
+> Tres caminhos agora:
+>
+> 1. **Botao no email** que conclui num clique (`/login?verificar=&codigo=`), com o codigo ainda no
+>    corpo para quem preferir digitar. Os dois concluem. Nao e credencial nova exposta: o codigo ja
+>    viajava no email, segue com validade curta e uso unico — diferente de um "magic link" que
+>    autentica por si.
+> 2. **Link visivel na tela de login** ("nao confirmei meu email"), que devolve a tela e reenvia.
+> 3. **A tela deixou de ser volatil**: o email pendente vive na URL (`?verificar=`), entao
+>    recarregar e o voltar do navegador devolvem a tela. O `codigo` sai da URL antes do envio, para
+>    nao ficar no historico nem vazar por Referer.
+>
+> 6 testes de backend + 6 de frontend, 6 guardas verificados quebrando.
+>
+> **Defeito no meu proprio teste, corrigido:** a primeira versao gravava e-mails FIXOS no SQLite de
+> desenvolvimento. Passou uma vez e falhou em toda execucao seguinte com "Email ja cadastrado" —
+> teste que so passa em banco limpo mente na segunda vez, e ainda suja o banco de quem desenvolve.
+> Agora cada chamada usa banco temporario. Rodado duas vezes seguidas para provar.
+
 ### feat(onboarding): tour guiado sobre a tela de demonstracao (fases 3 e 4)
 
 > Fecha o pedido do usuario: *"eu gosto do tour guiado, podemos ter uma tela de exemplo com dados
