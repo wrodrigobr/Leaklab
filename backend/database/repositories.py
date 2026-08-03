@@ -1696,7 +1696,10 @@ def get_drill_spots(user_id: int, limit: int = 10, street: str = None, spot: str
               AND d.gto_action IS NOT NULL AND d.gto_action != ''
               -- Multiway postflop NAO entra: o solver e heads-up e a correcao devolveria
               -- 'uncovered'. Spot que nao pode ser corrigido nao e exercicio, e ruido — e ainda
-              -- ocupa uma das vagas da sessao. Medido: custa 3% do pool.
+              -- ocupa uma das vagas da sessao. Medido: custa 3 por cento do pool.
+              -- (Escrito por extenso de proposito: o psycopg2 nao sabe que isto e comentario SQL,
+              --  varre a string inteira e trata o sinal de porcentagem como placeholder. Um numero
+              --  com esse sinal AQUI derrubou o Ghost Table em producao, com IndexError.)
               AND NOT (d.street != 'preflop' AND COALESCE(d.n_active_opponents, 0) >= 2)
               {street_filter}
               {spot_filter}

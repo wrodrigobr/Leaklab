@@ -47,7 +47,7 @@ SUITES = {
                   'test_is_production.py',
                   'test_clear_bogus_icm_tax.py', 'test_diag_validacao.py',
                   'test_evolution_report.py', 'test_bool_int_convention.py',
-                  'test_evolution_cadence.py', 'test_row_access.py'],
+                  'test_evolution_cadence.py', 'test_row_access.py', 'test_sql_sem_porcentagem.py'],
     'llm':       ['test_llm_explainer.py', 'test_study_plan.py', 'test_study_patterns.py',
                   'test_revisor_pt.py'],
     'api':       ['test_api_endpoints.py', 'test_subscription.py', 'test_partygaming_financials.py',
