@@ -39,6 +39,33 @@ DIFICULDADES = ('basica', 'intermediaria', 'avancada')
 _POSICOES = ['UTG', 'UTG+1', 'UTG+2', 'LJ', 'HJ', 'CO', 'BTN', 'SB']
 
 
+# ── De QUEM a pergunta fala ───────────────────────────────────────────────────────────────────────
+#
+# **Pedido do usuário, olhando um print:** a pergunta era *"qual destas **BTN** joga de dois jeitos a
+# 17bb?"* e o botão "tabela de ranges" abria a matriz do **SB** — a posição do SPOT. Ele conferiu
+# 86s, viu que ali não folda nunca, e concluiu que o produto tinha errado. Conferido no dado: BTN a
+# 17bb tem 86s na fronteira entrando 32%; SB a 17bb tem 86s no núcleo, entrando 100%. **A pergunta
+# estava certa e a referência que o próprio produto abriu é que não respondia a pergunta feita.**
+#
+# Por isso toda pergunta declara `posicao`/`stack`: a tela abre a matriz nessas condições enquanto a
+# pergunta está em cena, e volta às do spot quando as cartas do herói aparecem.
+#
+# **`None` quando a pergunta não tem UMA posição.** `quem_abre_mais` compara duas — abrir uma delas
+# seria apontar para metade das alternativas. `efeito_do_stack` tem uma posição e DUAS profundidades,
+# então declara a posição e omite o stack. Declarar condição errada é pior que não declarar: foi
+# exatamente isso que gerou o relato.
+
+def _condicoes(pos: str | None, stack: float | None) -> dict:
+    """As condições que a tabela de ranges deve mostrar para esta pergunta. Chaves ausentes = a
+    tela mantém o que já usava (as do spot)."""
+    saida = {}
+    if pos:
+        saida['posicao'] = pos
+    if stack is not None:
+        saida['stack'] = float(stack)
+    return saida
+
+
 def _larguras(stack: float) -> dict:
     from leaklab.academy_questions import _larguras_por_posicao
     try:
@@ -79,6 +106,7 @@ def p_mao_entra(rng, pos: str, stack: float, excluir_mao: str | None = None):
                                 0 if entra else 1)
     return {
         'tipo': 'mao_entra', 'dificuldade': 'basica',
+        **_condicoes(pos, stack),
         'pergunta': f'{pos} abre {mao} a {int(stack)}bb?',
         'opcoes': opcoes, 'correta': certa,
         'explicacao': (
@@ -113,6 +141,8 @@ def p_quem_abre_mais(rng, stack: float):
     opcoes, certa = _embaralhar(rng, [pa, pb], 0 if maior == pa else 1)
     return {
         'tipo': 'quem_abre_mais', 'dificuldade': 'basica',
+        # DUAS posicoes comparadas: abrir uma seria apontar para metade das alternativas.
+        **_condicoes(None, stack),
         'pergunta': f'A {int(stack)}bb, quem abre MAIS maos: {pa} ou {pb}?',
         'opcoes': opcoes, 'correta': certa,
         'explicacao': (
@@ -133,6 +163,8 @@ def p_efeito_do_stack(rng, pos: str, stack_a: float, stack_b: float):
                                 0 if mais_larga == stack_a else 1)
     return {
         'tipo': 'efeito_do_stack', 'dificuldade': 'intermediaria',
+        # Uma posicao, DUAS profundidades: declara a posicao e omite o stack.
+        **_condicoes(pos, None),
         'pergunta': f'A range de abertura de {pos} e mais LARGA com qual profundidade?',
         'opcoes': opcoes, 'correta': certa,
         'explicacao': (
@@ -165,6 +197,7 @@ def p_qual_e_mista(rng, pos: str, stack: float, excluir_mao: str | None = None):
     pct = f'{round(float(freq) * 100)}%' if freq is not None else 'parte das vezes'
     return {
         'tipo': 'qual_e_mista', 'dificuldade': 'avancada',
+        **_condicoes(pos, stack),
         'pergunta': f'Qual destas {pos} joga de DOIS jeitos a {int(stack)}bb, as vezes entrando e '
                     f'as vezes foldando?',
         'opcoes': opcoes, 'correta': certa,

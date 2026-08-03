@@ -315,6 +315,10 @@ def _sondagem_de_range(vs_pos: str, stack: float, rng: random.Random) -> dict | 
         # `tipo`/`dificuldade` para a saida ser observavel junto com o catalogo novo. Sem eles a
         # sondagem era indistinguivel de "nenhuma pergunta" em qualquer contagem.
         'tipo': 'largura_do_vilao', 'dificuldade': 'intermediaria',
+        # DE QUEM a pergunta fala. A tela abre a tabela de ranges nesta posição depois que o
+        # jogador responde — ver `_POSICAO_DA_PERGUNTA` em `perguntas_de_range.py`.
+        'posicao': vs_pos,
+        'stack': float(stack),
         'pergunta': f'Antes de ver suas cartas: que fatia das mãos {vs_pos} tem aqui?',
         'opcoes': [opcoes[i] for i in ordem],
         'correta': ordem.index(0),

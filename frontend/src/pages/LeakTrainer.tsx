@@ -650,7 +650,14 @@ export default function LeakTrainer() {
         {showRange && table && (
           <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/70 p-4" onClick={() => setShowRange(false)}>
             <div className="w-full max-w-lg max-h-[88vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-              <RangePanel step={table.step} hero="Hero" heroCards={table.heroCards} onClose={() => setShowRange(false)} />
+              {/* Enquanto a pergunta está em cena, a tabela abre nas condições DELA; quando as
+                  cartas do herói aparecem (`phase !== "probe"`), volta para as da mão. Reportado:
+                  a pergunta falava do BTN e a tabela abria no SB, a posição do spot — o jogador
+                  conferiu a mão citada e concluiu que o produto tinha errado. */}
+              <RangePanel step={table.step} hero="Hero" heroCards={table.heroCards}
+                onClose={() => setShowRange(false)}
+                posicaoInicial={phase === "probe" ? sondagem?.posicao ?? null : null}
+                stackInicial={phase === "probe" ? sondagem?.stack ?? null : null} />
             </div>
           </div>
         )}

@@ -1288,6 +1288,11 @@ export interface LeakTrainerSpot {
     opcoes: string[];
     correta: number;
     explicacao: string;
+    /* Condições que a TABELA DE RANGES deve mostrar enquanto esta pergunta está em cena.
+       Ausentes quando a pergunta não tem uma posição única (ex.: "quem abre mais, LJ ou BTN?",
+       onde abrir uma seria apontar para metade das alternativas). */
+    posicao?: string | null;
+    stack?: number | null;
   } | null;
 }
 // Estado da sessão (client-side): por categoria, hits/misses/seen. Adulterar não falsifica acerto

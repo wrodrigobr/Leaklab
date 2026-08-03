@@ -7,6 +7,42 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(treino): a tabela de ranges abria numa posicao que nao respondia a pergunta (#treino)
+
+> **Reportado com print:** a pergunta era *"qual destas **BTN** joga de DOIS jeitos a 17bb, as vezes
+> entrando e as vezes foldando?"*, resposta 86s. O usuario abriu a TABELA DE RANGES para conferir,
+> viu 86s sem fold nenhum, e concluiu que o produto tinha errado.
+>
+> **Conferido no dado antes de mexer em qualquer coisa:**
+>
+> ```
+>   BTN a 17bb -> 86s na FRONTEIRA, entra  32%   (a pergunta estava certa)
+>   SB  a 17bb -> 86s no NUCLEO,    entra 100%   (a matriz que abriu)
+> ```
+>
+> A tabela abria na posicao do SPOT (SB, defendendo vs BTN), nao na da PERGUNTA. **O produto se fez
+> parecer errado com a propria ferramenta de conferencia** — e o jogador confia, porque veio
+> aprender.
+>
+> Agora toda pergunta declara `posicao`/`stack`, a tela abre a matriz nessas condicoes enquanto a
+> pergunta esta em cena, e **troca para as da mao quando as cartas do heroi aparecem** (pedido
+> explicito). O botao segue manual, como era.
+>
+> **Silencio quando nao ha UMA condicao:** `quem_abre_mais` compara duas posicoes (abrir uma seria
+> apontar para metade das alternativas) e `efeito_do_stack` compara duas profundidades (declara a
+> posicao, omite o stack). Declarar condicao errada e pior que nao declarar — foi exatamente isso
+> que gerou o relato.
+>
+> **Ressalva registrada:** com a pergunta ainda NAO respondida, essa matriz e o gabarito de
+> perguntas como "86s joga de dois jeitos?". Quem abrir antes de responder ve a resposta, e isso
+> entra na taxa de acerto. Decisao do usuario, tomada com o risco na mesa.
+>
+> **O teste de frontend nasceu incapaz de falhar, e so a quebra proposital mostrou.** Ele usava o
+> `rerender` da testing-library, que — medido com um contador de montagem — **REMONTAVA** o painel;
+> o `useState` reinicializava sozinho e o teste passava mesmo com o efeito de sincronia deletado.
+> Reescrito para trocar a prop por um PAI que re-renderiza, com o painel seguindo montado, que e
+> como o LeakTrainer faz. Agora cada quebra derruba exatamente um teste.
+
 ### fix(banco): o conserto do pool tirou producao do AR, e o duble era o culpado de novo (#infra)
 
 > **Meu conserto anterior derrubou o servico inteiro.** O ping de vivacidade e um `SELECT 1`, e no

@@ -25,6 +25,13 @@ interface Props {
   heroCards: string[];
   onClose: () => void;
   onHeaderMouseDown?: (e: React.MouseEvent<HTMLDivElement>) => void;
+  /* Condições que a matriz deve MOSTRAR, quando quem abre o painel não quer as da mão.
+     Nasceu de um relato: a pergunta do treino falava da range do BTN e a tabela abria no SB — a
+     posição do spot. O jogador conferiu a mão citada, viu comportamento diferente e concluiu que
+     o produto tinha errado. A pergunta estava certa; a referência é que não respondia a pergunta
+     feita. Ausente = comporta-se como sempre (as condições da mão). */
+  posicaoInicial?: string | null;
+  stackInicial?: number | null;
 }
 
 // Frequência por ação (estilo solver — soma 1.0)
@@ -157,19 +164,22 @@ function buildRangeFromApi(resp: PreflopRangesResp, type: RangeType, openerPos?:
   return null;
 }
 
-export function RangePanel({ step, hero, heroCards, onClose, onHeaderMouseDown }: Props) {
+export function RangePanel({ step, hero, heroCards, onClose, onHeaderMouseDown,
+                             posicaoInicial, stackInicial }: Props) {
   const heroSeat    = Object.entries(step.seats ?? {}).find(([, s]) => s.player === hero);
   const detectedPos = heroSeat ? normalizePosition(heroSeat[1].pos) : null;
   const gto         = step.preflop_gto;
+  const posPedida   = posicaoInicial ? normalizePosition(posicaoInicial) : null;
 
-  const [pos,  setPos]  = useState<Position>(detectedPos ?? 'BTN');
+  const [pos,  setPos]  = useState<Position>(posPedida ?? detectedPos ?? 'BTN');
 
   const [apiData, setApiData] = useState<PreflopRangesResp | null>(null);
   const [loading, setLoading] = useState(false);
 
   // hero_stack_bb só existe em steps de decisão do hero; fallback via seats + bb
   const heroSeatStack = heroSeat ? heroSeat[1].stack : null;
-  const stackBb = step.hero_stack_bb
+  const stackBb = stackInicial
+    ?? step.hero_stack_bb
     ?? (heroSeatStack && step.bb ? Math.round(heroSeatStack / step.bb) : null)
     ?? 30;
   const openerPos  = gto?.vs_position ?? undefined;
@@ -185,7 +195,21 @@ export function RangePanel({ step, hero, heroCards, onClose, onHeaderMouseDown }
           step.seats?.[seat]?.player !== hero && bet > (step.bb ?? 0))
         ? 'call' : 'open'));
 
-  const [type, setType] = useState<RangeType>(defaultType);
+  const [type, setType] = useState<RangeType>(posPedida ? 'open' : defaultType);
+
+  /* A matriz TROCA quando as condições pedidas mudam — é o pedido explícito: enquanto a pergunta
+     está em cena o painel mostra a range DELA; ao revelar as cartas do herói ele volta para a da
+     mão. Sem este efeito o `useState` congelaria o valor da primeira montagem, e um painel deixado
+     aberto seguiria mostrando a range da pergunta depois que ela saiu da tela — que é a mesma
+     confusão que o conserto existe para acabar, só que ao contrário.
+     Trocar de aba à mão continua valendo: as dependências só mudam quando a FONTE muda. */
+  useEffect(() => {
+    setPos(posPedida ?? detectedPos ?? 'BTN');
+    // Toda pergunta de range do treino é sobre a range de ABERTURA ("abre", "range de abertura",
+    // "às vezes entrando"). Abrir na aba de call mostraria outra coisa com o rótulo certo.
+    setType(posPedida ? 'open' : defaultType);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [posPedida, detectedPos]);
 
   useEffect(() => {
     let cancelled = false;

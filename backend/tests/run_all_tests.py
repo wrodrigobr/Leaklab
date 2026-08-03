@@ -18,6 +18,7 @@ SUITES = {
                   'test_elo_engine.py', 'test_leaderboard.py', 'test_invariants.py',
                   'test_leak_trainer.py', 'test_strategy_provider.py', 'test_sanidade_do_gabarito.py', 'test_progression.py',
                   'test_nota_da_mao_postflop.py',
+                  'test_condicoes_da_pergunta.py',
                   'test_drill_fronteira.py',
                   'test_memorizacao_range.py',
                   'test_proximo_passo.py',
