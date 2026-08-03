@@ -133,14 +133,21 @@ describe("modo grind", () => {
     expect(fita).toMatch(/·2|1\/2/);
   });
 
-  it("os botões de ação ficam centralizados, sem esticar pela tela", async () => {
+  it("a decisão fica AO LADO da mesa, não embaixo", async () => {
+    // Reportado: "ficaria melhor se os botões de decisão e veredito ficassem ao lado da mesa e não
+    // embaixo, como acontece nas páginas de treino". Embaixo, a decisão empurrava a mesa para cima
+    // e desperdiçava a largura — numa tela de 1300px sobravam faixas vazias dos dois lados.
     estado.mao = { token: "abc", total: 1, passos: [passo("flop")] };
     const { container } = montar();
     await waitFor(() => expect(screen.getByText("check")).toBeTruthy());
-    const grupo = screen.getByText("check").parentElement;
-    expect(grupo?.className).toContain("justify-center");
-    expect(grupo?.className).toContain("mx-auto");
-    expect(grupo?.className).toContain("max-w-2xl");
+    // a mesa e o painel dividem uma LINHA em tela larga
+    const linha = container.querySelector('[class*="lg:flex-row"]');
+    expect(linha, "mesa e decisão não estão na mesma linha").not.toBeNull();
+    // e os botões vivem no painel lateral, que tem largura própria
+    const aside = container.querySelector("aside");
+    expect(aside, "não há painel lateral").not.toBeNull();
+    expect(aside?.className).toMatch(/lg:w-\d/);
+    expect(aside?.contains(screen.getByText("check"))).toBe(true);
   });
 
   it("sem saber quem é o adversário, a mesa NÃO dobra ninguém", async () => {

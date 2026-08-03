@@ -194,9 +194,8 @@ export default function Grind() {
           <div className="flex min-h-0 flex-1 flex-col gap-2">
             {/* A fita fala de STREET, não de passo. Uma street pode ter DUAS decisões (check e
                 depois enfrentar a aposta), e listar passo a passo escrevia "flop, flop" — que se lê
-                como erro, não como duas decisões no mesmo flop. Quando há mais de uma, a street
-                mostra em qual delas você está. */}
-            <div className="flex flex-wrap items-center gap-1.5">
+                como erro, não como duas decisões no mesmo flop. */}
+            <div className="flex shrink-0 flex-wrap items-center gap-1.5">
               {streets.map((s) => (
                 <span key={s.street}
                   className={cn("rounded-md px-2 py-1 font-mono text-[10px] uppercase tracking-wider",
@@ -216,93 +215,96 @@ export default function Grind() {
               </span>
             </div>
 
-            {/* o que o vilão fez antes deste passo — sem isso o pote cresce sozinho na tela */}
-            {passo.vilao_antes && passo.vs_position && (
-              <p className="text-center font-mono text-xs text-amber-300">
-                {passo.vilao_antes.tipo === "aposta"
-                  ? t("grind.villainBet", { pos: passo.vs_position, bb: bb(passo.vilao_antes.bb) })
-                  : t("grind.villainCheck", { pos: passo.vs_position })}
-              </p>
-            )}
-
-            {/* `h-full w-auto` com proporção fixa: a mesa é dimensionada pela ALTURA disponível e
-                a largura sai da proporção. Era `w-full max-w-3xl`, que a travava em 768px no meio
-                de uma tela de 1600 e ainda assim gerava rolagem quando a altura era curta. */}
-            {mesa && (
-              <div className="flex min-h-0 flex-1 items-center justify-center">
-                <div className="aspect-[16/10] h-full max-h-full w-auto max-w-full">
-                  <PokerTableV3 step={mesa.step} hero="Hero" heroCards={mesa.heroCards}
-                    bb={100} betUnit="bb" transparentBg />
+            {/* MESA À ESQUERDA, DECISÃO À DIREITA — o mesmo arranjo das telas de treino. Embaixo, a
+                decisão empurrava a mesa para cima e desperdiçava a largura: numa tela de 1300px
+                sobravam faixas vazias dos dois lados enquanto a mesa encolhia. Ao lado, a mesa fica
+                com toda a altura e o olho não desce para agir.
+                Em tela estreita continua empilhado, que ali é o único arranjo possível. */}
+            <div className="flex min-h-0 flex-1 flex-col gap-3 lg:flex-row lg:items-stretch">
+              {mesa && (
+                <div className="flex min-h-0 min-w-0 flex-1 items-center justify-center">
+                  {/* `h-full w-auto` com proporção fixa: a mesa é dimensionada pela ALTURA e a
+                      largura sai da proporção. */}
+                  <div className="aspect-[16/10] h-full max-h-full w-auto max-w-full">
+                    <PokerTableV3 step={mesa.step} hero="Hero" heroCards={mesa.heroCards}
+                      bb={100} betUnit="bb" transparentBg />
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
 
-            {/* Sem vilão definido não se escreve "vs" — a tela dizia "UTG+1 vs unknown" numa
-                abertura, onde ainda não existe adversário. E pote 0 não vira "0bb": é ausência de
-                dado, não um pote de zero. */}
-            <div className="flex flex-wrap items-center justify-center gap-3 font-mono text-[11px] text-muted-foreground">
-              <span>{passo.vs_position ? `${passo.position} vs ${passo.vs_position}` : passo.position}</span>
-              <span>{bb(passo.stack_bb)}bb</span>
-              {passo.pot_bb > 0 && <span>{t("grind.pot")} {bb(passo.pot_bb)}bb</span>}
-              {passo.facing_size_bb > 0 && <span>{t("grind.facing")} {bb(passo.facing_size_bb)}bb</span>}
-            </div>
-
-            {/* Botões CENTRALIZADOS e com largura própria. Numa grade de 2 colunas sobre uma tela
-                de 1300px, dois botões viravam duas faixas de 650px cada: o alvo fica longe do
-                centro do olhar e a tela parece um formulário, não uma mesa.
-                (O comentário fica AQUI, fora do parêntese: dentro dele seria um segundo elemento
-                irmão, e o ramo só aceita um — foi assim que quebrei a página duas vezes hoje.) */}
-            {fase === "decidindo" && (
-              <div className="mx-auto flex w-full max-w-2xl shrink-0 flex-wrap justify-center gap-2">
-                {passo.options.map((a) => (
-                  <button key={a} type="button" disabled={enviando} onClick={() => void responder(a)}
-                    className="min-w-[120px] flex-1 rounded-xl border border-border bg-background/60 px-6 py-3 font-mono text-sm font-bold uppercase tracking-wider text-foreground transition-colors hover:border-primary/50 hover:text-primary disabled:opacity-40">
-                    {t(`grind.act.${a}`, a)}
-                  </button>
-                ))}
-              </div>
-            )}
-
-            {fase === "feedback" && (
-              <div className={cn("mx-auto w-full max-w-2xl shrink-0 space-y-2 rounded-2xl p-4 ring-1",
-                resultados[resultados.length - 1]?.semVeredito ? "bg-muted/20 ring-border"
-                  : resultados[resultados.length - 1]?.correto ? "bg-emerald-500/10 ring-emerald-500/30"
-                    : "bg-amber-500/10 ring-amber-500/30")}>
-                {resultados[resultados.length - 1]?.semVeredito ? (
-                  /* Nunca vira "errou": sem gabarito não há veredito, e dizer isso é o honesto. */
-                  <p className="text-sm text-muted-foreground">{t("grind.noVerdict")}</p>
-                ) : (
-                  <>
-                    <p className="font-heading text-base font-bold text-foreground">
-                      {resultados[resultados.length - 1]?.correto ? t("grind.right") : t("grind.wrong")}
-                    </p>
-                    {ultimo?.gto_strategy?.length ? (
-                      <div className="space-y-1">
-                        {ultimo.gto_strategy.map((d) => (
-                          <div key={d.action} className="flex items-center gap-2">
-                            <span className="w-14 shrink-0 font-mono text-[10px] uppercase text-muted-foreground">
-                              {t(`grind.act.${d.action}`, d.action)}
-                            </span>
-                            <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-border">
-                              <div className="h-full rounded-full bg-primary"
-                                style={{ width: `${Math.round(d.freq * 100)}%` }} />
-                            </div>
-                            <span className="w-10 shrink-0 text-right font-mono text-[10px] tabular-nums text-muted-foreground">
-                              {Math.round(d.freq * 100)}%
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    ) : null}
-                  </>
+              <aside className="flex w-full shrink-0 flex-col justify-center gap-3 lg:min-h-0 lg:w-80">
+                {/* o que o vilão fez antes deste passo — sem isso o pote cresce sozinho na tela */}
+                {passo.vilao_antes && passo.vs_position && (
+                  <p className="rounded-lg bg-amber-500/10 px-3 py-2 text-center font-mono text-xs text-amber-300 ring-1 ring-amber-500/25">
+                    {passo.vilao_antes.tipo === "aposta"
+                      ? t("grind.villainBet", { pos: passo.vs_position, bb: bb(passo.vilao_antes.bb) })
+                      : t("grind.villainCheck", { pos: passo.vs_position })}
+                  </p>
                 )}
-                <button type="button" onClick={avancar}
-                  className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 font-mono text-xs font-bold uppercase tracking-widest text-primary-foreground">
-                  {i + 1 >= mao.passos.length ? t("grind.finishHand") : t("grind.next")}
-                  <ArrowRight className="size-4" aria-hidden />
-                </button>
-              </div>
-            )}
+
+                {/* Sem vilão definido não se escreve "vs" — a tela dizia "UTG+1 vs unknown" numa
+                    abertura, onde não existe adversário. E pote 0 não vira "0bb": é ausência de
+                    dado, não um pote de zero. */}
+                <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 font-mono text-[11px] text-muted-foreground">
+                  <span>{passo.vs_position ? `${passo.position} vs ${passo.vs_position}` : passo.position}</span>
+                  <span>{bb(passo.stack_bb)}bb</span>
+                  {passo.pot_bb > 0 && <span>{t("grind.pot")} {bb(passo.pot_bb)}bb</span>}
+                  {passo.facing_size_bb > 0 && <span>{t("grind.facing")} {bb(passo.facing_size_bb)}bb</span>}
+                </div>
+
+                {fase === "decidindo" && (
+                  <div className="flex w-full flex-wrap justify-center gap-2">
+                    {passo.options.map((a) => (
+                      <button key={a} type="button" disabled={enviando} onClick={() => void responder(a)}
+                        className="min-w-[110px] flex-1 rounded-xl border border-border bg-background/60 px-4 py-3 font-mono text-sm font-bold uppercase tracking-wider text-foreground transition-colors hover:border-primary/50 hover:text-primary disabled:opacity-40">
+                        {t(`grind.act.${a}`, a)}
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {fase === "feedback" && (
+                  <div className={cn("w-full space-y-2 rounded-2xl p-4 ring-1",
+                    resultados[resultados.length - 1]?.semVeredito ? "bg-muted/20 ring-border"
+                      : resultados[resultados.length - 1]?.correto ? "bg-emerald-500/10 ring-emerald-500/30"
+                        : "bg-amber-500/10 ring-amber-500/30")}>
+                    {resultados[resultados.length - 1]?.semVeredito ? (
+                      /* Nunca vira "errou": sem gabarito não há veredito, e dizer isso é o honesto. */
+                      <p className="text-sm text-muted-foreground">{t("grind.noVerdict")}</p>
+                    ) : (
+                      <>
+                        <p className="font-heading text-base font-bold text-foreground">
+                          {resultados[resultados.length - 1]?.correto ? t("grind.right") : t("grind.wrong")}
+                        </p>
+                        {ultimo?.gto_strategy?.length ? (
+                          <div className="space-y-1">
+                            {ultimo.gto_strategy.map((d) => (
+                              <div key={d.action} className="flex items-center gap-2">
+                                <span className="w-12 shrink-0 font-mono text-[10px] uppercase text-muted-foreground">
+                                  {t(`grind.act.${d.action}`, d.action)}
+                                </span>
+                                <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-border">
+                                  <div className="h-full rounded-full bg-primary"
+                                    style={{ width: `${Math.round(d.freq * 100)}%` }} />
+                                </div>
+                                <span className="w-9 shrink-0 text-right font-mono text-[10px] tabular-nums text-muted-foreground">
+                                  {Math.round(d.freq * 100)}%
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        ) : null}
+                      </>
+                    )}
+                    <button type="button" onClick={avancar}
+                      className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 font-mono text-xs font-bold uppercase tracking-widest text-primary-foreground">
+                      {i + 1 >= mao.passos.length ? t("grind.finishHand") : t("grind.next")}
+                      <ArrowRight className="size-4" aria-hidden />
+                    </button>
+                  </div>
+                )}
+              </aside>
+            </div>
           </div>
         )}
 

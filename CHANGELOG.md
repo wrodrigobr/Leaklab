@@ -7,6 +7,22 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(treino): a decisao do modo grind foi para o LADO da mesa (#treino)
+
+> Pedido: "ficaria melhor se os botoes de decisao e veredito ficassem ao lado da mesa e nao embaixo,
+> como acontece nas paginas de treino".
+>
+> Embaixo, a decisao empurrava a mesa para cima e desperdicava a largura: numa tela de 1300px
+> sobravam faixas vazias dos dois lados enquanto a mesa encolhia. Ao lado — mesmo arranjo do Leak
+> Trainer — a mesa fica com toda a altura e o olho nao desce para agir. Em tela estreita continua
+> empilhado, que ali e o unico arranjo possivel.
+>
+> A acao do vilao, o contexto do spot, os botoes e o veredito moram todos no painel lateral agora.
+>
+> Guarda cobra que mesa e decisao dividam uma LINHA em tela larga e que os botoes vivam no painel.
+> Verificado devolvendo a coluna. Frontend 252, zero falhas.
+
+
 ### fix(treino): a mesa do modo grind ficava sem NINGUEM na jogada (#treino)
 
 > Reportado duas vezes, e a segunda foi a que expos a causa: "aqui tambem nao tem ninguem na mao",
