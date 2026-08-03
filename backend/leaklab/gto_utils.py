@@ -365,3 +365,52 @@ def map_cards_suits(cards, suit_map):
         if len(c) >= 2:
             out.append(c[0].upper() + suit_map.get(c[1].lower(), c[1].lower()))
     return out
+
+
+# ── Coerência do dinheiro no spot ─────────────────────────────────────────────────────────────
+#
+# **Reportado pelo usuário, vendo a tela:** *"aposta de 0.1bb?"* — o produto pediu uma decisão
+# contra uma aposta de 0,1bb num pote de 4,1bb. Medindo o acervo depois disso, o outro extremo era
+# pior: uma aposta de **116.000% do pote**.
+#
+# Nenhum dos dois é jogada. São erro de UNIDADE: `spot.potSize` do pipeline vem em FICHAS e
+# `decisions.pot_size` já está em BB — dois campos com o mesmo nome e escalas diferentes, a mesma
+# armadilha que o `facingSize` × `facingToBb` já causou três vezes neste projeto.
+#
+# Medido em 2026-08-03: as linhas ruins são LEGADO (o enfileiramento já converte certo, zero spot
+# novo veio errado). Mas o script de recuperação que eu mesmo rodei **copiou 13 delas adiante**,
+# porque copiava o payload sem olhar o conteúdo. Por isso o guarda mora aqui, numa função só,
+# usada tanto por quem SERVE quanto por quem ENFILEIRA — a origem do dado não importa.
+#
+# **As regras são de impossibilidade ESTRUTURAL, não de julgamento estratégico.** Um shove de 30bb
+# num pote de 4bb é 750% do pote e é perfeitamente real; ele passa. Medido: as quatro regras juntas
+# reprovam 6,3% do acervo e preservam os 28 shoves legítimos.
+
+_POTE_MINIMO_BB      = 1.0    # o pote pós-flop carrega os blinds: abaixo disso é erro de unidade
+_POTE_MAX_EM_STACKS  = 25.0   # 9 jogadores all-in não chegam perto disso
+_APOSTA_MAX_EM_STACKS = 3.0   # enfrentar aposta de 3x o seu stack não muda nada: o efetivo é o seu
+_APOSTA_MINIMA_BB    = 0.5    # abaixo de meio blind não é aposta
+
+
+def dinheiro_coerente(pot_bb, facing_bb, stack_bb):
+    """`(ok, motivo)` — o pote e a aposta deste spot são possíveis numa mesa de verdade?
+
+    Devolve o MOTIVO, e não só um booleano, porque acervo que encolhe sem dizer por quê vira
+    mistério: quem contar spots descartados precisa saber de qual defeito está falando.
+    """
+    try:
+        p = float(pot_bb or 0)
+        f = float(facing_bb or 0)
+        s = float(stack_bb or 0)
+    except (TypeError, ValueError):
+        return False, 'valores_nao_numericos'
+
+    if 0 < p < _POTE_MINIMO_BB:
+        return False, 'pote_menor_que_os_blinds'
+    if s > 0 and p > _POTE_MAX_EM_STACKS * s:
+        return False, 'pote_maior_que_a_mesa_inteira'
+    if s > 0 and f > _APOSTA_MAX_EM_STACKS * s:
+        return False, 'aposta_maior_que_o_stack'
+    if 0 < f < _APOSTA_MINIMA_BB:
+        return False, 'aposta_menor_que_meio_blind'
+    return True, None

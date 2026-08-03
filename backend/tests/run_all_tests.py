@@ -63,6 +63,7 @@ SUITES = {
     'ghost':     ['test_ghost_table_invariants.py', 'test_table_state.py', 'test_drill_preflop_action.py',
                   'test_drill_sem_veredito.py', 'test_trainer_pool.py',
                   'test_board_da_street_no_pool.py',
+                  'test_dinheiro_coerente.py',
                   'test_trainer_catalog.py', 'test_grind_mode.py'],
     'academy':   ['test_academy_variety.py'],
     'challenge': ['test_daily_challenge_difficulty.py', 'test_challenge_adversarial.py'],

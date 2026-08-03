@@ -7,6 +7,58 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(treino): "aposta de 0.1bb?" -- dinheiro impossivel virava exercicio (#treino)
+
+> Reportado pelo usuario olhando a tela. O outro extremo do acervo era pior: **aposta de 116.000%
+> do pote**. Nenhum dos dois e jogada — e erro de UNIDADE (`spot.potSize` do pipeline vem em FICHAS,
+> `decisions.pot_size` ja esta em BB; dois campos com o mesmo nome e escalas diferentes, a mesma
+> armadilha do `facingSize` x `facingToBb` que este projeto ja pagou tres vezes).
+>
+> **A hipotese inicial estava errada, e a medicao a derrubou.** Eu apostei no fallback
+> `_level_bb = float(d.get('level_bb') or 1) or 1`, que faria fichas serem lidas como BB quando o
+> nivel faltasse. Medido: **zero decisions tem `level_bb` nulo, zero ou 1** — o fallback nunca
+> dispara. As linhas ruins sao legado e o enfileiramento de hoje converte certo.
+>
+> **E 13 delas foram reenfileiradas HOJE pelo meu proprio script de recuperacao**, que copiava o
+> payload e so trocava o board. Zero vieram de upload novo. Copiar sem olhar transforma defeito
+> legado em defeito de hoje, com data de hoje, e o rastro se perde.
+>
+> Novo `dinheiro_coerente(pot, facing, stack)` em `gto_utils`, usado por quem SERVE (trainer pool) e
+> por quem ENFILEIRA (o script). **A procedencia do dado nao pode ser criterio de confianca** — foi
+> exatamente confiar nela que deixou os 13 passarem.
+>
+> **As regras sao de impossibilidade ESTRUTURAL, nao de julgamento estrategico**, e isso tem teste
+> proprio: um shove de 28bb num pote de 4bb e 700% e passa, porque e real. Uma regra escrita como
+> "aposta > 3x o pote e absurda" mataria justamente os spots mais instrutivos — verificado
+> quebrando: ela derruba `test_shove_legitimo_nao_e_rejeitado`.
+>
+> ```
+>   pote < 1bb (menor que os blinds)     303 spots
+>   pote > 25x o stack                    98
+>   aposta > 3x o stack                   38
+>   aposta entre 0 e 0.5bb                 6
+>   --------------------------------------------
+>   custo total: 411 de 6.541 (6,3%), e os 28 shoves legitimos sobrevivem
+> ```
+>
+> Acervo do treino: 2.329 serviveis, quatro familias de acao preservadas, 30 spots servidos com
+> ZERO dinheiro impossivel.
+
+### chore(infra): a latencia do /health que eu estava investigando era a MINHA internet (#infra)
+
+> Registrado porque quase virou trabalho. Eu tinha anotado "/health oscilando entre 0,43s e 1,09s,
+> provavel contencao com o solver drenando — remedir quando a fila esvaziar". Remedido:
+>
+> ```
+>   do SERVIDOR (sem Cloudflare):  TLS 6ms   | 1o byte  30ms
+>   da minha maquina:              TLS 350-680ms | 1o byte 680-1340ms
+>   maquina: load 0.03 | solver-consumer 0.00% CPU | app 22ms de mediana
+> ```
+>
+> O servidor responde em 30ms com a maquina ociosa. O aperto inteiro esta no handshake TLS do meu
+> link ate a borda da Cloudflare. **Nao havia contencao nenhuma** — a hipotese estava errada, e o
+> numero que eu vinha acompanhando media a minha conexao, nao o produto.
+
 ### feat(landing): FAQ, com toda resposta conferida no codigo antes de virar texto (#landing)
 
 > Seis perguntas entre os planos e o CTA final — que e onde a objecao nasce: o visitante acabou de

@@ -163,6 +163,20 @@ def _monta_spot(r: dict) -> Optional[dict]:
     _solvado = sj.get('board') or meta.get('board') or []
     if _solvado and len(_solvado) > len(board_for_street(_solvado, r['street'])):
         return None
+
+    # ── O dinheiro do spot é possível numa mesa de verdade? ───────────────────────────────────
+    #
+    # Reportado pelo usuário olhando a tela: *"aposta de 0.1bb?"*. O outro extremo do acervo era
+    # pior — aposta de 116.000% do pote. Erro de UNIDADE, não jogada. Ver `dinheiro_coerente`.
+    #
+    # Aqui é a última linha de defesa, e ela vale para QUALQUER origem: o enfileiramento já
+    # converte certo, mas o script de recuperação que rodei copiou 13 payloads ruins adiante.
+    # Filtro que confia na procedência do dado só adia o problema.
+    from leaklab.gto_utils import dinheiro_coerente
+    _ok, _ = dinheiro_coerente(sj.get('pot_bb'), sj.get('facing_size_bb'),
+                               sj.get('effective_stack_bb') or sj.get('hero_stack_bb'))
+    if not _ok:
+        return None
     mao = sj.get('hero_hand') or meta.get('hero_hand') or _carrega(r['hero_hand'])
     if isinstance(mao, str):
         mao = [mao[i:i + 2] for i in range(0, len(mao), 2)]

@@ -42,7 +42,8 @@ except Exception:
     pass
 
 from database.schema import get_conn, USE_POSTGRES
-from leaklab.gto_utils import board_for_street, compute_spot_hash, normalize_position
+from leaklab.gto_utils import (board_for_street, compute_spot_hash, normalize_position,
+                               dinheiro_coerente)
 
 _ESPERADO = {'flop': 3, 'turn': 4, 'river': 5}
 
@@ -67,14 +68,16 @@ def _pendentes() -> int:
     return int(r['n'] or 0)
 
 
-def levantar(limite: int | None = None) -> list:
-    """As linhas da fila cujo solve usou board maior que a street. Devolve o que seria feito."""
+def levantar(limite: int | None = None) -> tuple:
+    """`(alvos, descartados)` — as linhas cujo solve usou board maior que a street, e o que foi
+    RECUSADO por dinheiro incoerente, com o motivo."""
     with get_conn() as c:
         linhas = c.execute(_adapt(
             "SELECT spot_hash, spot_json, status FROM gto_solver_queue "
             "WHERE spot_json IS NOT NULL")).fetchall()
 
     alvos = []
+    descartados: dict = {}
     for r in linhas:
         sj = _carrega(r['spot_json']) or {}
         street = (sj.get('street') or '').lower()
@@ -91,6 +94,17 @@ def levantar(limite: int | None = None) -> list:
         facing = float(sj.get('facing_size_bb') or meta.get('facing_size_bb') or 0)
         if not pos or not mao or not stack:
             continue                       # sem os campos da chave não dá para refazer o hash
+
+        # **NÃO propagar payload podre.** A primeira versão deste script copiava o `spot_json`
+        # inteiro e só trocava o board — e foi assim que ele reenfileirou **13 spots com pote ou
+        # aposta em unidade errada**, um dos quais o usuário viu na tela ("aposta de 0.1bb?").
+        # Copiar sem olhar transforma defeito legado em defeito de hoje, com data de hoje, e o
+        # rastro se perde.
+        _ok, _motivo = dinheiro_coerente(sj.get('pot_bb'), facing,
+                                         sj.get('effective_stack_bb') or stack)
+        if not _ok:
+            descartados[_motivo] = descartados.get(_motivo, 0) + 1
+            continue
 
         novo_hash = compute_spot_hash(street, pos, cortado, mao, stack, facing)
         if novo_hash == r['spot_hash']:
@@ -113,7 +127,7 @@ def levantar(limite: int | None = None) -> list:
         })
         if limite and len(alvos) >= limite:
             break
-    return alvos
+    return alvos, descartados
 
 
 def _ja_existe(hashes: list) -> set:
@@ -143,7 +157,11 @@ def main():
     print('  Re-enfileiramento dos nós com board de street errada')
     print('=' * 62)
 
-    alvos = levantar(args.limite)
+    alvos, descartados = levantar(args.limite)
+    if descartados:
+        print('\n  RECUSADOS por dinheiro incoerente (pote ou aposta em unidade impossivel):')
+        for m, n in sorted(descartados.items()):
+            print(f'    {m}: {n}')
     if not alvos:
         print('\n  Nenhum nó com board maior que a street. Nada a fazer.')
         return 0
