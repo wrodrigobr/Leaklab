@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import {
   Upload, Brain, TrendingUp, ChevronRight,
   Check, Zap, BookOpen, Target, Activity, HelpCircle,
-  ClipboardCheck, Sigma, RotateCcw,
+  ClipboardCheck, Sigma, RotateCcw, Sparkles,
 } from "lucide-react";
 import { LEVEL_ICONS } from "@/components/hud/LevelIcons";
 import { SiteLogo } from "@/components/hud/SiteLogo";
@@ -12,7 +12,58 @@ import { HandExportGuide } from "@/components/hud/HandExportGuide";
 import { SampleDecisionCard } from "@/components/hud/SampleDecisionCard";
 import logoHorizontal from "@/assets/brand/grindlab_final_horizontal.svg";
 
+/**
+ * LANDING DESLOGADA — remodelada 2026-08-03 sobre uma referência de layout do usuário.
+ *
+ * ── O problema que a remodelagem resolve ──────────────────────────────────────────────────────
+ *
+ * Da faixa de redes até os planos, a página tinha UM ritmo repetido três vezes: `HowItWorks`,
+ * `Diferencial` e `Features` eram a mesma coisa — grade de 3 cards, cada um com ícone num quadrado
+ * de 40px, título e parágrafo, mesmo `py-24`, mesmo cabeçalho centralizado, duas delas com o mesmo
+ * fundo. Quem rolava via o mesmo bloco três vezes e parava de ler.
+ *
+ * Agora cada seção tem uma DENSIDADE própria: grade de fio de cabelo (processo) → lista numerada
+ * com filetes (argumento, ritmo de leitura) → cards leves com cantos táticos (varredura).
+ *
+ * ── O que da referência NÃO foi copiado, e por quê ────────────────────────────────────────────
+ *
+ * A referência trazia afirmações que este produto não sustenta, e copiá-las seria repetir uma
+ * cicatriz que já está registrada aqui: esta mesma landing já exibiu um selo **AES-256 sem uma
+ * linha de cifragem por trás**.
+ *
+ *   • "1.4M mãos analisadas" / "42 padrões de leak"  → número que não temos como provar;
+ *   • "4 sites: PokerStars, GG, 888, Party"          → 888 e Party estão DESLIGADOS (foco PS/GG,
+ *                                                      mais ACR e CoinPoker);
+ *   • "criptografia AES-256"                         → a cicatriz acima;
+ *   • "~3 min do upload ao diagnóstico"              → não medido;
+ *   • R$ 79 / R$ 199 e um terceiro plano             → os planos reais são Free e Pro R$ 99;
+ *   • marca LeakLabs.ai e links para `/dashboard`    → é GrindLab, e as rotas são `/login` e `/demo`.
+ *
+ * O que ficou é o LAYOUT e a linguagem visual (fio de cabelo, mono em caixa alta, ponto de status,
+ * cantos táticos, caixa de CTA com brilho), com o conteúdo verdadeiro que já existia.
+ *
+ * Zero chave de i18n nova: a remodelagem é visual e reusa toda a copy que já estava nas 3 locales.
+ */
+
 const LEVELS = ["Iniciante", "Estudante", "Grinder", "Regular", "Sólido", "Expert", "Elite"] as const;
+
+/**
+ * As redes que a landing MOSTRA. Exportada porque a frase abaixo da faixa também as lista, em
+ * prosa e em três idiomas — duas fontes para o mesmo fato.
+ *
+ * Elas já divergiram: os chips mostravam CoinPoker e a frase dizia "PokerStars, GGPoker e ACR
+ * (WPN)". Quem lia a frase concluía que a rede não era suportada. `landingNetworks.test.ts` exige
+ * que a copy cubra esta lista nas três locales, então acrescentar rede aqui e esquecer o texto
+ * passa a quebrar o teste em vez de virar informação errada na página.
+ */
+/** `name` é o que a faixa desenha; `token` é o que a copy PRECISA mencionar (sem a pontuação,
+ *  que muda de idioma para idioma). */
+export const LANDING_NETWORKS = [
+  { site: "pokerstars", name: "PokerStars", token: "PokerStars" },
+  { site: "ggpoker",    name: "GGPoker",    token: "GGPoker" },
+  { site: "acr",        name: "ACR (WPN)",  token: "ACR" },
+  { site: "coinpoker",  name: "CoinPoker",  token: "CoinPoker", isNew: true },
+] as const;
 
 // ── Subcomponents ─────────────────────────────────────────────────────────────
 
@@ -51,15 +102,19 @@ function Navbar() {
  * primeira evidência do produto ficava a **2,3 telas** de distância, então a página pedia
  * confiança antes de mostrar qualquer coisa.
  *
- * O card à direita é o mesmo Decision Card do produto, com dados de uma mão real. Ele estava na
- * página, só que enterrado — subiu para cá e a seção `#exemplo` deixou de existir, para não
- * aparecer duas vezes.
+ * O card à direita é o mesmo Decision Card do produto, com dados de uma mão REAL. A referência
+ * punha ali um mock com números inventados; o nosso é mais forte justamente por não ser mock.
  */
 function HeroSection() {
   const { t } = useTranslation("landing");
   const bullets = [t("demo.b1"), t("demo.b2"), t("demo.b3")];
   return (
-    <section className="relative overflow-hidden px-6 pt-28 pb-20">
+    <section className="relative overflow-hidden border-b border-border px-6 pt-28 pb-16">
+      <div
+        className="pointer-events-none absolute inset-0"
+        style={{ background: "radial-gradient(60% 80% at 50% -10%, hsl(var(--primary) / 0.14), transparent 70%)" }}
+        aria-hidden
+      />
       <div
         className="pointer-events-none absolute inset-0 opacity-[0.03]"
         style={{
@@ -67,18 +122,27 @@ function HeroSection() {
           backgroundSize: "40px 40px",
         }}
       />
-      <div className="pointer-events-none absolute -top-24 left-1/4 size-[520px] rounded-full bg-primary/8 blur-3xl" />
 
       <div className="relative mx-auto grid max-w-6xl items-center gap-12 lg:grid-cols-2">
         <div className="space-y-6 text-center lg:text-left">
-          <p className="font-mono text-[10px] uppercase tracking-widest-2 text-primary">
-            {t("hero.eyebrow")}
-          </p>
-          <h1 className="font-heading text-4xl sm:text-5xl font-bold tracking-tight text-foreground leading-[1.06]">
+          {/* Pílula + linha de status com ponto pulsando: as duas assinaturas do HUD. A pílula diz
+              o que move o produto, a linha diz que ele está VIVO — antes de qualquer promessa. */}
+          <div className="flex flex-col items-center gap-3 lg:items-start">
+            <span className="inline-flex w-fit items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-3 py-1 font-mono text-[10px] font-bold uppercase tracking-widest-2 text-primary">
+              <Sparkles className="size-3" aria-hidden />
+              {t("hero.badge")}
+            </span>
+            <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest-2 text-muted-foreground">
+              <span className="size-1.5 shrink-0 rounded-full bg-primary animate-pulse" aria-hidden />
+              {t("hero.eyebrow")}
+            </div>
+          </div>
+
+          <h1 className="font-heading text-4xl font-bold leading-[1.06] tracking-tight text-foreground sm:text-5xl md:text-6xl">
             {t("hero.title1")}<br />
             <span className="text-primary">{t("hero.title2")}</span>
           </h1>
-          <p className="mx-auto max-w-xl text-base text-muted-foreground leading-relaxed lg:mx-0">
+          <p className="mx-auto max-w-xl text-base leading-relaxed text-muted-foreground lg:mx-0">
             {t("hero.subtitle")}
           </p>
 
@@ -94,7 +158,7 @@ function HeroSection() {
           <div className="flex flex-col items-center gap-3 pt-1 sm:flex-row lg:justify-start">
             <Link
               to="/login"
-              className="flex w-full items-center justify-center gap-2 rounded-md bg-primary px-6 py-3 font-mono text-sm font-bold uppercase tracking-widest-2 text-primary-foreground shadow-glow transition-colors hover:bg-primary/90 sm:w-auto"
+              className="flex w-full items-center justify-center gap-2 rounded-md bg-primary px-6 py-3.5 font-mono text-sm font-bold uppercase tracking-widest-2 text-primary-foreground shadow-glow transition-colors hover:bg-primary/90 sm:w-auto"
             >
               {t("hero.ctaStart")} <Zap className="size-4" />
             </Link>
@@ -102,7 +166,7 @@ function HeroSection() {
                 temos para mostrar a quem ainda não tem dado nenhum. */}
             <Link
               to="/demo"
-              className="flex w-full items-center justify-center gap-2 rounded-md border border-border px-6 py-3 font-mono text-sm text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground sm:w-auto"
+              className="flex w-full items-center justify-center gap-2 rounded-md border border-border bg-hud-surface px-6 py-3.5 font-mono text-sm text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground sm:w-auto"
             >
               {t("hero.ctaDemo")} <ChevronRight className="size-4" />
             </Link>
@@ -121,51 +185,63 @@ function HeroSection() {
   );
 }
 
+/**
+ * A faixa logo abaixo do hero, em FIO DE CABELO (`gap-px` sobre `bg-border`).
+ *
+ * A referência usava esta batida visual para uma tira de estatísticas ("1.4M mãos", "42 padrões").
+ * Aqui ela carrega as REDES SUPORTADAS, que é o fato equivalente que sabemos ser verdade — e que
+ * responde a primeira pergunta de quem chega: "dá pra importar de onde eu jogo?".
+ */
 function SupportedNetworksSection() {
   const { t } = useTranslation("landing");
   const { t: to } = useTranslation("onboarding");
   const [showGuide, setShowGuide] = useState(false);
-  const NETWORKS = [
-    { site: "pokerstars", name: "PokerStars" },
-    { site: "ggpoker",    name: "GGPoker" },
-    { site: "acr",        name: "ACR (WPN)" },
-    { site: "coinpoker",  name: "CoinPoker", isNew: true },
-  ];
   return (
-    <section className="border-y border-border/50 bg-hud-surface/30 py-12 px-6">
-      <div className="mx-auto max-w-4xl text-center">
-        <p className="font-mono text-[10px] uppercase tracking-widest-2 text-primary mb-2">{t("networks.eyebrow")}</p>
-        <h2 className="font-heading text-xl font-bold text-foreground">{t("networks.heading")}</h2>
-        <p className="mx-auto mt-2 max-w-lg text-sm text-muted-foreground leading-relaxed">{t("networks.subtitle")}</p>
-        <div className="mt-7 flex flex-wrap items-center justify-center gap-3">
-          {NETWORKS.map((n) => (
-            <div key={n.site}
-              className={`inline-flex items-center gap-2.5 rounded-full border px-4 py-2 ${
-                (n as { isNew?: boolean }).isNew ? "border-primary/40 bg-primary/[0.06]" : "border-border bg-hud-surface"}`}>
-              <SiteLogo site={n.site} size={24} />
-              <span className="font-mono text-sm font-bold text-foreground">{n.name}</span>
-              {(n as { isNew?: boolean }).isNew && (
-                <span className="rounded-full bg-primary px-2 py-0.5 font-mono text-[9px] font-bold uppercase tracking-wider text-primary-foreground">
-                  {t("networks.new")}
-                </span>
-              )}
-            </div>
-          ))}
+    <section className="border-b border-border bg-hud-surface/30">
+      <div className="mx-auto max-w-6xl px-6 py-10">
+        <div className="mb-6 flex flex-col gap-1 sm:flex-row sm:items-baseline sm:justify-between">
+          <h2 className="font-heading text-lg font-bold text-foreground">{t("networks.heading")}</h2>
+          <p className="font-mono text-[10px] uppercase tracking-widest-2 text-muted-foreground">
+            {t("networks.eyebrow")}
+          </p>
         </div>
-        <button
-          type="button"
-          onClick={() => setShowGuide(true)}
-          className="mt-6 inline-flex items-center gap-1.5 text-xs font-medium text-primary transition-colors hover:text-primary-glow underline-offset-4 hover:underline"
-        >
-          <HelpCircle className="size-3.5" aria-hidden />
-          {to("exportGuide.trigger")}
-        </button>
+
+        <div className="grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-border bg-border md:grid-cols-4">
+          {LANDING_NETWORKS.map((n) => {
+            const novo = (n as { isNew?: boolean }).isNew;
+            return (
+              <div key={n.site} className="flex items-center gap-3 bg-background px-5 py-4">
+                <SiteLogo site={n.site} size={26} />
+                <span className="flex-1 truncate font-mono text-sm font-bold text-foreground">{n.name}</span>
+                {novo && (
+                  <span className="rounded-sm bg-primary/15 px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-widest-2 text-primary">
+                    {t("networks.new")}
+                  </span>
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="mt-5 flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-sm leading-relaxed text-muted-foreground">{t("networks.subtitle")}</p>
+          <button
+            type="button"
+            onClick={() => setShowGuide(true)}
+            className="inline-flex shrink-0 items-center gap-1.5 text-xs font-medium text-primary underline-offset-4 transition-colors hover:text-primary-glow hover:underline"
+          >
+            <HelpCircle className="size-3.5" aria-hidden />
+            {to("exportGuide.trigger")}
+          </button>
+        </div>
       </div>
       <HandExportGuide open={showGuide} onClose={() => setShowGuide(false)} />
     </section>
   );
 }
 
+/** PROCESSO — grade de fio de cabelo. Densa e larga: lê-se de relance, que é o que um "como
+ *  funciona" precisa. É o primeiro dos três ritmos. */
 function HowItWorksSection() {
   const { t } = useTranslation("landing");
   const steps = [
@@ -174,25 +250,28 @@ function HowItWorksSection() {
     { step: "03", icon: TrendingUp, title: t("howItWorks.step3Title"), desc: t("howItWorks.step3Desc"), levels: true },
   ];
   return (
-    <section id="como-funciona" className="py-24 px-6 scroll-mt-16">
-      <div className="mx-auto max-w-5xl">
-        <div className="text-center mb-14">
-          <p className="font-mono text-[10px] uppercase tracking-widest-2 text-primary mb-2">{t("howItWorks.eyebrow")}</p>
-          <h2 className="font-heading text-2xl font-bold text-foreground">{t("howItWorks.heading")}</h2>
+    <section id="como-funciona" className="scroll-mt-16 px-6 py-20">
+      <div className="mx-auto max-w-6xl">
+        <div className="mb-8 flex flex-col gap-1 sm:flex-row sm:items-baseline sm:justify-between">
+          <h2 className="font-heading text-2xl font-bold tracking-tight text-foreground md:text-3xl">
+            {t("howItWorks.heading")}
+          </h2>
+          <span className="font-mono text-[10px] uppercase tracking-widest-2 text-muted-foreground">
+            {t("howItWorks.eyebrow")}
+          </span>
         </div>
-        <div className="grid sm:grid-cols-3 gap-8">
+
+        <ol className="grid grid-cols-1 gap-px overflow-hidden rounded-xl border border-border bg-border shadow-elevated sm:grid-cols-3">
           {steps.map((item) => (
-            <div key={item.step} className="relative rounded-xl border border-border bg-hud-surface p-6 space-y-4">
-              <span className="font-mono text-4xl font-bold text-primary/15 absolute top-4 right-5 select-none">
-                {item.step}
-              </span>
-              <div className="flex size-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                <item.icon className="size-5" />
+            <li key={item.step} className="bg-hud-surface p-6 transition-colors hover:bg-hud-surface-elevated">
+              <div className="mb-4 flex items-center justify-between">
+                <span className="font-mono text-[10px] font-bold tracking-widest-2 text-primary">{item.step}</span>
+                <item.icon className="size-4 text-primary/60" aria-hidden />
               </div>
-              <h3 className="font-semibold text-foreground">{item.title}</h3>
-              <p className="text-sm text-muted-foreground leading-relaxed">{item.desc}</p>
+              <h3 className="text-sm font-semibold text-foreground">{item.title}</h3>
+              <p className="mt-2 text-xs leading-relaxed text-muted-foreground">{item.desc}</p>
               {item.levels && (
-                <div className="pt-1">
+                <div className="mt-4 border-t border-border/60 pt-3">
                   <div className="flex items-center justify-between gap-1">
                     {LEVELS.map((lvl) => {
                       const Icon = LEVEL_ICONS[lvl];
@@ -208,97 +287,114 @@ function HowItWorksSection() {
                   </p>
                 </div>
               )}
-            </div>
+            </li>
           ))}
-        </div>
+        </ol>
       </div>
     </section>
   );
 }
 
 /**
- * O DIFERENCIAL. Vem logo depois do exemplo e antes das features, que Ã© onde a pergunta nasce:
- * o visitante acabou de ver uma anÃ¡lise real e pensa "e por que vocÃª, se eu jÃ¡ uso um trainer?".
- * Enterrar isto depois das features genÃ©ricas seria responder tarde.
+ * O DIFERENCIAL. Vem logo depois do exemplo e antes das features, que é onde a pergunta nasce:
+ * o visitante acabou de ver uma análise real e pensa "e por que você, se eu já uso um trainer?".
+ * Enterrar isto depois das features genéricas seria responder tarde.
  *
- * As trÃªs afirmaÃ§Ãµes foram conferidas no cÃ³digo antes de irem para a tela, e nÃ£o Ã© zelo abstrato:
- * esta mesma landing exibia um selo "AES-256" sem uma linha de cifragem por trÃ¡s.
- *   â€¢ "mede no seu jogo"        â†’ `_category_error_counts` compara as mÃ£os importadas contra o
- *                                 histÃ³rico anterior ao baseline (repositories.py);
- *   â€¢ "sÃ³ afirma quando resiste" â†’ `validate_leak` (Wilson + Newcombe + shrinkage, validation.py);
- *   â€¢ "reabre sozinho"           â†’ `should_reopen` move o baseline e dispara o sino.
- * Se alguma delas sair do produto, esta seÃ§Ã£o sai da landing junto.
+ * As três afirmações foram conferidas no código antes de irem para a tela, e não é zelo abstrato:
+ * esta mesma landing exibia um selo "AES-256" sem uma linha de cifragem por trás.
+ *   • "mede no seu jogo"         → `_category_error_counts` compara as mãos importadas contra o
+ *                                  histórico anterior ao baseline (repositories.py);
+ *   • "só afirma quando resiste" → `validate_leak` (Wilson + Newcombe + shrinkage, validation.py);
+ *   • "reabre sozinho"           → `should_reopen` move o baseline e dispara o sino.
+ * Se alguma delas sair do produto, esta seção sai da landing junto.
+ *
+ * SEGUNDO RITMO: lista numerada com filetes, em duas colunas, com o título fixo à esquerda. É a
+ * seção que carrega o argumento mais forte, então ela pede ritmo de LEITURA — não de varredura.
+ * Era a terceira grade de 3 cards seguida, e o leitor já tinha desistido antes de chegar aqui.
  */
 function DiferencialSection() {
   const { t } = useTranslation("landing");
   const cards = [
-    { icon: Activity,       title: t("prova.c1Title"), desc: t("prova.c1Desc") },
-    { icon: Sigma,          title: t("prova.c2Title"), desc: t("prova.c2Desc") },
-    { icon: RotateCcw,      title: t("prova.c3Title"), desc: t("prova.c3Desc") },
+    { icon: Activity,  title: t("prova.c1Title"), desc: t("prova.c1Desc") },
+    { icon: Sigma,     title: t("prova.c2Title"), desc: t("prova.c2Desc") },
+    { icon: RotateCcw, title: t("prova.c3Title"), desc: t("prova.c3Desc") },
   ];
   return (
     <section
-      className="border-y border-border/50 bg-hud-surface/30 py-24 px-6"
+      className="border-y border-border bg-hud-surface/40 px-6 py-20"
       aria-labelledby="landing-prova-heading"
     >
-      <div className="mx-auto max-w-5xl">
-        <div className="text-center mb-14">
-          <p className="font-mono text-[10px] uppercase tracking-widest-2 text-primary mb-2">
+      <div className="mx-auto grid max-w-6xl gap-10 lg:grid-cols-[minmax(0,21rem)_1fr] lg:gap-16">
+        <div className="space-y-3 lg:sticky lg:top-24 lg:self-start">
+          <p className="font-mono text-[10px] uppercase tracking-widest-2 text-primary">
             {t("prova.eyebrow")}
           </p>
-          <h2 id="landing-prova-heading" className="font-heading text-2xl font-bold text-foreground">
+          <h2 id="landing-prova-heading" className="font-heading text-2xl font-bold leading-snug text-foreground">
             {t("prova.heading")}
           </h2>
-          <p className="mx-auto mt-3 max-w-2xl text-sm text-muted-foreground leading-relaxed">
-            {t("prova.sub")}
+          <p className="text-sm leading-relaxed text-muted-foreground">{t("prova.sub")}</p>
+        </div>
+
+        <div>
+          <ol className="border-t border-border/70">
+            {cards.map((c, i) => (
+              <li key={c.title} className="grid grid-cols-[auto_1fr] gap-x-4 border-b border-border/70 py-6">
+                <span className="font-mono text-xs font-bold tracking-widest-2 text-primary/60 pt-0.5">
+                  {String(i + 1).padStart(2, "0")}
+                </span>
+                <div>
+                  <h3 className="flex items-center gap-2 font-semibold text-foreground">
+                    <c.icon className="size-4 shrink-0 text-primary" aria-hidden />
+                    {c.title}
+                  </h3>
+                  <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{c.desc}</p>
+                </div>
+              </li>
+            ))}
+          </ol>
+
+          {/* O fecho é o que separa isto de marketing: diz de onde o número sai. */}
+          <p className="mt-6 flex items-start gap-2 text-sm leading-relaxed text-muted-foreground">
+            <ClipboardCheck className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden />
+            <span>{t("prova.nota")}</span>
           </p>
         </div>
-
-        <div className="grid sm:grid-cols-3 gap-8">
-          {cards.map((c) => (
-            <div key={c.title} className="rounded-xl border border-border bg-hud-surface p-6 space-y-4">
-              <div className="flex size-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                <c.icon className="size-5" aria-hidden />
-              </div>
-              <h3 className="font-semibold text-foreground">{c.title}</h3>
-              <p className="text-sm text-muted-foreground leading-relaxed">{c.desc}</p>
-            </div>
-          ))}
-        </div>
-
-        {/* O fecho Ã© o que separa isto de marketing: diz de onde o nÃºmero sai. */}
-        <p className="mx-auto mt-10 flex max-w-2xl items-start justify-center gap-2 text-center text-sm text-muted-foreground leading-relaxed">
-          <ClipboardCheck className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden />
-          <span>{t("prova.nota")}</span>
-        </p>
       </div>
     </section>
   );
 }
 
+/** TERCEIRO RITMO: cards leves com cantos táticos e elevação no hover. Mais arejado que a grade
+ *  de fio de cabelo e mais rápido que a lista — é varredura, que é o papel de uma seção de
+ *  funcionalidades. */
 function FeaturesSection() {
   const { t } = useTranslation("landing");
   const features = [
-    { icon: Target,    title: t("features.f1Title"), desc: t("features.f1Desc") },
-    { icon: Activity,  title: t("features.f2Title"), desc: t("features.f2Desc") },
-    { icon: BookOpen,  title: t("features.f3Title"), desc: t("features.f3Desc") },
+    { icon: Target,   title: t("features.f1Title"), desc: t("features.f1Desc") },
+    { icon: Activity, title: t("features.f2Title"), desc: t("features.f2Desc") },
+    { icon: BookOpen, title: t("features.f3Title"), desc: t("features.f3Desc") },
   ];
   return (
-    <section className="py-24 px-6 bg-hud-surface/30">
-      <div className="mx-auto max-w-5xl">
-        <div className="text-center mb-14">
-          <p className="font-mono text-[10px] uppercase tracking-widest-2 text-primary mb-2">{t("features.eyebrow")}</p>
-          <h2 className="font-heading text-2xl font-bold text-foreground">{t("features.heading")}</h2>
+    <section className="px-6 py-20">
+      <div className="mx-auto max-w-6xl">
+        <div className="mb-8 flex flex-col gap-1 sm:flex-row sm:items-baseline sm:justify-between">
+          <h2 className="font-heading text-2xl font-bold tracking-tight text-foreground md:text-3xl">
+            {t("features.heading")}
+          </h2>
+          <span className="font-mono text-[10px] uppercase tracking-widest-2 text-muted-foreground">
+            {t("features.eyebrow")}
+          </span>
         </div>
-        <div className="grid gap-5 lg:grid-cols-3">
+        <div className="grid gap-6 md:grid-cols-3">
           {features.map((f) => (
-            <div key={f.title} className="rounded-xl border border-border bg-hud-surface p-6 space-y-3 hover:border-primary/40 transition-colors">
-              <div className="flex size-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                <f.icon className="size-5" />
-              </div>
-              <h3 className="font-medium text-foreground">{f.title}</h3>
-              <p className="text-sm text-muted-foreground leading-relaxed">{f.desc}</p>
-            </div>
+            <article
+              key={f.title}
+              className="tactical-corners rounded-lg border border-border bg-hud-surface p-6 transition-transform hover:-translate-y-1"
+            >
+              <f.icon className="size-5 text-primary" aria-hidden />
+              <h3 className="mt-5 text-base font-medium text-foreground">{f.title}</h3>
+              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{f.desc}</p>
+            </article>
           ))}
         </div>
       </div>
@@ -340,42 +436,47 @@ function PricingSection() {
     },
   ];
   return (
-    <section id="planos" className="py-24 px-6">
-      <div className="mx-auto max-w-5xl">
-        <div className="text-center mb-14">
-          <p className="font-mono text-[10px] uppercase tracking-widest-2 text-primary mb-2">{t("plans.eyebrow")}</p>
-          <h2 className="text-2xl font-bold text-foreground">{t("plans.heading")}</h2>
-          <p className="text-sm text-muted-foreground mt-2">{t("plans.details")}</p>
+    <section id="planos" className="border-y border-border bg-hud-surface/40 px-6 py-20">
+      <div className="mx-auto max-w-6xl">
+        <div className="mb-8 flex flex-col gap-1 sm:flex-row sm:items-baseline sm:justify-between">
+          <div>
+            <h2 className="font-heading text-2xl font-bold tracking-tight text-foreground md:text-3xl">
+              {t("plans.heading")}
+            </h2>
+            <p className="mt-2 text-sm text-muted-foreground">{t("plans.details")}</p>
+          </div>
+          <span className="font-mono text-[10px] uppercase tracking-widest-2 text-muted-foreground">
+            {t("plans.eyebrow")}
+          </span>
         </div>
-        <div className="grid sm:grid-cols-2 gap-5 max-w-3xl mx-auto">
+
+        <div className="mx-auto grid max-w-3xl gap-6 sm:grid-cols-2">
           {plans.map((plan) => (
-            <div
+            <article
               key={plan.id}
-              className={`relative rounded-xl border p-6 space-y-5 flex flex-col ${
-                plan.highlight
-                  ? "border-primary/60 bg-primary/5 shadow-glow"
-                  : "border-border bg-hud-surface"
+              className={`flex flex-col rounded-xl border bg-background p-6 ${
+                plan.highlight ? "border-primary/50 shadow-glow" : "border-border"
               }`}
             >
-              {plan.badge && (
-                <div className={`absolute -top-3 left-1/2 -translate-x-1/2 inline-flex items-center gap-1 rounded-full px-3 py-0.5 ${
-                  plan.highlight ? "bg-primary text-primary-foreground" : "bg-hud-surface border border-border text-muted-foreground"
-                }`}>
-                  {plan.highlight && <Zap className="size-3" />}
-                  <span className="font-mono text-[10px] uppercase tracking-widest-2">{plan.badge}</span>
-                </div>
-              )}
-              <div>
-                <p className="font-mono text-xs uppercase tracking-widest-2 text-muted-foreground">{plan.name}</p>
-                <div className="flex items-baseline gap-1 mt-1">
-                  <span className="text-3xl font-bold text-foreground">{plan.price}</span>
-                  <span className="font-mono text-xs text-muted-foreground">{plan.period}</span>
-                </div>
+              <div className="flex items-center justify-between">
+                <span className="font-mono text-[10px] font-bold uppercase tracking-widest-2 text-primary">
+                  {plan.name}
+                </span>
+                {plan.badge && (
+                  <span className="inline-flex items-center gap-1 rounded-sm bg-primary/15 px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-widest-2 text-primary">
+                    {plan.highlight && <Zap className="size-2.5" aria-hidden />}
+                    {plan.badge}
+                  </span>
+                )}
               </div>
-              <ul className="space-y-2.5 flex-1">
+              <div className="mt-5 flex items-baseline gap-1.5">
+                <span className="text-3xl font-semibold text-foreground">{plan.price}</span>
+                <span className="font-mono text-xs text-muted-foreground">{plan.period}</span>
+              </div>
+              <ul className="mt-6 flex-1 space-y-2.5">
                 {plan.features.map((f) => (
                   <li key={f} className="flex items-start gap-2 text-sm text-muted-foreground">
-                    <Check className="size-4 text-primary shrink-0 mt-0.5" />
+                    <Check className="mt-0.5 size-3.5 shrink-0 text-primary" aria-hidden />
                     {f}
                   </li>
                 ))}
@@ -385,15 +486,15 @@ function PricingSection() {
                   destino escapava da varredura de links internos (`routeLinks.test.ts`). */}
               <Link
                 to={plan.href}
-                className={`flex items-center justify-center gap-1.5 w-full rounded-md py-2.5 font-mono text-xs font-bold uppercase tracking-widest-2 transition-colors ${
+                className={`mt-7 inline-flex items-center justify-center gap-1.5 rounded-md px-4 py-3 font-mono text-[10px] font-bold uppercase tracking-widest-2 transition-colors ${
                   plan.highlight
                     ? "bg-primary text-primary-foreground hover:bg-primary/90"
-                    : "border border-border text-muted-foreground hover:text-foreground hover:border-primary/50"
+                    : "border border-border text-foreground hover:border-primary/40 hover:text-primary"
                 }`}
               >
-                {plan.cta} <ChevronRight className="size-3.5" />
+                {plan.cta} <ChevronRight className="size-3" />
               </Link>
-            </div>
+            </article>
           ))}
         </div>
       </div>
@@ -401,20 +502,27 @@ function PricingSection() {
   );
 }
 
+/** CTA final em caixa com brilho radial — a batida de fecho da referência. Sozinha no fim da
+ *  página, ela recupera a atenção de quem rolou até aqui sem clicar. */
 function CtaSection() {
   const { t } = useTranslation("landing");
   return (
-    <section className="py-24 px-6 border-t border-border">
-      <div className="mx-auto max-w-xl text-center space-y-6">
-        <h2 className="text-2xl font-bold text-foreground">
+    <section className="mx-auto max-w-6xl px-6 py-20">
+      <div className="relative overflow-hidden rounded-xl border border-primary/30 bg-primary/5 p-8 text-center md:p-12">
+        <div
+          className="pointer-events-none absolute inset-0"
+          style={{ background: "radial-gradient(60% 100% at 50% 0%, hsl(var(--primary) / 0.16), transparent 70%)" }}
+          aria-hidden
+        />
+        <h2 className="relative font-heading text-2xl font-bold tracking-tight text-foreground md:text-4xl">
           {t("cta.heading")}
         </h2>
-        <p className="text-sm text-muted-foreground leading-relaxed">
+        <p className="relative mx-auto mt-4 max-w-xl text-sm leading-relaxed text-muted-foreground">
           {t("cta.desc")}
         </p>
         <Link
           to="/login"
-          className="inline-flex items-center gap-2 rounded-md bg-primary px-6 py-3 font-mono text-sm font-bold uppercase tracking-widest-2 text-primary-foreground hover:bg-primary/90 transition-colors shadow-glow"
+          className="relative mt-8 inline-flex items-center gap-2 rounded-md bg-primary px-7 py-3.5 font-mono text-sm font-bold uppercase tracking-widest-2 text-primary-foreground shadow-glow transition-colors hover:bg-primary/90"
         >
           {t("cta.btn")} <Zap className="size-4" />
         </Link>
@@ -426,24 +534,22 @@ function CtaSection() {
 function Footer() {
   const { t } = useTranslation("landing");
   return (
-    <footer className="border-t border-border bg-hud-surface/30 py-8 px-6">
-      <div className="mx-auto max-w-6xl flex flex-col sm:flex-row items-center justify-between gap-4">
-        <div className="flex items-center">
-          <img src={logoHorizontal} alt="GrindLab Poker" className="h-7 w-auto" />
-        </div>
-        <p className="font-mono text-[10px] text-muted-foreground uppercase tracking-widest-2">
+    <footer className="border-t border-border bg-hud-surface/30">
+      <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-6 py-8 sm:flex-row">
+        <img src={logoHorizontal} alt="GrindLab Poker" className="h-7 w-auto" />
+        <p className="font-mono text-[10px] uppercase tracking-widest-2 text-muted-foreground">
           {t("footer.copyright")}
         </p>
         <div className="flex items-center gap-4">
           <Link
             to="/privacidade"
-            className="font-mono text-[10px] text-muted-foreground hover:text-foreground transition-colors uppercase tracking-widest-2"
+            className="font-mono text-[10px] uppercase tracking-widest-2 text-muted-foreground transition-colors hover:text-foreground"
           >
             {t("footer.privacy")}
           </Link>
           <Link
             to="/login"
-            className="font-mono text-[10px] text-muted-foreground hover:text-foreground transition-colors uppercase tracking-widest-2"
+            className="font-mono text-[10px] uppercase tracking-widest-2 text-muted-foreground transition-colors hover:text-foreground"
           >
             {t("footer.login")}
           </Link>
@@ -453,19 +559,19 @@ function Footer() {
   );
 }
 
-// ── Page ──────────────────────────────────────────────────────────────────────
-
 export default function Landing() {
   return (
-    <div className="min-h-dvh bg-background hud-scanline text-foreground">
+    <div id="top" className="min-h-dvh bg-background hud-scanline text-foreground">
       <Navbar />
-      <HeroSection />
-      <SupportedNetworksSection />
-      <HowItWorksSection />
-      <DiferencialSection />
-      <FeaturesSection />
-      <PricingSection />
-      <CtaSection />
+      <main>
+        <HeroSection />
+        <SupportedNetworksSection />
+        <HowItWorksSection />
+        <DiferencialSection />
+        <FeaturesSection />
+        <PricingSection />
+        <CtaSection />
+      </main>
       <Footer />
     </div>
   );

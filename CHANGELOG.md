@@ -7,6 +7,50 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(landing): remodelada -- tres ritmos no lugar do mesmo bloco repetido tres vezes (#landing)
+
+> Pedido do usuario, com uma referencia de layout.
+>
+> **O problema, mensuravel:** da faixa de redes ate os planos a pagina tinha UM ritmo repetido tres
+> vezes. `HowItWorks`, `Diferencial` e `Features` eram a mesma coisa — grade de 3 cards, cada um com
+> icone num quadrado de 40px, titulo e paragrafo, mesmo `py-24`, mesmo cabecalho centralizado, duas
+> delas com o mesmo fundo. Quem rolava via o mesmo bloco tres vezes e parava de ler.
+>
+> Agora cada secao tem DENSIDADE propria: grade de fio de cabelo (processo, leitura de relance) →
+> lista numerada com filetes e titulo fixo (o argumento mais forte, ritmo de LEITURA) → cards com
+> cantos taticos (varredura). Hero ganhou a pilula e a linha de status com ponto pulsando; o CTA
+> final virou caixa com brilho radial.
+>
+> **Zero chave de i18n nova:** a remodelagem e visual e reusa toda a copy que ja estava nas 3
+> locales.
+>
+> **O que da referencia NAO foi copiado, e por que.** Ela trazia afirmacoes que este produto nao
+> sustenta, e copia-las repetiria uma cicatriz ja registrada: esta mesma landing exibiu um selo
+> **AES-256 sem uma linha de cifragem por tras**.
+>
+> ```
+>   "1.4M maos analisadas" / "42 padroes de leak"  -> numero que nao temos como provar
+>   "4 sites: PokerStars, GG, 888, Party"          -> 888 e Party estao DESLIGADOS
+>   "criptografia AES-256"                         -> a cicatriz acima
+>   "~3 min do upload ao diagnostico"              -> nao medido
+>   R$ 79 / R$ 199 e um terceiro plano             -> os planos reais sao Free e Pro R$ 99
+>   marca LeakLabs.ai, links /dashboard            -> e GrindLab, e as rotas sao /login e /demo
+> ```
+>
+> O mock de produto da referencia tambem saiu: o nosso hero ja mostra o Decision Card REAL, com dado
+> de uma mao jogada. E mais forte justamente por nao ser maquete.
+>
+> **Bug achado pelo usuario durante a revisao:** a faixa mostrava CoinPoker e a frase abaixo dela
+> dizia "PokerStars, GGPoker e ACR (WPN)". Duas fontes para o mesmo fato, e quem lesse a frase
+> concluiria que a rede nao era suportada — numa pagina cujo trabalho e responder "da pra importar
+> de onde eu jogo?". Corrigido nas 3 locales, e a lista virou `LANDING_NETWORKS` exportada com um
+> guarda que exige a copy cobri-la nas tres. Verificado quebrando dos dois lados: tirar CoinPoker da
+> frase acusa; acrescentar rede nova sem mexer no texto quebra as quatro asserçoes de copy.
+>
+> Verificado no navegador com backend no ar: 8 secoes, sem estouro horizontal em 1440px nem em
+> 375px, zero erro de console, e o Decision Card do hero carregando dado real (KJo vs CO, ~30bb).
+> Frontend 263 testes, tsc limpo.
+
 ### fix(treino): 39% do acervo dava veredito de RIVER numa decisao de FLOP (#treino)
 
 > Achado enquanto se investigava outra coisa, e e o defeito mais grave desta sessao.
