@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import {
   Upload, Brain, TrendingUp, ChevronRight,
   Check, Zap, BookOpen, Target, Activity, HelpCircle,
-  ClipboardCheck, Sigma, RotateCcw, Sparkles,
+  ClipboardCheck, Sigma, RotateCcw, Sparkles, ChevronDown,
 } from "lucide-react";
 import { LEVEL_ICONS } from "@/components/hud/LevelIcons";
 import { SiteLogo } from "@/components/hud/SiteLogo";
@@ -502,6 +502,71 @@ function PricingSection() {
   );
 }
 
+/**
+ * FAQ — as objeções logo ANTES do pedido, que é onde elas nascem: o visitante acabou de ver o
+ * preço e a próxima coisa que ele faz é procurar o motivo para não começar.
+ *
+ * `<details>`/`<summary>` nativos de propósito: abre e fecha sem JavaScript, é navegável por
+ * teclado e lido por leitor de tela sem nenhum `aria-*` escrito à mão. Um acordeão em estado de
+ * React aqui seria mais código para entregar menos.
+ *
+ * **Toda resposta foi conferida no código antes de virar texto**, e não é zelo abstrato: esta
+ * landing já exibiu um selo "AES-256" sem uma linha de cifragem por trás. O que sustenta cada uma:
+ *   • redes    → `LANDING_NETWORKS` e o parser (PS/GG/ACR/CoinPoker); o resumo do torneio é o que
+ *                habilita colocação, prêmio, ROI e detecção de mesa final;
+ *   • solver   → o gabarito sai de solve próprio, e o produto o aplica às mãos do jogador;
+ *   • "não é chute" → `validate_leak` (intervalo de confiança) e `should_reopen`, os mesmos que
+ *                sustentam a seção do diferencial;
+ *   • plano Free → os limites são os de `plans.freeF1..F4`, na mesma página;
+ *   • cash game  → o motor é de torneio (`mtt_context.py`: ICM, M-ratio, estágio, bolha), então a
+ *                resposta diz o que ele É, sem prometer cash para depois.
+ *
+ * A pergunta sobre DADOS ficou de fora de propósito. A única resposta completa teria de falar do
+ * acervo compartilhado do modo grind, e o aviso sobre isso foi removido do produto por decisão do
+ * usuário — reintroduzi-lo aqui seria contrariar essa decisão pela porta dos fundos.
+ */
+/** Quantos pares q/a a seção desenha. Exportado porque falta de chave NÃO quebra o i18next: ele
+ *  imprime a chave crua ("faq.q7") na tela. `landingFaq.test.ts` cobra as 3 locales contra este
+ *  número, então o modo de falha vira teste vermelho em vez de texto quebrado na página. */
+export const FAQ_COUNT = 6;
+
+function FaqSection() {
+  const { t } = useTranslation("landing");
+  const perguntas = Array.from({ length: FAQ_COUNT }, (_, k) => k + 1).map((i) => ({
+    q: t(`faq.q${i}`),
+    a: t(`faq.a${i}`),
+  }));
+  return (
+    <section id="faq" className="px-6 py-20">
+      <div className="mx-auto max-w-3xl">
+        <div className="mb-8 flex flex-col gap-1 sm:flex-row sm:items-baseline sm:justify-between">
+          <h2 className="font-heading text-2xl font-bold tracking-tight text-foreground md:text-3xl">
+            {t("faq.heading")}
+          </h2>
+          <span className="font-mono text-[10px] uppercase tracking-widest-2 text-muted-foreground">
+            {t("faq.eyebrow")}
+          </span>
+        </div>
+
+        <div className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-hud-surface">
+          {perguntas.map((f) => (
+            <details key={f.q} className="group px-5 py-4">
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-sm font-medium text-foreground transition-colors hover:text-primary">
+                {f.q}
+                <ChevronDown
+                  className="size-4 shrink-0 text-primary transition-transform group-open:rotate-180"
+                  aria-hidden
+                />
+              </summary>
+              <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{f.a}</p>
+            </details>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 /** CTA final em caixa com brilho radial — a batida de fecho da referência. Sozinha no fim da
  *  página, ela recupera a atenção de quem rolou até aqui sem clicar. */
 function CtaSection() {
@@ -570,6 +635,7 @@ export default function Landing() {
         <DiferencialSection />
         <FeaturesSection />
         <PricingSection />
+        <FaqSection />
         <CtaSection />
       </main>
       <Footer />

@@ -7,6 +7,43 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(landing): FAQ, com toda resposta conferida no codigo antes de virar texto (#landing)
+
+> Seis perguntas entre os planos e o CTA final — que e onde a objecao nasce: o visitante acabou de
+> ver o preco e a proxima coisa que ele faz e procurar motivo para nao comecar.
+>
+> `<details>`/`<summary>` nativos de proposito: abre e fecha sem JavaScript, navegavel por teclado e
+> lido por leitor de tela sem um `aria-*` escrito a mao. Acordeao em estado de React seria mais
+> codigo entregando menos.
+>
+> **Cada resposta tem lastro, e isso foi conferido antes de escrever** — o FAQ da referencia
+> afirmava "criptografia AES-256", que e literalmente a cicatriz desta landing:
+>
+> ```
+>   redes         -> LANDING_NETWORKS + parser (PS/GG/ACR/CoinPoker); o resumo do torneio e o que
+>                    habilita colocacao, premio, ROI e deteccao de mesa final
+>   solver        -> o gabarito sai de solve proprio, aplicado as maos do jogador
+>   "nao e chute" -> validate_leak (intervalo de confianca) e should_reopen
+>   plano Free    -> os limites sao os de plans.freeF1..F4, na mesma pagina
+>   cash game     -> o motor e de torneio (mtt_context: ICM, M-ratio, estagio, bolha), entao a
+>                    resposta diz o que ele E, sem prometer cash para depois
+> ```
+>
+> **A pergunta sobre DADOS ficou de fora de proposito.** A unica resposta completa teria de falar do
+> acervo compartilhado do modo grind, e o aviso sobre isso foi removido do produto por decisao do
+> usuario hoje mesmo — reintroduzi-lo aqui seria contrariar essa decisao pela porta dos fundos.
+>
+> **O guarda existe porque o modo de falha e silencioso:** chave faltando NAO quebra o i18next, ele
+> imprime a chave crua ("faq.q7") na tela, na pagina cujo trabalho e passar confianca. O teste cobra
+> as 3 locales contra `FAQ_COUNT`, o que a secao realmente desenha — e tambem o inverso (copy escrita
+> que a tela nunca mostra) e resposta identica em dois idiomas, que e como "traduzo depois" fica.
+> Verificado quebrando as tres: apagar `a4` do es acusa, subir `FAQ_COUNT` para 7 derruba 4 testes,
+> colar a resposta pt no es acusa.
+>
+> Conferido no navegador: 6 perguntas, zero chave crua, acordeao abrindo (52px -> 132px) e fechando,
+> sem estouro horizontal com TODAS abertas em 1425px nem em 375px. Frontend 272 testes, tsc limpo.
+
+
 ### feat(landing): remodelada -- tres ritmos no lugar do mesmo bloco repetido tres vezes (#landing)
 
 > Pedido do usuario, com uma referencia de layout.
