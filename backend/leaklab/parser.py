@@ -103,8 +103,19 @@ BOARD_RE        = re.compile(r"\[([^\]]+)\]")
 # — sem isto o \d+ parava no "1,500" → bb=None → potBb/stack_bb em FICHAS → nós GTO degenerados.
 # Converter os grupos SEMPRE via _pg_num (tira vírgula/espaço) antes do float.
 SB_RE           = re.compile(r"\((\d[\d, ]*(?:\.\d+)?)/(\d[\d, ]*(?:\.\d+)?)(?:\((\d[\d, ]*(?:\.\d+)?)\))?\)")
+# `allin` SEM hífen é o CoinPoker. **Ele estava faltando, e o efeito era silencioso:** a linha
+# `ed737bcf: ALLIN 8,826.54` não casava com nada, então o all-in inteiro DESAPARECIA da mão.
+# Medido em 2026-08-03: **206 linhas em 164 mãos** — todo all-in de CoinPoker importado até então.
+#
+# O estrago não parava no all-in perdido. Sem ele o herói ficava com `preflop_raises_faced=0` e
+# `facing_bet=0`, ou seja, "ninguém subiu": `vs_position` saía `unknown`, o spot não roteava para
+# `vs_rfi` e ficava SEM GABARITO — e o `calls` seguinte (que era o call de um all-in) ainda era
+# classificado como LIMP. Uma decisão contra 14,7bb aparecia como pote limpado.
+#
+# `all-in` vem antes de `allin` na alternância só por clareza: as duas formas são normalizadas
+# para `all-in` logo abaixo, que é o nome que o resto do motor conhece.
 ACTION_LINE_RE  = re.compile(
-    r"^(?P<player>[^:]+): (?P<action>folds|checks|calls|bets|raises|all-in|shows|mucks)"
+    r"^(?P<player>[^:]+): (?P<action>folds|checks|calls|bets|raises|all-in|allin|shows|mucks)"
     r"(?: .*?(?P<amount>\d[\d,]*(?:\.\d+)?))?",   # aceita separador de milhar do GG (1,109)
     re.IGNORECASE,
 )
@@ -319,6 +330,10 @@ def parse_hand(raw_text: str, id_re: re.Pattern | None = None, site: str = "poke
         if ma:
             amount = ma.group("amount")
             action_str = ma.group("action").lower()
+            # `ALLIN` (CoinPoker) e `all-in` (PS/GG) são a MESMA ação. Normaliza aqui, num lugar
+            # só: quem consome ação não pode precisar saber de qual site a mão veio.
+            if action_str == 'allin':
+                action_str = 'all-in'
             # "bets X and is all-in" / "raises X and is all-in" → all-in
             if action_str in ('bets', 'raises') and 'and is all-in' in line.lower():
                 action_str = 'all-in'

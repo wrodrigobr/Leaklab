@@ -59,6 +59,7 @@ SUITES = {
                   'test_email_confirmacao.py', 'test_enqueue_pot_unit.py'],
     'regression':['test_tournament.py', 'test_multi_decision.py', 'test_partygaming_parser.py',
                   'test_acr_parser.py', 'test_coinpoker_parser.py',
+                  'test_coinpoker_allin.py',
                   'test_raise_total_separator.py'],
     'ghost':     ['test_ghost_table_invariants.py', 'test_table_state.py', 'test_drill_preflop_action.py',
                   'test_drill_sem_veredito.py', 'test_trainer_pool.py',

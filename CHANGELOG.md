@@ -7,6 +7,43 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(parser): o CoinPoker escreve `ALLIN` e nos perdiamos o all-in INTEIRO (#parser)
+
+> Achado investigando outra coisa: por que 46 decisoes de BB ficavam sem gabarito. O backlog dizia
+> que era falta de range de `vs_3bet` com abridor BB/SB. **Nao era** — esse item valia 2 decisoes, e
+> foi fechado pela medicao. Sobrou um balde marcado como "ninguem subiu", e a mao CRUA respondeu:
+>
+> ```
+>   ed737bcf: ALLIN 8,826.54
+>   e3ae7fac: calls 8,526.54
+>   Hero: folds
+> ```
+>
+> O `ACTION_LINE_RE` aceitava `all-in` COM hifen (PS/GG) e nao `ALLIN` (CoinPoker). A linha nao
+> casava com nada e **o all-in desaparecia da mao**, em silencio.
+>
+> **O estrago nao parava no all-in perdido.** Sem ele o heroi ficava com `preflop_raises_faced=0` e
+> `facing_bet=0` — "ninguem subiu". Em cadeia: `vs_position` saia `unknown`, o spot nao roteava para
+> `vs_rfi`, ficava SEM GABARITO, e o `calls` seguinte (que era o call de um all-in) era classificado
+> como **LIMP**. Uma decisao contra 14,7bb aparecia como pote limpado.
+>
+> Medido: **206 linhas `ALLIN` em 164 maos** — todo all-in de CoinPoker importado ate hoje.
+>
+> **Cinco hipoteses minhas cairam antes desta.** Falta de range vs_3bet; `num_players<=1` (2.680 de
+> 2.777 dessas decisoes TEM gabarito, logo nao e causa); `_level_bb or 1` (zero decisions com
+> level_bb nulo/zero/1); "fold com check gratis" (era all-in nao capturado). A que valeu foi a unica
+> em que parei de teorizar e li o texto da mao. **E mesmo ali errei primeiro:** meu recorte inicial
+> do raw pegou a mao VIZINHA, e eu quase concluí sobre cartas que nao eram as do spot — so notei
+> porque o cabecalho e as cartas nao batiam com o banco.
+>
+> Guardas verificados quebrando: tirar `allin` da regex derruba 4 testes com a lista de acoes SEM o
+> all-in; casar sem normalizar para `all-in` derruba 3, porque o resto do motor nao reconhece
+> `allin`. Backend 1860 testes.
+>
+> **Pendente:** as 164 maos ja importadas seguem gravadas com o all-in ausente. O reprocessamento
+> existe (`scripts/reprocess_tournament --tid 72561`) e le do `raw_text` guardado.
+
+
 ### fix(treino): "aposta de 0.1bb?" -- dinheiro impossivel virava exercicio (#treino)
 
 > Reportado pelo usuario olhando a tela. O outro extremo do acervo era pior: **aposta de 116.000%
