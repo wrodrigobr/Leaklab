@@ -7,6 +7,25 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(treino): a mesa do modo grind ocupa a tela, e o "vs unknown" era um sentinela (#treino)
+
+> Reportado: "temos que aproveitar melhor o espaco da tela e evitar barras de rolagem... quanto
+> maior a mesa melhor".
+>
+> **A mesa estava travada em 768px** (`max-w-3xl`) no meio de uma tela de 1600, com o cabecalho
+> grande do `HudLayout` empurrando tudo para baixo e ainda gerando rolagem. Agora a tela usa a mesma
+> casca do Leak Trainer — `h-dvh overflow-hidden` — e a mesa e dimensionada pela ALTURA que sobra,
+> com a largura saindo da proporcao. Cabecalho compacto numa linha so, para nao roubar altura.
+>
+> **E o "SB vs unknown" nao era o bug que eu tinha consertado.** Ontem tratei `vs_position` vazio;
+> medido agora, ele nao vem vazio quando nao ha vilao — vem o LITERAL `'unknown'`, em **3.600 linhas
+> de preflop**. Testar por string vazia nao pega sentinela. Normalizado na LEITURA, para que nenhum
+> consumidor precise saber que o sentinela existe.
+>
+> Guarda novo cobra a casca de altura de viewport e que a mesa derive a largura da ALTURA — verificado
+> tirando o `h-dvh` e devolvendo o `max-w-3xl`. Backend 83 (ghost), frontend 249, zero falhas.
+
+
 ### fix(gto): o corretor respondia FOLD para AQs de UTG+1, com confianca e sem erro (#gto #treino)
 
 > Reportado no primeiro uso do modo grind: "dei um bet com AQs e fala que o GTO indica fold... isto

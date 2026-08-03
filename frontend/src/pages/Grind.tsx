@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { ArrowRight, Flame, Home, RotateCw, Trophy } from "lucide-react";
-import { HudLayout } from "@/components/hud/HudLayout";
+import { HudHeader } from "@/components/hud/HudHeader";
 import { PokerTableV3 } from "@/components/hud/PokerTableV3";
 import { grind, type GrindMao, type GrindPasso, type LeakTrainerGrade } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -132,8 +132,21 @@ export default function Grind() {
   const mesa = useMemo(() => (passo ? montarMesa(passo) : null), [passo]);
 
   return (
-    <HudLayout eyebrow={t("grind.eyebrow")} title={t("grind.title")} description={t("grind.subtitle")}>
-      <div className="mx-auto w-full max-w-5xl space-y-4">
+    /* Casca de ALTURA DA VIEWPORT, sem rolagem — a mesma do Leak Trainer, e pela mesma razão: o
+       cabeçalho grande do HudLayout empurrava tudo para baixo e a mesa sobrava espremida no meio
+       de uma tela larga, com barra de rolagem. Aqui a mesa recebe a altura que sobra e cresce até
+       preenchê-la; quanto maior, melhor se lê o board. */
+    <div className="flex h-dvh flex-col overflow-hidden bg-background hud-scanline">
+      <HudHeader />
+      <main className="mx-auto flex w-full max-w-[1500px] flex-1 flex-col gap-2 px-4 py-2 md:px-8">
+        {/* cabeçalho COMPACTO: título e subtítulo numa linha só, para não roubar altura da mesa */}
+        <div className="flex shrink-0 flex-wrap items-baseline gap-x-3 gap-y-0.5">
+          <span className="font-mono text-[10px] uppercase tracking-widest text-primary">
+            {t("grind.eyebrow")}
+          </span>
+          <h1 className="font-heading text-lg font-bold text-foreground">{t("grind.title")}</h1>
+          <p className="text-xs text-muted-foreground">{t("grind.subtitle")}</p>
+        </div>
 
         {fase === "vazio" && (
           <div className="rounded-2xl border border-border bg-card/40 p-6 text-center">
@@ -154,7 +167,7 @@ export default function Grind() {
         )}
 
         {mao && passo && (fase === "decidindo" || fase === "feedback") && (
-          <>
+          <div className="flex min-h-0 flex-1 flex-col gap-2">
             {/* linha da mão: onde estamos dentro dela */}
             <div className="flex flex-wrap items-center gap-1.5">
               {mao.passos.map((p, idx) => (
@@ -180,10 +193,15 @@ export default function Grind() {
               </p>
             )}
 
+            {/* `h-full w-auto` com proporção fixa: a mesa é dimensionada pela ALTURA disponível e
+                a largura sai da proporção. Era `w-full max-w-3xl`, que a travava em 768px no meio
+                de uma tela de 1600 e ainda assim gerava rolagem quando a altura era curta. */}
             {mesa && (
-              <div className="mx-auto aspect-[16/10] w-full max-w-3xl">
-                <PokerTableV3 step={mesa.step} hero="Hero" heroCards={mesa.heroCards}
-                  bb={100} betUnit="bb" transparentBg />
+              <div className="flex min-h-0 flex-1 items-center justify-center">
+                <div className="aspect-[16/10] h-full max-h-full w-auto max-w-full">
+                  <PokerTableV3 step={mesa.step} hero="Hero" heroCards={mesa.heroCards}
+                    bb={100} betUnit="bb" transparentBg />
+                </div>
               </div>
             )}
 
@@ -248,7 +266,7 @@ export default function Grind() {
                 </button>
               </div>
             )}
-          </>
+          </div>
         )}
 
         {fase === "fim" && (
@@ -294,11 +312,11 @@ export default function Grind() {
         {/* É REPLAY, não simulação. O jogador não muda o rumo da mão: ele responde o que o GTO
             faria, e a mão segue o caminho que seguiu de verdade. Omitir isso seria vender
             simulação. */}
-        <p className="pt-2 text-center text-[11px] leading-snug text-muted-foreground">
+        <p className="shrink-0 text-center text-[10px] leading-snug text-muted-foreground">
           <Flame className="mr-1 inline size-3 text-amber-400" aria-hidden />
           {t("grind.disclaimer")}
         </p>
-      </div>
-    </HudLayout>
+      </main>
+    </div>
   );
 }

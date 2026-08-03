@@ -26,9 +26,7 @@ vi.mock("@/lib/api", () => ({
     grade: () => Promise.resolve(estado.respostas[estado.i++] ?? { resultado: null, sem_veredito: true }),
   },
 }));
-vi.mock("@/components/hud/HudLayout", () => ({
-  HudLayout: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-}));
+vi.mock("@/components/hud/HudHeader", () => ({ HudHeader: () => <div data-testid="hud" /> }));
 vi.mock("@/components/hud/PokerTableV3", () => ({ PokerTableV3: () => <div data-testid="mesa" /> }));
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({ t: (k: string, o?: unknown) => (typeof o === "string" ? o : k),
@@ -95,6 +93,24 @@ describe("modo grind", () => {
     // O RÓTULO do pote não pode aparecer. Checar a string "0bb" era impreciso: o stack de 40bb
     // contém "0bb" como substring, e o teste falhava com o código certo.
     expect(texto).not.toContain("grind.pot");  // pote ausente não vira pote de zero
+  });
+
+  it("a tela nao rola: a casca tem a altura da viewport e a mesa cresce com ela", async () => {
+    // Reportado: "temos que aproveitar melhor o espaço da tela e evitar barras de rolagem... quanto
+    // maior a mesa melhor". A mesa estava travada em `max-w-3xl` (768px) no meio de uma tela de
+    // 1600, com o cabeçalho grande empurrando tudo. Agora a casca é `h-dvh overflow-hidden` e a
+    // mesa é dimensionada pela ALTURA que sobra, com a largura saindo da proporção.
+    estado.mao = { token: "abc", total: 1, passos: [passo("flop")] };
+    const { container } = montar();
+    await waitFor(() => expect(screen.getByTestId("mesa")).toBeTruthy());
+    const casca = container.querySelector(".h-dvh");
+    expect(casca, "a casca não tem altura de viewport").not.toBeNull();
+    expect(casca?.className).toContain("overflow-hidden");
+    // a mesa deriva a largura da ALTURA, e não o contrário
+    const alvo = container.querySelector('[class*="aspect-"]');
+    expect(alvo?.className).toContain("h-full");
+    expect(alvo?.className).toContain("w-auto");
+    expect(alvo?.className ?? "").not.toContain("max-w-3xl");
   });
 
   it("a tela avisa que é replay de mão real, não simulação", async () => {

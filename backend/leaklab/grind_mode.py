@@ -50,6 +50,18 @@ from database.repositories import _adapt
 # inteiro pedindo mãos por id sequencial. Cai para uma constante em dev, onde não há o que proteger.
 _SEGREDO = os.getenv('LEAKLAB_SECRET') or 'dev-grind'
 
+# `vs_position` não vem vazio quando não há vilão: vem o LITERAL 'unknown'. Medido: 3.600 linhas
+# de preflop com esse valor. Testar por string vazia não pega, e a tela escrevia "SB vs unknown"
+# numa abertura onde ainda não existe adversário. Normaliza aqui, na leitura, para que nenhum
+# consumidor precise saber do sentinela.
+_SEM_VILAO = ('', 'unknown', 'none', 'null', '-')
+
+
+def _vilao(v) -> str:
+    s = str(v or '').strip()
+    return '' if s.lower() in _SEM_VILAO else s
+
+
 _ORDEM_STREET = {'preflop': 0, 'flop': 1, 'turn': 2, 'river': 3}
 _TAMANHO_BOARD = {'preflop': 0, 'flop': 3, 'turn': 4, 'river': 5}
 
@@ -181,7 +193,7 @@ def montar_mao(tournament_id: int, hand_id: str) -> Optional[dict]:
             'board':          list(board_final)[:n],
             'hero_hand':      mao,
             'position':       r['position'],
-            'vs_position':    r['vs_position'] or '',
+            'vs_position':    _vilao(r['vs_position']),
             'stack_bb':       round(float(r['stack_bb'] or 0), 1),
             'pot_bb':         round(float(r['pot_size'] or 0), 1),
             'facing_size_bb': round(facing, 2),
