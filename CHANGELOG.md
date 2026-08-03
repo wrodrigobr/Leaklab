@@ -7,6 +7,35 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(banco): o conserto do pool tirou producao do AR, e o duble era o culpado de novo (#infra)
+
+> **Meu conserto anterior derrubou o servico inteiro.** O ping de vivacidade e um `SELECT 1`, e no
+> psycopg2 isso ABRE uma transacao. A linha seguinte, `raw.autocommit = False`, chama `set_session`,
+> que o driver PROIBE dentro de transacao. O worker morreu em `init_db()`, no boot, e o container
+> entrou em loop de restart: **400 de 400 requisicoes em 502**.
+>
+> **A ironia esta registrada de proposito:** antes, o ping quase nunca rodava (a idade desconhecida
+> lia como zero), entao este caminho nao era exercitado. Consertar o ping o tornou o caminho NORMAL
+> e um defeito latente virou parada total. Conserto que muda a FREQUENCIA de um caminho precisa ser
+> tratado como quem passa a usar codigo novo, porque e isso que ele faz.
+>
+> **E o duble do teste passou verde de novo, pela TERCEIRA vez no dia.** `autocommit` no psycopg2
+> nao e um campo, e `set_session` — e ele levanta dentro de transacao. Meu `_ConexaoFalsa` aceitava
+> a atribuicao em silencio. Agora e `property` que recusa exatamente como o original.
+>
+> Correcao: o ping da `rollback()` (alem do crash, entregar conexao com transacao aberta daria
+> snapshot velho na primeira leitura) e o `autocommit` so e ESCRITO quando precisa mudar.
+>
+> **A escotilha salvou duas vezes.** `LEAKLAB_DB_POOL=0` devolveu o servico em **2 segundos**, nas
+> duas quedas. Ela existe porque a regra do desenho era "nunca inventar modo de falha novo" — e o
+> pool inventou dois.
+>
+> **E parei de liberar deploy com o duble.** Antes de subir, o codigo novo foi exercitado contra o
+> Postgres REAL num processo separado, sem tocar no servico no ar: o caminho do crash, o `init_db()`
+> inteiro, 20 ciclos, aninhamento, ociosidade acima do limite do ping e transacao aberta devolvida.
+> Os cinco passaram. Teste com duble prova a LOGICA; so o driver de verdade prova o CONTRATO.
+
+
 ### fix(banco): o pool derrubou o /health em producao, e o conserto veio do que ele nao sabia (#infra)
 
 > **Eu introduzi isto no commit anterior e vale registrar como aconteceu.** Depois de deployar o

@@ -130,6 +130,13 @@ def _viva(raw, ocioso_ha):
         cur.execute('SELECT 1')
         cur.fetchone()
         cur.close()
+        # O ping ABRE uma transação (psycopg2 não é autocommit). Sem desfazê-la, a conexão sai
+        # daqui dentro de uma transação já aberta — e a linha seguinte, `raw.autocommit = False`,
+        # vira `set_session cannot be used inside a transaction` e derruba o worker no boot.
+        # Foi o que tirou produção do ar: antes o ping quase nunca rodava, então este caminho não
+        # era exercitado; consertar o ping o tornou o caminho NORMAL.
+        # Além do crash, entregar conexão com transação aberta daria snapshot velho na 1a leitura.
+        raw.rollback()
         return True
     except Exception:
         return False
@@ -161,7 +168,10 @@ def _pega_do_pool():
         if ocioso_ha > _POOL_DESCARTA_APOS_S or not _viva(raw, ocioso_ha):
             _descarta(pool, raw)
             continue
-        raw.autocommit = False
+        # Só ESCREVE se precisar. Atribuir `autocommit` chama `set_session`, que o psycopg2
+        # proíbe dentro de transação — ler antes custa nada e tira a chamada do caminho comum.
+        if raw.autocommit:
+            raw.autocommit = False
         return raw, (lambda c=raw: _devolve_ao_pool(pool, c))
     return _conecta_pg(), None
 

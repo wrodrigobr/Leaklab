@@ -65,7 +65,21 @@ class _ConexaoFalsa:
         self.em_transacao = False
         self.rollbacks = 0
         self.consultas = []
-        self.autocommit = False
+        self._autocommit = False
+
+    # `autocommit` no psycopg2 não é um campo, é `set_session` — e ele LEVANTA dentro de uma
+    # transação. O dublê aceitava a atribuição em silêncio, e por isso os testes ficaram verdes
+    # enquanto produção subia em loop de restart com
+    # `ProgrammingError: set_session cannot be used inside a transaction`.
+    @property
+    def autocommit(self):
+        return self._autocommit
+
+    @autocommit.setter
+    def autocommit(self, v):
+        if self.em_transacao:
+            raise Exception('set_session cannot be used inside a transaction')
+        self._autocommit = v
 
     def cursor(self, *a, **kw):
         return _CursorFalso(self)
@@ -225,9 +239,13 @@ def test_transacao_aberta_nao_vaza_para_o_proximo():
         with S.get_conn() as c:
             c.execute('INSERT INTO users (username) VALUES (?)', ('x',))
             assert c._conn.em_transacao, 'o dublê não registrou a transação — o teste mede nada'
-        suja = cen.pool.livres[-1]
-        assert suja.rollbacks == 1, 'a transação aberta voltou ao pool SEM rollback'
+            # DELTA, não total: o ping de vivacidade também dá rollback, então o número absoluto
+            # mede quantas vezes a conexão foi conferida, não se a devolução limpou a transação.
+            antes = c._conn.rollbacks
+            suja = c._conn
+        assert suja.rollbacks == antes + 1, 'a transação aberta voltou ao pool SEM rollback'
         assert not suja.em_transacao, 'o próximo dono herdaria a transação'
+        assert suja in cen.pool.livres, 'a conexão suja nem voltou para o pool'
     print('OK  test_transacao_aberta_nao_vaza_para_o_proximo')
 
 
@@ -272,6 +290,27 @@ def test_minconn_mantem_conexoes_quentes_para_o_aninhamento():
         d2.close(); f2.close()
         assert cen.pool.criadas == criadas_antes, 'discou de novo no aninhamento'
     print('OK  test_minconn_mantem_conexoes_quentes_para_o_aninhamento')
+
+
+def test_o_ping_nao_pode_deixar_transacao_aberta():
+    """**Este é o teste do loop de restart em produção.**
+
+    O ping é um `SELECT 1`, e no psycopg2 isso ABRE uma transação. A conexão saía do pool dentro
+    dela, e a linha seguinte (`raw.autocommit = False`) virava
+    `ProgrammingError: set_session cannot be used inside a transaction`. O worker morria no boot,
+    em `init_db()`, e o container entrou em loop de restart — 400 de 400 requisições em 502.
+
+    Ironia registrada: antes do conserto anterior o ping quase nunca rodava, então este caminho
+    não era exercitado. Consertar o ping o tornou o caminho NORMAL e o defeito latente virou
+    parada total.
+    """
+    with _Cenario() as cen:
+        antiga = cen.pool.livres[-1]              # a do construtor: idade desconhecida → força ping
+        c = S.get_conn()                          # não pode levantar
+        assert not c._conn.em_transacao, 'a conexao saiu do pool com transacao ABERTA'
+        assert c._conn.consultas, 'o ping nem rodou — o teste nao mediu o caminho que quebrou'
+        c.close()
+    print('OK  test_o_ping_nao_pode_deixar_transacao_aberta')
 
 
 def test_conexao_morta_e_descartada_e_o_chamador_recebe_uma_BOA():
