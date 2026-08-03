@@ -151,6 +151,44 @@ def preflop_base_menu(scenario: str, position: str, stack_bb: float | None = Non
     return base
 
 
+_NAIPES = ('h', 'd', 'c', 's')
+_RANKS = '23456789TJQKA'
+
+
+def _normaliza_mao(mao):
+    """Cartas concretas → hand type. `'AdQd'` → `'AQs'`, `'KhQc'` → `'KQo'`, `'5h5d'` → `'55'`.
+
+    Já veio hand type? Devolve igual. **Formato irreconhecível devolve `None`**, e não uma
+    tentativa de adivinhar: `analyze_preflop` responde `available=False` para `None`, e "não sei"
+    é infinitamente melhor que "fold 100%" para uma mão que abre.
+
+    Existe porque o analisador compara o texto da mão com a string do range. `'AdQd'` não está em
+    `'...,AQo,AQs,...'`, então ele conclui "fora do range" e recomenda fold — com confiança, sem
+    erro nenhum. O modo grind mostrou exatamente isso: fold para AQs de UTG+1 a 58bb.
+    """
+    if mao is None:
+        return None
+    m = str(mao).strip().replace(' ', '')
+    if not m:
+        return None
+    # já é hand type: '77', 'AQs', 'AQo'
+    if len(m) == 2 and m[0].upper() in _RANKS and m[1].upper() in _RANKS:
+        return m[0].upper() + m[1].upper()
+    if len(m) == 3 and m[2].lower() in ('s', 'o') and m[0].upper() in _RANKS and m[1].upper() in _RANKS:
+        return m[0].upper() + m[1].upper() + m[2].lower()
+    # cartas concretas: 'AdQd'
+    if len(m) == 4 and m[1].lower() in _NAIPES and m[3].lower() in _NAIPES:
+        r1, r2 = m[0].upper(), m[2].upper()
+        if r1 not in _RANKS or r2 not in _RANKS:
+            return None
+        if r1 == r2:
+            return r1 + r2
+        if _RANKS.find(r1) < _RANKS.find(r2):
+            r1, r2 = r2, r1                      # rank alto primeiro, como no hand type
+        return f"{r1}{r2}{'s' if m[1].lower() == m[3].lower() else 'o'}"
+    return None
+
+
 def preflop_strategy(position: str, hand: str | None = None, stack_bb: float = 20.0, *,
                      hero_hand_type: str | None = None, action_taken: str = 'fold',
                      facing_size: float = 0.0, vs_position: str = '',
@@ -174,9 +212,27 @@ def preflop_strategy(position: str, hand: str | None = None, stack_bb: float = 2
                            com 'jam', action_quality, ev_loss_bb, pro_notes…). O engine/replay
                            consomem `raw` e seguem no dialeto de armazenamento sem mudança.
     """
+    # A mão chega aqui como HAND TYPE ('AQs', '77', 'KQo'). Quando chega como CARTAS CONCRETAS
+    # ('AdQd'), o analisador não reconhece, conclui "fora do range" e responde **fold 100% com
+    # confiança** — não levanta erro nenhum. Foi assim que o modo grind mostrou "o GTO manda fold"
+    # para AQs de UTG+1 a 58bb, que é uma abertura padrão. Resposta errada silenciosa é o pior
+    # defeito possível num corretor, e o conserto mora AQUI porque esta é a porta única do preflop:
+    # protegendo o chamador que errou hoje, protejo os que vierem.
+    _bruta = hero_hand_type if hero_hand_type is not None else hand
+    _mao = _normaliza_mao(_bruta)
+    if _bruta and _mao is None:
+        # Mão veio, e não dá para entender. Responder "não sei" é obrigatório: `analyze_preflop`
+        # não valida o formato, então seguir daqui produziria "fora do range, fold 100%" para uma
+        # string qualquer. Conferido: sem esta porta, `preflop_strategy(..., 'lixo')` voltava
+        # `available=True`. Um corretor que responde com confiança sobre entrada que não entendeu
+        # é pior que um que recusa.
+        return {'available': False, 'scenario': '', 'hand_freq': {}, 'recommended': [],
+                'available_actions': [], 'range_pct': None, 'raise_to_bb': None,
+                'raw': {'available': False, 'motivo': 'mao_em_formato_desconhecido',
+                        'hand_type': str(_bruta)[:16]}}
     res = analyze_preflop(
         position=position,
-        hero_hand_type=(hero_hand_type if hero_hand_type is not None else hand),
+        hero_hand_type=_mao,
         stack_bb=float(stack_bb),
         action_taken=action_taken,
         facing_size=float(facing_size or 0.0),

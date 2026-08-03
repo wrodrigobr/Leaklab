@@ -81,6 +81,22 @@ describe("modo grind", () => {
     await waitFor(() => expect(screen.getByText("1/1")).toBeTruthy());
   });
 
+  it("sem vilão definido, a tela não escreve 'vs' nem anuncia pote zero", async () => {
+    // Reportado: "UTG+1 vs unknown ... pote 0bb" numa abertura, onde ainda não existe adversário.
+    // Pote 0 é ausência de dado, não um pote de zero fichas.
+    estado.mao = { token: "abc", total: 1, passos: [{
+      ...passo("preflop"), position: "UTG+1", vs_position: "", pot_bb: 0,
+      options: ["fold", "raise"],
+    }] };
+    const { container } = montar();
+    await waitFor(() => expect(screen.getByText("UTG+1")).toBeTruthy());
+    const texto = container.textContent ?? "";
+    expect(texto).not.toContain("UTG+1 vs");   // não inventa adversário
+    // O RÓTULO do pote não pode aparecer. Checar a string "0bb" era impreciso: o stack de 40bb
+    // contém "0bb" como substring, e o teste falhava com o código certo.
+    expect(texto).not.toContain("grind.pot");  // pote ausente não vira pote de zero
+  });
+
   it("a tela avisa que é replay de mão real, não simulação", async () => {
     estado.mao = { token: "abc", total: 1, passos: [passo("flop")] };
     montar();

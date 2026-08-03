@@ -38,10 +38,17 @@ function montarMesa(p: GrindPasso) {
   const seats: Record<string, { player: string; stack: number; pos: string }> = {};
   const bets: Record<string, number> = {};
   const folded: string[] = [];
+  // Quem está FORA da mão depende da street, e tratar tudo como heads-up deixava a mesa com nove
+  // assentos apagados e ninguém jogando — foi o "não aparece quais jogadores estão na jogada" do
+  // relato. No preflop sem vilão definido (RFI), quem foldou foi quem agiu ANTES do herói; quem
+  // vem depois ainda não falou. No postflop, e no preflop com vilão, sobra o par.
+  const rfiSemVilao = p.street === "preflop" && vsIdx < 0;
   ORDER.forEach((pos, i) => {
     const isHero = pos === p.position;
     seats[String(i + 1)] = { player: isHero ? "Hero" : pos, stack: stackChips, pos };
-    if (!isHero && pos !== p.vs_position) folded.push(pos);
+    if (isHero) return;
+    if (rfiSemVilao) { if (i < heroIdx) folded.push(pos); }
+    else if (pos !== p.vs_position) folded.push(pos);
   });
   const facing = p.facing_size_bb ?? 0;
   if (vsIdx >= 0 && facing > 0) bets[String(vsIdx + 1)] = Math.round(facing * bbChips);
@@ -165,7 +172,7 @@ export default function Grind() {
             </div>
 
             {/* o que o vilão fez antes deste passo — sem isso o pote cresce sozinho na tela */}
-            {passo.vilao_antes && (
+            {passo.vilao_antes && passo.vs_position && (
               <p className="text-center font-mono text-xs text-amber-300">
                 {passo.vilao_antes.tipo === "aposta"
                   ? t("grind.villainBet", { pos: passo.vs_position, bb: bb(passo.vilao_antes.bb) })
@@ -180,10 +187,13 @@ export default function Grind() {
               </div>
             )}
 
+            {/* Sem vilão definido não se escreve "vs" — a tela dizia "UTG+1 vs unknown" numa
+                abertura, onde ainda não existe adversário. E pote 0 não vira "0bb": é ausência de
+                dado, não um pote de zero. */}
             <div className="flex flex-wrap items-center justify-center gap-3 font-mono text-[11px] text-muted-foreground">
-              <span>{passo.position} vs {passo.vs_position}</span>
+              <span>{passo.vs_position ? `${passo.position} vs ${passo.vs_position}` : passo.position}</span>
               <span>{bb(passo.stack_bb)}bb</span>
-              <span>{t("grind.pot")} {bb(passo.pot_bb)}bb</span>
+              {passo.pot_bb > 0 && <span>{t("grind.pot")} {bb(passo.pot_bb)}bb</span>}
               {passo.facing_size_bb > 0 && <span>{t("grind.facing")} {bb(passo.facing_size_bb)}bb</span>}
             </div>
 

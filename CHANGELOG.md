@@ -7,6 +7,41 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(gto): o corretor respondia FOLD para AQs de UTG+1, com confianca e sem erro (#gto #treino)
+
+> Reportado no primeiro uso do modo grind: "dei um bet com AQs e fala que o GTO indica fold... isto
+> e bizarro e nao pode acontecer".
+>
+> **A causa e o pior modo de falha que existe num corretor.** A mao chegava como CARTAS CONCRETAS
+> (`'AdQd'`) onde se esperava HAND TYPE (`'AQs'`). O analisador compara o TEXTO da mao com a string
+> do range; `'AdQd'` nao esta em `'...,AQo,AQs,...'`, entao ele concluiu **"fora do range, fold
+> 100%"** — sem erro, sem aviso, com nota explicativa e tudo. Erro que explode aparece; erro que
+> responde errado vira aprendizado errado.
+>
+> **O conserto mora na PORTA UNICA do preflop**, e nao no chamador que errou: `preflop_strategy`
+> passou a normalizar cartas concretas para hand type. Protegendo a porta, protejo os chamadores que
+> ainda nao existem — a mesma mao ja tinha derrubado `hand_class` hoje de manha, por outro caminho.
+>
+> **E mao em formato irreconhecivel passou a responder "nao sei".** Conferido: sem essa porta,
+> `preflop_strategy(..., 'lixo')` voltava `available=True` com fold 100% e a nota *"None esta fora
+> do range GTO do UTG+1"*. Um corretor que responde com confianca sobre entrada que nao entendeu e
+> exatamente o que este conserto existe para impedir.
+>
+> **A validacao que o usuario pediu.** `test_sanidade_do_gabarito.py` nao olha forma, olha
+> SUBSTANCIA: mao premium nunca e fold 100% na abertura, cartas concretas dao a MESMA resposta que o
+> hand type, formato desconhecido responde "nao sei", 72o de UTG continua sendo fold (senao os
+> outros passariam sem significar nada), e o modo grind nao serve veredito absurdo de ponta a ponta.
+> Nenhum teste estrutural pegava isto: o payload estava perfeito, o menu estava certo, o veredito
+> voltou preenchido. So o CONTEUDO era absurdo.
+>
+> **Tres defeitos de tela do mesmo print:** a mesa apagava os nove assentos e ninguem aparecia na
+> jogada (tratar tudo como heads-up; no preflop RFI quem foldou foi quem agiu ANTES do heroi), o
+> rodape anunciava "UTG+1 vs unknown" numa abertura onde nao existe adversario, e "pote 0bb" — que e
+> ausencia de dado, nao um pote de zero fichas.
+>
+> Backend 1795, frontend 248, zero falhas. 5 quebras verificadas.
+
+
 ### feat(treino): modo grind na tela — a mao inteira, decisao por decisao (#treino) [frontend]
 
 > Fecha o modo. `/grind` percorre os passos da mao: linha da mao no topo (onde voce esta dentro

@@ -16,7 +16,7 @@ SUITES = {
                   'test_draw_detector.py', 'test_postflop_evaluator.py', 'test_mtt_context.py',
                   'test_preflop_gto_quality.py', 'test_recent_regressions.py', 'test_icm.py',
                   'test_elo_engine.py', 'test_leaderboard.py', 'test_invariants.py',
-                  'test_leak_trainer.py', 'test_strategy_provider.py', 'test_progression.py',
+                  'test_leak_trainer.py', 'test_strategy_provider.py', 'test_sanidade_do_gabarito.py', 'test_progression.py',
                   'test_drill_fronteira.py',
                   'test_memorizacao_range.py',
                   'test_proximo_passo.py',
