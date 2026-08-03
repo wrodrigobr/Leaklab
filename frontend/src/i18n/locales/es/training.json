@@ -264,6 +264,8 @@
       "title": "No hay mano disponible ahora",
       "desc": "El acervo crece a medida que se resuelven más torneos.",
       "back": "Volver al entrenamiento"
-    }
+    },
+    "acceptable": "Aceptable, pero no es la línea principal",
+    "acceptableCount": "{{n}} decisión fue aceptable, pero no la línea principal."
   }
 }

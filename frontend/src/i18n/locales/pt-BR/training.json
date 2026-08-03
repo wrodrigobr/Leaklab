@@ -264,6 +264,8 @@
       "title": "Nenhuma mão disponível agora",
       "desc": "O acervo cresce conforme mais torneios são analisados pelo solver.",
       "back": "Voltar ao treino"
-    }
+    },
+    "acceptable": "Aceitável, mas não é a linha principal",
+    "acceptableCount": "{{n}} decisão foi aceitável, mas não a linha principal."
   }
 }

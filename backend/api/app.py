@@ -3275,8 +3275,11 @@ def leaktrainer_grade():
             from database.repositories import (record_training_attempt, evaluate_training_achievements,
                                                record_daily_mission_progress)
             result['training'] = record_training_attempt(g.user_id, _cat, bool(result.get('is_correct')))
-            # conquistas de treino recém-desbloqueadas (pro veredito da lição comemorar)
-            result['training_achievements'] = evaluate_training_achievements(g.user_id)
+            # conquistas de treino recém-desbloqueadas (pro veredito da lição comemorar).
+            # `com_prova=False`: as medalhas de prova-no-jogo dependem de hand history nova, não
+            # de responder um spot — e calculá-las aqui custava 2,7s POR CLIQUE. Quem as concede
+            # é `/player/training/overview`, que já calcula a prova pra desenhar a tela.
+            result['training_achievements'] = evaluate_training_achievements(g.user_id, com_prova=False)
             # missões diárias: incrementa contadores + auto-resgata as completas (XP).
             # tz_offset (min a leste do UTC, do frontend) → reset à meia-noite LOCAL do jogador.
             _tz = 0
@@ -3315,6 +3318,14 @@ def training_overview():
     # segunda requisição — 219 idas para desenhar uma página. Ela vai no corpo porque quem já pagou
     # o cálculo devolvê-lo é de graça; `/player/training/proof` continua existindo.
     prova = get_training_proof(g.user_id)
+    # ÚNICO ponto que concede as medalhas de prova-no-jogo. O corretor não pode fazê-lo (custaria
+    # 2,7s por clique), e aqui a prova já está na mão. Antes de `get_training_achievements`, senão
+    # a tela desenharia a medalha como bloqueada no mesmo instante em que ela foi conquistada.
+    try:
+        from database.repositories import evaluate_training_achievements
+        evaluate_training_achievements(g.user_id, proof=prova)
+    except Exception:
+        app.logger.exception('overview: conceder conquistas de prova falhou (user=%s)', g.user_id)
     return jsonify({
         'xp':           get_xp_status(g.user_id),
         # O hub mostra DOMÍNIO, e domínio é por cenário: exibir as 54 chaves exatas (todas em

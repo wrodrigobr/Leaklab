@@ -41,7 +41,7 @@ SUITES = {
                   'test_solve_quota.py', 'test_coach_adherence_multiway.py', 'test_coach_invites.py',
                   'test_coach_trial.py', 'test_coach_referral.py', 'test_coach_replay.py',
                   'test_admin_finance.py', 'test_verdict_invariant.py',
-                  'test_training_gamification.py',
+                  'test_training_gamification.py', 'test_conquistas_sem_prova.py',
                   'test_pending_gto_count.py', 'test_confidence_drift.py',
                   'test_no_id_tables.py', 'test_hand_request_cadence.py',
                   'test_is_production.py',

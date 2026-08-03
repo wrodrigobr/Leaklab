@@ -24,10 +24,30 @@ O que estes testes travam:
    jogador com pouco volume ficaria sem treino nenhum.
 """
 import os
+import re
 import sys
 import traceback
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+
+
+def _corpo_da_funcao(arquivo, nome):
+    """O código de UMA função, do `def` até o próximo `def` de mesma indentação.
+
+    Nasceu de uma falha de teste: os dois testes de leitura de fonte daqui fatiavam uma janela
+    FIXA de caracteres (`src[i:i+3000]`). Um conserto de comentário sem relação nenhuma — trocar
+    `3%` por "3 por cento" numa linha de SQL, porque `%` literal quebra em Postgres — deixou o
+    texto 49 caracteres mais longo e empurrou o filtro para FORA da janela. O teste passou a
+    acusar "filtro multiway ausente" sobre um filtro que estava lá, intacto.
+
+    Guarda que depende de deslocamento de byte não guarda a regra, guarda a formatação.
+    """
+    caminho = os.path.join(os.path.dirname(__file__), '..', *arquivo)
+    with open(caminho, encoding='utf-8') as f:
+        src = f.read()
+    i = src.index(f'def {nome}')
+    m = re.search(r'\n(?:@|def )', src[i + 10:])          # próximo def ou decorador de topo
+    return src[i:(i + 10 + m.start()) if m else len(src)]
 
 try:
     import flask_cors  # noqa: F401
@@ -110,9 +130,7 @@ def test_falha_de_lookup_nao_exclui():
 def test_selecao_pede_folga_para_poder_descartar():
     """Sem folga, filtrar entregaria menos spots que o pedido — e o jogador veria a sessão
     encurtar sem entender por quê."""
-    import re
-    src = open(os.path.join(os.path.dirname(__file__), '..', 'api', 'app.py'), encoding='utf-8').read()
-    trecho = src[src.index('def player_drill_spots'): src.index('def player_drill_spots') + 1800]
+    trecho = _corpo_da_funcao(('api', 'app.py'), 'player_drill_spots')
     assert re.search(r'get_drill_spots\([^)]*limit\s*=\s*limit\s*\*\s*\d', trecho), \
         'a selecao nao pede folga antes de filtrar'
     assert '_spot_sem_veredito' in trecho, 'a selecao nao aplica o filtro'
@@ -121,10 +139,7 @@ def test_selecao_pede_folga_para_poder_descartar():
 
 def test_sql_exclui_multiway_postflop():
     """O multiway sai no SQL, e nao so no Python: sem isso ele consumiria a folga da selecao."""
-    src = open(os.path.join(os.path.dirname(__file__), '..', 'database', 'repositories.py'),
-               encoding='utf-8').read()
-    i = src.index('def get_drill_spots')
-    trecho = src[i:i + 3000]
+    trecho = _corpo_da_funcao(('database', 'repositories.py'), 'get_drill_spots')
     assert "n_active_opponents, 0) >= 2" in trecho, 'filtro multiway ausente no SQL da selecao'
     assert 'd.n_active_opponents,' in trecho, \
         'a coluna nao vem no SELECT — o filtro em Python nao teria como conferir'

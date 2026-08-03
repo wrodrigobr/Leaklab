@@ -65,7 +65,18 @@ function montarMesa(p: GrindPasso) {
   return { step, heroCards: p.hero_hand };
 }
 
-type Resultado = { acao: string; tier: string; correto: boolean; semVeredito: boolean };
+/** O veredito tem TRÊS níveis, e a tela tratava dois.
+ *
+ *  Reportado: "mesmo quando erro, está contabilizando acerto". O corretor não estava mentindo — ele
+ *  aplica uma tolerância de MÃO-FEITA: quando o GTO quase nunca folda, call e raise passam os dois,
+ *  qualquer que seja a frequência. Ela foi escrita para o catálogo antigo, onde o solver era capado
+ *  num tamanho só e punir um call de top pair seria injusto. No acervo, com todos os tamanhos, uma
+ *  ação de 0,6% contada como "Certo" é licença demais.
+ *
+ *  O corretor já marca esses casos com `mixed`. A tela passou a distinguir: CERTO conta como
+ *  acerto; ACEITÁVEL aparece como tal e não infla a nota; ERRADO é erro. */
+type Nivel = "certo" | "aceitavel" | "errado" | "sem_veredito";
+type Resultado = { acao: string; nivel: Nivel };
 
 export default function Grind() {
   const { t } = useTranslation("training");
@@ -103,12 +114,10 @@ export default function Grind() {
       // Sem veredito possível NÃO vira "errou": não pontua e diz que não pontuou. Inventar um
       // veredito aqui seria o defeito que o Ghost Table levou o dia inteiro para tirar.
       setUltimo(r.resultado);
-      setResultados((v) => [...v, {
-        acao,
-        tier: r.resultado?.gto_tier ?? "—",
-        correto: Boolean(r.resultado?.is_correct),
-        semVeredito: r.sem_veredito,
-      }]);
+      const nivel: Nivel = r.sem_veredito || !r.resultado ? "sem_veredito"
+        : !r.resultado.is_correct ? "errado"
+          : r.resultado.mixed ? "aceitavel" : "certo";
+      setResultados((v) => [...v, { acao, nivel }]);
       setFase("feedback");
     } finally {
       setEnviando(false);
@@ -150,8 +159,10 @@ export default function Grind() {
     });
   }, [mao, i]);
 
-  const acertos = resultados.filter((r) => r.correto).length;
-  const contados = resultados.filter((r) => !r.semVeredito).length;
+  const nivelAtual: Nivel = resultados[resultados.length - 1]?.nivel ?? "sem_veredito";
+  const acertos = resultados.filter((r) => r.nivel === "certo").length;
+  const aceitaveis = resultados.filter((r) => r.nivel === "aceitavel").length;
+  const contados = resultados.filter((r) => r.nivel !== "sem_veredito").length;
   const mesa = useMemo(() => (passo ? montarMesa(passo) : null), [passo]);
 
   return (
@@ -265,16 +276,19 @@ export default function Grind() {
 
                 {fase === "feedback" && (
                   <div className={cn("w-full space-y-2 rounded-2xl p-4 ring-1",
-                    resultados[resultados.length - 1]?.semVeredito ? "bg-muted/20 ring-border"
-                      : resultados[resultados.length - 1]?.correto ? "bg-emerald-500/10 ring-emerald-500/30"
-                        : "bg-amber-500/10 ring-amber-500/30")}>
-                    {resultados[resultados.length - 1]?.semVeredito ? (
+                    nivelAtual === "sem_veredito" ? "bg-muted/20 ring-border"
+                      : nivelAtual === "certo" ? "bg-emerald-500/10 ring-emerald-500/30"
+                        : nivelAtual === "aceitavel" ? "bg-sky-500/10 ring-sky-500/30"
+                          : "bg-amber-500/10 ring-amber-500/30")}>
+                    {nivelAtual === "sem_veredito" ? (
                       /* Nunca vira "errou": sem gabarito não há veredito, e dizer isso é o honesto. */
                       <p className="text-sm text-muted-foreground">{t("grind.noVerdict")}</p>
                     ) : (
                       <>
                         <p className="font-heading text-base font-bold text-foreground">
-                          {resultados[resultados.length - 1]?.correto ? t("grind.right") : t("grind.wrong")}
+                          {nivelAtual === "certo" ? t("grind.right")
+                            : nivelAtual === "aceitavel" ? t("grind.acceptable")
+                              : t("grind.wrong")}
                         </p>
                         {ultimo?.gto_strategy?.length ? (
                           <div className="space-y-1">
@@ -332,8 +346,13 @@ export default function Grind() {
             </div>
             {/* `contados` e não `resultados.length`: passo sem gabarito não entra no denominador,
                 senão a nota pune o jogador por uma lacuna nossa. */}
+            {aceitaveis > 0 && (
+              <p className="mt-2 text-[11px] text-sky-300">
+                {t("grind.acceptableCount", { n: aceitaveis })}
+              </p>
+            )}
             {contados < resultados.length && (
-              <p className="mt-2 text-[11px] text-muted-foreground">
+              <p className="mt-1 text-[11px] text-muted-foreground">
                 {t("grind.skipped", { n: resultados.length - contados })}
               </p>
             )}

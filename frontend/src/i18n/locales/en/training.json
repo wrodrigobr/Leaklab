@@ -264,6 +264,8 @@
       "title": "No hand available right now",
       "desc": "The pool grows as more tournaments are solved.",
       "back": "Back to training"
-    }
+    },
+    "acceptable": "Acceptable, but not the main line",
+    "acceptableCount": "{{n}} decision was acceptable, but not the main line."
   }
 }

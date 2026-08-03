@@ -7136,8 +7136,13 @@ def _achievement_progress(state: dict, campo: str, alvo: float) -> tuple:
     return (round(min(atual, alvo), 1), alvo)
 
 
-def _training_state(user_id: int, *, proof=None) -> dict:
+def _training_state(user_id: int, *, proof=None, com_prova: bool = True) -> dict:
     """`proof` entra pronto quando quem chama JÁ o calculou.
+
+    `com_prova=False` DISPENSA a prova e devolve os três campos dela como `None` — "não sei",
+    que é diferente de zero. Medido em produção: a prova custa **2.677ms dos 3.115ms** de
+    `evaluate_training_achievements`, e essa função roda a cada clique no corretor. O jogador
+    esperava ~6s pelo veredito de um spot cujo cálculo de GTO leva 57ms.
 
     Medido em `/player/training/overview`: 115 idas ao banco, das quais **104 eram esta prova**,
     recalculada aqui só para somar três inteiros. Em produção o banco é remoto, então cada ida
@@ -7157,9 +7162,16 @@ def _training_state(user_id: int, *, proof=None) -> dict:
     # que o produto diz ser o diferencial: o aluno podia comprovar tres leaks nas mesas e nao ganhar
     # medalha nenhuma, enquanto ganhava por clicar 200 vezes no treino. Sete das doze conquistas
     # eram volume ou sequencia.
-    provados = reconquistados = com_amostra = 0
+    if not com_prova and proof is None:
+        # `None`, não `0`: quem lê precisa distinguir "zero provados" de "não perguntei". Zero
+        # aqui negaria a medalha em silêncio, que é a falha que o CLAUDE.md chama de zero
+        # tranquilizador — encerra a pergunta com um número que ninguém mediu.
+        provados = reconquistados = com_amostra = None
+    else:
+        provados = reconquistados = com_amostra = 0
     try:
-        for pr in ((get_training_proof(user_id) if proof is None else proof) or []):
+        _prova = proof if proof is not None else (get_training_proof(user_id) if com_prova else [])
+        for pr in (_prova or []):
             v = (pr.get('validacao') or {}).get('veredito')
             if v and v != 'sem_amostra':
                 # Ciclo fechado = amostra COLETADA depois de treinar, mesmo sem veredito ainda.
@@ -7187,11 +7199,17 @@ def _training_state(user_id: int, *, proof=None) -> dict:
     }
 
 
-def evaluate_training_achievements(user_id: int) -> list:
-    """Concede as conquistas de treino recém-atingidas e devolve as keys novas (pro veredito)."""
+def evaluate_training_achievements(user_id: int, *, proof=None, com_prova: bool = True) -> list:
+    """Concede as conquistas de treino recém-atingidas e devolve as keys novas (pro veredito).
+
+    `com_prova=False` avalia só o que PODE ter mudado pelo clique e pula as quatro medalhas de
+    prova-no-jogo, que dependem de hand history nova e não de responder um spot. O corretor usa
+    esse caminho; o hub de treino, que já calcula a prova para desenhar a tela, passa `proof=` e
+    concede as quatro sem gastar uma consulta a mais.
+    """
     if not user_id:
         return []
-    state = _training_state(user_id)
+    state = _training_state(user_id, proof=proof, com_prova=com_prova)
     conn = get_conn()
     try:
         earned = {r['achievement_key'] for r in conn.execute(
@@ -7200,6 +7218,11 @@ def evaluate_training_achievements(user_id: int) -> list:
         newly = []
         for key, campo, alvo in _TRAINING_ACHIEVEMENT_DEFS:
             if key in earned:
+                continue
+            # Campo desconhecido não concede NEM nega — fica para quem tiver o dado. Explícito de
+            # propósito: `float(None or 0)` daria 0 e a medalha morreria calada se um campo novo
+            # entrasse com nome errado.
+            if state.get(campo) is None:
                 continue
             try:
                 if float(state.get(campo) or 0) >= alvo:

@@ -60,6 +60,26 @@ describe("modo grind", () => {
     expect(screen.queryByText("grind.wrong")).toBeNull();
   });
 
+  it("acao de frequencia minima NAO conta como acerto cheio", async () => {
+    // Reportado: "mesmo quando erro, está contabilizando acerto". O corretor aplica uma tolerância
+    // de mão-feita — quando o GTO quase nunca folda, call e raise passam os dois, qualquer que seja
+    // a frequência. Uma ação de 0,6% aparecia como "Certo". Ele já marca esses casos com `mixed`;
+    // a tela é que ignorava.
+    estado.mao = { token: "abc", total: 1, passos: [passo("flop", 1.9)] };
+    estado.respostas = [{
+      resultado: { is_correct: true, mixed: true, gto_tier: "correct", gto_strategy: [] },
+      sem_veredito: false,
+    }];
+    montar();
+    await waitFor(() => expect(screen.getByText("fold")).toBeTruthy());
+    fireEvent.click(screen.getByText("fold"));
+    await waitFor(() => expect(screen.getByText("grind.acceptable")).toBeTruthy());
+    expect(screen.queryByText("grind.right")).toBeNull();
+    fireEvent.click(screen.getByText("grind.finishHand"));
+    // não infla a nota: 0 acertos cheios em 1 decisão contada
+    await waitFor(() => expect(screen.getByText("0/1")).toBeTruthy());
+  });
+
   it("a decisão sem gabarito fica fora do denominador da nota", async () => {
     estado.mao = { token: "abc", total: 2, passos: [passo("flop"), passo("turn")] };
     estado.respostas = [

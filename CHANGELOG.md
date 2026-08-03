@@ -7,6 +7,85 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### perf(treino): o veredito levava 6,19s porque recalculava a prova a cada clique (#treino)
+
+> Pergunta do usuario: "quando seleciono uma das opcoes do leak trainer, demora ate aparecer o
+> veredito... por que?". Depois ele mandou o print do Network: **6,19 s** na chamada de `grade`.
+>
+> **O calculo de GTO do spot leva 57ms. O resto era encanamento.** Medido peca por peca em
+> producao:
+>
+> ```
+>   grade_canonical_spot                85 ms   1 conexao
+>   record_progression_attempt          92 ms   1 conexao
+>   add_xp                             108 ms   1 conexao
+>   record_training_attempt            282 ms   3 conexoes
+>   evaluate_training_achievements    3115 ms   6 conexoes   <-- aqui
+>   record_daily_mission_progress       86 ms   1 conexao
+> ```
+>
+> Dentro dela, `get_training_proof` sozinha custava **2.677ms**. E uma consulta N+1 que mede leak
+> comprovado NAS MESAS — muda quando chega hand history nova, jamais por responder um spot. Estava
+> sendo recalculada a cada clique para somar tres inteiros.
+>
+> Agora o corretor passa `com_prova=False` e avalia so o que o clique pode ter mudado. As quatro
+> medalhas de prova-no-jogo sao concedidas por `/player/training/overview`, que ja calcula a prova
+> para desenhar a tela — custo zero a mais.
+>
+> **O risco do conserto era pior que o bug:** pular a prova poderia aposentar as quatro medalhas em
+> silencio. Por isso campo nao medido vira `None` e nao `0` — zero NEGARIA a medalha caladamente, o
+> "zero tranquilizador" do CLAUDE.md. E o teste exige as duas metades: que o caminho rapido nao
+> conceda **e** que o caminho com prova conceda.
+>
+> **Dois dos meus proprios guardas eram incapazes de falhar, e a quebra proposital mostrou:**
+> um procurava `com_prova=False` em qualquer lugar do bloco e passava encontrando a expressao **no
+> comentario que eu tinha acabado de escrever** acima da chamada (CLAUDE.md n. 8, literalmente).
+> O outro nao construia o unico caso em que o guarda importa (alvo 0). Corrigidos: agora as tres
+> quebras acusam.
+>
+> **Fica medido e nao consertado:** nao existe pool de conexoes. Cada `get_conn()` disca de novo
+> para o Neon e custa ~72ms. Um endpoint que toca o banco 6 vezes paga ~430ms so para conectar. E
+> provavelmente a maior alavanca de performance do sistema, e mexer nisso atravessa toda consulta
+> do app — merece sessao propria.
+
+
+### fix(testes): guarda do drill media DESLOCAMENTO DE BYTE, nao a regra (#testes)
+
+> A suite completa acusou `test_sql_exclui_multiway_postflop: filtro multiway ausente no SQL da
+> selecao`. **O filtro estava la, intacto.** Ja falhava em `main` — o ultimo commit foi com este
+> teste vermelho, e so a rodada completa pegou.
+>
+> O teste fatiava uma janela FIXA (`src[i:i+3000]`) a partir do `def`. O conserto de um comentario
+> sem relacao nenhuma — trocar `3%` por "3 por cento" numa linha de SQL, porque `%` literal quebra
+> em Postgres — deixou o texto **49 caracteres** mais longo e empurrou o filtro para fora da janela.
+>
+> Guarda que depende de deslocamento de byte nao guarda a regra, guarda a formatacao. Novo
+> `_corpo_da_funcao()` fatia do `def` ate o proximo, e os dois testes de leitura de fonte do arquivo
+> (o outro usava `+1800`) passaram a usa-lo.
+>
+> Verificado das DUAS formas: removendo o filtro de verdade o teste acusa; inchando a funcao em
+> 5.000 caracteres ele continua verde. A primeira sozinha nao provaria nada — era exatamente o que
+> a versao antiga tambem fazia.
+
+
+### fix(treino): o modo grind contava ACERTO quando o jogador errava (#treino)
+
+> Relato com print: "mesmo qdo erro, esta contabilizando acerto" — placar 4/4 numa mao com erro.
+>
+> A tela tinha DOIS estados (certo/errado) para um veredito de TRES niveis. Linha co-otima que o
+> GTO mistura volta com `is_correct=true` **e** `mixed=true`; o front olhava so o primeiro e
+> pintava "Certo". E spot sem gabarito caia no mesmo balaio.
+>
+> Agora sao quatro estados explicitos — `certo`, `aceitavel`, `errado`, `sem_veredito` — e o placar
+> conta so o que tem gabarito, com a linha de aceitaveis separada. Sem veredito nao entra no
+> denominador: nao ha o que acertar quando nao ha gabarito.
+>
+> E o terceiro lugar do projeto a repetir o mesmo engano de colapsar tres niveis em dois. A fonte
+> unica ja existe (`cardLogic.verdictLevel*` / `verdict.py`) e o grind nasceu sem consumi-la.
+>
+> Guarda verificado quebrando: fazendo `aceitavel` contar como acerto, o teste acusa. Frontend 253.
+
+
 ### fix(treino): a decisao do modo grind foi para o LADO da mesa (#treino)
 
 > Pedido: "ficaria melhor se os botoes de decisao e veredito ficassem ao lado da mesa e nao embaixo,
