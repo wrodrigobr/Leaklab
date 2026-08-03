@@ -7,6 +7,41 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(banco): o pool derrubou o /health em producao, e o conserto veio do que ele nao sabia (#infra)
+
+> **Eu introduzi isto no commit anterior e vale registrar como aconteceu.** Depois de deployar o
+> pool, medi de fora: **1 em 5 requisicoes ao `/health` voltava 503**, com corpo
+> `{"db": false, "status": "degraded"}` -- o proprio app dizendo que nao alcancou o banco.
+>
+> **Duas coisas minhas estavam erradas, e as duas eram "o desconhecido lido como o caso bom".**
+>
+> 1. **Idade desconhecida virava idade zero.** O pool abre `minconn` conexoes no CONSTRUTOR, e
+>    essas nunca passam pelo caminho de devolucao -- nao estao no dicionario de ociosidade. Meu
+>    codigo fazia `pop(raw, time.monotonic())`, cujo default e "agora": conexao de idade
+>    desconhecida lia como recem-criada, pulava o ping e era entregue viva ou morta. Agora
+>    desconhecido FORCA o ping. Em toda decisao do bloco, o que nao se sabe pesa contra reusar.
+>
+> 2. **O dublê do teste modelava o psycopg2 errado.** Li a fonte do `_putconn`:
+>    `if len(self._pool) < self.minconn and not close:` -- ele **retem ate `minconn` e FECHA o
+>    resto**. Meu `_PoolFalso` guardava todas. Com `minconn=1` so UMA conexao ficava quente e todo
+>    aninhamento (profundidade 2, medida em codigo real) rediscava os 72ms. O dublê agora abre
+>    `minconn` no construtor e fecha o excedente, como o original, e `_POOL_MIN` virou 4.
+>
+> **O processo funcionou onde eu tinha preparado.** `LEAKLAB_DB_POOL=0` desligou o pool em producao
+> em um restart e a taxa voltou a 30/30 em 200 enquanto eu consertava -- a escotilha existia porque
+> a regra de desenho era "nunca inventar modo de falha novo", e ela inventou um.
+>
+> **Onde eu perdi tempo antes de achar:** tratei o 503 como saturacao de nginx por tres rodadas de
+> carga. Um `grep " 503 "` no log casou o CAMPO DE TAMANHO do corpo (`200 503` = status 200, 503
+> bytes) e me fez ler requisicoes bem-sucedidas do usuario como erros. So o cabecalho da resposta
+> (`x-request-id`, nosso) provou que o 503 saia do proprio app. **Numero colhido com o filtro errado
+> mente com confianca.**
+>
+> Dois testes novos, os dois verificados quebrando: restaurar o `pop(..., time.monotonic())` faz o
+> guarda acusar "entregou a conexao de idade DESCONHECIDA sem conferir", e voltar `minconn` a 1 faz
+> o guarda do aninhamento acusar "discou 1 vez a mais".
+
+
 ### perf(banco): pool de conexoes -- cada consulta pagava ~72ms so pra discar (#infra)
 
 > Medido em producao: abrir uma conexao custa **~72ms** e o `SELECT 1` depois dela custa 19ms. O

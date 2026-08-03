@@ -56,6 +56,12 @@ _POOL_DESCARTA_APOS_S = float(os.environ.get('LEAKLAB_DB_POOL_MAX_IDLE', '60') o
 # comum (mesma requisição, consultas em sequência) e onde está o ganho inteiro.
 _POOL_PING_APOS_S = float(os.environ.get('LEAKLAB_DB_POOL_PING_AFTER', '5') or 5)
 
+# Quantas ficam QUENTES. Não é enfeite: `_putconn` do psycopg2 é
+# `if len(self._pool) < self.minconn and not close:` — ele RETÉM até `minconn` e **fecha** todo o
+# resto. Com `minconn=1` só uma ficava quente, e toda chamada aninhada (profundidade 2, medida em
+# código real) pagava os 72ms de novo. O `maxconn` é o teto de simultâneas, não o de reuso.
+_POOL_MIN = max(1, min(int(os.environ.get('LEAKLAB_DB_POOL_MIN', '4') or 4), _POOL_MAX))
+
 _pool = None
 _pool_pid = None          # gunicorn dá fork: pool herdado é socket compartilhado entre processos
 _pool_ocioso_desde = {}   # conexão -> instante em que voltou ao pool
@@ -86,7 +92,7 @@ def _pool_do_processo():
         _pool_ocioso_desde.clear()
     import psycopg2.extras
     from psycopg2.pool import ThreadedConnectionPool
-    _pool = ThreadedConnectionPool(1, _POOL_MAX, DATABASE_URL,
+    _pool = ThreadedConnectionPool(_POOL_MIN, _POOL_MAX, DATABASE_URL,
                                    cursor_factory=psycopg2.extras.RealDictCursor)
     _pool_pid = pid
     return _pool
@@ -142,7 +148,16 @@ def _pega_do_pool():
         except Exception:
             # exausto (aninhamento fundo, concorrência) ou pool em erro: nunca falha a requisição
             return _conecta_pg(), None
-        ocioso_ha = time.monotonic() - _pool_ocioso_desde.pop(raw, time.monotonic())
+        # **Idade DESCONHECIDA não é idade zero.** O pool cria `minconn` conexões no construtor, e
+        # essas nunca passaram por `_devolve_ao_pool` — não estão no dicionário. A primeira versão
+        # daqui usava `pop(raw, time.monotonic())`, que faz o desconhecido ler como recém-criado:
+        # a conexão era entregue SEM ping, viva ou morta. Derrubou o `/health` em produção com
+        # `{"db": false}` e 503, cerca de uma em cinco, medido de fora.
+        #
+        # Desconhecido agora força o ping, sem forçar o descarte: se responder, reusa; se não,
+        # descarta. Em toda decisão deste bloco, o que não se sabe pesa contra reusar.
+        _marcado = _pool_ocioso_desde.pop(raw, None)
+        ocioso_ha = (time.monotonic() - _marcado) if _marcado is not None else _POOL_PING_APOS_S
         if ocioso_ha > _POOL_DESCARTA_APOS_S or not _viva(raw, ocioso_ha):
             _descarta(pool, raw)
             continue

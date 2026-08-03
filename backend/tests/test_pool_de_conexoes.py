@@ -87,30 +87,47 @@ class _ConexaoFalsa:
 
 
 class _PoolFalso:
-    """Imita as regras do ThreadedConnectionPool que o desenho usa — inclusive o rollback no
-    putconn de conexão com transação aberta."""
+    """Imita o ThreadedConnectionPool **incluindo as regras que mordem**.
 
-    def __init__(self, maxconn):
+    A primeira versão deste dublê guardava TODA conexão devolvida, e por isso os testes passaram
+    sobre um modelo que não era o psycopg2. Duas regras reais estavam faltando, e as duas causaram
+    defeito em produção:
+
+    1. `_putconn` é `if len(self._pool) < self.minconn and not close:` — ele **retém até `minconn`
+       e FECHA o resto**. Com `minconn=1` só uma conexão ficava quente e todo aninhamento pagava
+       o handshake de novo.
+    2. O construtor já cria `minconn` conexões, e essas nunca passaram pelo caminho de devolução
+       — logo, o código não sabe a idade delas.
+    """
+
+    def __init__(self, minconn, maxconn):
+        self.minconn = minconn
         self.maxconn = maxconn
-        self.livres = []
-        self.emprestadas = 0
         self.criadas = 0
+        self.emprestadas = 0
         self.fechadas = 0
+        self.pedidos = 0          # quantas vezes o pool foi CONSULTADO (não quantas criou)
+        # o construtor do psycopg2 já abre minconn conexões
+        self.livres = [self._nova() for _ in range(minconn)]
+
+    def _nova(self):
+        self.criadas += 1
+        return _ConexaoFalsa(self.criadas)
 
     def getconn(self):
+        self.pedidos += 1
         if self.livres:
             c = self.livres.pop()
         else:
             if self.emprestadas >= self.maxconn:
                 raise Exception('connection pool exhausted')
-            self.criadas += 1
-            c = _ConexaoFalsa(self.criadas)
+            c = self._nova()
         self.emprestadas += 1
         return c
 
     def putconn(self, conn, close=False):
         self.emprestadas -= 1
-        if close or conn.closed:
+        if close or conn.closed or len(self.livres) >= self.minconn:
             self.fechadas += 1
             conn.close()
             return
@@ -122,8 +139,9 @@ class _PoolFalso:
 class _Cenario:
     """Liga o caminho Postgres com os dublês e restaura tudo depois."""
 
-    def __init__(self, maxconn=8, direto_falha=False):
-        self.pool = _PoolFalso(maxconn)
+    def __init__(self, maxconn=8, minconn=None, direto_falha=False):
+        self._minconn = S._POOL_MIN if minconn is None else minconn
+        self.pool = _PoolFalso(self._minconn, maxconn)
         self.diretas = 0
         self._maxconn = maxconn
         self._direto_falha = direto_falha
@@ -164,7 +182,8 @@ def test_reusa_a_mesma_conexao_em_idas_seguidas():
         c2 = S.get_conn(); n2 = c2._conn.n; c2.close()
         c3 = S.get_conn(); n3 = c3._conn.n; c3.close()
     assert n1 == n2 == n3, f'discou de novo a cada ida: {n1}, {n2}, {n3}'
-    assert cen.pool.criadas == 1, f'criou {cen.pool.criadas} conexoes para 3 idas seguidas'
+    novas = cen.pool.criadas - cen._minconn
+    assert novas == 0, f'criou {novas} conexao(oes) NOVA(s) para 3 idas seguidas'
     assert cen.diretas == 0, 'caiu no fallback sem motivo'
     print('OK  test_reusa_a_mesma_conexao_em_idas_seguidas')
 
@@ -180,7 +199,8 @@ def test_aninhamento_recebe_conexoes_DIFERENTES():
         # a de fora continua viva e usável depois da de dentro voltar
         assert fora._conn.closed == 0, 'a de dentro fechou a conexao da de fora'
         fora.close()
-    assert cen.pool.criadas == 2, cen.pool.criadas
+    novas = cen.pool.criadas - cen._minconn
+    assert novas == 0, f'o aninhamento discou {novas} vez(es) a mais'
     print('OK  test_aninhamento_recebe_conexoes_DIFERENTES')
 
 
@@ -189,7 +209,9 @@ def test_liberacao_dupla_nao_devolve_duas_vezes():
     with _Cenario() as cen:
         with S.get_conn() as c:
             c.close()                      # o caminho que devolve duas vezes sem a trava
-        assert len(cen.pool.livres) == 1, f'a fila livre ficou com {len(cen.pool.livres)} entradas'
+        n_livres = len(cen.pool.livres)
+        assert n_livres <= cen._minconn, (
+            f'a fila livre passou de {cen._minconn} para {n_livres}: a conexao voltou duas vezes')
         # e a prova de que importa: dois donos não podem receber a mesma conexão
         a = S.get_conn(); b = S.get_conn()
         assert a._conn is not b._conn, 'dois donos receberam a MESMA conexao'
@@ -207,6 +229,49 @@ def test_transacao_aberta_nao_vaza_para_o_proximo():
         assert suja.rollbacks == 1, 'a transação aberta voltou ao pool SEM rollback'
         assert not suja.em_transacao, 'o próximo dono herdaria a transação'
     print('OK  test_transacao_aberta_nao_vaza_para_o_proximo')
+
+
+def test_conexao_de_idade_DESCONHECIDA_e_conferida_antes_de_entregar():
+    """**Este é o teste do 503 em produção.**
+
+    O pool abre `minconn` conexões no construtor. Elas nunca passaram pelo caminho de devolução,
+    então não estão no dicionário de ociosidade — a idade delas é desconhecida. A primeira versão
+    do código usava `pop(raw, time.monotonic())`, que faz o desconhecido ler como recém-criado: a
+    conexão saía SEM ping, viva ou morta. O `/health` passou a responder `{"db": false}` e 503,
+    cerca de uma em cinco, medido de fora.
+
+    Idade desconhecida tem que pesar CONTRA reusar.
+    """
+    with _Cenario() as cen:
+        assert cen.pool.livres, 'o dublê não abriu conexão no construtor — o teste mede nada'
+        antiga = cen.pool.livres[-1]
+        antiga.morta = True                       # nasceu no boot e morreu ociosa desde então
+        assert antiga not in S._pool_ocioso_desde, 'a de construtor não pode estar registrada'
+        c = S.get_conn()
+        assert c._conn is not antiga, 'entregou a conexao de idade DESCONHECIDA sem conferir'
+        c.execute('SELECT 1')                      # a prova final: ela funciona
+        c.close()
+    print('OK  test_conexao_de_idade_DESCONHECIDA_e_conferida_antes_de_entregar')
+
+
+def test_minconn_mantem_conexoes_quentes_para_o_aninhamento():
+    """`_putconn` do psycopg2 é `if len(self._pool) < self.minconn` — ele RETÉM até `minconn` e
+    FECHA o resto. Com `minconn=1` a conexão de dentro do aninhamento era fechada a cada volta e
+    o handshake voltava a ser pago (72ms medidos). O pool precisa reter mais de uma."""
+    assert S._POOL_MIN >= 2, f'_POOL_MIN={S._POOL_MIN}: o aninhamento de profundidade 2 nao cabe'
+    with _Cenario() as cen:
+        fora, dentro = S.get_conn(), S.get_conn()
+        n_fora, n_dentro = fora._conn.n, dentro._conn.n
+        dentro.close(); fora.close()
+        assert len(cen.pool.livres) >= 2, \
+            f'so {len(cen.pool.livres)} conexao(oes) ficou quente: o aninhamento vai rediscar'
+        # e a prova: repetir o aninhamento não cria conexão nova
+        criadas_antes = cen.pool.criadas
+        f2, d2 = S.get_conn(), S.get_conn()
+        assert {f2._conn.n, d2._conn.n} == {n_fora, n_dentro}, 'o aninhamento nao reusou'
+        d2.close(); f2.close()
+        assert cen.pool.criadas == criadas_antes, 'discou de novo no aninhamento'
+    print('OK  test_minconn_mantem_conexoes_quentes_para_o_aninhamento')
 
 
 def test_conexao_morta_e_descartada_e_o_chamador_recebe_uma_BOA():
@@ -252,7 +317,7 @@ def test_conexao_fechada_no_putconn_nao_deixa_entrada_orfa():
 
 def test_pool_exausto_cai_no_fallback_e_NAO_levanta():
     """Aninhamento fundo ou concorrência não podem virar erro de requisição."""
-    with _Cenario(maxconn=2) as cen:
+    with _Cenario(maxconn=2, minconn=1) as cen:
         abertas = [S.get_conn(), S.get_conn()]     # esgota
         extra = S.get_conn()                       # tem que funcionar mesmo assim
         assert extra is not None
@@ -291,7 +356,7 @@ def test_fork_nao_herda_o_pool_do_pai():
 
         class _Espia(_PoolFalso):
             def __init__(self, minconn, maxconn, dsn, **kw):
-                super().__init__(maxconn)
+                super().__init__(minconn, maxconn)
                 criados.append(self)
 
         _pp.ThreadedConnectionPool = _Espia
@@ -319,7 +384,7 @@ def test_desligar_por_env_volta_ao_comportamento_antigo():
         c1 = S.get_conn(); c1.close()
         c2 = S.get_conn(); c2.close()
         assert cen.diretas == 2, f'com o pool desligado deveria discar 2x, discou {cen.diretas}'
-        assert cen.pool.criadas == 0, 'usou o pool mesmo desligado'
+        assert cen.pool.pedidos == 0, 'consultou o pool mesmo desligado'
     print('OK  test_desligar_por_env_volta_ao_comportamento_antigo')
 
 
