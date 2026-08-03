@@ -183,6 +183,17 @@ def montar_mao(tournament_id: int, hand_id: str) -> Optional[dict]:
     if len(mao) != 2 or len(board_final) < 3:
         return None            # mão sem cartas ou sem board não vira exercício
 
+    # O PREFLOP quase nunca guarda `vs_position` (vem 'unknown'), mas o postflop guarda — e num
+    # pote heads-up quem estava no flop estava no preflop também. Herdar do primeiro passo que sabe
+    # é dedução honesta, e sem ela a mesa fica sem ninguém: reportado com o herói no BB, onde a
+    # regra "quem agiu antes foldou" apagava os oito outros assentos.
+    vilao_da_mao = ''
+    for r in linhas:
+        v = _vilao(r.get('vs_position'))
+        if v:
+            vilao_da_mao = v
+            break
+
     passos, anterior = [], None
     for r in linhas:
         street = (r['street'] or '').lower()
@@ -193,7 +204,7 @@ def montar_mao(tournament_id: int, hand_id: str) -> Optional[dict]:
             'board':          list(board_final)[:n],
             'hero_hand':      mao,
             'position':       r['position'],
-            'vs_position':    _vilao(r['vs_position']),
+            'vs_position':    _vilao(r['vs_position']) or vilao_da_mao,
             'stack_bb':       round(float(r['stack_bb'] or 0), 1),
             'pot_bb':         round(float(r['pot_size'] or 0), 1),
             'facing_size_bb': round(facing, 2),

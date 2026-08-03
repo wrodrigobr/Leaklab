@@ -7,6 +7,34 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(treino): a mesa do modo grind ficava sem NINGUEM na jogada (#treino)
+
+> Reportado duas vezes, e a segunda foi a que expos a causa: "aqui tambem nao tem ninguem na mao",
+> com o heroi no BB.
+>
+> **Eu estava ADIVINHANDO quem foldou.** A regra era "quem agiu antes do heroi passou", e com o
+> heroi no BB isso significa todo mundo — os oito outros assentos apagados, ninguem jogando, numa
+> mao que segue para o flop. Dobrar todo mundo e uma AFIRMACAO ("todos passaram"), e ela era falsa.
+>
+> **O dado sabia a resposta, num lugar que eu nao tinha olhado.** O preflop quase nunca guarda
+> `vs_position` (vem `'unknown'`), mas o postflop guarda — e num pote heads-up quem estava no flop
+> estava no preflop tambem. O preflop passou a HERDAR o vilao do primeiro passo que o conhece. E
+> quando nem assim se sabe, a mesa nao dobra ninguem: na duvida ela nao afirma nada.
+>
+> **Dois defeitos de leitura no mesmo print:** a fita dizia "preflop, flop, flop" (uma street pode
+> ter DUAS decisoes, e listar passo a passo se le como erro em vez de "duas decisoes no mesmo
+> flop"), e os botoes viravam faixas de 650px numa tela de 1300, longe do centro do olhar.
+>
+> **Quebrei a pagina de novo com comentario JSX como irmao dentro de um ramo** — segunda vez hoje. O
+> ramo so aceita um elemento. O comentario agora mora fora do parentese, e o proprio comentario diz
+> por que.
+>
+> O aviso de rodape sobre replay/anonimizacao saiu a pedido do usuario.
+>
+> Guarda novo cobra exatamente o bug relatado: sem adversario conhecido, ZERO assentos dobrados;
+> com adversario, sete. Verificado nas duas direcoes. Backend 83 (ghost), frontend 252.
+
+
 ### fix(treino): a mesa do modo grind ocupa a tela, e o "vs unknown" era um sentinela (#treino)
 
 > Reportado: "temos que aproveitar melhor o espaco da tela e evitar barras de rolagem... quanto

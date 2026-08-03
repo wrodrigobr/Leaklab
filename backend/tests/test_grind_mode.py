@@ -74,6 +74,48 @@ _MAO = [
 
 # ── testes ────────────────────────────────────────────────────────────────────
 
+def test_o_preflop_herda_o_vilao_do_postflop():
+    """O preflop quase nunca guarda `vs_position` (vem o sentinela `'unknown'`), mas o postflop
+    guarda. Num pote heads-up, quem estava no flop estava no preflop também.
+
+    Sem isso a mesa ficava SEM NINGUÉM na jogada: reportado com o herói no BB, onde a regra
+    "quem agiu antes do herói foldou" apagava os oito outros assentos. Dobrar todo mundo é uma
+    afirmação — "todos passaram" — e ela era falsa, porque a mão seguia para o flop.
+    """
+    linhas = [
+        _dec(1, 'preflop', facing=3.0, pot=2.0),
+        _dec(2, 'flop', facing=0.0, pot=4.0),
+    ]
+    linhas[0]['vs_position'] = 'unknown'      # como o banco realmente grava
+    linhas[1]['vs_position'] = 'BTN'
+    orig = _com(linhas)
+    try:
+        m = GM.montar_mao(7, 'H1')
+    finally:
+        GM.get_conn = orig
+    assert m['passos'][0]['vs_position'] == 'BTN', m['passos'][0]
+    assert m['passos'][1]['vs_position'] == 'BTN'
+    print('OK  test_o_preflop_herda_o_vilao_do_postflop')
+
+
+def test_sentinela_unknown_nunca_chega_na_tela():
+    """`vs_position` não vem VAZIO quando não há vilão: vem o literal `'unknown'`, em 3.600 linhas
+    de preflop. Testar por string vazia não pega sentinela, e a tela escrevia "SB vs unknown"."""
+    for sentinela in ('unknown', 'UNKNOWN', 'none', '-', '', None):
+        assert GM._vilao(sentinela) == '', f'{sentinela!r} passou'
+    assert GM._vilao('BTN') == 'BTN'
+    linhas = [_dec(1, 'preflop'), _dec(2, 'flop')]
+    for l in linhas:
+        l['vs_position'] = 'unknown'
+    orig = _com(linhas)
+    try:
+        m = GM.montar_mao(7, 'H1')
+    finally:
+        GM.get_conn = orig
+    assert all(p['vs_position'] == '' for p in m['passos']), m['passos']
+    print('OK  test_sentinela_unknown_nunca_chega_na_tela')
+
+
 def test_o_payload_nao_carrega_identificador_nenhum():
     """As mãos são de OUTROS jogadores. Nick, torneio, hand_id e data não podem sair daqui."""
     orig = _com(_MAO)

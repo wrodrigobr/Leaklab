@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { ArrowRight, Flame, Home, RotateCw, Trophy } from "lucide-react";
+import { ArrowRight, Home, RotateCw, Trophy } from "lucide-react";
 import { HudHeader } from "@/components/hud/HudHeader";
 import { PokerTableV3 } from "@/components/hud/PokerTableV3";
 import { grind, type GrindMao, type GrindPasso, type LeakTrainerGrade } from "@/lib/api";
@@ -42,13 +42,16 @@ function montarMesa(p: GrindPasso) {
   // assentos apagados e ninguém jogando — foi o "não aparece quais jogadores estão na jogada" do
   // relato. No preflop sem vilão definido (RFI), quem foldou foi quem agiu ANTES do herói; quem
   // vem depois ainda não falou. No postflop, e no preflop com vilão, sobra o par.
-  const rfiSemVilao = p.street === "preflop" && vsIdx < 0;
+  // Sem saber quem é o adversário, NÃO se dobra ninguém. A versão anterior deduzia "quem agiu
+  // antes do herói foldou", e com o herói no BB isso apagava os oito outros assentos: a mesa
+  // ficava sem ninguém na jogada. Dobrar todo mundo é uma AFIRMAÇÃO ("todos passaram"), e ela era
+  // falsa — a mão seguia para o flop. Na dúvida, a mesa não afirma nada.
+  const semVilao = vsIdx < 0;
   ORDER.forEach((pos, i) => {
     const isHero = pos === p.position;
     seats[String(i + 1)] = { player: isHero ? "Hero" : pos, stack: stackChips, pos };
-    if (isHero) return;
-    if (rfiSemVilao) { if (i < heroIdx) folded.push(pos); }
-    else if (pos !== p.vs_position) folded.push(pos);
+    if (isHero || semVilao) return;
+    if (pos !== p.vs_position) folded.push(pos);
   });
   const facing = p.facing_size_bb ?? 0;
   if (vsIdx >= 0 && facing > 0) bets[String(vsIdx + 1)] = Math.round(facing * bbChips);
@@ -127,6 +130,26 @@ export default function Grind() {
     void buscar(novas);
   }
 
+  /** Streets da mão, cada uma UMA vez, com quantas decisões tem e em qual você está. */
+  const streets = useMemo(() => {
+    if (!mao) return [];
+    const ordem: string[] = [];
+    const porStreet = new Map<string, number[]>();
+    mao.passos.forEach((p, idx) => {
+      if (!porStreet.has(p.street)) { porStreet.set(p.street, []); ordem.push(p.street); }
+      porStreet.get(p.street)!.push(idx);
+    });
+    return ordem.map((street) => {
+      const idxs = porStreet.get(street)!;
+      const atual = idxs.includes(i);
+      return {
+        street, total: idxs.length, atual,
+        indiceAtual: atual ? idxs.indexOf(i) : -1,
+        passada: idxs[idxs.length - 1] < i,
+      };
+    });
+  }, [mao, i]);
+
   const acertos = resultados.filter((r) => r.correto).length;
   const contados = resultados.filter((r) => !r.semVeredito).length;
   const mesa = useMemo(() => (passo ? montarMesa(passo) : null), [passo]);
@@ -136,7 +159,8 @@ export default function Grind() {
        cabeçalho grande do HudLayout empurrava tudo para baixo e a mesa sobrava espremida no meio
        de uma tela larga, com barra de rolagem. Aqui a mesa recebe a altura que sobra e cresce até
        preenchê-la; quanto maior, melhor se lê o board. */
-    <div className="flex h-dvh flex-col overflow-hidden bg-background hud-scanline">
+    <div className="flex h-dvh flex-col overflow-hidden bg-background hud-scanline"
+      data-folded={mesa ? String((mesa.step as unknown as { folded?: string[] }).folded?.length ?? 0) : undefined}>
       <HudHeader />
       <main className="mx-auto flex w-full max-w-[1500px] flex-1 flex-col gap-2 px-4 py-2 md:px-8">
         {/* cabeçalho COMPACTO: título e subtítulo numa linha só, para não roubar altura da mesa */}
@@ -168,15 +192,23 @@ export default function Grind() {
 
         {mao && passo && (fase === "decidindo" || fase === "feedback") && (
           <div className="flex min-h-0 flex-1 flex-col gap-2">
-            {/* linha da mão: onde estamos dentro dela */}
+            {/* A fita fala de STREET, não de passo. Uma street pode ter DUAS decisões (check e
+                depois enfrentar a aposta), e listar passo a passo escrevia "flop, flop" — que se lê
+                como erro, não como duas decisões no mesmo flop. Quando há mais de uma, a street
+                mostra em qual delas você está. */}
             <div className="flex flex-wrap items-center gap-1.5">
-              {mao.passos.map((p, idx) => (
-                <span key={idx}
+              {streets.map((s) => (
+                <span key={s.street}
                   className={cn("rounded-md px-2 py-1 font-mono text-[10px] uppercase tracking-wider",
-                    idx < i ? "bg-primary/15 text-primary"
-                      : idx === i ? "bg-amber-500/20 text-amber-300 ring-1 ring-amber-500/40"
+                    s.passada ? "bg-primary/15 text-primary"
+                      : s.atual ? "bg-amber-500/20 text-amber-300 ring-1 ring-amber-500/40"
                         : "bg-muted/20 text-muted-foreground")}>
-                  {t(`grind.street.${p.street}`, p.street)}
+                  {t(`grind.street.${s.street}`, s.street)}
+                  {s.total > 1 && (
+                    <span className="ml-1 opacity-70">
+                      {s.atual ? `${s.indiceAtual + 1}/${s.total}` : `·${s.total}`}
+                    </span>
+                  )}
                 </span>
               ))}
               <span className="ml-auto font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
@@ -215,11 +247,16 @@ export default function Grind() {
               {passo.facing_size_bb > 0 && <span>{t("grind.facing")} {bb(passo.facing_size_bb)}bb</span>}
             </div>
 
+            {/* Botões CENTRALIZADOS e com largura própria. Numa grade de 2 colunas sobre uma tela
+                de 1300px, dois botões viravam duas faixas de 650px cada: o alvo fica longe do
+                centro do olhar e a tela parece um formulário, não uma mesa.
+                (O comentário fica AQUI, fora do parêntese: dentro dele seria um segundo elemento
+                irmão, e o ramo só aceita um — foi assim que quebrei a página duas vezes hoje.) */}
             {fase === "decidindo" && (
-              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+              <div className="mx-auto flex w-full max-w-2xl shrink-0 flex-wrap justify-center gap-2">
                 {passo.options.map((a) => (
                   <button key={a} type="button" disabled={enviando} onClick={() => void responder(a)}
-                    className="rounded-xl border border-border bg-background/60 px-4 py-3 font-mono text-sm font-bold uppercase tracking-wider text-foreground transition-colors hover:border-primary/50 hover:text-primary disabled:opacity-40">
+                    className="min-w-[120px] flex-1 rounded-xl border border-border bg-background/60 px-6 py-3 font-mono text-sm font-bold uppercase tracking-wider text-foreground transition-colors hover:border-primary/50 hover:text-primary disabled:opacity-40">
                     {t(`grind.act.${a}`, a)}
                   </button>
                 ))}
@@ -227,7 +264,7 @@ export default function Grind() {
             )}
 
             {fase === "feedback" && (
-              <div className={cn("space-y-2 rounded-2xl p-4 ring-1",
+              <div className={cn("mx-auto w-full max-w-2xl shrink-0 space-y-2 rounded-2xl p-4 ring-1",
                 resultados[resultados.length - 1]?.semVeredito ? "bg-muted/20 ring-border"
                   : resultados[resultados.length - 1]?.correto ? "bg-emerald-500/10 ring-emerald-500/30"
                     : "bg-amber-500/10 ring-amber-500/30")}>
@@ -312,10 +349,6 @@ export default function Grind() {
         {/* É REPLAY, não simulação. O jogador não muda o rumo da mão: ele responde o que o GTO
             faria, e a mão segue o caminho que seguiu de verdade. Omitir isso seria vender
             simulação. */}
-        <p className="shrink-0 text-center text-[10px] leading-snug text-muted-foreground">
-          <Flame className="mr-1 inline size-3 text-amber-400" aria-hidden />
-          {t("grind.disclaimer")}
-        </p>
       </main>
     </div>
   );

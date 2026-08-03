@@ -113,10 +113,55 @@ describe("modo grind", () => {
     expect(alvo?.className ?? "").not.toContain("max-w-3xl");
   });
 
-  it("a tela avisa que é replay de mão real, não simulação", async () => {
+  it("a fita mostra cada STREET uma vez, e nao 'flop, flop'", async () => {
+    // Reportado: "em cima tem preflop, flop, flop". Uma street pode ter DUAS decisões (check e
+    // depois enfrentar a aposta); listar passo a passo escrevia a street repetida, o que se lê como
+    // erro em vez de "duas decisões no mesmo flop".
+    estado.mao = { token: "abc", total: 3, passos: [
+      passo("preflop"), passo("flop"), passo("flop", 1.9),
+    ] };
+    const { container } = montar();
+    await waitFor(() => expect(screen.getByTestId("mesa")).toBeTruthy());
+    const fita = container.textContent ?? "";
+    // "flop" aparece uma vez só na fita (a contagem "1/2" indica as duas decisões)
+    const chips = [...container.querySelectorAll("span")]
+      .map((e) => e.textContent ?? "").filter((x) => x.startsWith("grind.street."));
+    const nomes = chips.map((c) => c.replace(/[^a-z.]/g, ""));
+    expect(new Set(nomes).size).toBe(nomes.length);   // sem street repetida
+    // A street com DUAS decisões anuncia isso. Estando no preflop, ela mostra a contagem (`·2`);
+    // quando você chega nela, passa a mostrar em qual das duas está (`1/2`).
+    expect(fita).toMatch(/·2|1\/2/);
+  });
+
+  it("os botões de ação ficam centralizados, sem esticar pela tela", async () => {
     estado.mao = { token: "abc", total: 1, passos: [passo("flop")] };
-    montar();
-    await waitFor(() => expect(screen.getByText("grind.disclaimer")).toBeTruthy());
+    const { container } = montar();
+    await waitFor(() => expect(screen.getByText("check")).toBeTruthy());
+    const grupo = screen.getByText("check").parentElement;
+    expect(grupo?.className).toContain("justify-center");
+    expect(grupo?.className).toContain("mx-auto");
+    expect(grupo?.className).toContain("max-w-2xl");
+  });
+
+  it("sem saber quem é o adversário, a mesa NÃO dobra ninguém", async () => {
+    // Reportado duas vezes: "não aparece quais jogadores estão na jogada" e "aqui também não tem
+    // ninguém na mão". A regra anterior deduzia "quem agiu antes do herói foldou", e com o herói no
+    // BB isso apagava os oito outros assentos. Dobrar todo mundo é uma AFIRMAÇÃO — "todos passaram"
+    // — e era falsa: a mão seguia para o flop.
+    estado.mao = { token: "abc", total: 1, passos: [{
+      ...passo("preflop"), position: "BB", vs_position: "", options: ["fold", "raise"],
+    }] };
+    const { container } = montar();
+    await waitFor(() => expect(screen.getByTestId("mesa")).toBeTruthy());
+    expect(container.querySelector("[data-folded]")?.getAttribute("data-folded")).toBe("0");
+  });
+
+  it("com adversário conhecido, sobra o par na mesa", async () => {
+    estado.mao = { token: "abc", total: 1, passos: [{ ...passo("flop"), position: "BB", vs_position: "BTN" }] };
+    const { container } = montar();
+    await waitFor(() => expect(screen.getByTestId("mesa")).toBeTruthy());
+    // 9 assentos, 2 na mão → 7 dobrados
+    expect(container.querySelector("[data-folded]")?.getAttribute("data-folded")).toBe("7");
   });
 
   it("sem mão disponível, não fica em branco", async () => {
