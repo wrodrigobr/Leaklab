@@ -7,6 +7,69 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### perf(banco): pool de conexoes -- cada consulta pagava ~72ms so pra discar (#infra)
+
+> Medido em producao: abrir uma conexao custa **~72ms** e o `SELECT 1` depois dela custa 19ms. O
+> custo dominante de quase toda consulta era DISCAR, nao consultar. Um endpoint que toca o banco 6
+> vezes pagava ~430ms so de handshake. A URL ja aponta pro endpoint `-pooler` do Neon (PgBouncer),
+> entao o pool do lado do SERVIDOR ja existia -- o que se pagava era o TCP+TLS do container ate
+> ele, e so pool no CLIENTE elimina isso.
+>
+> **A regra de desenho foi que ele nunca inventasse modo de falha novo.** Pool exausto, conexao
+> quebrada, driver reclamando: tudo cai no `psycopg2.connect` direto de antes. O pior caso e a
+> lentidao de hoje, jamais um erro que hoje nao existe. `LEAKLAB_DB_POOL=0` desliga tudo.
+>
+> **Tres coisas que um pool ingenuo erraria aqui, e que foram MEDIDAS antes de desenhar:**
+>
+> 1. **Aninhamento.** Sondado em codigo real: `get_xp_status` segura uma conexao e chama
+>    `get_achievements`, que abre outra -- profundidade 2. Um cache de UMA conexao por processo
+>    devolveria a mesma pras duas, e a de dentro a liberaria embaixo da de fora.
+> 2. **Transacao aberta.** `_AdaptedConn.__exit__` fecha SEM commitar. Devolver assim entregaria a
+>    transacao suja ao proximo dono. O `putconn` do psycopg2 ja faz rollback; dependemos disso de
+>    proposito em vez de reimplementar.
+> 3. **Liberacao dupla.** `close()` e `__exit__` levam ao mesmo lugar, e `with get_conn() as c:` com
+>    um `c.close()` dentro dispara os dois. Sem trava, a conexao voltaria DUAS vezes pra fila livre
+>    e o pool a entregaria a dois donos: duas requisicoes escrevendo no mesmo socket. Nao e
+>    lentidao, e corrupcao, e silenciosa.
+>
+> Mais: pool por PID (worker do gunicorn que herdasse o do pai compartilharia os mesmos sockets),
+> idade maxima ociosa e ping antes de entregar (servidor que derruba deixa `closed=0` e status
+> IDLE -- so a consulta revela).
+>
+> **Testado com driver FALSO, e isso e o ponto.** O pool so roda em Postgres e dev e SQLite: um
+> teste que exercitasse so o caminho normal daria verde sobre codigo que ninguem executou -- a
+> armadilha "funciona no dev, nao em prod" que este projeto ja pagou varias vezes. Os dubles imitam
+> o contrato do psycopg2 que o desenho usa, inclusive o rollback do `putconn`. 12 testes, todos os
+> guardas verificados quebrando.
+
+
+### fix(treino): o texto didatico contradizia o board na tela (#treino)
+
+> Perguntado pelo usuario diante de um spot: flop `K9 3`, heroi no BB com `32s` -- par do 3 -- e o
+> feedback dizia *"conector suited quase nunca acerta na hora, ele vive de implied odds"*.
+>
+> **O veredito de GTO estava CERTO**, e vale registrar porque minha primeira reacao foi que estava
+> errado. Conferido no dado: `2d3d` e `2h3h` com estrategia identica (fold 8 / call 36 / raise 56),
+> raise medio de 10,8% na range inteira, ar 6,7% contra top pair 22,8%, exploitability 1,44%. Solve
+> convergido e bem diferenciado. 32s e o FUNDO da range de defesa: nao aguenta tres ruas de pressao,
+> entao vira raise em vez de call -- e Q3s, com kicker melhor mas dominado, folda 63%.
+>
+> **Quem mentia era a camada didatica.** A nota era escolhida so por `hand_class`, que olha o hand
+> type e nada mais, e a tabela `_HAND_NOTES` inteira e escrita em linguagem de PREFLOP: "quase nunca
+> acerta na hora", "erra o flop e fica sem plano", "precisa acertar muito pra valer alguma coisa".
+> Todas pressupoem que o flop nao veio. Servidas num spot onde o board esta na tela e a mao ACERTOU,
+> contradizem o que o jogador esta vendo -- e ele confia, porque veio aprender.
+>
+> Depois do flop a nota passa a descrever a mao NESTE board (set, trinca, dois pares, overpar, top
+> par, par medio, par baixo, par na mao, duas overcards, sem par). **A regra do bloco e preferir o
+> silencio:** straight, flush, entrada estranha -- devolve `None` e nenhuma nota aparece. Nota
+> ausente e oportunidade perdida; nota errada ensina errado.
+>
+> O guarda principal varre a tabela de preflop INTEIRA contra 150 spots de pos-flop. Um guarda que
+> testasse so o caso do print deixaria as outras nove frases livres pra reaparecer. Verificado
+> quebrando dos dois lados: religando a nota de preflop, 150 spots acusam; tirando a deteccao de
+> flush, a mao que fechou flush volta a ser chamada de "sem par".
+
 ### perf(treino): o veredito levava 6,19s porque recalculava a prova a cada clique (#treino)
 
 > Pergunta do usuario: "quando seleciono uma das opcoes do leak trainer, demora ate aparecer o

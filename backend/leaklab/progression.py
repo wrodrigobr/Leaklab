@@ -464,6 +464,107 @@ _HAND_NOTES = {
 }
 
 
+# ── A nota da mão DEPOIS do flop ──────────────────────────────────────────────────────────────
+#
+# **Reportado pelo usuário, olhando um spot de flop:** board K93, herói com 32s, par do 3 na mão,
+# e o texto dizia *"conector suited quase nunca acerta na hora, ele vive de implied odds"*.
+#
+# A tabela `_HAND_NOTES` inteira é escrita em linguagem de PREFLOP — "quase nunca acerta na hora",
+# "erra o flop e fica sem plano", "precisa acertar muito pra valer alguma coisa". Todas pressupõem
+# que o flop ainda não veio. Servidas num spot onde o board está na tela e a mão ACERTOU, elas
+# contradizem o que o jogador está vendo. E ele confia no texto: veio aqui para aprender.
+#
+# **A regra deste bloco é preferir o silêncio.** Straight, flush, board pareado, qualquer coisa que
+# a comparação de ranks sozinha não decida com certeza → devolve `None` e nenhuma nota é exibida.
+# Uma nota ausente é uma oportunidade perdida; uma nota errada ensina errado.
+
+_ORDEM = '23456789TJQKA'
+
+_NOTAS_POSTFLOP = {
+    'set':          "Set é a mão que paga o preço de ter jogado o par pequeno: a decisão aqui é de "
+                    "quanto extrair, não de se continua.",
+    'trinca':       "Trinca com carta da mão é forte, mas o board pareado também melhora o vilão: "
+                    "vale checar quais mãos dele te alcançam.",
+    'dois_pares':   "Dois pares ganha da maioria dos pares únicos e perde para os projetos que "
+                    "fecham: a pergunta é quantas ruas pagar antes do board mudar.",
+    'overpar':      "Par maior que todo o board é mão feita forte, e o valor dela cai a cada carta "
+                    "alta que aparece: proteger costuma valer mais que esperar.",
+    'top_par':      "Top par é mão feita de verdade: o problema dela raramente é continuar, é "
+                    "escolher quantas ruas pagar.",
+    'par_medio':    "Par médio ganha de blefe e perde de quase toda aposta grande: é a mão que mais "
+                    "sofre com decisão adiada.",
+    'par_baixo':    "Par baixo tem showdown value pequeno: ganha de blefe, perde do resto. Por isso "
+                    "ele costuma estar no FUNDO da range, e é de lá que saem os blefes.",
+    'par_na_mao':   "Par na mão abaixo do board virou mão marginal: ele bloqueia pouco e melhora "
+                    "pouco, então decidir cedo custa menos que pagar por inércia.",
+    'duas_over':    "Sem par, mas com duas cartas acima do board: a mão vive das cartas que ainda "
+                    "vêm, e do que o vilão está disposto a foldar.",
+    'sem_par':      "Sem par e sem carta acima do board, a mão não melhora sozinha: o que ela tem é "
+                    "o que o vilão desiste.",
+}
+
+
+def _mao_no_board(mao, board):
+    """Que mão o herói TEM neste board, por comparação de ranks. `None` quando não dá para saber.
+
+    Devolve `None` — de propósito — em straight, flush e qualquer coisa que a contagem de ranks
+    não resolva sozinha. Chamar de "par baixo" uma mão que fechou flush seria exatamente o tipo de
+    afirmação confiante e falsa que este bloco existe para não fazer.
+    """
+    def cartas(x):
+        if isinstance(x, str):
+            return [x[i:i + 2] for i in range(0, len(x), 2)]
+        return [str(c) for c in (x or [])]
+
+    h = [c for c in cartas(mao) if len(c) >= 2]
+    b = [c for c in cartas(board) if len(c) >= 2]
+    if len(h) != 2 or len(b) < 3:
+        return None
+    try:
+        hr = [c[0].upper() for c in h]
+        br = [c[0].upper() for c in b]
+        naipes = [c[1].lower() for c in h + b]
+    except Exception:
+        return None
+    if any(r not in _ORDEM for r in hr + br):
+        return None
+
+    # flush: 5 do mesmo naipe em qualquer combinação → não classifica por par
+    for n in set(naipes):
+        if naipes.count(n) >= 5:
+            return None
+    # straight: 5 ranks consecutivos (com o ás valendo 1 também)
+    idx = {_ORDEM.index(r) for r in hr + br}
+    if 12 in idx:
+        idx.add(-1)                                  # A-2-3-4-5
+    for base in sorted(idx):
+        if all((base + k) in idx for k in range(5)):
+            return None
+
+    todas = hr + br
+    if any(todas.count(r) >= 3 for r in set(hr)):
+        return 'set' if hr[0] == hr[1] else 'trinca'
+
+    board_ranks = sorted({_ORDEM.index(r) for r in br}, reverse=True)
+    if hr[0] == hr[1]:                               # par na mão
+        if _ORDEM.index(hr[0]) > board_ranks[0]:
+            return 'overpar'
+        return 'par_na_mao'
+
+    casadas = [r for r in hr if r in br]
+    if len(casadas) >= 2:
+        return 'dois_pares'
+    if len(casadas) == 1:
+        pos = board_ranks.index(_ORDEM.index(casadas[0]))
+        if pos == 0:
+            return 'top_par'
+        return 'par_baixo' if pos == len(board_ranks) - 1 else 'par_medio'
+
+    if all(_ORDEM.index(r) > board_ranks[0] for r in hr):
+        return 'duas_over'
+    return 'sem_par'
+
+
 def _rfi_principio(pos: str, stack: float) -> tuple[str, str]:
     """Abertura: o gatilho muda com a POSIÇÃO, e o SB é um caso à parte.
     Do SB só existe UM jogador atrás — dizer 'quantos podem te enfrentar' seria falso —
@@ -581,6 +682,19 @@ def concept_for_spot(spot: dict, grade: dict | None = None) -> dict:
     # de repetir a mesma frase 10 vezes (fadiga) e o que o jogador leva pro jogo — ele não vai
     # reencontrar 94s, vai reencontrar "suited gapper fraco".
     classe = hand_class(spot.get('hand') or '')
+    # DEPOIS do flop a nota de preflop mente: ela fala do que a mão "costuma acertar" enquanto o
+    # board está na tela dizendo o que ela acertou. Aqui a nota descreve a mão NESTE board, e
+    # quando a classificação não é certa (straight, flush, board pareado) não se diz nada.
+    _street = (spot.get('street') or 'preflop').lower()
+    if _street != 'preflop':
+        _feita = _mao_no_board(spot.get('hand') or spot.get('hero_hand'), spot.get('board'))
+        return {
+            'gatilho':   gatilho,
+            'principio': principio,
+            'regra':     regra,
+            'classe':    _feita or 'desconhecida',
+            'nota_mao':  _NOTAS_POSTFLOP.get(_feita) or '',
+        }
     nota_mao = _HAND_NOTES.get(classe) or ''
     # conector suited em stack curto: o par implied-odds × profundidade é forte demais pra perder
     if classe == 'conector_suited' and stack <= _SHORT_BB:

@@ -22,16 +22,164 @@ USE_POSTGRES = bool(DATABASE_URL)
 _LOCAL_DB = os.path.join(os.path.dirname(__file__), '..', 'data', 'leaklab.db')
 SQLITE_PATH = os.environ.get('LEAKLAB_DB', _LOCAL_DB)
 
+# ── Pool de conexões (SÓ PostgreSQL) ──────────────────────────────────────────
+#
+# **O problema, medido em produção 2026-08-02:** abrir uma conexão custa ~72ms e o `SELECT 1`
+# depois dela custa 19ms. O custo dominante de quase toda consulta é DISCAR, não consultar. Um
+# endpoint que toca o banco 6 vezes paga ~430ms só de handshake. A URL já aponta para o endpoint
+# `-pooler` do Neon (PgBouncer), então o pool do lado do SERVIDOR já existe — o que se paga é o
+# TCP+TLS do nosso container até ele, e só pool no CLIENTE elimina isso.
+#
+# **A regra de desenho é que ele nunca invente um modo de falha novo.** Pool exausto, conexão
+# quebrada, driver reclamando: tudo cai no `psycopg2.connect` direto de antes. O pior caso é a
+# lentidão de hoje, jamais um erro que hoje não existe. `LEAKLAB_DB_POOL=0` desliga tudo.
+#
+# **Três coisas que este código precisa acertar e que um pool ingênuo erra:**
+#
+# 1. **Aninhamento.** Medido: `get_xp_status` segura uma conexão e chama `get_achievements`, que
+#    abre outra — profundidade 2 em código real. Um cache de UMA conexão por processo devolveria
+#    a mesma para as duas e a de dentro a liberaria embaixo da de fora. Por isso é pool, com N.
+# 2. **Transação aberta.** `_AdaptedConn.__exit__` fecha SEM commitar. Devolver assim ao pool
+#    entregaria a transação suja ao próximo. O `putconn` do psycopg2 já faz rollback nesse caso;
+#    dependemos disso de propósito, em vez de reimplementar.
+# 3. **Conexão morta em silêncio.** Se o servidor derruba, `conn.closed` continua 0 e o status
+#    continua IDLE — o cliente só descobre na próxima consulta. Daí a idade máxima ociosa e o
+#    ping; ver `_pega_do_pool`.
+
+_POOL_LIGADO = os.environ.get('LEAKLAB_DB_POOL', '1').lower() not in ('0', 'false', 'no')
+_POOL_MAX = int(os.environ.get('LEAKLAB_DB_POOL_MAX', '8') or 8)
+
+# Ociosa além disto, a conexão é DESCARTADA em vez de reusada: nunca fica pior que hoje, porque
+# o pior caso é discar de novo, que é exatamente o que se fazia sempre.
+_POOL_DESCARTA_APOS_S = float(os.environ.get('LEAKLAB_DB_POOL_MAX_IDLE', '60') or 60)
+# Ociosa além disto, confere com um ping antes de entregar. Abaixo disto entrega direto — é o caso
+# comum (mesma requisição, consultas em sequência) e onde está o ganho inteiro.
+_POOL_PING_APOS_S = float(os.environ.get('LEAKLAB_DB_POOL_PING_AFTER', '5') or 5)
+
+_pool = None
+_pool_pid = None          # gunicorn dá fork: pool herdado é socket compartilhado entre processos
+_pool_ocioso_desde = {}   # conexão -> instante em que voltou ao pool
+
+
+def _conecta_pg():
+    """A conexão crua, sem pool. É também o fallback de tudo que der errado no pool."""
+    import psycopg2
+    import psycopg2.extras
+    raw = psycopg2.connect(DATABASE_URL, cursor_factory=psycopg2.extras.RealDictCursor)
+    raw.autocommit = False
+    return raw
+
+
+def _pool_do_processo():
+    """O pool DESTE processo. Recriado quando o PID muda.
+
+    Sem isso, os workers do gunicorn herdariam do pai um pool cujos sockets são os MESMOS
+    descritores em processos diferentes — dois workers escrevendo no mesmo socket é corrupção de
+    protocolo, não lentidão.
+    """
+    global _pool, _pool_pid
+    pid = os.getpid()
+    if _pool is not None and _pool_pid == pid:
+        return _pool
+    if _pool is not None:
+        # herdado de outro processo: abandona sem fechar (os sockets são do pai)
+        _pool_ocioso_desde.clear()
+    import psycopg2.extras
+    from psycopg2.pool import ThreadedConnectionPool
+    _pool = ThreadedConnectionPool(1, _POOL_MAX, DATABASE_URL,
+                                   cursor_factory=psycopg2.extras.RealDictCursor)
+    _pool_pid = pid
+    return _pool
+
+
+def _descarta(pool, raw):
+    _pool_ocioso_desde.pop(raw, None)
+    try:
+        pool.putconn(raw, close=True)
+    except Exception:
+        try:
+            raw.close()
+        except Exception:
+            pass
+
+
+def _viva(raw, ocioso_ha):
+    """A conexão responde? Só pergunta quando vale a pena perguntar.
+
+    Ociosa há pouco (o caso comum: várias consultas na mesma requisição) entrega sem ping — é aí
+    que mora o ganho. Ociosa há mais tempo paga um round-trip, que ainda é bem menos que discar.
+    """
+    if raw.closed:
+        return False
+    try:
+        import psycopg2.extensions as _ext
+        if raw.get_transaction_status() == _ext.TRANSACTION_STATUS_UNKNOWN:
+            return False
+    except Exception:
+        return False
+    if ocioso_ha < _POOL_PING_APOS_S:
+        return True
+    try:
+        cur = raw.cursor()
+        cur.execute('SELECT 1')
+        cur.fetchone()
+        cur.close()
+        return True
+    except Exception:
+        return False
+
+
+def _pega_do_pool():
+    """`(conexão, devolver)`. `devolver` é None quando a conexão não é do pool (fallback)."""
+    import time
+    try:
+        pool = _pool_do_processo()
+    except Exception:
+        return _conecta_pg(), None            # pool nem subiu: segue como sempre foi
+    for _ in range(_POOL_MAX + 1):
+        try:
+            raw = pool.getconn()
+        except Exception:
+            # exausto (aninhamento fundo, concorrência) ou pool em erro: nunca falha a requisição
+            return _conecta_pg(), None
+        ocioso_ha = time.monotonic() - _pool_ocioso_desde.pop(raw, time.monotonic())
+        if ocioso_ha > _POOL_DESCARTA_APOS_S or not _viva(raw, ocioso_ha):
+            _descarta(pool, raw)
+            continue
+        raw.autocommit = False
+        return raw, (lambda c=raw: _devolve_ao_pool(pool, c))
+    return _conecta_pg(), None
+
+
+def _devolve_ao_pool(pool, raw):
+    """Devolve. O `putconn` do psycopg2 faz o rollback da transação aberta e descarta a conexão
+    perdida — ver o item 2 do comentário do topo."""
+    import time
+    try:
+        _pool_ocioso_desde[raw] = time.monotonic()
+        pool.putconn(raw)
+        # O putconn FECHA a conexão perdida em vez de devolvê-la, e sem levantar. Sem esta linha
+        # a entrada ficaria órfã no dicionário para sempre — uma por conexão quebrada, num
+        # processo que vive dias.
+        if raw.closed:
+            _pool_ocioso_desde.pop(raw, None)
+    except Exception:
+        _pool_ocioso_desde.pop(raw, None)
+        try:
+            raw.close()
+        except Exception:
+            pass
+
+
 # ── Conexão ───────────────────────────────────────────────────────────────────
 
 def get_conn() -> _AdaptedConn:
     """Retorna conexão adaptada: PostgreSQL (produção) ou SQLite (dev)."""
     if USE_POSTGRES:
-        import psycopg2
-        import psycopg2.extras
-        raw = psycopg2.connect(DATABASE_URL,
-                               cursor_factory=psycopg2.extras.RealDictCursor)
-        raw.autocommit = False
+        if _POOL_LIGADO:
+            raw, devolver = _pega_do_pool()
+            return _AdaptedConn(raw, True, _devolver=devolver)
+        raw = _conecta_pg()
     else:
         os.makedirs(os.path.dirname(os.path.abspath(SQLITE_PATH)), exist_ok=True)
         raw = sqlite3.connect(SQLITE_PATH)
@@ -2337,9 +2485,12 @@ class _AdaptedConn:
     - Expõe .execute(), .executemany(), .executescript(), .commit(), .close()
     """
 
-    def __init__(self, raw_conn, is_postgres: bool):
+    def __init__(self, raw_conn, is_postgres: bool, _devolver=None):
         self._conn = raw_conn
         self._pg = is_postgres
+        # Como esta conexão volta: ao pool (callable) ou fechando de verdade (None).
+        self._devolver = _devolver
+        self._solta = False
 
     def _adapt(self, sql: str) -> str:
         if not self._pg:
@@ -2425,14 +2576,30 @@ class _AdaptedConn:
     def rollback(self):
         self._conn.rollback()
 
+    def _soltar(self):
+        """Devolve ao pool, ou fecha. **Idempotente, e isso não é zelo: é o requisito.**
+
+        `close()` e `__exit__` são dois caminhos para o mesmo lugar, e `with get_conn() as c:` com
+        um `c.close()` dentro dispara os dois. Sem a trava, a conexão voltaria DUAS vezes para a
+        fila livre e o pool a entregaria a dois donos ao mesmo tempo — duas requisições escrevendo
+        no mesmo socket. Não é lentidão, é corrupção, e silenciosa.
+        """
+        if self._solta:
+            return
+        self._solta = True
+        if self._devolver is not None:
+            self._devolver()
+        else:
+            self._conn.close()
+
     def close(self):
-        self._conn.close()
+        self._soltar()
 
     def __enter__(self):
         return self
 
     def __exit__(self, *args):
-        self._conn.close()
+        self._soltar()
 
     # row_factory compat
     @property
