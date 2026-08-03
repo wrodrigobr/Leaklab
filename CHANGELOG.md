@@ -40,8 +40,26 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 > all-in; casar sem normalizar para `all-in` derruba 3, porque o resto do motor nao reconhece
 > `allin`. Backend 1860 testes.
 >
-> **Pendente:** as 164 maos ja importadas seguem gravadas com o all-in ausente. O reprocessamento
-> existe (`scripts/reprocess_tournament --tid 72561`) e le do `raw_text` guardado.
+> **Reprocessado em seguida** (`scripts/reprocess_tournament --tid 72561 --apply`), lendo do
+> `raw_text` guardado. Antes -> depois no torneio:
+>
+> ```
+>   decisoes                 351 -> 412   (+61: os all-ins descartados criavam pontos de decisao
+>                                          que sumiam junto)
+>   com gabarito             330 -> 395   (+65)
+>   preflop sem gabarito      20 ->  13   (-7)
+>   BB "fold sem aposta"      13 ->   0   (eram TODOS all-in nao capturado)
+>   vs_position desconhecido  65% -> 59%
+>   postflop com gabarito     23 ->  23   (nada se perdeu)
+> ```
+>
+> **O que isso significa na tela, na mao do diagnostico:** o jogador foldou 9h5c contra um all-in de
+> 14,7bb. Antes: `facing_bet=0`, `vs_position=unknown`, sem gabarito, e a heuristica rotulava
+> `small_mistake`. Depois: `facing_bet=14,7`, `vs_position=BTN`, **`gto_correct`**. O produto estava
+> dizendo que o jogador errou numa jogada que o solver diz estar certa.
+>
+> Resta a cadeia de postflop do proprio script (`reenqueue_postflop_from_decisions` -> `drain` ->
+> `resync_postflop_gto`) para as 4 decisoes postflop novas — ganho pequeno, nao rodado.
 
 
 ### fix(treino): "aposta de 0.1bb?" -- dinheiro impossivel virava exercicio (#treino)
