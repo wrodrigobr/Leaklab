@@ -7,6 +7,47 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(treino): 39% do acervo dava veredito de RIVER numa decisao de FLOP (#treino)
+
+> Achado enquanto se investigava outra coisa, e e o defeito mais grave desta sessao.
+>
+> **Medido em producao:** 1.977 dos 5.030 nos servivies pelo trainer pool (**39,3%**) foram solvados
+> com o board COMPLETO da mao. Um no de `flop` cujo solve viu as cinco cartas do river; 697 de
+> `turn` que viram as cinco. Todos criados entre 12/05 e 28/07 — **zero depois** do conserto do
+> enfileiramento. O codigo esta certo; o estrago e legado.
+>
+> **Por que ninguem tinha visto, e a parte que importa:** esses nos eram INOFENSIVOS enquanto so o
+> `lookup_gto` os consultava, porque ele recalcula o hash a partir do board cortado e nunca os
+> encontrava. O `trainer_pool` passou a ler `gto_nodes` DIRETO, por SQL, e entrou pela porta que o
+> hash fechava. Um bug adormecido nao morre: ele espera um consumidor novo.
+>
+> **E o corte de exibicao escondia o resto.** O pool refatiava o board para desenhar a mesa, entao
+> ela mostrava 3 cartas no flop e 4 no turn, com aparencia perfeitamente correta, enquanto o
+> veredito vinha de um solve que ja conhecia o river. O jogador decidia um flop e era corrigido por
+> estrategia de river. **A pior forma de errar e a que nao aparece** — o CLAUDE.md ja registra a
+> versao anterior deste mesmo bug: *"bug que some com a resposta e honesto; conserto que a troca
+> nao e"*.
+>
+> **Nada foi re-chaveado.** A memoria do projeto proibe, e com razao: mudar a chave de um no orfao
+> faria estrategia de river responder decisao de flop, que e exatamente o dano em curso. O no
+> simplesmente nao e servivel, e quem descobre isso e a SELECAO.
+>
+> Junto: o corte por street no pool era a **QUINTA copia** da mesma regra no projeto — passou a usar
+> `board_for_street`, a funcao unica que existe ao lado do hash que ela alimenta. E `contar_acervo`
+> passou a contar pelo caminho que SERVE (`_monta_spot`) em vez do SQL cru: ele reportaria 5.030
+> servivies quando 1.866 o sao, e numero tranquilizador e pior que numero nenhum.
+>
+> **Custo medido:** acervo de 5.030 lidos para **1.866 servivies**, com as quatro familias de acao
+> preservadas e as tres streets entregando em 6 de 6 sorteios. O treino segue de pe.
+>
+> **Um teste antigo travava o comportamento errado.** `test_board_e_cortado_pela_street` exigia
+> `len(board) == 3` para um no de flop solvado com cinco cartas — ou seja, garantia a aparencia
+> correta por cima do veredito errado. Reescrito com o significado novo e o motivo.
+>
+> `scripts/reenfileirar_board_da_street.py` (dry-run por padrao) recupera a cobertura: enfileira um
+> solve NOVO com o board cortado e o hash recalculado. Nao apaga nem re-chaveia nada. A fila esta
+> ociosa (0 pendentes) e a vazao medida e ~267/dia.
+
 ### fix(treino): a tabela de ranges abria numa posicao que nao respondia a pergunta (#treino)
 
 > **Reportado com print:** a pergunta era *"qual destas **BTN** joga de DOIS jeitos a 17bb, as vezes

@@ -106,14 +106,24 @@ def _sql_base() -> str:
 
 def contar_acervo() -> dict:
     """Quantos nós servíveis existem, por família de ação. Existe para o diagnóstico PROVAR que
-    mede: um acervo que devolve zero calado encerraria a investigação com uma resposta boa."""
-    fora = {}
+    mede: um acervo que devolve zero calado encerraria a investigação com uma resposta boa.
+
+    Conta pelo MESMO caminho que serve (`_monta_spot`), e não pelo SQL cru. A versão anterior
+    contava as linhas da consulta e teria reportado 5.030 nós quando 1.977 deles eram inservíveis
+    por board de street errada — número tranquilizador é pior que número nenhum, porque encerra a
+    pergunta. `_descartados` sai junto: acervo que encolhe sem dizer por quê vira mistério.
+    """
+    fora = {'_descartados': 0}
     with get_conn() as conn:
         linhas = conn.execute(_adapt(_sql_base())).fetchall()
     for r in linhas:
+        if _monta_spot(dict(r)) is None:
+            fora['_descartados'] += 1
+            continue
         fam = _familia(r['gto_action'] or '')
         fora[fam] = fora.get(fam, 0) + 1
-    fora['_total'] = len(linhas)
+    fora['_total'] = len(linhas) - fora['_descartados']
+    fora['_lidos'] = len(linhas)
     return fora
 
 
@@ -122,12 +132,36 @@ def _monta_spot(r: dict) -> Optional[dict]:
     distinguir a origem e o corretor não precisar de um segundo contrato."""
     from leaklab.leak_trainer import _cards_to_objs
 
+    from leaklab.gto_utils import board_for_street
+
     sj = _carrega(r['spot_json']) or {}
     meta = sj.get('_meta') or {}
     # ORDEM ORIGINAL do board (ver docstring). O de `gto_nodes` está ordenado e trocaria a carta
     # do river pela do turn.
     board = sj.get('board') or meta.get('board') or _carrega(r['board']) or []
     if not board:
+        return None
+
+    # ── O nó foi SOLVADO com o board da street dele? ──────────────────────────────────────────
+    #
+    # O board que foi ao solver está em `sj['board']`. Até 2026-07-28 o enfileiramento não cortava,
+    # e o solver recebia `street: flop` com as CINCO cartas do river. Medido em produção: **1.977
+    # dos 5.030 nós servíveis (39,3%)** nasceram assim, todos antes do conserto — zero depois.
+    #
+    # **Esses nós eram inofensivos enquanto só o `lookup_gto` os consultava**, porque ele recalcula
+    # o hash a partir do board cortado e nunca os encontrava. O pool leu `gto_nodes` DIRETO, por
+    # SQL, e assim entrou pela porta que o hash fechava.
+    #
+    # **E o corte de exibição abaixo tornava o descompasso invisível:** a mesa desenhava 3 cartas
+    # no flop e 4 no turn, com aparência correta, enquanto o veredito vinha de um solve que já
+    # conhecia o river. O jogador decidia um flop e era corrigido por estratégia de river.
+    # É a pior forma de errar — a que não aparece. O CLAUDE.md registra a versão anterior deste
+    # mesmo bug: *"bug que some com a resposta é honesto; conserto que a troca não é"*.
+    #
+    # Aqui não se re-chaveia nada (a memória do projeto proíbe, e com razão): o nó simplesmente
+    # não é servível, e o lugar de descobrir isso é a SELEÇÃO.
+    _solvado = sj.get('board') or meta.get('board') or []
+    if _solvado and len(_solvado) > len(board_for_street(_solvado, r['street'])):
         return None
     mao = sj.get('hero_hand') or meta.get('hero_hand') or _carrega(r['hero_hand'])
     if isinstance(mao, str):
@@ -152,8 +186,10 @@ def _monta_spot(r: dict) -> Optional[dict]:
         return None            # sem escolha real não é exercício
 
     street = (r['street'] or 'flop').lower()
-    n_board = {'flop': 3, 'turn': 4, 'river': 5}.get(street, len(board))
-    board = list(board)[:n_board]
+    # A fatia mora em `board_for_street`, ao lado do hash que ela alimenta. Esta era a QUINTA cópia
+    # da mesma regra no projeto, e cópia de regra de corte de board é exatamente o que já custou
+    # três meses gravando com uma chave e procurando com outra.
+    board = board_for_street(board, street)
 
     stack = float(sj.get('effective_stack_bb') or sj.get('hero_stack_bb') or 0) or None
     if not stack:

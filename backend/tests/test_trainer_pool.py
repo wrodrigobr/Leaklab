@@ -115,15 +115,38 @@ def test_board_sai_na_ordem_original_nao_na_ordenada():
     print('OK  test_board_sai_na_ordem_original_nao_na_ordenada')
 
 
-def test_board_e_cortado_pela_street():
+def test_no_de_flop_solvado_com_CINCO_cartas_nao_e_servido():
+    """**Este teste mudou de significado em 2026-08-03, e o antigo era o problema.**
+
+    Ele afirmava `len(s['board']) == 3` para um nó de flop cujo SOLVE tinha visto as cinco cartas
+    — ou seja, travava a aparência correta por cima de um veredito de river. Medido em produção:
+    1.977 dos 5.030 nós servíveis nasceram assim (todos antes do conserto do enfileiramento em
+    28/07). A mesa desenhava 3 cartas, o jogador decidia um flop, e era corrigido por uma
+    estratégia que já conhecia o river.
+
+    Cortar a exibição não conserta o solve: só esconde o descompasso. O nó não é servível.
+    Detalhes e a varredura completa em `test_board_da_street_no_pool.py`.
+    """
     n = _no(street='flop', board=['Ks', '6c', '7d', '2h', '9s'])
     orig = _com_nos([n])
     try:
-        s = TP.proximo_spot(rng=random.Random(1))
-        assert len(s['board']) == 3, s['board']
+        assert TP.proximo_spot(rng=random.Random(1)) is None, \
+            'no de flop solvado com o board do river virou exercicio'
     finally:
         TP.get_conn = orig
-    print('OK  test_board_e_cortado_pela_street')
+    print('OK  test_no_de_flop_solvado_com_CINCO_cartas_nao_e_servido')
+
+
+def test_board_da_street_certa_continua_sendo_servido():
+    """O contraponto: sem ele, rejeitar TUDO faria o teste acima passar com o acervo em zero."""
+    orig = _com_nos([_no(street='flop', board=['Ks', '6c', '7d'])])
+    try:
+        s = TP.proximo_spot(rng=random.Random(1))
+        assert s is not None, 'flop com 3 cartas foi rejeitado'
+        assert s['board'] == ['Ks', '6c', '7d'], s['board']
+    finally:
+        TP.get_conn = orig
+    print('OK  test_board_da_street_certa_continua_sendo_servido')
 
 
 def test_sem_aposta_na_mesa_o_menu_diz_bet_e_nao_raise():
