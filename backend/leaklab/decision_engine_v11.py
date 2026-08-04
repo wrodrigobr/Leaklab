@@ -1206,6 +1206,45 @@ def evaluate_decision(input_data: Dict[str, Any]) -> Dict[str, Any]:
         final_score = min(final_score, _LABEL_MAX_SCORE['marginal'])
         icm_zone_approx = True
 
+    # SEM GABARITO NÃO É ERRO — só para FOLD, e o "só" tem razão de ser.
+    #
+    # A regra já vale em outros pontos do motor ("sem gabarito não é erro; a decisão sai da
+    # conta em vez de virar acusação"), mas não estava aplicada aqui. Medido no acervo: das
+    # 196 decisões acusadas de erro, 44 (22,4%) não têm cobertura NENHUMA — nem solver, nem
+    # range preflop. Sem gabarito, tudo que sobra é o estimador heurístico de equity.
+    #
+    # Por que só o fold, e não um cap cego de "sem GTO" (que este arquivo já rejeitou uma vez,
+    # ver o Tema 2 acima): o estimador erra numa direção conhecida — ele SUPERVALORIZA quem não
+    # tem nada (postflop sem gabarito, 21 das 32 acusações são de mão `air`). Equity inflada só
+    # fabrica erro num sentido: acusar quem FOLDOU ("você tinha equity e desistiu"). No sentido
+    # oposto ela é conservadora — um call julgado com equity inflada tende a ser ABSOLVIDO, não
+    # condenado. É por isso que a "violação de pot odds limpa" que o Tema 2 defende continua
+    # podendo condenar: ela condena quem PAGOU.
+    #
+    # Postflop exige mão `air`: com par+ o estimador está no regime em que ele SUBvaloriza (o
+    # Tema 2 cobre esse lado), e ali um fold acusado pode ser acusação boa — foldar mão feita.
+    # Sem essa condição, foldar o nuts no river viraria "aceitável".
+    #
+    # Cap em 'marginal', não 'standard': `marginal` é "subótimo mas defensável" e NÃO conta como
+    # erro no veredito de 3 níveis. É exatamente "sair da conta" sem afirmar que estava perfeito.
+    if (label in ('small_mistake', 'clear_mistake')
+            and not gto.get('available') and not preflop_gto.get('available')
+            and _norm_gto_action(input_data.get('player_action', '')) == 'fold'):
+        _estimador_infla = True
+        if street != 'preflop':
+            from leaklab.bet_intent import made_hand_category
+            # ATENÇÃO: `made_hand_category(None, None)` devolve 'air'. Sem cartas ou sem board
+            # não dá para AFIRMAR que o hero não tem nada, e a regra inteira se apoia nisso —
+            # aplicá-la aí seria ler ausência de dado como o caso que me convém. Sem os dois,
+            # a decisão mantém o veredito que tinha.
+            _cartas = input_data.get('hero_cards')
+            _board  = spot.get('board')
+            _estimador_infla = bool(_cartas) and bool(_board) and made_hand_category(
+                _cartas, _board) not in ('value', 'middle')
+        if _estimador_infla:
+            label = 'marginal'
+            final_score = min(final_score, _LABEL_MAX_SCORE['marginal'])
+
     interpretation = build_interpretation(input_data, label, threshold_pack["adjustedRequiredEquity"])
 
     # Intenção da aposta/raise postflop (value / proteção / semi-blefe / blefe / "o meio").

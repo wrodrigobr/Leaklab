@@ -7,6 +7,60 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(motor): sem gabarito o produto nao acusa mais um FOLD (#motor #veredito)
+
+> A regra ja estava enunciada no proprio motor -- *"sem gabarito nao e erro; a decisao sai da conta
+> em vez de virar acusacao"* -- e nao estava aplicada aqui. Medido: das **196 decisoes acusadas de
+> erro** no acervo, **44 (22,4%) nao tem cobertura NENHUMA**, nem solver nem range preflop. Sem
+> gabarito, o que sobra carregando o veredito e o estimador heuristico de equity.
+>
+> **Nao e o cap cego de "sem GTO", que este motor ja rejeitou uma vez** ("uma violacao de pot odds
+> limpa e clear_mistake legitimo mesmo sem solver"). A regra nova nao atropela aquela decisao, e a
+> razao e a DIRECAO do erro do estimador. Ele SUPERVALORIZA quem nao tem nada -- medido: postflop
+> sem gabarito, 21 das 32 acusacoes sao de mao `air`. Equity inflada so fabrica erro num sentido:
+>
+> ```
+>   acusar quem FOLDOU  ->  "voce tinha equity e desistiu"   equity inflada CONDENA
+>   acusar quem PAGOU   ->  "voce pagou sem equity"          equity inflada ABSOLVE
+> ```
+>
+> No sentido do call a inflacao e conservadora. Por isso a "violacao de pot odds limpa" segue
+> podendo condenar: ela condena quem pos dinheiro. A regra e so do fold.
+>
+> **Postflop exige mao `air`.** Com par+ o estimador esta no regime oposto, em que SUBvaloriza (a
+> rede do Tema 2 cobre esse lado), e ali um fold acusado pode ser acusacao boa. Sem essa condicao,
+> **foldar o nuts no river viraria "aceitavel"** -- ha um teste so para isso.
+>
+> **O cap e `marginal`, nao `standard`:** `marginal` e "subotimo mas defensavel" e nao conta como
+> erro no veredito de 3 niveis. E "sair da conta" sem afirmar que a jogada estava perfeita.
+>
+> **Medido, 2.158 decisoes:** 13 vereditos mudam, **todos folds, todos mais brandos, zero mais
+> graves**. Acusacoes do acervo: **196 -> 183**. Por street: flop 8, turn 3, preflop 2.
+>
+> **O efeito que fecha o ciclo das entradas abaixo:** com a regra ligada, os consertos do pote e do
+> estimador passam a transformar **1** decisao em erro, nao 14. E a sobrevivente e justa -- fold de
+> river com par de VERDADE, onde o estimador esta no regime confiavel e a regra corretamente nao
+> protege.
+>
+> Guardas verificados quebrando: tirar a regra derruba 3 dos 7 testes; estende-la a qualquer acao
+> derruba 1; ignorar a mao feita derruba 1; valer com gabarito derruba 1; capar em `standard` em
+> vez de `marginal` derruba 1.
+>
+> Tres armadilhas na verificacao, as tres do tipo que este projeto ja pagou caro:
+>
+> · **Ausencia de dado lida como o caso que me convem.** `made_hand_category(None, None)` devolve
+>   **`'air'`**. A regra passou a absolver decisao onde nem da para saber o que o hero tinha. **Nao
+>   foi hipotese minha: a suite acusou** -- `test_clear_fold_error` e o controle do gate de ICM
+>   montam o spot sem cartas e viraram `marginal`. Agora a regra exige cartas E board presentes;
+>   sem os dois, a decisao mantem o veredito. E a cicatriz "desconhecido lido como o caso bom", que
+>   ja derrubou producao duas vezes.
+> · **Controle contaminado.** Para medir o "antes" eu forcei `made_hand_category` a devolver sempre
+>   `value`, e isso ativou OUTRAS redes que dependem da mesma funcao — apareceram 6 vereditos
+>   ficando mais GRAVES, o que a regra nao pode causar. Refeito removendo o bloco do arquivo, como
+>   nos guardas: 13 mudancas, zero mais graves.
+> · **Cobertura falsa.** Tirar a condicao "sem cobertura" nao derrubava teste nenhum na primeira
+>   rodada. Faltava o caso oposto (foldar AA COM a range dizendo raise), que agora existe.
+
 ### fix(motor): o stack efetivo nunca olhava o oponente (#motor #gto)
 
 > Quem tem 88bb contra um vilao de 14bb esta jogando um spot de **14bb**: a mao se decide ali,

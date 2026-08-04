@@ -35,6 +35,7 @@ SUITES = {
                   'test_replay_pareamento.py',
                   'test_stack_efetivo.py',
                   'test_pote_e_equity_river.py',
+                  'test_sem_gabarito_nao_e_erro.py',
                   'test_progressao.py',
                   'test_pg_migration_isolation.py',
                   'test_interpretation_sign.py',
