@@ -65,7 +65,8 @@ def build_math_snapshot(state: HandState) -> MathSnapshot:
         pot_odds_equity = round(facing / (pot + facing), 4) if (pot + facing) > 0 else None
 
     villain_range = (state.metadata or {}).get('villain_range') if state.street == 'preflop' else None
-    estimated_equity = _estimate_hand_equity(state.hero_cards, state.board, state.street, villain_range)
+    estimated_equity = _estimate_hand_equity(state.hero_cards, state.board, state.street,
+                                             villain_range, enfrentando_aposta=facing > 0)
     # Ajuste multiway: equity heuristica eh calibrada vs random HU. Em pote
     # 3+way, equity real cai significativamente. Aplica fator empirico em
     # postflop (preflop ja usa ranges GTO especificos por cenario).
@@ -89,7 +90,8 @@ def build_math_snapshot(state: HandState) -> MathSnapshot:
 
 
 def _estimate_hand_equity(hero_cards: str | None, board, street: str,
-                          villain_range: dict | None = None) -> float | None:
+                          villain_range: dict | None = None,
+                          enfrentando_aposta: bool = False) -> float | None:
     if not hero_cards:
         return None
     ranks = hero_cards[0] + (hero_cards[2] if len(hero_cards) >= 4 else "")
@@ -128,7 +130,7 @@ def _estimate_hand_equity(hero_cards: str | None, board, street: str,
     # mesmo parente do bug da wheel). Agora classifica via eval7 e mapeia pra escala
     # "vs range típica de continuação". Draws e multiway são aplicados por cima
     # (draw_detector + fator multiway em build_math_snapshot), como antes.
-    made = _postflop_made_equity(hero_cards, board)
+    made = _postflop_made_equity(hero_cards, board, enfrentando_aposta)
     if made is not None:
         return made
     # Fallback (board incompleto/parse falhou): heurístico antigo conservador.
@@ -139,7 +141,8 @@ def _estimate_hand_equity(hero_cards: str | None, board, street: str,
     return 0.29
 
 
-def _postflop_made_equity(hero_cards: str | None, board) -> float | None:
+def _postflop_made_equity(hero_cards: str | None, board,
+                          enfrentando_aposta: bool = False) -> float | None:
     """Equity postflop estimada a partir da força da MÃO FEITA do hero vs uma range
     típica de continuação (HU, pré-ajuste de draws/multiway). eval7 classifica a mão
     de 5–7 cartas; pares são refinados por posição relativa ao board (overpair / top /
@@ -170,6 +173,36 @@ def _postflop_made_equity(hero_cards: str | None, board) -> float | None:
         if ht in strong:
             return strong[ht]
 
+        # ── RIVER, enfrentando aposta, com o hero sem NADA de seu ──────────────────────────
+        #
+        # Os dois ramos abaixo ("High Card" e "par só no board") descrevem a mesma coisa: o
+        # hero não tem par. O valor que eles davam era POTENCIAL DE MELHORAR — quantas
+        # overcards ainda podem parear — e no RIVER não há carta por vir. O QJs que errou o
+        # flush draw em 9s8s4d3d5c saía com 34% sendo Q-high; o 76o em Q-3-3 saía com 40%
+        # porque o eval7 lê o par do BOARD.
+        #
+        # Pior: o mesmo número servia a dois spots opostos. Medido nos showdowns reais do
+        # acervo, com o hero sem par próprio no river:
+        #
+        #     high card,  river passado ......... n=24, venceu 25,0%
+        #     high card,  pagou aposta no river .. n= 0
+        #     par do board, river passado ........ n=16, venceu 37,5%
+        #     par do board, pagou aposta ......... n= 0
+        #
+        # **Zero nos dois.** Ninguém paga aposta de river sem ter par — o campo inteiro folda,
+        # e é justamente esse spot que recebia 34-40%. Sem showdown não há como calibrar por
+        # dado, e o 0.10 é um TETO conservador de bluff-catcher, não uma medição: existe para
+        # o motor parar de recomendar call, não para prometer precisão. No pote PASSADO os
+        # valores antigos batem com o campo (25% e 37,5%) e ficam como estão.
+        #
+        # Só o river: no flop e no turn o potencial de melhorar é real, e os draws já entram
+        # por fora (`adjust_equity_for_draws`).
+        _sem_par_proprio = (ht == 'High Card'
+                            or (ht == 'Pair' and hero[0][0] != hero[1][0]
+                                and not [r for r in hr if r in br]))
+        if len(brd) >= 5 and enfrentando_aposta and _sem_par_proprio:
+            return 0.10
+
         if ht == 'Pair':
             if hero[0][0] == hero[1][0]:                       # par de bolso
                 return 0.66 if hr[0] > bmax else 0.42          # overpair vs underpair
@@ -184,7 +217,8 @@ def _postflop_made_equity(hero_cards: str | None, board) -> float | None:
                 return 0.50                                                 # middle pair
             return 0.40                                        # par só no board (joga kicker)
 
-        # High Card: valor por overcards vivos (potencial de melhorar).
+        # High Card: valor por overcards vivas (potencial de melhorar). O caso do river
+        # enfrentando aposta é tratado acima, antes de chegar aqui.
         over = sum(1 for r in hr if r > bmax)
         if over >= 2:
             return 0.34
@@ -196,20 +230,24 @@ def _postflop_made_equity(hero_cards: str | None, board) -> float | None:
 
 
 def _pote_no_meio(state: HandState) -> float:
-    """Pote no denominador das pot odds.
+    """Pote no ponto da decisão, a aposta enfrentada inclusa e já descontado o que o hero não
+    tem como cobrir (esse excesso volta pro vilão e nunca fica no pote).
 
-    ATENÇÃO, e está medido: `pot_size` está errado em quase toda mão. Ele soma o `amount`
-    cru do parser, então perde os blinds (que não são ação) e conta o INCREMENTO do raise
-    em vez do total do jogador. Conferido contra a linha `Total pot` do SUMMARY em 1.682
-    mãos, ele acerta **1,2%**; a reconstrução por jogador acerta 99,6%
-    (`scripts/medir_pote_reconstruido.py` refaz a conta).
+    `pot_size` não serve e o tamanho do erro é esse: ele soma o `amount` cru do parser, então
+    perde os blinds (que não são ação) e conta o INCREMENTO do raise em vez do total do
+    jogador. Conferido contra a linha `Total pot` do SUMMARY em 1.682 mãos, `pot_size` acerta
+    **1,2%** e a reconstrução por jogador acerta **99,6%**
+    (`scripts/medir_pote_reconstruido.py` refaz a medição).
 
-    Não foi trocado aqui de propósito. A tolerância do motor foi calibrada em cima desta
-    equity exigida inflada, e corrigir só o pote produz 13 acusações NOVAS contra fold em
-    2.158 decisões — duas delas comprovadamente falsas, vindas do estimador heurístico de
-    equity (ele lê o par do BOARD como par do hero). O pote é tarefa própria, com
-    recalibragem junto."""
-    return max(state.pot_size, 0.0)
+    `pot_size` NÃO foi trocado — ele alimenta SPR, display e a coluna do banco, e mexer nele
+    é outra conversa. Aqui só o denominador das pot odds passa a usar o número certo."""
+    meta  = state.metadata or {}
+    total = meta.get('pot_at_decision')
+    if total is None:
+        # HandState montado à mão (teste, outro caminho): mantém o comportamento antigo em vez
+        # de chutar, para que a ausência do campo não vire um pote zerado.
+        return max(state.pot_size, 0.0)
+    return max(float(total) - float(meta.get('facing_excesso_devolvido') or 0.0), 0.0)
 
 
 def _custo_de_pagar(state: HandState) -> float:

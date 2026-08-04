@@ -264,6 +264,35 @@ def _facing_to_call_at(hand: ParsedHand, actions: List[ParsedAction], hero_index
     return to_call
 
 
+def _pot_at_decision(hand: ParsedHand, actions: List[ParsedAction], hero_index: int,
+                     street: str) -> float:
+    """Tudo que está NO MEIO quando a ação chega no hero: blinds, antes, e o que cada jogador
+    tem na frente — a aposta enfrentada inclusive.
+
+    Existe porque `_pot_up_to` soma `amount` cru, e isso erra duas vezes ao mesmo tempo: perde
+    os blinds (que não são ação do parser) e conta o incremento do raise em vez do total do
+    jogador. Conferido contra a linha `Total pot` do SUMMARY em 1.682 mãos: `_pot_up_to`
+    acerta **1,2%**, esta reconstrução acerta **99,6%**
+    (`scripts/medir_pote_reconstruido.py` refaz a medição)."""
+    ordem, vistas = [], set()
+    for a in actions:
+        if a.street not in vistas:
+            vistas.add(a.street)
+            ordem.append(a.street)
+    if street not in ordem:
+        ordem.append(street)
+
+    jogadores = {s['name'] for s in (hand.seats or [])} or {a.player for a in actions}
+    total = sum(float(v or 0) for v in (hand.antes or {}).values())
+    for st in ordem:
+        # Streets anteriores fecharam: contam inteiras. Na street corrente, só até a decisão.
+        limite = hero_index if st == street else len(actions)
+        total += sum(_committed_on_street(hand, actions, limite, st, p) for p in jogadores)
+        if st == street:
+            break
+    return total
+
+
 def _stack_inicial_de(hand: ParsedHand, jogador: str) -> float | None:
     """Stack inicial do jogador, lido da linha 'Seat N: nome (X in chips)'. Regex tolerante:
     casa PS/GG '(21,280 in chips)' e ACR '(30200.00)'."""
@@ -376,6 +405,13 @@ def extract_decision_points(hand: ParsedHand) -> List[HandState]:
         # manda no CUSTO da decisão. Ver `_facing_to_call_at`.
         facing_to_call    = _facing_to_call_at(hand, hand.actions, idx, street, hero)
         facing_to_call_bb = round(facing_to_call / _bb_amt, 2)
+        pot_at_decision   = _pot_at_decision(hand, hand.actions, idx, street)
+        # Aposta que o hero não tem como cobrir: volta pro vilão ('Uncalled bet returned') e
+        # portanto NÃO é pote disputável. Sem descontar, ele apareceria pagando 150 para ganhar
+        # um pote de 360 onde só há 270.
+        _facing_total   = _facing_to_total_at(hand.actions, idx, street, hand)
+        _hero_na_frente = _hero_committed_at(hand, hand.actions, idx, street, hero)
+        facing_excesso  = max(0.0, _facing_total - _hero_na_frente - facing_to_call)
         position = _infer_position(hand, hero)
         # `eff_stack` é calculado MAIS ABAIXO, depois de `still_in_now` — o efetivo depende de
         # quem ainda está no pote, e isso só se sabe ali.
@@ -547,6 +583,12 @@ def extract_decision_points(hand: ParsedHand) -> List[HandState]:
                 # quando o hero não tem nada na frente.
                 'facing_to_call':    facing_to_call,
                 'facing_to_call_bb': facing_to_call_bb,
+                # Pote com TUDO que está no meio, a aposta enfrentada inclusive, já descontado
+                # o excesso que volta pro vilão. Só as pot odds consomem — `pot_size` segue
+                # como estava para não mexer no que já depende dele (SPR, display, coluna do
+                # banco). Ver `_pot_at_decision`.
+                'pot_at_decision':          pot_at_decision,
+                'facing_excesso_devolvido': facing_excesso,
                 # De onde saiu o `effective_stack_bb`: 'heads_up' (min entre os dois, que é o
                 # efetivo de verdade), 'hero_only' (multiway ou RFI — não existe UM efetivo
                 # ali) ou 'fallback'. Quem confia no número precisa poder saber disso.

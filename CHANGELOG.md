@@ -196,9 +196,74 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 > jogador via a mesma exigencia inflada. Agora usa `custoDePagar()` em `cardLogic`, com fallback
 > para `facing_bet` em decisao antiga (coluna NULL) — nunca para zero.
 
+### fix(motor): o pote das pot odds acertava 1,2%, e a equity de quem nao tem nada no river (#motor)
+
+> Os dois juntos, porque o pote sozinho ficou pendente esperando o estimador. **A hipotese com
+> que entramos estava errada e vale dizer primeiro: consertar o estimador resolveu 1 das 15
+> acusacoes que o pote criava, nao a maioria.**
+>
+> **O pote.** `_pot_up_to` soma o `amount` cru de cada acao, e erra duas vezes ao mesmo tempo:
+> perde os blinds (que nao chegam como acao do parser) e conta o INCREMENTO do raise em vez do
+> total do jogador. Oraculo: a linha `Total pot` do SUMMARY, descontando a aposta devolvida
+> (`Uncalled bet returned` no PS/GG, `RETURN` no CoinPoker). Em 1.682 maos:
+>
+> ```
+>   _pot_up_to (o que o motor usava) ....   1,2%
+>   reconstrucao por jogador ............  99,6%
+> ```
+>
+> `pot_size` NAO foi trocado -- ele alimenta SPR, display e a coluna do banco. So o denominador
+> das pot odds passou a usar o numero certo, e ele ainda desconta o que o hero nao tem como
+> cobrir (esse excesso volta pro vilao e nunca foi pote disputavel).
+>
+> **O estimador.** Ele dava valor por "overcards vivas" -- quantas cartas ainda podem parear --
+> e **no river nao ha carta por vir**. Pior: o mesmo numero servia a dois spots opostos. Medido
+> nos showdowns reais do acervo, com o hero SEM PAR PROPRIO no river:
+>
+> ```
+>   high card,    river passado ...... n=24, venceu 25,0%
+>   high card,    pagou aposta ....... n= 0
+>   par do board, river passado ...... n=16, venceu 37,5%
+>   par do board, pagou aposta ....... n= 0
+> ```
+>
+> **Zero nos dois.** Ninguem paga aposta de river sem ter par -- o campo inteiro folda, e era
+> justamente esse spot que recebia 34-40%. Sem showdown nao ha como calibrar por dado: o 0.10 e
+> um TETO conservador de bluff-catcher, nao uma medicao. Em pote PASSADO os valores antigos batem
+> com o campo (25% e 37,5%) e ficaram como estao. So o river; no flop e no turn o potencial de
+> melhorar e real, e os draws ja entram por fora.
+>
+> O ramo do "par so no board" entrou junto por ser o MESMO defeito: o `eval7` diz `Pair` por causa
+> do board e o hero nao tem par nenhum (76o em Q-3-3 valia 40%). Era ele, e nao o high card, o que
+> mais aparecia nas acusacoes que sobravam.
+>
+> **Medido, 2.158 decisoes:**
+>
+> ```
+>   so o pote ................. 17 vereditos mudam | 15 acusacoes NOVAS (9 sem gabarito), 2 caem
+>   + o estimador ............. 19 vereditos mudam | 14 acusacoes NOVAS (8 sem gabarito), 5 caem
+> ```
+>
+> Das 14 que sobram, 8 sao `standard -> marginal` (a rotulagem mais branda, "defensavel") e 6 sao
+> acusacoes de verdade -- 0,28% do acervo. As que conferi sao defensaveis: a mais clara e um fold
+> de 1bb num pote de 13,3bb, que a equity exigida inflada vinha desculpando. O que restou como
+> motor das outras e o estimador no FLOP e no TURN, onde nao ha como decidir por showdown.
+>
+> **Fica medido para uma decisao de produto, nao de conserto:** das 196 decisoes acusadas de erro
+> no acervo, **44 (22,4%) nao tem gabarito nenhum** e 20 delas sao folds. A regra que o proprio
+> motor ja enuncia ("sem gabarito nao e erro; a decisao sai da conta em vez de virar acusacao")
+> nao esta aplicada ai. Aplicar removeria essas 20 do acervo INTEIRO, nao so as novas.
+>
+> Guardas verificados quebrando: voltar ao `pot_size` derruba 1 dos 9 testes; esquecer os blinds
+> derruba 3; nao descontar o excesso derruba 1; devolver a equity de potencial no river derruba 2;
+> vazar a regra do river para o flop/turn derruba 1; deixar a regra atingir par de VERDADE derruba 1.
+
 ### diag(motor): o pote que alimenta as pot odds acerta 1,2% das vezes (#motor)
 
-> Achado ao conferir o conserto acima, e **nao foi consertado de proposito**.
+> **CONSERTADO em seguida, na entrada acima.** Fica o registro do diagnostico e da razao pela qual
+> ele esperou uma tarefa propria.
+>
+> Achado ao conferir o conserto do `facing_to_call`, e **nao foi consertado na hora, de proposito**.
 >
 > `_pot_up_to` soma o `amount` cru de cada acao. Isso erra duas vezes ao mesmo tempo: perde os
 > blinds (que nao sao acao do parser) e conta o INCREMENTO do raise em vez do total do jogador.
