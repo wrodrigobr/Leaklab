@@ -153,9 +153,14 @@ def test_o_mesmo_high_card_em_pote_PASSADO_mantem_o_valor_antigo():
 
 
 def test_par_so_do_BOARD_tambem_e_bluff_catcher_no_river():
-    """76o em Q-3-3-x-x: o eval7 diz 'Pair' por causa do board, e o hero nao tem par nenhum."""
+    """76o em Q-3-3-x-x: o eval7 diz 'Pair' por causa do board, e o hero nao tem par nenhum.
+
+    O piso e 0.05 aqui (nao 0.10) porque as duas cartas do hero estao ABAIXO da maior do board:
+    a amostragem mediu teto de 4,8% nesse sub-caso. Com pelo menos uma overcard o teto e 15,3%
+    e o piso segue 0.10."""
     board = ['Qs', '3c', '3d', '8h', '2c']
-    assert _postflop_made_equity('7d6h', board, True)  == 0.10
+    assert _postflop_made_equity('7d6h', board, True)  == 0.05   # nenhuma overcard
+    assert _postflop_made_equity('AdKh', board, True)  == 0.10   # duas overcards
     assert _postflop_made_equity('7d6h', board, False) == 0.40   # pote passado: como antes
 
 
@@ -181,9 +186,39 @@ def test_o_turn_vale_MENOS_que_o_flop_para_quem_nao_tem_par():
     assert flop == 0.34, flop
     assert turn == 0.22, turn
     assert turn < flop, 'o turn tem menos carta por vir que o flop'
-    # o mesmo vale para o par que e so do board
-    assert _postflop_made_equity('7d6h', ['Qs', '3c', '3d'], True) == 0.40
-    assert _postflop_made_equity('7d6h', ['Qs', '3c', '3d', '8h'], True) == 0.25
+    # O mesmo vale para o par que e so do board. Os valores sairam da amostragem contra o teto
+    # computado: no FLOP o 0.40 antigo estava provado alto em +11,9pp (n=190) e desceu ao teto.
+    assert _postflop_made_equity('7d6h', ['Qs', '3c', '3d'], True) == 0.28
+    assert _postflop_made_equity('7d6h', ['Qs', '3c', '3d', '8h'], True) == 0.22
+
+
+def test_mao_feita_vale_MENOS_conforme_o_board_cresce():
+    """O dicionario `strong` e os pares eram FLAT entre as ruas. Nao podem ser: com mais cartas
+    na mesa, mais da range do vilao conectou, e a mesma mao vale relativamente menos.
+
+    Medido por amostragem (1.500 spots por rua, teto = equity vs a range do BTN):
+
+        Two Pair    flop +0,2pp | turn + 6,0pp | river +13,5pp   (n 208 / 344)
+        Trips       flop +0,3pp | turn + 6,4pp | river + 9,4pp   (n  63 /  82)
+
+    A mesma constante sai de "abaixo do teto" no flop para "provado alto" no river. E
+    monotonico e tem explicacao — nao e ruido."""
+    # dois pares com as mesmas cartas do hero, board crescendo
+    fl = _postflop_made_equity('9h8d', ['9c', '8s', '2d'], True)
+    tu = _postflop_made_equity('9h8d', ['9c', '8s', '2d', '4h'], True)
+    ri = _postflop_made_equity('9h8d', ['9c', '8s', '2d', '4h', '3c'], True)
+    assert fl > tu > ri, f'two pair: flop={fl} turn={tu} river={ri}'
+    assert (fl, tu, ri) == (0.72, 0.66, 0.58), (fl, tu, ri)
+
+
+def test_ramo_ABAIXO_do_teto_nao_foi_mexido():
+    """O teste do teto e UNILATERAL: so prova "esta ALTO". Ficar abaixo dele nao prova nada, e
+    por isso `top pair` — que ficou 14pp abaixo em todas as ruas — nao pode ter sido tocado.
+
+    (Foi um erro meu antes: li `flop/value` abaixo do teto como "subvaloriza".)"""
+    vals = [_postflop_made_equity('QdJh', b, True) for b in
+            (['Qs', '3c', '2d'], ['Qs', '3c', '2d', '7h'], ['Qs', '3c', '2d', '7h', '4c'])]
+    assert len(set(vals)) == 1, f'top pair mudou entre as ruas sem prova de estar alto: {vals}'
 
 
 if __name__ == '__main__':

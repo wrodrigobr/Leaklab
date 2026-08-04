@@ -167,9 +167,52 @@ def _estimate_hand_equity(hero_cards: str | None, board, street: str,
 # seria contrariar a própria medição. O river ENFRENTANDO aposta é outro caso e sai antes, no
 # corpo da função.
 _SEM_PAR_POR_CARTAS_A_VIR = {
-    2: {'over': {0: 0.20, 1: 0.28, 2: 0.34}, 'par_do_board': 0.40},   # flop
-    1: {'over': {0: 0.15, 1: 0.19, 2: 0.22}, 'par_do_board': 0.25},   # turn
+    2: {'over': {0: 0.20, 1: 0.28, 2: 0.34}, 'par_do_board': 0.28},   # flop
+    1: {'over': {0: 0.15, 1: 0.19, 2: 0.22}, 'par_do_board': 0.22},   # turn
     0: {'over': {0: 0.20, 1: 0.28, 2: 0.34}, 'par_do_board': 0.40},   # river de pote passado
+}
+
+# MÃO FEITA por cartas ainda por vir. Mesmo defeito estrutural do de cima, no outro extremo da
+# função: os valores eram FLAT entre as ruas, e o valor de uma mão feita **decai conforme o
+# board cresce** — com mais cartas na mesa, mais da range do vilão conectou, e a mesma mão vale
+# relativamente menos.
+#
+# Medido por AMOSTRAGEM, não pelas poucas decisões do acervo (`_postflop_made_equity` é função
+# pura de (mão, board): dá para medi-la em milhares de spots sintéticos em vez dos 16 que a
+# categoria oferecia). Teto = equity vs a range PREFLOP do BTN, `eval7` Monte Carlo com o board
+# real, 1.500 amostras por rua. `scripts/medir_estimador_postflop.py` mede o mesmo no acervo.
+#
+#     ramo             flop      turn      river     n(turn/river)
+#     Two Pair        + 0,2pp   + 6,0pp   +13,5pp     208 / 344
+#     Trips           + 0,3pp   + 6,4pp   + 9,4pp      63 /  82
+#     middle pair     - 9,4pp   - 5,0pp   + 4,3pp     199 / 192
+#     bottom pair     -10,5pp   - 4,4pp   + 7,9pp      87 /  69
+#     underpair       - 7,4pp   - 0,7pp   + 4,9pp      30 /  30
+#     Flush              —      - 6,8pp   + 2,7pp      16 /  42
+#
+# A mesma constante sai de "abaixo do teto" no flop para "provado alto" no river. É monotônico
+# e tem explicação: não é ruído.
+#
+# **O teste é UNILATERAL, e isso limita o que dá para consertar.** Ele só prova "está ALTO"
+# (acima do teto ⇒ acima até do limite superior). Ficar ABAIXO do teto **não prova nada** — pode
+# estar certo. Por isso aqui só desce o que está provado alto, e só ATÉ o teto medido; ramo
+# abaixo do teto fica intocado, mesmo parecendo baixo. (Foi um erro meu antes: li `flop/value`
+# abaixo do teto como "subvaloriza", o que a medição não sustenta.)
+#
+# O teto usado é o da range mais LARGA (BTN). Contra range tight o teto cai e mais ramos ficam
+# provados altos — usar a larga é a escolha conservadora.
+_FORTES_BASE = {'Straight Flush': 0.95, 'Quads': 0.95, 'Full House': 0.92,
+                'Flush': 0.82, 'Straight': 0.80, 'Trips': 0.82, 'Two Pair': 0.72}
+_FORTES_POR_CARTAS_A_VIR = {
+    2: _FORTES_BASE,                                              # flop: no teto, intocado
+    1: {**_FORTES_BASE, 'Trips': 0.76, 'Two Pair': 0.66},         # turn
+    0: {**_FORTES_BASE, 'Trips': 0.73, 'Two Pair': 0.58, 'Flush': 0.79},   # river
+}
+# Pares: só o river tinha ramo provado alto.
+_PARES_POR_CARTAS_A_VIR = {
+    2: {'underpair': 0.42, 'middle': 0.50, 'bottom': 0.42},
+    1: {'underpair': 0.42, 'middle': 0.50, 'bottom': 0.42},
+    0: {'underpair': 0.37, 'middle': 0.46, 'bottom': 0.34},
 }
 
 
@@ -200,8 +243,8 @@ def _postflop_made_equity(hero_cards: str | None, board,
             return None
         bmax, bmin = br[0], br[-1]
 
-        strong = {'Straight Flush': 0.95, 'Quads': 0.95, 'Full House': 0.92,
-                  'Flush': 0.82, 'Straight': 0.80, 'Trips': 0.82, 'Two Pair': 0.72}
+        _a_vir = max(0, 5 - len(brd))
+        strong = _FORTES_POR_CARTAS_A_VIR[_a_vir]
         if ht in strong:
             return strong[ht]
 
@@ -233,21 +276,25 @@ def _postflop_made_equity(hero_cards: str | None, board,
                             or (ht == 'Pair' and hero[0][0] != hero[1][0]
                                 and not [r for r in hr if r in br]))
         if len(brd) >= 5 and enfrentando_aposta and _sem_par_proprio:
-            return 0.10
-        _a_vir = max(0, 5 - len(brd))
+            # Piso de bluff-catcher. Era 0.10 fixo; a amostragem mostrou que sem NENHUMA
+            # overcard (as duas cartas abaixo da maior do board) o teto é 4,8% — o 0.10 ficava
+            # provado alto ali, e só ali. Com pelo menos uma overcard o teto é 15,3%, então
+            # 0.10 segue abaixo dele e não se mexe.
+            return 0.10 if any(r > bmax for r in hr) else 0.05
 
         if ht == 'Pair':
+            _pares = _PARES_POR_CARTAS_A_VIR[_a_vir]
             if hero[0][0] == hero[1][0]:                       # par de bolso
-                return 0.66 if hr[0] > bmax else 0.42          # overpair vs underpair
+                return 0.66 if hr[0] > bmax else _pares['underpair']   # overpair vs underpair
             paired = [r for r in hr if r in br]                # par com o board
             if paired:
                 pr   = paired[0]
                 kick = max((r for r in hr if r != pr), default=0)
-                if pr >= bmax:
-                    return 0.62 if kick >= _RANK_ORD.index('Q') else 0.56   # top pair
+                if pr >= bmax:   # top pair — abaixo do teto em todas as ruas, intocado
+                    return 0.62 if kick >= _RANK_ORD.index('Q') else 0.56
                 if pr <= bmin:
-                    return 0.42                                             # bottom pair
-                return 0.50                                                 # middle pair
+                    return _pares['bottom']
+                return _pares['middle']
             return _SEM_PAR_POR_CARTAS_A_VIR[_a_vir]['par_do_board']   # par só no board
 
         # High Card: valor por overcards vivas (potencial de melhorar).

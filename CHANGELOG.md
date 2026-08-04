@@ -7,6 +7,61 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(motor): mao feita valia o mesmo em todas as ruas, e nao vale (#motor)
+
+> Entrei nisto para calibrar `turn/value` (+9,7pp) e o problema era outro, maior e mais simples:
+> **o dicionario `strong` e os pares eram FLAT entre as ruas.** O valor de uma mao feita **decai
+> conforme o board cresce** — com mais cartas na mesa, mais da range do vilao conectou, e a mesma
+> mao vale relativamente menos.
+>
+> **O que destravou foi trocar a fonte da amostra.** Eu tinha parado por n=16 no acervo. Mas
+> `_postflop_made_equity` e **funcao pura de (mao, board)**: da para medi-la em milhares de spots
+> sinteticos em vez das poucas decisoes reais da categoria. 1.500 amostras por rua, teto = equity
+> vs a range PREFLOP do BTN (`eval7` Monte Carlo, board real).
+>
+> ```
+>   ramo             flop      turn      river     n(turn/river)
+>   Two Pair        + 0,2pp   + 6,0pp   +13,5pp     208 / 344
+>   Trips           + 0,3pp   + 6,4pp   + 9,4pp      63 /  82
+>   middle pair     - 9,4pp   - 5,0pp   + 4,3pp     199 / 192
+>   bottom pair     -10,5pp   - 4,4pp   + 7,9pp      87 /  69
+>   underpair       - 7,4pp   - 0,7pp   + 4,9pp      30 /  30
+>   Flush              —      - 6,8pp   + 2,7pp      16 /  42
+>   par so do board +11,9pp   + 3,3pp   - 2,4pp     190 / 306
+> ```
+>
+> A mesma constante sai de "abaixo do teto" no flop para "provado alto" no river. **E monotonico e
+> tem explicacao — nao e ruido.** E apareceu um que eu tinha deixado passar: `par so do board` no
+> FLOP, +11,9pp com n=190 (consertei esse ramo no turn e no river na entrega anterior e deixei o
+> flop em 0.40).
+>
+> **O teste e UNILATERAL, e isso define o que da para consertar.** Ele so prova "esta ALTO" (acima
+> do teto ⇒ acima ate do limite superior). Ficar ABAIXO do teto **nao prova nada** — pode estar
+> certo. Entao aqui so desce o que esta provado alto, e so ATE o teto medido. `top pair`, 14pp
+> abaixo em todas as ruas, ficou intocado, e ha teste exigindo que continue assim.
+>
+> **Correcao de algo que eu disse na entrada anterior:** li `flop/value` abaixo do teto como
+> "subvaloriza". A medicao nao sustenta isso — abaixo do teto e compativel com estar certo. A
+> subvalorizacao de mao feita existe e esta documentada no Tema 2, mas por outra evidencia.
+>
+> O teto usado e o da range mais LARGA (BTN) de proposito: contra range tight ele cai e mais ramos
+> ficam provados altos, entao a larga e a escolha conservadora — conferido com UTG.
+>
+> Ainda: o piso de bluff-catcher do river era 0.10 fixo, e a amostragem mostrou que **sem nenhuma
+> overcard** o teto e 4,8%. So esse sub-caso desceu, para 0.05; com overcard o teto e 15,3% e o
+> 0.10 segue abaixo dele.
+>
+> **Impacto medido, 2.158 decisoes:** 77 equities mudam, 8 recomendacoes corrigidas, 6 vereditos
+> mudam (5 mais brandos, 1 mais grave). Acusacoes 183 -> 182. O unico que agravou e um CALL de
+> river — a direcao que o teto sustenta: a equity estava alta, entao o call valia menos do que
+> parecia.
+>
+> Depois da calibragem, **zero ramos provados altos** no flop, no turn e no river.
+>
+> Guardas verificados quebrando: voltar o `strong` a ser flat derruba 1 dos 12 testes; devolver o
+> river aos valores do flop derruba 1; `par do board` do flop de volta a 0.40 derruba 1; o piso do
+> river ignorar overcards derruba 1; deixar a calibragem VAZAR para `top pair` derruba 2.
+
 ### fix(motor): o turn recebia uma rua de potencial a mais (#motor)
 
 > `_postflop_made_equity` e cego a street: dava o MESMO numero para quem nao tem par no flop e no
