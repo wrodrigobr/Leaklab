@@ -166,10 +166,24 @@ def test_par_de_VERDADE_nao_e_tocado():
     assert _postflop_made_equity('AhAd', board, True) > 0.6, 'overpair segue overpair'
 
 
-def test_flop_e_turn_nao_sao_tocados():
-    """No flop e no turn o potencial de melhorar e real — a regra e so do river."""
-    assert _postflop_made_equity('QsJs', ['9s', '8s', '4d'], True) == 0.34
-    assert _postflop_made_equity('QsJs', ['9s', '8s', '4d', '3d'], True) == 0.34
+def test_a_regra_do_river_nao_vaza_para_flop_e_turn():
+    """No flop e no turn o potencial de melhorar e real — o piso de bluff-catcher e so do river."""
+    assert _postflop_made_equity('QsJs', ['9s', '8s', '4d'], True) != 0.10
+    assert _postflop_made_equity('QsJs', ['9s', '8s', '4d', '3d'], True) != 0.10
+
+
+def test_o_turn_vale_MENOS_que_o_flop_para_quem_nao_tem_par():
+    """Uma rua a menos pela frente e uma rua a menos de potencial. O codigo dava o mesmo
+    numero nas duas, e a medicao contra o teto computado mostrou o tamanho disso:
+    flop/air +4,5pp, turn/air +12,1pp — a diferenca e exatamente a rua que sobra."""
+    flop = _postflop_made_equity('QsJs', ['9s', '8s', '4d'], True)
+    turn = _postflop_made_equity('QsJs', ['9s', '8s', '4d', '3d'], True)
+    assert flop == 0.34, flop
+    assert turn == 0.22, turn
+    assert turn < flop, 'o turn tem menos carta por vir que o flop'
+    # o mesmo vale para o par que e so do board
+    assert _postflop_made_equity('7d6h', ['Qs', '3c', '3d'], True) == 0.40
+    assert _postflop_made_equity('7d6h', ['Qs', '3c', '3d', '8h'], True) == 0.25
 
 
 if __name__ == '__main__':

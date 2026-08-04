@@ -141,6 +141,38 @@ def _estimate_hand_equity(hero_cards: str | None, board, street: str,
     return 0.29
 
 
+# Equity de quem NÃO tem par próprio, por cartas ainda por vir. O valor destas mãos é quase
+# todo POTENCIAL DE MELHORAR, e o código dava o MESMO número no flop e no turn — como se as
+# duas ruas tivessem a mesma quantidade de cartas pela frente.
+#
+# Medido contra um teto computado (equity vs a range PREFLOP do vilão, `eval7` Monte Carlo com
+# o board real, ranges de `gto_solver._DEFAULT_RANGES`). O teste é unilateral e por isso é
+# rigoroso: a range que o vilão APOSTA é mais forte que a preflop inteira, então a equity real
+# é MENOR que o teto, e tudo acima dele é supervalorização comprovada.
+#
+#     street/categoria    n    estimador   teto     erro
+#     flop / air         49      35,3%    30,8%    + 4,5pp
+#     turn / air         19      44,1%    32,0%    +12,1pp   <- uma rua de potencial a mais
+#
+# O flop está quase calibrado; o turn não. A diferença entre os dois erros é exatamente a rua
+# que sobra. Os valores do turn abaixo são a interpolação entre as duas pontas já justificadas:
+# o piso de showdown do river (0.10, ver o bloco no corpo da função) e os valores do flop.
+#
+# O `draw_detector` NÃO é a causa e não foi tocado: ele já está calibrado para UMA rua
+# ("9 outs ≈ 19% num street", diz o próprio arquivo).
+# O RIVER sem aposta na frente mantém os valores históricos DE PROPÓSITO. Ali o número não é
+# mais potencial (não há carta por vir) e sim valor de showdown contra uma range que também
+# passou — e a medição de campo o sustenta: 24 showdowns de high card em river passado venceram
+# 25,0%, e 16 de par-do-board venceram 37,5%. Significado diferente, número parecido; trocá-lo
+# seria contrariar a própria medição. O river ENFRENTANDO aposta é outro caso e sai antes, no
+# corpo da função.
+_SEM_PAR_POR_CARTAS_A_VIR = {
+    2: {'over': {0: 0.20, 1: 0.28, 2: 0.34}, 'par_do_board': 0.40},   # flop
+    1: {'over': {0: 0.15, 1: 0.19, 2: 0.22}, 'par_do_board': 0.25},   # turn
+    0: {'over': {0: 0.20, 1: 0.28, 2: 0.34}, 'par_do_board': 0.40},   # river de pote passado
+}
+
+
 def _postflop_made_equity(hero_cards: str | None, board,
                           enfrentando_aposta: bool = False) -> float | None:
     """Equity postflop estimada a partir da força da MÃO FEITA do hero vs uma range
@@ -195,13 +227,14 @@ def _postflop_made_equity(hero_cards: str | None, board,
         # o motor parar de recomendar call, não para prometer precisão. No pote PASSADO os
         # valores antigos batem com o campo (25% e 37,5%) e ficam como estão.
         #
-        # Só o river: no flop e no turn o potencial de melhorar é real, e os draws já entram
-        # por fora (`adjust_equity_for_draws`).
+        # No flop e no turn o potencial de melhorar é real — mas NÃO é o mesmo nos dois, e era
+        # isso que o código dizia. Ver `_SEM_PAR_POR_CARTAS_A_VIR` logo abaixo.
         _sem_par_proprio = (ht == 'High Card'
                             or (ht == 'Pair' and hero[0][0] != hero[1][0]
                                 and not [r for r in hr if r in br]))
         if len(brd) >= 5 and enfrentando_aposta and _sem_par_proprio:
             return 0.10
+        _a_vir = max(0, 5 - len(brd))
 
         if ht == 'Pair':
             if hero[0][0] == hero[1][0]:                       # par de bolso
@@ -215,16 +248,11 @@ def _postflop_made_equity(hero_cards: str | None, board,
                 if pr <= bmin:
                     return 0.42                                             # bottom pair
                 return 0.50                                                 # middle pair
-            return 0.40                                        # par só no board (joga kicker)
+            return _SEM_PAR_POR_CARTAS_A_VIR[_a_vir]['par_do_board']   # par só no board
 
-        # High Card: valor por overcards vivas (potencial de melhorar). O caso do river
-        # enfrentando aposta é tratado acima, antes de chegar aqui.
+        # High Card: valor por overcards vivas (potencial de melhorar).
         over = sum(1 for r in hr if r > bmax)
-        if over >= 2:
-            return 0.34
-        if over == 1:
-            return 0.28
-        return 0.20
+        return _SEM_PAR_POR_CARTAS_A_VIR[_a_vir]['over'][min(over, 2)]
     except Exception:
         return None
 

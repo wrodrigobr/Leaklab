@@ -7,6 +7,61 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(motor): o turn recebia uma rua de potencial a mais (#motor)
+
+> `_postflop_made_equity` e cego a street: dava o MESMO numero para quem nao tem par no flop e no
+> turn, como se as duas ruas tivessem a mesma quantidade de carta pela frente.
+>
+> **O oraculo, e ele e computado — nao e opiniao nem constante recalibrada no chute.** Aqui, ao
+> contrario do river, a equity real E calculavel. Usei `eval7` Monte Carlo com o board real contra
+> a range PREFLOP do vilao (`gto_solver._DEFAULT_RANGES`, a mesma definicao que o projeto ja usa
+> para solvar). O teste e unilateral de proposito, e por isso e rigoroso:
+>
+> ```
+>   equity vs a range PREFLOP  >=  equity real vs a range que ele APOSTA
+> ```
+>
+> Uma range de aposta e mais forte que a preflop inteira, entao a equity do heroi contra ela e
+> MENOR. Tudo acima do teto e supervalorizacao COMPROVADA, sem precisar modelar range de aposta
+> nenhuma — que seria justamente a parte discutivel.
+>
+> **Medido, 103 decisoes heads-up enfrentando aposta:**
+>
+> ```
+>   street/categoria    n    estimador   teto     erro
+>   flop / air         49      35,3%    30,8%    + 4,5pp
+>   flop / value       19      66,2%    69,9%    - 3,7pp   subvaloriza (rede do Tema 2 ja cobre)
+>   turn / air         19      44,1%    32,0%    +12,1pp   <- o defeito
+>   turn / value       16      65,8%    54,9%    +10,9pp   <- fica ABERTO, ver abaixo
+> ```
+>
+> O flop esta quase calibrado; o turn nao. **A diferenca entre os dois erros e exatamente a rua que
+> sobra.** Os valores novos do turn sao a interpolacao entre as duas pontas ja justificadas: o piso
+> de showdown do river (0.10, medido na entrega anterior) e os valores do flop.
+>
+> Depois: **turn/air +2,1pp**, em linha com o flop.
+>
+> **O `draw_detector` NAO e a causa e nao foi tocado** — ele ja esta calibrado para UMA rua ("9
+> outs ~ 19% num street", diz o proprio arquivo). Quem estava errado era o valor-base.
+>
+> **O river de pote PASSADO manteve os valores antigos de proposito.** Ali o numero nao e mais
+> potencial e sim valor de showdown contra uma range que tambem passou, e a medicao de campo o
+> sustenta (24 showdowns venceram 25,0%; 16 de par-do-board venceram 37,5%). Cheguei a troca-lo
+> por engano no meio do caminho e a propria medicao anterior me desmentiu.
+>
+> **Impacto medido, 2.158 decisoes:** 69 equities mudam, **8 recomendacoes corrigidas**, 4
+> vereditos mudam e **todos ficam mais brandos**. Acusacoes: 183 -> 183. O ganho real esta nas
+> recomendacoes: o produto dizia "GTO recomenda call" para quem foldou com nada no turn.
+>
+> **Fica medido e NAO consertado: `turn/value` +9,7pp.** A explicacao provavel e estrutural (com 4
+> cartas no board, mais da range do vilao conectou, entao mao feita vale relativamente menos), mas
+> n=16 e o `flop/value` anda na direcao OPOSTA (-3,9pp) — calibrar exigiria mexer em duas pontas
+> com amostra pequena. `scripts/medir_estimador_postflop.py` refaz a medicao a qualquer momento.
+>
+> Guardas verificados quebrando: fazer o turn valer o mesmo que o flop derruba 1 dos 10 testes;
+> deixar a tabela de olhar as cartas por vir derruba 1; tirar do river de pote passado os valores
+> medidos em campo derruba 2.
+
 ### feat(motor): sem gabarito o produto nao acusa mais um FOLD (#motor #veredito)
 
 > A regra ja estava enunciada no proprio motor -- *"sem gabarito nao e erro; a decisao sai da conta
