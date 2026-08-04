@@ -32,6 +32,7 @@ SUITES = {
                   'test_perguntas_de_range.py',
                   'test_call_ja_allin.py',
                   'test_facing_to_call.py',
+                  'test_replay_pareamento.py',
                   'test_progressao.py',
                   'test_pg_migration_isolation.py',
                   'test_interpretation_sign.py',

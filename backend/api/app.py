@@ -65,6 +65,7 @@ from leaklab.parser import parse_pokerstars_file_from_text
 from leaklab.parser import raise_total_from_raw as _raise_total_from_raw
 from leaklab.pipeline import build_decision_inputs_for_hand
 from leaklab.decision_engine_v11 import evaluate_decision
+from leaklab.pareamento_decisoes import BaldeDeDecisoes, balde_de_gto_do_banco
 from leaklab.mtt_context import build_mtt_context
 from leaklab.gto_utils import hand_to_type as _hand_to_type
 from leaklab.preflop_gto_ranges import analyze_preflop as _analyze_preflop
@@ -5244,12 +5245,9 @@ def coach_student_replay(student_id, tournament_id, hand_id):
         _apply_alias_to_hand(target, _build_gg_alias_map(_asrc, t.get('hero') or target.hero))
     _db_all_c  = get_decisions(t['id'])
     _db_hand_c = [d for d in _db_all_c if str(d.get('hand_id')) == str(hand_id)]
-    _gto_idx_c = {
-        (d.get('street',''), (d.get('action_taken','') or '').rstrip('s') or d.get('action_taken','')):
-        {'gto_label': d.get('gto_label'), 'gto_action': d.get('gto_action'),
-         'gto_depth_capped': d.get('gto_depth_capped')}
-        for d in _db_hand_c if d.get('gto_label')
-    }
+    # Balde consumido em ordem, não índice — a chave (street, ação) não é única, e a lista
+    # vai INTEIRA (sem filtrar por gto_label). Mesma função do replay do aluno.
+    _gto_idx_c = balde_de_gto_do_banco(_db_hand_c)
     try:
         from leaklab.pipeline import build_decision_inputs_for_hand
         from leaklab.decision_engine_v11 import evaluate_decision as _eval
@@ -5257,7 +5255,7 @@ def coach_student_replay(student_id, tournament_id, hand_id):
         for di in build_decision_inputs_for_hand(target):
             r = _eval(di)
             action_norm = (r.get('actionTaken','') or '').rstrip('s') or r.get('actionTaken','')
-            gto_data = _gto_idx_c.get((di['street'], action_norm), {})
+            gto_data = _gto_idx_c.proxima((di['street'], action_norm)) or {}
             live_decisions.append({
                 'hand_id': str(target.hand_id), 'street': di['street'],
                 'action_taken': r.get('actionTaken', ''), 'best_action': r.get('bestAction', ''),
@@ -6057,13 +6055,12 @@ def get_replay(tournament_id, hand_id):
     # Buscar decisões do banco para enriquecer com gto_label/gto_action
     _db_all      = get_decisions(t['id'])
     _db_hand     = [d for d in _db_all if str(d.get('hand_id')) == str(hand_id)]
-    # Índice (street, action_taken) → dados GTO do banco
-    _gto_index   = {
-        (d.get('street',''), (d.get('action_taken','') or '').rstrip('s') or d.get('action_taken','')):
-        {'gto_label': d.get('gto_label'), 'gto_action': d.get('gto_action'),
-         'facing_bet': d.get('facing_bet'), 'gto_depth_capped': d.get('gto_depth_capped')}
-        for d in _db_hand if d.get('gto_label')
-    }
+    # Balde (street, action_taken) → linhas do banco, consumidas EM ORDEM. Não é índice: a
+    # chave NÃO é única (o hero age duas vezes na mesma street ao pagar um open e depois
+    # enfrentar um 3-bet), e um dict fazia as duas decisões dividirem um veredito só.
+    # Passa `_db_hand` INTEIRO de propósito — filtrar por `gto_label` aqui era a outra
+    # metade do defeito. Ver leaklab/pareamento_decisoes.py.
+    _gto_index   = balde_de_gto_do_banco(_db_hand)
 
     # Re-executar o engine ao vivo para garantir scores/labels atualizados
     # O banco pode ter dados de versões antigas do engine com bugs corrigidos
@@ -6074,7 +6071,7 @@ def get_replay(tournament_id, hand_id):
         for di in build_decision_inputs_for_hand(target):
             r = _eval(di)
             action_norm = (r.get('actionTaken','') or '').rstrip('s') or r.get('actionTaken','')
-            gto_data = _gto_index.get((di['street'], action_norm), {})
+            gto_data = _gto_index.proxima((di['street'], action_norm)) or {}
             live_decisions.append({
                 'hand_id':      str(target.hand_id),
                 'street':       di['street'],
@@ -6308,11 +6305,12 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
         a = a.rstrip('s') if a.endswith('s') else a
         return 'allin' if a in ('all-in', 'allin', 'jam', 'shove') else a
 
-    # Mapa unificado: todas as decisões do hero, indexadas por (street, action)
-    all_decisions = {}
-    for d in decisions_db:
-        key = (d.get('street', ''), _norm(d.get('action_taken', '')))
-        all_decisions[key] = d
+    # Decisões do hero por (street, action). NÃO é um dict: a chave se repete quando o hero
+    # age duas vezes na mesma street, e `all_decisions[key] = d` fazia a segunda APAGAR a
+    # primeira — os dois passos da mesa acabavam mostrando o mesmo card. Cada balde é
+    # consumido em ordem. Ver leaklab/pareamento_decisoes.py.
+    _chave_dec = lambda d: (d.get('street', ''), _norm(d.get('action_taken', '')))
+    _decisoes_por_chave = BaldeDeDecisoes(decisions_db, _chave_dec)
 
     # Re-rodar o engine para enriquecer TODAS as decisões hero com dados matemáticos
     # e análise de range preflop GTO
@@ -6321,14 +6319,16 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
         from leaklab.decision_engine_v11 import evaluate_decision
         from leaklab.gto_utils import hand_to_type
         engine_inputs = build_decision_inputs_for_hand(hand)
+        _balde_enriq = BaldeDeDecisoes(decisions_db, _chave_dec)
         for di in engine_inputs:
             r   = evaluate_decision(di)
             key = (di['street'], _norm(r.get('actionTaken', '')))
-            if key in all_decisions:
-                all_decisions[key]['context']   = di.get('context', {})
-                all_decisions[key]['math']      = di.get('math', {})
-                all_decisions[key]['breakdown'] = r['evaluation'].get('scoreBreakdown', {})
-                all_decisions[key]['_di']       = di  # spot params for GTO strategy lookup
+            _alvo = _balde_enriq.proxima(key)
+            if _alvo is not None:
+                _alvo['context']   = di.get('context', {})
+                _alvo['math']      = di.get('math', {})
+                _alvo['breakdown'] = r['evaluation'].get('scoreBreakdown', {})
+                _alvo['_di']       = di  # spot params for GTO strategy lookup
                 # Análise de range preflop — só para preflop hero actions
                 if di['street'] == 'preflop':
                     try:
@@ -6415,7 +6415,7 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
                                 _op = _pf_open_proxy(_pf_pos, h_type, _pf_stack_bb, action_taken=_uncov_act)
                                 if _op:
                                     _pf_result = _op
-                            all_decisions[key]['preflop_gto'] = _pf_result
+                            _alvo['preflop_gto'] = _pf_result
                     except Exception:
                         pass
     except Exception:
@@ -6593,8 +6593,12 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
             if action.player in shows_map:
                 current_revealed[str(pseat)] = shows_map[action.player]
 
+        # Consome o balde EM ORDEM: a 1ª ação do hero com essa chave leva a 1ª decisão, a 2ª
+        # leva a 2ª. Com `dict.get` as duas levavam a mesma, e o segundo passo da mesa exibia
+        # o veredito do primeiro — inclusive o selo SOLVER de uma decisão sem solver.
         err_key  = (action.street, _norm(action.action))
-        decision = all_decisions.get(err_key) if action.player == hero else None
+        decision = (_decisoes_por_chave.proxima(err_key)
+                    if action.player == hero else None)
 
         # Dados técnicos para QUALQUER ação do hero (não só erros)
         tech = {}
@@ -10079,13 +10083,19 @@ def _process_gto_hand_request(req: dict) -> tuple[str, str | None]:
         db_decisions = [d for d in get_decisions(tournament_id)
                         if str(d.get('hand_id')) == str(hand_id)]
 
-        # Índice rápido: (street, action_taken) → decision_id
+        # Balde (street, action_taken) → linhas do banco, consumido EM ORDEM.
+        # Era um dict, e a chave NÃO é única: com duas decisões iguais na mesma street a
+        # segunda sobrescrevia a primeira, e o resultado do solver era gravado no
+        # `decision_id` ERRADO. Dos quatro lugares com esse defeito, este é o único que
+        # ESCREVE no banco. Ver leaklab/pareamento_decisoes.py.
         def _norm(a):
             if not a: return ''
             a = a.rstrip('s') if a.endswith('s') else a
             return 'allin' if a in ('all-in', 'allin', 'jam', 'shove') else a
-        db_index = {(_norm(d.get('street', '')), _norm(d.get('action_taken', ''))): d
-                    for d in db_decisions}
+        db_index = BaldeDeDecisoes(
+            db_decisions,
+            lambda d: (_norm(d.get('street', '')), _norm(d.get('action_taken', ''))),
+        )
 
         update_gto_hand_request(request_id, 'processing',
                                 decisions_found=len(db_decisions))
@@ -10097,7 +10107,7 @@ def _process_gto_hand_request(req: dict) -> tuple[str, str | None]:
                 continue
             ctx = di.get('context', {})
             key = (_norm(di['street']), _norm(di.get('player_action', '') or ''))
-            db_dec = db_index.get(key)
+            db_dec = db_index.proxima(key)
             if not db_dec:
                 continue
             already_analyzed = bool(db_dec.get('gto_label'))

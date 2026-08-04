@@ -7,6 +7,69 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(replay): duas decisoes iguais na mesma street dividiam UM veredito so (#replay #motor)
+
+> **Achado pelo usuario lendo a tela**, com print, depois de eu ter afirmado que aquela mao nao
+> tinha defeito. Mao 259091895483: o hero age duas vezes no preflop e o card da SEGUNDA decisao
+> mostrava **"ERRO · SOLVER · VOCE JOGOU CALL · GTO RECOMENDA RAISE"** -- o veredito da primeira.
+>
+> A causa e uma so, repetida: `(street, acao)` usado como chave de `dict`. **Essa chave nao e
+> unica** -- o hero age duas vezes na mesma street sempre que paga um open e depois enfrenta um
+> 3-bet, ou aposta e depois enfrenta um raise. Num dict, a segunda linha sobrescreve a primeira.
+>
+> Havia uma segunda metade: o filtro `if d.get('gto_label')` deixava a decisao SEM gabarito fora
+> do mapa. Ela nao ocupava o proprio lugar, cedia a vez, e herdava o veredito da outra -- selo
+> SOLVER numa decisao que nao tem solver.
+>
+> **Eram QUATRO copias**, todas em `api/app.py`, e o relato so mostrava uma:
+>
+> ```
+>   :6062  /replay do aluno         indice GTO          <- o caso relatado
+>   :5248  /replay do coach         indice GTO
+>   :6314  _build_replay_data       a 2a decisao APAGAVA a 1a, e os dois passos
+>                                   da mesa exibiam o mesmo card
+>   :10087 _process_gto_hand_request  db_index -> decision_id: gravava o resultado
+>                                   do solver na decisao ERRADA  <- este ESCREVE no banco
+> ```
+>
+> As quatro passaram a usar `leaklab/pareamento_decisoes.py`. A chave continua `(street, acao)` --
+> e o que as duas fontes tem em comum, ja que a decisao recalculada ao vivo nao carrega
+> `decision_id`. O que muda e que ela deixa de ser indice unico e vira **balde consumido em
+> ordem**: a 1a decisao da mao casa com a 1a linha do banco daquela chave, a 2a com a 2a. As duas
+> fontes sao cronologicas (`get_decisions` ordena por `id`; o pipeline devolve na ordem das acoes).
+>
+> Quando o balde acaba -- banco com menos linhas que a mao recalculada, o que acontece em torneio
+> analisado por uma versao anterior do parser -- a decisao fica **sem** par em vez de roubar o de
+> outra. Perder cobertura e honesto; trocar veredito nao e.
+>
+> **Medido no acervo local** (2.306 decisoes): 11 chaves colidem, 22 decisoes envolvidas (1,0%),
+> 8 com uma tendo gto e a outra nao. Proporcao igual a de producao (74 de 9.672, 26 assimetricas).
+>
+> **Antes -> depois nas 11 maos com colisao**, 36 passos do hero comparados, 9 mudaram:
+>
+> ```
+>   7  veredito que estava SUMIDO e voltou   (a 2a decisao, sem gto, apagava a 1a)
+>   1  recomendacao corrigida                (exibia "GTO recomenda JAM" -- da OUTRA decisao)
+>   1  veredito removido                     (era calculado do spot da outra decisao)
+> ```
+>
+> Nenhuma perda real: os tres tipos sao o conserto funcionando. E notar que a direcao mais comum
+> nao era a do relato -- na maioria das vezes o defeito **engolia** o veredito da primeira decisao,
+> em silencio. O caso visivel foi o raro.
+>
+> **Um efeito colateral bom:** o comentario em `:6824` ("facing_bet not available in live_decision
+> for decisions without gto_label") descrevia um sintoma do filtro. Com o filtro fora, o
+> `facing_bet` chega para todas as decisoes.
+>
+> Guardas verificados quebrando, um a um: voltar o dict derruba 6 dos 9 testes; tirar o consumo
+> derruba 6; devolver o filtro `gto_label` (dentro da funcao OU no chamador) derruba 1 cada;
+> voltar o `dict.get` no `_build_replay_data` derruba 1.
+>
+> O guarda do filtro no CHAMADOR e um teste que varre o TEXTO do `app.py` -- sem ele o filtro podia
+> voltar sem que nada acusasse, porque `_build_replay_data` recebe as decisoes ja prontas. Foi
+> exatamente o que aconteceu na primeira rodada de verificacao: o teste passou com o conserto
+> desfeito.
+
 ### fix(motor): cobravamos a aposta INTEIRA de quem so devia a diferenca (#motor #treino)
 
 > `facing_bet` e o TAMANHO da aposta do vilao. O motor usava esse numero como se fosse o CUSTO
