@@ -39,9 +39,75 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 > guarda `ctx.heroStackBb`, que **nao** e o stack efetivo. Por isso ela nao mudou nada no
 > reprocesso, embora o `effectiveStackBb` (que entra no hash) tenha mudado em metade do acervo.
 
-### diag(motor): o veredito GRAVADO discorda do motor em 14,4% das decisoes (#motor #veredito)
+### fix(veredito): o reconcile acusava mais que o motor por ignorar o teto de EV (#motor #veredito)
 
-> Achado no mesmo reprocesso, **nao consertado** — e decisao de produto, nao conserto.
+> Isolando por etapa num torneio de 485 decisoes:
+>
+> ```
+>   apos save_decisions ......... divergencia motor x banco:  0 / 485
+>   apos reconcile SOZINHO ...... divergencia:               54 / 485
+> ```
+>
+> O banco tinha **exatamente** o veredito do motor, e o reconcile o reescrevia. Das 54, **38 eram
+> o mesmo caso**: `marginal -> small_mistake`, todas `gto_critical`. O `_reconcile_label` aplicava
+> o piso cru de `gto_critical` por cima de um veredito que o motor ja tinha rebaixado pelo TETO DE
+> EV — um `gto_critical` que custa ~0bb e spot misto, nao erro grave.
+>
+> **O reconcile tinha como saber.** `ev_loss_bb`, `ev_loss_source`, `estimated_equity`, `pot_size`
+> e `facing_bet` estao todos na propria linha; simplesmente nao eram lidos. O conserto **nao
+> reimplementa a regra**: chama `_ev_severity_ceiling` + `ev_loss_trustworthy` do motor. Uma
+> terceira copia de politica de veredito e o erro que este projeto ja pagou varias vezes.
+>
+> Falha para o lado seguro: sem EV, sem fonte confiavel ou com o import falhando, devolve o label
+> como veio — o teto so ABAIXA, nunca inventa severidade.
+>
+> **Medido no acervo (2.366 decisoes):**
+>
+> ```
+>   divergencia motor x banco ...... 14,4%  ->  9,9%
+>   banco MAIS grave que o motor ...   205  ->   97
+>   acusacoes no reprocesso ........  +43   ->  -85     (259 -> 174, de 11,2% para 7,5%)
+> ```
+>
+> O `+43` que o reprocesso anterior mostrou era inteiramente isto. Com o conserto, o delta do
+> acervo passa a bater com as medicoes feitas no motor durante a sessao.
+>
+> **Erro de atribuicao meu, no caminho, e vale registrar:** o primeiro isolamento deu "o reconcile
+> responde por 0" e apontou o `sync`. Era falso — `sync_tournament` CHAMA o reconcile por dentro
+> quando atualiza alguma linha, entao quando eu o chamava depois ele ja tinha rodado. **Medir uma
+> etapa que outra ja executou nao isola nada.**
+>
+> Guardas verificados quebrando: tirar o teto do `gto_critical` derruba 2 dos 7 testes; fazer o
+> teto valer sem `ev_loss_bb` derruba 1; o SELECT deixar de ler os campos de EV derruba 1 — e esse
+> ultimo so existe porque na primeira rodada **nao derrubava nada**: os testes exercitavam a funcao
+> pura e nunca o caminho SQL. Ha agora um teste que grava a decisao num banco de verdade.
+
+### diag(veredito): duas contradicoes de politica que sobraram (#motor #veredito)
+
+> **Nao consertadas — sao decisao de produto, nao conserto.** Restam 235 divergencias (9,9%), e
+> elas tem duas causas nomeadas:
+>
+> **1. `gto_minor_deviation`: o motor CAPEIA, o reconcile PISA.** Mesma entrada, operacoes opostas:
+>
+> ```
+>   motor      (_preflop_gto_label_adjust):  min(atual, marginal)   TETO
+>   reconcile  (_reconcile_label):           max(atual, marginal)   PISO
+> ```
+>
+> Um `standard` continua `standard` no motor e vira `marginal` no banco (55 casos). Como
+> `gto_minor_deviation` significa "acao mista valida", capear parece mais defensavel que pisar —
+> mas e mudanca de politica.
+>
+> **2. `gto_correct`/`gto_mixed` viram `standard` sem condicao** (104 `marginal -> standard`, 28
+> `small_mistake -> standard`, 1 `clear_mistake -> standard`). O motor tinha razoes que o
+> `gto_label` sozinho nao carrega — gate de ICM, rede do multiway, cap de mao monstro, a regra "sem
+> gabarito". O reconcile as apaga. O caso `clear_mistake -> standard` e o mais forte: erro virando
+> Correto, que e justamente o que [[project_verdict_consistency]] protege por outro caminho.
+
+### diag(motor): o veredito GRAVADO discordava do motor em 14,4% das decisoes (#motor #veredito)
+
+> Diagnostico original, mantido pelo registro. **CONSERTADO em parte na entrada acima**; o que
+> sobra esta descrito em "duas contradicoes de politica".
 >
 > Comparando `evaluate_decision` com a linha do banco depois de `sync_gto_labels_from_ranges` +
 > `reconcile_tournament_labels`, em 2.366 decisoes:

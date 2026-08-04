@@ -10385,11 +10385,23 @@ def _reconcile_label(label: str, gto_label: str,
                      stack_bb: float | None = None,
                      street: str | None = None,
                      action_taken: str | None = None,
-                     gto_action: str | None = None) -> str:
+                     gto_action: str | None = None,
+                     ev_loss_bb: float | None = None,
+                     ev_loss_source: str | None = None,
+                     equity: float | None = None,
+                     pot_bb: float | None = None,
+                     facing_bb: float | None = None) -> str:
     """Reconcilia label heurístico com veredicto GTO. GTO é autoritativo para direção.
 
     Em push/fold zone (stack ≤ 12bb preflop), se hero não jam/fold com gto_mixed:
     demote para small_mistake — não é decisão "standard" limpar/callar em short stack.
+
+    **O teto de EV vem do motor, não é reimplementado aqui.** Sem ele, esta função aplicava o
+    piso cru de `gto_critical` (→ `small_mistake`) por cima de um veredito que o motor já tinha
+    rebaixado para `marginal` por custo ínfimo — e o banco passava a acusar mais que o motor.
+    Medido em 2026-08-04 num torneio de 485 decisões: logo após `save_decisions` a divergência
+    motor×banco era ZERO, e o reconcile sozinho criava 54, das quais **38 eram exatamente este
+    caso** (`marginal → small_mistake`, todas `gto_critical`).
     """
     is_pf = _is_pf_zone(stack_bb, street)
     act = (action_taken or '').lower().strip()
@@ -10404,13 +10416,41 @@ def _reconcile_label(label: str, gto_label: str,
     if gto_label in ('gto_correct', 'gto_mixed'):
         # PF zone com call/limp/check vs gto_mixed → não é standard
         if pf_non_decisive and gto_label == 'gto_mixed':
-            return label if _LABEL_SEVERITY.get(label, 0) >= 2 else 'small_mistake'
+            return _teto_de_ev(
+                label if _LABEL_SEVERITY.get(label, 0) >= 2 else 'small_mistake',
+                ev_loss_bb, ev_loss_source, stack_bb, action_taken, equity, pot_bb, facing_bb)
         return 'standard'
     if gto_label == 'gto_minor_deviation':
-        return label if _LABEL_SEVERITY.get(label, 0) >= 1 else 'marginal'
+        return _teto_de_ev(
+            label if _LABEL_SEVERITY.get(label, 0) >= 1 else 'marginal',
+            ev_loss_bb, ev_loss_source, stack_bb, action_taken, equity, pot_bb, facing_bb)
     if gto_label == 'gto_critical':
-        return label if _LABEL_SEVERITY.get(label, 0) >= 2 else 'small_mistake'
+        return _teto_de_ev(
+            label if _LABEL_SEVERITY.get(label, 0) >= 2 else 'small_mistake',
+            ev_loss_bb, ev_loss_source, stack_bb, action_taken, equity, pot_bb, facing_bb)
     return label
+
+
+def _teto_de_ev(label: str, ev_loss_bb, ev_loss_source, stack_bb,
+                action_taken, equity, pot_bb, facing_bb) -> str:
+    """Aplica o MESMO teto de severidade por EV que o motor aplica — chamando a função dele.
+
+    Um `gto_critical` que custa ~0bb é spot misto, não erro grave, e o motor já sabe disso
+    (`_ev_severity_ceiling` + `ev_loss_trustworthy`). Reimplementar a regra aqui seria a
+    terceira cópia de uma política de veredito; sem ela, o banco acusava mais que o motor.
+
+    Falha para o lado seguro: sem EV, sem fonte confiável ou com o import falhando, devolve o
+    label como veio — o teto só ABAIXA, nunca inventa severidade."""
+    if ev_loss_bb is None:
+        return label
+    try:
+        from leaklab.decision_engine_v11 import _ev_severity_ceiling, ev_loss_trustworthy
+        confiavel = ev_loss_trustworthy(
+            ev_loss_bb, stack_bb, ev_loss_source,
+            action=action_taken, equity=equity, pot_bb=pot_bb, facing_bb=facing_bb)
+        return _ev_severity_ceiling(label, ev_loss_bb, ev_loss_source if confiavel else None)
+    except Exception:
+        return label
 
 
 def update_decision_gto(decision_id: int, gto_label: str, gto_action: str,
@@ -10585,7 +10625,8 @@ def reconcile_tournament_labels(tournament_id: int) -> int:
     conn = get_conn()
     try:
         rows = _fetchall(conn, _adapt("""
-            SELECT id, label, gto_label, stack_bb, street, action_taken, gto_action, score
+            SELECT id, label, gto_label, stack_bb, street, action_taken, gto_action, score,
+                   ev_loss_bb, ev_loss_source, estimated_equity, pot_size, facing_bet
             FROM decisions
             WHERE tournament_id = ?
               AND gto_label IS NOT NULL AND gto_label != ''
@@ -10598,6 +10639,10 @@ def reconcile_tournament_labels(tournament_id: int) -> int:
                 r['label'], r['gto_label'],
                 stack_bb=r['stack_bb'], street=r['street'], action_taken=r['action_taken'],
                 gto_action=r['gto_action'],   # RC-C: sinal de direção (GTO folda ↔ hero agride)
+                # Sem estes cinco o teto de EV do motor não roda aqui e o banco acusa mais que
+                # ele. Todos já existem na linha — era só não estarem sendo lidos.
+                ev_loss_bb=r['ev_loss_bb'], ev_loss_source=r['ev_loss_source'],
+                equity=r['estimated_equity'], pot_bb=r['pot_size'], facing_bb=r['facing_bet'],
             )
             # Alinha o score à banda do label (Classe C: score-vs-label) — mesmo quando o label não
             # muda, o score pode estar fora da banda (poluição) e divergir das telas por score.
