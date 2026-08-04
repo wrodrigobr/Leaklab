@@ -33,6 +33,7 @@ import { ProLockCard } from "@/components/hud/ProLockCard";
 import { drill, gto } from "@/lib/api";
 import type { DrillSpot, DrillStats, DrillSubmitResult, ReplayStep, GtoStrategyAction, DrillTableState } from "@/lib/api";
 import { cn, formatAction } from "@/lib/utils";
+import { custoDePagar, potOddsExigidas } from "@/lib/cardLogic";
 
 type Phase = "intro" | "loading" | "active" | "result" | "done";
 
@@ -745,9 +746,11 @@ export default function GhostTable() {
                   )}
                   {/* Mobile pot odds context */}
                   {tableState && current.facing_bet != null && current.facing_bet > 0 && drillStep.pot_bb > current.facing_bet && (() => {
-                    const callAmt   = current.facing_bet;
-                    const potBefore = drillStep.pot_bb - current.facing_bet;
-                    const potOdds   = callAmt / (potBefore + 2 * callAmt);
+                    // `pot_bb` já inclui a aposta do vilão; o que entra por fora é o que o
+                    // jogador paga. Antes o custo vinha de `facing_bet` (o tamanho da aposta),
+                    // e a exigência saía inflada em todo spot com fichas do hero na frente.
+                    const potOdds = potOddsExigidas(drillStep.pot_bb, custoDePagar(current));
+                    if (potOdds == null) return null;
                     return (
                       <div className="flex items-center gap-2 rounded-lg border border-border/30 bg-muted/5 px-2.5 py-1.5">
                         <span className="font-mono text-[9px] text-muted-foreground/60 uppercase">{t("potOdds")}</span>
@@ -798,9 +801,10 @@ export default function GhostTable() {
                 )}
                 {/* Pot odds context (when facing a bet) */}
                 {tableState && current.facing_bet != null && current.facing_bet > 0 && drillStep.pot_bb > current.facing_bet && (() => {
-                  const callAmt   = current.facing_bet;
-                  const potBefore = drillStep.pot_bb - current.facing_bet;
-                  const potOdds   = callAmt / (potBefore + 2 * callAmt);
+                  // Ver a versão mobile acima: `pot_bb` já traz a aposta do vilão, e o que se
+                  // soma por fora é o CUSTO de pagar, não o tamanho da aposta.
+                  const potOdds = potOddsExigidas(drillStep.pot_bb, custoDePagar(current));
+                  if (potOdds == null) return null;
                   return (
                     <div className="rounded-lg border border-border/40 bg-muted/5 px-2.5 py-2 shrink-0 space-y-1">
                       <p className="font-mono text-[8px] uppercase tracking-wider text-muted-foreground/50">{t("potOdds")}</p>

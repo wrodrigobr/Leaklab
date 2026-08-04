@@ -284,6 +284,7 @@
     "miss_next": "A miss restarts the spot at the minimum interval.",
     "mastery_next": "A mastered spot is archived at the maximum interval.",
     "p3": "The drills card on the dashboard shows spots with overdue review (red), about to expire (yellow), and on track (green). The goal is to keep all spots green, a sign that the patterns have been internalized.",
+    "p3b": "The <strong>Pot Odds</strong> panel shows the minimum equity to call, and it is computed on <strong>what is left to pay</strong>, not on the size of the opponent's bet. The two differ whenever you already have chips in front of you: against a 2bb open, the BB puts in 1bb more, and that 1bb is what the math uses.",
     "p4": "XP earned: <strong>25 XP</strong> per completed drill, <strong>100 XP</strong> for reaching mastery on a spot.",
     "p5": "<strong>Pressure Mode</strong> adds a 30-second countdown per decision. When the timer reaches zero, a fold is automatically recorded and the hit streak resets. The streak is shown with a 🔥 badge during the session and on the final summary.",
     "result_hit": "Hit",

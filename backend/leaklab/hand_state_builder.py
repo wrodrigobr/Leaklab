@@ -151,17 +151,145 @@ _RAISE_TO_RE = re.compile(r"\bto\s+([\d,.]+)", re.IGNORECASE)  # aceita separado
 
 
 def _facing_to_total_at(actions: List[ParsedAction], hero_index: int,
-                        street: str) -> float:
+                        street: str, hand: 'ParsedHand | None' = None) -> float:
     """Tamanho TOTAL ('raise to' X) da última aposta/raise antes do hero — não o
     incremento. PokerStars loga 'raises 546 to 626' e o parser captura 546 (o
     incremento); o GW/canônico raciocina sobre o 'to' total (626). Lê o 'to Y' do
-    raw quando presente; senão usa a.amount (formato GG 'raises to Y' já é total)."""
+    raw quando presente.
+
+    Sem 'to Y' o `amount` é o que aquele jogador pôs AGORA, e o total dele é o que ele
+    já tinha na frente mais isso. O CoinPoker escreve `ALLIN 107,315.65` para quem já
+    tinha 6.000 de SB: o total é 113.315,65, e tratar o número como total subestimava a
+    aposta em um blind inteiro. `hand` é opcional só para não quebrar quem chama sem
+    ela — sem `hand` os blinds não entram e o resultado degrada para o comportamento
+    antigo."""
     total = 0.0
-    for a in actions[:hero_index]:
-        if a.street == street and a.action in {'bets', 'raises', 'all-in'}:
-            m = _RAISE_TO_RE.search(a.raw or '')
-            total = float(m.group(1).replace(",","")) if m else (a.amount or 0.0)
+    for i, a in enumerate(actions[:hero_index]):
+        if a.street != street or a.action not in {'bets', 'raises', 'all-in'}:
+            continue
+        m = _RAISE_TO_RE.search(a.raw or '')
+        if m:
+            total = float(m.group(1).replace(",", ""))
+        elif hand is not None:
+            total = _committed_on_street(hand, actions, i, street, a.player) + (a.amount or 0.0)
+        else:
+            total = (a.amount or 0.0)
     return total
+
+
+def _blind_posted_by(hand: ParsedHand, player: str) -> float:
+    """Blind que o jogador postou (SB ou BB), em fichas. Blinds NÃO chegam como ação do
+    parser, então quem quiser saber o que já está na frente de alguém no preflop precisa
+    reconstruí-los daqui — mesma regra de assentos do `build_table_state_at_decision`
+    (em heads-up o botão É o SB, ver [[project_posicao_heads_up]])."""
+    seats = sorted(int(s['seat']) for s in (hand.seats or []))
+    if not seats or hand.button_seat is None:
+        return 0.0
+    seat = next((int(s['seat']) for s in (hand.seats or []) if s['name'] == player), None)
+    if seat is None:
+        return 0.0
+    n = len(seats)
+    try:
+        bi = seats.index(hand.button_seat)
+    except ValueError:
+        # Botão MORTO: o assento do botão não tem linha 'Seat N:' (jogador saiu). O SB é o
+        # primeiro assento vivo DEPOIS dele, então recuamos um para que seats[bi+1] caia
+        # ali. Devolver 0 aqui zerava o blind em toda mão de botão morto — foi o que fez a
+        # mão 2769806804 (888) contar 2.000 de investido onde havia 4.000.
+        prox = min(range(n), key=lambda i: (seats[i] - hand.button_seat) % 100)
+        bi = (prox - 1) % n
+    if n == 2:
+        sb_seat, bb_seat = seats[bi], seats[(bi + 1) % n]
+    else:
+        sb_seat, bb_seat = seats[(bi + 1) % n], seats[(bi + 2) % n]
+    if seat == sb_seat:
+        return float(hand.sb or 0)
+    if seat == bb_seat:
+        return float(hand.bb or 0)
+    return 0.0
+
+
+def _committed_on_street(hand: ParsedHand, actions: List[ParsedAction], upto_index: int,
+                         street: str, player: str) -> float:
+    """Fichas que `player` tem na frente NESTA street, olhando as ações até `upto_index`.
+
+    Convenção idêntica à do `build_table_state_at_decision`: raise/all-in gravam o
+    TO-TOTAL ('raises 1200 to 1600' → 1600), bets/calls somam. No preflop o blind entra
+    mesmo sem ser ação do parser.
+
+    Somar `amount` cru NÃO serve: o parser guarda o INCREMENTO do raise, que é medido
+    contra a aposta anterior da MESA e não contra o que o próprio jogador já pôs. Um
+    'raises 120 to 240' de quem ainda não tinha nada vale 240, não 120."""
+    bet = _blind_posted_by(hand, player) if street == 'preflop' else 0.0
+    for a in actions[:upto_index]:
+        if a.street != street or a.player != player:
+            continue
+        act = (a.action or '').lower()
+        amt = float(a.amount or 0)
+        if act in ('raises', 'all-in'):
+            m = _RAISE_TO_RE.search(a.raw or '')
+            bet = float(m.group(1).replace(",", "")) if m else bet + amt
+        elif amt > 0 and act in ('bets', 'calls'):
+            bet += amt
+    return bet
+
+
+def _hero_committed_at(hand: ParsedHand, actions: List[ParsedAction], hero_index: int,
+                       street: str, hero: str) -> float:
+    """Fichas que o hero já tem na frente nesta street, no momento da decisão."""
+    return _committed_on_street(hand, actions, hero_index, street, hero)
+
+
+def _facing_to_call_at(hand: ParsedHand, actions: List[ParsedAction], hero_index: int,
+                       street: str, hero: str) -> float:
+    """Quanto o hero AINDA PRECISA PAGAR, em fichas — não o tamanho da aposta do vilão.
+
+    `_facing_to_total_at` devolve o TO-TOTAL do vilão, e é ele que identifica o nó
+    (uma aposta "to 12bb" é o mesmo nó independente de quem já pôs quanto). Mas o CUSTO
+    de pagar é `to_total - o que o hero já tem na frente`, e é esse que manda nas pot
+    odds. Confundir os dois cobrava do jogador uma aposta inteira quando ele só devia a
+    diferença: mão 93440400037, all-in total de 1.677 sobre o raise de 1.600 do hero —
+    o histórico diz `Hero: calls 277.41`, e as pot odds exigiam equity de 27% para uma
+    decisão que custava 5%."""
+    to_total = _facing_to_total_at(actions, hero_index, street, hand)
+    if to_total <= 0:
+        return 0.0
+    to_call = max(0.0, to_total - _hero_committed_at(hand, actions, hero_index, street, hero))
+    # Ninguém paga mais do que tem. Com o hero coberto, o que ele arrisca é o stack, e é
+    # esse o número que manda nas pot odds — 12 dos 168 calls conferidos são `and is
+    # all-in`, em que o histórico mostra o hero pagando menos que a aposta cheia.
+    resto = _hero_remaining_chips(hand, hero, actions[:hero_index])
+    if resto is not None:
+        to_call = min(to_call, resto)
+    return to_call
+
+
+def _hero_initial_stack(hand: ParsedHand, hero: str) -> float | None:
+    """Stack inicial do hero, lido da linha 'Seat N: nome (X in chips)'. Regex tolerante:
+    casa PS/GG '(21,280 in chips)' e ACR '(30200.00)'."""
+    for line in (hand.raw_text or '').splitlines():
+        if f': {hero} (' in line and line.startswith('Seat '):
+            m = re.search(r'\(\s*([\d.,]+)', line)
+            if m:
+                try:
+                    return float(m.group(1).replace(',', ''))
+                except ValueError:
+                    return None
+            return None
+    return None
+
+
+def _hero_remaining_chips(hand: ParsedHand, hero: str,
+                          actions_before: List[ParsedAction]) -> float | None:
+    """Fichas que sobram ao hero no ponto da decisão. None quando o stack inicial não foi
+    lido (aí quem chama não deve capar nada — palpite seria pior que a ausência)."""
+    inicial = _hero_initial_stack(hand, hero)
+    if inicial is None:
+        return None
+    n = len(actions_before)
+    gasto = sum(_committed_on_street(hand, actions_before, n, st, hero)
+                for st in {a.street for a in actions_before} | {'preflop'})
+    return max(0.0, inicial - gasto - float((hand.antes or {}).get(hero, 0) or 0))
 
 
 def _effective_stack(hand: ParsedHand, hero: str,
@@ -221,7 +349,12 @@ def extract_decision_points(hand: ParsedHand) -> List[HandState]:
         # Tamanho do open enfrentado em bb ('raise to' total / bb) — usado pra detectar
         # open off-tree (maior que o GTO) e não marcar fold de defesa como crítico (#23).
         _bb_amt = (hand.bb or 0) or 1.0
-        facing_to_bb = round(_facing_to_total_at(hand.actions, idx, street) / _bb_amt, 2)
+        facing_to_bb = round(_facing_to_total_at(hand.actions, idx, street, hand) / _bb_amt, 2)
+        # Quanto FALTA PAGAR — não o tamanho da aposta do vilão. Os dois divergem sempre
+        # que o hero já tem fichas na street (blind, open que levou 3-bet), e é este que
+        # manda no CUSTO da decisão. Ver `_facing_to_call_at`.
+        facing_to_call    = _facing_to_call_at(hand, hand.actions, idx, street, hero)
+        facing_to_call_bb = round(facing_to_call / _bb_amt, 2)
         position = _infer_position(hand, hero)
         eff_stack = _effective_stack(hand, hero, actions_before)
 
@@ -372,6 +505,11 @@ def extract_decision_points(hand: ParsedHand) -> List[HandState]:
                 'villain_name': villain_name,   # HUD: nome do vilão do spot (lookup do perfil)
                 'facing_allin': facing_allin,   # hero enfrenta um all-in (call = a agressão)
                 'facing_to_bb': facing_to_bb,  # #23: tamanho do open enfrentado (bb)
+                # Os dois números abaixo respondem "quanto CUSTA pagar", enquanto o
+                # facing_to_bb acima responde "de que tamanho é a aposta". Só coincidem
+                # quando o hero não tem nada na frente.
+                'facing_to_call':    facing_to_call,
+                'facing_to_call_bb': facing_to_call_bb,
                 # Tamanho do PRÓPRIO raise do hero (raise-to em bb). O facing_to_bb acima é o do
                 # VILÃO; sem este, o sizing do hero não podia ser agregado ao longo do tempo (era
                 # recalculado ao vivo no /replay) e por isso não virava leak nem missão.

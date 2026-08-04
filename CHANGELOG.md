@@ -7,6 +7,95 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(motor): cobravamos a aposta INTEIRA de quem so devia a diferenca (#motor #treino)
+
+> `facing_bet` e o TAMANHO da aposta do vilao. O motor usava esse numero como se fosse o CUSTO
+> de paga-la, e os dois so coincidem quando o heroi nao tem nada na frente.
+>
+> A mao 93440400037 mostra o tamanho do erro, e o proprio historico da o gabarito:
+>
+> ```
+>   Hero: raises 1,200 to 1,600
+>   0450b46f: calls 1,600
+>   1f32e0e3: ALLIN 1,677.41
+>   Hero: calls 277.41          <-- 0,69bb foi o que ele pagou
+> ```
+>
+> Gravavamos `facing_bet = 4,19bb` e calculavamos as pot odds sobre as 1.677 fichas:
+> **equity exigida de 27,2% para uma decisao que custa 5,4%**. Cinco vezes mais.
+>
+> **O oraculo que fechou o caso:** quando o heroi paga, o valor do `calls` no historico E o custo.
+> Nao e opiniao, e o texto do site. Conferido em 168 calls reais:
+>
+> ```
+>   facingSize (incremento cru do parser) ....  66,1% de acerto
+>   facingToTotal (o que gravavamos) .........  44,0%
+>   facing_to_call (novo) ....................  98,8%   (as 2 restantes sao fixtures
+>                                                        sinteticas internamente incoerentes)
+> ```
+>
+> **Os dois numeros continuam existindo, e nao se substituem.** `facingToBb` (to-total) identifica
+> o NO: uma aposta "to 12bb" e o mesmo no independente de quem ja pos quanto, e ele entra no
+> `spot_hash`. `facingToCallBb` e o que sai do bolso e manda nas pot odds. Trocar o primeiro pelo
+> segundo re-chavearia milhares de decisoes e invalidaria solve — a cicatriz do bug do board.
+>
+> **Tres defeitos vizinhos cairam junto**, todos achados perseguindo as divergencias do oraculo:
+>
+> 1. **`ALLIN` sem "to" era lido como to-total.** E incremento: quem tinha 6.000 de SB e escreve
+>    `ALLIN 107.315,65` esta indo a 113.315,65. Subestimavamos a aposta em um blind inteiro.
+> 2. **Botao MORTO zerava o blind.** Com o assento do botao sem linha `Seat N:` (jogador saiu),
+>    o codigo desistia e devolvia 0 — o heroi aparecia sem blind postado.
+> 3. **O stack restante somava o INCREMENTO do raise.** Um `raises 120 to 240` de quem nao tinha
+>    nada contava 120, e o heroi aparecia com mais fichas do que tem.
+>
+> **Medido, antes -> depois, em 2.158 decisoes reais:** 4 vereditos mudam. Tres ficam **menos**
+> graves e um vira `marginal`. O maior deles: fold de J9 sem par contra all-in na turn, que era
+> `clear_mistake` porque o motor achava que o call custava 6,5bb — custava os 14bb do stack.
+>
+> Alcance no `spot_hash`: 7 decisoes de 2.158 (0,3%), todas CoinPoker, do item 1. Elas passam a
+> procurar outro hash; quando nao acham, ficam SEM cobertura em vez de receber veredito errado.
+>
+> Guardas verificados quebrando, um a um: desfazer o custo derruba 5 dos 9 testes; o `ALLIN`
+> derruba 3; o botao morto, o stack restante e as pot odds derrubam 1 cada. No front, trocar o
+> `??` por `||` derruba o teste do custo ZERO.
+>
+> Ha ainda um guarda de DERIVA: a convencao "fichas na frente" (raise grava to-total, bets/calls
+> somam, blind conta) vive em `_committed_on_street` E no loop do `build_table_state_at_decision`.
+> O teste confronta as duas contas sobre um torneio real inteiro; fazer uma delas somar o
+> incremento derruba 3 testes. O ideal seria uma funcao so, mas o loop da mesa calcula stacks e
+> folds no mesmo passe — ate valer a extracao, o guarda e o que impede a divergencia silenciosa.
+>
+> Backend 1869 testes (o arquivo novo foi REGISTRADO em `run_all_tests.py` — as suites sao listas
+> explicitas, e sem isso o guarda existiria sem nunca rodar). Frontend 279.
+>
+> **Na tela:** o Ghost Table calculava as pot odds do drill com `callAmt = facing_bet`, entao o
+> jogador via a mesma exigencia inflada. Agora usa `custoDePagar()` em `cardLogic`, com fallback
+> para `facing_bet` em decisao antiga (coluna NULL) — nunca para zero.
+
+### diag(motor): o pote que alimenta as pot odds acerta 1,2% das vezes (#motor)
+
+> Achado ao conferir o conserto acima, e **nao foi consertado de proposito**.
+>
+> `_pot_up_to` soma o `amount` cru de cada acao. Isso erra duas vezes ao mesmo tempo: perde os
+> blinds (que nao sao acao do parser) e conta o INCREMENTO do raise em vez do total do jogador.
+> O numero vai para `state.pot_size`, que e o denominador das pot odds de todo o motor.
+>
+> Oraculo: a linha `Total pot` do SUMMARY, somando o que cada jogador pos e descontando a aposta
+> devolvida (`Uncalled bet returned` no PS/GG, `RETURN` no CoinPoker). Em 1.682 maos:
+>
+> ```
+>   _pot_up_to (o que o motor usa hoje) ....   1,2%
+>   reconstrucao por jogador ...............  99,6%
+> ```
+>
+> **Por que ficou de fora:** a tolerancia do veredito foi calibrada em cima dessa equity exigida
+> inflada. Corrigir so o pote produz **13 acusacoes NOVAS contra fold** em 2.158 decisoes, e duas
+> sao comprovadamente falsas — vem do estimador heuristico de equity, que le o par do BOARD como
+> par do heroi (76o em Q-3-3 avaliado em 44% de equity; o real e 15-20%). O pote certo nao cria
+> esse defeito, ele o **expoe**. Consertar exige recalibrar junto, e isso e tarefa propria.
+>
+> A medicao fica reproduzivel em `scripts/medir_pote_reconstruido.py` (READ-ONLY).
+
 ### fix(parser): o CoinPoker escreve `ALLIN` e nos perdiamos o all-in INTEIRO (#parser)
 
 > Achado investigando outra coisa: por que 46 decisoes de BB ficavam sem gabarito. O backlog dizia

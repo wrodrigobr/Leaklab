@@ -284,6 +284,7 @@
     "miss_next": "Un error reinicia el spot en el intervalo mínimo.",
     "mastery_next": "Un spot dominado se archiva en el intervalo máximo.",
     "p3": "El card de drills en el dashboard muestra los spots con revisión vencida (rojo), próximos a vencer (amarillo) y al día (verde). El objetivo es mantener todos los spots en verde, señal de que los patrones fueron internalizados.",
+    "p3b": "El panel <strong>Pot Odds</strong> muestra la equity mínima para pagar, y se calcula sobre <strong>lo que falta pagar</strong>, no sobre el tamaño de la apuesta del rival. Los dos difieren siempre que ya tenés fichas en la mesa: contra un open de 2bb, el BB completa 1bb, y sobre ese 1bb se hace la cuenta.",
     "p4": "XP ganado: <strong>25 XP</strong> por drill completado, <strong>100 XP</strong> al alcanzar mastery en un spot.",
     "p5": "El <strong>Modo Presión</strong> agrega un cronómetro de 30 segundos por decisión. Cuando el tiempo llega a cero, se registra un fold automáticamente y el streak de aciertos se reinicia. El streak se muestra con un sello 🔥 durante la sesión y en el resumen final.",
     "result_hit": "Acierto",

@@ -725,6 +725,10 @@ def _run_migrations(conn):
             # esta coluna o sizing do hero só existia recalculado ao vivo no /replay e não
             # podia ser agregado ao longo do tempo — logo, não virava leak nem missão.
             "ALTER TABLE decisions ADD COLUMN IF NOT EXISTS raise_to_bb REAL",
+            # Quanto o hero precisa PAGAR, em bb. `facing_bet` é o TAMANHO da aposta do vilão
+            # (to-total) e identifica o nó GTO; os dois divergem sempre que o hero já tem fichas
+            # na frente. Sem esta coluna a tela do drill calculava pot odds com a aposta cheia.
+            "ALTER TABLE decisions ADD COLUMN IF NOT EXISTS facing_to_call_bb REAL",
             # #15 leaderboard — opt-in/privacidade: aparecer no ranking público é consentido
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS leaderboard_opt_in BOOLEAN NOT NULL DEFAULT FALSE",
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS leaderboard_handle TEXT",
@@ -1434,6 +1438,8 @@ def _run_migrations(conn):
             ("n_active_opponents", "ALTER TABLE decisions ADD COLUMN n_active_opponents INTEGER"),
             ("multiway_safe_verdict", "ALTER TABLE decisions ADD COLUMN multiway_safe_verdict TEXT"),  # #30 shadow
             ("raise_to_bb",      "ALTER TABLE decisions ADD COLUMN raise_to_bb      REAL"),   # sizing do hero
+            # Custo de pagar (bb) — espelha o bloco PG. Ver o comentário de lá.
+            ("facing_to_call_bb", "ALTER TABLE decisions ADD COLUMN facing_to_call_bb REAL"),
             # Pureza da estratégia — espelha o bloco PG à prova de abort. `gto_top_freq` é o que
             # separa decisão AUTOMÁTICA (modal ~100%) de decisão de VERDADE (estratégia mista).
             ("gto_played_freq",  "ALTER TABLE decisions ADD COLUMN gto_played_freq  REAL"),

@@ -725,6 +725,11 @@ def save_decisions(tournament_db_id: int, results: List[dict]):
             _facing_to_bb = spot_ctx.get('facingToBb')
             facing_bet_bb = (round(float(_facing_to_bb), 1) if _facing_to_bb is not None
                              else (round(raw_face / level_bb_val, 1) if raw_face else None))
+            # Quanto CUSTA pagar, que é outro número: `facing_bet` acima é o to-total do vilão
+            # e identifica o nó GTO; este é o que sai do bolso quando o hero já tem fichas na
+            # frente. NULL em linha antiga — quem lê deve cair no `facing_bet` nesse caso.
+            _facing_to_call = spot_ctx.get('facingToCallBb')
+            facing_to_call_bb = round(float(_facing_to_call), 2) if _facing_to_call is not None else None
             gto = r.get('gto', {})
             rows.append((
                 tournament_db_id,
@@ -764,6 +769,7 @@ def save_decisions(tournament_db_id: int, results: List[dict]):
                 gto.get('ev_loss_source'),
                 spot_ctx.get('nActiveOpponents'),   # oponentes vivos no momento da decisão (multiway-aware)
                 spot_ctx.get('heroRaiseToBb'),      # tamanho do PRÓPRIO raise do hero (bb)
+                facing_to_call_bb,                  # quanto falta pagar (bb) — custo, não tamanho
                 *_purity(r),                        # (freq da ação jogada, freq da modal)
                 # Chaves de agregação (Protocolo de Progressão, Fase 0). Calculadas pelo MESMO
                 # caminho que o backfill usa — ver `familia_spot.chaves_de_decisao`.
@@ -778,9 +784,9 @@ def save_decisions(tournament_db_id: int, results: List[dict]):
                level_sb, level_bb, level_num, note, is_3bet, showdown_result,
                pot_size, facing_bet, gto_label, gto_action, gto_depth_capped, estimated_equity,
                vs_position, preflop_raises_faced, hero_won_hand,
-               ev_loss_bb, ev_loss_source, n_active_opponents, raise_to_bb,
+               ev_loss_bb, ev_loss_source, n_active_opponents, raise_to_bb, facing_to_call_bb,
                gto_played_freq, gto_top_freq, spot_family_key, spot_hash)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
         """, rows)
         conn.commit()
     finally:
@@ -1672,7 +1678,7 @@ def get_drill_spots(user_id: int, limit: int = 10, street: str = None, spot: str
                 d.action_taken, d.best_action, d.label, d.score,
                 d.m_ratio, d.icm_pressure, d.stack_bb, d.position,
                 d.num_players, d.is_3bet, d.level_bb, d.note, d.draw_profile,
-                d.pot_size, d.facing_bet, d.n_active_opponents,
+                d.pot_size, d.facing_bet, d.facing_to_call_bb, d.n_active_opponents,
                 d.gto_action, d.gto_label,
                 t.tournament_name, t.tournament_id, t.played_at, t.buy_in,
                 ds_last.next_drill_at, ds_last.srs_interval_days

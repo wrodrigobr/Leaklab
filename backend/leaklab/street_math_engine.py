@@ -54,8 +54,12 @@ def _canon_hand(hero_cards: str | None) -> str | None:
 
 
 def build_math_snapshot(state: HandState) -> MathSnapshot:
-    pot = max(state.pot_size, 0.0)
-    facing = max(state.facing_size, 0.0)
+    # Pot odds se pagam com o que AINDA FALTA PAGAR, não com o tamanho da aposta do vilão.
+    # `facing_size` é o incremento cru do parser e `facing_to_bb` é o to-total dele; nenhum
+    # dos dois é o custo quando o hero já tem fichas na frente. Conferido contra o próprio
+    # histórico (o valor do `calls` do hero): 166 de 168; o to-total acertava 74.
+    facing = _custo_de_pagar(state)
+    pot    = _pote_no_meio(state)
     pot_odds_equity = None
     if facing > 0:
         pot_odds_equity = round(facing / (pot + facing), 4) if (pot + facing) > 0 else None
@@ -191,10 +195,38 @@ def _postflop_made_equity(hero_cards: str | None, board) -> float | None:
         return None
 
 
+def _pote_no_meio(state: HandState) -> float:
+    """Pote no denominador das pot odds.
+
+    ATENÇÃO, e está medido: `pot_size` está errado em quase toda mão. Ele soma o `amount`
+    cru do parser, então perde os blinds (que não são ação) e conta o INCREMENTO do raise
+    em vez do total do jogador. Conferido contra a linha `Total pot` do SUMMARY em 1.682
+    mãos, ele acerta **1,2%**; a reconstrução por jogador acerta 99,6%
+    (`scripts/medir_pote_reconstruido.py` refaz a conta).
+
+    Não foi trocado aqui de propósito. A tolerância do motor foi calibrada em cima desta
+    equity exigida inflada, e corrigir só o pote produz 13 acusações NOVAS contra fold em
+    2.158 decisões — duas delas comprovadamente falsas, vindas do estimador heurístico de
+    equity (ele lê o par do BOARD como par do hero). O pote é tarefa própria, com
+    recalibragem junto."""
+    return max(state.pot_size, 0.0)
+
+
+def _custo_de_pagar(state: HandState) -> float:
+    """Fichas que o hero precisa colocar para continuar. Cai no `facing_size` quando o
+    builder não forneceu o número (HandState montado à mão em teste ou por outro caminho),
+    para que a ausência não vire zero — zero apaga as pot odds em silêncio."""
+    v = (state.metadata or {}).get('facing_to_call')
+    if v is None:
+        return max(state.facing_size, 0.0)
+    return max(float(v), 0.0)
+
+
 def _estimate_pressure(state: HandState) -> float:
-    if state.facing_size <= 0:
+    custo = _custo_de_pagar(state)
+    if custo <= 0:
         return 0.05
-    ratio = state.facing_size / max(state.pot_size, 1.0)
+    ratio = custo / max(state.pot_size, 1.0)
     if ratio >= 1.0:
         return 0.8
     if ratio >= 0.66:

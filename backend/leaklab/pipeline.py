@@ -116,6 +116,10 @@ def build_decision_input(state: HandState, hand: 'ParsedHand | None' = None) -> 
             'facingLimp':         state.metadata.get('facing_limp', False),  # pote limpado (fora de cobertura GTO)
             'callerPosition':     state.metadata.get('caller_position', ''),  # cold caller (pra rotear squeeze)
             'facingToBb':         state.metadata.get('facing_to_bb'),  # #23: open enfrentado em bb (raise-to total)
+            # TAMANHO da aposta (facingToBb) x CUSTO de pagá-la (facingToCallBb). O primeiro
+            # identifica o nó — uma aposta "to 12bb" é o mesmo nó independente de quem já pôs
+            # quanto — e por isso segue mandando no spot_hash. O segundo é o que sai do bolso.
+            'facingToCallBb':     state.metadata.get('facing_to_call_bb'),
             'heroRaiseToBb':      state.metadata.get('hero_raise_to_bb'),  # tamanho do PRÓPRIO raise do hero
             'potType':            state.metadata.get('pot_type', 'srp'),       # Fase 2: srp|3bet|4bet|limped
             'preflopOpener':      state.metadata.get('preflop_opener', ''),    # posição do opener

@@ -829,7 +829,12 @@ export interface DrillSpot {
   note: string | null;
   draw_profile: string | null;
   pot_size: number | null;
+  /** TAMANHO da aposta do vilão (to-total, em bb). Identifica o nó GTO. */
   facing_bet: number | null;
+  /** CUSTO de pagar essa aposta (bb). Diverge de `facing_bet` sempre que o hero já tem
+   *  fichas na frente (blind, ou open que levou 3-bet). NULL em decisão analisada antes
+   *  de 2026-08-04 — quem exibe deve cair no `facing_bet` nesse caso. */
+  facing_to_call_bb: number | null;
   // Sprint R — SRS
   next_drill_at: string | null;
   srs_interval_days: number | null;

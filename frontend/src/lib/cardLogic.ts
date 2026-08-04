@@ -109,6 +109,37 @@ export function verdictLevelFromScore(score: number | null | undefined): Verdict
   return "error";
 }
 
+/**
+ * Quanto o jogador PAGA para continuar, em bb — que NÃO é o tamanho da aposta do vilão.
+ *
+ * `facing_bet` é o to-total do vilão e serve para identificar o nó GTO. O custo é
+ * `to-total − o que o hero já tem na frente`, e os dois divergem sempre que ele já pôs
+ * fichas na street: contra um open de 2bb, o BB paga 1bb. Usar o tamanho como custo
+ * inflava as pot odds da tela — numa mão real do acervo, 27,2% de equity exigida numa
+ * decisão que custava 5,4%.
+ *
+ * `??` e não `||`: um custo de 0 é legítimo (ninguém apostou) e com `||` cairia no
+ * fallback — a mesma armadilha que já mordeu o `facing_size_bb` do Leak Trainer.
+ * Decisão analisada antes de 2026-08-04 tem a coluna NULL e cai no `facing_bet`,
+ * preservando o comportamento antigo em vez de zerar.
+ */
+export function custoDePagar(
+  spot: { facing_to_call_bb?: number | null; facing_bet?: number | null },
+): number {
+  return Number(spot.facing_to_call_bb ?? spot.facing_bet ?? 0);
+}
+
+/** Pot odds exigidas para pagar, em fração. `potBb` já inclui a aposta enfrentada; o custo
+ *  entra por fora porque ainda não foi pago. Devolve null quando não há o que pagar. */
+export function potOddsExigidas(
+  potBb: number | null | undefined,
+  custoBb: number,
+): number | null {
+  const pot = Number(potBb ?? 0);
+  if (!(custoBb > 0) || !(pot + custoBb > 0)) return null;
+  return custoBb / (pot + custoBb);
+}
+
 /** Jogadores ainda no pote = assentos com cartas − foldados (acumulado no step). */
 export function livePlayers(
   seats: Record<string, unknown> | undefined | null,
