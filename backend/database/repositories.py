@@ -10615,12 +10615,29 @@ def resync_gto_labels_for_node(spot_hash: str) -> int:
         conn.close()
 
 
-def reconcile_tournament_labels(tournament_id: int) -> int:
+def reconcile_tournament_labels(tournament_id: int, only_ids=None) -> int:
     """
-    Reconcilia label vs gto_label para todas as decisões de um torneio,
-    e recalcula standard_pct do torneio.
-    Chamado como background thread após upload e após sync de gto_labels.
-    Retorna o número de decisões atualizadas.
+    Reconcilia label vs gto_label para as decisões de um torneio, alinha o score à banda do
+    label e recalcula os percentuais do torneio. Retorna o número de decisões atualizadas.
+
+    `only_ids` limita a RE-DERIVAÇÃO DE LABEL às decisões indicadas (o alinhamento de score e o
+    recálculo de percentuais seguem valendo para o torneio inteiro):
+
+      · `None` (padrão) — varre tudo. É o que o `drain_solver_queue` e o
+        `backfill_label_reconciliation` precisam: ali o solver mudou `gto_label` em muitas
+        linhas e a re-derivação é justamente o serviço.
+      · lista (inclusive vazia) — só essas. É o que o caminho de ANÁLISE precisa.
+
+    **Por que a lista existe.** Logo depois de `save_decisions`, cada linha tem o label que o
+    MOTOR calculou junto com aquele mesmo `gto_label`. Varrer ali não reconcilia nada: só troca
+    um veredito completo (que viu ICM, multiway, mão monstro, EV e ausência de gabarito) por um
+    derivado só do `gto_label`. Medido em 2026-08-04 num torneio de 485 decisões: depois do
+    `save_decisions` a divergência motor×banco era ZERO, e a varredura criava 54.
+
+    Isto NÃO muda o mapeamento de `_reconcile_label` — as duas contradições de política
+    conhecidas (`gto_minor_deviation` teto-vs-piso, e `gto_correct`/`gto_mixed` virando
+    `standard` sem condição) continuam como estão, de propósito: a segunda é load-bearing para o
+    solve tardio, que precisa limpar erro heurístico falso.
     """
     conn = get_conn()
     try:
@@ -10632,6 +10649,10 @@ def reconcile_tournament_labels(tournament_id: int) -> int:
               AND gto_label IS NOT NULL AND gto_label != ''
               AND label IS NOT NULL AND label != ''
         """), (tournament_id,))
+
+        if only_ids is not None:
+            _alvo = {int(i) for i in only_ids}
+            rows = [r for r in rows if int(r['id']) in _alvo]
 
         changes = []
         for r in rows:

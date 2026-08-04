@@ -228,12 +228,18 @@ def _build_vs3bet_context(rows: list[dict], conn) -> set[int]:
 
 
 def _process_rows(rows: list[dict], conn, dry_run: bool = True, verbose: bool = True,
-                  clear_stale: bool = False) -> int:
+                  clear_stale: bool = False, _tocados: list | None = None) -> int:
     """Process a list of decision rows, filling gto_label where missing. Returns count updated.
 
     clear_stale=True: quando o range nao cobre o spot mas o DB ainda tem gto_label
     persistido de uma run anterior, limpa o campo (evita label orfa sem evidencia).
+
+    `_tocados`: lista OPCIONAL preenchida com os ids das decisoes cujo `gto_label` mudou. Quem
+    reconcilia depois usa isso para nao varrer o torneio inteiro — ver
+    `reconcile_tournament_labels(only_ids=...)`.
     """
+    if _tocados is None:
+        _tocados = []
     updates: list[tuple] = []
     clears:  list[int] = []
     skipped = 0
@@ -332,6 +338,9 @@ def _process_rows(rows: list[dict], conn, dry_run: bool = True, verbose: bool = 
 
     if (not updates and not clears) or dry_run:
         return 0
+    # Ids tocados — quem reconcilia depois precisa saber QUAIS linhas mudaram de `gto_label`,
+    # senão varre o torneio inteiro e reescreve vereditos que o motor acabou de calcular.
+    _tocados[:] = [d for _, _, d in updates] + list(clears)
 
     for new_label, new_action, dec_id in updates:
         # Atualiza gto_label/gto_action E best_action — manter consistencia interna
@@ -371,9 +380,12 @@ def sync_tournament(tournament_id: int) -> int:
         if not rows:
             return 0
 
-        n = _process_rows(rows, conn, dry_run=False, verbose=False)
+        tocados: list = []
+        n = _process_rows(rows, conn, dry_run=False, verbose=False, _tocados=tocados)
         if n:
-            reconcile_tournament_labels(tournament_id)
+            # SÓ as linhas cujo `gto_label` mudou. Varrer o torneio aqui reescrevia o veredito
+            # que o motor tinha acabado de calcular — ver reconcile_tournament_labels.
+            reconcile_tournament_labels(tournament_id, only_ids=tocados)
         return n
     except Exception:
         return 0

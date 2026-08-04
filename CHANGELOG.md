@@ -82,10 +82,70 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 > ultimo so existe porque na primeira rodada **nao derrubava nada**: os testes exercitavam a funcao
 > pura e nunca o caminho SQL. Ha agora um teste que grava a decisao num banco de verdade.
 
+### fix(veredito): a reconciliacao nao varre mais o que o motor acabou de rotular (#motor #veredito)
+
+> Sequencia das duas contradicoes de politica: **nenhuma delas era segura de virar**, e nao foram
+> viradas. O `gto_minor_deviation` (teto no motor, piso no reconcile) e escolha de produto sobre o
+> que "acao mista valida" deve mostrar; e o `gto_correct`/`gto_mixed` -> `standard` e **load-
+> bearing** — sem ele, um solve que chega depois dizendo "correto" nao limpa mais o erro
+> heuristico falso, que e exatamente o servico do `drain_solver_queue` e do
+> `backfill_label_reconciliation`.
+>
+> **O que era seguro: parar de varrer as linhas que o motor acabou de rotular.** Logo depois de
+> `save_decisions`, cada linha ja tem o veredito que o MOTOR calculou junto com aquele mesmo
+> `gto_label`. Varrer ali nao reconcilia nada: troca um veredito completo — que viu ICM, multiway,
+> mao monstro, EV e ausencia de gabarito — por um derivado so do `gto_label`.
+>
+> `reconcile_tournament_labels(tournament_id, only_ids=None)`:
+>
+> ```
+>   None (padrao)      varre tudo    <- drain_solver_queue, backfill: e o servico deles
+>   lista (ou vazia)   so essas      <- caminho de ANALISE
+> ```
+>
+> O `sync_tournament` passou a devolver quais linhas ele mudou e reconcilia so elas. Os tres
+> chamadores pos-analise passam `only_ids=[]` — a chamada segue valendo pelo alinhamento de score e
+> pelo recalculo dos percentuais, que sao do torneio inteiro.
+>
+> **Medido no acervo (2.366 decisoes):**
+>
+> ```
+>   divergencia motor x banco ......  14,4%  ->  9,9% (teto de EV)  ->  6,4%
+>   "mesmo gto_label, label diferente"   ...     97   ->  10
+>   banco MAIS grave que o motor ....   205  ->   97  ->  75
+> ```
+>
+> Os casos "mesmo `gto_label`, label diferente" sao a medida direta das contradicoes de politica
+> sendo EVITADAS sem serem decididas: 97 -> 10.
+>
+> **Erro meu na verificacao, de novo do mesmo tipo:** a primeira medicao deu 235 antes e 235 depois,
+> e eu quase reportei "a varredura nao era a fonte". Era o meu harness que chamava
+> `reconcile_tournament_labels(local_id)` direto, **sem passar o `only_ids`** que eu tinha acabado
+> de criar. Numero identico dos dois lados e sinal de que o experimento nao mudou nada, nao de que
+> a mudanca nao importa.
+
+### diag(veredito): o `sync` e o motor discordam sobre o proprio `gto_label` (#motor #gto)
+
+> Achado ao investigar o que sobrou. Das 151 divergencias restantes, **141 tem `gto_label`
+> DIFERENTE entre o motor e o banco** — nao e o label derivado que diverge, e a propria fonte:
+>
+> ```
+>   motor gto_critical  x  banco gto_correct     (vereditos OPOSTOS)
+>   motor gto_correct   x  banco gto_critical
+>   motor gto_mixed     x  banco None
+> ```
+>
+> Sao duas fontes de verdade GTO preflop: o motor consome o `strategy_provider` e o
+> `sync_gto_labels_from_ranges` deriva das ranges estaticas. [[project_strategy_provider_single_source]]
+> ja enuncia a regra ("toda decisao nova DEVE consumi-lo"); o sync nao a segue.
+>
+> Nao consertado: escolher a fonte autoritativa e decisao de produto, e mexer no sync sem isso
+> trocaria uma discordancia por outra.
+
 ### diag(veredito): duas contradicoes de politica que sobraram (#motor #veredito)
 
-> **Nao consertadas — sao decisao de produto, nao conserto.** Restam 235 divergencias (9,9%), e
-> elas tem duas causas nomeadas:
+> **Nao consertadas — e a decisao de NAO consertar esta justificada na entrada acima.** Restam
+> 10 casos com o mesmo `gto_label` (eram 235 antes de escopar a varredura), com duas causas:
 >
 > **1. `gto_minor_deviation`: o motor CAPEIA, o reconcile PISA.** Mesma entrada, operacoes opostas:
 >

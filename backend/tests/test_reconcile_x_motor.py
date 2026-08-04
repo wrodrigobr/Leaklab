@@ -144,6 +144,70 @@ def test_o_SELECT_do_reconcile_le_os_campos_de_EV():
             pass
 
 
+def test_only_ids_limita_a_re_derivacao_de_label():
+    """Depois do `save_decisions` cada linha ja tem o veredito do MOTOR, calculado junto com
+    aquele mesmo `gto_label`. Varrer ali nao reconcilia nada — so troca um veredito completo
+    (que viu ICM, multiway, mao monstro, EV e ausencia de gabarito) por um derivado so do
+    `gto_label`. `only_ids=[]` desliga a re-derivacao sem desligar o resto.
+
+    Medido no acervo: a varredura escopada levou a divergencia motor x banco de 9,9% para
+    6,4%, e os casos "mesmo gto_label, label diferente" de 97 para 10."""
+    import tempfile, sqlite3
+    import database.schema as sch
+    import database.repositories as repo
+
+    db = tempfile.mktemp(suffix='.db')
+    _os, _or = sch.get_conn, repo.get_conn
+
+    def _conn():
+        c = sqlite3.connect(db)
+        c.row_factory = sqlite3.Row
+        return c
+    sch.get_conn = _conn
+    repo.get_conn = _conn
+    try:
+        sch.init_db()
+        uid = repo.create_user('scopeuser', 'scope@t.com', 'pwd')
+        tid = repo.save_tournament(uid, 'TSC', 'phpro', {'total_hands': 1, 'total_decisions': 2})
+        c = _conn()
+        # `standard` com `gto_critical`: a varredura completa PISA em small_mistake.
+        for hid in ('H1', 'H2'):
+            c.execute("""INSERT INTO decisions
+                (tournament_id, hand_id, street, position, action_taken, best_action, label,
+                 gto_label, gto_action, score, stack_bb, facing_bet, hero_cards, board)
+                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                (tid, hid, 'preflop', 'BTN', 'raise', 'raise', 'standard',
+                 'gto_critical', 'raise', 0.05, 40.0, 2.0, 'AsKd', '[]'))
+        c.commit()
+        ids = [r['id'] for r in c.execute("SELECT id FROM decisions WHERE tournament_id=? ORDER BY id", (tid,))]
+        c.close()
+
+        def _labels():
+            c2 = _conn()
+            r = [x['label'] for x in c2.execute(
+                "SELECT label FROM decisions WHERE tournament_id=? ORDER BY id", (tid,))]
+            c2.close()
+            return r
+
+        repo.reconcile_tournament_labels(tid, only_ids=[])
+        assert _labels() == ['standard', 'standard'], \
+            f'only_ids=[] nao pode re-derivar label nenhum, veio {_labels()}'
+
+        repo.reconcile_tournament_labels(tid, only_ids=[ids[0]])
+        assert _labels() == ['small_mistake', 'standard'], \
+            f'only_ids devia agir SO na primeira, veio {_labels()}'
+
+        repo.reconcile_tournament_labels(tid)          # None = varre tudo (drain/backfill)
+        assert _labels() == ['small_mistake', 'small_mistake'], \
+            f'sem only_ids a varredura completa precisa continuar valendo, veio {_labels()}'
+    finally:
+        sch.get_conn, repo.get_conn = _os, _or
+        try:
+            os.remove(db)
+        except OSError:
+            pass
+
+
 if __name__ == '__main__':
     falhas = 0
     testes = [v for k, v in sorted(globals().items()) if k.startswith('test_')]

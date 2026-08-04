@@ -1035,7 +1035,12 @@ def _analyze_impl():
         except Exception as _e:
             _log.exception("preflop_sync FAILED tournament_id=%s err=%s", tid, _e)
         try:
-            n = reconcile_tournament_labels(tid)
+            # `only_ids=[]`: NÃO re-deriva label nenhum. O `sync_tournament` acima já reconciliou
+            # exatamente as linhas cujo `gto_label` ele mudou; o resto acabou de sair do motor,
+            # com um veredito mais completo do que o `gto_label` sozinho produz. Esta chamada
+            # segue valendo pelo alinhamento de score e pelo recálculo dos percentuais, que são
+            # do torneio inteiro. Ver reconcile_tournament_labels.
+            n = reconcile_tournament_labels(tid, only_ids=[])
             _log.info("preflop_sync_and_reconcile done tournament_id=%s reconciled=%d", tid, n)
         except Exception as _e:
             _log.exception("reconcile FAILED tournament_id=%s err=%s", tid, _e)
@@ -7665,7 +7670,9 @@ def admin_reconcile_tournament(tournament_db_id: int):
         return jsonify({'error': f'sync_failed: {e}'}), 500
 
     try:
-        reconciled = reconcile_tournament_labels(tournament_db_id)
+        # `only_ids=[]` pelo mesmo motivo do outro chamador pós-sync: o sync já reconciliou o
+        # que mudou, e varrer o resto reescreveria o veredito do motor.
+        reconciled = reconcile_tournament_labels(tournament_db_id, only_ids=[])
     except Exception as e:
         return jsonify({'error': f'reconcile_failed: {e}'}), 500
 

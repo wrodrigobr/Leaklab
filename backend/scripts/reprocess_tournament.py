@@ -114,7 +114,9 @@ def main():
     except Exception as e:
         print(f"  preflop sync falhou: {e}")
     try:
-        n = reconcile_tournament_labels(t['id'])
+        # `only_ids=[]`: o sync acima ja reconciliou as linhas que ele mudou; o resto acabou de
+        # sair do motor. Aqui a chamada vale pelo alinhamento de score e pelos percentuais.
+        n = reconcile_tournament_labels(t['id'], only_ids=[])
         print(f"  reconcile: {n} labels")
     except Exception as e:
         print(f"  reconcile falhou: {e}")
