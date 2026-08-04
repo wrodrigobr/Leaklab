@@ -679,7 +679,17 @@ def _chaves(r: dict) -> tuple:
         return chaves_de_decisao(
             street      = r.get('street'),
             position    = r.get('position') or spot.get('position'),
-            stack_bb    = r.get('stack_bb') or spot.get('heroStackBb'),
+            # `effectiveStackBb` PRIMEIRO, e não é detalhe: o resultado da análise não tem
+            # `stack_bb` no topo nem `heroStackBb` dentro do spot (esse vive no `context`),
+            # então as duas fontes antigas davam None e `chaves_de_decisao` devolvia
+            # (None, None) — **toda decisão gravada pelo caminho vivo saía com `spot_hash`
+            # NULL**, e só as que passaram por backfill tinham chave. Medido no acervo local:
+            # os 4 torneios analisados mais recentemente estavam com 0%.
+            # É também o stack que o motor usa no `compute_spot_hash` (decision_engine:
+            # `effectiveStackBb or heroStackBb or 20`), então esta é a única fonte que produz
+            # a MESMA chave que o lookup procura.
+            stack_bb    = (r.get('stack_bb') or spot.get('effectiveStackBb')
+                           or spot.get('heroStackBb')),
             vs_position = r.get('vs_position') or spot.get('villainPosition'),
             is_3bet     = r.get('is_3bet') or spot.get('isThreeBet'),
             board       = r.get('board'),

@@ -7,6 +7,63 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(banco): toda decisao gravada saia com `spot_hash` NULL (#banco #progressao)
+
+> Achado reprocessando o acervo local: o `spot_hash` caiu de 1.728 preenchidos para **1**. Nao era
+> dano do reprocesso -- era o caminho de gravacao **nunca** ter preenchido a chave. Os 1.728 que
+> existiam vinham de backfill, e os torneios analisados mais recentemente estavam com 0%:
+>
+> ```
+>   t=418  n=34   com hash=0
+>   t=420  n=64   com hash=0
+>   t=426  n=136  com hash=0
+>   t=429  n=351  com hash=7   (2%)
+> ```
+>
+> Causa em `repositories._chaves`: `stack_bb = r.get('stack_bb') or spot.get('heroStackBb')`. O
+> dict de resultado da analise **nao tem nenhum dos dois** — no topo nao existe `stack_bb`, e o
+> `spot` carrega `effectiveStackBb` (o `heroStackBb` vive no `context`). As duas fontes davam None,
+> `chaves_de_decisao` devolvia `(None, None)`, e o INSERT gravava NULL nas duas colunas.
+>
+> `spot_family_key` e `spot_hash` alimentam a agregacao por familia do Protocolo de Progressao:
+> **decisao sem chave sai da conta em silencio.** Depois do conserto, 2.306/2.306.
+>
+> Usa `effectiveStackBb` e nao `heroStackBb` porque e o stack que o MOTOR usa no
+> `compute_spot_hash` — qualquer outro produziria uma chave que o lookup nunca procura. Ha teste
+> confrontando a chave gravada com a que o motor monta.
+>
+> **Nenhuma medicao anterior podia ter pego isto**: todas rodavam o motor direto e nunca passavam
+> pelo caminho de gravacao. So o reprocesso do acervo passa.
+>
+> Nota de passagem, registrada porque contradiz o que estava anotado: a COLUNA `decisions.stack_bb`
+> guarda `ctx.heroStackBb`, que **nao** e o stack efetivo. Por isso ela nao mudou nada no
+> reprocesso, embora o `effectiveStackBb` (que entra no hash) tenha mudado em metade do acervo.
+
+### diag(motor): o veredito GRAVADO discorda do motor em 14,4% das decisoes (#motor #veredito)
+
+> Achado no mesmo reprocesso, **nao consertado** — e decisao de produto, nao conserto.
+>
+> Comparando `evaluate_decision` com a linha do banco depois de `sync_gto_labels_from_ranges` +
+> `reconcile_tournament_labels`, em 2.366 decisoes:
+>
+> ```
+>   DIVERGEM ....................... 340  (14,4%)
+>      marginal -> small_mistake      124        o banco MAIS grave que o motor: 205
+>      marginal -> standard           104        o banco mais brando:            135
+>      standard -> small_mistake       58
+>      small_mistake -> standard       28
+>      clear_mistake -> standard        1
+>      standard -> clear_mistake        1
+> ```
+>
+> Caso conferido a mao (mao SG3812283472): o motor devolve `marginal` (ele rebaixa por EV) e o banco
+> grava `small_mistake`. **O reconcile nao aplica o teto de EV do motor.**
+>
+> **Consequencia pratica, e e por isso que fica registrado:** o delta de veredito de um reprocesso
+> do acervo NAO e atribuivel aos consertos, porque passa por uma camada que discorda do motor. As
+> medicoes de veredito desta sessao foram todas feitas NO MOTOR e seguem validas; a do acervo e que
+> nao serve para atribuir causa.
+
 ### fix(motor): mao feita valia o mesmo em todas as ruas, e nao vale (#motor)
 
 > Entrei nisto para calibrar `turn/value` (+9,7pp) e o problema era outro, maior e mais simples:
