@@ -264,11 +264,11 @@ def _facing_to_call_at(hand: ParsedHand, actions: List[ParsedAction], hero_index
     return to_call
 
 
-def _hero_initial_stack(hand: ParsedHand, hero: str) -> float | None:
-    """Stack inicial do hero, lido da linha 'Seat N: nome (X in chips)'. Regex tolerante:
+def _stack_inicial_de(hand: ParsedHand, jogador: str) -> float | None:
+    """Stack inicial do jogador, lido da linha 'Seat N: nome (X in chips)'. Regex tolerante:
     casa PS/GG '(21,280 in chips)' e ACR '(30200.00)'."""
     for line in (hand.raw_text or '').splitlines():
-        if f': {hero} (' in line and line.startswith('Seat '):
+        if f': {jogador} (' in line and line.startswith('Seat '):
             m = re.search(r'\(\s*([\d.,]+)', line)
             if m:
                 try:
@@ -279,48 +279,69 @@ def _hero_initial_stack(hand: ParsedHand, hero: str) -> float | None:
     return None
 
 
-def _hero_remaining_chips(hand: ParsedHand, hero: str,
-                          actions_before: List[ParsedAction]) -> float | None:
-    """Fichas que sobram ao hero no ponto da decisão. None quando o stack inicial não foi
-    lido (aí quem chama não deve capar nada — palpite seria pior que a ausência)."""
-    inicial = _hero_initial_stack(hand, hero)
+def _fichas_restantes_de(hand: ParsedHand, jogador: str,
+                         actions_before: List[ParsedAction]) -> float | None:
+    """Fichas que sobram ao jogador no ponto da decisão. None quando o stack inicial não foi
+    lido (aí quem chama não deve chutar — palpite é pior que a ausência)."""
+    inicial = _stack_inicial_de(hand, jogador)
     if inicial is None:
         return None
     n = len(actions_before)
-    gasto = sum(_committed_on_street(hand, actions_before, n, st, hero)
+    gasto = sum(_committed_on_street(hand, actions_before, n, st, jogador)
                 for st in {a.street for a in actions_before} | {'preflop'})
-    return max(0.0, inicial - gasto - float((hand.antes or {}).get(hero, 0) or 0))
+    return max(0.0, inicial - gasto - float((hand.antes or {}).get(jogador, 0) or 0))
+
+
+# Nomes antigos, mantidos porque `_facing_to_call_at` e os testes já os usam.
+_hero_initial_stack   = _stack_inicial_de
+_hero_remaining_chips = _fichas_restantes_de
 
 
 def _effective_stack(hand: ParsedHand, hero: str,
-                     actions_before: List[ParsedAction]) -> float:
-    """Stack efetivo em BBs estimado subtraindo o que o hero já colocou."""
+                     actions_before: List[ParsedAction],
+                     street: str = '', oponentes_vivos: set | None = None) -> tuple:
+    """Stack EFETIVO em bb: o máximo que ainda pode mudar de mãos. Devolve `(bb, fonte)`.
+
+    Efetivo é `min(eu, ele)` — quem tem 88bb contra um vilão de 14bb está jogando um spot de
+    14bb, e a mão se decide ali. Este cálculo NUNCA olhava o oponente: usava só o stack do
+    hero, e o número ia para o bucket da range preflop **e** para a profundidade da árvore do
+    CFR. Medido: o valor muda em 96,4% das decisões heads-up e o bucket em 49% delas.
+
+    Do lado do hero, o que ainda pode entrar é:
+
+        min(resto_do_hero,  (aposta_dele_na_street - minha_aposta_na_street) + resto_dele)
+
+    O segundo termo é o que ele ainda pode cobrar: o que falta pagar agora mais o que sobra
+    atrás dele. Com o vilão já all-in, `resto_dele` é 0 e o efetivo vira exatamente o que dá
+    para pagar — que é o certo.
+
+    **Só vale em heads-up.** Em pote multiway com um curto e um profundo NÃO EXISTE um stack
+    efetivo; forçar um número trocaria um erro por outro. Fora do heads-up devolve o stack do
+    próprio hero, como sempre foi, e diz isso em `fonte`:
+
+        'heads_up'  — min(eu, ele), inequívoco
+        'hero_only' — multiway, ou ninguém agiu ainda (RFI: qualquer um atrás pode pagar,
+                      e o oponente relevante ainda não existe)
+        'fallback'  — nem o stack inicial deu para ler; 20bb, como antes
+    """
     bb = hand.bb or 1.0
+    meu = _fichas_restantes_de(hand, hero, actions_before)
+    if meu is None:
+        return 20.0, 'fallback'          # mesmo fallback de sempre
 
-    # Tentar extrair stack inicial do HH. Regex robusto: casa PS/GG "(21,280 in chips)"
-    # E ACR "(30200.00)" (sem "in chips", stack decimal terminando em ')'). O método antigo
-    # (split('(')[1].split()[0]) pegava "30200.00)" no ACR → float() estourava → fallback 20bb
-    # em TODA mão ACR, corrompendo stack_bb (que entra no spot_hash GTO) e o SPR.
-    initial_stack = None
-    for line in hand.raw_text.splitlines():
-        if f': {hero} (' in line and line.startswith('Seat '):
-            m = re.search(r'\(\s*([\d.,]+)', line)
-            if m:
-                try:
-                    initial_stack = float(m.group(1).replace(',', ''))
-                except ValueError:
-                    pass
-            break
+    if not oponentes_vivos or len(oponentes_vivos) != 1:
+        return max(meu / bb, 0.0), 'hero_only'
 
-    if initial_stack is None:
-        return 20.0  # fallback
+    oponente = next(iter(oponentes_vivos))
+    dele = _fichas_restantes_de(hand, oponente, actions_before)
+    if dele is None:
+        return max(meu / bb, 0.0), 'hero_only'
 
-    spent = sum(
-        a.amount or 0.0
-        for a in actions_before
-        if a.player == hero and a.action in {'calls', 'bets', 'raises', 'all-in', 'posts'}
-    )
-    return max((initial_stack - spent) / bb, 0.0)
+    n = len(actions_before)
+    minha_aposta = _committed_on_street(hand, actions_before, n, street, hero)
+    aposta_dele  = _committed_on_street(hand, actions_before, n, street, oponente)
+    pendente     = max(0.0, aposta_dele - minha_aposta)
+    return max(min(meu, pendente + dele) / bb, 0.0), 'heads_up'
 
 
 def extract_decision_points(hand: ParsedHand) -> List[HandState]:
@@ -356,7 +377,8 @@ def extract_decision_points(hand: ParsedHand) -> List[HandState]:
         facing_to_call    = _facing_to_call_at(hand, hand.actions, idx, street, hero)
         facing_to_call_bb = round(facing_to_call / _bb_amt, 2)
         position = _infer_position(hand, hero)
-        eff_stack = _effective_stack(hand, hero, actions_before)
+        # `eff_stack` é calculado MAIS ABAIXO, depois de `still_in_now` — o efetivo depende de
+        # quem ainda está no pote, e isso só se sabe ali.
 
         # Determinar villain_position: quem fez a última aposta antes do hero.
         # facing_allin = a aposta/raise que o hero enfrenta É um all-in (não dá pra aumentar
@@ -437,6 +459,21 @@ def extract_decision_points(hand: ParsedHand) -> List[HandState]:
         n_active_opponents = max(0, len(still_in_now) - 1)  # exclui hero (ainda no pote)
         is_multiway = n_active_opponents >= 2
 
+        # Stack EFETIVO — precisa saber quem está vivo, por isso vem só agora. Em heads-up é
+        # `min(eu, ele)`; fora dele continua sendo o stack do hero, e `fonte` diz qual dos dois
+        # foi usado (o consumidor não deve ter que adivinhar). Ver `_effective_stack`.
+        #
+        # O conjunto NÃO é o `still_in_now`: aquele conta só quem já agiu VOLUNTARIAMENTE, e
+        # preflop isso mente. Na mão 100000008, UTG+2 vai all-in com 1,25bb e o hero sobe com
+        # 31bb; `still_in_now` via um heads-up de 1,25bb, mas CO/BTN/SB/BB ainda não tinham
+        # agido e podiam pagar — o pote podia virar 31bb. Aqui vale "sentou e não foldou":
+        # quem ainda tem cartas conta, tendo agido ou não. Postflop os dois conjuntos
+        # coincidem, então nada muda lá.
+        _sentados = {s['name'] for s in (hand.seats or [])} or set(hand.players or [])
+        _vivos_na_mao = (_sentados - folded_so_far) | {hero}
+        eff_stack, eff_stack_fonte = _effective_stack(
+            hand, hero, actions_before, street, _vivos_na_mao - {hero})
+
         # Vilão em HU postflop quando ele deu CHECK (hero é o agressor): o loop acima só
         # captura quem APOSTOU antes do hero; com o vilão dando check, ficava 'unknown' →
         # o spot caía em "sem vilão" e PERDIA a cobertura GTO (ex.: c-bet HU num pote que
@@ -510,6 +547,10 @@ def extract_decision_points(hand: ParsedHand) -> List[HandState]:
                 # quando o hero não tem nada na frente.
                 'facing_to_call':    facing_to_call,
                 'facing_to_call_bb': facing_to_call_bb,
+                # De onde saiu o `effective_stack_bb`: 'heads_up' (min entre os dois, que é o
+                # efetivo de verdade), 'hero_only' (multiway ou RFI — não existe UM efetivo
+                # ali) ou 'fallback'. Quem confia no número precisa poder saber disso.
+                'effective_stack_source': eff_stack_fonte,
                 # Tamanho do PRÓPRIO raise do hero (raise-to em bb). O facing_to_bb acima é o do
                 # VILÃO; sem este, o sizing do hero não podia ser agregado ao longo do tempo (era
                 # recalculado ao vivo no /replay) e por isso não virava leak nem missão.

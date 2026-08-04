@@ -7,6 +7,67 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(motor): o stack efetivo nunca olhava o oponente (#motor #gto)
+
+> Quem tem 88bb contra um vilao de 14bb esta jogando um spot de **14bb**: a mao se decide ali,
+> nao ha tres ruas de aposta pela frente. `_effective_stack` usava so o stack do heroi, e esse
+> numero alimenta duas coisas ao mesmo tempo -- o BUCKET da range preflop (e o `spot_hash`) e a
+> PROFUNDIDADE da arvore do CFR.
+>
+> Sao **dois** consertos, e eles pesam de formas bem diferentes. Separei a medicao porque juntos
+> o relatorio mentiria:
+>
+> ```
+>                                                     decisoes com   vereditos    cobertura
+>                                                     stack alterado              postflop
+>   (b) o resto do PROPRIO heroi                        2.080 (96%)   20 (16 +brandos)   -16
+>       (to-total do raise + blind + ante, em vez
+>        de somar o incremento cru do parser)
+>   (a) min(eu, ele) em heads-up                          361         51 (24 +graves)    -34
+>   ------------------------------------------------------------------------------------
+>   total                                               2.080         71                 -50
+> ```
+>
+> **A formula:** `min(resto_meu, (aposta_dele_na_street - minha_aposta_na_street) + resto_dele)`.
+> O segundo termo e o que ele ainda pode cobrar: o que falta pagar agora mais o que sobra atras
+> dele. Com o vilao ja all-in, `resto_dele` e 0 e o efetivo vira exatamente o que da para pagar.
+>
+> **So vale em heads-up**, e essa e a parte em que errei primeiro. A versao inicial usava
+> `still_in_now` (quem ja agiu VOLUNTARIAMENTE), e preflop isso MENTE: na mao 100000008, UTG+2 vai
+> all-in com 1,25bb e o heroi sobe com 31bb -- `still_in_now` via um heads-up de 1,25bb, mas
+> CO/BTN/SB/BB ainda nao tinham agido e podiam pagar os 200 do heroi. Com o conjunto certo
+> ("sentou e nao foldou"), a fatia heads-up caiu de 45,4% para **31,1%** das decisoes. Fora do
+> heads-up nao existe UM efetivo (um curto e um profundo no mesmo pote), entao continua sendo o
+> stack do heroi, e o spot passa a dizer isso em `effective_stack_source`.
+>
+> **As 28 acusacoes novas foram conferidas uma a uma.** 21 tem gabarito real: com o stack curto
+> certo, a range passa a dizer **jam** onde antes dizia raise -- subir 2,2x com 3,5bb efetivos e
+> erro, e o produto estava aprovando. As outras 7 vem do estimador heuristico de equity, e **esse
+> modo de falha ja existe hoje**: 18 de 163 decisoes postflop sem gabarito e sem mao feita ja sao
+> acusadas como erro (11,0%); depois do conserto sao 20 de 187 (10,7%), ou seja a proporcao nao
+> piora. E 43 acusacoes CAIRAM, 31 delas com gabarito.
+>
+> **Achado que fica registrado e nao foi consertado:** a pior das 7 e um fold de river com QJs que
+> errou o flush draw -- Q-high, e o estimador da 34% de equity porque conta "duas overcards vivas".
+> No RIVER nao ha carta por vir; `_postflop_made_equity` da valor de potencial numa rua em que nao
+> existe potencial. E defeito proprio, anterior a este conserto.
+>
+> **Forward-only, como combinado.** Nada foi re-chaveado no historico: linha ja gravada mantem o
+> `stack_bb` dela. Analise NOVA passa a procurar outro `spot_hash`, e 50 decisoes postflop deixam
+> de achar o no que tinham -- elas ficam SEM cobertura em vez de receber veredito da profundidade
+> errada, que e a falha honesta. `scripts/reenqueue_postflop_from_decisions.py` re-enfileira pelo
+> hash que a decisao procura, entao pega os novos por construcao.
+>
+> Guardas verificados quebrando: tirar o `min` derruba 2 dos 8 testes; esquecer o que o vilao tem
+> atras derruba 2; voltar ao `still_in_now` derruba 1; somar o incremento no resto do heroi derruba
+> 3; aplicar `min` tambem em multiway derruba 2.
+>
+> **O golden do /replay acusou, e era o que ele existe para fazer.** Tres linhas de 43 mudaram, e as
+> tres sao o ante passando a ser descontado -- duas cruzaram a fronteira do bucket por margem
+> minima (3.000 fichas = 25,00bb -> 24,88bb com o ante, bucket '30bb' -> '20bb') sem mudar veredito
+> nenhum, e a terceira trocou a recomendacao de `raise` para `jam` a 15,4bb, que e o lance certo
+> naquela profundidade. Revisadas uma a uma antes de regenerar; o diff do fixture nao tem mais nada.
+
 ### fix(replay): duas decisoes iguais na mesma street dividiam UM veredito so (#replay #motor)
 
 > **Achado pelo usuario lendo a tela**, com print, depois de eu ter afirmado que aquela mao nao

@@ -87,7 +87,10 @@ def _spots_for_tournament(raw):
         gametype = gw_gametype_for(n_seat)
         if not gametype:
             continue
-        depth = round(_effective_stack(hand, hero, []), 2)  # stack inicial em bb = depth GW
+        # `_effective_stack` devolve `(bb, fonte)`. Aqui, sem ações antes e sem oponente vivo,
+        # a fonte é sempre 'hero_only' — que é o que este script quer: o stack INICIAL do hero
+        # em bb, usado como depth do GW.
+        depth = round(_effective_stack(hand, hero, [])[0], 2)
         dec_idxs = [i for i, a in enumerate(hand.actions)
                     if a.player == hero and a.action in _DECISION_ACTIONS]
         try:
