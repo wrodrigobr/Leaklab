@@ -7,6 +7,43 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### ops: reprocesso do acervo de producao com a migracao aplicada — e ele mudou 5 de 9.813 (#producao)
+
+> **O resultado interessante e o quase-zero, e ele foi conferido antes de ser acreditado.** A
+> migracao de boot voltou a aplicar, mas as duas colunas que faltavam (`facing_to_call_bb`,
+> `effective_stack_bb`) ja tinham sido aplicadas na mao antes do reprocesso anterior. Entao o
+> reprocesso de hoje nao tinha, de fato, muito o que mudar.
+>
+> | | antes | depois |
+> |---|---|---|
+> | decisoes | 9.813 | 9.813 |
+> | acusadas de erro | 663 | **661** |
+> | com `gto_label` | 9.176 | 9.171 |
+> | maos com diferenca real | — | **5 de 6.611** |
+>
+> Reprocessar de novo os 5 torneios afetados deu **zero** diferenca: e deterministico, nao ruido.
+>
+> ── As 5 ──────────────────────────────────────────────────────────────────────────────────────
+>
+> Todas sao a **segunda `call` preflop do hero na mesma mao** — ele pagou um raise e depois pagou
+> um re-raise. `save_decisions` faz DELETE+INSERT e apaga todo `gto_label`; o sync repoe 9.171 e
+> nao consegue repor essas 5, porque o provider preflop responde `available=False` para "call
+> diante do segundo raise" (`preflop_raises_faced` 1 ou 2). O `gto_critical` que elas carregavam
+> vinha do drain do solver da sessao anterior e o hash nao casa mais (0 nos com aquele hash).
+>
+> Perder um `gto_critical` que nao se consegue reproduzir e a **direcao certa**: e a regra "sem
+> gabarito nao e erro". Duas acusacoes a menos, nenhuma acusacao nova.
+>
+> ── Uma cicatriz de medicao, minha, nesta mesma tarefa ─────────────────────────────────────────
+>
+> A primeira comparacao chaveava por `(torneio, mao, street, acao)#ordinal`. Eu vi que as 5 eram
+> todas `call#2` e **conclui que era artefato da minha chave** — o DELETE+INSERT reatribui ids e
+> inverteria o #1 com o #2. Estava errado: refiz por **multiconjunto por mao**, imune a ordem, e
+> as 5 continuaram la, com `effective_stack_bb` e `facing_to_call_bb` identicos dos dois lados.
+> Ou seja, quase descartei uma mudanca real como erro de medicao. O comparador so foi usado
+> depois de dois controles: um "depois" forjado com tudo em `standard` (acusou 1.966) e um com
+> **um unico label trocado** (acusou 1) — sem isso, nenhum zero dele valeria nada.
+
 ### fix(banco): um `rollback` incondicional jogava fora TODA migracao de boot, todo boot (#banco #producao)
 
 > **Correcao de uma entrada minha de hoje mesmo.** Publiquei aqui que a causa eram tres `ALTER`
