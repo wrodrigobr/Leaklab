@@ -80,6 +80,30 @@ def test_o_isolador_existe_e_usa_SAVEPOINT():
     assert 'SAVEPOINT' in corpo and 'ROLLBACK TO SAVEPOINT' in corpo, corpo[:200]
 
 
+def test_o_fim_da_migracao_nao_descarta_o_bloco_principal():
+    """A CAUSA REAL de nenhuma migracao aplicar em producao.
+
+    O bloco `_safe` (lista com commit por statement) era precedido de um `conn.rollback()`
+    INCONDICIONAL. Ele rodava mesmo com a transacao sa e jogava fora os ~240 statements do
+    bloco principal, todo boot. So sobrevivia o que estivesse em `_safe`.
+
+    O remendo se auto-confirmava: cada coluna que faltava em prod era acrescentada a `_safe`,
+    a coluna aparecia, e a causa seguia intacta.
+    """
+    s = open(_CAMINHO, encoding='utf-8').read()
+    i = s.index('À prova de transação abortada')
+    j = s.index('_safe = [', i)
+    # so CODIGO: o comentario deste trecho CITA o `conn.rollback()` que causou o problema, e
+    # varrer prosa junto faria o guarda acusar a propria explicacao (a primeira versao acusou).
+    trecho = '\n'.join(l for l in s[i:j].splitlines() if not l.lstrip().startswith('#'))
+    assert 'conn.rollback()' not in trecho, (
+        'rollback incondicional antes do bloco `_safe` — descarta TODA a migracao do bloco '
+        'principal a cada boot:\n' + trecho[-300:])
+    assert 'conn.commit()' in trecho, (
+        'o bloco principal precisa ser COMMITADO antes do `_safe`, senao o `_safe` (que commita '
+        'por statement) encerra a transacao e o bloco principal se perde')
+
+
 def test_as_colunas_do_drill_sobreviveriam_a_um_segundo_boot():
     """Regressao do caso concreto: as tres colunas de `drill_sessions` que causaram tudo."""
     pg = _ramo_postgres()

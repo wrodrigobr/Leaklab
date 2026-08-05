@@ -7,57 +7,70 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
-### fix(banco): tres `ALTER` mataram TODA a migracao de boot em producao, por meses (#banco #producao)
+### fix(banco): um `rollback` incondicional jogava fora TODA migracao de boot, todo boot (#banco #producao)
 
-> A causa do que a entrada anterior deixou em aberto. **Nao saiu de leitura de codigo** — duas
-> hipoteses minhas cairam antes, as duas REFUTADAS por teste: (a) que o `_init_postgres` abortava a
-> transacao, e (b) que o `init_db()` nao era chamado sob gunicorn. Ambas erradas.
->
-> O que respondeu foi **instrumentar o boot em producao** e ler o que ele faz:
->
-> ```
->   [pid 8] OK    ALTER TABLE decisions ADD COLUMN IF NOT EXISTS facing_to_call_bb REAL
->   [pid 8] BLOCO#13 -> DuplicateColumn: column "next_drill_at" ... already exists
->   [pid 8] BLOCO#14+ -> InFailedSqlTransaction  (cascata ate o fim)
-> ```
+> **Correcao de uma entrada minha de hoje mesmo.** Publiquei aqui que a causa eram tres `ALTER`
+> sem `IF NOT EXISTS` envenenando a transacao. **Nao era.** Aquilo e um defeito real, esta
+> consertado e o conserto fica — mas a migracao continuou nao aplicando depois dele, e foi
+> continuar medindo que achou a causa de verdade.
 >
 > ── A causa ───────────────────────────────────────────────────────────────────────────────────
 >
+> No fim do `_run_migrations`, logo antes da lista `_safe`:
+>
 > ```python
->   try:
->       conn.execute("ALTER TABLE drill_sessions ADD COLUMN next_drill_at TIMESTAMP")
->   except Exception: pass
+>   if USE_POSTGRES:
+>       try: conn.rollback()          # <— INCONDICIONAL
+>       except Exception: pass
 > ```
 >
-> Sem `IF NOT EXISTS`, e com DDL cru dentro de `except: pass`. Na PRIMEIRA vez rodou e criou a
-> coluna. Da segunda em diante levanta `DuplicateColumn` — e no Postgres **um erro aborta a
-> transacao inteira**. O `except` engolia, todo statement seguinte virava `InFailedSqlTransaction`
-> em silencio, e o `conn.commit()` do fim nao salvava nada. Repare no log: o `ALTER` de `decisions`
-> **executa com sucesso** e mesmo assim nao sobrevive — o abort vem depois dele.
+> Ele existia para limpar um estado abortado antes de reaplicar a lista `_safe` statement a
+> statement. So que rodava **sempre**, inclusive com a transacao sa, e descartava os ~240
+> statements do bloco principal. Sobrevivia apenas o que estivesse em `_safe`, porque essa lista
+> commita uma linha por vez.
 >
-> **Consequencia: nenhuma coluna nova aplicava em producao desde entao, e o deploy parecia OK.**
-> As colunas antigas so existem porque foram criadas na primeira execucao, antes do envenenamento.
+> **O remendo se auto-confirmava.** Toda vez que faltava uma coluna em producao, a coluna era
+> acrescentada a `_safe`, aparecia, e o remendo parecia ter funcionado — enquanto a causa seguia
+> intacta e o bloco principal seguia sendo descartado. Os comentarios ao redor da lista contam
+> essa historia em tres episodios (`expenses`, `drill_sessions.correct`, o perfil demografico),
+> cada um tratado como incidente isolado.
 >
-> ── O conserto ────────────────────────────────────────────────────────────────────────────────
+> Conserto: `conn.commit()` no lugar do `conn.rollback()`. E seguro nos dois estados — com a
+> transacao sa **persiste** o bloco principal; com ela abortada o Postgres executa o COMMIT como
+> ROLLBACK sem levantar erro, que e exatamente o comportamento de antes. Nunca e pior.
 >
-> Nao so as tres do relato: varri o ramo PG inteiro do `_run_migrations`. **12 `ADD COLUMN` estavam
-> sem `IF NOT EXISTS`** (as 3 do `drill_sessions` + 9 do bloco de `users`, que era a proxima bomba
-> na fila), e **1 executor silencioso** virou `_pg_exec_isolated`. Consertar so o `next_drill_at`
-> teria movido a bomba, nao desarmado.
+> ── Como foi achado, depois de eu ja ter cantado vitoria ───────────────────────────────────────
 >
-> Quatro guardas, verificados quebrando: nenhum `ADD COLUMN` sem `IF NOT EXISTS` no ramo PG;
-> nenhum DDL cru dentro de `except` silencioso; o `_pg_exec_isolated` tem que manter SAVEPOINT e
-> ROLLBACK TO SAVEPOINT; e a regressao nominal das tres colunas de `drill_sessions`.
+> A coluna-sonda. Injetei `_probe_boot_20260805` na lista de migracao do container, reiniciei, e
+> **continuou nao nascendo mesmo com o conserto anterior no ar**. Dai em diante foi eliminacao:
 >
-> **O teste achou mais do que eu procurava** — eu ia consertar 3 e ele apontou 12. Foi o proprio
-> guarda, na primeira execucao, que mostrou que o bloco de `users` tinha o mesmo padrao.
+> | pergunta | resposta |
+> |---|---|
+> | a sonda executa? | `OK ALTER TABLE decisions ADD COLUMN IF NOT EXISTS _probe_boot_20260805` |
+> | algum DDL falha? | 240 statements, **0 falhas** |
+> | o commit acontece? | `--- COMMIT FEITO ---` |
+> | e outro banco? | `neondb/public`, mesma `DATABASE_URL` do gunicorn e do `exec` |
+> | a camada de conexao perde DDL? | nao: `ALTER` manual pelo mesmo `get_conn` sobrevive |
+> | estado da transacao no commit? | **`0` = IDLE** |
 >
-> ── Metodo, que vale mais que o conserto ──────────────────────────────────────────────────────
+> `IDLE` foi o que entregou: **nao havia transacao aberta na hora do commit**. Alguem a tinha
+> fechado antes — e o `conn.commit()` do `init_db` estava commitando o nada.
 >
-> O experimento decisivo foi injetar uma **coluna-sonda** na lista de migracao do container,
-> reiniciar e ver se ela nascia. Nao nasceu — o que separou "o codigo de migracao esta errado" de
-> "o boot nao executa esse codigo". Depois, instrumentar cada `except` silencioso com um numero
-> deu o bloco exato. Codigo do container restaurado com `up -d --force-recreate` ao fim.
+> Duas licoes que ja estao no CLAUDE.md e que eu mesmo furei: *"nao concluir de numero colhido com
+> processo em andamento"* (o `COMMIT` do Postgres numa transacao abortada nao levanta erro, entao
+> "commit feito" no log **nao e prova de que gravou**) e *"confirmar que a mudanca esta NO
+> AMBIENTE"* — a sonda foi justamente isso, e foi ela que me impediu de encerrar errado.
+>
+> ── Guarda ────────────────────────────────────────────────────────────────────────────────────
+>
+> Quinto teste em `test_migracao_de_boot.py`: nenhum `conn.rollback()` entre o fim do bloco
+> principal e a lista `_safe`, e um `conn.commit()` obrigatorio ali. Verificado quebrando. A
+> primeira versao do guarda acusou o **proprio comentario** que cita o `rollback` — corrigido para
+> varrer so codigo, o que e a regra *"comentario nao e evidencia"* aplicada ao proprio teste.
+>
+> Ficam tambem os quatro guardas da tentativa anterior (nenhum `ADD COLUMN` sem `IF NOT EXISTS` no
+> ramo PG, nenhum DDL cru em `except` silencioso, `_pg_exec_isolated` com SAVEPOINT, e a regressao
+> nominal do `drill_sessions`) — 12 `ADD COLUMN` foram tornados idempotentes por eles.
 
 ### ops: deploy + reprocesso de PRODUCAO, e as acusacoes cairam 32% (#producao)
 

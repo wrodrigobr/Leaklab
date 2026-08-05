@@ -2237,10 +2237,24 @@ def _run_migrations(conn):
     # As migrações acima rodam numa transação única; se UMA falha, o Postgres aborta
     # TODA a transação e os CREATE/ALTER seguintes (em try/except) falham silenciosamente.
     # Foi assim que a tabela `expenses` (e colunas novas) não foram criadas em prod. Aqui
-    # recriamos os objetos recentes com COMMIT ISOLADO por statement (rollback antes p/ limpar
-    # qualquer estado abortado), garantindo que sobrevivam a uma migração anterior que falhou.
+    # recriamos os objetos recentes com COMMIT ISOLADO por statement, garantindo que sobrevivam
+    # a uma migração anterior que falhou.
+    #
+    # ⚠️ ESTA LINHA JÁ FOI UM `conn.rollback()`, e era ELA que impedia TODA migração nova de
+    # aplicar em produção (achado em 2026-08-05, instrumentando o boot real). O rollback era
+    # INCONDICIONAL: rodava mesmo com a transação limpa, e jogava fora os ~240 statements do
+    # bloco principal a cada boot. Sobreviviam só as colunas listadas em `_safe` logo abaixo,
+    # que commitam uma a uma — e é exatamente por isso que o remendo parecia funcionar: cada
+    # coluna que faltava em prod era adicionada AQUI, o que confirmava o remendo e escondia a
+    # causa. O sintoma pelo qual se reconhece: o `ALTER` executa sem erro no log do boot e
+    # mesmo assim a coluna não existe depois.
+    #
+    # `commit()` é seguro nos dois estados: com a transação sã ele PERSISTE o bloco principal;
+    # com ela abortada o Postgres executa o COMMIT como ROLLBACK sem levantar erro, ou seja,
+    # cai no mesmo comportamento de antes. Nunca é pior, e no caso normal é o conserto.
+    # O advisory lock do boot é liberado aqui igual era antes — a janela não mudou.
     if USE_POSTGRES:
-        try: conn.rollback()
+        try: conn.commit()
         except Exception: pass
         _safe = [
             """CREATE TABLE IF NOT EXISTS expenses (
