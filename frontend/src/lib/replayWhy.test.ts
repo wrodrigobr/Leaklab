@@ -70,7 +70,28 @@ describe("selectWhy — prioridade", () => {
   });
 
   it("pote limpado ganha da cobertura", () => {
-    expect(w({ limpedPotHeuristic: true, preflopNoCoverageStrict: true }).key).toBe("card.whyLimped");
+    expect(w({ limpedPotHeuristic: true, preflopNoCoverageStrict: true, heroPosition: "BB" }).key)
+      .toBe("card.whyLimped");
+  });
+
+  // Reportado por um aluno no SB: o card dizia "Check é a opção grátis" numa posição em que
+  // check NAO EXISTE — ele já pôs meia blind e precisa completar. A frase descrevia uma mesa
+  // que não era a dele.
+  it("fora do BB nao promete check gratis", () => {
+    for (const pos of ["SB", "BTN", "CO", "HJ", "UTG"]) {
+      expect(w({ limpedPotHeuristic: true, heroPosition: pos }).key)
+        .toBe("card.whyLimpedForaDoBb");
+    }
+  });
+
+  it("no BB segue com a frase do check gratis", () => {
+    expect(w({ limpedPotHeuristic: true, heroPosition: "bb" }).key).toBe("card.whyLimped");
+  });
+
+  it("posicao ausente nao promete check gratis", () => {
+    // Sem saber a posição, prometer "grátis" é a afirmação mais forte das duas — na dúvida,
+    // a frase que não crava.
+    expect(w({ limpedPotHeuristic: true }).key).toBe("card.whyLimpedForaDoBb");
   });
 });
 

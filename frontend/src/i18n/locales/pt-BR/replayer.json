@@ -293,6 +293,7 @@
     "mwRecommended": "Recomendado",
     "mwNway": "{{n}}-way",
     "whyLimped": "Pote limpado: a heurística recomenda passivo. Check é a opção grátis; iso-raise sobre o limp é opcional.",
+    "whyLimpedForaDoBb": "Pote limpado: a heurística recomenda passivo. No SB completar é barato; fora dos blinds, pagar ou aumentar são as opções. Iso-raise sobre o limp é opcional.",
     "approxDeep": "≈ Aproximação (solver a {{n}}bb): seu stack é mais fundo; a ação é confiável, o sizing pode diferir.",
     "vApprox": "≈ Aproximação",
     "vApproxIcm": "≈ Aproximação chipEV",

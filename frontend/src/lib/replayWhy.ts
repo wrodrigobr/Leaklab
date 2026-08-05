@@ -28,6 +28,9 @@ export interface WhyInput {
   gtoSpotMismatch: boolean;
   isPfZone: boolean;
   heroStackBb?: number | null;
+  /** posicao do hero (BB/SB/BTN/...). O check GRATIS so existe no BB: no SB o hero ja pos
+   *  meia blind e precisa COMPLETAR, e nas demais posicoes nem existe check. */
+  heroPosition?: string | null;
   hasEngineGtoConflict: boolean;
   engineBest?: string | null;
   gtoAction?: string | null;
@@ -57,8 +60,14 @@ export function selectWhy(i: WhyInput): WhyChoice {
   // Estimativa multiway: o why heads-up usaria equity vs aleatória e contradiria o fold.
   if (i.hasMultiwayAdvice) return { key: "card.whyMultiwayEstimate" };
 
-  // Pote limpado: a heurística recomenda passivo (opção grátis), sem fingir GTO.
-  if (i.limpedPotHeuristic) return { key: "card.whyLimped" };
+  // Pote limpado: a heurística recomenda passivo, sem fingir GTO. A frase MUDA com a posição —
+  // "check é a opção grátis" só vale no BB. No SB o hero já pôs meia blind e precisa COMPLETAR,
+  // e fora dos blinds não existe check nenhum. Reportado por um aluno no SB, que leu a frase e
+  // viu um erro factual: a análise descrevia uma mesa que não era a dele.
+  if (i.limpedPotHeuristic) {
+    return { key: (i.heroPosition ?? "").toUpperCase() === "BB"
+      ? "card.whyLimped" : "card.whyLimpedForaDoBb" };
+  }
 
   // ANTES da cobertura (que zera a frase): sem isto o card fica com o veredito nu depois de
   // omitir a barra de equity, e o jogador não descobre de onde veio o "erro".

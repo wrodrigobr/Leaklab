@@ -388,6 +388,7 @@ export function SidePanels({
           limpedPotHeuristic, equityNotRangeAware, preflopNoCoverageStrict,
           gtoSpotMismatch: !!step.gto_spot_mismatch,
           isPfZone, heroStackBb: step.hero_stack_bb,
+          heroPosition: step.position,
           hasEngineGtoConflict, engineBest: step.engine_best, gtoAction: step.gto_action,
           hasMathEvidence, requiredIsAdjusted, eq, req, profitable,
           hasGto, isHero: !!step.is_hero, pg,

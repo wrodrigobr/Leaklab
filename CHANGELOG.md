@@ -7,6 +7,48 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(card): o texto narrava a HEURISTICA enquanto o veredito vinha do SOLVER (#veredito #card)
+
+> Dois reports do usuario, no mesmo dia, com a mesma raiz: **duas fontes para o mesmo fato**.
+>
+> ── 1. "Acao esperada" discordava do "melhor" ─────────────────────────────────────────────────
+>
+> Card da mao 259090752525 (BB, 9d6c):
+>
+> ```
+>   Erro · Solver · Pre-flop: Fold, Call
+>   "A linha FOLD esta fora do range defensavel em BB no pre-flop."
+>   "Acao esperada: FOLD."
+> ```
+>
+> Tres afirmacoes que nao podem ser verdade juntas. `build_interpretation` lia
+> `range_evaluation.recommendedPrimaryAction` — a opiniao da HEURISTICA — enquanto o `bestAction`
+> exibido e `_best_action`, que o GTO **sobrescreve em quatro pontos** do `evaluate_decision`.
+>
+> Medido: **263 de 657** cards acusados (40%) tinham "Acao esperada: X" com X diferente do
+> cabecalho. E havia caso pior que o reportado:
+>
+> ```
+>   t7 257045965983 preflop: fez=call  best=fold  MAS o texto diz esperada=CALL
+> ```
+>
+> Acusa o jogador de erro e manda fazer **exatamente o que ele fez**.
+>
+> A segunda frase e incoerente por construcao: `outside_range` fala da MAO, nao da linha. "A linha
+> FOLD esta fora do range defensavel" nao quer dizer nada — foldar e o default, e a mao estar fora
+> do range **confirma** o fold. Eram 59 cards; agora a frase so aparece para quem ENTROU na mao.
+>
+> ── 2. "Check e a opcao gratis" para quem estava no SB ────────────────────────────────────────
+>
+> Pote limpado exibia sempre a mesma frase, e ela so vale no BB: **no SB o hero ja pos meia blind
+> e precisa COMPLETAR**, e fora dos blinds nem existe check. A analise descrevia uma mesa que nao
+> era a do aluno. Agora a frase varia com a posicao (`whyLimpedForaDoBb`, nos 3 locales).
+>
+> Detalhe da guarda: **posicao ausente cai na frase que NAO crava**. Prometer "gratis" e a
+> afirmacao mais forte das duas, e na duvida ela e a errada.
+>
+> Sete guardas (5 backend + 4 frontend), verificados quebrando. Backend 1982, frontend 282.
+
 ### fix(motor): shove sobre all-in que ninguem podia pagar era gradeado como se fosse outra jogada (#motor #veredito)
 
 > Reportado pelo usuario, mao 259090647211: *"vilao foi all in, eu dei um allin por cima, porem eu

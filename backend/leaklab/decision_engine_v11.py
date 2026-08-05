@@ -1261,7 +1261,14 @@ def evaluate_decision(input_data: Dict[str, Any]) -> Dict[str, Any]:
             label = 'marginal'
             final_score = min(final_score, _LABEL_MAX_SCORE['marginal'])
 
-    interpretation = build_interpretation(input_data, label, threshold_pack["adjustedRequiredEquity"])
+    # `_best_action` FINAL — o mesmo que o card exibe. A narrativa relia
+    # `range_evaluation.recommendedPrimaryAction`, que e a opiniao da HEURISTICA antes das
+    # sobrescritas do GTO (linhas ~1006/1012/1029/1064). Resultado medido: 263 de 657 cards
+    # acusados diziam "Acao esperada: X" com X diferente do "melhor" do cabecalho — e num
+    # deles o texto mandava fazer exatamente o que o jogador tinha feito, enquanto o acusava.
+    interpretation = build_interpretation(input_data, label,
+                                          threshold_pack["adjustedRequiredEquity"],
+                                          best_action=_best_action)
 
     # Intenção da aposta/raise postflop (value / proteção / semi-blefe / blefe / "o meio").
     # Só preenche em aposta agressiva postflop; None caso contrário.
@@ -1350,7 +1357,9 @@ def evaluate_decision(input_data: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
-def build_interpretation(input_data: Dict[str, Any], label: str, adjusted_required_equity: float | None):
+def build_interpretation(input_data: Dict[str, Any], label: str,
+                        adjusted_required_equity: float | None,
+                        best_action: str | None = None):
     summary_map = {
         "standard":      "Linha sólida para o spot.",
         "marginal":      "Ação defensável, mas existe alternativa levemente melhor.",
@@ -1364,7 +1373,9 @@ def build_interpretation(input_data: Dict[str, Any], label: str, adjusted_requir
     action = input_data.get("player_action", "")
     street = input_data.get("street", "preflop")
     rng    = input_data.get("range_evaluation", {})
-    best   = rng.get("recommendedPrimaryAction", "")
+    # O best do CARD, nao o da heuristica. `best_action=None` so acontece em chamador antigo;
+    # ai cai no de antes, que e o comportamento conhecido.
+    best   = best_action if best_action else rng.get("recommendedPrimaryAction", "")
     zone   = rng.get("rangeZone", "")
     mt     = input_data.get("math", {})
     spot   = input_data.get("spot", {})
@@ -1473,7 +1484,11 @@ def build_interpretation(input_data: Dict[str, Any], label: str, adjusted_requir
         parts.append("ICM médio: equity de fichas subestima o risco de eliminação neste spot.")
 
     # ── Range zone / position ────────────────────────────────────────────────
-    if zone == "outside_range":
+    # `outside_range` fala da MAO, nao da linha — e por isso a frase so faz sentido quando o hero
+    # ENTROU na mao com ela. Foldar nunca esta "fora do range defensavel": foldar e o default, e a
+    # mao estar fora do range CONFIRMA o fold em vez de conde-lo. Eram 59 cards dizendo
+    # "A linha FOLD esta fora do range defensavel" logo acima de um "Acao esperada" qualquer.
+    if zone == "outside_range" and action != "fold":
         pos_txt = f"em {position}" if position else "nesta posição"
         parts.append(f"A linha {action_pt.upper()} está fora do range defensável {pos_txt} no {street_pt}.")
     elif zone == "borderline_range":
