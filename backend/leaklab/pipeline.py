@@ -113,6 +113,8 @@ def build_decision_input(state: HandState, hand: 'ParsedHand | None' = None) -> 
             'preflopRaisesFaced': state.metadata.get('preflop_raises_faced', 0),  # 3-bet/squeeze faced
             'heroWasAggressor':   state.metadata.get('hero_was_aggressor', False),
             'facingAllin':        state.metadata.get('facing_allin', False),  # enfrenta all-in (call = a agressão)
+            # ...e o excesso de um raise seria impagavel por todos → aumentar E o call.
+            'shoveEquivaleCall':  state.metadata.get('shove_equivale_call', False),
             'facingLimp':         state.metadata.get('facing_limp', False),  # pote limpado (fora de cobertura GTO)
             'callerPosition':     state.metadata.get('caller_position', ''),  # cold caller (pra rotear squeeze)
             'facingToBb':         state.metadata.get('facing_to_bb'),  # #23: open enfrentado em bb (raise-to total)

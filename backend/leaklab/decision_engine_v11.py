@@ -899,6 +899,22 @@ def evaluate_decision(input_data: Dict[str, Any]) -> Dict[str, Any]:
             "debug": {"rangeZone": None, "alternativeActions": [], "rawFlags": []},
         }
 
+    # Shove sobre all-in cujo excesso NINGUEM pode pagar: as fichas a mais voltam, entao a
+    # jogada É o call — mesmo pote, mesmo custo, mesmo resultado. Gradear "shove" contra "call"
+    # aqui e cobrar uma distincao que nao existe: medido no acervo, 24 decisoes, 3 delas acusadas
+    # de `small_mistake` RECOMENDANDO exatamente a jogada equivalente a que o jogador fez.
+    #
+    # Grada-se como CALL (o custo real e o do call), e a acao exibida segue sendo a de verdade —
+    # o jogador deu shove e a tela tem que dizer isso. O `_acao_real` restaura no fim.
+    #
+    # Nao vale para `best_action='fold'`: ali a critica e legitima e continua de pe (o leak e
+    # entrar na mao, nao o tamanho). Isso sai de graca — so mexemos quando o melhor E o call.
+    _acao_real = input_data.get('player_action', '')
+    _shove_e_call = (bool(spot.get('shoveEquivaleCall'))
+                     and (_acao_real or '').lower() in ('shove', 'jam', 'allin', 'all-in', 'raise'))
+    if _shove_e_call:
+        input_data = {**input_data, 'player_action': 'call'}
+
     realization_adjustment = calc_realization_adjustment(
         spot.get("isInPosition"),
         math.get("reverseImpliedOddsFactor"),
@@ -1286,6 +1302,15 @@ def evaluate_decision(input_data: Dict[str, Any]) -> Dict[str, Any]:
         required_equity=threshold_pack.get("adjustedRequiredEquity") or math.get("potOddsEquity"),
         street=street,
     )
+
+    # Shove == call (excesso impagavel): a tela mostra a acao REAL, e quando o melhor e o call
+    # ela passa a mostrar a acao do jogador — porque sao a MESMA jogada, e exibir "melhor: call"
+    # ao lado de "voce deu shove" e uma correcao fantasma. Nao mexe no label: ele ja foi calculado
+    # como call acima, que e o certo.
+    if _shove_e_call:
+        input_data = {**input_data, 'player_action': _acao_real}
+        if (_best_action or '').lower() == 'call':
+            _best_action = _acao_real
 
     return {
         "handId": input_data["hand_id"],

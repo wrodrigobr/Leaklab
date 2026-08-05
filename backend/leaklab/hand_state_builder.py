@@ -584,6 +584,36 @@ def extract_decision_points(hand: ParsedHand) -> List[HandState]:
         committed = set(a.player for a in actions_before if a.action in _VOLUNTARY)
         still_in_now = (committed - folded_so_far) | {hero}  # hero está vivo (decide agora)
         n_active_opponents = max(0, len(still_in_now) - 1)  # exclui hero (ainda no pote)
+
+        # Aumentar sobre um all-in só vale se ALGUÉM ainda puder pagar o excesso. Se o teto de
+        # cada oponente vivo (o que ele já pôs nesta street mais o que sobra atrás) não passa do
+        # valor já all-in, o excesso é DEAD MONEY que volta para o hero — a jogada é o call, e
+        # gradear "shove" contra "call" ali é cobrar uma distinção que não existe.
+        #
+        # Critério de DECISÃO, não de resultado: não olha "Uncalled bet returned", que depende do
+        # que o vilão fez depois. Caso real (mão 259090647211): o terceiro jogador tinha 2.550
+        # atrás contra 7.046 já all-in — impossível dar diferente.
+        #
+        # `None` em `_fichas_restantes_de` significa stack inicial não lido. Aí NÃO afirmamos nada:
+        # sem saber o resto de alguém, o excesso pode ser pagável, e chutar aqui apagaria um
+        # veredito legítimo.
+        shove_equivale_call = False
+        if facing_allin:
+            _teto_allin = _facing_to_total_at(hand.actions, idx, street, hand)
+            _vivos = [p for p in still_in_now if p != hero and p != villain_name]
+            _sabemos_todos = True
+            _algum_cobre = False
+            for _p in _vivos:
+                _resto = _fichas_restantes_de(hand, _p, actions_before)
+                if _resto is None:
+                    _sabemos_todos = False
+                    break
+                _teto_p = _committed_on_street(hand, actions_before, len(actions_before),
+                                               street, _p) + _resto
+                if _teto_p > _teto_allin + 1e-9:
+                    _algum_cobre = True
+                    break
+            shove_equivale_call = bool(_sabemos_todos and not _algum_cobre and _teto_allin > 0)
         is_multiway = n_active_opponents >= 2
 
         # Stack EFETIVO — precisa saber quem está vivo, por isso vem só agora. Em heads-up é
@@ -668,6 +698,8 @@ def extract_decision_points(hand: ParsedHand) -> List[HandState]:
                 'caller_position': caller_position,
                 'villain_name': villain_name,   # HUD: nome do vilão do spot (lookup do perfil)
                 'facing_allin': facing_allin,   # hero enfrenta um all-in (call = a agressão)
+                # ...e ninguém vivo pode pagar mais que esse all-in → aumentar É o call.
+                'shove_equivale_call': shove_equivale_call,
                 'facing_to_bb': facing_to_bb,  # #23: tamanho do open enfrentado (bb)
                 # Os dois números abaixo respondem "quanto CUSTA pagar", enquanto o
                 # facing_to_bb acima responde "de que tamanho é a aposta". Só coincidem

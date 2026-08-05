@@ -7,6 +7,50 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(motor): shove sobre all-in que ninguem podia pagar era gradeado como se fosse outra jogada (#motor #veredito)
+
+> Reportado pelo usuario, mao 259090647211: *"vilao foi all in, eu dei um allin por cima, porem eu
+> cobria todo mundo... a sugestao e de call e nao shove, mas nesta mao dava na mesma"*.
+>
+> ```
+>   Gazsi100: bets 7046 and is all-in
+>   CSM96:    raises 2728 to 9774 and is all-in     <- hero
+>   Uncalled bet (2728) returned to CSM96
+> ```
+>
+> Ele esta certo, e **da para provar sem olhar o resultado**: o terceiro jogador vivo tinha ~2.550
+> atras contra 7.046 ja all-in. O excesso era impagavel por qualquer um — nao "deu na mesma por
+> sorte", era impossivel dar diferente.
+>
+> ── O criterio e de DECISAO, e isso muda o numero ─────────────────────────────────────────────
+>
+> **Nao** usa "Uncalled bet returned", que depende do que o vilao fez depois. Usa o teto de cada
+> oponente vivo (o que ja pos na street + o que sobra atras) contra o valor ja all-in.
+>
+> A diferenca entre os dois criterios e grande e importa: no acervo, **24** decisoes tiveram o bet
+> devolvido, mas so **10** eram provadamente impagaveis na hora de decidir. Nas outras 14 alguem
+> PODIA ter pago mais e escolheu foldar — ali o raise tem fold equity de verdade, e trata-lo como
+> call apagaria uma diferenca que existe. O criterio frouxo teria "consertado" 14 vereditos
+> corretos.
+>
+> ── O que muda ────────────────────────────────────────────────────────────────────────────────
+>
+> A decisao e gradeada como CALL (o custo real e o do call) e a acao EXIBIDA segue sendo a real.
+> Quando o melhor seria `call`, passa a exibir a acao do jogador, porque sao a MESMA jogada.
+>
+> `best_action = fold` **nao e afetado**: ali a critica e legitima (o leak e entrar na mao, nao o
+> tamanho). Sai de graca, porque so mexemos quando o melhor e o call.
+>
+> A mao reportada: `marginal` + "melhor: call" -> **`standard`** + "melhor: shove". No acervo, das
+> 10 equivalentes sobram **zero** com recomendacao fantasma (8 `standard`/shove, 1 `standard`/raise,
+> 1 `marginal`/fold, essa legitima).
+>
+> Ja existia um guarda desse tipo (`_normalize_facing_allin`), mas so no caminho PREFLOP; esta
+> decisao e de flop e sem no de solver, entao quem julgou foi o motor de matematica, que nao tinha
+> o conceito.
+>
+> Cinco guardas, tres verificados quebrando. Backend 1977 testes, 0 falhas.
+
 ### fix(parser): assento "is sitting out" sumia da mesa, mas contava na posicao (#parser #posicao)
 
 > A divergencia que sobrou das 11. Rastreada ate a raiz, e a raiz era **duas contagens da mesma
