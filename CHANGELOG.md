@@ -7,6 +7,45 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(parser): assento "is sitting out" sumia da mesa, mas contava na posicao (#parser #posicao)
+
+> A divergencia que sobrou das 11. Rastreada ate a raiz, e a raiz era **duas contagens da mesma
+> mesa dentro do mesmo modulo**.
+>
+> `ACR_SEAT_RE` terminava em `$`, entao `Seat 6: Bitemee126 (74900.00) is sitting out` nao casava
+> e o jogador sumia de `players`/`seats`. So que `_infer_position` conta assento por
+> `line.startswith('Seat ')`, **sem exigir "in chips"** — e contava o mesmo jogador. Posicao
+> calculada num anel de 7, tamanho da mesa reportado como 6.
+>
+> Era exatamente isso que o sync e o motor viam de forma diferente: o sync lia `num_players` do
+> banco (que vem de `active_players`, contagem de ASSENTOS = 7) e o motor passava
+> `len(hand.players)` = 6.
+>
+> **O jogador estava na mao**: postou ante e foldou. No acervo sao **362 linhas** com esse sufixo,
+> e em 9 maos o descartado chegou a agir.
+>
+> ── A armadilha do conserto, e eu cai nela ────────────────────────────────────────────────────
+>
+> A primeira versao aceitava sufixo generico. Com isso a linha de SUMMARY
+>
+> ```
+>   Seat 3: b75bd8ef (button) showed [8c 8h] and won (780) with three of a kind
+> ```
+>
+> passou a **casar** — o `(780)` faz as vezes de stack — e injetava um jogador fantasma chamado
+> `"b75bd8ef (button) showed [8c 8h] and won"`. Conserto criando dano que o bug nao tinha, que e a
+> regra 7 do CLAUDE.md em acao.
+>
+> Versao final: aceita **so** o sufixo `is sitting out`, o unico que existe no acervo (362 de 362),
+> e o nome nao pode conter `(` nem `[`. Cobrir o que existe, nao adivinhar o que nao existe.
+>
+> Quatro guardas, verificados quebrando **dos dois lados** — voltando o `$` (perde o jogador) e
+> abrindo o sufixo (cria o fantasma). Um deles trava o invariante que faltava: quem conta assento
+> para POSICAO e quem conta para TAMANHO tem que ver a mesma mesa; com o sufixo generico ele
+> acusa `posicao repetida: [... 'BTN', ..., 'BTN']`.
+>
+> Backend 1972 testes, 0 falhas. **Nao deployado.**
+
 ### feat(parser): as cartas do vilao no SUMMARY, que a gente lia e jogava fora (#parser #dado)
 
 > O parser lia a secao SUMMARY **so** para saber se o hero ganhou ou perdeu, e **descartava as

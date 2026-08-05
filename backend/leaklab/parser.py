@@ -39,7 +39,18 @@ GG_ID_RE     = re.compile(r"Poker Hand #(\w+)")
 # specs/acr-parser.md. Vários arquivos do MESMO Tournament # = mesmo torneio (merge no import).
 ACR_SPLIT_RE  = re.compile(r"(?=Game Hand #)")
 ACR_ID_RE     = re.compile(r"Game Hand #(\d+)")
-ACR_SEAT_RE   = re.compile(r"^Seat (\d+): (.+?) \(([\d.,]+)\)$")
+# O `$` original exigia que a linha TERMINASSE no stack, e por isso descartava
+# "Seat 6: Bitemee126 (74900.00) is sitting out" — 362 linhas do acervo. O jogador sumia de
+# `players`/`seats` embora o `_infer_position` o CONTASSE (ele nao exige "in chips"), deixando
+# DUAS CONTAGENS DA MESMA MESA no mesmo modulo: posicao calculada num anel de 7 e tamanho
+# reportado como 6.
+#
+# O sufixo aceito e SO "is sitting out", que e o unico que aparece no acervo (362 de 362). Um
+# `.*` generico casaria a linha de SUMMARY "Seat 3: nome (button) showed [8c 8h] and won (780)..."
+# — o `(780)` passa por stack — e injetaria um jogador fantasma chamado
+# "nome (button) showed [8c 8h] and won". A primeira versao deste conserto fez exatamente isso.
+# O `[^(\[]` no nome e a segunda tranca da mesma porta.
+ACR_SEAT_RE   = re.compile(r"^Seat (\d+): ([^(\[]+?) \(([\d.,]+)\)(?:\s+is sitting out)?$", re.I)
 ACR_ANTE_RE   = re.compile(r"^(?P<player>.+?) posts (?:the )?ante (?P<amount>[\d.,]+)", re.IGNORECASE)
 # "raises X to Y" (Y=total), "calls X", "bets X", "folds"/"checks", "... and is all-in".
 ACR_ACTION_RE = re.compile(

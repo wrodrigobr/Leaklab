@@ -26,6 +26,7 @@ SUITES = {
                   'test_meta_semanal.py',
                   'test_replay_acr_summary.py',
                   'test_reveals_do_summary.py',
+                  'test_assento_sitting_out.py',
                   'test_roster_e_formato.py',
                   'test_mesa_final.py',
                   'test_posicoes.py',
