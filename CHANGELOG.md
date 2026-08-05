@@ -43,6 +43,20 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 > Corrigido para varrer so codigo; agora acusa os dois `SELECT`, um de cada vez.
 >
 > Backend 1951 testes, 0 falhas.
+>
+> ── Em producao ───────────────────────────────────────────────────────────────────────────────
+>
+> `d55933f3` deployado. O dry-run passou de **`pulados (ambiguo): 4`** para **`0`**, com
+> `Reconciliados: 0` — as 4 sao alcancadas e CONCORDAM com o recalculo, entao nao ha o que
+> gravar. Zero so vale com controle: o MESMO script no escopo `--street preflop` (nunca aplicado)
+> segue achando divergencia, logo a maquinaria detecta.
+>
+> **Achado de brinde, nao consertado aqui:** esse controle mostrou que `preflop/check` do BB tem
+> `gto_correct` no banco e `unavailable` no motor. Vem do atalho do `sync_gto_labels_from_ranges`
+> (BB com `facing = 0` e check -> `gto_correct`), enquanto o `analyze_preflop` trata o check de
+> opcao do BB como nao-gradeavel. Sao duas politicas sobre o mesmo spot, e escolher uma e decisao
+> de produto, nao refactor — **nao rodar `--street preflop --apply` sem decidir isso antes**, ou
+> ele apaga esses rotulos em massa.
 
 ### ops: os spots orfaos do conserto de posicao, solvados e religados (#producao #solver)
 
