@@ -68,6 +68,14 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 >
 > Queda de **0,6 a 5,2 pontos**, nenhuma troca de banda. O efeito e pequeno porque o que sai sao
 > pontos que vinham de nao-decisao — se fosse grande, seria sinal de que o rating dependia deles.
+>
+> ── Idempotencia confirmada ───────────────────────────────────────────────────────────────────
+>
+> Segunda passada do reprocesso sobre o MESMO codigo: **0 maos com diferenca** em 6.611, acusadas
+> 658 -> 658, com gabarito 9.011 -> 9.011, e os **8 ELOs identicos ate a decima**.
+>
+> Um zero so vale com controle: no mesmo comando, o comparador rodou antes contra um "depois"
+> forjado com **um unico label trocado** e acusou 1. Logo o zero e do dado, nao do medidor.
 
 ### fix(resync): as decisoes que MAIS precisam de par eram justamente as puladas (#gto #resync)
 
