@@ -33,6 +33,10 @@ class ParsedHand:
     antes:    Dict[str, float] = field(default_factory=dict)   # player -> ante postado (dead money no pote)
     is_pko:   bool = False                                     # PKO/Bounty tournament flag
     showdown_result: Optional[str] = None                      # 'won'|'lost'|None (hero no showdown)
+    # Cartas que o SUMMARY revelou, por jogador — hero E vilões ({nome: ['Qc','6c']}). Até 05/08 o
+    # projeto lia essa seção só para saber se o hero ganhou e DESCARTAVA as cartas: 3.830
+    # revelações de vilão em 2.185 mãos iam para o lixo. Vazio quando ninguém revelou.
+    reveals:  Dict[str, list] = field(default_factory=dict)
 
 
 @dataclass

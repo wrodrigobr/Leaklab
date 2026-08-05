@@ -7,6 +7,36 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(parser): as cartas do vilao no SUMMARY, que a gente lia e jogava fora (#parser #dado)
+
+> O parser lia a secao SUMMARY **so** para saber se o hero ganhou ou perdeu, e **descartava as
+> cartas**. Medido no acervo de producao:
+>
+> | | |
+> |---|---|
+> | maos com carta revelada | 2.185 de 6.736 |
+> | revelacoes do hero | 708 |
+> | **revelacoes de vilao** | **3.830** — descartadas |
+>
+> Agora `ParsedHand.reveals` traz `{jogador: [cartas]}` de todo mundo. Duas armadilhas do formato
+> real, que so apareceram porque contei os FORMATOS em vez de assumir o do PokerStars: metade das
+> linhas traz `(button)`/`(big blind)` no meio, e ha nome com espaco (`Andrew Willian`) — as duas
+> quebram um regex ingenuo de jeitos diferentes.
+>
+> ── O segundo achado, que valia mais que o primeiro ───────────────────────────────────────────
+>
+> O regex antigo casava so `showed`. O acervo tem **405 linhas de `mucked`**, e elas **nunca** vem
+> com "and won": 405 de 405 sem resultado, contra 2.329 ganhas e 1.804 perdidas entre as de
+> `showed`. Quem da muck no showdown chegou la e PERDEU.
+>
+> Consequencia: **50 showdowns do hero voltavam `None`** e saiam do denominador do W$SD — todos
+> derrotas. Tirar so derrotas do denominador e o unico jeito de errar a taxa **exclusivamente para
+> cima**. `mucked` agora conta como `lost`.
+>
+> Oito guardas, tres verificados quebrando (voltar o regex so-`showed`, tirar o muck-e-derrota,
+> tirar o rotulo de posicao). Backend 1968 testes, 0 falhas. **Nao deployado**, e o dado passa a
+> existir para quem quiser consumir (HUD de vilao, validacao do estimador de equity).
+
 ### fix(sync): as 11 divergencias eram DOIS argumentos, e nao os que pareciam (#gto #motor)
 
 > Onze decisoes preflop tinham gabarito no banco e "nao sei" no motor. Os dois chamam a **mesma

@@ -372,15 +372,50 @@ def parse_hand(raw_text: str, id_re: re.Pattern | None = None, site: str = "poke
         antes=antes,
         is_pko=is_pko,
         showdown_result=_extract_showdown_result(raw_text, hero_name),
+        reveals=reveals_do_summary(raw_text),
     )
 
 
 # Linha de summary do showdown (PokerStars/GGPoker):
 #   "Seat 4: Hero showed [6c Ad] and lost with Ace high"
 #   "Seat 3: b75bd8ef (button) showed [8c 8h] and won (780) with three of a kind"
+#   "Seat 1: jojosetubal (button) mucked [Qc 6c]"
+#
+# `mucked` entra junto, e não é detalhe: são 405 das 4.538 linhas de revelação do acervo. Quem
+# chega ao showdown e mostra derrota aparece como `mucked`, então ignorá-lo tirava do denominador
+# do W$SD justamente os showdowns PERDIDOS — o único jeito de errar essa taxa só para cima.
+#
+# O `(?:\([^)]*\)\s+)?` come o "(button)"/"(small blind)" que metade das linhas traz. O nome do
+# jogador pode ter espaço ("Andrew Willian"), por isso `.+?` preguiçoso ancorado no verbo.
 _SD_SUMMARY_RE = re.compile(
-    r"^Seat\s+\d+:\s+(?P<player>.+?)\s+(?:\([^)]*\)\s+)?showed\s+\[", re.IGNORECASE
+    r"^Seat\s+\d+:\s+(?P<player>.+?)\s+(?:\([^)]*\)\s+)?(?P<verbo>showed|mucked)\s+"
+    r"\[(?P<cards>[^\]]+)\]", re.IGNORECASE
 )
+
+
+def reveals_do_summary(raw_text: str) -> dict:
+    """`{jogador: [cartas]}` de TUDO que o SUMMARY revelou — hero e vilões.
+
+    Até 05/08 o projeto lia esta seção só para saber se o hero ganhou ou perdeu, e **jogava fora
+    as cartas**. Medido no acervo: 3.830 revelações de vilão em 2.185 mãos, descartadas.
+
+    Só a seção SUMMARY: as linhas de showdown do corpo da mão ("Player: shows [As Ks]") descrevem
+    o mesmo fato e duplicariam. Cartas em formato inesperado são ignoradas em silêncio — revelação
+    é dado OPCIONAL, e derrubar o parse de uma mão inteira por causa dela seria trocar um dado que
+    não temos por um que temos.
+    """
+    if not raw_text or '*** SUMMARY ***' not in raw_text:
+        return {}
+    out: dict = {}
+    for line in raw_text.split('*** SUMMARY ***', 1)[1].splitlines():
+        m = _SD_SUMMARY_RE.match(line.strip())
+        if not m:
+            continue
+        cards = [c for c in m.group('cards').replace(',', ' ').split() if len(c) == 2]
+        if not cards:
+            continue
+        out.setdefault(m.group('player').strip(), cards)
+    return out
 
 
 def _extract_showdown_result(raw_text: str, hero: str | None) -> Optional[str]:
@@ -388,12 +423,20 @@ def _extract_showdown_result(raw_text: str, hero: str | None) -> Optional[str]:
 
     Lê a seção SUMMARY: a linha do hero com 'showed [...]' + 'and won'/'and lost'.
     None quando o hero não revelou (foldou antes / ganhou sem showdown) — assim o
-    denominador do W$SD conta só showdowns de verdade."""
+    denominador do W$SD conta só showdowns de verdade.
+
+    **`mucked` conta como derrota.** Quem dá muck no showdown chegou lá e perdeu: medido no
+    acervo, 405 de 405 linhas de `mucked` vêm SEM "and won", enquanto as de `showed` se dividem
+    em 2.329 ganhas e 1.804 perdidas. Antes de 05/08 o regex nem casava `mucked`, então essas
+    mãos voltavam None e saíam do W$SD — eram 50 do hero, **todas derrotas**. Tirar só derrotas do
+    denominador é o único jeito de errar a taxa exclusivamente para cima."""
     if not hero:
         return None
     for line in raw_text.splitlines():
         m = _SD_SUMMARY_RE.match(line.strip())
         if m and m.group("player").strip() == hero:
+            if (m.group("verbo") or "").lower() == "mucked":
+                return "lost"
             low = line.lower()
             if "and won" in low or "won (" in low:
                 return "won"
@@ -551,6 +594,9 @@ def _parse_partygaming_hand(raw_text: str, site: str) -> ParsedHand:
         raw_text=raw_text,
         bounties={},
         is_pko=is_pko,
+        # Dialeto PartyGaming: se houver seção SUMMARY no formato conhecido, aproveita; senão
+        # devolve {} sem reclamar. Revelação é dado opcional.
+        reveals=reveals_do_summary(raw_text),
     )
 
 
