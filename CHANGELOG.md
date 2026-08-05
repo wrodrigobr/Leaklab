@@ -7,6 +7,72 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### ops: deploy + reprocesso de PRODUCAO, e as acusacoes cairam 32% (#producao)
+
+> Primeiro deploy de backend desde 31/07 — o CI segue travado por cobranca, entao nada de hoje
+> tinha subido. Host `deploy@167.233.139.122`, `~/app`, imagem reconstruida.
+>
+> **O susto veio antes do reprocesso, e e o achado mais importante desta entrada.** O container
+> subiu com o codigo de hoje — que **insere** em `facing_to_call_bb` e `effective_stack_bb` — e as
+> duas colunas **nao existiam** no Postgres. Toda analise nova teria falhado. A janela foi de ~5
+> minutos e nao houve upload nenhum (0 `UndefinedColumn` nos logs), entao ninguem foi atingido.
+>
+> Rodando os `ALTER ... IF NOT EXISTS` a mao, **os dois passaram na hora**. Nao e o SQL: o
+> `_run_migrations` do boot nao os aplicou, e `_pg_exec_isolated` faz `except Exception: pass`,
+> entao nada apareceu em log nenhum. **FICA ABERTO** — a causa raiz nao foi encontrada, so o
+> sintoma. Ate que seja, **todo deploy que adicione coluna precisa conferir o `information_schema`
+> antes de considerar-se pronto**, e nao confiar no boot.
+>
+> ── Sequencia que funcionou, para repetir ─────────────────────────────────────────────────────
+>
+> ```
+>   1  git fetch origin main; git reset --hard origin/main   (provar antes que HEAD e ancestral)
+>   2  docker compose up -d --build web                       (sem --build a imagem velha fica)
+>   3  conferir marcador do codigo NOVO DENTRO do container   (nao no host)
+>   4  conferir as colunas no information_schema              (e aplicar a mao se faltarem)
+>   5  dump de `decisions` -> JSON, copiado para FORA do container
+>   6  dry-run, depois --apply
+> ```
+>
+> ── Reprocesso: 81 torneios, 9.813 decisoes, 8 usuarios ───────────────────────────────────────
+>
+> Zero falhas, zero torneios pulados. Backup em `~/backups/decisions_backup_20260805-014546.json`.
+>
+> ```
+>                       original   pos-reprocesso   pos-recuperacao
+>   acusadas de erro ..     979         604              663
+>   com gto_label .....   9.468       8.955            9.176
+>   com spot_hash .....   8.802       9.812            9.812
+>   nos GTO ...........   7.481       7.481            8.147
+>   effective_stack_bb        0       9.813            9.813
+>   facing_to_call_bb .       0       9.813            9.813
+> ```
+>
+> Saldo: **acusacoes -32%** (979 -> 663), batendo com o acervo local (11,2% -> 7,2%).
+>
+> ── Recuperacao das 513 que perderam o no ─────────────────────────────────────────────────────
+>
+> `reenqueue_postflop_from_decisions --apply` -> `drain_solver_queue` -> `resync_postflop_gto
+> --apply`. **221 voltaram.** As 292 restantes ja TEM no (o reenqueue devolve `enfileirados=0, ja
+> cobertos=2.903`), mas o lookup nao valida o no para aquele spot — nao sai por outra rodada.
+>
+> Tres coisas que so aparecem operando, e que a memoria do projeto nao tinha:
+>
+> · **`drain_solver_queue` roda em lote de 20** (`max_jobs=20`), nao drena a fila inteira numa
+>   chamada. O que fecha o caso e `pending=0`, nao a mensagem "OK" do fim do log.
+> · **O solver e maior do que o registro dizia:** `/health` responde `solver_cli`, **8 CPUs, 2
+>   solves simultaneos**. O "Oracle 1 core/1GB, cap 20bb" esta obsoleto — foi por isso que 666
+>   solves sairam em minutos.
+> · **Recuperar cobertura SOBE acusacao, e e correto:** `clear_mistake` foi de 50 para 115.
+>   Decisao que estava sem gabarito (e protegida pela regra "sem gabarito nao e erro") passa a ter
+>   veredito do solver.
+>
+> ── Gotcha de ferramenta ──────────────────────────────────────────────────────────────────────
+>
+> PowerShell -> ssh **come aspas e interpola `$(...)` LOCALMENTE**. Cheguei a reportar o commit da
+> minha maquina como se fosse o de producao. Solucao: escrever o script local e mandar por `scp`,
+> nunca montar comando remoto com substituicao.
+
 ### fix(banco): toda decisao gravada saia com `spot_hash` NULL (#banco #progressao)
 
 > Achado reprocessando o acervo local: o `spot_hash` caiu de 1.728 preenchidos para **1**. Nao era
