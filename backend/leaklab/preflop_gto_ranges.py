@@ -255,6 +255,26 @@ _POS_NORM_BY_N = {
     },
 }
 
+# Ordem de AÇÃO da primeira órbita preflop, no dialeto já normalizado por `_POS_NORM`.
+# Blinds agem por ÚLTIMO preflop — por isso SB/BB no fim, e não no começo como no pós-flop.
+_ORDEM_ACAO_PREFLOP = ('UTG', 'UTG+1', 'UTG+2', 'LJ', 'HJ', 'CO', 'BTN', 'SB', 'BB')
+_IDX_ACAO_PREFLOP = {p: i for i, p in enumerate(_ORDEM_ACAO_PREFLOP)}
+
+
+def _age_depois(hero_pos: str, vs_pos: str) -> bool:
+    """O vilão age DEPOIS do hero na primeira órbita preflop?
+
+    Serve para reconhecer o par estruturalmente impossível numa árvore raise-first: hero em
+    UTG+1 "defendendo" um open do HJ, ou hero no SB "defendendo" um open do BB. Nenhum dos dois
+    existe — em ambos hero já tinha agido, então só segue na mão por ter LIMPADO.
+
+    Posição desconhecida responde False: na dúvida, não classifica.
+    """
+    i = _IDX_ACAO_PREFLOP.get(hero_pos)
+    j = _IDX_ACAO_PREFLOP.get(vs_pos)
+    return i is not None and j is not None and j > i
+
+
 # Push/fold bucket → lista de pf_stack keys (em ordem de preferência)
 _PUSHFOLD_BUCKET_STACK = {
     '10bb': ['12bb', '10bb'],   # 12bb é o máximo do bucket; fallback 10bb
@@ -525,6 +545,21 @@ def _analyze_preflop_impl(
         scenario = 'rfi'
     base['scenario'] = scenario
 
+    # Hero ainda na mão contra um raise de quem age DEPOIS dele. Só existe um jeito de isso
+    # acontecer: hero LIMPOU. (Se tivesse foldado estaria fora; se tivesse aberto, o cenário seria
+    # vs_3bet.) Nenhuma árvore que capturamos tem esse nó — as nossas são raise-first e o GTO não
+    # open-limpa de posição não-blind. O lookup abaixo ia falhar de qualquer jeito; o problema é
+    # que falhava MUDO, com `available=False` e `coverage_reason=None`, indistinguível de gap de
+    # captura. Medido no acervo de produção: 89 das 284 decisões preflop sem gabarito são isto,
+    # e o par mais comum é SB limp + BB iso-raise (29).
+    #
+    # Só ANOTA — não retorna. Anotar não muda `available` nem veredito nenhum (há teste travando
+    # esse invariante), e retornar aqui apagaria o fallback de reshove push/fold que vive logo
+    # abaixo no ramo vs_rfi. Ele hoje é código morto (a seção `push_fold` do JSON está vazia em
+    # todos os buckets), mas matá-lo de vez seria uma decisão que esta anotação não precisa tomar.
+    if scenario in ('vs_rfi', 'faces_squeeze') and vs_pos and _age_depois(pos, vs_pos):
+        base['coverage_reason'] = 'limp_then_raise'
+
     # Pote LIMPADO (limp sem raise) = árvore fora da cobertura GTO (capturamos só
     # árvores raise-first: RFI/vs_RFI/vs_3bet/squeeze/faces_squeeze). Iso-raise,
     # over-limp e BB-check de opção caem todos aqui. Rotula o motivo p/ o display
@@ -785,6 +820,7 @@ def _analyze_preflop_impl(
                                                      is_reshove=True),
                     })
                     return base
+            base.setdefault('coverage_reason', 'pairing_uncovered')
             return base
 
         if 'fold_pct' in defender:
@@ -954,6 +990,12 @@ def _analyze_preflop_impl(
             if spot:
                 break
         if not spot:
+            # Sem o par [hero][vilão] na captura. Distinto de `limp_then_raise`: aquele é
+            # estrutural (o nó não existe em árvore nenhuma), este é lacuna da NOSSA base — o nó
+            # existe, nós é que não temos. Quem lê a tela precisa saber qual dos dois é, e quem
+            # for reabastecer a base precisa saber o que buscar. `setdefault` porque a anotação
+            # estrutural, quando houver, é a mais informativa das duas.
+            base.setdefault('coverage_reason', 'pairing_uncovered')
             return base
         hands_4bet  = spot.get('raise_hands', '')
         hands_call  = spot.get('call_hands', '')

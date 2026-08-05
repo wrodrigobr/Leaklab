@@ -86,6 +86,7 @@ SUITES = {
                   'test_api_gto_endpoints.py',
                   'test_card_invariants.py',
                   'test_card_verdict.py',
+                  'test_gap_preflop_nomeado.py',
                   'test_multiway_divergence.py',
                   'test_multiway_advisor.py',
                   'test_multiway_safety.py',

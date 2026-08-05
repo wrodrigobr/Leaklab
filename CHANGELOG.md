@@ -7,6 +7,73 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(preflop): o null agora diz POR QUE — e o gabarito das 5 nao da para repor (#gto #preflop)
+
+> **A resposta curta e desagradavel primeiro: das 5, nenhuma tem gabarito para repor.** Nao e
+> falta de trabalho, sao tres becos diferentes, e cada um foi checado antes de eu desistir dele.
+>
+> ── O que as 5 sao ────────────────────────────────────────────────────────────────────────────
+>
+> Reproduzidas fora do banco (o provider e funcao pura), elas se separam em dois grupos:
+>
+> | | caso | cenario | por que nao tem range |
+> |---|---|---|---|
+> | 3 | t41 UTG+1 vs HJ, t42 MP1 vs BTN, t91 CO vs SB | `vs_rfi` | **o "opener" age DEPOIS do hero** |
+> | 2 | t125 SB vs BB, t72 UTG+1 vs CO | `faces_squeeze` | par [hero][vilao] nunca capturado |
+>
+> As tres primeiras sao **estruturalmente impossiveis** numa arvore raise-first: se o vilao age
+> depois do hero e o hero ainda esta pagando um raise dele, o hero **limpou**. Foldado estaria
+> fora; aberto viraria `vs_3bet`. Confirmado no dado: a decisao anterior de cada uma dessas maos e
+> um `call` com `facing_bet = 0`, que e a definicao de limp. O GTO nao open-limpa de posicao
+> nao-blind, entao esse no nao existe para capturar em fonte nenhuma.
+>
+> ── Os tres becos, cada um fechado por evidencia ──────────────────────────────────────────────
+>
+> 1. **Capturar os pares que faltam.** A fonte era o GTO Wizard, **descontinuado** (o usuario
+>    confirmou em 08/07). Unica fonte viva e o `solver_cli`.
+> 2. **Substituir por uma range vizinha.** Usar `vs_3bet[hero][vilao]` (esse sim, 36 pares em todo
+>    bucket) para um cold-caller seria trocar a range de quem ABRIU pela de quem PAGOU. O proprio
+>    codigo ja avisa disso: *"NUNCA tratar como vs_rfi... marcando um fold correto como
+>    gto_critical"*. E a regra 7 do CLAUDE.md — o bug esconde resposta, o conserto trocaria.
+> 3. **Ligar o push/fold.** O ramo `vs_rfi` tem um fallback de reshove que atenderia os casos
+>    rasos (t91 esta a 3bb!), e `scripts/add_pushfold_ranges.py` tem os dados prontos. Conferido:
+>    a secao `push_fold` do JSON esta **vazia nos 9 buckets** — o fallback e codigo morto. E a
+>    memoria do projeto registra que esse script **ja foi rodado e revertido** em 07/07, porque o
+>    range saia largo demais, e que a heuristica de alargamento foi **falsificada** pelo GW
+>    (A6o UTG @6bb = fold 100%). Abencoar shove que o solver folda ensina -EV.
+>
+> ── O que FOI entregue ────────────────────────────────────────────────────────────────────────
+>
+> O null preflop deixou de ser MUDO. Antes ele voltava `available=False` com
+> `coverage_reason=None`, indistinguivel entre "o no nao existe em arvore nenhuma" e "o no existe
+> e nos e que nao temos" — e as duas pedem coisas opostas: a primeira se aceita, a segunda se
+> reabastece. Agora ha `limp_then_raise` (estrutural) e `pairing_uncovered` (lacuna nossa).
+>
+> Medido no acervo de producao, nas 284 decisoes preflop sem gabarito:
+>
+> | motivo | antes | depois | acusadas de erro |
+> |---|---|---|---|
+> | `pairing_uncovered` | — | 149 | 8 |
+> | `limp_then_raise` | — | 89 | 14 |
+> | ainda MUDO (BB sem opener detectado) | 284 | **46** | 8 |
+>
+> **238 das 284 deixaram de ser mudas.** As 46 restantes sao outro gap: BB sem opener detectado,
+> que e deteccao, nao cobertura.
+>
+> Nenhum veredito mudou — e isso NAO e afirmacao minha, e o golden do `/replay` que provou.
+>
+> ── O guarda que eu escrevi nao bastou, e o golden pegou ───────────────────────────────────────
+>
+> Escrevi um teste do invariante "`coverage_reason` so aparece com `available=False`" e ele passou.
+> A suite reprovou assim mesmo: **o golden do `/replay` guarda `coverage_reason` como uma das 21
+> colunas da impressao digital**. Diferenca real, coluna a coluna: **1 coluna, 3 linhas, todas
+> `None -> 'pairing_uncovered'`** — `gto_label`, `is_error`, `action_quality`, `best_action`,
+> `available` e `verdict_layer` **identicos**. Golden regenerado (6 linhas de diff, todas iguais).
+>
+> Um teste meu com matriz de 7 spots dizia "inocuo". O golden, com 43 linhas de mao real, e que
+> mostrou EXATAMENTE onde e quanto. Os seis guardas novos foram verificados quebrando: tirar a
+> anotacao estrutural, inverter a comparacao de ordem, e fazer a anotacao vazar para spot coberto.
+
 ### ops: reprocesso do acervo de producao com a migracao aplicada — e ele mudou 5 de 9.813 (#producao)
 
 > **O resultado interessante e o quase-zero, e ele foi conferido antes de ser acreditado.** A
