@@ -7,6 +7,46 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(sync): as 11 divergencias eram DOIS argumentos, e nao os que pareciam (#gto #motor)
+
+> Onze decisoes preflop tinham gabarito no banco e "nao sei" no motor. Os dois chamam a **mesma
+> funcao** (`preflop_strategy`) — a divergencia estava nos ARGUMENTOS.
+>
+> ── Metodo: observar, depois ablacao ──────────────────────────────────────────────────────────
+>
+> Nao dava para ler o codigo e apontar: eu reconstrui os argumentos a mao e errei o nome do campo
+> **tres vezes seguidas** (`facingBet` onde o pipeline grava `facingSize`, `vsPosition` onde grava
+> `villainPosition`). Entao **interceptei a chamada** nos dois caminhos e gravei os kwargs de
+> verdade. Sete campos diferiam.
+>
+> Sete campos diferindo nao sao sete causas. Ablacao **um-a-um** sobre os 11 — partir dos args do
+> sync e trocar UM campo pelo do motor:
+>
+> ```
+>   hero_was_aggressor    9 de 11
+>   n_players             2 de 11
+> ```
+>
+> **E so.** `facing_size` diferia em 11 de 11 (18.0 bb no sync contra 300.0 fichas no motor) e
+> **nao causava nada**: o provider so usa esse campo como `> 0`. Sem a ablacao eu teria consertado
+> a unidade — que e o bug mais recorrente deste projeto e por isso o suspeito mais convincente — e
+> errado o alvo inteiro.
+>
+> ── Por que o motor esta certo nos dois ───────────────────────────────────────────────────────
+>
+> `hero_was_aggressor`: o sync usava `is_3bet` como proxy, e o comentario dele **admitia o chute**.
+> O campo decide o CENARIO (`vs_3bet` x `vs_rfi` x `faces_squeeze` x `vs_4bet`) — ou seja, QUAL
+> RANGE e consultada. Chutar aqui nao devolve "nao sei", devolve **veredito da range errada**.
+>
+> `n_players`: `_norm_pos` mapeia posicao por tamanho de mesa. O sync nao passava.
+>
+> Conserto: coluna `decisions.hero_was_aggressor`, gravada pelo pipeline (mesmo padrao do
+> `facing_limp` de hoje), e `num_players`, que ja existia e so nao era lida. Linha antiga com NULL
+> cai no proxy de antes — errado, mas **conhecido**, em vez de virar um terceiro comportamento
+> silencioso.
+>
+> Cinco guardas, tres verificados quebrando. Backend 1960 testes, 0 falhas. **Nao deployado.**
+
 ### fix(politica): o check do BB nao e free play, e carimba-lo de correto ENSINAVA um leak (#gto #politica)
 
 > Havia duas politicas para o mesmo spot, e elas discordavam ha meses:

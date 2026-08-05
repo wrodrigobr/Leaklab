@@ -788,6 +788,9 @@ def save_decisions(tournament_db_id: int, results: List[dict]):
                 # deste metodo) devolvia null MUDO. `facing_bet = 0` NAO substitui — fora do BB
                 # ele tambem vale quando todo mundo foldou, que e RFI e nao limp.
                 1 if spot_ctx.get('facingLimp') else 0,
+                # Hero ja agrediu nesta street. Sem isto, quem reconstroi veredito da linha usava
+                # `is_3bet` como proxy e escolhia o CENARIO errado (logo, a range errada).
+                1 if spot_ctx.get('heroWasAggressor') else 0,
                 *_purity(r),                        # (freq da ação jogada, freq da modal)
                 # Chaves de agregação (Protocolo de Progressão, Fase 0). Calculadas pelo MESMO
                 # caminho que o backfill usa — ver `familia_spot.chaves_de_decisao`.
@@ -803,9 +806,9 @@ def save_decisions(tournament_db_id: int, results: List[dict]):
                pot_size, facing_bet, gto_label, gto_action, gto_depth_capped, estimated_equity,
                vs_position, preflop_raises_faced, hero_won_hand,
                ev_loss_bb, ev_loss_source, n_active_opponents, raise_to_bb, facing_to_call_bb,
-               effective_stack_bb, facing_limp,
+               effective_stack_bb, facing_limp, hero_was_aggressor,
                gto_played_freq, gto_top_freq, spot_family_key, spot_hash)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
         """, rows)
         conn.commit()
     finally:

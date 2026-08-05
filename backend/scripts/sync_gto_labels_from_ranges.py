@@ -281,6 +281,13 @@ def _process_rows(rows: list[dict], conn, dry_run: bool = True, verbose: bool = 
         # is_3bet_pot semantico: hero ja deu raise antes nesta hand
         # (corrige bug do pipeline que so marca True quando hero da 3-bet)
         is_3bet   = bool(r["is_3bet"]) or (r["id"] in vs3bet_ids)
+        # Hero JA agrediu nesta street? Vem da coluna, gravada pelo pipeline. Antes era o proxy
+        # `is_3bet` ("hero deu 3bet"), e a ablacao um-a-um de 05/08 mostrou que ele sozinho
+        # causava 9 das 11 divergencias sync x motor — ele decide o CENARIO (vs_3bet x vs_rfi x
+        # faces_squeeze x vs_4bet) e portanto QUAL RANGE e consultada. NULL em linha antiga cai no
+        # proxy de antes, que e o comportamento conhecido, em vez de chutar False.
+        _hwa = r.get("hero_was_aggressor")
+        was_aggressor = bool(_hwa) if _hwa is not None else is_3bet
         action    = (r["action_taken"] or "").lower()
 
         # ── O check do BB NÃO é free play, e por isso não tem atalho aqui ──────────────────
@@ -333,7 +340,12 @@ def _process_rows(rows: list[dict], conn, dry_run: bool = True, verbose: bool = 
                 is_3bet_pot=is_3bet,
                 caller_position=caller_pos,
                 facing_raises=int(r.get("preflop_raises_faced") or 0),
-                hero_was_aggressor=is_3bet,  # proxy DB-only (hero deu 3bet)
+                hero_was_aggressor=was_aggressor,
+                n_players=(int(r["num_players"]) if r.get("num_players") else None),
+                # Tamanho da mesa: `_norm_pos` mapeia posicao por numero de jogadores (6/7/8-max
+                # nao caem no mesmo lugar do 9-max). O sync nao passava, e isso sozinho causava as
+                # outras 2 das 11 divergencias.
+
                 facing_to_bb=facing_bb,
                 # Pote limpado. Ate 05/08 este argumento NUNCA chegava aqui: o dado existia no
                 # pipeline, o `/analyze` passava, e morria porque nao havia coluna. Sem ele o
@@ -398,7 +410,7 @@ def sync_tournament(tournament_id: int) -> int:
         rows = conn.execute("""
             SELECT id, hand_id, tournament_id, street, position, stack_bb, facing_bet, is_3bet,
                    action_taken, best_action, hero_cards, vs_position, preflop_raises_faced,
-                   effective_stack_bb, facing_limp
+                   effective_stack_bb, facing_limp, hero_was_aggressor, num_players
             FROM decisions
             WHERE tournament_id = ?
               AND street = 'preflop'
@@ -445,7 +457,8 @@ def main():
     rows = conn.execute(
         f"SELECT id, hand_id, tournament_id, street, position, stack_bb, facing_bet, is_3bet, "
         f"action_taken, best_action, hero_cards, vs_position, gto_label, gto_action, "
-        f"preflop_raises_faced, effective_stack_bb, facing_limp FROM decisions {where}",
+        f"preflop_raises_faced, effective_stack_bb, facing_limp, hero_was_aggressor, "
+        f"num_players FROM decisions {where}",
         params
     ).fetchall()
     rows = [dict(r) for r in rows]

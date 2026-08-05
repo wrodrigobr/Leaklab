@@ -56,6 +56,7 @@ SUITES = {
                   'test_migracao_de_boot.py',
                   'test_reconcile_x_motor.py',
                   'test_sync_usa_o_provider.py',
+                  'test_sync_x_motor_mesmos_args.py',
                   'test_is_production.py',
                   'test_clear_bogus_icm_tax.py', 'test_diag_validacao.py',
                   'test_evolution_report.py', 'test_bool_int_convention.py',

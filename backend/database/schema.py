@@ -741,6 +741,12 @@ def _run_migrations(conn):
             # devolvia null MUDO — 46 decisões do acervo de produção. `facing_bet = 0` não
             # substitui: fora do BB ele também vale quando todo mundo foldou, que é RFI, não limp.
             "ALTER TABLE decisions ADD COLUMN IF NOT EXISTS facing_limp INTEGER",
+            # Hero JA TINHA agredido nesta street antes desta decisao. O `sync` usava `is_3bet`
+            # como proxy ("hero deu 3bet") e o proprio comentario dele admitia o chute. Medido em
+            # 05/08 por ablacao um-a-um: o proxy era a causa de 9 das 11 divergencias entre o
+            # sync e o motor no preflop — e ele decide o CENARIO (vs_3bet x vs_rfi x faces_squeeze
+            # x vs_4bet), ou seja, qual range e consultada.
+            "ALTER TABLE decisions ADD COLUMN IF NOT EXISTS hero_was_aggressor INTEGER",
             # #15 leaderboard — opt-in/privacidade: aparecer no ranking público é consentido
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS leaderboard_opt_in BOOLEAN NOT NULL DEFAULT FALSE",
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS leaderboard_handle TEXT",
@@ -1469,6 +1475,8 @@ def _run_migrations(conn):
             ("effective_stack_bb", "ALTER TABLE decisions ADD COLUMN effective_stack_bb REAL"),
             # Pote limpado — espelha o bloco PG. Ver o comentário de lá.
             ("facing_limp", "ALTER TABLE decisions ADD COLUMN facing_limp INTEGER"),
+            # Espelha o bloco PG. Ver o comentario de la.
+            ("hero_was_aggressor", "ALTER TABLE decisions ADD COLUMN hero_was_aggressor INTEGER"),
             # Pureza da estratégia — espelha o bloco PG à prova de abort. `gto_top_freq` é o que
             # separa decisão AUTOMÁTICA (modal ~100%) de decisão de VERDADE (estratégia mista).
             ("gto_played_freq",  "ALTER TABLE decisions ADD COLUMN gto_played_freq  REAL"),
