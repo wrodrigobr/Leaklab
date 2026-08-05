@@ -734,6 +734,13 @@ def _run_migrations(conn):
             # (casos de 3,0bb efetivos contra 15,0bb do hero). Quem consulta range preflop a
             # partir da linha precisa do efetivo, que é o que o motor usa.
             "ALTER TABLE decisions ADD COLUMN IF NOT EXISTS effective_stack_bb REAL",
+            # Pote LIMPADO. O pipeline calcula isto na hora do parse e o `/analyze` passa pro
+            # provider preflop, mas até agora ele MORRIA ali: não havia coluna. Quem reconstrói
+            # veredito a partir da linha (o `sync_gto_labels_from_ranges`, que roda depois de todo
+            # DELETE+INSERT do `save_decisions`) não tinha como saber que o pote fora limpado, e
+            # devolvia null MUDO — 46 decisões do acervo de produção. `facing_bet = 0` não
+            # substitui: fora do BB ele também vale quando todo mundo foldou, que é RFI, não limp.
+            "ALTER TABLE decisions ADD COLUMN IF NOT EXISTS facing_limp INTEGER",
             # #15 leaderboard — opt-in/privacidade: aparecer no ranking público é consentido
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS leaderboard_opt_in BOOLEAN NOT NULL DEFAULT FALSE",
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS leaderboard_handle TEXT",
@@ -1460,6 +1467,8 @@ def _run_migrations(conn):
             ("facing_to_call_bb", "ALTER TABLE decisions ADD COLUMN facing_to_call_bb REAL"),
             # Stack efetivo (bb) — espelha o bloco PG. Ver o comentário de lá.
             ("effective_stack_bb", "ALTER TABLE decisions ADD COLUMN effective_stack_bb REAL"),
+            # Pote limpado — espelha o bloco PG. Ver o comentário de lá.
+            ("facing_limp", "ALTER TABLE decisions ADD COLUMN facing_limp INTEGER"),
             # Pureza da estratégia — espelha o bloco PG à prova de abort. `gto_top_freq` é o que
             # separa decisão AUTOMÁTICA (modal ~100%) de decisão de VERDADE (estratégia mista).
             ("gto_played_freq",  "ALTER TABLE decisions ADD COLUMN gto_played_freq  REAL"),

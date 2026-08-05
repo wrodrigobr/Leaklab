@@ -783,6 +783,11 @@ def save_decisions(tournament_db_id: int, results: List[dict]):
                 # Stack EFETIVO. A coluna `stack_bb` acima guarda `heroStackBb`, que é outra
                 # quantidade — quem for consultar range preflop a partir da linha precisa desta.
                 spot_ctx.get('effectiveStackBb'),
+                # Pote LIMPADO. Vem calculado do pipeline e ate agora morria aqui, sem coluna:
+                # quem reconstroi veredito a partir da linha (o sync, depois de todo DELETE+INSERT
+                # deste metodo) devolvia null MUDO. `facing_bet = 0` NAO substitui — fora do BB
+                # ele tambem vale quando todo mundo foldou, que e RFI e nao limp.
+                1 if spot_ctx.get('facingLimp') else 0,
                 *_purity(r),                        # (freq da ação jogada, freq da modal)
                 # Chaves de agregação (Protocolo de Progressão, Fase 0). Calculadas pelo MESMO
                 # caminho que o backfill usa — ver `familia_spot.chaves_de_decisao`.
@@ -798,9 +803,9 @@ def save_decisions(tournament_db_id: int, results: List[dict]):
                pot_size, facing_bet, gto_label, gto_action, gto_depth_capped, estimated_equity,
                vs_position, preflop_raises_faced, hero_won_hand,
                ev_loss_bb, ev_loss_source, n_active_opponents, raise_to_bb, facing_to_call_bb,
-               effective_stack_bb,
+               effective_stack_bb, facing_limp,
                gto_played_freq, gto_top_freq, spot_family_key, spot_hash)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
         """, rows)
         conn.commit()
     finally:

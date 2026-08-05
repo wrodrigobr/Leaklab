@@ -321,6 +321,10 @@ def _process_rows(rows: list[dict], conn, dry_run: bool = True, verbose: bool = 
                 facing_raises=int(r.get("preflop_raises_faced") or 0),
                 hero_was_aggressor=is_3bet,  # proxy DB-only (hero deu 3bet)
                 facing_to_bb=facing_bb,
+                # Pote limpado. Ate 05/08 este argumento NUNCA chegava aqui: o dado existia no
+                # pipeline, o `/analyze` passava, e morria porque nao havia coluna. Sem ele o
+                # provider nao reconhecia o pote limpado e devolvia null MUDO.
+                facing_limp=bool(r.get("facing_limp")),
             )['raw']
         except Exception:
             skipped += 1
@@ -380,7 +384,7 @@ def sync_tournament(tournament_id: int) -> int:
         rows = conn.execute("""
             SELECT id, hand_id, tournament_id, street, position, stack_bb, facing_bet, is_3bet,
                    action_taken, best_action, hero_cards, vs_position, preflop_raises_faced,
-                   effective_stack_bb
+                   effective_stack_bb, facing_limp
             FROM decisions
             WHERE tournament_id = ?
               AND street = 'preflop'
@@ -427,7 +431,7 @@ def main():
     rows = conn.execute(
         f"SELECT id, hand_id, tournament_id, street, position, stack_bb, facing_bet, is_3bet, "
         f"action_taken, best_action, hero_cards, vs_position, gto_label, gto_action, "
-        f"preflop_raises_faced, effective_stack_bb FROM decisions {where}",
+        f"preflop_raises_faced, effective_stack_bb, facing_limp FROM decisions {where}",
         params
     ).fetchall()
     rows = [dict(r) for r in rows]

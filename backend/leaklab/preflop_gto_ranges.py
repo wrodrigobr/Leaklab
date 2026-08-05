@@ -571,7 +571,17 @@ def _analyze_preflop_impl(
         # open-limpa de posição não-blind, então não existe árvore vs-limp pra
         # capturar). Aplica o range de RFI (push/fold) com flag de aproximação. Os
         # demais potes limpados (deep, ou call/iso-raise) seguem sem cobertura honesta.
-        if stack_bb <= 12 and action_taken.lower() in ('shove', 'jam', 'allin', 'fold'):
+        # ⚠️ O BB NÃO entra neste atalho, e a razão é dupla. (a) Estrutural: o BB nunca é
+        # first-in — não existe range de RFI para ele em bucket nenhum (conferido: os 9 buckets
+        # trazem UTG..SB e nenhum BB), então o lookup abaixo não tinha como achar nada.
+        # (b) Semântica: o raciocínio do atalho é "o limp é dead money, então jamar sobre ele é a
+        # mesma decisão de abrir". Para o BB isso é falso — ele já tem 1bb dentro e FECHA a ação;
+        # não é abertura, é defesa da própria big blind.
+        # Sem esta guarda o BB caía no lookup, não achava, e escorria para o fim da função sem
+        # `coverage_reason` — o null MUDO. Eram 11 das 46 mudas do acervo de produção; as outras
+        # 35 nem chegavam aqui porque o `facing_limp` não sobrevivia ao banco.
+        if (pos != 'BB' and stack_bb <= 12
+                and action_taken.lower() in ('shove', 'jam', 'allin', 'fold')):
             scenario = 'rfi'
             base['scenario'] = 'rfi'
             base['limp_dead_money'] = True   # display: "≈ push/fold · limp = dead money"

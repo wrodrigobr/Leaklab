@@ -7,6 +7,55 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(preflop): o pote limpado morria no banco — as 46 ultimas mudas (#gto #preflop #banco)
+
+> As 46 que sobraram da entrada anterior sao **todas a mesma coisa**: BB, `facing_bet = 0`, zero
+> raises, agredindo (26 raise, 19 shove, 1 fold). Isso e **iso-raise sobre limpers**.
+>
+> **Duas causas empilhadas, e a de cima escondia a de baixo.**
+>
+> ── 1. O `facing_limp` era calculado e jogado fora ─────────────────────────────────────────────
+>
+> O `pipeline` calcula na hora do parse e o `/analyze` passa pro provider. So que **nao havia
+> coluna**. Quem reconstroi veredito a partir da LINHA — o `sync_gto_labels_from_ranges`, que roda
+> depois de todo `DELETE+INSERT` do `save_decisions` — nao tinha como saber que o pote fora
+> limpado. Resultado: null MUDO, 46 de 46.
+>
+> Conserto: coluna `decisions.facing_limp`, gravada pelo `save_decisions` e lida pelos dois
+> `SELECT` do sync. **`facing_bet = 0` NAO substitui**: fora do BB ele tambem vale quando todo
+> mundo foldou, que e RFI e tem gabarito. Deduzir cobriria o caso de hoje e mentiria no de amanha.
+>
+> ── 2. O atalho `limp_dead_money` mandava o BB procurar range de abertura ──────────────────────
+>
+> Com o `facing_limp` chegando, 35 das 46 se resolviam e **11 continuavam mudas**. A stacks
+> <=12bb o codigo trata jam/fold sobre limp como a mesma decisao de abrir ("o limp e dead
+> money") e cai no lookup de RFI. Para o BB isso e falso duas vezes: ele **nunca e first-in**
+> (conferido: os 9 buckets trazem UTG..SB e nenhum BB) e ele **ja tem 1bb dentro e FECHA a
+> acao** — nao e abertura, e defesa da propria big blind. O lookup nao achava nada e a funcao
+> escorria ate o fim sem `coverage_reason`.
+>
+> Guarda: `pos != 'BB'` no atalho. O SB segue com a aproximacao (tem RFI e e abertura de verdade).
+>
+> ── Resultado ─────────────────────────────────────────────────────────────────────────────────
+>
+> | | antes | depois |
+> |---|---|---|
+> | mudas | 46 | **0** |
+> | com gabarito novo | — | **0** |
+>
+> **Nenhuma ganha gabarito, e isso e o certo.** Pote limpado esta fora da arvore raise-first em
+> qualquer fonte; fabricar veredito aqui seria pior que o null. O ganho e a tela poder dizer
+> "pote limpado, fora de cobertura" em vez de nao dizer nada.
+>
+> Cinco guardas, tres verificados quebrando (tirar a guarda do BB, parar de gravar a coluna,
+> o sync parar de repassar). Dois deles nenhum teste de funcao pura pegaria: **o dado existia em
+> memoria e morria na gravacao**, entao o teste grava e le de volta; e o de FIAÇÃO, que exige que
+> o sync consulte a coluna — ter a coluna nao adianta se ninguem le, e isso ja aconteceu aqui com
+> o `spot_hash`, gravado pelo backfill e nunca pelo caminho vivo.
+>
+> Backend 1938 testes, 0 falhas. **Migracao nova**: primeira desde o conserto do boot, e vai ser a
+> prova de fogo dele em producao.
+
 ### fix(preflop): o null agora diz POR QUE — e o gabarito das 5 nao da para repor (#gto #preflop)
 
 > **A resposta curta e desagradavel primeiro: das 5, nenhuma tem gabarito para repor.** Nao e
