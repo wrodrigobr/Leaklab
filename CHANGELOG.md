@@ -7,6 +7,61 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### ops: reprocesso fechou 42 das 46 — e as 4 que sobraram sao POSICAO ERRADA (#producao #achado)
+
+> Deploy de `43280a7b` em producao e reprocesso dos 81 torneios. **A migracao de boot foi provada
+> em campo**: `facing_limp` nao existia antes do deploy e existia depois, criada pelo boot. Das
+> 131 colunas que o schema manda criar, **0 faltando**.
+>
+> | | antes | depois |
+> |---|---|---|
+> | `facing_limp` preenchido | 0 | **9.813** (743 sao pote limpado) |
+> | nulls MUDOS | 46 | **4** |
+> | maos com veredito diferente | — | **0 de 6.611** |
+>
+> Zero mudanca de veredito era o esperado e foi conferido com o comparador por multiconjunto, com
+> controle de um unico label trocado antes de rodar.
+>
+> ── As 4 que sobraram nao eram cobertura ──────────────────────────────────────────────────────
+>
+> Todas com `facing_limp = 0` no banco: o pipeline nao viu limp nenhum. Fui ao historico cru:
+>
+> ```
+>   Game Hand #2789041938 ... Seat #4 is the button
+>   Seat 2: MusashiBR (76770.00)   <- hero
+>   Seat 3: JAMESHARPER ...  Seat 4: MoneyFunnel ...  Seat 6: jippy ...
+>   jippy posts the big blind 2000.00      <- NENHUM small blind postado
+>   MusashiBR raises 4000.00 to 4000.00    <- hero e o PRIMEIRO a agir
+> ```
+>
+> O hero abre a mao de UTG. **O banco diz `position = BB`.** Nao ha limp porque nao ha limp:
+> a posicao e que esta errada, e o `facing_limp` so nao aparece como consequencia.
+>
+> `_infer_position` deriva tudo do botao e assume que os dois assentos seguintes postam SB e BB.
+> Com **botao morto** (assento do botao vazio) ou **SB morto**, isso desloca a mesa inteira em uma
+> casa. A range consultada no preflop dessas maos e a da posicao errada.
+>
+> **Escala medida: 24 maos de 6.734 (0,4%) tem quem postou o BB rotulado como outra coisa**, mais
+> 13 com o SB errado. Nas 24, o hero estava na mao. Nao consertado nesta entrada.
+>
+> ── Tres erros de medicao meus ate chegar nesse 0,4% ──────────────────────────────────────────
+>
+> Vale mais que o numero, porque os tres davam resposta confiante e errada:
+>
+> 1. Extrair a mao por `hand_id in bloco` pegou a mao **vizinha** — passei a casar o CABECALHO.
+> 2. O regex do postante (`^(.+?) posts`) nao casa o PokerStars, que escreve `Nome: posts`. Isso
+>    derrubou 6.522 das 6.736 maos e eu quase reportei **12,7%** medido em um site so. O que
+>    salvou foi estranhar o denominador: 213 de 6.611 nao podia estar certo.
+> 3. Corrigido o regex, deu 228 (3,4%) — mas **204 eram heads-up**, onde o botao E o SB e o codigo
+>    ja acerta. Eu e que re-derivava a ordem por fora. Refiz chamando o **proprio
+>    `_infer_position`** e conferindo contra o que o historico DECLARA: 24.
+>
+> A licao que fica: quando o oraculo existe no proprio dado (o historico diz quem postou cada
+> blind), **teste o codigo contra ele** em vez de reimplementar a regra no medidor. Reimplementar
+> me deu tres numeros errados seguidos, todos plausiveis.
+>
+> Backup em `/app/data/decisions_backup_20260805-*.json`, scripts temporarios removidos.
+
 ### fix(preflop): o pote limpado morria no banco — as 46 ultimas mudas (#gto #preflop #banco)
 
 > As 46 que sobraram da entrada anterior sao **todas a mesma coisa**: BB, `facing_bet = 0`, zero
