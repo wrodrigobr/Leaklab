@@ -7,6 +7,60 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### ops: os spots orfaos do conserto de posicao, solvados e religados (#producao #solver)
+
+> Fecha a pendencia que a entrada anterior deixou. O `spot_hash` inclui a posicao: corrigida a
+> posicao, o hash mudou e o no do solver deixou de casar.
+>
+> **Foram 10 spots, nao 5** — e o proprio `reenqueue_postflop_from_decisions` disse quais, porque
+> ele descobre pelo MESMO hash que o lookup usa (com as tres variantes: exato, sem mao, sem
+> facing). Os 10 cairam exatamente nos dois torneios que o conserto de posicao tocou.
+>
+> ── Um numero meu que estava errado ───────────────────────────────────────────────────────────
+>
+> Eu tinha medido "206 postflop com hash sem no correspondente" e usei isso para dimensionar a
+> tarefa. **Estava errado**: minha consulta comparava so o hash EXATO, e o lookup aceita variantes.
+> O numero real e 10 de 2.903 (`ja cobertos=2893`). Medir cobertura sem reproduzir o caminho do
+> lookup superestima o buraco em 20x.
+>
+> ── A prova de que solvou, por tres caminhos ──────────────────────────────────────────────────
+>
+> A fila voltou a zero pendentes em segundos, o que sozinho nao prova nada (pode ser consumo ou
+> pode ser statement marcando `done` sem solvar):
+>
+> - `gto_nodes` **8.147 -> 8.157**;
+> - o MESMO dry-run passou a dizer **`enfileirados=0, ja cobertos=2903`**;
+> - o log do `solver-consumer` mostra os solves com os hashes exatos e a exploitability
+>   (`dc6f68dddc → allin 97% (exploit=0.01%)`).
+>
+> ── Religar o rotulo e uma etapa separada ─────────────────────────────────────────────────────
+>
+> Solvar cria o NO; quem leva o veredito ate a decisao e o `resync_postflop_gto`. Reconciliou 5
+> (todas `appeared`) e **pulou 4 por ambiguidade** — `(street, acao)` nao e chave unica dentro da
+> mao, e pular e o certo: religar no palpite gravaria o solve na decisao errada.
+>
+> ```
+>   t125 2789041938 turn/call   gto None -> gto_correct
+>   t125 2789042497 flop/call   gto None -> gto_correct
+>   t125 2789042497 river/raise gto None -> gto_mixed
+>   t52  2769806435 flop/fold   standard -> clear_mistake   (best fold->call, gto_critical)
+>   t125 2789042497 turn/check  standard -> clear_mistake   (best check->jam, gto_critical)
+> ```
+>
+> **As duas acusacoes duras sao o sistema funcionando, nao dano.** Elas vem de no fresco, solvado
+> para a posicao CORRIGIDA, com exploitability 0,00-0,01%. Antes a mesma decisao era julgada
+> contra a range de outra posicao ou nao era julgada.
+>
+> | | antes | depois |
+> |---|---|---|
+> | nos gto | 8.147 | **8.157** |
+> | com `gto_label` | 9.169 | **9.174** |
+> | postflop sem gabarito | 365 | 360 |
+> | acusadas de erro | 656 | 658 |
+>
+> Os 360 postflop sem gabarito que sobram sao acervo antigo, **nao** resto deste conserto: o
+> dry-run confirma cobertura de no para 2.903 de 2.903.
+
 ### ops: deploy da posicao + reprocesso — o primeiro reprocesso do dia que MUDOU veredito (#producao)
 
 > `d2ce7b8d` em producao, confirmado no ambiente antes de reprocessar: o medidor rodou DENTRO do
