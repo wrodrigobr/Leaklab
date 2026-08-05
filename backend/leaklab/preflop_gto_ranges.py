@@ -594,10 +594,16 @@ def _analyze_preflop_impl(
     # foldar o BB; check é o default), mas é TRIVIALMENTE correto. Marca como tal em vez de
     # "sem cobertura" pra não exibir "Spot N/A · Sem veredito".
     if scenario == 'rfi' and pos == 'BB' and action_taken.lower() == 'check':
-        # BB check em pote não-aberto = free play: NÃO é decisão gradeável (INV-3, null honesty).
-        # Não fabrica veredito 'correct' (isso era veredito inventado p/ um não-spot). available=False
-        # honesto; marca bb_option só p/ o display mostrar "Check de opção do BB" em vez de "Spot N/A"
-        # mudo, sem cravar acerto. scenario fica 'rfi' e NÃO seta coverage_reason (é free play, não gap).
+        # BB check em pote não-aberto: NÃO é decisão gradeável (INV-3, null honesty). Não fabrica
+        # veredito 'correct' (isso era veredito inventado p/ um não-spot). available=False honesto;
+        # marca bb_option só p/ o display mostrar "Check de opção do BB" em vez de "Spot N/A" mudo,
+        # sem cravar acerto. scenario fica 'rfi' e NÃO seta coverage_reason.
+        #
+        # ⚠️ Na prática este ramo quase não roda: quem chega aqui com `facing_limp` conhecido já
+        # foi desviado acima para `limped_pot`, e no acervo de produção **163 de 163** desses
+        # checks tinham `facing_limp = 1` — se todos foldassem até o BB, a mão acabaria sem
+        # decisão dele. Isto aqui é o fallback de quem chama sem saber do limp (linha antiga, outro
+        # caller). Não é o caso comum, e chamá-lo de "free play" no plural seria errado.
         base['bb_option'] = True
         base['reasoning'] = 'Check de opção do BB em pote não-aberto: sem decisão gradeável.'
         return base   # available=False (default da base) — scenario='rfi'

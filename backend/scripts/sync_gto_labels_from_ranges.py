@@ -283,10 +283,24 @@ def _process_rows(rows: list[dict], conn, dry_run: bool = True, verbose: bool = 
         is_3bet   = bool(r["is_3bet"]) or (r["id"] in vs3bet_ids)
         action    = (r["action_taken"] or "").lower()
 
-        # BB free play: no facing bet, BB checks — always correct
-        if pos.upper() == "BB" and facing_bb == 0 and action == "check":
-            updates.append(("gto_correct", "check", r["id"]))
-            continue
+        # ── O check do BB NÃO é free play, e por isso não tem atalho aqui ──────────────────
+        # Este bloco marcava `gto_correct` para BB com `facing_bet = 0` e check, com o comentário
+        # "BB free play: always correct". Medido no acervo de produção em 05/08: das 163 decisões
+        # nessa condição, **163 tinham `facing_limp = 1`**. Nenhuma era free play.
+        #
+        # Faz sentido: se todos foldassem até o BB a mão acabaria sem decisão dele. Quando há
+        # ação, há limper (ou complete do SB) — e aí o BB escolhe entre dar check e iso-raisar
+        # sobre os limpers, que é decisão de verdade. Não iso-raisar sobre limp é leak clássico de
+        # MTT, então carimbar `gto_correct` no check ENSINAVA o leak.
+        #
+        # Sem o atalho, quem responde é o `preflop_strategy`, que devolve
+        # `coverage_reason='limped_pot'` e SEM gabarito: a árvore raise-first não cobre o nó.
+        # É a mesma política das outras 89 decisões de pote limpado, e agora é uma só.
+        #
+        # Custo, medido antes de decidir: 163 decisões perdem o `gto_correct` (2,5% de todo
+        # `gto_correct` do acervo) e o ELO cai um pouco para quem dá muito check de BB — o rating
+        # conta só spot com gabarito. É o lado certo do trade: rating tem que refletir aderência
+        # real, não crédito por não-decisão.
 
         # Squeeze detection: se hero é 3-bet pot, tenta detectar squeeze para passar caller_position
         caller_pos = ""

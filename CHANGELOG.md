@@ -7,6 +7,46 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(politica): o check do BB nao e free play, e carimba-lo de correto ENSINAVA um leak (#gto #politica)
+
+> Havia duas politicas para o mesmo spot, e elas discordavam ha meses:
+>
+> | | resposta |
+> |---|---|
+> | `sync_gto_labels_from_ranges` | `gto_correct` (comentario: *"BB free play: always correct"*) |
+> | `analyze_preflop` | `available=False`, sem gabarito |
+>
+> ── O dado desempatou ─────────────────────────────────────────────────────────────────────────
+>
+> Das **163** decisoes preflop de BB com `facing_bet = 0` e check no acervo de producao,
+> **163 tinham `facing_limp = 1`**. NENHUMA era free play.
+>
+> Faz sentido: se todos foldassem ate o BB, a mao acabaria sem decisao dele. Havendo acao, ha
+> limper (ou complete do SB) — e ai o BB escolhe entre dar check e **iso-raisar sobre os
+> limpers**, que e decisao de verdade. Nao iso-raisar sobre limp e leak classico de MTT, entao
+> carimbar `gto_correct` no check **ensinava o leak**, com selo de solver.
+>
+> ── Decisao: a do motor ───────────────────────────────────────────────────────────────────────
+>
+> Atalho removido do sync. Quem responde passa a ser o `preflop_strategy`:
+> `coverage_reason='limped_pot'`, sem gabarito. **A mesma politica das outras 89 decisoes de pote
+> limpado** — uma so, em vez de duas.
+>
+> ── O custo, medido ANTES de decidir ──────────────────────────────────────────────────────────
+>
+> 163 decisoes perdem o `gto_correct` (2,5% de todo `gto_correct` do acervo). O ELO cai um pouco
+> para quem da muito check de BB, porque o rating conta so spot com gabarito — de 1,5% a 2,7% da
+> amostra por usuario. **E o lado certo do trade**: o rating existe para refletir aderencia real,
+> nao para dar credito por nao-decisao. O `label` nao muda; o que sai e o selo de solver.
+>
+> ── Como a divergencia apareceu ───────────────────────────────────────────────────────────────
+>
+> Por acaso. Rodei o resync no escopo preflop como **controle** de outra coisa (provar que um
+> zero era zero de verdade) e ele cuspiu `gto_correct -> None` em serie. Controle bem feito acha
+> bug que ninguem estava procurando.
+>
+> Quatro guardas, um verificado quebrando (reintroduzir o atalho). Backend 1955 testes, 0 falhas.
+
 ### fix(resync): as decisoes que MAIS precisam de par eram justamente as puladas (#gto #resync)
 
 > O `resync_postflop_gto` casa a linha do banco com o recalculo por
