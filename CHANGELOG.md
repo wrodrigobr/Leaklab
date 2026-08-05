@@ -34,8 +34,33 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 > cima**. `mucked` agora conta como `lost`.
 >
 > Oito guardas, tres verificados quebrando (voltar o regex so-`showed`, tirar o muck-e-derrota,
-> tirar o rotulo de posicao). Backend 1968 testes, 0 falhas. **Nao deployado**, e o dado passa a
-> existir para quem quiser consumir (HUD de vilao, validacao do estimador de equity).
+> tirar o rotulo de posicao). Backend 1968 testes, 0 falhas. O dado passa a existir para quem
+> quiser consumir (HUD de vilao, validacao do estimador de equity).
+>
+> ── Em producao ───────────────────────────────────────────────────────────────────────────────
+>
+> `43abf2b5` deployado e acervo reprocessado. A coluna `hero_was_aggressor` nao existia antes do
+> deploy e existia depois — **segunda confirmacao em campo** da migracao de boot consertada hoje.
+>
+> | | antes | depois |
+> |---|---|---|
+> | divergencias sync x motor | 11 | **1** |
+> | acusadas de erro | 658 | 657 |
+> | com `gto_label` | 9.011 | 9.001 |
+> | maos com diferenca | — | 10 de 6.611 |
+> | showdown `lost` (decisoes) | 567 | **780** |
+> | `hero_was_aggressor` gravado | 0 | 9.813 (214 verdadeiros) |
+>
+> O salto de `lost` e o conserto do muck: 50 maos do hero que estavam FORA do denominador do W$SD,
+> todas derrotas, entraram. Em maos, a taxa sai de 433/639 (**67,8%**) para 433/689 (**62,8%**) —
+> quase 5 pontos de otimismo que a estatistica carregava. O "antes" em maos e inferido das 50
+> linhas de muck medidas, nao de um retrato guardado.
+>
+> ELO praticamente parado (user 3: 1704,5 -> 1704,9). Faz sentido: o que mudou foi cenario de 11
+> decisoes, nao o corpo do acervo.
+>
+> **Sobrou 1 divergencia** das 11. Nao investiguei — fica registrada em vez de arredondada para
+> zero.
 
 ### fix(sync): as 11 divergencias eram DOIS argumentos, e nao os que pareciam (#gto #motor)
 
