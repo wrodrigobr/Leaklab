@@ -7,6 +7,58 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(banco): tres `ALTER` mataram TODA a migracao de boot em producao, por meses (#banco #producao)
+
+> A causa do que a entrada anterior deixou em aberto. **Nao saiu de leitura de codigo** — duas
+> hipoteses minhas cairam antes, as duas REFUTADAS por teste: (a) que o `_init_postgres` abortava a
+> transacao, e (b) que o `init_db()` nao era chamado sob gunicorn. Ambas erradas.
+>
+> O que respondeu foi **instrumentar o boot em producao** e ler o que ele faz:
+>
+> ```
+>   [pid 8] OK    ALTER TABLE decisions ADD COLUMN IF NOT EXISTS facing_to_call_bb REAL
+>   [pid 8] BLOCO#13 -> DuplicateColumn: column "next_drill_at" ... already exists
+>   [pid 8] BLOCO#14+ -> InFailedSqlTransaction  (cascata ate o fim)
+> ```
+>
+> ── A causa ───────────────────────────────────────────────────────────────────────────────────
+>
+> ```python
+>   try:
+>       conn.execute("ALTER TABLE drill_sessions ADD COLUMN next_drill_at TIMESTAMP")
+>   except Exception: pass
+> ```
+>
+> Sem `IF NOT EXISTS`, e com DDL cru dentro de `except: pass`. Na PRIMEIRA vez rodou e criou a
+> coluna. Da segunda em diante levanta `DuplicateColumn` — e no Postgres **um erro aborta a
+> transacao inteira**. O `except` engolia, todo statement seguinte virava `InFailedSqlTransaction`
+> em silencio, e o `conn.commit()` do fim nao salvava nada. Repare no log: o `ALTER` de `decisions`
+> **executa com sucesso** e mesmo assim nao sobrevive — o abort vem depois dele.
+>
+> **Consequencia: nenhuma coluna nova aplicava em producao desde entao, e o deploy parecia OK.**
+> As colunas antigas so existem porque foram criadas na primeira execucao, antes do envenenamento.
+>
+> ── O conserto ────────────────────────────────────────────────────────────────────────────────
+>
+> Nao so as tres do relato: varri o ramo PG inteiro do `_run_migrations`. **12 `ADD COLUMN` estavam
+> sem `IF NOT EXISTS`** (as 3 do `drill_sessions` + 9 do bloco de `users`, que era a proxima bomba
+> na fila), e **1 executor silencioso** virou `_pg_exec_isolated`. Consertar so o `next_drill_at`
+> teria movido a bomba, nao desarmado.
+>
+> Quatro guardas, verificados quebrando: nenhum `ADD COLUMN` sem `IF NOT EXISTS` no ramo PG;
+> nenhum DDL cru dentro de `except` silencioso; o `_pg_exec_isolated` tem que manter SAVEPOINT e
+> ROLLBACK TO SAVEPOINT; e a regressao nominal das tres colunas de `drill_sessions`.
+>
+> **O teste achou mais do que eu procurava** — eu ia consertar 3 e ele apontou 12. Foi o proprio
+> guarda, na primeira execucao, que mostrou que o bloco de `users` tinha o mesmo padrao.
+>
+> ── Metodo, que vale mais que o conserto ──────────────────────────────────────────────────────
+>
+> O experimento decisivo foi injetar uma **coluna-sonda** na lista de migracao do container,
+> reiniciar e ver se ela nascia. Nao nasceu — o que separou "o codigo de migracao esta errado" de
+> "o boot nao executa esse codigo". Depois, instrumentar cada `except` silencioso com um numero
+> deu o bloco exato. Codigo do container restaurado com `up -d --force-recreate` ao fim.
+
 ### ops: deploy + reprocesso de PRODUCAO, e as acusacoes cairam 32% (#producao)
 
 > Primeiro deploy de backend desde 31/07 — o CI segue travado por cobranca, entao nada de hoje

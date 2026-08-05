@@ -938,39 +938,52 @@ def _run_migrations(conn):
             conn.execute("CREATE INDEX IF NOT EXISTS idx_training_proof_user ON training_proof(user_id)")
         except Exception: pass
         # Sprint R — FEAT-05: SRS columns on drill_sessions (Postgres)
-        try:
-            conn.execute("ALTER TABLE drill_sessions ADD COLUMN next_drill_at    TIMESTAMP")
-        except Exception: pass
-        try:
-            conn.execute("ALTER TABLE drill_sessions ADD COLUMN srs_interval_days INTEGER NOT NULL DEFAULT 3")
-        except Exception: pass
-        # Correção do acerto autoritativo (tier de frequência GTO) — antes o SRS/stats
-        # rederivavam de delta<0, que marcava errado spots GTO-corretos de score já baixo.
-        # INTEGER 0/1 (não BOOLEAN) p/ evitar o gotcha SQLite/Postgres; NULL = linha legada.
-        try:
-            conn.execute("ALTER TABLE drill_sessions ADD COLUMN correct INTEGER")
-        except Exception: pass
+        #
+        # ESTES TRÊS `ALTER` MATARAM TODA A MIGRAÇÃO DE BOOT EM PRODUÇÃO, e por meses.
+        #
+        # Estavam sem `IF NOT EXISTS`, dentro de `try/except: pass`. Na PRIMEIRA vez rodaram e
+        # criaram as colunas. Da segunda em diante, `DuplicateColumn` — e no Postgres um erro
+        # **aborta a transação inteira**. O `except` engolia o erro, e todo statement seguinte
+        # virava `InFailedSqlTransaction` em silêncio, incluindo o `conn.commit()` do fim: os
+        # `ALTER` que já tinham dado certo iam junto no rollback.
+        #
+        # Diagnosticado em 2026-08-05 instrumentando o boot em produção:
+        #
+        #     BLOCO#13 -> DuplicateColumn: column "next_drill_at" ... already exists
+        #     BLOCO#14+ -> InFailedSqlTransaction  (cascata até o fim)
+        #
+        # Sintoma que isso produzia: coluna nova nunca aparecia em prod, e o deploy parecia OK.
+        # `_pg_exec_isolated` existe justamente para isso — usar SEMPRE, e nunca `conn.execute`
+        # cru de DDL dentro de `except: pass`. Há teste varrendo este arquivo por esse padrão.
+        for _sql in (
+            "ALTER TABLE drill_sessions ADD COLUMN IF NOT EXISTS next_drill_at TIMESTAMP",
+            "ALTER TABLE drill_sessions ADD COLUMN IF NOT EXISTS srs_interval_days INTEGER NOT NULL DEFAULT 3",
+            # Correção do acerto autoritativo (tier de frequência GTO) — antes o SRS/stats
+            # rederivavam de delta<0, que marcava errado spots GTO-corretos de score já baixo.
+            # INTEGER 0/1 (não BOOLEAN) p/ evitar o gotcha SQLite/Postgres; NULL = linha legada.
+            "ALTER TABLE drill_sessions ADD COLUMN IF NOT EXISTS correct INTEGER",
+        ):
+            _pg_exec_isolated(conn, _sql)
         # Sprint Q — FEAT-02+03: XP server-side + Daily Focus
         for _col, _sql in [
-            ("xp_total",            "ALTER TABLE users ADD COLUMN xp_total            INTEGER NOT NULL DEFAULT 0"),
-            ("xp_streak",           "ALTER TABLE users ADD COLUMN xp_streak           INTEGER NOT NULL DEFAULT 0"),
-            ("xp_last_activity",    "ALTER TABLE users ADD COLUMN xp_last_activity    TEXT"),
-            ("daily_focus_done_at", "ALTER TABLE users ADD COLUMN daily_focus_done_at TEXT"),
-            ("digest_subscribed",   "ALTER TABLE users ADD COLUMN digest_subscribed   INTEGER NOT NULL DEFAULT 0"),
+            ("xp_total",            "ALTER TABLE users ADD COLUMN IF NOT EXISTS xp_total            INTEGER NOT NULL DEFAULT 0"),
+            ("xp_streak",           "ALTER TABLE users ADD COLUMN IF NOT EXISTS xp_streak           INTEGER NOT NULL DEFAULT 0"),
+            ("xp_last_activity",    "ALTER TABLE users ADD COLUMN IF NOT EXISTS xp_last_activity    TEXT"),
+            ("daily_focus_done_at", "ALTER TABLE users ADD COLUMN IF NOT EXISTS daily_focus_done_at TEXT"),
+            ("digest_subscribed",   "ALTER TABLE users ADD COLUMN IF NOT EXISTS digest_subscribed   INTEGER NOT NULL DEFAULT 0"),
             # opt-out de email de comunicado do admin (default 1 = inscrito; unsubscribe via link zera)
-            ("email_opt_in",        "ALTER TABLE users ADD COLUMN email_opt_in        INTEGER NOT NULL DEFAULT 1"),
+            ("email_opt_in",        "ALTER TABLE users ADD COLUMN IF NOT EXISTS email_opt_in        INTEGER NOT NULL DEFAULT 1"),
             # Verificação de email no cadastro (2FA simples anti-bot). default 1 = legados verificados;
             # novos signups nascem com 0 e só completam com o código enviado por email.
-            ("email_verified",      "ALTER TABLE users ADD COLUMN email_verified      INTEGER NOT NULL DEFAULT 1"),
-            ("verification_code",   "ALTER TABLE users ADD COLUMN verification_code   TEXT"),
-            ("verification_expires_at", "ALTER TABLE users ADD COLUMN verification_expires_at TEXT"),
-            ("verification_attempts",   "ALTER TABLE users ADD COLUMN verification_attempts   INTEGER NOT NULL DEFAULT 0"),
+            ("email_verified",      "ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified      INTEGER NOT NULL DEFAULT 1"),
+            ("verification_code",   "ALTER TABLE users ADD COLUMN IF NOT EXISTS verification_code   TEXT"),
+            ("verification_expires_at", "ALTER TABLE users ADD COLUMN IF NOT EXISTS verification_expires_at TEXT"),
+            ("verification_attempts",   "ALTER TABLE users ADD COLUMN IF NOT EXISTS verification_attempts   INTEGER NOT NULL DEFAULT 0"),
             # Win-back (reengajamento de inativos): estágio já enviado (0..3) + quando saiu o último.
-            ("winback_stage",       "ALTER TABLE users ADD COLUMN winback_stage       INTEGER NOT NULL DEFAULT 0"),
-            ("winback_sent_at",     "ALTER TABLE users ADD COLUMN winback_sent_at     TEXT"),
+            ("winback_stage",       "ALTER TABLE users ADD COLUMN IF NOT EXISTS winback_stage       INTEGER NOT NULL DEFAULT 0"),
+            ("winback_sent_at",     "ALTER TABLE users ADD COLUMN IF NOT EXISTS winback_sent_at     TEXT"),
         ]:
-            try: conn.execute(_sql)
-            except Exception: pass
+            _pg_exec_isolated(conn, _sql)
         try:
             conn.execute("""
                 CREATE TABLE IF NOT EXISTS achievements (

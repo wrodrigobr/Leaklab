@@ -53,6 +53,7 @@ SUITES = {
                   'test_pending_gto_count.py', 'test_confidence_drift.py',
                   'test_no_id_tables.py', 'test_hand_request_cadence.py',
                   'test_chaves_de_decisao_gravadas.py',
+                  'test_migracao_de_boot.py',
                   'test_reconcile_x_motor.py',
                   'test_sync_usa_o_provider.py',
                   'test_is_production.py',
