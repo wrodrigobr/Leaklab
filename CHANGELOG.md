@@ -7,6 +7,43 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(resync): as decisoes que MAIS precisam de par eram justamente as puladas (#gto #resync)
+
+> O `resync_postflop_gto` casa a linha do banco com o recalculo por
+> `(hand_id, street, action_taken)`. **Essa chave nao e unica** — o hero age duas vezes na mesma
+> street sempre que paga e depois enfrenta um raise. Chave com mais de uma decisao era PULADA
+> INTEIRA, entao essas decisoes nunca eram reconciliadas, e o relatorio dizia so
+> "pulados (ambiguo)", sem distinguir "concordam" de "divergem".
+>
+> Mesma familia do que ja consertei no `/replay` nesta sessao ([[project_replay_veredito_trocado]]),
+> agora no ultimo lugar que faltava.
+>
+> ── O que o dado disse antes de eu mexer no codigo ────────────────────────────────────────────
+>
+> No acervo de producao sao **2 chaves, 4 decisoes**, todas `(mao, flop, call)` com 2 de cada
+> lado. Pareadas por ordem, as quatro batem CAMPO A CAMPO com o recalculo — e o sinal e
+> **distinguivel** (`gto_action` = raise na primeira, call na segunda), o que PROVA a
+> correspondencia em vez de supo-la. Se a ordem estivesse invertida, o par sairia trocado.
+>
+> ── O pre-requisito que estava faltando ───────────────────────────────────────────────────────
+>
+> Parear por ordem so vale se a ordem for a mesma dos dois lados. **Os dois `SELECT` do script nao
+> tinham `ORDER BY id`** — no Postgres a ordem sem ele nao e garantida. Sem esse conserto, o
+> pareamento "funcionaria" casando as decisoes erradas, calado.
+>
+> Contagem DIFERENTE entre os lados continua pulada: ai a correspondencia nao esta provada, e
+> gravar no palpite escreveria o solve na decisao errada — nesta base isso ja pos 90 vereditos
+> errados na tela.
+>
+> ── Um teste meu que nao falhava quando devia ─────────────────────────────────────────────────
+>
+> O guarda do `ORDER BY` passou com o codigo QUEBRADO na primeira versao: ele varria o arquivo
+> inteiro, e os meus proprios comentarios citam "ORDER BY id" para explicar por que ele e
+> obrigatorio. **Segunda vez que caio nisso hoje** (a primeira foi o guarda do `coverage_reason`).
+> Corrigido para varrer so codigo; agora acusa os dois `SELECT`, um de cada vez.
+>
+> Backend 1951 testes, 0 falhas.
+
 ### ops: os spots orfaos do conserto de posicao, solvados e religados (#producao #solver)
 
 > Fecha a pendencia que a entrada anterior deixou. O `spot_hash` inclui a posicao: corrigida a

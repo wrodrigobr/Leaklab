@@ -19,8 +19,13 @@ preflop range-backed (`analyze_preflop`) — útil após mudanças nas tabelas d
 range / nos params de cenário (ex.: fix de squeeze adicionou `facing_raises`/
 `hero_was_aggressor`, que deixaram phantoms `gto_correct` em spots non-RFI/limp
 agora corretamente `unavailable`). `--street all` faz os dois. Em todos os casos
-o `evaluate_decision` é a fonte autoritativa. Matching inequívoco
-(hand_id, street, action_taken) LIMIT 1 — multi-decision ambíguo é PULADO.
+o `evaluate_decision` é a fonte autoritativa.
+
+Matching por `(hand_id, street, action_taken)`, que **não é chave única** — o hero age duas vezes
+na mesma street sempre que paga e depois enfrenta um raise. Isso era PULADO ("multi-decision
+ambíguo"); desde 05/08 é pareado POSICIONALMENTE, com as duas fontes em ordem cronológica
+(`ORDER BY id` no banco, ordem das ações no pipeline). Só continua pulado quando as CONTAGENS
+divergem entre os dois lados, aí a correspondência não está provada. Ver `_pares_por_ordem`.
 
 Uso:
     python scripts/resync_postflop_gto.py                       # dry-run (postflop)
@@ -36,6 +41,28 @@ from database.schema import get_conn, init_db, USE_POSTGRES
 from leaklab.parser import parse_hand_history
 from leaklab.pipeline import build_decision_inputs_for_hand
 from leaklab.decision_engine_v11 import evaluate_decision
+
+
+def _pares_por_ordem(srows, frows):
+    """Pares (linha_do_banco, recalculo) da MESMA chave `(hand_id, street, ação)`.
+
+    Essa chave NÃO é única: o hero age duas vezes na mesma street sempre que paga um open e
+    depois enfrenta um 3-bet, ou aposta e depois enfrenta um raise. Antes, chave com mais de uma
+    decisão era PULADA inteira — o resync simplesmente não alcançava essas decisões, e o relatório
+    dizia só "pulados (ambíguo)", sem distinguir "concordam" de "divergem".
+
+    Pareia POSICIONALMENTE: as duas fontes são cronológicas (o SELECT ordena por `id`, que é a
+    ordem de gravação; o pipeline devolve na ordem das ações). Mesma regra do
+    `leaklab.pareamento_decisoes`, que resolveu isto no `/replay`.
+
+    **Contagem diferente entre os lados devolve VAZIO.** Aí a correspondência não está provada
+    (torneio analisado por versão anterior do parser, decisão a mais ou a menos), e gravar no
+    palpite escreveria o solve na decisão errada — foi assim que 90 vereditos errados foram parar
+    na tela uma vez. Perder cobertura é honesto; trocar veredito não é.
+    """
+    if not srows or len(srows) != len(frows):
+        return []
+    return list(zip(srows, frows))
 
 
 def _norm(v):
@@ -95,25 +122,26 @@ def resync_tournament_postflop(tid, apply=True):
         stored = defaultdict(list)
         for r in conn.execute(
             "SELECT id, hand_id, street, action_taken, label, best_action, gto_label, gto_action "
-            "FROM decisions WHERE tournament_id=? AND lower(street)!='preflop'", (tid,)).fetchall():
+            # ORDER BY id é PRÉ-REQUISITO do pareamento por ordem abaixo. Sem ele o Postgres não
+            # garante ordem nenhuma, e parear duas listas cuja ordem não foi provada é como se
+            # grava um solve no `decision_id` errado.
+            "FROM decisions WHERE tournament_id=? AND lower(street)!='preflop' "
+            "ORDER BY id", (tid,)).fetchall():
             d = dict(r)
             stored[(d['hand_id'], (d['street'] or '').lower(),
                     (d['action_taken'] or '').lower())].append(d)
 
         updated = 0
         for key, srows in stored.items():
-            frows = fresh.get(key, [])
-            if len(srows) != 1 or len(frows) != 1:     # multi-decisão ambíguo: pula
-                continue
-            s, f = srows[0], frows[0]
-            # FILL-ONLY: só 'appeared' (era uncovered e ganhou nó). Nunca toca o que já tem gto.
-            if _norm(s['gto_label']) or not f['gto_label']:
-                continue
-            if apply:
-                conn.execute(
-                    "UPDATE decisions SET label=?, best_action=?, gto_label=?, gto_action=? WHERE id=?",
-                    (f['label'], f['best'], f['gto_label'], f['gto_action'], s['id']))
-            updated += 1
+            for s, f in _pares_por_ordem(srows, fresh.get(key, [])):
+                # FILL-ONLY: só 'appeared' (era uncovered e ganhou nó). Nunca toca o que já tem gto.
+                if _norm(s['gto_label']) or not f['gto_label']:
+                    continue
+                if apply:
+                    conn.execute(
+                        "UPDATE decisions SET label=?, best_action=?, gto_label=?, gto_action=? WHERE id=?",
+                        (f['label'], f['best'], f['gto_label'], f['gto_action'], s['id']))
+                updated += 1
         if apply:
             conn.commit()
         return updated
@@ -208,48 +236,51 @@ def main():
         for r in conn.execute(
             "SELECT id, hand_id, street, action_taken, label, best_action, "
             "gto_label, gto_action FROM decisions "
-            "WHERE tournament_id=?" + street_clause, (tid,)).fetchall():
+            # ORDER BY id: pre-requisito do pareamento por ordem. Ver `_pares_por_ordem`.
+            "WHERE tournament_id=?" + street_clause + " ORDER BY id", (tid,)).fetchall():
             d = dict(r)
             stored[(d['hand_id'], (d['street'] or '').lower(),
                     (d['action_taken'] or '').lower())].append(d)
 
         for key, srows in stored.items():
-            frows = fresh.get(key, [])
-            if len(srows) != 1 or len(frows) != 1:
+            pares = _pares_por_ordem(srows, fresh.get(key, []))
+            if not pares:
+                # So sobra aqui quem tem CONTAGEM diferente entre banco e recalculo. A chave com
+                # duas decisoes de CADA lado agora e pareada por ordem, nao pulada inteira.
                 skipped += len(srows)
                 continue
-            s, f = srows[0], frows[0]
-            s_gl, s_ga = _norm(s['gto_label']), _norm(s['gto_action'])
-            diffs = []
-            if f['label'] != s['label']:      diffs.append('label')
-            if f['best'] != s['best_action']: diffs.append('best_action')
-            if f['gto_label'] != s_gl:        diffs.append('gto_label')
-            if f['gto_action'] != s_ga:       diffs.append('gto_action')
-            if not diffs:
-                continue
-            # classifica a natureza da mudança de gto (conta TODOS pra o relatório, inclusive
-            # os que o --fill-only vai pular — assim você vê quantos vanished/drift existem).
-            is_appeared = (not s_gl) and bool(f['gto_label'])   # era uncovered, ganhou nó
-            if s_gl and not f['gto_label']:        kinds['vanished'] += 1
-            elif is_appeared:                      kinds['appeared'] += 1
-            elif s_gl != f['gto_label']:           kinds['label_drift'] += 1
-            elif 'gto_action' in diffs:            kinds['action_only'] += 1
-            # --fill-only: só processa os 'appeared' (nunca remove/muda cobertura existente).
-            if args.fill_only and not is_appeared:
-                continue
-            updated += 1
-            for d in diffs:
-                changes[d] += 1
-            if len(examples) < 20:
-                examples.append(
-                    f"  t{tid} {key[0]} {key[1]}/{key[2]} | "
-                    f"label {s['label']}->{f['label']} | best {s['best_action']}->{f['best']} | "
-                    f"gto {s_gl}/{s_ga}->{f['gto_label']}/{f['gto_action']}")
-            if args.apply:
-                conn.execute(
-                    "UPDATE decisions SET label=?, best_action=?, gto_label=?, gto_action=? "
-                    "WHERE id=?",
-                    (f['label'], f['best'], f['gto_label'], f['gto_action'], s['id']))
+            for s, f in pares:
+                s_gl, s_ga = _norm(s['gto_label']), _norm(s['gto_action'])
+                diffs = []
+                if f['label'] != s['label']:      diffs.append('label')
+                if f['best'] != s['best_action']: diffs.append('best_action')
+                if f['gto_label'] != s_gl:        diffs.append('gto_label')
+                if f['gto_action'] != s_ga:       diffs.append('gto_action')
+                if not diffs:
+                    continue
+                # classifica a natureza da mudança de gto (conta TODOS pra o relatório, inclusive
+                # os que o --fill-only vai pular — assim você vê quantos vanished/drift existem).
+                is_appeared = (not s_gl) and bool(f['gto_label'])   # era uncovered, ganhou nó
+                if s_gl and not f['gto_label']:        kinds['vanished'] += 1
+                elif is_appeared:                      kinds['appeared'] += 1
+                elif s_gl != f['gto_label']:           kinds['label_drift'] += 1
+                elif 'gto_action' in diffs:            kinds['action_only'] += 1
+                # --fill-only: só processa os 'appeared' (nunca remove/muda cobertura existente).
+                if args.fill_only and not is_appeared:
+                    continue
+                updated += 1
+                for d in diffs:
+                    changes[d] += 1
+                if len(examples) < 20:
+                    examples.append(
+                        f"  t{tid} {key[0]} {key[1]}/{key[2]} | "
+                        f"label {s['label']}->{f['label']} | best {s['best_action']}->{f['best']} | "
+                        f"gto {s_gl}/{s_ga}->{f['gto_label']}/{f['gto_action']}")
+                if args.apply:
+                    conn.execute(
+                        "UPDATE decisions SET label=?, best_action=?, gto_label=?, gto_action=? "
+                        "WHERE id=?",
+                        (f['label'], f['best'], f['gto_label'], f['gto_action'], s['id']))
 
     if args.apply:
         conn.commit()
