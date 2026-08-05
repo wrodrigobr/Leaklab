@@ -44,7 +44,31 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 > para POSICAO e quem conta para TAMANHO tem que ver a mesma mesa; com o sufixo generico ele
 > acusa `posicao repetida: [... 'BTN', ..., 'BTN']`.
 >
-> Backend 1972 testes, 0 falhas. **Nao deployado.**
+> Backend 1972 testes, 0 falhas.
+>
+> ── Em producao, e o resultado inverte o enquadramento ────────────────────────────────────────
+>
+> `6d04d6a1` deployado e acervo reprocessado:
+>
+> | | antes | depois |
+> |---|---|---|
+> | divergencias sync x motor | 1 | **0** |
+> | maos com diferenca | — | **0 de 6.611** |
+> | acusadas de erro | 657 | 657 |
+> | com `gto_label` | 9.001 | 9.001 |
+> | ELO | — | identico |
+>
+> **Zero mudanca no dado, e a divergencia acabou.** Nao e contradicao: a divergencia era entre o
+> que estava GRAVADO e o que o motor RECALCULAVA. O gravado ja estava certo — quem estava errado
+> era o recalculo, que via uma mesa de 6 onde havia 7.
+>
+> Isso inverte como eu vinha tratando as 11. Eu as chamei de "o banco tem gabarito que o motor nao
+> justifica", assumindo o motor como autoridade. Em 10 delas o sync era o errado. **Nesta, era o
+> motor** — e o `resync` classificou como `vanished`, ou seja, aplicar teria **apagado um veredito
+> correto**. A classificacao `vanished` embute "o recalculo manda", e essa premissa nao vale
+> quando o defeito esta no recalculo.
+>
+> O controle rodou junto (um label trocado -> acusa 1), entao o zero e do dado e nao do medidor.
 
 ### feat(parser): as cartas do vilao no SUMMARY, que a gente lia e jogava fora (#parser #dado)
 
