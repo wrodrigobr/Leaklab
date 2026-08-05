@@ -46,6 +46,28 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 > bug que ninguem estava procurando.
 >
 > Quatro guardas, um verificado quebrando (reintroduzir o atalho). Backend 1955 testes, 0 falhas.
+>
+> ── Aplicado em producao, com o custo medido de verdade ───────────────────────────────────────
+>
+> `ee4218b8` deployado e acervo reprocessado. **163 -> 0** com `gto_correct`; `gto_correct` do
+> acervo 6.616 -> 6.453; com `gto_label` 9.174 -> 9.011. **Acusadas de erro: 658 -> 658** — o
+> `label` vem do motor de matematica e nao mudou, saiu so o selo de solver, como previsto.
+>
+> O ELO, que era a duvida real (previ "cai um pouco" e podia estar redondamente errado):
+>
+> | user | antes | depois | delta | amostra |
+> |---|---|---|---|---|
+> | 3 | 1709,7 | 1704,5 | **−5,2** | 4560 → 4464 |
+> | 43 | 1822,4 | 1820,1 | −2,3 | 3234 → 3184 |
+> | 26 | 1632,1 | 1627,8 | −4,3 | 392 → 383 |
+> | 40 | 1658,8 | 1654,7 | −4,1 | 40 → 39 |
+> | 22 | 1743,0 | 1738,3 | −4,7 | 75 → 73 |
+> | 31 | 1829,0 | 1827,8 | −1,2 | 242 → 239 |
+> | 28 | 1879,6 | 1879,0 | −0,6 | 613 → 611 |
+> | 27 | 1681,0 | 1681,0 | 0 | 18 → 18 |
+>
+> Queda de **0,6 a 5,2 pontos**, nenhuma troca de banda. O efeito e pequeno porque o que sai sao
+> pontos que vinham de nao-decisao — se fosse grande, seria sinal de que o rating dependia deles.
 
 ### fix(resync): as decisoes que MAIS precisam de par eram justamente as puladas (#gto #resync)
 
