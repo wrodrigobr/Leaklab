@@ -7,6 +7,53 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### ops: deploy da posicao + reprocesso — o primeiro reprocesso do dia que MUDOU veredito (#producao)
+
+> `d2ce7b8d` em producao, confirmado no ambiente antes de reprocessar: o medidor rodou DENTRO do
+> container e deu **0 de 6.734** maos com blind rotulado errado.
+>
+> Os dois reprocessos anteriores mudaram 5 e 0 decisoes. Este mexeu de verdade, e era esperado:
+> `_blind_posted_by` decide quantas fichas cada um ja tem na frente, entao entra em pote, pot odds
+> e stack efetivo.
+>
+> | | antes | depois |
+> |---|---|---|
+> | acusadas de erro | 661 | **656** |
+> | com `gto_label` | 9.171 | 9.169 |
+> | preflop sem gabarito | 284 | 279 |
+> | nulls MUDOS | 4 | **0** |
+> | maos com alguma diferenca | — | **15 de 6.611** |
+>
+> ── O saldo, por transicao ────────────────────────────────────────────────────────────────────
+>
+> Das 15, **13 mudaram veredito ou gabarito**; 2 mudaram so o stack efetivo (efeito direto do
+> blind ir para o jogador certo).
+>
+> ```
+>   small_mistake -> standard        6     acusacao removida
+>   small_mistake -> marginal        1     acusacao removida
+>   marginal      -> standard        2
+>   standard      -> small_mistake   2     acusacao NOVA
+>   standard      -> marginal        1
+> ```
+>
+> **As 2 acusacoes novas nao sao efeito colateral, sao o conserto funcionando.** Com a posicao
+> errada o motor consultava a range de outra posicao; corrigi-la tanto absolve quem estava sendo
+> acusado a toa quanto acusa quem estava sendo poupado pelo mesmo erro. Saldo liquido: −5.
+>
+> No gabarito, **5 `gto_critical` viraram `gto_correct`** — vereditos duros que estavam apoiados
+> na range da posicao errada.
+>
+> ── O efeito colateral que fica em aberto ─────────────────────────────────────────────────────
+>
+> **5 decisoes postflop perderam o `gto_label`** (`gto_correct -> None`). O `spot_hash` inclui a
+> posicao: corrigida a posicao, o hash mudou e o no do solver nao casa mais. O `gto_correct` que
+> elas exibiam era do no da posicao ERRADA, entao perde-lo e correto — mas elas ficam sem gabarito
+> ate um novo solve. Enfileirar essas 5 e a proxima tarefa; nao foi feita aqui.
+>
+> Backup em `/app/data/decisions_backup_20260805-*.json`, scripts temporarios removidos,
+> container healthy.
+
 ### fix(posicao): botao morto e SB morto deslocavam a mesa inteira uma casa (#motor #posicao)
 
 > **Nao havia o que derivar: o historico DECLARA quem postou cada blind.** `_infer_position`
