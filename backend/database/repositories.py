@@ -780,6 +780,9 @@ def save_decisions(tournament_db_id: int, results: List[dict]):
                 spot_ctx.get('nActiveOpponents'),   # oponentes vivos no momento da decisão (multiway-aware)
                 spot_ctx.get('heroRaiseToBb'),      # tamanho do PRÓPRIO raise do hero (bb)
                 facing_to_call_bb,                  # quanto falta pagar (bb) — custo, não tamanho
+                # Stack EFETIVO. A coluna `stack_bb` acima guarda `heroStackBb`, que é outra
+                # quantidade — quem for consultar range preflop a partir da linha precisa desta.
+                spot_ctx.get('effectiveStackBb'),
                 *_purity(r),                        # (freq da ação jogada, freq da modal)
                 # Chaves de agregação (Protocolo de Progressão, Fase 0). Calculadas pelo MESMO
                 # caminho que o backfill usa — ver `familia_spot.chaves_de_decisao`.
@@ -795,8 +798,9 @@ def save_decisions(tournament_db_id: int, results: List[dict]):
                pot_size, facing_bet, gto_label, gto_action, gto_depth_capped, estimated_equity,
                vs_position, preflop_raises_faced, hero_won_hand,
                ev_loss_bb, ev_loss_source, n_active_opponents, raise_to_bb, facing_to_call_bb,
+               effective_stack_bb,
                gto_played_freq, gto_top_freq, spot_family_key, spot_hash)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
         """, rows)
         conn.commit()
     finally:

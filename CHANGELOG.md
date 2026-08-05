@@ -124,23 +124,48 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 > de criar. Numero identico dos dois lados e sinal de que o experimento nao mudou nada, nao de que
 > a mudanca nao importa.
 
-### diag(veredito): o `sync` e o motor discordam sobre o proprio `gto_label` (#motor #gto)
+### fix(gto): o `sync` derivava o veredito preflop de outra fonte, com o stack ERRADO (#motor #gto)
 
-> Achado ao investigar o que sobrou. Das 151 divergencias restantes, **141 tem `gto_label`
-> DIFERENTE entre o motor e o banco** — nao e o label derivado que diverge, e a propria fonte:
+> **CORRECAO, primeiro, porque o que eu reportei na entrada anterior estava errado.** Eu disse que
+> havia "141 decisoes com `gto_label` DIFERENTE entre motor e banco", com exemplos de
+> `gto_critical x gto_correct` — vereditos opostos. **Nao existe um unico caso desses.**
+>
+> O comparador pareava as decisoes por POSICAO na lista: o motor em ordem de parse, o banco
+> ordenado por `LENGTH(hand_id), hand_id, id`. **Em 3 dos 18 torneios as duas ordens diferem**
+> (145, 418 e o 429, com 412 decisoes), e la ele comparava linhas de MAOS DIFERENTES. Refeito com
+> chave por mao:
 >
 > ```
->   motor gto_critical  x  banco gto_correct     (vereditos OPOSTOS)
->   motor gto_correct   x  banco gto_critical
->   motor gto_mixed     x  banco None
+>   label divergente ......  0 de 2.366      (eu tinha reportado 6,38%)
+>   gto_label divergente ... 39              (eu tinha reportado 141)
+>   e as 39 sao TODAS "motor nao tem, banco TEM" — zero contradicoes
 > ```
 >
-> Sao duas fontes de verdade GTO preflop: o motor consome o `strategy_provider` e o
-> `sync_gto_labels_from_ranges` deriva das ranges estaticas. [[project_strategy_provider_single_source]]
-> ja enuncia a regra ("toda decisao nova DEVE consumi-lo"); o sync nao a segue.
+> Os consertos anteriores (teto de EV, varredura escopada) eram reais e a evidencia deles vinha de
+> um torneio ALINHADO — o isolamento no t151, que mostrou 0 apos o `save_decisions` e 54 apos o
+> reconcile. O que estava inflado eram os agregados do acervo.
 >
-> Nao consertado: escolher a fonte autoritativa e decisao de produto, e mexer no sync sem isso
-> trocaria uma discordancia por outra.
+> ── O defeito de verdade ──────────────────────────────────────────────────────────────────────
+>
+> O `sync` nao contradiz o motor: ele preenche onde o motor nao cobre. Mas derivava de outra fonte
+> e, sobretudo, **com o stack errado**:
+>
+> · **Stack.** `decisions.stack_bb` guarda `heroStackBb`; a range preflop precisa do EFETIVO.
+>   Medido: os dois diferem em **52%** das linhas, com casos de 3,0bb efetivos contra 15,0bb do
+>   hero. Consultar a range de outra profundidade.
+> · **Fonte.** Chamava `analyze_preflop` cru em vez de `preflop_strategy`, a porta unica que o
+>   motor, o trainer, a academy e o /replay usam. O provider tem um guarda que o cru nao tem: mao
+>   em formato que ele nao entende vira "nao sei", nao "fora do range, fold 100%".
+>
+> Conserto: coluna `effective_stack_bb` (o motor ja calculava, so nao gravava) + o sync consumindo
+> `preflop_strategy`.
+>
+> **O que NAO foi unificado, e por que:** paridade TOTAL de entrada nao sai das colunas — o motor
+> passa `facingSize` em FICHAS, mais `n_players`, `facing_allin`, `is_pko` e `heroWasAggressor`
+> vindos do spot. Sobram **35** decisoes (1,5% do acervo) em que o sync acha cobertura que o motor
+> nao acha; nenhuma contradiz o motor.
+>
+> Depois: `label` divergente **0/2.366**, `gto_label` divergente 39 -> 35.
 
 ### diag(veredito): duas contradicoes de politica que sobraram (#motor #veredito)
 

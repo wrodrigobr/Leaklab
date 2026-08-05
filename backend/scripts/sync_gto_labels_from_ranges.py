@@ -27,7 +27,7 @@ load_dotenv(BACKEND_DIR / ".env")
 
 from database.schema import get_conn
 from database.repositories import reconcile_tournament_labels
-from leaklab.preflop_gto_ranges import analyze_preflop
+from leaklab.strategy_provider import preflop_strategy
 from leaklab.gto_utils import hand_to_type
 
 
@@ -270,7 +270,11 @@ def _process_rows(rows: list[dict], conn, dry_run: bool = True, verbose: bool = 
             skipped += 1
             continue
 
-        stack_bb  = float(r["stack_bb"] or 20)
+        # Stack EFETIVO, que é o que o motor consulta. `stack_bb` guarda o `heroStackBb`, e os
+        # dois diferem em 44% do preflop (medido: 3,0bb efetivos contra 15,0bb do hero) — usar o
+        # do hero é consultar a range de outra profundidade. `effective_stack_bb` é NULL em
+        # linha antiga, e aí cai no comportamento de antes em vez de chutar.
+        stack_bb  = float(r.get("effective_stack_bb") or r["stack_bb"] or 20)
         facing_bb = float(r["facing_bet"] or 0)
         pos       = r["position"] or ""
         vs_pos    = r["vs_position"] or ""
@@ -299,7 +303,13 @@ def _process_rows(rows: list[dict], conn, dry_run: bool = True, verbose: bool = 
                 squeeze_op_pos, caller_pos = sq
 
         try:
-            result = analyze_preflop(
+            # PORTA ÚNICA: `preflop_strategy`, a mesma que o motor, o trainer, a academy e o
+            # /replay consomem — não o `analyze_preflop` cru. Ver
+            # [[project_strategy_provider_single_source]]. Além de unificar a fonte, o provider
+            # traz um guarda que o analisador cru não tem: mão em formato desconhecido responde
+            # "não sei" em vez de "fora do range, fold 100%" com confiança.
+            # `raw` é o dialeto de armazenamento — o resto desta função segue sem mudança.
+            result = preflop_strategy(
                 position=pos,
                 hero_hand_type=hand_type,
                 stack_bb=stack_bb,
@@ -310,7 +320,8 @@ def _process_rows(rows: list[dict], conn, dry_run: bool = True, verbose: bool = 
                 caller_position=caller_pos,
                 facing_raises=int(r.get("preflop_raises_faced") or 0),
                 hero_was_aggressor=is_3bet,  # proxy DB-only (hero deu 3bet)
-            )
+                facing_to_bb=facing_bb,
+            )['raw']
         except Exception:
             skipped += 1
             continue
@@ -368,7 +379,8 @@ def sync_tournament(tournament_id: int) -> int:
     try:
         rows = conn.execute("""
             SELECT id, hand_id, tournament_id, street, position, stack_bb, facing_bet, is_3bet,
-                   action_taken, best_action, hero_cards, vs_position, preflop_raises_faced
+                   action_taken, best_action, hero_cards, vs_position, preflop_raises_faced,
+                   effective_stack_bb
             FROM decisions
             WHERE tournament_id = ?
               AND street = 'preflop'
@@ -415,7 +427,7 @@ def main():
     rows = conn.execute(
         f"SELECT id, hand_id, tournament_id, street, position, stack_bb, facing_bet, is_3bet, "
         f"action_taken, best_action, hero_cards, vs_position, gto_label, gto_action, "
-        f"preflop_raises_faced FROM decisions {where}",
+        f"preflop_raises_faced, effective_stack_bb FROM decisions {where}",
         params
     ).fetchall()
     rows = [dict(r) for r in rows]
