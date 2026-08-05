@@ -39,6 +39,80 @@ def _board_for_street(raw_text: str, street: str) -> list:
 _NON_DECISIONS = {'shows', 'mucks', 'posts'}
 
 
+# "Nome: posts the small blind 350" (PS/GG) e "nome posts the small blind 350" (CoinPoker/ACR).
+# O `:?` cobre os dois — sem ele o PokerStars inteiro escapava, e foi assim que uma medição minha
+# analisou 213 de 6.736 mãos e quase reportou um número medido em UM site só.
+# `posts small & big blinds` (jogador voltando à mesa) NÃO casa aqui de propósito: quem posta os
+# dois não está na posição de blind nenhuma, e cair no caminho antigo é mais honesto que fingir.
+_SB_POSTER_RE = re.compile(r'^(?P<p>.+?):? posts (?:the )?small blind\b', re.M | re.I)
+_BB_POSTER_RE = re.compile(r'^(?P<p>.+?):? posts (?:the )?big blind\b', re.M | re.I)
+
+
+def blinds_declarados(hand: ParsedHand) -> tuple:
+    """(sb, bb) — quem o HISTÓRICO DIZ que postou cada blind, ou None.
+
+    FONTE ÚNICA. Antes desta função a regra vivia derivada do BOTÃO em dois lugares
+    (`_infer_position` e `_blind_posted_by`), cada um com a sua gambiarra de botão morto, e os
+    dois erravam junto: com o assento do botão vazio, ou com o small blind morto, a mesa inteira
+    deslocava uma casa. Medido no acervo de produção: 24 mãos de 6.734 tinham quem postou o BB
+    rotulado como outra coisa, e nelas a range preflop consultada era a da posição errada.
+
+    O ponto: **não há o que derivar.** O histórico declara quem postou. Derivar era reimplementar
+    uma regra que o dado já responde, e reimplementar é onde entram os casos especiais (botão
+    morto, blind morto, assento movido de outra mesa) que ninguém lembra de todos.
+    """
+    raw = hand.raw_text or ''
+    if not raw:
+        return None, None
+    vivos = set(hand.players or [])
+    msb, mbb = _SB_POSTER_RE.search(raw), _BB_POSTER_RE.search(raw)
+    sb = (msb.group('p').strip() if msb else None)
+    bb = (mbb.group('p').strip() if mbb else None)
+    # Nome que não está na mão não serve de âncora (linha de outra mesa, texto colado).
+    return (sb if sb in vivos else None), (bb if bb in vivos else None)
+
+
+def _ordem_de_acao(hand: ParsedHand, active_seats: list) -> tuple:
+    """(ordem, n_virtual) — assentos na ordem de ação preflop, índice 0 = SB, 1 = BB, último = BTN.
+
+    Ancorada em `blinds_declarados`. Devolve `n_virtual` porque nem sempre é `len(ordem)`: com o
+    **small blind morto** ninguém ocupa o índice 0, então a lista leva um `None` ali e a mesa
+    virtual tem um lugar a mais. Sem isso o BTN escorregaria para o penúltimo.
+
+    Sem blind declarado, devolve `(None, None)` e o chamador segue pelo caminho antigo — nunca
+    chutar posição é melhor que chutar.
+    """
+    n = len(active_seats)
+    if n == 0:
+        return None, None
+    sb_p, bb_p = blinds_declarados(hand)
+    por_nome = {s.get('name'): int(s.get('seat')) for s in (hand.seats or [])
+                if s.get('seat') is not None}
+    bb_seat, sb_seat = por_nome.get(bb_p), por_nome.get(sb_p)
+    if bb_seat not in active_seats:
+        return None, None
+
+    if n == 2:
+        # HEADS-UP: o botão É o SB, e `nomes_de_posicao(2)` devolve {0:'BB', 1:'SB'} — por isso o
+        # BB vem PRIMEIRO aqui. Ver [[project_posicao_heads_up]].
+        outro = [s for s in active_seats if s != bb_seat]
+        return [bb_seat] + outro, 2
+
+    if sb_seat in active_seats:
+        i = active_seats.index(sb_seat)
+        ordem = active_seats[i:] + active_seats[:i]
+        if ordem[1] == bb_seat:
+            return ordem, n
+        # SB e BB declarados que não são vizinhos: algo que este modelo não descreve (mão com
+        # posting-in, texto truncado). Cair no caminho antigo é melhor que forçar.
+        return None, None
+
+    # SB MORTO: ninguém postou small blind. O índice 0 fica vago para que o BB continue no 1 e o
+    # BTN no último — é o caso da mão 2789041938, em que o hero abria de UTG e era rotulado BB.
+    j = active_seats.index(bb_seat)
+    return [None] + active_seats[j:] + active_seats[:j], n + 1
+
+
 def _normalize_action(action: Optional[str]) -> str:
     mapping = {
         None:     'fold',
@@ -107,21 +181,27 @@ def _infer_position(hand: ParsedHand, hero: str) -> str:
     n = len(active_seats)
     btn = hand.button_seat
 
-    # Reordenar a partir do assento após o botão
-    try:
-        btn_idx = active_seats.index(btn)
-    except ValueError:
-        btn_idx = min(range(n), key=lambda i: (active_seats[i] - btn) % 100)
+    # PRIMEIRO o que o histórico DECLARA. Só se ele não declarar é que se deriva do botão.
+    ordered, n_virtual = _ordem_de_acao(hand, active_seats)
 
-    ordered = active_seats[(btn_idx + 1):] + active_seats[:(btn_idx + 1)]
-    # ordered[0]=SB, ordered[1]=BB, ..., ordered[n-1]=BTN
+    if ordered is None:
+        # Caminho antigo: derivar do botão, assumindo que os dois assentos seguintes postam os
+        # blinds. É o que errava com botão/blind morto — fica só como último recurso, para mão
+        # sem linha de blind (histórico truncado, formato não coberto).
+        try:
+            btn_idx = active_seats.index(btn)
+        except ValueError:
+            btn_idx = min(range(n), key=lambda i: (active_seats[i] - btn) % 100)
+        ordered = active_seats[(btn_idx + 1):] + active_seats[:(btn_idx + 1)]
+        n_virtual = n
+        # ordered[0]=SB, ordered[1]=BB, ..., ordered[n-1]=BTN
 
     try:
         hero_order_idx = ordered.index(hero_seat)
     except ValueError:
         return 'unknown'
 
-    return _position_names(n).get(hero_order_idx, f'P{hero_order_idx}')
+    return _position_names(n_virtual).get(hero_order_idx, f'P{hero_order_idx}')
 
 
 def _is_in_position(position: str) -> bool:
@@ -182,6 +262,17 @@ def _blind_posted_by(hand: ParsedHand, player: str) -> float:
     parser, então quem quiser saber o que já está na frente de alguém no preflop precisa
     reconstruí-los daqui — mesma regra de assentos do `build_table_state_at_decision`
     (em heads-up o botão É o SB, ver [[project_posicao_heads_up]])."""
+    # O histórico DECLARA quem postou — usar isso antes de derivar do botão. A derivação abaixo
+    # errava junto com o `_infer_position` em mão de botão/blind morto: mesma suposição, mesmo
+    # deslocamento de uma casa. Ver `blinds_declarados`.
+    _sb_p, _bb_p = blinds_declarados(hand)
+    if _bb_p:
+        if player == _sb_p:
+            return float(hand.sb or 0)
+        if player == _bb_p:
+            return float(hand.bb or 0)
+        return 0.0   # o histórico nomeou os blinds e este jogador não é nenhum deles
+
     seats = sorted(int(s['seat']) for s in (hand.seats or []))
     if not seats or hand.button_seat is None:
         return 0.0

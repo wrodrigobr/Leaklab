@@ -7,6 +7,60 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(posicao): botao morto e SB morto deslocavam a mesa inteira uma casa (#motor #posicao)
+
+> **Nao havia o que derivar: o historico DECLARA quem postou cada blind.** `_infer_position`
+> derivava do BOTAO e assumia que os dois assentos seguintes postam SB e BB. Com o assento do
+> botao vazio, ou com nenhum small blind postado, a mesa inteira desloca uma casa — e a range
+> preflop consultada passa a ser a da posicao errada, para TODAS as decisoes daquela mao.
+>
+> ```
+>   Game Hand #2789041938 ... Seat #4 is the button
+>   Seat 2: MusashiBR                     <- hero
+>   jippy posts the big blind 2000.00     <- NENHUM small blind
+>   MusashiBR raises 4000.00              <- hero e o PRIMEIRO a agir
+> ```
+>
+> Hero abre de UTG, o banco gravava `BB`.
+>
+> ── O conserto foi maior que o achado ─────────────────────────────────────────────────────────
+>
+> `blinds_declarados` virou fonte unica, e os **DOIS** consumidores passaram a ler dela. O segundo
+> era `_blind_posted_by`, que tinha a propria derivacao pelo botao (com a propria gambiarra de
+> botao morto) e errava junto. Esse e o mais perigoso dos dois: ele decide quantas fichas cada
+> jogador ja tem na frente no preflop, entao errar ali contamina **pote, pot odds e stack
+> efetivo** — nao so o rotulo.
+>
+> Detalhe do modelo: com o **SB morto** ninguem ocupa o indice 0, entao a ordem leva um `None`
+> ali e a mesa virtual tem um lugar a mais (`n+1`). Sem isso o BTN escorregava para o penultimo e
+> a mesa errava do outro lado — ha teste so para essa parte.
+>
+> ── A prova ───────────────────────────────────────────────────────────────────────────────────
+>
+> A/B no MESMO container de producao, mesmo medidor, so o modulo trocado:
+>
+> | | codigo antigo | codigo novo |
+> |---|---|---|
+> | quem postou o BB rotulado errado | **24** de 6.734 | **0** |
+> | quem postou o SB rotulado errado | **13** | **0** |
+>
+> O A/B existe porque zero e o resultado de que mais desconfio: rodar so o "depois" nao separa
+> "consertou" de "medidor parou de medir".
+>
+> ── O oraculo estava dentro do dado ───────────────────────────────────────────────────────────
+>
+> Os testes rodam o **proprio `_infer_position`** e conferem contra o que o texto declara, em vez
+> de reimplementar a regra e comparar duas implementacoes minhas. Nao e preciosismo: reimplementar
+> no medidor me deu tres numeros errados seguidos na entrada anterior, todos plausiveis.
+>
+> Sete guardas, tres verificados quebrando: voltar a derivacao pelo botao (acusa 4), tirar o lugar
+> vago do SB morto (acusa 2), tirar o `:?` do regex que casa `Nome: posts` do PokerStars (acusa 3).
+>
+> Backend 1945 testes, 0 falhas — inclusive o golden do `/replay`, que e a rede mais forte aqui,
+> porque `_blind_posted_by` mexe em numero, nao so em rotulo.
+>
+> **Nao deployado.** Corrige mao NOVA; o acervo so muda com reprocesso.
+
 ### ops: reprocesso fechou 42 das 46 — e as 4 que sobraram sao POSICAO ERRADA (#producao #achado)
 
 > Deploy de `43280a7b` em producao e reprocesso dos 81 torneios. **A migracao de boot foi provada
