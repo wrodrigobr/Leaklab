@@ -747,6 +747,19 @@ def _run_migrations(conn):
             # sync e o motor no preflop — e ele decide o CENARIO (vs_3bet x vs_rfi x faces_squeeze
             # x vs_4bet), ou seja, qual range e consultada.
             "ALTER TABLE decisions ADD COLUMN IF NOT EXISTS hero_was_aggressor INTEGER",
+            # ── Identidade ESTAVEL da anotacao do coach ────────────────────────────────────
+            # `coach_hand_annotations.decision_id` tem FK ON DELETE CASCADE, e `save_decisions`
+            # faz DELETE+INSERT por torneio: **todo reprocesso apagava as anotacoes do coach**.
+            # Aconteceu de verdade em 05/08 — 71 comentarios sumiram e so voltaram porque eu
+            # tinha um export por acaso. O `decision_id` nasce outro a cada reprocesso; estas
+            # colunas descrevem a decisao de um jeito que sobrevive a reescrita.
+            "ALTER TABLE coach_hand_annotations ADD COLUMN IF NOT EXISTS tournament_id INTEGER",
+            "ALTER TABLE coach_hand_annotations ADD COLUMN IF NOT EXISTS hand_id TEXT",
+            "ALTER TABLE coach_hand_annotations ADD COLUMN IF NOT EXISTS street TEXT",
+            "ALTER TABLE coach_hand_annotations ADD COLUMN IF NOT EXISTS action_taken TEXT",
+            # Ordinal DENTRO da chave: `(mao, street, acao)` NAO e unica — o hero age duas vezes
+            # na mesma street sempre que paga e depois enfrenta um raise.
+            "ALTER TABLE coach_hand_annotations ADD COLUMN IF NOT EXISTS ordinal INTEGER",
             # #15 leaderboard — opt-in/privacidade: aparecer no ranking público é consentido
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS leaderboard_opt_in BOOLEAN NOT NULL DEFAULT FALSE",
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS leaderboard_handle TEXT",
@@ -1444,6 +1457,20 @@ def _run_migrations(conn):
         if 'coach_override_label' not in ann_existing:
             try: conn.execute("ALTER TABLE coach_hand_annotations ADD COLUMN coach_override_label TEXT")
             except Exception: pass
+        # Identidade ESTAVEL da anotacao — espelha o bloco PG. Estes ALTER precisam ficar AQUI,
+        # sob o PRAGMA de `coach_hand_annotations`: postos na lista de `decisions` (onde eu os
+        # coloquei primeiro) o guard `col not in dec_existing` via `tournament_id` ja presente em
+        # `decisions` e PULAVA a migracao inteira, em silencio.
+        for _c, _sql in [
+            ("tournament_id", "ALTER TABLE coach_hand_annotations ADD COLUMN tournament_id INTEGER"),
+            ("hand_id",       "ALTER TABLE coach_hand_annotations ADD COLUMN hand_id TEXT"),
+            ("street",        "ALTER TABLE coach_hand_annotations ADD COLUMN street TEXT"),
+            ("action_taken",  "ALTER TABLE coach_hand_annotations ADD COLUMN action_taken TEXT"),
+            ("ordinal",       "ALTER TABLE coach_hand_annotations ADD COLUMN ordinal INTEGER"),
+        ]:
+            if _c not in ann_existing:
+                try: conn.execute(_sql)
+                except Exception: pass
         dec_existing = {r[1] for r in conn.execute('PRAGMA table_info(decisions)').fetchall()}
         for col, sql in [
             ("position",    "ALTER TABLE decisions ADD COLUMN position    TEXT"),

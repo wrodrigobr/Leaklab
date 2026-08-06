@@ -713,10 +713,81 @@ def _purity(r: dict) -> tuple:
         return (None, None)
 
 
+def _anotacoes_do_torneio(conn, tournament_db_id: int) -> list:
+    """Anotações do coach deste torneio, com a IDENTIDADE ESTÁVEL da decisão anotada.
+
+    `coach_hand_annotations.decision_id` tem FK `ON DELETE CASCADE`, e `save_decisions` faz
+    `DELETE+INSERT`: **todo reprocesso apagava as anotações do coach**. Aconteceu de verdade em
+    05/08 — 71 comentários de um coach sumiram, e só voltaram porque eu tinha um export por acaso.
+
+    A identidade estável é `(hand_id, street, action_taken)` mais um ORDINAL, porque essa chave
+    não é única: o hero age duas vezes na mesma street sempre que paga e depois enfrenta um raise.
+    """
+    linhas = _fetchall(conn, _adapt(
+        "SELECT a.*, d.hand_id AS _hid, d.street AS _st, d.action_taken AS _act "
+        "FROM coach_hand_annotations a JOIN decisions d ON d.id = a.decision_id "
+        "WHERE d.tournament_id = ? ORDER BY d.id"), (tournament_db_id,))
+    vistos: dict = {}
+    saida = []
+    for r in linhas:
+        d = dict(r)
+        k = (str(d.get('_hid')), d.get('_st'), (d.get('_act') or '').lower())
+        vistos[k] = vistos.get(k, -1) + 1
+        d['_chave'] = k
+        d['_ordinal'] = vistos[k]
+        saida.append(d)
+    return saida
+
+
+def _religa_anotacoes(conn, tournament_db_id: int, guardadas: list) -> int:
+    """Recoloca as anotações nas decisões RECÉM-GRAVADAS, casando pela identidade estável.
+
+    Contagem diferente entre o guardado e o novo naquela chave => a anotação NÃO volta. Colar o
+    comentário do coach na decisão errada é pior que perdê-lo — é o mesmo princípio do
+    `pareamento_decisoes`.
+    """
+    if not guardadas:
+        return 0
+    novos: dict = {}
+    for r in _fetchall(conn, _adapt(
+            "SELECT id, hand_id, street, action_taken FROM decisions "
+            "WHERE tournament_id = ? ORDER BY id"), (tournament_db_id,)):
+        d = dict(r)
+        novos.setdefault((str(d['hand_id']), d['street'],
+                          (d['action_taken'] or '').lower()), []).append(d['id'])
+    n = 0
+    for a in guardadas:
+        ids = novos.get(a['_chave'], [])
+        if a['_ordinal'] >= len(ids):
+            continue                      # a decisão não existe mais: perder é honesto
+        try:
+            conn.execute(_adapt(
+                "INSERT INTO coach_hand_annotations "
+                "(coach_id, student_id, decision_id, comment, mode, coach_action, "
+                " coach_override_label, created_at, tournament_id, hand_id, street, "
+                " action_taken, ordinal) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)"),
+                (a.get('coach_id'), a.get('student_id'), ids[a['_ordinal']], a.get('comment'),
+                 a.get('mode'), a.get('coach_action'), a.get('coach_override_label'),
+                 a.get('created_at'), tournament_db_id, a['_chave'][0], a['_chave'][1],
+                 a['_chave'][2], a['_ordinal']))
+            n += 1
+        except Exception as _e:
+            # `except: pass` aqui foi exatamente o que escondeu a primeira versao quebrada deste
+            # conserto. Duplicata (UNIQUE) e esperada e silenciosa; qualquer outra coisa GRITA.
+            if 'unique' not in str(_e).lower() and 'duplicate' not in str(_e).lower():
+                import logging
+                logging.getLogger(__name__).warning(
+                    'religa_anotacoes falhou: %s: %s', type(_e).__name__, _e)
+    return n
+
+
 def save_decisions(tournament_db_id: int, results: List[dict]):
     """Salva todas as decisões de uma análise. Limpa as antigas primeiro."""
     conn = get_conn()
     try:
+        # As anotações do coach vão junto no CASCADE do DELETE abaixo. Guardar ANTES e religar
+        # DEPOIS, na mesma transação: se algo explodir no meio, o rollback devolve tudo.
+        _anot_guardadas = _anotacoes_do_torneio(conn, tournament_db_id)
         conn.execute("DELETE FROM decisions WHERE tournament_id = ?",
                      (tournament_db_id,))
         rows = []
@@ -810,6 +881,7 @@ def save_decisions(tournament_db_id: int, results: List[dict]):
                gto_played_freq, gto_top_freq, spot_family_key, spot_hash)
             VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
         """, rows)
+        _religa_anotacoes(conn, tournament_db_id, _anot_guardadas)
         conn.commit()
     finally:
         conn.close()

@@ -52,6 +52,7 @@ SUITES = {
     'database':  ['test_database.py', 'test_coach_system.py', 'test_notifications.py',
                   'test_solve_quota.py', 'test_coach_adherence_multiway.py', 'test_coach_invites.py',
                   'test_coach_trial.py', 'test_coach_referral.py', 'test_coach_replay.py',
+                  'test_anotacao_sobrevive_reprocesso.py',
                   'test_admin_finance.py', 'test_verdict_invariant.py',
                   'test_training_gamification.py', 'test_conquistas_sem_prova.py',
                   'test_pool_de_conexoes.py',

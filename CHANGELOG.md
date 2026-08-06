@@ -7,6 +7,45 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(dados): o reprocesso APAGAVA as anotacoes do coach, e apagou 71 de verdade (#dados #coach)
+
+> `coach_hand_annotations.decision_id` tem FK **`ON DELETE CASCADE`**, e `save_decisions` faz
+> `DELETE FROM decisions WHERE tournament_id = ?` antes de reinserir. **Todo reprocesso destruia o
+> trabalho do coach** — sem erro, sem log, sem aviso.
+>
+> Nao e hipotese: em 05/08 isso apagou **71 comentarios** de um coach em producao. Voltaram porque
+> eu tinha exportado o JSON por acaso, para montar um relatorio. **Sorte nao e processo.**
+>
+> Restauracao: 71 de 71, remapeando `decision_id` pela identidade estavel. Conferida por CONTEUDO
+> e nao por contagem — os 71 comentarios estao na mesma mao/street/acao de antes.
+>
+> ── O conserto ────────────────────────────────────────────────────────────────────────────────
+>
+> `save_decisions` guarda as anotacoes ANTES do DELETE e as religa DEPOIS do INSERT, na MESMA
+> transacao (se explodir no meio, o rollback devolve tudo). O religamento usa
+> `(hand_id, street, action_taken)` mais um **ORDINAL** — essa chave nao e unica, o hero age duas
+> vezes na mesma street sempre que paga e depois enfrenta um raise.
+>
+> Decisao que sumiu do recalculo NAO leva a anotacao para outra: perder e honesto, colar o
+> comentario do coach na decisao errada seria pior.
+>
+> Mais as colunas de identidade estavel na propria tabela (`tournament_id`, `hand_id`, `street`,
+> `action_taken`, `ordinal`), para que a anotacao sobreviva a qualquer outro caminho de delete.
+>
+> ── Duas armadilhas no caminho, as duas minhas ────────────────────────────────────────────────
+>
+> **1. Escrevi um `except Exception: pass` no religamento** e ele escondeu a primeira versao
+> quebrada. Trocado por log: duplicata (UNIQUE) segue silenciosa, qualquer outra coisa grita. Foi
+> o log que revelou o erro real — `table coach_hand_annotations has no column named tournament_id`.
+>
+> **2. Pus os `ALTER` na lista de migracao errada.** No ramo SQLite eles foram parar na lista de
+> `decisions`, cujo guard e `col not in dec_existing`; como `decisions` JA tem `tournament_id`, a
+> migracao inteira era **pulada em silencio**. Movidos para sob o `PRAGMA table_info` da tabela
+> certa.
+>
+> Quatro guardas, dois verificados quebrando — e um deles reproduz o defeito original inteiro:
+> reprocessa de verdade e exige que a anotacao continue la, na decisao certa. Backend 1998 testes.
+
 ### fix(motor): os quatro defeitos que a revisao com o coach humano expos (#motor #veredito)
 
 > Sairam de comparar **71 anotacoes de um coach** com o veredito do produto, mao a mao. Nenhum
