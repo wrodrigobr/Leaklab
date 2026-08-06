@@ -7,6 +7,35 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(gto): cartas HEADS-UP capturadas do GTO Wizard via HAR do usuario (#gto #hu)
+
+> A simulacao 1 da revisao com o coach provou que gradeavamos o trecho HU com carta de MESA
+> CHEIA. O usuario capturou os nos HU no GW (DevTools -> HAR) e agora ha ferramenta + dado:
+> `scripts/importar_har_hu.py` -> `docs/hu_ranges_har.json`, **15 nos, 169 maos cada, com EV**.
+>
+> Cobertura: `ROOT` (SB first-in) em 1/10/25/30/40bb; `R2` (BB vs open) em 10-60bb.
+>
+> ── O que o dado ja decidiu ───────────────────────────────────────────────────────────────────
+>
+> **JJ no BB vs open: 3-bet 100% em TODA profundidade de 10 a 60bb.** A nossa carta ring dizia
+> call 100% — errada em todo o espectro, nao so nos 20bb da mao do aluno. A acusacao ao 3-bet do
+> jogador (caso 75) era falsa.
+>
+> **Caso 73 invertido: o SISTEMA estava certo e o coach errado.** A5s no SB first-in a 17bb:
+> GW manda **limp 100%** (limp domina ate ~30bb; so vira open puro a 40bb). O coach tinha dito
+> "all-in direto" — jam tem 0% em todas as profundidades capturadas. A recomendacao de
+> limp/call do sistema, que eu tinha chamado de "erro de cenario" no relatorio, era a correta.
+>
+> ── Duas licoes de decodificacao, pagas com erro na frente do usuario ─────────────────────────
+>
+> A ordem dos arrays de 169 do GW **nao e a matriz 13x13** — li JJ como "call 90,5%" antes de
+> ancorar a ordem em `simple_hand_counters` (dict ordenado por nome: `22, 32o, 32s...`). E o
+> validador de lixo rejeitou um no BOM (fold de `92s` vs 3-bet e legitimo quando o range chega
+> filtrado): validacao forte so em no de primeira decisao; ancora AA/KK nos demais.
+>
+> Falta capturar (quando quiser): `ROOT` em 12-18bb e os nos de **SB vs 3-bet**. Integracao no
+> motor (roteamento `n_players==2` + null honesto no que faltar) e o proximo passo.
+
 ### ops: reprocesso completo prova as duas coisas de uma vez (#producao #coach)
 
 > `74daf900` ja estava no ar (subiu na prova do conserto anterior); nao havia commit novo. Rodei o

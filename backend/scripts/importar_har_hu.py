@@ -1,0 +1,170 @@
+# -*- coding: utf-8 -*-
+"""Importa estrategias HEADS-UP do GTO Wizard a partir de arquivos .har.
+
+    python scripts/importar_har_hu.py caminho/um.har [outro.har ...] [--out saida.json]
+
+── Por que existe ─────────────────────────────────────────────────────────────────────────────
+
+A revisao cruzada com o coach (05/08) provou por oraculo externo que gradeavamos o trecho
+HEADS-UP com carta de MESA CHEIA: JJ no BB contra open de SB era "call 100%" na nossa carta e
+**3-bet 100%** no GW HU real (HAR de 06/08, depth 20.125). O sistema acusou de erro a jogada
+correta do jogador.
+
+O usuario captura os nos no GW com o DevTools (Network -> "Save all as HAR with content") e este
+script extrai, de cada resposta `spot-solution`, a estrategia COMPLETA das 169 maos.
+
+── As duas licoes de decodificacao, pagas com erro ────────────────────────────────────────────
+
+1. **A ordem dos arrays de 169 NAO e a matriz 13x13.** O proprio `parse_gw_har.py` ja avisava
+   ("ordem ... nao e trivial") e eu reincidi: li JJ como "call 90,5%" com a ordem errada. A ordem
+   verdadeira vem de `players_info[*].simple_hand_counters`, um dict cuja ORDEM DE INSERCAO
+   ('22', '32o', '32s', '33', ...) indexa `strategy`/`evs`/`range`. Este script a le DO PROPRIO
+   ARQUIVO, nunca a assume.
+2. **Todo no importado passa por validacao de lixo**: num no de defesa de BB vs open, as maos com
+   fold 100% tem que ser offsuit fraco (32o, 94o...). Se aparecer par ou As entre elas, a ordem
+   esta errada e o no e REJEITADO em vez de importado torto — carta errada e pior que carta
+   nenhuma, como a propria carta 9-max acabou de demonstrar.
+"""
+from __future__ import annotations
+
+import argparse
+import base64
+import json
+import sys
+from pathlib import Path
+
+# Maos que PODEM ser fold puro num no de defesa HU. Qualquer coisa fora disto com fold 100%
+# indica ordem corrompida. Conservador de proposito: pares e maos com As nunca entram.
+_LIXO_ACEITAVEL = {
+    f"{a}{b}o" for a in "23456789T" for b in "23456789" if a != b
+} | {f"{a}{b}s" for a in "23456" for b in "2345" if a != b} | {
+    'J2o', 'J3o', 'J4o', 'J5o', 'J6o', 'J7o', 'Q2o', 'Q3o', 'Q4o', 'Q5o', 'Q6o',
+    'K2o', 'K3o', 'K4o', 'T2s', 'T3s',
+}
+
+
+def _texto_da_resposta(entry: dict) -> str:
+    c = entry.get('response', {}).get('content', {}) or {}
+    txt = c.get('text') or ''
+    if c.get('encoding') == 'base64':
+        txt = base64.b64decode(txt).decode('utf-8', 'replace')
+    return txt
+
+
+def _rotulo(acao: dict) -> str:
+    t = acao.get('type', '?')
+    bs = acao.get('betsize')
+    return f"{t} {bs}" if bs not in (None, 0, '0') else t
+
+
+def extrai_nos(har_path: Path) -> list[dict]:
+    """Todos os nos `spot-solution` de um HAR, ja decodificados e validados."""
+    har = json.loads(har_path.read_text(encoding='utf-8'))
+    nos = []
+    for entry in har.get('log', {}).get('entries', []):
+        url = entry.get('request', {}).get('url', '')
+        if '/spot-solution' not in url:
+            continue
+        txt = _texto_da_resposta(entry)
+        if not txt:
+            continue                       # o GW manda a mesma chamada 2x, uma vazia
+        try:
+            j = json.loads(txt)
+        except Exception:
+            continue
+        q = {p['name']: p['value'] for p in entry['request'].get('queryString', [])}
+        pi = j.get('players_info') or []
+        if not pi or not j.get('action_solutions'):
+            continue
+        ordem = list((pi[0].get('simple_hand_counters') or {}).keys())
+        if len(ordem) != 169:
+            continue
+        ativo = next((p for p in pi if (p.get('player') or {}).get('is_active')), None)
+        if not ativo:
+            continue
+        # HU: dealer E o SB. Fora de HU este importador nao se aplica.
+        ator = 'SB' if (ativo['player'].get('is_dealer')) else 'BB'
+        maos: dict = {}
+        acoes = []
+        for s in j['action_solutions']:
+            rot = _rotulo(s.get('action') or {})
+            acoes.append(rot)
+            evs = s.get('evs') or [None] * 169
+            for i, freq in enumerate(s.get('strategy') or []):
+                if freq and freq > 0.0005:
+                    maos.setdefault(ordem[i], {})[rot] = {
+                        'f': round(float(freq), 4),
+                        'ev': (round(float(evs[i]), 4) if evs[i] is not None else None),
+                    }
+        nos.append({
+            'gametype': q.get('gametype', ''),
+            'depth': q.get('depth', ''),
+            'preflop_actions': q.get('preflop_actions', ''),
+            'ator': ator,
+            'pot': (j.get('game') or {}).get('pot'),
+            'acoes': acoes,
+            'maos': maos,
+        })
+    return nos
+
+
+def valida_no(no: dict) -> str | None:
+    """None = ok; senao, o motivo da rejeicao.
+
+    Duas forcas de validacao, porque o range de chegada muda o que e plausivel:
+
+    - **No de PRIMEIRA decisao** (ROOT, ou BB reagindo a open/limp): o ator chega com as 169.
+      Ali fold 100% so pode ser lixo — par ou As foldando denuncia ordem corrompida.
+    - **No posterior** (ex.: SB enfrentando 3-bet): o range ja e filtrado e foldar `92s` que
+      abriu e LEGITIMO — a primeira versao deste validador rejeitou um no bom por isso. Resta a
+      ancora universal: AA/KK nunca sao fold puro preflop HU nessas profundidades. Com ordem
+      corrompida, o indice que se le como "AA" e uma mao qualquer, que plausivelmente folda —
+      entao a ancora pega a corrupcao com boa probabilidade, sem falso alarme.
+    """
+    if not any(a.startswith('FOLD') for a in no['acoes']):
+        return None
+    folds_puros = {mao for mao, acs in no['maos'].items()
+                   if acs.get('FOLD', {}).get('f', 0) >= 0.99}
+    for ancora in ('AA', 'KK'):
+        if ancora in folds_puros:
+            return f"ordem corrompida: {ancora} com fold 100%"
+    primeira_decisao = no['preflop_actions'] in ('', 'R2', 'C') or (
+        no['preflop_actions'].count('-') == 0)
+    if primeira_decisao:
+        suspeitos = [m for m in folds_puros if m not in _LIXO_ACEITAVEL]
+        if suspeitos:
+            return f"ordem suspeita: fold 100% em {sorted(suspeitos)[:6]}"
+    return None
+
+
+def main() -> int:
+    ap = argparse.ArgumentParser()
+    ap.add_argument('hars', nargs='+')
+    ap.add_argument('--out', default='docs/hu_ranges_har.json')
+    args = ap.parse_args()
+
+    saida: dict = {}
+    rejeitados = 0
+    for caminho in args.hars:
+        for no in extrai_nos(Path(caminho)):
+            motivo = valida_no(no)
+            chave = f"{no['depth']}|{no['preflop_actions'] or 'ROOT'}"
+            if motivo:
+                rejeitados += 1
+                print(f"REJEITADO {chave}: {motivo}")
+                continue
+            # ultimo vence (recaptura do mesmo no substitui)
+            saida.setdefault(no['gametype'], {})[chave] = no
+            print(f"OK  {chave:24s} ator={no['ator']} acoes={no['acoes']} "
+                  f"maos_no_range={len(no['maos'])}")
+
+    out = Path(args.out)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(json.dumps(saida, ensure_ascii=False, indent=1), encoding='utf-8')
+    total = sum(len(v) for v in saida.values())
+    print(f"\n{total} nos importados, {rejeitados} rejeitados -> {out}")
+    return 0 if total else 1
+
+
+if __name__ == '__main__':
+    sys.exit(main())
