@@ -115,6 +115,8 @@ def build_decision_input(state: HandState, hand: 'ParsedHand | None' = None) -> 
             'facingAllin':        state.metadata.get('facing_allin', False),  # enfrenta all-in (call = a agressão)
             # ...e o excesso de um raise seria impagavel por todos → aumentar E o call.
             'shoveEquivaleCall':  state.metadata.get('shove_equivale_call', False),
+            # Alguem vivo ja esta all-in: blefe nao tem fold equity contra ele.
+            'hasAllinOpponent':   state.metadata.get('has_allin_opponent', False),
             'facingLimp':         state.metadata.get('facing_limp', False),  # pote limpado (fora de cobertura GTO)
             'callerPosition':     state.metadata.get('caller_position', ''),  # cold caller (pra rotear squeeze)
             'facingToBb':         state.metadata.get('facing_to_bb'),  # #23: open enfrentado em bb (raise-to total)

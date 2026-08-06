@@ -1261,6 +1261,96 @@ def evaluate_decision(input_data: Dict[str, Any]) -> Dict[str, Any]:
             label = 'marginal'
             final_score = min(final_score, _LABEL_MAX_SCORE['marginal'])
 
+    # ── Defeito 1: o rotulo mais duro num spot de moeda ao alto ────────────────────────────
+    # Achado na revisao cruzada com o coach (05/08). Em tres maos o produto cravou
+    # `clear_mistake` num FOLD cuja propria conta dizia outra coisa:
+    #
+    #   95o em 7-T-6   equity 28,0%  exigido 36,7%   -> o fold estava CERTO
+    #   A9o em 4-8-2   equity 34,0%  exigido 33,6%   -> empate (0,4pp)
+    #   Q5s em 6-A-2   equity 24,0%  exigido 23,5%   -> empate (0,5pp)
+    #
+    # Duas regras, e a primeira e a que mais importa: **se a equity estimada NAO alcanca o
+    # exigido, o fold e +EV pela nossa propria matematica**. Chamar isso de "erro claro" e o
+    # produto se contradizendo dentro do mesmo card. E o argumento vale mesmo com nó de solver:
+    # o estimador erra INFLANDO equity (ver o bloco de "sem gabarito nao e erro" acima), entao
+    # quando ate a versao inflada diz que nao da preco, nao da preco.
+    #
+    # Cap em `marginal`, nao em `standard`: pode existir motivo de range para pagar que a conta
+    # de pot odds nao ve. Marginal e "subotimo mas defensavel", que e exatamente o que se sabe.
+    _EMPATE_PP = 0.02
+    if label in ('small_mistake', 'clear_mistake') and _norm_gto_action(
+            input_data.get('player_action', '')) == 'fold':
+        # POT ODDS CRU, nao o `adjustedRequiredEquity`. A primeira versao deste guarda usou o
+        # ajustado e nao disparou em nenhuma das tres maos do relatorio: ele ja vem descontado
+        # por realizacao/pressao (0,25 onde o pot odds era 0,336) e por isso quase sempre fica
+        # ABAIXO da equity. A pergunta aqui e aritmetica — "o call paga o preco oferecido?" — e
+        # quem responde isso e o preco, nao o preco ajustado por modelo.
+        _eq_f  = math.get('estimatedHandEquity')
+        _req_f = math.get('potOddsEquity') or threshold_pack.get('adjustedRequiredEquity')
+        if _eq_f is not None and _req_f is not None:
+            if _eq_f < _req_f or abs(_eq_f - _req_f) <= _EMPATE_PP:
+                label = 'marginal'
+                final_score = min(final_score, _LABEL_MAX_SCORE['marginal'])
+
+    # ── Defeito 2: equity vs mao ALEATORIA nao vale como argumento contra range estreita ───
+    # O caso do coach: AQo enfrentando 4-bet ALL-IN por 20bb. O card exibia 64,4% de equity e
+    # rotulava o call de `standard`. Mas 64,4% e vs mao ALEATORIA — contra quem 4-beta 20bb, AQo
+    # esta bem atras. O produto usou um numero medido contra outra coisa para abencoar a jogada.
+    #
+    # Sinal de range estreita, sem adivinhacao: enfrentar all-in COM dois ou mais raises antes.
+    # Nao e "vilao agressivo" nem leitura — e a linha mais estreita que existe no preflop.
+    #
+    # A correcao NAO acusa: baixa de `standard` para `marginal`. A diferenca importa. Acusar
+    # exigiria saber a range de verdade; o que sabemos e so que **nao temos base para chamar de
+    # correto**, e `marginal` diz exatamente isso. Mesma logica de direcao do bloco "sem gabarito
+    # nao e erro": equity inflada absolve quem paga, entao a correcao anda no sentido de tirar a
+    # absolvicao, nunca no de criar culpa.
+    if (street == 'preflop' and label == 'standard'
+            # `equitySource` vive no bloco `math` do input, nao no `context` — a primeira
+            # versao leu do lugar errado e o guarda nunca disparou, calado.
+            and math.get('equitySource') == 'vs_random'
+            and spot.get('facingAllin')
+            and int(spot.get('preflopRaisesFaced') or 0) >= 2
+            and _norm_gto_action(input_data.get('player_action', '')) == 'call'
+            and not gto.get('available') and not preflop_gto.get('available')):
+        label = 'marginal'
+        final_score = max(final_score, _LABEL_MAX_SCORE['standard'] + 0.001)
+
+    # ── Defeito 3: abaixo de ~10bb a arvore e jam-ou-fold ──────────────────────────────────
+    # O coach apontou duas: ATo de UTG com 9,2bb recebeu `raise` (com `gto_correct`!) e A5s
+    # heads-up com 16,4bb recebeu `call`. Nessa profundidade o open pequeno nao existe na arvore
+    # da mesa — quem abre, abre comprometido. Recomendar `raise` ali descreve uma arvore mais
+    # funda do que a que o jogador tinha.
+    #
+    # So converte a RECOMENDACAO (raise -> jam), nunca cria acusacao: quem ja tinha jogado a
+    # agressao continua com o mesmo rotulo, e o cap abaixo impede que a troca vire erro novo.
+    _PROF_JAM = 10.0
+    if (street == 'preflop' and _best_action == 'raise'
+            and 0 < float(_hero_stack_bb or 0) <= _PROF_JAM):
+        _best_action = 'jam'
+        if _action_family(input_data.get('player_action', '')) in ('raise', 'allin'):
+            label = 'marginal' if label in ('small_mistake', 'clear_mistake') else label
+            final_score = min(final_score, _LABEL_MAX_SCORE['marginal'])
+
+    # ── Defeito 4: blefe em pote com jogador JA all-in ─────────────────────────────────────
+    # A anotacao mais valiosa das 71: "nao blefe em potes que ja tem alguem de all-in". Contra
+    # quem nao pode foldar nao existe fold equity — o blefe perde a metade da sua razao de ser, e
+    # a outra metade (ganhar no showdown) e justamente onde a mao fraca perde. O produto rotulava
+    # `standard` nesses bets.
+    #
+    # So mexe quando ha mao fraca DE VERDADE (`air`) e cartas+board conhecidos, pela mesma razao
+    # do bloco de `made_hand_category` acima: sem os dois, ausencia de dado viraria acusacao.
+    # Cap em `marginal`, jamais em erro — a jogada tem equity e pode ser correta por outros
+    # motivos; o que ela nao pode e ser exibida como linha padrao.
+    if (street != 'preflop' and spot.get('hasAllinOpponent')
+            and _action_family(input_data.get('player_action', '')) in ('bet', 'raise')
+            and label == 'standard'):
+        from leaklab.bet_intent import made_hand_category
+        _c_ai, _b_ai = input_data.get('hero_cards'), spot.get('board')
+        if _c_ai and _b_ai and made_hand_category(_c_ai, _b_ai) == 'air':
+            label = 'marginal'
+            final_score = max(final_score, _LABEL_MAX_SCORE['standard'] + 0.001)
+
     # `_best_action` FINAL — o mesmo que o card exibe. A narrativa relia
     # `range_evaluation.recommendedPrimaryAction`, que e a opiniao da HEURISTICA antes das
     # sobrescritas do GTO (linhas ~1006/1012/1029/1064). Resultado medido: 263 de 657 cards

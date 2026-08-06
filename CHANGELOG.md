@@ -7,6 +7,62 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(motor): os quatro defeitos que a revisao com o coach humano expos (#motor #veredito)
+
+> Sairam de comparar **71 anotacoes de um coach** com o veredito do produto, mao a mao. Nenhum
+> deles estava em lista de bug.
+>
+> | | antes | depois |
+> |---|---|---|
+> | acusadas de erro | 657 | **640** |
+> | rotuladas `standard` | 7.854 | **7.834** |
+> | `marginal` | 1.302 | **1.339** |
+>
+> 17 acusacoes suavizadas (G1 e G3) e 20 "padrao" rebaixados a marginal (G2 e G4). **Nenhum
+> guarda cria acusacao nova** — os quatro so tiram severidade ou tiram absolvicao.
+>
+> **G1 — fold cujo preco nao paga nao pode ser "erro claro".** Se nem a equity estimada (que erra
+> INFLANDO, ver o bloco "sem gabarito nao e erro") alcanca o pot odds, o fold e +EV pela nossa
+> propria conta. Cap em `marginal`, com margem de 2pp para empate tecnico.
+>
+> **G2 — equity vs mao ALEATORIA nao abencoa call contra range estreita.** AQo enfrentando 4-bet
+> all-in exibia 64,4% e virava `standard`. Contra quem 4-beta 20bb, AQo esta atras. Gatilho sem
+> adivinhacao: all-in COM dois ou mais raises antes. Baixa para `marginal`, nao acusa — a direcao
+> do erro do estimador ABSOLVE quem paga, entao a correcao tira a absolvicao e para ali.
+>
+> **G3 — abaixo de 10bb a arvore e jam-ou-fold.** ATo de UTG com 9,2bb recebia `raise` (com
+> `gto_correct`). So converte a recomendacao; nao cria erro.
+>
+> **G4 — blefe em pote com jogador JA all-in.** Contra quem nao pode foldar nao existe fold
+> equity. Era a anotacao mais valiosa das 71 e o produto rotulava `standard`. Coluna nova de
+> estado (`has_allin_opponent`), e o cap so vale com mao `air` e cartas+board conhecidos.
+>
+> ── Um erro MEU, maior que tres dos quatro defeitos ───────────────────────────────────────────
+>
+> No relatorio eu acusei o produto de cravar `clear_mistake` em tres folds "de moeda ao alto",
+> calculando pot odds como `to_call / (pot_size + to_call)` a partir de colunas do banco.
+> **Estava errado.** O motor RECONSTROI o pote — trabalho desta mesma sessao, que levou a precisao
+> de 1,2% para 99,6% — e o pot odds real daquelas maos era **25%, nao 33-37%**. Com o numero
+> certo a equity paga o preco e o `clear_mistake` esta **correto**.
+>
+> Somei dois campos do banco e chamei de pot odds. O guarda G1 continua valendo como principio,
+> mas nao se aplica aquelas tres, e ha teste travando a referencia certa.
+>
+> A primeira versao do G1 usava `adjustedRequiredEquity` e **nunca disparava**: aquele numero ja
+> vem descontado por realizacao/pressao (0,25 onde o pot odds era 0,336), entao fica quase sempre
+> abaixo da equity. Guarda que nao dispara e cobertura sem cobrir. O G2 tinha o mesmo tipo de
+> falha: lia `equitySource` do `context`, onde ele nao vive.
+>
+> Doze guardas, os quatro verificados quebrando. **Dois controles meus passavam com o codigo
+> quebrado** e foram refeitos: um comparava rotulo absoluto num spot que ja saia `marginal` por
+> outra regra, e outro tinha um `or` que aceitava os dois lados.
+>
+> O golden do `/replay` mudou junto, e nao pelos guardas: o conserto do `is_3bet_pot` no lookup do
+> replay corrigiu `squeeze` para `faces_squeeze` em 3 linhas, e com o cenario certo o fold do hero
+> passou de `unknown` para `correct`. Regenerado.
+>
+> Backend 1994 testes, 0 falhas.
+
 ### fix(card): o texto narrava a HEURISTICA enquanto o veredito vinha do SOLVER (#veredito #card)
 
 > Dois reports do usuario, no mesmo dia, com a mesma raiz: **duas fontes para o mesmo fato**.

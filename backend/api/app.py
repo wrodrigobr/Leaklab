@@ -6372,9 +6372,20 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
                                     )
                             except Exception:
                                 pass
-                            _pf_is_3bet_pot = (_pf_n_raises_before >= 2
-                                              or bool(spot.get('is3betPot'))
-                                              or bool(di.get('is_3bet', False)))
+                            # `is_3bet_pot` significa "hero FEZ o 3-bet", NAO "o pote e de 3-bet"
+                            # — esta escrito no proprio `analyze_preflop`. A formula antiga ligava a
+                            # flag quando havia >=2 raises ANTES do hero, que e exatamente o caso
+                            # OPOSTO (hero ENFRENTA um 3-bet). Com ela, o cenario virava
+                            # squeeze/vs_4bet em vez de vs_3bet e o veredito saia `fold`.
+                            #
+                            # Reportado por um aluno: card dizendo "Call lucrativo: equity 64%
+                            # supera pot odds 21%" e, no mesmo quadro, "ERRO" e "CALL -EV". O
+                            # backend gravou `standard`; quem inventou o erro foi este lookup.
+                            #
+                            # "Quantos raises vieram antes" ja viaja em `facing_raises`, logo
+                            # abaixo — este parametro nunca foi o lugar dele. Agora usa a MESMA
+                            # fonte do motor (`decision_engine_v11` linha ~248).
+                            _pf_is_3bet_pot = bool(di.get('is_3bet', False))
                             # Porta única de estratégia preflop (mesma do trainer/engine/replay-verdict).
                             # `raw` = dict cru do analyze_preflop (dialeto de armazenamento) → o
                             # frontend consome preflop_gto como antes, sem mudança de contrato.

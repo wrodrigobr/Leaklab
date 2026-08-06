@@ -614,6 +614,15 @@ def extract_decision_points(hand: ParsedHand) -> List[HandState]:
                     _algum_cobre = True
                     break
             shove_equivale_call = bool(_sabemos_todos and not _algum_cobre and _teto_allin > 0)
+        # Algum oponente VIVO ja esta all-in neste ponto? Contra quem nao pode foldar nao
+        # existe fold equity, e um blefe perde metade da razao de ser. Reportado pelo coach:
+        # "nao blefe em potes que ja tem alguem de all-in" — principio conhecido que o motor
+        # nao tinha. Ver o guarda em `decision_engine_v11`.
+        has_allin_opponent = any(
+            (_a.action or '').lower() in ('all-in', 'allin')
+            and _a.player != hero and _a.player in still_in_now
+            for _a in actions_before)
+
         is_multiway = n_active_opponents >= 2
 
         # Stack EFETIVO — precisa saber quem está vivo, por isso vem só agora. Em heads-up é
@@ -698,6 +707,8 @@ def extract_decision_points(hand: ParsedHand) -> List[HandState]:
                 'caller_position': caller_position,
                 'villain_name': villain_name,   # HUD: nome do vilão do spot (lookup do perfil)
                 'facing_allin': facing_allin,   # hero enfrenta um all-in (call = a agressão)
+                # Alguém VIVO já está all-in: blefe aqui não tem fold equity contra ele.
+                'has_allin_opponent': has_allin_opponent,
                 # ...e ninguém vivo pode pagar mais que esse all-in → aumentar É o call.
                 'shove_equivale_call': shove_equivale_call,
                 'facing_to_bb': facing_to_bb,  # #23: tamanho do open enfrentado (bb)
