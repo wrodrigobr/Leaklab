@@ -7,6 +7,36 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### ops: reprocesso completo prova as duas coisas de uma vez (#producao #coach)
+
+> `74daf900` ja estava no ar (subiu na prova do conserto anterior); nao havia commit novo. Rodei o
+> reprocesso dos **81 torneios** mesmo assim, porque ele testa o que a prova anterior nao testava:
+> a preservacao das anotacoes no acervo INTEIRO, e nao num torneio so.
+>
+> | | antes | depois |
+> |---|---|---|
+> | decisoes | 9.813 | 9.813 |
+> | acusadas de erro | 640 | 640 |
+> | com `gto_label` | 9.002 | 9.002 |
+> | maos com diferenca | — | **0 de 6.611** |
+> | **anotacoes do coach** | **71** | **71** |
+> | ...ligadas a decisao viva | — | **71** |
+> | ...com identidade estavel gravada | — | **71** |
+>
+> **1. O reprocesso converge.** Zero diferenca sobre o mesmo codigo, com o controle rodando junto
+> (um unico label trocado -> acusa 1). Isso confirma que o 657 -> 640 do deploy dos guardas foi
+> conserto, e nao deriva do proprio reprocesso.
+>
+> **2. As 71 anotacoes sobreviveram a um reprocesso completo.** As tres contagens contam a mesma
+> historia: existem, apontam para decisoes vivas, e carregam a identidade estavel gravada. Ontem
+> este mesmo comando teria zerado a tabela.
+>
+> ── Nota de fechamento do dia ─────────────────────────────────────────────────────────────────
+>
+> Os dois piores problemas do dia **nao vieram de medicao**. "Nao blefe em pote com all-in" veio de
+> um coach humano olhando a mao; o CASCADE veio de eu tentar reler as anotacoes e encontrar a
+> tabela vazia. Metrica nao acha ausencia de conceito, e nao acha dado que ja sumiu.
+
 ### fix(dados): o reprocesso APAGAVA as anotacoes do coach, e apagou 71 de verdade (#dados #coach)
 
 > `coach_hand_annotations.decision_id` tem FK **`ON DELETE CASCADE`**, e `save_decisions` faz
