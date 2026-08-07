@@ -246,6 +246,84 @@ def test_prefixo_compartilhado_gasta_uma_requisicao_so():
     assert len(log) == 6, f'esperava 6 nos distintos, foram {len(log)}: {log}'
 
 
+# ── 7. o transporte: navegar e ESCUTAR ────────────────────────────────────────────────────────
+
+class _RespostaFalsa:
+    def __init__(self, url, corpo, status=200):
+        self.url, self._corpo, self.status = url, corpo, status
+
+    def json(self):
+        return self._corpo
+
+
+class _PaginaFalsa:
+    """Playwright de mentira: `goto` dispara as respostas que o app 'faria' para aquela URL."""
+
+    def __init__(self, respostas_por_no):
+        self.respostas = respostas_por_no          # {preflop_actions: [(no_da_resposta, corpo)]}
+        self.ouvintes = []
+        self.visitadas = []
+
+    def on(self, _evento, fn):
+        self.ouvintes.append(fn)
+
+    def remove_listener(self, _evento, fn):
+        self.ouvintes.remove(fn)
+
+    def goto(self, url, **_):
+        from urllib.parse import parse_qs, urlparse
+        q = parse_qs(urlparse(url).query)
+        self.visitadas.append((q.get('depth', [''])[0], q.get('preflop_actions', [''])[0]))
+        pedido = q.get('preflop_actions', [''])[0]
+        for no_resp, corpo in self.respostas.get(pedido, []):
+            u = (f"https://api.gtowizard.com/v4/solutions/spot-solution/?gametype=g"
+                 f"&depth={q['depth'][0]}&preflop_actions={no_resp}")
+            for fn in list(self.ouvintes):
+                fn(_RespostaFalsa(u, corpo))
+
+    def wait_for_timeout(self, _ms):
+        pass
+
+
+def test_navegando_casa_a_resposta_com_o_no_pedido():
+    """A pagina emite varias respostas; so a do no PEDIDO pode ser aceita."""
+    from coletor_gw import buscador_navegando
+    alvo = _payload([('FOLD', None), ('CALL', '2'), ('RAISE', '4.5')], ator_dealer=False)
+    outro = _payload([('FOLD', None), ('CALL', '1.000')])
+    page = _PaginaFalsa({'R2': [('', outro), ('R2', alvo), ('C', outro)]})
+    status, corpo = buscador_navegando(page, espera_ms=1000)(
+        {'gametype': 'g', 'depth': '14.125', 'preflop_actions': 'R2'})
+    assert status == 200
+    assert [a['action']['type'] for a in corpo['action_solutions']] == ['FOLD', 'CALL', 'RAISE']
+    assert page.visitadas == [('14.125', 'R2')]
+
+
+def test_navegando_acusa_se_o_app_entregar_outro_no():
+    """O pior desfecho possivel seria gravar o ROOT sob a chave de R2: carta errada nao se
+    denuncia depois. Se a rota da SPA mudar, isto PARA em vez de gravar."""
+    from coletor_gw import LimiteAtingido as _L, buscador_navegando
+    root = _payload([('FOLD', None), ('CALL', '1.000')])
+    page = _PaginaFalsa({'R2': [('', root)]})          # pedi R2, o app so entregou ROOT
+    try:
+        buscador_navegando(page, espera_ms=300, passo_ms=100)(
+            {'gametype': 'g', 'depth': '14.125', 'preflop_actions': 'R2'})
+        assert False, 'aceitou resposta de outro no'
+    except _L as e:
+        assert 'nao entregou' in str(e), e
+    # CONTROLE: com a resposta certa, o mesmo caminho NAO acusa
+    page2 = _PaginaFalsa({'R2': [('R2', root)]})
+    assert buscador_navegando(page2, espera_ms=300, passo_ms=100)(
+        {'gametype': 'g', 'depth': '14.125', 'preflop_actions': 'R2'})[0] == 200
+
+
+def test_url_do_spot_carrega_o_no():
+    from coletor_gw import url_do_spot
+    u = url_do_spot({'gametype': 'MTTHUGeneralSimpleAI', 'depth': '16.125',
+                     'preflop_actions': 'R2-RAI'})
+    assert 'preflop_actions=R2-RAI' in u and 'depth=16.125' in u
+    assert u.startswith('https://app.gtowizard.com/solutions?')
+
+
 if __name__ == '__main__':
     falhas = 0
     testes = [v for k, v in sorted(globals().items()) if k.startswith('test_')]

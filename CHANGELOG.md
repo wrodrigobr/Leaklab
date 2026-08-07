@@ -24,6 +24,14 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 > se descobre andando. Prefixos compartilhados sao memoizados: as 6 linhas do plano gastam 6
 > requisicoes, nao 14.
 >
+> **O coletor nao forja requisicao: ele navega e ESCUTA.** A primeira versao montava o `fetch`
+> na mao e morria em "Failed to fetch" — o app assina cada chamada com um header
+> `google-anal-id` gerado por script proprio (`xyz.gtowizard.com/jwodlhco.js`), entao imitar o
+> app nao funciona e nao deve funcionar. Agora o script navega ate a URL do no e captura a
+> resposta que **o proprio app** pede, que e exatamente o que o HAR fazia — so que sem DevTools.
+> E casa a resposta com o no PEDIDO: se a rota da SPA mudar e vier outro no, PARA, em vez de
+> gravar dado certo sob chave errada (carta errada nao se denuncia depois).
+>
 > **O coletor nao loga, ele se CONECTA.** O Google recusa OAuth em navegador iniciado por
 > automacao ("Esse navegador ou app pode nao ser seguro") — decisao deles, nao obstaculo a
 > burlar. Entao o fluxo e o inverso: o usuario abre o Chrome com `--remote-debugging-port=9222`,

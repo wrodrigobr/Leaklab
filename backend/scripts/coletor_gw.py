@@ -239,20 +239,69 @@ def _conecta_cdp(porta: int):
     return pw, browser, page
 
 
-def buscador_playwright(page):
-    """Faz a requisicao DE DENTRO da pagina logada — mesma origem, mesma sessao, sem token."""
+def url_do_spot(params: dict) -> str:
+    """URL da SPA para um no. Os params extras sao os que o app usa ao abrir um estudo."""
+    from urllib.parse import urlencode
+    q = {
+        'soltab': 'strategy', 'solution_type': 'gwiz', 'gmfs_solution_tab': 'ai_sols',
+        'gametype': params['gametype'], 'depth': params['depth'],
+        'preflop_actions': params.get('preflop_actions', ''),
+        'gmfft_sort_key': '0', 'gmfft_sort_order': 'desc', 'history_spot': '0',
+        'gmff_favorite': 'false',
+    }
+    return f'{APP}solutions?{urlencode(q)}'
+
+
+def _mesma_chave(url: str, params: dict) -> bool:
+    from urllib.parse import parse_qs, urlparse
+    q = parse_qs(urlparse(url).query)
+    def v(k):
+        return (q.get(k) or [''])[0]
+    return (v('gametype') == params['gametype'] and v('depth') == params['depth']
+            and v('preflop_actions') == (params.get('preflop_actions') or ''))
+
+
+def buscador_navegando(page, espera_ms: int = 30000, passo_ms: int = 250):
+    """Navega ate o no e ESCUTA a requisicao que o proprio app faz.
+
+    Forjar a chamada nao funciona e nao deve funcionar: o app assina cada requisicao com um
+    header `google-anal-id` gerado por um script proprio, e um `fetch` nosso chega sem ele
+    ("Failed to fetch"). Entao nao imitamos o app — deixamos o app trabalhar e so lemos o que
+    passa, que e exatamente o que o HAR fazia.
+
+    **Casa a resposta com o no PEDIDO.** Se a rota da SPA mudar e o app entregar outro no, isto
+    acusa em vez de gravar dado certo sob chave errada — que seria o pior desfecho possivel,
+    porque a carta errada nao se denuncia depois.
+    """
     def buscar(params: dict):
-        r = page.evaluate(
-            """async ({api, params}) => {
-                 const u = new URL(api);
-                 Object.entries(params).forEach(([k, v]) => u.searchParams.set(k, v));
-                 const resp = await fetch(u.toString(), {credentials: 'include'});
-                 let body = null;
-                 try { body = await resp.json(); } catch (e) {}
-                 return {status: resp.status, body};
-               }""",
-            {'api': API, 'params': params})
-        return r['status'], r['body']
+        capturado: dict = {}
+
+        def ao_responder(resp):
+            try:
+                if '/spot-solution' not in resp.url or not _mesma_chave(resp.url, params):
+                    return
+                if 'body' not in capturado:
+                    capturado['status'] = resp.status
+                    capturado['body'] = resp.json()
+            except Exception:
+                pass                        # resposta sem corpo legivel: a proxima serve
+
+        page.on('response', ao_responder)
+        try:
+            page.goto(url_do_spot(params), wait_until='domcontentloaded')
+            esperou = 0
+            while 'body' not in capturado and esperou < espera_ms:
+                page.wait_for_timeout(passo_ms)
+                esperou += passo_ms
+        finally:
+            page.remove_listener('response', ao_responder)
+
+        if 'body' not in capturado:
+            raise LimiteAtingido(
+                f"o app nao entregou o no {params.get('preflop_actions') or 'ROOT'} "
+                f"(depth={params['depth']}) em {espera_ms // 1000}s — sessao caiu, cota, "
+                f"ou a rota da SPA mudou")
+        return capturado['status'], capturado['body']
     return buscar
 
 
@@ -326,7 +375,7 @@ def main() -> int:
         print('a sessao do GW nao esta logada nessa janela — logue nela e rode de novo')
         fechar()
         return 2
-    buscar = buscador_playwright(page)
+    buscar = buscador_navegando(page)
 
     parada = None
     try:
