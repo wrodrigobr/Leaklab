@@ -333,6 +333,55 @@ def villain_open_range(position: str, stack_bb: float, n_players: int | None = N
     return out
 
 
+def villain_reraise_range(villain_pos: str, hero_pos: str, stack_bb: float,
+                          n_players: int | None = None, is_pko: bool = False) -> dict:
+    """Range com que o villain 3-BETA contra um open do hero, como {hand_canon: weight}.
+
+    ── Por que existe ─────────────────────────────────────────────────────────────────────────
+    O `estimated_equity` do produto é medido **contra mão aleatória** sempre que o hero enfrenta
+    mais de um raise: `pipeline.py` só injetava range no caso de open simples, com a justificativa
+    "3bet/4bet têm ranges mais estreitas e ficam no vs-random". A consequência é o defeito que o
+    coach apontou: AQo contra um 4-bet all-in exibia **64,4%** de equity — número medido contra
+    outra coisa — e o card usava isso para abençoar o call.
+
+    A range existe nas nossas cartas e é a MESMA que já usamos para gradear o villain: em
+    `vs_RFI[opener][defender]`, o peso de cada mão nas famílias de aumento. Aqui ela é lida do
+    ponto de vista do villain, que é quem 3-betou.
+
+    Vazio (`{}`) quando não há cobertura — e aí o caller mantém o vs-random, que é o
+    comportamento de hoje. **Nunca inventar range estreita**: equity contra range errada é pior
+    que equity contra aleatória, porque parece precisa.
+    """
+    vil = _norm_pos(villain_pos, n_players)
+    her = _norm_pos(hero_pos, n_players)
+    bk_data = None
+    if is_pko:
+        _pko_bk, _stg, _lbl = _pko_ranges_for(stack_bb)
+        if _pko_bk:
+            bk_data = _pko_bk
+    if bk_data is None:
+        bk_data = _load().get('ranges', {}).get(_stack_bucket(stack_bb), {})
+    spot = ((bk_data.get('vs_RFI') or {}).get(her) or {}).get(vil)
+    if not spot:
+        return {}
+    membros = _expand_range(spot.get('raise_hands', '') or '') | _expand_range(
+        spot.get('allin_hands', '') or '')
+    if not membros:
+        return {}
+    hand_freqs = spot.get('hand_freqs', {}) or {}
+    out: dict[str, float] = {}
+    for h in membros:
+        hf = hand_freqs.get(h, {})
+        if hf:
+            w = sum(float(f) for code, f in hf.items()
+                    if code == 'RAI' or (code.startswith('R') and code != 'F'))
+            if w > 0:
+                out[h] = w
+        else:
+            out[h] = 1.0
+    return out
+
+
 def _canonical_open_bb(bk_data: dict, opener_pos: str) -> Optional[float]:
     """Tamanho de open canônico do GTO p/ a posição do opener, em bb — lido do código
     de sizing (R{x}) modal na RFI do opener (ex.: 'R2.1' → 2.1bb). None se o opener

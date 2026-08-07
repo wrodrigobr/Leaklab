@@ -27,21 +27,42 @@ def build_decision_input(state: HandState, hand: 'ParsedHand | None' = None) -> 
     """Constrói o input do Decision Engine para um HandState."""
     spot      = classify_spot(state)
 
-    # #27 range-aware: quando o hero DEFENDE contra um único open (vs_rfi), injeta a
-    # RFI range GTO real do opener pra equity vs RANGE (não vs random). Só esse caso
-    # (open simples) — 3bet/4bet têm ranges mais estreitas e ficam no vs-random.
+    # #27 range-aware: quando o hero DEFENDE contra um open, injeta a RFI range GTO real do
+    # opener pra equity vs RANGE (não vs random).
+    #
+    # ── 07/08: estendido ao 3-bet, que era o buraco ────────────────────────────────────────────
+    # A versão anterior parava no open simples, com a justificativa "3bet/4bet têm ranges mais
+    # estreitas e ficam no vs-random". Justamente por serem mais estreitas é que o vs-random
+    # mente mais ali: o coach pegou um AQo contra 4-bet all-in exibindo **64,4%** de equity, e o
+    # card usou esse número — medido contra outra coisa — para abençoar o call. Contra a range
+    # real de 3-bet o mesmo AQo fica em ~52%.
+    #
+    # A range de re-raise sai das MESMAS cartas que já usamos para gradear o villain. Quando não
+    # há cobertura, `villain_reraise_range` devolve `{}` e tudo segue como antes: **equity contra
+    # range errada é pior que contra aleatória**, porque parece precisa.
     if (state.street == 'preflop'
-            and (state.metadata or {}).get('preflop_raises_faced') == 1
             and state.villain_position and state.villain_position != 'unknown'):
         try:
-            from .preflop_gto_ranges import villain_open_range
+            _raises = int((state.metadata or {}).get('preflop_raises_faced') or 0)
             mtt = state.metadata.get('mtt_context', {}) or {}
-            vr = villain_open_range(
-                state.villain_position,
-                state.effective_stack_bb or 0.0,
-                state.metadata.get('n_players'),
-                bool(mtt.get('isPko')),
-            )
+            vr = None
+            if _raises == 1:
+                from .preflop_gto_ranges import villain_open_range
+                vr = villain_open_range(
+                    state.villain_position,
+                    state.effective_stack_bb or 0.0,
+                    state.metadata.get('n_players'),
+                    bool(mtt.get('isPko')),
+                )
+            elif _raises >= 2 and state.position:
+                from .preflop_gto_ranges import villain_reraise_range
+                vr = villain_reraise_range(
+                    state.villain_position,
+                    state.position,
+                    state.effective_stack_bb or 0.0,
+                    state.metadata.get('n_players'),
+                    bool(mtt.get('isPko')),
+                )
             if vr:
                 state.metadata['villain_range'] = vr
         except Exception:

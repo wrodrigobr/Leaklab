@@ -97,6 +97,7 @@ SUITES = {
                   'test_hu_preflop.py',
                   'test_coletor_gw.py',
                   'test_ring_gw.py',
+                  'test_equity_vs_range_3bet.py',
                   'test_plano_ring.py',
                   'test_facing_limp_persistido.py',
                   'test_bb_check_nao_e_free_play.py',

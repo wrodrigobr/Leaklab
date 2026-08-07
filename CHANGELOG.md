@@ -7,6 +7,27 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(motor): equity contra a range de 3-BET, nao contra mao aleatoria (#motor #coach)
+
+> Familia 2 das cinco da revisao com o coach. O `pipeline` injetava range so no open simples, com
+> a justificativa escrita no codigo: *"3bet/4bet tem ranges mais estreitas e ficam no vs-random"*.
+> **E justamente por serem mais estreitas que o vs-random mente mais ali** — o coach pegou um AQo
+> contra 4-bet all-in exibindo **64,4%** de equity, numero medido contra outra coisa, e o card
+> usava isso para abencoar o call. Contra a range real de 3-bet o mesmo AQo fica em **~52%**.
+>
+> Nao precisou de motor de equity novo: `equity_vs_range` e a matriz ja existiam, e a range de
+> re-raise sai das MESMAS cartas que ja usamos para gradear o villain (`vs_RFI[opener][defensor]`,
+> peso das familias de aumento). `villain_reraise_range` devolve `{}` sem cobertura, e o caller
+> mantem o vs-random: **equity contra range errada e pior que contra aleatoria, porque parece
+> precisa.**
+>
+> O golden do `/replay` acusou — que e o guarda funcionando. Diferenca real: **1 linha de 43, e so
+> o campo `equitySource`**; nenhum veredito mudou. Regenerado com a diferenca conferida linha a
+> linha, nao no automatico.
+>
+> Nota de metodo: meu primeiro diff do golden disse "0 mudaram" **porque cada linha e uma lista, e
+> eu comparava chaves de dict** — zero vacuo. O MD5 diferente foi o que denunciou.
+
 ### fix(motor): G5 -- o espelho do G1, para o lado do CALL (#motor #coach)
 
 > Familia 3 das cinco que a revisao com o coach isolou. O G1 (06/08) cobre uma direcao so: o
