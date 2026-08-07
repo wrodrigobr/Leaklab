@@ -170,11 +170,27 @@ def gravador(caminho: Path):
 
 # ── browser ───────────────────────────────────────────────────────────────────────────────────
 
-def _contexto(perfil: Path, headless: bool):
+def _contexto(perfil: Path, headless: bool, navegador: str = 'chrome'):
+    """Chromium empacotado ou o Chrome/Edge instalado na maquina.
+
+    Default e o **Chrome real**: e o navegador que voce ja usa no GW, entao user-agent e
+    fingerprint sao os de sempre — um Chromium de automacao destoa do trafego normal da conta
+    sem nenhum ganho. Cai para o Chromium empacotado se o canal nao estiver instalado.
+
+    O perfil e SEPARADO do seu Chrome do dia a dia (`.gw_profile`): o Chrome recusa abrir um
+    perfil ja em uso, e apontar para o seu perfil real misturaria a automacao com suas abas.
+    """
     from playwright.sync_api import sync_playwright
     pw = sync_playwright().start()
-    ctx = pw.chromium.launch_persistent_context(str(perfil), headless=headless,
-                                                viewport={'width': 1280, 'height': 800})
+    opcoes = dict(headless=headless, viewport={'width': 1280, 'height': 800})
+    canal = {'chrome': 'chrome', 'edge': 'msedge'}.get(navegador)
+    if canal:
+        try:
+            ctx = pw.chromium.launch_persistent_context(str(perfil), channel=canal, **opcoes)
+            return pw, ctx
+        except Exception as e:
+            print(f'{navegador} nao disponivel ({type(e).__name__}); usando o Chromium empacotado')
+    ctx = pw.chromium.launch_persistent_context(str(perfil), **opcoes)
     return pw, ctx
 
 
@@ -204,13 +220,15 @@ def main() -> int:
     ap.add_argument('--login', action='store_true', help='abre o browser para voce logar e sai')
     ap.add_argument('--pausa', type=float, default=8.0, help='segundos entre requisicoes')
     ap.add_argument('--max-nos', type=int, default=40, help='teto de nos NOVOS por execucao')
+    ap.add_argument('--navegador', default='chrome', choices=('chrome', 'edge', 'chromium'),
+                    help='Chrome instalado (default), Edge, ou o Chromium empacotado')
     args = ap.parse_args()
 
     perfil = Path(args.perfil).resolve()
     perfil.mkdir(parents=True, exist_ok=True)
 
     if args.login:
-        pw, ctx = _contexto(perfil, headless=False)
+        pw, ctx = _contexto(perfil, headless=False, navegador=args.navegador)
         page = ctx.pages[0] if ctx.pages else ctx.new_page()
         page.goto(APP)
         print('\nLogue no GTO Wizard nesta janela. Quando o estudo estiver aberto, volte aqui e')
@@ -237,7 +255,7 @@ def main() -> int:
     def pausar():
         time.sleep(args.pausa * random.uniform(0.8, 1.4))
 
-    pw, ctx = _contexto(perfil, headless=False)
+    pw, ctx = _contexto(perfil, headless=False, navegador=args.navegador)
     page = ctx.pages[0] if ctx.pages else ctx.new_page()
     page.goto(APP)
     if 'login' in page.url:

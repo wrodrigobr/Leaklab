@@ -24,6 +24,11 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 > se descobre andando. Prefixos compartilhados sao memoizados: as 6 linhas do plano gastam 6
 > requisicoes, nao 14.
 >
+> Roda no **Chrome instalado** por padrao (`--navegador chrome|edge|chromium`): e o navegador
+> que o usuario ja usa no GW, entao user-agent e fingerprint sao os de sempre. Perfil separado
+> do Chrome do dia a dia -- o Chrome recusa abrir perfil em uso, e apontar para o real
+> misturaria a automacao com as abas do usuario.
+>
 > A decodificacao virou **porta unica** (`no_de_resposta`), consumida pelo HAR e pelo coletor,
 > com teste que passa o MESMO payload pelos dois caminhos e exige no identico -- a ordem das 169
 > ja nos custou uma leitura errada e nao pode ter duas copias.
