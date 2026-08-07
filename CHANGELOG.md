@@ -7,6 +7,20 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(motor): all-in fica FORA da range de 3-bet -- regressao pega ao regerar o relatorio
+
+> A carta `vs_RFI` modela um 3-bet DE TAMANHO, nao um jam: sao nos diferentes, e usar um pelo
+> outro e o mesmo defeito que o caminho HU existe para matar.
+>
+> Pego regerando o relatorio do coach, no caso-bandeira dele: o AQo contra 4-bet all-in ganhou
+> equity mais verdadeira (**64,4% -> 51,7%**) e mesmo assim **subiu de `marginal` para
+> `standard`** — porque o G2 so rebaixa quando a fonte e `vs_random`, e eu tinha trocado a fonte
+> usando a range do no errado. Precisao falsa, exatamente contra o que eu mesmo havia escrito o
+> comentario no codigo tres commits antes.
+>
+> Enfrentando all-in o vs-random continua, e com ele o rebaixamento do G2. O relatorio pagou o
+> proprio custo: sem regerar, a regressao teria ficado.
+
 ### feat(card): o pote com jogador all-in passa a ser NOMEADO (#motor #coach)
 
 > Familia 4, e a que menos mudou veredito — de proposito. A anotacao do coach era um CONCEITO

@@ -115,6 +115,31 @@ def test_pipeline_injeta_a_range_quando_ha_3bet():
     assert _entrada(0)['math']['equitySource'] == 'vs_random'
 
 
+def test_ALLIN_fica_fora_da_range_de_3bet():
+    """A carta `vs_RFI` modela um 3-bet DE TAMANHO, nao um jam — sao nos diferentes.
+
+    Pego ao regerar o relatorio do coach: com a range de 3-bet injetada num 4-bet ALL-IN, o AQo
+    ganhou equity mais verdadeira (64,4% -> 51,7%) e mesmo assim **subiu** para `standard`, porque
+    o G2 so rebaixa quando a fonte e `vs_random`. Trocar aleatoria por uma range do no errado e a
+    precisao falsa contra a qual eu mesmo tinha escrito o comentario no codigo.
+    """
+    from leaklab.models import HandState
+    from leaklab.pipeline import build_decision_input
+
+    def _entrada(facing_allin):
+        st = HandState(
+            hand_id='H', street='preflop', hero='hero', hero_cards='AcQd', board=[],
+            player_action='call', pot_size=9.0, facing_size=31.4, effective_stack_bb=20.3,
+            position='UTG+2', villain_position='SB', is_in_position=False, is_multiway=False,
+            actions=[], metadata={'preflop_raises_faced': 2, 'n_players': 8,
+                                  'facing_allin': facing_allin})
+        return build_decision_input(st)
+
+    assert _entrada(True)['math']['equitySource'] == 'vs_random', 'jam gradeado por carta de 3-bet'
+    # CONTROLE: o MESMO spot sem all-in continua ganhando a range
+    assert _entrada(False)['math']['equitySource'] == 'vs_range'
+
+
 if __name__ == '__main__':
     falhas = 0
     testes = [v for k, v in sorted(globals().items()) if k.startswith('test_')]

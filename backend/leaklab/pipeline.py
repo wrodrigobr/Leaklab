@@ -54,7 +54,16 @@ def build_decision_input(state: HandState, hand: 'ParsedHand | None' = None) -> 
                     state.metadata.get('n_players'),
                     bool(mtt.get('isPko')),
                 )
-            elif _raises >= 2 and state.position:
+            elif (_raises >= 2 and state.position
+                    and not (state.metadata or {}).get('facing_allin')):
+                # **All-in fica FORA.** A carta `vs_RFI` modela um 3-bet DE TAMANHO, não um jam:
+                # são nós diferentes, e usar um pelo outro é o mesmo defeito que o caminho HU
+                # existe para matar. Descoberto ao regerar o relatório do coach: o AQo contra
+                # 4-bet all-in ganhou equity mais verdadeira (64,4% -> 51,7%) e **subiu** para
+                # `standard`, porque o G2 deixa de disparar quando a fonte vira `vs_range`.
+                # Trocar `vs_random` por uma range do nó errado é exatamente a precisão falsa
+                # contra a qual eu tinha escrito o comentário acima. Enfrentando all-in, o
+                # vs-random continua, e com ele o rebaixamento do G2.
                 from .preflop_gto_ranges import villain_reraise_range
                 vr = villain_reraise_range(
                     state.villain_position,
