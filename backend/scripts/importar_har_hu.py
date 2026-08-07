@@ -103,10 +103,17 @@ def no_de_resposta(j: dict, q: dict) -> dict | None:
         codigos.append(acao.get('code'))
         evs = s.get('evs') or [None] * 169
         for i, freq in enumerate(s.get('strategy') or []):
-            if freq and freq > 0.0005:
+            f = float(freq or 0)
+            ev = evs[i] if i < len(evs) else None
+            # **Guarda tambem a acao de frequencia ZERO, quando o solver publica o EV dela.**
+            # Ate 07/08 so guardavamos o que a carta joga, e com isso o motor sabia COM QUE
+            # FREQUENCIA cada acao aparece mas nao QUANTO CUSTA escolher outra. Resultado medido:
+            # min-raise de SB a 12,6bb virava "erro" custando 0,003bb. O numero que desmente a
+            # acusacao estava no payload o tempo todo, no `evs` das acoes nao jogadas.
+            if f > 0.0005 or ev is not None:
                 maos.setdefault(ordem[i], {})[rot] = {
-                    'f': round(float(freq), 4),
-                    'ev': (round(float(evs[i]), 4) if evs[i] is not None else None),
+                    'f': round(f, 4),
+                    'ev': (round(float(ev), 4) if ev is not None else None),
                 }
     return {
         'gametype': q.get('gametype', ''),

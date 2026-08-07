@@ -7,6 +7,35 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(motor): severidade olha o CUSTO, nao so a frequencia (#gto #coach)
+
+> Familia 1 das cinco que a revisao com o coach de 07/08 apontou. O motor contava **com que
+> frequencia** a carta joga cada acao e ignorava **quanto custa** escolher outra: o SB que
+> min-raisa a 12,6bb em vez de limpar levava `major_leak` e perde **0,003bb**.
+>
+> A causa nao era falta de dado — era descarte. O GW publica o `evs` de TODA acao, inclusive as de
+> frequencia zero, e o importador so guardava o que a carta joga. Agora guarda tudo, e
+> `_perda_de_ev_da_carta` compara a acao jogada com a melhor do no. Abaixo de
+> `_PREFLOP_EV_MINOR_BB` (0,12bb, **o mesmo limiar da recalibracao com o coach #27** — fonte
+> unica, nao numero novo), o veredito duro vira `acceptable`.
+>
+> **Por que isto nao contradiz o RC-A**, que decidiu que `major_leak` nunca rebaixa por EV: aquilo
+> vale para mao FORA do range ("custa pouco justamente porque nao devia estar no pote"), e essa
+> nem chega ao ponto — sai antes como `hu_hand_out_of_range`. Aqui a mao esta no range e joga
+> alguma coisa; o que tem frequencia zero e a ACAO escolhida, com EV empatado.
+>
+> Medido no acervo antes de deployar: **16 decisoes HU suavizadas** (perda mediana 0,008bb, maxima
+> 0,082), das quais **9 sao acusacoes de hoje** — inclusive um `clear_mistake` que custa 0,001bb.
+> Rollout parcial e honesto: so os 21 nos reimportados do HAR tem o EV das acoes nao jogadas; onde
+> ele falta, o veredito e o de antes.
+>
+> **Duas regressoes silenciosas que a mudanca quase criou**, as duas pegas por mutacao: guardar
+> acao de frequencia zero fazia (a) a adjacencia raise/jam nunca mais disparar, porque ela
+> perguntava "existe rotulo dessa familia" e o rotulo passou a existir sempre, e (b) mao fora do
+> range deixar de ser detectada, porque `if not acs` virou falso. As duas viraram teste com no
+> sintetico — com dado real o teste dependia de qual no por acaso tem EV, e foi assim que a
+> primeira versao dos dois guardas passou cega.
+
 ### feat(gw): politica de tamanho de mesa — carta aproximada absolve, mas nao acusa (#gto)
 
 > No GW gratuito so existe 8-max, e o acervo esta espalhado: das 104 decisoes atendiveis, **41 sao

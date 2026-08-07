@@ -160,6 +160,100 @@ def test_bb_vs_4bet_jam_e_gradeado():
     assert r['action_quality'] == 'correct'
 
 
+def test_severidade_olha_o_CUSTO_e_nao_so_a_frequencia():
+    """O achado da revisão de 07/08 com o coach.
+
+    O motor contava com que FREQUÊNCIA a carta joga cada ação e ignorava QUANTO CUSTA escolher
+    outra. Medido: o SB que min-raisa a 12,6bb em vez de limpar perde **0,003bb** — e levava
+    `major_leak`. O número que desmenteos estava no payload o tempo todo, no `evs` das ações de
+    frequência zero, que o importador descartava.
+
+    Limiar: o mesmo `_PREFLOP_EV_MINOR_BB` (0,12bb) da recalibração com o coach (#27) — fonte
+    única, não um número novo.
+    """
+    r = _hu(position='SB', hero_hand_type='63o', stack_bb=12.7, action_taken='raise')
+    assert r['available'] is True
+    assert r['action_quality'] == 'acceptable', r['action_quality']
+    assert 0 <= r['ev_perda_carta_bb'] < 0.12, r.get('ev_perda_carta_bb')
+
+
+def test_perda_grande_continua_sendo_erro():
+    """CONTROLE que discrimina, na MESMA carta e com EV disponível: jamar 63o a 12,7bb custa
+    0,25bb (CALL +0,04 contra RAISE all-in −0,21). Continua `major_leak`."""
+    r = _hu(position='SB', hero_hand_type='63o', stack_bb=12.7, action_taken='jam')
+    assert r['action_quality'] == 'major_leak', r['action_quality']
+    assert 'ev_perda_carta_bb' not in r, 'suavizou uma perda de 0,25bb'
+
+
+def test_sem_EV_na_carta_nada_e_suavizado():
+    """Rollout parcial e honesto: só os nós reimportados do HAR têm o EV das ações não jogadas.
+    Onde ele falta, o veredito é o de antes — nunca um palpite."""
+    r = _hu(position='SB', hero_hand_type='AJo', stack_bb=14.1, action_taken='raise')
+    assert r['available'] is True
+    assert 'ev_perda_carta_bb' not in r
+    assert r['action_quality'] == 'major_leak'
+
+
+def test_mao_fora_do_range_nao_e_suavizada_e_sim_NULA():
+    """O RC-A do `_preflop_gto_label_adjust` decidiu, com razão, que ação FORA do range não
+    rebaixa por EV: 'custa pouco justamente porque não devia estar no pote'. Esse caso não passa
+    pela suavização — sai antes, como null honesto."""
+    r = _hu(position='SB', hero_hand_type='72o', stack_bb=16.0, action_taken='call',
+            facing_size=16.0, vs_position='BB', facing_raises=1, hero_was_aggressor=True,
+            facing_to_bb=16.0, facing_allin=True)
+    assert r['available'] is False
+    assert r.get('coverage_reason') == 'hu_hand_out_of_range'
+    assert 'ev_perda_carta_bb' not in r
+
+
+def _no_sintetico(maos):
+    return {'gametype': 'MTTHUGeneralSimpleAI', 'depth': '10.125', 'preflop_actions': '',
+            'ator': 'SB', 'mesa': 2, 'pot': '1.5',
+            'acoes': ['FOLD', 'CALL 1.000', 'RAISE 2', 'RAISE 10.000'],
+            'codigos': ['F', 'C', 'R2', 'RAI'], 'maos': maos}
+
+
+def test_adjacencia_raise_jam_sobreviveu_ao_EV_de_frequencia_zero():
+    """Guarda de REGRESSÃO SILENCIOSA que eu quase criei.
+
+    A adjacência raise↔jam vale quando o nó não oferece a família jogada: a 10bb o único aumento
+    real é o jam, e um "raise" do jogador é o mesmo compromisso. A varredura perguntava "existe
+    rótulo dessa família entre as mãos" — e, ao passar a guardar as ações de frequência ZERO,
+    esse rótulo passou a existir sempre, então a adjacência nunca mais dispararia. A pergunta
+    certa sempre foi "alguma mão JOGA essa família".
+
+    Nó sintético de propósito: com dado real o teste dependeria de qual nó por acaso tem EV, e foi
+    assim que a primeira versão deste guarda passou cega na verificação por mutação.
+    """
+    from leaklab.preflop_gto_ranges import _grade_por_no_capturado
+    # ninguém JOGA o raise pequeno; o rótulo existe em todas as mãos, com f=0 e EV publicado
+    no = _no_sintetico({
+        'AA': {'CALL 1.000': {'f': 0.0, 'ev': 3.0}, 'RAISE 2': {'f': 0.0, 'ev': 2.9},
+               'RAISE 10.000': {'f': 1.0, 'ev': 3.2}, 'FOLD': {'f': 0.0, 'ev': 0.0}},
+        'K5o': {'CALL 1.000': {'f': 1.0, 'ev': 0.3}, 'RAISE 2': {'f': 0.0, 'ev': 0.28},
+                'RAISE 10.000': {'f': 0.0, 'ev': 0.1}, 'FOLD': {'f': 0.0, 'ev': 0.0}},
+    })
+    base = {'scenario': 'hu_rfi'}
+    r = _grade_por_no_capturado(base, no, 10.125, 'AA', 'raise', fonte='gw_hu_har')
+    assert r['action_quality'] == 'correct', (
+        'o raise do jogador devia ter sido lido como jam (única forma de aumento no nó): %s'
+        % r['action_quality'])
+
+
+def test_mao_so_com_frequencia_zero_e_fora_do_range():
+    """Com o EV das ações não jogadas guardado, uma mão fora do range chega com ENTRADAS — todas
+    zeradas. O teste de `if not acs` deixaria de pegá-la e ela seria gradeada como se a carta
+    tivesse algo a dizer. É o defeito do 72o levando erro no call E no fold, de volta."""
+    from leaklab.preflop_gto_ranges import _grade_por_no_capturado
+    no = _no_sintetico({'72o': {'CALL 1.000': {'f': 0.0, 'ev': -0.5},
+                                'RAISE 2': {'f': 0.0, 'ev': -0.6},
+                                'FOLD': {'f': 0.0, 'ev': 0.0}}})
+    r = _grade_por_no_capturado({'scenario': 'hu_rfi'}, no, 10.125, '72o', 'call',
+                                fonte='gw_hu_har')
+    assert r.get('available') is not True, r.get('action_quality')
+    assert r.get('coverage_reason') == 'hu_hand_out_of_range'
+
+
 def test_mesa_cheia_nao_muda():
     """CONTROLE: o roteamento e de mesa de 2. Em 9-max nada disto se aplica."""
     r = analyze_preflop(position='BB', hero_hand_type='JJ', stack_bb=22.0, action_taken='raise',

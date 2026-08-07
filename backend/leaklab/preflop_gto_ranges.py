@@ -724,6 +724,35 @@ def _hu_analyze(base: dict, pos: str, hero_hand_type: str, stack_bb: float, acti
                                    fonte='gw_hu_har')
 
 
+def _EV_MINOR_BB() -> float:
+    """Limiar de EV desprezivel. **Fonte unica**: o mesmo `_PREFLOP_EV_MINOR_BB` (0,12bb) que o
+    motor ja usa desde a recalibracao com o coach (#27). Import tardio so para nao criar ciclo."""
+    try:
+        from leaklab.decision_engine_v11 import _PREFLOP_EV_MINOR_BB
+        return float(_PREFLOP_EV_MINOR_BB)
+    except Exception:
+        return 0.12
+
+
+def _perda_de_ev_da_carta(acs: dict, depth: float, fam: str):
+    """Quanto a acao jogada perde para a melhor da carta, em bb. None = a carta nao diz.
+
+    Sai do `evs` que o GW publica para TODA acao, inclusive as de frequencia zero — o dado que o
+    importador descartava ate 07/08. Sem ele, o motor sabia com que frequencia cada acao aparece
+    e nao sabia quanto custa escolher outra.
+    """
+    por_fam: dict = {}
+    for rot, v in (acs or {}).items():
+        ev = v.get('ev')
+        if ev is None:
+            continue
+        f = _hu_familia_da_acao(rot, depth)
+        por_fam[f] = max(por_fam.get(f, float('-inf')), float(ev))
+    if len(por_fam) < 2 or fam not in por_fam:
+        return None
+    return round(max(por_fam.values()) - por_fam[fam], 4)
+
+
 def _grade_por_no_capturado(base: dict, no: dict, depth: float, hero_hand_type: str,
                             action_taken: str, fonte: str) -> dict:
     """Gradua uma acao contra um no capturado do GW. **Porta unica**: HU e mesa cheia usam esta.
@@ -732,7 +761,9 @@ def _grade_por_no_capturado(base: dict, no: dict, depth: float, hero_hand_type: 
     qualidade — quatro copias de regra que ja moram aqui, e a quinta divergiria calada.
     """
     acs = (no.get('maos') or {}).get(hero_hand_type) or {}
-    if not acs:
+    # `any(f > 0)` e nao `if acs`: desde 07/08 o importador guarda tambem a acao de frequencia
+    # ZERO (pelo EV dela), entao uma mao fora da range chega aqui com entradas — todas zeradas.
+    if not any(float(v.get('f') or 0) > 0 for v in acs.values()):
         # A mão não chega a este nó: a range que o GW faz avançar até aqui não a contém (num
         # `R2-RAI` de 16bb são 98 das 169). Sem estratégia para ela, TODA ação vira desvio — o
         # 72o levava `major_leak` no call E no fold, o que só denuncia que a carta não tem o que
@@ -762,11 +793,15 @@ def _grade_por_no_capturado(base: dict, no: dict, depth: float, hero_hand_type: 
            'fold': 'fold'}.get((action_taken or '').lower(), (action_taken or '').lower())
     # Adjacencia raise<->jam SO quando o no nao oferece a familia jogada: a 10bb o unico
     # aumento e o jam, e um "raise" do jogador e o mesmo compromisso.
+    # O `f > 0` no varredor NAO e decorativo: desde 07/08 o importador guarda tambem as acoes de
+    # frequencia zero, entao "existe rotulo dessa familia" passou a ser sempre verdadeiro e a
+    # adjacencia nunca mais dispararia. A pergunta certa sempre foi "alguma mao JOGA essa
+    # familia", nao "o rotulo existe".
     if freq.get(fam, 0) == 0 and fam in ('raise', 'allin'):
         outra = 'allin' if fam == 'raise' else 'raise'
         if freq.get(outra, 0) > 0 and not any(
-                _hu_familia_da_acao(r, depth) == fam
-                for macs in (no.get('maos') or {}).values() for r in macs):
+                _hu_familia_da_acao(r, depth) == fam and float(v.get('f') or 0) > 0
+                for macs in (no.get('maos') or {}).values() for r, v in macs.items()):
             fam = outra
 
     f_jogada = freq.get(fam, 0.0)
@@ -778,6 +813,20 @@ def _grade_por_no_capturado(base: dict, no: dict, depth: float, hero_hand_type: 
         quality = 'minor_mistake'
     else:
         quality = 'major_leak'
+
+    perda = _perda_de_ev_da_carta(acs, depth, fam)
+    if (perda is not None and perda < _EV_MINOR_BB()
+            and quality in ('major_leak', 'minor_mistake')):
+        # ── Por que isto NAO contradiz o RC-A ────────────────────────────────────────────────
+        # O `_preflop_gto_label_adjust` decidiu, com razao, que `major_leak` nunca rebaixa por EV:
+        # "custa pouco JUSTAMENTE porque nao devia estar no pote". Aquilo vale para mao fora do
+        # range — que aqui nem chega neste ponto, sai antes como `hu_hand_out_of_range`.
+        # Este caso e outro: a mao ESTA no range e joga alguma coisa; o que tem frequencia zero e
+        # a ACAO escolhida. Medido no acervo, o SB a 12,6bb que min-raisa em vez de limpar perde
+        # entre 0,000 e 0,014bb — mesma mao, mesmo pote, EV empatado. Chamar isso de erro e
+        # severidade sem lastro, e foi o que o coach apontou em 4 casos.
+        quality = 'acceptable'
+        base['ev_perda_carta_bb'] = perda
 
     base.update({
         'available': True,
