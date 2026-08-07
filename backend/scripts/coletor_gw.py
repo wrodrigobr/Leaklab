@@ -261,6 +261,31 @@ def _mesma_chave(url: str, params: dict) -> bool:
             and v('preflop_actions') == (params.get('preflop_actions') or ''))
 
 
+_MARCADORES_DE_LIMITE = (
+    'daily solution browsing limit',        # o texto exato que o GW mostrou em 07/08
+    'reached your free daily',
+    'limite diario',
+    'limite diário',
+)
+
+
+def _aviso_de_limite(page) -> str | None:
+    """A propria pagina diz quando a cota acabou. Perguntar a ela e mais barato e mais honesto
+    do que esperar o timeout e depois adivinhar entre cota, sessao caida e rota mudada."""
+    try:
+        txt = page.evaluate('document.body.innerText') or ''
+    except Exception:
+        return None
+    baixo = str(txt).lower()
+    for m in _MARCADORES_DE_LIMITE:
+        if m in baixo:
+            for linha in str(txt).splitlines():
+                if m in linha.lower():
+                    return linha.strip()[:160]
+            return m
+    return None
+
+
 def buscador_navegando(page, espera_ms: int = 30000, passo_ms: int = 250):
     """Navega ate o no e ESCUTA a requisicao que o proprio app faz.
 
@@ -293,6 +318,9 @@ def buscador_navegando(page, espera_ms: int = 30000, passo_ms: int = 250):
             while 'body' not in capturado and esperou < espera_ms:
                 page.wait_for_timeout(passo_ms)
                 esperou += passo_ms
+                aviso = _aviso_de_limite(page)
+                if aviso:
+                    raise LimiteAtingido(f'o GW respondeu: "{aviso}"')
         finally:
             page.remove_listener('response', ao_responder)
 

@@ -24,6 +24,12 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 > se descobre andando. Prefixos compartilhados sao memoizados: as 6 linhas do plano gastam 6
 > requisicoes, nao 14.
 >
+> **Le o aviso de cota da propria pagina.** Na primeira rodada real a cota diaria do usuario ja
+> estava estourada: o coletor navegou certo (o spot de 16bb renderizou), nenhuma solucao veio, e
+> ele esperou 30s por no antes de dizer um erro generico. A pagina dizia o tempo todo: "You have
+> reached your free daily solution browsing limit." Agora ele pergunta a ela — para na hora e com
+> a causa certa, em vez de deixar o usuario escolher entre cota, sessao caida e rota mudada.
+>
 > **O coletor nao forja requisicao: ele navega e ESCUTA.** A primeira versao montava o `fetch`
 > na mao e morria em "Failed to fetch" — o app assina cada chamada com um header
 > `google-anal-id` gerado por script proprio (`xyz.gtowizard.com/jwodlhco.js`), entao imitar o

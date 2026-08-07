@@ -284,6 +284,9 @@ class _PaginaFalsa:
     def wait_for_timeout(self, _ms):
         pass
 
+    def evaluate(self, _expr):
+        return getattr(self, 'texto', '')
+
 
 def test_navegando_casa_a_resposta_com_o_no_pedido():
     """A pagina emite varias respostas; so a do no PEDIDO pode ser aceita."""
@@ -314,6 +317,35 @@ def test_navegando_acusa_se_o_app_entregar_outro_no():
     page2 = _PaginaFalsa({'R2': [('R2', root)]})
     assert buscador_navegando(page2, espera_ms=300, passo_ms=100)(
         {'gametype': 'g', 'depth': '14.125', 'preflop_actions': 'R2'})[0] == 200
+
+
+def test_le_o_aviso_de_limite_da_propria_pagina():
+    """Em 07/08 o coletor rodou com a cota estourada e ficou 30s no escuro por no. A pagina
+    dizia, o tempo todo: "You have reached your free daily solution browsing limit." Perguntar
+    a ela e mais barato que esperar o timeout e mais honesto que adivinhar a causa."""
+    from coletor_gw import LimiteAtingido as _L, buscador_navegando
+    page = _PaginaFalsa({'': []})                      # nenhuma resposta chega
+    page.texto = '\n'.join([
+        'Mtt 16bb Heads-up',
+        'You have reached your free daily solution browsing limit.',
+        'View Plans',
+    ])
+    try:
+        buscador_navegando(page, espera_ms=5000, passo_ms=100)(
+            {'gametype': 'g', 'depth': '16.125', 'preflop_actions': ''})
+        assert False, 'nao acusou o limite'
+    except _L as e:
+        assert 'daily solution browsing limit' in str(e), e
+
+    # CONTROLE: sem o aviso, a MESMA ausencia de resposta da o erro generico, nao "limite"
+    page2 = _PaginaFalsa({'': []})
+    page2.texto = 'Mtt 16bb Heads-up'
+    try:
+        buscador_navegando(page2, espera_ms=300, passo_ms=100)(
+            {'gametype': 'g', 'depth': '16.125', 'preflop_actions': ''})
+        assert False
+    except _L as e:
+        assert 'nao entregou' in str(e), f'confundiu ausencia de resposta com cota: {e}'
 
 
 def test_url_do_spot_carrega_o_no():
