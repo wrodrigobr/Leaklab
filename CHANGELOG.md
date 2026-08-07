@@ -7,6 +7,25 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(hu): terceira captura -- SB vs 3-bet JAM entra no motor, pelo coletor (#gto #hu)
+
+> Primeira captura feita **pelo script**, e a maior das tres: **36 -> 56 nos**. O alvo saiu --
+> `R2-RAI` (SB vs 3-bet jam) em 9 profundidades, de 10 a 40bb --, mais `ROOT` em 14/18/20 (a
+> fresta de SB first-in fechou: sobram so 2-9bb e acima de ~50) e `C`/`R2-R5`/`R2-R5.5-RAI` em
+> profundidades novas.
+>
+> **Defeito achado pela propria captura, antes do deploy:** num `R2-RAI` de 16bb so 98 das 169
+> maos chegam ao no (o SB nao abre 72o). Para as outras 71 o motor dava `major_leak` no call E no
+> fold -- os dois lados errados denunciam que a carta nao tem o que dizer, nao que o jogador errou
+> duas vezes. Agora e `hu_hand_out_of_range`, null honesto, a mesma regra de
+> [[project_sem_gabarito_nao_e_erro]].
+>
+> Tres testes que codificavam "ainda nao capturado" viraram guardas da cobertura nova: a fronteira
+> de regime agora e verificada em 5 e 55bb (onde ainda ha buraco), o null honesto passou a ser
+> provado com no que existe mas NAO naquela profundidade (`R2-RAI` so vai ate 40bb, entao a 60
+> cala), e a separacao 3-bet pequeno x jam virou o assunto do teste, ja que os dois estao
+> capturados. Guarda novo quebrado e restaurado.
+
 ### feat(gw): coletor dirigido -- captura sem DevTools, no tamanho da mao humana (#gto #tooling)
 
 > `scripts/coletor_gw.py`: Playwright numa sessao logada do usuario, percorrendo uma LISTA

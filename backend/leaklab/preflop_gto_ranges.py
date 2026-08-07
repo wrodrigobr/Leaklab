@@ -571,8 +571,9 @@ def _hu_analyze(base: dict, pos: str, hero_hand_type: str, stack_bb: float, acti
     elif pos == 'BB' and not hero_was_aggressor and _raises == 0 and facing_limp:
         node, base['scenario'] = 'BB_VS_LIMP', 'hu_bb_vs_limp'
     elif pos == 'SB' and hero_was_aggressor and _raises >= 1:
-        # SB abriu e levou 3-bet. O no capturado modela 3-bet PEQUENO; 3-bet jam e outro no
-        # (R2-RAI), ainda nao capturado — la o guard de tamanho manda pro null.
+        # SB abriu e levou 3-bet. Sao DOIS nos distintos e o tamanho decide qual: `R2-Rx` para
+        # 3-bet pequeno, `R2-RAI` para jam (capturado em 07/08, 10-40bb). Gradear jam pelo no de
+        # 3-bet pequeno seria o defeito da carta ring com outra roupa.
         if facing_allin or _to >= float(stack_bb) * 0.65:
             node, base['scenario'] = 'SB_VS_3BET_JAM', 'hu_vs_3bet_jam'
         else:
@@ -596,6 +597,14 @@ def _hu_analyze(base: dict, pos: str, hero_hand_type: str, stack_bb: float, acti
         return base
 
     acs = (no.get('maos') or {}).get(hero_hand_type) or {}
+    if not acs:
+        # A mão não chega a este nó: a range que o GW faz avançar até aqui não a contém (num
+        # `R2-RAI` de 16bb são 98 das 169). Sem estratégia para ela, TODA ação vira desvio — o
+        # 72o levava `major_leak` no call E no fold, o que só denuncia que a carta não tem o que
+        # dizer. Sem gabarito não é erro, a mesma regra do [[project_sem_gabarito_nao_e_erro]].
+        base['coverage_reason'] = 'hu_hand_out_of_range'
+        base['hu_depth'] = depth
+        return base
     freq: dict = {'fold': 0.0, 'call': 0.0, 'raise': 0.0, 'allin': 0.0}
     for rot, v in acs.items():
         freq[_hu_familia_da_acao(rot, depth)] += float(v.get('f') or 0)

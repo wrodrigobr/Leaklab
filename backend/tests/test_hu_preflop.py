@@ -64,29 +64,49 @@ def test_a5s_sb_first_in_limpa():
 
 def test_fronteira_de_regime_e_null_ate_capturar():
     """A licao da amostragem em producao: SB a 14,8bb caiu no no de 10bb (janela de 40%) e um
-    AJo foi ACUSADO por min-raisar em vez de jamar — regime errado. Com 25%, SB first-in de
-    12-20bb fica em null honesto ate capturarmos os ROOT dessas profundidades."""
-    # Janela de 25% com ROOT em {1, 10, 12.6, 25, 30, 40} (a 2a captura adicionou o 12.6 e o
-    # buraco encolheu): coberto ate ~15,8 pelo no de 12.6 e de ~18,8 em diante pelo de 25;
-    # null so na fresta 16-18, ate capturarmos ROOT ali.
-    # (16,0 tambem e coberto pelo 12.6: razao 0,211 — a janela alcanca d/0,75 = 16,8)
-    for stack in (17.0, 18.0):
+    AJo foi ACUSADO por min-raisar em vez de jamar — regime errado. A janela de 25% continua
+    valendo mesmo agora que a fresta de 12-20bb foi capturada (coletor, 07/08).
+
+    ROOT hoje: {1, 10, 12.6, 14, 16, 18, 20, 25, 30, 40}. Os buracos que sobraram sao 2-9bb e
+    acima de ~50 — e la o veredito tem que continuar sendo null, nao o no mais proximo a
+    qualquer distancia.
+    """
+    for stack in (5.0, 55.0):
         r = _hu(position='SB', hero_hand_type='AJo', stack_bb=stack, action_taken='raise')
         assert r['available'] is False, (
             f'stack {stack} usou no de outro regime ({r.get("hu_depth")})')
-    for stack, faixa in ((13.0, (12, 13)), (16.0, (12, 13)), (20.0, (24, 26))):
+    for stack, faixa in ((13.0, (12, 15)), (17.0, (16, 19)), (22.5, (20, 26))):
         r = _hu(position='SB', hero_hand_type='AJo', stack_bb=stack, action_taken='raise')
         assert r['available'] is True, f'stack {stack} devia estar coberto'
         assert faixa[0] < float(r['hu_depth']) < faixa[1], (stack, r['hu_depth'])
 
 
 def test_hu_sem_no_e_null_honesto():
-    """SB enfrentando 3-bet nao foi capturado: available=False com motivo, nunca carta ring."""
-    r = _hu(position='SB', hero_hand_type='A5s', stack_bb=17.0, action_taken='call',
-            facing_size=17.0, vs_position='BB', facing_raises=1, hero_was_aggressor=True,
-            facing_to_bb=17.0, facing_allin=True)
+    """Nó existente na nossa base, mas NAO naquela profundidade, segue null — a janela nao
+    estica. Temos `R2` a 60bb e `R2-RAI` so ate 40bb: a 60bb o jam fica sem gabarito, e o motor
+    prefere calar a gradear por um regime 33% mais raso."""
+    r = _hu(position='SB', hero_hand_type='A5s', stack_bb=60.0, action_taken='call',
+            facing_size=60.0, vs_position='BB', facing_raises=1, hero_was_aggressor=True,
+            facing_to_bb=60.0, facing_allin=True)
     assert r['available'] is False
     assert r.get('coverage_reason') == 'hu_uncovered'
+
+
+def test_mao_fora_da_range_que_chega_ao_no_nao_e_erro():
+    """`R2-RAI` de 16bb tem 98 das 169: o 72o nunca chega ali porque o SB nao abre 72o. Sem
+    estrategia para a mao, TODA acao virava desvio — o 72o levava `major_leak` no call E no
+    fold, o que so denuncia que a carta nao tem o que dizer. Sem gabarito nao e erro."""
+    for acao in ('call', 'fold'):
+        r = _hu(position='SB', hero_hand_type='72o', stack_bb=16.0, action_taken=acao,
+                facing_size=16.0, vs_position='BB', facing_raises=1, hero_was_aggressor=True,
+                facing_to_bb=16.0, facing_allin=True)
+        assert r['available'] is False, f'{acao}: {r.get("action_quality")}'
+        assert r.get('coverage_reason') == 'hu_hand_out_of_range'
+    # CONTROLE: mao que CHEGA ao mesmo no continua sendo gradeada
+    r = _hu(position='SB', hero_hand_type='AJo', stack_bb=16.0, action_taken='call',
+            facing_size=16.0, vs_position='BB', facing_raises=1, hero_was_aggressor=True,
+            facing_to_bb=16.0, facing_allin=True)
+    assert r['available'] is True and r['action_quality'] == 'correct'
 
 
 def test_defesa_vs_open_jam_nao_usa_o_no_de_open_pequeno():
@@ -114,19 +134,21 @@ def test_bb_vs_limp_e_gradeado():
     assert (r['hand_freq'] or {}).get('raise', 0) > 0, 'o mix de iso-raise sumiu'
 
 
-def test_sb_vs_3bet_pequeno_e_gradeado_e_jam_nao():
-    """SB abriu e levou 3-bet PEQUENO: no capturado. Levou 3-bet JAM: no diferente, ainda nao
-    capturado — null honesto, nunca o no de 3-bet pequeno (gradear contra o no errado e o
-    defeito que este caminho existe para matar)."""
-    r = _hu(position='SB', hero_hand_type='AJo', stack_bb=16.0, action_taken='fold',
-            facing_size=4.5, vs_position='BB', facing_raises=1, hero_was_aggressor=True,
-            facing_to_bb=4.5)
-    assert r['available'] is True and r['scenario'] == 'hu_vs_3bet'
-    assert r['action_quality'] == 'major_leak', 'foldar AJo a 3-bet pequeno a 16bb e leak'
-    r2 = _hu(position='SB', hero_hand_type='AJo', stack_bb=16.0, action_taken='call',
-             facing_size=16.0, vs_position='BB', facing_raises=1, hero_was_aggressor=True,
-             facing_to_bb=16.0, facing_allin=True)
-    assert r2['available'] is False and r2.get('coverage_reason') == 'hu_uncovered'
+def test_3bet_pequeno_e_3bet_jam_sao_NOS_DIFERENTES():
+    """Os dois estao capturados (o jam veio no coletor de 07/08), e o tamanho decide qual usar.
+    O que este teste protege nao e a cobertura, e a SEPARACAO: gradear um jam pela carta de
+    3-bet pequeno seria o defeito da carta ring com outra roupa."""
+    pequeno = _hu(position='SB', hero_hand_type='AJo', stack_bb=16.0, action_taken='fold',
+                  facing_size=4.5, vs_position='BB', facing_raises=1, hero_was_aggressor=True,
+                  facing_to_bb=4.5)
+    assert pequeno['available'] is True and pequeno['scenario'] == 'hu_vs_3bet'
+    assert pequeno['action_quality'] == 'major_leak', 'foldar AJo a 3-bet pequeno a 16bb e leak'
+
+    jam = _hu(position='SB', hero_hand_type='AJo', stack_bb=16.0, action_taken='call',
+              facing_size=16.0, vs_position='BB', facing_raises=1, hero_was_aggressor=True,
+              facing_to_bb=16.0, facing_allin=True)
+    assert jam['available'] is True and jam['scenario'] == 'hu_vs_3bet_jam'
+    assert jam['action_quality'] == 'correct', 'pagar o jam com AJo a 16bb e a jogada da carta'
 
 
 def test_bb_vs_4bet_jam_e_gradeado():
