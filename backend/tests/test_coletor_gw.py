@@ -147,12 +147,25 @@ def test_descobre_o_sizing_do_proprio_no():
     assert ('14.125', 'R2-RAI') in pedidos and ('30.125', 'R2-RAI') in pedidos
 
 
-def test_token_do_allin_nao_confunde_com_raise_grande():
-    """'RAISE 12.500' num spot de 12,625 e all-in ('RAI'); 'RAISE 4.5' e raise normal."""
+def test_o_code_do_payload_manda_no_token():
+    """O GW declara o token em `action.code`. Derivar por tamanho era heuristica onde havia dado
+    — a mesma familia do `history_spot` adivinhado. O `code` vence sempre."""
+    assert token_da_acao({'type': 'RAISE', 'betsize': '4.5', 'code': 'R4.5'}, 16.125) == 'R4.5'
+    assert token_da_acao({'type': 'RAISE', 'betsize': '16.000', 'code': 'RAI',
+                          'allin': True}, 16.125) == 'RAI'
+    assert token_da_acao({'type': 'FOLD', 'betsize': '0', 'code': 'F'}, 16.125) == 'F'
+    # o `code` manda mesmo quando a heuristica discordaria (raise gigante que NAO e all-in)
+    assert token_da_acao({'type': 'RAISE', 'betsize': '15.900', 'code': 'R15.9',
+                          'allin': False}, 16.125) == 'R15.9'
+
+
+def test_token_derivado_sobrevive_para_no_antigo():
+    """Fallback para no gravado antes de guardarmos `code`. FOLD agora e 'F', nao None: em mesa
+    cheia foldar PASSA A VEZ, e o token precisa entrar na linha (`F-F-F-F-R2`)."""
     assert token_da_acao({'type': 'RAISE', 'betsize': '12.500'}, 12.625) == 'RAI'
     assert token_da_acao({'type': 'RAISE', 'betsize': '4.5'}, 12.625) == 'R4.5'
     assert token_da_acao({'type': 'CALL', 'betsize': '2'}, 12.625) == 'C'
-    assert token_da_acao({'type': 'FOLD'}, 12.625) is None
+    assert token_da_acao({'type': 'FOLD'}, 12.625) == 'F'
     # CONTROLE: o mesmo 12.5 num spot FUNDO nao e all-in
     assert token_da_acao({'type': 'RAISE', 'betsize': '12.500'}, 60.125) == 'R12.5'
 
@@ -401,6 +414,115 @@ def test_no_ja_no_acervo_nao_gasta_requisicao():
     log2 = []
     caminha(_buscar_de({'16.125': arvore}, log=log2), 'g', '16.125', _LINHAS)
     assert '' in {n for _d, n in log2} and 'R2' in {n for _d, n in log2}
+
+
+# ── 9. mesa cheia ─────────────────────────────────────────────────────────────────────────────
+
+_ORDEM_8M = ['UTG', 'UTG+1', 'LJ', 'HJ', 'CO', 'BTN', 'SB', 'BB']
+
+
+def _payload_ring(pos_ator, acoes, folds_puros=(), n=8):
+    """Resposta de mesa cheia na forma REAL, lida de um HAR de 11/05 (`MTTGeneral_8m`):
+    `player.position`, `game.active_position` e `action.code` existem e sao autoritativos."""
+    base = _payload(acoes, folds_puros=folds_puros)
+    base['players_info'] = [
+        {'simple_hand_counters': {m: 1 for m in _MAOS},
+         'player': {'position': p, 'name': p, 'seat': i, 'is_active': p == pos_ator,
+                    'is_dealer': p == 'BTN', 'is_hero': p == pos_ator, 'is_folded': False}}
+        for i, p in enumerate(_ORDEM_8M[:n])
+    ]
+    base['game'] = {'pot': '2.5', 'active_position': pos_ator, 'board': ''}
+    for s, (tipo, bs) in zip(base['action_solutions'], acoes):
+        s['action']['position'] = pos_ator
+        s['action']['allin'] = False
+        s['action']['code'] = {'FOLD': 'F', 'CALL': 'C', 'CHECK': 'X'}.get(tipo, f'R{bs}')
+    return base
+
+
+def test_ring_le_a_posicao_do_payload_e_nao_do_is_dealer():
+    """Em HU dava para deduzir 'SB' de `is_dealer`. Em mesa cheia sao 8 posicoes e um dealer so —
+    a heuristica nao teria como funcionar. O GW declara `position` e `active_position`."""
+    # CO de proposito: a heuristica de `is_dealer` devolveria 'BB' para QUALQUER nao-dealer, entao
+    # um teste com ator no BB passaria mesmo com a heuristica velha — foi o que a mutacao pegou.
+    corpo = _payload_ring('CO', [('FOLD', None), ('CALL', '6.5'), ('RAISE', '20.000')],
+                          folds_puros={'32o', '72o'})
+    q = {'gametype': 'MTTGeneral_8m', 'depth': '20.125', 'preflop_actions': 'F-F-F-R2'}
+    no = no_de_resposta(corpo, q)
+    assert no['ator'] == 'CO', no['ator']
+    assert no['mesa'] == 8
+    assert no['codigos'] == ['F', 'C', 'R20.000']
+    # CONTROLE: em HU o mesmo caminho continua dando SB/BB
+    hu = no_de_resposta(_payload([('FOLD', None), ('CALL', '2')], ator_dealer=True),
+                        {'gametype': 'MTTHUGeneralSimpleAI', 'depth': '16.125',
+                         'preflop_actions': ''})
+    assert hu['ator'] == 'SB' and hu['mesa'] == 2
+
+
+def test_ring_nao_e_validado_com_a_lista_de_lixo_de_hu():
+    """A lista de lixo aceitavel e de HU, onde as ranges sao larguissimas. Um UTG de 8-max folda
+    Q9o, J9o, T8s — com a regra de HU o no bom seria REJEITADO. Em mesa cheia vale a ancora do
+    outro extremo: num RFI, 32o e 72o SAO fold puro."""
+    from importar_har_hu import valida_no as _valida
+    lixo_de_ring = {'32o', '72o', 'Q9o', 'J9o', 'T8s', 'K5o', '94o'}
+    bom = no_de_resposta(_payload_ring('UTG', [('FOLD', None), ('RAISE', '2')],
+                                       folds_puros=lixo_de_ring),
+                         {'gametype': 'MTTGeneral_8m', 'depth': '20.125', 'preflop_actions': ''})
+    assert _valida(bom) is None, _valida(bom)
+
+    # ordem corrompida das duas maneiras que o validador tem que pegar
+    com_aa = no_de_resposta(_payload_ring('UTG', [('FOLD', None), ('RAISE', '2')],
+                                          folds_puros=lixo_de_ring | {'AA'}),
+                            {'gametype': 'MTTGeneral_8m', 'depth': '20.125',
+                             'preflop_actions': ''})
+    assert 'AA' in (_valida(com_aa) or ''), _valida(com_aa)
+
+    sem_lixo = no_de_resposta(_payload_ring('UTG', [('FOLD', None), ('RAISE', '2')],
+                                            folds_puros={'Q9o', 'J9o'}),
+                              {'gametype': 'MTTGeneral_8m', 'depth': '20.125',
+                               'preflop_actions': ''})
+    assert '32o' in (_valida(sem_lixo) or ''), _valida(sem_lixo)
+
+
+def test_no_postflop_e_recusado_pelas_DUAS_pontas():
+    """Achado no HAR real de 11/05: o unico no de mesa cheia que sobrou era POSTFLOP, e ali o
+    `strategy` vem por COMBO (1326), nao por mao (169). Sem guarda a decodificacao estourava com
+    IndexError — e um payload com 1000 valores teria "funcionado" para as 169 primeiras chaves,
+    mentindo em silencio. Duas recusas independentes: o board na query e o tamanho do array."""
+    corpo = _payload_ring('BB', [('FOLD', None), ('CALL', '6.5')])
+    q = {'gametype': 'MTTGeneral_8m', 'depth': '20.125', 'preflop_actions': 'R2-F-C'}
+
+    assert no_de_resposta(corpo, dict(q, board='Ad6h5d')) is None, 'aceitou no com board'
+
+    por_combo = json.loads(json.dumps(corpo))
+    for s in por_combo['action_solutions']:
+        s['strategy'] = s['strategy'] + [0.1] * 1157        # 1326 combos
+    assert no_de_resposta(por_combo, q) is None, 'aceitou strategy fora de 169'
+
+    # CONTROLE: o mesmo no, preflop e com 169, entra normalmente
+    assert no_de_resposta(corpo, q) is not None
+
+
+def test_ring_caminha_pelos_folds_ate_o_heroi():
+    """A linha de mesa cheia atravessa os folds dos outros: `F-F-F-F-R2-F-R6.5` e o BB decidindo
+    contra squeeze do SB depois do open do CO. Sem a intencao `fold`, esse no e inalcancavel."""
+    arvore = {
+        '': _payload_ring('UTG', [('FOLD', None), ('RAISE', '2')], folds_puros={'32o', '72o'}),
+        'F': _payload_ring('UTG+1', [('FOLD', None), ('RAISE', '2')], folds_puros={'32o', '72o'}),
+        'F-F': _payload_ring('LJ', [('FOLD', None), ('RAISE', '2')], folds_puros={'32o', '72o'}),
+        'F-F-F': _payload_ring('HJ', [('FOLD', None), ('RAISE', '2')], folds_puros={'32o', '72o'}),
+        'F-F-F-F': _payload_ring('CO', [('FOLD', None), ('RAISE', '2')],
+                                 folds_puros={'32o', '72o'}),
+        'F-F-F-F-R2': _payload_ring('BTN', [('FOLD', None), ('CALL', '2'), ('RAISE', '6.5')]),
+        'F-F-F-F-R2-F': _payload_ring('SB', [('FOLD', None), ('CALL', '2'), ('RAISE', '6.5')]),
+        'F-F-F-F-R2-F-R6.5': _payload_ring('BB', [('FOLD', None), ('CALL', '6.5'),
+                                                  ('RAISE', '20.000')]),
+    }
+    log = []
+    linha = [['fold', 'fold', 'fold', 'fold', 'raise_min', 'fold', 'raise_min']]
+    coletados = caminha(_buscar_de({'20.125': arvore}, log=log), 'MTTGeneral_8m', '20.125', linha)
+    assert '20.125|F-F-F-F-R2-F-R6.5' in coletados, sorted(coletados)
+    assert coletados['20.125|F-F-F-F-R2-F-R6.5']['ator'] == 'BB'
+    assert len(log) == 8, f'gastou {len(log)} requisicoes para 8 nos: {log}'
 
 
 if __name__ == '__main__':

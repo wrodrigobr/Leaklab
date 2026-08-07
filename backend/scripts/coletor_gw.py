@@ -62,29 +62,42 @@ class LimiteAtingido(Exception):
 def token_da_acao(acao: dict, stack: float) -> str | None:
     """Nome do no filho para uma acao, no dialeto do `preflop_actions` do GW.
 
-    Regra lida dos 36 nos ja capturados: CALL -> 'C'; raise de tamanho ~stack -> 'RAI';
-    demais raises -> 'R' + betsize como o GW escreve ('R2', 'R4.5'). FOLD encerra a mao.
+    **O payload JA DIZ o token**, no campo `code` ('F', 'C', 'R2', 'RAI'). A primeira versao
+    derivava por tamanho ("betsize >= stack - 0,5 e all-in") e acertava, mas era heuristica onde
+    havia dado declarado — a mesma familia de erro do `history_spot` adivinhado. A derivacao
+    sobrevive so como fallback para no antigo, gravado antes de guardarmos `code`.
     """
+    if acao.get('code'):
+        return str(acao['code'])
     tipo = (acao.get('type') or '').upper()
     if tipo == 'FOLD':
-        return None
+        return 'F'                           # em mesa cheia foldar PASSA a vez, nao encerra
     if tipo in ('CALL', 'CHECK'):
         return 'C'
     bs = acao.get('betsize')
     if bs in (None, '', 0):
         return None
-    valor = float(bs)
-    if valor >= float(stack) - 0.5:          # all-in: 'RAISE 12.500' num spot de 12,625
+    if acao.get('allin') or float(bs) >= float(stack) - 0.5:
         return 'RAI'
     txt = str(bs).rstrip('0').rstrip('.') if '.' in str(bs) else str(bs)
     return f'R{txt}'
 
 
+def _eh_allin(a: dict, stack: float) -> bool:
+    if 'allin' in a:
+        return bool(a['allin'])              # o payload declara; nao precisamos inferir
+    try:
+        return float(a.get('betsize') or 0) >= float(stack) - 0.5
+    except (TypeError, ValueError):
+        return False
+
+
 def escolhe_acao(desejo: str, acoes: list[dict], stack: float) -> dict | None:
     """Resolve a INTENCAO do plano contra as acoes que o no realmente oferece."""
     raises = [a for a in acoes if (a.get('type') or '').upper() == 'RAISE' and a.get('betsize')]
-    allin = [a for a in raises if float(a['betsize']) >= float(stack) - 0.5]
-    normais = sorted((a for a in raises if a not in allin), key=lambda a: float(a['betsize']))
+    allin = [a for a in raises if _eh_allin(a, stack)]
+    normais = sorted((a for a in raises if a not in allin),
+                     key=lambda a: float(a.get('betsize') or 0))
     if desejo == 'allin':
         return allin[0] if allin else None
     if desejo == 'raise_min':
@@ -94,6 +107,9 @@ def escolhe_acao(desejo: str, acoes: list[dict], stack: float) -> dict | None:
     if desejo in ('call', 'limp', 'check'):
         return next((a for a in acoes
                      if (a.get('type') or '').upper() in ('CALL', 'CHECK')), None)
+    if desejo == 'fold':
+        # So faz sentido em mesa cheia, onde o fold passa a vez ate chegar em quem queremos.
+        return next((a for a in acoes if (a.get('type') or '').upper() == 'FOLD'), None)
     raise ValueError(f'desejo desconhecido no plano: {desejo!r}')
 
 
@@ -121,7 +137,7 @@ def caminha(buscar, gametype: str, depth: str, linhas: list[list[str]],
         chave_ja = f"{depth}|{no_str or 'ROOT'}"
         if chave_ja in conhecidos:
             no = dict(conhecidos[chave_ja])
-            no['_acoes_cruas'] = acoes_cruas_de_rotulos(no.get('acoes') or [])
+            no['_acoes_cruas'] = acoes_cruas_do_no(no)
             cache[no_str] = no
             print(f'  ja tinha {chave_ja}')
             return no
@@ -272,6 +288,16 @@ def url_do_spot(params: dict) -> str:
     return f'{APP}solutions?{urlencode(q)}'
 
 
+def acoes_cruas_do_no(no: dict) -> list[dict]:
+    """Acoes de um no JA GRAVADO, para caminhar sem repedi-lo. Usa os `codigos` quando o no foi
+    capturado depois de passarmos a guarda-los; senao reconstroi do rotulo."""
+    cruas = acoes_cruas_de_rotulos(no.get('acoes') or [])
+    for acao, code in zip(cruas, (no.get('codigos') or [])):
+        if code:
+            acao['code'] = code
+    return cruas
+
+
 def acoes_cruas_de_rotulos(rotulos: list[str]) -> list[dict]:
     """'RAISE 4.5' -> {'type': 'RAISE', 'betsize': '4.5'}. Volta do que foi GRAVADO.
 
@@ -408,7 +434,9 @@ def main() -> int:
         return 0
 
     plano = json.loads(Path(args.plano).read_text(encoding='utf-8'))
-    out = Path(args.out)
+    # O plano manda no destino: HU e mesa cheia nao dividem acervo (o motor le so o de HU, e um
+    # no de 8-max entrando la seria carta de mesa cheia gradeando heads-up — o defeito original).
+    out = Path(plano.get('saida') or args.out)
     ja = {}
     if out.exists():
         ja = json.loads(out.read_text(encoding='utf-8'))

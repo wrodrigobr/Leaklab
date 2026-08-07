@@ -65,6 +65,8 @@ def no_de_resposta(j: dict, q: dict) -> dict | None:
     custou uma leitura errada) nao pode ter duas copias. `tests/test_coletor_gw.py` varre os
     dois caminhos com o MESMO payload e exige no identico.
     """
+    if (q.get('board') or '').strip():
+        return None                        # no postflop: este importador modela preflop
     pi = j.get('players_info') or []
     if not pi or not j.get('action_solutions'):
         return None
@@ -74,13 +76,31 @@ def no_de_resposta(j: dict, q: dict) -> dict | None:
     ativo = next((p for p in pi if (p.get('player') or {}).get('is_active')), None)
     if not ativo:
         return None
-    # HU: dealer E o SB. Fora de HU este importador nao se aplica.
-    ator = 'SB' if (ativo['player'].get('is_dealer')) else 'BB'
+
+    # A POSICAO vem do payload, nao de heuristica. A primeira versao deduzia 'SB' de `is_dealer`
+    # (verdade em HU, inutil em mesa cheia); o GW declara `player.position` e
+    # `game.active_position` em toda resposta. Conferido: bate com a heuristica em 21 de 21 nos
+    # HU. Em mesa cheia a heuristica nao teria como funcionar — sao 8 posicoes, um dealer so.
+    jogo = j.get('game') or {}
+    ator = (jogo.get('active_position') or ativo['player'].get('position')
+            or ('SB' if ativo['player'].get('is_dealer') else 'BB'))
+
+    # O `strategy` TEM que ter 169 posicoes. Num no postflop ele vem por COMBO (1326) e a
+    # indexacao por mao vira lixo — testado com o HAR de 11/05, onde a decodificacao estourou
+    # com IndexError assim que o guarda de board foi retirado. Erro em indice e o defeito que
+    # menos se anuncia: com 1326 valores e 169 chaves, metade "funcionaria" e mentiria.
+    if any(len(s.get('strategy') or []) != 169 for s in j['action_solutions']):
+        return None
+
     maos: dict = {}
-    acoes = []
+    acoes, codigos = [], []
     for s in j['action_solutions']:
-        rot = _rotulo(s.get('action') or {})
+        acao = s.get('action') or {}
+        rot = _rotulo(acao)
         acoes.append(rot)
+        # `code` E o token do no ('F', 'C', 'R2', 'RAI'). Guardamos porque o coletor precisa dele
+        # para montar o filho, e deriva-lo por tamanho era chute onde havia dado.
+        codigos.append(acao.get('code'))
         evs = s.get('evs') or [None] * 169
         for i, freq in enumerate(s.get('strategy') or []):
             if freq and freq > 0.0005:
@@ -93,8 +113,10 @@ def no_de_resposta(j: dict, q: dict) -> dict | None:
         'depth': q.get('depth', ''),
         'preflop_actions': q.get('preflop_actions', ''),
         'ator': ator,
-        'pot': (j.get('game') or {}).get('pot'),
+        'mesa': len(pi),
+        'pot': jogo.get('pot'),
         'acoes': acoes,
+        'codigos': codigos,
         'maos': maos,
     }
 
@@ -121,6 +143,14 @@ def extrai_nos(har_path: Path) -> list[dict]:
     return nos
 
 
+def eh_hu(no: dict) -> bool:
+    """Mesa de 2. Lido do payload (`mesa` = jogadores em `players_info`) e, para nos antigos que
+    nao tem o campo, do gametype."""
+    if no.get('mesa'):
+        return int(no['mesa']) == 2
+    return 'HU' in (no.get('gametype') or '').upper()
+
+
 def valida_no(no: dict) -> str | None:
     """None = ok; senao, o motivo da rejeicao.
 
@@ -138,9 +168,24 @@ def valida_no(no: dict) -> str | None:
         return None
     folds_puros = {mao for mao, acs in no['maos'].items()
                    if acs.get('FOLD', {}).get('f', 0) >= 0.99}
-    for ancora in ('AA', 'KK'):
+    for ancora in ('AA', 'KK', 'QQ', 'AKs'):
         if ancora in folds_puros:
             return f"ordem corrompida: {ancora} com fold 100%"
+
+    if not eh_hu(no):
+        # MESA CHEIA: a lista de lixo aceitavel e de HU, onde as ranges sao larguissimas. Um UTG
+        # de 8-max folda Q9o, J9o, T8s — nada disso e "suspeito" ali, e usar a lista de HU
+        # rejeitaria no bom (foi assim que a 1a versao do validador matou um no legitimo).
+        # A ancora do outro extremo funciona em qualquer mesa: num RFI, `32o` e `72o` SAO fold
+        # puro. Se a ordem estiver corrompida, o indice lido como '32o' e uma mao qualquer, que
+        # provavelmente nao folda 100% — entao as duas pontas juntas pegam a corrupcao.
+        so_folds_antes = all(t == 'F' for t in no['preflop_actions'].split('-') if t)
+        if so_folds_antes:
+            faltando = [m for m in ('32o', '72o') if m not in folds_puros]
+            if faltando:
+                return f"ordem suspeita: {faltando} deveria(m) ser fold puro num RFI"
+        return None
+
     primeira_decisao = no['preflop_actions'] in ('', 'R2', 'C') or (
         no['preflop_actions'].count('-') == 0)
     if primeira_decisao:

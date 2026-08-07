@@ -7,6 +7,34 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(gw): importador e coletor entendem MESA CHEIA (#gto #tooling)
+
+> Para os 149 `faces_squeeze` sem gabarito. Dois HAR antigos no Downloads (11/05) tinham nos
+> `MTTGeneral_8m`, e ler o payload REAL mudou o desenho — para melhor e contra o que eu ia fazer:
+>
+> - **a posicao vem declarada** (`player.position`, `game.active_position`). Eu ia derivar de
+>   `is_dealer` + contagem de acoes; o GW simplesmente diz. Conferido contra a heuristica em
+>   **21 de 21** nos HU, zero divergencia — por isso a troca e segura;
+> - **o token do no vem declarado** (`action.code`: 'F', 'C', 'R2', 'RAI'), junto com `allin` como
+>   booleano. A heuristica "betsize >= stack - 0,5" acertava, mas era palpite onde havia dado, a
+>   mesma familia do `history_spot`. Virou fallback para no antigo;
+> - **`strategy` postflop vem por COMBO (1326), nao por mao (169)**: sem guarda a decodificacao
+>   estoura, e um array de tamanho intermediario "funcionaria" para as 169 primeiras chaves,
+>   mentindo em silencio. Agora sao duas recusas independentes, board e tamanho.
+>
+> Validacao propria de mesa cheia: a lista de lixo aceitavel e de HU, onde as ranges sao
+> larguissimas — um UTG de 8-max folda Q9o e T8s, e a regra de HU REJEITARIA o no bom. Em mesa
+> cheia vale a ancora do outro extremo: num RFI, `32o` e `72o` sao fold puro.
+>
+> `docs/gw_plano_ring.json` com os 7 pares (~91 das 149). A linha atravessa os folds dos outros
+> (`F-F-F-F-R2-F-R6.5`), entao cada alvo custa ate 8 requisicoes — no free tier isto e trabalho de
+> varios dias, e o plano diz isso. Acervo separado (`ring_ranges_har.json`): no de 8-max no
+> arquivo de HU seria a carta de mesa cheia gradeando heads-up, o defeito original.
+>
+> Re-import do HU: 21 nos, **zero divergencia em campo antigo**. 22 testes; 5 guardas quebrados
+> um a um — e um deles passou CEGO na primeira tentativa (eu tinha testado a posicao com o ator
+> no BB, que e o que a heuristica velha devolve para qualquer nao-dealer). Refeito com o CO.
+
 ### feat(hu): terceira captura -- SB vs 3-bet JAM entra no motor, pelo coletor (#gto #hu)
 
 > Primeira captura feita **pelo script**, e a maior das tres: **36 -> 56 nos**. O alvo saiu --
