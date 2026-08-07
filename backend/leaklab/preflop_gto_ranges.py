@@ -478,7 +478,8 @@ def _preenche_buraco_com_ring(base: dict, args: tuple, kwargs: dict) -> None:
         return
     p = dict(zip(_ARGS_POSICIONAIS, args))
     p.update(kwargs)
-    if int(p.get('n_players') or 0) == 2:
+    mesa_decisao = int(p.get('n_players') or 0)
+    if mesa_decisao == 2:
         return
     cenario = base.get('scenario')
     hero, vilao = p.get('position'), p.get('vs_position')
@@ -490,10 +491,30 @@ def _preenche_buraco_com_ring(base: dict, args: tuple, kwargs: dict) -> None:
     depth, no = _hu_no_mais_proximo(por_depth, float(p.get('stack_bb') or 0))
     if no is None:
         return
+
+    # ── mesa da carta x mesa da decisão ───────────────────────────────────────────────────────
+    # No GW gratuito só existe 8-max, e o acervo real está espalhado: das 104 decisões, 41 são de
+    # mesa de 8, 30 de 7, 16 de 6, 11 de 9. Carta de outra mesa é outro regime — a mesma família
+    # do defeito que originou tudo isto. Mas a assimetria decide a política: hoje estas decisões
+    # são NULL, então absolver com carta aproximada é aditivo, e ACUSAR CRITICAMENTE com ela
+    # seria dano que o buraco não causava.
+    #   distância 0 → gradua normal
+    #   distância 1 → gradua, marcado, e o veredito duro é rebaixado
+    #   distância 2+ → não usa (6-max com carta de 8-max muda a pressão de posição de verdade)
+    dist = abs(int(no.get('mesa') or 0) - mesa_decisao) if mesa_decisao else 99
+    if dist > 1:
+        return
+
     _grade_por_no_capturado(base, no, depth, p.get('hero_hand_type') or '',
-                            p.get('action_taken') or '', fonte='gw_ring_har')
-    if base.get('available'):
-        base.pop('coverage_reason', None)
+                            p.get('action_taken') or '',
+                            fonte='gw_ring_har' if dist == 0 else 'gw_ring_har_aprox')
+    if not base.get('available'):
+        return
+    base.pop('coverage_reason', None)
+    if dist == 1:
+        base['ring_mesa_aproximada'] = {'carta': no.get('mesa'), 'decisao': mesa_decisao}
+        if base.get('action_quality') == 'major_leak':
+            base['action_quality'] = 'gto_minor_deviation'
 
 
 def analyze_preflop(*args, **kwargs) -> dict:

@@ -7,6 +7,31 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(gw): politica de tamanho de mesa — carta aproximada absolve, mas nao acusa (#gto)
+
+> No GW gratuito so existe 8-max, e o acervo esta espalhado: das 104 decisoes atendiveis, **41 sao
+> de mesa de 8, 30 de 7, 16 de 6 e 11 de 9**. Carta de outra mesa e outro regime — a mesma familia
+> do defeito que originou esta frente.
+>
+> A politica sai da **assimetria**, nao do gosto: hoje essas decisoes sao NULL. Absolver com carta
+> aproximada e aditivo; **acusar criticamente com ela seria dano que o buraco nao causava**.
+>
+> | distancia | o que acontece |
+> |---|---|
+> | 0 (mesa 8) | gradua normal, `gw_ring_har` |
+> | 1 (7 ou 9) | gradua marcado `gw_ring_har_aprox`, e o veredito duro cai para `gto_minor_deviation` |
+> | 2+ (6 ou menos) | nao usa; segue null honesto |
+>
+> O rebaixamento e so do veredito DURO: mao que a carta aprova segue aprovada, senao a aproximacao
+> viraria ruido em vez de informacao.
+>
+> **Alcance remedido: 53 decisoes** (25 exatas + 28 aproximadas) dos 22 nos-alvo do plano — nao as
+> 66 que a conta anterior sugeria, porque aquela ignorava o tamanho de mesa. As 22 decisoes de
+> mesa 6 ou menor ficam de fora ate haver 6-max, que e pago.
+>
+> Quatro guardas quebrados um a um: usar carta de qualquer mesa, acusar com a aproximada, nao
+> marcar a fonte, e rebaixar tambem na mesa exata.
+
 ### fix(gw): o plano de captura de ring vinha com as profundidades ERRADAS (#gto)
 
 > A primeira versao fixava 15/20/30/40bb para todos os pares, por analogia com HU. Rodei o MOTOR

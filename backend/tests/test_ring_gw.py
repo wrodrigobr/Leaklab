@@ -147,6 +147,46 @@ def test_mesa_de_2_nunca_usa_carta_de_ring():
     assert _com_acervo(_ACERVO, lambda: chama(8)).get('source') == 'gw_ring_har'
 
 
+def _em_mesa(n, mao='72o', acao='call'):
+    return _com_acervo(_ACERVO, lambda: analyze_preflop(
+        position='BB', hero_hand_type=mao, stack_bb=20.0, action_taken=acao,
+        facing_size=6.5, vs_position='SB', facing_raises=2, hero_was_aggressor=False,
+        facing_to_bb=6.5, n_players=n))
+
+
+def test_carta_de_outra_mesa_nao_acusa_criticamente():
+    """No GW gratuito so ha 8-max, e o acervo esta espalhado (41 decisoes em mesa de 8, 30 em 7,
+    16 em 6, 11 em 9). A politica sai da ASSIMETRIA: hoje estas decisoes sao NULL, entao absolver
+    com carta aproximada e aditivo, e acusar CRITICAMENTE com ela e dano que o buraco nao causava.
+
+    distancia 0 -> normal | distancia 1 -> gradua marcado, sem veredito duro | 2+ -> nao usa.
+    """
+    exata = _em_mesa(8)
+    assert exata['source'] == 'gw_ring_har'
+    assert exata['action_quality'] == 'major_leak', '72o pagando squeeze e leak na mesa certa'
+    assert 'ring_mesa_aproximada' not in exata
+
+    for n in (7, 9):
+        ap = _em_mesa(n)
+        assert ap['source'] == 'gw_ring_har_aprox', (n, ap.get('source'))
+        assert ap['action_quality'] == 'gto_minor_deviation', (n, ap['action_quality'])
+        assert ap['ring_mesa_aproximada'] == {'carta': 8, 'decisao': n}
+
+    # mesa distante: nem gradua
+    for n in (6, 5):
+        r = _em_mesa(n)
+        assert r['available'] is False, (n, r.get('source'))
+        assert r.get('coverage_reason') == 'pairing_uncovered'
+
+
+def test_aproximada_ainda_absolve_normalmente():
+    """O rebaixamento e so do veredito DURO. Mao que a carta aprova segue aprovada — senao a
+    aproximacao viraria ruido em vez de informacao."""
+    r = _em_mesa(7, mao='JJ', acao='call')
+    assert r['available'] is True and r['source'] == 'gw_ring_har_aprox'
+    assert r['action_quality'] == 'correct', r['action_quality']
+
+
 def test_profundidade_distante_continua_null():
     """A janela de 25% vale igual aqui: nó de 20bb nao gradeia um spot de 40bb."""
     # 10bb e buraco E esta a 50% do no de 20.125. (Escolhi 40bb primeiro e o teste falhou: ali
