@@ -514,7 +514,11 @@ def _hu_no_mais_proximo(por_depth: dict, stack_bb: float):
     # first-in a 17bb) caia em null indevido. 7bb de distancia a 10bb e outra estrategia; 8bb a
     # 25bb e a mesma familia.
     d = min(por_depth, key=lambda x: abs(x - stack_bb) / max(x, stack_bb))
-    if abs(d - stack_bb) / max(d, stack_bb) > 0.40:
+    # Janela de 25%, nao 40%. A primeira versao usou 40% e a amostragem do acervo pegou o dano:
+    # SB a 14,8bb gradeado pelo no de 10bb — outro REGIME (a 10bb o SB e jam/limp; a 15bb existe
+    # raise normal), e um AJo foi acusado por min-raisar "em vez de jamar". Fronteira de regime
+    # e onde profundidade vizinha mais mente; melhor null honesto ate capturar o no certo.
+    if abs(d - stack_bb) / max(d, stack_bb) > 0.25:
         return None, None
     return d, por_depth[d]
 

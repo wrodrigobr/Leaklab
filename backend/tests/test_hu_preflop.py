@@ -54,19 +54,30 @@ def test_jj_bb_vs_open_3bet_e_correto_e_call_e_leak():
 
 
 def test_a5s_sb_first_in_limpa():
-    """O caso 73, em que o COACH errou: limp e a estrategia dominante do SB ate ~30bb."""
-    r = _hu(position='SB', hero_hand_type='A5s', stack_bb=17.0, action_taken='call')
+    """O caso 73, em que o COACH errou: limp e a estrategia dominante do SB ate ~30bb.
+    A 27bb (janela do no de 25); os 17bb originais ficam null ate capturar ROOT de 16-18."""
+    r = _hu(position='SB', hero_hand_type='A5s', stack_bb=27.0, action_taken='call')
     assert r['available'] is True and r['scenario'] == 'hu_rfi'
     assert r['recommended_actions'][0] == 'call', r['recommended_actions']
     assert r['action_quality'] == 'correct'
 
 
-def test_distancia_relativa_escolhe_o_no_certo():
-    """Regressao: stack 17 com ROOT em {1,10,25,30,40}. Distancia ABSOLUTA escolhia 10 (dist 7),
-    que reprova no guarda de 40%, e o spot caia em null com o no de 25bb valido ali do lado."""
-    r = _hu(position='SB', hero_hand_type='A5s', stack_bb=17.0, action_taken='raise')
-    assert r['available'] is True, r.get('coverage_reason')
-    assert float(r.get('hu_depth') or 0) > 20, f"escolheu {r.get('hu_depth')}"
+def test_fronteira_de_regime_e_null_ate_capturar():
+    """A licao da amostragem em producao: SB a 14,8bb caiu no no de 10bb (janela de 40%) e um
+    AJo foi ACUSADO por min-raisar em vez de jamar — regime errado. Com 25%, SB first-in de
+    12-20bb fica em null honesto ate capturarmos os ROOT dessas profundidades."""
+    # Os numeros da janela de 25% com ROOT em {1, 10, 25, 30, 40}:
+    #   13,0 -> no de 10 (razao 0,221, MESMO regime curto: ok)
+    #   14,0-17,0 -> null (entre regimes, nenhum no a <=25%)
+    #   20,0 -> no de 25 (razao 0,20, regime de raise normal: ok)
+    for stack in (14.0, 14.8, 17.0):
+        r = _hu(position='SB', hero_hand_type='AJo', stack_bb=stack, action_taken='raise')
+        assert r['available'] is False, (
+            f'stack {stack} usou no de outro regime ({r.get("hu_depth")})')
+    for stack, faixa in ((13.0, (9, 11)), (20.0, (24, 26))):
+        r = _hu(position='SB', hero_hand_type='AJo', stack_bb=stack, action_taken='raise')
+        assert r['available'] is True, f'stack {stack} devia estar coberto'
+        assert faixa[0] < float(r['hu_depth']) < faixa[1], (stack, r['hu_depth'])
 
 
 def test_hu_sem_no_e_null_honesto():
