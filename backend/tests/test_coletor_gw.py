@@ -51,15 +51,19 @@ def _payload(acoes, ator_dealer=True, folds_puros=()):
         if bs is not None:
             acao['betsize'] = bs
         sols.append({'action': acao, 'strategy': estrategia, 'evs': [1.5] * 169})
+    # `position` e `seat` NAO sao enfeite: o payload real do GW os traz, e a fixture sem eles
+    # escondeu o bug de `mesa` — em HU o BB e o ultimo assento (1), entao a mesa e 2.
     return {
         'players_info': [
             {'simple_hand_counters': {m: 1 for m in _MAOS},
-             'player': {'is_active': True, 'is_dealer': ator_dealer}},
+             'player': {'is_active': ator_dealer, 'is_dealer': True,
+                        'position': 'SB', 'seat': 0}},
             {'simple_hand_counters': {m: 1 for m in _MAOS},
-             'player': {'is_active': False, 'is_dealer': not ator_dealer}},
+             'player': {'is_active': not ator_dealer, 'is_dealer': False,
+                        'position': 'BB', 'seat': 1}},
         ],
         'action_solutions': sols,
-        'game': {'pot': 1.5},
+        'game': {'pot': 1.5, 'active_position': 'SB' if ator_dealer else 'BB'},
     }
 
 
@@ -456,6 +460,49 @@ def test_ring_le_a_posicao_do_payload_e_nao_do_is_dealer():
                         {'gametype': 'MTTHUGeneralSimpleAI', 'depth': '16.125',
                          'preflop_actions': ''})
     assert hu['ator'] == 'SB' and hu['mesa'] == 2
+
+
+def test_mesa_nao_e_len_players_info():
+    """O defeito que eu enviei em 07/08 e so descobri ao varrer os HAR antigos.
+
+    `players_info` traz **so quem ja agiu**: num no raiz vem UM jogador. Ler isso como "mesa de 1"
+    fez o cruzamento contra 1.948 nos em disco devolver ZERO pares aproveitaveis — um zero
+    tranquilizador que era artefato do meu proprio campo, nao ausencia de dado. O tamanho sai de
+    duas fontes que precisam concordar: os digitos do gametype e o assento de uma posicao TARDIA
+    (o BB e sempre o ultimo assento).
+    """
+    from importar_har_hu import mesa_do_no
+    parcial = [{'player': {'position': 'UTG', 'seat': 0}},
+               {'player': {'position': 'BB', 'seat': 7}}]
+    assert mesa_do_no('MTTGeneral_8m', parcial) == 8
+    assert mesa_do_no('MTTGeneralV2', parcial) == 8, 'sem digitos no gametype, o assento resolve'
+    # so o ator, e cedo na mesa: nao da para derivar do assento — vale o gametype
+    assert mesa_do_no('MTTGeneral_8m', [{'player': {'position': 'UTG', 'seat': 0}}]) == 8
+    assert mesa_do_no('MTTGeneralV2', [{'player': {'position': 'UTG', 'seat': 0}}]) is None
+    # 9-max: o BB e o assento 8
+    assert mesa_do_no('MTTGeneralV2', [{'player': {'position': 'BB', 'seat': 8}}]) == 9
+    # DISCORDANCIA entre as fontes -> None, nunca um palpite
+    assert mesa_do_no('MTTGeneral_8m', [{'player': {'position': 'BB', 'seat': 8}}]) is None
+
+
+def test_payload_PARCIAL_ainda_da_a_mesa_certa():
+    """O cenario REAL, pelo caminho de verdade.
+
+    Num no de mesa cheia so aparecem em `players_info` os jogadores que ja agiram: `F-F-F-R2` tras
+    quatro, nao oito. As fixtures anteriores listavam a mesa inteira, entao `len(players_info)`
+    acertava por acidente e a verificacao por mutacao passava cega — o defeito so apareceu contra
+    os HAR de verdade, onde o campo virou "mesa de 1".
+    """
+    corpo = _payload_ring('CO', [('FOLD', None), ('RAISE', '2')], folds_puros={'32o', '72o'})
+    # ate o ATOR: os quatro que ja agiram mais o CO, que esta decidindo. O payload real sempre
+    # inclui quem age — cortar antes dele produziria uma resposta que o GW nunca manda.
+    corpo['players_info'] = corpo['players_info'][:5]
+    corpo['game']['active_position'] = 'CO'
+    no = no_de_resposta(corpo, {'gametype': 'MTTGeneralV2', 'depth': '20.125',
+                                'preflop_actions': 'F-F-F-R2'})
+    assert no['mesa'] == 8, (
+        'mesa saiu %r com 4 jogadores listados — voltou a contar `players_info`' % no['mesa'])
+    assert no['ator'] == 'CO'
 
 
 def test_ring_nao_e_validado_com_a_lista_de_lixo_de_hu():

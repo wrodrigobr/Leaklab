@@ -7,6 +7,33 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(ring): 283 nos de mesa cheia vieram do disco, e o `mesa` estava errado (#gto)
+
+> O usuario lembrou que `docs/ranges_gto` guarda 82 HAR de maio (828 MB). Varridos: **1.948 nos
+> preflop decodificaveis**.
+>
+> **O primeiro cruzamento deu ZERO pares aproveitaveis — e era artefato meu.** `players_info` traz
+> so quem JA AGIU: num no raiz vem **um** jogador. O `mesa = len(players_info)` que subi hoje lia
+> isso como "mesa de 1", e todo no caia fora do modelo. Zero tranquilizador, de novo, e de novo o
+> diagnostico ao lado do numero foi o que salvou (`tamanhos de mesa: {1: 410, 2: 1538}`).
+>
+> `mesa_do_no` cruza **duas fontes que precisam concordar**: os digitos do gametype
+> (`MTTGeneral_8m`) e o assento de uma posicao TARDIA (o BB e sempre o ultimo). Discordancia
+> devolve None, nunca palpite. Com isso: 1.602 nos de 9-max (`MTTGeneralV2`), 49 de 8-max.
+>
+> Importados so os pares que o acervo precisa (o arquivo inteiro seriam ~66 MB): **283 nos, 6 MB**.
+> ICM/PKO ficaram de fora — range de bolha nao e range normal, e o indice nao distingue gametype.
+>
+> **Efeito medido antes de deployar: 13 decisoes ganham gabarito** (3 em mesa exata, 10
+> aproximadas), todas `correct`, nenhuma acusacao nova. Bem menos que as 42 que o cruzamento por
+> par sugeria — aquele numero ignorava tamanho de mesa e janela de profundidade.
+>
+> Tres defeitos de TESTE que isto expos, todos meus: a fixture de HU nao tinha `position`/`seat`
+> (o payload real tem, e a fixture incompleta escondeu o bug do `mesa`); dois testes de ring
+> mediam o AMBIENTE, porque presumiam o `ring_ranges_har.json` vazio e agora ele existe; e a
+> fixture de mesa cheia listava os 8 jogadores, entao `len()` acertava por acidente e a mutacao
+> passava cega — agora ha teste com payload PARCIAL, que e a forma real.
+
 ### fix(motor): severidade olha o CUSTO, nao so a frequencia (#gto #coach)
 
 > Familia 1 das cinco que a revisao com o coach de 07/08 apontou. O motor contava **com que

@@ -92,7 +92,10 @@ def test_derivacao_discordando_do_payload_descarta_o_no():
 def test_preenche_o_buraco_e_gradua():
     """O par BB x SB nao existe nas nossas cartas: hoje e `pairing_uncovered`. Com a carta do GW
     ele passa a ter veredito."""
-    sem = _bb_vs_squeeze()
+    # o "antes" tem que rodar com acervo VAZIO explicito: desde 07/08 existe um
+    # `ring_ranges_har.json` de verdade no disco, e um teste que dependesse dele estaria medindo
+    # o ambiente, nao a regra.
+    sem = _com_acervo({}, _bb_vs_squeeze)
     assert sem['available'] is False and sem.get('coverage_reason') == 'pairing_uncovered'
 
     com = _com_acervo(_ACERVO, _bb_vs_squeeze)
@@ -111,7 +114,7 @@ def test_nao_encosta_onde_ja_ha_carta():
     kw = dict(position='BB', hero_hand_type='JJ', stack_bb=20.0, action_taken='call',
               facing_size=2.0, vs_position='CO', facing_raises=1, hero_was_aggressor=False,
               facing_to_bb=2.0, n_players=8)
-    antes = analyze_preflop(**kw)
+    antes = _com_acervo({}, lambda: analyze_preflop(**kw))
     assert antes['available'] is True, 'o controle precisa de um spot JA coberto'
     # BB contra open do CO com todos foldando ate o SB: `F-F-F-F-R2-F-F`. Precisa ser no VALIDO
     # — a primeira versao usou um no que o guarda de discordancia rejeitava, entao o acervo ficava
@@ -199,7 +202,7 @@ def test_profundidade_distante_continua_null():
 
 def test_acervo_vazio_nao_muda_nada():
     """Enquanto nao houver captura, o motor tem que se comportar exatamente como antes."""
-    antes = _bb_vs_squeeze()
+    antes = _com_acervo({}, _bb_vs_squeeze)
     depois = _com_acervo({}, _bb_vs_squeeze)
     assert antes.get('available') == depois.get('available')
     assert antes.get('coverage_reason') == depois.get('coverage_reason')

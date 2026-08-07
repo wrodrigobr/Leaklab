@@ -30,6 +30,7 @@ from __future__ import annotations
 import argparse
 import base64
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -120,7 +121,7 @@ def no_de_resposta(j: dict, q: dict) -> dict | None:
         'depth': q.get('depth', ''),
         'preflop_actions': q.get('preflop_actions', ''),
         'ator': ator,
-        'mesa': len(pi),
+        'mesa': mesa_do_no(q.get('gametype', ''), pi),
         'pot': jogo.get('pot'),
         'acoes': acoes,
         'codigos': codigos,
@@ -148,6 +149,41 @@ def extrai_nos(har_path: Path) -> list[dict]:
         if no:
             nos.append(no)
     return nos
+
+
+# Posicoes contadas DO FIM da mesa, que e o unico jeito estavel: o BB e sempre o ultimo assento,
+# o SB o penultimo, e assim por diante, em qualquer tamanho de mesa.
+_DO_FIM = {'BB': 1, 'SB': 2, 'BTN': 3, 'CO': 4, 'HJ': 5, 'LJ': 6, 'MP1': 6, 'MP': 6}
+
+
+def mesa_do_no(gametype: str, players_info: list) -> int | None:
+    """Tamanho da MESA. Nao e `len(players_info)`.
+
+    `players_info` traz so quem ja agiu: num no raiz vem **um** jogador. A primeira versao deste
+    importador leu isso como "mesa de 1" e, pior, o cruzamento que rodei contra os HAR antigos
+    devolveu ZERO pares aproveitaveis — um zero tranquilizador que era artefato do meu proprio
+    campo errado, nao ausencia de dado.
+
+    Duas fontes, e elas precisam concordar:
+      1. o `gametype` quando cravado (`MTTGeneral_8m` -> 8);
+      2. o assento de uma posicao TARDIA + a distancia dela ate o fim (BB e o ultimo assento).
+    """
+    do_nome = None
+    m = re.search(r'(\d+)m(?:\b|[A-Z_])', gametype or '')
+    if m:
+        do_nome = int(m.group(1))
+    do_assento = None
+    for p in players_info or []:
+        pl = p.get('player') or {}
+        off = _DO_FIM.get((pl.get('position') or '').upper())
+        if off is not None and pl.get('seat') is not None:
+            n = int(pl['seat']) + off
+            if do_assento is not None and do_assento != n:
+                return None                      # dois assentos discordam entre si
+            do_assento = n
+    if do_nome and do_assento and do_nome != do_assento:
+        return None                              # gametype e assento discordam: nao adivinhar
+    return do_assento or do_nome
 
 
 def eh_hu(no: dict) -> bool:
