@@ -498,7 +498,23 @@ def _load_hu() -> dict:
         for _gt, mapa in (bruto or {}).items():
             for chave, no in mapa.items():
                 d_str, node = chave.split('|', 1)
-                nos.setdefault(node, {})[float(d_str)] = no
+                # O NOME do no carrega o sizing da sessao (R2-R4.5 num depth, R2-R5.5 noutro).
+                # Quem roteia precisa do TIPO, nao do nome.
+                if node == 'ROOT':
+                    tipo = 'ROOT'
+                elif node == 'C':
+                    tipo = 'BB_VS_LIMP'
+                elif '-' not in node:
+                    tipo = 'R2'                       # BB vs open
+                else:
+                    partes = node.split('-')
+                    if len(partes) == 2:
+                        tipo = 'SB_VS_3BET_JAM' if partes[1] == 'RAI' else 'SB_VS_3BET'
+                    elif len(partes) == 3 and partes[2] == 'RAI':
+                        tipo = 'BB_VS_4BET_JAM'
+                    else:
+                        continue                      # linha mais funda: fora do modelo
+                nos.setdefault(tipo, {})[float(d_str)] = no
         _hu_cache = nos
     return _hu_cache
 
@@ -527,7 +543,9 @@ def _hu_familia_da_acao(rotulo: str, depth: float) -> str:
     t = rotulo.split()[0]
     if t == 'FOLD':
         return 'fold'
-    if t == 'CALL':
+    if t in ('CALL', 'CHECK'):
+        # CHECK aparece no no de BB vs limp. Sem este ramo ele caia no parser de betsize e
+        # virava 'raise' — check gradeado como agressao.
         return 'call'
     try:
         bs = float(rotulo.split()[1])
@@ -546,11 +564,24 @@ def _hu_analyze(base: dict, pos: str, hero_hand_type: str, stack_bb: float, acti
     base['scenario'] = 'hu_uncovered'
 
     node = None
-    if (pos == 'SB' and not hero_was_aggressor and int(facing_raises or 0) == 0
-            and not facing_limp):
+    _to = float(facing_to_bb or 0)
+    _raises = int(facing_raises or 0)
+    if (pos == 'SB' and not hero_was_aggressor and _raises == 0 and not facing_limp):
         node, base['scenario'] = 'ROOT', 'hu_rfi'
-    elif (pos == 'BB' and not hero_was_aggressor and int(facing_raises or 0) == 1
-            and not facing_allin and float(facing_to_bb or 0) <= 4.5):
+    elif pos == 'BB' and not hero_was_aggressor and _raises == 0 and facing_limp:
+        node, base['scenario'] = 'BB_VS_LIMP', 'hu_bb_vs_limp'
+    elif pos == 'SB' and hero_was_aggressor and _raises >= 1:
+        # SB abriu e levou 3-bet. O no capturado modela 3-bet PEQUENO; 3-bet jam e outro no
+        # (R2-RAI), ainda nao capturado — la o guard de tamanho manda pro null.
+        if facing_allin or _to >= float(stack_bb) * 0.65:
+            node, base['scenario'] = 'SB_VS_3BET_JAM', 'hu_vs_3bet_jam'
+        else:
+            node, base['scenario'] = 'SB_VS_3BET', 'hu_vs_3bet'
+    elif pos == 'BB' and hero_was_aggressor and _raises >= 2 and (
+            facing_allin or _to >= float(stack_bb) * 0.65):
+        node, base['scenario'] = 'BB_VS_4BET_JAM', 'hu_vs_4bet'
+    elif (pos == 'BB' and not hero_was_aggressor and _raises == 1
+            and not facing_allin and _to <= 4.5):
         # R2 modela defesa vs open pequeno. Open-jam (facing_allin) e opens gigantes ficam FORA:
         # gradear vs o no errado foi exatamente o defeito que este caminho substitui.
         node, base['scenario'] = 'R2', 'hu_vs_rfi'

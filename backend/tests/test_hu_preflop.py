@@ -66,15 +66,15 @@ def test_fronteira_de_regime_e_null_ate_capturar():
     """A licao da amostragem em producao: SB a 14,8bb caiu no no de 10bb (janela de 40%) e um
     AJo foi ACUSADO por min-raisar em vez de jamar — regime errado. Com 25%, SB first-in de
     12-20bb fica em null honesto ate capturarmos os ROOT dessas profundidades."""
-    # Os numeros da janela de 25% com ROOT em {1, 10, 25, 30, 40}:
-    #   13,0 -> no de 10 (razao 0,221, MESMO regime curto: ok)
-    #   14,0-17,0 -> null (entre regimes, nenhum no a <=25%)
-    #   20,0 -> no de 25 (razao 0,20, regime de raise normal: ok)
-    for stack in (14.0, 14.8, 17.0):
+    # Janela de 25% com ROOT em {1, 10, 12.6, 25, 30, 40} (a 2a captura adicionou o 12.6 e o
+    # buraco encolheu): coberto ate ~15,8 pelo no de 12.6 e de ~18,8 em diante pelo de 25;
+    # null so na fresta 16-18, ate capturarmos ROOT ali.
+    # (16,0 tambem e coberto pelo 12.6: razao 0,211 — a janela alcanca d/0,75 = 16,8)
+    for stack in (17.0, 18.0):
         r = _hu(position='SB', hero_hand_type='AJo', stack_bb=stack, action_taken='raise')
         assert r['available'] is False, (
             f'stack {stack} usou no de outro regime ({r.get("hu_depth")})')
-    for stack, faixa in ((13.0, (9, 11)), (20.0, (24, 26))):
+    for stack, faixa in ((13.0, (12, 13)), (16.0, (12, 13)), (20.0, (24, 26))):
         r = _hu(position='SB', hero_hand_type='AJo', stack_bb=stack, action_taken='raise')
         assert r['available'] is True, f'stack {stack} devia estar coberto'
         assert faixa[0] < float(r['hu_depth']) < faixa[1], (stack, r['hu_depth'])
@@ -103,6 +103,39 @@ def test_fora_da_janela_de_profundidade_e_null():
         r = _hu(position='BB', hero_hand_type='JJ', stack_bb=stack, action_taken='call',
                 facing_size=2.0, vs_position='SB', facing_raises=1, facing_to_bb=2.0)
         assert r['available'] is False, f'stack {stack} deveria ser hu_uncovered'
+
+
+def test_bb_vs_limp_e_gradeado():
+    """No `C` (2a captura): BB contra limp do SB tem estrategia real (check/raise mix)."""
+    r = _hu(position='BB', hero_hand_type='QTs', stack_bb=30.0, action_taken='check',
+            facing_limp=True)
+    assert r['available'] is True and r['scenario'] == 'hu_bb_vs_limp'
+    assert r['action_quality'] == 'correct'
+    assert (r['hand_freq'] or {}).get('raise', 0) > 0, 'o mix de iso-raise sumiu'
+
+
+def test_sb_vs_3bet_pequeno_e_gradeado_e_jam_nao():
+    """SB abriu e levou 3-bet PEQUENO: no capturado. Levou 3-bet JAM: no diferente, ainda nao
+    capturado — null honesto, nunca o no de 3-bet pequeno (gradear contra o no errado e o
+    defeito que este caminho existe para matar)."""
+    r = _hu(position='SB', hero_hand_type='AJo', stack_bb=16.0, action_taken='fold',
+            facing_size=4.5, vs_position='BB', facing_raises=1, hero_was_aggressor=True,
+            facing_to_bb=4.5)
+    assert r['available'] is True and r['scenario'] == 'hu_vs_3bet'
+    assert r['action_quality'] == 'major_leak', 'foldar AJo a 3-bet pequeno a 16bb e leak'
+    r2 = _hu(position='SB', hero_hand_type='AJo', stack_bb=16.0, action_taken='call',
+             facing_size=16.0, vs_position='BB', facing_raises=1, hero_was_aggressor=True,
+             facing_to_bb=16.0, facing_allin=True)
+    assert r2['available'] is False and r2.get('coverage_reason') == 'hu_uncovered'
+
+
+def test_bb_vs_4bet_jam_e_gradeado():
+    """BB 3-betou, SB jamou por cima: no R2-Rx-RAI. JJ paga (call 100% no no de 16bb)."""
+    r = _hu(position='BB', hero_hand_type='JJ', stack_bb=16.0, action_taken='call',
+            facing_size=16.0, vs_position='SB', facing_raises=2, hero_was_aggressor=True,
+            facing_to_bb=16.0, facing_allin=True)
+    assert r['available'] is True and r['scenario'] == 'hu_vs_4bet'
+    assert r['action_quality'] == 'correct'
 
 
 def test_mesa_cheia_nao_muda():

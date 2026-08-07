@@ -7,6 +7,24 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(hu): segunda captura — BB vs limp, SB vs 3-bet e BB vs 4-bet jam entram no motor (#gto #hu)
+
+> Segundo HAR do usuario (21 nos novos, total 36). O importador agora MESCLA com o ja importado
+> (os HAR se sobrescrevem no Downloads; o JSON de saida e o acumulador), e o loader classifica no
+> por TIPO em vez de nome — o sizing do 3-bet muda por profundidade (R2-R4.5 num depth, R2-R5.5
+> noutro) e quem roteia precisa do tipo.
+>
+> Tres cenarios HU novos gradeaveis: **BB vs limp** (no `C`, 12.6-40bb), **SB vs 3-bet pequeno**
+> (12.6-40bb menos 20/25) e **BB vs 4-bet jam** (12.6-30bb). SB vs 3-bet **JAM** segue null
+> honesto — e outro no (`R2-RAI`), ainda nao capturado, e o guard de tamanho impede que caia no
+> no de 3-bet pequeno.
+>
+> Dois ajustes pagos com erro: `CHECK` (que so aparece no no de limp) caia no parser de betsize e
+> virava familia 'raise'; e a fronteira de regime ENCOLHEU com o ROOT@12.6 novo (cobre ate 16,8bb
+> — eu recalculei errado duas vezes ate escrever a conta no teste: a janela alcanca d/0,75).
+>
+> Fresta restante de SB first-in: so 17-18,7bb. Backend gto 358 / hu 10, verdes.
+
 ### ops: HU em producao — o caso 75 morre, e a amostragem derrubou a primeira janela (#producao #hu)
 
 > Dois deploys e dois reprocessos, porque a PRIMEIRA versao criou acusacao falsa e a amostragem

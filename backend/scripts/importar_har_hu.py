@@ -143,7 +143,17 @@ def main() -> int:
     ap.add_argument('--out', default='docs/hu_ranges_har.json')
     args = ap.parse_args()
 
+    # MERGE com o que ja foi importado: os HAR de captura se sobrescrevem no Downloads (os tres
+    # ate agora chamavam 'sbxbb.har'), entao o JSON de saida e o unico acumulador que sobrevive.
+    # Novo no com a mesma chave substitui o antigo; nos de sessoes anteriores ficam.
+    out_previa = Path(args.out)
     saida: dict = {}
+    if out_previa.exists():
+        try:
+            saida = json.loads(out_previa.read_text(encoding='utf-8'))
+            print(f"mesclando com {sum(len(v) for v in saida.values())} nos ja importados")
+        except Exception:
+            saida = {}
     rejeitados = 0
     for caminho in args.hars:
         for no in extrai_nos(Path(caminho)):
