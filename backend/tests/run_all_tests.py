@@ -94,6 +94,7 @@ SUITES = {
                   'test_card_invariants.py',
                   'test_card_verdict.py',
                   'test_gap_preflop_nomeado.py',
+                  'test_hu_preflop.py',
                   'test_facing_limp_persistido.py',
                   'test_bb_check_nao_e_free_play.py',
                   'test_multiway_divergence.py',

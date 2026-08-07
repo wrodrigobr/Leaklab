@@ -7,6 +7,30 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(motor): mesa de 2 agora e gradeada por carta HU de verdade (#gto #hu #motor)
+
+> Integracao das cartas capturadas: `n_players == 2` roteia EXCLUSIVAMENTE para
+> `docs/hu_ranges_har.json` — ou ha no capturado, ou `hu_uncovered` (null honesto). A carta ring
+> nunca mais e consultada em heads-up.
+>
+> Cobre: SB first-in (`hu_rfi`) e BB vs open pequeno (`hu_vs_rfi`), com bucketing por
+> profundidade. Fica em null honesto: SB vs 3-bet, BB vs limp, BB vs open-jam (nos nao
+> capturados) e stacks fora da janela de 40% de distancia relativa do no mais proximo.
+>
+> Tres decisoes de desenho que ja quebraram uma vez, e por isso tem guarda:
+>
+> - **distancia RELATIVA, nao absoluta**: com nos em {10, 25} e stack 17, o absoluto escolhia 10
+>   (reprova no guarda) e caia em null indevido com o no de 25 valido ao lado;
+> - **defesa vs open-JAM nao usa o no R2 de open pequeno** — gradear contra o no errado e o
+>   defeito original com outra roupa;
+> - **adjacencia raise<->jam so quando o no nao oferece a familia jogada** (a 10bb o unico
+>   aumento E o jam).
+>
+> O EV por mao veio junto no dado, mas NAO alimenta `ev_loss_bb` ainda: a unidade do GW nao foi
+> validada, e numero em escala errada e a cicatriz mais repetida deste projeto.
+>
+> Sete guardas, tres verificados quebrando. Backend 2005 testes, 0 falhas.
+
 ### feat(gto): cartas HEADS-UP capturadas do GTO Wizard via HAR do usuario (#gto #hu)
 
 > A simulacao 1 da revisao com o coach provou que gradeavamos o trecho HU com carta de MESA

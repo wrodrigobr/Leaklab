@@ -465,12 +465,152 @@ def analyze_preflop(*args, **kwargs) -> dict:
     """Análise GTO preflop + ev_loss_bb (#24). Wrapper fino sobre o _impl pra
     anexar o EV em todos os returns (RFI/push-fold/vs_rfi/3bet/etc)."""
     facing_allin = bool(kwargs.pop('facing_allin', False))
+    # O pop acima alimenta o _normalize_facing_allin do wrapper, mas o caminho HU (dentro
+    # do impl) tambem precisa da flag — sem ela, defesa vs open-jam seria gradeada pelo no
+    # R2 de open pequeno, que e o defeito que o caminho HU existe para matar.
+    kwargs['facing_allin'] = facing_allin
     base = _analyze_preflop_impl(*args, **kwargs)
     _attach_ev_loss(base)
     _act = kwargs.get('action_taken') or (args[3] if len(args) > 3 else '')
     if facing_allin:
         _normalize_facing_allin(base, _act)
     _soften_mixed_3bet_quality(base, _act)
+    return base
+
+
+# ── HEADS-UP: cartas capturadas do GTO Wizard via HAR (docs/hu_ranges_har.json) ────────────────
+# A revisao com o coach provou por oraculo externo que a carta RING mentia em HU: JJ no BB vs
+# open era "call 100%" na 9-max e 3-BET 100% no GW HU, em TODA profundidade de 10 a 60bb. Em mesa
+# de 2, a carta ring nunca e consultada: ou ha no HU capturado, ou null honesto (`hu_uncovered`).
+_HU_PATH = os.path.join(os.path.dirname(__file__), '..', 'docs', 'hu_ranges_har.json')
+_hu_cache = None
+
+
+def _load_hu() -> dict:
+    global _hu_cache
+    if _hu_cache is None:
+        try:
+            with open(_HU_PATH, encoding='utf-8') as f:
+                bruto = json.load(f)
+        except Exception:
+            bruto = {}
+        nos: dict = {}
+        for _gt, mapa in (bruto or {}).items():
+            for chave, no in mapa.items():
+                d_str, node = chave.split('|', 1)
+                nos.setdefault(node, {})[float(d_str)] = no
+        _hu_cache = nos
+    return _hu_cache
+
+
+def _hu_no_mais_proximo(por_depth: dict, stack_bb: float):
+    """No de profundidade mais proxima — ou None quando a distancia RELATIVA passa de 40%.
+    Um jogador a 5bb nao pode ser gradeado pela carta de 10bb: melhor null honesto que carta de
+    outra profundidade (e o mesmo principio que derrubou a carta ring em HU)."""
+    if not por_depth:
+        return None, None
+    # Distancia RELATIVA, nao absoluta: com nos em {10, 25} e stack 17, o absoluto escolhe 10
+    # (dist 7 < 8) que REPROVA no guarda de 40%, enquanto 25 passaria — e o caso 73 (A5s SB
+    # first-in a 17bb) caia em null indevido. 7bb de distancia a 10bb e outra estrategia; 8bb a
+    # 25bb e a mesma familia.
+    d = min(por_depth, key=lambda x: abs(x - stack_bb) / max(x, stack_bb))
+    if abs(d - stack_bb) / max(d, stack_bb) > 0.40:
+        return None, None
+    return d, por_depth[d]
+
+
+def _hu_familia_da_acao(rotulo: str, depth: float) -> str:
+    t = rotulo.split()[0]
+    if t == 'FOLD':
+        return 'fold'
+    if t == 'CALL':
+        return 'call'
+    try:
+        bs = float(rotulo.split()[1])
+    except Exception:
+        bs = 0.0
+    return 'allin' if bs >= depth - 1.0 else 'raise'
+
+
+_HU_COMBOS = lambda m: 6 if len(m) == 2 else (4 if m.endswith('s') else 12)
+
+
+def _hu_analyze(base: dict, pos: str, hero_hand_type: str, stack_bb: float, action_taken: str,
+                facing_raises: int, hero_was_aggressor: bool, facing_limp: bool,
+                facing_to_bb: float, facing_allin: bool) -> dict:
+    dados = _load_hu()
+    base['scenario'] = 'hu_uncovered'
+
+    node = None
+    if (pos == 'SB' and not hero_was_aggressor and int(facing_raises or 0) == 0
+            and not facing_limp):
+        node, base['scenario'] = 'ROOT', 'hu_rfi'
+    elif (pos == 'BB' and not hero_was_aggressor and int(facing_raises or 0) == 1
+            and not facing_allin and float(facing_to_bb or 0) <= 4.5):
+        # R2 modela defesa vs open pequeno. Open-jam (facing_allin) e opens gigantes ficam FORA:
+        # gradear vs o no errado foi exatamente o defeito que este caminho substitui.
+        node, base['scenario'] = 'R2', 'hu_vs_rfi'
+
+    if node is None:
+        base['coverage_reason'] = 'hu_uncovered'
+        return base
+
+    depth, no = _hu_no_mais_proximo(dados.get(node) or {}, float(stack_bb))
+    if no is None:
+        base['coverage_reason'] = 'hu_uncovered'
+        return base
+
+    acs = (no.get('maos') or {}).get(hero_hand_type) or {}
+    freq: dict = {'fold': 0.0, 'call': 0.0, 'raise': 0.0, 'allin': 0.0}
+    for rot, v in acs.items():
+        freq[_hu_familia_da_acao(rot, depth)] += float(v.get('f') or 0)
+    freq = {k: round(v, 4) for k, v in freq.items()}
+
+    # range agregado (peso por combos) — so display
+    total = jogadas = 0.0
+    for m, macs in (no.get('maos') or {}).items():
+        c = _HU_COMBOS(m)
+        total += c
+        jogadas += c * sum(float(v.get('f') or 0) for r, v in macs.items()
+                           if _hu_familia_da_acao(r, depth) != 'fold')
+    range_pct = round(100.0 * jogadas / total, 1) if total else 0.0
+
+    _rec_map = {'fold': 'fold', 'call': 'call', 'raise': 'raise', 'allin': 'jam'}
+    rec = [_rec_map[k] for k, v in sorted(freq.items(), key=lambda kv: -kv[1]) if v >= 0.02]
+
+    fam = {'shove': 'allin', 'jam': 'allin', 'allin': 'allin', 'all-in': 'allin',
+           'raise': 'raise', 'bet': 'raise', 'call': 'call', 'check': 'call',
+           'fold': 'fold'}.get((action_taken or '').lower(), (action_taken or '').lower())
+    # Adjacencia raise<->jam SO quando o no nao oferece a familia jogada: a 10bb o unico
+    # aumento e o jam, e um "raise" do jogador e o mesmo compromisso.
+    if freq.get(fam, 0) == 0 and fam in ('raise', 'allin'):
+        outra = 'allin' if fam == 'raise' else 'raise'
+        if freq.get(outra, 0) > 0 and not any(
+                _hu_familia_da_acao(r, depth) == fam
+                for macs in (no.get('maos') or {}).values() for r in macs):
+            fam = outra
+
+    f_jogada = freq.get(fam, 0.0)
+    if f_jogada >= 0.20:
+        quality = 'correct'
+    elif f_jogada >= 0.05:
+        quality = 'acceptable'
+    elif f_jogada >= 0.005:
+        quality = 'minor_mistake'
+    else:
+        quality = 'major_leak'
+
+    base.update({
+        'available': True,
+        'source': 'gw_hu_har',
+        'hu_depth': depth,
+        'in_range': (freq['call'] + freq['raise'] + freq['allin']) >= 0.05,
+        'range_pct': range_pct,
+        'hand_freq': freq,
+        'recommended_actions': rec or ['fold'],
+        'action_quality': quality,
+        'pro_notes': [],
+    })
     return base
 
 
@@ -489,6 +629,7 @@ def _analyze_preflop_impl(
     facing_limp: bool = False,  # pote limpado (limp sem raise) — árvore fora da cobertura GTO
     is_pko: bool = False,  # torneio PKO/bounty — usa ranges PKO do GW (RFI) quando cobertos
     facing_to_bb: float = 0.0,  # #23: tamanho do open enfrentado (raise-to total, em bb)
+    facing_allin: bool = False,   # so o caminho HU consome; o ring usa o wrapper via pop
 ) -> dict:
     """
     Retorna análise GTO completa de uma decisão preflop.
@@ -544,6 +685,14 @@ def _analyze_preflop_impl(
     else:
         scenario = 'rfi'
     base['scenario'] = scenario
+
+    # HEADS-UP: rota EXCLUSIVA para as cartas capturadas do GW. A carta ring nao descreve mesa
+    # de 2 (BB defende outra range, SB limpa por estrategia), e ate 06/08 ela era consultada
+    # assim mesmo — acusando de erro, por exemplo, o 3-bet OBRIGATORIO de JJ no BB.
+    if int(n_players or 0) == 2 and pos in ('SB', 'BB'):
+        return _hu_analyze(base, pos, hero_hand_type, float(stack_bb), action_taken,
+                           facing_raises, hero_was_aggressor, facing_limp,
+                           float(facing_to_bb or 0.0), bool(facing_allin))
 
     # Hero ainda na mão contra um raise de quem age DEPOIS dele. Só existe um jeito de isso
     # acontecer: hero LIMPOU. (Se tivesse foldado estaria fora; se tivesse aberto, o cenário seria
