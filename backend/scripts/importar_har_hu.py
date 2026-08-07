@@ -57,8 +57,50 @@ def _rotulo(acao: dict) -> str:
     return f"{t} {bs}" if bs not in (None, 0, '0') else t
 
 
+def no_de_resposta(j: dict, q: dict) -> dict | None:
+    """Decodifica UMA resposta `spot-solution` no nosso formato de no. None = nao aproveitavel.
+
+    **Porta unica de decodificacao.** Existem dois caminhos que trazem essa resposta — o HAR
+    salvo a mao e o `coletor_gw.py` — e a decodificacao (sobretudo a ordem das 169, que ja nos
+    custou uma leitura errada) nao pode ter duas copias. `tests/test_coletor_gw.py` varre os
+    dois caminhos com o MESMO payload e exige no identico.
+    """
+    pi = j.get('players_info') or []
+    if not pi or not j.get('action_solutions'):
+        return None
+    ordem = list((pi[0].get('simple_hand_counters') or {}).keys())
+    if len(ordem) != 169:
+        return None
+    ativo = next((p for p in pi if (p.get('player') or {}).get('is_active')), None)
+    if not ativo:
+        return None
+    # HU: dealer E o SB. Fora de HU este importador nao se aplica.
+    ator = 'SB' if (ativo['player'].get('is_dealer')) else 'BB'
+    maos: dict = {}
+    acoes = []
+    for s in j['action_solutions']:
+        rot = _rotulo(s.get('action') or {})
+        acoes.append(rot)
+        evs = s.get('evs') or [None] * 169
+        for i, freq in enumerate(s.get('strategy') or []):
+            if freq and freq > 0.0005:
+                maos.setdefault(ordem[i], {})[rot] = {
+                    'f': round(float(freq), 4),
+                    'ev': (round(float(evs[i]), 4) if evs[i] is not None else None),
+                }
+    return {
+        'gametype': q.get('gametype', ''),
+        'depth': q.get('depth', ''),
+        'preflop_actions': q.get('preflop_actions', ''),
+        'ator': ator,
+        'pot': (j.get('game') or {}).get('pot'),
+        'acoes': acoes,
+        'maos': maos,
+    }
+
+
 def extrai_nos(har_path: Path) -> list[dict]:
-    """Todos os nos `spot-solution` de um HAR, ja decodificados e validados."""
+    """Todos os nos `spot-solution` de um HAR, ja decodificados."""
     har = json.loads(har_path.read_text(encoding='utf-8'))
     nos = []
     for entry in har.get('log', {}).get('entries', []):
@@ -73,38 +115,9 @@ def extrai_nos(har_path: Path) -> list[dict]:
         except Exception:
             continue
         q = {p['name']: p['value'] for p in entry['request'].get('queryString', [])}
-        pi = j.get('players_info') or []
-        if not pi or not j.get('action_solutions'):
-            continue
-        ordem = list((pi[0].get('simple_hand_counters') or {}).keys())
-        if len(ordem) != 169:
-            continue
-        ativo = next((p for p in pi if (p.get('player') or {}).get('is_active')), None)
-        if not ativo:
-            continue
-        # HU: dealer E o SB. Fora de HU este importador nao se aplica.
-        ator = 'SB' if (ativo['player'].get('is_dealer')) else 'BB'
-        maos: dict = {}
-        acoes = []
-        for s in j['action_solutions']:
-            rot = _rotulo(s.get('action') or {})
-            acoes.append(rot)
-            evs = s.get('evs') or [None] * 169
-            for i, freq in enumerate(s.get('strategy') or []):
-                if freq and freq > 0.0005:
-                    maos.setdefault(ordem[i], {})[rot] = {
-                        'f': round(float(freq), 4),
-                        'ev': (round(float(evs[i]), 4) if evs[i] is not None else None),
-                    }
-        nos.append({
-            'gametype': q.get('gametype', ''),
-            'depth': q.get('depth', ''),
-            'preflop_actions': q.get('preflop_actions', ''),
-            'ator': ator,
-            'pot': (j.get('game') or {}).get('pot'),
-            'acoes': acoes,
-            'maos': maos,
-        })
+        no = no_de_resposta(j, q)
+        if no:
+            nos.append(no)
     return nos
 
 

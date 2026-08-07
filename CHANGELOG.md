@@ -7,6 +7,31 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(gw): coletor dirigido -- captura sem DevTools, no tamanho da mao humana (#gto #tooling)
+
+> `scripts/coletor_gw.py`: Playwright numa sessao logada do usuario, percorrendo uma LISTA
+> FECHADA de nos (`docs/gw_plano_hu.json`) e gravando direto no acervo. Substitui o ritual de
+> DevTools + "Save all as HAR", que ja custou dois acidentes: nos vazios porque o browser
+> respondeu do CACHE, e um HAR de mesa cheia SOBRESCRITO antes do import.
+>
+> **Nao e um aspirador, de proposito.** A cota e da conta do usuario e automatizar nao cria cota:
+> pausa com jitter entre requisicoes, teto de nos por execucao, e **parada no primeiro sinal de
+> limite** (429/402/403 ou corpo sem solucao) em vez de insistir. Grava a cada no, entao uma
+> parada no meio preserva o que veio.
+>
+> O sizing do 3-bet muda por profundidade (`R2-R4.5` a 14bb, `R2-R5.5` a 30bb), entao o plano
+> declara INTENCAO (`raise_min`, `allin`, `call`) e o token sai da resposta do no pai -- a arvore
+> se descobre andando. Prefixos compartilhados sao memoizados: as 6 linhas do plano gastam 6
+> requisicoes, nao 14.
+>
+> A decodificacao virou **porta unica** (`no_de_resposta`), consumida pelo HAR e pelo coletor,
+> com teste que passa o MESMO payload pelos dois caminhos e exige no identico -- a ordem das 169
+> ja nos custou uma leitura errada e nao pode ter duas copias.
+>
+> Testado inteiro contra um `buscar` falso (zero requisicoes ao GW: testar "rodando pra ver"
+> gastaria a cota que o script existe para poupar). Os 6 guardas foram **quebrados um a um** e
+> cada um acusou. Suite gto 368 verde.
+
 ### feat(hu): segunda captura — BB vs limp, SB vs 3-bet e BB vs 4-bet jam entram no motor (#gto #hu)
 
 > Segundo HAR do usuario (21 nos novos, total 36). O importador agora MESCLA com o ja importado

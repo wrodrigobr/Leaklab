@@ -102,3 +102,7 @@ backups/
 
 # Documentos estratégicos/negociação (confidenciais — nunca versionar)
 business/
+
+# perfil do Chromium do coletor do GW (contem a sessao logada do usuario)
+backend/.gw_profile/
+.gw_profile/
