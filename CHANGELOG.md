@@ -7,6 +7,29 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### ops: HU em producao — o caso 75 morre, e a amostragem derrubou a primeira janela (#producao #hu)
+
+> Dois deploys e dois reprocessos, porque a PRIMEIRA versao criou acusacao falsa e a amostragem
+> pegou antes de eu celebrar.
+>
+> | | pre-HU | janela 40% | **janela 25%** |
+> |---|---|---|---|
+> | acusadas total | 640 | 663 | **653** |
+> | HU preflop com gabarito | 157 (carta RING, mentira) | 118 | **85** (carta HU real) |
+> | HU preflop acusadas | 8 | 31 | **21** |
+>
+> **A mao do JJ (caso 75): `standard / gto_correct / raise`.** A acusacao falsa que motivou a
+> captura inteira morreu.
+>
+> Com 40%, SB a 14,8bb caia no no de 10bb — outro regime (jam/limp vs raise normal) — e um AJo
+> foi acusado por min-raisar "em vez de jamar". Com 25%, a faixa 14-19bb de SB first-in vira null
+> honesto ate capturarmos os ROOT que faltam, e a amostra das 21 acusacoes restantes e
+> chart-verdadeira: raise de 63o/Q5o/J8o onde a carta manda fold/limp, limp de 52o onde manda
+> fold. As 71 anotacoes do coach seguem intactas.
+>
+> O ganho liquido contra o estado pre-HU: -157 vereditos de carta errada, +85 de carta certa, e
+> as ~13 acusacoes novas sao leaks REAIS de HU que a carta ring abencoava.
+
 ### feat(motor): mesa de 2 agora e gradeada por carta HU de verdade (#gto #hu #motor)
 
 > Integracao das cartas capturadas: `n_players == 2` roteia EXCLUSIVAMENTE para
