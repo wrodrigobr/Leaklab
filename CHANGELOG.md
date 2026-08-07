@@ -7,6 +7,28 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(motor): G5 -- o espelho do G1, para o lado do CALL (#motor #coach)
+
+> Familia 3 das cinco que a revisao com o coach isolou. O G1 (06/08) cobre uma direcao so: o
+> jogador FOLDOU e o preco nao pagava. O caso do coach e o inverso — ele PAGOU, o preco fechava
+> com folga, e o produto acusou.
+>
+> **O motor ja sabia.** Em 72 decisoes do acervo a nota do proprio card diz, textualmente: "O
+> preco fechava (X% de equity contra Y% exigidos), mas o fold vem da RANGE, nao do preco". Saber
+> que o preco fecha e ainda assim cravar `small_mistake` e severidade contra a propria evidencia
+> — TT pagando 10% do pote, 99 pagando 22%.
+>
+> Tres cuidados, cada um por um erro ja pago: usa o `potOddsEquity` do MOTOR (somar colunas do
+> banco foi como eu acusei o produto errado em 06/08); exige margem larga (15pp), porque a equity
+> estimada erra INFLANDO; e tem teto de preco (35%), porque quanto mais caro o call mais essa
+> inflacao pesa — sem o teto, o guarda absolveria justamente o AQo contra 4-bet all-in que o coach
+> mandou foldar. Cap em `marginal`, nunca `standard`: pode haver motivo de range que o preco nao ve.
+>
+> Descoberta ao escrever o teste: por este caminho **call contra all-in nunca chega ao G5**, ja e
+> capado antes pelo G2. A clausula de range estreita e segunda barreira, e o teste diz isso em vez
+> de fingir que discrimina — eu escrevi esperando `small_mistake` e o resultado era `marginal` com
+> o guarda ligado ou desligado.
+
 ### feat(ring): 283 nos de mesa cheia vieram do disco, e o `mesa` estava errado (#gto)
 
 > O usuario lembrou que `docs/ranges_gto` guarda 82 HAR de maio (828 MB). Varridos: **1.948 nos

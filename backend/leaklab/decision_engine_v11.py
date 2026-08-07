@@ -1292,6 +1292,39 @@ def evaluate_decision(input_data: Dict[str, Any]) -> Dict[str, Any]:
                 label = 'marginal'
                 final_score = min(final_score, _LABEL_MAX_SCORE['marginal'])
 
+    # ── Defeito 5 (familia 3 da revisao de 07/08): o ESPELHO do G1, para o lado do call ────
+    #
+    # O G1 acima cobre uma direcao so: jogador FOLDOU e o preco nao pagava. O caso que o coach
+    # apontou e o inverso — o jogador PAGOU, o preco fechava com folga, e o produto acusou. A nota
+    # do proprio card dizia, em 72 decisoes do acervo: "O preco fechava (X% de equity contra Y%
+    # exigidos), mas o fold vem da RANGE, nao do preco". Saber e dizer que o preco fecha e ainda
+    # assim cravar `small_mistake` e severidade contra a propria evidencia.
+    #
+    # Tres cuidados, cada um por um erro ja pago:
+    #   1. **usa o pot odds do MOTOR** (`potOddsEquity`), nunca `to_call/(pot+to_call)` de colunas
+    #      do banco — foi assim que eu acusei o produto errado no relatorio de 06/08;
+    #   2. **margem larga** (>= `_MARGEM_PRECO_FOLGADO`), porque a equity estimada erra INFLANDO:
+    #      exigir folga grande faz o guarda sobreviver a essa inflacao;
+    #   3. **nao dispara contra range estreita** (all-in com 2+ raises). Ali a equity vs mao
+    #      aleatoria nao vale como argumento — e exatamente o que o G2 logo abaixo trata.
+    #
+    # Cap em `marginal`, nunca `standard`: pode haver motivo de RANGE para foldar que o preco nao
+    # ve. O que se sabe e que nao ha base para chamar de erro — e `marginal` diz isso.
+    _MARGEM_PRECO_FOLGADO = 0.15
+    _PRECO_BARATO = 0.35
+    if label in ('small_mistake', 'clear_mistake') and _norm_gto_action(
+            input_data.get('player_action', '')) == 'call':
+        _eq_c = math.get('estimatedHandEquity')
+        _req_c = math.get('potOddsEquity')
+        _range_estreita = (spot.get('facingAllin')
+                           and int(spot.get('preflopRaisesFaced') or 0) >= 2
+                           and math.get('equitySource') == 'vs_random')
+        if (_eq_c is not None and _req_c is not None and not _range_estreita
+                and _req_c < _PRECO_BARATO
+                and (_eq_c - _req_c) >= _MARGEM_PRECO_FOLGADO):
+            label = 'marginal'
+            final_score = min(final_score, _LABEL_MAX_SCORE['marginal'])
+
     # ── Defeito 2: equity vs mao ALEATORIA nao vale como argumento contra range estreita ───
     # O caso do coach: AQo enfrentando 4-bet ALL-IN por 20bb. O card exibia 64,4% de equity e
     # rotulava o call de `standard`. Mas 64,4% e vs mao ALEATORIA — contra quem 4-beta 20bb, AQo

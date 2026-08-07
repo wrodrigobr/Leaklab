@@ -100,6 +100,75 @@ def _aqo(**m):
                  range_evaluation={'recommendedPrimaryAction': 'call', 'rangeZone': 'in_range'})
 
 
+def _call_barato(**kw):
+    """Jogador PAGOU um preco folgado e o produto acusou. `pot odds` 10%, equity 48%."""
+    d = dict(
+        player_action='call', street='preflop', hero_cards='TdTs',
+        spot={'position': 'BTN', 'board': [], 'effectiveStackBb': 38.0,
+              'facingSize': 2.5, 'facingToBb': 2.5, 'preflopRaisesFaced': 2},
+        math={'estimatedHandEquity': 0.48, 'potOddsEquity': 0.10, 'equitySource': 'vs_random'},
+        range_evaluation={'recommendedPrimaryAction': 'fold', 'rangeZone': 'outside_range'})
+    for k, v in kw.items():                     # o override do teste FUNDE, nao duplica
+        d[k] = {**d[k], **v} if isinstance(v, dict) and isinstance(d.get(k), dict) else v
+    return _base(**d)
+
+
+def test_g5_call_com_preco_folgado_nao_e_erro():
+    """O ESPELHO do G1, achado na releitura de 07/08. Em 72 decisoes o proprio card dizia "o preco
+    fechava ... mas o fold vem da RANGE" e mesmo assim cravava `small_mistake`. Saber que o preco
+    fecha e acusar assim mesmo e severidade contra a propria evidencia."""
+    assert _lab(_call_barato()) not in ('small_mistake', 'clear_mistake')
+
+
+def test_g5_nao_absolve_call_com_preco_apertado():
+    """CONTROLE: com o preco perto da equity, a acusacao continua de pe — o guarda separa preco
+    folgado de preco justo, nao absolve todo call."""
+    caro = _call_barato(math={'estimatedHandEquity': 0.36, 'potOddsEquity': 0.33})
+    assert _lab(caro) in ('small_mistake', 'clear_mistake'), _lab(caro)
+
+
+def test_g5_nao_passa_por_cima_do_tratamento_de_range_estreita():
+    """All-in com 2+ raises e a linha mais estreita do preflop, e ali a equity vs mao ALEATORIA
+    nao vale como argumento — e o que o G2 trata.
+
+    Medido ao escrever este teste: por este caminho o call contra all-in **nunca chega ao G5**,
+    porque ja e capado antes (G2 rebaixa `standard`, e o facing-allin normaliza). Entao a clausula
+    `not _range_estreita` e SEGUNDA BARREIRA, e dizer que ela "discrimina" seria mentira: eu
+    escrevi o teste esperando `small_mistake` e o resultado era `marginal` com o guarda ligado ou
+    desligado. O que da para provar, e esta provado aqui, e que o resultado nao piora nem melhora
+    por causa do G5 — e que o G2 continua fazendo o trabalho dele.
+    """
+    estreito = _call_barato(
+        spot={'position': 'BTN', 'board': [], 'effectiveStackBb': 20.0, 'facingSize': 20.0,
+              'facingToBb': 20.0, 'facingAllin': True, 'preflopRaisesFaced': 2})
+    assert _lab(estreito) == 'marginal', _lab(estreito)
+    # e o G2 e quem faz isso: com equity medida contra RANGE, o mesmo spot volta a `standard`
+    com_range = _call_barato(
+        spot={'position': 'BTN', 'board': [], 'effectiveStackBb': 20.0, 'facingSize': 20.0,
+              'facingToBb': 20.0, 'facingAllin': True, 'preflopRaisesFaced': 2},
+        math={'equitySource': 'vs_range'})
+    assert _lab(com_range) == 'standard', _lab(com_range)
+
+
+def test_g5_nao_absolve_call_CARO_mesmo_com_margem_grande():
+    """O teto de preco nao e decoracao, e a margem sozinha nao basta.
+
+    Quanto mais caro o call, mais pesa a inflacao da equity estimada: 65% "de equity" contra um
+    preco de 45% absolveria justamente o caso que o coach mandou FOLDAR (AQo contra 4-bet all-in,
+    onde o 64,4% era vs mao aleatoria). O argumento do coach era sobre continuacao BARATA — "voce
+    ja pos 2bb, pagar o all-in e so mais 5" —, e e so ate ali que o guarda vai.
+    """
+    caro = _call_barato(math={'estimatedHandEquity': 0.65, 'potOddsEquity': 0.45})
+    assert _lab(caro) in ('small_mistake', 'clear_mistake'), _lab(caro)
+
+
+def test_g5_usa_o_pot_odds_do_motor():
+    """A referencia e `potOddsEquity`, calculado pelo motor com o pote RECONSTRUIDO. Somar duas
+    colunas do banco foi como eu acusei o produto errado em 06/08 — sem o campo, nao age."""
+    sem_preco = _call_barato(math={'estimatedHandEquity': 0.48, 'potOddsEquity': None})
+    assert _lab(sem_preco) in ('small_mistake', 'clear_mistake'), _lab(sem_preco)
+
+
 def test_g2_equity_vs_aleatoria_nao_abencoa_call_contra_4bet_allin():
     """64% vs mao aleatoria nao diz nada sobre uma range de 4-bet all-in por 20bb."""
     assert _lab(_aqo()) == 'marginal', _lab(_aqo())
