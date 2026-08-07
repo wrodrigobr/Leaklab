@@ -24,6 +24,13 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 > se descobre andando. Prefixos compartilhados sao memoizados: as 6 linhas do plano gastam 6
 > requisicoes, nao 14.
 >
+> **O coletor nao loga, ele se CONECTA.** O Google recusa OAuth em navegador iniciado por
+> automacao ("Esse navegador ou app pode nao ser seguro") — decisao deles, nao obstaculo a
+> burlar. Entao o fluxo e o inverso: o usuario abre o Chrome com `--remote-debugging-port=9222`,
+> loga como sempre, e o script attacha na sessao existente. Nada de automatizado no login, e o
+> navegador e literalmente o dele. `--login` agora so imprime o comando pronto. O modo que abre
+> o proprio navegador continua em `--sem-cdp`, para quem tiver conta com senha propria.
+>
 > Roda no **Chrome instalado** por padrao (`--navegador chrome|edge|chromium`): e o navegador
 > que o usuario ja usa no GW, entao user-agent e fingerprint sao os de sempre. Perfil separado
 > do Chrome do dia a dia -- o Chrome recusa abrir perfil em uso, e apontar para o real

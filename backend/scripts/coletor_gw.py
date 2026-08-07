@@ -24,6 +24,13 @@ O desenho e deliberadamente do tamanho da mao humana:
 - **para no primeiro sinal de limite** (HTTP 429/402/403 ou corpo sem solucao) em vez de insistir;
 - **grava a cada no**, para que uma parada no meio preserve o que ja veio.
 
+── Login: o coletor NAO loga, ele se CONECTA ──────────────────────────────────────────────────
+
+O Google recusa OAuth em navegador iniciado por automacao ("Esse navegador ou app pode nao ser
+seguro") — e isso e uma decisao deles, nao um obstaculo a contornar. Entao o fluxo padrao e o
+inverso: **voce** abre o Chrome, loga como sempre, e o script ATTACHA na sessao que ja existe
+(`--cdp`). Nada e automatizado no login, e o navegador e literalmente o seu.
+
 ── Como descobre o nome do no ─────────────────────────────────────────────────────────────────
 
 O sizing do GW muda por profundidade (`R2-R4.5` a 14bb, `R2-R5.5` a 30bb). Adivinhar geraria
@@ -194,6 +201,44 @@ def _contexto(perfil: Path, headless: bool, navegador: str = 'chrome'):
     return pw, ctx
 
 
+def _chrome_exe() -> str:
+    for c in (r'C:\Program Files\Google\Chrome\Application\chrome.exe',
+              r'C:\Program Files (x86)\Google\Chrome\Application\chrome.exe'):
+        if Path(c).exists():
+            return c
+    return 'chrome'
+
+
+def _instrucoes_cdp(porta: int, perfil: Path) -> str:
+    return '\n'.join([
+        '',
+        'Abra o Chrome VOCE MESMO, com um perfil so para isto:',
+        '',
+        f'  "{_chrome_exe()}" --remote-debugging-port={porta} --user-data-dir="{perfil}"',
+        '',
+        'Logue no GTO Wizard nessa janela. O login e normal, feito por voce — o Google recusa',
+        'OAuth em navegador aberto por automacao, e isso e decisao deles, nao obstaculo a burlar.',
+        'Deixe a janela aberta e rode o coletor de novo:',
+        '',
+        '  python scripts/coletor_gw.py --plano docs/gw_plano_hu.json --max-nos 40',
+        '',
+    ])
+
+
+def _conecta_cdp(porta: int):
+    """Attacha no Chrome que VOCE abriu. Retorna (pw, browser, page) — o browser NAO e nosso
+    para fechar."""
+    from playwright.sync_api import sync_playwright
+    pw = sync_playwright().start()
+    browser = pw.chromium.connect_over_cdp(f'http://localhost:{porta}')
+    ctx = browser.contexts[0] if browser.contexts else browser.new_context()
+    page = next((p for p in ctx.pages if 'gtowizard.com' in p.url), None)
+    if page is None:
+        page = ctx.new_page()
+        page.goto(APP)
+    return pw, browser, page
+
+
 def buscador_playwright(page):
     """Faz a requisicao DE DENTRO da pagina logada — mesma origem, mesma sessao, sem token."""
     def buscar(params: dict):
@@ -221,11 +266,19 @@ def main() -> int:
     ap.add_argument('--pausa', type=float, default=8.0, help='segundos entre requisicoes')
     ap.add_argument('--max-nos', type=int, default=40, help='teto de nos NOVOS por execucao')
     ap.add_argument('--navegador', default='chrome', choices=('chrome', 'edge', 'chromium'),
-                    help='Chrome instalado (default), Edge, ou o Chromium empacotado')
+                    help='so para --login: Chrome instalado, Edge, ou o Chromium empacotado')
+    ap.add_argument('--cdp', type=int, default=9222, metavar='PORTA',
+                    help='attacha no Chrome que voce abriu com --remote-debugging-port (padrao)')
+    ap.add_argument('--sem-cdp', action='store_true',
+                    help='abre o proprio navegador em vez de attachar (o Google bloqueia o login)')
     args = ap.parse_args()
 
     perfil = Path(args.perfil).resolve()
     perfil.mkdir(parents=True, exist_ok=True)
+
+    if args.login and not args.sem_cdp:
+        print(_instrucoes_cdp(args.cdp, perfil))
+        return 0
 
     if args.login:
         pw, ctx = _contexto(perfil, headless=False, navegador=args.navegador)
@@ -255,12 +308,23 @@ def main() -> int:
     def pausar():
         time.sleep(args.pausa * random.uniform(0.8, 1.4))
 
-    pw, ctx = _contexto(perfil, headless=False, navegador=args.navegador)
-    page = ctx.pages[0] if ctx.pages else ctx.new_page()
-    page.goto(APP)
-    if 'login' in page.url:
-        print('sessao expirada — rode com --login primeiro')
-        ctx.close(); pw.stop()
+    nosso = args.sem_cdp                       # so fechamos o navegador se fomos nos que abrimos
+    if nosso:
+        pw, ctx = _contexto(perfil, headless=False, navegador=args.navegador)
+        page = ctx.pages[0] if ctx.pages else ctx.new_page()
+        page.goto(APP)
+        fechar = lambda: (ctx.close(), pw.stop())
+    else:
+        try:
+            pw, browser, page = _conecta_cdp(args.cdp)
+        except Exception as e:
+            print(f'nao consegui conectar no Chrome em localhost:{args.cdp} ({type(e).__name__})')
+            print(_instrucoes_cdp(args.cdp, perfil))
+            return 2
+        fechar = lambda: pw.stop()             # a janela e do usuario; so soltamos a conexao
+    if 'login' in page.url or 'accounts.google' in page.url:
+        print('a sessao do GW nao esta logada nessa janela — logue nela e rode de novo')
+        fechar()
         return 2
     buscar = buscador_playwright(page)
 
@@ -280,7 +344,7 @@ def main() -> int:
     except KeyboardInterrupt:
         parada = 'interrompido pelo usuario'
     finally:
-        ctx.close(); pw.stop()
+        fechar()
 
     depois = sum(len(v) for v in json.loads(out.read_text(encoding='utf-8')).values()) if out.exists() else 0
     print(f'\n{novos} nos coletados nesta execucao — acervo {antes} -> {depois} ({out})')
