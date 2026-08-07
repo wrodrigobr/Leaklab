@@ -356,6 +356,53 @@ def test_url_do_spot_carrega_o_no():
     assert u.startswith('https://app.gtowizard.com/solutions?')
 
 
+def test_history_spot_acompanha_a_linha():
+    """`history_spot=0` fixo fazia o app exibir a RAIZ e ignorar o `preflop_actions` — o coletor
+    esperou 30s por um `R2` que nunca vinha. A URL que o GW montou ao clicar mostrou a regra:
+    e o numero de acoes ja jogadas na linha."""
+    from coletor_gw import url_do_spot
+    casos = {'': '0', 'R2': '1', 'R2-RAI': '2', 'R2-R4.5-RAI': '3'}
+    for acoes, esperado in casos.items():
+        u = url_do_spot({'gametype': 'g', 'depth': '16.125', 'preflop_actions': acoes})
+        assert f'history_spot={esperado}' in u, (acoes, u)
+
+
+# ── 8. cota: no que ja esta no disco nao se pede de novo ──────────────────────────────────────
+
+def test_rotulo_gravado_volta_a_acao():
+    """Round-trip: a acao crua vira rotulo ao gravar e precisa voltar identica ao ser lida,
+    senao o reaproveitamento escolheria o filho errado."""
+    from coletor_gw import acoes_cruas_de_rotulos
+    cruas = [{'type': 'FOLD'}, {'type': 'CALL', 'betsize': '2'},
+             {'type': 'RAISE', 'betsize': '4.5'}, {'type': 'RAISE', 'betsize': '16.000'}]
+    rotulos = ['FOLD', 'CALL 2', 'RAISE 4.5', 'RAISE 16.000']
+    assert acoes_cruas_de_rotulos(rotulos) == cruas
+    for original, voltou in zip(cruas, acoes_cruas_de_rotulos(rotulos)):
+        assert token_da_acao(original, 16.125) == token_da_acao(voltou, 16.125)
+
+
+def test_no_ja_no_acervo_nao_gasta_requisicao():
+    """A cota diaria e o recurso mais escasso da operacao. Entre execucoes, ROOT e R2 ja estao
+    no disco: rebusca-los seria pagar de novo por dado que ja temos — e foi o que aconteceu na
+    rodada de 07/08, que gastou ROOT@16.125 duas vezes."""
+    arvore = _arvore(16.125, '4.5')
+    conhecidos = {}
+    for no_str in ('', 'R2'):
+        conhecidos[f"16.125|{no_str or 'ROOT'}"] = no_de_resposta(
+            arvore[no_str], {'gametype': 'g', 'depth': '16.125', 'preflop_actions': no_str})
+    log = []
+    caminha(_buscar_de({'16.125': arvore}, log=log), 'g', '16.125', _LINHAS,
+            conhecidos=conhecidos)
+    pedidos = {n for _d, n in log}
+    assert '' not in pedidos and 'R2' not in pedidos, f'refez no conhecido: {pedidos}'
+    assert 'R2-RAI' in pedidos, 'nao chegou ao no inedito usando as acoes gravadas'
+
+    # CONTROLE: sem `conhecidos`, os mesmos nos SAO pedidos (o teste nao passa por vacuidade)
+    log2 = []
+    caminha(_buscar_de({'16.125': arvore}, log=log2), 'g', '16.125', _LINHAS)
+    assert '' in {n for _d, n in log2} and 'R2' in {n for _d, n in log2}
+
+
 if __name__ == '__main__':
     falhas = 0
     testes = [v for k, v in sorted(globals().items()) if k.startswith('test_')]

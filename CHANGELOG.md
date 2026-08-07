@@ -24,6 +24,17 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 > se descobre andando. Prefixos compartilhados sao memoizados: as 6 linhas do plano gastam 6
 > requisicoes, nao 14.
 >
+> **`history_spot` nao era decorativo.** A URL da SPA levava `history_spot=0` fixo, e com isso o
+> app exibia a RAIZ da linha e ignorava o `preflop_actions`: o `ROOT@16.125` veio, e o `R2` nunca
+> vinha. O usuario clicou no no a mao e mandou a URL que o proprio GW montou — `history_spot=1`.
+> E o numero de acoes ja jogadas na linha. **O oraculo estava no proprio produto**, e adivinhar o
+> parametro custou uma rodada de cota.
+>
+> **No que ja esta no disco nao se pede de novo.** A caminhada precisa das acoes do no pai para
+> achar o filho, e essas acoes ja estao gravadas — entao `acoes_cruas_de_rotulos` as reconstroi do
+> acervo e a execucao seguinte comeca de onde parou sem repagar ROOT e R2. Na rodada de 07/08 o
+> `ROOT@16.125` foi comprado duas vezes. `--refazer` forca a rebusca.
+>
 > **Le o aviso de cota da propria pagina.** Na primeira rodada real a cota diaria do usuario ja
 > estava estourada: o coletor navegou certo (o spot de 16bb renderizou), nenhuma solucao veio, e
 > ele esperou 30s por no antes de dizer um erro generico. A pagina dizia o tempo todo: "You have

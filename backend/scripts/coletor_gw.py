@@ -100,19 +100,31 @@ def escolhe_acao(desejo: str, acoes: list[dict], stack: float) -> dict | None:
 # ── caminhada ─────────────────────────────────────────────────────────────────────────────────
 
 def caminha(buscar, gametype: str, depth: str, linhas: list[list[str]],
-            ao_coletar=None, pausar=None) -> dict:
+            ao_coletar=None, pausar=None, conhecidos=None) -> dict:
     """Percorre as `linhas` de UMA profundidade. `buscar(params) -> (status, corpo)`.
 
     Prefixos sao memoizados: `[raise_min]` e `[raise_min, allin]` compartilham ROOT e R2 e
     gastam UMA requisicao cada, nao duas. Cota economizada e cota que sobra para no novo.
+
+    `conhecidos` (o acervo ja em disco) evita refazer requisicao entre EXECUCOES: a caminhada
+    precisa das acoes do no pai para achar o filho, e essas acoes ja estao gravadas. Sem isso,
+    cada nova execucao pagava ROOT e R2 de novo antes de chegar ao no inedito.
     """
     stack = float(depth)
     cache: dict[str, dict] = {}
     coletados: dict[str, dict] = {}
+    conhecidos = conhecidos or {}
 
     def obter(no_str: str) -> dict:
         if no_str in cache:
             return cache[no_str]
+        chave_ja = f"{depth}|{no_str or 'ROOT'}"
+        if chave_ja in conhecidos:
+            no = dict(conhecidos[chave_ja])
+            no['_acoes_cruas'] = acoes_cruas_de_rotulos(no.get('acoes') or [])
+            cache[no_str] = no
+            print(f'  ja tinha {chave_ja}')
+            return no
         if pausar and cache:
             pausar()
         params = {'gametype': gametype, 'depth': depth, 'stacks': '',
@@ -240,16 +252,41 @@ def _conecta_cdp(porta: int):
 
 
 def url_do_spot(params: dict) -> str:
-    """URL da SPA para um no. Os params extras sao os que o app usa ao abrir um estudo."""
+    """URL da SPA para um no.
+
+    **`history_spot` e o indice do spot dentro da linha, e nao e decorativo.** A primeira versao
+    mandava `history_spot=0` fixo: o app entao exibia a RAIZ da linha e ignorava o
+    `preflop_actions`, e o coletor esperava 30s por um `R2` que nunca vinha. Lido da URL que o
+    proprio GW montou ao clicar: ROOT -> 0, `R2` -> 1, `R2-RAI` -> 2 — o numero de acoes ja
+    jogadas na linha.
+    """
     from urllib.parse import urlencode
+    acoes = params.get('preflop_actions') or ''
     q = {
         'soltab': 'strategy', 'solution_type': 'gwiz', 'gmfs_solution_tab': 'ai_sols',
         'gametype': params['gametype'], 'depth': params['depth'],
-        'preflop_actions': params.get('preflop_actions', ''),
-        'gmfft_sort_key': '0', 'gmfft_sort_order': 'desc', 'history_spot': '0',
-        'gmff_favorite': 'false',
+        'preflop_actions': acoes,
+        'gmfft_sort_key': '0', 'gmfft_sort_order': 'desc',
+        'history_spot': str(len(acoes.split('-')) if acoes else 0),
     }
     return f'{APP}solutions?{urlencode(q)}'
+
+
+def acoes_cruas_de_rotulos(rotulos: list[str]) -> list[dict]:
+    """'RAISE 4.5' -> {'type': 'RAISE', 'betsize': '4.5'}. Volta do que foi GRAVADO.
+
+    Serve para reaproveitar no que o acervo ja tem: com a cota diaria do GW sendo o recurso mais
+    escasso da operacao, refazer uma requisicao de no conhecido e cota queimada em dado que ja
+    esta no disco.
+    """
+    cruas = []
+    for r in rotulos:
+        partes = r.split(' ', 1)
+        acao = {'type': partes[0]}
+        if len(partes) > 1:
+            acao['betsize'] = partes[1]
+        cruas.append(acao)
+    return cruas
 
 
 def _mesma_chave(url: str, params: dict) -> bool:
@@ -346,6 +383,8 @@ def main() -> int:
                     help='so para --login: Chrome instalado, Edge, ou o Chromium empacotado')
     ap.add_argument('--cdp', type=int, default=9222, metavar='PORTA',
                     help='attacha no Chrome que voce abriu com --remote-debugging-port (padrao)')
+    ap.add_argument('--refazer', action='store_true',
+                    help='rebusca nos que o acervo ja tem (padrao: reaproveita, poupa cota)')
     ap.add_argument('--sem-cdp', action='store_true',
                     help='abre o proprio navegador em vez de attachar (o Google bloqueia o login)')
     args = ap.parse_args()
@@ -415,7 +454,8 @@ def main() -> int:
                     raise LimiteAtingido(parada)
                 print(f'\ndepth {depth}')
                 caminha(buscar, gt, str(depth), bloco['linhas'],
-                        ao_coletar=ao_coletar, pausar=pausar)
+                        ao_coletar=ao_coletar, pausar=pausar,
+                        conhecidos=(None if args.refazer else ja.get(gt, {})))
     except LimiteAtingido as e:
         parada = str(e)
     except KeyboardInterrupt:
