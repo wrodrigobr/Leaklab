@@ -7,6 +7,29 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(gw): o plano de captura de ring vinha com as profundidades ERRADAS (#gto)
+
+> A primeira versao fixava 15/20/30/40bb para todos os pares, por analogia com HU. Rodei o MOTOR
+> sobre as 332 decisoes preflop de mesa cheia sem gabarito em producao: **104 sao atendiveis por
+> carta de ring**, e as profundidades reais nao tem relacao com aquele chute — SB x BTN vive em
+> **60-100bb**, SB x CO em 28-100bb. Capturar a 20bb ali produziria no que o motor RECUSA pela
+> janela de 25%: dias de cota gastos em carta inutil.
+>
+> Plano refeito com o conjunto MINIMO de profundidades que cobre os stacks observados, por par,
+> escolhido guloso sobre o menu que o estudo oferece. **10 blocos, 22 nos-alvo, 66 das 104
+> decisoes**; a cauda de 14 pares rende menos de 1,5 decisao por no e ficou de fora, dito no
+> proprio arquivo.
+>
+> `tests/test_plano_ring.py`: cada linha e simulada e tem que chegar ao heroi que o rotulo
+> promete. Um fold a mais ou a menos captura o no do VIZINHO — carta certa sob rotulo errado, que
+> nao se denuncia depois porque gradua do mesmo jeito. O verificador tem controle proprio (linha
+> torta forjada nas tres formas), porque hoje dois testes meus ja passaram cegos.
+>
+> **Pendencia levantada pela medicao, e ela precisa do usuario:** das 104 decisoes so **41 sao de
+> mesa de 8**. Sao 30 de 7 jogadores, 16 de 6 e 11 de 9. Carta de 8-max aplicada a mesa de 6 e o
+> mesmo erro que carta de ring gradeando heads-up — antes de gastar cota, e preciso saber quais
+> tamanhos o MTTGeneral oferece.
+
 ### feat(gw): importador e coletor entendem MESA CHEIA (#gto #tooling)
 
 > Para os 149 `faces_squeeze` sem gabarito. Dois HAR antigos no Downloads (11/05) tinham nos

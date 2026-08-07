@@ -461,6 +461,41 @@ def _soften_mixed_3bet_quality(base: dict, action_taken: str) -> None:
     base['action_quality'] = 'gto_minor_deviation'
 
 
+_ARGS_POSICIONAIS = ('position', 'hero_hand_type', 'stack_bb', 'action_taken')
+
+
+def _preenche_buraco_com_ring(base: dict, args: tuple, kwargs: dict) -> None:
+    """Carta de mesa cheia do GW, SÓ onde não há gabarito.
+
+    O gatilho é `available=False` com `pairing_uncovered`: 149 decisões do acervo caem aí porque
+    o par (hero, 3-bettor) nunca foi semeado. Onde já existe carta, este caminho não encosta —
+    trocar a fonte mexeria em veredito hoje correto sem experimento que diga qual está certa.
+
+    Mesa de 2 nunca entra aqui: HU tem porta própria, e carta de mesa cheia em heads-up é o
+    defeito que originou toda esta frente.
+    """
+    if base.get('available') or base.get('coverage_reason') != 'pairing_uncovered':
+        return
+    p = dict(zip(_ARGS_POSICIONAIS, args))
+    p.update(kwargs)
+    if int(p.get('n_players') or 0) == 2:
+        return
+    cenario = base.get('scenario')
+    hero, vilao = p.get('position'), p.get('vs_position')
+    if cenario not in ('faces_squeeze', 'vs_rfi') or not hero or not vilao:
+        return
+    por_depth = _load_ring().get((cenario, hero, vilao))
+    if not por_depth:
+        return
+    depth, no = _hu_no_mais_proximo(por_depth, float(p.get('stack_bb') or 0))
+    if no is None:
+        return
+    _grade_por_no_capturado(base, no, depth, p.get('hero_hand_type') or '',
+                            p.get('action_taken') or '', fonte='gw_ring_har')
+    if base.get('available'):
+        base.pop('coverage_reason', None)
+
+
 def analyze_preflop(*args, **kwargs) -> dict:
     """Análise GTO preflop + ev_loss_bb (#24). Wrapper fino sobre o _impl pra
     anexar o EV em todos os returns (RFI/push-fold/vs_rfi/3bet/etc)."""
@@ -470,6 +505,7 @@ def analyze_preflop(*args, **kwargs) -> dict:
     # R2 de open pequeno, que e o defeito que o caminho HU existe para matar.
     kwargs['facing_allin'] = facing_allin
     base = _analyze_preflop_impl(*args, **kwargs)
+    _preenche_buraco_com_ring(base, args, kwargs)
     _attach_ev_loss(base)
     _act = kwargs.get('action_taken') or (args[3] if len(args) > 3 else '')
     if facing_allin:
@@ -517,6 +553,73 @@ def _load_hu() -> dict:
                 nos.setdefault(tipo, {})[float(d_str)] = no
         _hu_cache = nos
     return _hu_cache
+
+
+# ── MESA CHEIA: cartas do GTO Wizard (docs/ring_ranges_har.json) ──────────────────────────────
+#
+# Preenche BURACO, não substitui carta existente. Onde já há cobertura, trocar a fonte mexeria em
+# veredito hoje correto sem experimento que diga qual das duas está certa — e o dano seria de um
+# tipo que o gap não causa. Promover o GW a autoritativo em ring é decisão separada e medível.
+
+_RING_PATH = os.path.join(os.path.dirname(__file__), '..', 'docs', 'ring_ranges_har.json')
+_ring_cache = None
+
+# Ordem de ação da primeira órbita. As linhas que capturamos vivem todas nela.
+_ORDEM_RING = {
+    8: ['UTG', 'UTG+1', 'LJ', 'HJ', 'CO', 'BTN', 'SB', 'BB'],
+    9: ['UTG', 'UTG+1', 'UTG+2', 'LJ', 'HJ', 'CO', 'BTN', 'SB', 'BB'],
+    6: ['LJ', 'HJ', 'CO', 'BTN', 'SB', 'BB'],
+}
+
+
+def _ring_papeis(node: str, mesa: int, ator: str):
+    """Do nome do nó (`F-F-F-F-R2-F-R6.5`) para os papéis: quem abriu, quem 3-betou, e o cenário.
+
+    O i-ésimo token é o i-ésimo jogador na ordem de ação. É derivação, e derivação já nos custou
+    caro — por isso o resultado é CONFERIDO contra o `ator` que o payload declara: se a posição
+    que a contagem diz que age não for a que o GW diz que está agindo, o nó é descartado em vez
+    de indexado torto. Duas fontes independentes precisam concordar.
+    """
+    ordem = _ORDEM_RING.get(int(mesa or 0))
+    if not ordem or not node:
+        return None
+    tokens = [t for t in node.split('-') if t]
+    if len(tokens) >= len(ordem):
+        return None                                   # passou da primeira órbita: fora do modelo
+    agressores = [ordem[i] for i, t in enumerate(tokens) if t.startswith('R')]
+    if ordem[len(tokens)] != ator:
+        return None                                   # a contagem e o payload discordam
+    if len(agressores) == 1:
+        return {'abriu': agressores[0], 'vilao': agressores[0], 'cenario': 'vs_rfi'}
+    if len(agressores) == 2:
+        # Hero ainda não agiu, então ele não é o abridor: é defesa contra open + 3-bet.
+        return {'abriu': agressores[0], 'vilao': agressores[1], 'cenario': 'faces_squeeze'}
+    return None
+
+
+def _load_ring() -> dict:
+    """{(cenario, hero, vilao): {depth: no}} — vazio enquanto não houver captura de mesa cheia."""
+    global _ring_cache
+    if _ring_cache is None:
+        try:
+            with open(_RING_PATH, encoding='utf-8') as f:
+                bruto = json.load(f)
+        except Exception:
+            bruto = {}
+        idx: dict = {}
+        for _gt, mapa in (bruto or {}).items():
+            for chave, no in (mapa or {}).items():
+                try:
+                    d_str, node = chave.split('|', 1)
+                    papeis = _ring_papeis(node, no.get('mesa'), no.get('ator'))
+                    if not papeis:
+                        continue
+                    k = (papeis['cenario'], no['ator'], papeis['vilao'])
+                    idx.setdefault(k, {})[float(d_str)] = no
+                except Exception:
+                    continue
+        _ring_cache = idx
+    return _ring_cache
 
 
 def _hu_no_mais_proximo(por_depth: dict, stack_bb: float):
@@ -596,6 +699,17 @@ def _hu_analyze(base: dict, pos: str, hero_hand_type: str, stack_bb: float, acti
         base['coverage_reason'] = 'hu_uncovered'
         return base
 
+    return _grade_por_no_capturado(base, no, depth, hero_hand_type, action_taken,
+                                   fonte='gw_hu_har')
+
+
+def _grade_por_no_capturado(base: dict, no: dict, depth: float, hero_hand_type: str,
+                            action_taken: str, fonte: str) -> dict:
+    """Gradua uma acao contra um no capturado do GW. **Porta unica**: HU e mesa cheia usam esta.
+
+    A alternativa era o caminho de ring reimplementar frequencia, adjacencia raise/jam e faixas de
+    qualidade — quatro copias de regra que ja moram aqui, e a quinta divergiria calada.
+    """
     acs = (no.get('maos') or {}).get(hero_hand_type) or {}
     if not acs:
         # A mão não chega a este nó: a range que o GW faz avançar até aqui não a contém (num
@@ -646,7 +760,7 @@ def _hu_analyze(base: dict, pos: str, hero_hand_type: str, stack_bb: float, acti
 
     base.update({
         'available': True,
-        'source': 'gw_hu_har',
+        'source': fonte,
         'hu_depth': depth,
         'in_range': (freq['call'] + freq['raise'] + freq['allin']) >= 0.05,
         'range_pct': range_pct,
