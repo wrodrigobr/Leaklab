@@ -100,6 +100,49 @@ def _aqo(**m):
                  range_evaluation={'recommendedPrimaryAction': 'call', 'rangeZone': 'in_range'})
 
 
+def test_g4_o_card_NOMEIA_o_pote_com_allin_mesmo_sem_erro():
+    """Familia 4, releitura de 07/08. A anotacao do coach era um CONCEITO, e o motor so tratava o
+    assunto no veredito: em `standard`/`marginal` o `build_interpretation` retornava cedo e o card
+    ficava mudo justamente onde havia algo a ensinar.
+
+    Medido em 470 decisoes postflop reais: 50 tem all-in vivo no pote, o hero apostou em 3, e as
+    tres eram mao de VALOR — o veredito ja estava certo nas tres. O que faltava era o texto.
+    """
+    from leaklab.decision_engine_v11 import evaluate_decision
+
+    def _texto(di):
+        return (evaluate_decision(di).get('interpretation') or {}).get('strategicExplanation', '')
+
+    com = _base(player_action='bet', hero_cards='AdKd',
+                spot={'hasAllinOpponent': True, 'board': ['7d', 'Tc', '6h'],
+                      'nActiveOpponents': 2},
+                range_evaluation={'recommendedPrimaryAction': 'bet', 'rangeZone': 'in_range'},
+                math={'estimatedHandEquity': 0.72, 'potOddsEquity': 0.30})
+    assert 'all-in' in _texto(com).lower(), _texto(com)
+    assert 'pote lateral' in _texto(com), 'a frase precisa dizer O QUE muda, nao so que ha all-in'
+
+    # CONTROLE 1: sem all-in no pote, o card `standard` segue mudo como sempre foi
+    sem = _base(player_action='bet', hero_cards='AdKd',
+                spot={'hasAllinOpponent': False, 'board': ['7d', 'Tc', '6h']},
+                range_evaluation={'recommendedPrimaryAction': 'bet', 'rangeZone': 'in_range'},
+                math={'estimatedHandEquity': 0.72, 'potOddsEquity': 0.30})
+    assert _texto(sem) == '', repr(_texto(sem))
+
+    # CONTROLE 2: quem so PAGA nao esta disputando pote lateral nenhum
+    pagando = _base(player_action='call', hero_cards='AdKd',
+                    spot={'hasAllinOpponent': True, 'board': ['7d', 'Tc', '6h']},
+                    range_evaluation={'recommendedPrimaryAction': 'call', 'rangeZone': 'in_range'},
+                    math={'estimatedHandEquity': 0.72, 'potOddsEquity': 0.30})
+    assert _texto(pagando) == '', repr(_texto(pagando))
+
+    # CONTROLE 3: preflop nao tem pote lateral formado por all-in de rua anterior
+    pf = _base(player_action='bet', street='preflop', hero_cards='AdKd',
+               spot={'hasAllinOpponent': True, 'board': []},
+               range_evaluation={'recommendedPrimaryAction': 'bet', 'rangeZone': 'in_range'},
+               math={'estimatedHandEquity': 0.72, 'potOddsEquity': 0.30})
+    assert _texto(pf) == '', repr(_texto(pf))
+
+
 def _call_barato(**kw):
     """Jogador PAGOU um preco folgado e o produto acusou. `pot odds` 10%, equity 48%."""
     d = dict(

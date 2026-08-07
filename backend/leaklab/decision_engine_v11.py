@@ -1490,8 +1490,28 @@ def build_interpretation(input_data: Dict[str, Any], label: str,
         "clear_mistake": "Erro claro com impacto relevante em EV.",
     }
 
+    # ── Familia 4: o pote com jogador all-in precisa ser NOMEADO, mesmo sem erro ───────────────
+    # A anotacao do coach era um CONCEITO ("nao blefe em potes que ja tem alguem de all-in"), e o
+    # motor tratava o assunto so no veredito (guarda G4), nunca no texto. Medido em 470 decisoes
+    # postflop reais: 50 tem all-in vivo no pote e o hero apostou em 3 — todas com **outro
+    # oponente vivo**, e todas com mao de VALOR. Ou seja, o veredito ja estava certo nas tres, e
+    # o que faltava era o card dizer o que muda ali.
+    #
+    # Correcao do meu proprio enunciado: nao e "sem fold equity". Quando o unico oponente esta
+    # all-in nao existe aposta possivel (25 dos 50 casos). Havendo aposta, ha alguem vivo para
+    # foldar — o que a presenca do all-in tira e o POTE PRINCIPAL, que vai a showdown de qualquer
+    # jeito. A frase abaixo diz isso, e nao a versao simplificada.
+    _spot_ai = input_data.get('spot') or {}
+    _nota_allin = ''
+    if (input_data.get('street', 'preflop') != 'preflop' and _spot_ai.get('hasAllinOpponent')
+            and _action_family(input_data.get('player_action', '')) in ('bet', 'raise')):
+        _nota_allin = ('Há um jogador all-in no pote: o pote principal vai a showdown de qualquer '
+                       'forma, então esta aposta disputa apenas o pote lateral e precisa vencer '
+                       'no showdown, não por fold.')
+
     if label not in ("small_mistake", "clear_mistake"):
-        return {"summary": summary_map[label], "mathExplanation": "", "strategicExplanation": ""}
+        return {"summary": summary_map[label], "mathExplanation": "",
+                "strategicExplanation": _nota_allin}
 
     action = input_data.get("player_action", "")
     street = input_data.get("street", "preflop")
@@ -1623,6 +1643,9 @@ def build_interpretation(input_data: Dict[str, Any], label: str,
 
     if not parts:
         parts.append(f"A linha {action_pt.upper()} ficou abaixo do esperado para o spot — {best_pt.upper()} era a ação correta.")
+
+    if _nota_allin:
+        parts.insert(0, _nota_allin)     # o contexto vem ANTES do veredito, nao como rodape
 
     parts.append(f"Ação esperada: {best_pt.upper()}.")
 

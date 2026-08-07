@@ -7,6 +7,27 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(card): o pote com jogador all-in passa a ser NOMEADO (#motor #coach)
+
+> Familia 4, e a que menos mudou veredito — de proposito. A anotacao do coach era um CONCEITO
+> ("nao blefe em potes que ja tem alguem de all-in"), e o motor so tratava o assunto na
+> severidade (guarda G4, de 06/08). Em `standard`/`marginal` o `build_interpretation` **retornava
+> cedo** e o card ficava mudo justamente onde havia algo a ensinar.
+>
+> **Medido em 470 decisoes postflop reais antes de escrever qualquer codigo:** 50 tem all-in vivo
+> no pote, o hero apostou em **3**, e as tres eram mao de VALOR. Ou seja, o veredito ja estava
+> certo nas tres e o G4 nao devia mesmo disparar. Inventar acusacao aqui teria sido resolver a
+> familia no papel e piorar o produto.
+>
+> **Corrigi tambem o meu proprio enunciado.** Eu vinha dizendo "sem fold equity contra quem ja
+> esta all-in". Nao e isso: quando o UNICO oponente esta all-in nao existe aposta possivel (25 dos
+> 50 casos), e nas 3 apostas havia alguem vivo para foldar. O que a presenca do all-in tira e o
+> **pote principal**, que vai a showdown de qualquer jeito. A frase do card diz isso.
+>
+> Mudanca cirurgica: o retorno antecipado so deixa de ser vazio quando ha all-in no pote E o hero
+> apostou E e postflop. Tres controles no teste (call, sem all-in, preflop) — os tres seguem mudos
+> como sempre foram.
+
 ### fix(motor): equity contra a range de 3-BET, nao contra mao aleatoria (#motor #coach)
 
 > Familia 2 das cinco da revisao com o coach. O `pipeline` injetava range so no open simples, com
