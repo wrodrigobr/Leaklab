@@ -7004,9 +7004,17 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
         # push/fold (≤12bb é jam-or-fold; "abra 2-2,5bb" ali é conselho de deep stack, sem sentido).
         _eff_stack = float(_spot.get('effectiveStackBb') or _ctx.get('heroStackBb') or 99)
         sizing_advice = None
+        # `> 12` era PROXY de "zona de jam", e proxy erra: numa mao de 17bb efetivos o card dizia
+        # ao mesmo tempo "GTO RECOMENDA: SHOVE" e "suba pra 3bb" — duas recomendacoes diferentes
+        # na mesma tela. O sinal certo estava a duas linhas de distancia: a recomendacao
+        # RECONCILIADA. Se a jogada e all-in, nao existe conselho de tamanho a dar; o tamanho e
+        # forcado. Perguntar ao sistema em vez de aproximar por profundidade.
+        _rec_norm = str(reconciled_best or '').lower()
+        _rec_e_jam = _rec_norm in ('jam', 'shove', 'allin', 'all-in')
         if (action.player == hero and action.street == 'preflop'
                 and action.action == 'raises' and decision
                 and int(_spot.get('preflopRaisesFaced') or 0) == 0
+                and not _rec_e_jam
                 and _eff_stack > 12):
             try:
                 # Total via parser (tolerante a separador de milhar). O regex antigo

@@ -7,6 +7,27 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(card): conselho de tamanho nao contradiz mais o veredito (#replay #ux)
+
+> Terceira contradicao interna de card achada no mesmo dia, depois do selo `−EV` e da frase que
+> descrevia a mao. O card dizia **"GTO RECOMENDA: SHOVE"** no topo e **"suba pra 3bb"** na linha
+> de sizing — duas recomendacoes diferentes na mesma tela.
+>
+> **A causa foi proxy no lugar do dado.** O guarda existia e usava `_eff_stack > 12` como
+> aproximacao de "zona de jam-or-fold", com o comentario certo ("abra 2-2,5bb ali e conselho de
+> deep stack"). Mas 12bb e fronteira inventada: na mao do print o efetivo era **17bb** — passa no
+> guarda — e a arvore de heads-up ali ja e jam-dominante.
+>
+> O sinal certo estava **a duas linhas de distancia**: `reconciled_best`, a mesma recomendacao que
+> o card exibe no topo. Se a jogada e all-in, nao existe conselho de tamanho a dar; o tamanho e
+> forcado. Perguntar ao sistema em vez de aproximar por profundidade — a lição que este dia
+> inteiro repetiu.
+>
+> Guarda em `test_sizing_nao_contradiz_veredito.py`: varre o codigo-fonte e exige que a condicao
+> olhe a recomendacao, e que a lista de apelidos de all-in (`jam`/`shove`/`allin`/`all-in`) esteja
+> completa — cobrir so um deixaria o defeito vivo pela metade, que e pior que nao cobrir, porque
+> parece consertado. Duas mutacoes, ambas acusadas.
+
 ### feat(card): a frase fala da ACAO, e o olho volta a ter trabalho (#replay #ux)
 
 > **A frase descrevia a MAO quando o veredito era sobre a ACAO.** Caso real: 33 no SB heads-up a
