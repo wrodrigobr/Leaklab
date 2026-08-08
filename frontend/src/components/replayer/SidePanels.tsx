@@ -462,15 +462,23 @@ export function SidePanels({
           // Math card — usa adjusted_required_equity (mesmo critério do engine).
           // Tooltip mostra pot_odds bruto quando há ajuste relevante para didática.
           const mathCallIsEv  = eq! >= req!;
-          // O badge da AÇÃO segue o veredito (isActionOk), não só "equity ≥ pot odds".
-          // Numa ação agressiva (bet/raise) que o engine marca ERRO mas é "+EV vs fold",
-          // o antigo "RAISE +EV" verde contradizia o "✗ ERRO". Agora bate com o veredito.
-          const mathActionIsEv = isActionOk;
+          // ── O selo fala de PREÇO; o veredito fala de estratégia. Não trocar um pelo outro ──
+          // Versão anterior: `mathActionIsEv = isActionOk`, ou seja, o selo repetia o veredito.
+          // Isso resolveu uma contradição ("RAISE +EV" verde ao lado de "✗ ERRO") e criou outra,
+          // pior: um selo rotulado **EV** que não fala de EV. Reportado com print — a frase dizia
+          // "Call lucrativo: equity 54% supera pot odds 44%" e o selo, a dois centímetros,
+          // "CALL −EV".
+          //
+          // Agora o selo diz o que o nome dele promete (o preço fecha ou não), e quando isso
+          // DIVERGE do veredito a divergência vira informação explícita em vez de sumir: é o
+          // caso em que a range ou o ICM mandam o contrário do que o preço sugere, e é
+          // justamente o que o jogador precisa entender.
           const mathActLabel  = step.action ? fmtAction(step.action) : null;
-          const mathBadgeCls  = mathActionIsEv
+          const precoDiverge  = mathCallIsEv !== isActionOk;
+          const mathBadgeCls  = mathCallIsEv
             ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
             : "bg-red-500/10 text-red-400 border border-red-500/20";
-          const mathBadgeLabel = `${mathActLabel ?? ''} ${mathActionIsEv ? "+EV" : "−EV"}`.trim();
+          const mathBadgeLabel = `${mathActLabel ?? ''} ${mathCallIsEv ? "+EV" : "−EV"}`.trim();
           const reqHeader = requiredIsAdjusted ? t("card.reqEquity") : "Pot Odds";
           const reqTooltip = requiredIsAdjusted
             ? `Equity necessária ajustada por realization e pressão ICM. Pot odds bruto: ${(poRaw! * 100).toFixed(1)}%.`
@@ -493,6 +501,13 @@ export function SidePanels({
                   {mathBadgeLabel}
                 </div>
               </div>
+              {precoDiverge && (
+                <p className="mt-2 border-t border-border/40 pt-2 text-[11.5px] leading-snug text-muted-foreground">
+                  {mathCallIsEv
+                    ? t("card.precoPagaMasVeredito")
+                    : t("card.precoNaoPagaMasVeredito")}
+                </p>
+              )}
             </div>
           );
         } else if (isPostflop && eq != null) {

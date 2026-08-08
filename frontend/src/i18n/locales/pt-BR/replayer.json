@@ -301,7 +301,9 @@
     "tipIcmApprox": "Perto do dinheiro, sob pressão de ICM, apertar costuma valer mais do que o EV em fichas sugere. Esta análise é em fichas (chipEV) e não mede esse prêmio de risco, então um fold defensável aqui não é marcado como erro.",
     "whyNoGtoPreflop": "Sem solução pré-computada do solver para este spot preflop, análise pela heurística do engine.",
     "whyRangeNotPrice": "O veredito vem da RANGE, não do preço. A conta de equity × pot odds foi omitida de propósito: nesta situação ela seria contra uma mão aleatória, não contra a range real do vilão, e apontaria para o lado errado.",
-    "evUnavailable": "Sem EV em bb: esta decisão precisa de um solve por mão específica, que ainda não temos para este nó. O veredito acima já é confiável."
+    "evUnavailable": "Sem EV em bb: esta decisão precisa de um solve por mão específica, que ainda não temos para este nó. O veredito acima já é confiável.",
+    "precoPagaMasVeredito": "O preço fecha, mas o veredito vem da range: com esta mão o GTO não continua aqui, mesmo o pot odds sendo favorável.",
+    "precoNaoPagaMasVeredito": "O preço não fecha isoladamente, mas o veredito considera a range e a posição, que sustentam a linha."
   },
   "controls": {
     "play": "Reproduzir",

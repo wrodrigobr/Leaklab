@@ -301,7 +301,9 @@
     "tipIcmApprox": "Near the money, under ICM pressure, folding tight is often worth more than the chip EV suggests. This analysis is in chips (chipEV) and does not measure that risk premium, so a defensible fold here is not flagged as a mistake.",
     "whyNoGtoPreflop": "No pre-computed solver solution for this preflop spot, analysis falls back to the engine heuristic.",
     "whyRangeNotPrice": "The verdict comes from the RANGE, not the price. The equity vs pot odds math is deliberately omitted here: it would be against a random hand, not against the villain's real range, and would point the wrong way.",
-    "evUnavailable": "No EV in bb: this decision needs a hand-specific solve we don't have for this node yet. The verdict above is already reliable."
+    "evUnavailable": "No EV in bb: this decision needs a hand-specific solve we don't have for this node yet. The verdict above is already reliable.",
+    "precoPagaMasVeredito": "The price is right, but the verdict comes from the range: GTO does not continue with this hand here, even with favorable pot odds.",
+    "precoNaoPagaMasVeredito": "The price alone does not close, but the verdict weighs range and position, which support the line."
   },
   "controls": {
     "play": "Play",

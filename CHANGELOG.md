@@ -7,6 +7,21 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(card): o selo de EV voltou a falar de EV (#replay #ux)
+
+> Reportado com print: a frase dizia *"Call lucrativo: equity 54% supera pot odds 44%"* e o selo,
+> a dois centimetros, dizia *"CALL −EV"*. Duas fontes para o mesmo fato **dentro do mesmo card**.
+>
+> A causa estava documentada no proprio codigo: o selo tinha sido mudado para seguir
+> `isActionOk` (o veredito) porque um "RAISE +EV" verde ao lado de "✗ ERRO" parecia contradicao.
+> Isso resolveu uma contradicao e criou outra, pior — um selo rotulado **EV** que nao media EV. E
+> a variavel que fazia a conta certa (`mathCallIsEv`) estava calculada e **nunca usada**.
+>
+> Agora o selo diz o que o nome promete: o preco fecha ou nao. E quando isso **diverge** do
+> veredito, a divergencia vira uma linha explicita em vez de sumir — porque e exatamente ali que
+> mora a informacao: o preco sugere uma coisa e a range ou o ICM mandam outra. Chave nos tres
+> idiomas; build limpo e os 20 testes do `replayWhy` verdes.
+
 ### fix(replay): o card gradeava JAM pela carta de 3-bet pequeno (#motor #replay)
 
 > Achado a partir de um print do usuario. A chamada da porta unica no `/replay` nao passava
