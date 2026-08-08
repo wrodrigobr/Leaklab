@@ -46,8 +46,8 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 ### FECHAMENTO: as cinco familias do coach, medidas (#motor #coach)
 
 > Encerramento da frente aberta pela revisao cruzada com um coach humano (05/08). Das cinco
-> familias de defeito que as 71 anotacoes expuseram, **quatro foram consertadas** e a quinta foi
-> classificada como feature, nao defeito.
+> familias de defeito que as 71 anotacoes expuseram, **as cinco foram tratadas** — tres mudando o
+> veredito, duas mudando o TEXTO onde o motor ja estava certo.
 >
 > | familia | resultado |
 > |---|---|
@@ -55,7 +55,8 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 > | 2 · equity vs mao aleatoria | resolvida — range real de 3-bet; **all-in ficou de fora**, ver acima |
 > | 3 · preco que fecha, mas a range manda foldar | resolvida — G5, o espelho do G1 |
 > | 4 · pote com jogador all-in | veredito **ja estava certo**; o card passou a ensinar o conceito |
-> | 5 · extracao de valor e leitura de range | **feature**: em 2 de 3 casos o solver concordava conosco |
+> | 5 · extracao de valor | resolvida no TEXTO — o solver concordava com a linha passiva nos dois casos |
+> | 5b · leitura de range pela passividade do vilao | **bloqueada**: exige a range de JAM, e push/fold e secao morta |
 >
 > **No acervo: acusacoes 662 -> 581.** Cada corte com perda de EV medida ou preco conferido pelo
 > proprio motor, nunca por opiniao.
@@ -68,6 +69,12 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 >
 > O numero subiu de 580 para 581 no fim, e isso e o comportamento certo: o conserto da regressao
 > devolveu a contagem uma decisao que tinha sido indevidamente absolvida.
+>
+> **O saldo mais valioso da frente nao esta nesta tabela.** Comparar mao a mao com um humano rendeu
+> dois defeitos que nenhuma lista de bug continha e nenhum teste apontava: o `equitySource` que
+> desligava o G2 (pego ao REGERAR o relatorio, nao pela suite) e o `_ranks_of` lendo naipe como
+> rank, com **140 de 470 decisoes** classificadas com a forca de mao errada. O segundo apareceu
+> porque uma medicao da familia 5 nao fechava com o que o codigo dizia.
 
 ### fix(motor): all-in fica FORA da range de 3-bet -- regressao pega ao regerar o relatorio
 
