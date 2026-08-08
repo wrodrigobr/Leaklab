@@ -4301,7 +4301,8 @@ def _analyze_hands(hands, field_size=None, colocacoes=None):
                                 hero_hand_type = h_type,
                                 stack_bb       = float(_spot.get('effectiveStackBb') or _ctx.get('heroStackBb') or 20),
                                 action_taken   = di.get('player_action', ''),
-                                facing_size    = float(_spot.get('facingSize') or 0),
+                                # em bb, nao em fichas: `facingSize` e o valor cru da mesa
+                                facing_size    = float(_spot.get('facingToBb') or 0),
                                 vs_position    = _spot.get('villainPosition', ''),
                                 is_3bet_pot    = bool(_spot.get('is3betPot') or di.get('is_3bet', False)),
                                 n_players      = _spot.get('nPlayers'),
@@ -4309,6 +4310,13 @@ def _analyze_hands(hands, field_size=None, colocacoes=None):
                                 hero_was_aggressor = bool(_spot.get('heroWasAggressor')),
                                 facing_limp        = bool(_spot.get('facingLimp')),
                                 caller_position    = _spot.get('callerPosition', ''),
+                                # `facingToBb` e `facingAllin` FALTAVAM aqui, e sao o que separa
+                                # dois nos diferentes: sem eles um JAM era roteado para a carta de
+                                # 3-bet PEQUENO — o mesmo defeito de "no errado" que o caminho HU
+                                # existe para matar. `facingSize` vem em FICHAS
+                                # (212.780 nesta mao) e nao serve de tamanho em bb.
+                                facing_to_bb       = float(_spot.get('facingToBb') or 0),
+                                facing_allin       = bool(_spot.get('facingAllin')),
                             )
                     except Exception:
                         pass
@@ -8541,6 +8549,13 @@ def get_decision_gto(decision_id):
                     # sem isto, squeeze cai em vs_rfi e sugere call largo.
                     facing_raises = int(dec.get('preflop_raises_faced') or 0),
                     is_3bet_pot   = bool(dec.get('is_3bet')),
+                    # Mesmos dois que faltavam no /replay: separam a carta de 3-bet PEQUENO da
+                    # carta de JAM. Sem eles, um all-in e gradeado pelo no de raise sized.
+                    facing_to_bb  = float(dec.get('facing_to_call_bb') or 0),
+                    facing_allin  = bool(dec.get('facing_bet') and dec.get('effective_stack_bb')
+                                         and float(dec['facing_bet']) >= float(dec['effective_stack_bb']) * 0.98),
+                    hero_was_aggressor = bool(dec.get('hero_was_aggressor')),
+                    facing_limp        = bool(dec.get('facing_limp')),
                 )
                 if pf.get('available') and pf.get('recommended_actions'):
                     top_action = pf['recommended_actions'][0]

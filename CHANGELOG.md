@@ -7,6 +7,28 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(replay): o card gradeava JAM pela carta de 3-bet pequeno (#motor #replay)
+
+> Achado a partir de um print do usuario. A chamada da porta unica no `/replay` nao passava
+> **`facing_to_bb` nem `facing_allin`** — e sao esses dois que separam a carta de 3-bet PEQUENO da
+> carta de JAM. Numa mao heads-up de 15bb efetivos, o shove do vilao era roteado para o no de
+> raise sized: veredito da carta errada, o mesmo defeito que o caminho HU existe para matar.
+>
+> O caminho principal (`/analyze`) ja passava os dois. So o replay ficou para tras, e **nada
+> acusava**: o teste de paridade que existia comparava `sync x motor`, e o replay nao estava na
+> conta.
+>
+> `tests/test_todo_caminho_mesmos_args.py` varre o codigo-fonte e exige que **toda** chamada passe
+> `n_players` e `facing_allin`. A varredura achou de brinde um **quarto** call site incompleto
+> (app.py:8540) que ninguem sabia que existia — tambem corrigido.
+>
+> Junto, a unidade: o replay passava `facingSize` (**fichas** — 212.780 na mao que expos isto)
+> onde cabe `facingToBb`. Honestidade: no provider atual esse campo so e usado como `> 0`, entao a
+> troca **nao muda veredito hoje**; o teste existe para quando alguem passar a usar o valor.
+>
+> Nota sobre o print que originou tudo: o card mostrado era **anterior aos deploys de hoje**. Em
+> producao a mesma decisao ja responde `hu_hand_out_of_range` (null honesto), nao "ERRO / fold".
+
 ### fix(motor): naipe lido como RANK -- 140 de 470 decisoes tinham a forca da mao errada (#motor)
 
 > Achado ao investigar a familia 5, e maior que ela. `_ranks_of` fazia `for c in cards`: numa
