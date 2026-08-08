@@ -317,7 +317,8 @@
     "scenHuVs3bet": "de SB contra 3-bet (heads-up)",
     "scenHuVs3betJam": "de SB contra all-in (heads-up)",
     "scenHuVs4bet": "de BB contra all-in (heads-up)",
-    "whyAcaoDiverge": "{{hand}} está en el range {{scen}}, pero la jugada aquí es {{rec}}{{freq}} — no {{act}}. La mano está bien; lo que falló fue el tamaño."
+    "whyAcaoDiverge": "{{hand}} está en el range {{scen}}, pero la jugada aquí es {{rec}}{{freq}} — no {{act}}.",
+    "whyAcaoDivergeTamanho": "{{hand}} está en el range {{scen}}, pero la jugada aquí es {{rec}}{{freq}} — no {{act}}. La mano está bien; lo que falló fue el tamaño de la subida."
   },
   "controls": {
     "play": "Reproducir",

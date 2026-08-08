@@ -7,6 +7,21 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(card): "o tamanho" so e dito quando E de tamanho (#replay #ux)
+
+> O usuario achou o fecho vago — *"o que saiu do lugar foi o tamanho"* — e sugeriu "tamanho do
+> POTE". A sugestao aponta para o problema certo e o nome errado: o pote nao e o que o jogador
+> escolhe; o que ele escolheu foi o tamanho do **aumento**.
+>
+> E ao olhar isso apareceu o defeito por baixo da vagueza: a frase afirmava "o que saiu do lugar
+> foi o tamanho" **mesmo quando a divergencia nao era de tamanho**. Se a carta manda `call` e o
+> jogador aumentou, nao e questao de tamanho — e de acao, e a primeira metade da frase ja disse
+> isso. Explicar errado com confianca e pior que explicar de menos.
+>
+> Agora sao duas frases: com as duas acoes na familia agressiva (min-raise onde a carta manda
+> all-in) o fecho fala do **tamanho do aumento**; fora disso, a frase termina na comparacao de
+> acoes. Tres testes novos, duas mutacoes acusadas.
+
 ### fix(card): conselho de tamanho nao contradiz mais o veredito (#replay #ux)
 
 > Terceira contradicao interna de card achada no mesmo dia, depois do selo `−EV` e da frase que

@@ -135,8 +135,15 @@ export function selectWhy(i: WhyInput): WhyChoice {
     if (i.pg.in_range && dif) {
       const freq = i.pg.top_freq != null && i.pg.top_freq > 0
         ? ` (${(i.pg.top_freq * 100).toFixed(0)}%)` : "";
+      // O fecho "o que saiu do lugar foi o TAMANHO" so vale quando as duas acoes sao agressivas
+      // (min-raise onde a carta manda all-in, por exemplo). Se a carta manda CALL e o jogador
+      // aumentou, nao e questao de tamanho — e de acao, e a primeira metade da frase ja disse
+      // isso. Afirmar "tamanho" ali seria explicar errado com confianca.
+      const agressiva = (a?: string | null) =>
+        !!a && /^(raise|bet|jam|shove|allin|all-in)/.test(a.toLowerCase());
+      const soTamanho = agressiva(i.recAction) && agressiva(i.heroActionRaw);
       return {
-        key: "card.whyAcaoDiverge",
+        key: soTamanho ? "card.whyAcaoDivergeTamanho" : "card.whyAcaoDiverge",
         params: { ...base, freq },
         actionParams: { rec: i.recAction as string, act: i.heroActionRaw as string },
       };

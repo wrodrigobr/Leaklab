@@ -160,3 +160,34 @@ describe("selectWhy — fallback", () => {
     }
   });
 });
+
+describe("acao diverge: a frase so fala de TAMANHO quando e tamanho", () => {
+  const pgBase = { available: true, in_range: true, hand_type: "33",
+                   scenario: "hu_rfi", range_pct: 0.988, stack_bucket: "17bb",
+                   top_freq: 1.0 };
+  const base = { isPostflop: false, isError: true, hasGto: true, isHero: true,
+                 hasMathEvidence: false, requiredIsAdjusted: false,
+                 hasMultiwayAdvice: false, limpedPotHeuristic: false,
+                 equityNotRangeAware: false, preflopNoCoverageStrict: false,
+                 gtoSpotMismatch: false, isPfZone: false, hasEngineGtoConflict: false } as never;
+
+  it("min-raise onde a carta manda all-in -> fala do tamanho", () => {
+    const r = selectWhy({ ...(base as object), heroAction: "raise", pg: pgBase,
+                          recAction: "jam", heroActionRaw: "raise" } as never);
+    expect(r.key).toBe("card.whyAcaoDivergeTamanho");
+  });
+
+  it("carta manda CALL e o jogador aumentou -> NAO fala de tamanho", () => {
+    // Nao e questao de tamanho, e de acao. Afirmar "tamanho" ali seria explicar errado com
+    // confianca — o defeito que o usuario apontou como "ficou vago" era isto por baixo.
+    const r = selectWhy({ ...(base as object), heroAction: "raise", pg: pgBase,
+                          recAction: "call", heroActionRaw: "raise" } as never);
+    expect(r.key).toBe("card.whyAcaoDiverge");
+  });
+
+  it("acao igual a recomendada -> volta a descrever o range", () => {
+    const r = selectWhy({ ...(base as object), heroAction: "jam", pg: pgBase,
+                          recAction: "jam", heroActionRaw: "jam" } as never);
+    expect(r.key).toBe("card.whyInRange");
+  });
+});
