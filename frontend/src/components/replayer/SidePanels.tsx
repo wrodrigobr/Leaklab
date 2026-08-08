@@ -523,7 +523,16 @@ export function SidePanels({
               </div>
             </div>
           );
-        } else if (!isPostflop && pg?.available && pg.range_pct > 0) {
+        } else if (false && !isPostflop && pg?.available && pg.range_pct > 0) {
+          // ── DESLIGADA em 08/08: a barra de "range de continuação" ─────────────────────────
+          // O numero (ex.: 42%) responde "que fatia do range INTEIRO o GTO nao folda aqui" —
+          // pergunta que o jogador nao fez, sobre um range que nao e o dele. Ele quer saber o
+          // que fazer com a MAO que tinha, e essa resposta ja esta logo abaixo, na barra de
+          // frequencia da propria mao ("Fold 100%"). Duas barras competindo, uma sobre o range
+          // e outra sobre a mao, com pesos visuais parecidos: a mais util perdia a disputa.
+          //
+          // Mantida no codigo, e nao apagada, porque o dado continua correto e util em outra
+          // superficie (estudo de range). O que estava errado era o LUGAR.
           // Range bar (preflop com cobertura)
           evidence = (
             <div>
@@ -886,6 +895,15 @@ export function SidePanels({
                   {t("card.limpedPot", { pos: pg.position })}
                 </span>
               </div>
+            )}
+            {/* "Sem veredito" precisa dizer POR QUE. O banner neutro ja existia, mas o card
+                ficava mudo sobre o motivo, e "nao sei" sem explicacao lê como produto quebrado.
+                Cada motivo tem uma frase propria — sao situacoes diferentes, nao um buraco so. */}
+            {!isPostflop && pg && !pg.available && pg.coverage_reason
+              && pg.coverage_reason !== 'limped_pot' && (
+              <p className="text-[12.5px] leading-snug text-muted-foreground border-l-2 border-border/60 pl-2.5">
+                {t(`card.semGabarito.${pg.coverage_reason}`)}
+              </p>
             )}
             {/* SPR/Sizing/Equity/Mín.EV de postflop migraram pro bloco de 3 (acima).
                 Aqui ficam só os de PREFLOP (gated !isPostflop). */}

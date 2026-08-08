@@ -303,7 +303,13 @@
     "whyRangeNotPrice": "The verdict comes from the RANGE, not the price. The equity vs pot odds math is deliberately omitted here: it would be against a random hand, not against the villain's real range, and would point the wrong way.",
     "evUnavailable": "No EV in bb: this decision needs a hand-specific solve we don't have for this node yet. The verdict above is already reliable.",
     "precoPagaMasVeredito": "The price is right, but the verdict comes from the range: GTO does not continue with this hand here, even with favorable pot odds.",
-    "precoNaoPagaMasVeredito": "The price alone does not close, but the verdict weighs range and position, which support the line."
+    "precoNaoPagaMasVeredito": "The price alone does not close, but the verdict weighs range and position, which support the line.",
+    "semGabarito": {
+      "hu_uncovered": "Heads-up spot with no chart in our base at this depth. We would rather give no verdict than grade against the wrong chart.",
+      "hu_hand_out_of_range": "In this heads-up line the hand never reaches this node in the tree we have: the chart has no strategy for it, so any action would look like a deviation with no basis.",
+      "pairing_uncovered": "This pair of positions was never seeded in our full-ring charts. With no reference, we do not accuse.",
+      "limp_then_raise": "The line goes through a limp followed by a raise, which our raise-first trees do not model."
+    }
   },
   "controls": {
     "play": "Play",

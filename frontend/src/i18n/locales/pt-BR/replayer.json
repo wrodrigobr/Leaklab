@@ -303,7 +303,13 @@
     "whyRangeNotPrice": "O veredito vem da RANGE, não do preço. A conta de equity × pot odds foi omitida de propósito: nesta situação ela seria contra uma mão aleatória, não contra a range real do vilão, e apontaria para o lado errado.",
     "evUnavailable": "Sem EV em bb: esta decisão precisa de um solve por mão específica, que ainda não temos para este nó. O veredito acima já é confiável.",
     "precoPagaMasVeredito": "O preço fecha, mas o veredito vem da range: com esta mão o GTO não continua aqui, mesmo o pot odds sendo favorável.",
-    "precoNaoPagaMasVeredito": "O preço não fecha isoladamente, mas o veredito considera a range e a posição, que sustentam a linha."
+    "precoNaoPagaMasVeredito": "O preço não fecha isoladamente, mas o veredito considera a range e a posição, que sustentam a linha.",
+    "semGabarito": {
+      "hu_uncovered": "Spot de heads-up sem carta na nossa base para esta profundidade. Preferimos não dar veredito a graduar pela carta errada.",
+      "hu_hand_out_of_range": "Nesta linha de heads-up a mão nem chega a este ponto na árvore que temos: a carta não tem estratégia para ela, então qualquer ação viraria \"desvio\" sem base.",
+      "pairing_uncovered": "Este par de posições não foi semeado nas nossas cartas de mesa cheia. Sem gabarito, não acusamos.",
+      "limp_then_raise": "A linha passa por um limp seguido de aumento, que as nossas árvores (raise-first) não modelam."
+    }
   },
   "controls": {
     "play": "Reproduzir",

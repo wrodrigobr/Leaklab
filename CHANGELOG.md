@@ -7,6 +7,35 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(card): o veredito passa a responder as tres perguntas do jogador (#replay #ux)
+
+> O que eu fiz, o que devia ter feito, **quanto custou**. O card respondia bem a primeira, mal a
+> segunda e nao respondia a terceira.
+>
+> **1. O custo aparece — e a ausencia dele tambem.** O selo de `−X bb` ja existia; o que faltava
+> era o caso nulo. Quando nao ha EV e ha acusacao, o card mostra `EV ?` com explicacao, em vez de
+> sumir calado (o card compacto ja fazia isso; o completo, nao). Sem isso o jogador nao sabe se
+> nao perdeu nada ou se o produto nao sabe.
+>
+> **2. O porque saiu de tras do toggle.** O `build_interpretation` GERA a explicacao e a tela
+> escondia atras do olho, sob o principio "profissional nao precisa de prosa". Resultado medido:
+> um card so de numeros, sem a leitura que o jogador veio buscar. As `pro_notes` seguem no toggle.
+>
+> **3. "Sem veredito" diz o MOTIVO.** O banner neutro ja existia, mas o card ficava mudo sobre a
+> causa — e "nao sei" sem explicacao le como produto quebrado. Cada motivo
+> (`hu_uncovered`, `hu_hand_out_of_range`, `pairing_uncovered`, `limp_then_raise`) ganhou frase
+> propria nos tres idiomas. O tipo em `api.ts` declarava so `limped_pot` enquanto o motor ja
+> devolvia cinco.
+>
+> **E a barra de "range de continuacao" saiu do card.** O 42% responde "que fatia do range INTEIRO
+> o GTO nao folda aqui" — pergunta que o jogador nao fez, sobre um range que nao e o dele. A
+> resposta que ele quer ja esta logo abaixo, na frequencia da propria mao. Duas barras competindo,
+> e a mais util perdia. Desligada, nao apagada: o dado esta certo, o lugar e que estava errado.
+>
+> `DecisionCard.card3.test.tsx`, 7 testes com controle em cada um. Tres mutacoes, todas acusadas —
+> e uma delas so foi vista porque o script de mutacao quebrou no meio e **deixou o arquivo
+> mutado**; conferir o estado antes de concluir foi o que pegou.
+
 ### fix(card): o selo de EV voltou a falar de EV (#replay #ux)
 
 > Reportado com print: a frase dizia *"Call lucrativo: equity 54% supera pot odds 44%"* e o selo,

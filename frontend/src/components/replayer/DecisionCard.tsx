@@ -137,6 +137,18 @@ export function DecisionCard({
           {verdict.icon} {verdict.label}
         </span>
         <div className="flex items-center gap-2">
+          {/* Ausência de EV EXPLICADA, não silenciosa (paridade com o card compacto, que já
+              fazia isso): o selo simplesmente sumir deixa o jogador sem saber se ele não perdeu
+              nada ou se o produto não sabe. Só quando há acusação — em "correto" o EV perto de
+              zero não precisa de explicação. */}
+          {evLossBb == null && !isActionOk && (
+            <span
+              className="inline-flex items-center rounded-md bg-muted/20 px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground/70 ring-1 ring-border/50 cursor-help"
+              title={t("card.evUnavailable")}
+            >
+              EV ?
+            </span>
+          )}
           {/* #24 — EV-loss: bb perdidos vs a melhor jogada (preflop) */}
           {evLossBb != null && evLossBb > 0.05 && (
             <span
@@ -208,15 +220,18 @@ export function DecisionCard({
           </div>
         )}
 
-        {/* ── Toggle (visão didática): Why + pro_notes ──────────────────
-            Profissional vê só dados (slots 3 e 4). Toggle revela texto. */}
-        {showDetails && (why || proNotes) && (
+        {/* ── O PORQUÊ, sempre visível ──────────────────────────────────
+            Antes vivia atrás do toggle ("profissional vê só dados"), e o resultado medido era um
+            card só de números: o backend GERA a explicação e a tela não mostrava. Um veredito sem
+            leitura obriga o jogador a inferir o motivo — que é justamente o que ele veio buscar.
+            O toggle continua existindo, agora só para as pro_notes. */}
+        {why && (
+          <p className="text-[13px] leading-relaxed text-foreground/75 pt-1 border-t border-border/30">
+            {why}
+          </p>
+        )}
+        {showDetails && proNotes && (
           <div className="space-y-2 pt-1 border-t border-border/30">
-            {why && (
-              <p className="text-[13px] text-muted-foreground leading-relaxed">
-                {why}
-              </p>
-            )}
             {proNotes}
           </div>
         )}

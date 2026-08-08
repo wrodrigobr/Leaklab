@@ -371,7 +371,10 @@ export interface ReplayStep {
     reasoning?: string;
     // Motivo de available=false quando é gap de cenário conhecido (não falta de captura).
     // 'limped_pot' = pote limpado (árvore raise-first não cobre) → display "{pos} vs Limp".
-    coverage_reason?: "limped_pot";
+    // Motivos de AUSENCIA de gabarito. O tipo listava so `limped_pot` e o motor ja devolvia
+    // outros quatro — o card tratava todos como "sem cobertura" generica, sem dizer qual.
+    coverage_reason?: "limped_pot" | "limp_then_raise" | "pairing_uncovered"
+      | "hu_uncovered" | "hu_hand_out_of_range";
     // Jam/fold curto sobre limp: usa o range de push/fold (mesma decisão; limp = dead
     // money). Display caveateia "≈ push/fold · limp como dead money".
     limp_dead_money?: boolean;
