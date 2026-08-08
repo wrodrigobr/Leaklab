@@ -7,6 +7,42 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(motor): naipe lido como RANK -- 140 de 470 decisoes tinham a forca da mao errada (#motor)
+
+> Achado ao investigar a familia 5, e maior que ela. `_ranks_of` fazia `for c in cards`: numa
+> LISTA (`['9d','Qc']`) itera cartas, numa STRING (`'9dQc'`) itera **caractere**. Como `_rv('d')`
+> devolve 0, o heroi entrava com dois ranks fantasma de valor 0 — e o par de zeros contava como
+> par. Num board com trinca, `sorted_cnt` virava `[3, 2, ...]` e `is_monster_hand` declarava
+> **full house** para um 9Q qualquer.
+>
+> **O motor chama com string**, entao o caminho vivo era o quebrado. Medido em 470 decisoes
+> postflop reais:
+>
+> | tier | antes | depois |
+> |---|---|---|
+> | `value` | 203 | **63** |
+> | `middle` | **0** | **132** |
+> | `air` | 267 | 275 |
+> | monstro | 44 | 37 |
+>
+> O tier `middle` **nao aparecia em nenhuma decisao**: o par fantasma curto-circuitava tudo para
+> `value` antes de chegar la. Consumidores afetados: o guarda "apostar monstro por valor nunca e
+> erro grave", o G4 (que so age com mao `air`), o `_estimador_infla` e a intencao da aposta.
+>
+> O teste exige a MESMA resposta pelos dois formatos — um que so chamasse com lista passaria com
+> o bug presente.
+
+### feat(card): familia 5 -- monstro jogado passivamente passa a ser NOMEADO (#motor #coach)
+
+> Ultima das cinco. "Foi pro slow play, tinha que crescer o pote" (#24) e "eu daria raise" (#74):
+> nos DOIS o solver concordava com a linha passiva, entao acusar seria trocar o gabarito pela
+> opiniao do coach. O card, porem, dizia so "Linha solida para o spot" e nao mencionava que a mao
+> estava no topo do range.
+>
+> Mesmo remedio da familia 4: onde o motor esta certo e o coach ensina algo, quem muda e o TEXTO.
+> **Zero mudanca de veredito.** 12 das 470 decisoes postflop recebem a nota — numero medido
+> DEPOIS do conserto do `_ranks_of`, porque antes o predicado dizia 18, inflado.
+
 ### FECHAMENTO: as cinco familias do coach, medidas (#motor #coach)
 
 > Encerramento da frente aberta pela revisao cruzada com um coach humano (05/08). Das cinco

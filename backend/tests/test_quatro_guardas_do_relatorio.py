@@ -143,6 +143,54 @@ def test_g4_o_card_NOMEIA_o_pote_com_allin_mesmo_sem_erro():
     assert _texto(pf) == '', repr(_texto(pf))
 
 
+def test_g5_familia_monstro_passivo_e_NOMEADO_sem_virar_acusacao():
+    """Familia 5. "Foi pro slow play, tinha que crescer o pote" (#24) e "eu daria raise" (#74):
+    nos DOIS o solver concordava com a linha passiva, entao acusar seria trocar o gabarito pela
+    opiniao do coach. O que faltava era o card dizer que a mao estava no TOPO do range.
+
+    Medido em 470 decisoes postflop reais: 37 monstros, 12 jogados passivamente.
+    """
+    from leaklab.decision_engine_v11 import evaluate_decision
+
+    def _r(di):
+        out = evaluate_decision(di)
+        return ((out.get('evaluation') or {}).get('label'),
+                (out.get('interpretation') or {}).get('strategicExplanation', ''))
+
+    monstro = _base(player_action='call', hero_cards='6c8c',
+                    spot={'board': ['Ks', '8s', '8d'], 'hasAllinOpponent': False},
+                    range_evaluation={'recommendedPrimaryAction': 'call', 'rangeZone': 'in_range'},
+                    math={'estimatedHandEquity': 0.88, 'potOddsEquity': 0.25})
+    lab, txt = _r(monstro)
+    assert 'topo do range' in txt, txt
+    assert lab not in ('small_mistake', 'clear_mistake'), f'a nota virou acusacao: {lab}'
+
+    # CONTROLE 1: trinca do BOARD nao e monstro do heroi — foi o caso que denunciou o bug do
+    # `_ranks_of`, e sem o conserto esta linha receberia a nota indevidamente.
+    _l2, t2 = _r(_base(player_action='call', hero_cards='9dQc',
+                       spot={'board': ['3h', '3d', '3s']},
+                       range_evaluation={'recommendedPrimaryAction': 'call',
+                                         'rangeZone': 'in_range'},
+                       math={'estimatedHandEquity': 0.30, 'potOddsEquity': 0.25}))
+    assert 'topo do range' not in t2, t2
+
+    # CONTROLE 2: quem JA apostou o monstro nao precisa ser lembrado de apostar
+    _l3, t3 = _r(_base(player_action='bet', hero_cards='6c8c',
+                       spot={'board': ['Ks', '8s', '8d']},
+                       range_evaluation={'recommendedPrimaryAction': 'bet',
+                                         'rangeZone': 'in_range'},
+                       math={'estimatedHandEquity': 0.88, 'potOddsEquity': 0.25}))
+    assert 'topo do range' not in t3, t3
+
+    # CONTROLE 3: preflop nao tem board, entao nao ha monstro a nomear
+    _l4, t4 = _r(_base(player_action='call', street='preflop', hero_cards='6c8c',
+                       spot={'board': []},
+                       range_evaluation={'recommendedPrimaryAction': 'call',
+                                         'rangeZone': 'in_range'},
+                       math={'estimatedHandEquity': 0.55, 'potOddsEquity': 0.25}))
+    assert 'topo do range' not in t4, t4
+
+
 def _call_barato(**kw):
     """Jogador PAGOU um preco folgado e o produto acusou. `pot odds` 10%, equity 48%."""
     d = dict(

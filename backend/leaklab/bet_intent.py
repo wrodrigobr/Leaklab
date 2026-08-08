@@ -19,12 +19,33 @@ _AGGR_ACTIONS = {'bet', 'bets', 'raise', 'raises', 'allin', 'all-in', 'all_in', 
 _RANKS = '23456789TJQKA'
 
 
+def _cartas(cards) -> list:
+    """Normaliza para lista de cartas de 2 chars, aceitando lista OU string colada.
+
+    ── O defeito que isto conserta ────────────────────────────────────────────────────────────
+    `for c in cards` numa STRING itera CARACTERE: `'9dQc'` virava `['9','d','Q','c']`, e como
+    `_rv('d')` devolve 0, o herói entrava com dois ranks fantasma de valor 0. O par de zeros
+    contava como par: num board com trinca, `sorted_cnt` virava `[3, 2, ...]` e
+    `is_monster_hand` declarava **full house** para um 9Q qualquer.
+
+    Medido: a MESMA mão dava `monstro=True / cat=value` como string e `monstro=False / cat=air`
+    como lista. O motor chama com string (`input_data['hero_cards']`), entao o caminho vivo era o
+    quebrado — em G4, no guarda de monstro e na classificação de intenção da aposta.
+    """
+    if not cards:
+        return []
+    if isinstance(cards, str):
+        s = cards.replace(' ', '').replace(',', '')
+        return [s[i:i + 2] for i in range(0, len(s) - 1, 2)]
+    return [str(c) for c in cards if c]
+
+
 def _ranks_of(cards) -> list:
-    return [str(c)[0].upper() for c in (cards or []) if c]
+    return [str(c)[0].upper() for c in _cartas(cards) if c]
 
 
 def _suits_of(cards) -> list:
-    return [str(c)[1].lower() for c in (cards or []) if c and len(str(c)) >= 2]
+    return [str(c)[1].lower() for c in _cartas(cards) if c and len(str(c)) >= 2]
 
 
 def _rv(r) -> int:

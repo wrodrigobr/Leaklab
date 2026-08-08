@@ -1501,6 +1501,29 @@ def build_interpretation(input_data: Dict[str, Any], label: str,
     # all-in nao existe aposta possivel (25 dos 50 casos). Havendo aposta, ha alguem vivo para
     # foldar — o que a presenca do all-in tira e o POTE PRINCIPAL, que vai a showdown de qualquer
     # jeito. A frase abaixo diz isso, e nao a versao simplificada.
+    # ── Familia 5: monstro jogado passivamente — NOMEAR o valor deixado na mesa ───────────────
+    # "Aqui foi pro slow play, tinha que crescer o pote com aposta" (#24) e "eu daria raise aqui"
+    # (#74). Nos dois o SOLVER concordava com a linha passiva, entao acusar seria trocar o
+    # gabarito pela opiniao do coach — mas o card dizia so "Linha solida para o spot" e nao
+    # mencionava que a mao estava no TOPO do range.
+    #
+    # Medido em 470 decisoes postflop reais: 37 monstros, **12 jogados de forma passiva**. Numero
+    # medido DEPOIS de consertar o `_ranks_of` — antes dele o predicado dizia 44/18, inflado por
+    # ranks fantasma.
+    #
+    # Nao mexe em veredito. Este e o mesmo remedio da familia 4: onde o motor esta certo e o
+    # coach ensina algo, quem tem que mudar e o TEXTO.
+    _spot_v5 = input_data.get('spot') or {}
+    _nota_valor = ''
+    if (input_data.get('street', 'preflop') != 'preflop'
+            and _action_family(input_data.get('player_action', '')) in ('check', 'call')):
+        from leaklab.bet_intent import is_monster_hand
+        _cv, _bv = input_data.get('hero_cards'), _spot_v5.get('board')
+        if _cv and _bv and is_monster_hand(_cv, _bv):
+            _nota_valor = ('Sua mão está no topo do range aqui. A linha passiva protege o pote '
+                           'pequeno, mas é apostando que ele cresce — vale conferir se havia '
+                           'valor a extrair.')
+
     _spot_ai = input_data.get('spot') or {}
     _nota_allin = ''
     if (input_data.get('street', 'preflop') != 'preflop' and _spot_ai.get('hasAllinOpponent')
@@ -1509,9 +1532,11 @@ def build_interpretation(input_data: Dict[str, Any], label: str,
                        'forma, então esta aposta disputa apenas o pote lateral e precisa vencer '
                        'no showdown, não por fold.')
 
+    _contexto = ' '.join(x for x in (_nota_allin, _nota_valor) if x)
+
     if label not in ("small_mistake", "clear_mistake"):
         return {"summary": summary_map[label], "mathExplanation": "",
-                "strategicExplanation": _nota_allin}
+                "strategicExplanation": _contexto}
 
     action = input_data.get("player_action", "")
     street = input_data.get("street", "preflop")
@@ -1644,8 +1669,8 @@ def build_interpretation(input_data: Dict[str, Any], label: str,
     if not parts:
         parts.append(f"A linha {action_pt.upper()} ficou abaixo do esperado para o spot — {best_pt.upper()} era a ação correta.")
 
-    if _nota_allin:
-        parts.insert(0, _nota_allin)     # o contexto vem ANTES do veredito, nao como rodape
+    if _contexto:
+        parts.insert(0, _contexto)       # o contexto vem ANTES do veredito, nao como rodape
 
     parts.append(f"Ação esperada: {best_pt.upper()}.")
 
