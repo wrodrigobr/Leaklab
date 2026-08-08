@@ -7,6 +7,24 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(card): a frase fala da ACAO, e o olho volta a ter trabalho (#replay #ux)
+
+> **A frase descrevia a MAO quando o veredito era sobre a ACAO.** Caso real: 33 no SB heads-up a
+> 17bb, o jogador min-raisou, a carta manda all-in — e o card dizia *"33 esta no range de
+> abertura"*. Verdade, e irrelevante: ele nao errou por estar fora do range, errou o TAMANHO.
+> Descrever a mao ali deixa o jogador sem saber o que corrigir. Agora, quando a acao diverge da
+> recomendada, a frase e sobre ela: *"...mas a jogada aqui e ALL-IN (100%) — nao RAISE. A mao e
+> boa; o que saiu do lugar foi o tamanho."*
+>
+> **E o olho voltou a ter trabalho.** Ao tirar o `why` do toggle (commit anterior), sobrou so
+> `proNotes` atras dele — que quase nunca existe. Um controle que nao faz nada e pior que
+> controle nenhum, e o usuario notou na primeira tela. A divisao agora segue o que o card se
+> propoe a responder: a **leitura** (veredito, acao, custo, porque) fica sempre visivel, e os
+> **dados** de auditoria (equity, pot odds, min. EV, sizing, cadeia) abrem no olho.
+>
+> Dois testes novos com controle: os indicadores somem e voltam com o toggle, e a leitura NAO
+> depende dele. Duas mutacoes, ambas acusadas.
+
 ### fix(card): sigla interna e escala errada vazando para a tela (#replay #ux)
 
 > Dois defeitos numa frase so, os dois vistos num print de producao:

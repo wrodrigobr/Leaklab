@@ -316,7 +316,8 @@
     "scenHuVsLimp": "BB vs limp (heads-up)",
     "scenHuVs3bet": "SB vs 3-bet (heads-up)",
     "scenHuVs3betJam": "SB vs all-in (heads-up)",
-    "scenHuVs4bet": "BB vs all-in (heads-up)"
+    "scenHuVs4bet": "BB vs all-in (heads-up)",
+    "whyAcaoDiverge": "{{hand}} is in the {{scen}} range, but the play here is {{rec}}{{freq}} — not {{act}}. The hand is fine; the sizing is what went wrong."
   },
   "controls": {
     "play": "Play",

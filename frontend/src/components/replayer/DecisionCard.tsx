@@ -214,7 +214,13 @@ export function DecisionCard({
         {evidence && <div>{evidence}</div>}
 
         {/* ── Slot 4: Indicators (chips/rows secundários, sempre visíveis) ── */}
-        {indicators && (
+        {/* ── Slot 4: indicadores, ATRÁS DO OLHO ────────────────────────
+            Ao tirar o `why` do toggle, o olho ficou sem trabalho: só restava `proNotes`, que
+            quase nunca existe — um controle que não faz nada é pior que controle nenhum.
+            A divisão agora segue o que o card se propõe a responder: a LEITURA (veredito, ação,
+            custo, porquê) fica sempre visível, e os DADOS de auditoria (equity, pot odds, mín.
+            EV, sizing, cadeia) abrem no olho, para quem quer conferir a conta. */}
+        {showDetails && indicators && (
           <div className="space-y-1.5 pt-1 border-t border-border/30">
             {indicators}
           </div>

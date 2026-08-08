@@ -43,7 +43,13 @@ export interface WhyInput {
   isHero: boolean;
   /** bloco de range preflop, quando disponível */
   pg?: { available?: boolean; in_range?: boolean; hand_type?: string; scenario?: string;
-         range_pct?: number; stack_bucket?: string } | null;
+         range_pct?: number; stack_bucket?: string;
+         /** frequência GTO da AÇÃO recomendada, quando a carta traz (0..1) */
+         top_freq?: number | null } | null;
+  /** ação recomendada pelo card (o `_best_action` final, não o palpite da heurística) */
+  recAction?: string | null;
+  /** ação que o jogador tomou, normalizada */
+  heroActionRaw?: string | null;
 }
 
 export interface WhyChoice {
@@ -116,10 +122,26 @@ export function selectWhy(i: WhyInput): WhyChoice {
 
   if (!i.isPostflop && i.pg?.available) {
     const pct = (i.pg.range_pct ?? 0) > 0 ? ` (${((i.pg.range_pct ?? 0) * 100).toFixed(0)}%)` : "";
-    return {
-      key: i.pg.in_range ? "card.whyInRange" : "card.whyOutRange",
-      params: { hand: i.pg.hand_type, scenKey: i.pg.scenario, pct, bucket: i.pg.stack_bucket },
-    };
+    const base = { hand: i.pg.hand_type, scenKey: i.pg.scenario, pct, bucket: i.pg.stack_bucket };
+
+    // A frase tem que falar da AÇÃO quando é a ação que está errada.
+    //
+    // Caso real (print de producao): 33 no SB heads-up a 17bb, jogador min-raisou, a carta manda
+    // all-in. O card dizia "33 está no range de abertura" — verdade, e irrelevante: ele NÃO errou
+    // por estar fora do range, errou o TAMANHO. Descrever a mão quando o veredito é sobre a ação
+    // deixa o jogador sem saber o que corrigir.
+    const dif = !!i.recAction && !!i.heroActionRaw
+      && i.recAction.toLowerCase() !== i.heroActionRaw.toLowerCase();
+    if (i.pg.in_range && dif) {
+      const freq = i.pg.top_freq != null && i.pg.top_freq > 0
+        ? ` (${(i.pg.top_freq * 100).toFixed(0)}%)` : "";
+      return {
+        key: "card.whyAcaoDiverge",
+        params: { ...base, freq },
+        actionParams: { rec: i.recAction as string, act: i.heroActionRaw as string },
+      };
+    }
+    return { key: i.pg.in_range ? "card.whyInRange" : "card.whyOutRange", params: base };
   }
 
   if (!i.hasGto && i.isHero) {

@@ -73,6 +73,25 @@ describe("card de veredito — as tres mudancas", () => {
     expect(container.textContent).not.toContain("undefined");
   });
 
+  it("4. o olho TEM trabalho: os indicadores abrem e fecham com ele", () => {
+    // Ao tirar o `why` do toggle, o olho ficou inerte — so restava `proNotes`, que quase nunca
+    // existe. Controle que nao faz nada e pior que controle nenhum. Agora ele revela os DADOS.
+    const ind = <p>equity 53.8% · pot odds 43.8%</p>;
+    montar({ indicators: ind, showDetails: false });
+    expect(screen.queryByText(/pot odds/i)).toBeNull();
+    cleanup();
+    montar({ indicators: ind, showDetails: true });
+    expect(screen.getByText(/pot odds/i)).toBeTruthy();
+  });
+
+  it("4b. CONTROLE: a LEITURA nao depende do olho", () => {
+    // O que o card se propoe a responder fica sempre visivel; so a auditoria abre.
+    montar({ why: "a jogada aqui e all-in", evLossBb: 1.4, indicators: <p>dado</p>,
+             showDetails: false });
+    screen.getByText(/a jogada aqui e all-in/i);
+    screen.getByText(/1[.,]4 bb/);
+  });
+
   it("3. o veredito neutro de 'sem cobertura' e renderizavel", () => {
     // O banner neutro ja existia; o que faltava era o card poder exibi-lo sem parecer erro.
     montar({

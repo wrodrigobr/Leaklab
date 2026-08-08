@@ -403,6 +403,10 @@ export function SidePanels({
           hasEngineGtoConflict, engineBest: step.engine_best, gtoAction: step.gto_action,
           hasMathEvidence, requiredIsAdjusted, eq, req, profitable,
           hasGto, isHero: !!step.is_hero, pg,
+          // A frase precisa poder falar da AÇÃO, não só descrever a mão: o card dizia "33 está
+          // no range de abertura" para quem min-raisou onde a carta manda all-in.
+          recAction: idealAction ?? null,
+          heroActionRaw: step.action ?? null,
         });
         const why = whyChoice.key
           ? t(whyChoice.key, {
