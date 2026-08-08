@@ -7,6 +7,32 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### FECHAMENTO: as cinco familias do coach, medidas (#motor #coach)
+
+> Encerramento da frente aberta pela revisao cruzada com um coach humano (05/08). Das cinco
+> familias de defeito que as 71 anotacoes expuseram, **quatro foram consertadas** e a quinta foi
+> classificada como feature, nao defeito.
+>
+> | familia | resultado |
+> |---|---|
+> | 1 · severidade por frequencia, sem custo | resolvida — o EV estava no payload e o importador jogava fora |
+> | 2 · equity vs mao aleatoria | resolvida — range real de 3-bet; **all-in ficou de fora**, ver acima |
+> | 3 · preco que fecha, mas a range manda foldar | resolvida — G5, o espelho do G1 |
+> | 4 · pote com jogador all-in | veredito **ja estava certo**; o card passou a ensinar o conceito |
+> | 5 · extracao de valor e leitura de range | **feature**: em 2 de 3 casos o solver concordava conosco |
+>
+> **No acervo: acusacoes 662 -> 581.** Cada corte com perda de EV medida ou preco conferido pelo
+> proprio motor, nunca por opiniao.
+>
+> **Nos 16 casos em que o coach descrevia melhor:** 6 ja recomendam a MESMA acao que ele, e apenas
+> **4 ainda acusam** o jogador. As 4 restantes sao discordancia de RANGE entre um humano e a carta
+> (limp/flat em stack profundo, range de abertura, e o 97s HU onde o oraculo externo esta do nosso
+> lado) — nao sao defeito de medicao, e conserta-las exigiria decidir contra o GTO Wizard sem
+> evidencia.
+>
+> O numero subiu de 580 para 581 no fim, e isso e o comportamento certo: o conserto da regressao
+> devolveu a contagem uma decisao que tinha sido indevidamente absolvida.
+
 ### fix(motor): all-in fica FORA da range de 3-bet -- regressao pega ao regerar o relatorio
 
 > A carta `vs_RFI` modela um 3-bet DE TAMANHO, nao um jam: sao nos diferentes, e usar um pelo
