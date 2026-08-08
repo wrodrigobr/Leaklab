@@ -309,7 +309,14 @@
       "hu_hand_out_of_range": "In this heads-up line the hand never reaches this node in the tree we have: the chart has no strategy for it, so any action would look like a deviation with no basis.",
       "pairing_uncovered": "This pair of positions was never seeded in our full-ring charts. With no reference, we do not accuse.",
       "limp_then_raise": "The line goes through a limp followed by a raise, which our raise-first trees do not model."
-    }
+    },
+    "scenGenerico": "for this spot",
+    "scenHuRfi": "SB opening (heads-up)",
+    "scenHuVsRfi": "BB defense (heads-up)",
+    "scenHuVsLimp": "BB vs limp (heads-up)",
+    "scenHuVs3bet": "SB vs 3-bet (heads-up)",
+    "scenHuVs3betJam": "SB vs all-in (heads-up)",
+    "scenHuVs4bet": "BB vs all-in (heads-up)"
   },
   "controls": {
     "play": "Play",

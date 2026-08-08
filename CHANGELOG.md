@@ -7,6 +7,31 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(card): sigla interna e escala errada vazando para a tela (#replay #ux)
+
+> Dois defeitos numa frase so, os dois vistos num print de producao:
+> **"33 esta no range `hu_rfi` (9880%) @ 17bb"**.
+>
+> **`hu_rfi`** e identificador do motor. Os seis cenarios de heads-up criados em 07/08 nao tinham
+> rotulo humano — e o fallback do card era `?? scenKey`, ou seja, **garantia** de vazamento para
+> todo cenario novo. Agora ha rotulo para os seis ("de abertura no SB (heads-up)") nos tres
+> idiomas, e o fallback e uma palavra em portugues: sigla nao chega a tela nem quando esquecemos
+> de mapear.
+>
+> **`9880%`** e escala. O caminho HU devolvia `range_pct` em PORCENTAGEM (98.8) e todo o resto do
+> sistema em FRACAO (0.86); front e `llm_explainer` multiplicam por 100 para exibir. O mesmo
+> defeito de unidade que ja custou caro aqui em fichas x bb.
+>
+> **Por que demorou a aparecer:** enquanto o numero so alimentava a LARGURA de uma barra, o erro
+> era invisivel — `width: 9880%` satura em 100% e a barra ficava cheia, plausivel para um range de
+> 98,8%. So virou visivel no dia em que a explicacao textual passou a ser exibida. **Numero que so
+> alimenta pixel nao e numero verificado.**
+>
+> Dois guardas novos: `test_range_pct_unidade.py` compara os DOIS produtores exigindo a mesma
+> faixa (um teste de um caminho so passaria com o bug), e `scenarioLabel.test.ts` **le a lista de
+> cenarios DO MOTOR** e exige rotulo para cada um — lista escrita a mao envelheceria junto com o
+> mapa, que e como o defeito nasceu.
+
 ### feat(card): o veredito passa a responder as tres perguntas do jogador (#replay #ux)
 
 > O que eu fiz, o que devia ter feito, **quanto custou**. O card respondia bem a primeira, mal a

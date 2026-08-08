@@ -309,7 +309,14 @@
       "hu_hand_out_of_range": "En esta línea de heads-up la mano ni llega a este punto del árbol que tenemos: la carta no tiene estrategia para ella, así que cualquier acción parecería una desviación sin base.",
       "pairing_uncovered": "Este par de posiciones no fue sembrado en nuestras cartas de mesa completa. Sin referencia, no acusamos.",
       "limp_then_raise": "La línea pasa por un limp seguido de subida, que nuestros árboles (raise-first) no modelan."
-    }
+    },
+    "scenGenerico": "de este spot",
+    "scenHuRfi": "de apertura en SB (heads-up)",
+    "scenHuVsRfi": "de defensa en BB (heads-up)",
+    "scenHuVsLimp": "de BB contra limp (heads-up)",
+    "scenHuVs3bet": "de SB contra 3-bet (heads-up)",
+    "scenHuVs3betJam": "de SB contra all-in (heads-up)",
+    "scenHuVs4bet": "de BB contra all-in (heads-up)"
   },
   "controls": {
     "play": "Reproducir",

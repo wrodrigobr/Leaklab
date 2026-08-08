@@ -832,7 +832,12 @@ def _grade_por_no_capturado(base: dict, no: dict, depth: float, hero_hand_type: 
         total += c
         jogadas += c * sum(float(v.get('f') or 0) for r, v in macs.items()
                            if _hu_familia_da_acao(r, depth) != 'fold')
-    range_pct = round(100.0 * jogadas / total, 1) if total else 0.0
+    # **FRAÇÃO (0..1), não porcentagem.** Todo o resto do sistema devolve `range_pct` nessa escala
+    # e os consumidores multiplicam por 100 na hora de exibir (front, `llm_explainer`). Este ramo
+    # nascia em 0..100 e o card imprimia **"9880%"** — o mesmo defeito de unidade que já custou
+    # caro aqui em fichas × bb, agora em fração × porcentagem. Ficou escondido enquanto o número
+    # só alimentava a largura de uma barra (que satura em 100%); apareceu no dia em que virou texto.
+    range_pct = round(jogadas / total, 4) if total else 0.0
 
     _rec_map = {'fold': 'fold', 'call': 'call', 'raise': 'raise', 'allin': 'jam'}
     rec = [_rec_map[k] for k, v in sorted(freq.items(), key=lambda kv: -kv[1]) if v >= 0.02]

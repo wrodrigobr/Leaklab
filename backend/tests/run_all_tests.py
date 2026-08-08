@@ -100,6 +100,7 @@ SUITES = {
                   'test_equity_vs_range_3bet.py',
                   'test_forca_da_mao_string_ou_lista.py',
                   'test_todo_caminho_mesmos_args.py',
+                  'test_range_pct_unidade.py',
                   'test_plano_ring.py',
                   'test_facing_limp_persistido.py',
                   'test_bb_check_nao_e_free_play.py',

@@ -266,6 +266,11 @@ export function SidePanels({
     if (a === "allin" || a.startsWith("allin") || a === "shove") return "text-red-400";
     return "text-purple-400";
   };
+  // Nome HUMANO do cenário. O que chega do motor é identificador interno (`hu_rfi`), e o card
+  // imprimia isso na cara do jogador: "33 está no range hu_rfi". Os seis cenários de heads-up
+  // criados em 07/08 nem tinham entrada aqui — e o fallback era `?? scenKey`, que GARANTE o
+  // vazamento de qualquer cenário novo. Agora o fallback é uma palavra em português; sigla
+  // interna não chega à tela nem quando esquecemos de mapear.
   const scenarioLabel: Record<string, string> = {
     rfi: "RFI",
     vs_rfi: "vs Open",
@@ -275,6 +280,12 @@ export function SidePanels({
     faces_squeeze: "vs Squeeze",
     vs_4bet: "vs 4-Bet",
     bb_option: t("card.scenBbOption"),
+    hu_rfi: t("card.scenHuRfi"),
+    hu_vs_rfi: t("card.scenHuVsRfi"),
+    hu_bb_vs_limp: t("card.scenHuVsLimp"),
+    hu_vs_3bet: t("card.scenHuVs3bet"),
+    hu_vs_3bet_jam: t("card.scenHuVs3betJam"),
+    hu_vs_4bet: t("card.scenHuVs4bet"),
   };
   // Rótulo do range_pct por cenário: "abertura" só faz sentido no RFI; nos demais
   // é defesa/continuação/squeeze (antes era "Range de abertura" hardcoded p/ todos).
@@ -400,7 +411,7 @@ export function SidePanels({
               ...(whyChoice.params?.reqLabelKey
                 ? { reqLabel: t(whyChoice.params.reqLabelKey as string) } : {}),
               ...(whyChoice.params?.scenKey
-                ? { scen: scenarioLabel[whyChoice.params.scenKey as string] ?? whyChoice.params.scenKey } : {}),
+                ? { scen: scenarioLabel[whyChoice.params.scenKey as string] ?? t("card.scenGenerico") } : {}),
               ...Object.fromEntries(
                 Object.entries(whyChoice.actionParams ?? {}).map(([k, v]) => [k, fmtAction(v)])),
             })
