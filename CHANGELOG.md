@@ -7,6 +7,36 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(motor): limpar fora dos blinds e DESVIO, nao falta de carta (#motor)
+
+> Observacao do usuario, e e de POKER antes de ser de codigo: limp so e acao legitima nos blinds
+> — o SB completa por meia cega, o BB tem a opcao gratis. De UTG a BTN a jogada e fold ou RFI.
+>
+> **Conferido contra o proprio GTO Wizard** antes de aceitar, em 374 nos de primeira decisao dos
+> HAR em disco: de UTG a BTN o menu e `('FOLD','RAISE')` — **nao existe CALL**. So o SB oferece
+> `CALL 1.000`. Nao e lacuna de captura: e acao que a arvore nao contem. Isso tambem responde, em
+> definitivo, se vale capturar "cartas de limp" no GW para mesa cheia: **nao ha o que capturar**.
+>
+> **O defeito:** o hero limpando de ABERTURA ja era acusado (17 decisoes do acervo, todas com
+> veredito); o mesmo hero limpando ATRAS de outro limp caia no desvio `limped_pot` e ficava MUDO
+> (41 decisoes). Dois vereditos diferentes para o mesmo erro, decididos por **quem agiu antes
+> dele**.
+>
+> Agora a carta de RFI responde as duas pontas: mao no range → o certo era RAISE; fora do range →
+> era FOLD. Nos blinds o `limped_pot` continua, porque la limpar E jogada e para essa nao temos
+> carta.
+>
+> **Medido em producao: acusadas 544 → 574.** As 30 novas sao over-limps que estavam mudos — e
+> over-limp fora do blind e leak por definicao da arvore, nao por opiniao.
+>
+> Tres controles no teste: nos blinds segue sem gabarito; quem ISO-RAISA ou FOLDA sobre um limp
+> segue sem gabarito (a range de iso e mais larga que a de RFI — estender ali seria gradear pela
+> carta errada); e o atalho de push/fold ≤12bb mantem precedencia. Tres mutacoes, todas acusadas.
+>
+> Uma assercao de `test_recent_regressions.py` **congelava o comportamento antigo** ("call sobre
+> limp segue sem cobertura") — era descricao do estado, nao invariante. Atualizada com o porque e
+> com controle no SB.
+
 ### fix(motor): a decisao so pode ser gradeada pelo NO que a descreve (#motor #card)
 
 > Seis defeitos, uma familia so: o produto respondia com confianca usando uma carta que modela
