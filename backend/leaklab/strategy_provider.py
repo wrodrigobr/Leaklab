@@ -311,8 +311,24 @@ def preflop_call_vs_shove_fallback(position: str, hero_hand_type: str, stack_bb:
                           action_taken='raise', facing_size=0.0, vs_position='')
     if not rfi.get('available'):
         return None
-    rq = rfi.get('action_quality', 'unknown')
-    q  = 'correct' if rq == 'correct' else ('acceptable' if rq == 'acceptable' else 'leak')
+
+    # ── A pergunta certa e "a mao ABRE?", nao "o RAISE esta certo?" ───────────────────────────
+    # A versao anterior lia `action_quality` de uma consulta feita com `action_taken='raise'`. Em
+    # stack curto o GTO abre as maos fortes com JAM, entao "raise" volta como leak — e o fallback
+    # concluia "mao fora do range de abertura, folde ao shove" para uma mao que abre **100%**.
+    #
+    # Caso real (33 no SB heads-up, 15,2bb efetivos, pagando shove de 17,2 com 53,8% de equity
+    # contra 43,8% de pot odds): o card acusava ERRO. O proprio retorno se contradizia —
+    # `in_range=True` junto de `recommended_actions=['fold']`.
+    #
+    # Agora a forca vem da FREQUENCIA de nao-fold da mao: e a mesma pergunta que o range faz.
+    freq = rfi.get('hand_freq') or {}
+    _abre = sum(float(v or 0) for k, v in freq.items() if k != 'fold') if freq else None
+    if _abre is None:
+        rq = rfi.get('action_quality', 'unknown')
+        q  = 'correct' if rq == 'correct' else ('acceptable' if rq == 'acceptable' else 'leak')
+    else:
+        q = 'correct' if _abre >= 0.80 else ('acceptable' if _abre >= 0.30 else 'leak')
     return {
         'available':           True,
         'scenario':            'vs_shove_fallback',
@@ -327,7 +343,9 @@ def preflop_call_vs_shove_fallback(position: str, hero_hand_type: str, stack_bb:
         'pro_notes':           rfi.get('pro_notes', []),
         'recommended_actions': ['call'] if q != 'leak' else ['fold'],
         'action_quality':      q,
-        'in_range':            rfi.get('in_range', q != 'leak'),
+        # `in_range` e `recommended_actions` NAO podem se contradizer: era exatamente esse par
+        # ("no range" + "folde") que o card exibia lado a lado. Aqui os dois saem da MESMA conta.
+        'in_range':            q != 'leak',
         'reasoning': (
             'Mão premium em range de abertura — call de shove correto.'  if q == 'correct'    else
             'Mão no limite do range — call de shove aceitável.'          if q == 'acceptable' else

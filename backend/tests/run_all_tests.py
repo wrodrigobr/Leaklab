@@ -102,6 +102,7 @@ SUITES = {
                   'test_todo_caminho_mesmos_args.py',
                   'test_range_pct_unidade.py',
                   'test_sizing_nao_contradiz_veredito.py',
+                  'test_fallback_call_vs_shove.py',
                   'test_plano_ring.py',
                   'test_facing_limp_persistido.py',
                   'test_bb_check_nao_e_free_play.py',

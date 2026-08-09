@@ -7,6 +7,25 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(motor): o fallback call-vs-shove perguntava a coisa errada (#motor #replay)
+
+> Print do usuario: `33` no SB heads-up, 15,2bb efetivos, pagando um shove de 17,2 com **53,8% de
+> equity contra 43,8% de pot odds** — e o card cravando **ERRO**. O banco guardava `standard` e o
+> motor recomputado tambem: **quem inventou o erro foi o fallback**, no caminho do `/replay`.
+>
+> O proxy media a qualidade de uma consulta com `action_taken='raise'`. Em stack curto o GTO abre
+> as maos fortes com **JAM**, entao "raise" volta como leak e o fallback concluia *"mao fora do
+> range de abertura — folde ao shove"* para uma mao que abre **100% das vezes**. Quanto mais forte
+> a mao em stack curto, mais provavel a acusacao falsa.
+>
+> O proprio retorno se contradizia: `in_range=True` ao lado de `recommended_actions=['fold']` — o
+> par que o usuario viu no card. Agora os dois saem da MESMA conta, e a pergunta e a certa: **"a
+> mao abre?"**, medida pela frequencia de nao-fold no range.
+>
+> Quatro testes, dois deles controle (lixo continua fold; sem cobertura de RFI o fallback se cala)
+> e uma invariante varrendo 20+ combinacoes: `in_range` e a recomendacao nunca mais se
+> contradizem. Duas mutacoes, ambas acusadas.
+
 ### fix(card): o card explica por que NAO sabe, e para de inventar a razao (#replay #ux)
 
 > O usuario perguntou: *"por que aqui indicou heuristica, se capturamos este spot de HU?"* — e a
