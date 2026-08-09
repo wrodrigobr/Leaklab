@@ -399,9 +399,17 @@ def test_short_jam_over_limp_uses_pushfold():
     # Pote limpado DEEP (não push/fold) segue sem cobertura honesta
     deep = analyze_preflop(stack_bb=40.0, **kw)
     assert deep.get('available') is False and deep.get('coverage_reason') == 'limped_pot'
-    # Call sobre limp (não jam/fold) também segue sem cobertura
+    # ATUALIZADO 09/08 — esta asserção congelava o comportamento antigo, não uma invariante.
+    # Ela exigia "sem cobertura" para o BTN PAGANDO sobre um limp. Mas limpar (ou over-limpar)
+    # fora dos blinds não é ação da estratégia: a árvore do GW oferece só FOLD e RAISE de UTG a
+    # BTN (conferido em 374 nós). Não é falta de carta, é desvio — e a 8bb com QQ é desvio caro,
+    # porque a carta manda jam. Ver `test_limp_fora_dos_blinds.py`.
     call = analyze_preflop(stack_bb=8.0, **{**kw, 'action_taken': 'call'})
-    assert call.get('available') is False
+    assert call.get('available') is True, 'over-limp fora dos blinds voltou a ficar mudo'
+    assert call.get('action_quality') == 'major_leak', call.get('action_quality')
+    # CONTROLE: nos BLINDS o mesmo call sobre limp segue sem cobertura, porque lá é legítimo
+    call_sb = analyze_preflop(stack_bb=8.0, **{**kw, 'action_taken': 'call', 'position': 'SB'})
+    assert call_sb.get('available') is False and call_sb.get('coverage_reason') == 'limped_pot'
     print("OK  test_short_jam_over_limp_uses_pushfold")
 
 

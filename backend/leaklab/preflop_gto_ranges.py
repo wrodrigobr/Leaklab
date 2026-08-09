@@ -1195,6 +1195,24 @@ def _analyze_preflop_impl(
             base['scenario'] = 'rfi'
             base['limp_dead_money'] = True   # display: "≈ push/fold · limp = dead money"
             # cai pro lookup de RFI abaixo (não retorna)
+        elif pos not in ('SB', 'BB') and action_taken.lower() in ('call', 'limp', 'check'):
+            # ── OVER-LIMP fora dos blinds: não é falta de carta, é desvio ────────────────────
+            # Limpar só é ação legítima nos blinds — o SB completa por meia cega, o BB tem a
+            # opção grátis. De UTG a BTN a árvore do GW oferece **só FOLD e RAISE** (conferido
+            # em 374 nós de primeira decisão: nenhum tem CALL fora do SB). Não é lacuna de
+            # captura: é ação que a estratégia não contém.
+            #
+            # Sem esta saída, o hero limpando ATRÁS de outro limp caía no `limped_pot` e ficava
+            # sem veredito — 41 decisões do acervo, todas mudas. E o mesmo hero limpando de
+            # ABERTURA (17 decisões) já era acusado, porque não passava por aqui: dois vereditos
+            # diferentes para o mesmo erro, decididos por quem agiu antes dele.
+            #
+            # A carta de RFI responde as duas pontas: mão no range → o certo era RAISE; fora do
+            # range → era FOLD. Nos dois casos o limp é o desvio.
+            scenario = 'rfi'
+            base['scenario'] = 'rfi'
+            base['limp_fora_dos_blinds'] = True
+            # cai pro lookup de RFI abaixo (não retorna)
         else:
             base['coverage_reason'] = 'limped_pot'
             return base  # available=False — fora de cobertura (limped pot)
