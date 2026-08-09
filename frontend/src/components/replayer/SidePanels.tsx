@@ -394,6 +394,9 @@ export function SidePanels({
         // (street errada, e evidência contradizendo o veredito).
         const whyChoice = selectWhy({
           isPostflop, isError,
+          // O MESMO sinal que decide ✓/◎/✗ no banner. Sem ele a frase era escolhida por uma
+          // fonte independente do selo e chegava a dizer "Call lucrativo" embaixo de "✗ Erro".
+          isActionOk,
           heroAction: (step.action ?? "").toLowerCase(),
           hasMultiwayAdvice: !!step.multiway_advice,
           limpedPotHeuristic, equityNotRangeAware, preflopNoCoverageStrict,

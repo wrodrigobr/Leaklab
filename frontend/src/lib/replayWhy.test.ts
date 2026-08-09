@@ -130,6 +130,64 @@ describe("selectWhy — evidência matemática descreve a AÇÃO TOMADA", () => 
   });
 });
 
+/**
+ * A frase não pode absolver o que o resto do card condena.
+ *
+ * Caso real: turn call que o solver folda 88%. O card mostrava, na MESMA tela, "✗ Erro",
+ * "−0,9 bb", "GTO recomenda Fold", barras "Fold 88% / Call 12%" — e a única frase sempre visível
+ * dizendo "Call lucrativo: equity 28% supera pot odds 25%". Quem lê só a frase mantém o call.
+ *
+ * O ramo escolhia pelo SINAL DO PREÇO e nunca consultava o veredito, que estava no mesmo input.
+ * É a mesma família do bug já corrigido no SELO de EV, agora na frase e no sentido inverso.
+ */
+describe("selectWhy — a frase não contradiz o veredito", () => {
+  const math = { hasMathEvidence: true, isPostflop: true };
+
+  it("REGRESSÃO: preço fecha mas o veredito é Erro -> a frase NOMEIA a divergência", () => {
+    const r = w({ ...math, eq: 0.28, req: 0.25, heroAction: "call", profitable: true,
+                  isError: true, isActionOk: false });
+    expect(r.key).toBe("card.whyPrecoFechaMasVeredito");
+    // os números continuam na frase: nomear a divergência não é esconder a conta
+    expect(r.params?.eqPct).toBe(28);
+    expect(r.params?.reqPct).toBe(25);
+  });
+
+  it("preço NÃO fecha mas o veredito é ok -> também nomeia (a contradição espelhada)", () => {
+    const r = w({ ...math, eq: 0.18, req: 0.25, heroAction: "call", profitable: false,
+                  isActionOk: true });
+    expect(r.key).toBe("card.whyPrecoNaoFechaMasVeredito");
+  });
+
+  it("o FOLD tem o sinal invertido: preço fechando + veredito Erro é CONCORDÂNCIA", () => {
+    // Aqui as duas leituras dizem a mesma coisa ("o fold deixou EV"), então a frase normal fica.
+    expect(w({ ...math, eq: 0.60, req: 0.40, heroAction: "fold", profitable: true,
+               isError: true, isActionOk: false }).key).toBe("card.whyFoldLeftEv");
+    // e o fold barato com veredito Correto também concorda
+    expect(w({ ...math, eq: 0.20, req: 0.40, heroAction: "fold", profitable: false,
+               isActionOk: true }).key).toBe("card.whyFoldCorrect");
+  });
+
+  it("CONTROLE: quando preço e veredito CONCORDAM, a frase de sempre continua saindo", () => {
+    expect(w({ ...math, eq: 0.60, req: 0.40, heroAction: "call", profitable: true,
+               isActionOk: true }).key).toBe("card.whyCallProfit");
+    expect(w({ ...math, eq: 0.18, req: 0.40, heroAction: "call", profitable: false,
+               isError: true, isActionOk: false }).key).toBe("card.whyCallLose");
+    expect(w({ ...math, eq: 0.60, req: 0.40, heroAction: "raise", profitable: true,
+               isActionOk: true }).key).toBe("card.whyAggrProfit");
+  });
+
+  it("CONTROLE: check é neutro, não elogia nem critica — não entra no gate", () => {
+    expect(w({ ...math, eq: 0.60, req: 0.40, heroAction: "check", profitable: true,
+               isError: true, isActionOk: false }).key).toBe("card.whyCheck");
+  });
+
+  it("CONTROLE: chamador que não informa o veredito mantém o comportamento conhecido", () => {
+    // `isActionOk` ausente = não inventar um terceiro comportamento.
+    expect(w({ ...math, eq: 0.28, req: 0.25, heroAction: "call", profitable: true,
+               isError: true }).key).toBe("card.whyCallProfit");
+  });
+});
+
 describe("selectWhy — range preflop", () => {
   it("mão dentro × fora da range, com o cenário como chave", () => {
     const dentro = w({ pg: { available: true, in_range: true, hand_type: "AQs",
@@ -172,7 +230,8 @@ describe("acao diverge: a frase so fala de TAMANHO quando e tamanho", () => {
                  gtoSpotMismatch: false, isPfZone: false, hasEngineGtoConflict: false } as never;
 
   it("min-raise onde a carta manda all-in -> fala do tamanho", () => {
-    const r = selectWhy({ ...(base as object), heroAction: "raise", pg: pgBase,
+    const r = selectWhy({ ...(base as object), heroAction: "raise",
+                          pg: { ...pgBase, recommended_actions: ["jam"] },
                           recAction: "jam", heroActionRaw: "raise" } as never);
     expect(r.key).toBe("card.whyAcaoDivergeTamanho");
   });
@@ -180,15 +239,66 @@ describe("acao diverge: a frase so fala de TAMANHO quando e tamanho", () => {
   it("carta manda CALL e o jogador aumentou -> NAO fala de tamanho", () => {
     // Nao e questao de tamanho, e de acao. Afirmar "tamanho" ali seria explicar errado com
     // confianca — o defeito que o usuario apontou como "ficou vago" era isto por baixo.
-    const r = selectWhy({ ...(base as object), heroAction: "raise", pg: pgBase,
+    const r = selectWhy({ ...(base as object), heroAction: "raise",
+                          pg: { ...pgBase, recommended_actions: ["call"] },
                           recAction: "call", heroActionRaw: "raise" } as never);
     expect(r.key).toBe("card.whyAcaoDiverge");
   });
 
   it("acao igual a recomendada -> volta a descrever o range", () => {
-    const r = selectWhy({ ...(base as object), heroAction: "jam", pg: pgBase,
+    const r = selectWhy({ ...(base as object), heroAction: "jam",
+                          pg: { ...pgBase, recommended_actions: ["jam"] },
                           recAction: "jam", heroActionRaw: "jam" } as never);
     expect(r.key).toBe("card.whyInRange");
+  });
+
+  // ── Rec com 2+ acoes: a igualdade de string era IMPOSSIVEL por construcao ───────────────────
+  // `recAction` chega ja formatado e juntado ("Raise / Call"); `heroActionRaw` e o token cru
+  // ("raise"). Com duas acoes recomendadas o `!==` era sempre verdadeiro, entao este ramo roubava
+  // o caso do `whyInRange` e o card dizia "✓ Correto" com a frase "a jogada aqui e RAISE / CALL —
+  // nao Raise. A mao e boa; o que saiu do lugar foi o tamanho do aumento" — causa inventada para
+  // um erro que nao houve. Medido: 33 de 707 cards preflop com veredito Correto. E rec
+  // multi-acao e o caso NORMAL (a porta unica inclui toda acao de freq >= 2%).
+  it("REGRESSAO: jogou UMA das recomendadas com rec multi-acao -> descreve o range", () => {
+    const r = selectWhy({ ...(base as object), isError: false, heroAction: "raise",
+                          pg: { ...pgBase, hand_type: "KJo", scenario: "vs_rfi",
+                                recommended_actions: ["raise", "call"] },
+                          recAction: "Raise / Call", heroActionRaw: "raise" } as never);
+    expect(r.key).toBe("card.whyInRange");
+  });
+
+  it("REGRESSAO: o mesmo pelo lado do CALL (a frase se contradizia em si mesma)", () => {
+    const r = selectWhy({ ...(base as object), isError: false, heroAction: "call",
+                          pg: { ...pgBase, recommended_actions: ["raise", "call"] },
+                          recAction: "Raise / Call", heroActionRaw: "call" } as never);
+    expect(r.key).toBe("card.whyInRange");
+  });
+
+  it("CONTROLE: rec multi-acao e o hero jogou FORA dela -> ainda acusa a divergencia", () => {
+    const r = selectWhy({ ...(base as object), heroAction: "fold",
+                          pg: { ...pgBase, recommended_actions: ["raise", "call"] },
+                          recAction: "Raise / Call", heroActionRaw: "fold" } as never);
+    expect(r.key).toBe("card.whyAcaoDiverge");
+  });
+
+  it("CONTROLE: com rec Raise / Call, o problema NAO e o tamanho", () => {
+    // `agressiva()` testava o INICIO da string juntada, entao "Raise / Call" passava por
+    // agressiva e o card afirmava que o erro tinha sido o tamanho do aumento.
+    const r = selectWhy({ ...(base as object), heroAction: "jam",
+                          pg: { ...pgBase, recommended_actions: ["raise", "call"] },
+                          recAction: "Raise / Call", heroActionRaw: "shove" } as never);
+    expect(r.key).toBe("card.whyAcaoDiverge");
+  });
+
+  it("dialetos diferentes da MESMA acao nao contam como divergencia", () => {
+    // A carta fala 'jam'; a timeline fala 'shove'/'allin'. Compara-los como texto cru
+    // reintroduziria o mesmo falso positivo com outra roupa.
+    for (const act of ["shove", "allin", "all-in"]) {
+      const r = selectWhy({ ...(base as object), isError: false, heroAction: act,
+                            pg: { ...pgBase, recommended_actions: ["jam"] },
+                            recAction: "Jam", heroActionRaw: act } as never);
+      expect(r.key, act).toBe("card.whyInRange");
+    }
   });
 });
 
@@ -209,7 +319,8 @@ describe("sem cobertura: o card diz POR QUE nao sabe", () => {
   });
 
   it("cada motivo tem a sua frase", () => {
-    for (const m of ["hu_uncovered", "pairing_uncovered", "limp_then_raise"]) {
+    for (const m of ["hu_uncovered", "pairing_uncovered", "limp_then_raise",
+                     "open_jam_uncovered", "open_size_off_tree", "hand_out_of_node_range"]) {
       const r = selectWhy({ ...(base as object), preflopNoCoverageStrict: true,
                             pg: { available: false, coverage_reason: m } } as never);
       expect(r.key).toBe(`card.semGabarito.${m}`);

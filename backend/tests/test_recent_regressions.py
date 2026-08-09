@@ -204,18 +204,40 @@ def test_hero_as_3bettor_routes_to_vs_rfi():
     assert r.get('scenario') == 'vs_rfi', f"esperava vs_rfi, veio {r.get('scenario')}"
     print("OK  test_hero_as_3bettor_routes_to_vs_rfi")
 
-def test_vs_3bet_hand_freq_fold_when_out_of_range():
-    """Mão fora do range vs_3bet → hand_freq.fold=1.0 (inferido). Bucket A: hero
-    abriu BTN e enfrenta 3bet da BB; 72o nunca continua vs 3-bet."""
+def test_vs_3bet_mao_OFF_TREE_nao_vira_fold_inferido():
+    """REESCRITO em 09/08 — este teste congelava um defeito.
+
+    A versão anterior exigia `hand_freq.fold >= 0.95` para 72o de BTN enfrentando um 3-bet, com a
+    justificativa "72o nunca continua vs 3-bet". A conclusão está certa e a INFERÊNCIA que a
+    produzia estava errada, e a inferência é que virava veredito: o código tratava "a mão não
+    está em lista nenhuma do nó" como "o GTO folda 100%". A premissa desse nó é "você ABRIU esta
+    mão de BTN"; 72o o BTN abre 0%, então a mão não chega aqui — não existe estratégia publicada
+    para ela, e não é a mesma coisa que "a estratégia é foldar".
+
+    Com 72o o erro era inócuo. Com KK a 10bb (que o GW JAMA em vez de min-raisar, logo também
+    ausente do nó de vs_3bet) o mesmo código dava `correct` a quem FOLDOU KK a um 3-bet all-in e
+    `major_leak` a quem pagou — enquanto `leaklab_gto_evs.json`, no mesmo card, cobrava 7,27bb
+    pelo fold. Ver `tests/test_carta_do_no_certo.py`.
+    """
     r = analyze_preflop(
         position='BTN', hero_hand_type='72o', stack_bb=25,
-        action_taken='fold', facing_size=8, vs_position='BB',
+        action_taken='fold', facing_size=8, vs_position='BB', facing_to_bb=8,
         is_3bet_pot=False, hero_was_aggressor=True, facing_raises=1, n_players=9,
     )
     assert r.get('scenario') == 'vs_3bet'
-    hf = r.get('hand_freq') or {}
-    assert hf.get('fold', 0) >= 0.95, f'expected fold ~1.0, got {hf}'
-    print("OK  test_vs_3bet_hand_freq_fold_when_out_of_range")
+    assert r.get('available') is False, f'72o off-tree nao pode ter veredito: {r}'
+    assert r.get('coverage_reason') == 'hand_out_of_node_range', r.get('coverage_reason')
+
+    # CONTROLE — o que o teste antigo QUERIA proteger e que continua valendo: mão que o nó
+    # DECLARA como fold (está em `fold_hands`) segue saindo com fold 1.0 e veredito.
+    r2 = analyze_preflop(
+        position='BTN', hero_hand_type='J8o', stack_bb=25,
+        action_taken='fold', facing_size=8, vs_position='BB', facing_to_bb=8,
+        is_3bet_pot=False, hero_was_aggressor=True, facing_raises=1, n_players=9,
+    )
+    assert r2.get('available') is True, r2
+    assert (r2.get('hand_freq') or {}).get('fold', 0) >= 0.95, r2.get('hand_freq')
+    print("OK  test_vs_3bet_mao_OFF_TREE_nao_vira_fold_inferido")
 
 
 # ── 8. Squeeze/3-bet enfrentado a frio → faces_squeeze (NÃO vs_RFI; bug "call 45s vs squeeze") ──
@@ -323,6 +345,14 @@ def test_allin_guard_converts_facing_chips_to_bb():
             'spot': {'spotType': 'preflop', 'position': 'CO', 'villainPosition': 'BTN',
                      'isInPosition': True, 'isMultiway': False, 'effectiveStackBb': 22.0,
                      'potSize': facing_chips, 'facingSize': facing_chips, 'raiseSizeBb': facing_chips,
+                     # `facingToBb` estava faltando na fixture, e o teste passava porque o motor
+                     # lia `facingSize` (FICHAS) como tamanho enfrentado. Em 09/08 a ordem foi
+                     # corrigida (bb primeiro, como nos outros tres caminhos) e a fixture ficou
+                     # com facing = 0, o que muda o CENARIO consultado e derruba o teste por um
+                     # motivo que nao tem nada a ver com o guard de all-in. O pipeline preenche
+                     # `facing_to_bb` incondicionalmente (hand_state_builder, mesmo dict de
+                     # `facing_limp`/`facing_allin`), entao a fixture e que estava incompleta.
+                     'facingToBb': facing_chips / level_bb,
                      'board': [], 'nPlayers': 9, 'nActiveOpponents': 1,
                      'preflopRaisesFaced': 1, 'heroWasAggressor': True},
             'hand_profile': {'handClass': 'premium', 'showdownValueTier': 'strong',

@@ -6866,6 +6866,22 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
                             n_players      = _spot.get('nPlayers'),
                             facing_raises      = int(_spot.get('preflopRaisesFaced') or 0),
                             hero_was_aggressor = bool(_spot.get('heroWasAggressor')),
+                            # ── A MESMA superfície do bloco de display (app.py:~6403) ────────────
+                            # `_build_replay_data` chama a porta única DUAS vezes para a mesma
+                            # decisão: lá para o card, aqui para o VEREDITO. Esta cópia ficou sem
+                            # `facing_to_bb`, `facing_limp` e `caller_position`, e o card se
+                            # contradizia sozinho: o bloco GTO dizia `acceptable` (open off-tree) e
+                            # o selo dizia ERRO / `gto_critical` recomendando CALL. Trinta decisões
+                            # no acervo local, todas folds, várias contra all-in — foldar 63s para
+                            # 39,5bb levava carimbo de erro grave.
+                            #
+                            # É o defeito do commit 68347c0a vivo de novo: aquele conserto
+                            # acrescentou `facing_allin` e esqueceu `facing_to_bb`. `facing_allin`
+                            # só salva o 3-bet que é all-in de verdade; um 3-bet a 74% do stack
+                            # rota para o nó errado.
+                            facing_to_bb       = float(_spot.get('facingToBb') or 0) or _facing,
+                            facing_limp        = bool(_spot.get('facingLimp')),
+                            caller_position    = _spot.get('callerPosition', '') or '',
                             facing_allin       = bool(_spot.get('facingAllin', False)),
                         )['raw']
                         # Fallback call-vs-shove: sem dados vs_shove, proxy pela pertinência ao open

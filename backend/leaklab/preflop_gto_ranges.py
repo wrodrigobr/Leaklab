@@ -101,10 +101,10 @@ def _ev_action_code(action_taken: str, hand_ev: dict) -> Optional[str]:
     return None
 
 
-def _ev_loss_bb(bucket: str, scenario: str, hero: str, vs: str,
-                hero_hand: str, action_taken: str):
-    """ev_loss_bb da mão do hero = max_ação(ev) − ev(ação escolhida), clamp ≥0.
-    Devolve (ev_loss, source) ou (None, None) sem cobertura. Source 'gw_har'."""
+def _evs_da_mao(bucket: str, scenario: str, hero: str, vs: str, hero_hand: str):
+    """`{codigo de acao: EV em bb}` que `leaklab_gto_evs.json` publica para esta mão neste nó.
+    `None` sem cobertura. Único leitor desse JSON — dois caminhos indexando o mesmo arquivo por
+    conta própria foi como a contradição do KK chegou ao card."""
     bk = _load_evs().get('ranges', {}).get(bucket, {})
     if scenario == 'rfi':
         spot = bk.get('RFI', {}).get(hero)
@@ -114,9 +114,27 @@ def _ev_loss_bb(bucket: str, scenario: str, hero: str, vs: str,
         spot = bk.get(scenario, {}).get(hero, {}).get(vs)
     else:
         spot = None
-    if not spot:
-        return None, None
-    hand_ev = spot.get(hero_hand)
+    return (spot or {}).get(hero_hand) or None
+
+
+def _margem_ev_sobre_fold(bucket: str, scenario: str, hero: str, vs: str, hero_hand: str):
+    """Quanto a MELHOR ação vale a mais que o fold, em bb, pela carta de EV. `None` sem cobertura.
+
+    É o oráculo que diz o TAMANHO da vantagem de continuar — não só que existe. Usado pelo teto de
+    tamanho: uma vantagem de 11,4bb (AA) não some porque o vilão abriu 1,3bb a mais; uma de 0,14bb
+    (75o) some.
+    """
+    ev = _evs_da_mao(bucket, scenario, hero, vs, hero_hand)
+    if not ev or 'F' not in ev:
+        return None
+    return round(max(ev.values()) - float(ev['F']), 3)
+
+
+def _ev_loss_bb(bucket: str, scenario: str, hero: str, vs: str,
+                hero_hand: str, action_taken: str):
+    """ev_loss_bb da mão do hero = max_ação(ev) − ev(ação escolhida), clamp ≥0.
+    Devolve (ev_loss, source) ou (None, None) sem cobertura. Source 'gw_har'."""
+    hand_ev = _evs_da_mao(bucket, scenario, hero, vs, hero_hand)
     if not hand_ev:
         return None, None
     code = _ev_action_code(action_taken, hand_ev)
@@ -229,31 +247,50 @@ _POS_NORM = {
     'MP':    'LJ',      # genérico
 }
 
-# Mapping específico por n_players (preciso): pipeline N-max → GW 9-max
-_POS_NORM_BY_N = {
-    # Mesa 8-max — pipeline 'UTG+2' (5ª seat) é a 3ª ação preflop = LJ no GW
-    8: {
-        **_POS_NORM,
-        'UTG+2': 'LJ',  # 3ª ação em 8-max = LJ
-    },
-    # Mesa 7-max — pipeline 'UTG+1' é a 2ª ação preflop. Em GW 9-max, 2ª ação = UTG+1.
-    # MAS quem é early/mid em 7-max joga ranges mais wide que UTG+1 9-max.
-    # Aceito imprecisão: 'UTG+1' 7-max → UTG+1 9-max (ranges aproximados).
-    7: {
-        **_POS_NORM,
-        # UTG+1 (4º seat) é 2ª ação preflop em 7-max = UTG+1 9-max (mesma ordem)
-        # HJ (5º seat) é 3ª ação preflop = LJ 9-max
-        'HJ': 'LJ',
-    },
-    # Mesa 6-max — só 4 posições não-blind. UTG=1ª ação, HJ=2ª, CO=3ª, BTN=4ª.
-    # GW 9-max 2ª ação = UTG+1. Mapear:
-    6: {
-        **_POS_NORM,
-        # HJ (4º seat) 6-max é 2ª ação = UTG+1 no GW
-        # CO permanece CO (próximo do BTN, similar)
-        'HJ': 'UTG+1',
-    },
-}
+# ── Pipeline N-max → GW 9-max: parear por JOGADORES ATRÁS ─────────────────────────────────────
+#
+# A tabela estática que morava aqui misturava duas filosofias e por isso mentia. CO e BTN eram
+# mapeados por jogadores atrás (certo), mas UTG e HJ por ÍNDICE DE AÇÃO (errado): numa mesa de 6 o
+# HJ, que tem 4 jogadores atrás, recebia a carta de UTG+1 9-max — a range mais TIGHT da mesa
+# grande. Medido: 17,7% de abertura contra os 29,3% que a posição pede a 40bb, e 17 tipos de mão
+# que a carta equivalente abre 100% e a usada abre 0% (KTo, JTo, QTo, A8o, 33…). Abrir KTo do 2º
+# assento 6-max, que todo regular faz, saía `gto_critical`. Mesas de 3/4/5 nem tinham entrada e
+# caíam no default 9-max, que é ainda mais tight.
+#
+# O que define a range de abertura é QUANTOS AINDA PODEM AGIR depois de você, não em que ordem
+# você agiu. Por isso a regra virou UMA conta, e não uma tabela por tamanho de mesa: mesa nova
+# nunca mais fica sem entrada. A ordem dos nomes vem de `leaklab.posicoes` — a MESMA fonte que o
+# pipeline usa para batizar o assento; re-derivá-la aqui seria a segunda cópia de sempre.
+_ORDEM_GW_9MAX = ('UTG', 'UTG+1', 'UTG+2', 'LJ', 'HJ', 'CO', 'BTN', 'SB', 'BB')
+# quantos agem DEPOIS na primeira órbita: UTG=8 … BTN=2, SB=1, BB=0
+_GW_POR_ATRAS = {len(_ORDEM_GW_9MAX) - 1 - i: p for i, p in enumerate(_ORDEM_GW_9MAX)}
+_ATRAS_MAX_GW = max(_GW_POR_ATRAS)
+
+# Apelidos de dialeto que não são posição nova, só grafia (v2 legado / genérico).
+_POS_ALIAS = {'UTG1': 'UTG+1', 'UTG2': 'UTG+2', 'MP': 'LJ'}
+
+_mapa_mesa_cache: dict[int, dict[str, str]] = {}
+
+
+def _mapa_da_mesa(n: int) -> dict[str, str]:
+    """{nome do pipeline → posição GW 9-max} para uma mesa de n, pareado por jogadores atrás."""
+    if n in _mapa_mesa_cache:
+        return _mapa_mesa_cache[n]
+    from leaklab.posicoes import nomes_de_posicao
+    out: dict[str, str] = {}
+    # Os dois vocabulários do projeto (`LJ` no replay/Decision Card, `MP1` no hand_state_builder)
+    # nomeiam o MESMO assento — ver o cabeçalho de `leaklab/posicoes.py`. Indexar os dois evita
+    # que o dialeto de quem chama decida se há cobertura.
+    for vocab in ('LJ', 'MP1'):
+        for i, nome in nomes_de_posicao(n, miolo=vocab).items():
+            if nome in ('SB', 'BB'):
+                out[nome] = nome
+                continue
+            # (n-1-i) ainda por agir na mesa + os dois blinds, que agem por último preflop
+            atras = n + 1 - i
+            out[nome] = _GW_POR_ATRAS.get(min(atras, _ATRAS_MAX_GW), 'UTG')
+    _mapa_mesa_cache[n] = out
+    return out
 
 # Ordem de AÇÃO da primeira órbita preflop, no dialeto já normalizado por `_POS_NORM`.
 # Blinds agem por ÚLTIMO preflop — por isso SB/BB no fim, e não no começo como no pós-flop.
@@ -286,12 +323,16 @@ _PUSHFOLD_BUCKET_STACK = {
 def _norm_pos(position: str, n_players: int | None = None) -> str:
     """Normaliza nome de posição do pipeline/banco para chave do JSON v3 (9-max GW).
 
-    Quando n_players conhecido, usa mapping específico (mais accurate).
-    Sem n_players, usa default (assume 9-max).
+    Com `n_players`, pareia por JOGADORES ATRÁS (ver `_mapa_da_mesa`). Sem ele, assume que o nome
+    já é do dialeto 9-max — é o único palpite honesto quando o tamanho da mesa não veio.
     """
-    p = position.upper()
-    if n_players in _POS_NORM_BY_N:
-        return _POS_NORM_BY_N[n_players].get(p, p)
+    p = (position or '').upper()
+    p = _POS_ALIAS.get(p, p)
+    n = int(n_players or 0)
+    if n >= 2:
+        m = _mapa_da_mesa(n)
+        if p in m:
+            return m[p]
     return _POS_NORM.get(p, p)
 
 
@@ -442,6 +483,129 @@ def raise_to_bb_from_node(node: dict, hero_hand_type: str | None = None) -> floa
 
 # Open ≥ este fator do canônico = off-tree "maior que o GTO" (ex.: 2bb→2.8bb+).
 _OPEN_OVERSIZE_FACTOR = 1.4
+
+# Aposta que come esta fração do stack efetivo é JAM na prática, mesmo sem o histórico dizer
+# all-in. Era `0.65` literal em dois pontos do roteador heads-up; virou constante porque o mesmo
+# limiar passou a decidir cobertura em mesa cheia — três cópias divergem calado.
+_FRACAO_QUE_E_JAM = 0.65
+
+
+def _raise_declarado_bb(node: dict) -> Optional[float]:
+    """Tamanho do ÚLTIMO aumento da linha que o nó DECLARA, em bb — None se ele fecha em all-in
+    ou não declara nada.
+
+    O nó do GW carrega a própria linha em `preflop_actions`: `R2-F-F-F-F-F-F-F` é "o opener
+    aumentou para 2bb e todos foldaram", `R2-R6` é "open 2bb, 3-bet para 6bb". Isso é o sistema
+    DECLARANDO o tamanho que ele modela — melhor que `_canonical_open_bb`, que deduz o tamanho
+    pelo código R modal das mãos do opener e pode divergir do nó realmente servido.
+
+    Varredura dos 324 nós `vs_RFI` do JSON: TODOS modelam open pequeno (2 a 3,5bb) e NENHUM
+    modela open-jam. Por isso enfrentar all-in em mesa cheia não tem carta — tem que calar.
+    """
+    if not isinstance(node, dict):
+        return None
+    toks = [t for t in (node.get('preflop_actions') or '').split('-') if t.startswith('R')]
+    if not toks or toks[-1] == 'RAI':
+        return None
+    try:
+        return float(toks[-1][1:])
+    except (ValueError, IndexError):
+        return None
+
+
+def _direcao_do_tamanho(node: dict, to_bb: float) -> str:
+    """Como a aposta enfrentada (`to_bb`) se compara ao tamanho que o nó modela.
+
+    Devolve `'dentro'`, `'maior'`, `'menor'` ou `'indeterminado'` (nó sem tamanho declarado ou
+    `to_bb` ausente — não dá para afirmar nada sobre um nó cujo tamanho não se conhece).
+
+    Tolerância = `_OPEN_OVERSIZE_FACTOR` para os dois lados, a mesma régua que o projeto já usa
+    para chamar um open de off-tree (`open_size_mismatch`, logo abaixo). Uma régua só: dois
+    limiares para o mesmo conceito divergem calados.
+
+    Nota de escopo: o ramo `R2` do heads-up (BB vs open) guarda o teto histórico de 4,5bb em vez
+    desta função. Apertá-lo para 2×1,4=2,8bb tiraria a cobertura de todo open de 3bb, que é
+    comum — é uma medição a fazer, não um bug a consertar de passagem.
+    """
+    tam = _raise_declarado_bb(node)
+    if tam is None or not to_bb or float(to_bb) <= 0:
+        return 'indeterminado'
+    to = float(to_bb)
+    if to > tam * _OPEN_OVERSIZE_FACTOR:
+        return 'maior'
+    if to < tam / _OPEN_OVERSIZE_FACTOR:
+        return 'menor'
+    return 'dentro'
+
+
+def _tamanho_cabe_no_no(node: dict, to_bb: float) -> bool:
+    """Atalho booleano de `_direcao_do_tamanho` — `'indeterminado'` conta como NÃO cabe."""
+    return _direcao_do_tamanho(node, to_bb) == 'dentro'
+
+
+# Ações que continuam na mão. Uma recomendação DEFENSIVA (só fold) e uma AGRESSIVA reagem em
+# sentidos opostos a um erro de preço — é isso que `_veredito_sobrevive_ao_tamanho` explora.
+_ACOES_QUE_DEFENDEM = frozenset({'call', 'raise', 'jam', 'allin', 'shove'})
+_ACOES_AGRESSIVAS = frozenset({'raise', 'jam', 'allin', 'shove'})
+
+
+def _defesa_e_de_valor(hand_freq: dict | None, rec: list | None) -> bool:
+    """A carta defende esta mão sobretudo AGREDINDO (3-bet/jam pesam mais que o call)?
+
+    Regra do #23, que morava inline no bloco de `open_size_mismatch`. Serve para decidir se um
+    fold é DEFENSÁVEL contra um open maior, e só para isso: ela NÃO é criterio para manter uma
+    acusação viva — `22` a 23bb é jam pela frequência e a margem de EV dele sobre o fold é de
+    0,38bb, ou seja, o open maior pode virar a resposta. Quem decide isso é
+    `_veredito_sobrevive_ao_tamanho`, com a margem medida.
+
+    Preferir a freq EXATA da mão; sem ela, cair na presença de raise/jam no `rec`.
+    """
+    if hand_freq:
+        return (float(hand_freq.get('raise', 0) or 0) + float(hand_freq.get('allin', 0) or 0)
+                > float(hand_freq.get('call', 0) or 0))
+    return any(str(a).lower() in _ACOES_AGRESSIVAS for a in (rec or []))
+
+
+def _veredito_sobrevive_ao_tamanho(direcao: str, rec: list,
+                                   margem_bb: float | None = None,
+                                   excesso_bb: float = 0.0) -> bool:
+    """O veredito deste nó continua válido mesmo o tamanho enfrentado não sendo o modelado?
+
+    Argumento UNILATERAL, no espírito do teto computado de equity: mantendo a range do vilão
+    fixa, subir o preço só pode tornar o FOLD mais certo, e baixá-lo só pode tornar a DEFESA mais
+    certa. Então:
+
+      preço MAIOR que o do nó   → a carta que manda FOLDAR continua valendo (a resposta não pode
+                                  virar defesa a um preço pior); a que manda DEFENDER pode virar
+                                  fold → sem gabarito.
+      preço MENOR que o do nó   → o espelho.
+
+    Isto não prova que a carta acerta; prova só que o erro de preço não anda contra ela. Serve
+    exatamente para não trocar uma resposta — trocar é o dano que o bug não causava.
+
+    A EXCEÇÃO, com o número no lugar do palpite. Suprimir tudo apagaria acusações certas: foldar
+    AA a um open de 3,3bb não é defensável por o open ter vindo maior, e essa acusação vale mais
+    que a regra. Mas "é mão de value" não serve de criterio — pela frequência, `22` que o nó jama
+    a 23bb entra no mesmo grupo de AA, e acusar quem folda 22 contra um open de 4,7bb seria a
+    falsa condenação que este guarda existe para evitar (medido: a régua de frequência devolvia
+    14 acusações, 12 delas assim).
+
+    O critério é o oráculo de EV do próprio repositório (`leaklab_gto_evs.json`): a melhor ação
+    vale `margem_bb` a mais que o fold, e defender no preço real custa no máximo `excesso_bb`
+    (= quanto o open passou do que o nó modela) a mais do que defender no preço modelado. Se a
+    margem cobre o excesso, o fold continua sendo pior — a resposta não pode ter virado. Medido no
+    nó CO→BB a 30bb com excesso de 1,3bb: AA 11,43 · KK 8,58 · QQ 6,89 · AKs 5,75 · 99 3,18
+    sobrevivem; 75o 0,14 não. É COTA INFERIOR de segurança, não estimativa: o limite ignora que um
+    pote maior também paga mais quando a mão ganha, então erra para o lado de calar.
+    """
+    if direcao in ('dentro', 'indeterminado'):
+        return True
+    defende = any(str(a).lower() in _ACOES_QUE_DEFENDEM for a in (rec or []))
+    if direcao == 'maior':
+        if not defende:
+            return True
+        return margem_bb is not None and float(margem_bb) > float(excesso_bb or 0.0)
+    return defende
 
 
 def _attach_ev_loss(base: dict) -> None:
@@ -747,12 +911,12 @@ def _hu_analyze(base: dict, pos: str, hero_hand_type: str, stack_bb: float, acti
         # SB abriu e levou 3-bet. Sao DOIS nos distintos e o tamanho decide qual: `R2-Rx` para
         # 3-bet pequeno, `R2-RAI` para jam (capturado em 07/08, 10-40bb). Gradear jam pelo no de
         # 3-bet pequeno seria o defeito da carta ring com outra roupa.
-        if facing_allin or _to >= float(stack_bb) * 0.65:
+        if facing_allin or _to >= float(stack_bb) * _FRACAO_QUE_E_JAM:
             node, base['scenario'] = 'SB_VS_3BET_JAM', 'hu_vs_3bet_jam'
         else:
             node, base['scenario'] = 'SB_VS_3BET', 'hu_vs_3bet'
     elif pos == 'BB' and hero_was_aggressor and _raises >= 2 and (
-            facing_allin or _to >= float(stack_bb) * 0.65):
+            facing_allin or _to >= float(stack_bb) * _FRACAO_QUE_E_JAM):
         node, base['scenario'] = 'BB_VS_4BET_JAM', 'hu_vs_4bet'
     elif (pos == 'BB' and not hero_was_aggressor and _raises == 1
             and not facing_allin and _to <= 4.5):
@@ -767,6 +931,20 @@ def _hu_analyze(base: dict, pos: str, hero_hand_type: str, stack_bb: float, acti
     depth, no = _hu_no_mais_proximo(dados.get(node) or {}, float(stack_bb))
     if no is None:
         base['coverage_reason'] = 'hu_uncovered'
+        return base
+
+    # ── O nó de 3-bet modela UM tamanho, e o roteador acima só separava jam de não-jam ────────
+    # `SB_VS_3BET` a 40bb é `R2-R6`: a única opção de pagamento dentro dele é CALL 6. Um 3-bet real
+    # de 15 ou 25bb era gradeado por essa estratégia, com pot odds de outro mundo (pagar 6 exige
+    # ~33% de equity; pagar 25 exige ~42%). Foldar QTo a um 3-bet de 25bb saía `gto_critical` com
+    # "GTO recomenda Call", e a 26,5bb — 1,5bb a mais, agora acima do limiar de jam — o MESMO fold
+    # virava `correct`. Descontinuidade no mesmo spot.
+    #
+    # O guarda de tamanho já existia no ramo IRMÃO (BB vs open, `_to <= 4.5`), com o comentário
+    # "gradear vs o no errado foi exatamente o defeito que este caminho substitui". Faltava aqui.
+    if node == 'SB_VS_3BET' and not _tamanho_cabe_no_no(no, _to):
+        base['coverage_reason'] = 'hu_uncovered'
+        base['scenario'] = 'hu_uncovered'
         return base
 
     return _grade_por_no_capturado(base, no, depth, hero_hand_type, action_taken,
@@ -1349,10 +1527,7 @@ def _analyze_preflop_impl(
                 # com agressão (raise/jam > call) NUNCA é fold defensável, mesmo vs open
                 # grande — segue crítico (ex.: AA/KK/QQ/99 que 3betam). Usa a freq EXATA
                 # da mão (hand_freq) quando há; senão cai na presença de raise/jam no rec.
-                if has_hf:
-                    _is_value = (hand_freq.get('raise', 0) + hand_freq.get('allin', 0)) > hand_freq.get('call', 0)
-                else:
-                    _is_value = ('raise' in rec) or ('jam' in rec)
+                _is_value = _defesa_e_de_valor(hand_freq if has_hf else None, rec)
                 if (action_taken.lower() == 'fold' and not _is_value
                         and quality in ('leak', 'major_leak')):
                     quality = 'acceptable'
@@ -1390,6 +1565,61 @@ def _analyze_preflop_impl(
                 'pro_notes': _vs_rfi_notes(pos, vs_pos, hero_hand_type, stack_bb,
                                             pct_play, in_rng, action_taken, acoes),
             })
+
+        # ── O open enfrentado não é o que o nó modela ────────────────────────────────────────
+        # `vs_RFI[opener][defender]` responde a UM tamanho — e o nó o DECLARA em
+        # `preflop_actions`. Varredura dos 324 nós: todos declaram open pequeno (2 a 3,5bb) e
+        # NENHUM declara open-jam. Até 09/08 o motor gradeava qualquer tamanho por esse nó:
+        # BB/K9o/40bb vs CO saía `correct`, com o MESMO "GTO joga Call / Raise", enfrentando
+        # 2bb, 5bb ou 20bb — dez vezes o preço que a carta modela. Pior, pagar um shove de 14bb
+        # com J9o também saía "Correto": medido com eval7 contra a própria range de ABERTURA do
+        # vilão (mais larga que a de jam, logo conservadora a favor do hero), J9o a 14bb tem
+        # 31,1% e precisa de 45,6%; 96s a 20bb tem 32,1% contra 46,9%. Calls de −2 a −3bb
+        # absolvidos pelo produto.
+        #
+        # A rodada anterior escreveu o teto e só o consultou sob "é jam" (≥65% do stack), o que
+        # criou uma descontinuidade absurda no mesmo spot: a 20bb `correct`, a 26,5bb sem
+        # veredito.
+        #
+        # POR QUE DIRECIONAL, e não teto seco. Medido no acervo local (1.688 decisões preflop,
+        # 587 chegam a um nó vs_RFI): 185 enfrentam tamanho fora da tolerância de 1,4x, 126 já
+        # eram null, e 59 ainda têm veredito. Teto seco mataria os 59 — mas 55 deles são FOLDS
+        # que a carta também manda foldar (72o, 85o, 93o…), e nesses o preço maior não muda a
+        # resposta: só a reforça. Perder 55 vereditos certos para consertar 4 é trocar cobertura
+        # por nada. Quem decide é `_veredito_sobrevive_ao_tamanho`, com a margem de EV que a
+        # carta publica sobre o fold — ver a justificativa lá, inclusive por que "é mão de value"
+        # NÃO serve de critério.
+        #
+        # Ablação no mesmo acervo (guarda ligado × desligado): 18 decisões perdem veredito, 67
+        # ganham (o gate de jam anterior calava 62 folds que a carta também folda), e nenhuma
+        # TROCA de veredito nem ganha acusação nova.
+        #
+        # Sem gabarito não é erro: null honesto, e o card diz qual foi o motivo.
+        _dir_tam = _direcao_do_tamanho(defender, facing_to_bb)
+        _enfrenta_jam = bool(facing_allin) or bool(
+            facing_to_bb and stack_bb
+            and float(facing_to_bb) >= float(stack_bb) * _FRACAO_QUE_E_JAM)
+        if _dir_tam == 'indeterminado' and _enfrenta_jam:
+            # All-in sem `facing_to_bb` no payload: não se sabe o número, mas se sabe que um
+            # shove não é o open de 2bb que o nó declara. Tratar como 'dentro' seria o pior
+            # veredito possível — o confiante e falso.
+            _dir_tam = 'maior'
+        _tam_no = _raise_declarado_bb(defender)
+        _excesso = max(0.0, float(facing_to_bb or 0) - float(_tam_no or 0))
+        _margem = _margem_ev_sobre_fold(bucket, 'vs_rfi', pos, vs_pos, hero_hand_type)
+        if base.get('available') and not _veredito_sobrevive_ao_tamanho(
+                _dir_tam, base.get('recommended_actions'), _margem, _excesso):
+            for _k in ('available', 'in_range'):
+                base[_k] = False
+            base['recommended_actions'] = []
+            base['action_quality'] = 'unknown'
+            # O motivo do all-in só vale quando o shove foi MAIOR que o nó: um vilão que vai de
+            # all-in por 1,25bb num nó de 2bb está do outro lado da régua, e dizer "abriu de
+            # all-in e a carta só descreve open pequeno" seria descrever o oposto do que houve.
+            base['coverage_reason'] = ('open_jam_uncovered'
+                                       if (_enfrenta_jam and _dir_tam == 'maior')
+                                       else 'open_size_off_tree')
+            return base
 
     # ── vs 3bet / faces_squeeze / squeeze / vs_4bet — MESMA estrutura [hero][villain] ──
     elif scenario in ('vs_3bet', 'faces_squeeze', 'squeeze', 'vs_4bet'):
@@ -1452,9 +1682,35 @@ def _analyze_preflop_impl(
         in_cl   = _in_range(hero_hand_type, hands_call)
         in_jam  = _in_range(hero_hand_type, hands_allin)
         in_rng  = in_4b or in_cl or in_jam
-        # Freq por mão — normaliza códigos brutos GW (F/C/R{x}/RAI) → nosso modelo.
-        # Se a mão não está em hand_freqs, é fold 100% (GW só popula mãos com ação não-fold).
         hf_raw = hand_freqs.get(hero_hand_type) if hand_freqs else None
+
+        # ── Ausente de TODAS as listas do nó = OFF-TREE, não "fold 100%" ─────────────────────
+        # O comentário antigo aqui dizia que "GW só popula mãos com ação não-fold", e por isso
+        # tratava a ausência como fold puro. É falso: `fold_hands` é populado à parte (neste nó,
+        # 8 das 13 mãos de `fold_hands` nem aparecem em `hand_freqs`). Quem não está em lista
+        # NENHUMA não chega a este nó — a range de abertura que faz o hero avançar até aqui não a
+        # contém.
+        #
+        # O custo do erro: a 10bb o GW jama KK e AKo em vez de min-raisar, então quem min-raisou
+        # KK e levou 3-bet all-in ficava fora de todas as listas → "GTO folda 100%" → o produto
+        # dava `correct` a QUEM FOLDOU KK e `major_leak` a quem pagou. E o oráculo já estava no
+        # repositório contradizendo isso no MESMO card: `leaklab_gto_evs.json` publica
+        # KK = {'F': 0.0, 'C': 7.27}, e é esse arquivo que alimenta o selo de −7,3bb impresso ao
+        # lado do "Correto". Duas fontes para o mesmo fato. Medido: 996 pares (nó, mão) off-tree
+        # cujo fold o próprio GW cobra ≥1bb, 46 deles com mão premium.
+        #
+        # A população afetada é "o hero abriu fora da carta na rua anterior" — desvio recreativo
+        # comum, não caso raro. Sem gabarito não é erro: null honesto, como o caminho HU já faz.
+        _peso_hf = sum(float(v or 0) for v in (hf_raw or {}).values())
+        _no_no = _peso_hf > 0.001 or in_rng or _in_range(hero_hand_type, spot.get('fold_hands', '') or '') \
+            or _in_range(hero_hand_type, spot.get('check_hands', '') or '')
+        if hand_freqs and not _no_no:
+            # `hand_freqs` no if: nó em formato antigo (sem freq por mão) não tem como distinguir
+            # off-tree de fold, e ali o comportamento conhecido continua valendo.
+            base['coverage_reason'] = 'hand_out_of_node_range'
+            return base
+
+        # Freq por mão — normaliza códigos brutos GW (F/C/R{x}/RAI) → nosso modelo.
         hf = {'fold': 0.0, 'call': 0.0, 'raise': 0.0, 'allin': 0.0}
         if hf_raw:
             for code, f in hf_raw.items():
@@ -1576,6 +1832,25 @@ def _rfi_quality(action: str, in_rng: bool, stack_bb: float, *,
         # Soma as duas freqs pra creditar o jam de qualquer mão que o GTO abre.
         if act == 'jam' and stack_bb <= 12:
             freq = float(hand_freq.get('allin', 0)) + float(hand_freq.get('raise', 0))
+        # ── O espelho, que faltava ───────────────────────────────────────────────────────────
+        # A adjacência era creditada em UMA direção só, apesar de o comentário acima justificá-la
+        # com "raise≈allin". Consequência: min-raisar KK/QQ/AKs de CO a 10bb — jogada padrão de
+        # regular de MTT — devolvia freq['raise']=0 e virava `major_leak` → `gto_critical`, que
+        # pesa 0,45 no ranking de leaks e manda o aluno estudar um erro inexistente. Jammar a
+        # MESMA mão no MESMO spot saía "Correto". Varredura do bucket 10bb: 326 de 449 pares
+        # mão×posição cujo jam é `correct` tinham o min-raise marcado `major_leak`.
+        #
+        # Por que TETO em `acceptable` e não `correct`: a mão está no range, mas quem tem
+        # frequência zero é o SIZING escolhido, e o custo medido pela própria carta é real ainda
+        # que pequeno (mediana 0,029bb; 304 dos 326 abaixo do limiar de 0,12bb do motor). É
+        # exatamente o veredito que a porta irmã já dá no mesmo caso — `_grade_por_no_capturado`
+        # rebaixa para `acceptable` quando "a mao ESTA no range e joga alguma coisa; o que tem
+        # frequencia zero e a ACAO escolhida". `acceptable` capeia o label em 'marginal' e o
+        # gto_label em desvio leve: informa sem acusar.
+        if act == 'raise' and stack_bb <= 12 and freq < 0.10:
+            _vizinho = float(hand_freq.get('allin', 0)) + float(hand_freq.get('raise', 0))
+            if _vizinho >= 0.30:
+                return 'acceptable'
         if   freq >= 0.30: return 'correct'
         elif freq >= 0.10: return 'acceptable'
         elif freq >= 0.03: return 'leak'

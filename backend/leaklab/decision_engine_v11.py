@@ -238,17 +238,40 @@ def _enrich_preflop_gto(input_data: Dict[str, Any]) -> dict:
             hero_hand_type = h_type,
             stack_bb       = float(spot.get('effectiveStackBb') or ctx.get('heroStackBb') or 20),
             action_taken   = input_data.get('player_action', ''),
-            # `facingSize` vem em FICHAS e as vezes vem VAZIO; `facingToBb` e o valor que o
-            # pipeline calcula e no qual o resto do produto confia. A consulta roteia por
-            # `facing_size`, entao com ele em 0 a cobertura SOME mesmo havendo no GTO — medido:
-            # BB vs SB a 8,6bb responde `jam` com facing preenchido e `indisponivel` sem ele.
-            # Foi o que fez a mao 2790343346 ficar "sem cobertura" tendo o numero certo ao lado.
-            facing_size    = float(spot.get('facingSize') or spot.get('facingToBb') or 0),
+            # A consulta roteia por `facing_size`, entao com ele em 0 a cobertura SOME mesmo
+            # havendo no GTO — medido: BB vs SB a 8,6bb responde `jam` com facing preenchido e
+            # `indisponivel` sem ele. Foi o que fez a mao 2790343346 ficar "sem cobertura" tendo o
+            # numero certo ao lado.
+            #
+            # A ORDEM importa e estava invertida: `facingSize` vem em FICHAS e vinha PRIMEIRO,
+            # enquanto os outros tres caminhos passam `facingToBb`. Os dois saem da mesma
+            # travessia de acoes em `hand_state_builder` (linhas 488 e 493), entao um e zero
+            # exatamente quando o outro e — a ordem nunca comprou cobertura, so misturou unidade
+            # no mesmo parametro, que e o bug mais recorrente deste projeto.
+            facing_size    = float(spot.get('facingToBb') or 0),
             vs_position    = spot.get('villainPosition', ''),
             is_3bet_pot    = bool(input_data.get('is_3bet', False)),
             n_players      = spot.get('nPlayers'),
             facing_raises      = int(spot.get('preflopRaisesFaced') or 0),
             hero_was_aggressor = bool(spot.get('heroWasAggressor', False)),
+            # ── Estes dois decidem QUAL ÁRVORE, e o motor era o único caminho que não os passava ──
+            # `/analyze` (app.py:4311), `/replay` (app.py:6417) e o sync já passavam os dois; o
+            # motor — que é justamente quem GRAVA `gto_label` e `best_action` — não. Resultado:
+            # banco e card discordando sobre a MESMA decisão, na mesma tela.
+            #
+            # `facing_limp`: sem a flag, o guarda de política (`limped_pot`, available=False) não
+            # dispara e, como o limp deixa `facingSize > 0`, o spot cai em `vs_rfi` e é gradeado
+            # pela range de DEFESA CONTRA UM OPEN RAISE. Iso-raise sobre limp — a jogada mais
+            # banal do MTT de buy-in baixo — saía `gto_critical` com best_action='fold'. Medido no
+            # acervo local: 18 decisões em que o motor acusa e o card cala, com conselho
+            # ativamente ruim (AQs a 11,3bb com best='call', K5o com best='jam').
+            #
+            # `caller_position`: sem ela o gate de squeeze (`is_3bet_pot and vs_pos and cal_pos`)
+            # nunca dispara e o squeeze é gradeado como defesa heads-up contra open — o motor
+            # chegou a recomendar flatar A5s de BTN com um cold caller já no pote. Em 36 de 108
+            # combinações amostradas o cenário consultado muda por causa deste argumento.
+            facing_limp        = bool(spot.get('facingLimp')),
+            caller_position    = spot.get('callerPosition', '') or '',
             is_pko             = bool(ctx.get('isPko')),
             facing_to_bb       = float(spot.get('facingToBb') or 0),
             facing_allin       = bool(spot.get('facingAllin', False)),

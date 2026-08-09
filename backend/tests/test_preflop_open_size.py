@@ -1,8 +1,23 @@
 """
 #23 — Vereditos preflop sensíveis ao tamanho do open. Quando o vilão abre OFF-TREE
-(maior que o sizing canônico do GTO), a range de defesa mostrada é vs o open mínimo;
-foldar uma mão marginal vs um open maior é DEFENSÁVEL e não deve virar gto_critical.
-O engine rebaixa o fold (leak/major_leak → acceptable) e anexa a flag open_size_mismatch.
+(maior que o sizing canônico do GTO), a range de defesa mostrada é vs o open mínimo.
+
+── A política mudou em 09/08, e estes testes mudaram com ela ─────────────────────────────────
+
+A regra original REBAIXAVA o fold da mão marginal (leak/major_leak → acceptable) e mantinha a
+recomendação na tela. O problema é que a recomendação também vinha do preço errado: no mesmo card
+que dizia "seu fold é aceitável" continuava impresso "GTO joga Call" — call derivado de um open de
+2bb, num spot em que o vilão abriu 3,3bb. E do lado do CALL o rebaixamento não fazia nada: pagar
+com uma mão que a carta paga a 2bb saía `correct` a qualquer preço, que é a ABSOLVIÇÃO falsa.
+
+Agora, quando o tamanho enfrentado sai da tolerância de 1,4x e a resposta da carta para AQUELA mão
+depende do preço, não há veredito: `available=False`, `coverage_reason='open_size_off_tree'`. Sem
+gabarito não é erro.
+
+O que NÃO mudou, e é o coração do #23: mão que a carta defende AGREDINDO (raise+allin > call)
+continua sendo gradeada, porque foldar AA nunca é defensável por o open ter vindo maior. É a mesma
+definição de "mão de value" de antes, agora numa função só (`_defesa_e_de_valor`), consumida pelo
+rebaixamento E pelo teto de tamanho.
 """
 import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
@@ -32,14 +47,17 @@ def test_canonical_open_bb_reads_rcode():
     print(f"OK  test_canonical_open_bb_reads_rcode (CO={co})")
 
 
-def test_offtree_fold_downgraded():
+def test_offtree_fold_sem_veredito():
+    """Antes: fold rebaixado para `acceptable`. Agora: sem veredito — a carta defende 75o com
+    call 100%, e a 3,3bb (1,65x) essa resposta pode ser outra. O CONTROLE do open normal, que
+    prova que o guarda não comeu a cobertura inteira, é a metade que importa aqui."""
     base = _vs_rfi('fold', facing_to_bb=2.0)   # open normal
     off  = _vs_rfi('fold', facing_to_bb=3.3)   # open off-tree (1.65×)
     assert base['action_quality'] in ('leak', 'major_leak'), base['action_quality']
     assert base.get('open_size_mismatch') is None
-    assert off['action_quality'] == 'acceptable', off['action_quality']
-    assert off['open_size_mismatch'] == {'facing_bb': 3.3, 'canonical_bb': 2.0}
-    print("OK  test_offtree_fold_downgraded")
+    assert off['available'] is False, off['action_quality']
+    assert off.get('coverage_reason') == 'open_size_off_tree', off.get('coverage_reason')
+    print("OK  test_offtree_fold_sem_veredito")
 
 
 def test_premium_fold_stays_critical_offtree():
@@ -52,13 +70,17 @@ def test_premium_fold_stays_critical_offtree():
     print("OK  test_premium_fold_stays_critical_offtree")
 
 
-def test_offtree_only_fold_softened():
-    # call/raise vs open off-tree NÃO é rebaixado (só o fold falso-crítico)
+def test_offtree_call_nao_e_mais_absolvido():
+    """O lado que o #23 nunca cobriu. A regra antiga só mexia no fold, então pagar 3,3bb com 75o
+    saía `correct` — a carta larga demais ABSOLVENDO quem paga, que é a metade cara do erro de
+    preço. Agora cala dos dois lados."""
     c = _vs_rfi('call', facing_to_bb=3.3)
-    assert c['action_quality'] == 'correct', c['action_quality']
-    # mas a flag fica anexada pra transparência no card
-    assert c.get('open_size_mismatch') is not None
-    print("OK  test_offtree_only_fold_softened")
+    assert c['available'] is False, c['action_quality']
+    assert c.get('coverage_reason') == 'open_size_off_tree', c.get('coverage_reason')
+    # CONTROLE: no tamanho que o nó modela, o call segue gradeado
+    ok = _vs_rfi('call', facing_to_bb=2.0)
+    assert ok['available'] is True and ok['action_quality'] == 'correct', ok['action_quality']
+    print("OK  test_offtree_call_nao_e_mais_absolvido")
 
 
 def test_no_downgrade_without_facing_to_bb():

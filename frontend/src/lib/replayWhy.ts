@@ -18,6 +18,9 @@ export interface WhyInput {
   /** street atual — decide frases que citam flop/postflop */
   isPostflop: boolean;
   isError: boolean;
+  /** veredito CLAMPADO exibido no banner (o mesmo `isActionOk` que decide ✓/◎/✗).
+   *  A frase não pode ser decidida por uma fonte independente do selo — ver `precoDiverge`. */
+  isActionOk?: boolean;
   /** ação do hero, minúscula (fold/call/check/bet/raise/shove) */
   heroAction: string;
   hasMultiwayAdvice: boolean;
@@ -45,7 +48,10 @@ export interface WhyInput {
   pg?: { available?: boolean; in_range?: boolean; hand_type?: string; scenario?: string;
          range_pct?: number; stack_bucket?: string; coverage_reason?: string | null;
          /** frequência GTO da AÇÃO recomendada, quando a carta traz (0..1) */
-         top_freq?: number | null } | null;
+         top_freq?: number | null;
+         /** tokens CRUS da carta (fold/call/raise/jam) — a comparação com a ação do hero tem que
+          *  ser feita aqui, não na string já formatada que o card exibe */
+         recommended_actions?: string[] | null } | null;
   /** ação recomendada pelo card (o `_best_action` final, não o palpite da heurística) */
   recAction?: string | null;
   /** ação que o jogador tomou, normalizada */
@@ -61,6 +67,22 @@ export interface WhyChoice {
 }
 
 const NONE: WhyChoice = { key: "" };
+
+/** Família canônica de uma ação, para comparar dialetos diferentes sem inventar equivalência.
+ *  `jam`/`shove`/`allin` são a mesma ação com três nomes; `check` é a forma passiva de `call`
+ *  (é assim que o backend classifica frequência). Raise e jam NÃO se fundem: a diferença entre
+ *  min-raise e all-in é exatamente o que a frase de tamanho existe para dizer. */
+function familiaAcao(a?: string | null): string {
+  const t = (a ?? "").toLowerCase().trim();
+  if (!t) return "";
+  if (t === "jam" || t === "shove" || t === "allin" || t === "all-in") return "allin";
+  if (t === "bet" || t === "raise") return "raise";
+  if (t === "check" || t === "call" || t === "complete") return "call";
+  if (t === "fold") return "fold";
+  return t;
+}
+
+const AGRESSIVAS = new Set(["raise", "allin"]);
 
 export function selectWhy(i: WhyInput): WhyChoice {
   // Estimativa multiway: o why heads-up usaria equity vs aleatória e contradiria o fold.
@@ -112,6 +134,31 @@ export function selectWhy(i: WhyInput): WhyChoice {
     const base = { eqPct, reqPct, reqLabelKey };
     const act = i.heroAction;
 
+    // ── A frase não pode absolver o que o card condena (nem o contrário) ────────────────────
+    // Este ramo escolhia a frase SÓ pelo sinal do preço, sem olhar o veredito que está no mesmo
+    // input. Caso real: turn call que o solver folda 88% — banner "✗ Erro", selo "−0,9 bb", "GTO
+    // recomenda Fold", barras "Fold 88% / Call 12%", e a única frase sempre visível dizendo
+    // "Call lucrativo: equity 28% supera pot odds 25%". Quem lê só a frase mantém o call. É a
+    // mesma família do bug já corrigido no SELO de EV, agora na frase e no sentido inverso:
+    // absolvendo em vez de acusar.
+    //
+    // `absolve` = a frase que sairia daqui elogia a ação tomada. Para o FOLD isso se inverte:
+    // o preço fechar significa que o fold deixou EV na mesa (crítica), e o preço não fechar
+    // significa fold correto (elogio).
+    // Quando `absolve` discorda do veredito, quem manda é o veredito — e a frase NOMEIA a
+    // divergência em vez de escolher um dos lados, que é o que o parágrafo `precoPagaMasVeredito`
+    // já faz na evidência ao lado. `isActionOk` indefinido = chamador antigo: mantém o
+    // comportamento conhecido em vez de inventar um terceiro.
+    // `check` fica de fora: a frase dele (`whyCheck`) só recita os números, não elogia nem
+    // critica, então não há o que contradizer.
+    if (i.isActionOk != null && act !== "check") {
+      const absolve = act === "fold" ? !i.profitable : !!i.profitable;
+      if (absolve !== i.isActionOk) {
+        return { key: i.profitable ? "card.whyPrecoFechaMasVeredito"
+                                   : "card.whyPrecoNaoFechaMasVeredito", params: base };
+      }
+    }
+
     // A frase descreve a AÇÃO TOMADA, nunca a alternativa: "Call lucrativo" quando o hero
     // foldou soa como crítica oposta ao veredito.
     if (act === "fold") {
@@ -138,8 +185,21 @@ export function selectWhy(i: WhyInput): WhyChoice {
     // all-in. O card dizia "33 está no range de abertura" — verdade, e irrelevante: ele NÃO errou
     // por estar fora do range, errou o TAMANHO. Descrever a mão quando o veredito é sobre a ação
     // deixa o jogador sem saber o que corrigir.
-    const dif = !!i.recAction && !!i.heroActionRaw
-      && i.recAction.toLowerCase() !== i.heroActionRaw.toLowerCase();
+    //
+    // ── A comparação é de CONJUNTO e em tokens crus, não igualdade de string formatada ──────
+    // `recAction` chega como `pg.recommended_actions.map(fmtAction).join(" / ")` — já formatada e
+    // possivelmente com N ações ("Raise / Call") — enquanto `heroActionRaw` é o token cru
+    // (`raise`). Com 2+ ações recomendadas a igualdade era IMPOSSÍVEL por construção, então `dif`
+    // era sempre true e este ramo roubava o caso do `whyInRange`: um jogador que jogou
+    // EXATAMENTE como a carta manda lia "✓ Correto" e, logo abaixo, "a jogada aqui é RAISE / CALL
+    // — não Raise. A mão é boa; o que saiu do lugar foi o tamanho do aumento" — causa inventada
+    // para um erro que não houve. Com hero pagando, a frase se contradizia em si mesma
+    // ("é RAISE / CALL — não Call"). Medido no acervo: 33 de 707 cards preflop com veredito
+    // Correto. E rec multi-ação é o caso NORMAL — a porta única monta `rec` com toda ação de
+    // frequência ≥2% (ou ≥10%), e a própria fixture de exemplo do produto tem duas.
+    const recFams = (i.pg.recommended_actions ?? []).map(familiaAcao).filter(Boolean);
+    const heroFam = familiaAcao(i.heroActionRaw);
+    const dif = recFams.length > 0 && !!heroFam && !recFams.includes(heroFam);
     if (i.pg.in_range && dif) {
       const freq = i.pg.top_freq != null && i.pg.top_freq > 0
         ? ` (${(i.pg.top_freq * 100).toFixed(0)}%)` : "";
@@ -147,9 +207,8 @@ export function selectWhy(i: WhyInput): WhyChoice {
       // (min-raise onde a carta manda all-in, por exemplo). Se a carta manda CALL e o jogador
       // aumentou, nao e questao de tamanho — e de acao, e a primeira metade da frase ja disse
       // isso. Afirmar "tamanho" ali seria explicar errado com confianca.
-      const agressiva = (a?: string | null) =>
-        !!a && /^(raise|bet|jam|shove|allin|all-in)/.test(a.toLowerCase());
-      const soTamanho = agressiva(i.recAction) && agressiva(i.heroActionRaw);
+      // `every`, e nao "a primeira": com rec = Raise / Call o problema tambem nao e o tamanho.
+      const soTamanho = AGRESSIVAS.has(heroFam) && recFams.every(f => AGRESSIVAS.has(f));
       return {
         key: soTamanho ? "card.whyAcaoDivergeTamanho" : "card.whyAcaoDiverge",
         params: { ...base, freq },

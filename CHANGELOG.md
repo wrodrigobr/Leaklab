@@ -7,6 +7,215 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(motor): a decisao so pode ser gradeada pelo NO que a descreve (#motor #card)
+
+> Seis defeitos, uma familia so: o produto respondia com confianca usando uma carta que modela
+> OUTRO spot. Todos vieram de uma auditoria dirigida ao preflop.
+>
+> **1. O open enfrentado nao era o que o no modela.** `vs_RFI[opener][defender]` e a defesa contra
+> um open de 2 a 3,5bb — o proprio no declara isso em `preflop_actions`, e a varredura confirma:
+> **324 de 324 nos modelam open pequeno, nenhum modela jam**. O motor gradeava QUALQUER tamanho por
+> esse no: BB/K9o/40bb vs CO saia `correct`, com o MESMO *"GTO joga Call / Raise"*, enfrentando
+> 2bb, 5bb ou **20bb** — dez vezes o preco que a carta modela. Pagar um open-shove de 14bb com J9o
+> saia *"Correto / GTO joga Call 100%"*. O motor ATE detectava o tamanho (`open_size_mismatch`
+> vinha preenchido), mas so usava o achado para suavizar o FOLD; o CALL seguia abencoado. Medido
+> com eval7 contra a propria range de ABERTURA do vilao (mais larga que a de jam, logo
+> conservadora a favor do hero): J9o a 14bb vs UTG tem 31,1% e precisa de 45,6%. Sao calls de −2 a
+> −3bb absolvidos — o erro mais caro do MTT amador.
+>
+> A **primeira** versao deste conserto so consultava o teto sob "e jam" (≥65% do stack), e criou um
+> degrau absurdo no mesmo spot: a 20bb `correct`, a 26,5bb sem veredito. **Um QA reprovou, e com
+> razao.**
+>
+> O teto agora vale sempre — e e **DIRECIONAL**, porque o numero mandou. Medido no acervo local
+> (1.688 decisoes preflop, 587 chegam a um no `vs_RFI`): **185 enfrentam tamanho fora da tolerancia
+> de 1,4x**, 126 ja eram null, e **59 ainda tinham veredito**. Teto seco mataria os 59 — mas **55
+> deles sao FOLDS que a carta tambem folda** (72o, 85o, 93o…), e ai o preco maior nao muda a
+> resposta: so a reforca. Perder 55 vereditos certos para consertar 4 e trocar cobertura por nada.
+> O argumento e unilateral, no espirito do teto computado de equity: **com a range do vilao fixa,
+> subir o preco so pode tornar o FOLD mais certo, e baixa-lo so pode tornar a DEFESA mais certa**.
+> Entao a carta que manda FOLDAR sobrevive a um open maior, e a que manda DEFENDER nao.
+>
+> **A excecao — e o criterio dela custou uma medicao para acertar.** Suprimir toda defesa apagaria
+> acusacoes certas: foldar AA a 3,3bb nao vira defensavel por o open ter vindo maior. A primeira
+> regua foi a do #23, "mao que a carta defende AGREDINDO", e ela e larga demais: pela frequencia,
+> `22` que o no jama a 23bb entra no mesmo grupo de AA, e a regua **devolvia 14 acusacoes, 12 delas
+> especulativas** (acusar quem folda 22 contra um open de 4,7bb, ou Q5o contra um shove de 14,7bb).
+> O criterio final e o oraculo de EV que ja mora no repositorio: a melhor acao vale `margem` a mais
+> que o fold, e defender no preco real custa no maximo `excesso = enfrentado − declarado` a mais.
+> **Se a margem cobre o excesso, a resposta nao pode ter virado.** Com excesso de 1,3bb no no
+> CO→BB a 30bb: AA 11,43 · KK 8,58 · QQ 6,89 · AKs 5,75 · 99 3,18 sobrevivem, 75o 0,14 nao. E cota
+> inferior, nao estimativa — ignora que o pote maior tambem paga mais, entao erra para o lado de
+> calar.
+>
+> **Efeito medido no acervo (ablacao, mesmo corpus, guarda ligado x desligado): 18 decisoes perdem
+> veredito, 67 GANHAM** — o gate de jam anterior calava 62 folds que a carta tambem folda — e
+> **zero veredito TROCA, zero acusacao NOVA**. Motivo novo no card: `open_size_off_tree` (e
+> `open_jam_uncovered` segue nomeando o caso do all-in), com frase nos tres locales.
+>
+> Os testes do #23 mudaram junto, e nao por conveniencia: `test_offtree_fold_downgraded` virou
+> `..._sem_veredito` e `test_offtree_only_fold_softened` virou `..._call_nao_e_mais_absolvido`. O
+> rebaixamento antigo so mexia no FOLD, entao pagar 3,3bb com 75o seguia `correct` — a metade cara
+> do erro de preco, e a que ninguem testava. `test_premium_fold_stays_critical_offtree` passa sem
+> alteracao: e o controle de que a excecao esta viva.
+>
+> **2. Posicao de mesa pequena.** A tabela `_POS_NORM_BY_N` misturava duas filosofias: CO e BTN
+> pareados por JOGADORES ATRAS (certo), UTG e HJ por INDICE DE ACAO (errado). O HJ de uma mesa de
+> 6, com 4 jogadores atras, recebia a carta de UTG+1 9-max: **17,7% de abertura contra os 29,3%**
+> que a posicao pede a 40bb, e 17 tipos de mao que a carta certa abre 100% e a usada abre 0%.
+> Abrir KTo do segundo assento 6-max saia `gto_critical`. Mesas de 3/4/5 nao tinham entrada
+> nenhuma. Virou uma CONTA (`n + 1 - indice`), com a ordem lida de `leaklab.posicoes` — a mesma
+> fonte que o pipeline usa para batizar o assento. Mesa nova nunca mais nasce sem entrada.
+>
+> **3. Heads-up: 3-bet de qualquer tamanho caia no no de 3-bet pequeno.** `SB_VS_3BET` modela UM
+> tamanho por profundidade (`R2-R6` a 40bb) e o roteador so separava jam de nao-jam. Foldar QTo a
+> um 3-bet de 25bb saia `gto_critical` com "GTO recomenda Call"; a **26,5bb — 1,5bb a mais** — o
+> MESMO fold virava `correct`. O guarda de tamanho ja existia no ramo IRMAO (BB vs open) com o
+> comentario explicando por que; faltava aqui.
+>
+> **Alcance, medido varrendo o tamanho de 0,25 em 0,25bb em cada profundidade capturada** — o custo
+> e uma BANDA MORTA entre o no de 3-bet pequeno e o no de jam, e ela cresce com a profundidade:
+>
+> | depth | no `R2-Rx` | com gabarito (bb) | banda morta (bb) |
+> |---|---|---|---|
+> | 12,6 | 4,0 | 3,00–5,50 e 8,25–12,50 | 5,75–8,00 (2,50) |
+> | 16,1 | 4,5 | 3,25–6,25 e 10,50–16,00 | 6,50–10,25 (4,00) |
+> | 20,1 | 5,0 | 3,75–7,00 e 13,25–20,00 | 7,25–13,00 (6,00) |
+> | 25,1 | 5,5 | 4,00–7,50 e 16,50–25,00 | 7,75–16,25 (8,75) |
+> | 30,1 | 5,5 | 4,00–7,50 e 19,75–30,00 | 7,75–19,50 (12,00) |
+> | 40,1 | 6,0 | 4,50–8,25 e 26,25–40,00 | 8,50–26,00 (17,75) |
+>
+> **Este ramo NAO ficou direcional como o do `vs_RFI`, de proposito, e a divergencia esta medida:**
+> dos 8.267 (profundidade, tamanho, mao) da banda morta que o no responderia, a regra direcional
+> manteria **2.360 (29%)** — todos com a carta mandando foldar. E consertavel e vale um numero, mas
+> e outra mudanca de produto, com outra medicao; fica como pendencia nomeada, nao de passagem.
+>
+> **4. Mao OFF-TREE lida como "fold 100%".** Nas secoes vs_3bet/faces_squeeze/squeeze/vs_4bet o no
+> so e alcancado pela range de ABERTURA do hero. A 10bb o GW **jama** KK, entao KK nao aparece em
+> lista nenhuma daquele no — nem em `fold_hands`. O codigo tratava a ausencia como fold puro (o
+> comentario afirmava que "GW so popula maos com acao nao-fold", **falso**: `fold_hands` e
+> populado a parte). Resultado: `correct` para quem FOLDOU KK a um 3-bet all-in e `major_leak`
+> para quem pagou — com o selo de **−7,3bb impresso ao lado do "Correto"**, porque
+> `leaklab_gto_evs.json` publica KK = {'F': 0.0, 'C': 7.27}. Duas fontes para o mesmo fato, se
+> contradizendo no mesmo card. 996 pares (no, mao) com fold cobrado em ≥1bb, 46 com mao premium.
+>
+> **Alcance, por ablacao** (enumeracao dos 324 nos `vs_3bet` x 169 tipos de mao = 54.756 spots,
+> guarda ligado x desligado): **7.669 spots perdem gabarito** — 14% da secao. Nenhum deles perde
+> nada de verdade, porque o veredito que davam era inventado: para cada um dos 7.669 o codigo
+> antigo respondia `fold = correct`, `call = major_leak`, `jam = major_leak`, ou seja **23.007
+> vereditos (spot, acao) emitidos como se o GTO foldasse 100%** — num no onde a mao nem aparece.
+> 13 desses spots sao mao premium (AA/KK/QQ/JJ/AK).
+>
+> **5. A adjacencia raise≈allin era unilateral.** `if act == 'jam' and stack_bb <= 12` somava
+> raise+allin; nao havia o espelho, apesar de o comentario justificar a regra com "raise≈allin".
+> Min-raisar KK/QQ/AKs de CO a 10bb virava `gto_critical`, que pesa 0,45 no ranking de leaks —
+> **o aluno era mandado estudar um erro que nao existe**. 326 de 449 pares do bucket 10bb. Custo
+> medido pela propria carta: mediana **0,029bb**, com 304 dos 326 abaixo do limiar de desprezivel
+> do proprio motor. Teto em `acceptable`, que e o que a porta irma (`_grade_por_no_capturado`) ja
+> devolve no mesmo caso: a mao esta no range, quem tem frequencia zero e o SIZING.
+>
+> **6. Quatro caminhos chamam a porta unica, e cada um passava um conjunto de argumentos.** O
+> MOTOR — que e quem GRAVA `gto_label` e `best_action` — nao passava `facing_limp` nem
+> `caller_position`: iso-raise sobre limp era gradeado pela range de defesa-contra-open e saia
+> `gto_critical` com best='fold' (conselho ativamente ruim: flatar AQs a 11,3bb sobre um limp), e
+> squeeze virava defesa heads-up. O override de veredito do `/replay` nao passava `facing_to_bb`,
+> `facing_limp` nem `caller_position` **enquanto o bloco de display, na MESMA funcao, passava os
+> tres** — 30 decisoes com `display=acceptable` ao lado de `veredito=gto_critical`. O sync nao
+> passava `facing_allin`. E o motor passava `facingSize` (FICHAS) na frente de `facingToBb` (bb)
+> no mesmo parametro.
+>
+> O guarda que devia pegar isso varria SO `api/app.py` e exigia SO dois argumentos: passava 3/3.
+> Agora varre os TRES arquivos e os CINCO argumentos, com lista de isencao NOMEADA (um caso: nao
+> ha coluna `caller_position` em `decisions`). E ele proprio tinha o defeito que persegue — a
+> busca por substring encontrava os nomes dos argumentos **no comentario** que os explica, entao
+> remover os tres de verdade passava verde. Agora apaga os comentarios antes de olhar.
+>
+> **E tinha o defeito uma terceira vez, achado pelo QA:** a isencao era chaveada por ARQUIVO
+> (`('api/app.py', 'caller_position')`), e `api/app.py` tem QUATRO chamadas da porta unica. O QA
+> removeu `caller_position` das TRES que o passavam e a varredura ficou **verde** — a isencao de
+> uma chamada cobria as outras tres. Guarda com isencao larga demais e guarda desligado. A chave
+> agora e o **call site**: o nome qualificado da funcao que chama (`get_decision_gto`), resolvido
+> subindo pela indentacao, e nao o numero da linha, que se desloca a cada edicao acima dele. Com
+> a chave por arquivo o nome ingenuo "def mais proximo acima" apontava para `_valid_node_replayer`,
+> uma funcao aninhada IRMA — mais uma razao para nao chavear por proximidade textual. Entrou junto
+> um guarda DA LISTA: toda isencao tem que casar com exatamente UMA chamada que realmente nao passa
+> o argumento, senao ela e obsoleta e cala a chamada errada no dia seguinte.
+>
+> Quatro arquivos de teste novos e um guarda de i18n que exige frase nos tres locales para todo
+> `coverage_reason` que o motor emite. **Esse guarda tambem nasceu furado**: lia so a forma
+> `coverage_reason'] = 'literal'`, e o motivo novo e emitido por um condicional de duas linhas —
+> a varredura devolvia ZERO para ele. Agora le a instrucao inteira (ate os parenteses fecharem),
+> ignora comentarios, e tem um teste com fonte sintetica cobrindo as tres formas de emissao mais
+> o controle de que um `coverage_reason` COMENTADO nao conta como emissao.
+>
+> **Mutacoes verificadas (uma linha por guarda, todas acusaram e foram restauradas):** teto so sob
+> jam → 5 falhas; teto seco, sem direcao → 3 falhas; excecao sem limite de EV (toda defesa
+> sobrevive) → 7 falhas, inclusive o shove de 14bb voltando a ser "Correto"; excecao removida (nem
+> AA sobrevive) → 2 falhas; `caller_position` fora das tres chamadas de `app.py` → 1 falha nomeando
+> as tres; `caller_position` fora do motor → 2 falhas; isencao apontando para funcao inexistente →
+> 2 falhas; frase pt-BR do motivo novo removida → 1 falha; varredura de motivos de volta a uma
+> forma so → 3 falhas.
+
+### test(gto): auditoria linha a linha do golden do /replay (#gto #teste)
+
+> O relato anterior dizia que o golden mudara em "2 linhas, ambas auditadas". **Eram TRES, e duas
+> descricoes estavam erradas.** Segue o diff completo dos dois fixtures, HEAD x arvore, com a
+> conclusao de cada linha — e o que sobrou depois de fechar os bloqueios.
+>
+> **Linha #0 — mao 257045862415, LJ com Q9o, 37,5bb, petretudor abre ALL-IN de 7,8bb do UTG.**
+> A rodada anterior trocou `pg.scenario` `vs_rfi`→`rfi` e `verdict_layer` `preflop`→`stored`, e no
+> golden COM solver perdeu tambem `gto_action` e `gto_label` (viraram `null`). **Era regressao, nao
+> melhoria:** o gate de jam calava o `vs_RFI`, o `/replay` caia no *fallback* de proxy pela range
+> de abertura, e um veredito ancorado na carta ("Q9o folda 100% vs open do UTG") virava uma
+> afirmacao mais fraca e de outra fonte. O sinal de que havia coisa errada estava no proprio
+> fixture: **os dois goldens discordavam na MESMA linha preflop**, que o solver sintetico nem
+> deveria tocar. Com o teto direcional a linha voltou ao valor de HEAD, e os dois goldens agora
+> **concordam em todas as linhas preflop**. Sem alteracao a registrar.
+>
+> **Linha #30 — mao 257046046366, BB com 85o, 23,6bb, varen1k322 abre 2,3bb.** Mudou `gto_action`
+> `fold`→`call`, `gto_label` `gto_correct`→`gto_mixed`, `pg.action_quality` `correct`→`acceptable`,
+> `pg.rec[0]` `fold`→`call`. **Correta, e a causa e o conserto de POSICAO, nao o de tamanho.** A
+> mesa tem 8 jogadores e o botao esta no assento 4; varen1k322 (assento 7) e o primeiro a agir, com
+> **7 jogadores atras** — que em 9-max e o assento do UTG+1, nao o do UTG. A tabela antiga chamava
+> de UTG e consultava a range mais tight da mesa grande. Contra UTG+1 a 24bb o BB defende 85o com
+> call 85%, e o fold do hero vira `acceptable` num spot misto — nao acusacao. Nota sobre a
+> descricao anterior: **`best_action` NAO mudou nesta linha** (continua `fold`); quem mudou foi
+> `gto_action`. O produto nao passou a "mandar pagar": ele passou a dizer que a linha modal e call
+> e que o fold custa pouco.
+>
+> **Linha #38 — mao 257046105639, BB com 75o, 16,5bb, Zahard23 abre 3,0bb (1,5x o que o no
+> modela).** Nao havia sido mencionada. HEAD dizia `best_action=call`, `gto_critical`,
+> `is_error=True`: **acusar de erro critico quem folda 75o no BB por 2bb a 17bb de stack e falso**,
+> e o motivo e o de sempre — o no responde a um open de 2bb e o preco real era outro. A rodada
+> anterior rebaixou para `gto_mixed` (via severidade por EV) e ainda publicava "GTO joga Call"
+> baseado no preco errado. **Agora e null honesto** (`open_size_off_tree`): `available=False`,
+> `verdict_layer` volta para `stored`, `best_action=fold`, `is_error=False`. Sem gabarito nao e
+> erro.
+>
+> **Estado final: os dois goldens diferem de HEAD em 2 linhas (#30 e #38), identicas nos dois
+> arquivos, ambas auditadas acima.** A #0 deixou de divergir.
+
+### fix(card): a frase do card nao contradiz mais o veredito ao lado (#replay #ux)
+
+> Duas frases mentiam ao jogador, cada uma por um motivo, ambas na unica linha sempre visivel.
+>
+> **"✓ Correto" com a frase acusando erro de tamanho.** `dif` comparava `recAction` — string JA
+> FORMATADA e possivelmente com N acoes ("Raise / Call") — contra o token cru `step.action`
+> ("raise"). Com 2+ acoes recomendadas a igualdade era **impossivel por construcao**, entao o ramo
+> de divergencia roubava o caso do `whyInRange` e o card escrevia *"KJo esta no range vs Open, mas
+> a jogada aqui e RAISE / CALL — nao Raise. A mao e boa; o que saiu do lugar foi o tamanho do
+> aumento"* para quem jogou EXATAMENTE como a carta manda. Rec multi-acao e o caso NORMAL (a porta
+> unica inclui toda acao de freq ≥2%). 33 de 707 cards preflop com veredito Correto. Agora a
+> comparacao e de CONJUNTO, em tokens crus e por familia de acao (jam=shove=allin).
+>
+> **"Call lucrativo" embaixo de "✗ Erro".** O ramo de evidencia matematica escolhia a frase SO
+> pelo sinal do preco e nunca consultava o veredito, que estava no mesmo input. Turn call que o
+> solver folda 88%: banner "✗ Erro", selo "−0,9 bb", "GTO recomenda Fold" — e a frase dizendo
+> *"Call lucrativo: equity 28% supera pot odds 25%"*. Quem le so a frase mantem o call. Mesma
+> familia do bug ja corrigido no SELO de EV, agora na frase e no sentido inverso: absolvendo em
+> vez de acusar. Quando preco e veredito divergem, a frase agora **nomeia a divergencia** — com os
+> numeros — em vez de escolher um lado.
+
 ### fix(motor): o fallback call-vs-shove perguntava a coisa errada (#motor #replay)
 
 > Print do usuario: `33` no SB heads-up, 15,2bb efetivos, pagando um shove de 17,2 com **53,8% de

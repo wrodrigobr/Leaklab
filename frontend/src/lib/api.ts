@@ -373,8 +373,18 @@ export interface ReplayStep {
     // 'limped_pot' = pote limpado (árvore raise-first não cobre) → display "{pos} vs Limp".
     // Motivos de AUSENCIA de gabarito. O tipo listava so `limped_pot` e o motor ja devolvia
     // outros quatro — o card tratava todos como "sem cobertura" generica, sem dizer qual.
+    // 'open_jam_uncovered'      = o vilao abriu de ALL-IN e nenhum no `vs_RFI` modela isso (os 324
+    //                             declaram open de 2 a 3,5bb em `preflop_actions`).
+    // 'open_size_off_tree'      = o open enfrentado esta fora do tamanho que o no modela (>1,4x
+    //                             para qualquer lado) E a linha recomendada para esta mao depende
+    //                             do preco. Quando a carta manda FOLDAR, um open MAIOR so reforca
+    //                             o fold, entao ali o veredito continua — ver
+    //                             `_veredito_sobrevive_ao_tamanho` no backend.
+    // 'hand_out_of_node_range'  = a mao nao chega a este no da arvore (a carta faz a posicao abrir
+    //                             de outro jeito) — nao esta em `hand_freqs` NEM em `fold_hands`.
     coverage_reason?: "limped_pot" | "limp_then_raise" | "pairing_uncovered"
-      | "hu_uncovered" | "hu_hand_out_of_range";
+      | "hu_uncovered" | "hu_hand_out_of_range"
+      | "open_jam_uncovered" | "open_size_off_tree" | "hand_out_of_node_range";
     // Jam/fold curto sobre limp: usa o range de push/fold (mesma decisão; limp = dead
     // money). Display caveateia "≈ push/fold · limp como dead money".
     limp_dead_money?: boolean;

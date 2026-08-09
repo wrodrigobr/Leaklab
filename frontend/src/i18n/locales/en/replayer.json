@@ -300,6 +300,8 @@
     "srcIcm": "ICM",
     "tipIcmApprox": "Near the money, under ICM pressure, folding tight is often worth more than the chip EV suggests. This analysis is in chips (chipEV) and does not measure that risk premium, so a defensible fold here is not flagged as a mistake.",
     "whyNoGtoPreflop": "No pre-computed solver solution for this preflop spot, analysis falls back to the engine heuristic.",
+    "whyPrecoFechaMasVeredito": "The price is right (equity {{eqPct}}% vs {{reqLabel}} {{reqPct}}%), but the verdict does not come from the price: the recommended line here is a different one.",
+    "whyPrecoNaoFechaMasVeredito": "The price alone does not close (equity {{eqPct}}% vs {{reqLabel}} {{reqPct}}%), but the verdict factors in range and position, which back this line.",
     "whyRangeNotPrice": "The verdict comes from the RANGE, not the price. The equity vs pot odds math is deliberately omitted here: it would be against a random hand, not against the villain's real range, and would point the wrong way.",
     "evUnavailable": "No EV in bb: this decision needs a hand-specific solve we don't have for this node yet. The verdict above is already reliable.",
     "precoPagaMasVeredito": "The price is right, but the verdict comes from the range: GTO does not continue with this hand here, even with favorable pot odds.",
@@ -308,6 +310,9 @@
       "hu_uncovered": "Heads-up spot with no chart in our base at this depth. We would rather give no verdict than grade against the wrong chart.",
       "hu_hand_out_of_range": "In this heads-up line the hand never reaches this node in the tree we have: the chart has no strategy for it, so any action would look like a deviation with no basis.",
       "pairing_uncovered": "This pair of positions was never seeded in our full-ring charts. With no reference, we do not accuse.",
+      "open_jam_uncovered": "The villain open-shoved and our chart only describes a small open. With no jam node for this position, we would rather give no verdict.",
+      "open_size_off_tree": "The villain opened much bigger than the chart models, and the recommended line here depends on that price. Rather than grade you against the wrong price, we give no verdict.",
+      "hand_out_of_node_range": "This hand never reaches this point of the tree: the chart opens the position a different way, so there is no published strategy for it here.",
       "limp_then_raise": "The line goes through a limp followed by a raise, which our raise-first trees do not model."
     },
     "scenGenerico": "for this spot",

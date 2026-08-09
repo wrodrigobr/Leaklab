@@ -347,6 +347,14 @@ def _process_rows(rows: list[dict], conn, dry_run: bool = True, verbose: bool = 
                 # outras 2 das 11 divergencias.
 
                 facing_to_bb=facing_bb,
+                # Enfrentando all-in. Sem esta flag o sync roteia um open-jam / 3-bet-jam para o
+                # no de aumento PEQUENO — nos diferentes, veredito de outra carta. Era o unico
+                # dos cinco argumentos-de-roteamento que faltava aqui (varredura de 09/08), e o
+                # sync e quem GRAVA `gto_label` no banco. Derivacao identica a de `app.py:8564`,
+                # para que os dois caminhos concordem; `effective_stack_bb` NULL (linha antiga)
+                # cai em False, que e o comportamento de antes.
+                facing_allin=bool(facing_bb and r.get("effective_stack_bb")
+                                  and facing_bb >= float(r["effective_stack_bb"]) * 0.98),
                 # Pote limpado. Ate 05/08 este argumento NUNCA chegava aqui: o dado existia no
                 # pipeline, o `/analyze` passava, e morria porque nao havia coluna. Sem ele o
                 # provider nao reconhecia o pote limpado e devolvia null MUDO.
