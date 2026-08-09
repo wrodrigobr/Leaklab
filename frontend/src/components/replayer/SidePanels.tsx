@@ -518,7 +518,13 @@ export function SidePanels({
               </div>
               {precoDiverge && (
                 <p className="mt-2 border-t border-border/40 pt-2 text-[11.5px] leading-snug text-muted-foreground">
-                  {mathCallIsEv
+                  {/* "o veredito vem da RANGE" só pode ser dito quando HÁ range. Num spot sem
+                      cobertura (a mão não chega àquele nó da árvore) o veredito vem da
+                      heurística, e afirmar range ali é inventar um motivo — a mesma família do
+                      "foi o tamanho" dito onde não era tamanho. */}
+                  {!pg?.available
+                    ? t("card.precoDivergeHeuristica")
+                    : mathCallIsEv
                     ? t("card.precoPagaMasVeredito")
                     : t("card.precoNaoPagaMasVeredito")}
                 </p>

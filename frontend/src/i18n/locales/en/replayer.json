@@ -318,7 +318,8 @@
     "scenHuVs3betJam": "SB vs all-in (heads-up)",
     "scenHuVs4bet": "BB vs all-in (heads-up)",
     "whyAcaoDiverge": "{{hand}} is in the {{scen}} range, but the play here is {{rec}}{{freq}} — not {{act}}.",
-    "whyAcaoDivergeTamanho": "{{hand}} is in the {{scen}} range, but the play here is {{rec}}{{freq}} — not {{act}}. The hand is fine; the raise size is what went wrong."
+    "whyAcaoDivergeTamanho": "{{hand}} is in the {{scen}} range, but the play here is {{rec}}{{freq}} — not {{act}}. The hand is fine; the raise size is what went wrong.",
+    "precoDivergeHeuristica": "There is no GTO chart for this hand at this node, so the verdict comes from the engine heuristic — price alone does not decide it."
   },
   "controls": {
     "play": "Play",

@@ -318,7 +318,8 @@
     "scenHuVs3betJam": "de SB contra all-in (heads-up)",
     "scenHuVs4bet": "de BB contra all-in (heads-up)",
     "whyAcaoDiverge": "{{hand}} está en el range {{scen}}, pero la jugada aquí es {{rec}}{{freq}} — no {{act}}.",
-    "whyAcaoDivergeTamanho": "{{hand}} está en el range {{scen}}, pero la jugada aquí es {{rec}}{{freq}} — no {{act}}. La mano está bien; lo que falló fue el tamaño de la subida."
+    "whyAcaoDivergeTamanho": "{{hand}} está en el range {{scen}}, pero la jugada aquí es {{rec}}{{freq}} — no {{act}}. La mano está bien; lo que falló fue el tamaño de la subida.",
+    "precoDivergeHeuristica": "Aquí no hay carta GTO para esta mano en este punto, así que el veredicto sale de la heurística del motor — el precio por sí solo no decide."
   },
   "controls": {
     "play": "Reproducir",

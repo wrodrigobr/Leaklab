@@ -43,7 +43,7 @@ export interface WhyInput {
   isHero: boolean;
   /** bloco de range preflop, quando disponível */
   pg?: { available?: boolean; in_range?: boolean; hand_type?: string; scenario?: string;
-         range_pct?: number; stack_bucket?: string;
+         range_pct?: number; stack_bucket?: string; coverage_reason?: string | null;
          /** frequência GTO da AÇÃO recomendada, quando a carta traz (0..1) */
          top_freq?: number | null } | null;
   /** ação recomendada pelo card (o `_best_action` final, não o palpite da heurística) */
@@ -80,7 +80,15 @@ export function selectWhy(i: WhyInput): WhyChoice {
   if (i.equityNotRangeAware) return { key: "card.whyRangeNotPrice" };
 
   // Sem cobertura GTO: a tag de cobertura já explica; não inventar porquê sobre dado stale.
-  if (i.preflopNoCoverageStrict) return NONE;
+  if (i.preflopNoCoverageStrict) {
+    // Era `NONE` — a frase sumia e o MOTIVO da ausencia vivia num indicador, que em 08/08 foi
+    // para tras do olho. Resultado: o card dizia "Heuristica" e nao explicava por que a carta
+    // GTO calou. Saber POR QUE nao ha gabarito e leitura, nao auditoria.
+    const motivo = i.pg?.coverage_reason;
+    return motivo && motivo !== "limped_pot"
+      ? { key: `card.semGabarito.${motivo}` }
+      : NONE;
+  }
 
   if (i.gtoSpotMismatch) {
     return { key: i.engineBest === "call" ? "card.whyMismatchFacing" : "card.whyMismatchNoBet" };

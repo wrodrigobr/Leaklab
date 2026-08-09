@@ -191,3 +191,40 @@ describe("acao diverge: a frase so fala de TAMANHO quando e tamanho", () => {
     expect(r.key).toBe("card.whyInRange");
   });
 });
+
+describe("sem cobertura: o card diz POR QUE nao sabe", () => {
+  const base = { isPostflop: false, isError: true, hasGto: false, isHero: true,
+                 hasMathEvidence: false, requiredIsAdjusted: false, hasMultiwayAdvice: false,
+                 limpedPotHeuristic: false, equityNotRangeAware: false,
+                 gtoSpotMismatch: false, isPfZone: false, hasEngineGtoConflict: false,
+                 heroAction: "call" } as never;
+
+  it("mao que nao chega ao no -> a frase e o MOTIVO", () => {
+    // O motivo vivia num indicador, e em 08/08 os indicadores foram para tras do olho: o card
+    // dizia "Heuristica" e nao explicava por que a carta calou. Saber por que nao ha gabarito e
+    // LEITURA, nao auditoria.
+    const r = selectWhy({ ...(base as object), preflopNoCoverageStrict: true,
+                          pg: { available: false, coverage_reason: "hu_hand_out_of_range" } } as never);
+    expect(r.key).toBe("card.semGabarito.hu_hand_out_of_range");
+  });
+
+  it("cada motivo tem a sua frase", () => {
+    for (const m of ["hu_uncovered", "pairing_uncovered", "limp_then_raise"]) {
+      const r = selectWhy({ ...(base as object), preflopNoCoverageStrict: true,
+                            pg: { available: false, coverage_reason: m } } as never);
+      expect(r.key).toBe(`card.semGabarito.${m}`);
+    }
+  });
+
+  it("CONTROLE: pote limpado tem tratamento proprio e nao entra aqui", () => {
+    const r = selectWhy({ ...(base as object), preflopNoCoverageStrict: true,
+                          pg: { available: false, coverage_reason: "limped_pot" } } as never);
+    expect(r.key).toBe("");
+  });
+
+  it("CONTROLE: sem motivo declarado, a frase e omitida em vez de inventada", () => {
+    const r = selectWhy({ ...(base as object), preflopNoCoverageStrict: true,
+                          pg: { available: false } } as never);
+    expect(r.key).toBe("");
+  });
+});

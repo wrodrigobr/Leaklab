@@ -7,6 +7,30 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(card): o card explica por que NAO sabe, e para de inventar a razao (#replay #ux)
+
+> O usuario perguntou: *"por que aqui indicou heuristica, se capturamos este spot de HU?"* — e a
+> resposta expos dois defeitos meus de 08/08.
+>
+> **O fato, primeiro:** o spot ESTA capturado; a MAO e que nao chega la. A 16bb o GTO abre `33`
+> com **all-in 100%**, nunca com min-raise — entao `33` nao existe no no `R2-RAI` daquela
+> profundidade (98 das 169 chegam, e ela nao esta entre elas). A 18 e 20bb passa a min-raisar
+> (5,5% e 11,5%) e ai aparece. O jogador min-raisou a 15,2bb efetivos: saiu da arvore com a
+> propria acao. `hu_hand_out_of_range` funcionando como projetado.
+>
+> **Defeito 1 — a explicacao ficou escondida.** A frase que diz POR QUE nao ha gabarito vivia
+> dentro dos `indicators`, e no commit anterior os indicadores foram para tras do olho. O card
+> dizia "Heuristica" e nao explicava nada. Saber por que a carta calou e **leitura**, nao
+> auditoria: agora e a propria frase do card.
+>
+> **Defeito 2 — a frase de divergencia inventava a razao.** Ela dizia *"o preco fecha, mas o
+> veredito vem da RANGE"* mesmo quando nao ha range nenhuma para aquela mao. Mesma familia do
+> "foi o tamanho" dito onde nao era tamanho, corrigido horas antes. Sem cobertura, a frase agora
+> diz o que e verdade: o veredito sai da heuristica.
+>
+> Quatro testes novos, dois deles CONTROLE (pote limpado tem tratamento proprio; sem motivo
+> declarado a frase e omitida em vez de inventada). Duas mutacoes, ambas acusadas.
+
 ### fix(card): "o tamanho" so e dito quando E de tamanho (#replay #ux)
 
 > O usuario achou o fecho vago — *"o que saiu do lugar foi o tamanho"* — e sugeriu "tamanho do
