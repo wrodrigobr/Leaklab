@@ -37,6 +37,22 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 > Golden do `/replay`: o git mesclou os dois fixtures por texto, o que **nao prova nada** sobre
 > comportamento. O teste passou sem regenerar, e ai sim prova: ele compara o fixture com a saida
 > computada, entao passar significa que o texto mesclado bate com o comportamento mesclado.
+>
+> ── **EM PRODUCAO 2026-08-10** ────────────────────────────────────────────────────────────────
+>
+> Deploy `b87e8dd0` + reprocesso dos 81 torneios (`ok=81 falhas=0`). Sem coluna nova.
+>
+> **Previsao feita ANTES de ligar:** 429 das 6.910 decisoes preflop perdem a range de vilao pela
+> janela — 218 abaixo de 6bb, 124 entre 6 e 8bb, 87 acima de 133bb, com o extremo em **0,07bb
+> recebendo a carta de 10bb**.
+>
+> **Observado depois:** **171 equities** mudaram e **ZERO labels**. Zero merece controle, e aqui
+> o controle e o historico do proprio medidor: e o mesmo diff que acusou 11 e 9 mudancas de label
+> nas duas rodadas anteriores de hoje, com o mesmo pareamento 1:1 provado (9.813 pareadas, 0
+> duplicadas, 0 orfas). Ele enxerga label; nao havia label para ver.
+>
+> Faz sentido: as decisoes alcancadas sao de stack extremo, onde o veredito e dominado pelo preco
+> e nao pela range. Acusadas seguem 573, e as 71 anotacoes do coach intactas.
 
 ### fix(motor): a LINHA do jam nao sai do numero de raises sozinho (#motor #coach)
 
