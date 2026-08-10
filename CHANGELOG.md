@@ -7,6 +7,36 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### docs(changelog): relatorio do coach regerado -- o 96s deixou de ser silencio (#coach)
+
+> Producao em `d9cf4d1c`, 567 acusadas. Dois vereditos mudaram nas 71 anotacoes, e sao as duas
+> maos que motivaram a frente do pote limpado.
+>
+> | caso | antes | agora | coach |
+> |---|---|---|---|
+> | **#14 `96s`** SB 32bb | `standard` (silencio) | **`small_mistake`** | `clear_mistake` |
+> | **#6 `82s`** SB 57bb | `standard` | `marginal` | `clear_mistake` |
+> | #18 `Q5o` SB 14bb | `standard` | `standard` | `clear_mistake` |
+>
+> **O `96s` virou ACORDO.** Pagava 0,5bb para disputar ~3,7bb, precisava de 11,9% e realiza 24,2%
+> contra 2 oponentes, ja descontada a penalidade de jogar fora de posicao. O coach estava certo
+> desde o inicio. O que sobra e diferenca de SEVERIDADE — ele diz erro grave, o produto para em
+> erro pequeno, porque `clear_mistake` exige gabarito e pote limpado nao tem. A direcao coincide.
+>
+> **O `82s` virou ACERTO DO SISTEMA, e me fez mudar de lado pela segunda vez** — por isso o numero
+> ficou na nota, e nao a opiniao. Com a contagem CERTA de oponentes (3: os dois limpers **mais o
+> BB**, que tem opcao gratis e sempre ve o flop) e o desconto de realizacao, o `82s` realiza 9,0%
+> contra 9,9% exigidos: fica abaixo do preco, o fold e defensavel, e o "erro grave" exagera. Eu
+> tinha afirmado ao usuario que o coach estava certo aqui, e aquela conta usava 2 oponentes.
+>
+> **Placar:** 31 acordo · 15 o coach descreve melhor · 14 o sistema se sustenta · 8 so tamanho ·
+> 2 falta o numero · **0 discordo dos dois**. 19 das 71 recebem acusacao; dos 15 em que o coach
+> descreve melhor, apenas **2 ainda acusam** o jogador.
+>
+> A secao "as tres que se afastaram", que o usuario questionou, deixou de existir como estava:
+> uma virou acordo, uma virou acerto do sistema, e a terceira ele mesmo decidiu. Nenhuma e mais
+> silencio.
+
 ### feat(card): o PRECO do pote limpado entra na leitura, nao atras do olho (#card #motor)
 
 > Pedido do usuario depois do relatorio do coach: *"apresentar as odds nestas decisoes de
