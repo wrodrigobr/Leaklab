@@ -84,6 +84,62 @@ def test_o_no_e_o_do_ABRIDOR_nao_o_do_hero():
 
 # ── Os guardas, cada um com o numero que o originou ────────────────────────────────────────────
 
+def test_a_LINHA_do_jam_nao_sai_do_numero_de_raises_sozinho():
+    """MUTACAO: voltar `_linha_do_jam` ao mapa numerico `{1:'open_jam', 2:'3bet_jam'}`.
+
+    `preflop_raises_faced` conta raises de **VILAO** — o raise do proprio hero nao entra, ele vira
+    `hero_was_aggressor`. Ler o numero sozinho erra os dois lados, e **sempre na direcao que
+    absolve call ruim**, porque o no errado e sempre o mais LARGO:
+
+    | rf | hero abriu | linha real | o que a versao errada usava |
+    |---|---|---|---|
+    | 1 | nao | open-jam  | `RFI[vilao]` — certo |
+    | 1 | sim | 3-bet jam | `RFI[vilao]`, range de ABERTURA (83 decisoes do acervo) |
+    | 2 | nao | 3-bet jam a frio | `vs_RFI[abridor][vilao]` — certo |
+    | 2 | sim | 4-bet jam | `vs_RFI`, range de 3-BET (23 decisoes) |
+    """
+    from leaklab.preflop_gto_ranges import _linha_do_jam as linha
+    assert linha(1, False) == 'open_jam'
+    assert linha(1, True) == '3bet_jam', 'hero abriu e levou 1 raise: isso e 3-bet jam'
+    assert linha(2, False) == '3bet_jam', 'hero nao abriu e levou 2: open + 3-bet jam a frio'
+    assert linha(2, True) == '4bet_jam', 'hero abriu, 3-betaram e jamaram: 4-bet jam'
+    assert linha(0, False) is None and linha(3, True) is None
+
+
+def test_4BET_jam_nao_recebe_a_carta_de_3bet():
+    """O caso #2 do relatorio do coach, e ele so apareceu ao REGERAR o relatorio.
+
+    `QhAd UTG+2 vs SB, 20,3bb`. O coach: *"tem um 3-bet e um 4-bet. Esse 4-bet e muita forca."*
+    Com a linha lida pelo numero sozinho, isso ia para o no de 3-bet jam — mais largo —, a equity
+    subia para 52,5% e o veredito passou de `marginal` para **`standard`**: o produto abencoando
+    exatamente o call que o coach critica.
+
+    Nao ha nó de 4-bet jam em carta nenhuma. `{}` devolve o vs-random, que e o comportamento
+    antigo, e com ele o G2 volta a rebaixar. Sem gabarito nao vira absolvicao.
+    """
+    assert villain_jam_range('SB', 'UTG+2', 20.3, n_players=8, raises_faced=2,
+                             opener_pos='UTG+2', hero_was_aggressor=True) == {}
+    # CONTROLE: o MESMO rf=2 pego A FRIO (hero nao abriu) e 3-bet jam, e tem carta.
+    assert villain_jam_range('BB', 'SB', 14.0, n_players=8, raises_faced=2,
+                             opener_pos='CO', hero_was_aggressor=False)
+
+
+def test_3BET_jam_nao_e_gradeado_pela_range_de_ABERTURA():
+    """A outra ponta do mesmo erro, e a mais numerosa: 83 decisoes do acervo.
+
+    Hero abre, vilao 3-beta all-in. Isso e `rf=1` com `hero_was_aggressor`, e a versao errada
+    servia a `RFI` do vilao — a range com que ele ABRE, muito mais larga que a com que ele
+    3-beta. Equity inflada, call absolvido.
+    """
+    tres_bet = villain_jam_range('BB', 'CO', 14.0, n_players=8, raises_faced=1,
+                                 hero_was_aggressor=True)
+    abertura = villain_jam_range('BB', 'CO', 14.0, n_players=8, raises_faced=1,
+                                 hero_was_aggressor=False)
+    assert tres_bet, 'o no de 3-bet jam existe nesta profundidade e voltou vazio'
+    assert set(tres_bet) != set(abertura), (
+        'as duas linhas devolveram a MESMA range — o `hero_was_aggressor` esta sendo ignorado')
+
+
 def test_jam_residual_NAO_vira_range():
     """MUTACAO: trocar `_jam_e_a_abertura` por `return True`.
 
@@ -218,7 +274,7 @@ def test_linha_fora_do_modelo_nao_recebe_carta():
 
 # ── O caminho VIVO ─────────────────────────────────────────────────────────────────────────────
 
-def _entrada(opener, allin=True, raises=2, cartas='AcQd'):
+def _entrada(opener, allin=True, raises=2, cartas='AcQd', agg=False):
     from leaklab.models import HandState
     from leaklab.pipeline import build_decision_input
     st = HandState(
@@ -226,23 +282,34 @@ def _entrada(opener, allin=True, raises=2, cartas='AcQd'):
         player_action='call', pot_size=9.0, facing_size=31.4, effective_stack_bb=20.3,
         position='UTG+2', villain_position='SB', is_in_position=False, is_multiway=False,
         actions=[], metadata={'preflop_raises_faced': raises, 'n_players': 8,
-                              'facing_allin': allin, 'preflop_opener': opener})
+                              'facing_allin': allin, 'preflop_opener': opener,
+                              'hero_was_aggressor': agg})
     return build_decision_input(st)
 
 
-def test_pipeline_usa_a_range_de_jam_e_a_equity_do_coach_aparece():
-    """O AQo da revisao cruzada, de ponta a ponta. O card exibia **64,4%** e usava esse numero —
-    medido contra mao aleatoria — para abencoar o call. Contra a range de jam do no certo sao
-    ~52%, que foi o que o coach disse."""
-    com = _entrada('UTG+2')
-    assert com['math']['equitySource'] == 'vs_range', com['math']['equitySource']
-    eq = float(com['math']['estimatedHandEquity'])
-    assert 0.48 <= eq <= 0.57, f'equity {eq} fora do que a range de jam devolve'
+def test_pipeline_leva_o_hero_was_aggressor_ate_a_escolha_do_no():
+    """O caminho VIVO, com os metadados do caso REAL do coach.
 
-    sem = _entrada('')
-    assert sem['math']['equitySource'] == 'vs_random', 'inventou no sem saber quem abriu'
-    assert float(sem['math']['estimatedHandEquity']) > eq, (
-        'a range de jam tem de ser mais forte que mao aleatoria neste spot')
+    A primeira versao deste teste omitia `hero_was_aggressor` e por isso descrevia um spot que
+    nao e o da anotacao: o AQo dela tem `hero_was_aggressor=1` (ele abriu, levaram 3-bet e o SB
+    4-betou all-in). Sem a flag o pipeline classificava como 3-bet jam a frio e servia a carta
+    errada — e o teste passava, porque media outro spot.
+    """
+    # O caso real: hero ABRIU, entao rf=2 e 4-bet jam. Sem no, vs-random, G2 rebaixa.
+    real = _entrada('UTG+2', raises=2, agg=True)
+    assert real['math']['equitySource'] == 'vs_random', (
+        '4-bet jam recebeu carta: o produto volta a abencoar o call que o coach critica')
+
+    # CONTROLE: o MESMO rf=2 a frio e 3-bet jam, e ai a carta responde.
+    frio = _entrada('CO', raises=2, agg=False)
+    assert frio['math']['equitySource'] == 'vs_range'
+    eq = float(frio['math']['estimatedHandEquity'])
+    assert 0.35 <= eq <= 0.60, f'equity {eq} fora do que a range de jam devolve'
+    assert float(real['math']['estimatedHandEquity']) > eq, (
+        'vs-random tinha de ser MAIS otimista que a range de jam neste spot')
+
+    # CONTROLE 2: sem saber quem abriu e sem o hero ter aberto, nao ha no.
+    assert _entrada('', raises=2, agg=False)['math']['equitySource'] == 'vs_random'
 
 
 def test_o_open_simples_continua_como_estava():

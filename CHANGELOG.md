@@ -7,6 +7,48 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(motor): a LINHA do jam nao sai do numero de raises sozinho (#motor #coach)
+
+> Achado ao **regerar o relatorio do coach** depois do deploy da familia 5b — nao por teste, nao
+> por log. Das 71 anotacoes, exatamente uma mudou de veredito, e foi a pior possivel: o **caso #2,
+> o AQo**, subiu de `marginal` para `standard`. O produto passou a abencoar justamente o call que
+> o coach critica.
+>
+> **A causa.** `preflop_raises_faced` conta raises de **VILAO** — o raise do proprio hero nao
+> entra, ele vira `hero_was_aggressor`. Eu li o numero sozinho e errei os dois lados:
+>
+> | rf | hero abriu | linha real | o que eu servia | decisoes |
+> |---|---|---|---|---|
+> | 1 | nao | open-jam | `RFI[vilao]` — certo | 221 |
+> | 1 | **sim** | **3-bet jam** | `RFI[vilao]`, range de ABERTURA | **83** |
+> | 2 | nao | 3-bet jam a frio | `vs_RFI[abridor][vilao]` — certo | 57 |
+> | 2 | **sim** | **4-bet jam** | `vs_RFI`, range de 3-BET | **23** |
+>
+> **106 decisoes no no errado, e as duas pontas na MESMA direcao**: o no servido era sempre o mais
+> LARGO, entao a equity do hero saia inflada e o call ruim era absolvido. O comentario do coach
+> dizia o que os dados nao diziam — *"tem um 3-bet e um 4-bet. Esse 4-bet e muita forca."*
+>
+> A ironia e que eu tinha o discriminador certo e o joguei fora: a primeira versao exigia
+> `hero_was_aggressor`, eu medi que ela descartava 57 de 80 e a substitui por `opener_pos`.
+> Resolvi um problema real criando outro maior. **As duas informacoes eram necessarias**, nao
+> alternativas: `hero_was_aggressor` diz QUAL linha, `preflop_opener` diz QUEM abriu.
+>
+> Virou `_linha_do_jam(raises_faced, hero_was_aggressor)` -> `open_jam | 3bet_jam | 4bet_jam |
+> None`, porta unica dos tres consumidores (HU capturado, `RFI`, `vs_RFI`). O mapa de HU estava
+> deslocado pelo mesmo motivo e foi junto: `ROOT` e open-jam, `R2` e 3-bet jam (`rf=1` com o hero
+> tendo aberto, nao `rf=2`), `SB_VS_3BET` e 4-bet jam.
+>
+> **Nao ha no de 4-bet jam em carta nenhuma**, entao ali a resposta e `{}` — vs-random, o
+> comportamento antigo, e com ele o G2 volta a rebaixar. Sem gabarito nao vira absolvicao.
+>
+> Cobertura: **139 -> 158**, e agora todas no no certo (eram 106 no errado). Tres testes novos, e
+> **as 9 mutacoes sao acusadas** — inclusive a que mexe no `pipeline.py`, arquivo diferente do
+> testado.
+>
+> **Os 15 testes passavam com o bug presente.** Nenhum exercitava `hero_was_aggressor`, entao a
+> mudanca de semantica passou incolume por eles. Foi a mutacao que denunciou, de novo.
+
+
 ### test(card): dois testes do exemplo da landing estavam vermelhos desde 08/08, e eram meus (#card #teste)
 
 > Achado de raspao, rodando a suite do frontend por causa de uma mudanca de i18n desta entrega.

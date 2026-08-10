@@ -62,6 +62,11 @@ def build_decision_input(state: HandState, hand: 'ParsedHand | None' = None) -> 
                     _raises,
                     bool(mtt.get('isPko')),
                     opener_pos=(state.metadata or {}).get('preflop_opener') or '',
+                    # **Obrigatório, não opcional.** `preflop_raises_faced` conta raises de
+                    # VILÃO, então sem esta flag um 3-bet jam (hero abriu, 1 raise de vilão) é
+                    # indistinguível de um open-jam, e um 4-bet jam de um 3-bet jam. Nos dois
+                    # casos o erro serve uma range mais LARGA e absolve call ruim.
+                    hero_was_aggressor=bool((state.metadata or {}).get('hero_was_aggressor')),
                 )
             if not vr and _raises == 1:
                 # Open-jam sem carta de jam cai na range de ABERTURA, que é o comportamento de

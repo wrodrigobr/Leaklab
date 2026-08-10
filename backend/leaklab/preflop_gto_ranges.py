@@ -423,19 +423,54 @@ def villain_reraise_range(villain_pos: str, hero_pos: str, stack_bb: float,
     return out
 
 
-def _no_de_jam_do_vilao(villain_pos: str, hero_pos: str, stack_bb: float,
-                        n_players: Optional[int], raises_faced: int):
-    """`(depth, no)` do nó em que o VILÃO agiu com o jam no menu — ou `(None, None)`.
+def _linha_do_jam(raises_faced: int, hero_was_aggressor: bool) -> Optional[str]:
+    """Qual linha do preflop produziu este all-in: `open_jam`, `3bet_jam`, `4bet_jam` ou `None`.
 
-    O tipo do nó sai de quantos raises o hero enfrenta, porque o último deles É o jam do vilão:
-    1 → o vilão jamou de primeira; 2 → jamou por cima do open do hero; 3 → 4-bet jam.
+    ── O erro que esta função existe para não deixar repetir ──────────────────────────────────
+    `preflop_raises_faced` conta **raises de VILÃO** — o raise do próprio hero não entra, ele vira
+    `hero_was_aggressor`. A primeira versão deste caminho leu o número sozinho e errou os dois
+    lados, sempre na direção que ABSOLVE call ruim:
+
+    | rf | hero abriu | linha real | o que eu usava | efeito |
+    |---|---|---|---|---|
+    | 1 | não | open-jam | `RFI[vilão]` | certo |
+    | 1 | **sim** | **3-bet jam** | `RFI[vilão]` | range de ABERTURA, larga demais (83 decisões) |
+    | 2 | não | open + 3-bet jam a frio | `vs_RFI[abridor][vilão]` | certo |
+    | 2 | **sim** | **4-bet jam** | `vs_RFI` | range de 3-BET, larga demais (23 decisões) |
+
+    Achado ao regerar o relatório do coach: o AQo dele (`QhAd UTG+2`, o caso #2) subiu de
+    `marginal` para `standard` — nós abençoando exatamente o call que ele critica. O comentário
+    dele dizia o que os dados não diziam: *"tem um 3-bet e um 4-bet. Esse 4-bet é muita força."*
+    É 4-bet jam com `rf=2`, e eu gradeava pelo nó de 3-bet.
+
+    **Não há nó de 4-bet jam em carta nenhuma**, então ali a resposta certa é `None` — vs-random,
+    que é o comportamento antigo, e o G2 volta a rebaixar.
+    """
+    rf = int(raises_faced or 0)
+    agg = bool(hero_was_aggressor)
+    if rf == 1:
+        return '3bet_jam' if agg else 'open_jam'
+    if rf == 2:
+        # A frio o hero não abriu: o vilão 3-betou por cima do open de um TERCEIRO, e o nó dele
+        # continua sendo `vs_RFI[abridor][vilão]`. Com o hero tendo aberto, o que veio foi 4-bet.
+        return '4bet_jam' if agg else '3bet_jam'
+    return None
+
+
+def _no_de_jam_do_vilao(villain_pos: str, hero_pos: str, stack_bb: float,
+                        n_players: Optional[int], raises_faced: int,
+                        hero_was_aggressor: bool = False):
+    """`(depth, no)` do nó em que o VILÃO agiu com o jam no menu — ou `(None, None)`.
 
     A seleção espelha `_hu_analyze` e `_load_ring` de propósito. Um índice próprio aqui seria a
     quinta cópia de uma regra que já mora em quatro lugares, e a quinta divergiria calada.
     """
     mesa = int(n_players or 0)
     if mesa == 2:
-        tipo = {1: 'ROOT', 2: 'R2', 3: 'SB_VS_3BET'}.get(int(raises_faced or 0))
+        # `raises_faced` conta raises de VILÃO (o do hero vira `hero_was_aggressor`), então o
+        # tipo do nó depende do PAR, não do número sozinho — ver `_linha_do_jam`.
+        tipo = {'open_jam': 'ROOT', '3bet_jam': 'R2', '4bet_jam': 'SB_VS_3BET'}.get(
+            _linha_do_jam(raises_faced, hero_was_aggressor) or '')
         # Em HU o ator do nó é fixo pela estrutura da mão: quem age primeiro é o SB, quem
         # responde ao open é o BB, quem responde ao 3-bet é o SB de novo. Se o vilão declarado
         # não é esse, a decisão não é a que o nó modela.
@@ -447,7 +482,7 @@ def _no_de_jam_do_vilao(villain_pos: str, hero_pos: str, stack_bb: float,
     # então só o 3-bet jam tem carta. E aqui a mesa tem de ser EXATA — a política de "carta de
     # mesa vizinha absolve mas não acusa" não se transporta para uma range: uma range aproximada
     # não suaviza veredito, ela muda a equity, e move nos DOIS sentidos.
-    if int(raises_faced or 0) != 2:
+    if _linha_do_jam(raises_faced, hero_was_aggressor) != '3bet_jam':
         return None, None
     por_depth = _load_ring().get(('vs_rfi', villain_pos, hero_pos))
     if not por_depth:
@@ -460,7 +495,8 @@ def _no_de_jam_do_vilao(villain_pos: str, hero_pos: str, stack_bb: float,
 
 def villain_jam_range(villain_pos: str, hero_pos: str, stack_bb: float,
                       n_players: Optional[int] = None, raises_faced: int = 2,
-                      is_pko: bool = False, opener_pos: str = '') -> dict:
+                      is_pko: bool = False, opener_pos: str = '',
+                      hero_was_aggressor: bool = False) -> dict:
     """Range com que o villain vai de ALL-IN, como `{hand_canon: weight}`.
 
     ── Por que existe ─────────────────────────────────────────────────────────────────────────
@@ -486,7 +522,8 @@ def villain_jam_range(villain_pos: str, hero_pos: str, stack_bb: float,
         # A captura do GW é Classic. Em PKO ela não serve de substituta: com bounty a range de
         # jam ABRE, e emprestar a Classic estreitaria a range do vilão, inflaria a equity do hero
         # e absolveria call ruim — dano que o buraco de hoje não causa.
-        depth, no = _no_de_jam_do_vilao(villain_pos, hero_pos, stack_bb, n_players, raises_faced)
+        depth, no = _no_de_jam_do_vilao(villain_pos, hero_pos, stack_bb, n_players, raises_faced,
+                                        hero_was_aggressor)
         if no is not None:
             out: dict[str, float] = {}
             massa = {'allin': 0.0, 'raise': 0.0}
@@ -506,7 +543,7 @@ def villain_jam_range(villain_pos: str, hero_pos: str, stack_bb: float,
             # alternativa boa que exige barra alta; aqui, enfrentando 3-bet jam, a alternativa é
             # mão aleatória. Exigir dominância nos dois zerava o HU acima de 16bb — e a 25bb o
             # 3-bet jam do BB é ramo de estratégia, não cauda.
-            if out and (int(raises_faced or 0) != 1
+            if out and (_linha_do_jam(raises_faced, hero_was_aggressor) != 'open_jam'
                         or _jam_e_a_abertura(massa['allin'], massa['raise'])):
                 if sum(_HU_COMBOS(m) for m in out) >= _MASSA_MINIMA_DE_JAM:
                     return out
@@ -529,17 +566,22 @@ def villain_jam_range(villain_pos: str, hero_pos: str, stack_bb: float,
         # Sem esta saída, um HU sem nó capturado cairia no `RFI[SB]` da 9-max — e só não caía por
         # acidente, porque o guarda de dominância barrava antes. Ou há nó HU, ou `{}` honesto.
         return {}
-    _rf = int(raises_faced or 0)
-    if _rf == 1:
+    linha = _linha_do_jam(raises_faced, hero_was_aggressor)
+    if linha == 'open_jam':
         return _jam_da_carta_rfi(villain_pos, stack_bb, n_players, is_pko)
-    if _rf == 2 and opener_pos:
-        # `vs_RFI[opener][defender]` — e o opener é quem ABRIU, não o hero. A primeira versão
-        # exigia `hero_was_aggressor` e indexava pela posição do hero; medido no acervo, isso
-        # descartava **57 das 80** decisões que enfrentam 3-bet jam, todas em que o hero pagou ou
-        # estava nos blinds. O nó do vilão nunca dependeu de onde o hero senta: depende de contra
-        # quem ele 3-betou. Quando o hero é o abridor os dois coincidem, e foi por isso que a
-        # versão errada parecia funcionar nos 5 casos que sobravam.
-        return _jam_da_carta_vs_rfi(villain_pos, opener_pos, stack_bb, n_players, is_pko)
+    if linha == '3bet_jam':
+        # `vs_RFI[opener][defender]` — e o opener é quem ABRIU, que **nem sempre é o hero**. Com
+        # o hero tendo aberto ele é o próprio abridor; num 3-bet jam pego a frio, o abridor é um
+        # terceiro e vem de `preflop_opener`. Indexar pela posição do hero nos dois casos
+        # descartava 57 das 80 decisões; indexar SÓ pelo `preflop_opener` sem olhar
+        # `hero_was_aggressor` mandava 4-bet jam para este nó, que é largo demais.
+        abridor = opener_pos or (hero_pos if hero_was_aggressor else '')
+        if not abridor:
+            return {}
+        return _jam_da_carta_vs_rfi(villain_pos, abridor, stack_bb, n_players, is_pko)
+    # `4bet_jam` e o resto caem aqui: não há nó de 4-bet jam em carta nenhuma, e servir o de
+    # 3-bet no lugar infla a equity e absolve o call. Vazio devolve o vs-random, que é o
+    # comportamento antigo — e com ele o rebaixamento do G2 volta a valer.
     return {}
 
 
