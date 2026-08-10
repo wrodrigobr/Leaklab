@@ -25,6 +25,10 @@ export interface WhyInput {
   heroAction: string;
   hasMultiwayAdvice: boolean;
   limpedPotHeuristic: boolean;
+  /** Preco do pote limpado, quando ha custo de verdade (o BB tem opcao gratis e fica fora). */
+  limpedPrice?: {
+    custoBb: number; poteBb: number; exige: number; equity: number; nJogadores: number;
+  } | null;
   /** preflop enfrentando aposta com equity vs_random: a conta não descreve o spot */
   equityNotRangeAware: boolean;
   preflopNoCoverageStrict: boolean;
@@ -93,8 +97,20 @@ export function selectWhy(i: WhyInput): WhyChoice {
   // e fora dos blinds não existe check nenhum. Reportado por um aluno no SB, que leu a frase e
   // viu um erro factual: a análise descrevia uma mesa que não era a dele.
   if (i.limpedPotHeuristic) {
-    return { key: (i.heroPosition ?? "").toUpperCase() === "BB"
-      ? "card.whyLimped" : "card.whyLimpedForaDoBb" };
+    if ((i.heroPosition ?? "").toUpperCase() === "BB") return { key: "card.whyLimped" };
+    // ── O PRECO entra na frase, e nao atras do olho ────────────────────────────────────────
+    // Em 08/08 os dados de auditoria (equity, pot odds) foram para tras do toggle, com a regra
+    // "a LEITURA sempre visivel, os DADOS no olho". No pote limpado o preco NAO e auditoria: e
+    // a unica evidencia que sustenta o veredito, porque nao existe carta de GTO para essa
+    // arvore. Esconde-lo deixava o card afirmando sem mostrar por que — e foi o pedido do
+    // usuario depois do relatorio do coach: "mostrar o quanto valia a pena".
+    if (i.limpedPrice) {
+      const { custoBb, poteBb, exige, equity, nJogadores } = i.limpedPrice;
+      return { key: "card.whyLimpedPreco", params: {
+        custo: custoBb.toFixed(2), pote: poteBb.toFixed(1),
+        exige: (exige * 100).toFixed(1), equity: (equity * 100).toFixed(1), n: nJogadores } };
+    }
+    return { key: "card.whyLimpedForaDoBb" };
   }
 
   // ANTES da cobertura (que zera a frase): sem isto o card fica com o veredito nu depois de

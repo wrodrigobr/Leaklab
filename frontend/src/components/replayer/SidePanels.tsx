@@ -379,7 +379,15 @@ export function SidePanels({
         // veredito (que estava certo: contra a range real AQs tem ~30%). Um número que
         // contradiz o veredito ensina o jogador a desconfiar da análise inteira.
         // Push/fold fica FORA: ali a equity vem da range de shove e o preço É o enquadramento.
-        const equityNotRangeAware = !isPostflop && !isVsRange && !isShoveFb
+        // Pote LIMPADO fica FORA da supressão, e é o ponto do bloco inteiro: a regra existe
+        // porque equity vs mão ALEATÓRIA contradizia o veredito. Aqui a equity é multiway de
+        // verdade (Monte Carlo por número de jogadores que ainda podem ver o flop), e este é o
+        // único spot pré-flop sem carta em fonte nenhuma — o preço é a evidência que sobra.
+        // Esconder o número justo onde ele é a única razão do veredito deixa o card afirmando
+        // sem mostrar por quê.
+        const limpedPotComPreco = !isPostflop && !!step.facing_limp
+                                  && (step.n_can_see_flop ?? 0) >= 2;
+        const equityNotRangeAware = !isPostflop && !isVsRange && !isShoveFb && !limpedPotComPreco
                                     && eq != null && req != null && req > 0;
         const requiredIsAdjusted = step.adjusted_required_equity != null &&
                                    poRaw != null &&
@@ -400,6 +408,13 @@ export function SidePanels({
           heroAction: (step.action ?? "").toLowerCase(),
           hasMultiwayAdvice: !!step.multiway_advice,
           limpedPotHeuristic, equityNotRangeAware, preflopNoCoverageStrict,
+          // O preco so vai junto quando existe de verdade: o BB tem opcao gratis, e sem
+          // custo a frase viraria "voce pagava 0bb", que e pior que nao dizer nada.
+          limpedPrice: (limpedPotComPreco && step.facing_to_call_bb && poRaw && eq != null)
+            ? { custoBb: step.facing_to_call_bb, exige: poRaw, equity: eq,
+                nJogadores: step.n_can_see_flop ?? 0,
+                poteBb: step.facing_to_call_bb / poRaw - step.facing_to_call_bb }
+            : null,
           gtoSpotMismatch: !!step.gto_spot_mismatch,
           isPfZone, heroStackBb: step.hero_stack_bb,
           heroPosition: step.position,
@@ -933,7 +948,11 @@ export function SidePanels({
                 Aqui ficam só os de PREFLOP (gated !isPostflop). */}
             {!isPostflop && eq != null && !equityNotRangeAware && (
               <div className="flex items-center gap-2 font-mono text-[11px] flex-wrap"
-                title={showAuditPreflop ? (isVsRange ? t("card.reqVsRangeTip") : t("card.reqVsRandomTip")) : t("card.equityTip")}>
+                title={limpedPotComPreco
+                  ? t("card.limpedPriceTip", { n: step.n_can_see_flop })
+                  : showAuditPreflop ? (isVsRange ? t("card.reqVsRangeTip")
+                                                  : t("card.reqVsRandomTip"))
+                                     : t("card.equityTip")}>
                 <span className="w-14 shrink-0 text-muted-foreground uppercase text-[10px]">Equity</span>
                 <span className={cn(
                   "font-bold tabular-nums",
@@ -944,7 +963,15 @@ export function SidePanels({
                 )}>{(eq * 100).toFixed(1)}%</span>
                 <span className="text-muted-foreground text-[10px] whitespace-nowrap">
                   {eq >= 0.65 ? t("card.eqStrong") : eq >= 0.50 ? t("card.eqFavorable") : eq >= 0.35 ? t("card.eqMarginal") : t("card.eqWeak")}
-                  {(showAuditPreflop || isShoveFb) && <span className="text-muted-foreground/60"> · {isVsRange ? t("card.vsRange") : t("card.vsRandom")}</span>}
+                  {(showAuditPreflop || isShoveFb || limpedPotComPreco) && (
+                    <span className="text-muted-foreground/60"> · {
+                      // Nomear a fonte pelo que ela É. Num pote limpado não é "vs range" (não há
+                      // carta) nem "vs aleatória" (o número é multiway) — é contra N jogadores,
+                      // e dizer quantos é o que torna o valor lido corretamente.
+                      limpedPotComPreco ? t("card.vsMultiway", { n: step.n_can_see_flop })
+                        : isVsRange ? t("card.vsRange") : t("card.vsRandom")
+                    }</span>
+                  )}
                 </span>
               </div>
             )}

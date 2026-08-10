@@ -7135,6 +7135,13 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
             'gto_label':          (None if _mw_spot else gto_label),
             'gto_action':         preflop_override_action or live_top_act or gto_action,
             'n_active_opponents': (_mw_nopp or None),   # >=2 = multiway (card usa severidade, não gto HU)
+            # Pote LIMPADO: o card precisa saber para PARAR de esconder o preço. A supressão de
+            # equity/pot odds no preflop existe porque a equity vs mão aleatória contradizia o
+            # veredito — mas aqui ela é multiway de verdade (Monte Carlo), e este é justamente o
+            # spot em que o preço é a única evidência que temos.
+            'facing_limp':        bool(_spot.get('facingLimp')),
+            'facing_to_call_bb':  _spot.get('facingToCallBb'),   # custo de entrar, em bb
+            'n_can_see_flop':     _spot.get('nCanSeeFlop'),
             # Opção B: derivado AO VIVO (não da coluna armazenada, que a re-análise não
             # atualiza) — postflop coberto com stack >60bb é aproximação capada em 60bb.
             'gto_depth_capped':   (not _mw_spot and action.street != 'preflop' and bool(gto_label)

@@ -305,6 +305,9 @@ export interface ReplayStep {
   error_label?: string;
   error_score?: number;
   n_active_opponents?: number | null;  // >=2 = pote multiway (card usa severidade do engine, não gto HU)
+  facing_limp?: boolean | null;        // pote limpado: o preço deixa de ser escondido
+  facing_to_call_bb?: number | null;   // custo de entrar no pote, em bb
+  n_can_see_flop?: number | null;      // preflop: quem ainda não foldou (inclui quem não agiu)
   best_action?: string;
   // error details
   pot_odds_equity?: number;

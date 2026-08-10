@@ -7,6 +7,46 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(card): o PRECO do pote limpado entra na leitura, nao atras do olho (#card #motor)
+
+> Pedido do usuario depois do relatorio do coach: *"apresentar as odds nestas decisoes de
+> completar, pra mostrar o quanto valia a pena, e estamos suportados na decisao"*.
+>
+> Havia um bloqueio real na tela, e ele existia por um bom motivo. `equityNotRangeAware` esconde
+> equity e pot odds no pre-flop quando a equity nao vem de range: um AQs no SB pagando 3-bet
+> aparecia como *"66,3% vs 46,4% · +19,9pp"* ao lado de **"ERRO / RECOMENDADO FOLD"**, porque o
+> numero era vs mao ALEATORIA. Evidencia contradizendo veredito ensina o jogador a desconfiar da
+> analise inteira.
+>
+> **Pote limpado e a excecao, e por dois motivos.** A equity ali passou a ser multiway de verdade
+> (Monte Carlo pelo numero de jogadores que ainda podem ver o flop), entao ela nao contradiz nada.
+> E e o unico spot pre-flop **sem carta em fonte nenhuma** — o preco nao e um detalhe de
+> auditoria, e a UNICA evidencia que sustenta o veredito. Esconde-lo deixava o card afirmando sem
+> mostrar por que.
+>
+> Em 08/08 os dados de auditoria foram para tras do toggle, com a regra "a LEITURA sempre visivel,
+> os DADOS no olho". Aqui o preco **e** leitura, entao ele entra na FRASE:
+>
+> > *Pote limpado, sem carta de GTO para essa arvore: o veredito vem do preco. Voce pagava 0,50bb
+> > para disputar 3,7bb, precisava de 11,9% e tinha 32,0% contra 2 jogadores.*
+>
+> E o rotulo da fonte passa a nomear o que ela E: nao "vs range" (nao ha carta) nem "vs aleatoria"
+> (o numero e multiway), e sim **"vs N jogadores"** — dizer quantos e o que faz o valor ser lido
+> certo, porque 32% contra 1 e outra coisa que 32% contra 3.
+>
+> `SidePanels.limped.test.tsx`, 5 testes, **4 mutacoes acusadas**. i18n nos tres locales.
+>
+> **Duas armadilhas no teste de tela, as duas de zero vazio:**
+> - A primeira versao passava dois "controles" com o **DOM VAZIO**: faltavam `type: "action"` e
+>   `error_label`, o painel retornava `null`, e todo `not.toContain` passava sem provar nada.
+>   Virou um teste de SANIDADE que exige o painel renderizar antes de qualquer assercao.
+> - O script de mutacao reportou **as 4 como acusadas** numa rodada em que o `stdout` do vitest
+>   nao pode ser decodificado (cp1252 no Windows): `r.stdout` virava `None`, e a comparacao dava
+>   falso para todas. Refeito com `encoding='utf-8'` e um CONTROLE que exige a suite verde e a
+>   saida legivel ANTES de mutar.
+>
+> Frontend 318 testes verdes, `api` 148.
+
 ### feat(motor): pote limpado tinha custo ZERO, e por isso nao tinha preco (#motor #coach)
 
 > Veio de uma pergunta sobre o relatorio do coach: em tres maos o produto se calava onde ele dizia
