@@ -423,6 +423,241 @@ def villain_reraise_range(villain_pos: str, hero_pos: str, stack_bb: float,
     return out
 
 
+def _no_de_jam_do_vilao(villain_pos: str, hero_pos: str, stack_bb: float,
+                        n_players: Optional[int], raises_faced: int):
+    """`(depth, no)` do nó em que o VILÃO agiu com o jam no menu — ou `(None, None)`.
+
+    O tipo do nó sai de quantos raises o hero enfrenta, porque o último deles É o jam do vilão:
+    1 → o vilão jamou de primeira; 2 → jamou por cima do open do hero; 3 → 4-bet jam.
+
+    A seleção espelha `_hu_analyze` e `_load_ring` de propósito. Um índice próprio aqui seria a
+    quinta cópia de uma regra que já mora em quatro lugares, e a quinta divergiria calada.
+    """
+    mesa = int(n_players or 0)
+    if mesa == 2:
+        tipo = {1: 'ROOT', 2: 'R2', 3: 'SB_VS_3BET'}.get(int(raises_faced or 0))
+        # Em HU o ator do nó é fixo pela estrutura da mão: quem age primeiro é o SB, quem
+        # responde ao open é o BB, quem responde ao 3-bet é o SB de novo. Se o vilão declarado
+        # não é esse, a decisão não é a que o nó modela.
+        if tipo is None or {'ROOT': 'SB', 'R2': 'BB', 'SB_VS_3BET': 'SB'}[tipo] != villain_pos:
+            return None, None
+        return _hu_no_mais_proximo(_load_hu().get(tipo) or {}, stack_bb)
+
+    # Mesa cheia: só o nó de defesa contra UM open está indexado (`_ring_papeis` exige agressor),
+    # então só o 3-bet jam tem carta. E aqui a mesa tem de ser EXATA — a política de "carta de
+    # mesa vizinha absolve mas não acusa" não se transporta para uma range: uma range aproximada
+    # não suaviza veredito, ela muda a equity, e move nos DOIS sentidos.
+    if int(raises_faced or 0) != 2:
+        return None, None
+    por_depth = _load_ring().get(('vs_rfi', villain_pos, hero_pos))
+    if not por_depth:
+        return None, None
+    depth, no = _hu_no_mais_proximo(por_depth, stack_bb)
+    if no is None or int(no.get('mesa') or 0) != mesa:
+        return None, None
+    return depth, no
+
+
+def villain_jam_range(villain_pos: str, hero_pos: str, stack_bb: float,
+                      n_players: Optional[int] = None, raises_faced: int = 2,
+                      is_pko: bool = False, opener_pos: str = '') -> dict:
+    """Range com que o villain vai de ALL-IN, como `{hand_canon: weight}`.
+
+    ── Por que existe ─────────────────────────────────────────────────────────────────────────
+    Enfrentando um jam, o produto media equity contra **mão aleatória**: `pipeline.py` excluía
+    `facing_allin` da injeção de range de propósito, porque a carta `vs_RFI` modela um 3-bet DE
+    TAMANHO e usar um nó pelo outro é precisão falsa. A saída correta nunca foi voltar ao
+    aleatório — era ler o nó certo.
+
+    ── Onde a range estava ────────────────────────────────────────────────────────────────────
+    Em lugar nenhum novo. Ela é a coluna `allin` dos nós que já capturamos do GW, lida do lado de
+    **quem jamou** em vez de quem responde. O fechamento das cinco famílias registrou esta metade
+    como "bloqueada: exige a range de JAM, e push/fold é seção morta" — e a primeira parte estava
+    certa quanto ao ARQUIVO de ranges (nenhuma chave de push/jam/shove, `_other_spots` vazia) e
+    errada quanto ao DADO: 198 dos nós capturados oferecem jam, 192 têm mão jogando-o, 2.885
+    pares (nó, mão) com frequência > 0. Mesmo formato da família 1 — o dado vinha no payload e
+    ninguém o consumia.
+
+    Vazio (`{}`) quando não há cobertura, e aí o caller mantém o comportamento de hoje.
+    **Nunca inventar range estreita**: equity contra range errada é pior que contra aleatória,
+    porque parece precisa.
+    """
+    if not is_pko:
+        # A captura do GW é Classic. Em PKO ela não serve de substituta: com bounty a range de
+        # jam ABRE, e emprestar a Classic estreitaria a range do vilão, inflaria a equity do hero
+        # e absolveria call ruim — dano que o buraco de hoje não causa.
+        depth, no = _no_de_jam_do_vilao(villain_pos, hero_pos, stack_bb, n_players, raises_faced)
+        if no is not None:
+            out: dict[str, float] = {}
+            massa = {'allin': 0.0, 'raise': 0.0}
+            for mao, acs in (no.get('maos') or {}).items():
+                combos = _HU_COMBOS(mao)
+                f = 0.0
+                for rot, v in (acs or {}).items():
+                    fam = _hu_familia_da_acao(rot, depth)
+                    if fam in massa:
+                        massa[fam] += combos * float(v.get('f') or 0)
+                    if fam == 'allin':
+                        f += float(v.get('f') or 0)
+                if f > 0.005:
+                    out[mao] = round(f, 4)
+            # Dominância só no open-jam, pela mesma assimetria documentada em
+            # `_jam_da_carta_vs_rfi`: ali recusar devolve o caller para a range de ABERTURA, uma
+            # alternativa boa que exige barra alta; aqui, enfrentando 3-bet jam, a alternativa é
+            # mão aleatória. Exigir dominância nos dois zerava o HU acima de 16bb — e a 25bb o
+            # 3-bet jam do BB é ramo de estratégia, não cauda.
+            if out and (int(raises_faced or 0) != 1
+                        or _jam_e_a_abertura(massa['allin'], massa['raise'])):
+                if sum(_HU_COMBOS(m) for m in out) >= _MASSA_MINIMA_DE_JAM:
+                    return out
+
+    # ── A carta já publica as duas ranges de jam; faltava lê-las ───────────────────────────────
+    # Em mesa cheia o nó capturado quase nunca responde: o índice do ring só tem `faces_squeeze`,
+    # e first-in não é indexado por construção (`_ring_papeis` exige agressor). Mas o arquivo de
+    # ranges publica `allin_hands` nos DOIS nós que interessam:
+    #
+    #   open-jam   → `RFI[pos]`                  — 25 das 72 entradas têm mão jamando
+    #   3-bet jam  → `vs_RFI[opener][defender]`  — 183 das 324, e em 105 o jam domina
+    #
+    # A seção `push/fold` do arquivo está morta de fato (nenhuma chave, `_other_spots` vazia), e
+    # foi por isso que esta metade da família 5 ficou registrada como bloqueada. Mas a push range
+    # nunca esteve nela: estava na coluna de all-in dos nós que já consultamos todo dia.
+    if int(n_players or 0) == 2:
+        # **Mesa de 2 nunca consulta carta de mesa cheia.** É a regra que originou todo o caminho
+        # HU: a revisão com o coach provou por oráculo externo que a carta ring mente em heads-up
+        # (JJ no BB vs open é "call 100%" na 9-max e 3-BET 100% no GW HU, em toda profundidade).
+        # Sem esta saída, um HU sem nó capturado cairia no `RFI[SB]` da 9-max — e só não caía por
+        # acidente, porque o guarda de dominância barrava antes. Ou há nó HU, ou `{}` honesto.
+        return {}
+    _rf = int(raises_faced or 0)
+    if _rf == 1:
+        return _jam_da_carta_rfi(villain_pos, stack_bb, n_players, is_pko)
+    if _rf == 2 and opener_pos:
+        # `vs_RFI[opener][defender]` — e o opener é quem ABRIU, não o hero. A primeira versão
+        # exigia `hero_was_aggressor` e indexava pela posição do hero; medido no acervo, isso
+        # descartava **57 das 80** decisões que enfrentam 3-bet jam, todas em que o hero pagou ou
+        # estava nos blinds. O nó do vilão nunca dependeu de onde o hero senta: depende de contra
+        # quem ele 3-betou. Quando o hero é o abridor os dois coincidem, e foi por isso que a
+        # versão errada parecia funcionar nos 5 casos que sobravam.
+        return _jam_da_carta_vs_rfi(villain_pos, opener_pos, stack_bb, n_players, is_pko)
+    return {}
+
+
+def _jam_e_a_abertura(massa_jam: float, massa_raise: float) -> bool:
+    """O jam só vira range quando ele É a agressão daquela profundidade, não a cauda dela.
+
+    ── Por que este guarda existe ─────────────────────────────────────────────────────────────
+    Sem ele o consumo da range de jam produz o pior resultado possível: uma range **estreita e
+    confiante** feita do resíduo da carta. Medido no acervo: `7h7s UTG+2 vs SB a 29,8bb` saía com
+    range de **10 mãos** e a equity pulava de 59,5% para 72,1% — 12,6 pontos, num fold que hoje é
+    `gto_correct`. A 30bb o open-jam é fração residual da estratégia; condicionar nela é a
+    precisão falsa contra a qual todo este arquivo está escrito.
+
+    E há um motivo mais forte que o estatístico: a auditoria de 09/08 escolheu a range de
+    ABERTURA de propósito, por ser "mais larga que a de jam, logo conservadora a favor do hero".
+    Sem este guarda, ligar a range de jam reverteria calada uma decisão deliberada, e no sentido
+    que ABSOLVE call ruim.
+
+    O limiar não é inventado: é uma comparação dentro da própria fonte. Vale onde abrir É jamar,
+    que é o regime raso — e casa com o que se vê na árvore do GW, onde abaixo de ~9bb a primeira
+    decisão não oferece mais aumento dimensionado.
+
+    **Os dois caminhos passam por aqui** (nó capturado e carta de RFI). Eram duas leituras da
+    mesma regra, e regra em N lugares diverge calada no N+1.
+    """
+    return massa_jam >= massa_raise
+
+
+def _balde_da_carta(stack_bb: float, is_pko: bool) -> dict:
+    """O bloco de ranges da profundidade — PKO quando há, senão Classic. Mesma seleção que
+    `villain_open_range` e `villain_reraise_range` fazem, extraída para não virar a terceira.
+
+    Diferença de propósito em relação a elas: aqui a profundidade do balde é CONFERIDA contra o
+    stack real. `_stack_bucket` satura nos extremos e devolve a carta de 10bb para um stack de
+    3,9bb sem dizer nada — silêncio que virou duas acusações falsas no acervo. Range de jam de
+    outra profundidade é o mesmo defeito que o guarda de 25% já mata no caminho capturado.
+    """
+    if is_pko:
+        _pko_bk, _stg, _lbl = _pko_ranges_for(stack_bb)
+        if _pko_bk:
+            return _pko_bk
+    balde = _stack_bucket(stack_bb)
+    try:
+        prof = float(str(balde).replace('bb', ''))
+    except (TypeError, ValueError):
+        return {}
+    if not _profundidade_compativel(prof, stack_bb):
+        return {}
+    return _load().get('ranges', {}).get(balde, {})
+
+
+# Massa mínima (em combos, de 1326) para uma range de jam valer como leitura. 60 combos são
+# ~10 mãos canônicas. Ver o comentário do piso em `_jam_do_spot` para o número medido por trás.
+_MASSA_MINIMA_DE_JAM = 60
+
+
+def _jam_do_spot(spot: Optional[dict], exigir_dominancia: bool = True) -> dict:
+    """`{hand_canon: freq_de_RAI}` de um spot da carta — `{}` se ninguém jama ali.
+
+    Lê a MESMA estrutura que `villain_open_range` e `villain_reraise_range`, mudando só o filtro:
+    lá o peso é toda ação não-fold, aqui é só `RAI`. Serve tanto o `RFI[pos]` (open-jam) quanto o
+    `vs_RFI[opener][defender]` (3-bet jam) porque os dois têm o mesmo formato — e um extrator por
+    nó seria a segunda cópia de uma leitura que já diverge fácil.
+    """
+    if not spot:
+        return {}
+    massa = lambda hs: sum(_HU_COMBOS(m) for m in _expand_range(hs or ''))
+    mj = massa(spot.get('allin_hands'))
+    mr = massa(spot.get('raise_hands') or spot.get('hands'))
+    if exigir_dominancia and not _jam_e_a_abertura(mj, mr):
+        return {}
+    # ── Piso de suporte ────────────────────────────────────────────────────────────────────────
+    # Range estreita demais não é leitura, é ruído com aparência de precisão — e a DIREÇÃO do
+    # erro decide que ele importa: range estreita puxa a equity para baixo, o que absolve fold e
+    # **condena call**, que é o lado onde acusação nova nasce. Medido nas 57 decisões de 3-bet
+    # jam do acervo, a distribuição é limpa: 21 a 33 mãos no corpo e um único caso de **5 mãos**
+    # (`AcTs UTG+2 vs SB a 27,4bb`, −24,6 pontos de equity). O piso é julgamento meu, escolhido
+    # abaixo do corpo e acima do caso solto; o que ele não é é limiar de conveniência.
+    if mj < _MASSA_MINIMA_DE_JAM:
+        return {}
+    hand_freqs = spot.get('hand_freqs', {}) or {}
+    out: dict[str, float] = {}
+    for h in _expand_range(spot.get('allin_hands', '') or ''):
+        f = float((hand_freqs.get(h) or {}).get('RAI') or 0)
+        # Sem `hand_freqs` a carta só diz "esta mão está na range de all-in", sem frequência —
+        # peso 1.0, o mesmo que `villain_open_range` faz na mesma situação.
+        out[h] = round(f, 4) if f > 0.005 else (1.0 if not hand_freqs.get(h) else 0.0)
+    return {h: w for h, w in out.items() if w > 0}
+
+
+def _jam_da_carta_rfi(pos_vilao: str, stack_bb: float, n_players: Optional[int],
+                      is_pko: bool) -> dict:
+    """Open-jam: o vilão abriu de all-in. O nó dele é a própria RFI da posição."""
+    bk = _balde_da_carta(stack_bb, is_pko)
+    return _jam_do_spot((bk.get('RFI') or {}).get(_norm_pos(pos_vilao, n_players)))
+
+
+def _jam_da_carta_vs_rfi(pos_vilao: str, pos_opener: str, stack_bb: float,
+                         n_players: Optional[int], is_pko: bool) -> dict:
+    """3-bet jam: alguém abriu e o vilão respondeu de all-in.
+
+    O nó é `vs_RFI[opener][defender]` — o abridor manda no primeiro índice, o vilão que 3-betou é
+    o defender. É a MESMA entrada que `villain_reraise_range` consulta e na mesma ordem; a
+    diferença é o filtro, que aqui fica só no all-in em vez de somar todas as famílias de aumento.
+    """
+    bk = _balde_da_carta(stack_bb, is_pko)
+    spot = ((bk.get('vs_RFI') or {}).get(_norm_pos(pos_opener, n_players)) or {}).get(
+        _norm_pos(pos_vilao, n_players))
+    # ── Aqui a barra é MENOR que no open-jam, e a razão é a alternativa ────────────────────────
+    # No open-jam, recusar a range de jam devolve o caller para `villain_open_range` — uma range
+    # real, escolhida de propósito por ser conservadora. Trocá-la exige limpar uma barra alta.
+    # Enfrentando um 3-bet jam o caller não tem para onde cair: hoje é **mão aleatória**. Uma
+    # range do nó CERTO ganha do aleatório mesmo sem dominar a agressão, e exigir dominância aqui
+    # descartaria 3 dos 9 nós medidos com share de 0,42 a 0,48 — 3-bet jam a 20-25bb não é cauda
+    # de estratégia, é ramo inteiro. O que continua barrado é o nó sem all-in nenhum.
+    return _jam_do_spot(spot, exigir_dominancia=False)
+
+
 def _canonical_open_bb(bk_data: dict, opener_pos: str) -> Optional[float]:
     """Tamanho de open canônico do GTO p/ a posição do opener, em bb — lido do código
     de sizing (R{x}) modal na RFI do opener (ex.: 'R2.1' → 2.1bb). None se o opener
@@ -857,23 +1092,34 @@ def _load_ring() -> dict:
 
 
 def _hu_no_mais_proximo(por_depth: dict, stack_bb: float):
-    """No de profundidade mais proxima — ou None quando a distancia RELATIVA passa de 40%.
+    """No de profundidade mais proxima — ou None quando a distancia RELATIVA passa da janela.
     Um jogador a 5bb nao pode ser gradeado pela carta de 10bb: melhor null honesto que carta de
     outra profundidade (e o mesmo principio que derrubou a carta ring em HU)."""
     if not por_depth:
         return None, None
     # Distancia RELATIVA, nao absoluta: com nos em {10, 25} e stack 17, o absoluto escolhe 10
-    # (dist 7 < 8) que REPROVA no guarda de 40%, enquanto 25 passaria — e o caso 73 (A5s SB
-    # first-in a 17bb) caia em null indevido. 7bb de distancia a 10bb e outra estrategia; 8bb a
-    # 25bb e a mesma familia.
+    # (dist 7 < 8) que REPROVA no guarda, enquanto 25 passaria — e o caso 73 (A5s SB first-in a
+    # 17bb) caia em null indevido. 7bb de distancia a 10bb e outra estrategia; 8bb a 25bb e a
+    # mesma familia.
     d = min(por_depth, key=lambda x: abs(x - stack_bb) / max(x, stack_bb))
-    # Janela de 25%, nao 40%. A primeira versao usou 40% e a amostragem do acervo pegou o dano:
-    # SB a 14,8bb gradeado pelo no de 10bb — outro REGIME (a 10bb o SB e jam/limp; a 15bb existe
-    # raise normal), e um AJo foi acusado por min-raisar "em vez de jamar". Fronteira de regime
-    # e onde profundidade vizinha mais mente; melhor null honesto ate capturar o no certo.
-    if abs(d - stack_bb) / max(d, stack_bb) > 0.25:
+    if not _profundidade_compativel(d, stack_bb):
         return None, None
     return d, por_depth[d]
+
+
+def _profundidade_compativel(depth: float, stack_bb: float) -> bool:
+    """Distância RELATIVA de no máximo 25% entre a carta e o stack real.
+
+    Extraído de `_hu_no_mais_proximo` porque o consumidor de range de jam precisa da MESMA
+    pergunta e não tem um dicionário de profundidades para passar: ele recebe um balde de
+    `_stack_bucket`, que **satura** no extremo — a 3,9bb devolve a carta de 10bb sem avisar.
+    Medido no acervo, isso produzia duas acusações falsas (`3hAh CO vs BTN a 3,9bb` e `KdJs BTN
+    vs SB a 5,2bb`, ambas viraram `small_mistake`): a 4bb pagar um jam com A3s é obrigatório, e
+    só saía erro porque a range de 10bb é bem mais tight que a de 4bb.
+    """
+    if not depth or depth <= 0:
+        return False
+    return abs(depth - stack_bb) / max(depth, stack_bb) <= 0.25
 
 
 def _hu_familia_da_acao(rotulo: str, depth: float) -> str:

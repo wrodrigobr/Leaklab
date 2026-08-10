@@ -115,29 +115,61 @@ def test_pipeline_injeta_a_range_quando_ha_3bet():
     assert _entrada(0)['math']['equitySource'] == 'vs_random'
 
 
-def test_ALLIN_fica_fora_da_range_de_3bet():
+def test_ALLIN_nunca_e_gradeado_pela_range_de_3BET_DIMENSIONADO():
     """A carta `vs_RFI` modela um 3-bet DE TAMANHO, nao um jam — sao nos diferentes.
 
     Pego ao regerar o relatorio do coach: com a range de 3-bet injetada num 4-bet ALL-IN, o AQo
     ganhou equity mais verdadeira (64,4% -> 51,7%) e mesmo assim **subiu** para `standard`, porque
     o G2 so rebaixa quando a fonte e `vs_random`. Trocar aleatoria por uma range do no errado e a
     precisao falsa contra a qual eu mesmo tinha escrito o comentario no codigo.
+
+    ── Atualizado em 09/08 ────────────────────────────────────────────────────────────────────
+    A versao anterior afirmava `equitySource == 'vs_random'` enfrentando all-in, e isso era
+    DESCRICAO DO ESTADO, nao invariante: o vs-random nao era a resposta certa, era a ausencia de
+    resposta. Hoje existe `villain_jam_range`, que le a coluna de all-in do MESMO no — e o
+    principio deste teste continua de pe, so que agora ele pode ser verificado direito: o que
+    nunca pode acontecer e o all-in receber a range de AUMENTO DIMENSIONADO.
+
+    O teste passou a comparar as duas ranges em vez de olhar so o rotulo da fonte. Um rotulo
+    `vs_range` nao diz de qual no ele veio, e era exatamente isso que precisava ser garantido.
     """
     from leaklab.models import HandState
     from leaklab.pipeline import build_decision_input
+    from leaklab.preflop_gto_ranges import villain_jam_range, villain_reraise_range
 
-    def _entrada(facing_allin):
+    def _entrada(facing_allin, opener='UTG+2'):
         st = HandState(
             hand_id='H', street='preflop', hero='hero', hero_cards='AcQd', board=[],
             player_action='call', pot_size=9.0, facing_size=31.4, effective_stack_bb=20.3,
             position='UTG+2', villain_position='SB', is_in_position=False, is_multiway=False,
             actions=[], metadata={'preflop_raises_faced': 2, 'n_players': 8,
-                                  'facing_allin': facing_allin})
+                                  'facing_allin': facing_allin, 'preflop_opener': opener})
         return build_decision_input(st)
 
-    assert _entrada(True)['math']['equitySource'] == 'vs_random', 'jam gradeado por carta de 3-bet'
-    # CONTROLE: o MESMO spot sem all-in continua ganhando a range
-    assert _entrada(False)['math']['equitySource'] == 'vs_range'
+    jam = villain_jam_range('SB', 'UTG+2', 20.3, 8, 2, opener_pos='UTG+2')
+    dimensionado = villain_reraise_range('SB', 'UTG+2', 20.3, 8)
+    assert jam and dimensionado, 'controle quebrado: as duas cartas precisam existir aqui'
+    assert set(jam) != set(dimensionado), 'as duas ranges sao iguais — o teste nao discrimina nada'
+
+    com_allin = _entrada(True)
+    assert com_allin['math']['equitySource'] == 'vs_range'
+    # A prova de qual no foi usado: a equity tem de bater com a range de JAM, nao com a de aumento.
+    from leaklab.equity import equity_vs_range
+    eq = round(float(com_allin['math']['estimatedHandEquity']), 3)
+    assert eq == round(float(equity_vs_range('AQo', jam)), 3), (
+        f'{eq} nao veio da range de jam')
+    assert eq != round(float(equity_vs_range('AQo', dimensionado)), 3), (
+        'jam gradeado por carta de 3-bet dimensionado')
+
+    # CONTROLE 1: o MESMO spot SEM all-in usa a range de 3-bet dimensionado.
+    sem_allin = _entrada(False)
+    assert sem_allin['math']['equitySource'] == 'vs_range'
+    assert round(float(sem_allin['math']['estimatedHandEquity']), 3) == round(
+        float(equity_vs_range('AQo', dimensionado)), 3)
+
+    # CONTROLE 2: sem saber quem abriu nao ha no de jam, e o vs-random volta — null honesto em vez
+    # de carta adivinhada.
+    assert _entrada(True, opener='')['math']['equitySource'] == 'vs_random'
 
 
 if __name__ == '__main__':

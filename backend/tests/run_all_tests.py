@@ -98,6 +98,7 @@ SUITES = {
                   'test_coletor_gw.py',
                   'test_ring_gw.py',
                   'test_equity_vs_range_3bet.py',
+                  'test_villain_jam_range.py',
                   'test_forca_da_mao_string_ou_lista.py',
                   'test_todo_caminho_mesmos_args.py',
                   'test_carta_do_no_certo.py',

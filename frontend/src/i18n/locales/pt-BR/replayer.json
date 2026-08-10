@@ -112,7 +112,7 @@
     "vsRandom": "vs aleatória",
     "vsRange": "vs range",
     "reqVsRandomTip": "Equity estimada vs uma mão aleatória, não vs o range real do oponente. O veredito vem da estratégia GTO da sua mão (acima). Contra o range do oponente, a equity costuma ser menor.",
-    "reqVsRangeTip": "Equity estimada vs a range de abertura GTO real do oponente (não vs uma mão aleatória), pela matriz de equity mão-a-mão. O veredito vem da estratégia GTO da sua mão (acima).",
+    "reqVsRangeTip": "Equity estimada vs a range GTO real do oponente para a ação que ele tomou (não vs uma mão aleatória), pela matriz de equity mão-a-mão. Se ele foi de all-in, a range é a de all-in, que é mais estreita que a de abertura. O veredito vem da estratégia GTO da sua mão (acima).",
     "reqSolverContextTip": "Pot odds da sua ação. O veredito vem da estratégia do solver (acima), que considera o range inteiro e as ruas futuras, não só esta conta. Por isso a margem aparece neutra.",
     "multiway": "Multiway · {{n}}-way",
     "depthCapped": "≈ Aproximação",

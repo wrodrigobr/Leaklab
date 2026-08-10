@@ -112,7 +112,7 @@
     "vsRandom": "vs random",
     "vsRange": "vs range",
     "reqVsRandomTip": "Equity estimated vs a random hand, not vs the opponent's actual range. The verdict comes from your hand's GTO strategy (above). Vs the opponent's range, equity is usually lower.",
-    "reqVsRangeTip": "Equity estimated vs the opponent's actual GTO opening range (not vs a random hand), from the hand-vs-hand equity matrix. The verdict comes from your hand's GTO strategy (above).",
+    "reqVsRangeTip": "Equity estimated vs the opponent's actual GTO range for the action they took (not vs a random hand), from the hand-vs-hand equity matrix. If they moved all-in, the range is the all-in range, which is tighter than the opening range. The verdict comes from your hand's GTO strategy (above).",
     "reqSolverContextTip": "Pot odds of your action. The verdict comes from the solver strategy (above), which accounts for the whole range and future streets, not just this calculation. That's why the margin is shown neutral.",
     "multiway": "Multiway · {{n}}-way",
     "depthCapped": "≈ Approximation",

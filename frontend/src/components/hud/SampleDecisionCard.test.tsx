@@ -15,7 +15,7 @@
  */
 import { describe, it, expect, vi, afterEach, beforeEach } from "vitest";
 import { readFileSync } from "node:fs";
-import { render, screen, cleanup, waitFor } from "@testing-library/react";
+import { render, screen, cleanup, waitFor, fireEvent } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 const FIXTURE = "../backend/fixtures/decisao_exemplo.json";
@@ -51,6 +51,22 @@ function montar() {
 beforeEach(() => { pedir.mockReset(); });
 afterEach(() => cleanup());
 
+/** O olho de detalhes, sem depender de qual é o estado inicial. Desde 08/08 os INDICADORES
+ *  (cenário, posição do vilão, barra de frequência por ação) vivem atrás dele — o usuário pediu
+ *  que o ícone tivesse trabalho, e a divisão ficou "leitura sempre visível, auditoria no toggle".
+ *  O `t` mockado devolve a chave, então o título do botão é a chave crua. Escrever
+ *  `getByTitle("card.toggleShow")` cravaria o padrão fechado, que nesta superfície não é o caso —
+ *  e um teste que crava o default quebra na próxima vez que o default mudar, sem nada de errado
+ *  no produto. Foi assim que este arquivo quebrou. */
+function alternarDetalhes() {
+  fireEvent.click(screen.getByTitle(/^card\.toggle(Show|Hide)$/));
+}
+
+/** Garante o olho ABERTO, seja qual for o default. */
+function abrirDetalhes() {
+  if (screen.queryByTitle("card.toggleShow")) alternarDetalhes();
+}
+
 describe("exemplo de análise — o dado é real", () => {
   it("renderiza a evidência da decisão que o backend serve", async () => {
     pedir.mockResolvedValue({ decision: decisao });
@@ -61,12 +77,19 @@ describe("exemplo de análise — o dado é real", () => {
     // não quebra o teste, empobrecê-la quebra.
     await waitFor(() => expect(screen.getAllByText(new RegExp(pg.hand_type)).length).toBeGreaterThan(0));
 
+    // CONTROLE, e ele vem primeiro: a LEITURA do card não depende do olho. Se um dia isto
+    // quebrar, o problema é o card ter escondido o que se propõe a responder, não este teste.
+    expect(document.body.textContent ?? "", "profundidade de referência")
+      .toContain(pg.stack_bucket);
+
+    // Os DADOS de auditoria abrem no olho desde 08/08 — a primeira versão deste teste media o
+    // card fechado e passou a falhar ali, sem que nada estivesse errado no produto.
+    abrirDetalhes();
     const texto = document.body.textContent ?? "";
     // A posição do HERÓI não aparece no card de preflop: num cenário `vs_rfi` o contexto é
     // "vs CO", e a do herói fica implícita. Medido, não suposto — a primeira versão deste teste
     // cobrava `pg.position` e falhou por isso.
     expect(texto, "posição do vilão").toContain(pg.vs_position);
-    expect(texto, "profundidade de referência").toContain(pg.stack_bucket);
     // % da range de defesa, com uma casa — é a barra que o card desenha
     expect(texto, "range de defesa").toContain((pg.range_pct * 100).toFixed(0));
     // equity da mão vs range
@@ -81,12 +104,23 @@ describe("exemplo de análise — o dado é real", () => {
     const comFreq = Object.entries(freq).filter(([, v]) => v > 0.001);
     expect(comFreq.length, "a fixture não tem frequência nenhuma").toBeGreaterThan(0);
 
-    await waitFor(() => {
-      const texto = document.body.textContent ?? "";
-      for (const [, v] of comFreq) {
-        expect(texto, `frequência ${(v * 100).toFixed(1)}% ausente`).toContain((v * 100).toFixed(1));
-      }
-    });
+    await waitFor(() => expect(
+      screen.getAllByText(new RegExp(decisao.preflop_gto.hand_type)).length).toBeGreaterThan(0));
+
+    abrirDetalhes();
+    const aberto = document.body.textContent ?? "";
+    for (const [, v] of comFreq) {
+      expect(aberto, `frequência ${(v * 100).toFixed(1)}% ausente`).toContain((v * 100).toFixed(1));
+    }
+
+    // CONTROLE: fechando o olho, ela some. Sem isto o teste passaria igual se o olho não fizesse
+    // nada — e olho inerte já foi defeito real aqui, notado pelo usuário na primeira tela.
+    alternarDetalhes();
+    const fechado = document.body.textContent ?? "";
+    for (const [, v] of comFreq) {
+      expect(fechado, `frequência ${(v * 100).toFixed(1)}% sobreviveu ao fechar`)
+        .not.toContain((v * 100).toFixed(1));
+    }
   });
 
   it("não renderiza nada quando o backend não tem exemplo", async () => {

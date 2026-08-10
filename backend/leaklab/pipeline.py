@@ -46,7 +46,27 @@ def build_decision_input(state: HandState, hand: 'ParsedHand | None' = None) -> 
             _raises = int((state.metadata or {}).get('preflop_raises_faced') or 0)
             mtt = state.metadata.get('mtt_context', {}) or {}
             vr = None
-            if _raises == 1:
+            # ── 09/08: enfrentando ALL-IN, a range é a de JAM ──────────────────────────────────
+            # Até aqui o all-in caía no vs-random de propósito: a carta `vs_RFI` modela um 3-bet
+            # DE TAMANHO, e usar um nó pelo outro é precisão falsa. A saída nunca foi voltar ao
+            # aleatório, era ler o nó certo — a coluna `allin_hands` do MESMO spot, que já estava
+            # no arquivo. `villain_jam_range` devolve `{}` sem cobertura, e aí nada muda.
+            _allin = bool((state.metadata or {}).get('facing_allin'))
+            if _allin and _raises >= 1:
+                from .preflop_gto_ranges import villain_jam_range
+                vr = villain_jam_range(
+                    state.villain_position,
+                    state.position,
+                    state.effective_stack_bb or 0.0,
+                    state.metadata.get('n_players'),
+                    _raises,
+                    bool(mtt.get('isPko')),
+                    opener_pos=(state.metadata or {}).get('preflop_opener') or '',
+                )
+            if not vr and _raises == 1:
+                # Open-jam sem carta de jam cai na range de ABERTURA, que é o comportamento de
+                # hoje e é conservador de propósito (mais larga que a de jam, logo a favor do
+                # hero). O `villain_jam_range` só a substitui onde abrir É jamar.
                 from .preflop_gto_ranges import villain_open_range
                 vr = villain_open_range(
                     state.villain_position,
@@ -54,16 +74,7 @@ def build_decision_input(state: HandState, hand: 'ParsedHand | None' = None) -> 
                     state.metadata.get('n_players'),
                     bool(mtt.get('isPko')),
                 )
-            elif (_raises >= 2 and state.position
-                    and not (state.metadata or {}).get('facing_allin')):
-                # **All-in fica FORA.** A carta `vs_RFI` modela um 3-bet DE TAMANHO, não um jam:
-                # são nós diferentes, e usar um pelo outro é o mesmo defeito que o caminho HU
-                # existe para matar. Descoberto ao regerar o relatório do coach: o AQo contra
-                # 4-bet all-in ganhou equity mais verdadeira (64,4% -> 51,7%) e **subiu** para
-                # `standard`, porque o G2 deixa de disparar quando a fonte vira `vs_range`.
-                # Trocar `vs_random` por uma range do nó errado é exatamente a precisão falsa
-                # contra a qual eu tinha escrito o comentário acima. Enfrentando all-in, o
-                # vs-random continua, e com ele o rebaixamento do G2.
+            elif not vr and _raises >= 2 and state.position and not _allin:
                 from .preflop_gto_ranges import villain_reraise_range
                 vr = villain_reraise_range(
                     state.villain_position,

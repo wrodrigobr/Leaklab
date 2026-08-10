@@ -7,6 +7,120 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### test(card): dois testes do exemplo da landing estavam vermelhos desde 08/08, e eram meus (#card #teste)
+
+> Achado de raspao, rodando a suite do frontend por causa de uma mudanca de i18n desta entrega.
+> `SampleDecisionCard.test.tsx` falhava em 2 de 5 — e nao era o produto, era o teste cravando um
+> estado que eu mesmo mudei a pedido do usuario.
+>
+> **Provado por bisseccao, nao por leitura:** worktree em `9a188214` (antes dos dois commits do
+> card) rodou **5 de 5 verdes**. Depois de `a27c874b` + `b598bddb`, 3 de 5. As falhas sao minhas.
+>
+> A causa: em `b598bddb` os INDICADORES (cenario, posicao do vilao, barra de frequencia por acao)
+> foram para tras do olho de detalhes — que foi exatamente o pedido *"precisa ver o que podemos
+> ocultar, e exibir apenas qdo clicar no icone"*. O teste media o card no estado inicial e passou
+> a nao encontrar `CO` nem `34.5%`. **Nada estava errado no produto** (a posicao do vilao continua
+> no texto, so que atras do toggle).
+>
+> Consertado no teste, com o guarda melhorado no caminho: ele agora ALTERNA o olho e exige que os
+> dados sumam ao fechar — antes so afirmava presenca, e passaria igual com o olho inerte, que ja
+> foi defeito real aqui. E nao crava mais o default: a primeira tentativa de conserto usava
+> `getByTitle("card.toggleShow")`, o que quebraria de novo na proxima vez que o default mudasse.
+> Nesta superficie o default e ABERTO, e so descobri isso sondando os `title` do DOM.
+>
+> **A licao operacional:** commitei duas mudancas de frontend sem rodar a suite do frontend. A
+> suite do backend passava, e eu li isso como verde.
+
+### feat(motor): familia 5b -- a range de JAM nao estava faltando, estava sem consumidor (#motor #coach)
+
+> O fechamento das cinco familias registrou esta metade como **bloqueada**: *"exige a range de
+> JAM, e push/fold e secao morta"*. Reconferi a primeira parte e ela esta certa — em
+> `leaklab_gto_ranges.json` nao ha chave nenhuma com push/jam/shove e `_other_spots` esta vazia.
+>
+> **A conclusao que tirei dali e que estava errada.** A range de jam nunca morou numa secao
+> propria: ela e a coluna de all-in dos nos que ja consultamos todo dia.
+>
+> | onde | o que tem |
+> |---|---|
+> | `RFI[pos].allin_hands` | open-jam — 25 das 72 entradas tem mao jamando |
+> | `vs_RFI[opener][defender].allin_hands` | 3-bet jam — 183 das 324, jam dominante em 105 |
+> | nos capturados do GW (HU/ring) | 198 oferecem jam, **2.885 pares (no, mao)** com freq > 0 |
+>
+> Mesmo formato da familia 1: o dado vinha no payload e o importador jogava fora.
+>
+> **O efeito.** Enfrentando all-in com 2+ raises, o `pipeline` excluia a injecao de range de
+> proposito e a equity saia contra **mao aleatoria**. Nas 44 decisoes que o no de 3-bet jam cobre,
+> a equity cai **17,8 pontos na mediana**, 43 de 44 para baixo. O AQo que o coach pegou — 64,4%
+> exibidos para abencoar um call — vai a **52,5%**, o numero que ele disse na revisao.
+>
+> **Cobertura medida no acervo:** open-jam 95 de 304, 3-bet jam 44 de 80, 4-bet jam 0 de 12.
+>
+> **Medido no acervo (397 decisoes que enfrentam all-in), A/B com a mesma reconstrucao nos dois
+> bracos:** a fonte vira `vs_range` em 44, e o LABEL muda em **4** — 3 absolvicoes e 1 acusacao.
+> As absolvicoes sao as que davam vergonha: `KK` pagando all-in a 23,6bb era `marginal`, `AK`
+> pagando um jam de 8,1bb era `small_mistake`.
+>
+> **Quatro guardas, cada um vindo de um numero, nao de precaucao:**
+>
+> 1. **Dominancia** (`_jam_e_a_abertura`) — a 30bb o open-jam do SB e cauda de 10 maos; sem o
+>    guarda, `7h7s UTG+2 vs SB a 29,8bb` saltava de 59,5% para **72,1%** de equity num fold hoje
+>    `gto_correct`. Vale so no open-jam, e a razao e a ALTERNATIVA: ali recusar devolve o caller
+>    para `villain_open_range`, escolhida de proposito na auditoria de 09/08 por ser "mais larga
+>    que a de jam, logo conservadora a favor do hero". Enfrentando 3-bet jam a alternativa e o
+>    aleatorio, e exigir dominancia la descartaria ramos inteiros de 0,42 a 0,48 de share.
+> 2. **Janela de profundidade** — `_stack_bucket` **satura**: a 3,9bb devolve a carta de 10bb sem
+>    avisar. O caminho capturado ja tinha janela de 25%, o da carta nao tinha nenhuma, e o A/B
+>    pegou o dano: `3hAh CO vs BTN a 3,9bb` e `KdJs BTN vs SB a 5,2bb` viravam `small_mistake`.
+>    Pagar um jam de 4bb com A3s e obrigatorio. A janela virou `_profundidade_compativel`, uma
+>    funcao usada pelos DOIS caminhos. Ela e responsavel pela maior fatia das exclusoes — **107
+>    das 304** decisoes de open-jam —, e a distribuicao mostra que esta certa: **todas** estao
+>    abaixo de 7,5bb, com o extremo em **0,2bb recebendo a carta de 10bb**.
+>
+>    *Follow-up que isto expoe e que NAO foi tocado aqui:* `villain_open_range` e
+>    `villain_reraise_range` consultam `_stack_bucket` sem janela nenhuma, entao servem a mesma
+>    carta de 10bb ao stack de 0,2bb. Fora do escopo desta entrega, mas e o mesmo defeito.
+> 3. **Piso de suporte** — range estreita puxa a equity para baixo, o que absolve fold e
+>    **condena call**, o lado onde acusacao nova nasce. O corpo da distribuicao ficou em 21-33
+>    maos, com um caso solto de **5** (`AcTs`, −24,6 pontos). O numero do piso e julgamento meu e
+>    esta dito como tal no codigo.
+> 4. **Captura Classic nao vai para PKO** — com bounty a range de jam ABRE. O gate protege a
+>    captura; o ramo da carta segue o caminho que `villain_open_range` ja seguia.
+> 5. **Mesa de 2 nunca consulta carta de mesa cheia** — achado RELENDO o codigo, nao por teste que
+>    falhou. Quando o no HU capturado nao respondia, o fluxo caia no `RFI[SB]` da 9-max, que e a
+>    carta que o caminho HU inteiro existe para nao usar (JJ no BB vs open: "call 100%" na 9-max,
+>    **3-bet 100%** no GW HU). So nao explodia por acidente — a dominancia barrava antes na maioria
+>    das profundidades. Acidente nao e guarda.
+>
+> **O defeito mais caro foi meu e passou pela primeira versao.** Eu indexava `vs_RFI` pela posicao
+> do HERO e exigia `hero_was_aggressor`. O primeiro indice e do **ABRIDOR** — e quando o hero e o
+> abridor os dois coincidem, que e por que a versao errada parecia funcionar nos 5 casos que
+> sobravam. Media no acervo, ela descartava **57 das 80** decisoes de 3-bet jam.
+>
+> **Golden do `/replay`:** exatamente **1 linha** nos dois fixtures, e so o campo `equitySource`
+> (`vs_random` -> `vs_range`) na mao 257046057865. O veredito da linha (`gto_correct` / `correct`
+> / `fold`) esta identico — conferido campo a campo por codigo, nao a olho.
+>
+> `tests/test_villain_jam_range.py` (12 testes). **As 7 mutacoes sao acusadas, cada uma pelo teste
+> que deveria pega-la**, e o arquivo foi conferido por hash depois de restaurado.
+>
+> **Um dos testes nasceu cego, e a mutacao e que denunciou.** A primeira versao do teste do guarda
+> de HU afirmava `{}` a 16/20/30/60bb — e passava com o guarda REMOVIDO, porque naquelas
+> profundidades a dominancia ja devolvia `{}` sozinha. Dois mecanismos produzindo o mesmo
+> resultado, e o teste sem distinguir qual agia. Reescrito removendo o no capturado e escolhendo a
+> profundidade em que a carta de mesa cheia RESPONDERIA, com o controle vindo ANTES da assercao:
+> sem provar que a carta responderia, o `{}` nao prova nada.
+>
+> `test_ALLIN_fica_fora_da_range_de_3bet` afirmava `equitySource == 'vs_random'` enfrentando
+> all-in. Era **descricao do estado, nao invariante** — o vs-random nunca foi a resposta certa,
+> era a ausencia de resposta. Reescrito para verificar o principio de verdade: a equity tem de
+> bater com a range de JAM e **nao** com a de aumento dimensionado. Rotulo de fonte nao diz de
+> qual no ele veio, e era isso que precisava ser garantido.
+>
+> **O que continua sem cobertura, com numero:** 12 decisoes de 4-bet jam (nao ha no), e as de
+> 3-bet jam cujo par (abridor, vilao) a carta nao tem. Ring segue sem no `vs_rfi` capturado — o
+> indice do ring so tem `faces_squeeze` —, o que nao bloqueia esta entrega porque a carta responde,
+> mas continua no backlog de captura.
+
 ### fix(motor): limpar fora dos blinds e DESVIO, nao falta de carta (#motor)
 
 > Observacao do usuario, e e de POKER antes de ser de codigo: limp so e acao legitima nos blinds
