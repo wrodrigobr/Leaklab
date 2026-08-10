@@ -77,6 +77,27 @@ def build_math_snapshot(state: HandState) -> MathSnapshot:
             # 2 opps -> 77% do HU; 3 opps -> 62%; 4 opps -> 53%; 5 opps -> 45%
             factor = 1.0 / (1.0 + 0.3 * (n_opp - 1))
             estimated_equity = round(estimated_equity * factor, 4)
+    elif (estimated_equity is not None and state.street == 'preflop'
+          and (state.metadata or {}).get('facing_limp')):
+        # ── Pote limpado é a exceção do comentário acima ───────────────────────────────────────
+        # "preflop já usa ranges GTO específicas por cenário" vale em todo lugar MENOS aqui: é o
+        # único spot preflop sem carta em fonte nenhuma, então o que sobrava era a equity
+        # HEADS-UP exibida num pote 4-way. Medido: `Q5o` no SB aparecia com **50,2%** onde o
+        # número multiway é 17,5%.
+        #
+        # Aqui a conta é o Monte Carlo de verdade, não o fator empírico do ramo de cima, porque
+        # este número tem um segundo consumidor: o guarda G6, que ACUSA fold com base nele. Duas
+        # fontes para o mesmo fato é o defeito que já custou 263 cards contraditórios neste
+        # projeto — uma conta só, exibida e julgada.
+        _n = int((state.metadata or {}).get('n_can_see_flop') or 0)
+        if _n >= 2:
+            try:
+                from leaklab.multiway_advisor import equity_realizada_em_pote_limpado
+                _mw = equity_realizada_em_pote_limpado(state.hero_cards, _n, state.is_in_position)
+            except Exception:
+                _mw = None
+            if _mw:
+                estimated_equity = _mw[0]
     implied = 0.1 if state.street in {"flop", "turn"} else 0.0
     reverse_implied = 0.15 if (state.hero_cards and len(state.hero_cards) >= 4 and state.hero_cards[0] != state.hero_cards[2]) else 0.05
     pressure = _estimate_pressure(state)

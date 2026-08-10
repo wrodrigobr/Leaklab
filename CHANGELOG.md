@@ -7,6 +7,76 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(motor): pote limpado tinha custo ZERO, e por isso nao tinha preco (#motor #coach)
+
+> Veio de uma pergunta sobre o relatorio do coach: em tres maos o produto se calava onde ele dizia
+> "erro grave, tem que completar". A explicacao que eu tinha escrito no relatorio — *"o caminho e
+> capturar as cartas de limp"* — estava **errada por dois motivos**.
+>
+> **1. A carta nao existe.** Dos 239 nos capturados do GW, 10 tem limp na linha e **9 sao
+> heads-up**. Em mesa cheia, 165 nos tem menu `(FOLD, RAISE)`: a arvore nao deixa UTG-BTN limpar.
+> Nao e lacuna de captura, e jogada que a solucao nao contem. Capturar nao resolveria.
+>
+> **2. Nao era carta que faltava, era PRECO.** `_facing_to_total_at` so olha `bets/raises/all-in`,
+> e limp e `calls`:
+>
+> | | custo zerado |
+> |---|---|
+> | pote LIMPADO | **743 de 743** (100%) |
+> | pote com raise | 8 de 3.107 (0%) |
+>
+> Sem custo, `potOddsEquity` sai `None`. O motor ficava sem preco no unico spot preflop onde ele
+> e a unica evidencia disponivel.
+>
+> **O pote sempre esteve certo.** Num pote com raise o motor mostra `potBb: 1.0, custo: 2.0,
+> potOdds: 0.3046` — invertendo a conta, o pote que ele usa e 4,57bb. A reconstrucao funciona (os
+> 99,6% de 04/08); `potBb` e outro campo, parcial. So o custo faltava.
+>
+> **Tres pecas:**
+>
+> 1. **O custo.** Num pote limpado o nivel a igualar e o BIG BLIND: fora dos blinds paga 1bb, o SB
+>    paga a diferenca, o BB paga zero (opcao gratis). Sai do `to_total - o que ja esta na frente`,
+>    sem caso especial por posicao. **So com limp de verdade** — sem essa condicao, 3.060 decisoes
+>    de first-in ganhariam pot odds de uma vez, e pagar nao e acao da arvore no first-in.
+> 2. **A equity multiway.** O `street_math_engine` so corrige multiway POSTFLOP, com a
+>    justificativa "preflop ja usa ranges GTO por cenario" — verdade menos aqui. Num pote 5-way o
+>    produto exibia a equity HEADS-UP: `Q5o` no SB aparecia com **50,2%** onde o numero e 17,5%.
+>    Monte Carlo de verdade, nao o fator empirico, porque este numero tem um segundo consumidor
+>    que ACUSA — **uma conta so, exibida e julgada**.
+> 3. **G6, o unico guarda que cria acusacao sem carta.** So o FOLD; equity multiway; descontada a
+>    realizacao pela `_realization_tax` que ja existia; margem `_MW_FOLD_MARGIN`, a MESMA que o
+>    `multiway_advisor` usa para chamar um fold de CLARO; teto em `small_mistake`.
+>
+> **Nos tres casos do coach, sem limiar ajustado a mao:** `96s` com 7:1 e 24,2% realizados contra
+> 11,9% -> **acusa** (era o "erro grave" dele); `82s` com 9,0% contra 9,9% -> nao acusa; `Q5o` com
+> 4,9% contra 8,3% -> nao acusa, que e o julgamento que o usuario deu.
+>
+> **Medido no acervo, pareamento provado 1:1 (739 de 743, 4 ambiguas, 0 sem par): 39 labels
+> mudam.** 13 acusacoes novas (folds baratos), 22 suavizacoes, saldo **−9** acusacoes.
+>
+> **Tres armadilhas no caminho, todas minhas e todas de MEDICAO:**
+> - A primeira versao do impacto deu **0 mudancas em 743** — e eu tinha contado as mudancas sem
+>   contar o DENOMINADOR. Pareadas: **0**. A chave usava `potSize`, que o pipeline entrega em
+>   **fichas** (120.0) e o banco em **bb** (1.0). O fichas x bb de novo, agora no medidor.
+> - A ablacao mostrou o **G6 inteiro sendo no-op**: ele exigia `label == 'standard'` e o proprio
+>   conserto do custo ja rebaixava esses folds para `marginal` antes dele.
+> - Com o custo ligado e a equity ainda heads-up, o G1 acordou e **absolvia 73 over-limps** com
+>   numero de 2 jogadores em pote 4-way. Uma fonte so de equity derrubou 160 mudancas para 50.
+>
+> **E um teto que nao estava no pedido.** Dar preco ao spot escalou 11 over-limps de
+> `small_mistake` para `clear_mistake` — 9 sao lixo (`Q2o`, `J5o`, `K6o`) e 2 sao par pequeno em
+> set mining, onde a conta imediata ignora as odds implicitas. Como antes desta entrega os 11 ja
+> eram `small_mistake`, e como o pote que se forma dali e linha que a solucao nao contem, o teto
+> vale para todo pote limpado: **`clear_mistake` exige gabarito**.
+>
+> `tests/test_pote_limpado_tem_preco.py`, 7 testes, **7 mutacoes acusadas** — inclusive a que
+> troca `nCanSeeFlop` por `nActiveOpponents` (este ultimo so conta quem JA AGIU e perde o BB;
+> contar a menos INFLA a equity, que e a direcao que acusa a mais) e a que devolve a semente do
+> Monte Carlo para `hash()`, que e randomizado por processo e faria a mesma mao mudar de rotulo a
+> cada reprocesso.
+>
+> Suites `engine` (837), `gto` (492), `database` (287) e `regression` (58) verdes.
+
 ### merge: duas frentes escreveram `_balde_da_carta` no mesmo dia, e o git juntou em silencio (#motor)
 
 > Duas sessoes chegaram na MESMA necessidade por lados diferentes — o seletor de balde precisa

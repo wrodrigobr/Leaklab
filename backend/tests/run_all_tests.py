@@ -41,6 +41,7 @@ SUITES = {
                   'test_pote_e_equity_river.py',
                   'test_sem_gabarito_nao_e_erro.py',
                   'test_sem_definicao_duplicada.py',
+                  'test_pote_limpado_tem_preco.py',
                   'test_progressao.py',
                   'test_pg_migration_isolation.py',
                   'test_interpretation_sign.py',

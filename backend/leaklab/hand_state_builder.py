@@ -331,6 +331,23 @@ def _hero_committed_at(hand: ParsedHand, actions: List[ParsedAction], hero_index
     return _committed_on_street(hand, actions, hero_index, street, hero)
 
 
+def _houve_limp_antes(hand: ParsedHand, actions_before: List[ParsedAction], hero: str) -> bool:
+    """Algum villain só PAGOU o blind antes do hero, num pote sem raise?
+
+    Num pote SEM raise, qualquer `calls` de villain é limp/complete: open-limp (~1bb) OU complete
+    do SB (~0,5bb). O threshold de 0,4bb pega os dois — antes era 0,9bb e perdia o complete do SB,
+    e aí um iso do BB sobre limp do SB caía na banda de OPEN e 3bb saía "grande demais".
+
+    Extraída porque passou a ter DOIS consumidores: o rótulo `facing_limp` e o CUSTO de entrar no
+    pote (`_facing_to_call_at`). Duas leituras do mesmo fato divergem calado — e neste arquivo a
+    segunda cópia é sempre a que fica para trás.
+    """
+    bb_amt = (hand.bb or 0) or 1.0
+    return any(a.street == 'preflop' and a.player != hero and a.action == 'calls'
+               and (a.amount or 0) >= bb_amt * 0.4
+               for a in actions_before)
+
+
 def _facing_to_call_at(hand: ParsedHand, actions: List[ParsedAction], hero_index: int,
                        street: str, hero: str) -> float:
     """Quanto o hero AINDA PRECISA PAGAR, em fichas — não o tamanho da aposta do vilão.
@@ -343,6 +360,22 @@ def _facing_to_call_at(hand: ParsedHand, actions: List[ParsedAction], hero_index
     o histórico diz `Hero: calls 277.41`, e as pot odds exigiam equity de 27% para uma
     decisão que custava 5%."""
     to_total = _facing_to_total_at(actions, hero_index, street, hand)
+    if to_total <= 0 and street == 'preflop' and _houve_limp_antes(hand, actions[:hero_index], hero):
+        # ── Pote LIMPADO: existe custo, e ele estava indo a zero ──────────────────────────────
+        # `_facing_to_total_at` só olha `bets/raises/all-in`, e limp é `calls`. Resultado: em
+        # **743 de 743** potes limpados do acervo o custo saía 0, logo `potOddsEquity` saía None
+        # e o motor ficava sem preço no único spot onde ele é decisivo. Medido contra o pote com
+        # raise, onde o custo é preenchido em 3.099 de 3.107 — o defeito é do limp, não geral.
+        #
+        # O nível a igualar num pote limpado é o BIG BLIND: quem está fora dos blinds paga 1bb,
+        # o SB paga a diferença (0,5bb) e o BB paga zero, que é a opção grátis dele. Sai
+        # naturalmente do `to_total - o que o hero já tem na frente`, sem caso especial por
+        # posição.
+        #
+        # **Só com limp de verdade.** Sem essa condição o first-in também ganharia preço, e aí
+        # 3.060 decisões passariam a ter pot odds onde hoje não têm — "pagar" não é ação da
+        # árvore no first-in, e o raio de alcance disso não foi medido.
+        to_total = float((hand.bb or 0) or 0)
     if to_total <= 0:
         return 0.0
     to_call = max(0.0, to_total - _hero_committed_at(hand, actions, hero_index, street, hero))
@@ -538,18 +571,9 @@ def extract_decision_points(hand: ParsedHand) -> List[HandState]:
         # NÃO houve raise. O hero (tipicamente BB) só completa/dá check de opção.
         # É uma árvore fora da cobertura GTO (capturamos só árvores raise-first) —
         # marca o spot p/ o display rotular "{pos} vs Limp" em vez de silêncio.
-        facing_limp = False
-        if street == 'preflop' and preflop_raises_faced == 0 and not hero_was_aggressor:
-            bb_amt = (hand.bb or 0) or 1.0
-            for a in actions_before:
-                # Num pote SEM raise, qualquer 'calls' de villain é limp/complete: open-limp
-                # (~1bb) OU complete do SB (~0,5bb). O threshold 0,4bb pega os dois (antes 0,9bb
-                # perdia o complete do SB → BB iso sobre SB-limp caía na banda de OPEN, flagrando
-                # 3bb como "grande demais").
-                if (a.street == 'preflop' and a.player != hero
-                        and a.action == 'calls' and (a.amount or 0) >= bb_amt * 0.4):
-                    facing_limp = True
-                    break
+        facing_limp = (street == 'preflop' and preflop_raises_faced == 0
+                       and not hero_was_aggressor
+                       and _houve_limp_antes(hand, actions_before, hero))
 
         # Cold caller (pra SQUEEZE): posição de quem PAGOU o open antes do hero agir,
         # quando houve open + call sem re-raise. O engine usa isso pra rotear um
@@ -624,6 +648,23 @@ def extract_decision_points(hand: ParsedHand) -> List[HandState]:
             for _a in actions_before)
 
         is_multiway = n_active_opponents >= 2
+
+        # ── Quantos ainda podem ver o flop ────────────────────────────────────────────────────
+        # `n_active_opponents` conta só quem JÁ AGIU voluntariamente — e isso é limitação
+        # conhecida e documentada ("`still_in_now` mente preflop: quem não agiu ainda pode
+        # pagar"). Para pot odds num pote limpado a conta certa é outra: quem NÃO foldou.
+        #
+        # Medido nos três casos do relatório do coach, a diferença é o veredito: no `82s` do SB
+        # o campo diz 2 vilões (os limpers) e são 3 (o BB tem opção grátis e sempre vê o flop).
+        # Com 2 a equity realizada dá 18% e o fold vira erro; com 3 dá 10,6% e o fold é
+        # defensável. Contar a menos INFLA a equity, que é a direção que acusa a mais.
+        #
+        # Só preflop: depois do flop `n_active_opponents` já observa quem agiu de verdade.
+        n_can_see_flop = None
+        if street == 'preflop':
+            _assentos = {s['name'] for s in (hand.seats or [])}
+            if _assentos:
+                n_can_see_flop = max(0, len(_assentos - folded_so_far - {hero}))
 
         # Stack EFETIVO — precisa saber quem está vivo, por isso vem só agora. Em heads-up é
         # `min(eu, ele)`; fora dele continua sendo o stack do hero, e `fonte` diz qual dos dois
@@ -701,6 +742,7 @@ def extract_decision_points(hand: ParsedHand) -> List[HandState]:
                 'total_decisions': None,  # preenchido depois
                 'n_players': len(hand.players) if hand.players else None,  # tamanho da mesa
                 'n_active_opponents': n_active_opponents,
+                'n_can_see_flop':     n_can_see_flop,   # preflop: quem NAO foldou
                 'preflop_raises_faced': preflop_raises_faced,
                 'hero_was_aggressor': hero_was_aggressor,
                 'facing_limp': facing_limp,

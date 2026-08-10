@@ -13,6 +13,7 @@ marginais raramente apostam ou pagam; só os pedaços fortes do range agridem.
 """
 from __future__ import annotations
 import random
+import zlib
 from functools import lru_cache
 
 try:
@@ -142,6 +143,11 @@ def _realization_tax(raw_eq: float, is_in_position, n_opp: int,
     return min(tax, 0.15)
 
 
+# Folga acima das pot odds para chamar um fold de CLARO. Vivia solta dentro do
+# `_advise_impl`; virou constante quando o guarda G6 do motor passou a precisar da
+# MESMA margem — duas copias divergiriam calado.
+_MW_FOLD_MARGIN = 0.03
+
 _ADVISE_CACHE = {}
 
 
@@ -198,7 +204,7 @@ def _advise_impl(hero_cards, board, pot_bb, to_call_bb, n_opponents,
 
     # Limiares: agredir multiway exige mão FORTE (só valor/proteção). Marginal paga ou passa.
     STRONG = 0.62      # equity crua vs range de continuação que justifica value bet/raise
-    FOLD_MARGIN = 0.03 # folga abaixo das pot odds p/ chamar o fold de CLARO
+    FOLD_MARGIN = _MW_FOLD_MARGIN
     # is_clear = veredito de ALTA confiança que VALE sobrepor o solver HU. Decisões próximas
     # (bet vs check marginal, fold no limite) NÃO sobrepõem — caem no engine, sem over-flag.
     if facing:
@@ -233,6 +239,81 @@ def _advise_impl(hero_cards, board, pot_bb, to_call_bb, n_opponents,
         'rationale': why,
         'confidence': 'estimate',
     }
+
+
+_POTE_LIMPADO_CACHE = {}
+
+
+def equity_realizada_em_pote_limpado(hero_cards, n_opponents, is_in_position, n_sims=8000):
+    """`(crua, realizada)` PRÉ-FLOP multiway num pote limpado — ou `None`.
+
+    ── Por que preflop, se o resto deste módulo é postflop ────────────────────────────────────
+    Pote limpado é o único spot preflop sem carta GTO em fonte nenhuma (a árvore do GW não
+    oferece limp de UTG a BTN). O `street_math_engine` só aplica correção multiway **postflop**,
+    com a justificativa "preflop já usa ranges GTO específicas por cenário" — que é verdade em
+    todo lugar menos aqui. Resultado medido: num pote 5-way o produto exibia a equity HEADS-UP,
+    e `Q5o` no SB aparecia com **50,2%** onde o número multiway é **17,4%**.
+
+    ── Vilão ALEATÓRIO, e isso é de propósito ─────────────────────────────────────────────────
+    `_equity_vs_field` amostra de range de CONTINUAÇÃO, que é conceito de board. Aqui o vilão é
+    aleatório, e a direção do erro favorece o hero: quem limpa não tem as mãos mais fortes, então
+    contra uma range de limp real a equity do hero é MAIOR que contra aleatória. Como o único
+    consumidor disto acusa FOLD, subestimar a equity só deixa de acusar — nunca acusa a mais.
+
+    A penalidade de realização é a `_realization_tax` que já existe, sem board (mais vilões e
+    fora de posição pesam; a parte que depende de mão feita não se aplica antes do flop).
+    """
+    if not _HAS_EVAL7:
+        return None
+    # Lista OU string. O motor entrega `['2c','8c']` (o `_parse_cards` do pipeline) e o resto
+    # deste módulo entrega `'2c8c'`. Aceitar só um dos dois é o bug do `_ranks_of`, que iterava
+    # uma string caractere a caractere e transformou naipe em rank em 140 de 470 decisões.
+    hs = (''.join(str(c) for c in hero_cards) if isinstance(hero_cards, (list, tuple))
+          else str(hero_cards or '')).replace(' ', '')
+    n_opp = int(n_opponents or 0)
+    if len(hs) != 4 or n_opp < 1:
+        return None
+    # Cache pela forma CANÔNICA: preflop contra aleatório a equity só depende de ranks e de ser
+    # suited, então 169 formas cobrem o acervo inteiro em vez de 1.326 combos.
+    r1, n1, r2, n2 = hs[0], hs[1], hs[2], hs[3]
+    canon = (f'{r1}{r2}' if r1 == r2 else
+             ''.join(sorted([r1, r2], key='23456789TJQKA'.index, reverse=True))
+             + ('s' if n1 == n2 else 'o'))
+    # `is_in_position` entra CRU, nao como bool: `_realization_tax` distingue `False` (fora de
+    # posicao, +4pp de imposto) de `None` (desconhecido, sem imposto), e `bool()` colapsava os
+    # dois na mesma chave — o primeiro a calcular ficava no cache pelos dois.
+    chave = (canon, n_opp, is_in_position, n_sims)
+    if chave in _POTE_LIMPADO_CACHE:
+        return _POTE_LIMPADO_CACHE[chave]
+
+    # `hash()` de string e RANDOMIZADO por processo (PYTHONHASHSEED), entao usa-lo como semente
+    # daria equity diferente a cada reprocesso — e aqui a equity decide VEREDITO. `crc32` e
+    # estavel entre processos e entre maquinas.
+    # A semente NAO inclui a posicao: o Monte Carlo depende so de (mao, vilaos, sims), e a
+    # posicao entra depois, no imposto de realizacao. Incluindo-a, a equity CRUA mudava conforme
+    # o hero estivesse dentro ou fora de posicao — que e absurdo, e o teste pegou.
+    rng = random.Random(zlib.crc32(repr((canon, n_opp, n_sims)).encode()))
+    hero = [eval7.Card(hs[0:2]), eval7.Card(hs[2:4])]
+    resto = [c for c in eval7.Deck().cards if _card_str(c) not in {_card_str(x) for x in hero}]
+    ganhos = 0.0
+    for _ in range(n_sims):
+        rng.shuffle(resto)
+        i = 0
+        vils = []
+        for _v in range(n_opp):
+            vils.append(resto[i:i + 2]); i += 2
+        board = resto[i:i + 5]
+        meu = eval7.evaluate(hero + board)
+        outros = [eval7.evaluate(v + board) for v in vils]
+        melhor = max(outros)
+        if meu > melhor:
+            ganhos += 1.0
+        elif meu == melhor:
+            ganhos += 1.0 / (1 + sum(1 for o in outros if o == melhor))
+    crua = ganhos / n_sims
+    realizada = max(0.0, crua - _realization_tax(crua, is_in_position, n_opp, hs, []))
+    _POTE_LIMPADO_CACHE[chave] = (round(crua, 4), round(realizada, 4))
+    return _POTE_LIMPADO_CACHE[chave]
 
 
 def is_hero_leak(adv, hero_action):

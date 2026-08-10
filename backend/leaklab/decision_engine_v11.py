@@ -1388,6 +1388,66 @@ def evaluate_decision(input_data: Dict[str, Any]) -> Dict[str, Any]:
             label = 'marginal' if label in ('small_mistake', 'clear_mistake') else label
             final_score = min(final_score, _LABEL_MAX_SCORE['marginal'])
 
+    # ── G6: fold barato em POTE LIMPADO, o unico guarda que CRIA acusacao sem carta ────────
+    # Pote limpado nao tem gabarito em fonte nenhuma, e a arvore do GW nem contem a jogada (de
+    # UTG a BTN nao existe CALL no menu, conferido em 374 nos). Ate 10/08 o produto se calava, e
+    # a revisao com o coach mostrou o preco disso: `96s` no SB foldado recebendo **7:1**, com o
+    # coach chamando de erro grave e o produto sem dizer nada.
+    #
+    # Aqui nao ha carta a consultar, mas ha PRECO — e o preco e o mesmo argumento dos guardas
+    # acima, so que na direcao contraria. Por isso este guarda e o mais restrito de todos:
+    #
+    #   1. so o FOLD. Nunca abencoa um call, nunca mexe em quem entrou no pote.
+    #   2. equity MULTIWAY, nao heads-up. Medido, a diferenca decide o veredito: `Q5o` num pote
+    #      5-way exibe 50,2% heads-up e vale 17,5% de verdade.
+    #   3. descontada a REALIZACAO. `Q5o` fora de posicao com 4 vilaos realiza 5,5% contra 8,3%
+    #      exigidos — e o fold esta certo. Sem esse desconto o guarda acusaria justamente o caso
+    #      que o jogador humano confirmou ser fold bom.
+    #   4. margem de `_MW_FOLD_MARGIN` acima do preco, a MESMA que o multiway_advisor ja usa
+    #      para chamar um fold de CLARO. Numero reusado, nao inventado.
+    #   5. teto em `small_mistake`. `clear_mistake` exige gabarito, e aqui nao existe nenhum.
+    #   6. age sobre `standard` E `marginal`. So `standard` nunca disparava: o proprio conserto
+    #      do custo ja rebaixa esses folds para `marginal` antes daqui, e a ablacao mostrou o
+    #      guarda inteiro sendo no-op por causa disso.
+    if (street == 'preflop' and label in ('standard', 'marginal')
+            and spot.get('facingLimp')
+            and _norm_gto_action(input_data.get('player_action', '')) == 'fold'
+            and not gto.get('available') and not preflop_gto.get('available')):
+        _custo = float(spot.get('facingToCallBb') or 0)
+        _pote = float(math.get('potOddsEquity') or 0)
+        # `nCanSeeFlop`, nao `nActiveOpponents`: o segundo so conta quem ja agiu e no pote
+        # limpado perde o BB, que tem opcao gratis e sempre ve o flop. Contar a menos infla
+        # a equity, que e a direcao que ACUSA a mais.
+        _nopp = int(spot.get('nCanSeeFlop') or 0)
+        if _custo > 0 and _pote > 0 and _nopp >= 1:
+            try:
+                from leaklab.multiway_advisor import (equity_realizada_em_pote_limpado,
+                                                      _MW_FOLD_MARGIN)
+                _eq = equity_realizada_em_pote_limpado(
+                    input_data.get('hero_cards'), _nopp, spot.get('isInPosition'))
+            except Exception:
+                _eq = None
+            if _eq and _eq[1] > _pote + _MW_FOLD_MARGIN:
+                label = 'small_mistake'
+                final_score = min(final_score, _LABEL_MAX_SCORE['small_mistake'])
+
+    # ── E o TETO do pote limpado: `clear_mistake` exige gabarito, e aqui nao ha nenhum ─────
+    # Vale para toda decisao em pote limpado, nao so para o fold do guarda acima. Ao dar preco a
+    # esses spots, a comparacao equity-x-preco passou a escalar 11 over-limps de `small_mistake`
+    # para `clear_mistake` — quase todos par pequeno, em que a conta imediata ignora as odds
+    # implicitas do set mining num pote 8-way. A conta nao esta errada; ela e insuficiente para
+    # sustentar o rotulo mais duro que o produto tem.
+    #
+    # O teto e o mesmo principio de "sem gabarito nao e erro", so que um degrau adiante: sem
+    # gabarito pode ser erro PEQUENO, quando o preco e gritante, mas nunca erro CLARO.
+    # Vale mesmo COM carta. Para over-limp fora dos blinds a carta de RFI diz que a jogada e
+    # desvio (09/08), e isso sustenta ACUSAR — nao sustenta a MAGNITUDE, porque o pote que se
+    # forma dali e uma linha que a solucao nao contem. E, decisivo: antes desta entrega esses
+    # 11 ja eram `small_mistake`. Dar preco ao spot nao deveria endurecer veredito de tabela.
+    if (street == 'preflop' and spot.get('facingLimp') and label == 'clear_mistake'):
+        label = 'small_mistake'
+        final_score = min(final_score, _LABEL_MAX_SCORE['small_mistake'])
+
     # ── Defeito 4: blefe em pote com jogador JA all-in ─────────────────────────────────────
     # A anotacao mais valiosa das 71: "nao blefe em potes que ja tem alguem de all-in". Contra
     # quem nao pode foldar nao existe fold equity — o blefe perde a metade da sua razao de ser, e
