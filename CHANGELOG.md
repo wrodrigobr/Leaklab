@@ -120,6 +120,43 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 > 3-bet jam cujo par (abridor, vilao) a carta nao tem. Ring segue sem no `vs_rfi` capturado — o
 > indice do ring so tem `faces_squeeze` —, o que nao bloqueia esta entrega porque a carta responde,
 > mas continua no backlog de captura.
+>
+> ── **EM PRODUCAO 2026-08-10** ─────────────────────────────────────────────────────────────────
+>
+> Deploy (`2f1ef753` -> `85327179`) + reprocesso dos 81 torneios. Sem coluna nova, entao o risco de
+> 05/08 nao se aplicava — conferido no diff, nao suposto.
+>
+> **O dry-run pegou uma discrepancia que era do MEDIDOR:** 80 torneios e 9.768 decisoes contra
+> 9.813 gravadas. Era a ultima linha do arquivo sem `\n` no meu `while read`. Corrigido, **81 de 81
+> reconstroem exatamente o gravado, 9.813 = 9.813, zero diferenca** — e so entao apliquei, porque
+> `--apply` faz DELETE+INSERT e 45 decisoes teriam sumido caladas.
+>
+> | | antes | depois |
+> |---|---|---|
+> | decisoes | 9.813 | 9.813 |
+> | **acusadas de erro** | **574** | **573** |
+> | `gto_label` / `spot_hash` / nos GTO | 8.248 / 9.812 / 8.157 | iguais |
+> | anotacoes do coach | 71 | **71** |
+>
+> Diff contra o dump pre-reprocesso, **pareado 1:1 e com o pareamento provado antes de comparar**
+> (0 chaves duplicadas, 0 orfas dos dois lados — ids mudam no DELETE+INSERT, entao parear por id
+> daria numero falso): **11 labels mudaram** e **111 equities**.
+>
+> | mudanca | n |
+> |---|---|
+> | `marginal` -> `standard` | 8 |
+> | `small_mistake` -> `marginal` | 2 |
+> | `marginal` -> `small_mistake` | 1 |
+>
+> Saldo −1, que fecha com 574 -> 573. As 8 absolvicoes sao **AA, KK, AK e AQ pagando all-in**
+> rotuladas `marginal` — exatamente o defeito que o coach apontou. Entre elas, o AQo da revisao:
+> **0,644 -> 0,525** em producao.
+>
+> Foram 11 e nao as 4 do A/B local porque ali eu reconstruia o abridor por tentativa; producao usa
+> o `preflop_opener` real e cobre mais.
+>
+> O reenqueue postflop devolveu `enfileirados=0` (a mudanca nao mexe em hash de postflop), entao a
+> cadeia de recuperacao de 05/08 foi no-op aqui. Zero erros no log, API 200.
 
 ### fix(motor): limpar fora dos blinds e DESVIO, nao falta de carta (#motor)
 
