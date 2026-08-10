@@ -171,6 +171,42 @@ def _stack_bucket(stack_bb: float) -> str:
     return '100bb'
 
 
+def _profundidade_compativel(depth: float, stack_bb: float) -> bool:
+    """A carta de `depth` bb pode falar de um stack de `stack_bb`? Janela RELATIVA de 25%.
+
+    Extraída de `_hu_no_mais_proximo`, onde a regra nasceu e onde o comentário original explica o
+    porquê do número: a 40% um SB de 14,8bb era gradeado pelo nó de 10bb — outro REGIME (a 10bb o
+    SB é jam/limp; a 15bb existe raise normal) — e um AJo foi acusado por min-raisar "em vez de
+    jamar". Fronteira de regime é onde profundidade vizinha mais mente.
+
+    Relativa e não absoluta: 5bb de distância a 10bb é outra estratégia; 5bb a 100bb é ruído."""
+    d, s = float(depth or 0), float(stack_bb or 0)
+    if d <= 0 or s <= 0:
+        return False
+    return abs(d - s) / max(d, s) <= 0.25
+
+
+def _balde_da_carta(stack_bb: float) -> Optional[str]:
+    """Balde de ranges para este stack — ou None quando a profundidade do balde não cabe nele.
+
+    `_stack_bucket` PARTICIONA a reta: o balde mais raso é `[0, 12)` e o mais fundo `[87.5, 9999)`,
+    então nas duas pontas ele **satura em silêncio**. Um jogador de 0,2bb recebia a carta de 10bb
+    (e um de 195bb, a de 100bb) sem nenhum sinal de que a carta era de outra profundidade.
+
+    Este é o mesmo seletor que o caminho HU já usa via `_profundidade_compativel`, e por isso a
+    resposta aqui é a mesma de lá: **null honesto**. Quem não passa cai no vs-random, que é
+    exatamente o comportamento que esses spots tinham antes de existir range nenhuma — não é
+    perda de veredito, é parar de fingir precisão que a carta não tem."""
+    label = _stack_bucket(stack_bb)
+    try:
+        depth = float(str(label).replace('bb', ''))
+    except ValueError:
+        # Rótulo não-numérico só existe no `stack_buckets` do JSON v2 (custom). Sem depth para
+        # conferir, mantém o comportamento antigo em vez de derrubar cobertura por não saber.
+        return label
+    return label if _profundidade_compativel(depth, stack_bb) else None
+
+
 def _expand_range(notation: str) -> set[str]:
     """Expande notação de range separada por vírgula em conjunto de hand_types."""
     if not notation or 'N/A' in notation.upper():
@@ -352,7 +388,10 @@ def villain_open_range(position: str, stack_bb: float, n_players: int | None = N
         if _pko_bk:
             bk_data = _pko_bk
     if bk_data is None:
-        bk_data = _load().get('ranges', {}).get(_stack_bucket(stack_bb), {})
+        _bk = _balde_da_carta(stack_bb)
+        if _bk is None:
+            return {}
+        bk_data = _load().get('ranges', {}).get(_bk, {})
     rfi = (bk_data.get('RFI') or {}).get(pos)
     if not rfi:
         return {}
@@ -401,7 +440,10 @@ def villain_reraise_range(villain_pos: str, hero_pos: str, stack_bb: float,
         if _pko_bk:
             bk_data = _pko_bk
     if bk_data is None:
-        bk_data = _load().get('ranges', {}).get(_stack_bucket(stack_bb), {})
+        _bk = _balde_da_carta(stack_bb)
+        if _bk is None:
+            return {}
+        bk_data = _load().get('ranges', {}).get(_bk, {})
     spot = ((bk_data.get('vs_RFI') or {}).get(her) or {}).get(vil)
     if not spot:
         return {}
@@ -866,12 +908,16 @@ def _hu_no_mais_proximo(por_depth: dict, stack_bb: float):
     # (dist 7 < 8) que REPROVA no guarda de 40%, enquanto 25 passaria — e o caso 73 (A5s SB
     # first-in a 17bb) caia em null indevido. 7bb de distancia a 10bb e outra estrategia; 8bb a
     # 25bb e a mesma familia.
-    d = min(por_depth, key=lambda x: abs(x - stack_bb) / max(x, stack_bb))
+    d = min(por_depth, key=lambda x: abs(x - stack_bb) / max(x, stack_bb, 1e-9))
     # Janela de 25%, nao 40%. A primeira versao usou 40% e a amostragem do acervo pegou o dano:
     # SB a 14,8bb gradeado pelo no de 10bb — outro REGIME (a 10bb o SB e jam/limp; a 15bb existe
     # raise normal), e um AJo foi acusado por min-raisar "em vez de jamar". Fronteira de regime
     # e onde profundidade vizinha mais mente; melhor null honesto ate capturar o no certo.
-    if abs(d - stack_bb) / max(d, stack_bb) > 0.25:
+    #
+    # A regra mora em `_profundidade_compativel` desde 09/08, porque o seletor de BALDE das ranges
+    # de vilao (`_balde_da_carta`) precisava exatamente dela: `_stack_bucket` satura nas duas
+    # pontas e entregava a carta de 10bb para 0,2bb. Um seletor, tres consumidores.
+    if not _profundidade_compativel(d, stack_bb):
         return None, None
     return d, por_depth[d]
 

@@ -108,6 +108,7 @@ SUITES = {
                   'test_sizing_nao_contradiz_veredito.py',
                   'test_fallback_call_vs_shove.py',
                   'test_limp_fora_dos_blinds.py',
+                  'test_balde_da_carta_profundidade.py',
                   'test_plano_ring.py',
                   'test_facing_limp_persistido.py',
                   'test_bb_check_nao_e_free_play.py',

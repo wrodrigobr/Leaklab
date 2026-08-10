@@ -7,6 +7,76 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(motor): a carta de 10bb nao fala por quem tem 0,2bb (#motor)
+
+> `villain_open_range` e `villain_reraise_range` escolhiam o bloco de ranges com
+> `_load()['ranges'][_stack_bucket(stack_bb)]`, **cru**. E `_stack_bucket` particiona a reta: o
+> balde mais raso e `[0, 12)` e o mais fundo `[87.5, 9999)` — nas duas pontas ele **satura em
+> silencio**. Um jogador de 0,2bb recebia a carta de 10bb; um de 195bb, a de 100bb. Nada no
+> retorno dizia que a carta era de outra profundidade.
+>
+> Essas duas funcoes alimentam o `villain_range` do `pipeline`, que decide se a equity do produto
+> e medida contra a RANGE do vilao ou contra MAO ALEATORIA. Range da profundidade errada e o caso
+> que o proprio codigo ja tinha nomeado tres commits antes: **pior que aleatoria, porque parece
+> precisa.**
+>
+> ── O conserto nao inventou regra ──────────────────────────────────────────────────────────────
+>
+> A janela RELATIVA de 25% ja existia, escrita a mao dentro de `_hu_no_mais_proximo` — e o
+> comentario dela ja explicava o porque do numero (SB a 14,8bb gradeado pelo no de 10bb e outro
+> REGIME; um AJo foi acusado por min-raisar "em vez de jamar"). Virou `_profundidade_compativel`,
+> e agora os **tres** caminhos passam por ela: o no HU, a range de open e a range de re-raise.
+> `_balde_da_carta` e o seletor de balde que a consome. CLAUDE.md #5, com a varredura que exige.
+>
+> ── A prova: A/B com a MESMA reconstrucao nos dois bracos ──────────────────────────────────────
+>
+> Mesmo medidor, mesmo acervo (18 torneios, 2.366 decisoes), so o modulo trocado:
+>
+> | | codigo antigo | codigo novo |
+> |---|---|---|
+> | decisoes com equity vs RANGE | 683 | **616** |
+> | perderam a range | — | **67** (57 com stack < 7,5bb, 10 com > 133bb) |
+> | **label mudou** | — | **0** |
+> | acusacoes | 141 | **141** |
+> | `bestAction` mudou | — | **2** |
+>
+> Quem perde a range cai no vs-random, que e exatamente o que esses spots tinham antes de existir
+> range nenhuma. Nao e perda de veredito: e parar de fingir precisao.
+>
+> Os **2** `bestAction` sao BB a 5,7bb e a 6,7bb, `fold` -> `call`, os dois seguindo `standard`
+> (score 0,0). A equity subiu porque a carta de 10bb e mais forte que uma mao aleatoria — e a
+> 6bb o BB paga um open por pot odds de qualquer jeito. Nenhuma acusacao nova.
+>
+> ── Zero em label e o resultado de que mais desconfio ──────────────────────────────────────────
+>
+> Antes de acreditar nele, um **controle absurdo**: `_profundidade_compativel` forcada a `False`,
+> matando TODAS as ranges. O medidor acusou **671 fontes de equity trocadas e 50 labels
+> mudados**. Ele mede; o zero e do conserto, nao do medidor.
+>
+> A previsao tambem foi feita ANTES de ligar (contando quantos stacks caem fora da janela): **67**,
+> o mesmo numero que a observacao devolveu.
+>
+> ── O golden, auditado por codigo ──────────────────────────────────────────────────────────────
+>
+> `test_replay_reconciliation_golden` divergiu, nos dois goldens. Diff conferido **coluna a
+> coluna por script**, com as 21 colunas nomeadas e o alinhamento provado antes da comparacao —
+> nao a olho, porque ler esse diff a olho ja custou caro aqui. Resultado: **2 linhas, 1 celula
+> cada, e a celula e `equity_source`** (`vs_range` -> `vs_random`). Nenhum campo de veredito se
+> mexeu. So entao regenerado.
+>
+> ── O que este conserto NAO fez ────────────────────────────────────────────────────────────────
+>
+> `analyze_preflop_decision` continua com `_stack_bucket` cru na linha 1104 — e ele e quem grava
+> label e `best_action`. Passar o guarda por la muda veredito de verdade e merece a propria
+> medicao; ficou fora de proposito. O `pg.stack_bucket` do golden segue `10bb` nas duas linhas
+> alteradas, o que confirma o raio de alcance.
+>
+> Guarda novo verificado quebrando-o **seis vezes**, uma por vez: cada `villain_*` de volta ao
+> lookup cru, a janela virando absoluta, a janela afrouxando para 40%, o guarda olhando so a ponta
+> rasa, e `_hu_no_mais_proximo` voltando a escolher por distancia absoluta. As seis foram acusadas.
+>
+> Suites `engine` (828), `gto` (477) e `regression` (58) verdes.
+
 ### fix(motor): limpar fora dos blinds e DESVIO, nao falta de carta (#motor)
 
 > Observacao do usuario, e e de POKER antes de ser de codigo: limp so e acao legitima nos blinds
