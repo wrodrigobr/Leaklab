@@ -47,6 +47,26 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 >
 > **Os 15 testes passavam com o bug presente.** Nenhum exercitava `hero_was_aggressor`, entao a
 > mudanca de semantica passou incolume por eles. Foi a mutacao que denunciou, de novo.
+>
+> ── **Relatorio do coach regerado, 2026-08-10** ────────────────────────────────────────────────
+>
+> Deploy `9509f577` + reprocesso dos 81 torneios (`ok=81 falhas=0`). Depois do conserto,
+> **nenhuma das 71 anotacoes muda de veredito** em relacao ao relatorio de 07/08 — o AQo voltou
+> para `marginal`, que e onde estava.
+>
+> Efeito liquido da familia 5b no acervo inteiro, medido contra o dump anterior a entrega e com o
+> pareamento provado 1:1 (9.813 pareadas, 0 duplicadas, 0 orfas): **143 equities** e **9 labels**
+> (5 `marginal`->`standard`, 2 `small_mistake`->`marginal`, 1 `marginal`->`small_mistake`, 1
+> `small_mistake`->`clear_mistake`). Acusadas 574 -> 573.
+>
+> As 71, por conclusao: 31 acordo, 15 o coach descreve melhor, 12 o sistema esta certo, 9 so
+> tamanho, 3 discordo dos dois, 1 sem posicao do coach. **Dos 15 em que o coach descreve melhor,
+> 6 ja recomendam a mesma acao e apenas 2 ainda acusam o jogador.**
+>
+> Duas armadilhas de ferramenta no caminho, as duas de MEDICAO e nao de produto: o `tids2.txt`
+> vivia dentro do container e sumiu no rebuild (o loop rodou `ok=0`, e so nao passou batido porque
+> eu conferi as contagens depois); e o tunel ssh corrompe UTF-8, entao **o relatorio de 07/08 foi
+> entregue com os acentos quebrados** nos comentarios do coach. Agora o dump vem em base64.
 
 
 ### test(card): dois testes do exemplo da landing estavam vermelhos desde 08/08, e eram meus (#card #teste)
