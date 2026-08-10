@@ -24,8 +24,15 @@ export interface EntradaMetricas {
   /** Vem do backend (`_ev_e_motivo`). `null`/ausente quando o EV está presente. */
   evLossMotivo?: "sem_gabarito" | "fora_de_escala" | "nao_confiavel" | null;
   equity?: number | null;
-  /** Equity exigida pelo preço. Ausente quando o hero não enfrentou aposta. */
+  /** Equity exigida pelo preço enfrentado. Ausente quando o hero não pagou nada. */
   requerido?: number | null;
+  /**
+   * Equity mínima para a APOSTA do hero ser +EV. É o preço da jogada dele, e existe justamente
+   * quando `requerido` não existe. O card clássico já resolvia assim — um slot, rótulo que muda.
+   * O v2 dizia "não pagou" e três linhas abaixo mostrava esse número: o jogador lia "não tem
+   * preço" seguido de um preço.
+   */
+  requeridoImplicito?: number | null;
   /** A ação do hero, para distinguir "não pagou" de "faltou dado". */
   acao?: string | null;
   /** `true` quando o veredito diz que a ação está ok — o EV zero então é informativo, não erro. */
@@ -71,6 +78,10 @@ export function metricasDoCard(e: EntradaMetricas): {
   let potOdds: MetricaV2;
   if (e.requerido != null && e.requerido > 0) {
     potOdds = { valor: `${(e.requerido * 100).toFixed(0)}%` };
+  } else if (e.requeridoImplicito != null && e.requeridoImplicito > 0) {
+    // Apostou: o preço é o dele. Mesmo slot, rótulo diferente — "mín. EV" é a equity a partir da
+    // qual a aposta paga. Dizer "não pagou" aqui era a contradição.
+    potOdds = { valor: `${(e.requeridoImplicito * 100).toFixed(0)}%`, rotulo: "card.reqMinEv" };
   } else if (AGRESSIVAS.has((e.acao ?? "").toLowerCase())) {
     potOdds = { valor: null, motivo: "card.v2OddsNaoEnfrentouAposta",
                 motivoCurto: "card.v2OddsNaoEnfrentouApostaCurto" };

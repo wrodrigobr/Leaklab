@@ -78,3 +78,30 @@ describe("metricas do card v2", () => {
     expect(m.equity.motivoCurto).toBe("card.v2SemDado");
   });
 });
+
+describe("o slot de preco nao se contradiz", () => {
+  it("quem APOSTOU ve o min. EV, nao 'nao pagou'", () => {
+    // O print do usuario: a metrica dizia "POT ODDS — nao pagou" e o bloco de auditoria mostrava
+    // "MIN. EV 17.5%" tres linhas abaixo. Sao conceitos diferentes, mas o jogador le "nao tem
+    // preco" seguido de um preco. Um slot so, rotulo que muda — como o card classico ja fazia.
+    const m = metricasDoCard({ equity: 0.553, requerido: null,
+                               requeridoImplicito: 0.175, acao: "raise" });
+    expect(m.potOdds.valor).toBe("18%");
+    expect(m.potOdds.rotulo, "o rotulo tem de mudar junto com o significado").toBe("card.reqMinEv");
+    expect(m.potOdds.motivoCurto, "ainda dizia que nao pagou").toBeUndefined();
+  });
+
+  it("CONTROLE: enfrentando aposta, o rotulo continua sendo pot odds", () => {
+    const m = metricasDoCard({ equity: 0.5, requerido: 0.29,
+                               requeridoImplicito: 0.9, acao: "call" });
+    expect(m.potOdds.valor).toBe("29%");
+    expect(m.potOdds.rotulo, "o preco enfrentado tem precedencia sobre o implicito").toBeFalsy();
+  });
+
+  it("CONTROLE: sem nenhum dos dois, volta a dizer que nao pagou", () => {
+    const m = metricasDoCard({ equity: 0.5, requerido: null,
+                               requeridoImplicito: null, acao: "check" });
+    expect(m.potOdds.valor).toBeNull();
+    expect(m.potOdds.motivoCurto).toBe("card.v2OddsNaoEnfrentouApostaCurto");
+  });
+});

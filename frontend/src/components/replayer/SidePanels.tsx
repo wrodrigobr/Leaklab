@@ -1158,6 +1158,10 @@ export function SidePanels({
                   evLossMotivo: step.ev_loss_motivo,
                   equity: eq,
                   requerido: req,
+                  // Apostou: o preco e o DELE. Sem isto o slot dizia "nao pagou" e o bloco de
+                  // auditoria mostrava "min. EV 17,5%" tres linhas abaixo — o card se
+                  // contradizendo, reportado num print.
+                  requeridoImplicito: reqImplicit,
                   acao: step.action,
                   acaoOk: isActionOk,
                 })}
@@ -1175,7 +1179,36 @@ export function SidePanels({
                 frase={whyFull}
                 showDetails={showDetails}
                 onToggleDetails={toggleDetails}
-                detalhes={hasIndicators ? indicators : undefined}
+                // ── Auditoria ENXUTA ──────────────────────────────────────────────────
+                // A primeira versao reaproveitava o `indicators` do card classico, e o
+                // resultado foi o print do usuario: seis rotulos empilhados, a EQUITY
+                // repetida (55,3% em cima e embaixo) e o "min. EV" contradizendo o
+                // "nao pagou" da linha de metricas.
+                //
+                // Aqui fica so o que NAO esta na linha de tres: o cenario, se a mao esta no
+                // range, e o tamanho. Os numeros ja subiram.
+                detalhes={(() => {
+                  const cenario = pg?.available ? (scenarioLabel[pg.scenario] ?? pg.scenario) : null;
+                  const sz = (step as { sizing_advice?: { key: string; params: Record<string, unknown> } })
+                             .sizing_advice;
+                  if (!cenario && !sz) return undefined;
+                  return (
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1
+                                    font-mono text-[11px] text-muted-foreground">
+                      {cenario && <span>{cenario}</span>}
+                      {pg?.hand_type && (
+                        // `in_range`, nao `hand_in_range` — o segundo nao existe no tipo e eu o
+                        // inventei. Passou no `tsc --noEmit` da raiz porque aquele comando NAO
+                        // CHECA NADA neste repo (o tsconfig raiz so tem project references).
+                        <span className={pg.in_range ? undefined : "text-amber-400"}>
+                          {pg.hand_type} · {pg.in_range
+                            ? t("card.handInRangeTag") : t("card.handOutRangeTag")}
+                        </span>
+                      )}
+                      {sz && <span>{t(`card.sizingAdvice.${sz.key}`, sz.params)}</span>}
+                    </div>
+                  );
+                })()}
                 icmBadge={null}
                 fmtAction={fmtAction}
                 verdictTooltip={verdict.sourceTooltip}

@@ -51,13 +51,15 @@ function montar(step: Record<string, unknown>) {
       step={step as never} isError={false} isCorrect={false}
       coachAnnotation={null as never} studentId={null as never}
       currentDecisionId={null as never} annotating={false}
-      annComment="" annMode="" annAction="" annOverride=""
-      saveAnn={() => {}} deleteAnn={() => {}}
+      annComment="" annMode={"replace" as never} annAction=""
+      annOverride={null as never}
+      saveAnn={{} as never} deleteAnn={{} as never}
       replayData={{ bb: 1000 } as never} playerAliases={{} as never}
       setAnnotating={() => {}} setAnnComment={() => {}} setAnnMode={() => {}}
       setAnnAction={() => {}} setAnnOverride={() => {}}
       openAnnotationForm={() => {}} t={t}
       gtoRequestStatus={null as never} onRequestGto={() => {}}
+      tournamentId={1 as never} handId={"1" as never}
     />
     </QueryClientProvider>,
   );

@@ -121,6 +121,20 @@ describe("card v2 — os quatro casos que quebram", () => {
 });
 
 describe("card v2 — o que o layout enxuto NAO pode perder", () => {
+  it("o slot de preco RENDERIZA o rotulo alternativo quando o significado muda", () => {
+    // O mapeamento ja devolvia `rotulo: "card.reqMinEv"` para quem apostou, e o componente
+    // ignorava — a mutacao "o rotulo alternativo e ignorado" sobrevivia porque nenhum teste de
+    // COMPONENTE exercitava o campo. Regra pura testada nao cobre a tela que a consome.
+    montar({
+      playedAction: "raise",
+      metricas: { evPerdido: { valor: "0.30bb" }, equity: { valor: "55.3%" },
+                  potOdds: { valor: "18%", rotulo: "card.reqMinEv" } },
+    });
+    expect(txt(), "o rotulo alternativo nao apareceu").toContain("card.reqMinEv");
+    expect(txt(), "manteve o rotulo padrao junto, e ai sao dois nomes para um slot")
+      .not.toContain("card.v2PotOdds");
+  });
+
   it("a FONTE do veredito fica sempre visivel", () => {
     // O exemplo que originou o pedido escrevia so "PRE-FLOP", que e a street. Com 1.565
     // decisoes sem gabarito, o card tem de declarar de ONDE veio o veredito.

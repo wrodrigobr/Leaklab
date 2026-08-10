@@ -7,6 +7,49 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(card): o v2 se contradizia, e o `tsc` que eu rodava nao checava NADA (#card #teste)
+
+> Print do usuario sobre o v2 em producao: *"esta parte do sizing, cenario, como joga gto... ta
+> super confusa, muito junta, muito texto"*. Ele estava certo, e havia algo pior que densidade.
+>
+> **O card se contradizia.** A linha de metricas dizia `POT ODDS — nao pagou` e tres linhas abaixo
+> o bloco de auditoria mostrava `MIN. EV 17.5%`. Sao conceitos diferentes (preco enfrentado x
+> equity minima para a aposta ser +EV), mas o jogador le "nao tem preco" seguido de um preco.
+> **E a equity aparecia duas vezes** — 55,3% em cima e embaixo.
+>
+> A raiz e minha: reaproveitei no v2 o bloco de auditoria desenhado para o card CLASSICO. E o
+> classico ja resolvia certo — um slot com o rotulo que muda (`req ?? reqImplicit`). O v2 quebrou
+> a regra em vez de reusa-la.
+>
+> **Conserto:** o terceiro slot mostra `pot odds` quando o hero pagou e `min. EV` quando ele
+> apostou, com o rotulo trocando junto. Isso tambem PREENCHE o slot nos ~52% de casos em que ele
+> aparecia vazio. E a auditoria do v2 ficou so com o que NAO esta na linha de tres: cenario, mao
+> no range, sizing — de seis rotulos para tres.
+>
+> ── **E o achado que vale mais que a entrega** ─────────────────────────────────────────────────
+>
+> **`npx tsc --noEmit` neste repo nao checa nada.** O `tsconfig.json` da raiz nao tem `include`,
+> so *project references* — entao o comando resolve as referencias e sai limpo sem olhar arquivo
+> nenhum. Eu o rodei varias vezes hoje e li "limpo" como evidencia.
+>
+> O que ele deixou passar, tudo em codigo que fui ao ar:
+> - `sizingAdviceText` — **variavel que nao existe**. Quebrou 3 testes com `is not defined`.
+> - `icmBadge.tip` — o campo e `tooltip`. Renderizaria `undefined` no title.
+> - `pg.hand_in_range` — o campo e `in_range`. A tag de range sairia sempre igual.
+> - `verdict.tip` e `card.preflopTag`, corrigidos na entrega anterior pelo mesmo motivo.
+>
+> O comando certo e `npx tsc --noEmit -p tsconfig.app.json`. Ele acusa **85 erros pre-existentes**
+> no projeto (16 so em `SidePanels.tsx`), o que explica por que ninguem o usa — e por que os meus
+> tres passaram despercebidos no meio.
+>
+> Conferido que **nao adicionei nenhum**: comparando os erros por TEXTO (nao por linha, que desloca
+> quando se insere codigo), com e sem as minhas mudancas o conjunto e identico. Arquivos novos:
+> zero erros.
+>
+> Frontend 343 testes verdes, build limpo. 4 mutacoes novas acusadas, incluindo "volta a
+> contradicao" e "o rotulo alternativo e ignorado" — esta ultima sobreviveu na primeira rodada
+> porque eu tinha testado a regra PURA e nao a tela que a consome.
+
 ### feat(card): layout v2 atras de toggle, desenhado a partir dos casos que QUEBRAM (#card)
 
 > Pedido a partir de um exemplo de card mais simples. O exemplo, porem, mostrava uma decisao

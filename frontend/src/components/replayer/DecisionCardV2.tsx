@@ -40,6 +40,8 @@ export interface MetricaV2 {
   motivoCurto?: string | null;
   /** Tom do valor, quando ele merece cor (custo alto, equity forte). */
   tom?: "neutro" | "bom" | "ruim";
+  /** Rótulo alternativo: o mesmo slot muda de nome quando muda de significado. */
+  rotulo?: string | null;
 }
 
 export interface LinhaEstrategia {
@@ -85,7 +87,7 @@ function Metrica({ rotulo, m }: { rotulo: string; m: MetricaV2 }) {
   return (
     <div className="flex-1 min-w-0 px-3 py-2">
       <div className="font-mono text-[10px] uppercase tracking-wide text-muted-foreground/80">
-        {rotulo}
+        {m.rotulo ? t(m.rotulo) : rotulo}
       </div>
       {vazio ? (
         // O travessão sozinho seria "não sei" sem explicação. O `title` carrega o motivo, e o
@@ -224,7 +226,7 @@ export function DecisionCardV2({
       {icmBadge && (
         <div className="border-t border-border/60 px-3 py-1.5">
           <span className="font-mono text-[10px] uppercase tracking-wide text-muted-foreground/70"
-                title={icmBadge.tip}>
+                title={icmBadge.tooltip}>
             {icmBadge.label}
           </span>
         </div>
