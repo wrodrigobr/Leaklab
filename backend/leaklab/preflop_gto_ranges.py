@@ -171,6 +171,48 @@ def _stack_bucket(stack_bb: float) -> str:
     return '100bb'
 
 
+def _profundidade_compativel(depth: float, stack_bb: float) -> bool:
+    """A carta de `depth` bb pode falar de um stack de `stack_bb`? Janela RELATIVA de 25%.
+
+    Extraída de `_hu_no_mais_proximo`, onde a regra nasceu e onde o comentário original explica o
+    porquê do número: a 40% um SB de 14,8bb era gradeado pelo nó de 10bb — outro REGIME (a 10bb o
+    SB é jam/limp; a 15bb existe raise normal) — e um AJo foi acusado por min-raisar "em vez de
+    jamar". Fronteira de regime é onde profundidade vizinha mais mente.
+
+    Relativa e não absoluta: 5bb de distância a 10bb é outra estratégia; 5bb a 100bb é ruído.
+
+    **Quatro consumidores**, e os dois últimos chegaram aqui no mesmo dia por lados diferentes: o
+    nó HU, o seletor de balde das ranges de open/re-raise (0,2bb recebia a carta de 10bb) e o
+    consumo da range de JAM, onde a mesma saturação produziu **duas acusações falsas medidas no
+    acervo** — `3hAh CO vs BTN a 3,9bb` e `KdJs BTN vs SB a 5,2bb` viravam `small_mistake`, e a
+    4bb pagar um jam com A3s é obrigatório."""
+    d, s = float(depth or 0), float(stack_bb or 0)
+    if d <= 0 or s <= 0:
+        return False
+    return abs(d - s) / max(d, s) <= 0.25
+
+
+def _balde_da_carta(stack_bb: float) -> Optional[str]:
+    """Balde de ranges para este stack — ou None quando a profundidade do balde não cabe nele.
+
+    `_stack_bucket` PARTICIONA a reta: o balde mais raso é `[0, 12)` e o mais fundo `[87.5, 9999)`,
+    então nas duas pontas ele **satura em silêncio**. Um jogador de 0,2bb recebia a carta de 10bb
+    (e um de 195bb, a de 100bb) sem nenhum sinal de que a carta era de outra profundidade.
+
+    Este é o mesmo seletor que o caminho HU já usa via `_profundidade_compativel`, e por isso a
+    resposta aqui é a mesma de lá: **null honesto**. Quem não passa cai no vs-random, que é
+    exatamente o comportamento que esses spots tinham antes de existir range nenhuma — não é
+    perda de veredito, é parar de fingir precisão que a carta não tem."""
+    label = _stack_bucket(stack_bb)
+    try:
+        depth = float(str(label).replace('bb', ''))
+    except ValueError:
+        # Rótulo não-numérico só existe no `stack_buckets` do JSON v2 (custom). Sem depth para
+        # conferir, mantém o comportamento antigo em vez de derrubar cobertura por não saber.
+        return label
+    return label if _profundidade_compativel(depth, stack_bb) else None
+
+
 def _expand_range(notation: str) -> set[str]:
     """Expande notação de range separada por vírgula em conjunto de hand_types."""
     if not notation or 'N/A' in notation.upper():
@@ -352,7 +394,10 @@ def villain_open_range(position: str, stack_bb: float, n_players: int | None = N
         if _pko_bk:
             bk_data = _pko_bk
     if bk_data is None:
-        bk_data = _load().get('ranges', {}).get(_stack_bucket(stack_bb), {})
+        _bk = _balde_da_carta(stack_bb)
+        if _bk is None:
+            return {}
+        bk_data = _load().get('ranges', {}).get(_bk, {})
     rfi = (bk_data.get('RFI') or {}).get(pos)
     if not rfi:
         return {}
@@ -401,7 +446,10 @@ def villain_reraise_range(villain_pos: str, hero_pos: str, stack_bb: float,
         if _pko_bk:
             bk_data = _pko_bk
     if bk_data is None:
-        bk_data = _load().get('ranges', {}).get(_stack_bucket(stack_bb), {})
+        _bk = _balde_da_carta(stack_bb)
+        if _bk is None:
+            return {}
+        bk_data = _load().get('ranges', {}).get(_bk, {})
     spot = ((bk_data.get('vs_RFI') or {}).get(her) or {}).get(vil)
     if not spot:
         return {}
@@ -610,25 +658,28 @@ def _jam_e_a_abertura(massa_jam: float, massa_raise: float) -> bool:
     return massa_jam >= massa_raise
 
 
-def _balde_da_carta(stack_bb: float, is_pko: bool) -> dict:
-    """O bloco de ranges da profundidade — PKO quando há, senão Classic. Mesma seleção que
-    `villain_open_range` e `villain_reraise_range` fazem, extraída para não virar a terceira.
+def _bloco_de_ranges(stack_bb: float, is_pko: bool) -> dict:
+    """O bloco de ranges da profundidade — PKO quando há, senão Classic. `{}` fora da janela.
 
-    Diferença de propósito em relação a elas: aqui a profundidade do balde é CONFERIDA contra o
-    stack real. `_stack_bucket` satura nos extremos e devolve a carta de 10bb para um stack de
-    3,9bb sem dizer nada — silêncio que virou duas acusações falsas no acervo. Range de jam de
-    outra profundidade é o mesmo defeito que o guarda de 25% já mata no caminho capturado.
+    Fina de propósito: quem decide se o balde serve é `_balde_da_carta`, o MESMO seletor que
+    `villain_open_range` e `villain_reraise_range` usam. Esta função só resolve o bloco.
+
+    ── Nota de merge, 2026-08-10 ──────────────────────────────────────────────────────────────
+    Duas frentes chegaram nesta necessidade no mesmo dia, por lados diferentes: a range de jam
+    (`_stack_bucket` devolvia a carta de 10bb para 3,9bb e isso virou duas acusações falsas) e as
+    ranges de open/re-raise (a mesma saturação, com 0,2bb recebendo a carta de 10bb). As duas
+    escreveram um `_balde_da_carta`, com o MESMO nome e contratos diferentes — e o merge textual
+    do git juntou as duas definições em silêncio, com a segunda vencendo. Os call sites da outra
+    passariam um argumento só e estourariam `TypeError` em `villain_open_range`.
+
+    Ficou um contrato só: `_balde_da_carta(stack_bb) -> rótulo | None` decide, esta resolve.
     """
     if is_pko:
         _pko_bk, _stg, _lbl = _pko_ranges_for(stack_bb)
         if _pko_bk:
             return _pko_bk
-    balde = _stack_bucket(stack_bb)
-    try:
-        prof = float(str(balde).replace('bb', ''))
-    except (TypeError, ValueError):
-        return {}
-    if not _profundidade_compativel(prof, stack_bb):
+    balde = _balde_da_carta(stack_bb)
+    if balde is None:
         return {}
     return _load().get('ranges', {}).get(balde, {})
 
@@ -675,7 +726,7 @@ def _jam_do_spot(spot: Optional[dict], exigir_dominancia: bool = True) -> dict:
 def _jam_da_carta_rfi(pos_vilao: str, stack_bb: float, n_players: Optional[int],
                       is_pko: bool) -> dict:
     """Open-jam: o vilão abriu de all-in. O nó dele é a própria RFI da posição."""
-    bk = _balde_da_carta(stack_bb, is_pko)
+    bk = _bloco_de_ranges(stack_bb, is_pko)
     return _jam_do_spot((bk.get('RFI') or {}).get(_norm_pos(pos_vilao, n_players)))
 
 
@@ -687,7 +738,7 @@ def _jam_da_carta_vs_rfi(pos_vilao: str, pos_opener: str, stack_bb: float,
     o defender. É a MESMA entrada que `villain_reraise_range` consulta e na mesma ordem; a
     diferença é o filtro, que aqui fica só no all-in em vez de somar todas as famílias de aumento.
     """
-    bk = _balde_da_carta(stack_bb, is_pko)
+    bk = _bloco_de_ranges(stack_bb, is_pko)
     spot = ((bk.get('vs_RFI') or {}).get(_norm_pos(pos_opener, n_players)) or {}).get(
         _norm_pos(pos_vilao, n_players))
     # ── Aqui a barra é MENOR que no open-jam, e a razão é a alternativa ────────────────────────
@@ -1140,28 +1191,22 @@ def _hu_no_mais_proximo(por_depth: dict, stack_bb: float):
     if not por_depth:
         return None, None
     # Distancia RELATIVA, nao absoluta: com nos em {10, 25} e stack 17, o absoluto escolhe 10
-    # (dist 7 < 8) que REPROVA no guarda, enquanto 25 passaria — e o caso 73 (A5s SB first-in a
-    # 17bb) caia em null indevido. 7bb de distancia a 10bb e outra estrategia; 8bb a 25bb e a
-    # mesma familia.
-    d = min(por_depth, key=lambda x: abs(x - stack_bb) / max(x, stack_bb))
+    # (dist 7 < 8) que REPROVA no guarda de 40%, enquanto 25 passaria — e o caso 73 (A5s SB
+    # first-in a 17bb) caia em null indevido. 7bb de distancia a 10bb e outra estrategia; 8bb a
+    # 25bb e a mesma familia.
+    d = min(por_depth, key=lambda x: abs(x - stack_bb) / max(x, stack_bb, 1e-9))
+    # Janela de 25%, nao 40%. A primeira versao usou 40% e a amostragem do acervo pegou o dano:
+    # SB a 14,8bb gradeado pelo no de 10bb — outro REGIME (a 10bb o SB e jam/limp; a 15bb existe
+    # raise normal), e um AJo foi acusado por min-raisar "em vez de jamar". Fronteira de regime
+    # e onde profundidade vizinha mais mente; melhor null honesto ate capturar o no certo.
+    #
+    # A regra mora em `_profundidade_compativel` desde 09/08, porque DOIS caminhos chegaram nela
+    # no mesmo dia, por lados diferentes: o seletor de BALDE das ranges de vilao (`_stack_bucket`
+    # satura nas duas pontas e entregava a carta de 10bb para 0,2bb) e o consumo da range de JAM.
+    # Uma janela, quatro consumidores.
     if not _profundidade_compativel(d, stack_bb):
         return None, None
     return d, por_depth[d]
-
-
-def _profundidade_compativel(depth: float, stack_bb: float) -> bool:
-    """Distância RELATIVA de no máximo 25% entre a carta e o stack real.
-
-    Extraído de `_hu_no_mais_proximo` porque o consumidor de range de jam precisa da MESMA
-    pergunta e não tem um dicionário de profundidades para passar: ele recebe um balde de
-    `_stack_bucket`, que **satura** no extremo — a 3,9bb devolve a carta de 10bb sem avisar.
-    Medido no acervo, isso produzia duas acusações falsas (`3hAh CO vs BTN a 3,9bb` e `KdJs BTN
-    vs SB a 5,2bb`, ambas viraram `small_mistake`): a 4bb pagar um jam com A3s é obrigatório, e
-    só saía erro porque a range de 10bb é bem mais tight que a de 4bb.
-    """
-    if not depth or depth <= 0:
-        return False
-    return abs(depth - stack_bb) / max(depth, stack_bb) <= 0.25
 
 
 def _hu_familia_da_acao(rotulo: str, depth: float) -> str:

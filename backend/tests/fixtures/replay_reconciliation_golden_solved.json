@@ -581,7 +581,7 @@
   false,
   "96o",
   "10bb",
-  "vs_range",
+  "vs_random",
   false,
   [],
   "preflop"
@@ -627,7 +627,7 @@
   false,
   "83o",
   "10bb",
-  "vs_range",
+  "vs_random",
   false,
   [],
   "preflop"
