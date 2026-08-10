@@ -6172,6 +6172,57 @@ def _apply_alias_to_hand(hand, alias):
     return hand
 
 
+def _ev_para_exibir(decision, _di, _spot):
+    """O `ev_loss_bb` gravado, ou `None` quando ele nao cabe no jogo.
+
+    Porta unica do CARD para o EV, espelhando o que o motor ja faz para severidade. Antes desta
+    funcao o motor gateava e a tela nao, e a tela mostrava numero impossivel: `-3588 bb` num
+    stack de 32,2bb, reportado por um usuario. Medido no acervo, 62 decisoes tinham EV maior do
+    que cabe na mao, 34 delas com `clear_mistake`.
+
+    Devolve `None` de proposito, e nao um valor "consertado": o pote com que o no foi solvado nao
+    e gravado em lugar nenhum, entao nao ha como reescalar — so da para conferir e calar.
+    """
+    if not decision:
+        return None
+    ev = decision.get('ev_loss_bb')
+    if ev is None:
+        return None
+    try:
+        from leaklab.decision_engine_v11 import ev_loss_trustworthy
+        _m = (_di or {}).get('math', {}) or {}
+        ok = ev_loss_trustworthy(
+            ev,
+            (_spot or {}).get('effectiveStackBb') or decision.get('effective_stack_bb'),
+            decision.get('ev_loss_source'),
+            action=decision.get('action_taken'),
+            equity=_m.get('estimatedHandEquity') or decision.get('estimated_equity'),
+            pot_bb=(_spot or {}).get('potBb'),
+            facing_bb=(_spot or {}).get('facingToCallBb'),
+        )
+    except Exception:
+        return ev          # sem conseguir avaliar, mantem o comportamento antigo
+    return ev if ok else None
+
+
+def _sem_ev_impossivel(hand_strategy, decision, _di, _spot):
+    """`hand_strategy` com os EVs removidos quando eles nao cabem no jogo. Frequencias intactas.
+
+    Mesma regra e mesma porta do `_ev_para_exibir`: as duas superficies do card (o selo de custo e
+    as linhas por acao) tem de calar juntas, senao o card volta a se contradizer — foi assim que
+    263 cards mostraram texto de uma fonte e veredito de outra em 05/08.
+    """
+    if not hand_strategy or not hand_strategy.get('actions'):
+        return hand_strategy
+    if _ev_para_exibir(decision, _di, _spot) is not None:
+        return hand_strategy
+    # Sem EV confiavel: zera SO os campos de EV, preservando o resto do bloco.
+    limpo = dict(hand_strategy)
+    limpo['actions'] = [{**a, 'ev_bb': None, 'ev_loss_bb': None}
+                        for a in hand_strategy['actions']]
+    return limpo
+
+
 def _build_replay_data(hand, decisions_db, hero_override=None):
     """Constrói a timeline completa de replay a partir de uma ParsedHand.
 
@@ -7157,12 +7208,29 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
             'threebet_sizing':    threebet_sizing,   # #3: tamanho do 3-bet vs open (IP 3x/OOP 4x)
             'postflop_sizing':    postflop_sizing,   # Fase 2: aposta do hero vs size do nó GTO
             'postflop_texture_sizing': postflop_texture_sizing,   # Fase 3: heurística de textura (sem nó)
-            'ev_loss_bb':         (decision.get('ev_loss_bb') if decision else None),  # #24
+            # ── O EV so vai para a tela se couber no JOGO ──────────────────────────────────
+            # `ev_loss_trustworthy` e a fonte unica da regra "este numero pode ser usado como
+            # quantidade", e ate 10/08 o motor a consultava para decidir SEVERIDADE enquanto o
+            # card lia o valor gravado direto. Duas portas para o mesmo fato, e a do card nao
+            # tinha guarda: um usuario viu **"-3588 bb" num stack de 32,2bb**.
+            #
+            # Medido: 62 decisoes com EV maior do que cabe na mao, 34 delas rotuladas
+            # `clear_mistake`. A causa esta em `ev_loss_fold_ceiling` — o EV vem na escala do
+            # POTE SOLVADO e o pote nao entra no `spot_hash`, entao nao ha como reescalar.
+            #
+            # `None` some com o selo e o custo de oportunidade, que e o certo: melhor o card nao
+            # falar de custo do que falar um numero impossivel.
+            'ev_loss_bb':         _ev_para_exibir(decision, _di, _spot),  # #24
             'multiway_advice':    multiway_advice,   # fallback multiway: equity-vs-range (estimativa, não GTO HU)
             'multiway_safe':      multiway_safe,     # Fase 2: veredito GRADEADO da cauda segura (None = informativo)
             # com estimativa multiway ativa, esconde as barras HU (o artefato que estamos
             # substituindo) — o card mostra a estimativa, não "raise 93%" do solver HU.
-            'hand_strategy':      (None if _mw_spot else live_hand_strategy),   # Fase 3: freq/EV da MÃO do hero
+            # As FREQUENCIAS ficam (sao estrategia, nao dependem de escala); os EVs saem quando
+            # nao cabem no jogo. Era daqui que vinham as linhas "Call 100% 3588.4bb" e o custo de
+            # oportunidade do card que o usuario reportou — o selo tem guarda desde 10/08, estas
+            # linhas nao tinham.
+            'hand_strategy':      (None if _mw_spot
+                                   else _sem_ev_impossivel(live_hand_strategy, decision, _di, _spot)),
             'gto_strategy':       (None if _mw_spot else gto_strategy),
             'gto_approx_stack':   (None if _mw_spot else _lk_approx_stack),   # MVP deep: ≈ aproximação a Xbb
 

@@ -7,6 +7,55 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(card): o EV exibido tem de caber no JOGO -- "-3588 bb" num stack de 32,2bb (#card #motor)
+
+> Print do usuario: veredito ERRO com selo **"-3588 bb"**, linhas *"Call 100% 3588.4bb"* e
+> *"Custo de oportunidade: -3588,36 BB"*, num spot com **Stack 32.2bb**. Perder 3.588 big blinds
+> com 32 na frente nao e estimativa exagerada, e impossivel.
+>
+> **Nao era um card.** Medido no acervo: das 6.275 decisoes com EV gravado, **62 tem |EV| maior do
+> que cabe na mao**, a pior com **68.724bb num stack de 16bb**, e 34 delas rotuladas
+> `clear_mistake`.
+>
+> A causa ja estava documentada em `ev_loss_fold_ceiling`: o EV do solver vem na escala do **POTE
+> COM QUE O NO FOI SOLVADO**, e `compute_spot_hash` nao inclui o pote. Um no solvado num pote de
+> 5bb e servido a um spot de 31,8bb. O pote solvado nao e gravado em lugar nenhum, entao **nao ha
+> como reescalar — so da para conferir e calar**.
+>
+> **O furo nao era onde eu pensei.** Minha primeira leitura foi que o motor nao filtrava. Errado:
+> dos 62, o motor **ja desconfiava de 60** (o teto de fold os pegava). O guarda funcionava. O
+> problema e que **o motor consultava o guarda e a tela nao** — o card lia `ev_loss_bb` gravado
+> direto, e o `GtoStrategyPanel` renderizava `ev_bb` cru. Duas portas para o mesmo fato, e so uma
+> com fechadura. Mesma familia dos 263 cards que mostravam texto de uma fonte e veredito de outra.
+>
+> **Dois consertos:**
+>
+> 1. **Teto FISICO em `ev_loss_trustworthy`**, a fonte unica da regra. Os dois guardas existentes
+>    perguntavam se a CALIBRACAO e confiavel (o stack e fundo demais? o fold contradiz a conta?);
+>    nenhum perguntava se o VALOR e possivel. O limite e a fisica do jogo, nao um limiar: numa mao
+>    o hero ganha no maximo o pote mais o que o vilao cobre, e perde no maximo o proprio stack.
+>    `pote + 2 x stack` e generoso de proposito — mata o impossivel sem apertar o duvidoso. E vale
+>    para TODA acao: o teto de fold so existe para fold porque la a aritmetica e fechada, e 1 das
+>    62 era um CALL, que nao tinha guarda nenhum.
+> 2. **As duas superficies do card passam pela mesma porta** (`_ev_para_exibir` e
+>    `_sem_ev_impossivel`) e calam juntas: o selo de custo e as linhas por acao. As FREQUENCIAS
+>    ficam, porque sao estrategia e nao dependem de escala.
+>
+> **Efeito medido.** O teto fisico muda **2** decisoes de confianca (ambas com stack de 0,2bb) e
+> **ZERO vereditos** — confirmado por ABLACAO: com e sem o guarda, o diff de labels e identico
+> (94 mudancas nos dois bracos, que sao drift do harness contra o rotulo pos-reconcile, nao do
+> guarda). E correcao de EXIBICAO, nao de veredito.
+>
+> Na tela: **326 cards deixam de mostrar o custo**, 62 deles porque o numero era impossivel. O
+> maior que some e o de 68.724bb.
+>
+> `tests/test_ev_cabe_no_jogo.py`, 7 testes, **5 mutacoes acusadas** — inclusive "so o selo cala,
+> as linhas por acao nao", que e exatamente a contradicao que o card ja teve. Controles: EV
+> legitimo continua passando (perda pequena, stack inteiro perdido, e o proprio teto), a fronteira
+> discrimina em 0,1bb, e sem stack o guarda nao inventa teto.
+>
+> Suites `engine` (844), `gto` (492) e `api` (148) verdes.
+
 ### docs(changelog): relatorio do coach regerado -- o 96s deixou de ser silencio (#coach)
 
 > Producao em `d9cf4d1c`, 567 acusadas. Dois vereditos mudaram nas 71 anotacoes, e sao as duas

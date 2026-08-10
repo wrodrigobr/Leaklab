@@ -463,6 +463,32 @@ def ev_loss_trustworthy(ev_loss_bb, stack_bb, ev_loss_source, *,
             return False
     except (TypeError, ValueError):
         return False
+    # ── Teto FÍSICO: o número precisa caber no jogo ────────────────────────────────────────────
+    # As duas checagens acima perguntam se a CALIBRAÇÃO é confiável (o stack é fundo demais? o
+    # fold contradiz a aritmética?). Nenhuma pergunta se o VALOR é possível — e ele nem sempre é.
+    #
+    # Medido em produção: **62 decisões com EV maior do que cabe na mão**, a pior com −68.724bb
+    # num stack de 16bb, e **34 delas rotuladas `clear_mistake`** — o veredito mais duro do
+    # produto apoiado num número que não pode existir. Um usuário viu o card: "−3588 bb" com
+    # stack de 32,2bb.
+    #
+    # A causa está documentada em `ev_loss_fold_ceiling`: o EV vem na escala do POTE SOLVADO, e
+    # `compute_spot_hash` não inclui o pote, então um nó solvado num pote de 5bb é servido a um
+    # spot de 31,8bb. O pote solvado não é gravado, logo não há como reescalar — só conferir.
+    #
+    # O limite é a física do jogo, não um limiar: numa mão o hero pode ganhar no máximo o pote
+    # mais o que o vilão cobre, e perder no máximo o próprio stack. `pot + 2 * stack` é generoso
+    # de propósito — o objetivo é matar o impossível, não apertar o duvidoso, que os outros dois
+    # guardas já fazem. Vale para TODA ação: o teto de fold só existe para fold porque lá há
+    # aritmética fechada; este vale para call e raise também.
+    try:
+        _st = float(stack_bb) if stack_bb is not None else None
+        if _st is not None and _st > 0:
+            _teto_fisico = float(pot_bb or 0) + 2.0 * _st
+            if abs(ev) > _teto_fisico:
+                return False
+    except (TypeError, ValueError):
+        pass
     if (action or '').strip().lower() in _FOLD_ACTIONS:
         teto = ev_loss_fold_ceiling(equity, pot_bb, facing_bb, stack_bb)
         if teto is not None and ev > teto:
