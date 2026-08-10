@@ -6183,11 +6183,26 @@ def _ev_para_exibir(decision, _di, _spot):
     Devolve `None` de proposito, e nao um valor "consertado": o pote com que o no foi solvado nao
     e gravado em lugar nenhum, entao nao ha como reescalar — so da para conferir e calar.
     """
+    return _ev_e_motivo(decision, _di, _spot)[0]
+
+
+def _ev_e_motivo(decision, _di, _spot):
+    """`(valor, motivo)` — o EV a exibir e, quando ele nao vai, POR QUE nao vai.
+
+    Sao TRES ausencias diferentes, e trata-las como uma so seria a celula em branco que este
+    produto ja pagou caro para nao ter:
+
+      · `sem_gabarito`   nao ha carta nem no: nao existe linha otima contra a qual medir custo
+      · `fora_de_escala` o numero e IMPOSSIVEL (passa do pote + 2 stacks) — 62 decisoes medidas
+      · `nao_confiavel`  os guardas antigos desconfiam (teto de fold, profundidade, fonte) sem
+                         que o valor seja absurdo — **264 decisoes**, e chama-las de "fora de
+                         escala" seria impreciso: elas cabem no jogo, so nao merecem confianca
+    """
     if not decision:
-        return None
+        return None, None
     ev = decision.get('ev_loss_bb')
     if ev is None:
-        return None
+        return None, 'sem_gabarito'
     try:
         from leaklab.decision_engine_v11 import ev_loss_trustworthy
         _m = (_di or {}).get('math', {}) or {}
@@ -6201,8 +6216,18 @@ def _ev_para_exibir(decision, _di, _spot):
             facing_bb=(_spot or {}).get('facingToCallBb'),
         )
     except Exception:
-        return ev          # sem conseguir avaliar, mantem o comportamento antigo
-    return ev if ok else None
+        return ev, None    # sem conseguir avaliar, mantem o comportamento antigo
+    if ok:
+        return ev, None
+    # Impossivel x apenas duvidoso: a fronteira e a mesma do teto fisico do motor.
+    try:
+        _st = float((_spot or {}).get('effectiveStackBb')
+                    or decision.get('effective_stack_bb') or 0)
+        _pt = float((_spot or {}).get('potBb') or 0)
+        impossivel = _st > 0 and abs(float(ev)) > _pt + 2.0 * _st
+    except (TypeError, ValueError):
+        impossivel = False
+    return None, ('fora_de_escala' if impossivel else 'nao_confiavel')
 
 
 def _sem_ev_impossivel(hand_strategy, decision, _di, _spot):
@@ -7220,7 +7245,9 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
             #
             # `None` some com o selo e o custo de oportunidade, que e o certo: melhor o card nao
             # falar de custo do que falar um numero impossivel.
-            'ev_loss_bb':         _ev_para_exibir(decision, _di, _spot),  # #24
+            'ev_loss_bb':         _ev_e_motivo(decision, _di, _spot)[0],  # #24
+            # POR QUE o custo nao aparece. Tres motivos distintos — ver `_ev_e_motivo`.
+            'ev_loss_motivo':     _ev_e_motivo(decision, _di, _spot)[1],
             'multiway_advice':    multiway_advice,   # fallback multiway: equity-vs-range (estimativa, não GTO HU)
             'multiway_safe':      multiway_safe,     # Fase 2: veredito GRADEADO da cauda segura (None = informativo)
             # com estimativa multiway ativa, esconde as barras HU (o artefato que estamos

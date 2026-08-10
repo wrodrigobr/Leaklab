@@ -4,6 +4,8 @@ import { useMutation } from "@tanstack/react-query";
 import { AlertOctagon, Check, CheckCircle2, FlaskConical, GraduationCap, Info, Loader2, Lock, PenLine, Sparkles, Trash2, X } from "lucide-react";
 import { GtoStrategyPanel } from "@/components/replayer/GtoStrategyPanel";
 import { DecisionCard, type DecisionSourceVariant } from "@/components/replayer/DecisionCard";
+import { DecisionCardV2 } from "@/components/replayer/DecisionCardV2";
+import { metricasDoCard } from "@/lib/cardV2Metricas";
 import { PlayingCard } from "@/components/hud/PlayingCard";
 import { parseCards, fmtAction } from "@/components/replayer/replayerFormat";
 import { cn } from "@/lib/utils";
@@ -69,6 +71,21 @@ export function SidePanels({
   const [showDetails, setShowDetails] = useState<boolean>(
     () => localStorage.getItem('replayer_show_details') === 'true'
   );
+  // ── Layout v2, atras de toggle, CLASSICO por padrao ───────────────────────────────────────
+  // O v2 nasce do pedido de um card mais simples, mas o exemplo que o originou mostrava o caso
+  // facil (decisao correta, cobertura total do solver). Medido, esse e o caso raro: a linha de
+  // metricas fica parcialmente vazia em 76% dos cards. Por isso ele entra opt-in, com o classico
+  // acessivel — da para comparar os dois nos casos dificeis antes de trocar o padrao, em vez de
+  // descobrir na primeira tela do usuario.
+  const [usarV2, setUsarV2] = useState<boolean>(
+    () => localStorage.getItem('replayer_card_v2') === 'true'
+  );
+  const toggleV2 = () => setUsarV2(prev => {
+    const next = !prev;
+    localStorage.setItem('replayer_card_v2', String(next));
+    return next;
+  });
+
   const toggleDetails = () => setShowDetails(prev => {
     const next = !prev;
     localStorage.setItem('replayer_show_details', String(next));
@@ -1122,7 +1139,56 @@ export function SidePanels({
           );
         }
 
-        const CardImpl = DecisionCard;   // layout clássico fixo (sem toggle de v2)
+        // ── v2: mesmo dado, layout enxuto. As três métricas saem de uma função PURA ────────
+        // (`metricasDoCard`), testada à parte — a cascata que decide o motivo de cada ausência
+        // não podia morar dentro do JSX.
+        if (usarV2) {
+          return (
+            <>
+              <DecisionCardV2
+                verdict={verdict}
+                source={{ label: SOURCE_LABEL[sourceVariant],
+                          tooltip: SOURCE_TOOLTIP[sourceVariant], variant: sourceVariant }}
+                playedAction={playedAction}
+                idealAction={idealAction}
+                isActionOk={isActionOk}
+                contexto={step.street ?? null}
+                metricas={metricasDoCard({
+                  evLossBb: step.ev_loss_bb,
+                  evLossMotivo: step.ev_loss_motivo,
+                  equity: eq,
+                  requerido: req,
+                  acao: step.action,
+                  acaoOk: isActionOk,
+                })}
+                estrategia={verdictStrat.length
+                  ? verdictStrat.map(r => ({
+                      acao: r.action, freq: r.frequency ?? 0,
+                      jogada: normalizeGtoAction(r.action)
+                              === normalizeGtoAction(step.action ?? ''),
+                    }))
+                  : null}
+                // O título diz de QUEM é a estratégia. Num pote multiway o solver é heads-up e
+                // não resolve 3-way+: pôr as barras sob "Estratégia do Solver" atribuiria a ele
+                // uma resposta que não é dele.
+                estrategiaTitulo={isMultiwayStep ? t("card.mwTitle") : t("card.solverStrategy")}
+                frase={whyFull}
+                showDetails={showDetails}
+                onToggleDetails={toggleDetails}
+                detalhes={hasIndicators ? indicators : undefined}
+                icmBadge={null}
+                fmtAction={fmtAction}
+                verdictTooltip={verdict.sourceTooltip}
+              />
+              <button type="button" onClick={toggleV2} title={t("card.v2ToggleTip")}
+                      className="mt-1 w-full text-right font-mono text-[10px] text-muted-foreground/50 hover:text-muted-foreground">
+                {t("card.v2ToggleOn")}
+              </button>
+            </>
+          );
+        }
+
+        const CardImpl = DecisionCard;
         return (
           <>
           <CardImpl
@@ -1166,6 +1232,12 @@ export function SidePanels({
             evLossBb={step.ev_loss_bb}
             fmtAction={fmtAction}
           />
+          {/* A PORTA DE ENTRADA do v2. A primeira versao so tinha o "voltar ao classico", dentro
+              do ramo v2 — um opt-in sem como optar. Achado ao reler, nao por teste. */}
+          <button type="button" onClick={toggleV2} title={t("card.v2ToggleTip")}
+                  className="mt-1 w-full text-right font-mono text-[10px] text-muted-foreground/50 hover:text-muted-foreground">
+            {t("card.v2ToggleOff")}
+          </button>
           </>
         );
       })()}

@@ -307,6 +307,8 @@ export interface ReplayStep {
   n_active_opponents?: number | null;  // >=2 = pote multiway (card usa severidade do engine, não gto HU)
   facing_limp?: boolean | null;        // pote limpado: o preço deixa de ser escondido
   facing_to_call_bb?: number | null;   // custo de entrar no pote, em bb
+  /** POR QUE o custo nao aparece. Tres ausencias distintas, ver `_ev_e_motivo` no backend. */
+  ev_loss_motivo?: "sem_gabarito" | "fora_de_escala" | "nao_confiavel" | null;
   n_can_see_flop?: number | null;      // preflop: quem ainda não foldou (inclui quem não agiu)
   best_action?: string;
   // error details

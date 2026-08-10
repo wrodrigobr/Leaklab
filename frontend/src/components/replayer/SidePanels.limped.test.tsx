@@ -114,3 +114,43 @@ describe("pote limpado mostra o preco", () => {
     expect(texto).not.toContain("card.whyLimpedPreco");
   });
 });
+
+describe("toggle do layout v2", () => {
+  afterEach(() => localStorage.removeItem("replayer_card_v2"));
+
+  it("o CLASSICO e o padrao, e existe porta para LIGAR o v2", () => {
+    // A primeira versao so tinha o botao "voltar ao classico", dentro do ramo v2 — um opt-in sem
+    // como optar. Sem este teste, o layout novo seria inalcancavel e ninguem notaria.
+    montar(passo({ facing_limp: true, n_can_see_flop: 2 }));
+    const texto = document.body.textContent ?? "";
+    expect(texto, "sem a porta de entrada o v2 e inalcancavel").toContain("card.v2ToggleOff");
+    expect(texto, "o padrao tem de ser o classico").not.toContain("card.v2ToggleOn");
+  });
+
+  it("com o v2 ligado, o card muda e a saida de volta aparece", () => {
+    localStorage.setItem("replayer_card_v2", "true");
+    montar(passo({ facing_limp: true, n_can_see_flop: 2 }));
+    const texto = document.body.textContent ?? "";
+    expect(texto, "o v2 nao renderizou").toContain("card.v2EvPerdido");
+    expect(texto, "sem saida, o usuario fica preso no layout novo").toContain("card.v2ToggleOn");
+  });
+
+  it("o v2 mostra o MOTIVO quando o custo se cala", () => {
+    // Pote limpado nao tem gabarito, entao nao ha linha otima contra a qual medir custo. O slot
+    // vazio tem de dizer isso — celula em branco e o que este layout existe para nao ter.
+    localStorage.setItem("replayer_card_v2", "true");
+    montar(passo({ facing_limp: true, n_can_see_flop: 2, ev_loss_bb: null,
+                   ev_loss_motivo: "sem_gabarito" }));
+    expect(document.body.textContent ?? "").toContain("card.v2EvSemGabaritoCurto");
+  });
+
+  it("os 264 recebem motivo PROPRIO, nao 'fora de escala'", () => {
+    // Eles cabem no jogo; o que falta e confianca. Chama-los de impossiveis seria impreciso.
+    localStorage.setItem("replayer_card_v2", "true");
+    montar(passo({ facing_limp: true, n_can_see_flop: 2, ev_loss_bb: null,
+                   ev_loss_motivo: "nao_confiavel" }));
+    const texto = document.body.textContent ?? "";
+    expect(texto).toContain("card.v2EvNaoConfiavelCurto");
+    expect(texto).not.toContain("card.v2EvForaDeEscalaCurto");
+  });
+});

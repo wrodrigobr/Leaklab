@@ -7,6 +7,64 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(card): layout v2 atras de toggle, desenhado a partir dos casos que QUEBRAM (#card)
+
+> Pedido a partir de um exemplo de card mais simples. O exemplo, porem, mostrava uma decisao
+> **correta com cobertura total do solver** — o caso facil. Medido no acervo, ele e o raro:
+>
+> | | |
+> |---|---|
+> | decisoes | 9.813 |
+> | **sem veredito GTO nenhum** | **1.565** (16%) |
+> | com os TRES numeros (EV, equity, odds) | **2.425** (24%) |
+> | com NENHUM dos tres | 0 |
+>
+> A linha de metricas fica **parcialmente vazia em 76% dos cards**. Por isso o estado VAZIO e o
+> centro do componente, nao um detalhe — e sao QUATRO ausencias de naturezas diferentes:
+>
+> | motivo | quando | n |
+> |---|---|---|
+> | `sem_gabarito` | nao ha carta nem no contra o qual medir custo | 1.565 |
+> | `fora_de_escala` | o numero e IMPOSSIVEL (passa do pote + 2 stacks) | 62 |
+> | `nao_confiavel` | os guardas desconfiam, mas o valor CABE no jogo | 264 |
+> | nao se aplica | pot odds quando o hero apostou em vez de pagar | ~52% |
+>
+> **A distincao entre os dois do meio foi decisao do usuario**, e ela e precisa: os 264 nao sao
+> impossiveis, so nao merecem confianca. Chama-los de "fora de escala" seria impreciso.
+>
+> **O que o layout enxuto NAO perde**, e cada um custou um defeito no passado:
+> - **a FONTE do veredito** — o exemplo escrevia so "PRE-FLOP", que e a street; com 16% sem
+>   gabarito, o card tem de declarar de onde veio a afirmacao;
+> - **o titulo da estrategia muda com a fonte** — barras sob "Estrategia do Solver" num pote
+>   multiway atribuiriam ao solver uma resposta que nao e dele (ele e heads-up);
+> - **a frase sempre visivel**, a auditoria atras do olho.
+>
+> E corta a redundancia que o proprio exemplo tinha: ele repetia os mesmos 62% em **tres** lugares.
+> Aqui a acao jogada e um ponto na barra, e a coluna "GTO recomenda" so aparece quando o GTO
+> recomenda OUTRA coisa.
+>
+> As tres metricas saem de `lib/cardV2Metricas.ts`, funcao **pura e testada a parte** — mesmo
+> motivo do `replayWhy`: cascata de decisao dentro do JSX e onde bug se esconde.
+>
+> **Tres defeitos meus, achados relendo e nao por teste:**
+> 1. **O opt-in nao tinha porta.** O botao so existia dentro do ramo v2 ("voltar ao classico"), e
+>    ninguem conseguiria LIGAR o layout novo. Ha teste para os dois sentidos agora.
+> 2. **O rotulo curto vinha por convencao de nome** (`motivo + "Curto"`) com `defaultValue`: chave
+>    faltando caia **calada** no generico "sem dado" — exatamente o modo de falha que o componente
+>    existe para evitar. Virou campo explicito, entao a omissao aparece no call site.
+> 3. `verdict.tip` e `card.preflopTag` **nao existem** — o primeiro nao esta no `VInfo`, o segundo
+>    nao esta em locale nenhum. Passaram no `tsc` e teriam renderizado a chave crua.
+>
+> 26 testes novos (9 no componente, 8 no mapeamento puro, 4 no toggle, mais os do pote limpado) e
+> **20 mutacoes acusadas**. i18n nos tres locales, paridade de chaves conferida.
+>
+> **Um limite documentado no proprio teste:** `textContent` prova que o texto esta na ARVORE, nao
+> que esta VISIVEL. O jsdom nao carrega Tailwind, entao trocar uma classe por `hidden` passa
+> batido — verificado mutando (`className="hidden"` sobreviveu; remover o elemento foi acusado).
+> Para regressao de visibilidade por CSS esta suite nao serve, e isso esta escrito nela.
+>
+> Frontend 339 testes verdes, `api` 148, build limpo. **Classico segue o padrao.**
+
 ### fix(card): o EV exibido tem de caber no JOGO -- "-3588 bb" num stack de 32,2bb (#card #motor)
 
 > Print do usuario: veredito ERRO com selo **"-3588 bb"**, linhas *"Call 100% 3588.4bb"* e

@@ -78,7 +78,9 @@ interface Props {
   fmtAction: (a: string) => string;
 }
 
-const SOURCE_VARIANT_CLS: Record<DecisionSourceVariant, string> = {
+// Exportado para o `DecisionCardV2` reusar: dois mapas de cor para a MESMA fonte
+// divergiriam calados, e a fonte e justamente o que o v2 nao pode perder.
+export const SOURCE_VARIANT_CLS: Record<DecisionSourceVariant, string> = {
   gto:       "text-primary bg-primary/10 ring-primary/30",
   preflop:   "text-foreground/80 bg-background/60 ring-border",
   engine:    "text-muted-foreground bg-background/40 ring-border/50",
