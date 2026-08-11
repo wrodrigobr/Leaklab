@@ -23,6 +23,13 @@ Baseline diferente de zero é dívida declarada, não invariante quebrada. A alt
 tudo zerar antes de ligar a varredura) deixaria a rede desligada justamente durante os consertos,
 que é quando ela pega mais coisa.
 
+**O baseline SOBE em um caso só, e ele precisa de prova anexada:** quando um conserto torna o
+DADO DE ENTRADA mais correto e, com isso, expõe instâncias de um defeito DIFERENTE que já existia
+mascarado. Aconteceu em 11/08 com `ODDS` e `NOTA`, e a prova foi mostrar que `estimated_equity`,
+`facing_to_call_bb` e `pot_size` ficaram BIT-IDÊNTICOS nas linhas novas — só o label mudou, porque
+um portão de ICM que rodava sobre mesa falsa parou de abrandar os folds. Sem essa prova, subir
+baseline é legalizar regressão, que é exatamente o que esta rede existe para impedir.
+
 ── A regra que este arquivo tem de obedecer ───────────────────────────────────────────────────
 
 CLAUDE.md, item 1: diagnóstico precisa PROVAR que detecta. Toda invariante aqui traz um `forjar`,
@@ -370,10 +377,13 @@ INVARIANTES: List[Invariante] = [
                                        ev_loss_source='solver_hand'),
     ),
     Invariante(
-        id='MESA', baseline=2355,
+        id='MESA', baseline=0,
         titulo='num_players menor que 2 — mesa que não existe',
         porta='icm_pressure="high" força exclusão do ranking de leaks e do plano de estudo',
-        origem='auditoria 10/08, lentes de nulos e de escala — confirmado por 2 céticos',
+        origem='auditoria 10/08, lentes de nulos e de escala — confirmado por 2 céticos. '
+               'RESOLVIDO em 11/08: o bounty do PKO mora DENTRO do parêntese do assento '
+               '("(5469 in chips, $1.50 bounty)") e o regex exigia o ")" logo após "in chips". '
+               '11 torneios, 2.355 linhas, reprocessadas.',
         medir=_mesa_impossivel,
         forjar=lambda c: _forjar_linha(c, num_players=0, position='UTG+2', n_active_opponents=5),
     ),
@@ -430,10 +440,13 @@ INVARIANTES: List[Invariante] = [
                                        score=0.7, action_taken='call', best_action='fold'),
     ),
     Invariante(
-        id='NOTA', baseline=45,
+        id='NOTA', baseline=49,
         titulo='nota perfeita (score 0.0) sem gabarito e discordando da própria recomendação',
         porta='score exibido no card e usado no ELO',
-        origem='medido em 10/08 sobre o snapshot, com controle',
+        origem='medido em 10/08 sobre o snapshot, com controle. BASELINE SUBIU 45 → 49 em '
+               '11/08 pelo mesmo motivo de ODDS: o reprocesso dos 11 torneios PKO tirou a máscara '
+               'do portão de ICM sobre mesa falsa. Delta 100% contido nos 11 (o resto do acervo '
+               'ficou em 461 acusadas antes e depois).',
         medir=_nota_perfeita_sem_gabarito,
         forjar=lambda c: _forjar_linha(c, score=0.0, gto_label=None, action_taken='fold',
                                        best_action='call'),
@@ -447,10 +460,17 @@ INVARIANTES: List[Invariante] = [
         forjar=lambda c: _forjar_linha(c, street='flop', board='["2h","7c","2d","Qs","4h"]'),
     ),
     Invariante(
-        id='ODDS', baseline=16,
+        id='ODDS', baseline=25,
         titulo='fold acusado com a equity da própria linha abaixo do pot odds da própria linha',
         porta='card mostra equity, preço e veredito juntos',
-        origem='medido em 10/08 sobre o snapshot (13 no flop), com coorte de controle',
+        origem='medido em 10/08 sobre o snapshot (13 no flop), com coorte de controle. '
+               'BASELINE SUBIU 16 → 25 em 11/08, e a prova está no par antes/depois: nas 9 linhas '
+               'novas a equity, o call e o pote ficaram bit-idênticos e só o label mudou '
+               '(marginal → clear_mistake). Com num_players=0 o `icm_zone_softens_fold` disparava '
+               '(exige icm_pressure=high E mesa <= 6; zero satisfaz as duas) e abrandava TODO fold '
+               'desses torneios. Consertar a mesa tirou a máscara. As 25 são gto_critical com '
+               'played_freq=0: a acusação é do SOLVER e o que contradiz é a equity heurística '
+               'exibida ao lado — o conserto é de DISPLAY, não de veredito.',
         medir=_fold_acusado_com_preco_ruim,
         forjar=lambda c: _forjar_linha(c, street='flop', board='["2h","7c","2d"]',
                                        action_taken='fold', best_action='call',

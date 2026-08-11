@@ -7,6 +7,51 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(assento): o bounty do PKO zerava a mesa, e o portao de ICM abrandava tudo (#parser #icm)
+
+> **`num_players < 2`: 2.355 → 0.** Onze torneios PKO, 24% do acervo, reprocessados. 71 anotacoes
+> do coach e 9.813 decisoes intactas.
+>
+> ```
+> Seat 1: jojosetubal (7835 in chips)                    <- casava
+> Seat 1: speedyman393 (5469 in chips, $1.50 bounty)     <- NAO casava
+> ```
+>
+> O regex exigia o `)` logo depois de "in chips". O mesmo texto quebrava uma SEGUNDA leitura,
+> `_extract_all_stacks`, que alimenta o ICM real, e `mtt_context` ainda carregava duas regexes
+> mortas igualmente cegas. Hoje ha uma leitura so: `mesa_final.assentos_com_stack`.
+>
+> ── **O dano era maior do que a auditoria disse** ──────────────────────────────────────────────
+>
+> A auditoria achou que mesa zero forcava `icm_pressure='high'` e tirava 85 acusacoes do ranking.
+> Verdade, e incompleto. **Ela tambem abrandava TODO fold desses torneios**: o
+> `icm_zone_softens_fold` exige `icm_pressure='high'` E mesa curta (`active_players <= 6`), e zero
+> satisfaz as duas. Um portao desenhado para zona-ICM real rodava sobre mesa inexistente.
+>
+> Acusacoes 536 → 596, **delta 100% contido nos 11 torneios** (o resto do acervo ficou em 461
+> antes e depois). Nao e o produto ficando mais severo: e um abrandamento indevido saindo.
+>
+> ── **A varredura pegou duas regressoes, e a prova mudou o veredito sobre elas** ────────────────
+>
+> `ODDS` 16 → 25 e `NOTA` 45 → 49. Baseline so desce, entao fui atras. A prova: nas 9 linhas novas
+> de `ODDS`, `estimated_equity`, `facing_to_call_bb` e `pot_size` sao **bit-identicos** antes e
+> depois — mudou so o label, `marginal` → `clear_mistake`. Nao e defeito novo, e a mascara saindo.
+>
+> Isso obrigou a escrever no modulo a UNICA excecao a regra do baseline, com a exigencia de prova
+> anexada. Sem ela, "o dado melhorou" vira desculpa para legalizar qualquer regressao.
+>
+> As 25 de `ODDS` sao todas `gto_critical` com `played_freq=0`: a acusacao vem do SOLVER e o que
+> contradiz e a equity HEURISTICA exibida ao lado. O conserto e de display, nao de veredito.
+>
+> ── **Duas suposicoes derrubadas ao escrever o teste** ─────────────────────────────────────────
+>
+> O agente disse "MP1/UTG+2 exigem n>=7"; o real e 8. Eu supus BTN=2; o real e 3, porque heads-up
+> o botao E o small blind. A tabela do teste agora e MEDIDA de `nomes_de_posicao`.
+>
+> A comparacao antes/depois por `id` tambem nao valia: o reprocesso faz DELETE+INSERT e renumera.
+> Por id, 9 linhas "nao existiam antes"; pela chave estavel `(hand_id, street, action)`, todas as
+> 9 estavam la, como `marginal`.
+
 ### fix(veredito): o piso de direcao tinha DUAS copias, e o relabel rodou (#veredito #reprocesso)
 
 > **Acusacoes em producao: 567 → 536.** `SELO` 12 → 2, `GRAFIA` 9 → 2, `AUTO` 20 → 15. Nenhuma
