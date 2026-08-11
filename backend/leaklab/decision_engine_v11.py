@@ -1153,7 +1153,23 @@ def evaluate_decision(input_data: Dict[str, Any]) -> Dict[str, Any]:
     #   · nao ha cobertura GTO nenhuma. Ai o unico "melhor lance" disponivel vem da heuristica, que
     #     no preflop nao computa equity-vs-range: ela recomendou FOLD com AK e 8,6bb contra 37,5bb.
     #     Sem base, o produto nao acusa — a mesma regra que vale no resto dele.
-    _sem_gabarito = not preflop_gto.get('available')
+    # "Sem gabarito" e SEM GABARITO NENHUM — nao "sem range preflop".
+    #
+    # Esta linha era `not preflop_gto.get('available')`, e `_enrich_preflop_gto` devolve
+    # available=False para toda street != preflop. Ou seja: no postflop o segundo gatilho era
+    # sempre verdadeiro e o guarda virava pura aritmetica (facing >= 95% do stack efetivo),
+    # apagando o veredito do solver em 149 linhas. Em 19 delas o solver dizia gto_critical
+    # (frequencia ZERO) e o produto devolvia 'standard' com score 0.0 — o solver acusa, o produto
+    # absolve. E em 108 o `best_action` deixava de ser recomendacao e virava eco da acao do hero.
+    #
+    # O guarda vizinho, tres linhas abaixo, ja fazia certo: `not gto.get('available')`. E a
+    # definicao canonica de "sem gabarito" no projeto e o gto_label do solver, nao o range
+    # preflop (tests/test_familia_spot.py). O comentario acima diz "nao ha cobertura GTO
+    # nenhuma" desde o inicio — o codigo e que nao dizia. Comentario nao e evidencia.
+    #
+    # No preflop nada muda: `_enrich_gto` retorna available=False fora de flop/turn/river, entao
+    # o `and` e inerte la.
+    _sem_gabarito = not preflop_gto.get('available') and not gto.get('available')
     if ((_best_action in ('raise', 'jam') or _sem_gabarito)
             and _facing_bb > 0 and _hero_stack_bb > 0
             and _facing_bb >= _hero_stack_bb * 0.95):

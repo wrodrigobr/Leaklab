@@ -43,6 +43,7 @@ SUITES = {
                   'test_stack_efetivo.py',
                   'test_pote_e_equity_river.py',
                   'test_sem_gabarito_nao_e_erro.py',
+                  'test_sem_gabarito_e_sem_gabarito_nenhum.py',
                   'test_sem_definicao_duplicada.py',
                   'test_pote_limpado_tem_preco.py',
                   'test_ev_cabe_no_jogo.py',
