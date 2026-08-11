@@ -149,7 +149,12 @@ for row in tournaments:
                 hand_updated += 1
                 total_updated += 1
                 affected_tournament_ids.add(tid)
-                if total_updated <= 30 or total_updated % 50 == 0:
+                # Em DRY-RUN imprime TUDO. O corte em 30 existe para não afogar o log de uma
+                # execução real de milhares de linhas, mas no dry-run a lista É o produto: em
+                # 11/08 ele reportou "Mudariam: 42" mostrando 30, e as 12 escondidas eram
+                # exatamente o que faltava para decidir se aplicava. Diagnóstico que trunca
+                # calado não fecha decisão.
+                if DRY or total_updated <= 30 or total_updated % 50 == 0:
                     print(f"  tid={tid} hand={hand_id} {street}/{act}: "
                           f"{old_label}->{new_label} | gto {old_gtolbl}->{new_gtolbl}")
 
