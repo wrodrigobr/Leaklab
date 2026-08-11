@@ -95,6 +95,35 @@ def test_mix_LEGITIMO_nao_leva_piso_de_direcao():
     print("OK  test_mix_LEGITIMO_nao_leva_piso_de_direcao")
 
 
+def test_unificar_nao_e_SOMAR():
+    """O motor nao pode ficar MAIS severo que o reconcile ao passar a chamar a mesma funcao.
+
+    `is_verdict_error_signal` tem tres gatilhos: recomendacao=fold, frequencia ~0, e fora do
+    range. O reconcile so alimenta o PRIMEIRO — chama a funcao com dois argumentos. Na primeira
+    versao deste conserto eu passei `played_freq` no motor "porque a funcao aceita", e o dry-run
+    de producao mostrou 110 bets postflop de `gto_minor_deviation` subindo de `marginal` para
+    `small_mistake`. Unificar duas copias e faze-las concordar, nao somar o que cada uma tinha.
+    """
+    import os
+    motor = open(os.path.join(os.path.dirname(__file__), '..',
+                              'leaklab', 'decision_engine_v11.py'), encoding='utf-8').read()
+    alvo = 'label = piso_por_direcao('
+    assert alvo in motor, 'o motor nao chama piso_por_direcao'
+    # Regex com parenteses aninhados e onde a primeira versao DESTE teste falhou: a chamada tem
+    # dois niveis (`_norm_gto_action(input_data.get(...))`) e o padrao so casava um. Contar
+    # parenteses e chato e correto; regex de parenteses balanceados e curta e errada.
+    i = motor.index(alvo) + len(alvo)
+    nivel, fim = 1, i
+    while nivel and fim < len(motor):
+        nivel += {'(': 1, ')': -1}.get(motor[fim], 0)
+        fim += 1
+    chamada = motor[i:fim]
+    assert 'played_freq' not in chamada, (
+        'o motor passa played_freq e o reconcile nao — volta a ser mais severo que ele: %s'
+        % chamada)
+    print("OK  test_unificar_nao_e_SOMAR")
+
+
 def test_a_regra_de_direcao_tem_UM_dono():
     """A varredura dos N+1: quem quiser o piso importa a funcao, nao reescreve a lista.
 

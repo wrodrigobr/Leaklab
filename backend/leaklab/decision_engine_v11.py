@@ -1252,11 +1252,15 @@ def evaluate_decision(input_data: Dict[str, Any]) -> Dict[str, Any]:
     # daqui dizia "espelha o is_verdict_error_signal do reconcile" e não espelhava. Custou 12
     # cards com o selo `GTO Correto` ao lado do veredito de erro, em nós onde o solver tomava a
     # mesma ação entre 30% e 49% do tempo.
+    # `played_freq` NÃO é passado aqui, de propósito. `is_verdict_error_signal` também aciona por
+    # frequência ~0, mas o reconcile chama a função só com (gto_action, action_taken) — passar a
+    # frequência tornaria o motor MAIS severo que ele, que é a assimetria que este commit existe
+    # para acabar. Medido no dry-run de produção: com a frequência, 110 bets postflop de
+    # `gto_minor_deviation` subiam de `marginal` para `small_mistake`. Unificar não é somar.
     from leaklab.verdict import piso_por_direcao
     _label_antes_do_piso = label
     label = piso_por_direcao(label, gto.get('gto_label'), _best_action,
-                             _norm_gto_action(input_data.get('player_action', '')),
-                             played_freq=gto.get('played_freq'))
+                             _norm_gto_action(input_data.get('player_action', '')))
     if label != _label_antes_do_piso:
         final_score = max(final_score, _LABEL_MAX_SCORE['marginal'] + 0.001)
 
