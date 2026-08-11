@@ -7,6 +7,81 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(medicao): a suite testava CONSERTOS, e ninguem varria o ACERVO (#invariantes #ev #teste)
+
+> Pergunta do usuario, depois de mais um build revelar um defeito novo: *"por que tanta
+> dificuldade em estruturar o teste e as validacoes pra entregar algo confiavel?"*
+>
+> A resposta e o achado do dia, e nao e "faltam testes". **Faltava um TIPO de teste.** As 227
+> suites respondem "o guarda X funciona?" — dado este input, o motor devolve aquele veredito. O
+> produto faz outra pergunta: "existe alguma linha gravada que viola X?". Ninguem estava fazendo
+> a segunda, e por isso a suite inteira ficava verde com 567 acusacoes no ar.
+>
+> Seis lentes independentes varreram um snapshot de producao (9.813 decisoes, espelho conferido
+> em 5 metricas). Cada achado enfrentou dois ceticos, um atacando a medicao e outro a premissa.
+> Resultado honesto: **48 candidatos, 8 sobreviveram aos dois ceticos, 21 foram refutados e 19
+> morreram sem julgamento** quando a cota da sessao estourou. Medi os 19 eu mesmo — e **tres
+> tinham numero errado** (54 era 10, 1.845 era 2.411, 3.059 era 3.067). Achado nao verificado
+> nao e achado.
+>
+> ── **A rede: `leaklab/invariantes_acervo.py`** ────────────────────────────────────────────────
+>
+> Catorze invariantes, cada uma declarando o que e impossivel, ONDE isso chega na tela, e quantas
+> violacoes existem hoje. A varredura falha quando um numero CRESCE — baseline e divida medida,
+> nao meta. Esperar tudo zerar antes de ligar a rede a deixaria desligada justamente durante os
+> consertos, que e quando ela pega mais coisa.
+>
+> `scripts/varre_invariantes.py` roda contra o SQLite local ou contra producao via ssh depois do
+> reprocesso, e sai com codigo 1 se algo piorou. Nao depende do CI, bloqueado por cobranca desde
+> 01/08.
+>
+> **Cada sonda prova que enxerga.** `tests/test_invariantes_acervo.py` insere a violacao forjada
+> num banco com duas decisoes SAS e exige que a sonda va de 0 para 1 — e que nenhuma outra reaja.
+> Esse terceiro passo pegou sobreposicao na estreia: tres forjas herdavam `gto_correct` da linha
+> sa e quebravam duas coisas de uma vez. A quarta sobreposicao e real (acusacao ortografica e,
+> por definicao, auto-acusacao) e ficou DECLARADA no campo `sobrepoe`. Mutacao: 14 de 14 sondas
+> cegadas foram acusadas pelo teste.
+>
+> ── **O que a rede achou e ja foi consertado** ─────────────────────────────────────────────────
+>
+> **TRES portas somavam EV sem a regua**, um dia depois de eu escrever "guarda existir nao basta,
+> conte quantas portas levam a tela":
+>
+> | porta | exibia | honesto |
+> |---|---|---|
+> | `get_ev_summary` -> DashboardV2 | 7.669,3 bb/100 | **9,8** |
+> | `coach_replay` -> relatorio do coach | 78.738,0 bb num torneio | **5,9** |
+> | `get_leak_categories` -> fila do Leak Trainer | ranking sem regua | filtrado |
+>
+> A primeira tinha CINCO agregacoes cruas DENTRO dela (EV/100, top_leaks, share, serie por
+> torneio, sangria por street). O leak nº1 do jogador era `flop fold -> call, 222.929 bb`; hoje e
+> `118,6 bb`. Os leaks nº3 e nº4 diziam *"voce deu FOLD, o certo era FOLD"* cobrando 21 mil bb —
+> sumiram. Medido chamando as funcoes VIVAS sobre um espelho com o schema real, nao reimplementando
+> a agregacao no medidor.
+>
+> **`shove` e `jam` sao a mesma jogada, e o motor cobrava pela palavra.** `calc_base_action_gap`,
+> `calc_range_penalty` e `calc_context_penalty` comparavam string crua enquanto o `math_penalty`,
+> na MESMA expressao de score, ja normalizava. 160 decisoes no acervo com a mesma jogada escrita
+> de dois jeitos, 9 punidas, 5 acusadas — o card dizia "Acao esperada: ALL-IN" para quem tinha
+> dado all-in.
+>
+> Os dois consertos tem varredura do FONTE, nao so dos casos de hoje: nenhuma soma de
+> `ev_loss_bb` em SQL no backend, nenhuma comparacao crua entre acao jogada e recomendada no
+> motor. A quarta porta e a que ainda nao existe.
+>
+> ── **O que a rede achou e AINDA NAO foi consertado** ──────────────────────────────────────────
+>
+> Onze invariantes seguem com baseline acima de zero, e o numero esta declarado no codigo:
+> `MESA` 2.355 (mesa de zero jogadores forca `icm_pressure=high` e apaga 85 acusacoes do
+> ranking), `BOARD` 6.070 (a decisao guarda cartas que o hero nao tinha visto), `EV-TETO` 60,
+> `NOTA` 45, `FREQ` 43, `AUTO` 20, `MUDO` 19, `ODDS` 16, `SELO` 12, `PROCED` 5, e tres colunas
+> mortas (`hero_won_hand`, `multiway_safe_verdict`, `hero_was_aggressor` no postflop).
+>
+> **Nota sobre as fixtures.** Quatro testes ficaram vermelhos com o conserto do EV, e estavam
+> certos em ficar: as fixtures nao declaravam `ev_loss_source`, e EV sem procedencia e rejeitado
+> pela regua — como as funcoes irmas ja faziam desde julho. As fixtures nasceram para as portas
+> cruas.
+
 ### fix(card): o v2 se contradizia, e o `tsc` que eu rodava nao checava NADA (#card #teste)
 
 > Print do usuario sobre o v2 em producao: *"esta parte do sizing, cenario, como joga gto... ta

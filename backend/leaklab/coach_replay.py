@@ -27,6 +27,19 @@ _ACT_INF = {'fold': 'foldar', 'call': 'pagar', 'raise': 'aumentar', 'bet': 'apos
             'check': 'dar check', 'shove': 'dar shove', 'jam': 'dar shove', 'allin': 'dar shove'}
 
 
+def _ev_utilizavel(d: dict) -> bool:
+    """O número de EV desta decisão pode virar quantidade no relatório?
+
+    Fonte única da regra é `ev_loss_trustworthy` — replicar o critério aqui recriaria a segunda
+    noção de "EV confiável" que o projeto passou meses eliminando. O veredito da mão não muda:
+    o que se descarta é o NÚMERO, não a acusação.
+    """
+    from leaklab.decision_engine_v11 import ev_loss_trustworthy
+    return ev_loss_trustworthy(d.get('ev_loss_bb'), d.get('stack_bb'), d.get('ev_loss_source'),
+                               action=d.get('action_taken'), equity=d.get('estimated_equity'),
+                               pot_bb=d.get('pot_size'), facing_bb=d.get('facing_bet'))
+
+
 def _leak_title(spot: str) -> str:
     street, _, action = spot.partition('/')
     return f"{_STREET_PT.get(street, street).capitalize()}: decisões de {action}"
@@ -98,9 +111,13 @@ def build_coach_replay(user_id: int, tournament_id: int) -> dict | None:
         t = dict(trow)
         if t['user_id'] != user_id:
             return None   # só o dono
+        # As cinco colunas depois de `ev_loss_bb` existem só para alimentar `ev_loss_trustworthy`.
+        # Sem elas o guarda não era apenas não-chamado, era não-chamável sem mexer nesta query —
+        # e o relatório exibia 78.738 bb perdidos num torneio cujo custo medido é 6,0 bb.
         rows = conn.execute(repo._adapt(
             "SELECT hand_id, street, position, hero_cards, action_taken, best_action, "
-            "COALESCE(gto_action, best_action) AS gto_action, label, ev_loss_bb, showdown_result "
+            "COALESCE(gto_action, best_action) AS gto_action, label, ev_loss_bb, showdown_result, "
+            "ev_loss_source, stack_bb, estimated_equity, pot_size, facing_bet "
             "FROM decisions WHERE tournament_id = ? ORDER BY hand_id ASC, id ASC"),
             (tournament_id,)).fetchall()
         decisions = [dict(r) for r in rows]
@@ -134,7 +151,8 @@ def build_coach_replay(user_id: int, tournament_id: int) -> dict | None:
         hero_cards = next((d.get('hero_cards') for d in decs if d.get('hero_cards')), '') or ''
         position = next((d.get('position') for d in decs if d.get('position')), '') or ''
         ev_cost = round(sum(abs(float(d.get('ev_loss_bb') or 0))
-                            for d in decs if verdict3(d.get('label')) == ERROR), 1)
+                            for d in decs
+                            if verdict3(d.get('label')) == ERROR and _ev_utilizavel(d)), 1)
         playlist.append({
             'hand_id': str(hand_id),
             'position': position,

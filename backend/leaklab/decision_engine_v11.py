@@ -821,10 +821,19 @@ def calc_adjusted_required_equity(street: str, pot_odds_equity: float | None, re
 
 
 def calc_base_action_gap(player_action: str, recommended_primary_action: str, alternative_actions: list[str] | None = None) -> float:
+    """Distância entre o que o hero fez e o que o nó recomenda.
+
+    A comparação passa por `_norm_gto_action` porque shove, jam e all-in são a MESMA jogada com
+    nomes diferentes — o pipeline grava 'shove' e o ramo push/fold do range devolve 'jam'. Medido
+    no acervo em 10/08: 160 decisões com a mesma jogada escrita de dois jeitos, 9 delas punidas
+    (0,18 de gap + 0,08 de range_penalty) e 5 acusadas. A assimetria estava dentro da MESMA
+    expressão de score, que já normalizava no `math_penalty`.
+    """
     alternatives = alternative_actions or []
-    if player_action == recommended_primary_action:
+    _p, _r = _norm_gto_action(player_action), _norm_gto_action(recommended_primary_action)
+    if _p == _r:
         return 0.0
-    if player_action in alternatives:
+    if _p in {_norm_gto_action(a) for a in alternatives}:
         return 0.08
     aggressive_mismatch = player_action in {"shove", "jam", "raise"} and recommended_primary_action == "fold"
     if aggressive_mismatch:
@@ -856,7 +865,8 @@ def calc_math_penalty(player_action: str, estimated_hand_equity: float | None, a
 
 
 def calc_range_penalty(range_zone: str, player_action: str, recommended_primary_action: str) -> float:
-    if player_action == recommended_primary_action:
+    # Mesma normalizacao de `calc_base_action_gap`: nao se cobra range_penalty pela palavra.
+    if _norm_gto_action(player_action) == _norm_gto_action(recommended_primary_action):
         return 0.0
     if range_zone == "borderline_range":
         return 0.03
@@ -869,7 +879,7 @@ def calc_range_penalty(range_zone: str, player_action: str, recommended_primary_
 
 def calc_context_penalty(street: str, is_multiway: bool | None, is_in_position: bool | None, icm_pressure: str | None, player_action: str, recommended_primary_action: str) -> float:
     penalty = 0.0
-    if player_action != recommended_primary_action:
+    if _norm_gto_action(player_action) != _norm_gto_action(recommended_primary_action):
         if street == "turn": penalty += 0.02
         if street == "river": penalty += 0.04
     if is_multiway: penalty += 0.01

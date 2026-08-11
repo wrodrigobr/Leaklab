@@ -32,11 +32,17 @@ def _seed():
         ('H1', 'flop', 'CO', 'AhTs', 'fold', 'call', 9.2),
         ('H2', 'turn', 'BB', 'JsAs', 'fold', 'call', 17.5),
     ]:
+        # `ev_loss_source` e `stack_bb` entraram em 10/08: o custo por mão passou a filtrar por
+        # `ev_loss_trustworthy`, que rejeita EV de fonte não declarada. Sem estes dois campos a
+        # fixture media zero — que é o que o relatório de produção passou a fazer, corretamente,
+        # com as linhas cuja procedência ninguém gravou.
         conn.execute(repo._adapt(
             "INSERT INTO decisions (tournament_id, hand_id, street, position, hero_cards, "
-            "action_taken, best_action, gto_action, gto_label, label, score, ev_loss_bb) "
-            "VALUES (?,?,?,?,?,?,?,?,?,?,?,?)"),
-            (9001, hid, street, pos, cards, taken, gto, gto, 'gto_critical', 'clear_mistake', 0.4, ev))
+            "action_taken, best_action, gto_action, gto_label, label, score, ev_loss_bb, "
+            "ev_loss_source, stack_bb, pot_size, facing_bet, estimated_equity) "
+            "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"),
+            (9001, hid, street, pos, cards, taken, gto, gto, 'gto_critical', 'clear_mistake', 0.4,
+             ev, 'solver_hand', 40.0, 20.0, 10.0, 0.55))
     conn.commit(); conn.close()
     return uid
 

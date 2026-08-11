@@ -193,16 +193,19 @@ def _seed_leaks(uid, n_tourneys, n_leak_cats):
                   "VALUES (?,?,?,?,?,datetime('now'))", (uid, f'T{i}', 'H', 'raw', 'pokerstars'))
         tids.append(dict(c.execute("SELECT id FROM tournaments WHERE tournament_id=? AND user_id=?",
                                     (f'T{i}', uid)).fetchone())['id'])
+    # `ev_loss_source` entrou aqui em 10/08: `get_leak_categories` passou a ranquear pela regua
+    # `ev_loss_trustworthy`, que rejeita EV de fonte NAO declarada. A fixture nascera para a
+    # versao crua da funcao e, sem fonte, o curriculo inteiro vinha vazio.
     cols = ("(tournament_id,hand_id,street,action_taken,best_action,position,vs_position,"
-            "is_3bet,preflop_raises_faced,ev_loss_bb,stack_bb,label,score)")
+            "is_3bet,preflop_raises_faced,ev_loss_bb,ev_loss_source,stack_bb,label,score)")
     hid = 0
     for ci in range(n_leak_cats):
         pos = positions[ci % len(positions)]
         for _ in range(2):                       # >=2 p/ passar no HAVING COUNT>=2
             hid += 1
-            c.execute(f"INSERT INTO decisions {cols} VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            c.execute(f"INSERT INTO decisions {cols} VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                       (tids[0], f'H{hid}', 'preflop', 'fold', 'raise', pos, '', 0, 0,
-                       1.0 + ci, 50, 'clear_mistake', 0.8))
+                       1.0 + ci, 'gw_har', 50, 'clear_mistake', 0.8))
     c.commit(); c.close()
 
 
@@ -399,9 +402,11 @@ def test_cenarios_sao_gateados_INDEPENDENTEMENTE():
     t = dict(c.execute("SELECT id FROM tournaments WHERE user_id=? LIMIT 1", (uid,)).fetchone())['id']
     for i in range(2):
         c.execute("INSERT INTO decisions (tournament_id,hand_id,street,action_taken,best_action,"
-                  "position,vs_position,is_3bet,preflop_raises_faced,ev_loss_bb,stack_bb,label,score) "
-                  "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
-                  (t, f'V{i}', 'preflop', 'fold', 'call', 'BB', 'CO', 0, 1, 9.0, 50, 'clear_error', 0.0))
+                  "position,vs_position,is_3bet,preflop_raises_faced,ev_loss_bb,ev_loss_source,"
+                  "stack_bb,label,score) "
+                  "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                  (t, f'V{i}', 'preflop', 'fold', 'call', 'BB', 'CO', 0, 1, 9.0, 'gw_har',
+                   50, 'clear_error', 0.0))
     c.commit(); c.close()
 
     keys = [k['key'] for k in build_curriculum(uid) if int(k.get('n') or 0) > 0]

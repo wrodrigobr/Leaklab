@@ -1373,50 +1373,71 @@ def get_leak_categories(user_id: int, days: int = 90, last_n: int | None = None,
     nº de raises enfrentados) e ranqueia por EV perdido (bb). Diferente do get_ev_leaks (que agrega só
     por position/street/action), aqui o vs_position e o contexto de 3-bet ficam separados — é o que
     permite distinguir rfi / vs_rfi / vs_3bet e o PAR de posições. Só preflop (cobertura GTO completa).
-    Devolve dados crus; o mapeamento cenário/stack fica no leak_trainer (separação dado × lógica)."""
+    Devolve dados crus; o mapeamento cenário/stack fica no leak_trainer (separação dado × lógica).
+
+    A agregação é em Python, não em SQL, pelo mesmo motivo de `get_ev_leaks`: quem soma ou
+    ranqueia `ev_loss_bb` passa por `ev_loss_trustworthy`, e a régua precisa de equity, pote e
+    facing juntos. Esta era a terceira porta ungated encontrada em 10/08 — as outras duas
+    (`get_ev_summary` e `coach_replay`) publicavam 7.669 bb/100 e 78.738 bb por torneio. Aqui o
+    estrago era menor porque o recorte é preflop, onde só 5 de 404 linhas são impossíveis, mas
+    "quase não muda" não é critério: é a fila de treino do jogador."""
+    from leaklab.decision_engine_v11 import ev_loss_trustworthy
     tf, tp = _build_tournament_filter(user_id, days, last_n)
     conn = get_conn()
     try:
-        rows = conn.execute(_adapt(f"""
+        cruas = conn.execute(_adapt(f"""
             SELECT
                 d.position                              AS position,
                 COALESCE(d.vs_position, '')             AS vs_position,
                 CASE WHEN d.is_3bet THEN 1 ELSE 0 END   AS is_3bet,
                 COALESCE(d.preflop_raises_faced, 0)     AS raises_faced,
-                COUNT(*)                                AS n,
-                SUM(d.ev_loss_bb)                       AS total_ev_loss_bb,
+                d.ev_loss_bb AS ev, d.ev_loss_source AS src, d.action_taken AS action_taken,
+                d.estimated_equity AS equity, d.pot_size AS pot, d.facing_bet AS facing,
                 -- Profundidade REAL do leak, em BB. NÃO usar level_bb aqui: ele é o tamanho do
                 -- big blind em FICHAS (ex.: level_bb=40 com stack_bb=3), então entrava como
                 -- "stack" na casa dos milhares e o _snap_stack do trainer jogava TUDO em 100bb
                 -- (medido: 12/12 categorias treinavam a 100bb enquanto os leaks aconteciam a
                 -- 9-36bb). Só stack_bb responde "quantos BB o herói tinha".
-                AVG(d.stack_bb)                         AS avg_stack_bb,
-                -- Quantas decisões da categoria não têm profundidade: sem isto o chamador não
-                -- sabe se o avg_stack_bb representa a categoria ou só uma minoria com dado.
-                SUM(CASE WHEN d.stack_bb IS NULL THEN 1 ELSE 0 END) AS n_sem_stack
+                d.stack_bb                              AS stack_bb
             FROM decisions d
             JOIN tournaments t ON t.id = d.tournament_id
             WHERE {tf}
               AND d.street = 'preflop'
               AND d.ev_loss_bb IS NOT NULL AND d.ev_loss_bb > 0.05
               AND d.position IS NOT NULL AND d.position != ''
-            GROUP BY position, vs_position, is_3bet, raises_faced
-            HAVING COUNT(*) >= 2
-            ORDER BY total_ev_loss_bb DESC
-            LIMIT ?
-        """), tp + (limit,)).fetchall()
+        """), tp).fetchall()
+
+        grupos: dict = {}
+        for r in cruas:
+            if not ev_loss_trustworthy(r['ev'], r['stack_bb'], r['src'],
+                                       action=r['action_taken'], equity=r['equity'],
+                                       pot_bb=r['pot'], facing_bb=r['facing']):
+                continue
+            g = grupos.setdefault((r['position'], r['vs_position'] or '',
+                                   int(r['is_3bet'] or 0), int(r['raises_faced'] or 0)),
+                                  {'n': 0, 'bb': 0.0, 'stacks': [], 'sem_stack': 0})
+            g['n'] += 1
+            g['bb'] += float(r['ev'])
+            if r['stack_bb'] is None:
+                g['sem_stack'] += 1
+            else:
+                g['stacks'].append(float(r['stack_bb']))
+
+        # HAVING COUNT(*) >= 2 e ORDER BY total DESC LIMIT ?, agora em Python.
+        rows = sorted(((k, g) for k, g in grupos.items() if g['n'] >= 2),
+                      key=lambda kv: kv[1]['bb'], reverse=True)[:limit]
         out = []
-        for r in rows:
-            n          = int(r['n'] or 0)
-            sem_stack  = int(r['n_sem_stack'] or 0)
-            avg_stack  = r['avg_stack_bb']          # NULL quando NENHUMA decisão tem stack
+        for (position, vs_position, is_3bet, raises_faced), g in rows:
+            n          = g['n']
+            sem_stack  = g['sem_stack']
+            avg_stack  = (sum(g['stacks']) / len(g['stacks'])) if g['stacks'] else None
             out.append({
-                'position':          r['position'],
-                'vs_position':       r['vs_position'] or '',
-                'is_3bet':           int(r['is_3bet'] or 0),
-                'raises_faced':      int(r['raises_faced'] or 0),
+                'position':          position,
+                'vs_position':       vs_position,
+                'is_3bet':           is_3bet,
+                'raises_faced':      raises_faced,
                 'n':                 n,
-                'total_ev_loss_bb':  round(float(r['total_ev_loss_bb'] or 0), 2),
+                'total_ev_loss_bb':  round(g['bb'], 2),
                 # None (não 50) quando não há profundidade medida: o caller decide o fallback
                 # em vez de receber um chute disfarçado de dado.
                 'avg_stack_bb':      (round(float(avg_stack), 1) if avg_stack is not None else None),
@@ -10019,7 +10040,21 @@ def get_ev_summary(user_id: int) -> dict:
     EV/100 = bb perdidos por 100 decisões ANALISADAS (com ev_loss_bb — solver
     hand-aware postflop + overlay preflop). Tendência: últimos 5 torneios vs os
     5 anteriores. top_leaks: padrões (street + jogou + melhor) rankeados por
-    CUSTO em bb, não por contagem — o diferencial da plataforma."""
+    CUSTO em bb, não por contagem — o diferencial da plataforma.
+
+    ── Toda soma daqui passa por `ev_loss_trustworthy` ────────────────────────────────────────
+    Esta função tinha CINCO agregações de `ev_loss_bb` em SQL cru: o EV/100, o `top_leaks`, a
+    soma para o `share_pct`, a série por torneio e a sangria por street. Nenhuma chamava a régua.
+    Medido no acervo em 10/08: o card publicava **7.669,3 bb/100** onde o número honesto é 9,8,
+    porque 99,9% da soma vinha de 105 linhas que o próprio produto classifica como não
+    confiáveis. O leak nº1 exibido era `flop fold → call, 222.929 bb`, e os de nº3 e nº4 diziam
+    "você deu FOLD, o certo era FOLD" cobrando 21 mil bb.
+
+    As irmãs (`get_ev_leaks`, `get_evolution_report`) já tinham removido o filtro do SQL
+    justamente para poder chamar a função. Esta era a exceção não documentada. A leitura agora é
+    uma só, em Python, e as cinco agregações saem da MESMA lista filtrada — não adianta consertar
+    uma porta quando o mesmo dado chega à tela por cinco (CLAUDE.md, item 5)."""
+    from leaklab.decision_engine_v11 import ev_loss_trustworthy
     conn = get_conn()
     try:
         tids = [r['id'] for r in _fetchall(conn, _adapt(
@@ -10027,23 +10062,35 @@ def get_ev_summary(user_id: int) -> dict:
         if not tids:
             return {'has_data': False}
 
+        ph_all = ','.join('?' * len(tids))
+
+        # Leitura única do EV. Tudo que soma, ranqueia ou pesa bb daqui pra baixo sai desta
+        # lista — que já passou pela régua. O denominador do EV/100 também: uma linha cujo
+        # número não se pode usar não é uma decisão "analisada", e mantê-la embaixo enquanto
+        # se tira o de cima produziria uma taxa artificialmente baixa.
+        _ev_rows = [r for r in _fetchall(conn, _adapt(f"""
+            SELECT d.tournament_id AS tid, d.street AS street, d.action_taken AS action_taken,
+                   d.best_action AS best_action, d.ev_loss_bb AS ev, d.ev_loss_source AS src,
+                   d.stack_bb AS stack_bb, d.estimated_equity AS equity,
+                   d.pot_size AS pot, d.facing_bet AS facing
+            FROM decisions d
+            WHERE d.tournament_id IN ({ph_all}) AND d.ev_loss_bb IS NOT NULL"""), tuple(tids))
+            if ev_loss_trustworthy(r['ev'], r['stack_bb'], r['src'], action=r['action_taken'],
+                                   equity=r['equity'], pot_bb=r['pot'], facing_bb=r['facing'])]
+
         def _ev_per_100(id_list):
             if not id_list:
                 return None, 0
-            ph = ','.join('?' * len(id_list))
-            row = _fetchone(conn, _adapt(f"""
-                SELECT COUNT(ev_loss_bb) AS with_ev, COALESCE(SUM(ev_loss_bb),0) AS loss
-                FROM decisions WHERE tournament_id IN ({ph})"""), tuple(id_list))
-            n = row['with_ev'] or 0
+            alvo = set(id_list)
+            evs = [float(r['ev']) for r in _ev_rows if r['tid'] in alvo]
+            n = len(evs)
             if n < 10:
                 return None, n   # amostra pequena demais pra taxa honesta
-            return round(float(row['loss']) / n * 100.0, 1), n
+            return round(sum(evs) / n * 100.0, 1), n
 
         ev100_all,  n_all  = _ev_per_100(tids)
         ev100_cur,  _      = _ev_per_100(tids[:5])
         ev100_prev, _      = _ev_per_100(tids[5:10])
-
-        ph_all = ','.join('?' * len(tids))
         srow = _fetchone(conn, _adapt(f"""
             SELECT COUNT(*) AS total,
                    SUM(CASE WHEN label = 'standard' THEN 1 ELSE 0 END) AS std
@@ -10051,58 +10098,55 @@ def get_ev_summary(user_id: int) -> dict:
         standard_pct = (round(srow['std'] / srow['total'] * 100.0, 1)
                         if srow and srow['total'] else None)
 
-        leaks = _fetchall(conn, _adapt(f"""
-            SELECT street, action_taken, best_action,
-                   COUNT(*) AS cnt, SUM(ev_loss_bb) AS loss_bb
-            FROM decisions
-            WHERE tournament_id IN ({ph_all})
-              AND ev_loss_bb IS NOT NULL AND ev_loss_bb > 0.05
-              AND best_action IS NOT NULL AND best_action != ''
-            GROUP BY street, action_taken, best_action
-            ORDER BY loss_bb DESC LIMIT 5"""), tuple(tids))
-        total_loss = sum(float(l['loss_bb'] or 0) for l in leaks) or None
-        lrow = _fetchone(conn, _adapt(f"""
-            SELECT COALESCE(SUM(ev_loss_bb),0) AS s FROM decisions
-            WHERE tournament_id IN ({ph_all}) AND ev_loss_bb > 0.05"""), tuple(tids))
-        loss_all = float(lrow['s'] or 0) if lrow else 0.0
+        _custosas = [r for r in _ev_rows if float(r['ev']) > 0.05]
+        _grupos = {}
+        for r in _custosas:
+            if not (r['best_action'] or '').strip():
+                continue
+            g = _grupos.setdefault((r['street'], r['action_taken'], r['best_action']),
+                                   {'cnt': 0, 'loss': 0.0})
+            g['cnt'] += 1
+            g['loss'] += float(r['ev'])
+        leaks = sorted(_grupos.items(), key=lambda kv: kv[1]['loss'], reverse=True)[:5]
+        total_loss = sum(g['loss'] for _, g in leaks) or None
+        loss_all = sum(float(r['ev']) for r in _custosas)
         top_leaks = [{
-            'street':       l['street'],
-            'action_taken': l['action_taken'],
-            'best_action':  l['best_action'],
-            'count':        l['cnt'],
-            'loss_bb':      round(float(l['loss_bb'] or 0), 1),
-            'share_pct':    (round(float(l['loss_bb'] or 0) / loss_all * 100.0)
-                             if loss_all > 0 else 0),
-        } for l in leaks]
+            'street':       st,
+            'action_taken': at,
+            'best_action':  ba,
+            'count':        g['cnt'],
+            'loss_bb':      round(g['loss'], 1),
+            'share_pct':    (round(g['loss'] / loss_all * 100.0) if loss_all > 0 else 0),
+        } for (st, at, ba), g in leaks]
 
         # Série por torneio (últimos 12, ordem cronológica) — sparkline de tendência
         last12 = tids[:12]
         ph12 = ','.join('?' * len(last12))
-        srows = _fetchall(conn, _adapt(f"""
-            SELECT d.tournament_id AS tid, t.tournament_name AS name,
-                   COUNT(d.ev_loss_bb) AS n, COALESCE(SUM(d.ev_loss_bb),0) AS loss
-            FROM decisions d JOIN tournaments t ON t.id = d.tournament_id
-            WHERE d.tournament_id IN ({ph12})
-            GROUP BY d.tournament_id, t.tournament_name
-            ORDER BY d.tournament_id ASC"""), tuple(last12))
+        _nomes = {r['id']: r['tournament_name'] for r in _fetchall(conn, _adapt(
+            f"SELECT id, tournament_name FROM tournaments WHERE id IN ({ph12})"), tuple(last12))}
+        _por_torneio = {}
+        for r in _ev_rows:
+            if r['tid'] in _nomes:
+                g = _por_torneio.setdefault(r['tid'], [])
+                g.append(float(r['ev']))
         series = [{
-            'tournament_id': r['tid'],
-            'name':          (r['name'] or '')[:24],
-            'ev_per_100':    (round(float(r['loss']) / r['n'] * 100.0, 1) if r['n'] >= 5 else None),
-        } for r in srows]
+            'tournament_id': tid,
+            'name':          (_nomes.get(tid) or '')[:24],
+            'ev_per_100':    (round(sum(evs) / len(evs) * 100.0, 1) if len(evs) >= 5 else None),
+        } for tid, evs in sorted(_por_torneio.items())]
 
         # Sangria por street (bb perdidos) — card "onde você sangra" do V2
-        st_rows = _fetchall(conn, _adapt(f"""
-            SELECT street, COUNT(*) AS cnt, COALESCE(SUM(ev_loss_bb),0) AS loss
-            FROM decisions
-            WHERE tournament_id IN ({ph_all}) AND ev_loss_bb > 0.05
-            GROUP BY street"""), tuple(tids))
+        _por_street = {}
+        for r in _custosas:
+            g = _por_street.setdefault(r['street'], {'cnt': 0, 'loss': 0.0})
+            g['cnt'] += 1
+            g['loss'] += float(r['ev'])
         _order = {'preflop': 0, 'flop': 1, 'turn': 2, 'river': 3}
         by_street = sorted([{
-            'street':  r['street'],
-            'count':   r['cnt'],
-            'loss_bb': round(float(r['loss']), 1),
-        } for r in st_rows], key=lambda x: _order.get(x['street'], 9))
+            'street':  st,
+            'count':   g['cnt'],
+            'loss_bb': round(g['loss'], 1),
+        } for st, g in _por_street.items()], key=lambda x: _order.get(x['street'], 9))
 
         # Cobertura GTO por street group (% decisões com gto_label) — anéis do V2
         cov = _fetchall(conn, _adapt(f"""
