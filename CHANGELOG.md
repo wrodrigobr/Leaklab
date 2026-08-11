@@ -7,6 +7,50 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### deploy(prod): EV consertado em producao, e o RELABEL global SEGURADO com numero (#ev #reprocesso)
+
+> Deploy em `a1ab4a40`. As tres portas de EV estao vivas em producao, medidas chamando
+> `get_ev_summary` dentro do container, nos tres usuarios com mais dados:
+>
+> | usuario | antes | depois |
+> |---|---|---|
+> | 3  | 8.140,3 bb/100 | **7,2** |
+> | 43 | 7.825,7 bb/100 | **12,5** |
+> | 40 | 1,5 bb/100 | **1,5** |
+>
+> O usuario 40 e o controle: quem ja tinha numero honesto nao mudou. Sem ele, "tudo caiu" leria
+> como filtro que descarta demais.
+>
+> **A varredura de invariantes rodou contra o Postgres de producao e devolveu os MESMOS 14
+> numeros do snapshot local.** Duas coisas de uma vez: o espelho e fiel, e a rede funciona nos
+> dois drivers.
+>
+> ── **O relabel global foi SEGURADO, e este e o registro do porque** ───────────────────────────
+>
+> `reanalyze_all_labels --dry-run` sobre as 9.774 decisoes: **42 mudariam — 23 melhoram, 10
+> pioram, 9 mexem so em ev/best_action**. As 23 incluem os 18 `shove` do conserto da grafia.
+>
+> As 10 que pioram NAO sao deste conserto: as tres edicoes de hoje trocam `X == Y` por
+> `norm(X) == norm(Y)`, e o ramo verdadeiro sempre devolve o valor MENOR — so podem abrandar.
+> Sao drift acumulado do motor com as etiquetas gravadas velhas.
+>
+> **Sete delas criariam violacao nova de `SELO`** (`gto_correct` convivendo com veredito de erro),
+> levando a invariante de 12 para 19. Aplicar consertaria 23 e quebraria 10, sendo 7 do tipo
+> "card se contradiz na propria tela" — e a licao de 04/08 e que bug que SOME com a resposta e
+> honesto, conserto que a TROCA nao e.
+>
+> Investiguei a raiz o suficiente para nomear a frente: as 12 linhas `SELO` de hoje tem score
+> **exatamente 0,19**, que e o piso da banda de `small_mistake` em `_align_score_to_label`. Elas
+> foram reconciliadas como ERRO e o `gto_label` virou `gto_correct` DEPOIS, por outro processo,
+> sem ninguem revisitar o label. Dois escritores para o mesmo fato — a familia de sempre.
+>
+> **Consequencia declarada:** os 9 casos de `GRAFIA` continuam errados no banco ate o relabel. O
+> baseline segue em 9, no codigo, e a varredura cobra.
+>
+> Um achado de metodo no caminho: o dry-run reportava "Mudariam: 42" imprimindo **30**. As 12
+> ocultas eram exatamente o que faltava para decidir. Em dry-run nada e gravado, entao a lista E
+> o produto — agora imprime tudo.
+
 ### fix(medicao): a suite testava CONSERTOS, e ninguem varria o ACERVO (#invariantes #ev #teste)
 
 > Pergunta do usuario, depois de mais um build revelar um defeito novo: *"por que tanta
