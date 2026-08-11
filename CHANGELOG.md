@@ -7,6 +7,43 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(gto): frequencia nao se inventa, e no de check nao serve spot com aposta (#gto)
+
+> **`FREQ`: 43 → 0.** Nada piorou. Acusacoes 597, 71 anotacoes e 9.813 decisoes intactas.
+>
+> ── **Dois defeitos nas MESMAS 43 linhas** ─────────────────────────────────────────────────────
+>
+> **(1) A conta da frequencia.** No ramo do no PARCIAL, `played_freq = 1.0 - top_freq` supunha no
+> BINARIO. Com `gto_freq` ausente (`float(... or 0.0)` = 0.0) isso dava played=1.0 contra top=0.0.
+>
+> **O defeito era mais largo que o caso reportado**, e quem mostrou foi a varredura de TODAS as
+> combinacoes no teste, nao a linha da lista: com top=0.05 a conta dava played=0.95. Se a acao
+> MODAL tem 40%, a outra nao pode ter 60% — senao a modal seria ela. Hoje: no PURO (top=1.0) a
+> nao-modal e 0.0 exato; no MISTO sem strategy, None.
+>
+> **(2) O no errado.** `gto_action='check'` com aposta na frente — aquele no foi solvado para um
+> spot de FIRST TO ACT. 44 decisoes exibiam "o GTO daria check" a quem enfrentava uma aposta.
+> Vira `spot_mismatch` e o no e recusado. Custa a cobertura das 44, nenhuma delas acusada.
+>
+> ── **Tres consertos meus se atropelaram no caminho** ──────────────────────────────────────────
+>
+> **O guarda de ontem bloqueou o conserto de hoje.** O "avaliacao sem cobertura nao sobrescreve"
+> tratava a recusa DELIBERADA como perda de cobertura: dry-run deu `Mudariam: 0 | puladas: 19`.
+> `spot_mismatch` e `ungradeable_action` significam a mesma coisa e limpam o gabarito.
+>
+> **As frequencias nao estavam no UPDATE.** O relabel limpou o `gto_label` de 44 linhas e `FREQ`
+> continuou em 43 — o conserto do motor estava certo e nao chegava ao banco.
+>
+> **E o conserto disso quase apagou 5.700 preflops.** Usei `gto_dict.get('played_freq')`, mas o
+> bloco preflop monta o dict SEM essas chaves, entao `.get()` devolvia None. O dry-run pulou de
+> 44 para **5.723** e a amostra mostrou a forma: 636 preflops com `num -> None`. Numero grande
+> demais para o esperado e sinal, nao ruido. Passou a testar presenca da CHAVE, nao valor.
+>
+> ── **O controle que protegia o bug** ──────────────────────────────────────────────────────────
+>
+> O primeiro controle do teste esperava `1.0 - top` no caso do meio — ou seja, foi escrito contra
+> a conta errada. Controle assim nao ancora nada, defende o defeito.
+
 ### fix(veredito): guarda do PREFLOP disparava em TODO postflop e apagava o solver (#veredito)
 
 > **`MUDO`: 19 → 0.** `AUTO` 15 → 14. Nenhuma invariante piorou. 71 anotacoes e 9.813 decisoes
