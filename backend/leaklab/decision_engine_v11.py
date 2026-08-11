@@ -611,6 +611,19 @@ def _enrich_gto(input_data: Dict[str, Any]) -> dict:
         top_action = node['gto_action']
         top_freq   = float(node.get('gto_freq') or 0.0)
 
+        # SPOT MISMATCH: `check` nao e uma acao legal para quem enfrenta aposta. Um no cujo lance
+        # modal e check foi solvado para um spot de FIRST TO ACT — servi-lo aqui e responder outra
+        # pergunta. Medido em producao: 44 decisoes exibiam "o GTO daria check" com uma aposta na
+        # frente, e 43 delas carregavam junto o par impossivel played=1.0 / top=0.0.
+        #
+        # Recusar custa a cobertura dessas 44 linhas (nenhuma delas era acusada). E o preco certo:
+        # bug que SOME com a resposta e honesto, conserto que a TROCA nao e — e aqui a resposta
+        # estava trocada, nao ausente. Mesma familia do no errado em decisao vs aposta.
+        if facing_bb > 0 and _norm_gto_action(top_action) == 'check':
+            _log_gto_miss('postflop', street, position,
+                          f'no de check servido a spot com facing={facing_bb:.2f}bb')
+            return {'available': False, 'spot_mismatch': True}
+
         # Desserializar strategy_json completo
         strategy = []
         if node.get('strategy_json'):
@@ -722,14 +735,33 @@ def _enrich_gto(input_data: Dict[str, Any]) -> dict:
                 gto_label = 'gto_mixed'
         else:
             gto_label  = _gto_classify(player_action, top_action, top_freq, equity)
-            played_freq = top_freq if _gto_action_matches(player_action, top_action) else (1.0 - top_freq)
+            # `1.0 - top_freq` supunha no BINARIO, e estava errado sempre que `top_freq < 0.5`:
+            # se a acao MODAL tem 40%, a outra nao pode ter 60% — senao a modal seria ela. Com
+            # `gto_freq` ausente (`float(... or 0.0)` = 0.0) a conta dava played=1.0 contra top=0.0,
+            # o par impossivel de 43 linhas em producao. Mas o defeito era mais largo que o caso
+            # reportado, e quem mostrou isso foi a varredura de TODAS as combinacoes no teste:
+            # top=0.05 dava played=0.95.
+            #
+            # Num no PURO (top=1.0) a acao que nao e a modal tem exatamente 0% — isso se sabe.
+            # Num no MISTO sem strategy, so se sabe que ela e <= top. Entao nao se afirma.
+            #
+            # Sem frequencia no no, o produto NAO afirma frequencia. O veredito do `gto_label`
+            # continua valendo: o que se descarta e o numero, nao a leitura.
+            if _gto_action_matches(player_action, top_action):
+                played_freq = top_freq or None
+            elif top_freq == 1.0:
+                played_freq = 0.0      # no PURO: a acao que nao e a modal tem exatamente 0%
+            else:
+                played_freq = None     # no MISTO sem strategy: so se sabe que e <= top
 
         # Aproximação por profundidade: nó solver_cli (capado a 60bb) servido a um spot > 60bb.
         depth_capped = (node.get('source') == 'solver_cli') and stack_bb > _SOLVE_CAP_BB
         return {
             'available':    True,
             'gto_action':   top_action,
-            'gto_freq':     top_freq,
+            # 0.0 aqui significa "o no nao trouxe frequencia", nao "a acao modal tem 0%" — que e
+            # impossivel. Sai como None para nao virar medicao na coluna nem barra zerada no card.
+            'gto_freq':     top_freq or None,
             'played_freq':  played_freq,
             'strategy':     strategy,
             'exploitability': node.get('exploitability_pct'),
