@@ -117,8 +117,15 @@ for row in tournaments:
                 # avaliacoes diferentes. Medido em 11/08: o relabel limpou o gto_label de 44
                 # linhas e a invariante FREQ continuou em 43, com o par impossivel
                 # played=1.0 / top=0.0 intacto.
-                new_played = gto_dict.get('played_freq')
-                new_top    = gto_dict.get('gto_freq')
+                # `.get()` NAO serve aqui: o bloco PREFLOP monta o `gto` sem as chaves de
+                # frequencia (elas vem so do enrichment postflop), entao `.get()` devolveria None
+                # e o relabel APAGARIA numero que existe. Medido numa amostra de 6 torneios: 636
+                # linhas preflop perderiam played e top. Tem de ser presenca da CHAVE, nao valor.
+                if 'played_freq' in gto_dict or 'gto_freq' in gto_dict:
+                    new_played = gto_dict.get('played_freq')
+                    new_top    = gto_dict.get('gto_freq')
+                else:
+                    new_played, new_top = old_played, old_top
 
                 # `spot_mismatch` entrou junto de `ungradeable_action` em 11/08: os dois
                 # significam "este no NAO responde a esta pergunta", e nos dois o certo e LIMPAR
