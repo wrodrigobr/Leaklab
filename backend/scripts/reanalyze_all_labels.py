@@ -109,7 +109,11 @@ for row in tournaments:
                 new_label = (result.get('evaluation') or {}).get('label') or old_label
                 new_best  = result.get('bestAction') or old_best
                 gto_dict  = result.get('gto') or {}
-                if gto_dict.get('ungradeable_action'):
+                # `spot_mismatch` entrou junto de `ungradeable_action` em 11/08: os dois
+                # significam "este no NAO responde a esta pergunta", e nos dois o certo e LIMPAR
+                # o gabarito velho, nao preserva-lo. Um no de check servido a quem enfrenta
+                # aposta e resposta trocada, e resposta trocada e pior que ausente.
+                if gto_dict.get('ungradeable_action') or gto_dict.get('spot_mismatch'):
                     # Ação fora da árvore solvada (ex.: shove em árvore sem branch de
                     # raise): o nó NÃO grade essa ação. Limpa os campos GTO antigos —
                     # mantê-los preservava o 'fold/gto_critical' podre gravado antes
@@ -128,7 +132,8 @@ for row in tournaments:
                 old_evsrc  = db_row['ev_loss_source']
                 new_evloss = gto_dict.get('ev_loss_bb')
                 new_evsrc  = gto_dict.get('ev_loss_source')
-                if new_evloss is None and not gto_dict.get('ungradeable_action'):
+                if new_evloss is None and not (gto_dict.get('ungradeable_action')
+                                                or gto_dict.get('spot_mismatch')):
                     new_evloss, new_evsrc = old_evloss, old_evsrc
 
                 # A avaliação NOVA perdeu a cobertura GTO que a gravada tinha? Então ela sabe
@@ -145,9 +150,14 @@ for row in tournaments:
                 # entre si, e a próxima rodada com cobertura resolve. Sobrescrever seria trocar
                 # uma resposta certa por uma menos informada — o tipo de conserto que faz dano
                 # que o bug não fazia.
+                # A recusa DELIBERADA nao conta como "perdeu cobertura": ela e o conserto.
+                # Sem esta linha o guarda de ontem bloqueava o conserto de hoje — medido no
+                # dry-run: "Mudariam: 0 | puladas s/ cobertura: 19", com as 43 linhas do par
+                # impossivel intactas.
                 _perdeu_cobertura = (not gto_dict.get('available')
                                      and old_gtolbl not in (None, '', 'wizard_pending')
-                                     and not gto_dict.get('ungradeable_action'))
+                                     and not gto_dict.get('ungradeable_action')
+                                     and not gto_dict.get('spot_mismatch'))
                 if _perdeu_cobertura and new_label != old_label:
                     sem_cobertura_agora += 1
                     continue
