@@ -85,7 +85,8 @@ for row in tournaments:
 
             db_row = conn.execute(
                 """SELECT id, label, best_action, gto_label, gto_action,
-                          ev_loss_bb, ev_loss_source FROM decisions
+                          ev_loss_bb, ev_loss_source, gto_played_freq, gto_top_freq
+                     FROM decisions
                    WHERE hand_id = ? AND street = ? AND action_taken = ?
                    LIMIT 1""",
                 (hand_id, street, act)
@@ -93,7 +94,9 @@ for row in tournaments:
             if not db_row:
                 continue
 
-            did       = db_row['id']
+            did        = db_row['id']
+            old_played = db_row['gto_played_freq']
+            old_top    = db_row['gto_top_freq']
             old_label = db_row['label']
             old_best  = db_row['best_action']
             old_gtolbl = db_row['gto_label']
@@ -109,6 +112,14 @@ for row in tournaments:
                 new_label = (result.get('evaluation') or {}).get('label') or old_label
                 new_best  = result.get('bestAction') or old_best
                 gto_dict  = result.get('gto') or {}
+                # As FREQUENCIAS andam com o gabarito. Elas nao estavam no UPDATE, entao ficavam
+                # velhas ao lado de um `gto_label` novo — os dois campos passavam a descrever
+                # avaliacoes diferentes. Medido em 11/08: o relabel limpou o gto_label de 44
+                # linhas e a invariante FREQ continuou em 43, com o par impossivel
+                # played=1.0 / top=0.0 intacto.
+                new_played = gto_dict.get('played_freq')
+                new_top    = gto_dict.get('gto_freq')
+
                 # `spot_mismatch` entrou junto de `ungradeable_action` em 11/08: os dois
                 # significam "este no NAO responde a esta pergunta", e nos dois o certo e LIMPAR
                 # o gabarito velho, nao preserva-lo. Um no de check servido a quem enfrenta
@@ -120,11 +131,14 @@ for row in tournaments:
                     # do fix (shove com a wheel no torneio 388).
                     new_gtolbl = None
                     new_gtoact = None
+                    new_played = new_top = None
                 else:
                     new_gtolbl = gto_dict.get('gto_label') if gto_dict.get('available') else old_gtolbl
                     new_gtoact = gto_dict.get('gto_action') if gto_dict.get('available') else old_gtoact
                     if not new_gtolbl: new_gtolbl = old_gtolbl
                     if not new_gtoact: new_gtoact = old_gtoact
+                    if not gto_dict.get('available'):
+                        new_played, new_top = old_played, old_top
                 # Fase 3 / #24 postflop: a re-análise também sincroniza o EV loss —
                 # sem isto, decisões antigas nunca ganham ev_loss_bb (só re-upload),
                 # e o card "onde você sangra" fica só com o preflop do overlay.
@@ -167,7 +181,8 @@ for row in tournaments:
             total_checked += 1
             changed = (new_label != old_label or new_best != old_best or
                        new_gtolbl != old_gtolbl or new_gtoact != old_gtoact or
-                       new_evloss != old_evloss)
+                       new_evloss != old_evloss or
+                       new_played != old_played or new_top != old_top)
             if changed:
                 if (old_gtolbl in (None, '', 'wizard_pending')
                         and new_gtolbl not in (None, '', 'wizard_pending')):
@@ -175,8 +190,10 @@ for row in tournaments:
                 if not DRY:
                     conn.execute(
                         "UPDATE decisions SET label = ?, best_action = ?, gto_label = ?, "
-                        "gto_action = ?, ev_loss_bb = ?, ev_loss_source = ? WHERE id = ?",
-                        (new_label, new_best, new_gtolbl, new_gtoact, new_evloss, new_evsrc, did)
+                        "gto_action = ?, ev_loss_bb = ?, ev_loss_source = ?, "
+                        "gto_played_freq = ?, gto_top_freq = ? WHERE id = ?",
+                        (new_label, new_best, new_gtolbl, new_gtoact, new_evloss, new_evsrc,
+                         new_played, new_top, did)
                     )
                 hand_updated += 1
                 total_updated += 1
