@@ -41,6 +41,7 @@ tournaments = conn.execute(
 print(f"Processando {len(tournaments)} torneios com raw_text...")
 total_checked = 0
 total_updated = 0
+sem_cobertura_agora = 0   # linhas puladas por perder cobertura GTO na re-analise
 gto_gained = 0   # heurística (gto_label vazio) → GTO (label real) — responde "quantos viram GTO"
 affected_tournament_ids = set()
 
@@ -129,6 +130,27 @@ for row in tournaments:
                 new_evsrc  = gto_dict.get('ev_loss_source')
                 if new_evloss is None and not gto_dict.get('ungradeable_action'):
                     new_evloss, new_evsrc = old_evloss, old_evsrc
+
+                # A avaliação NOVA perdeu a cobertura GTO que a gravada tinha? Então ela sabe
+                # MENOS, e não pode sobrescrever o label.
+                #
+                # O fallback acima ("se não veio gto_label novo, mantém o velho") existe para não
+                # apagar cobertura por falha transitória de lookup. Mas ele preserva o gto_label
+                # ao lado de um `label` calculado SEM ele — e os dois campos deixam de descrever
+                # a mesma avaliação. Medido no dry-run de 11/08: 6 decisões com o selo
+                # `GTO Correto` gravado passariam a `small_mistake`, e a sonda mostrou
+                # `gto_available=False` no motor nas 6. O card exibiria selo e acusação juntos.
+                #
+                # Pular é honesto: a linha fica como está, com o par (label, gto_label) coerente
+                # entre si, e a próxima rodada com cobertura resolve. Sobrescrever seria trocar
+                # uma resposta certa por uma menos informada — o tipo de conserto que faz dano
+                # que o bug não fazia.
+                _perdeu_cobertura = (not gto_dict.get('available')
+                                     and old_gtolbl not in (None, '', 'wizard_pending')
+                                     and not gto_dict.get('ungradeable_action'))
+                if _perdeu_cobertura and new_label != old_label:
+                    sem_cobertura_agora += 1
+                    continue
             except Exception:
                 continue
 
@@ -183,6 +205,7 @@ if affected_tournament_ids and not DRY:
 conn.close()
 print(f"\nConcluido. Verificadas: {total_checked} | "
       f"{'Mudariam' if DRY else 'Atualizadas'}: {total_updated} | "
+      f"puladas s/ cobertura: {sem_cobertura_agora} | "
       f"heuristica->GTO: {gto_gained}")
 if DRY:
     print("== DRY-RUN — nada foi gravado ==")
