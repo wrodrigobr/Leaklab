@@ -72,6 +72,72 @@ def test_score_aligns_to_label_band():
     print("OK  test_score_aligns_to_label_band")
 
 
+def test_mix_LEGITIMO_nao_leva_piso_de_direcao():
+    """Num no MISTO, agredir e o outro lado do mix — nao e erro de direcao.
+
+    Medido em producao em 11/08: 12 decisoes com o selo `GTO Correto` e o veredito
+    `small_mistake` no MESMO card, todas com score 0,19 exato. Eram nos em que o solver tomava a
+    acao do hero entre 30% e 49% do tempo. A regra existia em dois lugares e so a copia do
+    reconcile excluia o mix; a do motor estava escrita a mao, sem a exclusao, sob um comentario
+    afirmando que espelhava a outra.
+    """
+    from leaklab.verdict import piso_por_direcao
+    for mix in ('gto_correct', 'gto_mixed'):
+        assert piso_por_direcao('standard', mix, 'fold', 'raise') == 'standard', mix
+        assert piso_por_direcao('marginal', mix, 'fold', 'shove') == 'marginal', mix
+    # CONTROLE: fora do mix o piso continua caindo. Sem isto, "nunca acusa" passaria aqui.
+    assert piso_por_direcao('standard', 'gto_critical', 'fold', 'raise') == 'small_mistake'
+    assert piso_por_direcao('standard', None, 'fold', 'raise') == 'small_mistake'
+    # CONTROLE: o piso so SOBE, nunca rebaixa quem ja era mais grave.
+    assert piso_por_direcao('clear_mistake', 'gto_critical', 'fold', 'raise') == 'clear_mistake'
+    # CONTROLE: acao nao-agressiva nao tem erro de direcao.
+    assert piso_por_direcao('standard', 'gto_critical', 'fold', 'call') == 'standard'
+    print("OK  test_mix_LEGITIMO_nao_leva_piso_de_direcao")
+
+
+def test_a_regra_de_direcao_tem_UM_dono():
+    """A varredura dos N+1: quem quiser o piso importa a funcao, nao reescreve a lista.
+
+    A PRIMEIRA versao deste teste varria conjuntos literais com tres sinonimos de agressao e
+    acusou SETE modulos — `bet_intent`, `gto_utils`, `preflop_gto_ranges`, `differ` e outros
+    tem listas dessas para outros fins. Rede de arrasto nao mede: ou vira ruido ignorado, ou
+    obriga uma lista de excecoes que cresce ate nao significar nada. Ficaram tres tells exatos.
+
+    LIMITE CONHECIDO: isto pega a funcao COPIADA e o padrao inline antigo. Nao pega a mesma
+    regra reescrita do zero com outro nome e outra forma.
+    """
+    import os, re
+    raiz = os.path.join(os.path.dirname(__file__), '..')
+
+    def fonte(rel):
+        return open(os.path.join(raiz, rel), encoding='utf-8').read()
+
+    # 1. Cada funcao da regra e definida UMA vez em todo o backend.
+    for fn in ('piso_por_direcao', 'is_verdict_error_signal'):
+        onde = []
+        for pasta in ('leaklab', 'database', 'api'):
+            for dirpath, _, arquivos in os.walk(os.path.join(raiz, pasta)):
+                for nome in arquivos:
+                    if not nome.endswith('.py'):
+                        continue
+                    caminho = os.path.join(dirpath, nome)
+                    n = len(re.findall(r'^def %s\(' % fn, open(caminho, encoding='utf-8').read(),
+                                       re.M))
+                    onde += [f'{pasta}/{nome}'] * n
+        assert onde == ['leaklab/verdict.py'], f'{fn} definida em {onde}'
+
+    # 2. Os dois consumidores CHAMAM a funcao, nao so a importam.
+    for arq in ('leaklab/decision_engine_v11.py', 'database/repositories.py'):
+        assert 'piso_por_direcao(' in fonte(arq), f'{arq} nao chama piso_por_direcao'
+
+    # 3. O padrao inline exato que causou o defeito nao voltou: comparar a recomendacao com
+    #    'fold' e a acao do hero com uma tupla de agressao, no motor.
+    motor = fonte('leaklab/decision_engine_v11.py')
+    inline = re.search(r"==\s*'fold'[^\n]*\n?[^\n]*in \(('raise'|'bet')[^\)]*\)", motor)
+    assert inline is None, f'piso de direcao remontado inline no motor: {inline.group(0)!r}'
+    print("OK  test_a_regra_de_direcao_tem_UM_dono")
+
+
 if __name__ == '__main__':
     tests = [v for k, v in sorted(globals().items()) if k.startswith('test_')]
     passed = failed = 0

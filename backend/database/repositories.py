@@ -10459,25 +10459,10 @@ def get_gto_hand_request_queue(limit: int = 50) -> list:
 _LABEL_SEVERITY = {'standard': 0, 'marginal': 1, 'small_mistake': 2, 'clear_mistake': 3}
 
 # Ações AGRESSIVAS (continuam/aumentam o pote). Base do sinal canônico de erro de direção.
-_AGGRESSIVE_ACTIONS = {'raise', 'bet', 'jam', 'shove', 'allin', 'all-in', '3bet', '4bet', 'reraise'}
-
-
-def is_verdict_error_signal(gto_action: str | None, action_taken: str | None,
-                            played_freq: float | None = None, in_range: bool | None = None) -> bool:
-    """Sinal CANÔNICO de erro de DIREÇÃO (invariante do veredito). True ⇒ a mão NUNCA pode ser
-    'correta'/'aceitável', independente de ev_loss baixo. FONTE ÚNICA (reconcile + validação +
-    display). Captura: o GTO folda a mão (fora do range de continuação) mas o hero AGREDIU; ou a
-    ação tomada tem freq GTO ~0 / fora do range."""
-    _ga = (gto_action or '').lower().strip()
-    _at = (action_taken or '').lower().strip()
-    if _at in _AGGRESSIVE_ACTIONS:
-        if _ga == 'fold':                                    # GTO descarta a mão; hero agrediu
-            return True
-        if played_freq is not None and played_freq < 0.05:   # ação com freq ~0 (fora do mix)
-            return True
-        if in_range is False:                                # fora do range (agressão preflop)
-            return True
-    return False
+# O sinal de erro de direção e o piso que ele produz moram em `leaklab/verdict.py` — importáveis
+# pelo MOTOR sem inverter a camada (repositories já importa o engine, o contrário não pode). O
+# nome segue exportado daqui porque scripts e testes o importam deste módulo há meses.
+from leaklab.verdict import is_verdict_error_signal, piso_por_direcao   # noqa: F401,E402
 
 
 # Bandas de score por label — espelham verdictLevelFromScore (cardLogic): <=0.08 correct,
@@ -10537,9 +10522,11 @@ def _reconcile_label(label: str, gto_label: str,
 
     # RC-C / INVARIANTE (rede de segurança): erro de DIREÇÃO (GTO folda a mão mas hero AGREDIU)
     # força piso de erro ANTES do switch por gto_label — que pode vir leniente (bug) ou legado.
-    # Exclui gto_mixed/gto_correct (mix legítimo onde a agressão pode ser co-ótima).
-    if gto_label not in ('gto_mixed', 'gto_correct') and is_verdict_error_signal(gto_action, action_taken):
-        return label if _LABEL_SEVERITY.get(label, 0) >= 2 else 'small_mistake'
+    # A regra (inclusive a exclusão do mix legítimo) mora em `leaklab/verdict.py`, chamada aqui e
+    # pelo motor. Ver a docstring de `piso_por_direcao` para o que custou tê-la em dois lugares.
+    _com_piso = piso_por_direcao(label, gto_label, gto_action, action_taken)
+    if _com_piso != label:
+        return _com_piso
 
     if gto_label in ('gto_correct', 'gto_mixed'):
         # PF zone com call/limp/check vs gto_mixed → não é standard

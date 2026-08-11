@@ -1242,14 +1242,22 @@ def evaluate_decision(input_data: Dict[str, Any]) -> Dict[str, Any]:
     if label != _label_pre_ceil:
         final_score = min(final_score, _LABEL_MAX_SCORE[label])
 
-    # INVARIANTE (piso TERMINAL): erro de DIREÇÃO — o GTO folda a mão (fora do range de continuação)
-    # mas o hero AGREDIU — NUNCA é capeado por EV. O _ev_severity_ceiling acima rebaixava de volta a
-    # 'marginal' quando o EV era ~0 (open fora do range custa pouco justamente por isso). Espelha o
-    # is_verdict_error_signal do reconcile/display → consistência card↔lista↔engine.
-    _played_act = _norm_gto_action(input_data.get('player_action', ''))
-    if (_best_action == 'fold' and _played_act in ('raise', 'bet', 'allin', 'jam', 'shove')
-            and _LABEL_SEV.get(label, 1) < _LABEL_SEV['small_mistake']):
-        label = 'small_mistake'
+    # INVARIANTE (piso TERMINAL): erro de DIREÇÃO — o GTO folda a mão (fora do range de
+    # continuação) mas o hero AGREDIU — NUNCA é capeado por EV. O _ev_severity_ceiling acima
+    # rebaixava de volta a 'marginal' quando o EV era ~0 (open fora do range custa pouco
+    # justamente por isso).
+    #
+    # A regra mora em `leaklab/verdict.py` e é chamada AQUI e no reconcile. Antes ela estava
+    # escrita à mão nos dois, e só a cópia do reconcile excluía o mix legítimo — o comentário
+    # daqui dizia "espelha o is_verdict_error_signal do reconcile" e não espelhava. Custou 12
+    # cards com o selo `GTO Correto` ao lado do veredito de erro, em nós onde o solver tomava a
+    # mesma ação entre 30% e 49% do tempo.
+    from leaklab.verdict import piso_por_direcao
+    _label_antes_do_piso = label
+    label = piso_por_direcao(label, gto.get('gto_label'), _best_action,
+                             _norm_gto_action(input_data.get('player_action', '')),
+                             played_freq=gto.get('played_freq'))
+    if label != _label_antes_do_piso:
         final_score = max(final_score, _LABEL_MAX_SCORE['marginal'] + 0.001)
 
     # Teto HEURÍSTICO p/ POTE LIMPADO: sem nó GTO E pote limpado (o hero iso-raisa/aposta/
