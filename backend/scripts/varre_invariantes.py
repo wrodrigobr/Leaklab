@@ -38,7 +38,9 @@ MODULO = os.path.join(os.path.dirname(os.path.abspath(__file__)),
 def _conectar(caminho):
     if caminho:
         import sqlite3
-        return sqlite3.connect(f'file:{caminho}?mode=ro', uri=True)
+        c = sqlite3.connect(f'file:{caminho}?mode=ro', uri=True)
+        c.row_factory = sqlite3.Row   # sem isto as linhas vêm como tupla e o `dict(r)` estoura
+        return c
     import database.schema as sch
     return sch.get_conn()
 

@@ -88,11 +88,16 @@ class Invariante:
 def _linhas(conn, sql: str, params: Sequence = ()) -> List[dict]:
     """Lê como lista de dicts, funcionando em SQLite e no adaptador de Postgres do projeto.
 
-    O adaptador do projeto normaliza `?` → `%s`, então o SQL aqui usa `?` e vale nos dois bancos.
+    O adaptador normaliza `?` → `%s`, então o SQL aqui usa `?` e vale nos dois bancos.
+
+    Só `fetchall()`, nunca `cursor.description`: no Postgres o `execute` devolve um `_PgResult`,
+    que emula a interface do sqlite3 sem expor `description`. A primeira versão desta função usava
+    `description` e passou em toda a suíte — que roda em SQLite — para estourar `AttributeError`
+    na primeira execução contra produção. `_PgResult.fetchall()` já devolve dicts; o `sqlite3.Row`
+    vira dict com o mesmo `dict(r)`.
     """
     cur = conn.execute(sql, tuple(params)) if params else conn.execute(sql)
-    cols = [d[0] for d in cur.description]
-    return [dict(zip(cols, r)) for r in cur.fetchall()]
+    return [dict(r) for r in cur.fetchall()]
 
 
 def _tid_qualquer(conn) -> object:

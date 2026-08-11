@@ -125,6 +125,53 @@ def test_toda_invariante_declara_forja_e_porta():
     print(f'OK  test_toda_invariante_declara_forja_e_porta ({len(ids)} invariantes)')
 
 
+class _ResultadoComoNoPostgres:
+    """A superfície EXATA de `_PgResult`: `fetchall()` devolvendo dicts e nada mais.
+
+    Sem `description`, sem `keys()`, sem indexação por posição. Se a varredura tocar em qualquer
+    coisa fora daqui, este dublê estoura.
+    """
+
+    def __init__(self, cur):
+        self._linhas = [dict(r) for r in cur.fetchall()]
+
+    def fetchall(self):
+        return list(self._linhas)
+
+    def fetchone(self):
+        return self._linhas[0] if self._linhas else None
+
+    def __iter__(self):
+        return iter(self._linhas)
+
+
+class _ConexaoComoNoPostgres:
+    def __init__(self, conn):
+        self._c = conn
+
+    def execute(self, sql, params=()):
+        return _ResultadoComoNoPostgres(self._c.execute(sql, params) if params
+                                        else self._c.execute(sql))
+
+
+def test_a_varredura_roda_na_superficie_do_POSTGRES():
+    """A suíte roda em SQLite; produção é Postgres, e as duas interfaces não são a mesma.
+
+    A primeira versão de `_linhas` usava `cursor.description` e passou em TODOS os testes daqui
+    para estourar `AttributeError: '_PgResult' object has no attribute 'description'` na
+    primeira execução contra produção — depois do deploy, que é o pior momento para descobrir.
+
+    LIMITE CONHECIDO: dublê prova LÓGICA, só o driver prova CONTRATO. Este teste garante que a
+    varredura não usa nada além de `fetchall()`; não garante que o SQL é aceito pelo Postgres.
+    """
+    c = _banco()
+    real = _contagens(c)
+    disfarcada = {r['id']: r['medido'] for r in varrer(_ConexaoComoNoPostgres(c))}
+    c.close()
+    assert disfarcada == real, f'a varredura muda de resultado conforme o driver: {disfarcada}'
+    print('OK  test_a_varredura_roda_na_superficie_do_POSTGRES')
+
+
 def test_regressao_e_melhoria_sao_lidas_com_o_sinal_certo():
     """O veredito da varredura: só o que PIORA derruba; o que melhora pede baseline novo.
 
