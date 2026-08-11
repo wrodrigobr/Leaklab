@@ -7,6 +7,56 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(veredito): o piso de direcao tinha DUAS copias, e o relabel rodou (#veredito #reprocesso)
+
+> **Acusacoes em producao: 567 → 536.** `SELO` 12 → 2, `GRAFIA` 9 → 2, `AUTO` 20 → 15. Nenhuma
+> invariante piorou. 71 anotacoes do coach intactas, 9.813 decisoes intactas.
+>
+> ── **A raiz** ─────────────────────────────────────────────────────────────────────────────────
+>
+> A regra "o GTO folda a mao e o hero AGREDIU ⇒ piso de erro" vivia em dois lugares. O reconcile
+> excluia `gto_correct`/`gto_mixed` — mix legitimo, onde a agressao pode ser co-otima. O motor
+> tinha a MESMA regra escrita a mao, **sem a exclusao**, sob um comentario afirmando que
+> espelhava a do reconcile. Resultado na tela: 12 cards com o selo `GTO Correto` ao lado do
+> veredito de erro, todos com score 0,19 exato — em nos onde o solver tomava a acao do hero
+> entre 30% e 49% do tempo.
+>
+> Agora `leaklab/verdict.py` e o dono unico (`is_verdict_error_signal` + `piso_por_direcao`).
+>
+> ── **Tres erros meus no caminho, e o que pegou cada um** ──────────────────────────────────────
+>
+> **1. Unificar nao e SOMAR.** Ao ligar o motor na funcao, passei tambem `played_freq` "porque a
+> funcao aceita". O reconcile chama com dois argumentos. O motor saiu MAIS severo que ele — a
+> propria assimetria que o commit existia para acabar. **110 bets postflop** subiriam de
+> `marginal` para `small_mistake`. Quem pegou foi o dry-run, nao teste; agora ha um teste lendo a
+> chamada no fonte.
+>
+> **2. O reprocesso sobrescrevia label com avaliacao MENOS informada.** O script fazia
+> `if not new_gtolbl: new_gtolbl = old_gtolbl` para nao apagar cobertura por falha transitoria.
+> So que mantinha o selo velho ao lado de um `label` recalculado SEM ele. Uma sonda no motor
+> mostrou `gto_available=False` em 6 de 6 casos: o `gto_correct` do relatorio era o valor velho
+> repetido pelo script. Agora a linha e PULADA (12 no total) e a contagem sai no rodape.
+>
+> **3. Uma invariante nova que era VAZIA.** Escrevi `SELO-ORFAO` (gto_label sem gto_action) para
+> fechar o caso acima. O script preservava `gto_action` tambem, entao a sonda ficaria em zero
+> enquanto o defeito acontecia ao lado. Descartada. Quem cobre e a `SELO`, que subiria de 12
+> para 18 — desde que a varredura rode DEPOIS de todo reprocesso.
+>
+> ── **O que sobrou, nomeado** ──────────────────────────────────────────────────────────────────
+>
+> `AUTO` 15: 12 fold/fold, 2 check/check, 1 call/call. Depende de decisao de produto — rebaixar o
+> veredito ou corrigir a recomendacao.
+> `SELO` 2: outra familia. Postflop com frequencia ALTA (0,60 e 0,90) e perda de EV real (1,93bb
+> e 2,56bb) — o solver toma a acao quase sempre E ela custa. Nao e contradicao de piso.
+> `GRAFIA` 2: ambas `marginal`, nao acusacao.
+>
+> ── **O buraco de metodo que isto expos** ──────────────────────────────────────────────────────
+>
+> A auditoria de agentes mede o ACERVO. A rede de invariantes mede o ACERVO. Nenhuma das duas
+> pergunta **"o motor concorda com o que esta gravado?"**. Os dois defeitos mais caros de hoje so
+> apareceram no dry-run, que e essa terceira pergunta feita a mao. Ate ela virar automatica, o
+> `--dry-run` antes de todo reprocesso e obrigatorio, e a varredura depois.
+
 ### deploy(prod): EV consertado em producao, e o RELABEL global SEGURADO com numero (#ev #reprocesso)
 
 > Deploy em `a1ab4a40`. As tres portas de EV estao vivas em producao, medidas chamando

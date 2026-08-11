@@ -387,16 +387,19 @@ INVARIANTES: List[Invariante] = [
                                        gto_action='check', gto_label='gto_mixed'),
     ),
     Invariante(
-        id='AUTO', baseline=20,
+        id='AUTO', baseline=15,
         titulo='decisão acusada em que a ação recomendada é a ação jogada',
         porta='card exibe "✗ Erro" com a coluna ideal repetindo o que o jogador fez',
-        origem='auditoria 10/08, achado por duas lentes — confirmado por 2 céticos',
+        origem='auditoria 10/08, achado por duas lentes — confirmado por 2 céticos. '
+               'Relabel de 11/08 levou 20 → 15: os 5 shove/jam sairam com o conserto da grafia. '
+               'Os 15 restantes sao 12 fold/fold, 2 check/check e 1 call/call, e dependem de uma '
+               'decisao de produto: rebaixar o veredito ou corrigir a recomendacao.',
         medir=_acusa_o_que_recomenda,
         forjar=lambda c: _forjar_linha(c, action_taken='fold', best_action='fold',
                                        label='small_mistake', score=0.19, gto_label=None),
     ),
     Invariante(
-        id='GRAFIA', baseline=9,
+        id='GRAFIA', baseline=2,
         titulo='mesma jogada com outra palavra tratada como desvio (shove vs jam)',
         porta='score e label do card, e a nota "Ação esperada: ALL-IN" para quem deu all-in',
         origem='auditoria 10/08, lente de contradição — confirmado por 2 céticos',
@@ -415,10 +418,13 @@ INVARIANTES: List[Invariante] = [
                                        street='flop', board='["2h","7c","2d"]'),
     ),
     Invariante(
-        id='SELO', baseline=12,
+        id='SELO', baseline=2,
         titulo='selo "GTO Correto" convivendo com veredito de erro na mesma linha',
         porta='card do replayer: selo e veredito a três centímetros um do outro',
-        origem='medido em 10/08 sobre o snapshot, com controle',
+        origem='medido em 10/08 sobre o snapshot, com controle. Relabel de 11/08 levou 12 → 2 '
+               'ao unificar o piso de direcao. As 2 que sobraram sao de outra familia: postflop '
+               'com frequencia ALTA (0,60 e 0,90) e perda de EV real (1,93bb e 2,56bb) — o '
+               'solver toma a acao quase sempre E ela custa. Nao e contradicao de piso.',
         medir=_selo_contradiz_veredito,
         forjar=lambda c: _forjar_linha(c, gto_label='gto_correct', label='clear_mistake',
                                        score=0.7, action_taken='call', best_action='fold'),
