@@ -388,10 +388,16 @@ INVARIANTES: List[Invariante] = [
         forjar=lambda c: _forjar_linha(c, num_players=0, position='UTG+2', n_active_opponents=5),
     ),
     Invariante(
-        id='FREQ', baseline=43,
+        id='FREQ', baseline=0,
         titulo='frequência da ação jogada acima da frequência da ação modal',
         porta='card do replayer imprime as duas frequências lado a lado',
-        origem='auditoria 10/08, lente de contradição — confirmado por 2 céticos',
+        origem='auditoria 10/08, lente de contradição — confirmado por 2 céticos. RESOLVIDO em '
+               '11/08, e o defeito era mais largo que o caso reportado: `1.0 - top_freq` supunha '
+               'nó BINÁRIO e errava sempre que top < 0.5 (top=0.05 dava played=0.95). Quem '
+               'mostrou foi a varredura de TODAS as combinações no teste, não o caso da lista. '
+               'Nó puro (top=1.0) → a não-modal é 0.0 exato; nó misto sem strategy → None. '
+               'As 43 tinham junto um nó de `check` servido a spot com aposta na frente, hoje '
+               'recusado como spot_mismatch.',
         medir=_freq_jogada_acima_da_modal,
         forjar=lambda c: _forjar_linha(c, gto_played_freq=1.0, gto_top_freq=0.0,
                                        gto_action='check', gto_label='gto_mixed'),
