@@ -7,6 +7,40 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(veredito): guarda do PREFLOP disparava em TODO postflop e apagava o solver (#veredito)
+
+> **`MUDO`: 19 → 0.** `AUTO` 15 → 14. Nenhuma invariante piorou. 71 anotacoes e 9.813 decisoes
+> intactas.
+>
+> `_sem_gabarito` era `not preflop_gto.get('available')` — e `_enrich_preflop_gto` devolve
+> `available=False` para toda street diferente de preflop. No postflop o segundo gatilho do
+> guarda era SEMPRE verdadeiro, e ele virava aritmetica pura: facing >= 95% do stack efetivo.
+>
+> Medido em producao: **149 linhas atingidas**, 19 com `gto_critical` (solver: frequencia ZERO)
+> devolvidas como `standard` com score 0.0, e **108** em que o `best_action` deixou de ser
+> recomendacao e virou eco da acao do hero.
+>
+> O guarda vizinho, tres linhas abaixo, ja fazia certo (`not gto.get('available')`). E o
+> comentario deste dizia "nao ha cobertura GTO nenhuma" desde o inicio — o codigo e que nao
+> dizia. **Comentario nao e evidencia** (CLAUDE.md, item 8), pela segunda vez hoje.
+>
+> ── **O efeito, na direcao certa** ─────────────────────────────────────────────────────────────
+>
+> 30 linhas mudaram: **22 folds saem de "Correto" para "Aceitavel"** — no veredito de 3 niveis
+> `marginal` nao e erro. Uma acusacao aprofunda e uma nasce. Acusacoes 596 → 597. Nao e o produto
+> ficando severo, e o solver deixando de ser apagado.
+>
+> Os **90** casos restantes de `best_action` igual a acao do hero nesse recorte sao spots SEM
+> cobertura nenhuma, onde o guarda deve mesmo valer — foi para eles que ele foi escrito.
+>
+> ── **A primeira versao do teste era VACUA** ───────────────────────────────────────────────────
+>
+> Ela assertava `label != 'standard'` e a mutacao "volta ao guarda so-preflop" **passava**: neste
+> spot sintetico o label e reposto por outro caminho depois do guarda. Medindo com o guarda
+> antigo, o que discrimina e `score` 0.0 (contra 0,22) e `best_action` 'fold' (eco) em vez de
+> 'call'. Assertar um sintoma que o proprio caso nao produz e cobertura sem cobrir — e so a
+> mutacao denunciou.
+
 ### fix(assento): o bounty do PKO zerava a mesa, e o portao de ICM abrandava tudo (#parser #icm)
 
 > **`num_players < 2`: 2.355 → 0.** Onze torneios PKO, 24% do acervo, reprocessados. 71 anotacoes
