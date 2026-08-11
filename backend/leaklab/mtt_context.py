@@ -15,10 +15,10 @@ from typing import Optional
 from .models import ParsedHand
 from .icm import hero_icm_equity
 
-# Stack por assento — cobre PokerStars/GGPoker ("(1500 in chips)") e o dialeto
-# PartyGaming/888/PartyPoker ("( 500 )" / "( $826.51 )" / "( 86,425 )").
-_SEAT_STACK_PSGG_RE = re.compile(r'^Seat \d+: (.+?) \(([0-9.]+) in chips\)', re.MULTILINE)
-_SEAT_STACK_PG_RE   = re.compile(r'^Seat \d+: (.+?) \(\s*\$?([0-9,]+(?:\.[0-9]+)?)\s*\)\s*$', re.MULTILINE)
+# Stack por assento: NAO ha regex aqui. A leitura de assento e uma so, em `mesa_final`.
+# Os dois regexes que moravam nesta linha exigiam o ")" logo apos "in chips" e quebravam no PKO
+# ("(5469 in chips, $1.50 bounty)"), zerando o ICM real nos mesmos 11 torneios em que a outra
+# copia zerava o `num_players`. Ver `mesa_final.assentos_com_stack`.
 
 # ICM real exige que A MESA SEJA O TORNEIO — só aí os stacks visíveis representam todo o prize
 # pool. Esta constante é o tamanho máximo de um torneio de mesa única.
@@ -37,7 +37,7 @@ _SEAT_STACK_PG_RE   = re.compile(r'^Seat \d+: (.+?) \(\s*\$?([0-9,]+(?:\.[0-9]+)
 _ICM_MAX_PLAYERS = 9
 
 # ── Regex ─────────────────────────────────────────────────────────────────────
-from leaklab.mesa_final import mesa_e_o_torneio, nomes_sentados
+from leaklab.mesa_final import assentos_com_stack, mesa_e_o_torneio, nomes_sentados
 
 _LEVEL_RE  = re.compile(r'Level\s+([IVXLCDM]+)\s+\((\d+)/(\d+)\)')
 
@@ -50,8 +50,7 @@ def _roman_to_int(s: str) -> int:
         prev = v
     return result
 _ANTE_RE   = re.compile(r'posts the ante (\d+)')
-_SEAT_RE   = re.compile(r'^Seat \d+: .+ \([0-9.]+ in chips\)')
-_STACK_RE  = re.compile(r'Seat \d+: {hero} \(([0-9.]+) in chips\)')
+# (_SEAT_RE e _STACK_RE removidos: zero usos, e ambos quebravam no PKO.)
 _FINISH_RE = re.compile(r'finished the tournament in (\d+)(?:st|nd|rd|th) place')
 
 
@@ -225,18 +224,15 @@ def build_mtt_context(hand: ParsedHand, field_size: int | None = None,
 def _extract_all_stacks(raw: str, hero: str) -> tuple[list[float], Optional[int]]:
     """Extrai (stacks, índice_do_hero) de todos os assentos da mão.
 
-    Cobre o formato PokerStars/GGPoker e o dialeto PartyGaming (888/PartyPoker).
+    Cobre todos os dialetos porque delega para `mesa_final.assentos_com_stack` — a MESMA leitura
+    que produz o `num_players`. Antes eram duas implementações e as duas quebravam no PKO.
     Retorna a lista de stacks na ordem dos assentos e o índice do hero (ou None).
     """
-    matches = _SEAT_STACK_PSGG_RE.findall(raw) or _SEAT_STACK_PG_RE.findall(raw)
     stacks: list[float] = []
     hero_idx: Optional[int] = None
-    for name, chips in matches:
-        try:
-            stacks.append(float(chips.replace(',', '')))
-        except ValueError:
-            continue
-        if hero and name.strip() == hero.strip():
+    for name, chips in assentos_com_stack(raw):
+        stacks.append(chips)
+        if hero and name == hero.strip():
             hero_idx = len(stacks) - 1
     return stacks, hero_idx
 

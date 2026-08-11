@@ -59,7 +59,17 @@ import re
 # começam com "Seat N:" e trazem "(1500)" como VALOR COLETADO) é o corte ESTRUTURAL abaixo, não
 # este padrão. Tentar resolver por regex mais esperto já falhou duas vezes: exigir "in chips"
 # quebra a ACR, e exigir dígito logo após o "(" quebra o 888.
-_ASSENTO_RE = re.compile(r'^Seat \d+: (.+?) \(\s*\$?[\d.,]+\s*(?:in chips)?\s*\)')
+#   PS PKO         "Seat 1: nome (5469 in chips, $1.50 bounty)"   — bounty DENTRO do parêntese
+#   GG PKO         "Seat 3: nome (1500 in chips, bounty $0.25)"
+#
+# O `(?:,[^)]*)?` existe por causa do PKO, e custou caro descobrir: 11 torneios do acervo (2.355
+# decisões, 24% do total) gravavam `num_players = 0` porque o `)` não vinha logo depois de
+# "in chips". Mesa de zero jogadores força `icm_pressure='high'`, que exclui a linha do ranking
+# de leaks e do plano de estudo — 85 acusações sumiam em silêncio.
+#
+# O oráculo estava dentro da própria linha: 972 dessas decisões tinham posições (HJ, MP1, UTG+2)
+# que `posicoes.py` só emite com 6 ou 7 assentos. A linha se contradizia sozinha.
+_ASSENTO_RE = re.compile(r'^Seat \d+: (.+?) \(\s*\$?([\d.,]+)\s*(?:in chips)?(?:,[^)]*)?\s*\)')
 
 # Máximo de jogadores que caberia numa mesa. Acima disso não é mesa, é torneio em andamento.
 MAX_NA_MESA = 9
@@ -72,7 +82,26 @@ def nomes_sentados(raw: str) -> set:
     contar o roster de uma mão e provar mesa final. O corte do summary é estrutural — ver
     `_ASSENTO_RE`.
     """
-    nomes = set()
+    return {nome for nome, _ in assentos_com_stack(raw)}
+
+
+def assentos_com_stack(raw: str) -> list:
+    """(nome, fichas) de cada assento do roster, na ordem em que aparecem. Fonte única.
+
+    Existe porque a MESMA leitura tinha duas implementações: esta, e um par de regexes em
+    `mtt_context._extract_all_stacks` que alimentava o ICM real. As duas exigiam o `)` logo após
+    "in chips" e as duas quebravam no PKO — uma zerava `num_players`, a outra zerava o ICM. Regra
+    em N lugares vira função (CLAUDE.md, item 5).
+
+    Nomes repetem entre mãos do mesmo arquivo, então a lista tem duplicatas de propósito: quem
+    quer o conjunto usa `nomes_sentados`, quem quer os stacks de UMA mão passa uma mão só.
+
+    O corte do `*** SUMMARY ***` é ESTRUTURAL e não decorativo: as linhas de summary também
+    começam com "Seat N:" e trazem "(1500)" como valor COLETADO, não como stack. Resolver isso
+    por regex mais esperto já falhou duas vezes — exigir "in chips" quebra a ACR, exigir dígito
+    logo após o "(" quebra o 888.
+    """
+    assentos = []
     em_summary = False
     for linha in (raw or '').splitlines():
         l = linha.strip()
@@ -88,8 +117,12 @@ def nomes_sentados(raw: str) -> set:
             continue
         m = _ASSENTO_RE.match(l)
         if m:
-            nomes.add(m.group(1).strip())
-    return nomes
+            try:
+                fichas = float(m.group(2).replace(',', ''))
+            except ValueError:
+                continue
+            assentos.append((m.group(1).strip(), fichas))
+    return assentos
 
 
 def mesa_e_o_torneio(sentados: set | list | None,
