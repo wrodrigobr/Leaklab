@@ -397,7 +397,7 @@ INVARIANTES: List[Invariante] = [
                                        gto_action='check', gto_label='gto_mixed'),
     ),
     Invariante(
-        id='AUTO', baseline=15,
+        id='AUTO', baseline=14,
         titulo='decisão acusada em que a ação recomendada é a ação jogada',
         porta='card exibe "✗ Erro" com a coluna ideal repetindo o que o jogador fez',
         origem='auditoria 10/08, achado por duas lentes — confirmado por 2 céticos. '
@@ -419,10 +419,15 @@ INVARIANTES: List[Invariante] = [
                                        label='small_mistake', score=0.2565, gto_label=None),
     ),
     Invariante(
-        id='MUDO', baseline=19,
+        id='MUDO', baseline=0,
         titulo='solver diz 0% de frequência e o produto devolve "standard"',
         porta='veredito do card e score exibido; o piso é do próprio _gto_label_cap',
-        origem='auditoria 10/08, lente de cobertura — confirmado por 2 céticos',
+        origem='auditoria 10/08, lente de cobertura — confirmado por 2 céticos. RESOLVIDO em '
+               '11/08: `_sem_gabarito` era `not preflop_gto.available`, e o enrichment preflop '
+               'devolve False em toda street != preflop, então o guarda virava aritmética pura no '
+               'postflop (facing >= 95% do stack). 22 folds saíram de "Correto" para "Aceitável" '
+               'e o solver voltou a mandar. Os 90 casos restantes de best_action = ação do hero '
+               'nesse recorte são spots SEM cobertura, onde o guarda deve mesmo valer.',
         medir=_solver_acusa_produto_absolve,
         forjar=lambda c: _forjar_linha(c, gto_label='gto_critical', label='standard', score=0.0,
                                        street='flop', board='["2h","7c","2d"]'),
