@@ -7,6 +7,22 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(gto): montar_payload_postflop — hash e ranges pela MESMA régua; 4 contaminados purgados (#gto)
+
+> A suspeita aberta do intercept fechou MEDIDA: o hash saía sem `pot_type` (chave legada)
+> enquanto as ranges eram variant-aware. Solve de variante pedido pelo replay era perdido
+> (o lookup consulta a chave de variante) e envenenava a chave da família SRP. No acervo:
+> **574 decisões de variante** expostas ao caminho, **4 nós contaminados** de fato (payload
+> 3-bet sob chave legada, t125/t132) — alcance atual ZERO porque a chave exata inclui as
+> cartas do herói, mas o replay produziria mais um a cada pedido.
+>
+> Conserto de uma linha na fonte única (`_effective_pot_type` entra no `compute_spot_hash`),
+> teste com controle legado (o caso majoritário não muda de chave) quebrado de propósito, os
+> 4 nós purgados com árvores órfãs, deploy conferido NOS DOIS containers. O
+> `reenfileirar_postflop_sem_cobertura` ganhou o LIMITE no docstring: `decisions` não guarda
+> opener, então ele só produz variante legada — para variantes, a ferramenta é o reenqueue
+> que reparseia o raw.
+
 ### chore(fila): dos 13 rejected sobrou 1 — e ele ensinou o que "estratégia vazia" significa (#gto #medicao)
 
 > Caracterização: 12 eram de 05/08 com payload envenenado (pote em fichas, um com
