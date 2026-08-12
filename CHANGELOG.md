@@ -7,6 +7,27 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### chore(fila): dos 13 rejected sobrou 1 — e ele ensinou o que "estratégia vazia" significa (#gto #medicao)
+
+> Caracterização: 12 eram de 05/08 com payload envenenado (pote em fichas, um com
+> `pot=2.728.606`) — 9 hashes órfãos que nenhuma decisão procura e 3 de spots vivos que a
+> peneira de pote insano exclui por design. Removidos como os 64 failed, com guarda de
+> contagem no comando. O 13º era de HOJE, payload limpo, spot vivo e são — e a autópsia dele
+> valeu o ataque.
+>
+> A trilha: solver devolve `strategy_detail={}` com `total_combos=0` e converge em 30
+> iterações. Ablação: board sem par funciona; ranges AA,KK funcionam NO MESMO board; classe
+> de mão com 0 combos restantes NÃO envenena (AA,99 funciona); exaustão total dá erro
+> honesto do solver. A busca binária nos tokens da range matou a hipótese de token ruim:
+> subconjuntos dão combos FRACIONÁRIOS (0,08) e um dá 3.899 — `total_combos` é ponderado
+> pelo ALCANCE do nó no equilíbrio. **Estratégia vazia = nó inalcançado: com estas ranges
+> neste board, o OOP em equilíbrio nunca faz esta aposta.** A linha do vilão está fora da
+> árvore — não há gabarito a servir, e o guarda do solve vazio recusa gravar exatamente o
+> que deve recusar. "Sem gabarito não é erro" cobre o resto.
+>
+> Fila final: `done 7.962, rejected 1` — o 1 é o registro honesto de um spot fora de
+> equilíbrio, ressuscitável se um dia houver payload/árvore que o alcance.
+
 ### chore(fila): os 64 failed eram fósseis — removidos com prova de que ninguém os espera (#gto)
 
 > Caracterização antes de qualquer conserto: todos de 27/06 a 04/08 (pré-consertos de payload),
