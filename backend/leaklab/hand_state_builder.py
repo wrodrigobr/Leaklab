@@ -553,12 +553,25 @@ def extract_decision_points(hand: ParsedHand) -> List[HandState]:
                 facing_allin = (a.action == 'all-in')
                 break
 
-        # Contexto de multi-raise preflop (3-bet/squeeze): conta raises de villains ANTES do
-        # hero e se o hero já foi agressor. >=2 raises sem o hero ter agredido = pote 3-bet/
-        # squeeze enfrentado a frio — o engine NÃO deve tratar como vs_RFI (defesa vs open).
+        # `hero_was_aggressor` tem DUAS semânticas, uma por street, e as duas são deliberadas:
+        #
+        # PREFLOP — "o hero JÁ agrediu nesta street" (qualquer raise, não o último). É o que o
+        # roteamento de cenário exige: hero abriu e enfrenta 3-bet → vs_3bet precisa de
+        # hero_was_aggressor=True mesmo com o vilão tendo feito o ÚLTIMO raise. Mudar isso
+        # quebraria faces_squeeze/vs_3bet (medido em 10/08: 106 decisões no nó errado quando
+        # este sinal faltou).
+        #
+        # POSTFLOP — INICIATIVA: a última ação agressiva da mão até aqui é do hero? É o que
+        # c-bet, leitura de range e escolha de nó significam por "agressor". Até 12/08 este
+        # campo era computado SÓ no preflop e as 2.903 linhas postflop gravavam 0 — a coluna
+        # morta exatamente onde significa alguma coisa (invariante COL-AGRESSOR). Quem c-betava
+        # e quem pagava o c-bet ficavam idênticos aos olhos do dado.
         preflop_raises_faced = 0
         hero_was_aggressor = False
         if street == 'preflop':
+            # Multi-raise preflop (3-bet/squeeze): conta raises de villains ANTES do hero.
+            # >=2 raises sem o hero ter agredido = pote 3-bet/squeeze enfrentado a frio — o
+            # engine NÃO deve tratar como vs_RFI (defesa vs open).
             for a in actions_before:
                 if a.street != 'preflop' or a.action not in {'raises', 'all-in'}:
                     continue
@@ -566,6 +579,12 @@ def extract_decision_points(hand: ParsedHand) -> List[HandState]:
                     hero_was_aggressor = True
                 else:
                     preflop_raises_faced += 1
+        else:
+            # A iniciativa anda com a ÚLTIMA agressão, de qualquer street: quem abriu preflop a
+            # tem no flop; quem c-betou a mantém no turn; um check-raise do vilão a toma.
+            for a in actions_before:
+                if a.action in {'bets', 'raises', 'all-in'}:
+                    hero_was_aggressor = (a.player == hero)
 
         # Pote LIMPADO (limp): villain deu open-limp/over-limp (calls >= ~1bb) e
         # NÃO houve raise. O hero (tipicamente BB) só completa/dá check de opção.
