@@ -7,6 +7,27 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(gto): o solve vazio gravado como pronto — 45 nós ocupando hash em silêncio (#gto #medicao)
+
+> "Ataca os 7 vanished" virou a autópsia da população inteira sem gabarito (~350 postflop), com
+> o motivo REAL capturado interceptando `_log_gto_miss`: **210** "jam rejeitado" (o guarda de
+> SPR protegendo spots fundos de nós rasos — o estado declarado da profundidade), **~80** "ação
+> do hero fora da árvore rasa" (recusa honesta), **35** "nó de check servido a spot com facing".
+> Este último levou ao defeito: o nó exato de t23 existia, a fila dizia `done`, o payload tinha
+> o facing certo — e a **strategy_json era NULL**. O solver devolveu sem estratégia, o escritor
+> gravou assim mesmo. **45 nós assim em produção**, todos solver_cli.
+>
+> O dano do nó vazio não é servir errado — é OCUPAR o hash: o reenqueue vê "coberto" e nunca
+> re-enfileira; o spot fica heurístico para sempre, e o lookup ainda pode cair num nó vizinho
+> errado. Regra 6 (falha silenciosa exige conferência explícita), aplicada no PONTO ÚNICO:
+> `insert_gto_nodes` agora rejeita solver_cli sem estratégia — cobre pool local, worker remoto
+> e scripts sem edição por chamador, porque `inserted=0` já vira job `rejected` em cada um.
+> Guarda quebrado de propósito (o teste acusa; restaurado, cala). Invariante **NO-VAZIO**
+> (baseline 0) entra na varredura com forja própria.
+>
+> Limpeza: `cleanup_empty_solver_nodes` purga ESCOPADA (só solver_cli com strategy vazia,
+> árvores órfãs junto) e devolve os spots à fila para re-solve com o guarda ativo.
+
 ### chore(gto): capturas oop_pfr — fechada por MEDICAO, o refill de ontem ja tinha pago (#gto #medicao)
 
 > "Ataca as capturas dos spots oop_pfr" terminou sem uma linha de codigo: o reenfileiramento de

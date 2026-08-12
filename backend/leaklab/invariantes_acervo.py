@@ -164,6 +164,20 @@ def _ev_acima_do_teto(conn):
                    AND ABS(ev_loss_bb) > COALESCE(pot_size,0) + 2*COALESCE(stack_bb,0)""")]
 
 
+def _no_solvado_vazio(conn):
+    """Nó solver_cli sem strategy_json é um solve que FALHOU e foi gravado como pronto.
+
+    Ele não serve veredito (o motor rejeita na leitura), mas OCUPA o hash: o reenqueue vê
+    "coberto" e nunca re-enfileira — o spot fica heurístico para sempre, em silêncio. Medido
+    em 12/08: 45 nós assim, um deles o "1 de 541 não-servível" do refill.
+    """
+    return [Violacao(r['spot_hash'], f"source={r['source']} strategy_json vazia")
+            for r in _linhas(conn, """
+                SELECT spot_hash, source FROM gto_nodes
+                 WHERE source = 'solver_cli'
+                   AND (strategy_json IS NULL OR strategy_json = '')""")]
+
+
 def _mesa_impossivel(conn):
     """Uma decisão existe porque há mesa. `num_players` nunca pode ser menor que 2.
 
@@ -393,6 +407,20 @@ INVARIANTES: List[Invariante] = [
         medir=_ev_acima_do_teto,
         forjar=lambda c: _forjar_linha(c, ev_loss_bb=9999.0, stack_bb=10.0, pot_size=3.0,
                                        ev_loss_source='solver_hand'),
+    ),
+    Invariante(
+        id='NO-VAZIO', baseline=0,
+        titulo='nó solver_cli sem strategy_json — solve que falhou gravado como pronto',
+        porta='ocupa o hash: reenqueue diz "coberto", o spot fica heurístico para sempre; '
+              'e o lookup pode cair num nó vizinho errado (t23 caiu no nó de check com facing 8,68bb)',
+        origem='ataque aos 7 vanished, 12/08 — 45 nós em produção, todos solver_cli; o guarda '
+               'novo em insert_gto_nodes rejeita na entrada',
+        medir=_no_solvado_vazio,
+        forjar=lambda c: c.execute(
+            "INSERT INTO gto_nodes (spot_hash, street, position, board, hero_hand, "
+            "stack_bucket, gto_action, gto_freq, source, strategy_json) "
+            "VALUES ('forja-no-vazio', 'flop', 'BTN', '[]', '[]', '20-30', 'check', 1.0, "
+            "'solver_cli', NULL)"),
     ),
     Invariante(
         id='MESA', baseline=0,

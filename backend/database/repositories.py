@@ -8585,6 +8585,15 @@ def insert_gto_nodes(nodes: list[dict]) -> int:
                     rejected += 1
                     continue
                 strategy_json = strategy_raw
+            elif source == 'solver_cli':
+                # Solve sem estratégia é solve que FALHOU — gravá-lo ocupa o hash, o
+                # reenqueue passa a dizer "coberto" e o spot fica heurístico pra sempre.
+                # Medido em 12/08: 45 nós done com strategy_json NULL, todos solver_cli
+                # (um deles era o "1 de 541 não-servível" do refill). Rejeitar aqui faz o
+                # chamador marcar o job rejected em vez de done — e o reenqueue re-enfileira.
+                _log_gto_rejection(n, 'solver_cli sem strategy_json — solve vazio (falha silenciosa)')
+                rejected += 1
+                continue
             else:
                 strategy_json = None
 
