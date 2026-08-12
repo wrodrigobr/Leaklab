@@ -215,3 +215,4 @@ if __name__ == '__main__':
             print(f"FAIL {t.__name__}: {e}"); failed += 1
             import traceback; traceback.print_exc()
     print(f"\n{'='*50}\nTotal: {passed+failed} | Passed: {passed} | Failed: {failed}")
+    raise SystemExit(1 if failed else 0)

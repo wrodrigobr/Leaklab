@@ -330,3 +330,4 @@ if __name__ == '__main__':
     print(f"Total: {passed+failed} | Passed: {passed} | Failed: {failed}")
     try: os.unlink(TEST_DB)
     except: pass
+    raise SystemExit(1 if failed else 0)

@@ -470,3 +470,4 @@ if __name__ == '__main__':
     # Limpar banco de teste
     try: os.unlink(TEST_DB)
     except: pass
+    raise SystemExit(1 if failed else 0)

@@ -563,6 +563,7 @@ def _run_unit_tests():
     test_comparison_divergence_detection()
     print(f'\n{"=" * 50}')
     print(f'Total: {_TESTS_PASSED + _TESTS_FAILED} | Passed: {_TESTS_PASSED} | Failed: {_TESTS_FAILED}')
+    raise SystemExit(1 if _TESTS_FAILED else 0)
 
 
 # ── CLI entry point ────────────────────────────────────────────────────────────

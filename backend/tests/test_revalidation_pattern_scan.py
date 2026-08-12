@@ -183,3 +183,4 @@ if __name__ == '__main__':
     try: os.unlink(_TMPDB.name)
     except Exception: pass
     print(f"\n{'='*50}\nTotal: {passed+failed} | Passed: {passed} | Failed: {failed}")
+    raise SystemExit(1 if failed else 0)

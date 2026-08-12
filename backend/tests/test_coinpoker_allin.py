@@ -150,3 +150,4 @@ if __name__ == '__main__':
             fail += 1
     print(f"\n{'='*50}")
     print(f'Total: {ok+fail} | Passed: {ok} | Failed: {fail}')
+    raise SystemExit(1 if fail else 0)

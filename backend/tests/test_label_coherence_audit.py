@@ -286,3 +286,4 @@ if __name__ == '__main__':
         os.unlink(TEST_DB)
     except Exception:
         pass
+    raise SystemExit(1 if failed else 0)

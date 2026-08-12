@@ -225,3 +225,4 @@ if __name__ == '__main__':
         except Exception as e:
             print(f"FAIL {name}: {e}"); traceback.print_exc(); failed += 1
     print(f"\n{'='*50}\nTotal: {passed+failed} | Passed: {passed} | Failed: {failed}")
+    raise SystemExit(1 if failed else 0)

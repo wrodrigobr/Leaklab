@@ -222,3 +222,4 @@ if __name__ == '__main__':
     except Exception: pass
     print(f"\n{'='*50}")
     print(f"Total: {passed+failed} | Passed: {passed} | Failed: {failed}")
+    raise SystemExit(1 if failed else 0)

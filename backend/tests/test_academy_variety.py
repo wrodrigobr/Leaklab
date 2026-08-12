@@ -746,6 +746,7 @@ def run_tests():
                 print(f"      {l}")
         print()
     print(f"Total: {result.testsRun} | Passed: {passed} | Failed: {failed}")
+    return failed
 
 
 
@@ -1004,4 +1005,4 @@ class TestGuardaDeRepeticao(unittest.TestCase):
 if __name__ == '__main__':
     print("Academia LeakLab — Teste de Variedade de Exercícios")
     print("="*60)
-    run_tests()
+    raise SystemExit(1 if run_tests() else 0)

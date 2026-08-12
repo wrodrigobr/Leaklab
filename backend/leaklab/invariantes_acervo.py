@@ -279,9 +279,13 @@ def _selo_contradiz_veredito(conn):
 # como defeito. E ela vinha dos 19 achados da auditoria que NUNCA passaram por cetico (a cota
 # matou os verificadores): adotei com contagem propria, sem provar o mecanismo.
 #
-# O risco REAL que sobrou dela e outro e esta no backlog: consumidores de score (ELO) tratam
-# "sem gabarito" como acerto pleno. Isso e regra de CONSUMO, nao invariante de dado — mesma
-# familia do ev_loss_trustworthy.
+# O "risco real que sobrou" apontado aqui — ELO tratando sem-gabarito como acerto — TAMBEM caiu
+# quando verificado (12/08): o ELO nunca leu `decisions.score`; ele deriva S do `gto_label` e
+# EXCLUI o sem-gabarito por decisao de produto documentada (2026-05-28, elo_engine.py), com teste
+# direto e mutacao provando o guarda. Medido em producao: 23%/15%/32% das decisoes excluidas nos
+# tres maiores usuarios. Os agregadores de `score` cru (perfis) consomem medicao emitida pelo
+# motor, nao NULL virando zero — sem_gabarito avg 0.0437 vs com_gabarito 0.0550. A alegacao veio
+# desta mesma lapide, que a propagou sem verificar: ate lapide precisa de cetico.
 #
 def _board_do_futuro(conn):
     """A decisão não pode guardar cartas que o hero ainda não tinha visto.

@@ -7,6 +7,34 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(testes): 101 arquivos de teste com exit code MENTINDO, achados ao verificar o ELO (#testes #elo)
+
+> O item do backlog era "a regra de consumo do ELO: score sem gabarito conta como acerto". A
+> verificacao derrubou a alegacao e achou outra coisa no caminho.
+>
+> ── **A regra ja existia, e esta viva** ────────────────────────────────────────────────────────
+>
+> O ELO nunca leu `decisions.score`: deriva S do `gto_label` e **EXCLUI** o sem-gabarito, por
+> decisao de produto documentada (2026-05-28, `elo_engine.py`), com teste direto. Provado em
+> producao: 23% / 15% / 32% das decisoes excluidas nos tres maiores usuarios. Os agregadores de
+> score cru (perfis) consomem medicao emitida pelo motor, nao NULL virando zero (sem_gabarito
+> avg 0.0437 vs 0.0550) — e os dois rankings filtram acusadas antes de agregar. A alegacao veio
+> da lapide da NOTA, que a propagou sem verificar. **Terceira alegacao dos 19 sem cetico a cair;
+> a lapide foi corrigida — ate lapide precisa de cetico.**
+>
+> ── **O que a mutacao achou: exit code mentindo em 107 arquivos** ──────────────────────────────
+>
+> Ao mutar o guarda do ELO, meu harness disse "PASSOU" com DOIS FAILs no texto: o rodape do
+> arquivo imprimia as falhas e saia com **exit 0**. Varredura: **107 dos ~150 arquivos de teste**
+> nao propagavam falha para o exit code. O runner da suite le o TEXTO ("Total: X | Failed: Y"),
+> entao o dia a dia nao estava cego — mas todo consumidor de exit code estava: harnesses de
+> mutacao (o desta sessao foi enganado), invocacao direta em CI, qualquer `&&`.
+>
+> Conserto mecanico com verificacao: 99 rodapes ganharam `raise SystemExit(1 if falhas else 0)`
+> (sem import novo), 2 casos manuais (unittest runner e CLI hibrido), 2 ja corretos no nivel do
+> modulo, sintaxe conferida por AST nos 199 arquivos. Prova ponta-a-ponta: a MESMA mutacao do
+> ELO que enganou o harness agora sai com exit 1.
+
 ### feat(card): leitura de range por INICIATIVA — e a medicao que limitou a copy (#replayer #leitura)
 
 > Segundo consumidor destravado pela iniciativa. O card postflop, enfrentando aposta, agora LE a
