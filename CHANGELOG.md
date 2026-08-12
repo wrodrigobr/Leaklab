@@ -7,6 +7,32 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(gto): o reenqueue envenenou 529 solves — pote em FICHAS e o espelho, de novo (#gto #medicao)
+
+> "Confere a fila e roda o resync quando drenar" virou investigacao: a fila drenou rapido, mas o
+> dry-run do resync mostrou **245 vanished** — spots que perderiam a cobertura em vez de ganhar a
+> nova. O rastreio (settrace ate a linha do return) achou o guarda de SPR rejeitando nos de
+> **jam 97,6%** — assinatura de no degenerado — e a causa era o PROPRIO script de
+> reenfileiramento, com dois defeitos:
+>
+> **(1) A QUINTA encarnacao do fichas-vs-bb.** `level_bb` NULL na linha caia no default 1 e o
+> pote seguia em fichas: payload com `pot_bb=1653` num stack de 5bb. SPR colapsado: 338 de 529
+> solves viraram jam degenerado (o guarda barra na leitura) e **178 de call puro passariam pelo
+> guarda** (que so barra jam) servindo veredito errado. O pote agora vem PRONTO do spot
+> (`potBb`), sem conversao nenhuma, com peneira de sanidade ANTES de pagar o solve.
+>
+> **(2) O TERCEIRO espelho.** O payload montava hero→ip_range e vilao→oop_range incondicionais —
+> sem `resolve_solver_ranges`, sem ranges capturadas, sem opener, sem `hero_is_ip` (o bug do
+> jogador errado). A varredura dos N+1 nova achou o MESMO padrao em mais cinco scripts (o worker
+> legado da era GCP, o deep_approx e tres one-offs) — todos ligados na fonte unica.
+>
+> Remediacao: expurgo ESCOPADO dos artefatos de hoje (547 nos, 529 arvores, fila zerada — nada
+> de cleanup global), reenfileiramento com o script consertado (541 spots, 6 potes insanos
+> barrados pela peneira nova, payloads conferidos: pot 8,14bb num stack de 9,4bb, `hero_is_ip`
+> presente). Resync so DEPOIS do dreno limpo.
+>
+> Teste novo na rede dos N+1: **nenhum payload monta oop/ip_range fora de gto_solver.py**.
+
 ### fix(gto): o nó postflop vira iniciativa-aware — o ramo SRP invertia as ranges do SB-vs-BB (#gto #solver)
 
 > O terceiro consumidor da iniciativa, e o mais fundo. `resolve_solver_ranges` nasceu para matar
