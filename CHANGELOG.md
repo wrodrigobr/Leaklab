@@ -7,6 +7,29 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(deploy+fila): o consumer rodava imagem de 30/07 — e o nó vazio SERVIA gabarito (#infra #gto)
+
+> O re-solve dos 45 nós vazios devolveu **45 nós vazios identicos** — e o log entregou: 45
+> "solves" em 2 segundos, todos `check 0%`. O guarda estava no `web`; quem grava é o
+> **solver-consumer**, cuja imagem era de **30/07**: `deploy.sh` fazia `up -d --build web` e o
+> consumer (mesmo contexto `./backend`) nunca era recriado — duas semanas de consertos que nunca
+> chegaram ao processo que solva e reconcilia. `docker compose restart` tampouco troca imagem.
+> Consertado no deploy.sh; a cicatriz da regra 4 ganha adendo: **conferir o ambiente é conferir
+> CADA container que executa o código, não o primeiro que responder.**
+>
+> Com o consumer atual, a cebola terminou de descascar: (1) os payloads dos 45 eram VELHOS e
+> envenenados (pote em fichas, `hero_is_ip` ausente — anteriores ao purge de 12/08, que filtrou
+> por `requested_at`); (2) `enqueue_solver_spot` não resetava status `rejected`, prendendo o
+> spot no payload que o condenou — agora reseta; (3) re-enfileirados 33 com payload limpo:
+> **32 nós sadios** (14 call / 17 fold / 1 jam, zero puros), 1 rejeição honesta.
+>
+> E a descoberta que muda a gravidade: o nó vazio não só ocupava o hash — **SERVIA `check 0%`
+> como gabarito** (a coluna `gto_action` preenchida, estratégia nenhuma). 29 linhas do acervo
+> tinham gabarito vindo de solve falho; o resync as devolveu ao heurístico e 26 ganharam
+> cobertura REAL dos nós novos (t23, o caso-testemunha, virou `gto_correct/call`). Saldo:
+> acusadas 590 → **588**, postflop com gabarito 2.552 → **2.582**, NO-VAZIO **0** na varredura,
+> segundo dry-run **0** (idempotente), 71 anotações intactas.
+
 ### fix(gto): o solve vazio gravado como pronto — 45 nós ocupando hash em silêncio (#gto #medicao)
 
 > "Ataca os 7 vanished" virou a autópsia da população inteira sem gabarito (~350 postflop), com
