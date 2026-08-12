@@ -261,7 +261,9 @@ def test_normalize_whitespace_stripped():
 # ── VALID_POSITIONS / VALID_GTO_ACTIONS ──────────────────────────────────────
 
 def test_valid_positions_set():
-    for pos in ('UTG', 'HJ', 'CO', 'BTN', 'SB', 'BB'):
+    # 'UTG+1'/'UTG+2' são a grafia CANÔNICA do pipeline (parser, ranges, gto_nodes) —
+    # ficar fora daqui warnava toda decisão UTG+ como "position desconhecida" (12/08).
+    for pos in ('UTG', 'UTG+1', 'UTG+2', 'UTG1', 'UTG2', 'LJ', 'HJ', 'CO', 'BTN', 'SB', 'BB'):
         _ok(f'valid_pos_{pos}', pos in VALID_POSITIONS)
     _ok('invalid_pos_Button', 'Button' not in VALID_POSITIONS)
     _ok('invalid_pos_EP', 'EP' not in VALID_POSITIONS)

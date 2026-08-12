@@ -138,6 +138,34 @@ def test_validate_unknown_position():
     _ok('validate_unknown_position', any('position' in s for s in w), f'{w}')
 
 
+def test_validate_pipeline_positions_accepted():
+    """Varre TODA posição que o pipeline emite — canônico com '+', mesa cheia (MP*) e o
+    legado UTG1/UTG2. A cópia local do conjunto não conhecia 'UTG+1'/'UTG+2' e 55 de 55
+    decisões UTG+ postflop do acervo warnavam "position desconhecida" — 21 delas com o
+    lookup GTO funcionando (12/08)."""
+    for pos in ('UTG', 'UTG+1', 'UTG+2', 'UTG1', 'UTG2', 'MP', 'MP1', 'MP2',
+                'LJ', 'HJ', 'CO', 'BTN', 'SB', 'BB'):
+        w = _validate_decision_input(_inp(position=pos))
+        _ok(f'validate_pos_{pos}', not any('position' in s for s in w), f'{pos}: {w}')
+
+
+def test_valid_positions_fonte_unica():
+    """Regra nº 5: as quatro cópias do conjunto de posições válidas viraram UMA (gto_utils).
+    Varre os consumidores — engine, repositories e o audit script — e exige que todos
+    apontem para o MESMO objeto, não para uma cópia que pode divergir de novo."""
+    import importlib.util
+    from leaklab.gto_utils import VALID_POSITIONS
+    import leaklab.decision_engine_v11 as _eng
+    from database import repositories as _repo
+    _ok('engine_fonte_unica', _eng._GTO_VALID_POSITIONS is VALID_POSITIONS)
+    _ok('repositories_fonte_unica', _repo._GTO_VALID_POSITIONS is VALID_POSITIONS)
+    _audit_path = os.path.join(os.path.dirname(__file__), '..', 'scripts', 'audit_gto_nodes.py')
+    spec = importlib.util.spec_from_file_location('_audit_gto_nodes_teste', _audit_path)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    _ok('audit_fonte_unica', mod._VALID_POSITIONS is VALID_POSITIONS)
+
+
 def test_validate_preflop_no_board_no_warning():
     inp = _inp(street='preflop', board=[])
     w = _validate_decision_input(inp)

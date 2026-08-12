@@ -7,7 +7,10 @@ from leaklab.verdict import icm_zone_softens_fold
 
 _gto_log = _logging.getLogger('leaklab.gto')
 
-_GTO_VALID_POSITIONS = {'UTG', 'UTG1', 'UTG2', 'LJ', 'HJ', 'CO', 'BTN', 'SB', 'BB'}
+# Fonte única em gto_utils — a cópia local não conhecia 'UTG+1'/'UTG+2' (grafia canônica do
+# pipeline) e toda decisão UTG+ postflop warnava "position desconhecida", mesmo com lookup ok.
+from leaklab.gto_utils import VALID_POSITIONS as _GTO_VALID_POSITIONS
+from leaklab.gto_utils import normalize_position as _normalize_position
 _VALID_CARD_RANKS    = set('AKQJT98765432')
 _VALID_CARD_SUITS    = set('shdc')
 
@@ -44,7 +47,9 @@ def _validate_decision_input(inp: dict) -> list:
         except (TypeError, ValueError):
             warnings.append(f'facing_size não numérico: {facing!r}')
 
-    if pos and pos not in _GTO_VALID_POSITIONS:
+    # Pela mesma normalização do hash (MP1→LJ etc.) — senão MP1, que o lookup serve
+    # normalmente, warnaria aqui como desconhecida.
+    if pos and _normalize_position(pos) not in _GTO_VALID_POSITIONS:
         warnings.append(f'position desconhecida: {pos!r}')
 
     if street and street != 'preflop':
