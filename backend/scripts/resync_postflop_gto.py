@@ -117,6 +117,17 @@ def resync_tournament_postflop(tid, apply=True):
                     "best":       r.get("bestAction") or None,
                     "gto_label":  _norm(g.get("gto_label")),
                     "gto_action": _norm(g.get("gto_action")),
+                    # Os campos que DESCREVEM a avaliacao viajam juntos, ou a linha vira quimera:
+                    # em 12/08 este script gravou label+gto_label novos e deixou played_freq/ev
+                    # VELHOS — a linha 321149 saiu `gto_correct + small_mistake` com ev=0.0 no
+                    # banco, quando a avaliacao real tinha ev=1.61 (o caso RC-B legitimo). A
+                    # varredura pegou em minutos (SELO 0 -> 1). Mesma familia do conserto do
+                    # reanalyze_all_labels de 11/08 — outro escritor, mesma regra.
+                    "played":     g.get("played_freq") if g.get("available") else None,
+                    "top":        g.get("gto_freq") if g.get("available") else None,
+                    "ev":         g.get("ev_loss_bb") if g.get("available") else None,
+                    "ev_src":     g.get("ev_loss_source") if g.get("available") else None,
+                    "tem_gto":    bool(g.get("available")),
                 })
 
         stored = defaultdict(list)
@@ -139,8 +150,10 @@ def resync_tournament_postflop(tid, apply=True):
                     continue
                 if apply:
                     conn.execute(
-                        "UPDATE decisions SET label=?, best_action=?, gto_label=?, gto_action=? WHERE id=?",
-                        (f['label'], f['best'], f['gto_label'], f['gto_action'], s['id']))
+                        "UPDATE decisions SET label=?, best_action=?, gto_label=?, gto_action=?, "
+                        "gto_played_freq=?, gto_top_freq=?, ev_loss_bb=?, ev_loss_source=? WHERE id=?",
+                        (f['label'], f['best'], f['gto_label'], f['gto_action'],
+                         f.get('played'), f.get('top'), f.get('ev'), f.get('ev_src'), s['id']))
                 updated += 1
         if apply:
             conn.commit()
@@ -235,7 +248,8 @@ def main():
         stored = defaultdict(list)
         for r in conn.execute(
             "SELECT id, hand_id, street, action_taken, label, best_action, "
-            "gto_label, gto_action FROM decisions "
+            "gto_label, gto_action, gto_played_freq, gto_top_freq, ev_loss_bb, ev_loss_source "
+            "FROM decisions "
             # ORDER BY id: pre-requisito do pareamento por ordem. Ver `_pares_por_ordem`.
             "WHERE tournament_id=?" + street_clause + " ORDER BY id", (tid,)).fetchall():
             d = dict(r)
@@ -256,6 +270,15 @@ def main():
                 if f['best'] != s['best_action']: diffs.append('best_action')
                 if f['gto_label'] != s_gl:        diffs.append('gto_label')
                 if f['gto_action'] != s_ga:       diffs.append('gto_action')
+                # Freq e EV tambem detectam mudanca — sem isto, uma linha cujos 4 campos ja
+                # batem mas cujo freq/ev ficou de outra avaliacao (a quimera de 12/08) nunca
+                # seria reescrita, e a proxima rodada nao a consertaria.
+                def _f4(v):
+                    try: return round(float(v), 4)
+                    except (TypeError, ValueError): return None
+                if _f4(f.get('played')) != _f4(s.get('gto_played_freq')): diffs.append('played_freq')
+                if _f4(f.get('top')) != _f4(s.get('gto_top_freq')):       diffs.append('top_freq')
+                if _f4(f.get('ev')) != _f4(s.get('ev_loss_bb')):          diffs.append('ev_loss')
                 if not diffs:
                     continue
                 # classifica a natureza da mudança de gto (conta TODOS pra o relatório, inclusive
@@ -278,9 +301,11 @@ def main():
                         f"gto {s_gl}/{s_ga}->{f['gto_label']}/{f['gto_action']}")
                 if args.apply:
                     conn.execute(
-                        "UPDATE decisions SET label=?, best_action=?, gto_label=?, gto_action=? "
+                        "UPDATE decisions SET label=?, best_action=?, gto_label=?, gto_action=?, "
+                        "gto_played_freq=?, gto_top_freq=?, ev_loss_bb=?, ev_loss_source=? "
                         "WHERE id=?",
-                        (f['label'], f['best'], f['gto_label'], f['gto_action'], s['id']))
+                        (f['label'], f['best'], f['gto_label'], f['gto_action'],
+                         f.get('played'), f.get('top'), f.get('ev'), f.get('ev_src'), s['id']))
 
     if args.apply:
         conn.commit()
