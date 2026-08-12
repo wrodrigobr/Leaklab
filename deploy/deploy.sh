@@ -14,7 +14,12 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 echo "=== BUILD ==="
-docker compose up -d --build web
+# web E solver-consumer: os dois nascem do MESMO ./backend, mas `--build web` só recria o web.
+# Medido em 12/08: o consumer rodava imagem de 30/07 — duas semanas de consertos (guarda do
+# solve vazio, campos-viajantes do reconcile) deployados no web e NUNCA no processo que solva
+# e reconcilia. `docker compose restart` também NÃO troca a imagem. Conferir o ambiente =
+# conferir CADA container que executa o código, não o primeiro que responder.
+docker compose up -d --build web solver-consumer
 
 echo "=== LIMPEZA ==="
 # Imagens soltas: o build anterior perde a tag `latest` e vira dangling.
