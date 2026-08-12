@@ -237,6 +237,15 @@ def main():
                     "best":       r.get("bestAction") or None,
                     "gto_label":  _norm(g.get("gto_label")),
                     "gto_action": _norm(g.get("gto_action")),
+                    # Os MESMOS campos-viajantes do builder do gancho automatico (linha ~126).
+                    # Este builder e o do CLI; em 12/08 so o outro foi consertado e o comparador
+                    # leu `played` inexistente -> None != gravado -> 2.500 de 2.500 "drifts".
+                    # Dois builders para o mesmo dict e a regra dos N+1 pedindo funcao unica.
+                    "played":     g.get("played_freq") if g.get("available") else None,
+                    "top":        g.get("gto_freq") if g.get("available") else None,
+                    "ev":         g.get("ev_loss_bb") if g.get("available") else None,
+                    "ev_src":     g.get("ev_loss_source") if g.get("available") else None,
+                    "tem_gto":    bool(g.get("available")),
                 })
 
         if args.street == "all":
