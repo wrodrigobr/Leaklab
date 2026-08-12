@@ -7,6 +7,23 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### chore(fila): os 64 failed eram fósseis — removidos com prova de que ninguém os espera (#gto)
+
+> Caracterização antes de qualquer conserto: todos de 27/06 a 04/08 (pré-consertos de payload),
+> todos flop, 45 sem `hero_is_ip`. A pergunta decisiva foi a interseção com os hashes que o
+> lookup do acervo computa HOJE: **4 de 64 são hashes vivos, e os 4 já têm nó** por outra via —
+> os outros 60 são órfãos de esquemas de hash antigos que nenhuma decisão procura. O reenqueue
+> (que ressuscita `failed`) rodou no mesmo dia e não quis nenhum: a autoridade sobre "o que
+> merece solve" já tinha dado o veredito.
+>
+> O único consumidor do status é a taxa de erro do admin, janelada em 24h — fóssil não entra.
+> O dano real era ruído de operação: "failed: 64" em toda conferência de fila vira fundo que
+> esconde falha NOVA (o primo do zero tranquilizador: o número constante que ninguém lê mais).
+> Removidos os 64 + 50 vínculos torneio-spot pendurados, com guarda de recência no próprio
+> comando (aborta se houver failed < 7 dias). Fila final: done 7.962, rejected 13 — e os 13
+> ficam de propósito: são o registro honesto dos spots que o solver não resolve, e o
+> `enqueue_solver_spot` agora os ressuscita se um payload novo aparecer.
+
 ### fix(deploy+fila): o consumer rodava imagem de 30/07 — e o nó vazio SERVIA gabarito (#infra #gto)
 
 > O re-solve dos 45 nós vazios devolveu **45 nós vazios identicos** — e o log entregou: 45
