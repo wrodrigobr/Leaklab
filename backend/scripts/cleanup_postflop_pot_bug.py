@@ -118,11 +118,15 @@ def main():
                     continue
                 seen += 1
                 _params = _solver_params_for_stack(stack)
+                from leaklab.gto_solver import resolve_solver_ranges as _rsr_u
+                _rr_cl = _rsr_u(pos, vs_pos, stack)
+
                 payload = {
                     'street': st, 'board': board, 'position': pos, 'hero_hand': hero,
                     'hero_stack_bb': stack, 'facing_size_bb': facing,
-                    'oop_range': _DEFAULT_RANGES.get(vs_pos, _DEFAULT_RANGE_WIDE),
-                    'ip_range': _DEFAULT_RANGES.get(pos, _DEFAULT_RANGE_WIDE),
+                    # Fonte unica — o espelho morava aqui.
+                    'oop_range': _rr_cl[1],
+                    'ip_range': _rr_cl[0],
                     'pot_bb': pot_bb,
                     'effective_stack_bb': _params['effective_stack_bb'],
                     'max_iterations': _params['max_iterations'],

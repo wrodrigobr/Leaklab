@@ -137,6 +137,8 @@ def enqueue_from_db(max_spots: int = 5000) -> int:
                 continue
 
             params  = _solver_params(stack)
+            from leaklab.gto_solver import resolve_solver_ranges as _rsr_u
+            _rr_w = _rsr_u(pos, vs_pos, stack)
             payload = json.dumps({
                 'street':                    street,
                 'board':                     board,
@@ -144,8 +146,11 @@ def enqueue_from_db(max_spots: int = 5000) -> int:
                 'hero_hand':                 hero_h,
                 'hero_stack_bb':             stack,
                 'facing_size_bb':            facing,
-                'oop_range':                 _DEFAULT_RANGES.get(vs_pos, _RANGE_WIDE),
-                'ip_range':                  _DEFAULT_RANGES.get(pos, _RANGE_WIDE),
+                # Fonte unica de atribuicao — as duas linhas antigas eram o espelho
+                # (hero->ip, vilao->oop incondicionais). Worker LEGADO (era GCP), corrigido
+                # para nao renascer errado se alguem o reativar.
+                'oop_range':                 _rr_w[1],
+                'ip_range':                  _rr_w[0],
                 'pot_bb':                    pot_bb,
                 'effective_stack_bb':        params['effective_stack_bb'],
                 'max_iterations':            params['max_iterations'],

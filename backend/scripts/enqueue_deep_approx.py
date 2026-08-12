@@ -98,11 +98,15 @@ try:
             already += 1
             continue
         params = _solver_params_for_stack(APPROX_STACK)
+        from leaklab.gto_solver import resolve_solver_ranges as _rsr_u
+        _rr_deep = _rsr_u(pos, vs_pos, APPROX_STACK)
+
         payload = json.dumps({
             'street': street, 'board': board, 'position': pos, 'hero_hand': hero,
             'hero_stack_bb': APPROX_STACK, 'facing_size_bb': facing,
-            'oop_range': _DEFAULT_RANGES.get(vs_pos, _DEFAULT_RANGE_WIDE),
-            'ip_range':  _DEFAULT_RANGES.get(pos,    _DEFAULT_RANGE_WIDE),
+            # Fonte unica (resolve_solver_ranges) — o espelho hero->ip/vilao->oop morava aqui.
+            'oop_range': _rr_deep[1],
+            'ip_range':  _rr_deep[0],
             'pot_bb': pot_bb,
             'effective_stack_bb':        params['effective_stack_bb'],
             'max_iterations':            params['max_iterations'],

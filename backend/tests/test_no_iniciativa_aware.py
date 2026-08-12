@@ -138,6 +138,33 @@ def test_CONTROLE_spot_de_opener_IP_segue_lendo_o_legado():
     print('OK  test_CONTROLE_spot_de_opener_IP_segue_lendo_o_legado')
 
 
+def test_nenhum_payload_monta_ranges_fora_da_fonte_unica():
+    """A varredura dos N+1 contra o ESPELHO. O terceiro ja aconteceu: o reenqueue montava
+    hero->ip_range e vilao->oop_range incondicionais, ignorando quem e IP, as ranges capturadas
+    e o opener — e 529 solves de 12/08 sairam envenenados por isso (junto com pote em fichas).
+    Atribuicao de oop_range/ip_range por _DEFAULT_RANGES fora de gto_solver.py e o tell.
+    """
+    import re
+    raiz = os.path.join(os.path.dirname(__file__), '..')
+    tell = re.compile(r"'(?:oop|ip)_range':\s*_DEFAULT_RANGES")
+    fora = []
+    for pasta in ('leaklab', 'database', 'api', 'scripts'):
+        for dirpath, _, arquivos in os.walk(os.path.join(raiz, pasta)):
+            for nome in arquivos:
+                if not nome.endswith('.py'):
+                    continue
+                rel = os.path.relpath(os.path.join(dirpath, nome), raiz).replace(os.sep, '/')
+                if rel == 'leaklab/gto_solver.py':
+                    continue
+                for i, linha in enumerate(open(os.path.join(dirpath, nome),
+                                               encoding='utf-8').read().splitlines(), 1):
+                    if tell.search(linha.split('#')[0]):
+                        fora.append(f'{rel}:{i}')
+    assert not fora, ('payload montando ranges fora da fonte unica — use '
+                      'resolve_solver_ranges: ' + '; '.join(fora))
+    print('OK  test_nenhum_payload_monta_ranges_fora_da_fonte_unica')
+
+
 if __name__ == '__main__':
     import sys as _s
     _testes = [v for k, v in sorted(globals().items()) if k.startswith('test_') and callable(v)]

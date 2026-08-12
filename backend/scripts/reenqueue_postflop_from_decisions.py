@@ -58,7 +58,7 @@ def main():
         params = (tid_filter,)
     rows = conn.execute(q, params).fetchall()
 
-    enq = already = skipped = 0
+    enq = already = skipped = insanos = 0
     for tr in rows:
         t = dict(tr)
         try:
@@ -96,16 +96,38 @@ def main():
                     continue
                 # payload de solve (mesma forma do _enqueue_postflop_spots)
                 vs_pos = normalize_position(spot.get('villainPosition', ''))
-                level_bb = float(d.get('level_bb') or 1) or 1
-                pot_chips = float(spot.get('potSize') or 0)
-                pot_bb = round(pot_chips / level_bb, 2) if pot_chips > 0 else (facing_bb * 2 + 2 or 4.0)
+                # O pote vem PRONTO em bb do spot ('potBb', pipeline linha ~153) — a conversao
+                # fichas/level_bb que morava aqui e a QUINTA encarnacao do bug mais recorrente do
+                # projeto: `level_bb` NULL na linha caia no default 1 e o pote seguia em FICHAS.
+                # Medido em 12/08: pot_bb=1653 com stack de 5bb no payload -> SPR colapsado ->
+                # 338 de 529 solves viraram no de jam degenerado, e 178 de call puro passariam
+                # pelo guarda de SPR (que so barra jam) servindo veredito errado.
+                pot_bb = float(spot.get('potBb') or 0) or (facing_bb * 2 + 2 or 4.0)
+                # Sanidade ANTES de pagar o solve: pote maior que os dois stacks somados nao
+                # existe em HU — e a mesma peneira do trainer_pool (_POTE_MAX_EM_STACKS).
+                if pot_bb > 2.5 * max(stack_bb, 1.0) * 2:
+                    insanos += 1
+                    continue
+                from leaklab.gto_solver import resolve_solver_ranges as _rsr
+                _rr_ip, _rr_oop, _rr_hip = _rsr(pos, vs_pos, stack_bb,
+                                          pot_type=spot.get('potType', ''),
+                                          opener=spot.get('preflopOpener', ''),
+                                          threebettor=spot.get('preflop3bettor', ''))
                 p = _solver_params_for_stack(stack_bb)
                 payload = json.dumps({
                     'street': street, 'board': board, 'position': pos, 'hero_hand': hero,
                     'hero_stack_bb': stack_bb, 'facing_size_bb': facing_bb,
-                    'oop_range': _DEFAULT_RANGES.get(vs_pos, _DEFAULT_RANGE_WIDE),
-                    'ip_range':  _DEFAULT_RANGES.get(pos,    _DEFAULT_RANGE_WIDE),
+                    # Pela FONTE UNICA (resolve_solver_ranges) — as duas linhas que moravam
+                    # aqui eram o terceiro espelho do projeto: hero->ip_range e vilao->oop_range
+                    # INCONDICIONAIS, ignorando quem e IP de fato, as ranges capturadas e o
+                    # opener. O docstring da fonte unica diz "o enfileiramento chama a MESMA
+                    # funcao" — este script e um segundo enfileiramento e nao chamava.
+                    'oop_range': _rr_oop,
+                    'ip_range':  _rr_ip,
                     'pot_bb': pot_bb,
+                    # Sem a flag, o solver devolve o player 0 (OOP) mesmo com o hero IP — o
+                    # "bug do jogador errado". O lookup ja mandava; este payload nao.
+                    'hero_is_ip': _rr_hip,
                     'effective_stack_bb': p['effective_stack_bb'],
                     'max_iterations': p['max_iterations'],
                     'target_exploitability_pct': p['target_exploitability_pct'],
@@ -117,7 +139,7 @@ def main():
                     print(f"  ENQ t{t['tournament_id']} {pos}/{street} facing={facing_bb} stack={stack_bb} -> {primary[:10]}")
     conn.close()
     print(f"\n{'APLICADO' if _APPLY else 'DRY-RUN (use --apply)'}: "
-          f"enfileirados={enq}, já cobertos={already}")
+          f"enfileirados={enq}, já cobertos={already}, pote insano pulado={insanos}")
 
 
 if __name__ == '__main__':

@@ -66,11 +66,15 @@ def _resolve_spot(conn, st, pos, vs_pos, board, hero, stack, pot_bb, facing, sha
     conn.execute("DELETE FROM gto_nodes WHERE spot_hash = ?", (shash,))
     conn.commit()
     _p = _solver_params_for_stack(stack)
+    from leaklab.gto_solver import resolve_solver_ranges as _rsr_u
+    _rr_sw = _rsr_u(pos, vs_pos, stack)
+
     payload = {
         'street': st, 'board': board, 'position': pos, 'hero_hand': hero,
         'hero_stack_bb': stack, 'facing_size_bb': facing,
-        'oop_range': _DEFAULT_RANGES.get(vs_pos, _DEFAULT_RANGE_WIDE),
-        'ip_range': _DEFAULT_RANGES.get(pos, _DEFAULT_RANGE_WIDE),
+        # Fonte unica — o espelho morava aqui.
+        'oop_range': _rr_sw[1],
+        'ip_range': _rr_sw[0],
         'pot_bb': pot_bb,
         'effective_stack_bb': _p['effective_stack_bb'],
         'max_iterations': _p['max_iterations'],
