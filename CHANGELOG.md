@@ -7,6 +7,24 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### chore(gto): capturas oop_pfr — fechada por MEDICAO, o refill de ontem ja tinha pago (#gto #medicao)
+
+> "Ataca as capturas dos spots oop_pfr" terminou sem uma linha de codigo: o reenfileiramento de
+> 12/08 (pos-conserto) ja computava o hash `oop_pfr` e as ranges pela fonte unica, entao os 541
+> solves limpos INCLUIRAM esses spots. Medido no acervo com duas sondas independentes que
+> concordam: **547 decisoes oop_pfr, 541 com no (98,9%), 520 servidas pelo motor VIVO (95,1%)**,
+> distribuicao sadia (226 correct / 192 mixed / 58 minor / 44 critical, 404 hand-aware).
+>
+> As 27 heuristicas, com o motivo REAL capturado interceptando `_log_gto_miss` (observar, nao
+> reconstruir): **19** sao recusa honesta "acao do hero fora da arvore" (hero apostou/raisou e a
+> arvore shallow so tem check/jam — julgar bet numa arvore sem bet seria inventar veredito);
+> **6** sao os potes insanos multiway ja peneirados (stack 0,8–17bb contra pote 30–120bb: o pote
+> carrega fichas de quem ja saiu e o solver HU nao modela); **1** e o guarda de facing fazendo o
+> trabalho; **2** sao "position desconhecida" UTG+1/UTG+2 — viraram tarefa propria junto com um
+> `effectiveStackBb=0.0` achado de passagem.
+>
+> DB ja coerente por construcao: o 2o dry-run do resync de ontem deu 0. Nada a deployar.
+
 ### fix(resync): os campos que descrevem a avaliacao viajam JUNTOS — e eram DOIS builders (#gto #medicao)
 
 > A varredura pegou em minutos o que o apply do resync deixou: **SELO 0 → 1**. A linha 321149
