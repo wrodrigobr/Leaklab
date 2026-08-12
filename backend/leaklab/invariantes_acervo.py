@@ -305,25 +305,26 @@ def _board_do_futuro(conn):
     return fora
 
 
-def _fold_acusado_com_preco_ruim(conn):
-    """Não se acusa um fold quando a própria linha mostra equity abaixo do pot odds.
-
-    Os dois números aparecem no card ao lado do veredito. Se a equity exibida não paga o preço
-    exibido, chamar o fold de erro é o card se contradizendo na mesma tela.
-    """
-    return [Violacao(r['id'], f"{r['street']} eq={r['estimated_equity']:.3f} < "
-                              f"odds={r['facing_to_call_bb']/(r['pot_size']+r['facing_to_call_bb']):.3f} "
-                              f"→ {r['label']}")
-            for r in _linhas(conn, """
-                SELECT id, street, estimated_equity, facing_to_call_bb, pot_size, label
-                  FROM decisions
-                 WHERE action_taken = 'fold'
-                   AND label IN ('clear_mistake','critical')
-                   AND estimated_equity IS NOT NULL AND pot_size IS NOT NULL
-                   AND facing_to_call_bb > 0
-                   AND estimated_equity < facing_to_call_bb/(pot_size+facing_to_call_bb)""")]
-
-
+# ── ODDS: sonda APOSENTADA em 11/08, e o motivo fica registrado ────────────────────────────────
+#
+# Ela media "fold acusado com a equity da linha abaixo do pot odds da linha" e chegou a 25. A
+# verificacao contra o CARD VIVO (nao contra o banco) derrubou: 16 de 16 linhas mensuraveis eram
+# FANTASMA — a sonda calculava o preco com `pot_size`, que e o pote ANTES da aposta enfrentada, e
+# o card usa o pote com a aposta. Preco da sonda 0,323; preco na tela 0,199; equity 0,28: na tela
+# o preco FECHA e acusar o fold e coerente. Recalcular o pote em SQL e exatamente o anti-padrao
+# "medir reconstruindo" que ja custou seis medicoes erradas num dia (05/08).
+#
+# As 9 restantes nao rendiam card nenhum — e ESSA investigacao achou o defeito real: o replayer
+# estava MORTO para as maos PKO (quarto regex de assento, inline). Ver `test_replay_mao_pko.py`.
+#
+# ODDS veio dos 19 achados da auditoria sem verificacao adversarial, como NOTA. Duas sondas
+# dessa origem, duas aposentadas ao inspecionar o MECANISMO. A regra que fica: achado sem cetico
+# nao vira invariante sem antes provar que a contradicao aparece NA TELA.
+#
+# A coerencia frase-x-veredito que ela tentava proteger tem dono proprio: `replayWhy.selectWhy`
+# nomeia a divergencia (`whyPrecoFechaMasVeredito` / `whyPrecoNaoFechaMasVeredito`) e e testada
+# em `frontend/src/lib/replayWhy.test.ts`.
+#
 def _ev_sem_procedencia(conn):
     """Número de EV sem fonte declarada não pode ser gravado — a régua depende da fonte."""
     return [Violacao(r['id'], f"ev={r['ev_loss_bb']} sem ev_loss_source")
@@ -469,25 +470,6 @@ INVARIANTES: List[Invariante] = [
         origem='medido em 10/08 sobre o snapshot (4.456 preflop, 1.042 flop, 572 turn)',
         medir=_board_do_futuro,
         forjar=lambda c: _forjar_linha(c, street='flop', board='["2h","7c","2d","Qs","4h"]'),
-    ),
-    Invariante(
-        id='ODDS', baseline=25,
-        titulo='fold acusado com a equity da própria linha abaixo do pot odds da própria linha',
-        porta='card mostra equity, preço e veredito juntos',
-        origem='medido em 10/08 sobre o snapshot (13 no flop), com coorte de controle. '
-               'BASELINE SUBIU 16 → 25 em 11/08, e a prova está no par antes/depois: nas 9 linhas '
-               'novas a equity, o call e o pote ficaram bit-idênticos e só o label mudou '
-               '(marginal → clear_mistake). Com num_players=0 o `icm_zone_softens_fold` disparava '
-               '(exige icm_pressure=high E mesa <= 6; zero satisfaz as duas) e abrandava TODO fold '
-               'desses torneios. Consertar a mesa tirou a máscara. As 25 são gto_critical com '
-               'played_freq=0: a acusação é do SOLVER e o que contradiz é a equity heurística '
-               'exibida ao lado — o conserto é de DISPLAY, não de veredito.',
-        medir=_fold_acusado_com_preco_ruim,
-        forjar=lambda c: _forjar_linha(c, street='flop', board='["2h","7c","2d"]',
-                                       action_taken='fold', best_action='call',
-                                       label='clear_mistake', score=0.8,
-                                       estimated_equity=0.10, pot_size=10.0,
-                                       facing_to_call_bb=10.0, gto_label='gto_critical'),
     ),
     Invariante(
         id='PROCED', baseline=0,

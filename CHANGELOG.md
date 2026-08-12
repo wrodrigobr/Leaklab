@@ -7,6 +7,34 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(replayer): o replay estava MORTO para as maos PKO, e a sonda ODDS era fantasma (#replayer #invariantes)
+
+> Ataquei a ODDS (25 folds acusados com equity abaixo do pot odds) e a investigacao inverteu o
+> quadro duas vezes.
+>
+> **Primeiro: as 25 eram fantasma.** A sonda calculava o preco com `pot_size` — o pote ANTES da
+> aposta enfrentada. O card vivo usa o pote com a aposta: preco da sonda 0,323, preco na tela
+> 0,199, equity 0,28. Na tela o preco FECHA e acusar o fold e coerente. 16 de 16 linhas
+> mensuraveis assim. Recalcular o pote em SQL e o anti-padrao "medir reconstruindo" de 05/08.
+>
+> **Segundo: as 9 que faltavam nao rendiam card NENHUM.** O `_build_replay_data` tinha o QUARTO
+> regex de assento do projeto — inline (`_re.match`, invisivel a varredura de `re.compile`) — e
+> exigia o `)` logo apos o numero. Nas maos PKO (`(12255 in chips, $15 bounty)`) ele nao achava
+> assento nenhum e o replay INTEIRO devolvia `Seats nao encontrados`: **onze torneios sem replay
+> em producao**, e ninguem reportou porque erro parece dado faltando.
+>
+> Consertos: `mesa_final.assentos_numerados` vira a fonte unica com numero de assento e linha
+> crua (o filtro out-of-hand fica no replay, que e de quem ele e); o replay PKO tem teste com a
+> mao REAL de producao; a varredura dos N+1 agora pega regex inline, nao so `re.compile`.
+>
+> **ODDS aposentada com lapide.** Segunda sonda nascida dos 19 achados sem verificacao
+> adversarial que cai ao inspecionar o mecanismo (NOTA foi a primeira). A regra que fica na
+> rede: achado sem cetico nao vira invariante sem antes provar que a contradicao aparece NA
+> TELA. A coerencia frase-x-veredito tem dono proprio (`replayWhy`, testado).
+>
+> Rede: **12 invariantes**. Fixture do teste out-of-hand pegou um `.replace` que nao casava —
+> assercao de sanidade no proprio teste, porque fixture que nao muda nada mede a mao original.
+
 ## [v0.168.0] — 2026-08-11 — a rede de invariantes do acervo, e o motor deixa de se contradizer
 
 > O fechamento desta versao e o trabalho de 10-11/08: uma auditoria de seis lentes sobre o

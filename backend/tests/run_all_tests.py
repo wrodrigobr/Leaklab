@@ -30,6 +30,7 @@ SUITES = {
                   'test_reveals_do_summary.py',
                   'test_assento_sitting_out.py',
                   'test_assento_pko.py',
+                  'test_replay_mao_pko.py',
                   'test_roster_e_formato.py',
                   'test_mesa_final.py',
                   'test_posicoes.py',

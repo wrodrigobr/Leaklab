@@ -69,7 +69,7 @@ import re
 #
 # O oráculo estava dentro da própria linha: 972 dessas decisões tinham posições (HJ, MP1, UTG+2)
 # que `posicoes.py` só emite com 6 ou 7 assentos. A linha se contradizia sozinha.
-_ASSENTO_RE = re.compile(r'^Seat \d+: (.+?) \(\s*\$?([\d.,]+)\s*(?:in chips)?(?:,[^)]*)?\s*\)')
+_ASSENTO_RE = re.compile(r'^Seat (\d+): (.+?) \(\s*\$?([\d.,]+)\s*(?:in chips)?(?:,[^)]*)?\s*\)')
 
 # Máximo de jogadores que caberia numa mesa. Acima disso não é mesa, é torneio em andamento.
 MAX_NA_MESA = 9
@@ -101,6 +101,22 @@ def assentos_com_stack(raw: str) -> list:
     por regex mais esperto já falhou duas vezes — exigir "in chips" quebra a ACR, exigir dígito
     logo após o "(" quebra o 888.
     """
+    return [(nome, fichas) for _n, nome, fichas, _l in assentos_numerados(raw)]
+
+
+def assentos_numerados(raw: str) -> list:
+    """(numero, nome, fichas, linha_crua) de cada assento do roster, na ordem do texto.
+
+    O QUARTO consumidor da leitura de assento — o `_build_replay_data` do replayer — tinha um
+    regex INLINE proprio (`_re.match`, que a varredura de `re.compile` nao enxergava) exigindo o
+    `)` logo apos o numero. Nas maos PKO ele nao achava assento NENHUM e o replay inteiro
+    devolvia `{'error': 'Seats nao encontrados'}`: onze torneios sem replay em producao, e
+    ninguem reportou porque o erro parece dado faltando, nao bug.
+
+    A linha crua vai junto porque ha filtros que pertencem ao CHAMADOR, nao a leitura: o replay
+    exclui assentos "out of hand" (`parser.SEAT_OUT_OF_HAND_RE`), e este modulo nao importa o
+    parser para nao criar ciclo.
+    """
     assentos = []
     em_summary = False
     for linha in (raw or '').splitlines():
@@ -118,10 +134,10 @@ def assentos_com_stack(raw: str) -> list:
         m = _ASSENTO_RE.match(l)
         if m:
             try:
-                fichas = float(m.group(2).replace(',', ''))
+                fichas = float(m.group(3).replace(',', ''))
             except ValueError:
                 continue
-            assentos.append((m.group(1).strip(), fichas))
+            assentos.append((int(m.group(1)), m.group(2).strip(), fichas, l))
     return assentos
 
 

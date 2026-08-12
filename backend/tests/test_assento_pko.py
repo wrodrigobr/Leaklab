@@ -153,6 +153,7 @@ def test_num_players_nao_pode_contradizer_a_POSICAO():
     assert 'UTG+2' not in nomes_de_posicao(7).values()
     print('OK  test_num_players_nao_pode_contradizer_a_POSICAO')
 
+
 if __name__ == '__main__':
     import sys as _s
     _testes = [v for k, v in sorted(globals().items()) if k.startswith('test_') and callable(v)]

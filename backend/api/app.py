@@ -6329,30 +6329,28 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
 
     hero = hero_override or hand.hero
 
-    # Extrair seats, stacks e bounties do raw_text
+    # Extrair seats, stacks e bounties — pela FONTE ÚNICA de leitura de assento.
+    #
+    # Este bloco tinha o QUARTO regex próprio de assento, inline (`_re.match`, invisível à
+    # varredura de `re.compile`), exigindo o ")" logo após o número: nas mãos PKO
+    # ("(12255 in chips, $15 bounty)") ele não achava assento NENHUM e o replay inteiro devolvia
+    # {'error': 'Seats não encontrados'} — onze torneios sem replay em produção, descobertos ao
+    # investigar por que 9 linhas da sonda ODDS não rendiam card. O corte do SUMMARY (linhas
+    # "Seat N: ... won (1,110)" corrompiam o roster) mora na fonte única; o filtro de assento
+    # "out of hand" fica AQUI porque é regra do replay, não da leitura.
     seats = {}
     _bounties = getattr(hand, 'bounties', {}) or {}
-    for line in hand.raw_text.split('\n'):
-        # PARA no SUMMARY: lá as linhas "Seat N: player showed [..] and won (1,110) with ..."
-        # também casam a regex de assento (o "(1,110)" vira "stack") e SOBRESCREVIAM o roster
-        # com o nome corrompido "player showed ... won" → o lookup ação→assento falhava (seat
-        # None) e a ação do VENCEDOR não renderizava. Só o roster do topo interessa aqui.
-        if line.startswith('*** SUMMARY ***'):
-            break
+    from leaklab.mesa_final import assentos_numerados
+    for _num, player, _fichas, _linha in assentos_numerados(hand.raw_text):
         # Assento "out of hand" (movido de outra mesa, joga só após o botão) não
         # está nesta mão: incluí-lo na mesa inflava a contagem (HU virava "multiway"
         # no fallback seats−folded do card) e deslocava as posições do replay.
-        if SEAT_OUT_OF_HAND_RE.search(line):
+        if SEAT_OUT_OF_HAND_RE.search(_linha):
             continue
-        # PS/GG: "(1500 in chips)"; ACR: "(29150.00)" — sem "in chips", stack decimal.
-        m = _re.match(r'Seat (\d+): (.+?) \(([0-9.,]+)(?: in chips)?\)', line)
-        if m:
-            player = m.group(2).strip()
-            # GG usa separador de milhar (21,280); tira a vírgula antes de converter.
-            seat_d = {'player': player, 'stack': int(float(m.group(3).replace(',', '')))}
-            if player in _bounties:
-                seat_d['bounty'] = _bounties[player]
-            seats[int(m.group(1))] = seat_d
+        seat_d = {'player': player, 'stack': int(_fichas)}
+        if player in _bounties:
+            seat_d['bounty'] = _bounties[player]
+        seats[_num] = seat_d
     if not seats:
         return {'error': 'Seats não encontrados'}
 
