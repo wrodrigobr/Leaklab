@@ -189,7 +189,9 @@
         "flop": "flop",
         "turn": "turn",
         "river": "river"
-      }
+      },
+      "pfIniciativa": "C-bet e barrel: {{pos}} com a iniciativa ({{street}})",
+      "pfDefesa": "{{pos}} defende no {{street}}"
     },
     "act": {
       "fold": "Fold",

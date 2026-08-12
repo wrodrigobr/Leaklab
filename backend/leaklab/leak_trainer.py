@@ -152,6 +152,14 @@ def postflop_leak_cats(user_id: int, days: int = 90) -> list[dict]:
     cats = []
     for r in brutos:
         stack = r.get('avg_stack_bb')
+        iniciativa = bool(r.get('iniciativa'))
+        # A chave da DEFESA fica a antiga (`pf:street:pos`) de proposito: `progression_attempts`
+        # e chaveado por ela, e a categoria agregada de antes era 76% defesa por volume — o
+        # historico de treino existente descreve majoritariamente defesa, entao ele fica onde
+        # esta. A INICIATIVA e categoria NOVA (`:ini`) e comeca do zero, o que tambem e verdade:
+        # ninguem treinou pool de c-bet antes, porque ele nao existia.
+        chave = (f"pf:{r['street']}:{r['position']}:ini" if iniciativa
+                 else f"pf:{r['street']}:{r['position']}")
         cats.append({
             'kind':        'postflop',
             'catalog':     'bb_defense',           # piso, se o acervo não render
@@ -159,13 +167,14 @@ def postflop_leak_cats(user_id: int, days: int = 90) -> list[dict]:
             'street':      r['street'],
             'position':    r['position'],
             'vs_position': '',
+            'iniciativa':  iniciativa,
             'stack_bb':    _snap_stack(stack),
             'stack_measured': stack is not None,
             'ev_loss_bb':  0.0,
             'n':           int(r.get('n') or 0),
             'erros':       int(r.get('erros') or 0),
             'weight':      max(0.5, float(r.get('erros') or 0)),
-            'key':         f"pf:{r['street']}:{r['position']}",
+            'key':         chave,
         })
     return cats
 
@@ -659,8 +668,16 @@ def generate_postflop_spot(category: dict, rng: random.Random | None = None,
             from leaklab.trainer_pool import proximo_spot as _pool
             # Mira o LEAK: street e posição vêm da categoria. Se a categoria não os traz (o piloto
             # antigo não traz), cai no acervo inteiro — que é o comportamento anterior, não um erro.
+            # `enfrentando` traduz a iniciativa para a forma do POOL: categoria de iniciativa
+            # treina decisoes SEM aposta na frente (c-bet/barrel — o hero age), defesa treina
+            # ENFRENTANDO. Categoria sem o campo (piloto/legado) nao filtra — comportamento
+            # anterior. E uma aproximacao declarada: OOP primeiro-a-agir sem iniciativa tambem
+            # nao enfrenta aposta, mas o pool nao guarda quem agrediu por ultimo — guarda o
+            # `facing_size_bb`, e essa e a forma treinavel da distincao.
+            _enfrentando = (not category['iniciativa']) if 'iniciativa' in category else None
             s = _pool(rng=rng, evitar=servidos or set(),
-                      street=category.get('street'), position=category.get('position'))
+                      street=category.get('street'), position=category.get('position'),
+                      enfrentando=_enfrentando)
             if s is None and (category.get('street') or category.get('position')):
                 # Leak sem nó no acervo: melhor um spot postflop de outro recorte do que nenhum.
                 # Registrado porque um leak que nunca encontra spot é buraco de cobertura, e

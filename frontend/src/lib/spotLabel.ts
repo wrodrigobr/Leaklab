@@ -28,6 +28,8 @@ export interface SpotLabelInput {
   street?: string | null;
   /** há aposta na mesa? sem isso o rótulo anuncia "vs c-bet" num spot de check/bet */
   facing?: boolean | null;
+  /** categoria de INICIATIVA (`pf:street:pos:ini`): c-bet e barrel, o hero agride */
+  iniciativa?: boolean | null;
 }
 
 /** Quebra a `category_key` (`scenario:pos:vs:stack`) — a ÚNICA taxonomia persistida. */
@@ -38,9 +40,14 @@ export function parseCategoryKey(key: string): SpotLabelInput {
   // habilidades postflop aparecerem com o MESMO nome na lista de domínio, e a de river anunciar
   // "(flop)". Sem posição conhecida, é melhor não inventar uma.
   if (key.startsWith("pf:")) {
-    const [, a, b] = key.split(":");
+    const [, a, b, c] = key.split(":");
     const streets = ["flop", "turn", "river"];
-    if (a && streets.includes(a)) return { kind: "postflop", street: a, position: b || "", vs_position: "" };
+    // `pf:<street>:<pos>:ini` (12/08): categoria de INICIATIVA — c-bet e barrel. A chave da
+    // defesa segue sem sufixo de propósito, porque `progression_attempts` é chaveado por ela e
+    // o histórico agregado de antes era majoritariamente defesa.
+    if (a && streets.includes(a))
+      return { kind: "postflop", street: a, position: b || "", vs_position: "",
+               iniciativa: c === "ini" };
     return { kind: "postflop", position: "BB", vs_position: "BTN", street: "flop" };  // `pf:bb_defense` legado
   }
   const [scenario, position, vs_position, stack] = key.split(":");
@@ -71,7 +78,11 @@ export function useSpotLabel() {
         ? (vs
             ? t(s.facing ? "leakTrainer.cat.postflopBb" : "leakTrainer.cat.postflopNoBet",
                 { pos, vs, street: t(`leakTrainer.cat.street.${s.street || "flop"}`, s.street || "flop") })
-            : t(`leakTrainer.cat.street.${s.street || "flop"}`, s.street || "flop"))
+            // Sem vs_position, o rótulo era SÓ a street — três categorias da mesma street liam
+            // idênticas. Com a posição e a iniciativa a categoria diz o que o jogador treina:
+            // "C-bet e barrel: SB com a iniciativa (turn)" vs "SB defende no turn".
+            : t(s.iniciativa ? "leakTrainer.cat.pfIniciativa" : "leakTrainer.cat.pfDefesa",
+                { pos, street: t(`leakTrainer.cat.street.${s.street || "flop"}`, s.street || "flop") }))
       : s.scenario === "rfi"     ? t("leakTrainer.cat.rfi", { pos })
       : s.scenario === "vs_rfi"  ? t("leakTrainer.cat.vsRfi", { pos, vs })
       : s.scenario === "vs_3bet" ? t("leakTrainer.cat.vs3bet", { pos, vs })

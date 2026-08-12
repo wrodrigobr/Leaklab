@@ -243,7 +243,8 @@ def _monta_spot(r: dict) -> Optional[dict]:
 
 
 def proximo_spot(rng: Optional[random.Random] = None, street: Optional[str] = None,
-                 position: Optional[str] = None, evitar: Optional[set] = None) -> Optional[dict]:
+                 position: Optional[str] = None, evitar: Optional[set] = None,
+                 enfrentando: Optional[bool] = None) -> Optional[dict]:
     """Um spot do acervo, com a AÇÃO CERTA sorteada antes do nó.
 
     `evitar` recebe os `spot_hash` já servidos na sessão — o acervo é grande, mas sortear sem
@@ -270,6 +271,14 @@ def proximo_spot(rng: Optional[random.Random] = None, street: Optional[str] = No
     for r in linhas:
         if r['spot_hash'] in evitar:
             continue
+        # Filtro de INICIATIVA da categoria (12/08): True = treinar ENFRENTANDO aposta (defesa),
+        # False = treinar agindo SEM aposta na frente (c-bet/barrel), None = sem filtro. Aplicado
+        # AQUI e nao no laco de candidatos: rejeitar depois do sorteio da familia esgotaria o
+        # `_TETO_TENTATIVAS` nas familias em que quase todo no e da forma errada.
+        if enfrentando is not None:
+            _sj = _carrega(r['spot_json']) or {}
+            if (float(_sj.get('facing_size_bb') or 0) > 0) != enfrentando:
+                continue
         por_familia.setdefault(_familia(r['gto_action'] or ''), []).append(r)
     if not por_familia:
         return None

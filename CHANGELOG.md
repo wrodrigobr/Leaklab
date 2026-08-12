@@ -7,6 +7,31 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(treino): categorias de leak de C-BET — a iniciativa divide o postflop (#treino #leak-trainer)
+
+> A primeira feature DESTRAVADA pela iniciativa no acervo. Medido antes de ligar: **150 dos 524
+> erros postflop (29%) eram de spots COM iniciativa** e ficavam invisiveis dentro de categorias
+> dominadas pela defesa (76% do volume) — o jogador treinava defesa para consertar leak de c-bet.
+>
+> A categoria postflop era (street x posicao); agora e (street x posicao x iniciativa):
+>
+> - **"C-bet e barrel: SB com a iniciativa (turn)"** — chave nova `pf:turn:SB:ini`, treina spots
+>   SEM aposta na frente (o hero age). Pool medido: flop 2.614 / turn 1.530 / river 574 nos.
+> - **"SB defende no turn"** — chave ANTIGA `pf:turn:SB`, de proposito: `progression_attempts` e
+>   chaveado por ela e o historico agregado era majoritariamente defesa. Iniciativa comeca do
+>   zero, o que tambem e verdade: o pool de c-bet nao existia.
+>
+> Linha com `hero_was_aggressor` NULL (pre-backfill) conta como defesa — o lado conservador.
+>
+> O treino TRADUZ a categoria para a forma do pool: iniciativa → agir sem aposta na frente;
+> defesa → enfrentando. Aproximacao declarada no codigo: o pool guarda `facing_size_bb`, nao quem
+> agrediu por ultimo. O filtro e aplicado ANTES do sorteio de familia — rejeitar depois esgotaria
+> o teto de tentativas nas familias em que quase todo no e da forma errada.
+>
+> Rotulos nas 3 locales; `spotLabel` parseia o sufixo `:ini` com teste do formato persistido.
+> Mutacao: 4 de 4 acusadas (GROUP BY, sufixo da chave, traducao do treino, filtro do pool).
+> Suites: engine 884, database 294, ghost 106, vitest 4 — verdes.
+
 ### feat(iniciativa): hero_was_aggressor postflop deixa de ser coluna morta (#invariantes #pipeline)
 
 > **`COL-AGRESSOR`: 1 → 0** — a ultima invariante aberta com conserto viavel. Restam na rede so

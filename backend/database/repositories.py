@@ -1330,9 +1330,16 @@ def get_postflop_leak_categories(user_id: int, days: int = 90, last_n: int | Non
     tf, tp = _build_tournament_filter(user_id, days, last_n)
     conn = get_conn()
     try:
+        # A INICIATIVA divide a categoria desde 12/08, quando `hero_was_aggressor` postflop
+        # deixou de ser coluna morta. Antes, quem c-betava e quem defendia contra c-bet caiam na
+        # MESMA categoria (street x posicao) — medido no acervo: 150 dos 524 erros postflop (29%)
+        # eram de spots COM iniciativa e ficavam invisiveis dentro de categorias dominadas pela
+        # defesa. `COALESCE(...,0)` porque linhas anteriores ao backfill podem ter NULL, e NULL
+        # ali significa "sem iniciativa medida", que treina como defesa — o lado conservador.
         rows = conn.execute(_adapt(f"""
             SELECT d.street                                   AS street,
                    d.position                                 AS position,
+                   COALESCE(d.hero_was_aggressor, 0)          AS iniciativa,
                    COUNT(*)                                   AS n,
                    SUM(CASE WHEN d.gto_label IN ('gto_critical','gto_minor_deviation')
                             THEN 1 ELSE 0 END)                AS erros,
@@ -1343,7 +1350,7 @@ def get_postflop_leak_categories(user_id: int, days: int = 90, last_n: int | Non
                AND d.street IN ('flop','turn','river')
                AND d.gto_label IS NOT NULL AND d.gto_label <> ''
                AND d.position IS NOT NULL AND d.position <> ''
-             GROUP BY d.street, d.position
+             GROUP BY d.street, d.position, COALESCE(d.hero_was_aggressor, 0)
             HAVING COUNT(*) >= ?
              ORDER BY erros DESC
              LIMIT ?
@@ -1357,6 +1364,7 @@ def get_postflop_leak_categories(user_id: int, days: int = 90, last_n: int | Non
             out.append({
                 'street':       r['street'],
                 'position':     r['position'],
+                'iniciativa':   bool(r['iniciativa']),
                 'n':            n,
                 'erros':        erros,
                 'taxa':         round(erros / n, 4) if n else 0.0,
