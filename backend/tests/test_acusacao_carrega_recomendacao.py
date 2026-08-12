@@ -97,6 +97,33 @@ def test_arvore_rasa_converteu_para_jam_e_o_hero_jamou():
     print('OK  test_arvore_rasa_converteu_para_jam_e_o_hero_jamou')
 
 
+def test_chart_que_gradou_o_jam_como_leak_NAO_e_convertido():
+    """A regressao que a varredura pegou no proprio deploy (MUDO 0 -> 1, linha 320755).
+
+    BB vs limp a 7,85bb: o chart grada o SHOVE como major_leak e recomenda raise. A conversao
+    raise->jam dizia "a arvore e jam-ou-fold" — mas o chart acabou de provar que nao e: ele
+    contem o jam e o rejeitou. Converter apagava a critica e deixava `standard` ao lado de
+    `gto_critical`.
+    """
+    original = eng._enrich_preflop_gto
+    eng._enrich_preflop_gto = lambda _i: {
+        'available': True, 'action_quality': 'major_leak', 'recommended_actions': ['raise'],
+        'ev_loss_bb': None, 'ev_loss_source': None}
+    try:
+        r = eng.evaluate_decision(_entrada(
+            spot={'heroStackBb': 7.85, 'effectiveStackBb': 7.85},
+            range_evaluation={'recommendedPrimaryAction': 'raise',
+                              'rangeZone': 'borderline_range',
+                              'inRange': True, 'alternativeActions': []}))
+    finally:
+        eng._enrich_preflop_gto = original
+    assert r['bestAction'] == 'raise', (
+        f"a conversao apagou a distincao que o chart tem: best={r['bestAction']}")
+    assert r['evaluation']['label'] != 'standard', (
+        f"o chart diz major_leak e o produto deu standard: {r['evaluation']}")
+    print('OK  test_chart_que_gradou_o_jam_como_leak_NAO_e_convertido')
+
+
 def _g6(fold_e_barato):
     """Roda o guarda do pote limpado com a equity multiway dublada — acima ou abaixo do preco."""
     import leaklab.multiway_advisor as mw

@@ -415,7 +415,7 @@ INVARIANTES: List[Invariante] = [
                                        gto_action='check', gto_label='gto_mixed'),
     ),
     Invariante(
-        id='AUTO', baseline=14,
+        id='AUTO', baseline=0,
         titulo='decisão acusada em que a ação recomendada é a ação jogada',
         porta='card exibe "✗ Erro" com a coluna ideal repetindo o que o jogador fez',
         origem='auditoria 10/08, achado por duas lentes — confirmado por 2 céticos. '
@@ -427,7 +427,7 @@ INVARIANTES: List[Invariante] = [
                                        label='small_mistake', score=0.19, gto_label=None),
     ),
     Invariante(
-        id='GRAFIA', baseline=2,
+        id='GRAFIA', baseline=0,
         titulo='mesma jogada com outra palavra tratada como desvio (shove vs jam)',
         porta='score e label do card, e a nota "Ação esperada: ALL-IN" para quem deu all-in',
         origem='auditoria 10/08, lente de contradição — confirmado por 2 céticos',
@@ -451,7 +451,7 @@ INVARIANTES: List[Invariante] = [
                                        street='flop', board='["2h","7c","2d"]'),
     ),
     Invariante(
-        id='SELO', baseline=2,
+        id='SELO', baseline=0,
         titulo='selo "GTO Correto" convivendo com veredito de erro na mesma linha',
         porta='card do replayer: selo e veredito a três centímetros um do outro',
         origem='medido em 10/08 sobre o snapshot, com controle. Relabel de 11/08 levou 12 → 2 '
@@ -490,7 +490,7 @@ INVARIANTES: List[Invariante] = [
                                        facing_to_call_bb=10.0, gto_label='gto_critical'),
     ),
     Invariante(
-        id='PROCED', baseline=5,
+        id='PROCED', baseline=0,
         titulo='ev_loss_bb gravado sem ev_loss_source',
         porta='a régua ev_loss_trustworthy decide pela fonte; sem fonte ela chuta',
         origem='medido em 10/08 sobre o snapshot',
@@ -498,7 +498,7 @@ INVARIANTES: List[Invariante] = [
         forjar=lambda c: _forjar_linha(c, ev_loss_bb=1.2, ev_loss_source=None, stack_bb=30.0),
     ),
     Invariante(
-        id='COL-GANHOU', baseline=1, banco_isolado=True,
+        id='COL-GANHOU', baseline=0, banco_isolado=True,
         titulo='hero_won_hand nunca é gravada',
         porta='card "Resultado vs GTO" publica 0 e 0,0% como se fosse medição',
         origem='medido em 10/08: 9.813 de 9.813 nulas',
@@ -507,7 +507,7 @@ INVARIANTES: List[Invariante] = [
         curar=lambda c: _forjar_linha(c, hero_won_hand=1),
     ),
     Invariante(
-        id='COL-MULTIWAY', baseline=1, banco_isolado=True,
+        id='COL-MULTIWAY', baseline=0, banco_isolado=True,
         titulo='multiway_safe_verdict nunca é gravada',
         porta='é a coluna que decide se um erro multiway aparece; nula, o produto cala',
         origem='medido em 10/08: 9.813 de 9.813 nulas',

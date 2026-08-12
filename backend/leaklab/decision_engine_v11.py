@@ -1512,8 +1512,17 @@ def evaluate_decision(input_data: Dict[str, Any]) -> Dict[str, Any]:
     # So converte a RECOMENDACAO (raise -> jam), nunca cria acusacao: quem ja tinha jogado a
     # agressao continua com o mesmo rotulo, e o cap abaixo impede que a troca vire erro novo.
     _PROF_JAM = 10.0
+    # Quando o CHART gradou o proprio jam como leak, a premissa "a arvore e jam-ou-fold" e
+    # FALSA — a arvore contem a distincao raise/jam, tanto que rejeitou o jam. Converter ali
+    # apagava a critica do chart: a linha 320755 (BB vs limp a 7,85bb, shove = major_leak,
+    # rec = raise) virou `standard` com `gto_critical` do lado — a regressao MUDO 0 -> 1 que a
+    # propria varredura acusou minutos depois do deploy.
+    _chart_grada_o_jam = (preflop_gto.get('available')
+                          and preflop_gto.get('action_quality') in ('leak', 'major_leak')
+                          and _norm_gto_action(input_data.get('player_action', '')) == 'allin')
     if (street == 'preflop' and _best_action == 'raise'
-            and 0 < float(_hero_stack_bb or 0) <= _PROF_JAM):
+            and 0 < float(_hero_stack_bb or 0) <= _PROF_JAM
+            and not _chart_grada_o_jam):
         _best_action = 'jam'
         if _norm_gto_action(input_data.get('player_action', '')) == 'allin':
             # A conversao acabou de declarar que nesta profundidade a arvore e jam-ou-fold — e o
