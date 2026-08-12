@@ -22,10 +22,15 @@ def _won(raw: str, hero: str):
 def main():
     init_db()  # aplica a migration hero_won_hand (idempotente)
     conn = get_conn()
-    try:
-        conn.execute("PRAGMA busy_timeout=10000")
-    except Exception:
-        pass
+    # PRAGMA e so SQLite. No Postgres ele ERRA — e o except engole a excecao Python, mas a
+    # transacao fica ABORTADA: todo statement seguinte morre com InFailedSqlTransaction. Foi
+    # exatamente assim que este backfill falhou em producao em 11/08 (a regra ja estava na
+    # memoria do projeto e no reanalyze_all_labels; este script era anterior ao padrao).
+    if not getattr(conn, '_pg', False):
+        try:
+            conn.execute("PRAGMA busy_timeout=10000")
+        except Exception:
+            pass
     tids = [dict(x)["id"] for x in conn.execute(
         "SELECT id FROM tournaments WHERE raw_text IS NOT NULL").fetchall()]
     updated = won = lost = none = 0

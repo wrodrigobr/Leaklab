@@ -7,6 +7,38 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+## [v0.168.0] — 2026-08-11 — a rede de invariantes do acervo, e o motor deixa de se contradizer
+
+> O fechamento desta versao e o trabalho de 10-11/08: uma auditoria de seis lentes sobre o
+> acervo de producao (48 achados candidatos, cada um verificado ou refutado com numero), a rede
+> permanente de 13 invariantes com baseline declarado (`leaklab/invariantes_acervo.py` +
+> `scripts/varre_invariantes.py`, rodada no host apos todo reprocesso), e a regra que unifica os
+> consertos do motor: **quem muda o veredito carrega recomendacao e score junto**.
+>
+> Estado medido no corte, em producao:
+>
+> | invariante | corte | historia |
+> |---|---|---|
+> | MESA | **0** | era 2.355 — bounty do PKO dentro do parentese zerava a mesa |
+> | MUDO | **0** | era 19 — guarda do preflop apagava o solver no postflop |
+> | FREQ | **0** | era 43 — frequencia inventada por `1.0 - top_freq` sem freq no no |
+> | AUTO | **0** | era 20 — acusacao recomendando a propria acao do jogador |
+> | GRAFIA | **0** | era 9 — shove vs jam cobrado pela palavra, em tres camadas |
+> | SELO | **0** | era 12 — piso de direcao com duas copias; excecao RC-B documentada |
+> | PROCED | **0** | era 5 — EV sem fonte nao sai mais do motor |
+> | EV-TETO | 60 | dado envenenado DECLARADO: os leitores filtram pela regua unica |
+> | ODDS | 25 | defeito de DISPLAY declarado: equity heuristica ao lado de veredito do solver |
+> | BOARD | 6.070 | estrutural declarado: o replayer precisa do runout; corte e na leitura |
+> | COL-* | — | hero_won_hand e multiway_safe_verdict backfillados; hero_was_aggressor postflop segue divida |
+>
+> NOTA foi APOSENTADA com lapide no codigo: o zero dela era medido (credito de tolerancia),
+> nao fabricado — a sonda vinha dos 19 achados que nunca passaram por cetico.
+>
+> Acusacoes em producao ao longo do fechamento: 567 → 536 → 597 (o reprocesso do PKO tirou a
+> mascara de um portao de ICM que abrandava TODO fold de 11 torneios) → estado do corte.
+> EV/100 do dashboard: de 8.140 bb/100 (usuario 3) para 7,2 — com controle que nao mudou.
+
+
 ### fix(gto): frequencia nao se inventa, e no de check nao serve spot com aposta (#gto)
 
 > **`FREQ`: 43 → 0.** Nada piorou. Acusacoes 597, 71 anotacoes e 9.813 decisoes intactas.
