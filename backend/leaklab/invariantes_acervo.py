@@ -42,7 +42,8 @@ import json
 from dataclasses import dataclass, field
 from typing import Callable, List, Optional, Sequence
 
-from leaklab.decision_engine_v11 import _norm_gto_action
+from leaklab.decision_engine_v11 import (_EV_CEIL_SMALL_BB, _EV_RELIABLE_SOURCES,
+                                          _norm_gto_action)
 
 # Rótulos que o produto exibe como erro. Fonte: CLAUDE.md e `verdict3`.
 ACUSADAS = ('small_mistake', 'clear_mistake', 'critical')
@@ -246,31 +247,42 @@ def _selo_contradiz_veredito(conn):
     """O selo 'GTO Correto' e o veredito de erro não podem conviver na mesma linha.
 
     São duas respostas para a mesma pergunta, exibidas a três centímetros uma da outra.
+
+    EXCEÇÃO ÚNICA, deliberada e com dono (RC-B em `_ev_severity_ceiling`): quando o EV
+    hand-aware CONFIÁVEL diz que ESTA mão perdeu >= _EV_CEIL_SMALL_BB, a acusação convive com o
+    selo — a range joga a ação com frequência (o selo fala da range), mas esta mão a jogou mal
+    (o veredito fala da mão). São respostas para perguntas DIFERENTES, e desde 11/08 o motor
+    carrega junto a recomendação alternativa do próprio hand_strategy, então o card não repete a
+    ação do jogador como ideal. Sem fonte confiável a exceção NÃO vale — aí é contradição mesmo.
     """
-    return [Violacao(r['id'], f"gto_correct + label={r['label']} (played={r['gto_played_freq']})")
-            for r in _linhas(conn, """
-                SELECT id, label, gto_played_freq FROM decisions
+    fontes = ','.join('?' for _ in _EV_RELIABLE_SOURCES)
+    return [Violacao(r['id'], f"gto_correct + label={r['label']} (played={r['gto_played_freq']}, "
+                              f"ev={r['ev_loss_bb']})")
+            for r in _linhas(conn, f"""
+                SELECT id, label, gto_played_freq, ev_loss_bb FROM decisions
                  WHERE gto_label = 'gto_correct'
-                   AND label IN ('small_mistake','clear_mistake','critical')""")]
+                   AND label IN ('small_mistake','clear_mistake','critical')
+                   AND NOT (ev_loss_bb IS NOT NULL AND ev_loss_bb >= ?
+                            AND ev_loss_source IN ({fontes}))""",
+                [_EV_CEIL_SMALL_BB, *_EV_RELIABLE_SOURCES])]
 
 
-def _nota_perfeita_sem_gabarito(conn):
-    """`score = 0.0` é a nota perfeita. Sem gabarito e discordando da ação, ela é mentira.
-
-    Não é o "sem gabarito não é erro" que já foi decidido — ali o produto se cala. Aqui ele
-    AFIRMA acerto máximo numa linha em que o próprio motor recomenda outra coisa.
-    """
-    fora = []
-    for r in _linhas(conn, """
-            SELECT id, score, best_action, action_taken, gto_label FROM decisions
-             WHERE score = 0.0 AND best_action IS NOT NULL
-               AND (gto_label IS NULL OR gto_label = '' OR gto_label = 'uncovered')"""):
-        if _norm_gto_action(r['best_action']) != _norm_gto_action(r['action_taken']):
-            fora.append(Violacao(r['id'], f"score=0.0 sem gabarito, jogou {r['action_taken']} "
-                                          f"e o motor queria {r['best_action']}"))
-    return fora
-
-
+# ── NOTA: sonda APOSENTADA em 11/08, e o motivo fica registrado ────────────────────────────────
+#
+# Ela media "score 0.0 sem gabarito com best != action" e chegou a 49 linhas. A investigacao de
+# mecanismo (breakdown real de producao) mostrou que o zero e MEDIDO, nao fabricado:
+#
+#     gap 0.08 + range 0.03 - toleranceCredit 0.12  ->  0.0
+#
+# O credito de tolerancia existe para dizer "as duas acoes cabem" — fold dentro da tolerancia de
+# um raise nominal e score zero legitimo, nao nota falsa. A sonda lia decisao deliberada do motor
+# como defeito. E ela vinha dos 19 achados da auditoria que NUNCA passaram por cetico (a cota
+# matou os verificadores): adotei com contagem propria, sem provar o mecanismo.
+#
+# O risco REAL que sobrou dela e outro e esta no backlog: consumidores de score (ELO) tratam
+# "sem gabarito" como acerto pleno. Isso e regra de CONSUMO, nao invariante de dado — mesma
+# familia do ev_loss_trustworthy.
+#
 def _board_do_futuro(conn):
     """A decisão não pode guardar cartas que o hero ainda não tinha visto.
 
@@ -449,18 +461,6 @@ INVARIANTES: List[Invariante] = [
         medir=_selo_contradiz_veredito,
         forjar=lambda c: _forjar_linha(c, gto_label='gto_correct', label='clear_mistake',
                                        score=0.7, action_taken='call', best_action='fold'),
-    ),
-    Invariante(
-        id='NOTA', baseline=49,
-        titulo='nota perfeita (score 0.0) sem gabarito e discordando da própria recomendação',
-        porta='score exibido no card e usado no ELO',
-        origem='medido em 10/08 sobre o snapshot, com controle. BASELINE SUBIU 45 → 49 em '
-               '11/08 pelo mesmo motivo de ODDS: o reprocesso dos 11 torneios PKO tirou a máscara '
-               'do portão de ICM sobre mesa falsa. Delta 100% contido nos 11 (o resto do acervo '
-               'ficou em 461 acusadas antes e depois).',
-        medir=_nota_perfeita_sem_gabarito,
-        forjar=lambda c: _forjar_linha(c, score=0.0, gto_label=None, action_taken='fold',
-                                       best_action='call'),
     ),
     Invariante(
         id='BOARD', baseline=6070,

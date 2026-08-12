@@ -37,6 +37,7 @@ SUITES = {
                   'test_perguntas_de_range.py',
                   'test_call_ja_allin.py',
                   'test_shove_equivale_call.py',
+                  'test_acusacao_carrega_recomendacao.py',
                   'test_quatro_guardas_do_relatorio.py',
                   'test_facing_to_call.py',
                   'test_replay_pareamento.py',

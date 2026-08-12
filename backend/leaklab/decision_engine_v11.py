@@ -1005,6 +1005,15 @@ def evaluate_decision(input_data: Dict[str, Any]) -> Dict[str, Any]:
                      and (_acao_real or '').lower() in ('shove', 'jam', 'allin', 'all-in', 'raise'))
     if _shove_e_call:
         input_data = {**input_data, 'player_action': 'call'}
+        # A equivalencia vale para os DOIS lados da comparacao. Gradar o shove como call e
+        # deixar a recomendacao 'jam' de pe recria a cobranca pela palavra uma camada acima:
+        # gap('call','jam') = 0.18 + range_penalty, num spot em que jam, call e shove sao a
+        # MESMA decisao de commit (o facing cobre o stack; raise nao existe). Medido: score
+        # 0,1615 e veredito 'Aceitavel' para quem fez exatamente o que a range mandava.
+        # 'fold' NAO colapsa — recomendar fold contra um commit e critica legitima.
+        _rec_cru = (range_eval.get('recommendedPrimaryAction') or '').lower()
+        if _rec_cru and _rec_cru != 'fold':
+            range_eval = {**range_eval, 'recommendedPrimaryAction': 'call'}
 
     realization_adjustment = calc_realization_adjustment(
         spot.get("isInPosition"),
@@ -1145,10 +1154,14 @@ def evaluate_decision(input_data: Dict[str, Any]) -> Dict[str, Any]:
             # Tema 1: rebaixa o gto_label crítico quando o custo de EV é minúsculo.
             if _low_cost_leak and _gto_lbl == 'gto_critical':
                 _gto_lbl = 'gto_minor_deviation'
+            # EV sem fonte declarada nao sai do motor: a regua `ev_loss_trustworthy` decide
+            # PELA fonte, e um numero orfao vira a violacao PROCED no acervo (5 linhas em
+            # producao, todas ev=0.0 sem fonte — inofensivas na soma e erradas na proveniencia).
+            _pf_evsrc = preflop_gto.get('ev_loss_source')
             gto = {'available': True, 'gto_label': _gto_lbl, 'gto_action': rec[0] if rec else None,
                    # #24: bb perdidos vs melhor ação (vem do overlay de EV no analyze_preflop)
-                   'ev_loss_bb':     _pf_evloss,
-                   'ev_loss_source': preflop_gto.get('ev_loss_source')}
+                   'ev_loss_bb':     _pf_evloss if _pf_evsrc else None,
+                   'ev_loss_source': _pf_evsrc}
 
     # Guard: BB pode check grátis quando não há aposta — fold é impossível.
     # Outras posições (UTG/HJ/CO/BTN/SB) estão escolhendo não abrir — fold é correto.
@@ -1287,8 +1300,30 @@ def evaluate_decision(input_data: Dict[str, Any]) -> Dict[str, Any]:
         facing_bb=_facing_bb,
     )
     label = _ev_severity_ceiling(label, _eff_ev, _ev_src if _ev_ok else None)
-    if label != _label_pre_ceil:
+    if _LABEL_SEV.get(label, 1) < _LABEL_SEV.get(_label_pre_ceil, 1):
         final_score = min(final_score, _LABEL_MAX_SCORE[label])
+    elif _LABEL_SEV.get(label, 1) > _LABEL_SEV.get(_label_pre_ceil, 1):
+        # O piso RC-B acusou (EV hand-aware alto em mão que o gto_label range-level aprova).
+        # Acusação carrega recomendação e score junto — sem isso o card dizia "Erro" com a
+        # coluna ideal repetindo a ação do jogador e score 0.0 (4 casos em produção, a família
+        # AUTO do postflop). A alternativa vem do MESMO dado que sustenta o piso: a ação de
+        # maior EV do hand_strategy.
+        _melhor_alt = None
+        for _e in (gto.get('hand_strategy') or []):
+            if (_e.get('ev_bb') is not None
+                    and _action_family(_e.get('action', '')) != _action_family(
+                        input_data.get('player_action', ''))
+                    and (_melhor_alt is None or _e['ev_bb'] > _melhor_alt['ev_bb'])):
+                _melhor_alt = _e
+        if _melhor_alt is not None:
+            _best_action = _melhor_alt['action']
+            final_score = max(final_score, _LABEL_MAX_SCORE['marginal'] + 0.001)
+            final_score = min(final_score, _LABEL_MAX_SCORE[label])
+        elif _norm_gto_action(_best_action or '') == _norm_gto_action(
+                input_data.get('player_action', '')):
+            # Sem alternativa nomeável e recomendando o que foi jogado, a acusação seria a
+            # contradição AUTO ("Erro; ideal: o que você fez"). Acusar exige poder dizer o quê.
+            label = _label_pre_ceil
 
     # INVARIANTE (piso TERMINAL): erro de DIREÇÃO — o GTO folda a mão (fora do range de
     # continuação) mas o hero AGREDIU — NUNCA é capeado por EV. O _ev_severity_ceiling acima
@@ -1480,7 +1515,14 @@ def evaluate_decision(input_data: Dict[str, Any]) -> Dict[str, Any]:
     if (street == 'preflop' and _best_action == 'raise'
             and 0 < float(_hero_stack_bb or 0) <= _PROF_JAM):
         _best_action = 'jam'
-        if _action_family(input_data.get('player_action', '')) in ('raise', 'allin'):
+        if _norm_gto_action(input_data.get('player_action', '')) == 'allin':
+            # A conversao acabou de declarar que nesta profundidade a arvore e jam-ou-fold — e o
+            # hero JAMOU. Ele fez o que a arvore faz; manter 'marginal' aqui era cobrar a
+            # diferenca entre duas palavras para o mesmo lance (medido: score 0,1615 com a
+            # recomendacao exibida identica a jogada).
+            label = 'standard'
+            final_score = min(final_score, _LABEL_MAX_SCORE['standard'])
+        elif _action_family(input_data.get('player_action', '')) in ('raise', 'allin'):
             label = 'marginal' if label in ('small_mistake', 'clear_mistake') else label
             final_score = min(final_score, _LABEL_MAX_SCORE['marginal'])
 
@@ -1524,7 +1566,14 @@ def evaluate_decision(input_data: Dict[str, Any]) -> Dict[str, Any]:
             except Exception:
                 _eq = None
             if _eq and _eq[1] > _pote + _MW_FOLD_MARGIN:
+                # Acusacao carrega a recomendacao e o score JUNTO. A primeira versao levantava so
+                # o label: o card dizia "Erro" com a coluna ideal repetindo o fold do jogador, e
+                # o score ficava 0.0 ao lado de small_mistake (12 casos em producao — a familia
+                # AUTO inteira do preflop). A premissa do guarda E que pagar era lucrativo, entao
+                # a recomendacao e o call.
                 label = 'small_mistake'
+                _best_action = 'call'
+                final_score = max(final_score, _LABEL_MAX_SCORE['marginal'] + 0.001)
                 final_score = min(final_score, _LABEL_MAX_SCORE['small_mistake'])
 
     # ── E o TETO do pote limpado: `clear_mistake` exige gabarito, e aqui nao ha nenhum ─────
