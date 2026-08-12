@@ -114,6 +114,7 @@ SUITES = {
                   'test_forca_da_mao_string_ou_lista.py',
                   'test_todo_caminho_mesmos_args.py',
                   'test_carta_do_no_certo.py',
+                  'test_no_iniciativa_aware.py',
                   'test_frequencia_nao_se_inventa.py',
                   'test_motivo_sem_gabarito_tem_frase.py',
                   'test_posicao_por_jogadores_atras.py',

@@ -545,7 +545,9 @@ def _enrich_gto(input_data: Dict[str, Any]) -> dict:
         # Fase 2: pot_type efetivo — prefere o nó de pote 3-bet (ranges corretas) e cai no
         # nó SRP (aproximação/legado) se o 3-bet ainda não foi solvado. '' = hash legado.
         _eff_pot = _effective_pot_type(spot.get('potType', ''), spot.get('preflopOpener', ''),
-                                       spot.get('preflop3bettor', ''), stack_bb)
+                                       spot.get('preflop3bettor', ''), stack_bb,
+                                       hero_pos=position,
+                                       vs_pos=spot.get('villainPosition', ''))
 
         def _variants(pt):
             hs = [compute_spot_hash(street, position, board, hero_hand, stack_bb, facing_bb, pt),
@@ -554,8 +556,14 @@ def _enrich_gto(input_data: Dict[str, Any]) -> dict:
                 hs.append(compute_spot_hash(street, position, board, [], stack_bb, 0.0, pt))
             return hs
 
-        # Mesmas variantes de hash que lookup_gto() usa (3-bet primeiro, SRP como fallback)
-        hashes = (_variants('3bet') if _eff_pot == '3bet' else []) + _variants('')
+        # Mesmas variantes de hash que lookup_gto() usa (3-bet primeiro, SRP como fallback).
+        # 'oop_pfr' NAO cai no legado: o nó SRP legado foi solvado com "o IP abriu" e, num pote
+        # em que o opener está OOP, ele descreve o confronto com as ranges TROCADAS — não é
+        # aproximação, é o espelho. Miss honesto (heurístico) até o solve certo existir.
+        if _eff_pot == 'oop_pfr':
+            hashes = _variants('oop_pfr')
+        else:
+            hashes = (_variants('3bet') if _eff_pot == '3bet' else []) + _variants('')
 
         # Nós do solver Texas (source='solver_cli') REATIVADOS no postflop, COM TRAVA de
         # depth: o solve agora roda no stack REAL (cap 60bb), não mais capado a 20bb. Só

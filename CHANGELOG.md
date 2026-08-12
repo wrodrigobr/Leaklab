@@ -7,6 +7,37 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(gto): o nó postflop vira iniciativa-aware — o ramo SRP invertia as ranges do SB-vs-BB (#gto #solver)
+
+> O terceiro consumidor da iniciativa, e o mais fundo. `resolve_solver_ranges` nasceu para matar
+> o confronto espelhado ("cada jogador recebia a range do outro") — e o ramo SRP o mantinha,
+> escondido numa suposicao de iniciativa: **"o IP abriu (RFI) e o OOP pagou"**. Em SB-vs-BB (o
+> SB abre e e OOP) e em UTG-abre-BTN-paga, cada jogador recebia a range do OUTRO. O parametro
+> `opener` sempre esteve na assinatura; o ramo o ignorava.
+>
+> Medido antes de mexer: **468 decisoes postflop cobertas com o opener OOP** (32% da populacao
+> SRP coberta), 354 `solver_hand`, 47 acusacoes — gradadas contra o confronto espelhado.
+>
+> ── **As tres pernas, e por que NAO ha fallback** ──────────────────────────────────────────────
+>
+> 1. **Ranges**: o ramo SRP honra o `opener` real (quem abriu leva RFI, esteja onde estiver).
+> 2. **Hash**: spot de opener-OOP ganha a variante `oop_pfr` na MESMA fonte unica que ja decidia
+>    `3bet` (`_effective_pot_type`, agora com as posicoes). Motor, lookup, replay, enqueue e
+>    reenqueue computam a mesma chave.
+> 3. **Sem fallback para o legado**: diferente do pote 3-bet (onde o no SRP e aproximacao), o no
+>    legado aqui descreve o confronto ESPELHADO. Spot `oop_pfr` sem no fica heuristico ate o
+>    solve certo existir — bug que some com a resposta e honesto; resposta trocada nao e.
+>
+> O golden do /replay divergiu em exatamente 2 linhas (o solver fake escolhe template por
+> `sha1(hash)`, e o hash desses spots mudou — a divergencia E a prova do re-chaveamento) e foi
+> regenerado pelo mecanismo proprio. Mutacao: 4 de 4 pernas acusadas. Suites: engine 886,
+> gto 503, api 148.
+>
+> **Transicao declarada**: as 468 decisoes mantem o veredito antigo (o guarda "avaliacao sem
+> cobertura nao sobrescreve" as protege) ate os solves na chave nova drenarem pela fila e o
+> resync colar os nos certos. O reenqueue usa o hash novo por construcao — corrigido no proprio
+> script, que prometia "o MESMO hash que o lookup" e calculava a variante sem as posicoes.
+
 ### fix(testes): 101 arquivos de teste com exit code MENTINDO, achados ao verificar o ELO (#testes #elo)
 
 > O item do backlog era "a regra de consumo do ELO: score sem gabarito conta como acerto". A

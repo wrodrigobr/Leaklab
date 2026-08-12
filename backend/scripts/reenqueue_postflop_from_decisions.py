@@ -82,8 +82,14 @@ def main():
                     continue
                 stack_bb  = float(spot.get('effectiveStackBb') or 20.0)
                 facing_bb = float(spot.get('facingToBb') or 0.0)          # BB — igual ao lookup
+                # As posicoes entram na decisao da variante (12/08, 'oop_pfr'): sem elas o
+                # script computaria o hash legado para spots de opener OOP e enfileiraria o
+                # solve na chave que o lookup nao consulta mais — o contrario da promessa do
+                # cabecalho ("o MESMO hash que o lookup").
                 eff_pot   = _effective_pot_type(spot.get('potType', ''), spot.get('preflopOpener', ''),
-                                                spot.get('preflop3bettor', ''), stack_bb)
+                                                spot.get('preflop3bettor', ''), stack_bb,
+                                                hero_pos=pos,
+                                                vs_pos=normalize_position(spot.get('villainPosition', '')))
                 primary, cov = _covered(street, pos, board, hero, stack_bb, facing_bb, eff_pot)
                 if cov and not _FORCE:
                     already += 1

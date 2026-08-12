@@ -265,7 +265,8 @@ def resolve_solver_ranges(hero_pos: str, vs_pos: str, hero_stack_bb: float,
     # Quem age por último é IP. O herói só é IP quando age depois do vilão.
     ip_pos, oop_pos = (hero, vilao) if hero_ip else (vilao, hero)
 
-    eff_pot = _effective_pot_type(pot_type, opener, threebettor, hero_stack_bb)
+    eff_pot = _effective_pot_type(pot_type, opener, threebettor, hero_stack_bb,
+                                  hero_pos=hero, vs_pos=vilao)
     if eff_pot == '3bet':
         # Pote 3-bet: quem 3-betou recebe a range de 3-bet; o opener que pagou recebe a de
         # call-vs-3bet, que é capada e mais forte que a RFI larga do SRP.
@@ -274,22 +275,52 @@ def resolve_solver_ranges(hero_pos: str, vs_pos: str, hero_stack_bb: float,
         ip_range = por_pos.get(ip_pos) or _DEFAULT_RANGES.get(ip_pos, _DEFAULT_RANGE_WIDE)
         oop_range = por_pos.get(oop_pos) or _DEFAULT_RANGES.get(oop_pos, _DEFAULT_RANGE_WIDE)
     else:
-        # SRP: o IP abriu (RFI) e o OOP pagou (call vs RFI).
-        ip_range = (_captured_range_str(ip_pos, hero_stack_bb, 'rfi')
-                    or _DEFAULT_RANGES.get(ip_pos, _DEFAULT_RANGE_WIDE))
-        oop_range = (_captured_range_str(oop_pos, hero_stack_bb, 'call_vs_rfi', opener=ip_pos)
-                     or _DEFAULT_RANGES.get(oop_pos, _DEFAULT_RANGE_WIDE))
+        # SRP: quem ABRIU leva a range de RFI e quem PAGOU leva a de call-vs-RFI — pelo OPENER
+        # REAL, não por posição. A versão anterior assumia "o IP abriu", e em SB-vs-BB (SB abre,
+        # SB é OOP) ou UTG-abre-BTN-paga cada jogador recebia a range do OUTRO — o mesmo
+        # confronto espelhado que esta função existe para impedir, escondido no ramo SRP.
+        # Sem opener conhecido, mantém a suposição legada (caso majoritário, hash legado).
+        _op = (opener or '').upper().strip()
+        if _op and _op == oop_pos:
+            oop_range = (_captured_range_str(oop_pos, hero_stack_bb, 'rfi')
+                         or _DEFAULT_RANGES.get(oop_pos, _DEFAULT_RANGE_WIDE))
+            ip_range = (_captured_range_str(ip_pos, hero_stack_bb, 'call_vs_rfi', opener=oop_pos)
+                        or _DEFAULT_RANGES.get(ip_pos, _DEFAULT_RANGE_WIDE))
+        else:
+            ip_range = (_captured_range_str(ip_pos, hero_stack_bb, 'rfi')
+                        or _DEFAULT_RANGES.get(ip_pos, _DEFAULT_RANGE_WIDE))
+            oop_range = (_captured_range_str(oop_pos, hero_stack_bb, 'call_vs_rfi', opener=ip_pos)
+                         or _DEFAULT_RANGES.get(oop_pos, _DEFAULT_RANGE_WIDE))
     return ip_range, oop_range, hero_ip
 
 
-def _effective_pot_type(pot_type: str, opener: str, threebettor: str, stack_bb: float) -> str:
-    """pot_type EFETIVO pro hash/ranges: '3bet' só quando é pote 3-bet E há ranges 3-bet
-    capturadas pros dois jogadores; senão '' (comporta-se como SRP — hash legado). 4bet e
-    spots sem range caem em '' (aproximação SRP, paridade com o legado)."""
-    if (pot_type or '').lower().strip() != '3bet':
+def _effective_pot_type(pot_type: str, opener: str, threebettor: str, stack_bb: float,
+                        hero_pos: str = '', vs_pos: str = '') -> str:
+    """pot_type EFETIVO pro hash/ranges — FONTE ÚNICA da variante de nó.
+
+    '3bet'    pote 3-bet COM ranges 3-bet capturadas pros dois lados; senão cai em ''.
+    'oop_pfr' SRP em que o OPENER preflop está OOP (12/08). A suposição histórica do ramo SRP
+              ("o IP abriu") inverte as ranges dos dois jogadores nesses potes — SB abre vs BB
+              e UTG-abre-BTN-paga são o dia a dia, não borda: 32% da população SRP coberta.
+              Exige opener E as duas posições; sem eles, '' (suposição legada, caso majoritário).
+    ''        hash legado.
+
+    SEM fallback de 'oop_pfr' para '': diferente do 3-bet (onde o nó SRP é aproximação), o nó
+    legado aqui descreve o confronto espelhado. Quem não achar nó 'oop_pfr' fica heurístico até
+    o solve certo existir."""
+    if (pot_type or '').lower().strip() == '3bet':
+        r_3b, r_call = _captured_3bet_ranges(opener, threebettor, stack_bb)
+        return '3bet' if (r_3b and r_call) else ''
+    if (pot_type or '').lower().strip() == '4bet':
         return ''
-    r_3b, r_call = _captured_3bet_ranges(opener, threebettor, stack_bb)
-    return '3bet' if (r_3b and r_call) else ''
+    op = (opener or '').upper().strip()
+    h = (hero_pos or '').upper().strip()
+    v = (vs_pos or '').upper().strip()
+    if op and h and v and v not in ('', 'UNKNOWN'):
+        oop = v if _postflop_hero_is_ip(h, v) else h
+        if op == oop:
+            return 'oop_pfr'
+    return ''
 
 
 def _canon_solver_action(label: str, facing_size_bb: float) -> str:
@@ -429,7 +460,8 @@ def lookup_gto(
     sb         = stack_bucket(hero_stack_bb)
     hand_type  = hand_to_type(hero_hand)
     # Fase 2: pot_type efetivo ('3bet' só com ranges 3-bet capturadas; senão '' = SRP/legado)
-    _eff_pot   = _effective_pot_type(pot_type, opener, threebettor, hero_stack_bb)
+    _eff_pot   = _effective_pot_type(pot_type, opener, threebettor, hero_stack_bb,
+                                     hero_pos=position_u, vs_pos=(vs_position or ''))
     spot_hash  = compute_spot_hash(street_l, position_u, board, hero_hand, hero_stack_bb, facing_size_bb, _eff_pot)
 
     # 1. Preflop — só retorna se houver dados verificados
@@ -490,7 +522,9 @@ def lookup_gto(
     if (not _has_strategy(node)) and street_l != 'preflop' \
             and hero_stack_bb > _DEEP_APPROX_MIN_BB and not allow_remote_solve:
         for _hh in (hero_hand, []):
-            _na = get_gto_node(compute_spot_hash(street_l, position_u, board, _hh, _DEEP_APPROX_STACK_BB, facing_size_bb))
+            # A variante viaja junto: um nó deep-approx LEGADO servido a um spot 'oop_pfr'
+            # teria as ranges trocadas — miss honesto até existir o nó na chave certa.
+            _na = get_gto_node(compute_spot_hash(street_l, position_u, board, _hh, _DEEP_APPROX_STACK_BB, facing_size_bb, _eff_pot))
             if _has_strategy(_na):
                 node, _approx_stack = _na, _DEEP_APPROX_STACK_BB
                 break

@@ -10772,7 +10772,15 @@ def _enqueue_postflop_spots(results: list, tournament_id: int = None) -> None:
             _level_bb = float(d.get('level_bb') or 1) or 1
             facing = round(float(spot.get('facingSize') or 0) / _level_bb, 2)
 
-            spot_hash = compute_spot_hash(d['street'], pos, board, hero_h, stack, facing)
+            # A variante de pot_type entra no hash DO ENFILEIRAMENTO tambem — sem isto, o
+            # solve de um spot 'oop_pfr' seria gravado sob o hash legado e o lookup (que
+            # procura na chave certa, sem fallback) nunca o encontraria.
+            from leaklab.gto_solver import _effective_pot_type as _epft
+            _effq = _epft(spot.get('potType', ''), spot.get('preflopOpener', ''),
+                          spot.get('preflop3bettor', ''), stack,
+                          hero_pos=pos, vs_pos=normalize_position(
+                              spot.get('villainPosition', ctx.get('vsPosition', ''))))
+            spot_hash = compute_spot_hash(d['street'], pos, board, hero_h, stack, facing, _effq)
             if get_gto_node(spot_hash):
                 already += 1
                 continue
@@ -10830,7 +10838,7 @@ def _enqueue_postflop_spots(results: list, tournament_id: int = None) -> None:
             # cobre como "≈ Aproximação" (a AÇÃO transfere). Mesmo hash que o lookup procura
             # (pot_type default). O lookup prioriza o nó REAL — o 30bb só entra se o real não cobrir.
             if stack > _DEEP_APPROX_MIN_BB:
-                _h30 = compute_spot_hash(d['street'], pos, board, hero_h, _DEEP_APPROX_STACK_BB, facing)
+                _h30 = compute_spot_hash(d['street'], pos, board, hero_h, _DEEP_APPROX_STACK_BB, facing, _effq)
                 if not get_gto_node(_h30):
                     _p30 = _solver_params_for_stack(_DEEP_APPROX_STACK_BB)
                     # Ranges do stack CAPADO, não do real: as capturadas são por faixa de stack,

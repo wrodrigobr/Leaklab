@@ -172,7 +172,11 @@ def compute_spot_hash(
         "bet_bucket":   bet_bucket(facing_size_bb),
     }
     _pt = (pot_type or '').lower().strip()
-    if _pt in ('3bet', '4bet'):          # SRP/limped/'' → omite (hash legado preservado)
+    # 'oop_pfr' (12/08): SRP em que o OPENER preflop está OOP (SB abre vs BB; UTG abre e o BTN
+    # paga). O nó legado foi solvado sob a suposição "o IP abriu" — para estes spots ele tem as
+    # ranges dos DOIS jogadores trocadas, então o hash TEM de divergir: servir o legado aqui não
+    # é aproximação, é o confronto espelhado. Medido no acervo: 468 decisões cobertas assim.
+    if _pt in ('3bet', '4bet', 'oop_pfr'):   # SRP/limped/'' → omite (hash legado preservado)
         canonical["pot_type"] = _pt
     return hashlib.sha256(
         json.dumps(canonical, sort_keys=True).encode()
