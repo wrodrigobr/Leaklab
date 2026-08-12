@@ -7,6 +7,33 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(iniciativa): hero_was_aggressor postflop deixa de ser coluna morta (#invariantes #pipeline)
+
+> **`COL-AGRESSOR`: 1 → 0** — a ultima invariante aberta com conserto viavel. Restam na rede so
+> os dois estados DECLARADOS (EV-TETO 60, BOARD 6.070).
+>
+> O campo era computado so no preflop; as 2.903 decisoes postflop gravavam 0, e quem c-betava
+> ficava identico a quem pagava o c-bet aos olhos do dado.
+>
+> **Duas semanticas deliberadas, documentadas no builder:**
+> - PREFLOP (intocada): "o hero JA agrediu" — qualquer raise. O roteamento vs_3bet/faces_squeeze
+>   depende disto; ha teste de REGRESSAO guardando (quebrar mandaria 106 decisoes ao no errado).
+> - POSTFLOP (nova): INICIATIVA — a ultima acao agressiva da mao ate a decisao. Quem abre pre a
+>   tem no flop; quem c-beta a mantem no turn; **o check-raise do vilao a TOMA** — e "primeiro
+>   agressor" seria errado exatamente ai, com mutacao provando que o teste discrimina.
+>
+> Backfill: **2.903/2.903 pareadas, zero sem par**, 751 viram 1 (26%). Pareamento por
+> (hand_id, street, action) + ORDINAL — a chave nao e unica. Nenhum consumidor postflop existe
+> hoje, e o dry-run do relabel confirmou: **zero mudanca de label ou gto_label** (as 13 linhas
+> tocadas foram refresh de precisao de frequencia, aplicadas para calar o ruido dos proximos
+> dry-runs).
+>
+> As fixtures dos testes sao maos em TEXTO parseadas pelo caminho vivo — fixture de dict ja
+> passou pelo motivo errado nesta sessao.
+>
+> O campo agora habilita o que estava bloqueado: categorias de leak de c-bet, leitura de range
+> por iniciativa e no postflop iniciativa-aware (a familia TEXAS_HERO_IP) tem o dado no acervo.
+
 ### fix(replayer): o replay estava MORTO para as maos PKO, e a sonda ODDS era fantasma (#replayer #invariantes)
 
 > Ataquei a ODDS (25 folds acusados com equity abaixo do pot odds) e a investigacao inverteu o

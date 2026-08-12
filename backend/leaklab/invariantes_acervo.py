@@ -498,10 +498,15 @@ INVARIANTES: List[Invariante] = [
         curar=lambda c: _forjar_linha(c, multiway_safe_verdict='ok'),
     ),
     Invariante(
-        id='COL-AGRESSOR', baseline=1, banco_isolado=True,
+        id='COL-AGRESSOR', baseline=0, banco_isolado=True,
         titulo='hero_was_aggressor é sempre 0 no postflop',
         porta='sizing, leitura de range e escolha de nó postflop dependem dela',
-        origem='medido em 10/08: 2.903 de 2.903 postflop com 0 (controle: 214 preflop com 1)',
+        origem='medido em 10/08: 2.903 de 2.903 postflop com 0 (controle: 214 preflop com 1). '
+               'RESOLVIDO em 12/08: o builder ganhou a semantica de INICIATIVA no postflop '
+               '(ultima agressao da mao; o check-raise do vilao a toma) e o backfill pareou '
+               '2.903/2.903 por (hand_id, street, action) + ordinal — 751 viram 1. A semantica '
+               'preflop ("ja agrediu", roteamento vs_3bet) ficou intocada, com teste de '
+               'regressao proprio.',
         medir=_coluna_constante('hero_was_aggressor', 0, "street <> 'preflop'"),
         forjar=lambda c: _forjar_linha(c, street='flop', board='["2h","7c","2d"]',
                                        hero_was_aggressor=0),
