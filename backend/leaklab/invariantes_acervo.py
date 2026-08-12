@@ -385,7 +385,8 @@ def _coluna_constante(coluna: str, valor_morto, filtro: str = ''):
 
 INVARIANTES: List[Invariante] = [
     Invariante(
-        id='EV-TETO', baseline=60,
+        id='EV-TETO', baseline=41,   # 60->41 em 12/08: o resync passou a reescrever freq/ev
+                                     # junto do label e 19 EVs impossiveis eram residuo velho
         titulo='EV perdido acima do que havia em jogo (pote + 2 stacks)',
         porta='DashboardV2 "−X bb/100", card "Onde você sangra", relatório de replay do coach',
         origem='auditoria 10/08, lente de escala — confirmado por 2 céticos',

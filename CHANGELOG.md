@@ -7,6 +7,28 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(resync): os campos que descrevem a avaliacao viajam JUNTOS — e eram DOIS builders (#gto #medicao)
+
+> A varredura pegou em minutos o que o apply do resync deixou: **SELO 0 → 1**. A linha 321149
+> saiu quimera — `gto_correct + small_mistake` com `ev=0.0` gravado, quando a avaliacao real e o
+> caso RC-B legitimo (`played=0.864, ev=1.61`). Causa: o resync gravava so
+> label/best/gto_label/gto_action e deixava freq/ev **da avaliacao anterior**. Mesma familia do
+> conserto do reanalyze_all_labels de 11/08, em outro escritor.
+>
+> O conserto teve tres atos, e o segundo foi um bug meu: (1) campos-viajantes no dict fresco,
+> no SELECT e nos dois UPDATEs, com a deteccao de mudanca comparando os campos novos — sem isso
+> as quimeras ja gravadas nunca seriam reescritas, porque os 4 campos antigos ja batem;
+> (2) o dry-run acusou **2.500 de 2.500** com drift — numero absurdo que denunciou um SEGUNDO
+> builder do mesmo dict (o do CLI), que seguia sem os campos e comparava `None` contra o banco;
+> (3) os dois builders viraram **`_avaliacao_fresca()`**, fonte unica, com guarda que conta os
+> lugares que montam o dict e prova que freq/ev/fonte viajam (quebrado de proposito nos dois
+> sentidos; na primeira rodada o "guarda cego" era o meu grep — o runner imprime FALHOU, nao FAIL).
+>
+> Aplicado em producao: **500 linhas** reescritas (474 freq, 360 ev) — as 331 do resync de ontem
+> mais residuo de escritores antigos. Nenhum label mudou (`Natureza {}`). Segunda rodada do
+> dry-run: **0** (idempotente). Varredura final: SELO 0, e **EV-TETO 60 → 41** de bonus — 19 EVs
+> impossiveis eram exatamente residuo velho da mesma familia; baseline baixado no mesmo commit.
+
 ### fix(gto): o reenqueue envenenou 529 solves — pote em FICHAS e o espelho, de novo (#gto #medicao)
 
 > "Confere a fila e roda o resync quando drenar" virou investigacao: a fila drenou rapido, mas o

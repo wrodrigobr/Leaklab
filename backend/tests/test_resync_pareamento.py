@@ -107,6 +107,30 @@ def test_a_chave_do_pareamento_nao_e_tratada_como_unica():
         'street param de ser reconciliadas de novo')
 
 
+def test_avaliacao_fresca_e_fonte_unica_e_carrega_os_campos_viajantes():
+    """Duas provas num teste: (1) o modulo tem UM SO lugar montando o dict fresco — eram dois
+    builders copiados e em 12/08 o conserto editou um enquanto o comparador lia o outro;
+    (2) a funcao carrega freq/ev/fonte junto do label, senao a linha gravada vira quimera
+    (321149: gto_correct + small_mistake com ev=0.0 velho no banco e 1.61 na avaliacao)."""
+    import inspect
+    import scripts.resync_postflop_gto as R
+    fonte = inspect.getsource(R)
+    builders = fonte.count('"played":')
+    assert builders == 1, (
+        f'{builders} lugares montando o dict fresco — a regra dos N lugares: use _avaliacao_fresca')
+    d = R._avaliacao_fresca({
+        'evaluation': {'label': 'small_mistake'}, 'bestAction': 'allin',
+        'gto': {'available': True, 'gto_label': 'gto_correct', 'gto_action': 'allin',
+                'played_freq': 0.864, 'gto_freq': 0.864, 'ev_loss_bb': 1.61,
+                'ev_loss_source': 'solver_hand'},
+    })
+    assert (d['played'], d['top'], d['ev'], d['ev_src']) == (0.864, 0.864, 1.61, 'solver_hand'), d
+    # sem cobertura, os campos viajam como None — nunca sobra valor de outra avaliacao
+    d2 = R._avaliacao_fresca({'evaluation': {}, 'gto': {'available': False, 'ev_loss_bb': 9.9}})
+    assert d2['played'] is None and d2['ev'] is None and d2['tem_gto'] is False, d2
+    print('OK  test_avaliacao_fresca_e_fonte_unica_e_carrega_os_campos_viajantes')
+
+
 if __name__ == '__main__':
     falhas = 0
     testes = [v for k, v in sorted(globals().items()) if k.startswith('test_')]

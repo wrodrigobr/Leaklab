@@ -70,6 +70,31 @@ def _norm(v):
     return v if v else None
 
 
+def _avaliacao_fresca(r):
+    """Dict fresco da avaliacao — FONTE UNICA dos dois passos (gancho automatico e CLI).
+
+    Eram dois builders copiados; em 12/08 o conserto dos campos-viajantes editou um e o
+    comparador lia o outro — 2.500 de 2.500 linhas "com drift" porque `played` nao existia
+    no dict. Regra dos N lugares: quem precisar deste formato chama ESTA funcao."""
+    g = r.get("gto") or {}
+    return {
+        "label":      (r.get("evaluation") or {}).get("label") or None,
+        "best":       r.get("bestAction") or None,
+        "gto_label":  _norm(g.get("gto_label")),
+        "gto_action": _norm(g.get("gto_action")),
+        # Os campos que DESCREVEM a avaliacao viajam juntos, ou a linha vira quimera:
+        # em 12/08 o resync gravou label+gto_label novos e deixou played_freq/ev VELHOS —
+        # a linha 321149 saiu `gto_correct + small_mistake` com ev=0.0 no banco, quando a
+        # avaliacao real tinha ev=1.61 (o caso RC-B legitimo). A varredura pegou em
+        # minutos (SELO 0 -> 1). Mesma familia do reanalyze_all_labels de 11/08.
+        "played":     g.get("played_freq") if g.get("available") else None,
+        "top":        g.get("gto_freq") if g.get("available") else None,
+        "ev":         g.get("ev_loss_bb") if g.get("available") else None,
+        "ev_src":     g.get("ev_loss_source") if g.get("available") else None,
+        "tem_gto":    bool(g.get("available")),
+    }
+
+
 def resync_tournament_postflop(tid, apply=True):
     """Re-anexa o gto (label/best/gto_label/gto_action) das decisões POSTFLOP de UM torneio,
     modo FILL-ONLY: só rotula uncovered que ganhou nó ('appeared'); nunca remove nem muda
@@ -111,24 +136,7 @@ def resync_tournament_postflop(tid, apply=True):
                     r = evaluate_decision(di)
                 except Exception:
                     continue
-                g = r.get("gto") or {}
-                fresh[(hid, st, act)].append({
-                    "label":      (r.get("evaluation") or {}).get("label") or None,
-                    "best":       r.get("bestAction") or None,
-                    "gto_label":  _norm(g.get("gto_label")),
-                    "gto_action": _norm(g.get("gto_action")),
-                    # Os campos que DESCREVEM a avaliacao viajam juntos, ou a linha vira quimera:
-                    # em 12/08 este script gravou label+gto_label novos e deixou played_freq/ev
-                    # VELHOS — a linha 321149 saiu `gto_correct + small_mistake` com ev=0.0 no
-                    # banco, quando a avaliacao real tinha ev=1.61 (o caso RC-B legitimo). A
-                    # varredura pegou em minutos (SELO 0 -> 1). Mesma familia do conserto do
-                    # reanalyze_all_labels de 11/08 — outro escritor, mesma regra.
-                    "played":     g.get("played_freq") if g.get("available") else None,
-                    "top":        g.get("gto_freq") if g.get("available") else None,
-                    "ev":         g.get("ev_loss_bb") if g.get("available") else None,
-                    "ev_src":     g.get("ev_loss_source") if g.get("available") else None,
-                    "tem_gto":    bool(g.get("available")),
-                })
+                fresh[(hid, st, act)].append(_avaliacao_fresca(r))
 
         stored = defaultdict(list)
         for r in conn.execute(
@@ -231,22 +239,7 @@ def main():
                     r = evaluate_decision(di)
                 except Exception:
                     continue
-                g = r.get("gto") or {}
-                fresh[(hid, st, act)].append({
-                    "label":      (r.get("evaluation") or {}).get("label") or None,
-                    "best":       r.get("bestAction") or None,
-                    "gto_label":  _norm(g.get("gto_label")),
-                    "gto_action": _norm(g.get("gto_action")),
-                    # Os MESMOS campos-viajantes do builder do gancho automatico (linha ~126).
-                    # Este builder e o do CLI; em 12/08 so o outro foi consertado e o comparador
-                    # leu `played` inexistente -> None != gravado -> 2.500 de 2.500 "drifts".
-                    # Dois builders para o mesmo dict e a regra dos N+1 pedindo funcao unica.
-                    "played":     g.get("played_freq") if g.get("available") else None,
-                    "top":        g.get("gto_freq") if g.get("available") else None,
-                    "ev":         g.get("ev_loss_bb") if g.get("available") else None,
-                    "ev_src":     g.get("ev_loss_source") if g.get("available") else None,
-                    "tem_gto":    bool(g.get("available")),
-                })
+                fresh[(hid, st, act)].append(_avaliacao_fresca(r))
 
         if args.street == "all":
             street_clause = ""
