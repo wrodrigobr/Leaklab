@@ -28,6 +28,10 @@ Nos dois casos o conserto e o mesmo, e e este script.
 
 ── O que ele NAO faz ──────────────────────────────────────────────────────────────────────────────
 
+LIMITE CONHECIDO (12/08): a tabela `decisions` nao guarda pot_type/opener, entao este script
+so produz solves da variante LEGADA — para spots de pote 3-bet/oop_pfr o solve certo exige o
+contexto preflop e a ferramenta e `reenqueue_postflop_from_decisions.py`, que reparseia o raw.
+
 Nao monta payload proprio: chama `gto_solver.montar_payload_postflop`, a mesma funcao que o
 enfileiramento do upload usa. Isso importa porque a montagem ja existiu em tres copias e elas ja
 discordaram — uma mandava as ranges trocadas, e o no gravado descrevia a decisao do VILAO.

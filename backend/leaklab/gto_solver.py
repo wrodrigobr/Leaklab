@@ -218,7 +218,14 @@ def montar_payload_postflop(street, position, vs_position, board, hero_cards,
 
     b = board_for_street(board or [], st)
     stack = float(stack_bb or 0) or 20.0
-    h = compute_spot_hash(st, pos, b, hero, stack, facing)
+    # Hash e ranges decidem a variante pela MESMA regua (_effective_pot_type) — ate 12/08 o
+    # hash saia sem pot_type enquanto as ranges eram variant-aware: solve de pote 3-bet
+    # gravado sob a chave LEGADA, que o lookup da decisao nao consulta (solve perdido) e que
+    # pertence a familia SRP (4 nos contaminados medidos no acervo, t125/t132). Hash de um
+    # lado e conteudo de outro e o mesmo bug do corte de board, uma porta ao lado.
+    _eff = _effective_pot_type(pot_type or '', opener or '', threebettor or '', stack,
+                               hero_pos=pos, vs_pos=vs)
+    h = compute_spot_hash(st, pos, b, hero, stack, facing, _eff)
     prm = _solver_params_for_stack(stack)
     ipr, oopr, hip = resolve_solver_ranges(pos, vs, stack, pot_type=pot_type or '',
                                            opener=opener or '', threebettor=threebettor or '')

@@ -165,6 +165,43 @@ def test_nenhum_payload_monta_ranges_fora_da_fonte_unica():
     print('OK  test_nenhum_payload_monta_ranges_fora_da_fonte_unica')
 
 
+def test_montar_payload_postflop_hash_e_ranges_decidem_a_variante_pela_mesma_regua():
+    """Ate 12/08 o hash saia SEM pot_type e as ranges COM: solve de variante gravado sob a
+    chave legada — o lookup nunca o acha (perdido) e a chave e da familia SRP (4 nos
+    contaminados medidos, t125/t132). O assert central: o hash de quem ENFILEIRA e o hash
+    de quem PROCURA, por construcao."""
+    from leaklab.gto_solver import montar_payload_postflop
+    import json
+    board = ['2h', '7c', '9d']
+    hero = ['Ah', 'Kd']
+    # SB abriu e e OOP -> variante oop_pfr
+    m = montar_payload_postflop('flop', 'SB', 'BB', board, hero, 40.0, 0.0,
+                                pot_bb=5.0, pot_type='', opener='SB', threebettor='')
+    assert m, 'gate recusou o spot de controle — a fixture nao exercita nada'
+    h, payload = m
+    base = dict(street='flop', position='SB', board=board, hero_hand=hero,
+                hero_stack_bb=40.0, facing_size_bb=0.0)
+    assert h == compute_spot_hash(**base, pot_type='oop_pfr'), (
+        'o hash do enfileiramento nao e o hash que o lookup oop_pfr consulta')
+    assert h != compute_spot_hash(**base), (
+        'solve de variante caiu na chave LEGADA — a familia SRP seria contaminada')
+    # e as ranges do payload sao as da variante (opener OOP leva a RFI dele)
+    p = json.loads(payload)
+    from leaklab.gto_solver import _captured_range_str, _DEFAULT_RANGES, _DEFAULT_RANGE_WIDE
+    esperada_oop = (_captured_range_str('SB', 40.0, 'rfi')
+                    or _DEFAULT_RANGES.get('SB', _DEFAULT_RANGE_WIDE))
+    assert p['oop_range'] == esperada_oop, 'hash de variante com ranges de outra variante'
+    # CONTROLE: BTN abriu (IP) -> legado intacto
+    m2 = montar_payload_postflop('flop', 'BB', 'BTN', board, hero, 40.0, 3.0,
+                                 pot_bb=6.0, pot_type='', opener='BTN', threebettor='')
+    assert m2, 'gate recusou o controle legado'
+    h2, _ = m2
+    assert h2 == compute_spot_hash(street='flop', position='BB', board=board, hero_hand=hero,
+                                   hero_stack_bb=40.0, facing_size_bb=3.0), (
+        'o caso majoritario mudou de chave — TODA cobertura existente ficaria orfa')
+    print('OK  test_montar_payload_postflop_hash_e_ranges_decidem_a_variante_pela_mesma_regua')
+
+
 if __name__ == '__main__':
     import sys as _s
     _testes = [v for k, v in sorted(globals().items()) if k.startswith('test_') and callable(v)]
