@@ -6710,6 +6710,10 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
                 'adjusted_required_equity': thr.get('adjustedRequiredEquity'),
                 'hand_equity':     math.get('estimatedHandEquity'),
                 'equity_source':   math.get('equitySource', 'vs_random'),  # #27: vs_range | vs_random
+                # Leitura de range por iniciativa (12/08): quem tinha a iniciativa quando a
+                # street comecou. O front deriva 'c-bet' vs 'donk/check-raise' cruzando com o
+                # facing — derivacao PURA em replayWhy, testada la.
+                'street_initiative': (decision.get('_di') or {}).get('spot', {}).get('iniciativaDaStreet'),
                 'draw_profile':    math.get('drawProfile', 'none'),
                 'm_ratio':         ctx.get('mRatio'),
                 'icm_pressure':    ctx.get('icmPressure'),

@@ -11,7 +11,7 @@ import { parseCards, fmtAction } from "@/components/replayer/replayerFormat";
 import { cn } from "@/lib/utils";
 import { computeEffectiveGtoLabel } from "@/lib/gtoUtils";
 import { livePlayers as computeLivePlayers, isMultiwayPot, isPpMuted, idealActionSource, verdictStrategy, verdictLevel, clampVerdict } from "@/lib/cardLogic";
-import { selectWhy } from "@/lib/replayWhy";
+import { leituraDaIniciativa, selectWhy } from "@/lib/replayWhy";
 import { ACTION_COLORS } from "@/lib/actionColors";
 import { coachDashboard, ReplayData, ReplayStep, CoachAnnotation, CoachOverrideLabel } from "@/lib/api";
 
@@ -443,6 +443,12 @@ export function SidePanels({
           recAction: idealAction ?? null,
           heroActionRaw: step.action ?? null,
         });
+        // Leitura de range por iniciativa: uma frase estrutural, SEM alegacao estatistica
+        // (derivacao pura em replayWhy — a medicao que limita a copy esta documentada la).
+        // Vai como frase adicional, nao substitui a dominante: a dominante fala da DECISAO,
+        // esta fala do que a aposta enfrentada costuma ser.
+        const leituraIniciativaKey = leituraDaIniciativa(
+          isPostflop, (step.facing_to_call_bb ?? 0) > 0, step.street_initiative);
         const why = whyChoice.key
           ? t(whyChoice.key, {
               ...(whyChoice.params ?? {}),
@@ -455,6 +461,9 @@ export function SidePanels({
                 Object.entries(whyChoice.actionParams ?? {}).map(([k, v]) => [k, fmtAction(v)])),
             })
           : "";
+        const whyComLeitura = leituraIniciativaKey
+          ? (why ? `${why} ${t(leituraIniciativaKey)}` : t(leituraIniciativaKey))
+          : why;
 
         // ──────── Evidence (1 widget, escolhido por contexto) ────────
         let evidence: React.ReactNode = null;
@@ -1051,9 +1060,13 @@ export function SidePanels({
         // #23: ressalva de open off-tree — o vilão abriu maior que o GTO, então a
         // range de defesa mostrada (vs open mínimo) é mais larga que a correta.
         const osm = !isPostflop ? pg?.open_size_mismatch : null;
+        // Encadeia na MESMA variavel que a leitura de iniciativa ja compos: um unico ponto de
+        // acumulo de ressalvas, senao cada frase adicional nova cria a sua copia do padrao e
+        // uma engole a outra. (osm e preflop; a leitura de iniciativa e postflop — nunca
+        // coexistem, mas o encadeamento nao depende disso.)
         const whyFull = osm
-          ? `${why ? why + " " : ""}${t("card.openOversizeCaveat", { facing: osm.facing_bb, canonical: osm.canonical_bb })}`
-          : why;
+          ? `${whyComLeitura ? whyComLeitura + " " : ""}${t("card.openOversizeCaveat", { facing: osm.facing_bb, canonical: osm.canonical_bb })}`
+          : whyComLeitura;
 
         // ── COMPACT (bottom-sheet mobile): só o essencial, sem scroll, 2 cols em landscape ──
         // Reusa TODO o cálculo de veredito/why/evidence acima. NÃO renderiza pro_notes,

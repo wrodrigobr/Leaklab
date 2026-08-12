@@ -167,6 +167,77 @@ Total pot 400 | Rake 0
     print('OK  test_REGRESSAO_semantica_preflop_intocada')
 
 
+def _spots_entrada(corpo, n):
+    """{(street, acao): iniciativaDaStreet} — o sinal da ENTRADA da street, nao o da decisao."""
+    hands = parse_hand_history(CABECALHO % n + corpo)
+    out = {}
+    for di in build_decision_inputs_for_hand(hands[0]):
+        out[(di['street'], (di.get('player_action') or '').lower())] =             di['spot'].get('iniciativaDaStreet')
+    return out
+
+
+def test_iniciativa_da_ENTRADA_distingue_cbet_de_donk():
+    """`hero_was_aggressor` na decisao e False nos DOIS casos (a ultima agressao e a aposta do
+    vilao). O sinal que distingue e quem tinha a iniciativa quando a street COMECOU."""
+    # c-bet: o VILAO (outro) abriu pre e c-beta o flop — na entrada do flop a iniciativa e dele.
+    s = _spots("""villain: folds
+outro: raises 40 to 60
+hero: calls 50
+*** FLOP *** [2h 7c 9d]
+outro: bets 80
+hero: folds
+Uncalled bet (80) returned to outro
+outro collected 130 from pot
+*** SUMMARY ***
+Total pot 130 | Rake 0
+""", n=7)
+    e = _spots_entrada("""villain: folds
+outro: raises 40 to 60
+hero: calls 50
+*** FLOP *** [2h 7c 9d]
+outro: bets 80
+hero: folds
+Uncalled bet (80) returned to outro
+outro collected 130 from pot
+*** SUMMARY ***
+Total pot 130 | Rake 0
+""", n=7)
+    assert s[('flop', 'fold')] is False               # na decisao: a aposta e a ultima agressao
+    assert e[('flop', 'fold')] == 'vilao', e          # na entrada: c-bet — o vilao a MANTEVE
+
+    # donk: o HERO abriu pre; o vilao aposta no flop CONTRA o agressor.
+    e2 = _spots_entrada("""villain: folds
+hero: raises 40 to 60
+outro: calls 40
+*** FLOP *** [2h 7c 9d]
+outro: bets 100
+hero: folds
+Uncalled bet (100) returned to outro
+outro collected 130 from pot
+*** SUMMARY ***
+Total pot 130 | Rake 0
+""", n=8)
+    assert e2[('flop', 'fold')] == 'hero', e2         # na entrada: a iniciativa era do HERO
+    print('OK  test_iniciativa_da_ENTRADA_distingue_cbet_de_donk')
+
+
+def test_iniciativa_da_entrada_pote_passivo_e_None_e_preflop_nao_tem():
+    e = _spots_entrada("""villain: folds
+hero: calls 10
+outro: checks
+*** FLOP *** [2h 7c 9d]
+outro: bets 40
+hero: folds
+Uncalled bet (40) returned to outro
+outro collected 40 from pot
+*** SUMMARY ***
+Total pot 40 | Rake 0
+""", n=9)
+    assert e[('flop', 'fold')] is None, e             # limpado: ninguem agrediu antes do flop
+    assert e[('preflop', 'call')] is None, e          # preflop nao tem street anterior
+    print('OK  test_iniciativa_da_entrada_pote_passivo_e_None_e_preflop_nao_tem')
+
+
 if __name__ == '__main__':
     import sys as _s
     _testes = [v for k, v in sorted(globals().items()) if k.startswith('test_') and callable(v)]

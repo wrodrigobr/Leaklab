@@ -72,6 +72,24 @@ export interface WhyChoice {
 
 const NONE: WhyChoice = { key: "" };
 
+/**
+ * Leitura de range por INICIATIVA — quem tinha a iniciativa quando a street começou diz o que a
+ * aposta enfrentada costuma ser. Derivação PURA; a view só traduz a chave.
+ *
+ * A copy é ESTRUTURAL de propósito, sem alegação estatística: a medição de 12/08 (showdowns
+ * reais do acervo) não sustenta ajuste de força por iniciativa — calls contra donk/check-raise
+ * venceram 63,9% contra 55,8% vs c-bet, porque quem paga check-raise paga com range mais forte
+ * (seleção, não força do vilão). O que se afirma é teoria estabelecida: c-bet é a aposta mais
+ * frequente e mais larga; apostar contra o agressor é linha tipicamente mais polarizada.
+ */
+export function leituraDaIniciativa(isPostflop: boolean, facingBet: boolean,
+                                    streetInitiative?: string | null): string | null {
+  if (!isPostflop || !facingBet) return null;
+  if (streetInitiative === "vilao") return "card.rangeCbet";
+  if (streetInitiative === "hero") return "card.rangeTomada";
+  return null;   // pote passivo ate aqui: a aposta nao tem historia de iniciativa para ler
+}
+
 /** Família canônica de uma ação, para comparar dialetos diferentes sem inventar equivalência.
  *  `jam`/`shove`/`allin` são a mesma ação com três nomes; `check` é a forma passiva de `call`
  *  (é assim que o backend classifica frequência). Raise e jam NÃO se fundem: a diferença entre

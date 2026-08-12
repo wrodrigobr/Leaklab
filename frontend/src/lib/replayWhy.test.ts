@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { selectWhy, type WhyInput } from "./replayWhy";
+import { leituraDaIniciativa, selectWhy, type WhyInput } from "./replayWhy";
 
 /**
  * Esta cascata já mentiu duas vezes para o jogador. Os dois casos viraram teste:
@@ -339,3 +339,23 @@ describe("sem cobertura: o card diz POR QUE nao sabe", () => {
     expect(r.key).toBe("");
   });
 });
+
+describe("leituraDaIniciativa — a leitura de range e pura e nao alega forca", () => {
+  it("c-bet: o vilao MANTEVE a iniciativa e aposta", () => {
+    expect(leituraDaIniciativa(true, true, "vilao")).toBe("card.rangeCbet");
+  });
+  it("donk/check-raise: o vilao apostou contra quem TINHA a iniciativa", () => {
+    expect(leituraDaIniciativa(true, true, "hero")).toBe("card.rangeTomada");
+  });
+  it("pote passivo nao tem historia de iniciativa para ler", () => {
+    expect(leituraDaIniciativa(true, true, null)).toBeNull();
+    expect(leituraDaIniciativa(true, true, undefined)).toBeNull();
+  });
+  it("CONTROLE: sem aposta na frente nao ha leitura, mesmo com iniciativa conhecida", () => {
+    expect(leituraDaIniciativa(true, false, "vilao")).toBeNull();
+  });
+  it("CONTROLE: preflop fica fora — a leitura e postflop por definicao", () => {
+    expect(leituraDaIniciativa(false, true, "vilao")).toBeNull();
+  });
+});
+

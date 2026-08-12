@@ -586,6 +586,27 @@ def extract_decision_points(hand: ParsedHand) -> List[HandState]:
                 if a.action in {'bets', 'raises', 'all-in'}:
                     hero_was_aggressor = (a.player == hero)
 
+        # Iniciativa NA ENTRADA da street (só postflop): a última agressão em street ANTERIOR.
+        # É o sinal que `hero_was_aggressor` NÃO carrega quando o hero enfrenta aposta — ali a
+        # última agressão é a própria aposta do vilão, e o campo sai False tanto contra c-bet
+        # (vilão MANTEVE a iniciativa) quanto contra donk/check-raise (vilão a TOMOU do hero).
+        # Distinguir os dois é leitura de range: a c-bet é a aposta mais larga do jogo; a linha
+        # que aposta contra o agressor é tipicamente mais polarizada.
+        #
+        # Medição que LIMITA o uso (12/08): showdowns reais não calibram ajuste de equity por
+        # iniciativa — calls contra quem tomou venceram 63,9% vs 55,8% contra c-bet, porque a
+        # range de quem PAGA check-raise é mais forte por seleção. O sinal serve à LEITURA do
+        # card, não ao número que acusa.
+        iniciativa_da_street = None
+        if street != 'preflop':
+            _ordem = {'preflop': 0, 'flop': 1, 'turn': 2, 'river': 3}
+            _corte = _ordem.get(street, 9)
+            for a in actions_before:
+                if _ordem.get(a.street, 9) >= _corte:
+                    break
+                if a.action in {'bets', 'raises', 'all-in'}:
+                    iniciativa_da_street = 'hero' if a.player == hero else 'vilao'
+
         # Pote LIMPADO (limp): villain deu open-limp/over-limp (calls >= ~1bb) e
         # NÃO houve raise. O hero (tipicamente BB) só completa/dá check de opção.
         # É uma árvore fora da cobertura GTO (capturamos só árvores raise-first) —
@@ -764,6 +785,7 @@ def extract_decision_points(hand: ParsedHand) -> List[HandState]:
                 'n_can_see_flop':     n_can_see_flop,   # preflop: quem NAO foldou
                 'preflop_raises_faced': preflop_raises_faced,
                 'hero_was_aggressor': hero_was_aggressor,
+                'iniciativa_da_street': iniciativa_da_street,
                 'facing_limp': facing_limp,
                 'caller_position': caller_position,
                 'villain_name': villain_name,   # HUD: nome do vilão do spot (lookup do perfil)

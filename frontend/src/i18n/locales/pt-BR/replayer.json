@@ -342,7 +342,9 @@
     "scenHuVs4bet": "de BB contra all-in (heads-up)",
     "whyAcaoDiverge": "{{hand}} está no range {{scen}}, mas a jogada aqui é {{rec}}{{freq}} — não {{act}}.",
     "whyAcaoDivergeTamanho": "{{hand}} está no range {{scen}}, mas a jogada aqui é {{rec}}{{freq}} — não {{act}}. A mão é boa; o que saiu do lugar foi o tamanho do aumento.",
-    "precoDivergeHeuristica": "Aqui não há carta GTO para esta mão neste ponto, então o veredito sai da heurística do motor — o preço sozinho não decide."
+    "precoDivergeHeuristica": "Aqui não há carta GTO para esta mão neste ponto, então o veredito sai da heurística do motor — o preço sozinho não decide.",
+    "rangeCbet": "Você enfrenta uma c-bet, a aposta mais frequente e mais larga do jogo.",
+    "rangeTomada": "O vilão apostou contra quem tinha a iniciativa (donk ou check-raise), uma linha tipicamente mais polarizada."
   },
   "controls": {
     "play": "Reproduzir",

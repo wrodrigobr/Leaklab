@@ -316,6 +316,8 @@ export interface ReplayStep {
   adjusted_required_equity?: number;  // engine usa isto (pot_odds + realization_adj + pressure_adj) para classificar
   hand_equity?: number;
   equity_source?: "vs_range" | "vs_random";  // #27: equity vs range real do opener (vs_rfi) ou vs aleatória
+  /** quem tinha a iniciativa quando a street começou (leitura de range, 12/08) */
+  street_initiative?: "hero" | "vilao" | null;
   m_ratio?: number;
   icm_pressure?: string;
   icm_tax_pct?: number | null;  // mesa final: chip% − equity ICM% (>0 pilha grande, <0 short stack)

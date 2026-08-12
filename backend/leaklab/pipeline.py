@@ -161,6 +161,9 @@ def build_decision_input(state: HandState, hand: 'ParsedHand | None' = None) -> 
             'nCanSeeFlop':      state.metadata.get('n_can_see_flop'),
             'preflopRaisesFaced': state.metadata.get('preflop_raises_faced', 0),  # 3-bet/squeeze faced
             'heroWasAggressor':   state.metadata.get('hero_was_aggressor', False),
+            # Iniciativa na ENTRADA da street (postflop): 'hero' | 'vilao' | None. Ver o
+            # comentario no builder — e o sinal de LEITURA, nao entra no numero que acusa.
+            'iniciativaDaStreet': state.metadata.get('iniciativa_da_street'),
             'facingAllin':        state.metadata.get('facing_allin', False),  # enfrenta all-in (call = a agressão)
             # ...e o excesso de um raise seria impagavel por todos → aumentar E o call.
             'shoveEquivaleCall':  state.metadata.get('shove_equivale_call', False),

@@ -7,6 +7,34 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(card): leitura de range por INICIATIVA — e a medicao que limitou a copy (#replayer #leitura)
+
+> Segundo consumidor destravado pela iniciativa. O card postflop, enfrentando aposta, agora LE a
+> aposta para o jogador:
+>
+> - **c-bet** (o vilao manteve a iniciativa): "a aposta mais frequente e mais larga do jogo"
+> - **donk/check-raise** (o vilao apostou contra quem tinha a iniciativa): "linha tipicamente
+>   mais polarizada"
+>
+> ── **A medicao que DERRUBOU o plano original** ────────────────────────────────────────────────
+>
+> O plano era ajustar a EQUITY por iniciativa (range de quem toma e mais forte). O oraculo de
+> campo disse nao: nos showdowns reais do acervo, calls contra quem TOMOU a iniciativa venceram
+> **63,9%** (n=83) contra 55,8% vs c-bet (n=147) — o oposto da teoria, porque quem paga
+> check-raise paga com range mais forte, e o hero agressor tem range mais forte por construcao.
+> **O oraculo nao isola a forca da range do vilao.** Sem base para mexer no numero que acusa,
+> o sinal vira LEITURA: copy estrutural, sem alegacao estatistica, documentada no codigo.
+>
+> ── **O sinal novo: iniciativa na ENTRADA da street** ──────────────────────────────────────────
+>
+> `hero_was_aggressor` na decisao e False contra c-bet E contra donk (a ultima agressao e a
+> propria aposta do vilao). O que distingue os dois e quem tinha a iniciativa quando a street
+> COMECOU — campo novo `iniciativaDaStreet` ('hero'|'vilao'|None) no builder, servido ao card
+> como `street_initiative`. Derivacao da frase e PURA (`leituraDaIniciativa` em replayWhy),
+> encadeada no `whyFull` existente — um unico ponto de acumulo de ressalvas.
+>
+> i18n nas 3 locales. Mutacao: 2/2 no builder. Suites: engine 886, api 148, vitest 47.
+
 ### feat(treino): categorias de leak de C-BET — a iniciativa divide o postflop (#treino #leak-trainer)
 
 > A primeira feature DESTRAVADA pela iniciativa no acervo. Medido antes de ligar: **150 dos 524
