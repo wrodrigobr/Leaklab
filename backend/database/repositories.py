@@ -10225,11 +10225,15 @@ def enqueue_solver_spot(spot_hash: str, spot_json: str, priority: int = 5,
             except Exception:
                 try: conn.rollback()
                 except Exception: pass
-        existing = _fetchone(conn, _adapt("SELECT id, status FROM gto_solver_queue WHERE spot_hash = ?"), (spot_hash,))
+        existing = _fetchone(conn, _adapt("SELECT id, status, spot_json FROM gto_solver_queue WHERE spot_hash = ?"), (spot_hash,))
         if existing:
-            # 'rejected' também reseta: o job rejeitado guarda o PAYLOAD que produziu a
-            # rejeição, e quem re-enfileira traz payload novo (12/08: 45 payloads com pote
-            # em fichas presos em rejected — o reenqueue limpo não conseguia substituí-los).
+            # 'rejected' também reseta — mas SÓ com payload NOVO. O rejeitado guarda o payload
+            # que produziu a rejeição: payload novo merece solve novo (12/08: 45 payloads com
+            # pote em fichas presos em rejected), payload IGUAL produz o MESMO resultado e
+            # re-enfileirá-lo é pagar o solve para re-rejeitar em loop (o spot t23 de nó
+            # inalcançado voltaria à fila a cada rodada do reenqueue).
+            if existing['status'] == 'rejected' and existing.get('spot_json') == spot_json:
+                return False
             if existing['status'] in ('done', 'failed', 'requeued', 'rejected'):
                 conn.execute(_adapt("""
                     UPDATE gto_solver_queue

@@ -1013,6 +1013,20 @@ def run_solver_worker(max_jobs: int = 10) -> dict:
                 failed += 1
                 continue
 
+            # Estratégia vazia com convergência = nó INALCANÇADO no equilíbrio: com estas
+            # ranges neste board, o agressor nunca faz esta aposta — a linha do vilão está
+            # fora da árvore e não há gabarito a servir. Diagnóstico de 12/08 (spot t23,
+            # ablação + busca binária: total_combos é ponderado pelo ALCANCE do nó).
+            # Rejeita AQUI, com o motivo certo no log; o guarda do insert_gto_nodes segue
+            # como backstop para os outros escritores.
+            if not result.get('strategy_detail'):
+                log.info("Spot %s: solve sem estrategia (total_combos=%s) — nó inalcançado "
+                         "no equilíbrio; rejeitando sem gravar", spot_hash,
+                         result.get('total_combos'))
+                mark_solver_job_done(spot_hash, 'rejected')
+                rejected += 1
+                continue
+
             # Fase 3: persiste a tabela por mão do solve (keyed por tree_hash)
             _store_tree_strategy(_th, spot.get('board', []), result)
 

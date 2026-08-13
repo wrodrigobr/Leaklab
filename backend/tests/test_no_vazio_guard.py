@@ -62,6 +62,25 @@ def test_gto_wizard_preflop_sem_estrategia_nao_e_alvo():
     print('OK  test_gto_wizard_preflop_sem_estrategia_nao_e_alvo')
 
 
+def test_rejected_com_payload_IGUAL_nao_reenfileira_e_com_payload_novo_sim():
+    """O par do reset de `rejected`: payload novo merece solve novo, payload IGUAL produz o
+    mesmo resultado — re-enfileirá-lo é pagar o solve para re-rejeitar em loop (o spot t23
+    de nó inalcançado voltaria à fila a cada rodada do reenqueue)."""
+    from database.repositories import enqueue_solver_spot
+    from database.schema import get_conn
+    payload = '{"street": "flop", "board": ["2h", "7c", "9d"], "pot_bb": 5.0}'
+    assert enqueue_solver_spot('rejeitado-1', payload) is True
+    conn = get_conn()
+    conn.execute("UPDATE gto_solver_queue SET status='rejected' WHERE spot_hash='rejeitado-1'")
+    conn.commit(); conn.close()
+    assert enqueue_solver_spot('rejeitado-1', payload) is False, (
+        'payload IGUAL re-enfileirou um rejected — o loop de re-pagar o solve voltou')
+    payload2 = '{"street": "flop", "board": ["2h", "7c", "9d"], "pot_bb": 6.0}'
+    assert enqueue_solver_spot('rejeitado-1', payload2) is True, (
+        'payload NOVO não resetou o rejected — spots presos no payload que os condenou')
+    print('OK  test_rejected_com_payload_IGUAL_nao_reenfileira_e_com_payload_novo_sim')
+
+
 if __name__ == '__main__':
     import sys as _s
     _testes = [v for k, v in sorted(globals().items()) if k.startswith('test_') and callable(v)]
