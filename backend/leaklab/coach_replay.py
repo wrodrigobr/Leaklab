@@ -34,10 +34,8 @@ def _ev_utilizavel(d: dict) -> bool:
     noção de "EV confiável" que o projeto passou meses eliminando. O veredito da mão não muda:
     o que se descarta é o NÚMERO, não a acusação.
     """
-    from leaklab.decision_engine_v11 import ev_loss_trustworthy
-    return ev_loss_trustworthy(d.get('ev_loss_bb'), d.get('stack_bb'), d.get('ev_loss_source'),
-                               action=d.get('action_taken'), equity=d.get('estimated_equity'),
-                               pot_bb=d.get('pot_size'), facing_bb=d.get('facing_bet'))
+    from leaklab.decision_engine_v11 import ev_loss_trustworthy_row
+    return ev_loss_trustworthy_row(d)
 
 
 def _leak_title(spot: str) -> str:

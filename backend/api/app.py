@@ -6204,26 +6204,22 @@ def _ev_e_motivo(decision, _di, _spot):
     if ev is None:
         return None, 'sem_gabarito'
     try:
-        from leaklab.decision_engine_v11 import ev_loss_trustworthy
-        _m = (_di or {}).get('math', {}) or {}
-        ok = ev_loss_trustworthy(
-            ev,
-            (_spot or {}).get('effectiveStackBb') or decision.get('effective_stack_bb'),
-            decision.get('ev_loss_source'),
-            action=decision.get('action_taken'),
-            equity=_m.get('estimatedHandEquity') or decision.get('estimated_equity'),
-            pot_bb=(_spot or {}).get('potBb'),
-            facing_bb=(_spot or {}).get('facingToCallBb'),
-        )
+        # Insumos CANONICOS: as colunas da LINHA, iguais aos do coach e dos agregadores.
+        # A versao anterior passava pot/equity/facing do spot REPARSEADO e, num caso
+        # limitrofe do teto de fold, o card dizia "sem confianca" enquanto o badge do
+        # coach mostrava -0.9BB para o MESMO numero (13/08). Mesma regra + mesmos
+        # insumos = mesma resposta em toda porta, por construcao.
+        from leaklab.decision_engine_v11 import ev_loss_trustworthy_row
+        ok = ev_loss_trustworthy_row(decision)
     except Exception:
         return ev, None    # sem conseguir avaliar, mantem o comportamento antigo
     if ok:
         return ev, None
-    # Impossivel x apenas duvidoso: a fronteira e a mesma do teto fisico do motor.
+    # Impossivel x apenas duvidoso: a fronteira e a mesma do teto fisico do motor —
+    # com os MESMOS insumos de linha da regra acima.
     try:
-        _st = float((_spot or {}).get('effectiveStackBb')
-                    or decision.get('effective_stack_bb') or 0)
-        _pt = float((_spot or {}).get('potBb') or 0)
+        _st = float(decision.get('stack_bb') or 0)
+        _pt = float(decision.get('pot_size') or 0)
         impossivel = _st > 0 and abs(float(ev)) > _pt + 2.0 * _st
     except (TypeError, ValueError):
         impossivel = False

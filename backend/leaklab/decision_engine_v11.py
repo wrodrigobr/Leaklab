@@ -501,6 +501,25 @@ def ev_loss_trustworthy(ev_loss_bb, stack_bb, ev_loss_source, *,
     return True
 
 
+def ev_loss_trustworthy_row(d: dict) -> bool:
+    """A régua de confiança do EV com os insumos CANÔNICOS: as colunas da linha de `decisions`.
+
+    Existe porque a regra era fonte única mas os INSUMOS não: o card do replayer passava
+    pot/equity/facing do spot REPARSEADO (`facingToCallBb` = custo) enquanto coach e
+    agregadores passavam as colunas (`facing_bet` = tamanho) — e um caso limítrofe no teto de
+    fold (decisão 322182, K9o, ev 0.895 gw_har) saiu "sem confiança" numa tela e "-0.9BB" na
+    outra. Linha-do-banco é o único insumo que TODA porta alcança; `facing_bet` (tamanho) é
+    direcionalmente seguro no teto de fold (call maior → teto menor → mais cético: esconde
+    número, nunca mostra número falso), e `min(facing, stack)` já apara o excesso.
+
+    Quem tiver uma LINHA chama isto; `ev_loss_trustworthy` cru fica para quem está no meio do
+    motor com o spot vivo em mãos."""
+    return ev_loss_trustworthy(
+        d.get('ev_loss_bb'), d.get('stack_bb'), d.get('ev_loss_source'),
+        action=d.get('action_taken'), equity=d.get('estimated_equity'),
+        pot_bb=d.get('pot_size'), facing_bb=d.get('facing_bet'))
+
+
 def _ev_severity_ceiling(label: str, ev_loss_bb: float | None, ev_loss_source: str | None = None) -> str:
     if ev_loss_bb is None:
         return label

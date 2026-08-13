@@ -7,6 +7,25 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(ev): os INSUMOS do ev_loss_trustworthy viram canonicos -- card e coach respondem igual (#vitrine #medicao)
+
+> A regra era fonte unica; os insumos nao. O card do replayer passava pot/equity/facing do
+> spot REPARSEADO (`facingToCallBb` = custo) enquanto coach e agregadores passavam as
+> colunas do banco (`facing_bet` = tamanho) -- e no caso limitrofe do K9o (decisao 322182,
+> ev 0.895 gw_har) o card dizia "sem confianca" com o badge do coach mostrando -0.9BB.
+>
+> Conserto: `ev_loss_trustworthy_row(d)` e o adaptador canonico (colunas da linha), usado
+> pelo card (`_ev_e_motivo`, inclusive o motivo fora_de_escala) e pelo coach; os tres
+> agregadores de repositories ja passavam as mesmas colunas inline. Linha-do-banco e o unico
+> insumo que TODA porta alcanca, e tamanho>=custo no teto de fold e direcionalmente seguro
+> (esconde numero, nunca mostra numero falso).
+>
+> Medido no acervo ANTES do deploy: 6.344 decisoes com EV, **98,5% inalteradas**; 8 passam a
+> mostrar (a familia do K9o) e 90 deixam de mostrar (stack_bb do heroi > efetivo estoura o
+> teto de 60bb; tamanho abaixa o teto de fold). Testes: concordancia card==coach para a mesma
+> linha, card IGNORA spot envenenado (quebrado de proposito: reverter para insumos de spot
+> faz o teste acusar), fora_de_escala pela linha.
+
 ### fix(gto+vitrine): dinheiro morto em HU e solvavel -- e o eco PREFLOP morto (#gto #vitrine)
 
 > "Ataca os potes insanos multiway" terminou com a peneira DIVIDIDA em duas populacoes que
