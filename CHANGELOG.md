@@ -7,6 +7,14 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(card): cores canônicas por ação nas barras do card novo (#vitrine)
+
+> Pedido do usuário sobre as barras recém-restauradas: barra monocromática não distingue
+> Call de Raise. As barras (preflop e solver) agora usam a paleta CANÔNICA de
+> `lib/actionColors` — a mesma do range grid e do layout clássico (fold amarelo, check azul
+> claro, call azul, bet/raise verde, allin vermelho) — via `colorFor`, sem segunda paleta.
+> A ação jogada segue marcada (negrito + ponto + barra em opacidade cheia).
+
 ### fix(replay): o shove≡call REGREDIU numa porta acima — e a barra do GTO voltou ao card novo (#vitrine #gto)
 
 > Print do usuário: "X ERRO, Você jogou Shove, GTO recomenda Call" num spot em que o hero

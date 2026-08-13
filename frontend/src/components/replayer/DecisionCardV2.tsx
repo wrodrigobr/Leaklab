@@ -25,6 +25,7 @@ import { cn } from "@/lib/utils";
 
 import { SOURCE_VARIANT_CLS } from "./DecisionCard";
 import type { DecisionSource, DecisionVerdict, IcmBadge } from "./DecisionCard";
+import { colorFor } from "@/lib/actionColors";
 
 /** Uma métrica da linha de três. `valor` já formatado; `motivo` explica a ausência. */
 export interface MetricaV2 {
@@ -185,22 +186,28 @@ export function DecisionCardV2({
             </span>
           </div>
           <div className="flex flex-col gap-1">
-            {estrategia.map(r => (
-              <div key={r.acao} className="flex items-center gap-2">
-                <span className={cn("w-14 shrink-0 font-mono text-[11px]",
-                                    r.jogada ? "font-bold text-foreground" : "text-muted-foreground")}>
-                  {fmtAction(r.acao)}{r.jogada ? " •" : ""}
-                </span>
-                <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-border/40">
-                  <div className={cn("h-full rounded-full",
-                                     r.jogada ? "bg-primary" : "bg-muted-foreground/40")}
-                       style={{ width: `${Math.min(100, r.freq * 100).toFixed(0)}%` }} />
+            {estrategia.map(r => {
+              // Cor CANONICA por acao (a mesma do range grid e das barras do layout
+              // classico) — barra monocromatica nao distingue Call de Raise de relance.
+              const cor = colorFor(r.acao);
+              return (
+                <div key={r.acao} className="flex items-center gap-2">
+                  <span className={cn("w-14 shrink-0 font-mono text-[11px]",
+                                      r.jogada ? "font-bold" : "opacity-80")}
+                        style={{ color: cor }}>
+                    {fmtAction(r.acao)}{r.jogada ? " •" : ""}
+                  </span>
+                  <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-border/40">
+                    <div className="h-full rounded-full"
+                         style={{ width: `${Math.min(100, r.freq * 100).toFixed(0)}%`,
+                                  background: cor, opacity: r.jogada ? 1 : 0.75 }} />
+                  </div>
+                  <span className="w-9 shrink-0 text-right font-mono text-[11px] tabular-nums text-muted-foreground">
+                    {(r.freq * 100).toFixed(0)}%
+                  </span>
                 </div>
-                <span className="w-9 shrink-0 text-right font-mono text-[11px] tabular-nums text-muted-foreground">
-                  {(r.freq * 100).toFixed(0)}%
-                </span>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
