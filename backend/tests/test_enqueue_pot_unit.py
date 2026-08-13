@@ -175,10 +175,12 @@ def test_os_tres_pontos_do_arquivo_convertem_fichas_para_bb():
         ruins.append(codigo.strip())
     assert not ruins, f'potSize (fichas) indo cru para pot_bb: {ruins}'
     assert 'potSize' in src, 'a varredura nao encontrou potSize — passaria sem ler nada'
-    # e a peneira de sanidade tem que existir no enfileiramento
+    # e a peneira de sanidade tem que existir no enfileiramento — desde 13/08 pela FONTE
+    # UNICA (pote_implausivel), que alem do dado quebrado conhece a excecao do dinheiro
+    # morto em HU. O assert antigo procurava a formula inline ('_stack * 2.5').
     i = src.index('def _enfileirar_spot_da_decisao')
     trecho = src[i:i + 3000]
-    assert '_stack * 2.5' in trecho, 'sumiu a peneira de pote implausivel do enfileiramento'
+    assert 'pote_implausivel' in trecho, 'sumiu a peneira de pote implausivel do enfileiramento'
     print('OK  test_os_tres_pontos_do_arquivo_convertem_fichas_para_bb')
 
 

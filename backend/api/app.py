@@ -10170,10 +10170,12 @@ def _enfileirar_spot_da_decisao(di: dict, facing: float, tournament_db_id=None) 
             _pot_bb = float(_pot_bb) if _pot_bb is not None else None
         except (TypeError, ValueError):
             _pot_bb = None
-        if _pot_bb is not None and (_pot_bb <= 0 or _pot_bb > _stack * 2.5):
-            # Pote maior que os dois stacks somados não existe em heads-up. NÃO enfileira: nó
-            # degenerado é pior que nó ausente, porque o ausente vira "sem cobertura" e o
-            # degenerado vira veredito confiante e errado.
+        # Peneira pela FONTE UNICA (pote_implausivel) — a regra local barrava TAMBEM o pote
+        # multiway legitimo com um so vilao ativo (HU com dinheiro morto), que e solvavel.
+        # Nota: o limiar local antigo (pot > 2.5*stack) era ate MAIS estrito que a peneira
+        # do reenqueue (2.5*2*stack); a fonte unica unifica os dois no mesmo numero.
+        from leaklab.gto_solver import pote_implausivel as _pote_impl
+        if _pot_bb is not None and (_pot_bb <= 0 or _pote_impl(_pot_bb, _stack, spot.get('nActiveOpponents'))):
             log.warning('spot NAO enfileirado: pote implausivel (%.1fbb com stack %.1fbb, street=%s)',
                         _pot_bb, _stack, street)
             return False

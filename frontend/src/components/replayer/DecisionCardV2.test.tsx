@@ -143,6 +143,14 @@ describe("card v2 — o que o layout enxuto NAO pode perder", () => {
     expect(txt(), "o contexto tambem cabe, mas nao substitui a fonte").toContain("PRÉ-FLOP");
   });
 
+  it("contexto IGUAL ao badge da fonte nao ecoa (print 'PREFLOP PREFLOP')", () => {
+    // Fonte 'preflop' com street preflop: o cabecalho dizia a mesma palavra duas vezes.
+    // A comparacao e no display, case-insensitive — vale para qualquer par futuro.
+    const { container } = montar({ source: fonte("Preflop", "preflop"), contexto: "PREFLOP" });
+    const ocorrencias = (container.textContent?.toUpperCase().match(/PREFLOP/g) ?? []).length;
+    expect(ocorrencias, "a palavra deve aparecer UMA vez (o badge da fonte)").toBe(1);
+  });
+
   it("nao repete a acao quando os dois concordam", () => {
     // A redundancia que este layout existe para cortar: o exemplo mostrava o mesmo 62% em tres
     // lugares. Concordando, "GTO recomenda" ao lado de "voce jogou" e a mesma palavra duas vezes.

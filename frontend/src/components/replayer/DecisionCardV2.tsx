@@ -133,7 +133,10 @@ export function DecisionCardV2({
           {verdict.icon} {verdict.label}
         </span>
         <div className="flex items-center gap-2">
-          {contexto && (
+          {/* Contexto igual ao badge da fonte vira eco ("PREFLOP PREFLOP", print de 13/08) —
+              a street só informa quando a FONTE não a diz. Comparação no ponto de display,
+              então vale para qualquer par futuro, não só preflop. */}
+          {contexto && contexto.toLowerCase() !== source.label.toLowerCase() && (
             <span className="font-mono text-[10px] uppercase tracking-wide text-muted-foreground/70">
               {contexto}
             </span>

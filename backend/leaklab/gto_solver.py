@@ -183,6 +183,28 @@ def vale_enfileirar_postflop(hero_pos: str, vs_pos: str, facing_size_bb: float =
     return facing_size_bb == 0.0 or _TEXAS_HERO_IP_FACING
 
 
+def pote_implausivel(pot_bb, stack_bb, n_ativos=None) -> bool:
+    """O pote cabe no jogo que o solver HU modela? FONTE UNICA da peneira de enfileiramento.
+
+    Duas coisas diferentes moravam na mesma regra "pot > 2.5 * 2 * stack":
+      1. dado QUEBRADO (pote em fichas: 1.653bb, 67.750bb) — sempre barrar;
+      2. pote multiway LEGITIMO inflado por dinheiro morto (all-ins/folds de quem ja saiu).
+    Para o caso 2, se na hora da decisao resta UM vilao ativo, o spot E heads-up com pote
+    grande — modelo valido, o dinheiro morto so muda as odds. Medido em 13/08: 13 de 17
+    decisoes barradas eram exatamente isso (uma acusada de small_mistake por pagar 0,8bb num
+    pote de 50bb). Com 2+ ativos segue barrado (solver e HU-only).
+
+    O teto de 150bb e o limite FISICO do acervo (maior pote legitimo medido: 120bb; menor
+    pote da era em fichas: 306bb) — barra a proxima encarnacao do fichas-vs-bb mesmo em HU."""
+    pot = float(pot_bb or 0)
+    stack = float(stack_bb or 0)
+    if pot <= 2.5 * max(stack, 1.0) * 2:
+        return False
+    if n_ativos == 1 and pot <= 150.0:
+        return False
+    return True
+
+
 def montar_payload_postflop(street, position, vs_position, board, hero_cards,
                             stack_bb, facing_bb, pot_bb=None, pot_type='',
                             opener='', threebettor=''):

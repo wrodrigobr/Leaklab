@@ -103,9 +103,10 @@ def main():
                 # 338 de 529 solves viraram no de jam degenerado, e 178 de call puro passariam
                 # pelo guarda de SPR (que so barra jam) servindo veredito errado.
                 pot_bb = float(spot.get('potBb') or 0) or (facing_bb * 2 + 2 or 4.0)
-                # Sanidade ANTES de pagar o solve: pote maior que os dois stacks somados nao
-                # existe em HU — e a mesma peneira do trainer_pool (_POTE_MAX_EM_STACKS).
-                if pot_bb > 2.5 * max(stack_bb, 1.0) * 2:
+                # Peneira pela FONTE UNICA (pote_implausivel): pote em fichas barra sempre;
+                # pote multiway legitimo com UM vilao ativo e HU com dinheiro morto — passa.
+                from leaklab.gto_solver import pote_implausivel as _pi
+                if _pi(pot_bb, stack_bb, spot.get('nActiveOpponents')):
                     insanos += 1
                     continue
                 from leaklab.gto_solver import resolve_solver_ranges as _rsr
