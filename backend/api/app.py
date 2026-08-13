@@ -6099,8 +6099,22 @@ def get_replay(tournament_id, hand_id):
                 'gto_label':    gto_data.get('gto_label'),
                 'gto_action':   gto_data.get('gto_action'),
                 'gto_depth_capped': 1 if (gto_data.get('depth_capped') or gto_data.get('gto_depth_capped')) else 0,
-                'facing_bet':   gto_data.get('facing_bet'),
-                'ev_loss_bb':   (r.get('gto') or {}).get('ev_loss_bb'),  # #24 (live)
+                # Os campos-viajantes do EV, com a MESMA semantica do save_decisions: a regua
+                # de confianca (ev_loss_trustworthy_row) le estas colunas, e este dict vivo
+                # SUBSTITUI a linha do banco no /replay. Sem eles, o dict sintetico chegava a
+                # _ev_e_motivo com ev_loss_source=None e todo EV preflop saia "sem confianca"
+                # enquanto o coach (que le a LINHA) mostrava o numero (13/08, K9o -0.9BB).
+                'facing_bet':   ((di.get('spot') or {}).get('facingToBb')
+                                 if (di.get('spot') or {}).get('facingToBb') is not None
+                                 else gto_data.get('facing_bet')),
+                'ev_loss_bb':   ((r.get('gto') or {}).get('ev_loss_bb')
+                                 if (r.get('gto') or {}).get('ev_loss_bb') is not None
+                                 else (r.get('preflop_gto') or {}).get('ev_loss_bb')),  # #24 (live)
+                'ev_loss_source': ((r.get('gto') or {}).get('ev_loss_source')
+                                   or (r.get('preflop_gto') or {}).get('ev_loss_source')),
+                'stack_bb':     (di.get('context') or {}).get('heroStackBb'),
+                'estimated_equity': (di.get('math') or {}).get('estimatedHandEquity'),
+                'pot_size':     (di.get('spot') or {}).get('potBb'),
                 'bet_intent':   r.get('bet_intent'),
                 'threebet_intent': r.get('threebet_intent'),  # intenção do 3-bet (valor/merge/light)
                 'reco_rationale': r.get('reco_rationale'),
