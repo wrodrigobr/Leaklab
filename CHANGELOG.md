@@ -1,4 +1,4 @@
-﻿# Changelog
+# Changelog
 
 Todas as mudanÃ§as notÃ¡veis neste projeto serÃ£o documentadas aqui.
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
@@ -124,6 +124,33 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 > cobertura REAL dos nós novos (t23, o caso-testemunha, virou `gto_correct/call`). Saldo:
 > acusadas 590 → **588**, postflop com gabarito 2.552 → **2.582**, NO-VAZIO **0** na varredura,
 > segundo dry-run **0** (idempotente), 71 anotações intactas.
+
+### fix(gto): o validador não conhecia a grafia canônica UTG+1/UTG+2 — 4 cópias do conjunto viram fonte única (#gto #medicao)
+
+> Do intercept de 12/08 sobraram 3 decisões suspeitas: 2 com "position desconhecida: 'UTG+1'/
+> 'UTG+2'" e 1 com "effectiveStackBb=0.0 num spot de call". As duas acusações **morreram na
+> autópsia, mas revelaram o defeito de verdade**.
+>
+> O "position desconhecida" NÃO era a causa da queda no heurístico: reproduzido no acervo,
+> **55 de 55** decisões UTG+ postflop emitiam o warning — **21 delas com o lookup GTO
+> funcionando** (o warning da linha 1126 não bloqueia nada). A grafia com `+` é o canônico do
+> pipeline: parser, ranges capturadas, `_POSTFLOP_ORDER` e TODOS os nós em `gto_nodes` usam
+> `UTG+1`. Quem não conhecia era o conjunto de posições válidas, que existia em **QUATRO
+> cópias** (engine, gto_utils, repositories, audit) — duas sem o `+`. Regra 5: viraram UMA
+> (`gto_utils.VALID_POSITIONS`), com teste que varre os consumidores exigindo o MESMO objeto e
+> teste que varre toda posição que o pipeline emite (guarda quebrado de propósito: acusa;
+> restaurado: cala). De quebra, o audit C4 deixou de acusar falso-positivo nos 88 nós UTG+ e o
+> validador passou a normalizar MP1/MP2 antes de checar. **`normalize_position` NÃO mapeia
+> entre grafias de propósito** — mapear re-chavearia todo nó já gravado sob `UTG+1`.
+>
+> O `effectiveStackBb=0.0` era arredondamento de exibição: a mão de produção (t91,
+> 261384109833) tem o SB all-in por **11 fichas** a nível 500 — o banco guarda 0.022bb e o
+> builder recomputa 0.022bb, que é o valor CERTO por design (com o vilão all-in, o efetivo é
+> exatamente o que ainda pode mudar de mãos). Não houve conserto porque não havia defeito.
+>
+> Aberto em task separada: `montar_payload_postflop` computa o hash SEM a variante de
+> pot_type — solve oop_pfr/3bet pedido via hand-request cai na chave legada que o lookup não
+> consulta (e a contamina).
 
 ### fix(gto): o solve vazio gravado como pronto — 45 nós ocupando hash em silêncio (#gto #medicao)
 

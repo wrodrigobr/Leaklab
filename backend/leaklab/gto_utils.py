@@ -26,7 +26,14 @@ STACK_BUCKETS = [
 RANKS = ['2', '3', '4', '5', '6', '7', '8', '9', 'T', 'J', 'Q', 'K', 'A']
 RANK_IDX = {r: i for i, r in enumerate(RANKS)}
 
-VALID_POSITIONS = {'UTG', 'UTG1', 'UTG2', 'LJ', 'HJ', 'CO', 'BTN', 'SB', 'BB'}
+# FONTE ÚNICA do conjunto de posições válidas (12/08). Existiam QUATRO cópias — engine,
+# repositories, audit e esta — e duas delas não conheciam 'UTG+1'/'UTG+2', a grafia canônica
+# do pipeline (parser, ranges capturadas, _POSTFLOP_ORDER e TODOS os nós em gto_nodes usam
+# '+'). Custo medido: 55 de 55 decisões UTG+ postflop do acervo emitiam "position
+# desconhecida" — inclusive 21 com lookup GTO funcionando — e o audit C4 acusaria os 88 nós
+# UTG+ como inválidos. 'UTG1'/'UTG2' ficam como legado aceito; normalize_position NÃO mapeia
+# entre as grafias de propósito (mapear re-chavearia todo nó já gravado sob 'UTG+1').
+VALID_POSITIONS = {'UTG', 'UTG1', 'UTG2', 'UTG+1', 'UTG+2', 'LJ', 'HJ', 'CO', 'BTN', 'SB', 'BB'}
 
 # Posições de mesa cheia (9/10-max) → canônico do GW/GTO. MESMO mapa do pipeline preflop
 # ('MP1'=4ª ação=LJ). Sem isso, spots postflop com hero em MP1/MP2 eram REJEITADOS no insert

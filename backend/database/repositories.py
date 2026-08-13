@@ -8468,7 +8468,9 @@ def get_gto_node_by_spot(street: str, board: list, position: str) -> Optional[di
 
 
 _GTO_VALID_STREETS   = {'preflop', 'flop', 'turn', 'river'}
-_GTO_VALID_POSITIONS = {'UTG', 'UTG1', 'UTG2', 'UTG+1', 'UTG+2', 'LJ', 'HJ', 'CO', 'BTN', 'SB', 'BB'}
+# Fonte única (gto_utils) — esta era uma das QUATRO cópias do conjunto, e era a única que já
+# conhecia 'UTG+1'/'UTG+2'; as outras warnavam/acusavam a grafia canônica do pipeline.
+from leaklab.gto_utils import VALID_POSITIONS as _GTO_VALID_POSITIONS
 _GTO_VALID_ACTIONS   = {'fold', 'check', 'call', 'bet', 'raise', 'jam', 'allin', 'shove', 'all-in', 'all_in'}
 _gto_log = __import__('logging').getLogger('leaklab.gto')
 

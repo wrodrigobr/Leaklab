@@ -21,7 +21,9 @@ logging.basicConfig(level=logging.INFO, format='%(levelname)s  %(message)s')
 log = logging.getLogger('audit_gto')
 
 _VALID_STREETS   = {'preflop', 'flop', 'turn', 'river'}
-_VALID_POSITIONS = {'UTG', 'UTG1', 'UTG2', 'LJ', 'HJ', 'CO', 'BTN', 'SB', 'BB'}
+# Fonte única (gto_utils) — a cópia local não conhecia 'UTG+1'/'UTG+2' e o C4 acusava como
+# "position desconhecida" os nós na grafia canônica do pipeline (88 no acervo local).
+from leaklab.gto_utils import VALID_POSITIONS as _VALID_POSITIONS
 _VALID_ACTIONS   = {'fold', 'check', 'call', 'bet', 'raise', 'jam'}
 _NORM_ACTION     = {
     'shove': 'jam', 'allin': 'jam', 'all-in': 'jam', 'all_in': 'jam', 'all in': 'jam',
