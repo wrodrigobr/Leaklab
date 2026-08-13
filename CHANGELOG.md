@@ -7,6 +7,17 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(replay): o dict vivo do /replay carrega os campos-viajantes do EV (#vitrine)
+
+> A segunda camada do mesmo defeito: consertados os insumos do card, o K9o SEGUIA "sem
+> confianca" -- porque o /replay reavalia a mao ao vivo e o dict que SUBSTITUI a linha do
+> banco nao carregava ev_loss_source/stack_bb/estimated_equity/pot_size. Fonte ausente =
+> recusa na primeira checagem, para TODO EV preflop do replay. A familia dos
+> campos-viajantes, agora no LEITOR: quem substitui a linha carrega as colunas que a regua
+> le, com a MESMA semantica do save_decisions (facing_bet do spot, nao do no; pot em bb via
+> potBb do pipeline -- nunca a divisao por level_bb com `or 1`). Provado em producao:
+> decisao 322182 serve `ev 0.895, motivo null` -- card e coach mostram o MESMO -0.9BB.
+
 ### fix(ev): os INSUMOS do ev_loss_trustworthy viram canonicos -- card e coach respondem igual (#vitrine #medicao)
 
 > A regra era fonte unica; os insumos nao. O card do replayer passava pot/equity/facing do
