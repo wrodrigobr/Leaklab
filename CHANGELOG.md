@@ -7,6 +7,24 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(gto+vitrine): dinheiro morto em HU e solvavel -- e o eco PREFLOP morto (#gto #vitrine)
+
+> "Ataca os potes insanos multiway" terminou com a peneira DIVIDIDA em duas populacoes que
+> moravam na mesma regra: dado QUEBRADO (pote em fichas, sempre barrado) e pote multiway
+> LEGITIMO inflado por dinheiro morto. Medido: 17 decisoes barradas, **13 com UM vilao ativo**
+> na decisao -- heads-up com pote grande, modelo valido para o solver -- e uma delas ACUSADA
+> de small_mistake por pagar 0,8bb num pote de 50bb (odds de 1,5%). A fonte unica
+> `pote_implausivel` (gto_solver) conhece a excecao (1 ativo + teto fisico de 150bb; maior
+> pote legitimo do acervo: 120bb; menor pote da era em fichas: 306bb) e e usada pelo reenqueue
+> E pelo hand-request -- que tinham ate LIMIARES diferentes. Casos de teste sao os MEDIDOS,
+> quebrado de proposito, e o guarda antigo do enfileiramento passou a exigir a fonte unica.
+>
+> No mesmo passe, dois achados de tela do usuario: (1) "PREFLOP PREFLOP" no cabecalho do card
+> novo -- o contexto cala quando e igual ao badge da fonte; (2) coach mostra -0.9BB onde o
+> card diz "sem confianca" -- as duas portas usam a MESMA regra com INSUMOS diferentes (spot
+> reparseado vs colunas do banco, facing tamanho vs custo) num caso limitrofe do teto de fold;
+> virou tarefa propria com o mapa dos chamadores.
+
 ### feat(card): cores canônicas por ação nas barras do card novo (#vitrine)
 
 > Pedido do usuário sobre as barras recém-restauradas: barra monocromática não distingue
