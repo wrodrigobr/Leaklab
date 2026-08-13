@@ -126,6 +126,19 @@ _ENGINE_ERROR_LABELS    = ('clear_mistake', 'small_mistake', 'marginal')
 _MW_ENGINE_ERROR_LABELS = ('small_mistake', 'clear_mistake')
 
 
+_ACOES_DE_COMMIT = ('shove', 'jam', 'allin', 'all-in', 'raise')
+
+
+def colapsa_shove_para_call(spot: dict, played_action) -> bool:
+    """Shove sobre all-in cujo excesso ninguem pode pagar E o call: mesmo pote, mesmo custo,
+    mesmo resultado. FONTE UNICA da condicao — o motor (decision_engine) e a camada viva do
+    /replay usam ESTA funcao. Em 12/08 a regra existia so no motor: o refill deu no vivo ao
+    spot, a camada 2 do replay ligou e re-acusou "Shove vs Call" num spot em que o hero cobria
+    todos — a MESMA acusacao que o conserto de 11/08 tinha matado, uma porta acima."""
+    return (bool((spot or {}).get('shoveEquivaleCall'))
+            and (str(played_action or '')).lower() in _ACOES_DE_COMMIT)
+
+
 def spot_mismatch(gto_action_norm: str, engine_best_norm: str) -> bool:
     """O nó GTO responde a um spot INCOMPATÍVEL com o que o hero enfrenta.
 

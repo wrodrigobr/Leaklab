@@ -347,6 +347,29 @@ def test_invariante_nunca_recomenda_e_critica_a_mesma():
     print("OK  test_invariante_nunca_recomenda_e_critica_a_mesma")
 
 
+def test_colapso_shove_call_na_camada_viva():
+    """REGRESSAO 12/08: o motor absolvia (shoveEquivaleCall) e a camada viva do /replay
+    re-acusava "Shove vs Call" assim que o spot ganhava no — a estrategia de facing (call/fold)
+    nao tem 'allin' e a comparacao crua dava freq 0. A condicao agora e FONTE UNICA
+    (colapsa_shove_para_call) e o played e colapsado ANTES do reconcile."""
+    from leaklab.card_verdict import colapsa_shove_para_call, reconcile_verdict
+    spot = {'shoveEquivaleCall': True}
+    assert colapsa_shove_para_call(spot, 'shove') is True
+    assert colapsa_shove_para_call(spot, 'raise') is True
+    assert colapsa_shove_para_call(spot, 'call') is False      # call ja e call
+    assert colapsa_shove_para_call({}, 'shove') is False       # sem a flag, sem colapso
+    # o caminho vivo: estrategia call 100 / fold 0, hero deu shove num spot com a flag
+    strategy = [{'action': 'call', 'frequency': 1.0}, {'action': 'fold', 'frequency': 0.0}]
+    played = 'call' if colapsa_shove_para_call(spot, 'shove') else 'shove'
+    v = reconcile_verdict(strategy, None, played)
+    assert v['is_error'] is False, v
+    assert v['played_freq'] == 1.0, v
+    # CONTROLE: sem o colapso, a mesma comparacao acusa — e o que a tela mostrava
+    v2 = reconcile_verdict(strategy, None, 'shove')
+    assert v2['is_error'] is True, 'o controle nao acusa mais — o teste perdeu o poder de detectar'
+    print('OK  test_colapso_shove_call_na_camada_viva')
+
+
 if __name__ == '__main__':
     tests = [v for k, v in sorted(globals().items()) if k.startswith('test_')]
     passed = failed = 0

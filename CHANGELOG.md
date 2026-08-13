@@ -7,6 +7,24 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(replay): o shove≡call REGREDIU numa porta acima — e a barra do GTO voltou ao card novo (#vitrine #gto)
+
+> Print do usuário: "X ERRO, Você jogou Shove, GTO recomenda Call" num spot em que o hero
+> COBRIA todos (AhKd, top pair, sobre o all-in do vilão). O banco estava CERTO (`standard`,
+> `gto_correct`, EV 0 — o colapso do motor de 11/08 funcionando); o erro nascia na camada 2
+> do `/replay` (estratégia viva), que compara a ação crua contra o nó de facing (call/fold,
+> sem 'allin') e "floora small_mistake". A linha do tempo explica o "voltou a acontecer":
+> antes do refill de ontem o spot NÃO tinha nó, a camada viva nem rodava e valia o label do
+> banco; o nó chegou, a camada ligou, a acusação renasceu. A condição virou FONTE ÚNICA
+> (`card_verdict.colapsa_shove_para_call`) usada pelo motor E pelo replay, com teste de
+> regressão + controle (sem o colapso, a mesma comparação TEM de acusar).
+>
+> Mais dois consertos de vitrine no mesmo passe: (1) o template do coach dizia "é aceitável,
+> mas o GTO tende a pagar" quando o hero PAGOU — mesma ação agora vira "aceitável e alinhado
+> ao GTO, spot de margens finas"; (2) o card novo perdeu a barra "Como GTO joga {mão}" do
+> preflop (pedido do usuário) — as barras voltam alimentadas pelo `hand_freq` das ranges,
+> com o título contextual do layout clássico; postflop segue com a estratégia do solver.
+
 ### fix(fila): o rejected que sobrou virou estado ESTÁVEL — payload igual não re-paga solve (#gto)
 
 > O diagnóstico de ontem ("estratégia vazia = nó inalcançado no equilíbrio") deixou uma

@@ -1178,17 +1178,39 @@ export function SidePanels({
                   acao: step.action,
                   acaoOk: isActionOk,
                 })}
-                estrategia={verdictStrat.length
-                  ? verdictStrat.map(r => ({
+                estrategia={(() => {
+                  if (verdictStrat.length)
+                    return verdictStrat.map(r => ({
                       acao: r.action, freq: r.frequency ?? 0,
                       jogada: normalizeGtoAction(r.action)
                               === normalizeGtoAction(step.action ?? ''),
-                    }))
-                  : null}
+                    }));
+                  // PREFLOP sem estratégia de solver: as barras vêm do hand_freq (a frequência
+                  // da MÃO nas ranges) — o "Como GTO joga X" do layout clássico. Sumiu na v1 do
+                  // card novo e era o bloco mais usado do antigo (pedido do usuário, 12/08).
+                  const hf = !isPostflop ? pg?.hand_freq : null;
+                  if (!hf || !Object.values(hf).some(v => (v ?? 0) > 0.001)) return null;
+                  return (["raise", "allin", "call", "fold"] as const)
+                    .map(a => ({ acao: a, freq: hf[a] ?? 0,
+                                 jogada: normalizeGtoAction(a) === normalizeGtoAction(step.action ?? '') }))
+                    .filter(r => r.freq > 0.001)
+                    .sort((x, y) => y.freq - x.freq);
+                })()}
                 // O título diz de QUEM é a estratégia. Num pote multiway o solver é heads-up e
                 // não resolve 3-way+: pôr as barras sob "Estratégia do Solver" atribuiria a ele
-                // uma resposta que não é dele.
-                estrategiaTitulo={isMultiwayStep ? t("card.mwTitle") : t("card.solverStrategy")}
+                // uma resposta que não é dele. No preflop (hand_freq), o título é o do bloco
+                // clássico: "Como GTO joga {mão} · {contexto}".
+                estrategiaTitulo={verdictStrat.length
+                  ? (isMultiwayStep ? t("card.mwTitle") : t("card.solverStrategy"))
+                  : (() => {
+                      if (isPostflop || !pg?.hand_freq) return t("card.solverStrategy");
+                      const validVs = pg.vs_position && pg.vs_position !== 'UNKNOWN' ? pg.vs_position : null;
+                      const ctxStr = pg.scenario === 'rfi'
+                        ? t(isShoveSpot ? "card.ctxShoving" : "card.ctxOpening", { position: pg.position, stack: pg.stack_bucket })
+                        : (validVs ? t("card.ctxVs", { vs: validVs, stack: pg.stack_bucket })
+                                   : t("card.ctxPlain", { position: pg.position, stack: pg.stack_bucket }));
+                      return t("card.freqDisplayHand", { hand: pg.hand_type ?? '', ctx: ctxStr });
+                    })()}
                 frase={whyFull}
                 showDetails={showDetails}
                 onToggleDetails={toggleDetails}

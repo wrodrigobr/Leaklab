@@ -6888,10 +6888,15 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
             # Reconciliação PURA (leaklab/card_verdict, testada): a estratégia da MÃO
             # tem prioridade sobre o range agregado. Sem isto a recomendação pegava a
             # ação modal do range (ex.: fold 63%) em vez da da mão (raise 93%).
+            # Colapso shove≡call ANTES da comparacao viva: no spot em que o call ja poe
+            # todo mundo all-in, a estrategia do no (call/fold) nao tem 'allin' e comparar a
+            # acao crua re-acusa o que o motor ja absolveu (regressao vista em 12/08).
+            from leaklab.card_verdict import colapsa_shove_para_call as _colapsa_sc
+            _played_live = 'call' if _colapsa_sc(_spot, action.action) else action.action
             _v = _reconcile(
                 gto_strategy,
                 (live_hand_strategy or {}).get('actions'),
-                action.action,
+                _played_live,
                 gto_action,
             )
             if _v:

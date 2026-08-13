@@ -1009,8 +1009,8 @@ def evaluate_decision(input_data: Dict[str, Any]) -> Dict[str, Any]:
     # Nao vale para `best_action='fold'`: ali a critica e legitima e continua de pe (o leak e
     # entrar na mao, nao o tamanho). Isso sai de graca — so mexemos quando o melhor E o call.
     _acao_real = input_data.get('player_action', '')
-    _shove_e_call = (bool(spot.get('shoveEquivaleCall'))
-                     and (_acao_real or '').lower() in ('shove', 'jam', 'allin', 'all-in', 'raise'))
+    from leaklab.card_verdict import colapsa_shove_para_call as _colapsa
+    _shove_e_call = _colapsa(spot, _acao_real)
     if _shove_e_call:
         input_data = {**input_data, 'player_action': 'call'}
         # A equivalencia vale para os DOIS lados da comparacao. Gradar o shove como call e

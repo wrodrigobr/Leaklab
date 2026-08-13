@@ -64,6 +64,12 @@ def _narration(focus: dict, verdict: str, reached_street: str, is_allin: bool) -
     if verdict == ACCEPTABLE:
         noun = _ACT_NOUN.get(act, act)
         inf = _ACT_INF.get(gto_act, gto_act)
+        # "mas o GTO tende a pagar" quando o hero PAGOU e contradicao (visto em tela em
+        # 12/08: call marginal com best_action=call). Mesma acao: a margem e fina, nao ha
+        # divergencia a narrar.
+        from leaklab.card_verdict import norm_action as _na
+        if act and gto_act and _na(act) == _na(gto_act):
+            return f"Seu {noun} no {st} é aceitável e alinhado ao GTO. Spot de margens finas."
         return f"Seu {noun} no {st} é aceitável, mas o GTO tende a {inf}. A diferença é pequena."
     # correto (mão mantida por ter ido ao postflop ou por ser confronto all-in)
     if is_allin:
