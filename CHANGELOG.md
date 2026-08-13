@@ -7,6 +7,21 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(fila): o rejected que sobrou virou estado ESTÁVEL — payload igual não re-paga solve (#gto)
+
+> O diagnóstico de ontem ("estratégia vazia = nó inalcançado no equilíbrio") deixou uma
+> consequência prática: com o reset de `rejected` da manhã, TODA rodada do reenqueue
+> re-enfileiraria o spot t23, pagaria o solve e re-rejeitaria — loop de custo. O reset agora
+> exige payload DIFERENTE: payload novo merece solve novo, payload igual produz o mesmo
+> resultado. Provado em produção: o reenqueue tentou, a fila recusou, `done` não se moveu.
+>
+> Junto: (1) o pool rejeita solve sem estratégia ANTES do insert com o motivo certo no log
+> ("nó inalcançado no equilíbrio, total_combos=N") e sem gravar tree_strategy — o guarda do
+> `insert_gto_nodes` segue como backstop dos outros escritores; (2) o contador do reenqueue
+> reportava a TENTATIVA como "enfileirado" ("enfileirados=1" com 0 entrando) — agora conta o
+> ACEITE da fila e ganhou a coluna "recusados pela fila". A decisão do spot segue com
+> veredito heurístico são (`standard`, call com trinca, equity 0,67, sem EV falso).
+
 ### fix(gto): montar_payload_postflop — hash e ranges pela MESMA régua; 4 contaminados purgados (#gto)
 
 > A suspeita aberta do intercept fechou MEDIDA: o hash saía sem `pot_type` (chave legada)
