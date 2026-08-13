@@ -438,23 +438,38 @@ function renderSeatsAndChips(
     const sv = (ev as unknown as Record<string, Record<string, number>>)["stacks"]?.[sn] ?? d.stack;
     const displayName = (aliases[d.player] ?? d.player);
     const rawAction = isActive ? (ev.action ?? null) : null;
-    const actText = rawAction ? (ACTION_LABEL[rawAction] ?? rawAction).toUpperCase() : null;
+    const actLabel = rawAction ? (ACTION_LABEL[rawAction] ?? rawAction) : null;
+    // CALL leva o preço junto ("CALL 20.3 BB"): o pod mostra o STACK logo abaixo da ação, e
+    // num call de all-in por menos o stack zera — a mesa lia "CALL 0 BB" como se o call fosse
+    // de graça. O preço do call não aparece em nenhum outro lugar: as fichas à frente somam a
+    // rodada inteira (raise anterior + call). Só o call precisa disso; bet/raise já têm o
+    // total nas fichas à frente, e o amount do raise no step é o INCREMENTO, não o total.
+    const actText = actLabel
+      ? (actLabel.toLowerCase() === "call" && (ev.amount ?? 0) > 0
+          ? `${actLabel.toUpperCase()} ${fmtAmt(ev.amount!, bb, unit)}`
+          : actLabel.toUpperCase())
+      : null;
     const ac = rawAction ? (AC_COLORS[rawAction] ?? "#888") : null;
     const nameFill = isHero ? "#ffffff" : "#ddd8d0";
-    const stackFill = isHero ? "#c9e8ff" : "#c0bab0";
+    // Stack zerado em jogador VIVO = all-in: mostrar "ALL-IN" no lugar de "0 BB". No showdown
+    // volta a ser número (ali 0 significa "perdeu tudo", que é informação certa).
+    const isAllInStack = sv <= 0 && !isFolded && ev.type !== "showdown";
+    const stackStr = isAllInStack ? "ALL-IN" : fmtAmt(sv, bb, unit);
+    const stackFill = isAllInStack ? "#ff6a5e" : (isHero ? "#c9e8ff" : "#c0bab0");
 
     if (G.compactPod) {
       // Pod (mobile): só o NOME (ocupa o pod inteiro) ou a AÇÃO; o stack vira badge embaixo.
       const ty = by + bh / 2 + 6;
       if (actText) {
-        html += `<text x="${pos.x}" y="${ty}" text-anchor="middle" fill="${ac}" font-family="Inter,sans-serif" font-size="19" font-weight="700" letter-spacing=".03">${actText}</text>`;
+        // "CALL 20.3 BB" (com preço) não cabe no pod compacto em fonte 19 — reduz quando longo.
+        const actFs = actText.length > 8 ? 14.5 : 19;
+        html += `<text x="${pos.x}" y="${ty}" text-anchor="middle" fill="${ac}" font-family="Inter,sans-serif" font-size="${actFs}" font-weight="700" letter-spacing=".03">${actText}</text>`;
       } else {
         const maxChars = 13;
         const name = displayName.length > maxChars ? displayName.slice(0, maxChars) + "…" : displayName;
         html += `<text x="${pos.x}" y="${ty}" text-anchor="middle" fill="${nameFill}" font-family="Inter,sans-serif" font-size="18" font-weight="${isHero ? 600 : 500}" letter-spacing=".02">${name}</text>`;
       }
       // Badge de STACK na borda inferior do pod (espelha o badge de posição no topo)
-      const stackStr = fmtAmt(sv, bb, unit);
       const sBW = stackStr.length * 7.4 + 16;
       const sBY = by + bh - 8;
       const sFill = isHero ? "rgba(24,48,72,0.96)" : "rgba(18,26,42,0.95)";
@@ -470,7 +485,7 @@ function renderSeatsAndChips(
         const name = displayName.length > maxChars ? displayName.slice(0, maxChars) + "…" : displayName;
         html += `<text x="${pos.x}" y="${by + 26}" text-anchor="middle" fill="${nameFill}" font-family="Inter,sans-serif" font-size="${isHero ? 14 : 12.5}" font-weight="${isHero ? 600 : 500}" letter-spacing=".05">${name}</text>`;
       }
-      html += `<text x="${pos.x}" y="${by + 48}" text-anchor="middle" fill="${stackFill}" font-family="Share Tech Mono,monospace" font-size="15" font-weight="600" letter-spacing=".05">${fmtAmt(sv, bb, unit)}</text>`;
+      html += `<text x="${pos.x}" y="${by + 48}" text-anchor="middle" fill="${stackFill}" font-family="Share Tech Mono,monospace" font-size="15" font-weight="600" letter-spacing=".05">${stackStr}</text>`;
     }
 
     // Bounty badge (PKO) — canto SUPERIOR DIREITO do pod, ancorado à direita.

@@ -15,6 +15,23 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 > claro, call azul, bet/raise verde, allin vermelho) — via `colorFor`, sem segunda paleta.
 > A ação jogada segue marcada (negrito + ponto + barra em opacidade cheia).
 
+### fix(replayer): call de all-in por menos lia "CALL 0 BB" — o zero era o STACK, não o preço (#vitrine)
+
+> Caso do usuário (torneio 3960586609, mão 259090517149): CSM96 paga 4.056 fichas (20,3bb)
+> do 4-bet jam do SB e o pod do assento mostra "CALL" com "0 BB" logo abaixo — lê como call
+> de graça. A suspeita era o `amount` do backend; PROVADO no parser que não: "calls 4056 and
+> is all-in" chega com `amount=4056` intacto e o step da timeline o carrega. O zero era o
+> STACK depois do call (all-in por menos zera), que o pod sempre renderiza sob a ação — o
+> preço do call não aparecia em lugar NENHUM da mesa, porque as fichas à frente somam a
+> rodada inteira (raise anterior + call = os 22,3bb que o usuário viu).
+>
+> Dois consertos em `PokerTableV3`: (1) CALL leva o preço junto ("CALL 20.3 BB") — só o
+> call, porque bet/raise já têm o total nas fichas à frente e o amount do raise no step é o
+> INCREMENTO; (2) stack zerado de jogador vivo vira "ALL-IN" (em vermelho), não "0 BB" — no
+> showdown volta a ser número, onde 0 significa "perdeu tudo". Guarda quebrado de propósito:
+> sem o conserto, 3 dos 4 testes novos acusam. Verificado em DOM real: texto 100px num pod
+> de 168px, sem "0 BB" na mesa.
+
 ### fix(replay): o shove≡call REGREDIU numa porta acima — e a barra do GTO voltou ao card novo (#vitrine #gto)
 
 > Print do usuário: "X ERRO, Você jogou Shove, GTO recomenda Call" num spot em que o hero
