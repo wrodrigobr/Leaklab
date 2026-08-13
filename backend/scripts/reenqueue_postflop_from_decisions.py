@@ -58,7 +58,7 @@ def main():
         params = (tid_filter,)
     rows = conn.execute(q, params).fetchall()
 
-    enq = already = skipped = insanos = 0
+    enq = already = skipped = insanos = recusados = 0
     for tr in rows:
         t = dict(tr)
         try:
@@ -133,13 +133,19 @@ def main():
                     'target_exploitability_pct': p['target_exploitability_pct'],
                 })
                 if _APPLY:
-                    enqueue_solver_spot(primary, payload)
+                    # O retorno importa: False = a fila recusou (ex.: rejected com payload
+                    # IGUAL, que produziria o mesmo resultado). Contar a tentativa como
+                    # "enfileirado" reportou 1 quando entraram 0 em 12/08.
+                    if not enqueue_solver_spot(primary, payload):
+                        recusados += 1
+                        continue
                 enq += 1
                 if enq <= 20:
                     print(f"  ENQ t{t['tournament_id']} {pos}/{street} facing={facing_bb} stack={stack_bb} -> {primary[:10]}")
     conn.close()
     print(f"\n{'APLICADO' if _APPLY else 'DRY-RUN (use --apply)'}: "
-          f"enfileirados={enq}, já cobertos={already}, pote insano pulado={insanos}")
+          f"enfileirados={enq}, já cobertos={already}, pote insano pulado={insanos}, "
+          f"recusados pela fila={recusados}")
 
 
 if __name__ == '__main__':
