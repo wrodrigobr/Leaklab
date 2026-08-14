@@ -13,26 +13,26 @@ h2{font-family:'Chakra Petch',monospace;color:#E3E8EC;font-size:18px;margin:30px
 <div class="cards">
   <div class="card"><div class="k">211</div><div class="kl">mãos</div></div>
   <div class="card"><div class="k">71</div><div class="kl">decisões comentadas</div></div>
-  <div class="card"><div class="k" style="color:#2DD4BF">63.8%</div><div class="kl">alinhamento (match)</div></div>
+  <div class="card"><div class="k" style="color:#2DD4BF">66.7%</div><div class="kl">alinhamento (match)</div></div>
   <div class="card"><div class="k" style="color:#38bdf8">7</div><div class="kl">sustentam nossa decisão</div></div>
-  <div class="card"><div class="k" style="color:#f59e0b">12</div><div class="kl">diverge · rígidos</div></div>
+  <div class="card"><div class="k" style="color:#f59e0b">10</div><div class="kl">diverge · rígidos</div></div>
   <div class="card"><div class="k" style="color:#ef4444">13</div><div class="kl">diverge · perdidos</div></div>
 </div>
-<p style="color:#64748b;font-size:12.5px">De 69 decisões comparáveis: <b style="color:#2DD4BF">44 match</b> (37 ambos aprovam + <b style="color:#38bdf8">7 ambos apontam o mesmo erro = coach SUSTENTA nossa decisão</b>) · 25 divergências · 2 comentários sem ação clara (mostrados, não comparados).</p>
+<p style="color:#64748b;font-size:12.5px">De 69 decisões comparáveis: <b style="color:#2DD4BF">46 match</b> (39 ambos aprovam + <b style="color:#38bdf8">7 ambos apontam o mesmo erro = coach SUSTENTA nossa decisão</b>) · 23 divergências · 2 comentários sem ação clara (mostrados, não comparados).</p>
 
 <h2>Pontos de calibragem — como chegar mais perto do coach</h2>
 <div style="background:#0f172a;border:1px solid #1e293b;border-radius:10px;padding:12px 16px;margin:8px 0 16px">
-<p style="color:#cbd5e1;font-size:13px;margin:4px 0"><b style="color:#f59e0b">1. Estamos severos demais em spots agressivos/curtos preflop + sizing.</b> Dos 12 casos que flagamos e o coach aprova, <b style="color:#ef4444">1 foram chamados por nós de erro GRAVE</b> (clear_mistake/critical) — reshoves, folds vs 4-bet, 3-bets marginais que o coach considera linha padrão. Ação: rebaixar severidade desses spots (já em curso na recalibração por EV). 7 dos 12 são preflop.</p>
+<p style="color:#cbd5e1;font-size:13px;margin:4px 0"><b style="color:#f59e0b">1. Estamos severos demais em spots agressivos/curtos preflop + sizing.</b> Dos 10 casos que flagamos e o coach aprova, <b style="color:#ef4444">1 foram chamados por nós de erro GRAVE</b> (clear_mistake/critical) — reshoves, folds vs 4-bet, 3-bets marginais que o coach considera linha padrão. Ação: rebaixar severidade desses spots (já em curso na recalibração por EV). 7 dos 10 são preflop.</p>
 <p style="color:#cbd5e1;font-size:13px;margin:4px 0"><b style="color:#ef4444">2. O coach joga mais tight/exploit que o GTO baseline.</b> Dos 13 casos que ele aponta e nós aprovamos, 8 são preflop (folda mãos marginais como A6s, set-mine, calls/folds por read). <b>Cuidado:</b> nem todos são bug nosso — muitos são preferência EXPLOITATIVA do coach (vs recreativo/nit) que o GTO não modela. Não tightem cego rumo a ele; revise caso a caso quais são leak real vs exploit.</p>
 </div>
 <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
 <div>
-  <h3 style="color:#f59e0b;font-size:15px">⚠️ Rígidos demais (12) — nós flagamos, coach aprova</h3>
-  <p style="color:#94a3b8;font-size:12.5px">RELAXAR. 1 chamados de erro grave. Por street: {'flop': 4, 'preflop': 7, 'river': 1}</p>
-  <ul style="padding-left:18px;margin:6px 0"><li style="margin:6px 0;color:#cbd5e1;font-size:13px"><b style="color:#f59e0b">#173799 9hAc</b> flop/fold: sistema diz <b>small_mistake</b>/gto_critical, coach recomenda <b>fold</b>. <span style="color:#94a3b8">AQUI O JOGADOR SAIU DE LEAD, TINHA QUE FOLDAR MESMO PELO TAMANHO DA APOSTA</span></li><li style="margin:6px 0;color:#cbd5e1;font-size:13px"><b style="color:#f59e0b">#633671 Kh7c</b> preflop/raise: sistema diz <b>small_mistake</b>/gto_critical, coach recomenda <b>fold</b>. <span style="color:#94a3b8">AQUI ERA FOLD, MAS JÁ ESTÁ ITM E TEM BOUNTY NO TORNEIO.
+  <h3 style="color:#f59e0b;font-size:15px">⚠️ Rígidos demais (10) — nós flagamos, coach aprova</h3>
+  <p style="color:#94a3b8;font-size:12.5px">RELAXAR. 1 chamados de erro grave. Por street: {'preflop': 7, 'flop': 2, 'river': 1}</p>
+  <ul style="padding-left:18px;margin:6px 0"><li style="margin:6px 0;color:#cbd5e1;font-size:13px"><b style="color:#f59e0b">#633671 Kh7c</b> preflop/raise: sistema diz <b>small_mistake</b>/gto_critical, coach recomenda <b>fold</b>. <span style="color:#94a3b8">AQUI ERA FOLD, MAS JÁ ESTÁ ITM E TEM BOUNTY NO TORNEIO.
 TODOS OS DEMAIS JOGADORES ESTÃO COM POUCAS FICHAS</span></li><li style="margin:6px 0;color:#cbd5e1;font-size:13px"><b style="color:#f59e0b">#653675 9d5c</b> flop/fold: sistema diz <b>clear_mistake</b>/gto_critical, coach recomenda <b>fold</b>. <span style="color:#94a3b8">AQUI ESTÁ BEM NO LIMIAR, FOLD ACEITÁVEL</span></li><li style="margin:6px 0;color:#cbd5e1;font-size:13px"><b style="color:#f59e0b">#793585 3dKc</b> preflop/raise: sistema diz <b>small_mistake</b>/gto_critical, coach recomenda <b>fold</b>. <span style="color:#94a3b8">NAO TA NO RANGE ESSE OPEN</span></li><li style="margin:6px 0;color:#cbd5e1;font-size:13px"><b style="color:#f59e0b">#823949 8hAh</b> preflop/call: sistema diz <b>small_mistake</b>/gto_critical, coach recomenda <b>call</b>. <span style="color:#94a3b8">LIMP OK AQUI</span></li><li style="margin:6px 0;color:#cbd5e1;font-size:13px"><b style="color:#f59e0b">#943428 Js3c</b> preflop/raise: sistema diz <b>small_mistake</b>/gto_critical, coach recomenda <b>fold</b>. <span style="color:#94a3b8">AQUI ERA FOLD
 MAS PELO BOUNTY ARRISCOU O RAISE</span></li><li style="margin:6px 0;color:#cbd5e1;font-size:13px"><b style="color:#f59e0b">#998179 Kh9s</b> preflop/raise: sistema diz <b>small_mistake</b>/gto_critical, coach recomenda <b>raise</b>. <span style="color:#94a3b8">AQUI A SUGESTÃO É RAISE PRA 2BB MESMO</span></li><li style="margin:6px 0;color:#cbd5e1;font-size:13px"><b style="color:#f59e0b">#015573 5hAs</b> river/bet: sistema diz <b>small_mistake</b>/gto_critical, coach recomenda <b>bet</b>. <span style="color:#94a3b8">APOSTOU POR BLEFE, ATÉ GOSTO.
-AQUI O SIZING TINHA QUE SER MAIS ALTO, PRA ESCONDER MÃO. TERIA QUE SER DE 35000 A 40000</span></li><li style="margin:6px 0;color:#cbd5e1;font-size:13px"><b style="color:#f59e0b">#176947 Qh5c</b> flop/check: sistema diz <b>marginal</b>/gto_minor_deviation, coach recomenda <b>bet</b>. <span style="color:#94a3b8">AQUI TINHA QUE FAZER UMA APOSTA BAIXA, 8000 OU 9000 PRA COMEÇAR A CRESCER O POTE</span></li><li style="margin:6px 0;color:#cbd5e1;font-size:13px"><b style="color:#f59e0b">#368334 Qh5h</b> flop/fold: sistema diz <b>small_mistake</b>/gto_critical, coach recomenda <b>fold</b>. <span style="color:#94a3b8">AQUI ERA FOLD MESMO, TEM QUE ABANDONAR, NAO BATEU NADA, E TINHA A NA MESA</span></li><li style="margin:6px 0;color:#cbd5e1;font-size:13px"><b style="color:#f59e0b">#458445 Kc3d</b> preflop/call: sistema diz <b>small_mistake</b>/, coach recomenda <b>fold</b>. <span style="color:#94a3b8">AQUI O COACH NAO TERIA COMPLETADO</span></li><li style="margin:6px 0;color:#cbd5e1;font-size:13px"><b style="color:#f59e0b">#494086 7s9s</b> preflop/raise: sistema diz <b>small_mistake</b>/gto_critical, coach recomenda <b>raise</b>. <span style="color:#94a3b8">RAISE PRA 3 OK</span></li></ul>
+AQUI O SIZING TINHA QUE SER MAIS ALTO, PRA ESCONDER MÃO. TERIA QUE SER DE 35000 A 40000</span></li><li style="margin:6px 0;color:#cbd5e1;font-size:13px"><b style="color:#f59e0b">#176947 Qh5c</b> flop/check: sistema diz <b>marginal</b>/gto_minor_deviation, coach recomenda <b>bet</b>. <span style="color:#94a3b8">AQUI TINHA QUE FAZER UMA APOSTA BAIXA, 8000 OU 9000 PRA COMEÇAR A CRESCER O POTE</span></li><li style="margin:6px 0;color:#cbd5e1;font-size:13px"><b style="color:#f59e0b">#458445 Kc3d</b> preflop/call: sistema diz <b>small_mistake</b>/, coach recomenda <b>fold</b>. <span style="color:#94a3b8">AQUI O COACH NAO TERIA COMPLETADO</span></li><li style="margin:6px 0;color:#cbd5e1;font-size:13px"><b style="color:#f59e0b">#494086 7s9s</b> preflop/raise: sistema diz <b>small_mistake</b>/gto_critical, coach recomenda <b>raise</b>. <span style="color:#94a3b8">RAISE PRA 3 OK</span></li></ul>
 </div>
 <div>
   <h3 style="color:#ef4444;font-size:15px">🔴 Coach aponta, nós aprovamos (13)</h3>
@@ -150,7 +150,7 @@ AS ODDS ESTÃO AO FAVOR DO JOGADOR <span style="color:#2DD4BF">[coach: call]</sp
       </div>
       <table style="width:100%;border-collapse:collapse"><tr>
           <td style="padding:8px 10px;border-top:1px solid #1e293b;color:#cbd5e1;white-space:nowrap;font:600 12px monospace">turn</td>
-          <td style="padding:8px 10px;border-top:1px solid #1e293b;color:#94a3b8;font-size:12.5px"><b>fold</b> → veredito <b>marginal</b> · GTO gto_critical · sugere <b>call</b> · EV 4399.68bb</td>
+          <td style="padding:8px 10px;border-top:1px solid #1e293b;color:#94a3b8;font-size:12.5px"><b>fold</b> → veredito <b>marginal</b> · GTO gto_mixed · sugere <b>call</b></td>
           <td style="padding:8px 10px;border-top:1px solid #1e293b;color:#e2e8f0;font-size:13px">AQUI O COACH INDICA QUE O JOGAODR FEZ A JOGADA CORRETA DANDO FOLD NESTA APOSTA. FOI MUITO ALTA.
 AVALIAR NO GTO WIZARD <span style="color:#2DD4BF">[coach: fold]</span></td>
           <td style="padding:8px 10px;border-top:1px solid #1e293b;text-align:right"><span style="background:#2DD4BF22;color:#2DD4BF;border:1px solid #2DD4BF55;border-radius:6px;padding:2px 8px;font:600 11px/1.4 monospace;white-space:nowrap">MATCH · ok</span></td>
@@ -231,9 +231,9 @@ AQUI TINHA QUE FAZER UMA APOSTA ALTA, EM TORNO DE 2500 E 2800 <span style="color
       </div>
       <table style="width:100%;border-collapse:collapse"><tr>
           <td style="padding:8px 10px;border-top:1px solid #1e293b;color:#cbd5e1;white-space:nowrap;font:600 12px monospace">flop</td>
-          <td style="padding:8px 10px;border-top:1px solid #1e293b;color:#94a3b8;font-size:12.5px"><b>fold</b> → veredito <b>small_mistake</b> · GTO gto_critical · sugere <b>call</b> · EV 3588.36bb</td>
+          <td style="padding:8px 10px;border-top:1px solid #1e293b;color:#94a3b8;font-size:12.5px"><b>fold</b> → veredito <b>standard</b> · GTO gto_mixed · sugere <b>fold</b> · EV 3588.36bb</td>
           <td style="padding:8px 10px;border-top:1px solid #1e293b;color:#e2e8f0;font-size:13px">AQUI O JOGADOR SAIU DE LEAD, TINHA QUE FOLDAR MESMO PELO TAMANHO DA APOSTA <span style="color:#2DD4BF">[coach: fold]</span></td>
-          <td style="padding:8px 10px;border-top:1px solid #1e293b;text-align:right"><span style="background:#f59e0b22;color:#f59e0b;border:1px solid #f59e0b55;border-radius:6px;padding:2px 8px;font:600 11px/1.4 monospace;white-space:nowrap">DIVERGE · rígido</span></td>
+          <td style="padding:8px 10px;border-top:1px solid #1e293b;text-align:right"><span style="background:#2DD4BF22;color:#2DD4BF;border:1px solid #2DD4BF55;border-radius:6px;padding:2px 8px;font:600 11px/1.4 monospace;white-space:nowrap">MATCH · ok</span></td>
         </tr></table>
     </div><div style="background:#0f172a;border:1px solid #1e293b;border-radius:12px;margin:14px 0;overflow:hidden">
       <div style="padding:10px 14px;background:#111c30;border-bottom:1px solid #1e293b;display:flex;gap:12px;align-items:baseline">
@@ -308,18 +308,6 @@ AQUI TINHA QUE FAZER UMA APOSTA ALTA, EM TORNO DE 2500 E 2800 <span style="color
 DEVERIA SER 4500 OU 5000
 SIZING INCORRETO. <span style="color:#2DD4BF">[coach: bet]</span></td>
           <td style="padding:8px 10px;border-top:1px solid #1e293b;text-align:right"><span style="background:#2DD4BF22;color:#2DD4BF;border:1px solid #2DD4BF55;border-radius:6px;padding:2px 8px;font:600 11px/1.4 monospace;white-space:nowrap">MATCH · ok</span></td>
-        </tr></table>
-    </div><div style="background:#0f172a;border:1px solid #1e293b;border-radius:12px;margin:14px 0;overflow:hidden">
-      <div style="padding:10px 14px;background:#111c30;border-bottom:1px solid #1e293b;display:flex;gap:12px;align-items:baseline">
-        <span style="font:700 15px 'Chakra Petch',monospace;color:#2DD4BF">Mão #575256</span>
-        <span style="color:#e2e8f0;font:600 14px monospace">JsTs</span>
-        <span style="color:#64748b;font-size:12px">UTG</span>
-      </div>
-      <table style="width:100%;border-collapse:collapse"><tr>
-          <td style="padding:8px 10px;border-top:1px solid #1e293b;color:#cbd5e1;white-space:nowrap;font:600 12px monospace">flop</td>
-          <td style="padding:8px 10px;border-top:1px solid #1e293b;color:#94a3b8;font-size:12.5px"><b>call</b> → veredito <b>standard</b> · GTO gto_correct · sugere <b>call</b></td>
-          <td style="padding:8px 10px;border-top:1px solid #1e293b;color:#e2e8f0;font-size:13px"><i style="color:#475569">— sem comentário —</i></td>
-          <td style="padding:8px 10px;border-top:1px solid #1e293b;text-align:right"><span style="background:#33415522;color:#334155;border:1px solid #33415555;border-radius:6px;padding:2px 8px;font:600 11px/1.4 monospace;white-space:nowrap">—</span></td>
         </tr></table>
     </div><div style="background:#0f172a;border:1px solid #1e293b;border-radius:12px;margin:14px 0;overflow:hidden">
       <div style="padding:10px 14px;background:#111c30;border-bottom:1px solid #1e293b;display:flex;gap:12px;align-items:baseline">
@@ -731,9 +719,9 @@ AQUI O SIZING TINHA QUE SER MAIS ALTO, PRA ESCONDER MÃO. TERIA QUE SER DE 35000
       </div>
       <table style="width:100%;border-collapse:collapse"><tr>
           <td style="padding:8px 10px;border-top:1px solid #1e293b;color:#cbd5e1;white-space:nowrap;font:600 12px monospace">flop</td>
-          <td style="padding:8px 10px;border-top:1px solid #1e293b;color:#94a3b8;font-size:12.5px"><b>fold</b> → veredito <b>small_mistake</b> · GTO gto_critical · sugere <b>call</b> · EV 29637.59bb</td>
+          <td style="padding:8px 10px;border-top:1px solid #1e293b;color:#94a3b8;font-size:12.5px"><b>fold</b> → veredito <b>standard</b> · GTO gto_correct · sugere <b>fold</b></td>
           <td style="padding:8px 10px;border-top:1px solid #1e293b;color:#e2e8f0;font-size:13px">AQUI ERA FOLD MESMO, TEM QUE ABANDONAR, NAO BATEU NADA, E TINHA A NA MESA <span style="color:#2DD4BF">[coach: fold]</span></td>
-          <td style="padding:8px 10px;border-top:1px solid #1e293b;text-align:right"><span style="background:#f59e0b22;color:#f59e0b;border:1px solid #f59e0b55;border-radius:6px;padding:2px 8px;font:600 11px/1.4 monospace;white-space:nowrap">DIVERGE · rígido</span></td>
+          <td style="padding:8px 10px;border-top:1px solid #1e293b;text-align:right"><span style="background:#2DD4BF22;color:#2DD4BF;border:1px solid #2DD4BF55;border-radius:6px;padding:2px 8px;font:600 11px/1.4 monospace;white-space:nowrap">MATCH · ok</span></td>
         </tr></table>
     </div><div style="background:#0f172a;border:1px solid #1e293b;border-radius:12px;margin:14px 0;overflow:hidden">
       <div style="padding:10px 14px;background:#111c30;border-bottom:1px solid #1e293b;display:flex;gap:12px;align-items:baseline">
