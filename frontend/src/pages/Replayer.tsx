@@ -103,6 +103,9 @@ const Replayer = () => {
   const [coachMode, setCoachMode] = useState<boolean>(
     () => coachParam || localStorage.getItem("replayer_coach") === "true");
   const [walkMap, setWalkMap] = useState<Record<string, CoachReplayHand>>({});
+  // Playlist do coach NA ORDEM (walkMap é Record, não guarda ordem). Fonte da navegação em
+  // modo coach; o efeito de interseção abaixo a combina com o &f= da URL.
+  const [coachIds, setCoachIds] = useState<string[]>([]);
   const toggleCoach = () => setCoachMode((v) => {
     const nv = !v;
     localStorage.setItem("replayer_coach", String(nv));
@@ -252,16 +255,16 @@ const Replayer = () => {
       .finally(() => setLoading(false));
   }, [tournamentId, handId, studentId, coachMode]);
 
-  // Modo coach LIGADO: carrega a playlist da sessão (mãos que valem revisão, em ordem) e restringe
-  // a navegação a ela. Keyed no torneio (não na mão) → handList estável ao avançar. Se a mão atual
-  // ficou de fora do filtro (ex.: entrou por um fold pré-flop), salta pra primeira mão que vale.
+  // Modo coach LIGADO: carrega a playlist da sessão (mãos que valem revisão, em ordem). Keyed no
+  // torneio (não na mão) → estável ao avançar. Se a mão atual ficou de fora da playlist (ex.:
+  // entrou por um fold pré-flop), salta pra primeira mão que vale.
   useEffect(() => {
     if (!coachMode || !tournamentId) return;
     let alive = true;
     metrics.coachReplay(tournamentId).then((d) => {
       if (!alive || !d?.hands?.length) return;
       const ids = d.hands.map((h) => h.hand_id);
-      setHandList(ids);
+      setCoachIds(ids);
       const m: Record<string, CoachReplayHand> = {};
       d.hands.forEach((h) => { m[h.hand_id] = h; });
       setWalkMap(m);
@@ -273,10 +276,25 @@ const Replayer = () => {
     return () => { alive = false; };
   }, [coachMode, tournamentId]);
 
+  // A navegação em modo coach: a playlist dá a ORDEM, mas o &f= da URL segue valendo — a
+  // INTERSEÇÃO dos dois. Antes a playlist substituía o filtro calada: usuário filtrava "só os
+  // erros" na lista, abria com coach=1, e o avançar pousava em mão Aceitável que a lista não
+  // mostra (mão 259090517149, reportado em 14/08) — com a barra ainda rotulada "só os erros"
+  // (o "3/84" do primeiro print era o TAMANHO DA PLAYLIST, não a contagem de erros).
+  // Fallback para a playlist inteira se a interseção esvaziar — navegação nunca morre.
+  useEffect(() => {
+    if (!coachMode || !coachIds.length) return;
+    if (resultFilter === "all" || !decisions.length) { setHandList(coachIds); return; }
+    const passa = new Set(filterHandIds(decisions, resultFilter));
+    const ids = coachIds.filter((h) => passa.has(h));
+    setHandList(ids.length ? ids : coachIds);
+  }, [coachMode, coachIds, decisions, resultFilter]);
+
   // Modo coach DESLIGADO: restaura a lista completa do torneio (todas as mãos) a partir das decisões.
   useEffect(() => {
     if (coachMode) return;
     setWalkMap({});
+    setCoachIds([]);
     if (decisions.length) setHandList(filterHandIds(decisions, resultFilter));
   }, [coachMode, decisions, resultFilter]);
 

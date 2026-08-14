@@ -7,6 +7,20 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(replayer): no modo coach, o &f= volta a valer -- a playlist dava a ordem E engolia o filtro (#vitrine)
+
+> Relato preciso do usuario: filtrou "so os erros" na lista, abriu o replayer (coach=1),
+> avancou, e pousou numa mao ACEITAVEL que a lista nao mostra. Causa: em modo coach a
+> navegacao e comandada pela playlist do coach (maos que valem revisao, incluindo aceitaveis
+> POR DESIGN) e o &f= da URL era ignorado calado -- com a barra ainda rotulada "so os erros".
+> Retro-diagnostico: o "3/84" do primeiro print de 13/08 era o TAMANHO DA PLAYLIST do coach,
+> nao a contagem de erros; a parte "aba velha" daquela explicacao estava certa para as
+> contagens, mas a navegacao ja era este defeito.
+>
+> Conserto: INTERSECAO -- a playlist segue dando a ordem (e o walkthrough), o filtro decide o
+> que entra; fallback para a playlist inteira se a intersecao esvaziar. Fora do modo coach,
+> nada muda.
+
 ### fix(lista): auditoria lista x replay completa -- 8 divergentes, uma familia, e um conserto errado no meio (#vitrine #medicao)
 
 > "Confira se pode ter mais algum spot acusando erro na lista, divergente do replayer."
