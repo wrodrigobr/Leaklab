@@ -9,13 +9,27 @@ Roda depois de reanalyze_all_labels (verdictos atuais).
 import os, sys, re, html
 from collections import Counter, defaultdict
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-import sqlite3
 
-TID = 388
-DB = os.path.join(os.path.dirname(__file__), '..', 'data', 'leaklab.db')
+# Porta ÚNICA de conexão (14/08): o script era sqlite hardcoded e as 71 anotações vivem em
+# PRODUÇÃO (Postgres, t132) — o relatório saía do banco errado ou não saía. get_conn respeita
+# DATABASE_URL; os placeholders '?' são adaptados. O torneio é RESOLVIDO pelas anotações
+# (o único com coach_hand_annotations), não hardcoded — o id local (388) e o de prod (132)
+# diferem para o MESMO histórico.
+import database.schema as _sch
+_sch.init_db()
+from database.schema import get_conn
+
 OUT = os.path.join(os.path.dirname(__file__), '..', 'docs', 'coach_review_t27.html')
 
-c = sqlite3.connect(DB); c.row_factory = sqlite3.Row
+c = get_conn()
+_tid_row = c.execute(
+    'SELECT d.tournament_id AS tid, COUNT(*) AS n FROM coach_hand_annotations a '
+    'JOIN decisions d ON d.id = a.decision_id GROUP BY d.tournament_id ORDER BY n DESC'
+).fetchone()
+if not _tid_row:
+    sys.exit('ERRO: nenhuma anotação de coach no banco.')
+TID = dict(_tid_row)['tid']
+print(f'torneio com anotações: id={TID} ({dict(_tid_row)["n"]} anotações)')
 
 # Multiway-aware: o "erro do sistema" em pote 3-way+ vem do multiway_advisor (mesma fonte
 # do card do replayer), não do label HU armazenado. Reusa o helper do módulo compartilhado.
@@ -105,7 +119,7 @@ def classify(dec, ann):
 decs = c.execute('''SELECT id, hand_id, street, action_taken, hero_cards, position, label,
     gto_label, gto_action, best_action, ev_loss_bb, score,
     board, pot_size, facing_bet, n_active_opponents
-    FROM decisions WHERE tournament_id=? ORDER BY hand_id, rowid''', (TID,)).fetchall()
+    FROM decisions WHERE tournament_id=? ORDER BY hand_id, id''', (TID,)).fetchall()
 anns = {r['decision_id']: r for r in c.execute(
     '''SELECT a.* FROM coach_hand_annotations a JOIN decisions d ON d.id=a.decision_id
        WHERE d.tournament_id=?''', (TID,)).fetchall()}
@@ -160,7 +174,9 @@ for hid in sorted(by_hand):
     if not any(r[1] for r in hrows) and not any(r[4] for r in hrows):
         continue
     d0 = hrows[0][0]
-    hnum = int(hid) - 100000000
+    # hand_id de prod nao e numerico-curto ('259090801366', 'TM6103541092') — o `int(hid)`
+    # antigo estourava. Mostra o sufixo, que e o que distingue as maos do mesmo torneio.
+    hnum = str(hid)[-6:]
     cards = esc(d0['hero_cards']); pos = esc(d0['position'])
     decrows = ''
     for d, ann, kind, rec, sysm in hrows:
@@ -186,7 +202,7 @@ for hid in sorted(by_hand):
 def cal_list(items, color):
     out = ''
     for d, ann, kind, rec, sysm in items:
-        hnum = int(d['hand_id'])-100000000
+        hnum = str(d['hand_id'])[-6:]
         cards = esc(d['hero_cards']); st = esc(d['street']); act = esc(d['action_taken'])
         lab = esc(d['label']); gto = esc(d['gto_label']); cm = esc((ann['comment'] or '')[:120])
         out += (f'<li style="margin:6px 0;color:#cbd5e1;font-size:13px">'
