@@ -1115,6 +1115,12 @@ def evaluate_decision(input_data: Dict[str, Any]) -> Dict[str, Any]:
         label,
         best_action=_best_action,
     )
+    # NOTA 14/08: houve aqui, por uma hora, um piso "call fechado com equity >= exigido+20pp
+    # vira standard". Ele BRIGAVA com o guarda deliberado da recalibracao do coach (#27, linha
+    # ~1547): a equity e VS-RANDOM, e 20pp de folga contra mao aleatoria absolveria tambem o
+    # squeeze-call genuinamente ruim — exatamente o buraco que aquele guarda fechou. O call
+    # forcado do excesso sai 'marginal' ("nao temos base para chamar de correto") por design;
+    # o invariante real e NUNCA PIOR que marginal, garantido pelo proprio guarda de la.
 
     # GTO enrichment postflop — fonte primária quando strategy_json disponível
     gto = _enrich_gto(input_data)

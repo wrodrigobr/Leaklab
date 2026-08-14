@@ -86,6 +86,28 @@ def test_raise_que_compromete_o_efetivo_e_gradeado_como_jam():
     print('OK  test_raise_que_compromete_o_efetivo_e_gradeado_como_jam')
 
 
+def test_call_do_excesso_nunca_e_pior_que_marginal():
+    """A SEGUNDA decisão da mesma mão: pagar os 2bb de excesso do 4-bet-jam depois do próprio
+    3-bet-commit (65% vs-random contra ~9% exigidos). O veredito DESENHADO é 'marginal': a
+    equity é vs-random e não dá base para absolver ('standard') um call vs squeeze — guarda da
+    recalibração do coach (#27). Houve por uma hora um piso que forçava 'standard' aqui; ele
+    absolveria também squeeze-calls ruins e foi revertido. O invariante real: o call forçado
+    NUNCA vira acusação (small/clear), e a recomendação é o próprio call."""
+    hands = parse_hand_history(MAO)
+    di_call = None
+    for di in build_decision_inputs_for_hand(hands[0]):
+        if di.get('street') == 'preflop' and (di.get('player_action') or '').lower() == 'call':
+            di_call = di
+    assert di_call, 'a fixture nao produziu o call do excesso'
+    assert bool(di_call['spot'].get('facingAllin')) is True
+    r = evaluate_decision(di_call)
+    ev = r.get('evaluation') or {}
+    assert ev.get('label') in ('standard', 'marginal'), (
+        f"call forcado do excesso virou ACUSACAO: {ev.get('label')}")
+    assert (r.get('bestAction') or '').lower() in ('call', 'calls'), r.get('bestAction')
+    print('OK  test_call_do_excesso_nunca_e_pior_que_marginal')
+
+
 def test_CONTROLE_raise_pequeno_em_stack_fundo_nao_colapsa():
     """Sem esta ancora, 'colapsar tudo' passaria: um 3-bet de 10bb a 47bb efetivos NAO e jam."""
     from leaklab.strategy_provider import preflop_strategy
