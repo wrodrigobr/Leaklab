@@ -62,6 +62,26 @@ def test_gto_wizard_preflop_sem_estrategia_nao_e_alvo():
     print('OK  test_gto_wizard_preflop_sem_estrategia_nao_e_alvo')
 
 
+def test_upsert_bloqueado_pela_blindagem_NAO_conta_como_inserido():
+    """REGRA 6 (14/08): a blindagem do upsert ('não piora exploitability') bloqueava em
+    SILÊNCIO — o execute afeta 0 linhas sem erro, o contador somava 1 e o consumer marcava
+    `done` acreditando ter gravado. Os 40 re-solves dos nós de outra escala foram 40x
+    bloqueados assim. Agora o rowcount decide: bloqueado = rejeitado, e o chamador sabe."""
+    bom = _no(spot_hash='blindado-1', exploitability_pct=0.01,
+              strategy_detail={'call': {'frequency': 1.0}})
+    assert insert_gto_nodes([bom]) == 1
+    pior = _no(spot_hash='blindado-1', exploitability_pct=5.0,
+               strategy_detail={'fold': {'frequency': 1.0}})
+    assert insert_gto_nodes([pior]) == 0, (
+        'upsert bloqueado pela blindagem contou como inserido — o consumer vai marcar done sem gravar')
+    n = get_gto_node('blindado-1')
+    import json as _j
+    st = _j.loads(dict(n)['strategy_json'])
+    acoes = st.get('strategy') or st
+    assert 'call' in acoes, 'a blindagem deixou o pior sobrescrever'
+    print('OK  test_upsert_bloqueado_pela_blindagem_NAO_conta_como_inserido')
+
+
 def test_rejected_com_payload_IGUAL_nao_reenfileira_e_com_payload_novo_sim():
     """O par do reset de `rejected`: payload novo merece solve novo, payload IGUAL produz o
     mesmo resultado — re-enfileirá-lo é pagar o solve para re-rejeitar em loop (o spot t23

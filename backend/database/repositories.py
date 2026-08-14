@@ -8622,7 +8622,7 @@ def insert_gto_nodes(nodes: list[dict]) -> int:
                 facing_size_bb=float(n.get('facing_size_bb', 0.0)),
             )
 
-            conn.execute(_adapt("""
+            _res = conn.execute(_adapt("""
                 INSERT INTO gto_nodes
                     (spot_hash, street, position, board, hero_hand, stack_bucket,
                      gto_action, gto_freq, ev_diff, exploitability_pct, iterations, source,
@@ -8663,7 +8663,20 @@ def insert_gto_nodes(nodes: list[dict]) -> int:
                 bool(is_aggregate),   # boolean nativo: SQLite aceita; Postgres exige (não int)
                 n.get('tree_hash'),
             ))
-            count += 1
+            # HONESTIDADE do contador (14/08): quando o WHERE da blindagem BLOQUEIA o upsert,
+            # o execute nao erra — afeta 0 linhas. O `count += 1` incondicional contava o
+            # bloqueio como sucesso, o consumer marcava o job `done` acreditando ter gravado,
+            # e o re-solve dos 40 nos de outra escala foi 40x bloqueado EM SILENCIO (a
+            # blindagem "nao piora exploitability" protegia nos do pote errado com
+            # exploitability 0.01 fraudulentamente perfeita). rowcount diz a verdade nos dois
+            # bancos (sqlite cursor e _PgResult expoem). None/-1 = driver nao informou:
+            # mantem o comportamento antigo em vez de inventar bloqueio.
+            _rc = getattr(_res, 'rowcount', None)
+            if _rc is None or _rc < 0 or _rc > 0:
+                count += 1
+            else:
+                rejected += 1
+                _log_gto_rejection(n, 'upsert bloqueado pela blindagem (no existente nao-pior)')
         conn.commit()
         if rejected:
             _gto_log.info('insert_gto_nodes: %d inseridos, %d rejeitados', count, rejected)

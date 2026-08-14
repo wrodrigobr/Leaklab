@@ -96,6 +96,13 @@ def main():
                     continue
                 vistos.add(h)
                 if APPLY:
+                    # DELETE antes do enqueue: a blindagem do upsert ("não piora a
+                    # exploitability") bloqueava o solve novo porque o nó do pote errado
+                    # converge para 0.01 fraudulentamente perfeito — 40 de 40 re-solves
+                    # bloqueados em silêncio na 1ª rodada (14/08). Nó provadamente de outra
+                    # escala não merece blindagem: sai, e o solve fresco entra limpo.
+                    conn.execute('DELETE FROM gto_nodes WHERE spot_hash = ?', (h,))
+                    conn.commit()
                     enqueue_solver_spot(h, payload, priority=_priority(di.get('street')))
                 enfileirados += 1
         sem_spot += len(chaves)
