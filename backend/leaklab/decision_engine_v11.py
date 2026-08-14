@@ -1365,6 +1365,26 @@ def evaluate_decision(input_data: Dict[str, Any]) -> Dict[str, Any]:
             # contradição AUTO ("Erro; ideal: o que você fez"). Acusar exige poder dizer o quê.
             label = _label_pre_ceil
 
+    # Nó de OUTRA ESCALA (família 1 da revisão do coach, 14/08): quando o EV do próprio nó é
+    # fisicamente impossível (|ev| > pote + 2 stacks — o MESMO teto físico do
+    # ev_loss_trustworthy), o nó foi solvado num pote que não é o deste spot, e as FREQUÊNCIAS
+    # que sustentam o score vieram da decisão errada junto com o número (o pote não entra no
+    # spot_hash; ver ev_loss_fold_ceiling). `clear_mistake` apoiado nisso não se sustenta:
+    # cap em `small_mistake`. NÃO absolve — o estimador pode seguir dizendo que o call paga
+    # (9hAc: eq 34% vs preço 25%); derruba só o tier mais grave, que exigiria um nó em que se
+    # confia. Medido: 9hAc com EV +3.588bb e Qh5h com +29.637bb, ambos clear score 0.9 pelo
+    # nó, ambos gradados 'standard' pelo coach; 29 acusações assim no acervo.
+    try:
+        _pot_fis = float(spot.get('potBb') or 0)
+        _stk_fis = float(_hero_stack_bb or 0)
+        _fora_de_escala = (_eff_ev is not None and _stk_fis > 0
+                           and abs(float(_eff_ev)) > _pot_fis + 2.0 * _stk_fis)
+    except (TypeError, ValueError):
+        _fora_de_escala = False
+    if _fora_de_escala and label == 'clear_mistake':
+        label = 'small_mistake'
+        final_score = min(final_score, _LABEL_MAX_SCORE['small_mistake'])
+
     # INVARIANTE (piso TERMINAL): erro de DIREÇÃO — o GTO folda a mão (fora do range de
     # continuação) mas o hero AGREDIU — NUNCA é capeado por EV. O _ev_severity_ceiling acima
     # rebaixava de volta a 'marginal' quando o EV era ~0 (open fora do range custa pouco
