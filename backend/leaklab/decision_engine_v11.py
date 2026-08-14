@@ -1491,6 +1491,13 @@ def evaluate_decision(input_data: Dict[str, Any]) -> Dict[str, Any]:
     #
     # Cap em `marginal`, nao em `standard`: pode existir motivo de range para pagar que a conta
     # de pot odds nao ve. Marginal e "subotimo mas defensavel", que e exatamente o que se sabe.
+    #
+    # NOTA 14/08: os numeros dos tres exemplos acima sao da epoca do pote RECONSTRUIDO ERRADO.
+    # Com o conserto de 04/08 o preco real dessas maos caiu para ~25% e a equity passou a pagar
+    # com folga — o guarda deixou de disparar NELAS corretamente (settrace conferido: A9o eq 34%
+    # vs preco 25%). O `clear` que voltou a essas maos vinha de OUTRO defeito: no de outra
+    # escala ditando o score (ver o cap de fora-de-escala adiante). O G1 segue valendo para os
+    # empates verdadeiros que existirem.
     _EMPATE_PP = 0.02
     if label in ('small_mistake', 'clear_mistake') and _norm_gto_action(
             input_data.get('player_action', '')) == 'fold':

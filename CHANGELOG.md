@@ -7,6 +7,24 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(engine): no de OUTRA ESCALA nao sustenta clear_mistake -- familia 1 do coach extinta (#gto #medicao)
+
+> "Ataca a familia 1": os tres folds postflop que gradavamos `clear_mistake` (score 0,9) e o
+> coach grada `standard`. O settrace ABSOLVEU o G1 -- com o pote reconstruido (04/08) o preco
+> real dessas maos e ~25% e a equity paga com folga; as tres maos-referencia do proprio guarda
+> mudaram de lugar. O verdadeiro autor do clear: o recompute de score pelas FREQUENCIAS do no
+> (linha ~1145) -- o mesmo no cujo EV marca +3.588bb num spot de 32bb (e +29.637bb no outro).
+> EV fisicamente impossivel = no solvado em OUTRO pote (o pote nao entra no spot_hash); as
+> frequencias vieram da decisao errada junto com o numero.
+>
+> Cap: |ev| > pote + 2 stacks (o MESMO teto fisico do ev_loss_trustworthy) e clear_mistake ->
+> small_mistake com score junto. NAO absolve (o estimador segue dizendo que o call paga:
+> A9o eq 34% vs preco 25%). Teste com a mao real parseada + duble de no, quebrado de
+> proposito; golden INALTERADO (so a classe nova muda). Relabel: **40 linhas** clear->small,
+> gto intacto, incluindo as duas maos do coach; **fora-de-escala-ainda-clear: 0** no acervo;
+> acusadas estaveis em 586 (mudanca de TIER, nao de contagem). Nota historica no G1 para os
+> numeros dos exemplos nao enganarem o proximo leitor.
+
 ### fix(replayer): no modo coach, o &f= volta a valer -- a playlist dava a ordem E engolia o filtro (#vitrine)
 
 > Relato preciso do usuario: filtrou "so os erros" na lista, abriu o replayer (coach=1),
