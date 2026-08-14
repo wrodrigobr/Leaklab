@@ -6,6 +6,12 @@ segura. É SHADOW: nada no produto lê essa coluna ainda (cobertura/ELO/veredito
 Serve pra acumular dados e validar (validate_multiway_safety.py) antes de ligar (Fase 2).
 
 Escreve SÓ a coluna multiway_safe_verdict; não toca label/gto/score. Idempotente.
+
+AVISO (14/08): o "SÓ a coluna" era seguro na Fase 1 SHADOW, mas desde a Fase 2 a lista de
+mãos GRADEIA PELO LABEL quando o veredito multiway existe — gravar `safe_fold` numa linha
+cujo label HU diz clear_mistake cria a contradição "lista acusa, replay absolve" (13 linhas
+medidas, sonda MW-COERENTE na varredura). Se este script voltar a rodar sobre linhas legadas,
+o label tem de viajar junto: `safe_fold` + hero foldou → label standard.
 Uso: python scripts/backfill_multiway_safety.py [--prod] [--sims N] [--limit N]
 """
 import os, sys, json

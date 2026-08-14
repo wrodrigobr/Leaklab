@@ -178,6 +178,23 @@ def _no_solvado_vazio(conn):
                    AND (strategy_json IS NULL OR strategy_json = '')""")]
 
 
+def _multiway_incoerente(conn):
+    """`safe_fold` + hero FOLDOU + label de erro é impossível por construção.
+
+    Se o veredito multiway gravado diz que o fold era a linha segura e o hero foldou, não há
+    leak — mas o backfill da Fase 1 era SHADOW ("não toca label") e a lista passou a ler a
+    coluna assumindo label coerente. Medido em 14/08: 13 linhas, 8 mãos acusadas na lista de
+    mãos com o replay (que recomputa ao vivo) servindo standard — a divergência que o usuário
+    reportou três vezes. Quem gravar multiway_safe_verdict carrega o label junto.
+    """
+    return [Violacao(r['id'], f"safe_fold + fold + {r['label']}")
+            for r in _linhas(conn, """
+                SELECT id, label FROM decisions
+                 WHERE multiway_safe_verdict = 'safe_fold'
+                   AND lower(action_taken) = 'fold'
+                   AND label IN ('small_mistake', 'clear_mistake')""")]
+
+
 def _mesa_impossivel(conn):
     """Uma decisão existe porque há mesa. `num_players` nunca pode ser menor que 2.
 
@@ -407,6 +424,21 @@ INVARIANTES: List[Invariante] = [
         medir=_ev_acima_do_teto,
         forjar=lambda c: _forjar_linha(c, ev_loss_bb=9999.0, stack_bb=10.0, pot_size=3.0,
                                        ev_loss_source='solver_hand'),
+    ),
+    Invariante(
+        id='MW-COERENTE', baseline=0,
+        titulo='multiway_safe_verdict=safe_fold com fold do hero e label de erro',
+        porta='lista de mãos acusa (grada pelo label quando o veredito multiway existe) '
+              'enquanto o replay, que recomputa ao vivo, absolve — mesma mão, duas telas',
+        origem='auditoria lista×replay de 14/08 — 13 linhas do backfill SHADOW da Fase 1 '
+               '(escrevia o veredito sem carregar o label junto)',
+        medir=_multiway_incoerente,
+        # gto_label coerente com o label de erro, senão a forja também acorda a SELO.
+        forjar=lambda c: _forjar_linha(c, street='flop', action_taken='fold',
+                                       multiway_safe_verdict='safe_fold',
+                                       label='clear_mistake', gto_label='gto_critical',
+                                       gto_action='call', best_action='call',
+                                       n_active_opponents=4),
     ),
     Invariante(
         id='NO-VAZIO', baseline=0,
