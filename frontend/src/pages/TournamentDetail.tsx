@@ -297,6 +297,34 @@ const TournamentDetail = () => {
     }
   }, [id, coachStudentId]);
 
+  // Rebusca ao VOLTAR o foco na aba (throttle 60s). Sem isto, uma aba aberta na lista desde
+  // antes de um relabel do servidor mostrava o veredito velho enquanto o replayer (que busca
+  // ao abrir) mostrava o novo — "erro na lista, sem erro no replayer", reportado 2x pelo
+  // usuário em 13/08 e 14/08. A API não é cacheada (cf DYNAMIC); o dado velho morava AQUI.
+  useEffect(() => {
+    if (!id) return;
+    let ultima = Date.now();
+    const aoFocar = () => {
+      if (document.visibilityState !== "visible" || Date.now() - ultima < 60_000) return;
+      ultima = Date.now();
+      const fetchTournament = coachStudentId
+        ? coachDashboard.studentTournament(Number(coachStudentId), id)
+        : tournaments.get(id);
+      fetchTournament
+        .then((r) => {
+          setTournament(r.tournament);
+          setHands(groupByHand(r.decisions));
+        })
+        .catch(() => null);
+    };
+    document.addEventListener("visibilitychange", aoFocar);
+    window.addEventListener("focus", aoFocar);
+    return () => {
+      document.removeEventListener("visibilitychange", aoFocar);
+      window.removeEventListener("focus", aoFocar);
+    };
+  }, [id, coachStudentId]);
+
   useEffect(() => {
     if (!tournament?.id) return;
     metrics.sessionReview(tournament.id).then(setSessionReview).catch(() => null);

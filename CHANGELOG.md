@@ -7,6 +7,17 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(vitrine): a lista rebusca ao voltar o foco -- e a revalidacao completa deu 12 de 9.763 (#vitrine)
+
+> Segundo relato de "erro na lista, sem erro no replayer" (mao 259090556402). Diagnostico nas
+> tres camadas: banco e replay CONCORDAM (standard); a revalidacao completa do acervo
+> (reanalyze_all_labels, dry-run antes) mudou so **12 de 9.763** decisoes -- nao ha drift de
+> label. A API nao e cacheada na borda (cf DYNAMIC). O mecanismo real: a LISTA busca os dados
+> quando a pagina monta e vive com eles; o replayer busca ao abrir. Aba aberta desde antes de
+> um relabel + clique numa mao = lista velha, replayer fresco. Conserto: a lista rebusca ao
+> voltar o foco da aba (visibilitychange/focus, throttle 60s) -- o dado envelhecido morria no
+> F5 e agora morre sozinho.
+
 ### fix(replay): o dict vivo do /replay carrega os campos-viajantes do EV (#vitrine)
 
 > A segunda camada do mesmo defeito: consertados os insumos do card, o K9o SEGUIA "sem
