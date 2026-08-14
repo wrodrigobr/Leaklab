@@ -280,6 +280,8 @@ def _enrich_preflop_gto(input_data: Dict[str, Any]) -> dict:
             is_pko             = bool(ctx.get('isPko')),
             facing_to_bb       = float(spot.get('facingToBb') or 0),
             facing_allin       = bool(spot.get('facingAllin', False)),
+            # colapso raise≡jam mora na porta única; sem o tamanho ele não dispara
+            hero_raise_to_bb   = spot.get('heroRaiseToBb'),
         )['raw']
     except Exception as exc:
         _log_gto_miss('preflop', input_data.get('street'), spot.get('position'), str(exc)[:120])

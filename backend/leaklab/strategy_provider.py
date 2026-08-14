@@ -196,7 +196,7 @@ def preflop_strategy(position: str, hand: str | None = None, stack_bb: float = 2
                      facing_raises: int = 0, caller_position: str = '',
                      n_players: int | None = None, facing_limp: bool = False,
                      is_pko: bool = False, facing_to_bb: float = 0.0,
-                     facing_allin: bool = False) -> dict:
+                     facing_allin: bool = False, hero_raise_to_bb: float | None = None) -> dict:
     """Resposta normalizada de estratégia preflop — a PORTA ÚNICA para preflop (trainer, academy,
     decision_engine/HH analyzer, /replay). Encaminha TODA a superfície de parâmetros do
     `analyze_preflop` (não recalcula nada). `hand`/`hero_hand_type` são sinônimos (ex.: 'A8s').
@@ -230,6 +230,18 @@ def preflop_strategy(position: str, hand: str | None = None, stack_bb: float = 2
                 'available_actions': [], 'range_pct': None, 'raise_to_bb': None,
                 'raw': {'available': False, 'motivo': 'mao_em_formato_desconhecido',
                         'hand_type': str(_bruta)[:16]}}
+    # Raise que COMPROMETE o stack efetivo é o jam com outro nome: a 3-bet de 10bb contra um
+    # stack efetivo de 12bb deixa 2bb atrás — mesma fold equity, mesmo commit, mesmo resultado.
+    # A carta só tem fold/call/jam nessas profundidades, então gradear o "raise" pela palavra dá
+    # freq 0 e gto_critical RECOMENDANDO exatamente a jogada equivalente (mão 259090801366, AJs
+    # BB 3-bet 10bb vs open de 12bb: acusada com best=jam). Mesma família do shove≡call do
+    # postflop, na porta única do preflop — protege motor, /replay (card e veredito) e futuros.
+    # Limiar 0.8: deixa <20% do efetivo atrás; 'fold' nunca colapsa (nem chega aqui: só raise).
+    _act_cru = (action_taken or '').lower()
+    if (hero_raise_to_bb and _act_cru in ('raise', 'bet', '3bet', '4bet', 'reraise')
+            and float(stack_bb or 0) > 0
+            and float(hero_raise_to_bb) >= 0.8 * float(stack_bb)):
+        action_taken = 'allin'
     res = analyze_preflop(
         position=position,
         hero_hand_type=_mao,

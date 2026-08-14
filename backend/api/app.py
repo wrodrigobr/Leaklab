@@ -6504,6 +6504,7 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
                                 # rebaixar fold de defesa marginal vs open off-tree.
                                 facing_to_bb       = float(spot.get('facingToBb') or 0),
                                 facing_allin       = bool(spot.get('facingAllin', False)),
+                                hero_raise_to_bb   = spot.get('heroRaiseToBb'),
                             )['raw']
                             # Fallbacks preflop honestos (sem cobertura de árvore) — fonte única no
                             # strategy_provider (antes construídos INLINE aqui, em cópia do lado do
@@ -6976,6 +6977,7 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
                             facing_limp        = bool(_spot.get('facingLimp')),
                             caller_position    = _spot.get('callerPosition', '') or '',
                             facing_allin       = bool(_spot.get('facingAllin', False)),
+                            hero_raise_to_bb   = _spot.get('heroRaiseToBb'),
                         )['raw']
                         # Fallback call-vs-shove: sem dados vs_shove, proxy pela pertinência ao open
                         # (RFI). Fonte única no provider (antes construído inline aqui). Gatilho aqui.
