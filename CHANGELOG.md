@@ -7,6 +7,22 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(preflop): raise que compromete o stack efetivo e JAM -- e a prova das listas velhas (#gto #vitrine)
+
+> Mao 259090801366 (print do usuario): AJs no BB 3-beta para 10bb contra open de 12bb
+> EFETIVOS -- deixa 2bb atras, mesma fold equity, mesmo commit -- e saia `gto_critical` com
+> freq 0 recomendando `best=jam`, a jogada equivalente. Mesma familia do shove-equivale-call,
+> agora do lado do agressor, consertada na PORTA UNICA (`preflop_strategy`,
+> `hero_raise_to_bb >= 0.8 x efetivo`): cobre motor, as duas chamadas do /replay e o
+> trainer. Fold nunca colapsa; controle prova que raise pequeno em stack fundo nao muda;
+> quebrado de proposito (volta `major_leak`). Relabel completo: **16 de 9.763** mudaram,
+> a mao do usuario virou `standard/gto_correct`; acusadas 588 -> **586**.
+>
+> E as outras duas maos reportadas ("erro na lista, sem erro no replayer"): banco e replay
+> CONCORDAM (standard) e nenhuma esta na lista de erros ATUAL (28 maos no torneio) -- e a aba
+> com bundle/dados de antes dos relabels; o refetch-ao-focar ja deployado mata a recorrencia
+> apos um unico reload.
+
 ### fix(vitrine): a lista rebusca ao voltar o foco -- e a revalidacao completa deu 12 de 9.763 (#vitrine)
 
 > Segundo relato de "erro na lista, sem erro no replayer" (mao 259090556402). Diagnostico nas
