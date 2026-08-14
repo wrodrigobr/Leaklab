@@ -44,21 +44,36 @@ export function verdictLevelOrError(label: string | null | undefined): VerdictLe
 /**
  * Severidade EFETIVA de UMA decisão para o resumo da mão (lista de mãos), honrando a
  * regra multiway — a MESMA que o card/replay aplica. Postflop com 2+ oponentes ativos é
- * INFORMATIVO (solver é HU-only): não pune, vira "correct". Exceção: se a cauda segura foi
- * gravada (`multiway_safe_verdict`), aí o spot É gradeado pelo label. Sem isso a lista lia o
- * `label` cru (ex.: small_mistake/gto_critical multiway) e mostrava "Erro" onde o replay
- * mostra "Correto" — a divergência entre as duas telas.
+ * INFORMATIVO (solver é HU-only): não pune, vira "correct". Com a cauda segura gravada
+ * (`multiway_safe_verdict`), o veredito DERIVA do próprio safe_verdict + ação — exatamente
+ * como o replay/drill (graded_safe_verdict) fazem: hero seguiu a linha segura → correct;
+ * divergiu → grade pelo label. A versão anterior gradeava "pelo label" sempre que o veredito
+ * existia, e as linhas do backfill SHADOW (label HU intacto por design) saíam "Erro" na lista
+ * com o replay absolvendo — a divergência entre as duas telas.
  */
 export interface DecisionSeverityInput {
   street: string;
   label: string | null | undefined;
   n_active_opponents?: number | null;
   multiway_safe_verdict?: string | null;
+  action_taken?: string | null;
 }
+
+const _SAFE_VALUE_ACTS = new Set(["bet", "bets", "raise", "raises", "call", "calls", "jam", "shove", "allin", "all-in"]);
+
 export function decisionSeverity(d: DecisionSeverityInput): VerdictLevel {
   const isPostflop = (d.street || "").toLowerCase() !== "preflop";
   const multiway = isPostflop && d.n_active_opponents != null && d.n_active_opponents >= 2;
   if (multiway && !d.multiway_safe_verdict) return "correct";  // informativo, não pune
+  if (multiway && d.multiway_safe_verdict) {
+    // Cauda segura: o veredito deriva do PRÓPRIO safe_verdict + ação, como o replay e o drill
+    // fazem (graded_safe_verdict vive nas camadas de display; o `label` da linha segue sendo o
+    // HU, por design). A versão anterior gradeava "pelo label" e 13 linhas do backfill SHADOW
+    // saíam ERRO na lista com o replay absolvendo — safe_fold + hero foldou não é leak.
+    const at = (d.action_taken || "").toLowerCase();
+    if (d.multiway_safe_verdict === "safe_fold") return at === "fold" || at === "folds" ? "correct" : verdictLevelOrError(d.label);
+    if (d.multiway_safe_verdict === "safe_value") return _SAFE_VALUE_ACTS.has(at) ? "correct" : verdictLevelOrError(d.label);
+  }
   return verdictLevelOrError(d.label);
 }
 

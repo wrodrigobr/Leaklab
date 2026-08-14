@@ -7,11 +7,11 @@ Serve pra acumular dados e validar (validate_multiway_safety.py) antes de ligar 
 
 Escreve SÓ a coluna multiway_safe_verdict; não toca label/gto/score. Idempotente.
 
-AVISO (14/08): o "SÓ a coluna" era seguro na Fase 1 SHADOW, mas desde a Fase 2 a lista de
-mãos GRADEIA PELO LABEL quando o veredito multiway existe — gravar `safe_fold` numa linha
-cujo label HU diz clear_mistake cria a contradição "lista acusa, replay absolve" (13 linhas
-medidas, sonda MW-COERENTE na varredura). Se este script voltar a rodar sobre linhas legadas,
-o label tem de viajar junto: `safe_fold` + hero foldou → label standard.
+NOTA (14/08): "SÓ a coluna" segue correto — o label da linha É o HU por design, e o veredito
+multiway deriva do safe_verdict nas camadas de DISPLAY (drill, replay e a lista, via
+decisionSeverity no frontend). A primeira leitura desse contrato ("a lista grada pelo label")
+produziu 13 linhas acusadas na lista com o replay absolvendo; o conserto foi na régua da
+lista, não aqui. Não escreva label a partir deste script.
 Uso: python scripts/backfill_multiway_safety.py [--prod] [--sims N] [--limit N]
 """
 import os, sys, json

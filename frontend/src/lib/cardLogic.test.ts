@@ -197,8 +197,20 @@ describe("decisionSeverity — multiway informativo (igual ao replay)", () => {
     expect(decisionSeverity({ street: "flop", label: "small_mistake", n_active_opponents: 1 })).toBe("error");
     expect(decisionSeverity({ street: "river", label: "standard", n_active_opponents: 1 })).toBe("correct");
   });
-  it("multiway COM cauda-segura gravada: volta a gradear pelo label", () => {
-    expect(decisionSeverity({ street: "flop", label: "small_mistake", n_active_opponents: 2, multiway_safe_verdict: "safe_fold" })).toBe("error");
+  it("cauda-segura: hero SEGUIU a linha segura → correct, mesmo com label HU de erro", () => {
+    // O caso das 13 linhas do backfill SHADOW (14/08): safe_fold + hero foldou. O label da
+    // linha é o HU por design; a lista gradeava "pelo label" e acusava onde o replay
+    // (graded_safe_verdict ao vivo) absolvia — 8 mãos divergentes na auditoria.
+    expect(decisionSeverity({ street: "flop", label: "clear_mistake", n_active_opponents: 4,
+                              multiway_safe_verdict: "safe_fold", action_taken: "fold" })).toBe("correct");
+    expect(decisionSeverity({ street: "turn", label: "small_mistake", n_active_opponents: 2,
+                              multiway_safe_verdict: "safe_value", action_taken: "bet" })).toBe("correct");
+  });
+  it("cauda-segura: hero DIVERGIU da linha segura → grade pelo label (leak real)", () => {
+    expect(decisionSeverity({ street: "flop", label: "small_mistake", n_active_opponents: 2,
+                              multiway_safe_verdict: "safe_fold", action_taken: "call" })).toBe("error");
+    expect(decisionSeverity({ street: "flop", label: "clear_mistake", n_active_opponents: 3,
+                              multiway_safe_verdict: "safe_value", action_taken: "fold" })).toBe("error");
   });
   it("sem n_active_opponents: trata como não-multiway (usa label)", () => {
     expect(decisionSeverity({ street: "flop", label: "small_mistake" })).toBe("error");
