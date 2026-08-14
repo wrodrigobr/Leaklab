@@ -7200,6 +7200,26 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
             except Exception:
                 pass
 
+        # O tier EFETIVO do passo, calculado UMA vez para os dois campos de display.
+        #
+        # A camada 1 conta 'marginal' como is_error DE PROPOSITO (e o que faz a recomendacao
+        # aparecer em vez de abencoar a jogada), mas o piso do display promovia marginal
+        # (Aceitavel) a small_mistake (Erro): o pill do replayer dizia ERRO onde card e lista
+        # dizem Aceitavel (call do excesso, print de 14/08). A regra cirurgica usa a
+        # PROVENIENCIA da cadeia: se a ULTIMA palavra foi da camada 1 ('stored') com label
+        # marginal, nao ha acusacao — pill Aceitavel, anel e bolinha sem vermelho. Se qualquer
+        # camada posterior opinou (override preflop major_leak, estrategia viva, multiway), o
+        # piso continua valendo — e o que os goldens congelam (AJo call vs 3-bet major_leak
+        # TEM de seguir ERRO; a 1a versao desta mudanca derrubou esses e o golden acusou).
+        _so_marginal_camada_1 = (getattr(_vc, 'layer', None) == 'stored'
+                                 and bool(decision) and decision.get('label') == 'marginal')
+        _el_efetivo = (multiway_safe_label if multiway_safe_label is not None
+                       else (None if multiway_advice
+                       else ((decision.get('label') if decision else None)
+                             if (not is_error or _so_marginal_camada_1
+                                 or (decision and decision.get('label')
+                                     in ('small_mistake', 'clear_mistake')))
+                             else 'small_mistake')))
         timeline.append(snap({
             'type':               'action',
             'player':             action.player,
@@ -7208,7 +7228,7 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
             'amount':             amt,
             'is_hero':            action.player == hero,
             'gto_coverage':       gto_coverage,   # covered|multiway|deep|ip_facing_bet|no_villain|pending
-            'is_error':           is_error,
+            'is_error':           bool(is_error and not _so_marginal_camada_1),
             # FEAT-20: severidade que dirige o veredito de 3 níveis do card. Em multiway-clear
             # o advisor é AUTORITATIVO (sobrepõe o label HU do engine, válido ou não): leak →
             # small_mistake (Erro), senão standard (Correto). Fora dele, a label do engine.
@@ -7219,11 +7239,7 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
             # (não do label antigo do DB); preserva clear/small; floora small_mistake quando is_error.
             # Fase 2: cauda segura graduada (multiway_safe_label) tem precedência — veredito
             # REAL (small_mistake/standard) em vez do None informativo. Senão, lógica de hoje.
-            'error_label':        (multiway_safe_label if multiway_safe_label is not None
-                                   else (None if multiway_advice
-                                   else ((decision.get('label') if decision else None)
-                                         if (not is_error or (decision and decision.get('label') in ('small_mistake', 'clear_mistake')))
-                                         else 'small_mistake'))),
+            'error_label':        _el_efetivo,
             'error_score':        round(float(decision.get('score', 0)), 3)         if decision else None,
             'best_action':        reconciled_best                                    if decision else None,
             'engine_best':        engine_best if (gto_engine_conflict or gto_spot_mismatch) else None,
