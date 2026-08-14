@@ -7,6 +7,24 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(lista): auditoria lista x replay completa -- 8 divergentes, uma familia, e um conserto errado no meio (#vitrine #medicao)
+
+> "Confira se pode ter mais algum spot acusando erro na lista, divergente do replayer."
+> Auditoria de TODAS as 522 maos-erro do acervo contra o /replay servido: **8 divergiam,
+> todas da mesma familia** -- linhas do backfill SHADOW multiway (Fase 1) com
+> `multiway_safe_verdict='safe_fold'`, hero FOLDOU, e label HU de erro. A lista gradeava
+> "pelo label" quando o veredito existia; o replay recomputa a cauda segura ao vivo e absolvia.
+>
+> O primeiro conserto (reescrever os 13 labels) estava ERRADO e a varredura pegou em minutos:
+> MUDO 0 -> 12 (label standard com gto_critical vivo = quimera), e o proximo relabel reverteria
+> tudo -- o label da linha e o HU por DESIGN; a cauda segura grada nas camadas de DISPLAY.
+> O conserto certo: `decisionSeverity` (a regua unica da lista) DERIVA o veredito do
+> safe_verdict + acao, igual replay e drill -- hero seguiu a linha segura vira correct, hero
+> divergiu grade pelo label. Labels restaurados pelo relabel; a sonda MW-COERENTE (1h de vida)
+> saiu porque declarava impossivel um par legitimo em repouso.
+>
+> Prova final: re-auditoria completa com a regua nova -- **511 maos-erro, 0 divergentes**.
+
 ### fix(preflop): raise que compromete o stack efetivo e JAM -- e a prova das listas velhas (#gto #vitrine)
 
 > Mao 259090801366 (print do usuario): AJs no BB 3-beta para 10bb contra open de 12bb
