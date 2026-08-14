@@ -7,6 +7,30 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(medicao): os 11 fora-de-escala pos re-solve -- 10 eram LINHA stale, 1 era a regua cega ao preflop (#gto #medicao)
+
+> Pergunta da tarefa: depois do re-solve dos 40 nos, por que 11 decisoes ainda tem
+> |ev_loss_bb| > pote + 2 stacks pelas COLUNAS? Resposta em duas partes, nenhuma delas
+> "no de escala errada que sobrou":
+>
+> **10 postflop**: o re-solve de 14/08 CUROU os nos (pote da fila = pote vivo do reparse,
+> exploitability 0,34-1,64%), mas o re-attach automatico pos-fila e FILL-ONLY por design --
+> nunca reescreve linha que ja tinha gto. O EV gigante (631..41.605bb) era residuo do no
+> envenenado. A avaliacao fresca do engine reproduz label/gto/best/freqs IDENTICOS e EV
+> ausente: a mao real do heroi esta fora do range do solve novo (AKo que o range capado de
+> call so tem suited, 66 que o BB nunca chega limpado) -- ausencia honesta, hand_view None.
+> Resync escopado nas 10 linhas (dry-run pareou 10/10, unica mudanca ev/src -> NULL),
+> aplicado; varredura depois: EV-TETO 41 -> 1, nenhuma sonda piorou; re-solve dry-run: 0.
+>
+> **1 preflop (317491)**: EV gw_har 0,669bb LEGITIMO -- SB folda K2o com 0,2bb ATRAS; SB+BB
+> (1,5bb) ja estao no pote e a regua por colunas nao os ve (`pot_size` NULL no preflop,
+> `stack_bb` e o que sobra depois do blind). Coluna nao e vivo: o cap do engine olha
+> `spot.potBb` e nunca acusou. Conserto na SONDA, nao no dado: piso de 1,5bb no pote
+> preflop (so COALESCE/CASE -- MAX escalar e SQLite-only, GREATEST e Postgres-only).
+> Baseline EV-TETO 41 -> 0; formula nova medida contra o acervo de producao: 0 violacoes.
+> Teste novo nos dois sentidos, quebrado de proposito antes do conserto: o caso real cala a
+> sonda (falhava na formula velha), o gemeo com ev 2,0 > 1,9 segue acusando so a EV-TETO.
+
 ### fix(engine): no de OUTRA ESCALA nao sustenta clear_mistake -- familia 1 do coach extinta (#gto #medicao)
 
 > "Ataca a familia 1": os tres folds postflop que gradavamos `clear_mistake` (score 0,9) e o

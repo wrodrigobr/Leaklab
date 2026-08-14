@@ -12,6 +12,11 @@ Hash e payload saem da FONTE ÚNICA (`montar_payload_postflop`): mesmo hash que 
 em bb do pipeline, ranges pelo resolve, variante pela régua efetiva. Peneira de pote implausível
 aplicada (dinheiro morto HU passa; dado quebrado não).
 
+O re-solve NAO termina o servico sozinho (14/08): o re-attach automatico pos-fila e
+FILL-ONLY e nunca reescreve decisao que ja tinha gto, entao o ev_loss envenenado continua
+na LINHA depois que o no sara. Depois da fila drenar, rode o par deste script:
+`python -m scripts.resync_ev_fora_de_escala --apply` (dry-run antes, varredura depois).
+
 Uso:
     python -m scripts.resolve_nos_fora_de_escala            # dry-run
     python -m scripts.resolve_nos_fora_de_escala --apply

@@ -29,7 +29,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 import database.schema as sch
 from leaklab.invariantes_acervo import (INVARIANTES, LINHA_SA, LINHA_SA_POSTFLOP,
-                                        melhorias, regressoes, varrer)
+                                        _forjar_linha, melhorias, regressoes, varrer)
 
 _FALHAS = []
 
@@ -170,6 +170,36 @@ def test_a_varredura_roda_na_superficie_do_POSTGRES():
     c.close()
     assert disfarcada == real, f'a varredura muda de resultado conforme o driver: {disfarcada}'
     print('OK  test_a_varredura_roda_na_superficie_do_POSTGRES')
+
+
+def test_ev_teto_preflop_enxerga_o_dinheiro_morto_dos_blinds():
+    """A régua por COLUNAS é cega ao pote preflop: `pot_size` é NULL nessa street e `stack_bb`
+    é o que sobra ATRÁS do blind postado. Caso real (14/08, id 317491 em produção): SB com
+    0,2bb atrás folda K2o, gw_har mede 0,669bb — legítimo, porque SB+BB (1,5bb) já estão no
+    pote e a coluna não os vê; a sonda acusava falso. O conserto é o piso de 1,5bb no pote
+    preflop, e este teste exige os DOIS sentidos: o caso real cala a sonda, e um EV acima até
+    do teto com piso (1,5 + 2·stack) continua acusando. Nenhuma outra sonda pode se mover."""
+    c = _banco()
+    antes = _contagens(c)
+
+    _forjar_linha(c, street='preflop', pot_size=None, stack_bb=0.2,
+                  effective_stack_bb=0.2, ev_loss_bb=0.669, ev_loss_source='gw_har')
+    c.commit()
+    depois = _contagens(c)
+    assert depois == antes, \
+        f'EV preflop legítimo (dinheiro morto dos blinds) moveu sonda: ' \
+        f'{ {k: (antes[k], depois[k]) for k in depois if depois[k] != antes[k]} }'
+
+    _forjar_linha(c, street='preflop', pot_size=None, stack_bb=0.2,
+                  effective_stack_bb=0.2, ev_loss_bb=2.0, ev_loss_source='gw_har')
+    c.commit()
+    depois2 = _contagens(c)
+    c.close()
+    esperado = dict(depois, **{'EV-TETO': depois['EV-TETO'] + 1})
+    assert depois2 == esperado, \
+        f'EV 2,0bb com teto-piso 1,9 devia acusar SÓ a EV-TETO: ' \
+        f'{ {k: (depois[k], depois2[k]) for k in depois2 if depois2[k] != depois[k]} }'
+    print('OK  test_ev_teto_preflop_enxerga_o_dinheiro_morto_dos_blinds')
 
 
 def test_regressao_e_melhoria_sao_lidas_com_o_sinal_certo():

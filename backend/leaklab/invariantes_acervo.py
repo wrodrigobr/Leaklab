@@ -154,14 +154,23 @@ def _ev_acima_do_teto(conn):
     porque enquanto a linha existir, basta uma porta esquecer o filtro para o número chegar à
     tela — foi o que aconteceu com `-3588 bb` num stack de 32,2bb, e depois de novo em
     `get_ev_summary` e em `coach_replay`.
+
+    COLUNA não é VIVO (14/08): o cap do motor opera no spot vivo (`spot.potBb`, stack efetivo);
+    esta sonda opera nas colunas — e no preflop `pot_size` é NULL e `stack_bb` é o que sobra
+    ATRÁS do blind postado. O dinheiro morto de SB+BB fica invisível, e um EV legítimo acusa
+    falso quando o stack é sub-1bb (id 317491 em produção: SB folda K2o com 0,2bb atrás,
+    gw_har mede 0,669bb — correto, o pote de 1,5bb paga isso). Por isso o pote preflop tem
+    piso de 1,5bb (SB+BB; antes só aumentam, o piso segue conservador). Só COALESCE/CASE:
+    `MAX(a,b)` escalar é SQLite-only e GREATEST é Postgres-only.
     """
+    teto = ("COALESCE(pot_size, CASE WHEN lower(street)='preflop' THEN 1.5 ELSE 0 END) "
+            "+ 2*COALESCE(stack_bb,0)")
     return [Violacao(r['id'], f"ev={r['ev_loss_bb']:.1f} teto={r['teto']:.1f} stack={r['stack_bb']}")
-            for r in _linhas(conn, """
-                SELECT id, ev_loss_bb, stack_bb,
-                       COALESCE(pot_size,0) + 2*COALESCE(stack_bb,0) AS teto
+            for r in _linhas(conn, f"""
+                SELECT id, ev_loss_bb, stack_bb, {teto} AS teto
                   FROM decisions
                  WHERE ev_loss_bb IS NOT NULL
-                   AND ABS(ev_loss_bb) > COALESCE(pot_size,0) + 2*COALESCE(stack_bb,0)""")]
+                   AND ABS(ev_loss_bb) > {teto}""")]
 
 
 def _no_solvado_vazio(conn):
@@ -399,8 +408,11 @@ def _coluna_constante(coluna: str, valor_morto, filtro: str = ''):
 
 INVARIANTES: List[Invariante] = [
     Invariante(
-        id='EV-TETO', baseline=41,   # 60->41 em 12/08: o resync passou a reescrever freq/ev
-                                     # junto do label e 19 EVs impossiveis eram residuo velho
+        id='EV-TETO', baseline=0,    # 41->0 em 14/08: 10 postflop eram resíduo do nó de outra
+                                     # escala (re-solve curou o NÓ; o re-attach fill-only nunca
+                                     # reescrevia a LINHA — resync escopado anulou o EV, labels
+                                     # intactos) e o 11º era falso da régua por colunas no
+                                     # preflop, resolvido pelo piso de 1,5bb acima
         titulo='EV perdido acima do que havia em jogo (pote + 2 stacks)',
         porta='DashboardV2 "−X bb/100", card "Onde você sangra", relatório de replay do coach',
         origem='auditoria 10/08, lente de escala — confirmado por 2 céticos',
