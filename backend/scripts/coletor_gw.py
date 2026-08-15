@@ -376,7 +376,18 @@ def buscador_navegando(page, espera_ms: int = 30000, passo_ms: int = 250):
 
         page.on('response', ao_responder)
         try:
-            page.goto(url_do_spot(params), wait_until='domcontentloaded')
+            # O app do GW tem lentidao INTERMITENTE: em 15/08 tres execucoes morreram no goto
+            # de 30s depois de dezenas de navegacoes rapidas, sempre em nos diferentes — nao e
+            # limite (o aviso de cota aparece na pagina, e ha guarda para ele), e babar
+            # reexecucao a cada soluco desperdicava a sessao aberta. Uma retentativa com
+            # timeout dobrado resolve o soluco; se a SEGUNDA tambem estourar, ai sim e problema
+            # de verdade e o erro sobe.
+            try:
+                page.goto(url_do_spot(params), wait_until='domcontentloaded')
+            except Exception:
+                page.wait_for_timeout(3000)
+                page.goto(url_do_spot(params), wait_until='domcontentloaded',
+                          timeout=60000)
             esperou = 0
             while 'body' not in capturado and esperou < espera_ms:
                 page.wait_for_timeout(passo_ms)

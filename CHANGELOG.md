@@ -7,6 +7,22 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(gto): primeira leva RING do faces_squeeze -- 36 nos novos ate o limite diario do free tier (#gto #coleta)
+
+> Continuacao da fila de capturas pendentes, mesmo dia da rodada 4 HU. Acervo
+> `docs/ring_ranges_har.json` 183 -> 219 nos (`MTTGeneral_8m`): caminhadas completas ate o
+> alvo em 12/19/50/60bb (BB vs squeeze do SB apos open do CO; SB vs 3-bet do BTN) e o comeco
+> de 100bb (5 nos) -- ali o GW disse "free daily solution browsing limit" e o coletor parou
+> no primeiro sinal, como projetado. O consumo ja esta ligado no motor (overlay
+> preenche-buraco com politica de distancia de mesa), entao os nos entram no proximo relabel.
+> Faltam ~6 blocos do plano; continuar amanha com a cota nova.
+>
+> Robustez paga no meio: o app do GW tem lentidao intermitente e tres execucoes morreram num
+> `page.goto` de 30s (uma delas duas vezes no MESMO no). O coletor ganhou retentativa unica
+> com timeout dobrado -- soluco resolve sozinho, problema de verdade continua subindo. A aba
+> congelada de vez precisou do usuario reabrir o Chrome; a retomada pulou os 7 nos ja salvos
+> (gravacao por no pagando de novo).
+
 ### feat(gto): rodada 4 das capturas HU -- escada ROOT completa de 1 a 60bb e EVs de freq-zero no acervo inteiro (#gto #coleta)
 
 > "Ataca as capturas GW pendentes". Tres entregas no acervo `docs/hu_ranges_har.json`
