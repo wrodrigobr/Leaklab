@@ -7,6 +7,19 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(gto): recaptura SB x BB ring -- 18 nos, acervo 278; JJ confirmado 3-bet 100% (#gto #coleta)
+
+> O modulo perdido antes do import (o HAR de HU sobrescreveu o arquivo) voltou: BB vs open
+> do SB em TODA a grade free (12/19/50/60/80/100bb; a 19bb o open minimo real do SB e 3x e o
+> no e F*6-R3). Spot-check do oraculo: **JJ no BB vs open de SB a 50/60bb = 3-bet 100%,
+> call 0%** — exatamente a mentira da carta ring atual (call 100%) que a revisao com o coach
+> expos em 05/08.
+>
+> IMPORTANTE — o dado ainda NAO muda veredito: o overlay ring e preenche-buraco por politica
+> (`_preenche_buraco_com_ring` so age em `pairing_uncovered`), e BB vs SB TEM carta (a que
+> mente). Promover o GW a autoritativo neste par e decisao de produto que agora da para
+> MEDIR: proximo passo e o experimento de divergencia no acervo real.
+
 ### feat(gto): plano ring faces_squeeze ESGOTADO no free tier -- acervo 219 -> 260 no mesmo dia (#gto #coleta)
 
 > A cota renovou no meio do dia e o que a memoria previa levar "varios dias" fechou em um:
