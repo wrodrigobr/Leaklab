@@ -25,7 +25,9 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 > blocos que compartilham prefixo (F-F-R2 serve a 3 pares) rebuscavam o mesmo no — 3x numa
 > leva, ~6 requisicoes de cota desperdicadas. `ao_coletar` agora alimenta o indice em memoria.
 >
-> **3. Colheita**: relabel + varredura apos deploy (numeros no proximo bloco de deploy).
+> **3. Colheita** (medida apos deploy nos dois containers, indice ring 46->75 cartas em 14
+> cenarios): relabel 41 mudancas / 9.763 (30 heuristica->carta, quase tudo confirmacao de
+> fold correto + 1 absolvicao small->standard), acusadas 554 -> 552, varredura limpa.
 
 ### fix(testes): flake do task-status da revalidacao -- prazo de parede no lugar de 20 tentativas (#medicao)
 
