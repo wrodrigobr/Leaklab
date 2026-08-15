@@ -115,6 +115,15 @@ def piso_por_direcao(label, gto_label, gto_action, action_taken,
     o produto chamou de erro. Um relabel completo levaria isso de 12 para 19.
 
     Comentário não é evidência (CLAUDE.md, item 8) e regra em N lugares vira função (item 5).
+
+    ── DELIBERADO em 14/08 (família 2 da revisão com o coach): o piso NÃO cede a EV ínfimo ──
+    Quatro opens fora do range (K9o, K7o, J3o, K3o) com EV confiável de 0,10-0,22bb foram
+    gradados como veniais pelo coach humano, e a proposta de rebaixar o piso para 'marginal'
+    quando o custo confiável é < 0,25bb foi colocada ao dono do produto — que decidiu MANTER:
+    o leak é ENTRAR na mão; custa pouco por instância e é reincidente no agregado, e apontá-lo
+    como Erro é a função do produto. 30 decisões no acervo nessa janela ficam como estão.
+    Se um dia isto reabrir, a mudança exige as TRÊS camadas juntas (este piso, o reconcile e o
+    clamp RC-D do frontend) + goldens + relabel — mudar só uma recria o card contraditório.
     """
     if gto_label in _MIX_LEGITIMO:
         return label
