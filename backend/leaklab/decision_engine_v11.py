@@ -1559,12 +1559,19 @@ def evaluate_decision(input_data: Dict[str, Any]) -> Dict[str, Any]:
     # correto**, e `marginal` diz exatamente isso. Mesma logica de direcao do bloco "sem gabarito
     # nao e erro": equity inflada absolve quem paga, entao a correcao anda no sentido de tirar a
     # absolvicao, nunca no de criar culpa.
+    # ESTENDIDO em 15/08 (P7 da revisão dos "perdidos"): `>= 1` raise, não `>= 2`. Defender o
+    # próprio open contra um 3-bet-JAM é a mesma situação epistêmica do squeeze — a equity
+    # vs-random (K3o exibia 51%) não vale como argumento contra a range do jam. A 1ª versão
+    # trazia uma exceção de "preço trivial" (exigido <= 12%) e o teste do range-estreita a
+    # derrubou: o pior matchup preflop chega a ~6,5%, então 12% não é "qualquer mão paga" —
+    # e o precedente do call do excesso (2 raises → marginal) já aceita a demoção mesmo com
+    # preço ínfimo. Marginal tira a absolvição sem criar culpa; não há exceção de preço.
     if (street == 'preflop' and label == 'standard'
             # `equitySource` vive no bloco `math` do input, nao no `context` — a primeira
             # versao leu do lugar errado e o guarda nunca disparou, calado.
             and math.get('equitySource') == 'vs_random'
             and spot.get('facingAllin')
-            and int(spot.get('preflopRaisesFaced') or 0) >= 2
+            and int(spot.get('preflopRaisesFaced') or 0) >= 1
             and _norm_gto_action(input_data.get('player_action', '')) == 'call'
             and not gto.get('available') and not preflop_gto.get('available')):
         label = 'marginal'
@@ -1679,6 +1686,13 @@ def evaluate_decision(input_data: Dict[str, Any]) -> Dict[str, Any]:
     # do bloco de `made_hand_category` acima: sem os dois, ausencia de dado viraria acusacao.
     # Cap em `marginal`, jamais em erro — a jogada tem equity e pode ser correta por outros
     # motivos; o que ela nao pode e ser exibida como linha padrao.
+    # NOTA 15/08 (P10 da revisão dos "perdidos"): o coach gradou `clear` no semi-blefe com
+    # all-in no pote, e a investigação confirmou que ESTE guarda já o cobria — draws são
+    # 'air' para `made_hand_category` ("não conta draws"), então flush draw apostando ali já
+    # perdia a absolvição. Tentei "estender para draw" (código morto: a categoria não existe)
+    # e um piso `small` (o controle derrubou: AdKd high com 72% de equity é 'air' também —
+    # a categoria é grossa demais para sustentar Erro). Fica o original: marginal, que tira a
+    # linha-padrão sem criar culpa; o pino de regressão do semi-blefe vive nos testes do G4.
     if (street != 'preflop' and spot.get('hasAllinOpponent')
             and _action_family(input_data.get('player_action', '')) in ('bet', 'raise')
             and label == 'standard'):

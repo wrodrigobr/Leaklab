@@ -218,6 +218,53 @@ def test_g5_nao_absolve_call_com_preco_apertado():
     assert _lab(caro) in ('small_mistake', 'clear_mistake'), _lab(caro)
 
 
+def test_g4_PINO_semi_blefe_com_allin_no_pote_nao_e_linha_padrao():
+    """PINO de regressão (15/08, P10 dos 'perdidos'): o G4 original JÁ cobre o semi-blefe,
+    porque draws são 'air' para made_hand_category ("não conta draws"). Este teste fixa isso —
+    se um dia a categoria ganhar 'draw' de verdade, o G4 precisa acompanhar ou este teste
+    acusa. Nunca vira Erro: a categoria é grossa demais (AdKd high com 72% também é 'air');
+    marginal tira a linha-padrão sem criar culpa."""
+    # 8h4h em 7h-Ts-Qh: flush draw — 'draw', não 'air' nem mão feita.
+    com_draw = _base(player_action='bet', hero_cards='4h8h',
+                     spot={'hasAllinOpponent': True, 'board': ['7h', 'Ts', 'Qh'],
+                           'position': 'BTN'},
+                     range_evaluation={'recommendedPrimaryAction': 'bet', 'rangeZone': 'in_range'},
+                     math={'estimatedHandEquity': 0.34, 'potOddsEquity': 0.0})
+    assert _lab(com_draw) == 'marginal', _lab(com_draw)
+    # CONTROLE: o MESMO semi-blefe sem all-in no pote segue standard (fold equity existe).
+    sem_allin = _base(player_action='bet', hero_cards='4h8h',
+                      spot={'hasAllinOpponent': False, 'board': ['7h', 'Ts', 'Qh'],
+                            'position': 'BTN'},
+                      range_evaluation={'recommendedPrimaryAction': 'bet', 'rangeZone': 'in_range'},
+                      math={'estimatedHandEquity': 0.34, 'potOddsEquity': 0.0})
+    assert _lab(sem_allin) == 'standard', _lab(sem_allin)
+    print('OK  test_g4_ESTENDIDO_semi_blefe_com_allin_no_pote_nao_e_linha_padrao')
+
+
+def test_g2_ESTENDIDO_um_raise_tambem_e_range_estreita():
+    """Extensão de 15/08 (P7 dos 'perdidos'): defender o próprio open contra 3-bet-JAM
+    (raisesFaced=1) é a mesma situação epistêmica do squeeze — vs-random não absolve.
+    K3o exibia 51% vs-random e saía standard; contra a range real do jam não há base."""
+    um_raise = _base(street='preflop', player_action='call', hero_cards='3dKc',
+                     spot={'position': 'BTN', 'board': [], 'effectiveStackBb': 6.5,
+                           'facingSize': 8.5, 'facingToBb': 8.51, 'facingAllin': True,
+                           'preflopRaisesFaced': 1},
+                     range_evaluation={'recommendedPrimaryAction': 'call', 'rangeZone': 'in_range'},
+                     math={'estimatedHandEquity': 0.51, 'potOddsEquity': 0.34,
+                           'equitySource': 'vs_random'})
+    assert _lab(um_raise) == 'marginal', _lab(um_raise)
+    # CONTROLE: equity medida contra RANGE (não aleatória) mantém a absolvição.
+    com_range = _base(street='preflop', player_action='call', hero_cards='3dKc',
+                      spot={'position': 'BTN', 'board': [], 'effectiveStackBb': 6.5,
+                            'facingSize': 8.5, 'facingToBb': 8.51, 'facingAllin': True,
+                            'preflopRaisesFaced': 1},
+                      range_evaluation={'recommendedPrimaryAction': 'call', 'rangeZone': 'in_range'},
+                      math={'estimatedHandEquity': 0.51, 'potOddsEquity': 0.34,
+                            'equitySource': 'vs_range'})
+    assert _lab(com_range) == 'standard', _lab(com_range)
+    print('OK  test_g2_ESTENDIDO_um_raise_tambem_e_range_estreita')
+
+
 def test_g5_nao_passa_por_cima_do_tratamento_de_range_estreita():
     """All-in com 2+ raises e a linha mais estreita do preflop, e ali a equity vs mao ALEATORIA
     nao vale como argumento — e o que o G2 trata.
