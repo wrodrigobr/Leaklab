@@ -52,8 +52,8 @@ def main() -> int:
            AND d.vs_position = 'SB'
            AND d.num_players > 2
            AND d.preflop_raises_faced = 1
-           AND (d.hero_was_aggressor IS NULL OR d.hero_was_aggressor IN (0, false))
-           AND (d.facing_limp IS NULL OR d.facing_limp IN (0, false))
+           AND (d.hero_was_aggressor IS NULL OR d.hero_was_aggressor = 0)
+           AND (d.facing_limp IS NULL OR d.facing_limp = 0)
         """
     ).fetchall()
 
