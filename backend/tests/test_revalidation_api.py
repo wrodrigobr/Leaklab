@@ -197,13 +197,18 @@ def test_background_task_status():
     assert d['status'] == 'started'
     assert d['task_id'] >= 1
     task_id = d['task_id']
-    # Aguarda a thread finalizar
+    # Aguarda a thread finalizar. Por PRAZO DE PAREDE, nao por contagem: o teto antigo de
+    # 20 x 0,1s = 2s passava isolado e FALHAVA na suite completa (CPU dividida com 2.259
+    # testes, a thread nao terminava a tempo) — flake nomeado em 15/08. Sai cedo ao concluir,
+    # entao o caminho feliz continua custando os mesmos ~centesimos. Prova de que ainda morde:
+    # prazo zerado reproduz a falha ("recebi started"), feita antes deste commit.
     import time
-    for _ in range(20):
+    prazo = time.monotonic() + 30.0
+    while time.monotonic() < prazo:
         s = client.get(f'/admin/revalidation/tasks/{task_id}', headers=_hdr(tok))
         if s.get_json()['status'] in ('done', 'error'):
             break
-        time.sleep(0.1)
+        time.sleep(0.2)
     final = client.get(f'/admin/revalidation/tasks/{task_id}', headers=_hdr(tok)).get_json()
     assert final['status'] == 'done', f"esperado done, recebi {final}"
     assert final['run_id'] is not None

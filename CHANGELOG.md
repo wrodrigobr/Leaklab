@@ -7,6 +7,19 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(testes): flake do task-status da revalidacao -- prazo de parede no lugar de 20 tentativas (#medicao)
+
+> `test_background_task_status` esperava a thread de background em 20 x 0,1s = 2s: passava
+> isolado e falhava na suite completa (CPU dividida entre 2.259 testes). Era a "segunda
+> falha" da rodada que expos o runner cego a FALHOU. Agora espera por prazo de parede (30s,
+> saida antecipada ao concluir — o caminho feliz continua nos centesimos). Mutacao feita:
+> prazo zerado reproduz exatamente a falha da suite ("recebi started").
+>
+> Licao operacional que ficou do processo: round-trip `Get-Content`/`Set-Content` do
+> PowerShell dobra o encoding de arquivo UTF-8 sem BOM (mojibake em todo acento). Mutacao
+> por shell em arquivo com acento: restaurar do git e reaplicar com ferramenta que preserva
+> encoding, e conferir com sonda (`'Ã' not in data`).
+
 ### feat(gto): primeira leva RING do faces_squeeze -- 36 nos novos ate o limite diario do free tier (#gto #coleta)
 
 > Continuacao da fila de capturas pendentes, mesmo dia da rodada 4 HU. Acervo
