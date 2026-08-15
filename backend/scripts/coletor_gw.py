@@ -57,6 +57,18 @@ class LimiteAtingido(Exception):
     """Sinal de parar TUDO: cota, bloqueio ou resposta que nao e solucao."""
 
 
+class DepthIndisponivel(Exception):
+    """HTTP 403 na PRIMEIRA requisicao de uma profundidade: a depth nao esta disponivel para
+    ESTA conta — atras do paywall do tier ou fora da grade.
+
+    Provado em 15/08 com 28.125: o 403 abortou o plano inteiro duas vezes, e o diagnostico
+    inicial ("degrau fora da grade") estava ERRADO — o app mostra "Upgrade to get access to
+    this solution / Premium Tournament users and higher". E paywall, e o free tier serve as
+    outras depths do plano normalmente. Quem trata pula SO a depth; 403 no MEIO de uma
+    caminhada (depois de resposta valida) continua sendo LimiteAtingido, porque servidor que
+    muda de ideia no meio e bloqueio de sessao, nao paywall de depth."""
+
+
 # ── tokens ────────────────────────────────────────────────────────────────────────────────────
 
 def token_da_acao(acao: dict, stack: float) -> str | None:
@@ -148,6 +160,11 @@ def caminha(buscar, gametype: str, depth: str, linhas: list[list[str]],
                   'river_actions': '', 'board': ''}
         status, corpo = buscar(params)
         if status != 200:
+            if status == 403 and not cache:
+                # Nada foi obtido nesta depth ainda (nem conhecido, nem buscado): o 403 e da
+                # depth, nao da sessao. Quem chama decide pular.
+                raise DepthIndisponivel(
+                    f'HTTP 403 em depth={depth} — paywall do tier (ou degrau fora da grade)')
             raise LimiteAtingido(f'HTTP {status} em depth={depth} no={no_str or "ROOT"}')
         if not isinstance(corpo, dict) or not corpo.get('action_solutions'):
             # Nao e "no vazio": e resposta que nao contem solucao — cota, bloqueio ou spot
@@ -459,6 +476,11 @@ def main() -> int:
         nonlocal novos
         novos += 1
         grava(gt, chave, no)
+        # No coletado vira CONHECIDO na hora, nao so na proxima execucao: blocos diferentes
+        # do plano compartilham prefixos (F-F-R2 serve a 3 pares), e sem isto o mesmo no era
+        # buscado 3x na MESMA execucao — medido em 15/08, ~6 requisicoes de cota desperdicadas
+        # numa leva de 24.
+        ja.setdefault(gt, {})[chave] = no
 
     def pausar():
         time.sleep(args.pausa * random.uniform(0.8, 1.4))
@@ -485,6 +507,7 @@ def main() -> int:
 
     parada = None
     try:
+        seguidas_403 = 0
         for bloco in plano['blocos']:
             gt = bloco.get('gametype', plano.get('gametype'))
             for depth in bloco['depths']:
@@ -492,9 +515,20 @@ def main() -> int:
                     parada = f'teto de {args.max_nos} nos atingido'
                     raise LimiteAtingido(parada)
                 print(f'\ndepth {depth}')
-                caminha(buscar, gt, str(depth), bloco['linhas'],
-                        ao_coletar=ao_coletar, pausar=pausar,
-                        conhecidos=(None if args.refazer else ja.get(gt, {})))
+                try:
+                    caminha(buscar, gt, str(depth), bloco['linhas'],
+                            ao_coletar=ao_coletar, pausar=pausar,
+                            conhecidos=(None if args.refazer else ja.get(gt, {})))
+                    seguidas_403 = 0
+                except DepthIndisponivel as e:
+                    # Depth atras do paywall (ou fora da grade): pula SO esta depth. Mas 403
+                    # em serie nao e paywall pontual, e sessao/bloqueio — ai vale a regra de
+                    # parar no primeiro sinal.
+                    seguidas_403 += 1
+                    print(f'  PULEI: {e}')
+                    if seguidas_403 >= 3:
+                        raise LimiteAtingido(
+                            f'3 depths seguidas com 403 — cheiro de bloqueio, nao de paywall ({e})')
     except LimiteAtingido as e:
         parada = str(e)
     except KeyboardInterrupt:

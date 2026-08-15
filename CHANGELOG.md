@@ -7,6 +7,26 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(gto): plano ring faces_squeeze ESGOTADO no free tier -- acervo 219 -> 260 no mesmo dia (#gto #coleta)
+
+> A cota renovou no meio do dia e o que a memoria previa levar "varios dias" fechou em um:
+> passada de confirmacao com 0 novos, todos os blocos do plano cobertos nos degraus que o
+> free tier serve. Tres achados de operacao no caminho:
+>
+> **1. O 403 nao era grade, era PAYWALL** (screenshot do usuario: "Upgrade... Premium
+> Tournament users and higher"). Free tier ring serve 12/19/50/60/80/100.125; 22/25/28/40.125
+> sao premium. `DepthIndisponivel` novo: 403 na PRIMEIRA requisicao da depth pula so a depth
+> (3 seguidas = aborta, cheiro de bloqueio de sessao); 403 no MEIO da caminhada segue
+> abortando. Teste nos tres sentidos + mutacao (sem o `and not cache`, o 403 do meio virava
+> pulo e o teste acusou). Plano re-mapeado para degraus free vizinhos dentro da janela de
+> 25%; decisoes de ~28bb ficam null honesto ate haver premium (19.125 esta a 31% delas).
+>
+> **2. No coletado vira conhecido NA HORA**: o indice `ja` so era lido do disco no inicio, e
+> blocos que compartilham prefixo (F-F-R2 serve a 3 pares) rebuscavam o mesmo no — 3x numa
+> leva, ~6 requisicoes de cota desperdicadas. `ao_coletar` agora alimenta o indice em memoria.
+>
+> **3. Colheita**: relabel + varredura apos deploy (numeros no proximo bloco de deploy).
+
 ### fix(testes): flake do task-status da revalidacao -- prazo de parede no lugar de 20 tentativas (#medicao)
 
 > `test_background_task_status` esperava a thread de background em 20 x 0,1s = 2s: passava

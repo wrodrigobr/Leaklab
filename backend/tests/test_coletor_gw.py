@@ -199,6 +199,55 @@ def test_para_no_primeiro_sinal_de_limite():
     assert len(log_ok) > 3, 'o controle parou sem motivo — o guarda nao discrimina'
 
 
+def test_no_coletado_vira_conhecido_na_mesma_execucao():
+    """Blocos diferentes do plano compartilham prefixos (F-F-R2 serve a 3 pares). O `ja` so
+    era lido do disco no inicio: o mesmo no foi buscado 3x na MESMA execucao (15/08, ~6
+    requisicoes de cota desperdicadas). O contrato: no coletado entra no indice NA HORA, e o
+    bloco seguinte o pula sem requisicao."""
+    arvores = {'14.125': _arvore(14.125, '4.5')}
+    ja: dict = {}
+
+    def ao_coletar(gt, chave, no):
+        ja.setdefault(gt, {})[chave] = no          # a mesma fiacao do main()
+
+    log1: list = []
+    caminha(_buscar_de(arvores, log=log1), 'g', '14.125', [[], ['raise_min']],
+            ao_coletar=ao_coletar)
+    assert log1, 'bloco 1 devia ter buscado'
+    log2: list = []
+    caminha(_buscar_de(arvores, log=log2), 'g', '14.125', [[], ['raise_min']],
+            ao_coletar=ao_coletar, conhecidos=ja.get('g', {}))
+    assert log2 == [], f'bloco 2 rebuscou no ja coletado nesta execucao: {log2}'
+
+
+def test_403_na_primeira_requisicao_e_depth_indisponivel():
+    """O caso 28.125 (15/08): 403 no ROOT abortava o plano inteiro — duas execucoes perdidas.
+    O 403 e PAYWALL de tier (o app mostra "Upgrade... Premium Tournament users"), nao cota:
+    403 ANTES de qualquer resposta da depth e DepthIndisponivel (quem chama pula a depth);
+    403 no MEIO da caminhada continua LimiteAtingido — servidor que muda de ideia no meio e
+    bloqueio de sessao, nao paywall."""
+    from coletor_gw import DepthIndisponivel
+    arvores = {'14.125': _arvore(14.125, '4.5')}
+    # 403 logo na 1a requisicao -> DepthIndisponivel
+    try:
+        caminha(_buscar_de(arvores, erro_em=1, status_erro=403), 'g', '14.125', _LINHAS)
+        assert False, 'devia ter levantado DepthIndisponivel'
+    except DepthIndisponivel as e:
+        assert '403' in str(e), e
+    # 403 na 3a (ja houve resposta valida) -> LimiteAtingido, como sempre
+    try:
+        caminha(_buscar_de(arvores, erro_em=3, status_erro=403), 'g', '14.125', _LINHAS)
+        assert False, 'devia ter levantado LimiteAtingido'
+    except LimiteAtingido as e:
+        assert '403' in str(e), e
+    # CONTROLE: 429 na 1a NAO vira pulo de depth — so 403 fala de grade
+    try:
+        caminha(_buscar_de(arvores, erro_em=1, status_erro=429), 'g', '14.125', _LINHAS)
+        assert False, 'devia ter levantado LimiteAtingido'
+    except LimiteAtingido as e:
+        assert '429' in str(e), e
+
+
 def test_corpo_sem_solucao_tambem_e_limite():
     """200 com corpo vazio e o disfarce mais comum de cota estourada: seguir so gastaria mais."""
     class _Vazio(dict):
