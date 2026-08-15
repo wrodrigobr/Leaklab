@@ -7,6 +7,22 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(gto): "so absolve" no par BB vs SB -- decisao do dono com o experimento na mesa (#gto #veredito)
+
+> O experimento (`medir_divergencia_sb_bb.py`, 92 decisoes reais): 32 concordancias, 15
+> divergencias — 9 seriam ACUSACOES novas (folds baratos de 9-15bb que o GW defende), 1 e
+> acusacao nossa que o GW aprova (J6s 10bb pagou min-raise, `small_mistake` da heuristica),
+> 0 divergencia funda (50-100bb concordam). A zona 26-37bb (o caso JJ original) segue
+> imensuravel: e paywall premium. Colocado ao dono: **so absolve** (coerente com o principio
+> "carta vizinha absolve, nao acusa" de project_ring_gw_no_motor).
+>
+> `_gw_ring_absolve` com DOIS gatilhos, ambos exigindo o GW aprovar a jogada ('correct'):
+> carta atual acusando (major_leak cai) e carta atual sem resposta (off_tree vira carta —
+> o caso real do J6s, que era acusacao da heuristica com gto_label None). Se o GW acusaria,
+> buraco fica buraco e acusacao sustentada fica de pe. Escopo: SO ('vs_rfi', BB, SB) — a
+> lista `_PARES_GW_ABSOLVE` exige experimento proprio por par. 6 testes; mutacao (remover a
+> exigencia de 'correct') derrubou exatamente os 2 guardas de protecao.
+
 ### feat(gto): recaptura SB x BB ring -- 18 nos, acervo 278; JJ confirmado 3-bet 100% (#gto #coleta)
 
 > O modulo perdido antes do import (o HAR de HU sobrescreveu o arquivo) voltou: BB vs open

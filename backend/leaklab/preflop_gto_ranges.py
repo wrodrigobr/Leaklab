@@ -1058,6 +1058,64 @@ def _preenche_buraco_com_ring(base: dict, args: tuple, kwargs: dict) -> None:
             base['action_quality'] = 'gto_minor_deviation'
 
 
+# O unico par em que o no GW pode ABSOLVER acusacao da carta existente. Decisao do dono em
+# 15/08, tomada COM o experimento na mesa (`scripts/medir_divergencia_sb_bb.py`, 92 decisoes):
+# das 15 divergencias, 9 seriam ACUSACOES novas (folds baratos de 9-15bb que o GW defende) e
+# 1 e acusacao nossa que o GW aprova (J6s 10bb pagou min-raise). O principio em pe desde
+# [[project_ring_gw_no_motor]] e "carta vizinha absolve, nao acusa" — entao o GW aqui so
+# derruba acusacao, nunca cria. Alargar para outro par exige OUTRO experimento medido.
+_PARES_GW_ABSOLVE = {('vs_rfi', 'BB', 'SB')}
+
+
+def _gw_ring_absolve(base: dict, args: tuple, kwargs: dict) -> None:
+    """No GW recapturado SO ABSOLVE no par deliberado — nunca acusa.
+
+    DOIS gatilhos, medidos no experimento antes de existir codigo:
+    - carta atual ACUSA (`major_leak`): se o GW aprova a jogada, a acusacao cai;
+    - carta atual NAO RESPONDE (`available=False`, ex.: `open_size_off_tree` — o caso real do
+      J6s, que levou `small_mistake` da HEURISTICA com gto_label None): se o GW aprova a
+      jogada, o buraco vira carta. Se o GW acusaria, o buraco FICA buraco — e a protecao dos
+      9 folds baratos que o dono decidiu nao acusar (15/08).
+
+    A sonda e descartavel — GW nao aprovando ('correct') ou nao alcancando a mao, NADA muda:
+    acusacao que os dois sustentam fica de pe, e o GW discordando em outra direcao (carta
+    manda call, GW manda jam) nao vira acusacao nova."""
+    acusacao_da_carta = base.get('available') and base.get('action_quality') == 'major_leak'
+    buraco = not base.get('available')
+    if not (acusacao_da_carta or buraco):
+        return
+    p = dict(zip(_ARGS_POSICIONAIS, args))
+    p.update(kwargs)
+    mesa_decisao = int(p.get('n_players') or 0)
+    if mesa_decisao <= 2:
+        return
+    cenario = base.get('scenario')
+    hero, vilao = p.get('position'), p.get('vs_position')
+    if (cenario, hero, vilao) not in _PARES_GW_ABSOLVE:
+        return
+    por_depth = _load_ring().get((cenario, hero, vilao))
+    if not por_depth:
+        return
+    depth, no = _hu_no_mais_proximo(por_depth, float(p.get('stack_bb') or 0))
+    if no is None:
+        return
+    dist = abs(int(no.get('mesa') or 0) - mesa_decisao)
+    if dist > 1:
+        return
+    sonda: dict = {'scenario': cenario}
+    _grade_por_no_capturado(sonda, no, depth, p.get('hero_hand_type') or '',
+                            p.get('action_taken') or '',
+                            fonte='gw_ring_har' if dist == 0 else 'gw_ring_har_aprox')
+    if not sonda.get('available') or sonda.get('action_quality') != 'correct':
+        return
+    # Absolvicao: o veredito NOVO carrega recomendacao, freqs, range e fonte JUNTOS — copiar
+    # so o action_quality deixaria o card dizer "devia fold" sobre um call aprovado.
+    base.update(sonda)
+    base.pop('coverage_reason', None)
+    if dist == 1:
+        base['ring_mesa_aproximada'] = {'carta': no.get('mesa'), 'decisao': mesa_decisao}
+
+
 def analyze_preflop(*args, **kwargs) -> dict:
     """Análise GTO preflop + ev_loss_bb (#24). Wrapper fino sobre o _impl pra
     anexar o EV em todos os returns (RFI/push-fold/vs_rfi/3bet/etc)."""
@@ -1068,6 +1126,7 @@ def analyze_preflop(*args, **kwargs) -> dict:
     kwargs['facing_allin'] = facing_allin
     base = _analyze_preflop_impl(*args, **kwargs)
     _preenche_buraco_com_ring(base, args, kwargs)
+    _gw_ring_absolve(base, args, kwargs)
     _attach_ev_loss(base)
     _act = kwargs.get('action_taken') or (args[3] if len(args) > 3 else '')
     if facing_allin:

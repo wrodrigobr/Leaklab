@@ -200,6 +200,107 @@ def test_profundidade_distante_continua_null():
     assert _com_acervo(_ACERVO, lambda: _bb_vs_squeeze(stack=22.0))['available'] is True
 
 
+# ── "so absolve" no par SB x BB (decisao do dono, 15/08, com o experimento na mesa) ───────────
+#
+# BB vs open unico do SB (mesa inteira folda). O caso real que motivou: J6s 10bb pagou
+# min-raise, a HEURISTICA acusou `small_mistake` (gto_label None — a carta nem respondia,
+# `open_size_off_tree`), e o GW joga call ~97%.
+_NODE_BB_VS_SB_OPEN = 'F-F-F-F-F-F-R2'
+_ACERVO_SB_BB = {f'20.125|{_NODE_BB_VS_SB_OPEN}': _no('BB', _NODE_BB_VS_SB_OPEN, maos={
+    'J6s': {'CALL 6.5': {'f': 0.97, 'ev': 0.4}, 'FOLD': {'f': 0.03, 'ev': 0.0}},
+    '72o': {'FOLD': {'f': 1.0, 'ev': 0.0}, 'CALL 6.5': {'f': 0.0, 'ev': -0.3}},
+    'A7o': {'RAISE 20.000': {'f': 1.0, 'ev': 2.1}, 'CALL 6.5': {'f': 0.0, 'ev': 1.2}},
+})}
+
+_KW_SB_BB = dict(position='BB', stack_bb=20.0, vs_position='SB', n_players=8)
+
+
+def _absolve_direto(mao, acao, base):
+    """Chama o gancho direto, com o gatilho forjado — o idioma do test_mesa_de_2: e o unico
+    jeito de exercitar cada condicao sem depender do que a carta REAL do ambiente responde."""
+    def roda():
+        g._gw_ring_absolve(base, (), dict(_KW_SB_BB, hero_hand_type=mao, action_taken=acao))
+        return base
+    return _com_acervo(_ACERVO_SB_BB, roda)
+
+
+def test_gw_absolve_buraco_que_a_heuristica_acusaria():
+    """O caso J6s real: carta nao responde (off_tree) e o GW aprova o call — o buraco vira
+    carta, com recomendacao/freqs/fonte viajando JUNTOS (um veredito absolvido com a
+    recomendacao antiga seria card contraditorio)."""
+    r = _absolve_direto('J6s', 'call',
+                        {'available': False, 'coverage_reason': 'open_size_off_tree',
+                         'scenario': 'vs_rfi'})
+    assert r.get('available') is True, r
+    assert r['source'] == 'gw_ring_har', r.get('source')
+    assert r['action_quality'] == 'correct', r['action_quality']
+    assert r['recommended_actions'][0] == 'call', r['recommended_actions']
+    assert r.get('coverage_reason') is None
+
+
+def test_gw_nao_gradeia_buraco_quando_acusaria():
+    """A protecao dos 9 folds baratos: 72o pagou, o GW acusaria (call freq 0) — o buraco FICA
+    buraco, a heuristica decide como antes. 'Carta vizinha absolve, nao acusa'."""
+    base = {'available': False, 'coverage_reason': 'open_size_off_tree', 'scenario': 'vs_rfi'}
+    r = _absolve_direto('72o', 'call', dict(base))
+    assert r.get('available') is False, r
+    assert r.get('source') != 'gw_ring_har'
+
+
+def test_gw_absolve_acusacao_da_propria_carta():
+    """Segundo gatilho: a carta atual respondeu ACUSANDO e o GW aprova — a acusacao cai."""
+    r = _absolve_direto('J6s', 'call',
+                        {'available': True, 'action_quality': 'major_leak',
+                         'scenario': 'vs_rfi', 'recommended_actions': ['fold']})
+    assert r['action_quality'] == 'correct', r['action_quality']
+    assert r['source'] == 'gw_ring_har'
+    assert r['recommended_actions'][0] == 'call'
+
+
+def test_gw_discordando_sem_aprovar_nao_absolve():
+    """A7o foldou; o GW manda RAISE (fold freq 0). Discordar da carta nao basta — absolver
+    exige o GW dizer 'a jogada esta certa', nao apenas 'a carta esta errada'."""
+    base = {'available': True, 'action_quality': 'major_leak', 'scenario': 'vs_rfi',
+            'recommended_actions': ['call']}
+    r = _absolve_direto('A7o', 'fold', base)
+    assert r['action_quality'] == 'major_leak', r
+    assert r.get('source') != 'gw_ring_har'
+
+
+def test_gw_nao_toca_veredito_bom_nem_outro_par():
+    """Carta aprovando (sem acusacao) o gancho nem olha; e par fora da lista deliberada
+    (BB vs CO) fica exatamente como antes, mesmo com no valido no acervo."""
+    bom = {'available': True, 'action_quality': 'correct', 'scenario': 'vs_rfi',
+           'recommended_actions': ['call'], 'source': None}
+    r = _absolve_direto('J6s', 'call', dict(bom))
+    assert r == bom, r
+    # outro par, pelo caminho publico
+    no_co = _no('BB', 'F-F-F-F-R2-F-F')
+    acervo = {'20.125|F-F-F-F-R2-F-F': no_co}
+    kw = dict(position='BB', hero_hand_type='72o', stack_bb=20.0, action_taken='call',
+              facing_size=2.0, vs_position='CO', facing_raises=1, hero_was_aggressor=False,
+              facing_to_bb=2.0, n_players=8)
+    antes = _com_acervo({}, lambda: analyze_preflop(**kw))
+    depois = _com_acervo(acervo, lambda: analyze_preflop(**kw))
+    for campo in ('action_quality', 'source', 'recommended_actions'):
+        assert antes.get(campo) == depois.get(campo), (campo, antes.get(campo), depois.get(campo))
+
+
+def test_gw_absolve_fiacao_no_caminho_publico():
+    """O gancho esta ligado no analyze_preflop de verdade: 72o pagando min-raise do SB cai em
+    off_tree na carta real (pre-requisito conferido), e com um no FORJADO em que o GW aprova o
+    call, o caminho publico absolve de ponta a ponta."""
+    kw = dict(position='BB', hero_hand_type='72o', stack_bb=20.0, action_taken='call',
+              facing_size=2.0, vs_position='SB', facing_raises=1, hero_was_aggressor=False,
+              facing_to_bb=2.0, n_players=8)
+    antes = _com_acervo({}, lambda: analyze_preflop(**kw))
+    assert antes.get('available') is False, ('pre-requisito: o spot precisa ser buraco', antes)
+    acervo_aprova = {f'20.125|{_NODE_BB_VS_SB_OPEN}': _no('BB', _NODE_BB_VS_SB_OPEN, maos={
+        '72o': {'CALL 6.5': {'f': 0.9, 'ev': 0.1}, 'FOLD': {'f': 0.1, 'ev': 0.0}}})}
+    depois = _com_acervo(acervo_aprova, lambda: analyze_preflop(**kw))
+    assert depois.get('available') is True and depois.get('source') == 'gw_ring_har', depois
+
+
 def test_acervo_vazio_nao_muda_nada():
     """Enquanto nao houver captura, o motor tem que se comportar exatamente como antes."""
     antes = _com_acervo({}, _bb_vs_squeeze)
