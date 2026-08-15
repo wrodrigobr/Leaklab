@@ -164,7 +164,11 @@ def run_suite(name: str, files: list, fast: bool = False) -> tuple[int,int,list]
         )
         lines = (r.stdout + r.stderr).strip().split('\n')
         summary = [l for l in lines if 'Total:' in l and 'Passed:' in l]
-        fails   = [l for l in lines if l.startswith('FAIL')]
+        # Os arquivos imprimem em DUAS convencoes ('FAIL ...' e 'FALHOU ...'). So a primeira era
+        # capturada: em 15/08 a suite terminou "4 falhas" e VERDE, porque as 4 eram FALHOU e a
+        # lista (que decide o exit code) ficou vazia. Falha contada sem nome capturado nao pode
+        # virar verde — dai o fallback sintetico abaixo.
+        fails   = [l for l in lines if l.startswith('FAIL') or l.startswith('FALHOU')]
         if summary:
             s = summary[-1]
             p = int(s.split('Passed:')[1].split('|')[0].strip())
@@ -172,6 +176,8 @@ def run_suite(name: str, files: list, fast: bool = False) -> tuple[int,int,list]
             passed += p; failed += f
             mark = '✅' if f == 0 else f'❌ {f}×'
             print(f"  {mark:<8} {fname:<42} {p+f:>3} testes")
+            if f > 0 and not fails:
+                fails = [f"{f} falha(s) sem linha FAIL/FALHOU capturada — ver saida do arquivo"]
             for fail in fails:
                 failures.append(f"[{fname}] {fail}")
                 print(f"           ↳ {fail}")

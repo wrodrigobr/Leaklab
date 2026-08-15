@@ -7,6 +7,48 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(gto): rodada 4 das capturas HU -- escada ROOT completa de 1 a 60bb e EVs de freq-zero no acervo inteiro (#gto #coleta)
+
+> "Ataca as capturas GW pendentes". Tres entregas no acervo `docs/hu_ranges_har.json`
+> (56 -> 69 nos), todas capturadas E importadas no mesmo dia:
+>
+> **1. Buracos novos**: ROOT raso 2-9bb (regime push/fold, de 1 em 1bb), ROOT + R2-RAI em
+> 50/60bb. A escada ROOT agora e continua de 1.125 a 60.125 -- short stack de 5bb deixa de
+> cair em null e ganha a carta do REGIME CERTO.
+>
+> **2. Refazer dos EVs de frequencia zero**: 35 nos importados antes de 07/08 so guardavam
+> as acoes que a carta joga -- o motor sabia a frequencia mas nao QUANTO CUSTA escolher
+> outra acao (card exibia "EV ?"). Recapturados com `--refazer` (o unico caso em que a flag
+> deve ser passada). Medicao pos: 0 nos sem EV de freq-zero, ancoras AA/KK integras nos 69.
+>
+> **3. Validador ganhou o regime raso**: a lista de lixo aceitavel foi calibrada para HU
+> profundo (SB joga ~90% das maos) e REJEITAVA no legitimo de 3-7bb -- a 5bb o proprio GW
+> folda 72s/82s/83s. Abaixo de 7,5bb valem so as proibicoes universais (par e Ax nunca sao
+> fold puro; ancoras AA/KK/QQ/AKs seguem ativas). Teste nos dois sentidos + mutacao que
+> acusou (desligar o regime raso derruba o teste novo).
+>
+> Por que: e o item da fila de capturas pendentes que arbitra disputas com o coach por
+> oraculo externo -- e o EV de freq-zero e o numero que desmente acusacao barata (min-raise
+> de SB a 12,6bb custando 0,003bb ja saiu de "erro" por ele).
+
+### fix(testes): o runner era CEGO a "FALHOU" -- 4 falhas reais terminaram em veredito verde (#medicao)
+
+> A suite completa terminou "2259 testes, 4 falhas" e IMPRIMIU "zero regressoes", exit 0.
+> Causa: `run_all_tests.py` soma o `Failed: N` dos sumarios, mas a lista que decide o exit
+> code so capturava linhas `FAIL...` -- e metade dos arquivos imprime `FALHOU`. Falha
+> contada sem nome capturado virava verde (a MESMA licao do grep cego de 13/08, agora no
+> proprio juiz). Conserto: captura as duas convencoes + fallback sintetico ("N falhas sem
+> linha capturada") que impede verde com falha contada. Provado com forja nos dois sentidos.
+>
+> As 4 falhas mascaradas, todas explicadas: 3 eram testes de "sem cobertura -> null
+> honesto" que a captura de hoje OBSOLETOU (reescritos para os buracos que ainda existem:
+> >75bb e SB vs 3-bet nao-jam a 60bb; o de suavizacao virou no sintetico, imune a captura
+> futura); 1 era `test_ev_cabe_no_jogo` quebrado DESDE 13/08 -- quando a porta do card
+> migrou para insumos canonicos da linha, a fixture ficou no dialeto do spot (sem
+> `stack_bb`, o teto fisico nao tem contra o que conferir). Fixture no dialeto da linha;
+> suite completa re-rodada: 2257/2259, unica falha restante e flake de timing de
+> `test_revalidation_api` (passa isolado).
+
 ### fix(medicao): os 11 fora-de-escala pos re-solve -- 10 eram LINHA stale, 1 era a regua cega ao preflop (#gto #medicao)
 
 > Pergunta da tarefa: depois do re-solve dos 40 nos, por que 11 decisoes ainda tem

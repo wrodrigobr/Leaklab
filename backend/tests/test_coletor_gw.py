@@ -223,6 +223,29 @@ def test_no_com_ordem_corrompida_e_rejeitado():
         assert len(coletados) == esperado, (esperado, coletados.keys())
 
 
+def test_hu_raso_aceita_fold_largo_mas_nao_par_nem_ax():
+    """Rodada 4 (15/08): a 3-7bb o proprio GW folda 72s/82s/83s no ROOT (regime push/fold) —
+    a lista de lixo do HU profundo rejeitou 5 nos LEGITIMOS. No raso valem so as proibicoes
+    universais: par e Ax nunca sao fold puro, e as ancoras AA/KK seguem ativas. No fundo
+    (>7,5bb) a regra continua a de sempre."""
+    from importar_har_hu import valida_no as _valida
+    lixo_raso = {'72s', '82s', '83s', '32o', '72o'}
+
+    def _no(depth, folds):
+        return no_de_resposta(_payload([('FOLD', None), ('RAISE', '5.000')],
+                                       folds_puros=folds),
+                              {'gametype': 'MTTHUGeneralSimpleAI', 'depth': depth,
+                               'preflop_actions': ''})
+
+    assert _valida(_no('5.125', lixo_raso)) is None, _valida(_no('5.125', lixo_raso))
+    # proibicoes universais continuam valendo no raso
+    assert '22' in (_valida(_no('5.125', lixo_raso | {'22'})) or '')
+    assert 'A2o' in (_valida(_no('5.125', lixo_raso | {'A2o'})) or '')
+    assert 'AA' in (_valida(_no('5.125', lixo_raso | {'AA'})) or '')   # ancora, camada anterior
+    # CONTROLE: no fundo a mesma mao ainda denuncia — a regra rasa nao vazou para cima
+    assert '72s' in (_valida(_no('14.125', {'72s', '32o'})) or '')
+
+
 # ── 5. o que ja veio fica gravado ─────────────────────────────────────────────────────────────
 
 def test_grava_a_cada_no_e_sobrevive_a_parada():

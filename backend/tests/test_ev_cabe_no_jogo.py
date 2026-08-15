@@ -106,8 +106,13 @@ def test_as_duas_superficies_do_card_calam_JUNTAS():
     veredito de outra em 05/08. As FREQUENCIAS ficam: sao estrategia, nao dependem de escala.
     """
     from api.app import _ev_para_exibir, _sem_ev_impossivel
+    # A fixture fala o dialeto da LINHA (stack_bb/pot_size/facing_bet), porque desde 13/08 a
+    # porta usa os insumos canonicos das colunas e IGNORA o spot. A versao anterior so tinha os
+    # campos do spot: sem `stack_bb` o teto fisico nao tem contra o que conferir, o teste
+    # falhava — e o runner cego a FALHOU escondeu isso por dois dias.
     dec = {'ev_loss_bb': 3588.36, 'ev_loss_source': 'solver_hand',
-           'action_taken': 'fold', 'estimated_equity': 0.34}
+           'action_taken': 'fold', 'estimated_equity': 0.34,
+           'stack_bb': 32.2, 'pot_size': 10.7, 'facing_bet': 2.0}
     di = {'math': {'estimatedHandEquity': 0.34}}
     spot = {'effectiveStackBb': 32.2, 'potBb': 10.7, 'facingToCallBb': 2.0}
     hs = {'actions': [{'action': 'call', 'frequency': 1.0, 'ev_bb': 3588.4, 'ev_loss_bb': 0.0},

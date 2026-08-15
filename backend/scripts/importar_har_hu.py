@@ -43,6 +43,10 @@ _LIXO_ACEITAVEL = {
     'K2o', 'K3o', 'K4o', 'T2s', 'T3s',
 }
 
+# Abaixo desta profundidade o HU vira regime push/fold e ranges de fold LARGAS sao legitimas
+# (a 5bb o GW folda 72s no SB). A validacao rasa mantem so as proibicoes universais (par/Ax).
+_DEPTH_PUSH_FOLD = 7.5
+
 
 def _texto_da_resposta(entry: dict) -> str:
     c = entry.get('response', {}).get('content', {}) or {}
@@ -232,7 +236,18 @@ def valida_no(no: dict) -> str | None:
     primeira_decisao = no['preflop_actions'] in ('', 'R2', 'C') or (
         no['preflop_actions'].count('-') == 0)
     if primeira_decisao:
-        suspeitos = [m for m in folds_puros if m not in _LIXO_ACEITAVEL]
+        try:
+            raso = float(no.get('depth') or 0) <= _DEPTH_PUSH_FOLD
+        except (TypeError, ValueError):
+            raso = False
+        if raso:
+            # Regime push/fold (rodada 4, 15/08): a 3-7bb o proprio GW folda 72s/82s/83s no
+            # ROOT — a lista de lixo do HU profundo rejeitava no LEGITIMO. Aqui so par e Ax
+            # continuam proibidos de fold puro (mesma filosofia da lista: "pares e maos com
+            # As nunca entram"), e as ancoras AA/KK/QQ/AKs acima seguem pegando corrupcao.
+            suspeitos = [m for m in folds_puros if m[0] == m[1] or m[0] == 'A']
+        else:
+            suspeitos = [m for m in folds_puros if m not in _LIXO_ACEITAVEL]
         if suspeitos:
             return f"ordem suspeita: fold 100% em {sorted(suspeitos)[:6]}"
     return None

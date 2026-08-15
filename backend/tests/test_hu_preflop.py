@@ -62,20 +62,21 @@ def test_a5s_sb_first_in_limpa():
     assert r['action_quality'] == 'correct'
 
 
-def test_fronteira_de_regime_e_null_ate_capturar():
+def test_fronteira_de_regime_continua_null_fora_da_escada():
     """A licao da amostragem em producao: SB a 14,8bb caiu no no de 10bb (janela de 40%) e um
     AJo foi ACUSADO por min-raisar em vez de jamar — regime errado. A janela de 25% continua
-    valendo mesmo agora que a fresta de 12-20bb foi capturada (coletor, 07/08).
+    valendo mesmo com a escada ROOT completa (rodada 4, 15/08: 1-9bb + 50/60 capturados).
 
-    ROOT hoje: {1, 10, 12.6, 14, 16, 18, 20, 25, 30, 40}. Os buracos que sobraram sao 2-9bb e
-    acima de ~50 — e la o veredito tem que continuar sendo null, nao o no mais proximo a
-    qualquer distancia.
+    ROOT hoje: 1..9 de 1 em 1, depois 10, 12.6, 14, 16, 18, 20, 25, 30, 40, 50, 60. O que
+    sobrou FORA da escada (acima de ~75bb) tem que continuar null, nao o no mais proximo a
+    qualquer distancia. (80bb ja cai na janela de 25% do no de 60 — por isso a fronteira do
+    teste e 100.)
     """
-    for stack in (5.0, 55.0):
-        r = _hu(position='SB', hero_hand_type='AJo', stack_bb=stack, action_taken='raise')
-        assert r['available'] is False, (
-            f'stack {stack} usou no de outro regime ({r.get("hu_depth")})')
-    for stack, faixa in ((13.0, (12, 15)), (17.0, (16, 19)), (22.5, (20, 26))):
+    r = _hu(position='SB', hero_hand_type='AJo', stack_bb=100.0, action_taken='raise')
+    assert r['available'] is False, (
+        f'stack 100 usou no de outro regime ({r.get("hu_depth")})')
+    for stack, faixa in ((5.0, (4, 6)), (13.0, (12, 15)), (17.0, (16, 19)),
+                         (22.5, (20, 26)), (55.0, (49, 61))):
         r = _hu(position='SB', hero_hand_type='AJo', stack_bb=stack, action_taken='raise')
         assert r['available'] is True, f'stack {stack} devia estar coberto'
         assert faixa[0] < float(r['hu_depth']) < faixa[1], (stack, r['hu_depth'])
@@ -83,12 +84,13 @@ def test_fronteira_de_regime_e_null_ate_capturar():
 
 def test_hu_sem_no_e_null_honesto():
     """Nó existente na nossa base, mas NAO naquela profundidade, segue null — a janela nao
-    estica. Temos `R2` a 60bb e `R2-RAI` so ate 40bb: a 60bb o jam fica sem gabarito, e o motor
-    prefere calar a gradear por um regime 33% mais raso."""
+    estica. Depois da rodada 4 o `R2-RAI` chega a 60bb, mas o `R2-Rx` (3-bet NAO-jam) para em
+    40bb: a 60bb a defesa contra 3-bet pequeno fica sem gabarito, e o motor prefere calar a
+    gradear por um regime 33% mais raso."""
     r = _hu(position='SB', hero_hand_type='A5s', stack_bb=60.0, action_taken='call',
-            facing_size=60.0, vs_position='BB', facing_raises=1, hero_was_aggressor=True,
-            facing_to_bb=60.0, facing_allin=True)
-    assert r['available'] is False
+            facing_size=12.0, vs_position='BB', facing_raises=1, hero_was_aggressor=True,
+            facing_to_bb=12.0)
+    assert r['available'] is False, r.get('hu_depth')
     assert r.get('coverage_reason') == 'hu_uncovered'
 
 
@@ -186,12 +188,22 @@ def test_perda_grande_continua_sendo_erro():
 
 
 def test_sem_EV_na_carta_nada_e_suavizado():
-    """Rollout parcial e honesto: só os nós reimportados do HAR têm o EV das ações não jogadas.
-    Onde ele falta, o veredito é o de antes — nunca um palpite."""
-    r = _hu(position='SB', hero_hand_type='AJo', stack_bb=14.1, action_taken='raise')
+    """Onde o EV falta, o veredito é o de antes — nunca um palpite.
+
+    Nó SINTÉTICO de propósito (15/08): a versão anterior apontava para o nó real de 14bb, que
+    era pré-07/08 e não tinha o EV das ações não jogadas — o --refazer da rodada 4 completou o
+    acervo inteiro e o teste quebrou por depender de qual nó por acaso NÃO tinha EV. O contrato
+    que ele guarda é independente do acervo: entrada sem `ev` publicado não é suavizada."""
+    from leaklab.preflop_gto_ranges import _grade_por_no_capturado
+    no = _no_sintetico({
+        'K5o': {'CALL 1.000': {'f': 1.0, 'ev': None}, 'RAISE 2': {'f': 0.0, 'ev': None},
+                'RAISE 10.000': {'f': 0.0, 'ev': None}, 'FOLD': {'f': 0.0, 'ev': None}},
+    })
+    r = _grade_por_no_capturado({'scenario': 'hu_rfi'}, no, 10.125, 'K5o', 'raise',
+                                fonte='gw_hu_har')
     assert r['available'] is True
-    assert 'ev_perda_carta_bb' not in r
-    assert r['action_quality'] == 'major_leak'
+    assert 'ev_perda_carta_bb' not in r, r.get('ev_perda_carta_bb')
+    assert r['action_quality'] == 'major_leak', r['action_quality']
 
 
 def test_mao_fora_do_range_nao_e_suavizada_e_sim_NULA():
