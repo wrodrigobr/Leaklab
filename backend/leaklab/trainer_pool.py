@@ -310,9 +310,114 @@ def proximo_spot(rng: Optional[random.Random] = None, street: Optional[str] = No
                 return None
             tentativas += 1
             spot = _monta_spot(dict(r))
-            if spot and _coerente(spot):
-                return spot
+            if not spot:
+                continue
+            # Fase 2 (17/08): tenta uma mão SORTEADA da hand_table da árvore (o acervo real é
+            # a tabela, mediana 462 mãos/board — servíamos só a que o herói jogou). A mão
+            # original fica de fallback: o destravamento é aditivo, nunca regressão.
+            _enf = float(spot.get('facing_size_bb') or 0) > 0
+            for _mao in (mao_da_arvore(r['tree_hash'], fam, _enf, rng, board=spot.get('board')),
+                         spot['hero_hand']):
+                if not _mao:
+                    continue
+                s2 = dict(spot, hand=''.join(_mao), hero_hand=_mao,
+                          hero_cards=_cards_to_objs_pool(_mao))
+                if _coerente(s2):
+                    return s2
     return None
+
+
+def _cards_to_objs_pool(cards):
+    from leaklab.leak_trainer import _cards_to_objs
+    return _cards_to_objs(cards)
+
+
+# ── Fase 2 do catálogo (17/08): servir QUALQUER mão da árvore, não só a que o herói jogou ─────
+#
+# Medido em [[project_modo_grind_preflop]]: cada árvore solvada guarda a estratégia de TODAS as
+# mãos daquele board (mediana 462/árvore; 2,3M pares no acervo, 1,1M com decisão real) e o pool
+# servia UM par por nó — 0,2% do que já foi solvado e pago. A seleção por mão multiplica a
+# variedade sem um solve novo. Os três filtros vieram da mesma medição:
+_PESO_MIN_FRAC = 0.05       # peso < 5% do máximo da tabela ≈ mão fora da range → ensinar exceção
+_FREQ_DISCRIMINANTE = 0.10  # 2ª família com ≥10% = decisão de verdade (mistura), não reflexo
+_VIES_DISCRIMINANTE = 0.7   # VIÉS, não filtro: estratégia pura também ensina (value bet óbvio),
+                            # mas o que faz pensar é a mistura — mesma régua do Desafio do Dia
+
+
+def _tabela_da_arvore(tree_hash: str):
+    """(acoes, tabela) da árvore, ou (None, None). Fonte única da leitura — a mesma que a
+    correção usa, para seleção e veredito nunca divergirem de dado."""
+    if not tree_hash:
+        return None, None
+    with get_conn() as conn:
+        r = conn.execute(_adapt(
+            "SELECT actions, hand_table FROM gto_tree_strategies WHERE tree_hash = ?"),
+            (tree_hash,)).fetchone()
+    if not r:
+        return None, None
+    return _carrega(r['actions']) or [], _carrega(r['hand_table']) or []
+
+
+def _familias_da_linha(linha: dict, acoes: list, enfrentando: bool) -> dict:
+    """{familia: freq} de uma linha da hand_table, no vocabulário do MENU (raise→bet sem
+    aposta na mesa — a mesma tradução do resto do pool)."""
+    freqs = linha.get('freqs') or []
+    if len(freqs) != len(acoes):
+        return {}
+    fam: dict = {}
+    for i, rotulo in enumerate(acoes):
+        f = _familia(rotulo)
+        if f == 'raise' and not enfrentando:
+            f = 'bet'
+        fam[f] = fam.get(f, 0.0) + float(freqs[i] or 0)
+    return fam
+
+
+def mao_da_arvore(tree_hash: str, alvo_fam: str, enfrentando: bool,
+                  rng: Optional[random.Random] = None,
+                  board: Optional[list] = None) -> Optional[list]:
+    """Sorteia uma MÃO da hand_table cuja família DOMINANTE é `alvo_fam` — o mix de respostas
+    continua decidido pelo `_MIX_ALVO`, agora no nível da mão (mais fino que o do nó, onde a
+    ação agregada escondia as mãos que jogam diferente da média).
+
+    None quando a árvore não rende candidata — o chamador cai na mão original do nó, que é o
+    comportamento de sempre (o destravamento é aditivo, nunca regressão)."""
+    rng = rng or random
+    acoes, tabela = _tabela_da_arvore(tree_hash)
+    if not acoes or not tabela:
+        return None
+    max_peso = max((float(l.get('weight') or 0) for l in tabela), default=0.0)
+    if max_peso <= 0:
+        return None
+    discriminantes, puras = [], []
+    for linha in tabela:
+        if float(linha.get('weight') or 0) < max_peso * _PESO_MIN_FRAC:
+            continue                        # quase fora da range: exercício de exceção
+        fam = _familias_da_linha(linha, acoes, enfrentando)
+        if not fam:
+            continue
+        ordenado = sorted(fam.items(), key=lambda kv: -kv[1])
+        if ordenado[0][0] != alvo_fam:
+            continue                        # o mix é decidido fora; aqui só se obedece
+        mao = linha.get('hand') or ''
+        if len(mao) != 4:
+            continue
+        # Carta da mão no board = combo impossível. A tabela do solver não deveria trazer,
+        # mas filtro que confia na procedência do dado só adia o problema (lição do pool).
+        if board and ({mao[:2], mao[2:]} & {str(c) for c in board}):
+            continue
+        alvo = discriminantes if (len(ordenado) > 1
+                                  and ordenado[1][1] >= _FREQ_DISCRIMINANTE) else puras
+        alvo.append(mao)
+    grupo = None
+    if discriminantes and puras:
+        grupo = discriminantes if rng.random() < _VIES_DISCRIMINANTE else puras
+    else:
+        grupo = discriminantes or puras
+    if not grupo:
+        return None
+    mao = rng.choice(grupo)
+    return [mao[:2], mao[2:]]
 
 
 def estrategia_da_mao(tree_hash: str, hero_hand) -> Optional[dict]:
@@ -339,14 +444,9 @@ def estrategia_da_mao(tree_hash: str, hero_hand) -> Optional[dict]:
         hero_hand = [hero_hand[i:i + 2] for i in range(0, len(hero_hand), 2)]
     alvos = {''.join(hero_hand), ''.join(reversed(hero_hand))}
 
-    with get_conn() as conn:
-        r = conn.execute(_adapt(
-            "SELECT actions, hand_table FROM gto_tree_strategies WHERE tree_hash = ?"),
-            (tree_hash,)).fetchone()
-    if not r:
+    acoes, tabela = _tabela_da_arvore(tree_hash)
+    if not acoes or not tabela:
         return None
-    acoes = _carrega(r['actions']) or []
-    tabela = _carrega(r['hand_table']) or []
     linha = next((it for it in tabela if (it.get('hand') or '') in alvos), None)
     if not linha:
         return None                       # mão fora da tabela: nó de outro jogador

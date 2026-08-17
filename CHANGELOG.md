@@ -7,6 +7,26 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(trainer): Fase 2 do catalogo -- o pool serve QUALQUER mao da arvore (destravamento do 0,2%) (#trainer #gto)
+
+> Medido em 02/08: cada arvore solvada guarda a estrategia de TODAS as maos do board
+> (mediana 462/arvore; 2,3M pares no acervo, 1,1M com decisao real) e o pool servia UM par
+> por no — 0,2% do que ja foi solvado e pago. Agora `proximo_spot` sorteia a MAO da
+> hand_table (`mao_da_arvore`), com a mao original de fallback — aditivo, nunca regressao.
+>
+> Os tres filtros da medicao: **peso** (< 5% do maximo da tabela = mao quase fora da range,
+> ensinar excecao); **dominancia obedece o mix** (`_MIX_ALVO` continua decidindo a
+> distribuicao de respostas, agora no nivel da mao — mais fino que o do no, onde a acao
+> agregada escondia as maos que jogam diferente da media); **vies pro-discriminante** (70%
+> para maos onde a 2a familia tem >=10% — mistura faz pensar; estrategia pura tambem ensina
+> e nao vira filtro). Guarda extra: mao com carta no board nao sai (combo impossivel; a
+> tabela nao deveria trazer, mas filtro que confia na procedencia so adia o problema).
+>
+> Fonte unica de leitura `_tabela_da_arvore` (selecao e correcao leem o MESMO dado);
+> `_coerente` continua validando a mao SERVIDA (gradeavel + menu + veredito dentro do menu).
+> 5 testes; 2 mutacoes derrubaram exatamente os guardas certos (peso: 3 testes; dominancia:
+> 4 — o mix e o quiz-vencivel sao protegidos em dobro).
+
 ### feat(trainer): catalogo de treinos NOMEADOS -- Fase 1 da frente do catalogo (#trainer)
 
 > A lacuna medida em project_catalogo_de_treinos era de AGENCIA: quem sabe o que quer
