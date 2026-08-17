@@ -3073,7 +3073,11 @@ def leaktrainer_next():
     # Free: sem treino MIRADO (adaptive/leak reais) → cai em fundamentos genéricos (preflop),
     # que de quebra já exclui postflop. O front mostra o upsell via targeted_locked.
     targeted_locked = False
-    if not lim.get('leak_targeted', True) and not focus.startswith('fund:'):
+    from leaklab.leak_trainer import FREE_CATALOG_FOCUSES
+    # Entradas de catálogo que SÃO fundamentos (BvB, stack curto) treinam no Free como os
+    # fund:*; postflop e adaptativo seguem o gate do plano.
+    if (not lim.get('leak_targeted', True) and not focus.startswith('fund:')
+            and focus not in FREE_CATALOG_FOCUSES):
         focus = 'adaptive'          # normaliza; abaixo forçamos fundamentos
         targeted_locked = True
     try:
@@ -3098,6 +3102,14 @@ def leaktrainer_next():
             spot = proximo_card_de_range(g.user_id,
                                          servidas=(body.get('servidas') or []),
                                          alvo=_alvo)
+        elif focus.startswith('cat:'):
+            # Catálogo de treinos nomeados (Fase 1, 17/08): BvB, stack curto, catálogos
+            # postflop. Currículo vem da fonte única; id desconhecido → lista vazia → o
+            # fallback de fundamentos abaixo segura (nunca 500).
+            from leaklab.leak_trainer import curriculo_do_catalogo
+            curriculum = curriculo_do_catalogo(focus.split(':', 1)[1], g.user_id)
+            spot       = next_spot(curriculum, session_state) if curriculum else \
+                         next_spot(_fundamentals_curriculum(), session_state)
         elif focus.startswith('fund:'):
             curriculum = fundamentals_catalog(focus.split(':', 1)[1])
             spot       = next_spot(curriculum, session_state)
@@ -3281,7 +3293,19 @@ def leaktrainer_options():
         }
     except Exception:
         app.logger.exception("leaktrainer_options: memorizacao falhou (user=%s)", g.user_id)
-    return jsonify({'leaks': leaks, 'scenarios': TRAINABLE_SCENARIOS, 'memorizacao': memorizacao})
+    # Catálogo de treinos NOMEADOS (Fase 1, 17/08): a porta de quem chega sabendo o que quer.
+    # Nome/descrição são i18n do frontend (chaveados por `id`); o backend manda o roteável
+    # (focus) e a estatística agregada da persistência que JÁ existia (training_skill_progress).
+    catalogo = []
+    try:
+        from leaklab.leak_trainer import CATALOGO_TREINOS, stats_do_catalogo
+        _stats = stats_do_catalogo(list(skills.values()))
+        catalogo = [{**{k: e[k] for k in ('id', 'focus', 'grupo', 'free')},
+                     'stats': _stats.get(e['id'])} for e in CATALOGO_TREINOS]
+    except Exception:
+        app.logger.exception("leaktrainer_options: catalogo falhou (user=%s)", g.user_id)
+    return jsonify({'leaks': leaks, 'scenarios': TRAINABLE_SCENARIOS,
+                    'memorizacao': memorizacao, 'catalogo': catalogo})
 
 
 @app.route('/player/leaktrainer/grade', methods=['POST'])

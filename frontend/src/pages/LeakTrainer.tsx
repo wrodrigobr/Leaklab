@@ -1065,24 +1065,64 @@ export default function LeakTrainer() {
                       </div>
                     </div>
                   )}
-                  <div>
-                    <p className="mb-1.5 text-[11px] font-bold text-foreground">{t("leakTrainer.picker.fundamentals")}</p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {(trainOptions?.scenarios ?? ["rfi", "vs_rfi"]).map((scn) => (
-                        <button key={scn} onClick={() => startFocus(`fund:${scn}`)}
-                          className="rounded-lg border border-border bg-background/60 px-3 py-1.5 text-[12px] text-foreground transition-colors hover:border-amber-500/40">
-                          {t(`leakTrainer.scn.${scn}`)}
+                  {/* ── CATÁLOGO DE TREINOS NOMEADOS (Fase 1, 17/08) ─────────────────────
+                      A porta de quem chega sabendo o que quer: cada card é um treino com nome
+                      na linguagem do jogador e a estatística PERSISTENTE (mãos · domínio%,
+                      agregada do training_skill_progress — sobrevive à sessão). O adaptativo
+                      por leak continua sendo o padrão lá em cima; isto é a academia com as
+                      máquinas etiquetadas. */}
+                  {(trainOptions?.catalogo ?? []).filter((c) => c.grupo !== "recomendado").length > 0 ? (
+                    (["preflop", "postflop", "memorizacao"] as const).map((grupo) => {
+                      const entradas = (trainOptions?.catalogo ?? []).filter((c) => c.grupo === grupo);
+                      if (!entradas.length) return null;
+                      return (
+                        <div key={grupo}>
+                          <p className="mb-1.5 text-[11px] font-bold text-foreground">
+                            {t(`leakTrainer.catalogo.grupo.${grupo}`)}
+                          </p>
+                          <div className="grid gap-1.5">
+                            {entradas.map((c) => (
+                              <button key={c.id} onClick={() => startFocus(c.focus as LeakTrainerFocus)}
+                                className="flex items-center justify-between gap-2 rounded-lg border border-border bg-background/60 px-3 py-2 text-left transition-colors hover:border-amber-500/40">
+                                <span className="min-w-0">
+                                  <span className="block truncate text-[13px] text-foreground">
+                                    {t(`leakTrainer.catalogo.${c.id}`)}
+                                  </span>
+                                  <span className="block truncate text-[10.5px] text-muted-foreground">
+                                    {t(`leakTrainer.catalogo.${c.id}Desc`)}
+                                  </span>
+                                </span>
+                                {c.stats && c.stats.attempts > 0 && (
+                                  <span className="shrink-0 text-right font-mono text-[10px] tabular-nums text-muted-foreground"
+                                        title={t("leakTrainer.catalogo.statsTip")}>
+                                    {t("leakTrainer.catalogo.stats",
+                                       { n: c.stats.attempts, pct: Math.round(c.stats.mastery) })}
+                                  </span>
+                                )}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })
+                  ) : (
+                    /* Fallback (backend antigo sem `catalogo`): os chips de fundamentos de antes. */
+                    <div>
+                      <p className="mb-1.5 text-[11px] font-bold text-foreground">{t("leakTrainer.picker.fundamentals")}</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {(trainOptions?.scenarios ?? ["rfi", "vs_rfi"]).map((scn) => (
+                          <button key={scn} onClick={() => startFocus(`fund:${scn}`)}
+                            className="rounded-lg border border-border bg-background/60 px-3 py-1.5 text-[12px] text-foreground transition-colors hover:border-amber-500/40">
+                            {t(`leakTrainer.scn.${scn}`)}
+                          </button>
+                        ))}
+                        <button onClick={() => startFocus("fund:range_grid")}
+                          className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-1.5 text-[12px] text-amber-300 transition-colors hover:border-amber-500/70">
+                          {t("leakTrainer.scn.range_grid")}
                         </button>
-                      ))}
-                      {/* Memorização, não decisão: marcar até onde a range vai. Fica junto dos
-                          fundamentos porque é o alicerce dos outros exercícios — sem saber a
-                          fronteira, acertar um spot é reconhecimento, não conhecimento. */}
-                      <button onClick={() => startFocus("fund:range_grid")}
-                        className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-1.5 text-[12px] text-amber-300 transition-colors hover:border-amber-500/70">
-                        {t("leakTrainer.scn.range_grid")}
-                      </button>
+                      </div>
                     </div>
-                  </div>
+                  )}
                 </div>
               )}
             </div>

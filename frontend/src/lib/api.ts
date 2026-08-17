@@ -1360,6 +1360,7 @@ export interface LeakTrainerGrade {
 }
 
 // foco do treino: 'adaptive' (padrão) | 'leak:<category_key>' | 'fund:<scenario>'
+// | 'cat:<id do catálogo>' (treinos nomeados: bvb, short, pf_bb_defense, pf_bb_3bet)
 export type LeakTrainerFocus = string;
 export interface LeakTrainerLeakOption {
   category_key: string;
@@ -1377,6 +1378,15 @@ export interface LeakTrainerOptions {
   /** Memorização de range: a sugestão vinda dos leaks REAIS e o placar do SRS. Null quando não
    *  há motivo para sugerir — o produto não empurra estudo a partir de ruído. */
   memorizacao?: { sugestao: MemorizacaoSugestao | null; placar: MemorizacaoPlacar } | null;
+  /** Catálogo de treinos NOMEADOS (Fase 1, 17/08): a porta de quem chega sabendo o que quer.
+   *  Nome/descrição são i18n chaveados por `id`; `stats` agrega a persistência por categoria
+   *  (training_skill_progress) — null na entrada de memorização, que tem placar próprio. */
+  catalogo?: {
+    id: string; focus: string; grupo: "recomendado" | "preflop" | "postflop" | "memorizacao";
+    free: boolean;
+    stats?: { attempts: number; correct: number; mastery: number; tier: string;
+              last_practiced_at: string | null } | null;
+  }[];
 }
 export interface RangeGridGrade {
   acertou: boolean;

@@ -7,6 +7,24 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(trainer): catalogo de treinos NOMEADOS -- Fase 1 da frente do catalogo (#trainer)
+
+> A lacuna medida em project_catalogo_de_treinos era de AGENCIA: quem sabe o que quer
+> treinar nao conseguia pedir na linguagem dele. Agora o seletor tem a vitrine: 9 treinos
+> nomeados em 4 grupos — Adaptativo (recomendado, segue sendo o padrao), Preflop
+> (Fundamentos de abertura / Defesa contra open / Enfrentando 3-bet / **Blind vs Blind** /
+> **Stack curto 12bb**), Postflop (Defesa de BB no flop / **Pote 3-bet: seu c-bet**) e
+> Memorizacao (Fronteira da range). BvB e Stack Curto sao recortes NOVOS dos fundamentos
+> (filtro por par/stack — zero motor novo); os postflop ganharam roteamento proprio
+> (`cat:<id>`) que antes so funcionava por acaso via leak:.
+>
+> **A estatistica persistente por treino ja EXISTIA** (training_skill_progress: EMA +
+> decaimento temporal + tiers) — o backlog a listava como faltante (memoria atras do codigo,
+> 3a vez no fim de semana). O catalogo agrega por entrada (media ponderada por tentativas) e
+> o card mostra "N maos · dominio%". Free treina os fundamentos nomeados (BvB/short
+> liberados); postflop e adaptativo seguem o gate do plano. 6 testes + mutacao no recorte
+> do BvB; nomes/descricoes nas 3 locales; fallback para backend antigo sem o campo.
+
 ### feat(trainer): categoria BB 3-BET POT no Leak Trainer -- onde vivem AK/AQ/QQ+ (#trainer #gto)
 
 > Expansao prevista desde 28/06: as maos premium 3-betam preflop e por isso NUNCA chegam ao

@@ -297,6 +297,33 @@
       "pergunta": "How many days a week can you train?",
       "porque": "It is there so you can measure your own pace. You can change it any time.",
       "depois": "Later"
+    },
+    "catalogo": {
+      "grupo": {
+        "preflop": "Preflop",
+        "postflop": "Postflop",
+        "memorizacao": "Memorization"
+      },
+      "adaptive": "Adaptive (recommended)",
+      "adaptiveDesc": "The system picks from your measured leaks",
+      "fund_rfi": "Opening fundamentals (RFI)",
+      "fund_rfiDesc": "Open the right pots, position by position",
+      "fund_vs_rfi": "Defending vs open",
+      "fund_vs_rfiDesc": "Call, 3-bet or fold against each position",
+      "fund_vs_3bet": "Facing a 3-bet",
+      "fund_vs_3betDesc": "You opened and got 3-bet: 4-bet, call or fold",
+      "bvb": "Blind vs Blind",
+      "bvbDesc": "SB against BB: the most frequent battle in tournaments",
+      "short": "Short stack (12bb)",
+      "shortDesc": "Shove and reshove zone: the decisions that define your tournament",
+      "pf_bb_defense": "BB defense on the flop",
+      "pf_bb_defenseDesc": "You called from the BB and face a c-bet — single-raised pot",
+      "pf_bb_3bet": "3-bet pot: your c-bet",
+      "pf_bb_3betDesc": "You 3-bet from the BB and got called — c-bet or check the flop",
+      "range_grid": "Range boundary",
+      "range_gridDesc": "Mark on the grid how far the range goes",
+      "stats": "{{n}} hands · {{pct}}%",
+      "statsTip": "Hands trained in this drill and current mastery (decays without practice)."
     }
   },
   "trainAch": {

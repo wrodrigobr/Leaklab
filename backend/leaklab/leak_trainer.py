@@ -224,6 +224,110 @@ def fundamentals_catalog(scenario: str, stack: int = 50) -> list[dict]:
     return cats
 
 
+# ── Catálogo de TREINOS NOMEADOS (Fase 1, 17/08) ──────────────────────────────────────────────
+#
+# A lacuna medida em [[project_catalogo_de_treinos]] era de AGÊNCIA, não de motor: quem sabe o
+# que quer treinar não conseguia pedir na linguagem dele. Cada entrada mapeia um focus roteável
+# para um treino NOMEADO (nome/descrição são i18n do frontend, chaveados pelo `id` — texto não
+# mora no backend). O adaptativo continua sendo o padrão e o diferencial; isto é a porta de quem
+# chega sabendo o que quer.
+#
+# A ESTATÍSTICA por treino não é nova: `training_skill_progress` (EMA + decaimento + tiers) já
+# persistia por category_key — o catálogo só AGREGA por entrada. Memória atrás do código, de
+# novo: o backlog listava "persistência por treino" como faltante.
+CATALOGO_TREINOS = [
+    # grupo 'recomendado' — o fisioterapeuta: o sistema escolhe pelo leak medido
+    {'id': 'adaptive',      'focus': 'adaptive',          'grupo': 'recomendado', 'free': False},
+    # grupo 'preflop' — fundamentos nomeados (cobertura gold, 36 pares × 9 profundidades)
+    {'id': 'fund_rfi',      'focus': 'fund:rfi',          'grupo': 'preflop',     'free': True},
+    {'id': 'fund_vs_rfi',   'focus': 'fund:vs_rfi',       'grupo': 'preflop',     'free': True},
+    {'id': 'fund_vs_3bet',  'focus': 'fund:vs_3bet',      'grupo': 'preflop',     'free': True},
+    {'id': 'bvb',           'focus': 'cat:bvb',           'grupo': 'preflop',     'free': True},
+    {'id': 'short',         'focus': 'cat:short',         'grupo': 'preflop',     'free': True},
+    # grupo 'postflop' — catálogos pré-solvados (45 spots validados em prod)
+    {'id': 'pf_bb_defense', 'focus': 'cat:pf_bb_defense', 'grupo': 'postflop',    'free': False},
+    {'id': 'pf_bb_3bet',    'focus': 'cat:pf_bb_3bet',    'grupo': 'postflop',    'free': False},
+    # grupo 'memorizacao' — fronteira da range na grade (placar próprio do SRS)
+    {'id': 'range_grid',    'focus': 'fund:range_grid',   'grupo': 'memorizacao', 'free': True},
+]
+
+# Focos de catálogo que são FUNDAMENTOS por natureza (preflop, sem leak medido) — liberados no
+# Free como os fund:*. Postflop e adaptativo seguem o gate normal do plano.
+FREE_CATALOG_FOCUSES = {e['focus'] for e in CATALOGO_TREINOS
+                        if e['free'] and e['focus'].startswith('cat:')}
+
+
+def curriculo_do_catalogo(cat_id: str, user_id: int | None = None) -> list[dict]:
+    """Currículo de uma entrada `cat:<id>` do catálogo. Lista vazia = id desconhecido (o /next
+    cai no fallback de fundamentos, nunca 500)."""
+    if cat_id == 'bvb':
+        # Blind vs Blind: SB abre (RFI de SB é o confronto BvB por definição) + o par SB×BB
+        # da defesa. É filtro sobre o fundamento — cobertura idêntica.
+        rfi = [c for c in fundamentals_catalog('rfi') if c['position'] == 'SB']
+        vs = [c for c in fundamentals_catalog('vs_rfi')
+              if {c['position'], c['vs_position']} == {'SB', 'BB'}]
+        return rfi + vs
+    if cat_id == 'short':
+        # Stack curto: os mesmos fundamentos a 12bb — zona de shove/reshove. A escada do
+        # next_spot ainda pode endurecer para 10bb com 3 acertos seguidos.
+        return fundamentals_catalog('rfi', stack=12) + fundamentals_catalog('vs_rfi', stack=12)
+    if cat_id == 'pf_bb_defense':
+        return [c for c in _postflop_pilot_cats() if c['catalog'] == 'bb_defense']
+    if cat_id == 'pf_bb_3bet':
+        return [c for c in _postflop_pilot_cats() if c['catalog'] == 'bb_3bet_pot']
+    return []
+
+
+def _chaves_da_entrada(entry_id: str, key: str) -> bool:
+    """A category_key pertence à entrada do catálogo? (agregação de estatística)."""
+    if entry_id == 'adaptive':
+        return True
+    if entry_id == 'fund_rfi':
+        return key.startswith('rfi:')
+    if entry_id == 'fund_vs_rfi':
+        return key.startswith('vs_rfi:')
+    if entry_id == 'fund_vs_3bet':
+        return key.startswith('vs_3bet:')
+    if entry_id == 'bvb':
+        return (key.startswith('rfi:SB') or key.startswith('vs_rfi:SB:BB')
+                or key.startswith('vs_rfi:BB:SB'))
+    if entry_id == 'short':
+        # 'cenario:pos:vs:stack' — curto = 15bb ou menos
+        try:
+            return (key.split(':')[0] in ('rfi', 'vs_rfi')
+                    and float(key.rsplit(':', 1)[1]) <= 15)
+        except (ValueError, IndexError):
+            return False
+    if entry_id == 'pf_bb_defense':
+        return key == 'pf:bb_defense'
+    if entry_id == 'pf_bb_3bet':
+        return key == 'pf:bb_3bet_pot'
+    return False
+
+
+def stats_do_catalogo(skills: list[dict]) -> dict:
+    """{entry_id: {attempts, correct, mastery, tier, last_practiced_at}} agregado das skills
+    persistidas (que já chegam com o domínio DECAÍDO pelo tempo — get_training_skills).
+    Média ponderada por tentativas: 200 mãos a 80% pesam mais que 3 a 100%."""
+    from database.repositories import _mastery_tier
+    out = {}
+    for e in CATALOGO_TREINOS:
+        if e['id'] == 'range_grid':
+            continue        # placar próprio (SRS das cartas de range), já exposto no /options
+        pertence = [s for s in (skills or []) if _chaves_da_entrada(e['id'], s['category_key'])]
+        attempts = sum(int(s.get('attempts') or 0) for s in pertence)
+        correct = sum(int(s.get('correct') or 0) for s in pertence)
+        if attempts > 0:
+            mastery = round(sum(float(s.get('mastery') or 0) * int(s.get('attempts') or 0)
+                                for s in pertence) / attempts, 1)
+        else:
+            mastery = 0.0
+        last = max((s.get('last_practiced_at') or '' for s in pertence), default=None) or None
+        out[e['id']] = {'attempts': attempts, 'correct': correct, 'mastery': mastery,
+                        'tier': _mastery_tier(mastery), 'last_practiced_at': last}
+    return out
+
+
 # ── Amostragem de FRONTEIRA ───────────────────────────────────────────────────────────────────
 #
 # O sorteio era uniforme (`rng.shuffle(_HANDS)`), então a maioria das perguntas era trivial:

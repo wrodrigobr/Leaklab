@@ -297,6 +297,33 @@
       "pergunta": "Em quantos dias por semana você consegue treinar?",
       "porque": "Serve para você medir o seu próprio ritmo. Dá para mudar quando quiser.",
       "depois": "Depois"
+    },
+    "catalogo": {
+      "grupo": {
+        "preflop": "Preflop",
+        "postflop": "Postflop",
+        "memorizacao": "Memorização"
+      },
+      "adaptive": "Adaptativo (recomendado)",
+      "adaptiveDesc": "O sistema escolhe pelo seu leak medido",
+      "fund_rfi": "Fundamentos de abertura (RFI)",
+      "fund_rfiDesc": "Abrir o pote certo, posição a posição",
+      "fund_vs_rfi": "Defesa contra open",
+      "fund_vs_rfiDesc": "Pagar, 3-betar ou foldar contra cada posição",
+      "fund_vs_3bet": "Enfrentando 3-bet",
+      "fund_vs_3betDesc": "Você abriu e levou 3-bet: 4-bet, call ou fold",
+      "bvb": "Blind vs Blind",
+      "bvbDesc": "SB contra BB: o confronto mais frequente do torneio",
+      "short": "Stack curto (12bb)",
+      "shortDesc": "Zona de shove e reshove: as decisões que definem o torneio",
+      "pf_bb_defense": "Defesa de BB no flop",
+      "pf_bb_defenseDesc": "Você pagou do BB e enfrenta o c-bet — pote simples",
+      "pf_bb_3bet": "Pote 3-bet: seu c-bet",
+      "pf_bb_3betDesc": "Você 3-betou do BB, pagaram — c-bet ou check no flop",
+      "range_grid": "Fronteira da range",
+      "range_gridDesc": "Marcar na grade até onde a range vai",
+      "stats": "{{n}} mãos · {{pct}}%",
+      "statsTip": "Mãos treinadas neste treino e domínio atual (decai com o tempo sem prática)."
     }
   },
   "trainAch": {
