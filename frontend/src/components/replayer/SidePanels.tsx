@@ -57,6 +57,9 @@ export interface SidePanelsProps {
   handId: string;
   /** Layout enxuto p/ bottom-sheet mobile (sem scroll; 2 colunas em landscape). Default false = desktop intocado. */
   compact?: boolean;
+  /** Padrão do layout v2 quando o navegador NÃO tem preferência salva. A vitrine da landing
+   *  passa true (visitante vê o card novo); quem escolheu o clássico continua respeitado. */
+  defaultCardV2?: boolean;
 }
 
 export function SidePanels({
@@ -67,6 +70,7 @@ export function SidePanels({
   openAnnotationForm, t,
   gtoRequestStatus, onRequestGto,
   compact = false,
+  defaultCardV2 = false,
 }: SidePanelsProps) {
   const [showDetails, setShowDetails] = useState<boolean>(
     () => localStorage.getItem('replayer_show_details') === 'true'
@@ -77,9 +81,12 @@ export function SidePanels({
   // metricas fica parcialmente vazia em 76% dos cards. Por isso ele entra opt-in, com o classico
   // acessivel — da para comparar os dois nos casos dificeis antes de trocar o padrao, em vez de
   // descobrir na primeira tela do usuario.
-  const [usarV2, setUsarV2] = useState<boolean>(
-    () => localStorage.getItem('replayer_card_v2') === 'true'
-  );
+  const [usarV2, setUsarV2] = useState<boolean>(() => {
+    // Preferência salva manda; sem ela vale o default do chamador (a landing passa true
+    // para a vitrine vender o card novo — visitante não tem localStorage).
+    const salvo = localStorage.getItem('replayer_card_v2');
+    return salvo != null ? salvo === 'true' : defaultCardV2;
+  });
   const toggleV2 = () => setUsarV2(prev => {
     const next = !prev;
     localStorage.setItem('replayer_card_v2', String(next));

@@ -30,6 +30,12 @@
     --muted: 217 33% 12%;
     --muted-foreground: 215 16% 47%;
 
+    /* Prosa de leitura sobre o fundo escuro (avaliação da landing, 06/08): o muted-foreground
+       (#65758B) rende 4,10:1 sobre #0A0E1A — abaixo do AA (4,5) — e estava em 24 de 26
+       parágrafos. Este tom (#8B99AD) rende 6,7:1. O muted continua existindo para METADADOS
+       e legendas mono; parágrafo que alguém precisa LER usa text-prose-fg. */
+    --prose-fg: 215 17% 61%;
+
     --accent: 172 66% 50%;
     --accent-foreground: 222 47% 4%;
 

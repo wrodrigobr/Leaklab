@@ -78,7 +78,7 @@ function Navbar() {
         <nav className="flex items-center gap-3">
           <Link
             to="/login"
-            className="font-mono text-xs text-muted-foreground hover:text-foreground transition-colors uppercase tracking-widest-2"
+            className="font-mono text-xs text-prose-fg hover:text-foreground transition-colors uppercase tracking-widest-2"
           >
             {t("nav.login")}
           </Link>
@@ -142,7 +142,7 @@ function HeroSection() {
             {t("hero.title1")}<br />
             <span className="text-primary">{t("hero.title2")}</span>
           </h1>
-          <p className="mx-auto max-w-xl text-base leading-relaxed text-muted-foreground lg:mx-0">
+          <p className="mx-auto max-w-xl text-base leading-relaxed text-prose-fg lg:mx-0">
             {t("hero.subtitle")}
           </p>
 
@@ -224,7 +224,7 @@ function SupportedNetworksSection() {
         </div>
 
         <div className="mt-5 flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-sm leading-relaxed text-muted-foreground">{t("networks.subtitle")}</p>
+          <p className="text-sm leading-relaxed text-prose-fg">{t("networks.subtitle")}</p>
           <button
             type="button"
             onClick={() => setShowGuide(true)}
@@ -269,7 +269,7 @@ function HowItWorksSection() {
                 <item.icon className="size-4 text-primary/60" aria-hidden />
               </div>
               <h3 className="text-sm font-semibold text-foreground">{item.title}</h3>
-              <p className="mt-2 text-xs leading-relaxed text-muted-foreground">{item.desc}</p>
+              <p className="mt-2 text-xs leading-relaxed text-prose-fg">{item.desc}</p>
               {item.levels && (
                 <div className="mt-4 border-t border-border/60 pt-3">
                   <div className="flex items-center justify-between gap-1">
@@ -332,7 +332,7 @@ function DiferencialSection() {
           <h2 id="landing-prova-heading" className="font-heading text-2xl font-bold leading-snug text-foreground">
             {t("prova.heading")}
           </h2>
-          <p className="text-sm leading-relaxed text-muted-foreground">{t("prova.sub")}</p>
+          <p className="text-sm leading-relaxed text-prose-fg">{t("prova.sub")}</p>
         </div>
 
         <div>
@@ -347,14 +347,14 @@ function DiferencialSection() {
                     <c.icon className="size-4 shrink-0 text-primary" aria-hidden />
                     {c.title}
                   </h3>
-                  <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{c.desc}</p>
+                  <p className="mt-2 text-sm leading-relaxed text-prose-fg">{c.desc}</p>
                 </div>
               </li>
             ))}
           </ol>
 
           {/* O fecho é o que separa isto de marketing: diz de onde o número sai. */}
-          <p className="mt-6 flex items-start gap-2 text-sm leading-relaxed text-muted-foreground">
+          <p className="mt-6 flex items-start gap-2 text-sm leading-relaxed text-prose-fg">
             <ClipboardCheck className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden />
             <span>{t("prova.nota")}</span>
           </p>
@@ -393,7 +393,7 @@ function FeaturesSection() {
             >
               <f.icon className="size-5 text-primary" aria-hidden />
               <h3 className="mt-5 text-base font-medium text-foreground">{f.title}</h3>
-              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{f.desc}</p>
+              <p className="mt-2 text-sm leading-relaxed text-prose-fg">{f.desc}</p>
             </article>
           ))}
         </div>
@@ -443,7 +443,7 @@ function PricingSection() {
             <h2 className="font-heading text-2xl font-bold tracking-tight text-foreground md:text-3xl">
               {t("plans.heading")}
             </h2>
-            <p className="mt-2 text-sm text-muted-foreground">{t("plans.details")}</p>
+            <p className="mt-2 text-sm text-prose-fg">{t("plans.details")}</p>
           </div>
           <span className="font-mono text-[10px] uppercase tracking-widest-2 text-muted-foreground">
             {t("plans.eyebrow")}
@@ -475,7 +475,7 @@ function PricingSection() {
               </div>
               <ul className="mt-6 flex-1 space-y-2.5">
                 {plan.features.map((f) => (
-                  <li key={f} className="flex items-start gap-2 text-sm text-muted-foreground">
+                  <li key={f} className="flex items-start gap-2 text-sm text-prose-fg">
                     <Check className="mt-0.5 size-3.5 shrink-0 text-primary" aria-hidden />
                     {f}
                   </li>
@@ -558,7 +558,7 @@ function FaqSection() {
                   aria-hidden
                 />
               </summary>
-              <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{f.a}</p>
+              <p className="mt-3 text-sm leading-relaxed text-prose-fg">{f.a}</p>
             </details>
           ))}
         </div>
@@ -582,7 +582,7 @@ function CtaSection() {
         <h2 className="relative font-heading text-2xl font-bold tracking-tight text-foreground md:text-4xl">
           {t("cta.heading")}
         </h2>
-        <p className="relative mx-auto mt-4 max-w-xl text-sm leading-relaxed text-muted-foreground">
+        <p className="relative mx-auto mt-4 max-w-xl text-sm leading-relaxed text-prose-fg">
           {t("cta.desc")}
         </p>
         <Link

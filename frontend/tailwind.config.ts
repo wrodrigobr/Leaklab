@@ -47,6 +47,8 @@ export default {
           DEFAULT: "hsl(var(--muted))",
           foreground: "hsl(var(--muted-foreground))",
         },
+        // Prosa legível sobre o fundo escuro (6,7:1) — o muted ficou só para metadados.
+        "prose-fg": "hsl(var(--prose-fg))",
         accent: {
           DEFAULT: "hsl(var(--accent))",
           foreground: "hsl(var(--accent-foreground))",

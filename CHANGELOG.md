@@ -7,6 +7,25 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(landing): prosa legivel (AA) + lang pt-BR + vitrine no card v2 (#landing)
+
+> Itens 1+2 da avaliacao de 06/08, mais o v2 forcado no sample (decisao do dono):
+>
+> **1. Token de prosa**: 24 de 26 paragrafos usavam o muted (#65758B, 4,10:1 sobre #0A0E1A —
+> abaixo do AA). Token novo `--prose-fg` (#8B99AD, **6,7:1**) aplicado nos ~12 paragrafos de
+> LEITURA da landing + no "Entrar" da nav; o muted fica so para metadados/legendas mono, como
+> a avaliacao mandou. Dark+teal intocado (identidade).
+>
+> **2. `lang="pt-BR"`** no index.html (era "en" numa pagina pt-BR — leitor de tela pronunciava
+> portugues com fonetica inglesa).
+>
+> **3. Vitrine no v2**: `SidePanels` ganhou `defaultCardV2` (preferencia salva SEMPRE manda;
+> o default so vale sem localStorage) e o `SampleDecisionCard` da landing passa true — o
+> visitante ve o card novo, quem escolheu o classico no replayer continua respeitado. O teste
+> da vitrine ganhou o guarda do layout (rotulo v2Freq presente) e foi atualizado ao contrato
+> v2 (frequencias sempre visiveis, percentual inteiro); mutacao (default de volta ao
+> classico) derruba o guarda. Vitest 356/356.
+
 ### feat(replayer): moldura de confianca da equity estimada por street -- "=" no turn/river com o numero medido (#replayer #equity)
 
 > O gate que a validacao de ontem justificou. A equity estimada e calibrada NA MEDIA, mas a

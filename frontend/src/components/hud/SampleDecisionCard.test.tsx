@@ -97,6 +97,11 @@ describe("exemplo de análise — o dado é real", () => {
   });
 
   it("mostra as frequências por ação, que é o que o exemplo antigo não tinha", async () => {
+    // Desde 17/08 a vitrine mostra o layout V2 por padrão (`defaultCardV2` — decisão do dono:
+    // a landing vende o card novo). No v2 as barras de frequência são SEMPRE visíveis, sem
+    // olho, com percentual inteiro. A versão anterior deste teste media o clássico (uma casa
+    // decimal atrás do olho) e quebrou exatamente quando o default mudou — como avisado no
+    // comentário do `alternarDetalhes`.
     pedir.mockResolvedValue({ decision: decisao });
     montar();
 
@@ -107,19 +112,13 @@ describe("exemplo de análise — o dado é real", () => {
     await waitFor(() => expect(
       screen.getAllByText(new RegExp(decisao.preflop_gto.hand_type)).length).toBeGreaterThan(0));
 
-    abrirDetalhes();
-    const aberto = document.body.textContent ?? "";
+    const texto = document.body.textContent ?? "";
+    // GUARDA do "força o v2 no sample": o rótulo de frequência do v2 presente prova que a
+    // vitrine está no layout novo. Se o default regredir para o clássico, isto acusa.
+    expect(texto, "a vitrine não está no layout v2").toContain("card.v2Freq");
     for (const [, v] of comFreq) {
-      expect(aberto, `frequência ${(v * 100).toFixed(1)}% ausente`).toContain((v * 100).toFixed(1));
-    }
-
-    // CONTROLE: fechando o olho, ela some. Sem isto o teste passaria igual se o olho não fizesse
-    // nada — e olho inerte já foi defeito real aqui, notado pelo usuário na primeira tela.
-    alternarDetalhes();
-    const fechado = document.body.textContent ?? "";
-    for (const [, v] of comFreq) {
-      expect(fechado, `frequência ${(v * 100).toFixed(1)}% sobreviveu ao fechar`)
-        .not.toContain((v * 100).toFixed(1));
+      expect(texto, `frequência ${(v * 100).toFixed(0)}% ausente`)
+        .toContain(`${(v * 100).toFixed(0)}%`);
     }
   });
 

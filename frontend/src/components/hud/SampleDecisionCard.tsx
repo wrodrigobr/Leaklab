@@ -88,6 +88,9 @@ export function SampleDecisionCard() {
       onRequestGto={() => {}}
       tournamentId=""
       handId=""
+      // A vitrine vende o card NOVO: visitante (sem preferência salva) vê o v2. Quem já
+      // escolheu o clássico no replayer continua vendo o clássico — preferência manda.
+      defaultCardV2
     />
     </div>
   );
