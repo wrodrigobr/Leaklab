@@ -7,6 +7,26 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(trainer): categoria BB 3-BET POT no Leak Trainer -- onde vivem AK/AQ/QQ+ (#trainer #gto)
+
+> Expansao prevista desde 28/06: as maos premium 3-betam preflop e por isso NUNCA chegam ao
+> catalogo SRP de bb_defense (hand_strategy None e range-aware, nao bug). Agora ha o espelho:
+> BTN abre 2,5 -> BB 3-beta p/ 11 -> BTN paga; pote 22,5bb, 29bb atras (SPR ~1,3), e o BB
+> decide o C-BET (facing 0, iniciativa).
+>
+> **14/14 spots validados em prod** pelo seed `--pote-3bet` (exploitability 0,60-1,43%, zero
+> reprovados; ranges REAIS de 3-bet/call do GW conferidas antes em `_captured_3bet_ranges`).
+> Estrategias coerentes: range de check pesada OOP, TT/T9s/98o mixando jam no board molhado.
+>
+> Fiacao com as cicatrizes em mente: parametros POR CATALOGO (`_CATALOG_PARAMS` — usar os da
+> bb_defense poria pote de SRP no pote 3-bet); `pot_type='3bet'` viaja do spot ao lookup
+> (senao o grade leria a arvore SRP — o RC-3 com outra roupa); menu pela FORMA (facing 0 ->
+> check/bet, nunca "raise" de aposta que ninguem fez); e `facing_size_bb=0.0` protegido da
+> armadilha do `or` (mutacao provou: com `or 1.65` o hash nunca acharia o no semeado).
+> Piloto com peso 1,5 ao lado da bb_defense; rotulo proprio nas 3 locales
+> (`pf:bb_3bet_pot` nao cai no legado "defende vs c-bet"). 3 testes backend + 2 mutacoes
+> acusaram; spotLabel com teste novo.
+
 ### fix(drill): RC-3/5/6 da auditoria do Ghost Table -- pot_type no no, coerencia com o gravado, freqs viajam com o guard (#veredito #drill)
 
 > Fecha os 3 pendentes criticos da auditoria de 25/06 (o passo focado que ela pediu).

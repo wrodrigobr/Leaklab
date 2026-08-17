@@ -30,6 +30,8 @@ export interface SpotLabelInput {
   facing?: boolean | null;
   /** categoria de INICIATIVA (`pf:street:pos:ini`): c-bet e barrel, o hero agride */
   iniciativa?: boolean | null;
+  /** categoria POTE 3-BET (`pf:bb_3bet_pot`, 17/08): BB 3-betou, BTN pagou, BB decide o c-bet */
+  pote3bet?: boolean | null;
 }
 
 /** Quebra a `category_key` (`scenario:pos:vs:stack`) — a ÚNICA taxonomia persistida. */
@@ -48,6 +50,10 @@ export function parseCategoryKey(key: string): SpotLabelInput {
     if (a && streets.includes(a))
       return { kind: "postflop", street: a, position: b || "", vs_position: "",
                iniciativa: c === "ini" };
+    // `pf:bb_3bet_pot` (17/08): pote 3-bet, BB decide o c-bet — rótulo próprio; cair no
+    // legado anunciaria "defende vs c-bet" num spot em que ninguém apostou ainda.
+    if (a === "bb_3bet_pot")
+      return { kind: "postflop", position: "BB", vs_position: "BTN", street: "flop", pote3bet: true };
     return { kind: "postflop", position: "BB", vs_position: "BTN", street: "flop" };  // `pf:bb_defense` legado
   }
   const [scenario, position, vs_position, stack] = key.split(":");
@@ -76,7 +82,8 @@ export function useSpotLabel() {
       // board e nenhuma ficha do vilão.
       s.kind === "postflop"
         ? (vs
-            ? t(s.facing ? "leakTrainer.cat.postflopBb" : "leakTrainer.cat.postflopNoBet",
+            ? t(s.pote3bet ? "leakTrainer.cat.pfBb3bet"
+                  : s.facing ? "leakTrainer.cat.postflopBb" : "leakTrainer.cat.postflopNoBet",
                 { pos, vs, street: t(`leakTrainer.cat.street.${s.street || "flop"}`, s.street || "flop") })
             // Sem vs_position, o rótulo era SÓ a street — três categorias da mesma street liam
             // idênticas. Com a posição e a iniciativa a categoria diz o que o jogador treina:

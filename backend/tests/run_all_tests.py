@@ -85,7 +85,7 @@ SUITES = {
                   'test_decisao_exemplo.py', 'test_dashboard_demo.py',
                   'test_email_confirmacao.py', 'test_enqueue_pot_unit.py',
                   'test_villain_reveals_hud.py', 'test_equity_real_vs_mostrada.py',
-                  'test_no_da_linha_pot_type.py'],
+                  'test_no_da_linha_pot_type.py', 'test_leaktrainer_3bet_pot.py'],
     'regression':['test_tournament.py', 'test_multi_decision.py', 'test_partygaming_parser.py',
                   'test_acr_parser.py', 'test_coinpoker_parser.py',
                   'test_coinpoker_allin.py',

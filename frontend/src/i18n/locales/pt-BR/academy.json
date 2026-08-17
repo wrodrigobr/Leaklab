@@ -191,7 +191,8 @@
         "river": "river"
       },
       "pfIniciativa": "C-bet e barrel: {{pos}} com a iniciativa ({{street}})",
-      "pfDefesa": "{{pos}} defende no {{street}}"
+      "pfDefesa": "{{pos}} defende no {{street}}",
+      "pfBb3bet": "Pote 3-bet: {{pos}} decide o c-bet vs {{vs}} ({{street}})"
     },
     "act": {
       "fold": "Fold",

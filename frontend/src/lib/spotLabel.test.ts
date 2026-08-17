@@ -27,6 +27,12 @@ describe("parseCategoryKey", () => {
     });
   });
 
+  it("pf:bb_3bet_pot tem identidade propria (nao cai no legado 'defende vs c-bet')", () => {
+    expect(parseCategoryKey("pf:bb_3bet_pot")).toEqual({
+      kind: "postflop", position: "BB", vs_position: "BTN", street: "flop", pote3bet: true,
+    });
+  });
+
   it("CONTROLE: chave preflop nao e tocada pelo parse postflop", () => {
     expect(parseCategoryKey("vs_rfi:BB:BTN:40")).toEqual({
       scenario: "vs_rfi", position: "BB", vs_position: "BTN", stack_bb: 40,

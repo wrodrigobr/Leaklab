@@ -122,12 +122,19 @@ def build_curriculum(user_id: int, days: int = 90) -> list[dict]:
 
 
 def _postflop_pilot_cats() -> list[dict]:
-    """Fase 2 (piloto): categoria postflop BB-defesa do catálogo validado. Peso modesto — fundamento de
-    defesa OOP útil a todos. Serve de PISO quando o jogador ainda não tem leak postflop medido."""
-    cat = {'kind': 'postflop', 'catalog': 'bb_defense', 'scenario': 'pf_bb_defense',
-           'position': 'BB', 'vs_position': 'BTN', 'stack_bb': 40.0,
-           'ev_loss_bb': 0.0, 'n': 0, 'weight': 2.0, 'key': 'pf:bb_defense'}
-    return [cat]
+    """Fase 2 (piloto): categorias postflop do catálogo validado. Peso modesto — fundamentos OOP
+    úteis a todos. Servem de PISO quando o jogador ainda não tem leak postflop medido.
+
+    Duas metades do mesmo confronto BB vs BTN: DEFESA (enfrentar o c-bet no SRP) e INICIATIVA
+    (decidir o c-bet no pote 3-BET — a categoria de 17/08, onde vivem AK/AQ/QQ+)."""
+    return [
+        {'kind': 'postflop', 'catalog': 'bb_defense', 'scenario': 'pf_bb_defense',
+         'position': 'BB', 'vs_position': 'BTN', 'stack_bb': 40.0,
+         'ev_loss_bb': 0.0, 'n': 0, 'weight': 2.0, 'key': 'pf:bb_defense'},
+        {'kind': 'postflop', 'catalog': 'bb_3bet_pot', 'scenario': 'pf_bb_3bet',
+         'position': 'BB', 'vs_position': 'BTN', 'stack_bb': 29.0,
+         'ev_loss_bb': 0.0, 'n': 0, 'weight': 1.5, 'key': 'pf:bb_3bet_pot'},
+    ]
 
 
 def postflop_leak_cats(user_id: int, days: int = 90) -> list[dict]:
@@ -592,6 +599,17 @@ _BBDEF_PARAMS = {
     'position': 'BB', 'vs_position': 'BTN', 'stack_bb': 40.0,
     'facing_size_bb': 1.65, 'pot_bb': 5.0, 'street': 'flop',
 }
+# Categoria BB 3-BET POT (17/08): BTN abre 2,5 → BB 3-beta p/ 11 → BTN paga. Pote 22,5bb,
+# 29bb atrás (SPR ~1,3), BB PRIMEIRO a agir com iniciativa — decisão de c-bet (facing 0).
+# É o espelho da bb_defense e o lar de AK/AQ/QQ+, que 3-betam preflop e por isso nunca
+# chegam ao catálogo SRP (range-aware, não bug). pot_type='3bet' entra no HASH do nó —
+# sem ele o grade leria o nó SRP de outra árvore (a família do RC-3).
+_BB3BET_PARAMS = {
+    'position': 'BB', 'vs_position': 'BTN', 'stack_bb': 29.0,
+    'facing_size_bb': 0.0, 'pot_bb': 22.5, 'street': 'flop',
+    'pot_type': '3bet', 'opener': 'BTN', 'threebettor': 'BB',
+}
+_CATALOG_PARAMS = {'bb_defense': _BBDEF_PARAMS, 'bb_3bet_pot': _BB3BET_PARAMS}
 POSTFLOP_CATALOG = {
     'bb_defense': [
         {'board': ['Kd', '7c', '2s'], 'hand': ['Kh', 'Qc']},   # top pair bom kicker
@@ -626,6 +644,26 @@ POSTFLOP_CATALOG = {
         {'board': ['Ah', 'Tc', '5h'], 'hand': ['Jd', 'Td']},   # mid pair
         {'board': ['9s', '7s', '4d'], 'hand': ['8h', '6h']},   # OESD (middle two-tone)
         {'board': ['9s', '7s', '4d'], 'hand': ['Kh', '9c']},   # top pair
+    ],
+    # ── BB 3-BET POT (17/08): BB 3-betou, BTN pagou; decisão de c-bet (facing 0) ──────────────
+    # 14/14 validados pelo seed --pote-3bet em prod (expl 0,60-1,43%, zero reprovados). Onde
+    # vivem AK/AQ/QQ+, que 3-betam preflop e nunca chegam ao catálogo SRP. Parâmetros em
+    # _BB3BET_PARAMS (pote 22,5bb, 29bb atrás, pot_type='3bet' no hash).
+    'bb_3bet_pot': [
+        {'board': ['Kd', '7c', '2s'], 'hand': ['Ah', 'Kc']},   # top pair top kicker
+        {'board': ['Kd', '7c', '2s'], 'hand': ['Qh', 'Qc']},   # under pair ao K
+        {'board': ['Kd', '7c', '2s'], 'hand': ['Ah', '5d']},   # blefe da range
+        {'board': ['9h', '8h', '5c'], 'hand': ['Th', 'Tc']},   # overpair-ish
+        {'board': ['9h', '8h', '5c'], 'hand': ['Ah', 'Kd']},   # overs air
+        {'board': ['9h', '8h', '5c'], 'hand': ['Ts', '9s']},   # top pair + draw
+        {'board': ['Ah', 'Tc', '5h'], 'hand': ['Ad', 'Qd']},   # top pair
+        {'board': ['Ah', 'Tc', '5h'], 'hand': ['Kd', 'Qd']},   # gutshot + over
+        {'board': ['Ah', 'Tc', '5h'], 'hand': ['9c', '8c']},   # air
+        {'board': ['7d', '6s', '4h'], 'hand': ['Ac', 'Ad']},   # overpair
+        {'board': ['7d', '6s', '4h'], 'hand': ['9h', '8d']},   # OESD
+        {'board': ['Qd', '7s', '4h'], 'hand': ['Ac', 'Qh']},   # top pair
+        {'board': ['Qd', '7s', '4h'], 'hand': ['Kh', 'Kd']},   # overpair
+        {'board': ['Qd', '7s', '4h'], 'hand': ['Jh', '9d']},   # blefe gutshot
     ],
 }
 _POSTFLOP_OPTIONS = list(POSTFLOP_FACING_BET_MENU)   # fonte única (strategy_provider)
@@ -697,11 +735,19 @@ def generate_postflop_spot(category: dict, rng: random.Random | None = None,
                 return s
         except Exception:
             log.exception('acervo de treino postflop indisponível; caindo no catálogo estático')
-    spots = POSTFLOP_CATALOG.get(category.get('catalog', 'bb_defense')) or []
+    _catalogo = category.get('catalog', 'bb_defense')
+    spots = POSTFLOP_CATALOG.get(_catalogo) or []
     if not spots:
         return None
     s = rng.choice(spots)
-    p = _BBDEF_PARAMS
+    # Parâmetros POR CATÁLOGO (17/08): o bb_3bet_pot tem pote/stack/facing próprios e carrega
+    # pot_type no spot — usar _BBDEF_PARAMS para todos era exatamente o furo que faria o grade
+    # ler o nó da árvore errada.
+    p = _CATALOG_PARAMS.get(_catalogo, _BBDEF_PARAMS)
+    # Menu pela FORMA do spot: enfrentando aposta → fold/call/raise; primeiro a agir (facing 0)
+    # → check/bet. Oferecer 'raise' sem aposta na mesa é pedir para aumentar o que ninguém fez
+    # (a mesma lição do menu do pool).
+    _opts = list(_POSTFLOP_OPTIONS) if float(p.get('facing_size_bb') or 0) > 0 else ['check', 'bet']
     return {
         'kind':           'postflop',
         'street':         p['street'],
@@ -711,12 +757,16 @@ def generate_postflop_spot(category: dict, rng: random.Random | None = None,
         'stack_bb':       p['stack_bb'],
         'facing_size_bb': p['facing_size_bb'],
         'pot_bb':         p['pot_bb'],
+        # Variante do nó (hash): sem isto o grade leria a árvore SRP num pote 3-bet.
+        'pot_type':       p.get('pot_type', ''),
+        'opener':         p.get('opener', ''),
+        'threebettor':    p.get('threebettor', ''),
         'board':          s['board'],
         'board_cards':    _cards_to_objs(s['board']),
         'hand':           ''.join(s['hand']),
         'hero_hand':      s['hand'],
         'hero_cards':     _cards_to_objs(s['hand']),
-        'options':        list(_POSTFLOP_OPTIONS),
+        'options':        _opts,
         'xp_value':       30,
     }
 
@@ -767,13 +817,22 @@ def grade_from_hand_strategy(hand_strategy: dict, action: str) -> dict:
 def grade_postflop_spot(spot: dict, action: str) -> dict | None:
     """Lê o nó pré-solvado (NUNCA solva ao vivo) e gradeia a mão. None se sem tabela por-mão."""
     from leaklab.gto_solver import lookup_gto
+    # `facing_size_bb=0.0` é LEGÍTIMO (pote 3-bet: BB decide o c-bet, primeiro a agir) e um
+    # `or 1.65` o engoliria — o hash sairia com facing 1.65 e nunca acharia o nó semeado com
+    # facing 0. A mesma armadilha do `?? vs ||` já paga no front; só None cai no default.
+    _facing = spot.get('facing_size_bb')
+    _facing = 1.65 if _facing is None else float(_facing)
     res = lookup_gto(
         street=spot.get('street', 'flop'), position=spot.get('position', 'BB'),
         board=spot.get('board') or [], hero_hand=spot.get('hero_hand') or [],
         hero_stack_bb=float(spot.get('stack_bb', 40) or 40),
         vs_position=spot.get('vs_position', 'BTN'),
-        facing_size_bb=float(spot.get('facing_size_bb', 1.65) or 1.65),
+        facing_size_bb=_facing,
         pot_bb=float(spot.get('pot_bb', 5.0) or 5.0), bb_chips=1.0,
+        # Variante do nó (17/08): o spot de pote 3-bet carrega pot_type/opener/threebettor.
+        # Sem repassar, o hash cai na árvore SRP — o RC-3 com outra roupa.
+        pot_type=spot.get('pot_type', ''),
+        opener=spot.get('opener', ''), threebettor=spot.get('threebettor', ''),
         require_hand_aware=True, block_remote=False, allow_remote_solve=False,
     )
     hs = res.get('hand_strategy')
