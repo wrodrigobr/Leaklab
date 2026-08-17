@@ -71,9 +71,21 @@ for s in spots:
         viol.append((s['id'], best, f"best_action fora das 6 ações: {best!r}"))
 
     if off:
-        # I2: off-tree/multiway → TODA ação é uncovered (nunca grada a mão contra a range/HU)
+        # I2: off-tree/multiway → uncovered… EXCETO a cauda segura da Fase 2 (flag
+        # MULTIWAY_GRADE_SAFE_TAIL, LIGADA em prod desde 29/06): ali o tier gradeia DE
+        # PROPÓSITO (safe_fold+continuar = error; ação garantida = correct). Este invariante
+        # era anterior à flag, e a primeira rodada --prod com ela ligada (17/08) acusou 136
+        # "violações" que eram o comportamento deliberado — sonda não pode declarar
+        # impossível o que o design permite (a lição do MW-COERENTE de 14/08). Para a cauda
+        # segura, o invariante REAL é: o tier segue o multiway_safe.
         for a in ACTIONS:
-            if g[a]['gto_tier'] != 'uncovered':
+            ms = g[a].get('multiway_safe')
+            if ms:
+                esperado = 'error' if ms.get('is_leak') else 'correct'
+                if g[a]['gto_tier'] != esperado:
+                    viol.append((s['id'], a,
+                                 f"cauda segura mas tier={g[a]['gto_tier']} (esperado {esperado})"))
+            elif g[a]['gto_tier'] != 'uncovered':
                 viol.append((s['id'], a, f"off-tree/multiway mas tier={g[a]['gto_tier']} (esperado uncovered)"))
     else:
         # I3: jogar o best_action NÃO pode dar 'error' (a recomendação não pode ser erro)
