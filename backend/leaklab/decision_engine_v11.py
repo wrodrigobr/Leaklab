@@ -522,6 +522,23 @@ def ev_loss_trustworthy_row(d: dict) -> bool:
         pot_bb=d.get('pot_size'), facing_bb=d.get('facing_bet'))
 
 
+def facing_allin_row(d: dict) -> bool:
+    """A aposta enfrentada É um all-in? Insumos canônicos: colunas da linha de `decisions`.
+
+    Fonte ÚNICA da regra (o limiar de 98% tolera arredondamento de conversão fichas→bb).
+    A derivação vivia COPIADA em `api/app.py` (rota do replay) e no
+    `sync_gto_labels_from_ranges.py` — apontado pelo QA de aceitação em 09/08; hoje idênticas,
+    e a quinta cópia divergiria calada (CLAUDE.md, regra 5). Sem esta flag o roteador manda
+    um open-jam/3-bet-jam para o nó de aumento PEQUENO — nó diferente, veredito de outra
+    carta. `effective_stack_bb` NULL (linha antiga) cai em False, o comportamento de sempre.
+    `tests/test_facing_allin_row.py` varre o repositório contra cópias novas."""
+    fb, es = d.get('facing_bet'), d.get('effective_stack_bb')
+    try:
+        return bool(fb and es and float(fb) >= float(es) * 0.98)
+    except (TypeError, ValueError):
+        return False
+
+
 def _ev_severity_ceiling(label: str, ev_loss_bb: float | None, ev_loss_source: str | None = None) -> str:
     if ev_loss_bb is None:
         return label

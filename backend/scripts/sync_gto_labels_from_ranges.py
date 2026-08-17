@@ -29,6 +29,7 @@ from database.schema import get_conn
 from database.repositories import reconcile_tournament_labels
 from leaklab.strategy_provider import preflop_strategy
 from leaklab.gto_utils import hand_to_type
+from leaklab.decision_engine_v11 import facing_allin_row
 
 
 def parse_cards(raw: str) -> list[str]:
@@ -350,11 +351,9 @@ def _process_rows(rows: list[dict], conn, dry_run: bool = True, verbose: bool = 
                 # Enfrentando all-in. Sem esta flag o sync roteia um open-jam / 3-bet-jam para o
                 # no de aumento PEQUENO — nos diferentes, veredito de outra carta. Era o unico
                 # dos cinco argumentos-de-roteamento que faltava aqui (varredura de 09/08), e o
-                # sync e quem GRAVA `gto_label` no banco. Derivacao identica a de `app.py:8564`,
-                # para que os dois caminhos concordem; `effective_stack_bb` NULL (linha antiga)
-                # cai em False, que e o comportamento de antes.
-                facing_allin=bool(facing_bb and r.get("effective_stack_bb")
-                                  and facing_bb >= float(r["effective_stack_bb"]) * 0.98),
+                # sync e quem GRAVA `gto_label` no banco. Fonte unica com o /replay:
+                # `facing_allin_row` (a derivacao vivia copiada aqui e em app.py).
+                facing_allin=facing_allin_row(r),
                 # Pote limpado. Ate 05/08 este argumento NUNCA chegava aqui: o dado existia no
                 # pipeline, o `/analyze` passava, e morria porque nao havia coluna. Sem ele o
                 # provider nao reconhecia o pote limpado e devolvia null MUDO.

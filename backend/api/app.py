@@ -64,7 +64,7 @@ from flask_limiter.util import get_remote_address
 from leaklab.parser import parse_pokerstars_file_from_text
 from leaklab.parser import raise_total_from_raw as _raise_total_from_raw
 from leaklab.pipeline import build_decision_inputs_for_hand
-from leaklab.decision_engine_v11 import evaluate_decision
+from leaklab.decision_engine_v11 import evaluate_decision, facing_allin_row
 from leaklab.pareamento_decisoes import BaldeDeDecisoes, balde_de_gto_do_banco
 from leaklab.mtt_context import build_mtt_context
 from leaklab.gto_utils import hand_to_type as _hand_to_type
@@ -8713,8 +8713,7 @@ def get_decision_gto(decision_id):
                     # Mesmos dois que faltavam no /replay: separam a carta de 3-bet PEQUENO da
                     # carta de JAM. Sem eles, um all-in e gradeado pelo no de raise sized.
                     facing_to_bb  = float(dec.get('facing_to_call_bb') or 0),
-                    facing_allin  = bool(dec.get('facing_bet') and dec.get('effective_stack_bb')
-                                         and float(dec['facing_bet']) >= float(dec['effective_stack_bb']) * 0.98),
+                    facing_allin  = facing_allin_row(dec),
                     hero_was_aggressor = bool(dec.get('hero_was_aggressor')),
                     facing_limp        = bool(dec.get('facing_limp')),
                 )

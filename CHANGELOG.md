@@ -7,6 +7,16 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(engine): limiar de all-in duplicado vira fonte unica -- facing_allin_row (#medicao)
+
+> Apontado pelo QA de aceitacao em 09/08: `facing_bet >= effective_stack_bb * 0.98` vivia
+> copiado em `api/app.py` (rota do replay) e no `sync_gto_labels_from_ranges.py`. Hoje
+> identicos — e a quinta copia divergiria calada (regra 5; ja aconteceu com o corte do board
+> e o piso por direcao). Agora `facing_allin_row` em decision_engine_v11, ao lado do
+> `ev_loss_trustworthy_row` (mesmo dialeto-linha), e `tests/test_facing_allin_row.py` traz a
+> varredura que pega a copia N+1 (quebrada de proposito: recolocar a copia no sync derruba o
+> teste). Comportamento identico: linha antiga sem effective_stack cai em False.
+
 ### feat(gto): "so absolve" no par BB vs SB -- decisao do dono com o experimento na mesa (#gto #veredito)
 
 > O experimento (`medir_divergencia_sb_bb.py`, 92 decisoes reais): 32 concordancias, 15
