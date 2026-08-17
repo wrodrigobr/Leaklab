@@ -16,8 +16,10 @@ Os reprovados são LISTADOS (não servidos). Sem cross-check vs GTO Wizard autom
 numa amostra antes de ligar o branch postflop do trainer.
 
 Uso (no SERVER DA API, que alcança o solver via GTO_SOLVER_URL; ~75s/spot, alguns minutos):
-    python scripts/seed_leaktrainer_postflop.py
+    python scripts/seed_leaktrainer_postflop.py              # piloto BB-defesa (SRP)
+    python scripts/seed_leaktrainer_postflop.py --pote-3bet  # categoria BB 3-BET POT (17/08)
 """
+import argparse
 import os
 import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -27,6 +29,37 @@ from leaklab.gto_solver import lookup_gto
 STACK = 40.0
 POT_BB = 5.0          # SRP: BTN open ~2.2 + BB call → ~5bb
 CBET = 1.65           # c-bet ~33% do pote (em BB)
+
+# ── Categoria BB 3-BET POT (17/08) ─────────────────────────────────────────────────────────────
+# BTN abre 2,5 → BB 3-beta para 11 → BTN paga: pote 22,5bb, sobram 29bb (SPR ~1,3). A decisão
+# treinada é a do BB no flop: c-bet ou check, PRIMEIRO a agir, com INICIATIVA — o espelho da
+# bb_defense (que treina enfrentar o c-bet). É onde vivem AK/AQ/QQ+, que 3-betam preflop e por
+# isso NUNCA chegam ao catálogo SRP (hand_strategy None — range-aware, não bug).
+# Toda mão AQUI precisa estar na range de 3-BET do BB vs BTN (senão hand_strategy None) — range
+# conferida por `_captured_3bet_ranges('BTN','BB',29)` em 17/08. pot_type='3bet' entra no HASH.
+STACK_3BET = 29.0     # atrás, depois do 3-bet de 11bb (40 - 11)
+POT_3BET = 22.5       # 11 + 11 + 0,5 do SB que foldou
+CATALOG_3BET = [
+    # ── DRY K72r: valor forte, under pair e blefe ──
+    ('flop', ['Kd', '7c', '2s'], ['Ah', 'Kc'], 'top pair top kicker (AKo)'),
+    ('flop', ['Kd', '7c', '2s'], ['Qh', 'Qc'], 'under pair ao K (QQ)'),
+    ('flop', ['Kd', '7c', '2s'], ['Ah', '5d'], 'blefe da range (A5o)'),
+    # ── WET 985tt: overpair-ish, overs, par+draw ──
+    ('flop', ['9h', '8h', '5c'], ['Th', 'Tc'], 'overpair-ish (TT)'),
+    ('flop', ['9h', '8h', '5c'], ['Ah', 'Kd'], 'overs air (AKo)'),
+    ('flop', ['9h', '8h', '5c'], ['Ts', '9s'], 'top pair + draw (T9s)'),
+    # ── ACE two-tone AT5tt ──
+    ('flop', ['Ah', 'Tc', '5h'], ['Ad', 'Qd'], 'top pair (AQs)'),
+    ('flop', ['Ah', 'Tc', '5h'], ['Kd', 'Qd'], 'gutshot + over (KQs)'),
+    ('flop', ['Ah', 'Tc', '5h'], ['9c', '8c'], 'air (98s)'),
+    # ── LOW connected 764r ──
+    ('flop', ['7d', '6s', '4h'], ['Ac', 'Ad'], 'overpair (AA)'),
+    ('flop', ['7d', '6s', '4h'], ['9h', '8d'], 'OESD (98o)'),
+    # ── DRY Q74r ──
+    ('flop', ['Qd', '7s', '4h'], ['Ac', 'Qh'], 'top pair (AQo)'),
+    ('flop', ['Qd', '7s', '4h'], ['Kh', 'Kd'], 'overpair (KK)'),
+    ('flop', ['Qd', '7s', '4h'], ['Jh', '9d'], 'blefe gutshot (J9o)'),
+]
 MAX_EXPLOIT = 3.0     # % — bar prático: o grading é por TIER (freq≥30%=correto), robusto a erro de
                       # poucos % na freq. 2-3% é "GTO prático" bom. A corretude REAL vem do cross-check
                       # vs GTO Wizard (a exploitability só prova convergência, não a resposta certa).
@@ -116,19 +149,17 @@ def _fmt_strategy(res):
     return " · ".join(parts) if parts else "(sem hand_table)"
 
 
-def main():
-    if not os.environ.get('GTO_SOLVER_URL'):
-        print("AVISO: GTO_SOLVER_URL não setado — rode no server da API (onde alcança o solver).")
+def _roda(catalogo, titulo, **kw_lookup):
     served, dropped = [], []
-    for street, board, hero, label in CATALOG:
+    for street, board, hero, label in catalogo:
         tag = f"{''.join(c[0] for c in board)} {''.join(hero)} · {label}"
         try:
             res = lookup_gto(
                 street=street, position='BB', board=board, hero_hand=hero,
-                hero_stack_bb=STACK, vs_position='BTN',
-                facing_size_bb=CBET, pot_bb=POT_BB, bb_chips=1.0,
+                vs_position='BTN', bb_chips=1.0,
                 allow_remote_solve=True, block_remote=True,   # live solve (GW-real ranges)
                 require_hand_aware=True,                       # estratégia DA MÃO, não o agregado da range
+                **kw_lookup,
             )
         except Exception as e:
             dropped.append(('', tag, f"erro: {e}", ''))
@@ -136,15 +167,33 @@ def main():
         ok, why = _validate(res)
         (served if ok else dropped).append(((res.get('spot_hash') or '')[:12], tag, why, _fmt_strategy(res)))
 
-    print(f"\n=== PILOTO BB-DEFESA (BTN open ~{POT_BB}bb, c-bet {CBET}bb, {int(STACK)}bb) — {len(CATALOG)} spots ===")
+    print(f"\n=== {titulo} — {len(catalogo)} spots ===")
     print(f"VALIDADOS ({len(served)}) — exploitability < {MAX_EXPLOIT}%:")
     for h, tag, why, strat in served:
         print(f"  ✓ {tag:<34} [{why}]\n        {strat}")
     print(f"REPROVADOS ({len(dropped)}):")
     for h, tag, why, strat in dropped:
         print(f"  ✗ {tag:<34} [{why}]" + (f"\n        {strat}" if strat else ""))
-    print("\nCROSS-CHECK: compare as frequências acima (board+mão BB defendendo vs BTN open, ~40bb) com o")
-    print("GTO Wizard (mesmo spot). Se baterem na DIREÇÃO e ~freq, o pipeline está correto → ligo o branch.")
+    print("\nCROSS-CHECK: compare as frequências acima com o GTO Wizard (mesmo spot). Se baterem na")
+    print("DIREÇÃO e ~freq, o pipeline está correto.")
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument('--pote-3bet', action='store_true',
+                    help='seed da categoria BB 3-BET POT (BB 3-betou, BTN pagou; decisão de c-bet)')
+    args = ap.parse_args()
+    if not os.environ.get('GTO_SOLVER_URL'):
+        print("AVISO: GTO_SOLVER_URL não setado — rode no server da API (onde alcança o solver).")
+    if args.pote_3bet:
+        _roda(CATALOG_3BET,
+              f"BB 3-BET POT (BTN abre, BB 3-beta p/ 11, BTN paga; pote {POT_3BET}bb, {STACK_3BET}bb atrás, BB decide c-bet)",
+              hero_stack_bb=STACK_3BET, facing_size_bb=0.0, pot_bb=POT_3BET,
+              pot_type='3bet', opener='BTN', threebettor='BB')
+    else:
+        _roda(CATALOG,
+              f"PILOTO BB-DEFESA (BTN open ~{POT_BB}bb, c-bet {CBET}bb, {int(STACK)}bb)",
+              hero_stack_bb=STACK, facing_size_bb=CBET, pot_bb=POT_BB)
 
 
 if __name__ == '__main__':
