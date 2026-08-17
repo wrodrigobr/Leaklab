@@ -7,6 +7,25 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(trainer): modo GRIND -- volume sem atrito, erros no relatorio do fim (#trainer #frontend)
+
+> O catalogo criou o volume (qualquer mao da arvore); faltava o RITMO para consumi-lo. O
+> toggle "Ritmo grind" (persistido em localStorage) troca a fase de feedback por um flash
+> discreto: acertou = check verde 700ms, errou = "certo era X" 1600ms; o proximo spot ja
+> esta PRE-CARREGADO (prefetch dispara junto com a pergunta) e entra sozinho -- tecla,
+> resposta, proximo. Sessao de 50 spots; os erros vao para o resumo final ("Erros da
+> sessao (N)": mao, categoria, jogado -> certo), porque no grind o aprendizado e revisao
+> em lote, nao interrupcao. Sessoes com PLANO (protocolo) ficam FORA do grind de proposito:
+> la o feedback completo e o produto.
+>
+> Bug pego so na verificacao ao vivo (vitrine de novo): a pergunta tem DUAS cascas (mesa
+> imersiva e painel) e o flash vivia so na mesa -- a sessao do painel avancava sem feedback
+> NENHUM. Virou overlay unico (fixed) renderizado nas duas raizes; e a 1a versao ainda
+> daria TDZ (const usava actLabel definido 300 linhas abaixo). Verificado no navegador com
+> sonda de timeline: flash aos ~200ms do clique, some aos ~900/~1850ms, botoes travados
+> durante o flash, resumo com "97s . Raise -> Call" renderizando. 357 testes do frontend
+> verdes; i18n nos 3 locales.
+
 ### feat(trainer): Fase 2 do catalogo -- o pool serve QUALQUER mao da arvore (destravamento do 0,2%) (#trainer #gto)
 
 > Medido em 02/08: cada arvore solvada guarda a estrategia de TODAS as maos do board

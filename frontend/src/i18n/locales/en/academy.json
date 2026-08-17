@@ -324,6 +324,14 @@
       "range_gridDesc": "Mark on the grid how far the range goes",
       "stats": "{{n}} hands · {{pct}}%",
       "statsTip": "Hands trained in this drill and current mastery (decays without practice)."
+    },
+    "grind": {
+      "titulo": "Grind pace",
+      "desc": "Warm-up volume: answer by key, next spot instantly, mistakes in the end-of-session report",
+      "on": "on",
+      "off": "off",
+      "certoEra": "correct was",
+      "errosTitulo": "Session mistakes ({{count}}) — review one by one"
     }
   },
   "trainAch": {

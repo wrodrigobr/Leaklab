@@ -324,6 +324,14 @@
       "range_gridDesc": "Marcar na grade até onde a range vai",
       "stats": "{{n}} mãos · {{pct}}%",
       "statsTip": "Mãos treinadas neste treino e domínio atual (decai com o tempo sem prática)."
+    },
+    "grind": {
+      "titulo": "Ritmo grind",
+      "desc": "Volume de aquecimento: resposta por tecla, próximo spot na hora, erros no relatório do fim",
+      "on": "ligado",
+      "off": "desligado",
+      "certoEra": "certo era",
+      "errosTitulo": "Erros da sessão ({{count}}) — revise um a um"
     }
   },
   "trainAch": {

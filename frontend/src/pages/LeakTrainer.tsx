@@ -27,6 +27,7 @@ import { cn } from "@/lib/utils";
 type Phase = "intro" | "loading" | "probe" | "question" | "feedback" | "error" | "empty" | "summary" | "paywall";
 
 const LESSON_SIZE = 10;   // lição fechada: N spots, depois fim automático com veredito
+const GRIND_SIZE = 50;    // modo grind: volume é o produto (o cap diário do plano segue valendo)
 type SessionStat = { label: string; hits: number; misses: number };
 
 const ORDER = ["UTG", "UTG+1", "UTG+2", "LJ", "HJ", "CO", "BTN", "SB", "BB"];
@@ -161,6 +162,31 @@ export default function LeakTrainer() {
   const [gateInfo, setGateInfo]         = useState<{ used?: number; cap?: number } | null>(null);
   const [focus, setFocus]               = useState<string>("adaptive");   // o usuário escolhe o tipo de spot
   const focusRef = useRef<string>("adaptive");
+  // ── MODO GRIND (Fase 2 do catálogo, 17/08): aquecimento por volume ─────────────────────────
+  // O desenho da memória do projeto: resposta por tecla, PRÓXIMO SPOT IMEDIATO (pré-carregado
+  // enquanto o jogador responde — o gabarito continua no servidor, só o enunciado viaja
+  // adiantado), feedback DISCRETO (flash ✓/✗, sem o card completo — pontuar cada mão na tela
+  // é o que quebra o ritmo) e o relatório no fim. Não se aplica ao Protocolo, que tem
+  // composição e ritmo próprios (60/25/15).
+  const [grindMode, setGrindMode] = useState<boolean>(
+    () => localStorage.getItem("leaktrainer_grind") === "true");
+  const grindRef = useRef(grindMode);
+  const toggleGrind = () => setGrindMode((v) => {
+    const next = !v; grindRef.current = next;
+    try { localStorage.setItem("leaktrainer_grind", String(next)); } catch { /* quota */ }
+    return next;
+  });
+  // Flash do grind: ✓/✗ + a ação certa, por ~0,7s (acerto) / ~1,5s (erro). null = sem flash.
+  const [grindFlash, setGrindFlash] = useState<{ ok: boolean; best: string } | null>(null);
+  const grindTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Erros da sessão de grind, para o recap (o "relatório no fim" que substitui o feedback):
+  const [grindMisses, setGrindMisses] = useState<{ label: string; hand: string; played: string; best: string }[]>([]);
+  // Pré-carga: o próximo enunciado chega enquanto o jogador decide o atual. O estado de
+  // adaptação fica UMA resposta atrasado no spot pré-carregado — aceitável de propósito no
+  // grind, que é repetição, não diagnóstico.
+  const prefetchRef = useRef<LeakTrainerSpot | null>(null);
+  const prefetchGateRef = useRef<{ limit?: boolean; used?: number; cap?: number } | null>(null);
+  const prefetchingRef = useRef(false);
   // ── Protocolo de Progressão: sessão com missão + composição 60/25/15 ──
   // Quando `planRef` tem plano, o loadNext puxa do protocolo (intercalando missão/revisão/
   // contraste) em vez do sorteio adaptativo solto. Refs porque o loadNext é useCallback estável.
@@ -217,6 +243,10 @@ export default function LeakTrainer() {
   const newSession = () => {
     setSessionStats({}); setTotalDone(0); setTotalCorrect(0); setStreak(0); setXpEarned(0);
     setMasteryByCat({}); setUnlockedAch([]);
+    // grind: zera o recap de erros, o flash e a pré-carga (spot velho não vaza p/ a sessão nova)
+    setGrindMisses([]); setGrindFlash(null);
+    prefetchRef.current = null; prefetchGateRef.current = null;
+    if (grindTimerRef.current) { clearTimeout(grindTimerRef.current); grindTimerRef.current = null; }
     setPhase("intro");   // nova lição começa pela tela de início
   };
 
@@ -250,13 +280,54 @@ export default function LeakTrainer() {
       if (r.spot?.card_key) servidasRef.current = [...servidasRef.current, r.spot.card_key];
       setSpot(r.spot);
       setPhase(r.spot.range_probe ? "probe" : "question");
+      if (grindRef.current) prefetchNext();     // grind: o próximo já começa a viajar
     } catch { setPhase("error"); }
   }, []);
+
+  // ── Pré-carga do grind: dispara e esquece; o consumo confere o gate ─────────────────────────
+  const prefetchNext = () => {
+    if (prefetchingRef.current || prefetchRef.current) return;
+    prefetchingRef.current = true;
+    leaktrainer.next(stateRef.current, 90, focusRef.current, servidasRef.current)
+      .then((r) => {
+        if (r.limit_reached || r.requires_pro) {
+          prefetchGateRef.current = { limit: true, used: r.used, cap: r.cap };
+        } else if (r.spot && !r.spot.range_probe) {
+          prefetchRef.current = r.spot;
+          if (r.spot.card_key) servidasRef.current = [...servidasRef.current, r.spot.card_key];
+        }
+      })
+      .catch(() => { /* pré-carga é otimização: falhou, o advance busca na hora */ })
+      .finally(() => { prefetchingRef.current = false; });
+  };
+
+  // Avança o grind: consome o pré-carregado (instantâneo) ou busca na hora.
+  const advanceGrind = () => {
+    if (grindTimerRef.current) { clearTimeout(grindTimerRef.current); grindTimerRef.current = null; }
+    setGrindFlash(null);
+    if (totalDone >= sessionSize) { setPhase("summary"); return; }
+    const gate = prefetchGateRef.current;
+    if (gate?.limit) {
+      prefetchGateRef.current = null;
+      setGateInfo({ used: gate.used, cap: gate.cap }); setPhase("paywall"); return;
+    }
+    const nxt = prefetchRef.current;
+    if (nxt) {
+      prefetchRef.current = null;
+      setSpotSeq((n) => n + 1);
+      setSelected(null); setGrade(null); setShowRange(false);
+      setSpot(nxt); setPhase("question");
+      prefetchNext();
+      return;
+    }
+    loadNext();
+  };
 
   // seletor de tipo de spot: fixa o foco e começa a lição (o usuário escolhe, não é só aleatório)
   const startFocus = (f: string) => {
     planRef.current = null; setPlan(null); doneRef.current = {};   // sai do protocolo
     servidasRef.current = [];                                      // sessao nova, baralho cheio
+    setGrindMisses([]); prefetchRef.current = null; prefetchGateRef.current = null;
     focusRef.current = f; setFocus(f); loadNext();
   };
 
@@ -310,12 +381,12 @@ export default function LeakTrainer() {
 
   // Não auto-inicia: a lição começa pela tela de "intro" (botão Começar → loadNext).
   // No protocolo o tamanho é o do PLANO (a duração que o jogador escolheu); fora dele, a lição fixa.
-  const sessionSize   = plan?.total ?? LESSON_SIZE;
+  const sessionSize   = plan?.total ?? (grindMode ? GRIND_SIZE : LESSON_SIZE);
   const lessonComplete = totalDone >= sessionSize;
   const nextOrFinish = () => { if (totalDone >= sessionSize) setPhase("summary"); else loadNext(); };
 
   const submit = async (action: string) => {
-    if (!spot || phase !== "question" || submitting) return;
+    if (!spot || phase !== "question" || submitting || grindFlash) return;
     setSelected(action); setSubmitting(true);
     try {
       const g = await leaktrainer.grade(spot, action, origemRef.current);
@@ -354,6 +425,19 @@ export default function LeakTrainer() {
       }
       if (g.is_correct) { setStreak((s) => s + 1); setTotalCorrect((n) => n + 1); }
       else setStreak(0);
+      // MODO GRIND: sem a fase de feedback — flash discreto e o próximo spot. O erro vai
+      // para o recap do fim (grindMisses); pontuar cada mão na tela quebra o ritmo, que é
+      // o produto deste modo. Protocolo fica fora (ritmo e composição próprios).
+      if (grindRef.current && !planRef.current) {
+        const best = g.best_action || "";
+        if (!g.is_correct) {
+          setGrindMisses((m) => [...m, { label: labelFor(spot), hand: spot.hand,
+                                         played: action, best }]);
+        }
+        setGrindFlash({ ok: !!g.is_correct, best });
+        grindTimerRef.current = setTimeout(advanceGrind, g.is_correct ? 700 : 1600);
+        return;
+      }
       setPhase("feedback");
     } catch { setPhase("error"); }
     finally { setSubmitting(false); }
@@ -365,6 +449,11 @@ export default function LeakTrainer() {
     const onKey = (e: KeyboardEvent) => {
       if (e.metaKey || e.ctrlKey || e.altKey) return;
       const k = e.key.toLowerCase();
+      // Grind com flash na tela: Enter/espaço pulam a espera (grinder não espera timer).
+      if (phase === "question" && grindFlash) {
+        if (e.key === "Enter" || e.key === " " || k === "n") { e.preventDefault(); advanceGrind(); }
+        return;
+      }
       if (phase === "question" && spot && !submitting) {
         // S = shove (stack curto): sem isso o atalho não alcançava a ação que MAIS aparece
         // abaixo de 20bb. O guard `spot.options.includes(a)` abaixo ignora a tecla quando a
@@ -385,7 +474,8 @@ export default function LeakTrainer() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [phase, spot, submitting, loadNext]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase, spot, submitting, loadNext, grindFlash]);
 
   const accuracy = totalDone > 0 ? Math.round((totalCorrect / totalDone) * 100) : null;
   // O spot de grade NÃO tem mesa: sem assentos, sem cartas do herói. `buildStep` acessa
@@ -511,6 +601,23 @@ export default function LeakTrainer() {
     return t(`leakTrainer.act.${a}`, a);
   };
 
+  // MODO GRIND: flash discreto no lugar da fase de feedback — ✓/✗ e a ação certa; o próximo
+  // spot entra sozinho (pré-carregado). Clicar/Enter pula a espera. OVERLAY ÚNICO (fixed) nas
+  // DUAS cascas da pergunta (mesa imersiva e painel) — a 1ª versão vivia só na mesa, e a
+  // sessão do painel avançava sem flash nenhum: pego na verificação ao vivo, não em teste.
+  const grindFlashOverlay = (phase === "question" && grindFlash) ? (
+    <button onClick={() => advanceGrind()}
+      className={cn(
+        "fixed left-1/2 top-1/2 z-[80] -translate-x-1/2 -translate-y-1/2 rounded-2xl px-6 py-4",
+        "font-mono text-sm font-bold uppercase tracking-wider shadow-2xl ring-2 backdrop-blur animate-fade-in",
+        grindFlash.ok
+          ? "bg-emerald-500/20 text-emerald-300 ring-emerald-500/50"
+          : "bg-red-500/20 text-red-300 ring-red-500/50",
+      )}>
+      {grindFlash.ok ? "✓" : `✗ · ${t("leakTrainer.grind.certoEra")} ${actLabel(grindFlash.best)}`}
+    </button>
+  ) : null;
+
   const freqEntries = grade
     ? Object.entries(grade.hand_freq || {}).filter(([, v]) => v && v > 0.01).sort((a, b) => b[1] - a[1])
     : [];
@@ -590,6 +697,7 @@ export default function LeakTrainer() {
     return (
       <div ref={rootRef} className="h-dvh relative overflow-hidden hud-scanline"
         style={{ background: "radial-gradient(ellipse at 50% 45%, #14223a 0%, #080f1c 100%)" }}>
+        {grindFlashOverlay}
         <div className="absolute inset-0 flex items-center justify-center p-0.5">
           <div className="h-full w-auto max-w-full mx-auto" style={{ aspectRatio: "1160 / 710" }}>
             <PokerTableV3 step={table.step} hero="Hero" heroCards={cartasVisiveis} bb={table.bb} betUnit="bb" orientation="landscape" fill />
@@ -631,7 +739,7 @@ export default function LeakTrainer() {
         {phase === "question" && (
           <div className="absolute bottom-[calc(0.6rem+env(safe-area-inset-bottom))] left-1/2 z-30 flex -translate-x-1/2 items-center gap-2">
             {spot.options.map((a) => (
-              <button key={a} onClick={() => submit(a)} disabled={submitting}
+              <button key={a} onClick={() => submit(a)} disabled={submitting || !!grindFlash}
                 className="min-w-[68px] rounded-full bg-background/85 px-4 py-2 font-mono text-xs font-bold uppercase tracking-wider text-foreground shadow-lg ring-1 ring-border backdrop-blur transition-all active:scale-95 hover:text-amber-400 hover:ring-amber-500/60 disabled:opacity-40">
                 {actLabel(a)}
               </button>
@@ -698,6 +806,7 @@ export default function LeakTrainer() {
 
   return (
     <div ref={rootRef} className="h-dvh overflow-hidden bg-background hud-scanline flex flex-col">
+      {grindFlashOverlay}
       {!isFull && <HudHeader />}
       <main className="flex-1 min-h-0 mx-auto flex w-full max-w-[1500px] flex-col px-4 py-3 md:px-8 animate-fade-in">
         {/* header compacto + tela cheia (header grande do HudLayout causava scroll) */}
@@ -1047,6 +1156,23 @@ export default function LeakTrainer() {
               </button>
               {showOther && (
                 <div className="space-y-3 border-t border-border/60 p-3">
+                  {/* MODO GRIND (Fase 2, 17/08): aquecimento por volume — feedback vira flash,
+                      o próximo spot entra pré-carregado, o relatório fica pro fim. Vale para
+                      qualquer treino iniciado daqui; o Protocolo tem ritmo próprio e ignora. */}
+                  <button onClick={toggleGrind}
+                    className={cn(
+                      "flex w-full items-center justify-between rounded-lg border px-3 py-2 text-left transition-colors",
+                      grindMode ? "border-amber-500/60 bg-amber-500/10" : "border-border bg-background/60 hover:border-amber-500/40",
+                    )}>
+                    <span>
+                      <span className="block text-[13px] font-bold text-foreground">⚡ {t("leakTrainer.grind.titulo")}</span>
+                      <span className="block text-[10.5px] text-muted-foreground">{t("leakTrainer.grind.desc")}</span>
+                    </span>
+                    <span className={cn("font-mono text-[10px] font-bold uppercase",
+                                        grindMode ? "text-amber-400" : "text-muted-foreground")}>
+                      {grindMode ? t("leakTrainer.grind.on") : t("leakTrainer.grind.off")}
+                    </span>
+                  </button>
                   <button onClick={() => startFocus("adaptive")}
                     className="w-full rounded-lg border border-border bg-background/60 px-3 py-2 text-left text-[13px] text-foreground transition-colors hover:border-amber-500/40">
                     {t("leakTrainer.picker.adaptive")}
@@ -1240,6 +1366,32 @@ export default function LeakTrainer() {
                 </div>
               )}
 
+              {/* MODO GRIND: o relatório que substitui o feedback por mão — os erros da
+                  sessão, com a jogada e a resposta certa, um a um. É aqui que se aprende
+                  no grind; a tela durante a sessão só marca ✓/✗. */}
+              {grindMisses.length > 0 && (
+                <div className="mt-4 rounded-2xl bg-background/60 p-4 ring-1 ring-border">
+                  <p className="mb-2 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+                    {t("leakTrainer.grind.errosTitulo", { count: grindMisses.length })}
+                  </p>
+                  <div className="max-h-44 space-y-1.5 overflow-y-auto">
+                    {grindMisses.map((m, i) => (
+                      <div key={i} className="flex items-center justify-between gap-2 rounded-lg bg-red-500/5 px-2.5 py-1.5 ring-1 ring-red-500/15">
+                        <span className="min-w-0 truncate text-[11.5px] text-foreground">
+                          <span className="font-mono font-bold">{m.hand}</span>
+                          <span className="text-muted-foreground"> · {m.label}</span>
+                        </span>
+                        <span className="shrink-0 font-mono text-[10.5px]">
+                          <span className="text-red-300 line-through">{actLabel(m.played)}</span>
+                          <span className="text-muted-foreground"> → </span>
+                          <span className="font-bold text-emerald-300">{actLabel(m.best)}</span>
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* streak + categoria mais difícil */}
               <div className="mt-4 flex items-center gap-2">
                 {streak >= 1 && (
@@ -1410,7 +1562,7 @@ export default function LeakTrainer() {
                       <button
                         key={a}
                         onClick={() => submit(a)}
-                        disabled={submitting}
+                        disabled={submitting || !!grindFlash}
                         className={cn(
                           "flex min-h-[48px] items-center justify-between rounded-lg border px-4 py-3 font-mono text-sm font-bold uppercase tracking-wider transition-all active:scale-95",
                           "border-border bg-hud-surface text-foreground ring-1 ring-border hover:border-amber-500/60 hover:bg-amber-500/5 hover:text-amber-400",
