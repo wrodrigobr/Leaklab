@@ -7,6 +7,28 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(medicao): estimador de equity validado contra 1.082 cartas reveladas -- media calibrada, cauda gorda (#medicao #equity)
+
+> A pergunta aberta desde [[project_cartas_reveladas_no_summary]]: o `estimated_equity` que
+> alimenta vereditos aguenta confronto com a mao REAL do vilao? Medicao em producao
+> (`scripts/validar_equity_com_reveals.py`): 560 maos com UM revelador alem do heroi, 1.082
+> decisoes HU medidas, enumeracao exata (eval7) no board da street, matriz do motor no
+> preflop, ancoras de deteccao e descartes contabilizados (a primeira rodada perdeu 108
+> decisoes CALADAS porque `decisions.board` e string JSON — a contabilidade apontou).
+>
+> **Resultado em duas caras:**
+> - **Media por street quase zero** (preflop +0,033 / flop −0,004 / turn +0,049 / river
+>   +0,002) — mesmo contra a fatia showdown-selecionada, que deveria puxar positivo. Usos
+>   AGREGADOS (ranking, somas de EV) estao bem servidos.
+> - **Cauda gorda que cresce por street**: gap p90 flop +0,31 / turn +0,49 / river +0,58.
+>   No river, 1 em 10 decisoes tem equity estimada superestimada em 58+ pontos — casos
+>   "est 0,95 / real 0,00" (drawing dead com 95% estimado) existem e estao listados.
+>   Confirma com numero a politica de tratar equity como insumo SECUNDARIO do veredito
+>   individual (guardas vs-random, teto de fold, "sem gabarito nao e erro").
+>
+> Medicao pura, nada gravado. Se um dia nascer um gate de confianca por street para o
+> numero de equity NA TELA, ele nasce deste dataset — decisao de produto separada.
+
 ### feat(hud): consumidor das cartas de vilao reveladas -- "Mostrou" no HUD da mesa (#hud #replayer)
 
 > O parser captura `ParsedHand.reveals` desde 05/08 (3.830 revelacoes de vilao no SUMMARY,
