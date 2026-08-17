@@ -608,6 +608,10 @@ def lookup_gto(
                         'hand_strategy': _hv,
                         # MVP deep: nó capado a Xbb p/ spot fundo (None = nó do stack real)
                         'approx_stack': _approx_stack,
+                        # árvore de origem do nó — o painel range-por-classe lê a hand_table
+                        # inteira por aqui, pela MESMA porta que achou o nó (nunca por um
+                        # segundo hash montado alhures)
+                        'tree_hash': node.get('tree_hash'),
                     }
         # Nó parcial: sem strategy_json — salva como fallback, continua para GTO Wizard
         action = node.get('gto_action')

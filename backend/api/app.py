@@ -3255,6 +3255,34 @@ def player_meta_semanal():
     return jsonify({'ok': True, 'meta_semanal': meta_semanal_de(g.user_id, tz)})
 
 
+@app.route('/player/leaktrainer/range-classes', methods=['POST'])
+@require_auth
+def leaktrainer_range_classes():
+    """Painel "range por classe de mão" de um spot postflop do trainer: a hand_table da árvore
+    que CORRIGE o spot, agrupada por classe (trinca+, top pair, draw...) com a estratégia média
+    ponderada pelo peso. Display-only: nada daqui alimenta veredito, score ou SRS.
+
+    O spot volta do cliente como no /grade, mas a VERDADE é lida do banco: o tree_hash do pool
+    (ou o re-derivado pelo mesmo lookup da correção) escolhe a árvore, e a tabela vem de lá.
+    O que o cliente poderia adulterar muda só o rótulo do painel dele mesmo."""
+    from leaklab.leak_trainer import arvore_do_spot
+    from leaklab.range_classes import range_por_classe
+    body = request.get_json(force=True) or {}
+    spot = body.get('spot') or {}
+    if spot.get('kind') != 'postflop' or not spot.get('board'):
+        return jsonify({'found': False})
+    try:
+        th = arvore_do_spot(spot)
+        painel = range_por_classe(th, spot.get('board') or [],
+                                  float(spot.get('facing_size_bb') or 0) > 0) if th else None
+    except Exception:
+        logger.exception('range-classes falhou (user=%s)', g.user_id)
+        painel = None
+    if not painel:
+        return jsonify({'found': False})
+    return jsonify({'found': True, **painel})
+
+
 @app.route('/player/leaktrainer/options', methods=['GET'])
 @require_auth
 def leaktrainer_options():

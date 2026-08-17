@@ -918,15 +918,17 @@ def grade_from_hand_strategy(hand_strategy: dict, action: str) -> dict:
     }
 
 
-def grade_postflop_spot(spot: dict, action: str) -> dict | None:
-    """Lê o nó pré-solvado (NUNCA solva ao vivo) e gradeia a mão. None se sem tabela por-mão."""
+def _lookup_do_spot(spot: dict) -> dict:
+    """O mapeamento spot→lookup_gto do catálogo postflop, numa porta só. Corretor E painel de
+    range leem por aqui — duas cópias deste mapeamento seria gravar o hash com uma chave e
+    procurar com outra (regra 5)."""
     from leaklab.gto_solver import lookup_gto
     # `facing_size_bb=0.0` é LEGÍTIMO (pote 3-bet: BB decide o c-bet, primeiro a agir) e um
     # `or 1.65` o engoliria — o hash sairia com facing 1.65 e nunca acharia o nó semeado com
     # facing 0. A mesma armadilha do `?? vs ||` já paga no front; só None cai no default.
     _facing = spot.get('facing_size_bb')
     _facing = 1.65 if _facing is None else float(_facing)
-    res = lookup_gto(
+    return lookup_gto(
         street=spot.get('street', 'flop'), position=spot.get('position', 'BB'),
         board=spot.get('board') or [], hero_hand=spot.get('hero_hand') or [],
         hero_stack_bb=float(spot.get('stack_bb', 40) or 40),
@@ -939,6 +941,22 @@ def grade_postflop_spot(spot: dict, action: str) -> dict | None:
         opener=spot.get('opener', ''), threebettor=spot.get('threebettor', ''),
         require_hand_aware=True, block_remote=False, allow_remote_solve=False,
     )
+
+
+def arvore_do_spot(spot: dict) -> str | None:
+    """tree_hash da árvore que corrige este spot. Spot do pool já viaja com ele; spot do
+    catálogo estático re-deriva pelo MESMO lookup da correção — nunca por um hash paralelo."""
+    th = spot.get('tree_hash')
+    if th:
+        return th
+    if spot.get('kind') != 'postflop' and not spot.get('board'):
+        return None
+    return _lookup_do_spot(spot).get('tree_hash')
+
+
+def grade_postflop_spot(spot: dict, action: str) -> dict | None:
+    """Lê o nó pré-solvado (NUNCA solva ao vivo) e gradeia a mão. None se sem tabela por-mão."""
+    res = _lookup_do_spot(spot)
     hs = res.get('hand_strategy')
     if not hs or not hs.get('actions'):
         return None

@@ -7,6 +7,27 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(trainer): painel RANGE POR CLASSE nos spots postflop (#trainer #gto)
+
+> A hand_table de cada arvore ja guarda a estrategia de TODAS as maos do board; o painel
+> agrupa por CLASSE (trinca+, dois pares, overpair, top/par medio/fraco, air + draws no
+> flop/turn) e mostra barras empilhadas por acao, ponderadas pelo PESO de cada combo — a
+> pergunta que o jogador leva pra mesa e "quanto disso a range aguenta", nao so "o que a
+> minha mao faz". Identificado em 02/08 como o maior ganho por esforco dos prints do GW.
+>
+> Fontes unicas, zero porta nova: a leitura e a MESMA da selecao/correcao
+> (`_tabela_da_arvore`), a traducao rotulo->familia e a MESMA do menu (`_familias_da_linha`),
+> e o spot do catalogo estatico deriva a arvore pelo MESMO lookup da correcao
+> (`_lookup_do_spot` extraido de grade_postflop_spot; `lookup_gto` passou a devolver
+> tree_hash). A classificacao e HERO-CENTRICA: board pareado nao infla par em two-pair nem
+> kicker em trips (eval7 diria que sim). Display-only: nada alimenta veredito/score/SRS.
+>
+> Endpoint `/player/leaktrainer/range-classes`; card nas DUAS cascas do overlay de ranges
+> (licao do flash do grind, aplicada no mesmo dia). Sem dado o card SOME — nunca renderiza
+> vazio fingindo informacao. 7 testes; 4 mutacoes deliberadas (ponderacao, colisao com
+> board, inflacao de classe, draw no river) todas acusadas. Verificado no navegador com
+> arvore forjada no dev (limpa depois): 7 classes, barras com larguras exatas.
+
 ### feat(trainer): modo GRIND -- volume sem atrito, erros no relatorio do fim (#trainer #frontend)
 
 > O catalogo criou o volume (qualquer mao da arvore); faltava o RITMO para consumi-lo. O

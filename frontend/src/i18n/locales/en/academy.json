@@ -332,6 +332,23 @@
       "off": "off",
       "certoEra": "correct was",
       "errosTitulo": "Session mistakes ({{count}}) — review one by one"
+    },
+    "rangeClasses": {
+      "titulo": "Range by hand class",
+      "desc": "What the whole range does on this board, weighted by each combo. The % on the left is the share of the range.",
+      "carregando": "Computing the range...",
+      "draws": "Draws (overlap with classes)",
+      "monster": "Straight or better",
+      "trips": "Trips",
+      "two_pair": "Two pair",
+      "overpair": "Overpair",
+      "top_pair": "Top pair",
+      "middle_pair": "Middle pair",
+      "weak_pair": "Weak pair",
+      "no_made": "No pair (air)",
+      "flush_draw": "Flush draw",
+      "oesd": "OESD",
+      "gutshot": "Gutshot"
     }
   },
   "trainAch": {

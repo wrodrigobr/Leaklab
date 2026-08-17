@@ -12,6 +12,7 @@ import { PokerTableV3 } from "@/components/hud/PokerTableV3";
 import { RangePanel } from "@/components/replayer/RangePanel";
 import { ProLockCard } from "@/components/hud/ProLockCard";
 import { MasteryGate } from "@/components/training/MasteryGate";
+import { RangeClassesCard } from "@/components/training/RangeClassesCard";
 import { useSpotLabel } from "@/lib/spotLabel";
 import { useTableOrientation } from "@/hooks/use-table-orientation";
 import { useIsLandscapeMobile } from "@/hooks/use-is-landscape-mobile";
@@ -758,6 +759,9 @@ export default function LeakTrainer() {
         {showRange && table && (
           <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/70 p-4" onClick={() => setShowRange(false)}>
             <div className="w-full max-w-lg max-h-[88vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+              {/* Postflop: range POR CLASSE antes da grade preflop — nas DUAS cascas do overlay
+                  (a lição do flash do grind: feature numa casca só é feature pela metade). */}
+              {spot?.kind === "postflop" && phase !== "probe" && <RangeClassesCard spot={spot} />}
               {/* Enquanto a pergunta está em cena, a tabela abre nas condições DELA; quando as
                   cartas do herói aparecem (`phase !== "probe"`), volta para as da mão. Reportado:
                   a pergunta falava do BTN e a tabela abria no SB, a posição do spot — o jogador
@@ -1595,6 +1599,7 @@ export default function LeakTrainer() {
       {showRange && table && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setShowRange(false)}>
           <div className="w-full max-w-lg max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            {spot?.kind === "postflop" && phase !== "probe" && <RangeClassesCard spot={spot} />}
             <RangePanel step={table.step} hero="Hero" heroCards={table.heroCards} onClose={() => setShowRange(false)} />
           </div>
         </div>

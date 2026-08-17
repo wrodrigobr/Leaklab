@@ -332,6 +332,23 @@
       "off": "desactivado",
       "certoEra": "lo correcto era",
       "errosTitulo": "Errores de la sesión ({{count}}) — revisa uno a uno"
+    },
+    "rangeClasses": {
+      "titulo": "Range por clase de mano",
+      "desc": "Lo que hace la range completa en este board, ponderado por el peso de cada combo. El % de la izquierda es la porción de la range.",
+      "carregando": "Calculando la range...",
+      "draws": "Draws (se superponen con las clases)",
+      "monster": "Straight o mejor",
+      "trips": "Trío",
+      "two_pair": "Doble pareja",
+      "overpair": "Overpair",
+      "top_pair": "Top pair",
+      "middle_pair": "Pareja media",
+      "weak_pair": "Pareja débil",
+      "no_made": "Sin pareja (air)",
+      "flush_draw": "Flush draw",
+      "oesd": "OESD",
+      "gutshot": "Gutshot"
     }
   },
   "trainAch": {

@@ -1444,7 +1444,30 @@ export const leaktrainer = {
       method: "POST",
       body: JSON.stringify({ spot, marcadas, tz_offset: tzOffsetMinutes() }),
     }),
+  /** Painel "range por classe de mão" do spot postflop: a hand_table da árvore que corrige o
+   *  spot, agregada por classe × ação (ponderada pelo peso). Display-only — nunca veredito. */
+  rangeClasses: (spot: LeakTrainerSpot) =>
+    request<RangeClassesPanel>("/player/leaktrainer/range-classes", {
+      method: "POST",
+      body: JSON.stringify({ spot }),
+    }),
 };
+
+/** Linha do painel range-por-classe: peso da classe na range + o que ela faz (freq % por
+ *  família de ação, média ponderada pelo peso dos combos). */
+export interface RangeClassRow {
+  id: string;
+  peso_pct: number;
+  combos: number;
+  freqs: Record<string, number>;
+}
+export interface RangeClassesPanel {
+  found: boolean;
+  familias?: string[];
+  classes?: RangeClassRow[];
+  /** Sobrepostos de propósito (top pair + flush draw conta nos dois). Vazio no river. */
+  draws?: RangeClassRow[];
+}
 
 // ── Protocolo de Progressão: missão (PIP) + sessão com composição 60/25/15 ──
 export type SessionSize = "curta" | "media" | "longa";
