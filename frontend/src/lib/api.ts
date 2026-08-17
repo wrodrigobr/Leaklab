@@ -447,6 +447,9 @@ export interface ReplayData {
   coach_annotations?: Record<string, CoachAnnotation>;
   // HUD estilo Holdem Manager: perfil por jogador (nome → stats) p/ box na mesa
   opponent_profiles?: Record<string, OpponentProfile>;
+  // Mãos que o vilão MOSTROU neste torneio (SUMMARY, incl. muck revelado) — fato, não read;
+  // a mão atual fica de fora no backend (spoiler). {jogador: [{hand: "…6 dígitos", cards}]}
+  villain_reveals?: Record<string, { hand: string; cards: string[] }[]>;
 }
 
 export interface OpponentProfile {

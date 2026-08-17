@@ -7,6 +7,20 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(hud): consumidor das cartas de vilao reveladas -- "Mostrou" no HUD da mesa (#hud #replayer)
+
+> O parser captura `ParsedHand.reveals` desde 05/08 (3.830 revelacoes de vilao no SUMMARY,
+> incluindo muck revelado) e NINGUEM consumia. Agora o `/replay` (aluno E coach, helper
+> compartilhado) anexa `villain_reveals` = {jogador: [{hand, cards}]} e o tooltip do box do
+> HUD na mesa ganha a linha "Mostrou: Qc6c (#124784) · ...".
+>
+> Politicas herdadas e deliberadas: mao revelada e FATO (nao read inferido), entao entra sem
+> o gate de amostra do HUD; a mao ATUAL fica de fora (spoiler do showdown); heroi e
+> nome-posicao (anonimizado) tambem; teto de 8 por vilao; so no replayer, nunca no
+> dashboard (clarificacao do dono de 13/06). 4 testes + mutacao no guarda do spoiler;
+> provado ponta a ponta com torneio real do banco local (7 viloes, 21 maos com reveal).
+> Legenda do HUD explica a linha nas 3 locales.
+
 ### fix(engine): limiar de all-in duplicado vira fonte unica -- facing_allin_row (#medicao)
 
 > Apontado pelo QA de aceitacao em 09/08: `facing_bet >= effective_stack_bb * 0.98` vivia

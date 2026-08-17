@@ -5200,18 +5200,43 @@ def coach_student_study_plan(student_id):
         return jsonify({'error': str(e)}), 500
 
 
-def _attach_opponent_hud(replay, local_tid):
+def _attach_opponent_hud(replay, local_tid, hands=None):
     """HUD de oponente (Fases 2-3): anexa `villain_profile` (arquétipo + stats gateados) e
     `exploit` a cada step do timeline, por lookup do `villain_name` nos opponent_profiles do
     torneio. Pula nomes que são POSIÇÃO (dados anonimizados → read sem significado). Fonte
     ÚNICA do HUD — usada pela visão do aluno (get_replay) e do coach (coach_student_replay).
-    Nunca bloqueia o /replay (exceção engolida)."""
+    Nunca bloqueia o /replay (exceção engolida).
+
+    `hands` (as ParsedHand do torneio, 17/08): liga o CONSUMIDOR do `ParsedHand.reveals` —
+    `replay['villain_reveals']` = {jogador: [{hand, cards}]}, "ele já MOSTROU X neste
+    torneio". Mão revelada no SUMMARY é FATO, não read inferido, então não passa pelo gate
+    de amostra do [[project_opponent_hud]] — mas é dado de terceiro e só aparece onde o HUD
+    já aparece (replayer, nunca dashboard). A mão ATUAL fica de fora do mapa: o HUD
+    mostraria o showdown antes de o replay chegar lá (spoiler). Mapa por JOGADOR (não por
+    step) porque o HUD vive na MESA, um box por assento."""
     try:
         from database.repositories import get_opponent_profiles as _get_opp
         from leaklab.opponent_stats import compute_exploit as _exploit, is_position_name as _is_pos
         _opp_map = {p['player']: {'archetype': p['archetype'], 'confidence': p['confidence'],
                                   'hands': p['hands'], 'stats': p['stats']}
                     for p in _get_opp(local_tid)}
+        # Reveals agregados do torneio — independentes do perfil (vilão de poucas mãos não
+        # tem arquétipo, mas mão mostrada continua sendo evidência). Herói fica de fora: a
+        # carta dele já é o centro do replay.
+        _mostradas: dict = {}
+        _mao_atual = str(replay.get('hand_id') or '')
+        _heroi = replay.get('hero') or ''
+        for _h in (hands or []):
+            if str(getattr(_h, 'hand_id', '')) == _mao_atual:
+                continue
+            for _nome, _cartas in (getattr(_h, 'reveals', None) or {}).items():
+                if _cartas and _nome != _heroi and not _is_pos(_nome):
+                    _mostradas.setdefault(_nome, []).append(
+                        {'hand': str(getattr(_h, 'hand_id', '') or '')[-6:],
+                         'cards': list(_cartas)})
+        if _mostradas:
+            # As mais recentes por último no HH; teto de 8 por vilão para não virar tabela.
+            replay['villain_reveals'] = {n: v[-8:] for n, v in _mostradas.items()}
         if not _opp_map:
             return
         # Mapa completo pro HUD da MESA (estilo Holdem Manager: 1 box por assento) — só
@@ -5287,7 +5312,7 @@ def coach_student_replay(student_id, tournament_id, hand_id):
         hand_decisions = _db_hand_c
     replay = _build_replay_data(target, hand_decisions, t.get('hero', target.hero))
     # HUD de oponente na visão do COACH — mesma fonte do aluno (perfil + exploit por step).
-    _attach_opponent_hud(replay, t['id'])
+    _attach_opponent_hud(replay, t['id'], hands=hands)
     # Attach coach annotations for decisions in this hand
     db_decisions = _db_all_c
     hand_db_decisions = [d for d in db_decisions if str(d.get('hand_id')) == str(hand_id)]
@@ -6131,7 +6156,7 @@ def get_replay(tournament_id, hand_id):
 
     # HUD Fase 2-3: perfil do vilão + exploit por step. t['id'] = id LOCAL (chave do
     # opponent_profiles). Mesma fonte do aluno e do coach (helper compartilhado).
-    _attach_opponent_hud(replay, t['id'])
+    _attach_opponent_hud(replay, t['id'], hands=hands)
 
     _replay_cache_set(_cache_key, dict(replay))
 

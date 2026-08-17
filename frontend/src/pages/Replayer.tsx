@@ -128,7 +128,16 @@ const Replayer = () => {
   // poker (VPIP/PFR/3-bet/c-bet/AF/WTSD) não se traduzem; só os conectivos são i18n.
   const hudTips = useMemo<Record<string, string>>(() => {
     const profs = replayData?.opponent_profiles ?? {};
+    const reveals = replayData?.villain_reveals ?? {};
     const pp = (v: number | null | undefined) => (v == null ? "–" : `${Math.round(v * 100)}%`);
+    // "Mostrou: Qc6c (#123456) · AhKd (#654321)" — mão revelada no SUMMARY é FATO, não read
+    // inferido, por isso entra sem gate de amostra. O backend já exclui a mão atual (spoiler).
+    const shownLine = (name: string) => {
+      const rv = reveals[name];
+      if (!rv?.length) return "";
+      const itens = rv.map((r) => `${r.cards.join("")} (#${r.hand})`).join(" · ");
+      return `\n${t("hudShowed")}: ${itens}`;
+    };
     const out: Record<string, string> = {};
     for (const [name, p] of Object.entries(profs)) {
       const s = p.stats ?? {};
@@ -142,10 +151,11 @@ const Replayer = () => {
         (hint ? `${hint}\n` : "") +
         `VPIP ${pp(s.vpip_pct)}   PFR ${pp(s.pfr_pct)}   3-bet ${pp(s.threebet_pct)}\n` +
         `c-bet ${pp(s.cbet_pct)}   fold→c-bet ${pp(s.foldcbet_pct)}\n` +
-        `AF ${af}   WTSD ${pp(s.wtsd_pct)}`;
+        `AF ${af}   WTSD ${pp(s.wtsd_pct)}` +
+        shownLine(name);
     }
     return out;
-  }, [replayData?.opponent_profiles, t]);
+  }, [replayData?.opponent_profiles, replayData?.villain_reveals, t]);
   const [decisions, setDecisions]   = useState<TournamentDecision[]>([]);
   const [showRange, setShowRange]           = useState(false);
   const [annotating, setAnnotating]         = useState(false);
