@@ -1833,6 +1833,73 @@ _DEEP_APPROX_STACK_BB = 30.0
 _DEEP_APPROX_MIN_BB   = 35.0
 
 
+def _hashes_da_linha(street, position, board_for_hash, hero_hand, stack_bb, facing_bb,
+                     is_3bet) -> list:
+    """Variantes de hash de nó para uma LINHA de `decisions`, na MESMA ordem do engine.
+
+    RC-3 da auditoria do Ghost Table (25/06, fechado 17/08): o drill e o /replay/<id>/gto
+    chamavam `compute_spot_hash` SEM pot_type — um pote 3-BET resolvia o nó da árvore SRP
+    (outra estrutura de ranges, veredito de outra carta). A linha carrega `is_3bet`, que
+    basta para espelhar o engine no ramo 3-bet: variante '3bet' primeiro, legado como
+    aproximação deliberada — a mesma ordem de `_enrich_gto`/`lookup_gto`.
+
+    A variante 'oop_pfr' NÃO é derivável da linha: o opener preflop não é coluna, e
+    `hero_was_aggressor` postflop é INICIATIVA (um check-raise a inverte) — derivar seria
+    chute, e derivação já custou caro aqui. Quem protege esse caso é o guarda
+    `_no_contradiz_o_gravado`."""
+    from leaklab.gto_utils import compute_spot_hash
+    hashes = []
+    for pt in (('3bet', '') if is_3bet else ('',)):
+        if hero_hand:
+            hashes.append(compute_spot_hash(street, position, board_for_hash, hero_hand,
+                                            stack_bb, facing_bb, pt))
+        hashes.append(compute_spot_hash(street, position, board_for_hash, [],
+                                        stack_bb, facing_bb, pt))
+        if facing_bb == 0:
+            hashes.append(compute_spot_hash(street, position, board_for_hash, [],
+                                            stack_bb, 0.0, pt))
+    return hashes
+
+
+_FAMILIA_ACAO_NO = {
+    'jam': 'allin', 'shove': 'allin', 'allin': 'allin', 'all-in': 'allin', 'all_in': 'allin',
+    'bet': 'aggro', 'raise': 'aggro', 'reraise': 'aggro', '3bet': 'aggro', '4bet': 'aggro',
+    'call': 'call', 'check': 'check', 'fold': 'fold',
+}
+
+
+def _no_contradiz_o_gravado(node, stored_gto_action) -> bool:
+    """True quando a ação-topo do nó VIVO é de outra FAMÍLIA que o `gto_action` gravado —
+    o cheiro de nó de variante errada (ex.: 'oop_pfr', que não dá para derivar da linha; o
+    nó legado ali descreve o confronto com as ranges TROCADAS).
+
+    O gravado veio do engine com o spot COMPLETO em mãos, e o resync o mantém fresco depois
+    de re-solve — contradição aqui não é frescor, é outra árvore. Quem contradiz é
+    rejeitado e o consumidor cai no gravado: coerente com o que o card mostra em toda outra
+    superfície, e nunca introduz dado novo errado (regra 7: o conserto não pode causar dano
+    que o buraco não causava). Sem gravado (linha sem cobertura na análise), o guarda não
+    age — nó vivo é cobertura ADITIVA. Família (fold/check/call/aggro/allin), não ação
+    exata: 'bet' vs 'raise' é rótulo de menu, não contradição."""
+    if not node or not stored_gto_action:
+        return False
+    topo = ''
+    sj = node.get('strategy_json')
+    if sj:
+        try:
+            import json as _jj
+            _s = _jj.loads(sj) if isinstance(sj, str) else sj
+            topo = max(_s, key=lambda k: (_s[k] or {}).get('frequency', 0))
+        except Exception:
+            topo = ''
+    if not topo:
+        topo = node.get('gto_action') or ''
+    fam_no = _FAMILIA_ACAO_NO.get((topo or '').lower().strip())
+    fam_gravado = _FAMILIA_ACAO_NO.get((stored_gto_action or '').lower().strip())
+    if not fam_no or not fam_gravado:
+        return False
+    return fam_no != fam_gravado
+
+
 def _resolve_best_action_from_node(row: dict, return_strategy: bool = False):
     """Busca ação GTO ao vivo em gto_nodes (mesma lógica do /replay/<id>/gto).
     Fallback para decisions.gto_action → best_action se nenhum nó for encontrado.
@@ -1877,27 +1944,33 @@ def _resolve_best_action_from_node(row: dict, return_strategy: bool = False):
         # Rejeita nó incompatível com o FACING do spot: se o hero enfrenta aposta (facing>0),
         # o nó não pode ser um first-to-act (menu com 'check'). Sem isto um nó OOP check/bet
         # casa num spot vs-bet e o card recomenda "check" sem botão de check (ação inalcançável).
-        if facing_bb > 0:
+        _acts = set()
+        try:
+            _sj = n.get('strategy_json')
+            if _sj:
+                _acts = {str(k).lower() for k in (_j.loads(_sj) if isinstance(_sj, str) else _sj).keys()}
+        except Exception:
             _acts = set()
-            try:
-                _sj = n.get('strategy_json')
-                if _sj:
-                    _acts = {str(k).lower() for k in (_j.loads(_sj) if isinstance(_sj, str) else _sj).keys()}
-            except Exception:
-                _acts = set()
-            if not _acts and n.get('gto_action'):
-                _acts = {str(n['gto_action']).lower()}
-            if 'check' in _acts:
-                return None
+        if not _acts and n.get('gto_action'):
+            _acts = {str(n['gto_action']).lower()}
+        if facing_bb > 0 and 'check' in _acts:
+            return None
+        # O INVERSO (RC-5/6, 17/08): sem aposta a enfrentar POSTFLOP, nó com 'fold' no menu é
+        # um nó vs-aposta — outra forma de spot. Servi-lo faz a janela de frequência premiar
+        # fold onde fold nem existe. Preflop fica fora: open-fold é legal com facing 0.
+        if facing_bb == 0 and street.lower() != 'preflop' and 'fold' in _acts:
+            return None
         return n
 
+    # RC-3: variantes de pot_type na ordem do engine ('3bet' primeiro quando a linha diz
+    # is_3bet) + guarda de coerência contra o gravado (pega variante inderivável, ex. oop_pfr).
     node = None
-    if hero_hand:
-        node = _valid_node(get_gto_node(compute_spot_hash(street, position, board_for_hash, hero_hand, stack_bb, facing_bb)))
-    if not node:
-        node = _valid_node(get_gto_node(compute_spot_hash(street, position, board_for_hash, [], stack_bb, facing_bb)))
-    if not node and facing_bb == 0:
-        node = _valid_node(get_gto_node(compute_spot_hash(street, position, board_for_hash, [], stack_bb, 0.0)))
+    for _h in _hashes_da_linha(street, position, board_for_hash, hero_hand, stack_bb,
+                               facing_bb, row.get('is_3bet')):
+        _n = _valid_node(get_gto_node(_h))
+        if _n and not _no_contradiz_o_gravado(_n, row.get('gto_action')):
+            node = _n
+            break
     # Fallback d (get_gto_node_by_spot) removido: usa algoritmo de hash diferente de compute_spot_hash,
     # podendo retornar nós completamente errados via colisão acidental.
 
@@ -2013,6 +2086,12 @@ def grade_drill_action(row, new_action):
     # Guard: BB pode check grátis — fold sem aposta é impossível.
     if float(row.get('facing_bet') or 0) == 0 and best_action == 'fold' and row.get('position') == 'BB':
         best_action = 'check'
+        # RC-5/6 (17/08): quem reescreve o best_action reescreve as FREQUÊNCIAS junto — a
+        # mesma regra dos campos-viajantes do veredito. Sem isto a janela de ≥30% premiava o
+        # fold que este guard acabou de declarar impossível (freq do nó intacta).
+        if gto_freqs and 'fold' in gto_freqs:
+            gto_freqs = dict(gto_freqs)
+            gto_freqs['check'] = round(gto_freqs.get('check', 0.0) + gto_freqs.pop('fold'), 4)
 
     # MULTIWAY: postflop com 2+ oponentes vivos → solver é HU-only, não cobre.
     # n_active_opponents NULL (legado/reimport) → 0 = NÃO multiway (alinha com o drill em ~6812).
@@ -8659,35 +8738,45 @@ def get_decision_gto(decision_id):
                 return None
         except Exception:
             pass
+        # Guardas de FORMA do menu (RC-5/6, 17/08) — os mesmos do drill: vs-aposta não pode
+        # ter 'check' no menu; sem aposta postflop não pode ter 'fold'.
+        _acts = set()
+        try:
+            _sj = n.get('strategy_json')
+            if _sj:
+                _acts = {str(k).lower() for k in (_json.loads(_sj) if isinstance(_sj, str) else _sj).keys()}
+        except Exception:
+            _acts = set()
+        if not _acts and n.get('gto_action'):
+            _acts = {str(n['gto_action']).lower()}
+        if facing_bb > 0 and 'check' in _acts:
+            return None
+        if facing_bb == 0 and street.lower() != 'preflop' and 'fold' in _acts:
+            return None
         return n
 
     # ── Node lookup: multiple fallback strategies ────────────────────────────
+    # RC-3 (17/08): mesmas variantes de pot_type e mesmo guarda de coerência do drill
+    # (`_hashes_da_linha` + `_no_contradiz_o_gravado`) — fonte única; a cópia sem pot_type
+    # aqui resolvia nó SRP para pote 3-bet.
     node = None
-    # a) Exact: with hero_hand + facing
-    if hero_hand:
-        _h = compute_spot_hash(street, position, board_for_hash, hero_hand, stack_bb, facing_bb)
-        node = _valid_node_replayer(get_gto_node(_h))
-    # b) Generic: no hero_hand, with facing
-    if not node:
-        _h = compute_spot_hash(street, position, board_for_hash, [], stack_bb, facing_bb)
-        node = _valid_node_replayer(get_gto_node(_h))
-    # c) Generic: no hero_hand, no facing (only when not facing a bet)
-    if not node and facing_bb == 0:
-        _h = compute_spot_hash(street, position, board_for_hash, [], stack_bb, 0.0)
-        node = _valid_node_replayer(get_gto_node(_h))
+    for _h in _hashes_da_linha(street, position, board_for_hash, hero_hand, stack_bb,
+                               facing_bb, dec.get('is_3bet')):
+        _n = _valid_node_replayer(get_gto_node(_h))
+        if _n and not _no_contradiz_o_gravado(_n, stored_gto_action):
+            node = _n
+            break
     # fallback d (get_gto_node_by_spot) removido: hash algorithm divergente → falsos matches
     # e) APROXIMAÇÃO DEEP: postflop fundo sem nó no stack real → tenta o nó capado a 30bb (HU
     #    tratável). A AÇÃO transfere bem; sizing/comprometimento podem diferir → marca aproximação.
     _approx_stack = None
     if not node and street != 'preflop' and stack_bb > _DEEP_APPROX_MIN_BB:
-        for _hh in ([hero_hand, []] if hero_hand else [[]]):
-            node = _valid_node_replayer(get_gto_node(
-                compute_spot_hash(street, position, board_for_hash, _hh, _DEEP_APPROX_STACK_BB, facing_bb)))
-            if node:
+        for _h in _hashes_da_linha(street, position, board_for_hash, hero_hand,
+                                   _DEEP_APPROX_STACK_BB, facing_bb, dec.get('is_3bet')):
+            _n = _valid_node_replayer(get_gto_node(_h))
+            if _n and not _no_contradiz_o_gravado(_n, stored_gto_action):
+                node = _n
                 break
-        if not node and facing_bb == 0:
-            node = _valid_node_replayer(get_gto_node(
-                compute_spot_hash(street, position, board_for_hash, [], _DEEP_APPROX_STACK_BB, 0.0)))
         if node:
             _approx_stack = _DEEP_APPROX_STACK_BB
 

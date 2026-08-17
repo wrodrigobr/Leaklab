@@ -7,6 +7,32 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(drill): RC-3/5/6 da auditoria do Ghost Table -- pot_type no no, coerencia com o gravado, freqs viajam com o guard (#veredito #drill)
+
+> Fecha os 3 pendentes criticos da auditoria de 25/06 (o passo focado que ela pediu).
+>
+> **RC-3** -- o drill e o /replay/<id>/gto resolviam no SEM pot_type: pote 3-BET caia no no
+> da arvore SRP (ranges de outra estrutura). Fonte unica `_hashes_da_linha`: variante '3bet'
+> primeiro quando a linha diz is_3bet, legado como aproximacao — a MESMA ordem do engine. A
+> variante 'oop_pfr' NAO e derivavel da linha (opener nao e coluna; hero_was_aggressor
+> postflop e INICIATIVA, que um check-raise inverte) — quem a protege e o guarda novo
+> `_no_contradiz_o_gravado`: no vivo cuja acao-topo e de outra FAMILIA que o gto_action
+> gravado (que o engine escreveu com o spot completo e o resync mantem fresco) e rejeitado;
+> cai no gravado, coerente com o card. De carona, esse guarda cobre o caso SPR-jam do RC-5
+> (engine rejeitou o jam -> gravado difere do no cru -> no cai).
+>
+> **RC-5/6** -- (a) o guard "BB pode check gratis" reescrevia best_action fold->check e
+> deixava as freqs do no intactas: a janela de >=30% premiava o fold que o guard declarou
+> impossivel (mutacao reproduziu o bug literal: fold -> 'correct'). Agora a freq de fold
+> VIAJA para check — campos-viajantes no drill. (b) guarda de forma do menu que faltava no
+> sentido inverso: sem aposta POSTFLOP, no com 'fold' no menu e no vs-aposta -> rejeitado
+> (preflop fora: open-fold e legal). Aplicado no validador do drill E no do replayer.
+>
+> Prova: 6 testes novos; 3 mutacoes acusaram (uma delas expos teste que passava pelo motivo
+> errado — o cenario nao isolava o guarda de menu do de coerencia; reescrito). O validador
+> exaustivo da propria auditoria (validate_drill_verdicts): ZERO violacoes e distribuicao
+> de vereditos BYTE-IDENTICA no dev (nada que estava certo mudou).
+
 ### fix(landing): itens 3-5 da avaliacao -- escala de H2, alvos de toque, line-height do H1 (#landing)
 
 > Fecha a avaliacao de 06/08 (itens 1+2 sairam hoje mais cedo). Tudo MEDIDO no vivo antes:
