@@ -344,7 +344,9 @@
     "whyAcaoDivergeTamanho": "{{hand}} está en el range {{scen}}, pero la jugada aquí es {{rec}}{{freq}} — no {{act}}. La mano está bien; lo que falló fue el tamaño de la subida.",
     "precoDivergeHeuristica": "Aquí no hay carta GTO para esta mano en este punto, así que el veredicto sale de la heurística del motor — el precio por sí solo no decide.",
     "rangeCbet": "Enfrentas una c-bet, la apuesta más frecuente y más amplia del juego.",
-    "rangeTomada": "El villano apostó contra quien tenía la iniciativa (donk o check-raise), una línea típicamente más polarizada."
+    "rangeTomada": "El villano apostó contra quien tenía la iniciativa (donk o check-raise), una línea típicamente más polarizada.",
+    "realEqTitle": "Equity real vs mano mostrada",
+    "realEqTip": "Equity de tu mano contra la mano que {{villain}} mostró en el showdown, calculada carta a carta en esta street. Es un hecho del historial, no una estimación. Sirve para la revisión, no para juzgar la decisión: en la mesa enfrentas el rango completo del oponente, y el veredicto se calcula contra ese rango. Pagar con poca equity contra la mano específica que apareció puede haber sido la jugada correcta contra el rango (y viceversa): juzgar por el resultado es el error que el análisis existe para evitar."
   },
   "controls": {
     "play": "Reproducir",

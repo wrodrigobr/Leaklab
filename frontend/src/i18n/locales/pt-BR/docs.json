@@ -145,7 +145,10 @@
     "resultsgto_interpret": "Quanto maior, mais o resultado está mascarando erros de processo, vencer não valida a jogada. Revise estes spots mesmo quando ganhar.",
     "evloss_measures": "Quantos big blinds você perdeu vs a melhor jogada GTO naquela decisão (preflop).",
     "evloss_interpret": "Transforma \"errado\" em \"você vazou X bb\": quantifica o custo da jogada. Quanto maior, mais EV a decisão deixou na mesa; jogadas corretas ficam em 0. O painel Leak Finder ranqueia seus spots por esse total de bb perdidos.",
-    "p1": "O <strong>Leak ROI</strong> combina a frequência de cada spot de erro com o custo em EV de errar ali, priorizando o que mais pesa no longo prazo. Spots frequentes de custo baixo podem importar mais que spots raros de custo alto, e o ROI captura isso."
+    "p1": "O <strong>Leak ROI</strong> combina a frequência de cada spot de erro com o custo em EV de errar ali, priorizando o que mais pesa no longo prazo. Spots frequentes de custo baixo podem importar mais que spots raros de custo alto, e o ROI captura isso.",
+    "realeq_name": "Equity real vs mão mostrada",
+    "realeq_measures": "Equity da sua mão contra a mão que o oponente revelou no showdown, calculada carta a carta em cada street (aparece no replayer quando exatamente um oponente mostrou as cartas).",
+    "realeq_interpret": "É um fato do histórico, para revisão — não julga a decisão. Na mesa você enfrenta a range inteira do oponente, e o veredito é calculado contra ela; julgar pela mão que apareceu é avaliar pelo resultado."
   },
   "gto_method": {
     "title": "Metodologia de Classificação GTO",

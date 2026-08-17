@@ -672,6 +672,24 @@ export function SidePanels({
                 </div>
               );
             })()}
+            {/* Equity REAL vs a mão mostrada (17/08): fato do showdown, não estimativa. É
+                contexto de REVISÃO, nunca veredito — julgar a decisão pela mão que apareceu
+                é resulting; o veredito continua vindo da range. O tooltip explica isso. */}
+            {(() => {
+              const re = (step as { real_equity_vs_shown?: { equity: number; villain: string; villain_cards: string[] } }).real_equity_vs_shown;
+              if (!re) return null;
+              return (
+                <div className="rounded-lg ring-1 px-2.5 py-2 bg-sky-500/8 ring-sky-500/25"
+                     title={t("card.realEqTip", { villain: re.villain })}>
+                  <p className="font-mono text-[9px] font-bold uppercase tracking-wider mb-0.5 text-sky-300/90">
+                    {t("card.realEqTitle")}
+                  </p>
+                  <p className="text-[11.5px] text-foreground/85 leading-relaxed font-mono">
+                    {re.villain_cards.join(" ")} · {Math.round(re.equity * 100)}%
+                  </p>
+                </div>
+              );
+            })()}
             {/* Sizing do open (Fase 1): tamanho do open preflop do hero vs o padrão. */}
             {(() => {
               const sz = (step as { sizing_advice?: { key: string; status: string; params: Record<string, unknown> } }).sizing_advice;

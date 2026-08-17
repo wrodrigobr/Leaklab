@@ -285,6 +285,9 @@ export interface ReplayStep {
   type: "deal" | "street" | "action" | "showdown";
   desc: string;
   street: string;
+  // Equity real do herói vs a mão que o vilão MOSTROU (fato do showdown; contexto de
+  // revisão, nunca veredito — anexado só quando há exatamente um revelador além do herói)
+  real_equity_vs_shown?: { equity: number; villain: string; villain_cards: string[] };
   seats: Record<string, ReplaySeat>;
   hero: string;
   hero_cards: string[];

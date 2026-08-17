@@ -7,6 +7,21 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(replayer): equity REAL vs a mao mostrada no card, street a street (#replayer #equity)
+
+> Item 2 da deliberacao pos-validacao (17/08): nas maos em que o vilao revelou as cartas, o
+> card de decisao mostra "Equity real vs mao mostrada: 5d2d - 35%" — fato do showdown,
+> calculado por enumeracao exata (eval7) no board da street; preflop pela matriz do motor.
+> O jogador reve o call do turn sabendo que estava com 15% contra a mao real.
+>
+> Fonte unica `leaklab/equity_real.py` (o medidor `validar_equity_com_reveals.py` agora
+> importa de la — regra 5). Pareamento estrito: so com UM revelador alem do heroi (mutacao
+> provou o guarda). Anexado por step de decisao do heroi, nas visoes do aluno E do coach.
+> **Tooltip didatico nas 3 locales** (pedido do dono): explica que e fato, nao estimativa —
+> e que serve para revisao, NUNCA para julgar a decisao (o veredito vem da range; julgar
+> pela mao que apareceu e resulting). Linha na tabela de indicadores do /docs, 3 locales.
+> Provado com maos reais do banco (9h8h vs KK: 22% preflop -> 15% flop -> 100% river).
+
 ### feat(medicao): estimador de equity validado contra 1.082 cartas reveladas -- media calibrada, cauda gorda (#medicao #equity)
 
 > A pergunta aberta desde [[project_cartas_reveladas_no_summary]]: o `estimated_equity` que

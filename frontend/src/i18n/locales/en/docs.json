@@ -145,7 +145,10 @@
     "resultsgto_interpret": "The higher it is, the more results are masking process errors, winning doesn't validate the play. Review these spots even when you win.",
     "evloss_measures": "How many big blinds you lost vs the best GTO play in that decision (preflop).",
     "evloss_interpret": "Turns \"wrong\" into \"you leaked X bb\": it quantifies the cost of the play. The higher, the more EV the decision left on the table; correct plays stay at 0. The Leak Finder panel ranks your spots by this total bb lost.",
-    "p1": "<strong>Leak ROI</strong> combines how often each error spot occurs with the EV cost of getting it wrong there, prioritizing what weighs most over the long run. High-frequency low-cost spots can matter more than rare high-cost spots, and ROI captures that."
+    "p1": "<strong>Leak ROI</strong> combines how often each error spot occurs with the EV cost of getting it wrong there, prioritizing what weighs most over the long run. High-frequency low-cost spots can matter more than rare high-cost spots, and ROI captures that.",
+    "realeq_name": "Real equity vs shown hand",
+    "realeq_measures": "Your hand’s equity against the hand the opponent revealed at showdown, computed card by card on each street (shown in the replayer when exactly one opponent showed their cards).",
+    "realeq_interpret": "A fact from the history, for review — it does not judge the decision. At the table you face the opponent’s whole range, and the verdict is computed against it; judging by the hand that showed up is results-oriented thinking."
   },
   "gto_method": {
     "title": "GTO Classification Methodology",

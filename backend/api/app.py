@@ -5200,6 +5200,37 @@ def coach_student_study_plan(student_id):
         return jsonify({'error': str(e)}), 500
 
 
+def _attach_equity_real_vs_mostrada(replay, hand):
+    """Equity REAL do herói vs a mão que o vilão mostrou, por street, nos steps de decisão.
+
+    Item 2 da deliberação de 17/08 (após a validação com 1.082 medições): a equity estimada
+    é calibrada na média mas tem cauda gorda no river — a real vs a mão revelada é o
+    antídoto pedagógico na revisão ("você pagou o turn com 5% contra a mão dele"). É
+    CONTEXTO, nunca veredito: julgar a decisão pela mão mostrada é resulting; o veredito
+    continua vindo da range. Pareamento estrito: só com UM revelador além do herói
+    (`revelador_unico`) — vs 2+ mãos o número não significa nada. Nunca bloqueia o /replay."""
+    try:
+        from leaklab.equity_real import equity_real_por_street, revelador_unico
+        par = revelador_unico(getattr(hand, 'reveals', None) or {}, replay.get('hero') or '')
+        if not par:
+            return
+        nome, vilao_cartas = par
+        por_street = equity_real_por_street(
+            getattr(hand, 'hero_cards', '') or '', vilao_cartas,
+            getattr(hand, 'board', None) or [])
+        if not por_street:
+            return
+        for _st in replay.get('timeline', []):
+            if not _st.get('is_hero'):
+                continue
+            eq = por_street.get((_st.get('street') or '').lower())
+            if eq is not None:
+                _st['real_equity_vs_shown'] = {'equity': eq, 'villain': nome,
+                                               'villain_cards': list(vilao_cartas)}
+    except Exception:
+        pass
+
+
 def _attach_opponent_hud(replay, local_tid, hands=None):
     """HUD de oponente (Fases 2-3): anexa `villain_profile` (arquétipo + stats gateados) e
     `exploit` a cada step do timeline, por lookup do `villain_name` nos opponent_profiles do
@@ -5313,6 +5344,7 @@ def coach_student_replay(student_id, tournament_id, hand_id):
     replay = _build_replay_data(target, hand_decisions, t.get('hero', target.hero))
     # HUD de oponente na visão do COACH — mesma fonte do aluno (perfil + exploit por step).
     _attach_opponent_hud(replay, t['id'], hands=hands)
+    _attach_equity_real_vs_mostrada(replay, target)
     # Attach coach annotations for decisions in this hand
     db_decisions = _db_all_c
     hand_db_decisions = [d for d in db_decisions if str(d.get('hand_id')) == str(hand_id)]
@@ -6157,6 +6189,7 @@ def get_replay(tournament_id, hand_id):
     # HUD Fase 2-3: perfil do vilão + exploit por step. t['id'] = id LOCAL (chave do
     # opponent_profiles). Mesma fonte do aluno e do coach (helper compartilhado).
     _attach_opponent_hud(replay, t['id'], hands=hands)
+    _attach_equity_real_vs_mostrada(replay, target)
 
     _replay_cache_set(_cache_key, dict(replay))
 

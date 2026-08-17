@@ -25,63 +25,16 @@ from __future__ import annotations
 
 import os
 import sys
-from itertools import combinations
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
-import eval7                                                        # noqa: E402
-
 from database.schema import get_conn, init_db                       # noqa: E402
 from leaklab.equity import equity_vs_hand                           # noqa: E402
+from leaklab.equity_real import cartas as _cartas, equity_exata     # noqa: E402  (fonte unica)
 from leaklab.gto_utils import hand_to_type                          # noqa: E402
 from leaklab.parser import parse_hand_history                       # noqa: E402
 
 _N_POR_STREET = {'preflop': 0, 'flop': 3, 'turn': 4, 'river': 5}
-
-
-def _cartas(txt) -> list:
-    """'Jd6d' / 'Jd 6d' / ['Jd','6d'] / '["Kh", "Qh"]' -> lista de cartas.
-
-    Tres dialetos REAIS do banco: hero_cards vem COLADO (a licao de 28/07), reveals vem
-    lista, e `decisions.board` vem string JSON — descoberto aqui mesmo, quando 108 decisoes
-    postflop sumiram caladas com equity_none e a contabilidade de descartes apontou o board."""
-    if isinstance(txt, list):
-        s = ''.join(txt)
-    else:
-        s = (txt or '').strip()
-        if s.startswith('['):
-            try:
-                import json
-                return [str(c) for c in json.loads(s)]
-            except Exception:
-                return []
-        s = s.replace(' ', '')
-    return [s[i:i + 2] for i in range(0, len(s) - 1, 2)]
-
-
-def equity_exata(hero: list, vilao: list, board: list) -> float | None:
-    """Equity EXATA de hero vs a mao revelada, enumerando todos os runouts."""
-    conhecidas = hero + vilao + board
-    if len(set(conhecidas)) != len(conhecidas):
-        return None                                    # carta repetida: dado podre, fora
-    try:
-        h = [eval7.Card(c) for c in hero]
-        v = [eval7.Card(c) for c in vilao]
-        b = [eval7.Card(c) for c in board]
-    except Exception:
-        return None
-    resto = [c for c in eval7.Deck().cards if str(c) not in conhecidas]
-    faltam = 5 - len(b)
-    ganha = empata = total = 0
-    for extra in (combinations(resto, faltam) if faltam else ((),)):
-        full = b + list(extra)
-        sh, sv = eval7.evaluate(h + full), eval7.evaluate(v + full)
-        total += 1
-        if sh > sv:
-            ganha += 1
-        elif sh == sv:
-            empata += 1
-    return (ganha + 0.5 * empata) / total if total else None
 
 
 def _ancoras():
