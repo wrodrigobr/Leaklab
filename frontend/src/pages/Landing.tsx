@@ -78,7 +78,7 @@ function Navbar() {
         <nav className="flex items-center gap-3">
           <Link
             to="/login"
-            className="font-mono text-xs text-prose-fg hover:text-foreground transition-colors uppercase tracking-widest-2"
+            className="inline-flex items-center py-2 font-mono text-xs text-prose-fg hover:text-foreground transition-colors uppercase tracking-widest-2"
           >
             {t("nav.login")}
           </Link>
@@ -138,7 +138,9 @@ function HeroSection() {
             </div>
           </div>
 
-          <h1 className="font-heading text-4xl font-bold leading-[1.06] tracking-tight text-foreground sm:text-5xl md:text-6xl">
+          {/* leading TAMBÉM nas variantes: text-5xl/6xl trazem line-height 1 embutido e, por
+              virem na camada do breakpoint, ganhavam do leading base — medido vivo: 60/60. */}
+          <h1 className="font-heading text-4xl font-bold leading-[1.06] tracking-tight text-foreground sm:text-5xl sm:leading-[1.06] md:text-6xl md:leading-[1.06]">
             {t("hero.title1")}<br />
             <span className="text-primary">{t("hero.title2")}</span>
           </h1>
@@ -200,7 +202,9 @@ function SupportedNetworksSection() {
     <section className="border-b border-border bg-hud-surface/30">
       <div className="mx-auto max-w-6xl px-6 py-10">
         <div className="mb-6 flex flex-col gap-1 sm:flex-row sm:items-baseline sm:justify-between">
-          <h2 className="font-heading text-lg font-bold text-foreground">{t("networks.heading")}</h2>
+          {/* h3, não h2: é rótulo de faixa, não título de seção — como h2 de 18px ele quebrava
+              a escala (as seções reais são 30px, o fechamento 36px). Avaliação de 06/08, item 3. */}
+          <h3 className="font-heading text-lg font-bold text-foreground">{t("networks.heading")}</h3>
           <p className="font-mono text-[10px] uppercase tracking-widest-2 text-muted-foreground">
             {t("networks.eyebrow")}
           </p>
@@ -228,7 +232,7 @@ function SupportedNetworksSection() {
           <button
             type="button"
             onClick={() => setShowGuide(true)}
-            className="inline-flex shrink-0 items-center gap-1.5 text-xs font-medium text-primary underline-offset-4 transition-colors hover:text-primary-glow hover:underline"
+            className="inline-flex shrink-0 items-center gap-1.5 py-1.5 text-xs font-medium text-primary underline-offset-4 transition-colors hover:text-primary-glow hover:underline"
           >
             <HelpCircle className="size-3.5" aria-hidden />
             {to("exportGuide.trigger")}
@@ -329,7 +333,7 @@ function DiferencialSection() {
           <p className="font-mono text-[10px] uppercase tracking-widest-2 text-primary">
             {t("prova.eyebrow")}
           </p>
-          <h2 id="landing-prova-heading" className="font-heading text-2xl font-bold leading-snug text-foreground">
+          <h2 id="landing-prova-heading" className="font-heading text-2xl font-bold leading-snug text-foreground md:text-3xl">
             {t("prova.heading")}
           </h2>
           <p className="text-sm leading-relaxed text-prose-fg">{t("prova.sub")}</p>
@@ -606,15 +610,16 @@ function Footer() {
           {t("footer.copyright")}
         </p>
         <div className="flex items-center gap-4">
+          {/* py-2: alvo de toque ≥24px (WCAG 2.2) — os links tinham 15px de altura no vivo. */}
           <Link
             to="/privacidade"
-            className="font-mono text-[10px] uppercase tracking-widest-2 text-muted-foreground transition-colors hover:text-foreground"
+            className="inline-flex items-center py-2 font-mono text-[10px] uppercase tracking-widest-2 text-muted-foreground transition-colors hover:text-foreground"
           >
             {t("footer.privacy")}
           </Link>
           <Link
             to="/login"
-            className="font-mono text-[10px] uppercase tracking-widest-2 text-muted-foreground transition-colors hover:text-foreground"
+            className="inline-flex items-center py-2 font-mono text-[10px] uppercase tracking-widest-2 text-muted-foreground transition-colors hover:text-foreground"
           >
             {t("footer.login")}
           </Link>

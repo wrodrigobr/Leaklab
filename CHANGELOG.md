@@ -7,6 +7,19 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(landing): itens 3-5 da avaliacao -- escala de H2, alvos de toque, line-height do H1 (#landing)
+
+> Fecha a avaliacao de 06/08 (itens 1+2 sairam hoje mais cedo). Tudo MEDIDO no vivo antes:
+>
+> **3. Escala de H2**: "Importe de onde voce ja joga" (18px) virou h3 — e rotulo de faixa,
+> nao titulo de secao; o H2 do diferencial ganhou md:text-3xl (24 -> 30 no desktop).
+> Escala final: secoes 30px, fechamento 36px.
+> **4. Alvos de toque** (WCAG 2.2, minimo 24px): "Entrar" da nav (16px), "Como exportar suas
+> maos" (16px) e links do rodape (15px) ganharam padding vertical — todos >= 27px.
+> **5. H1 60/60 no desktop**: o `leading-[1.06]` base PERDIA para o line-height 1 embutido de
+> `sm:text-5xl`/`md:text-6xl` (camada do breakpoint vence a base) — leading repetido nas
+> variantes. E o motivo de o item ter "parecido pronto" no codigo: medir o vivo pegou.
+
 ### fix(landing): prosa legivel (AA) + lang pt-BR + vitrine no card v2 (#landing)
 
 > Itens 1+2 da avaliacao de 06/08, mais o v2 forcado no sample (decisao do dono):
