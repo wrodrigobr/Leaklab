@@ -346,7 +346,8 @@
     "rangeCbet": "Enfrentas una c-bet, la apuesta más frecuente y más amplia del juego.",
     "rangeTomada": "El villano apostó contra quien tenía la iniciativa (donk o check-raise), una línea típicamente más polarizada.",
     "realEqTitle": "Equity real vs mano mostrada",
-    "realEqTip": "Equity de tu mano contra la mano que {{villain}} mostró en el showdown, calculada carta a carta en esta street. Es un hecho del historial, no una estimación. Sirve para la revisión, no para juzgar la decisión: en la mesa enfrentas el rango completo del oponente, y el veredicto se calcula contra ese rango. Pagar con poca equity contra la mano específica que apareció puede haber sido la jugada correcta contra el rango (y viceversa): juzgar por el resultado es el error que el análisis existe para evitar."
+    "realEqTip": "Equity de tu mano contra la mano que {{villain}} mostró en el showdown, calculada carta a carta en esta street. Es un hecho del historial, no una estimación. Sirve para la revisión, no para juzgar la decisión: en la mesa enfrentas el rango completo del oponente, y el veredicto se calcula contra ese rango. Pagar con poca equity contra la mano específica que apareció puede haber sido la jugada correcta contra el rango (y viceversa): juzgar por el resultado es el error que el análisis existe para evitar.",
+    "eqLowConfTip": "Equity estimada: no conocemos la mano del oponente, así que el número se calcula contra una mano típica. Validamos el estimador contra 1.082 showdowns reales donde el oponente mostró sus cartas: en promedio acierta, pero en esta street 1 de cada 10 casos diverge {{p90}}+ puntos de la equity real. Trátalo como orden de magnitud, no como número exacto: el veredicto no depende solo de él."
   },
   "controls": {
     "play": "Reproducir",

@@ -144,6 +144,28 @@ export function custoDePagar(
   return Number(spot.facing_to_call_bb ?? spot.facing_bet ?? 0);
 }
 
+// ── Confiança da equity ESTIMADA, por street (17/08) ──────────────────────────────────────────
+//
+// Medida contra 1.082 showdowns reais (backend/scripts/validar_equity_com_reveals.py, mão do
+// vilão revelada no SUMMARY): a MÉDIA por street é calibrada (gap médio ≈ 0), mas a CAUDA
+// cresce — gap p90 do (estimado − real): preflop +0,23 · flop +0,31 · turn +0,49 · river
+// +0,58. O número continua na tela (a média presta); turn e river ganham MOLDURA de baixa
+// confiança: marcador "≈" e tooltip com o número medido. Regra de DISPLAY, não de veredito —
+// o motor já trata equity como insumo secundário (guardas vs-random, teto de fold).
+// Se o estimador mudar, re-rodar o medidor e atualizar estas constantes.
+export const EQUITY_GAP_P90: Record<string, number> = {
+  preflop: 0.23,
+  flop: 0.31,
+  turn: 0.49,
+  river: 0.58,
+};
+
+/** true quando a equity estimada desta street merece a moldura de baixa confiança. */
+export function equityLowConfidence(street: string | null | undefined): boolean {
+  const s = (street ?? "").trim().toLowerCase();
+  return s === "turn" || s === "river";
+}
+
 /** Pot odds exigidas para pagar, em fração. `potBb` já inclui a aposta enfrentada; o custo
  *  entra por fora porque ainda não foi pago. Devolve null quando não há o que pagar. */
 export function potOddsExigidas(

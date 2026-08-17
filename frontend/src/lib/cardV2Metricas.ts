@@ -18,6 +18,7 @@
  *                    dado faltando
  */
 import type { MetricaV2 } from "@/components/replayer/DecisionCardV2";
+import { EQUITY_GAP_P90, equityLowConfidence } from "@/lib/cardLogic";
 
 export interface EntradaMetricas {
   evLossBb?: number | null;
@@ -37,6 +38,8 @@ export interface EntradaMetricas {
   acao?: string | null;
   /** `true` quando o veredito diz que a ação está ok — o EV zero então é informativo, não erro. */
   acaoOk?: boolean;
+  /** Street da decisão — dirige a moldura de confiança da equity (turn/river = "≈"). */
+  street?: string | null;
 }
 
 const MOTIVO_EV: Record<string, { motivo: string; motivoCurto: string }> = {
@@ -69,9 +72,16 @@ export function metricasDoCard(e: EntradaMetricas): {
   // ── Equity ────────────────────────────────────────────────────────────────────────────────
   // Existe em 100% das decisões medidas, mas o `null` é tratado mesmo assim: um dia em que
   // deixar de existir, o card diz "sem dado" em vez de imprimir "NaN%".
+  // Turn/river ganham a moldura de baixa confiança ("≈" + tooltip com o gap p90 medido
+  // contra 1.082 showdowns reais) — ver EQUITY_GAP_P90 em cardLogic.
+  const eqLow = e.equity != null && equityLowConfidence(e.street);
   const equity: MetricaV2 = e.equity != null
-    ? { valor: `${(e.equity * 100).toFixed(1)}%`,
-        tom: e.equity >= 0.55 ? "bom" : e.equity <= 0.35 ? "ruim" : "neutro" }
+    ? { valor: `${eqLow ? "≈ " : ""}${(e.equity * 100).toFixed(1)}%`,
+        tom: e.equity >= 0.55 ? "bom" : e.equity <= 0.35 ? "ruim" : "neutro",
+        ...(eqLow ? { tooltip: "card.eqLowConfTip",
+                      tooltipParams: { p90: Math.round(
+                        (EQUITY_GAP_P90[(e.street ?? "").toLowerCase()] ?? 0.5) * 100) } }
+                  : {}) }
     : { valor: null, motivo: "card.v2SemDado", motivoCurto: "card.v2SemDado" };
 
   // ── Pot odds ──────────────────────────────────────────────────────────────────────────────

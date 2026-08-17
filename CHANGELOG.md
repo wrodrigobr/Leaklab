@@ -7,6 +7,23 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(replayer): moldura de confianca da equity estimada por street -- "=" no turn/river com o numero medido (#replayer #equity)
+
+> O gate que a validacao de ontem justificou. A equity estimada e calibrada NA MEDIA, mas a
+> cauda cresce por street (gap p90 medido contra 1.082 showdowns reais: preflop +0,23 /
+> flop +0,31 / turn +0,49 / river +0,58). O numero NAO some da tela — a media presta; o que
+> muda e a moldura: no turn e river ele vem prefixado com "aproximadamente" e ganha tooltip
+> dizendo, com o numero medido, que 1 em 10 casos diverge 49+/58+ pontos da equity real.
+> "Trate como ordem de grandeza" — regra de DISPLAY, zero mudanca de veredito.
+>
+> Fonte unica no front: `EQUITY_GAP_P90` + `equityLowConfidence` em cardLogic (comentario
+> aponta o medidor; mudou o estimador -> re-mede e atualiza as constantes). Aplicado nas
+> TRES superficies que mostram a equity estimada: math-card (equity vs pot odds), barra de
+> equity postflop e metrica do card v2 (`MetricaV2` ganhou tooltip para valor presente).
+> Multiway fica fora: estimador proprio, disclaimer proprio, e o dataset da medicao e HU.
+> Vitest 356/356; mutacao (moldura desligada) derrubou exatamente os 2 testes do gate;
+> tooltip didatico nas 3 locales.
+
 ### feat(replayer): equity REAL vs a mao mostrada no card, street a street (#replayer #equity)
 
 > Item 2 da deliberacao pos-validacao (17/08): nas maos em que o vilao revelou as cartas, o

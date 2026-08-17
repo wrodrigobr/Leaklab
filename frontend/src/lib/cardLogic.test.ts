@@ -10,9 +10,50 @@ import {
   verdictLevelOrError,
   verdictLevelFromScore,
   decisionSeverity,
+  equityLowConfidence,
+  EQUITY_GAP_P90,
   VERDICT_META,
   VERDICT_LEVELS,
 } from "./cardLogic";
+import { metricasDoCard } from "./cardV2Metricas";
+
+// ── Moldura de confiança da equity por street (17/08, medida contra 1.082 showdowns) ─────
+describe("equityLowConfidence — turn/river ganham a moldura, preflop/flop não", () => {
+  it("turn e river são baixa confiança", () => {
+    expect(equityLowConfidence("turn")).toBe(true);
+    expect(equityLowConfidence("river")).toBe(true);
+    expect(equityLowConfidence(" River ")).toBe(true);
+  });
+  it("preflop e flop seguem sem moldura (média calibrada, cauda menor)", () => {
+    expect(equityLowConfidence("preflop")).toBe(false);
+    expect(equityLowConfidence("flop")).toBe(false);
+    expect(equityLowConfidence(null)).toBe(false);
+    expect(equityLowConfidence(undefined)).toBe(false);
+  });
+  it("as constantes citam a medição (gap p90 cresce por street)", () => {
+    expect(EQUITY_GAP_P90.preflop).toBeLessThan(EQUITY_GAP_P90.flop);
+    expect(EQUITY_GAP_P90.flop).toBeLessThan(EQUITY_GAP_P90.turn);
+    expect(EQUITY_GAP_P90.turn).toBeLessThan(EQUITY_GAP_P90.river);
+  });
+});
+
+describe("metricasDoCard — equity de turn/river sai com ≈ e tooltip; flop sai limpa", () => {
+  it("river: valor prefixado e tooltip com o p90 medido", () => {
+    const m = metricasDoCard({ equity: 0.54, street: "river", acao: "call" });
+    expect(m.equity.valor).toBe("≈ 54.0%");
+    expect(m.equity.tooltip).toBe("card.eqLowConfTip");
+    expect(m.equity.tooltipParams).toEqual({ p90: 58 });
+  });
+  it("flop: sem moldura — o valor é o de sempre", () => {
+    const m = metricasDoCard({ equity: 0.54, street: "flop", acao: "call" });
+    expect(m.equity.valor).toBe("54.0%");
+    expect(m.equity.tooltip).toBeUndefined();
+  });
+  it("sem street (linha antiga): comporta como antes, sem moldura", () => {
+    const m = metricasDoCard({ equity: 0.54, acao: "call" });
+    expect(m.equity.valor).toBe("54.0%");
+  });
+});
 
 // ── FEAT-20: veredito de display em 3 níveis (Correto/Aceitável/Erro) ──────────
 describe("verdictLevel — colapso 4 severidades → 3 níveis", () => {

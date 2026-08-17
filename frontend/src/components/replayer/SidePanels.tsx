@@ -10,7 +10,7 @@ import { PlayingCard } from "@/components/hud/PlayingCard";
 import { parseCards, fmtAction } from "@/components/replayer/replayerFormat";
 import { cn } from "@/lib/utils";
 import { computeEffectiveGtoLabel } from "@/lib/gtoUtils";
-import { livePlayers as computeLivePlayers, isMultiwayPot, isPpMuted, idealActionSource, verdictStrategy, verdictLevel, clampVerdict } from "@/lib/cardLogic";
+import { livePlayers as computeLivePlayers, isMultiwayPot, isPpMuted, idealActionSource, verdictStrategy, verdictLevel, clampVerdict, equityLowConfidence, EQUITY_GAP_P90 } from "@/lib/cardLogic";
 import { leituraDaIniciativa, selectWhy } from "@/lib/replayWhy";
 import { ACTION_COLORS } from "@/lib/actionColors";
 import { coachDashboard, ReplayData, ReplayStep, CoachAnnotation, CoachOverrideLabel } from "@/lib/api";
@@ -358,6 +358,10 @@ export function SidePanels({
 
         // ──────── Pré-cálculos compartilhados (postflop) ────────
         const eq = step.hand_equity ?? null;
+        // Moldura de confiança da equity por street (17/08): turn/river = "≈" + tooltip com o
+        // gap p90 medido contra showdowns reais. Ver EQUITY_GAP_P90 (cardLogic).
+        const eqLowConf = eq != null && equityLowConfidence(step.street);
+        const eqGapP90 = Math.round((EQUITY_GAP_P90[(step.street ?? "").toLowerCase()] ?? 0.5) * 100);
         // #27: equity vs a RFI range real do opener (vs_rfi) — não vs mão aleatória.
         const isVsRange = step.equity_source === "vs_range";
         const poRaw = step.pot_odds_equity ?? null;
@@ -550,10 +554,13 @@ export function SidePanels({
                   <p className="font-mono text-[13px] font-bold text-foreground/80 tabular-nums">{(req! * 100).toFixed(1)}%</p>
                 </div>
                 <div className="text-muted-foreground/50 font-mono text-[11px]">vs</div>
-                <div>
+                {/* Moldura de confiança por street (17/08): "≈" + tooltip com o gap p90 medido
+                    contra 1.082 showdowns reais — turn/river têm cauda gorda. */}
+                <div className={cn(eqLowConf && "cursor-help")}
+                     title={eqLowConf ? t("card.eqLowConfTip", { p90: eqGapP90 }) : undefined}>
                   <p className="font-mono text-[10px] text-muted-foreground uppercase">Equity</p>
                   <p className={cn("font-mono text-[13px] font-bold tabular-nums", !isActionOk ? "text-muted-foreground/60" : mathCallIsEv ? "text-emerald-400" : "text-red-400")}>
-                    {(eq! * 100).toFixed(1)}%
+                    {eqLowConf ? "≈ " : ""}{(eq! * 100).toFixed(1)}%
                   </p>
                 </div>
                 <div className={cn("ml-auto rounded-md px-2 py-1 font-mono text-[10px] font-bold uppercase tracking-wide", mathBadgeCls)}>
@@ -576,12 +583,13 @@ export function SidePanels({
             </div>
           );
         } else if (isPostflop && eq != null) {
-          // Equity bar (postflop sem pot odds)
+          // Equity bar (postflop sem pot odds) — mesma moldura de confiança por street.
           evidence = (
-            <div>
+            <div className={cn(eqLowConf && "cursor-help")}
+                 title={eqLowConf ? t("card.eqLowConfTip", { p90: eqGapP90 }) : undefined}>
               <div className="flex items-center justify-between mb-1">
                 <span className="font-mono text-[10px] uppercase tracking-wide text-muted-foreground">Equity</span>
-                <span className="font-mono text-[13px] font-bold tabular-nums text-sky-400">{(eq * 100).toFixed(0)}%</span>
+                <span className="font-mono text-[13px] font-bold tabular-nums text-sky-400">{eqLowConf ? "≈ " : ""}{(eq * 100).toFixed(0)}%</span>
               </div>
               <div className="h-1.5 rounded-full bg-border/50 overflow-hidden">
                 <div className="h-full rounded-full bg-sky-500 transition-all" style={{ width: `${(eq * 100).toFixed(1)}%` }} />
@@ -1195,6 +1203,7 @@ export function SidePanels({
                   requeridoImplicito: reqImplicit,
                   acao: step.action,
                   acaoOk: isActionOk,
+                  street: step.street,
                 })}
                 estrategia={(() => {
                   if (verdictStrat.length)

@@ -43,6 +43,10 @@ export interface MetricaV2 {
   tom?: "neutro" | "bom" | "ruim";
   /** Rótulo alternativo: o mesmo slot muda de nome quando muda de significado. */
   rotulo?: string | null;
+  /** Tooltip para valor PRESENTE mas com ressalva (ex.: equity de turn/river, cuja moldura
+   *  de baixa confiança vem da medição contra showdowns reais). Chave i18n + params. */
+  tooltip?: string | null;
+  tooltipParams?: Record<string, unknown>;
 }
 
 export interface LinhaEstrategia {
@@ -105,7 +109,8 @@ function Metrica({ rotulo, m }: { rotulo: string; m: MetricaV2 }) {
         </div>
       ) : (
         <div className={cn("font-mono text-[15px] font-bold tabular-nums",
-                           TOM_CLS[m.tom ?? "neutro"])}>
+                           TOM_CLS[m.tom ?? "neutro"], m.tooltip && "cursor-help")}
+             title={m.tooltip ? t(m.tooltip, m.tooltipParams) : undefined}>
           {m.valor}
         </div>
       )}
