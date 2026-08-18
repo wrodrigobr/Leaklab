@@ -177,6 +177,25 @@ export default function LeakTrainer() {
     try { localStorage.setItem("leaktrainer_grind", String(next)); } catch { /* quota */ }
     return next;
   });
+  // ── TURBO (Fase 3): timebank por decisão DENTRO do grind ───────────────────────────────────
+  // 10s por decisão; estourou = conta como erro no recap (jogado "⏱") e avança SEM gradear —
+  // gradear uma resposta que o jogador não deu poluiria a estatística persistente com uma
+  // ação fabricada. O turbo treina RITMO; o veredito continua sendo só de resposta real.
+  const TURBO_SECONDS = 10;
+  const [turboMode, setTurboMode] = useState<boolean>(
+    () => localStorage.getItem("leaktrainer_turbo") === "true");
+  const turboRef = useRef(turboMode);
+  const toggleTurbo = () => setTurboMode((v) => {
+    const next = !v; turboRef.current = next;
+    try { localStorage.setItem("leaktrainer_turbo", String(next)); } catch { /* quota */ }
+    return next;
+  });
+  const [turboLeft, setTurboLeft] = useState<number | null>(null);
+  const turboIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const stopTurbo = () => {
+    if (turboIntervalRef.current) { clearInterval(turboIntervalRef.current); turboIntervalRef.current = null; }
+    setTurboLeft(null);
+  };
   // Flash do grind: ✓/✗ + a ação certa, por ~0,7s (acerto) / ~1,5s (erro). null = sem flash.
   const [grindFlash, setGrindFlash] = useState<{ ok: boolean; best: string } | null>(null);
   const grindTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -360,6 +379,7 @@ export default function LeakTrainer() {
   // Avança o grind: consome o pré-carregado (instantâneo) ou busca na hora.
   const advanceGrind = () => {
     if (grindTimerRef.current) { clearTimeout(grindTimerRef.current); grindTimerRef.current = null; }
+    stopTurbo();
     setGrindFlash(null);
     if (totalDone >= sessionSize) { setPhase("summary"); return; }
     const gate = prefetchGateRef.current;
@@ -378,6 +398,28 @@ export default function LeakTrainer() {
     }
     loadNext();
   };
+
+  // Timebank do turbo: nasce com a pergunta, morre com a resposta (submit) ou o avanço.
+  // Estouro = erro de RITMO no recap (jogado "⏱"), sem gradear — resposta fabricada não
+  // entra na estatística. Range_probe/protocolo/mão-inteira ficam fora, como no grind.
+  useEffect(() => {
+    // A FASE filtra a sondagem (probe ≠ question); vetar por `spot.range_probe` era pular o
+    // spot inteiro — o mesmo spot VIRA pergunta depois da sondagem, e o turbo nunca armava.
+    if (phase !== "question" || !grindRef.current || !turboRef.current || planRef.current
+        || fhRef.current || !spot) return;
+    const t0 = Date.now();
+    setTurboLeft(TURBO_SECONDS);
+    turboIntervalRef.current = setInterval(() => {
+      const restam = TURBO_SECONDS - (Date.now() - t0) / 1000;
+      if (restam > 0) { setTurboLeft(Math.ceil(restam)); return; }
+      stopTurbo();
+      setGrindMisses((m) => [...m, { label: labelFor(spot), hand: spot.hand || "", played: "⏱", best: "—" }]);
+      setTotalDone((n) => n + 1); setStreak(0);
+      advanceGrind();
+    }, 100);
+    return stopTurbo;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase, spotSeq, turboMode, grindMode]);
 
   // seletor de tipo de spot: fixa o foco e começa a lição (o usuário escolhe, não é só aleatório)
   const startFocus = (f: string) => {
@@ -447,6 +489,7 @@ export default function LeakTrainer() {
 
   const submit = async (action: string) => {
     if (!spot || phase !== "question" || submitting || grindFlash) return;
+    stopTurbo();   // resposta dada: o timebank desta decisão morre aqui
     setSelected(action); setSubmitting(true);
     // MÃO INTEIRA: corrige o PASSO pela porta própria (ref opaco; a verdade fica no servidor)
     // e adapta a resposta ao contrato do card. Sem grind, sem protocolo, sem XP por enquanto.
@@ -704,6 +747,17 @@ export default function LeakTrainer() {
     </button>
   ) : null;
 
+  // Pill do timebank do turbo — overlay único nas duas cascas, como o flash.
+  const turboPill = (turboLeft != null && phase === "question") ? (
+    <div className={cn(
+      "fixed left-1/2 top-[calc(3.4rem+env(safe-area-inset-top))] z-[70] -translate-x-1/2",
+      "rounded-full px-3 py-1 font-mono text-[11px] font-bold tabular-nums ring-1 backdrop-blur",
+      turboLeft <= 3 ? "bg-red-500/20 text-red-300 ring-red-500/50 animate-pulse"
+                     : "bg-background/80 text-foreground ring-border")}>
+      ⏱ {turboLeft}s
+    </div>
+  ) : null;
+
   // ── MÃO INTEIRA: a LINHA da mão até aqui (narração anonimizada) ────────────────────────────
   // Corte anti-spoiler: da street ATUAL só aparece o que veio ANTES da decisão em cena — a
   // ação que o herói historicamente jogou é exatamente a resposta da pergunta. Streets
@@ -828,6 +882,7 @@ export default function LeakTrainer() {
       <div ref={rootRef} className="h-dvh relative overflow-hidden hud-scanline"
         style={{ background: "radial-gradient(ellipse at 50% 45%, #14223a 0%, #080f1c 100%)" }}>
         {grindFlashOverlay}
+        {turboPill}
         {fhNarracaoStrip}
         <div className="absolute inset-0 flex items-center justify-center p-0.5">
           <div className="h-full w-auto max-w-full mx-auto" style={{ aspectRatio: "1160 / 710" }}>
@@ -941,6 +996,7 @@ export default function LeakTrainer() {
   return (
     <div ref={rootRef} className="h-dvh overflow-hidden bg-background hud-scanline flex flex-col">
       {grindFlashOverlay}
+      {turboPill}
       {fhNarracaoStrip}
       {!isFull && <HudHeader />}
       <main className="flex-1 min-h-0 mx-auto flex w-full max-w-[1500px] flex-col px-4 py-3 md:px-8 animate-fade-in">
@@ -1308,6 +1364,23 @@ export default function LeakTrainer() {
                       {grindMode ? t("leakTrainer.grind.on") : t("leakTrainer.grind.off")}
                     </span>
                   </button>
+                  {/* TURBO (Fase 3): timebank de 10s por decisão, só faz sentido DENTRO do grind */}
+                  {grindMode && (
+                    <button onClick={toggleTurbo}
+                      className={cn(
+                        "flex w-full items-center justify-between rounded-lg border px-3 py-2 text-left transition-colors",
+                        turboMode ? "border-red-500/50 bg-red-500/10" : "border-border bg-background/60 hover:border-red-500/40",
+                      )}>
+                      <span>
+                        <span className="block text-[13px] font-bold text-foreground">⏱ {t("leakTrainer.grind.turboTitulo")}</span>
+                        <span className="block text-[10.5px] text-muted-foreground">{t("leakTrainer.grind.turboDesc")}</span>
+                      </span>
+                      <span className={cn("font-mono text-[10px] font-bold uppercase",
+                                          turboMode ? "text-red-400" : "text-muted-foreground")}>
+                        {turboMode ? t("leakTrainer.grind.on") : t("leakTrainer.grind.off")}
+                      </span>
+                    </button>
+                  )}
                   <button onClick={() => startFocus("adaptive")}
                     className="w-full rounded-lg border border-border bg-background/60 px-3 py-2 text-left text-[13px] text-foreground transition-colors hover:border-amber-500/40">
                     {t("leakTrainer.picker.adaptive")}

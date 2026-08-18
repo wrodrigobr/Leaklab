@@ -333,7 +333,9 @@
       "on": "ligado",
       "off": "desligado",
       "certoEra": "certo era",
-      "errosTitulo": "Erros da sessão ({{count}}) — revise um a um"
+      "errosTitulo": "Erros da sessão ({{count}}) — revise um a um",
+      "turboTitulo": "Turbo (10s por decisão)",
+      "turboDesc": "Timebank: estourou o tempo, conta como erro de ritmo no relatório"
     },
     "rangeClasses": {
       "titulo": "Range por classe de mão",

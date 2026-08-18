@@ -7,6 +7,22 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(trainer): TURBO no grind + fila das lacunas da mao inteira (fecha a Fase 3) (#trainer)
+
+> **Turbo**: timebank de 10s por decisao DENTRO do grind (toggle proprio, so aparece com o
+> grind ligado). Estourou = erro de RITMO no recap ("⏱ → —") e avanca SEM gradear — gradear
+> resposta que o jogador nao deu poluiria a estatistica persistente com acao fabricada.
+> Bug pego ao vivo: o guard `spot.range_probe` pulava o spot INTEIRO, mas o mesmo spot VIRA
+> pergunta depois da sondagem — o turbo nunca armava; a FASE ja filtra. Verificado no
+> navegador: pill 10s -> estouro -> recap com 3 timeouts -> rearma no proximo.
+>
+> **Fila**: `scripts/enqueue_mao_completa_gaps.py` enfileira o solve das streets que faltam
+> nas maos a <=1 street de virarem jogaveis (228 medidas; 180 re-solves de no que existe mas
+> nao grada hand-aware). Hash pela 1a variante de `_hashes_da_linha` (a que o resolver
+> procura primeiro — outra chave seria gravar com uma e procurar com outra); retorno do
+> enqueue CONFERIDO (regra 6). Aplicado em prod: fila 0 -> 154 pending + consumer drenando.
+> O acervo da mao inteira cresce de 167 passivamente; re-medir depois do drain.
+
 ### feat(trainer): MAO COMPLETA heads-up -- replay real, decisao por street (Fase 3) (#trainer #gto)
 
 > Re-medido em prod antes de construir (os numeros de 02/08 estavam velhos): 673 maos 100%
