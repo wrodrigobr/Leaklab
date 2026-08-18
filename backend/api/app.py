@@ -3255,6 +3255,64 @@ def player_meta_semanal():
     return jsonify({'ok': True, 'meta_semanal': meta_semanal_de(g.user_id, tz)})
 
 
+@app.route('/player/leaktrainer/full-hand/next', methods=['POST'])
+@require_auth
+def leaktrainer_full_hand_next():
+    """Mão INTEIRA heads-up (Fase 3): sorteia uma mão real jogável ponta a ponta do acervo
+    compartilhado. Payload anonimizado POR CONSTRUÇÃO (test_mao_completa varre e falha se
+    vazar identificador); `chave` de dedup é hash opaco. Pro, como o Ghost (mão real)."""
+    from database.repositories import PLAN_LIMITS
+    from leaklab import mao_completa as mc
+    plan = (getattr(g, 'user', None) or {}).get('plan', 'free')
+    gate_active, _ = _training_gate_status()
+    if gate_active and not PLAN_LIMITS.get(plan, PLAN_LIMITS['free']).get('ghost', False):
+        return jsonify({'hand': None, 'requires_pro': True, 'feature': 'full_hand'}), 200
+    body = request.get_json(force=True) or {}
+    evitar = {str(x) for x in (body.get('evitar') or [])[:300]}
+    import random as _r
+    linhas, chave = mc.mao_jogavel(_resolve_best_action_from_node, _r.Random(), evitar)
+    if not linhas:
+        return jsonify({'hand': None})
+    payload = mc.montar_mao(linhas, *chave)
+    if not payload:
+        return jsonify({'hand': None})
+    payload['chave'] = mc.chave_opaca(*chave)
+    return jsonify({'hand': payload})
+
+
+@app.route('/player/leaktrainer/full-hand/grade', methods=['POST'])
+@require_auth
+def leaktrainer_full_hand_grade():
+    """Corrige UM passo da mão inteira por `grade_drill_action` (fonte única do Ghost).
+    Sem SRS: o SRS é do Ghost do DONO da mão. Resposta com whitelist de campos — o veredito
+    não pode virar a porta por onde a identidade vaza."""
+    from leaklab import mao_completa as mc
+    body = request.get_json(force=True) or {}
+    try:
+        ref = int(body.get('ref') or 0)
+    except (TypeError, ValueError):
+        ref = 0
+    action = (body.get('action') or '').lower()
+    if not ref or not action:
+        return jsonify({'found': False}), 400
+    try:
+        res = mc.corrigir_passo(ref, action, grade_drill_action)
+    except Exception:
+        logger.exception('full-hand/grade falhou (user=%s ref=%s)', g.user_id, ref)
+        res = None
+    if res is None:
+        return jsonify({'found': False}), 404
+    # Estatística persistente do card do catálogo — mesma porta dos outros treinos.
+    try:
+        from database.repositories import record_training_attempt
+        record_training_attempt(g.user_id, 'fh:full_hand', bool(res.get('is_correct')))
+    except Exception:
+        logger.exception('full-hand: record_training_attempt falhou (user=%s)', g.user_id)
+    permitidos = ('is_correct', 'gto_tier', 'mixed', 'best_action', 'gto_freqs',
+                  'validation_source', 'gto_off_tree', 'new_action', 'gto_freq')
+    return jsonify({'found': True, **{k: res.get(k) for k in permitidos if k in res}})
+
+
 @app.route('/player/leaktrainer/range-classes', methods=['POST'])
 @require_auth
 def leaktrainer_range_classes():

@@ -18,7 +18,7 @@ import { useTableOrientation } from "@/hooks/use-table-orientation";
 import { useIsLandscapeMobile } from "@/hooks/use-is-landscape-mobile";
 import { leaktrainer, progression } from "@/lib/api";
 import type { LeakTrainerSpot, LeakTrainerGrade, LeakTrainerState, ReplayStep,
-  ProgressionPlan, SessionSize } from "@/lib/api";
+  ProgressionPlan, SessionSize, FullHand } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
 // `probe` = sondagem de range: a tela pergunta a fatia de mãos do VILÃO antes de revelar as
@@ -188,6 +188,12 @@ export default function LeakTrainer() {
   const prefetchRef = useRef<LeakTrainerSpot | null>(null);
   const prefetchGateRef = useRef<{ limit?: boolean; used?: number; cap?: number } | null>(null);
   const prefetchingRef = useRef(false);
+  // ── MÃO INTEIRA HU (Fase 3, 17/08): mão real do acervo compartilhado, decisão por street ──
+  // Payload anonimizado por construção no backend; aqui só existe o hash `chave` p/ dedup.
+  // Full-hand IGNORA o modo grind de propósito: uma mão inteira é estudo, e o veredito por
+  // street é o produto — flash discreto aqui esconderia exatamente o que se veio ver.
+  const fhRef = useRef<{ hand: FullHand; idx: number } | null>(null);
+  const fhServidasRef = useRef<string[]>([]);
   // ── Protocolo de Progressão: sessão com missão + composição 60/25/15 ──
   // Quando `planRef` tem plano, o loadNext puxa do protocolo (intercalando missão/revisão/
   // contraste) em vez do sorteio adaptativo solto. Refs porque o loadNext é useCallback estável.
@@ -247,11 +253,60 @@ export default function LeakTrainer() {
     // grind: zera o recap de erros, o flash e a pré-carga (spot velho não vaza p/ a sessão nova)
     setGrindMisses([]); setGrindFlash(null);
     prefetchRef.current = null; prefetchGateRef.current = null;
+    fhRef.current = null; fhServidasRef.current = [];
     if (grindTimerRef.current) { clearTimeout(grindTimerRef.current); grindTimerRef.current = null; }
     setPhase("intro");   // nova lição começa pela tela de início
   };
 
+  // Spot sintetizado de UM passo da mão inteira, no contrato que a mesa/pergunta já leem.
+  // `vs_position` é heurística DE DESENHO (o gravado não guarda o assento do vilão): herói
+  // nos blinds → vilão no BTN; herói fora → vilão no BB. Não toca veredito nenhum.
+  const fhSpotDoPasso = (hand: FullHand, idx: number): LeakTrainerSpot => {
+    const p = hand.passos[idx];
+    const vs = p.position === "BB" ? "BTN" : "BB";
+    return {
+      kind: p.street === "preflop" ? "preflop" : "postflop",
+      category: "fh:full_hand",
+      fh_ref: p.ref, fh_idx: idx, fh_total: hand.passos.length,
+      street: p.street, position: p.position, vs_position: vs,
+      stack_bb: p.stack_bb ?? 30, facing_size_bb: p.facing_bb, facing_size: p.facing_bb,
+      pot_bb: p.pot_bb,
+      board: p.board, board_cards: p.board_cards,
+      hand: hand.hero_hand.join(""), hero_hand: hand.hero_hand, hero_cards: hand.hero_cards,
+      options: p.options, xp_value: 0,
+    } as unknown as LeakTrainerSpot;
+  };
+
+  const startFullHand = useCallback(async () => {
+    setSpotSeq((n) => n + 1);
+    setPhase("loading"); setSelected(null); setGrade(null); setShowRange(false);
+    try {
+      const r = await leaktrainer.fullHandNext(fhServidasRef.current);
+      if (r.requires_pro) { setGateInfo({}); setPhase("paywall"); return; }
+      if (!r.hand || !r.hand.passos?.length) { setPhase("empty"); return; }
+      fhServidasRef.current = [...fhServidasRef.current, r.hand.chave].slice(-200);
+      fhRef.current = { hand: r.hand, idx: 0 };
+      setSpot(fhSpotDoPasso(r.hand, 0));
+      setPhase("question");
+    } catch { setPhase("error"); }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const loadNext = useCallback(async () => {
+    // MÃO INTEIRA: o "próximo" é o próximo PASSO da mesma mão; acabou a mão, vem outra.
+    if (fhRef.current) {
+      const { hand, idx } = fhRef.current;
+      if (idx + 1 < hand.passos.length) {
+        fhRef.current = { hand, idx: idx + 1 };
+        setSpotSeq((n) => n + 1);
+        setSelected(null); setGrade(null); setShowRange(false);
+        setSpot(fhSpotDoPasso(hand, idx + 1));
+        setPhase("question");
+      } else {
+        startFullHand();
+      }
+      return;
+    }
     // Sobe a cada exercício carregado. Serve de `key` para os drills que guardam estado próprio:
     // a categoria sozinha não serve porque ela REPETE (são ~40 combinações de posição/família), e
     // num repique o React reusaria a instância e o exercício novo nasceria já corrigido.
@@ -329,7 +384,11 @@ export default function LeakTrainer() {
     planRef.current = null; setPlan(null); doneRef.current = {};   // sai do protocolo
     servidasRef.current = [];                                      // sessao nova, baralho cheio
     setGrindMisses([]); prefetchRef.current = null; prefetchGateRef.current = null;
-    focusRef.current = f; setFocus(f); loadNext();
+    fhRef.current = null;                                          // sai da mão inteira
+    focusRef.current = f; setFocus(f);
+    // Mão inteira tem fluxo próprio (multi-decisão): roteia para o /full-hand, não o /next.
+    if (f.startsWith("fh:")) { fhServidasRef.current = []; startFullHand(); return; }
+    loadNext();
   };
 
   // Protocolo: abre a sessão com a duração escolhida na hora (curta/média/longa).
@@ -389,6 +448,32 @@ export default function LeakTrainer() {
   const submit = async (action: string) => {
     if (!spot || phase !== "question" || submitting || grindFlash) return;
     setSelected(action); setSubmitting(true);
+    // MÃO INTEIRA: corrige o PASSO pela porta própria (ref opaco; a verdade fica no servidor)
+    // e adapta a resposta ao contrato do card. Sem grind, sem protocolo, sem XP por enquanto.
+    const fhCur = fhRef.current;
+    if (fhCur && (spot as { fh_ref?: number }).fh_ref) {
+      try {
+        const r = await leaktrainer.fullHandGrade((spot as unknown as { fh_ref: number }).fh_ref, action);
+        if (!r.found) { setPhase("error"); return; }
+        const strat = Object.entries(r.gto_freqs || {})
+          .map(([a, f]) => ({ action: a, freq: f })).sort((x, y) => y.freq - x.freq);
+        setGrade({
+          is_correct: !!r.is_correct, gto_tier: (r.gto_tier as LeakTrainerGrade["gto_tier"]) || "error",
+          mixed: !!r.mixed, best_action: r.best_action || "", new_action: r.new_action || action,
+          gto_freq: r.gto_freq ?? 0, gto_strategy: strat,
+          recommended: r.best_action ? [r.best_action] : [],
+          hand_freq: {}, xp_awarded: 0,
+        } as unknown as LeakTrainerGrade);
+        setTotalDone((n) => n + 1);
+        if (r.is_correct) { setTotalCorrect((n) => n + 1); setStreak((s) => s + 1); } else setStreak(0);
+        setSessionStats((s) => {
+          const c = s["fh:full_hand"] || { label: t("leakTrainer.catalogo.full_hand"), hits: 0, misses: 0 };
+          return { ...s, "fh:full_hand": { ...c, hits: c.hits + (r.is_correct ? 1 : 0), misses: c.misses + (r.is_correct ? 0 : 1) } };
+        });
+        setPhase("feedback");
+      } catch { setPhase("error"); } finally { setSubmitting(false); }
+      return;
+    }
     try {
       const g = await leaktrainer.grade(spot, action, origemRef.current);
       setGrade(g);
@@ -619,6 +704,50 @@ export default function LeakTrainer() {
     </button>
   ) : null;
 
+  // ── MÃO INTEIRA: a LINHA da mão até aqui (narração anonimizada) ────────────────────────────
+  // Corte anti-spoiler: da street ATUAL só aparece o que veio ANTES da decisão em cena — a
+  // ação que o herói historicamente jogou é exatamente a resposta da pergunta. Streets
+  // passadas aparecem inteiras (a mão seguiu como foi jogada; o replay é honesto sobre isso).
+  // Overlay único nas DUAS cascas, como o flash do grind (feature numa casca só = metade).
+  const fhNarracaoStrip = (() => {
+    const fh = fhRef.current;
+    if (!fh || !spot || !(spot as { fh_ref?: number }).fh_ref) return null;
+    if (phase !== "question" && phase !== "feedback") return null;
+    const { hand, idx } = fh;
+    const cur = hand.passos[idx];
+    const ordem = ["preflop", "flop", "turn", "river"];
+    const k = hand.passos.slice(0, idx + 1).filter((p) => p.street === cur.street).length;
+    const linhas: { st: string; acs: typeof hand.narracao[string] }[] = [];
+    for (const st of ordem.slice(0, ordem.indexOf(cur.street) + 1)) {
+      const acs = hand.narracao[st] || [];
+      if (st !== cur.street) { if (acs.length) linhas.push({ st, acs }); continue; }
+      let h = 0; const visiveis: typeof acs = [];
+      for (const a of acs) {
+        if (a.quem === "hero") { h += 1; if (h >= k) break; }
+        visiveis.push(a);
+      }
+      if (visiveis.length) linhas.push({ st, acs: visiveis });
+    }
+    const quem = (q: string) => t(q === "hero" ? "leakTrainer.fh.voce" : "leakTrainer.fh.vilao");
+    const fmtA = (a: { acao: string; valor_bb?: number }) =>
+      `${t(`leakTrainer.fh.acao.${a.acao}`, a.acao)}${a.valor_bb != null ? ` ${a.valor_bb}bb` : ""}`;
+    return (
+      <div className="fixed bottom-[calc(0.75rem+env(safe-area-inset-bottom))] left-1/2 z-[55] w-[min(560px,94vw)] -translate-x-1/2 rounded-xl border border-border bg-background/90 px-3 py-2 shadow-xl backdrop-blur">
+        <div className="mb-1 flex items-center justify-between font-mono text-[9px] uppercase tracking-widest">
+          <span className="text-amber-400">{t("leakTrainer.fh.titulo")}</span>
+          <span className="text-muted-foreground">{t("leakTrainer.fh.decisao", { i: idx + 1, n: hand.passos.length })}</span>
+        </div>
+        {linhas.map(({ st, acs }) => (
+          <div key={st} className="truncate text-[11px] leading-relaxed text-muted-foreground">
+            <span className="font-mono text-[9px] font-bold uppercase text-foreground/70">{st}</span>
+            {" · "}
+            {acs.map((a) => `${quem(a.quem)} ${fmtA(a)}`).join(" · ")}
+          </div>
+        ))}
+      </div>
+    );
+  })();
+
   const freqEntries = grade
     ? Object.entries(grade.hand_freq || {}).filter(([, v]) => v && v > 0.01).sort((a, b) => b[1] - a[1])
     : [];
@@ -699,6 +828,7 @@ export default function LeakTrainer() {
       <div ref={rootRef} className="h-dvh relative overflow-hidden hud-scanline"
         style={{ background: "radial-gradient(ellipse at 50% 45%, #14223a 0%, #080f1c 100%)" }}>
         {grindFlashOverlay}
+        {fhNarracaoStrip}
         <div className="absolute inset-0 flex items-center justify-center p-0.5">
           <div className="h-full w-auto max-w-full mx-auto" style={{ aspectRatio: "1160 / 710" }}>
             <PokerTableV3 step={table.step} hero="Hero" heroCards={cartasVisiveis} bb={table.bb} betUnit="bb" orientation="landscape" fill />
@@ -811,6 +941,7 @@ export default function LeakTrainer() {
   return (
     <div ref={rootRef} className="h-dvh overflow-hidden bg-background hud-scanline flex flex-col">
       {grindFlashOverlay}
+      {fhNarracaoStrip}
       {!isFull && <HudHeader />}
       <main className="flex-1 min-h-0 mx-auto flex w-full max-w-[1500px] flex-col px-4 py-3 md:px-8 animate-fade-in">
         {/* header compacto + tela cheia (header grande do HudLayout causava scroll) */}

@@ -1451,7 +1451,54 @@ export const leaktrainer = {
       method: "POST",
       body: JSON.stringify({ spot }),
     }),
+  /** Mão INTEIRA heads-up (Fase 3): mão real do acervo compartilhado, anonimizada por
+   *  construção. `evitar` = chaves opacas já servidas nesta sessão. */
+  fullHandNext: (evitar: string[] = []) =>
+    request<{ hand: FullHand | null; requires_pro?: boolean }>(
+      "/player/leaktrainer/full-hand/next",
+      { method: "POST", body: JSON.stringify({ evitar }) },
+    ),
+  fullHandGrade: (ref: number, action: string) =>
+    request<FullHandGrade>("/player/leaktrainer/full-hand/grade", {
+      method: "POST",
+      body: JSON.stringify({ ref, action }),
+    }),
 };
+
+/** Um passo (decisão do herói) da mão inteira. `ref` é o id opaco usado na correção. */
+export interface FullHandStep {
+  ref: number;
+  street: string;
+  position: string;
+  stack_bb: number | null;
+  facing_bb: number;
+  pot_bb?: number;
+  board: string[];
+  board_cards: { rank: string; suit: string }[];
+  options: string[];
+}
+export interface FullHandNarr { quem: "hero" | "vilao"; acao: string; valor_bb?: number }
+export interface FullHand {
+  kind: "full_hand";
+  hero_hand: string[];
+  hero_cards: { rank: string; suit: string }[];
+  narracao: Record<string, FullHandNarr[]>;
+  passos: FullHandStep[];
+  total_passos: number;
+  chave: string;
+}
+export interface FullHandGrade {
+  found: boolean;
+  is_correct?: boolean;
+  gto_tier?: string;
+  mixed?: boolean;
+  best_action?: string;
+  new_action?: string;
+  gto_freq?: number;
+  gto_freqs?: Record<string, number>;
+  validation_source?: string;
+  gto_off_tree?: boolean;
+}
 
 /** Linha do painel range-por-classe: peso da classe na range + o que ela faz (freq % por
  *  família de ação, média ponderada pelo peso dos combos). */

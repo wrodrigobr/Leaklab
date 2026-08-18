@@ -247,6 +247,9 @@ CATALOGO_TREINOS = [
     # grupo 'postflop' — catálogos pré-solvados (45 spots validados em prod)
     {'id': 'pf_bb_defense', 'focus': 'cat:pf_bb_defense', 'grupo': 'postflop',    'free': False},
     {'id': 'pf_bb_3bet',    'focus': 'cat:pf_bb_3bet',    'grupo': 'postflop',    'free': False},
+    # Fase 3: mão INTEIRA heads-up — replay real, decisão por street. O focus 'fh:' não passa
+    # pelo /next: o frontend roteia para /full-hand/next (fluxo próprio, multi-decisão).
+    {'id': 'full_hand',     'focus': 'fh:full_hand',      'grupo': 'postflop',    'free': False},
     # grupo 'memorizacao' — fronteira da range na grade (placar próprio do SRS)
     {'id': 'range_grid',    'focus': 'fund:range_grid',   'grupo': 'memorizacao', 'free': True},
 ]
@@ -288,6 +291,8 @@ def _chaves_da_entrada(entry_id: str, key: str) -> bool:
         return key.startswith('vs_rfi:')
     if entry_id == 'fund_vs_3bet':
         return key.startswith('vs_3bet:')
+    if entry_id == 'full_hand':
+        return key.startswith('fh:')
     if entry_id == 'bvb':
         return (key.startswith('rfi:SB') or key.startswith('vs_rfi:SB:BB')
                 or key.startswith('vs_rfi:BB:SB'))

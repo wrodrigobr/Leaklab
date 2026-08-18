@@ -7,6 +7,29 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(trainer): MAO COMPLETA heads-up -- replay real, decisao por street (Fase 3) (#trainer #gto)
+
+> Re-medido em prod antes de construir (os numeros de 02/08 estavam velhos): 673 maos 100%
+> HU no postflop, **167 jogaveis** na regua estrita (hand-aware em TODA street, medido
+> ATRAVES da porta do Ghost, nao por reconstrucao — a 1a rodada usou num_players==2 e achou
+> 56 onde havia 673: numero em contradicao e criterio errado). Fila: 224 maos a 1 street.
+>
+> `mao_completa.py`: selecao SQL (HU por n_active_opponents, >=2 decisoes) +
+> `street_gradeavel_gto` (o seletor replica TODOS os gates do corretor — o 1o probe em prod
+> serviu mao que gradearia 'heuristic' no turn); payload ANONIMIZADO POR CONSTRUCAO (nomes
+> -> hero/vilao, sem tid/hid/data; dedup por hash opaco — `tid:hid` cru seria o proprio
+> vazamento); narracao com valores em bb; pote no ponto da decisao por `_pote_no_meio`
+> (99,6% vs SUMMARY; decisions.pot_size acerta 1,2%), pareado por indice com guarda.
+> Correcao por `grade_drill_action` (fonte unica), sem SRS (SRS e do Ghost do dono).
+> Endpoints /player/leaktrainer/full-hand/{next,grade}; Pro como o Ghost; estatistica em
+> training_skill_progress ('fh:full_hand').
+>
+> Frontend: item "Mao completa (HU)" no catalogo; fluxo intercepta loadNext/submit (passo a
+> passo na mesma mesa), strip de narracao nas DUAS cascas com corte anti-spoiler (da street
+> atual so o que veio ANTES da decisao — a acao jogada E a resposta). Full-hand ignora o
+> grind de proposito. 6 testes + 3 mutacoes de vazamento acusadas; probe prod 5/5 maos
+> limpas; ciclo completo verificado no navegador (1/2 -> 2/2 -> mao nova).
+
 ### feat(trainer): painel RANGE POR CLASSE nos spots postflop (#trainer #gto)
 
 > A hand_table de cada arvore ja guarda a estrategia de TODAS as maos do board; o painel

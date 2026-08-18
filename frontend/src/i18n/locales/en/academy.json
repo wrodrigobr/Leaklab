@@ -323,7 +323,9 @@
       "range_grid": "Range boundary",
       "range_gridDesc": "Mark on the grid how far the range goes",
       "stats": "{{n}} hands · {{pct}}%",
-      "statsTip": "Hands trained in this drill and current mastery (decays without practice)."
+      "statsTip": "Hands trained in this drill and current mastery (decays without practice).",
+      "full_hand": "Full hand (HU)",
+      "full_handDesc": "A real hand start to finish: one decision per street, against the line the villain played"
     },
     "grind": {
       "titulo": "Grind pace",
@@ -349,6 +351,21 @@
       "flush_draw": "Flush draw",
       "oesd": "OESD",
       "gutshot": "Gutshot"
+    },
+    "fh": {
+      "titulo": "Full hand",
+      "decisao": "decision {{i}}/{{n}}",
+      "voce": "you",
+      "vilao": "villain",
+      "acao": {
+        "raises": "raises to",
+        "calls": "calls",
+        "bets": "bets",
+        "checks": "checks",
+        "folds": "folds",
+        "all-in": "all-in",
+        "allin": "all-in"
+      }
     }
   },
   "trainAch": {

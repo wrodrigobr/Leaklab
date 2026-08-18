@@ -323,7 +323,9 @@
       "range_grid": "Frontera del rango",
       "range_gridDesc": "Marcar en la grilla hasta dónde llega el rango",
       "stats": "{{n}} manos · {{pct}}%",
-      "statsTip": "Manos entrenadas en este drill y dominio actual (decae sin práctica)."
+      "statsTip": "Manos entrenadas en este drill y dominio actual (decae sin práctica).",
+      "full_hand": "Mano completa (HU)",
+      "full_handDesc": "Una mano real de principio a fin: decisión por street, contra la línea que jugó el villano"
     },
     "grind": {
       "titulo": "Ritmo grind",
@@ -349,6 +351,21 @@
       "flush_draw": "Flush draw",
       "oesd": "OESD",
       "gutshot": "Gutshot"
+    },
+    "fh": {
+      "titulo": "Mano completa",
+      "decisao": "decisión {{i}}/{{n}}",
+      "voce": "tú",
+      "vilao": "villano",
+      "acao": {
+        "raises": "sube a",
+        "calls": "paga",
+        "bets": "apuesta",
+        "checks": "pasa",
+        "folds": "foldea",
+        "all-in": "all-in",
+        "allin": "all-in"
+      }
     }
   },
   "trainAch": {
