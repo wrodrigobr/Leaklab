@@ -335,7 +335,8 @@
       "certoEra": "lo correcto era",
       "errosTitulo": "Errores de la sesión ({{count}}) — revisa uno a uno",
       "turboTitulo": "Turbo (10s por decisión)",
-      "turboDesc": "Timebank: si se acaba el tiempo, cuenta como error de ritmo en el informe"
+      "turboDesc": "Timebank: si se acaba el tiempo, cuenta como error de ritmo en el informe",
+      "correto": "Correcto"
     },
     "rangeClasses": {
       "titulo": "Range por clase de mano",

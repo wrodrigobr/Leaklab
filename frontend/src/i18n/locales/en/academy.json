@@ -335,7 +335,8 @@
       "certoEra": "correct was",
       "errosTitulo": "Session mistakes ({{count}}) — review one by one",
       "turboTitulo": "Turbo (10s per decision)",
-      "turboDesc": "Timebank: run out of time and it counts as a pace mistake in the report"
+      "turboDesc": "Timebank: run out of time and it counts as a pace mistake in the report",
+      "correto": "Correct"
     },
     "rangeClasses": {
       "titulo": "Range by hand class",

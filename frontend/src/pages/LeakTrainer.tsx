@@ -734,27 +734,42 @@ export default function LeakTrainer() {
   // spot entra sozinho (pré-carregado). Clicar/Enter pula a espera. OVERLAY ÚNICO (fixed) nas
   // DUAS cascas da pergunta (mesa imersiva e painel) — a 1ª versão vivia só na mesa, e a
   // sessão do painel avançava sem flash nenhum: pego na verificação ao vivo, não em teste.
+  // Fundo QUASE OPACO e escuro de propósito: a 1ª versão era translúcida (bg .../20 + blur)
+  // e o verde do flash sumia sobre o feltro verde da mesa — camuflagem perfeita, reportado
+  // como "veredito quase invisível". Sobre o feltro, contraste vem do fundo, não da cor.
   const grindFlashOverlay = (phase === "question" && grindFlash) ? (
     <button onClick={() => advanceGrind()}
       className={cn(
-        "fixed left-1/2 top-1/2 z-[80] -translate-x-1/2 -translate-y-1/2 rounded-2xl px-6 py-4",
-        "font-mono text-sm font-bold uppercase tracking-wider shadow-2xl ring-2 backdrop-blur animate-fade-in",
-        grindFlash.ok
-          ? "bg-emerald-500/20 text-emerald-300 ring-emerald-500/50"
-          : "bg-red-500/20 text-red-300 ring-red-500/50",
+        "fixed left-1/2 top-1/2 z-[80] -translate-x-1/2 -translate-y-1/2 rounded-2xl px-7 py-4",
+        "bg-[#0b1220]/95 font-mono text-lg font-bold uppercase tracking-wider",
+        "shadow-[0_8px_40px_rgba(0,0,0,.7)] ring-2 animate-fade-in",
+        grindFlash.ok ? "text-emerald-300 ring-emerald-400" : "text-red-300 ring-red-400",
       )}>
-      {grindFlash.ok ? "✓" : `✗ · ${t("leakTrainer.grind.certoEra")} ${actLabel(grindFlash.best)}`}
+      {grindFlash.ok
+        ? `✓ ${t("leakTrainer.grind.correto")}`
+        : `✗ ${t("leakTrainer.grind.certoEra")} ${actLabel(grindFlash.best)}`}
     </button>
   ) : null;
 
   // Pill do timebank do turbo — overlay único nas duas cascas, como o flash.
+  // top 5rem: a 1ª versão (3.4rem) ficava ATRÁS do HudHeader sticky (medido: pill topo 54px,
+  // header até 65px) — o contador existia e ninguém via. Fundo quase opaco pela mesma razão
+  // do flash; barra de tempo encolhendo dá leitura sem precisar ler o número.
   const turboPill = (turboLeft != null && phase === "question") ? (
     <div className={cn(
-      "fixed left-1/2 top-[calc(3.4rem+env(safe-area-inset-top))] z-[70] -translate-x-1/2",
-      "rounded-full px-3 py-1 font-mono text-[11px] font-bold tabular-nums ring-1 backdrop-blur",
-      turboLeft <= 3 ? "bg-red-500/20 text-red-300 ring-red-500/50 animate-pulse"
-                     : "bg-background/80 text-foreground ring-border")}>
-      ⏱ {turboLeft}s
+      "fixed left-1/2 top-[calc(5rem+env(safe-area-inset-top))] z-[70] -translate-x-1/2",
+      "w-32 rounded-xl bg-[#0b1220]/95 px-3 py-1.5 text-center ring-2",
+      "shadow-[0_4px_24px_rgba(0,0,0,.6)]",
+      turboLeft <= 3 ? "ring-red-400 animate-pulse" : "ring-amber-400/70")}>
+      <div className={cn("font-mono text-base font-bold tabular-nums",
+                         turboLeft <= 3 ? "text-red-300" : "text-amber-300")}>
+        ⏱ {turboLeft}s
+      </div>
+      <div className="mt-1 h-1 overflow-hidden rounded-full bg-white/10">
+        <div className={cn("h-full rounded-full transition-[width] duration-200",
+                           turboLeft <= 3 ? "bg-red-400" : "bg-amber-400")}
+          style={{ width: `${Math.max(0, (turboLeft / TURBO_SECONDS) * 100)}%` }} />
+      </div>
     </div>
   ) : null;
 

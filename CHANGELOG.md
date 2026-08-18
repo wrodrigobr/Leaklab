@@ -7,6 +7,17 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(trainer): flash do grind e contador do turbo INVISIVEIS -- contraste e posicao (#trainer #frontend)
+
+> Reportado pelo usuario nos dois casos (bug de vitrine, de novo): (1) o flash ✓/✗ era
+> translucido (bg /20 + blur) e o verde sumia SOBRE O FELTRO VERDE da mesa — camuflagem;
+> virou chip com fundo escuro 95% opaco, texto 18px com rotulo ("✓ CORRETO" / "✗ certo era
+> X") e ring forte — sobre feltro, contraste vem do FUNDO, nao da cor. (2) o contador do
+> turbo ficava ATRAS do HudHeader sticky (medido no navegador: pill topo 54px, header ate
+> 65px) — existia e ninguem via; desceu para 5rem, ganhou fundo opaco, numero maior e barra
+> de tempo encolhendo. Verificado por medicao de DOM: pill livre (80px > 65px), bg
+> rgba(11,18,32,.95) nos dois. 357 testes verdes.
+
 ### feat(trainer): TURBO no grind + fila das lacunas da mao inteira (fecha a Fase 3) (#trainer)
 
 > **Turbo**: timebank de 10s por decisao DENTRO do grind (toggle proprio, so aparece com o
