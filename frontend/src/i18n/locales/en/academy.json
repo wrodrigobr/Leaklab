@@ -332,7 +332,7 @@
       "desc": "Warm-up volume: answer by key, next spot instantly, mistakes in the end-of-session report",
       "on": "on",
       "off": "off",
-      "certoEra": "correct was",
+      "certoEra": "Correct play:",
       "errosTitulo": "Session mistakes ({{count}}) — review one by one",
       "turboTitulo": "Turbo (10s per decision)",
       "turboDesc": "Timebank: run out of time and it counts as a pace mistake in the report",

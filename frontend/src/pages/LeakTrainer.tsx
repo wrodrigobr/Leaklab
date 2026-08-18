@@ -741,7 +741,7 @@ export default function LeakTrainer() {
     <button onClick={() => advanceGrind()}
       className={cn(
         "fixed left-1/2 top-1/2 z-[80] -translate-x-1/2 -translate-y-1/2 rounded-2xl px-7 py-4",
-        "bg-[#0b1220]/95 font-mono text-lg font-bold uppercase tracking-wider",
+        "bg-[#0b1220]/95 font-mono text-lg font-bold",
         "shadow-[0_8px_40px_rgba(0,0,0,.7)] ring-2 animate-fade-in",
         grindFlash.ok ? "text-emerald-300 ring-emerald-400" : "text-red-300 ring-red-400",
       )}>

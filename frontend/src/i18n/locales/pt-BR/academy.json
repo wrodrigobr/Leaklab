@@ -332,7 +332,7 @@
       "desc": "Volume de aquecimento: resposta por tecla, próximo spot na hora, erros no relatório do fim",
       "on": "ligado",
       "off": "desligado",
-      "certoEra": "certo era",
+      "certoEra": "Jogada correta:",
       "errosTitulo": "Erros da sessão ({{count}}) — revise um a um",
       "turboTitulo": "Turbo (10s por decisão)",
       "turboDesc": "Timebank: estourou o tempo, conta como erro de ritmo no relatório",
