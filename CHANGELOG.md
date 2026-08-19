@@ -7,6 +7,26 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(training): TRILHA DE TREINO (v2) -- Fase 1 do redesign, em rota propria (#training #frontend)
+
+> O usuario avaliou a tela de Training como "poluida e de dificil entendimento" (diagnostico
+> no codigo: 9 blocos, 5 CTAs para /leak-trainer, 4 sistemas de progresso) e aprovou a
+> proposta da trilha padrao Duolingo (artifact project_redesign_trilha_training, v2 com as
+> medalhas reais). Fase 1: /training-v2 NOVA com a classica INTACTA em /training (convite
+> "Beta" discreto la) — comparaveis lado a lado ate a decisao de promover.
+>
+> A trilha: caminho serpentina de nos = os leaks DO JOGADOR na ordem de EV que o Protocolo
+> ja decide (`progression.status` — zero motor novo). No ativo pulsa em teal com UM CTA
+> (Continuar); dominado = medalha OURO com check; comprovado no jogo = medalha DIAMANTE com
+> selo; bloqueado = medalha com cadeado (AchievementMedal real, emblema por cenario:
+> spade=RFI, shield=defesa, cards=vs3bet); REABERTO por regressao perde o selo e pulsa em
+> vermelho — esconder regressao seria mentir com a trilha. Painel lateral de contexto reage
+> ao clique (criterios do gate via MasteryGate; numeros da prova no comprovado); numeros
+> (streak/XP/ranking) viram barra lateral; Desafio do Dia e portas de Praticar na lateral —
+> nada se perde. Logica pura em lib/trilhaTreino.ts com 5 testes (ordem, reaberto nunca
+> some, dedup ativa/proximas, vazio nunca quebra, emblema por cenario). Verificado ao vivo
+> com dados reais no dev; i18n 3 locales.
+
 ### fix(trainer): flash do grind e contador do turbo INVISIVEIS -- contraste e posicao (#trainer #frontend)
 
 > Reportado pelo usuario nos dois casos (bug de vitrine, de novo): (1) o flash ✓/✗ era

@@ -267,5 +267,45 @@
     },
     "acceptable": "Aceitável, mas não é a linha principal",
     "acceptableCount": "{{n}} decisão foi aceitável, mas não a linha principal."
+  },
+  "trilha": {
+    "eyebrow": "Trilha de treino",
+    "title": "Sua trilha",
+    "subtitle": "Um caminho gerado pelos seus leaks, na ordem do EV que você perde. Um passo por vez.",
+    "beta": "Beta",
+    "convite": "Conheça a nova Trilha de Treino: seu caminho, um botão",
+    "voltarClassica": "Voltar à tela clássica",
+    "unidade": "Em foco agora",
+    "unidadeSub": "Medido no seu jogo: −{{ev}}bb em {{hands}} mãos",
+    "vazia": "Importe torneios para o sistema medir seus leaks e montar a trilha.",
+    "flagComecar": "COMEÇAR",
+    "flagReaberto": "REABRIU",
+    "estado": {
+      "comprovado": "Comprovado ◆",
+      "dominado": "Dominado",
+      "ativo": "Em foco",
+      "bloqueado": "Bloqueado"
+    },
+    "estadoReaberto": "Reabriu no jogo",
+    "maisAdiante": "+{{count}} leaks mais adiante",
+    "statStreak": "dias",
+    "statLiga": "Ranking",
+    "ctx": {
+      "ativo": "Leak em foco",
+      "dominado": "Dominado no treino",
+      "comprovado": "Comprovado no jogo real",
+      "bloqueado": "Próximo da trilha"
+    },
+    "ctxReaberto": "Reabriu por regressão no jogo",
+    "gate": "Critérios de domínio",
+    "provaNums": "Taxa de erro no jogo real: {{antes}}% → {{depois}}%.",
+    "reabertoNota": "A validação no jogo real detectou regressão. O nó volta para a trilha até você reconquistar o selo.",
+    "ctaContinuar": "Continuar",
+    "ctaRevisar": "Revisar no Ghost",
+    "ctaRelatorio": "Ver no relatório",
+    "ctaBloqueado": "Domine o nó atual para destravar",
+    "treinarOutra": "Treinar outra coisa",
+    "praticar": "Praticar",
+    "perfilNota": "Placar, domínio e conquistas: tela clássica"
   }
 }

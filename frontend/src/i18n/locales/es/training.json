@@ -267,5 +267,45 @@
     },
     "acceptable": "Aceptable, pero no es la línea principal",
     "acceptableCount": "{{n}} decisión fue aceptable, pero no la línea principal."
+  },
+  "trilha": {
+    "eyebrow": "Ruta de entrenamiento",
+    "title": "Tu ruta",
+    "subtitle": "Un camino generado por tus leaks, en el orden del EV que pierdes. Un paso a la vez.",
+    "beta": "Beta",
+    "convite": "Conoce la nueva Ruta de Entrenamiento: tu camino, un botón",
+    "voltarClassica": "Volver a la vista clásica",
+    "unidade": "En foco ahora",
+    "unidadeSub": "Medido en tu juego: −{{ev}}bb en {{hands}} manos",
+    "vazia": "Importa torneos para que el sistema mida tus leaks y arme tu ruta.",
+    "flagComecar": "EMPEZAR",
+    "flagReaberto": "REABIERTO",
+    "estado": {
+      "comprovado": "Comprobado ◆",
+      "dominado": "Dominado",
+      "ativo": "En foco",
+      "bloqueado": "Bloqueado"
+    },
+    "estadoReaberto": "Reabierto en juego",
+    "maisAdiante": "+{{count}} leaks más adelante",
+    "statStreak": "días",
+    "statLiga": "Ranking",
+    "ctx": {
+      "ativo": "Leak en foco",
+      "dominado": "Dominado en entrenamiento",
+      "comprovado": "Comprobado en juego real",
+      "bloqueado": "Siguiente de la ruta"
+    },
+    "ctxReaberto": "Reabierto por regresión en juego",
+    "gate": "Criterios de dominio",
+    "provaNums": "Tasa de error en juego real: {{antes}}% → {{depois}}%.",
+    "reabertoNota": "La validación en juego real detectó regresión. El nodo vuelve a la ruta hasta reconquistar el sello.",
+    "ctaContinuar": "Continuar",
+    "ctaRevisar": "Repasar en Ghost",
+    "ctaRelatorio": "Ver el informe",
+    "ctaBloqueado": "Domina el nodo actual para desbloquear",
+    "treinarOutra": "Entrenar otra cosa",
+    "praticar": "Practicar",
+    "perfilNota": "Marcador, dominio y logros: vista clásica"
   }
 }

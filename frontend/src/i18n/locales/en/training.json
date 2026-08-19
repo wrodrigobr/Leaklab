@@ -267,5 +267,45 @@
     },
     "acceptable": "Acceptable, but not the main line",
     "acceptableCount": "{{n}} decision was acceptable, but not the main line."
+  },
+  "trilha": {
+    "eyebrow": "Training path",
+    "title": "Your path",
+    "subtitle": "A path built from your leaks, ordered by the EV you lose. One step at a time.",
+    "beta": "Beta",
+    "convite": "Meet the new Training Path: your journey, one button",
+    "voltarClassica": "Back to classic view",
+    "unidade": "In focus now",
+    "unidadeSub": "Measured in your game: −{{ev}}bb over {{hands}} hands",
+    "vazia": "Import tournaments so the system can measure your leaks and build your path.",
+    "flagComecar": "START",
+    "flagReaberto": "REOPENED",
+    "estado": {
+      "comprovado": "Proven ◆",
+      "dominado": "Mastered",
+      "ativo": "In focus",
+      "bloqueado": "Locked"
+    },
+    "estadoReaberto": "Reopened in game",
+    "maisAdiante": "+{{count}} leaks further ahead",
+    "statStreak": "days",
+    "statLiga": "Ranking",
+    "ctx": {
+      "ativo": "Leak in focus",
+      "dominado": "Mastered in training",
+      "comprovado": "Proven in real games",
+      "bloqueado": "Next on the path"
+    },
+    "ctxReaberto": "Reopened by in-game regression",
+    "gate": "Mastery criteria",
+    "provaNums": "Real-game error rate: {{antes}}% → {{depois}}%.",
+    "reabertoNota": "Real-game validation detected a regression. The node returns to the path until you win the seal back.",
+    "ctaContinuar": "Continue",
+    "ctaRevisar": "Review in Ghost",
+    "ctaRelatorio": "See the report",
+    "ctaBloqueado": "Master the current node to unlock",
+    "treinarOutra": "Train something else",
+    "praticar": "Practice",
+    "perfilNota": "Scoreboard, mastery and achievements: classic view"
   }
 }

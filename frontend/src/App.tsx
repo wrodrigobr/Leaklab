@@ -33,6 +33,7 @@ import PublicCoachProfile from "./pages/PublicCoachProfile.tsx";
 import AdminDashboard from "./pages/admin/AdminDashboard.tsx";
 import GhostTable from "./pages/GhostTable.tsx";
 import Training from "./pages/Training.tsx";
+import TrainingV2 from "./pages/TrainingV2.tsx";
 import Evolution from "./pages/Evolution.tsx";
 import Academy from "./pages/Academy.tsx";
 import AcademyMath from "./pages/AcademyMath.tsx";
@@ -340,6 +341,9 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
+            {/* Trilha (Fase 1 do redesign): página NOVA, a clássica intacta — comparáveis
+                lado a lado até a decisão de promover. Ver project_redesign_trilha_training. */}
+            <Route path="/training-v2" element={<ProtectedRoute><TrainingV2 /></ProtectedRoute>} />
             <Route path="/evolucao" element={<ProtectedRoute><Evolution /></ProtectedRoute>} />
             {/* Retrato congelado — MESMA tela, dado de outro dia. Comparar meses exige a mesma
                 forma, senão o que salta aos olhos é a diferença do desenho, não a do jogo. */}
