@@ -165,7 +165,7 @@ export default function TrainingV2() {
           <Target className="size-5" aria-hidden />
           {n.reaberto ? t("trilha.ctaRetreinar") : t("trilha.ctaTreinarAgora")}
         </Link>
-        <Link to="/leak-trainer"
+        <Link to="/leak-trainer?origem=trilha&vitrine=1"
           className="mt-2 block text-center font-mono text-[10.5px] font-bold uppercase tracking-[0.14em] text-primary/70 hover:text-primary hover:underline">
           {t("trilha.treinarOutra")}
         </Link>

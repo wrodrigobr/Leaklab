@@ -15,7 +15,8 @@
     "title": "Challenge complete!",
     "correct": "Correct",
     "accuracy": "Accuracy",
-    "again": "New challenge"
+    "again": "New challenge",
+    "backAcademy": "Back to Academy"
   },
   "levels": {
     "beginner": "Beginner",
@@ -172,7 +173,10 @@
       "mastery": "Category mastery",
       "finish": "Finish",
       "loopHint": "Training preps you. Play a tournament and import it to see the effect on your real game.",
-      "unlocked": "Achievement unlocked!"
+      "unlocked": "Achievement unlocked!",
+      "gateTitle": "Mastery gate",
+      "gateFaltam": "{{n}} criteria left to master this leak.",
+      "gateFechado": "Gate closed! Leak mastered — prove it in real games."
     },
     "vCorrect": "Correct",
     "vMixed": "Acceptable",
@@ -371,7 +375,8 @@
       }
     },
     "emptyOutra": "Train something else",
-    "emptyVoltar": "Back"
+    "emptyVoltar": "Back",
+    "coldStartCta": "Start with fundamentals"
   },
   "trainAch": {
     "train_first": {

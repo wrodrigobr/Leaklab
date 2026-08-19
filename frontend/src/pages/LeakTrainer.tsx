@@ -239,6 +239,12 @@ export default function LeakTrainer() {
   // seguidas numa sessão focada num leak só — a resposta é constante dentro da categoria,
   // repetir é cobrança, não ensino).
   const sondadasRef = useRef<Set<string>>(new Set());
+  // P1: ?vitrine=1 abre o disclosure "Treinar outra coisa" já aberto — quem clicou nesse
+  // botão na trilha veio ESCOLHER, não reler a intro (a mesma tela de decisão de novo).
+  useEffect(() => {
+    if (urlParams.get("vitrine") === "1") setShowOther(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const faseInicial = (sp: LeakTrainerSpot): Phase => {
     if (!sp.range_probe) return "question";
     const k = sp.category || "";
@@ -481,6 +487,13 @@ export default function LeakTrainer() {
     queryKey: ["progression-status", 365],   // a JANELA na key: cache de 90d ≠ 365d (costura 1)
     queryFn: () => progression.status(365),
     enabled: phase === "intro",
+  });
+  // P1: o gate FRESCO no resumo — a sessão que acabou de terminar já conta nos critérios.
+  const { data: statusResumo } = useQuery({
+    queryKey: ["progression-status", 365, "resumo"],
+    queryFn: () => progression.status(365),
+    enabled: phase === "summary",
+    staleTime: 0,
   });
   const { data: missionData } = useQuery({
     queryKey: ["progression-missions"],
@@ -1246,6 +1259,15 @@ export default function LeakTrainer() {
                   </button>
                 </div>
               )}
+              {/* P1 (costura 7): SEM leak medido a intro ficava sem ação primária — tudo
+                  escondido no disclosure. Cold start ganha CTA: fundamentos, que o motor
+                  serve sem depender de leak. */}
+              {!miss && (
+                <button onClick={() => startFocus("fund:rfi")}
+                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-amber-500 px-6 py-3.5 font-mono text-sm font-bold uppercase tracking-widest text-black transition-colors hover:bg-amber-400">
+                  <Target className="size-4" aria-hidden /> {t("leakTrainer.coldStartCta")}
+                </button>
+              )}
             </div>
 
           </div>
@@ -1565,6 +1587,17 @@ export default function LeakTrainer() {
           const mStart = Math.round(primaryMastery?.start ?? 0);
           const mNow = Math.round(primaryMastery?.now ?? 0);
           const mGain = Math.max(0, mNow - mStart);
+          // Gate da categoria TREINADA (foco explícito ou missão do protocolo) — nunca de
+          // uma sessão espalhada, onde o gate de uma categoria responderia a pergunta errada.
+          const focoKey = focusRef.current.startsWith("leak:") ? focusRef.current.slice(5) : null;
+          const itemGate = (focoKey || planRef.current)
+            ? (statusResumo?.items ?? []).find((i) => i.key === (focoKey ?? statusResumo?.ativa?.key))
+            : null;
+          const gateResumo = itemGate?.mastery?.criterios?.length
+            ? { ok: itemGate.mastery.criterios.filter((c) => c.ok).length,
+                total: itemGate.mastery.criterios.length,
+                criterios: itemGate.mastery.criterios }
+            : null;
           return (
           <div className="mx-auto w-full max-w-md">
             <div className="relative overflow-hidden rounded-3xl border border-primary/30 bg-gradient-to-b from-primary/[0.10] via-card to-card p-7 shadow-elevated animate-in fade-in zoom-in-95 duration-300">
@@ -1613,6 +1646,28 @@ export default function LeakTrainer() {
                     <span className="text-muted-foreground">{mStart}% → <span className="font-bold text-foreground">{mNow}%</span></span>
                     {mGain > 0 && <span className="font-bold text-emerald-400">+{mGain}</span>}
                   </div>
+                </div>
+              )}
+
+              {/* P1: O DELTA DO GATE — o momento de recompensa que era jogado fora. O jogador
+                  acabou de suar; a pergunta dele é "quanto falta para fechar?", e a resposta
+                  estava só na intro. Lê o status FRESCO (a sessão que acabou já conta). */}
+              {gateResumo && (
+                <div className="mt-4 space-y-2 rounded-2xl bg-background/60 p-4 ring-1 ring-border">
+                  <div className="flex items-baseline justify-between">
+                    <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-amber-400">
+                      {t("leakTrainer.summary.gateTitle")}
+                    </span>
+                    <span className="font-mono text-[11px] font-bold tabular-nums text-amber-300">
+                      {gateResumo.ok}/{gateResumo.total}
+                    </span>
+                  </div>
+                  <MasteryGate criterios={gateResumo.criterios} />
+                  <p className="text-[11px] leading-snug text-muted-foreground">
+                    {gateResumo.ok >= gateResumo.total
+                      ? t("leakTrainer.summary.gateFechado")
+                      : t("leakTrainer.summary.gateFaltam", { n: gateResumo.total - gateResumo.ok })}
+                  </p>
                 </div>
               )}
 

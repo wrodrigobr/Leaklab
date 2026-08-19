@@ -7,6 +7,18 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(jornada): pacote P1 -- o loop ganha recompensa e o cold start ganha acao (#training #frontend)
+
+> Os 4 itens do P1 da auditoria: (1) DELTA DO GATE NO RESUMO de sessao focada/protocolo —
+> o jogador termina e ve "Gate de dominio 0/5 · volume 6/20 · faltam 5" com status FRESCO
+> (a sessao que acabou ja conta); era o momento de maior recompensa do loop e se perdia;
+> (2) quiz da Academia ganhou "Voltar a Academia" (terminava so com "de novo"); (3) intro
+> SEM leak medido ganhou CTA primario "Comecar pelos fundamentos" (tudo ficava escondido no
+> disclosure); (4) "Treinar outra coisa" da trilha abre a vitrine JA ABERTA (?vitrine=1) —
+> quem clicou veio escolher, nao reler a intro. Verificado ao vivo: vitrine direto e gate no
+> resumo com dados reais; cold-start e quiz verificados por typecheck (dev tem leaks
+> medidos). typecheck real exit 0; vitest 365/365 ANTES do push.
+
 ### fix(frontend): 78 erros de tipo zerados + gate tsc que nunca mais roda vazio (#frontend #ci)
 
 > POR QUE: por meses a checagem era `npx tsc --noEmit` no tsconfig.json RAIZ, que e

@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
+import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
   ArrowRight,
@@ -437,6 +438,12 @@ export function QuizRunner({
               <RefreshCw className="size-4" aria-hidden />
               {t("challenge.again")}
             </button>
+            {/* P1 da auditoria (costura 13): o quiz terminava só com "de novo" — beco sem
+                volta. A origem natural do quiz é a Academia. */}
+            <Link to="/academy"
+              className="w-full rounded-lg border border-border px-4 py-2.5 text-center font-mono text-xs font-bold uppercase tracking-widest text-muted-foreground transition-colors hover:text-foreground">
+              {t("challenge.backAcademy")}
+            </Link>
           </div>
         )}
     </div>

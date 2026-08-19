@@ -15,7 +15,8 @@
     "title": "Desafio concluído!",
     "correct": "Acertos",
     "accuracy": "Precisão",
-    "again": "Novo desafio"
+    "again": "Novo desafio",
+    "backAcademy": "Voltar à Academia"
   },
   "levels": {
     "beginner": "Iniciante",
@@ -172,7 +173,10 @@
       "mastery": "Domínio da categoria",
       "finish": "Finalizar",
       "loopHint": "O treino te prepara. Jogue um torneio e importe pra ver o efeito no seu jogo real.",
-      "unlocked": "Conquista desbloqueada!"
+      "unlocked": "Conquista desbloqueada!",
+      "gateTitle": "Gate de domínio",
+      "gateFaltam": "Faltam {{n}} critérios para dominar este leak.",
+      "gateFechado": "Gate fechado! O leak está dominado — comprove no jogo real."
     },
     "vCorrect": "Correto",
     "vMixed": "Aceitável",
@@ -371,7 +375,8 @@
       }
     },
     "emptyOutra": "Treinar outra coisa",
-    "emptyVoltar": "Voltar"
+    "emptyVoltar": "Voltar",
+    "coldStartCta": "Começar pelos fundamentos"
   },
   "trainAch": {
     "train_first": {
