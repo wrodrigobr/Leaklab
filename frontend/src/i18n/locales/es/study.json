@@ -87,5 +87,6 @@
     "eyebrow": "Entrenamiento recomendado",
     "villain": "Memoriza el rango de apertura del {{pos}}: perdiste {{bb}}bb enfrentando sus aperturas, en {{hands}} manos.",
     "hero": "Memoriza tu rango de apertura del {{pos}}: perdiste {{bb}}bb abriendo desde ahí, en {{hands}} manos."
-  }
+  },
+  "academyDoor": "Lecciones, conceptos y quizzes: la teoría que sostiene el entrenamiento"
 }

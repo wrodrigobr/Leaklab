@@ -321,6 +321,9 @@
     "reabertoNums": "La tasa de error volvió a subir: {{antes}}% → {{depois}}% en las últimas {{n}} manos.",
     "bloqueadoNota": "Se desbloquea cuando la misión activa cierre su gate. El orden de la fila es tu EV: nada aquí es genérico.",
     "ghostSub": "Repaso espaciado de tus manos reales",
-    "academySub": "La teoría detrás del entrenamiento"
+    "academySub": "La teoría detrás del entrenamiento",
+    "jogarTitulo": "Compruébalo en juego real",
+    "jogarNota": "Dominar en el entrenamiento es la mitad del camino: juega torneos e importa — la validación abre el veredicto y el sello de diamante.",
+    "jogarCta": "Jugar e importar"
   }
 }

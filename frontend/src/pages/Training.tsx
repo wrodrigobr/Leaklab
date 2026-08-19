@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowRight, CheckCircle2, Dumbbell, GraduationCap, RotateCw, Target, Award, Flame, Star, Trophy, Lock, Map as MapIcon, Play, TrendingUp, TrendingDown, Sparkles, Info } from "lucide-react";
+import { ArrowRight, CheckCircle2, Dumbbell, RotateCw, Target, Award, Flame, Star, Trophy, Lock, Map as MapIcon, Play, TrendingUp, TrendingDown, Sparkles, Info } from "lucide-react";
 import { HudLayout } from "@/components/hud/HudLayout";
 import { training, progression } from "@/lib/api";
 import { DailyChallengeCard } from "@/components/training/DailyChallengeCard";
@@ -158,17 +158,8 @@ export default function Training() {
             </div>
             <ArrowRight className="size-4 shrink-0 text-amber-400 transition-transform group-hover:translate-x-0.5" aria-hidden />
           </Link>
-          <Link to="/academy"
-            className="group flex items-center gap-3 rounded-xl border border-violet-500/30 bg-violet-500/[0.06] p-3 transition-colors hover:border-violet-500/50">
-            <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-violet-500/10 ring-1 ring-violet-500/30">
-              <GraduationCap className="size-5 text-violet-400" aria-hidden />
-            </div>
-            <div className="min-w-0 flex-1">
-              <h3 className="font-heading text-base font-bold text-foreground">{t("academy.title")}</h3>
-              <p className="line-clamp-2 text-xs leading-snug text-muted-foreground">{t("academy.desc")}</p>
-            </div>
-            <ArrowRight className="size-4 shrink-0 text-violet-400 transition-transform group-hover:translate-x-0.5" aria-hidden />
-          </Link>
+          {/* Academia MUDOU para /study (18/08): teoria é objetivo de ESTUDO, não de treino —
+              a tela de treino fica com revisar e treinar, que é o que ela promete. */}
         </div>
 
         {/* ── Catálogo: o jogador ESCOLHE o que treinar ────────────────────────

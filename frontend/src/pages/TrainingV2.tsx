@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, Flame, GraduationCap, Lock, RotateCw, Star, Target, Trophy } from "lucide-react";
+import { ArrowLeft, Flame, Lock, RotateCw, Star, Target, Trophy } from "lucide-react";
 import { HudLayout } from "@/components/hud/HudLayout";
 import { AchievementMedal, EmblemIcon, type MedalEmblem } from "@/components/hud/AchievementMedal";
 import { DailyChallengeCard } from "@/components/training/DailyChallengeCard";
@@ -219,10 +219,23 @@ export default function TrainingV2() {
         )}
 
         {n.estado === "dominado" ? (
-          <Link to="/ghost"
-            className="mt-4 flex items-center justify-center gap-2 rounded-xl bg-primary/15 px-4 py-2.5 font-mono text-xs font-bold uppercase tracking-widest text-primary ring-1 ring-primary/30 hover:bg-primary/25">
-            <RotateCw className="size-4" aria-hidden /> {t("trilha.ctaRevisar")}
-          </Link>
+          <>
+            {/* A etapa JOGAR/VALIDAR, explícita (pergunta do usuário: "onde fica o jogar?"):
+                dominar no treino é meio caminho — o selo diamante só nasce de torneio real
+                importado. O nó dominado é o lugar exato desta chamada. */}
+            <div className="mt-4 rounded-xl border border-sky-500/30 bg-sky-500/[0.06] p-3">
+              <p className="text-[12.5px] font-bold text-foreground">{t("trilha.jogarTitulo")}</p>
+              <p className="mt-0.5 text-[11.5px] leading-snug text-muted-foreground">{t("trilha.jogarNota")}</p>
+              <Link to="/dashboard"
+                className="mt-2.5 flex items-center justify-center gap-2 rounded-lg bg-sky-500/15 px-4 py-2.5 font-mono text-xs font-bold uppercase tracking-widest text-sky-300 ring-1 ring-sky-500/30 hover:bg-sky-500/25">
+                {t("trilha.jogarCta")}
+              </Link>
+            </div>
+            <Link to="/ghost?origem=trilha"
+              className="mt-2 flex items-center justify-center gap-2 rounded-xl bg-primary/15 px-4 py-2.5 font-mono text-xs font-bold uppercase tracking-widest text-primary ring-1 ring-primary/30 hover:bg-primary/25">
+              <RotateCw className="size-4" aria-hidden /> {t("trilha.ctaRevisar")}
+            </Link>
+          </>
         ) : n.estado === "comprovado" ? (
           <Link to="/evolucao"
             className="mt-4 flex items-center justify-center gap-2 rounded-xl bg-sky-500/15 px-4 py-2.5 font-mono text-xs font-bold uppercase tracking-widest text-sky-300 ring-1 ring-sky-500/30 hover:bg-sky-500/25">
@@ -359,16 +372,9 @@ export default function TrainingV2() {
             </span>
             <span className="shrink-0 font-mono text-[10px] text-primary">→</span>
           </Link>
-          <Link to="/academy" className="flex items-center justify-between rounded-xl border border-violet-500/30 bg-violet-500/[0.06] px-3.5 py-2.5 transition-colors hover:border-violet-500/50">
-            <span className="flex min-w-0 items-center gap-2">
-              <GraduationCap className="size-4 shrink-0 text-violet-400" aria-hidden />
-              <span className="min-w-0">
-                <span className="block truncate text-[12px] font-bold text-foreground">{t("academy.title")}</span>
-                <span className="block truncate text-[10px] text-muted-foreground">{t("trilha.academySub")}</span>
-              </span>
-            </span>
-            <span className="shrink-0 font-mono text-[10px] text-violet-400">→</span>
-          </Link>
+          {/* Academia mudou para /study (18/08): teoria é objetivo de ESTUDO. A porta dela na
+              jornada de treino volta na F2 como link CONTEXTUAL do nó ativo (aula ligada ao
+              leak da missão), não como atalho genérico. */}
           <Link to="/training" className="block text-center text-[10.5px] text-muted-foreground hover:text-foreground hover:underline">
             {t("trilha.perfilNota")}
           </Link>

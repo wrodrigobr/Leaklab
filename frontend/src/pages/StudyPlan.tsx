@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { useSearchParams, Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
+  ArrowRight,
   Award,
   BookOpen,
   BrainCircuit,
@@ -261,6 +262,23 @@ const StudyPlanPage = () => {
       title={t("title")}
       description={t("subtitle")}
     >
+      {/* A ACADEMIA mora em ESTUDOS (18/08): estudar teoria e treinar reflexo são objetivos
+          distintos, e a porta da teoria estava enterrada nas telas de treino. Card de entrada
+          com o mesmo destaque visual que ela tinha na lateral do cockpit. */}
+      <Link to="/academy"
+        className="flex items-center justify-between gap-3 rounded-xl border border-violet-500/30 bg-violet-500/[0.06] p-4 transition-colors hover:border-violet-500/50">
+        <span className="flex min-w-0 items-center gap-3">
+          <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-violet-500/10 ring-1 ring-violet-500/30">
+            <GraduationCap className="size-5 text-violet-400" aria-hidden />
+          </span>
+          <span className="min-w-0">
+            <span className="block font-heading text-base font-bold text-foreground">{tAcad("title", "Academia")}</span>
+            <span className="block truncate text-xs text-muted-foreground">{t("academyDoor")}</span>
+          </span>
+        </span>
+        <ArrowRight className="size-4 shrink-0 text-violet-400" aria-hidden />
+      </Link>
+
       {/* Toolbar */}
       <section className="flex flex-col gap-4 rounded-xl border border-border bg-hud-surface p-5 md:flex-row md:items-center md:justify-between">
         <div className="flex items-start gap-3">

@@ -87,5 +87,6 @@
     "eyebrow": "Treino recomendado",
     "villain": "Memorize a range de abertura do {{pos}}: você perdeu {{bb}}bb enfrentando aberturas dele, em {{hands}} mãos.",
     "hero": "Memorize a sua range de abertura do {{pos}}: você perdeu {{bb}}bb abrindo daí, em {{hands}} mãos."
-  }
+  },
+  "academyDoor": "Aulas, conceitos e quizzes: a teoria que sustenta o treino"
 }

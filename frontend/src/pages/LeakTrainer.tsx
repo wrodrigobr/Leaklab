@@ -235,6 +235,17 @@ export default function LeakTrainer() {
   // adaptativo — o deep-link prometia um leak e servia outro (pego ao vivo: pediu
   // BB vs SB 20 e veio RFI UTG+1). Quem manda o foco manda a janela junto.
   const daysRef = useRef<number>(Number(urlParams.get("days")) || 90);
+  // Sondagem de range UMA vez por categoria por sessão (reportado: a mesma pergunta 3x
+  // seguidas numa sessão focada num leak só — a resposta é constante dentro da categoria,
+  // repetir é cobrança, não ensino).
+  const sondadasRef = useRef<Set<string>>(new Set());
+  const faseInicial = (sp: LeakTrainerSpot): Phase => {
+    if (!sp.range_probe) return "question";
+    const k = sp.category || "";
+    if (sondadasRef.current.has(k)) return "question";
+    sondadasRef.current.add(k);
+    return "probe";
+  };
   // P0/D3 da auditoria: deep-link NUNCA herda grind/turbo do localStorage — um clique de
   // e-mail virava 50 spots com timer de 10s sem aviso. Sessão por ?foco= só entra em grind/
   // turbo se a URL pedir (?modo=grind|turbo); o localStorage segue valendo APENAS para
@@ -358,7 +369,7 @@ export default function LeakTrainer() {
         if (!r.spot) { setPhase("summary"); return; }   // plano cumprido = fim da sessão
         setSpot(r.spot);
         setContrastNote(r.contrast_note);
-        setPhase(r.spot.range_probe ? "probe" : "question");
+        setPhase(faseInicial(r.spot));
       } catch { setPhase("error"); }
       return;
     }
@@ -372,7 +383,7 @@ export default function LeakTrainer() {
       setTargetedLocked(!!r.targeted_locked);   // Free: treinando fundamentos, mirado é Pro
       if (r.spot?.card_key) servidasRef.current = [...servidasRef.current, r.spot.card_key];
       setSpot(r.spot);
-      setPhase(r.spot.range_probe ? "probe" : "question");
+      setPhase(faseInicial(r.spot));
       if (grindRef.current) prefetchNext();     // grind: o próximo já começa a viajar
     } catch { setPhase("error"); }
   }, []);
@@ -443,6 +454,7 @@ export default function LeakTrainer() {
   const startFocus = (f: string) => {
     planRef.current = null; setPlan(null); doneRef.current = {};   // sai do protocolo
     servidasRef.current = [];                                      // sessao nova, baralho cheio
+    sondadasRef.current = new Set();                               // sondagem volta 1x/categoria
     setGrindMisses([]); prefetchRef.current = null; prefetchGateRef.current = null;
     fhRef.current = null;                                          // sai da mão inteira
     focusRef.current = f; setFocus(f);

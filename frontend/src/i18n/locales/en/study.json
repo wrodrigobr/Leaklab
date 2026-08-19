@@ -87,5 +87,6 @@
     "eyebrow": "Recommended training",
     "villain": "Memorise the {{pos}} opening range: you lost {{bb}}bb facing their opens, across {{hands}} hands.",
     "hero": "Memorise your {{pos}} opening range: you lost {{bb}}bb opening from there, across {{hands}} hands."
-  }
+  },
+  "academyDoor": "Lessons, concepts and quizzes: the theory behind the training"
 }
