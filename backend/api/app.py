@@ -3119,8 +3119,15 @@ def leaktrainer_next():
         elif focus.startswith('leak:'):
             key = focus.split(':', 1)[1]
             full = build_curriculum(g.user_id, days=days)
-            curriculum = [c for c in full if c.get('key') == key] or full
+            filtrado = [c for c in full if c.get('key') == key]
+            # Regra 6: o fallback era `or full` CALADO — o deep-link prometia um leak e o
+            # adaptativo servia outro sem ninguém saber (pego ao vivo na auditoria da
+            # jornada). O fallback continua (tela vazia é pior), mas agora AVISA.
+            _fallback = not filtrado
+            curriculum = filtrado or full
             spot       = next_spot(curriculum, session_state)
+            if _fallback and spot is not None:
+                spot['focus_fallback'] = True
         else:
             curriculum = build_curriculum(g.user_id, days=days)
             spot       = next_spot(curriculum, session_state)

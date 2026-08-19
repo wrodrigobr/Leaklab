@@ -376,7 +376,8 @@
     },
     "emptyOutra": "Train something else",
     "emptyVoltar": "Back",
-    "coldStartCta": "Start with fundamentals"
+    "coldStartCta": "Start with fundamentals",
+    "focoFallback": "That leak is no longer in the measurement window — training the adaptive plan."
   },
   "trainAch": {
     "train_first": {

@@ -376,7 +376,8 @@
     },
     "emptyOutra": "Entrenar otra cosa",
     "emptyVoltar": "Volver",
-    "coldStartCta": "Empezar por los fundamentos"
+    "coldStartCta": "Empezar por los fundamentos",
+    "focoFallback": "Ese leak ya no está en la ventana de medición — entrenando el plan adaptativo."
   },
   "trainAch": {
     "train_first": {

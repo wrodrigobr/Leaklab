@@ -7,6 +7,22 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(jornada): P2/D2 -- o CTA da trilha treina DENTRO do protocolo; fallback do foco avisa (#training)
+
+> A medicao mudou o desenho: o gate JA credita sessoes focadas (volume subiu ao vivo), mas
+> transferencia/amplitude so fecham com os spots de CONTRASTE que o plano 60/25/15 serve —
+> e a missao da trilha E a missao do protocolo. Logo o conserto certo nao e vies novo no
+> motor: o CTA da trilha (e o da missao do Dashboard) agora inicia a SESSAO DO PROTOCOLO
+> via deep-link ?protocolo=1 (&size= opcional). O foco `leak:` continua para catalogo/leaks
+> arbitrarios. Bonus regra 6: o fallback `or full` do foco no backend deixou de trocar de
+> assunto CALADO — o spot volta com focus_fallback e a tela avisa em toast ("esse leak nao
+> esta mais na janela") e assume o adaptativo explicitamente.
+>
+> E o rebalanceio v2 do intro (reportado: rolagem interna com a esquerda vazia — o
+> disclosure + toggles cresceram desde o 1o rebalanceio): em xl o contexto vira MASONRY de
+> 2 colunas (padrao do dashboard) e o grid alarga para 5fr/7fr. vitest 365 + suite api
+> verdes ANTES do push.
+
 ### feat(jornada): pacote P1 -- o loop ganha recompensa e o cold start ganha acao (#training #frontend)
 
 > Os 4 itens do P1 da auditoria: (1) DELTA DO GATE NO RESUMO de sessao focada/protocolo —

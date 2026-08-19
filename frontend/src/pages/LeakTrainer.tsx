@@ -15,6 +15,7 @@ import { MasteryGate } from "@/components/training/MasteryGate";
 import { RangeClassesCard } from "@/components/training/RangeClassesCard";
 import { useSpotLabel } from "@/lib/spotLabel";
 import { destinoDaOrigem } from "@/lib/origem";
+import { toast } from "sonner";
 import { useTableOrientation } from "@/hooks/use-table-orientation";
 import { useIsLandscapeMobile } from "@/hooks/use-is-landscape-mobile";
 import { leaktrainer, progression } from "@/lib/api";
@@ -388,6 +389,12 @@ export default function LeakTrainer() {
       if (!r.spot) { setPhase("empty"); return; }
       setTargetedLocked(!!r.targeted_locked);   // Free: treinando fundamentos, mirado é Pro
       if (r.spot?.card_key) servidasRef.current = [...servidasRef.current, r.spot.card_key];
+      // O backend avisa quando o foco pedido não existe na janela e ele caiu no adaptativo
+      // (era troca MUDA de assunto — regra 6). O aviso é honesto, o treino continua.
+      if ((r.spot as { focus_fallback?: boolean }).focus_fallback && focusRef.current.startsWith("leak:")) {
+        toast.info(t("leakTrainer.focoFallback"));
+        focusRef.current = "adaptive"; setFocus("adaptive");
+      }
       setSpot(r.spot);
       setPhase(faseInicial(r.spot));
       if (grindRef.current) prefetchNext();     // grind: o próximo já começa a viajar
@@ -519,6 +526,15 @@ export default function LeakTrainer() {
   // exercício prescrito. Obrigar a reencontrar o botão dentro de "Treinar outra coisa" seria
   // cobrar e esconder o caixa. Roda uma vez; sem foco na URL, o fluxo é o de sempre.
   useEffect(() => {
+    // P2/D2: ?protocolo=1 inicia a SESSÃO DO PROTOCOLO direto (60/25/15 sobre a missão
+    // ativa). É o deep-link certo para o CTA da trilha: a missão do cockpit É a missão do
+    // protocolo, e só o plano serve os spots de contraste que fecham transferência — o foco
+    // `leak:` farmaria volume sem nunca fechar o gate. `?size=` opcional (curta/media/longa).
+    if (urlParams.get("protocolo") === "1") {
+      const sz = (urlParams.get("size") as SessionSize) || "media";
+      startProtocol(["curta", "media", "longa"].includes(sz) ? sz : "media");
+      return;
+    }
     const f = focoInicialRef.current;
     if (f) { focoInicialRef.current = null; startFocus(f); }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1149,7 +1165,10 @@ export default function LeakTrainer() {
              lados). Em telas largas vira duas colunas: o herói (a AÇÃO) à esquerda, o contexto
              (arco, conquistas, memorização, outros modos) à direita. Estreito segue empilhado —
              ali a rolagem é inevitável e correta. */
-          <div className="mx-auto w-full max-w-xl lg:grid lg:max-w-4xl lg:grid-cols-2 lg:items-start lg:gap-5">
+          /* v2 do rebalanceio (reportado de novo: rolagem interna com a esquerda vazia — o
+             disclosure + toggles cresceram desde a 1ª vez): em xl o contexto vira MASONRY de
+             2 colunas (o mesmo padrão do dashboard) e o grid alarga para 12/5+7. */
+          <div className="mx-auto w-full max-w-xl lg:grid lg:max-w-4xl lg:grid-cols-2 lg:items-start lg:gap-5 xl:max-w-7xl xl:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
           <div className="flex w-full flex-col gap-3">
             {/* ── 0. O COMPROMISSO (uma vez só) ──
                 Aparece antes da missão porque é a pergunta que dá sentido a toda cobrança
@@ -1272,7 +1291,7 @@ export default function LeakTrainer() {
 
           </div>
 
-          <div className="mt-3 flex w-full flex-col gap-3 lg:mt-0">
+          <div className="mt-3 flex w-full flex-col gap-3 lg:mt-0 xl:block xl:columns-2 xl:gap-4 xl:space-y-0 [&>*]:xl:mb-4 [&>*]:xl:break-inside-avoid">
             {/* ── 2. O ARCO: as próximas missões (por que só uma por vez) ── */}
             {outras.length > 0 && (
               <div className="rounded-xl border border-border bg-hud-surface/40 p-3">

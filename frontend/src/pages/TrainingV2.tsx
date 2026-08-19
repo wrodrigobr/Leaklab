@@ -160,7 +160,10 @@ export default function TrainingV2() {
         {/* Deep-link com FOCO: "Treinar agora" tem que cair TREINANDO o leak da missão, não
             na intro do Leak Trainer (outra tela de decisão no meio da promessa — reportado).
             O ?foco= já existia exatamente para isso. */}
-        <Link to={`/leak-trainer?origem=trilha&days=365&foco=${encodeURIComponent(`leak:${n.item.key}`)}`}
+        {/* P2/D2: o nó ativo É a missão do protocolo — o CTA inicia a SESSÃO DO PROTOCOLO
+            (60/25/15), porque só o plano serve os spots de contraste que fecham
+            transferência; `?foco=leak:` farmaria volume sem nunca fechar o gate. */}
+        <Link to="/leak-trainer?origem=trilha&protocolo=1"
           className="mt-2.5 flex items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3.5 font-mono text-base font-extrabold uppercase tracking-wider text-primary-foreground shadow-[0_4px_0_rgba(23,138,124,1)] transition-transform active:translate-y-0.5">
           <Target className="size-5" aria-hidden />
           {n.reaberto ? t("trilha.ctaRetreinar") : t("trilha.ctaTreinarAgora")}
