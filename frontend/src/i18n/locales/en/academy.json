@@ -369,7 +369,9 @@
         "all-in": "all-in",
         "allin": "all-in"
       }
-    }
+    },
+    "emptyOutra": "Train something else",
+    "emptyVoltar": "Back"
   },
   "trainAch": {
     "train_first": {

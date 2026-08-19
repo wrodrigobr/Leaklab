@@ -21,6 +21,7 @@ import {
   Zap,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { destinoDaOrigem } from "@/lib/origem";
 import { HudLayout } from "@/components/hud/HudLayout";
 import { HudHeader } from "@/components/hud/HudHeader";
 import { AiText } from "@/components/ui/AiText";
@@ -467,7 +468,7 @@ export default function GhostTable() {
           style={{ background: "radial-gradient(ellipse at 50% 45%, #14223a 0%, #080f1c 100%)" }}>
           <RotateCw className="size-14 text-primary" />
           <p className="font-mono text-[13px] uppercase tracking-widest text-muted-foreground leading-relaxed">{t("rotatePrompt")}</p>
-          <button onClick={() => navigate("/training")}
+          <button onClick={() => navigate(destinoDaOrigem(new URLSearchParams(window.location.search).get("origem")))}
             className="font-mono text-[11px] uppercase tracking-widest text-muted-foreground/70 transition-colors hover:text-primary">{t("backToTraining")}</button>
         </div>
       );
@@ -494,8 +495,8 @@ export default function GhostTable() {
           </div>
         </div>
 
-        {/* Voltar — topo-esquerda */}
-        <button onClick={() => navigate("/training")}
+        {/* Voltar — topo-esquerda. "De onde vim, para onde volto" (auditoria da jornada) */}
+        <button onClick={() => navigate(destinoDaOrigem(new URLSearchParams(window.location.search).get("origem")))}
           className="absolute top-2 left-2 z-30 inline-flex items-center gap-1.5 rounded-full bg-background/70 backdrop-blur px-3 py-1.5 font-mono text-[10px] uppercase tracking-widest-2 text-muted-foreground ring-1 ring-border transition-colors hover:text-primary">
           <ArrowLeft className="size-3.5" /> {t("backToTraining")}
         </button>
@@ -1411,8 +1412,10 @@ export default function GhostTable() {
             )}
           </div>
           <div className="flex flex-col gap-3 sm:flex-row">
+            {/* Costura 3 da auditoria: o fim da sessão SRS caía no /dashboard enquanto todas
+                as outras saídas iam para /training — agora volta à ORIGEM (trilha inclusa). */}
             <Link
-              to="/dashboard"
+              to={destinoDaOrigem(new URLSearchParams(window.location.search).get("origem"))}
               className="flex-1 inline-flex items-center justify-center gap-2 rounded-lg border border-border bg-hud-surface px-5 py-3 font-mono text-sm font-bold uppercase tracking-wider text-foreground hover:border-primary/40 hover:bg-primary/5 transition-colors"
             >
               {t("backDashboard")}

@@ -369,7 +369,9 @@
         "all-in": "all-in",
         "allin": "all-in"
       }
-    }
+    },
+    "emptyOutra": "Entrenar otra cosa",
+    "emptyVoltar": "Volver"
   },
   "trainAch": {
     "train_first": {

@@ -70,7 +70,7 @@ export default function Training() {
   // mesmo leak no mesmo dia. Os tiers continuam existindo como gamificação de ESFORÇO (volume
   // praticado); quem decide progressão é o gate de domínio.
   const { data: protocolo } = useQuery({
-    queryKey: ["progression-status"],
+    queryKey: ["progression-status", 90],   // janela na key: 90d ≠ 365d da trilha (costura 1)
     queryFn: () => progression.status(),
     staleTime: 60_000,
     retry: false,

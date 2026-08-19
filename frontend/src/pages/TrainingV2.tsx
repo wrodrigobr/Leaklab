@@ -71,7 +71,7 @@ export default function TrainingV2() {
   const { t } = useTranslation("training");
   const spotLabel = useSpotLabel();
   const { data: status } = useQuery({
-    queryKey: ["progression-status"], queryFn: () => progression.status(365), staleTime: 60_000,
+    queryKey: ["progression-status", 365], queryFn: () => progression.status(365), staleTime: 60_000,
   });
   const { data: overview } = useQuery({ queryKey: ["training-overview"], queryFn: training.overview });
 
@@ -349,7 +349,7 @@ export default function TrainingV2() {
 
           {/* Portas de prática em LINHAS CHEIAS (reportado: a Academia estava "muito
               escondida" num botão espremido) — mesmo peso visual das linhas de status. */}
-          <Link to="/ghost" className="flex items-center justify-between rounded-xl border border-border bg-card/60 px-3.5 py-2.5 transition-colors hover:border-primary/40">
+          <Link to="/ghost?origem=trilha" className="flex items-center justify-between rounded-xl border border-border bg-card/60 px-3.5 py-2.5 transition-colors hover:border-primary/40">
             <span className="flex min-w-0 items-center gap-2">
               <RotateCw className="size-4 shrink-0 text-primary" aria-hidden />
               <span className="min-w-0">

@@ -14,6 +14,7 @@ import { ProLockCard } from "@/components/hud/ProLockCard";
 import { MasteryGate } from "@/components/training/MasteryGate";
 import { RangeClassesCard } from "@/components/training/RangeClassesCard";
 import { useSpotLabel } from "@/lib/spotLabel";
+import { destinoDaOrigem } from "@/lib/origem";
 import { useTableOrientation } from "@/hooks/use-table-orientation";
 import { useIsLandscapeMobile } from "@/hooks/use-is-landscape-mobile";
 import { leaktrainer, progression } from "@/lib/api";
@@ -234,6 +235,18 @@ export default function LeakTrainer() {
   // adaptativo — o deep-link prometia um leak e servia outro (pego ao vivo: pediu
   // BB vs SB 20 e veio RFI UTG+1). Quem manda o foco manda a janela junto.
   const daysRef = useRef<number>(Number(urlParams.get("days")) || 90);
+  // P0/D3 da auditoria: deep-link NUNCA herda grind/turbo do localStorage — um clique de
+  // e-mail virava 50 spots com timer de 10s sem aviso. Sessão por ?foco= só entra em grind/
+  // turbo se a URL pedir (?modo=grind|turbo); o localStorage segue valendo APENAS para
+  // sessões iniciadas pela vitrine, onde os toggles estão visíveis.
+  const modoInicial = urlParams.get("modo");
+  if (focoInicialRef.current !== null && !modoInicial) {
+    if (grindRef.current) { grindRef.current = false; }
+    if (turboRef.current) { turboRef.current = false; }
+  } else if (modoInicial) {
+    grindRef.current = true;
+    turboRef.current = modoInicial === "turbo";
+  }
   const rootRef = useRef<HTMLDivElement>(null);
   const [isFull, setIsFull] = useState(false);
 
@@ -453,7 +466,7 @@ export default function LeakTrainer() {
   // Status do protocolo (missões + estado + gate de domínio) — a tela de início é sobre
   // ONDE VOCÊ ESTÁ antes de ser sobre o que clicar.
   const { data: statusData } = useQuery({
-    queryKey: ["progression-status"],
+    queryKey: ["progression-status", 365],   // a JANELA na key: cache de 90d ≠ 365d (costura 1)
     queryFn: () => progression.status(365),
     enabled: phase === "intro",
   });
@@ -1496,6 +1509,17 @@ export default function LeakTrainer() {
           <div className="flex flex-col items-center gap-3 rounded-xl border border-border bg-hud-surface p-10 text-center">
             <Target className="size-10 text-muted-foreground" aria-hidden />
             <p className="text-sm text-muted-foreground max-w-md">{t("leakTrainer.empty")}</p>
+            {/* Costura 6: beco sem saída — tela vazia sem CTA obrigava o back do navegador */}
+            <div className="flex flex-wrap justify-center gap-2">
+              <button onClick={newSession}
+                className="rounded-lg bg-amber-500/15 px-4 py-2 font-mono text-xs font-bold uppercase tracking-widest text-amber-300 ring-1 ring-amber-500/30 hover:bg-amber-500/25">
+                {t("leakTrainer.emptyOutra")}
+              </button>
+              <button onClick={() => navigate(destinoDaOrigem(origemRef.current))}
+                className="rounded-lg border border-border px-4 py-2 font-mono text-xs font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground">
+                {t("leakTrainer.emptyVoltar")}
+              </button>
+            </div>
           </div>
         )}
 
@@ -1657,7 +1681,7 @@ export default function LeakTrainer() {
                 <button onClick={newSession} className="w-full rounded-xl bg-primary px-4 py-3.5 font-mono text-sm font-bold uppercase tracking-widest text-primary-foreground shadow-lg transition-transform hover:bg-primary/90 active:scale-[0.98]">
                   {t("leakTrainer.summary.continue")}
                 </button>
-                <button onClick={() => navigate("/training")} className="flex w-full items-center justify-center gap-2 rounded-xl border border-border px-4 py-3 font-mono text-xs font-bold uppercase tracking-wider text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground">
+                <button onClick={() => navigate(destinoDaOrigem(origemRef.current))} className="flex w-full items-center justify-center gap-2 rounded-xl border border-border px-4 py-3 font-mono text-xs font-bold uppercase tracking-wider text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground">
                   <Home className="size-4" aria-hidden /> {t("leakTrainer.summary.finish")}
                 </button>
               </div>

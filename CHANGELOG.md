@@ -7,6 +7,22 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(jornada): pacote P0 da auditoria -- o loop de treino fecha e o deep-link nao mente (#training #frontend)
+
+> Auditoria da jornada (painel: mapeador 18 costuras + arquiteto + critico). P0 entregue:
+> (D5) `destinoDaOrigem` em lib/origem.ts — "de onde vim, para onde volto": Finalizar do
+> Leak Trainer e TODAS as saidas do Ghost voltam a ORIGEM (trilha inclusa; Ghost terminava
+> no /dashboard), nunca history.back; (D3-corte) deep-link ?foco= NUNCA herda grind/turbo
+> do localStorage (e-mail virava 50 spots com timer de 10s sem aviso) — modo so entra por
+> ?modo=grind|turbo; localStorage segue valendo para sessoes da vitrine, onde os toggles
+> estao visiveis; (costura 1) queryKey ["progression-status", days] — cache de 90d nao
+> mente mais para a trilha de 365d; (6) fase empty ganhou CTAs (treinar outra coisa /
+> voltar); (11) CTA de missao do DashboardV2 virou Link com foco+days+origem (era <a href>
+> com reload e intro generica). Verificado ao vivo: com grind+turbo LIGADOS no storage, o
+> deep-link da trilha entrega feedback completo sem timer, e Finalizar volta a /training-v2.
+> vitest 365/365. No caminho, o Set-Content mutilou o GhostTable (66 linhas + BOM — a
+> cicatriz de encoding de novo); revertido e refeito com a ferramenta certa.
+
 ### feat(training): COCKPIT DE SESSAO na /training-v2 (v3 do redesign, sintese do painel de design) (#training #frontend)
 
 > Processo pedido pelo usuario: 2 agentes-designers propuseram em paralelo (A "Curva de

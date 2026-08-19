@@ -221,12 +221,16 @@ export function DashboardV2({ onUpload, evSummary, hasData, renderCard, gtoQuali
                 <div className="mt-1 text-[12px] text-muted-foreground">{t("v2.ctaNoLeak")}</div>
               )}
             </div>
-            <a
-              href={missao ? "/leak-trainer" : "/training"}
+            {/* Costura 11: era <a href> (reload completo) e sem foco/origem — o CTA nomeava a
+                missão e entregava a intro genérica. Link + deep-link com janela do protocolo. */}
+            <Link
+              to={missao
+                ? `/leak-trainer?origem=dashboard&days=365&foco=${encodeURIComponent(`leak:${missao.key}`)}`
+                : "/training"}
               className="mt-3 inline-flex items-center justify-center rounded-lg bg-teal-400 px-3 py-2 font-mono text-[11px] font-bold uppercase tracking-wider text-[#06281f] hover:bg-teal-300 transition-colors"
             >
               {t("v2.ctaButton")}
-            </a>
+            </Link>
           </div>
         </section>
 
