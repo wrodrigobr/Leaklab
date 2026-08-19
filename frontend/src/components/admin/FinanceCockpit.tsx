@@ -48,92 +48,105 @@ function Breakdown({ rows }: { rows: Array<{ label: string; amount_cents: number
 }
 
 // ── Coach payouts table (zone E) ──────────────────────────────────────────────
-function CoachPayoutsTable({ period }: { period: string }) {
+// Modelo %: comissão acumulada por coach (pagável / em carência / paga) — não é
+// apurada por mês, então a tabela ignora o período do cockpit.
+function CoachPayoutsTable() {
   const qc = useQueryClient();
   const { data, isLoading } = useQuery({
-    queryKey: ["admin-finance-coaches", period],
-    queryFn: () => adminDashboard.coachPayouts(period),
+    queryKey: ["admin-finance-coaches"],
+    queryFn: () => adminDashboard.coachPayouts(),
     staleTime: 30_000,
   });
-  const payouts: CoachPayout[] = data?.payouts ?? [];
-  const totalPending = data?.total_pending_cents ?? 0;
+  const payouts: CoachPayout[] = data?.coaches ?? [];
+  const totalPayable = data?.total_payable_cents ?? 0;
+
+  const invalidate = () => {
+    qc.invalidateQueries({ queryKey: ["admin-finance-coaches"] });
+    qc.invalidateQueries({ queryKey: ["admin-finance-cockpit"] });
+  };
 
   const payMut = useMutation({
-    mutationFn: (paymentId: number) => adminDashboard.markPaid(paymentId),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["admin-finance-coaches"] });
-      qc.invalidateQueries({ queryKey: ["admin-finance-cockpit"] });
-      toast.success("Marcado como pago");
+    mutationFn: (coachId: number) => adminDashboard.payCoachCommission(coachId),
+    onSuccess: (r) => {
+      invalidate();
+      toast.success(`Pago: ${fmt(r.paid_cents)}`);
     },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Falha ao pagar."),
   });
 
   const payAll = async () => {
-    const pending = payouts.filter((p) => p.status !== "paid" && p.payment_id);
+    const pending = payouts.filter((p) => p.payable_cents > 0);
     if (pending.length === 0) return;
     if (!confirm(`Pagar ${pending.length} repasse(s) pendente(s)?`)) return;
     for (const p of pending) {
-      try { await adminDashboard.markPaid(p.payment_id!); } catch { /* keep going */ }
+      try { await adminDashboard.payCoachCommission(p.id); } catch { /* keep going */ }
     }
-    qc.invalidateQueries({ queryKey: ["admin-finance-coaches"] });
-    qc.invalidateQueries({ queryKey: ["admin-finance-cockpit"] });
+    invalidate();
     toast.success("Repasses pendentes pagos");
   };
 
-  const exportUrl = `/admin/finance/export.csv?period=${period}`;
-  const hasPending = payouts.some((p) => p.status !== "paid" && p.payment_id);
+  const exportCsv = () => {
+    adminDashboard.downloadCommissionsCsv()
+      .catch((e) => toast.error(e instanceof Error ? e.message : "Falha ao exportar."));
+  };
+
+  const hasPending = payouts.some((p) => p.payable_cents > 0);
 
   return (
     <div className="overflow-hidden rounded-xl border border-border bg-hud-surface">
       <div className="px-4 py-3 border-b border-border bg-hud-elevated/40 flex flex-wrap items-center gap-2 justify-between">
-        <span className="font-mono text-[10px] font-bold uppercase tracking-widest-2 text-muted-foreground">Repasses de coaches, {period}</span>
+        <span className="font-mono text-[10px] font-bold uppercase tracking-widest-2 text-muted-foreground">Repasses de coaches (comissão acumulada)</span>
         <div className="flex items-center gap-3">
-          {totalPending > 0 && <span className="font-mono text-[10px] text-warning">Pendente: {fmt(totalPending)}</span>}
+          {totalPayable > 0 && <span className="font-mono text-[10px] text-warning">A pagar: {fmt(totalPayable)}</span>}
           {hasPending && (
             <button onClick={payAll}
               className="inline-flex items-center gap-1 rounded-md border border-primary/30 bg-primary/10 px-2.5 py-1 font-mono text-[10px] font-bold uppercase tracking-wider text-primary hover:bg-primary/20 transition-colors">
               <CheckCircle2 className="size-3" /> Pagar todos pendentes
             </button>
           )}
-          <a href={exportUrl} target="_blank" rel="noopener noreferrer"
+          <button onClick={exportCsv}
             className="inline-flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1 font-mono text-[10px] font-bold uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors">
             <Download className="size-3" /> CSV
-          </a>
+          </button>
         </div>
       </div>
       <div className="overflow-x-auto">
         <table className="w-full text-xs text-left">
           <thead className="border-b border-border">
             <tr>
-              {["Coach", "Plano", "Alunos vinculados", "Alunos ativos", "Valor (R$)", "Status", ""].map((h) => (
+              {["Coach", "Taxa", "A pagar", "Em carência (14d)", "Já pago", ""].map((h) => (
                 <th key={h} className="px-4 py-3 font-mono text-[10px] font-bold uppercase tracking-wider text-muted-foreground whitespace-nowrap">{h}</th>
               ))}
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
             {isLoading ? (
-              <tr><td colSpan={7} className="py-12 text-center"><Loader2 className="size-5 animate-spin text-primary mx-auto" /></td></tr>
+              <tr><td colSpan={6} className="py-12 text-center"><Loader2 className="size-5 animate-spin text-primary mx-auto" /></td></tr>
             ) : payouts.length === 0 ? (
-              <tr><td colSpan={7} className="py-12 text-center text-muted-foreground">Nenhum coach cadastrado.</td></tr>
+              <tr><td colSpan={6} className="py-12 text-center text-muted-foreground">Nenhum coach cadastrado.</td></tr>
             ) : payouts.map((p) => (
               <tr key={p.id} className="hover:bg-primary/5 transition-colors">
                 <td className="px-4 py-3">
                   <p className="font-medium text-foreground">{p.display_name || p.username}</p>
                   <p className="font-mono text-[10px] text-muted-foreground">@{p.username}</p>
                 </td>
-                <td className="px-4 py-3 font-mono text-muted-foreground">{p.plan}</td>
-                <td className="px-4 py-3 font-mono tabular-nums text-foreground text-center">{p.total_students}</td>
-                <td className="px-4 py-3 font-mono tabular-nums text-center">
-                  <span className={cn("font-bold", p.active_students > 0 ? "text-primary" : "text-muted-foreground")}>{p.active_students}</span>
+                <td className="px-4 py-3 font-mono tabular-nums text-muted-foreground">
+                  {p.commission_rate_bps != null ? `${(p.commission_rate_bps / 100).toFixed(0)}%` : "escada"}
                 </td>
-                <td className="px-4 py-3 font-mono tabular-nums font-bold text-foreground">
-                  {p.amount_cents > 0 ? fmt(p.amount_cents) : p.active_students > 0 ? "Zerado" : "—"}
+                <td className="px-4 py-3 font-mono tabular-nums font-bold">
+                  <span className={cn(p.payable_cents > 0 ? "text-primary" : "text-muted-foreground")}>
+                    {p.payable_cents > 0 ? fmt(p.payable_cents) : "—"}
+                  </span>
                 </td>
-                <td className="px-4 py-3">
-                  {p.status === "paid" ? <StatusBadge kind="paid" /> : <StatusBadge kind="pending" />}
+                <td className="px-4 py-3 font-mono tabular-nums text-warning">
+                  {p.held_cents > 0 ? fmt(p.held_cents) : "—"}
+                </td>
+                <td className="px-4 py-3 font-mono tabular-nums text-muted-foreground">
+                  {p.paid_cents > 0 ? fmt(p.paid_cents) : "—"}
                 </td>
                 <td className="px-4 py-3 text-right">
-                  {p.status !== "paid" && p.payment_id && (
-                    <button onClick={() => payMut.mutate(p.payment_id!)} disabled={payMut.isPending}
+                  {p.payable_cents > 0 && (
+                    <button onClick={() => payMut.mutate(p.id)} disabled={payMut.isPending}
                       className="inline-flex items-center gap-1 font-mono text-[10px] text-primary hover:underline disabled:opacity-50">
                       {payMut.isPending ? <Loader2 className="size-3 animate-spin" /> : <ChevronRight className="size-3" />}
                       Marcar pago
@@ -404,7 +417,7 @@ export function FinanceCockpit() {
           <Trends />
 
           {/* ── E · Coach payouts ── */}
-          <CoachPayoutsTable period={period} />
+          <CoachPayoutsTable />
 
           {/* ── F · Expenses ── */}
           <ExpensesPanel />

@@ -620,6 +620,9 @@ def me():
         'tournaments_used':     quota['tournaments_used'],
         'ai_calls_used':        quota['ai_calls_used'],
         'plan_limits':          quota['limits'],
+        # Stripe: current_period_end (próxima cobrança / fim do acesso se cancelado).
+        # A página de assinatura mostrava "—" porque o campo nunca saía daqui.
+        'plan_expires_at':      quota.get('plan_expires_at'),
         'whatsapp_phone':          g.user.get('whatsapp_phone'),
         'digest_subscribed':       bool(g.user.get('digest_subscribed', 0)),
         'profile_completed_at':    g.user.get('profile_completed_at'),
@@ -5314,7 +5317,7 @@ def coach_student_worst_decisions(student_id):
     try:
         rows = conn.execute("""
             SELECT d.id, d.hand_id, d.street, d.hero_cards, d.board,
-                   d.action_taken, d.best_action, d.label, d.score,
+                   d.action_taken, d.best_action, d.gto_action, d.label, d.score,
                    d.position, d.icm_pressure, d.m_ratio, d.stack_bb,
                    t.tournament_id, t.site,
                    COALESCE(a.coach_override_label, d.label) AS effective_label

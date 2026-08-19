@@ -70,6 +70,14 @@ jobs:
         working-directory: frontend
         run: npm ci
 
+      # -p tsconfig.app.json OBRIGATORIO: o tsconfig.json raiz e solution-style (so references)
+      # e `tsc --noEmit` nele checa ZERO arquivos — exit 0 vazio. Foi assim que um Link sem
+      # import chegou a prod (18/08). O `npm run build` encadeia o mesmo typecheck, entao o
+      # deploy do Cloudflare Pages (que roda `npm run build` por git-integration) tambem gateia.
+      - name: Typecheck do frontend (tsconfig.app.json — o raiz checa zero arquivos)
+        working-directory: frontend
+        run: npm run typecheck
+
       - name: Testes do frontend (vitest — regras de display do card)
         working-directory: frontend
         run: npx vitest run

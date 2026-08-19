@@ -197,8 +197,9 @@ export default function Training() {
             </h2>
             <div className="grid grid-cols-3 gap-2">
               {JOURNEY.map(({ key, emblem, status }, i) => {
+                // "soon" não existe mais nos status do JOURNEY (active/done/locked) — resíduo removido
                 const done = status === "done", active = status === "active";
-                const locked = status === "locked", soon = status === "soon";
+                const locked = status === "locked";
                 return (
                   <div key={key} className="flex items-center gap-2">
                     <div title={t(`journey.${key}.tip`)}
@@ -210,13 +211,13 @@ export default function Training() {
                       <div className="relative">
                         <EmblemIcon emblem={emblem} size={26} className={cn(active ? "text-primary" : done ? "text-emerald-400" : "text-muted-foreground")} />
                         {done && <CheckCircle2 className="absolute -right-1.5 -top-1.5 size-3.5 text-emerald-400" aria-hidden />}
-                        {(locked || soon) && <Lock className="absolute -right-1.5 -top-1.5 size-3 text-muted-foreground" aria-hidden />}
+                        {locked && <Lock className="absolute -right-1.5 -top-1.5 size-3 text-muted-foreground" aria-hidden />}
                       </div>
                       <p className={cn("font-mono text-[11px] font-bold uppercase tracking-wider", active ? "text-foreground" : "text-muted-foreground")}>
                         {t(`journey.${key}.title`)}
                       </p>
                       <p className="text-[10px] leading-tight text-muted-foreground">
-                        {soon ? t("journey.soon") : t(`journey.${key}.desc`)}
+                        {t(`journey.${key}.desc`)}
                       </p>
                     </div>
                     {i < JOURNEY.length - 1 && <ArrowRight className="size-4 shrink-0 text-muted-foreground/50" aria-hidden />}
@@ -497,7 +498,11 @@ export default function Training() {
                         <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-muted/30">
                           <div className="h-full rounded-full transition-[width] duration-500" style={{ width: `${Math.round(s.mastery)}%`, backgroundColor: cor }} />
                         </div>
-                        {s.stale && <RotateCw className="size-3 shrink-0 text-amber-400/80" title={t("status.reviewHint")} aria-hidden />}
+                        {s.stale && (
+                          <span title={t("status.reviewHint")} className="shrink-0 inline-flex">
+                            <RotateCw className="size-3 text-amber-400/80" aria-hidden />
+                          </span>
+                        )}
                         <span className="w-16 shrink-0 text-right font-mono text-[10px] font-bold uppercase" style={{ color: cor }}>{t(`tiers.${s.tier}`)}</span>
                       </div>
                     );

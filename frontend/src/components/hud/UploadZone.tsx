@@ -111,7 +111,6 @@ export function UploadZone({ onResult }: Props) {
           <button
             type="button"
             onClick={() => inputRef.current?.click()}
-            disabled={status === "loading"}
             className="inline-flex items-center gap-2 rounded-md bg-primary px-5 py-2 font-mono text-xs font-bold uppercase tracking-widest-2 text-primary-foreground transition-all hover:bg-primary-glow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:opacity-50"
           >
             <FileUp className="size-3.5" aria-hidden />

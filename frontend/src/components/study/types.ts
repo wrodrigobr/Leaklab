@@ -3,6 +3,8 @@ export type LeakSeverity = "critical" | "moderate" | "minor";
 export interface LeakRef {
   id: string;
   signature: string;
+  /** chave do spot (vem do StudyCard.spot) — casa o deep-link ?spot= e a busca de coach por especialidade */
+  spot: string;
   title: string;
   severity: LeakSeverity;
   evLoss: string;

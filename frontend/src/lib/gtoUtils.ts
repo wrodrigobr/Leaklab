@@ -15,7 +15,7 @@ function normAction(a: string): string {
  * (stored value may be stale if the solver node was updated after import).
  */
 export function computeEffectiveGtoLabel(
-  strategy: Array<{ action: string; frequency: number }> | null | undefined,
+  strategy: Array<{ action: string; frequency?: number | null }> | null | undefined,
   storedGtoLabel: string | null | undefined,
   playedAction: string | null | undefined,
 ): GtoLabel | null {

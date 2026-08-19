@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, type UseMutationResult } from "@tanstack/react-query";
 import { AlertOctagon, Check, CheckCircle2, FlaskConical, GraduationCap, Info, Loader2, Lock, PenLine, Sparkles, Trash2, X } from "lucide-react";
 import { GtoStrategyPanel } from "@/components/replayer/GtoStrategyPanel";
 import { DecisionCard, type DecisionSourceVariant } from "@/components/replayer/DecisionCard";
@@ -40,8 +40,8 @@ export interface SidePanelsProps {
   annMode: "complement" | "replace";
   annAction: string;
   annOverride: CoachOverrideLabel;
-  saveAnn: ReturnType<typeof import("@tanstack/react-query").useMutation>;
-  deleteAnn: ReturnType<typeof import("@tanstack/react-query").useMutation>;
+  saveAnn: UseMutationResult<CoachAnnotation, Error, void>;
+  deleteAnn: UseMutationResult<{ ok: boolean }, Error, void>;
   replayData: ReplayData;
   playerAliases: Record<string, string>;
   setAnnotating: (v: boolean) => void;
@@ -110,6 +110,11 @@ export function SidePanels({
   });
 
   const isPostflop = step.street !== 'preflop';
+  // Posição do hero derivada dos ASSENTOS (cada seat traz `pos` do backend). O código antigo
+  // lia `step.position`, campo que o backend nunca envia no step — o replayWhy então caía
+  // sempre no ramo "posição ausente" e o BB nunca recebia a frase do check grátis.
+  const heroPosition = Object.values(step.seats ?? {})
+    .find((s) => s.player === step.hero)?.pos ?? null;
   // Spot multiway postflop: o solver HU não é confiável (backend zera gto_label/strategy).
   // Quando o advisor multiway DEFERE (sem multiway_advice), o veredito vem da SEVERIDADE
   // do engine (error_label EV-capado), não do gto_label de frequência HU. Card = badge.
@@ -445,7 +450,7 @@ export function SidePanels({
             : null,
           gtoSpotMismatch: !!step.gto_spot_mismatch,
           isPfZone, heroStackBb: step.hero_stack_bb,
-          heroPosition: step.position,
+          heroPosition,
           hasEngineGtoConflict, engineBest: step.engine_best, gtoAction: step.gto_action,
           hasMathEvidence, requiredIsAdjusted, eq, req, profitable,
           hasGto, isHero: !!step.is_hero, pg,
@@ -1113,7 +1118,7 @@ export function SidePanels({
           if (step.hero_stack_bb != null) ind.push({ label: t("card.stackBb"), value: `${step.hero_stack_bb.toFixed(1)}bb`, tip: t("card.stackTip") });
           if (step.m_ratio != null)       ind.push({ label: t("card.mRatio"), value: step.m_ratio.toFixed(1), tip: t("card.mTip") });
           if (step.icm_pressure != null)  ind.push({ label: t("card.icm"), value: (step.icm_pressure === "low" ? t("card.icmLow") : step.icm_pressure === "medium" ? t("card.icmMedium") : step.icm_pressure === "high" ? t("card.icmHigh") : step.icm_pressure), tip: t("card.icmTip") });
-          if (step.position)              ind.push({ label: t("card.position"), value: step.position, tip: "" });
+          if (heroPosition)               ind.push({ label: t("card.position"), value: heroPosition, tip: "" });
           return (
             <section className={cn("rounded-xl border overflow-hidden", verdict.borderCls)}>
               <div className="grid grid-cols-1 landscape:grid-cols-2 gap-3 p-3">

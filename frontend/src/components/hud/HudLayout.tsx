@@ -22,7 +22,8 @@ export function HudLayout({
 }: {
   children: React.ReactNode;
   eyebrow?: string;
-  title: string;
+  /** Sem title o header não renderiza — para páginas que pintam o próprio cabeçalho (ex.: Docs). */
+  title?: string;
   description?: string;
 }) {
   const back = useBackTarget();
@@ -39,16 +40,18 @@ export function HudLayout({
             {back.label}
           </Link>
         )}
-        <header className="flex flex-col gap-3">
-          {eyebrow && (
-            <div className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-widest-2 text-primary">
-              <span className="size-1.5 rounded-full bg-primary animate-pulse" aria-hidden />
-              {eyebrow}
-            </div>
-          )}
-          <h1 className="text-3xl font-semibold tracking-tight text-foreground md:text-4xl">{title}</h1>
-          {description && <p className="max-w-2xl text-sm text-muted-foreground">{description}</p>}
-        </header>
+        {title && (
+          <header className="flex flex-col gap-3">
+            {eyebrow && (
+              <div className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-widest-2 text-primary">
+                <span className="size-1.5 rounded-full bg-primary animate-pulse" aria-hidden />
+                {eyebrow}
+              </div>
+            )}
+            <h1 className="text-3xl font-semibold tracking-tight text-foreground md:text-4xl">{title}</h1>
+            {description && <p className="max-w-2xl text-sm text-muted-foreground">{description}</p>}
+          </header>
+        )}
         {children}
       </main>
     </div>

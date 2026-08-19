@@ -891,11 +891,12 @@ const Replayer = () => {
           {/* Table column */}
           <div className="flex-1 min-w-0 min-h-0 flex flex-col gap-2">
             {/* Mesa — height-bound: cabe SEMPRE na faixa flex-1 (acima dos controles), nunca
-                rola pra baixo do menu. Aspect troca por orientação (portrait vertical). */}
+                rola pra baixo do menu. Aspect fixo 16/10: só landscape chega aqui — portrait
+                já retornou no ramo mobileReplayer, então o ternário por orientação era morto. */}
             <div className="relative flex-1 min-h-0 overflow-hidden flex items-center justify-center">
               <div
                 className="h-full w-auto max-w-full max-h-full mx-auto"
-                style={{ aspectRatio: tableOrientation === "portrait" ? "728 / 932" : "16 / 10" }}
+                style={{ aspectRatio: "16 / 10" }}
               >
                 <PokerTableV3
                   step={step}

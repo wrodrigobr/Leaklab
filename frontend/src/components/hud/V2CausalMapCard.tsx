@@ -1,5 +1,6 @@
 import { GitFork, ArrowRight, Crosshair } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 import { HudTooltip } from "./HudTooltip";
 import type { LeakNode, LeakEdge } from "./LeakCausalMap";
 import { formatAction } from "@/lib/utils";
@@ -19,7 +20,7 @@ const SEVERITY_BADGE: Record<string, string> = {
 /** Nome legível do spot a partir do node.id ("BB|flop/fold" → "BB Fold no flop").
  *  O id é "POS|street/action" (posição opcional, "?" quando ausente).
  *  Streets e ações ficam em inglês (termos de poker); só o conector é i18n. */
-function spotLabel(node: LeakNode, t: (k: string, o?: object) => string): string {
+function spotLabel(node: LeakNode, t: TFunction<"dashboard">): string {
   let id = node.id || "";
   let pos = "";
   if (id.includes("|")) { [pos, id] = id.split("|"); }
@@ -31,7 +32,7 @@ function spotLabel(node: LeakNode, t: (k: string, o?: object) => string): string
   return node.label.replace(/[_-]+/g, " ");
 }
 
-function NodeChip({ node, t }: { node: LeakNode; t: (k: string, o?: object) => string }) {
+function NodeChip({ node, t }: { node: LeakNode; t: TFunction<"dashboard"> }) {
   const name = spotLabel(node, t);
   return (
     <span
