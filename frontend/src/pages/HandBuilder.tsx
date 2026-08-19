@@ -166,8 +166,10 @@ const DEFAULTS = {
   tableSize: DEFAULT_TABLE as TableSize,
   stackBb: DEFAULT_STACK_BB,
   players: buildPlayers(DEFAULT_TABLE, DEFAULT_STACK_BB),
-  buttonSeat: DEFAULT_TABLE,           // BTN no último assento
-  heroSeat: DEFAULT_TABLE,             // hero = BTN por padrão
+  // number, não TableSize: assento (1..N) que rotaciona a cada mão — o narrowing de const
+  // prendia o tipo no literal 6 e travava a rotação no typecheck.
+  buttonSeat: DEFAULT_TABLE as number, // BTN no último assento
+  heroSeat: DEFAULT_TABLE as number,   // hero = BTN por padrão
   heroCards: [] as string[],
   actions: [] as HandAction[],
   board: { flop: [] as string[], turn: "", river: "" },

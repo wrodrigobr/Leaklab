@@ -107,6 +107,7 @@ export function buildStudyPlan(backend: StudyPlanResponse): StudyPlan {
   const leaks: LeakRef[] = cards.map((card, i) => ({
     id:        card.prioridade ?? `p${i + 1}`,
     signature: (card.prioridade ?? `P${i + 1}`).toUpperCase(),
+    spot:      card.spot ?? "",
     title:     card.titulo,
     severity:  severityFromIndex(i),
     evLoss:    card.ev_ponderado || "—",

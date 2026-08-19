@@ -114,7 +114,7 @@ describe("relatório de evolução em HTML", () => {
 
   it("célula sem amostra fica vazia, nunca zero", () => {
     const html = montar();
-    const celulas = html.match(/<td[^>]*>(.*?)<\/td>/gs) ?? [];
+    const celulas: string[] = html.match(/<td[^>]*>(.*?)<\/td>/gs) ?? [];
     const vazias = celulas.filter((c) => c.includes("vaz"));
     expect(vazias).toHaveLength(1);
     expect(vazias[0]).not.toMatch(/>0(\.0)?</);

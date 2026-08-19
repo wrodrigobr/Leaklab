@@ -3864,7 +3864,7 @@ def get_all_students_worst_decisions(
             params.append(label_filter)
         rows = conn.execute(
             f"""SELECT d.id, d.hand_id, d.street, d.hero_cards, d.board,
-                       d.action_taken, d.best_action, d.label, d.score,
+                       d.action_taken, d.best_action, d.gto_action, d.label, d.score,
                        d.position, d.icm_pressure, d.m_ratio, d.stack_bb,
                        t.tournament_id, t.site, t.user_id AS student_id
                 FROM decisions d

@@ -61,9 +61,9 @@ interface Hand {
   levelBb?: number | null;
   levelNum?: number | null;
   hasAnnotation?: boolean;
-  gtoLabel?: string | null;
+  gtoLabel: string | null;   // sempre setado no builder (worst.gto_label ?? null) — exigido pelo filtro "pending"
   gtoAction?: string | null;
-  hasPostflop?: boolean;
+  hasPostflop: boolean;      // sempre derivado no builder (decs.some(street postflop)) — idem
   multiway?: boolean;             // algum spot postflop com 2+ oponentes ativos (solver é HU → nunca ganha gto_label)
   divergent?: boolean;            // coach mode: alguma decisão não-aderente (coach × sistema)
   adherence?: string | null;      // categoria representativa (diverge_*/match_*/comentario)

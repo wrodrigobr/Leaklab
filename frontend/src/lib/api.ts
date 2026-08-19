@@ -67,6 +67,8 @@ export interface UserProfile {
   tournaments_used: number;
   ai_calls_used: number;
   plan_limits: { tournaments: number | null; ai_calls: number | null };
+  /** Stripe current_period_end (ISO) — próxima cobrança, ou fim do acesso se cancelado */
+  plan_expires_at?: string | null;
   whatsapp_phone?: string | null;
   digest_subscribed?: boolean;
   profile_completed_at?: string | null;
@@ -310,6 +312,8 @@ export interface ReplayStep {
   n_active_opponents?: number | null;  // >=2 = pote multiway (card usa severidade do engine, não gto HU)
   facing_limp?: boolean | null;        // pote limpado: o preço deixa de ser escondido
   facing_to_call_bb?: number | null;   // custo de entrar no pote, em bb
+  /** bb perdidos vs a melhor acao (#24) — null quando o EV nao cabe no jogo (`_ev_e_motivo`). */
+  ev_loss_bb?: number | null;
   /** POR QUE o custo nao aparece. Tres ausencias distintas, ver `_ev_e_motivo` no backend. */
   ev_loss_motivo?: "sem_gabarito" | "fora_de_escala" | "nao_confiavel" | null;
   n_can_see_flop?: number | null;      // preflop: quem ainda não foldou (inclui quem não agiu)
@@ -552,7 +556,9 @@ export const tournaments = {
     ),
 
   getGtoRequestStatus: (handId: string) =>
-    request<{ status: "not_requested" | "pending" | "processing" | "done" | "error"; decisions_found?: number; decisions_done?: number }>(
+    // "solver_queued": decisões enfileiradas na gto_solver_queue (o worker resolve depois) —
+    // o backend grava esse status de verdade; sem ele aqui o polling do Replayer nunca parava.
+    request<{ status: "not_requested" | "pending" | "processing" | "solver_queued" | "done" | "error"; decisions_found?: number; decisions_done?: number }>(
       `/player/hands/${handId}/gto-status`
     ),
 
@@ -1334,7 +1340,9 @@ export interface LeakTrainerGrade {
   gto_tier: "correct" | "error";
   mixed: boolean;
   gto_freq: number;
-  gto_strategy: GtoStrategyAction[];
+  /** O corretor do leaktrainer manda `freq` (leak_trainer.py), NÃO `frequency` como o
+   *  /gto/strategy — tipo próprio para o payload real deste endpoint. */
+  gto_strategy: { action: string; freq: number }[];
   best_action: string;
   new_action: string;
   hand_freq: Record<string, number>;
@@ -2543,6 +2551,8 @@ export interface StudentWorstDecision {
   board: string;
   action_taken: string;
   best_action: string;
+  /** ação GTO gravada no import (pode ser null: spot sem nó); a view cai em best_action */
+  gto_action: string | null;
   label: string;
   score: number;
   position: string | null;
@@ -3253,6 +3263,30 @@ export const adminDashboard = {
 
   coachPayouts: () =>
     request<{ coaches: CoachPayout[]; total_payable_cents: number }>("/admin/finance/coaches"),
+
+  // Baixa o CSV de comissões autenticado (o endpoint exige admin; <a href> puro daria 401).
+  downloadCommissionsCsv: async (): Promise<void> => {
+    const t = sessionStorage.getItem("ll_token");
+    const res = await fetch(`${BASE}/admin/finance/export.csv`, {
+      headers: t ? { Authorization: `Bearer ${t}` } : {},
+    });
+    if (!res.ok) {
+      const msg = await res.text().catch(() => `HTTP ${res.status}`);
+      throw new Error(msg);
+    }
+    const cd = res.headers.get("content-disposition") ?? "";
+    const m  = /filename="?([^"]+)"?/i.exec(cd);
+    const name = m?.[1] || "comissoes.csv";
+    const blob = await res.blob();
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement("a");
+    a.href = url;
+    a.download = name;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  },
 
   // Paga (marca como pagas) as comissões pagáveis do coach (carência vencida).
   payCoachCommission: (coachId: number) =>

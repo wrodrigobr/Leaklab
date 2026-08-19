@@ -354,7 +354,7 @@ function AvaliacoesSection() {
             </div>
             <div className="flex-1 space-y-1">
               {([5, 4, 3, 2, 1] as const).map(n => (
-                <RatingBar key={n} label={String(n)} n={(stats as Record<string, number>)?.[`r${n}`] ?? 0} total={stats?.total ?? 0} />
+                <RatingBar key={n} label={String(n)} n={stats?.[`r${n}`] ?? 0} total={stats?.total ?? 0} />
               ))}
             </div>
           </div>

@@ -7,6 +7,31 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(frontend): 78 erros de tipo zerados + gate tsc que nunca mais roda vazio (#frontend #ci)
+
+> POR QUE: por meses a checagem era `npx tsc --noEmit` no tsconfig.json RAIZ, que e
+> solution-style (so references) e checa ZERO arquivos — exit 0 vazio. A divida acumulou 78
+> erros em 20 arquivos, e varios NAO eram so tipo: (1) a tabela de repasses do FinanceCockpit
+> consumia o modelo MORTO (payouts por periodo/payment_id) — em runtime mostrava sempre
+> "Nenhum coach cadastrado" e o CSV era <a href> relativo sem auth (404/401); reescrita
+> contra o modelo real de comissao (payable/held/paid + payCoachCommission) com download
+> autenticado. (2) O replayWhy nunca recebia a posicao do hero (`step.position` nao existe
+> no payload — deriva agora de seats[].pos), entao o BB nunca ganhava a frase do check
+> gratis — o conserto do bug reportado pelo aluno do SB estava desligado. (3) GhostTable:
+> os TS2304 (isCallEqualToJam) moravam em blocos ACTIVE/RESULT do return final que eram
+> COPIAS MORTAS do layout full-screen (early return identico acima) — 230 linhas removidas
+> em vez de mantidas compilando. (4) "Proxima cobranca" da assinatura mostrava "—" desde
+> sempre: /auth/me nao enviava plan_expires_at (quota ja calculava); enviado. (5) Deep-link
+> ?spot= do plano de estudo nunca casava: planBuilder descartava card.spot; LeakRef ganhou
+> o campo. (6) Coach: worst-decisions nao selecionava d.gto_action (coluna existe) — o
+> `gto_action || best_action` da view era intencao sem dado. (7) LeakTrainerGrade.gto_strategy
+> tipado com `frequency` mas o corretor manda `freq` — tipo proprio do payload real.
+> Gate instalado: `npm run typecheck` (tsc -p tsconfig.app.json) encadeado no `npm run build`
+> — gateia o Cloudflare Pages, que builda por git-integration fora dos Actions — + passo
+> explicito no ci-cd.yml. Guarda quebrado de proposito uma vez (TS2304 forjado → exit 2,
+> vite nem rodou) e restaurado. Verificado: tsc 0 erros, vitest 365/365, suites api 190 e
+> database 297 ok, build de producao verde.
+
 ### fix(jornada): pacote P0 da auditoria -- o loop de treino fecha e o deep-link nao mente (#training #frontend)
 
 > Auditoria da jornada (painel: mapeador 18 costuras + arquiteto + critico). P0 entregue:

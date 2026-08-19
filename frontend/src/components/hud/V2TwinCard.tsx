@@ -1,4 +1,5 @@
 import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 import { Crosshair, TrendingUp, TrendingDown, Minus } from "lucide-react";
 import { HudTooltip } from "./HudTooltip";
 import type { StrategicTwinProfile, TwinSpot } from "@/lib/api";
@@ -22,7 +23,7 @@ function DeltaIcon({ delta }: { delta: number }) {
   return <Minus className="size-3 text-muted-foreground shrink-0" />;
 }
 
-function SpotRow({ spot, avgRate, t }: { spot: TwinSpot; avgRate: number; t: (k: string) => string }) {
+function SpotRow({ spot, avgRate, t }: { spot: TwinSpot; avgRate: number; t: TFunction<"dashboard"> }) {
   const errPct   = Math.round(spot.error_rate * 100);
   const deltaPct = Math.round(spot.delta_from_avg * 100);
   const isAbove  = spot.delta_from_avg > 0.05;
