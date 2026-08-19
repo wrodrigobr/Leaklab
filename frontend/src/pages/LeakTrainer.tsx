@@ -19,7 +19,7 @@ import { useTableOrientation } from "@/hooks/use-table-orientation";
 import { useIsLandscapeMobile } from "@/hooks/use-is-landscape-mobile";
 import { leaktrainer, progression } from "@/lib/api";
 import type { LeakTrainerSpot, LeakTrainerGrade, LeakTrainerState, ReplayStep,
-  ProgressionPlan, SessionSize, FullHand } from "@/lib/api";
+  ProgressionPlan, SessionSize, FullHand, LeakTrainerFocus } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
 // `probe` = sondagem de range: a tela pergunta a fatia de mãos do VILÃO antes de revelar as
