@@ -184,7 +184,9 @@
       "correct": "Correcto",
       "mixed": "Aceptable (el GTO mezcla aquí)",
       "error": "No fue la mejor"
-    }
+    },
+    "fechar": "Cerrar",
+    "verExplicacao": "Ver explicación"
   },
   "tiers": {
     "bronze": "Bronce",

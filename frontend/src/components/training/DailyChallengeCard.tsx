@@ -16,6 +16,9 @@ export function DailyChallengeCard() {
   const qc = useQueryClient();
   const { data, isLoading } = useQuery({ queryKey: ["daily-challenge"], queryFn: metrics.dailyChallenge });
   const [open, setOpen] = useState(false);   // mesa em tela cheia
+  // Respondido, o veredito completo ocupava a tela PARA SEMPRE (reportado). Agora nasce
+  // FECHADO num resumo de uma linha; expandir é escolha, fechar de novo também.
+  const [verVeredito, setVerVeredito] = useState(false);
 
   const submit = useMutation({
     mutationFn: (action: string) => metrics.dailyChallengeSubmit(action),
@@ -96,8 +99,32 @@ export function DailyChallengeCard() {
             <Play className="size-4" aria-hidden /> {t("challenge.start")}
           </button>
         ) : result && (
-          <VerdictBox result={result} actLabel={actLabel} context={context} spot={spot} t={t}
-            onRetest={onRetest} retesting={retest.isPending} />
+          verVeredito ? (
+            <div className="space-y-2">
+              <VerdictBox result={result} actLabel={actLabel} context={context} spot={spot} t={t}
+                onRetest={onRetest} retesting={retest.isPending} />
+              <button onClick={() => setVerVeredito(false)}
+                className="flex w-full items-center justify-center gap-1.5 rounded-lg bg-background/60 px-3 py-2 font-mono text-[10px] font-bold uppercase tracking-widest text-muted-foreground ring-1 ring-border transition-colors hover:text-foreground">
+                <X className="size-3.5" aria-hidden /> {t("challenge.fechar")}
+              </button>
+            </div>
+          ) : (
+            <button onClick={() => setVerVeredito(true)}
+              className="flex w-full items-center justify-between gap-2 rounded-xl bg-background/50 px-3.5 py-2.5 ring-1 ring-border transition-colors hover:ring-sky-500/40">
+              <span className="flex min-w-0 items-center gap-2">
+                {result.gto_tier === "error"
+                  ? <XCircle className="size-4 shrink-0 text-amber-400" aria-hidden />
+                  : <CheckCircle2 className="size-4 shrink-0 text-emerald-400" aria-hidden />}
+                <span className="truncate text-[12.5px] font-bold text-foreground">
+                  {result.gto_tier === "error" ? t("challenge.verdict.error")
+                    : result.mixed ? t("challenge.verdict.mixed") : t("challenge.verdict.correct")}
+                </span>
+              </span>
+              <span className="shrink-0 font-mono text-[10px] font-bold uppercase tracking-wider text-sky-300">
+                {t("challenge.verExplicacao")}
+              </span>
+            </button>
+          )
         )}
       </div>
 

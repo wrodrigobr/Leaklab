@@ -245,49 +245,59 @@ export default function TrainingV2() {
         </Link>
       </div>
 
-      {/* ── FAIXA A: a régua da trilha + placar ── */}
+      {/* ── FAIXA A: a régua da trilha + placar ──
+          Alinhamento por CAIXAS FIXAS (reportado: nós em alturas diferentes e rótulos
+          truncados): todo nó tem uma faixa de disco de 48px com o disco centrado e um bloco
+          de rótulo de 2 linhas. O trilho pontilhado vive DENTRO do grupo de nós (w-max),
+          nunca varrendo a largura vazia da tela. */}
       <div className="mb-4 flex items-center gap-4 rounded-2xl border border-border bg-background/80 px-4 py-2.5">
-        <div ref={reguaRef} className="relative flex flex-1 items-start gap-3 overflow-x-auto pb-1 pt-1">
-          <div className="pointer-events-none absolute left-2 right-2 top-[23px] border-t-2 border-dashed border-border" aria-hidden />
-          {nos.map((n, i) => {
-            const emblem = emblemaDoCenario(n.item.scenario);
-            const mostraRotulo = n.estado === "ativo" || sel?.key === n.key
-              || Math.abs(i - idxAtivo) === 1;
-            return (
-              <button key={n.key} type="button" onClick={() => setSelKey(n.estado === "ativo" ? null : n.key)}
-                data-ativo={n.estado === "ativo" ? "1" : undefined}
-                title={spotLabel(n.item, { fallback: n.item.titulo })}
-                className={cn("relative z-[1] w-[64px] shrink-0 text-center transition-transform hover:-translate-y-0.5",
-                              sel?.key === n.key && "scale-105")}>
-                {n.estado === "ativo" ? (
-                  <span className="inline-flex"><DiscoAtivo emblem={emblem} reaberto={n.reaberto} size={48} /></span>
-                ) : n.estado === "bloqueado" ? (
-                  <AchievementMedal tier="silver" emblem={emblem} locked size={44} label="" />
-                ) : (
-                  <span className="relative inline-flex">
-                    <AchievementMedal tier={n.estado === "comprovado" ? "diamond" : "gold"} emblem={emblem}
-                      size={44} label="" className={cn(n.reaberto && "opacity-60 saturate-50")} />
-                    {!n.reaberto && (
-                      <span className={cn("absolute -right-0.5 -top-0.5 flex size-3.5 items-center justify-center rounded-full text-[8px] font-black",
-                        n.estado === "comprovado" ? "bg-sky-300 text-sky-950" : "bg-emerald-400 text-emerald-950")}>
-                        {n.estado === "comprovado" ? "◆" : "✓"}
+        <div ref={reguaRef} className="flex-1 overflow-x-auto pb-1 pt-1">
+          <div className="relative flex w-max items-start gap-2">
+            <div className="pointer-events-none absolute left-6 right-6 top-[24px] border-t-2 border-dashed border-border" aria-hidden />
+            {nos.map((n, i) => {
+              const emblem = emblemaDoCenario(n.item.scenario);
+              const mostraRotulo = n.estado === "ativo" || sel?.key === n.key
+                || Math.abs(i - idxAtivo) === 1;
+              return (
+                <button key={n.key} type="button" onClick={() => setSelKey(n.estado === "ativo" ? null : n.key)}
+                  data-ativo={n.estado === "ativo" ? "1" : undefined}
+                  title={spotLabel(n.item, { fallback: n.item.titulo })}
+                  className={cn("relative z-[1] w-[84px] shrink-0 text-center transition-transform hover:-translate-y-0.5",
+                                sel?.key === n.key && "scale-105")}>
+                  <span className="flex h-12 items-center justify-center">
+                    {n.estado === "ativo" ? (
+                      <DiscoAtivo emblem={emblem} reaberto={n.reaberto} size={48} />
+                    ) : n.estado === "bloqueado" ? (
+                      <AchievementMedal tier="silver" emblem={emblem} locked size={44} label="" />
+                    ) : (
+                      <span className="relative inline-flex">
+                        <AchievementMedal tier={n.estado === "comprovado" ? "diamond" : "gold"} emblem={emblem}
+                          size={44} label="" className={cn(n.reaberto && "opacity-60 saturate-50")} />
+                        {!n.reaberto && (
+                          <span className={cn("absolute -right-0.5 -top-0.5 flex size-3.5 items-center justify-center rounded-full text-[8px] font-black",
+                            n.estado === "comprovado" ? "bg-sky-300 text-sky-950" : "bg-emerald-400 text-emerald-950")}>
+                            {n.estado === "comprovado" ? "◆" : "✓"}
+                          </span>
+                        )}
                       </span>
                     )}
                   </span>
-                )}
-                {n.reaberto && <span className="mx-auto mt-0.5 block h-[3px] w-7 rounded bg-red-400" aria-hidden />}
-                <span className={cn("mt-0.5 block truncate text-[9.5px] leading-tight",
-                  mostraRotulo ? "text-foreground" : "text-transparent select-none")}>
-                  {spotLabel(n.item, { fallback: n.item.titulo, stack: false })}
-                </span>
-              </button>
-            );
-          })}
-          {(status?.restantes ?? 0) > 0 && (
-            <span className="mt-3 shrink-0 self-start font-mono text-[9.5px] uppercase tracking-[0.14em] text-muted-foreground/70">
-              {t("trilha.maisAdiante", { count: status!.restantes })}
-            </span>
-          )}
+                  {n.reaberto
+                    ? <span className="mx-auto mt-0.5 block h-[3px] w-7 rounded bg-red-400" aria-hidden />
+                    : <span className="mt-0.5 block h-[3px]" aria-hidden />}
+                  <span className={cn("mt-0.5 block h-[26px] overflow-hidden px-0.5 text-[9.5px] leading-[13px]",
+                    mostraRotulo ? "text-foreground" : "text-transparent select-none")}>
+                    {spotLabel(n.item, { fallback: n.item.titulo, stack: false })}
+                  </span>
+                </button>
+              );
+            })}
+            {(status?.restantes ?? 0) > 0 && (
+              <span className="z-[1] flex h-12 shrink-0 items-center rounded-full bg-card/80 px-3 font-mono text-[9.5px] uppercase tracking-[0.14em] text-muted-foreground ring-1 ring-border">
+                {t("trilha.maisAdiante", { count: status!.restantes })}
+              </span>
+            )}
+          </div>
         </div>
         <div className="shrink-0 text-right">
           {placar.bbComprovados > 0 && (
