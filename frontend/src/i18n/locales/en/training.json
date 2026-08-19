@@ -306,6 +306,17 @@
     "ctaBloqueado": "Master the current node to unlock",
     "treinarOutra": "Train something else",
     "praticar": "Practice",
-    "perfilNota": "Scoreboard, mastery and achievements: classic view"
+    "perfilNota": "Scoreboard, mastery and achievements: classic view",
+    "missaoAtiva": "Active mission",
+    "medidos": "−{{ev}}bb measured · {{hands}} hands",
+    "feche5": "The most expensive leak in your game right now. Close the 5 criteria to master it.",
+    "gateNota": "mastering = gold medal on the strip",
+    "ctaTreinarAgora": "Train now",
+    "ctaRetreinar": "Retrain now",
+    "voltarMissao": "Back to active mission",
+    "placarBb": "proven in real games",
+    "placarDominados": "{{n}}/{{m}} mastered",
+    "reabertoNums": "Error rate climbed back: {{antes}}% → {{depois}}% over the last {{n}} hands.",
+    "bloqueadoNota": "Unlocks when the active mission closes its gate. The queue order is your EV: nothing here is generic."
   }
 }

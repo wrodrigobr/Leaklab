@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { emblemaDoCenario, montarTrilha } from "./trilhaTreino";
+import { emblemaDoCenario, emblemaDoCriterio, montarTrilha, placarDaTrilha } from "./trilhaTreino";
 import type { ProgressionStatus, ProgressionStatusItem } from "./api";
 
 /** Trilha (Training v2): a ordem dos nós e o estado de cada um são regra, não acaso. */
@@ -45,6 +45,39 @@ describe("montarTrilha", () => {
   it("status vazio ou ausente devolve trilha vazia (nunca quebra a página)", () => {
     expect(montarTrilha(undefined)).toEqual([]);
     expect(montarTrilha(status({}))).toEqual([]);
+  });
+});
+
+describe("placarDaTrilha", () => {
+  it("bb só entram COMPROVADOS no jogo — dominado no treino não é bb recuperado", () => {
+    const nos = montarTrilha(status({
+      dominadas: [
+        item("a", "dominado_no_treino", { ev_loss_bb: -9 } as never),
+        item("b", "comprovado_no_jogo", { ev_loss_bb: -5.24 } as never),
+      ],
+      ativa: item("c", "em_treino", { ev_loss_bb: -3 } as never),
+    }));
+    const p = placarDaTrilha(nos);
+    expect(p.dominados).toBe(2);
+    expect(p.total).toBe(3);
+    expect(p.bbComprovados).toBe(5.2);   // só o comprovado; arredondado a 1 casa
+  });
+
+  it("comprovado REABERTO perde o bb do placar — regressão não mantém crédito", () => {
+    const nos = montarTrilha(status({
+      dominadas: [item("b", "comprovado_no_jogo", { ev_loss_bb: -5, reaberto: true } as never)],
+    }));
+    expect(placarDaTrilha(nos).bbComprovados).toBe(0);
+  });
+});
+
+describe("emblemaDoCriterio", () => {
+  it("cada critério do gate tem seu mostrador", () => {
+    expect(emblemaDoCriterio("volume")).toBe("chip");
+    expect(emblemaDoCriterio("precisao")).toBe("target");
+    expect(emblemaDoCriterio("amplitude")).toBe("range");
+    expect(emblemaDoCriterio("fronteira")).toBe("cards");
+    expect(emblemaDoCriterio("transferencia")).toBe("clock");
   });
 });
 

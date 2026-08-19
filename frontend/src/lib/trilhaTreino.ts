@@ -70,3 +70,32 @@ export function criteriosDoNo(item: ProgressionStatusItem): { ok: number; total:
   const c = item.mastery?.criterios ?? [];
   return { ok: c.filter((x) => x.ok).length, total: c.length };
 }
+
+/** Emblema do MOSTRADOR de critério do gate (cockpit v3) — vocabulário fixo por chave. */
+export function emblemaDoCriterio(key: string): MedalEmblem {
+  switch (key) {
+    case "volume": return "chip";
+    case "precisao": return "target";
+    case "amplitude": return "range";
+    case "fronteira": return "cards";
+    case "transferencia": return "clock";
+    default: return "target";
+  }
+}
+
+/**
+ * O placar da régua — HONESTO por construção (a crítica do painel de design derrubou a
+ * proposta A exatamente por um eixo que mentia): `bbComprovados` soma o EV medido APENAS
+ * dos leaks com estado comprovado_no_jogo — melhora validada por torneio real importado.
+ * Dominado-no-treino conta em `dominados`, nunca em bb: treino fechado não é bb recuperado
+ * até o jogo real confirmar.
+ */
+export function placarDaTrilha(nos: NoDaTrilha[]): {
+  dominados: number; total: number; bbComprovados: number;
+} {
+  const fechados = nos.filter((n) => n.estado === "dominado" || n.estado === "comprovado");
+  const bb = nos
+    .filter((n) => n.estado === "comprovado" && !n.reaberto)
+    .reduce((s, n) => s + Math.abs(n.item.ev_loss_bb ?? 0), 0);
+  return { dominados: fechados.length, total: nos.length, bbComprovados: Math.round(bb * 10) / 10 };
+}

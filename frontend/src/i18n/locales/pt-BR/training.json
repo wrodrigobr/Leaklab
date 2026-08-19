@@ -306,6 +306,17 @@
     "ctaBloqueado": "Domine o nó atual para destravar",
     "treinarOutra": "Treinar outra coisa",
     "praticar": "Praticar",
-    "perfilNota": "Placar, domínio e conquistas: tela clássica"
+    "perfilNota": "Placar, domínio e conquistas: tela clássica",
+    "missaoAtiva": "Missão ativa",
+    "medidos": "−{{ev}}bb medidos · {{hands}} mãos",
+    "feche5": "O leak mais caro do seu jogo agora. Feche os 5 critérios para dominar.",
+    "gateNota": "dominar = medalha ouro na régua",
+    "ctaTreinarAgora": "Treinar agora",
+    "ctaRetreinar": "Retreinar agora",
+    "voltarMissao": "Voltar à missão ativa",
+    "placarBb": "comprovados no jogo",
+    "placarDominados": "{{n}}/{{m}} dominados",
+    "reabertoNums": "A taxa de erro voltou a subir: {{antes}}% → {{depois}}% nas últimas {{n}} mãos.",
+    "bloqueadoNota": "Destrava quando a missão ativa fechar o gate. A ordem da fila é o seu EV: nada aqui é genérico."
   }
 }

@@ -306,6 +306,17 @@
     "ctaBloqueado": "Domina el nodo actual para desbloquear",
     "treinarOutra": "Entrenar otra cosa",
     "praticar": "Practicar",
-    "perfilNota": "Marcador, dominio y logros: vista clásica"
+    "perfilNota": "Marcador, dominio y logros: vista clásica",
+    "missaoAtiva": "Misión activa",
+    "medidos": "−{{ev}}bb medidos · {{hands}} manos",
+    "feche5": "El leak más caro de tu juego ahora. Cierra los 5 criterios para dominarlo.",
+    "gateNota": "dominar = medalla de oro en la regla",
+    "ctaTreinarAgora": "Entrenar ahora",
+    "ctaRetreinar": "Reentrenar ahora",
+    "voltarMissao": "Volver a la misión activa",
+    "placarBb": "comprobados en juego real",
+    "placarDominados": "{{n}}/{{m}} dominados",
+    "reabertoNums": "La tasa de error volvió a subir: {{antes}}% → {{depois}}% en las últimas {{n}} manos.",
+    "bloqueadoNota": "Se desbloquea cuando la misión activa cierre su gate. El orden de la fila es tu EV: nada aquí es genérico."
   }
 }

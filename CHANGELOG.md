@@ -7,6 +7,26 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(training): COCKPIT DE SESSAO na /training-v2 (v3 do redesign, sintese do painel de design) (#training #frontend)
+
+> Processo pedido pelo usuario: 2 agentes-designers propuseram em paralelo (A "Curva de
+> Recuperacao" = trilha como chart de equity; B "Cockpit de Sessao" = missao domina, regua
+> de medalhas no topo) e 1 critico adversarial de UX de treino decidiu: B como base (uso
+> diario exige friccao minima ate a acao + feedback proximal) com 3 enxertos da A. A caiu
+> por ser tela de contemplar e por eixo normalizado que MENTE — desqualificante em produto
+> de medicao auditada.
+>
+> Implementado: painel de missao dominando (~65%) com os 5 criterios do gate como
+> MOSTRADORES — medalha se materializando (contorno cinza → arco teal de progresso → ouro
+> cheia; 3 estados inequivocos, cadeado NUNCA em criterio), metrica legivel ("87/120",
+> rotulo do backend), CTA unico Treinar agora. Regua horizontal de medalhas com rotulo no
+> ativo/vizinhos/selecionado, traço vermelho no reaberto, "+N adiante", e o PLACAR honesto:
+> bb somam APENAS leaks comprovados no jogo real (reaberto perde o credito) — regra pura em
+> placarDaTrilha com teste. Consulta por clique (dominado→Ghost, comprovado→prova+relatorio,
+> bloqueado→nota de fila por EV). Lateral de 1 linha (streak/XP/ranking) + Desafio do Dia +
+> Praticar. 8 testes na lib; verificado ao vivo com dados reais; i18n 3 locales. Classica
+> segue intacta em /training.
+
 ### feat(training): TRILHA DE TREINO (v2) -- Fase 1 do redesign, em rota propria (#training #frontend)
 
 > O usuario avaliou a tela de Training como "poluida e de dificil entendimento" (diagnostico
