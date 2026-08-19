@@ -24,18 +24,9 @@ import { cn } from "@/lib/utils";
  * clássica. A trilha dá corpo espacial ao que o gate de domínio já decide.
  */
 
-// Ritmo vertical da trilha (px). O conector serpentina é um SVG calculado destas MESMAS
-// constantes — mudar o ritmo sem mudar o conector deixaria a linha passando fora dos nós.
-const ALTURA_NO = 118;
-const ALTURA_NO_ATIVO = 138;
-const LARGURA_TRILHA = 320;
-const DESVIO = 72;   // serpentina: quanto cada nó sai do eixo central
-
-function desvioDoIndice(i: number): number {
-  // 0, +1, 0, -1, 0, +1... — senoide discreta; o nó ativo fica onde a sequência o puser
-  const seq = [0, 1, 0, -1];
-  return seq[i % 4] * DESVIO;
-}
+// v2.1 (feedback do usuário na v2): a serpentina com rótulo EMBAIXO desperdiçava a lateral
+// dos ícones e encavalava os textos. A trilha virou LINHAS: medalha à esquerda num trilho
+// vertical, título/estado AO LADO — cada nó usa a largura inteira e o texto respira.
 
 /** O disco do nó ATIVO: aro teal pulsando com o emblema gravado — mesma linguagem de traço
  *  das medalhas (EmblemIcon), tier teal que as medalhas não têm (ativo não é conquista). */
@@ -71,24 +62,6 @@ export default function TrainingV2() {
   const sel: NoDaTrilha | null =
     nos.find((n) => n.key === selKey) ?? nos.find((n) => n.estado === "ativo") ?? nos[0] ?? null;
   const ctxRef = useRef<HTMLDivElement>(null);
-
-  // conector serpentina: mesmo cálculo de posição dos nós (constantes acima)
-  const conector = useMemo(() => {
-    if (nos.length < 2) return null;
-    const cx = LARGURA_TRILHA / 2;
-    let y = 46;
-    const pts: [number, number][] = [];
-    nos.forEach((n, i) => {
-      pts.push([cx + desvioDoIndice(i), y]);
-      y += n.estado === "ativo" ? ALTURA_NO_ATIVO : ALTURA_NO;
-    });
-    let d = `M${pts[0][0]} ${pts[0][1]}`;
-    for (let i = 1; i < pts.length; i++) {
-      const [x0, y0] = pts[i - 1], [x1, y1] = pts[i], my = (y0 + y1) / 2;
-      d += ` C ${x0} ${my}, ${x1} ${my}, ${x1} ${y1}`;
-    }
-    return { d, h: y + 8 };
-  }, [nos]);
 
   const selecionar = (n: NoDaTrilha) => {
     setSelKey(n.key);
@@ -142,59 +115,79 @@ export default function TrainingV2() {
           {nos.length === 0 ? (
             <p className="py-10 text-center text-sm text-muted-foreground">{t("trilha.vazia")}</p>
           ) : (
-            <div className="relative mx-auto" style={{ width: LARGURA_TRILHA }}>
-              {conector && (
-                <svg className="pointer-events-none absolute inset-0" width={LARGURA_TRILHA} height={conector.h}
-                     viewBox={`0 0 ${LARGURA_TRILHA} ${conector.h}`} aria-hidden>
-                  <path d={conector.d} fill="none" stroke="hsl(var(--border))" strokeWidth="4"
-                        strokeLinecap="round" strokeDasharray="1 10" />
-                </svg>
-              )}
-              {nos.map((n, i) => {
-                const emblem = emblemaDoCenario(n.item.scenario);
-                const selecionado = sel?.key === n.key;
-                return (
-                  <button key={n.key} type="button" onClick={() => selecionar(n)}
-                    aria-pressed={selecionado}
-                    className={cn("relative z-[1] mx-auto block text-center transition-transform hover:-translate-y-0.5",
-                                  selecionado && "scale-[1.04]")}
-                    style={{ width: 96, height: (n.estado === "ativo" ? ALTURA_NO_ATIVO : ALTURA_NO) - 14,
-                             transform: `translateX(${desvioDoIndice(i)}px)` }}>
-                    {n.estado === "ativo" && (
-                      <span className="absolute -top-2 left-1/2 z-[2] -translate-x-1/2 rounded-full bg-primary px-2.5 py-0.5 font-mono text-[9px] font-extrabold tracking-[0.12em] text-primary-foreground">
-                        {n.reaberto ? t("trilha.flagReaberto") : t("trilha.flagComecar")}
-                      </span>
-                    )}
-                    {n.estado === "ativo" ? (
-                      <DiscoAtivo emblem={emblem} reaberto={n.reaberto} />
-                    ) : n.estado === "bloqueado" ? (
-                      <AchievementMedal tier="silver" emblem={emblem} locked size={64} label="" className="drop-shadow-[0_5px_8px_rgba(0,0,0,0.55)]" />
-                    ) : (
-                      <span className="relative inline-flex">
-                        <AchievementMedal tier={n.estado === "comprovado" ? "diamond" : "gold"}
-                                          emblem={emblem} size={64} label=""
-                                          className={cn("drop-shadow-[0_5px_8px_rgba(0,0,0,0.55)]", n.reaberto && "opacity-60 saturate-50")} />
-                        {!n.reaberto && (
-                          <span className={cn("absolute -right-1 -top-1 flex size-5 items-center justify-center rounded-full text-[10px] font-black",
-                            n.estado === "comprovado" ? "bg-sky-300 text-sky-950" : "bg-emerald-400 text-emerald-950")}>
-                            {n.estado === "comprovado" ? "◆" : "✓"}
-                          </span>
+            <div className="relative">
+              {/* o trilho: linha pontilhada vertical passando pelo CENTRO das medalhas
+                  (medalha 64px + padding do botão 12px → centro a 44px) */}
+              <div className="pointer-events-none absolute bottom-6 top-6 left-[44px] w-0 border-l-2 border-dashed border-border" aria-hidden />
+              <div className="space-y-2">
+                {nos.map((n) => {
+                  const emblem = emblemaDoCenario(n.item.scenario);
+                  const selecionado = sel?.key === n.key;
+                  const ativo = n.estado === "ativo";
+                  return (
+                    <button key={n.key} type="button" onClick={() => selecionar(n)}
+                      aria-pressed={selecionado}
+                      className={cn(
+                        "relative z-[1] flex w-full items-center gap-4 rounded-2xl p-3 text-left transition-colors",
+                        ativo ? "bg-primary/[0.08] ring-1 ring-primary/40"
+                          : selecionado ? "bg-card/80 ring-1 ring-primary/30"
+                          : "hover:bg-card/60",
+                        n.reaberto && "ring-1 ring-red-500/40 bg-red-500/[0.05]",
+                      )}>
+                      {/* a medalha, sempre no trilho */}
+                      <span className="relative shrink-0">
+                        {ativo ? (
+                          <DiscoAtivo emblem={emblem} reaberto={n.reaberto} />
+                        ) : n.estado === "bloqueado" ? (
+                          <AchievementMedal tier="silver" emblem={emblem} locked size={64} label=""
+                                            className="drop-shadow-[0_5px_8px_rgba(0,0,0,0.55)]" />
+                        ) : (
+                          <>
+                            <AchievementMedal tier={n.estado === "comprovado" ? "diamond" : "gold"}
+                                              emblem={emblem} size={64} label=""
+                                              className={cn("drop-shadow-[0_5px_8px_rgba(0,0,0,0.55)]",
+                                                            n.reaberto && "opacity-60 saturate-50")} />
+                            {!n.reaberto && (
+                              <span className={cn("absolute -right-1 -top-1 flex size-5 items-center justify-center rounded-full text-[10px] font-black",
+                                n.estado === "comprovado" ? "bg-sky-300 text-sky-950" : "bg-emerald-400 text-emerald-950")}>
+                                {n.estado === "comprovado" ? "◆" : "✓"}
+                              </span>
+                            )}
+                          </>
                         )}
                       </span>
-                    )}
-                    <span className="mt-1 block text-[10.5px] leading-tight text-muted-foreground">
-                      <b className="block text-[11px] font-bold text-foreground">
-                        {spotLabel(n.item, { fallback: n.item.titulo })}
-                      </b>
-                      {n.reaberto ? (
-                        <span className="text-red-400">{t("trilha.estadoReaberto")}</span>
-                      ) : t(`trilha.estado.${n.estado}`)}
-                    </span>
-                  </button>
-                );
-              })}
+                      {/* título e estado AO LADO — a lateral que estava vazia */}
+                      <span className="min-w-0 flex-1">
+                        <span className={cn("block truncate font-heading text-[15px] font-bold",
+                                            n.estado === "bloqueado" ? "text-muted-foreground" : "text-foreground")}>
+                          {spotLabel(n.item, { fallback: n.item.titulo })}
+                        </span>
+                        <span className="mt-0.5 flex flex-wrap items-center gap-x-2 text-[11.5px]">
+                          {ativo && (
+                            <span className="rounded-full bg-primary px-2 py-px font-mono text-[9px] font-extrabold tracking-[0.12em] text-primary-foreground">
+                              {n.reaberto ? t("trilha.flagReaberto") : t("trilha.flagComecar")}
+                            </span>
+                          )}
+                          <span className={cn(n.reaberto ? "text-red-400"
+                            : n.estado === "comprovado" ? "text-sky-300"
+                            : n.estado === "dominado" ? "text-emerald-400"
+                            : "text-muted-foreground")}>
+                            {n.reaberto ? t("trilha.estadoReaberto") : t(`trilha.estado.${n.estado}`)}
+                          </span>
+                          {typeof n.item.ev_loss_bb === "number" && n.item.ev_loss_bb !== 0 && (
+                            <span className="font-mono tabular-nums text-muted-foreground">
+                              −{Math.abs(n.item.ev_loss_bb).toFixed(1)}bb
+                            </span>
+                          )}
+                        </span>
+                      </span>
+                      {ativo && <ArrowRight className="size-4 shrink-0 text-primary" aria-hidden />}
+                    </button>
+                  );
+                })}
+              </div>
               {(status?.restantes ?? 0) > 0 && (
-                <p className="pb-1 pt-2 text-center font-mono text-[10px] uppercase tracking-widest text-muted-foreground/70">
+                <p className="pb-1 pl-[84px] pt-2 font-mono text-[10px] uppercase tracking-widest text-muted-foreground/70">
                   {t("trilha.maisAdiante", { count: status!.restantes })}
                 </p>
               )}
