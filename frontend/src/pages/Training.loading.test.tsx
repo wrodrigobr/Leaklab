@@ -77,10 +77,13 @@ describe("carregamento do /training", () => {
     expect(blocos.length).toBeGreaterThanOrEqual(8);
   });
 
-  it("os três atalhos continuam clicáveis durante o carregamento", () => {
-    // O esqueleto não pode bloquear quem já sabe onde quer ir.
+  it("os atalhos continuam clicáveis durante o carregamento", () => {
+    // O esqueleto não pode bloquear quem já sabe onde quer ir. A Academia SAIU desta tela
+    // em 19/08 (mudou para /study — separar estudar de treinar foi decisão de produto), então
+    // o contrato dos atalhos é: revisão, treino e o convite da trilha.
     const { container } = montar();
     const destinos = [...container.querySelectorAll("a[href]")].map((a) => a.getAttribute("href"));
-    expect(destinos).toEqual(expect.arrayContaining(["/ghost", "/leak-trainer", "/academy"]));
+    expect(destinos).toEqual(expect.arrayContaining(["/ghost", "/leak-trainer", "/training-v2"]));
+    expect(destinos).not.toContain("/academy");
   });
 });
