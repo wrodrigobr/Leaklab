@@ -319,6 +319,8 @@
     "placarBb": "comprobados en juego real",
     "placarDominados": "{{n}}/{{m}} dominados",
     "reabertoNums": "La tasa de error volvió a subir: {{antes}}% → {{depois}}% en las últimas {{n}} manos.",
-    "bloqueadoNota": "Se desbloquea cuando la misión activa cierre su gate. El orden de la fila es tu EV: nada aquí es genérico."
+    "bloqueadoNota": "Se desbloquea cuando la misión activa cierre su gate. El orden de la fila es tu EV: nada aquí es genérico.",
+    "ghostSub": "Repaso espaciado de tus manos reales",
+    "academySub": "La teoría detrás del entrenamiento"
   }
 }

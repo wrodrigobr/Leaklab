@@ -319,6 +319,8 @@
     "placarBb": "comprovados no jogo",
     "placarDominados": "{{n}}/{{m}} dominados",
     "reabertoNums": "A taxa de erro voltou a subir: {{antes}}% → {{depois}}% nas últimas {{n}} mãos.",
-    "bloqueadoNota": "Destrava quando a missão ativa fechar o gate. A ordem da fila é o seu EV: nada aqui é genérico."
+    "bloqueadoNota": "Destrava quando a missão ativa fechar o gate. A ordem da fila é o seu EV: nada aqui é genérico.",
+    "ghostSub": "Revisão espaçada das suas mãos reais",
+    "academySub": "A teoria por trás do treino"
   }
 }

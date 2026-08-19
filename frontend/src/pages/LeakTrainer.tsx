@@ -229,6 +229,11 @@ export default function LeakTrainer() {
   const [urlParams] = useSearchParams();
   const origemRef = useRef<string>(urlParams.get("origem") || "espontanea");
   const focoInicialRef = useRef<string | null>(urlParams.get("foco"));
+  // Janela de medição da sessão. A trilha mede com 365 dias e o /next usava 90 fixos: a
+  // missão da trilha podia NEM EXISTIR no currículo curto, e o backend caía calado no
+  // adaptativo — o deep-link prometia um leak e servia outro (pego ao vivo: pediu
+  // BB vs SB 20 e veio RFI UTG+1). Quem manda o foco manda a janela junto.
+  const daysRef = useRef<number>(Number(urlParams.get("days")) || 90);
   const rootRef = useRef<HTMLDivElement>(null);
   const [isFull, setIsFull] = useState(false);
 
@@ -347,7 +352,7 @@ export default function LeakTrainer() {
     try {
       const timeout = new Promise<never>((_, rej) => setTimeout(() => rej(new Error("timeout")), 12000));
       const r = await Promise.race([
-        leaktrainer.next(stateRef.current, 90, focusRef.current, servidasRef.current), timeout]);
+        leaktrainer.next(stateRef.current, daysRef.current, focusRef.current, servidasRef.current), timeout]);
       // Gate freemium: cap diário atingido → paywall (não tela vazia)
       if (r.limit_reached || r.requires_pro) { setGateInfo({ used: r.used, cap: r.cap }); setPhase("paywall"); return; }
       if (!r.spot) { setPhase("empty"); return; }

@@ -157,7 +157,10 @@ export default function TrainingV2() {
           </span>
           <span className="font-mono text-[10px] text-muted-foreground">{t("trilha.gateNota")}</span>
         </div>
-        <Link to="/leak-trainer?origem=trilha"
+        {/* Deep-link com FOCO: "Treinar agora" tem que cair TREINANDO o leak da missão, não
+            na intro do Leak Trainer (outra tela de decisão no meio da promessa — reportado).
+            O ?foco= já existia exatamente para isso. */}
+        <Link to={`/leak-trainer?origem=trilha&days=365&foco=${encodeURIComponent(`leak:${n.item.key}`)}`}
           className="mt-2.5 flex items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3.5 font-mono text-base font-extrabold uppercase tracking-wider text-primary-foreground shadow-[0_4px_0_rgba(23,138,124,1)] transition-transform active:translate-y-0.5">
           <Target className="size-5" aria-hidden />
           {n.reaberto ? t("trilha.ctaRetreinar") : t("trilha.ctaTreinarAgora")}
@@ -344,22 +347,31 @@ export default function TrainingV2() {
 
           <DailyChallengeCard />
 
-          <div className="rounded-xl border border-border bg-card/60 p-3">
-            <p className="mb-2 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">{t("trilha.praticar")}</p>
-            <div className="grid grid-cols-2 gap-2">
-              <Link to="/ghost" className="flex items-center gap-2 rounded-lg bg-background/60 px-2.5 py-2 ring-1 ring-border transition-colors hover:ring-primary/40">
-                <RotateCw className="size-3.5 shrink-0 text-primary" aria-hidden />
-                <span className="truncate text-[11px] font-bold text-foreground">{t("trainer.review.title")}</span>
-              </Link>
-              <Link to="/academy" className="flex items-center gap-2 rounded-lg bg-background/60 px-2.5 py-2 ring-1 ring-border transition-colors hover:ring-violet-500/40">
-                <GraduationCap className="size-3.5 shrink-0 text-violet-400" aria-hidden />
-                <span className="truncate text-[11px] font-bold text-foreground">{t("academy.title")}</span>
-              </Link>
-            </div>
-            <Link to="/training" className="mt-2 block text-center text-[10.5px] text-muted-foreground hover:text-foreground hover:underline">
-              {t("trilha.perfilNota")}
-            </Link>
-          </div>
+          {/* Portas de prática em LINHAS CHEIAS (reportado: a Academia estava "muito
+              escondida" num botão espremido) — mesmo peso visual das linhas de status. */}
+          <Link to="/ghost" className="flex items-center justify-between rounded-xl border border-border bg-card/60 px-3.5 py-2.5 transition-colors hover:border-primary/40">
+            <span className="flex min-w-0 items-center gap-2">
+              <RotateCw className="size-4 shrink-0 text-primary" aria-hidden />
+              <span className="min-w-0">
+                <span className="block truncate text-[12px] font-bold text-foreground">{t("trainer.review.title")}</span>
+                <span className="block truncate text-[10px] text-muted-foreground">{t("trilha.ghostSub")}</span>
+              </span>
+            </span>
+            <span className="shrink-0 font-mono text-[10px] text-primary">→</span>
+          </Link>
+          <Link to="/academy" className="flex items-center justify-between rounded-xl border border-violet-500/30 bg-violet-500/[0.06] px-3.5 py-2.5 transition-colors hover:border-violet-500/50">
+            <span className="flex min-w-0 items-center gap-2">
+              <GraduationCap className="size-4 shrink-0 text-violet-400" aria-hidden />
+              <span className="min-w-0">
+                <span className="block truncate text-[12px] font-bold text-foreground">{t("academy.title")}</span>
+                <span className="block truncate text-[10px] text-muted-foreground">{t("trilha.academySub")}</span>
+              </span>
+            </span>
+            <span className="shrink-0 font-mono text-[10px] text-violet-400">→</span>
+          </Link>
+          <Link to="/training" className="block text-center text-[10.5px] text-muted-foreground hover:text-foreground hover:underline">
+            {t("trilha.perfilNota")}
+          </Link>
         </aside>
       </div>
     </HudLayout>

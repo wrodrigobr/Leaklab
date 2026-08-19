@@ -319,6 +319,8 @@
     "placarBb": "proven in real games",
     "placarDominados": "{{n}}/{{m}} mastered",
     "reabertoNums": "Error rate climbed back: {{antes}}% → {{depois}}% over the last {{n}} hands.",
-    "bloqueadoNota": "Unlocks when the active mission closes its gate. The queue order is your EV: nothing here is generic."
+    "bloqueadoNota": "Unlocks when the active mission closes its gate. The queue order is your EV: nothing here is generic.",
+    "ghostSub": "Spaced review of your real hands",
+    "academySub": "The theory behind the training"
   }
 }
