@@ -438,6 +438,25 @@ def build_admin_email_html(username: str, title: str, body: str,
     )
 
 
+def prazo_humano(minutes: int) -> str:
+    """"1440 minutos" é tecnicamente certo e péssimo de ler — parece defeito e queima a
+    confiança justamente no e-mail que precisa parecer legítimo. Usado nos DOIS e-mails que
+    carregam código (confirmação e reset), para os dois não divergirem com o tempo."""
+    try:
+        m = int(minutes)
+    except (TypeError, ValueError):
+        return f'{minutes} minutos'
+    if m < 60:
+        return f'{m} minuto' + ('' if m == 1 else 's')
+    if m % 1440 == 0:
+        d = m // 1440
+        return f'{d} dia' + ('' if d == 1 else 's')
+    if m % 60 == 0:
+        h = m // 60
+        return f'{h} hora' + ('' if h == 1 else 's')
+    return f'{m // 60}h{m % 60:02d}'
+
+
 def build_verification_email_html(username: str, code: str, minutes: int = 15,
                                   email: str | None = None) -> str:
     """Email de confirmação de conta: BOTÃO que conclui num clique + código para digitar.
@@ -477,7 +496,7 @@ def build_verification_email_html(username: str, code: str, minutes: int = 15,
           f'Prefere digitar? Use este código na tela de confirmação:</p>'
         + code_box
         + f'<p style="margin:0;font-size:14px;line-height:1.6;color:{_C_MUTED};">'
-          f'O código expira em {minutes} minutos. Se você não criou esta conta, é só ignorar este email.</p>'
+          f'O código expira em {prazo_humano(minutes)}. Se você não criou esta conta, é só ignorar este email.</p>'
     )
     return _email_document(
         title="Seu código de confirmação · GrindLab", inner_html=inner, base_url=base_url,
@@ -502,7 +521,7 @@ def build_password_reset_email_html(username: str, code: str, minutes: int = 15)
           f'Use o código abaixo para criar uma nova senha:</p>'
         + code_box
         + f'<p style="margin:0;font-size:14px;line-height:1.6;color:{_C_MUTED};">'
-          f'O código expira em {minutes} minutos. Se você não pediu para redefinir a senha, '
+          f'O código expira em {prazo_humano(minutes)}. Se você não pediu para redefinir a senha, '
           f'é só ignorar este email, sua senha atual continua valendo.</p>'
     )
     return _email_document(

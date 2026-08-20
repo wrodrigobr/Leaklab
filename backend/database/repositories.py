@@ -8182,6 +8182,25 @@ def get_activation_funnel(days: int = 30) -> dict:
 
         cadastrados = _n("SELECT COUNT(*) AS n FROM users WHERE created_at >= ? "
                          "AND COALESCE(role,'player') = 'player'", (cutoff,))
+        # Degrau que faltava (20/08): confirmar o e-mail vem ANTES de tudo, e é onde a conta
+        # some sem deixar rastro — sem token emitido, a pessoa nunca aparece em nenhum outro
+        # degrau. Descobrimos 7 contas paradas aqui, todas sem NENHUMA tentativa de digitar
+        # o código, porque o DNS do domínio não autorizava o remetente e o e-mail ia p/ spam.
+        # Ressalva honesta: contas criadas antes da verificação existir têm email_verified=1
+        # por default da coluna, então este degrau superestima a confirmação no passado.
+        confirmaram = _n("SELECT COUNT(*) AS n FROM users WHERE created_at >= ? "
+                         "AND COALESCE(role,'player') = 'player' "
+                         "AND COALESCE(email_verified, 1) = 1", (cutoff,))
+        presos = _n("SELECT COUNT(*) AS n FROM users WHERE created_at >= ? "
+                    "AND COALESCE(role,'player') = 'player' "
+                    "AND COALESCE(email_verified, 1) = 0", (cutoff,))
+        # A distinção que decide o conserto: quem NUNCA digitou nada não recebeu o e-mail
+        # (problema de ENTREGA); quem digitou e falhou é código expirado/errado (problema de
+        # JANELA). Somar os dois num número só esconde qual dos dois consertar.
+        presos_sem_tentativa = _n("SELECT COUNT(*) AS n FROM users WHERE created_at >= ? "
+                                  "AND COALESCE(role,'player') = 'player' "
+                                  "AND COALESCE(email_verified, 1) = 0 "
+                                  "AND COALESCE(verification_attempts, 0) = 0", (cutoff,))
         importaram = _n(
             "SELECT COUNT(DISTINCT t.user_id) AS n FROM tournaments t JOIN users u ON u.id = t.user_id "
             "WHERE u.created_at >= ? AND COALESCE(u.role,'player') = 'player'", (cutoff,))
@@ -8209,15 +8228,25 @@ def get_activation_funnel(days: int = 30) -> dict:
             'days': days,
             'degraus': [
                 {'key': 'cadastrou', 'n': cadastrados, 'pct': 100.0},
+                {'key': 'confirmou', 'n': confirmaram, 'pct': _pct(confirmaram, cadastrados)},
                 {'key': 'importou', 'n': importaram, 'pct': _pct(importaram, cadastrados)},
                 {'key': 'treinou', 'n': treinaram, 'pct': _pct(treinaram, cadastrados)},
                 {'key': 'voltou', 'n': voltaram, 'pct': _pct(voltaram, cadastrados)},
             ],
             # conversão ENTRE degraus: é onde o gargalo aparece (o % sobre o topo esconde)
             'entre': {
+                'cadastro_para_confirmacao': _pct(confirmaram, cadastrados),
+                'confirmacao_para_import': _pct(importaram, confirmaram),
                 'cadastro_para_import': _pct(importaram, cadastrados),
                 'import_para_treino': _pct(treinaram, importaram),
                 'treino_para_volta': _pct(voltaram, treinaram),
+            },
+            'porta_de_entrada': {
+                'presos': presos,
+                'sem_nenhuma_tentativa': presos_sem_tentativa,
+                # Quando quase todos os presos nunca digitaram nada, o problema é a ENTREGA
+                # do e-mail, não a janela do código. Rode scripts/verificar_dns_email.py.
+                'suspeita_de_entrega': presos > 0 and presos_sem_tentativa >= presos,
             },
             'origens': [dict(o) for o in origens],
         }

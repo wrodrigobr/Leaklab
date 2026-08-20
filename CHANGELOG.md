@@ -7,6 +7,65 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(entrada): o e-mail de confirmacao ia para SPAM por politica do nosso proprio dominio
+
+> **Por que:** o funil apontou o gargalo em cadastro -> importacao (28%), entao fui medir
+> onde o jogador trava ao importar. Nao trava na importacao: **quem entra, importa no mesmo
+> dia** (mediana 0 dias; nenhum import depois do 7o dia). O gargalo esta ANTES — na porta.
+>
+> **A medicao.** 25 jogadores, 7 com `email_verified=0`. Todos os 7 com **ZERO tentativas**
+> de digitar o codigo — nao desistiram, nunca receberam o e-mail. Dois deles chegaram a
+> pedir reenvio (o `verification_expires_at` esta horas depois do cadastro) e mesmo assim
+> nunca digitaram nada. Contraprova de que a conta nao era falsa: na mesma noite de 01/08,
+> o user 47 passou pela mesma porta e usou o produto.
+>
+> **A causa, perguntando ao DNS em vez de ao log:** o relay do Brevo autenticava normalmente
+> (testado com controle: senha errada e rejeitada), entao o log dizia "enviado". O que estava
+> errado era o DNS de `grindlabpoker.com`:
+>
+> - `SPF` = `v=spf1 include:_spf.mx.cloudflare.net ~all` — autoriza o Cloudflare, **nao o
+>   Brevo**, que e quem envia;
+> - `DKIM` — **nenhum** seletor publicado (`brevo._domainkey` e `mail._domainkey` vazios);
+> - `DMARC` = `p=quarantine` — o dominio instrui Gmail/Hotmail a **quarentenar** o que falha
+>   nos dois acima.
+>
+> Ou seja, o dominio mandava jogar no spam o e-mail do proprio produto. **Isso nao afeta so a
+> confirmacao: win-back, digest semanal e boas-vindas viajam pelo mesmo caminho.** "SMTP OK"
+> nunca foi evidencia de entrega — era evidencia de que o relay aceitou o envio (regra 8).
+>
+> **O conserto de verdade e em DNS e depende do painel do Brevo + Cloudflare** (fora do
+> codigo). O que entra aqui e o que reduz o dano e impede a recaida:
+>
+> 1. **Guarda permanente** `leaklab/dns_email_health.py` (funcao pura, testavel sem rede) +
+>    `scripts/verificar_dns_email.py` (resolve por DNS-over-HTTPS; o container nao tem `dig`
+>    nem `dnspython`). Sai com codigo 1 quando a entrega esta em risco. **9 testes**, sendo o
+>    central o estado real de 20/08 congelado: o guarda TEM que acusa-lo (regra 1). Quebrado
+>    de proposito (`elif False` na deteccao de SPF): 2 testes acusaram, 7 seguiram verdes.
+> 2. **TTL da confirmacao: 15min -> 24h** (`EMAIL_VERIFICATION_TTL_MIN`). Nao foi o que
+>    travou ninguem, mas 15 minutos e janela hostil e a mensagem que sobra ("Codigo
+>    expirado") parece erro do jogador. **Nao e infinito de proposito**: `/auth/verify-email`
+>    EMITE token de sessao, entao o codigo e credencial de acesso.
+> 3. **Reset de senha ficou em 15min** (`_PASSWORD_RESET_TTL_MIN`, com teste). A constante
+>    era compartilhada — esticar os dois daria 24h ao codigo que TROCA A SENHA, dano que o
+>    bug nao causava (regra 7).
+> 4. **`prazo_humano()`** nos DOIS e-mails que carregam codigo: sem ela o corpo diria "expira
+>    em 1440 minutos", que parece defeito justamente no e-mail que precisa parecer legitimo.
+>    Regra 5 — o teste varre os dois, nao so o que eu lembrei de mudar.
+> 5. **Aviso de spam na tela de confirmacao** (3 locales), ACIMA do campo: no rodape so e
+>    lido por quem ja desistiu. Verificado renderizado no ambiente.
+> 6. **Degrau `confirmou` no funil de ativacao** + `porta_de_entrada`, que separa
+>    `sem_nenhuma_tentativa` (falha de ENTREGA) de quem digitou e errou (falha de JANELA) —
+>    consertos opostos, e somados num numero so o painel nao diria qual aplicar. Quem nunca
+>    confirma nao emite token e some de todos os outros degraus: eram 7 invisiveis.
+> 7. **`scripts/recuperar_contas_presas.py`** — lista por padrao, so envia com `--enviar`, e
+>    **RECUSA enviar enquanto o DNS acusar risco**: reenviar antes de consertar gasta a
+>    segunda chance no mesmo spam e queima mais reputacao do dominio.
+>
+> **Ressalva honesta do medidor:** `feature_usage` so existe desde 27/07, entao "0 hits" para
+> quem entrou antes disso e cegueira de instrumentacao, nao prova de inatividade — a primeira
+> leitura desta investigacao estava contaminada por isso. E o degrau `confirmou` superestima
+> o passado, porque `email_verified` tem default 1 para contas anteriores a verificacao.
+
 ### feat(produto): TRILHA PROMOVIDA a /training + funil de ativacao + contexto no feedback
 
 > Preparacao para o programa de fundadores (acesso Pro em troca de uso e feedback — a

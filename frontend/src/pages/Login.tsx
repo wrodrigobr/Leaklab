@@ -259,6 +259,18 @@ const Login = () => {
               <p className="mt-1 text-xs text-muted-foreground">
                 {t("verify.sentTo")} <span className="text-foreground">{pendingEmail}</span>
               </p>
+              <p className="mt-1 text-[11px] text-muted-foreground">{t("verify.validFor")}</p>
+            </div>
+
+            {/*
+              O spam não é hipótese: em 20/08 as 7 contas travadas na confirmação tinham ZERO
+              tentativas de digitar código — ninguém tinha recebido o e-mail. Enquanto o DNS do
+              domínio não autorizar o remetente (SPF/DKIM), este aviso é o que dá saída ao
+              jogador. Fica ACIMA do campo porque no rodapé ele só é lido por quem já desistiu.
+            */}
+            <div className="mb-4 rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-[11px] leading-relaxed text-amber-200">
+              <p className="font-bold">{t("verify.spamHint")}</p>
+              <p className="mt-0.5 text-amber-200/80">{t("verify.spamHintAction")}</p>
             </div>
 
             <form onSubmit={submitCode} className="space-y-4">

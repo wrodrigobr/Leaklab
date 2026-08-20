@@ -143,6 +143,35 @@ def test_codigo_do_link_conclui_o_cadastro():
     print('OK  test_codigo_do_link_conclui_o_cadastro')
 
 
+def test_prazo_do_codigo_e_legivel_em_todo_email_que_carrega_codigo():
+    """O TTL virou 24h (era 15min) e o texto do e-mail é interpolado cru: sem tradução, ele
+    diria "expira em 1440 minutos" — parece defeito no e-mail que mais precisa parecer
+    legítimo. Varre os DOIS e-mails que carregam código, não só o que eu lembrei de mudar."""
+    from leaklab.email_digest import (build_password_reset_email_html,
+                                      build_verification_email_html, prazo_humano)
+    assert prazo_humano(15) == '15 minutos'
+    assert prazo_humano(1) == '1 minuto'
+    assert prazo_humano(60) == '1 hora'
+    assert prazo_humano(1440) == '1 dia'
+    assert prazo_humano(2880) == '2 dias'
+    assert prazo_humano(90) == '1h30'
+
+    for nome, html in (('confirmação', build_verification_email_html('F', '123456', 1440)),
+                       ('reset de senha', build_password_reset_email_html('F', '123456', 1440))):
+        assert '1440 minutos' not in html, f'{nome}: prazo cru vazou para o corpo do e-mail'
+        assert 'expira em 1 dia' in html, f'{nome}: não traduziu o prazo'
+    print('OK  test_prazo_do_codigo_e_legivel_em_todo_email_que_carrega_codigo')
+
+
+def test_reset_de_senha_continua_com_janela_curta():
+    """Regra 7: o conserto não pode criar dano que o bug não causava. Esticar a confirmação
+    de cadastro para 24h é seguro; esticar o código que TROCA A SENHA não é."""
+    import api.app as appmod
+    assert appmod._PASSWORD_RESET_TTL_MIN <= 30, 'reset de senha ganhou janela longa'
+    assert appmod._verification_ttl_min() >= 60, 'confirmação continua curta demais'
+    print('OK  test_reset_de_senha_continua_com_janela_curta')
+
+
 if __name__ == '__main__':
     tests = [(k, v) for k, v in sorted(globals().items()) if k.startswith('test_')]
     passed = failed = 0

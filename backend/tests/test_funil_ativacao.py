@@ -64,6 +64,17 @@ def _treino(uid: int, dia: str, origem: str = 'trilha'):
         conn.commit()
 
 
+def _preso(uid: int, email: str, tentativas: int = 0):
+    """Conta parada na confirmação de e-mail. `tentativas` separa as duas causas:
+    0 = nunca digitou código nenhum (o e-mail não chegou); >0 = digitou e falhou."""
+    with get_conn() as conn:
+        conn.execute(_adapt(
+            "INSERT INTO users (id, email, password_hash, username, role, email_verified, "
+            "verification_attempts) VALUES (?,?,?,?,'player',0,?)"),
+            (uid, email, 'x', email.split('@')[0], tentativas))
+        conn.commit()
+
+
 def _degrau(f: dict, key: str) -> int:
     return next(d['n'] for d in f['degraus'] if d['key'] == key)
 
@@ -110,6 +121,46 @@ def test_conversao_entre_degraus_expoe_o_gargalo():
     assert f['entre']['cadastro_para_import'] == 10.0     # 1 de 10
     assert f['entre']['import_para_treino'] == 100.0      # 1 de 1 — o gargalo é ANTES
     assert f['entre']['treino_para_volta'] == 0.0
+
+
+def test_porta_de_entrada_conta_quem_nunca_confirmou():
+    """O degrau que faltava: sem confirmar o e-mail a conta não emite token e SOME — não
+    aparece em nenhum outro degrau. Antes de 20/08 esses 7 jogadores eram invisíveis aqui."""
+    init_db(); _limpa()
+    _user(9300, 'entrou@t.com'); _torneio(9300, 'T5')
+    _preso(9301, 'preso1@t.com'); _preso(9302, 'preso2@t.com')
+    f = get_activation_funnel(3650)
+    assert _degrau(f, 'cadastrou') == 3
+    assert _degrau(f, 'confirmou') == 1, 'contou como confirmado quem está preso na porta'
+    assert f['porta_de_entrada']['presos'] == 2
+    assert f['entre']['cadastro_para_confirmacao'] == round(100 / 3, 1)
+
+
+def test_separa_nao_recebeu_de_errou_o_codigo():
+    """Os dois presos têm consertos OPOSTOS: entrega de e-mail vs janela do código.
+    Somados num número só, o painel não diria qual consertar."""
+    init_db(); _limpa()
+    _preso(9310, 'nunca_recebeu@t.com', tentativas=0)
+    _preso(9311, 'errou@t.com', tentativas=3)
+    p = get_activation_funnel(3650)['porta_de_entrada']
+    assert p['presos'] == 2
+    assert p['sem_nenhuma_tentativa'] == 1, 'não separou quem nunca digitou nada'
+    assert p['suspeita_de_entrega'] is False, 'metade tentou: não é falha de entrega'
+
+    # Agora o cenário REAL de 20/08 — 7 de 7 sem nenhuma tentativa. Tem que acusar entrega.
+    init_db(); _limpa()
+    for i in range(7):
+        _preso(9320 + i, f'p{i}@t.com', tentativas=0)
+    p = get_activation_funnel(3650)['porta_de_entrada']
+    assert p['sem_nenhuma_tentativa'] == 7 and p['suspeita_de_entrega'] is True
+
+
+def test_banco_sem_ninguem_preso_nao_levanta_suspeita():
+    """Contraprova: se a suspeita ligasse sozinha, o alarme não valeria nada."""
+    init_db(); _limpa()
+    _user(9330, 'ok@t.com')
+    p = get_activation_funnel(3650)['porta_de_entrada']
+    assert p['presos'] == 0 and p['suspeita_de_entrega'] is False
 
 
 def test_origem_das_sessoes_aparece():

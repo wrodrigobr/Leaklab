@@ -386,16 +386,38 @@ def _gen_verification_code() -> str:
     return f"{secrets.randbelow(1000000):06d}"
 
 
-_VERIFICATION_TTL_MIN = 15
+def _verification_ttl_min() -> int:
+    """Validade do código de confirmação de cadastro, em minutos (default 24h).
+
+    Era 15 minutos, herdado de OTP de login. Confirmação de cadastro é outro caso de uso:
+    a pessoa cadastra no celular, o e-mail demora ou cai em spam, e quando ela acha o código
+    já morreu — recebendo "Código expirado", que parece erro dela.
+
+    Não é infinito de propósito: `/auth/verify-email` EMITE token de sessão, então o código é
+    credencial de acesso à conta. Sem expirar, viraria uma senha permanente de 6 dígitos
+    guardada na caixa de e-mail de quem nunca confirmou."""
+    try:
+        v = int(os.environ.get('EMAIL_VERIFICATION_TTL_MIN', '1440'))
+    except ValueError:
+        return 1440
+    return v if 5 <= v <= 43200 else 1440
+
+
+# Reset de SENHA continua curto de propósito: esse código troca a senha da conta, é o alvo
+# clássico de quem invade uma caixa de e-mail. A folga de 24h vale para confirmar cadastro
+# (o pior caso é ativar uma conta que já era daquele e-mail), não para tomar uma conta viva.
+_PASSWORD_RESET_TTL_MIN = 15
+
 
 def _issue_verification(user_id: int, email: str, username: str) -> bool:
     """Gera + grava + envia o código de verificação. Retorna se o email saiu."""
     from datetime import datetime, timedelta
+    ttl = _verification_ttl_min()
     code = _gen_verification_code()
-    expires = (datetime.utcnow() + timedelta(minutes=_VERIFICATION_TTL_MIN)).strftime("%Y-%m-%d %H:%M:%S")
+    expires = (datetime.utcnow() + timedelta(minutes=ttl)).strftime("%Y-%m-%d %H:%M:%S")
     set_verification_code(user_id, code, expires)
     try:
-        return send_verification_email(email, username, code, _VERIFICATION_TTL_MIN)
+        return send_verification_email(email, username, code, ttl)
     except Exception:
         log.exception("failed sending verification email to %s", email)
         return False
@@ -677,9 +699,9 @@ def forgot_password():
         try:
             from datetime import datetime, timedelta
             code = _gen_verification_code()
-            expires = (datetime.utcnow() + timedelta(minutes=_VERIFICATION_TTL_MIN)).strftime("%Y-%m-%d %H:%M:%S")
+            expires = (datetime.utcnow() + timedelta(minutes=_PASSWORD_RESET_TTL_MIN)).strftime("%Y-%m-%d %H:%M:%S")
             set_verification_code(user['id'], code, expires)
-            send_password_reset_email(email, user.get('username', ''), code, _VERIFICATION_TTL_MIN)
+            send_password_reset_email(email, user.get('username', ''), code, _PASSWORD_RESET_TTL_MIN)
         except Exception:
             log.exception("forgot-password: falha ao emitir reset para %s", email)
     return generic, 200
