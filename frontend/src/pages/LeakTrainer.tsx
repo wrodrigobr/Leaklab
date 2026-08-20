@@ -1513,7 +1513,7 @@ export default function LeakTrainer() {
                     </button>
                   )}
                   {vitrineTab === "leaks" && (
-                    <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
+                    <div className="grid grid-cols-1 gap-1.5">
                       {(trainOptions?.leaks ?? []).slice(0, 8).map((l) => (
                         <button key={l.category_key} onClick={() => startFocus(`leak:${l.category_key}`)}
                           className="flex items-center justify-between gap-2 rounded-lg border border-border bg-background/60 px-3 py-2 text-left transition-colors hover:border-amber-500/40">
@@ -1525,7 +1525,7 @@ export default function LeakTrainer() {
                   )}
                   {(vitrineTab === "preflop" || vitrineTab === "postflop" || vitrineTab === "memorizacao") && (
                     (trainOptions?.catalogo ?? []).some((c) => c.grupo === vitrineTab) ? (
-                      <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
+                      <div className="grid grid-cols-1 gap-1.5">
                         {(trainOptions?.catalogo ?? []).filter((c) => c.grupo === vitrineTab).map((c) => (
                           <button key={c.id} onClick={() => startFocus(c.focus as LeakTrainerFocus)}
                             className="flex items-center justify-between gap-2 rounded-lg border border-border bg-background/60 px-3 py-2 text-left transition-colors hover:border-amber-500/40">
