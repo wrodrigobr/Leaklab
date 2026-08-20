@@ -8738,6 +8738,17 @@ def admin_feature_usage():
     return jsonify(get_feature_usage_report(days))
 
 
+@app.route('/admin/activation-funnel', methods=['GET'])
+@require_admin
+def admin_activation_funnel():
+    """Funil de ativação: cadastrou → importou → treinou → voltou, com a conversão ENTRE
+    degraus (onde o gargalo aparece) e a origem das sessões. É o instrumento do programa de
+    fundadores: sem ele, o programa vira sensação em vez de aprendizado. `?days=` (1..365)."""
+    from database.repositories import get_activation_funnel
+    days = request.args.get('days', 30, type=int) or 30
+    return jsonify(get_activation_funnel(max(1, min(days, 365))))
+
+
 @app.route('/player/preferences', methods=['GET'])
 @require_auth
 def get_player_preferences():

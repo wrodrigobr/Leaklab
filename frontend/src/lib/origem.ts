@@ -8,7 +8,7 @@
  */
 export function destinoDaOrigem(origem: string | null | undefined): string {
   switch ((origem || "").toLowerCase()) {
-    case "trilha": return "/training-v2";
+    case "trilha": return "/training";
     case "dashboard": return "/dashboard";
     default: return "/training";
   }

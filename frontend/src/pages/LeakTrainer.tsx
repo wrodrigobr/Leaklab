@@ -1695,7 +1695,7 @@ export default function LeakTrainer() {
                   {/* F2: DOMINOU — a celebração acontece no EVENTO (nunca no load) e leva
                       para a trilha ver a medalha nascer. */}
                   {gateResumo.ok >= gateResumo.total && (
-                    <Link to={`/training-v2?comemorar=${encodeURIComponent(gateResumo.key)}`}
+                    <Link to={`/training?comemorar=${encodeURIComponent(gateResumo.key)}`}
                       className="mt-2 flex items-center justify-center gap-2 rounded-xl bg-[#f5c542] px-4 py-3 font-mono text-sm font-extrabold uppercase tracking-wider text-black shadow-[0_4px_0_#a97d10] transition-transform active:translate-y-0.5">
                       🏅 {t("leakTrainer.summary.verNaTrilha")}
                     </Link>

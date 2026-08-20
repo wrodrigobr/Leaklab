@@ -8160,6 +8160,71 @@ def get_feature_usage_report(days: int = 30) -> dict:
         conn.close()
 
 
+def get_activation_funnel(days: int = 30) -> dict:
+    """FUNIL DE ATIVAÇÃO (20/08) — a pergunta do programa de fundadores: de quem entra,
+    quantos IMPORTAM, quantos TREINAM, e quantos VOLTAM?
+
+    Sem tabela nova: os degraus saem de fatos que já existem (cadastro, torneio importado,
+    tentativa de treino registrada). Contar por evento cru daria número maior e mais bonito;
+    aqui cada degrau é um USUÁRIO DISTINTO que atravessou de verdade — o degrau é o gargalo,
+    e gargalo inflado não se conserta.
+
+    `d1`/`d7` = voltou a treinar em outro DIA (não só na sessão de entrada) — retenção é
+    voltar, não permanecer.
+    """
+    from datetime import datetime, timedelta
+    cutoff = (datetime.utcnow() - timedelta(days=days)).strftime('%Y-%m-%d')
+    conn = get_conn()
+    try:
+        def _n(sql: str, params: tuple = ()) -> int:
+            r = _fetchone(conn, _adapt(sql), params)
+            return int(dict(r)['n'] or 0) if r else 0
+
+        cadastrados = _n("SELECT COUNT(*) AS n FROM users WHERE created_at >= ? "
+                         "AND COALESCE(role,'player') = 'player'", (cutoff,))
+        importaram = _n(
+            "SELECT COUNT(DISTINCT t.user_id) AS n FROM tournaments t JOIN users u ON u.id = t.user_id "
+            "WHERE u.created_at >= ? AND COALESCE(u.role,'player') = 'player'", (cutoff,))
+        treinaram = _n(
+            "SELECT COUNT(DISTINCT p.user_id) AS n FROM progression_attempts p JOIN users u ON u.id = p.user_id "
+            "WHERE u.created_at >= ? AND COALESCE(u.role,'player') = 'player'", (cutoff,))
+        # voltou: treinou em 2+ DIAS distintos
+        voltaram = _n(
+            "SELECT COUNT(*) AS n FROM (SELECT p.user_id FROM progression_attempts p "
+            "JOIN users u ON u.id = p.user_id WHERE u.created_at >= ? "
+            "AND COALESCE(u.role,'player') = 'player' "
+            "GROUP BY p.user_id HAVING COUNT(DISTINCT SUBSTR(CAST(p.created_at AS TEXT), 1, 10)) >= 2) x",
+            (cutoff,))
+        # de onde vieram as sessões (a métrica 1 da spec de cobrança — `?origem=`)
+        origens = conn.execute(_adapt(
+            "SELECT COALESCE(NULLIF(origem, ''), 'espontanea') AS origem, "
+            "COUNT(*) AS tentativas, COUNT(DISTINCT user_id) AS users "
+            "FROM progression_attempts WHERE created_at >= ? "
+            "GROUP BY 1 ORDER BY tentativas DESC"), (cutoff,)).fetchall()
+
+        def _pct(a: int, b: int) -> float:
+            return round(100.0 * a / b, 1) if b else 0.0
+
+        return {
+            'days': days,
+            'degraus': [
+                {'key': 'cadastrou', 'n': cadastrados, 'pct': 100.0},
+                {'key': 'importou', 'n': importaram, 'pct': _pct(importaram, cadastrados)},
+                {'key': 'treinou', 'n': treinaram, 'pct': _pct(treinaram, cadastrados)},
+                {'key': 'voltou', 'n': voltaram, 'pct': _pct(voltaram, cadastrados)},
+            ],
+            # conversão ENTRE degraus: é onde o gargalo aparece (o % sobre o topo esconde)
+            'entre': {
+                'cadastro_para_import': _pct(importaram, cadastrados),
+                'import_para_treino': _pct(treinaram, importaram),
+                'treino_para_volta': _pct(voltaram, treinaram),
+            },
+            'origens': [dict(o) for o in origens],
+        }
+    finally:
+        conn.close()
+
+
 # ── Desafio do Dia (#42) — pool vetado + agenda + tentativas ──────────────────
 
 def add_challenge_candidates(candidates: list) -> int:

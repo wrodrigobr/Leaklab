@@ -125,7 +125,21 @@ export function SupportModal({ onClose, initialTab = "new" }: Props) {
     if (!message.trim()) return;
     setFormStatus("sending");
     try {
-      await support.contact({ category, subject: subject.trim(), message: message.trim() });
+      // CONTEXTO AUTOMÁTICO (20/08, programa de fundadores): o report chega com ONDE
+      // aconteceu. Sem isto, "não funcionou" vira uma ida e volta de perguntas — e com
+      // dezenas de testadores isso não escala. Só dado técnico da própria sessão do usuário:
+      // rota, tamanho de tela, idioma e versão do bundle. Nada de terceiros, nada de rastreio.
+      const ctx = [
+        `rota: ${window.location.pathname}${window.location.search}`,
+        `tela: ${window.innerWidth}x${window.innerHeight}`,
+        `idioma: ${navigator.language}`,
+        `app: ${(document.querySelector('script[src*="/assets/"]') as HTMLScriptElement | null)
+          ?.src.split("/").pop() ?? "?"}`,
+      ].join(" · ");
+      await support.contact({
+        category, subject: subject.trim(),
+        message: `${message.trim()}\n\n---\n${ctx}`,
+      });
       setFormStatus("success");
       qc.invalidateQueries({ queryKey: ["my-support-tickets"] });
       qc.invalidateQueries({ queryKey: ["my-support-unread"] });

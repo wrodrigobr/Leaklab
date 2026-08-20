@@ -333,17 +333,28 @@ const App = () => (
               }
             />
             {/* Sparring removido do produto até termos o arco sintético funcional (opção 2). */}
+            {/* PROMOVIDA (20/08): a Trilha é a tela de treino. A condição do crítico do painel
+                de design era empty-state digno no cockpit — entregue na F2 (cold start com
+                importar + fundamentos). A clássica sobrevive em /training/classic (sunset
+                depois de um ciclo), e /training-v2 REDIRECIONA: bookmarks e links do beta
+                não podem morrer. Ver project_redesign_trilha_training. */}
             <Route
               path="/training"
+              element={
+                <ProtectedRoute>
+                  <TrainingV2 />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/training/classic"
               element={
                 <ProtectedRoute>
                   <Training />
                 </ProtectedRoute>
               }
             />
-            {/* Trilha (Fase 1 do redesign): página NOVA, a clássica intacta — comparáveis
-                lado a lado até a decisão de promover. Ver project_redesign_trilha_training. */}
-            <Route path="/training-v2" element={<ProtectedRoute><TrainingV2 /></ProtectedRoute>} />
+            <Route path="/training-v2" element={<Navigate to="/training" replace />} />
             <Route path="/evolucao" element={<ProtectedRoute><Evolution /></ProtectedRoute>} />
             {/* Retrato congelado — MESMA tela, dado de outro dia. Comparar meses exige a mesma
                 forma, senão o que salta aos olhos é a diferença do desenho, não a do jogo. */}

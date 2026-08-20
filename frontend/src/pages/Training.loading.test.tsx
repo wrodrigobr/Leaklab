@@ -78,12 +78,16 @@ describe("carregamento do /training", () => {
   });
 
   it("os atalhos continuam clicáveis durante o carregamento", () => {
-    // O esqueleto não pode bloquear quem já sabe onde quer ir. A Academia SAIU desta tela
-    // em 19/08 (mudou para /study — separar estudar de treinar foi decisão de produto), então
-    // o contrato dos atalhos é: revisão, treino e o convite da trilha.
+    /* O esqueleto não pode bloquear quem já sabe onde quer ir. O contrato mudou duas vezes,
+     * e as duas por decisão de produto (não por defeito):
+     *   19/08 — a Academia saiu desta tela (foi para /study: estudar ≠ treinar);
+     *   20/08 — a TRILHA foi promovida a /training e esta tela virou o legado
+     *           (/training/classic). O link daqui aponta de volta para a trilha, não mais
+     *           para um "beta". */
     const { container } = montar();
     const destinos = [...container.querySelectorAll("a[href]")].map((a) => a.getAttribute("href"));
-    expect(destinos).toEqual(expect.arrayContaining(["/ghost", "/leak-trainer", "/training-v2"]));
+    expect(destinos).toEqual(expect.arrayContaining(["/ghost", "/leak-trainer", "/training"]));
     expect(destinos).not.toContain("/academy");
+    expect(destinos).not.toContain("/training-v2");   // a rota do beta virou redirect
   });
 });

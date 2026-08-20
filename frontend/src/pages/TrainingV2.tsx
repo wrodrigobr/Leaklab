@@ -374,7 +374,7 @@ export default function TrainingV2() {
         <span className="rounded-full bg-primary/10 px-3 py-1 font-mono text-[10px] font-bold uppercase tracking-widest text-primary ring-1 ring-primary/30">
           {t("trilha.beta")}
         </span>
-        <Link to="/training" className="text-[11px] font-bold text-muted-foreground hover:text-foreground hover:underline">
+        <Link to="/training/classic" className="text-[11px] font-bold text-muted-foreground hover:text-foreground hover:underline">
           {t("trilha.voltarClassica")}
         </Link>
       </div>
@@ -519,7 +519,7 @@ export default function TrainingV2() {
           {/* Academia mudou para /study (18/08): teoria é objetivo de ESTUDO. A porta dela na
               jornada de treino volta na F2 como link CONTEXTUAL do nó ativo (aula ligada ao
               leak da missão), não como atalho genérico. */}
-          <Link to="/training" className="block text-center text-[10.5px] text-muted-foreground hover:text-foreground hover:underline">
+          <Link to="/training/classic" className="block text-center text-[10.5px] text-muted-foreground hover:text-foreground hover:underline">
             {t("trilha.perfilNota")}
           </Link>
         </aside>

@@ -7,6 +7,30 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(produto): TRILHA PROMOVIDA a /training + funil de ativacao + contexto no feedback
+
+> Preparacao para o programa de fundadores (acesso Pro em troca de uso e feedback — a
+> estrategia comercial decidida em 20/08). Quatro frentes:
+>
+> 1. **A Trilha e a tela de treino** (`/training`). A condicao que o critico do painel de
+>    design impos — empty-state digno no cockpit — foi entregue na F2, entao a promocao
+>    saiu. A classica sobrevive em `/training/classic` (sunset depois de um ciclo) e
+>    `/training-v2` REDIRECIONA: bookmark e link de e-mail do beta nao podem morrer.
+>    `destinoDaOrigem`, o CTA de comemoracao e os "voltar" foram reapontados.
+> 2. **Funil de ativacao** (`/admin/activation-funnel`): cadastrou -> importou -> treinou ->
+>    voltou, com a conversao ENTRE degraus (onde o gargalo aparece; o % sobre o topo esconde)
+>    e a origem das sessoes. Sem tabela nova — os degraus saem de fatos que ja existem. Cada
+>    degrau conta USUARIO DISTINTO, nao evento: contar evento infla o gargalo, e gargalo
+>    inflado nao se conserta. Ja revelou o numero que importa no dev: 18% dos cadastrados
+>    importam. 4 testes com forja degrau a degrau (regra 1).
+> 3. **Contexto automatico no feedback**: o ticket chega com rota, tamanho de tela, idioma e
+>    versao do bundle. Com dezenas de testadores, "nao funcionou" sem contexto e uma ida e
+>    volta de perguntas — hoje isso so funciona porque o dono manda print.
+> 4. O onboarding de 1o acesso JA EXISTIA (EmptyDashboard com 3 passos + GuidedTour); o
+>    buraco era o passo seguinte, coberto pelo cold start da trilha na F2.
+>
+> vitest 373 + suite api verdes.
+
 ### feat(i18n): RangePanel nos 3 locales + copy dos blocos da sessao em linguagem de jogador
 
 > O RangePanel era PT hardcoded (convencao antiga do arquivo): 24 strings viraram chaves em

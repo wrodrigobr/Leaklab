@@ -125,7 +125,7 @@ export default function Training() {
 
         {/* Fase 1 do redesign (project_redesign_trilha_training): a v2 mora em rota própria e
             esta tela fica INTACTA — um convite discreto, nunca um redirect. */}
-        <Link to="/training-v2"
+        <Link to="/training"
           className="flex items-center justify-between gap-3 rounded-xl border border-primary/25 bg-primary/[0.05] px-3 py-2 text-[12px] transition-colors hover:border-primary/50">
           <span className="text-muted-foreground">
             <span className="mr-2 rounded-full bg-primary/15 px-2 py-0.5 font-mono text-[9px] font-bold uppercase tracking-widest text-primary">{t("trilha.beta")}</span>
