@@ -189,32 +189,48 @@ export default function TrainingV2() {
           </div>
         )}
 
-        {/* Enxerto: A SESSÃO DE HOJE — o 60/25/15 do Protocolo era invisível para o jogador.
-            Nomear os blocos e a duração responde "quanto tempo isso vai levar" antes do clique
-            (os números vêm da composição real: 24 spots da sessão média). */}
-        <div className="mt-5 rounded-xl border border-border bg-background/40 p-3">
-          <div className="mb-2 flex items-baseline justify-between">
-            <span className="font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-foreground">
-              {t("trilha.sessaoHoje")}
-            </span>
-            <span className="font-mono text-[10px] text-muted-foreground">{t("trilha.sessaoDur")}</span>
-          </div>
-          <div className="grid gap-1.5 sm:grid-cols-3">
-            {([["missao", "1"], ["revisao", "2"], ["contraste", "3"]] as const).map(([k, i]) => (
-              <div key={k} className="flex items-center gap-2 rounded-lg bg-card/60 px-2.5 py-2">
-                <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-primary/15 font-mono text-[9px] font-bold text-primary">{i}</span>
-                <span className="min-w-0">
-                  <span className="block truncate text-[11.5px] font-bold text-foreground">
-                    {t(`trilha.bloco.${k}`)}
-                  </span>
-                  <span className="block truncate font-mono text-[9px] uppercase tracking-wider text-muted-foreground">
-                    {t(`trilha.bloco.${k}Sub`)}
-                  </span>
+        {/* A SESSÃO DE HOJE — o 60/25/15 do Protocolo era invisível para o jogador. Reportado
+            (20/08): a 1ª versão mostrava PERCENTUAL e jargão ("drill · 60% da sessão") e
+            confundiu até o dono do produto. A pergunta real é "o que eu vou fazer nos próximos
+            18 minutos": então a resposta é em MÃOS, com o porquê de cada fatia em linguagem de
+            jogador. Os números saem da composição real (60/25/15 sobre a duração escolhida). */}
+        {(() => {
+          const totalMaos = 24;   // sessão média — a duração é escolhida na tela de treino
+          const fatias = [
+            { k: "missao", n: Math.round(totalMaos * 0.6) },
+            { k: "revisao", n: Math.round(totalMaos * 0.25) },
+            { k: "contraste", n: Math.round(totalMaos * 0.15) },
+          ] as const;
+          return (
+            <div className="mt-5 rounded-xl border border-border bg-background/40 p-3">
+              <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
+                <span className="font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-foreground">
+                  {t("trilha.sessaoHoje")}
+                </span>
+                <span className="font-mono text-[10px] text-muted-foreground">
+                  {t("trilha.sessaoDur", { n: totalMaos, min: 8 })}
                 </span>
               </div>
-            ))}
-          </div>
-        </div>
+              <div className="grid gap-1.5 sm:grid-cols-3">
+                {fatias.map(({ k, n }, i) => (
+                  <div key={k} className="flex items-center gap-2 rounded-lg bg-card/60 px-2.5 py-2">
+                    <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-primary/15 font-mono text-[9px] font-bold text-primary">
+                      {i + 1}
+                    </span>
+                    <span className="min-w-0">
+                      <span className="block truncate text-[11.5px] font-bold text-foreground">
+                        {t(`trilha.bloco.${k}`)}
+                      </span>
+                      <span className="block truncate text-[10px] text-muted-foreground">
+                        {t(`trilha.bloco.${k}Sub`, { n })}
+                      </span>
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        })()}
 
         <div className="mt-4 flex items-center justify-between">
           <span className="font-mono text-[12px] font-bold uppercase tracking-[0.14em] text-amber-300">

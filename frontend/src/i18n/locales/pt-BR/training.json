@@ -332,15 +332,15 @@
     "evPerdido": "EV perdido",
     "evPerdidoSub": "bb em {{hands}} mãos medidas",
     "placarNaMesa": "{{bb}}bb ainda na mesa",
-    "sessaoHoje": "Sessão de hoje",
-    "sessaoDur": "~18 min · você retoma de onde parou",
+    "sessaoHoje": "O que você vai treinar agora",
+    "sessaoDur": "{{n}} mãos · ~{{min}} min · dá pra parar e voltar",
     "bloco": {
-      "missao": "Spots da missão",
-      "missaoSub": "drill · 60% da sessão",
-      "revisao": "Revisão espaçada",
-      "revisaoSub": "o que você já domina · 25%",
-      "contraste": "Contraste",
-      "contrasteSub": "a fronteira do leak · 15%"
+      "missao": "O leak em foco",
+      "missaoSub": "{{n}} mãos deste spot",
+      "revisao": "O que você já dominou",
+      "revisaoSub": "{{n}} mãos, pra não enferrujar",
+      "contraste": "Variações do mesmo spot",
+      "contrasteSub": "{{n}} mãos em outra profundidade"
     },
     "criterio": {
       "volume": "mãos treinadas no spot",

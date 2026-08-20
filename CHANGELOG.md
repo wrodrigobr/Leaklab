@@ -7,6 +7,22 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(i18n): RangePanel nos 3 locales + copy dos blocos da sessao em linguagem de jogador
+
+> O RangePanel era PT hardcoded (convencao antiga do arquivo): 24 strings viraram chaves em
+> `replayer.rangePanel` nos 3 locales — incluindo os mapas de cenario/qualidade e o aviso de
+> mesa curta. Termos de poker (Open/Call/3-Bet/Shove/RFI/squeeze) NAO sao traduzidos, por
+> regra do projeto. Frases com destaque usam `<Trans>` para o negrito sobreviver a traducao.
+> Teste novo varre as 15 chaves + 5 subarvores nos 3 locales: chave sem traducao renderiza o
+> identificador cru na cara do usuario.
+>
+> E a copy dos blocos da sessao, reportada como confusa PELO DONO DO PRODUTO ("fiquei um
+> pouco confuso... o que significam?"): a 1a versao mostrava PERCENTUAL e jargao ("drill ·
+> 60% da sessao"). A pergunta real e "o que vou fazer nos proximos 18 minutos", entao a
+> resposta virou MAOS com o porque de cada fatia: "O leak em foco · 14 maos deste spot" /
+> "O que voce ja dominou · 6 maos, pra nao enferrujar" / "Variacoes do mesmo spot · 4 maos
+> em outra profundidade". Se o dono se confunde, o usuario tambem. vitest 373.
+
 ### fix(replayer): a grade declara a premissa quando a mesa e CURTA (#replayer #gto)
 
 > Fecha a familia das duas contradicoes reportadas (fallback Nash e K6s UTG+2). A varredura

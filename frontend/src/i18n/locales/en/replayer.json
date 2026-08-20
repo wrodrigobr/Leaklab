@@ -445,5 +445,58 @@
     "attention": "attention only",
     "correct": "correct only",
     "pending": "heuristic only"
+  },
+  "rangePanel": {
+    "fechar": "Close",
+    "cenarioLabel": "Scenario",
+    "cenario": {
+      "rfi": "Raise First In (open)",
+      "vsRfi": "vs Open (defend)",
+      "vs3bet": "vs 3-Bet (continue)",
+      "vsShove": "Call vs Shove",
+      "facesSqueeze": "vs Squeeze (defend)",
+      "squeeze": "Squeeze (3-bet over open+caller)"
+    },
+    "qualidade": {
+      "correto": "Correct (GTO)",
+      "aceitavel": "Acceptable",
+      "leak": "Leak",
+      "leakGrave": "Major leak",
+      "semDados": "No data"
+    },
+    "mesa": {
+      "hu": "Heads-up hand.",
+      "curta": "Table with {{n}} players.",
+      "aviso": "This grid is the full-ring (9-max) range and works as a reference — it does not know the table size. The card verdict considers the real table, so differences here are expected.",
+      "avisoHu": "Heads-up, almost every hand plays looser."
+    },
+    "solverSubstitui": "Solver verdict overrides the static range analysis.",
+    "noRange": "is in the GTO range",
+    "foraRange": "outside the GTO range",
+    "noRangeCurto": "in range",
+    "foraRangeCurto": "out of range",
+    "rangeTop": "Range: top",
+    "estrategiaDaMao": "Your hand strategy",
+    "semSolverBucket": "No GTO Solver data for this bucket — using the binary Nash shove/fold table.",
+    "abaDivergente": "This grid shows <b>{{pos}}</b>. The verdict above was computed at <b>{{gtoPos}}</b> — go back to that tab to compare with the analysis.",
+    "cenarioOutraAba": "This grid is a reference ({{refLabel}}). This hand decision ({{decLabel}}) lives on the <b>{{aba}}</b> tab.",
+    "cenarioSemAba": "This grid is reference only ({{refLabel}}). The specific range for this decision ({{decLabel}}) is in the analysis card (your hand frequencies), not yet available as a 13×13 grid.",
+    "ref": {
+      "open": "RFI open",
+      "tresBet": "3-bet",
+      "defesa": "defense"
+    },
+    "dec": {
+      "defesa": "defense vs open",
+      "respTresBet": "response to the 3-bet",
+      "abertura": "open"
+    },
+    "carregando": "Loading ranges…",
+    "semRange": "Range not available for this position.",
+    "analiseGto": "GTO analysis",
+    "posicao": "Position",
+    "fonte": "Source",
+    "fonteEstatica": "static tables",
+    "gtoIndisponivel": "GTO analysis unavailable in this spot"
   }
 }

@@ -445,5 +445,58 @@
     "attention": "só as de atenção",
     "correct": "só as corretas",
     "pending": "só as heurísticas"
+  },
+  "rangePanel": {
+    "fechar": "Fechar",
+    "cenarioLabel": "Cenário",
+    "cenario": {
+      "rfi": "Raise First In (abertura)",
+      "vsRfi": "vs Open (defender)",
+      "vs3bet": "vs 3-Bet (continuar)",
+      "vsShove": "Call vs Shove",
+      "facesSqueeze": "vs Squeeze (defender)",
+      "squeeze": "Squeeze (3-bet sobre open+caller)"
+    },
+    "qualidade": {
+      "correto": "Correto (GTO)",
+      "aceitavel": "Aceitável",
+      "leak": "Leak",
+      "leakGrave": "Leak grave",
+      "semDados": "Sem dados"
+    },
+    "mesa": {
+      "hu": "Mão heads-up.",
+      "curta": "Mesa com {{n}} jogadores.",
+      "aviso": "Esta grade é a range de mesa cheia (9-max) e serve de referência — ela não conhece o tamanho da mesa. O veredito do card considera a mesa real, então divergências aqui são esperadas.",
+      "avisoHu": "Em heads-up, quase toda mão é mais solta."
+    },
+    "solverSubstitui": "Veredicto do solver substitui análise de range estática.",
+    "noRange": "está no range GTO",
+    "foraRange": "fora do range GTO",
+    "noRangeCurto": "no range",
+    "foraRangeCurto": "fora do range",
+    "rangeTop": "Range: top",
+    "estrategiaDaMao": "Estratégia da sua mão",
+    "semSolverBucket": "Sem dados do GTO Solver pra este bucket, usando tabela Nash binária shove/fold.",
+    "abaDivergente": "Esta grade mostra <b>{{pos}}</b>. O veredito acima foi calculado em <b>{{gtoPos}}</b> — volte àquela aba para comparar com a análise.",
+    "cenarioOutraAba": "Esta grade mostra referência ({{refLabel}}). A decisão desta mão ({{decLabel}}) está na aba <b>{{aba}}</b>.",
+    "cenarioSemAba": "Esta grade é só referência ({{refLabel}}). A range específica desta decisão ({{decLabel}}) está no card de análise (frequências da sua mão), ainda não disponível como grade 13×13.",
+    "ref": {
+      "open": "abertura RFI",
+      "tresBet": "3-bet",
+      "defesa": "defesa"
+    },
+    "dec": {
+      "defesa": "defesa vs open",
+      "respTresBet": "resposta ao 3-bet",
+      "abertura": "abertura"
+    },
+    "carregando": "Carregando ranges…",
+    "semRange": "Range não disponível para esta posição.",
+    "analiseGto": "Análise GTO",
+    "posicao": "Posição",
+    "fonte": "Fonte",
+    "fonteEstatica": "tabelas estáticas",
+    "gtoIndisponivel": "análise GTO indisponível neste spot"
   }
 }

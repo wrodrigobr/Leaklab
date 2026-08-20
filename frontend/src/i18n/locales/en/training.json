@@ -332,15 +332,15 @@
     "evPerdido": "EV lost",
     "evPerdidoSub": "bb over {{hands}} measured hands",
     "placarNaMesa": "{{bb}}bb still on the table",
-    "sessaoHoje": "Today's session",
-    "sessaoDur": "~18 min · you resume where you stopped",
+    "sessaoHoje": "What you will train now",
+    "sessaoDur": "{{n}} hands · ~{{min}} min · you can stop and resume",
     "bloco": {
-      "missao": "Mission spots",
-      "missaoSub": "drill · 60% of the session",
-      "revisao": "Spaced review",
-      "revisaoSub": "what you already master · 25%",
-      "contraste": "Contrast",
-      "contrasteSub": "the edge of the leak · 15%"
+      "missao": "The leak in focus",
+      "missaoSub": "{{n}} hands of this spot",
+      "revisao": "What you already mastered",
+      "revisaoSub": "{{n}} hands, so it doesn't rust",
+      "contraste": "Variations of the same spot",
+      "contrasteSub": "{{n}} hands at another depth"
     },
     "criterio": {
       "volume": "hands trained in the spot",

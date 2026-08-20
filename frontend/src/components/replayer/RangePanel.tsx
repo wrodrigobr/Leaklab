@@ -9,6 +9,7 @@ import {
 import { ACTION_COLORS } from "@/lib/actionColors";
 import { ReplayStep } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { Trans, useTranslation } from "react-i18next";
 import { computeEffectiveGtoLabel } from "@/lib/gtoUtils";
 
 function authFetch(path: string): Promise<Response> {
@@ -81,21 +82,23 @@ const SCENARIO_TO_TYPE: Record<string, RangeType> = {
   squeeze: '3bet',         // hero é o squeezador (3bet sobre open+caller)
 };
 
-const SCENARIO_LABEL: Record<string, string> = {
-  rfi: 'Raise First In (abertura)',
-  vs_rfi: 'vs Open (defender)',
-  vs_3bet: 'vs 3-Bet (continuar)',
-  vs_shove_fallback: 'Call vs Shove',
-  faces_squeeze: 'vs Squeeze (defender)',
-  squeeze: 'Squeeze (3-bet sobre open+caller)',
+// Rótulos de cenário/qualidade: a CHAVE i18n mora aqui, a tradução no locale (os termos de
+// poker — RFI, Open, 3-Bet, Squeeze — atravessam os 3 idiomas por regra do projeto).
+const SCENARIO_KEY: Record<string, string> = {
+  rfi: 'cenario.rfi',
+  vs_rfi: 'cenario.vsRfi',
+  vs_3bet: 'cenario.vs3bet',
+  vs_shove_fallback: 'cenario.vsShove',
+  faces_squeeze: 'cenario.facesSqueeze',
+  squeeze: 'cenario.squeeze',
 };
 
-const QUALITY_META: Record<string, { label: string; color: string; icon: typeof CheckCircle2 }> = {
-  correct:    { label: 'Correto (GTO)',    color: 'text-emerald-400', icon: CheckCircle2 },
-  acceptable: { label: 'Aceitável',        color: 'text-sky-400',     icon: Info          },
-  leak:       { label: 'Leak',             color: 'text-amber-400',   icon: AlertTriangle },
-  major_leak: { label: 'Leak grave',       color: 'text-red-400',     icon: XCircle       },
-  unknown:    { label: 'Sem dados',        color: 'text-muted-foreground', icon: Info     },
+const QUALITY_META: Record<string, { key: string; color: string; icon: typeof CheckCircle2 }> = {
+  correct:    { key: 'qualidade.correto',   color: 'text-emerald-400', icon: CheckCircle2 },
+  acceptable: { key: 'qualidade.aceitavel', color: 'text-sky-400',     icon: Info          },
+  leak:       { key: 'qualidade.leak',      color: 'text-amber-400',   icon: AlertTriangle },
+  major_leak: { key: 'qualidade.leakGrave', color: 'text-red-400',     icon: XCircle       },
+  unknown:    { key: 'qualidade.semDados',  color: 'text-muted-foreground', icon: Info     },
 };
 
 function buildRangeFromApi(resp: PreflopRangesResp, type: RangeType, openerPos?: string, scenario?: string): RangeSet | null {
@@ -166,6 +169,7 @@ function buildRangeFromApi(resp: PreflopRangesResp, type: RangeType, openerPos?:
 
 export function RangePanel({ step, hero, heroCards, onClose, onHeaderMouseDown,
                              posicaoInicial, stackInicial }: Props) {
+  const { t } = useTranslation("replayer");
   const heroSeat    = Object.entries(step.seats ?? {}).find(([, s]) => s.player === hero);
   const detectedPos = heroSeat ? normalizePosition(heroSeat[1].pos) : null;
   const gto         = step.preflop_gto;
@@ -328,7 +332,7 @@ export function RangePanel({ step, hero, heroCards, onClose, onHeaderMouseDown,
         </div>
         <div className="flex items-center gap-2">
           {loading && <Loader2 className="size-3 text-muted-foreground animate-spin" />}
-          <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition-colors" aria-label="Fechar">
+          <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition-colors" aria-label={t("rangePanel.fechar")}>
             <X className="size-3.5" />
           </button>
         </div>
@@ -342,12 +346,10 @@ export function RangePanel({ step, hero, heroCards, onClose, onHeaderMouseDown,
           <Info className="mt-0.5 size-3.5 shrink-0 text-amber-400" aria-hidden />
           <p className="text-[11px] leading-snug text-amber-200/90">
             <span className="font-bold">
-              {vivosNaMao === 2 ? "Mão heads-up." : `Mesa com ${vivosNaMao} jogadores.`}
+              {vivosNaMao === 2 ? t("rangePanel.mesa.hu") : t("rangePanel.mesa.curta", { n: vivosNaMao })}
             </span>{" "}
-            Esta grade é a range de <span className="font-bold">mesa cheia (9-max)</span> e serve
-            de referência — ela não conhece o tamanho da mesa. O veredito do card considera a mesa
-            real, então divergências aqui são esperadas
-            {vivosNaMao === 2 ? " (em heads-up, quase toda mão é mais solta)" : ""}.
+            {t("rangePanel.mesa.aviso")}
+            {vivosNaMao === 2 ? ` ${t("rangePanel.mesa.avisoHu")}` : ""}
           </p>
         </div>
       )}
@@ -362,12 +364,12 @@ export function RangePanel({ step, hero, heroCards, onClose, onHeaderMouseDown,
         )}>
           {/* Scenario — em PF zone renomear "Raise First In" para "Push/Fold" */}
           <p className="font-mono text-[9px] text-muted-foreground uppercase tracking-wide">
-            Cenário: {
+            {t("rangePanel.cenarioLabel")}: {
               isPushZone && gto.scenario === 'rfi'
                 ? `Push/Fold (RFI · ${stackBb.toFixed(0)}bb)`
                 : isPushZone && gto.scenario === 'vs_rfi'
                 ? `Push/Fold (Reshove vs Open · ${stackBb.toFixed(0)}bb)`
-                : (SCENARIO_LABEL[gto.scenario] ?? gto.scenario)
+                : (SCENARIO_KEY[gto.scenario] ? t(`rangePanel.${SCENARIO_KEY[gto.scenario]}`) : gto.scenario)
             }
           </p>
 
@@ -375,7 +377,7 @@ export function RangePanel({ step, hero, heroCards, onClose, onHeaderMouseDown,
           {solverOverridesStatic ? (
             <div className="flex items-center flex-wrap gap-2">
               <p className="font-mono text-[9px] text-muted-foreground/60 italic">
-                Veredicto do solver substitui análise de range estática.
+                {t("rangePanel.solverSubstitui")}
               </p>
               {(effectiveGtoLabel === 'gto_mixed' || effectiveGtoLabel === 'gto_minor_deviation') && (
                 <GtoMixedBadge label={effectiveGtoLabel} size="xs" />
@@ -389,7 +391,7 @@ export function RangePanel({ step, hero, heroCards, onClose, onHeaderMouseDown,
                   ? <CheckCircle2 className="size-3 text-emerald-400 shrink-0" />
                   : <XCircle     className="size-3 text-amber-400 shrink-0" />}
                 <span className={cn("font-mono text-[10px] font-bold", gto.in_range ? "text-emerald-400" : "text-amber-400")}>
-                  {hand} {gto.in_range ? "está no range GTO" : "fora do range GTO"}
+                  {hand} {gto.in_range ? t("rangePanel.noRange") : t("rangePanel.foraRange")}
                 </span>
               </div>
 
@@ -398,7 +400,7 @@ export function RangePanel({ step, hero, heroCards, onClose, onHeaderMouseDown,
                 {quality && (
                   <div className={cn("flex items-center gap-1", quality.color)}>
                     <QIcon className="size-3 shrink-0" />
-                    <span className="font-mono text-[9px]">{quality.label}</span>
+                    <span className="font-mono text-[9px]">{t(`rangePanel.${quality.key}`)}</span>
                   </div>
                 )}
                 {gto.recommended_actions.length > 0 && (
@@ -408,7 +410,7 @@ export function RangePanel({ step, hero, heroCards, onClose, onHeaderMouseDown,
                 )}
                 {gto.range_pct > 0 && (
                   <span className="font-mono text-[9px] text-muted-foreground">
-                    Range: top <span className="text-foreground">{(gto.range_pct * 100).toFixed(0)}%</span>
+                    {t("rangePanel.rangeTop")} <span className="text-foreground">{(gto.range_pct * 100).toFixed(0)}%</span>
                   </span>
                 )}
               </div>
@@ -430,7 +432,7 @@ export function RangePanel({ step, hero, heroCards, onClose, onHeaderMouseDown,
                 return (
                   <div className="space-y-1 rounded-md border border-border/60 bg-background/40 px-2.5 py-1.5">
                     <div className="font-mono text-[9px] font-semibold uppercase tracking-wide text-foreground/70">
-                      Estratégia da sua mão · {hand}
+                      {t("rangePanel.estrategiaDaMao")} · {hand}
                     </div>
                     <div className="flex h-3 w-full overflow-hidden rounded-sm ring-1 ring-border/40">
                       {segs.map(s => (
@@ -470,14 +472,14 @@ export function RangePanel({ step, hero, heroCards, onClose, onHeaderMouseDown,
             </span>
           </div>
           <p className="font-mono text-[9px] text-muted-foreground leading-relaxed">
-            Sem dados do GTO Solver pra este bucket, usando tabela Nash binária shove/fold.
+            {t("rangePanel.semSolverBucket")}
           </p>
           {hand && nashRange && (
             <p className={cn(
               "font-mono text-[10px] font-bold",
               (nashRange.raise.has(hand) || nashRange.call?.has(hand)) ? "text-emerald-400" : "text-amber-400"
             )}>
-              {hand}: {(nashRange.raise.has(hand) || nashRange.call?.has(hand)) ? '✓ no range' : '✗ fora do range'}
+              {hand}: {(nashRange.raise.has(hand) || nashRange.call?.has(hand)) ? `✓ ${t("rangePanel.noRangeCurto")}` : `✗ ${t("rangePanel.foraRangeCurto")}`}
             </p>
           )}
         </div>
@@ -517,9 +519,9 @@ export function RangePanel({ step, hero, heroCards, onClose, onHeaderMouseDown,
       {showGtoCtx && gtoPos && pos !== gtoPos && (
         <div className="rounded-md border border-amber-500/25 bg-amber-500/5 px-3 py-1.5">
           <p className="font-mono text-[9px] text-amber-400/80 leading-snug">
-            Esta grade mostra <strong className="text-amber-400">{pos}</strong>. O veredito acima
-            foi calculado em <strong className="text-amber-400">{gtoPos}</strong> — volte àquela
-            aba para comparar com a análise.
+            <Trans i18nKey="rangePanel.abaDivergente" ns="replayer"
+              values={{ pos, gtoPos }}
+              components={{ b: <strong className="text-amber-400" /> }} />
           </p>
         </div>
       )}
@@ -530,16 +532,18 @@ export function RangePanel({ step, hero, heroCards, onClose, onHeaderMouseDown,
       {(() => {
         const targetType = gto?.scenario ? SCENARIO_TO_TYPE[gto.scenario] : undefined;
         if (!showGtoCtx || !targetType || effectiveType === targetType) return null;
-        const refLabel = effectiveType === 'open' ? 'abertura RFI' : effectiveType === '3bet' ? '3-bet' : 'defesa';
-        const decLabel = targetType === 'call' ? 'defesa vs open' : targetType === '3bet' ? 'resposta ao 3-bet' : 'abertura';
+        const refLabel = t(`rangePanel.ref.${effectiveType === 'open' ? 'open' : effectiveType === '3bet' ? 'tresBet' : 'defesa'}`);
+        const decLabel = t(`rangePanel.dec.${targetType === 'call' ? 'defesa' : targetType === '3bet' ? 'respTresBet' : 'abertura'}`);
         const targetTab = availableTypes.find(t => t.id === targetType);
         return (
           <div className="rounded-md border border-amber-500/25 bg-amber-500/5 px-3 py-1.5">
             <p className="font-mono text-[9px] text-amber-400/80 leading-snug">
               {targetTab ? (
-                <>Esta grade mostra referência ({refLabel}). A decisão desta mão ({decLabel}) está na aba <strong className="text-amber-400">{targetTab.label}</strong>.</>
+                <Trans i18nKey="rangePanel.cenarioOutraAba" ns="replayer"
+                  values={{ refLabel, decLabel, aba: targetTab.label }}
+                  components={{ b: <strong className="text-amber-400" /> }} />
               ) : (
-                <>Esta grade é só referência ({refLabel}). A range específica desta decisão ({decLabel}) está no card de análise (frequências da sua mão), ainda não disponível como grade 13×13.</>
+                <>{t("rangePanel.cenarioSemAba", { refLabel, decLabel })}</>
               )}
             </p>
           </div>
@@ -550,15 +554,15 @@ export function RangePanel({ step, hero, heroCards, onClose, onHeaderMouseDown,
       {displayRange ? (
         <RangeGrid range={displayRange} heroHand={hand} />
       ) : loading ? (
-        <p className="text-xs text-muted-foreground text-center py-4 animate-pulse">Carregando ranges…</p>
+        <p className="text-xs text-muted-foreground text-center py-4 animate-pulse">{t("rangePanel.carregando")}</p>
       ) : (
-        <p className="text-xs text-muted-foreground text-center py-4">Range não disponível para esta posição.</p>
+        <p className="text-xs text-muted-foreground text-center py-4">{t("rangePanel.semRange")}</p>
       )}
 
       {/* Pro notes — suprimidas quando solver contradiz ranges estaticos */}
       {showGtoCtx && !solverOverridesStatic && gto?.pro_notes && gto.pro_notes.length > 0 && (
         <div className="rounded-lg border border-border bg-muted/10 px-3 py-2 space-y-1">
-          <p className="font-mono text-[9px] text-muted-foreground uppercase tracking-wide mb-1.5">Análise GTO</p>
+          <p className="font-mono text-[9px] text-muted-foreground uppercase tracking-wide mb-1.5">{t("rangePanel.analiseGto")}</p>
           {gto.pro_notes.map((note, i) => (
             <p key={i} className="font-mono text-[9px] text-foreground/80 leading-relaxed">
               · {note}
@@ -569,10 +573,10 @@ export function RangePanel({ step, hero, heroCards, onClose, onHeaderMouseDown,
 
       {/* Footer — data source + context */}
       <p className="font-mono text-[8px] text-muted-foreground/40 text-center leading-relaxed">
-        {detectedPos ? `Posição: ${detectedPos} · ` : ''}{stackBb.toFixed(0)}bb
+        {detectedPos ? `${t("rangePanel.posicao")}: ${detectedPos} · ` : ''}{stackBb.toFixed(0)}bb
         {openerPos ? ` · opener: ${openerPos}` : ''}
-        {' · '}Fonte: {apiData ? 'Nash MTT (local)' : 'tabelas estáticas'}
-        {!showGtoCtx && gto && !gto.available && ' · análise GTO indisponível neste spot'}
+        {' · '}{t("rangePanel.fonte")}: {apiData ? 'Nash MTT (local)' : t("rangePanel.fonteEstatica")}
+        {!showGtoCtx && gto && !gto.available && ` · ${t("rangePanel.gtoIndisponivel")}`}
       </p>
     </section>
   );

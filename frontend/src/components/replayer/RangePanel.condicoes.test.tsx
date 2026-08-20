@@ -148,29 +148,50 @@ describe("RangePanel — mesa curta declara a premissa", () => {
     },
   });
 
+  /* O painel virou i18n (20/08): sem provider, o `t` devolve a CHAVE. Os testes de
+   * COMPORTAMENTO conferem a chave (é o que prova que o aviso renderiza, e não some se o
+   * texto mudar); o teste de CONTEÚDO abaixo confere que a chave existe traduzida nos 3
+   * locales — chave sem tradução renderiza o identificador cru na cara do usuário. */
   it("heads-up avisa que a grade é de mesa cheia", async () => {
     render(<RangePanel step={mesaCom(2)} hero="Hero" heroCards={["Ah", "Kh"]} onClose={() => {}} />);
-    expect(await screen.findByText("Mão heads-up.")).toBeTruthy();
-    expect(screen.getByText(/mesa cheia \(9-max\)/i)).toBeTruthy();
+    expect(await screen.findByText("rangePanel.mesa.hu")).toBeTruthy();
+    expect(screen.getByText(/rangePanel\.mesa\.aviso/)).toBeTruthy();
   });
 
   it("mesa de 4 avisa com o número de jogadores", async () => {
     render(<RangePanel step={mesaCom(4)} hero="Hero" heroCards={["Ah", "Kh"]} onClose={() => {}} />);
-    expect(await screen.findByText(/Mesa com 4 jogadores/i)).toBeTruthy();
+    expect(await screen.findByText("rangePanel.mesa.curta")).toBeTruthy();
   });
 
   it("mesa cheia NÃO avisa (senão o aviso vira ruído em 100% das mãos)", async () => {
     render(<RangePanel step={mesaCom(9)} hero="Hero" heroCards={["Ah", "Kh"]} onClose={() => {}} />);
     await waitFor(() => expect(urls.length).toBeGreaterThan(0));
-    expect(screen.queryByText(/mesa cheia \(9-max\)/i)).toBeNull();
+    expect(screen.queryByText(/rangePanel\.mesa\./)).toBeNull();
   });
 
   it("jogadores que já FOLDARAM não contam como mesa cheia", async () => {
-    // 8 assentos, 5 já foldaram → 3 vivos: o aviso tem que aparecer.
+    // 8 assentos, 5 já foldaram → 3 vivos: o aviso tem que aparecer (curta, não hu).
     const step = mesaCom(8);
     step.folded = ["V1", "V2", "V3", "V4", "V5"];
     render(<RangePanel step={step} hero="Hero" heroCards={["Ah", "Kh"]} onClose={() => {}} />);
-    expect(await screen.findByText(/Mesa com 3 jogadores/i)).toBeTruthy();
+    expect(await screen.findByText("rangePanel.mesa.curta")).toBeTruthy();
+    expect(screen.queryByText("rangePanel.mesa.hu")).toBeNull();
+  });
+
+  it("as chaves do painel existem nos 3 locales (chave sem tradução vaza para a tela)", async () => {
+    const chaves = ["fechar", "carregando", "semRange", "analiseGto", "solverSubstitui",
+                    "noRange", "foraRange", "rangeTop", "estrategiaDaMao", "semSolverBucket",
+                    "abaDivergente", "cenarioOutraAba", "cenarioSemAba", "posicao", "fonte"];
+    for (const loc of ["pt-BR", "en", "es"]) {
+      const d = (await import(`@/i18n/locales/${loc}/replayer.json`)).default as
+        Record<string, Record<string, unknown>>;
+      const rp = d.rangePanel;
+      expect(rp, `${loc} sem rangePanel`).toBeTruthy();
+      for (const k of chaves) expect(rp[k], `${loc} sem ${k}`).toBeTruthy();
+      for (const sub of ["mesa", "cenario", "qualidade", "ref", "dec"]) {
+        expect(Object.keys(rp[sub] as object).length, `${loc}.${sub} vazio`).toBeGreaterThan(2);
+      }
+    }
   });
 });
 
