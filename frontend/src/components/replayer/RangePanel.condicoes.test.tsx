@@ -120,3 +120,62 @@ describe("RangePanel — condições da pergunta", () => {
     expect(ultima()).toEqual({ pos: "LJ", stack: "50" });
   });
 });
+
+/* O caso do K6s (print de 19/08): RFI de UTG+2 a 24bb. O veredito — calculado pelo backend na
+ * posição UTG+2, bucket 20bb — dizia "fora do range, Fold 100%, top 20%". A grade na MESMA tela
+ * renderizava LJ 20bb, onde K6s é raise. Duas causas, dois guardas:
+ *
+ * 1. `normalizePosition` achatava UTG+2 → LJ (e UTG+1 → UTG). Era uma SEGUNDA cópia da regra de
+ *    normalização de posição — a primeira vive em `_norm_pos` no backend, que mantém UTG+2 como
+ *    chave própria do GW 9-max e, com n_players, mapeia por jogadores atrás. Duas cópias
+ *    discordando é a regra 5 do projeto. A fonte única é `preflop_gto.position`: a posição em que
+ *    o veredito FOI calculado, já normalizada por quem o calculou.
+ *
+ * 2. Conferir `pos === "UTG+2"` via URLSearchParams também prova o ENCODING: sem
+ *    encodeURIComponent, o `+` literal na query decodifica como ESPAÇO e o backend recebe
+ *    "UTG 2" — posição inexistente, grade vazia. */
+describe("RangePanel — a grade responde a pergunta do VEREDITO", () => {
+  const STEP_UTG2: any = {
+    seats: { 1: { player: "Hero", pos: "UTG+2", stack: 2400 }, 2: { player: "V", pos: "BB", stack: 2400 } },
+    bets: {},
+    bb: 100,
+    hero_stack_bb: 24,
+    // Shape completo do banner (o cabeçalho deste arquivo explica: dublê incompleto acusa a
+    // coisa errada) — os valores são os do print: fora do range, Fold 100%, top 20%.
+    preflop_gto: {
+      scenario: "rfi", vs_position: null, position: "UTG+2", available: true,
+      in_range: false, range_pct: 0.2, recommended_actions: ["fold"],
+      action_quality: "correct", hand_freq: null, pro_notes: [], reasoning: "",
+    },
+  };
+
+  it("o caso do K6s: veredito em UTG+2 busca a grade de UTG+2, não a de LJ — já na 1ª busca", async () => {
+    render(<RangePanel step={STEP_UTG2} hero="Hero" heroCards={["Kh", "6h"]} onClose={() => {}} />);
+    await waitFor(() => expect(urls.length).toBeGreaterThan(0));
+    expect(params(urls[0])).toEqual({ pos: "UTG+2", stack: "24" });
+    // A régua de posições não tem aba fixa de UTG+2 — ela entra DINAMICAMENTE quando é a posição
+    // do veredito. Sem a aba, a busca certa renderizaria uma seleção invisível.
+    expect(screen.getByRole("button", { name: "UTG+2" })).toBeTruthy();
+  });
+
+  it("quando o assento e o veredito discordam (mesa curta), a posição do VEREDITO manda", async () => {
+    // Mesa de 7: o assento se chama "UTG+1" no dialeto do replay, mas o backend gradeia por
+    // jogadores atrás e o veredito sai em LJ. A grade tem que seguir o veredito — reproduzir o
+    // mapa por jogadores atrás no frontend seria a terceira cópia da regra.
+    const step: any = {
+      ...STEP_UTG2,
+      seats: { 1: { player: "Hero", pos: "UTG+1", stack: 2400 }, 2: { player: "V", pos: "BB", stack: 2400 } },
+      preflop_gto: { ...STEP_UTG2.preflop_gto, position: "LJ" },
+    };
+    render(<RangePanel step={step} hero="Hero" heroCards={["Kh", "6h"]} onClose={() => {}} />);
+    await waitFor(() => expect(urls.length).toBeGreaterThan(0));
+    expect(params(urls[0]).pos).toBe("LJ");
+  });
+
+  it("o header rotula o arredondamento: stack real 24bb, tabela do bucket 20bb", async () => {
+    // O chip mostrava só "20bb" enquanto o veredito falava de 24bb — na mesma tela, parecia
+    // contradição. O rótulo liga os dois números em vez de esconder um deles.
+    render(<RangePanel step={STEP_UTG2} hero="Hero" heroCards={["Kh", "6h"]} onClose={() => {}} />);
+    await waitFor(() => expect(screen.getByText("24bb (bucket 20bb)")).toBeTruthy());
+  });
+});

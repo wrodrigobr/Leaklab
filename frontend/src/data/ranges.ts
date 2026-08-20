@@ -328,11 +328,13 @@ const BB_DEFEND: RangeSet = {
 
 // ── Lookup ────────────────────────────────────────────────────────────────────
 
-export type Position = 'UTG' | 'LJ' | 'MP' | 'HJ' | 'CO' | 'BTN' | 'SB' | 'BB';
+export type Position = 'UTG' | 'UTG+1' | 'UTG+2' | 'LJ' | 'MP' | 'HJ' | 'CO' | 'BTN' | 'SB' | 'BB';
 export type RangeType = 'open' | 'call' | '3bet' | 'shove';
 
 export const RANGES: Record<Position, Partial<Record<RangeType, RangeSet>>> = {
   UTG: { open: UTG_OPEN, '3bet': THREEBET_OOP },
+  'UTG+1': { '3bet': THREEBET_OOP },  // open/call served by API (GW 9-max tem chave própria)
+  'UTG+2': { '3bet': THREEBET_OOP },  // open/call served by API (GW 9-max tem chave própria)
   LJ:  { '3bet': THREEBET_OOP },  // open/call served by API
   MP:  { open: MP_OPEN,  '3bet': THREEBET_OOP },
   HJ:  { open: HJ_OPEN,  '3bet': THREEBET_IP,  call: CALL_IP },
@@ -342,7 +344,12 @@ export const RANGES: Record<Position, Partial<Record<RangeType, RangeSet>>> = {
   BB:  { call: BB_DEFEND, '3bet': THREEBET_OOP },
 };
 
-export const POSITIONS: Position[] = ['UTG', 'LJ', 'MP', 'HJ', 'CO', 'BTN', 'SB', 'BB'];
+// Ordem canônica de TODAS as posições nomeáveis (dialeto do replay = GW 9-max, + MP legado).
+export const POSITIONS: Position[] = ['UTG', 'UTG+1', 'UTG+2', 'LJ', 'MP', 'HJ', 'CO', 'BTN', 'SB', 'BB'];
+
+// Abas sempre visíveis do painel de ranges. UTG+1/UTG+2 entram só quando são a posição da
+// mão/veredito: dez abas fixas não cabem na régua, e nas mesas curtas essas posições nem existem.
+export const CORE_TAB_POSITIONS: Position[] = ['UTG', 'LJ', 'MP', 'HJ', 'CO', 'BTN', 'SB', 'BB'];
 
 export const RANGE_TYPES: { id: RangeType; label: string }[] = [
   { id: 'shove', label: 'Shove' },
@@ -435,14 +442,21 @@ export const PUSH_FOLD: Record<StackBucket, Partial<Record<Position, RangeSet>>>
   },
 };
 
+/** UTG+1/UTG+2 passam VERBATIM: são chaves próprias do GW 9-max e o backend
+ *  (`_norm_pos`) as aceita como estão. Achatar aqui (UTG+2→LJ, UTG+1→UTG) era uma
+ *  segunda cópia da regra de normalização discordando da primeira — caso real
+ *  (19/08): veredito calculado em UTG+2 20bb dizia "K6s fora do range, Fold 100%"
+ *  e a grade na mesma tela renderizava LJ 20bb, onde K6s é raise. */
 export function normalizePosition(pos: string): Position | null {
   const p = pos.toUpperCase();
   if (p === 'BTN') return 'BTN';
   if (p === 'CO') return 'CO';
   if (p === 'HJ') return 'HJ';
-  if (p === 'LJ' || p === 'UTG+2') return 'LJ';
+  if (p === 'LJ') return 'LJ';
   if (p === 'MP' || p === 'MP1' || p.startsWith('MP')) return 'MP';
-  if (p === 'UTG' || p === 'UTG+1') return 'UTG';
+  if (p === 'UTG+2' || p === 'UTG2') return 'UTG+2';
+  if (p === 'UTG+1' || p === 'UTG1') return 'UTG+1';
+  if (p === 'UTG') return 'UTG';
   if (p === 'SB') return 'SB';
   if (p === 'BB') return 'BB';
   return null;

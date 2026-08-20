@@ -7,6 +7,27 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(replayer): a grade de ranges responde a pergunta do VEREDITO -- mesma posicao, mesmo bucket (#frontend)
+
+> Caso real com print (19/08): RFI de UTG+2 a 24bb com K6s. O veredito -- calculado pelo
+> backend em UTG+2, bucket 20bb -- dizia "fora do range, Fold 100%, top 20%" (conferido no
+> dado: UTG+2 20bb abre 19,7% e K6s NAO esta). A grade na MESMA tela renderizava LJ 20bb,
+> onde K6s e raise. Causa: `normalizePosition` do frontend achatava UTG+2->LJ e UTG+1->UTG
+> -- uma SEGUNDA copia da regra de normalizacao (a primeira e `_norm_pos` no backend, que
+> tem UTG+1/UTG+2 como chaves proprias do GW 9-max e, com n_players, mapeia por jogadores
+> atras). Regra 5: duas copias discordando.
+>
+> Fonte unica agora e `preflop_gto.position` -- a posicao em que o veredito FOI calculado,
+> por quem o calculou. A grade abre nela; UTG+1/UTG+2 viram abas DINAMICAS quando sao a
+> posicao da mao/veredito (dez abas fixas nao cabem na regua); o fetch ganhou
+> encodeURIComponent (o `+` cru na query decodifica como ESPACO no backend -- "UTG 2",
+> grade vazia); navegar para outra aba mostra aviso "o veredito acima foi calculado em X".
+> Bonus: o chip de stack do header rotula o arredondamento ("24bb (bucket 20bb)") em vez
+> de mostrar so o balde ao lado de uma analise que fala 24bb.
+>
+> Guarda quebrado de proposito antes do conserto (3 testes vermelhos: pos=LJ na 1a busca,
+> UTG+1->UTG, chip sem rotulo). vitest 369/369 + tsc -p tsconfig.app.json verdes.
+
 ### feat(cockpit): F2 -- celebracao ao dominar, CTA sticky mobile, cold start digno (#training #frontend)
 
 > A celebracao acontece no EVENTO, nunca no load: quando o resumo de sessao mostra o gate

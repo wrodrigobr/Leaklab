@@ -4,7 +4,7 @@ import { GtoMixedBadge } from "./GtoMixedBadge";
 import { RangeGrid } from "./RangeGrid";
 import {
   heroHand, RANGES, normalizePosition, PUSH_FOLD, getPushFoldBucket,
-  Position, RangeType, POSITIONS, RANGE_TYPES, RangeSet,
+  Position, RangeType, POSITIONS, CORE_TAB_POSITIONS, RANGE_TYPES, RangeSet,
 } from "@/data/ranges";
 import { ACTION_COLORS } from "@/lib/actionColors";
 import { ReplayStep } from "@/lib/api";
@@ -170,8 +170,13 @@ export function RangePanel({ step, hero, heroCards, onClose, onHeaderMouseDown,
   const detectedPos = heroSeat ? normalizePosition(heroSeat[1].pos) : null;
   const gto         = step.preflop_gto;
   const posPedida   = posicaoInicial ? normalizePosition(posicaoInicial) : null;
+  /* A posição em que o veredito FOI calculado — fonte única. O nome do assento é outro dialeto:
+     numa mesa curta o backend gradeia por jogadores atrás (assento "UTG+1" de 7-max vira LJ), e
+     re-derivar esse mapa aqui seria mais uma cópia da regra. Caso real (19/08): o assento UTG+2
+     era achatado para LJ e a grade contradizia o veredito na mesma tela (K6s). */
+  const gtoPos      = gto?.position ? normalizePosition(gto.position) : null;
 
-  const [pos,  setPos]  = useState<Position>(posPedida ?? detectedPos ?? 'BTN');
+  const [pos,  setPos]  = useState<Position>(posPedida ?? gtoPos ?? detectedPos ?? 'BTN');
 
   const [apiData, setApiData] = useState<PreflopRangesResp | null>(null);
   const [loading, setLoading] = useState(false);
@@ -204,18 +209,19 @@ export function RangePanel({ step, hero, heroCards, onClose, onHeaderMouseDown,
      confusão que o conserto existe para acabar, só que ao contrário.
      Trocar de aba à mão continua valendo: as dependências só mudam quando a FONTE muda. */
   useEffect(() => {
-    setPos(posPedida ?? detectedPos ?? 'BTN');
+    setPos(posPedida ?? gtoPos ?? detectedPos ?? 'BTN');
     // Toda pergunta de range do treino é sobre a range de ABERTURA ("abre", "range de abertura",
     // "às vezes entrando"). Abrir na aba de call mostraria outra coisa com o rótulo certo.
     setType(posPedida ? 'open' : defaultType);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [posPedida, detectedPos]);
+  }, [posPedida, gtoPos, detectedPos]);
 
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
     setApiData(null);
-    authFetch(`/preflop-ranges?position=${pos}&stack_bb=${stackBb}`)
+    // encodeURIComponent: o '+' de UTG+1/UTG+2 cru na query decodifica como ESPAÇO no backend.
+    authFetch(`/preflop-ranges?position=${encodeURIComponent(pos)}&stack_bb=${stackBb}`)
       .then(r => r.json())
       .then((d: PreflopRangesResp) => { if (!cancelled) setApiData(d); })
       .catch(() => {})
@@ -225,6 +231,12 @@ export function RangePanel({ step, hero, heroCards, onClose, onHeaderMouseDown,
 
   const staticRange    = RANGES[pos];
   const nashRange      = pushBucket ? PUSH_FOLD[pushBucket]?.[pos] : null;
+
+  // UTG+1/UTG+2 só viram aba quando são a posição da mão/veredito/pergunta — mas aí PRECISAM
+  // existir, senão a grade responde outra pergunta. Âncoras (e não só `pos`): a aba não pode
+  // sumir da régua quando o usuário navega para outra e quer voltar.
+  const tabPositions = POSITIONS.filter(p =>
+    CORE_TAB_POSITIONS.includes(p) || p === pos || p === gtoPos || p === posPedida || p === detectedPos);
 
   const availableTypes = RANGE_TYPES.filter(t => {
     // Aba shove (Nash simplificado) só faz sentido sem GW v3 — o range de open já tem
@@ -282,7 +294,15 @@ export function RangePanel({ step, hero, heroCards, onClose, onHeaderMouseDown,
             Range Reference
           </span>
           {hand && <span className="font-mono text-[10px] text-primary font-bold">· {hand}</span>}
-          {apiData && <span className="font-mono text-[8px] text-emerald-400/60">{apiData.stack_bucket}</span>}
+          {/* O bucket sozinho ("20bb") ao lado de uma análise que fala 24bb parecia contradição —
+              o arredondamento existe, então ele é ROTULADO em vez de escondido. */}
+          {apiData && (
+            <span className="font-mono text-[8px] text-emerald-400/60">
+              {`${stackBb.toFixed(0)}bb` === apiData.stack_bucket
+                ? apiData.stack_bucket
+                : `${stackBb.toFixed(0)}bb (bucket ${apiData.stack_bucket})`}
+            </span>
+          )}
         </div>
         <div className="flex items-center gap-2">
           {loading && <Loader2 className="size-3 text-muted-foreground animate-spin" />}
@@ -425,8 +445,8 @@ export function RangePanel({ step, hero, heroCards, onClose, onHeaderMouseDown,
 
       {/* Position selector */}
       <div className="grid gap-px rounded-md overflow-hidden ring-1 ring-border"
-        style={{ gridTemplateColumns: `repeat(${POSITIONS.length}, minmax(0, 1fr))` }}>
-        {POSITIONS.map(p => (
+        style={{ gridTemplateColumns: `repeat(${tabPositions.length}, minmax(0, 1fr))` }}>
+        {tabPositions.map(p => (
           <button key={p} onClick={() => setPos(p)}
             className={cn(
               'py-1 font-mono text-[9px] font-bold uppercase transition-colors',
@@ -450,6 +470,19 @@ export function RangePanel({ step, hero, heroCards, onClose, onHeaderMouseDown,
           </button>
         ))}
       </div>
+
+      {/* Aviso quando a aba ativa mostra OUTRA POSIÇÃO que não a do veredito — navegar pelas
+          abas é legítimo, mas a grade e o banner na mesma tela não podem parecer se contradizer
+          sem rótulo (caso K6s: veredito UTG+2, grade LJ). */}
+      {showGtoCtx && gtoPos && pos !== gtoPos && (
+        <div className="rounded-md border border-amber-500/25 bg-amber-500/5 px-3 py-1.5">
+          <p className="font-mono text-[9px] text-amber-400/80 leading-snug">
+            Esta grade mostra <strong className="text-amber-400">{pos}</strong>. O veredito acima
+            foi calculado em <strong className="text-amber-400">{gtoPos}</strong> — volte àquela
+            aba para comparar com a análise.
+          </p>
+        </div>
+      )}
 
       {/* Aviso quando a aba ativa não corresponde ao cenário da decisão. Só aponta
           "está na aba X" quando essa aba REALMENTE existe, senão dizia pra clicar
