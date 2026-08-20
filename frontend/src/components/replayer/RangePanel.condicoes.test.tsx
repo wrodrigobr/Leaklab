@@ -121,6 +121,59 @@ describe("RangePanel — condições da pergunta", () => {
   });
 });
 
+/* MESA CURTA (20/08). A varredura de contradição (scripts/varredura_contradicao_grade.py,
+ * com prova de detecção por forja) mediu no acervo real: das 3.149 combinações
+ * (posição, stack, mão), 235 divergem entre o VEREDITO gravado e a GRADE — e a ablação por
+ * tamanho de mesa explica quase tudo:
+ *
+ *     mesa 2 (HU) .... 51,5% de divergência
+ *     mesa 3-4 ....... ~15%
+ *     mesa 6-9 ....... 4-6%
+ *
+ * Não é erro de lookup: as ranges são de 9-max e numa mesa de 3 o "UTG" é outra posição
+ * efetiva. O veredito conhece a mesa real; a grade, não. Então a grade DECLARA a premissa —
+ * fonte que não sabe, diz que não sabe — em vez de contradizer o card ao lado. */
+describe("RangePanel — mesa curta declara a premissa", () => {
+  const mesaCom = (n: number): any => ({
+    seats: Object.fromEntries(Array.from({ length: n }, (_, i) => [
+      i + 1, { player: i === 0 ? "Hero" : `V${i}`, pos: ["BTN", "BB", "SB", "CO", "HJ", "LJ", "UTG", "UTG+1", "UTG+2"][i], stack: 2000 },
+    ])),
+    bets: {}, folded: [], bb: 100, hero_stack_bb: 20,
+    // Shape COMPLETO do banner: dublê incompleto acusa a coisa errada (o cabeçalho deste
+    // arquivo registra a primeira vez que isso custou uma investigação).
+    preflop_gto: {
+      scenario: "rfi", vs_position: null, position: "BTN", available: true,
+      in_range: true, range_pct: 0.4, recommended_actions: ["raise"],
+      action_quality: "correct", hand_freq: null, pro_notes: [], reasoning: "",
+    },
+  });
+
+  it("heads-up avisa que a grade é de mesa cheia", async () => {
+    render(<RangePanel step={mesaCom(2)} hero="Hero" heroCards={["Ah", "Kh"]} onClose={() => {}} />);
+    expect(await screen.findByText("Mão heads-up.")).toBeTruthy();
+    expect(screen.getByText(/mesa cheia \(9-max\)/i)).toBeTruthy();
+  });
+
+  it("mesa de 4 avisa com o número de jogadores", async () => {
+    render(<RangePanel step={mesaCom(4)} hero="Hero" heroCards={["Ah", "Kh"]} onClose={() => {}} />);
+    expect(await screen.findByText(/Mesa com 4 jogadores/i)).toBeTruthy();
+  });
+
+  it("mesa cheia NÃO avisa (senão o aviso vira ruído em 100% das mãos)", async () => {
+    render(<RangePanel step={mesaCom(9)} hero="Hero" heroCards={["Ah", "Kh"]} onClose={() => {}} />);
+    await waitFor(() => expect(urls.length).toBeGreaterThan(0));
+    expect(screen.queryByText(/mesa cheia \(9-max\)/i)).toBeNull();
+  });
+
+  it("jogadores que já FOLDARAM não contam como mesa cheia", async () => {
+    // 8 assentos, 5 já foldaram → 3 vivos: o aviso tem que aparecer.
+    const step = mesaCom(8);
+    step.folded = ["V1", "V2", "V3", "V4", "V5"];
+    render(<RangePanel step={step} hero="Hero" heroCards={["Ah", "Kh"]} onClose={() => {}} />);
+    expect(await screen.findByText(/Mesa com 3 jogadores/i)).toBeTruthy();
+  });
+});
+
 /* O caso do K6s (print de 19/08): RFI de UTG+2 a 24bb. O veredito — calculado pelo backend na
  * posição UTG+2, bucket 20bb — dizia "fora do range, Fold 100%, top 20%". A grade na MESMA tela
  * renderizava LJ 20bb, onde K6s é raise. Duas causas, dois guardas:

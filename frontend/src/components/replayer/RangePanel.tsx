@@ -263,6 +263,28 @@ export function RangePanel({ step, hero, heroCards, onClose, onHeaderMouseDown,
 
   const hand = heroHand(heroCards);
 
+  // ── MESA CURTA: a grade é de MESA CHEIA e não sabe quantos jogadores há na mão ──────────
+  //
+  // Varredura de contradição (20/08, scripts/varredura_contradicao_grade.py): das 3.149
+  // combinações (posição, stack, mão) do acervo, 235 divergem entre o VEREDITO e a GRADE —
+  // e a ablação por tamanho de mesa explica: **51,5% em heads-up** contra 4-6% em mesa
+  // cheia. Não é bug de lookup: as ranges do GW são 9-max, e numa mesa de 3 o "UTG" é outra
+  // posição efetiva. O veredito conhece a mesa real; a grade, não.
+  //
+  // Então a grade DECLARA a premissa em vez de fingir que responde — a mesma regra que já
+  // vale no resto do produto: fonte que não sabe, diz que não sabe. Não escondemos a grade
+  // (ela segue útil como referência de mesa cheia), mas o aviso tira a contradição.
+  const vivosNaMao = (() => {
+    const total = Object.keys(step.seats ?? {}).length;
+    if (!total) return null;
+    const foldados = new Set(step.folded ?? []);
+    const vivos = Object.values(step.seats ?? {})
+      .filter((s) => s?.player && !foldados.has(s.player)).length;
+    // No preflop ninguém foldou ainda no início: o que vale é quem foi DISTRIBUÍDO.
+    return Math.max(vivos, 2) <= total ? Math.max(vivos, 2) : total;
+  })();
+  const mesaCurta = vivosNaMao != null && vivosNaMao < 6;
+
   // Show GTO context when data is available — detectedPos may be null for positions
   // not yet in the static list (e.g. LJ before the fix), so we show it regardless
   const showGtoCtx = gto?.available ?? false;
@@ -311,6 +333,24 @@ export function RangePanel({ step, hero, heroCards, onClose, onHeaderMouseDown,
           </button>
         </div>
       </div>
+
+      {/* MESA CURTA: a premissa da grade, declarada. Medido: em heads-up 51,5% das mãos do
+          acervo divergem entre veredito e grade — não porque o lookup erra, mas porque a
+          tabela é de mesa cheia. Aqui ela avisa em vez de contradizer o card ao lado. */}
+      {mesaCurta && (
+        <div className="flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/[0.07] px-3 py-2">
+          <Info className="mt-0.5 size-3.5 shrink-0 text-amber-400" aria-hidden />
+          <p className="text-[11px] leading-snug text-amber-200/90">
+            <span className="font-bold">
+              {vivosNaMao === 2 ? "Mão heads-up." : `Mesa com ${vivosNaMao} jogadores.`}
+            </span>{" "}
+            Esta grade é a range de <span className="font-bold">mesa cheia (9-max)</span> e serve
+            de referência — ela não conhece o tamanho da mesa. O veredito do card considera a mesa
+            real, então divergências aqui são esperadas
+            {vivosNaMao === 2 ? " (em heads-up, quase toda mão é mais solta)" : ""}.
+          </p>
+        </div>
+      )}
 
       {/* GTO context banner */}
       {showGtoCtx && gto && (

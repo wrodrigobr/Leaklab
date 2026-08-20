@@ -7,6 +7,22 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(replayer): a grade declara a premissa quando a mesa e CURTA (#replayer #gto)
+
+> Fecha a familia das duas contradicoes reportadas (fallback Nash e K6s UTG+2). A varredura
+> mediu no acervo real e a ABLACAO por tamanho de mesa achou a causa da cauda: das 3.149
+> combinacoes (posicao, stack, mao), 235 divergem entre veredito e grade — **51,5% em
+> heads-up**, ~15% em mesa de 3-4, 4-6% em mesa cheia. Nao e erro de lookup: as ranges do GW
+> sao 9-max e, numa mesa de 3, "UTG" e outra posicao efetiva. O veredito conhece a mesa real;
+> a grade, nao.
+>
+> Conserto: a grade AVISA em vez de contradizer — "Mao heads-up / Mesa com N jogadores: esta
+> grade e a range de mesa cheia (9-max) e serve de referencia; o veredito do card considera a
+> mesa real". Nao escondemos a grade (ela segue util como referencia), so tiramos a
+> contradicao. Conta quem esta VIVO na mao (foldados nao contam), limiar < 6.
+> 4 testes novos; 3 mutacoes deliberadas acusadas (guarda desligado, foldados ignorados,
+> limiar frouxo). typecheck 0; vitest 372.
+
 ### feat(cockpit): enxerto da proposta Lovable -- o que ela tinha de melhor, sem perder o nosso (#training)
 
 > O usuario trouxe uma tela concorrente (Lovable) para avaliacao. Diagnostico: estrutura
