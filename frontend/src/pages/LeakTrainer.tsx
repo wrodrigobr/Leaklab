@@ -221,6 +221,8 @@ export default function LeakTrainer() {
   const [plan, setPlan]                 = useState<ProgressionPlan | null>(null);
   const [sizeSel, setSizeSel]           = useState<SessionSize>("media");   // duração escolhida
   const [showOther, setShowOther]       = useState(false);                  // disclosure: outros modos
+  // Vitrine v2: uma ABA de tópico por vez (recomendado/leaks/preflop/postflop/memorização)
+  const [vitrineTab, setVitrineTab] = useState<"reco" | "leaks" | "preflop" | "postflop" | "memorizacao">("reco");
   const planRef = useRef<ProgressionPlan | null>(null);
   const doneRef = useRef<Record<string, number>>({});   // spots cumpridos por fatia
   const [contrastNote, setContrastNote] = useState<string | null>(null);
@@ -1458,103 +1460,95 @@ export default function LeakTrainer() {
                 <span className={cn("transition-transform", showOther && "rotate-180")} aria-hidden>▾</span>
               </button>
               {showOther && (
-                <div className="space-y-3 border-t border-border/60 p-3">
-                  {/* MODO GRIND (Fase 2, 17/08): aquecimento por volume — feedback vira flash,
-                      o próximo spot entra pré-carregado, o relatório fica pro fim. Vale para
-                      qualquer treino iniciado daqui; o Protocolo tem ritmo próprio e ignora. */}
-                  <button onClick={toggleGrind}
-                    className={cn(
-                      "flex w-full items-center justify-between rounded-lg border px-3 py-2 text-left transition-colors",
-                      grindMode ? "border-amber-500/60 bg-amber-500/10" : "border-border bg-background/60 hover:border-amber-500/40",
-                    )}>
-                    <span>
-                      <span className="block text-[13px] font-bold text-foreground">⚡ {t("leakTrainer.grind.titulo")}</span>
-                      <span className="block text-[10.5px] text-muted-foreground">{t("leakTrainer.grind.desc")}</span>
+                /* Vitrine v2 (reportado: lista vertical "linguiça" com rolagem): MODOS como
+                   chips no topo (modificadores de sessão moram no ponto de escolha — valem
+                   para tudo daqui; o Protocolo tem ritmo próprio e os ignora) + TÓPICOS em
+                   abas horizontais com o conteúdo em grade de 2 colunas. Altura limitada
+                   por construção: uma aba por vez. */
+                <div className="border-t border-border/60 p-3">
+                  <div className="mb-2.5 flex flex-wrap items-center gap-1.5">
+                    <span className="mr-0.5 font-mono text-[9px] uppercase tracking-widest text-muted-foreground">
+                      {t("leakTrainer.picker.modos")}
                     </span>
-                    <span className={cn("font-mono text-[10px] font-bold uppercase",
-                                        grindMode ? "text-amber-400" : "text-muted-foreground")}>
-                      {grindMode ? t("leakTrainer.grind.on") : t("leakTrainer.grind.off")}
-                    </span>
-                  </button>
-                  {/* TURBO (Fase 3): timebank de 10s por decisão, só faz sentido DENTRO do grind */}
-                  {grindMode && (
-                    <button onClick={toggleTurbo}
-                      className={cn(
-                        "flex w-full items-center justify-between rounded-lg border px-3 py-2 text-left transition-colors",
-                        turboMode ? "border-red-500/50 bg-red-500/10" : "border-border bg-background/60 hover:border-red-500/40",
-                      )}>
-                      <span>
-                        <span className="block text-[13px] font-bold text-foreground">⏱ {t("leakTrainer.grind.turboTitulo")}</span>
-                        <span className="block text-[10.5px] text-muted-foreground">{t("leakTrainer.grind.turboDesc")}</span>
-                      </span>
-                      <span className={cn("font-mono text-[10px] font-bold uppercase",
-                                          turboMode ? "text-red-400" : "text-muted-foreground")}>
-                        {turboMode ? t("leakTrainer.grind.on") : t("leakTrainer.grind.off")}
-                      </span>
+                    <button onClick={toggleGrind} title={t("leakTrainer.grind.desc")}
+                      className={cn("rounded-full border px-2.5 py-1 font-mono text-[10px] font-bold transition-colors",
+                        grindMode ? "border-amber-500/60 bg-amber-500/15 text-amber-300"
+                                  : "border-border bg-background/60 text-muted-foreground hover:border-amber-500/40")}>
+                      ⚡ {t("leakTrainer.grind.titulo")}{grindMode ? " · ON" : ""}
+                    </button>
+                    {grindMode && (
+                      <button onClick={toggleTurbo} title={t("leakTrainer.grind.turboDesc")}
+                        className={cn("rounded-full border px-2.5 py-1 font-mono text-[10px] font-bold transition-colors",
+                          turboMode ? "border-red-500/60 bg-red-500/15 text-red-300"
+                                    : "border-border bg-background/60 text-muted-foreground hover:border-red-500/40")}>
+                        ⏱ Turbo{turboMode ? " · ON" : ""}
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="mb-2.5 flex flex-wrap gap-1">
+                    {([["reco", t("leakTrainer.picker.tabReco")],
+                       ["leaks", t("leakTrainer.picker.yourLeaks")],
+                       ["preflop", t("leakTrainer.catalogo.grupo.preflop")],
+                       ["postflop", t("leakTrainer.catalogo.grupo.postflop")],
+                       ["memorizacao", t("leakTrainer.catalogo.grupo.memorizacao")]] as const)
+                      .filter(([k]) => k === "reco"
+                        || (k === "leaks" ? (trainOptions?.leaks?.length ?? 0) > 0
+                          : (trainOptions?.catalogo ?? []).some((c) => c.grupo === k)))
+                      .map(([k, rotulo]) => (
+                        <button key={k} onClick={() => setVitrineTab(k)}
+                          className={cn("rounded-lg px-3 py-1.5 font-mono text-[10.5px] font-bold uppercase tracking-wider transition-colors",
+                            vitrineTab === k ? "bg-amber-500/15 text-amber-300 ring-1 ring-amber-500/40"
+                                             : "text-muted-foreground hover:text-foreground")}>
+                          {rotulo}
+                        </button>
+                      ))}
+                  </div>
+
+                  {vitrineTab === "reco" && (
+                    <button onClick={() => startFocus("adaptive")}
+                      className="w-full rounded-lg border border-amber-500/30 bg-amber-500/[0.06] px-3 py-2.5 text-left transition-colors hover:border-amber-500/60">
+                      <span className="block text-[13px] font-bold text-foreground">{t("leakTrainer.picker.adaptive")}</span>
+                      <span className="block text-[10.5px] text-muted-foreground">{t("leakTrainer.picker.adaptiveDesc")}</span>
                     </button>
                   )}
-                  <button onClick={() => startFocus("adaptive")}
-                    className="w-full rounded-lg border border-border bg-background/60 px-3 py-2 text-left text-[13px] text-foreground transition-colors hover:border-amber-500/40">
-                    {t("leakTrainer.picker.adaptive")}
-                  </button>
-                  {trainOptions?.leaks && trainOptions.leaks.length > 0 && (
-                    <div>
-                      <p className="mb-1.5 text-[11px] font-bold text-foreground">{t("leakTrainer.picker.yourLeaks")}</p>
-                      <div className="grid gap-1.5">
-                        {trainOptions.leaks.slice(0, 6).map((l) => (
-                          <button key={l.category_key} onClick={() => startFocus(`leak:${l.category_key}`)}
+                  {vitrineTab === "leaks" && (
+                    <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
+                      {(trainOptions?.leaks ?? []).slice(0, 8).map((l) => (
+                        <button key={l.category_key} onClick={() => startFocus(`leak:${l.category_key}`)}
+                          className="flex items-center justify-between gap-2 rounded-lg border border-border bg-background/60 px-3 py-2 text-left transition-colors hover:border-amber-500/40">
+                          <span className="truncate text-[12.5px] text-foreground">{leakOptLabel(l)}</span>
+                          <span className="shrink-0 font-mono text-[10px] text-muted-foreground">−{l.ev_loss_bb}bb</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {(vitrineTab === "preflop" || vitrineTab === "postflop" || vitrineTab === "memorizacao") && (
+                    (trainOptions?.catalogo ?? []).some((c) => c.grupo === vitrineTab) ? (
+                      <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
+                        {(trainOptions?.catalogo ?? []).filter((c) => c.grupo === vitrineTab).map((c) => (
+                          <button key={c.id} onClick={() => startFocus(c.focus as LeakTrainerFocus)}
                             className="flex items-center justify-between gap-2 rounded-lg border border-border bg-background/60 px-3 py-2 text-left transition-colors hover:border-amber-500/40">
-                            <span className="truncate text-[13px] text-foreground">{leakOptLabel(l)}</span>
-                            <span className="shrink-0 font-mono text-[10px] text-muted-foreground">−{l.ev_loss_bb}bb</span>
+                            <span className="min-w-0">
+                              <span className="block truncate text-[12.5px] font-bold text-foreground">
+                                {t(`leakTrainer.catalogo.${c.id}`)}
+                              </span>
+                              <span className="block truncate text-[10px] text-muted-foreground">
+                                {t(`leakTrainer.catalogo.${c.id}Desc`)}
+                              </span>
+                            </span>
+                            {c.stats && c.stats.attempts > 0 && (
+                              <span className="shrink-0 text-right font-mono text-[10px] tabular-nums text-muted-foreground"
+                                    title={t("leakTrainer.catalogo.statsTip")}>
+                                {t("leakTrainer.catalogo.stats",
+                                   { n: c.stats.attempts, pct: Math.round(c.stats.mastery) })}
+                              </span>
+                            )}
                           </button>
                         ))}
                       </div>
-                    </div>
-                  )}
-                  {/* ── CATÁLOGO DE TREINOS NOMEADOS (Fase 1, 17/08) ─────────────────────
-                      A porta de quem chega sabendo o que quer: cada card é um treino com nome
-                      na linguagem do jogador e a estatística PERSISTENTE (mãos · domínio%,
-                      agregada do training_skill_progress — sobrevive à sessão). O adaptativo
-                      por leak continua sendo o padrão lá em cima; isto é a academia com as
-                      máquinas etiquetadas. */}
-                  {(trainOptions?.catalogo ?? []).filter((c) => c.grupo !== "recomendado").length > 0 ? (
-                    (["preflop", "postflop", "memorizacao"] as const).map((grupo) => {
-                      const entradas = (trainOptions?.catalogo ?? []).filter((c) => c.grupo === grupo);
-                      if (!entradas.length) return null;
-                      return (
-                        <div key={grupo}>
-                          <p className="mb-1.5 text-[11px] font-bold text-foreground">
-                            {t(`leakTrainer.catalogo.grupo.${grupo}`)}
-                          </p>
-                          <div className="grid gap-1.5">
-                            {entradas.map((c) => (
-                              <button key={c.id} onClick={() => startFocus(c.focus as LeakTrainerFocus)}
-                                className="flex items-center justify-between gap-2 rounded-lg border border-border bg-background/60 px-3 py-2 text-left transition-colors hover:border-amber-500/40">
-                                <span className="min-w-0">
-                                  <span className="block truncate text-[13px] text-foreground">
-                                    {t(`leakTrainer.catalogo.${c.id}`)}
-                                  </span>
-                                  <span className="block truncate text-[10.5px] text-muted-foreground">
-                                    {t(`leakTrainer.catalogo.${c.id}Desc`)}
-                                  </span>
-                                </span>
-                                {c.stats && c.stats.attempts > 0 && (
-                                  <span className="shrink-0 text-right font-mono text-[10px] tabular-nums text-muted-foreground"
-                                        title={t("leakTrainer.catalogo.statsTip")}>
-                                    {t("leakTrainer.catalogo.stats",
-                                       { n: c.stats.attempts, pct: Math.round(c.stats.mastery) })}
-                                  </span>
-                                )}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                      );
-                    })
-                  ) : (
-                    /* Fallback (backend antigo sem `catalogo`): os chips de fundamentos de antes. */
-                    <div>
-                      <p className="mb-1.5 text-[11px] font-bold text-foreground">{t("leakTrainer.picker.fundamentals")}</p>
+                    ) : (
+                      /* Fallback (backend antigo sem catálogo): os chips de fundamentos. */
                       <div className="flex flex-wrap gap-1.5">
                         {(trainOptions?.scenarios ?? ["rfi", "vs_rfi"]).map((scn) => (
                           <button key={scn} onClick={() => startFocus(`fund:${scn}`)}
@@ -1562,12 +1556,8 @@ export default function LeakTrainer() {
                             {t(`leakTrainer.scn.${scn}`)}
                           </button>
                         ))}
-                        <button onClick={() => startFocus("fund:range_grid")}
-                          className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-1.5 text-[12px] text-amber-300 transition-colors hover:border-amber-500/70">
-                          {t("leakTrainer.scn.range_grid")}
-                        </button>
                       </div>
-                    </div>
+                    )
                   )}
                 </div>
               )}

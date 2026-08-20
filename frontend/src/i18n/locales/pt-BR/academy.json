@@ -220,7 +220,10 @@
       "adaptive": "Adaptativo (recomendado)",
       "orChoose": "ou escolha o que treinar",
       "yourLeaks": "Seus leaks",
-      "fundamentals": "Explorar fundamentos"
+      "fundamentals": "Explorar fundamentos",
+      "modos": "Modos",
+      "tabReco": "Recomendado",
+      "adaptiveDesc": "O sistema escolhe pelo seu leak medido — o padrão e o diferencial"
     },
     "scn": {
       "rfi": "Abertura (RFI)",

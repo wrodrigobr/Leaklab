@@ -220,7 +220,10 @@
       "adaptive": "Adaptive (recommended)",
       "orChoose": "or choose what to train",
       "yourLeaks": "Your leaks",
-      "fundamentals": "Explore fundamentals"
+      "fundamentals": "Explore fundamentals",
+      "modos": "Modes",
+      "tabReco": "Recommended",
+      "adaptiveDesc": "The system picks by your measured leak — the default and the edge"
     },
     "scn": {
       "rfi": "Open (RFI)",
