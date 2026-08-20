@@ -1614,6 +1614,8 @@ export interface ProgressionStatusItem extends ProgressionMission {
   validacao?: LeakValidation | null;
   /** já reabriu por regressão comprovada no jogo — a UI precisa dizer POR QUE o leak voltou */
   reaberto?: boolean;
+  /** Aulas da Academia ligadas à missão (mesmo matcher do plano de estudos). Só na `ativa`. */
+  academy_modules?: { id: string; path: string }[];
 }
 
 /** Foco resolvido pelo backend: `ativa` é a primeira missão que ainda NÃO passou o gate. */

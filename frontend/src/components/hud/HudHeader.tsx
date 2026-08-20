@@ -121,12 +121,18 @@ export function HudHeader({ onUpload }: HudHeaderProps) {
     { label: t("nav.dashboard"),   mobileLabel: t("nav.dashboard"),   to: "/dashboard",   icon: LayoutDashboard },
     { label: t("nav.tournaments"), mobileLabel: t("nav.tournaments"), to: "/tournaments", icon: Trophy },
     { label: t("nav.leaderboard"), mobileLabel: t("nav.leaderboard"), to: "/leaderboard", icon: Medal },
-    { label: t("nav.study"),       mobileLabel: t("nav.study"),       to: "/study",       icon: GraduationCap },
+    {
+      label: t("nav.study"), mobileLabel: t("nav.study"), to: "/study", icon: GraduationCap,
+      // A Academia mudou para Estudos (19/08); a família dela acende a mesma aba.
+      activePaths: ["/study", "/academy"],
+    },
     {
       label: t("nav.training"), mobileLabel: t("nav.training"),
       to: "/training",
       icon: Dumbbell,
-      activePaths: ["/training", "/ghost"],
+      // Costura 14 da auditoria: a FAMÍLIA de treino acende a aba — antes /leak-trainer e
+      // /training-v2 não acendiam nada e o jogador ficava sem "onde estou" na nav.
+      activePaths: ["/training", "/training-v2", "/ghost", "/leak-trainer"],
       dot: lessonPending,
     },
     { label: t("nav.coach"),   mobileLabel: t("nav.coach"),   to: "/coach",   icon: Bot },
@@ -204,7 +210,10 @@ export function HudHeader({ onUpload }: HudHeaderProps) {
             >
               {navItems.map((item) => {
                 const activePaths = item.activePaths ?? [item.to];
-                const isActive = activePaths.some((p) => location.pathname === p);
+                // Por PREFIXO (costura 14): /academy/math acende Estudos, /training-v2 acende
+                // Treinos. Fronteira de segmento ("/" ou fim) evita /coach casar /coaches.
+                const isActive = activePaths.some((p) =>
+                  location.pathname === p || location.pathname.startsWith(p + "/"));
                 return (
                   <NavLink
                     key={item.to}

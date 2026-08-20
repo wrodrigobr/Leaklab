@@ -3178,6 +3178,19 @@ def progression_status():
     except Exception:
         app.logger.exception("progression_status falhou (user=%s)", g.user_id)
         return jsonify({'items': [], 'ativa': None, 'proximas': [], 'dominadas': [], 'restantes': 0})
+    # F2 do cockpit: a aula ligada à MISSÃO (a Academia contextual — o link genérico saiu das
+    # telas de treino em 19/08 e a volta dela é por vínculo real, nunca por atalho solto).
+    # Mesmo matcher do plano de estudos (academy_catalog) — fonte única do leak→aula.
+    try:
+        from leaklab.academy_catalog import modules_for_card
+        if est.get('ativa'):
+            a = est['ativa']
+            a['academy_modules'] = modules_for_card({
+                'titulo': a.get('titulo') or '',
+                'spot': f"{a.get('scenario') or ''} {a.get('position') or ''} vs {a.get('vs_position') or ''}",
+            })
+    except Exception:
+        app.logger.exception("academy_modules da missão falhou (user=%s)", g.user_id)
     return jsonify(est)
 
 

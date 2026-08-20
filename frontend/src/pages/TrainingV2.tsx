@@ -70,6 +70,7 @@ function DiscoAtivo({ emblem, reaberto, size = 76 }: { emblem: MedalEmblem; reab
 
 export default function TrainingV2() {
   const { t } = useTranslation("training");
+  const { t: tAcad } = useTranslation("academy");   // títulos dos módulos (leak→aula)
   const spotLabel = useSpotLabel();
   const { data: status } = useQuery({
     queryKey: ["progression-status", 365], queryFn: () => progression.status(365), staleTime: 60_000,
@@ -190,6 +191,22 @@ export default function TrainingV2() {
           className="mt-2 block text-center font-mono text-[10.5px] font-bold uppercase tracking-[0.14em] text-primary/70 hover:text-primary hover:underline">
           {t("trilha.treinarOutra")}
         </Link>
+        {/* F2: a Academia CONTEXTUAL — a aula ligada a ESTA missão (matcher do backend, o
+            mesmo do plano de estudos). O atalho genérico saiu; o vínculo real entrou. */}
+        {(n.item.academy_modules?.length ?? 0) > 0 && (
+          <div className="mt-3 border-t border-border/60 pt-2.5">
+            <p className="mb-1.5 font-mono text-[9px] uppercase tracking-[0.18em] text-violet-400">
+              {t("trilha.estudarTitulo")}
+            </p>
+            {n.item.academy_modules!.map((m) => (
+              <Link key={m.id} to={m.path}
+                className="flex items-center justify-between rounded-lg px-2 py-1.5 text-[12px] text-foreground transition-colors hover:bg-violet-500/10">
+                <span className="truncate">{tAcad(`modules.${m.id}.title`)}</span>
+                <span className="shrink-0 font-mono text-[10px] text-violet-400">→</span>
+              </Link>
+            ))}
+          </div>
+        )}
       </div>
     );
   };
