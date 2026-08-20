@@ -23,8 +23,12 @@ for (const [tag, T, H, stepN] of SPOTS) {
   // navega ao passo da decisão
   const seg = page.locator(`[aria-label="Passo ${stepN}"]`);
   if (await seg.count()) { await seg.first().click({ force: true }); await sleep(700); }
-  // abre o painel de range
+  // abre o painel de range. ESPERA o botão em vez de checar o count uma vez só: em 20/08 o
+  // rp_vs3b reportou "botao range NAO encontrado" e a investigação (dev + navegador) mostrou
+  // que o botão ESTAVA lá — era o replay ainda montando depois do pushState. Sonda que mede
+  // cedo demais acusa buraco onde há atraso, e custou uma investigação inteira.
   const rangeBtn = page.getByRole('button', { name: /range|grade/i });
+  await rangeBtn.first().waitFor({ state: 'visible', timeout: 15000 }).catch(() => {});
   if (await rangeBtn.count()) {
     await rangeBtn.first().click({ force: true }).catch(() => {});
     await sleep(1200);
