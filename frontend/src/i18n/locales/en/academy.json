@@ -176,7 +176,8 @@
       "unlocked": "Achievement unlocked!",
       "gateTitle": "Mastery gate",
       "gateFaltam": "{{n}} criteria left to master this leak.",
-      "gateFechado": "Gate closed! Leak mastered — prove it in real games."
+      "gateFechado": "Gate closed! Leak mastered — prove it in real games.",
+      "verNaTrilha": "See the medal on the path"
     },
     "vCorrect": "Correct",
     "vMixed": "Acceptable",

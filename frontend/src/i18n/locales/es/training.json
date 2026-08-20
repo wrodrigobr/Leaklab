@@ -324,6 +324,9 @@
     "academySub": "La teoría detrás del entrenamiento",
     "jogarTitulo": "Compruébalo en juego real",
     "jogarNota": "Dominar en el entrenamiento es la mitad del camino: juega torneos e importa — la validación abre el veredicto y el sello de diamante.",
-    "jogarCta": "Jugar e importar"
+    "jogarCta": "Jugar e importar",
+    "coldTitulo": "Tu ruta nace de tus torneos",
+    "coldImportar": "Importar torneos",
+    "coldFundamentos": "Entrenar fundamentos mientras tanto"
   }
 }

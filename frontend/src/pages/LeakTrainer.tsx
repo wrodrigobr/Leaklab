@@ -1,7 +1,7 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import confetti from "canvas-confetti";
 import { ArrowRight, CheckCircle2, Loader2, RefreshCw, XCircle, Target, Maximize2, Minimize2, LayoutGrid, Flag, RotateCw, Trophy, Flame, Home, Lock } from "lucide-react";
 import { HudHeader } from "@/components/hud/HudHeader";
@@ -502,6 +502,32 @@ export default function LeakTrainer() {
     enabled: phase === "summary",
     staleTime: 0,
   });
+  // Gate da categoria TREINADA (foco explícito ou missão do protocolo) — nunca de sessão
+  // espalhada, onde o gate de uma categoria responderia a pergunta errada.
+  const gateResumo = useMemo(() => {
+    const focoKey = focusRef.current.startsWith("leak:") ? focusRef.current.slice(5) : null;
+    if (!focoKey && !planRef.current) return null;
+    const item = (statusResumo?.items ?? []).find(
+      (i) => i.key === (focoKey ?? statusResumo?.ativa?.key));
+    if (!item?.mastery?.criterios?.length) return null;
+    return { key: item.key,
+             ok: item.mastery.criterios.filter((c) => c.ok).length,
+             total: item.mastery.criterios.length,
+             criterios: item.mastery.criterios };
+  }, [statusResumo]);
+  // F2: a CELEBRAÇÃO de dominar — uma vez, no EVENTO (o resumo em que o gate fechou),
+  // nunca no load de uma tela. Ouro, porque é a cor da medalha que acabou de nascer.
+  const comemorouRef = useRef(false);
+  useEffect(() => {
+    if (phase !== "summary" || !gateResumo || gateResumo.ok < gateResumo.total) return;
+    if (comemorouRef.current) return;
+    comemorouRef.current = true;
+    const colors = ["#f5c542", "#a97d10", "#2DD4BF", "#E3E8EC"];
+    confetti({ particleCount: 160, spread: 75, startVelocity: 40, origin: { y: 0.5 },
+               colors, scalar: 1, disableForReducedMotion: true });
+    setTimeout(() => confetti({ particleCount: 80, spread: 120, startVelocity: 32,
+      origin: { y: 0.55 }, colors, scalar: 0.9, disableForReducedMotion: true }), 250);
+  }, [phase, gateResumo]);
   const { data: missionData } = useQuery({
     queryKey: ["progression-missions"],
     queryFn: () => progression.missions(365),
@@ -1606,17 +1632,6 @@ export default function LeakTrainer() {
           const mStart = Math.round(primaryMastery?.start ?? 0);
           const mNow = Math.round(primaryMastery?.now ?? 0);
           const mGain = Math.max(0, mNow - mStart);
-          // Gate da categoria TREINADA (foco explícito ou missão do protocolo) — nunca de
-          // uma sessão espalhada, onde o gate de uma categoria responderia a pergunta errada.
-          const focoKey = focusRef.current.startsWith("leak:") ? focusRef.current.slice(5) : null;
-          const itemGate = (focoKey || planRef.current)
-            ? (statusResumo?.items ?? []).find((i) => i.key === (focoKey ?? statusResumo?.ativa?.key))
-            : null;
-          const gateResumo = itemGate?.mastery?.criterios?.length
-            ? { ok: itemGate.mastery.criterios.filter((c) => c.ok).length,
-                total: itemGate.mastery.criterios.length,
-                criterios: itemGate.mastery.criterios }
-            : null;
           return (
           <div className="mx-auto w-full max-w-md">
             <div className="relative overflow-hidden rounded-3xl border border-primary/30 bg-gradient-to-b from-primary/[0.10] via-card to-card p-7 shadow-elevated animate-in fade-in zoom-in-95 duration-300">
@@ -1687,6 +1702,14 @@ export default function LeakTrainer() {
                       ? t("leakTrainer.summary.gateFechado")
                       : t("leakTrainer.summary.gateFaltam", { n: gateResumo.total - gateResumo.ok })}
                   </p>
+                  {/* F2: DOMINOU — a celebração acontece no EVENTO (nunca no load) e leva
+                      para a trilha ver a medalha nascer. */}
+                  {gateResumo.ok >= gateResumo.total && (
+                    <Link to={`/training-v2?comemorar=${encodeURIComponent(gateResumo.key)}`}
+                      className="mt-2 flex items-center justify-center gap-2 rounded-xl bg-[#f5c542] px-4 py-3 font-mono text-sm font-extrabold uppercase tracking-wider text-black shadow-[0_4px_0_#a97d10] transition-transform active:translate-y-0.5">
+                      🏅 {t("leakTrainer.summary.verNaTrilha")}
+                    </Link>
+                  )}
                 </div>
               )}
 

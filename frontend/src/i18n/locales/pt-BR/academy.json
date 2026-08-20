@@ -176,7 +176,8 @@
       "unlocked": "Conquista desbloqueada!",
       "gateTitle": "Gate de domínio",
       "gateFaltam": "Faltam {{n}} critérios para dominar este leak.",
-      "gateFechado": "Gate fechado! O leak está dominado — comprove no jogo real."
+      "gateFechado": "Gate fechado! O leak está dominado — comprove no jogo real.",
+      "verNaTrilha": "Ver a medalha na trilha"
     },
     "vCorrect": "Correto",
     "vMixed": "Aceitável",

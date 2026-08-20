@@ -324,6 +324,9 @@
     "academySub": "A teoria por trás do treino",
     "jogarTitulo": "Comprove no jogo real",
     "jogarNota": "Dominar no treino é meio caminho: jogue torneios e importe — a validação abre o veredito e o selo diamante.",
-    "jogarCta": "Jogar e importar"
+    "jogarCta": "Jogar e importar",
+    "coldTitulo": "Sua trilha nasce dos seus torneios",
+    "coldImportar": "Importar torneios",
+    "coldFundamentos": "Treinar fundamentos enquanto isso"
   }
 }

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
+import confetti from "canvas-confetti";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, Flame, Lock, RotateCw, Star, Target, Trophy } from "lucide-react";
@@ -79,6 +80,23 @@ export default function TrainingV2() {
   const placar = useMemo(() => placarDaTrilha(nos), [nos]);
   const idxAtivo = nos.findIndex((n) => n.estado === "ativo");
   const [selKey, setSelKey] = useState<string | null>(null);
+  // F2: ?comemorar=<key> — chegou do resumo com o gate fechado: a medalha daquele nó nasce
+  // animada UMA vez (e ouro chove). Evento, nunca load comum: o param é consumido.
+  const [urlParams, setUrlParams] = useSearchParams();
+  const comemorarKey = urlParams.get("comemorar");
+  const comemoradoRef = useRef(false);
+  useEffect(() => {
+    if (!comemorarKey || comemoradoRef.current || !nos.length) return;
+    comemoradoRef.current = true;
+    setSelKey(comemorarKey);
+    const colors = ["#f5c542", "#a97d10", "#2DD4BF", "#E3E8EC"];
+    confetti({ particleCount: 140, spread: 80, startVelocity: 38, origin: { y: 0.35 },
+               colors, disableForReducedMotion: true });
+    // consome o param: reload/back não re-celebra
+    urlParams.delete("comemorar");
+    setUrlParams(urlParams, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [comemorarKey, nos.length]);
   const sel: NoDaTrilha | null =
     nos.find((n) => n.key === selKey) ?? (idxAtivo >= 0 ? nos[idxAtivo] : nos[0]) ?? null;
   const emConsulta = !!sel && sel.estado !== "ativo";
@@ -335,8 +353,21 @@ export default function TrainingV2() {
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_300px]">
         <div>
           {sel ? (emConsulta ? painelConsulta(sel) : painelMissao(sel)) : (
-            <div className="rounded-2xl border border-border bg-card/40 p-8 text-center text-sm text-muted-foreground">
-              {t("trilha.vazia")}
+            /* F2: COLD START digno — a diagnose É o valor no dia 1 (emenda do crítico):
+               dois caminhos claros em vez de um aviso seco. */
+            <div className="rounded-2xl border border-border bg-card/40 p-8 text-center">
+              <p className="font-heading text-lg font-bold text-foreground">{t("trilha.coldTitulo")}</p>
+              <p className="mx-auto mt-1 max-w-md text-sm text-muted-foreground">{t("trilha.vazia")}</p>
+              <div className="mx-auto mt-5 flex max-w-sm flex-col gap-2">
+                <Link to="/dashboard"
+                  className="flex items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 font-mono text-sm font-extrabold uppercase tracking-wider text-primary-foreground shadow-[0_4px_0_rgba(23,138,124,1)] transition-transform active:translate-y-0.5">
+                  {t("trilha.coldImportar")}
+                </Link>
+                <Link to="/leak-trainer?origem=trilha&foco=fund%3Arfi"
+                  className="flex items-center justify-center gap-2 rounded-xl bg-amber-500/15 px-4 py-2.5 font-mono text-xs font-bold uppercase tracking-widest text-amber-300 ring-1 ring-amber-500/30 hover:bg-amber-500/25">
+                  {t("trilha.coldFundamentos")}
+                </Link>
+              </div>
             </div>
           )}
         </div>
@@ -383,6 +414,16 @@ export default function TrainingV2() {
           </Link>
         </aside>
       </div>
+
+      {/* F2: CTA sticky no MOBILE — o botão que importa nunca fica abaixo da dobra. Só na
+          missão ativa (consulta tem CTAs próprios) e some em lg+, onde o painel está à vista. */}
+      {sel && !emConsulta && (
+        <Link to="/leak-trainer?origem=trilha&protocolo=1"
+          className="fixed inset-x-3 bottom-[calc(0.75rem+env(safe-area-inset-bottom))] z-40 flex items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3.5 font-mono text-sm font-extrabold uppercase tracking-wider text-primary-foreground shadow-[0_4px_0_rgba(23,138,124,1),0_10px_30px_rgba(0,0,0,.5)] lg:hidden">
+          <Target className="size-5" aria-hidden />
+          {sel.reaberto ? t("trilha.ctaRetreinar") : t("trilha.ctaTreinarAgora")}
+        </Link>
+      )}
     </HudLayout>
   );
 }

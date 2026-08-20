@@ -7,6 +7,20 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(cockpit): F2 -- celebracao ao dominar, CTA sticky mobile, cold start digno (#training #frontend)
+
+> A celebracao acontece no EVENTO, nunca no load: quando o resumo de sessao mostra o gate
+> FECHADO, chove ouro (confete uma vez, ref-guarded) e o CTA "Ver a medalha na trilha" leva
+> a /training-v2?comemorar=<key> — la o no e selecionado, ouro chove de novo UMA vez e o
+> param e CONSUMIDO da URL (reload/back nao re-celebra). Mobile: CTA "Treinar agora" sticky
+> no rodape (so na missao ativa; some em lg+). Cold start: trilha vazia virou dois caminhos
+> ("Importar torneios" + "Treinar fundamentos enquanto isso") — a diagnose e o valor no dia
+> 1, emenda do critico. Academia contextual ao no ficou PENDENTE de 1 campo no backend
+> (academy_modules no progression.status) — link generico nao volta.
+>
+> O typecheck REAL pegou um Link sem import ANTES do push — exatamente o erro que ontem
+> chegou em producao pelo tsc vazio. O gate novo ja se pagou.
+
 ### feat(jornada): P2/D2 -- o CTA da trilha treina DENTRO do protocolo; fallback do foco avisa (#training)
 
 > A medicao mudou o desenho: o gate JA credita sessoes focadas (volume subiu ao vivo), mas
