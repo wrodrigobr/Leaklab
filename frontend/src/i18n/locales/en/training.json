@@ -272,8 +272,8 @@
   },
   "trilha": {
     "eyebrow": "Training path",
-    "title": "Your path",
-    "subtitle": "A path built from your leaks, ordered by the EV you lose. One step at a time.",
+    "title": "Train what is costing you the most chips",
+    "subtitle": "Your route is built from the leaks measured in your history and ordered by the EV you lose. One target at a time, with clear mastery criteria.",
     "beta": "Beta",
     "convite": "Meet the new Training Path: your journey, one button",
     "voltarClassica": "Back to classic view",
@@ -328,6 +328,27 @@
     "coldTitulo": "Your path is born from your tournaments",
     "coldImportar": "Import tournaments",
     "coldFundamentos": "Train fundamentals meanwhile",
-    "estudarTitulo": "Study the theory for this mission"
+    "estudarTitulo": "Study the theory for this mission",
+    "evPerdido": "EV lost",
+    "evPerdidoSub": "bb over {{hands}} measured hands",
+    "placarNaMesa": "{{bb}}bb still on the table",
+    "sessaoHoje": "Today's session",
+    "sessaoDur": "~18 min · you resume where you stopped",
+    "bloco": {
+      "missao": "Mission spots",
+      "missaoSub": "drill · 60% of the session",
+      "revisao": "Spaced review",
+      "revisaoSub": "what you already master · 25%",
+      "contraste": "Contrast",
+      "contrasteSub": "the edge of the leak · 15%"
+    },
+    "criterio": {
+      "volume": "hands trained in the spot",
+      "precisao": "decisions inside the GTO mix",
+      "amplitude": "coverage of edge combos",
+      "fronteira": "accuracy on marginal hands",
+      "transferencia": "accuracy in your real game"
+    },
+    "conceitoTitulo": "Spot concept"
   }
 }

@@ -3191,6 +3191,14 @@ def progression_status():
             })
     except Exception:
         app.logger.exception("academy_modules da missão falhou (user=%s)", g.user_id)
+    # Enxerto (20/08): o CONCEITO do spot na tela, não só o link da aula — o mesmo
+    # `concept_for_spot` que o feedback do drill já usa (fonte única do gatilho/princípio).
+    try:
+        from leaklab.progression import concept_for_spot
+        if est.get('ativa'):
+            est['ativa']['concept'] = concept_for_spot(est['ativa'])
+    except Exception:
+        app.logger.exception("concept da missão falhou (user=%s)", g.user_id)
     return jsonify(est)
 
 

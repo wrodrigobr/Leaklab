@@ -272,8 +272,8 @@
   },
   "trilha": {
     "eyebrow": "Ruta de entrenamiento",
-    "title": "Tu ruta",
-    "subtitle": "Un camino generado por tus leaks, en el orden del EV que pierdes. Un paso a la vez.",
+    "title": "Entrena lo que más te está costando fichas",
+    "subtitle": "Tu ruta se genera con los leaks medidos en tu historial y se ordena por el EV que pierdes. Un objetivo a la vez, con criterios claros de dominio.",
     "beta": "Beta",
     "convite": "Conoce la nueva Ruta de Entrenamiento: tu camino, un botón",
     "voltarClassica": "Volver a la vista clásica",
@@ -328,6 +328,27 @@
     "coldTitulo": "Tu ruta nace de tus torneos",
     "coldImportar": "Importar torneos",
     "coldFundamentos": "Entrenar fundamentos mientras tanto",
-    "estudarTitulo": "Estudiar la teoría de esta misión"
+    "estudarTitulo": "Estudiar la teoría de esta misión",
+    "evPerdido": "EV perdido",
+    "evPerdidoSub": "bb en {{hands}} manos medidas",
+    "placarNaMesa": "{{bb}}bb aún en la mesa",
+    "sessaoHoje": "Sesión de hoy",
+    "sessaoDur": "~18 min · retomas donde paraste",
+    "bloco": {
+      "missao": "Spots de la misión",
+      "missaoSub": "drill · 60% de la sesión",
+      "revisao": "Repaso espaciado",
+      "revisaoSub": "lo que ya dominas · 25%",
+      "contraste": "Contraste",
+      "contrasteSub": "la frontera del leak · 15%"
+    },
+    "criterio": {
+      "volume": "manos entrenadas en el spot",
+      "precisao": "decisiones dentro del mix GTO",
+      "amplitude": "cobertura de combos de la frontera",
+      "fronteira": "acierto en manos marginales",
+      "transferencia": "acierto en tu juego real"
+    },
+    "conceitoTitulo": "Concepto del spot"
   }
 }

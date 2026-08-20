@@ -7,6 +7,25 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(cockpit): enxerto da proposta Lovable -- o que ela tinha de melhor, sem perder o nosso (#training)
+
+> O usuario trouxe uma tela concorrente (Lovable) para avaliacao. Diagnostico: estrutura
+> quase identica a nossa (cockpit + rota), entao NAO e troca, e ENXERTO. Seis coisas
+> entraram, todas com dado que ja existia: (1) TITULO com a tese ("Treine o que esta
+> custando mais fichas" — o nosso "Sua trilha" era neutro); (2) EV PERDIDO em destaque no
+> painel da missao; (3) "42.5bb AINDA NA MESA" no placar — o goal-gradient que faltava
+> (soma o EV dos nos nao fechados; reaberto conta como aberto, o custo voltou de verdade);
+> (4) SESSAO DE HOJE com os 3 blocos nomeados — o 60/25/15 do Protocolo era invisivel para
+> o jogador; (5) SUBTITULOS nos criterios ("acerto no seu jogo real") — mata o jargao que o
+> critico apontou como risco n1; (6) CODIGO do spot (BBvSB-20) na regua + CONCEITO do spot
+> com texto (mesma fonte `concept_for_spot` do feedback do drill — a tela e o treino ensinam
+> a MESMA regra).
+>
+> O que NAO copiamos, de proposito: as medalhas de ficha viram bolinhas genericas la (a
+> nossa linguagem visual comunica conquista, nao checklist), o selo DIAMANTE de comprovado
+> no jogo real nao existe na proposta (e o nosso diferencial), e regressao/reaberto tambem
+> nao. Verificado ao vivo: os 6 na tela com dado real. vitest 368 + suite api verdes.
+
 ### fix(replayer): a grade de ranges responde a pergunta do VEREDITO -- mesma posicao, mesmo bucket (#frontend)
 
 > Caso real com print (19/08): RFI de UTG+2 a 24bb com K6s. O veredito -- calculado pelo

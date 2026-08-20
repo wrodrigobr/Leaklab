@@ -1616,6 +1616,8 @@ export interface ProgressionStatusItem extends ProgressionMission {
   reaberto?: boolean;
   /** Aulas da Academia ligadas à missão (mesmo matcher do plano de estudos). Só na `ativa`. */
   academy_modules?: { id: string; path: string }[];
+  /** O conceito do spot (gatilho/princípio/regra) — mesma fonte do feedback do drill. */
+  concept?: SpotConcept | null;
 }
 
 /** Foco resolvido pelo backend: `ativa` é a primeira missão que ainda NÃO passou o gate. */

@@ -65,6 +65,23 @@ export function montarTrilha(status: ProgressionStatus | undefined | null): NoDa
   return nos;
 }
 
+/**
+ * Código curto do spot (enxerto 20/08): `BBvSB-20`, `RFI-BTN-30`. O grinder reconhece o
+ * spot pelo código antes de ler a frase — e o código é derivado da CHAVE, então não inventa
+ * informação nem depende de tradução.
+ */
+export function codigoDoNo(item: ProgressionStatusItem): string {
+  const pos = (item.position || "").replace("+", "");
+  const vs = (item.vs_position || "").replace("+", "");
+  const bb = Math.round(Number(item.stack_bb) || 0);
+  const cen = (item.scenario || "").toLowerCase();
+  const base = cen === "rfi" ? `RFI-${pos}`
+    : cen === "vs_rfi" ? `${pos}v${vs}`
+    : cen === "vs_3bet" ? `${pos}v3B`
+    : `${pos}${vs ? "v" + vs : ""}`;
+  return bb > 0 ? `${base}-${bb}` : base;
+}
+
 /** Critérios ok / total do gate — para a barrinha do painel de contexto. */
 export function criteriosDoNo(item: ProgressionStatusItem): { ok: number; total: number } {
   const c = item.mastery?.criterios ?? [];
@@ -91,11 +108,18 @@ export function emblemaDoCriterio(key: string): MedalEmblem {
  * até o jogo real confirmar.
  */
 export function placarDaTrilha(nos: NoDaTrilha[]): {
-  dominados: number; total: number; bbComprovados: number;
+  dominados: number; total: number; bbComprovados: number; bbNaMesa: number;
 } {
   const fechados = nos.filter((n) => n.estado === "dominado" || n.estado === "comprovado");
   const bb = nos
     .filter((n) => n.estado === "comprovado" && !n.reaberto)
     .reduce((s, n) => s + Math.abs(n.item.ev_loss_bb ?? 0), 0);
-  return { dominados: fechados.length, total: nos.length, bbComprovados: Math.round(bb * 10) / 10 };
+  // "Ainda na mesa": o EV que os leaks NÃO fechados seguem custando — o goal-gradient que
+  // faltava (enxerto 20/08). Reaberto conta como aberto: o custo voltou de verdade.
+  const naMesa = nos
+    .filter((n) => n.estado === "ativo" || n.estado === "bloqueado" || n.reaberto)
+    .reduce((s, n) => s + Math.abs(n.item.ev_loss_bb ?? 0), 0);
+  return { dominados: fechados.length, total: nos.length,
+           bbComprovados: Math.round(bb * 10) / 10,
+           bbNaMesa: Math.round(naMesa * 10) / 10 };
 }

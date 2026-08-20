@@ -8,7 +8,7 @@ import { HudLayout } from "@/components/hud/HudLayout";
 import { AchievementMedal, EmblemIcon, type MedalEmblem } from "@/components/hud/AchievementMedal";
 import { DailyChallengeCard } from "@/components/training/DailyChallengeCard";
 import { training, progression } from "@/lib/api";
-import { montarTrilha, emblemaDoCenario, emblemaDoCriterio, placarDaTrilha,
+import { montarTrilha, emblemaDoCenario, emblemaDoCriterio, placarDaTrilha, codigoDoNo,
   criteriosDoNo, type NoDaTrilha } from "@/lib/trilhaTreino";
 import { useSpotLabel } from "@/lib/spotLabel";
 import { cn } from "@/lib/utils";
@@ -134,6 +134,20 @@ export default function TrainingV2() {
             </h2>
             <p className="text-[12.5px] text-muted-foreground">{t("trilha.feche5")}</p>
           </div>
+          {/* Enxerto (20/08): o CUSTO em destaque — o número que dá urgência ao spot. */}
+          {typeof n.item.ev_loss_bb === "number" && n.item.ev_loss_bb !== 0 && (
+            <div className="ml-auto hidden shrink-0 rounded-xl border border-red-500/30 bg-red-500/[0.07] px-3 py-2 text-right sm:block">
+              <p className="font-mono text-[9px] uppercase tracking-[0.18em] text-red-300/80">
+                {t("trilha.evPerdido")}
+              </p>
+              <p className="font-mono text-xl font-extrabold tabular-nums text-red-300">
+                −{Math.abs(n.item.ev_loss_bb).toFixed(1)}
+              </p>
+              <p className="font-mono text-[9px] text-muted-foreground">
+                {t("trilha.evPerdidoSub", { hands: n.item.hands ?? 0 })}
+              </p>
+            </div>
+          )}
         </div>
 
         {/* os 5 mostradores — o centro visual da tela */}
@@ -154,7 +168,12 @@ export default function TrainingV2() {
                     estado === "done" ? "text-[#f5c542]" : estado === "prog" ? "text-foreground" : "text-muted-foreground")}>
                     {c.atual}/{c.alvo}
                   </span>
-                  <span className="text-[11px] leading-tight text-muted-foreground">{c.label}</span>
+                  <span className="text-[11px] font-bold leading-tight text-foreground">{c.label}</span>
+                  {/* Enxerto: o SUBTÍTULO que mata o jargão ("fronteira", "transferência" não
+                      significam nada sozinhos — o crítico do painel apontou como risco nº1). */}
+                  <span className="mt-0.5 text-[9.5px] leading-tight text-muted-foreground">
+                    {t(`trilha.criterio.${c.key}`, "")}
+                  </span>
                 </div>
               );
             })}
@@ -170,7 +189,34 @@ export default function TrainingV2() {
           </div>
         )}
 
-        <div className="mt-5 flex items-center justify-between">
+        {/* Enxerto: A SESSÃO DE HOJE — o 60/25/15 do Protocolo era invisível para o jogador.
+            Nomear os blocos e a duração responde "quanto tempo isso vai levar" antes do clique
+            (os números vêm da composição real: 24 spots da sessão média). */}
+        <div className="mt-5 rounded-xl border border-border bg-background/40 p-3">
+          <div className="mb-2 flex items-baseline justify-between">
+            <span className="font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-foreground">
+              {t("trilha.sessaoHoje")}
+            </span>
+            <span className="font-mono text-[10px] text-muted-foreground">{t("trilha.sessaoDur")}</span>
+          </div>
+          <div className="grid gap-1.5 sm:grid-cols-3">
+            {([["missao", "1"], ["revisao", "2"], ["contraste", "3"]] as const).map(([k, i]) => (
+              <div key={k} className="flex items-center gap-2 rounded-lg bg-card/60 px-2.5 py-2">
+                <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-primary/15 font-mono text-[9px] font-bold text-primary">{i}</span>
+                <span className="min-w-0">
+                  <span className="block truncate text-[11.5px] font-bold text-foreground">
+                    {t(`trilha.bloco.${k}`)}
+                  </span>
+                  <span className="block truncate font-mono text-[9px] uppercase tracking-wider text-muted-foreground">
+                    {t(`trilha.bloco.${k}Sub`)}
+                  </span>
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="mt-4 flex items-center justify-between">
           <span className="font-mono text-[12px] font-bold uppercase tracking-[0.14em] text-amber-300">
             {t("trilha.gate")} · {gate.ok}/{gate.total}
           </span>
@@ -191,6 +237,24 @@ export default function TrainingV2() {
           className="mt-2 block text-center font-mono text-[10.5px] font-bold uppercase tracking-[0.14em] text-primary/70 hover:text-primary hover:underline">
           {t("trilha.treinarOutra")}
         </Link>
+        {/* Enxerto: o CONCEITO do spot com texto (não só o link) — a mesma fonte do feedback
+            do drill, então a tela e o treino ensinam a MESMA regra. */}
+        {n.item.concept?.principio && (
+          <div className="mt-3 rounded-xl border border-violet-500/25 bg-violet-500/[0.05] p-3">
+            <p className="mb-1 font-mono text-[9px] uppercase tracking-[0.18em] text-violet-300">
+              {t("trilha.conceitoTitulo")}
+            </p>
+            <p className="text-[12.5px] font-bold leading-snug text-foreground">
+              {n.item.concept.principio}
+            </p>
+            {n.item.concept.regra && (
+              <p className="mt-1 text-[11.5px] leading-snug text-muted-foreground">
+                ▸ {n.item.concept.regra}
+              </p>
+            )}
+          </div>
+        )}
+
         {/* F2: a Academia CONTEXTUAL — a aula ligada a ESTA missão (matcher do backend, o
             mesmo do plano de estudos). O atalho genérico saiu; o vínculo real entrou. */}
         {(n.item.academy_modules?.length ?? 0) > 0 && (
@@ -339,7 +403,13 @@ export default function TrainingV2() {
                   {n.reaberto
                     ? <span className="mx-auto mt-0.5 block h-[3px] w-7 rounded bg-red-400" aria-hidden />
                     : <span className="mt-0.5 block h-[3px]" aria-hidden />}
-                  <span className={cn("mt-0.5 block h-[26px] overflow-hidden px-0.5 text-[9.5px] leading-[13px]",
+                  {/* Enxerto: CÓDIGO do spot (BBvSB-20) — reconhecível de relance, e o
+                      rótulo por extenso continua no ativo/vizinhos/selecionado. */}
+                  <span className={cn("mt-0.5 block truncate font-mono text-[8.5px] tracking-tight",
+                    mostraRotulo ? "text-primary/70" : "text-transparent select-none")}>
+                    {codigoDoNo(n.item)}
+                  </span>
+                  <span className={cn("block h-[26px] overflow-hidden px-0.5 text-[9.5px] leading-[13px]",
                     mostraRotulo ? "text-foreground" : "text-transparent select-none")}>
                     {spotLabel(n.item, { fallback: n.item.titulo, stack: false })}
                   </span>
@@ -353,6 +423,8 @@ export default function TrainingV2() {
             )}
           </div>
         </div>
+        {/* Enxerto: o placar ganhou as DUAS metades — o que já foi recuperado (auditado) e o
+            que ainda está na mesa (o goal-gradient). */}
         <div className="shrink-0 text-right">
           {placar.bbComprovados > 0 && (
             <p className="font-mono text-[15px] font-extrabold tabular-nums text-primary">
@@ -363,6 +435,11 @@ export default function TrainingV2() {
             {placar.bbComprovados > 0 ? t("trilha.placarBb") + " · " : ""}
             {t("trilha.placarDominados", { n: placar.dominados, m: placar.total })}
           </p>
+          {placar.bbNaMesa > 0 && (
+            <p className="font-mono text-[9.5px] uppercase tracking-[0.12em] text-amber-300/80">
+              {t("trilha.placarNaMesa", { bb: placar.bbNaMesa })}
+            </p>
+          )}
         </div>
       </div>
 
