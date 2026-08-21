@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, afterEach, beforeEach } from "vitest";
-import { render, screen, cleanup, waitFor, within } from "@testing-library/react";
+import { render, screen, cleanup, waitFor, within, fireEvent } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 /**
@@ -109,6 +109,41 @@ describe("programa de fundadores — a vitrine", () => {
     montar();
     expect(await screen.findByText(/venceu há 5d/i)).toBeTruthy();
     expect(screen.queryByText(/-5d restantes/)).toBeNull();
+  });
+
+  it("busca sem resultado DIZ que não achou, em vez de ficar muda", async () => {
+    // O caso real: digitar um e-mail válido devolvia lista vazia e silêncio, indistinguível
+    // de "ainda carregando" — parecia tela quebrada.
+    founders.mockResolvedValue({
+      founders: [], resumo: { total: 0, honrando: 0, silenciosos: 0, vencendo_em_30d: 0 },
+    });
+    users.mockResolvedValue({ users: [] });
+    const { container } = montar();
+    await screen.findByText(/Nenhum fundador ainda/i);
+
+    const campo = container.querySelector('input[placeholder*="nome ou email"]') as HTMLInputElement;
+    fireEvent.change(campo, { target: { value: "naoexiste@t.com" } });
+
+    await waitFor(() => expect(screen.getByText(/Nenhuma conta encontrada/i)).toBeTruthy());
+    // E precisa dizer o PORQUÊ, senão quem opera não sabe qual é o próximo passo.
+    expect(screen.getByText(/já ter conta/i)).toBeTruthy();
+  });
+
+  it("não esconde conta por causa do papel — mostra o papel e deixa decidir", async () => {
+    founders.mockResolvedValue({
+      founders: [], resumo: { total: 0, honrando: 0, silenciosos: 0, vencendo_em_30d: 0 },
+    });
+    users.mockResolvedValue({ users: [{ id: 9, username: "phpro", email: "eu@t.com", role: "admin" }] });
+    const { container } = montar();
+    await screen.findByText(/Nenhum fundador ainda/i);
+
+    const campo = container.querySelector('input[placeholder*="nome ou email"]') as HTMLInputElement;
+    fireEvent.change(campo, { target: { value: "eu@t.com" } });
+
+    await waitFor(() => expect(screen.getByText("phpro")).toBeTruthy());
+    expect(screen.getByText("admin")).toBeTruthy();
+    // A chamada não pode filtrar por papel: era isso que sumia com a conta sem avisar.
+    expect(users).toHaveBeenCalledWith(expect.not.objectContaining({ role: expect.anything() }));
   });
 
   it("o resumo mostra os quatro números que decidem a renovação", async () => {

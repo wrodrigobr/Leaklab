@@ -70,9 +70,12 @@ function Convidar({ onPronto }: { onPronto: () => void }) {
   const [meses, setMeses] = useState(6);
   const [escolhidos, setEscolhidos] = useState<AdminUser[]>([]);
 
+  // Sem filtro de papel DE PROPÓSITO. A primeira versão filtrava `role: "player"` e sumia
+  // silenciosamente com contas admin/coach — buscar o próprio e-mail devolvia lista vazia
+  // sem dizer por quê. Agora o papel aparece ao lado e quem opera decide.
   const { data, isFetching } = useQuery({
     queryKey: ["admin-users-founder-pick", busca],
-    queryFn: () => adminDashboard.users({ search: busca, limit: 8, role: "player" }),
+    queryFn: () => adminDashboard.users({ search: busca, limit: 8 }),
     enabled: busca.trim().length >= 2,
     staleTime: 15_000,
   });
@@ -92,6 +95,7 @@ function Convidar({ onPronto }: { onPronto: () => void }) {
     onError: (e: Error) => toast.error(e.message || "Não consegui conceder"),
   });
 
+  const buscou = busca.trim().length >= 2;
   const achados = (data?.users ?? []).filter((u) => !escolhidos.some((e) => e.id === u.id));
 
   return (
@@ -127,8 +131,17 @@ function Convidar({ onPronto }: { onPronto: () => void }) {
         </div>
       </div>
 
-      {isFetching && busca.trim().length >= 2 && (
+      {isFetching && buscou && (
         <p className="mt-2 text-[11px] text-muted-foreground">buscando…</p>
+      )}
+      {/* Busca sem resultado precisa DIZER isso. Lista vazia e muda é indistinguível de
+          "ainda carregando" — e foi assim que digitar um e-mail válido pareceu tela quebrada. */}
+      {buscou && !isFetching && achados.length === 0 && (
+        <div className="mt-2 rounded-md border border-border/60 bg-background/40 px-3 py-2.5 text-[11px] text-muted-foreground">
+          Nenhuma conta encontrada para <span className="text-foreground">{busca.trim()}</span>.
+          {" "}O fundador precisa <strong className="text-foreground">já ter conta</strong> no
+          GrindLab. Se ele ainda não se cadastrou, mande o link de convite primeiro.
+        </div>
       )}
       {achados.length > 0 && (
         <div className="mt-2 space-y-1">
@@ -136,10 +149,17 @@ function Convidar({ onPronto }: { onPronto: () => void }) {
             <button
               key={u.id}
               onClick={() => setEscolhidos((s) => [...s, u])}
-              className="flex w-full items-center justify-between rounded-md border border-border/60 px-3 py-1.5 text-left text-xs hover:border-primary/40 hover:bg-hud-elevated/40"
+              className="flex w-full items-center justify-between gap-2 rounded-md border border-border/60 px-3 py-1.5 text-left text-xs hover:border-primary/40 hover:bg-hud-elevated/40"
             >
-              <span className="text-foreground">{u.username}</span>
-              <span className="text-muted-foreground">{u.email}</span>
+              <span className="flex items-center gap-2">
+                <span className="text-foreground">{u.username}</span>
+                {u.role !== "player" && (
+                  <span className="rounded-full bg-muted/40 px-1.5 py-0.5 text-[9px] font-bold uppercase text-muted-foreground">
+                    {u.role}
+                  </span>
+                )}
+              </span>
+              <span className="truncate text-muted-foreground">{u.email}</span>
             </button>
           ))}
         </div>
