@@ -507,7 +507,7 @@ def _linha_do_jam(raises_faced: int, hero_was_aggressor: bool) -> Optional[str]:
 
 def _no_de_jam_do_vilao(villain_pos: str, hero_pos: str, stack_bb: float,
                         n_players: Optional[int], raises_faced: int,
-                        hero_was_aggressor: bool = False):
+                        hero_was_aggressor: bool = False, opener_pos: str = ''):
     """`(depth, no)` do nó em que o VILÃO agiu com o jam no menu — ou `(None, None)`.
 
     A seleção espelha `_hu_analyze` e `_load_ring` de propósito. Um índice próprio aqui seria a
@@ -532,7 +532,23 @@ def _no_de_jam_do_vilao(villain_pos: str, hero_pos: str, stack_bb: float,
     # não suaviza veredito, ela muda a equity, e move nos DOIS sentidos.
     if _linha_do_jam(raises_faced, hero_was_aggressor) != '3bet_jam':
         return None, None
-    por_depth = _load_ring().get(('vs_rfi', villain_pos, hero_pos))
+    # O 2º índice do ring é o ABRIDOR, não o hero. `_load_ring` monta a chave como
+    # `(cenario, ator, papeis['vilao'])`, e em `vs_rfi` o `vilao` É `agressores[0]` — quem
+    # abriu. A versão anterior passava `hero_pos` ali, o que só coincide quando o hero abriu.
+    #
+    # Com o abridor sendo um TERCEIRO (CO abre, hero paga no SB, BB jama), a chave consultada
+    # modela outro spot: a range devolvida era do nó errado, igual para openers diferentes, e
+    # ainda vinha quando ninguém sabia quem tinha aberto. É a MESMA distinção que o caminho da
+    # carta já fazia logo abaixo (`abridor = opener_pos or ...`) — a regra existia num lugar e
+    # não no outro, que é como ela diverge calada.
+    #
+    # Sem abridor conhecido não há nó: devolver vazio faz o caller cair no vs-random, que é
+    # impreciso mas HONESTO. Range estreita e errada é pior, porque parece precisa e absolve
+    # call ruim.
+    abridor = opener_pos or (hero_pos if hero_was_aggressor else '')
+    if not abridor:
+        return None, None
+    por_depth = _load_ring().get(('vs_rfi', villain_pos, abridor))
     if not por_depth:
         return None, None
     depth, no = _hu_no_mais_proximo(por_depth, stack_bb)
@@ -571,7 +587,7 @@ def villain_jam_range(villain_pos: str, hero_pos: str, stack_bb: float,
         # jam ABRE, e emprestar a Classic estreitaria a range do vilão, inflaria a equity do hero
         # e absolveria call ruim — dano que o buraco de hoje não causa.
         depth, no = _no_de_jam_do_vilao(villain_pos, hero_pos, stack_bb, n_players, raises_faced,
-                                        hero_was_aggressor)
+                                        hero_was_aggressor, opener_pos)
         if no is not None:
             out: dict[str, float] = {}
             massa = {'allin': 0.0, 'raise': 0.0}
