@@ -6642,13 +6642,43 @@ def _category_adherence_filter(category_key: str):
     return where, params
 
 
-def _category_adherence(conn, user_id, category_key, imported_after=None, only_tournament=None):
+def _memo(cache, chave, calcular):
+    """Memoriza pela ASSINATURA DA CONSULTA, dentro de uma chamada só.
+
+    Existe porque `_category_adherence_filter` **ignora o stack de propósito** ("mais amostra,
+    comparação honesta por cenário × posições"): `rfi:BTN::20` e `rfi:BTN::40` viram o mesmo
+    SQL com os mesmos parâmetros. Medido em 21/08 no maior acervo: 85 categorias mapeáveis
+    produziam apenas **55 consultas distintas** — 30 eram a mesma pergunta repetida.
+
+    A chave inclui TODOS os argumentos que entram no SQL (filtro, user, recortes de data e de
+    torneio). Cachear por `category_key` seria errado, porque duas categorias com o mesmo
+    filtro têm baselines diferentes; cachear pela assinatura é correto por construção, já que
+    consulta idêntica no mesmo instante devolve resultado idêntico.
+
+    O cache vive por CHAMADA, nunca global: global precisaria de invalidação, e invalidação
+    errada aqui mostraria prova desatualizada — medalha aparecendo bloqueada no instante em
+    que foi conquistada, que é o que o endpoint já tomava cuidado de evitar.
+    """
+    if cache is None:
+        return calcular()
+    if chave not in cache:
+        cache[chave] = calcular()
+    return cache[chave]
+
+
+def _category_adherence(conn, user_id, category_key, imported_after=None, only_tournament=None,
+                        cache=None):
     """Aderência GTO (gto_correct+gto_mixed sobre decisões com gto_label) da categoria, opcionalmente
     só de torneios importados após `imported_after` (o "depois") ou de um torneio específico (snapshot)."""
     filt = _category_adherence_filter(category_key)
     if not filt:
         return None
     where, params = filt
+    if cache is not None:
+        return _memo(cache, ('ader', where, tuple(params), user_id, imported_after,
+                             only_tournament),
+                     lambda: _category_adherence(conn, user_id, category_key,
+                                                 imported_after, only_tournament))
     sql = ("SELECT SUM(CASE WHEN d.gto_label IN ('gto_correct','gto_mixed') THEN 1 ELSE 0 END) AS aligned, "
            "SUM(CASE WHEN d.gto_label IS NOT NULL AND d.gto_label <> '' THEN 1 ELSE 0 END) AS with_gto "
            "FROM decisions d JOIN tournaments t ON t.id = d.tournament_id "
@@ -6685,7 +6715,7 @@ def familia_medida(category_key: str) -> str:
     return ':'.join(partes[:3]) if len(partes) >= 3 else (category_key or '')
 
 
-def _category_action_breakdown(conn, user_id, category_key, after=None) -> list:
+def _category_action_breakdown(conn, user_id, category_key, after=None, cache=None) -> list:
     """Erros por AÇÃO na família — o detalhe que a taxa agregada esconde.
 
     Motivo: em RFI, ~84% das decisões são folds triviais (72o em UTG+1 folda e ninguém erra). A
@@ -6696,6 +6726,9 @@ def _category_action_breakdown(conn, user_id, category_key, after=None) -> list:
     if not filt:
         return []
     where, params = filt
+    if cache is not None:
+        return _memo(cache, ('acoes', where, tuple(params), user_id, after),
+                     lambda: _category_action_breakdown(conn, user_id, category_key, after))
     sql = ("SELECT d.action_taken AS act, COUNT(*) AS n, "
            "SUM(CASE WHEN d.gto_label NOT IN ('gto_correct','gto_mixed') THEN 1 ELSE 0 END) AS erros "
            "FROM decisions d JOIN tournaments t ON t.id = d.tournament_id "
@@ -6710,7 +6743,7 @@ def _category_action_breakdown(conn, user_id, category_key, after=None) -> list:
             for r in _fetchall(conn, _adapt(sql), tuple(args))]
 
 
-def _category_purity_breakdown(conn, user_id, category_key, after=None) -> dict:
+def _category_purity_breakdown(conn, user_id, category_key, after=None, cache=None) -> dict:
     """Erros em spot PURO × MISTO — o diagnóstico que `gto_label` sozinho não dá.
 
     `gto_top_freq` é a frequência da ação modal, ou seja, a pureza do spot. Acima de
@@ -6727,6 +6760,9 @@ def _category_purity_breakdown(conn, user_id, category_key, after=None) -> dict:
     filt = _category_adherence_filter(category_key)
     if not filt:
         return {}
+    if cache is not None:
+        return _memo(cache, ('pureza', tuple(filt[1]), filt[0], user_id, after),
+                     lambda: _category_purity_breakdown(conn, user_id, category_key, after))
     from leaklab.decision_engine_v11 import PURE_STRATEGY_MIN_FREQ
     where, params = filt
     sql = ("SELECT CASE WHEN d.gto_top_freq >= ? THEN 'puro' ELSE 'misto' END AS faixa, "
@@ -6747,7 +6783,7 @@ def _category_purity_breakdown(conn, user_id, category_key, after=None) -> dict:
     return out
 
 
-def _category_error_counts(conn, user_id, category_key, before=None, after=None):
+def _category_error_counts(conn, user_id, category_key, before=None, after=None, cache=None):
     """(erros, n) da família no jogo REAL, fora da zona de ICM.
 
     `n` conta só decisões COM gabarito; erro é tudo que o gabarito não marcou como alinhado
@@ -6757,6 +6793,9 @@ def _category_error_counts(conn, user_id, category_key, before=None, after=None)
     if not filt:
         return None
     where, params = filt
+    if cache is not None:
+        return _memo(cache, ('erros', where, tuple(params), user_id, before, after),
+                     lambda: _category_error_counts(conn, user_id, category_key, before, after))
     sql = ("SELECT SUM(CASE WHEN d.gto_label NOT IN ('gto_correct','gto_mixed') THEN 1 ELSE 0 END) AS erros, "
            "SUM(1) AS n "
            "FROM decisions d JOIN tournaments t ON t.id = d.tournament_id "
@@ -7150,6 +7189,11 @@ def get_training_proof(user_id: int) -> list:
             "SELECT MAX(imported_at) AS m FROM tournaments WHERE user_id=?"), (user_id,))
         ultimo_import = (dict(_ult).get('m') if _ult else None)
 
+        # CORTE 3 — memoria por ASSINATURA DE CONSULTA, valida so nesta chamada. Ver `_memo`:
+        # categorias que diferem apenas no stack produzem o MESMO SQL, e 30 das 85 mapeaveis
+        # eram a mesma pergunta repetida.
+        memo = {}
+
         out = []
         for s in skills:
             key = s['category_key']
@@ -7172,18 +7216,22 @@ def get_training_proof(user_id: int) -> list:
             # destino sem pagar a consulta.
             if ultimo_import and pr['baseline_at'] and str(ultimo_import) <= str(pr['baseline_at']):
                 continue
-            after = _category_adherence(conn, user_id, key, imported_after=pr['baseline_at'])
+            after = _category_adherence(conn, user_id, key, imported_after=pr['baseline_at'],
+                                        cache=memo)
             if not after or after['with_gto'] <= 0:
                 continue   # sem torneio novo pós-treino → nada a provar ainda
             where, wparams = filt
-            last = _fetchone(conn, _adapt(
-                "SELECT t.id, t.tournament_id FROM tournaments t WHERE t.user_id=? AND t.imported_at > ? "
-                "AND EXISTS (SELECT 1 FROM decisions d WHERE d.tournament_id=t.id AND " + where + ") "
-                "ORDER BY t.imported_at DESC LIMIT 1"),
-                tuple([user_id, pr['baseline_at']] + wparams))
+            last = _memo(memo, ('ultimo', where, tuple(wparams), user_id, pr['baseline_at']),
+                         lambda: _fetchone(conn, _adapt(
+                             "SELECT t.id, t.tournament_id FROM tournaments t "
+                             "WHERE t.user_id=? AND t.imported_at > ? "
+                             "AND EXISTS (SELECT 1 FROM decisions d "
+                             "WHERE d.tournament_id=t.id AND " + where + ") "
+                             "ORDER BY t.imported_at DESC LIMIT 1"),
+                             tuple([user_id, pr['baseline_at']] + wparams)))
             snap = None
             if last:
-                sa = _category_adherence(conn, user_id, key, only_tournament=last['id'])
+                sa = _category_adherence(conn, user_id, key, only_tournament=last['id'], cache=memo)
                 snap = {'tournament_id': last['tournament_id'], 'pct': sa['pct'], 'n': sa['with_gto']}
             base_pct = round(float(pr['baseline_pct'] or 0), 1)
             # Trilho LENTO (Fase 3): taxa de erro binomial com IC, ICM fora dos dois lados.
@@ -7194,11 +7242,12 @@ def get_training_proof(user_id: int) -> list:
             reopen_count = int((pr or {}).get('reopen_count') or 0)
             try:
                 from leaklab.validation import validate_leak, should_reopen
-                antes  = _category_error_counts(conn, user_id, key, before=pr['baseline_at'])
-                depois = _category_error_counts(conn, user_id, key, after=pr['baseline_at'])
+                antes  = _category_error_counts(conn, user_id, key, before=pr['baseline_at'], cache=memo)
+                depois = _category_error_counts(conn, user_id, key, after=pr['baseline_at'], cache=memo)
                 if antes and depois:
                     validacao = validate_leak(antes[0], antes[1], depois[0], depois[1],
-                                              _user_global_error_rate(conn, user_id))
+                                              _memo(memo, ('global', user_id),
+                                                    lambda: _user_global_error_rate(conn, user_id)))
                 # REABERTURA: a regressão foi comprovada — move o baseline e marca o corte da
                 # janela do gate. Sem mover, esta MESMA evidência reabriria o leak em toda
                 # leitura, e o jogador ficaria preso nele para sempre por algo que já pagou.
@@ -7230,8 +7279,10 @@ def get_training_proof(user_id: int) -> list:
                 'confident': after['with_gto'] >= _TRAIN_PROOF_MIN_N,
                 'validacao': validacao,
                 'familia': familia_medida(key),
-                'acoes': _category_action_breakdown(conn, user_id, key, after=pr['baseline_at']),
-                'pureza': _category_purity_breakdown(conn, user_id, key, after=pr['baseline_at']),
+                'acoes': _category_action_breakdown(conn, user_id, key, after=pr['baseline_at'],
+                                                    cache=memo),
+                'pureza': _category_purity_breakdown(conn, user_id, key, after=pr['baseline_at'],
+                                                     cache=memo),
                 'reopened_at': reopened_at, 'reopen_count': reopen_count,
             })
         conn.commit()   # persiste baselines recém-congelados

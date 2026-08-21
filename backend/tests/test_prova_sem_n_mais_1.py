@@ -162,6 +162,92 @@ def test_custo_nao_cresce_com_o_numero_de_categorias():
                              'o custo ainda cresce por categoria')
 
 
+def _semear_mesmo_filtro(n_stacks: int):
+    """N categorias que diferem SÓ no stack. `_category_adherence_filter` ignora o stack de
+    propósito, então todas produzem o mesmo SQL — e sem memória, a mesma pergunta é feita N
+    vezes. Medido em produção: 85 categorias mapeáveis, 55 consultas distintas."""
+    uid = repo.create_user(f'mf{n_stacks}', f'mf{n_stacks}@t.com', 'pass1234')
+    conn = repo.get_conn()
+    try:
+        ontem = (datetime.utcnow() - timedelta(days=2)).strftime('%Y-%m-%d %H:%M:%S')
+        hoje = datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
+        cur = conn.execute(repo._adapt(
+            "INSERT INTO tournaments (user_id, tournament_id, tournament_name, hero, imported_at) "
+            "VALUES (?,?,?,?,?)"), (uid, 'T-a', 'T', 'Hero', ontem))
+        t_antigo = cur.lastrowid
+        for i in range(n_stacks):
+            # MESMO cenário e MESMA posição, só o stack muda: filtro idêntico.
+            conn.execute(repo._adapt(
+                "INSERT INTO training_skill_progress (user_id, category_key, attempts, correct) "
+                "VALUES (?,?,?,?)"), (uid, f'rfi:BTN::{10 + i}', 5, 3))
+        for j in range(4):
+            conn.execute(repo._adapt(
+                "INSERT INTO decisions (tournament_id, hand_id, street, hero_cards, "
+                "action_taken, best_action, score, label, position, stack_bb, gto_label, "
+                "preflop_raises_faced) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)"),
+                (t_antigo, f'h{j}-a', 'preflop', 'AsKs', 'raise', 'raise', 100,
+                 'standard', 'BTN', 25, 'gto_correct', 0))
+        conn.commit()
+    finally:
+        conn.close()
+
+    # A ORDEM REPRODUZ A VIDA: o jogador treina (o baseline congela o "antes") e só DEPOIS
+    # joga e importa. Inserir o torneio novo antes desta chamada o deixaria mais velho que o
+    # baseline, e ele não contaria como "depois" — a 1ª versão deste dublê errou exatamente
+    # aí, e o teste acusou com "0 de 12".
+    repo.get_training_proof(uid)
+
+    conn = repo.get_conn()
+    try:
+        amanha = (datetime.utcnow() + timedelta(days=1)).strftime('%Y-%m-%d %H:%M:%S')
+        cur = conn.execute(repo._adapt(
+            "INSERT INTO tournaments (user_id, tournament_id, tournament_name, hero, imported_at) "
+            "VALUES (?,?,?,?,?)"), (uid, 'T-n', 'T', 'Hero', amanha))
+        t_novo = cur.lastrowid
+        for j in range(4):
+            conn.execute(repo._adapt(
+                "INSERT INTO decisions (tournament_id, hand_id, street, hero_cards, "
+                "action_taken, best_action, score, label, position, stack_bb, gto_label, "
+                "preflop_raises_faced) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)"),
+                (t_novo, f'h{j}-n', 'preflop', 'AsKs', 'raise', 'raise', 100,
+                 'standard', 'BTN', 25, 'gto_correct', 0))
+        conn.commit()
+    finally:
+        conn.close()
+    return uid
+
+
+def test_categorias_com_o_mesmo_filtro_nao_repetem_a_consulta():
+    """O corte 3. `_category_adherence_filter` ignora o stack, então 12 categorias que só
+    diferem no stack fazem a MESMA pergunta ao banco 12 vezes. Perguntar uma vez e reusar é
+    correto por construção: consulta idêntica no mesmo instante devolve resultado idêntico."""
+    uid = _semear_mesmo_filtro(12)   # já deixa os baselines criados e o torneio novo importado
+    with Contador() as c:
+        r1 = repo.get_training_proof(uid)
+
+    # 12 categorias, 1 filtro distinto. Sem memória seriam ~4 consultas por categoria.
+    assert c.n <= 25, f'{c.n} consultas para 12 categorias de filtro IDÊNTICO — sem memória'
+    # A saída é UMA linha, e isso é correto: `get_training_proof` deduplica por família no
+    # fim ("sem isto a lista mostrava 60 linhas para 39 famílias, rfi:BTN seis vezes com
+    # números IDÊNTICOS"). Ou seja, o código já sabia que estas 12 medem a mesma população —
+    # o que torna calcular 12 vezes um desperdício em dobro. A 1ª versão deste teste exigia
+    # 12 e acusou "a memória engoliu categorias": era o teste que estava errado, não o código.
+    assert len(r1) == 1, f'a deduplicação por família mudou (saíram {len(r1)}, esperava 1)'
+    assert r1[0]['after_n'] > 0, 'a linha que sobrou perdeu o dado do depois'
+
+
+def test_memoria_nao_confunde_recortes_diferentes():
+    """A chave inclui os recortes de data e torneio. Se cacheasse só pelo filtro, o "antes"
+    e o "depois" da mesma categoria colidiriam — e a prova mostraria delta zero sempre,
+    dizendo ao jogador que ele não evoluiu."""
+    from database.repositories import _memo
+    cache = {}
+    a = _memo(cache, ('x', 'antes'), lambda: 'valor-antes')
+    b = _memo(cache, ('x', 'depois'), lambda: 'valor-depois')
+    assert a == 'valor-antes' and b == 'valor-depois', 'chaves diferentes colidiram'
+    assert _memo(cache, ('x', 'antes'), lambda: 'NAO DEVIA RECALCULAR') == 'valor-antes'
+
+
 if __name__ == '__main__':
     falhas = 0
     testes = [v for k, v in sorted(globals().items()) if k.startswith('test_')]
