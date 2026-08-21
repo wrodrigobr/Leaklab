@@ -2623,6 +2623,19 @@ def _run_migrations(conn):
                 completed_at     TIMESTAMP
             )""",
             "CREATE INDEX IF NOT EXISTS idx_telegram_intros_user ON telegram_intros(user_id)",
+            # Medido com EXPLAIN ANALYZE em 21/08, depois de tirar o N+1 da prova de treino:
+            # o que sobrava era `Seq Scan on decisions` descartando 9.461 de 9.956 linhas para
+            # achar 495. Com o índice o plano vira Bitmap Heap Scan e a consulta cai de 7,8ms
+            # para 6,4ms — pouco por consulta, mas ela roda 55 vezes por abertura da tela.
+            #
+            # Conferido que serve ANTES de entrar aqui (criado, medido, plano comparado).
+            # Índice que ninguém usa não é neutro: custa escrita em toda importação.
+            #
+            # Nota do que NÃO entrou: o plano também mostrava `Seq Scan on tournaments` com
+            # 495 loops, e eu quase adicionei um índice em `user_id` por causa disso. Ele JÁ
+            # EXISTE — o planejador escolhe scan porque a tabela tem 85 linhas, e aí varrer é
+            # mais barato que abrir índice. Plano de execução se lê inteiro, não por linha.
+            "CREATE INDEX IF NOT EXISTS idx_decisions_street_pos ON decisions(street, position)",
         ]
         for _stmt in _safe:
             try:
