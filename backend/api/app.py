@@ -478,6 +478,17 @@ def register():
                               link_status=link_status, invited_by_key=invited_by_key,
                               acquisition_source=_acq,
                               email_verified=0 if verify_on else 1)
+        # Candidatura ao programa de fundadores feita no próprio cadastro (veio de /fundadores).
+        # Gravada em coluna PRÓPRIA, não em acquisition_source: de onde veio (instagram) e o
+        # que pediu (ser fundador) são dois fatos distintos, e um não pode apagar o outro.
+        if bool(data.get('founder_apply')):
+            try:
+                from database.repositories import apply_as_founder
+                apply_as_founder(user_id)
+            except Exception:
+                # Não derruba o cadastro por causa da candidatura, mas também não some com
+                # a falha: sem o log, o jogador ficaria fora da fila sem ninguém saber.
+                log.exception("falha ao registrar candidatura de fundador para user %s", user_id)
         linked = _coach['username'] if (ref and coach_id) else None
         if verify_on:
             # Não emite token: a conta só completa depois que o código do email é validado.
@@ -8769,6 +8780,44 @@ def admin_activation_funnel():
     from database.repositories import get_activation_funnel
     days = request.args.get('days', 30, type=int) or 30
     return jsonify(get_activation_funnel(max(1, min(days, 365))))
+
+
+@app.route('/player/founder/apply', methods=['POST'])
+@require_auth
+def player_founder_apply():
+    """Candidatura ao programa de fundadores, para quem já tem conta.
+
+    Idempotente: clicar de novo devolve `ja_estava: True` sem reescrever a data. Reescrever
+    jogaria o jogador para o fim da fila por ter clicado duas vezes, e a ordem de chegada é
+    o critério que a divulgação promete."""
+    from database.repositories import apply_as_founder, get_user_by_id
+    novo = apply_as_founder(g.user_id)
+    u = get_user_by_id(g.user_id) or {}
+    return jsonify({'ok': True, 'ja_estava': not novo,
+                    'candidatado_em': u.get('founder_applied_at'),
+                    'ja_e_fundador': u.get('plan_source') == 'founder'})
+
+
+@app.route('/player/founder/status', methods=['GET'])
+@require_auth
+def player_founder_status():
+    """O que a página /fundadores mostra para quem está logado: já se candidatou? já entrou?"""
+    from database.repositories import get_user_by_id
+    u = get_user_by_id(g.user_id) or {}
+    return jsonify({
+        'candidatado_em': u.get('founder_applied_at'),
+        'ja_e_fundador':  u.get('plan_source') == 'founder',
+        'expira_em':      u.get('plan_expires_at') if u.get('plan_source') == 'founder' else None,
+    })
+
+
+@app.route('/admin/founders/candidatos', methods=['GET'])
+@require_admin
+def admin_founder_candidates():
+    """Fila de candidatos, na ordem em que chegaram — a ordem É a promessa."""
+    from database.repositories import get_founder_candidates
+    limit = request.args.get('limit', 200, type=int) or 200
+    return jsonify({'candidatos': get_founder_candidates(max(1, min(limit, 500)))})
 
 
 @app.route('/admin/founders', methods=['GET'])

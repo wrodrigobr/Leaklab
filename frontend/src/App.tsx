@@ -31,6 +31,7 @@ import StudentProfile from "./pages/StudentProfile.tsx";
 import CoachesDirectory from "./pages/CoachesDirectory.tsx";
 import PublicCoachProfile from "./pages/PublicCoachProfile.tsx";
 import AdminDashboard from "./pages/admin/AdminDashboard.tsx";
+import Fundadores from "./pages/Fundadores.tsx";
 import GhostTable from "./pages/GhostTable.tsx";
 import Training from "./pages/Training.tsx";
 import TrainingV2 from "./pages/TrainingV2.tsx";
@@ -164,6 +165,9 @@ const App = () => (
             <Route path="/demo" element={<Demo />} />
             <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
             <Route path="/coach-apply" element={<CoachApply />} />
+            {/* Pública de propósito: é o destino do link do Instagram, e quem chega ainda
+                não tem conta. Exigir login aqui mataria a candidatura no primeiro clique. */}
+            <Route path="/fundadores" element={<Fundadores />} />
             <Route
               path="/dashboard"
               element={

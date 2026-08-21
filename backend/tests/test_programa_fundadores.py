@@ -24,7 +24,8 @@ os.environ.pop('DATABASE_URL', None)        # pessoa é a versão silenciosa do 
 
 from database.schema import get_conn, init_db                      # noqa: E402
 from database.repositories import (                                # noqa: E402
-    _adapt, get_founder_program, get_quota_status, grant_founder, revoke_founder,
+    _adapt, apply_as_founder, get_founder_candidates, get_founder_program, get_quota_status,
+    grant_founder, revoke_founder,
 )
 
 
@@ -186,6 +187,68 @@ def test_concessao_relata_usuario_inexistente_em_vez_de_calar():
     res = grant_founder([777], meses=6)
     assert res['concedidos'] == []
     assert res['pulados'][0]['motivo'] == 'inexistente'
+
+
+def test_fila_respeita_a_ordem_de_chegada():
+    """A publicação promete "os N primeiros". Se a fila não sair na ordem em que as pessoas
+    se candidataram, a promessa não é cumprível — e ninguém percebe pela tela."""
+    init_db(); _limpa()
+    _user(30, 'terceiro'); _user(31, 'primeiro'); _user(32, 'segundo')
+    with get_conn() as conn:
+        for uid, quando in ((31, '2026-08-01 10:00:00'),
+                            (32, '2026-08-01 11:00:00'),
+                            (30, '2026-08-02 09:00:00')):
+            conn.execute(_adapt("UPDATE users SET founder_applied_at = ? WHERE id = ?"),
+                         (quando, uid))
+        conn.commit()
+    fila = get_founder_candidates()
+    assert [c['username'] for c in fila] == ['primeiro', 'segundo', 'terceiro'], fila
+    assert [c['posicao'] for c in fila] == [1, 2, 3]
+
+
+def test_candidatar_duas_vezes_nao_perde_o_lugar_na_fila():
+    """Clicar de novo não pode jogar a pessoa para o fim da fila — seria punir quem
+    interagiu mais, e a fila é justamente o critério prometido."""
+    init_db(); _limpa()
+    _user(40, 'clicou'); _user(41, 'depois')
+    assert apply_as_founder(40) is True
+    primeira = get_founder_candidates()[0]['founder_applied_at']
+    apply_as_founder(41)
+    assert apply_as_founder(40) is False, 'a 2ª candidatura reescreveu o registro'
+    fila = get_founder_candidates()
+    assert fila[0]['username'] == 'clicou', 'quem clicou 2x foi parar atrás'
+    assert fila[0]['founder_applied_at'] == primeira
+
+
+def test_aprovado_sai_da_fila():
+    """Sem isto o admin reaprovaria a mesma pessoa a cada visita ao painel."""
+    init_db(); _limpa()
+    _user(50, 'aprovado'); _user(51, 'esperando')
+    apply_as_founder(50); apply_as_founder(51)
+    assert len(get_founder_candidates()) == 2
+    grant_founder([50], meses=6)
+    fila = get_founder_candidates()
+    assert [c['username'] for c in fila] == ['esperando'], fila
+
+
+def test_fila_traz_sinal_para_decidir():
+    """Aprovar às cegas é o que enche o programa de silencioso. A fila mostra se a pessoa
+    já fez alguma coisa antes de você dar 6 meses de Pro."""
+    init_db(); _limpa()
+    _user(60, 'jausou'); _user(61, 'sonome')
+    apply_as_founder(60); apply_as_founder(61)
+    _torneio(60, 'X'); _treino(60, '2026-08-01')
+    fila = {c['username']: c for c in get_founder_candidates()}
+    assert fila['jausou']['torneios'] == 1 and fila['jausou']['treinos'] == 1
+    assert fila['sonome']['torneios'] == 0 and fila['sonome']['treinos'] == 0
+
+
+def test_quem_nao_se_candidatou_nao_aparece_na_fila():
+    """Contraprova: se a fila listasse todo mundo, ela não estaria medindo candidatura."""
+    init_db(); _limpa()
+    _user(70, 'pediu'); _user(71, 'nao_pediu')
+    apply_as_founder(70)
+    assert [c['username'] for c in get_founder_candidates()] == ['pediu']
 
 
 if __name__ == '__main__':

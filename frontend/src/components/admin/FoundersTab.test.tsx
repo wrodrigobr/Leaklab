@@ -18,12 +18,13 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
  *   4. vencimento próximo e vencido são visualmente diferentes de prazo folgado.
  */
 
-const { founders, grantFounders, revokeFounder, users } = vi.hoisted(() => ({
+const { founders, grantFounders, revokeFounder, users, founderCandidates } = vi.hoisted(() => ({
   founders: vi.fn(), grantFounders: vi.fn(), revokeFounder: vi.fn(), users: vi.fn(),
+  founderCandidates: vi.fn(),
 }));
 
 vi.mock("@/lib/api", () => ({
-  adminDashboard: { founders, grantFounders, revokeFounder, users },
+  adminDashboard: { founders, grantFounders, revokeFounder, users, founderCandidates },
 }));
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn(), warning: vi.fn() } }));
 
@@ -49,6 +50,7 @@ function montar() {
 beforeEach(() => {
   founders.mockReset(); grantFounders.mockReset(); revokeFounder.mockReset();
   users.mockReset(); users.mockResolvedValue({ users: [] });
+  founderCandidates.mockReset(); founderCandidates.mockResolvedValue({ candidatos: [] });
 });
 afterEach(() => cleanup());
 
@@ -144,6 +146,45 @@ describe("programa de fundadores — a vitrine", () => {
     expect(screen.getByText("admin")).toBeTruthy();
     // A chamada não pode filtrar por papel: era isso que sumia com a conta sem avisar.
     expect(users).toHaveBeenCalledWith(expect.not.objectContaining({ role: expect.anything() }));
+  });
+
+  it("a fila mostra a posição e o que o candidato já fez antes de aprovar", async () => {
+    // Aprovar às cegas é o que enche o programa de silencioso: 6 meses de Pro para quem
+    // nunca abriu nada. A fila precisa dar o sinal ANTES do clique.
+    founders.mockResolvedValue({
+      founders: [], resumo: { total: 0, honrando: 0, silenciosos: 0, vencendo_em_30d: 0 },
+    });
+    founderCandidates.mockResolvedValue({
+      candidatos: [
+        { id: 1, username: "chegou1o", email: "a@t.com", founder_applied_at: "2026-08-01T10:00:00",
+          created_at: null, acquisition_source: "instagram", email_verified: 1,
+          torneios: 2, treinos: 30, posicao: 1 },
+        { id: 2, username: "naoconfirmou", email: "b@t.com", founder_applied_at: "2026-08-01T11:00:00",
+          created_at: null, acquisition_source: null, email_verified: 0,
+          torneios: 0, treinos: 0, posicao: 2 },
+      ],
+    });
+    montar();
+    await screen.findByText("chegou1o");
+
+    expect(screen.getByText(/2 candidato\(s\) esperando/i)).toBeTruthy();
+    const linha = (n: string) => screen.getByText(n).closest("tr")!;
+    expect(within(linha("chegou1o")).getByText(/2 torneio/)).toBeTruthy();
+    expect(within(linha("chegou1o")).getByText("instagram")).toBeTruthy();
+    // Conta não confirmada não recebe e-mail nem entra: aprovar gastaria a vaga com quem
+    // ainda está preso na porta.
+    expect(within(linha("naoconfirmou")).getByText(/não confirmou/i)).toBeTruthy();
+    expect(within(linha("chegou1o")).queryByText(/não confirmou/i)).toBeNull();
+  });
+
+  it("sem candidatos, a fila não ocupa espaço na tela", async () => {
+    founders.mockResolvedValue({
+      founders: [], resumo: { total: 0, honrando: 0, silenciosos: 0, vencendo_em_30d: 0 },
+    });
+    founderCandidates.mockResolvedValue({ candidatos: [] });
+    montar();
+    await screen.findByText(/Nenhum fundador ainda/i);
+    expect(screen.queryByText(/candidato\(s\) esperando/i)).toBeNull();
   });
 
   it("o resumo mostra os quatro números que decidem a renovação", async () => {

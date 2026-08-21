@@ -198,6 +198,125 @@ function Convidar({ onPronto }: { onPronto: () => void }) {
   );
 }
 
+/**
+ * Fila de candidatos, na ordem em que chegaram.
+ *
+ * Traz torneios e treinos de cada um porque aprovar às cegas é o que enche o programa de
+ * silencioso: 6 meses de Pro para quem nunca abriu nada. E mostra a posição, que é o
+ * critério que a divulgação promete ("os N primeiros").
+ */
+function Fila({ onAprovado }: { onAprovado: () => void }) {
+  const qc = useQueryClient();
+  const [meses, setMeses] = useState(6);
+  const { data, isLoading } = useQuery({
+    queryKey: ["admin-founder-candidates"],
+    queryFn: adminDashboard.founderCandidates,
+    staleTime: 30_000,
+  });
+
+  const aprovar = useMutation({
+    mutationFn: (ids: number[]) => adminDashboard.grantFounders(ids, meses),
+    onSuccess: (r) => {
+      toast.success(`${r.concedidos.length} aprovado(s) até ${dataCurta(r.expira_em)}`);
+      r.pulados?.forEach((p) =>
+        toast.warning(`user ${p.user_id} não entrou: ${p.motivo}`, { duration: 8000 }));
+      qc.invalidateQueries({ queryKey: ["admin-founder-candidates"] });
+      onAprovado();
+    },
+    onError: (e: Error) => toast.error(e.message || "Não consegui aprovar"),
+  });
+
+  const fila = data?.candidatos ?? [];
+  if (isLoading || fila.length === 0) return null;   // sem fila, não ocupa espaço na tela
+
+  return (
+    <div className="rounded-xl border border-primary/30 bg-primary/[0.04] p-4">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <h3 className="flex items-center gap-2 font-mono text-[11px] font-bold uppercase tracking-widest-2 text-primary">
+          <Clock className="size-3.5" /> {fila.length} candidato(s) esperando
+        </h3>
+        <div className="flex items-center gap-2">
+          <select
+            value={meses}
+            onChange={(e) => setMeses(Number(e.target.value))}
+            className="h-8 rounded-md border border-border bg-background px-2 text-xs text-foreground focus:border-primary focus:outline-none"
+          >
+            <option value={3}>3 meses</option>
+            <option value={6}>6 meses</option>
+            <option value={12}>12 meses</option>
+          </select>
+          <button
+            onClick={() => aprovar.mutate(fila.slice(0, 20).map((c) => c.id))}
+            disabled={aprovar.isPending}
+            className="inline-flex h-8 items-center gap-1.5 rounded-md border border-primary/40 px-3 font-mono text-[10px] font-bold uppercase tracking-widest-2 text-primary hover:bg-primary/10 disabled:opacity-50"
+          >
+            {aprovar.isPending ? <Loader2 className="size-3 animate-spin" /> : <Handshake className="size-3" />}
+            Aprovar os {Math.min(20, fila.length)} primeiros
+          </button>
+        </div>
+      </div>
+
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[640px] text-sm">
+          <thead>
+            <tr className="border-b border-border/60 text-left font-mono text-[10px] uppercase tracking-widest-2 text-muted-foreground">
+              <th className="py-2 pr-3">#</th>
+              <th className="py-2 pr-3">Candidato</th>
+              <th className="py-2 pr-3">Pediu em</th>
+              <th className="py-2 pr-3">Veio de</th>
+              <th className="py-2 pr-3 text-right">Já usou</th>
+              <th className="py-2" />
+            </tr>
+          </thead>
+          <tbody>
+            {fila.map((c) => (
+              <tr key={c.id} className="border-b border-border/30 last:border-0">
+                <td className="py-2.5 pr-3 font-mono text-xs tabular-nums text-muted-foreground">
+                  {c.posicao}
+                </td>
+                <td className="py-2.5 pr-3">
+                  <span className="flex items-center gap-1.5">
+                    <span className="font-semibold text-foreground">{c.username}</span>
+                    {/* Conta não confirmada não recebe e-mail nem consegue entrar: aprovar
+                        às cegas gastaria uma vaga com quem ainda está na porta. */}
+                    {!c.email_verified && (
+                      <span className="rounded-full bg-amber-500/10 px-1.5 py-0.5 text-[9px] font-bold uppercase text-amber-400">
+                        não confirmou
+                      </span>
+                    )}
+                  </span>
+                  <span className="block text-[11px] text-muted-foreground">{c.email}</span>
+                </td>
+                <td className="py-2.5 pr-3 text-xs text-muted-foreground">
+                  {dataCurta(c.founder_applied_at)}
+                </td>
+                <td className="py-2.5 pr-3 text-xs text-muted-foreground">
+                  {c.acquisition_source || "direto"}
+                </td>
+                <td className="py-2.5 pr-3 text-right text-xs tabular-nums">
+                  <span className={c.torneios > 0 ? "text-primary" : "text-muted-foreground"}>
+                    {c.torneios} torneio(s)
+                  </span>
+                  <span className="block text-muted-foreground">{c.treinos} treino(s)</span>
+                </td>
+                <td className="py-2.5 text-right">
+                  <button
+                    onClick={() => aprovar.mutate([c.id])}
+                    disabled={aprovar.isPending}
+                    className="rounded-md bg-primary px-3 py-1.5 font-mono text-[10px] font-bold uppercase tracking-widest-2 text-primary-foreground hover:bg-primary-glow disabled:opacity-50"
+                  >
+                    Aprovar
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
 export function FoundersTab() {
   const qc = useQueryClient();
   const { data, isLoading } = useQuery({
@@ -242,6 +361,10 @@ export function FoundersTab() {
         <Indicador n={r?.silenciosos ?? 0} label="nunca usaram nada" tom="alerta" />
         <Indicador n={r?.vencendo_em_30d ?? 0} label="vencem em 30 dias" tom="alerta" />
       </div>
+
+      {/* A fila vem ANTES do convite manual: quem já pediu para entrar é a ação mais urgente
+          da tela, e deixar isso abaixo de uma caixa de busca é enterrar o que importa. */}
+      <Fila onAprovado={recarrega} />
 
       <Convidar onPronto={recarrega} />
 

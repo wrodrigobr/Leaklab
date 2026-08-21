@@ -12,7 +12,7 @@ interface AuthState {
   user: UserProfile | null;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
-  register: (username: string, email: string, password: string, role?: "player" | "coach", ref?: string | null) => Promise<RegisterResult>;
+  register: (username: string, email: string, password: string, role?: "player" | "coach", ref?: string | null, founderApply?: boolean) => Promise<RegisterResult>;
   verifyEmail: (email: string, code: string) => Promise<string | null>;
   logout: () => void;
   refreshUser: () => Promise<void>;
@@ -44,8 +44,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(profile);
   };
 
-  const register = async (username: string, email: string, password: string, role: "player" | "coach" = "player", ref?: string | null): Promise<RegisterResult> => {
-    const res = await auth.register(username, email, password, role, ref);
+  const register = async (username: string, email: string, password: string, role: "player" | "coach" = "player", ref?: string | null, founderApply?: boolean): Promise<RegisterResult> => {
+    const res = await auth.register(username, email, password, role, ref, founderApply);
     // Verificação de email ligada: não veio token, a conta fica pendente do código.
     if (res.pending_verification) {
       return { pending: true, email: res.email, linkedCoach: res.linked_coach ?? null };

@@ -8270,6 +8270,47 @@ def get_activation_funnel(days: int = 30) -> dict:
 FOUNDER_SOURCE = 'founder'
 
 
+def apply_as_founder(user_id: int) -> bool:
+    """Registra a candidatura ao programa. Idempotente: candidatar-se duas vezes NÃO
+    reescreve a data, senão o jogador perderia o lugar na fila ao clicar de novo — e a
+    ordem de chegada é justamente o critério prometido na divulgação."""
+    conn = get_conn()
+    try:
+        cur = conn.execute(_adapt(
+            "UPDATE users SET founder_applied_at = ? "
+            "WHERE id = ? AND founder_applied_at IS NULL"), (_now_str(), user_id))
+        conn.commit()
+        return bool(getattr(cur, 'rowcount', 0))
+    finally:
+        conn.close()
+
+
+def get_founder_candidates(limit: int = 200) -> list:
+    """Fila de candidatos: quem pediu e ainda não foi aprovado, na ORDEM em que chegaram.
+
+    Traz o que dá para saber antes de decidir — se já importou alguma coisa, se já treinou
+    e de onde veio. Aprovar sem nenhum sinal é o que enche o programa de silencioso.
+    """
+    conn = get_conn()
+    try:
+        rows = [dict(r) for r in conn.execute(_adapt(
+            "SELECT u.id, u.username, u.email, u.founder_applied_at, u.created_at, "
+            "u.acquisition_source, u.email_verified, "
+            "(SELECT COUNT(*) FROM tournaments t WHERE t.user_id = u.id) AS torneios, "
+            "(SELECT COUNT(*) FROM progression_attempts p WHERE p.user_id = u.id) AS treinos "
+            "FROM users u "
+            "WHERE u.founder_applied_at IS NOT NULL "
+            "AND (u.plan_source IS NULL OR u.plan_source <> ?) "
+            "AND COALESCE(u.role,'player') = 'player' "
+            "ORDER BY u.founder_applied_at LIMIT ?"),
+            (FOUNDER_SOURCE, int(limit))).fetchall()]
+        for i, r in enumerate(rows, start=1):
+            r['posicao'] = i          # a fila é a promessa: "os N primeiros"
+        return rows
+    finally:
+        conn.close()
+
+
 def grant_founder(user_ids: list, meses: int = 6) -> dict:
     """Concede Pro de fundador a vários usuários de uma vez. Retorna o que mudou de fato.
 

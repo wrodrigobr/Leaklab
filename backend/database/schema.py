@@ -1010,6 +1010,7 @@ def _run_migrations(conn):
             ("winback_sent_at",     "ALTER TABLE users ADD COLUMN IF NOT EXISTS winback_sent_at     TEXT"),
             # Programa de fundadores: quando entrou (o fim vive em plan_expires_at).
             ("founder_since",       "ALTER TABLE users ADD COLUMN IF NOT EXISTS founder_since       TIMESTAMP"),
+            ("founder_applied_at",  "ALTER TABLE users ADD COLUMN IF NOT EXISTS founder_applied_at  TIMESTAMP"),
         ]:
             _pg_exec_isolated(conn, _sql)
         try:
@@ -1903,6 +1904,7 @@ def _run_migrations(conn):
             ("winback_stage",              "ALTER TABLE users ADD COLUMN winback_stage              INTEGER NOT NULL DEFAULT 0"),
             ("winback_sent_at",            "ALTER TABLE users ADD COLUMN winback_sent_at            TEXT"),
             ("founder_since",              "ALTER TABLE users ADD COLUMN founder_since              TIMESTAMP"),
+            ("founder_applied_at",         "ALTER TABLE users ADD COLUMN founder_applied_at         TIMESTAMP"),
             ("birth_year",                "ALTER TABLE users ADD COLUMN birth_year                INTEGER"),
             ("country",                   "ALTER TABLE users ADD COLUMN country                   TEXT"),
             ("state_province",            "ALTER TABLE users ADD COLUMN state_province            TEXT"),
@@ -2580,6 +2582,11 @@ def _run_migrations(conn):
             # `plan_expires_at` e a coorte em `plan_source='founder'`; falta o INÍCIO, que é
             # o que permite ler "está no 2º ciclo" em vez de só "vence em novembro".
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS founder_since TIMESTAMP",
+            # Candidatura ao programa. Coluna PRÓPRIA, e não `acquisition_source='fundador'`:
+            # de onde a pessoa veio (instagram) e o que ela pediu (ser fundadora) são dois
+            # fatos, e enfiar os dois na mesma coluna apagaria o primeiro. Além disso é este
+            # campo que dá a ORDEM DE CHEGADA — o "os 20 primeiros" da publicação.
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS founder_applied_at TIMESTAMP",
         ]
         for _stmt in _safe:
             try:

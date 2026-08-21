@@ -96,12 +96,17 @@ export const profile = {
 };
 
 export const auth = {
-  register: (username: string, email: string, password: string, role: "player" | "coach" = "player", ref?: string | null) =>
+  // `founderApply` viaja SEPARADO de `acquisition_source`: um diz de onde a pessoa veio
+  // (instagram), o outro diz o que ela está pedindo (entrar no programa). Misturar os dois
+  // numa chave só apagaria a origem — e é a origem que mede se a campanha funcionou.
+  register: (username: string, email: string, password: string, role: "player" | "coach" = "player",
+             ref?: string | null, founderApply?: boolean) =>
     request<AuthResponse>("/auth/register", {
       method: "POST",
       body: JSON.stringify({
         username, email, password, role,
         ...(ref ? { ref } : {}),
+        ...(founderApply ? { founder_apply: true } : {}),
         ...(getAcquisition() ? { acquisition_source: getAcquisition() } : {}),
       }),
     }),
@@ -3201,6 +3206,26 @@ export interface Founder {
   honrando: boolean;
 }
 
+export interface FounderCandidate {
+  id: number;
+  username: string;
+  email: string;
+  founder_applied_at: string | null;
+  created_at: string | null;
+  acquisition_source: string | null;
+  email_verified: number;
+  torneios: number;
+  treinos: number;
+  posicao: number;
+}
+
+export const founder = {
+  status: () => request<{ candidatado_em: string | null; ja_e_fundador: boolean; expira_em: string | null }>(
+    "/player/founder/status"),
+  apply: () => request<{ ok: boolean; ja_estava: boolean; candidatado_em: string | null; ja_e_fundador: boolean }>(
+    "/player/founder/apply", { method: "POST" }),
+};
+
 export interface FounderProgram {
   founders: Founder[];
   resumo: { total: number; honrando: number; silenciosos: number; vencendo_em_30d: number };
@@ -3210,6 +3235,9 @@ export const adminDashboard = {
   stats: () => request<AdminStats>("/admin/dashboard"),
 
   founders: () => request<FounderProgram>("/admin/founders"),
+
+  founderCandidates: () =>
+    request<{ candidatos: FounderCandidate[] }>("/admin/founders/candidatos"),
 
   grantFounders: (user_ids: number[], meses = 6) =>
     request<{ ok: boolean; concedidos: number[]; pulados: { user_id: number; motivo: string }[]; expira_em: string }>(

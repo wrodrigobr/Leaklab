@@ -65,9 +65,13 @@ const Login = () => {
   const [newPw, setNewPw] = useState("");
   const [resetDone, setResetDone] = useState(false);
 
+  // Quem chega de /fundadores já vem decidido a criar conta: abrir no "entrar" faria a
+  // pessoa procurar a aba de cadastro depois de já ter clicado num botão de candidatura.
+  const candidatoFundador = searchParams.get("fundador") === "1";
+
   useEffect(() => {
-    if (ref) setTab("register");
-  }, [ref]);
+    if (ref || candidatoFundador) setTab("register");
+  }, [ref, candidatoFundador]);
 
   // Para onde ir depois de autenticar. O `?next=` chega dos guardas de rota e é o que faz o
   // clique de e-mail terminar NO TREINO prescrito em vez de no dashboard genérico. Validado
@@ -103,7 +107,7 @@ const Login = () => {
           setLoading(false);
           return;
         }
-        const res = await register(username, email, password, role, ref);
+        const res = await register(username, email, password, role, ref, candidatoFundador);
         if (res.pending) {
           setPendingCoach(res.linkedCoach ?? null);
           setPendingEmail(res.email ?? email);
