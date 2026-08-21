@@ -8827,8 +8827,18 @@ def telegram_webhook():
                                       proximo_passo, texto_boas_vindas_grupo)
     from database.repositories import get_telegram_intro, save_telegram_intro
 
-    ev = extrair_evento(request.get_json(silent=True) or {})
+    bruto = request.get_json(silent=True) or {}
+    ev = extrair_evento(bruto)
     if not ev or not ev.get('user_id'):
+        # Ignorar em silêncio deixa cego quem depura: um evento legítimo descartado por
+        # engano fica indistinguível de nenhum evento ter chegado. Loga só a FORMA do
+        # update (as chaves e o tipo de chat), nunca o conteúdo das mensagens do grupo.
+        msg = bruto.get('message') or {}
+        log.info("telegram: update ignorado tipos=%s chat=%s servico=%s",
+                 sorted(bruto.keys()),
+                 (msg.get('chat') or {}).get('type'),
+                 sorted(k for k in msg
+                        if k.endswith('_chat_member') or k.endswith('_chat_members')))
         return jsonify({'ok': True, 'ignorado': True})
 
     try:
