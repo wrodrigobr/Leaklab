@@ -23,7 +23,12 @@ PROVEDORES = {
     'brevo': {
         'nome': 'Brevo',
         'spf_include': 'spf.brevo.com',
-        'seletores_dkim': ('brevo', 'mail'),  # 'mail' é o seletor legado do Sendinblue
+        # Os seletores REAIS que o Brevo manda publicar são `brevo1` e `brevo2` (dois CNAMEs
+        # para b1./b2.<dominio>.dkim.brevo.com). A primeira versão deste arquivo procurou em
+        # `brevo` e `mail` e reportou "DKIM ausente" com os dois publicados e casando — um
+        # alarme falso, que custa tanto quanto o silêncio: manda consertar o que já está certo.
+        # `mail` é o seletor legado do Sendinblue e fica na lista por causa de contas antigas.
+        'seletores_dkim': ('brevo1', 'brevo2', 'brevo', 'mail'),
     },
     'sendgrid': {
         'nome': 'SendGrid',
@@ -130,15 +135,21 @@ def avaliar_dns_email(spf_txt: str | None,
                          'sem consertar a autenticação só esconde o problema dos relatórios.'),
         })
 
-    entrega_em_risco = (not autentica) or any(
-        p['gravidade'] == CRITICO and p['codigo'] in ('spf_ausente', 'spf_sem_provedor',
-                                                     'dkim_ausente') for p in problemas)
+    # `entrega_em_risco` é reservado para quando NADA autentica — aí o e-mail de fato tende
+    # a não chegar. Com um dos dois válido, o DMARC já passa e a entrega funciona: chamar
+    # isso de "em risco" seria alarme exagerado, e alarme exagerado que o operador descobre
+    # ser exagerado desmoraliza o instrumento tanto quanto o silêncio de um falso negativo.
+    entrega_em_risco = not autentica
     criticos = sum(1 for p in problemas if p['gravidade'] == CRITICO)
     if not problemas:
         resumo = f"DNS de e-mail saudável para {cfg['nome']}."
     elif entrega_em_risco:
         resumo = (f'ENTREGA EM RISCO: {criticos} problema(s) crítico(s) no DNS — '
                   'o e-mail tende a cair em spam ou ser recusado.')
+    elif criticos:
+        resumo = (f'{criticos} problema(s) crítico(s) no DNS, mas a autenticação que resta '
+                  f'({"SPF" if spf_ok else "DKIM"}) segura a entrega. Corrigir mesmo assim: '
+                  'com uma única perna, qualquer mudança do outro lado derruba tudo.')
     else:
         resumo = f'{len(problemas)} ajuste(s) recomendado(s) no DNS de e-mail.'
 
