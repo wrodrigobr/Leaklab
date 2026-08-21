@@ -18,13 +18,13 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
  *   4. vencimento próximo e vencido são visualmente diferentes de prazo folgado.
  */
 
-const { founders, grantFounders, revokeFounder, users, founderCandidates } = vi.hoisted(() => ({
+const { founders, grantFounders, revokeFounder, users, founderCandidates, telegramIntros } = vi.hoisted(() => ({
   founders: vi.fn(), grantFounders: vi.fn(), revokeFounder: vi.fn(), users: vi.fn(),
-  founderCandidates: vi.fn(),
+  founderCandidates: vi.fn(), telegramIntros: vi.fn(),
 }));
 
 vi.mock("@/lib/api", () => ({
-  adminDashboard: { founders, grantFounders, revokeFounder, users, founderCandidates },
+  adminDashboard: { founders, grantFounders, revokeFounder, users, founderCandidates, telegramIntros },
 }));
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn(), warning: vi.fn() } }));
 
@@ -51,6 +51,7 @@ beforeEach(() => {
   founders.mockReset(); grantFounders.mockReset(); revokeFounder.mockReset();
   users.mockReset(); users.mockResolvedValue({ users: [] });
   founderCandidates.mockReset(); founderCandidates.mockResolvedValue({ candidatos: [] });
+  telegramIntros.mockReset(); telegramIntros.mockResolvedValue({ intros: [] });
 });
 afterEach(() => cleanup());
 

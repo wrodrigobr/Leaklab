@@ -3223,6 +3223,21 @@ export interface FounderCandidate {
   ressalva: string | null;
 }
 
+/** Respostas de entrada do bot do Telegram. `duvida` é o insumo de roadmap mais direto
+ *  que o programa produz: o jogador dizendo, com as palavras dele, o que o incomoda. */
+export interface TelegramIntro {
+  telegram_user_id: number;
+  nome: string | null;
+  apelido: string | null;
+  formato: string | null;
+  duvida: string | null;
+  email: string | null;
+  conta: string | null;
+  etapa: number;
+  created_at: string | null;
+  completed_at: string | null;
+}
+
 export const founder = {
   status: () => request<{ candidatado_em: string | null; ja_e_fundador: boolean; expira_em: string | null }>(
     "/player/founder/status"),
@@ -3242,6 +3257,8 @@ export const adminDashboard = {
 
   founderCandidates: () =>
     request<{ candidatos: FounderCandidate[] }>("/admin/founders/candidatos"),
+
+  telegramIntros: () => request<{ intros: TelegramIntro[] }>("/admin/telegram/intros"),
 
   grantFounders: (user_ids: number[], meses = 6) =>
     request<{ ok: boolean; concedidos: number[]; pulados: { user_id: number; motivo: string }[]; expira_em: string }>(

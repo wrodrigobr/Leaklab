@@ -339,6 +339,76 @@ function Fila({ onAprovado }: { onAprovado: () => void }) {
   );
 }
 
+/**
+ * Respostas de entrada capturadas pelo bot do Telegram.
+ *
+ * A terceira pergunta ("qual decisão ainda te incomoda") é o insumo de roadmap mais direto
+ * que o programa produz, então ela aparece por extenso e em destaque. As outras duas dão
+ * contexto para ler essa. Capturar sem ler não serviria de nada, que é exatamente o que
+ * acontece hoje com o canal de feedback: existe e ninguém olha.
+ */
+function RespostasDeEntrada() {
+  const { data, isLoading } = useQuery({
+    queryKey: ["admin-telegram-intros"],
+    queryFn: adminDashboard.telegramIntros,
+    staleTime: 60_000,
+  });
+  if (isLoading) return null;
+
+  const intros = data?.intros ?? [];
+  const completas = intros.filter((i) => i.completed_at);
+
+  return (
+    <div className="rounded-xl border border-border bg-hud-surface p-4">
+      <h3 className="mb-1 flex items-center gap-2 font-mono text-[11px] font-bold uppercase tracking-widest-2 text-primary">
+        <MessageSquare className="size-3.5" /> Respostas de entrada
+      </h3>
+      {intros.length === 0 ? (
+        <p className="text-xs text-muted-foreground">
+          Ninguém respondeu ainda. O bot do Telegram faz as três perguntas no direto quando
+          alguém entra no grupo, e as respostas caem aqui.
+        </p>
+      ) : (
+        <>
+          <p className="mb-3 text-[11px] text-muted-foreground">
+            {completas.length} de {intros.length} completaram as três perguntas.
+          </p>
+          <div className="space-y-3">
+            {intros.map((i) => (
+              <div key={i.telegram_user_id} className="rounded-lg border border-border/60 bg-background/40 p-3">
+                <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+                  <span className="font-semibold text-foreground">
+                    {i.apelido || i.nome || "sem nome"}
+                  </span>
+                  {i.conta && (
+                    <span className="rounded-full bg-primary/10 px-1.5 py-0.5 text-[9px] font-bold uppercase text-primary">
+                      conta: {i.conta}
+                    </span>
+                  )}
+                  {!i.completed_at && (
+                    <span className="rounded-full bg-muted/40 px-1.5 py-0.5 text-[9px] font-bold uppercase text-muted-foreground">
+                      parou na {i.etapa + 1}ª pergunta
+                    </span>
+                  )}
+                  {i.formato && (
+                    <span className="text-[11px] text-muted-foreground">{i.formato}</span>
+                  )}
+                </div>
+                {i.duvida && (
+                  <p className="mt-1.5 text-sm leading-relaxed text-foreground">
+                    <span className="text-muted-foreground">Incomoda: </span>
+                    {i.duvida}
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 export function FoundersTab() {
   const qc = useQueryClient();
   const { data, isLoading } = useQuery({
@@ -389,6 +459,8 @@ export function FoundersTab() {
       <Fila onAprovado={recarrega} />
 
       <Convidar onPronto={recarrega} />
+
+      <RespostasDeEntrada />
 
       {lista.length === 0 ? (
         <div className="rounded-xl border border-dashed border-border bg-hud-surface/50 p-8 text-center">
