@@ -7128,18 +7128,50 @@ def get_training_proof(user_id: int) -> list:
     try:
         skills = _fetchall(conn, _adapt(
             "SELECT category_key FROM training_skill_progress WHERE user_id=?"), (user_id,))
+
+        # ── Dois cortes que tiram o N+1 daqui ──────────────────────────────────────────────
+        #
+        # Medido em 21/08 no usuário de maior acervo: 94 categorias, **626 idas ao banco**,
+        # 7,3s — e só 26 categorias tinham o que provar. As outras 68 pagavam o laço inteiro
+        # para serem descartadas no fim. O endpoint já tinha sido otimizado uma vez (219 →
+        # 115 idas); o que cresceu depois foi o NÚMERO DE CATEGORIAS, e o desenho por-item
+        # voltou a doer.
+        #
+        # CORTE 1 — todos os baselines numa consulta só, em vez de duas por categoria (o
+        # `exists` do _ensure_ mais o SELECT do laço).
+        proofs = {r['category_key']: r for r in _fetchall(conn, _adapt(
+            "SELECT category_key, baseline_pct, baseline_n, baseline_at, reopened_at, "
+            "reopen_count FROM training_proof WHERE user_id=?"), (user_id,))}
+
+        # CORTE 2 — a data do último torneio importado. `_category_adherence(imported_after=)`
+        # é a consulta cara do laço, e quando não há torneio NENHUM depois do baseline ela só
+        # pode devolver zero. Uma comparação de datas em memória substitui a ida ao banco.
+        _ult = _fetchone(conn, _adapt(
+            "SELECT MAX(imported_at) AS m FROM tournaments WHERE user_id=?"), (user_id,))
+        ultimo_import = (dict(_ult).get('m') if _ult else None)
+
         out = []
         for s in skills:
             key = s['category_key']
             filt = _category_adherence_filter(key)
             if not filt:
                 continue
-            _ensure_training_baseline(conn, user_id, key)
-            pr = _fetchone(conn, _adapt(
-                "SELECT baseline_pct, baseline_n, baseline_at, reopened_at, reopen_count "
-                "FROM training_proof WHERE user_id=? AND category_key=?"), (user_id, key))
+            pr = proofs.get(key)
+            if pr is None:
+                # Categoria sem baseline ainda: só ESTA paga a medição do "antes". É o caminho
+                # que congela o ponto de partida, e pulá-lo deixaria a categoria sem "antes"
+                # para sempre — o corte 2 nunca pode vir antes daqui.
+                _ensure_training_baseline(conn, user_id, key)
+                pr = _fetchone(conn, _adapt(
+                    "SELECT baseline_pct, baseline_n, baseline_at, reopened_at, reopen_count "
+                    "FROM training_proof WHERE user_id=? AND category_key=?"), (user_id, key))
             if not pr or int(pr['baseline_n'] or 0) <= 0:
                 continue   # sem "antes" real medido → não dá pra provar
+            # Sem torneio importado depois do baseline, `after` viria com with_gto=0 e a
+            # categoria cairia no `continue` logo abaixo. Comparar as datas chega ao MESMO
+            # destino sem pagar a consulta.
+            if ultimo_import and pr['baseline_at'] and str(ultimo_import) <= str(pr['baseline_at']):
+                continue
             after = _category_adherence(conn, user_id, key, imported_after=pr['baseline_at'])
             if not after or after['with_gto'] <= 0:
                 continue   # sem torneio novo pós-treino → nada a provar ainda
