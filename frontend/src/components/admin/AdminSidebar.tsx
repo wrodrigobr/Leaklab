@@ -7,6 +7,7 @@ export type AdminSection =
   | "usage"
   | "finance"
   | "users"
+  | "founders"
   | "coaches"
   | "support"
   | "feedback"

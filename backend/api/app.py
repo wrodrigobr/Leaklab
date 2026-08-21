@@ -8771,6 +8771,56 @@ def admin_activation_funnel():
     return jsonify(get_activation_funnel(max(1, min(days, 365))))
 
 
+@app.route('/admin/founders', methods=['GET'])
+@require_admin
+def admin_founders():
+    """Painel do programa de fundadores: o que cada um recebeu, usou e DEVOLVEU.
+
+    As três colunas juntas é que respondem a pergunta que interessa no fim do ciclo —
+    renovar ou não. Uso sozinho mede engajamento, não o trato."""
+    from database.repositories import get_founder_program
+    return jsonify(get_founder_program())
+
+
+@app.route('/admin/founders', methods=['POST'])
+@require_admin
+def admin_grant_founders():
+    """Concede Pro de fundador em lote. `{user_ids: [...], meses: 6}`.
+
+    Assinante pagante é PULADO, não sobrescrito — e volta na resposta, para a concessão
+    não sumir com o caso em silêncio."""
+    from database.repositories import grant_founder
+    data = request.get_json(silent=True) or {}
+    ids = data.get('user_ids') or []
+    if not isinstance(ids, list) or not ids:
+        return jsonify({'error': 'user_ids (lista não vazia) é obrigatório'}), 400
+    try:
+        ids = [int(i) for i in ids]
+    except (TypeError, ValueError):
+        return jsonify({'error': 'user_ids deve conter inteiros'}), 400
+    meses = data.get('meses', 6)
+    try:
+        meses = int(meses)
+    except (TypeError, ValueError):
+        meses = 6
+    if not 1 <= meses <= 24:
+        return jsonify({'error': 'meses deve estar entre 1 e 24'}), 400
+    res = grant_founder(ids, meses)
+    log.info("founders concedidos=%s pulados=%s ate=%s",
+             len(res['concedidos']), len(res['pulados']), res['expira_em'])
+    return jsonify({'ok': True, **res})
+
+
+@app.route('/admin/founders/<int:uid>', methods=['DELETE'])
+@require_admin
+def admin_revoke_founder(uid: int):
+    """Tira do programa (volta a free). Só afeta quem É fundador."""
+    from database.repositories import revoke_founder
+    if not revoke_founder(uid):
+        return jsonify({'error': 'usuário não está no programa de fundadores'}), 404
+    return jsonify({'ok': True})
+
+
 @app.route('/player/preferences', methods=['GET'])
 @require_auth
 def get_player_preferences():

@@ -5,7 +5,8 @@ import {
   LayoutDashboard, Loader2, RefreshCw, Search, Shield, Users,
   GraduationCap, X, Check, MessageSquarePlus, Trash2, AlertTriangle,
   Cpu, CircleDot, Lightbulb, Send, Megaphone, Mail, MailCheck,
-  TrendingUp, Zap, CalendarClock, ThumbsUp, ThumbsDown, Sparkles, Timer, Download
+  TrendingUp, Zap, CalendarClock, ThumbsUp, ThumbsDown, Sparkles, Timer, Download,
+  Handshake
 } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
 import { HudHeader } from "@/components/hud/HudHeader";
@@ -17,6 +18,7 @@ import { StatusBadge } from "@/components/admin/StatusBadge";
 import { FinanceCockpit } from "@/components/admin/FinanceCockpit";
 import { CoachesTab } from "@/components/admin/CoachesTab";
 import { TournamentsTab } from "@/components/admin/TournamentsTab";
+import { FoundersTab } from "@/components/admin/FoundersTab";
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
@@ -1680,6 +1682,7 @@ const SECTION_TITLE: Record<AdminSection, { title: string; sub: string }> = {
   usage:        { title: "Uso",            sub: "Funcionalidades mais usadas, adoção e usuários ativos." },
   finance:      { title: "Financeiro",     sub: "Fluxo de caixa, entradas, saídas e cobrança." },
   users:        { title: "Usuários",       sub: "Gestão de jogadores, planos e suspensões." },
+  founders:     { title: "Fundadores",     sub: "Pro em troca de uso e feedback. As três colunas do trato: o que cada um recebeu, usou e devolveu." },
   coaches:      { title: "Coaches",        sub: "Roster de coaches, alunos e repasses." },
   support:      { title: "Tickets",        sub: "Mensagens de suporte dos usuários." },
   feedback:     { title: "Feedback",       sub: "Sugestões, elogios e problemas dos jogadores." },
@@ -1716,6 +1719,15 @@ const AdminDashboard = () => {
     staleTime: 30_000,
   });
 
+  // O ponto no menu é o gatilho da conversa de renovação: sem ele o ciclo do fundador
+  // vence sozinho, que é justamente o modo silencioso de o programa virar doação.
+  const { data: founders } = useQuery({
+    queryKey: ["admin-founders"],
+    queryFn: adminDashboard.founders,
+    staleTime: 60_000,
+  });
+  const founderDot = (founders?.resumo?.vencendo_em_30d ?? 0) > 0;
+
   const openTickets = supportCount?.open ?? 0;
   const pendingCount = pendingApps?.applications?.length ?? 0;
   const financeDot = (dunning?.past_due?.length ?? 0) > 0 || (dunning?.recent_failed?.length ?? 0) > 0;
@@ -1729,6 +1741,7 @@ const AdminDashboard = () => {
         { id: "usage",    label: "Uso",         icon: TrendingUp },
         { id: "finance",  label: "Financeiro",  icon: BarChart2, dot: financeDot },
         { id: "users",    label: "Usuários",    icon: Users },
+        { id: "founders", label: "Fundadores",  icon: Handshake, dot: founderDot },
         { id: "coaches",  label: "Coaches",     icon: GraduationCap },
       ],
     },
@@ -1774,6 +1787,7 @@ const AdminDashboard = () => {
             {section === "usage"        && <UsageTab />}
             {section === "finance"      && <FinanceCockpit />}
             {section === "users"        && <UsersTab />}
+            {section === "founders"     && <FoundersTab />}
             {section === "coaches"      && <CoachesTab />}
             {section === "support"      && <SupportTab />}
             {section === "feedback"     && <SupportTab kind="feedback" />}

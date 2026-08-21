@@ -4124,12 +4124,16 @@ def get_quota_status(user_id: int) -> dict:
                 'solves_used': 0, 'limits': PLAN_LIMITS['free']}
 
     plan = row.get('plan') or 'free'
-    # PAY-02/04: só o LEGADO-PI (plan_source NULL) expira por data. Assinantes Stripe
-    # ('stripe_sub') são governados pelos webhooks (renovação automática); Pro de cortesia
-    # do coach (coach_trial/earned) é governado por coach_trial_ends_at. Nesses casos,
-    # plan_expires_at não derruba o plano aqui.
+    # PAY-02/04: o LEGADO-PI (plan_source NULL) e o FUNDADOR expiram por data. Assinantes
+    # Stripe ('stripe_sub') são governados pelos webhooks (renovação automática); Pro de
+    # cortesia do coach (coach_trial/earned) é governado por coach_trial_ends_at. Nesses
+    # casos, plan_expires_at não derruba o plano aqui.
+    #
+    # `founder` PRECISA estar nesta lista: sem ele o benefício de 6 meses jamais terminaria,
+    # e "renovável" viraria vitalício sem ninguém perceber — a renovação é justamente o
+    # momento de conversar sobre a contrapartida. Travado em test_programa_fundadores.
     expired = False
-    if (plan == 'pro' and row.get('plan_source') is None
+    if (plan == 'pro' and row.get('plan_source') in (None, 'founder')
             and row.get('plan_expires_at') and row['plan_expires_at'] < _now_str()):
         plan = 'free'
         expired = True
@@ -8250,6 +8254,147 @@ def get_activation_funnel(days: int = 30) -> dict:
             },
             'origens': [dict(o) for o in origens],
         }
+    finally:
+        conn.close()
+
+
+# ── Programa de fundadores (20/08) ────────────────────────────────────────────
+#
+# O trato é "Pro de graça em troca de uso e feedback". Um programa desses falha de dois
+# jeitos, e os dois são silenciosos: (a) o benefício nunca expira e vira doação vitalícia
+# sem decisão; (b) ninguém mede a contrapartida, e no fim do ciclo não há como saber quem
+# honrou. Por isso a coorte é explícita (`plan_source='founder'`), tem data dos dois lados
+# (`founder_since` / `plan_expires_at`), e o painel mostra o que cada um DEVOLVEU ao lado
+# do que consumiu.
+
+FOUNDER_SOURCE = 'founder'
+
+
+def grant_founder(user_ids: list, meses: int = 6) -> dict:
+    """Concede Pro de fundador a vários usuários de uma vez. Retorna o que mudou de fato.
+
+    Não sobrescreve assinante pagante: quem tem `plan_source='stripe_sub'` é pulado, senão
+    a concessão apagaria a assinatura de quem paga — dano que a ausência do programa não
+    causava. Retorna as listas para o chamador poder mostrar, em vez de somir com o caso.
+    """
+    from datetime import datetime, timedelta
+    if not user_ids:
+        return {'concedidos': [], 'pulados': [], 'expira_em': None}
+    expira = (datetime.utcnow() + timedelta(days=30 * int(meses))).strftime('%Y-%m-%d %H:%M:%S')
+    agora = _now_str()
+    concedidos, pulados = [], []
+    conn = get_conn()
+    try:
+        for uid in user_ids:
+            row = _fetchone(conn, _adapt(
+                "SELECT plan, plan_source FROM users WHERE id = ?"), (uid,))
+            if not row:
+                pulados.append({'user_id': uid, 'motivo': 'inexistente'})
+                continue
+            d = dict(row)
+            if d.get('plan_source') == 'stripe_sub':
+                pulados.append({'user_id': uid, 'motivo': 'assinante pagante'})
+                continue
+            # Renovação mantém o founder_since original: é ele que diz "está no 2º ciclo".
+            cur = conn.execute(_adapt(
+                "UPDATE users SET plan = 'pro', plan_source = ?, plan_expires_at = ?, "
+                "founder_since = COALESCE(founder_since, ?) WHERE id = ?"),
+                (FOUNDER_SOURCE, expira, agora, uid))
+            # rowcount honesto: UPDATE que não casou linha nenhuma não é sucesso (regra 6).
+            afetadas = getattr(cur, 'rowcount', None)
+            if afetadas == 0:
+                pulados.append({'user_id': uid, 'motivo': 'update não afetou linha'})
+            else:
+                concedidos.append(uid)
+        conn.commit()
+    finally:
+        conn.close()
+    return {'concedidos': concedidos, 'pulados': pulados, 'expira_em': expira}
+
+
+def revoke_founder(user_id: int) -> bool:
+    """Tira o fundador do programa (volta a free). Só mexe em quem É fundador — revogar
+    um assinante por engano seria estrago silencioso."""
+    conn = get_conn()
+    try:
+        cur = conn.execute(_adapt(
+            "UPDATE users SET plan = 'free', plan_source = NULL, plan_expires_at = NULL "
+            "WHERE id = ? AND plan_source = ?"), (user_id, FOUNDER_SOURCE))
+        conn.commit()
+        return bool(getattr(cur, 'rowcount', 0))
+    finally:
+        conn.close()
+
+
+def get_founder_program() -> dict:
+    """Painel do programa: por fundador, o que ele RECEBEU, o que USOU e o que DEVOLVEU.
+
+    As três colunas juntas existem de propósito. Só "usou" mede engajamento e não mede o
+    trato; só "devolveu" pune quem usa muito e fala pouco. É a leitura conjunta que diz se
+    a renovação faz sentido.
+    """
+    from datetime import datetime
+    conn = get_conn()
+    try:
+        founders = [dict(r) for r in conn.execute(_adapt(
+            "SELECT id, username, email, founder_since, plan_expires_at, plan, last_login "
+            "FROM users WHERE plan_source = ? ORDER BY founder_since"),
+            (FOUNDER_SOURCE,)).fetchall()]
+        if not founders:
+            return {'founders': [], 'resumo': {'total': 0, 'honrando': 0, 'silenciosos': 0,
+                                               'vencendo_em_30d': 0}}
+        ids = [f['id'] for f in founders]
+        marcas = ','.join(['?'] * len(ids))
+
+        def _mapa(sql: str) -> dict:
+            return {r['uid']: r for r in (dict(x) for x in conn.execute(
+                _adapt(sql), tuple(ids)).fetchall())}
+
+        tor = _mapa(f"SELECT user_id AS uid, COUNT(*) AS n, MAX(imported_at) AS ultimo "
+                    f"FROM tournaments WHERE user_id IN ({marcas}) GROUP BY user_id")
+        tre = _mapa(f"SELECT user_id AS uid, COUNT(*) AS n, "
+                    f"COUNT(DISTINCT SUBSTR(CAST(created_at AS TEXT),1,10)) AS dias "
+                    f"FROM progression_attempts WHERE user_id IN ({marcas}) GROUP BY user_id")
+        try:
+            tic = _mapa(f"SELECT user_id AS uid, COUNT(*) AS n, MAX(created_at) AS ultimo "
+                        f"FROM support_tickets WHERE user_id IN ({marcas}) GROUP BY user_id")
+        except Exception:
+            tic = {}
+
+        hoje = datetime.utcnow()
+        saida, honrando, silenciosos, vencendo = [], 0, 0, 0
+        for f in founders:
+            t, tr, ti = tor.get(f['id'], {}), tre.get(f['id'], {}), tic.get(f['id'], {})
+            dias_restantes = None
+            try:
+                dias_restantes = (datetime.fromisoformat(
+                    str(f['plan_expires_at'])[:19]) - hoje).days
+            except Exception:
+                pass
+            n_tor = int(t.get('n') or 0)
+            n_dias = int(tr.get('dias') or 0)
+            n_fb = int(ti.get('n') or 0)
+            # "Honrando" = usou de verdade E devolveu alguma palavra. Deliberadamente exige
+            # os dois: é o trato, não o engajamento.
+            usou = n_tor > 0 and n_dias >= 2
+            if usou and n_fb > 0:
+                honrando += 1
+            elif n_tor == 0 and n_dias == 0:
+                silenciosos += 1
+            if dias_restantes is not None and 0 <= dias_restantes <= 30:
+                vencendo += 1
+            saida.append({
+                'user_id': f['id'], 'username': f['username'], 'email': f['email'],
+                'desde': f['founder_since'], 'expira_em': f['plan_expires_at'],
+                'dias_restantes': dias_restantes, 'ultimo_acesso': f['last_login'],
+                'torneios': n_tor, 'ultimo_import': t.get('ultimo'),
+                'treinos': int(tr.get('n') or 0), 'dias_treinados': n_dias,
+                'feedbacks': n_fb, 'ultimo_feedback': ti.get('ultimo'),
+                'usou': usou, 'honrando': bool(usou and n_fb > 0),
+            })
+        return {'founders': saida,
+                'resumo': {'total': len(saida), 'honrando': honrando,
+                           'silenciosos': silenciosos, 'vencendo_em_30d': vencendo}}
     finally:
         conn.close()
 

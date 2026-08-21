@@ -1008,6 +1008,8 @@ def _run_migrations(conn):
             # Win-back (reengajamento de inativos): estágio já enviado (0..3) + quando saiu o último.
             ("winback_stage",       "ALTER TABLE users ADD COLUMN IF NOT EXISTS winback_stage       INTEGER NOT NULL DEFAULT 0"),
             ("winback_sent_at",     "ALTER TABLE users ADD COLUMN IF NOT EXISTS winback_sent_at     TEXT"),
+            # Programa de fundadores: quando entrou (o fim vive em plan_expires_at).
+            ("founder_since",       "ALTER TABLE users ADD COLUMN IF NOT EXISTS founder_since       TIMESTAMP"),
         ]:
             _pg_exec_isolated(conn, _sql)
         try:
@@ -1900,6 +1902,7 @@ def _run_migrations(conn):
             ("verification_attempts",      "ALTER TABLE users ADD COLUMN verification_attempts      INTEGER NOT NULL DEFAULT 0"),
             ("winback_stage",              "ALTER TABLE users ADD COLUMN winback_stage              INTEGER NOT NULL DEFAULT 0"),
             ("winback_sent_at",            "ALTER TABLE users ADD COLUMN winback_sent_at            TEXT"),
+            ("founder_since",              "ALTER TABLE users ADD COLUMN founder_since              TIMESTAMP"),
             ("birth_year",                "ALTER TABLE users ADD COLUMN birth_year                INTEGER"),
             ("country",                   "ALTER TABLE users ADD COLUMN country                   TEXT"),
             ("state_province",            "ALTER TABLE users ADD COLUMN state_province            TEXT"),
@@ -2573,6 +2576,10 @@ def _run_migrations(conn):
             )""",
             "CREATE INDEX IF NOT EXISTS idx_evolution_reports_user "
             "ON evolution_reports(user_id, created_at DESC)",
+            # Programa de fundadores: quem entrou e quando. O FIM da vigência já mora em
+            # `plan_expires_at` e a coorte em `plan_source='founder'`; falta o INÍCIO, que é
+            # o que permite ler "está no 2º ciclo" em vez de só "vence em novembro".
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS founder_since TIMESTAMP",
         ]
         for _stmt in _safe:
             try:

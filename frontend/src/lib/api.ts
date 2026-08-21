@@ -3178,8 +3178,45 @@ export interface GtoWorkerStatus {
   }>;
 }
 
+/**
+ * Programa de fundadores: Pro de graça em troca de uso e feedback.
+ * `honrando` é o trato cumprido (usou DE VERDADE e devolveu palavra), não engajamento —
+ * por isso vem separado de `usou`: quem usa muito e nunca fala é outro caso.
+ */
+export interface Founder {
+  user_id: number;
+  username: string;
+  email: string;
+  desde: string | null;
+  expira_em: string | null;
+  dias_restantes: number | null;
+  ultimo_acesso: string | null;
+  torneios: number;
+  ultimo_import: string | null;
+  treinos: number;
+  dias_treinados: number;
+  feedbacks: number;
+  ultimo_feedback: string | null;
+  usou: boolean;
+  honrando: boolean;
+}
+
+export interface FounderProgram {
+  founders: Founder[];
+  resumo: { total: number; honrando: number; silenciosos: number; vencendo_em_30d: number };
+}
+
 export const adminDashboard = {
   stats: () => request<AdminStats>("/admin/dashboard"),
+
+  founders: () => request<FounderProgram>("/admin/founders"),
+
+  grantFounders: (user_ids: number[], meses = 6) =>
+    request<{ ok: boolean; concedidos: number[]; pulados: { user_id: number; motivo: string }[]; expira_em: string }>(
+      "/admin/founders", { method: "POST", body: JSON.stringify({ user_ids, meses }) }),
+
+  revokeFounder: (uid: number) =>
+    request<{ ok: boolean }>(`/admin/founders/${uid}`, { method: "DELETE" }),
 
   users: (params?: { limit?: number; offset?: number; plan?: string; role?: string; search?: string }) => {
     const q = new URLSearchParams();
