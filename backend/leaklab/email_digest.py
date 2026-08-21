@@ -242,6 +242,41 @@ def build_digest_html(username: str, data: dict, unsub_link: str) -> str:
 
 # ── Envio SMTP ────────────────────────────────────────────────────────────────
 
+def html_para_texto(html: str) -> str:
+    """Versão text/plain legível a partir do corpo HTML.
+
+    Não é firula: declarar `multipart/alternative` e anexar só HTML custou -0,82 ponto no
+    teste de entregabilidade de 20/08 (`MPART_ALT_DIFF` + `MIME_HTML_ONLY`) — mais do que
+    qualquer problema de DNS que tínhamos. Filtro de spam trata "diz que tem alternativa e
+    não tem" como sinal de remetente descuidado.
+    """
+    import html as _html
+    import re
+    t = re.sub(r'(?is)<(script|style|head)[^>]*>.*?</\1>', '', html or '')
+    t = re.sub(r'(?i)<br\s*/?>', '\n', t)
+    t = re.sub(r'(?i)</(p|div|tr|h1|h2|h3|li|table)>', '\n', t)
+    t = re.sub(r'(?i)<a [^>]*href="([^"]+)"[^>]*>(.*?)</a>', r'\2 (\1)', t)
+    t = re.sub(r'<[^>]+>', ' ', t)
+    t = _html.unescape(t)
+    t = re.sub(r'[ \t\xa0]+', ' ', t)
+    t = re.sub(r'\n\s*\n\s*\n+', '\n\n', t)
+    return '\n'.join(l.strip() for l in t.splitlines()).strip()
+
+
+def _montar_mensagem(subject: str, from_addr: str, to_email: str, html_body: str):
+    """Monta a mensagem com AS DUAS partes. Existe como função única porque a montagem
+    vive em dois pontos (digest e transacional) — e era exatamente a divergência entre
+    eles que a regra 5 manda evitar: consertar num e esquecer o outro."""
+    msg = MIMEMultipart("alternative")
+    msg["Subject"] = subject
+    msg["From"] = from_addr
+    msg["To"] = to_email
+    # Ordem importa: em multipart/alternative o cliente exibe a ÚLTIMA parte que sabe ler,
+    # então o texto vai primeiro e o HTML depois.
+    msg.attach(MIMEText(html_para_texto(html_body), "plain", "utf-8"))
+    msg.attach(MIMEText(html_body, "html", "utf-8"))
+    return msg
+
 def send_digest_email(to_email: str, username: str, data: dict, user_id: int) -> bool:
     """Envia o digest para um usuário. Retorna True se enviado com sucesso."""
     smtp_host = os.environ.get("SMTP_HOST", "")
@@ -259,11 +294,7 @@ def send_digest_email(to_email: str, username: str, data: dict, user_id: int) ->
     unsub_url = f"{base_url}/api/player/digest/unsubscribe?uid={user_id}&token={token}"
     html_body = build_digest_html(username, data, unsub_url)
 
-    msg = MIMEMultipart("alternative")
-    msg["Subject"] = "📊 Seu resumo semanal · GrindLab"
-    msg["From"]    = from_addr
-    msg["To"]      = to_email
-    msg.attach(MIMEText(html_body, "html", "utf-8"))
+    msg = _montar_mensagem("📊 Seu resumo semanal · GrindLab", from_addr, to_email, html_body)
 
     try:
         with smtplib.SMTP(smtp_host, smtp_port, timeout=15) as server:
@@ -292,11 +323,7 @@ def send_transactional_email(to_email: str, subject: str, html_body: str) -> boo
         log.warning("SMTP não configurado — email transacional não enviado para %s", to_email)
         return False
 
-    msg = MIMEMultipart("alternative")
-    msg["Subject"] = subject
-    msg["From"]    = from_addr
-    msg["To"]      = to_email
-    msg.attach(MIMEText(html_body, "html", "utf-8"))
+    msg = _montar_mensagem(subject, from_addr, to_email, html_body)
 
     try:
         with smtplib.SMTP(smtp_host, smtp_port, timeout=15) as server:

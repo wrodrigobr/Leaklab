@@ -163,6 +163,34 @@ def test_prazo_do_codigo_e_legivel_em_todo_email_que_carrega_codigo():
     print('OK  test_prazo_do_codigo_e_legivel_em_todo_email_que_carrega_codigo')
 
 
+def test_todo_envio_carrega_as_duas_partes_mime():
+    """Medido no mail-tester em 20/08: declarar multipart/alternative e anexar SÓ HTML
+    custou -0,82 ponto (MPART_ALT_DIFF + MIME_HTML_ONLY) — mais do que qualquer problema
+    de DNS que tínhamos. Varre os DOIS pontos de envio (regra 5): a montagem vivia
+    duplicada, e consertar um e esquecer o outro seria o defeito de sempre."""
+    import inspect
+    from leaklab import email_digest as ED
+
+    # 1) Nenhum ponto de envio pode montar a mensagem por conta própria.
+    fonte = inspect.getsource(ED)
+    montagens = fonte.count('MIMEMultipart(')
+    assert montagens == 1, (f'{montagens} montagens de mensagem no módulo — a regra tem que '
+                            'viver em UMA função, senão uma delas fica para trás')
+
+    # 2) A mensagem montada tem texto E html, com o texto antes.
+    msg = ED._montar_mensagem('Assunto', 'a@b.com', 'c@d.com',
+                              '<p>Seu código é <b>424242</b></p><a href="https://x.com">Abrir</a>')
+    tipos = [p.get_content_type() for p in msg.walk() if p.get_content_maintype() == 'text']
+    assert tipos == ['text/plain', 'text/html'], tipos
+
+    # 3) O texto precisa CARREGAR o essencial — parte vazia não resolve nada.
+    texto = msg.get_payload()[0].get_payload(decode=True).decode('utf-8')
+    assert '424242' in texto, 'o código não sobreviveu na versão texto'
+    assert 'https://x.com' in texto, 'o link virou texto morto (sem URL) na versão texto'
+    assert '<p>' not in texto and '<b>' not in texto, 'sobrou tag HTML na versão texto'
+    print('OK  test_todo_envio_carrega_as_duas_partes_mime')
+
+
 def test_reset_de_senha_continua_com_janela_curta():
     """Regra 7: o conserto não pode criar dano que o bug não causava. Esticar a confirmação
     de cadastro para 24h é seguro; esticar o código que TROCA A SENHA não é."""
