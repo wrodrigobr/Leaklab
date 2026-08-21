@@ -58,6 +58,29 @@ FIM_TEXTO = ('Pronto, é isso. Obrigado.\n\n'
              'Quando algo travar ou parecer errado, me diz no grupo. Crítica direta vale '
              'mais que elogio.')
 
+FIM_COM_GRUPO = ('Pronto, é isso. Obrigado.\n\n'
+                 'O grupo dos fundadores é aqui: {link}\n\n'
+                 'Seu Pro já está ativo. O melhor primeiro passo é subir o hand history de '
+                 'um torneio recente e ver o que aparece.\n\n'
+                 'Quando algo travar ou parecer errado, fala no grupo. Crítica direta vale '
+                 'mais que elogio.')
+
+
+def texto_final(link_grupo: str | None = None) -> str:
+    """Fecho da entrevista. Com o grupo configurado, entrega o convite JUNTO.
+
+    O convite vai aqui porque este é o instante de maior disposição da pessoa: ela acabou
+    de responder três perguntas e está com o aplicativo aberto. Mandar depois, por outro
+    canal, é pedir que ela se lembre — e quem chegou ao bot pelo link do e-mail de seleção
+    pode nem estar no grupo ainda.
+
+    Sem `link_grupo`, cai no texto antigo. Melhor não mencionar o grupo do que mandar um
+    convite quebrado, que é o mesmo cuidado da mensagem de boas-vindas.
+    """
+    link = (link_grupo or '').strip()
+    return FIM_COM_GRUPO.format(link=link) if link else FIM_TEXTO
+
+
 JA_RESPONDEU = ('Você já respondeu as três. Se quiser mudar alguma coisa, é só falar no '
                 'grupo que eu ajusto.')
 
@@ -70,7 +93,7 @@ def _pular(texto: str) -> bool:
     return (texto or '').strip().lower() in ('pular', 'skip', 'nao', 'não', '-')
 
 
-def proximo_passo(etapa: int, texto: str) -> dict:
+def proximo_passo(etapa: int, texto: str, link_grupo: str | None = None) -> dict:
     """Dado em que etapa a pessoa está e o que ela acabou de escrever, diz o que gravar e
     o que responder.
 
@@ -105,7 +128,8 @@ def proximo_passo(etapa: int, texto: str) -> dict:
 
     nova = etapa + 1
     if nova >= ETAPA_FIM:
-        return {'gravar': gravar, 'responder': FIM_TEXTO, 'nova_etapa': nova, 'fim': True}
+        return {'gravar': gravar, 'responder': texto_final(link_grupo),
+                'nova_etapa': nova, 'fim': True}
     return {'gravar': gravar, 'responder': PERGUNTAS[nova]['texto'], 'nova_etapa': nova,
             'fim': False}
 

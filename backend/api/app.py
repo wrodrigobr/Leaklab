@@ -8864,7 +8864,8 @@ def telegram_webhook():
                              else 'Você já respondeu as três. Obrigado.')
             return jsonify({'ok': True, 'acao': 'start'})
 
-        passo = proximo_passo(etapa, texto)
+        passo = proximo_passo(etapa, texto,
+                              os.environ.get('TELEGRAM_GROUP_INVITE', '').strip())
         save_telegram_intro(ev['user_id'], ev['chat_id'], ev['nome'],
                             passo['nova_etapa'], passo['gravar'], concluido=passo['fim'])
         _telegram_enviar(ev['chat_id'], passo['responder'])

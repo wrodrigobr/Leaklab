@@ -65,6 +65,27 @@ def test_resposta_vazia_repete_a_pergunta_em_vez_de_avancar():
     assert '2 de 3' in p['responder'], 'nao repetiu a pergunta pendente'
 
 
+def test_fim_entrega_o_convite_do_grupo_no_momento_certo():
+    """A pessoa acabou de responder três perguntas e está com o app aberto: é o instante de
+    maior disposição que o programa vai ter. Mandar o convite depois, por outro canal, é
+    pedir que ela se lembre — e quem chegou pelo link do e-mail pode nem estar no grupo."""
+    p = proximo_passo(3, 'eu@t.com', 'https://t.me/+abc123')
+    assert p['fim'] is True
+    assert 'https://t.me/+abc123' in p['responder'], 'o convite nao foi entregue no fecho'
+
+
+def test_sem_grupo_configurado_nao_manda_convite_quebrado():
+    """Mesmo cuidado da mensagem de boas-vindas: melhor não citar o grupo do que mandar um
+    link vazio. O texto degrada, não quebra."""
+    p = proximo_passo(3, 'eu@t.com', '')
+    assert p['fim'] is True
+    assert 'https://t.me/' not in p['responder']
+    assert 'me diz no grupo' in p['responder'], 'perdeu o fecho na degradacao'
+
+    p2 = proximo_passo(3, 'eu@t.com', None)
+    assert 'https://t.me/' not in p2['responder']
+
+
 def test_email_pode_ser_pulado_sem_travar():
     """O e-mail é opcional de propósito. Se "pular" travasse a conversa, a pessoa ficaria
     presa na última pergunta depois de ter respondido as três que interessam."""
