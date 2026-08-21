@@ -106,3 +106,7 @@ business/
 # perfil do Chromium do coletor do GW (contem a sessao logada do usuario)
 backend/.gw_profile/
 .gw_profile/
+
+# Logs arquivados pelo deploy (deploy.sh salva o log do container antes de recriá-lo).
+# Fora do git de propósito: log de produção carrega e-mail de usuário e id de sessão.
+logs/
