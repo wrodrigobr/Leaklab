@@ -451,12 +451,12 @@ def hand_class(hand: str) -> str:
 # protocolo existe pra evitar). Com ela, cada spot ensina uma família de mão.
 _HAND_NOTES = {
     'par_alto':         "Par alto já é a mão feita na maioria dos flops: joga por valor direto.",
-    'par_baixo':        "Par baixo vale pelo set que ele acerta às vezes, não pela força de agora — e set precisa de stack pra pagar.",
+    'par_baixo':        "Par baixo vale pelo set que ele acerta às vezes, não pela força de agora, e set precisa de stack pra pagar.",
     'ace_suited':       "Ás suited tem o bloqueio do ás mais projeto de flush: continua bem mesmo quando não acerta par.",
     'ace_offsuit':      "Ás offsuit fraco vive de acertar par com kicker ruim, que é justamente onde se perde fichas.",
     'broadway_suited':  "Broadway suited acerta pares fortes e ainda tem projeto: é das mãos que mais gostam de jogar o flop.",
     'broadway_offsuit': "Broadway offsuit depende de acertar par alto; sem projeto, erra o flop e fica sem plano.",
-    'conector_suited':  "Conector suited quase nunca acerta na hora, ele vive de implied odds — e implied odds somem quando o stack é curto.",
+    'conector_suited':  "Conector suited quase nunca acerta na hora, ele vive de implied odds, e implied odds somem quando o stack é curto.",
     'conector_offsuit': "Conector offsuit perde o projeto de flush e fica só com a sequência: é bem mais fraco do que parece.",
     'suited_fraca':     "Ser do mesmo naipe ajuda pouco sozinho: o naipe adiciona uns 2-3% de equity, não transforma a mão.",
     'lixo':             "Sem par, sem naipe e sem conexão, essa mão precisa acertar muito pra valer alguma coisa.",
@@ -779,7 +779,7 @@ def mastery_status(attempts: list[dict]) -> dict:
         {'key': 'fronteira', 'ok': n_front >= MASTERY_MIN_EDGE_N and acc_front >= MASTERY_MIN_EDGE,
          'atual': round(acc_front * 100) if n_front else 0, 'alvo': round(MASTERY_MIN_EDGE * 100),
          'amostra': n_front, 'amostra_min': MASTERY_MIN_EDGE_N,
-         'label': 'Fronteira', 'desc': 'as mãos que o GTO mistura — é onde se erra de verdade'},
+         'label': 'Fronteira', 'desc': 'as mãos que o GTO mistura, é onde se erra de verdade'},
         {'key': 'transferencia', 'ok': n_contr >= MASTERY_MIN_EDGE_N and acc_contr >= MASTERY_MIN_EDGE,
          'atual': round(acc_contr * 100) if n_contr else 0, 'alvo': round(MASTERY_MIN_EDGE * 100),
          'amostra': n_contr, 'amostra_min': MASTERY_MIN_EDGE_N,
@@ -847,7 +847,7 @@ def sizing_note(spot: dict, raise_to_bb: float | None, recomendado: str | None =
 
     if scen == 'rfi':
         if pos == 'SB':
-            return (f"O open padrão daqui é {tam} — maior que das outras cadeiras, porque do SB "
+            return (f"O open padrão daqui é {tam}, maior que das outras cadeiras, porque do SB "
                     f"você joga o resto da mão fora de posição e quer levar o pote agora.")
         if stack <= 20:
             return (f"O open padrão daqui é {tam}. Com stack curto o raise é menor: você já está "
@@ -858,7 +858,7 @@ def sizing_note(spot: dict, raise_to_bb: float | None, recomendado: str | None =
         return (f"O 3-bet padrão aqui é {tam}. Fora de posição se 3-beta maior (você precisa "
                 f"cobrar caro por jogar fora de posição); em posição, menor já basta.")
     if scen == 'vs_3bet':
-        return (f"O 4-bet padrão aqui é {tam} — pequeno em relação ao pote, porque você já tem "
+        return (f"O 4-bet padrão aqui é {tam}, pequeno em relação ao pote, porque você já tem "
                 f"iniciativa e não precisa comprometer o stack pra negar a equity dele.")
     return f"O tamanho padrão neste spot é {tam}."
 

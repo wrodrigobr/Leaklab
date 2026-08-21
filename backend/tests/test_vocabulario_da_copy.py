@@ -25,6 +25,7 @@ novo.
 vocabulário demais transformaria o teste num revisor de estilo, e revisor que acusa o certo
 é desligado. Aqui só entra o que tem UM termo correto e um errado inequívoco.
 """
+import ast
 import os
 import re
 import sys
@@ -95,6 +96,86 @@ def test_o_varredor_ACHA_o_termo_errado():
     assert not any(re.search(p, bom, re.IGNORECASE) for p, _, _ in _PROIBIDOS), \
         'acusou o texto CORRETO — revisor que grita no certo é revisor desligado'
     print('OK  test_o_varredor_ACHA_o_termo_errado')
+
+
+# ── Travessão: proibido na copy, correto em intervalo numérico ────────────────────────────
+#
+# `feedback_no_dash_in_text`: a copy do produto não usa travessão. Mas a MEIA-RISCA entre
+# números ("SPR 1–3", "~30–35%") é intervalo, e ali o uso é certo — proibir os dois seria o
+# revisor gritando no lugar errado.
+_INTERVALO = re.compile(r'(\d\s*)[–—](\s*\d)')
+_TRAVESSAO = re.compile(r'\s+[–—]\s+')
+
+
+def _copy_do_arquivo(caminho):
+    """As strings que viram TEXTO PARA O JOGADOR, via AST.
+
+    Por AST e não por linha, e a razão é uma cicatriz de 21/08: consertando os travessões
+    eu apliquei por linha e mudei a docstring do módulo e um comentário inline
+    (`# ~4 min — cabe em qualquer dia`). O detector já era AST; a aplicação é que não era.
+
+    Comentário nem entra na árvore, e docstring dá para excluir pela posição — as duas
+    fontes de falso positivo somem por construção.
+    """
+    arvore = ast.parse(open(caminho, encoding='utf-8').read())
+    docs = set()
+    for no in ast.walk(arvore):
+        if isinstance(no, (ast.Module, ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+            corpo = getattr(no, 'body', None) or []
+            if corpo and isinstance(corpo[0], ast.Expr) \
+                    and isinstance(corpo[0].value, ast.Constant) \
+                    and isinstance(corpo[0].value.value, str):
+                docs.add((corpo[0].value.lineno, corpo[0].value.col_offset))
+    for no in ast.walk(arvore):
+        if isinstance(no, ast.Constant) and isinstance(no.value, str) \
+                and (no.lineno, no.col_offset) not in docs:
+            yield no.lineno, no.value
+
+
+def test_copy_nao_usa_travessao():
+    violacoes = []
+    strings = 0
+    for rel in _ARQUIVOS:
+        caminho = os.path.join(_BACKEND, rel)
+        if not os.path.exists(caminho):
+            continue
+        for n, txt in _copy_do_arquivo(caminho):
+            strings += 1
+            sem_intervalo = _INTERVALO.sub(lambda m: m.group(1) + '␟' + m.group(2), txt)
+            if _TRAVESSAO.search(sem_intervalo):
+                violacoes.append(f'  {rel}:{n}  {" ".join(txt.split())[:88]}')
+
+    assert strings > 300, f'só {strings} strings de copy lidas — o varredor parou de enxergar'
+    assert not violacoes, (
+        'travessão na copy (use vírgula, ponto ou dois pontos):\n' + '\n'.join(violacoes))
+    print(f'OK  test_copy_nao_usa_travessao ({strings} strings)')
+
+
+def test_intervalo_numerico_NAO_e_acusado():
+    """Contraprova. "SPR 1–3" e "~30–35%" são intervalos, e a meia-risca ali é correta.
+    Sem este caso, a regra acima poderia estar proibindo o certo junto com o errado."""
+    for bom in ('SPR 1–3 → top pair+ committed', 'você precisa de ~30–35% de equity'):
+        sem = _INTERVALO.sub(lambda m: m.group(1) + '␟' + m.group(2), bom)
+        assert not _TRAVESSAO.search(sem), f'acusou intervalo numérico legítimo: {bom}'
+
+    # E o inverso: travessão de pontuação TEM que ser pego.
+    ruim = 'Você já tem par ou melhor — mão feita com showdown value.'
+    sem = _INTERVALO.sub(lambda m: m.group(1) + '␟' + m.group(2), ruim)
+    assert _TRAVESSAO.search(sem), 'não pegou travessão de pontuação'
+    print('OK  test_intervalo_numerico_NAO_e_acusado')
+
+
+def test_o_varredor_ignora_comentario_e_docstring():
+    """O erro que este teste existe para não repetir: em 21/08 apliquei a correção por linha
+    e mudei a docstring do módulo e um comentário inline. Aqui se prova que o varredor
+    enxerga a copy e NÃO enxerga o texto de desenvolvedor."""
+    caminho = os.path.join(_BACKEND, _ARQUIVOS[0])
+    textos = [t for _, t in _copy_do_arquivo(caminho)]
+    junto = '\n'.join(textos)
+    assert 'cabe em qualquer dia' not in junto, 'leu um COMENTÁRIO como se fosse copy'
+    assert 'Protocolo de Progressão' not in junto, 'leu a DOCSTRING do módulo como copy'
+    assert len(textos) > 100, f'só {len(textos)} strings — o varredor não está lendo o arquivo'
+    print(f'OK  test_o_varredor_ignora_comentario_e_docstring ({len(textos)} strings de copy)')
 
 
 if __name__ == '__main__':
