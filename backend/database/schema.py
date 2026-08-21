@@ -1801,6 +1801,24 @@ def _run_migrations(conn):
         """)
         conn.execute("CREATE INDEX IF NOT EXISTS idx_evolution_reports_user "
                      "ON evolution_reports(user_id, created_at DESC)")
+        # Bot de boas-vindas dos fundadores no Telegram (espelha o bloco PG).
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS telegram_intros (
+                telegram_user_id INTEGER PRIMARY KEY,
+                chat_id          INTEGER,
+                nome             TEXT,
+                etapa            INTEGER NOT NULL DEFAULT 0,
+                apelido          TEXT,
+                formato          TEXT,
+                duvida           TEXT,
+                email            TEXT,
+                user_id          INTEGER REFERENCES users(id) ON DELETE SET NULL,
+                created_at       TEXT NOT NULL DEFAULT (datetime('now')),
+                completed_at     TEXT
+            )
+        """)
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_telegram_intros_user "
+                     "ON telegram_intros(user_id)")
         # SRS das cartas de memorizacao de range (espelha o bloco PG a prova de abort).
         conn.execute("""
             CREATE TABLE IF NOT EXISTS range_card_srs (
@@ -2587,6 +2605,24 @@ def _run_migrations(conn):
             # fatos, e enfiar os dois na mesma coluna apagaria o primeiro. Além disso é este
             # campo que dá a ORDEM DE CHEGADA — o "os 20 primeiros" da publicação.
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS founder_applied_at TIMESTAMP",
+            # Bot de boas-vindas dos fundadores no Telegram. A chave é o telegram_user_id
+            # porque é o único identificador que existe quando a conversa começa: a ligação
+            # com a conta do GrindLab (`user_id`) só acontece se a pessoa der o e-mail, e é
+            # opcional de propósito. Guardar a resposta sem vínculo é melhor que perdê-la.
+            """CREATE TABLE IF NOT EXISTS telegram_intros (
+                telegram_user_id BIGINT PRIMARY KEY,
+                chat_id          BIGINT,
+                nome             TEXT,
+                etapa            INTEGER NOT NULL DEFAULT 0,
+                apelido          TEXT,
+                formato          TEXT,
+                duvida           TEXT,
+                email            TEXT,
+                user_id          INTEGER REFERENCES users(id) ON DELETE SET NULL,
+                created_at       TIMESTAMP NOT NULL DEFAULT NOW(),
+                completed_at     TIMESTAMP
+            )""",
+            "CREATE INDEX IF NOT EXISTS idx_telegram_intros_user ON telegram_intros(user_id)",
         ]
         for _stmt in _safe:
             try:

@@ -8270,6 +8270,78 @@ def get_activation_funnel(days: int = 30) -> dict:
 FOUNDER_SOURCE = 'founder'
 
 
+def get_telegram_intro(telegram_user_id: int) -> dict | None:
+    conn = get_conn()
+    try:
+        r = _fetchone(conn, _adapt(
+            "SELECT * FROM telegram_intros WHERE telegram_user_id = ?"), (telegram_user_id,))
+        return dict(r) if r else None
+    finally:
+        conn.close()
+
+
+def save_telegram_intro(telegram_user_id: int, chat_id: int, nome: str,
+                        etapa: int, campos: dict | None = None,
+                        concluido: bool = False) -> None:
+    """Grava o avanço da conversa. Faz upsert manual (INSERT ou UPDATE) porque a sintaxe de
+    upsert diverge entre SQLite e Postgres e este projeto não usa ORM.
+
+    Quando o campo `email` chega, tenta ligar à conta do GrindLab. A ligação é um bônus:
+    se o e-mail não casar com nenhuma conta, a resposta é gravada do mesmo jeito. Perder o
+    que a pessoa escreveu porque ela digitou o e-mail errado seria o pior desfecho.
+    """
+    campos = dict(campos or {})
+    user_id = None
+    if campos.get('email'):
+        try:
+            u = get_user_by_email(campos['email'].strip().lower())
+            user_id = u['id'] if u else None
+        except Exception:
+            user_id = None
+
+    conn = get_conn()
+    try:
+        existe = _fetchone(conn, _adapt(
+            "SELECT telegram_user_id FROM telegram_intros WHERE telegram_user_id = ?"),
+            (telegram_user_id,))
+        agora = _now_str()
+        if not existe:
+            conn.execute(_adapt(
+                "INSERT INTO telegram_intros (telegram_user_id, chat_id, nome, etapa) "
+                "VALUES (?,?,?,?)"), (telegram_user_id, chat_id, nome, etapa))
+        sets, vals = ['etapa = ?', 'chat_id = ?'], [etapa, chat_id]
+        for c in ('apelido', 'formato', 'duvida', 'email'):
+            if campos.get(c) is not None:
+                sets.append(f'{c} = ?')
+                vals.append(campos[c])
+        if user_id is not None:
+            sets.append('user_id = ?')
+            vals.append(user_id)
+        if concluido:
+            sets.append('completed_at = ?')
+            vals.append(agora)
+        vals.append(telegram_user_id)
+        conn.execute(_adapt(
+            f"UPDATE telegram_intros SET {', '.join(sets)} WHERE telegram_user_id = ?"),
+            tuple(vals))
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def list_telegram_intros(limit: int = 200) -> list:
+    """As respostas de entrada, para o painel. A terceira pergunta (o que incomoda no jogo)
+    é o insumo mais direto de roadmap que este programa produz."""
+    conn = get_conn()
+    try:
+        return [dict(r) for r in conn.execute(_adapt(
+            "SELECT t.*, u.username AS conta FROM telegram_intros t "
+            "LEFT JOIN users u ON u.id = t.user_id "
+            "ORDER BY t.created_at DESC LIMIT ?"), (int(limit),)).fetchall()]
+    finally:
+        conn.close()
+
+
 def apply_as_founder(user_id: int) -> bool:
     """Registra a candidatura ao programa. Idempotente: candidatar-se duas vezes NÃO
     reescreve a data, senão o jogador perderia o lugar na fila ao clicar de novo — e a

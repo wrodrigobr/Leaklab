@@ -8782,6 +8782,98 @@ def admin_activation_funnel():
     return jsonify(get_activation_funnel(max(1, min(days, 365))))
 
 
+# ── Bot de boas-vindas dos fundadores (Telegram) ──────────────────────────────
+
+def _telegram_enviar(chat_id: int, texto: str) -> bool:
+    """Envia mensagem pelo bot. Sem token configurado, é no-op silencioso (dev/testes)."""
+    token = os.environ.get('TELEGRAM_BOT_TOKEN', '').strip()
+    if not token:
+        return False
+    try:
+        import requests
+        r = requests.post(f'https://api.telegram.org/bot{token}/sendMessage',
+                          json={'chat_id': chat_id, 'text': texto,
+                                'disable_web_page_preview': True}, timeout=10)
+        if not r.ok:
+            log.warning("telegram sendMessage falhou: %s %s", r.status_code, r.text[:200])
+        return r.ok
+    except Exception:
+        log.exception("telegram sendMessage erro")
+        return False
+
+
+@app.route('/telegram/webhook', methods=['POST'])
+def telegram_webhook():
+    """Recebe os updates do Telegram.
+
+    Endpoint PÚBLICO por natureza (o Telegram chama de fora), então a autenticação é o
+    header secreto configurado no setWebhook. Sem `TELEGRAM_WEBHOOK_SECRET` no ambiente a
+    rota recusa tudo: um webhook aberto seria uma porta para qualquer um mandar o bot
+    escrever no grupo dos fundadores.
+
+    Responde 200 mesmo quando ignora o update, de propósito: o Telegram reenvia o que não
+    recebe 200, e um erro nosso viraria laço de reentrega.
+    """
+    segredo = os.environ.get('TELEGRAM_WEBHOOK_SECRET', '').strip()
+    if not segredo:
+        return jsonify({'error': 'not configured'}), 404
+    enviado = request.headers.get('X-Telegram-Bot-Api-Secret-Token', '')
+    import hmac as _hmac
+    if not _hmac.compare_digest(enviado, segredo):
+        log.warning("telegram webhook: segredo invalido")
+        return jsonify({'error': 'forbidden'}), 403
+
+    from leaklab.telegram_bot import (ETAPA_FIM, extrair_evento, primeira_pergunta,
+                                      proximo_passo, texto_boas_vindas_grupo)
+    from database.repositories import get_telegram_intro, save_telegram_intro
+
+    ev = extrair_evento(request.get_json(silent=True) or {})
+    if not ev or not ev.get('user_id'):
+        return jsonify({'ok': True, 'ignorado': True})
+
+    try:
+        if ev['tipo'] == 'entrou_no_grupo':
+            usuario_bot = os.environ.get('TELEGRAM_BOT_USERNAME', '').strip().lstrip('@')
+            _telegram_enviar(ev['chat_id'], texto_boas_vindas_grupo(ev['nome'], usuario_bot))
+            return jsonify({'ok': True, 'acao': 'boas_vindas'})
+
+        # As perguntas só acontecem na conversa privada. No grupo o bot fica quieto, senão
+        # vira ruído em cima da conversa dos fundadores, que é o que o grupo existe para ter.
+        if ev.get('chat_tipo') != 'private':
+            return jsonify({'ok': True, 'ignorado': 'grupo'})
+
+        intro = get_telegram_intro(ev['user_id'])
+        etapa = int((intro or {}).get('etapa') or 0)
+        texto = ev['texto'] or ''
+        if texto.strip().startswith('/start'):
+            # /start não é resposta de pergunta nenhuma: só abre (ou reabre) a conversa.
+            if not intro:
+                save_telegram_intro(ev['user_id'], ev['chat_id'], ev['nome'], 0)
+            _telegram_enviar(ev['chat_id'],
+                             primeira_pergunta() if etapa < ETAPA_FIM
+                             else 'Você já respondeu as três. Obrigado.')
+            return jsonify({'ok': True, 'acao': 'start'})
+
+        passo = proximo_passo(etapa, texto)
+        save_telegram_intro(ev['user_id'], ev['chat_id'], ev['nome'],
+                            passo['nova_etapa'], passo['gravar'], concluido=passo['fim'])
+        _telegram_enviar(ev['chat_id'], passo['responder'])
+        return jsonify({'ok': True, 'etapa': passo['nova_etapa']})
+    except Exception:
+        # 200 mesmo no erro: 5xx faz o Telegram reenviar o mesmo update sem parar.
+        log.exception("telegram webhook: falha tratando update")
+        return jsonify({'ok': False}), 200
+
+
+@app.route('/admin/telegram/intros', methods=['GET'])
+@require_admin
+def admin_telegram_intros():
+    """As respostas de entrada. A terceira pergunta é o insumo de roadmap mais direto que
+    o programa produz: é o jogador dizendo, com as palavras dele, o que o incomoda."""
+    from database.repositories import list_telegram_intros
+    return jsonify({'intros': list_telegram_intros()})
+
+
 @app.route('/player/founder/apply', methods=['POST'])
 @require_auth
 def player_founder_apply():

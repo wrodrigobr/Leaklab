@@ -89,7 +89,7 @@ SUITES = {
                   'test_catalogo_de_treinos.py', 'test_mao_da_arvore.py',
                   'test_range_classes.py', 'test_mao_completa.py',
                   'test_funil_ativacao.py', 'test_dns_email_health.py',
-                  'test_programa_fundadores.py'],
+                  'test_programa_fundadores.py', 'test_telegram_bot.py'],
     'regression':['test_tournament.py', 'test_multi_decision.py', 'test_partygaming_parser.py',
                   'test_acr_parser.py', 'test_coinpoker_parser.py',
                   'test_coinpoker_allin.py',
