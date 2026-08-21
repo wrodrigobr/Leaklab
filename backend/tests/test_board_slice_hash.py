@@ -54,7 +54,25 @@ _ARQUIVOS = [
 
 # Recebe o board pronto de quem chama, pelo contrato acima. `insert_gto_nodes` ingere o RESULTADO
 # do solver e as importações de range, e nos dois casos o board já vem na street correta.
-_RECEBE_PRONTO = {'insert_gto_nodes'}
+# `_hashes_da_linha` monta as variantes de hash de UMA linha e recebe `board_for_hash`, que os
+# dois chamadores (`app.py`) fatiam antes de passar.
+#
+# **A allowlist não é declaração de confiança: é contrato VERIFICADO.** Até 21/08 ela apenas
+# pulava a função, e quem a alimentasse com board inteiro passava batido — o buraco pelo qual
+# um `_hashes_da_linha` mal chamado entraria sem acusar nada. `test_allowlist_recebe_de_quem_
+# fatia` confere cada chamador.
+#
+# São DOIS contratos, e misturá-los foi o que quase me fez enfraquecer o guarda:
+#
+#   `_INGERE_EXTERNO`     — o board vem de fora (payload do solver, arquivo de ranges) e já
+#                           chega na street certa. Não há como conferir isso estaticamente:
+#                           o dado nasce fora do nosso código.
+#   `_RECEBE_DE_QUEM_FATIA` — o board vem de OUTRA função nossa. Aqui dá para cobrar, e o
+#                           `test_allowlist_recebe_de_quem_fatia` cobra de cada chamador.
+#
+_INGERE_EXTERNO = {'insert_gto_nodes'}
+_RECEBE_DE_QUEM_FATIA = {'_hashes_da_linha'}
+_RECEBE_PRONTO = _INGERE_EXTERNO | _RECEBE_DE_QUEM_FATIA
 
 
 def _apelidos(arvore, alvo):
@@ -105,8 +123,11 @@ def test_todo_hash_recebe_board_fatiado():
 
         for func in [n for n in ast.walk(arvore)
                      if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))]:
-            if func.name in _RECEBE_PRONTO:
-                continue
+            # A allowlist isenta da VALIDAÇÃO, não da CONTAGEM. `vistos` existe para provar
+            # que o teste ainda enxerga as chamadas (o zero tranquilizador de um varredor que
+            # parou de casar nomes); descontá-lo ao isentar uma função faria o próprio guarda
+            # de detecção encolher junto com a allowlist.
+            isenta = func.name in _RECEBE_PRONTO
             # nomes que RECEBERAM a fatia dentro desta função
             fatiados = set()
             for no in ast.walk(func):
@@ -118,6 +139,8 @@ def test_todo_hash_recebe_board_fatiado():
                 if not (isinstance(no, ast.Call) and _nome_da_func(no) in nomes_hash):
                     continue
                 vistos += 1
+                if isenta:
+                    continue
                 arg = _arg_board(no)
                 if arg is None:
                     continue
@@ -167,9 +190,63 @@ def test_board_inteiro_produz_hash_DIFERENTE_do_fatiado():
     print("OK  test_board_inteiro_produz_hash_DIFERENTE_do_fatiado")
 
 
+def test_allowlist_recebe_de_quem_fatia():
+    """Quem está em `_RECEBE_PRONTO` promete receber o board já fatiado. Este teste cobra a
+    promessa de cada CHAMADOR, em vez de acreditar nela.
+
+    Sem isto a allowlist era um buraco: bastava alguém entrar nela para que o board inteiro
+    passasse batido — e a única evidência de que estava tudo bem seria o comentário ao lado
+    do nome. Comentário não é evidência.
+    """
+    violacoes = []
+    conferidos = 0
+
+    for rel in _ARQUIVOS:
+        caminho = os.path.join(_BACKEND, rel)
+        if not os.path.exists(caminho):
+            continue
+        arvore = ast.parse(open(caminho, encoding='utf-8').read())
+        nomes_fatia = _apelidos(arvore, _FATIA)
+
+        for func in [n for n in ast.walk(arvore)
+                     if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))]:
+            # nomes que receberam a fatia DENTRO desta função chamadora
+            fatiados = set()
+            for no in ast.walk(func):
+                if isinstance(no, ast.Assign) and isinstance(no.value, ast.Call) \
+                        and _nome_da_func(no.value) in nomes_fatia:
+                    fatiados.update(a.id for a in no.targets if isinstance(a, ast.Name))
+
+            for no in ast.walk(func):
+                if not (isinstance(no, ast.Call) and _nome_da_func(no) in _RECEBE_DE_QUEM_FATIA):
+                    continue
+                if func.name in _RECEBE_PRONTO:
+                    continue          # recursão/encadeamento entre as próprias allowlisted
+                conferidos += 1
+                # Basta UM argumento vir da fatia: a assinatura varia por função, e o que
+                # importa é que o board entregue tenha passado por `board_for_street`.
+                argumentos = list(no.args) + [k.value for k in no.keywords]
+                ok = any(
+                    (isinstance(a, ast.Name) and a.id in fatiados)
+                    or (isinstance(a, ast.Call) and _nome_da_func(a) in nomes_fatia)
+                    for a in argumentos)
+                if not ok:
+                    violacoes.append(
+                        f"  {rel}:{no.lineno} em {func.name}(): chamada a "
+                        f"{_nome_da_func(no)}() sem board vindo de {_FATIA}()")
+
+    assert conferidos > 0, (
+        'nenhuma chamada a função da allowlist foi encontrada — o teste não está medindo '
+        'nada (os arquivos varridos ou os nomes da allowlist mudaram?)')
+    assert not violacoes, (
+        'função da allowlist recebendo board NÃO fatiado:\n' + '\n'.join(violacoes))
+    print(f"OK  test_allowlist_recebe_de_quem_fatia ({conferidos} chamadas conferidas)")
+
+
 if __name__ == '__main__':
     falhas = 0
     for t in (test_todo_hash_recebe_board_fatiado,
+              test_allowlist_recebe_de_quem_fatia,
               test_fatia_corta_por_street,
               test_board_inteiro_produz_hash_DIFERENTE_do_fatiado):
         try:
@@ -179,5 +256,5 @@ if __name__ == '__main__':
             print(f"FALHOU  {t.__name__}: {e}")
     # Formato COM barras: o runner faz `split('Passed:')[1].split('|')[0]`, e sem o separador
     # ele estoura em vez de contar — o teste passaria e a suíte inteira quebraria.
-    print(f"\nTotal: 3 | Passed: {3 - falhas} | Failed: {falhas}")
+    print(f"\nTotal: 4 | Passed: {4 - falhas} | Failed: {falhas}")
     sys.exit(1 if falhas else 0)

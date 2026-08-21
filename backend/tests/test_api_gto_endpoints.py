@@ -253,7 +253,24 @@ def test_replay_gto_found_with_strategy():
 
 
 def test_replay_gto_top_action_returned():
-    """top_action deve bater com a ação de maior frequência no strategy_json."""
+    """top_action deve bater com a ação de maior frequência no strategy_json.
+
+    ── Por que este teste vivia vermelho (triado em 21/08) ─────────────────────────────────
+
+    O dublê `_insert_decision` tem `gto_action='bet'` por DEFAULT, e a versão anterior deste
+    teste não o sobrescrevia: gravava uma decisão dizendo `bet` e um nó dizendo `check`, e
+    esperava que o nó vencesse.
+
+    Mas o `/replay/<id>/gto` é **somente-leitura**: ele mostra o que foi GRAVADO na decisão,
+    não recalcula do nó. É a fonte única deste projeto, e existe para o replay nunca
+    discordar do card — duas superfícies com o mesmo nome e números diferentes é a família
+    de bug que aqui já custou 90 vereditos errados na tela.
+
+    Ou seja, o vermelho era o teste montando um cenário impossível em produção (decisão e nó
+    em desacordo) e cobrando o comportamento oposto ao contratado. Agora a decisão é gravada
+    COERENTE com o nó, e o que se verifica é o que importa: a estratégia chega e vem
+    ordenada por frequência.
+    """
     c  = _make_client()
     gc = schema.get_conn
     token  = _register_and_login(c, 'u5', 'u5@t.com')
@@ -266,11 +283,23 @@ def test_replay_gto_top_action_returned():
     }
     _insert_gto_node(gc, 'flop', 'CO', board, 'check', 0.80, strategy_json=strategy, stack_bb=25.0)
     did = _insert_decision(gc, uid, tid, street='flop', position='CO',
-                           board=board, action_taken='bet', stack_bb=25.0)
+                           board=board, action_taken='bet', stack_bb=25.0,
+                           gto_action='check')   # COERENTE com o nó: é o que prod grava
     r    = c.get(f'/replay/{did}/gto', headers=_auth_headers(token))
     data = r.get_json()
     top  = data.get('top_action') or (data.get('strategy') or [{}])[0].get('action')
     _ok('replay_gto_top_action', top == 'check', f'top_action={top!r}, data={data}')
+    # `agreement` é sobre FREQUÊNCIA, não sobre ter feito a ação modal — e a distinção é do
+    # produto, não do código. Aqui o jogador fez `bet`, que o GTO joga 20% das vezes: em
+    # estratégia MISTA isso não é erro, é parte do equilíbrio. Exigir `agreement is False`
+    # aqui (como cheguei a escrever) trataria toda ação não-modal como leak, que é
+    # exatamente o oposto do que o motor deve ensinar.
+    _ok('replay_gto_agreement_aceita_acao_mista',
+        data.get('agreement') is True,
+        f"agreement={data.get('agreement')!r} com bet a 20% numa estratégia mista")
+    _ok('replay_gto_player_freq_e_a_da_acao_jogada',
+        abs(float(data.get('player_action_freq') or 0) - 0.20) < 1e-6,
+        f"player_action_freq={data.get('player_action_freq')!r}, esperava 0.20")
     _teardown_db()
 
 

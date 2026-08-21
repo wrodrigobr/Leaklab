@@ -293,24 +293,42 @@ def test_pote_em_fichas_nao_e_servido():
     print('OK  test_pote_em_fichas_nao_e_servido')
 
 
-def test_no_sem_a_mao_na_tabela_nao_e_servido():
-    """34% do acervo real tem a mão do herói fora da `hand_table` — uma tabela por árvore, do
-    range de UM jogador. O lugar de descobrir isso é a seleção, não a correção."""
+def test_a_mao_servida_ESTA_sempre_na_tabela():
+    """A mão entregue ao jogador tem que ter linha na `hand_table` — é dela que sai o gabarito.
+
+    ── O que mudou, e por que este teste foi reescrito (triado em 21/08) ───────────────────
+
+    A versão anterior exigia `proximo_spot() is None` quando a mão do HERÓI estava fora da
+    tabela ("34% do acervo real"). Isso era o contrato até a **Fase 2 (17/08)**, quando o
+    pool passou a sortear uma mão DA PRÓPRIA TABELA e servir o spot com ela — destravando
+    justamente esses 34%, já que a tabela tem mediana de 462 mãos por board.
+
+    O teste ficou vermelho por cobrar o comportamento antigo depois da mudança, e o vermelho
+    passou despercebido porque o CI está bloqueado. **O invariante de verdade nunca foi "não
+    sirva o nó", era "não sirva mão sem gabarito"** — e é esse que fica travado aqui.
+    """
     ruim = _no(hash_='ruim', tabela_mao=[{'hand': '2c2d', 'weight': 9,
                                           'freqs': [1.0, 0.0], 'evs': [1, 0]}])
     orig = _com_nos([ruim])
     try:
-        assert TP.proximo_spot(rng=random.Random(1)) is None, 'serviu no nao-gradeavel'
-    finally:
-        TP.get_conn = orig
-    # e com um bom junto, serve o bom
-    orig = _com_nos([ruim, _no(hash_='bom')])
-    try:
         s = TP.proximo_spot(rng=random.Random(1))
-        assert s is not None and s['spot_hash'] == 'bom', s
+        assert s is not None, 'a Fase 2 devia destravar este nó servindo a mão da tabela'
+        assert s['hand'] == '2c2d', (
+            f"serviu {s['hand']!r}, que não tem linha na hand_table — sem gabarito da mão, "
+            'a correção compara com a ação de topo e ensina o errado')
     finally:
         TP.get_conn = orig
-    print('OK  test_no_sem_a_mao_na_tabela_nao_e_servido')
+
+    # CONTROLE: tabela VAZIA não tem mão nenhuma para sortear, e aí não há o que servir.
+    # Sem este caso, o teste acima passaria mesmo que o pool ignorasse a tabela por completo.
+    sem_tabela = _no(hash_='sem_tabela', tabela_mao=[])
+    orig = _com_nos([sem_tabela])
+    try:
+        assert TP.proximo_spot(rng=random.Random(1)) is None, \
+            'serviu spot de árvore SEM hand_table — não há gabarito por mão nenhum'
+    finally:
+        TP.get_conn = orig
+    print('OK  test_a_mao_servida_ESTA_sempre_na_tabela')
 
 
 def test_a_acao_certa_e_sorteada_antes_do_no():
