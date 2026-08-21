@@ -644,7 +644,10 @@ def concept_for_spot(spot: dict, grade: dict | None = None) -> dict:
         if pos == 'BB':
             principio = ("Você já tem 1bb no pote e paga barato pra ver o flop, mas joga a mão "
                          "inteira fora de posição.")
-            regra = "Defenda o BB largo em preço bom, e aperte quando for jogar sem posição."
+            # O preço justifica defender mais, mas quem escolhe as mãos é a posição — e é
+            # essa tensão que a regra tem que carregar, não duas ordens soltas.
+            regra = ("Com preço bom, defenda o BB com um range mais amplo. Mas escolha "
+                     "mãos que você consiga jogar fora de posição.")
         else:
             principio = ("Do SB você fica fora de posição o resto da mão e ainda tem o BB pra "
                          "agir atrás de você.")
@@ -853,7 +856,7 @@ def sizing_note(spot: dict, raise_to_bb: float | None, recomendado: str | None =
                 f"das vezes e mantém o pote controlado quando alguém paga.")
     if scen == 'vs_rfi':
         return (f"O 3-bet padrão aqui é {tam}. Fora de posição se 3-beta maior (você precisa "
-                f"cobrar caro por jogar sem posição); em posição, menor já basta.")
+                f"cobrar caro por jogar fora de posição); em posição, menor já basta.")
     if scen == 'vs_3bet':
         return (f"O 4-bet padrão aqui é {tam} — pequeno em relação ao pote, porque você já tem "
                 f"iniciativa e não precisa comprometer o stack pra negar a equity dele.")

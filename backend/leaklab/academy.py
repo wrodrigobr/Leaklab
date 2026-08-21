@@ -1607,7 +1607,7 @@ def _open_size_question() -> dict:
             if curto else
             f'A {stack} BB você está na faixa em que dá para jogar pós-flop, e o open padrão é '
             f'pequeno: 2 a 2,5 BB. Abrir grande arrisca mais fichas sem aumentar o seu fold equity '
-            f'na mesma proporção, e ainda infla o pote nas mãos em que você fica sem posição.'
+            f'na mesma proporção, e ainda infla o pote nas mãos em que você fica fora de posição.'
         ),
         'mental_tip': ('**Stack curto não abre pequeno.** Entre com força ou saia.' if curto else
                        '**Open de torneio:** pequeno, ~2 a 2,5 BB.'),
@@ -1648,7 +1648,7 @@ def _threebet_size_question() -> dict:
             f'que isso dá odds boas demais para o vilão pagar, e muito maior compromete fichas à toa.'
             if ip else
             f'Fora de posição você cobra mais: ~4x o open, ou seja {open_bb:.1f} × 4 ≈ {certo:.1f} '
-            f'BB. O tamanho maior compensa jogar as próximas ruas sem posição e nega odds ao vilão.'
+            f'BB. O tamanho maior compensa jogar as próximas ruas fora de posição e nega odds ao vilão.'
         ),
         'mental_tip': ('**3-bet em posição:** ~3x o open.' if ip else
                        '**3-bet fora de posição:** ~4x o open, maior que em posição.'),
