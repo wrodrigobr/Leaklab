@@ -1254,7 +1254,7 @@ def _bubble_defense_question() -> dict:
         'question': (
             f'**Bolha do torneio.** Você está no **BB** com stack médio e o **{opener}** '
             f'abre um min-raise tentando roubar. Contando só fichas, valeria a pena defender '
-            f'bem largo (uns **{wide_pct}%** das mãos). Considerando o ICM, o que você faz?'
+            f'um range bem amplo (uns **{wide_pct}%** das mãos). Considerando o ICM, o que você faz?'
         ),
         'options': [
             'Defendo MENOS: perder aqui pode me eliminar',
@@ -1263,11 +1263,11 @@ def _bubble_defense_question() -> dict:
         ],
         'correct_index': 0,
         'explanation': (
-            'Defender largo só compensa quando perder o pote custa **apenas fichas**. Na bolha, '
+            'Defender muitas mãos só compensa quando perder o pote custa **apenas fichas**. Na bolha, '
             'perder pode significar sair sem prêmio, então o custo de defender e errar dispara. '
             'Resultado: você defende **menos** que o normal, não mais. Contra o mesmo min-raise, '
             'a frequência de fold do BB, que giraria em torno de ~20% contando fichas, sobe para '
-            'perto de ~35% perto do prêmio. Insistir em defender largo na bolha é um dos '
+            'perto de ~35% perto do prêmio. Insistir em defender muitas mãos na bolha é um dos '
             'vazamentos mais caros do torneio.'
         ),
         'mental_tip': (
@@ -1421,11 +1421,11 @@ def _mw_middle_question() -> dict:
             f'Multiway: {opener} apostou, você está no **{seat}** (no meio) e ainda há '
             f'jogadores para agir depois. Ensanduichado, a postura correta é:'
         ),
-        'options': ['Pagar largo', 'Jogar apertado', 'Aumentar como blefe quase sempre'],
+        'options': ['Pagar muitas mãos', 'Jogar apertado', 'Aumentar como blefe quase sempre'],
         'correct_index': 1,
         'explanation': (
             'No meio você ainda pode levar um aumento de quem está atrás e enfrenta duas mãos '
-            'desconhecidas. Siga só com mãos fortes; pagar largo aqui vaza fichas.'
+            'desconhecidas. Siga só com mãos fortes; pagar muitas mãos aqui vaza fichas.'
         ),
         'mental_tip': '**Assento do meio = o pior lugar.** Aperte: você joga sem informação e sob risco de raise.',
         'context': {}, 'xp_value': 20,
@@ -2461,7 +2461,7 @@ def _pos_best_question() -> dict:
 def _pos_range_question() -> dict:
     return {
         'type': 'pos_range',
-        'question': 'De qual posição você deve abrir MAIS mãos (uma range mais larga)?',
+        'question': 'De qual posição você deve abrir MAIS mãos (uma range mais ampla)?',
         'options': ['Do button (BTN)', 'Do under the gun (UTG)', 'Tanto faz'],
         'correct_index': 0,
         'explanation': (
@@ -2613,7 +2613,7 @@ def _exploit_nit_question() -> dict:
         'question': 'Contra um nit (joga super apertado e folda demais), qual o ajuste?',
         'options': [
             'Blefe e roube mais; mas folde suas marginais quando ELE apostar',
-            'Pague largo todas as apostas dele',
+            'Pague todas as apostas dele',
             'Nunca blefe contra ele',
         ],
         'correct_index': 0,
@@ -2633,16 +2633,16 @@ def _exploit_lag_question() -> dict:
             'Contra um jogador muito agressivo que blefa demais (LAG ou maníaco), qual o ajuste?'
         ),
         'options': [
-            'Pague mais largo (bluff-catch) e não folde demais à pressão dele',
+            'Pague com range mais amplo (bluff-catch) e não folde demais à pressão dele',
             'Folde mais para não se expor',
             'Blefe por cima dele sempre',
         ],
         'correct_index': 0,
         'explanation': (
-            'Se ele blefa demais, as suas mãos médias viram bluff-catchers: pague mais largo e não '
+            'Se ele blefa demais, as suas mãos médias viram bluff-catchers: pague com um range mais amplo e não '
             'sobre-folde à agressão dele. Deixe-o blefar contra a sua mão em vez de fugir.'
         ),
-        'mental_tip': '**Vs agressor: pague mais largo, não sobre-folde.**',
+        'mental_tip': '**Vs agressor: pague com range mais amplo, não sobre-folde.**',
         'context': {}, 'xp_value': 20,
     }
 
@@ -2697,16 +2697,16 @@ def _pko_power_question() -> dict:
             'sua decisão de call?'
         ),
         'options': [
-            'Pague mais largo: o bounty adiciona valor ao call',
+            'Pague com range mais amplo: o bounty adiciona valor ao call',
             'Aperte mais: o bounty é só risco',
             'Não muda nada',
         ],
         'correct_index': 0,
         'explanation': (
             'O bounty é dinheiro extra que você ganha ao eliminar o vilão. Isso adiciona valor ao '
-            'call, então você pode pagar mais largo do que num torneio normal, desde que você o cubra.'
+            'call, então você pode pagar com um range mais amplo do que num torneio normal, desde que você o cubra.'
         ),
-        'mental_tip': '**Cobre o vilão? O bounty deixa o call mais largo.**',
+        'mental_tip': '**Cobre o vilão? O bounty deixa o call mais amplo.**',
         'context': {}, 'xp_value': 20,
     }
 
@@ -2862,10 +2862,10 @@ def _pf_position_question() -> dict:
         'correct_index': 0,
         'explanation': (
             'Quanto mais tarde a sua posição, menos jogadores faltam agir atrás, então é menos provável '
-            'que alguém acorde com uma mão forte. Mais fold equity = você shova mais largo. No UTG, com a '
+            'que alguém acorde com uma mão forte. Mais fold equity = você shova um range mais amplo. No UTG, com a '
             'mesa toda atrás, o range de shove segue apertado mesmo com stack curto.'
         ),
-        'mental_tip': '**A posição manda: botão shova largo, UTG segue tight.**',
+        'mental_tip': '**A posição manda: botão shova mais mãos, UTG segue tight.**',
         'context': {}, 'xp_value': 20,
     }
 
@@ -2973,17 +2973,17 @@ def _pf_ante_question() -> dict:
         'options': [
             'Alarga, porque há mais fichas mortas no pote e o shove precisa funcionar menos vezes',
             'Não muda, porque o ante afeta todo mundo igualmente',
-            'Aperta, porque com ante os oponentes pagam mais largo',
+            'Aperta, porque com ante os oponentes pagam com range mais amplo',
         ],
         'correct_index': 0,
         'explanation': (
             'O ante põe fichas no pote que não pertencem a ninguém. Isso melhora o preço do seu '
             'shove: você arrisca o mesmo stack para ganhar um pote maior, então ele precisa dar '
-            'certo menos vezes para valer a pena. É verdade que os oponentes também pagam mais '
-            'largo, mas o efeito no atacante é maior, porque ele fatura o pote inteiro toda vez '
+            'certo menos vezes para valer a pena. É verdade que os oponentes também pagam com um '
+            'range mais amplo, mas o efeito no atacante é maior, porque ele fatura o pote toda vez '
             'que todos foldam. Ignorar isso é o motivo clássico de jogar apertado demais em MTT.'
         ),
-        'mental_tip': '**Com ante, shove mais largo. Fichas mortas no pote pagam o seu risco.**',
+        'mental_tip': '**Com ante, shove um range mais amplo. Fichas mortas no pote pagam o seu risco.**',
         'context': {}, 'xp_value': 25,
     }
 
@@ -3003,11 +3003,11 @@ def _pf_behind_question() -> dict:
         ],
         'correct_index': 1,
         'explanation': (
-            'Stack curto atrás paga larguíssimo: com 3bb ou 4bb o jogador já está praticamente '
+            'Stack curto atrás paga quase qualquer mão: com 3bb ou 4bb o jogador já está praticamente '
             'comprometido, e o preço que ele recebe torna correto pagar com quase qualquer coisa. '
             'A sua fold equity, que é metade do lucro do shove, evapora. Contra stacks confortáveis '
-            'acontece o oposto, eles têm o que preservar e foldam mais, então você shova mais '
-            'largo. Olhar só o próprio stack é o erro mais comum em push/fold.'
+            'acontece o oposto, eles têm o que preservar e foldam mais, então você shova um range '
+            'mais amplo. Olhar só o próprio stack é o erro mais comum em push/fold.'
         ),
         'mental_tip': '**Stack curto atrás mata a sua fold equity. Aperte contra quem não tem como foldar.**',
         'context': {}, 'xp_value': 25,
@@ -3026,14 +3026,14 @@ def _pf_reshove_question() -> dict:
             'Diferente: há dinheiro morto no pote e um só adversário definido, então mãos que '
             'dominam o range de abertura dele sobem de valor',
             'O mesmo, porque o stack é o mesmo',
-            'Sempre mais largo, porque o open dele mostra fraqueza',
+            'Sempre com range mais amplo, porque o open dele mostra fraqueza',
         ],
         'correct_index': 0,
         'explanation': (
             'Duas coisas mudaram. Primeiro, o open dele já pôs fichas no pote que você fatura se '
             'ele foldar, o que melhora o preço do seu risco. Segundo, você deixou de enfrentar a '
             'mesa inteira e passou a enfrentar um range conhecido: mãos como A8o ou KTo, medíocres '
-            'para abrir de primeira, ficam boas quando dominam o que ele abre. Não é "mais largo" '
+            'para abrir de primeira, ficam boas quando dominam o que ele abre. Não é "mais amplo" '
             'por reflexo, é outro formato de range.'
         ),
         'mental_tip': '**Reshove tem dinheiro morto e alvo definido. Não é o mesmo range do open-shove.**',
@@ -3497,17 +3497,17 @@ def _bvb_bb_question() -> dict:
         'type': 'bvb_bb',
         'question': 'No big blind, contra um open do small blind (todos foldaram até ele), o padrão é:',
         'options': [
-            'Defender MUITO largo: você já tem 1bb no pote, fecha a ação e joga em posição',
+            'Defender MUITAS MÃOS: você já tem 1bb no pote, fecha a ação e joga em posição',
             'Foldar quase tudo, porque você está fora de posição',
             'Só continuar com mãos premium',
         ],
         'correct_index': 0,
         'explanation': (
             'No BB você já postou 1bb, então tem um preço ótimo para pagar, e ainda joga em posição contra '
-            'o SB no pós-flop. Os dois fatores mandam você defender larguíssimo. Overfoldar o BB nessa '
+            'o SB no pós-flop. Os dois fatores mandam você defender um range amplíssimo. Overfoldar o BB nessa '
             'situação é um dos leaks mais comuns e mais caros do MTT.'
         ),
-        'mental_tip': '**BB vs SB: defenda muito largo. Preço ótimo + posição. Overfoldar o BB é leak grande.**',
+        'mental_tip': '**BB vs SB: defenda um range muito amplo. Preço ótimo + posição. Overfoldar o BB é leak grande.**',
         'context': {}, 'xp_value': 20,
     }
 
@@ -3517,17 +3517,17 @@ def _bvb_sb_question() -> dict:
         'type': 'bvb_sb',
         'question': 'Você é o small blind e todos foldaram até você. Foldar demais aqui é ruim porque:',
         'options': [
-            'Você enfrenta só UM jogador (o BB) e já tem dinheiro no pote: dá para atacar largo',
+            'Você enfrenta só UM jogador (o BB) e já tem dinheiro no pote: dá para atacar com range amplo',
             'O small blind é a melhor posição da mesa',
             'O big blind nunca defende, então é fold grátis',
         ],
         'correct_index': 0,
         'explanation': (
             'Folded to você no SB, resta um só adversário (o BB) e você já tem 0,5bb investido. Isso justifica '
-            'atacar com uma range larga (abrir ou completar). Foldar demais o SB é passivo e entrega os blinds '
+            'atacar com uma range ampla (abrir ou completar). Foldar demais o SB é passivo e entrega os blinds '
             'sem luta. Cuidado só com o pós-flop, onde você joga fora de posição.'
         ),
-        'mental_tip': '**SB folded-to-you: ataque largo. Um só vilão + dinheiro no pote. Mas você fica OOP.**',
+        'mental_tip': '**SB folded-to-you: ataque com range amplo. Um só vilão + dinheiro no pote. Mas você fica OOP.**',
         'context': {}, 'xp_value': 20,
     }
 
@@ -3544,7 +3544,7 @@ def _bvb_position_question() -> dict:
         'correct_index': 0,
         'explanation': (
             'No pós-flop o small blind age primeiro (fora de posição) e o big blind age por último (em posição). '
-            'Por isso o BB pode jogar ainda mais largo, e o SB precisa ser mais seletivo e cuidadoso ao construir '
+            'Por isso o BB pode jogar um range ainda mais amplo, e o SB precisa ser mais seletivo e cuidadoso ao construir '
             'o pote sem a informação da ação do vilão.'
         ),
         'mental_tip': '**BvB: o BB age por último no pós-flop (IP); o SB é OOP. Posição favorece o BB.**',

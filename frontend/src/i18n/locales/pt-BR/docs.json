@@ -148,7 +148,7 @@
     "p1": "O <strong>Leak ROI</strong> combina a frequência de cada spot de erro com o custo em EV de errar ali, priorizando o que mais pesa no longo prazo. Spots frequentes de custo baixo podem importar mais que spots raros de custo alto, e o ROI captura isso.",
     "realeq_name": "Equity real vs mão mostrada",
     "realeq_measures": "Equity da sua mão contra a mão que o oponente revelou no showdown, calculada carta a carta em cada street (aparece no replayer quando exatamente um oponente mostrou as cartas).",
-    "realeq_interpret": "É um fato do histórico, para revisão — não julga a decisão. Na mesa você enfrenta a range inteira do oponente, e o veredito é calculado contra ela; julgar pela mão que apareceu é avaliar pelo resultado."
+    "realeq_interpret": "É um fato do histórico, para revisão. Não julga a decisão. Na mesa você enfrenta a range inteira do oponente, e o veredito é calculado contra ela; julgar pela mão que apareceu é avaliar pelo resultado."
   },
   "gto_method": {
     "title": "Metodologia de Classificação GTO",
@@ -207,7 +207,7 @@
     "pre_ft_pko": "Atenuado (o bounty alivia a pressão de bubble)",
     "final_classic": "Pressão máxima (ICM puro)",
     "final_pko": "Mantém pressão alta (o efeito do bounty sustenta a agressão)",
-    "p2": "Os ajustes para PKO refletem a mudança qualitativa principal da teoria de bounty: a equity necessária para arriscar o stack cai e a agressão é mais recompensada do que num MTT clássico equivalente. Em todas as decisões pré-flop, abertura (RFI), defesa contra um open, squeeze e respostas a re-raises (3-bet, 4-bet, squeeze enfrentado), o sistema consulta ranges GTO específicos de PKO, mais largos que os de um MTT clássico equivalente, refletindo a recompensa do bounty."
+    "p2": "Os ajustes para PKO refletem a mudança qualitativa principal da teoria de bounty: a equity necessária para arriscar o stack cai e a agressão é mais recompensada do que num MTT clássico equivalente. Em todas as decisões pré-flop, abertura (RFI), defesa contra um open, squeeze e respostas a re-raises (3-bet, 4-bet, squeeze enfrentado), o sistema consulta ranges GTO específicos de PKO, mais amplos que os de um MTT clássico equivalente, refletindo a recompensa do bounty."
   },
   "mstacks": {
     "title": "Fases de M-Ratio",
@@ -466,7 +466,7 @@
     "p1": "Num cash game cada ficha vale dinheiro de verdade, sempre igual. No torneio, não. Você trocou dinheiro por fichas na entrada, mas só volta a ter dinheiro se terminar numa posição paga. Daí sai uma regra que assusta no começo: <strong>a ficha que você ganha vale menos do que a ficha que você perde</strong>. Ganhar fichas te aproxima do prêmio aos poucos; perder todas te elimina de uma vez só. Esse desequilíbrio tem um nome, <strong>ICM</strong>, e é o que separa quem entende torneio de quem só joga fichas.",
     "p2": "Um exemplo pra fixar. São 4 jogadores e 3 são pagos, e você tem o maior stack de longe. Se arriscar tudo num spot que dá um lucrinho em fichas e perder, você sai em 4º e leva zero, mesmo tendo sido o líder. Se recusar o risco, provavelmente chega ao dinheiro só esperando os outros brigarem. Aqui, dobrar de fichas quase não muda o seu prêmio, mas ser eliminado destrói ele. Ou seja: às vezes o certo é <strong>abrir mão de um lucro em fichas para proteger o seu lugar no prêmio</strong>.",
     "p3": "Na prática isso vira uma exigência a mais: perto do prêmio, só coloque o stack em risco quando estiver <strong>bem mais seguro</strong> do que arriscaria no início. Uma mão que seria um call tranquilo contando só fichas pode virar fold quando cada eliminação mexe no seu dinheiro. E não é só na bolha: o peso do ICM já aparece quando boa parte do campo foi eliminada (lá pela metade) e vai crescendo até a mesa final.",
-    "p4": "Os dois erros clássicos do iniciante são opostos: <strong>apertar cedo demais</strong>, quando o ICM ainda não importa e você só precisava juntar fichas; e <strong>pagar largo demais na bolha</strong>, quando sobreviver valia mais do que ter razão. No GrindLab, quando você folda uma mão que a conta em fichas aprovaria mas que faz sentido apertar por ICM, o card não marca erro: mostra o selo <strong>≈ Aproximação chipEV</strong>. É o aviso de que ali a nossa análise em fichas fica devendo, e o seu fold é defensável.",
+    "p4": "Os dois erros clássicos do iniciante são opostos: <strong>apertar cedo demais</strong>, quando o ICM ainda não importa e você só precisava juntar fichas; e <strong>pagar mãos demais na bolha</strong>, quando sobreviver valia mais do que ter razão. No GrindLab, quando você folda uma mão que a conta em fichas aprovaria mas que faz sentido apertar por ICM, o card não marca erro: mostra o selo <strong>≈ Aproximação chipEV</strong>. É o aviso de que ali a nossa análise em fichas fica devendo, e o seu fold é defensável.",
     "table": {
       "col_stage": "Fase do torneio",
       "col_effect": "Como jogar",

@@ -176,7 +176,7 @@
       "unlocked": "Achievement unlocked!",
       "gateTitle": "Mastery gate",
       "gateFaltam": "{{n}} criteria left to master this leak.",
-      "gateFechado": "Gate closed! Leak mastered — prove it in real games.",
+      "gateFechado": "Gate closed! Leak mastered. Prove it in real games.",
       "verNaTrilha": "See the medal on the path"
     },
     "vCorrect": "Correct",
@@ -223,7 +223,7 @@
       "fundamentals": "Explore fundamentals",
       "modos": "Modes",
       "tabReco": "Recommended",
-      "adaptiveDesc": "The system picks by your measured leak — the default and the edge"
+      "adaptiveDesc": "The system picks by your measured leak: the default and the edge"
     },
     "scn": {
       "rfi": "Open (RFI)",
@@ -325,9 +325,9 @@
       "short": "Short stack (12bb)",
       "shortDesc": "Shove and reshove zone: the decisions that define your tournament",
       "pf_bb_defense": "BB defense on the flop",
-      "pf_bb_defenseDesc": "You called from the BB and face a c-bet — single-raised pot",
+      "pf_bb_defenseDesc": "You called from the BB and face a c-bet, single-raised pot",
       "pf_bb_3bet": "3-bet pot: your c-bet",
-      "pf_bb_3betDesc": "You 3-bet from the BB and got called — c-bet or check the flop",
+      "pf_bb_3betDesc": "You 3-bet from the BB and got called: c-bet or check the flop",
       "range_grid": "Range boundary",
       "range_gridDesc": "Mark on the grid how far the range goes",
       "stats": "{{n}} hands · {{pct}}%",
@@ -341,7 +341,7 @@
       "on": "on",
       "off": "off",
       "certoEra": "Correct play:",
-      "errosTitulo": "Session mistakes ({{count}}) — review one by one",
+      "errosTitulo": "Session mistakes ({{count}}): review one by one",
       "turboTitulo": "Turbo (10s per decision)",
       "turboDesc": "Timebank: run out of time and it counts as a pace mistake in the report",
       "correto": "Correct"
@@ -381,7 +381,7 @@
     "emptyOutra": "Train something else",
     "emptyVoltar": "Back",
     "coldStartCta": "Start with fundamentals",
-    "focoFallback": "That leak is no longer in the measurement window — training the adaptive plan."
+    "focoFallback": "That leak is no longer in the measurement window. Training the adaptive plan."
   },
   "trainAch": {
     "train_first": {

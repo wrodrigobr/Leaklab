@@ -176,7 +176,7 @@
       "unlocked": "¡Logro desbloqueado!",
       "gateTitle": "Gate de dominio",
       "gateFaltam": "Faltan {{n}} criterios para dominar este leak.",
-      "gateFechado": "¡Gate cerrado! Leak dominado — compruébalo en juego real.",
+      "gateFechado": "¡Gate cerrado! Leak dominado. Compruébalo en juego real.",
       "verNaTrilha": "Ver la medalla en la ruta"
     },
     "vCorrect": "Correcto",
@@ -223,7 +223,7 @@
       "fundamentals": "Explorar fundamentos",
       "modos": "Modos",
       "tabReco": "Recomendado",
-      "adaptiveDesc": "El sistema elige por tu leak medido — el estándar y el diferencial"
+      "adaptiveDesc": "El sistema elige por tu leak medido: el estándar y el diferencial"
     },
     "scn": {
       "rfi": "Apertura (RFI)",
@@ -325,9 +325,9 @@
       "short": "Stack corto (12bb)",
       "shortDesc": "Zona de shove y reshove: las decisiones que definen tu torneo",
       "pf_bb_defense": "Defensa de BB en el flop",
-      "pf_bb_defenseDesc": "Pagaste desde la BB y enfrentas el c-bet — bote simple",
+      "pf_bb_defenseDesc": "Pagaste desde la BB y enfrentas el c-bet, bote simple",
       "pf_bb_3bet": "Bote 3-bet: tu c-bet",
-      "pf_bb_3betDesc": "Hiciste 3-bet desde la BB y pagaron — c-bet o check en el flop",
+      "pf_bb_3betDesc": "Hiciste 3-bet desde la BB y pagaron: c-bet o check en el flop",
       "range_grid": "Frontera del rango",
       "range_gridDesc": "Marcar en la grilla hasta dónde llega el rango",
       "stats": "{{n}} manos · {{pct}}%",
@@ -341,7 +341,7 @@
       "on": "activado",
       "off": "desactivado",
       "certoEra": "Jugada correcta:",
-      "errosTitulo": "Errores de la sesión ({{count}}) — revisa uno a uno",
+      "errosTitulo": "Errores de la sesión ({{count}}): revisa uno a uno",
       "turboTitulo": "Turbo (10s por decisión)",
       "turboDesc": "Timebank: si se acaba el tiempo, cuenta como error de ritmo en el informe",
       "correto": "Correcto"
@@ -381,7 +381,7 @@
     "emptyOutra": "Entrenar otra cosa",
     "emptyVoltar": "Volver",
     "coldStartCta": "Empezar por los fundamentos",
-    "focoFallback": "Ese leak ya no está en la ventana de medición — entrenando el plan adaptativo."
+    "focoFallback": "Ese leak ya no está en la ventana de medición. Entrenando el plan adaptativo."
   },
   "trainAch": {
     "train_first": {
@@ -1850,7 +1850,7 @@
       "c3_tip_title": "Consejo de tamaño",
       "c3_tip": "Regla de bolsillo: en el multiway, sin los nuts, prefiere apuestas de medio pote o menos. Deja los overbets para cuando tengas la mano que le gana a todos.",
       "c4_title": "Capítulo 4: el asiento del medio es el peor lugar",
-      "c4_p1": "Existe un lugar específico que sangra fichas: estar <strong>en el medio</strong>. Imagina que alguien apostó antes que tú y todavía hay jugadores para actuar después. Quedas en sándwich: si pagas, todavía puedes llevarte un aumento de quien está atrás, y enfrentas dos manos desconocidas al mismo tiempo. Tienes la peor información de la mesa y el mayor riesgo. En ese asiento, juega <strong>apretado</strong>: sigue solo con manos que aguantan presión de los dos lados y evita pagar largo solo por curiosidad.",
+      "c4_p1": "Existe un lugar específico que sangra fichas: estar <strong>en el medio</strong>. Imagina que alguien apostó antes que tú y todavía hay jugadores para actuar después. Quedas en sándwich: si pagas, todavía puedes llevarte un aumento de quien está atrás, y enfrentas dos manos desconocidas al mismo tiempo. Tienes la peor información de la mesa y el mayor riesgo. En ese asiento, juega <strong>apretado</strong>: sigue solo con manos que aguantan presión de los dos lados y evita pagar demasiadas manos solo por curiosidad.",
       "scene5_cap": "El Oponente A apostó, tú estás en el medio (HJ) y el Oponente B todavía va a actuar. En sándwich: continúa con menos manos que en un pote normal.",
       "c4_curio_title": "Curiosidad",
       "c4_curio": "Este asiento tiene apodo en la jerga de los jugadores: 'el monkey in the middle'. Es la posición en la que más se falla por pagar de más, justamente porque odiamos foldear después de ya haber puesto fichas.",
@@ -1867,7 +1867,7 @@
       "cmp_r1_reg": "Blefea menos, pero todavía insiste con aire puro a veces.",
       "cmp_r1_pro": "Solo hace semi-bluff con proyecto fuerte; el blef puro es ~cero.",
       "cmp_r2": "Manos con que paga",
-      "cmp_r2_rec": "Paga largo, 'para ver', con pares medios y cartas altas.",
+      "cmp_r2_rec": "Paga demasiadas manos, 'para ver', con pares medios y cartas altas.",
       "cmp_r2_reg": "Aprieta un poco, pero todavía paga marginales por costumbre.",
       "cmp_r2_pro": "Continúa solo con mano fuerte y nut draws; suelta el resto.",
       "cmp_r3": "Tamaño de la apuesta",
@@ -1923,7 +1923,7 @@
       "gl_intro": "La teoría de arriba se vuelve práctica dentro de la plataforma. GrindLab lee tus manos importadas y muestra dónde estás perdiendo EV en potes multiway, sin que tengas que buscarlo.",
       "gl1": "Detecta cuándo el pote es <strong>multiway</strong> y marca esos spots con el sello ≈ Aproximación (el solver es heads-up).",
       "gl2": "Mide tu <strong>frecuencia de blef</strong> y de continuación en potes con varios jugadores.",
-      "gl3": "Señala las manos en las que <strong>pagaste largo</strong> o apostaste grande sin valor suficiente.",
+      "gl3": "Señala las manos en las que <strong>pagaste demasiadas manos</strong> o apostaste grande sin valor suficiente.",
       "gl4": "Compara tu comportamiento multiway con el de jugadores ganadores del mismo nivel de buy-in.",
       "gl5": "Genera <strong>ejercicios personalizados</strong> a partir de tus propias manos, para que entrenes donde fallas.",
       "next_label": "Practica en spots reales",

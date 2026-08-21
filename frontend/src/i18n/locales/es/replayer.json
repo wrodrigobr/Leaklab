@@ -340,9 +340,9 @@
     "scenHuVs3bet": "de SB contra 3-bet (heads-up)",
     "scenHuVs3betJam": "de SB contra all-in (heads-up)",
     "scenHuVs4bet": "de BB contra all-in (heads-up)",
-    "whyAcaoDiverge": "{{hand}} está en el range {{scen}}, pero la jugada aquí es {{rec}}{{freq}} — no {{act}}.",
-    "whyAcaoDivergeTamanho": "{{hand}} está en el range {{scen}}, pero la jugada aquí es {{rec}}{{freq}} — no {{act}}. La mano está bien; lo que falló fue el tamaño de la subida.",
-    "precoDivergeHeuristica": "Aquí no hay carta GTO para esta mano en este punto, así que el veredicto sale de la heurística del motor — el precio por sí solo no decide.",
+    "whyAcaoDiverge": "{{hand}} está en el range {{scen}}, pero la jugada aquí es {{rec}}{{freq}}, no {{act}}.",
+    "whyAcaoDivergeTamanho": "{{hand}} está en el range {{scen}}, pero la jugada aquí es {{rec}}{{freq}}, no {{act}}. La mano está bien; lo que falló fue el tamaño de la subida.",
+    "precoDivergeHeuristica": "Aquí no hay carta GTO para esta mano en este punto, así que el veredicto sale de la heurística del motor. El precio por sí solo no decide.",
     "rangeCbet": "Enfrentas una c-bet, la apuesta más frecuente y más amplia del juego.",
     "rangeTomada": "El villano apostó contra quien tenía la iniciativa (donk o check-raise), una línea típicamente más polarizada.",
     "realEqTitle": "Equity real vs mano mostrada",
@@ -467,7 +467,7 @@
     "mesa": {
       "hu": "Mano heads-up.",
       "curta": "Mesa con {{n}} jugadores.",
-      "aviso": "Esta grilla es la range de mesa completa (9-max) y sirve de referencia — no conoce el tamaño de la mesa. El veredicto del card considera la mesa real, así que las diferencias aquí son esperadas.",
+      "aviso": "Esta grilla es la range de mesa completa (9-max) y sirve de referencia: no conoce el tamaño de la mesa. El veredicto del card considera la mesa real, así que las diferencias aquí son esperadas.",
       "avisoHu": "En heads-up, casi toda mano se juega más suelta."
     },
     "solverSubstitui": "El veredicto del solver reemplaza el análisis de range estático.",
@@ -478,7 +478,7 @@
     "rangeTop": "Range: top",
     "estrategiaDaMao": "Estrategia de tu mano",
     "semSolverBucket": "Sin datos del GTO Solver para este bucket, usando tabla Nash binaria shove/fold.",
-    "abaDivergente": "Esta grilla muestra <b>{{pos}}</b>. El veredicto de arriba se calculó en <b>{{gtoPos}}</b> — vuelve a esa pestaña para comparar con el análisis.",
+    "abaDivergente": "Esta grilla muestra <b>{{pos}}</b>. El veredicto de arriba se calculó en <b>{{gtoPos}}</b>. Vuelve a esa pestaña para comparar con el análisis.",
     "cenarioOutraAba": "Esta grilla es referencia ({{refLabel}}). La decisión de esta mano ({{decLabel}}) está en la pestaña <b>{{aba}}</b>.",
     "cenarioSemAba": "Esta grilla es solo referencia ({{refLabel}}). El range específico de esta decisión ({{decLabel}}) está en el card de análisis (frecuencias de tu mano), aún no disponible como grilla 13×13.",
     "ref": {

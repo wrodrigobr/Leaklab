@@ -7,6 +7,55 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(copy): vocabulario e pontuacao da copy didatica, com guarda que varre as 4 superficies
+
+> **Por que:** o dono leu o card "Conceito do spot" de BB vs SB e reprovou duas frases:
+> *"Defenda o BB largo em preco bom"* e *"aperte quando for jogar sem posicao"*. Nao era
+> preferencia de estilo. **"sem posicao" nao existe em portugues de poker** (o termo e "fora
+> de posicao"/OOP) e **"largo" e decalque de "wide"/"loose"** — e os MESMOS arquivos ja usavam
+> o termo certo em outros trechos, o que torna o deslize invisivel a quem le so um trecho.
+>
+> **O que a medicao mostrou, e por que a primeira entrega estava incompleta.** Consertei o
+> backend (`progression.py`, `academy.py`) e declarei fechado. Ao varrer o resto do
+> repositorio apareceram **mais dois lugares**: 100 ocorrencias nos locales pt-BR do frontend
+> e 17 nas perguntas do quiz (`academy_questions.py`). O caso e literalmente a **regra 5** do
+> CLAUDE.md: regra que vale em N lugares vira funcao com teste que varre os N+1. O guarda
+> tinha nascido cobrindo 2 dos 4.
+>
+> **Nao foi troca de palavra.** Em "pague mais largo" o termo e ADVERBIO, e "pague mais amplo"
+> esta errado. Cada ocorrencia recebeu a construcao que cabe na frase: *"pague mais maos"*,
+> *"abra um range amplo"*, *"ataque com um range amplo"*, *"o quanto o seu range de shove
+> abre"*. Duas ocorrencias eram o VERBO largar, nao o decalque (`"Larga: par medio"`, que
+> pareia com `"Segue: ..."`, e `"blefa uma, larga a outra"`): viraram "Folda", que e o termo
+> do produto.
+>
+> **Travessao (`feedback_no_dash_in_text`):** 44 no backend + 55 na copy do frontend, nos tres
+> locales — a regra e da marca, nao do idioma. Cada uma recebeu virgula, dois pontos ou ponto
+> conforme o ritmo da frase, com capitalizacao quando virou inicio de frase.
+>
+> **Tres armadilhas, todas ja conhecidas, todas ativadas neste trabalho:**
+>
+> 1. **Aplicar por linha o que o detector le por arvore.** O detector de travessao ja era AST;
+>    a APLICACAO nao era, e alterou a docstring do modulo e um comentario (`# ~4 min - cabe em
+>    qualquer dia`). Revertido com `git checkout`. Pior: o teste de vocabulario ainda filtrava
+>    **por linha** enquanto o de travessao filtrava por AST, e acusou uma docstring como copy.
+>    Os dois usam o mesmo `_copy_do_arquivo` agora, e ha teste provando que ele NAO enxerga
+>    comentario nem docstring.
+> 2. **Falha silenciosa do `str.replace` (regra 6).** Toda troca e contada e aborta se o numero
+>    nao bater. Foi assim que apareceram as 5 frases do quiz que estao **cortadas no arquivo**
+>    por concatenacao de literais adjacentes (`'... ' \n 'f...'`): a troca literal devolvia
+>    zero, e "rodou sem erro" teria escondido isso.
+> 3. **Revisor que grita no certo e revisor desligado.** O detector de intervalo so reconhecia
+>    digito-travessao-digito, entao acusava `"Low ($5 - $30)"`, que esta correto. Corrigido
+>    para aceitar simbolo de moeda — e a quebra deliberada do guarda mostrou exatamente isso
+>    acontecendo antes do conserto.
+>
+> **Entregue:** `backend/tests/test_vocabulario_da_copy.py` com 7 testes cobrindo as 4
+> superficies (2 modulos Python + quiz + 3 locales JSON, 17.670 strings varridas), incluindo
+> prova de deteccao na frase EXATA que originou o caso (exige achar OS DOIS problemas, nao
+> um) e contraprova de que o texto correto nao e acusado. Os dois guardas novos foram
+> quebrados de proposito e acusaram; o vocabulario tem 0 ocorrencias em pt-BR.
+
 ### fix(entrada): o e-mail de confirmacao ia para SPAM por politica do nosso proprio dominio
 
 > **Por que:** o funil apontou o gargalo em cadastro -> importacao (28%), entao fui medir

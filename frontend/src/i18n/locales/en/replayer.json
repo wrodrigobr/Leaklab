@@ -340,14 +340,14 @@
     "scenHuVs3bet": "SB vs 3-bet (heads-up)",
     "scenHuVs3betJam": "SB vs all-in (heads-up)",
     "scenHuVs4bet": "BB vs all-in (heads-up)",
-    "whyAcaoDiverge": "{{hand}} is in the {{scen}} range, but the play here is {{rec}}{{freq}} — not {{act}}.",
-    "whyAcaoDivergeTamanho": "{{hand}} is in the {{scen}} range, but the play here is {{rec}}{{freq}} — not {{act}}. The hand is fine; the raise size is what went wrong.",
-    "precoDivergeHeuristica": "There is no GTO chart for this hand at this node, so the verdict comes from the engine heuristic — price alone does not decide it.",
+    "whyAcaoDiverge": "{{hand}} is in the {{scen}} range, but the play here is {{rec}}{{freq}}, not {{act}}.",
+    "whyAcaoDivergeTamanho": "{{hand}} is in the {{scen}} range, but the play here is {{rec}}{{freq}}, not {{act}}. The hand is fine; the raise size is what went wrong.",
+    "precoDivergeHeuristica": "There is no GTO chart for this hand at this node, so the verdict comes from the engine heuristic. Price alone does not decide it.",
     "rangeCbet": "You are facing a c-bet, the most frequent and widest bet in the game.",
     "rangeTomada": "The villain bet into the player with initiative (donk or check-raise), a typically more polarized line.",
     "realEqTitle": "Real equity vs shown hand",
-    "realEqTip": "Your hand’s equity against the hand {{villain}} showed at showdown, computed card by card on this street. It is a fact from the history, not an estimate. Use it for review, not to judge the decision: at the table you face the opponent’s whole range, and the verdict is computed against that range. Calling with low equity against the specific hand that showed up may still have been the right play against the range (and vice versa) — judging by results is the mistake analysis exists to avoid.",
-    "eqLowConfTip": "Estimated equity: we do not know the opponent’s hand, so this number is computed against a typical holding. We validated the estimator against 1,082 real showdowns where the opponent revealed their cards: on average it is accurate, but on this street 1 in 10 cases diverges by {{p90}}+ points from the real equity. Treat it as an order of magnitude, not an exact number — the verdict does not rest on it alone."
+    "realEqTip": "Your hand’s equity against the hand {{villain}} showed at showdown, computed card by card on this street. It is a fact from the history, not an estimate. Use it for review, not to judge the decision: at the table you face the opponent’s whole range, and the verdict is computed against that range. Calling with low equity against the specific hand that showed up may still have been the right play against the range (and vice versa). Judging by results is the mistake analysis exists to avoid.",
+    "eqLowConfTip": "Estimated equity: we do not know the opponent’s hand, so this number is computed against a typical holding. We validated the estimator against 1,082 real showdowns where the opponent revealed their cards: on average it is accurate, but on this street 1 in 10 cases diverges by {{p90}}+ points from the real equity. Treat it as an order of magnitude, not an exact number. The verdict does not rest on it alone."
   },
   "controls": {
     "play": "Play",
@@ -467,7 +467,7 @@
     "mesa": {
       "hu": "Heads-up hand.",
       "curta": "Table with {{n}} players.",
-      "aviso": "This grid is the full-ring (9-max) range and works as a reference — it does not know the table size. The card verdict considers the real table, so differences here are expected.",
+      "aviso": "This grid is the full-ring (9-max) range and works as a reference: it does not know the table size. The card verdict considers the real table, so differences here are expected.",
       "avisoHu": "Heads-up, almost every hand plays looser."
     },
     "solverSubstitui": "Solver verdict overrides the static range analysis.",
@@ -477,8 +477,8 @@
     "foraRangeCurto": "out of range",
     "rangeTop": "Range: top",
     "estrategiaDaMao": "Your hand strategy",
-    "semSolverBucket": "No GTO Solver data for this bucket — using the binary Nash shove/fold table.",
-    "abaDivergente": "This grid shows <b>{{pos}}</b>. The verdict above was computed at <b>{{gtoPos}}</b> — go back to that tab to compare with the analysis.",
+    "semSolverBucket": "No GTO Solver data for this bucket. Using the binary Nash shove/fold table.",
+    "abaDivergente": "This grid shows <b>{{pos}}</b>. The verdict above was computed at <b>{{gtoPos}}</b>. Go back to that tab to compare with the analysis.",
     "cenarioOutraAba": "This grid is a reference ({{refLabel}}). This hand decision ({{decLabel}}) lives on the <b>{{aba}}</b> tab.",
     "cenarioSemAba": "This grid is reference only ({{refLabel}}). The specific range for this decision ({{decLabel}}) is in the analysis card (your hand frequencies), not yet available as a 13×13 grid.",
     "ref": {

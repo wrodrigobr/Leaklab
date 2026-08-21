@@ -26,6 +26,7 @@ vocabulário demais transformaria o teste num revisor de estilo, e revisor que a
 é desligado. Aqui só entra o que tem UM termo correto e um errado inequívoco.
 """
 import ast
+import json
 import os
 import re
 import sys
@@ -35,33 +36,33 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 _BACKEND = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 
 # Arquivos que produzem copy DIDÁTICA lida pelo jogador (não log, não comentário de código).
+#
+# A lista começou com DOIS, e essa foi a falha: consertei o vocabulário no backend, declarei
+# fechado, e depois achei 100 ocorrências nos locales do frontend e 17 nas perguntas do quiz.
+# Regra 5 do CLAUDE.md: a regra vale nos N lugares, então o teste varre os N+1. Ao criar uma
+# superfície nova de copy, ELA ENTRA AQUI.
 _ARQUIVOS = [
     os.path.join('leaklab', 'progression.py'),
     os.path.join('leaklab', 'academy.py'),
+    os.path.join('leaklab', 'academy_questions.py'),
 ]
+
+# A copy do frontend vive em JSON, no mesmo repositório. Só o pt-BR: "largo plazo" é correto
+# em espanhol e "wide"/"loose" são os termos certos em inglês, então varrer es/en com a régua
+# do português seria o revisor gritando no lugar certo.
+_LOCALES_PT = os.path.abspath(
+    os.path.join(_BACKEND, '..', 'frontend', 'src', 'i18n', 'locales', 'pt-BR'))
 
 # (padrão proibido, o que usar, por quê)
 _PROIBIDOS = [
     (r'sem\s+posi[çc][ãa]o', 'fora de posição',
      'o termo consagrado é "fora de posição" (OOP); "sem posição" não é usado em português '
      'de poker, e os MESMOS arquivos já usam o certo em outros trechos'),
+    (r'\blarg[oa]s?\b|largu[íi]ssim[oa]', 'amplo / mais mãos',
+     'decalque de "wide". E não é troca de palavra: em "pague mais largo" o termo é ADVÉRBIO, '
+     'e "pague mais amplo" está errado — o certo é "pague com um range mais amplo" ou '
+     '"pague mais mãos", conforme o espaço da frase'),
 ]
-
-
-def _linhas_de_texto(caminho):
-    """Só as linhas que carregam texto para o jogador — strings com espaço e acento.
-
-    Comentário de código fica de fora: `repositories.py` tem 'o cenário, sem posição nem
-    profundidade' num docstring técnico, e ali o sentido é literalmente 'sem o campo
-    posição'. Acusar isso seria o revisor gritando onde não há problema.
-    """
-    for n, linha in enumerate(open(caminho, encoding='utf-8'), start=1):
-        cru = linha.strip()
-        if cru.startswith('#'):
-            continue
-        # precisa ter aspas (é string) e ao menos um espaço (é frase, não identificador)
-        if ('"' in cru or "'" in cru) and ' ' in cru:
-            yield n, cru
 
 
 def test_copy_nao_usa_termo_fora_do_vocabulario():
@@ -71,30 +72,81 @@ def test_copy_nao_usa_termo_fora_do_vocabulario():
         caminho = os.path.join(_BACKEND, rel)
         if not os.path.exists(caminho):
             continue
-        for n, linha in _linhas_de_texto(caminho):
+        # MESMO detector do travessão (AST). Ter dois filtros no mesmo arquivo, um por linha e
+        # outro por árvore, me fez acusar uma DOCSTRING como se fosse copy — o mesmo erro que
+        # eu já tinha cometido ao aplicar a correção dos travessões por linha.
+        for n, txt in _copy_do_arquivo(caminho):
             varridas += 1
             for padrao, certo, porque in _PROIBIDOS:
-                if re.search(padrao, linha, re.IGNORECASE):
-                    violacoes.append(f'  {rel}:{n} → use "{certo}". {porque}\n    {linha[:90]}')
+                if re.search(padrao, txt, re.IGNORECASE):
+                    violacoes.append(
+                        f'  {rel}:{n} → use "{certo}". {porque}\n    {" ".join(txt.split())[:90]}')
 
-    assert varridas > 100, (
-        f'só {varridas} linhas de texto varridas — o filtro parou de casar, e um teste que '
+    assert varridas > 300, (
+        f'só {varridas} strings de copy varridas, o filtro parou de casar, e um teste que '
         'não lê nada passa sempre')
     assert not violacoes, 'vocabulário fora do padrão na copy:\n' + '\n'.join(violacoes)
-    print(f'OK  test_copy_nao_usa_termo_fora_do_vocabulario ({varridas} linhas)')
+    print(f'OK  test_copy_nao_usa_termo_fora_do_vocabulario ({varridas} strings)')
+
+
+def _strings_do_json(caminho):
+    """Toda string de valor de um bundle de tradução, com a chave como 'linha'."""
+    def desce(no, chave):
+        if isinstance(no, dict):
+            for k, v in no.items():
+                for par in desce(v, f'{chave}.{k}' if chave else k):
+                    yield par
+        elif isinstance(no, list):
+            for i, v in enumerate(no):
+                for par in desce(v, f'{chave}[{i}]'):
+                    yield par
+        elif isinstance(no, str):
+            yield chave, no
+
+    with open(caminho, encoding='utf-8') as fh:
+        for par in desce(json.load(fh), ''):
+            yield par
+
+
+def test_copy_do_frontend_nao_usa_termo_fora_do_vocabulario():
+    """O lugar onde o vocabulário errado estava em MAIOR quantidade, e o último que olhei."""
+    assert os.path.isdir(_LOCALES_PT), (
+        f'{_LOCALES_PT} não existe. Não é motivo para pular: a copy pt-BR do produto mora aí, '
+        'e um teste que não acha o alvo passa sempre')
+
+    violacoes = []
+    varridas = 0
+    for arq in sorted(os.listdir(_LOCALES_PT)):
+        if not arq.endswith('.json'):
+            continue
+        for chave, txt in _strings_do_json(os.path.join(_LOCALES_PT, arq)):
+            varridas += 1
+            for padrao, certo, porque in _PROIBIDOS:
+                if re.search(padrao, txt, re.IGNORECASE):
+                    violacoes.append(f'  {arq}:{chave} → use "{certo}". {porque}\n'
+                                     f'    {" ".join(txt.split())[:90]}')
+
+    assert varridas > 2000, f'só {varridas} strings de tradução lidas — o varredor está cego'
+    assert not violacoes, ('vocabulário fora do padrão na copy pt-BR do frontend:\n'
+                           + '\n'.join(violacoes))
+    print(f'OK  test_copy_do_frontend_nao_usa_termo_fora_do_vocabulario ({varridas} strings)')
 
 
 def test_o_varredor_ACHA_o_termo_errado():
     """Prova de detecção (regra 1). Sem isto, o teste acima poderia estar passando porque
     parou de ler os arquivos — e um zero tranquilizador aqui deixaria a copy solta."""
     forjado = 'regra = "Defenda o BB largo e aperte quando for jogar sem posição."'
-    achou = any(re.search(p, forjado, re.IGNORECASE) for p, _, _ in _PROIBIDOS)
-    assert achou, 'o varredor não acha o termo na frase EXATA que originou este teste'
+    # `any` não bastaria: a frase original tem OS DOIS problemas, e passar por achar só um
+    # deixaria o outro padrão apodrecer sem ninguém notar.
+    pegos = {certo for p, certo, _ in _PROIBIDOS if re.search(p, forjado, re.IGNORECASE)}
+    assert len(pegos) == 2, (
+        f'a frase que originou este teste tem "largo" E "sem posição"; o varredor achou '
+        f'{len(pegos)}: {pegos}')
 
     # E o contrário: o texto correto não pode ser acusado.
-    bom = 'regra = "Com preço bom, defenda o BB com um range mais amplo — fora de posição."'
+    bom = 'regra = "Com preço bom, defenda o BB com um range mais amplo, fora de posição."'
     assert not any(re.search(p, bom, re.IGNORECASE) for p, _, _ in _PROIBIDOS), \
-        'acusou o texto CORRETO — revisor que grita no certo é revisor desligado'
+        'acusou o texto CORRETO. Revisor que grita no certo é revisor desligado'
     print('OK  test_o_varredor_ACHA_o_termo_errado')
 
 
@@ -103,7 +155,9 @@ def test_o_varredor_ACHA_o_termo_errado():
 # `feedback_no_dash_in_text`: a copy do produto não usa travessão. Mas a MEIA-RISCA entre
 # números ("SPR 1–3", "~30–35%") é intervalo, e ali o uso é certo — proibir os dois seria o
 # revisor gritando no lugar errado.
-_INTERVALO = re.compile(r'(\d\s*)[–—](\s*\d)')
+# O símbolo de moeda entra no lado direito: "Low ($5 – $30)" é intervalo, e sem isto o
+# varredor acusava um texto CORRETO — o defeito que mais rápido faz um revisor ser desligado.
+_INTERVALO = re.compile(r'(\d\s*)[–—](\s*(?:R\$|US\$|\$|€|£)?\s*\d)')
 _TRAVESSAO = re.compile(r'\s+[–—]\s+')
 
 
@@ -151,10 +205,38 @@ def test_copy_nao_usa_travessao():
     print(f'OK  test_copy_nao_usa_travessao ({strings} strings)')
 
 
+def test_copy_do_frontend_nao_usa_travessao():
+    """Aqui os TRÊS locales, ao contrário do vocabulário: travessão é regra da marca, não do
+    idioma, e uma frase em inglês com travessão fica igualmente fora do padrão."""
+    raiz = os.path.dirname(_LOCALES_PT)
+    assert os.path.isdir(raiz), f'{raiz} não existe — o varredor não tem o que ler'
+
+    violacoes = []
+    strings = 0
+    for loc in sorted(os.listdir(raiz)):
+        pasta = os.path.join(raiz, loc)
+        if not os.path.isdir(pasta):
+            continue
+        for arq in sorted(os.listdir(pasta)):
+            if not arq.endswith('.json'):
+                continue
+            for chave, txt in _strings_do_json(os.path.join(pasta, arq)):
+                strings += 1
+                sem_intervalo = _INTERVALO.sub(lambda m: m.group(1) + '␟' + m.group(2), txt)
+                if _TRAVESSAO.search(sem_intervalo):
+                    violacoes.append(f'  {loc}/{arq}:{chave}  {" ".join(txt.split())[:80]}')
+
+    assert strings > 6000, f'só {strings} strings de tradução lidas — o varredor está cego'
+    assert not violacoes, ('travessão na copy do frontend (use vírgula, ponto ou dois pontos):\n'
+                           + '\n'.join(violacoes))
+    print(f'OK  test_copy_do_frontend_nao_usa_travessao ({strings} strings, 3 locales)')
+
+
 def test_intervalo_numerico_NAO_e_acusado():
     """Contraprova. "SPR 1–3" e "~30–35%" são intervalos, e a meia-risca ali é correta.
     Sem este caso, a regra acima poderia estar proibindo o certo junto com o errado."""
-    for bom in ('SPR 1–3 → top pair+ committed', 'você precisa de ~30–35% de equity'):
+    for bom in ('SPR 1–3 → top pair+ committed', 'você precisa de ~30–35% de equity',
+                'Low ($5 – $30)', 'Mid (R$ 30 – R$ 200)'):
         sem = _INTERVALO.sub(lambda m: m.group(1) + '␟' + m.group(2), bom)
         assert not _TRAVESSAO.search(sem), f'acusou intervalo numérico legítimo: {bom}'
 

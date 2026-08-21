@@ -261,7 +261,7 @@
       "bet": "Bet",
       "allin": "Shove"
     },
-    "disclaimer": "Esta mano ocurrió de verdad y está anonimizada: ves posición y stack, nunca quién la jugó. El board y las cartas del rival ya están decididos — respondes lo que haría el GTO, y la mano sigue el camino que siguió.",
+    "disclaimer": "Esta mano ocurrió de verdad y está anonimizada: ves posición y stack, nunca quién la jugó. El board y las cartas del rival ya están decididos. Respondes lo que haría el GTO, y la mano sigue el camino que siguió.",
     "empty": {
       "title": "No hay mano disponible ahora",
       "desc": "El acervo crece a medida que se resuelven más torneos.",
@@ -323,7 +323,7 @@
     "ghostSub": "Repaso espaciado de tus manos reales",
     "academySub": "La teoría detrás del entrenamiento",
     "jogarTitulo": "Compruébalo en juego real",
-    "jogarNota": "Dominar en el entrenamiento es la mitad del camino: juega torneos e importa — la validación abre el veredicto y el sello de diamante.",
+    "jogarNota": "Dominar en el entrenamiento es la mitad del camino: juega torneos e importa. La validación abre el veredicto y el sello de diamante.",
     "jogarCta": "Jugar e importar",
     "coldTitulo": "Tu ruta nace de tus torneos",
     "coldImportar": "Importar torneos",

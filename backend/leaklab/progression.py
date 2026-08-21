@@ -570,13 +570,13 @@ def _rfi_principio(pos: str, stack: float) -> tuple[str, str]:
     Do SB só existe UM jogador atrás — dizer 'quantos podem te enfrentar' seria falso —
     mas você joga o resto da mão fora de posição e ainda pode completar."""
     if pos == 'SB':
-        return (("Do SB só o BB está atrás, então você abre muito mais largo do que de outras "
-                 "posições. O preço é jogar toda a mão fora de posição."),
-                "SB: abra largo, mas lembre que você age primeiro em todas as ruas seguintes.")
+        return (("Do SB só o BB está atrás, então você abre um range muito mais amplo do que de "
+                 "outras posições. O preço é jogar toda a mão fora de posição."),
+                "SB: abra um range amplo, mas lembre que você age primeiro em todas as ruas seguintes.")
     if pos == 'BTN':
         return (("No BTN quase ninguém está atrás e você joga o resto da mão em posição. "
                  "É a cadeira onde abrir barato mais lucra."),
-                "BTN: o range de abertura é o mais largo da mesa. Não desperdice a posição.")
+                "BTN: o range de abertura é o mais amplo da mesa. Não desperdice a posição.")
     return ((f"Abrindo de {pos}, ainda há vários jogadores atrás que podem pagar ou dar 3-bet. "
              f"Cada um deles é uma chance de você ficar numa mão difícil."),
             "Quanto mais gente atrás, mais apertado o range de abertura.")

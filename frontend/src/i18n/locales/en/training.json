@@ -261,7 +261,7 @@
       "bet": "Bet",
       "allin": "Shove"
     },
-    "disclaimer": "This hand really happened and is anonymized: you see position and stack, never who played it. The board and the villain's cards are already decided — you answer what GTO would do, and the hand follows the path it took.",
+    "disclaimer": "This hand really happened and is anonymized: you see position and stack, never who played it. The board and the villain's cards are already decided. You answer what GTO would do, and the hand follows the path it took.",
     "empty": {
       "title": "No hand available right now",
       "desc": "The pool grows as more tournaments are solved.",
@@ -323,7 +323,7 @@
     "ghostSub": "Spaced review of your real hands",
     "academySub": "The theory behind the training",
     "jogarTitulo": "Prove it in real games",
-    "jogarNota": "Mastering in training is half the way: play tournaments and import — validation opens the verdict and the diamond seal.",
+    "jogarNota": "Mastering in training is half the way: play tournaments and import. Validation opens the verdict and the diamond seal.",
     "jogarCta": "Play and import",
     "coldTitulo": "Your path is born from your tournaments",
     "coldImportar": "Import tournaments",

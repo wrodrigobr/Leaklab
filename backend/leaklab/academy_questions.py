@@ -43,21 +43,20 @@ def bvb_postflop_position() -> dict:
         0,
         'No pré-flop o SB age antes do BB, mas no pós-flop a ordem segue o botão, e o SB é o '
         'primeiro assento depois dele. Ou seja, em blind vs blind o BB tem POSIÇÃO, a única '
-        'situação em que isso acontece. É por causa disso que o BB pode pagar bem mais largo aqui '
+        'situação em que isso acontece. É por causa disso que o BB pode pagar bem mais mãos aqui '
         'do que contra um open de qualquer outra posição.',
-        '**Blind vs blind é a única vez em que o BB tem posição. Defenda mais largo por isso.**')
+        '**Blind vs blind é a única vez em que o BB tem posição. Defenda mais mãos por isso.**')
 
 
 def bvb_defense_price() -> dict:
     return _q(
         'bvb_defense_price',
-        'SB abre para 3bb e você está no BB. Fora a equity da sua mão, o que mais justifica '
-        'defender largo?',
-        ['Você tem posição no pós-flop e o range de abertura do SB é largo por obrigação',
+        'SB abre para 3bb e você está no BB. Fora a equity da sua mão, o que mais justifica defender mais mãos?',
+        ['Você tem posição no pós-flop e o range de abertura do SB é amplo por obrigação',
          'Porque você já postou 1bb, e essa ficha precisa ser defendida',
          'Porque o SB só abre com mão forte, então o pote vale mais'],
         0,
-        'Dois motivos somam. O SB é obrigado a abrir largo, porque só há um jogador atrás e foldar '
+        'Dois motivos somam. O SB é obrigado a abrir um range amplo, porque só há um jogador atrás e foldar '
         'demais entregaria os blinds de graça; e o BB joga o pós-flop em posição, o que aumenta a '
         'equity que ele consegue realizar. Defender "porque já paguei" é custo afundado: aquele bb '
         'não é mais seu, é do pote, e não entra na conta.',
@@ -86,12 +85,13 @@ def bvb_3bet() -> dict:
         'bvb_3bet',
         'BB contra open do SB. Comparado a enfrentar um open do UTG, o seu range de 3-bet aqui '
         'deve ser:',
-        ['Mais largo, porque o range dele é muito mais fraco e você tem posição nos potes que ele pagar',
+        ['Mais amplo, porque o range dele é muito mais fraco e você tem posição nos potes que ele pagar',
          'Igual, porque o range de 3-bet depende da sua mão',
          'Mais apertado, porque em blind vs blind os stacks efetivos ficam altos'],
         0,
-        'A força de um 3-bet não sai da sua mão isolada, sai do confronto entre ranges. O SB abre '
-        'muito mais largo que o UTG, então a mesma mão fica bem melhor aqui. E como você tem '
+        'A força de um 3-bet não sai da sua mão isolada, sai do confronto entre ranges. O SB '
+        'abre um range muito mais amplo que o UTG, então a mesma mão fica bem melhor aqui. E '
+        'como você tem '
         'posição no pós-flop, os potes que ele paga são mais fáceis de jogar. Tratar o range de '
         '3-bet como lista fixa de mãos, igual em todo spot, é exatamente o erro que esta pergunta '
         'expõe.',
@@ -143,7 +143,7 @@ def pos_steal_target() -> dict:
          'Quantas mãos você já ganhou nessa órbita'],
         0,
         'O roubo é rentável quando os blinds foldam o suficiente, e quem fecha a ação é o BB. Um BB '
-        'que defende 60% transforma o seu open largo em prejuízo; um que defende 25% faz quase '
+        'que defende 60% transforma o seu open amplo em prejuízo; um que defende 25% faz quase '
         'qualquer duas cartas valerem. A sua mão importa, mas dentro do range de roubo a diferença '
         'entre uma e outra é pequena perto do impacto de quem está no BB.',
         '**Roubo se decide olhando quem defende, não a sua mão.**')
@@ -449,7 +449,7 @@ def exploit_limper() -> dict:
     return _q(
         'exploit_limper',
         'Um jogador fraco limpa muito de posição inicial. Qual a exploração mais rentável?',
-        ['Isolar com raise, em posição e com range largo, para jogar potes heads-up contra ele',
+        ['Isolar com raise, em posição e com range amplo, para jogar potes heads-up contra ele',
          'Limpar atrás para ver flop barato junto',
          'Esperar mão premium para punir de vez'],
         0,
@@ -536,7 +536,7 @@ def pko_call_gap() -> dict:
         'pko_call_gap',
         'Num PKO, um jogador que você COBRE dá shove. Comparado a um torneio normal, seu call deve '
         'ser:',
-        ['Mais largo, porque além do pote você fatura o bounty dele se ganhar',
+        ['Mais amplo, porque além do pote você fatura o bounty dele se ganhar',
          'Mais apertado, porque perder fichas num PKO custa mais',
          'Igual, porque o bounty não muda a equity da mão'],
         0,
@@ -544,14 +544,14 @@ def pko_call_gap() -> dict:
         'quem cobre. Isso funciona como um prêmio extra pago ao vencedor daquele confronto, então a '
         'equity que o call precisa cai. É o ajuste mais importante do formato, e o mais ignorado: '
         'muita gente joga PKO com range de torneio normal e deixa bounty na mesa a torneio inteiro.',
-        '**Cobrindo o adversário, o bounty baixa a equity exigida. Pague mais largo.**',
+        '**Cobrindo o adversário, o bounty baixa a equity exigida. Pague mais mãos.**',
         xp=30)
 
 
 def pko_bounty_size() -> dict:
     return _q(
         'pko_bounty_size',
-        'O mesmo shove de 12bb, o mesmo adversário. Em qual caso você paga mais largo?',
+        'O mesmo shove de 12bb, o mesmo adversário. Em qual caso você paga mais mãos?',
         ['Quando o bounty dele vale muito em relação ao pote, por exemplo metade de um buy-in num '
          'pote pequeno',
          'Quando o pote já está grande, porque aí compensa mais',
@@ -560,7 +560,7 @@ def pko_bounty_size() -> dict:
         'O ajuste é proporcional: o que importa é o bounty COMPARADO ao pote em disputa. Um bounty '
         'gordo num pote pequeno muda drasticamente a conta, porque o prêmio extra pesa mais que as '
         'fichas. Num pote já grande, o mesmo bounty representa uma fração menor e mexe pouco. Tratar '
-        'o ajuste como fixo é o erro de quem decorou "em PKO paga mais largo" sem entender por quê.',
+        'o ajuste como fixo é o erro de quem decorou "em PKO paga mais mãos" sem entender por quê.',
         '**O que conta é o bounty EM RELAÇÃO ao pote, não o bounty em si.**',
         xp=30)
 
@@ -592,8 +592,9 @@ def pko_late() -> dict:
         0,
         'O bounty continua valendo o mesmo, mas ele deixa de ser o maior número em jogo: perto do '
         'fim, cada posição vale saltos de premiação altos, e ser eliminado custa muito mais do que '
-        'custava no meio do torneio. Quando o ICM cresce, ele domina o ajuste de bounty. Continuar '
-        'pagando largo por bounty na mesa final é trocar um prêmio pequeno por um risco grande.',
+        'custava no meio do torneio. Quando o ICM cresce, ele domina o ajuste de bounty. '
+        'Continuar pagando mãos demais por bounty na mesa final é trocar um prêmio pequeno '
+        'por um risco grande.',
         '**No fim, ICM vence bounty. O ajuste encolhe justamente quando você mais quer usá-lo.**',
         xp=30)
 
@@ -937,10 +938,11 @@ def _range_width_conceitual() -> dict:
          'A sua posição, que é a mesma nos dois casos'],
         0,
         'O UTG abre cerca de um quinto das mãos; o BTN, mais da metade. É a MESMA mão sua contra '
-        'dois conjuntos muito diferentes, e é por isso que você defende bem mais largo contra o '
-        'BTN. O tamanho do open muda pouco entre posições, e a sua posição é idêntica nos dois '
+        'dois conjuntos muito diferentes, e é por isso que você defende bem mais mãos contra '
+        'o BTN. O tamanho do open muda pouco entre posições, e a sua posição é idêntica nos '
+        'dois '
         'casos: quem muda é ele.',
-        '**Contra quem abre largo, você defende largo. A range dele é o que muda.**',
+        '**Contra quem abre um range amplo, você defende mais mãos. A range dele é o que muda.**',
         xp=25)
 
 
@@ -963,8 +965,9 @@ def range_width_compare_question() -> dict:
          'Praticamente iguais: a posição quase não muda a largura da abertura'],
         0,
         f'{largo} abre {_faixa(larguras[largo])} e {estreito} abre {_faixa(larguras[estreito])}. '
-        f'Quanto mais tarde você age, menos gente resta para te enfrentar, e mais largo dá para '
-        f'abrir. Não é preferência de estilo: é aritmética de quantos adversários faltam. Por isso '
+        f'Quanto mais tarde você age, menos gente resta para te enfrentar, e mais mãos dá '
+        f'para abrir. Não é preferência de estilo: é aritmética de quantos adversários '
+        f'faltam. Por isso '
         f'a mesma mão que é fold numa posição é open na seguinte, e é justamente nessa borda que '
         f'mora quase todo o erro de abertura.',
         '**Abre-se mais tarde porque sobra menos gente para agir depois de você.**',

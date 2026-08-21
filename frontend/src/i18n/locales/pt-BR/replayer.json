@@ -169,8 +169,8 @@
       "calling_station": "Paga demais. Blefes rendem menos; aposte por valor mais fino e desista dos blefes.",
       "nit": "Muito tight e foldão. Respeite a agressão dele; blefe mais e pague menos.",
       "tag": "Sólido (tight-agressivo). Joga perto do GTO, poucos vazamentos a explorar.",
-      "lag": "Solto e agressivo. Pague mais largo; cuidado em foldar demais à pressão dele.",
-      "maniac": "Hiper agressivo. Pague e re-aumente mais largo por valor; deixe ele blefar."
+      "lag": "Solto e agressivo. Pague mais mãos; cuidado em foldar demais à pressão dele.",
+      "maniac": "Hiper agressivo. Pague e re-aumente com mais mãos por valor; deixe ele blefar."
     },
     "exploitTitle": "Ajuste vs oponente",
     "exploit": {
@@ -179,7 +179,7 @@
       "value_thicker_station_icm": "Calling station na zona de ICM: engorde ainda mais o value. Aqui ele paga muito mais, então aposte por valor com muito mais frequência e maior (2/3+ do pote), sem blefe. É onde o thin value mais lucra.",
       "dont_bluff_station_icm": "Calling station na zona de ICM: blefe zero. Ele quase não folda sob pressão de ICM e o custo de perder fichas perto do pagamento é alto. Aposte só por valor.",
       "station_bets_strength": "Cuidado: jogador passivo apostando costuma ter mão forte. Folde marginais que pagaria contra um agressor.",
-      "call_wider_aggro": "Ele agride/blefa muito (AF {{af}}). Pague mais largo e não folde demais à pressão dele.",
+      "call_wider_aggro": "Ele agride/blefa muito (AF {{af}}). Pague mais mãos e não folde demais à pressão dele.",
       "overfold_nit": "Nit: range de aposta tight, raramente blefa. Folde suas marginais aqui.",
       "bluff_more_nit": "Nit foldão: você pode blefar mais. Ele desiste demais; blefes baratos lucram."
     },
@@ -340,14 +340,14 @@
     "scenHuVs3bet": "de SB contra 3-bet (heads-up)",
     "scenHuVs3betJam": "de SB contra all-in (heads-up)",
     "scenHuVs4bet": "de BB contra all-in (heads-up)",
-    "whyAcaoDiverge": "{{hand}} está no range {{scen}}, mas a jogada aqui é {{rec}}{{freq}} — não {{act}}.",
-    "whyAcaoDivergeTamanho": "{{hand}} está no range {{scen}}, mas a jogada aqui é {{rec}}{{freq}} — não {{act}}. A mão é boa; o que saiu do lugar foi o tamanho do aumento.",
-    "precoDivergeHeuristica": "Aqui não há carta GTO para esta mão neste ponto, então o veredito sai da heurística do motor — o preço sozinho não decide.",
-    "rangeCbet": "Você enfrenta uma c-bet, a aposta mais frequente e mais larga do jogo.",
+    "whyAcaoDiverge": "{{hand}} está no range {{scen}}, mas a jogada aqui é {{rec}}{{freq}}, não {{act}}.",
+    "whyAcaoDivergeTamanho": "{{hand}} está no range {{scen}}, mas a jogada aqui é {{rec}}{{freq}}, não {{act}}. A mão é boa; o que saiu do lugar foi o tamanho do aumento.",
+    "precoDivergeHeuristica": "Aqui não há carta GTO para esta mão neste ponto, então o veredito sai da heurística do motor. O preço sozinho não decide.",
+    "rangeCbet": "Você enfrenta uma c-bet, a aposta mais frequente e mais ampla do jogo.",
     "rangeTomada": "O vilão apostou contra quem tinha a iniciativa (donk ou check-raise), uma linha tipicamente mais polarizada.",
     "realEqTitle": "Equity real vs mão mostrada",
-    "realEqTip": "Equity da sua mão contra a mão que {{villain}} mostrou no showdown, calculada carta a carta nesta street. É um fato do histórico, não uma estimativa. Serve para a revisão, não para julgar a decisão: na hora de jogar você enfrenta a range inteira do oponente, e é contra ela que o veredito é calculado. Pagar com equity baixa contra a mão específica que apareceu pode ter sido a jogada certa contra a range (e vice-versa) — julgar pelo resultado é o erro que a análise existe para evitar.",
-    "eqLowConfTip": "Equity estimada: não conhecemos a mão do oponente, então o número é calculado contra uma mão típica. Validamos o estimador contra 1.082 showdowns reais em que o oponente mostrou as cartas: na média ele acerta, mas nesta street 1 em cada 10 casos diverge {{p90}}+ pontos da equity real. Trate como ordem de grandeza, não como número exato — o veredito da jogada não depende só dele."
+    "realEqTip": "Equity da sua mão contra a mão que {{villain}} mostrou no showdown, calculada carta a carta nesta street. É um fato do histórico, não uma estimativa. Serve para a revisão, não para julgar a decisão: na hora de jogar você enfrenta a range inteira do oponente, e é contra ela que o veredito é calculado. Pagar com equity baixa contra a mão específica que apareceu pode ter sido a jogada certa contra a range (e vice-versa). Julgar pelo resultado é o erro que a análise existe para evitar.",
+    "eqLowConfTip": "Equity estimada: não conhecemos a mão do oponente, então o número é calculado contra uma mão típica. Validamos o estimador contra 1.082 showdowns reais em que o oponente mostrou as cartas: na média ele acerta, mas nesta street 1 em cada 10 casos diverge {{p90}}+ pontos da equity real. Trate como ordem de grandeza, não como número exato. O veredito da jogada não depende só dele."
   },
   "controls": {
     "play": "Reproduzir",
@@ -467,7 +467,7 @@
     "mesa": {
       "hu": "Mão heads-up.",
       "curta": "Mesa com {{n}} jogadores.",
-      "aviso": "Esta grade é a range de mesa cheia (9-max) e serve de referência — ela não conhece o tamanho da mesa. O veredito do card considera a mesa real, então divergências aqui são esperadas.",
+      "aviso": "Esta grade é a range de mesa cheia (9-max) e serve de referência: ela não conhece o tamanho da mesa. O veredito do card considera a mesa real, então divergências aqui são esperadas.",
       "avisoHu": "Em heads-up, quase toda mão é mais solta."
     },
     "solverSubstitui": "Veredicto do solver substitui análise de range estática.",
@@ -478,7 +478,7 @@
     "rangeTop": "Range: top",
     "estrategiaDaMao": "Estratégia da sua mão",
     "semSolverBucket": "Sem dados do GTO Solver pra este bucket, usando tabela Nash binária shove/fold.",
-    "abaDivergente": "Esta grade mostra <b>{{pos}}</b>. O veredito acima foi calculado em <b>{{gtoPos}}</b> — volte àquela aba para comparar com a análise.",
+    "abaDivergente": "Esta grade mostra <b>{{pos}}</b>. O veredito acima foi calculado em <b>{{gtoPos}}</b>. Volte àquela aba para comparar com a análise.",
     "cenarioOutraAba": "Esta grade mostra referência ({{refLabel}}). A decisão desta mão ({{decLabel}}) está na aba <b>{{aba}}</b>.",
     "cenarioSemAba": "Esta grade é só referência ({{refLabel}}). A range específica desta decisão ({{decLabel}}) está no card de análise (frequências da sua mão), ainda não disponível como grade 13×13.",
     "ref": {
