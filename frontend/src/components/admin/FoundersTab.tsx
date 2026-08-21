@@ -227,7 +227,27 @@ function Fila({ onAprovado }: { onAprovado: () => void }) {
   });
 
   const fila = data?.candidatos ?? [];
-  if (isLoading || fila.length === 0) return null;   // sem fila, não ocupa espaço na tela
+  if (isLoading) return null;
+
+  // Fila vazia continua VISÍVEL. A 1ª versão sumia com o bloco inteiro, e aí não havia
+  // como descobrir onde as candidaturas apareceriam — quem operava ficava procurando um
+  // botão de aprovar que só existia depois que alguém se candidatasse.
+  if (fila.length === 0) {
+    return (
+      <div className="rounded-xl border border-dashed border-border bg-hud-surface/40 p-4">
+        <h3 className="flex items-center gap-2 font-mono text-[11px] font-bold uppercase tracking-widest-2 text-muted-foreground">
+          <Clock className="size-3.5" /> Fila de candidatos
+        </h3>
+        <p className="mt-1.5 text-xs text-muted-foreground">
+          Ninguém na fila. Quem se candidatar em{" "}
+          <a href="/fundadores" target="_blank" rel="noreferrer" className="text-primary hover:underline">
+            grindlabpoker.com/fundadores
+          </a>{" "}
+          aparece aqui por ordem de chegada, e é aqui que você aprova.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="rounded-xl border border-primary/30 bg-primary/[0.04] p-4">
@@ -277,11 +297,13 @@ function Fila({ onAprovado }: { onAprovado: () => void }) {
                 <td className="py-2.5 pr-3">
                   <span className="flex items-center gap-1.5">
                     <span className="font-semibold text-foreground">{c.username}</span>
-                    {/* Conta não confirmada não recebe e-mail nem consegue entrar: aprovar
-                        às cegas gastaria uma vaga com quem ainda está na porta. */}
-                    {!c.email_verified && (
+                    {/* A ressalva vem pronta do backend e diz o que impediria a aprovação
+                        de valer: assinante pagante (o grant pula), conta sem e-mail
+                        confirmado (não consegue entrar) ou papel diferente de jogador.
+                        Antes isso virava linha ESCONDIDA, e a candidatura sumia da tela. */}
+                    {c.ressalva && (
                       <span className="rounded-full bg-amber-500/10 px-1.5 py-0.5 text-[9px] font-bold uppercase text-amber-400">
-                        não confirmou
+                        {c.ressalva}
                       </span>
                     )}
                   </span>

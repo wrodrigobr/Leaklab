@@ -3210,13 +3210,17 @@ export interface FounderCandidate {
   id: number;
   username: string;
   email: string;
+  role: string | null;
   founder_applied_at: string | null;
   created_at: string | null;
   acquisition_source: string | null;
   email_verified: number;
+  plan_source: string | null;
   torneios: number;
   treinos: number;
   posicao: number;
+  /** O que impediria a aprovação de valer, já resolvido no backend. `null` = nada trava. */
+  ressalva: string | null;
 }
 
 export const founder = {

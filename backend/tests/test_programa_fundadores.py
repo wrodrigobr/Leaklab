@@ -243,6 +243,51 @@ def test_fila_traz_sinal_para_decidir():
     assert fila['sonome']['torneios'] == 0 and fila['sonome']['treinos'] == 0
 
 
+def test_NENHUM_papel_some_da_fila():
+    """Regra 5, e a cicatriz que a originou aqui: filtrar `role='player'` fez a candidatura
+    do próprio dono (admin) ser gravada no banco e sumir da tela sem explicação. O mesmo
+    defeito já tinha acontecido na busca do convite horas antes.
+
+    O critério agora é único e vale para TODOS os papéis: **quem pediu aparece**. O que
+    impede a aprovação viaja como `ressalva`, na linha, em vez de virar linha escondida.
+    """
+    init_db(); _limpa()
+    for uid, nome, papel in ((80, 'jogador', 'player'), (81, 'admin', 'admin'),
+                             (82, 'treinador', 'coach')):
+        with get_conn() as conn:
+            conn.execute(_adapt(
+                "INSERT INTO users (id, email, password_hash, username, role) VALUES (?,?,?,?,?)"),
+                (uid, f'{nome}@t.com', 'x', nome, papel))
+            conn.commit()
+        apply_as_founder(uid)
+
+    fila = get_founder_candidates()
+    nomes = sorted(c['username'] for c in fila)
+    assert nomes == ['admin', 'jogador', 'treinador'], f'algum papel sumiu da fila: {nomes}'
+
+    por_nome = {c['username']: c for c in fila}
+    # O papel não some: vira ressalva visível para quem opera decidir.
+    assert por_nome['admin']['ressalva'] == 'admin'
+    assert por_nome['treinador']['ressalva'] == 'coach'
+    assert por_nome['jogador']['ressalva'] is None, 'jogador comum não tem ressalva'
+
+
+def test_ressalva_avisa_o_que_impediria_a_aprovacao():
+    """Assinante pagante é pulado pelo grant e conta não confirmada não consegue entrar.
+    Os dois casos precisam aparecer ANTES do clique, senão a vaga é gasta à toa."""
+    init_db(); _limpa()
+    _user(90, 'assina', plan='pro', source='stripe_sub')
+    with get_conn() as conn:
+        conn.execute(_adapt(
+            "INSERT INTO users (id, email, password_hash, username, role, email_verified) "
+            "VALUES (?,?,?,?,'player',0)"), (91, 'naover@t.com', 'x', 'naover'))
+        conn.commit()
+    apply_as_founder(90); apply_as_founder(91)
+    por_nome = {c['username']: c for c in get_founder_candidates()}
+    assert por_nome['assina']['ressalva'] == 'assinante pagante'
+    assert por_nome['naover']['ressalva'] == 'nao confirmou o email'
+
+
 def test_quem_nao_se_candidatou_nao_aparece_na_fila():
     """Contraprova: se a fila listasse todo mundo, ela não estaria medindo candidatura."""
     init_db(); _limpa()

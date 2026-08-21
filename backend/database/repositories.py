@@ -8290,22 +8290,34 @@ def get_founder_candidates(limit: int = 200) -> list:
 
     Traz o que dá para saber antes de decidir — se já importou alguma coisa, se já treinou
     e de onde veio. Aprovar sem nenhum sinal é o que enche o programa de silencioso.
+
+    **NÃO filtra por papel, de propósito.** A 1ª versão exigia `role='player'` e sumia com
+    quem tivesse outro papel: uma candidatura gravada no banco, e a fila vazia na tela, sem
+    nenhuma explicação. Aconteceu duas vezes no mesmo dia (aqui e na busca do convite), o
+    que é exatamente o padrão que a regra 5 do projeto manda transformar em critério único:
+    **quem pediu aparece; o papel viaja junto e a tela decide o que fazer com ele.**
+    Esconder linha é o modo silencioso de o painel mentir.
     """
     conn = get_conn()
     try:
         rows = [dict(r) for r in conn.execute(_adapt(
-            "SELECT u.id, u.username, u.email, u.founder_applied_at, u.created_at, "
-            "u.acquisition_source, u.email_verified, "
+            "SELECT u.id, u.username, u.email, u.role, u.founder_applied_at, u.created_at, "
+            "u.acquisition_source, u.email_verified, u.plan_source, "
             "(SELECT COUNT(*) FROM tournaments t WHERE t.user_id = u.id) AS torneios, "
             "(SELECT COUNT(*) FROM progression_attempts p WHERE p.user_id = u.id) AS treinos "
             "FROM users u "
             "WHERE u.founder_applied_at IS NOT NULL "
             "AND (u.plan_source IS NULL OR u.plan_source <> ?) "
-            "AND COALESCE(u.role,'player') = 'player' "
             "ORDER BY u.founder_applied_at LIMIT ?"),
             (FOUNDER_SOURCE, int(limit))).fetchall()]
         for i, r in enumerate(rows, start=1):
             r['posicao'] = i          # a fila é a promessa: "os N primeiros"
+            # O que impediria a aprovação de valer, dito na linha em vez de escondido:
+            # assinante pagante é pulado pelo grant, e conta sem e-mail confirmado nem entra.
+            r['ressalva'] = ('assinante pagante' if r.get('plan_source') == 'stripe_sub'
+                             else 'nao confirmou o email' if not r.get('email_verified')
+                             else (r.get('role') if (r.get('role') or 'player') != 'player'
+                                   else None))
         return rows
     finally:
         conn.close()

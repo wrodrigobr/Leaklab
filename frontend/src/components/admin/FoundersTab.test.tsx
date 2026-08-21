@@ -156,12 +156,14 @@ describe("programa de fundadores — a vitrine", () => {
     });
     founderCandidates.mockResolvedValue({
       candidatos: [
-        { id: 1, username: "chegou1o", email: "a@t.com", founder_applied_at: "2026-08-01T10:00:00",
-          created_at: null, acquisition_source: "instagram", email_verified: 1,
-          torneios: 2, treinos: 30, posicao: 1 },
-        { id: 2, username: "naoconfirmou", email: "b@t.com", founder_applied_at: "2026-08-01T11:00:00",
-          created_at: null, acquisition_source: null, email_verified: 0,
-          torneios: 0, treinos: 0, posicao: 2 },
+        { id: 1, username: "chegou1o", email: "a@t.com", role: "player",
+          founder_applied_at: "2026-08-01T10:00:00", created_at: null,
+          acquisition_source: "instagram", email_verified: 1, plan_source: null,
+          torneios: 2, treinos: 30, posicao: 1, ressalva: null },
+        { id: 2, username: "naoconfirmou", email: "b@t.com", role: "player",
+          founder_applied_at: "2026-08-01T11:00:00", created_at: null,
+          acquisition_source: null, email_verified: 0, plan_source: null,
+          torneios: 0, treinos: 0, posicao: 2, ressalva: "nao confirmou o email" },
       ],
     });
     montar();
@@ -171,20 +173,39 @@ describe("programa de fundadores — a vitrine", () => {
     const linha = (n: string) => screen.getByText(n).closest("tr")!;
     expect(within(linha("chegou1o")).getByText(/2 torneio/)).toBeTruthy();
     expect(within(linha("chegou1o")).getByText("instagram")).toBeTruthy();
-    // Conta não confirmada não recebe e-mail nem entra: aprovar gastaria a vaga com quem
-    // ainda está preso na porta.
-    expect(within(linha("naoconfirmou")).getByText(/não confirmou/i)).toBeTruthy();
-    expect(within(linha("chegou1o")).queryByText(/não confirmou/i)).toBeNull();
+    expect(within(linha("naoconfirmou")).getByText(/nao confirmou o email/i)).toBeTruthy();
+    expect(within(linha("chegou1o")).queryByText(/nao confirmou/i)).toBeNull();
   });
 
-  it("sem candidatos, a fila não ocupa espaço na tela", async () => {
+  it("candidato de qualquer papel aparece na fila, com a ressalva à vista", async () => {
+    // O caso real: o dono se candidatou pela própria página, a candidatura foi gravada, e
+    // a fila não mostrou nada porque ele é admin. Linha escondida é o painel mentindo.
+    founders.mockResolvedValue({
+      founders: [], resumo: { total: 0, honrando: 0, silenciosos: 0, vencendo_em_30d: 0 },
+    });
+    founderCandidates.mockResolvedValue({
+      candidatos: [
+        { id: 3, username: "wrodrigo", email: "dono@t.com", role: "admin",
+          founder_applied_at: "2026-08-21T02:16:00", created_at: null,
+          acquisition_source: null, email_verified: 1, plan_source: "stripe_sub",
+          torneios: 0, treinos: 0, posicao: 1, ressalva: "assinante pagante" },
+      ],
+    });
+    montar();
+    expect(await screen.findByText("wrodrigo")).toBeTruthy();
+    expect(screen.getByText(/assinante pagante/i)).toBeTruthy();
+  });
+
+  it("fila vazia continua visível e diz onde as candidaturas aparecem", async () => {
+    // Esconder o bloco inteiro deixava quem opera procurando um botão de aprovar que só
+    // existia depois que alguém se candidatasse.
     founders.mockResolvedValue({
       founders: [], resumo: { total: 0, honrando: 0, silenciosos: 0, vencendo_em_30d: 0 },
     });
     founderCandidates.mockResolvedValue({ candidatos: [] });
     montar();
-    await screen.findByText(/Nenhum fundador ainda/i);
-    expect(screen.queryByText(/candidato\(s\) esperando/i)).toBeNull();
+    expect(await screen.findByText(/Fila de candidatos/i)).toBeTruthy();
+    expect(screen.getByText(/é aqui que você aprova/i)).toBeTruthy();
   });
 
   it("o resumo mostra os quatro números que decidem a renovação", async () => {
