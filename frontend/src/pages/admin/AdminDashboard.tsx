@@ -30,6 +30,33 @@ function fmtDate(iso: string | null) {
   return new Date(iso).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "2-digit" });
 }
 
+/** Dias desde a data, ou null se não houver registro. */
+function diasAtras(iso: string | null | undefined): number | null {
+  if (!iso) return null;
+  // O backend grava em UTC sem sufixo de fuso; sem o "Z" o navegador leria como hora local
+  // e a conta erraria 3 horas — o bastante para "hoje" virar "ontem" no fim do dia.
+  const t = new Date(/[zZ]|[+-]\d{2}:?\d{2}$/.test(iso) ? iso : iso.replace(" ", "T") + "Z");
+  if (isNaN(t.getTime())) return null;
+  return Math.floor((Date.now() - t.getTime()) / 86_400_000);
+}
+
+/**
+ * Atividade em linguagem de decisão, não em data crua.
+ *
+ * Numa lista de fundadores a pergunta nunca é "que dia foi" e sim "essa pessoa sumiu?".
+ * "12/ago" obriga quem lê a fazer a subtração de cabeça, linha a linha; "há 9 dias"
+ * responde direto. A data exata continua acessível no title.
+ */
+function atividadeRelativa(iso: string | null | undefined): string {
+  const d = diasAtras(iso);
+  if (d === null) return "nunca entrou";
+  if (d <= 0) return "hoje";
+  if (d === 1) return "ontem";
+  if (d < 30) return `há ${d} dias`;
+  const meses = Math.floor(d / 30);
+  return meses === 1 ? "há 1 mês" : `há ${meses} meses`;
+}
+
 // ── KPI tile ─────────────────────────────────────────────────────────────────
 
 function KpiTile({ label, value, sub, icon: Icon, accent }: {
@@ -491,16 +518,16 @@ function UsersTab() {
           <table className="w-full text-xs text-left">
             <thead className="border-b border-border bg-hud-elevated/40">
               <tr>
-                {["Usuário", "Role", "Plano", "Pagamento", "Coach", "Torneios", "Último import", "Cadastro", "Ações", ""].map(h => (
+                {["Usuário", "Role", "Plano", "Pagamento", "Coach", "Torneios", "Último import", "Última atividade", "Cadastro", "Ações", ""].map(h => (
                   <th key={h} className="px-4 py-3 font-mono text-[10px] font-bold uppercase tracking-wider text-muted-foreground whitespace-nowrap">{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
               {isLoading ? (
-                <tr><td colSpan={10} className="py-12 text-center"><Loader2 className="size-5 animate-spin text-primary mx-auto" /></td></tr>
+                <tr><td colSpan={11} className="py-12 text-center"><Loader2 className="size-5 animate-spin text-primary mx-auto" /></td></tr>
               ) : users.length === 0 ? (
-                <tr><td colSpan={10} className="py-12 text-center text-muted-foreground">Nenhum usuário encontrado.</td></tr>
+                <tr><td colSpan={11} className="py-12 text-center text-muted-foreground">Nenhum usuário encontrado.</td></tr>
               ) : users.map(u => (
                 <tr key={u.id} className={cn("transition-colors hover:bg-primary/5", u.suspended && "opacity-50")}>
                   <td className="px-4 py-3">
@@ -556,6 +583,15 @@ function UsersTab() {
                   </td>
                   <td className="px-4 py-3 font-mono tabular-nums text-foreground">{u.tournament_count}</td>
                   <td className="px-4 py-3 font-mono text-muted-foreground whitespace-nowrap">{fmtDate(u.last_import)}</td>
+                  {/* "Última atividade", não "último login": a coluna é atualizada a cada dia
+                      de USO (require_auth), não só quando a pessoa digita a senha. Chamar de
+                      login faria parecer que quem usa há semanas sem relogar sumiu. */}
+                  <td className="px-4 py-3 font-mono whitespace-nowrap" title={u.last_login || "sem registro de atividade"}>
+                    <span className={cn(diasAtras(u.last_login) === null && "text-muted-foreground/50",
+                                        (diasAtras(u.last_login) ?? 99) <= 1 && "text-primary")}>
+                      {atividadeRelativa(u.last_login)}
+                    </span>
+                  </td>
                   <td className="px-4 py-3 font-mono text-muted-foreground whitespace-nowrap">{fmtDate(u.created_at)}</td>
                   <td className="px-4 py-3">
                     <button

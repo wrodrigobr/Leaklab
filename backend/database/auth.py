@@ -93,8 +93,36 @@ def require_auth(f):
         g.user    = user
         g.user_id = user['id']
         g.role    = user['role']
+        _marcar_atividade(user)
         return f(*args, **kwargs)
     return decorated
+
+
+def _marcar_atividade(user) -> None:
+    """Atualiza `last_login` no MÁXIMO 1x por dia, por usuário.
+
+    Existe porque `last_login` só era gravado no `/auth/login`, e o token dura dias: quem
+    entrava uma vez e continuava usando ficava com a data congelada, e quem recebeu o token
+    direto do cadastro ficava com NULL para sempre. A coluna existia, o painel podia
+    mostrá-la, e ela estaria mentindo — pior do que não existir.
+
+    A docstring de `touch_activity` já dizia "chamado de forma throttled pelo require_auth";
+    só que ninguém chamava. Pendência que envelheceu calada, exatamente o padrão que este
+    projeto já pagou caro para aprender.
+
+    O throttle é por DIA e não por requisição: sem ele, cada chamada de API viraria um
+    UPDATE, e uma sessão de treino faz centenas. Falha aqui é silenciosa DE PROPÓSITO —
+    perder o registro de atividade não pode derrubar a requisição do jogador.
+    """
+    try:
+        from datetime import datetime
+        hoje = datetime.utcnow().strftime('%Y-%m-%d')
+        if str(user.get('last_login') or '')[:10] == hoje:
+            return
+        from database.repositories import touch_activity
+        touch_activity(user['id'])
+    except Exception:
+        pass
 
 
 def require_coach(f):
