@@ -279,7 +279,7 @@ const THREEBET_IP: RangeSet = {
 };
 
 const THREEBET_OOP: RangeSet = {
-  label: '3-Bet (OOP)', description: 'Sem posição, vs abertura',
+  label: '3-Bet (OOP)', description: 'Fora de posição, vs abertura',
   raise: mk(
     'AA-QQ', 'JJ-TT',
     'AKs', 'AKo', 'AQs', 'AJs',

@@ -50,8 +50,17 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 >    para aceitar simbolo de moeda — e a quebra deliberada do guarda mostrou exatamente isso
 >    acontecendo antes do conserto.
 >
-> **Entregue:** `backend/tests/test_vocabulario_da_copy.py` com 7 testes cobrindo as 4
-> superficies (2 modulos Python + quiz + 3 locales JSON, 17.670 strings varridas), incluindo
+> **E uma QUINTA superficie, achada so ao varrer o BUNDLE PUBLICADO.** Depois de deployar,
+> procurei os termos no `main-*.js` que esta no ar e achei
+> `description: 'Sem posicao, vs abertura'` em `frontend/src/data/ranges.ts` -- copy escrita
+> direto no componente, fora do i18n. Nenhuma das varreduras anteriores olhava para la: eu
+> procurei copy onde a copy *deveria* estar, e passei reto por onde ela *estava*. O guarda
+> agora le tambem `.ts`/`.tsx`, recortando comentario (onde "largo" quase sempre fala de
+> largura de tela) e ignorando arquivo de teste (onde "pergunta sem posicao unica" e correto).
+>
+> **Entregue:** `backend/tests/test_vocabulario_da_copy.py` com 9 testes cobrindo as 5
+> superficies (2 modulos Python + quiz + 3 locales JSON + 260 arquivos .ts/.tsx; 17.670
+> strings de traducao varridas), incluindo
 > prova de deteccao na frase EXATA que originou o caso (exige achar OS DOIS problemas, nao
 > um) e contraprova de que o texto correto nao e acusado. Os dois guardas novos foram
 > quebrados de proposito e acusaram; o vocabulario tem 0 ocorrencias em pt-BR.

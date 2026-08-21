@@ -132,6 +132,76 @@ def test_copy_do_frontend_nao_usa_termo_fora_do_vocabulario():
     print(f'OK  test_copy_do_frontend_nao_usa_termo_fora_do_vocabulario ({varridas} strings)')
 
 
+_FONTE_FRONT = os.path.abspath(os.path.join(_BACKEND, '..', 'frontend', 'src'))
+
+# Comentário de TS/TSX é texto de DESENVOLVEDOR: "largo" ali quase sempre fala de largura de
+# tela ("mais largo que alto"), e acusá-lo seria o revisor gritando no lugar errado. Sem um
+# parser de TypeScript em Python, o caminho é recortar os comentários antes de varrer.
+_COMENTARIO_TS = re.compile(r'/\*.*?\*/|(?<![:\w])//[^\n]*', re.S)
+
+
+def _codigo_sem_comentario_de_texto(fonte):
+    # troca cada comentário por quebras de linha, para que o número da linha continue certo
+    return _COMENTARIO_TS.sub(lambda m: '\n' * m.group(0).count('\n'), fonte)
+
+
+def _codigo_sem_comentario(caminho):
+    with open(caminho, encoding='utf-8') as fh:
+        return _codigo_sem_comentario_de_texto(fh.read())
+
+
+def test_copy_hardcoded_no_frontend_nao_usa_termo_fora_do_vocabulario():
+    """A QUINTA superfície, e a única que só apareceu ao varrer o bundle PUBLICADO.
+
+    `ranges.ts` tinha `description: 'Sem posição, vs abertura'` escrito direto no código, fora
+    do i18n. Nenhum dos guardas anteriores olhava para lá: eu procurava copy onde a copy
+    *deveria* estar."""
+    assert os.path.isdir(_FONTE_FRONT), f'{_FONTE_FRONT} não existe — o varredor está cego'
+
+    violacoes = []
+    arquivos = 0
+    for raiz, _, nomes in os.walk(_FONTE_FRONT):
+        for nome in sorted(nomes):
+            # Arquivo de teste não é copy: lá "pergunta sem posição única" quer dizer "sem uma
+            # posição definida", e acusar isso seria o revisor gritando num texto correto.
+            if not nome.endswith(('.ts', '.tsx')) or '.test.' in nome or '.spec.' in nome:
+                continue
+            caminho = os.path.join(raiz, nome)
+            arquivos += 1
+            texto = _codigo_sem_comentario(caminho)
+            for padrao, certo, porque in _PROIBIDOS:
+                for m in re.finditer(padrao, texto, re.IGNORECASE):
+                    linha = texto.count('\n', 0, m.start()) + 1
+                    rel = os.path.relpath(caminho, _FONTE_FRONT)
+                    trecho = ' '.join(texto[max(0, m.start() - 45):m.end() + 45].split())
+                    violacoes.append(f'  src/{rel}:{linha} → use "{certo}". {porque}\n'
+                                     f'    …{trecho}…')
+
+    assert arquivos > 100, f'só {arquivos} arquivos .ts/.tsx lidos — o varredor não achou nada'
+    assert not violacoes, ('vocabulário fora do padrão em copy escrita direto no código:\n'
+                           + '\n'.join(violacoes))
+    print(f'OK  test_copy_hardcoded_no_frontend_nao_usa_termo_fora_do_vocabulario '
+          f'({arquivos} arquivos)')
+
+
+def test_o_varredor_de_ts_ignora_comentario():
+    """Contraprova do recorte: os comentários sobre LARGURA DE TELA não podem ser acusados."""
+    fonte = ('// o emoji renderiza mais largo que o normal\n'
+             '/* usado quando a tela é mais larga que alta */\n'
+             "const rotulo = 'Fora de posição, vs abertura';\n"
+             "const url = 'https://exemplo.com/x';\n")
+    limpo = _codigo_sem_comentario_de_texto(fonte)
+    assert not any(re.search(p, limpo, re.IGNORECASE) for p, _, _ in _PROIBIDOS), \
+        f'acusou um comentário de desenvolvedor: {limpo!r}'
+    assert 'https://exemplo.com/x' in limpo, 'o recorte comeu o "//" de uma URL'
+
+    # E o inverso: a copy de verdade continua visível depois do recorte.
+    ruim = fonte.replace('Fora de posição', 'Sem posição')
+    assert any(re.search(p, _codigo_sem_comentario_de_texto(ruim), re.IGNORECASE)
+               for p, _, _ in _PROIBIDOS), 'não achou o termo errado numa string de código'
+    print('OK  test_o_varredor_de_ts_ignora_comentario')
+
+
 def test_o_varredor_ACHA_o_termo_errado():
     """Prova de detecção (regra 1). Sem isto, o teste acima poderia estar passando porque
     parou de ler os arquivos — e um zero tranquilizador aqui deixaria a copy solta."""
