@@ -498,5 +498,19 @@
     "fonte": "Source",
     "fonteEstatica": "static tables",
     "gtoIndisponivel": "GTO analysis unavailable in this spot"
+  },
+  "gtoMixed": {
+    "misto": {
+      "label": "Mixed GTO",
+      "tooltip": "Mixed strategy: the solver splits frequency across several actions in this spot. Your play sits between 30–60% frequency at Nash equilibrium, so it is a theoretically sound line. It is not a mistake; any action at 30% frequency or more counts as balanced."
+    },
+    "defensavel": {
+      "label": "Defensible",
+      "tooltip": "Slight deviation: an action at 10–30% frequency in the solver equilibrium. Uncommon in pure GTO, but defensible in specific range and exploitation contexts. Prefer the highest-frequency line to minimise exploitation mistakes."
+    },
+    "spotMisto": {
+      "label": "Mixed Spot",
+      "tooltip": "Mixed-strategy spot: the solver balances several actions here. That means there is no single correct answer: GTO spreads frequency across the lines to stay unpredictable and unexploitable. Any line at 10% or more is defensible."
+    }
   }
 }

@@ -6,6 +6,7 @@ import ptBRCommon from './locales/pt-BR/common.json';
 import ptBRDashboard from './locales/pt-BR/dashboard.json';
 import ptBRTournaments from './locales/pt-BR/tournaments.json';
 import ptBRStudy from './locales/pt-BR/study.json';
+import ptBRFundadores from './locales/pt-BR/fundadores.json';
 import ptBRAuth from './locales/pt-BR/auth.json';
 import ptBRAicoach from './locales/pt-BR/aicoach.json';
 import ptBRCoaches from './locales/pt-BR/coaches.json';
@@ -25,6 +26,7 @@ import enCommon from './locales/en/common.json';
 import enDashboard from './locales/en/dashboard.json';
 import enTournaments from './locales/en/tournaments.json';
 import enStudy from './locales/en/study.json';
+import enFundadores from './locales/en/fundadores.json';
 import enAuth from './locales/en/auth.json';
 import enAicoach from './locales/en/aicoach.json';
 import enCoaches from './locales/en/coaches.json';
@@ -44,6 +46,7 @@ import esCommon from './locales/es/common.json';
 import esDashboard from './locales/es/dashboard.json';
 import esTournaments from './locales/es/tournaments.json';
 import esStudy from './locales/es/study.json';
+import esFundadores from './locales/es/fundadores.json';
 import esAuth from './locales/es/auth.json';
 import esAicoach from './locales/es/aicoach.json';
 import esCoaches from './locales/es/coaches.json';
@@ -69,6 +72,7 @@ i18n
         dashboard: ptBRDashboard,
         tournaments: ptBRTournaments,
         study: ptBRStudy,
+        fundadores: ptBRFundadores,
         auth: ptBRAuth,
         aicoach: ptBRAicoach,
         coaches: ptBRCoaches,
@@ -89,6 +93,7 @@ i18n
         dashboard: enDashboard,
         tournaments: enTournaments,
         study: enStudy,
+        fundadores: enFundadores,
         auth: enAuth,
         aicoach: enAicoach,
         coaches: enCoaches,
@@ -109,6 +114,7 @@ i18n
         dashboard: esDashboard,
         tournaments: esTournaments,
         study: esStudy,
+        fundadores: esFundadores,
         auth: esAuth,
         aicoach: esAicoach,
         coaches: esCoaches,

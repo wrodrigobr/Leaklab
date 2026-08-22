@@ -1,0 +1,56 @@
+{
+  "eyebrow": "Programa de socios fundadores",
+  "titulo": "Pro gratis durante 6 meses para quien lo va a usar de verdad",
+  "subtitulo": "Estamos abriendo las primeras plazas de socio fundador. Recibes el plan Pro completo, sin pagar, durante 6 meses. A cambio juegas, importas tus torneos y cuentas qué está roto. Eso es todo: sin letra pequeña, sin tarjeta, sin renovación automática.",
+  "compromisso": {
+    "jogar": {
+      "titulo": "Jugar",
+      "texto": "Sigues jugando tus torneos con normalidad. El programa no cambia tu juego ni pide volumen que no fueras a jugar igual."
+    },
+    "importar": {
+      "titulo": "Importar",
+      "texto": "Sube los hand histories de los torneos que juegues. Sin manos importadas no hay leak medido, y eso es lo que hace distinta a esta herramienta."
+    },
+    "reportar": {
+      "titulo": "Decir qué está roto",
+      "texto": "Cuando algo se trabe, te confunda o parezca mal, repórtalo. El feedback crudo y directo vale más que un elogio."
+    }
+  },
+  "esperado": {
+    "titulo": "Qué se espera de ti",
+    "aviso": "Vale la pena leerlo antes de postularte. Quien no lo usa pierde la plaza en la renovación, y se dice aquí a propósito."
+  },
+  "recebe": {
+    "titulo": "Qué recibes",
+    "itens": [
+      "El plan Pro completo durante 6 meses, renovable mientras el programa tenga sentido para ambas partes",
+      "Cada decisión analizada contra un GTO Solver, con el EV perdido en big blinds",
+      "Entrenamiento dirigido a tus leaks, montado a partir de tus propias manos",
+      "Un canal directo para reportar problemas y pedir lo que falta"
+    ]
+  },
+  "verificando": "comprobando tu situación…",
+  "jaFundador": {
+    "titulo": "Ya eres socio fundador",
+    "texto": "Tu Pro está activo. Lo mejor que puedes hacer ahora es importar un torneo y contar qué te pareció raro.",
+    "cta": "Ir al panel"
+  },
+  "naFila": {
+    "titulo": "Candidatura registrada",
+    "texto": "Estás en la fila. Las plazas salen por orden de llegada y te avisamos en cuanto se confirme la tuya. Mientras tanto puedes usar la plataforma con normalidad en el plan gratuito.",
+    "cta": "Empezar a usarlo"
+  },
+  "cta": {
+    "titulo": "Quiero ser socio fundador",
+    "logado": "Al postularte aceptas los tres compromisos de arriba.",
+    "deslogado": "Vas a crear tu cuenta y entras directo en la fila.",
+    "botaoLogado": "Postularme",
+    "botaoDeslogado": "Crear cuenta y postularme"
+  },
+  "toast": {
+    "jaEstava": "Tu candidatura ya estaba registrada.",
+    "registrada": "Candidatura registrada. Estás en la fila.",
+    "erro": "No pude registrar tu candidatura"
+  },
+  "rodape": "El programa es por tiempo limitado y las plazas salen por orden de llegada. No prometemos resultados en torneo: lo que hace la herramienta es medir tus decisiones y señalar por dónde se va el EV."
+}

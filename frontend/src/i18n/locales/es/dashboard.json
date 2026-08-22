@@ -373,7 +373,31 @@
     "soon": "próximamente",
     "noStats": "sin datos",
     "noData": "Importa torneos para calcular tu perfil de juego.",
-    "refMtt": "Ref MTT {{range}}"
+    "refMtt": "Ref MTT {{range}}",
+    "tooltip": {
+      "vpip": "Voluntarily Put money In Pot, % de manos en que el jugador entró voluntariamente (call/raise preflop). Ideal MTT: 12–22%. Por debajo de 12% es muy tight; por encima de 25%, muy loose.",
+      "pfr": "PreFlop Raise, % de manos en que el jugador abrió o re-raiseó preflop. Ideal MTT: 9–18%. PFR cerca del VPIP indica juego agresivo; una diferencia grande indica pasividad.",
+      "af": "Aggression Factor, la razón entre acciones agresivas (bet/raise) y pasivas (call) en el postflop. Ideal MTT: 2.0–4.0x. Por debajo de 1.5 es demasiado pasivo; por encima de 6, overaggressive.",
+      "cbet": "Continuation Bet, % de veces que apostaste en el flop como agresor preflop (opener/raiser). Denominador: manos en que abriste o hiciste 3-bet preflop y viste el flop. Ideal MTT: 50–75%.",
+      "foldVsBet": "Fold to Flop Bet, proxy de Fold to C-Bet. % de veces que hiciste fold en el flop enfrentando una apuesta. Ideal MTT: 40–55%. Por encima de 65% es demasiado pasivo (te rindes muy pronto); por debajo de 35%, too sticky (pagas sin equity suficiente).",
+      "bbDefense": "BB Defense Rate, % de veces que defendiste la Big Blind (call o 3-bet) enfrentando una apertura preflop. Ideal MTT: 35–55%. Por debajo de 30% foldeas la BB en exceso y regalas fold equity.",
+      "steal": "Steal%, % de veces que abriste (raise/shove) desde el BTN, CO o SB cuando la acción llegó sin apuesta previa. Ideal MTT: 25–45%. Por debajo de 20% pierdes ventaja posicional y dejas equity en el bote; por encima de 50% es overaggression explotable.",
+      "openLimp": "Open Limp%, % de veces que entraste al bote con call (sin raise por delante) desde una posición que no es la BB. Ideal MTT: 0–5%. El limp preflop elimina la fold equity, crea botes multiway fuera de posición y es explotable por cualquier squeeze del BTN/BB. Por encima de 8% es un leak serio.",
+      "foldTo3bet": "% de veces que hiciste fold tras abrir y enfrentar un 3-bet preflop. Ideal MTT: 55–72%. Calculado a partir del patrón raise→fold en decisiones preflop.",
+      "wtsd": "Went to Deep Streets, % de manos que vieron flop y llegaron a una decisión en el river. Aproximación de WTSD (no hay showdown data). Ideal MTT: 25–35%.",
+      "threeBet": "3-Bet%, de las veces en que ENFRENTASTE un open preflop (oportunidades de 3-bet), % en que el hero re-raiseó. Denominador = manos enfrentando un raise, no todas las manos. Ideal MTT: 4–8%. Por debajo de 3% es muy pasivo; por encima de 10%, overaggression preflop.",
+      "wAtSd": "Won money at ShowDown, % de showdowns ganados. Meta: más de 50% para ser +EV en los enfrentamientos. Calculado a partir de las manos que llegaron al showdown en el hand history."
+    },
+    "tendenciaDirecional": "Tendencia direccional vs la referencia MTT",
+    "hudResumo": "Indicadores tácticos de tu perfil de juego. Row 1: VPIP, PFR, AF, C-Bet. Row 2: Fold to 3BET, WTSD, 3BET%, W$SD. Row 3: Fold vs Flop Bet (proxy FtCB), BB Defense, Steal%, Open Limp%.",
+    "amostra": {
+      "baixaLabel": "Muestra baja",
+      "baixaTooltip": "{{n}} manos, intervalo de confianza amplio (más de ±10pp en VPIP/PFR). Con poca muestra los números son DIRECCIONALES: indican la tendencia (más tight/loose/pasivo), no valores exactos, y unos pocos puntos no cambian el read. Apunta a 200+ manos para una lectura confiable; 1000+ para benchmarking.",
+      "mediaLabel": "Muestra media",
+      "mediaTooltip": "{{n}} manos, IC típico de ±5pp. Las tendencias son confiables pero los valores absolutos aún fluctúan. Llega a 1000+ manos para un benchmarking firme.",
+      "robustaLabel": "Muestra robusta",
+      "robustaTooltip": "{{n}} manos, IC por debajo de ±3pp. Números estadísticamente confiables para comparar con las referencias."
+    }
   },
   "dna": {
     "title": "Perfil Estratégico",

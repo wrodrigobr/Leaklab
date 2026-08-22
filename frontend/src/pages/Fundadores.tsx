@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { useAuth } from "@/lib/auth";
 import { founder } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { useTranslation } from "react-i18next";
 import logoHorizontal from "@/assets/brand/grindlab_final_horizontal.svg";
 
 /**
@@ -23,35 +24,31 @@ import logoHorizontal from "@/assets/brand/grindlab_final_horizontal.svg";
 const COMPROMISSOS = [
   {
     icone: Target,
-    titulo: "Jogar",
-    texto: "Você continua jogando seus torneios normalmente. O programa não muda seu jogo, " +
-           "nem pede volume que você já não faria.",
+    chave: "compromisso.jogar",
   },
   {
     icone: Upload,
-    titulo: "Importar",
-    texto: "Suba os hand histories dos torneios que jogar. Sem as mãos importadas não há " +
-           "leak medido, e é isso que a ferramenta faz de diferente.",
+    chave: "compromisso.importar",
   },
   {
     icone: MessageSquare,
-    titulo: "Dizer o que está quebrado",
-    texto: "Quando algo travar, estiver confuso ou parecer errado, reporte. Feedback ruim " +
-           "e direto vale mais do que elogio.",
+    chave: "compromisso.reportar",
   },
 ];
 
-function Compromisso({ icone: Icone, titulo, texto }: (typeof COMPROMISSOS)[number]) {
+function Compromisso({ icone: Icone, chave }: (typeof COMPROMISSOS)[number]) {
+  const { t } = useTranslation("fundadores");
   return (
     <div className="rounded-lg border border-border bg-hud-surface p-5">
       <Icone className="mb-3 size-5 text-primary" aria-hidden />
-      <h3 className="font-heading text-base font-bold text-foreground">{titulo}</h3>
-      <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">{texto}</p>
+      <h3 className="font-heading text-base font-bold text-foreground">{t(`${chave}.titulo`)}</h3>
+      <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">{t(`${chave}.texto`)}</p>
     </div>
   );
 }
 
 export default function Fundadores() {
+  const { t } = useTranslation("fundadores");
   const { user } = useAuth();
   const navigate = useNavigate();
   const [status, setStatus] = useState<{
@@ -84,10 +81,9 @@ export default function Fundadores() {
         ja_e_fundador: r.ja_e_fundador ?? s?.ja_e_fundador ?? false,
         expira_em: s?.expira_em ?? null,
       }));
-      toast.success(r.ja_estava ? "Sua candidatura já estava registrada."
-                                : "Candidatura registrada. Você entrou na fila.");
+      toast.success(t(r.ja_estava ? "toast.jaEstava" : "toast.registrada"));
     } catch (e) {
-      toast.error((e as Error).message || "Não consegui registrar sua candidatura");
+      toast.error((e as Error).message || t("toast.erro"));
     } finally {
       setEnviando(false);
     }
@@ -104,43 +100,35 @@ export default function Fundadores() {
         </Link>
 
         <p className="font-mono text-[11px] font-bold uppercase tracking-widest-2 text-primary">
-          Programa de parceiros fundadores
+          {t("eyebrow")}
         </p>
         <h1 className="mt-3 font-heading text-3xl font-bold leading-tight text-foreground md:text-4xl">
-          Pro liberado por 6 meses para quem vai usar de verdade
+          {t("titulo")}
         </h1>
         <p className="mt-4 max-w-2xl text-base leading-relaxed text-muted-foreground">
-          Estamos abrindo as primeiras vagas de parceiro fundador. Você recebe o plano Pro
-          completo, sem pagar, por 6 meses. Em troca, joga, importa seus torneios e conta o
-          que está quebrado. É isso: sem letra miúda, sem cartão, sem renovação automática.
+          {t("subtitulo")}
         </p>
 
         {/* O compromisso ANTES do botão, com o mesmo peso da oferta. */}
         <section className="mt-10">
           <h2 className="font-heading text-xl font-bold text-foreground">
-            O que se espera de você
+            {t("esperado.titulo")}
           </h2>
           <p className="mt-1.5 text-sm text-muted-foreground">
-            Vale ler antes de se candidatar. Quem não usa perde a vaga na renovação, e isso
-            é dito aqui de propósito.
+            {t("esperado.aviso")}
           </p>
           <div className="mt-5 grid gap-4 sm:grid-cols-3">
-            {COMPROMISSOS.map((c) => <Compromisso key={c.titulo} {...c} />)}
+            {COMPROMISSOS.map((c) => <Compromisso key={c.chave} {...c} />)}
           </div>
         </section>
 
         <section className="mt-10">
-          <h2 className="font-heading text-xl font-bold text-foreground">O que você recebe</h2>
+          <h2 className="font-heading text-xl font-bold text-foreground">{t("recebe.titulo")}</h2>
           <ul className="mt-4 space-y-2.5">
-            {[
-              "Plano Pro completo por 6 meses, renovável enquanto o programa fizer sentido para os dois lados",
-              "Análise de cada decisão contra um GTO Solver, com o EV perdido em big blinds",
-              "Treino dirigido aos seus leaks, montado a partir das suas próprias mãos",
-              "Canal direto para reportar problema e sugerir o que falta",
-            ].map((t) => (
-              <li key={t} className="flex gap-2.5 text-sm leading-relaxed text-muted-foreground">
+            {(t("recebe.itens", { returnObjects: true }) as string[]).map((item) => (
+              <li key={item} className="flex gap-2.5 text-sm leading-relaxed text-muted-foreground">
                 <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden />
-                <span>{t}</span>
+                <span>{item}</span>
               </li>
             ))}
           </ul>
@@ -149,22 +137,21 @@ export default function Fundadores() {
         <section className="mt-12 rounded-xl border border-border bg-hud-surface p-6">
           {carregando ? (
             <p className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Loader2 className="size-4 animate-spin" /> verificando sua situação…
+              <Loader2 className="size-4 animate-spin" /> {t("verificando")}
             </p>
           ) : jaFundador ? (
             <div>
               <p className="flex items-center gap-2 font-heading text-lg font-bold text-primary">
-                <CheckCircle2 className="size-5" /> Você já é parceiro fundador
+                <CheckCircle2 className="size-5" /> {t("jaFundador.titulo")}
               </p>
               <p className="mt-1.5 text-sm text-muted-foreground">
-                Seu Pro está ativo. A melhor coisa que você pode fazer agora é importar um
-                torneio e dizer o que achou estranho.
+                {t("jaFundador.texto")}
               </p>
               <Link
                 to="/dashboard"
                 className="mt-4 inline-flex h-10 items-center rounded-md bg-primary px-5 font-mono text-xs font-bold uppercase tracking-widest-2 text-primary-foreground hover:bg-primary-glow"
               >
-                Ir para o painel
+                {t("jaFundador.cta")}
               </Link>
             </div>
           ) : jaCandidatado ? (
@@ -172,29 +159,25 @@ export default function Fundadores() {
                criar expectativa que a fila pode não cumprir. */
             <div>
               <p className="flex items-center gap-2 font-heading text-lg font-bold text-foreground">
-                <Clock className="size-5 text-primary" /> Candidatura registrada
+                <Clock className="size-5 text-primary" /> {t("naFila.titulo")}
               </p>
               <p className="mt-1.5 text-sm text-muted-foreground">
-                Você está na fila. As vagas saem por ordem de chegada, e avisamos assim que
-                a sua for confirmada. Enquanto isso, pode usar a plataforma normalmente no
-                plano gratuito.
+                {t("naFila.texto")}
               </p>
               <Link
                 to="/dashboard"
                 className="mt-4 inline-flex h-10 items-center rounded-md border border-border px-5 font-mono text-xs font-bold uppercase tracking-widest-2 text-foreground hover:border-primary/40"
               >
-                Começar a usar
+                {t("naFila.cta")}
               </Link>
             </div>
           ) : (
             <div>
               <h2 className="font-heading text-lg font-bold text-foreground">
-                Quero ser parceiro fundador
+                {t("cta.titulo")}
               </h2>
               <p className="mt-1.5 text-sm text-muted-foreground">
-                {user
-                  ? "Ao se candidatar, você concorda com os três compromissos acima."
-                  : "Você vai criar sua conta e já entra na fila de candidatos."}
+                {t(user ? "cta.logado" : "cta.deslogado")}
               </p>
               <button
                 onClick={candidatar}
@@ -206,16 +189,14 @@ export default function Fundadores() {
                 )}
               >
                 {enviando && <Loader2 className="size-4 animate-spin" aria-hidden />}
-                {user ? "Me candidatar" : "Criar conta e me candidatar"}
+                {t(user ? "cta.botaoLogado" : "cta.botaoDeslogado")}
               </button>
             </div>
           )}
         </section>
 
         <p className="mt-8 text-xs leading-relaxed text-muted-foreground">
-          O programa é por tempo determinado e as vagas saem por ordem de chegada. Não
-          prometemos resultado em torneio: o que a ferramenta faz é medir suas decisões e
-          apontar onde o EV está indo embora.
+          {t("rodape")}
         </p>
       </main>
     </div>

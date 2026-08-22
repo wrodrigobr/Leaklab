@@ -373,7 +373,31 @@
     "soon": "coming soon",
     "noStats": "no data",
     "noData": "Import tournaments to calculate your playing profile.",
-    "refMtt": "MTT Ref {{range}}"
+    "refMtt": "MTT Ref {{range}}",
+    "tooltip": {
+      "vpip": "Voluntarily Put money In Pot, % of hands the player entered voluntarily (call/raise preflop). MTT target: 12–22%. Below 12% is very tight; above 25% is very loose.",
+      "pfr": "PreFlop Raise, % of hands the player opened or re-raised preflop. MTT target: 9–18%. PFR close to VPIP means an aggressive game; a wide gap means passivity.",
+      "af": "Aggression Factor, the ratio of aggressive actions (bet/raise) to passive ones (call) postflop. MTT target: 2.0–4.0x. Below 1.5 is too passive; above 6 is overaggressive.",
+      "cbet": "Continuation Bet, % of the time you bet the flop as the preflop aggressor (opener/raiser). Denominator: hands where you opened or 3-bet preflop and saw a flop. MTT target: 50–75%.",
+      "foldVsBet": "Fold to Flop Bet, a proxy for Fold to C-Bet. % of the time you folded the flop facing a bet. MTT target: 40–55%. Above 65% is too passive (giving up early); below 35% is too sticky (calling without enough equity).",
+      "bbDefense": "BB Defense Rate, % of the time you defended the Big Blind (call or 3-bet) facing a preflop open. MTT target: 35–55%. Below 30% means overfolding the BB, handing out free fold equity.",
+      "steal": "Steal%, % of the time you opened (raise/shove) from the BTN, CO or SB when the action folded to you. MTT target: 25–45%. Below 20% wastes your positional edge and leaves equity in the pot; above 50% is exploitable overaggression.",
+      "openLimp": "Open Limp%, % of the time you entered the pot with a call (no raise in front) from a non-BB seat. MTT target: 0–5%. Limping preflop kills fold equity, builds multiway pots out of position and is exploitable by any BTN/BB squeeze. Above 8% is a serious leak.",
+      "foldTo3bet": "% of the time you folded after opening and facing a preflop 3-bet. MTT target: 55–72%. Computed from the raise→fold pattern in preflop decisions.",
+      "wtsd": "Went to Deep Streets, % of hands that saw a flop and reached a decision on the river. An approximation of WTSD (showdown data is not available). MTT target: 25–35%.",
+      "threeBet": "3-Bet%, of the times you FACED a preflop open (3-bet opportunities), the % where the hero re-raised. Denominator = hands facing a raise, not all hands. MTT target: 4–8%. Below 3% is very passive; above 10% is preflop overaggression.",
+      "wAtSd": "Won money at ShowDown, % of showdowns won. Target: above 50% to be +EV in these confrontations. Computed from the hands that reached showdown in the hand history."
+    },
+    "tendenciaDirecional": "Directional trend vs the MTT benchmark",
+    "hudResumo": "Tactical indicators of your playing profile. Row 1: VPIP, PFR, AF, C-Bet. Row 2: Fold to 3BET, WTSD, 3BET%, W$SD. Row 3: Fold vs Flop Bet (FtCB proxy), BB Defense, Steal%, Open Limp%.",
+    "amostra": {
+      "baixaLabel": "Small sample",
+      "baixaTooltip": "{{n}} hands, wide confidence interval (over ±10pp on VPIP/PFR). With a small sample the numbers are DIRECTIONAL: they show the trend (more tight/loose/passive), not exact values, and a few points either way do not change the read. Aim for 200+ hands for a reliable read; 1000+ for benchmarking.",
+      "mediaLabel": "Medium sample",
+      "mediaTooltip": "{{n}} hands, typical CI of ±5pp. Trends are reliable but absolute values still move. Reach 1000+ hands for solid benchmarking.",
+      "robustaLabel": "Robust sample",
+      "robustaTooltip": "{{n}} hands, CI under ±3pp. Statistically reliable numbers for comparison against benchmarks."
+    }
   },
   "dna": {
     "title": "Strategic Profile",

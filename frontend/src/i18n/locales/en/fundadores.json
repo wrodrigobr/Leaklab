@@ -1,0 +1,56 @@
+{
+  "eyebrow": "Founding partner programme",
+  "titulo": "Pro free for 6 months, for people who will actually use it",
+  "subtitulo": "We are opening the first founding partner spots. You get the full Pro plan at no cost for 6 months. In return you play, import your tournaments and tell us what is broken. That is it: no fine print, no card, no auto-renew.",
+  "compromisso": {
+    "jogar": {
+      "titulo": "Play",
+      "texto": "You keep playing your tournaments as usual. The programme does not change your game, and it does not ask for volume you would not play anyway."
+    },
+    "importar": {
+      "titulo": "Import",
+      "texto": "Upload the hand histories of the tournaments you play. Without imported hands there is no measured leak, and that is what makes this tool different."
+    },
+    "reportar": {
+      "titulo": "Tell us what is broken",
+      "texto": "When something breaks, confuses you or looks wrong, report it. Blunt, direct feedback is worth more than praise."
+    }
+  },
+  "esperado": {
+    "titulo": "What we expect from you",
+    "aviso": "Worth reading before you apply. People who do not use it lose the spot at renewal, and that is stated here on purpose."
+  },
+  "recebe": {
+    "titulo": "What you get",
+    "itens": [
+      "The full Pro plan for 6 months, renewable while the programme makes sense for both sides",
+      "Every decision analysed against a GTO Solver, with the EV lost in big blinds",
+      "Training aimed at your leaks, built from your own hands",
+      "A direct channel to report problems and ask for what is missing"
+    ]
+  },
+  "verificando": "checking your status…",
+  "jaFundador": {
+    "titulo": "You are already a founding partner",
+    "texto": "Your Pro is active. The best thing you can do right now is import a tournament and tell us what looked odd.",
+    "cta": "Go to the dashboard"
+  },
+  "naFila": {
+    "titulo": "Application received",
+    "texto": "You are in the queue. Spots go out in order of arrival, and we will let you know as soon as yours is confirmed. In the meantime you can use the platform normally on the free plan.",
+    "cta": "Start using it"
+  },
+  "cta": {
+    "titulo": "I want to be a founding partner",
+    "logado": "By applying, you agree to the three commitments above.",
+    "deslogado": "You will create your account and go straight into the queue.",
+    "botaoLogado": "Apply",
+    "botaoDeslogado": "Create account and apply"
+  },
+  "toast": {
+    "jaEstava": "Your application was already on file.",
+    "registrada": "Application received. You are in the queue.",
+    "erro": "I could not register your application"
+  },
+  "rodape": "The programme runs for a limited time and spots go out in order of arrival. We do not promise tournament results: what the tool does is measure your decisions and show where the EV is leaking."
+}

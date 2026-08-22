@@ -498,5 +498,19 @@
     "fonte": "Fonte",
     "fonteEstatica": "tabelas estáticas",
     "gtoIndisponivel": "análise GTO indisponível neste spot"
+  },
+  "gtoMixed": {
+    "misto": {
+      "label": "GTO Misto",
+      "tooltip": "Estratégia mista: o solver distribui frequência entre múltiplas ações neste spot. Sua jogada tem entre 30–60% de frequência no equilíbrio de Nash: é uma linha teoricamente válida. Não é um erro; qualquer ação com ≥30% de frequência é considerada equilibrada."
+    },
+    "defensavel": {
+      "label": "Defensável",
+      "tooltip": "Desvio leve: ação com 10–30% de frequência no equilíbrio do solver. Incomum no GTO puro, mas defensável em contextos específicos de range e exploração. Prefira a linha de maior frequência para minimizar erros de exploração."
+    },
+    "spotMisto": {
+      "label": "Spot Misto",
+      "tooltip": "Spot de estratégia mista, o solver equilibra múltiplas ações neste spot. Isso significa que não existe uma única resposta correta: o GTO distribui frequência entre as linhas para ser imprevisível e não explorável. Qualquer linha com ≥10% é defensável."
+    }
   }
 }

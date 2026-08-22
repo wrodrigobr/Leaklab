@@ -498,5 +498,19 @@
     "fonte": "Fuente",
     "fonteEstatica": "tablas estáticas",
     "gtoIndisponivel": "análisis GTO no disponible en este spot"
+  },
+  "gtoMixed": {
+    "misto": {
+      "label": "GTO Mixto",
+      "tooltip": "Estrategia mixta: el solver reparte la frecuencia entre varias acciones en este spot. Tu jugada está entre 30–60% de frecuencia en el equilibrio de Nash, así que es una línea teóricamente válida. No es un error; cualquier acción con 30% de frecuencia o más se considera equilibrada."
+    },
+    "defensavel": {
+      "label": "Defendible",
+      "tooltip": "Desvío leve: acción con 10–30% de frecuencia en el equilibrio del solver. Poco común en GTO puro, pero defendible en contextos específicos de range y explotación. Prefiere la línea de mayor frecuencia para minimizar errores de explotación."
+    },
+    "spotMisto": {
+      "label": "Spot Mixto",
+      "tooltip": "Spot de estrategia mixta: el solver equilibra varias acciones aquí. Eso significa que no existe una única respuesta correcta: el GTO reparte la frecuencia entre las líneas para ser impredecible y no explotable. Cualquier línea con 10% o más es defendible."
+    }
   }
 }
