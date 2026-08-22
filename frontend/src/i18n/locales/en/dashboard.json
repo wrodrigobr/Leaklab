@@ -761,5 +761,53 @@
     "cidadeExemplo": "São Paulo",
     "faixaBuyin": "Buy-in range",
     "naoMostrar": "Do not show again"
-  }
+  },
+  "assinatura": {
+    "canceladaOk": "Subscription cancelled. Your Pro stays active until the end of the current period.",
+    "canceladaErro": "The subscription could not be cancelled.",
+    "acessoAte": "Pro access until",
+    "proximaCobranca": "Next charge",
+    "naoRenova": "Your subscription will not renew; after that date the account goes back to Free.",
+    "historico": "Payment history",
+    "semPagamentos": "No payments yet.",
+    "confirmarTitulo": "Cancel your subscription?",
+    "confirmarTexto": "Your Pro stays active until <b>{{data}}</b>. After that date the account goes back to Free and the subscription does not renew. You lose nothing right now.",
+    "botaoCancelar": "Cancel subscription",
+    "cancelando": "Cancelling…"
+  },
+  "heatmap": {
+    "titulo": "Position × Street heatmap",
+    "semDados": "Not enough data yet.",
+    "eyebrow": "GTO Alignment · Position × Street",
+    "ajuda": "GTO adherence by position and street. Green means aligned with the solver; red means a leak. Faded cells have fewer than 20 decisions (wide confidence interval).",
+    "amostraBaixaTip": "Cells with n < 20 have a wide CI: read them with care",
+    "amostraBaixa": "some cells have a small sample"
+  },
+  "upload": {
+    "analisando": "Analysing the tournament…",
+    "importado": "Tournament imported.",
+    "erro": "Import failed",
+    "titulo": "Analyse a new session",
+    "instrucao": "Drop tournament logs (.txt) here, or click to start the tactical scan.",
+    "botao": "Choose a log file",
+    "semHistory": "No hand history? Rebuild a hand by hand (video review, notes, and so on).",
+    "aria": "Upload a tournament log",
+    "importadoDetalhe": "{{hero}} • {{n}} hands imported"
+  },
+  "conta": {
+    "usoMes": "Usage this month",
+    "analises": "GrindLab analyses",
+    "aria": "Account menu",
+    "upgrade": "Upgrade to Pro · R$ 99",
+    "docs": "Documentation"
+  },
+  "quota": {
+    "titulo": "You are close to the monthly limit",
+    "torneios": "Tournaments this month",
+    "analises": "AI analyses this month",
+    "upgrade": "Upgrade to Pro · R$ 99"
+  },
+  "infoAria": "Information",
+  "mesaAria": "9-handed table, highlighting position {{posicao}}",
+  "mesaNaoDefinida": "not set"
 }

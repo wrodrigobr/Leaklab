@@ -1,4 +1,5 @@
 import { CheckCircle2, Star } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { GtoStrategyAction } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { GtoMixedBadge } from "./GtoMixedBadge";
@@ -57,6 +58,7 @@ function labelForBase(base: string): string {
 }
 
 export function GtoStrategyPanel({ strategy, playedAction, compact, handStrategy, handTitle, handTip }: Props) {
+  const { t } = useTranslation("replayer");
   if (!strategy || strategy.length === 0) return null;
 
   // Fase 3: agrega a estratégia da MÃO por ação-base (mesma regra das barras da
@@ -128,7 +130,7 @@ export function GtoStrategyPanel({ strategy, playedAction, compact, handStrategy
     <div className="space-y-2">
       {usingHand && (
         <div className="font-mono text-[8px] uppercase tracking-wide text-teal-300/90" title={handTip}>
-          {handTitle || "Sua mão"} · {prettyHand(handStrategy!.hand)}
+          {handTitle || t("suaMao")} · {prettyHand(handStrategy!.hand)}
         </div>
       )}
       {primary.map((row, idx) => {

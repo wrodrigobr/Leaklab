@@ -310,7 +310,7 @@ const StudyPlanPage = () => {
           </div>
         </div>
         {hasCoach ? (
-          <div className="flex items-center gap-2 rounded-md border border-border bg-background px-4 py-2 text-muted-foreground" title="Seu coach gerencia este plano">
+          <div className="flex items-center gap-2 rounded-md border border-border bg-background px-4 py-2 text-muted-foreground" title={t("coachGerencia")}>
             <Lock className="size-3.5 shrink-0" />
             <div className="text-left">
               <p className="font-mono text-[11px] font-bold uppercase tracking-widest-2">
@@ -429,7 +429,7 @@ const StudyPlanPage = () => {
               <Target className="size-5 shrink-0 text-amber-400" aria-hidden />
               <div className="min-w-0 flex-1">
                 <p className="font-mono text-[10px] uppercase tracking-widest text-amber-400">
-                  {t("memo.eyebrow", "Treino recomendado")}
+                  {t("memo.eyebrow")}
                 </p>
                 <p className="mt-0.5 text-[13px] leading-snug text-foreground">
                   {treinoSugerido.de_quem === "vilao"

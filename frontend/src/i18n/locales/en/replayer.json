@@ -523,5 +523,8 @@
     "acceptable": "Acceptable",
     "correct": "Correct"
   },
-  "proximo": "Next"
+  "proximo": "Next",
+  "suaMao": "Your hand",
+  "equityMinima": "Minimum equity for the call to break even (bet ÷ (bet + pot))",
+  "equityAjustada": "Required equity adjusted for realization and ICM pressure. Raw pot odds: {{bruto}}%."
 }

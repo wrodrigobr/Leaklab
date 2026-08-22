@@ -49,15 +49,13 @@ export function MetaSemanalPrompt({ onPular }: { onPular: () => void }) {
         <CalendarCheck className="mt-0.5 size-4 shrink-0 text-sky-400" aria-hidden />
         <div className="min-w-0">
           <p className="font-mono text-[10px] font-bold uppercase tracking-widest text-sky-400">
-            {t("leakTrainer.meta.eyebrow", "Seu compromisso")}
+            {t("leakTrainer.meta.eyebrow")}
           </p>
           <p className="mt-1 text-[13px] leading-snug text-foreground">
-            {t("leakTrainer.meta.pergunta",
-               "Em quantos dias por semana você consegue treinar?")}
+            {t("leakTrainer.meta.pergunta")}
           </p>
           <p className="mt-1 text-[11px] leading-snug text-muted-foreground">
-            {t("leakTrainer.meta.porque",
-               "Serve para você medir o seu próprio ritmo. Dá para mudar quando quiser.")}
+            {t("leakTrainer.meta.porque")}
           </p>
         </div>
       </div>
@@ -74,7 +72,7 @@ export function MetaSemanalPrompt({ onPular }: { onPular: () => void }) {
         ))}
         <button onClick={onPular} disabled={enviando !== null}
           className="shrink-0 px-2 font-mono text-[10px] uppercase tracking-wider text-muted-foreground transition-colors hover:text-foreground disabled:opacity-40">
-          {t("leakTrainer.meta.depois", "Depois")}
+          {t("leakTrainer.meta.depois")}
         </button>
       </div>
     </div>

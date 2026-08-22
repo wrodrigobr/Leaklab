@@ -1,4 +1,5 @@
 import { BookOpen, ExternalLink, Film, Globe, Wrench } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import type { StudyResource } from "./types";
 
 const ICONS = {
@@ -9,17 +10,18 @@ const ICONS = {
 } as const;
 
 const LABELS = {
-  book:  "Livro",
-  video: "Vídeo",
-  site:  "Site",
-  tool:  "Ferramenta",
+  book:  "recurso.livro",
+  video: "recurso.video",
+  site:  "recurso.site",
+  tool:  "recurso.ferramenta",
 } as const;
 
 export function ResourceList({ resources }: { resources: StudyResource[] }) {
+  const { t } = useTranslation("study");
   if (!resources?.length) {
     return (
       <p className="font-mono text-[11px] text-muted-foreground">
-        Nenhum recurso atribuído ainda.
+        {t("recurso.vazio")}
       </p>
     );
   }

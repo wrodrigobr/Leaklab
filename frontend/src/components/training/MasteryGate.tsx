@@ -41,7 +41,7 @@ export function MasteryGate({ criterios, className }: { criterios: MasteryCriter
             <span className={cn("w-24 shrink-0 text-right font-mono text-[10px] tabular-nums",
               c.ok ? "text-emerald-400" : "text-muted-foreground")}>
               {semAmostra
-                ? t("leakTrainer.protocol.needSample", "sem amostra")
+                ? t("leakTrainer.protocol.needSample")
                 : c.ok ? "✓" : valorTxt}
             </span>
           </div>

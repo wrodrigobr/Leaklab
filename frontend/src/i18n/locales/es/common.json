@@ -186,5 +186,8 @@
     "genericError": "No se pudo procesar ({{raw}}). Verifica si el servidor está actualizado.",
     "errorFallback": "error",
     "gtoNotice": "Las manos ya están en tu historial. El <1>análisis GTO</1> corre en segundo plano y puede tardar unos minutos en un torneo grande. Puedes cerrar, los torneos muestran el sello <2>Analizando</2> hasta terminar."
+  },
+  "suporte": {
+    "semMensagens": "Todavía no has enviado mensajes."
   }
 }

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Link, useSearchParams } from "react-router-dom";
 import { ArrowLeft, Loader2, TrendingUp, TrendingDown, Minus } from "lucide-react";
 import { HudLayout } from "@/components/hud/HudLayout";
@@ -49,6 +50,7 @@ function QualityBar({ value, max = 100 }: { value: number | null; max?: number }
 }
 
 export default function TournamentCompare() {
+  const { t } = useTranslation("tournaments");
   const [params] = useSearchParams();
   const ids = (params.get("ids") ?? "").split(",").filter(Boolean);
 
@@ -58,7 +60,7 @@ export default function TournamentCompare() {
   const [narrative, setNarrative] = useState("");
 
   useEffect(() => {
-    if (ids.length < 2) { setError("Selecione pelo menos 2 torneios."); setLoading(false); return; }
+    if (ids.length < 2) { setError(t("compare.min2")); setLoading(false); return; }
     tournamentsApi.compare(ids)
       .then((r) => { setItems(r.items); setNarrative(r.narrative); })
       .catch((e) => setError(e.message ?? "Erro ao carregar comparativo"))
@@ -77,13 +79,13 @@ export default function TournamentCompare() {
   const clearBest = bestIdx(items.map((i) => i.clear_pct), false);
 
   return (
-    <HudLayout eyebrow="Sprint O · FEAT-01" title="Comparativo de Torneios" description="Análise evolutiva lado a lado de qualidade técnica de decisão.">
+    <HudLayout eyebrow="Sprint O · FEAT-01" title={t("compare.titulo")} description={t("compare.subtitulo")}>
       <Link
         to="/tournaments"
         className="inline-flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-widest-2 text-muted-foreground hover:text-primary transition-colors"
       >
         <ArrowLeft className="size-3.5" />
-        Voltar para Torneios
+        {t("compare.voltar")}
       </Link>
 
       {loading && (
@@ -106,7 +108,7 @@ export default function TournamentCompare() {
           {narrative && (
             <div className="rounded-xl border border-primary/20 bg-primary/5 px-5 py-4">
               <p className="font-mono text-[10px] font-bold uppercase tracking-widest-2 text-primary mb-1.5">
-                Análise Comparativa IA
+                {t("compare.narrativa")}
               </p>
               <p className="text-sm leading-relaxed text-foreground">{narrative}</p>
             </div>
@@ -147,7 +149,7 @@ export default function TournamentCompare() {
           <section className="rounded-xl border border-border overflow-hidden">
             <div className="border-b border-border bg-hud-elevated/40 px-4 py-2">
               <span className="font-mono text-[10px] font-bold uppercase tracking-widest-2 text-muted-foreground">
-                Qualidade de Decisão
+                {t("compare.qualidade")}
               </span>
             </div>
 
@@ -156,7 +158,7 @@ export default function TournamentCompare() {
               {[
                 {
                   label: "Standard %",
-                  sub: "Decisões dentro do padrão, quanto maior, melhor",
+                  sub: t("compare.standardSub"),
                   render: (item: TournamentComparison, idx: number) => (
                     <div className="space-y-1">
                       <QualityBar value={item.standard_pct} />
@@ -167,7 +169,7 @@ export default function TournamentCompare() {
                 },
                 {
                   label: "Avg Score",
-                  sub: "Score médio de erro, quanto menor, melhor",
+                  sub: t("compare.scoreSub"),
                   render: (item: TournamentComparison, idx: number) => (
                     <div className="space-y-1">
                       <span className={cn("font-mono text-sm font-bold tabular-nums", (item.avg_score ?? 0) < 0.12 ? "text-primary" : (item.avg_score ?? 0) < 0.2 ? "text-yellow-400" : "text-destructive")}>
@@ -259,7 +261,7 @@ export default function TournamentCompare() {
             <section className="rounded-xl border border-border overflow-hidden">
               <div className="border-b border-border bg-hud-elevated/40 px-4 py-2">
                 <span className="font-mono text-[10px] font-bold uppercase tracking-widest-2 text-muted-foreground">
-                  Top Leaks por Torneio
+                  {t("compare.topLeaks")}
                 </span>
               </div>
               <div className={cn("grid gap-px bg-border", items.length === 2 ? "grid-cols-2" : items.length === 3 ? "grid-cols-3" : "grid-cols-2 md:grid-cols-4")}>
@@ -284,14 +286,14 @@ export default function TournamentCompare() {
                       );
                     })}
                     {item.top_leaks.length === 0 && (
-                      <p className="text-[10px] text-muted-foreground">Sem leaks recorrentes</p>
+                      <p className="text-[10px] text-muted-foreground">{t("compare.semLeaks")}</p>
                     )}
                   </div>
                 ))}
               </div>
               <div className="border-t border-border/40 px-4 py-2">
                 <span className="font-mono text-[9px] text-muted-foreground">
-                  <span className="text-yellow-400">■</span> Leak presente em múltiplos torneios
+                  <span className="text-yellow-400">■</span> {t("compare.legendaCompartilhado")}
                 </span>
               </div>
             </section>

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { AlertTriangle, Zap } from "lucide-react";
 import { subscription, QuotaStatus } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -31,6 +32,7 @@ function QuotaBar({ used, limit, label }: { used: number; limit: number; label: 
 }
 
 export function QuotaBanner() {
+  const { t } = useTranslation("dashboard");
   const [status, setStatus] = useState<QuotaStatus | null>(null);
   const [checkoutPlan, setCheckoutPlan] = useState<"pro" | null>(null);
 
@@ -58,20 +60,20 @@ export function QuotaBanner() {
       <div className="flex items-center gap-2">
         <AlertTriangle className={cn("size-3.5 shrink-0", atAny ? "text-destructive" : "text-amber-400")} />
         <p className="text-xs font-medium text-foreground">
-          {atAny ? "Limite mensal atingido" : "Limite mensal próximo"}
+          {atAny ? "Limite mensal atingido" : t("quota.titulo")}
         </p>
       </div>
 
       <div className="space-y-1.5">
-        <QuotaBar used={tournaments_used} limit={tLimit}  label="Torneios este mês" />
-        <QuotaBar used={ai_calls_used}   limit={aiLimit} label="Análises IA este mês" />
+        <QuotaBar used={tournaments_used} limit={tLimit}  label={t("quota.torneios")} />
+        <QuotaBar used={ai_calls_used}   limit={aiLimit} label={t("quota.analises")} />
       </div>
 
       <button
         onClick={() => setCheckoutPlan("pro")}
         className="flex items-center justify-center gap-1 w-full rounded-md bg-primary px-2 py-1.5 text-xs font-medium text-primary-foreground hover:opacity-90 transition-opacity"
       >
-        <Zap className="size-3" /> Upgrade para Pro R$99
+        <Zap className="size-3" /> {t("quota.upgrade")}
       </button>
 
       {checkoutPlan && (

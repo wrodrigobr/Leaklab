@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Trans, useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Loader2, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
@@ -29,6 +30,7 @@ const STATUS_CLS: Record<string, string> = {
 /** Tela de gerenciamento da assinatura: visão clara do plano + próxima cobrança + histórico de
  *  pagamentos + cancelamento discreto (confirmação in-page, sem popup, sem ir pro site do Stripe). */
 export default function Subscription() {
+  const { t } = useTranslation("dashboard");
   const { user, refreshUser } = useAuth();
   const navigate = useNavigate();
   const [invoices, setInvoices] = useState<Invoice[]>([]);
@@ -55,10 +57,10 @@ export default function Subscription() {
       setConfirming(false);
       await refreshUser();
       toast.success(res.cancel_at_period_end
-        ? "Assinatura cancelada. Seu Pro segue ativo até o fim do período atual."
+        ? t("assinatura.canceladaOk")
         : "Assinatura cancelada.");
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Não foi possível cancelar a assinatura.");
+      toast.error(e instanceof Error ? e.message : t("assinatura.canceladaErro"));
     } finally {
       setCancelLoading(false);
     }
@@ -99,11 +101,11 @@ export default function Subscription() {
           {isPro && (
             <div className="mt-4 border-t border-border/60 pt-4">
               <p className="font-mono text-[9px] uppercase tracking-widest-2 text-muted-foreground">
-                {cancelled ? "Acesso Pro até" : "Próxima cobrança"}
+                {t(cancelled ? "assinatura.acessoAte" : "assinatura.proximaCobranca")}
               </p>
               <p className="mt-1 font-mono text-sm font-bold text-foreground">{fmtDate(expires)}</p>
               {cancelled && (
-                <p className="mt-1 text-[11px] text-amber-400/90">Sua assinatura não vai renovar; depois dessa data a conta volta para o Free.</p>
+                <p className="mt-1 text-[11px] text-amber-400/90">{t("assinatura.naoRenova")}</p>
               )}
             </div>
           )}
@@ -112,7 +114,7 @@ export default function Subscription() {
         {/* Histórico de pagamentos */}
         <section className="space-y-2">
           <h2 className="font-mono text-[10px] font-bold uppercase tracking-widest-2 text-muted-foreground">
-            Histórico de pagamentos
+            {t("assinatura.historico")}
           </h2>
           <div className="overflow-hidden rounded-xl border border-border bg-hud-surface">
             {loading ? (
@@ -120,7 +122,7 @@ export default function Subscription() {
                 <Loader2 className="size-5 animate-spin" />
               </div>
             ) : invoices.length === 0 ? (
-              <p className="py-8 text-center text-sm text-muted-foreground">Nenhum pagamento ainda.</p>
+              <p className="py-8 text-center text-sm text-muted-foreground">{t("assinatura.semPagamentos")}</p>
             ) : (
               <table className="w-full text-sm">
                 <tbody>
@@ -147,13 +149,13 @@ export default function Subscription() {
                 onClick={() => setConfirming(true)}
                 className="font-mono text-[11px] text-muted-foreground/60 underline underline-offset-4 transition-colors hover:text-muted-foreground"
               >
-                Cancelar assinatura
+                {t("assinatura.botaoCancelar")}
               </button>
             ) : (
               <div className="space-y-3 rounded-xl border border-border bg-hud-surface/50 p-4">
-                <p className="text-sm font-medium text-foreground">Cancelar sua assinatura?</p>
+                <p className="text-sm font-medium text-foreground">{t("assinatura.confirmarTitulo")}</p>
                 <p className="text-xs leading-relaxed text-muted-foreground">
-                  Seu Pro continua ativo até <strong className="text-foreground">{fmtDate(expires)}</strong>. Depois dessa data, a conta volta para o Free e a assinatura não renova. Você não perde nada agora.
+                  <Trans i18nKey="assinatura.confirmarTexto" ns="dashboard" values={{ data: fmtDate(expires) }} components={{ b: <strong className="text-foreground" /> }} />
                 </p>
                 <div className="flex gap-2 pt-1">
                   <button
@@ -168,7 +170,7 @@ export default function Subscription() {
                     className="flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 font-mono text-[11px] font-medium uppercase tracking-wider text-muted-foreground transition-colors hover:border-destructive/40 hover:text-destructive disabled:opacity-50"
                   >
                     {cancelLoading && <Loader2 className="size-3.5 animate-spin" />}
-                    {cancelLoading ? "Cancelando…" : "Confirmar cancelamento"}
+                    {cancelLoading ? t("assinatura.cancelando") : "Confirmar cancelamento"}
                   </button>
                 </div>
               </div>

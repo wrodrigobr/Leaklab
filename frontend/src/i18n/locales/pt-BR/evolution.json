@@ -79,5 +79,6 @@
     "noteEv": "O custo em bb usa só as estimativas confiáveis. Quando a conta de EV sai fora de escala, ela é descartada em vez de somada. Ou seja, este número é um piso: o prejuízo real é igual ou maior.",
     "noteIcm": "Bolha e mesa final, o que se chama de zona de ICM, ficam fora da conta. Lá a jogada certa muda por causa do prêmio, e a referência que usamos é de fichas, não de dinheiro.",
     "noteFrozen": "Os números são do momento em que o arquivo foi gerado e não se atualizam sozinhos. Para a leitura de hoje, abra o relatório no site."
-  }
+  },
+  "celulaTitulo": "{{pos}} · {{bucket}} · {{bb}}bb/100 · {{n}} decisões"
 }

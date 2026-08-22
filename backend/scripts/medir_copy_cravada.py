@@ -37,31 +37,16 @@ import re
 import sys
 
 sys.path.insert(0, r'C:\Projetos\leaklab\backend\tests')
-from test_i18n_copy_do_frontend import _sem_comentario, _PORTUGUES, _LITERAL, _FRONT  # noqa
-
-# Texto entre `>` e `<` com pelo menos uma palavra de 3+ letras. Exclui o que e so
-# {expressao}, espaco ou pontuacao.
-_JSX = re.compile(r'>([^<>{}]*[A-Za-zÀ-ÿ]{3}[^<>{}]*)<')
-# Template literal com interpolacao: `Assinar ${x} - ${y}`. A v2 tambem perdia estes.
-_TEMPLATE = re.compile(r'`([^`]*[A-Za-zÀ-ÿ]{3}[^`]*)`')
-_URLISH = re.compile(r'^\S+\.(com|br|io|net|org|gg|tsx?|jsx?|json|svg|png)(/\S*)?$', re.I)
-
-
-def literais(texto):
-    for m in _LITERAL.finditer(texto):
-        yield m.start(), (m.group(1) or m.group(2)), 'aspas'
-    for m in _JSX.finditer(texto):
-        bruto = ' '.join(m.group(1).split())
-        if bruto:
-            yield m.start(), bruto, 'jsx'
-    for m in _TEMPLATE.finditer(texto):
-        bruto = ' '.join(m.group(1).split())
-        if bruto:
-            yield m.start(), bruto, 'template'
-
+# Os detectores moram no TESTE e sao importados daqui: tê-los em dois arquivos foi
+# exatamente o que deixou este medidor mais frouxo que o guarda por um tempo.
+from test_i18n_copy_do_frontend import (  # noqa
+    _sem_comentario, _PORTUGUES, _FRONT, _todo_texto_de_tela, _URLISH, _NAO_E_COPY)
 
 def portugues(lit):
     if _URLISH.match(lit):
+        return False
+    # identificador que so PARECE copy (valor de tipo, termo de busca, chave de mapa, log)
+    if any(marca in lit for marca in _NAO_E_COPY):
         return False
     return bool(_PORTUGUES.search(lit))
 
@@ -94,8 +79,8 @@ def varrer(filtro=None):
                 continue
             with open(caminho, encoding='utf-8') as fh:
                 texto = _sem_comentario(fh.read())
-            achados = [(texto.count('\n', 0, p) + 1, lit, origem)
-                       for p, lit, origem in literais(texto) if portugues(lit)]
+            achados = [(texto.count('\n', 0, p) + 1, lit)
+                       for p, lit in _todo_texto_de_tela(texto) if portugues(lit)]
             if achados:
                 grupos[audiencia(rel)][rel] = len(achados)
                 detalhe[rel] = achados
@@ -108,8 +93,8 @@ if __name__ == '__main__':
     if '--detalhe' in sys.argv:
         for rel in sorted(detalhe):
             print('\n=== %s (%d)' % (rel, len(detalhe[rel])))
-            for n, lit, origem in detalhe[rel]:
-                print('  %5d [%s] %s' % (n, origem, lit[:105]))
+            for n, lit in detalhe[rel]:
+                print('  %5d  %s' % (n, lit[:110]))
     else:
         for quem in ('jogador', 'coach', 'admin'):
             g = grupos[quem]

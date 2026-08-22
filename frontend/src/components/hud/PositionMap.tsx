@@ -1,4 +1,5 @@
 import { cn } from "@/lib/utils";
+import { useTranslation } from "react-i18next";
 
 /**
  * Mapa de posições: mesa de 9 lugares, minúscula, com os assentos NOMEADOS.
@@ -36,12 +37,13 @@ export function PositionMap({ destaque, secundario, className }: {
   secundario?: string | null;
   className?: string;
 }) {
+  const { t } = useTranslation("dashboard");
   const norm = (p?: string | null) => (p || "").toUpperCase().trim();
   const alvo = norm(destaque), vilao = norm(secundario);
 
   return (
     <svg viewBox={`0 0 ${W} ${H}`} className={cn("w-full max-w-[260px]", className)}
-         role="img" aria-label={`Mesa de 9 lugares, posição ${alvo || "não definida"} em destaque`}>
+         role="img" aria-label={t("mesaAria", { posicao: alvo || t("mesaNaoDefinida") })}>
       <ellipse cx={CX} cy={CY} rx={RX - 4} ry={RY - 4}
                fill="rgba(16,84,60,0.18)" stroke="rgba(255,255,255,0.08)" strokeWidth="1" />
       {ASSENTOS.map((p, i) => {

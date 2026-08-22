@@ -252,7 +252,7 @@ export function RangeFamilyDrill({ spot, onDone, rodape }: {
           <p className={cn("font-mono text-[10px] uppercase tracking-widest",
             spot.srs?.revisao ? "text-sky-400" : "text-amber-400")}>
             {spot.srs?.revisao
-              ? t("leakTrainer.grid.reviewEyebrow", "Revisão")
+              ? t("leakTrainer.grid.reviewEyebrow")
               : t("leakTrainer.grid.eyebrow")}
           </p>
           <h2 className="mt-1.5 font-heading text-[15px] font-bold leading-snug text-foreground">
@@ -308,14 +308,12 @@ export function RangeFamilyDrill({ spot, onDone, rodape }: {
           {grade.mistas?.length > 0 && (
             <p className="rounded-lg border border-sky-500/25 bg-sky-500/[0.06] px-2.5 py-2 text-center text-[11px] leading-snug text-sky-200/90">
               {t("leakTrainer.grid.mixedNote", { n: grade.mistas.length,
-                  maos: grade.mistas.map((m) => `${m.hand} ${Math.round(m.freq * 100)}%`).join(" · "),
-                  defaultValue: `Em azul, o GTO mistura: ${grade.mistas.map((m) => `${m.hand} ${Math.round(m.freq * 100)}%`).join(" · ")}. Marcar ou não, as duas passam.` })}
+                  maos: grade.mistas.map((m) => `${m.hand} ${Math.round(m.freq * 100)}%`).join(" · ") })}
             </p>
           )}
           {grade.srs && (
             <p className="text-center font-mono text-[10px] text-muted-foreground/70">
-              {t("leakTrainer.grid.nextReview", { dias: grade.srs.interval_days,
-                  defaultValue: `Volta em ${grade.srs.interval_days} dias` })}
+              {t("leakTrainer.grid.nextReview", { dias: grade.srs.interval_days })}
             </p>
           )}
           {rodape}

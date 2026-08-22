@@ -523,5 +523,8 @@
     "acceptable": "Aceitável",
     "correct": "Correto"
   },
-  "proximo": "Próximo"
+  "proximo": "Próximo",
+  "suaMao": "Sua mão",
+  "equityMinima": "Equity mínima para call ser break-even (bet ÷ (bet + pot))",
+  "equityAjustada": "Equity necessária ajustada por realization e pressão ICM. Pot odds bruto: {{bruto}}%."
 }

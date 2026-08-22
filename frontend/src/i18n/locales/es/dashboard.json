@@ -761,5 +761,53 @@
     "cidadeExemplo": "São Paulo",
     "faixaBuyin": "Rango de buy-in",
     "naoMostrar": "No mostrar más"
-  }
+  },
+  "assinatura": {
+    "canceladaOk": "Suscripción cancelada. Tu Pro sigue activo hasta el final del periodo actual.",
+    "canceladaErro": "No se pudo cancelar la suscripción.",
+    "acessoAte": "Acceso Pro hasta",
+    "proximaCobranca": "Próximo cobro",
+    "naoRenova": "Tu suscripción no se renovará; después de esa fecha la cuenta vuelve al plan Free.",
+    "historico": "Historial de pagos",
+    "semPagamentos": "Todavía no hay pagos.",
+    "confirmarTitulo": "¿Cancelar tu suscripción?",
+    "confirmarTexto": "Tu Pro sigue activo hasta <b>{{data}}</b>. Después de esa fecha la cuenta vuelve al plan Free y la suscripción no se renueva. No pierdes nada ahora.",
+    "botaoCancelar": "Cancelar suscripción",
+    "cancelando": "Cancelando…"
+  },
+  "heatmap": {
+    "titulo": "Heatmap Posición × Street",
+    "semDados": "Todavía no hay datos suficientes.",
+    "eyebrow": "GTO Alignment · Posición × Street",
+    "ajuda": "Adherencia GTO por posición y street. Verde significa alineado con el solver; rojo, un leak. Las celdas atenuadas tienen menos de 20 decisiones (intervalo de confianza amplio).",
+    "amostraBaixaTip": "Las celdas con n < 20 tienen un IC amplio: interprétalas con cuidado",
+    "amostraBaixa": "algunas celdas tienen muestra baja"
+  },
+  "upload": {
+    "analisando": "Analizando el torneo…",
+    "importado": "Torneo importado.",
+    "erro": "Error al importar",
+    "titulo": "Analizar una sesión nueva",
+    "instrucao": "Arrastra logs de torneos (.txt) o haz clic para iniciar el escaneo táctico.",
+    "botao": "Seleccionar archivo de log",
+    "semHistory": "¿No tienes hand history? Reconstruye una mano a mano (revisión de vídeo, notas, etc.).",
+    "aria": "Subir un log de torneo",
+    "importadoDetalhe": "{{hero}} • {{n}} manos importadas"
+  },
+  "conta": {
+    "usoMes": "Uso de este mes",
+    "analises": "Análisis GrindLab",
+    "aria": "Menú de la cuenta",
+    "upgrade": "Mejorar a Pro · R$ 99",
+    "docs": "Documentación"
+  },
+  "quota": {
+    "titulo": "Te acercas al límite mensual",
+    "torneios": "Torneos de este mes",
+    "analises": "Análisis de IA de este mes",
+    "upgrade": "Mejorar a Pro · R$ 99"
+  },
+  "infoAria": "Información",
+  "mesaAria": "Mesa de 9 jugadores, con la posición {{posicao}} destacada",
+  "mesaNaoDefinida": "sin definir"
 }

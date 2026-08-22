@@ -289,7 +289,7 @@ export function SupportModal({ onClose, initialTab = "new" }: Props) {
               ) : tickets.length === 0 ? (
                 <div className="flex flex-col items-center gap-3 py-12 text-center text-muted-foreground">
                   <Inbox className="size-8 opacity-30" />
-                  <p className="font-mono text-xs">Nenhuma mensagem enviada ainda.</p>
+                  <p className="font-mono text-xs">{t("suporte.semMensagens")}</p>
                 </div>
               ) : (
                 <>

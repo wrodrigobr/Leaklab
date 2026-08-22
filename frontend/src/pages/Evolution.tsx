@@ -524,6 +524,7 @@ function FragmentRow({ pos, buckets, grade, tom, vazio }: {
   grade: Map<string, EvolutionReport["matriz"][number]>;
   tom: (v: number) => React.CSSProperties; vazio: string;
 }) {
+  const { t } = useTranslation("evolution");
   return (
     <>
       <div className="flex items-center justify-end pr-2 font-mono text-[11px] text-muted-foreground">{pos}</div>
@@ -531,7 +532,7 @@ function FragmentRow({ pos, buckets, grade, tom, vazio }: {
         const c = grade.get(`${pos}|${b}`);
         return c && c.bb_100 != null ? (
           <div key={b} style={tom(c.bb_100)}
-            title={`${pos} · ${b} · ${c.bb_100}bb/100 · ${c.n} decisões`}
+            title={t("celulaTitulo", { pos, bucket: b, bb: c.bb_100, n: c.n })}
             className="flex aspect-[1.9] flex-col items-center justify-center rounded-md">
             <span className="font-mono text-[12px] font-bold text-foreground">{c.bb_100.toFixed(1)}</span>
             {/* `foreground/70` e NÃO `muted-foreground`: aquele cinza (L 47%) é calibrado contra o

@@ -47,7 +47,37 @@ _SEM_PORTUGUES_CRAVADO = [
     os.path.join('components', 'hud', 'ProfileCompletionCard.tsx'),
     os.path.join('components', 'replayer', 'GtoMixedBadge.tsx'),
     os.path.join('pages', 'Fundadores.tsx'),
+    os.path.join('pages', 'TournamentCompare.tsx'),
+    os.path.join('pages', 'Subscription.tsx'),
+    os.path.join('pages', 'LeakTrainer.tsx'),
+    os.path.join('components', 'hud', 'GtoAlignmentMatrixCard.tsx'),
+    os.path.join('components', 'hud', 'UploadZone.tsx'),
+    os.path.join('components', 'hud', 'AccountMenu.tsx'),
+    os.path.join('components', 'hud', 'QuotaBanner.tsx'),
+    os.path.join('components', 'hud', 'PositionMap.tsx'),
+    os.path.join('components', 'study', 'ResourceList.tsx'),
 ]
+
+# CONTRAPROVA do filtro de codigo. Ele ja cegou o varredor uma vez: com `(`, `)` e `"` na
+# lista de "cheiro de codigo", "Você tem 3 torneios (grátis)" deixou de ser visto. Um filtro
+# que silencia copy legitima e pior do que filtro nenhum, porque da a impressao de limpeza.
+_AMOSTRAS_DO_FILTRO = [
+    ('<p>Você tem 3 torneios (grátis) neste mês</p>', True, 'copy com parênteses'),
+    ('<p>Análise "profunda" da mão</p>', True, 'copy com aspas'),
+    ('<h2>O que você recebe</h2>', True, 'texto JSX solto'),
+    ('const x = a >= 0 ? b[i] : c; const y = !!z && w !== "ativo";', False, 'código puro'),
+    ('className={cn("flex", ativo && "on")}', False, 'className'),
+]
+
+
+def test_o_filtro_de_codigo_NAO_silencia_copy_legitima():
+    for fonte, esperado, rotulo in _AMOSTRAS_DO_FILTRO:
+        achou = any(_PORTUGUES.search(lit) for _, lit in _todo_texto_de_tela(fonte))
+        assert achou == esperado, (
+            f'{rotulo}: esperava {"achar" if esperado else "ignorar"} e o varredor '
+            f'{"achou" if achou else "ignorou"} — {fonte[:60]!r}')
+    print(f'OK  test_o_filtro_de_codigo_NAO_silencia_copy_legitima '
+          f'({len(_AMOSTRAS_DO_FILTRO)} amostras)')
 
 # Copy que E divida, e que fica em portugues POR DECISAO. Sem esta lista, quem vier depois
 # lê o placar do `scripts/medir_copy_cravada.py` como "falta traduzir isto" e refaz a
@@ -100,15 +130,48 @@ _TEMPLATE = re.compile(r'`([^`]*[A-Za-zÀ-ÿ]{3}[^`]*)`')
 # `pokerstars.com` casava "com" como palavra portuguesa.
 _URLISH = re.compile(r'^\S+\.(com|br|io|net|org|gg|tsx?|jsx?|json|svg|png)(/\S*)?$', re.I)
 
+# Um regex de crase-a-crase não distingue o INTERIOR de um template do INTERVALO entre dois
+# templates distintos: num arquivo cheio de cn(`...`), o "conteúdo" capturado vira um pedaço
+# de JSX. Estes marcadores só aparecem em código, nunca numa frase para o jogador.
+#
+# `(`, `)` e `"` estavam aqui e CEGARAM o detector: "Você tem 3 torneios (grátis)" e
+# 'Análise "profunda"' deixaram de ser vistos. Parêntese e aspas são comuns em copy — só
+# entram marcadores que praticamente NÃO aparecem numa frase para o jogador.
+_CHEIRO_DE_CODIGO = ('</', '/>', 'className', '=>', '{{', "':", '??', '!==', '===',
+                     '; ', 'const ', 'return ', '&&', '||')
+
+
+def _parece_codigo(trecho):
+    return any(marca in trecho for marca in _CHEIRO_DE_CODIGO)
+
+
+# Trechos que a heurística acusa e que NÃO são copy. Sem esta lista, quem retomar o placar
+# reinvestiga os mesmos catorze — e cada um custou abrir o arquivo para entender o papel.
+#
+# O padrão que os une: em todos, o português é um IDENTIFICADOR, não texto para o jogador.
+_NAO_E_COPY = {
+    'Pré-flop': 'valor do tipo `Street`, comparado com === (chave do filtro de mãos)',
+    'satélite': 'termo de BUSCA em `nome.includes("satélite")`, não rótulo',
+    'Sólido': 'chave de mapa pt→slug; o VALOR vem do backend nesse formato',
+    'como-funciona': 'id de âncora HTML',
+    '[GTO] solicitando análise': 'console.log — texto de desenvolvedor',
+    '[GTO] erro na solicitação:': 'console.error — texto de desenvolvedor',
+    '[GTO] handId ou tournamentId vazio': 'console.log — texto de desenvolvedor',
+    'PokerStars Hand #': 'FORMATO DE ARQUIVO que o parser lê, não copy: `hhGenerator` monta '
+                        'um hand history; traduzir quebraria a importação',
+}
+
 
 def _todo_texto_de_tela(codigo):
     """(posição, texto) de tudo que vira texto na tela: aspas, JSX solto e template."""
     for m in _LITERAL.finditer(codigo):
         yield m.start(), (m.group(1) or m.group(2))
+    # O filtro vale para OS DOIS: `_JSX_SOLTO` também casa o `>` de um operador `>=` e segue
+    # até o próximo `<`, devolvendo uma linha de código como se fosse texto de tela.
     for padrao in (_JSX_SOLTO, _TEMPLATE):
         for m in padrao.finditer(codigo):
             limpo = ' '.join(m.group(1).split())
-            if limpo:
+            if limpo and not _parece_codigo(limpo):
                 yield m.start(), limpo
 
 # `t("chave")` / `t('chave', {…})` — o que o código PEDE ao i18n

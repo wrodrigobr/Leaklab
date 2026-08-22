@@ -1,4 +1,5 @@
 import { HudTooltip } from "./HudTooltip";
+import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import type { GtoAlignmentMatrixData } from "@/lib/api";
 
@@ -27,13 +28,14 @@ function alignedColor(pct: number | null, n: number): { bg: string; text: string
 }
 
 export function GtoAlignmentMatrixCard({ data }: Props) {
+  const { t } = useTranslation("dashboard");
   if (!data || data.cells.length === 0) {
     return (
       <div className="rounded-xl border border-border bg-hud-surface p-4 space-y-2">
         <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-          Heatmap Posição × Street
+          {t("heatmap.titulo")}
         </span>
-        <p className="text-xs text-muted-foreground">Sem dados suficientes.</p>
+        <p className="text-xs text-muted-foreground">{t("heatmap.semDados")}</p>
       </div>
     );
   }
@@ -51,13 +53,13 @@ export function GtoAlignmentMatrixCard({ data }: Props) {
         <div className="flex items-center gap-2">
           <span className="size-1.5 rounded-full bg-primary" aria-hidden />
           <span className="font-mono text-[10px] font-bold uppercase tracking-widest-2 text-muted-foreground">
-            GTO Alignment · Posição × Street
+            {t("heatmap.eyebrow")}
           </span>
-          <HudTooltip content="Matriz de aderência GTO por posição e street. Verde = alinhado com solver; vermelho = leak. Células atenuadas têm < 20 decisões (intervalo de confiança alto)." />
+          <HudTooltip content={t("heatmap.ajuda")} />
         </div>
         {hasAnyLow && (
-          <span className="font-mono text-[9px] text-amber-400/70" title="Células com n < 20 têm IC alto, interpretar com cautela">
-            algumas células com amostra baixa
+          <span className="font-mono text-[9px] text-amber-400/70" title={t("heatmap.amostraBaixaTip")}>
+            {t("heatmap.amostraBaixa")}
           </span>
         )}
       </div>

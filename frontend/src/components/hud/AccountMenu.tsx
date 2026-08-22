@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { ChevronDown, LogOut, UserCircle, Zap, Users, LayoutDashboard, CreditCard, BookOpen } from "lucide-react";
 import { useAuth } from "@/lib/auth";
@@ -54,6 +55,7 @@ interface AccountMenuProps {
 }
 
 export function AccountMenu({ workspace, onSwitchWorkspace }: AccountMenuProps = {}) {
+  const { t } = useTranslation("dashboard");
   const { user, logout, refreshUser } = useAuth();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
@@ -93,7 +95,7 @@ export function AccountMenu({ workspace, onSwitchWorkspace }: AccountMenuProps =
       <button
         onClick={() => setOpen((o) => !o)}
         className="flex items-center gap-2 rounded-full bg-card px-3 py-1.5 ring-1 ring-border hover:ring-primary/40 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        aria-label="Menu da conta"
+        aria-label={t("conta.aria")}
         aria-expanded={open}
       >
         <span className="font-mono text-[10px] font-medium uppercase tracking-widest-2 text-foreground hidden sm:block">
@@ -122,15 +124,15 @@ export function AccountMenu({ workspace, onSwitchWorkspace }: AccountMenuProps =
           {/* Quota — só para jogadores */}
           {isPlayer && (
             <div className="px-4 py-3 border-b border-border space-y-2.5">
-              <p className="font-mono text-[10px] uppercase tracking-widest-2 text-muted-foreground">Uso este mês</p>
+              <p className="font-mono text-[10px] uppercase tracking-widest-2 text-muted-foreground">{t("conta.usoMes")}</p>
               <UsageBar used={user.tournaments_used ?? 0} limit={limits.tournaments} label="Torneios" />
-              <UsageBar used={user.ai_calls_used ?? 0}   limit={limits.ai_calls}    label="Análises GrindLab" />
+              <UsageBar used={user.ai_calls_used ?? 0}   limit={limits.ai_calls}    label={t("conta.analises")} />
               {plan === "free" && (
                 <button
                   onClick={() => { setOpen(false); setCheckoutPlan("pro"); }}
                   className="flex items-center justify-center gap-1 w-full rounded-md bg-primary py-1 font-mono text-[10px] font-bold uppercase tracking-widest-2 text-primary-foreground hover:opacity-90 transition-opacity"
                 >
-                  <Zap className="size-3" /> Upgrade para Pro R$99
+                  <Zap className="size-3" /> {t("conta.upgrade")}
                 </button>
               )}
               {plan === "pro" && (
@@ -179,7 +181,7 @@ export function AccountMenu({ workspace, onSwitchWorkspace }: AccountMenuProps =
               onClick={() => { setOpen(false); navigate("/docs"); }}
               className="flex w-full items-center gap-2.5 px-4 py-2.5 text-sm text-muted-foreground hover:text-foreground hover:bg-muted/30 transition-colors"
             >
-              <BookOpen className="size-4" /> Documentação
+              <BookOpen className="size-4" /> {t("conta.docs")}
             </button>
             <button
               onClick={handleLogout}

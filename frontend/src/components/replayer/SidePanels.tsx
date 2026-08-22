@@ -556,8 +556,8 @@ export function SidePanels({
           const mathBadgeLabel = `${mathActLabel ?? ''} ${mathCallIsEv ? "+EV" : "−EV"}`.trim();
           const reqHeader = requiredIsAdjusted ? t("card.reqEquity") : "Pot Odds";
           const reqTooltip = requiredIsAdjusted
-            ? `Equity necessária ajustada por realization e pressão ICM. Pot odds bruto: ${(poRaw! * 100).toFixed(1)}%.`
-            : "Equity mínima para call ser break-even (bet ÷ (bet + pot))";
+            ? t("equityAjustada", { bruto: (poRaw! * 100).toFixed(1) })
+            : t("equityMinima");
           evidence = (
             <div className="rounded-lg border border-border/40 bg-muted/5 px-3 py-2">
               <div className="flex items-center gap-3 flex-wrap">

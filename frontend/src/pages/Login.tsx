@@ -489,7 +489,7 @@ const Login = () => {
 
                   <div className="space-y-1.5">
                     <label className="font-mono text-[10px] font-bold uppercase tracking-widest-2 text-muted-foreground">
-                      Tipo de conta
+                      {t("cadastro.tipoConta")}
                     </label>
                     <div className="grid grid-cols-2 gap-2">
                       <button
@@ -511,7 +511,7 @@ const Login = () => {
                       </Link>
                     </div>
                     <p className="font-mono text-[9px] text-muted-foreground">
-                      Coaches precisam enviar candidatura para aprovação.
+                      {t("cadastro.avisoCoach")}
                     </p>
                   </div>
                 </>
@@ -589,7 +589,7 @@ const Login = () => {
         )}
 
         <p className="text-center font-mono text-[10px] text-muted-foreground uppercase tracking-widest-2">
-          Análise tática • GrindLab AI Engine
+          {t("rodape")}
         </p>
       </div>
     </div>

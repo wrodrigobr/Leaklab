@@ -40,6 +40,9 @@ function TournamentDate({ playedAt, importedAt }: { playedAt: string | null; imp
 const Tournaments = () => {
   const navigate = useNavigate();
   const { t } = useTranslation("tournaments");
+  // `t` fica SOMBREADO dentro dos `.map((t) => ...)` (ali `t` e o torneio):
+  // o alias garante o tradutor mesmo dentro do laco.
+  const traduz = t;
   const { t: tc } = useTranslation("common");
   const [data, setData] = useState<Tournament[]>([]);
   const [loading, setLoading] = useState(true);
@@ -453,7 +456,7 @@ const Tournaments = () => {
                         onChange={() => {}}
                         disabled={!selected.has(t.tournament_id) && selected.size >= 4}
                         className="size-3.5 rounded border-border accent-primary cursor-pointer disabled:opacity-30"
-                        aria-label="Selecionar para comparar"
+                        aria-label={traduz("selecionarComparar")}
                       />
                     </div>
                     <SiteLogo site={t.site} size={22} />
@@ -564,7 +567,7 @@ const Tournaments = () => {
                             onChange={() => {}}
                             disabled={!selected.has(t.tournament_id) && selected.size >= 4}
                             className="size-3.5 rounded border-border accent-primary cursor-pointer disabled:opacity-30"
-                            aria-label="Selecionar para comparar"
+                            aria-label={traduz("selecionarComparar")}
                           />
                         </td>
                         <td className="px-4 py-3.5 font-mono text-xs text-muted-foreground">

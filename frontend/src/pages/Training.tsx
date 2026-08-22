@@ -172,7 +172,7 @@ export default function Training() {
 
         {/* Enquanto o overview não chega, a página precisa DIZER que ainda está carregando. Sem
             isto ela mostra três atalhos e um vazio, que se lê como "acabou". */}
-        {carregandoOverview && <EsqueletoTreino rotulo={t("loading", "Carregando seu treino…")} />}
+        {carregandoOverview && <EsqueletoTreino rotulo={t("loading")} />}
 
         {/* ── Aviso: leaks do jogo ainda sem treino → reinicie o ciclo (novos leaks surgiram) ── */}
         {readiness && (readiness.untrained?.length ?? 0) > 0 && (

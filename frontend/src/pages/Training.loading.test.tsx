@@ -41,9 +41,29 @@ vi.mock("@/components/training/DailyChallengeCard", () => ({
   DailyChallengeCard: () => <div data-testid="daily" />,
 }));
 vi.mock("@/components/training/MasteryGate", () => ({ MasteryGate: () => null }));
-vi.mock("react-i18next", () => ({
-  useTranslation: () => ({ t: (k: string, d?: string) => d ?? k, i18n: { language: "pt-BR" } }),
-}));
+// O mock resolve a chave contra o BUNDLE pt-BR de verdade, em vez de devolver o
+// `defaultValue`. Antes ele era `(k, d) => d ?? k`, e por isso este teste passou a depender de
+// uma cópia da copy cravada no componente: quando o `defaultValue` saiu (a chave já existia,
+// com o texto idêntico), o teste caiu sem que nada mudasse para o jogador. Lendo o bundle, ele
+// verifica o texto que a pessoa REALMENTE vê — e cai se a chave sumir do locale.
+vi.mock("react-i18next", async () => {
+  const bundle = (await import("@/i18n/locales/pt-BR/training.json")).default as
+    Record<string, unknown>;
+  const resolve = (chave: string) => {
+    let no: unknown = bundle;
+    for (const parte of chave.split(".")) {
+      if (typeof no === "object" && no !== null && parte in no) {
+        no = (no as Record<string, unknown>)[parte];
+      } else {
+        return chave;
+      }
+    }
+    return typeof no === "string" ? no : chave;
+  };
+  return {
+    useTranslation: () => ({ t: (k: string) => resolve(k), i18n: { language: "pt-BR" } }),
+  };
+});
 vi.mock("@/lib/spotLabel", () => ({ useSpotLabel: () => (k: string) => k }));
 
 import Training from "./Training";

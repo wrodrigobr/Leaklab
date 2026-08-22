@@ -1212,14 +1212,14 @@ export default function LeakTrainer() {
               <div className="flex items-center justify-between gap-3">
                 <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
                   {revisao
-                    ? t("leakTrainer.protocol.reviewMode", "Revisão")
+                    ? t("leakTrainer.protocol.reviewMode")
                     : st ? t("leakTrainer.protocol.missionOf", {
                             n: 1,
                             // "+" quando o pool saturou: o número é um teto, não o total
                             total: `${statusData?.restantes ?? 1}${statusData?.restantes_cap ? "+" : ""}`,
                             defaultValue: `Missão 1 de ${statusData?.restantes ?? 1}`,
                           })
-                       : t("leakTrainer.protocol.mission", "Missão de hoje")}
+                       : t("leakTrainer.protocol.mission")}
                 </span>
                 {st && (
                   <span className={cn("rounded-md px-2 py-0.5 font-mono text-[9px] font-bold uppercase tracking-wider ring-1",
@@ -1237,7 +1237,7 @@ export default function LeakTrainer() {
                     {t("leakTrainer.protocol.lostIn", { hands: miss.hands,
                         defaultValue: `perdidos aqui, em ${miss.hands} mãos reais` })}
                     {!miss.stack_medido && (
-                      <span className="text-amber-400/80"> · {t("leakTrainer.protocol.estimated", "(profundidade estimada)")}</span>
+                      <span className="text-amber-400/80"> · {t("leakTrainer.protocol.estimated")}</span>
                     )}
                   </p>
                 </div>
@@ -1257,11 +1257,10 @@ export default function LeakTrainer() {
                   <RotateCw className="mt-0.5 size-4 shrink-0 text-amber-400" aria-hidden />
                   <div className="space-y-0.5">
                     <p className="font-mono text-[10px] font-bold uppercase tracking-widest text-amber-400">
-                      {t("leakTrainer.protocol.reopened", "Leak reaberto")}
+                      {t("leakTrainer.protocol.reopened")}
                     </p>
                     <p className="text-[12px] leading-snug text-muted-foreground">
-                      {t("leakTrainer.protocol.reopenedWhy",
-                         "Você tinha dominado isto no treino, mas nos seus torneios recentes o erro voltou. O domínio anterior foi zerado: vale o que você provar daqui pra frente.")}
+                      {t("leakTrainer.protocol.reopenedWhy")}
                     </p>
                   </div>
                 </div>
@@ -1273,8 +1272,8 @@ export default function LeakTrainer() {
                 <div className="rounded-xl border border-border/70 bg-background/40 p-3 space-y-2">
                   <div className="flex items-baseline justify-between">
                     <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                      {revisao ? t("leakTrainer.protocol.keepMastery", "Mantendo o domínio")
-                               : t("leakTrainer.protocol.untilMastered", "Até dominar")}
+                      {revisao ? t("leakTrainer.protocol.keepMastery")
+                               : t("leakTrainer.protocol.untilMastered")}
                     </span>
                     <span className="font-mono text-[10px] tabular-nums text-muted-foreground">
                       {feitos}/{totalCrit}
@@ -1301,8 +1300,8 @@ export default function LeakTrainer() {
                   <button onClick={() => startProtocol(sizeSel)}
                     className="flex w-full items-center justify-center gap-2 rounded-xl bg-amber-500 px-6 py-3.5 font-mono text-sm font-bold uppercase tracking-widest text-black transition-colors hover:bg-amber-400">
                     <Target className="size-4" aria-hidden />{" "}
-                    {revisao ? t("leakTrainer.protocol.review", "Revisar")
-                             : t("leakTrainer.protocol.train", "Treinar")}
+                    {revisao ? t("leakTrainer.protocol.review")
+                             : t("leakTrainer.protocol.train")}
                   </button>
                 </div>
               )}
@@ -1324,7 +1323,7 @@ export default function LeakTrainer() {
             {outras.length > 0 && (
               <div className="rounded-xl border border-border bg-hud-surface/40 p-3">
                 <p className="mb-2 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-                  {t("leakTrainer.protocol.nextMissions", "Depois desta")}
+                  {t("leakTrainer.protocol.nextMissions")}
                 </p>
                 <div className="space-y-1">
                   {outras.map((o, i) => (
@@ -1336,8 +1335,7 @@ export default function LeakTrainer() {
                   ))}
                 </div>
                 <p className="mt-2 text-[11px] leading-snug text-muted-foreground/70">
-                  {t("leakTrainer.protocol.oneAtATime",
-                     "Uma de cada vez: dividir o foco entre leaks faz você não dominar nenhum.")}
+                  {t("leakTrainer.protocol.oneAtATime")}
                 </p>
               </div>
             )}
@@ -1349,7 +1347,7 @@ export default function LeakTrainer() {
             {dominadas.length > 0 && (
               <div className="rounded-xl border border-sky-500/25 bg-sky-500/[0.04] p-3">
                 <p className="mb-2 font-mono text-[10px] uppercase tracking-widest text-sky-400/90">
-                  {t("leakTrainer.protocol.mastered", "Dominados")} · {dominadas.length}
+                  {t("leakTrainer.protocol.mastered")} · {dominadas.length}
                 </p>
                 <div className="space-y-2">
                   {dominadas.map((d) => {
@@ -1378,8 +1376,7 @@ export default function LeakTrainer() {
                                 ? t("leakTrainer.protocol.provenDrop", {
                                     antes: v.taxa_antes, depois: v.taxa_depois,
                                     defaultValue: `Erro caiu de ${v.taxa_antes}% para ${v.taxa_depois}% nas mãos reais.` })
-                                : t("leakTrainer.protocol.noDiff",
-                                    "As mãos que você jogou ainda não distinguem melhora de sorte.")}
+                                : t("leakTrainer.protocol.noDiff")}
                           </p>
                         )}
                       </div>
@@ -1388,10 +1385,8 @@ export default function LeakTrainer() {
                 </div>
                 <p className="mt-2 text-[11px] leading-snug text-muted-foreground/70">
                   {dominadas.some((d) => d.estado === "dominado_no_treino")
-                    ? t("leakTrainer.protocol.masteredPending",
-                        "Dominado no treino libera o próximo leak. O selo de comprovado só vem quando seus próximos torneios confirmarem a correção na mesa.")
-                    : t("leakTrainer.protocol.masteredProven",
-                        "Confirmado nos seus torneios: o acerto saiu do treino e chegou na mesa.")}
+                    ? t("leakTrainer.protocol.masteredPending")
+                    : t("leakTrainer.protocol.masteredProven")}
                 </p>
               </div>
             )}
@@ -1415,12 +1410,11 @@ export default function LeakTrainer() {
                     {vencidas > 0
                       ? t("leakTrainer.memo.dueEyebrow", { n: vencidas,
                           defaultValue: `${vencidas} range${vencidas > 1 ? "s" : ""} para revisar` })
-                      : t("leakTrainer.memo.eyebrow", "Memorizar range")}
+                      : t("leakTrainer.memo.eyebrow")}
                   </p>
                   <p className="text-[12px] leading-snug text-muted-foreground">
                     {vencidas > 0
-                      ? t("leakTrainer.memo.dueWhy",
-                          "Você já estudou estas e chegou a hora de reencontrá-las. É o reencontro no tempo certo que fixa, não a repetição seguida.")
+                      ? t("leakTrainer.memo.dueWhy")
                       : sug!.de_quem === "vilao"
                         /* Leak de vs_RFI: a range que falta é a de QUEM ABRIU. Mandá-lo memorizar
                            a range dele mesmo aqui seria a ferramenta errada com cara de conselho. */
@@ -1435,7 +1429,7 @@ export default function LeakTrainer() {
                     className="mt-2.5 flex w-full items-center justify-center gap-2 rounded-lg bg-amber-500/15 px-4 py-2.5 font-mono text-[11px] font-bold uppercase tracking-wider text-amber-400 ring-1 ring-amber-500/40 transition-colors hover:bg-amber-500/25">
                     <Target className="size-3.5" aria-hidden />
                     {vencidas > 0
-                      ? t("leakTrainer.memo.ctaReview", "Revisar ranges")
+                      ? t("leakTrainer.memo.ctaReview")
                       : t("leakTrainer.memo.cta", { pos: sug!.position,
                           defaultValue: `Memorizar a range do ${sug!.position}` })}
                   </button>
@@ -1456,7 +1450,7 @@ export default function LeakTrainer() {
             <div className="rounded-xl border border-border bg-hud-surface/40">
               <button onClick={() => setShowOther((v) => !v)}
                 className="flex w-full items-center justify-between px-3 py-2.5 font-mono text-[10px] uppercase tracking-widest text-muted-foreground transition-colors hover:text-foreground">
-                {t("leakTrainer.protocol.otherModes", "Treinar outra coisa")}
+                {t("leakTrainer.protocol.otherModes")}
                 <span className={cn("transition-transform", showOther && "rotate-180")} aria-hidden>▾</span>
               </button>
               {showOther && (
@@ -1857,8 +1851,8 @@ export default function LeakTrainer() {
               <div className="rounded-xl border border-amber-500/40 bg-amber-500/5 p-3 space-y-1">
                 <span className="inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-widest text-amber-400">
                   <Target className="size-3" aria-hidden />
-                  {blockKind === "contrast" ? t("leakTrainer.protocol.blockContrast", "Contraste")
-                    : blockKind === "review" ? t("leakTrainer.protocol.blockReview", "Revisão")
+                  {blockKind === "contrast" ? t("leakTrainer.protocol.blockContrast")
+                    : blockKind === "review" ? t("leakTrainer.protocol.blockReview")
                     : t("leakTrainer.weakSpot")}
                 </span>
                 <p className="text-sm font-bold text-foreground leading-snug">{catLabel}</p>
@@ -1873,7 +1867,7 @@ export default function LeakTrainer() {
                 <div className="rounded-xl border border-border bg-hud-surface/50 p-3">
                   <div className="mb-1.5 flex items-baseline justify-between">
                     <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-                      {t("leakTrainer.protocol.progress", "Sessão")}
+                      {t("leakTrainer.protocol.progress")}
                     </span>
                     <span className="font-mono text-[10px] tabular-nums text-foreground">
                       {totalDone}/{sessionSize}

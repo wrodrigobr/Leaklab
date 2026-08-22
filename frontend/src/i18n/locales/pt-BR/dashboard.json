@@ -761,5 +761,53 @@
     "cidadeExemplo": "São Paulo",
     "faixaBuyin": "Faixa de buy-in",
     "naoMostrar": "Não mostrar mais"
-  }
+  },
+  "assinatura": {
+    "canceladaOk": "Assinatura cancelada. Seu Pro segue ativo até o fim do período atual.",
+    "canceladaErro": "Não foi possível cancelar a assinatura.",
+    "acessoAte": "Acesso Pro até",
+    "proximaCobranca": "Próxima cobrança",
+    "naoRenova": "Sua assinatura não vai renovar; depois dessa data a conta volta para o Free.",
+    "historico": "Histórico de pagamentos",
+    "semPagamentos": "Nenhum pagamento ainda.",
+    "confirmarTitulo": "Cancelar sua assinatura?",
+    "confirmarTexto": "Seu Pro continua ativo até <b>{{data}}</b>. Depois dessa data, a conta volta para o Free e a assinatura não renova. Você não perde nada agora.",
+    "botaoCancelar": "Cancelar assinatura",
+    "cancelando": "Cancelando…"
+  },
+  "heatmap": {
+    "titulo": "Heatmap Posição × Street",
+    "semDados": "Sem dados suficientes.",
+    "eyebrow": "GTO Alignment · Posição × Street",
+    "ajuda": "Matriz de aderência GTO por posição e street. Verde = alinhado com solver; vermelho = leak. Células atenuadas têm < 20 decisões (intervalo de confiança alto).",
+    "amostraBaixaTip": "Células com n < 20 têm IC alto, interpretar com cautela",
+    "amostraBaixa": "algumas células com amostra baixa"
+  },
+  "upload": {
+    "analisando": "Analisando torneio…",
+    "importado": "Torneio importado!",
+    "erro": "Erro ao importar",
+    "titulo": "Analisar nova sessão",
+    "instrucao": "Arraste logs de torneios (.txt) ou clique para iniciar a varredura tática.",
+    "botao": "Selecionar arquivo de log",
+    "semHistory": "Não tem hand history? Reconstrua manualmente uma mão (análise de vídeo, anotação, etc).",
+    "aria": "Upload de log de torneio",
+    "importadoDetalhe": "{{hero}} • {{n}} mãos importadas"
+  },
+  "conta": {
+    "usoMes": "Uso este mês",
+    "analises": "Análises GrindLab",
+    "aria": "Menu da conta",
+    "upgrade": "Upgrade para Pro · R$ 99",
+    "docs": "Documentação"
+  },
+  "quota": {
+    "titulo": "Limite mensal próximo",
+    "torneios": "Torneios este mês",
+    "analises": "Análises IA este mês",
+    "upgrade": "Upgrade para Pro · R$ 99"
+  },
+  "infoAria": "Informação",
+  "mesaAria": "Mesa de 9 lugares, posição {{posicao}} em destaque",
+  "mesaNaoDefinida": "não definida"
 }

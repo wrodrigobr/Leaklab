@@ -299,5 +299,19 @@
     "planTitle": "O que fazer com isto",
     "week": "Semana {{n}}",
     "trainCta": "Treinar estes leaks"
-  }
+  },
+  "compare": {
+    "min2": "Selecione pelo menos 2 torneios.",
+    "titulo": "Comparativo de Torneios",
+    "subtitulo": "Análise evolutiva lado a lado de qualidade técnica de decisão.",
+    "voltar": "Voltar para Torneios",
+    "narrativa": "Análise Comparativa IA",
+    "qualidade": "Qualidade de Decisão",
+    "standardSub": "Decisões dentro do padrão, quanto maior, melhor",
+    "scoreSub": "Score médio de erro, quanto menor, melhor",
+    "topLeaks": "Top Leaks por Torneio",
+    "semLeaks": "Sem leaks recorrentes",
+    "legendaCompartilhado": "Leak presente em múltiplos torneios"
+  },
+  "selecionarComparar": "Selecionar para comparar"
 }

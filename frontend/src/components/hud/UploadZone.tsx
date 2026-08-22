@@ -1,4 +1,5 @@
 import { useCallback, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { CheckCircle2, FileUp, Loader2, UploadCloud, XCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { tournaments } from "@/lib/api";
@@ -17,6 +18,7 @@ interface Props {
 const SUPPORTED = ["PokerStars", "GGPoker", "ACR", "CoinPoker"];
 
 export function UploadZone({ onResult }: Props) {
+  const { t } = useTranslation("dashboard");
   const [isDragging, setIsDragging] = useState(false);
   const [status, setStatus] = useState<"idle" | "loading" | "ok" | "error">("idle");
   const [message, setMessage] = useState("");
@@ -31,7 +33,7 @@ export function UploadZone({ onResult }: Props) {
         const result = await tournaments.analyze(content, file.name);
         setStatus("ok");
         setMessage(
-          `${result.hero} • ${result.total_hands} mãos importadas`
+          t("upload.importadoDetalhe", { hero: result.hero, n: result.total_hands })
         );
         onResult?.({
           tournament_id: result.tournament_id,
@@ -69,7 +71,7 @@ export function UploadZone({ onResult }: Props) {
 
   return (
     <section
-      aria-label="Upload de log de torneio"
+      aria-label={t("upload.aria")}
       className="relative group"
       onDragOver={(e) => {
         e.preventDefault();
@@ -96,14 +98,14 @@ export function UploadZone({ onResult }: Props) {
 
         <div className="space-y-1">
           <h3 className="text-base font-medium text-foreground">
-            {status === "loading" && "Analisando torneio…"}
-            {status === "ok" && "Torneio importado!"}
-            {status === "error" && "Erro ao importar"}
-            {status === "idle" && "Analisar nova sessão"}
+            {status === "loading" && t("upload.analisando")}
+            {status === "ok" && t("upload.importado")}
+            {status === "error" && t("upload.erro")}
+            {status === "idle" && t("upload.titulo")}
           </h3>
           <p className="max-w-sm text-xs text-muted-foreground">
             {message ||
-              "Arraste logs de torneios (.txt) ou clique para iniciar a varredura tática."}
+              t("upload.instrucao")}
           </p>
         </div>
 
@@ -132,7 +134,7 @@ export function UploadZone({ onResult }: Props) {
           accept=".txt,.log"
           className="sr-only"
           onChange={(e) => handleFiles(e.target.files)}
-          aria-label="Selecionar arquivo de log"
+          aria-label={t("upload.botao")}
         />
 
         <div className="mt-2 flex flex-wrap items-center justify-center gap-2">
@@ -148,7 +150,7 @@ export function UploadZone({ onResult }: Props) {
 
         <div className="mt-3 pt-3 border-t border-border/40 text-center">
           <p className="text-[11px] text-muted-foreground mb-2">
-            Não tem hand history? Reconstrua manualmente uma mão (análise de vídeo, anotação, etc).
+            {t("upload.semHistory")}
           </p>
           <a
             href="/hand-builder"
