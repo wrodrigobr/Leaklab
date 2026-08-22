@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ChevronDown, ChevronUp, UserCircle, X } from "lucide-react";
 import { profile, DemographicProfile } from "@/lib/api";
@@ -27,6 +28,7 @@ function filledCount(d: DemographicProfile): number {
 }
 
 export function ProfileCompletionCard() {
+  const { t } = useTranslation("dashboard");
   const { user } = useAuth();
   const qc = useQueryClient();
 
@@ -95,7 +97,7 @@ export function ProfileCompletionCard() {
           className="flex items-center gap-2 text-sm font-semibold text-foreground"
         >
           <UserCircle className="size-4 text-primary" />
-          Complete seu perfil
+          {t("perfil.titulo")}
           <span className="font-mono text-xs text-muted-foreground">({pct}%)</span>
           {open ? <ChevronUp className="size-3.5 text-muted-foreground" /> : <ChevronDown className="size-3.5 text-muted-foreground" />}
         </button>
@@ -112,12 +114,12 @@ export function ProfileCompletionCard() {
       {open && (
         <div className="px-4 pb-4 space-y-4 border-t border-border/50 pt-3">
           <p className="font-mono text-[10px] text-muted-foreground">
-            Dados usados apenas para benchmarks agregados e anonimizados, nunca compartilhados individualmente.
+            {t("perfil.aviso")}
           </p>
 
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
             <div className="space-y-1">
-              <label className={labelClass}>Ano de nascimento</label>
+              <label className={labelClass}>{t("perfil.anoNascimento")}</label>
               <input
                 type="number" min="1940" max="2010"
                 defaultValue={demo.birth_year ?? ""}
@@ -127,7 +129,7 @@ export function ProfileCompletionCard() {
               />
             </div>
             <div className="space-y-1">
-              <label className={labelClass}>País</label>
+              <label className={labelClass}>{t("perfil.pais")}</label>
               <input
                 defaultValue={demo.country ?? ""}
                 onChange={set("country")}
@@ -149,7 +151,7 @@ export function ProfileCompletionCard() {
               <input
                 defaultValue={demo.city ?? ""}
                 onChange={set("city")}
-                placeholder="São Paulo"
+                placeholder={t("perfil.cidadeExemplo")}
                 className={inputClass}
               />
             </div>
@@ -175,7 +177,7 @@ export function ProfileCompletionCard() {
               </select>
             </div>
             <div className="space-y-1 sm:col-span-1">
-              <label className={labelClass}>Faixa de buy-in</label>
+              <label className={labelClass}>{t("perfil.faixaBuyin")}</label>
               <select
                 defaultValue={demo.usual_buyin_range ?? ""}
                 onChange={set("usual_buyin_range")}
@@ -189,7 +191,7 @@ export function ProfileCompletionCard() {
 
           <div className="flex gap-2 justify-end">
             <button type="button" onClick={dismiss} className="font-mono text-[10px] uppercase tracking-widest-2 text-muted-foreground hover:text-foreground transition-colors px-3 py-1.5">
-              Não mostrar mais
+              {t("perfil.naoMostrar")}
             </button>
             <button
               type="button"

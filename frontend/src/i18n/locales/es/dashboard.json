@@ -728,5 +728,37 @@
     "p6code": "Paso 06 // Entrenamiento",
     "p6title": "El leak se vuelve ejercicio",
     "p6desc": "Cada leak encontrado se convierte en drills con repetición espaciada. Y la validación no ocurre en el ejercicio: la plataforma vuelve a tus manos reales para comprobar si dejaste de filtrar."
+  },
+  "checkout": {
+    "ciclo": {
+      "mensal": "Mensual",
+      "anual": "Anual"
+    },
+    "preco": {
+      "mensal": "R$ 99/mes",
+      "anual": "R$ 990/año",
+      "badgeAnual": "2 meses gratis · R$ 82,50/mes"
+    },
+    "features": [
+      "Torneos ilimitados",
+      "Análisis GrindLab ilimitados",
+      "Insights avanzados de IA (Strategic Twin, Cognitive, Causal Map)",
+      "AI Coach Chat (conversación contextual)",
+      "Plan de estudios personalizado",
+      "Acceso al marketplace de coaches"
+    ],
+    "erroSdk": "No se pudo cargar el SDK de pago.",
+    "sucesso": "Suscripción activada.",
+    "processando": "Procesando…",
+    "assinar": "Suscribirme a {{plano}} · {{preco}}"
+  },
+  "perfil": {
+    "titulo": "Completa tu perfil",
+    "aviso": "Se usan solo para benchmarks agregados y anonimizados, nunca se comparten de forma individual.",
+    "anoNascimento": "Año de nacimiento",
+    "pais": "País",
+    "cidadeExemplo": "São Paulo",
+    "faixaBuyin": "Rango de buy-in",
+    "naoMostrar": "No mostrar más"
   }
 }

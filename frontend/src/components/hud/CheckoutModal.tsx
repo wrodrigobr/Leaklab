@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { createPortal } from "react-dom";
 import { loadStripe, type Stripe, type StripeElements } from "@stripe/stripe-js";
 import { X, Loader2, CreditCard, CheckCircle2, AlertCircle, Zap } from "lucide-react";
@@ -11,8 +12,8 @@ const STRIPE_KEY = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY as string;
 
 // Espelha leaklab.stripe_gateway: mensal R$99 / anual R$990 (2 meses grátis).
 const BILLING = {
-  monthly: { label: "Mensal", price: "R$ 99/mês",  badge: "" },
-  annual:  { label: "Anual",  price: "R$ 990/ano", badge: "2 meses grátis · R$ 82,50/mês" },
+  monthly: { labelKey: "checkout.ciclo.mensal", priceKey: "checkout.preco.mensal", badgeKey: "" },
+  annual:  { labelKey: "checkout.ciclo.anual",  priceKey: "checkout.preco.anual",  badgeKey: "checkout.preco.badgeAnual" },
 } as const;
 type BillingCycle = keyof typeof BILLING;
 
@@ -20,14 +21,7 @@ const PLAN_INFO = {
   pro: {
     label: "Pro",
     colorClass: "text-primary border-primary/30 bg-primary/5",
-    features: [
-      "Torneios ilimitados",
-      "Análises GrindLab ilimitadas",
-      "Insights avançados de IA (Strategic Twin, Cognitive, Causal Map)",
-      "AI Coach Chat (conversa contextual)",
-      "Plano de estudos personalizado",
-      "Acesso ao marketplace de coaches",
-    ],
+    featuresKey: "checkout.features",
   },
 } as const;
 
@@ -38,6 +32,7 @@ interface Props {
 }
 
 export function CheckoutModal({ plan, onClose, onSuccess }: Props) {
+  const { t } = useTranslation("dashboard");
   const { refreshUser } = useAuth();
   const info = PLAN_INFO[plan];
 
@@ -67,7 +62,7 @@ export function CheckoutModal({ plan, onClose, onSuccess }: Props) {
           loadStripe(STRIPE_KEY),
         ]);
         if (!active) return;
-        if (!stripe) throw new Error("Falha ao carregar SDK de pagamento.");
+        if (!stripe) throw new Error(t("checkout.erroSdk"));
         setStripeInstance(stripe);
         setClientSecret(intentResult.client_secret);
         setSubscriptionId(intentResult.subscription_id);
@@ -182,11 +177,11 @@ export function CheckoutModal({ plan, onClose, onSuccess }: Props) {
                 )}
               >
                 <span className={cn("font-mono text-[11px] font-bold uppercase tracking-wider",
-                  billing === c ? "text-primary" : "text-muted-foreground")}>{BILLING[c].label}</span>
+                  billing === c ? "text-primary" : "text-muted-foreground")}>{t(BILLING[c].labelKey)}</span>
                 <span className={cn("font-mono text-xs font-bold",
-                  billing === c ? "text-foreground" : "text-muted-foreground")}>{BILLING[c].price}</span>
-                {BILLING[c].badge && (
-                  <span className="font-mono text-[9px] text-primary">{BILLING[c].badge}</span>
+                  billing === c ? "text-foreground" : "text-muted-foreground")}>{t(BILLING[c].priceKey)}</span>
+                {BILLING[c].badgeKey && (
+                  <span className="font-mono text-[9px] text-primary">{t(BILLING[c].badgeKey)}</span>
                 )}
                 {c === "annual" && (
                   <span className="absolute -top-px right-1 rounded-b bg-primary px-1 py-0.5 font-mono text-[8px] font-bold uppercase text-primary-foreground">
@@ -203,12 +198,12 @@ export function CheckoutModal({ plan, onClose, onSuccess }: Props) {
           <div className="flex items-center justify-between">
             <span className="font-mono text-sm font-bold uppercase tracking-wider flex items-center gap-1.5">
               {plan === "pro" && <Zap className="size-3.5" />}
-              {info.label} · {BILLING[billing].label}
+              {info.label} · {t(BILLING[billing].labelKey)}
             </span>
-            <span className="font-mono text-sm font-bold">{BILLING[billing].price}</span>
+            <span className="font-mono text-sm font-bold">{t(BILLING[billing].priceKey)}</span>
           </div>
           <ul className="space-y-0.5">
-            {info.features.map((f) => (
+            {(t(info.featuresKey, { returnObjects: true }) as string[]).map((f) => (
               <li key={f} className="font-mono text-[10px] opacity-75">• {f}</li>
             ))}
           </ul>
@@ -218,7 +213,7 @@ export function CheckoutModal({ plan, onClose, onSuccess }: Props) {
         {success ? (
           <div className="flex flex-col items-center gap-3 py-6">
             <CheckCircle2 className="size-12 text-primary" />
-            <p className="text-sm font-semibold text-foreground text-center">Assinatura ativada com sucesso!</p>
+            <p className="text-sm font-semibold text-foreground text-center">{t("checkout.sucesso")}</p>
             <p className="text-xs text-muted-foreground text-center">
               Seu plano {info.label} já está disponível. Redirecionando…
             </p>
@@ -264,7 +259,7 @@ export function CheckoutModal({ plan, onClose, onSuccess }: Props) {
                   className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-md bg-primary font-mono text-xs font-bold uppercase tracking-widest-2 text-primary-foreground transition-all hover:opacity-90 disabled:opacity-50"
                 >
                   {submitting && <Loader2 className="size-4 animate-spin" />}
-                  {submitting ? "Processando…" : `Assinar ${info.label} · ${BILLING[billing].price}`}
+                  {submitting ? t("checkout.processando") : t("checkout.assinar", { plano: info.label, preco: t(BILLING[billing].priceKey) })}
                 </button>
                 <p className="text-center font-mono text-[9px] text-muted-foreground">
                   Pagamento seguro via Stripe · Cancele quando quiser

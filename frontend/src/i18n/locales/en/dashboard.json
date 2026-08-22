@@ -728,5 +728,37 @@
     "p6code": "Step 06 // Training",
     "p6title": "The leak becomes a drill",
     "p6desc": "Every leak found turns into spaced-repetition drills. And validation does not happen in the drill: the platform goes back to your real hands to check whether you stopped leaking."
+  },
+  "checkout": {
+    "ciclo": {
+      "mensal": "Monthly",
+      "anual": "Yearly"
+    },
+    "preco": {
+      "mensal": "R$ 99/month",
+      "anual": "R$ 990/year",
+      "badgeAnual": "2 months free · R$ 82.50/month"
+    },
+    "features": [
+      "Unlimited tournaments",
+      "Unlimited GrindLab analyses",
+      "Advanced AI insights (Strategic Twin, Cognitive, Causal Map)",
+      "AI Coach Chat (contextual conversation)",
+      "A study plan built for you",
+      "Access to the coach marketplace"
+    ],
+    "erroSdk": "Could not load the payment SDK.",
+    "sucesso": "Subscription activated.",
+    "processando": "Processing…",
+    "assinar": "Subscribe to {{plano}} · {{preco}}"
+  },
+  "perfil": {
+    "titulo": "Complete your profile",
+    "aviso": "Used only for aggregated, anonymised benchmarks, never shared individually.",
+    "anoNascimento": "Year of birth",
+    "pais": "Country",
+    "cidadeExemplo": "São Paulo",
+    "faixaBuyin": "Buy-in range",
+    "naoMostrar": "Do not show again"
   }
 }
