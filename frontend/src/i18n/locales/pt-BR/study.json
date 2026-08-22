@@ -1,4 +1,41 @@
 {
+  "planBuilder": {
+    "week": {
+      "fundamentos": "Fundamentos: Leaks Críticos",
+      "expansao": "Expansão: Leaks Secundários",
+      "integracao": "Integração: Aprofundamento",
+      "consolidacao": "Consolidação: Revisão e Medição"
+    },
+    "dia": {
+      "drill": "Drill prático",
+      "cronometrado": "Exercício cronometrado",
+      "revisaoSemanal": "Revisão semanal + métricas",
+      "testeFinal": "Teste final + próximos 90 dias"
+    },
+    "topico": {
+      "revisarReplays": "Re-assistir replays marcados + medir delta dos leaks",
+      "reimportar": "Re-importar histórico e comparar score antes/depois"
+    },
+    "objetivo": {
+      "marcarSpots": "Identificar os spots de erro em sessão passada e marcá-los para revisão",
+      "resolverMaos": "Resolver ≥{{n}} mãos no solver focando neste padrão",
+      "acertoQuiz": "Acerto ≥{{pct}}% no quiz da plataforma",
+      "documentarSpots": "Documentar os {{n}} principais spots ainda problemáticos",
+      "evLossAbaixoMeta": "EV loss total abaixo da meta do plano"
+    },
+    "fallback": {
+      "teoria": "Teoria",
+      "leakSecundario": "Leak secundário",
+      "estudoDeRange": "Estudo de range",
+      "entenderRaiz": "Entender a raiz do leak",
+      "handHistoryReview": "Hand history review: filtre mãos perdidas neste spot",
+      "quizTatico": "Quiz tático: resolva {{n}} questões cronometrado",
+      "posicaoSpr": "Análise de posição e SPR",
+      "rangeAdvantage": "Conceitos de range advantage",
+      "potOddsMultiway": "Pot odds e implied odds em pots multiway",
+      "reduzirErro": "Reduzir frequência de erro neste spot em ≥{{pct}}%"
+    }
+  },
   "eyebrow": "Plano de Estudos · Adaptive",
   "title": "Seu roteiro tático personalizado",
   "subtitle": "Diagnóstico dos seus leaks, roteiro semanal e recursos para estudar cada um.",

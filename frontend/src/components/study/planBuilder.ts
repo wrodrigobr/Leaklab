@@ -1,6 +1,14 @@
 import type { StudyPlan, StudyResource, LeakRef, LeakSeverity } from "./types";
 import type { StudyPlanResponse, StudyCard } from "@/lib/api";
 
+/**
+ * Tradutor do namespace `study`, injetado por quem chama.
+ *
+ * `buildStudyPlan` é uma função pura, fora da árvore do React, então não pode chamar
+ * `useTranslation`. Receber o `t` mantém a função testável e resolve o motivo pelo qual esta
+ * copy nasceu em português cravado: não havia por onde traduzir sem virar componente.
+ */
+export type Traduz = (chave: string, opcoes?: Record<string, unknown>) => string;
 
 // ── Transform backend response → StudyPlan ────────────────────────────────────
 
@@ -21,77 +29,77 @@ function resourcesFromCard(card: StudyCard): StudyResource[] {
   return out;
 }
 
-function generateWeeks(cards: StudyCard[]): import("./types").StudyWeek[] {
+function generateWeeks(cards: StudyCard[], t: Traduz): import("./types").StudyWeek[] {
   const weekThemes = [
-    "Fundamentos: Leaks Críticos",
-    "Expansão: Leaks Secundários",
-    "Integração: Aprofundamento",
-    "Consolidação: Revisão e Medição",
+    t("planBuilder.week.fundamentos"),
+    t("planBuilder.week.expansao"),
+    t("planBuilder.week.integracao"),
+    t("planBuilder.week.consolidacao"),
   ];
 
   return [0, 1, 2, 3].map((w) => {
     const primary   = cards[w * 2]     ?? cards[0];
     const secondary = cards[w * 2 + 1] ?? cards[1];
 
-    const primaryConceitos = primary?.conceitos?.join(" · ") ?? "Estudo de range";
+    const primaryConceitos = primary?.conceitos?.join(" · ") ?? t("planBuilder.fallback.estudoDeRange");
 
     const days: import("./types").StudyDay[] = [
       {
         day: 1,
-        title: primary?.titulo ?? "Teoria",
+        title: primary?.titulo ?? t("planBuilder.fallback.teoria"),
         topic: primaryConceitos,
         estimatedMinutes: 50,
         objectives: [
-          primary?.diagnostico ?? "Entender a raiz do leak",
-          "Identificar os spots de erro em sessão passada e marcá-los para revisão",
+          primary?.diagnostico ?? t("planBuilder.fallback.entenderRaiz"),
+          t("planBuilder.objetivo.marcarSpots"),
         ],
         leakIds: [primary?.prioridade ?? `p${w * 2 + 1}`],
       },
       {
         day: 2,
-        title: "Drill prático",
-        topic: primary?.exercicio ?? "Hand history review: filtre mãos perdidas neste spot",
+        title: t("planBuilder.dia.drill"),
+        topic: primary?.exercicio ?? t("planBuilder.fallback.handHistoryReview"),
         estimatedMinutes: 60,
         objectives: [
-          "Resolver ≥20 mãos no solver focando neste padrão",
-          primary?.metrica ?? "Reduzir frequência de erro neste spot em ≥20%",
+          t("planBuilder.objetivo.resolverMaos", { n: 20 }),
+          primary?.metrica ?? t("planBuilder.fallback.reduzirErro", { pct: 20 }),
         ],
         leakIds: [primary?.prioridade ?? `p${w * 2 + 1}`],
       },
       {
         day: 3,
-        title: secondary?.titulo ?? "Leak secundário",
-        topic: secondary?.diagnostico ?? "Análise de posição e SPR",
+        title: secondary?.titulo ?? t("planBuilder.fallback.leakSecundario"),
+        topic: secondary?.diagnostico ?? t("planBuilder.fallback.posicaoSpr"),
         estimatedMinutes: 45,
         objectives: [
-          secondary?.conceitos?.[0] ?? "Conceitos de range advantage",
-          secondary?.conceitos?.[1] ?? "Pot odds e implied odds em pots multi-way",
+          secondary?.conceitos?.[0] ?? t("planBuilder.fallback.rangeAdvantage"),
+          secondary?.conceitos?.[1] ?? t("planBuilder.fallback.potOddsMultiway"),
           ...(secondary?.conceitos?.slice(2) ?? []),
         ],
         leakIds: [secondary?.prioridade ?? `p${w * 2 + 2}`],
       },
       {
         day: 4,
-        title: "Exercício cronometrado",
-        topic: secondary?.exercicio ?? "Quiz tático: resolva 20 questões cronometrado",
+        title: t("planBuilder.dia.cronometrado"),
+        topic: secondary?.exercicio ?? t("planBuilder.fallback.quizTatico", { n: 20 }),
         estimatedMinutes: 30,
         objectives: [
-          "Acerto ≥80% no quiz da plataforma",
-          secondary?.metrica ?? "Reduzir frequência de erro neste spot em ≥10%",
+          t("planBuilder.objetivo.acertoQuiz", { pct: 80 }),
+          secondary?.metrica ?? t("planBuilder.fallback.reduzirErro", { pct: 10 }),
         ],
         leakIds: [secondary?.prioridade ?? `p${w * 2 + 2}`],
       },
       {
         day: 5,
-        title: w < 3 ? "Revisão semanal + métricas" : "Teste final + próximos 90 dias",
+        title: w < 3 ? t("planBuilder.dia.revisaoSemanal") : t("planBuilder.dia.testeFinal"),
         topic: w < 3
-          ? "Re-assistir replays marcados + medir delta dos leaks"
-          : "Re-importar histórico e comparar score antes/depois",
+          ? t("planBuilder.topico.revisarReplays")
+          : t("planBuilder.topico.reimportar"),
         estimatedMinutes: 25,
         objectives: [
           w < 3
-            ? "Documentar os 3 principais spots ainda problemáticos"
-            : "EV loss total abaixo da meta do plano",
+            ? t("planBuilder.objetivo.documentarSpots", { n: 3 })
+            : t("planBuilder.objetivo.evLossAbaixoMeta"),
         ],
         leakIds: cards.map((c) => c.prioridade).filter(Boolean),
       },
@@ -101,7 +109,7 @@ function generateWeeks(cards: StudyCard[]): import("./types").StudyWeek[] {
   });
 }
 
-export function buildStudyPlan(backend: StudyPlanResponse): StudyPlan {
+export function buildStudyPlan(backend: StudyPlanResponse, t: Traduz): StudyPlan {
   const cards = backend.cards ?? [];
 
   const leaks: LeakRef[] = cards.map((card, i) => ({
@@ -124,7 +132,7 @@ export function buildStudyPlan(backend: StudyPlanResponse): StudyPlan {
   return {
     generatedAt: new Date().toISOString(),
     diagnosis: { summary: backend.resumo ?? "", leaks },
-    weeks: generateWeeks(cards),
+    weeks: generateWeeks(cards, t),
     resourcesByLeak,
     observar: backend.observar_mais_dados ?? [],
     naoFocar: backend.nao_focar_agora ?? [],

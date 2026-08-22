@@ -210,7 +210,7 @@ const StudyPlanPage = () => {
       setCoachManaged(data.coach_managed ?? false);
       setTreinoSugerido(data.treino_sugerido ?? null);
       setPlanSource(data.source ?? null);
-      const built = buildStudyPlan(data);
+      const built = buildStudyPlan(data, t);
       setPlan(built);
       if (!activeLeakId) {
         const target = spotParam

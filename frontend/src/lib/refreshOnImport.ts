@@ -89,6 +89,10 @@ export const CHAVES_NAO_DERIVADAS = [
   "admin-gto-hand-queue", "admin-gto-worker-status", "admin-support-tickets",
   "admin-finance-coaches", "admin-finance-cockpit", "admin-finance-calendar",
   "admin-finance-dunning", "admin-finance-timeseries",
+  // programa de fundadores: o painel mede o uso DOS FUNDADORES, não o import de quem está com a
+  // tela aberta. O admin que sobe um torneio próprio não muda nenhum destes números.
+  "admin-founders", "admin-founder-candidates", "admin-telegram-intros",
+  "admin-users-founder-pick",
 ] as const;
 
 /**

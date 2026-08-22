@@ -7,6 +7,53 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(i18n): copy do plano de estudo traduzida, e o campo MORTO de `ranges.ts` removido
+
+> **Por que:** varrendo travessao achei `planBuilder.ts` e `ranges.ts` com portugues cravado
+> no codigo. Os dois pareciam a mesma divida. Nao eram, e a diferenca so apareceu ao MEDIR.
+>
+> **`planBuilder.ts` era copy VIVA.** Os titulos das semanas do plano de estudo e todos os
+> textos de fallback apareciam em portugues mesmo com a interface em ingles ou espanhol. A
+> causa de ter nascido assim e concreta: `buildStudyPlan` e funcao pura, fora da arvore do
+> React, e nao tinha por onde chamar `useTranslation`. Agora recebe o `t` por parametro --
+> 25 chaves, tres locales.
+>
+> **`ranges.ts` era copy MORTA, e traduzir teria sido trabalho que ninguem veria.** O campo
+> `RangeSet.description` era escrito em 43 lugares e lido em ZERO. A prova nao foi leitura de
+> codigo, foi o compilador: renomear o campo na interface produziu 43 erros, **todos**
+> `TS2561` ("propriedade desconhecida em literal"), ou seja todos ESCRITORES. E o `git log`
+> explicou por que: o commit `7a5db722` (25/05) tirou a descricao da tela e deixou o campo
+> para tras. Ele sobreviveu **tres meses** -- e eu mesmo editei uma dessas linhas ontem, em
+> `f67912a4`, sem notar que ninguem a lia. Campo removido, junto do `parts` que so existia
+> para monta-lo.
+>
+> **A pergunta que separou os dois casos foi "quem LE isto?", e ela custou dois minutos.**
+> Sem ela, eu teria traduzido 43 strings invisiveis para tres idiomas.
+>
+> **Guardas (`test_i18n_copy_do_frontend.py`, 5 testes):** chave pedida pelo codigo tem que
+> existir nos 3 locales (chave sem traducao vaza CRUA para a tela); portugues cravado nao
+> volta aos arquivos ja limpos; e o campo morto nao reaparece sem um leitor. A lista de
+> arquivos limpos e deliberadamente uma LISTA e nao uma varredura do frontend inteiro: dezenas
+> de componentes ainda tem copy cravada, e teste que nasce vermelho e teste que alguem desliga.
+>
+> **E um guarda do outro lado, em vitest** (`planBuilder.i18n.test.ts`): monta o plano com o
+> `t` REAL de cada idioma e exige que os tres saiam DIFERENTES. Esse e o controle que importa:
+> se a copy voltasse a ser cravada, os outros testes ainda passariam -- os tres idiomas e que
+> sairiam identicos.
+>
+> **Dois defeitos de processo achados no caminho, os dois meus:**
+>
+> 1. O teste novo **nao estava rodando**: `run_all_tests.py` tem lista fixa de arquivos, nao
+>    descoberta automatica. Registrei e provei com sabotagem deliberada que o runner o executa.
+>    Cobertura que nao roda e cobertura que nao cobre.
+> 2. A catraca `refreshOnImport` estava **vermelha no main** desde ontem, por quatro queryKeys
+>    do painel de fundadores que EU criei e nao classifiquei. Fechadas em `CHAVES_NAO_DERIVADAS`
+>    (o painel mede o uso DOS FUNDADORES, nao o import de quem esta com a tela aberta).
+>
+> Suite backend 2393/2393 (era 2388, +5 do arquivo novo), vitest 388/388 em 49 arquivos,
+> typecheck limpo.
+
+
 ### fix(copy): vocabulario e pontuacao da copy didatica, com guarda que varre as 4 superficies
 
 > **Por que:** o dono leu o card "Conceito do spot" de BB vs SB e reprovou duas frases:

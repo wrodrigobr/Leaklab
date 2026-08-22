@@ -1,4 +1,41 @@
 {
+  "planBuilder": {
+    "week": {
+      "fundamentos": "Fundamentals: Critical Leaks",
+      "expansao": "Expansion: Secondary Leaks",
+      "integracao": "Integration: Going Deeper",
+      "consolidacao": "Consolidation: Review and Measurement"
+    },
+    "dia": {
+      "drill": "Hands-on drill",
+      "cronometrado": "Timed exercise",
+      "revisaoSemanal": "Weekly review + metrics",
+      "testeFinal": "Final test + next 90 days"
+    },
+    "topico": {
+      "revisarReplays": "Re-watch flagged replays and measure the leak delta",
+      "reimportar": "Re-import your history and compare the score before and after"
+    },
+    "objetivo": {
+      "marcarSpots": "Spot the mistakes in a past session and flag them for review",
+      "resolverMaos": "Solve {{n}}+ hands in the solver focusing on this pattern",
+      "acertoQuiz": "{{pct}}%+ accuracy on the platform quiz",
+      "documentarSpots": "Write down the {{n}} spots still giving you trouble",
+      "evLossAbaixoMeta": "Total EV loss below the plan target"
+    },
+    "fallback": {
+      "teoria": "Theory",
+      "leakSecundario": "Secondary leak",
+      "estudoDeRange": "Range study",
+      "entenderRaiz": "Understand the root of the leak",
+      "handHistoryReview": "Hand history review: filter hands lost in this spot",
+      "quizTatico": "Tactical quiz: solve {{n}} questions against the clock",
+      "posicaoSpr": "Position and SPR analysis",
+      "rangeAdvantage": "Range advantage concepts",
+      "potOddsMultiway": "Pot odds and implied odds in multiway pots",
+      "reduzirErro": "Cut your error rate in this spot by {{pct}}% or more"
+    }
+  },
   "eyebrow": "Study Plan · Adaptive",
   "title": "Your personalized tactical roadmap",
   "subtitle": "A diagnosis of your leaks, a weekly roadmap, and resources to study each one.",

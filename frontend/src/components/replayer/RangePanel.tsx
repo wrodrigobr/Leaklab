@@ -104,15 +104,8 @@ const QUALITY_META: Record<string, { key: string; color: string; icon: typeof Ch
 function buildRangeFromApi(resp: PreflopRangesResp, type: RangeType, openerPos?: string, scenario?: string): RangeSet | null {
   if (type === 'open') {
     if (!resp.rfi) return null;
-    // Quebra raise/shove na descrição (as abas call/3bet já faziam). Em stack curto o "open"
-    // é quase todo SHOVE — sem isto o usuário via só "Open 89.7%" e a grade vermelha sem
-    // saber que é all-in.
-    const parts: string[] = [];
-    if (resp.rfi.raise_pct != null && resp.rfi.raise_pct > 0.001) parts.push(`Raise ${(resp.rfi.raise_pct*100).toFixed(1)}%`);
-    if (resp.rfi.allin_pct != null && resp.rfi.allin_pct > 0.001) parts.push(`Shove ${(resp.rfi.allin_pct*100).toFixed(1)}%`);
     return {
       label: `Open ${resp.position} (${resp.stack_bucket})`,
-      description: `Open ${(resp.rfi.pct * 100).toFixed(1)}% das mãos${parts.length ? ` · ${parts.join(' / ')}` : ''}`,
       raise: new Set(resp.rfi.hands),
       frequencies: resp.rfi.frequencies,
     };
@@ -127,13 +120,8 @@ function buildRangeFromApi(resp: PreflopRangesResp, type: RangeType, openerPos?:
     if (!villains.length) return null;
     const key = (openerPos && src[openerPos]) ? openerPos : villains[0];
     const g = src[key];
-    const parts: string[] = [];
-    if (g.call_pct  && g.call_pct  > 0.001) parts.push(`Call ${(g.call_pct*100).toFixed(1)}%`);
-    if (g.raise_pct && g.raise_pct > 0.001) parts.push(`${isSqueeze ? 'Squeeze' : '4bet'} ${(g.raise_pct*100).toFixed(1)}%`);
-    if (g.allin_pct && g.allin_pct > 0.001) parts.push(`Shove ${(g.allin_pct*100).toFixed(1)}%`);
     return {
       label: `${isSqueeze ? 'Squeeze vs' : 'vs'} ${key} ${isSqueeze ? 'open' : '3-bet'} · ${resp.position} (${resp.stack_bucket})`,
-      description: `continua ${(g.pct_play*100).toFixed(1)}%${parts.length ? ` · ${parts.join(' / ')}` : ''}`,
       raise: new Set(g.raise3bet),
       call:  new Set(g.call),
       allin: new Set(g.allin ?? []),
@@ -150,14 +138,8 @@ function buildRangeFromApi(resp: PreflopRangesResp, type: RangeType, openerPos?:
       : null;
     const key = resolvedKey ?? openers[0];
     const def = resp.vs_rfi[key];
-    const parts: string[] = [];
-    if (def.call_pct  != null && def.call_pct  > 0.001) parts.push(`Call ${(def.call_pct*100).toFixed(1)}%`);
-    if (def.raise_pct != null && def.raise_pct > 0.001) parts.push(`Raise ${(def.raise_pct*100).toFixed(1)}%`);
-    if (def.allin_pct != null && def.allin_pct > 0.001) parts.push(`Shove ${(def.allin_pct*100).toFixed(1)}%`);
-    const description = `vs ${key.replace('_open', '')} open · ${(def.pct_play*100).toFixed(1)}% defendem${parts.length ? ` · ${parts.join(' / ')}` : ''}`;
     return {
       label: `vs ${key.replace('_open', '')} open · ${resp.position} (${resp.stack_bucket})`,
-      description,
       raise: new Set(def.raise3bet ?? []),
       call:  new Set(def.call ?? []),
       allin: new Set(def.allin ?? []),
