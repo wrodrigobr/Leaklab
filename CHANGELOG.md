@@ -58,7 +58,16 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 > agora le tambem `.ts`/`.tsx`, recortando comentario (onde "largo" quase sempre fala de
 > largura de tela) e ignorando arquivo de teste (onde "pergunta sem posicao unica" e correto).
 >
-> **Entregue:** `backend/tests/test_vocabulario_da_copy.py` com 9 testes cobrindo as 5
+> **O guarda de TRAVESSAO tambem chegou ao `.ts`/`.tsx`** (a lacuna que eu tinha registrado
+> em vez de fechar). 11 ocorrencias reais: os titulos das semanas do plano de estudo
+> (`planBuilder.ts`), as descricoes de call vs shove (`ranges.ts`) e a legenda do painel de
+> fundadores. E DOIS falsos positivos que a primeira execucao acusou, os dois usos corretos
+> de travessao dentro de codigo: o intervalo montado por template (`${a} - ${b}`, sem digito
+> para o detector numerico ver) e o travessao SOZINHO como placeholder de "sem valor" num
+> card. Cada mascara tem contraprova, e desligar qualquer uma delas faz o guarda acusar
+> codigo correto -- e o que separa mascara necessaria de anestesia.
+>
+> **Entregue:** `backend/tests/test_vocabulario_da_copy.py` com 11 testes cobrindo as 5
 > superficies (2 modulos Python + quiz + 3 locales JSON + 260 arquivos .ts/.tsx; 17.670
 > strings de traducao varridas), incluindo
 > prova de deteccao na frase EXATA que originou o caso (exige achar OS DOIS problemas, nao

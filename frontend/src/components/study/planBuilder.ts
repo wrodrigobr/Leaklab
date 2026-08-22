@@ -23,10 +23,10 @@ function resourcesFromCard(card: StudyCard): StudyResource[] {
 
 function generateWeeks(cards: StudyCard[]): import("./types").StudyWeek[] {
   const weekThemes = [
-    "Fundamentos — Leaks Críticos",
-    "Expansão — Leaks Secundários",
-    "Integração — Aprofundamento",
-    "Consolidação — Revisão e Medição",
+    "Fundamentos: Leaks Críticos",
+    "Expansão: Leaks Secundários",
+    "Integração: Aprofundamento",
+    "Consolidação: Revisão e Medição",
   ];
 
   return [0, 1, 2, 3].map((w) => {
@@ -50,7 +50,7 @@ function generateWeeks(cards: StudyCard[]): import("./types").StudyWeek[] {
       {
         day: 2,
         title: "Drill prático",
-        topic: primary?.exercicio ?? "Hand history review — filtre mãos perdidas neste spot",
+        topic: primary?.exercicio ?? "Hand history review: filtre mãos perdidas neste spot",
         estimatedMinutes: 60,
         objectives: [
           "Resolver ≥20 mãos no solver focando neste padrão",
@@ -73,7 +73,7 @@ function generateWeeks(cards: StudyCard[]): import("./types").StudyWeek[] {
       {
         day: 4,
         title: "Exercício cronometrado",
-        topic: secondary?.exercicio ?? "Quiz tático — resolva 20 questões cronometrado",
+        topic: secondary?.exercicio ?? "Quiz tático: resolva 20 questões cronometrado",
         estimatedMinutes: 30,
         objectives: [
           "Acerto ≥80% no quiz da plataforma",

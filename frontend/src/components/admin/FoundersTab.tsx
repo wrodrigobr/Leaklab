@@ -562,7 +562,7 @@ export function FoundersTab() {
       <p className="text-[11px] leading-relaxed text-muted-foreground">
         <strong className="text-foreground">Como ler:</strong> “Honrando” é quem importou mãos,
         voltou a treinar em dias diferentes <em>e</em> mandou algum retorno. “Usa, não fala”
-        cumpre metade do trato — costuma ser quem só precisa ser perguntado. “Silencioso” nunca
+        cumpre metade do trato. Costuma ser quem só precisa ser perguntado. “Silencioso” nunca
         usou nada, e é o caso em que renovar não faz diferença.
       </p>
     </div>

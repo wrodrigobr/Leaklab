@@ -385,7 +385,7 @@ export const PUSH_FOLD: Record<StackBucket, Partial<Record<Position, RangeSet>>>
       raise: mk('AA-22','AKs-A2s','AKo-A2o','KQs-K2s','KQo-K2o','QJs-Q2s','QJo-Q3o','JTs-J2s','JTo-J4o','T9s-T2s','T9o-T2o','98s-92s','98o-92o','87s-82s','87o-82o','76s-72s','76o-72o','65s-62s','65o-62o','54s-52s','54o-52o','43s-42s','32s') },
     SB:  { label: 'Shove SB (≤8bb)', description: 'Nash ~81% · Shove ou Fold (vs BB)',
       raise: mk('AA-22','AKs-A2s','AKo-A2o','KQs-K2s','KQo-K2o','QJs-Q2s','QJo-Q2o','JTs-J2s','JTo-J2o','T9s-T2s','T9o-T2o','98s-92s','98o-92o','87s-82s','87o-82o','76s-72s','76o-72o','65s-62s','65o-62o','54s-52s','54o-52o','43s-42s','32s') },
-    BB:  { label: 'Call vs Shove BB (≤8bb)', description: '~46% — Call ou Fold vs shove',
+    BB:  { label: 'Call vs Shove BB (≤8bb)', description: '~46%: Call ou Fold vs shove',
       raise: mk(), call: mk('AA-22','AKs-A3s','AKo-A6o','KQs-K7s','KQo-KTo','QJs-Q7s','QJo-Q9o','JTs-J7s','JTo','T9s-T7s','T9o','98s-97s','87s-86s','76s') },
   },
   '≤10bb': {
@@ -401,7 +401,7 @@ export const PUSH_FOLD: Record<StackBucket, Partial<Record<Position, RangeSet>>>
       raise: mk('AA-22','AKs-A2s','AKo-A2o','KQs-K2s','KQo-K2o','QJs-Q2s','QJo-Q2o','JTs-J2s','JTo-J5o','T9s-T2s','T9o-T2o','98s-92s','98o-92o','87s-82s','87o-82o','76s-72s','76o-72o','65s-62s','65o-62o','54s-52s','54o-52o','43s-42s','32s') },
     SB:  { label: 'Shove SB (≤10bb)', description: 'Nash ~72% · Shove ou Fold (vs BB)',
       raise: mk('AA-22','AKs-A2s','AKo-A2o','KQs-K2s','KQo-K2o','QJs-Q2s','QJo-Q2o','JTs-J2s','JTo-J2o','T9s-T2s','T9o-T2o','98s-92s','98o-92o','87s-82s','87o-82o','76s-72s','76o-72o','65s-62s','65o-62o','54s-52s','54o-52o','43s-42s','32s') },
-    BB:  { label: 'Call vs Shove BB (≤10bb)', description: '~40% — Call ou Fold vs shove',
+    BB:  { label: 'Call vs Shove BB (≤10bb)', description: '~40%: Call ou Fold vs shove',
       raise: mk(), call: mk('AA-55','AKs-A7s','AKo-A9o','KQs-K8s','KQo-KJo','QJs-Q8s','QJo','JTs-J8s','T9s-T7s','98s-97s','87s') },
   },
   '≤15bb': {
@@ -419,7 +419,7 @@ export const PUSH_FOLD: Record<StackBucket, Partial<Record<Position, RangeSet>>>
       raise: mk('AA-22','AKs-A2s','AKo-A2o','KQs-K2s','KQo-K5o','QJs-Q2s','QJo-Q5o','JTs-J2s','JTo-J6o','T9s-T2s','T9o-T4o','98s-92s','98o-93o','87s-82s','87o-83o','76s-72s','76o-72o','65s-62s','65o-62o','54s-52s','54o-52o','43s-42s','32s') },
     SB:  { label: 'Shove SB (≤15bb)', description: 'Nash ~58% · Shove ou Fold (vs BB)',
       raise: mk('AA-22','AKs-A2s','AKo-A2o','KQs-K2s','KQo-K3o','QJs-Q2s','QJo-Q2o','JTs-J2s','JTo-J3o','T9s-T2s','T9o-T2o','98s-92s','98o-92o','87s-82s','87o-82o','76s-72s','76o-72o','65s-62s','65o-62o','54s-52s','54o-52o','43s-42s','32s') },
-    BB:  { label: 'Call vs Shove BB (≤15bb)', description: '~33% — Call ou Fold vs shove',
+    BB:  { label: 'Call vs Shove BB (≤15bb)', description: '~33%: Call ou Fold vs shove',
       raise: mk(), call: mk('AA-66','AKs-A7s','AKo-A9o','KQs-K8s','KQo-KJo','QJs-Q8s','QJo','JTs-J8s','T9s-T7s','98s-97s','87s') },
   },
   '≤20bb': {
@@ -437,7 +437,7 @@ export const PUSH_FOLD: Record<StackBucket, Partial<Record<Position, RangeSet>>>
       raise: mk('AA-22','AKs-A3s','AKo-A5o','KQs-K5s','KQo-K8o','QJs-Q5s','QJo-Q8o','JTs-J5s','JTo-J9o','T9s-T4s','T9o-T8o','98s-93s','98o','87s-82s','87o','76s-72s','76o','65s-62s','54s-52s','43s-42s') },
     SB:  { label: 'Shove SB (≤20bb)', description: 'Nash ~48% · Shove ou Fold (vs BB)',
       raise: mk('AA-22','AKs-A2s','AKo-A3o','KQs-K3s','KQo-K7o','QJs-Q3s','QJo-Q6o','JTs-J2s','JTo-J8o','T9s-T2s','T9o-T6o','98s-92s','98o-95o','87s-82s','87o-84o','76s-72s','76o-73o','65s-62s','65o','54s-52s','43s-42s','32s') },
-    BB:  { label: 'Call vs Shove BB (≤20bb)', description: '~27% — Call ou Fold vs shove',
+    BB:  { label: 'Call vs Shove BB (≤20bb)', description: '~27%: Call ou Fold vs shove',
       raise: mk(), call: mk('AA-77','AKs-A9s','AKo-ATo','KQs-KTs','KQo','QJs-QTs','JTs','T9s') },
   },
 };

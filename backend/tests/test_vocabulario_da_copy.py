@@ -184,6 +184,72 @@ def test_copy_hardcoded_no_frontend_nao_usa_termo_fora_do_vocabulario():
           f'({arquivos} arquivos)')
 
 
+# Dois usos de travessão que são CORRETOS dentro de código, e que o detector dos JSONs não
+# precisa conhecer porque lá não existem:
+#
+#   `${a} – ${b}`   intervalo montado por template literal (o detector numérico não vê dígito)
+#   <span>—</span>  o travessão SOZINHO, placeholder de "sem valor" numa tabela ou card
+#
+# Os dois viraram falso positivo na primeira versão deste guarda. Mascarar aqui é o mesmo
+# princípio do intervalo numérico: proibir o certo junto com o errado desliga o revisor.
+_INTERVALO_TEMPLATE = re.compile(r'(\}\s*)[–—](\s*(?:\$\{|\d))')
+_TRAVESSAO_SOZINHO = re.compile(r'(?m)^(\s*)[–—](\s*)$')
+
+
+def _mascarar_usos_legitimos(txt):
+    for padrao in (_INTERVALO, _INTERVALO_TEMPLATE):
+        txt = padrao.sub(lambda m: m.group(1) + '␟' + m.group(2), txt)
+    return _TRAVESSAO_SOZINHO.sub(lambda m: m.group(1) + '␟' + m.group(2), txt)
+
+
+def test_copy_hardcoded_no_frontend_nao_usa_travessao():
+    """O guarda de travessão na copy escrita direto em `.ts`/`.tsx`.
+
+    Ficou de fora da primeira entrega: só o guarda de VOCABULARIO tinha chegado a esta
+    superfície, e eu registrei a lacuna em vez de fechá-la."""
+    assert os.path.isdir(_FONTE_FRONT), f'{_FONTE_FRONT} não existe — o varredor está cego'
+
+    violacoes = []
+    arquivos = 0
+    for raiz, _, nomes in os.walk(_FONTE_FRONT):
+        for nome in sorted(nomes):
+            if not nome.endswith(('.ts', '.tsx')) or '.test.' in nome or '.spec.' in nome:
+                continue
+            arquivos += 1
+            texto = _codigo_sem_comentario(os.path.join(raiz, nome))
+            for m in _TRAVESSAO.finditer(_mascarar_usos_legitimos(texto)):
+                linha = texto.count('\n', 0, m.start()) + 1
+                rel = os.path.relpath(os.path.join(raiz, nome), _FONTE_FRONT)
+                trecho = ' '.join(texto[max(0, m.start() - 50):m.end() + 45].split())
+                violacoes.append(f'  src/{rel}:{linha}  …{trecho}…')
+
+    assert arquivos > 100, f'só {arquivos} arquivos .ts/.tsx lidos — o varredor não achou nada'
+    assert not violacoes, ('travessão na copy escrita direto no código (use vírgula, ponto ou '
+                           'dois pontos):\n' + '\n'.join(violacoes))
+    print(f'OK  test_copy_hardcoded_no_frontend_nao_usa_travessao ({arquivos} arquivos)')
+
+
+def test_os_usos_legitimos_de_travessao_em_codigo_NAO_sao_acusados():
+    """Contraprova das duas máscaras. Sem ela, o guarda acima acusaria código correto — e as
+    duas ocorrências que ele acusou de verdade na primeira execução foram exatamente estas."""
+    corretos = [
+        '`${b.threshold} – ${next.threshold - 1}`',          # intervalo de ELO
+        '<span className="font-mono">\n            —\n          </span>',   # "sem valor"
+        'const faixa = `${a} – 200`;',
+    ]
+    for bom in corretos:
+        assert not _TRAVESSAO.search(_mascarar_usos_legitimos(bom)), \
+            f'acusou uso legítimo de travessão em código: {bom!r}'
+
+    # E o inverso: pontuação de verdade continua sendo pega, inclusive dentro de JSX.
+    ruins = ['<p>cumpre metade do trato — costuma ser quem pergunta.</p>',
+             'const t = "Fundamentos — Leaks Críticos";']
+    for ruim in ruins:
+        assert _TRAVESSAO.search(_mascarar_usos_legitimos(ruim)), \
+            f'deixou passar travessão de pontuação: {ruim!r}'
+    print('OK  test_os_usos_legitimos_de_travessao_em_codigo_NAO_sao_acusados')
+
+
 def test_o_varredor_de_ts_ignora_comentario():
     """Contraprova do recorte: os comentários sobre LARGURA DE TELA não podem ser acusados."""
     fonte = ('// o emoji renderiza mais largo que o normal\n'
