@@ -750,7 +750,8 @@
     "erroSdk": "Falha ao carregar SDK de pagamento.",
     "sucesso": "Assinatura ativada com sucesso!",
     "processando": "Processando…",
-    "assinar": "Assinar {{plano}} · {{preco}}"
+    "assinar": "Assinar {{plano}} · {{preco}}",
+    "seguro": "Pagamento seguro via Stripe · Cancele quando quiser"
   },
   "perfil": {
     "titulo": "Complete seu perfil",

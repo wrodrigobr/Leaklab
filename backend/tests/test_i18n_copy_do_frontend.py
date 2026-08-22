@@ -42,17 +42,74 @@ _IDIOMAS = ('pt-BR', 'en', 'es')
 _SEM_PORTUGUES_CRAVADO = [
     os.path.join('components', 'study', 'planBuilder.ts'),
     os.path.join('data', 'ranges.ts'),
+    os.path.join('components', 'hud', 'PlayerStatsCard.tsx'),
+    os.path.join('components', 'hud', 'CheckoutModal.tsx'),
+    os.path.join('components', 'hud', 'ProfileCompletionCard.tsx'),
+    os.path.join('components', 'replayer', 'GtoMixedBadge.tsx'),
+    os.path.join('pages', 'Fundadores.tsx'),
 ]
+
+# Copy que E divida, e que fica em portugues POR DECISAO. Sem esta lista, quem vier depois
+# lê o placar do `scripts/medir_copy_cravada.py` como "falta traduzir isto" e refaz a
+# discussão do zero.
+_EXCECOES_DECLARADAS = {
+    os.path.join('pages', 'Privacy.tsx'):
+        'política de privacidade (LGPD/GDPR): tradução imprecisa de termo legal cria '
+        'exposição real, e em português o texto está correto. Traduzir exige revisão '
+        'jurídica, não só i18n',
+    os.path.join('pages', 'admin'):
+        'o painel admin tem UM leitor, que fala português',
+    os.path.join('pages', 'coach'):
+        '1 coach em produção; vale quando houver coach que não fale português',
+}
+
+
+def test_as_excecoes_de_i18n_ainda_apontam_para_arquivos_REAIS():
+    """Exceção que aponta para arquivo inexistente vira permissão silenciosa: o arquivo é
+    renomeado, a exceção continua na lista, e ninguém percebe que ela parou de valer."""
+    for alvo, porque in _EXCECOES_DECLARADAS.items():
+        caminho = os.path.join(_FRONT, alvo)
+        assert os.path.exists(caminho), (
+            f'a exceção {alvo!r} não existe mais ({porque}). Se o arquivo saiu, tire a '
+            'exceção; se foi renomeado, atualize o caminho')
+        assert len(porque) > 30, f'exceção {alvo!r} sem motivo escrito'
+    print(f'OK  test_as_excecoes_de_i18n_ainda_apontam_para_arquivos_REAIS '
+          f'({len(_EXCECOES_DECLARADAS)} exceções)')
 
 # Heurística de "isto é português": acento, ou palavra funcional que não existe em inglês nem
 # aparece em identificador de código. Termo de poker em inglês (Open, Shove, 3-Bet) passa
 # limpo de propósito — por regra do projeto ele NÃO é traduzido.
+#
+# A lista nasceu curta e ISSO ERA UM BURACO: a quebra deliberada com "Pro liberado por 6
+# meses" NÃO acusou, porque a frase não tem acento nem nenhuma das palavras que eu tinha
+# listado. O guarda parecia funcionar; funcionava só para o português acentuado.
 _PORTUGUES = re.compile(
     r'[áàâãéêíóôõúüçÁÀÂÃÉÊÍÓÔÕÚÜÇ]'
-    r'|\b(de|da|do|das|dos|em|para|com|sem|não|uma|seu|sua|pelo|pela|você)\b',
+    r'|\b(de|da|do|das|dos|em|para|com|sem|não|uma|seu|sua|pelo|pela|você'
+    r'|por|que|mais|quando|como|onde|ainda|já|ou|nos|nas|aos|isso|este|esta'
+    r'|entre|até|mas|foi|ser|tem|vai|cada|todo|toda|quem)\b',
     re.IGNORECASE)
 
 _LITERAL = re.compile(r"'([^'\n]{4,})'|\"([^\"\n]{4,})\"")
+
+# As TRÊS formas de escrever texto na tela, porque para quem LÊ elas são a mesma coisa. Medir
+# só a primeira me fez errar o tamanho da dívida duas vezes seguidas (308 → 537 → 628), e um
+# guarda que enxerga menos que o medidor é cobertura que não cobre.
+_JSX_SOLTO = re.compile(r'>([^<>{}]*[A-Za-zÀ-ÿ]{3}[^<>{}]*)<')
+_TEMPLATE = re.compile(r'`([^`]*[A-Za-zÀ-ÿ]{3}[^`]*)`')
+# `pokerstars.com` casava "com" como palavra portuguesa.
+_URLISH = re.compile(r'^\S+\.(com|br|io|net|org|gg|tsx?|jsx?|json|svg|png)(/\S*)?$', re.I)
+
+
+def _todo_texto_de_tela(codigo):
+    """(posição, texto) de tudo que vira texto na tela: aspas, JSX solto e template."""
+    for m in _LITERAL.finditer(codigo):
+        yield m.start(), (m.group(1) or m.group(2))
+    for padrao in (_JSX_SOLTO, _TEMPLATE):
+        for m in padrao.finditer(codigo):
+            limpo = ' '.join(m.group(1).split())
+            if limpo:
+                yield m.start(), limpo
 
 # `t("chave")` / `t('chave', {…})` — o que o código PEDE ao i18n
 _CHAMADA_T = re.compile(r"""\bt\(\s*['"]([a-zA-Z][\w.]*)['"]""")
@@ -117,11 +174,10 @@ def test_arquivos_ja_limpos_nao_tem_portugues_cravado():
         caminho = os.path.join(_FRONT, rel)
         assert os.path.exists(caminho), f'{rel} sumiu — o teste perdeu o alvo'
         texto = _sem_comentario(_ler(caminho))
-        for m in _LITERAL.finditer(texto):
+        for pos, lit in _todo_texto_de_tela(texto):
             literais += 1
-            lit = m.group(1) or m.group(2)
-            if _PORTUGUES.search(lit):
-                linha = texto.count('\n', 0, m.start()) + 1
+            if not _URLISH.match(lit) and _PORTUGUES.search(lit):
+                linha = texto.count('\n', 0, pos) + 1
                 violacoes.append(f'  src/{rel}:{linha}  {lit[:80]}')
 
     assert literais > 50, f'só {literais} literais lidos — o varredor não está enxergando'

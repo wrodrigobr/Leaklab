@@ -262,7 +262,7 @@ export function CheckoutModal({ plan, onClose, onSuccess }: Props) {
                   {submitting ? t("checkout.processando") : t("checkout.assinar", { plano: info.label, preco: t(BILLING[billing].priceKey) })}
                 </button>
                 <p className="text-center font-mono text-[9px] text-muted-foreground">
-                  Pagamento seguro via Stripe · Cancele quando quiser
+                  {t("checkout.seguro")}
                 </p>
               </>
             )}

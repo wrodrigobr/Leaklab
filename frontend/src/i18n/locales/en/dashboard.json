@@ -750,7 +750,8 @@
     "erroSdk": "Could not load the payment SDK.",
     "sucesso": "Subscription activated.",
     "processando": "Processing…",
-    "assinar": "Subscribe to {{plano}} · {{preco}}"
+    "assinar": "Subscribe to {{plano}} · {{preco}}",
+    "seguro": "Secure payment via Stripe · Cancel whenever you want"
   },
   "perfil": {
     "titulo": "Complete your profile",
