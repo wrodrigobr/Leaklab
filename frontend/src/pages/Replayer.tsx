@@ -21,13 +21,6 @@ import { livePlayers as computeLivePlayers, isMultiwayPot, isPpMuted, idealActio
 import { filterHandIds, parseResultFilter, type HandResultFilter } from "@/lib/handFilter";
 import { selectWhy } from "@/lib/replayWhy";
 
-/** Rótulo do filtro de navegação (fallback do i18n — chaves em replayer.filterNav.*). */
-const FILTER_FALLBACK: Record<Exclude<HandResultFilter, "all">, string> = {
-  error:     "só os erros",
-  attention: "só as de atenção",
-  correct:   "só as corretas",
-  pending:   "só as heurísticas",
-};
 import { VerdictPill } from "@/components/replayer/VerdictPill";
 import { ACTION_COLORS } from "@/lib/actionColors";
 import { tournaments as tournamentsApi, coachDashboard, metrics, ReplayData, ReplayStep, TournamentDecision, CoachAnnotation, CoachOverrideLabel, type CoachReplayHand } from "@/lib/api";
@@ -803,7 +796,7 @@ const Replayer = () => {
             {replayData?.is_pko && (
               <span
                 className="inline-flex items-center rounded-md bg-amber-500/10 px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider ring-1 ring-amber-500/30 text-amber-300"
-                title="Progressive Knockout (PKO), torneio com bounties. Ranges e thresholds GTO específicos podem divergir do MTT clássico."
+                title={t("pkoTooltip")}
               >
                 PKO
               </span>
@@ -813,7 +806,7 @@ const Replayer = () => {
               <button
                 onClick={toggleCoach}
                 aria-pressed={coachMode}
-                title={coachMode ? "Desligar modo coach (ver todas as mãos)" : "Ligar modo coach (revisar só as mãos que importam, com comentário)"}
+                title={t(coachMode ? "coachModo.desligar" : "coachModo.ligar")}
                 className={cn(
                   "inline-flex items-center gap-1.5 rounded-md px-2 py-1 font-mono text-[10px] uppercase tracking-wider transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                   coachMode ? "bg-primary/15 text-primary ring-1 ring-primary/30"
@@ -849,7 +842,7 @@ const Replayer = () => {
               walkCurrent.verdict === "error" ? "bg-red-500/10 text-red-400 ring-red-500/25"
               : walkCurrent.verdict === "acceptable" ? "bg-sky-500/10 text-sky-400 ring-sky-500/25"
               : "bg-emerald-500/10 text-emerald-400 ring-emerald-500/20")}>
-              {walkCurrent.verdict === "error" ? "Erro" : walkCurrent.verdict === "acceptable" ? "Aceitável" : "Correto"}
+              {t(`veredito.${walkCurrent.verdict}`)}
               {walkCurrent.ev_loss_bb > 0 && ` · -${walkCurrent.ev_loss_bb}bb`}
             </span>
           </div>
@@ -865,7 +858,7 @@ const Replayer = () => {
                 {t("filterNav.label", "Navegando")}
               </span>
               <span className="mx-2 text-muted-foreground">·</span>
-              {t(`filterNav.${resultFilter}`, FILTER_FALLBACK[resultFilter])}
+              {t(`filterNav.${resultFilter}`)}
               {handList.length > 0 && (
                 <span className="ml-2 font-mono text-[11px] tabular-nums text-muted-foreground">
                   {handIdx >= 0 ? `${handIdx + 1}/${handList.length}` : `${handList.length}`}
@@ -879,7 +872,7 @@ const Replayer = () => {
                 + (coachMode ? "&coach=1" : ""))}
               className="shrink-0 rounded-md px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider text-muted-foreground ring-1 ring-border transition-colors hover:text-foreground hover:ring-amber-500/40"
             >
-              {t("filterNav.showAll", "Todas as mãos")}
+              {t("filterNav.showAll")}
             </button>
           </div>
         )}
@@ -967,7 +960,7 @@ const Replayer = () => {
                 </button>
                 <button onClick={() => setStepIdx((i) => Math.min(steps.length - 1, i + 1))} disabled={stepIdx === steps.length - 1}
                   className="inline-flex size-9 items-center justify-center rounded-md text-muted-foreground hover:bg-secondary hover:text-foreground disabled:opacity-30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                  aria-label="Próximo"><ChevronRight className="size-5" /></button>
+                  aria-label={t("proximo")}><ChevronRight className="size-5" /></button>
                 <button
                   onClick={() => {
                     if (stepIdx < steps.length - 1) setStepIdx(steps.length - 1);

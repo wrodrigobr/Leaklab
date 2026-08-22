@@ -512,5 +512,16 @@
       "label": "Mixed Spot",
       "tooltip": "Mixed-strategy spot: the solver balances several actions here. That means there is no single correct answer: GTO spreads frequency across the lines to stay unpredictable and unexploitable. Any line at 10% or more is defensible."
     }
-  }
+  },
+  "pkoTooltip": "Progressive Knockout (PKO), a bounty tournament. Its specific GTO ranges and thresholds can differ from a classic MTT.",
+  "coachModo": {
+    "desligar": "Turn off coach mode (see every hand)",
+    "ligar": "Turn on coach mode (review only the hands that matter, with comments)"
+  },
+  "veredito": {
+    "error": "Mistake",
+    "acceptable": "Acceptable",
+    "correct": "Correct"
+  },
+  "proximo": "Next"
 }

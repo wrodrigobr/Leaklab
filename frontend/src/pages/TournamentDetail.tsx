@@ -208,6 +208,21 @@ function InfoTooltip({ children }: { children: React.ReactNode }) {
 
 // ScoreLabel and SEVERITY_META/FILTERS moved inside TournamentDetail component for i18n access
 
+function AjudaComFaixas({ chave }: { chave: string }) {
+  const { t } = useTranslation("tournaments");
+  const faixas = t(`${chave}.faixas`, { returnObjects: true }) as { r: string; d: string }[];
+  return (
+    <>
+      {t(`${chave}.intro`)}
+      <br /><br />
+      {faixas.map((f) => (
+        <span key={f.r}><strong>{f.r}</strong> {f.d}<br /></span>
+      ))}
+      {t(`${chave}.fecho`, { defaultValue: "" })}
+    </>
+  );
+}
+
 const STREETS: (Street | "all")[] = ["all", "Pré-flop", "Flop", "Turn", "River"];
 
 // ── Page ─────────────────────────────────────────────────────────────────────
@@ -269,7 +284,7 @@ const TournamentDetail = () => {
     } catch (err: unknown) {
       setAnalyses((p) => ({
         ...p,
-        [decisionId]: err instanceof Error ? err.message : "Erro ao gerar análise",
+        [decisionId]: err instanceof Error ? err.message : t("detail.erroAnalise"),
       }));
     } finally {
       setAnalysisLoading((p) => ({ ...p, [decisionId]: false }));
@@ -434,7 +449,7 @@ const TournamentDetail = () => {
                   }}
                   disabled={pdfDownloading || !tournament}
                   className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-border bg-hud-surface px-3 font-mono text-[11px] font-bold uppercase tracking-wider text-muted-foreground transition-colors hover:border-primary/40 hover:text-primary disabled:opacity-50 disabled:cursor-not-allowed"
-                  title="Baixar relatório PDF"
+                  title={t("detail.baixarPdf")}
                 >
                   {pdfDownloading
                     ? <Loader2 className="size-3.5 animate-spin" aria-hidden />
@@ -443,7 +458,7 @@ const TournamentDetail = () => {
                 </button>
                 {pdfFallback && (
                   <span className="font-mono text-[9px] text-yellow-400 text-right leading-tight">
-                    WeasyPrint indisponível: baixado como HTML
+                    {t("detail.pdfFallback")}
                   </span>
                 )}
               </div>
@@ -500,7 +515,7 @@ const TournamentDetail = () => {
               <div className="flex items-center gap-2">
                 <Target className="size-3.5 text-primary" />
                 <span className="font-mono text-[10px] font-bold uppercase tracking-widest-2 text-primary">
-                  Review da Sessão
+                  {t("detail.reviewSessao")}
                 </span>
               </div>
 
@@ -541,9 +556,9 @@ const TournamentDetail = () => {
                 <div className="flex items-center gap-2.5 rounded-lg border border-amber-500/30 bg-amber-500/5 px-3 py-2.5">
                   <Sparkles className="size-3.5 text-amber-400 shrink-0" />
                   <div>
-                    <p className="text-xs font-medium text-foreground">Review por IA disponível no plano Pro</p>
+                    <p className="text-xs font-medium text-foreground">{t("detail.reviewPro.titulo")}</p>
                     <p className="font-mono text-[10px] text-muted-foreground mt-0.5">
-                      Faça upgrade para receber análise comparativa da meta vs resultado.
+                      {t("detail.reviewPro.texto")}
                     </p>
                   </div>
                 </div>
@@ -563,11 +578,7 @@ const TournamentDetail = () => {
                 <span className="inline-block size-1.5 rounded-full bg-primary" />
                 {t("detail.phase.title")}
                 <InfoTooltip>
-                  Agrupa suas decisões pelas fases do torneio, derivadas do <strong>M-Ratio</strong> (sua pilha ÷ custo de uma órbita completa de blinds+antes).<br /><br />
-                  <strong>Deep Stack (M≥20):</strong> jogo completo, sem urgência.<br />
-                  <strong>Mid Stack (M 10–20):</strong> jogo restrito, priorize spots favoráveis.<br />
-                  <strong>Short Stack (M 6–10):</strong> zona de reshove, fold equity crítica.<br />
-                  <strong>Push/Fold (M&lt;6):</strong> push/fold puro, math decide tudo.
+                  <AjudaComFaixas chave="detail.phase.help" />
                 </InfoTooltip>
               </div>
               <div className="rounded-xl border border-border overflow-x-auto">
@@ -580,21 +591,13 @@ const TournamentDetail = () => {
                       <th className="px-4 py-2 text-right font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
                         {t("detail.phase.errorPct")}
                         <InfoTooltip>
-                          % de decisões classificadas como erro (pequeno ou claro) nesta fase.<br /><br />
-                          <strong>Abaixo de 20%:</strong> consistente.<br />
-                          <strong>20–40%:</strong> atenção, fase problemática.<br />
-                          <strong>Acima de 40%:</strong> leak grave nesta fase.
+                          <AjudaComFaixas chave="detail.phase.helpErro" />
                         </InfoTooltip>
                       </th>
                       <th className="px-4 py-2 text-right font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
                         {t("detail.phase.avgScore")}
                         <InfoTooltip>
-                          Pontuação média de erro das decisões nesta fase.<br /><br />
-                          <strong>Abaixo de 0.08:</strong> ótimo, quase sem erros.<br />
-                          <strong>0.08–0.15:</strong> bom, erros leves e raros.<br />
-                          <strong>0.15–0.25:</strong> moderado, ajustes necessários.<br />
-                          <strong>Acima de 0.25:</strong> alto, leak relevante.<br /><br />
-                          Quanto menor, melhor.
+                          <AjudaComFaixas chave="detail.phase.helpScore" />
                         </InfoTooltip>
                       </th>
                     </tr>
@@ -628,12 +631,7 @@ const TournamentDetail = () => {
                 <span className="inline-block size-1.5 rounded-full bg-primary" />
                 {t("detail.texture.title")}
                 <InfoTooltip>
-                  Classifica os boards pós-flop pelo nível de conectividade e risco de draws, revelando em que tipo de textura você comete mais erros.<br /><br />
-                  <strong>Seco:</strong> poucas draws possíveis (ex: A♠ 7♦ 2♣).<br />
-                  <strong>Coordenado:</strong> potencial de sequência (ex: K♠ Q♦ J♣).<br />
-                  <strong>Molhado:</strong> flush draw + straight draw (ex: J♥ T♠ 9♥).<br />
-                  <strong>Monocromático:</strong> três cartas do mesmo naipe.<br />
-                  <strong>Pareado:</strong> par no board (ex: A♠ A♦ 7♣).
+                  <AjudaComFaixas chave="detail.texture.help" />
                 </InfoTooltip>
               </div>
               <div className="rounded-xl border border-border overflow-x-auto">
@@ -645,18 +643,13 @@ const TournamentDetail = () => {
                       <th className="px-4 py-2 text-right font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
                         {t("detail.texture.errorPct")}
                         <InfoTooltip>
-                          % de decisões classificadas como erro nesta textura de board.<br />
-                          Uma taxa alta indica dificuldade em jogar boards deste tipo.
+                          {t("detail.texture.helpErro")}
                         </InfoTooltip>
                       </th>
                       <th className="px-4 py-2 text-right font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
                         {t("detail.texture.avgScore")}
                         <InfoTooltip>
-                          Pontuação média de erro nas decisões pós-flop nesta textura.<br /><br />
-                          <strong>Abaixo de 0.08:</strong> ótimo.<br />
-                          <strong>0.08–0.15:</strong> bom.<br />
-                          <strong>0.15–0.25:</strong> moderado.<br />
-                          <strong>Acima de 0.25:</strong> alto, priorize este board type no estudo.
+                          <AjudaComFaixas chave="detail.texture.helpScore" />
                         </InfoTooltip>
                       </th>
                     </tr>
@@ -709,7 +702,7 @@ const TournamentDetail = () => {
                     street === s ? "bg-primary/10 text-primary ring-1 ring-primary/30" : "text-muted-foreground hover:bg-secondary hover:text-foreground"
                   )}
                 >
-                  {s === "all" ? t("detail.streets.all") : s}
+                  {s === "all" ? t("detail.streets.all") : s === "Pré-flop" ? t("detail.streets.preflop") : s}
                 </button>
               ))}
             </div>
@@ -760,14 +753,14 @@ const TournamentDetail = () => {
             <div className="mb-3 flex items-center justify-between gap-3 rounded-xl border border-amber-400/30 bg-amber-500/5 px-4 py-3">
               <div className="flex items-center gap-2">
                 <GraduationCap className="size-4 text-amber-300" aria-hidden />
-                <span className="text-sm text-foreground">Revisão do coach, <b className="text-amber-300">{divergCount}</b> mão(s) não-aderente(s) (coach × sistema)</span>
+                <span className="text-sm text-foreground">{t("detail.coach.revisaoPre")} <b className="text-amber-300">{divergCount}</b> {t("detail.coach.revisaoPos")}</span>
               </div>
               <button
                 onClick={() => setOnlyDiverg((v) => !v)}
                 className={cn("inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 font-mono text-[11px] font-bold uppercase tracking-wider ring-1 transition-colors",
                   onlyDiverg ? "bg-amber-400/20 text-amber-200 ring-amber-400/50" : "bg-background/40 text-muted-foreground ring-border hover:text-foreground")}
               >
-                <Filter className="size-3" aria-hidden /> {onlyDiverg ? "mostrando só divergências" : "só não-aderentes"}
+                <Filter className="size-3" aria-hidden /> {t(onlyDiverg ? "detail.coach.mostrandoDiverg" : "detail.coach.soNaoAderentes")}
               </button>
             </div>
           )}
@@ -809,11 +802,11 @@ const TournamentDetail = () => {
                         </span>
                         {coachStudentId && h.adherence && (() => {
                           const A: Record<string, [string, string]> = {
-                            diverge_perdido: ["⚠ NÃO ADERENTE · coach aponta", "bg-red-500/10 text-red-400 ring-red-400/40"],
-                            diverge_rigido:  ["⚠ NÃO ADERENTE · nós flagamos", "bg-amber-500/10 text-amber-300 ring-amber-400/40"],
-                            match_erro:      ["coach confirma o erro", "bg-sky-500/10 text-sky-300 ring-sky-400/30"],
-                            match_ok:        ["aderente", "bg-primary/10 text-primary ring-primary/30"],
-                            comentario:      ["coach comentou", "bg-muted/30 text-muted-foreground ring-border"],
+                            diverge_perdido: [t("detail.coach.divergePerdido"), "bg-red-500/10 text-red-400 ring-red-400/40"],
+                            diverge_rigido:  [t("detail.coach.divergeRigido"), "bg-amber-500/10 text-amber-300 ring-amber-400/40"],
+                            match_erro:      [t("detail.coach.matchErro"), "bg-sky-500/10 text-sky-300 ring-sky-400/30"],
+                            match_ok:        [t("detail.coach.matchOk"), "bg-primary/10 text-primary ring-primary/30"],
+                            comentario:      [t("detail.coach.comentario"), "bg-muted/30 text-muted-foreground ring-border"],
                           };
                           const [lbl, cls] = A[h.adherence] ?? ["", ""];
                           if (!lbl) return null;
@@ -959,8 +952,8 @@ const TournamentDetail = () => {
               <div className="rounded-xl border border-dashed border-border bg-hud-surface p-12 text-center">
                 <p className="text-sm text-muted-foreground">
                   {hands.length === 0
-                    ? "Nenhuma mão encontrada para este torneio."
-                    : "Nenhuma mão encontrada para os filtros atuais."}
+                    ? t("detail.vazio.torneio")
+                    : t("detail.vazio.filtros")}
                 </p>
               </div>
             )}

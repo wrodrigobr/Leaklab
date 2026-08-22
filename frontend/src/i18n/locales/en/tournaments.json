@@ -125,14 +125,121 @@
       "mRatio": "M-Ratio",
       "decisions": "Decisions",
       "errorPct": "Error %",
-      "avgScore": "Avg Score"
+      "avgScore": "Avg Score",
+      "help": {
+        "intro": "Groups your decisions by tournament phase, derived from the M-Ratio (your stack ÷ the cost of one full orbit of blinds+antes).",
+        "faixas": [
+          {
+            "r": "Deep Stack (M≥20):",
+            "d": "full game, no urgency."
+          },
+          {
+            "r": "Mid Stack (M 10–20):",
+            "d": "tighter game, favour the good spots."
+          },
+          {
+            "r": "Short Stack (M 6–10):",
+            "d": "reshove zone, fold equity is critical."
+          },
+          {
+            "r": "Push/Fold (M<6):",
+            "d": "pure push/fold, the math decides everything."
+          }
+        ]
+      },
+      "helpErro": {
+        "intro": "% of decisions classed as a mistake (small or clear) in this phase.",
+        "faixas": [
+          {
+            "r": "Below 20%:",
+            "d": "consistent."
+          },
+          {
+            "r": "20–40%:",
+            "d": "careful, a problem phase."
+          },
+          {
+            "r": "Above 40%:",
+            "d": "a serious leak in this phase."
+          }
+        ]
+      },
+      "helpScore": {
+        "intro": "Average mistake score of the decisions in this phase.",
+        "faixas": [
+          {
+            "r": "Below 0.08:",
+            "d": "excellent, almost no mistakes."
+          },
+          {
+            "r": "0.08–0.15:",
+            "d": "good, mistakes are light and rare."
+          },
+          {
+            "r": "0.15–0.25:",
+            "d": "moderate, needs adjusting."
+          },
+          {
+            "r": "Above 0.25:",
+            "d": "high, a relevant leak."
+          }
+        ],
+        "fecho": "The lower, the better."
+      }
     },
     "texture": {
       "title": "Post-Flop by Board Texture",
       "texture": "Texture",
       "decisions": "Decisions",
       "errorPct": "Error %",
-      "avgScore": "Avg Score"
+      "avgScore": "Avg Score",
+      "help": {
+        "intro": "Classifies postflop boards by connectivity and draw risk, showing which texture you misplay the most.",
+        "faixas": [
+          {
+            "r": "Dry:",
+            "d": "few possible draws (e.g. A♠ 7♦ 2♣)."
+          },
+          {
+            "r": "Connected:",
+            "d": "straight potential (e.g. K♠ Q♦ J♣)."
+          },
+          {
+            "r": "Wet:",
+            "d": "flush draw plus straight draw (e.g. J♥ T♠ 9♥)."
+          },
+          {
+            "r": "Monotone:",
+            "d": "three cards of the same suit."
+          },
+          {
+            "r": "Paired:",
+            "d": "a pair on the board (e.g. A♠ A♦ 7♣)."
+          }
+        ]
+      },
+      "helpErro": "% of decisions classed as a mistake on this board texture. A high rate means you struggle with boards of this kind.",
+      "helpScore": {
+        "intro": "Average mistake score of the postflop decisions on this texture.",
+        "faixas": [
+          {
+            "r": "Below 0.08:",
+            "d": "excellent."
+          },
+          {
+            "r": "0.08–0.15:",
+            "d": "good."
+          },
+          {
+            "r": "0.15–0.25:",
+            "d": "moderate."
+          },
+          {
+            "r": "Above 0.25:",
+            "d": "high, make this board type a study priority."
+          }
+        ]
+      }
     },
     "analysisError": "Error generating analysis",
     "analysis": {
@@ -147,7 +254,30 @@
       "engine": "Engine",
       "engineTip": "GTO not computed yet, analysis by the engine (equity, M-Ratio, ICM)"
     },
-    "coachReplayCta": "Coach Replay"
+    "coachReplayCta": "Coach Replay",
+    "erroAnalise": "Could not generate the analysis",
+    "baixarPdf": "Download the PDF report",
+    "pdfFallback": "WeasyPrint unavailable: downloaded as HTML",
+    "reviewSessao": "Session Review",
+    "reviewPro": {
+      "titulo": "AI review is available on the Pro plan",
+      "texto": "Upgrade to get a comparison between your goal and your result."
+    },
+    "coach": {
+      "revisaoPre": "Coach review,",
+      "revisaoPos": "hand(s) where coach and system disagree",
+      "mostrandoDiverg": "showing disagreements only",
+      "soNaoAderentes": "disagreements only",
+      "divergePerdido": "⚠ DISAGREEMENT · coach flags",
+      "divergeRigido": "⚠ DISAGREEMENT · we flag it",
+      "matchErro": "coach confirms the mistake",
+      "matchOk": "in agreement",
+      "comentario": "coach commented"
+    },
+    "vazio": {
+      "torneio": "No hands found for this tournament.",
+      "filtros": "No hands match the current filters."
+    }
   },
   "summary": {
     "pending": "Upload summary",

@@ -512,5 +512,16 @@
       "label": "Spot Misto",
       "tooltip": "Spot de estratégia mista, o solver equilibra múltiplas ações neste spot. Isso significa que não existe uma única resposta correta: o GTO distribui frequência entre as linhas para ser imprevisível e não explorável. Qualquer linha com ≥10% é defensável."
     }
-  }
+  },
+  "pkoTooltip": "Progressive Knockout (PKO), torneio com bounties. Ranges e thresholds GTO específicos podem divergir do MTT clássico.",
+  "coachModo": {
+    "desligar": "Desligar modo coach (ver todas as mãos)",
+    "ligar": "Ligar modo coach (revisar só as mãos que importam, com comentário)"
+  },
+  "veredito": {
+    "error": "Erro",
+    "acceptable": "Aceitável",
+    "correct": "Correto"
+  },
+  "proximo": "Próximo"
 }

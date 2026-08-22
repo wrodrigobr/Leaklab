@@ -125,14 +125,121 @@
       "mRatio": "M-Ratio",
       "decisions": "Decisiones",
       "errorPct": "% Errores",
-      "avgScore": "Score Promedio"
+      "avgScore": "Score Promedio",
+      "help": {
+        "intro": "Agrupa tus decisiones por fase del torneo, derivadas del M-Ratio (tu stack ÷ el coste de una órbita completa de ciegas+antes).",
+        "faixas": [
+          {
+            "r": "Deep Stack (M≥20):",
+            "d": "juego completo, sin urgencia."
+          },
+          {
+            "r": "Mid Stack (M 10–20):",
+            "d": "juego más restringido, prioriza los spots favorables."
+          },
+          {
+            "r": "Short Stack (M 6–10):",
+            "d": "zona de reshove, la fold equity es crítica."
+          },
+          {
+            "r": "Push/Fold (M<6):",
+            "d": "push/fold puro, la matemática lo decide todo."
+          }
+        ]
+      },
+      "helpErro": {
+        "intro": "% de decisiones clasificadas como error (pequeño o claro) en esta fase.",
+        "faixas": [
+          {
+            "r": "Por debajo de 20%:",
+            "d": "consistente."
+          },
+          {
+            "r": "20–40%:",
+            "d": "atención, fase problemática."
+          },
+          {
+            "r": "Por encima de 40%:",
+            "d": "leak grave en esta fase."
+          }
+        ]
+      },
+      "helpScore": {
+        "intro": "Puntuación media de error de las decisiones en esta fase.",
+        "faixas": [
+          {
+            "r": "Por debajo de 0.08:",
+            "d": "excelente, casi sin errores."
+          },
+          {
+            "r": "0.08–0.15:",
+            "d": "bien, errores leves y poco frecuentes."
+          },
+          {
+            "r": "0.15–0.25:",
+            "d": "moderado, hay que ajustar."
+          },
+          {
+            "r": "Por encima de 0.25:",
+            "d": "alto, leak relevante."
+          }
+        ],
+        "fecho": "Cuanto más bajo, mejor."
+      }
     },
     "texture": {
       "title": "Postflop por Textura de Board",
       "texture": "Textura",
       "decisions": "Decisiones",
       "errorPct": "% Errores",
-      "avgScore": "Score Promedio"
+      "avgScore": "Score Promedio",
+      "help": {
+        "intro": "Clasifica los boards postflop por conectividad y riesgo de proyectos, y muestra en qué textura cometes más errores.",
+        "faixas": [
+          {
+            "r": "Seco:",
+            "d": "pocos proyectos posibles (ej.: A♠ 7♦ 2♣)."
+          },
+          {
+            "r": "Coordinado:",
+            "d": "potencial de escalera (ej.: K♠ Q♦ J♣)."
+          },
+          {
+            "r": "Húmedo:",
+            "d": "proyecto de color más proyecto de escalera (ej.: J♥ T♠ 9♥)."
+          },
+          {
+            "r": "Monocolor:",
+            "d": "tres cartas del mismo palo."
+          },
+          {
+            "r": "Emparejado:",
+            "d": "una pareja en el board (ej.: A♠ A♦ 7♣)."
+          }
+        ]
+      },
+      "helpErro": "% de decisiones clasificadas como error en esta textura de board. Una tasa alta indica dificultad para jugar boards de este tipo.",
+      "helpScore": {
+        "intro": "Puntuación media de error de las decisiones postflop en esta textura.",
+        "faixas": [
+          {
+            "r": "Por debajo de 0.08:",
+            "d": "excelente."
+          },
+          {
+            "r": "0.08–0.15:",
+            "d": "bien."
+          },
+          {
+            "r": "0.15–0.25:",
+            "d": "moderado."
+          },
+          {
+            "r": "Por encima de 0.25:",
+            "d": "alto, prioriza este tipo de board en tu estudio."
+          }
+        ]
+      }
     },
     "analysisError": "Error al generar análisis",
     "analysis": {
@@ -147,7 +254,30 @@
       "engine": "Engine",
       "engineTip": "GTO aún no calculado, análisis por el engine (equity, M-Ratio, ICM)"
     },
-    "coachReplayCta": "Coach Replay"
+    "coachReplayCta": "Coach Replay",
+    "erroAnalise": "No se pudo generar el análisis",
+    "baixarPdf": "Descargar el informe en PDF",
+    "pdfFallback": "WeasyPrint no disponible: descargado como HTML",
+    "reviewSessao": "Review de la Sesión",
+    "reviewPro": {
+      "titulo": "El review por IA está disponible en el plan Pro",
+      "texto": "Mejora tu plan para recibir la comparación entre la meta y el resultado."
+    },
+    "coach": {
+      "revisaoPre": "Revisión del coach,",
+      "revisaoPos": "mano(s) en que el coach y el sistema no coinciden",
+      "mostrandoDiverg": "mostrando solo las discrepancias",
+      "soNaoAderentes": "solo las discrepancias",
+      "divergePerdido": "⚠ DISCREPANCIA · lo marca el coach",
+      "divergeRigido": "⚠ DISCREPANCIA · lo marcamos nosotros",
+      "matchErro": "el coach confirma el error",
+      "matchOk": "coinciden",
+      "comentario": "el coach comentó"
+    },
+    "vazio": {
+      "torneio": "No se encontraron manos para este torneo.",
+      "filtros": "Ninguna mano coincide con los filtros actuales."
+    }
   },
   "summary": {
     "pending": "Subir summary",
