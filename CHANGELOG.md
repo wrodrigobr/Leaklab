@@ -5,6 +5,33 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## Os 16 casos de `matriz.stack_bb` eram o stack EFETIVO, e agora há guarda (24/08)
+
+**A acusação:** dois juízes de poker, em amostras diferentes, apontaram o mesmo — "a matriz foi
+consultada em 9,1bb num spot de 40bb, e 9,11 é exatamente o `facing_to_call_bb`: o valor do call
+entrou no lugar da profundidade". Em 16 decisões os dois números coincidiam.
+
+**Medido antes de consertar.** Comparando a profundidade servida com o stack EFETIVO em 1.077
+decisões preflop: **1.077 batem com o efetivo, 0 com o stack do hero, 0 com o call.** Controle
+vivo — 904 dessas decisões têm efetivo diferente do stack do hero, então a medição distinguia.
+
+No caso citado por nome (mão `260051924799`), o pipeline responde `facingAllin=True` e
+`efetivo=9.1`: o vilão estava all-in por 9,1bb. O hero tem 40bb e só 9,1 estão em jogo, então
+`min(eu, ele)` é a profundidade que decide. Quando o vilão está all-in por menos, o efetivo
+COINCIDE com o valor do call — coincidência aritmética, não bug. Sete dos 16 casos eram
+exatamente isso, com `hero_stack` também colado no call (14,9 vs 16,1; 40,7 vs 41,9).
+
+**Nada foi consertado, e é esse o ponto.** O risco aqui não é o produto regredir: é alguém
+"consertar" o falso positivo. Trocar o efetivo pelo stack do hero faria a ferramenta ensinar
+estratégia de 40bb para quem enfrenta um jam de 9bb — exatamente o erro que a acusação pediria.
+Dois auditores independentes já leram assim; o terceiro leria de novo.
+
+**Guarda:** `test_matriz_usa_stack_efetivo.py`, quebrado de propósito. A primeira versão exigia
+que "pelo menos um chamador" usasse o efetivo, e a mutação que trocava o `app.py` por
+`heroStackBb` passou VERDE porque o outro arquivo sustentava a asserção sozinho — cada chamador
+responde por si agora. E o varredor acusou duas linhas de um endpoint admin antes de ser
+ancorado: o padrão `stack_bb\s*=` casava o SUFIXO de `hero_stack_bb =`.
+
 ## Os "39 casos de raise 1.0" eram falso positivo, e o guarda que existia estava desligado (24/08)
 
 **A acusação, medida:** um juiz de poker apontou que a matriz devolvia `raise: 1.0` puro para
