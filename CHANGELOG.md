@@ -5,6 +5,34 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## Score gravado passou a respeitar a banda do label, tambem no INSERT (24/08)
+
+**O sintoma:** 27 decisoes com `label` de erro e `score` 0 ou nulo. Nao era aleatorio -- **27 de
+27 tinham `gto_label = gto_critical`**, e 20 delas tinham `math_penalty`/`range_penalty` maiores
+que zero ao lado do score zerado. Controle: 4.569 linhas do banco tem score > 0.
+
+**A causa:** `_gto_label_cap` promove o LABEL quando a carta reprova a jogada (`gto_critical` ->
+piso em `small_mistake`) e nao toca no SCORE. O `save_decisions` gravava `evaluation.mistakeScore`
+cru, entao saia uma linha dizendo "erro" com desvio zero. `_align_score_to_label` ja existia e
+resolvia, mas so rodava no reconcile -- a prova de que o caminho era esse: a banda de
+`small_mistake` e 0,19-0,35, entao qualquer linha que tivesse passado por ela teria 0,19, nunca 0.
+
+**Por que nao era cosmetico:** `priority_score = COUNT(*) * AVG(d.score)` ordena os leaks do
+plano de estudo. Com score 0, as decisoes que o SOLVER considera criticas eram justamente as que
+puxavam a media da familia para baixo e caiam no ranking do que estudar primeiro -- o inverso do
+pretendido.
+
+**Reordenamento medido ANTES de aplicar:** 63 linhas tocadas, 1 usuario de 8 com troca de ordem,
+e o topo do plano nao muda em nenhum. Arruma a coerencia sem virar o plano de cabeca para baixo.
+
+**Guarda:** `test_score_alinhado_no_insert.py`, quebrado de propósito tres vezes (INSERT volta a
+gravar cru; o alinhador vira no-op; a banda de `small_mistake` comeca em 0). O teste de fiacao
+le so as linhas de CODIGO de `save_decisions` -- um comentario citando a funcao nao prova que
+ela e chamada.
+
+**Pendente:** as 27 linhas ANTIGAS seguem com score 0 ate um reprocesso. O conserto vale para
+toda decisao nova; o backfill do acervo e passo separado, e mexe em dados de producao.
+
 ## Os 16 casos de `matriz.stack_bb` eram o stack EFETIVO, e agora há guarda (24/08)
 
 **A acusação:** dois juízes de poker, em amostras diferentes, apontaram o mesmo — "a matriz foi

@@ -827,7 +827,16 @@ def save_decisions(tournament_db_id: int, results: List[dict]):
                 r.get('actionTaken', r.get('action_taken', '')),
                 r.get('bestAction',  r.get('best_action',  '')),
                 r.get('evaluation', {}).get('label', ''),
-                r.get('evaluation', {}).get('mistakeScore', 0),
+                # Score ALINHADO a banda do label, a mesma politica que o reconcile ja aplica.
+                # Sem isto, a acusacao promovida pela CARTA (`gto_critical` -> piso
+                # `small_mistake`) entrava com o score cru do heuristico, que podia ser 0: o
+                # `_gto_label_cap` mexe no LABEL e nao toca no SCORE. Medido em 24/08: 27
+                # decisoes de erro gravadas com score 0/NULL, 27 delas com `gto_critical`.
+                # O dano nao era cosmetico -- `priority_score = COUNT(*) * AVG(d.score)` ordena
+                # os leaks do plano de estudo, entao as decisoes que o solver considera CRITICAS
+                # eram justo as que puxavam a media da familia para baixo e caiam no ranking.
+                _align_score_to_label(r.get('evaluation', {}).get('label', ''),
+                                      r.get('evaluation', {}).get('mistakeScore', 0)),
                 bd.get('mathPenalty', 0),
                 bd.get('rangePenalty', 0),
                 ctx.get('mRatio'),
