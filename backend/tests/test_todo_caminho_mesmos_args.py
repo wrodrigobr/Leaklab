@@ -51,7 +51,13 @@ _ARQUIVOS = (
 
 # Argumentos que mudam QUAL CARTA e consultada. Faltar qualquer um nao devolve "nao sei":
 # devolve veredito de outro no.
-_OBRIGATORIOS = ('n_players', 'facing_allin', 'facing_to_bb', 'facing_limp', 'caller_position')
+# `is_pko` entrou em 23/08, depois de uma auditoria achar o estrago: a carta PKO e OUTRA
+# carta (K7s de UTG a 71bb: raise 100% na PKO, 30/70 na Classic), e so o MOTOR passava o
+# argumento -- justo quem PERSISTE gto_label. Card, matriz e sync liam a Classic, entao o
+# jogador via 'Erro, devia dar raise' ao lado de uma matriz dizendo fold 70%. Esta lista
+# existe exatamente para essa familia e estava VERDE com o defeito vivo.
+_OBRIGATORIOS = ('n_players', 'facing_allin', 'facing_to_bb', 'facing_limp',
+                 'caller_position', 'is_pko')
 
 # Isencao NOMEADA, com motivo. Lista de isencao que cresce calada e a proxima versao do bug — so
 # entra aqui com uma frase dizendo por que o dado NAO EXISTE naquele caminho.

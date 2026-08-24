@@ -4550,6 +4550,7 @@ def _analyze_hands(hands, field_size=None, colocacoes=None):
                             _spot = di.get('spot', {})
                             _ctx  = di.get('context', {})
                             enriched['preflop_gto'] = _analyze_preflop(
+                                is_pko         = bool(_ctx.get('isPko')),
                                 position       = _spot.get('position', ''),
                                 hero_hand_type = h_type,
                                 stack_bb       = float(_spot.get('effectiveStackBb') or _ctx.get('heroStackBb') or 20),
@@ -6796,6 +6797,9 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
                                 preflop_call_vs_shove_fallback as _pf_shove_fb,
                                 preflop_open_range_proxy as _pf_open_proxy)
                             _pf_result = _pfs_a(
+                                # PKO muda a CARTA consultada. Sem este argumento o card
+                                # lia a Classic enquanto o veredito gravado vinha da PKO.
+                                is_pko         = bool((di.get('context') or {}).get('isPko')),
                                 position       = _pf_pos,
                                 hero_hand_type = h_type,
                                 stack_bb       = _pf_stack_bb,
@@ -7261,6 +7265,7 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
                     _ht = _h2t(_hc)
                     if _ht:
                         _pf = _pfs(
+                            is_pko         = bool((_di_pf.get('context') or {}).get('isPko')),
                             position       = _pos,
                             hero_hand_type = _ht,
                             stack_bb       = _sb,
@@ -9222,6 +9227,8 @@ def get_decision_gto(decision_id):
             h_type = hand_to_type(hero_hand)
             if h_type:
                 pf = analyze_preflop(
+                    # a decisao guarda o torneio; o torneio e que sabe se e PKO
+                    is_pko       = bool(dec.get('is_pko')),
                     position     = position,
                     hero_hand_type = h_type,
                     stack_bb     = stack_bb,

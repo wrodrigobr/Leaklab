@@ -250,14 +250,19 @@ def _process_rows(rows: list[dict], conn, dry_run: bool = True, verbose: bool = 
     tids = {r.get('tournament_id') for r in rows if r.get('tournament_id')}
     raw_by_tid: dict[int, str] = {}
     hero_by_tid: dict[int, str] = {}
+    # PKO muda a CARTA consultada pela porta única. Sem isto o sync REESCREVE `gto_label` com a
+    # carta Classic e desfaz o veredito que o motor gravou pela carta PKO — o mesmo torneio muda
+    # de veredito conforme o sync tenha rodado ou não.
+    pko_by_tid: dict[int, bool] = {}
     if tids:
         ph = ",".join("?" * len(tids))
-        for tid, hero, raw in conn.execute(
-            f"SELECT id, hero, raw_text FROM tournaments WHERE id IN ({ph})",
+        for tid, hero, raw, is_pko in conn.execute(
+            f"SELECT id, hero, raw_text, is_pko FROM tournaments WHERE id IN ({ph})",
             list(tids),
         ).fetchall():
             raw_by_tid[tid] = raw or ""
             hero_by_tid[tid] = hero or ""
+            pko_by_tid[tid] = bool(is_pko)
 
     for r in rows:
         cards = parse_cards(r["hero_cards"])
@@ -332,6 +337,7 @@ def _process_rows(rows: list[dict], conn, dry_run: bool = True, verbose: bool = 
             # "não sei" em vez de "fora do range, fold 100%" com confiança.
             # `raw` é o dialeto de armazenamento — o resto desta função segue sem mudança.
             result = preflop_strategy(
+                is_pko=pko_by_tid.get(tid, False),
                 position=pos,
                 hero_hand_type=hand_type,
                 stack_bb=stack_bb,

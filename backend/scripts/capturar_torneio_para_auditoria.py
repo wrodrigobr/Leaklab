@@ -19,7 +19,7 @@ Entao aqui se BATE nos mesmos endpoints que o navegador bate:
 
 ── Sobre o token ──────────────────────────────────────────────────────────────────────────
 
-O script emite um JWT para o proprio dono do torneio usando `auth.issue_token`, dentro do
+O script emite um JWT para o proprio dono do torneio usando `auth.generate_token`, dentro do
 container. Nenhuma senha e pedida, lida ou impressa, e o token nunca sai no stdout.
 """
 import json
@@ -49,7 +49,7 @@ def main():
         sys.exit('torneio %s nao existe' % tid)
     dono = dict(dono)
 
-    token = auth.issue_token(dono['user_id'], 'player')
+    token = auth.generate_token(dono['user_id'], 'player')
     cabecalho = {'Authorization': 'Bearer %s' % token}
 
     import urllib.request
@@ -59,8 +59,10 @@ def main():
         with urllib.request.urlopen(req, timeout=60) as r:
             return json.loads(r.read().decode('utf-8'))
 
-    detalhe = pega('/history/tournament/%s' % tid)
-    maos = detalhe.get('hands') or detalhe.get('decisions') or []
+    # O endpoint busca pelo tournament_id DO SITE (string), nao pelo id interno: passar o id
+    # interno devolve 404 mesmo com o torneio aparecendo na lista.
+    detalhe = pega('/history/tournament/%s' % dono['tournament_id'])
+    maos = detalhe.get('decisions') or []
     print(json.dumps({'tipo': 'torneio', 'id': tid,
                       'tournament_id': dono['tournament_id'],
                       'n_maos': len(maos), 'detalhe': detalhe}, ensure_ascii=False))
@@ -68,11 +70,11 @@ def main():
     # ── replay de CADA mão, e a matriz nas condições de cada decisão preflop ───────────────
     vistos_range = {}
     for m in maos:
-        hid = m.get('hand_id') or m.get('id')
+        hid = m.get('hand_id')
         if hid is None:
             continue
         try:
-            replay = pega('/replay/%s/%s' % (tid, hid))
+            replay = pega('/replay/%s/%s' % (dono['tournament_id'], hid))
         except Exception as e:                       # noqa: BLE001
             print(json.dumps({'tipo': 'erro_replay', 'hand_id': hid, 'erro': str(e)},
                              ensure_ascii=False))

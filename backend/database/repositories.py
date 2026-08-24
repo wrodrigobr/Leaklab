@@ -8839,12 +8839,17 @@ def get_decision_spot(decision_id: int, user_id: Optional[int] = None) -> Option
         if user_id is not None:
             return _fetchone(conn, _adapt(
                 "SELECT d.street, d.position, d.board, d.hero_cards, d.stack_bb, d.action_taken, "
-                "d.facing_bet, d.gto_action, d.gto_label, d.n_active_opponents "
+                "d.facing_bet, d.gto_action, d.gto_label, d.n_active_opponents, "
+                # PKO decide QUAL carta preflop e consultada. `decisions` nao guarda a flag;
+                # ela vive no torneio, e o JOIN ja estava aqui -- era so trazer a coluna.
+                "t.is_pko "
                 "FROM decisions d JOIN tournaments t ON t.id = d.tournament_id "
                 "WHERE d.id = ? AND t.user_id = ?"), (decision_id, user_id))
         return _fetchone(conn, _adapt(
-            "SELECT street, position, board, hero_cards, stack_bb, action_taken, facing_bet, "
-            "gto_action, gto_label, n_active_opponents FROM decisions WHERE id = ?"), (decision_id,))
+            "SELECT d.street, d.position, d.board, d.hero_cards, d.stack_bb, d.action_taken, "
+            "d.facing_bet, d.gto_action, d.gto_label, d.n_active_opponents, t.is_pko "
+            "FROM decisions d JOIN tournaments t ON t.id = d.tournament_id "
+            "WHERE d.id = ?"), (decision_id,))
     finally:
         conn.close()
 
