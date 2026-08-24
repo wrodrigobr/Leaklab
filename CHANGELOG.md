@@ -5,6 +5,40 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## Os "39 casos de raise 1.0" eram falso positivo, e o guarda que existia estava desligado (24/08)
+
+**A acusação, medida:** um juiz de poker apontou que a matriz devolvia `raise: 1.0` puro para
+mãos fora do próprio range (`K7s` de UTG+1 com `fold_pct 0.78`), e levantou a hipótese de um
+fallback disparando em todo fold de rei suited de posição inicial. Cruzando cada `raise 1.0`
+com a lista de abertura da PRÓPRIA grade daquele spot: **30 dentro, 0 fora** — o controle vivo.
+A carta do produto inclui essas mãos; o juiz comparou com a range que ele considera correta.
+
+Duas sondas de sanidade a mais, porque "a carta inclui" não responde "a carta é a certa":
+
+- ordem das aberturas por posição, 40-100bb: UTG+1 17,1% < UTG+2 19,9% < LJ 23,6% < HJ 28,8% <
+  CO 37,6% < BTN 54,6%. **Monotônica** — descarta posição lendo a carta de outra posição.
+- `fold_pct` e `hand_freq.fold` divergem em 372 de 386, e é esperado: um é da GRADE (quantas
+  MÃOS a posição descarta) e o outro é da MÃO. Não são o mesmo fato, apesar do nome parecido.
+
+**O que a investigação encontrou no caminho.** `clampVerdict` (RC-D) existe para garantir que o
+card nunca diga "Correto" enquanto o painel diz "Fold 100%". Ele aceita `foldPct` como 5º
+parâmetro — e **nenhum dos cinco chamadores passava esse argumento**. O ramo `foldPct >= 0.9`
+nunca executou em produção: a garantia estava no comentário e não no produto. `cardLogic.test.ts`
+cobria a função chamando-a direto com `foldPct`, então passava verde com a rede desligada.
+
+Impacto medido hoje: **1 caso** no acervo (agressão com `hand_freq.fold >= 0.9`), e nele o
+backend já acusa — o clamp é redundante no estado atual. Corrigido mesmo assim: é a mesma forma
+da flag que ficou sete semanas desligada porque o comentário explicava um estado com outra causa.
+
+**O argumento certo importa:** passa-se `hand_freq.fold` (da MÃO). Passar `fold_pct` (da GRADE)
+marcaria erro em toda agressão de posição inicial, inclusive com AA — e o teste cobre essa
+troca, porque ela é um conserto que causaria dano que o bug não causava.
+
+**Guarda:** `clampFoldPct.test.ts`, quebrado de propósito três vezes. A mutação "passa fold_pct
+da grade" passou VERDE duas vezes antes de acusar: primeiro porque a regex não-gulosa parava no
+`)` de `verdictLevel(...)` e nem via o argumento; depois porque o teste leu o COMENTÁRIO que
+explica por que não se usa `fold_pct` como se fosse código.
+
 ## A equity de river virou conta exata (24/08)
 
 **Como apareceu:** quatro juízes de poker independentes, auditando amostras diferentes do mesmo

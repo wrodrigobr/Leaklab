@@ -697,7 +697,8 @@ const Replayer = () => {
         {/* Verdict pill / Análise — canto inferior-direito */}
         <div className="absolute bottom-[calc(0.5rem+env(safe-area-inset-bottom))] right-[calc(0.5rem+env(safe-area-inset-right))] z-30">
           <VerdictPill
-            level={step.multiway_advice ? null : clampVerdict(verdictLevel(step.error_label) ?? (step.is_hero && step.type === "action" ? ((isError ? "error" : isCorrect ? "correct" : null) as VerdictLevel | null) : null), step.gto_action, step.action, step.gto_label)}
+            level={step.multiway_advice ? null : clampVerdict(verdictLevel(step.error_label) ?? (step.is_hero && step.type === "action" ? ((isError ? "error" : isCorrect ? "correct" : null) as VerdictLevel | null) : null), step.gto_action, step.action, step.gto_label,
+                    step.preflop_gto?.hand_freq?.fold)}
             evLossBb={step.ev_loss_bb}
             onClick={() => setShowAnalysis(true)}
           />
@@ -917,7 +918,8 @@ const Replayer = () => {
                     ?? (step.is_hero && step.type === "action"
                           ? (isError ? "error" : isCorrect ? "correct" : null) as VerdictLevel | null
                           : null),
-                    step.gto_action, step.action, step.gto_label)
+                    step.gto_action, step.action, step.gto_label,
+                    step.preflop_gto?.hand_freq?.fold)
                   }
                   evLossBb={step.ev_loss_bb}
                   onClick={() => setShowAnalysis(true)}
@@ -932,7 +934,8 @@ const Replayer = () => {
                 ?? (step.is_hero && step.type === "action"
                       ? (isError ? "error" : isCorrect ? "correct" : null) as VerdictLevel | null
                       : null),
-                step.gto_action, step.action, step.gto_label)
+                step.gto_action, step.action, step.gto_label,
+                    step.preflop_gto?.hand_freq?.fold)
               }
               evLossBb={step.ev_loss_bb}
               onClick={() => setShowAnalysis(true)}

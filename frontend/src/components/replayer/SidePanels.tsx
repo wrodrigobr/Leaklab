@@ -230,7 +230,10 @@ export function SidePanels({
     // correct/acceptable, mesmo se o label vier brando (não-reconciliado/legado).
     const _lvl: "correct" | "acceptable" | "error" = clampVerdict(
         verdictLevel(step.error_label) ?? (isError ? "error" : "correct"),
-        step.gto_action, playedAction, effectiveGtoLabel ?? step.gto_label) ?? "correct";
+        step.gto_action, playedAction, effectiveGtoLabel ?? step.gto_label,
+        // `hand_freq.fold` (da MAO), nunca `fold_pct` (da GRADE, quanto a posicao folda):
+        // UTG folda ~90% das MAOS, e passar esse numero marcaria erro ate com AA.
+        pg?.hand_freq?.fold) ?? "correct";
     const _M: Record<"correct" | "acceptable" | "error", VInfo> = {
       correct:    { icon: "✓", label: t("card.vCorrect"),    cls: "text-emerald-400", borderCls: "border-emerald-500/30", hdrCls: "bg-emerald-500/8", source: _src.name, sourceTooltip: _src.tip },
       acceptable: { icon: "◎", label: t("card.vAcceptable"), cls: "text-sky-400",     borderCls: "border-sky-500/30",     hdrCls: "bg-sky-500/8",     source: _src.name, sourceTooltip: _src.tip },
@@ -243,7 +246,8 @@ export function SidePanels({
   // Action comparison (playedAction already computed above) — FEAT-20: "ação ok" =
   // veredito NÃO-Erro (mesma severidade que dirige o card). Consistente com o badge.
   // Usa o veredito CLAMPADO (sinal de erro de direção nunca é "ok").
-  const _clampedActionLvl = clampVerdict(verdictLevel(step.error_label), step.gto_action, playedAction, effectiveGtoLabel ?? step.gto_label);
+  const _clampedActionLvl = clampVerdict(verdictLevel(step.error_label), step.gto_action, playedAction,
+                                         effectiveGtoLabel ?? step.gto_label, pg?.hand_freq?.fold);
   // B2: multiway é informativo → não marca "ação errada" (a sugestão do advisor aparece à parte).
   const isActionOk = step.multiway_advice ? true
     : _clampedActionLvl != null
