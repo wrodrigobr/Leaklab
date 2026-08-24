@@ -5,6 +5,35 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## O score ESCALA pelo custo, em vez de carimbar o piso (24/08)
+
+**Conserto de um defeito que eu mesmo introduzi horas antes.** Clampar o score na banda do label
+resolveu a contradicao score↔label e criou outra: num torneio, **59 das 77 acusacoes ficaram com
+exatamente 0,19** -- o piso de `small_mistake` -- com `ev_loss` variando de **0,000 a 3,816bb**.
+Coerente e cego. E como `priority_score = COUNT(*) * AVG(score)` ordena o plano de estudo, a
+ordenacao passou a depender quase so da CONTAGEM.
+
+Quem leu o sintoma foi um juiz de poker, direto na tela: "quanto menos o motor sabe do custo,
+mais duro ele acusa".
+
+**Agora** o score abaixo do piso e reposicionado DENTRO da banda em proporcao ao custo: 0bb no
+piso, 3,0bb ou mais no teto. O teto e o **p90** das acusacoes com EV medido -- a cauda e longa
+(p95 = 12,96bb, max = 116bb) e escalar ate o maximo colapsaria 90% dos casos no piso, que e o
+proprio defeito. Sem custo medido (`sem_gabarito`), fica no piso: e o que se pode afirmar sem base.
+
+**Cinco portas passam o custo**, nao duas: o INSERT, o `/replay` e as TRES do reconcile. As tres
+do reconcite nem selecionavam `ev_loss_bb` na query -- passariam `None` calado, e a escala seria
+inerte sem ninguem notar. O teste `test_as_duas_portas_PASSAM_o_custo` foi quem as encontrou.
+
+**Guarda:** 3 mutacoes (a escala vira piso; o INSERT para de passar o custo; o `/replay` para de
+passar), todas acusam.
+
+**LIMITE CONHECIDO:** o backfill de horas antes ja elevou 57 linhas do acervo para exatamente
+0,19, e a escala NAO as recupera -- ela so mexe em quem esta FORA da banda, e elas agora estao
+dentro. Medido: 6 linhas tocadas, 1 usuario de 8 com troca de ordem, topo inalterado. O acervo
+backfillado segue achatado ate um re-backfill que recalcule a partir do `ev_loss`; decisoes
+NOVAS ja nascem escaladas.
+
 ## A camada VIVA do score tambem alinha (24/08)
 
 O conserto do score (mesmo dia, logo acima) pegou so a GRAVACAO. Capturando um torneio novo

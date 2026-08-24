@@ -113,6 +113,59 @@ def test_as_DUAS_portas_do_score_alinham():
     print('OK  test_as_DUAS_portas_do_score_alinham (%d portas)' % len(portas))
 
 
+def test_o_score_ESCALA_pelo_custo_em_vez_de_carimbar_o_piso():
+    """Clampar no piso resolvia a contradição e criava outra: 59 de 77 acusações de um torneio
+    ficaram com EXATAMENTE 0,19, com `ev_loss` de 0,000 a 3,816bb. Coerente e cego — e como
+    `priority_score = COUNT(*) * AVG(score)` ordena o plano, a ordenação passou a depender só da
+    contagem. Um juiz de poker leu o sintoma direto na tela: "quanto menos o motor sabe do custo,
+    mais duro ele acusa"."""
+    from database.repositories import _align_score_to_label as alinha
+
+    barato = alinha('small_mistake', 0.0, 0.1)
+    caro   = alinha('small_mistake', 0.0, 3.8)
+    assert barato < caro, 'custo de 0,1bb e de 3,8bb recebem o mesmo score: voltou o achatamento'
+    assert caro > barato + 0.10, (
+        'a escala distingue de menos (%s vs %s): metade da banda tem que separar ruído de 3,8bb'
+        % (barato, caro))
+    # extremos continuam dentro da banda
+    assert 0.19 <= barato <= 0.35 and 0.19 <= caro <= 0.35, 'a escala saiu da banda'
+    # sem custo medido, o piso — é o que se pode afirmar sem base
+    assert alinha('small_mistake', 0.0) == 0.19, 'sem gabarito deixou de ficar no piso'
+    # e o teto não é dominado pela cauda (max do acervo é 116bb)
+    assert alinha('small_mistake', 0.0, 116.0) == 0.35, 'a cauda passou a estourar a banda'
+    print('OK  test_o_score_ESCALA_pelo_custo_em_vez_de_carimbar_o_piso')
+
+
+def test_as_duas_portas_PASSAM_o_custo():
+    """A escala só vale se alguém a alimentar. Melhorar a função e deixar os chamadores passando
+    dois argumentos é o mesmo buraco do clamp RC-D, que ficou desligado por não receber o 5º."""
+    import re
+    raiz = os.path.join(os.path.dirname(__file__), '..')
+    sem_custo = []
+    for pasta, arquivo in (('database', 'repositories.py'), ('api', 'app.py')):
+        caminho = os.path.join(raiz, pasta, arquivo)
+        with open(caminho, encoding='utf-8') as fh:
+            fonte = fh.read()
+        for m in re.finditer(r'_align_score_to_label\(', fonte):
+            i = m.end()
+            nivel, j = 1, i
+            while j < len(fonte) and nivel > 0:
+                if fonte[j] == '(':
+                    nivel += 1
+                elif fonte[j] == ')':
+                    nivel -= 1
+                j += 1
+            chamada = fonte[m.start():j]
+            codigo = chr(10).join(l.split('#')[0] for l in chamada.split(chr(10)))
+            if 'ev_loss' not in codigo:
+                sem_custo.append('%s/%s:%d' % (pasta, arquivo,
+                                               fonte[:m.start()].count(chr(10)) + 1))
+    assert not sem_custo, (
+        'chamada a _align_score_to_label SEM o custo (%s): o score volta a carimbar o piso e '
+        'todas as acusações viram o mesmo número' % ', '.join(sem_custo))
+    print('OK  test_as_duas_portas_PASSAM_o_custo')
+
+
 if __name__ == '__main__':
     falhas = 0
     testes = [v for k, v in sorted(globals().items()) if k.startswith('test_')]

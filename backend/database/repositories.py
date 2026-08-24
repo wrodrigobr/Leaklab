@@ -836,7 +836,10 @@ def save_decisions(tournament_db_id: int, results: List[dict]):
                 # os leaks do plano de estudo, entao as decisoes que o solver considera CRITICAS
                 # eram justo as que puxavam a media da familia para baixo e caiam no ranking.
                 _align_score_to_label(r.get('evaluation', {}).get('label', ''),
-                                      r.get('evaluation', {}).get('mistakeScore', 0)),
+                                      r.get('evaluation', {}).get('mistakeScore', 0),
+                                      # o CUSTO entra na escala: sem ele o score cai no piso e
+                                      # 77% das acusacoes viram o mesmo numero
+                                      (r.get('gto') or {}).get('ev_loss_bb')),
                 bd.get('mathPenalty', 0),
                 bd.get('rangePenalty', 0),
                 ctx.get('mRatio'),
@@ -10983,14 +10986,45 @@ _LABEL_SCORE_BAND = {
 }
 
 
-def _align_score_to_label(label: str, score) -> float:
-    """Clampa o score na banda do label reconciliado (consistência score↔label em TODA superfície)."""
+# Teto de escala do custo: p90 das acusacoes com EV medido no acervo (2,99bb). A cauda e longa
+# (p95 = 12,96 e max = 116), entao escalar linearmente ate o maximo colapsaria 90% dos casos no
+# piso -- o defeito que esta constante existe para evitar.
+_EV_TETO_ESCALA_BB = 3.0
+
+
+def _align_score_to_label(label: str, score, ev_loss_bb=None) -> float:
+    """Coloca o score na banda do label, ESCALANDO pelo custo quando ele existe.
+
+    Clampar no piso (versao de 24/08) resolvia a contradicao score↔label e criava outra: 59 das
+    77 acusacoes de um torneio ficaram com **exatamente 0,19**, com `ev_loss` variando de 0,000 a
+    3,816bb. Coerente e cego -- e, como `priority_score = COUNT(*) * AVG(score)` ordena o plano de
+    estudo, a ordenacao passou a depender so da CONTAGEM. Um juiz de poker leu o sintoma na tela:
+    "quanto menos o motor sabe do custo, mais duro ele acusa".
+
+    Agora o score abaixo do piso e reposicionado DENTRO da banda em proporcao ao custo medido:
+    0bb no piso, `_EV_TETO_ESCALA_BB` ou mais no teto. Sem custo medido (`sem_gabarito`) fica no
+    piso -- o que e honesto: nao ha base para dizer que doeu mais que o minimo.
+
+    Score que ja esta na banda nao e tocado; acima do teto, clampa.
+    """
     lo, hi = _LABEL_SCORE_BAND.get(label, (0.0, 0.08))
     try:
         s = float(score) if score is not None else lo
     except (TypeError, ValueError):
         s = lo
-    return round(min(max(s, lo), hi), 4)
+    if s > hi:
+        return round(hi, 4)
+    if s >= lo:
+        return round(s, 4)
+    # abaixo do piso: escala pelo custo em vez de carimbar `lo`
+    try:
+        ev = abs(float(ev_loss_bb)) if ev_loss_bb is not None else None
+    except (TypeError, ValueError):
+        ev = None
+    if not ev:
+        return round(lo, 4)
+    frac = min(1.0, ev / _EV_TETO_ESCALA_BB)
+    return round(lo + frac * (hi - lo), 4)
 
 
 def _is_pf_zone(stack_bb: float | None, street: str | None) -> bool:
@@ -11090,7 +11124,7 @@ def update_decision_gto(decision_id: int, gto_label: str, gto_action: str,
         else:
             # Reconcilia o label existente com o novo gto_label
             row = _fetchone(conn, _adapt(
-                "SELECT label, stack_bb, street, action_taken, score FROM decisions WHERE id = ?"
+                "SELECT label, stack_bb, street, action_taken, score, ev_loss_bb FROM decisions WHERE id = ?"
             ), (decision_id,))
             reconciled = _reconcile_label(
                 row['label'] if row else 'standard', gto_label,
@@ -11102,7 +11136,8 @@ def update_decision_gto(decision_id: int, gto_label: str, gto_action: str,
             conn.execute(_adapt("""
                 UPDATE decisions SET gto_label = ?, gto_action = ?, label = ?, score = ? WHERE id = ?
             """), (gto_label, gto_action, reconciled,
-                   _align_score_to_label(reconciled, row['score'] if row else None), decision_id))
+                   _align_score_to_label(reconciled, row['score'] if row else None,
+                                         row['ev_loss_bb'] if row else None), decision_id))
         conn.commit()
     finally:
         conn.close()
@@ -11155,7 +11190,8 @@ def resync_gto_labels_for_node(spot_hash: str) -> int:
         # Note: no gto_label IS NOT NULL filter — this node may be arriving for the first
         # time for decisions that had no GTO coverage at upload.
         candidates = _fetchall(conn, _adapt("""
-            SELECT id, tournament_id, board, hero_cards, stack_bb, facing_bet, action_taken, label, score
+            SELECT id, tournament_id, board, hero_cards, stack_bb, facing_bet, action_taken, label, score,
+                   ev_loss_bb
             FROM decisions
             WHERE street = ? AND position = ?
         """), (street, position))
@@ -11202,7 +11238,8 @@ def resync_gto_labels_for_node(spot_hash: str) -> int:
                 )
                 conn.execute(_adapt(
                     "UPDATE decisions SET gto_label=?, gto_action=?, label=?, score=? WHERE id=?"
-                ), (new_gto_label, top_action, reconciled, _align_score_to_label(reconciled, d.get('score')), d['id']))
+                ), (new_gto_label, top_action, reconciled, _align_score_to_label(reconciled, d.get('score'),
+                                                            d.get('ev_loss_bb')), d['id']))
                 updated += 1
                 if d.get('tournament_id'):
                     affected_tournaments.add(d['tournament_id'])
@@ -11265,6 +11302,7 @@ def reconcile_tournament_labels(tournament_id: int, only_ids=None) -> int:
     try:
         rows = _fetchall(conn, _adapt("""
             SELECT id, label, gto_label, stack_bb, street, action_taken, gto_action, score,
+                   ev_loss_bb,
                    ev_loss_bb, ev_loss_source, estimated_equity, pot_size, facing_bet
             FROM decisions
             WHERE tournament_id = ?
@@ -11289,7 +11327,7 @@ def reconcile_tournament_labels(tournament_id: int, only_ids=None) -> int:
             )
             # Alinha o score à banda do label (Classe C: score-vs-label) — mesmo quando o label não
             # muda, o score pode estar fora da banda (poluição) e divergir das telas por score.
-            new_score = _align_score_to_label(new, r['score'])
+            new_score = _align_score_to_label(new, r['score'], r['ev_loss_bb'])
             if new != r['label'] or abs(new_score - float(r['score'] or 0)) > 1e-6:
                 changes.append((new, new_score, r['id']))
 
