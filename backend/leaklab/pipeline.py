@@ -150,7 +150,23 @@ def build_decision_input(state: HandState, hand: 'ParsedHand | None' = None) -> 
             'isMultiway':       state.is_multiway,
             'effectiveStackBb': state.effective_stack_bb,
             'potSize':          state.pot_size,
-            'potBb':            round(state.pot_size / (state.metadata.get('bb') or 1), 2),  # pote em bb (p/ SPR)
+            # `potBb` decide coisa: o GUARDA DE JAM do motor (decision_engine_v11:710,
+            # rejeita nó de all-in quando stack/potBb > 3) e o `lookup_gto(pot_bb=...)`
+            # do /replay, que escolhe O NÓ.
+            #
+            # Vinha de `state.pot_size` (`_pot_up_to`), que o próprio hand_state_builder
+            # diz acertar 1,2% contra o `Total pot` do SUMMARY — sempre MENOR que o real,
+            # porque perde blinds e antes. SPR saía inflado e o guarda rejeitava jam demais:
+            # medido em 184 decisões postflop, 7 rejeições com este número e 1 com o certo.
+            # Uma delas dizia "pote 0.5bb" no postflop, o que não existe.
+            #
+            # `pot_at_decision` é o pote que o jogador ENFRENTA (antes + blinds + o que está
+            # na frente, aposta enfrentada inclusive). Fallback ao cálculo antigo só quando
+            # ele não vier, para não trocar um número ruim por None.
+            'potBb':            (round(float((state.metadata or {}).get('pot_at_decision'))
+                                       / (state.metadata.get('bb') or 1), 2)
+                                 if (state.metadata or {}).get('pot_at_decision')
+                                 else round(state.pot_size / (state.metadata.get('bb') or 1), 2)),
             # O pote que a decisão REALMENTE enfrentava (blinds, antes e o que está na
             # frente, aposta enfrentada inclusive). `potSize`/`potBb` continuam como
             # estavam de propósito (hand_state_builder:804) — quem precisa do pote de

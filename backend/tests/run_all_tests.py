@@ -121,6 +121,7 @@ SUITES = {
                   'test_villain_jam_range.py',
                   'test_forca_da_mao_string_ou_lista.py',
                   'test_todo_caminho_mesmos_args.py', 'test_pko_carta_consistente.py',
+                  'test_pote_do_guarda_de_jam.py',
                   'test_carta_do_no_certo.py',
                   'test_no_iniciativa_aware.py',
                   'test_frequencia_nao_se_inventa.py',
