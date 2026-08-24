@@ -6325,6 +6325,8 @@ def _replay_cache_set(key, data):
         _REPLAY_CACHE[key] = {'ts': time.time(), 'data': data}
 
 
+
+from database.repositories import _align_score_to_label   # porta unica da politica score<->label
 @app.route('/replay/<tournament_id>/<hand_id>', methods=['GET'])
 @require_auth
 def get_replay(tournament_id, hand_id):
@@ -7561,7 +7563,13 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
             # Fase 2: cauda segura graduada (multiway_safe_label) tem precedência — veredito
             # REAL (small_mistake/standard) em vez do None informativo. Senão, lógica de hoje.
             'error_label':        _el_efetivo,
-            'error_score':        round(float(decision.get('score', 0)), 3)         if decision else None,
+            # Alinhado ao label EXIBIDO (`_el_efetivo`), nao ao gravado. O label aqui e
+            # RECOMPUTADO ao vivo e costuma ser mais severo que o do banco; o score vinha da
+            # coluna, entao a tela mostrava `small_mistake` com score 0. O backfill de 24/08
+            # corrigiu a COLUNA e esta porta continuou servindo o numero velho -- duas portas
+            # para o mesmo fato, uma consertada. Medido no torneio 7: 61 de 485 abaixo do piso.
+            'error_score':        (_align_score_to_label(_el_efetivo, decision.get('score'))
+                                   if decision else None),
             'best_action':        reconciled_best                                    if decision else None,
             'engine_best':        engine_best if (gto_engine_conflict or gto_spot_mismatch) else None,
             'gto_label':          (None if _mw_spot else gto_label),

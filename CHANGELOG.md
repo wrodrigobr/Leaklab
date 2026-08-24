@@ -5,6 +5,25 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## A camada VIVA do score tambem alinha (24/08)
+
+O conserto do score (mesmo dia, logo acima) pegou so a GRAVACAO. Capturando um torneio novo
+para a 2a rodada de auditoria, a sonda acusou **61 de 485** decisoes com score abaixo do piso
+do label -- enquanto o banco, recem-backfillado, reportava **zero**.
+
+As duas medicoes estavam certas: olhavam FONTES diferentes. O `/replay` recomputa o
+`error_label` ao vivo (e ele costuma sair mais severo que o gravado) e servia o `error_score`
+da COLUNA. O backfill alinhou o score ao label do BANCO; a tela exibe o label RECALCULADO, e o
+numero ficava abaixo do piso dele. Duas portas para o mesmo fato, uma consertada -- o defeito
+mais recorrente deste projeto.
+
+Agora o `/replay` alinha contra `_el_efetivo`, o label que ele proprio esta exibindo.
+
+**Guarda:** `test_as_DUAS_portas_do_score_alinham` (regra 5 -- a politica vale onde o numero e
+gravado E onde e servido). A varredura precisou de conserto antes de valer: ela casava
+`error_score = d.get('error_score')`, uma linha que so repassa, e acusava a porta certa como
+quebrada. Agora ancora na CHAVE DE SAIDA (`'error_score':`).
+
 ## Score gravado passou a respeitar a banda do label, tambem no INSERT (24/08)
 
 **O sintoma:** 27 decisoes com `label` de erro e `score` 0 ou nulo. Nao era aleatorio -- **27 de

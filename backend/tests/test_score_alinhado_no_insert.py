@@ -78,6 +78,41 @@ def test_label_e_score_gravados_ficam_coerentes():
     print('OK  test_label_e_score_gravados_ficam_coerentes')
 
 
+def test_as_DUAS_portas_do_score_alinham():
+    """Regra 5: a política score↔label vale onde o número é GRAVADO e onde ele é SERVIDO.
+
+    O conserto de 24/08 pegou só a gravação. O `/replay` recomputa o `error_label` ao vivo (e
+    costuma sair mais severo que o do banco) mas servia o `score` da COLUNA — então a tela
+    mostrava `small_mistake` com score 0 mesmo depois do backfill. Medido no torneio 7: 61 de
+    485 abaixo do piso do label EXIBIDO, enquanto o banco reportava zero. Duas portas para o
+    mesmo fato, uma consertada: o defeito mais recorrente deste projeto.
+    """
+    raiz = os.path.join(os.path.dirname(__file__), '..')
+    portas = []
+    # O alvo é a CHAVE DE SAÍDA (`'error_score':` com dois-pontos), não qualquer menção: a
+    # primeira versão casou `error_score = d.get('error_score')` — uma linha que só repassa — e
+    # acusou a porta certa como se estivesse quebrada.
+    for pasta, arquivo, alvo in (('database', 'repositories.py', 'mistakeScore'),
+                                 ('api', 'app.py', "'error_score':")):
+        caminho = os.path.join(raiz, pasta, arquivo)
+        with open(caminho, encoding='utf-8') as fh:
+            fonte = fh.read()
+        assert alvo in fonte, 'a porta %s/%s perdeu o alvo %s' % (pasta, arquivo, alvo)
+        for m in __import__('re').finditer(alvo.replace('(', r'\('), fonte):
+            trecho = fonte[max(0, m.start() - 400):m.start() + 400]
+            codigo = chr(10).join(l.split('#')[0] for l in trecho.split(chr(10)))
+            portas.append(('%s/%s:%d' % (pasta, arquivo,
+                                         fonte[:m.start()].count(chr(10)) + 1),
+                           '_align_score_to_label(' in codigo))
+
+    faltando = [nome for nome, ok in portas if not ok]
+    assert len(portas) >= 2, 'a varredura perdeu uma das portas'
+    assert not faltando, (
+        'porta que entrega score SEM alinhar ao label: %s — o número volta a contradizer o '
+        'veredito ao lado dele' % ', '.join(faltando))
+    print('OK  test_as_DUAS_portas_do_score_alinham (%d portas)' % len(portas))
+
+
 if __name__ == '__main__':
     falhas = 0
     testes = [v for k, v in sorted(globals().items()) if k.startswith('test_')]
