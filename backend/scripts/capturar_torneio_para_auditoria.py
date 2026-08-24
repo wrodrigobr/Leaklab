@@ -53,7 +53,7 @@ def main():
     cabecalho = {'Authorization': 'Bearer %s' % token}
 
     import urllib.parse
-import urllib.request
+    import urllib.request
 
     def pega(caminho):
         req = urllib.request.Request('http://127.0.0.1:5000' + caminho, headers=cabecalho)
