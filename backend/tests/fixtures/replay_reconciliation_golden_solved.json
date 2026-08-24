@@ -224,7 +224,7 @@
   null,
   null,
   null,
-  "vs_random",
+  "vs_range",
   false,
   [],
   "multiway_engine"
@@ -486,7 +486,7 @@
   null,
   null,
   null,
-  "vs_random",
+  "vs_range",
   false,
   [
    "bet_75pct",

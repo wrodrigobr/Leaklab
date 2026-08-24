@@ -96,3 +96,59 @@ def revelador_unico(reveals: dict, hero_name: str):
     (nome, c), = outros.items()
     c = cartas(c)
     return (nome, c) if len(c) == 2 else None
+
+_BARALHO = [r + s for r in '23456789TJQKA' for s in 'shdc']
+
+
+def equity_river_vs_continuacao(hero, board):
+    """Equity EXATA do hero no river contra a range que continua. None se não der para calcular.
+
+    Por que existe (auditoria de 24/08): no river o board está completo, então não há
+    "potencial de melhorar" — a mão é o que é, e a equity é ENUMERÁVEL (1.081 mãos de vilão,
+    6 ms). O estimador servia uma tabela por classe de mão, calibrada para ruas com carta por
+    vir: medido em 203 decisões de river do acervo, ele erra **0,20 em média** contra a conta
+    exata, nas duas direções — `AcJc` em `KsKc7dKd7c` saía com 0,92 valendo 0,46, e `KcKs` em
+    `9dKdQs4c2h` saía com 0,56 valendo 0,98. O flush máximo aparecia com 79%.
+
+    "Continuação" é critério verificável, não palpite de range: o vilão tem PAR PRÓPRIO ou
+    melhor (pareia o board, par de bolso, ou sobe de categoria). Uma primeira versão pedia só
+    "melhora o board", o que é verdade para quase toda mão — e o número saía idêntico ao
+    vs-random nos três controles, que foi como o defeito apareceu.
+
+    Contra `vs_random` puro o conserto CRIARIA acusações novas (medido: 4 vereditos mudam,
+    dois deles `standard` → `small_mistake`). Contra a range de continuação muda **zero** —
+    é o número que a tela precisa sem que o motor passe a acusar quem não errou.
+    """
+    try:
+        import eval7
+    except Exception:                                          # noqa: BLE001
+        return None
+    hero = [str(c) for c in (hero or []) if c and len(str(c)) >= 2][:2]
+    board = [str(c) for c in (board or []) if c and len(str(c)) >= 2][:5]
+    if len(hero) != 2 or len(board) != 5:
+        return None
+    try:
+        def forca(cs):
+            return eval7.evaluate([eval7.Card(c) for c in cs])
+
+        mortas = set(hero) | set(board)
+        livres = [c for c in _BARALHO if c not in mortas]
+        meu = forca(hero + board)
+        cat_board = eval7.handtype(forca(board))
+        ranks_board = {c[0] for c in board}
+        w = t = n = 0
+        for v in combinations(livres, 2):
+            if not (v[0][0] in ranks_board or v[1][0] in ranks_board or v[0][0] == v[1][0]):
+                dele = forca(list(v) + board)
+                if eval7.handtype(dele) == cat_board:
+                    continue                                   # não continua: fora da range
+            else:
+                dele = forca(list(v) + board)
+            n += 1
+            if meu > dele:
+                w += 1
+            elif meu == dele:
+                t += 1
+        return round((w + 0.5 * t) / n, 4) if n else None
+    except Exception:                                          # noqa: BLE001
+        return None

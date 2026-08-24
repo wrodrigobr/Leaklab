@@ -67,6 +67,22 @@ def build_math_snapshot(state: HandState) -> MathSnapshot:
     villain_range = (state.metadata or {}).get('villain_range') if state.street == 'preflop' else None
     estimated_equity = _estimate_hand_equity(state.hero_cards, state.board, state.street,
                                              villain_range, enfrentando_aposta=facing > 0)
+    # ── RIVER: conta exata, não tabela por classe ──────────────────────────────────────────
+    # No river não há carta por vir, então a equity é ENUMERÁVEL e a estimativa por classe não
+    # tem desculpa: media 0,20 de erro em 203 decisões do acervo. Ver
+    # `equity_river_vs_continuacao`. O ajuste multiway abaixo continua valendo — a conta é HU.
+    if state.street == 'river':
+        try:
+            from leaklab.equity_real import cartas, equity_river_vs_continuacao
+            _exata = equity_river_vs_continuacao(cartas(state.hero_cards), cartas(state.board))
+        except Exception:                                       # noqa: BLE001
+            _exata = None
+        if _exata is not None:
+            estimated_equity = _exata
+            if isinstance(state.metadata, dict):
+                # o `/replay` rotula a fonte por aqui: deixar `vs_random` seria dizer que o
+                # número veio de mão aleatória quando ele veio de uma range enumerada.
+                state.metadata['equity_river_exata'] = True
     # Ajuste multiway: equity heuristica eh calibrada vs random HU. Em pote
     # 3+way, equity real cai significativamente. Aplica fator empirico em
     # postflop (preflop ja usa ranges GTO especificos por cenario).

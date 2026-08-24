@@ -5,6 +5,54 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## A equity de river virou conta exata (24/08)
+
+**Como apareceu:** quatro juízes de poker independentes, auditando amostras diferentes do mesmo
+torneio, apontaram a mesma coisa — os valores de equity de river se repetiam. Em 25 decisões
+havia 14 valores distintos, `0.46` sete vezes e `0.58` quatro, em boards sem nenhuma relação.
+No flop e no turn a dispersão era normal (89 decisões / 46 valores; 56 / 38), o que localizou o
+defeito no river.
+
+**A causa não era um estimador ruim.** `_postflop_made_equity` é uma tabela por CLASSE de mão,
+calibrada para ruas com carta por vir — o que é razoável no flop e no turn. No river não há
+carta por vir: a mão é o que é, e a equity sai por enumeração das 1.081 mãos possíveis do vilão
+em **6 ms**. Medido em 203 decisões de river do acervo, a tabela erra **0,20 em média**, nas
+duas direções: `AcJc` em `KsKc7dKd7c` exibia 0,92 valendo 0,46; `KcKs` em `9dKdQs4c2h` exibia
+0,56 valendo 0,98; um flush máximo aparecia com 79%.
+
+**Os dois candidatos foram medidos antes da escolha** (regra 7 — o conserto pode causar dano
+que o bug não causava):
+
+| substituto | vereditos que mudam |
+|---|---|
+| `vs_random` puro | 4, sendo dois `standard` → `small_mistake` |
+| range de continuação | **0** |
+
+`vs_random` criaria acusação nova contra quem não errou. A range de continuação corrige o número
+exibido sem que o motor passe a acusar ninguém. E o dano sempre foi de EXIBIÇÃO: com a equity
+forjada em 0,99, só 4 de 203 decisões mudam de rótulo — o veredito de river quase não depende
+dela.
+
+**O rótulo também mentia.** `pipeline.py` carimbava `equitySource: 'vs_random'` sempre que não
+houvesse range de vilão, e essa condição só é falsa no preflop — todo o postflop se declarava
+"vs mão aleatória" sem nunca ter sido calculado contra uma. Foi acreditando nesse rótulo que a
+própria auditoria mediu o número contra o oráculo errado na primeira passada.
+
+**Um caso concreto do fixture:** `As Jh` no board `Qs 2h 9s 9h 5s` — o par de noves é do BOARD,
+o hero tem A-high. A tabela dava **0,40**; a conta exata dá **0,00**: contra quem continua no
+river essa mão não ganha de ninguém. O hero apostou 658 e foi pago por dois pares. O veredito
+passou de "não é erro" para erro, e a acusação é justa: a equity inflada escondia um erro real.
+
+**Achado colateral (aberto):** os dois golden de reconciliação são sensíveis a TIMING. Na
+rodada em que a suíte levou 1.629s eles divergiram nas duas linhas de river (`verdict_layer`
+`stored`/`pending`); na rodada de 969s passaram com o golden original, sem regeneração. O
+veredito daquelas linhas depende de o solve chegar a tempo — não da mudança desta entrega.
+Fica anotado porque é o tipo de intermitência que passa por "regressão" na próxima vez.
+
+**Guarda:** `test_equity_do_river.py`, quebrado de propósito três vezes. O teste do rótulo
+passou VERDE na primeira mutação: ele casava com o COMENTÁRIO que menciona a variável, logo
+acima da expressão. Regra 8 na prática — agora só as linhas de código entram na verificação.
+
 ## Matriz sem carta GTO parou de afirmar estratégia (24/08)
 
 **Por quê:** em 12 decisões auditadas a matriz declarava `available: false` ("não há carta GTO

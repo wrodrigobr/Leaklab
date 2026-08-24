@@ -8,6 +8,7 @@ o jogador veria ao abrir o painel naquelas maos -- nao um conjunto que eu escolh
 """
 import json
 import sys
+import urllib.parse
 import urllib.request
 
 sys.path.insert(0, '/app')
@@ -32,7 +33,11 @@ def main():
     cab = {'Authorization': 'Bearer %s' % auth.generate_token(43, 'player')}
     out = {}
     for (pos, stack), n in sorted(pares.items(), key=lambda x: -x[1]):
-        url = 'http://127.0.0.1:5000/preflop-ranges?position=%s&stack_bb=%s' % (pos, stack)
+        # `+` CRU em query string decodifica como ESPACO: 'UTG+1' chegava como 'UTG 1' e a
+        # grade voltava VAZIA. Foi assim que a auditoria de 24/08 quase reportou 'UTG+1 e
+        # UTG+2 sem carta' -- a carta tem as duas nos 9 buckets; o instrumento e que perdia.
+        url = ('http://127.0.0.1:5000/preflop-ranges?%s'
+               % urllib.parse.urlencode({'position': pos, 'stack_bb': stack}))
         try:
             req = urllib.request.Request(url, headers=cab)
             with urllib.request.urlopen(req, timeout=60) as r:

@@ -216,7 +216,13 @@ def build_decision_input(state: HandState, hand: 'ParsedHand | None' = None) -> 
             'pressureScore':            math.pressure_score,
             # #27: 'vs_range' quando a equity foi calculada vs a RFI range real do
             # opener (vs_rfi); 'vs_random' caso contrário (proxy mão aleatória).
-            'equitySource':             'vs_range' if state.metadata.get('villain_range') else 'vs_random',
+            # `equity_river_exata`: no river o numero vem de enumeracao contra a range de
+            # continuacao. Rotular de `vs_random` ali seria mentir sobre a origem -- e a tela
+            # (SidePanels) muda a frase por este campo.
+            'equitySource':             ('vs_range'
+                                         if (state.metadata.get('villain_range')
+                                             or state.metadata.get('equity_river_exata'))
+                                         else 'vs_random'),
         },
         'range_evaluation': {
             'recommendedPrimaryAction': range_eval.recommended_primary_action,

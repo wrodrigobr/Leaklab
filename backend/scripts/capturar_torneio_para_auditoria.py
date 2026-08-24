@@ -52,7 +52,8 @@ def main():
     token = auth.generate_token(dono['user_id'], 'player')
     cabecalho = {'Authorization': 'Bearer %s' % token}
 
-    import urllib.request
+    import urllib.parse
+import urllib.request
 
     def pega(caminho):
         req = urllib.request.Request('http://127.0.0.1:5000' + caminho, headers=cabecalho)
@@ -93,7 +94,8 @@ def main():
                 continue
             try:
                 vistos_range[chave] = pega(
-                    '/preflop-ranges?position=%s&stack_bb=%s' % (pos, stack))
+                    '/preflop-ranges?%s'      # urlencode: '+' cru vira ESPACO na query
+                    % urllib.parse.urlencode({'position': pos, 'stack_bb': stack}))
             except Exception as e:                   # noqa: BLE001
                 vistos_range[chave] = {'erro': str(e)}
 

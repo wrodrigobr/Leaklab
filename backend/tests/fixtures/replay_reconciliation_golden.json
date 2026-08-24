@@ -224,7 +224,7 @@
   null,
   null,
   null,
-  "vs_random",
+  "vs_range",
   false,
   [],
   "multiway_engine"
@@ -466,7 +466,7 @@
   "check",
   null,
   null,
-  false,
+  true,
   "pending",
   null,
   null,
@@ -477,7 +477,7 @@
   null,
   null,
   null,
-  "vs_random",
+  "vs_range",
   false,
   [],
   "stored"
