@@ -46,14 +46,15 @@ def main():
         except Exception:                                       # noqa: BLE001
             continue
         # o que esta no banco, na MESMA ordem do parser
+        # Pareamento por (mao, street) + ORDEM, nao pela acao: o parser diz 'calls'/'raises'
+        # e o banco guarda 'call'/'raise'. Casar pelo verbo devolvia ZERO pares -- e um zero
+        # que so aparece porque a chave esta errada, nao porque nao ha dado.
         gravadas = {}
         for r in conn.execute(
                 'SELECT id, hand_id, street, action_taken, pot_size, level_bb '
                 'FROM decisions WHERE tournament_id=? ORDER BY id', (t['id'],)).fetchall():
             d = dict(r)
-            chave = (str(d['hand_id']), (d['street'] or '').lower(),
-                     (d['action_taken'] or '').lower())
-            gravadas.setdefault(chave, []).append(d)
+            gravadas.setdefault((str(d['hand_id']), (d['street'] or '').lower()), []).append(d)
 
         for hand in maos:
             acoes = getattr(hand, 'actions', []) or []
@@ -63,8 +64,7 @@ def main():
                 if getattr(a, 'player', None) != hero:
                     continue
                 street = (getattr(a, 'street', '') or 'preflop').lower()
-                acao = (getattr(a, 'action', '') or '').lower()
-                fila = gravadas.get((hid, street, acao))
+                fila = gravadas.get((hid, street))
                 if not fila:
                     sem_par += 1
                     continue
