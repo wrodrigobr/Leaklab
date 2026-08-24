@@ -1511,6 +1511,9 @@ def _run_migrations(conn):
             # separa decisão AUTOMÁTICA (modal ~100%) de decisão de VERDADE (estratégia mista).
             ("gto_played_freq",  "ALTER TABLE decisions ADD COLUMN gto_played_freq  REAL"),
             ("gto_top_freq",     "ALTER TABLE decisions ADD COLUMN gto_top_freq     REAL"),
+            # O pote REAL da decisão, em bb (ver o comentário longo no bloco PG).
+            ("pot_at_decision_bb",
+             "ALTER TABLE decisions ADD COLUMN pot_at_decision_bb REAL"),
         ]:
             if col not in dec_existing:
                 try: conn.execute(sql)
@@ -2583,6 +2586,18 @@ def _run_migrations(conn):
             #   gto_top_freq    = frequência da ação modal → é ELA que mede a pureza do spot
             "ALTER TABLE decisions ADD COLUMN IF NOT EXISTS gto_played_freq REAL",
             "ALTER TABLE decisions ADD COLUMN IF NOT EXISTS gto_top_freq REAL",
+            # O POTE que a decisão realmente enfrentava, em bb: blinds, antes e o que
+            # cada um tem na frente, a aposta enfrentada inclusive.
+            #
+            # `pot_size` NÃO é isso, e a divergência é deliberada (hand_state_builder:804:
+            # "só as pot odds consomem — pot_size segue como estava para não mexer no que
+            # já depende dele"). O problema era o DISPLAY: a nota escrevia "pot {pot_size}bb"
+            # e chamava de pote um número que não era o pote — 215 de 433 decisões preflop
+            # do torneio auditado (49,7%), tipicamente "pot 1.0bb" onde havia 3,7bb.
+            #
+            # O veredito nunca dependeu disto: as pot odds já usam `_pot_at_decision`
+            # (99,6% contra o `Total pot` do SUMMARY, medido em 1.682 mãos).
+            "ALTER TABLE decisions ADD COLUMN IF NOT EXISTS pot_at_decision_bb REAL",
             # Retratos datados do relatório de evolução. Guarda os NÚMEROS, não o HTML: o visual
             # pode melhorar sem invalidar relatório antigo, e comparar julho com agosto continua
             # válido porque compara dados, não páginas.

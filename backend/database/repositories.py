@@ -799,6 +799,12 @@ def save_decisions(tournament_db_id: int, results: List[dict]):
             raw_pot  = spot_ctx.get('potSize') or 0
             raw_face = spot_ctx.get('facingSize') or 0
             pot_size_bb   = round(raw_pot  / level_bb_val, 1) if raw_pot  else None
+            # O pote de VERDADE da decisão (blinds + antes + o que está na frente, com a
+            # aposta enfrentada). `pot_size` fica como está de propósito; este é o que o
+            # texto do card deve mostrar. Ver hand_state_builder:804.
+            raw_pot_dec   = spot_ctx.get('potAtDecision')
+            pot_at_dec_bb = (round(float(raw_pot_dec) / level_bb_val, 1)
+                             if raw_pot_dec else None)
             # facing_bet em BB: prefere facingToBb (computação correta do pipeline,
             # facing_to_total/bb) — o cálculo facingSize/level_bb dava valores errados
             # (ex.: 0.2bb) que ainda contaminavam o hash do nó GTO no drill. Ver
@@ -838,6 +844,7 @@ def save_decisions(tournament_db_id: int, results: List[dict]):
                 bool(r.get('is_3bet')),
                 r.get('showdown_result'),
                 pot_size_bb,
+                pot_at_dec_bb,
                 facing_bet_bb,
                 gto.get('gto_label') if gto.get('available') else None,
                 gto.get('gto_action') if gto.get('available') else None,
@@ -874,12 +881,12 @@ def save_decisions(tournament_db_id: int, results: List[dict]):
                math_penalty, range_penalty, m_ratio, icm_pressure, icm_tax_pct,
                stack_bb, draw_profile, position, num_players,
                level_sb, level_bb, level_num, note, is_3bet, showdown_result,
-               pot_size, facing_bet, gto_label, gto_action, gto_depth_capped, estimated_equity,
+               pot_size, pot_at_decision_bb, facing_bet, gto_label, gto_action, gto_depth_capped, estimated_equity,
                vs_position, preflop_raises_faced, hero_won_hand,
                ev_loss_bb, ev_loss_source, n_active_opponents, raise_to_bb, facing_to_call_bb,
                effective_stack_bb, facing_limp, hero_was_aggressor,
                gto_played_freq, gto_top_freq, spot_family_key, spot_hash)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
         """, rows)
         _religa_anotacoes(conn, tournament_db_id, _anot_guardadas)
         conn.commit()

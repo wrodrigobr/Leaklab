@@ -151,6 +151,11 @@ def build_decision_input(state: HandState, hand: 'ParsedHand | None' = None) -> 
             'effectiveStackBb': state.effective_stack_bb,
             'potSize':          state.pot_size,
             'potBb':            round(state.pot_size / (state.metadata.get('bb') or 1), 2),  # pote em bb (p/ SPR)
+            # O pote que a decisão REALMENTE enfrentava (blinds, antes e o que está na
+            # frente, aposta enfrentada inclusive). `potSize`/`potBb` continuam como
+            # estavam de propósito (hand_state_builder:804) — quem precisa do pote de
+            # VERDADE, como o texto do card, usa este.
+            'potAtDecision':    (state.metadata or {}).get('pot_at_decision'),
             'facingSize':       state.facing_size,
             'raiseSizeBb':      state.facing_size,
             'board':            state.board or [],

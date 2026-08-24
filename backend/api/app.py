@@ -4382,7 +4382,11 @@ def _enrich_note(row: dict) -> str:
     pos     = (row.get('position') or '').upper()
     is_3bet = row.get('is_3bet', 0)
     facing  = row.get('facing_bet')
-    pot_sz  = row.get('pot_size')
+    # O pote da nota e o pote da DECISAO (blinds + antes + o que esta na frente), nao
+    # `pot_size` -- que e outra coisa e ficou assim de proposito (hand_state_builder:804).
+    # A nota escrevia "pot 1.0bb" onde havia 3.7bb em 215 de 433 decisoes preflop.
+    # Linha antiga (sem a coluna nova) NAO cai no valor errado: omite o pote.
+    pot_sz  = row.get('pot_at_decision_bb')
 
     _act = {"fold": "fold", "check": "check", "call": "call",
             "bet": "bet", "raise": "raise", "jam": "all-in"}.get
