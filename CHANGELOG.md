@@ -30,7 +30,25 @@ gravar cru; o alinhador vira no-op; a banda de `small_mistake` comeca em 0). O t
 le so as linhas de CODIGO de `save_decisions` -- um comentario citando a funcao nao prova que
 ela e chamada.
 
-**Pendente:** as 27 linhas ANTIGAS seguem com score 0 ate um reprocesso. O conserto vale para
+**Backfill do acervo APLICADO** (`scripts/backfill_score_na_banda.py`). O dry-run mudou o
+escopo antes de qualquer escrita: "alinhar tudo" tocaria **404** linhas, das quais **347** sao
+`standard`/`marginal` com score ACIMA do teto -- alinha-las REBAIXARIA decisoes corretas e
+mexeria na media de quem nao errou, efeito que ninguem mediu e que o bug nao causava. O script
+foi restrito as **57** acusacoes com score abaixo do piso (27 delas com score 0/NULL, 24 com
+`gto_critical`), e os 347 saem declarados na saida para nao pegarem carona calada.
+
+Verificado no ambiente depois de aplicar: acusacoes abaixo do piso **0** (era 57), acusadas com
+score 0/NULL **0** (era 27), intocados 347 como planejado. Estado anterior salvo em
+`rollback_score.json` (57 pares id/score) antes da escrita.
+
+A conferencia do proprio script precisou de conserto: ela contava o acervo INTEIRO e imprimia
+"(esperado 0)", entao na rodada real mostrou 347 -- os que o script deliberadamente nao toca --
+e por um instante isso passou por falha. Conferencia tem que medir o que a operacao prometeu
+mexer, nao outra coisa.
+
+**Achado separado, NAO consertado:** 347 decisoes tem score fora da banda pelo lado de cima --
+189 `standard` com score > 0,08 e 152 `marginal` acima de 0,18. Um `standard` com score 0,25 e
+tao incoerente quanto um `small_mistake` com score 0, e pode ter a mesma causa pelo outro lado. O conserto vale para
 toda decisao nova; o backfill do acervo e passo separado, e mexe em dados de producao.
 
 ## Os 16 casos de `matriz.stack_bb` eram o stack EFETIVO, e agora há guarda (24/08)
