@@ -271,6 +271,7 @@ def preflop_strategy(position: str, hand: str | None = None, stack_bb: float = 2
     #
     # O motor nunca dependeu disto (decision_engine_v11:435 ja fazia
     # `hand_freq if available else None`) -- quem lia sem checar era a exibicao.
+    res = sem_carta_nao_afirma(res)          # zera no PROPRIO res: o `raw` abaixo viaja p/ o /replay
     hand_freq = normalize_freq_map(res.get('hand_freq')) if res.get('available') else {}
     recommended = [normalize_action(a) for a in (res.get('recommended_actions') or [])]
     base = preflop_base_menu(scenario or '', position, stack_bb)
@@ -287,6 +288,30 @@ def preflop_strategy(position: str, hand: str | None = None, stack_bb: float = 2
         'raise_to_bb':       res.get('raise_to_bb'),
         'raw':               res,
     }
+
+
+def sem_carta_nao_afirma(res: dict | None) -> dict | None:
+    """Zera `hand_freq` de um dict de estratégia preflop que declara `available: False`.
+
+    "Não há carta GTO para este spot" e "call 100%" não podem sair no mesmo objeto. A matriz
+    desenha a partir de `hand_freq`, e 100% numa ação é a afirmação mais forte que a ferramenta
+    faz — do tipo que o jogador DECORA. Em 4 de 12 casos auditados ela dizia o CONTRÁRIO do
+    veredito exibido ao lado.
+
+    Existe como função porque o mesmo dict sai por PORTAS diferentes: `preflop_strategy` (motor,
+    trainer), o `raw` que o `/replay` consome, e a chamada direta a `analyze_preflop` no
+    enriquecimento do histórico. Consertar só uma deixou 1 caso vivo em produção — foi assim que
+    esta função nasceu. `test_matriz_sem_carta.py` varre as chamadas e cobra que cada uma passe
+    por aqui.
+    """
+    if not isinstance(res, dict):
+        return res
+    if res.get('available'):
+        return res
+    if res.get('hand_freq'):
+        res = dict(res)
+        res['hand_freq'] = {}
+    return res
 
 
 def postflop_menu(freq_map: dict | None = None) -> list[str]:

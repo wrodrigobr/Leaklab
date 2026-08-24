@@ -4553,7 +4553,8 @@ def _analyze_hands(hands, field_size=None, colocacoes=None):
                         if h_type:
                             _spot = di.get('spot', {})
                             _ctx  = di.get('context', {})
-                            enriched['preflop_gto'] = _analyze_preflop(
+                            from leaklab.strategy_provider import sem_carta_nao_afirma
+                            enriched['preflop_gto'] = sem_carta_nao_afirma(_analyze_preflop(
                                 is_pko         = bool(_ctx.get('isPko')),
                                 position       = _spot.get('position', ''),
                                 hero_hand_type = h_type,
@@ -4575,7 +4576,7 @@ def _analyze_hands(hands, field_size=None, colocacoes=None):
                                 # (212.780 nesta mao) e nao serve de tamanho em bb.
                                 facing_to_bb       = float(_spot.get('facingToBb') or 0),
                                 facing_allin       = bool(_spot.get('facingAllin')),
-                            )
+                            ))
                     except Exception:
                         pass
                 results.append(enriched)

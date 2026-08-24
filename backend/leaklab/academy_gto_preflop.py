@@ -168,6 +168,12 @@ def generate_gto_preflop_question(scenario_filter: str = 'mixed') -> dict:
 
 def _build_explanation(spot: dict, res: dict, action: str) -> str:
     hand = spot.get('hand', '')
+    if not res.get('available'):
+        # Sem carta para o spot, a frase honesta e "nao sei". A versao anterior escrevia
+        # "GTO joga J8o aqui como: call 100%" com base num hand_freq que veio junto do aviso de
+        # ausencia -- a mesma contradicao que a matriz do replayer exibia.
+        return ('Nao ha carta GTO para este spot. A correcao veio da heuristica do motor, '
+                'nao de uma solucao de equilibrio.')
     hf   = res.get('hand_freq') or {}
     nonzero = {k: v for k, v in hf.items() if v and v > 0.01}
     parts: list[str] = []
@@ -206,6 +212,8 @@ def grade_gto_preflop_answer(spot: dict, action: str) -> dict:
         hero_was_aggressor=bool(spot.get('hero_was_aggressor', is_3b)),
         facing_raises=int(spot.get('facing_raises', 1 if is_3b else 0) or 0),
     )
+    from leaklab.strategy_provider import sem_carta_nao_afirma
+    res = sem_carta_nao_afirma(res)     # `hand_freq` sai no payload e desenha a matriz da aula
     quality    = res.get('action_quality', 'unknown')
     is_correct = quality in ('correct', 'acceptable')
     rec        = res.get('recommended_actions') or ['fold']

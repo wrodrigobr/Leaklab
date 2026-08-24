@@ -19,7 +19,22 @@ truthy em JS, então mandar o mapa vazio faria a tela afirmar **"Fold 100%"** on
 nenhuma. Os dois lados mudaram juntos: a porta única (`strategy_provider`) zera a frequência
 quando não há carta, e a tela decide por `available` em vez de inferir da ausência.
 
-**Guarda:** `test_matriz_sem_carta.py`, quebrado de propósito nos dois lados. A primeira versão
+**O conserto foi verificado e ainda deixou 1 caso vivo.** A sonda em produção (com controle:
+74 spots COBERTOS servindo frequência, provando que ela enxerga) achou 8 consertados e **1
+sobrevivente**. Motivo: o `/replay` não lê `hand_freq` do dict externo, lê `['raw']` — o dict
+cru, intacto. E havia uma terceira porta chamando `analyze_preflop` direto no enriquecimento do
+histórico, mais a academia, que publicava `hand_freq` no payload e escrevia "GTO joga J8o aqui
+como: call 100%" sem checar `available`.
+
+Virou função (`sem_carta_nao_afirma`) com varredura N+1 — regra 5. A varredura não usa lista de
+isentos: chamada sem o saneador só passa se ela própria não ler `hand_freq` (ou se tiver o guard
+`if not res.get('available')`), o que é reconferido a cada rodada. Lista declarada envelhece
+calada.
+
+**Guarda:** `test_matriz_sem_carta.py` (5 testes), quebrado de propósito três vezes. Duas
+mutações passaram VERDE na primeira tentativa: o detector aceitava o `import` do saneador como
+se fosse proteção, e a mutação da porta N+1 não chegava a ler `hand_freq`. Guarda que não é
+quebrado de propósito é cobertura sem cobertura. A primeira versão
 do teste do backend passou VERDE com o conserto desfeito: o caso usava `hand='ZZ9'`, que cai num
 `return` anterior já devolvendo `{}` e nunca chegava na linha consertada. Um duplo de
 `analyze_preflop` força o caminho exato; aí a mutação acusa.
