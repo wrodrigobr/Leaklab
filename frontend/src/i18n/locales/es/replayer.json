@@ -497,7 +497,8 @@
     "posicao": "Posición",
     "fonte": "Fuente",
     "fonteEstatica": "tablas estáticas",
-    "gtoIndisponivel": "análisis GTO no disponible en este spot"
+    "gtoIndisponivel": "análisis GTO no disponible en este spot",
+    "semCarta": "Sin carta GTO para este spot. Veredicto por la heurística del motor"
   },
   "gtoMixed": {
     "misto": {

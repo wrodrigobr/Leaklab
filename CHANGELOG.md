@@ -5,6 +5,28 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## Matriz sem carta GTO parou de afirmar estratégia (24/08)
+
+**Por quê:** em 12 decisões auditadas a matriz declarava `available: false` ("não há carta GTO
+para este spot") e servia `hand_freq` mesmo assim, às vezes com 100% numa ação. Em 4 delas a
+matriz dizia na tela o CONTRÁRIO do veredito ao lado. "Call 100%" é a afirmação mais forte que
+a ferramenta faz, o tipo de linha que o jogador decora; fazê-la sobre um spot que o produto diz
+não cobrir é falsa confiança, não informação.
+
+**O defeito morava na costura, não num dos lados.** Consertar só o backend criava um problema
+PIOR: o `RangePanel` tratava `hand_freq` ausente como fold puro (`hf ? ... : 1`) e `{}` é
+truthy em JS, então mandar o mapa vazio faria a tela afirmar **"Fold 100%"** onde não há carta
+nenhuma. Os dois lados mudaram juntos: a porta única (`strategy_provider`) zera a frequência
+quando não há carta, e a tela decide por `available` em vez de inferir da ausência.
+
+**Guarda:** `test_matriz_sem_carta.py`, quebrado de propósito nos dois lados. A primeira versão
+do teste do backend passou VERDE com o conserto desfeito: o caso usava `hand='ZZ9'`, que cai num
+`return` anterior já devolvendo `{}` e nunca chegava na linha consertada. Um duplo de
+`analyze_preflop` força o caminho exato; aí a mutação acusa.
+
+O motor nunca dependeu disto (`decision_engine_v11:435` já fazia `hand_freq if available else
+None`). Quem lia sem checar era a exibição.
+
 ## [Unreleased]
 
 ### fix(i18n): copy do plano de estudo traduzida, e o campo MORTO de `ranges.ts` removido

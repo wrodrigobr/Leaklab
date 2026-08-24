@@ -260,7 +260,18 @@ def preflop_strategy(position: str, hand: str | None = None, stack_bb: float = 2
         facing_allin=bool(facing_allin),
     )
     scenario = res.get('scenario')
-    hand_freq = normalize_freq_map(res.get('hand_freq'))
+    # `available: False` significa "nao ha carta GTO para este spot". Servir `hand_freq` junto
+    # com esse aviso e a contradicao mais cara que a tela pode ter: a matriz dizia "call 100%"
+    # -- a afirmacao mais forte que uma ferramenta faz, do tipo que o jogador DECORA -- ao lado
+    # de um veredito que discordava dela. Em 4 dos 12 casos auditados a matriz dizia o CONTRARIO
+    # do veredito exibido ao lado.
+    #
+    # Zerar aqui, na PORTA UNICA, e nao em cada tela: replayer, trainer, academy e export do
+    # coach sao portas diferentes para o mesmo numero.
+    #
+    # O motor nunca dependeu disto (decision_engine_v11:435 ja fazia
+    # `hand_freq if available else None`) -- quem lia sem checar era a exibicao.
+    hand_freq = normalize_freq_map(res.get('hand_freq')) if res.get('available') else {}
     recommended = [normalize_action(a) for a in (res.get('recommended_actions') or [])]
     base = preflop_base_menu(scenario or '', position, stack_bb)
     available_actions = menu_with_strategy(base, hand_freq)

@@ -402,8 +402,23 @@ export function RangePanel({ step, hero, heroCards, onClose, onHeaderMouseDown,
                   gto.hand_freq (None = fold puro 100%). */}
               {(() => {
                 const hf = gto.hand_freq;
+                // Sem carta GTO para o spot, a barra NAO e desenhada. Antes, `hand_freq`
+                // ausente caia no ramo "fold puro 100%" — a tela afirmava "Fold 100%" onde o
+                // produto nao tem resposta, e em 4 de 12 casos auditados isso contradizia o
+                // veredito exibido ao lado. Nao ter carta e um ESTADO, nao uma estrategia.
+                const semCarta = gto.available === false
+                  || !hf || Object.keys(hf).length === 0;
+                if (semCarta) {
+                  return (
+                    <div className="rounded-md border border-dashed border-border/60 bg-background/30 px-2.5 py-1.5">
+                      <div className="font-mono text-[9px] font-semibold uppercase tracking-wide text-muted-foreground">
+                        {t("rangePanel.semCarta")}
+                      </div>
+                    </div>
+                  );
+                }
                 const raise = hf?.raise ?? 0, call = hf?.call ?? 0, allin = hf?.allin ?? 0;
-                const fold = hf ? (hf.fold ?? Math.max(0, 1 - raise - call - allin)) : 1;
+                const fold = hf.fold ?? Math.max(0, 1 - raise - call - allin);
                 const segs = [
                   { k: "Raise",  v: raise, c: ACTION_COLORS.raise },
                   { k: "Call",   v: call,  c: ACTION_COLORS.call },

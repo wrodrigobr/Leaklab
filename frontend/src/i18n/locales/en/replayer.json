@@ -497,7 +497,8 @@
     "posicao": "Position",
     "fonte": "Source",
     "fonteEstatica": "static tables",
-    "gtoIndisponivel": "GTO analysis unavailable in this spot"
+    "gtoIndisponivel": "GTO analysis unavailable in this spot",
+    "semCarta": "No GTO chart for this spot. Verdict from the engine heuristic"
   },
   "gtoMixed": {
     "misto": {
