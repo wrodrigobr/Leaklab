@@ -233,6 +233,68 @@ def test_a_ETIQUETA_QUE_CHEGA_AO_CARD_usa_o_gate():
     print('OK  test_a_ETIQUETA_QUE_CHEGA_AO_CARD_usa_o_gate')
 
 
+def test_custo_irrelevante_nao_acusa():
+    """Acusação de erro exige custo que importe. 0,05bb é ruído de mesa.
+
+    Medido no acervo: 45 acusações com `ev_loss` abaixo de 0,10bb. Um juiz de poker pegou duas
+    delas na amostra — 0,05bb e 0,06bb — e as duas tinham, na MESMA linha, o próprio motor
+    dizendo `is_leak: false, justified: true`.
+
+    A regra virou função pura porque a versão inline não era testável sem montar uma decisão
+    inteira: o teste que a cobria olhava o CÓDIGO, e a mutação que trocava a condição por `False`
+    passava verde — ele continuava achando o `label = 'marginal'` logo abaixo."""
+    from leaklab.verdict import custo_irrelevante_para_acusar as irrelevante
+
+    assert irrelevante(0.04) is True, 'custo de 0,04bb voltou a sustentar acusação'
+    assert irrelevante(0.09) is True
+    assert irrelevante(-0.03) is True, 'o piso deixou de olhar o módulo do custo'
+    # e o contrário: custo que importa continua acusando
+    assert irrelevante(0.10) is False, 'o piso subiu e passou a engolir acusação legítima'
+    assert irrelevante(1.8) is False, 'custo de 1,8bb deixou de sustentar acusação'
+    # sem custo medido não é assunto desta regra (é da linguagem de GTO)
+    assert irrelevante(None) is False, 'ausência de custo virou absolvição pela regra errada'
+    assert irrelevante('x') is False, 'entrada inválida virou absolvição'
+    print('OK  test_custo_irrelevante_nao_acusa')
+
+
+def test_o_motor_CHAMA_o_piso():
+    """Fiação: a função pura só vale se o motor a consultar. Testar só a política deixaria o
+    buraco exatamente onde ele estava."""
+    caminho = os.path.join(os.path.dirname(__file__), '..', 'leaklab', 'decision_engine_v11.py')
+    with open(caminho, encoding='utf-8') as fh:
+        fonte = fh.read()
+    codigo = chr(10).join(l.split('#')[0] for l in fonte.split(chr(10)))
+    assert 'custo_irrelevante_para_acusar(' in codigo, (
+        'o motor parou de consultar o piso de custo: acusação de 0,04bb volta à tela')
+    i = codigo.index('custo_irrelevante_para_acusar(')
+    trecho = codigo[i:i + 300]
+    assert "label = 'marginal'" in trecho, 'o piso parou de rebaixar'
+    print('OK  test_o_motor_CHAMA_o_piso')
+
+
+def test_o_piso_NAO_virou_anistia_geral():
+    """Contraprova, e é ela que dá valor ao teste acima. O heurístico precisa continuar acusando
+    caso claro: uma versão anterior desligava a acusação para TODA decisão de procedência
+    `motor` e quebrou 4 testes do próprio motor — casos em que ele acusa certo. Reverti."""
+    from leaklab.decision_engine_v11 import evaluate_decision
+    entrada = {
+        'hand_id': 'T9', 'street': 'flop', 'player_action': 'call', 'hero_cards': '7c2d',
+        'hand_profile': {}, 'range_evaluation': {'recommendedPrimaryAction': 'fold',
+                                                 'rangeZone': 'outside_range'},
+        'spot': {'position': 'BTN', 'board': ['Ah', 'Kd', 'Qs'], 'facingSize': 8.0,
+                 'facingToCallBb': 8.0, 'potBb': 10.0, 'effectiveStackBb': 40.0,
+                 'nActiveOpponents': 1},
+        'context': {'heroStackBb': 40.0, 'icmPressure': 'low'},
+        'math': {'estimatedHandEquity': 0.08, 'potOddsEquity': 0.44},
+        'thresholds': {},
+    }
+    label = (evaluate_decision(entrada).get('evaluation') or {}).get('label')
+    assert label in ('small_mistake', 'clear_mistake'), (
+        'call horrível (8%% de equity pagando 44%%) deixou de ser acusado: o piso virou anistia '
+        'geral e o produto calou onde ele sabe — saiu %s' % label)
+    print('OK  test_o_piso_NAO_virou_anistia_geral')
+
+
 if __name__ == '__main__':
     falhas = 0
     testes = [v for k, v in sorted(globals().items()) if k.startswith('test_')]

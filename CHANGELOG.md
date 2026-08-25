@@ -45,6 +45,22 @@ veredito (custou duas investigacoes). Agora exige que duas leituras consecutivas
 **Golden regenerado com 3 mudancas, todas pretendidas:** dois `jam -> bet` (o teto) e um
 `call -> fold` com `52o` no turn, mao que so "valia call" pelo backdoor falso.
 
+**7. Piso de custo para acusar (0,10bb).** 45 acusacoes do acervo tinham `ev_loss` abaixo
+disso, e o juiz pegou duas na amostra (0,05bb e 0,06bb) com o proprio motor dizendo
+`is_leak: false, justified: true` na MESMA linha. Politica em `verdict.py`, direcional.
+
+**O que foi ESCRITO E REVERTIDO:** "procedencia `motor` nunca acusa". O juiz mediu 10 acusacoes
+do motor e nenhuma se sustentou, mas a regra quebrou **4 testes do proprio motor** -- casos em
+que o heuristico acusa CERTO (fold com equity muito acima do exigido, call muito abaixo).
+Desligar a acusacao ali calaria o produto justamente nos 12,5% que a carta nao cobre. O que os
+10 casos dele tinham em comum ja estava tratado por outras duas frentes: a LINGUAGEM de GTO sem
+equilibrio e a RECOMENDACAO absurda.
+
+O guarda do piso tambem precisou de duas voltas: a primeira versao olhava o CODIGO e a mutacao
+que trocava a condicao por `False` passava verde -- ela continuava achando o `label = 'marginal'`
+logo abaixo. A politica virou funcao pura em `verdict.py`, e o teste passou a exercitar
+comportamento.
+
 **Duas das tres invariantes que apareceram vermelhas na varredura eram do INSTRUMENTO:** o
 dossie nao copiava `verdict_source` (411/411 "sem procedencia" medindo o proprio dossie), e a
 sonda tratava equity `0.0` como ausente -- quando no river zero e o valor CORRETO para mao sem

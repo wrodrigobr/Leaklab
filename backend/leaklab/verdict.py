@@ -222,3 +222,24 @@ def pode_falar_como_gto(procedencia_valor: str, custo_medido: bool) -> bool:
     189 de 495 acusações com a carta reprovando saíam sem um bb de custo.
     """
     return procedencia_valor in (SOLVER, CARTA) and bool(custo_medido)
+
+# Piso de custo para ACUSAR. Abaixo disto o desvio e ruido de mesa: nao vira erro.
+#
+# Medido no acervo em 25/08: 45 acusacoes com `ev_loss` abaixo de 0,10bb. Um juiz de poker pegou
+# duas na amostra -- 0,05bb e 0,06bb -- e as duas traziam, na MESMA linha, o proprio motor
+# dizendo `is_leak: false, justified: true`.
+PISO_CUSTO_PARA_ACUSAR_BB = 0.10
+
+
+def custo_irrelevante_para_acusar(ev_loss_bb) -> bool:
+    """O custo medido e pequeno demais para sustentar uma acusacao?
+
+    So responde True quando HA custo medido: sem numero nao ha o que julgar aqui, e a ausencia
+    de custo e tratada por outra regra (a da linguagem de GTO, em `pode_falar_como_gto`).
+    """
+    if ev_loss_bb is None:
+        return False
+    try:
+        return abs(float(ev_loss_bb)) < PISO_CUSTO_PARA_ACUSAR_BB
+    except (TypeError, ValueError):
+        return False

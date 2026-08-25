@@ -1774,6 +1774,40 @@ def evaluate_decision(input_data: Dict[str, Any]) -> Dict[str, Any]:
         street=street,
     )
 
+    # ── ACUSAR EXIGE EQUILIBRIO OU CUSTO ──────────────────────────────────────────────────
+    #
+    # Um juiz de poker auditou 10 acusacoes cuja procedencia e `motor` (heuristica de equity e
+    # pot odds, sem carta nem no do solver). **Nenhuma se sustentou** -- e em varias a "correcao"
+    # oferecida era pior que a jogada do jogador. No acervo sao **72 acusacoes (12,5%), todas
+    # sem um bb de custo medido**.
+    #
+    # A regra tem duas partes, ambas DIRECIONAIS (so tiram acusacao, nunca criam):
+    #
+    # Custo medido abaixo de 0,10bb nao acusa: e ruido de mesa. Mesmo principio do teto de
+    # severidade por EV que ja existe -- ali o custo alto SOBE o rotulo; aqui o custo infimo tira
+    # a acusacao. 45 casos no acervo, e o juiz pegou dois deles na amostra (0,05bb e 0,06bb,
+    # ambos com o proprio motor dizendo `is_leak: false, justified: true` na mesma linha).
+    #
+    # O que NAO muda: quem tem carta ou no do solver com custo relevante continua acusando.
+    if label in ('small_mistake', 'clear_mistake'):
+        _proc = _verdict.procedencia(gto, preflop_gto, street)
+        _ev_acusa = gto.get('ev_loss_bb') if isinstance(gto, dict) else None
+        if _ev_acusa is None and isinstance(preflop_gto, dict):
+            _ev_acusa = preflop_gto.get('ev_loss_bb')
+        # A parte "procedencia `motor` nunca acusa" foi ESCRITA E REVERTIDA: quebrou 4 testes do
+        # motor que codificam casos em que o heuristico acusa CERTO (fold com equity muito acima
+        # do exigido, call muito abaixo). O juiz viu 10 casos ruins do motor, mas a conclusao
+        # "motor nunca sabe" nao se sustenta contra os casos claros -- e desligar a acusacao ali
+        # seria calar o produto justamente nos 12,5% que a carta nao cobre.
+        #
+        # O que os 10 casos dele tinham em comum era outra coisa, e ja foi tratado: a LINGUAGEM
+        # de GTO sem equilibrio (gate de procedencia) e a RECOMENDACAO absurda (teto do all-in).
+        # A politica vive em `verdict.py` (regra 5): a mesma pergunta e feita pelo motor e pelos
+        # testes, e uma condicao inline nao e testavel sem montar uma decisao inteira.
+        if _verdict.custo_irrelevante_para_acusar(_ev_acusa):
+            label = 'marginal'
+            final_score = min(final_score or 0.0, _LABEL_MAX_SCORE['marginal'])
+
     # ── TETO DE PROPORCIONALIDADE DO ALL-IN RECOMENDADO ───────────────────────────────────
     #
     # Tres juizes de poker independentes apontaram a mesma coisa na auditoria de 25/08: o
