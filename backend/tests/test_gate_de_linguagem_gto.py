@@ -339,6 +339,15 @@ def test_o_piso_de_custo_vale_na_camada_VIVA():
     assert "_el_efetivo = 'marginal'" in codigo, 'o piso da camada viva parou de rebaixar'
     assert 'is_error = False' in codigo, (
         'o piso rebaixa o rótulo e deixa `is_error` de pé: a tela continua marcando erro')
+    # A invariante #4 também precisa viver AQUI: o conserto feito no motor não alcança o rótulo
+    # recomputado. Medido: 3 acusações continuaram com a recomendação igual à jogada mesmo
+    # depois do conserto no motor.
+    # A COMPARAÇÃO, não a variável: `_best_exibido` continua definida para o payload mesmo se o
+    # bloco que a compara com a jogada sumir, e a mutação passava verde. QUARTA vez que este
+    # padrão aparece nesta série — ancore no que a mutação remove, não no que sobra.
+    assert '_normalize_action(action.action)' in codigo, (
+        'a camada viva voltou a acusar com a recomendação IGUAL à jogada do hero: o conserto '
+        'do motor não alcança o rótulo recomputado')
     print('OK  test_o_piso_de_custo_vale_na_camada_VIVA')
 
 

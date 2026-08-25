@@ -7664,6 +7664,21 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
                 and _verdict_mod.custo_irrelevante_para_acusar(decision.get('ev_loss_bb'))):
             _el_efetivo = 'marginal'
             is_error = False
+        # E a mesma invariante do motor, aqui: acusar com a recomendacao IGUAL a jogada e dizer
+        # "voce errou, e o certo era o que voce fez". O conserto feito no motor nao alcanca este
+        # rotulo, porque o /replay recomputa -- mesmo padrao que ja custou duas voltas com o
+        # score e uma com o piso de custo. Se ha desvio, ele e de TAMANHO, e quem fala de tamanho
+        # e o bloco de sizing.
+        _best_exibido = (_best_action_proporcional(
+            reconciled_best,
+            (decision.get('pot_at_decision_bb') or decision.get('pot_size')) if decision else None,
+            (decision.get('effective_stack_bb') or decision.get('stack_bb')) if decision else None)
+            if decision else None)
+        if (_el_efetivo in ('small_mistake', 'clear_mistake') and _best_exibido
+                and str(_best_exibido).lower()
+                == str(_normalize_action(action.action) or '').lower().rstrip('s')):
+            _el_efetivo = 'marginal'
+            is_error = False
         timeline.append(snap({
             'type':               'action',
             'player':             action.player,
@@ -7705,13 +7720,7 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
             # a falsa confiança que a procedência existe para eliminar, agora com carimbo de
             # autoridade. Medido no torneio 7: 3 de 4 spots multiway postflop faziam isso.
             'pode_falar_como_gto': _pode_falar_como_gto_da_linha(decision, multiway=_mw_spot),
-            'best_action':        (_best_action_proporcional(
-                                       reconciled_best,
-                                       (decision.get('pot_at_decision_bb')
-                                        or decision.get('pot_size')),
-                                       (decision.get('effective_stack_bb')
-                                        or decision.get('stack_bb')))
-                                   if decision else None),
+            'best_action':        _best_exibido,
             'engine_best':        engine_best if (gto_engine_conflict or gto_spot_mismatch) else None,
             'gto_label':          (None if _mw_spot else gto_label),
             'gto_action':         preflop_override_action or live_top_act or gto_action,
