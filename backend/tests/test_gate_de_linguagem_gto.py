@@ -327,13 +327,18 @@ def test_o_piso_de_custo_vale_na_camada_VIVA():
     caminho = os.path.join(os.path.dirname(__file__), '..', 'api', 'app.py')
     with open(caminho, encoding='utf-8') as fh:
         fonte = fh.read()
-    i = fonte.index("'error_label':")
-    trecho = fonte[i:i + 600]
-    codigo = chr(10).join(l.split('#')[0] for l in trecho.split(chr(10)))
+    # O piso é aplicado sobre `_el_efetivo` ANTES dos campos derivados. A primeira versão
+    # aplicava na chave `error_label` e deixava `is_error: True` e o score fora da banda — três
+    # campos para o mesmo fato, dois desatualizados. A âncora acompanha isso.
+    i = fonte.index('_el_efetivo = ')
+    fim = fonte.index('timeline.append(', i)
+    codigo = chr(10).join(l.split('#')[0] for l in fonte[i:fim].split(chr(10)))
     assert 'custo_irrelevante_para_acusar' in codigo, (
         'a camada viva do /replay voltou a servir acusação com custo irrelevante: o piso do '
         'motor não alcança o label recomputado')
-    assert "'marginal'" in codigo, 'o piso da camada viva parou de rebaixar'
+    assert "_el_efetivo = 'marginal'" in codigo, 'o piso da camada viva parou de rebaixar'
+    assert 'is_error = False' in codigo, (
+        'o piso rebaixa o rótulo e deixa `is_error` de pé: a tela continua marcando erro')
     print('OK  test_o_piso_de_custo_vale_na_camada_VIVA')
 
 

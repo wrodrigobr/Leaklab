@@ -475,7 +475,7 @@
   "check",
   "check",
   "gto_minor_deviation",
-  true,
+  false,
   "covered",
   null,
   null,

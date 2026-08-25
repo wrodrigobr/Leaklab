@@ -243,13 +243,17 @@ def _fingerprint_run():
     # Em vez de adivinhar quanto esperar, exige-se que duas leituras consecutivas concordem —
     # o fingerprint parou de se mexer, então a fila drenou. Regra 3 do CLAUDE.md: não concluir
     # de número colhido com processo em andamento.
+    # Janela generosa de propósito: 12 tentativas de 0,5s (6s) bastavam rodando sozinho e ainda
+    # deixaram o teste COM SOLVER falhar sob a carga da suíte inteira. O custo de esperar é
+    # segundos; o custo de um golden intermitente é uma investigação inteira atrás de uma
+    # regressão que não existe — já aconteceu duas vezes.
     anterior = None
-    for _ in range(12):
+    for _ in range(30):
         atual = _fingerprint(client, H, tid, hand_ids)
         if atual == anterior:
             return atual
         anterior = atual
-        time.sleep(0.5)
+        time.sleep(1.0)
     return anterior
 
 
