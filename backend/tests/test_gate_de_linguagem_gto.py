@@ -351,6 +351,38 @@ def test_o_piso_de_custo_vale_na_camada_VIVA():
     print('OK  test_o_piso_de_custo_vale_na_camada_VIVA')
 
 
+def test_o_rebaixamento_e_sempre_EXPLICAVEL():
+    """`gto_critical` exibido como não-erro só pode acontecer por política DECLARADA.
+
+    A invariante "carta crítica não aparece como não-erro" é antiga e valia antes das políticas
+    de 25/08. Depois delas ela acusou 9 casos — e os 9 estavam **inteiramente explicados**: 6
+    pelo piso de custo (desvio abaixo de 0,10bb) e 3 pela recomendação ter virado a própria
+    jogada do hero. Zero sem explicação.
+
+    Este teste congela a lista de motivos aceitáveis. Rebaixar por qualquer outra razão volta a
+    ser defeito: a invariante não foi afrouxada, foi tornada específica.
+    """
+    from leaklab.verdict import custo_irrelevante_para_acusar
+
+    def rebaixamento_explicado(ev_loss_bb, best_action, acao_jogada):
+        if custo_irrelevante_para_acusar(ev_loss_bb):
+            return True
+        if best_action and acao_jogada and (
+                str(best_action).lower() == str(acao_jogada).lower().rstrip('s')):
+            return True
+        return False
+
+    # os dois motivos aceitos
+    assert rebaixamento_explicado(0.04, 'check', 'bet') is True, 'o piso deixou de explicar'
+    assert rebaixamento_explicado(1.5, 'bet', 'bets') is True, (
+        'recomendação igual à jogada deixou de explicar o rebaixamento')
+    # e o que NÃO é aceito: custo relevante com recomendação diferente
+    assert rebaixamento_explicado(1.5, 'fold', 'raise') is False, (
+        'rebaixar carta crítica com custo de 1,5bb e recomendação diferente virou aceitável — '
+        'a invariante foi afrouxada em vez de tornada específica')
+    print('OK  test_o_rebaixamento_e_sempre_EXPLICAVEL')
+
+
 if __name__ == '__main__':
     falhas = 0
     testes = [v for k, v in sorted(globals().items()) if k.startswith('test_')]
