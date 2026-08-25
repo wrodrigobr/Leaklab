@@ -28,6 +28,7 @@ export type DecisionSourceVariant =
   | "heuristic"  // Sem cobertura GTO, fallback (cinza)
   | "pushfold"   // Push/Fold zone, modo binário (amber)
   | "multiway"   // Estimativa multiway (equity vs range), solver é HU (teal/amber)
+  | "motor"      // Sem equilíbrio COM custo medido: leitura do motor, NÃO é GTO (âmbar)
   | "na";        // Spot incompatível: sem dado válido (orange)
 
 export interface DecisionVerdict {
@@ -88,6 +89,10 @@ export const SOURCE_VARIANT_CLS: Record<DecisionSourceVariant, string> = {
   pushfold:  "text-amber-300 bg-amber-500/10 ring-amber-500/30",
   multiway:  "text-teal-300 bg-teal-500/10 ring-teal-500/30",
   na:        "text-orange-400 bg-orange-500/10 ring-orange-500/30",
+  // `motor` NÃO pode herdar o visual de `gto` (roxo/primary, autoridade máxima): é justamente a
+  // decisão em que o produto admite não ter equilíbrio com custo por trás. Âmbar sóbrio — visível
+  // como ressalva, sem alarme de erro.
+  motor:     "text-amber-200/90 bg-amber-500/8 ring-amber-500/25",
 };
 
 export function DecisionCard({

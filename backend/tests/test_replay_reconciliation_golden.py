@@ -13,7 +13,7 @@ strings/bools discretos (NÃO os floats de EV do Monte Carlo), pra não ficar fr
 
 Regenerar após uma mudança INTENCIONAL de veredito:  GOLDEN_UPDATE=1 python tests/test_replay_reconciliation_golden.py
 """
-import sys, os, tempfile, sqlite3, json, hashlib
+import sys, os, tempfile, sqlite3, json, hashlib, time
 
 # Determinismo do seed multiway (hash de strings) — precisa valer ANTES de importar o app.
 if os.environ.get('PYTHONHASHSEED') != '0':
@@ -231,7 +231,26 @@ def _fingerprint_run():
         "SELECT DISTINCT hand_id FROM decisions WHERE tournament_id=? ORDER BY hand_id", (tid,)).fetchall()]
     conn.close()
     assert hand_ids, 'nenhuma decisão importada'
-    return _fingerprint(client, H, tid, hand_ids)
+
+    # ── Espera o veredito ESTABILIZAR antes de congelar ───────────────────────────────────────
+    #
+    # `/analyze` dispara o aquecimento do solver numa thread. Se ela termina antes da leitura, o
+    # `/replay` serve a camada `live`; se não, serve `stored` — e as duas dão vereditos
+    # diferentes nas mesmas linhas. Resultado: o golden passava rodando sozinho e falhava na
+    # suíte carregada (medido: verde aos 969s, vermelho aos 1.629s), fazendo uma intermitência
+    # de TIMING parecer regressão de veredito. Isso já custou duas investigações.
+    #
+    # Em vez de adivinhar quanto esperar, exige-se que duas leituras consecutivas concordem —
+    # o fingerprint parou de se mexer, então a fila drenou. Regra 3 do CLAUDE.md: não concluir
+    # de número colhido com processo em andamento.
+    anterior = None
+    for _ in range(12):
+        atual = _fingerprint(client, H, tid, hand_ids)
+        if atual == anterior:
+            return atual
+        anterior = atual
+        time.sleep(0.5)
+    return anterior
 
 
 def _assert_golden(current, path, nome):

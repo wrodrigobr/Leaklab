@@ -1774,6 +1774,31 @@ def evaluate_decision(input_data: Dict[str, Any]) -> Dict[str, Any]:
         street=street,
     )
 
+    # ── TETO DE PROPORCIONALIDADE DO ALL-IN RECOMENDADO ───────────────────────────────────
+    #
+    # Tres juizes de poker independentes apontaram a mesma coisa na auditoria de 25/08: o
+    # produto recomendava all-in de 9x, 17x, 19x e ate **22x o pote** com Ts2h, Kc4d, AdKs.
+    # Medido na camada viva: **22 de 40 recomendacoes de all-in postflop passavam de 3x o pote,
+    # e 9 passavam de 8x**. Um aluno que obedeca uma dessas telas quebra.
+    #
+    # O jam so e jogada quando o dinheiro ja esta comprometido: com stack muito maior que o
+    # pote, all-in nao e "a versao forte da aposta", e outra jogada. O teto e 3x porque e onde
+    # as recomendacoes GRAVADAS (que passam pelo solver) se concentram: 129 das 130 do acervo
+    # estao abaixo disso.
+    #
+    # DIRECIONAL: so troca a RECOMENDACAO, nunca cria nem agrava acusacao. E cede a passagem
+    # quando o proprio solver recomenda o jam naquele no -- ali existe gabarito dizendo que o
+    # dinheiro entra, e o teto seria uma opiniao minha contra a carta.
+    _TETO_JAM_SOBRE_POTE = 3.0
+    if (street != 'preflop'
+            and _action_family(_best_action or '') == 'allin'
+            and _norm_gto_action(gto.get('gto_action') or '') != 'allin'):
+        _pote_bb = float(spot.get('potBb') or 0)
+        _stack_bb = float(spot.get('effectiveStackBb') or _hero_stack_bb or 0)
+        if _pote_bb > 0 and _stack_bb > _TETO_JAM_SOBRE_POTE * _pote_bb:
+            # `bet` e a agressao proporcional; o tamanho quem diz e o bloco de sizing.
+            _best_action = 'bet'
+
     # Shove == call (excesso impagavel): a tela mostra a acao REAL, e quando o melhor e o call
     # ela passa a mostrar a acao do jogador — porque sao a MESMA jogada, e exibir "melhor: call"
     # ao lado de "voce deu shove" e uma correcao fantasma. Nao mexe no label: ele ja foi calculado

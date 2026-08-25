@@ -529,7 +529,17 @@ REGRAS OBRIGATÓRIAS — NÃO VIOLE
         _src = d.get('verdict_source') or _proc(_gto_para_proc, pfgto, street)
         _custo = (d.get('verdict_has_cost') if d.get('verdict_has_cost') is not None
                   else _tem_custo(_gto_para_proc, pfgto))
-        _pode = _pode_gto(_src, _custo)
+        # MULTIWAY: o solver e HU-only e o card ja se recusa a graduar o spot (`gto_label` e
+        # `error_label` saem nulos). O texto NAO tinha esse ramo, entao o mesmo spot recebia
+        # "≈ Aproximacao" no card e PERMISSAO para escrever "leak" na narrativa -- a contradicao
+        # que a procedencia existe para eliminar, fechada numa porta so.
+        try:
+            _n_opp = int((spot.get('nActiveOpponents') or ctx.get('nActiveOpponents')
+                          or d.get('n_active_opponents') or 0))
+        except (TypeError, ValueError):
+            _n_opp = 0
+        _mw = _n_opp >= 2 and street != 'preflop'
+        _pode = (not _mw) and _pode_gto(_src, _custo)
         _ROTULO_ORIGEM = {
             'solver': 'no do solver resolvido para este spot',
             'carta':  'carta de range preflop (equilibrio)',

@@ -352,7 +352,17 @@ export function SidePanels({
             // Push/fold real = jam > raise (jam é a ação dominante)
             return (hf.allin ?? 0) >= (hf.raise ?? 0);
           })();
+        // PROCEDÊNCIA (25/08): esta é a cascata que CHEGA AO CARD — `SOURCE_LABEL[sourceVariant]`
+        // é o que o jogador lê. O primeiro conserto pôs o gate na cascata `_src`, que alimenta
+        // `verdict.source`, e esse campo não é renderizado em lugar nenhum: a etiqueta continuava
+        // dizendo "Solver" em decisão sem custo medido. Gate desligado por falta de consumidor —
+        // a terceira vez que este padrão aparece nesta série.
+        // Mesma fonte da outra cascata — `_semEquilibrio` vive noutro escopo, e duplicar a
+        // expressão aqui criaria duas leituras do mesmo campo que podem divergir na próxima
+        // edição. Uma linha, uma regra.
+        const semEquilibrioAqui = step.pode_falar_como_gto === false;
         const sourceVariant: DecisionSourceVariant =
+          semEquilibrioAqui                       ? "motor"     :
           step.multiway_advice                    ? "multiway"  :
           (isMultiwayStep && !step.gto_label)     ? "engine"    :  // multiway deferido → severidade do engine
           limpedPotHeuristic                      ? "heuristic" :  // pote limpado → veredito heurístico do engine
@@ -368,6 +378,7 @@ export function SidePanels({
           gto: "Solver", preflop: "Preflop", engine: "Engine",
           heuristic: t("card.srcHeuristic"), pushfold: "Push/Fold",
           multiway: t("card.srcMultiway"), na: "Spot N/A",
+          motor: t("card.srcMotor"),
         };
         const SOURCE_TOOLTIP: Record<DecisionSourceVariant, string> = {
           gto: t("card.srcGtoTip"),
@@ -376,6 +387,7 @@ export function SidePanels({
           heuristic: t("card.srcHeuristicTip"),
           pushfold: t("card.srcPushfoldTip"),
           multiway: t("card.tipMultiwayEstimate"),
+          motor: t("card.tipSemEquilibrio"),
           na: t("card.srcNaTip"),
         };
 

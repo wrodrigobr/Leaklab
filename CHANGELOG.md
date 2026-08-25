@@ -5,6 +5,51 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## Auditoria de lancamento: 3 juizes + QA reprovaram, e os bloqueios cairam (25/08)
+
+Auditoria com tres papeis num torneio nunca auditado. **Os tres juizes de poker e o QA
+reprovaram.** O que caiu:
+
+**1. Recomendacao de all-in desproporcional ao pote.** Os tres juizes pegaram o mesmo: o card
+mandava jogar 9x, 17x, 19x e ate **22x o pote** com Ts2h, Kc4d, AdKs. Medido na camada viva:
+**22 de 40 all-ins postflop passavam de 3x o pote, 9 passavam de 8x**.
+
+A origem NAO era o motor -- reprocessando as mesmas maos, `evaluate_decision` devolve `check`.
+Quem manda o jam e o **no do solver consultado ao vivo** (`verdict_layer: live`,
+`gto_action: allin`) num spot de SPR ~10: no de profundidade errada vazando para spot fundo.
+Teto de proporcionalidade (3x, onde 129 das 130 recomendacoes gravadas se concentram) aplicado
+no motor E na porta do /replay. O no em si continua a corrigir -- o teto e rede, nao conserto.
+
+**2. Backdoor no turn: a medicao que aprovou a poda tinha o denominador errado.** O QA mostrou
+que eu media so as decisoes que ENFRENTAM aposta, quando o ramo em que o draw decide a zona de
+range e o do hero agindo SEM aposta na frente. A segunda sonda tambem estava cega (injetava no
+dict ja montado, quando a conta acontece no pipeline). Medicao valida, com monkeypatch e
+reprocesso: **1 veredito muda em 163 (0,6%)**, e a acusacao nova e JUSTA -- `QhAh` em
+`8h 9c 4c Ad` vinha sendo absolvido por 10 pontos de equity de um projeto inexistente.
+
+**3. O gate na tela estava na cascata errada.** `_src` alimenta `verdict.source`, que NAO e
+renderizado. Quem chega ao card e `sourceVariant`. A etiqueta seguia dizendo "Solver", com o
+visual de autoridade maxima, em decisao sem custo medido. Terceira vez nesta serie que um gate
+fica desligado por falta de consumidor.
+
+**4. O gate multiway existia no card e nao no texto.** O mesmo spot recebia "≈ Aproximacao" no
+card e PERMISSAO para escrever "leak" na narrativa.
+
+**5. Assercao morta.** `test_o_flush_MAXIMO...` chamava `p.to_string()` sob `hasattr` -- metodo
+que nao existe -- comparando contra string vazia. Passava sempre.
+
+**6. O golden de reconciliacao virou deterministico.** Ele dependia de o solve chegar a tempo:
+verde aos 969s, vermelho aos 1.629s, fazendo intermitencia de TIMING parecer regressao de
+veredito (custou duas investigacoes). Agora exige que duas leituras consecutivas concordem.
+
+**Golden regenerado com 3 mudancas, todas pretendidas:** dois `jam -> bet` (o teto) e um
+`call -> fold` com `52o` no turn, mao que so "valia call" pelo backdoor falso.
+
+**Duas das tres invariantes que apareceram vermelhas na varredura eram do INSTRUMENTO:** o
+dossie nao copiava `verdict_source` (411/411 "sem procedencia" medindo o proprio dossie), e a
+sonda tratava equity `0.0` como ausente -- quando no river zero e o valor CORRETO para mao sem
+par contra quem continua.
+
 ## O gate de linguagem GTO fechou no TEXTO e na TELA (25/08)
 
 A procedencia foi entregue e o validador apontou o que faltava: quem de fato escreve

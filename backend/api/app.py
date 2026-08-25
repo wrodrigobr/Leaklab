@@ -6363,6 +6363,38 @@ def _procedencia_da_linha(d):
         d.get('street'))
 
 
+# Teto de proporcionalidade do all-in RECOMENDADO. Um jam so e jogada quando o dinheiro ja
+# esta comprometido: com stack muito maior que o pote, all-in nao e "a versao forte da aposta",
+# e outra jogada. 3x e onde as recomendacoes que passam pelo solver se concentram (129 de 130
+# do acervo estao abaixo disso).
+_TETO_JAM_SOBRE_POTE = 3.0
+_ACOES_DE_JAM = ('allin', 'shove', 'jam', 'all-in')
+
+
+def _best_action_proporcional(best, pot_bb, stack_bb):
+    """Troca all-in por `bet` quando o jam recomendado e desproporcional ao pote.
+
+    Tres juizes de poker independentes pegaram isto em 25/08: o card recomendava all-in de 9x,
+    17x, 19x e ate **22x o pote** com Ts2h, Kc4d, AdKs. A origem NAO era o motor -- reprocessando
+    as mesmas maos, `evaluate_decision` devolve `check`. Quem manda o jam e o NO DO SOLVER
+    consultado ao vivo (`verdict_layer: live`, `gto_action: allin`), num spot de SPR ~10: e no
+    de profundidade errada vazando para um spot fundo, a mesma familia ja registrada em
+    [[project_degenerate_pot_nodes]].
+
+    O teto e uma REDE, nao um substituto do conserto do no: enquanto a captura nao for revista,
+    ele impede que a tela mande o aluno colocar o torneio inteiro num pote de 5bb.
+    """
+    if (best or '').lower() not in _ACOES_DE_JAM:
+        return best
+    try:
+        pote, stack = float(pot_bb or 0), float(stack_bb or 0)
+    except (TypeError, ValueError):
+        return best
+    if pote > 0 and stack > _TETO_JAM_SOBRE_POTE * pote:
+        return 'bet'
+    return best
+
+
 def _pode_falar_como_gto_da_linha(d, multiway=None):
     """O gate COMPLETO para uma linha: procedencia + custo + a recusa em graduar multiway.
 
@@ -7664,7 +7696,13 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
             # a falsa confiança que a procedência existe para eliminar, agora com carimbo de
             # autoridade. Medido no torneio 7: 3 de 4 spots multiway postflop faziam isso.
             'pode_falar_como_gto': _pode_falar_como_gto_da_linha(decision, multiway=_mw_spot),
-            'best_action':        reconciled_best                                    if decision else None,
+            'best_action':        (_best_action_proporcional(
+                                       reconciled_best,
+                                       (decision.get('pot_at_decision_bb')
+                                        or decision.get('pot_size')),
+                                       (decision.get('effective_stack_bb')
+                                        or decision.get('stack_bb')))
+                                   if decision else None),
             'engine_best':        engine_best if (gto_engine_conflict or gto_spot_mismatch) else None,
             'gto_label':          (None if _mw_spot else gto_label),
             'gto_action':         preflop_override_action or live_top_act or gto_action,

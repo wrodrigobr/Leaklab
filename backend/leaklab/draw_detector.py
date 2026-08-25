@@ -94,6 +94,31 @@ def detect_draws(hero_cards: str, board: List[str]) -> DrawProfile:
     profile.flush_draw, profile.backdoor_flush_draw = _detect_flush_draws(all_cards)
     profile.oesd, profile.gutshot, profile.backdoor_straight_draw = _detect_straight_draws(all_cards)
 
+    # ── Backdoor SÓ existe no flop ────────────────────────────────────────────────────────────
+    #
+    # Backdoor precisa de DUAS cartas por vir. No turn resta uma; no river, nenhuma. O detector
+    # olhava só as cartas, nunca quantas faltavam, e por isso rotulava o turn inteiro: medido no
+    # acervo, **639 de 870 decisões de turn (73%)**. O caso que mostra o tamanho do absurdo é
+    # `As3s` em `Qs 8s 9s Ad` — FLUSH MÁXIMO FEITO — descrito como projeto de sequência backdoor.
+    #
+    # O rótulo carrega um boost de equity (+0,06 / +0,04), então tirá-lo pode mover veredito.
+    #
+    # A PRIMEIRA medição errou o denominador: olhou só as decisões que ENFRENTAM aposta e
+    # concluiu "nenhum veredito muda". Mas o ramo em que o rótulo de draw decide a ZONA DE RANGE
+    # é `_eval_no_bet` — o hero agindo SEM aposta na frente, exatamente o conjunto excluído. E a
+    # segunda sonda também estava cega: injetava `drawProfile` no dict já montado, quando a conta
+    # acontece no pipeline, antes do dict existir. O controle denunciou as duas (zero até com o
+    # boost forjado em +0,50).
+    #
+    # Medição válida (monkeypatch do detector + reprocesso do pipeline, controle vivo em 2 de
+    # 366): **1 veredito muda em 163 decisões com backdoor (0,6%)** — `marginal` →
+    # `small_mistake` em `QhAh` no board `8h 9c 4c Ad`. O hero deu raise comprometendo 26,6bb num
+    # pote de 28,2 com top pair de kicker médio, e vinha sendo absolvido por 10 pontos de equity
+    # de um projeto que não existe no turn. A acusação nova é justa.
+    if len(board_parsed) >= 4:
+        profile.backdoor_flush_draw = False
+        profile.backdoor_straight_draw = False
+
     return profile
 
 

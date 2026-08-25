@@ -56,6 +56,11 @@ _CAMPOS_DO_PASSO = (
     'best_action', 'engine_best', 'error_label', 'error_score', 'is_error',
     'gto_action', 'gto_label', 'gto_coverage', 'gto_spot_mismatch', 'gto_depth_capped',
     'ev_loss_bb', 'ev_loss_motivo', 'multiway_safe', 'multiway_advice',
+    # PROCEDENCIA (25/08): de onde veio o veredito e se ele pode falar como GTO. Sem estes
+    # campos a auditoria nao consegue julgar a pergunta mais importante -- "esta acusacao tem
+    # direito a se chamar GTO?" -- e a sonda de invariante acusava 411/411 "sem procedencia"
+    # medindo o proprio dossie, nao o produto.
+    'verdict_source', 'verdict_has_cost', 'pode_falar_como_gto',
     'postflop_sizing', 'postflop_texture_sizing', 'bet_intent',
     'math_penalty', 'context_penalty',
 )

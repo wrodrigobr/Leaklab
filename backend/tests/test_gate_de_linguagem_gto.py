@@ -182,6 +182,57 @@ def test_as_TRES_portas_servem_o_gate_pela_mesma_funcao():
     print('OK  test_as_TRES_portas_servem_o_gate_pela_mesma_funcao (%d usos)' % usos)
 
 
+def test_o_texto_tambem_recusa_multiway():
+    """O card recusava multiway e o TEXTO não: o mesmo spot recebia "≈ Aproximação" no card e
+    permissão para escrever "leak" na narrativa. Gate fechado numa porta só é gate aberto."""
+    hu = _prompt({'verdict_source': 'solver', 'verdict_has_cost': True,
+                  'n_active_opponents': 1})
+    assert 'PERMISSAO' in hu, 'heads-up com solver e custo deixou de poder falar como GTO'
+
+    mw = _prompt({'verdict_source': 'solver', 'verdict_has_cost': True,
+                  'n_active_opponents': 3})
+    assert 'PROIBIDO' in mw, (
+        'multiway postflop voltou a liberar a linguagem de GTO no texto, enquanto o card se '
+        'recusa a graduar o mesmo spot')
+
+    # o gate multiway é de POSTFLOP: no preflop a carta de range vale com mesa cheia
+    pre = _prompt({'street': 'preflop', 'verdict_source': 'carta', 'verdict_has_cost': True,
+                   'n_active_opponents': 4})
+    assert 'PROIBIDO' not in pre, 'o gate multiway vazou para o preflop'
+    print('OK  test_o_texto_tambem_recusa_multiway')
+
+
+def test_a_ETIQUETA_QUE_CHEGA_AO_CARD_usa_o_gate():
+    """A cascata `_src` alimenta `verdict.source`, que NÃO é renderizado. Quem chega ao card é
+    `sourceVariant` -> `SOURCE_LABEL`. O primeiro conserto foi na cascata errada e a etiqueta
+    continuava dizendo "Solver" em decisão sem custo medido — gate desligado por falta de
+    consumidor, a terceira vez que este padrão apareceu nesta série."""
+    caminho = os.path.join(os.path.dirname(__file__), '..', '..', 'frontend', 'src',
+                           'components', 'replayer', 'SidePanels.tsx')
+    with open(caminho, encoding='utf-8') as fh:
+        fonte = fh.read()
+    i = fonte.index('const sourceVariant:')
+    fim = fonte.index(';', fonte.index('"engine";', i) if '"engine";' in fonte[i:i + 900]
+                      else i + 400)
+    cascata = chr(10).join(l.split('//')[0] for l in fonte[i:fim].split(chr(10)))
+    assert 'semEquilibrioAqui' in cascata or 'pode_falar_como_gto' in cascata, (
+        'a cascata que CHEGA AO CARD não consulta o gate: heurístico volta a ser exibido como '
+        '"Solver", com o visual de autoridade máxima')
+    # e como PRIMEIRO ramo
+    j = cascata.index('semEquilibrioAqui') if 'semEquilibrioAqui' in cascata else 0
+    k = cascata.index('multiway_advice', j)
+    assert j < k, 'o gate ficou depois de outros ramos e pode ser encoberto'
+
+    # o variant precisa existir com estilo PRÓPRIO — herdar o de `gto` seria manter a autoridade
+    card = os.path.join(os.path.dirname(__file__), '..', '..', 'frontend', 'src',
+                        'components', 'replayer', 'DecisionCard.tsx')
+    with open(card, encoding='utf-8') as fh:
+        fc = fh.read()
+    assert '"motor"' in fc, 'o variant `motor` sumiu do tipo DecisionSourceVariant'
+    assert 'motor:' in fc, 'o variant `motor` não tem estilo próprio no SOURCE_VARIANT_CLS'
+    print('OK  test_a_ETIQUETA_QUE_CHEGA_AO_CARD_usa_o_gate')
+
+
 if __name__ == '__main__':
     falhas = 0
     testes = [v for k, v in sorted(globals().items()) if k.startswith('test_')]
