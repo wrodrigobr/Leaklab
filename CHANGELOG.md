@@ -61,6 +61,18 @@ que trocava a condicao por `False` passava verde -- ela continuava achando o `la
 logo abaixo. A politica virou funcao pura em `verdict.py`, e o teste passou a exercitar
 comportamento.
 
+**8. Duas REGRESSOES que os proprios consertos criaram**, pegas pela varredura seguinte:
+
+- O teto do all-in troca `jam` por `bet`. Onde o hero JA tinha apostado, a correcao virou a
+  jogada dele: "voce errou, e o certo era o que voce fez" -- 3 casos em 55 acusacoes. E a
+  invariante #4 do catalogo, criada pelo meu proprio conserto. Agora o teto rebaixa junto.
+- O piso de custo vivia so no motor, e o `/replay` RECOMPUTA o rotulo: **12 de 25 acusacoes
+  ainda saiam com custo abaixo de 0,10bb**. Mesmo padrao que ja custou duas voltas com o score.
+
+Os guardas dos dois precisaram de segunda volta pelo mesmo motivo de sempre: olhavam o EFEITO
+(`label = 'marginal'`) e nao a CONDICAO, entao a mutacao que troca o `if` por `False` passava
+verde. Terceira vez nesta serie.
+
 **Duas das tres invariantes que apareceram vermelhas na varredura eram do INSTRUMENTO:** o
 dossie nao copiava `verdict_source` (411/411 "sem procedencia" medindo o proprio dossie), e a
 sonda tratava equity `0.0` como ausente -- quando no river zero e o valor CORRETO para mao sem

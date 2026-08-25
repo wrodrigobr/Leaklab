@@ -1832,6 +1832,14 @@ def evaluate_decision(input_data: Dict[str, Any]) -> Dict[str, Any]:
         if _pote_bb > 0 and _stack_bb > _TETO_JAM_SOBRE_POTE * _pote_bb:
             # `bet` e a agressao proporcional; o tamanho quem diz e o bloco de sizing.
             _best_action = 'bet'
+            # E se o hero JA apostou, a correcao virou a propria jogada dele. Acusar ali e dizer
+            # "voce errou, e o certo era o que voce fez" -- a contradicao que a invariante #4 do
+            # catalogo existe para pegar, e que este teto criou em 3 casos na varredura.
+            # O desvio, se houver, e de TAMANHO, e quem fala de tamanho e o bloco de sizing.
+            if (_action_family(input_data.get('player_action', '')) == 'raise'
+                    and label in ('small_mistake', 'clear_mistake')):
+                label = 'marginal'
+                final_score = min(final_score or 0.0, _LABEL_MAX_SCORE['marginal'])
 
     # Shove == call (excesso impagavel): a tela mostra a acao REAL, e quando o melhor e o call
     # ela passa a mostrar a acao do jogador — porque sao a MESMA jogada, e exibir "melhor: call"

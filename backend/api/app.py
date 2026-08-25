@@ -7674,12 +7674,21 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
             # (não do label antigo do DB); preserva clear/small; floora small_mistake quando is_error.
             # Fase 2: cauda segura graduada (multiway_safe_label) tem precedência — veredito
             # REAL (small_mistake/standard) em vez do None informativo. Senão, lógica de hoje.
-            'error_label':        _el_efetivo,
             # Alinhado ao label EXIBIDO (`_el_efetivo`), nao ao gravado. O label aqui e
             # RECOMPUTADO ao vivo e costuma ser mais severo que o do banco; o score vinha da
             # coluna, entao a tela mostrava `small_mistake` com score 0. O backfill de 24/08
             # corrigiu a COLUNA e esta porta continuou servindo o numero velho -- duas portas
             # para o mesmo fato, uma consertada. Medido no torneio 7: 61 de 485 abaixo do piso.
+            # PISO DE CUSTO tambem na camada VIVA: o `_el_efetivo` e RECOMPUTADO aqui, entao a
+            # regra aplicada no motor nao alcanca este rotulo. Medido depois do deploy do piso:
+            # 12 acusacoes de 25 ainda saiam com custo abaixo de 0,10bb -- porque o piso vivia so
+            # de um lado. Mesmo padrao que ja custou duas voltas com o score.
+            'error_label':        (('marginal'
+                                    if (_el_efetivo in ('small_mistake', 'clear_mistake')
+                                        and _verdict_mod.custo_irrelevante_para_acusar(
+                                            decision.get('ev_loss_bb')))
+                                    else _el_efetivo)
+                                   if decision else _el_efetivo),
             'error_score':        (_align_score_to_label(_el_efetivo, decision.get('score'),
                                                           decision.get('ev_loss_bb'))
                                    if decision else None),

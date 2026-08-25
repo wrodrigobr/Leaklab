@@ -295,6 +295,48 @@ def test_o_piso_NAO_virou_anistia_geral():
     print('OK  test_o_piso_NAO_virou_anistia_geral')
 
 
+def test_o_teto_do_allin_nao_cria_contradicao_com_a_jogada():
+    """O teto troca `jam` por `bet`. Se o hero JÁ apostou, a correção virou a própria jogada dele
+    — "você errou, e o certo era o que você fez".
+
+    Apareceu na varredura logo depois de o teto entrar: 3 casos em 55 acusações. É a invariante
+    #4 do catálogo, criada pelo meu próprio conserto."""
+    caminho = os.path.join(os.path.dirname(__file__), '..', 'leaklab', 'decision_engine_v11.py')
+    with open(caminho, encoding='utf-8') as fh:
+        fonte = fh.read()
+    i = fonte.index('_TETO_JAM_SOBRE_POTE * _pote_bb')
+    bloco = fonte[i:i + 1000]
+    codigo = chr(10).join(l.split('#')[0] for l in bloco.split(chr(10)))
+    assert "_best_action = 'bet'" in codigo, 'o teto parou de trocar o jam por bet'
+    # A CONDIÇÃO, não só o efeito: uma mutação que troca o `if` por `False` mantém o
+    # `label = 'marginal'` logo abaixo e passaria verde. Terceira vez que este padrão aparece
+    # nesta série — o teste tem que olhar o que a mutação remove.
+    assert "_action_family(input_data.get('player_action'" in codigo, (
+        'o teto voltou a deixar acusação de pé quando a recomendação virou a jogada do hero: '
+        'a condição que compara a ação do hero sumiu')
+    assert "label = 'marginal'" in codigo, 'o rebaixamento sumiu'
+    print('OK  test_o_teto_do_allin_nao_cria_contradicao_com_a_jogada')
+
+
+def test_o_piso_de_custo_vale_na_camada_VIVA():
+    """O `/replay` RECOMPUTA o `error_label`, então a regra aplicada no motor não o alcança.
+
+    Medido depois do deploy do piso: 12 de 25 acusações ainda saíam com custo abaixo de 0,10bb,
+    porque o piso vivia só de um lado. É o padrão que já custou duas voltas com o score — regra
+    que decide o que o jogador vê tem que valer nas DUAS camadas."""
+    caminho = os.path.join(os.path.dirname(__file__), '..', 'api', 'app.py')
+    with open(caminho, encoding='utf-8') as fh:
+        fonte = fh.read()
+    i = fonte.index("'error_label':")
+    trecho = fonte[i:i + 600]
+    codigo = chr(10).join(l.split('#')[0] for l in trecho.split(chr(10)))
+    assert 'custo_irrelevante_para_acusar' in codigo, (
+        'a camada viva do /replay voltou a servir acusação com custo irrelevante: o piso do '
+        'motor não alcança o label recomputado')
+    assert "'marginal'" in codigo, 'o piso da camada viva parou de rebaixar'
+    print('OK  test_o_piso_de_custo_vale_na_camada_VIVA')
+
+
 if __name__ == '__main__':
     falhas = 0
     testes = [v for k, v in sorted(globals().items()) if k.startswith('test_')]
