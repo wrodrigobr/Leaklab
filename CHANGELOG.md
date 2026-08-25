@@ -36,7 +36,21 @@ pote real naquele dia, entao decisao NOVA ja e solvada certo. Os 524 nos sao leg
 **Agora ha piso no guarda de pote.** `pote_implausivel` so tinha teto; pote abaixo de 1,0bb (SB +
 BB, antes de antes) no postflop nao e pote pequeno, e pote errado -- e nao vai mais para o solver.
 
-**Re-solve dimensionado, NAO disparado:** 59s por no medidos, 8 vCPU com 2 solves simultaneos ->
+**Re-solve DISPARADO** (`scripts/resolve_nos_de_allin_com_pote_errado.py`). Lote de prova com 3
+nos antes dos demais: os tres voltaram com **check 60%, bet 59%, bet 55%** e exploitability de
+0,9% a 2,0% -- nenhum all-in, onde antes os tres eram jam.
+
+O script pula os nos cujo `spot_hash` MUDA ao remontar o payload (**14 de 388**): deletar o no
+antigo e gravar noutro endereco deixaria a decisao sem cobertura e o solve novo orfao -- a
+armadilha de [[project_board_hash_bug]]. Eles ficam contados e nomeados, nao silenciados.
+
+O `DELETE` antes do enqueue e obrigatorio: a blindagem do upsert ("nao piora a exploitability")
+bloquearia o solve novo, porque o no do pote errado converge para ~0,01 **fraudulentamente
+perfeito** -- arvore pequena converge facil. Em 14/08 isso bloqueou 40 de 40 re-solves em
+silencio, e foi a mesma exploitability baixa que me fez descartar a hipotese "no mal convergido"
+horas antes.
+
+**Custo dimensionado:** 59s por no medidos, 8 vCPU com 2 solves simultaneos ->
 **3,2h para os 388 nos usados**, 4,3h para os 524. E CPU do servidor que atende o produto ao
 vivo, entao a decisao de quando disparar e do dono.
 
