@@ -131,6 +131,57 @@ def test_o_texto_da_fonte_esta_traduzido_nos_tres_locales():
     print('OK  test_o_texto_da_fonte_esta_traduzido_nos_tres_locales')
 
 
+def _gate(**linha):
+    """Chama o helper REAL do app com uma linha gravada."""
+    import importlib
+    app = importlib.import_module('api.app')
+    return app._pode_falar_como_gto_da_linha(linha)
+
+
+def test_o_gate_da_linha_recusa_multiway_e_heuristico():
+    """Comportamento, não fiação. As três recusas que importam, cada uma com o seu controle."""
+    solver_hu = dict(street='turn', gto_label='gto_critical', ev_loss_bb=1.2,
+                     ev_loss_source='solver_hand', n_active_opponents=1)
+    assert _gate(**solver_hu) is True, 'nó do solver heads-up com custo deixou de poder falar GTO'
+
+    # multiway: o produto se recusa a graduar, então não pode acusar com autoridade de gabarito
+    mw = dict(solver_hu, n_active_opponents=3)
+    assert _gate(**mw) is False, 'multiway voltou a liberar a linguagem de GTO'
+
+    # equilíbrio sem custo medido
+    sem_custo = dict(solver_hu, ev_loss_bb=None, ev_loss_source=None)
+    assert _gate(**sem_custo) is False, 'equilíbrio sem custo voltou a poder acusar'
+
+    # heurístico puro
+    motor = dict(street='flop', gto_label=None, ev_loss_bb=None, ev_loss_source=None,
+                 n_active_opponents=1)
+    assert _gate(**motor) is False, 'heurístico voltou a poder dizer leak'
+
+    # multiway no PREFLOP não é o caso: o solver HU-only é problema de postflop
+    pre = dict(street='preflop', gto_label='gto_critical', ev_loss_bb=0.9,
+               ev_loss_source='gw_har', n_active_opponents=4)
+    assert _gate(**pre) is True, (
+        'o gate multiway vazou para o preflop, onde a carta de range vale com mesa cheia')
+    print('OK  test_o_gate_da_linha_recusa_multiway_e_heuristico')
+
+
+def test_as_TRES_portas_servem_o_gate_pela_mesma_funcao():
+    """Regra 5. O `/replay` tinha a expressão inline e a lista do torneio não tinha nada — ela
+    servia o veredito sem dizer se ele tem direito à linguagem de GTO."""
+    caminho = os.path.join(os.path.dirname(__file__), '..', 'api', 'app.py')
+    with open(caminho, encoding='utf-8') as fh:
+        fonte = fh.read()
+    codigo = chr(10).join(l.split('#')[0] for l in fonte.split(chr(10)))
+    usos = codigo.count('_pode_falar_como_gto_da_linha(')
+    assert usos >= 3, (
+        'o helper do gate é usado em %d lugares (definição + chamadas): alguma porta voltou a '
+        'servir veredito sem o gate, ou a decidir sozinha' % usos)
+    # e ninguém pode ter voltado a montar a regra inline
+    assert 'False if _mw_spot else _verdict_mod.pode_falar_como_gto' not in codigo, (
+        'a regra do gate voltou a ser montada inline — segunda porta para o mesmo fato')
+    print('OK  test_as_TRES_portas_servem_o_gate_pela_mesma_funcao (%d usos)' % usos)
+
+
 if __name__ == '__main__':
     falhas = 0
     testes = [v for k, v in sorted(globals().items()) if k.startswith('test_')]

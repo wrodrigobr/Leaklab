@@ -1305,6 +1305,11 @@ def history_tournament(tournament_id):
     for d in decisions:
         d['has_annotation'] = d['id'] in annotated
         d['note'] = _enrich_note(d)
+        # A lista servia o veredito sem dizer se ele tem direito a linguagem de GTO. Mesmo gate
+        # do /replay, mesma funcao — a alternativa era uma terceira porta para o mesmo fato.
+        d['verdict_source'] = _procedencia_da_linha(d)
+        d['verdict_has_cost'] = _tem_custo_da_linha(d)
+        d['pode_falar_como_gto'] = _pode_falar_como_gto_da_linha(d)
     return jsonify({'tournament': t, 'decisions': decisions})
 
 
@@ -6358,6 +6363,32 @@ def _procedencia_da_linha(d):
         d.get('street'))
 
 
+def _pode_falar_como_gto_da_linha(d, multiway=None):
+    """O gate COMPLETO para uma linha: procedencia + custo + a recusa em graduar multiway.
+
+    Existe como funcao porque ele e consultado em mais de uma porta (o `/replay` e a lista do
+    torneio), e a regra 5 deste projeto e explicita: regra em N lugares vira funcao. A versao
+    anterior tinha a expressao inline no /replay e NADA na lista -- a lista servia o veredito
+    sem dizer se ele tem direito a linguagem de GTO.
+
+    `multiway=None` deixa a funcao inferir de `n_active_opponents` + street; o /replay passa o
+    proprio `_mw_spot`, que ja considera os casos que so ele conhece.
+    """
+    if not d:
+        return False
+    if multiway is None:
+        try:
+            n_opp = int(d.get('n_active_opponents') or 0)
+        except (TypeError, ValueError):
+            n_opp = 0
+        multiway = n_opp >= 2 and (d.get('street') or '').lower() != 'preflop'
+    if multiway:
+        # O solver e HU-only: em multiway o produto se RECUSA a graduar, e liberar a palavra
+        # "leak" ali seria acusar com a autoridade de um gabarito que nao existe.
+        return False
+    return _verdict_mod.pode_falar_como_gto(_procedencia_da_linha(d), _tem_custo_da_linha(d))
+
+
 def _tem_custo_da_linha(d):
     """Existe EV em bb de fonte que vale como quantidade, nesta linha gravada?"""
     if not d:
@@ -7632,8 +7663,7 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
             # seria dizer "não posso te dar o veredito" e "pode escrever leak" no mesmo objeto —
             # a falsa confiança que a procedência existe para eliminar, agora com carimbo de
             # autoridade. Medido no torneio 7: 3 de 4 spots multiway postflop faziam isso.
-            'pode_falar_como_gto': (False if _mw_spot else _verdict_mod.pode_falar_como_gto(
-                _procedencia_da_linha(decision), _tem_custo_da_linha(decision))),
+            'pode_falar_como_gto': _pode_falar_como_gto_da_linha(decision, multiway=_mw_spot),
             'best_action':        reconciled_best                                    if decision else None,
             'engine_best':        engine_best if (gto_engine_conflict or gto_spot_mismatch) else None,
             'gto_label':          (None if _mw_spot else gto_label),

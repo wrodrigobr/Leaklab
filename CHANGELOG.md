@@ -26,6 +26,13 @@ PRIMEIRO ramo dela: quando ele diz que nao ha equilibrio, a etiqueta vira "Motor
 que EXPLICA (nos 3 locales) que a avaliacao vem de equity e pot odds, e deve ser tratada como
 orientacao, nao teoria.
 
+**A lista do torneio tambem fechou.** Ela servia o veredito sem dizer se ele tem direito a
+linguagem de GTO. O gate virou funcao unica (`_pode_falar_como_gto_da_linha`) usada pelo
+`/replay` e pela lista -- regra 5. A funcao aplica procedencia + custo + a recusa em graduar
+multiway, e infere multiway de `n_active_opponents` quando o chamador nao sabe; o `/replay`
+passa o proprio `_mw_spot`, que conhece casos que a linha nao mostra. O gate multiway NAO vale
+no preflop: ali a carta de range vale com mesa cheia.
+
 **Por que o teste le o PROMPT e nao a saida do modelo:** a saida do LLM nao e deterministica, e
 testa-la seria testar o modelo. O que o produto controla e o que ele PEDE.
 

@@ -233,9 +233,14 @@ def test_multiway_NAO_libera_a_linguagem_de_GTO():
     assert '_mw_spot' in codigo, (
         'o gate multiway sumiu de `pode_falar_como_gto`: spot que o produto se recusa a graduar '
         'volta a poder falar como GTO')
-    # e o gate tem que estar do lado que NEGA
-    assert 'False if _mw_spot' in codigo or 'not _mw_spot' in codigo, (
-        'o gate multiway está invertido ou frouxo: %s' % codigo.strip()[:120])
+    # A regra passou a viver no helper `_pode_falar_como_gto_da_linha` (regra 5: a mesma decisão
+    # é tomada no /replay e na lista do torneio). Aqui basta provar que o /replay ENTREGA o seu
+    # `_mw_spot` ao helper — a NEGAÇÃO em si tem teste de comportamento próprio em
+    # `test_gate_de_linguagem_gto.py::test_o_gate_da_linha_recusa_multiway_e_heuristico`.
+    assert 'multiway=_mw_spot' in codigo, (
+        'o /replay parou de passar o próprio `_mw_spot` ao gate: ele voltaria a inferir multiway '
+        'só de `n_active_opponents` e perderia os casos que só o replay conhece — %s'
+        % codigo.strip()[:110])
     print('OK  test_multiway_NAO_libera_a_linguagem_de_GTO')
 
 
