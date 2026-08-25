@@ -439,6 +439,12 @@ REGRAS OBRIGATÓRIAS — NÃO VIOLE
 6. Para flop/turn/river: pule a seção Range GTO de range tables — use o bloco "── GTO SOLVER ──" quando presente
 7. Quando o bloco GTO SOLVER estiver presente, use-o como verdade objetiva na análise — não estime o que o solver diria
 8. Nunca mencione "GTO Wizard" — use sempre "GTO Solver"
+9. REGRA DE PROCEDÊNCIA (acima de todas as outras): cada decisão traz um bloco
+   "── PROCEDENCIA DO VEREDITO ──". Quando ele disser PROIBIDO, você NÃO pode usar as palavras
+   "GTO", "leak", "equilíbrio" ou "solver" para julgar aquela decisão, e NÃO pode escrever a
+   seção "Range GTO" nem "GTO Postflop" para ela. Escreva como leitura do motor: equity, pot
+   odds, posição, stack. Afirmar equilíbrio sem equilíbrio medido é o erro mais caro que este
+   produto pode cometer — o aluno decora a linha errada achando que é teoria.
 7. A seção "💡 A Lição" DEVE referenciar padrão específico desta sessão — nunca genérica
 8. A síntese "📈 Relatório de Padrões" é obrigatória — não omita mesmo com poucos erros
 9. Português do Brasil, tom técnico e direto
@@ -504,6 +510,48 @@ REGRAS OBRIGATÓRIAS — NÃO VIOLE
                 f"\nPadrão recorrente: {leak_type} apareceu "
                 f"{error_pattern_tracker[leak_type]}x nesta sessão."
             )
+
+        # ── PROCEDÊNCIA: esta decisão tem direito à linguagem de GTO? ─────────────────────
+        #
+        # O gerador é quem de fato escreve "Range GTO" e "Ação GTO recomendada" na tela do
+        # jogador, e até 25/08 ele não perguntava de ONDE veio o veredito. Medido no acervo:
+        # 14,8% das decisões são heurístico puro e 38% das acusações em que a carta reprova a
+        # jogada saem sem um bb de custo — todas falando como equilíbrio.
+        #
+        # Quando não há equilíbrio COM custo, o texto tem que dizer que é leitura do motor. Não
+        # é modéstia: é a diferença entre ensinar e afirmar sem base.
+        from leaklab.verdict import (procedencia as _proc, tem_custo_medido as _tem_custo,
+                                     pode_falar_como_gto as _pode_gto)
+        _gto_para_proc = d.get('gto') or (
+            {'available': True, 'ev_loss_bb': d.get('ev_loss_bb'),
+             'ev_loss_source': d.get('ev_loss_source')}
+            if (d.get('gto_label') or d.get('ev_loss_bb') is not None) else None)
+        _src = d.get('verdict_source') or _proc(_gto_para_proc, pfgto, street)
+        _custo = (d.get('verdict_has_cost') if d.get('verdict_has_cost') is not None
+                  else _tem_custo(_gto_para_proc, pfgto))
+        _pode = _pode_gto(_src, _custo)
+        _ROTULO_ORIGEM = {
+            'solver': 'no do solver resolvido para este spot',
+            'carta':  'carta de range preflop (equilibrio)',
+            'motor':  'heuristica do motor (equity, pot odds, posicao) — NAO e GTO',
+        }
+        _NL = chr(10)
+        _proibicao = (
+            "  PROIBIDO: NAO use as palavras 'GTO', 'leak', 'equilibrio' nem 'solver' para"
+            " julgar esta decisao. Nao ha equilibrio com custo medido por tras dela. Escreva"
+            " como LEITURA DO MOTOR: fale de equity, pot odds, posicao e stack. Se nao houver"
+            " base para afirmar que foi erro, diga que a jogada e defensavel e explique o"
+            " trade-off, em vez de acusar."
+        )
+        _permissao = "  PERMISSAO: pode usar a linguagem de GTO (equilibrio com custo medido)."
+        procedencia_block = _NL.join([
+            "",
+            "── PROCEDENCIA DO VEREDITO ──",
+            "  Origem: %s" % _ROTULO_ORIGEM.get(_src, _src),
+            "  Custo em bb medido: %s" % ('SIM' if _custo else 'NAO'),
+            _permissao if _pode else _proibicao,
+            "",
+        ])
 
         # Bloco Range GTO preflop
         pfgto_block = ''
@@ -632,6 +680,9 @@ REGRAS OBRIGATÓRIAS — NÃO VIOLE
             f"range: {bd.get('rangePenalty',0):.3f} | "
             f"contexto: {bd.get('contextPenalty',0):.3f}"
             + pattern_note
+            # A procedencia vem ANTES dos blocos de dados: ela decide se o modelo pode usar a
+            # linguagem de GTO sobre o que vem depois.
+            + procedencia_block
             + pfgto_block
             + gto_solver_block
             + bet_intent_block

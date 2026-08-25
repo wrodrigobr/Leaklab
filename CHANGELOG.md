@@ -5,6 +5,36 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## O gate de linguagem GTO fechou no TEXTO e na TELA (25/08)
+
+A procedencia foi entregue e o validador apontou o que faltava: quem de fato escreve
+"Range GTO" e "Acao GTO recomendada" na tela e o `llm_explainer`, e ele **nao consultava o
+gate**. As 189 acusacoes sem custo que motivaram todo o trabalho saiam por ali. E o frontend nao
+lia nenhum dos tres campos -- a entrega tornava o dano mensuravel sem corrigi-lo.
+
+**No gerador de texto:** cada decisao passa a levar um bloco `── PROCEDENCIA DO VEREDITO ──` no
+prompt, com a origem, se ha custo em bb e uma linha de PERMISSAO ou PROIBICAO. Quando nao ha
+equilibrio COM custo, a instrucao e explicita: nao usar "GTO", "leak", "equilibrio" nem
+"solver"; escrever como leitura do motor (equity, pot odds, posicao, stack) e, sem base para
+afirmar erro, dizer que a jogada e defensavel e explicar o trade-off em vez de acusar. A regra
+entrou no system prompt declarada **acima de todas as outras**, porque o mesmo prompt manda
+escrever a secao "Range GTO" logo acima -- sem precedencia, as duas instrucoes competem.
+
+**Na tela:** o card ja tinha uma cascata que derivava a etiqueta de fonte ("Solver", "Preflop",
+"Engine") de campos locais -- uma segunda porta para o mesmo fato. Agora o gate do backend e o
+PRIMEIRO ramo dela: quando ele diz que nao ha equilibrio, a etiqueta vira "Motor" com um tooltip
+que EXPLICA (nos 3 locales) que a avaliacao vem de equity e pot odds, e deve ser tratada como
+orientacao, nao teoria.
+
+**Por que o teste le o PROMPT e nao a saida do modelo:** a saida do LLM nao e deterministica, e
+testa-la seria testar o modelo. O que o produto controla e o que ele PEDE.
+
+**Guarda:** `test_gate_de_linguagem_gto.py` (6 testes), quebrado de proposito quatro vezes. A
+mutacao "a tela volta a derivar sozinha" passou VERDE na primeira: o teste olhava uma janela ao
+redor da cascata e aceitava a DECLARACAO da variavel, mesmo com ela removida do ramo que decide.
+Agora extrai a expressao da cascata a partir do `=` -- a anotacao de tipo
+`{ name: string; tip: string }` tem um `;` dentro, e cortar nele devolvia so o cabecalho.
+
 ## PROCEDENCIA do veredito: todo veredito diz de onde veio (24/08)
 
 **A pergunta do dono:** "o que precisamos para garantir que o veredito seja confiavel?" A

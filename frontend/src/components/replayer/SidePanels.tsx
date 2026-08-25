@@ -204,8 +204,15 @@ export function SidePanels({
     // Dirigido pela SEVERIDADE (error_label, EV-capada) — a MESMA régua do badge de
     // aderência → card = badge por construção. A frequência (gto_label) deixou de ser
     // veredito; vive só nas barras de estratégia (contexto). Fonte = só p/ o tooltip.
+    // PROCEDÊNCIA (25/08): o backend decide se esta decisão tem direito à linguagem de GTO —
+    // exige equilíbrio (nó do solver ou carta) E custo em bb medido. A cascata abaixo deriva a
+    // etiqueta de campos locais, e isso é uma SEGUNDA porta para o mesmo fato: quando o gate
+    // disser não, ele manda. Medido no acervo: 14,8% das decisões são heurístico puro e 38% das
+    // acusações com a carta reprovando saem sem um bb de custo — todas exibidas como equilíbrio.
+    const _semEquilibrio = step.pode_falar_como_gto === false;
     const _src: { name: string; tip: string } =
-        step.multiway_advice          ? { name: t("card.srcMultiway"),  tip: t("card.tipMultiwayEstimate") }
+        _semEquilibrio                ? { name: t("card.srcMotor"),     tip: t("card.tipSemEquilibrio") }
+      : step.multiway_advice          ? { name: t("card.srcMultiway"),  tip: t("card.tipMultiwayEstimate") }
       : limpedPotHeuristic             ? { name: t("card.srcHeuristic"), tip: t("card.limpedPotTip") }
       : isMultiwayStep                 ? { name: "Engine",               tip: t("card.srcEngineTip") }
       : isShoveFb                      ? { name: t("card.srcHeuristic"), tip: t("card.srcHeuristicTip") }

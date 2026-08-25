@@ -344,6 +344,15 @@ export interface ReplayStep {
   } | null;
   gto_label?: "gto_correct" | "gto_mixed" | "gto_minor_deviation" | "gto_critical" | null;
   gto_action?: string | null;
+  // PROCEDÊNCIA do veredito (25/08): de onde veio o julgamento desta decisão.
+  //   solver = nó do solver resolvido para o spot · carta = range preflop (equilíbrio)
+  //   motor  = heurística de equity/pot odds — NÃO é GTO
+  // `pode_falar_como_gto` já combina origem + custo medido + o gate de multiway: é ele que a
+  // tela consulta, não os dois campos crus. Medido no acervo: 14,8% das decisões são heurístico
+  // puro e 38% das acusações com a carta reprovando saem sem um bb de custo.
+  verdict_source?: "solver" | "carta" | "motor" | null;
+  verdict_has_cost?: boolean | null;
+  pode_falar_como_gto?: boolean | null;
   // Fallback multiway: recomendação independente do solver HU (equity-vs-range + pot odds).
   // É ESTIMATIVA (não GTO). Quando presente, é a fonte do veredito do card.
   multiway_advice?: {

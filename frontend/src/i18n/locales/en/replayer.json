@@ -347,7 +347,9 @@
     "rangeTomada": "The villain bet into the player with initiative (donk or check-raise), a typically more polarized line.",
     "realEqTitle": "Real equity vs shown hand",
     "realEqTip": "Your hand’s equity against the hand {{villain}} showed at showdown, computed card by card on this street. It is a fact from the history, not an estimate. Use it for review, not to judge the decision: at the table you face the opponent’s whole range, and the verdict is computed against that range. Calling with low equity against the specific hand that showed up may still have been the right play against the range (and vice versa). Judging by results is the mistake analysis exists to avoid.",
-    "eqLowConfTip": "Estimated equity: we do not know the opponent’s hand, so this number is computed against a typical holding. We validated the estimator against 1,082 real showdowns where the opponent revealed their cards: on average it is accurate, but on this street 1 in 10 cases diverges by {{p90}}+ points from the real equity. Treat it as an order of magnitude, not an exact number. The verdict does not rest on it alone."
+    "eqLowConfTip": "Estimated equity: we do not know the opponent’s hand, so this number is computed against a typical holding. We validated the estimator against 1,082 real showdowns where the opponent revealed their cards: on average it is accurate, but on this street 1 in 10 cases diverges by {{p90}}+ points from the real equity. Treat it as an order of magnitude, not an exact number. The verdict does not rest on it alone.",
+    "srcMotor": "Engine",
+    "tipSemEquilibrio": "Engine read, not equilibrium. This spot has no GTO chart or solved node with a measured cost behind it: the assessment comes from equity, pot odds, position and stack. Treat it as guidance, not theory."
   },
   "controls": {
     "play": "Play",

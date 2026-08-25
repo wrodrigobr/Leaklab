@@ -79,7 +79,7 @@ SUITES = {
                   'test_evolution_cadence.py', 'test_row_access.py', 'test_sql_sem_porcentagem.py',
                   'test_portas_do_ev.py', 'test_facing_allin_row.py',
                   'test_ultima_atividade.py', 'test_prova_sem_n_mais_1.py'],
-    'llm':       ['test_llm_explainer.py', 'test_study_plan.py', 'test_study_patterns.py',
+    'llm':       ['test_llm_explainer.py', 'test_gate_de_linguagem_gto.py', 'test_study_plan.py', 'test_study_patterns.py',
                   'test_revisor_pt.py', 'test_vocabulario_da_copy.py',
                   'test_i18n_copy_do_frontend.py'],
     'api':       ['test_api_endpoints.py', 'test_subscription.py', 'test_partygaming_financials.py',
