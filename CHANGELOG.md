@@ -44,7 +44,33 @@ mutacao "a API para de servir" passou VERDE na primeira: o teste procurava a str
 `verdict_source`, que tambem aparece nos helpers que LEEM a coluna. Agora ancora na chave de
 saida.
 
-**Linhas antigas:** derivadas na leitura pela MESMA funcao, em vez de backfill. Reescrever 10 mil
+**REPROVADA na 1a validacao, e os tres GRAVES foram consertados no mesmo dia:**
+
+1. **`1 if ... else 0` numa coluna BOOLEAN do Postgres.** A suite inteira (SQLite) passava verde
+   e `save_decisions` estourava `DatatypeMismatch` em TODO upload novo. Pego pelo backfill,
+   minutos apos o deploy e antes do primeiro upload. Provado com controle em prod: booleano
+   aceito, inteiro rejeitado.
+2. **A coluna gravada era WRITE-ONLY.** O `/replay` monta um dict VIVO que substitui a linha do
+   banco, e ele nao carregava `verdict_source` -- entao o ramo "usa a coluna quando existe"
+   nunca executava. Pior: a procedencia derivava do `gto_label` GRAVADO enquanto o `error_label`
+   ao lado e RECOMPUTADO ao vivo, misturando dois instantes. Agora os dois dicts vivos (aluno e
+   coach) carregam a procedencia do MOTOR VIVO, mesma fonte de `label` e `score`.
+3. **Multiway liberava a linguagem de GTO.** O mesmo payload suprime `gto_label` e `error_label`
+   (solver e HU-only, o produto se RECUSA a graduar o spot) e servia `pode_falar_como_gto=True`.
+   Medido: **3 de 4** spots multiway postflop. Agora tem gate.
+
+O dict do COACH tambem nao carregava `ev_loss_bb`/`ev_loss_source`, entao o custo saia `False`
+so ali: mesma decisao, duas telas, respostas opostas. Alinhado.
+
+**Os guardas foram refeitos por AST.** Os primeiros eram grep de string e passavam verdes com os
+tres defeitos presentes -- o validador demonstrou isso rodando a suite. O guarda novo extrai as
+CHAVES de cada dict vivo pela arvore sintatica e exige procedencia e insumos de custo nos dois.
+
+**Linhas antigas:** backfill aplicado (10.137 linhas, 0 vazias). A escolha inicial de derivar so
+na leitura deixava o BANCO mudo: qualquer analise sobre ele -- inclusive a sonda que originou
+este trabalho -- continuava vendo 1.503 decisoes sem origem. Distribuicao do acervo:
+**64,8% tem equilibrio COM custo** (carta 46,9% + solver 17,9%); 35,2% e heuristico puro (14,8%)
+ou equilibrio sem custo medido (20,3%). Reescrever 10 mil
 linhas para um campo que o motor sabe recalcular criaria o estado "as vezes preenchida", que e
 pior que nao existir.
 

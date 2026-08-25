@@ -167,6 +167,78 @@ def test_o_custo_e_gravado_como_BOOLEANO_e_nao_0_ou_1():
     print('OK  test_o_custo_e_gravado_como_BOOLEANO_e_nao_0_ou_1')
 
 
+
+
+
+def _dicts_vivos_do_replay():
+    """Extrai, por AST, as chaves de cada `live_decisions.append({...})` do app.
+
+    Grep não serve aqui: a string aparece em comentário, em helper de leitura e no dict certo,
+    e foi exatamente assim que a versão anterior deste guarda passou verde com o defeito
+    presente. O AST enxerga a estrutura — quais chaves cada dict REALMENTE tem.
+    """
+    import ast
+    caminho = os.path.join(os.path.dirname(__file__), '..', 'api', 'app.py')
+    with open(caminho, encoding='utf-8') as fh:
+        arvore = ast.parse(fh.read())
+    achados = []
+    for no in ast.walk(arvore):
+        if not isinstance(no, ast.Call):
+            continue
+        f = no.func
+        if not (isinstance(f, ast.Attribute) and f.attr == 'append'
+                and isinstance(f.value, ast.Name) and f.value.id == 'live_decisions'):
+            continue
+        if not no.args or not isinstance(no.args[0], ast.Dict):
+            continue
+        chaves = {k.value for k in no.args[0].keys
+                  if isinstance(k, ast.Constant) and isinstance(k.value, str)}
+        achados.append((no.lineno, chaves))
+    return achados
+
+
+def test_os_DOIS_dicts_vivos_carregam_procedencia_e_insumos_do_custo():
+    """O `/replay` monta um dict VIVO que substitui a linha do banco — um para o aluno, outro
+    para o coach. Se um deles não carrega a procedência, aquela porta cai na derivação e a
+    coluna gravada vira write-only; se não carrega `ev_loss_*`, o custo sai `False` ali e a
+    MESMA decisão aparece com respostas opostas nas duas telas (foi o que acontecia).
+    """
+    dicts = _dicts_vivos_do_replay()
+    assert len(dicts) >= 2, (
+        'a varredura achou %d dicts vivos — o padrão mudou e o guarda parou de enxergar'
+        % len(dicts))
+    exigidas = {'verdict_source', 'verdict_has_cost', 'ev_loss_bb', 'ev_loss_source'}
+    faltando = []
+    for linha, chaves in dicts:
+        ausentes = exigidas - chaves
+        if ausentes:
+            faltando.append('app.py:%d sem %s' % (linha, ', '.join(sorted(ausentes))))
+    assert not faltando, (
+        'dict vivo do /replay sem os campos de procedência/custo: %s' % '; '.join(faltando))
+    print('OK  test_os_DOIS_dicts_vivos_carregam_procedencia_e_insumos_do_custo (%d dicts)'
+          % len(dicts))
+
+
+def test_multiway_NAO_libera_a_linguagem_de_GTO():
+    """Em multiway o payload suprime `gto_label` e `error_label` de propósito — o solver é
+    HU-only e o produto se recusa a graduar o spot. Liberar "leak" ali é dizer "não posso te dar
+    o veredito" e "pode acusar" no mesmo objeto. Medido: 3 de 4 spots multiway postflop faziam
+    isso antes do gate."""
+    caminho = os.path.join(os.path.dirname(__file__), '..', 'api', 'app.py')
+    with open(caminho, encoding='utf-8') as fh:
+        fonte = fh.read()
+    i = fonte.index("'pode_falar_como_gto':")
+    trecho = fonte[i:i + 400]
+    codigo = chr(10).join(l.split('#')[0] for l in trecho.split(chr(10)))
+    assert '_mw_spot' in codigo, (
+        'o gate multiway sumiu de `pode_falar_como_gto`: spot que o produto se recusa a graduar '
+        'volta a poder falar como GTO')
+    # e o gate tem que estar do lado que NEGA
+    assert 'False if _mw_spot' in codigo or 'not _mw_spot' in codigo, (
+        'o gate multiway está invertido ou frouxo: %s' % codigo.strip()[:120])
+    print('OK  test_multiway_NAO_libera_a_linguagem_de_GTO')
+
+
 if __name__ == '__main__':
     falhas = 0
     testes = [v for k, v in sorted(globals().items()) if k.startswith('test_')]

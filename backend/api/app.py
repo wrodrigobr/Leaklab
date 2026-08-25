@@ -5590,6 +5590,13 @@ def coach_student_replay(student_id, tournament_id, hand_id):
                 'label': r['evaluation']['label'], 'score': r['evaluation']['mistakeScore'],
                 'context': di.get('context', {}), 'math': di.get('math', {}),
                 'breakdown': r['evaluation'].get('scoreBreakdown', {}),
+                # Procedência e insumos do custo, iguais aos da rota do ALUNO. Sem eles o coach
+                # via `custo=False` na mesma decisão em que o aluno via `custo=True` — duas telas,
+                # respostas opostas sobre o mesmo spot.
+                'verdict_source':   r.get('verdictSource'),
+                'verdict_has_cost': r.get('verdictHasCost'),
+                'ev_loss_bb':     gto_data.get('ev_loss_bb'),
+                'ev_loss_source': gto_data.get('ev_loss_source'),
                 'gto_label':  gto_data.get('gto_label'),
                 'gto_action': gto_data.get('gto_action'),
                 'gto_depth_capped': 1 if (gto_data.get('depth_capped') or gto_data.get('gto_depth_capped')) else 0,
@@ -6449,6 +6456,13 @@ def get_replay(tournament_id, hand_id):
                 'math':         di.get('math', {}),
                 'thresholds':   r.get('thresholds', {}),
                 'breakdown':    r['evaluation'].get('scoreBreakdown', {}),
+                # PROCEDÊNCIA do veredito VIVO, na mesma fonte de `label`/`score` (o dict `r`).
+                # Ler da coluna aqui seria misturar instantes: o label é recomputado ao vivo e a
+                # coluna guarda o de ontem. Sem estes campos, `_procedencia_da_linha` caía SEMPRE
+                # no ramo de derivação e a coluna gravada virava write-only — a mesma forma do
+                # clamp que ficou desligado por não receber o argumento.
+                'verdict_source':   r.get('verdictSource'),
+                'verdict_has_cost': r.get('verdictHasCost'),
                 'gto_label':    gto_data.get('gto_label'),
                 'gto_action':   gto_data.get('gto_action'),
                 'gto_depth_capped': 1 if (gto_data.get('depth_capped') or gto_data.get('gto_depth_capped')) else 0,
@@ -7613,8 +7627,13 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
             'verdict_has_cost':   _tem_custo_da_linha(decision),
             # A tela usa isto para decidir se pode escrever "leak"/"erro contra o equilíbrio" ou
             # se precisa dizer que é leitura do motor.
-            'pode_falar_como_gto': _verdict_mod.pode_falar_como_gto(
-                _procedencia_da_linha(decision), _tem_custo_da_linha(decision)),
+            # MULTIWAY: o mesmo payload suprime `gto_label` e `error_label` porque o solver é
+            # HU-only e o produto se RECUSA a graduar o spot. Liberar a linguagem de GTO ali
+            # seria dizer "não posso te dar o veredito" e "pode escrever leak" no mesmo objeto —
+            # a falsa confiança que a procedência existe para eliminar, agora com carimbo de
+            # autoridade. Medido no torneio 7: 3 de 4 spots multiway postflop faziam isso.
+            'pode_falar_como_gto': (False if _mw_spot else _verdict_mod.pode_falar_como_gto(
+                _procedencia_da_linha(decision), _tem_custo_da_linha(decision))),
             'best_action':        reconciled_best                                    if decision else None,
             'engine_best':        engine_best if (gto_engine_conflict or gto_spot_mismatch) else None,
             'gto_label':          (None if _mw_spot else gto_label),
