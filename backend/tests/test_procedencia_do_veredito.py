@@ -141,6 +141,32 @@ def test_a_coluna_existe_nos_DOIS_backends():
     print('OK  test_a_coluna_existe_nos_DOIS_backends')
 
 
+def test_o_custo_e_gravado_como_BOOLEANO_e_nao_0_ou_1():
+    """No Postgres `verdict_has_cost` é BOOLEAN; no SQLite é INTEGER.
+
+    Gravar `1 if x else 0` passa no SQLite (dev e toda a suíte) e estoura em produção com
+    `DatatypeMismatch: column is of type boolean but expression is of type integer`. Foi o
+    backfill que pegou, minutos depois do deploy e antes do primeiro upload novo — a suíte
+    inteira estava verde com o defeito presente.
+
+    É a mesma família de [[reference_percent_sql_postgres]]: divergência de backend que o
+    SQLite do dev não enxerga.
+    """
+    caminho = os.path.join(os.path.dirname(__file__), '..', 'database', 'repositories.py')
+    with open(caminho, encoding='utf-8') as fh:
+        fonte = fh.read()
+    i = fonte.index('INSERT INTO decisions')
+    valores = fonte[max(0, i - 3000):i]
+    j = valores.index("r.get('verdictSource')")
+    trecho = valores[j:j + 400]
+    codigo = chr(10).join(l.split('#')[0] for l in trecho.split(chr(10)))
+    assert 'bool(' in codigo, (
+        'o custo voltou a ser gravado como inteiro: passa no SQLite e estoura no Postgres com '
+        'DatatypeMismatch, quebrando TODO upload novo')
+    assert '1 if r.get(' not in codigo, 'voltou o `1 if ... else 0` no valor booleano'
+    print('OK  test_o_custo_e_gravado_como_BOOLEANO_e_nao_0_ou_1')
+
+
 if __name__ == '__main__':
     falhas = 0
     testes = [v for k, v in sorted(globals().items()) if k.startswith('test_')]

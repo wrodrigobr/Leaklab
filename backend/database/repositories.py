@@ -892,7 +892,10 @@ def save_decisions(tournament_db_id: int, results: List[dict]):
                 # RAIZ do retorno do motor, não dentro de `evaluation` — ler do lugar errado
                 # devolveria None calado e gravaria a procedência vazia em toda decisão.
                 r.get('verdictSource'),
-                1 if r.get('verdictHasCost') else 0,
+                # BOOLEANO Python, não 0/1: no Postgres a coluna é BOOLEAN e um inteiro estoura
+                # `DatatypeMismatch`. O SQLite aceita True/False normalmente, então o teste local
+                # passava e só produção quebraria — o backfill pegou isto antes do primeiro upload.
+                bool(r.get('verdictHasCost')),
             ))
         conn.executemany("""
             INSERT INTO decisions
