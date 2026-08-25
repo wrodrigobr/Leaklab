@@ -198,6 +198,27 @@ def pote_implausivel(pot_bb, stack_bb, n_ativos=None) -> bool:
     pote da era em fichas: 306bb) — barra a proxima encarnacao do fichas-vs-bb mesmo em HU."""
     pot = float(pot_bb or 0)
     stack = float(stack_bb or 0)
+
+    # ── PISO: pote PEQUENO demais tambem e implausivel ────────────────────────────────────────
+    #
+    # O guarda so tinha teto. Medido em 25/08: **524 nos postflop recomendam all-in**, e o pior
+    # deles foi solvado com `pot_bb: 0.5` num flop -- impossivel, porque depois do preflop o pote
+    # tem no minimo os blinds. Com pote minusculo e stack de 60bb, o SPR DENTRO DA ARVORE passa
+    # de 100 e o solver empurra tudo para o jam.
+    #
+    # A prova nao e teorica. Re-solvando o MESMO spot (`9hJd` em `5h 7s 7c`, 61bb) so trocando o
+    # pote:
+    #     pot_bb 0.5 -> HTTP 500: "spot requer 7.2GB, excede o limite de 6GB"
+    #     pot_bb 3.0 -> 59s, exploitability 2,5%, estrategia **check 67,6% / bet_50pct 32,4%**
+    # O all-in era artefato do pote, nao estrategia. E o pote 0,5 vinha do `pot_size`, a
+    # reconstrucao que o proprio codigo declara acertar 1,2% (`spot.potBb` so passou a apontar
+    # para o pote real em 24/08 -- estes nos sao legado anterior a isso).
+    #
+    # 1,0bb e o piso FISICO do postflop: small blind + big blind, antes de qualquer ante. Abaixo
+    # disso o numero nao e um pote pequeno, e um pote errado.
+    if 0 < pot < 1.0:
+        return True
+
     if pot <= 2.5 * max(stack, 1.0) * 2:
         return False
     if n_ativos == 1 and pot <= 150.0:

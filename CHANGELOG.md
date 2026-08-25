@@ -5,6 +5,41 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## O all-in dos nos era o POTE ERRADO no payload do solve (25/08)
+
+Tres juizes apontaram all-in de ate 22x o pote. Investiguei e **errei tres diagnosticos** antes
+de chegar na causa -- cada um derrubado por medicao:
+
+1. "No de profundidade errada vazando" -- o bucket do no BATE com o stack real em **242 de 242**.
+2. "No mal convergido" -- a exploitability dos suspeitos e MELHOR que a dos normais (mediana
+   0,01% contra 0,15%).
+3. "Arvore degenerada com 1 size" -- o formato `check/allin` aparece igual nos dois grupos
+   (22 de 28 suspeitos, 17 de 29 do controle), entao nao distingue nada.
+
+**A causa, provada por experimento no solver de producao.** Mesmo spot (`9hJd` em `5h 7s 7c`,
+61bb), trocando SO o pote:
+
+    pot_bb 0.5  ->  HTTP 500: "spot requer 7.2GB, excede o limite de 6GB"
+    pot_bb 3.0  ->  59s, exploitability 2,5%, **check 67,6% / bet_50pct 32,4%**
+
+Com o pote certo o solver recomenda meio pote -- exatamente o que os juizes disseram ser correto.
+O all-in era artefato do pote, e o pote 0,5bb num FLOP e impossivel: depois do preflop o pote tem
+no minimo os blinds. Ele vinha do `pot_size`, a reconstrucao de 1,2% de acerto.
+
+**Minha propria medicao estava contaminada pelo mesmo numero:** os "242 nos com SPR ate 122"
+usavam `pot_size` no denominador. Refeita com o pote reconstruido (controle: 388 de 388 potes
+mudaram), sao **169 usos com SPR > 3** e o pior e SPR 21.
+
+**O conserto de enfileiramento ja existia e e de 24/08:** `spot.potBb` passou a apontar para o
+pote real naquele dia, entao decisao NOVA ja e solvada certo. Os 524 nos sao legado anterior.
+
+**Agora ha piso no guarda de pote.** `pote_implausivel` so tinha teto; pote abaixo de 1,0bb (SB +
+BB, antes de antes) no postflop nao e pote pequeno, e pote errado -- e nao vai mais para o solver.
+
+**Re-solve dimensionado, NAO disparado:** 59s por no medidos, 8 vCPU com 2 solves simultaneos ->
+**3,2h para os 388 nos usados**, 4,3h para os 524. E CPU do servidor que atende o produto ao
+vivo, entao a decisao de quando disparar e do dono.
+
 ## Auditoria de lancamento: 3 juizes + QA reprovaram, e os bloqueios cairam (25/08)
 
 Auditoria com tres papeis num torneio nunca auditado. **Os tres juizes de poker e o QA
