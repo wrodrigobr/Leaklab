@@ -3,6 +3,7 @@ from typing import Dict, Any
 import logging as _logging
 import os
 
+from leaklab import verdict as _verdict
 from leaklab.verdict import icm_zone_softens_fold
 
 _gto_log = _logging.getLogger('leaklab.gto')
@@ -1036,6 +1037,11 @@ def evaluate_decision(input_data: Dict[str, Any]) -> Dict[str, Any]:
             "evaluation": {"mistakeScore": 0.0, "label": "standard", "scoreBreakdown": {}},
             "thresholds": {},
             "interpretation": {"summary": "BB exerceu o free play — sem análise de range.", "details": []},
+            # A saída antecipada também declara procedência: sem isto ela grava NULL calado e a
+            # coluna vira "às vezes preenchida", que é pior que não existir. Aqui é `motor` por
+            # construção — não há carta nem nó para um check de BB em pote não contestado.
+            "verdictSource": _verdict.MOTOR,
+            "verdictHasCost": False,
             "gto": {"available": False},
             "preflop_gto": None,
             "debug": {"rangeZone": None, "alternativeActions": [], "rawFlags": []},
@@ -1801,6 +1807,12 @@ def evaluate_decision(input_data: Dict[str, Any]) -> Dict[str, Any]:
             "streetCapApplied": threshold_pack["streetCapApplied"],
         },
         "interpretation": interpretation,
+        # PROCEDÊNCIA: de onde veio ESTE veredito (solver / carta / motor) e se há custo em bb.
+        # Medido em 24/08: 1.503 decisões do acervo (14,8%) não sabiam responder isso, e 189 de
+        # 495 acusações com a carta reprovando saíam sem um bb de custo — usando a linguagem de
+        # GTO mesmo assim. Fonte única em `leaklab/verdict.py`.
+        "verdictSource": _verdict.procedencia(gto, preflop_gto, street),
+        "verdictHasCost": _verdict.tem_custo_medido(gto, preflop_gto),
         "gto": gto,
         "icm_zone_approx": icm_zone_approx,   # gate zona-ICM: fold ChipEV-reprovado defensável → "≈ Aproximação chipEV"
         "bet_intent": bet_intent,

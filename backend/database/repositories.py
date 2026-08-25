@@ -885,6 +885,14 @@ def save_decisions(tournament_db_id: int, results: List[dict]):
                 # Chaves de agregação (Protocolo de Progressão, Fase 0). Calculadas pelo MESMO
                 # caminho que o backfill usa — ver `familia_spot.chaves_de_decisao`.
                 *_chaves(r),
+                # PROCEDÊNCIA: de onde veio o veredito e se há custo em bb. O motor calcula
+                # (fonte única em `leaklab/verdict.py`); aqui só se grava o que ele decidiu.
+                # Ler `verdict_source` de outro lugar seria criar a segunda porta, que é o
+                # defeito mais recorrente deste projeto.
+                # RAIZ do retorno do motor, não dentro de `evaluation` — ler do lugar errado
+                # devolveria None calado e gravaria a procedência vazia em toda decisão.
+                r.get('verdictSource'),
+                1 if r.get('verdictHasCost') else 0,
             ))
         conn.executemany("""
             INSERT INTO decisions
@@ -897,8 +905,9 @@ def save_decisions(tournament_db_id: int, results: List[dict]):
                vs_position, preflop_raises_faced, hero_won_hand,
                ev_loss_bb, ev_loss_source, n_active_opponents, raise_to_bb, facing_to_call_bb,
                effective_stack_bb, facing_limp, hero_was_aggressor,
-               gto_played_freq, gto_top_freq, spot_family_key, spot_hash)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+               gto_played_freq, gto_top_freq, spot_family_key, spot_hash,
+               verdict_source, verdict_has_cost)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
         """, rows)
         _religa_anotacoes(conn, tournament_db_id, _anot_guardadas)
         conn.commit()

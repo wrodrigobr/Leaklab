@@ -130,3 +130,95 @@ def piso_por_direcao(label, gto_label, gto_action, action_taken,
     if not is_verdict_error_signal(gto_action, action_taken, played_freq, in_range):
         return label
     return label if _SEV.get(label, 0) >= _SEV['small_mistake'] else 'small_mistake'
+
+
+# ── PROCEDÊNCIA DO VEREDITO ─────────────────────────────────────────────────────────────────
+#
+# Nasceu da pergunta do dono em 24/08: "o que precisamos para garantir que o veredito seja
+# confiável?". Medido no acervo: **1.503 decisões (14,8%) não conseguem dizer de onde veio o
+# veredito** — não estão erradas, estão MUDAS, porque o campo nunca existiu. Sem ele, "confiável"
+# não é verificável nem por teste nem por auditoria: não dá para separar "o solver disse" de "o
+# motor achou" olhando o dado gravado.
+#
+# O dano concreto da ausência: 189 de 495 acusações em que a carta reprova a jogada (38%) saem
+# sem um bb de custo, e mesmo assim usam a linguagem de GTO na tela. Um juiz de poker leu o
+# sintoma sem ver o código: "quanto menos o motor sabe do custo, mais duro ele acusa".
+#
+# Vocabulário PEQUENO de propósito — três valores, mutuamente exclusivos, em ordem de força:
+
+SOLVER = 'solver'   # nó do solver postflop para ESTE spot (a resposta mais forte que existe)
+CARTA  = 'carta'    # range preflop (GW/chart) — estratégia de equilíbrio, sem EV do nó
+MOTOR  = 'motor'    # heurístico do produto: equity, pot odds, posição. NÃO é GTO.
+
+_ORDEM = (SOLVER, CARTA, MOTOR)
+
+# Fontes de EV que valem como QUANTIDADE (espelha `_EV_RELIABLE_SOURCES` do engine; a lista vive
+# lá porque é ela que gradua severidade — aqui só se pergunta se existe custo confiável).
+_FONTES_COM_CUSTO = ('gw_har', 'solver_hand', 'gto_tree', 'hand_aware')
+
+
+# Fontes de EV por ORIGEM do gabarito. A distinção não é cosmética: `gw_har` é captura do GTO
+# Wizard (uma CARTA de range), enquanto `solver_hand`/`hand_aware`/`gto_tree` são nós resolvidos
+# para aquele spot. Uma primeira versão desta função olhava só `gto.available` e classificava
+# **378 decisões preflop como `solver`** — porque no preflop o motor também preenche `gto`, com
+# `ev_loss_source: 'gw_har'`. Foi a medição por street que pegou; o campo estava preenchido e
+# errado, que é pior que vazio.
+_FONTES_DE_SOLVER = ('solver_hand', 'hand_aware', 'gto_tree')
+_FONTES_DE_CARTA = ('gw_har',)
+
+
+def procedencia(gto=None, preflop_gto=None, street=None) -> str:
+    """De ONDE veio este veredito: SOLVER, CARTA ou MOTOR. Nunca None.
+
+    `motor` não é um estado de erro — é a resposta honesta para o spot que o produto não cobre.
+    O que a procedência habilita é a regra que faltava: **só quem tem procedência `solver` pode
+    falar a linguagem de GTO na tela**; `motor` diz que é leitura do motor.
+
+    A classificação segue a FONTE do gabarito, não o `available`: os dois dicts ficam disponíveis
+    no preflop e só `ev_loss_source` separa carta de nó resolvido. Sem fonte declarada, decide a
+    street — preflop é território de carta, postflop é de solver.
+    """
+    if isinstance(gto, dict) and gto.get('available'):
+        fonte = (gto.get('ev_loss_source') or '').lower()
+        if fonte in _FONTES_DE_SOLVER:
+            return SOLVER
+        if fonte in _FONTES_DE_CARTA:
+            return CARTA
+        return CARTA if (street or '').lower() == 'preflop' else SOLVER
+    if isinstance(preflop_gto, dict) and preflop_gto.get('available'):
+        return CARTA
+    return MOTOR
+
+
+def tem_custo_medido(gto=None, preflop_gto=None) -> bool:
+    """Existe EV em bb, de fonte que vale como quantidade?
+
+    Separado da procedência de propósito: um nó do solver PODE não trazer EV utilizável (spot
+    fora da calibração, nó degenerado). Juntar as duas coisas num campo só foi o que permitiu
+    `major_leak` sem custo — a acusação herdava a autoridade do solver sem herdar o número.
+    """
+    for d in (gto, preflop_gto):
+        if not isinstance(d, dict) or not d.get('available'):
+            continue
+        if d.get('ev_loss_bb') is None:
+            continue
+        if (d.get('ev_loss_source') or '') in _FONTES_COM_CUSTO:
+            return True
+    return False
+
+
+def pode_falar_como_gto(procedencia_valor: str, custo_medido: bool) -> bool:
+    """A tela pode usar a linguagem de GTO ("leak", "erro contra o equilíbrio") nesta decisão?
+
+    Vale para SOLVER e para CARTA — a carta do GTO Wizard É estratégia de equilíbrio, e `gw_har`
+    consta das fontes de EV confiáveis do engine. A primeira versão exigia SOLVER e teria calado
+    358 decisões preflop legítimas do torneio de teste; a distinção solver/carta serve para
+    EXIBIR a origem, não para censurar a carta.
+
+    O que a regra barra é `motor`: heurístico de equity e pot odds não é equilíbrio, e chamar seu
+    desvio de "leak" é a falsa confiança que a procedência existe para eliminar.
+
+    Exige custo medido junto porque é o "quanto custou" que sustenta a palavra. Medido em 24/08:
+    189 de 495 acusações com a carta reprovando saíam sem um bb de custo.
+    """
+    return procedencia_valor in (SOLVER, CARTA) and bool(custo_medido)

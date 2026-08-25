@@ -5,6 +5,49 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## PROCEDENCIA do veredito: todo veredito diz de onde veio (24/08)
+
+**A pergunta do dono:** "o que precisamos para garantir que o veredito seja confiavel?" A
+medicao antes de responder: **1.503 decisoes do acervo (14,8%) nao conseguiam dizer de onde veio
+o veredito**. Nao estavam erradas -- estavam MUDAS, porque o campo nunca existiu. Sem ele
+"confiavel" nao e verificavel nem por teste nem por auditoria: nao da para separar "o solver
+disse" de "o motor achou" olhando o dado gravado.
+
+O dano concreto: **189 de 495 acusacoes** em que a carta reprova a jogada (38%) saiam sem um bb
+de custo, usando a linguagem de GTO na tela assim mesmo. Um juiz de poker leu o sintoma sem ver
+o codigo: "quanto menos o motor sabe do custo, mais duro ele acusa".
+
+**O que existe agora.** Dois campos, gravados e servidos: `verdict_source` (`solver` = no do
+solver para este spot, `carta` = range preflop, `motor` = heuristico) e `verdict_has_cost`
+(existe EV em bb de fonte que vale como quantidade). Separados de proposito -- um no do solver
+pode nao trazer EV utilizavel, e juntar as duas coisas foi o que deixou a acusacao herdar a
+autoridade do solver sem herdar o numero.
+
+E a regra que faltava: **`pode_falar_como_gto` exige equilibrio (solver ou carta) E custo**.
+Heuristico nao pode dizer "leak". Medido num torneio: das 23 acusacoes, 14 podem falar como GTO
+e **9 sao opiniao do motor** que hoje se apresenta como equilibrio.
+
+**Dois erros que so a MEDICAO pegou** (e que o guarda congela):
+
+1. A 1a versao olhava so `gto.available` e classificou **378 decisoes preflop como `solver`** --
+   no preflop o motor tambem preenche `gto`, com `ev_loss_source: gw_har`, que e a CARTA do GTO
+   Wizard. Campo preenchido e errado e pior que vazio.
+2. A 1a regra de linguagem exigia `solver`, e teria calado 358 decisoes preflop legitimas: a
+   carta E equilibrio. O que a regra barra e `motor`.
+
+**Terceiro erro, pego pela contagem:** `evaluate_decision` tem DOIS pontos de saida (o principal
+e o atalho do check de BB em pote nao contestado). O atalho ficou de fora e devolvia procedencia
+vazia -- apareceu ao medir 485 decisoes e achar 1 com `None`. O guarda conta as saidas.
+
+**Guarda:** `test_procedencia_do_veredito.py` (6 testes), quebrado de proposito cinco vezes. A
+mutacao "a API para de servir" passou VERDE na primeira: o teste procurava a string
+`verdict_source`, que tambem aparece nos helpers que LEEM a coluna. Agora ancora na chave de
+saida.
+
+**Linhas antigas:** derivadas na leitura pela MESMA funcao, em vez de backfill. Reescrever 10 mil
+linhas para um campo que o motor sabe recalcular criaria o estado "as vezes preenchida", que e
+pior que nao existir.
+
 ## O score ESCALA pelo custo, em vez de carimbar o piso (24/08)
 
 **Conserto de um defeito que eu mesmo introduzi horas antes.** Clampar o score na banda do label

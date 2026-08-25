@@ -1514,6 +1514,11 @@ def _run_migrations(conn):
             # O pote REAL da decisão, em bb (ver o comentário longo no bloco PG).
             ("pot_at_decision_bb",
              "ALTER TABLE decisions ADD COLUMN pot_at_decision_bb REAL"),
+            # PROCEDÊNCIA do veredito (ver o comentário no bloco PG).
+            ("verdict_source",
+             "ALTER TABLE decisions ADD COLUMN verdict_source TEXT"),
+            ("verdict_has_cost",
+             "ALTER TABLE decisions ADD COLUMN verdict_has_cost INTEGER"),
         ]:
             if col not in dec_existing:
                 try: conn.execute(sql)
@@ -2598,6 +2603,22 @@ def _run_migrations(conn):
             # O veredito nunca dependeu disto: as pot odds já usam `_pot_at_decision`
             # (99,6% contra o `Total pot` do SUMMARY, medido em 1.682 mãos).
             "ALTER TABLE decisions ADD COLUMN IF NOT EXISTS pot_at_decision_bb REAL",
+            # ── PROCEDÊNCIA do veredito ────────────────────────────────────────────────────
+            # `verdict_source`: 'solver' (nó do solver para este spot), 'carta' (range preflop)
+            # ou 'motor' (heurístico). `verdict_has_cost`: existe EV em bb de fonte que vale
+            # como quantidade.
+            #
+            # Por que: medido em 24/08, 1.503 decisões do acervo (14,8%) não conseguiam dizer de
+            # onde veio o veredito — o campo nunca existiu. Sem ele "confiável" não é
+            # verificável: não dá para separar "o solver disse" de "o motor achou" olhando o
+            # dado. E 189 de 495 acusações com a carta reprovando saíam sem um bb de custo,
+            # usando a linguagem de GTO na tela assim mesmo.
+            #
+            # Os dois campos são SEPARADOS de propósito: um nó do solver pode não trazer EV
+            # utilizável, e juntar as duas coisas foi o que deixou a acusação herdar a autoridade
+            # do solver sem herdar o número.
+            "ALTER TABLE decisions ADD COLUMN IF NOT EXISTS verdict_source TEXT",
+            "ALTER TABLE decisions ADD COLUMN IF NOT EXISTS verdict_has_cost BOOLEAN",
             # Retratos datados do relatório de evolução. Guarda os NÚMEROS, não o HTML: o visual
             # pode melhorar sem invalidar relatório antigo, e comparar julho com agosto continua
             # válido porque compara dados, não páginas.

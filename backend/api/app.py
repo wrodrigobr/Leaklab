@@ -6327,6 +6327,41 @@ def _replay_cache_set(key, data):
 
 
 from database.repositories import _align_score_to_label   # porta unica da politica score<->label
+
+from leaklab import verdict as _verdict_mod   # porta unica da politica de veredito
+
+
+def _procedencia_da_linha(d):
+    """Procedencia de uma linha JA GRAVADA. Usa a coluna quando existe; senao deriva da fonte.
+
+    Linhas anteriores a migracao de 24/08 nao tem `verdict_source`. Derivar na leitura evita um
+    backfill que reescreveria 10 mil linhas para um campo que o motor ja sabe recalcular -- e
+    evita o estado "as vezes preenchida", que e pior que nao existir.
+    """
+    if not d:
+        return None
+    gravado = d.get('verdict_source')
+    if gravado:
+        return gravado
+    fonte = (d.get('ev_loss_source') or '').lower()
+    tem_gab = bool(d.get('gto_label')) or d.get('ev_loss_bb') is not None
+    return _verdict_mod.procedencia(
+        {'available': tem_gab, 'ev_loss_source': fonte} if tem_gab else None,
+        None,
+        d.get('street'))
+
+
+def _tem_custo_da_linha(d):
+    """Existe EV em bb de fonte que vale como quantidade, nesta linha gravada?"""
+    if not d:
+        return False
+    if d.get('verdict_has_cost') is not None:
+        return bool(d.get('verdict_has_cost'))
+    return _verdict_mod.tem_custo_medido(
+        {'available': True, 'ev_loss_bb': d.get('ev_loss_bb'),
+         'ev_loss_source': d.get('ev_loss_source')}, None)
+
+
 @app.route('/replay/<tournament_id>/<hand_id>', methods=['GET'])
 @require_auth
 def get_replay(tournament_id, hand_id):
@@ -7571,6 +7606,15 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
             'error_score':        (_align_score_to_label(_el_efetivo, decision.get('score'),
                                                           decision.get('ev_loss_bb'))
                                    if decision else None),
+            # PROCEDÊNCIA: de onde veio o veredito. Derivada AQUI quando a coluna ainda está
+            # vazia (decisão anterior à migração), pela MESMA função do motor — reimplementar a
+            # regra na API seria a segunda porta, o defeito mais recorrente deste projeto.
+            'verdict_source':     _procedencia_da_linha(decision),
+            'verdict_has_cost':   _tem_custo_da_linha(decision),
+            # A tela usa isto para decidir se pode escrever "leak"/"erro contra o equilíbrio" ou
+            # se precisa dizer que é leitura do motor.
+            'pode_falar_como_gto': _verdict_mod.pode_falar_como_gto(
+                _procedencia_da_linha(decision), _tem_custo_da_linha(decision)),
             'best_action':        reconciled_best                                    if decision else None,
             'engine_best':        engine_best if (gto_engine_conflict or gto_spot_mismatch) else None,
             'gto_label':          (None if _mw_spot else gto_label),
