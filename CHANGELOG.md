@@ -5,6 +5,40 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## O GW gratuito NAO tem a faixa rasa de mesa cheia (26/08)
+
+Depois de importar a RFI de 3-7bb, sobraram 165 decisoes de **defesa** (`vs_RFI`/`vs_3bet`) entre
+2,5 e 7,5bb sem carta da profundidade certa -- 94 delas ainda respondidas pela carta de 10bb, o
+mesmo defeito que consertei so para RFI. O GW seria a fonte certa. Fui perguntar a ele.
+
+**Resposta: nao da.** No estudo `MTTGeneral_8m` do free tier, profundidade UNIFORME de 5,125,
+6,125, 7,125 e 8,125bb devolve **HTTP 403**. A 12,125bb, a MESMA linha e a MESMA conta devolvem
+200 e no valido.
+
+Tres controles, porque 403 sozinho nao distingue paywall de "esse no nao existe":
+
+1. **Controle ANTES**: 12,125bb com a linha da sonda -> 200 (acervo 278 -> 279).
+2. **Controle DEPOIS dos 403**: linha NOVA a 12,125bb -> 200 (279 -> 281). Nao fomos bloqueados;
+   o coletor tinha parado sozinho com "3 depths seguidas com 403, cheiro de bloqueio" e essa
+   suspeita foi derrubada por medicao, nao por opiniao.
+3. **A UI**: a 5,125bb o app RENDERIZA, mas so com **stack por assento variado**
+   (`5.125-13.125-19.125-17.125-9.125-7.125-3.125-15.125`: UTG 5, LJ 19, SB 2,5). Nao e
+   "todo mundo com 5bb" -- e outro modelo.
+
+Ou seja, mesmo com paywall aberto, importar a faixa rasa do 8-max exigiria decidir o que fazer com
+no de stack variado dentro de uma carta de profundidade efetiva uniforme. Seria a MESMA familia de
+erro que este dia inteiro corrigiu: carta de um regime respondendo por outro.
+
+**O que ficou:** 3 nos de ring novos a 12,125bb (281 no acervo), o plano MEDIDO da faixa rasa
+pronto em `docs/gw_plano_raso.json` (`scripts/plano_gw_raso.py`: 31 nos cobririam 118 das 165, e
+declara que 34 sao pote limpado -- sem no na arvore raise-first -- e 11 nao tem assento no 8-max),
+e a instrucao de login do coletor consertada: a linha com aspas e `--` e erro de sintaxe no
+PowerShell, que e o shell padrao aqui.
+
+Suite 2459/2459.
+
+---
+
 ## A faixa de 3 a 7bb ganhou carta da PROPRIA profundidade (26/08)
 
 A conferencia da manha mediu 94,0% de concordancia entre a nossa carta RFI e a de um coach. A

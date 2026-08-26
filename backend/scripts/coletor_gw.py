@@ -257,8 +257,15 @@ def _chrome_exe() -> str:
 def _instrucoes_cdp(porta: int, perfil: Path) -> str:
     return '\n'.join([
         '',
-        'Abra o Chrome VOCE MESMO, com um perfil so para isto:',
+        'Abra o Chrome VOCE MESMO, com um perfil so para isto.',
         '',
+        # A linha com aspas + `--` e um ERRO DE SINTAXE no PowerShell ("O operador '--' funciona
+        # apenas em variaveis"), que e o shell padrao aqui. Custou uma ida e volta em 26/08.
+        'PowerShell:',
+        f"  Start-Process \"{_chrome_exe()}\" -ArgumentList "
+        f"'--remote-debugging-port={porta}','--user-data-dir={perfil}'",
+        '',
+        'cmd.exe / bash:',
         f'  "{_chrome_exe()}" --remote-debugging-port={porta} --user-data-dir="{perfil}"',
         '',
         'Logue no GTO Wizard nessa janela. O login e normal, feito por voce — o Google recusa',
