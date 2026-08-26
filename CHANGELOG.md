@@ -50,6 +50,24 @@ perfeito** -- arvore pequena converge facil. Em 14/08 isso bloqueou 40 de 40 re-
 silencio, e foi a mesma exploitability baixa que me fez descartar a hipotese "no mal convergido"
 horas antes.
 
+**Os 14 pulados foram recuperados** (`scripts/resolve_nos_allin_hash_recuperado.py`). A causa da
+mudanca de hash: sao potes **3-bet**, e o script anterior remontava o payload sem `pot_type`. Em
+vez de adivinhar, o script TESTA as combinacoes de (pot_type, opener, threebettor) e aceita a que
+REPRODUZ o hash gravado -- o hash antigo e o gabarito, criterio exato. **14 de 14 recuperados,
+zero perdidos**, e os tres piores casos de SPR alto estavam entre eles.
+
+**Resultado final, medido em producao:**
+
+| | antes | depois |
+|---|---|---|
+| usos de no de all-in postflop | 388 | **44** |
+| destes, com SPR > 3 | 169 | **0** |
+| exploitability mediana | 0,01% | 0,80% |
+
+Zero suspeitos: os 44 que restam tem SPR <= 3x, onde jam e aposta sao a mesma jogada. A SUBIDA da
+exploitability e o sinal de saude -- 0,01% era o "fraudulentamente perfeito" de arvore pequena
+demais. Na tela do torneio auditado, `best_action = all-in` com SPR > 3 e **zero**.
+
 **Custo dimensionado:** 59s por no medidos, 8 vCPU com 2 solves simultaneos ->
 **3,2h para os 388 nos usados**, 4,3h para os 524. E CPU do servidor que atende o produto ao
 vivo, entao a decisao de quando disparar e do dono.
