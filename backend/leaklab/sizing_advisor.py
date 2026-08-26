@@ -32,12 +32,12 @@ def gto_open_to_bb(position: str, stack_bb: Optional[float]) -> Optional[float]:
     if not position or not stack_bb:
         return None
     try:
-        from leaklab.preflop_gto_ranges import _load, _stack_bucket, raise_to_bb_from_node
+        from leaklab.preflop_gto_ranges import _load, balde_rfi, raise_to_bb_from_node
         from leaklab.gto_utils import normalize_position
         # normaliza MP1→LJ, MP2→HJ etc: sem isto, spots com o rótulo antigo do parser
         # não achavam nó e sumiam da análise sem aviso.
         pos = normalize_position(position)
-        bucket = _stack_bucket(float(stack_bb))
+        bucket = balde_rfi(float(stack_bb))   # RFI da própria profundidade na faixa 3-7bb
         node = ((_load().get('ranges', {}).get(bucket, {}) or {}).get('RFI', {}) or {}).get(pos)
         return raise_to_bb_from_node(node) if node else None
     except Exception:

@@ -9586,13 +9586,13 @@ def preflop_ranges():
         vs_rfi: { [opener]: { call: [str], raise3bet: [str], pct_play: float } },
         vs_3bet: { hands_4bet: [str], hands_call: [str], pct_continua: float } | null }
     """
-    from leaklab.preflop_gto_ranges import _load, _stack_bucket, _expand_range, _norm_pos
+    from leaklab.preflop_gto_ranges import _load, balde_rfi, _expand_range, _norm_pos
 
     position = request.args.get('position', 'BTN')
     stack_bb = float(request.args.get('stack_bb', 30.0))
 
     pos    = _norm_pos(position)
-    bucket = _stack_bucket(stack_bb)
+    bucket = balde_rfi(stack_bb)   # este endpoint mostra a RFI; ver `balde_rfi`
     data   = _load()
     bk     = data.get('ranges', {}).get(bucket, {})
 

@@ -71,11 +71,18 @@ def test_o_balde_so_e_recusado_nas_duas_pontas_que_saturam():
 
 def test_range_de_open_some_no_stack_raso_e_no_profundo_e_fica_no_meio():
     """O caso do relatorio (0,2bb) e o simetrico dele (195bb). Com o controle no meio, porque um
-    guarda que zera TUDO tambem passaria nas duas primeiras assercoes."""
+    guarda que zera TUDO tambem passaria nas duas primeiras assercoes.
+
+    ATUALIZADO 26/08: 5,0bb saiu da lista dos vazios e entrou na dos cobertos. Nao e afrouxamento
+    — e o contrario. Antes 5bb caia em vs-random porque a UNICA carta disponivel era a de 10bb, e
+    responder com ela seria pior que nao responder. Agora existe carta de 5bb (importada e
+    conferida), entao o honesto e responder. O controle raso continua vivo em 2,0bb, faixa onde
+    seguimos sem carta de proposito: a de origem limpa QQ/JJ no SB a 2bb.
+    """
     assert villain_open_range('BTN', 0.2, 9) == {}
-    assert villain_open_range('BTN', 5.0, 9) == {}
+    assert villain_open_range('BTN', 2.0, 9) == {}
     assert villain_open_range('BTN', 195.0, 9) == {}
-    for s in (7.6, 10.0, 30.0, 100.0, 133.0):
+    for s in (5.0, 7.6, 10.0, 30.0, 100.0, 133.0):
         assert villain_open_range('BTN', s, 9), f'perdeu a range de open a {s}bb'
 
 
@@ -115,9 +122,14 @@ def test_uma_regra_um_lugar():
         f'a janela de 25% aparece {n}x no modulo (esperado: 1). Ela mora em '
         '`_profundidade_compativel`; os consumidores chamam a funcao, nao recopiam o numero — '
         'e se o numero mudou, mude tambem este teste, de proposito')
-    for nome in ('villain_open_range', 'villain_reraise_range'):
+    # `villain_open_range` passou a usar `balde_rfi_ou_none`, que E o seletor unico com um passo
+    # a mais: a carta rasa (3-7bb) quando ela existe, e `_balde_da_carta` em todo o resto. O que
+    # este guarda protege continua igual — nenhuma das duas pode voltar ao lookup cru.
+    for nome, seletores in (('villain_open_range', ('_balde_da_carta', 'balde_rfi_ou_none')),
+                            ('villain_reraise_range', ('_balde_da_carta',))):
         corpo = inspect.getsource(getattr(mod, nome))
-        assert '_balde_da_carta' in corpo, f'{nome} nao passa pelo seletor unico'
+        assert any(sel in corpo for sel in seletores), (
+            f'{nome} nao passa por nenhum seletor ({seletores})')
         assert '_stack_bucket' not in corpo, f'{nome} voltou ao lookup cru de balde'
 
 

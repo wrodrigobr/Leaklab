@@ -5,6 +5,91 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## A faixa de 3 a 7bb ganhou carta da PROPRIA profundidade (26/08)
+
+A conferencia da manha mediu 94,0% de concordancia entre a nossa carta RFI e a de um coach. A
+faixa rasa dele (3-7bb) foi importada. Mas o achado que importa nao e a importacao -- e o que ela
+descobriu ao ser feita.
+
+**`_stack_bucket` saturava na ponta rasa.** O balde `10bb` cobria `[0, 12)`, e o caminho principal
+do motor le esse balde **sem** passar por `_balde_da_carta`, a funcao escrita exatamente para
+impedir isso. Medido no acervo: **117 das 128 decisoes de RFI entre 2,5 e 7,5bb eram julgadas pela
+carta de 10bb** -- 2 a 4 vezes mais funda que o stack real. E a mesma saturacao que ja tinha
+produzido duas acusacoes falsas medidas (3,9bb e 5,2bb) no caminho da range de jam.
+
+O sintoma era caro porque a carta de 10bb tem uma range de LIMP grande no SB, que e real a 10bb e
+absurda a 3bb. Entao o produto **endossava** o limp do SB a 3bb e **acusava** quem foldava mao que
+o GTO manda jogar fora.
+
+**O efeito, medido por ablacao** (mesmos argumentos nos dois lados, ligando e desligando so a
+faixa rasa -- unico jeito de a medicao nao depender de eu reconstruir os argumentos certos):
+
+| | |
+|---|---|
+| recomendacoes que mudaram | 43 |
+| acusacoes FALSAS que somem | 3 |
+| leaks REAIS que passam a ser vistos | 12 |
+| decisoes que PERDEM cobertura | **0** |
+
+As 3 que somem sao a assinatura da saturacao: `J2o SB 6,6bb fold` e `72s SB 7,3bb fold` eram
+`major_leak` porque a carta de 10bb queria um limp, e `Q5s CO 3,4bb shove` era `small_mistake`
+sendo o jam obvio a 3,4bb. As 12 novas sao o espelho: limp do SB entre 3 e 6bb, e fold de mao que
+jama (`T9o CO 3,8bb`, `A8o UTG 4,1bb`, `93o SB 3,0bb`). No golden do `/replay` isso aparece como
+exatamente uma linha mudando: `A8o` fold, de `gto_correct` para `gto_critical`.
+
+**A primeira versao do conserto foi desfeita, e quem desfez foi um teste.** Comecei colocando os
+baldes rasos em `_DEFAULT_BUCKETS`, o roteamento geral. `test_carta_do_no_certo.py` -- um teste de
+CONTROLE que mora em outra suite -- ficou vermelho: um vilao de 3bb cujo jam cabe no no deixava de
+ser gradeado, porque `vs_RFI` a 3bb apontava para um balde que so tem RFI. Pior que isso:
+`_balde_da_carta(3,9)` passaria a **aceitar** o balde de 4bb (`|4-3,9|/4 < 25%`) onde hoje recusa,
+deixando dado de 10bb atravessar o guarda escrito para barra-lo.
+
+O desenho final e outro: `_DEFAULT_BUCKETS` **nao mudou**, e a carta rasa entra por uma porta so,
+`balde_rfi`, usada pelos 6 leitores da secao RFI que tem o stack em maos. Toda secao que nao
+importamos continua resolvendo exatamente como antes -- por isso a linha "0 decisoes perdem
+cobertura", que na primeira versao era 5. `_canonical_open_bb` fica de fora **com a excecao
+declarada na propria linha**, porque a carta importada nao traz sizing e le-la ali trocaria um
+tamanho conhecido por None.
+
+Dois testes existentes foram atualizados de proposito, nao por conveniencia:
+`villain_open_range('BTN', 5.0)` saiu da lista dos vazios (agora existe carta de 5bb; o controle
+raso desceu para 2,0bb, faixa onde seguimos sem carta de proposito) e
+`test_carta_de_outra_PROFUNDIDADE_nao_serve` passou a exigir que a range de jam a 3,9bb seja MAIS
+LARGA que a de 10bb -- 92 maos contra 73, medido. Era essa largura que faltava nas duas acusacoes
+falsas que originaram aquele teste.
+
+**As fronteiras foram escolhidas para nao roubar de ninguem.** `10bb` continua declarado como
+`[0, 12)` logo abaixo dos novos, entao `[0, 2.5)` e `[7.5, 12)` seguem caindo nele. Cada balde novo
+fica dentro da janela de 25% de `_profundidade_compativel`. Ha teste para as duas metades: a faixa
+nova funciona **e** as pontas vizinhas nao se mexeram.
+
+**Seis guardas, seis quebrados de proposito.** Apagar a faixa rasa, coloca-la no roteamento geral,
+remover a procedencia do dado, trocar UTG com BTN na importacao, apagar uma mao da celula e tirar
+`balde_rfi` de um leitor -- os seis fazem o teste acusar. Duas rodadas foram invalidas antes disso,
+as duas por defeito do GUARDA ou do MEDIDOR: o harness zerava o cache do JSON logo depois de aplicar
+a mutacao (apagando-a antes do guarda olhar), e a varredura N+1 aceitava a MENCAO de `balde_rfi` em
+vez da CHAMADA -- o import no topo da funcao ja bastava para ela passar verde com o conserto
+desfeito. E o vies de sempre: ancorar no efeito em vez da condicao.
+
+**Uma pergunta foi feita ao site, nao ao meu palpite.** UTG e UTG+1 sairam identicos em todas as
+profundidades. Podia ser a captura. Voltei ao site com controle: trocar para UTG+2 muda a grade
+(51 -> 54 all-ins a 5bb) e trocar para UTG+1 nao muda nada. **A carta de origem funde UTG e UTG+1**
+-- e o produto dele, e esta declarado dentro do dado, junto com a origem, a data e a autorizacao.
+
+Scripts: `importar_rfi_raso_externo.py`, `medir_efeito_rfi_raso.py`.
+Teste: `tests/test_carta_rasa_3_a_7bb.py` (registrado na suite `engine`).
+
+**Pendente:** o codigo esta no repo mas NAO foi para producao, e o acervo nao foi reprocessado --
+sao 15 vereditos de usuario real mudando de lado.
+
+**Uma pergunta aberta que este trabalho deixa:** a carta rasa da procedencia (`carta`) mas nao da
+CUSTO -- nao ha tabela de EV para 3-7bb. Entao o gate de linguagem ja proibe o texto de falar como
+GTO, mas a severidade exibida continua saindo `gto_critical` (ex.: `A8o` foldado a 4,1bb). Acusar
+como critico sem custo medido e a mesma familia de problema que o piso de EV resolveu noutro lugar,
+e vale decidir antes do reprocesso.
+
+---
+
 ## A nossa carta RFI, conferida contra uma carta INDEPENDENTE (26/08)
 
 Um coach que avaliou o sistema publicou a carta RFI dele. Com autorizacao do autor, capturei as

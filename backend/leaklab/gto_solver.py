@@ -128,8 +128,11 @@ def _captured_range_str(position: str, stack_bb: float, kind: str, opener: str =
     vez das _DEFAULT_RANGES genéricas. kind='rfi' → range de abertura da posição; kind=
     'call_vs_rfi' → range de call do defensor vs o open do `opener`. None se sem cobertura."""
     try:
-        from leaklab.preflop_gto_ranges import _load, _stack_bucket
-        bk = _load().get('ranges', {}).get(_stack_bucket(stack_bb), {})
+        from leaklab.preflop_gto_ranges import _load, _stack_bucket, balde_rfi
+        # `rfi` sai do balde da própria profundidade (faixa rasa 3-7bb); `call_vs_rfi` continua
+        # no balde de sempre, porque a carta rasa não cobre `vs_RFI`.
+        bk = _load().get('ranges', {}).get(
+            balde_rfi(stack_bb) if kind == 'rfi' else _stack_bucket(stack_bb), {})
         pos = (position or '').upper().strip()
         if kind == 'rfi':
             node = (bk.get('RFI') or {}).get(pos) or {}

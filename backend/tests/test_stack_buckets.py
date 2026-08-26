@@ -21,7 +21,8 @@ import sys, os, traceback
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 from leaklab.gto_utils import stack_bucket, STACK_BUCKETS
-from leaklab.preflop_gto_ranges import _stack_bucket, _DEFAULT_BUCKETS, _load
+from leaklab.preflop_gto_ranges import (_stack_bucket, _DEFAULT_BUCKETS, _BALDES_RASOS,
+                                        _load)
 
 
 def test_buckets_preflop_casam_com_as_chaves_do_json():
@@ -38,9 +39,17 @@ def test_buckets_preflop_casam_com_as_chaves_do_json():
             walk(v, prof + 1)
 
     walk(d)
-    codigo = {b[0] for b in _DEFAULT_BUCKETS}
+    # Duas listas, de propósito. `_DEFAULT_BUCKETS` roteia TUDO; `_BALDES_RASOS` (3-7bb) roteia
+    # só a seção RFI, que é a única que a carta importada cobre — se entrasse na primeira, as
+    # seções ausentes passariam a apontar para um balde vazio. A invariante que importa continua
+    # a mesma dos dois lados: bucket sem dado é lookup vazio e spot sem cobertura, calado.
+    codigo = {b[0] for b in _DEFAULT_BUCKETS} | {b[0] for b in _BALDES_RASOS}
     assert not (codigo - chaves), f"bucket no código sem dado no JSON: {sorted(codigo - chaves)}"
     assert not (chaves - codigo), f"profundidade no JSON sem bucket: {sorted(chaves - codigo)}"
+    rasos = {b[0] for b in _BALDES_RASOS}
+    assert rasos.isdisjoint({b[0] for b in _DEFAULT_BUCKETS}), (
+        f"a faixa rasa {sorted(rasos)} entrou nas DUAS listas: no roteamento geral ela leva "
+        "vs_RFI/vs_3bet para um balde que não tem essas seções")
     print(f"OK  test_buckets_preflop_casam_com_as_chaves_do_json ({len(codigo)} profundidades)")
 
 

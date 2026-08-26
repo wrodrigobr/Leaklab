@@ -164,10 +164,20 @@ def test_carta_de_outra_PROFUNDIDADE_nao_serve():
     `small_mistake`. A 4bb pagar um jam com A3s e obrigatorio; so saia erro porque a range de 10bb
     e bem mais tight que a de 4bb.
     """
-    assert villain_jam_range('BTN', 'CO', 3.9, n_players=8, raises_faced=1) == {}
+    # ATUALIZADO 26/08: a 3,9bb passou a EXISTIR carta de 4bb (importada e conferida). O caso
+    # deixou de ser "recusa" e virou "responde com a carta certa" — e a certa e MAIS LARGA, que
+    # era exatamente a causa da acusacao falsa: a de 10bb e tight demais para 4bb.
+    jam_raso = villain_jam_range('BTN', 'CO', 3.9, n_players=8, raises_faced=1)
+    jam_10 = villain_jam_range('BTN', 'CO', 10.0, n_players=8, raises_faced=1)
+    assert jam_raso, 'a 3,9bb o vilao voltou a nao ter range de jam'
+    assert len(jam_raso) > len(jam_10), (
+        f'a range de jam a 3,9bb ({len(jam_raso)} maos) nao e mais larga que a de 10bb '
+        f'({len(jam_10)}): ou a carta rasa saiu do caminho, ou voltou a ler a de 10bb')
+    assert 'A3s' in jam_raso, 'A3s fora do jam do vilao a 3,9bb — e ele que torna o call obrigatorio'
+    # 3-bet jam segue SEM cobertura na faixa rasa: a carta importada so tem RFI, nao `vs_RFI`
     assert villain_jam_range('SB', 'BTN', 5.2, n_players=8, raises_faced=2, opener_pos='CO') == {}
-    # CONTROLE: dentro da janela, a MESMA carta responde
-    assert villain_jam_range('BTN', 'CO', 10.0, n_players=8, raises_faced=1)
+    # CONTROLE: fora da faixa rasa, o seletor de sempre segue respondendo
+    assert jam_10
 
 
 def test_piso_de_suporte_contra_range_de_tres_maos():

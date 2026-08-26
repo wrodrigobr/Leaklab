@@ -171,6 +171,50 @@ def _stack_bucket(stack_bb: float) -> str:
     return '100bb'
 
 
+# Faixa rasa: profundidade -> [menor stack, maior stack). Só existe porque a carta importada de
+# 3 a 7bb cobre SOMENTE a seção RFI (ver `_metadata.baldes_de_fonte_externa`). Cada fronteira cabe
+# na janela de 25% de `_profundidade_compativel`.
+_BALDES_RASOS = [('3bb', 2.5, 3.5), ('4bb', 3.5, 4.5), ('5bb', 4.5, 5.5),
+                 ('6bb', 5.5, 6.5), ('7bb', 6.5, 7.5)]
+
+
+def balde_rfi(stack_bb: float) -> str:
+    """Balde que responde pela seção **RFI** deste stack.
+
+    Difere de `_stack_bucket` só na faixa `[2.5, 7.5)`, e por um motivo estreito: ali existe carta
+    da própria profundidade, e `_stack_bucket` satura — o balde `10bb` cobre `[0, 12)`, então um
+    stack de 4bb era gradeado por uma carta 2,5x mais funda. Medido no acervo: **117 das 128
+    decisões de RFI entre 2,5 e 7,5bb**. A carta de 10bb tem range de limp grande no SB, real a
+    10bb e absurda a 3bb, então o produto endossava o limp e acusava o fold correto.
+
+    **Por que uma função separada e não uma entrada em `_DEFAULT_BUCKETS`.** A carta rasa cobre
+    só RFI. Se ela entrasse no roteamento geral, `vs_RFI`/`vs_3bet`/`faces_squeeze` a 4bb passariam
+    a apontar para um balde que não tem essas seções — e, pior, `_balde_da_carta(3.9)` passaria a
+    ACEITAR o balde (`|4-3.9|/4 < 25%`) onde hoje recusa, deixando dado de 10bb entrar por um
+    guarda que existe justamente para barrá-lo. Foi um teste de controle que mostrou isso, não
+    raciocínio meu: `test_carta_do_no_certo.py` ficou vermelho na primeira tentativa.
+
+    Quem consome: os pontos que leem a seção `RFI` com o stack em mãos. `test_carta_rasa_3_a_7bb`
+    varre o módulo e exige que nenhum leitor novo apareça sem passar por aqui (regra 5).
+    """
+    return balde_rfi_ou_none(stack_bb) or _stack_bucket(stack_bb)
+
+
+def balde_rfi_ou_none(stack_bb: float) -> Optional[str]:
+    """Balde que PODE falar pela RFI deste stack, ou None quando nenhum pode.
+
+    É a versão honesta de `balde_rfi`, para quem alimenta equity: a carta rasa quando existe,
+    senão `_balde_da_carta` — que recusa nas duas pontas onde `_stack_bucket` satura. `balde_rfi`
+    é derivada desta; quem só exibe a carta pode saturar, quem calcula equity não pode.
+    """
+    s = float(stack_bb or 0)
+    ranges = _load().get('ranges') or {}
+    for label, lo, hi in _BALDES_RASOS:
+        if lo <= s < hi and (ranges.get(label) or {}).get('RFI'):
+            return label
+    return _balde_da_carta(s)
+
+
 def _profundidade_compativel(depth: float, stack_bb: float) -> bool:
     """A carta de `depth` bb pode falar de um stack de `stack_bb`? Janela RELATIVA de 25%.
 
@@ -394,7 +438,11 @@ def villain_open_range(position: str, stack_bb: float, n_players: int | None = N
         if _pko_bk:
             bk_data = _pko_bk
     if bk_data is None:
-        _bk = _balde_da_carta(stack_bb)
+        # `balde_rfi_ou_none` = a carta rasa quando existe, senão o seletor de sempre. A 3,9bb
+        # o seletor devolvia None e o spot caía em vs-random; agora há carta da própria
+        # profundidade, e ela é MAIS LARGA que a de 10bb (92 mãos contra 73, medido) — que é
+        # exatamente o que faltava nas duas acusações falsas de 3,9 e 5,2bb.
+        _bk = balde_rfi_ou_none(stack_bb)
         if _bk is None:
             return {}
         bk_data = _load().get('ranges', {}).get(_bk, {})
@@ -743,6 +791,8 @@ def _jam_da_carta_rfi(pos_vilao: str, stack_bb: float, n_players: Optional[int],
                       is_pko: bool) -> dict:
     """Open-jam: o vilão abriu de all-in. O nó dele é a própria RFI da posição."""
     bk = _bloco_de_ranges(stack_bb, is_pko)
+    if not is_pko:
+        bk = (_load().get('ranges') or {}).get(balde_rfi(stack_bb)) or bk
     return _jam_do_spot((bk.get('RFI') or {}).get(_norm_pos(pos_vilao, n_players)))
 
 
@@ -772,6 +822,10 @@ def _canonical_open_bb(bk_data: dict, opener_pos: str) -> Optional[float]:
     de sizing (R{x}) modal na RFI do opener (ex.: 'R2.1' → 2.1bb). None se o opener
     abre só jam (RAI, sem R-code) ou sem cobertura. Usado p/ detectar open off-tree
     (vilão abriu maior que o GTO) e não punir o fold de defesa como crítico (#23)."""
+    # `balde_rfi nao se aplica:` esta função recebe o bloco já resolvido e não vê o stack — e,
+    # mesmo se visse, a carta rasa importada não declara SIZING (o código de raise dela é 'R',
+    # sem número, porque a origem só rotula "RAISE"). Ler a rasa aqui trocaria um tamanho
+    # canônico conhecido por None e desligaria a detecção de open off-tree entre 3 e 7bb.
     rfi = (bk_data.get('RFI') or {}).get(opener_pos)
     if not isinstance(rfi, dict):
         return None
@@ -1668,7 +1722,11 @@ def _analyze_preflop_impl(
 
     # ── RFI ──────────────────────────────────────────────────────────────────
     if scenario == 'rfi':
-        rfi = bk_data.get('RFI', {}).get(pos)
+        # `bk_data` já pode ter sido trocado pelo bloco PKO acima; nesse caso ele manda. Fora
+        # disso, a seção RFI vem do balde da PRÓPRIA profundidade (ver `balde_rfi`).
+        _bk_rfi = bk_data if base.get('pko') else (
+            (_load().get('ranges') or {}).get(balde_rfi(stack_bb)) or bk_data)
+        rfi = _bk_rfi.get('RFI', {}).get(pos)
         if not rfi:
             # Push/fold fallback para stacks curtos (10bb, 14bb; 20bb como último recurso)
             pf_section = bk_data.get('push_fold', {}).get(pos)
