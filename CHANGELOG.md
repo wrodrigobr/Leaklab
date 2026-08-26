@@ -5,6 +5,53 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## A nossa carta RFI, conferida contra uma carta INDEPENDENTE (26/08)
+
+Um coach que avaliou o sistema publicou a carta RFI dele. Com autorizacao do autor, capturei as
+168 combinacoes (8 posicoes x 21 profundidades, 169 maos cada) e usei como **segunda opiniao**:
+duas cartas construidas de forma independente que concordam sao a evidencia mais barata que
+existe de que a nossa esta certa -- e onde discordam ha uma pergunta de poker a responder.
+
+**Concordancia: 94,0%** (10.162 de 10.816 maos, nas 64 celulas que as duas cartas cobrem).
+
+Tres controles antes do numero, porque concordancia alta sem controle e o "zero tranquilizador"
+de sempre: (1) vocabulario -- as duas falam das mesmas 169 maos, 0 rotulos orfaos; (2) a nossa
+carta contra ELA MESMA da 169/169; (3) a nossa de 100bb contra a nossa de 10bb da 80%, entao o
+comparador discrimina em vez de dizer "igual" para tudo.
+
+**A divergencia nao e toda igual.** 73% dela (478 de 654) e limp: a carta dele oferece open-limp
+em varias posicoes, a nossa (GW MTT) so no SB. Isso e arvore diferente, nao erro -- e e inofensivo
+para nos, porque limp fora dos blinds ja e tratado por caminho proprio que nao consulta a carta.
+Sobram 176 divergencias de DECISAO (uma manda jogar, a outra manda foldar), e dessas so **75** tem
+a nossa celula convicta (>=85%); as outras 101 sao mao mista de um lado que caiu pro outro lado no
+arredondamento. As 75 sao **todas de borda de range** -- 22, K6s, A3s, J9s, QJo, 54s. Nenhuma mao
+premium diverge em nenhuma celula.
+
+**O numero que decide alguma coisa e o de USO, nao o de grade.** Das 3.250 decisoes preflop de
+pote nao aberto do acervo que caem em celula comparavel, **2** caem numa divergencia dura e
+**nenhuma delas foi acusacao nossa**. Com ablacao para provar que o contador enxerga: afrouxando o
+criterio para qualquer divergencia ele acha 15 acusacoes, e 11 delas sao limp.
+
+**Duas medicoes minhas estavam contaminadas e foram refeitas.** A primeira reconstruia o
+mapeamento de posicao a mao em vez de usar `_norm_pos(pos, n_players)` do proprio motor -- `UTG`
+numa mesa de 5 e `HJ` na carta 9-max, e o unico "conflito" que ela achou vinha de olhar a celula
+errada. A segunda deu numero identico a primeira porque `docker cp` aninhou o diretorio em
+`/tmp/cmp/cmp/` e o que rodou foi o arquivo velho (regra 4: confirmar que a mudanca esta NO
+ambiente antes de concluir).
+
+**Sobre importar as profundidades que so ele tem (2-9bb, onde temos 331 decisoes sem carta):**
+nao importei, e o motivo e um achado da propria conferencia. A carta dele tem **AA e KK limpando
+no BTN entre 8 e 14bb**, e QQ/JJ limpando no SB a 2bb -- saida que nenhum solve MTT padrao produz.
+Ja 3-7bb vem **push/fold puro, zero limps**, coerente. Ou seja: a faixa importavel com seguranca
+sao os 157 decisoes de 3-7,9bb; as 144 de 8-9,9bb precisam de uma pergunta ao autor antes.
+
+Scripts: `backend/scripts/comparar_rfi_com_carta_externa.py` (concordancia + os 3 controles),
+`divergencias_duras_rfi.py` (separa modelo de decisao), `medir_impacto_divergencia_rfi.py`
+(quantas acusacoes do acervo real caem em cima). A carta capturada NAO foi versionada -- e produto
+de terceiro, autorizado para conferencia, nao para redistribuicao.
+
+---
+
 ## O all-in dos nos era o POTE ERRADO no payload do solve (25/08)
 
 Tres juizes apontaram all-in de ate 22x o pote. Investiguei e **errei tres diagnosticos** antes
