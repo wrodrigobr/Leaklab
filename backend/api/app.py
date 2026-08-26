@@ -7652,13 +7652,22 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
         # TEM de seguir ERRO; a 1a versao desta mudanca derrubou esses e o golden acusou).
         _so_marginal_camada_1 = (getattr(_vc, 'layer', None) == 'stored'
                                  and bool(decision) and decision.get('label') == 'marginal')
-        _el_efetivo = (multiway_safe_label if multiway_safe_label is not None
-                       else (None if multiway_advice
-                       else ((decision.get('label') if decision else None)
-                             if (not is_error or _so_marginal_camada_1
-                                 or (decision and decision.get('label')
-                                     in ('small_mistake', 'clear_mistake')))
-                             else 'small_mistake')))
+        # A cadeia viva NAO promove. O ramo antigo terminava em `else 'small_mistake'`: quando ela
+        # dizia "erro" e o rotulo gravado nao era acusacao, a tela acusava por conta propria --
+        # uma segunda politica de veredito por cima da do motor, e mais simples que ela.
+        # Medido em 26/08: 24 divergencias lista x card em 486 decisoes, 22 delas do card
+        # acusando mais e ZERO do card absolvendo. E em 22 das 24 o motor USOU o no do solver,
+        # entao nao era falta de cobertura -- era o motor aplicando suas regras (piso por
+        # direcao, teto de EV, ICM, piso de custo) e a cadeia viva ignorando todas. O regrade
+        # completo do acervo devolveu `MUDAM: 0`, ou seja, banco e motor concordam: quem destoa
+        # e a camada viva. Ver `verdict.label_exibido_da_camada_viva`.
+        if multiway_safe_label is not None:
+            _el_efetivo = multiway_safe_label
+        elif multiway_advice:
+            _el_efetivo = None
+        else:
+            _el_efetivo, is_error = _verdict_mod.label_exibido_da_camada_viva(
+                decision.get('label') if decision else None, is_error)
         # PISO DE CUSTO, aplicado AQUI e uma vez so: o `_el_efetivo` alimenta `error_label`,
         # `error_score` e `is_error`, e aplicar depois (como na primeira tentativa) rebaixava o
         # rotulo e deixava `is_error: True` e o score fora da banda -- tres campos para o mesmo

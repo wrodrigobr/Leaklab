@@ -88,6 +88,59 @@ def test_o_replay_consulta_a_camada_e_nao_so_a_coluna():
     print('OK  test_o_replay_consulta_a_camada_e_nao_so_a_coluna')
 
 
+def test_a_camada_viva_NAO_promove_para_acusacao():
+    """O segundo achado do mesmo juiz, e o maior.
+
+    Quando a cadeia viva dizia "erro" e o rótulo gravado não era acusação, a tela exibia
+    `small_mistake` por conta própria — uma SEGUNDA política de veredito por cima da do motor.
+
+    Medido em 26/08 no torneio 72: **24 divergências entre a lista e o card em 486 decisões**, e a
+    direção denuncia — **22 do card acusando mais, 0 do card absolvendo**. O aluno abre a lista,
+    lê "Correto", e o card da mesma decisão diz "Erro".
+
+    Quem está certo respondeu-se com duas medições: o regrade completo devolveu `MUDAM: 0` (banco
+    e motor concordam), e em **22 das 24 o motor USOU o nó do solver** — não era falta de
+    cobertura, era o motor aplicando suas regras e a cadeia viva ignorando todas.
+    """
+    from leaklab.verdict import label_exibido_da_camada_viva as exibe
+
+    label, erro = exibe('standard', True)
+    assert (label, erro) == ('standard', False), (
+        'a camada viva voltou a promover `standard` para acusação: a lista diz Correto e o card '
+        'diz Erro na mesma decisão')
+    label, erro = exibe('marginal', True)
+    assert (label, erro) == ('marginal', False), 'a camada viva voltou a promover `marginal`'
+    print('OK  test_a_camada_viva_NAO_promove_para_acusacao')
+
+
+def test_a_camada_viva_PRESERVA_a_acusacao_do_motor():
+    """Contraprova. Uma regra que devolvesse sempre `is_error=False` passaria no teste acima e
+    apagaria TODAS as acusações da tela — o dano que o defeito não causava."""
+    from leaklab.verdict import label_exibido_da_camada_viva as exibe
+
+    for label in ('small_mistake', 'clear_mistake'):
+        assert exibe(label, True) == (label, True), (
+            'a acusação do motor foi apagada da tela: %s' % label)
+        assert exibe(label, False) == (label, True), (
+            'a acusação gravada deixou de valer quando a camada viva não opinou')
+    print('OK  test_a_camada_viva_PRESERVA_a_acusacao_do_motor')
+
+
+def test_o_replay_usa_a_regra_e_nao_o_else_antigo():
+    """Fiação, ancorada na CONDIÇÃO. O ramo antigo terminava em `else 'small_mistake'` — se ele
+    voltar, a divergência volta com ele."""
+    caminho = os.path.join(os.path.dirname(__file__), '..', 'api', 'app.py')
+    with open(caminho, encoding='utf-8') as fh:
+        fonte = fh.read()
+    codigo = chr(10).join(l.split('#')[0] for l in fonte.split(chr(10)))
+    assert 'label_exibido_da_camada_viva(' in codigo, (
+        'o /replay parou de consultar a regra: a camada viva pode voltar a promover')
+    i = codigo.index('_el_efetivo')
+    assert "else 'small_mistake'" not in codigo[i:i + 900], (
+        "o `else 'small_mistake'` voltou ao cálculo do label exibido")
+    print('OK  test_o_replay_usa_a_regra_e_nao_o_else_antigo')
+
+
 if __name__ == '__main__':
     falhas = 0
     testes = [v for k, v in sorted(globals().items()) if k.startswith('test_')]

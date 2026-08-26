@@ -313,3 +313,34 @@ def procedencia_da_camada(camada, procedencia_gravada: str) -> str:
     continua False para estes casos, que e o certo: procedencia sem custo nao autoriza a palavra.
     """
     return _PROCEDENCIA_DA_CAMADA.get(camada) or procedencia_gravada or MOTOR
+
+
+# ── A camada viva nao PROMOVE ──────────────────────────────────────────────────────────────
+#
+# O `/replay` recomputa o veredito numa cadeia de camadas e, quando a cadeia dizia "erro" e o
+# rotulo gravado nao era acusacao, a tela exibia `small_mistake`. Isso e uma SEGUNDA politica de
+# veredito rodando por cima da do motor -- e mais simples que ela.
+#
+# Medido em 26/08 no torneio 72: **24 divergencias entre a lista e o card em 486 decisoes**, e a
+# direcao e o que denuncia: **22 do card acusando mais, 0 do card absolvendo**. O aluno abre a
+# lista, le "Correto", e o card da mesma decisao diz "Erro".
+#
+# A pergunta decisiva foi: quem esta certo? Duas medicoes responderam:
+#   * o regrade completo do acervo devolveu `MUDAM: 0` -- banco e motor CONCORDAM;
+#   * das 24, em **22 o motor USOU o no do solver** (so 2 sao recusa declarada). Ou seja, nao e
+#     falta de cobertura: e o motor tendo aplicado suas regras (piso por direcao, teto de EV,
+#     suavizacao de ICM, piso de custo) e a cadeia viva ignorando todas.
+#
+# Entao quem destoa e a cadeia viva. Ela continua util para o que so ela sabe -- frequencia da
+# mao, recomendacao viva, DEMOCAO -- mas nao pode transformar em acusacao o que o motor julgou
+# que nao era.
+def label_exibido_da_camada_viva(label_gravado, erro_ao_vivo):
+    """(label, is_error) para a tela, quando a cadeia viva discorda do motor.
+
+    A cadeia viva pode manter e pode rebaixar; NAO pode promover. Se o motor nao acusou, a tela
+    nao acusa -- e `is_error` acompanha, senao sobra `is_error: True` ao lado de um rotulo que
+    nao e erro, que e a contradicao seguinte.
+    """
+    if label_gravado in ('small_mistake', 'clear_mistake'):
+        return label_gravado, True
+    return label_gravado, False
