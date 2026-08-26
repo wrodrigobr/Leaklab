@@ -5,6 +5,38 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## Regrade do acervo em TODAS as streets (26/08)
+
+O postflop nunca tinha sido re-gradado contra o motor atual. **767 linhas mudaram**, e o grosso
+delas e o conserto da manha chegando na tela.
+
+| | |
+|---|---|
+| acusacoes que SAEM | 39 |
+| acusacoes que ENTRAM | 20 |
+| acusacoes totais | 529 -> **510** |
+| `gto_label` que era NULL e agora existe | ~200 |
+
+**As duas listas foram lidas antes de gravar, nao contadas.** As 39 que saem sao o espelho do
+conserto dos nos de all-in: `gto_critical -> gto_correct` com `best allin -> check` -- gente que
+foi acusada por dar check onde o no de pote errado mandava jam. As 20 que entram sao quase todas
+`standard -> small_mistake` com `gto_label` saindo de NULL: spots que nao tinham no de solver e
+agora tem, e o no diz check. Cobertura nova, nao acusacao inventada.
+
+Uma unica `clear_mistake` entrou (#320861). Ela passou pelo teto de severidade sem custo, que ja
+estava em producao -- ou seja, tem custo medido. A regra funcionando em vez de ser contornada.
+
+Conferido depois: 10.137 decisoes antes e depois, **71 anotacoes de coach** intactas,
+`clear_mistake` sem custo em **0**, score fora da banda em **0** (10.137 de 10.137), e a varredura
+de invariantes **identica** pela terceira vez no dia -- 12 de 13 em zero, BOARD nos mesmos 6.285
+que ja estava antes do primeiro deploy.
+
+O patch do script para NOMEAR as acusacoes falhou duas vezes em silencio antes de funcionar:
+`str.replace` que nao casa devolve a string intacta (regra 6). Na terceira fiz por LINHA, com
+`next()` que estoura se a ancora sumir.
+
+---
+
 ## Sem CUSTO medido, o veredito nao afirma MAGNITUDE (26/08)
 
 `pode_falar_como_gto` ja tinha resolvido a LINGUAGEM: sem custo medido a tela nao chama o desvio

@@ -109,6 +109,8 @@ def main():
     exemplos = []
     amostra = {}
     perdeu_carta = []
+    muda_acusacao = []
+    muda_acusacao = []
     for tid in torneios:
         row = conn.execute('SELECT raw_text FROM tournaments WHERE id=?', (tid,)).fetchone()
         if not row:
@@ -179,6 +181,14 @@ def main():
                    (f['label'] in ('small_mistake', 'clear_mistake')):
                     cont['acusacao_entra' if f['label'] in ('small_mistake', 'clear_mistake')
                          else 'acusacao_sai'] += 1
+                    # Acusacao que ENTRA e mao de usuario real passando a ser acusada: nomeada, nao
+                    # contada. Contar sozinho esconde de quem a conta e cobrada.
+                    muda_acusacao.append(
+                        '%s #%-7s %-7s %-14s -> %-14s | fez %-9s | best %-9s -> %-9s | gto %s -> %s'
+                        % ('ENTRA' if f['label'] in ('small_mistake', 'clear_mistake') else 'SAI  ',
+                           g['id'], g.get('street'), g['label'], f['label'],
+                           (g['action_taken'] or '')[:9], g.get('best_action'), f['best_action'],
+                           g.get('gto_label'), f['gto_label']))
                 if len(exemplos) < args.limite_exemplos:
                     exemplos.append('#%-7s %5.1fbb  %-13s -> %-13s | best %-6s -> %-6s'
                                     % (g['id'], float(g['stack'] or 0), g['label'], f['label'],
@@ -200,6 +210,16 @@ def main():
     print('    acusacoes que SAEM:   %d' % cont['acusacao_sai'])
     print('  maos puladas por tamanho diferente:  %d' % cont['mao_pulada_tamanho'])
     print('  maos puladas por acao desalinhada:   %d' % cont['mao_pulada_desalinhada'])
+    if muda_acusacao:
+        entram = [l for l in muda_acusacao if l.startswith('ENTRA')]
+        saem = [l for l in muda_acusacao if l.startswith('SAI')]
+        print('')
+        print('ACUSACOES QUE ENTRAM (%d):' % len(entram))
+        for l in entram[:25]:
+            print('   ' + l)
+        print('ACUSACOES QUE SAEM (%d):' % len(saem))
+        for l in saem[:12]:
+            print('   ' + l)
     if cont['torneio_ilegivel']:
         print('  torneios ilegiveis: %d' % cont['torneio_ilegivel'])
     print('')
