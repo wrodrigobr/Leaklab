@@ -342,7 +342,8 @@ def _regrade_tournament(conn, tournament_db_id: int) -> int:
     # armazenadas por mão, EM ORDEM (por id = ordem de inserção ≈ ordem de ação)
     stored_by_hand: dict = {}
     for r in conn.execute(
-            "SELECT id,hand_id,action_taken,label,best_action,gto_label,gto_action "
+            "SELECT id,hand_id,action_taken,label,best_action,gto_label,gto_action,"
+            "score,ev_loss_bb "
             "FROM decisions WHERE tournament_id=? AND lower(street)='preflop' ORDER BY id",
             (tournament_db_id,)).fetchall():
         d = dict(r)
@@ -359,8 +360,16 @@ def _regrade_tournament(conn, tournament_db_id: int) -> int:
                     and f["gto_label"] == (s["gto_label"] or None)
                     and f["gto_action"] == (s["gto_action"] or None)):
                 continue
-            conn.execute("UPDATE decisions SET label=?,best_action=?,gto_label=?,gto_action=? WHERE id=?",
-                         (f["label"], f["best"], f["gto_label"], f["gto_action"], s["id"]))
+            # O SCORE VIAJA COM O LABEL (invariante de v0.168). Esta funcao escrevia 4 colunas
+            # e deixava o numero descrevendo o veredito ANTERIOR -- e ele ainda ordena o plano de
+            # estudo por `COUNT(*) * AVG(score)`. Foi a varredura de portas em
+            # `test_score_alinhado_no_insert.py` que achou esta, a quarta.
+            from database.repositories import _align_score_to_label
+            conn.execute("UPDATE decisions SET label=?,best_action=?,gto_label=?,gto_action=?,"
+                         "score=? WHERE id=?",
+                         (f["label"], f["best"], f["gto_label"], f["gto_action"],
+                          _align_score_to_label(f["label"], s.get("score"), s.get("ev_loss_bb")),
+                          s["id"]))
             updated += 1
     return updated
 

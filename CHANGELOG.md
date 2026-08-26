@@ -39,7 +39,24 @@ aceitava a MENCAO de `qualificadorDeCusto` (o import no topo ja bastava) em vez 
 mutacao do score mexia no ARQUIVO de um modulo ja importado -- mutacao que nao muda comportamento
 nao testa nada.
 
-Suite 2466/2466; front 44 testes de `cardLogic` e `tsc -p tsconfig.app.json` limpo.
+**E o score ainda escapava por duas portas que ninguem tinha contado.** A varredura que escrevi
+para o guarda achou que `UPDATE decisions SET label=...` acontece em **quatro** lugares, e dois
+nao levavam o `score` junto -- a invariante de v0.168 ("quem muda o veredito carrega o score")
+furada em silencio. Sintoma no acervo: **274 linhas com o score fora da banda do proprio label**,
+incluindo 14 com `label='standard'` e `score=0,9` (a banda de standard e [0; 0,08]) -- o rotulo
+dizendo "correto" e o numero dizendo "pior possivel", e o numero e quem ordena o plano de estudo.
+As duas portas fechadas, as 274 realinhadas, e agora sao **10.137 de 10.137 dentro da banda**.
+
+O guarda dessa varredura nasceu cego DUAS vezes e as duas foram pegas quebrando de proposito:
+aceitava `db_row['score']` como se fosse a atribuicao `score = ?`, e usava janela de 14 linhas,
+curta demais para alcancar o `UPDATE` do `app.py` -- que e uma f-string montada 25 linhas depois
+da lista. **Passar verde por nao olhar e pior que passar verde por engano.**
+
+Aplicado em producao: `clear_mistake` sem custo **47 -> 0**, as 45 COM custo intactas, acusacoes
+totais **529 -> 529** (a regra nao absolve, so tira o tamanho), 10.137 decisoes e 71 anotacoes de
+coach preservadas, e a varredura de invariantes identica a de antes.
+
+Suite 2467/2467; front 44 testes de `cardLogic` e `tsc -p tsconfig.app.json` limpo.
 
 ---
 

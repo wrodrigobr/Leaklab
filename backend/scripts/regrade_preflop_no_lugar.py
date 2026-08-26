@@ -90,9 +90,16 @@ def main():
     ap.add_argument('--apply', action='store_true')
     ap.add_argument('--dry-run', action='store_true')
     ap.add_argument('--limite-exemplos', type=int, default=25)
+    # A regra de severidade sem custo NAO e preflop: 38 dos 47 `clear_mistake` sem custo medidos
+    # em 26/08 estao no flop, turn e river. O filtro nasceu preflop porque a carta rasa era
+    # preflop; deixa-lo assim teria consertado 9 de 47 e chamado de pronto.
+    ap.add_argument('--streets', default='preflop',
+                    help="'preflop' (padrao) ou 'todas'")
     args = ap.parse_args()
     if not args.apply and not args.dry_run:
         sys.exit('escolha --dry-run ou --apply')
+
+    _so_preflop = (args.streets or 'preflop').lower() != 'todas'
 
     conn = get_conn()
     torneios = [dict(r)['id'] for r in
@@ -119,7 +126,7 @@ def main():
             except Exception:                                             # noqa: BLE001
                 continue
             for di in entradas:
-                if (di.get('street') or '').lower() != 'preflop':
+                if _so_preflop and (di.get('street') or '').lower() != 'preflop':
                     continue
                 hid, act = di.get('hand_id', ''), (di.get('player_action') or '').lower()
                 if not hid or not act:
@@ -134,10 +141,11 @@ def main():
 
         gravadas = {}
         for r in conn.execute(
-                "SELECT id, hand_id, action_taken, %s, "
+                "SELECT id, hand_id, action_taken, street, %s, "
                 "COALESCE(effective_stack_bb, stack_bb) AS stack "
-                "FROM decisions WHERE tournament_id=? AND lower(street)='preflop' ORDER BY id"
-                % ', '.join(_COLUNAS), (tid,)).fetchall():
+                "FROM decisions WHERE tournament_id=? %s ORDER BY id"
+                % (', '.join(_COLUNAS),
+                   "AND lower(street)='preflop'" if _so_preflop else ''), (tid,)).fetchall():
             d = dict(r)
             gravadas.setdefault(d['hand_id'], []).append(d)
 
@@ -186,7 +194,7 @@ def main():
 
     conn.close()
     print('torneios: %d' % len(torneios))
-    print('decisoes preflop conferidas: %d' % cont['conferidas'])
+    print('decisoes conferidas (%s): %d' % (args.streets, cont['conferidas']))
     print('  MUDAM: %d' % cont['mudam'])
     print('    acusacoes que ENTRAM: %d' % cont['acusacao_entra'])
     print('    acusacoes que SAEM:   %d' % cont['acusacao_sai'])

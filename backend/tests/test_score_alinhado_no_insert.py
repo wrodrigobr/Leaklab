@@ -166,6 +166,46 @@ def test_as_duas_portas_PASSAM_o_custo():
     print('OK  test_as_duas_portas_PASSAM_o_custo')
 
 
+def test_TODA_porta_que_muda_o_label_carrega_o_score():
+    """Regra 5 + a invariante de v0.168: quem muda o veredito carrega o score junto.
+
+    Havia TRES portas escrevendo `label`, e a terceira nao levava o score. Ela produzia
+    `label='standard'` com `score=0,9` -- a banda de standard e [0; 0,08]. Medido em 26/08: 14
+    linhas do acervo, todas de solver, com o rotulo dizendo "correto" e o numero dizendo "pior
+    possivel". E `priority_score = COUNT(*) * AVG(score)` ordena o plano de estudo pelo numero.
+
+    A varredura e textual porque o defeito e textual: um `UPDATE` que lista `label` e esquece
+    `score` na mesma sentenca.
+    """
+    import re
+    raiz = os.path.join(os.path.dirname(__file__), '..')
+    alvos = ['api/app.py', 'database/repositories.py', 'leaklab/preflop_autocapture.py']
+    tem_label = re.compile(r"label\s*=|[\"']label[\"']")
+    # `score = ?` (a ATRIBUICAO no SQL), nao a mencao. A primeira versao aceitava
+    # `db_row['score']` na vizinhanca e passou verde com o `sets.append("score = ?")` removido --
+    # terceira vez no dia que um guarda meu ancora no efeito em vez da condicao.
+    tem_score = re.compile(r"score\s*=\s*\?")
+    faltam = []
+    for rel in alvos:
+        with open(os.path.join(raiz, *rel.split('/')), encoding='utf-8') as fh:
+            linhas = fh.read().split(chr(10))
+        for i, linha in enumerate(linhas):
+            if 'UPDATE decisions SET' not in linha.split('#')[0]:
+                continue
+            # A sentenca pode ser montada em VARIAS linhas: em `api/app.py` o `UPDATE` e uma
+            # f-string sobre uma lista `sets` construida ~25 linhas acima. Com janela de 14 o
+            # guarda nem chegava a olhar aquela porta -- passava verde por nao ver, que e pior
+            # que passar verde por engano.
+            trecho = chr(10).join(linhas[max(0, i - 32):i + 4])
+            if not tem_label.search(trecho) or tem_score.search(trecho):
+                continue
+            faltam.append('%s:%d' % (rel, i + 1))
+    assert not faltam, (
+        'porta(s) que mudam o LABEL sem carregar o SCORE: %s -- o numero fica descrevendo o '
+        'veredito anterior e ainda ordena o plano de estudo' % ', '.join(faltam))
+    print('OK  test_TODA_porta_que_muda_o_label_carrega_o_score')
+
+
 if __name__ == '__main__':
     falhas = 0
     testes = [v for k, v in sorted(globals().items()) if k.startswith('test_')]

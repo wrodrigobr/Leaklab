@@ -10642,7 +10642,7 @@ def admin_reanalyze_preflop_labels():
                     # (dois jogadores importam o mesmo torneio = mesmo hand_id). Sem o escopo,
                     # o match colide e relabela/reposiciona a decisão de OUTRA conta.
                     db_row = conn.execute(
-                        "SELECT id, label, position, vs_position FROM decisions "
+                        "SELECT id, label, score, ev_loss_bb, position, vs_position FROM decisions "
                         "WHERE tournament_id = ? AND hand_id = ? AND street = 'preflop' "
                         "AND action_taken = ? LIMIT 1",
                         (tid, hand_id, act)
@@ -10672,6 +10672,16 @@ def admin_reanalyze_preflop_labels():
                     sets, params = [], []
                     if new_label != old_label:
                         sets.append("label = ?");       params.append(new_label)
+                        # O SCORE VIAJA COM O LABEL. Esta era a terceira porta a mudar o veredito
+                        # sem carregar o score junto (as outras duas ja tinham sido fechadas), e
+                        # ela deixava `label='standard'` com `score=0,9` -- a banda de standard e
+                        # [0; 0,08]. Medido em 26/08: 14 linhas do acervo, todas de solver, com o
+                        # rotulo dizendo "correto" e o numero dizendo "pior possivel". Como
+                        # `priority_score = COUNT(*) * AVG(score)`, o numero orfao ainda ordenava
+                        # o plano de estudo.
+                        sets.append("score = ?")
+                        params.append(_align_score_to_label(
+                            new_label, db_row['score'], db_row['ev_loss_bb']))
                     # Só corrige posição/vs para um valor CONCRETO e realmente diferente:
                     # nunca rebaixa uma posição conhecida para UNKNOWN nem gera churn de caixa.
                     if _real(new_pos) and _diff(new_pos, old_pos):
