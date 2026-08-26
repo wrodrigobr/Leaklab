@@ -5,6 +5,50 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## Os 1.300 sem veredito GTO: nao havia nada a recuperar, havia o que NOMEAR (26/08)
+
+Ataquei os 1.300 `gto_label` NULL. O resultado nao foi cobertura nova -- foi descobrir que a
+ausencia era **muda**, e torna-la falante.
+
+`_enrich_gto` tinha ONZE saidas `{'available': False}` e apenas DUAS diziam por que. Sondando as
+68 decisoes que tem no de solver hand-aware no banco, casando por `spot_hash`, e mesmo assim caem
+no heuristico, a unica resposta possivel era "sem motivo declarado". Interceptando
+`compute_spot_hash` nelas: **40 pedem o hash certo** (a recusa vem de outro guarda), **23 pedem
+outro hash** (no orfao) e **5 nem chegam a pedir**.
+
+Agora cada recusa passa por `_sem_gto(motivo)`, e o motivo **sobrevive no resultado**: o motor
+devolvia `preflop_gto: None` sem cobertura, e com o None ia embora o `coverage_reason` que a carta
+JA declarava. Trocar o None por um dict nao servia (dict sem cobertura e truthy, quebraria todo
+`if preflop_gto:`), entao o motivo viaja em chave propria.
+
+**O mapa, lido pelo caminho real do motor:**
+
+| street | motivo | total | acusacoes |
+|---|---|---|---|
+| preflop | `limped_pot` | 510 | 35 |
+| preflop | **(sem motivo declarado)** | 169 | 0 |
+| preflop | `open_jam_uncovered` | 162 | 3 |
+| preflop | `pairing_uncovered` | 140 | 16 |
+| preflop | `open_size_off_tree` | 105 | 8 |
+| preflop | `limp_then_raise` | 65 | 2 |
+| flop/turn/river | `acao_do_hero_fora_da_arvore` | 81 | 19 |
+| preflop | `hu_uncovered` / `hand_out_of_node_range` / `hu_hand_out_of_range` | 61 | 1 |
+| flop | `sem_no_para_o_spot` / `jam_recusado_por_spr_alto` | 7 | 1 |
+
+**1.131 dos 1.300 agora declaram o motivo; 169 ainda nao.** Nenhuma delas era recuperavel: o
+regrade completo confirmou `MUDAM: 0`.
+
+**Minha sonda errou DUAS vezes antes de acertar, e as duas vezes o regrade estava certo.** Primeiro
+ela chamava `_enrich_preflop_gto` ISOLADO -- que ve entradas que o motor nao usa -- e reportou "64
+ja cobertas". Depois pareava a linha gravada com a fresca por `(mao, acao)`, ambiguo quando a mesma
+mao tem duas decisoes preflop com a mesma acao, e reportou "27 ja cobertas". Com casamento por
+ORDEM, a mesma trava de `_regrade_tournament`: **zero**. Sonda que discorda do caminho real e
+suspeita, nao descoberta.
+
+Ferramenta: `scripts/mapa_cobertura_gto.py`. Suite 2471/2471.
+
+---
+
 ## Regrade do acervo em TODAS as streets (26/08)
 
 O postflop nunca tinha sido re-gradado contra o motor atual. **767 linhas mudaram**, e o grosso
