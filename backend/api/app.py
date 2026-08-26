@@ -6395,7 +6395,7 @@ def _best_action_proporcional(best, pot_bb, stack_bb):
     return best
 
 
-def _pode_falar_como_gto_da_linha(d, multiway=None):
+def _pode_falar_como_gto_da_linha(d, multiway=None, procedencia=None):
     """O gate COMPLETO para uma linha: procedencia + custo + a recusa em graduar multiway.
 
     Existe como funcao porque ele e consultado em mais de uma porta (o `/replay` e a lista do
@@ -6418,7 +6418,11 @@ def _pode_falar_como_gto_da_linha(d, multiway=None):
         # O solver e HU-only: em multiway o produto se RECUSA a graduar, e liberar a palavra
         # "leak" ali seria acusar com a autoridade de um gabarito que nao existe.
         return False
-    return _verdict_mod.pode_falar_como_gto(_procedencia_da_linha(d), _tem_custo_da_linha(d))
+    # `procedencia` explicita existe para o /replay: la o veredito EXIBIDO pode ter vindo da
+    # camada viva, e o gate precisa julgar a fonte que decidiu, nao a que esta gravada. Quem nao
+    # passa (a lista do torneio) segue lendo a coluna, como sempre.
+    return _verdict_mod.pode_falar_como_gto(
+        procedencia or _procedencia_da_linha(d), _tem_custo_da_linha(d))
 
 
 def _tem_custo_da_linha(d):
@@ -7717,7 +7721,15 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
             # PROCEDÊNCIA: de onde veio o veredito. Derivada AQUI quando a coluna ainda está
             # vazia (decisão anterior à migração), pela MESMA função do motor — reimplementar a
             # regra na API seria a segunda porta, o defeito mais recorrente deste projeto.
-            'verdict_source':     _procedencia_da_linha(decision),
+            # Quem teve a ULTIMA palavra na cadeia responde pela procedencia. `error_label` e
+            # `gto_label` acima ja sao RECOMPUTADOS ao vivo; deixar `verdict_source` saindo da
+            # coluna fazia o mesmo objeto dizer "veio do heuristico" e "o solver classificou como
+            # desvio critico". Medido no torneio 72: 3 decisoes com `gto_critical` ao lado de
+            # `motor`, com o banco guardando `marginal` 0,13 e `gto_label` NULO.
+            # O CUSTO nao muda: a camada viva traz rotulo, nao traz EV — entao
+            # `pode_falar_como_gto` segue False nesses casos, que e o certo.
+            'verdict_source':     _verdict_mod.procedencia_da_camada(
+                                      _vc.layer, _procedencia_da_linha(decision)),
             'verdict_has_cost':   _tem_custo_da_linha(decision),
             # A tela usa isto para decidir se pode escrever "leak"/"erro contra o equilíbrio" ou
             # se precisa dizer que é leitura do motor.
@@ -7726,7 +7738,10 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
             # seria dizer "não posso te dar o veredito" e "pode escrever leak" no mesmo objeto —
             # a falsa confiança que a procedência existe para eliminar, agora com carimbo de
             # autoridade. Medido no torneio 7: 3 de 4 spots multiway postflop faziam isso.
-            'pode_falar_como_gto': _pode_falar_como_gto_da_linha(decision, multiway=_mw_spot),
+            'pode_falar_como_gto': _pode_falar_como_gto_da_linha(
+                                       decision, multiway=_mw_spot,
+                                       procedencia=_verdict_mod.procedencia_da_camada(
+                                           _vc.layer, _procedencia_da_linha(decision))),
             'best_action':        _best_exibido,
             'engine_best':        engine_best if (gto_engine_conflict or gto_spot_mismatch) else None,
             'gto_label':          (None if _mw_spot else gto_label),

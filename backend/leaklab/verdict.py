@@ -283,3 +283,33 @@ def severidade_sem_custo(label, custo_medido) -> str:
 # (a lesao de 24/08). O teto do ROTULO ja resolve sozinho: com `clear_mistake` virando
 # `small_mistake`, a banda passa a ser [0,19; 0,35] e o 0,900 e clampado pelo `hi` que sempre
 # existiu. Menos codigo, e o mesmo efeito onde o dano estava medido.
+
+
+# ── Procedencia de quem teve a ULTIMA palavra ──────────────────────────────────────────────
+#
+# O `/replay` recomputa o veredito numa cadeia de camadas (`card_verdict.LAYERS`) e a camada viva
+# costuma ser mais severa que a gravada. Mas `verdict_source` e `verdict_has_cost` continuavam
+# saindo da LINHA DO BANCO -- dois fatos, duas fontes, o defeito mais recorrente deste projeto.
+#
+# Medido em 26/08 no torneio 72: tres decisoes exibiam `gto_label: gto_critical` ao lado de
+# `verdict_source: motor`. O banco guardava `marginal` 0,13 com `gto_label` NULO; o card mostrava
+# `small_mistake` 0,19 com rotulo de solver. O objeto se contradizia -- dizia "isto veio do
+# heuristico" e "o solver classificou como desvio critico" na mesma linha. Um juiz de coerencia
+# pegou as tres.
+_PROCEDENCIA_DA_CAMADA = {
+    'live':     SOLVER,     # estrategia viva do solver
+    'preflop':  CARTA,      # ranges estaticas
+}
+
+
+def procedencia_da_camada(camada, procedencia_gravada: str) -> str:
+    """Quem responde pelo veredito EXIBIDO, dado quem teve a ultima palavra na cadeia.
+
+    `stored` e as camadas de multiway devolvem a procedencia gravada -- as de multiway nao trocam
+    a FONTE do veredito, elas suprimem ou suavizam o que a fonte disse. Camada desconhecida
+    tambem cai na gravada: na duvida, nao promover autoridade que ninguem provou.
+
+    NAO mexe no custo. A camada viva traz rotulo, nao traz EV -- entao `pode_falar_como_gto`
+    continua False para estes casos, que e o certo: procedencia sem custo nao autoriza a palavra.
+    """
+    return _PROCEDENCIA_DA_CAMADA.get(camada) or procedencia_gravada or MOTOR
