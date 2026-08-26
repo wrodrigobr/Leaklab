@@ -25,6 +25,11 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 _FONTE = os.path.join(os.path.dirname(__file__), '..', 'leaklab', 'decision_engine_v11.py')
 
 
+def _corpo_completo():
+    with open(_FONTE, encoding='utf-8') as fh:
+        return fh.read()
+
+
 def _corpo_do_enriquecimento():
     """Só o corpo de `_enrich_gto` — as outras funções do módulo têm política própria."""
     with open(_FONTE, encoding='utf-8') as fh:
@@ -74,6 +79,30 @@ def test_a_recusa_continua_sendo_recusa():
     extra = _sem_gto('outro', spot_mismatch=True)
     assert extra['spot_mismatch'] is True, 'os campos antigos pararam de viajar junto'
     print('OK  test_a_recusa_continua_sendo_recusa')
+
+
+def test_o_motivo_SOBREVIVE_a_ausencia_no_resultado():
+    """A segunda metade, e o caso que a primeira nao cobria.
+
+    `evaluate_decision` devolve `preflop_gto: None` quando nao ha cobertura — e com o None ia
+    embora o `coverage_reason` que a carta JA declarava (`limped_pot`, `pairing_uncovered`,
+    `open_size_off_tree`). Uma sonda perguntando ao motor por que 1.212 decisoes preflop nao tem
+    veredito GTO so conseguia responder "?", e eu quase reconstrui a razao por fora — que e como
+    seis medicoes desta base ja foram contaminadas.
+
+    Trocar o None por um dict NAO servia: dict sem cobertura e truthy e quebraria todo consumidor
+    que testa `if preflop_gto:`. Por isso o motivo viaja em chave propria.
+    """
+    fonte = _corpo_completo()
+    assert '"preflop_coverage_reason"' in fonte, (
+        'o motivo da ausencia preflop parou de viajar no resultado: quem for medir a cobertura '
+        'volta a ter que reconstruir a razao por fora')
+    assert '"gto_coverage_reason"' in fonte, 'o motivo da ausencia postflop parou de viajar'
+    # e o None do `preflop_gto` continua None: a chave nova e ADENDO, nao troca de contrato
+    assert "preflop_gto if preflop_gto.get('available') else None" in fonte, (
+        '`preflop_gto` deixou de ser None quando nao ha cobertura — dict vazio-de-cobertura e '
+        'truthy e quebra `if preflop_gto:` em todo consumidor')
+    print('OK  test_o_motivo_SOBREVIVE_a_ausencia_no_resultado')
 
 
 if __name__ == '__main__':

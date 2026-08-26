@@ -1916,6 +1916,15 @@ def evaluate_decision(input_data: Dict[str, Any]) -> Dict[str, Any]:
         "threebet_intent": threebet_intent,
         "reco_rationale": reco_rationale,
         "preflop_gto": preflop_gto if preflop_gto.get('available') else None,
+        # O MOTIVO sobrevive a ausencia. `preflop_gto` vira None quando nao ha cobertura, e com
+        # ele ia embora o `coverage_reason` que a carta JA declarava (`limped_pot`,
+        # `pairing_uncovered`, `open_size_off_tree`...). Resultado medido em 26/08: uma sonda que
+        # perguntava ao motor por que 1.212 decisoes preflop nao tem veredito GTO so conseguia
+        # responder "?". Trocar o None por um dict nao servia -- dict vazio-de-cobertura e
+        # TRUTHY, e quebraria todo consumidor que testa `if preflop_gto:`. Entao o motivo sai
+        # numa chave propria, e ninguem mais precisa reconstruir a razao por fora.
+        "preflop_coverage_reason": preflop_gto.get('coverage_reason'),
+        "gto_coverage_reason": gto.get('coverage_reason'),
         "debug": {
             "rangeZone": range_eval.get("rangeZone"),
             "alternativeActions": range_eval.get("alternativeActions") or [],
