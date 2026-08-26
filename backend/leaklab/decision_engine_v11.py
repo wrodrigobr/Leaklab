@@ -556,6 +556,21 @@ def _ev_severity_ceiling(label: str, ev_loss_bb: float | None, ev_loss_source: s
     return _SEV_LABEL[cur]
 
 
+def _sem_gto(motivo: str, **extra) -> dict:
+    """Recusa de cobertura GTO que DIZ por que.
+
+    `_enrich_gto` tinha onze saidas `{'available': False}` e duas delas diziam algo. Medido em
+    26/08: 68 decisoes com no hand-aware no banco caiam no heuristico, e a sonda so conseguia
+    responder "sem motivo declarado" -- ausencia calada nao da para atacar, so para conviver.
+
+    Nao muda o comportamento: quem recusava segue recusando. O que muda e que agora da para
+    contar POR MOTIVO, e cada motivo vira um alvo ou uma decisao consciente de nao cobrir.
+    """
+    out = {'available': False, 'coverage_reason': motivo}
+    out.update(extra)
+    return out
+
+
 def _enrich_gto(input_data: Dict[str, Any]) -> dict:
     """
     Lookup GTO postflop usando o mesmo hash que lookup_gto() — mesmos nós do banco.
@@ -564,7 +579,7 @@ def _enrich_gto(input_data: Dict[str, Any]) -> dict:
     """
     street = input_data.get('street', '')
     if street not in ('flop', 'turn', 'river'):
-        return {'available': False}
+        return _sem_gto('nao_e_postflop')
 
     spot          = input_data.get('spot', {})
     board         = spot.get('board', [])
@@ -578,7 +593,7 @@ def _enrich_gto(input_data: Dict[str, Any]) -> dict:
     equity        = input_data.get('math', {}).get('estimatedHandEquity')
 
     if not board or not position:
-        return {'available': False}
+        return _sem_gto('sem_board_ou_posicao')
 
     try:
         import json as _json
@@ -658,7 +673,9 @@ def _enrich_gto(input_data: Dict[str, Any]) -> dict:
                     node = _na
 
         if not node:
-            return {'available': False}
+            # A ausencia mais comum, e ate 26/08 a mais muda: nenhum no do solver responde por
+            # este spot. Nao e defeito -- e cobertura que nao existe, e agora ela se declara.
+            return _sem_gto('sem_no_para_o_spot')
 
         top_action = node['gto_action']
         top_freq   = float(node.get('gto_freq') or 0.0)
@@ -674,7 +691,7 @@ def _enrich_gto(input_data: Dict[str, Any]) -> dict:
         if facing_bb > 0 and _norm_gto_action(top_action) == 'check':
             _log_gto_miss('postflop', street, position,
                           f'no de check servido a spot com facing={facing_bb:.2f}bb')
-            return {'available': False, 'spot_mismatch': True}
+            return _sem_gto('no_de_check_servido_a_spot_com_aposta', spot_mismatch=True)
 
         # Desserializar strategy_json completo
         strategy = []
@@ -715,7 +732,7 @@ def _enrich_gto(input_data: Dict[str, Any]) -> dict:
             if spr > 3.0:
                 _log_gto_miss('postflop', street, position,
                               f'jam rejeitado: SPR={spr:.1f} (stack {stack_bb:.0f}bb / pote {pot_bb:.1f}bb)')
-                return {'available': False}
+                return _sem_gto('jam_recusado_por_spr_alto')
 
         # ── Fase 3 (plano solver): veredito HAND-AWARE ────────────────────────
         # A classificação usava a frequência AGREGADA da range — mas num K72r a
@@ -769,7 +786,7 @@ def _enrich_gto(input_data: Dict[str, Any]) -> dict:
             _log_gto_miss('postflop', street, position,
                           f'ação {player_action!r} fora da árvore '
                           f'({[s["action"] for s in _grade_strategy]})')
-            return {'available': False, 'ungradeable_action': True}
+            return _sem_gto('acao_do_hero_fora_da_arvore', ungradeable_action=True)
 
         # Classificação: mão específica (Fase 3) > frequência da range > top action
         if hand_strategy:
@@ -832,7 +849,7 @@ def _enrich_gto(input_data: Dict[str, Any]) -> dict:
     except Exception as exc:
         _log_gto_miss('postflop', input_data.get('street', ''),
                       (input_data.get('spot') or {}).get('position', ''), str(exc)[:120])
-        return {'available': False}
+        return _sem_gto('excecao_no_enriquecimento', erro=type(exc).__name__)
 
 
 def clamp(value: float, low: float, high: float) -> float:
