@@ -7664,6 +7664,13 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
                 and _verdict_mod.custo_irrelevante_para_acusar(decision.get('ev_loss_bb'))):
             _el_efetivo = 'marginal'
             is_error = False
+        # SEVERIDADE SEM CUSTO, tambem aqui e pelo mesmo motivo do piso acima: o /replay recomputa
+        # o rotulo, entao o conserto feito no motor nao alcanca esta camada. Sem custo medido o
+        # veredito nao afirma MAGNITUDE -- `clear_mistake` cai para `small_mistake`. Segue sendo
+        # acusacao: a frequencia zero da carta e evidencia; o que nao ha e base para o tamanho.
+        if _el_efetivo == 'clear_mistake' and decision:
+            _el_efetivo = _verdict_mod.severidade_sem_custo(
+                _el_efetivo, _tem_custo_da_linha(decision))
         # E a mesma invariante do motor, aqui: acusar com a recomendacao IGUAL a jogada e dizer
         # "voce errou, e o certo era o que voce fez". O conserto feito no motor nao alcanca este
         # rotulo, porque o /replay recomputa -- mesmo padrao que ja custou duas voltas com o

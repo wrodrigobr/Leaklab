@@ -14,6 +14,7 @@ import {
   EQUITY_GAP_P90,
   VERDICT_META,
   VERDICT_LEVELS,
+  qualificadorDeCusto,
 } from "./cardLogic";
 import { metricasDoCard } from "./cardV2Metricas";
 
@@ -255,5 +256,29 @@ describe("decisionSeverity — multiway informativo (igual ao replay)", () => {
   });
   it("sem n_active_opponents: trata como não-multiway (usa label)", () => {
     expect(decisionSeverity({ street: "flop", label: "small_mistake" })).toBe("error");
+  });
+});
+
+describe("qualificadorDeCusto — a palavra 'caro' precisa de um preço", () => {
+  it("sem custo medido não afirma que o desvio foi caro", () => {
+    expect(qualificadorDeCusto({ gtoLabel: "gto_critical", temCusto: false, pp: null }))
+      .toBe("unmeasured");
+    expect(qualificadorDeCusto({ gtoLabel: "gto_minor_deviation", temCusto: false, pp: null }))
+      .toBe("unmeasured");
+  });
+
+  it("COM custo medido nada muda — sem esta contraprova o guarda acima viraria peneira", () => {
+    expect(qualificadorDeCusto({ gtoLabel: "gto_critical", temCusto: true, pp: null }))
+      .toBe("critical");
+    expect(qualificadorDeCusto({ gtoLabel: "gto_minor_deviation", temCusto: true, pp: null }))
+      .toBe("minor");
+  });
+
+  it("o que NÃO fala de preço não é afetado pela falta de custo", () => {
+    // `gto_correct`/`gto_mixed` dizem "alinhado ao solver": é frequência, não preço.
+    expect(qualificadorDeCusto({ gtoLabel: "gto_correct", temCusto: false, pp: null }))
+      .toBe("aligned");
+    expect(qualificadorDeCusto({ gtoLabel: null, temCusto: false, pp: 4 })).toBe("plus");
+    expect(qualificadorDeCusto({ gtoLabel: null, temCusto: false, pp: -4 })).toBe("minus");
   });
 });

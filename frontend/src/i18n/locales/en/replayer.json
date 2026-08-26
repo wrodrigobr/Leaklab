@@ -208,6 +208,7 @@
     "costAligned": "aligned with solver",
     "costMinor": "minor deviation",
     "costCritical": "costly deviation",
+    "costUnmeasured": "cost not measured",
     "costPlus": "with room",
     "costMinus": "deficit",
     "multiwaySolverTip": "Multiway pot ({{n}} players in the pot). The solver strategy is solved heads-up, multiway it's an approximation: frequencies and ranges shift with more opponents. Equity is already adjusted for multiway.",

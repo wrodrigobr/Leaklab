@@ -10,7 +10,7 @@ import { PlayingCard } from "@/components/hud/PlayingCard";
 import { parseCards, fmtAction } from "@/components/replayer/replayerFormat";
 import { cn } from "@/lib/utils";
 import { computeEffectiveGtoLabel } from "@/lib/gtoUtils";
-import { livePlayers as computeLivePlayers, isMultiwayPot, isPpMuted, idealActionSource, verdictStrategy, verdictLevel, clampVerdict, equityLowConfidence, EQUITY_GAP_P90 } from "@/lib/cardLogic";
+import { livePlayers as computeLivePlayers, isMultiwayPot, isPpMuted, idealActionSource, verdictStrategy, verdictLevel, clampVerdict, equityLowConfidence, EQUITY_GAP_P90, qualificadorDeCusto } from "@/lib/cardLogic";
 import { leituraDaIniciativa, selectWhy } from "@/lib/replayWhy";
 import { ACTION_COLORS } from "@/lib/actionColors";
 import { coachDashboard, ReplayData, ReplayStep, CoachAnnotation, CoachOverrideLabel } from "@/lib/api";
@@ -864,10 +864,14 @@ export function SidePanels({
               const reqShown = (req != null && req > 0) ? req : reqImplicit;
               const pp = (eq != null && reqShown != null) ? (eq - reqShown) * 100 : null;
               const ppMuted = pp == null ? true : isPpMuted({ showAuditPreflop: false, effectiveGtoLabel, eq: eq!, reqShown: reqShown!, isActionOk });
-              const costQual = effectiveGtoLabel === "gto_critical" ? t("card.costCritical")
-                : effectiveGtoLabel === "gto_minor_deviation" ? t("card.costMinor")
-                : (effectiveGtoLabel === "gto_correct" || effectiveGtoLabel === "gto_mixed") ? t("card.costAligned")
-                : (pp != null && pp >= 0) ? t("card.costPlus") : t("card.costMinus");
+              // `qualificadorDeCusto` decide; aqui só se traduz. A palavra "caro" precisa de um
+              // preço, e `gto_critical` é frequência — ver a função para o caso que originou.
+              const costQual = t("card.cost" + ({
+                aligned: "Aligned", minor: "Minor", critical: "Critical",
+                plus: "Plus", minus: "Minus", unmeasured: "Unmeasured",
+              })[qualificadorDeCusto({
+                gtoLabel: effectiveGtoLabel, temCusto: step.verdict_has_cost, pp,
+              })]);
               const lblCls = "w-[74px] shrink-0 uppercase text-[9px] tracking-wider text-muted-foreground/60 pt-px";
               return (
                 <div className="space-y-1">

@@ -250,3 +250,31 @@ export function idealActionSource(ctx: {
   if (ctx.hasGto) return "solver";
   return "engine";
 }
+
+/**
+ * Qualificador do bloco "Custo" do card.
+ *
+ * O card dizia **"desvio caro"** (`card.costCritical`) sempre que `gto_label === "gto_critical"`.
+ * Mas `gto_critical` é um sinal de FREQUÊNCIA — o próprio produto já decidiu isso, e
+ * `verdictLevel("gto_critical")` devolve `null` com o comentário "frequência NÃO é veredito".
+ * Chamar o desvio de *caro* é uma afirmação sobre PREÇO, e ela precisa de um preço.
+ *
+ * Medido no acervo em 26/08: 47 decisões saíam com o veredito mais duro do produto e
+ * `ev_loss_bb` NULL nas 47.
+ *
+ * Regra: sem custo medido, o bloco diz que o custo não foi medido. Não absolve e não acusa de
+ * caro — informa o que se sabe. Com custo medido, nada muda.
+ */
+export function qualificadorDeCusto(args: {
+  gtoLabel: string | null | undefined;
+  temCusto: boolean | null | undefined;
+  pp: number | null;
+}): "aligned" | "minor" | "critical" | "plus" | "minus" | "unmeasured" {
+  const { gtoLabel, temCusto, pp } = args;
+  const afirmaPreco = gtoLabel === "gto_critical" || gtoLabel === "gto_minor_deviation";
+  if (afirmaPreco && !temCusto) return "unmeasured";
+  if (gtoLabel === "gto_critical") return "critical";
+  if (gtoLabel === "gto_minor_deviation") return "minor";
+  if (gtoLabel === "gto_correct" || gtoLabel === "gto_mixed") return "aligned";
+  return pp != null && pp >= 0 ? "plus" : "minus";
+}

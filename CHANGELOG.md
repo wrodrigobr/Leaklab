@@ -5,6 +5,44 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## Sem CUSTO medido, o veredito nao afirma MAGNITUDE (26/08)
+
+`pode_falar_como_gto` ja tinha resolvido a LINGUAGEM: sem custo medido a tela nao chama o desvio
+de leak. Faltava a MAGNITUDE, e ela vazava por tres superficies. Medido no acervo:
+
+* **47 `clear_mistake` com `ev_loss_bb` NULL nos 47** -- o veredito mais duro do produto, sem um bb
+  atras dele.
+* **score ate 0,900 sem custo**, com a MESMA mediana de quem tem custo (0,270 contra 0,267). A
+  origem: `opp_cost = top_freq - played_freq` multiplicado por 0,90 no motor. `opp_cost` e um gap
+  de **frequencia** com nome de custo -- a familia de `project_severidade_por_ev` ("o motor sabia
+  com que frequencia e nao sabia quanto custa") viva noutro caminho. E como
+  `priority_score = COUNT(*) * AVG(score)` ordena o plano de estudo, a magnitude inventada decidia
+  o que o aluno estuda primeiro.
+* **o card dizia "desvio caro"** (`card.costCritical`) sob o rotulo **Custo**, derivado so de
+  `gto_label` -- que e frequencia, como o proprio produto ja tinha decidido
+  (`verdictLevel("gto_critical")` devolve null, com o comentario "frequencia NAO e veredito").
+
+A linha: **frequencia e medida, custo nao.** Jogada que a carta faz 0% das vezes sustenta "isto
+esta fora da estrategia"; nao sustenta "isto custou caro". Entao a acusacao **permanece** e o que
+cai e a afirmacao de tamanho: `clear_mistake` -> `small_mistake`, nas duas camadas (motor e a viva
+do `/replay`, que recomputa).
+
+**O score cai junto, sem regra propria -- e foi um guarda antigo que me ensinou isso.** Minha
+primeira versao capava o score no piso da banda quando nao havia custo. Dois testes acusaram, com
+razao: `_align_score_to_label` nao pode mexer em score que ja esta dentro da banda, senao 59 de 77
+acusacoes voltam a valer exatamente 0,19 e a ordenacao do plano volta a depender so da contagem --
+a lesao de 24/08. Revertido. Com o ROTULO capado, a banda passa a ser [0,19; 0,35] e o 0,900 e
+clampado pelo `hi` que sempre existiu: **0,900 -> 0,35 sem uma linha de regra nova.**
+
+Sete guardas, sete quebrados de proposito. Dois nasceram cegos e foram consertados: o do card
+aceitava a MENCAO de `qualificadorDeCusto` (o import no topo ja bastava) em vez da CHAMADA, e a
+mutacao do score mexia no ARQUIVO de um modulo ja importado -- mutacao que nao muda comportamento
+nao testa nada.
+
+Suite 2466/2466; front 44 testes de `cardLogic` e `tsc -p tsconfig.app.json` limpo.
+
+---
+
 ## Deploy e reprocesso do acervo (26/08)
 
 A carta rasa foi para producao e o acervo preflop foi re-gradado **no lugar**.

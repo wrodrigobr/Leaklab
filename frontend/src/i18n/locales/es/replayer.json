@@ -208,6 +208,7 @@
     "costAligned": "alineado con el solver",
     "costMinor": "desvío leve",
     "costCritical": "desvío caro",
+    "costUnmeasured": "costo no medido",
     "costPlus": "con holgura",
     "costMinus": "déficit",
     "multiwaySolverTip": "Bote multiway ({{n}} jugadores en el bote). La estrategia del solver se resuelve heads-up, en multiway es una aproximación: las frecuencias y los rangos cambian con más oponentes. La equity ya está ajustada para el multiway.",

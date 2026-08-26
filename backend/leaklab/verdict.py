@@ -243,3 +243,43 @@ def custo_irrelevante_para_acusar(ev_loss_bb) -> bool:
         return abs(float(ev_loss_bb)) < PISO_CUSTO_PARA_ACUSAR_BB
     except (TypeError, ValueError):
         return False
+
+
+# ── Severidade sem custo ───────────────────────────────────────────────────────────────────
+#
+# `pode_falar_como_gto` resolveu a LINGUAGEM: sem custo medido a tela nao chama o desvio de leak.
+# Faltava a MAGNITUDE, e ela vazava por dois caminhos, medidos no acervo em 26/08:
+#
+#   * **47 `clear_mistake` com `ev_loss_bb` NULL nos 47.** O veredito mais duro do produto, sem um
+#     bb atras dele.
+#   * **score ate 0,900 sem custo**, com a mesma mediana de quem tem custo (0,270 x 0,267). A
+#     origem e `opp_cost = top_freq - played_freq` multiplicado por 0,90 em `decision_engine_v11`:
+#     um gap de FREQUENCIA com nome de custo. E a familia de [[project_severidade_por_ev]]
+#     ("o motor sabia com que frequencia e nao sabia quanto custa") viva noutro caminho. Como
+#     `priority_score = COUNT(*) * AVG(score)` ordena o plano de estudo, a magnitude inventada
+#     decidia o que o aluno estuda primeiro.
+#
+# A linha e: **frequencia e medida, custo nao.** Jogada que a carta faz 0% das vezes sustenta
+# "isto esta fora da estrategia"; nao sustenta "isto custou caro". Entao a acusacao permanece e o
+# que cai e a afirmacao de tamanho.
+TETO_DE_SEVERIDADE_SEM_CUSTO = 'small_mistake'
+
+
+def severidade_sem_custo(label, custo_medido) -> str:
+    """Rebaixa o veredito quando nao ha custo medido para sustentar a magnitude.
+
+    So mexe no topo da escala: `clear_mistake` -> `small_mistake`. NAO absolve — `small_mistake`
+    continua sendo acusacao, porque a frequencia zero da carta e evidencia de verdade. Com custo
+    medido, nada muda.
+    """
+    if custo_medido:
+        return label
+    return TETO_DE_SEVERIDADE_SEM_CUSTO if label == 'clear_mistake' else label
+
+# NAO existe uma funcao separada para o SCORE, e isso e deliberado. A primeira versao capava o
+# score no piso da banda quando nao havia custo -- e DOIS guardas antigos acusaram, com razao:
+# `_align_score_to_label` nao pode mexer em score que ja esta dentro da banda, senao 59 de 77
+# acusacoes voltam a valer exatamente 0,19 e o plano de estudo volta a ordenar so pela contagem
+# (a lesao de 24/08). O teto do ROTULO ja resolve sozinho: com `clear_mistake` virando
+# `small_mistake`, a banda passa a ser [0,19; 0,35] e o 0,900 e clampado pelo `hi` que sempre
+# existiu. Menos codigo, e o mesmo efeito onde o dano estava medido.

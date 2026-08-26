@@ -1850,6 +1850,19 @@ def evaluate_decision(input_data: Dict[str, Any]) -> Dict[str, Any]:
         if (_best_action or '').lower() == 'call':
             _best_action = _acao_real
 
+    # ── Sem CUSTO medido, o veredito nao afirma MAGNITUDE ──────────────────────────────────
+    # Aqui, e nao la em cima no ramo do solver, porque so neste ponto `gto` E `preflop_gto`
+    # existem os dois — aplicar antes de `_enrich_preflop_gto` deixaria a regra cega para a carta.
+    # E o ultimo lugar em que `label` muda, entao e a ultima palavra.
+    #
+    # Medido em 26/08: 47 `clear_mistake` com `ev_loss_bb` NULL nos 47, e score ate 0,900 sem
+    # custo (mediana 0,270, igual a de quem tem custo). A origem e `opp_cost = top_freq -
+    # played_freq` vezes 0,90: um gap de FREQUENCIA com nome de custo, a familia de
+    # `project_severidade_por_ev` viva noutro caminho. A acusacao NAO cai — frequencia zero e
+    # evidencia de verdade; o que cai e a afirmacao de tamanho.
+    _tem_custo = _verdict.tem_custo_medido(gto, preflop_gto)
+    label = _verdict.severidade_sem_custo(label, _tem_custo)
+
     return {
         "handId": input_data["hand_id"],
         "bestAction": _best_action,
@@ -1879,7 +1892,7 @@ def evaluate_decision(input_data: Dict[str, Any]) -> Dict[str, Any]:
         # 495 acusações com a carta reprovando saíam sem um bb de custo — usando a linguagem de
         # GTO mesmo assim. Fonte única em `leaklab/verdict.py`.
         "verdictSource": _verdict.procedencia(gto, preflop_gto, street),
-        "verdictHasCost": _verdict.tem_custo_medido(gto, preflop_gto),
+        "verdictHasCost": _tem_custo,   # o MESMO valor que rebaixou a severidade acima
         "gto": gto,
         "icm_zone_approx": icm_zone_approx,   # gate zona-ICM: fold ChipEV-reprovado defensável → "≈ Aproximação chipEV"
         "bet_intent": bet_intent,
