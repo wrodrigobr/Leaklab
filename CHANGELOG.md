@@ -5,6 +5,55 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## Deploy e reprocesso do acervo (26/08)
+
+A carta rasa foi para producao e o acervo preflop foi re-gradado **no lugar**.
+
+**O reprocesso normal nao servia.** Ele e DELETE + INSERT, e as tabelas que referenciam
+`decisions(id)` tem `ON DELETE CASCADE` -- foi assim que 71 anotacoes de coach sumiram caladas em
+producao. Para uma mudanca que so mexe no veredito preflop, apagar a linha e desproporcional.
+`_regrade_tournament` ja existia e faz UPDATE, mas escreve **4 colunas** e deixaria `score` e
+`note` descrevendo o veredito ANTERIOR -- a contradicao que a invariante de v0.168 fechou. Entao
+`scripts/regrade_preflop_no_lugar.py` escreve a tupla inteira, com a mesma trava anti-escrita-errada
+de `_regrade_tournament` (casamento por ORDEM dentro da mao; desalinhou, pula a mao inteira).
+
+**O dry-run pegou um dano que eu teria causado.** A primeira versao acusou **7.107 de 7.107
+mudando** -- numero absurdo e sinal, nao resultado. Contei por COLUNA: `score` fresco vinha `None`
+em todas, porque eu lia `evaluation.score`, chave que nao existe. O score sai de
+`_align_score_to_label(label, mistakeScore, ev_loss_bb)`. Aplicar teria **zerado o score do acervo
+inteiro**. O mesmo diagnostico achou `note`: prosa que o `/replay` enriquece na LEITURA, entao ela
+so e reescrita quando o motor produz uma -- apagar a explicacao de 384 decisoes seria dano que o
+bug nao causava.
+
+**Com o extrator certo: 557 mudam**, nao 7.107.
+
+| coluna | linhas |
+|---|---|
+| score (acerto de contas do alinhamento de 24/08) | 515 |
+| label | 82 |
+| gto_action / gto_label | 54 / 53 |
+| best_action | 40 |
+| verdict_source | 36 |
+| verdict_has_cost | 5 |
+
+**Acusacoes preflop: 357 -> 312** (6 entram, 51 saem). Na faixa 2,5-7,5bb o efeito e o esperado:
+`best_action = call` (o limp que a carta de 10bb recomendava a 3bb) foi de **10 para 0**, e `jam`
+de 49 para 62.
+
+As 36 que trocam `carta` por `motor` sao **check do BB em heads-up** entre 8 e 12bb -- fora da
+faixa que mexi hoje, acerto de contas de mudanca anterior. O reprocesso leva o acervo para o motor
+de HOJE, entao ele varre mais que a mudanca do dia; a composicao acima diz o que e o que.
+
+**Conferido depois, nao assumido:** 10.137 decisoes antes e depois (nada apagado), **71 anotacoes
+de coach intactas**, `score` nulo/zero em acusacao = 0, e a varredura de invariantes **identica**
+a de antes do deploy -- 12 de 13 em zero. A 13a (BOARD 6.285) ja estava assim ANTES do deploy: o
+baseline declarado e 6.070, de quando o acervo era menor. Nao mexi nele para ficar verde.
+
+Os dois containers foram conferidos um a um (`balde_rfi(4.1) = 4bb` nos dois), porque o codigo e
+baked na imagem e `git pull` no host nao muda container.
+
+---
+
 ## O GW gratuito NAO tem a faixa rasa de mesa cheia (26/08)
 
 Depois de importar a RFI de 3-7bb, sobraram 165 decisoes de **defesa** (`vs_RFI`/`vs_3bet`) entre
