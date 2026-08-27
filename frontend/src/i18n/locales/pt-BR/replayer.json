@@ -332,7 +332,8 @@
       "open_jam_uncovered": "O vilão abriu de all-in e a nossa carta só descreve open pequeno. Sem nó de jam nesta posição, preferimos não dar veredito.",
       "open_size_off_tree": "O vilão abriu bem maior do que a carta modela, e a linha recomendada aqui depende desse preço. Em vez de cobrar você contra o preço errado, não damos veredito.",
       "hand_out_of_node_range": "Esta mão não chega a este ponto da árvore: a carta faz a posição abrir de outro jeito, então não há estratégia publicada para ela aqui.",
-      "limp_then_raise": "A linha passa por um limp seguido de aumento, que as nossas árvores (raise-first) não modelam."
+      "limp_then_raise": "A linha passa por um limp seguido de aumento, que as nossas árvores (raise-first) não modelam.",
+      "profundidade_sem_carta": "Sem carta para esta profundidade: abaixo de 2,5bb ou acima de 133bb nenhuma carta responde"
     },
     "scenGenerico": "deste spot",
     "scenHuRfi": "de abertura no SB (heads-up)",

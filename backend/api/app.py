@@ -6442,7 +6442,7 @@ def _pode_falar_como_gto_da_linha(d, multiway=None, procedencia=None):
         procedencia or _procedencia_da_linha(d), _tem_custo_da_linha(d))
 
 
-def _tem_custo_da_linha(d):
+def _tem_custo_da_linha(d, motivo=None):
     """Existe EV em bb de fonte que vale como quantidade, nesta linha gravada?
 
     A COLUNA nao basta sozinha. Medido em 27/08 por um juiz de QA: 9 linhas com
@@ -6455,6 +6455,12 @@ def _tem_custo_da_linha(d):
     """
     if not d:
         return False
+    if (motivo or '') == 'nao_confiavel':
+        return False
+    # `ev_loss_motivo` NAO existe na linha do banco -- e campo calculado no display
+    # (`_ev_e_motivo`). A 1a versao deste guarda lia a chave direto do `decision` e nunca
+    # disparava: 10 linhas seguiram com `verdict_has_cost: true` e `ev_loss_bb` nulo depois do
+    # "conserto". Quem chama passa o motivo quando o tem.
     if (d.get('ev_loss_motivo') or '') == 'nao_confiavel':
         return False
     if d.get('verdict_has_cost') is not None:
@@ -7348,6 +7354,8 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
 
         # Re-evaluate is_error/reconciled_best using LIVE strategy (overrides stored gto_label)
         # Stored label may come from a mismatched or stale node; live frequency is ground truth.
+        _pf_vivo = None      # a carta preflop que a CAMADA VIVA consultou (pode existir onde o
+                             # motor nao teve nenhuma) -- ver o uso em `best_action`
         live_top_act = None
         # Veredito do hero vem da estratégia da MÃO específica (postflop solved node),
         # não do range agregado. Ex.: o range folda 63%, mas A2s levanta 93% → a
@@ -7453,6 +7461,8 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
                             if _fb:
                                 _pf = _fb
 
+                        if _pf.get('available'):
+                            _pf_vivo = _pf          # a carta que o /replay realmente consultou
                         if _pf.get('available') and _pf.get('recommended_actions'):
                             preflop_override_action = _pf['recommended_actions'][0]
                             # CAMADA 3 (card_verdict, puro): qualidade desconhecida devolve None
@@ -7476,6 +7486,12 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
         # Motivo declarado pela CARTA no preflop (`limped_pot`, `pairing_uncovered`, ...). Ele ja
         # existia dentro de `analyze_preflop` e morria no caminho: o payload so entregava coverage
         # para postflop.
+        # calculado UMA vez e reusado: o mesmo motivo alimenta `ev_loss_motivo` e o guarda de
+        # custo, senao voltam a ser duas portas para o mesmo fato
+        try:
+            _motivo_do_custo = _ev_e_motivo(decision, _di, _spot)[1]
+        except Exception:                                                 # noqa: BLE001
+            _motivo_do_custo = None
         _pf_cobertura = None
         try:
             _pf_cobertura = ((_di.get('preflop_gto') or {}) or {}).get('coverage_reason')
@@ -7823,7 +7839,7 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
             # `pode_falar_como_gto` segue False nesses casos, que e o certo.
             'verdict_source':     _verdict_mod.procedencia_da_camada(
                                       _vc.layer, _procedencia_da_linha(decision)),
-            'verdict_has_cost':   _tem_custo_da_linha(decision),
+            'verdict_has_cost':   _tem_custo_da_linha(decision, _motivo_do_custo),
             # A tela usa isto para decidir se pode escrever "leak"/"erro contra o equilíbrio" ou
             # se precisa dizer que é leitura do motor.
             # MULTIWAY: o mesmo payload suprime `gto_label` e `error_label` porque o solver é
@@ -7835,7 +7851,14 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
                                        decision, multiway=_mw_spot,
                                        procedencia=_verdict_mod.procedencia_da_camada(
                                            _vc.layer, _procedencia_da_linha(decision))),
-            'best_action':        _best_exibido,
+            # A recomendacao exibida nao nomeia acao que a carta VIVA joga 0% das vezes. A regra
+            # existe no motor, mas o /replay consulta a carta por conta propria (`_pf`) e podia
+            # exibir `raise` acima de `hand_freq {fold: 1.0, raise: 0.0}` -- 7 casos medidos, todos
+            # `verdict_source: motor`. Mesma funcao do motor, chamada tambem aqui: regra 5.
+            'best_action':        (_verdict_mod.recomendacao_coerente_com_a_carta(
+                                       _best_exibido, (_pf_vivo or {}).get('hand_freq'))
+                                   if (_pf_vivo or {}).get('scenario') == 'rfi'
+                                   else _best_exibido),
             'engine_best':        engine_best if (gto_engine_conflict or gto_spot_mismatch) else None,
             'gto_label':          (None if _mw_spot else gto_label),
             'gto_action':         preflop_override_action or live_top_act or gto_action,
@@ -7876,7 +7899,7 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
             # falar de custo do que falar um numero impossivel.
             'ev_loss_bb':         _ev_e_motivo(decision, _di, _spot)[0],  # #24
             # POR QUE o custo nao aparece. Tres motivos distintos — ver `_ev_e_motivo`.
-            'ev_loss_motivo':     _ev_e_motivo(decision, _di, _spot)[1],
+            'ev_loss_motivo':     _motivo_do_custo,
             'multiway_advice':    multiway_advice,   # fallback multiway: equity-vs-range (estimativa, não GTO HU)
             'multiway_safe':      multiway_safe,     # Fase 2: veredito GRADEADO da cauda segura (None = informativo)
             # com estimativa multiway ativa, esconde as barras HU (o artefato que estamos

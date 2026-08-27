@@ -115,7 +115,8 @@ def test_todo_leitor_da_secao_RFI_passa_pela_porta():
             # `sizing_advisor` de proposito e o guarda passou verde -- ancorado no efeito
             # (o nome aparece) em vez da condicao (a funcao e chamada). Ver
             # [[reference_teste_ancora_no_efeito_nao_na_condicao]].
-            if ('balde_rfi(' in viz or 'balde_rfi nao se aplica' in viz
+            if ('balde_rfi(' in viz or 'balde_rfi_ou_none(' in viz
+                    or 'balde_rfi nao se aplica' in viz
                     or '_pko' in viz or '_evs' in viz):
                 continue
             achados.append('%s:%d (em %s)' % (rel, i + 1, funcao or '<modulo>'))
@@ -172,6 +173,38 @@ def test_o_jam_abre_conforme_a_mesa_encurta_e_a_posicao_melhora():
     print('OK  test_o_jam_abre_conforme_a_mesa_encurta_e_a_posicao_melhora')
 
 
+def test_abaixo_da_carta_mais_rasa_NENHUMA_carta_responde():
+    """A última saturação, fechada em 27/08.
+
+    Abaixo de 2,5bb NÃO importamos carta de propósito — a de origem limpa QQ/JJ no SB a 2bb. Mas
+    "não importar" não bastava: `balde_rfi` satura, e a carta de **10bb** seguia respondendo por
+    quem tem 1,46bb — e por uma decisão de stack **0,00bb**. Medido: 56 decisões abaixo de 2,5bb,
+    45 julgadas pela carta funda, e foi uma delas que quebrou a invariante MUDO.
+
+    Recusar a importação e continuar respondendo pela carta funda seria o pior dos dois mundos.
+    """
+    from leaklab.preflop_gto_ranges import analyze_preflop
+    for stack in (1.46, 0.5, 2.0):
+        r = analyze_preflop(position='BTN', hero_hand_type='K7s', stack_bb=stack,
+                            action_taken='fold', n_players=9, facing_raises=0)
+        assert r.get('available') is False, (
+            'a %.2fbb uma carta voltou a responder — e a única disponível é a de 10bb' % stack)
+        assert r.get('coverage_reason') == 'profundidade_sem_carta', (
+            'a recusa a %.2fbb parou de declarar motivo' % stack)
+    print('OK  test_abaixo_da_carta_mais_rasa_NENHUMA_carta_responde')
+
+
+def test_a_faixa_COBERTA_continua_respondendo():
+    """Contraprova. Uma recusa larga demais apagaria a cobertura de 3-7bb que acabou de entrar,
+    e a de 10-100bb que sempre existiu."""
+    from leaklab.preflop_gto_ranges import analyze_preflop
+    for stack in (3.0, 4.0, 7.0, 10.0, 20.0, 100.0):
+        r = analyze_preflop(position='BTN', hero_hand_type='K7s', stack_bb=stack,
+                            action_taken='fold', n_players=9, facing_raises=0)
+        assert r.get('available') is True, 'a %.1fbb a carta parou de responder' % stack
+    print('OK  test_a_faixa_COBERTA_continua_respondendo')
+
+
 if __name__ == '__main__':
     falhas = 0
     testes = [v for k, v in sorted(globals().items()) if k.startswith('test_')]
@@ -186,3 +219,4 @@ if __name__ == '__main__':
             print('ERRO    %s: %s: %s' % (teste.__name__, type(e).__name__, e))
     print('\nTotal: %d | Passed: %d | Failed: %d' % (len(testes), len(testes) - falhas, falhas))
     sys.exit(1 if falhas else 0)
+

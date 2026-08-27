@@ -1724,9 +1724,22 @@ def _analyze_preflop_impl(
     if scenario == 'rfi':
         # `bk_data` já pode ter sido trocado pelo bloco PKO acima; nesse caso ele manda. Fora
         # disso, a seção RFI vem do balde da PRÓPRIA profundidade (ver `balde_rfi`).
+        # `balde_rfi_ou_none`, nao `balde_rfi`: a versao que SATURA servia a carta de 10bb a quem
+        # tem 1,46bb -- e a uma decisao de stack 0,00bb. Medido em 27/08: 56 decisoes abaixo de
+        # 2,5bb, 45 delas julgadas pela carta de 10bb, e foi uma delas que quebrou a invariante
+        # MUDO (`gto_critical` com frequencia 0,0003 saindo `standard`). E a mesma saturacao que
+        # `_balde_da_carta` existe para impedir, viva na unica faixa que a importacao de 3-7bb nao
+        # cobriu -- porque abaixo de 2,5bb a carta de origem limpa QQ/JJ e foi RECUSADA de
+        # proposito. Recusar a importacao e continuar respondendo pela carta funda seria o pior
+        # dos dois mundos.
+        _balde_rfi = balde_rfi_ou_none(stack_bb)
         _bk_rfi = bk_data if base.get('pko') else (
-            (_load().get('ranges') or {}).get(balde_rfi(stack_bb)) or bk_data)
-        rfi = _bk_rfi.get('RFI', {}).get(pos)
+            (_load().get('ranges') or {}).get(_balde_rfi) if _balde_rfi else {})
+        if not _balde_rfi and not base.get('pko'):
+            # A ausência DECLARA. Sem isto a recusa vira silêncio, e silêncio não dá para atacar
+            # nem para explicar ao aluno.
+            base['coverage_reason'] = 'profundidade_sem_carta'
+        rfi = (_bk_rfi or {}).get('RFI', {}).get(pos)
         if not rfi:
             # Push/fold fallback para stacks curtos (10bb, 14bb; 20bb como último recurso)
             pf_section = bk_data.get('push_fold', {}).get(pos)
