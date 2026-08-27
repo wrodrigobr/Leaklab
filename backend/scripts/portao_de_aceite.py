@@ -128,29 +128,17 @@ def porta_qualidade_estatica_nao_contradiz_o_veredito(passos):
     return ('qualidade benigna com veredito de ERRO', len(alvo), maus)
 
 
-def porta_a_regra_do_front_que_suprime_a_contradicao_existe(passos):
-    """A contradição "major leak" x "não é erro" é suprimida no FRONT, não no payload.
-
-    Por isso ela não se mede no dossiê: `cardLogic.mostraQualidadeEstatica` decide, e o payload
-    continua carregando os dois fatos legitimamente. Medir o payload aqui acusaria 20 casos que o
-    aluno não vê — foi o que a 1ª versão desta porta fez, e depois a 2ª ficou com o NOME e a
-    CONDIÇÃO em desacordo (flagava concordância).
-
-    Então esta porta confere o que dá para conferir daqui: que a regra está no lugar. Os casos
-    dela têm teste unitário próprio, quebrado de propósito, em `cardLogic.test.ts`.
-    """
-    import os as _os
-    caminho = _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), '..', '..',
-                            'frontend', 'src', 'lib', 'cardLogic.ts')
-    if not _os.path.exists(caminho):
-        return ('regra do front que suprime a contradicao', 0, [])
-    with open(caminho, encoding='utf-8') as fh:
-        fonte = fh.read()
-    ok = 'mostraQualidadeEstatica' in fonte and 'isError === false' in fonte
-    return ('regra do front que suprime a contradicao', 1, [] if ok else [{'street': '-',
-            'action': 'REGRA AUSENTE', 'best_action': None, 'gto_label': None,
-            'error_label': None, 'is_error': None, 'verdict_has_cost': None,
-            'equity_source': None}])
+# ── A regra do FRONT que suprime a contradicao mudou de casa (27/08) ─────────────────────────
+#
+# Ela era a 7a porta daqui e conferia que `cardLogic.mostraQualidadeEstatica` existe. Mas isso e
+# checagem de FONTE, nao de tela: rodando dentro do container do backend o diretorio `frontend/`
+# nao existe, a porta devolvia denominador 0 e o portao inteiro virava INCONCLUSIVO em todo
+# deploy. Alarme que bloqueia sempre ensina a ignorar bloqueio, do mesmo jeito que alarme que
+# toca sempre ensina a ignorar alarme.
+#
+# Passou para `tests/test_regra_do_front_suprime_contradicao.py`, que roda com o repositorio
+# inteiro na mao e ainda confere os DOIS consumidores (regra 5). Aqui ficam so portas que se
+# medem na captura da tela.
 
 
 def porta_multiway_nao_recebe_solver_hu(passos):
@@ -237,7 +225,7 @@ def porta_card_sem_carta_do_futuro(passos):
 
 _PORTAS = [porta_procedencia_coerente, porta_linguagem_exige_custo, porta_magnitude_exige_custo,
            porta_score_na_banda, porta_nao_acusa_o_que_recomenda, porta_palavra_bate_com_a_acao,
-           porta_a_regra_do_front_que_suprime_a_contradicao_existe, porta_multiway_nao_recebe_solver_hu,
+           porta_multiway_nao_recebe_solver_hu,
            porta_fold_nao_condenado_por_equity_vs_random, porta_ausencia_declara_motivo,
            porta_coverage_nao_mente, porta_qualidade_estatica_nao_contradiz_o_veredito,
            porta_card_sem_carta_do_futuro]
