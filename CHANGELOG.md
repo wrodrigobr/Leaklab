@@ -50,6 +50,14 @@ decisoes divergiam do gravado. Com o patch revertido, **17 divergiam do mesmo je
 ambiente local nao tem os nos postflop do solver. Atribuivel ao patch: **1**, exatamente a linha
 alvo.
 
+### E o conserto no motor nao alcancou o card
+
+Depois do regrade, a **lista** dizia `call`/`gto_correct` e o **card** seguia com "Correto" ao
+lado de "recomendado: jam" e o selo `gto_critical`. O `/replay` reconsulta a carta por conta
+propria — a mesma forma que ja custou voltas com o score, com o piso de custo e com a coerencia
+da recomendacao. A funcao pura passou a ser chamada tambem la, com guarda de fiacao nas duas
+portas e uma varredura N+1.
+
 ### BOARD: o alarme media o tamanho do acervo
 
 6.070 era baseline declarado desde 10/08. Virou 6.400 depois de dois torneios novos. A taxa **por

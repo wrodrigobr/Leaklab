@@ -7466,6 +7466,20 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
 
                         if _pf.get('available'):
                             _pf_vivo = _pf          # a carta que o /replay realmente consultou
+                        # O call que ja leva o stack inteiro E o jam da carta. O conserto no
+                        # MOTOR nao alcanca aqui: o /replay reconsulta a carta por conta propria,
+                        # e depois do regrade a LISTA ja dizia `call`/`gto_correct` enquanto o
+                        # CARD seguia com "Correto" ao lado de "recomendado: jam". Mesma funcao
+                        # pura do motor, chamada tambem aqui — regra 5.
+                        from leaklab.card_verdict import (
+                            carta_colapsada_por_commit_total as _colapsa_carta_viva)
+                        _q_viva, _rec_viva, _custo_viva = _colapsa_carta_viva(
+                            _pf.get('action_quality', 'unknown'),
+                            _pf.get('recommended_actions'), _spot, _norm(action.action))
+                        if not _custo_viva:      # so e False quando colapsou
+                            _pf = {**_pf, 'action_quality': _q_viva,
+                                   'recommended_actions': _rec_viva}
+                            _pf_vivo = _pf
                         if _pf.get('available') and _pf.get('recommended_actions'):
                             preflop_override_action = _pf['recommended_actions'][0]
                             # CAMADA 3 (card_verdict, puro): qualidade desconhecida devolve None

@@ -130,6 +130,38 @@ def test_o_motor_CHAMA_a_funcao_pura():
     print('OK  test_o_motor_CHAMA_a_funcao_pura')
 
 
+def test_a_CAMADA_VIVA_do_replay_tambem_colapsa():
+    """O /replay reconsulta a carta por conta propria, entao o conserto no motor nao chega la.
+
+    Medido depois do regrade em producao: a LISTA ja dizia `call`/`gto_correct` e o CARD seguia
+    com "Correto" ao lado de "recomendado: jam" e o selo `gto_critical`. E a mesma forma que ja
+    custou voltas com o score, com o piso de custo e com a coerencia da recomendacao — regra 5:
+    a regra vale nas N portas, e o guarda varre N+1.
+    """
+    caminho = os.path.join(os.path.dirname(__file__), '..', 'api', 'app.py')
+    with open(caminho, encoding='utf-8') as fh:
+        codigo = chr(10).join(l.split('#')[0] for l in fh.read().split(chr(10)))
+    i = codigo.index("preflop_override_action = _pf['recommended_actions'][0]")
+    # a janela olha para TRAS: o colapso precisa acontecer ANTES de a recomendacao ser lida
+    assert '_colapsa_carta_viva(' in codigo[max(0, i - 900):i], (
+        'a camada viva do /replay parou de colapsar: o card volta a dizer "recomendado: jam" '
+        'para quem pagou all-in, com "Correto" do lado')
+    print('OK  test_a_CAMADA_VIVA_do_replay_tambem_colapsa')
+
+
+def test_as_DUAS_portas_usam_a_MESMA_funcao():
+    """Regra 5 com varredura N+1: motor e camada viva. Se alguem reintroduzir a condicao inline
+    numa delas, as duas divergem em silencio e so uma recebe o proximo conserto."""
+    base = os.path.dirname(__file__)
+    n = 0
+    for rel in (('..', 'leaklab', 'decision_engine_v11.py'), ('..', 'api', 'app.py')):
+        with open(os.path.join(base, *rel), encoding='utf-8') as fh:
+            codigo = chr(10).join(l.split('#')[0] for l in fh.read().split(chr(10)))
+        n += codigo.count('carta_colapsada_por_commit_total')
+    assert n >= 2, 'a funcao deixou de ser compartilhada: %d consumidor(es) de 2' % n
+    print('OK  test_as_DUAS_portas_usam_a_MESMA_funcao')
+
+
 if __name__ == '__main__':
     falhas = 0
     testes = [v for k, v in sorted(globals().items()) if k.startswith('test_')]
