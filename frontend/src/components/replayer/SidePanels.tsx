@@ -10,7 +10,7 @@ import { PlayingCard } from "@/components/hud/PlayingCard";
 import { parseCards, fmtAction } from "@/components/replayer/replayerFormat";
 import { cn } from "@/lib/utils";
 import { computeEffectiveGtoLabel } from "@/lib/gtoUtils";
-import { livePlayers as computeLivePlayers, isMultiwayPot, isPpMuted, idealActionSource, verdictStrategy, verdictLevel, clampVerdict, equityLowConfidence, EQUITY_GAP_P90, qualificadorDeCusto } from "@/lib/cardLogic";
+import { livePlayers as computeLivePlayers, isMultiwayPot, isPpMuted, idealActionSource, verdictStrategy, verdictLevel, clampVerdict, equityLowConfidence, EQUITY_GAP_P90, qualificadorDeCusto, mostraQualidadeEstatica } from "@/lib/cardLogic";
 import { leituraDaIniciativa, selectWhy } from "@/lib/replayWhy";
 import { ACTION_COLORS } from "@/lib/actionColors";
 import { coachDashboard, ReplayData, ReplayStep, CoachAnnotation, CoachOverrideLabel } from "@/lib/api";
@@ -658,10 +658,15 @@ export function SidePanels({
 
         // ──────── Details (toggle): audit trail + pro_notes + indicadores secundários ────────
         const showAuditPreflop = !isPostflop && pg?.available && !isShoveFb;
+        // Mesma regra do RangePanel, uma função só: as notas que falam de "leak" não aparecem
+        // quando o veredito diz que não é erro. O guarda antigo ancorava no rótulo do solver e
+        // deixava passar `gto_critical`, que era 25 de 25 das contradições medidas.
         const showProNotes = showAuditPreflop && (pg!.pro_notes?.length ?? 0) > 0 &&
-                             !(effectiveGtoLabel &&
-                               ['gto_correct','gto_mixed','gto_minor_deviation'].includes(effectiveGtoLabel) &&
-                               ['leak','major_leak'].includes(pg!.action_quality));
+                             mostraQualidadeEstatica({
+                               actionQuality: pg!.action_quality,
+                               gtoLabel: effectiveGtoLabel,
+                               isError: step.is_error,
+                             });
         const sprColor = spr == null ? "" : spr < 2 ? "text-amber-400" : spr < 5 ? "text-sky-400" : "text-muted-foreground";
         const sprLabel = spr == null ? null : spr < 2 ? t("card.sprCommitted") : spr < 5 ? t("card.sprMid") : t("card.sprDeep");
         const isBetAct = step.is_hero && (step.action === "bet" || step.action === "raise" || step.action === "shove");

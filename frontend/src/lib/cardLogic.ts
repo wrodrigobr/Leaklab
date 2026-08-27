@@ -278,3 +278,30 @@ export function qualificadorDeCusto(args: {
   if (gtoLabel === "gto_correct" || gtoLabel === "gto_mixed") return "aligned";
   return pp != null && pp >= 0 ? "plus" : "minus";
 }
+
+/**
+ * A qualidade ESTÁTICA da carta ("leak", "major_leak") pode aparecer no card?
+ *
+ * Ela é a classificação crua da mão contra a carta. O VEREDITO é outra coisa: passa pelos pisos
+ * do motor (custo, direção, ICM, teto de EV) e pode concluir que aquilo não é erro. Quando os
+ * dois aparecem lado a lado, o card diz "Aceitável" com um "major leak" do lado.
+ *
+ * Já havia um guarda para isso, mas ancorado no RÓTULO DO SOLVER (`gto_correct`/`mixed`/`minor`).
+ * Ele não cobria `gto_critical` — e medido em 26/08, **as 25 contradições do torneio 72 eram
+ * todas `gto_critical`**, ou seja, o guarda não suprimia nenhuma. Ancorar no veredito cobre as
+ * duas famílias com uma regra só.
+ *
+ * (Eu mesmo levei essa contagem de 11 para 25 ao impedir a camada viva de promover verdictos —
+ * o conserto certo expôs o vizinho errado.)
+ */
+export function mostraQualidadeEstatica(args: {
+  actionQuality: string | null | undefined;
+  gtoLabel: string | null | undefined;
+  isError: boolean | null | undefined;
+}): boolean {
+  const { actionQuality, gtoLabel, isError } = args;
+  const acusa = ["leak", "major_leak"].includes(actionQuality ?? "");
+  if (!acusa) return true;                       // não fala de leak: nada a suprimir
+  if (isError === false) return false;           // o veredito diz que não é erro
+  return !["gto_correct", "gto_mixed", "gto_minor_deviation"].includes(gtoLabel ?? "");
+}

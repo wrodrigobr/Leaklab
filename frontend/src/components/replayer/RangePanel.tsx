@@ -7,6 +7,7 @@ import {
   Position, RangeType, POSITIONS, CORE_TAB_POSITIONS, RANGE_TYPES, RangeSet,
 } from "@/data/ranges";
 import { ACTION_COLORS } from "@/lib/actionColors";
+import { mostraQualidadeEstatica } from "@/lib/cardLogic";
 import { ReplayStep } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { Trans, useTranslation } from "react-i18next";
@@ -280,12 +281,14 @@ export function RangePanel({ step, hero, heroCards, onClose, onHeaderMouseDown,
     ? [...step.gto_strategy].sort((a, b) => (b.frequency ?? 0) - (a.frequency ?? 0))
     : [];
   const effectiveGtoLabel = computeEffectiveGtoLabel(solverStratSorted, step.gto_label, step.action);
-  const solverOverridesStatic =
-    !!effectiveGtoLabel &&
-    ['gto_correct', 'gto_mixed', 'gto_minor_deviation'].includes(effectiveGtoLabel) &&
-    ['leak', 'major_leak'].includes(gto?.action_quality ?? '');
+  // `mostraQualidadeEstatica` decide: a qualidade crua da carta não pode dizer "major leak" ao
+  // lado de um veredito que diz que não é erro. O guarda antigo ancorava só no rótulo do solver
+  // e não cobria `gto_critical` — que era 25 de 25 dos casos medidos.
+  const mostraQualidade = mostraQualidadeEstatica({
+    actionQuality: gto?.action_quality, gtoLabel: effectiveGtoLabel, isError: step.is_error,
+  });
 
-  const quality = showGtoCtx && !solverOverridesStatic
+  const quality = showGtoCtx && mostraQualidade
     ? QUALITY_META[gto!.action_quality ?? 'unknown'] : null;
   const QIcon   = quality?.icon ?? Info;
 
@@ -340,7 +343,7 @@ export function RangePanel({ step, hero, heroCards, onClose, onHeaderMouseDown,
       {showGtoCtx && gto && (
         <div className={cn(
           "rounded-lg border px-3 py-2 space-y-1.5",
-          solverOverridesStatic
+          !mostraQualidade
             ? "border-border/40 bg-muted/10"
             : gto.in_range ? "border-emerald-500/30 bg-emerald-500/5" : "border-amber-500/30 bg-amber-500/5"
         )}>
@@ -356,7 +359,7 @@ export function RangePanel({ step, hero, heroCards, onClose, onHeaderMouseDown,
           </p>
 
           {/* Solver override notice */}
-          {solverOverridesStatic ? (
+          {!mostraQualidade ? (
             <div className="flex items-center flex-wrap gap-2">
               <p className="font-mono text-[9px] text-muted-foreground/60 italic">
                 {t("rangePanel.solverSubstitui")}
@@ -557,7 +560,7 @@ export function RangePanel({ step, hero, heroCards, onClose, onHeaderMouseDown,
       )}
 
       {/* Pro notes — suprimidas quando solver contradiz ranges estaticos */}
-      {showGtoCtx && !solverOverridesStatic && gto?.pro_notes && gto.pro_notes.length > 0 && (
+      {showGtoCtx && mostraQualidade && gto?.pro_notes && gto.pro_notes.length > 0 && (
         <div className="rounded-lg border border-border bg-muted/10 px-3 py-2 space-y-1">
           <p className="font-mono text-[9px] text-muted-foreground uppercase tracking-wide mb-1.5">{t("rangePanel.analiseGto")}</p>
           {gto.pro_notes.map((note, i) => (

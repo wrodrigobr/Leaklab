@@ -15,6 +15,7 @@ import {
   VERDICT_META,
   VERDICT_LEVELS,
   qualificadorDeCusto,
+  mostraQualidadeEstatica,
 } from "./cardLogic";
 import { metricasDoCard } from "./cardV2Metricas";
 
@@ -280,5 +281,37 @@ describe("qualificadorDeCusto — a palavra 'caro' precisa de um preço", () => 
       .toBe("aligned");
     expect(qualificadorDeCusto({ gtoLabel: null, temCusto: false, pp: 4 })).toBe("plus");
     expect(qualificadorDeCusto({ gtoLabel: null, temCusto: false, pp: -4 })).toBe("minus");
+  });
+});
+
+describe("mostraQualidadeEstatica — 'major leak' não convive com 'não é erro'", () => {
+  it("o veredito manda: não sendo erro, a qualidade estática cala", () => {
+    expect(mostraQualidadeEstatica({
+      actionQuality: "major_leak", gtoLabel: "gto_critical", isError: false,
+    })).toBe(false);
+    expect(mostraQualidadeEstatica({
+      actionQuality: "leak", gtoLabel: "gto_critical", isError: false,
+    })).toBe(false);
+  });
+
+  it("sendo erro, a qualidade aparece — sem esta contraprova o guarda apagaria tudo", () => {
+    expect(mostraQualidadeEstatica({
+      actionQuality: "major_leak", gtoLabel: "gto_critical", isError: true,
+    })).toBe(true);
+  });
+
+  it("o guarda ANTIGO continua valendo: solver benigno sobrepõe a carta estática", () => {
+    // era a única regra antes, e ela cobria um caso que o veredito sozinho não cobre
+    expect(mostraQualidadeEstatica({
+      actionQuality: "major_leak", gtoLabel: "gto_correct", isError: true,
+    })).toBe(false);
+  });
+
+  it("qualidade que não fala de leak nunca é suprimida", () => {
+    for (const q of ["correct", "acceptable", "unknown", null]) {
+      expect(mostraQualidadeEstatica({
+        actionQuality: q, gtoLabel: "gto_critical", isError: false,
+      })).toBe(true);
+    }
   });
 });
