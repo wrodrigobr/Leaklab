@@ -5,6 +5,21 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## AUDITORIA PRE-LANCAMENTO: fechada (27/08)
+
+Estado final medido, nao estimado:
+
+| criterio | resultado |
+|---|---|
+| suite completa | **2.520 / 2.520** |
+| portao de aceite (13 portas sobre a TELA) | **13 testadas, 0 violacoes** |
+| varredura de invariantes (13 sondas sobre o BANCO) | **nenhuma piorou** |
+| veredito estavel entre boots de container | **6.343 / 6.343 passos identicos** |
+| acusacoes no acervo | **481** de 10.328 decisoes (44 graves) |
+
+O portao recusa aprovar porta sem denominador -- conserto que ele mesmo recebeu depois de imprimir
+"APROVADO com 12 portas NAO TESTAVEL" para um dossie vazio.
+
 ## O mesmo card dizia "Erro" num acesso e "Correto" no outro (27/08)
 
 Achado por acidente, e o mais grave do dia. Duas capturas do torneio 72 com nada entre elas alem
