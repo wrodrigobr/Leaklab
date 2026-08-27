@@ -156,7 +156,10 @@ def classify_safe(hero_cards, board, n_opponents, pot_bb, to_call_bb,
         return out  # HU tem o solver; só 2+ vilões é genuinamente multiway
 
     if seed is None:
-        seed = (hash((hero, tuple(b), n_opp)) & 0x7FFFFFFF)
+        # `hash()` de string e salgado por processo: a mesma mao dava equity diferente a cada
+        # boot, e aqui a equity decide veredito. Fonte unica em multiway_advisor.
+        from leaklab.multiway_advisor import semente_estavel
+        seed = semente_estavel(hero, tuple(b), n_opp)
     facing = float(to_call_bb or 0) > 0
     pot = float(pot_bb or 0)
     call = float(to_call_bb or 0)

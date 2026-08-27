@@ -73,6 +73,30 @@ def _continue_combos(board_key: str):
     return out
 
 
+def semente_estavel(*partes) -> int:
+    """Semente de Monte Carlo que NAO muda entre processos, deploys ou maquinas.
+
+    `hash()` de string e salgado por processo desde o PEP 456 (`PYTHONHASHSEED` aleatorio por
+    padrao), entao `hash(('AhKd', ('2h','7c','2d'), 2))` devolve um numero diferente a cada boot.
+    Medido em 4 processos: 1543247217 / 547438465 / 809049314 / 251416502. Com `crc32`, o mesmo
+    numero nas quatro.
+
+    ── O caso que originou (27/08) ────────────────────────────────────────────────────────────
+
+    Duas capturas do torneio 72, sem nada entre elas alem de um restart de container: uma decisao
+    multiway de flop saiu `small_mistake` com score **0,19** na primeira e `standard` com 0,0 na
+    segunda. 0,19 e exatamente o piso da faixa `small_mistake` — a equity do Monte Carlo mexeu o
+    suficiente para atravessar o limiar. Na tela isso e o mesmo card dizendo "Erro" num acesso e
+    "Correto" no outro.
+
+    A licao ja estava aprendida NESTE arquivo: `_equity_vs_range_de_continuacao` usa `crc32` desde
+    sempre, com o comentario "daria equity diferente a cada reprocesso — e aqui a equity decide
+    VEREDITO". Duas outras sementes ficaram com `hash()`, uma delas em outro modulo. Regra 5 do
+    CLAUDE.md: regra aplicada em N lugares vira funcao, com teste que varre os N+1.
+    """
+    return zlib.crc32(repr(partes).encode()) & 0x7FFFFFFF
+
+
 def _equity_vs_field(hero_str: str, board: list, n_opp: int, n_sims: int, seed: int):
     """Equity Monte Carlo do hero vs n_opp vilões amostrados da range de continuação,
     completando o board até o river. Determinístico por (hero, board, seed)."""
@@ -190,7 +214,7 @@ def _advise_impl(hero_cards, board, pot_bb, to_call_bb, n_opponents,
     if n_opp < 2:
         return None  # 2+ vilões = genuinamente multiway; HU tem o solver
 
-    seed = (hash((hs, tuple(board), n_opp)) & 0x7FFFFFFF)
+    seed = semente_estavel(hs, tuple(board), n_opp)
     raw = _equity_vs_field(hs, list(board), n_opp, n_sims, seed)
     if raw is None:
         return None
@@ -292,7 +316,7 @@ def equity_realizada_em_pote_limpado(hero_cards, n_opponents, is_in_position, n_
     # A semente NAO inclui a posicao: o Monte Carlo depende so de (mao, vilaos, sims), e a
     # posicao entra depois, no imposto de realizacao. Incluindo-a, a equity CRUA mudava conforme
     # o hero estivesse dentro ou fora de posicao — que e absurdo, e o teste pegou.
-    rng = random.Random(zlib.crc32(repr((canon, n_opp, n_sims)).encode()))
+    rng = random.Random(semente_estavel(canon, n_opp, n_sims))
     hero = [eval7.Card(hs[0:2]), eval7.Card(hs[2:4])]
     resto = [c for c in eval7.Deck().cards if _card_str(c) not in {_card_str(x) for x in hero}]
     ganhos = 0.0

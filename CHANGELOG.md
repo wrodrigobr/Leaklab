@@ -5,6 +5,44 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## O mesmo card dizia "Erro" num acesso e "Correto" no outro (27/08)
+
+Achado por acidente, e o mais grave do dia. Duas capturas do torneio 72 com nada entre elas alem
+de um restart de container. Mesma mao, mesmo passo -- o check do hero no flop da 260054126928:
+
+    captura 1 ....... small_mistake, score 0,19, "Erro" na tela
+    captura 2 ....... standard,      score 0,0,  "Correto" na tela
+
+0,19 e exatamente o piso da faixa `small_mistake`. Nada no banco mudou (a linha gravada diz
+`standard` desde 11/08): o veredito vem da camada VIVA, onde o pote multiway e avaliado por Monte
+Carlo.
+
+**A causa:** `seed = hash((hero, tuple(board), n_opp))`. Desde o PEP 456 o hash de string e
+salgado por processo -- `PYTHONHASHSEED` e aleatorio por padrao. Medido em quatro interpretadores:
+
+    hash()  -> 1543247217 / 547438465 / 809049314 / 251416502
+    crc32   -> 1009894888 / 1009894888 / 1009894888 / 1009894888
+
+Cada boot de container sorteava outra equity, e todo veredito perto de um limiar podia atravessar.
+
+**O que torna isso caro:** a licao ja estava aprendida no MESMO arquivo. Uma funcao acima,
+`_equity_vs_range_de_continuacao`, ja usava `crc32`, com o comentario "daria equity diferente a
+cada reprocesso -- e aqui a equity decide VEREDITO". Duas outras sementes ficaram com `hash()`,
+uma delas em outro modulo. E a regra 5 do CLAUDE.md inteira: regra aplicada em N lugares vira
+funcao, com teste que varre os N+1.
+
+**Duas voltas no guarda, tambem registradas:**
+
+1. A varredura N+1 passou verde com um `hash()` plantado de proposito num arquivo novo. `_RAIZ`
+   terminava em `tests/..`, entao o filtro `'tests' in base` casava com TODO caminho e a sonda
+   varria **zero** arquivos. Zero tranquilizador de uma sonda que nao olhou nada -- o pior
+   resultado possivel numa ferramenta de medicao. Agora ela conta os arquivos varridos e falha
+   se forem menos de 50 (varre 397).
+2. O teste de estabilidade precisa de um SEGUNDO interpretador: dentro de um processo so,
+   `hash()` e perfeitamente estavel e o defeito e invisivel.
+
+Quatro mutacoes, quatro deteccoes.
+
 ## A varredura acusou duas regressoes, e so uma era defeito (27/08)
 
 Fechando a auditoria pre-lancamento, a varredura de invariantes voltou com `MUDO: 0 -> 1` e
