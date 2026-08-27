@@ -159,6 +159,11 @@ def _imprime(c, mudancas, deltas, entram=()):
               % (sum(deltas) / len(deltas), min(deltas), max(deltas)))
     if not c['  equity mudou']:
         print('CONTROLE FALHOU: nenhuma equity mudou -- o medidor nao esta medindo nada.')
+    if entram:
+        print('')
+        print('AS QUE ENTRAM (as unicas que podem causar dano novo) -- %d:' % len(entram))
+        for e in entram:
+            print('   ' + e)
     if mudancas:
         print('\nvereditos que mudam:')
         for m in mudancas:
