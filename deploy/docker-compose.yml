@@ -1,6 +1,8 @@
 services:
   web:
-    build: { context: ./backend }
+    build:
+      context: ./backend
+      args: { GIT_SHA: "${GIT_SHA:-desconhecido}" }
     env_file: .env
     expose: ["5000"]
     restart: unless-stopped
@@ -12,7 +14,9 @@ services:
   # NÃO mover para o `web`: gunicorn sobe vários workers e cada um rodaria a própria cópia do
   # loop, processando o mesmo pedido em paralelo.
   solver-consumer:
-    build: { context: ./backend }
+    build:
+      context: ./backend
+      args: { GIT_SHA: "${GIT_SHA:-desconhecido}" }
     env_file: .env
     environment:
       - GTO_SOLVER_CONCURRENCY=2

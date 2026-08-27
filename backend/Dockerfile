@@ -21,6 +21,13 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
+# Carimbo do commit DENTRO da imagem. Sem ele nao existe forma honesta de responder "o que roda
+# no container e o que eu acabo de commitar?" -- o codigo e baked, e `git pull` no host nao muda
+# container nenhum. Ja declarei um conserto verificado tendo rodado o teste no lugar errado
+# (regra 4 do CLAUDE.md). `desconhecido` e o padrao para build manual, e o deploy.sh reprova.
+ARG GIT_SHA=desconhecido
+RUN echo "$GIT_SHA" > /app/.git_sha
+
 RUN mkdir -p /data
 
 ENV GAPHUNTER_DB=/data/leaklab.db
