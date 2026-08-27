@@ -5,6 +5,65 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## A range de continuacao tinha duas copias, e a errada pegava board pareado (27/08)
+
+Frente aberta a pedido: "atacar a equity de flop/turn antes de escalar a base". A medicao mudou
+o alvo -- o defeito nao era o que a auditoria tinha catalogado.
+
+### O que a medicao respondeu, e por que ela mudou o plano
+
+O plano era trocar a equity heuristica de flop/turn pela conta contra a range de continuacao.
+Medido no acervo inteiro, 2.651 decisoes de flop/turn: **2.629 vereditos identicos, 13 acusacoes
+ENTRAM e 9 saem**. Trocar assim causaria dano que o bug nao causava (regra 7), entao as 13 sairam
+inteiras para conferencia a mao -- e foi ai que o defeito real apareceu.
+
+As tres maiores altas de equity eram `3c,3h,Qd` (0,275 -> 0,532), `2d,6h,2s` (0,215 -> 0,587) e
+`5d,6d,5c` (0,275 -> 0,544). **Tres boards pareados nas tres maiores diferencas** nao e
+coincidencia.
+
+### O defeito
+
+`multiway_advisor._continue_combos` decidia "mao feita" por `handtype(mao + board) != 'High
+Card'`. Num board PAREADO isso e verdade para **toda** mao, porque o par do proprio board entra
+na avaliacao de 7 cartas. Medido sobre a mesma range base de 642 combos:
+
+| board | pareado? | combos | % |
+|---|---|---:|---:|
+| `9s,Ah,8s` | - | 433 | 67% |
+| `8c,6d,Qh` | - | 341 | 53% |
+| `Kd,9c,4s` | - | 305 | 48% |
+| `3c,3h,Qd` | PAREADO | 595 | 93% |
+| `2d,6h,2s` | PAREADO | 605 | 94% |
+| `2h,2d,5s` | PAREADO | 607 | 95% |
+
+Em board pareado a range de continuacao era a range inteira: **equity vs mao aleatoria com nome
+de equity vs range**, inflando o heroi exatamente onde o produto deveria ser mais cauteloso. Isso
+valia em producao, hoje, para todo pote multiway em board pareado.
+
+### A metade certa ja existia
+
+`equity_real.equity_river_vs_continuacao` compara a categoria da mao com a do **board sozinho** e
+descarta quem so carrega o par dele. Escrito em 24/08, correto, e nunca compartilhado. Regra 5 do
+CLAUDE.md pela sexta vez medida.
+
+O criterio virou `leaklab/range_de_continuacao.py`, fonte unica das duas portas. O river passou a
+chama-la com `com_draws=False` (no river nao ha carta por vir), e a troca foi provada equivalente
+em 7 boards, incluindo pareado e pareado DUPLO -- refactor sem prova de equivalencia e refactor
+as cegas.
+
+### E o deploy passou a se recusar a dizer OK sem provar
+
+Junto, a outra recomendacao da auditoria. `scripts/deploy.sh` faz pull, build, up e so entao
+declara: o passo 4 confere o commit **dentro** de cada container (carimbo `GIT_SHA` na imagem --
+imagem sem carimbo REPROVA, porque a tentacao era cair num teste fraco tipo "consegue importar?"
+e chamar isso de verificado), e o passo 5 roda o portao sobre a TELA e a varredura sobre o BANCO.
+
+Na primeira execucao real ele pegou dois problemas proprios: a captura vazia de container
+recem-subido (a reespera resolveu, ja tinha acontecido 3x numa tarde) e uma porta que lia o
+`frontend/`, inexistente na imagem do backend -- ela dava denominador 0 e deixava o portao
+INCONCLUSIVO em TODO deploy. Alarme que bloqueia sempre ensina a ignorar bloqueio. Mudou para a
+suite, onde o repositorio inteiro esta na mao, e ainda ganhou a conferencia dos DOIS consumidores.
+
 ## AUDITORIA PRE-LANCAMENTO: fechada (27/08)
 
 Estado final medido, nao estimado:

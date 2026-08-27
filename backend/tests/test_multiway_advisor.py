@@ -30,10 +30,33 @@ def test_set_e_raise():
     print("OK  test_set_e_raise")
 
 
-def test_overpair_aa_raise():
+def test_overpair_AA_em_board_PAREADO_paga_nao_sobe():
+    """MUDOU EM 27/08, e a expectativa antiga vinha de um bug — não de uma decisão.
+
+    O board `9c,4d,4h` é PAREADO, e até 27/08 `_continue_combos` decidia "mão feita" por
+    `handtype(mão + board) != 'High Card'` — verdade para TODA mão quando o próprio board já é
+    par. A range de continuação virava a range inteira (93-95% dela), a equity de AA saía
+    inflada acima do limiar `STRONG = 0.62` e o conselho era `raise`.
+
+    Com a range certa, AA tem 60,4% crua contra trinca de 4, 9x, pares de bolso e projetos
+    (medido a 120.000 sims: 0,6168 / 0,6081 / 0,6018 / 0,6038 conforme a amostra cresce — não é
+    ruído, é o número). Abaixo de 0,62, então `call`.
+
+    O CONTROLE que fecha o argumento: a mesma mão num board NÃO pareado comparável (`9c,4d,7h`)
+    dá 59,4% e sempre foi `call`. Ou seja, o `raise` só existia onde o bug morava. Overpair
+    multiway em board pareado é bluff-catcher, e é o próprio princípio do módulo ("aperta; só os
+    pedaços fortes agridem").
+
+    O caminho do `raise` continua coberto por `test_set_e_raise` — trinca no mesmo board, que
+    sobe com equity acima de 0,8.
+    """
     v = A('AsAd', ['9c', '4d', '4h'], 13, 4, 2, is_in_position=False, n_sims=NS)
-    assert v['action'] == 'raise', v
-    print("OK  test_overpair_aa_raise")
+    assert v['action'] == 'call', v
+    assert 0.55 < v['equity'] < 0.66, (
+        'a equity de AA em board pareado saiu de faixa (%.4f) — se subiu para perto de 0,7, a '
+        'range de continuação voltou a aceitar mão demais' % v['equity'])
+    print("OK  test_overpair_AA_em_board_PAREADO_paga_nao_sobe (eq=%.0f%%)" % (v['equity'] * 100))
+
 
 
 def test_draw_forte_paga_nao_raise():
