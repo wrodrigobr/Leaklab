@@ -52,10 +52,13 @@ def test_o_jam_PREFLOP_nao_vira_bet():
 def test_a_REDE_do_postflop_continua_de_pe():
     """A metade que protege o conserto de 25/08. Sem ela, volta o all-in de 22x o pote."""
     f = _f()
-    assert f('allin', 21.3, 65.4, street='flop') == 'bet', (
+    # `None`, não `'bet'`: recusar é recusar. Devolver `bet` nomeava uma ação que ninguém
+    # computou, sem tamanho, e a tela dizia "aposte" onde o solver disse all-in. O motivo viaja
+    # em `best_action_recusado`.
+    assert f('allin', 21.3, 65.4, street='flop') is None, (
         'a rede do pós-flop caiu: a tela volta a recomendar all-in desproporcional ao pote')
-    assert f('jam', 5.0, 60.0, street='turn') == 'bet'
-    assert f('shove', 3.0, 40.0, street='river') == 'bet'
+    assert f('jam', 5.0, 60.0, street='turn') is None
+    assert f('shove', 3.0, 40.0, street='river') is None
     print('OK  test_a_REDE_do_postflop_continua_de_pe')
 
 
@@ -102,6 +105,9 @@ def test_a_recusa_do_teto_NAO_acusa():
     caminho = os.path.join(os.path.dirname(__file__), '..', 'api', 'app.py')
     with open(caminho, encoding='utf-8') as fh:
         codigo = chr(10).join(l.split('#')[0] for l in fh.read().split(chr(10)))
+    assert "'best_action_recusado'" in codigo, (
+        'a recusa parou de se declarar: o card ve `best_action: null` e nao sabe se e ausencia '
+        'de cobertura ou recusa deliberada')
     i = codigo.index('_best_exibido = ')
     trecho = codigo[i:i + 2600]
     assert 'str(_best_exibido).lower() != str(reconciled_best).lower()' in trecho, (

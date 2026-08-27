@@ -128,20 +128,29 @@ def porta_qualidade_estatica_nao_contradiz_o_veredito(passos):
     return ('qualidade benigna com veredito de ERRO', len(alvo), maus)
 
 
-def porta_qualidade_nao_contradiz_veredito(passos):
-    """"major leak" não convive com "não é erro" — e só conta o que o front NÃO suprime.
+def porta_a_regra_do_front_que_suprime_a_contradicao_existe(passos):
+    """A contradição "major leak" x "não é erro" é suprimida no FRONT, não no payload.
 
-    A regra do front é `cardLogic.mostraQualidadeEstatica`: suprime quando o veredito diz que não
-    é erro, OU quando o rótulo do solver é benigno. A 1ª versão desta porta só conhecia a segunda
-    metade (ela é anterior ao conserto de 26/08) e acusou 25 casos que o aluno não vê — porta
-    desatualizada acusa o produto pelo defeito do instrumento.
+    Por isso ela não se mede no dossiê: `cardLogic.mostraQualidadeEstatica` decide, e o payload
+    continua carregando os dois fatos legitimamente. Medir o payload aqui acusaria 20 casos que o
+    aluno não vê — foi o que a 1ª versão desta porta fez, e depois a 2ª ficou com o NOME e a
+    CONDIÇÃO em desacordo (flagava concordância).
+
+    Então esta porta confere o que dá para conferir daqui: que a regra está no lugar. Os casos
+    dela têm teste unitário próprio, quebrado de propósito, em `cardLogic.test.ts`.
     """
-    alvo = [p for p in passos if _qualidade(p)]
-    maus = [p for p in alvo
-            if 'leak' in _qualidade(p)
-            and p.get('is_error')            # o front já suprime quando não é erro
-            and str(p.get('gto_label') or '') not in _SUPRIME_QUALIDADE]
-    return ('qualidade "leak" com veredito "nao e erro"', len(alvo), maus)
+    import os as _os
+    caminho = _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), '..', '..',
+                            'frontend', 'src', 'lib', 'cardLogic.ts')
+    if not _os.path.exists(caminho):
+        return ('regra do front que suprime a contradicao', 0, [])
+    with open(caminho, encoding='utf-8') as fh:
+        fonte = fh.read()
+    ok = 'mostraQualidadeEstatica' in fonte and 'isError === false' in fonte
+    return ('regra do front que suprime a contradicao', 1, [] if ok else [{'street': '-',
+            'action': 'REGRA AUSENTE', 'best_action': None, 'gto_label': None,
+            'error_label': None, 'is_error': None, 'verdict_has_cost': None,
+            'equity_source': None}])
 
 
 def porta_multiway_nao_recebe_solver_hu(passos):
@@ -199,7 +208,7 @@ def porta_coverage_nao_mente(passos):
 
 _PORTAS = [porta_procedencia_coerente, porta_linguagem_exige_custo, porta_magnitude_exige_custo,
            porta_score_na_banda, porta_nao_acusa_o_que_recomenda, porta_palavra_bate_com_a_acao,
-           porta_qualidade_nao_contradiz_veredito, porta_multiway_nao_recebe_solver_hu,
+           porta_a_regra_do_front_que_suprime_a_contradicao_existe, porta_multiway_nao_recebe_solver_hu,
            porta_fold_nao_condenado_por_equity_vs_random, porta_ausencia_declara_motivo,
            porta_coverage_nao_mente, porta_qualidade_estatica_nao_contradiz_o_veredito]
 
@@ -242,13 +251,18 @@ def main():
                      p.get('equity_source')))
 
     print()
+    # APROVADO exige as duas coisas: zero violacoes E zero portas sem denominador. Porta que nao
+    # pode ser testada nao aprova nada -- a 1a versao imprimia "APROVADO com 12 nao testaveis"
+    # para um dossie VAZIO, que e o zero tranquilizador com outro nome.
     if reprovou:
         print('PORTAO: REPROVADO — %d porta(s) com violacao' % reprovou)
     elif nao_testavel:
-        print('PORTAO: APROVADO com %d porta(s) NAO TESTAVEL nesta amostra' % nao_testavel)
+        print('PORTAO: INCONCLUSIVO — %d de %d portas sem denominador nesta amostra. '
+              'Nao aprova: precisa de um torneio que exercite essas portas.'
+              % (nao_testavel, len(_PORTAS)))
     else:
-        print('PORTAO: APROVADO — todas as portas testadas e sem violacao')
-    sys.exit(1 if reprovou else 0)
+        print('PORTAO: APROVADO — todas as %d portas testadas e sem violacao' % len(_PORTAS))
+    sys.exit(1 if (reprovou or nao_testavel) else 0)
 
 
 if __name__ == '__main__':

@@ -6400,12 +6400,15 @@ def _best_action_proporcional(best, pot_bb, stack_bb, street=None):
         return best
     if (best or '').lower() not in _ACOES_DE_JAM:
         return best
+    # Recusar e RECUSAR: devolver `bet` nomeava uma acao que ninguem computou, sem tamanho, e
+    # a tela dizia "aposte" onde o solver disse all-in. `None` diz o que de fato temos -- nenhuma
+    # recomendacao que sustentemos -- e o motivo viaja em `best_action_recusado`.
     try:
         pote, stack = float(pot_bb or 0), float(stack_bb or 0)
     except (TypeError, ValueError):
         return best
     if pote > 0 and stack > _TETO_JAM_SOBRE_POTE * pote:
-        return 'bet'
+        return None
     return best
 
 
@@ -7738,6 +7741,10 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
             # um juiz de QA leu como "a ausencia nao declara motivo": ela declarava, com a
             # palavra errada. O `_mw_spot` tem a ultima palavra.
             'gto_coverage':       ('multiway' if _mw_spot else gto_coverage),
+            # A recusa se DECLARA. Sem isto o card so veria `best_action: null` e nao saberia
+            # dizer se e ausencia de cobertura ou recusa deliberada de um jam desproporcional.
+            'best_action_recusado': ('jam_desproporcional'
+                                     if (reconciled_best and not _best_exibido) else None),
             'is_error':           bool(is_error and not _so_marginal_camada_1),
             # FEAT-20: severidade que dirige o veredito de 3 níveis do card. Em multiway-clear
             # o advisor é AUTORITATIVO (sobrepõe o label HU do engine, válido ou não): leak →
