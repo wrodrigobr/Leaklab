@@ -6371,8 +6371,8 @@ _TETO_JAM_SOBRE_POTE = 3.0
 _ACOES_DE_JAM = ('allin', 'shove', 'jam', 'all-in')
 
 
-def _best_action_proporcional(best, pot_bb, stack_bb):
-    """Troca all-in por `bet` quando o jam recomendado e desproporcional ao pote.
+def _best_action_proporcional(best, pot_bb, stack_bb, street=None):
+    """Troca all-in por `bet` quando o jam recomendado e desproporcional ao pote -- POSTFLOP.
 
     Tres juizes de poker independentes pegaram isto em 25/08: o card recomendava all-in de 9x,
     17x, 19x e ate **22x o pote** com Ts2h, Kc4d, AdKs. A origem NAO era o motor -- reprocessando
@@ -6383,7 +6383,21 @@ def _best_action_proporcional(best, pot_bb, stack_bb):
 
     O teto e uma REDE, nao um substituto do conserto do no: enquanto a captura nao for revista,
     ele impede que a tela mande o aluno colocar o torneio inteiro num pote de 5bb.
+
+    ── SO POSTFLOP, e isto foi conserto de 27/08 ─────────────────────────────────────────────
+
+    A 1a versao nao olhava a street, e a razao do teto e SPR -- que e conceito de postflop. No
+    preflop o pote e so os blinds (`pot_at_decision_bb` = 1,0), entao **todo** jam acima de 3bb
+    passa do teto: um push de 11,2bb num pote de 1bb, que e a jogada mais padrao que existe em
+    MTT, aparecia na tela como "aposte".
+
+    Medido no acervo: das 149 decisoes em que o teto trocava a palavra, **146 eram preflop** e so
+    3 postflop -- 98% de disparo errado, incluindo 10 acusacoes. Um juiz de poker pegou o sintoma
+    ("o aluno le `aposte` onde o motor quis dizer all-in") e a origem era este guarda, escrito por
+    mim no dia anterior.
     """
+    if (street or '').lower() == 'preflop':
+        return best
     if (best or '').lower() not in _ACOES_DE_JAM:
         return best
     try:
@@ -7692,8 +7706,8 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
         _best_exibido = (_best_action_proporcional(
             reconciled_best,
             (decision.get('pot_at_decision_bb') or decision.get('pot_size')) if decision else None,
-            (decision.get('effective_stack_bb') or decision.get('stack_bb')) if decision else None)
-            if decision else None)
+            (decision.get('effective_stack_bb') or decision.get('stack_bb')) if decision else None,
+            street=action.street) if decision else None)
         if (_el_efetivo in ('small_mistake', 'clear_mistake') and _best_exibido
                 and str(_best_exibido).lower()
                 == str(_normalize_action(action.action) or '').lower().rstrip('s')):
