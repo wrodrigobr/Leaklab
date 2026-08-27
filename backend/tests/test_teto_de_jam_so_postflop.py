@@ -89,6 +89,27 @@ def test_o_replay_passa_a_STREET():
     print('OK  test_o_replay_passa_a_STREET')
 
 
+def test_a_recusa_do_teto_NAO_acusa():
+    """Coerência: acusar o aluno por não ter feito aquilo que o produto se recusa a recomendar.
+
+    Quando o teto troca o all-in por `bet`, ele está dizendo "não endosso este jam" — e o que
+    sobra na tela é uma palavra sem tamanho. Era o único `clear_mistake` do torneio 72, e um juiz
+    de poker pediu para tirá-lo da tela: all-in de 3x o pote com segundo par, ENFRENTANDO uma
+    aposta, exibido como "aposte".
+
+    O guarda é de fiação porque a regra vive no `/replay`, onde não há função pura a chamar.
+    """
+    caminho = os.path.join(os.path.dirname(__file__), '..', 'api', 'app.py')
+    with open(caminho, encoding='utf-8') as fh:
+        codigo = chr(10).join(l.split('#')[0] for l in fh.read().split(chr(10)))
+    i = codigo.index('_best_exibido = ')
+    trecho = codigo[i:i + 2600]
+    assert 'str(_best_exibido).lower() != str(reconciled_best).lower()' in trecho, (
+        'a recusa do teto voltou a conviver com acusação: o card acusa o aluno por não ter feito '
+        'o jam que ele mesmo se recusou a recomendar')
+    print('OK  test_a_recusa_do_teto_NAO_acusa')
+
+
 if __name__ == '__main__':
     falhas = 0
     testes = [v for k, v in sorted(globals().items()) if k.startswith('test_')]

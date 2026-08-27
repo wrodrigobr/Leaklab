@@ -7713,6 +7713,17 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
                 == str(_normalize_action(action.action) or '').lower().rstrip('s')):
             _el_efetivo = 'marginal'
             is_error = False
+        # O TETO DE JAM RECUSOU a recomendacao: acusar o aluno por nao ter feito aquilo que o
+        # proprio produto se recusa a recomendar e incoerente. Quando `_best_action_proporcional`
+        # troca o all-in por `bet`, ele esta dizendo "nao endosso este jam" -- e a partir dai o
+        # que sobra na tela e uma palavra sem tamanho, que nao sustenta acusacao. Era o unico
+        # `clear_mistake` do torneio 72, e um juiz de poker pediu para tira-lo da tela: all-in de
+        # 3x o pote com segundo par, ENFRENTANDO uma aposta, exibido como "aposte".
+        if (_el_efetivo in ('small_mistake', 'clear_mistake')
+                and reconciled_best and _best_exibido
+                and str(_best_exibido).lower() != str(reconciled_best).lower()):
+            _el_efetivo = 'marginal'
+            is_error = False
         timeline.append(snap({
             'type':               'action',
             'player':             action.player,
@@ -7720,7 +7731,13 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
             'action':             _normalize_action(action.action),
             'amount':             amt,
             'is_hero':            action.player == hero,
-            'gto_coverage':       gto_coverage,   # covered|multiway|deep|ip_facing_bet|no_villain|pending
+            # `gto_coverage` e calculado ANTES de `_mw_spot`, e usa o `gto_label` de antes da
+            # supressao multiway -- entao dizia `covered` em 68 spots do torneio 72 nos quais o
+            # payload NAO entrega rotulo nenhum, porque o produto se recusa a graduar multiway.
+            # "Coberto" ao lado de "sem veredito" e a mesma contradicao de sempre, e foi o que
+            # um juiz de QA leu como "a ausencia nao declara motivo": ela declarava, com a
+            # palavra errada. O `_mw_spot` tem a ultima palavra.
+            'gto_coverage':       ('multiway' if _mw_spot else gto_coverage),
             'is_error':           bool(is_error and not _so_marginal_camada_1),
             # FEAT-20: severidade que dirige o veredito de 3 níveis do card. Em multiway-clear
             # o advisor é AUTORITATIVO (sobrepõe o label HU do engine, válido ou não): leak →
