@@ -1500,18 +1500,11 @@ def evaluate_decision(input_data: Dict[str, Any]) -> Dict[str, Any]:
     if (label in ('small_mistake', 'clear_mistake')
             and not gto.get('available') and not preflop_gto.get('available')
             and _norm_gto_action(input_data.get('player_action', '')) == 'fold'):
-        _estimador_infla = True
-        if street != 'preflop':
-            from leaklab.bet_intent import made_hand_category
-            # ATENÇÃO: `made_hand_category(None, None)` devolve 'air'. Sem cartas ou sem board
-            # não dá para AFIRMAR que o hero não tem nada, e a regra inteira se apoia nisso —
-            # aplicá-la aí seria ler ausência de dado como o caso que me convém. Sem os dois,
-            # a decisão mantém o veredito que tinha.
-            _cartas = input_data.get('hero_cards')
-            _board  = spot.get('board')
-            _estimador_infla = bool(_cartas) and bool(_board) and made_hand_category(
-                _cartas, _board) not in ('value', 'middle')
-        if _estimador_infla:
+        # A condição virou `verdict.estimador_infla_a_equity` quando o segundo consumidor
+        # apareceu (o guarda de `vs_random` no fold postflop). A armadilha do
+        # `made_hand_category(None, None) == 'air'` viaja junto, dentro da função.
+        if _verdict.estimador_infla_a_equity(
+                input_data.get('hero_cards'), spot.get('board'), street):
             label = 'marginal'
             final_score = min(final_score, _LABEL_MAX_SCORE['marginal'])
 
@@ -1616,6 +1609,19 @@ def evaluate_decision(input_data: Dict[str, Any]) -> Dict[str, Any]:
             and not gto.get('available') and not preflop_gto.get('available')):
         label = 'marginal'
         final_score = max(final_score, _LABEL_MAX_SCORE['standard'] + 0.001)
+
+    # ── O simetrico dos dois guardas de vs_random: postflop, na direcao do FOLD ────────────
+    # Os dois acima sao preflop e tiram ABSOLVICAO de quem pagou. Este tira CULPA de quem foldou,
+    # que e o lado onde a equity inflada fabrica acusacao. Medido em 26/08 por ablacao: das 77
+    # acusacoes de fold postflop do acervo, 22 nao tem custo medido e usam equity vs aleatoria --
+    # e em **22 de 22** a acusacao SOME quando a equity cai para 0,01. Era a unica evidencia.
+    # A MESMA condicao de classe de mao da regra irma: com par+ o estimador SUBvaloriza, e ali
+    # acusar o fold pode ser legitimo. A 1a versao desta regra ignorou isso e rebaixou o fold de
+    # TOP PAIR -- tres guardas antigos acusaram, com razao.
+    if _verdict.estimador_infla_a_equity(input_data.get('hero_cards'), spot.get('board'), street):
+        label = _verdict.equity_vs_random_nao_condena_fold(
+            label, street, math.get('equitySource'), input_data.get('player_action'),
+            _verdict.tem_custo_medido(gto, preflop_gto))
 
     # ── Defeito 3: abaixo de ~10bb a arvore e jam-ou-fold ──────────────────────────────────
     # O coach apontou duas: ATo de UTG com 9,2bb recebeu `raise` (com `gto_correct`!) e A5s

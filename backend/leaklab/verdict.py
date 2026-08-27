@@ -344,3 +344,80 @@ def label_exibido_da_camada_viva(label_gravado, erro_ao_vivo):
     if label_gravado in ('small_mistake', 'clear_mistake'):
         return label_gravado, True
     return label_gravado, False
+
+
+# ── Equity vs mao ALEATORIA nao condena um FOLD ────────────────────────────────────────────
+#
+# Ja existiam DOIS guardas de `equitySource == 'vs_random'`, os dois PREFLOP e os dois na direcao
+# do CALL -- tirar a absolvicao de quem pagou. Faltava o simetrico, que e onde nasce acusacao
+# falsa: postflop, na direcao do FOLD.
+#
+# A direcao e o argumento inteiro, e ja estava escrita em [[project_sem_gabarito_nao_e_erro]]:
+#
+#     equity inflada CONDENA quem folda   e   ABSOLVE quem paga
+#
+# Contra o range que apostou, a equity vs aleatoria e inflada por construcao. Um juiz de poker leu
+# o sintoma na tela: o produto manda PAGAR com nove-alto porque "32% > 27,7% exigidos" -- e os 32%
+# sao contra mao aleatoria; contra quem aposta 57% do pote a mao tem uns 10%.
+#
+# MEDIDO em 26/08, com ablacao (mesmo input, so a equity mexida):
+#   * 77 acusacoes de fold postflop no acervo; 74 usam equity vs_random;
+#   * 55 tem custo medido, **22 nao**;
+#   * nessas 22, derrubar a equity para 0,01 faz a acusacao SUMIR em **22 de 22**. Ou seja: a
+#     equity vs aleatoria e a UNICA evidencia sustentando a acusacao.
+#
+# A regra `sem gabarito nao e erro` ja capava o fold, mas so quando NAO havia cobertura nenhuma.
+# As 22 tem no de solver -- entao passavam por ela e eram acusadas por um numero medido contra
+# outra coisa.
+#
+# O conserto NAO absolve: baixa para `marginal`, que diz "nao temos base para chamar de erro".
+# Mesma escolha dos dois guardas preflop -- anda no sentido de tirar a culpa, nunca no de criar.
+def equity_vs_random_nao_condena_fold(label, street, equity_source, acao_do_hero,
+                                      custo_medido) -> str:
+    """Rebaixa a acusacao de um FOLD postflop sustentada so por equity vs mao aleatoria.
+
+    Com CUSTO medido nada muda: ai existe um numero de verdade por tras, e ele nao veio do
+    estimador. Com equity `vs_range` tambem nada muda -- a conta esta contra quem apostou.
+    """
+    if custo_medido:
+        return label
+    if label not in ('small_mistake', 'clear_mistake'):
+        return label
+    if (street or '').lower() == 'preflop':
+        return label
+    if (equity_source or '') != 'vs_random':
+        return label
+    if (acao_do_hero or '').lower() != 'fold':
+        return label
+    return 'marginal'
+
+
+def estimador_infla_a_equity(hero_cards, board, street) -> bool:
+    """O estimador esta no regime em que SUPERVALORIZA a mao do hero?
+
+    A direcao do erro do estimador depende da CLASSE DA MAO, e e isso que decide se uma acusacao
+    de fold pode ou nao se apoiar nele:
+
+        `air` (nada feito)  -> o estimador INFLA  -> acusar o fold e falso
+        par+ / value        -> o estimador SUBvaloriza -> a acusacao pode ser boa
+
+    A armadilha esta escrita no lugar de origem e viaja com a funcao: `made_hand_category(None,
+    None)` devolve `'air'`. **Sem cartas ou sem board nao da para AFIRMAR que o hero nao tem nada**,
+    e a regra inteira se apoia nisso -- aplicar ali seria ler ausencia de dado como o caso que me
+    convem. Por isso os dois `bool(...)` antes da classificacao.
+
+    Preflop nao tem board e nao tem classe de mao feita: o regime e outro, e a resposta e True
+    (era o comportamento inline de origem).
+
+    Virou funcao quando o segundo consumidor apareceu (26/08, o guarda de `vs_random` no fold
+    postflop). Regra 5 do CLAUDE.md: regra em N lugares vira funcao, com teste que varre os N+1.
+    """
+    if (street or '').lower() == 'preflop':
+        return True
+    if not hero_cards or not board:
+        return False
+    try:
+        from leaklab.bet_intent import made_hand_category
+        return made_hand_category(hero_cards, board) not in ('value', 'middle')
+    except Exception:                                                     # noqa: BLE001
+        return False

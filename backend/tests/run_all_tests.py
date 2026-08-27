@@ -12,7 +12,7 @@ import sys, os, subprocess, time, argparse
 sys.path.insert(0, os.path.dirname(__file__))
 
 SUITES = {
-    'engine':    ['test_decision_engine.py', 'test_pote_do_solve.py', 'test_procedencia_da_camada_viva.py', 'test_recusa_de_gto_declara_motivo.py', 'test_severidade_sem_custo.py', 'test_carta_rasa_3_a_7bb.py', 'test_procedencia_do_veredito.py', 'test_evaluators.py', 'test_pipeline.py',
+    'engine':    ['test_decision_engine.py', 'test_pote_do_solve.py', 'test_equity_vs_random_nao_condena_fold.py', 'test_procedencia_da_camada_viva.py', 'test_recusa_de_gto_declara_motivo.py', 'test_severidade_sem_custo.py', 'test_carta_rasa_3_a_7bb.py', 'test_procedencia_do_veredito.py', 'test_evaluators.py', 'test_pipeline.py',
                   'test_draw_detector.py', 'test_backdoor_so_no_flop.py', 'test_postflop_evaluator.py', 'test_mtt_context.py',
                   'test_preflop_gto_quality.py', 'test_recent_regressions.py', 'test_icm.py',
                   'test_elo_engine.py', 'test_leaderboard.py', 'test_invariants.py',
