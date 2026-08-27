@@ -53,7 +53,11 @@ _CAMPOS_DO_PASSO = (
     'n_active_opponents', 'facing_to_call_bb', 'facing_limp', 'draw_profile',
     'hand_equity', 'equity_source', 'pot_odds_equity', 'adjusted_required_equity',
     # o VEREDITO e a recomendacao, que e o que se audita
-    'best_action', 'engine_best', 'error_label', 'error_score', 'is_error',
+    # `best_action_recusado`: sem ele o auditor ve `best_action` ausente e nao consegue
+    # distinguir falta de cobertura de RECUSA declarada -- um juiz leu a ausencia como
+    # "acusacao entregue sem resposta" porque o campo do motivo nao vinha no dossie.
+    'best_action', 'best_action_recusado', 'engine_best', 'error_label', 'error_score',
+    'is_error',
     'gto_action', 'gto_label', 'gto_coverage', 'gto_spot_mismatch', 'gto_depth_capped',
     'ev_loss_bb', 'ev_loss_motivo', 'multiway_safe', 'multiway_advice',
     # PROCEDENCIA (25/08): de onde veio o veredito e se ele pode falar como GTO. Sem estes

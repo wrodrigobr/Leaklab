@@ -666,6 +666,7 @@ export function SidePanels({
                                actionQuality: pg!.action_quality,
                                gtoLabel: effectiveGtoLabel,
                                isError: step.is_error,
+                               podeFalarComoGto: step.pode_falar_como_gto,
                              });
         const sprColor = spr == null ? "" : spr < 2 ? "text-amber-400" : spr < 5 ? "text-sky-400" : "text-muted-foreground";
         const sprLabel = spr == null ? null : spr < 2 ? t("card.sprCommitted") : spr < 5 ? t("card.sprMid") : t("card.sprDeep");

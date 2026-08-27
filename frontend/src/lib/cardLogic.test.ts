@@ -315,3 +315,25 @@ describe("mostraQualidadeEstatica — 'major leak' não convive com 'não é err
     }
   });
 });
+
+describe("mostraQualidadeEstatica — a palavra 'leak' é linguagem de GTO", () => {
+  it("com o gate fechado, a palavra não aparece nem sendo erro", () => {
+    expect(mostraQualidadeEstatica({
+      actionQuality: "major_leak", gtoLabel: "gto_critical",
+      isError: true, podeFalarComoGto: false,
+    })).toBe(false);
+  });
+
+  it("com o gate aberto, nada muda — sem esta contraprova o guarda viraria peneira", () => {
+    expect(mostraQualidadeEstatica({
+      actionQuality: "major_leak", gtoLabel: "gto_critical",
+      isError: true, podeFalarComoGto: true,
+    })).toBe(true);
+  });
+
+  it("gate ausente (undefined) preserva o comportamento anterior", () => {
+    expect(mostraQualidadeEstatica({
+      actionQuality: "major_leak", gtoLabel: "gto_critical", isError: true,
+    })).toBe(true);
+  });
+});

@@ -6443,8 +6443,19 @@ def _pode_falar_como_gto_da_linha(d, multiway=None, procedencia=None):
 
 
 def _tem_custo_da_linha(d):
-    """Existe EV em bb de fonte que vale como quantidade, nesta linha gravada?"""
+    """Existe EV em bb de fonte que vale como quantidade, nesta linha gravada?
+
+    A COLUNA nao basta sozinha. Medido em 27/08 por um juiz de QA: 9 linhas com
+    `verdict_has_cost: true` e **sem `ev_loss_bb`**, todas com `ev_loss_motivo: nao_confiavel` --
+    o numero exibido passa pelo filtro de confiabilidade (`ev_loss_trustworthy`) e a coluna nao.
+    Duas portas para o mesmo fato: "tem custo" dizia sim enquanto o custo nao chegava a tela.
+    Em 3 delas isso liberava `pode_falar_como_gto`.
+
+    Custo que nao sobrevive ao filtro nao e custo para efeito de autoridade.
+    """
     if not d:
+        return False
+    if (d.get('ev_loss_motivo') or '') == 'nao_confiavel':
         return False
     if d.get('verdict_has_cost') is not None:
         return bool(d.get('verdict_has_cost'))
@@ -7462,6 +7473,14 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
         # o solver heads-up nunca cobre (multiway, deep>60bb, hero IP enfrentando
         # aposta, sem vilão). 'pending' = solvável, nó ainda não existe.
         gto_coverage = None
+        # Motivo declarado pela CARTA no preflop (`limped_pot`, `pairing_uncovered`, ...). Ele ja
+        # existia dentro de `analyze_preflop` e morria no caminho: o payload so entregava coverage
+        # para postflop.
+        _pf_cobertura = None
+        try:
+            _pf_cobertura = ((_di.get('preflop_gto') or {}) or {}).get('coverage_reason')
+        except Exception:                                                 # noqa: BLE001
+            _pf_cobertura = None
         if action.player == hero and action.street != 'preflop' and action.action not in ('shows', 'mucks', 'posts'):
             if gto_label:
                 gto_coverage = 'covered'
@@ -7493,8 +7512,17 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
         multiway_safe_label = None
         _mw_spot = False        # spot multiway postflop do hero (solver HU é unreliable aqui)
         _mw_nopp = 0
+        # `'all-in'` ESTAVA FALTANDO nesta lista, e o parser normaliza o shove exatamente assim
+        # (`leaklab/parser.py`: `action_str = 'all-in'`). Sem ele o bloco inteiro era pulado nos
+        # all-ins pos-flop: `_mw_spot` ficava False, `gto_label` nao era suprimido e
+        # `pode_falar_como_gto` LIBERAVA. Medido no torneio 72 por um juiz de QA: 9 all-ins
+        # postflop sem `n_active_opponents`, 5 deles multiway de verdade, 4 exibindo veredito de
+        # solver heads-up COM autorizacao para falar como GTO. O all-in e justamente o spot em
+        # que o conselho errado custa o torneio.
+        _VERBOS_DE_DECISAO = ('bets', 'raises', 'calls', 'checks', 'folds', 'all-in',
+                              'bet', 'raise', 'call', 'check', 'fold', 'shove')
         if (action.player == hero and action.street != 'preflop' and decision
-                and action.action in ('bets', 'raises', 'calls', 'checks', 'folds')):
+                and action.action in _VERBOS_DE_DECISAO):
             _nopp_mw = int(_spot.get('nActiveOpponents') or 0)
             _mw_nopp = _nopp_mw
             if _nopp_mw >= 2:
@@ -7722,9 +7750,15 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
         # que sobra na tela e uma palavra sem tamanho, que nao sustenta acusacao. Era o unico
         # `clear_mistake` do torneio 72, e um juiz de poker pediu para tira-lo da tela: all-in de
         # 3x o pote com segundo par, ENFRENTANDO uma aposta, exibido como "aposte".
-        if (_el_efetivo in ('small_mistake', 'clear_mistake')
-                and reconciled_best and _best_exibido
-                and str(_best_exibido).lower() != str(reconciled_best).lower()):
+        # `_best_exibido` VAZIO e o caso principal, nao o de borda: quando o teto recusa o jam ele
+        # devolve None. A 1a versao exigia `_best_exibido` verdadeiro -- escrita quando a recusa
+        # ainda devolvia a palavra `bet` -- e parou de disparar assim que a recusa virou None.
+        # Resultado: a unica `clear_mistake` do torneio 72 seguiu acusando, agora SEM nenhuma
+        # recomendacao ao lado. Um juiz de coerencia leu exatamente isso: "a acusacao mais grave
+        # do acervo entregue sem resposta".
+        if (_el_efetivo in ('small_mistake', 'clear_mistake') and reconciled_best
+                and (not _best_exibido
+                     or str(_best_exibido).lower() != str(reconciled_best).lower())):
             _el_efetivo = 'marginal'
             is_error = False
         timeline.append(snap({
@@ -7740,7 +7774,13 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
             # "Coberto" ao lado de "sem veredito" e a mesma contradicao de sempre, e foi o que
             # um juiz de QA leu como "a ausencia nao declara motivo": ela declarava, com a
             # palavra errada. O `_mw_spot` tem a ultima palavra.
-            'gto_coverage':       ('multiway' if _mw_spot else gto_coverage),
+            # PREFLOP tambem declara. `gto_coverage` so era calculado para postflop, entao 67
+            # decisoes preflop de procedencia `motor` -- 3 delas ACUSANDO -- nao diziam uma
+            # palavra sobre por que nao ha gabarito. A carta ja declara o motivo
+            # (`limped_pot`, `pairing_uncovered`, `open_size_off_tree`...); faltava entrega-lo.
+            'gto_coverage':       ('multiway' if _mw_spot else
+                                   (gto_coverage or
+                                    (_pf_cobertura if action.street == 'preflop' else None))),
             # A recusa se DECLARA. Sem isto o card so veria `best_action: null` e nao saberia
             # dizer se e ausencia de cobertura ou recusa deliberada de um jam desproporcional.
             'best_action_recusado': ('jam_desproporcional'

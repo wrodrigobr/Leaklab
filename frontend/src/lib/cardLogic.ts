@@ -298,10 +298,15 @@ export function mostraQualidadeEstatica(args: {
   actionQuality: string | null | undefined;
   gtoLabel: string | null | undefined;
   isError: boolean | null | undefined;
+  podeFalarComoGto?: boolean | null;
 }): boolean {
-  const { actionQuality, gtoLabel, isError } = args;
+  const { actionQuality, gtoLabel, isError, podeFalarComoGto } = args;
   const acusa = ["leak", "major_leak"].includes(actionQuality ?? "");
   if (!acusa) return true;                       // não fala de leak: nada a suprimir
+  // A palavra "leak" É linguagem de GTO. O gate que existe para proibi-la não a alcançava:
+  // medido em 27/08, 17 decisões traziam `pode_falar_como_gto: false` e `major_leak` no mesmo
+  // objeto, e o card mostrava as duas coisas. Um juiz de coerência achou 92 casos da família.
+  if (podeFalarComoGto === false) return false;
   if (isError === false) return false;           // o veredito diz que não é erro
   return !["gto_correct", "gto_mixed", "gto_minor_deviation"].includes(gtoLabel ?? "");
 }

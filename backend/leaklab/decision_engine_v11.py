@@ -1886,6 +1886,17 @@ def evaluate_decision(input_data: Dict[str, Any]) -> Dict[str, Any]:
     _tem_custo = _verdict.tem_custo_medido(gto, preflop_gto)
     label = _verdict.severidade_sem_custo(label, _tem_custo)
 
+    # A recomendacao nao nomeia acao que a carta EXIBIDA joga 0% das vezes. Sem isto o card
+    # mostrava `best_action: raise` logo acima de `hand_freq: {fold: 1.0, raise: 0.0}` -- a
+    # palavra vinha do heuristico e a frequencia da carta, duas fontes na mesma tela.
+    # SO no cenario RFI, e a restricao veio de um teste antigo que me pegou: fora dele o
+    # `hand_freq` tem chaves proprias (vs_3bet fala em 4bet/call, nao em allin), e a 1a versao
+    # reescreveu o `jam` de KK enfrentando 3-bet porque nao achou a chave `allin`. Os 7 casos
+    # medidos sao todos `scenario: rfi` com `verdict_source: motor`.
+    if preflop_gto.get('available') and preflop_gto.get('scenario') == 'rfi':
+        _best_action = _verdict.recomendacao_coerente_com_a_carta(
+            _best_action, preflop_gto.get('hand_freq'))
+
     return {
         "handId": input_data["hand_id"],
         "bestAction": _best_action,

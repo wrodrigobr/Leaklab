@@ -421,3 +421,31 @@ def estimador_infla_a_equity(hero_cards, board, street) -> bool:
         return made_hand_category(hero_cards, board) not in ('value', 'middle')
     except Exception:                                                     # noqa: BLE001
         return False
+
+
+def recomendacao_coerente_com_a_carta(best_action, hand_freq) -> str:
+    """A recomendacao nao pode nomear uma acao que a carta EXIBIDA joga 0% das vezes.
+
+    Medido em 27/08 (juiz de QA, achado colateral): 7 de 391 decisoes com carta disponivel
+    mostravam `best_action: raise` ao lado de `hand_freq: {fold: 1.0, raise: 0.0}`. O veredito
+    estava certo (o hero foldou, a carta folda, `action_quality: correct`) -- errada era so a
+    palavra, que vinha do heuristico (`verdict_source: motor`) enquanto a carta dizia outra coisa
+    logo abaixo. A tela se contradizendo, sem virar acusacao falsa.
+
+    Devolve a acao MODAL da propria carta. Se a carta nao tem frequencia utilizavel, devolve o
+    que veio -- na duvida nao se inventa recomendacao.
+    """
+    if not isinstance(hand_freq, dict) or not hand_freq:
+        return best_action
+    _equiv = {'raise': 'raise', 'bet': 'raise', 'jam': 'allin', 'allin': 'allin',
+              'shove': 'allin', 'call': 'call', 'fold': 'fold', 'check': 'check'}
+    chave = _equiv.get(str(best_action or '').lower())
+    if chave is None:
+        return best_action
+    try:
+        if float(hand_freq.get(chave) or 0) > 0:
+            return best_action
+        modal = max(hand_freq.items(), key=lambda kv: float(kv[1] or 0))
+        return modal[0] if float(modal[1] or 0) > 0 else best_action
+    except (TypeError, ValueError):
+        return best_action

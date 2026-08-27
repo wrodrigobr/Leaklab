@@ -286,6 +286,7 @@ export function RangePanel({ step, hero, heroCards, onClose, onHeaderMouseDown,
   // e não cobria `gto_critical` — que era 25 de 25 dos casos medidos.
   const mostraQualidade = mostraQualidadeEstatica({
     actionQuality: gto?.action_quality, gtoLabel: effectiveGtoLabel, isError: step.is_error,
+    podeFalarComoGto: step.pode_falar_como_gto,
   });
 
   const quality = showGtoCtx && mostraQualidade
