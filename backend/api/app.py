@@ -6412,7 +6412,7 @@ def _best_action_proporcional(best, pot_bb, stack_bb, street=None):
     return best
 
 
-def _pode_falar_como_gto_da_linha(d, multiway=None, procedencia=None):
+def _pode_falar_como_gto_da_linha(d, multiway=None, procedencia=None, motivo=None):
     """O gate COMPLETO para uma linha: procedencia + custo + a recusa em graduar multiway.
 
     Existe como funcao porque ele e consultado em mais de uma porta (o `/replay` e a lista do
@@ -6438,8 +6438,11 @@ def _pode_falar_como_gto_da_linha(d, multiway=None, procedencia=None):
     # `procedencia` explicita existe para o /replay: la o veredito EXIBIDO pode ter vindo da
     # camada viva, e o gate precisa julgar a fonte que decidiu, nao a que esta gravada. Quem nao
     # passa (a lista do torneio) segue lendo a coluna, como sempre.
+    # `motivo` viaja junto pelo mesmo motivo do `_tem_custo_da_linha`: filtrar o custo numa porta
+    # e nao na outra deixou 4 decisoes dizendo "posso falar como GTO" com `verdict_has_cost: false`
+    # na MESMA linha -- o portao de aceite pegou na rodada seguinte.
     return _verdict_mod.pode_falar_como_gto(
-        procedencia or _procedencia_da_linha(d), _tem_custo_da_linha(d))
+        procedencia or _procedencia_da_linha(d), _tem_custo_da_linha(d, motivo))
 
 
 def _tem_custo_da_linha(d, motivo=None):
@@ -7850,7 +7853,8 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
             'pode_falar_como_gto': _pode_falar_como_gto_da_linha(
                                        decision, multiway=_mw_spot,
                                        procedencia=_verdict_mod.procedencia_da_camada(
-                                           _vc.layer, _procedencia_da_linha(decision))),
+                                           _vc.layer, _procedencia_da_linha(decision)),
+                                       motivo=_motivo_do_custo),
             # A recomendacao exibida nao nomeia acao que a carta VIVA joga 0% das vezes. A regra
             # existe no motor, mas o /replay consulta a carta por conta propria (`_pf`) e podia
             # exibir `raise` acima de `hand_freq {fold: 1.0, raise: 0.0}` -- 7 casos medidos, todos
