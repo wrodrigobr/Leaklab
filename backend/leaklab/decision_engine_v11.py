@@ -1897,6 +1897,17 @@ def evaluate_decision(input_data: Dict[str, Any]) -> Dict[str, Any]:
         _best_action = _verdict.recomendacao_coerente_com_a_carta(
             _best_action, preflop_gto.get('hand_freq'))
 
+    # Recomendar PAGAR exige a equity medida contra quem apostou -- ou um custo. A irma desta
+    # regra cuida do lado do FOLD; esta cuida do lado da RECOMENDACAO, e vale em qualquer street
+    # porque o defeito nao e de street, e da comparacao.
+    # A MESMA condicao de classe de mao das duas regras irmas -- terceiro consumidor de
+    # `estimador_infla_a_equity`. Sem ela a regra rebaixava o fold de TOP PAIR, e os tres guardas
+    # de `sem gabarito nao e erro` acusaram (os mesmos tres que ja tinham me pegado com a regra do
+    # fold). Com par+ o estimador SUBvaloriza, e ali a acusacao pode ser boa.
+    if _verdict.estimador_infla_a_equity(input_data.get('hero_cards'), spot.get('board'), street):
+        label = _verdict.acusacao_de_call_sem_custo_com_equity_vs_random(
+            label, _best_action, math.get('equitySource'), _tem_custo)
+
     return {
         "handId": input_data["hand_id"],
         "bestAction": _best_action,

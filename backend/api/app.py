@@ -7761,6 +7761,12 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
                      or str(_best_exibido).lower() != str(reconciled_best).lower())):
             _el_efetivo = 'marginal'
             is_error = False
+        # SEM ROTULO NAO HA ERRO. `_el_efetivo` fica None quando o advisor multiway assume, e o
+        # `is_error` da cadeia seguia True: o card marcava "Erro" sem uma palavra que dissesse
+        # QUAL erro. Um juiz de poker achou 4 assim no torneio 72, tres delas com custo medido
+        # 0,00bb. Erro sem nome nao e veredito, e o aluno nao tem o que fazer com ele.
+        if _el_efetivo is None:
+            is_error = False
         timeline.append(snap({
             'type':               'action',
             'player':             action.player,

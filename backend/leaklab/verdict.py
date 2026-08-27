@@ -449,3 +449,33 @@ def recomendacao_coerente_com_a_carta(best_action, hand_freq) -> str:
         return modal[0] if float(modal[1] or 0) > 0 else best_action
     except (TypeError, ValueError):
         return best_action
+
+
+def acusacao_de_call_sem_custo_com_equity_vs_random(label, best_action, equity_source,
+                                                    custo_medido) -> str:
+    """Recomendar PAGAR exige a equity medida contra quem apostou -- ou um custo.
+
+    Irma de `equity_vs_random_nao_condena_fold`, pelo lado da RECOMENDACAO em vez do da acao.
+    Aquela pergunta "o hero foldou e a equity condena?"; esta pergunta "o produto manda PAGAR
+    apoiado em que numero?".
+
+    Equity vs mao ALEATORIA e inflada contra o range que aposta -- por construcao, nao por
+    calibracao. Um juiz de poker leu o sintoma: nove-alto sem projeto recebendo "pague, 32% > 27,7%
+    exigidos", quando contra o range que aposta 57% do pote a mao tem uns 10%. Medido no torneio 72
+    depois de duas rodadas de conserto: **5 das 35 acusacoes** ainda eram dessa forma -- recomendam
+    `call`, sem custo medido, com a equity vindo de `vs_random`. Tres preflop e duas no turn.
+
+    Vale em QUALQUER street, e a razao e que o defeito nao e de street: e da comparacao. Com custo
+    medido nada muda -- ali existe um numero que nao veio do estimador.
+
+    Rebaixa para `marginal` ("nao temos base para chamar de erro"), nunca absolve.
+    """
+    if custo_medido:
+        return label
+    if label not in ('small_mistake', 'clear_mistake'):
+        return label
+    if str(best_action or '').lower() != 'call':
+        return label
+    if (equity_source or '') != 'vs_random':
+        return label
+    return 'marginal'
