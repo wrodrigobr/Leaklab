@@ -56,6 +56,7 @@ def main():
 
     c = Counter()
     mudancas = []
+    entram = []
     deltas = []
     for tid in tids:
         row = conn.execute('SELECT raw_text FROM tournaments WHERE id=?', (tid,)).fetchone()
@@ -80,7 +81,7 @@ def main():
                 c['alvo (flop/turn vs_random)'] += 1
                 if args.limite and c['alvo (flop/turn vs_random)'] > args.limite:
                     conn.close()
-                    return _imprime(c, mudancas, deltas)
+                    return _imprime(c, mudancas, deltas, entram)
 
                 board = (di.get('spot') or {}).get('board') or di.get('board')
                 hero = (di.get('hand_profile') or {}).get('cards') or di.get('hero_cards')
@@ -123,15 +124,32 @@ def main():
                     c['ACUSACAO ENTRA'] += 1
                 else:
                     c['muda de grau (sem trocar de lado)'] += 1
+                if a2 and not a1:
+                    # As acusacoes que ENTRAM sao as unicas que podem causar dano que o bug nao
+                    # causava (regra 7). Sao poucas: saem inteiras, para conferencia a mao.
+                    sp = di.get('spot') or {}
+                    mt2 = di.get('math') or {}
+                    entram.append(
+                        '%-5s %-6s %-9s board=%-17s fez %-5s | eq %.3f -> %.3f | preco %.3f | '
+                        '%s -> %s'
+                        % (di.get('street'), _mao(di), sp.get('position'),
+                           ','.join(str(c) for c in (sp.get('board') or [])),
+                           di.get('player_action'), velha, nova,
+                           float(mt2.get('potOddsEquity') or 0), l1, l2))
                 if len(mudancas) < 25:
                     mudancas.append('%-5s fez %-6s eq %.3f -> %.3f | %-14s -> %-14s'
                                     % (di.get('street'), di.get('player_action'),
                                        velha, nova, l1, l2))
     conn.close()
-    return _imprime(c, mudancas, deltas)
+    return _imprime(c, mudancas, deltas, entram)
 
 
-def _imprime(c, mudancas, deltas):
+def _mao(di):
+    hp = di.get('hand_profile') or {}
+    return ''.join(str(x) for x in (hp.get('cards') or di.get('hero_cards') or []))[:5]
+
+
+def _imprime(c, mudancas, deltas, entram=()):
     print('%-42s %s' % ('medida', 'n'))
     for k, v in c.most_common():
         print('%-42s %d' % (k[:42], v))
