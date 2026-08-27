@@ -1201,6 +1201,17 @@ def evaluate_decision(input_data: Dict[str, Any]) -> Dict[str, Any]:
     preflop_gto = _enrich_preflop_gto(input_data)
     if preflop_gto.get('available'):
         quality   = preflop_gto.get('action_quality', 'unknown')
+        # O call que ja leva o stack inteiro E o jam da carta. `analyze_preflop` compara
+        # PALAVRAS e devolve `leak` para quem fez exatamente a jogada mandada — de onde saem,
+        # juntos, `gto_critical` e um EV de diferenca entre duas acoes identicas. A decisao mora
+        # em `card_verdict` como funcao pura; aqui so a fiacao.
+        from leaklab.card_verdict import carta_colapsada_por_commit_total as _colapsa_carta
+        quality, _rec_colapsada, _custo_ok = _colapsa_carta(
+            quality, preflop_gto.get('recommended_actions'), spot, _acao_real)
+        if not _custo_ok:
+            preflop_gto = {**preflop_gto, 'action_quality': quality,
+                           'recommended_actions': _rec_colapsada,
+                           'ev_loss_bb': None, 'ev_loss_source': None}
         _pf_evloss = preflop_gto.get('ev_loss_bb')
         # Tema 1: a severidade do label preflop agora considera o EV perdido medido.
         label   = _preflop_gto_label_adjust(label, quality, _pf_evloss)

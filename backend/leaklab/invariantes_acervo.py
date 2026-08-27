@@ -311,14 +311,37 @@ def _selo_contradiz_veredito(conn):
 # desta mesma lapide, que a propagou sem verificar: ate lapide precisa de cetico.
 #
 def _board_do_futuro(conn):
-    """A decisão não pode guardar cartas que o hero ainda não tinha visto.
+    """A coluna `board` guarda o runout INTEIRO, e o corte por street e feito na LEITURA.
 
-    O corte por street é feito na LEITURA, em mais de um ponto — e já houve três meses gravando
-    com uma chave e procurando com outra por causa de um consumidor que esqueceu de cortar.
-    Enquanto a coluna trouxer o runout inteiro, cada consumidor novo é uma chance de vazar o
-    river num card de flop.
+    Enquanto for assim, cada consumidor novo e uma chance de vazar o river num card de flop —
+    ja houve tres meses gravando com uma chave e procurando com outra por causa disso.
+
+    ── Por que esta sonda conta PRESENCA, e nao volume (27/08) ────────────────────────────────
+
+    Ate hoje ela devolvia uma violacao por linha, com baseline 6.070 (10/08). O numero e
+    proporcional ao tamanho do acervo e nao pode cair sem mudanca de schema, entao a varredura
+    acusava `PIOROU` a cada upload: 6.070 -> 6.400 depois de dois torneios novos. Alarme que toca
+    sempre e alarme que ninguem le.
+
+    Medido antes de mexer, com a taxa POR STREET, que e o que separa crescimento de defeito:
+
+        street     linhas   com runout    taxa      10/08
+        preflop      7238         4693    64,8%      4456
+        flop         1695         1098    64,8%      1042
+        turn          887          609    68,7%       572
+        river         508            0     0,0%         -
+
+    Taxa parada. E o que de fato machuca — carta do futuro chegando AO CARD — foi medido na
+    superficie certa, na captura do torneio 72: **0 de 641 passos**, com controle provando que a
+    sonda acharia (um flop forjado com 5 cartas e detectado). Esse lado agora tem dono proprio:
+    a porta `card com carta do futuro` em `scripts/portao_de_aceite.py`.
+
+    Mesma licao da sonda ODDS, aposentada logo abaixo: contradicao que nao aparece na tela nao e
+    defeito da tela. A diferenca e que esta nao foi aposentada — a coluna segue crua, e no dia em
+    que ela passar a ser cortada na GRAVACAO a sonda cala sozinha.
     """
-    fora = []
+    linhas = 0
+    exemplo = None
     for r in _linhas(conn, 'SELECT id, street, board FROM decisions WHERE board IS NOT NULL'):
         limite = CARTAS_VISIVEIS.get((r['street'] or '').lower())
         if limite is None:
@@ -328,8 +351,14 @@ def _board_do_futuro(conn):
         except (TypeError, ValueError):
             continue
         if isinstance(cartas, list) and len(cartas) > limite:
-            fora.append(Violacao(r['id'], f"{r['street']} com {len(cartas)} cartas: {cartas}"))
-    return fora
+            linhas += 1
+            if exemplo is None:
+                exemplo = (r['id'], r['street'], cartas)
+    if not linhas:
+        return []
+    return [Violacao(exemplo[0],
+                     f'{linhas} linhas guardam o runout inteiro; ex.: {exemplo[1]} com '
+                     f'{len(exemplo[2])} cartas: {exemplo[2]}')]
 
 
 # ── ODDS: sonda APOSENTADA em 11/08, e o motivo fica registrado ────────────────────────────────
@@ -515,10 +544,13 @@ INVARIANTES: List[Invariante] = [
                                        score=0.7, action_taken='call', best_action='fold'),
     ),
     Invariante(
-        id='BOARD', baseline=6070,
-        titulo='board gravado com cartas que o hero ainda não tinha visto',
+        id='BOARD', baseline=1,
+        titulo='a coluna board guarda o runout inteiro (corte e na leitura)',
         porta='mesa exibida ao lado do veredito; e cada consumidor novo que esquecer de cortar',
-        origem='medido em 10/08 sobre o snapshot (4.456 preflop, 1.042 flop, 572 turn)',
+        origem='medido em 10/08 (4.456 preflop, 1.042 flop, 572 turn = 6.070). Em 27/08 a '
+               'sonda passou a contar PRESENCA: o volume e proporcional ao acervo e fazia a '
+               'varredura acusar PIOROU a cada upload, com a taxa por street PARADA. Ver a '
+               'docstring de _board_do_futuro.',
         medir=_board_do_futuro,
         forjar=lambda c: _forjar_linha(c, street='flop', board='["2h","7c","2d","Qs","4h"]'),
     ),

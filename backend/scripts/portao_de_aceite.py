@@ -206,11 +206,41 @@ def porta_coverage_nao_mente(passos):
     return ('gto_coverage "covered" sem rotulo entregue', len(alvo), maus)
 
 
+_CARTAS_VISIVEIS = {'preflop': 0, 'flop': 3, 'turn': 4, 'river': 5}
+
+
+def porta_card_sem_carta_do_futuro(passos):
+    """O card nao pode receber carta que o hero ainda nao tinha visto.
+
+    A coluna `decisions.board` guarda o runout INTEIRO de proposito, e o corte por street e feito
+    na leitura, em mais de um consumidor. A invariante BOARD vigia a coluna; esta vigia a unica
+    coisa que machuca — o que chega a tela. Medida na captura do torneio 72: 0 de 641.
+    """
+    alvo, maus = [], []
+    for p in passos:
+        lim = _CARTAS_VISIVEIS.get((p.get('street') or '').lower())
+        if lim is None:
+            continue
+        b = p.get('board')
+        if isinstance(b, str):
+            try:
+                b = json.loads(b)
+            except (TypeError, ValueError):
+                b = None
+        if not isinstance(b, list):
+            continue
+        alvo.append(p)
+        if len(b) > lim:
+            maus.append(p)
+    return ('card com carta do futuro', len(alvo), maus)
+
+
 _PORTAS = [porta_procedencia_coerente, porta_linguagem_exige_custo, porta_magnitude_exige_custo,
            porta_score_na_banda, porta_nao_acusa_o_que_recomenda, porta_palavra_bate_com_a_acao,
            porta_a_regra_do_front_que_suprime_a_contradicao_existe, porta_multiway_nao_recebe_solver_hu,
            porta_fold_nao_condenado_por_equity_vs_random, porta_ausencia_declara_motivo,
-           porta_coverage_nao_mente, porta_qualidade_estatica_nao_contradiz_o_veredito]
+           porta_coverage_nao_mente, porta_qualidade_estatica_nao_contradiz_o_veredito,
+           porta_card_sem_carta_do_futuro]
 
 
 def main():

@@ -139,6 +139,65 @@ def colapsa_shove_para_call(spot: dict, played_action) -> bool:
             and (str(played_action or '')).lower() in _ACOES_DE_COMMIT)
 
 
+# Um call que ja poe TODAS as fichas nao deixa nada atras. Abaixo disto o hero nao consegue nem
+# postar um blind: 0,05bb nao e "fichas restantes", e a coluna `facing_to_call_bb` vem arredondada
+# em 2 casas contra um `effective_stack_bb` de 7 (1,46 contra 1,4566667).
+_SOBRA_IRRELEVANTE_BB = 0.05
+
+_COMMIT = ('jam', 'shove', 'allin', 'all-in', 'raise')
+
+
+def call_e_commit_total(facing_to_call_bb, effective_stack_bb) -> bool:
+    """Pagar ja custa o stack inteiro: nao existe `jam` que seja outra decisao."""
+    try:
+        custo = float(facing_to_call_bb)
+        stack = float(effective_stack_bb)
+    except (TypeError, ValueError):
+        return False
+    # Sem um dos dois numeros NAO afirmamos nada. Chutar aqui apagaria veredito legitimo — a
+    # mesma armadilha do estimador de equity, em que a ausencia de dado virava o caso que convem.
+    return stack > 0 and custo >= stack - _SOBRA_IRRELEVANTE_BB
+
+
+def colapsa_commit_para_call(spot: dict, played_action) -> bool:
+    """A IRMA de `colapsa_shove_para_call`, na direcao oposta — e a que faltava.
+
+    La o hero deu shove e o excesso voltava, entao o shove ERA o call. Aqui o hero PAGOU e o call
+    ja levou tudo, entao o `jam` da carta E o call: o vilao apostou mais do que o hero tem, raise
+    nao existe no spot, e as duas palavras movem exatamente as mesmas fichas.
+
+    Caso que originou (27/08, invariante MUDO 0 -> 1, decisao 325499 em producao): AJo no BTN com
+    1,4566bb efetivos enfrentando um raise de 2,0bb de UTG. A carta manda jam; o hero pagou
+    all-in. A carta classificou `leak` pela PALAVRA e gravou `gto_critical`, enquanto o veredito
+    final saiu `standard`. A tela entregou "Correto" com "recomendado: jam" e "-0,141bb" do lado.
+
+    Uma direcao so: colapsar nunca cria acusacao. `fold` fica de fora — recomendar fold contra um
+    commit e critica legitima, e o leak ali seria entrar na mao, nao a palavra usada."""
+    if str(played_action or '').lower().strip().rstrip('s') != 'call':
+        return False
+    return call_e_commit_total((spot or {}).get('facingToCallBb'),
+                               (spot or {}).get('effectiveStackBb'))
+
+
+def carta_colapsada_por_commit_total(quality, recomendadas, spot, acao_jogada):
+    """Aplica o colapso na leitura da carta preflop: `(quality, recomendadas, custo_ok)`.
+
+    Funcao PURA de proposito. A 1a versao era um `if` dentro do motor, e os guardas de fiacao dele
+    passaram verde com a condicao trocada por `False` — o vies de ancorar no EFEITO em vez de na
+    CONDICAO, que ja me custou quatro guardas cegos em 25/08. Aqui o comportamento e testavel sem
+    montar uma decisao inteira.
+
+    `custo_ok` False significa: nao ha diferenca de EV a cobrar, porque as duas acoes movem as
+    mesmas fichas."""
+    if not colapsa_commit_para_call(spot, acao_jogada):
+        return quality, recomendadas, True
+    if quality in ('correct', 'unknown'):
+        return quality, recomendadas, True
+    if str((list(recomendadas or []) or [''])[0]).lower() not in _COMMIT:
+        return quality, recomendadas, True
+    return 'correct', ['call'], False
+
+
 def spot_mismatch(gto_action_norm: str, engine_best_norm: str) -> bool:
     """O nó GTO responde a um spot INCOMPATÍVEL com o que o hero enfrenta.
 

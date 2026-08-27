@@ -5,6 +5,76 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## A varredura acusou duas regressoes, e so uma era defeito (27/08)
+
+Fechando a auditoria pre-lancamento, a varredura de invariantes voltou com `MUDO: 0 -> 1` e
+`BOARD: 6.070 -> 6.400`. Nenhuma das duas era o que parecia na primeira leitura.
+
+### MUDO: a equivalencia so existia em uma direcao
+
+Decisao 325499, em producao: AJo no BTN com **1,4566bb** efetivos enfrentando um raise de 2,0bb de
+UTG. O hero pagou -- e pagar ja custa tudo o que ele tem. O raise do vilao cobre o hero, entao
+`raise` nao existe no spot e `jam` e `call` movem exatamente as mesmas fichas.
+
+`analyze_preflop` compara **palavras**. Chamou de `leak`, gravou `gto_critical` e um `ev_loss_bb`
+de 0,141 -- a diferenca de EV entre duas acoes identicas. O que a tela entregou, lido na captura
+do torneio 142:
+
+    veredito ...... "Correto"
+    recomendacao .. "jam"
+    custo ......... "-0,141bb"
+
+Tres afirmacoes que nao cabem juntas: se esta correto, nao ha o que recomendar nem o que cobrar.
+
+A regra irma ja existia desde 12/08 -- `colapsa_shove_para_call`, para quando o hero da SHOVE
+sobre um all-in cujo excesso ninguem pode pagar. Ela exige que a acao jogada seja um commit, e
+aqui a acao jogada e `call`. **A equivalencia e simetrica e o codigo tinha metade dela.**
+
+O conserto e uma direcao so: colapsar iguala a jogada a recomendacao, nunca cria acusacao. `fold`
+fica de fora -- recomendar fold contra um commit e critica legitima, e o leak ali seria entrar na
+mao, nao a palavra usada.
+
+**Duas voltas antes de acertar, e as duas valem registro:**
+
+1. Escrevi o colapso sobre `range_eval` e conferi na mao real: `gto_label` continuou
+   `gto_critical`. Sao **duas fontes de recomendacao** e quem grava o preflop e
+   `_enrich_preflop_gto`. Consertei a porta errada e so a mao real mostrou.
+2. Com o conserto na porta certa, escrevi o guarda -- e ele passou verde com a condicao do motor
+   trocada por `False`. Guardas de fiacao ancoram na PRESENCA da chamada, nao na condicao: o
+   mesmo vies que ja me custou quatro guardas cegos em 25/08. A decisao virou funcao pura
+   (`carta_colapsada_por_commit_total`) e o teste passou a olhar comportamento. **Tres mutacoes,
+   tres deteccoes.**
+
+E a ablacao que separou o conserto do ambiente: rodando o torneio 142 inteiro localmente, 18
+decisoes divergiam do gravado. Com o patch revertido, **17 divergiam do mesmo jeito** -- e o
+ambiente local nao tem os nos postflop do solver. Atribuivel ao patch: **1**, exatamente a linha
+alvo.
+
+### BOARD: o alarme media o tamanho do acervo
+
+6.070 era baseline declarado desde 10/08. Virou 6.400 depois de dois torneios novos. A taxa **por
+street** conta a historia de verdade:
+
+| street  | linhas | com runout | taxa  | 10/08 |
+|---------|-------:|-----------:|------:|------:|
+| preflop |  7.238 |      4.693 | 64,8% | 4.456 |
+| flop    |  1.695 |      1.098 | 64,8% | 1.042 |
+| turn    |    887 |        609 | 68,7% |   572 |
+| river   |    508 |          0 |  0,0% |     - |
+
+Taxa parada. A coluna `board` guarda o runout inteiro **por projeto** e o corte por street e feito
+na leitura, entao o numero e proporcional ao acervo e nao pode cair sem mudanca de schema. Um
+alarme que toca a cada upload e um alarme que ninguem le.
+
+O que de fato machuca -- carta do futuro chegando **ao card** -- foi medido na superficie certa,
+na captura do torneio 72: **0 de 641 passos**, com controle provando que a sonda acharia (flop
+forjado com 5 cartas, detectado). A sonda BOARD passou a contar PRESENCA (baseline 1, o volume vai
+no detalhe) e o lado que importa ganhou dono proprio: a 13a porta do portao de aceite, sobre a
+tela. Mesma licao da sonda ODDS, aposentada em 11/08 no mesmo arquivo: contradicao que nao aparece
+na tela nao e defeito da tela.
+
+---
+
 ## Os 1.300 sem veredito GTO: nao havia nada a recuperar, havia o que NOMEAR (26/08)
 
 Ataquei os 1.300 `gto_label` NULL. O resultado nao foi cobertura nova -- foi descobrir que a
