@@ -131,24 +131,27 @@ def equity_river_vs_continuacao(hero, board):
         def forca(cs):
             return eval7.evaluate([eval7.Card(c) for c in cs])
 
+        from leaklab.range_de_continuacao import categoria_do_board, continua
         mortas = set(hero) | set(board)
         livres = [c for c in _BARALHO if c not in mortas]
+        board_cards = [eval7.Card(c) for c in board]
+        cat_board = categoria_do_board(board_cards)
         meu = forca(hero + board)
-        cat_board = eval7.handtype(forca(board))
-        ranks_board = {c[0] for c in board}
         w = t = n = 0
         for v in combinations(livres, 2):
-            if not (v[0][0] in ranks_board or v[1][0] in ranks_board or v[0][0] == v[1][0]):
-                dele = forca(list(v) + board)
-                if eval7.handtype(dele) == cat_board:
-                    continue                                   # não continua: fora da range
-            else:
-                dele = forca(list(v) + board)
+            # `com_draws=False`: no river nao ha carta por vir, projeto nao existe. O criterio
+            # e o mesmo do multiway desde 27/08 (`range_de_continuacao`), que ate entao tinha
+            # DUAS copias -- esta certa, e a de la errada em board pareado.
+            if not continua((eval7.Card(v[0]), eval7.Card(v[1])), board_cards, cat_board,
+                            com_draws=False):
+                continue
+            dele = forca(list(v) + board)
             n += 1
             if meu > dele:
                 w += 1
             elif meu == dele:
                 t += 1
+
         return round((w + 0.5 * t) / n, 4) if n else None
     except Exception:                                          # noqa: BLE001
         return None

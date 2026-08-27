@@ -48,29 +48,30 @@ def _card_str(c) -> str:
 
 @lru_cache(maxsize=512)
 def _continue_combos(board_key: str):
-    """Combos da base que INTERAGEM com o board (par+ ou draw) — a range de
-    continuação. Cacheado por board. Retorna lista de tuplas (Card, Card)."""
+    """Combos da base que CONTINUAM no board. Cacheado por board. Lista de tuplas (Card, Card).
+
+    O criterio mora em `range_de_continuacao` desde 27/08, porque ele existia em duas copias e a
+    daqui estava errada em board PAREADO: decidir "mao feita" por `handtype != 'High Card'` diz
+    SIM para toda mao quando o proprio board ja faz um par. Medido: 93-95% da range continuava
+    num board pareado contra 48-67% num board seco -- a range de continuacao virava a range
+    inteira, e a equity vs range virava equity vs aleatoria com outro nome.
+    """
     if not _HAS_EVAL7:
         return []
+    from leaklab.range_de_continuacao import categoria_do_board, continua
     board = board_key.split(',') if board_key else []
     board_cards = [eval7.Card(c) for c in board]
     board_set = set(board)
+    cat = categoria_do_board(board_cards)
     out = []
     for hand, _w in eval7.HandRange(_BASE_RANGE).hands:
         c1, c2 = hand
-        s1, s2 = _card_str(c1), _card_str(c2)
-        if s1 in board_set or s2 in board_set:
+        if _card_str(c1) in board_set or _card_str(c2) in board_set:
             continue
-        # made hand? (par ou melhor usando as 2 + board)
-        score = eval7.evaluate([c1, c2] + board_cards)
-        made = eval7.handtype(score) != 'High Card'
-        if not made:
-            # draw? (flush / oesd / gutshot — descarta backdoors p/ a range de continuação)
-            dp = detect_draws(s1 + s2, board)
-            if not (dp.flush_draw or dp.oesd or dp.gutshot):
-                continue
-        out.append((c1, c2))
+        if continua((c1, c2), board_cards, cat, com_draws=True):
+            out.append((c1, c2))
     return out
+
 
 
 def semente_estavel(*partes) -> int:
