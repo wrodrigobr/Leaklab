@@ -159,9 +159,12 @@ def test_o_projeto_CONTA_como_mao_que_continua():
     """`com_draws=True` é a diferença para o river, e some sem deixar rastro num refactor.
 
     No river não há carta por vir e projeto não existe. No flop e no turn um projeto de flush é uma
-    mão que continua de verdade; excluí-la estreitaria a range do vilão para algo que ele não joga,
-    e a equity do herói sairia INFLADA -- errando para o lado que acusa menos, que é o mais difícil
-    de notar.
+    mão que continua de verdade.
+
+    A DIREÇÃO, medida em 28/08 e não deduzida: incluir projetos alarga a range do vilão em ~45%
+    (798 combos contra 552 num turn real). Range mais larga é range mais fraca, então a equity do
+    herói sai MAIOR -- e equity maior condena FOLD. A versão anterior desta docstring afirmava o
+    contrário, por dedução, e estava errada.
     """
     if not _tem_eval7():
         print('PULADO test_o_projeto_CONTA_como_mao_que_continua (sem eval7)')

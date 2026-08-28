@@ -167,7 +167,13 @@ def equity_river_vs_continuacao(hero, board):
 #
 #   • **`com_draws=True`.** No river não há carta por vir, então projeto não existe e continuar é
 #     ter par próprio ou melhor. No flop e no turn um projeto de flush é uma mão que continua de
-#     verdade, e excluí-la estreitaria a range do vilão para algo que ele não joga.
+#     verdade, e excluí-la daria ao vilão uma range que ele não joga.
+#
+#     **A direção do efeito, medida (28/08):** incluir projetos ALARGA a range do vilão em ~45%
+#     (798 combos contra 552 num turn real), e range mais larga é range mais fraca, então a equity
+#     do herói sai MAIOR. Isso importa porque equity maior condena FOLD, e acusação de fold
+#     baseada em equity estimada é justamente a familia que este projeto ja teve de derrubar em
+#     26/08. Um comentário anterior meu afirmava a direção contrária, sem ter medido.
 #
 #   • **Turn enumera, flop amostra.** No turn falta uma carta: 44 saídas × os combos que
 #     continuam é conta fechada. No flop faltam duas: C(45,2) = 990 saídas pelos mesmos combos
