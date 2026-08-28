@@ -9735,7 +9735,13 @@ def admin_gto_missing_spots():
 # A pagina /ranges (28/08) trocou o padrao de uso: era 1 chamada por sessao de replayer, virou 1
 # por clique numa barra de 14 stacks x 9 posicoes. Medido pela revisao de seguranca: 30 requisicoes
 # seguidas custam 2,9s de CPU do worker e 1 MB de egress, e o conteudo e 100% deterministico.
-@limiter.limit("120 per minute")
+#
+# O TETO E 600, nao 120, e o numero saiu de medir o consumidor legitimo mais pesado antes de
+# escolher: `capturar_torneio_para_auditoria.py` consulta a matriz por decisao preflop e faz 433
+# chamadas em rajada num torneio de 600 decisoes. Com 120/min o portao de aceite -- a rede que
+# roda a cada deploy -- passaria a levar 429 de si mesmo. Limite que quebra uso legitimo vira
+# limite desligado na semana seguinte.
+@limiter.limit("600 per minute")
 def preflop_ranges():
     """
     Retorna ranges GTO de preflop por posição e stack depth.
