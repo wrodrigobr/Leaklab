@@ -5,6 +5,79 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## A landing anunciava, para o visitante, os arquivos que faltavam (28/08)
+
+O dono olhou a vitrine e disse "texto muito ruim", e depois: *"'grade abaixo e de verdade'... e a
+imagem esta na lateral"*. Os dois estavam certos, e puxar o fio expos algo pior que copy ruim.
+
+### O que estava NO AR
+
+`curl` no `main-CkqZOPrS.js` publicado em grindlabpoker.com: o artefato continha, literalmente,
+**"captura pendente"** e **"landing/veredito.webp"**. A pasta `frontend/public/landing/` nunca
+existiu. Tres dos quatro blocos da secao "O produto" renderizavam uma caixa tracejada com o
+caminho do arquivo em fonte mono, e logo abaixo o slot de video dizia "em gravacao".
+
+A secao anunciava as telas do produto e entregava **quatro admissoes de obra inacabada em
+sequencia**. Nao foi achado no fonte: o fonte parecia certo, porque o defeito era um arquivo que
+nao estava la. Foi achado no ARTEFATO PUBLICADO.
+
+E a caixa tracejada era um lembrete que eu tinha escrito **para mim**. Pior: um teste meu a
+CONGELAVA como requisito -- `'print declarado e ausente vira aviso VISIVEL'`. O comentario do
+slot de video defendia a mesma ideia com todas as letras: *"vazio silencioso parece proposital"*.
+Raciocinio de preview de desenvolvimento, aplicado a uma tela publica, em tres lugares.
+
+### O que a landing vende e o Free nao tem
+
+Medido no `PLAN_LIMITS`: o Free tem `ghost: False` e `leak_targeted: False`, e `full_hand` e
+`'free': False` no catalogo. O bloco de treino da vitrine prometia os tres, embaixo de um CTA
+"Comecar gratis". E **a tabela de planos nao mencionava treino em plano nenhum**, entao o jogador
+so descobria o paywall depois de criar a conta. Os bullets agora dizem `(Pro)`, e as duas listas
+de plano passaram a declarar o que cada uma treina.
+
+### Copy: tres defeitos com nome
+
+1. **Vocabulario interno vestido de portugues.** "A mistura vira categoria com nome, nao um tom
+   entre duas cores" descrevia a alternativa que o programador descartou. "Procedencia declarada
+   em toda acusacao" -- `acusacao` e como o codigo chama a decisao flagrada, e o jogador le que o
+   produto o acusa. "O veredito nao afirma magnitude" e vocabulario do motor.
+2. **Copy que aponta para posicao na tela.** `Vitrine.tsx` ALTERNA os lados por bloco e empilha no
+   mobile: "abaixo" e falso no desktop, "do lado" e falso no mobile, e no bloco invertido o lado
+   troca. Nenhuma palavra de posicao e verdadeira em todos os tamanhos, entao o guarda proibe a
+   categoria inteira. Ele achou uma violacao PRE-EXISTENTE em `vitrine.b3` na 1a execucao.
+3. **Frase que pede desculpa.** "Veja antes de criar conta" concedia uma amostra. "E a grade e a
+   de verdade" implicava que o normal seria falsa. `prova.nota` abria com "Nada disso e opiniao de
+   IA" duas rolagens abaixo do selo "Powered by Claude AI".
+
+### Numeros conferidos antes de reescrever
+
+- 14 profundidades e 3bb a 100bb: **verdadeiro** (`_load()['ranges']` tem 14 baldes).
+- "TODAS as ranges": **falso**. De 3bb a 7bb so existe RFI; `vs_RFI`, `vs_3bet` e `squeeze` so
+  aparecem de 10bb pra cima, e o proprio `/ranges` desabilita os cenarios ali. Virou "as ranges
+  que julgam suas maos".
+- "os combos de cada acao": **falso**. O tooltip do `RangeGrid` monta percentual
+  (`Raise 55% . Fold 45%`); combos so existem no painel de resumo, por categoria. Virou
+  "a frequencia de cada acao".
+- "15 analises/mes" **subvendia**: o contador e `ai_calls` e so conta chamada de LLM; a analise do
+  motor nao tem teto dentro dos 2 torneios. Virou "15 explicacoes da IA por mes".
+- O card de preco chamava o plano de "Freemium" e o resto da pagina de "Free".
+- O espanhol tinha UM "Elegi" rioplatense num arquivo inteiro em tuteo.
+
+### O que ficou, e o que falta
+
+A vitrine mostra **um** bloco: o unico que nao e captura, porque renderiza o `RangeGrid` de
+verdade com dado da carta. Os outros tres voltam quando as capturas existirem, e
+`landingCapturasExistem.test.ts` quebra a build se o caminho voltar sem o arquivo. O slot de video
+so renderiza quando `VIDEO_DE_USABILIDADE` apontar para um arquivo.
+
+**Pendente:** capturar `/landing/{veredito,treino,evolucao}.webp`. Tentei nesta sessao e o banco
+local nao serve: o unico usuario com torneio (990051) nao tem linha em `users`, entao nenhuma tela
+com dado abre. Precisa de conta semeada com torneio analisado.
+
+Criado `.claude/agents/copy.md`, um revisor de copy que carrega estes quatro defeitos como
+checklist. Foi ele que achou o Free vendendo Pro e o "todas as ranges".
+
+**Verificado:** frontend 425/425. 3 mutacoes plantadas nos guardas novos, 3 detectadas.
+
 ## Leitura de range DEPOIS do flop, e o motor dela ja existia por acidente (28/08)
 
 Pedido: o benchmark do concorrente tem um treino "leia o vilao street a street". Fui conferir o

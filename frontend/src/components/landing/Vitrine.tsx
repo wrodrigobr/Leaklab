@@ -41,26 +41,32 @@ function Moldura({ rotulo, children }: { rotulo: string; children: React.ReactNo
   );
 }
 
-/** Print do produto, com aviso VISÍVEL quando o arquivo ainda não foi capturado. */
-function Print({ src, alt }: { src: string; alt: string }) {
-  const [falhou, setFalhou] = useState(false);
-  if (falhou) {
-    return (
-      <div className="flex min-h-[200px] items-center justify-center rounded-md border border-dashed border-warning/40 bg-warning/[0.04] p-6 text-center">
-        <span className="font-mono text-[11px] leading-relaxed text-warning">
-          captura pendente
-          <br />
-          <span className="text-muted-foreground">{src}</span>
-        </span>
-      </div>
-    );
-  }
+/**
+ * Print do produto.
+ *
+ * ── O aviso que eu construí para mim e foi para o ar (28/08) ──────────────────────────────
+ *
+ * A primeira versão renderizava, no `onError`, uma caixa tracejada dizendo "captura pendente"
+ * com o caminho do arquivo em fonte mono. Era um lembrete para EU não esquecer de capturar.
+ *
+ * Ele foi para produção. O `main-*.js` publicado em grindlabpoker.com continha literalmente
+ * "captura pendente" e "/landing/veredito.webp", e três dos quatro blocos da seção "O produto"
+ * mostravam isso para o visitante. A seção anunciava as telas do produto e entregava avisos de
+ * arquivo faltando.
+ *
+ * Agora a falha ESCONDE o bloco: melhor mostrar menos produto do que mostrar obra inacabada.
+ * Mas isso é a rede de segurança, não o conserto. O conserto é
+ * `landingCapturasExistem.test.ts`, que quebra a build quando um caminho de `print` não existe
+ * no `public/` — sem ele, um arquivo faltando volta a virar um bloco que some calado, que é
+ * mais difícil de notar do que a caixa tracejada.
+ */
+function Print({ src, alt, onFalhar }: { src: string; alt: string; onFalhar: () => void }) {
   return (
     <img
       src={src}
       alt={alt}
       loading="lazy"
-      onError={() => setFalhou(true)}
+      onError={onFalhar}
       className="w-full rounded-md"
     />
   );
@@ -76,6 +82,10 @@ export interface BlocoVitrine {
 }
 
 function Bloco({ b, invertido }: { b: BlocoVitrine; invertido: boolean }) {
+  const [semCaptura, setSemCaptura] = useState(false);
+  // Sem a imagem, o bloco inteiro sai. O texto sozinho ao lado de uma moldura vazia leria como
+  // tela quebrada, e a moldura é o que dá a ele o sentido de "isto existe".
+  if (b.print && semCaptura) return null;
   return (
     <div className="grid items-center gap-8 md:grid-cols-2">
       <div className={cn(invertido && "md:order-2")}>
@@ -95,7 +105,7 @@ function Bloco({ b, invertido }: { b: BlocoVitrine; invertido: boolean }) {
       <div className={cn(invertido && "md:order-1")}>
         <Moldura rotulo={b.rotulo}>
           {b.print ? (
-            <Print src={b.print} alt={b.titulo} />
+            <Print src={b.print} alt={b.titulo} onFalhar={() => setSemCaptura(true)} />
           ) : (
             // O componente do produto, com dado do produto. Não é maquete.
             <RangeGrid range={VITRINE_RANGE} />

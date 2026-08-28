@@ -45,7 +45,18 @@ describe('Vitrine', () => {
     expect(titles.some((x) => /Fold \d+%/.test(x ?? ''))).toBe(true);
   });
 
-  it('print declarado e ausente vira aviso VISÍVEL, não espaço em branco', () => {
+  it('print declarado e ausente ESCONDE o bloco, em vez de anunciar o arquivo', () => {
+    // ── Este teste dizia o contrário até 28/08 ──────────────────────────────────────────────
+    //
+    // Ele exigia que a captura ausente virasse "um aviso VISÍVEL", e o componente obedecia:
+    // caixa tracejada, "captura pendente", caminho do arquivo em fonte mono. Era um lembrete
+    // que eu tinha escrito para mim, e o teste o congelou como requisito.
+    //
+    // Foi para produção. O `main-CkqZOPrS.js` publicado em grindlabpoker.com continha a frase, e
+    // três dos quatro blocos da seção "O produto" mostravam isso para o visitante.
+    //
+    // Aviso de obra é para quem constrói. O guarda que serve a quem constrói é
+    // `landingCapturasExistem.test.ts`, que quebra a build; a tela do visitante não é o lugar.
     const { container } = montar([{ ...base, print: '/landing/nao-existe.webp' }]);
     const img = container.querySelector('img');
     expect(img, 'o bloco com print deveria começar tentando a imagem').toBeTruthy();
@@ -53,8 +64,12 @@ describe('Vitrine', () => {
     // `fireEvent.error` é quem entrega o evento sintético — a 1ª versão deste teste falhava por
     // isso e a falha estava CERTA.
     fireEvent.error(img!);
-    expect(screen.getByText(/captura pendente/i)).toBeTruthy();
-    expect(screen.getByText('/landing/nao-existe.webp')).toBeTruthy();
+    expect(screen.queryByText(/captura pendente/i),
+           'a tela do visitante não anuncia arquivo faltando').toBeNull();
+    expect(screen.queryByText('/landing/nao-existe.webp'),
+           'o caminho do arquivo não vai para a tela').toBeNull();
+    // E o bloco inteiro sai: texto sozinho ao lado de moldura vazia leria como tela quebrada.
+    expect(screen.queryByText(base.titulo), 'o bloco deveria ter sumido').toBeNull();
   });
 
   it('mostra o rótulo da tela, o título e os DOIS bullets', () => {

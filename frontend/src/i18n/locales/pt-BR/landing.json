@@ -26,7 +26,7 @@
     "step1Title": "Importe seu histórico",
     "step1Desc": "Faça upload do arquivo .txt de qualquer torneio (PokerStars, GGPoker, ACR ou CoinPoker). Suporte a múltiplos arquivos de uma vez.",
     "step2Title": "GrindLab prioriza seus erros",
-    "step2Desc": "Cada decisão é avaliada por equity, posição e contexto MTT/SNG. O motor de detecção cruza frequência com impacto, e te mostra exatamente o que está custando fichas.",
+    "step2Desc": "Cada decisão é avaliada por equity, posição e contexto MTT/SNG. O GrindLab cruza a frequência do erro com o quanto ele custou em fichas, e te mostra o que sai mais caro.",
     "step3Title": "Evolua com foco no que importa",
     "step3Desc": "Plano de estudos construído sobre os seus próprios padrões de erro, não conteúdo genérico. Acompanhe a evolução pelos 7 níveis do sistema."
   },
@@ -50,16 +50,18 @@
     "ctaFree": "Começar grátis",
     "ctaSubscribe": "Assinar {{name}}",
     "freeF1": "2 torneios por mês",
-    "freeF2": "15 análises GrindLab/mês",
+    "freeF2": "15 explicações da IA por mês",
     "freeF3": "Análise GTO, leaks e estatísticas",
     "freeF4": "5 solves GTO sob demanda/mês",
     "proF1": "200 torneios/mês",
-    "proF2": "300 análises GrindLab/mês",
+    "proF2": "300 explicações da IA por mês",
     "proF3": "AI Coach Chat (conversa contextual)",
     "proF4": "Plano de estudos personalizado",
     "proF5": "Marketplace de coaches",
     "proF6": "Suporte prioritário",
-    "proF7": "Insights avançados de IA (Strategic Twin, Cognitive, Causal Map)"
+    "proF7": "Insights avançados de IA (Strategic Twin, Cognitive, Causal Map)",
+    "freeF5": "Treino de fundamentos preflop: RFI, vs RFI e vs 3-bet",
+    "proF8": "Treino mirado nos seus leaks: Ghost Table, mão completa e repetição espaçada"
   },
   "faq": {
     "eyebrow": "Dúvidas",
@@ -90,7 +92,7 @@
   "demo": {
     "b1": "Veredito claro por mão.",
     "b2": "A ação recomendada, lado a lado com a sua.",
-    "b3": "A evidência do solver, não achismo."
+    "b3": "A evidência do solver por trás de cada veredito."
   },
   "prova": {
     "eyebrow": "O diferencial",
@@ -99,39 +101,39 @@
     "c1Title": "Mede no seu jogo, não no simulador",
     "c1Desc": "Depois que você treina um leak, a plataforma acompanha as mãos daquele tipo nos torneios que você importar e compara com o seu histórico anterior.",
     "c2Title": "Só afirma quando resiste ao acaso",
-    "c2Desc": "A melhora só vira \"comprovado\" quando a diferença sobrevive ao intervalo de confiança. Enquanto não sobrevive, a tela diz que ainda não dá para afirmar. É proposital.",
+    "c2Desc": "A melhora só vira \"comprovado\" quando a diferença sobrevive ao intervalo de confiança. Enquanto não sobrevive, a tela diz que ainda não dá para afirmar.",
     "c3Title": "Reabre sozinho se você regredir",
     "c3Desc": "Se o erro voltar nas suas mãos reais, o leak reabre mesmo que você continue gabaritando o treino. É o caso que denuncia decoreba sem transferência.",
-    "nota": "Nada disso é opinião de IA sobre o seu jogo. É contagem de erro no seu próprio histórico, com o intervalo de confiança visível."
+    "nota": "O veredito de cada mão vem da contagem no seu próprio histórico, com o tamanho da amostra e o intervalo de confiança na tela. A IA explica a mão, quem julga é o solve."
   },
   "vitrine": {
     "eyebrow": "O PRODUTO",
-    "heading": "Veja antes de criar conta",
+    "heading": "A tela onde as ranges vivem",
     "b1": {
       "rotulo": "grindlabpoker.com/ranges",
-      "titulo": "Todas as ranges, de 3bb a 100bb",
-      "texto": "Consulte a range de qualquer posição em qualquer profundidade, sem precisar achar uma mão sua onde aquilo aconteceu. E a grade abaixo é a de verdade: abertura do CO com 20bb.",
-      "b1a": "14 profundidades, das rasas de torneio às de mesa funda",
-      "b1b": "A mistura vira categoria com nome, não um tom entre duas cores"
+      "titulo": "As ranges que julgam suas mãos, de 3bb a 100bb",
+      "texto": "Escolha a posição e a profundidade, e a grade abre. Esta é a abertura do CO com 20bb, a mesma range que julga as suas mãos.",
+      "b1a": "14 profundidades, do push/fold ao deep stack",
+      "b1b": "Mão que joga dos dois jeitos mostra a frequência de cada ação"
     },
     "b2": {
       "rotulo": "grindlabpoker.com/replayer",
       "titulo": "Todo veredito diz de onde veio",
-      "texto": "Cada decisão é julgada pelo solver, pelas ranges ou pelo motor, e o card diz qual. Quando não temos base para afirmar, ele declara o motivo em vez de inventar um número.",
-      "b2a": "Procedência declarada em toda acusação",
-      "b2b": "Sem custo medido, o veredito não afirma magnitude"
+      "texto": "Cada decisão mostra de onde saiu o julgamento: o solve GTO, a range da posição ou a avaliação de equity e contexto MTT. Quando dá para medir o custo do erro, ele aparece em bb, e quando não dá, o card diz o motivo.",
+      "b2a": "A fonte do julgamento aparece em toda decisão",
+      "b2b": "O custo em bb sai da sua própria mão"
     },
     "b3": {
       "rotulo": "grindlabpoker.com/training",
-      "titulo": "Treino que ataca o seu erro, não um spot qualquer",
-      "texto": "O plano de estudo aponta onde você mais perde fichas e o treino abre já naquele spot. Repetição espaçada para o que você errou, com a grade e o custo do lado.",
-      "b3a": "Ghost Table com repetição espaçada",
-      "b3b": "Mão completa, do preflop ao river"
+      "titulo": "Treino que abre no seu erro",
+      "texto": "O plano de estudo aponta onde você mais perde fichas e o treino abre já naquele spot. Repetição espaçada do que você errou, com a range certa e o custo do erro na mesma tela.",
+      "b3a": "Ghost Table com repetição espaçada (Pro)",
+      "b3b": "Mão completa heads-up, do preflop ao river (Pro)"
     },
     "b4": {
       "rotulo": "grindlabpoker.com/evolucao",
       "titulo": "Se o ajuste está pagando",
-      "texto": "Os bb perdidos por família de erro, torneio a torneio. Célula sem amostra fica cinza em vez de virar zero: número que não medimos não vira gráfico.",
+      "texto": "Os bb perdidos por família de erro, torneio a torneio. Cada ponto tem mão sua por trás, e a célula sem amostra fica cinza em vez de virar zero.",
       "b4a": "Evolução por família de leak",
       "b4b": "Amostra pequena aparece como amostra pequena"
     },

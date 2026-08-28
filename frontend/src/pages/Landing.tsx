@@ -409,23 +409,42 @@ function FeaturesSection() {
 
 function VitrineSection() {
   const { t } = useTranslation("landing");
-  // O 1o bloco NAO tem `print`: ele renderiza o RangeGrid de verdade, com dado real da carta.
-  // Os demais esperam captura em /landing/*.webp e avisam na tela enquanto ela nao existe.
+  // ── Por que só UM bloco (28/08) ──────────────────────────────────────────────────────────
+  //
+  // Havia quatro. Os três últimos apontavam para `/landing/*.webp`, e a pasta
+  // `frontend/public/landing/` NUNCA EXISTIU: o componente caía no `onError` e renderizava uma
+  // caixa tracejada dizendo "captura pendente" com o caminho do arquivo. Isso foi para o ar --
+  // o `main-CkqZOPrS.js` publicado continha a frase, e quem chegava no site via a seção "O
+  // produto" entregar três avisos de arquivo faltando.
+  //
+  // O bloco 1 fica porque ele NÃO é uma captura: renderiza o `RangeGrid` de verdade, com dado
+  // real da carta. Não pode envelhecer nem faltar.
+  //
+  // Para os outros três voltarem basta capturar os arquivos e devolver o `print:` aqui --
+  // `landingCapturasExistem.test.ts` quebra a build se o caminho voltar sem o arquivo. E aí a
+  // `vitrine.heading` volta a poder falar em mais de uma tela.
   const blocos: BlocoVitrine[] = [
     { rotulo: t("vitrine.b1.rotulo"), titulo: t("vitrine.b1.titulo"), texto: t("vitrine.b1.texto"),
       bullets: [t("vitrine.b1.b1a"), t("vitrine.b1.b1b")] },
-    { rotulo: t("vitrine.b2.rotulo"), titulo: t("vitrine.b2.titulo"), texto: t("vitrine.b2.texto"),
-      bullets: [t("vitrine.b2.b2a"), t("vitrine.b2.b2b")], print: "/landing/veredito.webp" },
-    { rotulo: t("vitrine.b3.rotulo"), titulo: t("vitrine.b3.titulo"), texto: t("vitrine.b3.texto"),
-      bullets: [t("vitrine.b3.b3a"), t("vitrine.b3.b3b")], print: "/landing/treino.webp" },
-    { rotulo: t("vitrine.b4.rotulo"), titulo: t("vitrine.b4.titulo"), texto: t("vitrine.b4.texto"),
-      bullets: [t("vitrine.b4.b4a"), t("vitrine.b4.b4b")], print: "/landing/evolucao.webp" },
   ];
   return <Vitrine eyebrow={t("vitrine.eyebrow")} heading={t("vitrine.heading")} blocos={blocos} />;
 }
 
+/**
+ * O vídeo de usabilidade. `null` enquanto ele não existe, e aí a seção inteira não renderiza.
+ *
+ * A versão anterior renderizava uma moldura tracejada dizendo "vídeo de usabilidade em gravação",
+ * e o comentário que a justificava dizia: "vazio silencioso parece proposital". O raciocínio
+ * valia para uma preview de desenvolvimento; numa landing pública ele soma com as três "captura
+ * pendente" logo acima, e o visitante lê quatro admissões de obra inacabada em sequência.
+ *
+ * Para ligar: aponte a constante para o arquivo. Só isso.
+ */
+const VIDEO_DE_USABILIDADE: string | null = null;
+
 function VideoSection() {
   const { t } = useTranslation("landing");
+  if (!VIDEO_DE_USABILIDADE) return null;
   return (
     <section className="border-t border-border px-6 py-20">
       <div className="mx-auto max-w-4xl text-center">
@@ -433,13 +452,12 @@ function VideoSection() {
           {t("vitrine.video.heading")}
         </h2>
         <p className="mx-auto mt-2 max-w-2xl text-sm text-prose-fg">{t("vitrine.video.sub")}</p>
-        {/* Slot do video de usabilidade. Enquanto o arquivo nao existe, o espaco DECLARA que
-            esta pendente em vez de ficar em branco -- vazio silencioso parece proposital. */}
-        <div className="mt-8 flex aspect-video items-center justify-center rounded-xl border border-dashed border-border bg-hud-surface">
-          <span className="font-mono text-[11px] uppercase tracking-widest text-muted-foreground">
-            {t("vitrine.video.pendente")}
-          </span>
-        </div>
+        <video
+          src={VIDEO_DE_USABILIDADE}
+          controls
+          preload="metadata"
+          className="mt-8 aspect-video w-full rounded-xl border border-border bg-hud-surface"
+        />
       </div>
     </section>
   );
@@ -450,12 +468,12 @@ function PricingSection() {
   const plans = [
     {
       id: "free",
-      name: "Freemium",
+      name: "Free",
       price: "R$ 0",
       period: t("plans.period"),
       highlight: false,
       badge: null as string | null,
-      features: [t("plans.freeF1"), t("plans.freeF2"), t("plans.freeF3"), t("plans.freeF4")],
+      features: [t("plans.freeF1"), t("plans.freeF2"), t("plans.freeF3"), t("plans.freeF4"), t("plans.freeF5")],
       cta: t("plans.ctaFree"),
       href: "/login",
     },
@@ -466,7 +484,7 @@ function PricingSection() {
       period: t("plans.period"),
       highlight: true,
       badge: t("plans.grinder") as string | null,
-      features: [t("plans.proF1"), t("plans.proF2"), t("plans.proF7"), t("plans.proF3"), t("plans.proF4"), t("plans.proF5"), t("plans.proF6")],
+      features: [t("plans.proF1"), t("plans.proF2"), t("plans.proF7"), t("plans.proF8"), t("plans.proF3"), t("plans.proF4"), t("plans.proF5"), t("plans.proF6")],
       cta: t("plans.ctaSubscribe", { name: "Pro" }),
       // Era um `mailto:` para o e-mail pessoal do dono — sobra de quando a assinatura ainda não
       // existia. Desde 2026-06-17 o Stripe está no ar, e o botão mandava o interessado escrever

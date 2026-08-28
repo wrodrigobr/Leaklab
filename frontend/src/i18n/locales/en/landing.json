@@ -26,7 +26,7 @@
     "step1Title": "Import your history",
     "step1Desc": "Upload the .txt file from any tournament (PokerStars, GGPoker, ACR or CoinPoker). Multiple files supported at once.",
     "step2Title": "GrindLab prioritizes your mistakes",
-    "step2Desc": "Each decision is evaluated by equity, position, and MTT/SNG context. The detection engine crosses frequency with impact, and shows you exactly what's costing you chips.",
+    "step2Desc": "Every decision is evaluated by equity, position and MTT/SNG context. GrindLab crosses how often you make the mistake with what it costs in chips, and shows you what is most expensive.",
     "step3Title": "Improve with focus on what matters",
     "step3Desc": "Study plan built on your own error patterns, not generic content. Track progression through the 7-level system."
   },
@@ -50,16 +50,18 @@
     "ctaFree": "Start free",
     "ctaSubscribe": "Subscribe to {{name}}",
     "freeF1": "2 tournaments/month",
-    "freeF2": "15 GrindLab analyses/month",
+    "freeF2": "15 AI explanations per month",
     "freeF3": "GTO analysis, leaks & stats",
     "freeF4": "5 on-demand GTO solves/month",
     "proF1": "200 tournaments/month",
-    "proF2": "300 GrindLab analyses/month",
+    "proF2": "300 AI explanations per month",
     "proF3": "AI Coach Chat (contextual conversation)",
     "proF4": "Personalized study plan",
     "proF5": "Coaches marketplace",
     "proF6": "Priority support",
-    "proF7": "Advanced AI insights (Strategic Twin, Cognitive, Causal Map)"
+    "proF7": "Advanced AI insights (Strategic Twin, Cognitive, Causal Map)",
+    "freeF5": "Preflop fundamentals training: RFI, vs RFI and vs 3-bet",
+    "proF8": "Training aimed at your own leaks: Ghost Table, full hands and spaced repetition"
   },
   "faq": {
     "eyebrow": "Questions",
@@ -90,7 +92,7 @@
   "demo": {
     "b1": "A clear verdict per hand.",
     "b2": "The recommended action, side by side with yours.",
-    "b3": "The solver's evidence, not guesswork."
+    "b3": "The solver's evidence behind every verdict."
   },
   "prova": {
     "eyebrow": "What sets it apart",
@@ -99,39 +101,39 @@
     "c1Title": "Measured in your play, not in a simulator",
     "c1Desc": "After you train a leak, the platform tracks hands of that type in the tournaments you import and compares them with your earlier history.",
     "c2Title": "Only claims it when it survives chance",
-    "c2Desc": "Improvement becomes \"proven\" only when the difference survives the confidence interval. Until it does, the screen says it cannot tell yet. That is on purpose.",
+    "c2Desc": "Improvement becomes \"proven\" only when the difference survives the confidence interval. Until it does, the screen says it cannot tell yet.",
     "c3Title": "Reopens by itself if you regress",
-    "c3Desc": "If the mistake returns in your real hands, the leak reopens even if you keep acing the drill. That is the case that exposes memorising without transfer.",
-    "nota": "None of this is an AI opinion about your game. It is error counting on your own history, with the confidence interval in plain sight."
+    "c3Desc": "If the mistake returns in your real hands, the leak reopens even if you keep acing the drill. That is the case that exposes memorizing without transfer.",
+    "nota": "Every verdict comes from counting mistakes in your own history, with the sample size and the confidence interval on screen. The AI explains the hand, the solve is what judges it."
   },
   "vitrine": {
     "eyebrow": "THE PRODUCT",
-    "heading": "See it before signing up",
+    "heading": "The screen where the ranges live",
     "b1": {
       "rotulo": "grindlabpoker.com/ranges",
-      "titulo": "Every range, from 3bb to 100bb",
-      "texto": "Look up any position at any depth without first finding a hand of yours where it happened. And the grid below is the real one: CO open at 20bb.",
-      "b1a": "14 depths, from tournament-shallow to deep-stacked",
-      "b1b": "Mixes are named categories, not a shade between two colors"
+      "titulo": "The ranges that judge your hands, from 3bb to 100bb",
+      "texto": "Pick a position and a depth, and the grid opens. This is the CO open at 20bb, the same range that judges your hands.",
+      "b1a": "14 depths, from push/fold to deep stack",
+      "b1b": "Hands that play both ways show the frequency of each action"
     },
     "b2": {
       "rotulo": "grindlabpoker.com/replayer",
       "titulo": "Every verdict says where it came from",
-      "texto": "Each decision is judged by the solver, the ranges or the engine, and the card says which. When we have no basis, it states the reason instead of inventing a number.",
-      "b2a": "Provenance stated on every accusation",
-      "b2b": "With no measured cost, the verdict claims no magnitude"
+      "texto": "Every decision shows where the judgement came from: the GTO solve, the range for that position, or the equity and MTT read. When the cost of the mistake can be measured, it shows up in bb, and when it cannot, the card says why.",
+      "b2a": "The source of the judgement shows on every decision",
+      "b2b": "The cost in bb comes from your own hand"
     },
     "b3": {
       "rotulo": "grindlabpoker.com/training",
-      "titulo": "Training aimed at your mistake",
-      "texto": "The study plan points at where you bleed the most and training opens right there. Spaced repetition on what you got wrong, with the grid and the cost beside it.",
-      "b3a": "Ghost Table with spaced repetition",
-      "b3b": "Full hands, preflop to river"
+      "titulo": "Training that opens on your mistake",
+      "texto": "The study plan points at where you bleed the most and training opens right there. Spaced repetition on what you got wrong, with the right range and the cost of the mistake on the same screen.",
+      "b3a": "Ghost Table with spaced repetition (Pro)",
+      "b3b": "Full heads-up hand, preflop to river (Pro)"
     },
     "b4": {
       "rotulo": "grindlabpoker.com/evolucao",
       "titulo": "Whether the fix is paying off",
-      "texto": "Big blinds lost per family of mistake, tournament by tournament. A cell without sample stays grey instead of becoming zero: what we did not measure does not become a chart.",
+      "texto": "Big blinds lost per family of mistake, tournament by tournament. Every point has your own hands behind it, and a cell without sample stays grey instead of becoming zero.",
       "b4a": "Evolution by leak family",
       "b4b": "Small samples show up as small samples"
     },
