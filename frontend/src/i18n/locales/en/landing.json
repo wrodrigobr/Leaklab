@@ -103,5 +103,42 @@
     "c3Title": "Reopens by itself if you regress",
     "c3Desc": "If the mistake returns in your real hands, the leak reopens even if you keep acing the drill. That is the case that exposes memorising without transfer.",
     "nota": "None of this is an AI opinion about your game. It is error counting on your own history, with the confidence interval in plain sight."
+  },
+  "vitrine": {
+    "eyebrow": "THE PRODUCT",
+    "heading": "See it before signing up",
+    "b1": {
+      "rotulo": "grindlabpoker.com/ranges",
+      "titulo": "The whole chart, from 3bb to 100bb",
+      "texto": "Look up any position at any depth without first finding a hand of yours where it happened. 354 spots, and the grid below is the real one: CO open at 20bb.",
+      "b1a": "14 depths, from tournament-shallow to deep-stacked",
+      "b1b": "Mixes are named categories, not a shade between two colors"
+    },
+    "b2": {
+      "rotulo": "grindlabpoker.com/replayer",
+      "titulo": "Every verdict says where it came from",
+      "texto": "Each decision is judged by the solver, the chart or the engine — and the card says which. When we have no basis, it states the reason instead of inventing a number.",
+      "b2a": "Provenance stated on every accusation",
+      "b2b": "With no measured cost, the verdict claims no magnitude"
+    },
+    "b3": {
+      "rotulo": "grindlabpoker.com/training",
+      "titulo": "Training aimed at your mistake",
+      "texto": "The study plan points at where you bleed the most and training opens right there. Spaced repetition on what you got wrong, with the grid and the cost beside it.",
+      "b3a": "Ghost Table with spaced repetition",
+      "b3b": "Full hands, preflop to river"
+    },
+    "b4": {
+      "rotulo": "grindlabpoker.com/evolucao",
+      "titulo": "Whether the fix is paying off",
+      "texto": "Big blinds lost per family of mistake, tournament by tournament. A cell without sample stays grey instead of becoming zero — what we did not measure does not become a chart.",
+      "b4a": "Evolution by leak family",
+      "b4b": "Small samples show up as small samples"
+    },
+    "video": {
+      "heading": "See the app in action",
+      "sub": "A quick tour: import the tournament, find the leaks and train — the way you will use it.",
+      "pendente": "usability video being recorded"
+    }
   }
 }

@@ -103,5 +103,42 @@
     "c3Title": "Reabre sozinho se você regredir",
     "c3Desc": "Se o erro voltar nas suas mãos reais, o leak reabre mesmo que você continue gabaritando o treino. É o caso que denuncia decoreba sem transferência.",
     "nota": "Nada disso é opinião de IA sobre o seu jogo. É contagem de erro no seu próprio histórico, com o intervalo de confiança visível."
+  },
+  "vitrine": {
+    "eyebrow": "O PRODUTO",
+    "heading": "Veja antes de criar conta",
+    "b1": {
+      "rotulo": "grindlabpoker.com/ranges",
+      "titulo": "A carta inteira, de 3bb a 100bb",
+      "texto": "Consulte a range de qualquer posição em qualquer profundidade, sem precisar achar uma mão sua onde aquilo aconteceu. São 354 spots, e a grade abaixo é a de verdade: abertura do CO com 20bb.",
+      "b1a": "14 profundidades, das rasas de torneio às de mesa funda",
+      "b1b": "A mistura vira categoria com nome, não um tom entre duas cores"
+    },
+    "b2": {
+      "rotulo": "grindlabpoker.com/replayer",
+      "titulo": "Todo veredito diz de onde veio",
+      "texto": "Cada decisão é julgada pelo solver, pela carta ou pelo motor — e o card diz qual. Quando não temos base para afirmar, ele declara o motivo em vez de inventar um número.",
+      "b2a": "Procedência declarada em toda acusação",
+      "b2b": "Sem custo medido, o veredito não afirma magnitude"
+    },
+    "b3": {
+      "rotulo": "grindlabpoker.com/training",
+      "titulo": "Treino que ataca o seu erro, não um spot qualquer",
+      "texto": "O plano de estudo aponta onde você mais perde fichas e o treino abre já naquele spot. Repetição espaçada para o que você errou, com a grade e o custo do lado.",
+      "b3a": "Ghost Table com repetição espaçada",
+      "b3b": "Mão completa, do preflop ao river"
+    },
+    "b4": {
+      "rotulo": "grindlabpoker.com/evolucao",
+      "titulo": "Se o ajuste está pagando",
+      "texto": "Os bb perdidos por família de erro, torneio a torneio. Célula sem amostra fica cinza em vez de virar zero — número que não medimos não vira gráfico.",
+      "b4a": "Evolução por família de leak",
+      "b4b": "Amostra pequena aparece como amostra pequena"
+    },
+    "video": {
+      "heading": "Veja o app funcionando",
+      "sub": "Um tour rápido: importar o torneio, achar os leaks e treinar — do jeito que você vai usar.",
+      "pendente": "vídeo de usabilidade em gravação"
+    }
   }
 }

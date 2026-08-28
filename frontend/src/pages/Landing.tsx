@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { Vitrine, type BlocoVitrine } from "@/components/landing/Vitrine";
 import {
   Upload, Brain, TrendingUp, ChevronRight,
   Check, Zap, BookOpen, Target, Activity, HelpCircle,
@@ -406,6 +407,44 @@ function FeaturesSection() {
   );
 }
 
+function VitrineSection() {
+  const { t } = useTranslation("landing");
+  // O 1o bloco NAO tem `print`: ele renderiza o RangeGrid de verdade, com dado real da carta.
+  // Os demais esperam captura em /landing/*.webp e avisam na tela enquanto ela nao existe.
+  const blocos: BlocoVitrine[] = [
+    { rotulo: t("vitrine.b1.rotulo"), titulo: t("vitrine.b1.titulo"), texto: t("vitrine.b1.texto"),
+      bullets: [t("vitrine.b1.b1a"), t("vitrine.b1.b1b")] },
+    { rotulo: t("vitrine.b2.rotulo"), titulo: t("vitrine.b2.titulo"), texto: t("vitrine.b2.texto"),
+      bullets: [t("vitrine.b2.b2a"), t("vitrine.b2.b2b")], print: "/landing/veredito.webp" },
+    { rotulo: t("vitrine.b3.rotulo"), titulo: t("vitrine.b3.titulo"), texto: t("vitrine.b3.texto"),
+      bullets: [t("vitrine.b3.b3a"), t("vitrine.b3.b3b")], print: "/landing/treino.webp" },
+    { rotulo: t("vitrine.b4.rotulo"), titulo: t("vitrine.b4.titulo"), texto: t("vitrine.b4.texto"),
+      bullets: [t("vitrine.b4.b4a"), t("vitrine.b4.b4b")], print: "/landing/evolucao.webp" },
+  ];
+  return <Vitrine eyebrow={t("vitrine.eyebrow")} heading={t("vitrine.heading")} blocos={blocos} />;
+}
+
+function VideoSection() {
+  const { t } = useTranslation("landing");
+  return (
+    <section className="border-t border-border px-6 py-20">
+      <div className="mx-auto max-w-4xl text-center">
+        <h2 className="font-heading text-2xl font-bold tracking-tight text-foreground md:text-3xl">
+          {t("vitrine.video.heading")}
+        </h2>
+        <p className="mx-auto mt-2 max-w-2xl text-sm text-prose-fg">{t("vitrine.video.sub")}</p>
+        {/* Slot do video de usabilidade. Enquanto o arquivo nao existe, o espaco DECLARA que
+            esta pendente em vez de ficar em branco -- vazio silencioso parece proposital. */}
+        <div className="mt-8 flex aspect-video items-center justify-center rounded-xl border border-dashed border-border bg-hud-surface">
+          <span className="font-mono text-[11px] uppercase tracking-widest text-muted-foreground">
+            {t("vitrine.video.pendente")}
+          </span>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function PricingSection() {
   const { t } = useTranslation("landing");
   const plans = [
@@ -639,6 +678,8 @@ export default function Landing() {
         <HowItWorksSection />
         <DiferencialSection />
         <FeaturesSection />
+      <VideoSection />
+      <VitrineSection />
         <PricingSection />
         <FaqSection />
         <CtaSection />
