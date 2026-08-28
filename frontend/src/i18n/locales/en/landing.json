@@ -117,7 +117,7 @@
     "b2": {
       "rotulo": "grindlabpoker.com/replayer",
       "titulo": "Every verdict says where it came from",
-      "texto": "Each decision is judged by the solver, the chart or the engine — and the card says which. When we have no basis, it states the reason instead of inventing a number.",
+      "texto": "Each decision is judged by the solver, the chart or the engine, and the card says which. When we have no basis, it states the reason instead of inventing a number.",
       "b2a": "Provenance stated on every accusation",
       "b2b": "With no measured cost, the verdict claims no magnitude"
     },
@@ -131,13 +131,13 @@
     "b4": {
       "rotulo": "grindlabpoker.com/evolucao",
       "titulo": "Whether the fix is paying off",
-      "texto": "Big blinds lost per family of mistake, tournament by tournament. A cell without sample stays grey instead of becoming zero — what we did not measure does not become a chart.",
+      "texto": "Big blinds lost per family of mistake, tournament by tournament. A cell without sample stays grey instead of becoming zero: what we did not measure does not become a chart.",
       "b4a": "Evolution by leak family",
       "b4b": "Small samples show up as small samples"
     },
     "video": {
       "heading": "See the app in action",
-      "sub": "A quick tour: import the tournament, find the leaks and train — the way you will use it.",
+      "sub": "A quick tour: import the tournament, find the leaks and train, the way you will use it.",
       "pendente": "usability video being recorded"
     }
   }

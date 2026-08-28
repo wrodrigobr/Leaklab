@@ -117,7 +117,7 @@
     "b2": {
       "rotulo": "grindlabpoker.com/replayer",
       "titulo": "Todo veredicto dice de dónde viene",
-      "texto": "Cada decisión la juzga el solver, la tabla o el motor — y la card dice cuál. Cuando no hay base, declara el motivo en vez de inventar un número.",
+      "texto": "Cada decisión la juzga el solver, la tabla o el motor, y la card dice cuál. Cuando no hay base, declara el motivo en vez de inventar un número.",
       "b2a": "Procedencia declarada en cada acusación",
       "b2b": "Sin costo medido, el veredicto no afirma magnitud"
     },
@@ -131,13 +131,13 @@
     "b4": {
       "rotulo": "grindlabpoker.com/evolucao",
       "titulo": "Si el ajuste está pagando",
-      "texto": "Los bb perdidos por familia de error, torneo a torneo. La celda sin muestra queda gris en vez de volverse cero — lo que no medimos no se vuelve gráfico.",
+      "texto": "Los bb perdidos por familia de error, torneo a torneo. La celda sin muestra queda gris en vez de volverse cero: lo que no medimos no se vuelve gráfico.",
       "b4a": "Evolución por familia de leak",
       "b4b": "Muestra pequeña aparece como muestra pequeña"
     },
     "video": {
       "heading": "Mira la app funcionando",
-      "sub": "Un tour rápido: importar el torneo, encontrar los leaks y entrenar — como lo vas a usar.",
+      "sub": "Un tour rápido: importar el torneo, encontrar los leaks y entrenar, como lo vas a usar.",
       "pendente": "video de usabilidad en grabación"
     }
   }

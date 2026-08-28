@@ -163,6 +163,8 @@
     "resumoCombos": "1,326 combos",
     "resumoVazio": "pick a covered spot to see the summary.",
     "resumoNota": "A mix is its own category, not a shade between two colors: \"Raise or Fold\" tells you how many combos play both ways.",
-    "combos": "combos"
+    "combos": "combos",
+    "erroCarregar": "could not load",
+    "posicoesForaDoCenario": "Greyed-out positions have no chart for this scenario."
   }
 }

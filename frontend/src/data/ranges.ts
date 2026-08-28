@@ -145,13 +145,31 @@ export function combosDeMaos(hands: string[]): { combos: number; pct: string } {
   return { combos, pct: (combos / 1326 * 100).toFixed(1) };
 }
 
+/**
+ * Quantos combos a range JOGA, contado pela MESMA fonte que pinta a célula.
+ *
+ * ── O defeito que originou (28/08) ────────────────────────────────────────────────────────
+ *
+ * Contava por `getCellAction`, que lê os Sets, enquanto as células e o `resumoDoSpot` leem
+ * `getHandFreq`. Duas contas para o mesmo fato, e as duas na MESMA linha do JSX: o rodapé da
+ * grade dizia `62,6% · 830 combos` e o resumo ao lado somava 1.158 não-fold (87,3%). Vinte e
+ * cinco pontos de diferença.
+ *
+ * Medido sobre a carta: **9 de 112 spots de RFI divergiam, todos no SB** — é a range de LIMP.
+ * `buildRangeFromApi` monta `raise: new Set(resp.rfi.hands)` e o endpoint nunca lê `call_hands`
+ * do registro de RFI, então as mãos de limp existem em `frequencies` (e são pintadas de azul) e
+ * não existem em Set nenhum (e sumiam da conta).
+ *
+ * É o mesmo conserto que `rangeActionPresence` recebeu para a LEGENDA, com o comentário
+ * explicando por quê — o contador ao lado ficou lendo os Sets.
+ */
 export function rangeStats(range: RangeSet): { combos: number; pct: string } {
   let combos = 0;
   for (let r = 0; r < 13; r++) {
     for (let c = 0; c < 13; c++) {
-      if (getCellAction(cellHand(r, c), range) !== '') {
-        combos += r === c ? 6 : r < c ? 4 : 12;
-      }
+      const f = getHandFreq(cellHand(r, c), range);
+      const ativo = (f.raise ?? 0) + (f.call ?? 0) + (f.allin ?? 0);
+      if (ativo > 0.001) combos += r === c ? 6 : r < c ? 4 : 12;
     }
   }
   return { combos, pct: (combos / 1326 * 100).toFixed(1) };

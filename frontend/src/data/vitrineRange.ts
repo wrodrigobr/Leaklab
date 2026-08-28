@@ -1,7 +1,11 @@
-// GERADO de `preflop_gto_ranges` (balde 20bb, CO, RFI) em 27/08.
-// A landing renderiza o RangeGrid DE VERDADE com este recorte, em vez de uma imagem: o que
-// o visitante ve e o componente do produto, com dado do produto. Print raster envelhece
-// calado quando a carta muda; isto nao.
+// GERADO por `backend/scripts/gerar_vitrine_range.py` a partir de `preflop_gto_ranges`
+// (balde 20bb, posicao CO, secao RFI).
+// NAO editar a mao: `tests/test_vitrine_range_em_dia.py` compara este recorte com a carta e
+// falha quando divergem.
+//
+// A landing renderiza o RangeGrid DE VERDADE com este recorte, em vez de uma imagem: o que o
+// visitante ve e o componente do produto, com dado do produto. Um print raster envelheceria
+// calado no dia em que a carta mudasse -- isto nao, porque o guarda acusa.
 import type { RangeSet } from "./ranges";
 
 const FREQS = {"44": {"allin": 0.0096, "raise": 0.9904}, "55": {"raise": 1.0}, "66": {"raise": 1.0}, "76s": {"fold": 0.8437, "raise": 0.1563}, "77": {"raise": 1.0}, "87s": {"raise": 1.0}, "88": {"raise": 1.0}, "97s": {"fold": 0.0984, "raise": 0.9016}, "98s": {"raise": 1.0}, "99": {"raise": 1.0}, "A2s": {"raise": 1.0}, "A3s": {"raise": 1.0}, "A4o": {"fold": 0.8843, "raise": 0.1157}, "A4s": {"raise": 1.0}, "A5o": {"raise": 1.0}, "A5s": {"allin": 0.0017, "raise": 0.9983}, "A6o": {"raise": 1.0}, "A6s": {"raise": 1.0}, "A7o": {"raise": 1.0}, "A7s": {"raise": 1.0}, "A8o": {"raise": 1.0}, "A8s": {"raise": 1.0}, "A9o": {"allin": 0.0011, "raise": 0.9989}, "A9s": {"raise": 1.0}, "AA": {"raise": 1.0}, "AJo": {"raise": 0.9999}, "AJs": {"raise": 1.0}, "AKo": {"raise": 1.0}, "AKs": {"raise": 1.0}, "AQo": {"raise": 1.0}, "AQs": {"raise": 1.0}, "ATo": {"allin": 0.001, "raise": 0.999}, "ATs": {"raise": 1.0}, "J7s": {"raise": 1.0}, "J8s": {"raise": 1.0}, "J9o": {"fold": 0.4538, "raise": 0.5462}, "J9s": {"raise": 1.0}, "JJ": {"raise": 1.0}, "JTo": {"raise": 1.0}, "JTs": {"raise": 0.9999}, "K4s": {"raise": 1.0}, "K5s": {"raise": 1.0}, "K6s": {"raise": 1.0}, "K7s": {"raise": 1.0}, "K8s": {"raise": 1.0}, "K9o": {"raise": 1.0}, "K9s": {"raise": 1.0}, "KJo": {"raise": 1.0}, "KJs": {"raise": 1.0}, "KK": {"raise": 1.0}, "KQo": {"allin": 0.0006, "raise": 0.9994}, "KQs": {"raise": 1.0}, "KTo": {"raise": 1.0}, "KTs": {"allin": 0.0008, "raise": 0.9992}, "Q5s": {"fold": 0.2162, "raise": 0.7838}, "Q6s": {"raise": 1.0}, "Q7s": {"raise": 1.0}, "Q8s": {"raise": 1.0}, "Q9o": {"fold": 0.355, "raise": 0.645}, "Q9s": {"raise": 1.0}, "QJo": {"raise": 1.0}, "QJs": {"raise": 1.0}, "QQ": {"raise": 1.0}, "QTo": {"raise": 1.0}, "QTs": {"raise": 1.0}, "T7s": {"fold": 0.0002, "raise": 0.9998}, "T8s": {"raise": 1.0}, "T9o": {"fold": 0.779, "raise": 0.221}, "T9s": {"raise": 1.0}, "TT": {"raise": 1.0}};

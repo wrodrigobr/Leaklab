@@ -163,6 +163,8 @@
     "resumoCombos": "1.326 combos",
     "resumoVazio": "escolha um spot coberto para ver o resumo.",
     "resumoNota": "A mistura é uma categoria própria, não um tom entre duas cores: \"Raise ou Fold\" diz quantos combos jogam dos dois jeitos.",
-    "combos": "combos"
+    "combos": "combos",
+    "erroCarregar": "não foi possível carregar",
+    "posicoesForaDoCenario": "As posições apagadas não têm este cenário na carta."
   }
 }

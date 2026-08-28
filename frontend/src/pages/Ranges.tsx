@@ -3,11 +3,17 @@
  *
  * ── Por que esta página existe (27/08) ────────────────────────────────────────────────────
  *
- * A carta tem 14 profundidades (3, 4, 5, 6, 7, 10, 14, 17, 20, 30, 40, 50, 75 e 100bb) e 6
- * cenários, somando **354 spots consultáveis**. Até hoje existiam ZERO formas de olhar qualquer
- * um deles: a matriz 13×13 só abria presa a um passo — dentro do replayer, de um drill ou de uma
- * aula. Para saber "como se abre do CO com 25bb?" era preciso antes achar uma mão do próprio
- * histórico em que isso aconteceu.
+ * A carta tem 14 profundidades (3, 4, 5, 6, 7, 10, 14, 17, 20, 30, 40, 50, 75 e 100bb) e até
+ * hoje existiam ZERO formas de olhar qualquer spot: a matriz 13×13 só abria presa a um passo —
+ * dentro do replayer, de um drill ou de uma aula. Para saber "como se abre do CO com 25bb?" era
+ * preciso antes achar uma mão do próprio histórico em que isso aconteceu.
+ *
+ * ── O que esta tela AINDA não cobre, e por quê ────────────────────────────────────────────
+ *
+ * Quatro cenários, não seis. `vs_4bet` e `faces_squeeze` existem na carta e o endpoint
+ * `/preflop-ranges` **não os serve** — a resposta tem `rfi`, `vs_rfi`, `vs_3bet` e `squeeze`.
+ * Oferecer a pílula sem o dado entregaria tela vazia; prometer "todos os cenários" no texto seria
+ * pior. A tela declara os quatro que tem, e a lacuna fica registrada aqui.
  *
  * A página não constrói motor nenhum: ela liga os seletores ao que já existe. `RangeGrid` pinta,
  * `buildRangeFromApi` monta o RangeSet (a MESMA função do replayer) e `resumoDoSpot` conta as
@@ -62,8 +68,19 @@ const CENARIOS: Cenario[] = [
     posicoes: POSICOES.slice(1), raso: false },
 ];
 
-/** O chip da categoria usa o MESMO gradiente da célula — se divergir, a legenda mente. */
-function gradienteDa(acoes: AcaoDaCelula[]): string {
+/**
+ * Gradiente do chip da categoria.
+ *
+ * A 1ª versão deste comentário dizia "usa o MESMO gradiente da célula", e era falso em duas
+ * coisas. A ORDEM eu consertei: agora segue a mesma de `buildGradient` (raise, call, allin,
+ * fold). A PROPORÇÃO não tem conserto e não deveria: a categoria "Raise ou Fold" agrupa mãos que
+ * sobem 15% e mãos que sobem 60%, então fatia igual é a representação honesta de um conjunto.
+ * O chip diz QUAIS ações, a célula diz QUANTO.
+ */
+const ORDEM_PINTURA: AcaoDaCelula[] = ['raise', 'call', 'allin', 'fold'];
+
+function gradienteDa(acoesFora: AcaoDaCelula[]): string {
+  const acoes = ORDEM_PINTURA.filter((a) => acoesFora.includes(a));
   const cor: Record<AcaoDaCelula, string> = {
     raise: ACTION_COLORS.raise,
     call: ACTION_COLORS.call,
@@ -89,6 +106,9 @@ function Pilula({ ativo, onClick, children, desabilitado, titulo }: {
       title={titulo}
       className={cn(
         "rounded-md border px-2.5 py-1 text-xs font-medium transition-colors",
+        // A convencao do projeto (ui/button.tsx) e `focus-visible:ring-2`; esta tela nasceu sem.
+        // Sem isso, navegar por Tab entre 31 pilulas nao move nada visivel na tela.
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background",
         desabilitado
           ? "cursor-not-allowed border-border/60 text-muted-foreground/40"
           : ativo
@@ -126,22 +146,28 @@ export default function Ranges() {
   const cenario = CENARIOS.find((c) => c.id === cenarioId) ?? CENARIOS[0];
   const rasoDemais = stack <= STACK_RASO_MAX && !cenario.raso;
 
-  // Sair de um estado impossível em vez de mostrar tela vazia: se o cenário não serve a posição
-  // escolhida (BB não abre), cai na primeira que ele serve.
+  // A posicao efetiva e DERIVADA, nao corrigida por efeito. Com `useEffect` a correcao roda
+  // depois do paint, entao trocar de cenario pintava um frame inteiro dizendo "nao temos carta
+  // para vs abertura de UTG" — uma ausencia com a causa ERRADA — antes de cair em UTG+1.
+  const posicaoValida = cenario.posicoes.includes(posicao) ? posicao : cenario.posicoes[0];
   useEffect(() => {
-    if (!cenario.posicoes.includes(posicao)) setPosicao(cenario.posicoes[0]);
-  }, [cenarioId]);  // eslint-disable-line react-hooks/exhaustive-deps
+    if (posicao !== posicaoValida) setPosicao(posicaoValida);
+  }, [posicao, posicaoValida]);
 
   useEffect(() => {
     let vivo = true;
     setCarregando(true);
     setErro(null);
-    getPreflopRanges(posicao, stack)
+    // `setResp(null)` nao e zelo: sem ele o painel da direita seguia exibindo as categorias do
+    // spot ANTERIOR enquanto o novo carregava, e PERMANENTEMENTE se o fetch falhasse. A coluna
+    // da esquerda declarava o estado e a da direita mentia calada, com cara de resposta.
+    setResp(null);
+    getPreflopRanges(posicaoValida, stack)
       .then((d) => { if (vivo) setResp(d); })
-      .catch((e) => { if (vivo) setErro(e?.message ?? "não foi possível carregar"); })
+      .catch((e) => { if (vivo) setErro(e?.message ?? t("ranges.erroCarregar")); })
       .finally(() => { if (vivo) setCarregando(false); });
     return () => { vivo = false; };
-  }, [posicao, stack]);
+  }, [posicaoValida, stack, t]);
 
   /** Os vilões que o cenário oferece de fato, lidos da resposta — nunca uma lista inventada. */
   const viloes = useMemo(() => {
@@ -191,7 +217,9 @@ export default function Ranges() {
                 onClick={() => setStack(s)}
                 titulo={s <= STACK_RASO_MAX ? t("ranges.dicaRaso") : undefined}
               >
-                <span className="font-mono">{s === stack ? `${s}bb` : s}</span>
+                {/* Largura estavel: antes a selecionada virava "7bb" e empurrava as
+                    seguintes, reorganizando a fila debaixo do dedo no celular. */}
+                <span className="font-mono tabular-nums">{s}</span>
               </Pilula>
             ))}
           </Linha>
@@ -200,15 +228,21 @@ export default function Ranges() {
             {POSICOES.map((p) => (
               <Pilula
                 key={p}
-                ativo={p === posicao}
+                ativo={p === posicaoValida}
                 desabilitado={!cenario.posicoes.includes(p)}
                 onClick={() => setPosicao(p)}
-                titulo={!cenario.posicoes.includes(p)
-                  ? t("ranges.semCenario", { pos: p }) : undefined}
               >
                 {p}
               </Pilula>
             ))}
+            {cenario.posicoes.length < POSICOES.length && (
+              // A causa vira TEXTO, nao tooltip de botao desabilitado: `title` em `disabled` nao
+              // e focavel por teclado, nao abre no Firefox e nao existe em toque. No celular a
+              // posicao apagada era so um rotulo sem motivo.
+              <span className="w-full text-[11px] text-hud-muted">
+                {t("ranges.posicoesForaDoCenario")}
+              </span>
+            )}
           </Linha>
           {cenario.contra && (
             <Linha>

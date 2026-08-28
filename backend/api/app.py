@@ -3,6 +3,7 @@ PokerLeakLab API v2 — com persistência SQLite e autenticação JWT.
 """
 from __future__ import annotations
 import sys, os, re, uuid, time, json, logging, threading
+import math
 from pathlib import Path
 
 _BASE = Path(__file__).resolve().parent.parent  # backend/
@@ -9731,6 +9732,10 @@ def admin_gto_missing_spots():
 
 @app.route('/preflop-ranges', methods=['GET'])
 @require_auth
+# A pagina /ranges (28/08) trocou o padrao de uso: era 1 chamada por sessao de replayer, virou 1
+# por clique numa barra de 14 stacks x 9 posicoes. Medido pela revisao de seguranca: 30 requisicoes
+# seguidas custam 2,9s de CPU do worker e 1 MB de egress, e o conteudo e 100% deterministico.
+@limiter.limit("120 per minute")
 def preflop_ranges():
     """
     Retorna ranges GTO de preflop por posição e stack depth.
@@ -9745,7 +9750,19 @@ def preflop_ranges():
     from leaklab.preflop_gto_ranges import _load, balde_rfi, _expand_range, _norm_pos
 
     position = request.args.get('position', 'BTN')
-    stack_bb = float(request.args.get('stack_bb', 30.0))
+    # `float()` cru devolvia 500 em `stack_bb=abc` e, pior, ACEITAVA `NaN` e `Infinity`: os dois
+    # saturavam no balde de 100bb e a resposta saia 200 dizendo `stack_bucket: "100bb"` para o
+    # stack que o cliente pediu, sem nenhum sinal. E `"stack_bb": NaN` nem e JSON valido (RFC
+    # 8259), entao o proprio `JSON.parse` do front quebrava num 200.
+    #
+    # Recusar, e NAO fazer clamp para a faixa valida: clamp transformaria a ameaca em entrega
+    # silenciosa da carta errada -- o conserto causando o dano que o bug so ameacava (regra 7).
+    try:
+        stack_bb = float(request.args.get('stack_bb', 30.0))
+    except (TypeError, ValueError):
+        return jsonify({'error': 'stack_bb invalido'}), 400
+    if not math.isfinite(stack_bb) or stack_bb <= 0:
+        return jsonify({'error': 'stack_bb precisa ser um numero finito e positivo'}), 400
 
     pos    = _norm_pos(position)
     bucket = balde_rfi(stack_bb)   # este endpoint mostra a RFI; ver `balde_rfi`
@@ -9956,7 +9973,10 @@ def preflop_ranges():
     # squeeze — hero squeeza; keyed por opener (estrutura squeeze[hero][opener]).
     squeeze = {opener: _grid_from_freqs(sp) for opener, sp in _section_for_pos('squeeze').items()} or None
 
-    return jsonify({
+    # Nada aqui depende do usuario: a carta e um JSON estatico em disco e a resposta e funcao
+    # pura de (posicao, balde). O `stack_bb` viaja no corpo so como eco do pedido, entao o cache
+    # publico e por URL e nao mistura resposta entre contas.
+    resp = jsonify({
         'position':     pos,
         'stack_bb':     round(stack_bb, 1),
         'stack_bucket': bucket,
@@ -9965,6 +9985,8 @@ def preflop_ranges():
         'vs_3bet':      vs_3bet,
         'squeeze':      squeeze,
     })
+    resp.headers['Cache-Control'] = 'public, max-age=3600'
+    return resp
 
 
 @app.route('/gto/strategy', methods=['POST'])

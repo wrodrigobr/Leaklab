@@ -96,7 +96,7 @@ export async function getPreflopRanges(
   position: string, stackBb: number
 ): Promise<PreflopRangesResp> {
   return request<PreflopRangesResp>(
-    `/preflop-ranges?position=${encodeURIComponent(position)}&stack_bb=${stackBb}`
+    `/preflop-ranges?position=${encodeURIComponent(position)}&stack_bb=${encodeURIComponent(String(stackBb))}`
   );
 }
 
