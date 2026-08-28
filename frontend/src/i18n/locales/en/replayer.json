@@ -333,7 +333,7 @@
       "open_size_off_tree": "The villain opened much bigger than the chart models, and the recommended line here depends on that price. Rather than grade you against the wrong price, we give no verdict.",
       "hand_out_of_node_range": "This hand never reaches this point of the tree: the chart opens the position a different way, so there is no published strategy for it here.",
       "limp_then_raise": "The line goes through a limp followed by a raise, which our raise-first trees do not model.",
-      "profundidade_sem_carta": "No chart for this depth: below 2.5bb or above 133bb no chart applies"
+      "profundidade_sem_carta": "No range for this depth: below 2.5bb or above 133bb we have no reference"
     },
     "scenGenerico": "for this spot",
     "scenHuRfi": "SB opening (heads-up)",

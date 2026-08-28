@@ -9965,10 +9965,21 @@ def preflop_ranges():
     _vs3_fallbacks = {'14bb': ['10bb', '20bb'], '17bb': ['20bb', '14bb'],
                       '40bb': ['30bb', '50bb'], '60bb': ['50bb', '75bb'],
                       '75bb': ['100bb', '50bb']}
+    # De onde CADA secao veio de fato. Ate 28/08 o fallback servia o balde vizinho e a resposta
+    # seguia dizendo `stack_bucket: <o pedido>` -- no replayer isso era invisivel (o stack nao era
+    # selecionavel), e a pagina /ranges transformou em contradicao de um clique: pedir squeeze a
+    # 17bb e a 14bb devolvia a MESMA grade com rotulos diferentes. Medido: 6 spots de squeeze.
+    #
+    # Substituicao silenciosa e a mesma familia da ausencia muda: o produto responde, e o que ele
+    # responde nao e o que foi perguntado.
+    substituicao = {}
+
     def _section_for_pos(section_name):
         for bk_try in [bucket] + _vs3_fallbacks.get(bucket, []):
             sec = data.get('ranges', {}).get(bk_try, {}).get(section_name, {})
             if sec.get(pos):
+                if bk_try != bucket:
+                    substituicao[section_name] = bk_try
                 return sec[pos]
         return {}
 
@@ -9990,6 +10001,8 @@ def preflop_ranges():
         'vs_rfi':       vs_rfi,
         'vs_3bet':      vs_3bet,
         'squeeze':      squeeze,
+        # so aparece quando ALGUMA secao veio de outro balde; ausente quando tudo bateu
+        'substituicao': substituicao or None,
     })
     resp.headers['Cache-Control'] = 'public, max-age=3600'
     return resp

@@ -136,11 +136,11 @@
   "coachGerencia": "Seu coach gerencia este plano",
   "rangesDoor": {
     "title": "Ranges",
-    "desc": "A carta de 3bb a 100bb, posição por posição"
+    "desc": "As ranges de abertura e defesa, de 3bb a 100bb"
   },
   "ranges": {
     "title": "Ranges",
-    "subtitle": "A carta de referência, posição por posição e profundidade por profundidade.",
+    "subtitle": "As ranges de referência, posição por posição e profundidade por profundidade.",
     "cenario": "Cenário",
     "stack": "Stack",
     "posicao": "Posição",
@@ -153,11 +153,11 @@
       "squeeze": "Squeeze"
     },
     "ou": " ou ",
-    "carregando": "carregando a carta…",
+    "carregando": "carregando as ranges…",
     "semVilao": "nenhum vilão coberto neste spot",
-    "rasoDemais": "A carta de {{stack}}bb cobre só a abertura. Escolha \"Abertura\" ou uma profundidade maior.",
-    "semCarta": "Não temos carta para {{cenario}} de {{posicao}} a {{stack}}bb.",
-    "dicaRaso": "faixa rasa: a carta cobre só a abertura",
+    "rasoDemais": "A {{stack}}bb só temos a range de abertura. Escolha \"Abertura\" ou uma profundidade maior.",
+    "semCarta": "Não temos range de {{cenario}} para {{posicao}} a {{stack}}bb.",
+    "dicaRaso": "stack curto: só temos a range de abertura",
     "semCenario": "{{pos}} não tem esse cenário",
     "resumoTitulo": "Resumo do spot",
     "resumoCombos": "1.326 combos",
@@ -165,6 +165,7 @@
     "resumoNota": "A mistura é uma categoria própria, não um tom entre duas cores: \"Raise ou Fold\" diz quantos combos jogam dos dois jeitos.",
     "combos": "combos",
     "erroCarregar": "não foi possível carregar",
-    "posicoesForaDoCenario": "As posições apagadas não têm este cenário na carta."
+    "posicoesForaDoCenario": "As posições apagadas não têm este cenário.",
+    "substituicao": "Estas são as ranges de {{balde}}: não temos este cenário na profundidade escolhida."
   }
 }

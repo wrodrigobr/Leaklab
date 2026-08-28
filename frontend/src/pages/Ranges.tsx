@@ -190,6 +190,12 @@ export default function Ranges() {
 
   const categorias = useMemo(() => (range ? resumoDoSpot(range) : []), [range]);
 
+  // De qual balde a secao exibida veio de fato. `rfi` e `vs_rfi` nunca caem em vizinho; so
+  // `vs_3bet` e `squeeze` tem fallback, entao o aviso so pode aparecer neles.
+  const substituida = resp?.substituicao?.[
+    cenario.id === "squeeze" ? "squeeze" : cenario.id === "vs_3bet" ? "vs_3bet" : "__nenhum"
+  ] ?? null;
+
   return (
     <div className="min-h-dvh bg-background text-foreground">
       <HudHeader />
@@ -281,6 +287,14 @@ export default function Ranges() {
             )}
             {!carregando && !erro && range && (
               <>
+                {substituida && (
+                  // A carta veio de OUTRA profundidade. Dizer isso e o minimo: sem o aviso, a
+                  // mesma grade aparece sob dois rotulos de stack diferentes, e o jogador conclui
+                  // que a range nao muda entre 14 e 17bb.
+                  <p className="mb-2 rounded-md border border-warning/30 bg-warning/[0.06] px-3 py-2 text-[11px] leading-relaxed text-warning">
+                    {t("ranges.substituicao", { balde: substituida })}
+                  </p>
+                )}
                 <div className="mb-2 flex items-baseline justify-between gap-3">
                   <h2 className="font-mono text-[11px] font-semibold uppercase tracking-[0.14em] text-primary">
                     {range.label}

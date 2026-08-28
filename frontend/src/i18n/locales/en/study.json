@@ -136,11 +136,11 @@
   "coachGerencia": "Your coach manages this plan",
   "rangesDoor": {
     "title": "Ranges",
-    "desc": "The chart from 3bb to 100bb, position by position"
+    "desc": "Opening and defence ranges, from 3bb to 100bb"
   },
   "ranges": {
     "title": "Ranges",
-    "subtitle": "The reference chart, position by position and depth by depth.",
+    "subtitle": "The reference ranges, position by position and depth by depth.",
     "cenario": "Scenario",
     "stack": "Stack",
     "posicao": "Position",
@@ -153,11 +153,11 @@
       "squeeze": "Squeeze"
     },
     "ou": " or ",
-    "carregando": "loading the chart…",
+    "carregando": "loading the ranges…",
     "semVilao": "no villain covered in this spot",
-    "rasoDemais": "The {{stack}}bb chart only covers opening. Pick \"Open\" or a deeper stack.",
-    "semCarta": "No chart for {{cenario}} from {{posicao}} at {{stack}}bb.",
-    "dicaRaso": "shallow band: the chart only covers opening",
+    "rasoDemais": "At {{stack}}bb we only have the opening range. Pick \"Open\" or a deeper stack.",
+    "semCarta": "No {{cenario}} range for {{posicao}} at {{stack}}bb.",
+    "dicaRaso": "short stack: opening range only",
     "semCenario": "{{pos}} has no such scenario",
     "resumoTitulo": "Spot summary",
     "resumoCombos": "1,326 combos",
@@ -165,6 +165,7 @@
     "resumoNota": "A mix is its own category, not a shade between two colors: \"Raise or Fold\" tells you how many combos play both ways.",
     "combos": "combos",
     "erroCarregar": "could not load",
-    "posicoesForaDoCenario": "Greyed-out positions have no chart for this scenario."
+    "posicoesForaDoCenario": "Greyed-out positions have no such scenario.",
+    "substituicao": "These are the {{balde}} ranges: we have no chart for this scenario at the depth you picked."
   }
 }

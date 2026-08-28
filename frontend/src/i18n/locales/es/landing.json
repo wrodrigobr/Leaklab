@@ -109,15 +109,15 @@
     "heading": "Míralo antes de crear cuenta",
     "b1": {
       "rotulo": "grindlabpoker.com/ranges",
-      "titulo": "La tabla entera, de 3bb a 100bb",
-      "texto": "Consulta cualquier posición en cualquier profundidad sin tener que encontrar antes una mano tuya donde eso pasó. Son 354 spots, y la grilla de abajo es la de verdad: apertura del CO con 20bb.",
+      "titulo": "Todas las ranges, de 3bb a 100bb",
+      "texto": "Consulta cualquier posición en cualquier profundidad sin tener que encontrar antes una mano tuya donde eso pasó. Y la grilla de abajo es la de verdad: apertura del CO con 20bb.",
       "b1a": "14 profundidades, de las cortas de torneo a las mesas profundas",
       "b1b": "La mezcla es una categoría con nombre, no un tono entre dos colores"
     },
     "b2": {
       "rotulo": "grindlabpoker.com/replayer",
       "titulo": "Todo veredicto dice de dónde viene",
-      "texto": "Cada decisión la juzga el solver, la tabla o el motor, y la card dice cuál. Cuando no hay base, declara el motivo en vez de inventar un número.",
+      "texto": "Cada decisión la juzga el solver, las ranges o el motor, y la card dice cuál. Cuando no hay base, declara el motivo en vez de inventar un número.",
       "b2a": "Procedencia declarada en cada acusación",
       "b2b": "Sin costo medido, el veredicto no afirma magnitud"
     },

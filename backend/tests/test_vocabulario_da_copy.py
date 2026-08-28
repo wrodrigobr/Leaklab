@@ -368,6 +368,79 @@ def test_copy_do_frontend_nao_usa_travessao():
     print(f'OK  test_copy_do_frontend_nao_usa_travessao ({strings} strings, 3 locales)')
 
 
+# "Carta" é o termo INTERNO do projeto para a tabela de ranges de preflop — aparece no código, nos
+# comentários e no changelog, e ali está certo. Na copy do jogador, `carta` é carta de baralho, e
+# 90 strings usam a palavra assim, corretamente ("essa carta ajuda mais o meu range?").
+#
+# O erro que este guarda pega é o vazamento do termo interno para a tela. Pego pelo dono em 28/08,
+# lendo "a carta de 3bb a 100bb" na landing — frase que não quer dizer nada para quem joga. O
+# termo do jogador é `range`, que a regra do projeto já manda manter em inglês.
+#
+# O padrão é estreito de propósito: `carta` colada a uma profundidade em bb, ou "a carta de
+# referência". Proibir a palavra inteira acusaria as 90 legítimas.
+_CARTA_COMO_RANGE = re.compile(
+    r'\bcartas?\b[^.!?]{0,40}?\d+\s*bb'          # "a carta de 3bb", "carta de {{stack}}bb"
+    r'|\bcartas?\b[^.!?]{0,20}?de\s+\{\{'                     # "carta de {{balde}}"
+    r'|\bcartas?\s+de\s+refer[êe]ncia'             # "carta de referência"
+    r'|\bn[ãa]o\s+temos\s+cartas?\b'               # "não temos carta para..."
+    r'|\bcarregando\s+a\s+cartas?\b',              # "carregando a carta"
+    re.IGNORECASE)
+
+
+def test_copy_nao_chama_range_de_CARTA():
+    """O termo interno do projeto não vaza para a tela do jogador."""
+    raiz = os.path.dirname(_LOCALES_PT)
+    violacoes, strings = [], 0
+    for loc in sorted(os.listdir(raiz)):
+        pasta = os.path.join(raiz, loc)
+        if not os.path.isdir(pasta):
+            continue
+        for arq in sorted(os.listdir(pasta)):
+            if not arq.endswith('.json'):
+                continue
+            for chave, txt in _strings_do_json(os.path.join(pasta, arq)):
+                strings += 1
+                if _CARTA_COMO_RANGE.search(txt):
+                    violacoes.append(f'  {loc}/{arq}:{chave}  {" ".join(txt.split())[:80]}')
+    assert strings > 6000, f'só {strings} strings lidas — o varredor está cego'
+    assert not violacoes, (
+        'a copy chama a tabela de ranges de "carta" — para o jogador, carta é carta de baralho. '
+        'Use `range`:\n' + '\n'.join(violacoes))
+    print(f'OK  test_copy_nao_chama_range_de_CARTA ({strings} strings, 3 locales)')
+
+
+def test_carta_de_BARALHO_na_copy_NAO_e_acusada():
+    """CONTRAPROVA, e ela é o motivo de o padrão ser estreito: 90 strings usam `carta` no sentido
+    certo. Um guarda que proibisse a palavra quebraria a Academia inteira."""
+    legitimas = [
+        'essa carta ajuda mais o meu range ou o dele?',
+        'Out é uma carta que ainda não veio e que melhora a sua mão',
+        'Julgue a decisão pelo EV, não pela carta que veio.',
+        'se vai ver só a próxima carta, multiplique por 2',
+        'Barrelar o turn sem olhar a carta.',
+    ]
+    for txt in legitimas:
+        assert not _CARTA_COMO_RANGE.search(txt), f'acusou uso legítimo: {txt!r}'
+    print('OK  test_carta_de_BARALHO_na_copy_NAO_e_acusada (%d amostras)' % len(legitimas))
+
+
+def test_o_guarda_ACHA_as_frases_que_o_originaram():
+    """Prova de detecção com as strings REAIS que o dono apontou, antes da correção. Sem isto, o
+    verde acima poderia significar só que o padrão não casa com nada."""
+    originais = [
+        'A carta de 3bb a 100bb, posição por posição',
+        'A carta inteira, de 3bb a 100bb',
+        'A carta de referência, posição por posição e profundidade por profundidade.',
+        'A carta de {{stack}}bb cobre só a abertura.',
+        'Não temos carta para {{cenario}} de {{posicao}} a {{stack}}bb.',
+        'Esta carta vem de {{balde}}: não temos este cenário na profundidade escolhida.',
+        'carregando a carta…',
+    ]
+    nao_pegou = [t for t in originais if not _CARTA_COMO_RANGE.search(t)]
+    assert not nao_pegou, 'o guarda não pega as frases que o originaram: %s' % nao_pegou
+    print('OK  test_o_guarda_ACHA_as_frases_que_o_originaram (%d frases)' % len(originais))
+
+
 def test_intervalo_numerico_NAO_e_acusado():
     """Contraprova. "SPR 1–3" e "~30–35%" são intervalos, e a meia-risca ali é correta.
     Sem este caso, a regra acima poderia estar proibindo o certo junto com o errado."""

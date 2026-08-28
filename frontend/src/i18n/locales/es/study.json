@@ -136,11 +136,11 @@
   "coachGerencia": "Tu coach gestiona este plan",
   "rangesDoor": {
     "title": "Ranges",
-    "desc": "La tabla de 3bb a 100bb, posición por posición"
+    "desc": "Ranges de apertura y defensa, de 3bb a 100bb"
   },
   "ranges": {
     "title": "Ranges",
-    "subtitle": "La tabla de referencia, posición por posición y profundidad por profundidad.",
+    "subtitle": "Las ranges de referencia, posición por posición y profundidad por profundidad.",
     "cenario": "Escenario",
     "stack": "Stack",
     "posicao": "Posición",
@@ -153,11 +153,11 @@
       "squeeze": "Squeeze"
     },
     "ou": " o ",
-    "carregando": "cargando la tabla…",
+    "carregando": "cargando las ranges…",
     "semVilao": "ningún villano cubierto en este spot",
-    "rasoDemais": "La tabla de {{stack}}bb solo cubre la apertura. Elige \"Apertura\" o más profundidad.",
-    "semCarta": "No hay tabla para {{cenario}} de {{posicao}} a {{stack}}bb.",
-    "dicaRaso": "franja corta: la tabla solo cubre la apertura",
+    "rasoDemais": "A {{stack}}bb solo tenemos la range de apertura. Elige \"Apertura\" o más profundidad.",
+    "semCarta": "No tenemos range de {{cenario}} para {{posicao}} a {{stack}}bb.",
+    "dicaRaso": "stack corto: solo la range de apertura",
     "semCenario": "{{pos}} no tiene ese escenario",
     "resumoTitulo": "Resumen del spot",
     "resumoCombos": "1.326 combos",
@@ -165,6 +165,7 @@
     "resumoNota": "La mezcla es una categoría propia, no un tono entre dos colores: \"Raise o Fold\" dice cuántos combos juegan de las dos formas.",
     "combos": "combos",
     "erroCarregar": "no se pudo cargar",
-    "posicoesForaDoCenario": "Las posiciones apagadas no tienen este escenario en la tabla."
+    "posicoesForaDoCenario": "Las posiciones apagadas no tienen ese escenario.",
+    "substituicao": "Estas son las ranges de {{balde}}: no tenemos este escenario en la profundidad elegida."
   }
 }

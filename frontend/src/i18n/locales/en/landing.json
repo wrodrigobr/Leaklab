@@ -109,15 +109,15 @@
     "heading": "See it before signing up",
     "b1": {
       "rotulo": "grindlabpoker.com/ranges",
-      "titulo": "The whole chart, from 3bb to 100bb",
-      "texto": "Look up any position at any depth without first finding a hand of yours where it happened. 354 spots, and the grid below is the real one: CO open at 20bb.",
+      "titulo": "Every range, from 3bb to 100bb",
+      "texto": "Look up any position at any depth without first finding a hand of yours where it happened. And the grid below is the real one: CO open at 20bb.",
       "b1a": "14 depths, from tournament-shallow to deep-stacked",
       "b1b": "Mixes are named categories, not a shade between two colors"
     },
     "b2": {
       "rotulo": "grindlabpoker.com/replayer",
       "titulo": "Every verdict says where it came from",
-      "texto": "Each decision is judged by the solver, the chart or the engine, and the card says which. When we have no basis, it states the reason instead of inventing a number.",
+      "texto": "Each decision is judged by the solver, the ranges or the engine, and the card says which. When we have no basis, it states the reason instead of inventing a number.",
       "b2a": "Provenance stated on every accusation",
       "b2b": "With no measured cost, the verdict claims no magnitude"
     },

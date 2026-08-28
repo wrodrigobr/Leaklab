@@ -333,7 +333,7 @@
       "open_size_off_tree": "El villano abrió mucho más grande de lo que la carta modela, y la línea recomendada aquí depende de ese precio. Antes que juzgarte contra el precio equivocado, no damos veredicto.",
       "hand_out_of_node_range": "Esta mano no llega a este punto del árbol: la carta abre la posición de otra forma, así que no hay estrategia publicada para ella aquí.",
       "limp_then_raise": "La línea pasa por un limp seguido de subida, que nuestros árboles (raise-first) no modelan.",
-      "profundidade_sem_carta": "Sin carta para esta profundidad: por debajo de 2,5bb o por encima de 133bb ninguna carta responde"
+      "profundidade_sem_carta": "Sin range para esta profundidad: por debajo de 2,5bb o por encima de 133bb no tenemos referencia"
     },
     "scenGenerico": "de este spot",
     "scenHuRfi": "de apertura en SB (heads-up)",

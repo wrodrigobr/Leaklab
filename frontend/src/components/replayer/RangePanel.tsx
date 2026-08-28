@@ -62,6 +62,9 @@ export interface PreflopRangesResp {
   vs_rfi: Record<string, ActionGrid>;
   vs_3bet: Record<string, ActionGrid> | null;     // keyed por 3bettor
   squeeze: Record<string, ActionGrid> | null;     // keyed por opener
+  /** Secoes servidas por OUTRO balde de stack. Ausente quando tudo veio do balde pedido.
+   *  Existe desde 28/08: o fallback servia o vizinho e a resposta seguia declarando o pedido. */
+  substituicao?: Record<string, string> | null;
 }
 
 function fmtAction(a: string): string {
