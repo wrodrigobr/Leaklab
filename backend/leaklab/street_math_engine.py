@@ -106,10 +106,37 @@ def build_math_snapshot(state: HandState) -> MathSnapshot:
                                                     cartas(state.board))
         except Exception:                                       # noqa: BLE001
             _cont = None
+        # ── A conta nova pode ABSOLVER um fold, nunca CONDENAR ────────────────────────────
+        #
+        # Medido no acervo inteiro (2.651 decisoes de flop/turn): a troca deixa 98,4% dos
+        # vereditos identicos, com 14 acusacoes entrando e 13 saindo. Mas **7 das 14 que entram
+        # sao FOLD, e as 4 que viram `clear_mistake` sao todas folds** -- maos sem par, com
+        # projeto, acusadas porque a equity subiu.
+        #
+        # Essa e exatamente a familia que este produto derrubou em 26/08: a equity estimada era a
+        # UNICA evidencia em 22 de 22 acusacoes de fold pos-flop, e a ablacao desmentiu metade da
+        # leitura do juiz.
+        #
+        # E a causa da subida e uma escolha nossa, nao um fato do jogo: contar projetos como maos
+        # que continuam alarga a range do vilao em ~45% (798 combos contra 552 num turn real).
+        # Range mais larga e range mais fraca, e equity do heroi mais alta. Escolher o criterio da
+        # range do vilao e depois usar o resultado para acusar quem foldou fecha um circulo.
+        #
+        # A assimetria segue o padrao que ja existe aqui: a carta vizinha do ring do GW ABSOLVE e
+        # nao acusa. Quando o numero novo baixa a equity, ele vale -- e e o que absolve os 6 folds
+        # que hoje sao acusados com equity inflada por board pareado (`3d3c` em `8d4h8s` saia com
+        # 0,720). Quando SOBE num fold, a equity antiga fica.
         if _cont is not None:
-            estimated_equity = _cont
-            if isinstance(state.metadata, dict):
-                state.metadata['equity_vs_continuacao'] = True
+            _acao = (getattr(state, 'player_action', '') or '').lower()
+            _condenaria_fold = _acao == 'fold' and _cont > (estimated_equity or 0)
+            if not _condenaria_fold:
+                estimated_equity = _cont
+                if isinstance(state.metadata, dict):
+                    state.metadata['equity_vs_continuacao'] = True
+            elif isinstance(state.metadata, dict):
+                # Observavel: sem isto, "a conta nao se aplicou aqui" e indistinguivel de "a conta
+                # nao existe para este spot", e ninguem consegue medir quantas vezes o freio pegou.
+                state.metadata['equity_continuacao_freada_no_fold'] = True
 
     # Ajuste multiway: equity heuristica eh calibrada vs random HU. Em pote
     # 3+way, equity real cai significativamente. Aplica fator empirico em

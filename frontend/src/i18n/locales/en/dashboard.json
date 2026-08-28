@@ -735,11 +735,6 @@
       "mensal": "Monthly",
       "anual": "Yearly"
     },
-    "preco": {
-      "mensal": "R$ 99/month",
-      "anual": "R$ 990/year",
-      "badgeAnual": "2 months free · R$ 82.50/month"
-    },
     "features": [
       "Unlimited tournaments",
       "Unlimited GrindLab analyses",
@@ -752,7 +747,11 @@
     "sucesso": "Subscription activated.",
     "processando": "Processing…",
     "assinar": "Subscribe to {{plano}} · {{preco}}",
-    "seguro": "Secure payment via Stripe · Cancel whenever you want"
+    "seguro": "Secure payment via Stripe · Cancel whenever you want",
+    "economia": "Save {{valor}} per year",
+    "mesesGratis": "{{n}} months free",
+    "porMes": "{{valor}}/mo",
+    "porAno": "{{valor}}/yr"
   },
   "perfil": {
     "titulo": "Complete your profile",
@@ -799,14 +798,14 @@
     "usoMes": "Usage this month",
     "analises": "GrindLab analyses",
     "aria": "Account menu",
-    "upgrade": "Upgrade to Pro · R$ 99",
+    "upgrade": "Upgrade to Pro",
     "docs": "Documentation"
   },
   "quota": {
     "titulo": "You are close to the monthly limit",
     "torneios": "Tournaments this month",
     "analises": "AI analyses this month",
-    "upgrade": "Upgrade to Pro · R$ 99"
+    "upgrade": "Upgrade to Pro"
   },
   "infoAria": "Information",
   "mesaAria": "9-handed table, highlighting position {{posicao}}",

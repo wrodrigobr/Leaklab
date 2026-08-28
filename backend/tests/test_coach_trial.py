@@ -7,6 +7,15 @@ TEST_DB = tempfile.mktemp(suffix='_coachtrial.db')
 import database.schema as sch
 import database.repositories as repo
 
+# ── Os valores DERIVAM do preço (28/08) ────────────────────────────────────────────────────
+#
+# Este arquivo cravava `9900` e `99000`. Quando o dono baixou o Pro para R$ 39,90, testes que
+# NADA tinham a ver com preço quebraram em bloco -- idempotência de webhook, renovação, MRR. O
+# literal transformava uma decisão comercial em quebra de suíte, e escondia o sinal de verdade.
+def _cents(billing='monthly'):
+    from leaklab.stripe_gateway import plan_amount
+    return int(round(plan_amount('pro', billing) * 100))
+
 
 def _setup():
     if os.path.exists(TEST_DB):
@@ -182,7 +191,7 @@ def test_mrr_excludes_coach_perk():
     repo.update_user_plan(repo.create_user('pb', 'pb@t.com', 'pass'), 'pro')
     stats = repo.get_admin_dashboard_stats()
     # coach conta em 'plans' como pro, mas o MRR só vê os 2 pagantes reais
-    assert stats['mrr_cents'] == 2 * 9900, stats
+    assert stats['mrr_cents'] == 2 * _cents('monthly'), stats
     print("OK  test_mrr_excludes_coach_perk")
 
 

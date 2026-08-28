@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { subscription } from "@/lib/api";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { Vitrine, type BlocoVitrine } from "@/components/landing/Vitrine";
@@ -474,13 +475,53 @@ function VideoSection() {
   );
 }
 
+/** Centavos -> "R$ 39,90". Mesma função do CheckoutModal, de propósito duplicada aqui e não
+ *  extraída: são dois bundles (a landing é pública e não carrega o modal). O guarda
+ *  `precoNaoEhCravado.test.ts` é quem impede as duas de divergirem, porque impede QUALQUER
+ *  literal de moeda nestas telas. */
+function brlLanding(centavos: number | undefined | null): string {
+  if (centavos == null) return "";
+  return (centavos / 100).toLocaleString("pt-BR", {
+    style: "currency", currency: "BRL", minimumFractionDigits: 2,
+  });
+}
+
 function PricingSection() {
   const { t } = useTranslation("landing");
+  // ── O preço vem da API (28/08) ────────────────────────────────────────────────────────────
+  //
+  // Estava `price: "R$ 99"` cravado aqui, ao lado de `PLAN_AMOUNTS` no backend, das traduções do
+  // checkout e do preço real no Stripe: CINCO fontes para o mesmo fato. No dia em que o dono
+  // baixou o Pro para R$39,90, mudar só uma delas faria o site anunciar um valor e o cartão ser
+  // debitado de outro.
+  //
+  // `/subscription/plans` é público (sem login), então a landing lê da mesma fonte que o
+  // checkout. Enquanto não chega, o card mostra o plano SEM preço -- número provisório numa
+  // página de vendas é pior que número ausente.
+  const [precos, setPrecos] = useState<{ mensal?: number; anual?: number; economia?: number;
+                                        meses?: number } | null>(null);
+  useEffect(() => {
+    let vivo = true;
+    subscription.plans()
+      .then((r) => {
+        if (!vivo) return;
+        const pro = (r.plans || []).find((p) => p.id === "pro");
+        const a = pro?.billing?.annual;
+        setPrecos({
+          mensal:   pro?.billing?.monthly?.price,
+          anual:    a?.price,
+          economia: a ? a.full_price - a.price : undefined,
+          meses:    a?.months_free,
+        });
+      })
+      .catch(() => { /* sem preço, e não um preço errado */ });
+    return () => { vivo = false; };
+  }, []);
   const plans = [
     {
       id: "free",
       name: "Free",
-      price: "R$ 0",
+      price: t("plans.gratis"),
       period: t("plans.period"),
       highlight: false,
       badge: null as string | null,
@@ -491,7 +532,7 @@ function PricingSection() {
     {
       id: "pro",
       name: "Pro",
-      price: "R$ 99",
+      price: brlLanding(precos?.mensal),
       period: t("plans.period"),
       highlight: true,
       badge: t("plans.grinder") as string | null,

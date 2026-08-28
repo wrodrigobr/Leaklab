@@ -5,6 +5,91 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## A jornada de pagamento inteira estava quebrada, e a suite passava verde (28/08)
+
+O dono pediu para testar o fluxo completo de pagamento e estorno antes de mexer no preco. Foi o
+pedido mais caro do dia, no bom sentido: **cinco defeitos de dinheiro, todos em producao, todos
+silenciosos.**
+
+### A medicao que abriu tudo
+
+Percorrendo a jornada no modo de TESTE do Stripe (chave `sk_test`, banco copia, backend local,
+`stripe listen` encaminhando webhooks): o cartao foi aprovado, a assinatura ficou `active`,
+**R$ 39,90 foram cobrados**, os 13 tipos de webhook chegaram e **todos responderam 200** -- e o
+usuario **continuou `free`**. Pagou e nao recebeu.
+
+### Os cinco defeitos
+
+**1. `validate_webhook` devolve `StripeObject`, que nao responde a `.get`.** O `__getattr__` dele
+procura a chave `'get'` nos dados e levanta `AttributeError`; o handler inteiro e escrito com
+`obj.get(...)`. Cada evento estourava, o `except` generico engolia e devolvia **200** -- o Stripe
+considera entregue e nunca reenvia. `dict(obj)` tambem nao serve: levanta `KeyError: 0`. Tropecei
+nas duas formas, em tres lugares, ate criar `_como_dict` como porta unica.
+
+**2. `invoice.subscription` mudou de lugar** na API `2026-04-22.dahlia`, para
+`invoice.parent.subscription_details.subscription`. Sem ele, `get_user_by_subscription(None)` nao
+achava ninguem.
+
+**3. `subscription.current_period_end` mudou de lugar**, para `items[0].current_period_end`. O
+`invoice.paid` gravava a validade certa e o `customer.subscription.updated` -- que chega DEPOIS --
+a apagava com nulo. O usuario virava Pro sem prazo: se a renovacao falhasse, nao havia quando
+rebaixar.
+
+**4. Grava com uma chave, procura com outra.** `invoice.paid` grava `gateway_id` = id da FATURA;
+`charge.refunded` traz o PaymentIntent. **Nenhum payload da API atual liga os dois** -- nem o
+PaymentIntent, nem o Charge, nem a Invoice. Resultado medido: estorno concluido, R$ 39,90
+devolvidos, **e o usuario continuava Pro**. A ponte que funciona e o CLIENTE, porque o `user_id`
+no metadata dele e gravado por nos.
+
+**5. `paying_pro * 9900` em TRES calculos do admin** (`mrr`, `past_due_risk`, `overview`). Depois
+da queda para R$ 39,90 eles continuariam contando R$ 99 por assinante -- mentindo num painel de
+decisao, sem erro em lugar nenhum.
+
+### Por que a suite nao pegava
+
+**Os defeitos 1 a 4 so existem com `STRIPE_WEBHOOK_SECRET` configurado.** Sem segredo o handler faz
+`json.loads(payload)` e recebe um dicionario de verdade -- que e o caminho de TODOS os testes
+existentes. **2.580 testes passavam verdes exercitando a metade que funciona.** E o defeito 5
+apareceu porque um teste que nem era sobre preco quebrou.
+
+`test_webhook_stripe_objeto.py` forca o caminho assinado com um dubl que reproduz as duas formas
+de falha do SDK -- e tem contraprova de que o duble nao virou um dict comum.
+
+### Preco: seis fontes viraram uma
+
+O valor estava escrito a mao em `PLAN_AMOUNTS`, na landing, nas traducoes do checkout, num `-17%`
+literal no JSX, em 6 chaves `"Upgrade para Pro · R$ 99"`, em 8 assercoes de teste e nos 3 calculos
+do admin. Agora tudo deriva de `plan_amount()`, a tela le de `/subscription/plans`, e dois guardas
+protegem: `precoNaoEhCravado.test.ts` (a tela nao afirma numero) e
+`conferir_precos_no_stripe.py` (o Stripe cobra o que a tela anuncia), este ultimo **no portao de
+deploy**.
+
+**Pro: R$ 39,90/mes ou R$ 358,80/ano** (R$ 29,90/mes) -- economia de **R$ 120,00, 3 meses gratis**,
+tudo derivado. E o teste do anual passou a verificar a CONTA em vez do numero, com uma assercao
+que faltava: que o anual seja mais barato que doze mensais.
+
+### O que a jornada provou depois do conserto
+
+| passo | Stripe | nosso banco |
+|---|---|---|
+| Mensal aprovado | R$ 39,90, `active` | pro, expira em 30 dias |
+| Estorno integral | R$ 39,90 devolvidos | **free**, `canceled` |
+| Cartao recusado | recusado | continua free |
+| Anual aprovado | R$ 358,80 | pro, expira em 1 ano |
+| Cancelamento | `cancel_at_period_end` | pro ate o fim do periodo pago |
+
+### Tres erros meus no proprio conserto, todos por medir com instrumento contaminado
+
+- **Tres processos velhos** na porta 5001 me fizeram culpar o conserto certo por duas rodadas.
+- **`PULADO` passa verde**: o teste se auto-desligava quando o usuario ja existia, e a mutacao do
+  defeito principal sobreviveu a varredura.
+- **Meu teste reusava `sub_PROMO`** entre execucoes, e promovia o usuario da rodada anterior.
+
+### Verificado
+
+Backend **2.589 / 2.589**, frontend **428 / 428**, tsc limpo. Webhook de producao conferido: 7
+eventos inscritos, nenhum faltando, mesma versao de API testada.
+
 ## A seta dizia "melhorando" com duas maos, e a equity de flop/turn ganhou medidor (28/08)
 
 ### A seta de tendencia afirmava direcao sem amostra

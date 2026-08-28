@@ -72,8 +72,22 @@ def _auth(tok):
     return {'Authorization': f'Bearer {tok}', 'Content-Type': 'application/json'}
 
 
+# ── Os valores DERIVAM do preço, não são cravados (28/08) ─────────────────────────────────
+#
+# Este arquivo tinha `9900` e `99000` escritos à mão em 8 lugares. No dia em que o dono baixou o
+# Pro para R$ 39,90, **7 testes quebraram de uma vez** -- e nenhum deles estava testando preço:
+# testavam idempotência, coerência de ciclo e dedupe de pagamento. O número cravado transformou
+# uma decisão comercial em quebra de suíte.
+#
+# Derivando de `plan_amount()`, a mesma fonte que o checkout usa, os testes continuam provando o
+# que se propõem e param de opinar sobre quanto o produto custa.
+def _cents(billing='monthly'):
+    from leaklab.stripe_gateway import plan_amount
+    return int(round(plan_amount('pro', billing) * 100))
+
+
 def _pi(pi_id='pi_T', status='succeeded', user_id=1, billing='monthly', amount=None, plan='pro'):
-    cents = amount if amount is not None else (99000 if billing == 'annual' else 9900)
+    cents = amount if amount is not None else _cents(billing)
     return {'id': pi_id, 'status': status, 'amount': cents, 'currency': 'brl',
             'metadata': {'user_id': str(user_id), 'plan_name': plan, 'billing_cycle': billing}}
 
@@ -118,7 +132,7 @@ def test_activate_allows_legacy_pi_without_metadata():
     """PI legado sem metadata.user_id → permitido (back-compat), tratado como mensal."""
     c = _client()
     tok, uid = _player(c, 'leg')
-    legacy = {'id': 'pi_leg', 'status': 'succeeded', 'amount': 9900, 'currency': 'brl', 'metadata': {}}
+    legacy = {'id': 'pi_leg', 'status': 'succeeded', 'amount': _cents('monthly'), 'currency': 'brl', 'metadata': {}}
     with patch('api.app.get_payment', return_value=legacy):
         r = c.post('/subscription/activate',
                    json={'plan': 'pro', 'payment_intent_id': 'pi_leg', 'subscription_id': 'pi_leg'},
@@ -143,15 +157,15 @@ def test_billing_cycle_comes_from_pi_not_body():
     assert data['billing'] == 'monthly', data
     exp = datetime.datetime.strptime(data['expires_at'], '%Y-%m-%d %H:%M:%S')
     assert (exp - datetime.datetime.utcnow()).days <= 31
-    assert _invoices(c, tok)[0]['amount_cents'] == 9900   # valor real, não R$990
+    assert _invoices(c, tok)[0]['amount_cents'] == _cents('monthly')   # o mensal, não o anual
     print("OK  test_billing_cycle_comes_from_pi_not_body")
 
 
 def test_activate_rejects_amount_mismatch():
-    """PI diz 'annual' no metadata mas o amount é 9900 (mensal) → inconsistente → 400."""
+    """PI diz 'annual' no metadata mas o amount é o do MENSAL → inconsistente → 400."""
     c = _client()
     tok, uid = _player(c, 'mm')
-    bad = _pi('pi_mm', 'succeeded', user_id=uid, billing='annual', amount=9900)  # anual deveria ser 99000
+    bad = _pi('pi_mm', 'succeeded', user_id=uid, billing='annual', amount=_cents('monthly'))  # anual esperaria o do ano
     with patch('api.app.get_payment', return_value=bad):
         r = c.post('/subscription/activate',
                    json={'plan': 'pro', 'payment_intent_id': 'pi_mm', 'subscription_id': 'pi_mm'},
@@ -169,7 +183,7 @@ def test_activate_ignores_tampered_body_amount():
         c.post('/subscription/activate',
                json={'plan': 'pro', 'payment_intent_id': 'pi_tamp', 'subscription_id': 'pi_tamp', 'amount': 1},
                headers=_auth(tok))
-    assert _invoices(c, tok)[0]['amount_cents'] == 99000
+    assert _invoices(c, tok)[0]['amount_cents'] == _cents('annual')
     print("OK  test_activate_ignores_tampered_body_amount")
 
 
@@ -226,7 +240,7 @@ def test_activate_then_webhook_single_payment():
     with patch('api.app.get_payment', return_value=_pi('pi_aw', 'succeeded', user_id=uid)):
         c.post('/subscription/activate', json={'plan': 'pro', 'payment_intent_id': 'pi_aw', 'subscription_id': 'pi_aw'}, headers=_auth(tok))
     payload = json.dumps({'type': 'payment_intent.succeeded',
-                          'data': {'object': {'id': 'pi_aw', 'amount': 9900,
+                          'data': {'object': {'id': 'pi_aw', 'amount': _cents('monthly'),
                                               'metadata': {'user_id': str(uid), 'plan_name': 'pro', 'billing_cycle': 'monthly'}}}}).encode()
     with patch('api.app.STRIPE_WEBHOOK_SECRET', ''):
         c.post('/subscription/webhook', data=payload, content_type='application/json')
@@ -257,7 +271,7 @@ def test_webhook_annual_sets_year_expiry():
     c = _client()
     tok, uid = _player(c, 'wa')
     payload = json.dumps({'type': 'payment_intent.succeeded',
-                          'data': {'object': {'id': 'pi_wa', 'amount': 99000,
+                          'data': {'object': {'id': 'pi_wa', 'amount': _cents('annual'),
                                               'metadata': {'user_id': str(uid), 'plan_name': 'pro', 'billing_cycle': 'annual'}}}}).encode()
     with patch('api.app.STRIPE_WEBHOOK_SECRET', ''):
         c.post('/subscription/webhook', data=payload, content_type='application/json')
@@ -323,10 +337,10 @@ def test_admin_overview_revenue_and_gateway():
         c.post('/subscription/activate', json={'plan': 'pro', 'payment_intent_id': 'pi_ov', 'subscription_id': 'pi_ov'}, headers=_auth(tok))
     atok, _ = _admin(c)
     ov = c.get('/admin/finance/overview', headers=_auth(atok)).get_json()
-    assert ov['revenue']['gross_cents'] == 99000
+    assert ov['revenue']['gross_cents'] == _cents('annual')
     assert ov['revenue']['approved_count'] == 1
     assert any(g['gateway'] == 'stripe' for g in ov['revenue']['by_gateway'])
-    assert ov['revenue']['mrr_cents'] == 9900   # 1 pagante pro
+    assert ov['revenue']['mrr_cents'] == _cents('monthly')   # 1 pagante pro
     assert ov['duplicates'] == []
     print("OK  test_admin_overview_revenue_and_gateway")
 
@@ -355,7 +369,7 @@ def test_admin_detect_duplicate_payments():
     conn = repositories.get_conn()
     for _ in range(2):
         conn.execute("INSERT INTO payments (user_id, plan, amount_cents, currency, status, gateway, gateway_id) "
-                     "VALUES (?,?,?,?,?,?,?)", (uid, 'pro', 9900, 'BRL', 'approved', 'stripe', 'pi_dupe'))
+                     "VALUES (?,?,?,?,?,?,?)", (uid, 'pro', _cents('monthly'), 'BRL', 'approved', 'stripe', 'pi_dupe'))
     conn.commit(); conn.close()
     dups = repositories.admin_detect_duplicate_payments()
     assert any(d['gateway_id'] == 'pi_dupe' and d['n'] == 2 for d in dups)

@@ -4159,9 +4159,29 @@ def get_baseline_comparison(coach_id: int, student_id: int) -> Optional[dict]:
 # leak_targeted: treino MIRADO nos leaks reais do jogador (Pro). Free treina fundamentos genéricos.
 # ghost: Ghost Table / SRS das mãos reais (Pro).
 PLAN_LIMITS: dict = {
-    'free':    {'tournaments': 2,   'ai_calls': 15,  'ai_coach_chat': False, 'solves': 5,    'advanced_insights': False,
+    # ── O corte Free/Pro, decidido em 28/08 com os numeros na mesa ──────────────────────────
+    #
+    # Medido em producao antes de decidir: 27 usuarios, **8 ja importaram alguma coisa**, 2
+    # chamadas de IA no mes inteiro (custo abaixo de dois centavos a preco de Haiku), 1 solve, 4
+    # sessoes de treino de UM usuario. E **3 pessoas paradas em exatamente 2 torneios**, que era o
+    # teto -- o unico limite que estava pegando, e pegava justo no comportamento de que o produto
+    # depende para existir.
+    #
+    # O principio: **gratis e o produto sobre fundamentos e sobre o acervo compartilhado; Pro e
+    # profundidade nas SUAS maos, e tudo que fala com IA.** O jogador free treina de verdade e ve
+    # a ferramenta inteira; o que ele nao tem e o produto trabalhando sobre os erros DELE, que e a
+    # tese do GrindLab.
+    #
+    # `tournaments` sobe de 2 para 30 porque importar nao e custo, e aquisicao: cada torneio
+    # entrega ~120 decisoes ao acervo compartilhado, de onde saem as maos do grind e da mao
+    # completa. Hoje 68 dos 90 torneios do acervo sao do dono. E 30 e o menor numero que faz a
+    # NOSSA analitica falar: `get_evolution_report` compara os 40 mais recentes com os anteriores,
+    # e a porta de amostra da tendencia pede 8 decisoes de cada lado por spot.
+    #
+    # Custo medido: 125 KB de `raw_text` por torneio. 30/mes por usuario sao 3,7 MB.
+    'free':    {'tournaments': 30,  'ai_calls': 15,  'ai_coach_chat': False, 'solves': 5,    'advanced_insights': False,
                 'ai_chat_per_day': 0,  'solves_per_day': None, 'max_pending_solves': 3,
-                'training_spots_per_day': 15, 'leak_targeted': False, 'ghost': False},
+                'training_spots_per_day': None, 'leak_targeted': False, 'ghost': False},
     'pro':     {'tournaments': 200, 'ai_calls': 300, 'ai_coach_chat': True,  'solves': None, 'advanced_insights': True,
                 'ai_chat_per_day': 50, 'solves_per_day': 20,   'max_pending_solves': 10,
                 'training_spots_per_day': None, 'leak_targeted': True, 'ghost': True},
@@ -4496,6 +4516,40 @@ def mark_payment_refunded(gateway_id: str, full: bool = True) -> int | None:
     return _uid if full else None
 
 
+def mark_payment_refunded_by_user(user_id: int, full: bool = True) -> int | None:
+    """Estorno quando o pagamento NAO e encontravel pelo id do gateway.
+
+    ── Por que existe (28/08) ──────────────────────────────────────────────────────────────
+
+    No caminho recorrente, `invoice.paid` grava `gateway_id` = id da FATURA (`in_...`), e o
+    `charge.refunded` traz o PaymentIntent (`pi_...`). Medido: **nenhum payload da API atual liga
+    os dois** -- nem o PaymentIntent, nem o Charge, nem a Invoice carregam o outro lado.
+
+    O dono foi achado pelo CLIENTE do Stripe (o `user_id` que nos mesmos gravamos no metadata
+    dele). Aqui o pagamento e marcado pelo usuario, para ele sair da receita do admin -- senao o
+    plano cai e o faturamento continua contando dinheiro que voltou.
+
+    Marca o mais recente APROVADO do usuario, que e o que o estorno acabou de reverter.
+    """
+    conn = get_conn()
+    try:
+        row = _fetchone(conn, _adapt(
+            "SELECT id, gateway_id FROM payments WHERE user_id = ? AND gateway = 'stripe' "
+            "AND status = 'approved' ORDER BY created_at DESC"), (user_id,))
+        if not row:
+            return None
+        conn.execute(_adapt("UPDATE payments SET status = 'refunded' WHERE id = ?"), (row['id'],))
+        conn.commit()
+        _gid = row['gateway_id']
+    finally:
+        conn.close()
+    try:
+        reverse_coach_commission(str(_gid))
+    except Exception:                                          # noqa: BLE001
+        pass
+    return int(user_id) if full else None
+
+
 # ── PAY-03: visão financeira administrativa (todos os pagamentos) ─────────────
 
 def admin_list_payments(status: str = None, gateway: str = None, search: str = None,
@@ -4553,7 +4607,7 @@ def admin_revenue_summary() -> dict:
             SELECT COUNT(*) AS n FROM users
             WHERE plan='pro' AND {_no_admin_usr} AND plan_source IN ('coach_trial','coach_earned')
         """)['n']
-        mrr = paying_pro * 9900
+        mrr = paying_pro * _preco_mensal_cents()
         return {
             'gross_cents':       int(gross['c']),
             'approved_count':    int(gross['n']),
@@ -4583,6 +4637,22 @@ def _month_bounds(month: str):
 def _current_month() -> str:
     from datetime import datetime
     return datetime.utcnow().strftime('%Y-%m')
+
+
+def _preco_mensal_cents() -> int:
+    """O preco do Pro em centavos, da FONTE UNICA (`plan_amount`), nunca de um literal.
+
+    Em 28/08 o preco estava escrito a mao em SEIS lugares. Tres deles calculavam dinheiro para o
+    painel do admin (`mrr`, `past_due_risk`, `overview`) e ficariam contando R$ 99 por assinante
+    depois de o preco cair para R$ 39,90 -- mentindo num painel de decisao, sem erro nenhum.
+
+    Nenhum foi achado por auditoria: apareceram porque um teste que nem era sobre preco quebrou.
+    """
+    try:
+        from leaklab.stripe_gateway import plan_amount
+        return int(round(plan_amount('pro', 'monthly') * 100))
+    except Exception:                                          # noqa: BLE001
+        return 0
 
 
 def _real_mrr_cents(conn) -> int:
@@ -4746,7 +4816,7 @@ def admin_cockpit_summary(month: str = None) -> dict:
             'coach_perk_pro':   perk,
             'arpu_cents':       round(gross_in / paying) if paying else 0,
             'past_due_count':   past_due,
-            'past_due_risk_cents': past_due * 9900,
+            'past_due_risk_cents': past_due * _preco_mensal_cents(),
             'churn_count':      churn,
         }
     finally:
@@ -5489,7 +5559,9 @@ def get_admin_dashboard_stats() -> dict:
               AND (plan_source IS NULL OR plan_source NOT IN ('coach_trial', 'coach_earned'))
               AND COALESCE(role,'') != 'admin'
         """)['n']
-        mrr_cents = paying_pro * 9900
+        # Fonte única, como os outros dois cálculos. Estava `paying_pro * 9900`, e depois de o
+        # preço cair para R$ 39,90 o MRR continuaria contando R$ 99 por assinante.
+        mrr_cents = paying_pro * _preco_mensal_cents()
         return {
             'total_users':          total_users,
             'total_coaches':        total_coaches,

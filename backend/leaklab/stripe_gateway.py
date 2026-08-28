@@ -24,13 +24,26 @@ PLAN_PRICES: dict[tuple[str, str], str] = {
 def price_id(plan_name: str, billing_cycle: str = "monthly") -> str:
     return PLAN_PRICES.get((plan_name, billing_cycle), "")
 
+# ── Preço, e a única autoridade sobre ele é o Stripe ────────────────────────────────────────
+#
+# Estes números NÃO decidem o que o cartão é debitado: quem decide é o `price` do Stripe apontado
+# por `PLAN_PRICES`. Eles são o que a tela anuncia e o que o registro local grava. Por isso podem
+# divergir do que se cobra, em silêncio, e por isso existe
+# `scripts/conferir_precos_no_stripe.py`, que pergunta ao Stripe e quebra o deploy se discordarem.
+#
+# Em 28/08 o dono baixou o Pro olhando o painel do Stripe e disse "me parece que já está
+# configurado". A API com a chave live respondia só R$99 e R$990 -- o preço novo tinha nascido no
+# modo de TESTE, que é outra metade da conta. Trocar o número aqui confiando no painel teria feito
+# o site anunciar 39,90 e o Stripe cobrar 99,00.
 PLAN_AMOUNTS: dict[str, float] = {
-    "pro": 99.00,
+    "pro": 39.90,
 }
 
-# PAY-02: ciclo anual com desconto (2 meses grátis → paga 10, leva 12).
+# Anual: 12 × 39,90 = R$478,80 cheio contra R$358,80 -- **R$120,00 de economia, 3 meses grátis**.
+# `/subscription/plans` deriva `discount_pct` e `months_free` daqui; nada de segundo lugar com o
+# desconto escrito à mão.
 PLAN_AMOUNTS_ANNUAL: dict[str, float] = {
-    "pro": 990.00,   # 99 × 10 (≈ 17% off vs 1.188 cheio)
+    "pro": 358.80,   # 39,90 × 9 (25% off vs 478,80 cheio)
 }
 
 # Dias de vigência por ciclo (define plan_expires_at).

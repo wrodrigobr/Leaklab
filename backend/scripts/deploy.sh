@@ -46,10 +46,14 @@ for s in $SERVICOS; do
   fi
 done
 
-echo "== 5/5  portao de aceite (a TELA) + varredura de invariantes (o BANCO)"
+echo "== 5/5  portao de aceite (a TELA) + invariantes (o BANCO) + preco (o STRIPE)"
 WEB="$(docker compose ps -q web)"
 docker exec "$WEB" python /app/scripts/portao_pos_deploy.py
 docker exec "$WEB" python /app/scripts/varre_invariantes.py
+# O preco e a unica coisa aqui que vive FORA do nosso sistema, entao ele e perguntado ao dono do
+# fato. Em 28/08 o painel do Stripe mostrava R$39 que nao existia na conta live: trocar o numero
+# na tela confiando nele teria feito o site anunciar um valor e o cartao ser debitado de outro.
+docker exec "$WEB" python /app/scripts/conferir_precos_no_stripe.py
 
 echo
 echo "DEPLOY OK — $ESPERADO no ar, portao aprovado, nenhuma invariante piorou."

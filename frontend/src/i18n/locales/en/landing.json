@@ -49,7 +49,7 @@
     "grinder": "Grinder",
     "ctaFree": "Start free",
     "ctaSubscribe": "Subscribe to {{name}}",
-    "freeF1": "2 tournaments/month",
+    "freeF1": "30 tournaments per month",
     "freeF2": "15 AI explanations per month",
     "freeF3": "GTO analysis, leaks & stats",
     "freeF4": "5 on-demand GTO solves/month",
@@ -60,8 +60,9 @@
     "proF5": "Coaches marketplace",
     "proF6": "Priority support",
     "proF7": "Advanced AI insights (Strategic Twin, Cognitive, Causal Map)",
-    "freeF5": "Preflop fundamentals training: RFI, vs RFI and vs 3-bet",
-    "proF8": "Training aimed at your own leaks: Ghost Table, full hands and spaced repetition"
+    "freeF5": "Full fundamentals and full-hand training, no daily cap",
+    "proF8": "Training aimed at your own leaks, and Ghost Table spaced repetition",
+    "gratis": "Free"
   },
   "faq": {
     "eyebrow": "Questions",
@@ -127,8 +128,8 @@
       "rotulo": "grindlabpoker.com/training",
       "titulo": "Training that opens on your mistake",
       "texto": "The study plan points at where you bleed the most and training opens right there. Spaced repetition on what you got wrong, with the right range and the cost of the mistake on the same screen.",
-      "b3a": "Ghost Table with spaced repetition (Pro)",
-      "b3b": "Full heads-up hand, preflop to river (Pro)"
+      "b3a": "Ghost Table: spaced repetition of your own hands (Pro)",
+      "b3b": "Full heads-up hand, preflop to river"
     },
     "b4": {
       "rotulo": "grindlabpoker.com/evolucao",

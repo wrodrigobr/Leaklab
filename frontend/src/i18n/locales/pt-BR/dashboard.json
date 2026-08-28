@@ -735,11 +735,6 @@
       "mensal": "Mensal",
       "anual": "Anual"
     },
-    "preco": {
-      "mensal": "R$ 99/mês",
-      "anual": "R$ 990/ano",
-      "badgeAnual": "2 meses grátis · R$ 82,50/mês"
-    },
     "features": [
       "Torneios ilimitados",
       "Análises GrindLab ilimitadas",
@@ -752,7 +747,11 @@
     "sucesso": "Assinatura ativada com sucesso!",
     "processando": "Processando…",
     "assinar": "Assinar {{plano}} · {{preco}}",
-    "seguro": "Pagamento seguro via Stripe · Cancele quando quiser"
+    "seguro": "Pagamento seguro via Stripe · Cancele quando quiser",
+    "economia": "Economize {{valor}} por ano",
+    "mesesGratis": "{{n}} meses grátis",
+    "porMes": "{{valor}}/mês",
+    "porAno": "{{valor}}/ano"
   },
   "perfil": {
     "titulo": "Complete seu perfil",
@@ -799,14 +798,14 @@
     "usoMes": "Uso este mês",
     "analises": "Análises GrindLab",
     "aria": "Menu da conta",
-    "upgrade": "Upgrade para Pro · R$ 99",
+    "upgrade": "Upgrade para Pro",
     "docs": "Documentação"
   },
   "quota": {
     "titulo": "Limite mensal próximo",
     "torneios": "Torneios este mês",
     "analises": "Análises IA este mês",
-    "upgrade": "Upgrade para Pro · R$ 99"
+    "upgrade": "Upgrade para Pro"
   },
   "infoAria": "Informação",
   "mesaAria": "Mesa de 9 lugares, posição {{posicao}} em destaque",

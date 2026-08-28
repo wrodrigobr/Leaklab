@@ -25,6 +25,15 @@ except ImportError:
 from database import schema, repositories
 from database.auth import generate_token
 
+# ── Os valores DERIVAM do preço (28/08) ────────────────────────────────────────────────────
+#
+# Este arquivo cravava `9900` e `99000`. Quando o dono baixou o Pro para R$ 39,90, testes que
+# NADA tinham a ver com preço quebraram em bloco -- idempotência de webhook, renovação, MRR. O
+# literal transformava uma decisão comercial em quebra de suíte, e escondia o sinal de verdade.
+def _cents(billing='monthly'):
+    from leaklab.stripe_gateway import plan_amount
+    return int(round(plan_amount('pro', billing) * 100))
+
 _TEST_DB = None
 
 def _setup_db():
@@ -73,7 +82,7 @@ def _mock_checkout(sub_id='sub_TEST001', cs='pi_secret_test'):
 def _mock_pi(pi_id='pi_TEST001', status='succeeded', user_id=None, billing='monthly', amount=None):
     """Espelha o PaymentIntent real do Stripe: inclui metadata (user_id/plan/cycle) + amount.
     Por padrão usa user_id=1 (o 1º registrado no DB de teste) e valor coerente com o ciclo."""
-    cents = amount if amount is not None else (99000 if billing == 'annual' else 9900)
+    cents = amount if amount is not None else _cents(billing)
     return {'id': pi_id, 'status': status, 'amount': cents, 'currency': 'brl',
             'metadata': {'user_id': str(user_id if user_id is not None else 1),
                          'plan_name': 'pro', 'billing_cycle': billing}}
@@ -383,7 +392,7 @@ def test_activate_then_webhook_no_double_payment():
                json={'plan': 'pro', 'payment_intent_id': 'pi_idem', 'subscription_id': 'pi_idem'},
                headers=_auth(token))
     payload = json.dumps({'type': 'payment_intent.succeeded',
-                          'data': {'object': {'id': 'pi_idem', 'amount': 9900,
+                          'data': {'object': {'id': 'pi_idem', 'amount': _cents('monthly'),
                                               'metadata': {'user_id': str(uid), 'plan_name': 'pro'}}}}).encode()
     with patch('api.app.STRIPE_WEBHOOK_SECRET', ''):
         r = c.post('/subscription/webhook', data=payload, content_type='application/json')
@@ -401,7 +410,7 @@ def test_webhook_retry_idempotent():
     token = _register_and_login(c, 'idem2')
     uid = _uid(c, token)
     payload = json.dumps({'type': 'payment_intent.succeeded',
-                          'data': {'object': {'id': 'pi_retry', 'amount': 9900,
+                          'data': {'object': {'id': 'pi_retry', 'amount': _cents('monthly'),
                                               'metadata': {'user_id': str(uid), 'plan_name': 'pro'}}}}).encode()
     with patch('api.app.STRIPE_WEBHOOK_SECRET', ''):
         c.post('/subscription/webhook', data=payload, content_type='application/json')
@@ -450,7 +459,7 @@ def test_webhook_payment_failed_recorded():
     token = _register_and_login(c, 'pfail')
     uid = _uid(c, token)
     payload = json.dumps({'type': 'payment_intent.payment_failed',
-                          'data': {'object': {'id': 'pi_fail', 'amount': 9900,
+                          'data': {'object': {'id': 'pi_fail', 'amount': _cents('monthly'),
                                               'metadata': {'user_id': str(uid), 'plan_name': 'pro'}}}}).encode()
     with patch('api.app.STRIPE_WEBHOOK_SECRET', ''):
         r = c.post('/subscription/webhook', data=payload, content_type='application/json')
@@ -464,7 +473,7 @@ def test_webhook_payment_failed_recorded():
 
 
 def test_admin_mrr_matches_pro_price():
-    """PAY-01: MRR do admin = pro_users * 9900 (preço real), não 4900 (subestimava metade)."""
+    """PAY-01: MRR do admin = pro_users x preço real do Pro, não 4900 (subestimava metade)."""
     c = _make_client()  # configura o DB de teste (patcha get_conn)
     from database import repositories as repo
     for i in range(2):
@@ -472,7 +481,7 @@ def test_admin_mrr_matches_pro_price():
         repo.update_user_plan(uid, 'pro')
     stats = repo.get_admin_dashboard_stats()
     pro = stats['plans'].get('pro', 0)
-    assert pro >= 2 and stats['mrr_cents'] == pro * 9900, stats
+    assert pro >= 2 and stats['mrr_cents'] == pro * _cents('monthly'), stats
     print("OK  test_admin_mrr_matches_pro_price")
 
 
@@ -488,10 +497,18 @@ def test_plans_exposes_annual_billing():
     r = c.get('/subscription/plans')
     pro = [p for p in r.get_json()['plans'] if p['id'] == 'pro'][0]
     b = pro['billing']
-    assert b['monthly']['price'] == 9900
-    assert b['annual']['price'] == 99000          # R$990
-    assert b['annual']['months_free'] == 2
-    assert b['annual']['discount_pct'] == 17      # round(1 - 990/1188)
+    assert b['monthly']['price'] == _cents('monthly')
+    assert b['annual']['price'] == _cents('annual')
+    # DERIVADOS, e não cravados: com R$ 99/R$ 990 eram "2 meses grátis, 17% off"; com
+    # R$ 39,90/R$ 358,80 são 3 meses e 25%. O que o teste garante é a CONTA estar certa, não o
+    # desconto ser um número específico — este último é decisão comercial, não invariante.
+    cheio = _cents('monthly') * 12
+    assert b['annual']['full_price'] == cheio
+    assert b['annual']['months_free'] == round(12 - _cents('annual') / _cents('monthly'))
+    assert b['annual']['discount_pct'] == round((1 - _cents('annual') / cheio) * 100)
+    assert b['annual']['monthly_equiv'] == int(_cents('annual') / 12)
+    # E a economia precisa ser REAL: anual mais caro que 12 mensais passaria nas contas acima.
+    assert _cents('annual') < cheio, 'o "desconto" anual é mais caro que pagar mês a mês'
     print("OK  test_plans_exposes_annual_billing")
 
 
@@ -522,7 +539,7 @@ def test_activate_annual_sets_year_expiry():
     assert 363 <= days <= 365, days
     # valor gravado = R$990
     inv = c.get('/subscription/invoices', headers={'Authorization': f'Bearer {token}'}).get_json()
-    assert inv['invoices'][0]['amount_cents'] == 99000
+    assert inv['invoices'][0]['amount_cents'] == _cents('annual')
     print("OK  test_activate_annual_sets_year_expiry")
 
 
@@ -539,7 +556,7 @@ def test_activate_monthly_sets_30d_expiry():
     days = (exp - datetime.datetime.utcnow()).days
     assert 29 <= days <= 30, days
     inv = c.get('/subscription/invoices', headers={'Authorization': f'Bearer {token}'}).get_json()
-    assert inv['invoices'][0]['amount_cents'] == 9900
+    assert inv['invoices'][0]['amount_cents'] == _cents('monthly')
     print("OK  test_activate_monthly_sets_30d_expiry")
 
 
@@ -614,7 +631,7 @@ def test_activate_subscription_active_sets_pro():
     assert row['plan_source'] == 'stripe_sub'
     # 1ª fatura registrada com o invoice id
     inv = _invoices(c, token) if False else c.get('/subscription/invoices', headers=_auth(token)).get_json()['invoices']
-    assert any(p['gateway_id'] == 'in_R1' and p['amount_cents'] == 99000 for p in inv), inv
+    assert any(p['gateway_id'] == 'in_R1' and p['amount_cents'] == _cents('annual') for p in inv), inv
     print("OK  test_activate_subscription_active_sets_pro")
 
 
@@ -656,7 +673,7 @@ def test_webhook_invoice_paid_renews():
     repo.link_subscription_id(uid, 'sub_REN')
     pe = int(time.time()) + 30 * 86400
     payload = json.dumps({'type': 'invoice.paid', 'data': {'object': {
-        'id': 'in_REN', 'subscription': 'sub_REN', 'amount_paid': 9900,
+        'id': 'in_REN', 'subscription': 'sub_REN', 'amount_paid': _cents('monthly'),
         'lines': {'data': [{'period': {'end': pe}}]}}}}).encode()
     with patch('api.app.STRIPE_WEBHOOK_SECRET', ''):
         r = c.post('/subscription/webhook', data=payload, content_type='application/json')

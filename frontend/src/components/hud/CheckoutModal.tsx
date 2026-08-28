@@ -11,10 +11,44 @@ import { cn } from "@/lib/utils";
 const STRIPE_KEY = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY as string;
 
 // Espelha leaklab.stripe_gateway: mensal R$99 / anual R$990 (2 meses grátis).
+/**
+ * ── O preço vem da API, e a economia é DERIVADA (28/08) ────────────────────────────────────
+ *
+ * Até hoje este arquivo tinha o preço em `checkout.preco.mensal` ("R$ 99/mês"), o do anual, o
+ * texto "2 meses grátis · R$ 82,50/mês" e um `-17%` cravado no JSX. Somados ao `PLAN_AMOUNTS` do
+ * backend, ao `"R$ 99"` da landing e ao preço real do Stripe, eram **cinco fontes para o mesmo
+ * fato** -- no campo onde divergir custa mais caro: o site anuncia um valor e o cartão é debitado
+ * de outro.
+ *
+ * Agora `/subscription/plans` (público, sem login) entrega `price`, `monthly_equiv`,
+ * `full_price`, `discount_pct` e `months_free`, todos derivados de uma constante só, que por sua
+ * vez é conferida contra o Stripe por `scripts/conferir_precos_no_stripe.py` no portão de deploy.
+ *
+ * O i18n mantém os RÓTULOS ("Economize {{valor}} por ano") e perdeu os NÚMEROS.
+ */
 const BILLING = {
-  monthly: { labelKey: "checkout.ciclo.mensal", priceKey: "checkout.preco.mensal", badgeKey: "" },
-  annual:  { labelKey: "checkout.ciclo.anual",  priceKey: "checkout.preco.anual",  badgeKey: "checkout.preco.badgeAnual" },
+  monthly: { labelKey: "checkout.ciclo.mensal" },
+  annual:  { labelKey: "checkout.ciclo.anual" },
 } as const;
+
+interface PlanoDaApi {
+  price?: number;                 // centavos, ciclo mensal
+  billing?: {
+    monthly?: { price: number };
+    annual?: {
+      price: number; monthly_equiv: number; full_price: number;
+      discount_pct: number; months_free: number;
+    };
+  };
+}
+
+/** Centavos -> "R$ 39,90". Uma função só: dois formatadores divergiriam no centavo. */
+function brl(centavos: number | undefined | null): string {
+  if (centavos == null) return "";
+  return (centavos / 100).toLocaleString("pt-BR", {
+    style: "currency", currency: "BRL", minimumFractionDigits: 2,
+  });
+}
 type BillingCycle = keyof typeof BILLING;
 
 const PLAN_INFO = {
@@ -36,7 +70,12 @@ export function CheckoutModal({ plan, onClose, onSuccess }: Props) {
   const { refreshUser } = useAuth();
   const info = PLAN_INFO[plan];
 
+
   const [billing,        setBilling]        = useState<BillingCycle>("annual");
+  // Os preços vêm do backend, que os deriva de UMA constante conferida contra o Stripe. Enquanto
+  // não chegam, os valores ficam VAZIOS em vez de mostrar um número de reserva: preço provisório
+  // na tela é a forma mais cara possível de "quase certo".
+  const [planos, setPlanos] = useState<PlanoDaApi | null>(null);
   const [clientSecret,   setClientSecret]   = useState<string | null>(null);
   const [subscriptionId, setSubscriptionId] = useState<string | null>(null);
   const [stripeInstance, setStripeInstance] = useState<Stripe | null>(null);
@@ -49,6 +88,23 @@ export function CheckoutModal({ plan, onClose, onSuccess }: Props) {
 
   // Phase 1: load Stripe.js + create subscription intent in parallel.
   // Re-runs quando o ciclo (mensal/anual) muda → novo PaymentIntent com o valor certo.
+  // Busca os planos ao montar. Falha em silencio de proposito: sem preco a tela mostra o rotulo
+  // sem numero, que e honesto -- inventar um valor de reserva seria anunciar o que talvez nao se
+  // cobre, que e exatamente o defeito que este dia inteiro perseguiu.
+  useEffect(() => {
+    let vivo = true;
+    subscription.plans()
+      .then((r) => {
+        if (!vivo) return;
+        setPlanos((r.plans || []).find((p) => p.id === "pro") ?? null);
+      })
+      .catch(() => { /* sem preco na tela, e nao um preco errado */ });
+    return () => { vivo = false; };
+  }, []);
+
+  const mensal = planos?.billing?.monthly;
+  const anual  = planos?.billing?.annual;
+
   useEffect(() => {
     let active = true;
     setClientSecret(null);
@@ -179,13 +235,27 @@ export function CheckoutModal({ plan, onClose, onSuccess }: Props) {
                 <span className={cn("font-mono text-[11px] font-bold uppercase tracking-wider",
                   billing === c ? "text-primary" : "text-muted-foreground")}>{t(BILLING[c].labelKey)}</span>
                 <span className={cn("font-mono text-xs font-bold",
-                  billing === c ? "text-foreground" : "text-muted-foreground")}>{t(BILLING[c].priceKey)}</span>
-                {BILLING[c].badgeKey && (
-                  <span className="font-mono text-[9px] text-primary">{t(BILLING[c].badgeKey)}</span>
+                  billing === c ? "text-foreground" : "text-muted-foreground")}>
+                  {c === "annual"
+                    ? t("checkout.porMes", { valor: brl(anual?.monthly_equiv) })
+                    : t("checkout.porMes", { valor: brl(mensal?.price) })}
+                </span>
+                {/* A ECONOMIA, que era o pedido: em reais e em meses, os dois derivados. Em reais
+                    porque "25%" não diz quanto fica no bolso, e em meses porque é a unidade em
+                    que o jogador pensa a assinatura. */}
+                {c === "annual" && anual && (
+                  <span className="font-mono text-[9px] text-primary">
+                    {t("checkout.economia", { valor: brl(anual.full_price - anual.price) })}
+                    {" · "}
+                    {t("checkout.mesesGratis", { n: anual.months_free })}
+                  </span>
                 )}
-                {c === "annual" && (
+                {/* O desconto sai da conta, não de um literal. Estava `-17%` cravado aqui, e
+                    com os valores de 28/08 (R$39,90 x 12 = R$478,80 contra R$358,80) o número
+                    certo é 25%. Um literal desses envelhece calado no dia em que o preço muda. */}
+                {c === "annual" && anual?.discount_pct != null && (
                   <span className="absolute -top-px right-1 rounded-b bg-primary px-1 py-0.5 font-mono text-[8px] font-bold uppercase text-primary-foreground">
-                    -17%
+                    -{anual.discount_pct}%
                   </span>
                 )}
               </button>
@@ -200,7 +270,11 @@ export function CheckoutModal({ plan, onClose, onSuccess }: Props) {
               {plan === "pro" && <Zap className="size-3.5" />}
               {info.label} · {t(BILLING[billing].labelKey)}
             </span>
-            <span className="font-mono text-sm font-bold">{t(BILLING[billing].priceKey)}</span>
+            <span className="font-mono text-sm font-bold">
+              {billing === "annual"
+                ? t("checkout.porAno", { valor: brl(anual?.price) })
+                : t("checkout.porMes", { valor: brl(mensal?.price) })}
+            </span>
           </div>
           <ul className="space-y-0.5">
             {(t(info.featuresKey, { returnObjects: true }) as string[]).map((f) => (
@@ -259,7 +333,12 @@ export function CheckoutModal({ plan, onClose, onSuccess }: Props) {
                   className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-md bg-primary font-mono text-xs font-bold uppercase tracking-widest-2 text-primary-foreground transition-all hover:opacity-90 disabled:opacity-50"
                 >
                   {submitting && <Loader2 className="size-4 animate-spin" />}
-                  {submitting ? t("checkout.processando") : t("checkout.assinar", { plano: info.label, preco: t(BILLING[billing].priceKey) })}
+                  {submitting ? t("checkout.processando") : t("checkout.assinar", {
+                    plano: info.label,
+                    preco: billing === "annual"
+                      ? t("checkout.porAno", { valor: brl(anual?.price) })
+                      : t("checkout.porMes", { valor: brl(mensal?.price) }),
+                  })}
                 </button>
                 <p className="text-center font-mono text-[9px] text-muted-foreground">
                   {t("checkout.seguro")}

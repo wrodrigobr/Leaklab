@@ -49,7 +49,7 @@
     "grinder": "Grinder",
     "ctaFree": "Começar grátis",
     "ctaSubscribe": "Assinar {{name}}",
-    "freeF1": "2 torneios por mês",
+    "freeF1": "30 torneios por mês",
     "freeF2": "15 explicações da IA por mês",
     "freeF3": "Análise GTO, leaks e estatísticas",
     "freeF4": "5 solves GTO sob demanda/mês",
@@ -60,8 +60,9 @@
     "proF5": "Marketplace de coaches",
     "proF6": "Suporte prioritário",
     "proF7": "Insights avançados de IA (Strategic Twin, Cognitive, Causal Map)",
-    "freeF5": "Treino de fundamentos preflop: RFI, vs RFI e vs 3-bet",
-    "proF8": "Treino mirado nos seus leaks: Ghost Table, mão completa e repetição espaçada"
+    "freeF5": "Treino completo de fundamentos e mão completa, sem limite diário",
+    "proF8": "Treino mirado nos seus leaks e Ghost Table com repetição espaçada",
+    "gratis": "Grátis"
   },
   "faq": {
     "eyebrow": "Dúvidas",
@@ -127,8 +128,8 @@
       "rotulo": "grindlabpoker.com/training",
       "titulo": "Treino que abre no seu erro",
       "texto": "O plano de estudo aponta onde você mais perde fichas e o treino abre já naquele spot. Repetição espaçada do que você errou, com a range certa e o custo do erro na mesma tela.",
-      "b3a": "Ghost Table com repetição espaçada (Pro)",
-      "b3b": "Mão completa heads-up, do preflop ao river (Pro)"
+      "b3a": "Ghost Table: revisão espaçada das suas mãos (Pro)",
+      "b3b": "Mão completa heads-up, do preflop ao river"
     },
     "b4": {
       "rotulo": "grindlabpoker.com/evolucao",

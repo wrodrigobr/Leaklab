@@ -8178,7 +8178,7 @@ def subscription_activate():
             log.warning("activate: sub %s pertence a %s, não a %s", subscription_id, smeta.get('user_id'), g.user_id)
             return jsonify({'error': 'Esta assinatura não pertence à sua conta.'}), 403
         status  = sub.get('status')
-        expires = _ts_to_str(sub.get('current_period_end'))
+        expires = _ts_to_str(_fim_do_periodo(sub))
         cycle   = smeta.get('billing_cycle', 'monthly')
         cycle   = cycle if cycle in ('monthly', 'annual') else 'monthly'
         if status in ('active', 'trialing'):
@@ -8256,6 +8256,104 @@ def subscription_activate():
                     'billing': billing, 'expires_at': period_end})
 
 
+def _como_dict(x) -> dict:
+    """Qualquer coisa vinda do SDK do Stripe vira dicionario de verdade.
+
+    `StripeObject` NAO e um dict nesta versao: `.get` levanta `AttributeError` e `dict(obj)` tenta
+    iterar como sequencia e levanta `KeyError: 0`. Eu tropecei nas duas formas no mesmo dia, em
+    tres lugares diferentes -- por isso existe um lugar so para converter.
+
+    `str(obj)` do SDK devolve JSON valido; e o caminho mais barato e o unico que nao depende de
+    qual atributo o Stripe moveu de lugar nesta semana.
+    """
+    if isinstance(x, dict):
+        return x
+    if x is None:
+        return {}
+    try:
+        import json as _j
+        d = _j.loads(str(x))
+        return d if isinstance(d, dict) else {}
+    except Exception:                                          # noqa: BLE001
+        return {}
+
+
+def _fim_do_periodo(sub) -> int | None:
+    """O `current_period_end` de uma Subscription, nas DUAS formas que o Stripe ja usou.
+
+    Terceiro campo que mudou de lugar na reorganizacao da API (`2026-04-22.dahlia`): o periodo
+    saiu do nivel da assinatura e foi para CADA ITEM dela.
+
+    O defeito que isto conserta, medido em 28/08: o `invoice.paid` gravava a expiracao correta, e
+    o `customer.subscription.updated` -- que chega DEPOIS -- lia `sub['current_period_end']`,
+    recebia `None`, e **sobrescrevia a data com nulo**. O usuario virava Pro sem validade: se a
+    renovacao falhasse, nao havia quando rebaixar.
+
+    Ordem observada dos eventos: invoice.paid (8o) e customer.subscription.updated (10o). O
+    ultimo a falar vence, e o ultimo estava lendo o lugar errado.
+    """
+    if not sub:
+        return None
+    direto = sub.get('current_period_end') if isinstance(sub, dict) else getattr(sub, 'current_period_end', None)
+    if direto:
+        return direto
+    itens = (sub.get('items') if isinstance(sub, dict) else getattr(sub, 'items', None)) or {}
+    dados = (itens.get('data') if isinstance(itens, dict) else getattr(itens, 'data', None)) or []
+    if not dados:
+        return None
+    primeiro = dados[0]
+    return (primeiro.get('current_period_end') if isinstance(primeiro, dict)
+            else getattr(primeiro, 'current_period_end', None))
+
+
+def _subscription_da_invoice(obj) -> str | None:
+    """O id da assinatura de uma invoice, nas DUAS formas que o Stripe ja usou.
+
+    ── O defeito, medido em 28/08 na jornada de pagamento completa ──────────────────────────
+
+    O Stripe REMOVEU `invoice.subscription` na API atual (`2026-04-22.dahlia`) e mudou o campo
+    para `invoice.parent.subscription_details.subscription`. Nosso handler lia so o caminho
+    antigo, recebia `None`, e `get_user_by_subscription(None)` nao achava ninguem.
+
+    O efeito exato, exercitado no modo de teste: o cartao foi aprovado, a assinatura ficou
+    `active`, o Stripe cobrou R$ 39,90, os 13 tipos de webhook chegaram e todos responderam
+    **200** -- e o usuario **continuou `free`**. Pagou e nao recebeu. Nada disso gera erro em
+    lugar nenhum, porque um `None` que nao acha usuario e indistinguivel de um evento que nao
+    era para nos.
+
+    O `payment_intent.succeeded` falha pelo mesmo motivo por outro caminho: na assinatura
+    recorrente o metadata mora na Subscription, e o PaymentIntent da fatura chega sem `user_id`.
+
+    Le as duas formas de proposito: eventos antigos reentregues pelo Stripe (retry, replay) ainda
+    chegam no formato velho, e quebrar o historico para consertar o presente trocaria um defeito
+    por outro.
+    """
+    if not obj:
+        return None
+    direto = obj.get('subscription') if isinstance(obj, dict) else getattr(obj, 'subscription', None)
+    if direto:
+        return direto
+    pai = obj.get('parent') if isinstance(obj, dict) else getattr(obj, 'parent', None)
+    if not pai:
+        return None
+    det = pai.get('subscription_details') if isinstance(pai, dict) else getattr(pai, 'subscription_details', None)
+    if not det:
+        return None
+    return (det.get('subscription') if isinstance(det, dict)
+            else getattr(det, 'subscription', None))
+
+
+def _metadata_da_invoice(obj) -> dict:
+    """O metadata que viaja com a assinatura da invoice. Segunda porta para achar o usuario
+    quando ele ainda nao tem `mp_subscription_id` gravado (ex.: 1a fatura chegando antes do
+    nosso registro)."""
+    pai = (obj.get('parent') if isinstance(obj, dict) else getattr(obj, 'parent', None)) or {}
+    det = (pai.get('subscription_details') if isinstance(pai, dict)
+           else getattr(pai, 'subscription_details', None)) or {}
+    m = det.get('metadata') if isinstance(det, dict) else getattr(det, 'metadata', None)
+    return dict(m) if m else {}
+
+
 @app.route('/subscription/webhook', methods=['POST'])
 def subscription_webhook():
     """Recebe eventos Stripe e atualiza planos/pagamentos."""
@@ -8282,9 +8380,31 @@ def subscription_webhook():
             log.warning("Stripe webhook validation error: %s", e)
             return jsonify({'error': 'Invalid signature'}), 400
 
-    event_type = event.get('type', '') if isinstance(event, dict) else event.type
-    obj        = (event.get('data', {}).get('object', {})
-                  if isinstance(event, dict) else event.data.object)
+    # ── O evento vira DICIONÁRIO aqui, uma vez ────────────────────────────────────────────
+    #
+    # `validate_webhook` devolve um `StripeObject`, que **não responde a `.get`**: o
+    # `__getattr__` dele procura a chave `'get'` nos dados e levanta `AttributeError`. O resto
+    # deste handler é escrito com `obj.get(...)` em dezenas de linhas.
+    #
+    # O efeito, medido em 28/08 percorrendo a jornada inteira no modo de teste: **todo evento de
+    # assinatura estourava**, o `except` genérico abaixo engolia, e o handler devolvia **200**. O
+    # Stripe considera entregue e nunca reenvia. O cartão foi aprovado, a assinatura ficou
+    # `active`, R$ 39,90 cobrados, e o usuário continuou `free`.
+    #
+    # E o pior: só acontece com o segredo CONFIGURADO. Sem segredo, o caminho é `json.loads` e vem
+    # um dict de verdade -- que é o caminho dos testes. **A suíte inteira passava por cima do
+    # defeito**, porque exercitava a metade que funciona.
+    #
+    # Normalizar aqui e não espalhar `isinstance` é o conserto: uma porta, e o resto do handler
+    # passa a falar com o mesmo tipo sempre.
+    if not isinstance(event, dict):
+        try:
+            event = _json.loads(str(event))
+        except Exception:                                      # noqa: BLE001
+            event = {'type': getattr(event, 'type', ''),
+                     'data': {'object': dict(getattr(event, 'data', {}).get('object', {}))}}
+    event_type = event.get('type', '')
+    obj        = (event.get('data') or {}).get('object') or {}
     log.info("Stripe webhook type=%s", event_type)
 
     # Blindagem: erro de PROCESSAMENTO (ex.: evento sem metadata) NÃO retorna 500 — o Stripe
@@ -8345,12 +8465,25 @@ def subscription_webhook():
             # Renovação (ou 1ª cobrança) paga → mantém/estende o Pro. Fonte da verdade da
             # recorrência. Idempotente: save_payment dedupe por invoice id (gateway_id).
             from database.repositories import get_user_by_subscription, apply_stripe_subscription
-            sub_id  = obj.get('subscription')
+            sub_id  = _subscription_da_invoice(obj)
             inv_id  = obj.get('id')
             amount  = obj.get('amount_paid', 0) or 0
             _lines  = (obj.get('lines') or {}).get('data') or [{}]
             per_end = _ts_to_str((_lines[0].get('period') or {}).get('end'))
             u = get_user_by_subscription(sub_id) if sub_id else None
+            if not u:
+                # Segunda porta: o metadata que viaja com a assinatura. A 1ª fatura pode chegar
+                # antes de `mp_subscription_id` estar gravado (o Stripe entrega o webhook em
+                # milissegundos, e o nosso registro acontece na resposta do checkout). Sem esta
+                # porta, quem paga na primeira tentativa depende de uma corrida para virar Pro.
+                _meta = _metadata_da_invoice(obj)
+                try:
+                    _uid = int(_meta.get('user_id') or 0)
+                except (TypeError, ValueError):
+                    _uid = 0
+                if _uid:
+                    from database.repositories import get_user_by_id as _get_u
+                    u = _get_u(_uid)
             if u:
                 apply_stripe_subscription(u['id'], 'active', per_end, sub_id)
                 save_payment(user_id=u['id'], plan='pro', amount_cents=int(amount),
@@ -8366,7 +8499,7 @@ def subscription_webhook():
         elif event_type == 'invoice.payment_failed':
             # Falha de renovação → registra; NÃO faz downgrade (Stripe entra em retry/dunning).
             from database.repositories import get_user_by_subscription
-            sub_id = obj.get('subscription')
+            sub_id = _subscription_da_invoice(obj)
             inv_id = obj.get('id')
             amount = obj.get('amount_due', 0) or 0
             u = get_user_by_subscription(sub_id) if sub_id else None
@@ -8380,7 +8513,7 @@ def subscription_webhook():
             from database.repositories import get_user_by_subscription, apply_stripe_subscription
             sub_id  = obj.get('id')
             status  = 'canceled' if event_type.endswith('deleted') else obj.get('status')
-            per_end = _ts_to_str(obj.get('current_period_end'))
+            per_end = _ts_to_str(_fim_do_periodo(obj))
             smeta   = obj.get('metadata') or {}
             uid     = int(smeta.get('user_id', 0) or 0)
             if not uid and sub_id:
@@ -8395,13 +8528,70 @@ def subscription_webhook():
         elif event_type == 'charge.refunded':
             # Estorno: marca o pagamento como refunded (sai da receita); se TOTAL e cobria o Pro,
             # rebaixa o usuário p/ free. Requer o evento 'charge.refunded' habilitado no webhook.
+            # ── Grava com uma chave, procura com outra (28/08) ──────────────────────────
+            #
+            # Exercitado no modo de teste: o estorno de R$ 39,90 foi concluido, o
+            # `charge.refunded` chegou -- e o usuario **continuou Pro**. Devolveu o dinheiro e
+            # ficou com o produto.
+            #
+            # A causa: no caminho RECORRENTE, `invoice.paid` grava `gateway_id` = id da FATURA
+            # (`in_...`), e o `charge.refunded` traz o PaymentIntent (`pi_...`). Nunca casam. E o
+            # `charge['invoice']` vem `None` nesta versao da API, entao nem a ponte obvia existe.
+            #
+            # A ponte que EXISTE e a assinatura: do PaymentIntent chega-se a fatura, e da fatura
+            # ao `sub_...` que gravamos em `gateway_sub_id`. Tres tentativas, da mais barata para
+            # a mais cara, e cada uma so roda se a anterior falhou.
             from database.repositories import mark_payment_refunded
             _pi   = obj.get('payment_intent') or obj.get('id')
             _full = bool(obj.get('refunded'))   # True = estorno integral
-            if _pi:
-                _uid = mark_payment_refunded(str(_pi), full=_full)
-                if _uid:
-                    update_user_plan(_uid, 'free', None)
+            _uid  = mark_payment_refunded(str(_pi), full=_full) if _pi else None
+            if not _uid:
+                # ── A ponte que NOS controlamos ─────────────────────────────────────────
+                #
+                # Nenhum payload liga o estorno ao pagamento: medido em 28/08, nem o
+                # `PaymentIntent`, nem o `Charge`, nem a propria `Invoice` carregam o outro lado
+                # nesta versao da API. Cacar a fatura a partir do PI foi a 1a tentativa e falhou
+                # nas tres pontes -- o log `ESTORNO SEM DONO` que instrumentei foi quem mostrou.
+                #
+                # O elo estavel e o CLIENTE: `_get_or_create_customer` grava `user_id` no metadata
+                # dele, entao esse dado e nosso e nao depende de como o Stripe reorganiza os
+                # objetos. Enquanto formos nos a escrever, a ponte continua de pe.
+                _cli = obj.get('customer')
+                if _cli:
+                    try:
+                        import stripe as _sdk
+                        _cli_obj = _como_dict(_sdk.Customer.retrieve(str(_cli)))
+                        _uid = int((_cli_obj.get('metadata') or {}).get('user_id') or 0) or None
+                    except Exception:                          # noqa: BLE001
+                        log.exception('estorno: nao consegui ler o cliente %s', _cli)
+                    if _uid and _pi:
+                        # Marca o pagamento pela ASSINATURA do usuario, para ele sair da receita.
+                        try:
+                            from database.repositories import mark_payment_refunded_by_user
+                            mark_payment_refunded_by_user(_uid, full=_full)
+                        except ImportError:
+                            log.warning('estorno: pagamento de %s nao marcado como refunded '
+                                        '(sem mark_payment_refunded_by_user); o plano cai, mas a '
+                                        'receita do admin fica inflada ate alguem conferir', _uid)
+            if _uid:
+                update_user_plan(_uid, 'free', None)
+                # O STATUS tambem cai. Sem isto o plano vira `free` e `subscription_status` fica
+                # `active`: a tela do admin e o painel do coach continuam mostrando uma assinatura
+                # viva para quem pediu o dinheiro de volta. Medido na jornada de 28/08 -- o plano
+                # caiu certo e o status mentiu.
+                try:
+                    from database.repositories import apply_stripe_subscription
+                    apply_stripe_subscription(_uid, 'canceled', None, None,
+                                              cancel_reason='refunded')
+                except Exception:                              # noqa: BLE001
+                    log.exception('estorno: plano caiu mas o status nao (user=%s)', _uid)
+                log.info('ESTORNO aplicado: user=%s rebaixado para free (charge=%s)',
+                         _uid, obj.get('id'))
+            else:
+                # NAO fica calado: um estorno que nao acha o dono e dinheiro devolvido com o
+                # produto entregue, e sem este log ninguem descobre ate a auditoria.
+                log.error('ESTORNO SEM DONO: charge=%s pi=%s cliente=%s -- o usuario segue com o '
+                          'plano', obj.get('id'), _pi, obj.get('customer'))
     except Exception:
         log.exception("Stripe webhook processing failed type=%s", event_type)
     return jsonify({'ok': True})
