@@ -1184,6 +1184,47 @@ def get_leak_summary(user_id: int, days: int = 90, last_n: int | None = None) ->
     finally:
         conn.close()
 
+# ── A seta de tendencia do leak ─────────────────────────────────────────────────────────────
+#
+# O jogador ve esta seta no painel de leaks: verde para melhorando, vermelha para piorando. Ela
+# compara a severidade media dos ultimos 30 dias com a dos 30 anteriores.
+#
+# ── Os dois defeitos que estavam aqui (28/08) ───────────────────────────────────────────────
+#
+# **1. Sem porta de amostra.** As consultas traziam so `AVG(score)`, sem `COUNT(*)`: nao havia nem
+# como perguntar quantas maos sustentavam a seta. Duas decisoes recentes contra quarenta antigas
+# viravam "melhorando" com seta verde, e o jogador nao tinha como saber. Isso contradiz o que o
+# resto do produto faz -- a celula sem amostra fica cinza, o card nunca vira zero -- e e pior aqui,
+# porque a seta nao mostra ausencia, ela AFIRMA uma direcao.
+#
+# **2. Duas copias.** `get_leak_roi_impact` e `get_gto_leak_ranking` calculavam a mesma regra em
+# linhas diferentes, com os mesmos limiares copiados. Regra 5 do CLAUDE.md: regra em N lugares vira
+# funcao, com varredura que confere os N+1.
+#
+# O piso e por LADO, e nao no total: 12 recentes contra 2 anteriores tem a mesma fragilidade que o
+# inverso, e um piso sobre a soma deixaria passar.
+
+TENDENCIA_MIN_AMOSTRA = 8      # decisoes de CADA lado para a seta poder afirmar direcao
+
+
+def tendencia_do_spot(s_recent, n_recent, s_prev, n_prev) -> str:
+    """A tendencia de um spot. Fonte unica -- nao recrie os limiares em SQL nem na tela.
+
+    - `new`          : falta um dos lados (o spot nao existia numa das janelas)
+    - `amostra_curta`: os dois lados existem, mas um deles nao sustenta a afirmacao
+    - `improving` / `regressing` / `stagnant`
+    """
+    if s_recent is None or s_prev is None:
+        return 'new'
+    if (n_recent or 0) < TENDENCIA_MIN_AMOSTRA or (n_prev or 0) < TENDENCIA_MIN_AMOSTRA:
+        return 'amostra_curta'
+    if s_recent < s_prev * 0.85:
+        return 'improving'
+    if s_recent > s_prev * 1.15:
+        return 'regressing'
+    return 'stagnant'
+
+
 def get_leak_roi_impact(user_id: int, days: int = 90, last_n: int | None = None) -> list:
     """Leaks enriquecidos com ROI estimado, priority_score e trend de progressão."""
     from datetime import datetime, timedelta
@@ -1213,24 +1254,29 @@ def get_leak_roi_impact(user_id: int, days: int = 90, last_n: int | None = None)
 
         # Trend comparison uses fixed 30-day windows (independent of last_n)
         recent_rows = conn.execute(_adapt("""
-            SELECT d.street || '/' || d.best_action AS spot, AVG(d.score) AS avg_score
+            SELECT d.street || '/' || d.best_action AS spot, AVG(d.score) AS avg_score,
+                   COUNT(*) AS n
             FROM decisions d
             JOIN tournaments t ON t.id = d.tournament_id
             WHERE t.user_id = ? AND t.imported_at >= ?
               AND d.label IN ('small_mistake','clear_mistake')
             GROUP BY spot
         """), (user_id, recent_since)).fetchall()
-        recent_map = {r['spot']: float(r['avg_score'] or 0) for r in recent_rows}
+        # (media, n): sem o n nao ha como pedir amostra, e a seta afirmava direcao com duas maos.
+        recent_map = {r['spot']: (float(r['avg_score'] or 0), int(r['n'] or 0))
+                      for r in recent_rows}
 
         prev_rows = conn.execute(_adapt("""
-            SELECT d.street || '/' || d.best_action AS spot, AVG(d.score) AS avg_score
+            SELECT d.street || '/' || d.best_action AS spot, AVG(d.score) AS avg_score,
+                   COUNT(*) AS n
             FROM decisions d
             JOIN tournaments t ON t.id = d.tournament_id
             WHERE t.user_id = ? AND t.imported_at >= ? AND t.imported_at < ?
               AND d.label IN ('small_mistake','clear_mistake')
             GROUP BY spot
         """), (user_id, prev_since, recent_since)).fetchall()
-        prev_map = {r['spot']: float(r['avg_score'] or 0) for r in prev_rows}
+        prev_map = {r['spot']: (float(r['avg_score'] or 0), int(r['n'] or 0))
+                    for r in prev_rows}
 
         # Drill stats per spot (last 30 days)
         drill_rows = conn.execute(_adapt("""
@@ -1257,17 +1303,11 @@ def get_leak_roi_impact(user_id: int, days: int = 90, last_n: int | None = None)
             n_monthly = r['n'] * (30.0 / days)
             r['ev_loss_monthly'] = round(n_monthly * float(r['avg_score'] or 0) * float(r['avg_buy_in'] or 0) * 0.10, 2)
             r['priority_rank'] = rank
-            # Trend from tournament decisions
-            s_recent = recent_map.get(r['spot'])
-            s_prev   = prev_map.get(r['spot'])
-            if s_recent is None or s_prev is None:
-                r['trend'] = 'new'
-            elif s_recent < s_prev * 0.85:
-                r['trend'] = 'improving'
-            elif s_recent > s_prev * 1.15:
-                r['trend'] = 'regressing'
-            else:
-                r['trend'] = 'stagnant'
+            # Tendencia: fonte unica em `tendencia_do_spot`.
+            rec = recent_map.get(r['spot']) or (None, 0)
+            pre = prev_map.get(r['spot']) or (None, 0)
+            r['trend'] = tendencia_do_spot(rec[0], rec[1], pre[0], pre[1])
+            r['trend_n'] = {'recente': rec[1], 'anterior': pre[1]}
             # Ghost Table drill activity for this spot
             d = drill_map.get(r['spot'], {})
             r['drill_count']    = d.get('count', 0)
@@ -1576,7 +1616,8 @@ def get_gto_leak_ranking(user_id: int, days: int = 90, last_n: int | None = None
                            WHEN d.gto_label = 'gto_critical'        THEN 0.45
                            WHEN d.gto_label = 'gto_minor_deviation' THEN 0.15
                            ELSE 0.0
-                       END) AS avg_score
+                       END) AS avg_score,
+                       COUNT(*) AS n
                 FROM decisions d
                 JOIN tournaments t ON t.id = d.tournament_id
                 WHERE t.user_id = ? AND t.imported_at >= ?
@@ -1587,7 +1628,8 @@ def get_gto_leak_ranking(user_id: int, days: int = 90, last_n: int | None = None
                 q += " AND t.imported_at < ?"
                 params.append(until_val)
             q += " GROUP BY spot"
-            return {r['spot']: float(r['avg_score'] or 0) for r in conn.execute(_adapt(q), params).fetchall()}
+            return {r['spot']: (float(r['avg_score'] or 0), int(r['n'] or 0))
+                    for r in conn.execute(_adapt(q), params).fetchall()}
 
         recent_map = _proxy_rows(recent_since)
         prev_map   = _proxy_rows(prev_since, recent_since)
@@ -1615,16 +1657,10 @@ def get_gto_leak_ranking(user_id: int, days: int = 90, last_n: int | None = None
             n_monthly = r['n'] * (30.0 / days)
             r['ev_loss_monthly'] = round(n_monthly * float(r['avg_score'] or 0) * float(r['avg_buy_in'] or 0) * 0.10, 2)
             r['priority_rank']   = rank
-            s_recent = recent_map.get(r['spot'])
-            s_prev   = prev_map.get(r['spot'])
-            if s_recent is None or s_prev is None:
-                r['trend'] = 'new'
-            elif s_recent < s_prev * 0.85:
-                r['trend'] = 'improving'
-            elif s_recent > s_prev * 1.15:
-                r['trend'] = 'regressing'
-            else:
-                r['trend'] = 'stagnant'
+            rec = recent_map.get(r['spot']) or (None, 0)
+            pre = prev_map.get(r['spot']) or (None, 0)
+            r['trend'] = tendencia_do_spot(rec[0], rec[1], pre[0], pre[1])
+            r['trend_n'] = {'recente': rec[1], 'anterior': pre[1]}
             d = drill_map.get(r['spot'], {})
             r['drill_count']    = d.get('count', 0)
             r['drill_accuracy'] = d.get('accuracy')

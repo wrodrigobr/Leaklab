@@ -155,3 +155,109 @@ def equity_river_vs_continuacao(hero, board):
         return round((w + 0.5 * t) / n, 4) if n else None
     except Exception:                                          # noqa: BLE001
         return None
+
+
+# ── Flop e turn: a irmã da conta do river, onde ainda falta carta ───────────────────────────
+#
+# O river virou conta exata em 24/08 porque lá o board está completo. No flop e no turn ainda
+# falta carta, e é por isso que o estimador por classe sobreviveu ali. Mas o defeito é o mesmo: a
+# tabela é calibrada contra MÃO ALEATÓRIA, e o vilão que segue apostando não tem mão aleatória.
+#
+# O que muda em relação ao river:
+#
+#   • **`com_draws=True`.** No river não há carta por vir, então projeto não existe e continuar é
+#     ter par próprio ou melhor. No flop e no turn um projeto de flush é uma mão que continua de
+#     verdade, e excluí-la estreitaria a range do vilão para algo que ele não joga.
+#
+#   • **Turn enumera, flop amostra.** No turn falta uma carta: 44 saídas × os combos que
+#     continuam é conta fechada. No flop faltam duas: C(45,2) = 990 saídas pelos mesmos combos
+#     passa de um milhão de avaliações por decisão, e o acervo tem milhares. Então o flop é Monte
+#     Carlo, com semente ESTÁVEL — `hash()` de string é salgado por processo e já fez a mesma
+#     decisão sair `small_mistake` num boot e `standard` no outro.
+#
+# `None` sempre que não der para afirmar: sem eval7, sem board do tamanho certo, ou com a range de
+# continuação vazia. Número ausente é honesto; número inventado com cara de medido não é.
+
+_AMOSTRAS_FLOP = 8000      # PARES (saída, mão do vilão) sorteados no flop. Ver o teste,
+                           # que mede o erro contra a conta densa em vez de confiar na fórmula.
+
+
+def equity_flop_turn_vs_continuacao(hero, board, amostras: int = _AMOSTRAS_FLOP):
+    """Equity do hero no flop/turn contra a range que CONTINUA neste board. `None` se não der."""
+    try:
+        import eval7
+    except Exception:                                          # noqa: BLE001
+        return None
+    hero = [str(c) for c in (hero or []) if c and len(str(c)) >= 2][:2]
+    board = [str(c) for c in (board or []) if c and len(str(c)) >= 2][:5]
+    if len(hero) != 2 or len(board) not in (3, 4):
+        return None
+
+    try:
+        from leaklab.range_de_continuacao import categoria_do_board, continua
+        from leaklab.multiway_advisor import semente_estavel
+
+        mortas = set(hero) | set(board)
+        livres = [c for c in _BARALHO if c not in mortas]
+        board_cards = [eval7.Card(c) for c in board]
+        cat_board = categoria_do_board(board_cards)
+
+        # A range do vilão é decidida no board ATUAL, não no board completo: é a informação que
+        # ele tem quando decide continuar. Avaliar a continuação já com a saída na mesa seria dar
+        # ao vilão uma carta que ele ainda não viu.
+        vilao = [v for v in combinations(livres, 2)
+                 if continua((eval7.Card(v[0]), eval7.Card(v[1])), board_cards, cat_board,
+                             com_draws=True)]
+        if not vilao:
+            return None
+
+        def forca(cs):
+            return eval7.evaluate([eval7.Card(c) for c in cs])
+
+        faltam = 5 - len(board)
+        if faltam == 1:
+            # Turn: uma carta por vir. 44 saidas x os combos que continuam e conta FECHADA, e
+            # conta fechada nao tem erro de amostragem para explicar depois.
+            w = t = n = 0
+            for saida in livres:
+                meu = forca(hero + [saida] + board)
+                for v in vilao:
+                    if saida in v:
+                        continue
+                    dele = forca(list(v) + [saida] + board)
+                    n += 1
+                    if meu > dele:
+                        w += 1
+                    elif meu == dele:
+                        t += 1
+        else:
+            # Flop: duas cartas por vir. A 1a versao enumerava as saidas e varria TODOS os combos
+            # em cada uma -- 1.200 x ~800 = perto de um milhao de avaliacoes, e medido: **8 a 10
+            # segundos por decisao**. Com milhares de decisoes no acervo isso nao e lento, e
+            # impossivel.
+            #
+            # Amostrar o PAR (saida, mao do vilao) de uma vez mede a mesma quantidade com duas
+            # ordens de grandeza menos trabalho: o erro padrao de uma proporcao com N amostras e
+            # ~0,5/raiz(N), entao 8.000 pares dao ~0,006 -- fino demais para mexer num veredito,
+            # cujas faixas sao dezenas de vezes mais largas. O teste mede esse erro contra a
+            # conta densa em vez de acreditar na formula.
+            import random as _r
+            rng = _r.Random(semente_estavel(tuple(hero), tuple(board), amostras))
+            w = t = n = 0
+            tentativas = 0
+            while n < amostras and tentativas < amostras * 4:
+                tentativas += 1
+                saida = rng.sample(livres, 2)
+                v = vilao[rng.randrange(len(vilao))]
+                if v[0] in saida or v[1] in saida:
+                    continue          # a saida pegou uma carta do vilao: esse par nao existe
+                meu = forca(hero + saida + board)
+                dele = forca(list(v) + saida + board)
+                n += 1
+                if meu > dele:
+                    w += 1
+                elif meu == dele:
+                    t += 1
+        return round((w + t * 0.5) / n, 4) if n else None
+    except Exception:                                          # noqa: BLE001
+        return None

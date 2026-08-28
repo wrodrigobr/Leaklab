@@ -164,7 +164,8 @@
     "trendRegressing": "Regredindo",
     "trendStagnant": "Estagnado",
     "drillPracticing": "Treinando",
-    "drillMastering": "Dominando"
+    "drillMastering": "Dominando",
+    "trendCurta": "Amostra curta"
   },
   "ghost": {
     "tooltip": "Resumo da sua atividade de drill nos últimos 30 dias. Drills em atraso (vermelho) indicam spots que precisam de revisão, ignorá-los aumenta a chance de repetir o mesmo erro em jogo real.",

@@ -5,6 +5,65 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## A seta dizia "melhorando" com duas maos, e a equity de flop/turn ganhou medidor (28/08)
+
+### A seta de tendencia afirmava direcao sem amostra
+
+O dono pediu a estatistica recente ao lado da historica: *"pra ver se mesmo com poucas maos a
+tendencia diz que as estatisticas estao melhorando, antes de sensibilizarem os dados historicos"*.
+
+Medindo antes de construir -- **quarta suposicao minha sobre este produto que morre na conferencia
+esta semana** -- a tendencia ja era calculada e ja aparecia no painel de leaks. O que faltava era o
+oposto do que eu ia construir.
+
+**A seta nao tinha porta de amostra, e nem como ter**: as consultas traziam so `AVG(score)`, o
+`COUNT(*)` nao era sequer buscado. Duas decisoes recentes contra quarenta antigas viravam seta
+verde de "Melhorando", e o jogador nao tinha como saber.
+
+Isso contradiz o resto do produto -- celula sem amostra fica cinza, card nunca vira zero -- e e
+**pior aqui**, porque a celula cinza MOSTRA ausencia e a seta verde AFIRMA que o jogador melhorou.
+
+E a regra vivia em **duas copias**, com os limiares 0,85 e 1,15 repetidos em `get_leak_roi_impact`
+e `get_gto_leak_ranking`. Virou `tendencia_do_spot`, com piso de **8 decisoes por lado** (por lado,
+nao no total: 12 recentes contra 2 antigas tem a mesma fragilidade que o inverso). O estado novo
+`amostra_curta` chega na tela com os dois numeros junto, porque "amostra curta" sem dizer curta
+quanto nao ajuda ninguem a decidir se vale treinar.
+
+### Equity de flop/turn: construida, medivel, e DESLIGADA
+
+`equity_flop_turn_vs_continuacao` e a irma da conta que o river ganhou em 24/08. Turn **enumera**
+(44 saidas, conta fechada); flop **amostra** o par (saida, mao do vilao), porque a versao densa
+levava **8 a 10 segundos por decisao**.
+
+Nasce atras de `LEAKLAB_EQUITY_FLOP_TURN`, desligada, por causa da regra 7. E
+`scripts/comparar_equity_flop_turn.py` roda o motor nos dois estados e lista mao a mao: a medicao
+de 27/08 foi ad-hoc e por isso nao pode ser repetida depois do conserto do board pareado.
+
+Custo medido: **+0,2s por decisao**, ~+16s num torneio de 400 maos. Isso e parte da decisao.
+
+### Os quatro defeitos, e os quatro estavam no MEDIDOR
+
+1. **O oraculo do teste era enviesado.** Ele pegava as 300 primeiras saidas de `combinations`, que
+   saem ORDENADAS: todas comecando pelas cartas mais baixas. Acusou o amostrador de errar 0,17
+   quando o erro real e 0,0036.
+2. **O limite do guarda acomodava o ruido do proprio oraculo** (0,02 com um oraculo que oscilava
+   0,02). Apertado para 0,008 com oraculo de 1.000 saidas.
+3. **O comparador leu chaves que nao existem** (`math.estimated_hand_equity`, `label`; os reais sao
+   `math.estimatedHandEquity` na ENTRADA e `evaluation.label` na saida) e imprimiu *"sem_troca em
+   40 de 40, nenhum veredito muda"*. **Zero tranquilizador.** Agora tem controle de deteccao que
+   para com um "PARE" se a chave nao estiver sendo lida.
+4. **A varredura N+1 acusou a propria fonte unica**, porque a janela de 400 caracteres nao
+   alcancava o `def` por causa da docstring. Ancorada no CORPO da funcao.
+
+E um guarda que passou verde: `test_as_consultas_TRAZEM_a_contagem` checava a PRESENCA do literal
+`COUNT(*) AS n`, e a funcao tem duas consultas -- mutei uma e a outra manteve o teste feliz. Agora
+conta.
+
+### Verificado
+
+Suite **2.576 / 2.576**, frontend **425/425**. 10 mutacoes plantadas nas duas frentes, 10
+detectadas.
+
 ## A quarta captura, e a copy que prometia um grafico que a tela nao tem (28/08)
 
 O dono corrigiu a premissa: *"eu ja tenho diversos torneios em producao"*. A `evolucao` tinha

@@ -1,4 +1,4 @@
-import { ChevronRight, ShieldAlert, AlertTriangle, TrendingDown, Flame, TrendingUp, Minus, BookOpen } from "lucide-react";
+import { Hourglass, ChevronRight, ShieldAlert, AlertTriangle, TrendingDown, Flame, TrendingUp, Minus, BookOpen } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { HudTooltip } from "./HudTooltip";
@@ -12,16 +12,33 @@ interface LeakData {
   avg_score: number;
   ev_loss_monthly?: number;
   priority_rank?: number;
-  trend?: "improving" | "regressing" | "stagnant" | "new";
+  trend?: "improving" | "regressing" | "stagnant" | "new" | "amostra_curta";
+  /** Quantas decisoes sustentam cada lado da comparacao. Viaja com a seta de proposito:
+   *  "amostra curta" sem dizer curta quanto nao ajuda ninguem a decidir se vale treinar. */
+  trend_n?: { recente: number; anterior: number };
   drill_count?: number;
   drill_accuracy?: number | null;
 }
 
+/**
+ * ── A seta afirma uma direcao, entao precisa de amostra (28/08) ──────────────────────────────
+ *
+ * Ate hoje o backend comparava a severidade media dos ultimos 30 dias com a dos 30 anteriores SEM
+ * olhar quantas decisoes sustentavam cada lado -- o `COUNT(*)` nem era buscado. Duas maos recentes
+ * contra quarenta antigas viravam seta verde de "Melhorando".
+ *
+ * Isso contradizia o resto do produto, onde celula sem amostra fica cinza e o card nunca vira
+ * zero. E e pior aqui: a celula cinza MOSTRA ausencia, a seta verde AFIRMA que o jogador melhorou.
+ *
+ * `amostra_curta` e o estado novo. Ele nao e um erro nem um vazio: e a resposta honesta a pergunta
+ * "ja da pra dizer?". Por isso tem cor propria e leva os numeros junto.
+ */
 const TREND_CONFIG = {
-  improving:  { Icon: TrendingDown, cls: "text-primary",     key: "leaks.trendImproving"  },
-  regressing: { Icon: TrendingUp,   cls: "text-destructive", key: "leaks.trendRegressing" },
-  stagnant:   { Icon: Minus,        cls: "text-yellow-400",  key: "leaks.trendStagnant"   },
-  new:        { Icon: Minus,        cls: "text-muted-foreground/50", key: "" },
+  improving:     { Icon: TrendingDown, cls: "text-primary",     key: "leaks.trendImproving"  },
+  regressing:    { Icon: TrendingUp,   cls: "text-destructive", key: "leaks.trendRegressing" },
+  stagnant:      { Icon: Minus,        cls: "text-yellow-400",  key: "leaks.trendStagnant"   },
+  amostra_curta: { Icon: Hourglass,    cls: "text-muted-foreground", key: "leaks.trendCurta"  },
+  new:           { Icon: Minus,        cls: "text-muted-foreground/50", key: "" },
 } as const;
 
 interface Props {

@@ -164,7 +164,8 @@
     "trendRegressing": "Retrocediendo",
     "trendStagnant": "Estancado",
     "drillPracticing": "Entrenando",
-    "drillMastering": "Dominando"
+    "drillMastering": "Dominando",
+    "trendCurta": "Muestra corta"
   },
   "ghost": {
     "tooltip": "Resumen de tu actividad de drill en los últimos 30 días. Los drills vencidos (rojo) indican spots que necesitan revisión, ignorarlos aumenta la probabilidad de repetir el mismo error en partidas reales.",

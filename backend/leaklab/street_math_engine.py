@@ -1,4 +1,6 @@
 from __future__ import annotations
+
+import os
 from .models import HandState, MathSnapshot
 
 # Equity preflop de cada mão canônica vs UMA mão aleatória (all-in até o river).
@@ -83,6 +85,32 @@ def build_math_snapshot(state: HandState) -> MathSnapshot:
                 # o `/replay` rotula a fonte por aqui: deixar `vs_random` seria dizer que o
                 # número veio de mão aleatória quando ele veio de uma range enumerada.
                 state.metadata['equity_river_exata'] = True
+    # ── FLOP e TURN: a mesma troca do river, atrás de uma chave ───────────────────────────
+    #
+    # O river virou conta exata em 24/08. No flop e no turn ainda falta carta, então a conta é
+    # contra a range de CONTINUAÇÃO com as saídas por vir (`equity_flop_turn_vs_continuacao`).
+    #
+    # Nasce DESLIGADA, e não por cautela genérica: a regra 7 do CLAUDE.md. Trocar o insumo do
+    # veredito em milhares de decisões pode causar dano que o bug não causava, e a medição de
+    # 27/08 mostrou acusações ENTRANDO. `scripts/comparar_equity_flop_turn.py` roda o motor com a
+    # chave nos dois estados e lista mão a mão o que muda, para a decisão ser tomada com a lista
+    # na mão em vez de com um agregado.
+    #
+    # Custo medido: ~0,3 a 0,9 s por decisão de flop, ~0,1 s no turn. Não é grátis, e isso
+    # também é parte da decisão.
+    if (estimated_equity is not None and state.street in ('flop', 'turn')
+            and os.environ.get('LEAKLAB_EQUITY_FLOP_TURN') == '1'):
+        try:
+            from leaklab.equity_real import cartas, equity_flop_turn_vs_continuacao
+            _cont = equity_flop_turn_vs_continuacao(cartas(state.hero_cards),
+                                                    cartas(state.board))
+        except Exception:                                       # noqa: BLE001
+            _cont = None
+        if _cont is not None:
+            estimated_equity = _cont
+            if isinstance(state.metadata, dict):
+                state.metadata['equity_vs_continuacao'] = True
+
     # Ajuste multiway: equity heuristica eh calibrada vs random HU. Em pote
     # 3+way, equity real cai significativamente. Aplica fator empirico em
     # postflop (preflop ja usa ranges GTO especificos por cenario).

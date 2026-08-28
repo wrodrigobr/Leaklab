@@ -845,7 +845,10 @@ export interface LeakRoiData {
   priority_rank: number;
   drill_count: number;
   drill_accuracy: number | null;
-  trend: "improving" | "regressing" | "stagnant" | "new";
+  /** `amostra_curta` (28/08): os dois lados existem mas um deles nao sustenta a
+   *  afirmacao. A seta AFIRMA uma direcao, entao ela cala quando nao pode. */
+  trend: "improving" | "regressing" | "stagnant" | "new" | "amostra_curta";
+  trend_n?: { recente: number; anterior: number };
 }
 
 export interface PressureProfile {
