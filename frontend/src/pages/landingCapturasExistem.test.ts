@@ -71,12 +71,20 @@ describe("as capturas que a landing referencia existem", () => {
     // A mesma doença apareceu em TRÊS lugares: a caixa "captura pendente", o slot de vídeo com
     // "em gravação", e o comentário que justificava os dois ("vazio silencioso parece
     // proposital"). Varrer os três de uma vez é o que impede o quarto.
+    //
+    // Varre os COMPONENTES e a COPY. Varrer só os componentes era um buraco, e o artefato publicado
+    // mostrou: depois de o slot de vídeo parar de renderizar, o bundle no ar AINDA continha
+    // "em gravação", porque a frase mora no i18n e não no `.tsx`. Ela não era exibida, mas um
+    // `t("vitrine.video.pendente")` de volta num componente passaria por este guarda sem
+    // encostar em nenhuma das strings que ele lia.
     const arquivos = [
       LANDING,
       ...fs
         .readdirSync(path.join(RAIZ, "src", "components", "landing"))
         .filter((f) => f.endsWith(".tsx") && !f.endsWith(".test.tsx"))
         .map((f) => path.join(RAIZ, "src", "components", "landing", f)),
+      ...["pt-BR", "en", "es"].map((l) =>
+        path.join(RAIZ, "src", "i18n", "locales", l, "landing.json")),
     ];
     const semComentario = (txt: string) =>
       txt
@@ -87,7 +95,12 @@ describe("as capturas que a landing referencia existem", () => {
     const violacoes: string[] = [];
     for (const arq of arquivos) {
       const corpo = semComentario(fs.readFileSync(arq, "utf-8"));
-      if (/captura pendente|em grava[çc][ãa]o|coming soon|em breve/i.test(corpo)) {
+      // O padrão é ESTREITO de propósito. A 1a versão incluía "coming soon"/"em breve" e acusou
+      // `networks.nota` ("Mais redes em breve"), que é declaração de ROADMAP, não aviso de
+      // arquivo faltando. Se um roadmap vale a pena ou não é outra pergunta, e do dono; guarda
+      // que grita por copy legítima é guarda que alguém desliga. Aqui só entra a frase que
+      // anuncia CONTEÚDO AUSENTE, que é o defeito que foi para o ar.
+      if (/captura pendente|em grava[çc][ãa]o|en grabaci[óo]n|being recorded/i.test(corpo)) {
         violacoes.push(path.basename(arq));
       }
     }
