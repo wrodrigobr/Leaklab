@@ -117,6 +117,110 @@ funcao, com teste que varre os N+1.
 
 Quatro mutacoes, quatro deteccoes.
 
+## A carta ganhou uma tela, e tres suposicoes minhas morreram na conferencia (28/08)
+
+Noite de melhorias a partir do benchmark. O que foi entregue vale menos que o padrao que
+apareceu: **tres vezes eu afirmei algo sobre o nosso proprio produto e o codigo desmentiu**.
+
+### O que entrou
+
+**`/ranges`** — a carta tem 14 profundidades (3 a 100bb) e 6 cenarios: **354 spots
+consultaveis**, e ate ontem existiam ZERO formas de olhar qualquer um deles. A matriz 13x13 so
+abria PRESA a um passo (replayer, drill ou aula), entao para perguntar "como se abre do CO com
+25bb?" era preciso antes achar uma mao propria em que isso tivesse acontecido.
+
+A pagina nao constroi motor nenhum: liga seletores ao que ja existe. `RangeGrid` pinta,
+`buildRangeFromApi` monta o RangeSet (a MESMA funcao do replayer, agora exportada) e
+`resumoDoSpot` conta as categorias.
+
+**`resumoDoSpot`** e o ganho didatico real, e veio do benchmark: a mistura vira **categoria com
+nome e contagem** ("Raise ou Fold: 60 combos, 4,5%") em vez de um tom entre duas cores que o olho
+tem que decifrar. Sai de contar o que a grade ja pinta, sem dado novo.
+
+**A vitrine da landing** — o concorrente tem seis blocos de feature com print real em moldura de
+navegador; a nossa tinha 8 secoes e DUAS imagens no arquivo inteiro. Nos descreviamos, eles
+mostravam. O 1o bloco agora renderiza o `RangeGrid` **de verdade**, com recorte real da carta:
+print raster mente calado no dia em que a carta muda, componente vivo nao.
+
+**PWA** — ja eramos instalaveis (manifest servido, icones no ar, e service worker nao e requisito
+do Chrome). Mas `start_url` era `/`, entao o app instalado abria a **landing de marketing**; e o
+icone maskable reusava o quadrado comum, que o Android recorta em circulo e cortava a marca.
+
+**A cor do fold** — a paleta canonica dizia `#fde047` (amarelo) e a grade pintava zinc CRAVADO.
+As duas superficies aparecem na MESMA tela do replayer. Pior: `COLORS.fold` era atribuido em
+`RangeGrid.tsx:18` e **nunca lido** — a constante estava la, morta, ao lado do literal que mandava.
+Somando os literais espalhados, a cor do fold tinha **cinco fontes**.
+
+### As tres suposicoes que morreram
+
+1. **"Temos EV por acao no backend, so nao exibimos."** Falso. `hand_freqs` so guarda frequencia,
+   e a busca por qualquer chave de EV no JSON da carta devolve **nenhuma**. O EV do produto e por
+   DECISAO, do solver, nao por mao da carta. O item saiu do plano em vez de virar um numero
+   inventado na tela.
+2. **"Falta a faixa de proximo passo no dashboard."** Falso. O `DashboardV2` ja tem o CTA com o
+   top leak, acao feita contra melhor acao, perda em bb e botao para o treino. Eu ia construir um
+   duplicado.
+3. **"O `spot` do leakRoi serve de `foco=leak:` no deep-link."** Falso, e essa quase virou bug: o
+   spot e `preflop/fold` e a key do curriculo e `vs_rfi:BB:SB:20`. Espacos de chave diferentes, e
+   o codigo ja carrega o comentario de quando isso prometeu um leak e serviu outro.
+
+No caminho ainda tracei o endpoint errado (`get_ev_leaks` em vez de `get_gto_leak_ranking`) e
+quase reportei um crash que nao existe. A conferencia pegou antes.
+
+### Os guardas, e o que eles pegaram de mim
+
+Quatro arquivos novos de teste, todos quebrados de proposito. Dois foram **cegos na 1a versao**:
+
+* O de `resumoDoSpot` passava verde com a mutacao que trocava "fold e o resto" por `f.fold`,
+  porque todo caso de teste declarava fold explicito. O caso que faltava era o mapa de frequencia
+  SEM a chave `fold` — que e como a celula e pintada.
+* O da `Vitrine` falhava por motivo certo: `error` em `<img>` nao borbulha, entao um `Event` cru
+  nao chega ao `onError` do React. Quem entrega e o `fireEvent.error`.
+
+O guarda da paleta conta os arquivos que varreu e falha abaixo de 100 — sem esse controle, um
+caminho errado devolveria "nenhuma suspeita" sem ter olhado nada, que e o zero tranquilizador que
+ja cegou um guarda meu nesta mesma semana.
+
+E o guarda de i18n pegou o conector `" ou "` dentro de `data/ranges.ts`: camada de dados nao sabe
+idioma. O rotulo passou a ser composto na tela, com as chaves nos 3 locales.
+
+
+### O que as duas revisoes acharam, e o que era comentario meu
+
+Dois agentes revisaram a entrega. Quase tudo o que acharam foi causado por ela, e a parte mais
+constrangedora sao **comentarios meus afirmando o que nao era verdade** -- a regra 8 do CLAUDE.md
+aplicada a mim.
+
+**Duas contas para o mesmo fato, na mesma linha do JSX.** O rodape da grade contava pelos Sets
+(`rangeStats` via `getCellAction`) e as celulas contavam por `getHandFreq`. Medido: **9 de 112
+spots de RFI divergiam, todos no SB**, porque a range de limp existe em `frequencies` e nao existe
+em Set nenhum. O rodape dizia 62,6% onde o resumo somava 87,3%. E o mesmo conserto que
+`rangeActionPresence` recebeu para a legenda; o contador ao lado tinha ficado para tras.
+
+**O painel mentia calado.** A coluna da direita seguia mostrando o spot ANTERIOR enquanto o novo
+carregava, e PERMANENTEMENTE se o fetch falhasse. A esquerda declarava o estado; a direita
+entregava dado de outro spot com cara de resposta.
+
+**Tres comentarios meus, falsos:**
+
+* *"O chip usa o MESMO gradiente da celula."* A ordem eu consertei. A proporcao nao tem conserto e
+  nao deveria ter: a categoria agrupa maos que sobem 15% e maos que sobem 60%, entao fatia igual e
+  o honesto. O chip diz QUAIS acoes, a celula diz QUANTO.
+* *"Print raster envelhece calado; isto nao."* Era um literal colado a mao, sem gerador e sem
+  conferencia. Agora ha os dois.
+* *"14 profundidades e 6 cenarios."* A tela oferece 4: `vs_4bet` e `faces_squeeze` existem na
+  carta e o endpoint nao os serve. A lacuna esta declarada em vez de prometida.
+
+**Seguranca, tudo medido com cliente Flask real.** `stack_bb=abc` devolvia 500; `NaN` e `Infinity`
+PASSAVAM e saturavam no balde de 100bb, devolvendo 200 com estrategia de mesa funda rotulada como
+resposta ao stack pedido; e `"stack_bb": NaN` nem e JSON valido, entao o proprio `JSON.parse` do
+front quebrava dentro de um 200. A correcao **recusa** em vez de fazer clamp -- clamp viraria
+entrega silenciosa da carta errada, o conserto causando o dano que o bug so ameacava.
+
+O rate limit levou um segundo round: 120/min quebraria o **meu proprio portao de aceite**, que faz
+433 chamadas em rajada por captura. Limite que quebra uso legitimo vira limite desligado na semana
+seguinte, entao o teto virou 600 -- numero medido no consumidor, nao escolhido no chute.
+
 ## A varredura acusou duas regressoes, e so uma era defeito (27/08)
 
 Fechando a auditoria pre-lancamento, a varredura de invariantes voltou com `MUDO: 0 -> 1` e
