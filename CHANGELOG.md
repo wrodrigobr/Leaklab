@@ -5,6 +5,75 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## Leitura de range DEPOIS do flop, e o motor dela ja existia por acidente (28/08)
+
+Pedido: o benchmark do concorrente tem um treino "leia o vilao street a street". Fui conferir o
+que nos tinhamos, e a primeira surpresa foi que **ja temos leitura de range, e mais rica que a
+deles**: `_sondagem_de_range` pergunta a largura do vilao ANTES de revelar as cartas do heroi, e
+`perguntas_de_range` tem cinco formatos.
+
+So que todos sao PRE-FLOP. Nenhum estreita a range conforme a mao avanca, que e exatamente a
+habilidade pos-flop: o vilao abriu com 20% das maos, veio um flop, e agora ele tem *o que*?
+
+O motor disso ja existia, sem ninguem ter planejado: `range_de_continuacao.py` nasceu ontem para
+consertar o board pareado, e e literalmente "quem continua neste board".
+
+### O que a conta ensina, medido
+
+Fracao dos combos que o CO abre a 30bb e que continua, por textura de board:
+
+| board | textura | continua |
+|---|---|---:|
+| `2s 2d 2h` | trinca no board | 14% |
+| `4s 4d 2c` | pareado baixo | 22% |
+| `Ks Kd 3h` | pareado alto | 29% |
+| `Kd 7c 2h` | seco, carta alta | 40% |
+| `Ts 6s 4d` | duas do mesmo naipe | 49% |
+| `9c 8d 7h` | conectado | 81% |
+| `Qh Jh Th` | conectado e do mesmo naipe | 97% |
+
+Board seco corta, board conectado nao. O treino ensina isso sem afirmar nada: os numeros saem da
+carta real de RFI daquela posicao e profundidade, e **os distratores sao fracoes reais de outros
+boards**, nunca inventados em volta da resposta. Alternativa inventada ensina a estimar de um
+jeito que o jogo nao confirma, e e indetectavel na tela porque parece uma pergunta normal.
+
+### O alcance e pequeno DE PROPOSITO: 8 de 60
+
+A sondagem sobre o board do proprio spot so existe onde a range do vilao E a range de abertura
+dele: pote de um aumento, com o heroi defendendo. Medido em todos os pares (heroi, vilao, tipo de
+pote): **8 de 60 elegiveis**, e cada exclusao tem razao propria.
+
+- **Pote 3-bet** fica de fora porque ali o BB 3-betou e o BTN pagou: a range do BTN e "paga um
+  3-bet", muito mais estreita. Contar a RFI seria um numero verdadeiro sobre a pergunta errada.
+- **Heroi que abriu** fica de fora porque entao o vilao e quem DEFENDEU.
+- **BB como vilao** e exclusao ESTRUTURAL: o BB e o ultimo a agir pre-flop e nunca abre.
+- **SB como vilao** e exclusao DECLARADA, nao estrutural: o SB abre de verdade e o caso seria
+  legitimo, mas e a linha onde mora o limp, e a mesma em que `rangeStats` divergia. Enquanto o
+  limp nao entra na conta de continuacao, a fracao do SB nao e afirmavel.
+
+Servido: 28% dos spots de `bb_defense` (a mesma cota da sondagem pre-flop, que e tempero e nao
+prato) e **0 de 60** nos de pote 3-bet.
+
+### Os dois defeitos que a medicao pegou no meu proprio codigo
+
+**1. Saturacao, de novo.** `fracao_que_continua` usava `balde_rfi`, que SATURA: pedir 999bb
+respondia com a carta de 100bb e a pergunta afirmava uma fracao para uma profundidade que a carta
+nao cobre. **E o mesmo defeito que eu consertei ontem no endpoint `/preflop-ranges`**, cometido de
+novo um dia depois, num arquivo novo. O guarda pegou na primeira rodada.
+
+**2. Guarda ancorado no efeito, nao na condicao.** O teste do filtro de cartas mortas comparava
+dois boards DIFERENTES, que divergem de qualquer jeito: com o filtro removido ele passava verde.
+Reescrito para espiar as maos que a contagem visitou, ele agora acusa 127 de 722 combos sujos.
+
+E na varredura de mutacao dois guardas de elegibilidade passaram verdes porque o spot que eu tinha
+forjado era barrado por OUTRA regra. Guarda que exercita a condicao errada e cobertura sem dar
+cobertura. **8 mutacoes plantadas, 8 detectadas** depois de consertados.
+
+### Verificado
+
+Suite inteira **2.565 / 2.565**, zero falhas. `test_perguntas_de_board.py` (11 casos) registrado no
+runner.
+
 ## A range de continuacao tinha duas copias, e a errada pegava board pareado (27/08)
 
 Frente aberta a pedido: "atacar a equity de flop/turn antes de escalar a base". A medicao mudou

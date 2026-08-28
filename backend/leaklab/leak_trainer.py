@@ -793,6 +793,26 @@ def _action_family(label: str) -> str:
             'all-in': 'raise'}.get(a, a)
 
 
+def _com_sondagem_de_board(spot: dict, rng: random.Random) -> dict:
+    """Anexa a sondagem de board ao spot, quando ela tiver o que dizer. Uma porta só.
+
+    `generate_postflop_spot` tem DUAS saídas (o acervo e o catálogo estático) e a sondagem tem de
+    sair pelas duas — anexar só numa deixaria a pergunta viva ou morta conforme a origem do spot,
+    que é o tipo de divergência que este projeto passa a semana perseguindo (regra 5).
+
+    A cota é a MESMA da sondagem pré-flop: ela é tempero, não prato. Perguntar antes de todo spot
+    transforma o treino num questionário e o jogador aprende a pular a pergunta.
+    """
+    if rng.random() >= _COTA_SONDAGEM:
+        return spot
+    try:
+        from leaklab.perguntas_de_board import sondagem_do_board
+        spot['range_probe'] = sondagem_do_board(spot, rng)
+    except Exception:                                       # noqa: BLE001
+        log.exception('sondagem de board indisponível; o spot segue sem pergunta')
+    return spot
+
+
 def generate_postflop_spot(category: dict, rng: random.Random | None = None,
                            servidos: set | None = None) -> dict | None:
     """Retorna um spot postflop (stateless, sem revelar a resposta).
@@ -841,7 +861,7 @@ def generate_postflop_spot(category: dict, rng: random.Random | None = None,
                     and (not category.get('position') or s.get('position') == category.get('position'))
                 if mesma:
                     s['category'] = category.get('key') or s.get('category')
-                return s
+                return _com_sondagem_de_board(s, rng)
         except Exception:
             log.exception('acervo de treino postflop indisponível; caindo no catálogo estático')
     _catalogo = category.get('catalog', 'bb_defense')
@@ -857,7 +877,7 @@ def generate_postflop_spot(category: dict, rng: random.Random | None = None,
     # → check/bet. Oferecer 'raise' sem aposta na mesa é pedir para aumentar o que ninguém fez
     # (a mesma lição do menu do pool).
     _opts = list(_POSTFLOP_OPTIONS) if float(p.get('facing_size_bb') or 0) > 0 else ['check', 'bet']
-    return {
+    return _com_sondagem_de_board({
         'kind':           'postflop',
         'street':         p['street'],
         'category':       category['key'],
@@ -877,7 +897,7 @@ def generate_postflop_spot(category: dict, rng: random.Random | None = None,
         'hero_cards':     _cards_to_objs(s['hand']),
         'options':        _opts,
         'xp_value':       30,
-    }
+    }, rng)
 
 
 def grade_from_hand_strategy(hand_strategy: dict, action: str) -> dict:

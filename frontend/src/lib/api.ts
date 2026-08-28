@@ -1347,7 +1347,13 @@ export interface LeakTrainerSpot {
   hands?: string[];
   /** Sondagem de range, quando presente: pergunta a fatia de mãos do vilão ANTES de revelar as
    *  cartas do herói. Existe só em cenário com vilão a ler (nunca em `rfi`, onde o herói age
-   *  primeiro e não há range de ninguém para estimar). */
+   *  primeiro e não há range de ninguém para estimar).
+   *
+   *  Desde 28/08 existe também PÓS-FLOP ("quanto da range dele continua neste board?"), e aí
+   *  vem `board`. Ela é ainda mais restrita que a pré-flop: só em pote de um aumento com o herói
+   *  defendendo, porque só aí a range do vilão É a range de abertura dele — em pote 3-bet ela é
+   *  "paga um 3-bet", e afirmar a RFI ali seria um número verdadeiro sobre a pergunta errada.
+   *  Ver `spot_e_elegivel` em `perguntas_de_board.py`. */
   range_probe?: {
     pergunta: string;
     opcoes: string[];
@@ -1358,6 +1364,8 @@ export interface LeakTrainerSpot {
        onde abrir uma seria apontar para metade das alternativas). */
     posicao?: string | null;
     stack?: number | null;
+    /* O flop de que a pergunta fala. Só na sondagem pós-flop. */
+    board?: string[] | null;
   } | null;
 }
 // Estado da sessão (client-side): por categoria, hits/misses/seen. Adulterar não falsifica acerto

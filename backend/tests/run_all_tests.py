@@ -37,6 +37,7 @@ SUITES = {
                   'test_posicoes.py',
                   'test_familia_spot.py',
                   'test_perguntas_de_range.py',
+                  'test_perguntas_de_board.py',
                   'test_call_ja_allin.py',
                   'test_shove_equivale_call.py',
                   'test_call_e_commit_total.py',
