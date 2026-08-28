@@ -7,10 +7,21 @@
 //
 // ── As duas regras que decidem o que entra ──────────────────────────────────────────────────
 //
-// **1. Só entra tela com dado REAL.** A `evolucao` ficou de fora de propósito: o banco de captura
-// tem um torneio só e `/player/career` responde `insufficient_data`. Semear torneios para desenhar
-// uma curva de melhora seria fabricar, numa imagem de marketing, exatamente o número que o produto
-// se recusa a inventar na tela do jogador.
+// **1. Só entra tela com dado REAL.** Este script gera `veredito` e `treino` a partir do banco de
+// captura sintético. A `evolucao` NÃO sai daqui: esse banco tem um torneio só e `/player/career`
+// responde `insufficient_data`. Semear torneios para desenhar uma curva de melhora seria fabricar,
+// numa imagem de marketing, exatamente o número que o produto se recusa a inventar na tela.
+//
+// `evolucao.webp` foi capturada da conta REAL do dono (40 torneios), num Chrome que ele mesmo
+// logou, com o navegador dirigido por CDP -- nenhuma credencial passou por aqui. Duas coisas
+// aprendidas ali, para quem for refazer:
+//   • uma aba NOVA no mesmo contexto NÃO herda a sessão: o JWT vive em `sessionStorage`, que é por
+//     aba. Tem de usar a aba que a pessoa logou.
+//   • a largura de desktop se força com `Emulation.setDeviceMetricsOverride` via CDP e se desfaz
+//     com `clearDeviceMetricsOverride`. `setViewportSize` redimensionaria a janela real de quem
+//     está olhando a tela.
+// O recorte começa abaixo da barra de navegação de propósito: o handle do dono não vai para uma
+// imagem pública. O conteúdo é agregado (bb por torneio, mãos mais caras) e não nomeia ninguém.
 //
 // **2. Nenhuma identidade real.** O histórico é de um torneio de verdade, com 43 screen names de
 // pessoas que não concordaram em aparecer num site aberto. O banco de captura é uma CÓPIA com todos

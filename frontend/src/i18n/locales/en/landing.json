@@ -132,10 +132,10 @@
     },
     "b4": {
       "rotulo": "grindlabpoker.com/evolucao",
-      "titulo": "Whether the fix is paying off",
-      "texto": "Big blinds lost per family of mistake, tournament by tournament. Every point has your own hands behind it, and a cell without sample stays grey instead of becoming zero.",
-      "b4a": "Evolution by leak family",
-      "b4b": "Small samples show up as small samples"
+      "titulo": "Whether the adjustment is paying off",
+      "texto": "How much you lose per tournament, compared with the earlier half of your history. Bubble and final table are left out of the count, because there the right play changes because of the payout.",
+      "b4a": "The most expensive hands of the period, each with its cost",
+      "b4b": "A cell with no sample stays grey, it never becomes zero"
     },
     "video": {
       "heading": "See the app in action",

@@ -5,6 +5,40 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## A quarta captura, e a copy que prometia um grafico que a tela nao tem (28/08)
+
+O dono corrigiu a premissa: *"eu ja tenho diversos torneios em producao"*. A `evolucao` tinha
+ficado de fora porque o banco de captura SINTETICO tem um torneio so -- mas a conta real tem 40.
+
+Capturada num Chrome que ele mesmo logou, dirigido por CDP. Nenhuma credencial passou por aqui.
+Duas coisas aprendidas, anotadas no script para quem refizer:
+
+- **Aba nova nao herda a sessao.** O JWT vive em `sessionStorage`, que e por aba: abrir uma aba no
+  mesmo contexto devolve uma tela deslogada. Tem de usar a aba que a pessoa logou.
+- **Largura de desktop se forca por `Emulation.setDeviceMetricsOverride`**, e se desfaz depois.
+  `setViewportSize` redimensionaria a janela real de quem esta olhando a tela.
+
+O recorte comeca abaixo da barra de navegacao de proposito: o handle do dono nao vai para uma
+imagem publica. O conteudo e agregado -- bb por torneio, maos mais caras -- e nao nomeia ninguem.
+
+### A copy do bloco prometia o que a tela nao mostra
+
+O texto dizia *"os bb perdidos por familia de erro, **torneio a torneio**"*. A tela nao tem esse
+grafico: tem o numero por torneio comparado com a metade anterior do historico, a lista das maos
+mais caras, o mapa posicao x profundidade e o antes/depois do treino. **Terceira vez hoje que uma
+frase da landing afirmava algo que a tela nao faz**, e a primeira em que foi a captura que
+denunciou: enquanto o bloco mostrava uma caixa tracejada, ninguem podia comparar a frase com a
+imagem.
+
+Agora o texto descreve o que esta na imagem, incluindo a parte honesta que o proprio produto
+escreve na tela: bolha e mesa final ficam fora da conta, porque la a jogada certa muda por causa
+do premio.
+
+### Verificado
+
+Frontend **425/425**. A vitrine tem os quatro blocos, e `landingCapturasExistem.test.ts` continua
+quebrando a build se um `print:` voltar sem arquivo.
+
 ## As capturas da landing, e a tela de treino que volta a ser a classica (28/08)
 
 ### As capturas: 2 de 3, e a terceira nao vai existir por enquanto

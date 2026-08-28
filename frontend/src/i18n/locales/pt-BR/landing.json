@@ -133,9 +133,9 @@
     "b4": {
       "rotulo": "grindlabpoker.com/evolucao",
       "titulo": "Se o ajuste está pagando",
-      "texto": "Os bb perdidos por família de erro, torneio a torneio. Cada ponto tem mão sua por trás, e a célula sem amostra fica cinza em vez de virar zero.",
-      "b4a": "Evolução por família de leak",
-      "b4b": "Amostra pequena aparece como amostra pequena"
+      "texto": "Quanto você perde por torneio, comparado com a metade anterior do seu histórico. Bolha e mesa final ficam de fora da conta, porque lá a jogada certa muda por causa do prêmio.",
+      "b4a": "As mãos mais caras do período, com o custo de cada uma",
+      "b4b": "Célula sem amostra fica cinza, nunca vira zero"
     },
     "video": {
       "heading": "Veja o app funcionando",

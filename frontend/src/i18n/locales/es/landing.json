@@ -133,9 +133,9 @@
     "b4": {
       "rotulo": "grindlabpoker.com/evolucao",
       "titulo": "Si el ajuste está pagando",
-      "texto": "Los bb perdidos por familia de error, torneo a torneo. Cada punto tiene manos tuyas atrás, y la celda sin muestra queda gris en vez de volverse cero.",
-      "b4a": "Evolución por familia de leak",
-      "b4b": "Muestra pequeña aparece como muestra pequeña"
+      "texto": "Cuánto perdés por torneo, comparado con la mitad anterior de tu historial. La burbuja y la mesa final quedan fuera de la cuenta, porque ahí la jugada correcta cambia por el premio.",
+      "b4a": "Las manos más caras del período, con el costo de cada una",
+      "b4b": "La celda sin muestra queda gris, nunca se vuelve cero"
     },
     "video": {
       "heading": "Mirá la app funcionando",

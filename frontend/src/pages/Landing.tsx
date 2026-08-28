@@ -419,9 +419,12 @@ function VitrineSection() {
   // 3 agora têm captura real, gerada por `scripts/landing_shots.mjs` a partir de um banco de
   // captura anonimizado (43 screen names de gente real trocados por "Jogador N").
   //
-  // A EVOLUÇÃO ficou de fora: o banco de captura tem um torneio só e `/player/career` responde
-  // `insufficient_data`. Semear torneios para desenhar uma curva de melhora seria fabricar, numa
-  // imagem de marketing, exatamente o número que o produto se recusa a inventar na tela.
+  // A EVOLUÇÃO só entrou depois: o banco de captura sintético tem um torneio só e
+  // `/player/career` responde `insufficient_data`. Semear torneios para desenhar uma curva de
+  // melhora seria fabricar, numa imagem de marketing, exatamente o número que o produto se
+  // recusa a inventar na tela. Ela foi capturada da conta REAL do dono, com 40 torneios, e por
+  // isso o recorte começa abaixo da barra de navegação: o handle dele não vai para uma imagem
+  // pública. Ver o cabeçalho de `scripts/landing_shots.mjs`.
   //
   // `landingCapturasExistem.test.ts` quebra a build se um `print:` voltar sem o arquivo.
   const blocos: BlocoVitrine[] = [
@@ -431,6 +434,8 @@ function VitrineSection() {
       bullets: [t("vitrine.b2.b2a"), t("vitrine.b2.b2b")], print: "/landing/veredito.webp" },
     { rotulo: t("vitrine.b3.rotulo"), titulo: t("vitrine.b3.titulo"), texto: t("vitrine.b3.texto"),
       bullets: [t("vitrine.b3.b3a"), t("vitrine.b3.b3b")], print: "/landing/treino.webp" },
+    { rotulo: t("vitrine.b4.rotulo"), titulo: t("vitrine.b4.titulo"), texto: t("vitrine.b4.texto"),
+      bullets: [t("vitrine.b4.b4a"), t("vitrine.b4.b4b")], print: "/landing/evolucao.webp" },
   ];
 
   return <Vitrine eyebrow={t("vitrine.eyebrow")} heading={t("vitrine.heading")} blocos={blocos} />;
