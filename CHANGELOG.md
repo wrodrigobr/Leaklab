@@ -117,6 +117,36 @@ funcao, com teste que varre os N+1.
 
 Quatro mutacoes, quatro deteccoes.
 
+## O termo interno vazou para a tela, e o guarda achou uma violacao mais velha (28/08)
+
+O dono leu "a carta de 3bb a 100bb" na landing e achou estranho. Estava certo.
+
+**`carta` e como o projeto chama a tabela de ranges de preflop** -- no codigo, nos comentarios e
+neste changelog. Ali esta certo. Na tela do jogador, carta e carta de baralho, e a frase nao quer
+dizer nada para quem joga. O termo do jogador e `range`, que a regra do projeto ja manda manter em
+ingles.
+
+Dez strings trocadas nos 3 locales. E o guarda que escrevi para o termo nao voltar achou uma
+violacao que **nao era minha**: `card.semGabarito.profundidade_sem_carta`, no replayer, dizia
+"Sem carta para esta profundidade... nenhuma carta responde" nos 3 locales, desde antes de
+ontem.
+
+O padrao e estreito de proposito. Medido antes de escrever: **90 strings usam `carta` no sentido
+certo** -- a Academia inteira fala "essa carta ajuda mais o meu range?". Proibir a palavra
+quebraria todas elas. O guarda casa so `carta` colada a uma profundidade em bb, "carta de
+referencia" e "nao temos carta", com contraprova de 5 frases legitimas e prova de deteccao com as
+7 frases originais.
+
+### E a substituicao de profundidade passou a se declarar
+
+O ultimo achado da revisao. `_section_for_pos` cai num balde vizinho quando o pedido nao tem a
+secao, e a resposta seguia dizendo `stack_bucket: <o pedido>`. No replayer isso era invisivel,
+porque o stack nao era selecionavel; a pagina nova transformou em contradicao de um clique:
+squeeze a 17bb e a 14bb devolviam a MESMA grade com rotulos diferentes. Medido: **6 spots**.
+
+Substituicao silenciosa e da familia da ausencia muda -- o produto responde, e o que ele responde
+nao e o que foi perguntado. A resposta ganhou `substituicao` e a tela avisa de onde a range veio.
+
 ## A carta ganhou uma tela, e tres suposicoes minhas morreram na conferencia (28/08)
 
 Noite de melhorias a partir do benchmark. O que foi entregue vale menos que o padrao que
