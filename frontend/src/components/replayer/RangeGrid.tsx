@@ -31,9 +31,11 @@ function buildGradient(hand: string, range: RangeSet): string {
   if (f.allin && f.allin > 0.001) segs.push([COLORS.allin, f.allin]);
   const totalActive = segs.reduce((a, [, v]) => a + v, 0);
   const foldPct = Math.max(0, 1 - totalActive);
-  if (foldPct > 0.001) segs.push(['rgba(113,113,122,0.35)', foldPct]); // zinc-500 transparente pra fold (cells)
+  // A constante, nao o literal: ate 27/08 `COLORS.fold` era atribuido acima e NUNCA lido,
+  // enquanto a celula pintava um rgba cravado. Duas fontes para a cor da mesma acao.
+  if (foldPct > 0.001) segs.push([COLORS.fold, foldPct]);
 
-  if (segs.length === 0) return 'rgba(113,113,122,0.35)';
+  if (segs.length === 0) return COLORS.fold;
   if (segs.length === 1) return segs[0][0];
 
   // Linear gradient horizontal — stripes proporcionais
@@ -126,7 +128,7 @@ export function RangeGrid({ range, heroHand }: Props) {
           )}
           {present.fold && (
             <span className="flex items-center gap-1">
-              <span className="inline-block size-2 rounded-[1px]" style={{ background: 'rgba(113,113,122,0.4)', border: '1px solid #71717a' }} />Fold
+              <span className="inline-block size-2 rounded-[1px]" style={{ background: COLORS.fold, border: '1px solid #71717a' }} />Fold
             </span>
           )}
         </div>

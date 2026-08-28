@@ -68,7 +68,7 @@ function gradienteDa(acoes: AcaoDaCelula[]): string {
     raise: ACTION_COLORS.raise,
     call: ACTION_COLORS.call,
     allin: ACTION_COLORS.allin,
-    fold: "rgba(113,113,122,0.35)",
+    fold: ACTION_COLORS.fold,
   };
   if (acoes.length === 1) return cor[acoes[0]];
   const fatia = 100 / acoes.length;
