@@ -197,7 +197,7 @@
   "catalog": {
     "title": "Escolha o que treinar",
     "subtitle": "Ou deixe o sistema escolher pelo que você mais erra.",
-    "never": "—",
+    "never": "sem amostra",
     "hands": "mãos",
     "start": "Treinar",
     "drills": {

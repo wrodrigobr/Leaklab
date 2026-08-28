@@ -98,16 +98,24 @@ describe("carregamento do /training", () => {
   });
 
   it("os atalhos continuam clicáveis durante o carregamento", () => {
-    /* O esqueleto não pode bloquear quem já sabe onde quer ir. O contrato mudou duas vezes,
-     * e as duas por decisão de produto (não por defeito):
+    /* O esqueleto não pode bloquear quem já sabe onde quer ir. O contrato mudou TRÊS vezes, e
+     * as três por decisão de produto, nunca por defeito:
      *   19/08 — a Academia saiu desta tela (foi para /study: estudar ≠ treinar);
-     *   20/08 — a TRILHA foi promovida a /training e esta tela virou o legado
-     *           (/training/classic). O link daqui aponta de volta para a trilha, não mais
-     *           para um "beta". */
+     *   20/08 — a TRILHA foi promovida a /training e esta virou o legado (/training/classic),
+     *           com um convite discreto apontando para a trilha;
+     *   28/08 — REVERTIDO: esta voltou a ser /training, por decisão do dono ("a princípio não
+     *           iremos mais utilizar" a beta). O convite saiu junto, e não por estilo: com
+     *           /training servindo esta tela, o link apontaria para ela mesma. A trilha
+     *           sobrevive em /training/trilha, sem link em lugar nenhum.
+     *
+     * Por isso a asserção agora é NEGATIVA nos dois: nem /training (auto-link) nem
+     * /training/trilha (a beta oculta) podem aparecer aqui. */
     const { container } = montar();
     const destinos = [...container.querySelectorAll("a[href]")].map((a) => a.getAttribute("href"));
-    expect(destinos).toEqual(expect.arrayContaining(["/ghost", "/leak-trainer", "/training"]));
+    expect(destinos).toEqual(expect.arrayContaining(["/ghost", "/leak-trainer"]));
     expect(destinos).not.toContain("/academy");
-    expect(destinos).not.toContain("/training-v2");   // a rota do beta virou redirect
+    expect(destinos).not.toContain("/training");         // esta tela É /training: não se auto-linka
+    expect(destinos).not.toContain("/training-v2");      // a rota do beta virou redirect
+    expect(destinos).not.toContain("/training/trilha");  // a beta está oculta, sem porta de entrada
   });
 });

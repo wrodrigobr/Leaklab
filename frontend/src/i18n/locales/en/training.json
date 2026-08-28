@@ -197,7 +197,7 @@
   "catalog": {
     "title": "Choose what to train",
     "subtitle": "Or let the system pick what you get wrong most.",
-    "never": "—",
+    "never": "no sample yet",
     "hands": "hands",
     "start": "Train",
     "drills": {

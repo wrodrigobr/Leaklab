@@ -338,24 +338,33 @@ const App = () => (
               }
             />
             {/* Sparring removido do produto até termos o arco sintético funcional (opção 2). */}
-            {/* PROMOVIDA (20/08): a Trilha é a tela de treino. A condição do crítico do painel
-                de design era empty-state digno no cockpit — entregue na F2 (cold start com
-                importar + fundamentos). A clássica sobrevive em /training/classic (sunset
-                depois de um ciclo), e /training-v2 REDIRECIONA: bookmarks e links do beta
-                não podem morrer. Ver project_redesign_trilha_training. */}
+            {/* REVERTIDA (28/08): a CLÁSSICA volta a ser a tela de treino, por decisão do dono
+                ("a tela de treino padrão tem que voltar a ser a clássica, oculte a versão beta,
+                pois a princípio não iremos mais utilizar").
+
+                A Trilha (cockpit v3) tinha sido promovida em 20/08. Ela não foi apagada: continua
+                em `/training/trilha`, sem link em lugar nenhum, para o código não morrer enquanto
+                a decisão for "a princípio". Apagar agora tornaria caro voltar atrás de uma escolha
+                que o próprio dono marcou como provisória.
+
+                `/training-v2` continua REDIRECIONANDO para `/training`: bookmarks e links de
+                e-mail do beta apontam para lá e não podem cair num 404. Só que agora chegam na
+                clássica, que é o destino certo. */}
             <Route
               path="/training"
               element={
                 <ProtectedRoute>
-                  <TrainingV2 />
+                  <Training />
                 </ProtectedRoute>
               }
             />
+            {/* Aliases da clássica: `/training/classic` existia e pode estar em link antigo. */}
+            <Route path="/training/classic" element={<Navigate to="/training" replace />} />
             <Route
-              path="/training/classic"
+              path="/training/trilha"
               element={
                 <ProtectedRoute>
-                  <Training />
+                  <TrainingV2 />
                 </ProtectedRoute>
               }
             />

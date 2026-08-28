@@ -61,7 +61,7 @@ function IlustracaoLeaks() {
 /** Mesa com duas cartas: diz "mao completa" sem a frase "do preflop ao river". */
 function IlustracaoMesa() {
   return (
-    <svg viewBox="0 0 120 56" className="h-full w-auto" aria-hidden>
+    <svg viewBox="0 0 120 56" className="w-full" aria-hidden>
       <ellipse cx="60" cy="28" rx="46" ry="22" className="fill-background"
                stroke="hsl(var(--primary))" strokeOpacity="0.35" strokeWidth="1.5" />
       <circle cx="60" cy="8"  r="4.5" className="fill-muted" />
@@ -97,16 +97,22 @@ export function TrainingCatalog() {
                    solto anunciando "mao completa" -- rotulo que nao descreve o destino. */
                 to={d.rota ? d.rota : `/leak-trainer?foco=${encodeURIComponent(d.foco)}`}
                 className={cn(
-                  "group flex flex-col gap-1.5 rounded-xl border p-2 transition-colors",
+                  "group flex items-center gap-3 rounded-xl border p-2.5 transition-colors",
                   d.destaque
                     ? "border-primary/40 bg-primary/[0.06] hover:border-primary/60"
                     : "border-border bg-background/40 hover:border-primary/40",
                 )}
               >
-                {/* A ILUSTRACAO no lugar da frase. Ela e a razao de o card existir: o formato da
-                    range diz o que o drill e mais rapido do que a descricao, e e o mesmo desenho
-                    que o jogador encontra treinando. Ver MiniRange. */}
-                <span className="flex h-[86px] items-center justify-center overflow-hidden py-1">
+                {/* ── Horizontal, e nao vertical (28/08) ──────────────────────────────────
+                    A 1a versao centralizava a ilustracao num card de 600px de largura, com o
+                    titulo encostado embaixo: o desenho ficava perdido num mar de vazio e a tela
+                    parecia quebrada. So a captura da tela real mostrou -- no mockup, com cards
+                    estreitos, o empilhado funcionava.
+
+                    A ilustracao e a razao de o card existir: o formato da range diz o que o drill
+                    e mais rapido que a descricao, e e o mesmo desenho que o jogador encontra
+                    treinando. Ancorada a esquerda, ela vira a primeira coisa que o olho pega. */}
+                <span className="flex size-[68px] shrink-0 items-center justify-center overflow-hidden rounded-lg bg-background/50 p-1.5">
                   {d.destaque
                     ? <IlustracaoLeaks />
                     : d.ilustracao === "mesa"
@@ -114,19 +120,22 @@ export function TrainingCatalog() {
                       : <MiniRange id={d.ilustracao ?? ""} />}
                 </span>
 
-                <h3 className="font-heading text-[13px] font-bold leading-tight text-foreground">
-                  {t(`catalog.drills.${d.id}.name`)}
-                </h3>
+                <span className="flex min-w-0 flex-1 flex-col gap-1">
+                  <h3 className="font-heading text-[13px] font-bold leading-tight text-foreground">
+                    {t(`catalog.drills.${d.id}.name`)}
+                  </h3>
 
-                {/* Nunca praticado mostra "sem amostra", nunca "0%". Zero afirma desempenho;
-                    ausencia de dado nao afirma nada. E a UNICA coisa aqui que continua sendo
-                    texto: uma medalha apagada leria como desempenho ruim. */}
-                <span className="flex items-center justify-between gap-1.5">
-                  <Medalha acerto={d.acerto} />
-                  <span className="font-mono text-[10px] tabular-nums text-foreground/70">
-                    {d.acerto === null
-                      ? t("catalog.never")
-                      : `${d.acerto}% · ${d.maos}`}
+                  {/* Nunca praticado diz "sem amostra", nunca "0%": zero afirma desempenho, e
+                      ausencia de dado nao afirma nada. Ate 28/08 este comentario ja dizia isso e
+                      a chave `catalog.never` valia "—", um travessao -- que nao diz nada ao
+                      jogador E viola a regra de copy do projeto. Comentario nao e evidencia. */}
+                  <span className="flex items-center gap-1.5">
+                    <Medalha acerto={d.acerto} />
+                    <span className="truncate font-mono text-[10px] tabular-nums text-foreground/70">
+                      {d.acerto === null
+                        ? t("catalog.never")
+                        : `${d.acerto}% · ${d.maos}`}
+                    </span>
                   </span>
                 </span>
               </Link>

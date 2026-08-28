@@ -123,16 +123,13 @@ export default function Training() {
     <HudLayout eyebrow={t("eyebrow")} title={t("title")} description={t("subtitle")}>
       <div className="space-y-4">
 
-        {/* Fase 1 do redesign (project_redesign_trilha_training): a v2 mora em rota própria e
-            esta tela fica INTACTA — um convite discreto, nunca um redirect. */}
-        <Link to="/training"
-          className="flex items-center justify-between gap-3 rounded-xl border border-primary/25 bg-primary/[0.05] px-3 py-2 text-[12px] transition-colors hover:border-primary/50">
-          <span className="text-muted-foreground">
-            <span className="mr-2 rounded-full bg-primary/15 px-2 py-0.5 font-mono text-[9px] font-bold uppercase tracking-widest text-primary">{t("trilha.beta")}</span>
-            {t("trilha.convite")}
-          </span>
-          <ArrowRight className="size-3.5 shrink-0 text-primary" aria-hidden />
-        </Link>
+        {/* O convite para a Trilha (beta) SAIU em 28/08, por decisão do dono: "a tela de
+            treino padrão tem que voltar a ser a clássica, oculte a versão beta, pois a princípio
+            não iremos mais utilizar".
+
+            O banner nem poderia continuar: com `/training` servindo esta tela, ele apontaria para
+            ela mesma. A Trilha continua viva em `/training/trilha`, sem link em lugar nenhum --
+            "a princípio" não é "nunca", e apagar tornaria caro voltar atrás. */}
 
         {/* ── Ações de treino — compactas, no topo (a ação principal vem primeiro) ── */}
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">

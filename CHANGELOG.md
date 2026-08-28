@@ -5,6 +5,62 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## As capturas da landing, e a tela de treino que volta a ser a classica (28/08)
+
+### As capturas: 2 de 3, e a terceira nao vai existir por enquanto
+
+`veredito.webp` e `treino.webp` capturadas do produto rodando, por
+`frontend/scripts/landing_shots.mjs`. A `evolucao` **nao foi capturada de proposito**: o banco de
+captura tem um torneio so e `/player/career` responde `insufficient_data`. Semear torneios para
+desenhar uma curva de melhora seria fabricar, numa imagem de marketing, exatamente o numero que o
+produto se recusa a inventar na tela do jogador.
+
+O card escolhido para `veredito` nao foi o mais bonito: e o que o TEXTO do bloco afirma. Erro de
+**-6,5bb no turn, julgado pelo SOLVER**, com "voce jogou FOLD / GTO recomenda CALL" e a estrategia
+da mao. A imagem confirma a frase em vez de decora-la.
+
+### O achado que quase publicou identidade de gente real
+
+A primeira captura saiu com os **screen names reais** do historico: 43 pessoas de verdade,
+`oldyellowbricks`, `McLci`, `D.Leonoff`. Ninguem concordou em aparecer num site aberto.
+
+O banco de captura virou uma COPIA com todos trocados por "Jogador N". A troca por palpite de nome
+de coluna (`hero`, `villain`, `player`) **nao bastou**: a varredura final, que confere TODA coluna
+de texto de TODA tabela, achou `opponent_profiles.player_name` -- que e justamente a fonte do HUD
+que aparecia na captura. 89 linhas tocadas, zero nicks restantes.
+
+### A tela de treino volta a ser a classica
+
+Decisao do dono: *"a tela de treino padrao tem que voltar a ser a classica, oculte a versao beta,
+pois a principio nao iremos mais utilizar"*. A Trilha (cockpit v3), promovida em 20/08, sai de
+`/training` e continua em `/training/trilha`, **sem link em lugar nenhum** -- "a principio" nao e
+"nunca", e apagar tornaria caro voltar atras. `/training-v2` e `/training/classic` redirecionam.
+
+O convite beta saiu junto, e nao por estilo: com `/training` servindo a classica, ele apontaria
+para ela mesma.
+
+### Os icones dos cards de treino: o defeito NAO era o front
+
+Reportado: *"os icones de cada tipo de treino nao estao aparecendo"*. O campo `ilustracao` vem do
+BACKEND (`leaklab/trainer_catalog.py`), e esse arquivo entrou em `8789a2d9` -- **depois** do
+ultimo deploy de backend verificado. O front subiu sozinho (Cloudflare), o backend nao
+(`project_ci_billing_bloqueado`), entao a API devolve `ilustracao` ausente e o `MiniRange`
+corretamente nao desenha nada. **Precisa de deploy de backend**, nao de conserto de codigo.
+
+E a captura da tela real expos dois defeitos que o mockup escondia:
+
+1. **O card era vertical**: a ilustracao centralizada num card de 600px de largura, com o titulo
+   encostado embaixo, ficava perdida num mar de vazio. Virou horizontal, com a ilustracao
+   ancorando a esquerda.
+2. **`catalog.never` valia `"—"`**, um travessao -- que nao diz nada ao jogador e viola a regra de
+   copy do proprio projeto. E o comentario ao lado afirmava, ha dias, que a tela mostrava "sem
+   amostra". Comentario nao e evidencia. Agora mostra mesmo, nos tres locales.
+
+### Verificado
+
+Frontend **425/425**. Backend: `test_miniaturas_de_treino` 6/6. A vitrine agora tem tres blocos, e
+`landingCapturasExistem.test.ts` quebra a build se um `print:` voltar sem arquivo.
+
 ## A landing anunciava, para o visitante, os arquivos que faltavam (28/08)
 
 O dono olhou a vitrine e disse "texto muito ruim", e depois: *"'grade abaixo e de verdade'... e a

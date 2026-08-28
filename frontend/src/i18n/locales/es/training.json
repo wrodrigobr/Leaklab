@@ -197,7 +197,7 @@
   "catalog": {
     "title": "Elige qué entrenar",
     "subtitle": "O deja que el sistema elija por lo que más fallas.",
-    "never": "—",
+    "never": "sin muestra",
     "hands": "manos",
     "start": "Entrenar",
     "drills": {

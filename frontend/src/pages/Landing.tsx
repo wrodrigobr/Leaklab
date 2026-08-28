@@ -409,24 +409,30 @@ function FeaturesSection() {
 
 function VitrineSection() {
   const { t } = useTranslation("landing");
-  // ── Por que só UM bloco (28/08) ──────────────────────────────────────────────────────────
+  // ── Três blocos, e o quarto está de fora por um motivo (28/08) ───────────────────────────
   //
-  // Havia quatro. Os três últimos apontavam para `/landing/*.webp`, e a pasta
-  // `frontend/public/landing/` NUNCA EXISTIU: o componente caía no `onError` e renderizava uma
-  // caixa tracejada dizendo "captura pendente" com o caminho do arquivo. Isso foi para o ar --
-  // o `main-CkqZOPrS.js` publicado continha a frase, e quem chegava no site via a seção "O
-  // produto" entregar três avisos de arquivo faltando.
+  // Eram quatro, e três apontavam para `/landing/*.webp` com a pasta `public/landing/` inexistente:
+  // o componente caía no `onError` e renderizava "captura pendente" com o caminho do arquivo. Isso
+  // foi para o ar -- o `main-*.js` publicado continha a frase.
   //
-  // O bloco 1 fica porque ele NÃO é uma captura: renderiza o `RangeGrid` de verdade, com dado
-  // real da carta. Não pode envelhecer nem faltar.
+  // O bloco 1 não é captura: renderiza o `RangeGrid` de verdade, com dado da carta. Os blocos 2 e
+  // 3 agora têm captura real, gerada por `scripts/landing_shots.mjs` a partir de um banco de
+  // captura anonimizado (43 screen names de gente real trocados por "Jogador N").
   //
-  // Para os outros três voltarem basta capturar os arquivos e devolver o `print:` aqui --
-  // `landingCapturasExistem.test.ts` quebra a build se o caminho voltar sem o arquivo. E aí a
-  // `vitrine.heading` volta a poder falar em mais de uma tela.
+  // A EVOLUÇÃO ficou de fora: o banco de captura tem um torneio só e `/player/career` responde
+  // `insufficient_data`. Semear torneios para desenhar uma curva de melhora seria fabricar, numa
+  // imagem de marketing, exatamente o número que o produto se recusa a inventar na tela.
+  //
+  // `landingCapturasExistem.test.ts` quebra a build se um `print:` voltar sem o arquivo.
   const blocos: BlocoVitrine[] = [
     { rotulo: t("vitrine.b1.rotulo"), titulo: t("vitrine.b1.titulo"), texto: t("vitrine.b1.texto"),
       bullets: [t("vitrine.b1.b1a"), t("vitrine.b1.b1b")] },
+    { rotulo: t("vitrine.b2.rotulo"), titulo: t("vitrine.b2.titulo"), texto: t("vitrine.b2.texto"),
+      bullets: [t("vitrine.b2.b2a"), t("vitrine.b2.b2b")], print: "/landing/veredito.webp" },
+    { rotulo: t("vitrine.b3.rotulo"), titulo: t("vitrine.b3.titulo"), texto: t("vitrine.b3.texto"),
+      bullets: [t("vitrine.b3.b3a"), t("vitrine.b3.b3b")], print: "/landing/treino.webp" },
   ];
+
   return <Vitrine eyebrow={t("vitrine.eyebrow")} heading={t("vitrine.heading")} blocos={blocos} />;
 }
 
