@@ -34,12 +34,16 @@ from typing import Optional
 # laço é outro (percorrer os passos de uma mão), mas entra como ITEM do catálogo e não como modo à
 # parte — é como o próprio GTO Wizard trata: "Full Hand" é um drill, não um modo.
 CATALOGO = [
+    # `ilustracao` diz QUAL desenho o card usa. Mora aqui, junto do resto da definicao do treino,
+    # em vez de a tela adivinhar pelo `id`: um treino novo sem ilustracao aparece sem desenho, que
+    # e honesto, em vez de cair num desenho de outro spot.
     {'id': 'meus_leaks', 'foco': 'adaptive',        'prefixo': None,      'destaque': True},
-    {'id': 'grind',      'foco': 'grind',           'prefixo': '',        'rota': '/grind'},
-    {'id': 'abrir',      'foco': 'fund:rfi',        'prefixo': 'rfi:'},
-    {'id': 'defender',   'foco': 'fund:vs_rfi',     'prefixo': 'vs_rfi:'},
-    {'id': 'vs_3bet',    'foco': 'fund:vs_3bet',    'prefixo': 'vs_3bet:'},
-    {'id': 'ranges',     'foco': 'fund:range_grid', 'prefixo': ''},
+    {'id': 'grind',      'foco': 'grind',           'prefixo': '',        'rota': '/grind',
+     'ilustracao': 'mesa'},
+    {'id': 'abrir',      'foco': 'fund:rfi',        'prefixo': 'rfi:',    'ilustracao': 'abrir'},
+    {'id': 'defender',   'foco': 'fund:vs_rfi',     'prefixo': 'vs_rfi:', 'ilustracao': 'defender'},
+    {'id': 'vs_3bet',    'foco': 'fund:vs_3bet',    'prefixo': 'vs_3bet:','ilustracao': 'vs_3bet'},
+    {'id': 'ranges',     'foco': 'fund:range_grid', 'prefixo': '',        'ilustracao': 'abrir'},
 ]
 
 
@@ -82,6 +86,7 @@ def catalogo_do_jogador(user_id: Optional[int]) -> list[dict]:
             'foco':    item['foco'],
             'rota':    item.get('rota'),
             'destaque': bool(item.get('destaque')),
+            'ilustracao': item.get('ilustracao'),
             # None, e não 0: nunca praticado não é desempenho zero
             'maos':    tent or None,
             'acerto':  (round(cert * 100.0 / tent, 1) if tent else None),

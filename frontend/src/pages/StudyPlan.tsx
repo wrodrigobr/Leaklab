@@ -290,9 +290,9 @@ const StudyPlanPage = () => {
             <Grid3x3 className="size-5 text-primary" aria-hidden />
           </span>
           <span className="min-w-0">
-            <span className="block font-heading text-base font-bold text-foreground">{t("rangesDoor.title", "Ranges")}</span>
+            <span className="block font-heading text-base font-bold text-foreground">{t("rangesDoor.title")}</span>
             <span className="block truncate text-xs text-muted-foreground">
-              {t("rangesDoor.desc", "A carta de 3bb a 100bb, posição por posição")}
+              {t("rangesDoor.desc")}
             </span>
           </span>
         </span>

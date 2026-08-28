@@ -856,7 +856,7 @@ const Replayer = () => {
             <Filter className="size-4 shrink-0 text-amber-400" aria-hidden />
             <p className="min-w-0 flex-1 text-sm text-foreground">
               <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-amber-400">
-                {t("filterNav.label", "Navegando")}
+                {t("filterNav.label")}
               </span>
               <span className="mx-2 text-muted-foreground">·</span>
               {t(`filterNav.${resultFilter}`)}

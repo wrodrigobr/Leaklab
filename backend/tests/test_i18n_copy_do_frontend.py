@@ -277,6 +277,50 @@ def test_RangeSet_nao_tem_campo_morto_de_descricao():
     print('OK  test_RangeSet_nao_tem_campo_morto_de_descricao')
 
 
+# Sobre-escapado na 1a versao (\b em raw string casa uma barra LITERAL), e o guarda passou
+# verde com o fallback plantado de volta. Pego quebrando de proposito.
+_T_COM_FALLBACK = re.compile('\\bt\\(\\s*"[^"]+"\\s*,\\s*"[^"]{4,}"\\s*\\)')
+
+
+def test_nenhuma_chamada_t_carrega_fallback_inline():
+    """`t("chave", "texto")` e uma SEGUNDA FONTE para a mesma string.
+
+    O caso que originou (28/08): troquei a copy de `rangesDoor.desc` nos 3 locales e o texto
+    VELHO continuou aparecendo no bundle publicado. A causa era o fallback inline -- o JSON
+    dizia uma coisa e o segundo argumento do `t()` dizia outra. So o artefato no ar mostrou,
+    que e a licao de sempre: o bundle acha o que o fonte esconde.
+
+    O fallback nao protege de nada aqui. Chave faltando ja tem guarda proprio neste arquivo, e
+    uma chave ausente aparece na tela como a propria chave, que e um sinal honesto. O que ele
+    faz e manter copy morta viva no binario.
+
+    Medido antes de escrever a regra: o projeto inteiro tinha DUAS chamadas assim (as duas
+    minhas, divergentes) mais uma terceira redundante no Replayer. A convencao ja era esta;
+    faltava o guarda.
+    """
+    suspeitas, arquivos = [], 0
+    for base, _dirs, arqs in os.walk(_FRONT):
+        if any(x in base.split(os.sep) for x in ('node_modules', '__tests__')):
+            continue
+        for a in arqs:
+            if not a.endswith(('.tsx', '.ts')) or '.test.' in a:
+                continue
+            arquivos += 1
+            caminho = os.path.join(base, a)
+            with open(caminho, encoding='utf-8') as fh:
+                for n, linha in enumerate(fh, 1):
+                    if _T_COM_FALLBACK.search(linha):
+                        suspeitas.append('%s:%d  %s' % (
+                            os.path.relpath(caminho, _FRONT), n, linha.strip()[:90]))
+    # CONTROLE: varredura que nao varreu devolve zero e parece aprovada.
+    assert arquivos > 100, (
+        'a varredura olhou %d arquivos, nao esta varrendo o front, e o zero abaixo nao '
+        'significa nada' % arquivos)
+    assert not suspeitas, (
+        'fallback inline em t(): segunda fonte para a mesma string, e a copy velha sobrevive '
+        'no bundle. Deixe so a chave.\\n  ' + '\\n  '.join(suspeitas))
+    print('OK  test_nenhuma_chamada_t_carrega_fallback_inline (%d arquivos)' % arquivos)
+
 if __name__ == '__main__':
     falhas = 0
     testes = [v for k, v in sorted(globals().items()) if k.startswith('test_')]

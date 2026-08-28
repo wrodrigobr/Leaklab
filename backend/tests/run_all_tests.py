@@ -45,6 +45,7 @@ SUITES = {
                   'test_pwa_manifest.py',
                   'test_preflop_ranges_endpoint.py',
                   'test_vitrine_range_em_dia.py',
+                  'test_miniaturas_de_treino.py',
                   'test_range_de_continuacao.py',
                   'test_acusacao_carrega_recomendacao.py',
                   'test_quatro_guardas_do_relatorio.py',

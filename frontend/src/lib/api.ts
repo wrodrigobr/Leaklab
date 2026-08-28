@@ -1768,6 +1768,9 @@ export interface TrainingDrill {
   destaque: boolean;
   maos: number | null;
   acerto: number | null;
+  /** qual desenho o card usa ("abrir", "defender", "vs_3bet", "mesa"). Sem valor, o card fica
+   *  sem ilustracao -- honesto, em vez de cair no desenho de outro spot. */
+  ilustracao?: string | null;
 }
 /** Um passo da mão no MODO GRIND: o que a tela desenha, sem nada da resposta.
  *  Anonimizado por construção — posição e stack em BB, e nada mais. */
