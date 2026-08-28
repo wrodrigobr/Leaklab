@@ -42,6 +42,7 @@ SUITES = {
                   'test_call_e_commit_total.py',
                   'test_semente_estavel.py',
                   'test_regra_do_front_suprime_contradicao.py',
+                  'test_pwa_manifest.py',
                   'test_range_de_continuacao.py',
                   'test_acusacao_carrega_recomendacao.py',
                   'test_quatro_guardas_do_relatorio.py',

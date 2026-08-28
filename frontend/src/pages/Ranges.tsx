@@ -1,0 +1,295 @@
+/**
+ * /ranges — consulta livre da carta de preflop.
+ *
+ * ── Por que esta página existe (27/08) ────────────────────────────────────────────────────
+ *
+ * A carta tem 14 profundidades (3, 4, 5, 6, 7, 10, 14, 17, 20, 30, 40, 50, 75 e 100bb) e 6
+ * cenários, somando **354 spots consultáveis**. Até hoje existiam ZERO formas de olhar qualquer
+ * um deles: a matriz 13×13 só abria presa a um passo — dentro do replayer, de um drill ou de uma
+ * aula. Para saber "como se abre do CO com 25bb?" era preciso antes achar uma mão do próprio
+ * histórico em que isso aconteceu.
+ *
+ * A página não constrói motor nenhum: ela liga os seletores ao que já existe. `RangeGrid` pinta,
+ * `buildRangeFromApi` monta o RangeSet (a MESMA função do replayer) e `resumoDoSpot` conta as
+ * categorias. Nada aqui é uma segunda fonte.
+ *
+ * ── O que ela deliberadamente NÃO mostra ──────────────────────────────────────────────────
+ *
+ * EV por ação. A proposta original prometia isso, e a conferência derrubou: `hand_freqs` só tem
+ * frequência e uma busca por qualquer chave de EV no JSON da carta devolve nenhuma. O EV que o
+ * produto tem é por DECISÃO, vindo do solver, não por mão da carta. Prometer o número na tela
+ * exigiria inventá-lo.
+ */
+import { useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
+import { HudHeader } from "@/components/hud/HudHeader";
+import { RangeGrid } from "@/components/replayer/RangeGrid";
+import { buildRangeFromApi, type PreflopRangesResp } from "@/components/replayer/RangePanel";
+import { getPreflopRanges } from "@/lib/api";
+import { resumoDoSpot, ROTULO_ACAO, type RangeSet, type RangeType, type AcaoDaCelula } from "@/data/ranges";
+import { ACTION_COLORS } from "@/lib/actionColors";
+import { cn } from "@/lib/utils";
+
+// As 14 profundidades que a carta REALMENTE tem. Lista fixa de propósito: um seletor que oferece
+// profundidade sem carta manda o jogador para uma tela vazia sem dizer por quê.
+const STACKS = [3, 4, 5, 6, 7, 10, 14, 17, 20, 30, 40, 50, 75, 100];
+
+// A ponta rasa (3 a 7bb) só tem seção RFI — ver `_BALDES_RASOS` no backend. O seletor precisa
+// saber disso para não oferecer "vs Abertura" a 4bb e entregar vazio.
+const STACK_RASO_MAX = 7;
+
+const POSICOES = ["UTG", "UTG+1", "UTG+2", "LJ", "HJ", "CO", "BTN", "SB", "BB"];
+
+interface Cenario {
+  id: string;
+  tipo: RangeType;
+  scenario?: string;
+  /** precisa de um vilão (o abridor ou o 3-bettor) */
+  contra?: "abridor" | "3bettor";
+  /** posições em que o herói pode estar neste cenário */
+  posicoes: string[];
+  /** existe na faixa rasa? */
+  raso: boolean;
+}
+
+const CENARIOS: Cenario[] = [
+  { id: "rfi", tipo: "open", posicoes: POSICOES.slice(0, 8), raso: true },
+  { id: "vs_rfi", tipo: "call", contra: "abridor",
+    posicoes: POSICOES.slice(1), raso: false },
+  { id: "vs_3bet", tipo: "3bet", contra: "3bettor",
+    posicoes: POSICOES.slice(0, 8), raso: false },
+  { id: "squeeze", tipo: "3bet", scenario: "squeeze", contra: "abridor",
+    posicoes: POSICOES.slice(1), raso: false },
+];
+
+/** O chip da categoria usa o MESMO gradiente da célula — se divergir, a legenda mente. */
+function gradienteDa(acoes: AcaoDaCelula[]): string {
+  const cor: Record<AcaoDaCelula, string> = {
+    raise: ACTION_COLORS.raise,
+    call: ACTION_COLORS.call,
+    allin: ACTION_COLORS.allin,
+    fold: "rgba(113,113,122,0.35)",
+  };
+  if (acoes.length === 1) return cor[acoes[0]];
+  const fatia = 100 / acoes.length;
+  return `linear-gradient(to right, ${acoes
+    .map((a, i) => `${cor[a]} ${i * fatia}% ${(i + 1) * fatia}%`)
+    .join(", ")})`;
+}
+
+function Pilula({ ativo, onClick, children, desabilitado, titulo }: {
+  ativo: boolean; onClick: () => void; children: React.ReactNode;
+  desabilitado?: boolean; titulo?: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={desabilitado}
+      title={titulo}
+      className={cn(
+        "rounded-md border px-2.5 py-1 text-xs font-medium transition-colors",
+        desabilitado
+          ? "cursor-not-allowed border-border/60 text-muted-foreground/40"
+          : ativo
+            ? "border-primary/45 bg-primary/[0.13] text-primary"
+            : "border-border text-muted-foreground hover:border-border/80 hover:text-foreground",
+      )}
+    >
+      {children}
+    </button>
+  );
+}
+
+function Linha({ children }: { children: React.ReactNode }) {
+  return <div className="flex flex-wrap items-center gap-1.5">{children}</div>;
+}
+
+function Rotulo({ children }: { children: React.ReactNode }) {
+  return (
+    <span className="min-w-[76px] font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-hud-muted">
+      {children}
+    </span>
+  );
+}
+
+export default function Ranges() {
+  const { t } = useTranslation("study");
+  const [cenarioId, setCenarioId] = useState("rfi");
+  const [stack, setStack] = useState(20);
+  const [posicao, setPosicao] = useState("CO");
+  const [contra, setContra] = useState<string | null>(null);
+  const [resp, setResp] = useState<PreflopRangesResp | null>(null);
+  const [carregando, setCarregando] = useState(true);
+  const [erro, setErro] = useState<string | null>(null);
+
+  const cenario = CENARIOS.find((c) => c.id === cenarioId) ?? CENARIOS[0];
+  const rasoDemais = stack <= STACK_RASO_MAX && !cenario.raso;
+
+  // Sair de um estado impossível em vez de mostrar tela vazia: se o cenário não serve a posição
+  // escolhida (BB não abre), cai na primeira que ele serve.
+  useEffect(() => {
+    if (!cenario.posicoes.includes(posicao)) setPosicao(cenario.posicoes[0]);
+  }, [cenarioId]);  // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    let vivo = true;
+    setCarregando(true);
+    setErro(null);
+    getPreflopRanges(posicao, stack)
+      .then((d) => { if (vivo) setResp(d); })
+      .catch((e) => { if (vivo) setErro(e?.message ?? "não foi possível carregar"); })
+      .finally(() => { if (vivo) setCarregando(false); });
+    return () => { vivo = false; };
+  }, [posicao, stack]);
+
+  /** Os vilões que o cenário oferece de fato, lidos da resposta — nunca uma lista inventada. */
+  const viloes = useMemo(() => {
+    if (!resp || !cenario.contra) return [];
+    const fonte = cenario.id === "vs_rfi" ? resp.vs_rfi
+      : cenario.id === "squeeze" ? resp.squeeze
+      : resp.vs_3bet;
+    return Object.keys(fonte ?? {}).map((k) => k.replace("_open", "")).sort();
+  }, [resp, cenario]);
+
+  const vilaoAtivo = contra && viloes.includes(contra) ? contra : viloes[0] ?? null;
+
+  const range: RangeSet | null = useMemo(() => {
+    if (!resp) return null;
+    const chave = cenario.id === "vs_rfi" && vilaoAtivo
+      ? (resp.vs_rfi?.[vilaoAtivo] ? vilaoAtivo : `${vilaoAtivo}_open`)
+      : vilaoAtivo ?? undefined;
+    return buildRangeFromApi(resp, cenario.tipo, chave, cenario.scenario);
+  }, [resp, cenario, vilaoAtivo]);
+
+  const categorias = useMemo(() => (range ? resumoDoSpot(range) : []), [range]);
+
+  return (
+    <div className="min-h-dvh bg-background text-foreground">
+      <HudHeader />
+      <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
+        <h1 className="font-heading text-2xl font-bold tracking-tight">{t("ranges.title")}</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          {t("ranges.subtitle")}
+        </p>
+
+        <div className="mt-5 flex flex-col gap-2.5 rounded-xl border border-border bg-hud-surface/40 p-3.5">
+          <Linha>
+            <Rotulo>{t("ranges.cenario")}</Rotulo>
+            {CENARIOS.map((c) => (
+              <Pilula key={c.id} ativo={c.id === cenarioId} onClick={() => setCenarioId(c.id)}>
+                {t(`ranges.cen.${c.id}`)}
+              </Pilula>
+            ))}
+          </Linha>
+          <Linha>
+            <Rotulo>{t("ranges.stack")}</Rotulo>
+            {STACKS.map((s) => (
+              <Pilula
+                key={s}
+                ativo={s === stack}
+                onClick={() => setStack(s)}
+                titulo={s <= STACK_RASO_MAX ? t("ranges.dicaRaso") : undefined}
+              >
+                <span className="font-mono">{s === stack ? `${s}bb` : s}</span>
+              </Pilula>
+            ))}
+          </Linha>
+          <Linha>
+            <Rotulo>{t("ranges.posicao")}</Rotulo>
+            {POSICOES.map((p) => (
+              <Pilula
+                key={p}
+                ativo={p === posicao}
+                desabilitado={!cenario.posicoes.includes(p)}
+                onClick={() => setPosicao(p)}
+                titulo={!cenario.posicoes.includes(p)
+                  ? t("ranges.semCenario", { pos: p }) : undefined}
+              >
+                {p}
+              </Pilula>
+            ))}
+          </Linha>
+          {cenario.contra && (
+            <Linha>
+              <Rotulo>{t(cenario.contra === "abridor" ? "ranges.contra" : "ranges.tresBetDe")}</Rotulo>
+              {viloes.length === 0 && (
+                <span className="text-xs text-muted-foreground">
+                  {carregando ? "…" : t("ranges.semVilao")}
+                </span>
+              )}
+              {viloes.map((v) => (
+                <Pilula key={v} ativo={v === vilaoAtivo} onClick={() => setContra(v)}>
+                  {v}
+                </Pilula>
+              ))}
+            </Linha>
+          )}
+        </div>
+
+        <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1.55fr)_minmax(0,1fr)]">
+          <div className="rounded-xl border border-border bg-hud-surface/40 p-3.5">
+            {carregando && (
+              <p className="py-16 text-center text-sm text-muted-foreground">{t("ranges.carregando")}</p>
+            )}
+            {!carregando && erro && (
+              <p className="py-16 text-center text-sm text-destructive">{erro}</p>
+            )}
+            {!carregando && !erro && !range && (
+              // Ausência que DECLARA o motivo — a mesma regra do backend. Uma grade vazia sem
+              // explicação faz o jogador achar que a range é fold 100%.
+              <p className="py-16 text-center text-sm text-muted-foreground">
+                {rasoDemais
+                  ? t("ranges.rasoDemais", { stack })
+                  : t("ranges.semCarta", {
+                      cenario: t(`ranges.cen.${cenario.id}`).toLowerCase(), posicao, stack })}
+              </p>
+            )}
+            {!carregando && !erro && range && (
+              <>
+                <div className="mb-2 flex items-baseline justify-between gap-3">
+                  <h2 className="font-mono text-[11px] font-semibold uppercase tracking-[0.14em] text-primary">
+                    {range.label}
+                  </h2>
+                </div>
+                <RangeGrid range={range} />
+              </>
+            )}
+          </div>
+
+          <div className="rounded-xl border border-border bg-hud-surface/40 p-3.5">
+            <h2 className="mb-2.5 flex items-baseline justify-between font-mono text-[11px] font-semibold uppercase tracking-[0.14em] text-primary">
+              <span>{t("ranges.resumoTitulo")}</span>
+              <span className="tracking-normal text-hud-muted">{t("ranges.resumoCombos")}</span>
+            </h2>
+            {categorias.length === 0 && (
+              <p className="text-xs text-muted-foreground">{t("ranges.resumoVazio")}</p>
+            )}
+            <ul className="space-y-0">
+              {categorias.map((c) => (
+                <li
+                  key={c.chave}
+                  className="flex items-center gap-2 border-b border-border/60 py-1.5 text-sm last:border-b-0"
+                >
+                  <span
+                    className="block size-2.5 flex-none rounded-[2px]"
+                    style={{ background: gradienteDa(c.acoes) }}
+                  />
+                  <span className="flex-1 text-foreground">
+                    {c.acoes.map((a) => ROTULO_ACAO[a]).join(t("ranges.ou"))}
+                  </span>
+                  <span className="font-mono text-xs tabular-nums text-muted-foreground">
+                    <b className="font-medium text-foreground">{c.combos}</b> {t("ranges.combos")} · {c.pct}%
+                  </span>
+                </li>
+              ))}
+            </ul>
+            <p className="mt-3 text-[11px] leading-relaxed text-hud-muted">
+              {t("ranges.resumoNota")}
+            </p>
+          </div>
+        </div>
+      </main>
+    </div>
+  );
+}

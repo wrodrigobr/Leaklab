@@ -17,8 +17,7 @@ import {
   Timer,
   Star,
   Users,
-  ChevronRight,
-} from "lucide-react";
+  ChevronRight, Grid3x3 } from "lucide-react";
 import { HudLayout } from "@/components/hud/HudLayout";
 import { ResourceList } from "@/components/study/ResourceList";
 import { buildStudyPlan } from "@/components/study/planBuilder";
@@ -277,6 +276,27 @@ const StudyPlanPage = () => {
           </span>
         </span>
         <ArrowRight className="size-4 shrink-0 text-violet-400" aria-hidden />
+      </Link>
+
+      {/* RANGES (27/08): a matriz 13x13 existia desde sempre, mas so abria PRESA a um passo --
+          dentro do replayer, de um drill ou de uma aula. Para perguntar "como se abre do CO com
+          25bb?" era preciso antes achar uma mao propria em que isso tivesse acontecido. Sao 354
+          spots consultaveis (14 profundidades x 6 cenarios) que ninguem conseguia olhar.
+          A porta mora aqui, ao lado da Academia, porque quem quer estudar range vem a Estudos. */}
+      <Link to="/ranges"
+        className="flex items-center justify-between gap-3 rounded-xl border border-primary/30 bg-primary/[0.06] p-4 transition-colors hover:border-primary/50">
+        <span className="flex min-w-0 items-center gap-3">
+          <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 ring-1 ring-primary/30">
+            <Grid3x3 className="size-5 text-primary" aria-hidden />
+          </span>
+          <span className="min-w-0">
+            <span className="block font-heading text-base font-bold text-foreground">{t("rangesDoor.title", "Ranges")}</span>
+            <span className="block truncate text-xs text-muted-foreground">
+              {t("rangesDoor.desc", "A carta de 3bb a 100bb, posição por posição")}
+            </span>
+          </span>
+        </span>
+        <ArrowRight className="size-4 shrink-0 text-primary" aria-hidden />
       </Link>
 
       {/* Toolbar */}

@@ -1,4 +1,5 @@
 import { getAcquisition } from "./acquisition";
+import type { PreflopRangesResp } from "@/components/replayer/RangePanel";
 
 const BASE = import.meta.env.VITE_API_URL ?? "http://localhost:5000";
 
@@ -84,6 +85,19 @@ export interface DemographicProfile {
   main_game_type?: "mtt" | "cash" | "spin" | "mixed" | null;
   usual_buyin_range?: "micro" | "low" | "mid" | "high" | null;
   profile_completed_at?: string | null;
+}
+
+/** Ranges GTO de preflop por posicao e profundidade. Consumido pela pagina /ranges.
+ *
+ * O endpoint devolve os TRES cenarios de uma vez (rfi, vs_rfi, vs_3bet/squeeze) para a posicao e
+ * o balde pedidos; quem escolhe qual mostrar e `buildRangeFromApi`, a MESMA funcao que o
+ * RangePanel do replayer usa. Uma construcao so para os dois consumidores. */
+export async function getPreflopRanges(
+  position: string, stackBb: number
+): Promise<PreflopRangesResp> {
+  return request<PreflopRangesResp>(
+    `/preflop-ranges?position=${encodeURIComponent(position)}&stack_bb=${stackBb}`
+  );
 }
 
 export const profile = {

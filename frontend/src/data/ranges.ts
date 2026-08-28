@@ -157,6 +157,92 @@ export function rangeStats(range: RangeSet): { combos: number; pct: string } {
   return { combos, pct: (combos / 1326 * 100).toFixed(1) };
 }
 
+// ── Resumo do spot: a mistura vira CATEGORIA com nome, não gradiente para adivinhar ──────────
+//
+// Nasceu do benchmark de 27/08. O visor do concorrente não deixa a estratégia mista como uma cor
+// intermediária que o olho tem que decifrar: ele nomeia cada combinação de ações e diz quantos
+// combos tem dentro ("Raise ou Call: 62 combos · 4,7%"). É a diferença entre um mapa de calor e
+// um vocabulário, e não custa dado novo — sai de contar o que a grade já pinta.
+//
+// O peso do combo é o mesmo de `rangeStats` (par = 6, suited = 4, offsuit = 12) e a leitura da
+// frequência passa por `getHandFreq`, que é a MESMA fonte que pinta a célula. Contar por outro
+// caminho seria a segunda fonte para o mesmo fato — o defeito que este projeto passa a semana
+// consertando.
+
+/** Uma categoria do resumo: as ações que a mão toma, com quantos combos caem nela. */
+export interface CategoriaDoSpot {
+  chave:  string;        // 'raise' | 'raise+fold' | 'call+raise' ...
+  acoes:  AcaoDaCelula[];   // para o chip usar o MESMO gradiente da célula
+  combos: number;
+  pct:    string;
+}
+
+export type AcaoDaCelula = 'raise' | 'call' | 'allin' | 'fold';
+
+// Termos de poker ficam em inglês — regra do projeto, e por isso vivem aqui. O CONECTOR
+// ("ou") não vive: ele é idioma, e camada de dados não sabe idioma. Quem junta é a tela, com
+// `t()`. A 1ª versão juntava aqui e o guarda de i18n pegou na hora.
+export const ROTULO_ACAO: Record<AcaoDaCelula, string> = {
+  raise: 'Raise',
+  call:  'Call',
+  allin: 'All-in',
+  fold:  'Fold',
+};
+
+// Ordem de leitura: agressão primeiro, fold por último. Vale para ordenar as categorias E para
+// nomear a mistura sempre na mesma sequência ("Raise ou Fold", nunca "Fold ou Raise").
+const ORDEM: AcaoDaCelula[] = ['allin', 'raise', 'call', 'fold'];
+
+// Mesmo limiar de `buildGradient`: abaixo disto a ação não é pintada, então não pode ser contada.
+const MINIMO = 0.001;
+
+/**
+ * Agrupa as 169 células por COMBINAÇÃO de ações e devolve as categorias com combos e %.
+ *
+ * Devolve só categorias não vazias, na ordem de leitura (agressão → fold). A soma dos combos é
+ * sempre 1.326 — se não for, alguma célula ficou de fora e o resumo estaria mentindo.
+ */
+export function resumoDoSpot(range: RangeSet): CategoriaDoSpot[] {
+  const acc = new Map<string, { acoes: AcaoDaCelula[]; combos: number }>();
+
+  for (let r = 0; r < 13; r++) {
+    for (let c = 0; c < 13; c++) {
+      const hand = cellHand(r, c);
+      const f    = getHandFreq(hand, range);
+      const ativo = (f.raise ?? 0) + (f.call ?? 0) + (f.allin ?? 0);
+
+      const acoes: AcaoDaCelula[] = [];
+      if ((f.allin ?? 0) > MINIMO) acoes.push('allin');
+      if ((f.raise ?? 0) > MINIMO) acoes.push('raise');
+      if ((f.call  ?? 0) > MINIMO) acoes.push('call');
+      // Fold é o RESTO, exatamente como a célula é pintada. Ler `f.fold` daria outro número
+      // quando a soma não fecha 1.0, e a tela mostraria uma coisa e o resumo outra.
+      if (1 - ativo > MINIMO) acoes.push('fold');
+      if (!acoes.length) acoes.push('fold');
+
+      const chave = acoes.join('+');
+      const peso  = r === c ? 6 : r < c ? 4 : 12;
+      const atual = acc.get(chave);
+      if (atual) atual.combos += peso;
+      else acc.set(chave, { acoes, combos: peso });
+    }
+  }
+
+  return [...acc.entries()]
+    .map(([chave, v]) => ({
+      chave,
+      acoes:  v.acoes,
+      combos: v.combos,
+      pct:    ((v.combos / 1326) * 100).toFixed(1),
+    }))
+    .sort((a, b) => {
+      // categoria pura antes de mista; dentro do mesmo tamanho, pela ação mais agressiva
+      const pa = a.acoes.length - b.acoes.length;
+      if (pa !== 0) return pa;
+      return ORDEM.indexOf(a.acoes[0]) - ORDEM.indexOf(b.acoes[0]);
+    });
+}
+
 // ── Open Ranges ───────────────────────────────────────────────────────────────
 
 const UTG_OPEN: RangeSet = {

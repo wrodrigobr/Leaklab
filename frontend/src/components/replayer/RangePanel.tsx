@@ -54,7 +54,7 @@ interface ActionGrid {
   acoes?: string[];
   frequencies?: Record<string, HandFreqApi>;
 }
-interface PreflopRangesResp {
+export interface PreflopRangesResp {
   position: string;
   stack_bb: number;
   stack_bucket: string;
@@ -102,7 +102,9 @@ const QUALITY_META: Record<string, { key: string; color: string; icon: typeof Ch
   unknown:    { key: 'qualidade.semDados',  color: 'text-muted-foreground', icon: Info     },
 };
 
-function buildRangeFromApi(resp: PreflopRangesResp, type: RangeType, openerPos?: string, scenario?: string): RangeSet | null {
+// Exportada em 27/08 para a pagina /ranges reusar a MESMA construcao. Duplicar aqui seria a
+// segunda fonte para o mesmo fato -- o defeito que este projeto passa a semana consertando.
+export function buildRangeFromApi(resp: PreflopRangesResp, type: RangeType, openerPos?: string, scenario?: string): RangeSet | null {
   if (type === 'open') {
     if (!resp.rfi) return null;
     return {

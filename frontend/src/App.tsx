@@ -37,6 +37,7 @@ import Training from "./pages/Training.tsx";
 import TrainingV2 from "./pages/TrainingV2.tsx";
 import Evolution from "./pages/Evolution.tsx";
 import Academy from "./pages/Academy.tsx";
+import Ranges from "./pages/Ranges.tsx";
 import AcademyMath from "./pages/AcademyMath.tsx";
 import AcademyBoardStrength from "./pages/AcademyBoardStrength.tsx";
 import AcademyMathIntermediate from "./pages/AcademyMathIntermediate.tsx";
@@ -363,6 +364,7 @@ const App = () => (
             {/* Retrato congelado — MESMA tela, dado de outro dia. Comparar meses exige a mesma
                 forma, senão o que salta aos olhos é a diferença do desenho, não a do jogo. */}
             <Route path="/evolucao/:reportId" element={<ProtectedRoute><Evolution /></ProtectedRoute>} />
+            <Route path="/ranges" element={<ProtectedRoute><Ranges /></ProtectedRoute>} />
             <Route path="/academy" element={<ProtectedRoute><Academy /></ProtectedRoute>} />
             <Route path="/academy/math" element={<ProtectedRoute><AcademyMath /></ProtectedRoute>} />
             <Route path="/academy/math/intermediate" element={<ProtectedRoute><AcademyMathIntermediate /></ProtectedRoute>} />

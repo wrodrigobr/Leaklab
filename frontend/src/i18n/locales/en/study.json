@@ -133,5 +133,36 @@
     "ferramenta": "Tool",
     "vazio": "No resources assigned yet."
   },
-  "coachGerencia": "Your coach manages this plan"
+  "coachGerencia": "Your coach manages this plan",
+  "rangesDoor": {
+    "title": "Ranges",
+    "desc": "The chart from 3bb to 100bb, position by position"
+  },
+  "ranges": {
+    "title": "Ranges",
+    "subtitle": "The reference chart, position by position and depth by depth.",
+    "cenario": "Scenario",
+    "stack": "Stack",
+    "posicao": "Position",
+    "contra": "Against",
+    "tresBetDe": "3-bet from",
+    "cen": {
+      "rfi": "Open",
+      "vs_rfi": "vs Open",
+      "vs_3bet": "vs 3-bet",
+      "squeeze": "Squeeze"
+    },
+    "ou": " or ",
+    "carregando": "loading the chart…",
+    "semVilao": "no villain covered in this spot",
+    "rasoDemais": "The {{stack}}bb chart only covers opening. Pick \"Open\" or a deeper stack.",
+    "semCarta": "No chart for {{cenario}} from {{posicao}} at {{stack}}bb.",
+    "dicaRaso": "shallow band: the chart only covers opening",
+    "semCenario": "{{pos}} has no such scenario",
+    "resumoTitulo": "Spot summary",
+    "resumoCombos": "1,326 combos",
+    "resumoVazio": "pick a covered spot to see the summary.",
+    "resumoNota": "A mix is its own category, not a shade between two colors: \"Raise or Fold\" tells you how many combos play both ways.",
+    "combos": "combos"
+  }
 }

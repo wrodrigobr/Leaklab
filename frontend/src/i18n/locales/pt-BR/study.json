@@ -133,5 +133,36 @@
     "ferramenta": "Ferramenta",
     "vazio": "Nenhum recurso atribuído ainda."
   },
-  "coachGerencia": "Seu coach gerencia este plano"
+  "coachGerencia": "Seu coach gerencia este plano",
+  "rangesDoor": {
+    "title": "Ranges",
+    "desc": "A carta de 3bb a 100bb, posição por posição"
+  },
+  "ranges": {
+    "title": "Ranges",
+    "subtitle": "A carta de referência, posição por posição e profundidade por profundidade.",
+    "cenario": "Cenário",
+    "stack": "Stack",
+    "posicao": "Posição",
+    "contra": "Contra",
+    "tresBetDe": "3-bet de",
+    "cen": {
+      "rfi": "Abertura",
+      "vs_rfi": "vs Abertura",
+      "vs_3bet": "vs 3-bet",
+      "squeeze": "Squeeze"
+    },
+    "ou": " ou ",
+    "carregando": "carregando a carta…",
+    "semVilao": "nenhum vilão coberto neste spot",
+    "rasoDemais": "A carta de {{stack}}bb cobre só a abertura. Escolha \"Abertura\" ou uma profundidade maior.",
+    "semCarta": "Não temos carta para {{cenario}} de {{posicao}} a {{stack}}bb.",
+    "dicaRaso": "faixa rasa: a carta cobre só a abertura",
+    "semCenario": "{{pos}} não tem esse cenário",
+    "resumoTitulo": "Resumo do spot",
+    "resumoCombos": "1.326 combos",
+    "resumoVazio": "escolha um spot coberto para ver o resumo.",
+    "resumoNota": "A mistura é uma categoria própria, não um tom entre duas cores: \"Raise ou Fold\" diz quantos combos jogam dos dois jeitos.",
+    "combos": "combos"
+  }
 }

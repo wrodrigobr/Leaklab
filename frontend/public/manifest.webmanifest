@@ -1,8 +1,11 @@
 {
+  "id": "/",
   "name": "GrindLab — Poker Coaching",
   "short_name": "GrindLab",
   "description": "Análise tática de torneios e detecção de leaks com IA.",
-  "start_url": "/",
+  "lang": "pt-BR",
+  "categories": ["education", "games", "sports"],
+  "start_url": "/dashboard",
   "scope": "/",
   "display": "standalone",
   "orientation": "any",
@@ -11,6 +14,6 @@
   "icons": [
     { "src": "/favicon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
     { "src": "/favicon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
-    { "src": "/favicon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+    { "src": "/favicon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ]
 }
