@@ -20,9 +20,26 @@ cd "$(dirname "$0")/.." 2>/dev/null || true
 [ -f docker-compose.yml ] || cd ~/app
 
 echo "== 1/5  git pull"
+ANTES="$(git rev-parse HEAD)"
 git pull --ff-only
 ESPERADO="$(git rev-parse --short HEAD)"
 echo "   HEAD: $ESPERADO"
+
+# ── O script atualiza a SI MESMO, e o bash le por posicao de byte ───────────────────────────
+#
+# Em 28/08 o passo 1 trouxe uma versao nova deste arquivo (com a conferencia de preco no passo 5)
+# e o bash seguiu executando a VELHA: a saida imprimiu o texto antigo do passo 5 e **a conferencia
+# nunca rodou**, enquanto os containers subiam com o codigo novo. Um portao que se
+# auto-desatualiza e pior que portao nenhum: ele declara aprovado o que nao mediu.
+#
+# Se o proprio deploy.sh mudou no pull, re-executa a versao nova UMA vez. `LEAKLAB_DEPLOY_REEXEC`
+# impede o laco infinito caso algo de errado na comparacao.
+if [ "$ANTES" != "$(git rev-parse HEAD)" ] && [ -z "${LEAKLAB_DEPLOY_REEXEC:-}" ]; then
+  if ! git diff --quiet "$ANTES" HEAD -- backend/scripts/deploy.sh; then
+    echo "   este script mudou no pull -- re-executando a versao nova"
+    LEAKLAB_DEPLOY_REEXEC=1 exec bash backend/scripts/deploy.sh "$@"
+  fi
+fi
 
 echo "== 2/5  build (carimbando $ESPERADO na imagem)"
 GIT_SHA="$ESPERADO" docker compose build $SERVICOS
