@@ -23,7 +23,16 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
   creditável); reprovado vira `retired_gto` com o motivo; aprovado ganha o SELO
   `gto_strategy_vetada` (a defesa 1 passa a valer para o acervo, e o piso vira exceção rara).
 
+### Corrigido (2ª rodada do dia)
+- **O desafio agendado de hoje era o #11 aposentado** e `get_today_challenge` servia pelo id
+  agendado sem reconferir o status. Regra nova: agendado que foi aposentado re-sorteia um
+  aprovado **só se ninguém respondeu no dia**; com tentativa gravada, mantém — trocar a
+  pergunta debaixo de resposta gravada é dano que o bug não causava (regra 7).
+
 ### Medido
+- Revalidação APLICADA em prod: 33 candidatos, 30 selados, 3 aposentados por premissa
+  impossível (#11 "LJ não abre 54o", #13 "LJ não abre J4o", #15 "UTG não abre 96o") — o #11
+  era exatamente o desafio que o dono pegou na tela.
 - Forjado o próprio caso de prod no teste (candidato 54o/LJ pré-gate): a revalidação o acha e
   aposenta; o válido ganha selo; dry-run comprovadamente não escreve. Engine 🟢, API 45/45.
 

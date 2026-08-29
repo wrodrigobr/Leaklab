@@ -185,6 +185,55 @@ def test_revalidacao_SELA_o_aprovado_e_dry_run_nao_escreve():
     print('OK  test_revalidacao_SELA_o_aprovado_e_dry_run_nao_escreve')
 
 
+
+def test_agendado_aposentado_re_sorteia_SO_sem_tentativa():
+    """30/08: a revalidacao aposentou o desafio JA AGENDADO de hoje. Regra: sem tentativa no
+    dia, re-sorteia um aprovado; com tentativa gravada, mantem — trocar a pergunta debaixo de
+    resposta gravada e dano que o bug nao causava (regra 7)."""
+    import json
+    import uuid
+    from database.schema import init_db
+    init_db()
+    from database.repositories import (add_challenge_candidates, create_user,
+                                       get_today_challenge, list_challenge_candidates,
+                                       record_challenge_attempt, set_challenge_status)
+    # dois candidatos: um bom (aprovado) e um que sera aposentado
+    bom = {'scenario': 'rfi', 'position': 'BTN', 'vs_position': '', 'stack_bb': 40,
+           'hand': 'A5s', 'hero_cards': [{'rank': 'A', 'suit': 'h'}, {'rank': '5', 'suit': 'h'}],
+           'options': ['fold', 'raise', 'allin'],
+           'gto_strategy_vetada': [{'action': 'raise', 'freq': 0.9}]}
+    add_challenge_candidates([
+        {'spot_json': json.dumps(dict(SPOT_BASE)), 'answer': 'fold', 'difficulty': 'facil'},
+        {'spot_json': json.dumps(bom), 'answer': 'raise', 'difficulty': 'facil'},
+    ])
+    ids = sorted(c['id'] for c in list_challenge_candidates(status=None, limit=1000))[-2:]
+    ruim_id, bom_id = ids[0], ids[1]
+    set_challenge_status(ruim_id, 'approved')
+    set_challenge_status(bom_id, 'approved')
+
+    dia1 = 'T1-' + uuid.uuid4().hex[:6]
+    ag = get_today_challenge(dia1)             # agenda o LRU (o ruim, id menor nunca usado)
+    assert ag and ag['id'] == ruim_id, (ag, ruim_id)
+    set_challenge_status(ruim_id, 'retired_gto')   # a revalidacao aposenta DEPOIS de agendado
+
+    # sem tentativa: re-sorteia o aprovado
+    novo = get_today_challenge(dia1)
+    assert novo and novo['id'] == bom_id, 'agendado aposentado sem tentativa nao foi trocado: %s' % novo
+
+    # com tentativa gravada: MANTEM mesmo aposentado
+    dia2 = 'T2-' + uuid.uuid4().hex[:6]
+    set_challenge_status(ruim_id, 'approved')
+    ag2 = get_today_challenge(dia2)
+    servido = ag2['id']
+    u = create_user('resp_' + uuid.uuid4().hex[:8], 'r%s@t.local' % uuid.uuid4().hex[:8], 'x' * 12)
+    record_challenge_attempt(u, dia2, 'fold', 'correct', True)
+    set_challenge_status(servido, 'retired_gto')
+    mantido = get_today_challenge(dia2)
+    assert mantido and mantido['id'] == servido, (
+        'trocou a pergunta debaixo de resposta gravada: %s' % mantido)
+    print('OK  test_agendado_aposentado_re_sorteia_SO_sem_tentativa')
+
+
 if __name__ == '__main__':
     falhas = 0
     testes = [v for k, v in sorted(globals().items()) if k.startswith('test_')]

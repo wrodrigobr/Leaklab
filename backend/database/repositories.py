@@ -8873,8 +8873,32 @@ def get_today_challenge(day: str) -> Optional[dict]:
             conn.execute(_adapt("UPDATE daily_challenge_pool SET used_on = ? WHERE id = ?"), (day, pool_id))
             conn.commit()
         row = _fetchone(conn, _adapt(
-            "SELECT id, spot_json, answer, explanation FROM daily_challenge_pool WHERE id = ?"), (pool_id,))
-        return dict(row) if row else None
+            "SELECT id, spot_json, answer, explanation, status FROM daily_challenge_pool WHERE id = ?"), (pool_id,))
+        d = dict(row) if row else None
+        # Agendado que foi APOSENTADO depois (revalidação GTO de 30/08): se NINGUÉM respondeu
+        # ainda, re-sorteia um aprovado — servir premissa que o GTO não joga é o defeito que a
+        # revalidação existe para tirar do ar. Se JÁ há tentativa no dia, mantém: trocar a
+        # pergunta debaixo de resposta gravada é dano que o bug não causava (regra 7).
+        if d and d.get('status') != 'approved':
+            ja_respondido = _fetchone(conn, _adapt(
+                "SELECT 1 AS x FROM daily_challenge_attempts WHERE day = ? LIMIT 1"), (day,))
+            if not ja_respondido:
+                cand = _fetchone(conn, _adapt(
+                    "SELECT id FROM daily_challenge_pool WHERE status = 'approved' "
+                    "ORDER BY (used_on IS NOT NULL), used_on ASC, id ASC LIMIT 1"))
+                if cand:
+                    novo_id = dict(cand)['id']
+                    conn.execute(_adapt(
+                        "UPDATE daily_challenge_schedule SET pool_id = ? WHERE day = ?"),
+                        (novo_id, day))
+                    conn.execute(_adapt(
+                        "UPDATE daily_challenge_pool SET used_on = ? WHERE id = ?"), (day, novo_id))
+                    conn.commit()
+                    row = _fetchone(conn, _adapt(
+                        "SELECT id, spot_json, answer, explanation, status "
+                        "FROM daily_challenge_pool WHERE id = ?"), (novo_id,))
+                    d = dict(row) if row else None
+        return d
     finally:
         conn.close()
 
