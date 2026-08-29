@@ -5,6 +5,17 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## A faixa esperada no HUD do torneio (30/08)
+
+### Adicionado
+- **HUD do torneio agora diz se cada indicador está na faixa** (pedido do dono): a régua de MTT
+  aparece NA célula ("alvo 18–24%") e o valor pinta verde dentro, âmbar fora — em qualquer
+  amostra, porque valor×faixa compara dois fatos; o que amostra curta não sustenta é tendência,
+  e o aviso do topo segue dizendo isso. Stat sem faixa declarada fica neutro (não se pinta sem
+  régua); sem oportunidade segue traço, nunca zero.
+
+---
+
 ## Feedback no pico, e o uso por jogador na tela do admin (30/08)
 
 ### Adicionado

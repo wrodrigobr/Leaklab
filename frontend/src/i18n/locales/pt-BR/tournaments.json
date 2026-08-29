@@ -291,7 +291,9 @@
         "cbet": "C-Bet",
         "wtsd": "WTSD",
         "af": "AF"
-      }
+      },
+      "alvo": "alvo",
+      "legenda": "verde = na faixa de MTT, âmbar = fora"
     }
   },
   "summary": {

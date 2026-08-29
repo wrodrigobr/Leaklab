@@ -14,18 +14,22 @@ import type { HeroHudResponse } from "@/lib/api";
  * ── A regra que decide o visual ───────────────────────────────────────────────────────────
  *
  * O número descreve a sessão; a COR compara com a referência de MTT. E comparação exige
- * amostra: com `low_sample` o valor aparece neutro (sem verde/vermelho), com o denominador do
- * lado — "31% em 42 mãos" informa; "31%" pintado de vermelho em 42 mãos acusa sem base
- * ([[project_opponent_hud]]: nenhum read sem amostra). `no_opportunity` mostra traço, nunca
- * zero: célula sem dado não vira 0 em superfície nenhuma deste produto.
+ * amostra. Revisada em 30/08 a pedido do dono ("indicar se está dentro do valor esperado"):
+ * o valor é comparado com a FAIXA de MTT em qualquer amostra — valor×faixa são dois fatos; o
+ * que amostra curta não sustenta é TENDÊNCIA, e o aviso do topo diz exatamente isso. A régua
+ * aparece NA CÉLULA ("alvo 18–24%"): cor sem régua visível é acusação sem base. Stat sem
+ * faixa declarada fica neutro, e `no_opportunity` mostra traço, nunca zero.
  */
 
 const ORDEM = ["vpip", "pfr", "threebet", "fold3bet", "cbet", "wtsd", "af"] as const;
 
-function corDaBanda(band: string): string {
-  if (band === "healthy") return "text-primary";
-  if (band === "below" || band === "above") return "text-amber-400";
-  return "text-foreground";           // low_sample / no_opportunity: neutro, sem veredito
+/* Dentro/fora da FAIXA de MTT (30/08, pedido do dono: "indicar se está dentro do valor
+   esperado"). A comparação valor×faixa é entre dois FATOS e vale em qualquer amostra — o que
+   a amostra curta não sustenta é TENDÊNCIA, e disso cuida o aviso no topo do card. Sem faixa
+   declarada (ex.: fold to c-bet), o valor fica neutro: não se pinta sem régua. */
+function dentroDaFaixa(valor: number | null, faixa?: [number, number] | null): boolean | null {
+  if (valor == null || !faixa) return null;
+  return valor >= faixa[0] && valor <= faixa[1];
 }
 
 export function HudDoTorneio({ hud }: { hud: HeroHudResponse }) {
@@ -49,7 +53,7 @@ export function HudDoTorneio({ hud }: { hud: HeroHudResponse }) {
         {/* A sessão típica fica abaixo dos gates de referência: o aviso vale para o card
             inteiro e evita repetir "amostra curta" em cada célula. */}
         <span className="ml-auto text-[10px] text-muted-foreground/70">
-          {t("detail.hud.disclaimer")}
+          {t("detail.hud.legenda")} · {t("detail.hud.disclaimer")}
         </span>
       </div>
       <div className="grid grid-cols-3 gap-px overflow-hidden rounded-lg border border-border bg-border sm:grid-cols-4 lg:grid-cols-7">
@@ -57,18 +61,27 @@ export function HudDoTorneio({ hud }: { hud: HeroHudResponse }) {
           const s = hud.stats?.[k];
           if (!s) return null;
           const semDado = s.value == null;
+          const dentro = dentroDaFaixa(s.value, s.healthy);
           return (
             <div key={k} className="bg-hud-surface px-2.5 py-2.5">
               <div className="mb-1 font-mono text-[9px] uppercase tracking-widest text-muted-foreground">
                 {t(`detail.hud.stat.${k}`)}
               </div>
               <div className={cn("font-mono text-lg font-light tabular-nums leading-none",
-                                 semDado ? "text-muted-foreground/50" : corDaBanda(s.band))}>
+                                 semDado ? "text-muted-foreground/50"
+                                   : dentro === null ? "text-foreground"
+                                   : dentro ? "text-primary" : "text-amber-400")}>
                 {semDado ? "—" : k === "af" ? s.value.toFixed(1) : `${s.value.toFixed(0)}%`}
               </div>
               <div className="mt-1 font-mono text-[9px] tabular-nums text-muted-foreground/70">
                 {semDado ? t("detail.hud.noOpportunity") : `${s.num}/${s.den}`}
               </div>
+              {/* A régua na célula: sem ela a cor vira acusação sem base visível. */}
+              {!semDado && s.healthy && (
+                <div className="font-mono text-[8.5px] tabular-nums text-muted-foreground/50">
+                  {t("detail.hud.alvo")} {s.healthy[0]}–{s.healthy[1]}{k === "af" ? "x" : "%"}
+                </div>
+              )}
             </div>
           );
         })}

@@ -291,7 +291,9 @@
         "cbet": "C-Bet",
         "wtsd": "WTSD",
         "af": "AF"
-      }
+      },
+      "alvo": "meta",
+      "legenda": "verde = dentro del rango MTT, ámbar = fuera"
     }
   },
   "summary": {
