@@ -3847,6 +3847,16 @@ def admin_daily_challenge_generate():
     return jsonify({'generated': added, 'difficulty': diff, 'verified': verify})
 
 
+@app.route('/admin/daily-challenge/revalidate', methods=['POST'])
+@require_admin
+def admin_daily_challenge_revalidate():
+    """Revalida o pool contra os gates de HOJE (30/08: 'certeza GTO' vale para o acervo).
+    `dry_run=true` só mede. Reprovados viram 'retired_gto' e saem do sorteio."""
+    from leaklab.daily_challenge import revalidar_pool
+    body = request.get_json(silent=True) or {}
+    return jsonify(revalidar_pool(aplicar=not bool(body.get('dry_run'))))
+
+
 @app.route('/admin/daily-challenge/pool', methods=['GET'])
 @require_admin
 def admin_daily_challenge_pool():

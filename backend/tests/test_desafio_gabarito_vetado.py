@@ -68,6 +68,15 @@ def test_spot_ANTIGO_piso_do_answer():
     com_piso = grade_challenge(spot, 'fold', answer='fold')
     assert com_piso['is_correct'], 'jogador jogou o gabarito vetado e foi marcado errado'
     assert com_piso['gto_tier'] == 'correct'
+    # 30/08, o dono pegou na tela: quem joga O GABARITO ve "Correto.", nao "Aceitavel" —
+    # mixed=True afirmaria "o GTO mistura aqui" sem ninguem ter verificado.
+    assert com_piso['mixed'] is False, 'o piso inventou uma mistura que ninguem verificou'
+    assert com_piso['best_action'] == 'fold', 'best_action nao e o gabarito vetado'
+    # E o mix da fonte DIVERGENTE nao pode ir para a tela como "Estrategia GTO".
+    assert com_piso['gto_strategy'] == [], (
+        'o card exibe a estrategia da politica que acabou de se provar errada: %s'
+        % com_piso['gto_strategy'])
+    assert com_piso['explanation'].startswith('Correto.'), com_piso['explanation']
     print('OK  test_spot_ANTIGO_piso_do_answer')
 
 
@@ -120,6 +129,60 @@ def test_candidato_novo_NASCE_selado():
     assert selo and isinstance(selo, list) and all('action' in s and 'freq' in s for s in selo), \
         'candidato novo nasceu sem o selo: o submit voltara a re-gradar ao vivo'
     print('OK  test_candidato_novo_NASCE_selado')
+
+
+
+def test_revalidacao_aposenta_premissa_impossivel():
+    """30/08, o caso de prod: candidato "LJ abriu 54o e levou 3-bet" nasceu ANTES do gate de
+    premissa. A revalidacao tem que acha-lo no acervo e aposenta-lo — "certeza GTO" vale para
+    o pool, nao so para o proximo candidato."""
+    import json
+    from database.schema import init_db
+    init_db()
+    from database.repositories import add_challenge_candidates, list_challenge_candidates
+    from leaklab.daily_challenge import revalidar_pool
+    ruim = dict(SPOT_BASE)                     # 54o LJ vs 3-bet: premissa impossivel
+    add_challenge_candidates([{'spot_json': json.dumps(ruim), 'answer': 'fold',
+                               'note': 'forjado pre-gate', 'difficulty': 'facil'}])
+    forjado = max(c['id'] for c in list_challenge_candidates(status=None, limit=1000))
+    r = revalidar_pool(aplicar=True)
+    apos = {a['id']: a for a in r['aposentados']}
+    assert forjado in apos, 'a revalidacao nao achou o candidato de premissa impossivel'
+    assert 'premissa' in apos[forjado]['motivo'], apos[forjado]
+    vivo = [c for c in list_challenge_candidates(status=None, limit=1000) if c['id'] == forjado]
+    assert vivo and vivo[0]['status'] == 'retired_gto', 'reprovado continua sorteavel'
+    print('OK  test_revalidacao_aposenta_premissa_impossivel')
+
+
+def test_revalidacao_SELA_o_aprovado_e_dry_run_nao_escreve():
+    """CONTRAPROVA dupla: quem passa ganha o selo (defesa 1 passa a valer para o acervo),
+    e o dry-run mede sem escrever."""
+    import json
+    import random
+    from database.schema import init_db
+    init_db()
+    from database.repositories import add_challenge_candidates, list_challenge_candidates
+    from leaklab import daily_challenge as dc
+    cands = dc.build_candidates(1, rng=random.Random(11), with_explanation=False,
+                                difficulty='facil', verify=False)
+    assert cands, 'sem candidato valido para o teste'
+    spot = json.loads(cands[0]['spot_json'])
+    spot.pop('gto_strategy_vetada', None)      # simula candidato antigo, sem selo
+    add_challenge_candidates([{'spot_json': json.dumps(spot), 'answer': cands[0]['answer'],
+                               'note': 'valido sem selo', 'difficulty': 'facil'}])
+    alvo = max(c['id'] for c in list_challenge_candidates(status=None, limit=1000))
+
+    dry = dc.revalidar_pool(aplicar=False)
+    assert dry['dry_run'] is True
+    sem_selo = [c for c in list_challenge_candidates(status=None, limit=1000) if c['id'] == alvo]
+    assert 'gto_strategy_vetada' not in sem_selo[0]['spot_json'], 'dry-run ESCREVEU'
+
+    r = dc.revalidar_pool(aplicar=True)
+    assert r['selados'] >= 1, r
+    com_selo = [c for c in list_challenge_candidates(status=None, limit=1000) if c['id'] == alvo]
+    assert com_selo[0]['status'] != 'retired_gto', 'candidato valido foi aposentado'
+    assert 'gto_strategy_vetada' in com_selo[0]['spot_json'], 'aprovado ficou sem o selo'
+    print('OK  test_revalidacao_SELA_o_aprovado_e_dry_run_nao_escreve')
 
 
 if __name__ == '__main__':

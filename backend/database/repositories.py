@@ -8811,6 +8811,23 @@ def list_challenge_candidates(status: Optional[str] = None, limit: int = 100) ->
         conn.close()
 
 
+def update_challenge_spot(pool_id: int, spot_json: str, note: Optional[str] = None) -> None:
+    """Regrava o spot de um candidato (usado pela revalidação para SELAR o mix vetado)."""
+    conn = get_conn()
+    try:
+        if note is None:
+            conn.execute(_adapt(
+                "UPDATE daily_challenge_pool SET spot_json = ? WHERE id = ?"),
+                (spot_json, pool_id))
+        else:
+            conn.execute(_adapt(
+                "UPDATE daily_challenge_pool SET spot_json = ?, note = ? WHERE id = ?"),
+                (spot_json, note, pool_id))
+        conn.commit()
+    finally:
+        conn.close()
+
+
 def set_challenge_status(pool_id: int, status: str) -> None:
     """Admin aprova/rejeita um candidato. Só 'approved' entra no sorteio do dia."""
     conn = get_conn()

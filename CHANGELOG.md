@@ -5,6 +5,30 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## Certeza GTO vale para o acervo, e o piso nao inventa mistura (30/08)
+
+### Corrigido
+- **O piso do gabarito rotulava "Aceitável (o GTO mistura aqui)"** — o dono pegou na tela: o
+  fold era a ÚNICA jogada certa. `mixed=True` era uma afirmação de fato que ninguém verificou,
+  e a "Estratégia GTO" exibida vinha da fonte que acabou de se provar divergente. Agora quem
+  joga o gabarito vê "Correto.", sem mix — melhor não afirmar estratégia nenhuma do que exibir
+  a estratégia da política errada. Guarda endurecido e quebrado de propósito.
+
+### Adicionado
+- **Revalidação do pool do desafio** (`POST /admin/daily-challenge/revalidate`, com dry-run):
+  o spot de prod ("você abriu 54o no LJ") tem premissa que o GTO nunca joga — o gate de
+  premissa EXISTE no gerador, mas o candidato nasceu antes dele. Regra do dono: "os desafios
+  têm que ser criados com certeza GTO" — e certeza vale para o acervo. Cada candidato passa
+  pelos 3 gates de hoje (premissa via `hand_in_open_range`, cobertura do provider, gabarito
+  creditável); reprovado vira `retired_gto` com o motivo; aprovado ganha o SELO
+  `gto_strategy_vetada` (a defesa 1 passa a valer para o acervo, e o piso vira exceção rara).
+
+### Medido
+- Forjado o próprio caso de prod no teste (candidato 54o/LJ pré-gate): a revalidação o acha e
+  aposenta; o válido ganha selo; dry-run comprovadamente não escreve. Engine 🟢, API 45/45.
+
+---
+
 ## O desafio que se contradizia, e o veredito que passou a respeitar as 5 camadas (29/08)
 
 ### Corrigido

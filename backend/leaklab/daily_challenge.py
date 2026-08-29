@@ -601,6 +601,74 @@ def describe_challenge(spot_json) -> dict:
     }
 
 
+def revalidar_pool(aplicar: bool = True) -> dict:
+    """Revalida TODO o pool contra os gates de HOJE — e aposenta o que reprovar.
+
+    ── O que originou (30/08) ──────────────────────────────────────────────────────────────
+    O desafio servido era "você abriu 54o no LJ e levou 3-bet" — premissa que o GTO nunca
+    joga (54o não está no range de abertura do LJ). O gate de premissa EXISTE no gerador,
+    mas o candidato nasceu antes dele. Regra do dono: "os desafios têm que ser criados com
+    certeza GTO" — e certeza vale para o acervo, não só para o próximo candidato.
+
+    Para cada candidato não-rejeitado, exige:
+      1. PREMISSA coerente — em vs_3bet, a mão pertence ao range de abertura da posição;
+      2. COBERTURA — o StrategyProvider responde available=True para o spot;
+      3. GABARITO creditável — o answer gravado tem freq >= MIN_CREDITABLE na estratégia.
+    Reprova → status 'retired_gto' (sai do sorteio; a nota diz qual gate falhou).
+    Aprova → SELA `gto_strategy_vetada` no spot_json se ainda não tiver (defesa 1 do
+    grade_challenge passa a valer também para o acervo).
+
+    `aplicar=False` = dry-run: só mede, não escreve.
+    """
+    from database.repositories import (list_challenge_candidates, set_challenge_status,
+                                       update_challenge_spot)
+    from leaklab.leak_trainer import hand_in_open_range
+
+    res = {'total': 0, 'ok': 0, 'selados': 0, 'aposentados': [], 'dry_run': not aplicar}
+    for cand in list_challenge_candidates(status=None, limit=1000):
+        if cand.get('status') == 'rejected':
+            continue
+        res['total'] += 1
+        try:
+            spot = json.loads(cand['spot_json'])
+        except Exception:
+            spot = None
+        motivo = None
+        strat = []
+        if not spot:
+            motivo = 'spot_json ilegivel'
+        else:
+            pos = spot.get('position', '')
+            hand = spot.get('hand', '')
+            stack = float(spot.get('stack_bb', 0) or 0)
+            if spot.get('scenario') == 'vs_3bet' and not hand_in_open_range(pos, hand, stack):
+                motivo = 'premissa: %s nao abre %s a %sbb' % (pos, hand, int(stack))
+            else:
+                g = grade_canonical_spot(spot, cand.get('answer') or 'fold')
+                strat = g.get('gto_strategy') or []
+                if not strat:
+                    motivo = 'cobertura: provider nao responde este spot'
+                else:
+                    freq = {_norm(x['action']): float(x['freq']) for x in strat}
+                    if freq.get(_norm(cand.get('answer') or ''), 0.0) < MIN_CREDITABLE:
+                        motivo = 'gabarito %r fora do creditavel na fonte de hoje' % cand.get('answer')
+        if motivo:
+            res['aposentados'].append({'id': cand['id'], 'motivo': motivo,
+                                       'era': cand.get('status')})
+            if aplicar:
+                set_challenge_status(cand['id'], 'retired_gto')
+                _log.warning('DESAFIO revalidacao: candidato %s aposentado (%s)',
+                             cand['id'], motivo)
+            continue
+        res['ok'] += 1
+        if spot is not None and not spot.get('gto_strategy_vetada') and strat:
+            if aplicar:
+                spot['gto_strategy_vetada'] = strat
+                update_challenge_spot(cand['id'], json.dumps(spot))
+            res['selados'] += 1
+    return res
+
+
 def grade_challenge(spot_json: str, action: str, answer: str | None = None) -> dict:
     """Grada a ação do jogador contra o spot VETADO — pelo mix selado na aprovação, quando
     existe; senão pela re-grade ao vivo com o `answer` aprovado como PISO.
@@ -638,12 +706,20 @@ def grade_challenge(spot_json: str, action: str, answer: str | None = None) -> d
         if answer and _norm(answer) == played and not g.get('is_correct'):
             # PISO: a re-grade contradisse o gabarito que humano+LLM aprovaram. O jogador que
             # jogou o gabarito não paga por isso; o log aciona a re-curadoria do spot.
+            #
+            # E o rótulo é "Correto.", NÃO "Aceitável" (30/08, o dono pegou na tela): o
+            # jogador jogou O GABARITO — "o GTO mistura aqui" seria uma afirmação de fato que
+            # ninguém verificou, e o mix da re-grade veio da fonte que acabou de se provar
+            # divergente. Por isso o mix ao vivo também SOME do card: melhor não afirmar
+            # estratégia nenhuma do que exibir a estratégia da política errada.
             _log.warning(
                 'DESAFIO: re-grade ao vivo diverge do gabarito vetado '
                 '(pos=%s vs=%s stack=%s hand=%s | answer=%s, live disse %s/%s)',
                 spot.get('position'), spot.get('vs_position'), spot.get('stack_bb'),
                 spot.get('hand'), _norm(answer), g.get('gto_tier'), g.get('best_action'))
-            g = {**g, 'is_correct': True, 'gto_tier': 'correct', 'mixed': True}
+            g = {'is_correct': True, 'gto_tier': 'correct', 'mixed': False,
+                 'best_action': _norm(answer)}
+            strat = []
 
     best = (strat[0]['action'] if strat else '') or g.get('best_action') or ''
     mix = ', '.join(f"{s['action']} {round(float(s['freq'])*100)}%" for s in strat[:3])
