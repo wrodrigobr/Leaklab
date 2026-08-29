@@ -134,7 +134,9 @@ describe("toggle do layout v2", () => {
     montar(passo({ facing_limp: true, n_can_see_flop: 2 }));
     const texto = document.body.textContent ?? "";
     expect(texto, "o v2 nao renderizou").toContain("card.v2EvPerdido");
-    expect(texto, "sem saida, o usuario fica preso no layout novo").toContain("card.v2ToggleOn");
+    // 30/08, decisao do dono: o layout novo venceu e o toggle saiu — ficar "preso" nele
+    // deixou de ser prisao para ser o padrao unico.
+    expect(texto, "o toggle voltou ao card depois de removido").not.toContain("card.v2ToggleOn");
   });
 
   it("o v2 mostra o MOTIVO quando o custo se cala", () => {

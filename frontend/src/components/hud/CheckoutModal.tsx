@@ -154,7 +154,9 @@ export function CheckoutModal({ plan, onClose, onSuccess }: Props) {
       },
     });
 
-    const paymentEl = elementsRef.current.create("payment");
+    // terms: never — o aviso de cobrança recorrente é NOSSO (i18n, 3 idiomas), no lugar do
+    // texto genérico do Stripe que o dono achou ruim (30/08).
+    const paymentEl = elementsRef.current.create("payment", { terms: { card: "never" } });
     paymentEl.on("ready", () => { if (active) setFormMounted(true); });
     paymentEl.mount("#stripe-payment-element");
 
@@ -206,7 +208,7 @@ export function CheckoutModal({ plan, onClose, onSuccess }: Props) {
     <div
       className="fixed inset-0 z-[200] flex items-center justify-center bg-background/80 backdrop-blur-sm p-4"
     >
-      <div className="w-full max-w-md rounded-xl border border-border bg-hud-surface p-6 shadow-elevated space-y-4 overflow-y-auto max-h-[calc(100vh-2rem)]">
+      <div className="w-full max-w-md md:max-w-3xl rounded-xl border border-border bg-hud-surface p-6 shadow-elevated space-y-4 overflow-y-auto max-h-[calc(100vh-2rem)]">
 
         {/* Header */}
         <div className="flex items-center justify-between">
@@ -219,6 +221,10 @@ export function CheckoutModal({ plan, onClose, onSuccess }: Props) {
           </button>
         </div>
 
+        {/* 30/08, o dono: "popup estreito e confuso". No desktop vira 2 colunas — plano à
+            esquerda, pagamento à direita — e o modal alarga. No celular empilha como antes. */}
+        <div className="grid gap-4 md:grid-cols-5 md:items-start">
+        <div className="space-y-4 md:col-span-2">
         {/* Toggle de ciclo (mensal / anual) — só faz sentido antes do sucesso */}
         {!success && (
           <div className="grid grid-cols-2 gap-px overflow-hidden rounded-lg border border-border bg-border">
@@ -282,7 +288,9 @@ export function CheckoutModal({ plan, onClose, onSuccess }: Props) {
             ))}
           </ul>
         </div>
+        </div>
 
+        <div className="md:col-span-3">
         {/* Success */}
         {success ? (
           <div className="flex flex-col items-center gap-3 py-6">
@@ -340,6 +348,13 @@ export function CheckoutModal({ plan, onClose, onSuccess }: Props) {
                       : t("checkout.porMes", { valor: brl(mensal?.price) }),
                   })}
                 </button>
+                <p className="text-[10px] leading-snug text-muted-foreground">
+                  {t("checkout.recorrencia", {
+                    preco: billing === "annual"
+                      ? t("checkout.porAno", { valor: brl(anual?.price) })
+                      : t("checkout.porMes", { valor: brl(mensal?.price) }),
+                  })}
+                </p>
                 <p className="text-center font-mono text-[9px] text-muted-foreground">
                   {t("checkout.seguro")}
                 </p>
@@ -347,6 +362,8 @@ export function CheckoutModal({ plan, onClose, onSuccess }: Props) {
             )}
           </form>
         )}
+        </div>
+        </div>
       </div>
     </div>,
     document.body

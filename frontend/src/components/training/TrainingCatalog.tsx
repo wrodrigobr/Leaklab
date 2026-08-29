@@ -91,11 +91,14 @@ function IlustracaoAbrir() {
   );
 }
 
+/* 30/08, cartas PRETAS em prod: `fill-card-face` nao e utility Tailwind (a var existe
+   no CSS, a classe nao) — SVG sem fill preenche PRETO por default. Fill explicito: sao
+   ilustracoes de marca em tema unico escuro. */
 function IlustracaoDefender() {
   return (
     <svg viewBox="0 0 64 64" className="h-full w-full" aria-hidden>
-      <rect x="20" y="10" width="12" height="17" rx="2" className="fill-card-face" transform="rotate(-10 26 18)" />
-      <rect x="32" y="10" width="12" height="17" rx="2" className="fill-card-face" transform="rotate(10 38 18)" />
+      <rect x="20" y="10" width="12" height="17" rx="2" fill="#E3E8EC" transform="rotate(-10 26 18)" />
+      <rect x="32" y="10" width="12" height="17" rx="2" fill="#E3E8EC" transform="rotate(10 38 18)" />
       <path d="M32 20 L50 27 V40 C50 50 42 56 32 59 C22 56 14 50 14 40 V27 Z" fill="#60A5FA" />
       <path d="M32 26 L44 31 V40 C44 46 39 50 32 52 C25 50 20 46 20 40 V31 Z" fill="#0A0E1A" opacity=".3" />
       <path d="M26 40 l4.5 4.5 L39 36" stroke="#E3E8EC" strokeWidth="3.2" fill="none"
@@ -122,7 +125,7 @@ function Ilustracao3Bet() {
 function IlustracaoMemorizar() {
   return (
     <svg viewBox="0 0 64 64" className="h-full w-full" aria-hidden>
-      <rect x="14" y="8" width="36" height="48" rx="5" className="fill-card-face" />
+      <rect x="14" y="8" width="36" height="48" rx="5" fill="#E3E8EC" />
       <g fill="#C084FC">
         <rect x="20" y="14" width="7" height="7" rx="1.5" />
         <rect x="29" y="14" width="7" height="7" rx="1.5" />
@@ -142,9 +145,9 @@ function IlustracaoMemorizar() {
 function IlustracaoMaoCompleta() {
   return (
     <svg viewBox="0 0 64 64" className="h-full w-full" aria-hidden>
-      <rect x="14" y="14" width="16" height="23" rx="2.5" className="fill-card-face" transform="rotate(-14 22 25)" />
-      <rect x="24" y="11" width="16" height="23" rx="2.5" className="fill-card-face" />
-      <rect x="34" y="14" width="16" height="23" rx="2.5" className="fill-card-face" transform="rotate(14 42 25)" />
+      <rect x="14" y="14" width="16" height="23" rx="2.5" fill="#E3E8EC" transform="rotate(-14 22 25)" />
+      <rect x="24" y="11" width="16" height="23" rx="2.5" fill="#E3E8EC" />
+      <rect x="34" y="14" width="16" height="23" rx="2.5" fill="#E3E8EC" transform="rotate(14 42 25)" />
       {/* as 4 streets como pontos: preflop, flop, turn e o river ainda por vir */}
       <g fill="#2DD4BF">
         <circle cx="17" cy="50" r="3.4" /><circle cx="27" cy="50" r="3.4" />

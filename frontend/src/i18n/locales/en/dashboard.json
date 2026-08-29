@@ -751,7 +751,8 @@
     "economia": "Save {{valor}} per year",
     "mesesGratis": "{{n}} months free",
     "porMes": "{{valor}}/mo",
-    "porAno": "{{valor}}/yr"
+    "porAno": "{{valor}}/yr",
+    "recorrencia": "By subscribing you authorize GrindLab Poker to charge {{preco}} on a recurring basis, per the chosen cycle. Cancel anytime from the subscription screen: no penalty, and access lasts until the end of the paid period."
   },
   "perfil": {
     "titulo": "Complete your profile",

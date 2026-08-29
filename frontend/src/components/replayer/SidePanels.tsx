@@ -1320,10 +1320,9 @@ export function SidePanels({
                 fmtAction={fmtAction}
                 verdictTooltip={verdict.sourceTooltip}
               />
-              <button type="button" onClick={toggleV2} title={t("card.v2ToggleTip")}
-                      className="mt-1 w-full text-right font-mono text-[10px] text-muted-foreground/50 hover:text-muted-foreground">
-                {t("card.v2ToggleOn")}
-              </button>
+              {/* 30/08, decisao do dono: o layout novo venceu — o toggle "voltar ao
+                    classico" saiu do card. O classico segue no codigo para o teste de
+                    contrato, sem porta na tela. */}
             </>
           );
         }

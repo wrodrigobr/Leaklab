@@ -751,7 +751,8 @@
     "economia": "Ahorrá {{valor}} por año",
     "mesesGratis": "{{n}} meses gratis",
     "porMes": "{{valor}}/mes",
-    "porAno": "{{valor}}/año"
+    "porAno": "{{valor}}/año",
+    "recorrencia": "Al suscribirte autorizas a GrindLab Poker a cobrarte {{preco}} de forma recurrente, según el ciclo elegido. Cancela cuando quieras desde la pantalla de suscripción: sin multa, y el acceso vale hasta el final del período pagado."
   },
   "perfil": {
     "titulo": "Completa tu perfil",

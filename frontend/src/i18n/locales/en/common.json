@@ -67,10 +67,7 @@
       "coaches": "Find a coach to review your game",
       "coach": "Chat with the AI Coach about your game",
       "maosCompartilhadas": "Hands the community shared for study",
-      "relTwin": "How you play, summarized by AI",
-      "relCognitivo": "The mental patterns behind your mistakes",
-      "relCausal": "Which leak feeds which",
-      "relCarreira": "When you reach the next level"
+      "relEvolucao": "The reports AI generates on your progress, period by period"
     },
     "secoes": {
       "resultados": "Results",
@@ -84,10 +81,7 @@
       "relatorios": "Player reports"
     },
     "maosCompartilhadas": "Shared hands",
-    "relTwin": "Strategic twin",
-    "relCognitivo": "Cognitive failures",
-    "relCausal": "Leak causal map",
-    "relCarreira": "Career projection"
+    "relEvolucao": "Evolution reports"
   },
   "notifications": {
     "title": "Notifications",

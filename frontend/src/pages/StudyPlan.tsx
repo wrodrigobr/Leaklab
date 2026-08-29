@@ -271,9 +271,11 @@ const StudyPlanPage = () => {
       title={t("title")}
       description={t("subtitle")}
     >
+      {/* 30/08, o dono: "tela bagunçada, aproveitar o espaço" — as duas portas dividem uma
+          linha no desktop em vez de empilharem em largura total. */}
+      <div className="grid gap-3 md:grid-cols-2">
       {/* A ACADEMIA mora em ESTUDOS (18/08): estudar teoria e treinar reflexo são objetivos
-          distintos, e a porta da teoria estava enterrada nas telas de treino. Card de entrada
-          com o mesmo destaque visual que ela tinha na lateral do cockpit. */}
+          distintos, e a porta da teoria estava enterrada nas telas de treino. */}
       <Link to="/academy"
         className="flex items-center justify-between gap-3 rounded-xl border border-violet-500/30 bg-violet-500/[0.06] p-4 transition-colors hover:border-violet-500/50">
         <span className="flex min-w-0 items-center gap-3">
@@ -308,6 +310,7 @@ const StudyPlanPage = () => {
         </span>
         <ArrowRight className="size-4 shrink-0 text-primary" aria-hidden />
       </Link>
+      </div>
 
       {/* Toolbar — some no estado Pro: "Carregando plano" + Gerar em cima do upsell era
           mentira na tela do Free (o dono pegou). */}
@@ -389,14 +392,14 @@ const StudyPlanPage = () => {
 
           {/* O EXEMPLO (30/08, pedido do dono): o Free ve COMO e o resultado antes de assinar.
               Conteudo estatico e rotulado — nunca se passa por analise das maos dele. */}
-          <div className="w-full max-w-lg rounded-xl border border-border bg-hud-surface p-4">
+          <div className="w-full max-w-4xl rounded-xl border border-border bg-hud-surface p-4">
             <p className="mb-3 flex items-center justify-between font-mono text-[9.5px] font-bold uppercase tracking-widest text-muted-foreground">
               {t("pro.exemploTitulo")}
               <span className="rounded bg-amber-400/10 px-1.5 py-0.5 text-amber-400">
                 {t("pro.exemploSelo")}
               </span>
             </p>
-            <div className="flex flex-col gap-2.5">
+            <div className="grid gap-2.5 md:grid-cols-3">
               {([0, 1, 2] as const).map((i) => (
                 <div key={i} className="rounded-lg border border-border/70 bg-background/40 p-3">
                   <p className="text-[13px] font-semibold text-foreground">

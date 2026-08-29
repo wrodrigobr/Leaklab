@@ -108,7 +108,9 @@ const SECOES_TREINAR: SecaoDeMenu[] = [
 
 const SECOES_ESTUDAR: SecaoDeMenu[] = [
   { chave: "nav.secoes.aprender", itens: [
-    { to: "/study", chave: "nav.study", desc: "nav.desc.study", icone: BookOpen, cor: "teal", exige: "advanced_insights" },
+    // 30/08, o dono: a TELA de estudos e livre (Academia/Ranges); so o plano DENTRO dela e Pro,
+    // e a trava ja mora la. Cadeado no menu inteiro acusava demais.
+    { to: "/study", chave: "nav.study", desc: "nav.desc.study", icone: BookOpen, cor: "teal" },
     { to: "/academy", chave: "nav.academia", desc: "nav.desc.academia", icone: GraduationCap, cor: "purple" },
   ]},
   { chave: "nav.secoes.ferramentas", itens: [
@@ -162,15 +164,11 @@ export const GRUPO_COACH: GrupoDeMenu = {
   acende: ["/coach"],
   secoes: [
     { chave: "nav.secoes.conversa", itens: [ITEM_COACH] },
+    // 30/08, correção do dono: os "relatórios" do menu da IA são os HTML de EVOLUÇÃO gerados
+    // de tempos em tempos (/evolucao) — não os cards do dashboard.
     { chave: "nav.secoes.relatorios", itens: [
-      { to: "/dashboard#twin", chave: "nav.relTwin", desc: "nav.desc.relTwin",
-        icone: TrendingUp, cor: "teal", exige: "advanced_insights" },
-      { to: "/dashboard#cognitive", chave: "nav.relCognitivo", desc: "nav.desc.relCognitivo",
-        icone: Crosshair, cor: "red", exige: "advanced_insights" },
-      { to: "/dashboard#causal_map", chave: "nav.relCausal", desc: "nav.desc.relCausal",
-        icone: Grid3x3, cor: "purple", exige: "advanced_insights" },
-      { to: "/dashboard#career", chave: "nav.relCarreira", desc: "nav.desc.relCarreira",
-        icone: Medal, cor: "amber", exige: "advanced_insights" },
+      { to: "/evolucao", chave: "nav.relEvolucao", desc: "nav.desc.relEvolucao",
+        icone: TrendingUp, cor: "teal" },
     ]},
   ],
   itens: [],

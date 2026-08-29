@@ -67,10 +67,7 @@
       "coaches": "Encontre um coach para revisar seu jogo",
       "coach": "Converse com o AI Coach sobre seu jogo",
       "maosCompartilhadas": "As mãos que a comunidade compartilhou para estudo",
-      "relTwin": "Como você joga, resumido pela IA",
-      "relCognitivo": "Os padrões mentais por trás dos seus erros",
-      "relCausal": "Qual leak alimenta qual",
-      "relCarreira": "Quando você chega ao próximo nível"
+      "relEvolucao": "Os relatórios que a IA gera da sua evolução, período a período"
     },
     "secoes": {
       "resultados": "Resultados",
@@ -84,10 +81,7 @@
       "relatorios": "Relatórios do jogador"
     },
     "maosCompartilhadas": "Mãos compartilhadas",
-    "relTwin": "Gêmeo estratégico",
-    "relCognitivo": "Falhas cognitivas",
-    "relCausal": "Mapa causal de leaks",
-    "relCarreira": "Projeção de carreira"
+    "relEvolucao": "Relatórios de evolução"
   },
   "notifications": {
     "title": "Notificações",

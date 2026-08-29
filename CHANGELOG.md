@@ -5,6 +5,33 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## Cartas pretas, checkout largo, e os relatórios certos no menu da IA (30/08)
+
+### Corrigido
+- **Cartas PRETAS nos ícones novos** (o dono pegou): `fill-card-face` não é utility Tailwind —
+  a var existe no CSS, a classe não, e SVG sem fill preenche preto por default. Fill explícito
+  nas 6 ocorrências (ilustração de marca em tema único).
+- **Menu da IA: os "relatórios" eram os HTML de evolução** (`/evolucao`), não os cards do
+  dashboard — corrigido conforme o dono explicou; as âncoras do dashboard ficam no código
+  (DraggableCard com id de DOM), sem itens de menu.
+- **Cadeado saiu do item Estudos no menu**: a tela é livre (Academia, Ranges); só o plano
+  DENTRO dela é Pro, e a trava já mora lá.
+
+### Mudado
+- **Checkout em 2 colunas no desktop** (o dono: "popup estreito e confuso"): plano à esquerda,
+  pagamento à direita, modal alargado; no celular empilha como antes.
+- **O aviso de cobrança agora é NOSSO** (pedido do dono, no lugar do texto genérico do
+  Stripe, desligado via `terms: never`): autorização de cobrança recorrente com o preço e o
+  ciclo escolhidos, cancelamento a qualquer momento sem multa, acesso até o fim do período
+  pago. 3 idiomas.
+- **Estudos aproveita o espaço**: portas Academia/Ranges lado a lado no desktop; o
+  plano-exemplo em 3 colunas.
+- **O toggle "voltar ao clássico" saiu do card de veredito** (decisão do dono: o layout novo
+  venceu). O clássico segue no código; o teste que exigia a saída mudou de contrato junto,
+  com o motivo anotado.
+
+---
+
 ## Os ícones que não subiram, o coach com relatórios, e o plano-exemplo (30/08)
 
 ### Corrigido
