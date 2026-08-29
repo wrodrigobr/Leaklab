@@ -521,7 +521,8 @@
   "pkoTooltip": "Progressive Knockout (PKO), torneo con bounties. Sus ranges y umbrales GTO específicos pueden diferir de un MTT clásico.",
   "coachModo": {
     "desligar": "Apagar el modo coach (ver todas las manos)",
-    "ligar": "Encender el modo coach (revisar solo las manos que importan, con comentario)"
+    "ligar": "Encender el modo coach (revisar solo las manos que importan, con comentario)",
+    "pro": "El modo coach es del plan Pro: salta folds triviales y comenta cada mano que vale revisar"
   },
   "veredito": {
     "error": "Error",

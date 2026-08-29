@@ -2736,6 +2736,7 @@ class _AdaptedConn:
     # Chave natural: `telegram_intros` é chaveada pelo telegram_user_id, que é o único
     # identificador que existe quando a conversa do bot começa.
     _NO_ID_TABLES = {'revalidation_llm_cache', 'gto_preflop_capture', 'gto_tree_strategies',
+                     'shared_hands', 'shared_hand_votes',
                      'daily_challenge_schedule', 'gto_tournament_queue', 'feature_usage',
                      'telegram_intros'}
 

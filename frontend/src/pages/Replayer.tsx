@@ -3,7 +3,7 @@ import { useSearchParams, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { ChevronLeft, ChevronRight, Pause, Play, Rewind, FastForward, AlertOctagon, CheckCircle2, Loader2, ArrowLeft, GraduationCap, PenLine, X, Check, Trash2, LayoutGrid, FlaskConical, Clock, Eye, EyeOff, Info, Maximize2, Minimize2, Lock, Users, RotateCw, Sparkles, Filter } from "lucide-react";
 import logoHorizontal from "@/assets/brand/grindlab_final_horizontal.svg";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { HudLayout } from "@/components/hud/HudLayout";
 import { HudHeader } from "@/components/hud/HudHeader";
 import { CompartilharMao } from "@/components/hud/CompartilharMao";
@@ -24,7 +24,7 @@ import { selectWhy } from "@/lib/replayWhy";
 
 import { VerdictPill } from "@/components/replayer/VerdictPill";
 import { ACTION_COLORS } from "@/lib/actionColors";
-import { tournaments as tournamentsApi, coachDashboard, metrics, ReplayData, ReplayStep, TournamentDecision, CoachAnnotation, CoachOverrideLabel, type CoachReplayHand } from "@/lib/api";
+import { tournaments as tournamentsApi, coachDashboard, metrics, ReplayData, ReplayStep, TournamentDecision, CoachAnnotation, CoachOverrideLabel, type CoachReplayHand, subscription } from "@/lib/api";
 
 
 function escapeRegex(s: string): string {
@@ -105,6 +105,17 @@ const Replayer = () => {
     localStorage.setItem("replayer_coach", String(nv));
     return nv;
   });
+
+  /* Modo coach e Pro (30/08, decisao do dono): a porta ja existia no backend
+     (requires_pro no /player/coach-replay) — o buraco era o botao, que para o Free ligava um
+     modo morto. O cadeado leva a assinatura; sem resposta do backend ainda, nao acusa. */
+  const { data: quotaCoach } = useQuery({
+    queryKey: ["subscription-status"],
+    queryFn: subscription.status,
+    staleTime: 300_000,
+    enabled: !studentId,
+  });
+  const coachTravado = quotaCoach ? quotaCoach.limits?.advanced_insights === false : false;
 
   const [replayData, setReplayData] = useState<ReplayData | null>(null);
   const [loading, setLoading]       = useState(false);
@@ -810,16 +821,19 @@ const Replayer = () => {
             {/* Modo coach: pula os folds pré-flop óbvios e comenta cada mão que vale revisão. */}
             {!studentId && (
               <button
-                onClick={toggleCoach}
+                onClick={coachTravado ? () => navigate("/subscription") : toggleCoach}
                 aria-pressed={coachMode}
-                title={t(coachMode ? "coachModo.desligar" : "coachModo.ligar")}
+                title={coachTravado ? t("coachModo.pro") : t(coachMode ? "coachModo.desligar" : "coachModo.ligar")}
                 className={cn(
                   "inline-flex items-center gap-1.5 rounded-md px-2 py-1 font-mono text-[10px] uppercase tracking-wider transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                  coachMode ? "bg-primary/15 text-primary ring-1 ring-primary/30"
+                  coachMode && !coachTravado ? "bg-primary/15 text-primary ring-1 ring-primary/30"
                             : "text-muted-foreground hover:bg-secondary hover:text-foreground")}
               >
-                <GraduationCap className="size-3.5" />
+                {coachTravado ? <Lock className="size-3" /> : <GraduationCap className="size-3.5" />}
                 <span className="hidden sm:inline">Coach</span>
+                {coachTravado && (
+                  <span className="rounded bg-amber-400/10 px-1 py-0.5 font-mono text-[8px] font-bold uppercase text-amber-400">Pro</span>
+                )}
               </button>
             )}
             <button

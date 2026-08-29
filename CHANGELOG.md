@@ -5,6 +5,24 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## A segunda mina do share, e o cadeado do modo coach (30/08)
+
+### Corrigido
+- **O share AINDA estourava em prod** depois do fix das tabelas: o wrapper de PG anexa
+  `RETURNING id` a todo INSERT (shim de lastrowid) e `shared_hands`/`shared_hand_votes` têm
+  CHAVE NATURAL, sem coluna id — exatamente a família do incidente `feature_usage`, que já
+  tinha allowlist (`_NO_ID_TABLES`) e auditoria. **Por que a auditoria não pegou:** ela varria
+  só o schema do init_db, e tabela criada SOB DEMANDA nunca aparecia. As duas tabelas entraram
+  na allowlist E a auditoria agora EXERCITA os criadores preguiçosos antes de varrer — quebrada
+  de propósito para provar que acusa.
+
+### Adicionado
+- **Modo coach do replayer com cadeado Pro** (decisão do dono): a porta já existia no backend
+  (`requires_pro`); o buraco era o botão, que para o Free ligava um modo morto. Agora mostra
+  cadeado + Pro e leva à assinatura.
+
+---
+
 ## O Sentry pagou o investimento: a tabela que nunca nasceu em prod (30/08)
 
 ### Corrigido

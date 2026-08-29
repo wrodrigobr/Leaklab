@@ -30,6 +30,20 @@ def _conn():
 schema.get_conn = _conn
 schema.init_db()
 
+# 30/08, o 500 de prod (UndefinedColumn em shared_hands): a varredura só via o schema do
+# init_db, e tabela criada SOB DEMANDA nunca aparecia nela. Agora a auditoria EXERCITA os
+# criadores preguiçosos conhecidos antes de varrer — módulo novo com _tabela() entra AQUI.
+def _exercita_criadores_sob_demanda():
+    from leaklab import mao_compartilhada, ritual_da_sessao
+    for mod in (mao_compartilhada, ritual_da_sessao):
+        c = _conn()
+        try:
+            mod._tabela(c)
+        finally:
+            c.close()
+
+_exercita_criadores_sob_demanda()
+
 
 def _allowlist() -> set:
     """Lê a allowlist do FONTE — ela é atributo de uma classe interna, sem import direto."""
