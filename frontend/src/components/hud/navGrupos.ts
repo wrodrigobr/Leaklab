@@ -29,15 +29,22 @@
  * menu da conta, não no de produto).
  */
 
-import { Dumbbell, GraduationCap, LayoutDashboard, Medal } from "lucide-react";
+import {
+  BookOpen, BookText, Bot, Blocks, Crosshair, Dumbbell, GitCompareArrows, Ghost,
+  Grid3x3, GraduationCap, LayoutDashboard, Medal, Spade, TrendingUp, Trophy, Users,
+} from "lucide-react";
 
 /** Chave de capacidade em `QuotaStatus.limits`. `undefined` = livre para todos. */
 export type Capacidade = "ghost" | "leak_targeted" | "ai_coach_chat" | "advanced_insights";
 
 export interface ItemDeMenu {
   to: string;
-  /** chave i18n do rótulo, em `dashboard:nav.*` */
+  /** chave i18n do rótulo, em `common:nav.*` */
   chave: string;
+  /** chave i18n da descrição de uma linha (`common:nav.desc.*`) — o mega-menu mostra sempre */
+  desc: string;
+  /** ícone do item (o painel estilo mega-menu dá um tile por item) */
+  icone: typeof LayoutDashboard;
   /** capacidade exigida; sem ela o item aparece com cadeado e o motivo */
   exige?: Capacidade;
 }
@@ -60,47 +67,47 @@ export const GRUPOS: GrupoDeMenu[] = [
     chave: "nav.grupos.meuJogo", icone: LayoutDashboard, to: "/dashboard",
     acende: ["/dashboard", "/tournaments", "/evolucao", "/replayer", "/rating"],
     itens: [
-      { to: "/dashboard", chave: "nav.dashboard" },
-      { to: "/tournaments", chave: "nav.tournaments" },
-      { to: "/tournaments/compare", chave: "nav.comparar" },
-      { to: "/evolucao", chave: "nav.evolucao" },
-      { to: "/rating", chave: "nav.rating" },
+      { to: "/dashboard", chave: "nav.dashboard", desc: "nav.desc.dashboard", icone: LayoutDashboard },
+      { to: "/tournaments", chave: "nav.tournaments", desc: "nav.desc.tournaments", icone: Trophy },
+      { to: "/tournaments/compare", chave: "nav.comparar", desc: "nav.desc.comparar", icone: GitCompareArrows },
+      { to: "/evolucao", chave: "nav.evolucao", desc: "nav.desc.evolucao", icone: TrendingUp },
+      { to: "/rating", chave: "nav.rating", desc: "nav.desc.rating", icone: Medal },
     ],
   },
   {
     chave: "nav.grupos.treinar", icone: Dumbbell, to: "/training",
     acende: ["/training", "/leak-trainer", "/ghost", "/grind", "/ranges"],
     itens: [
-      { to: "/training", chave: "nav.treinos" },
+      { to: "/training", chave: "nav.treinos", desc: "nav.desc.treinos", icone: Dumbbell },
       // O acervo é COMPARTILHADO e anonimizado: livre de propósito, e é o que faz o import valer.
-      { to: "/grind", chave: "nav.maoCompleta" },
-      { to: "/ranges", chave: "nav.ranges" },
+      { to: "/grind", chave: "nav.maoCompleta", desc: "nav.desc.maoCompleta", icone: Spade },
+      { to: "/ranges", chave: "nav.ranges", desc: "nav.desc.ranges", icone: Grid3x3 },
       // Estes dois trabalham sobre as SUAS mãos medidas — é a tese do produto, e o que se paga.
-      { to: "/leak-trainer", chave: "nav.meusLeaks", exige: "leak_targeted" },
-      { to: "/ghost", chave: "nav.ghost", exige: "ghost" },
+      { to: "/leak-trainer", chave: "nav.meusLeaks", desc: "nav.desc.meusLeaks", icone: Crosshair, exige: "leak_targeted" },
+      { to: "/ghost", chave: "nav.ghost", desc: "nav.desc.ghost", icone: Ghost, exige: "ghost" },
     ],
   },
   {
     chave: "nav.grupos.estudar", icone: GraduationCap, to: "/study",
     acende: ["/study", "/academy", "/docs", "/hand-builder"],
     itens: [
-      { to: "/study", chave: "nav.study" },
-      { to: "/academy", chave: "nav.academia" },
-      { to: "/hand-builder", chave: "nav.handBuilder" },
-      { to: "/docs", chave: "nav.docs" },
+      { to: "/study", chave: "nav.study", desc: "nav.desc.study", icone: BookOpen },
+      { to: "/academy", chave: "nav.academia", desc: "nav.desc.academia", icone: GraduationCap },
+      { to: "/hand-builder", chave: "nav.handBuilder", desc: "nav.desc.handBuilder", icone: Blocks },
+      { to: "/docs", chave: "nav.docs", desc: "nav.desc.docs", icone: BookText },
     ],
   },
   {
     chave: "nav.grupos.comunidade", icone: Medal, to: "/leaderboard",
     acende: ["/leaderboard", "/coaches"],
     itens: [
-      { to: "/leaderboard", chave: "nav.leaderboard" },
-      { to: "/coaches", chave: "nav.coaches" },
+      { to: "/leaderboard", chave: "nav.leaderboard", desc: "nav.desc.leaderboard", icone: Medal },
+      { to: "/coaches", chave: "nav.coaches", desc: "nav.desc.coaches", icone: Users },
     ],
   },
 ];
 
 /** O AI Coach fica fora dos grupos: é uma conversa, não uma seção. */
 export const ITEM_COACH: ItemDeMenu = {
-  to: "/coach", chave: "nav.coach", exige: "ai_coach_chat",
+  to: "/coach", chave: "nav.coach", desc: "nav.desc.coach", icone: Bot, exige: "ai_coach_chat",
 };

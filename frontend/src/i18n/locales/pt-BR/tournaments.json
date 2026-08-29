@@ -277,6 +277,21 @@
     "vazio": {
       "torneio": "Nenhuma mão encontrada para este torneio.",
       "filtros": "Nenhuma mão encontrada para os filtros atuais."
+    },
+    "hud": {
+      "title": "Seu HUD neste torneio",
+      "hands": "{{n}} mãos",
+      "disclaimer": "Amostra de um torneio: leia como retrato da sessão, não como tendência.",
+      "noOpportunity": "sem spot",
+      "stat": {
+        "vpip": "VPIP",
+        "pfr": "PFR",
+        "threebet": "3-Bet",
+        "fold3bet": "Fold 3-Bet",
+        "cbet": "C-Bet",
+        "wtsd": "WTSD",
+        "af": "AF"
+      }
     }
   },
   "summary": {

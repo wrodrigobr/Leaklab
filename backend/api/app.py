@@ -1194,6 +1194,11 @@ def _analyze_impl():
 @require_auth
 @limiter.limit("20 per hour")
 def tournament_summary():
+    # Pro (29/08, decisão do dono): a análise IA do torneio é insight avançado. O gate mora
+    # AQUI, não só no botão — cadeado de front sem porta de back é decoração.
+    gate = _check_advanced_insights(g.user_id)
+    if gate:
+        return gate
     try:
         body = request.get_json(silent=True) or {}
         t_db_id = body.get('tournament_id')  # ID interno do banco (int)
@@ -3780,7 +3785,7 @@ def player_daily_challenge():
         if attempt:
             # já respondeu: devolve o veredito (regrada pra não guardar texto), sem re-registrar
             from leaklab.daily_challenge import grade_challenge
-            g_res = grade_challenge(ch['spot_json'], attempt['chosen_action'])
+            g_res = grade_challenge(ch['spot_json'], attempt['chosen_action'], answer=ch.get('answer'))
             out['result'] = {'chosen': attempt['chosen_action'], **g_res,
                              'teaching': ch.get('explanation') or ''}
         return jsonify(out)
@@ -3807,7 +3812,7 @@ def player_daily_challenge_submit():
     action = (request.get_json(silent=True) or {}).get('action', '')
     if not action:
         return jsonify({'error': 'action obrigatória'}), 400
-    res = grade_challenge(ch['spot_json'], action)
+    res = grade_challenge(ch['spot_json'], action, answer=ch.get('answer'))
     record_challenge_attempt(g.user_id, day, res['played'], res.get('gto_tier') or '', res['is_correct'])
     try:
         record_daily_mission_progress(g.user_id, bool(res['is_correct']))   # conta no dia → Liga #32
@@ -6472,6 +6477,117 @@ def _tem_custo_da_linha(d, motivo=None):
     return _verdict_mod.tem_custo_medido(
         {'available': True, 'ev_loss_bb': d.get('ev_loss_bb'),
          'ev_loss_source': d.get('ev_loss_source')}, None)
+
+
+# ── Compartilhar uma mão ───────────────────────────────────────────────────────────────────
+#
+# Do benchmark, e a única coisa deste produto que sai dele: alguém posta o link num grupo e quem
+# clica vê o que o GrindLab disse da mão. Ver `leaklab/mao_compartilhada.py` para as três decisões
+# de desenho -- em resumo: compartilhar é ATO (token aleatório, revogável), o payload sai por
+# LISTA BRANCA, e nick de ninguém viaja.
+
+@app.route('/replay/share', methods=['POST'])
+@require_auth
+@limiter.limit("20 per hour")
+def criar_link_da_mao():
+    """Cria o link público de uma mão do PRÓPRIO usuário."""
+    from leaklab.mao_compartilhada import criar
+    body = request.get_json(silent=True) or {}
+    bruto = body.get('tournament_id')
+    # Aceita o id INTERNO (int) e o id do SITE (string, que é o que o replay carrega).
+    try:
+        tid = int(bruto or 0)
+    except (TypeError, ValueError):
+        t = get_tournament(g.user_id, str(bruto or ''))
+        tid = int(t['id']) if t else 0
+    hid = str(body.get('hand_id') or '').strip()
+    if not tid or not hid:
+        return jsonify({'error': 'tournament_id e hand_id sao obrigatorios'}), 400
+    step = body.get('step_idx')
+    step = int(step) if isinstance(step, (int, float)) and int(step) >= 0 else None
+    token = criar(g.user_id, tid, hid, step_idx=step,
+                  pergunta=str(body.get('question') or '').strip() or None)
+    if not token:
+        # 404 e nao 403: dizer "existe mas nao e sua" ja e informacao sobre a mao de outro.
+        return jsonify({'error': 'mao nao encontrada'}), 404
+    return jsonify({'token': token})
+
+
+@app.route('/replay/share/<token>', methods=['DELETE'])
+@require_auth
+def revogar_link_da_mao(token):
+    """Desliga o link. Quem compartilhou tem de poder voltar atrás."""
+    from leaklab.mao_compartilhada import revogar
+    return jsonify({'ok': revogar(g.user_id, str(token))})
+
+
+@app.route('/h/<token>/vote', methods=['POST'])
+@limiter.limit("30 per hour")
+def votar_mao_compartilhada(token):
+    """PÚBLICO: vota na decisão marcada ANTES de ver o veredito. Agregado por ação — nenhum
+    visitante identificável é gravado. 30/h por IP: mais que isso é script, não curiosidade."""
+    from leaklab.mao_compartilhada import votar
+    acao = (request.get_json(silent=True) or {}).get('action', '')
+    placar = votar(str(token), acao)
+    if placar is None:
+        return jsonify({'error': 'link invalido ou acao nao votavel'}), 404
+    return jsonify({'votos': placar})
+
+
+@app.route('/h/<token>/comment', methods=['POST'])
+@require_auth
+@limiter.limit("20 per hour")
+def comentar_mao_compartilhada(token):
+    """Comentário exige CONTA (anônimo vota, não escreve). Free serve: o link é porta de
+    entrada da comunidade, não feature paga."""
+    from leaklab.mao_compartilhada import comentar
+    texto = (request.get_json(silent=True) or {}).get('text', '')
+    cid = comentar(str(token), g.user_id, texto)
+    if cid is None:
+        return jsonify({'error': 'link invalido ou texto vazio'}), 400
+    return jsonify({'id': cid})
+
+
+@app.route('/h/<token>/comment/<int:comment_id>', methods=['DELETE'])
+@require_auth
+def apagar_comentario_mao(token, comment_id):
+    """Autor apaga o que escreveu; dono da mão modera a própria página."""
+    from leaklab.mao_compartilhada import apagar_comentario
+    return jsonify({'ok': apagar_comentario(comment_id, g.user_id)})
+
+
+@app.route('/h/<token>', methods=['GET'])
+@limiter.limit("60 per minute")
+def ler_mao_compartilhada(token):
+    """PÚBLICO, sem login. O limite existe porque endpoint aberto sem limite é convite a
+    varredura -- ainda que o token de 128 bits aleatórios não seja enumerável."""
+    from leaklab.mao_compartilhada import ler
+    dados = ler(str(token))
+    if not dados:
+        return jsonify({'error': 'link invalido ou revogado'}), 404
+    return jsonify(dados)
+
+
+@app.route('/tournament/<int:tid>/hero-hud', methods=['GET'])
+@require_auth
+def tournament_hero_hud(tid):
+    """HUD do HERÓI neste torneio (29/08): descritivo da sessão, com amostra declarada.
+    Computado do raw_text porque o upload grava perfis SÓ de oponentes — e sem gates de
+    amostra, porque descrição de sessão não é read de exploit (ver hud_do_torneio.py)."""
+    from leaklab.hud_do_torneio import hud_do_heroi
+    from leaklab.parser import parse_hand_history
+    t = get_tournament_by_db_id(g.user_id, tid)
+    if not t or not t.get('raw_text'):
+        return jsonify({'error': 'Torneio não encontrado'}), 404
+    try:
+        hands = parse_hand_history(t['raw_text'])
+        hud = hud_do_heroi(hands, t.get('hero') or '')
+    except Exception:
+        app.logger.exception('hero-hud falhou (t=%s)', tid)
+        hud = None
+    if not hud:
+        return jsonify({'available': False})
+    return jsonify({'available': True, **hud})
 
 
 @app.route('/replay/<tournament_id>/<hand_id>', methods=['GET'])

@@ -494,8 +494,26 @@ export interface OpponentProfile {
   stats: Record<string, number | null>;
 }
 
+export interface HeroHudStat {
+  value: number | null;
+  num: number;
+  den: number;
+  band: "healthy" | "below" | "above" | "low_sample" | "no_opportunity";
+  healthy?: [number, number] | null;
+}
+export interface HeroHudResponse {
+  available: boolean;
+  hands?: number;
+  archetype?: string | null;
+  stats?: Record<string, HeroHudStat>;
+}
+
 export const tournaments = {
   list: () => request<TournamentsResponse>("/history/tournaments"),
+
+  /** HUD do herói NESTE torneio (29/08): descritivo, com amostra declarada. */
+  heroHud: (tournamentDbId: number) =>
+    request<HeroHudResponse>(`/tournament/${tournamentDbId}/hero-hud`),
 
   get: (tournamentId: string) =>
     request<{ tournament: Tournament; decisions: TournamentDecision[] }>(

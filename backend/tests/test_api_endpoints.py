@@ -425,9 +425,40 @@ def test_tournament_summary_requires_auth():
     print("OK  test_tournament_summary_requires_auth")
 
 
+def _vira_pro(c, token):
+    """Promove o usuario do token a Pro direto no banco (29/08): a analise IA do torneio
+    passou a ser gateada por advanced_insights, e estes testes exercitam o MIOLO do endpoint,
+    nao o gate — o gate tem teste proprio logo abaixo."""
+    import jwt as _jwt
+    from database.repositories import _adapt
+    from database.schema import get_conn
+    from database.auth import SECRET_KEY
+    uid = _jwt.decode(token, SECRET_KEY, algorithms=['HS256'])['user_id']
+    conn = get_conn()
+    try:
+        conn.execute(_adapt("UPDATE users SET plan = 'pro' WHERE id = ?"), (uid,))
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def test_tournament_summary_exige_pro():
+    """29/08, decisao do dono: 'esta analise IA do torneio tem que ser do plano pro'.
+    O gate mora no BACKEND — cadeado de front sem porta de back e decoracao."""
+    c = _make_client()
+    token = _register_and_login(c, 'tsgate')
+    r = c.post('/analyze/tournament-summary',
+               json={'tournament_id': 99999},
+               headers=_auth_headers(token))
+    assert r.status_code == 402, f"free deveria bater no 402, veio {r.status_code}"
+    assert r.get_json().get('feature') == 'advanced_insights'
+    print("OK  test_tournament_summary_exige_pro")
+
+
 def test_tournament_summary_invalid_id():
     c = _make_client()
     token = _register_and_login(c, 'ts')
+    _vira_pro(c, token)
     r = c.post('/analyze/tournament-summary',
                json={'tournament_id': 99999},
                headers=_auth_headers(token))
@@ -443,6 +474,7 @@ def test_tournament_summary_with_real_data():
         return
     c = _make_client()
     token = _register_and_login(c, 'tsum')
+    _vira_pro(c, token)
     import_r = c.post('/analyze', json={'content': hh}, headers=_auth_headers(token))
     t_db_id = import_r.get_json().get('tournament_db_id')
     assert t_db_id is not None

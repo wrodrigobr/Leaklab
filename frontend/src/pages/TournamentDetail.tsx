@@ -27,10 +27,11 @@ import {
 import { HudLayout } from "@/components/hud/HudLayout";
 import { PlayingCard, type CardData } from "@/components/hud/PlayingCard";
 import { TournamentAiReport } from "@/components/hud/TournamentAiReport";
+import { HudDoTorneio } from "@/components/hud/HudDoTorneio";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { AiText } from "@/components/ui/AiText";
 import { cn, formatAction } from "@/lib/utils";
-import { tournaments, metrics, coachDashboard, Tournament, TournamentDecision, PhaseData, TextureData, SessionReviewResponse } from "@/lib/api";
+import { tournaments, metrics, coachDashboard, Tournament, TournamentDecision, PhaseData, TextureData, SessionReviewResponse, HeroHudResponse } from "@/lib/api";
 import { verdictLevelFromScore, decisionSeverity, VERDICT_META, type VerdictLevel } from "@/lib/cardLogic";
 import { matchesResultFilter, type HandResultFilter } from "@/lib/handFilter";
 
@@ -274,6 +275,7 @@ const TournamentDetail = () => {
   const [pdfDownloading, setPdfDownloading] = useState(false);
   const [pdfFallback, setPdfFallback] = useState(false);
   const [sessionReview, setSessionReview] = useState<SessionReviewResponse | null>(null);
+  const [heroHud, setHeroHud] = useState<HeroHudResponse | null>(null);
 
   const requestAnalysis = async (decisionId: number, force = false) => {
     if (analysisLoading[decisionId]) return;
@@ -343,6 +345,7 @@ const TournamentDetail = () => {
   useEffect(() => {
     if (!tournament?.id) return;
     metrics.sessionReview(tournament.id).then(setSessionReview).catch(() => null);
+    tournaments.heroHud(tournament.id).then(setHeroHud).catch(() => null);
   }, [tournament?.id]);
 
   const filtered = useMemo(
@@ -488,6 +491,8 @@ const TournamentDetail = () => {
               </div>
             ))}
           </section>
+
+          {heroHud?.available && <HudDoTorneio hud={heroHud} />}
 
           {narrative && (
             <section className="rounded-xl border border-border bg-hud-surface px-5 py-4">

@@ -8381,9 +8381,30 @@ def get_feature_usage_report(days: int = 30) -> dict:
 
         dau, wau, mau = _active(1), _active(7), _active(30)
         active_window = _active(days)  # denominador de adoção pra janela escolhida
+
+        # Recorte POR JOGADOR (29/08, pedido do dono: "o que cada jogador está mais usando").
+        # Mesma tabela instrumentada — nada de segunda fonte de verdade sobre uso.
+        linhas = conn.execute(_adapt(
+            "SELECT f.user_id, u.username, COALESCE(u.plan,'free') AS plan, "
+            "       f.feature_key, SUM(f.hits) AS hits "
+            "FROM feature_usage f JOIN users u ON u.id = f.user_id "
+            "WHERE f.day >= ? AND COALESCE(u.role,'player') = 'player' "
+            "GROUP BY f.user_id, u.username, u.plan, f.feature_key"
+        ), (cutoff,)).fetchall()
+        por_user: dict = {}
+        for r in linhas:
+            d = dict(r)
+            u = por_user.setdefault(d['user_id'], {
+                'user_id': d['user_id'], 'username': d['username'], 'plan': d['plan'],
+                'features': {}, 'total': 0})
+            u['features'][d['feature_key']] = int(d['hits'] or 0)
+            u['total'] += int(d['hits'] or 0)
+        users = sorted(por_user.values(), key=lambda x: -x['total'])
+
         return {
             'days': days,
             'features': [dict(f) for f in feats],
+            'users': users,
             'dau': dau, 'wau': wau, 'mau': mau,
             'active_window': active_window,
             'stickiness': round(dau / mau, 3) if mau else 0.0,

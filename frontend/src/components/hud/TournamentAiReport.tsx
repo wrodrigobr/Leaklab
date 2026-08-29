@@ -1,8 +1,10 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Brain, ChevronDown, Loader2, Sparkles, X } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import { Brain, ChevronDown, Loader2, Lock, Sparkles, X } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { tournaments } from "@/lib/api";
+import { subscription, tournaments } from "@/lib/api";
 import { AiText } from "@/components/ui/AiText";
 
 interface Props {
@@ -17,8 +19,25 @@ export function TournamentAiReport({ tournamentName, tournamentDbId, existingSum
   const [loading, setLoading] = useState(false);
   const [summary, setSummary] = useState<string | null>(existingSummary ?? null);
   const [error, setError] = useState("");
+  const navigate = useNavigate();
+
+  /* Cadeado Pro (29/08, decisao do dono): a analise IA do torneio e insight avancado.
+     A capacidade vem do backend (`limits.advanced_insights`) -- nenhuma lista "isto e Pro"
+     mora no front. Enquanto a resposta nao chega, o botao NAO mostra cadeado: acusar quem
+     talvez tenha e pior que um clique a mais (mesma regra do menu). E o cadeado aqui e so
+     dobradica: a PORTA e o 402 do backend. */
+  const { data: quota } = useQuery({
+    queryKey: ["subscription-status"],
+    queryFn: subscription.status,
+    staleTime: 300_000,
+  });
+  const travado = quota ? quota.limits?.advanced_insights === false : false;
 
   const requestAnalysis = async () => {
+    if (travado) {
+      navigate("/subscription");
+      return;
+    }
     setOpen(true);
     if (summary) return;
     setLoading(true);
@@ -39,8 +58,13 @@ export function TournamentAiReport({ tournamentName, tournamentDbId, existingSum
         onClick={requestAnalysis}
         className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-primary/30 bg-primary/10 px-3 font-mono text-[11px] font-bold uppercase tracking-wider text-primary shadow-[0_0_24px_-6px_hsl(var(--primary)/0.5)] transition-all hover:bg-primary/15 hover:border-primary/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
-        <Sparkles className="size-3.5" aria-hidden />
+        {travado ? <Lock className="size-3.5" aria-hidden /> : <Sparkles className="size-3.5" aria-hidden />}
         {t("aiReport.button")}
+        {travado && (
+          <span className="rounded bg-primary/15 px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-wider">
+            Pro
+          </span>
+        )}
       </button>
 
       {open && (

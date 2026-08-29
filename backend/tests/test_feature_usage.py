@@ -18,6 +18,7 @@ except ImportError:
     sys.modules['flask_cors'] = mock.MagicMock()
     sys.modules['flask_cors'].CORS = lambda app, **kw: None
 
+import io
 import api.app as A
 from database.auth import generate_token
 client = A.app.test_client()
@@ -58,6 +59,29 @@ def test_endpoint_admin_ok():
     assert 'features' in j and 'dau' in j and j['days'] == 7
     print("OK  test_endpoint_admin_ok")
 
+
+def test_recorte_por_jogador():
+    """29/08, pedido do dono: "o que cada jogador esta mais usando". O recorte sai da MESMA
+    tabela instrumentada do ranking por feature — a primeira versao deste recorte foi escrita
+    como funcao NOVA com o mesmo nome, virou a segunda definicao do arquivo e a de baixo
+    venceu calada (a licao do merge que duplica definicao). Este teste fixa que existe UMA
+    fonte e que ela responde por jogador."""
+    import uuid
+    m = uuid.uuid4().hex[:8]
+    u = repo.create_user('recorte_' + m, 'recorte_%s@t.local' % m, 'x' * 12)
+    repo.record_feature_usage(u, 'ranges')
+    repo.record_feature_usage(u, 'ranges')
+    repo.record_feature_usage(u, 'training')
+    rep = repo.get_feature_usage_report(30)
+    linha = next((x for x in rep['users'] if x['user_id'] == u), None)
+    assert linha, 'o jogador nao apareceu no recorte por usuario'
+    assert linha['features'] == {'ranges': 2, 'training': 1}, linha
+    assert linha['total'] == 3 and linha['plan'] == 'free', linha
+    # UMA definicao da funcao no repositorio — o guarda contra a duplicata calada.
+    import inspect
+    fonte = io.open('database/repositories.py', encoding='utf-8').read()
+    assert fonte.count('def get_feature_usage_report') == 1, 'definicao duplicada de novo'
+    print("OK  test_recorte_por_jogador")
 
 if __name__ == '__main__':
     tests = [v for k, v in sorted(globals().items()) if k.startswith('test_')]

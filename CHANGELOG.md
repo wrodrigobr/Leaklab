@@ -5,6 +5,55 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## O desafio que se contradizia, e o veredito que passou a respeitar as 5 camadas (29/08)
+
+### Corrigido
+- **Desafio do dia: o card dizia "errou" em cima de um teaching que explicava por que a jogada
+  era certa.** O dono foldou 54o vs 3-bet e foi marcado errado. Causa: o gabarito passa por 5
+  camadas (nó limpo, faixa, triangulação, voto adversarial de LLM, admin) e o `grade_challenge`
+  jogava tudo fora, re-gradando ao vivo contra a fonte de estratégia do dia — que pode divergir
+  da usada na aprovação. **Por quê do conserto em duas camadas:** spot novo SELA o mix aprovado
+  no `spot_json` e o submit grada por ele (fonte única com o teaching, por construção); spot
+  antigo (todo o pool de prod) ganha o PISO — quem joga o `answer` vetado nunca é marcado
+  errado, e a divergência vai para o log com nome, para re-curadoria. Guarda quebrado de
+  propósito nos dois sentidos. É a família lista×card de 26/08, num produto novo.
+- **Menu com chaves cruas na tela** (`nav.dashboard`, `NAV.MENU`...). Não faltava tradução: os
+  rótulos antigos moravam em `common.json` (o defaultNS) e os componentes novos liam de
+  `dashboard`. No i18next, chave sem tradução não é erro — vira o próprio texto. **Por quê do
+  guarda por varredura:** meu primeiro guarda listava os 2 arquivos que eu tinha na cabeça e
+  passou verde com o `NAV.MENU` quebrado num TERCEIRO (`HudHeader`); o guarda novo varre a
+  fonte inteira, extrai toda chave `nav.*` passada a `t()`, resolve no namespace que CADA
+  arquivo pede, nos 3 locales — com controle de detecção (varredor que lê zero arquivos acusa).
+- **Relatório de uso: quase nasceu uma segunda fonte de verdade.** Escrevi
+  `get_feature_usage_report` sem ver que já existia (tabela `feature_usage` instrumentada +
+  aba Uso no admin) — virou a segunda definição do arquivo e a de baixo venceu calada. Removida
+  a duplicata; o recorte POR JOGADOR que o dono pediu entrou na função EXISTENTE, com guarda
+  que conta as definições.
+
+### Adicionado
+- **Análise IA do torneio agora é Pro** (decisão do dono): porta 402 no backend
+  (`advanced_insights`) + cadeado no botão que leva à assinatura. O gate tem teste próprio; os
+  testes do miolo promovem o usuário a Pro para continuar exercitando o endpoint.
+- **HUD do herói nos detalhes do torneio**: VPIP/PFR/3-bet/F3B/C-bet/WTSD/AF da sessão, sem os
+  gates de 100+ mãos do HUD de oponente — descrição de sessão não é read de exploit. Cada
+  célula sai com numerador/denominador; `low_sample` fica neutro (sem cor de veredito),
+  `no_opportunity` mostra traço, nunca 0. Arquétipo continua atrás do gate de 100 mãos.
+- **Mãos compartilhadas — a inteligência** (além do link): a PERGUNTA do dono viaja no link
+  (marca a decisão em dúvida), voto público AGREGADO por ação (anônimo vota, nada identificável
+  é gravado — conferido na própria tabela), comentários com conta e username (o dono da mão
+  segue anônimo no payload), moderação autor-ou-dono, revogar desliga tudo. "Nota da mão" foi
+  proposta e CORTADA pelo dono — seria um segundo sistema de veredito na mesma tela.
+- **Mega-menu** (pedido do dono: estilo GTO Wizard): tile de ícone por item + descrição de uma
+  linha sempre visível, nos 3 locales; folha mobile com os mesmos ícones.
+- **Ilustrações dos cards de treino** redesenhadas: mesa com profundidade e herói aceso, mira
+  sobre a barra mais alta nos leaks, selo de intenção por drill (abrir/defender/3-bet/memorizar)
+  — as grades de range ficam, porque carregam a range real.
+
+### Medido
+- Backend 2597+ verde (suíte inteira + 45/45 API); frontend 462/462.
+
+---
+
 ## Treino de trinca, janela flutuante, e o menu que o dono nunca viu (28/08)
 
 Tres frentes do benchmark fechadas, e um defeito meu que so apareceu porque ele reclamou.

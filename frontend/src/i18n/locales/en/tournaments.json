@@ -277,6 +277,21 @@
     "vazio": {
       "torneio": "No hands found for this tournament.",
       "filtros": "No hands match the current filters."
+    },
+    "hud": {
+      "title": "Your HUD in this tournament",
+      "hands": "{{n}} hands",
+      "disclaimer": "One-tournament sample: read it as a session snapshot, not a trend.",
+      "noOpportunity": "no spot",
+      "stat": {
+        "vpip": "VPIP",
+        "pfr": "PFR",
+        "threebet": "3-Bet",
+        "fold3bet": "Fold 3-Bet",
+        "cbet": "C-Bet",
+        "wtsd": "WTSD",
+        "af": "AF"
+      }
     }
   },
   "summary": {

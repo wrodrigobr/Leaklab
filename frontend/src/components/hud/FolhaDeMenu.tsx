@@ -39,7 +39,7 @@ function liberado(item: ItemDeMenu, caps?: Props["capacidades"]): boolean {
 }
 
 export function FolhaDeMenu({ aberta, aoFechar, capacidades, ocultar = [] }: Props) {
-  const { t } = useTranslation("dashboard");
+  const { t } = useTranslation("common");
 
   // Trava o scroll do fundo enquanto a folha está aberta: sem isto o dedo arrasta a página por
   // baixo e a folha parece quebrada.
@@ -101,6 +101,8 @@ export function FolhaDeMenu({ aberta, aoFechar, capacidades, ocultar = [] }: Pro
                         className="flex flex-col gap-0.5 rounded-lg border border-border bg-background/40 px-2.5 py-2 active:bg-primary/10"
                       >
                         <span className="flex items-center gap-1.5">
+                          <item.icone className={cn("size-3.5 shrink-0",
+                                                    ok ? "text-primary" : "text-muted-foreground")} aria-hidden />
                           <span className={cn("text-[13px] font-medium leading-tight",
                                               ok ? "text-foreground" : "text-muted-foreground")}>
                             {t(item.chave)}

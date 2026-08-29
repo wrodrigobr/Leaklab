@@ -48,7 +48,7 @@ function liberado(item: ItemDeMenu, caps?: Props["capacidades"]): boolean {
 }
 
 export function MenuDeGrupo({ grupo, capacidades, ocultar = [] }: Props) {
-  const { t } = useTranslation("dashboard");
+  const { t } = useTranslation("common");
   const location = useLocation();
   const [aberto, setAberto] = useState(false);
   const caixa = useRef<HTMLDivElement>(null);
@@ -115,32 +115,44 @@ export function MenuDeGrupo({ grupo, capacidades, ocultar = [] }: Props) {
            O afastamento agora e `padding` do proprio painel (`pt-3` no wrapper), que faz parte da
            area sensivel. O visual e o mesmo; a diferenca e que o mouse nunca sai. */
         <div className="absolute left-0 top-full z-50 pt-3">
-        <div className="min-w-[248px] rounded-xl border border-border bg-hud-surface p-1.5 shadow-elevated">
+        {/* Mega-menu (29/08, pedido do dono): tile de ícone por item + descrição SEMPRE visível,
+            como GTO Wizard. A descrição deixou de ser exclusiva do cadeado: item livre também
+            explica o que é — é o painel fazendo o papel de tour. */}
+        <div className="w-[340px] rounded-xl border border-border bg-hud-surface p-2 shadow-elevated">
+          <p className="px-2.5 pb-1.5 pt-1 font-mono text-[9.5px] font-bold uppercase tracking-widest text-muted-foreground/70">
+            {t(grupo.chave)}
+          </p>
           {itens.map((item) => {
             const ok = liberado(item, capacidades);
+            const Icone = item.icone;
             return (
               <NavLink
                 key={item.to}
                 to={item.to}
                 className={cn(
-                  "flex items-start gap-2.5 rounded-lg px-2.5 py-2 transition-colors",
+                  "group/item flex items-center gap-3 rounded-lg px-2.5 py-2 transition-colors",
                   "hover:bg-primary/[0.07] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                 )}
               >
-                <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-                  <span className={cn("text-[13px] font-medium leading-tight",
+                <span className={cn(
+                  "flex size-9 shrink-0 items-center justify-center rounded-lg border transition-colors",
+                  ok
+                    ? "border-primary/20 bg-primary/[0.08] text-primary group-hover/item:bg-primary/15"
+                    : "border-border bg-background/40 text-muted-foreground",
+                )}>
+                  <Icone className="size-4" aria-hidden />
+                </span>
+                <span className="flex min-w-0 flex-1 flex-col gap-px">
+                  <span className={cn("text-[13px] font-semibold leading-tight",
                                       ok ? "text-foreground" : "text-muted-foreground")}>
                     {t(item.chave)}
                   </span>
-                  {/* O motivo só aparece quando há trava: em item livre seria ruído. */}
-                  {!ok && (
-                    <span className="text-[10.5px] leading-snug text-muted-foreground/80">
-                      {t(`nav.motivo.${item.exige}`)}
-                    </span>
-                  )}
+                  <span className="truncate text-[10.5px] leading-snug text-muted-foreground/80">
+                    {ok ? t(item.desc) : t(`nav.motivo.${item.exige}`)}
+                  </span>
                 </span>
                 {!ok && (
-                  <span className="mt-0.5 flex shrink-0 items-center gap-1 rounded bg-primary/10 px-1.5 py-0.5">
+                  <span className="flex shrink-0 items-center gap-1 rounded bg-primary/10 px-1.5 py-0.5">
                     <Lock className="size-2.5 text-primary" aria-hidden />
                     <span className="font-mono text-[9px] font-bold uppercase tracking-wider text-primary">
                       Pro

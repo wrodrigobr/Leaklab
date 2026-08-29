@@ -1,0 +1,138 @@
+# -*- coding: utf-8 -*-
+"""O desafio do dia grada pelo gabarito VETADO, nunca contra ele.
+
+── O que originou (29/08) ──────────────────────────────────────────────────────────────────
+
+O dono foldou 54o (LJ vs 3-bet do BB, 30bb) e o card disse "Não foi a melhor" — em cima de um
+teaching que explicava, em dez linhas, por que fold é a jogada óbvia. O gabarito passa por 5
+camadas (nó limpo, faixa de frequência, triangulação, voto adversarial de LLM, aprovação do
+admin) e o `grade_challenge` jogava tudo fora e re-gradava ao vivo. Quando a fonte de
+estratégia diverge entre a aprovação e o dia (dados diferentes entre ambientes), a tela
+contradiz a si mesma. É a família lista×card de 26/08, num produto novo.
+
+── As duas defesas, em ordem de força ──────────────────────────────────────────────────────
+
+1. Spot novo SELA o mix aprovado no spot_json (`gto_strategy_vetada`) e o submit grada por
+   ele. Fonte única com o teaching, por construção.
+2. Spot antigo (todo o pool de prod) não tem o selo: vale o PISO — quem joga o `answer`
+   vetado nunca é marcado errado, e a divergência vai para o log, não para a tela.
+"""
+import io
+import os
+import sys
+
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+
+os.environ.setdefault('LEAKLAB_TESTING', '1')
+
+SPOT_BASE = {
+    'scenario': 'vs_3bet', 'position': 'LJ', 'vs_position': 'BB', 'stack_bb': 30,
+    'hand': '54o', 'hero_cards': [{'rank': '5', 'suit': 'h'}, {'rank': '4', 'suit': 'd'}],
+    'options': ['fold', 'call', 'raise', 'allin'], 'is_3bet_pot': True,
+    'hero_was_aggressor': True, 'facing_raises': 1, 'facing_size': 9.0,
+}
+
+
+def test_spot_SELADO_grada_pelo_mix_vetado():
+    """Com o selo, a re-grade ao vivo nem é consultada: o veredito sai do mix aprovado."""
+    from leaklab.daily_challenge import grade_challenge
+    spot = dict(SPOT_BASE)
+    # Um mix deliberadamente DIFERENTE do que o provider diria hoje: se o selo manda, o
+    # veredito segue o selo. (allin 75/fold 20 — nenhum provider diria isso para 54o; 0.2 fica na
+    # faixa co-otima: MIN_CREDITABLE 0.1 <= f < CORRECT_FREQ 0.3.)
+    spot['gto_strategy_vetada'] = [{'action': 'allin', 'freq': 0.75}, {'action': 'fold', 'freq': 0.2}]
+    r_all = grade_challenge(spot, 'allin')
+    r_fold = grade_challenge(spot, 'fold')
+    r_call = grade_challenge(spot, 'call')
+    assert r_all['is_correct'] and not r_all['mixed'], 'a acao top do selo nao foi acerto pleno'
+    assert r_fold['is_correct'] and r_fold['mixed'], 'a acao co-otima do selo nao foi Aceitavel'
+    assert not r_call['is_correct'] and r_call['gto_tier'] == 'error', \
+        'acao fora do selo passou -- o selo nao esta mandando'
+    assert r_all['best_action'] == 'allin', 'best_action nao veio do selo'
+    print('OK  test_spot_SELADO_grada_pelo_mix_vetado')
+
+
+def test_spot_ANTIGO_piso_do_answer():
+    """O caso do print: sem selo, jogar o `answer` vetado NUNCA e erro.
+
+    Nao dependemos de reproduzir a divergencia de prod: forjamos a condicao com um answer que
+    a re-grade condena em qualquer fonte (fold de AA no BTN) e exigimos que o piso mande."""
+    from leaklab.daily_challenge import grade_challenge
+    spot = {'scenario': 'rfi', 'position': 'BTN', 'vs_position': '', 'stack_bb': 40,
+            'hand': 'AA', 'hero_cards': [{'rank': 'A', 'suit': 'h'}, {'rank': 'A', 'suit': 'd'}],
+            'options': ['fold', 'raise', 'allin']}
+    sem_piso = grade_challenge(spot, 'fold')
+    assert not sem_piso['is_correct'], (
+        'controle quebrado: a re-grade ao vivo NAO condena fold de AA no BTN -- este teste '
+        'nao esta exercitando a divergencia e vira verde vazio')
+    com_piso = grade_challenge(spot, 'fold', answer='fold')
+    assert com_piso['is_correct'], 'jogador jogou o gabarito vetado e foi marcado errado'
+    assert com_piso['gto_tier'] == 'correct'
+    print('OK  test_spot_ANTIGO_piso_do_answer')
+
+
+def test_o_piso_NAO_abencoa_outra_resposta():
+    """CONTRAPROVA: o piso vale para o answer vetado, nao para qualquer acao. Sem isto o
+    conserto silenciaria erro de verdade -- dano que o bug nao causava (regra 7)."""
+    from leaklab.daily_challenge import grade_challenge
+    spot = {'scenario': 'rfi', 'position': 'UTG', 'vs_position': '', 'stack_bb': 40,
+            'hand': '72o', 'hero_cards': [{'rank': '7', 'suit': 'h'}, {'rank': '2', 'suit': 'd'}],
+            'options': ['fold', 'raise', 'allin']}
+    r = grade_challenge(spot, 'allin', answer='fold')
+    assert not r['is_correct'], 'o piso do gabarito abencoou uma acao que NAO e o gabarito'
+    print('OK  test_o_piso_NAO_abencoa_outra_resposta')
+
+
+def test_a_divergencia_vai_para_o_LOG():
+    """O piso silencioso esconderia o spot podre para sempre. O log e o que aciona a
+    re-curadoria."""
+    import logging
+    from leaklab.daily_challenge import grade_challenge
+    spot = {'scenario': 'rfi', 'position': 'BTN', 'vs_position': '', 'stack_bb': 40,
+            'hand': 'AA', 'hero_cards': [{'rank': 'A', 'suit': 'h'}, {'rank': 'A', 'suit': 'd'}],
+            'options': ['fold', 'raise', 'allin']}
+    buf = io.StringIO()
+    h = logging.StreamHandler(buf)
+    log = logging.getLogger('leaklab.daily_challenge')
+    log.addHandler(h)
+    try:
+        grade_challenge(spot, 'fold', answer='fold')
+    finally:
+        log.removeHandler(h)
+    assert 'diverge do gabarito vetado' in buf.getvalue(), \
+        'o piso corrigiu a tela mas nao avisou ninguem -- o spot podre fica no pool para sempre'
+    print('OK  test_a_divergencia_vai_para_o_LOG')
+
+
+def test_candidato_novo_NASCE_selado():
+    """A defesa 1 por construcao: o que build_candidates grava carrega o mix vetado."""
+    import json
+    import random
+    from leaklab import daily_challenge as dc
+    cands = dc.build_candidates(1, rng=random.Random(3), with_explanation=False,
+                                difficulty='facil', verify=False)
+    if not cands:
+        cands = dc.build_candidates(1, rng=random.Random(3), with_explanation=False,
+                                    difficulty='dificil', verify=False)
+    assert cands, 'build_candidates nao gerou nenhum candidato -- o teste nao mediu nada'
+    spot = json.loads(cands[0]['spot_json'])
+    selo = spot.get('gto_strategy_vetada')
+    assert selo and isinstance(selo, list) and all('action' in s and 'freq' in s for s in selo), \
+        'candidato novo nasceu sem o selo: o submit voltara a re-gradar ao vivo'
+    print('OK  test_candidato_novo_NASCE_selado')
+
+
+if __name__ == '__main__':
+    falhas = 0
+    testes = [v for k, v in sorted(globals().items()) if k.startswith('test_')]
+    for teste in testes:
+        try:
+            teste()
+        except AssertionError as e:
+            falhas += 1
+            print('FALHOU  %s: %s' % (teste.__name__, e))
+        except Exception as e:                              # noqa: BLE001
+            falhas += 1
+            print('ERRO    %s: %s: %s' % (teste.__name__, type(e).__name__, e))
+    print('\nTotal: %d | Passed: %d | Failed: %d' % (len(testes), len(testes) - falhas, falhas))
+    sys.exit(1 if falhas else 0)

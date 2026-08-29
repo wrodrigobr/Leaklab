@@ -27,7 +27,8 @@ import random as _random
 
 _log = logging.getLogger(__name__)
 
-from leaklab.leak_trainer import generate_canonical_spot, grade_canonical_spot
+from leaklab.leak_trainer import (CORRECT_FREQ, generate_canonical_spot,
+                                  grade_canonical_spot)
 from leaklab.preflop_range_evaluator import _recommended_action
 
 # ── Dificuldade ──────────────────────────────────────────────────────────────────────────────
@@ -426,6 +427,11 @@ def build_candidates(n: int = 10, rng: _random.Random | None = None,
                 # Marca no que o admin lê: sem o voto, a revisão humana é a única barreira.
                 nota += "  [sem voto do LLM]"
 
+        # Sela o MIX no spot: e ELE que as 5 camadas vetaram, e e contra ele que o submit
+        # grada. Sem isto o grade_challenge re-deriva ao vivo, e quando a fonte de estrategia
+        # muda entre a aprovacao e o dia do desafio, o card diz "errou" em cima de um teaching
+        # que explica por que a jogada e certa (aconteceu em 29/08, com fold de 54o vs 3-bet).
+        spot['gto_strategy_vetada'] = _strat
         cand = {
             'spot_json':  json.dumps(spot),
             'answer':     answer,
@@ -595,15 +601,52 @@ def describe_challenge(spot_json) -> dict:
     }
 
 
-def grade_challenge(spot_json: str, action: str) -> dict:
-    """Grada a ação do jogador contra o spot vetado. Reusa o grader do trainer
-    (mixed-aware). Retorna o dict de veredito + uma explicação determinística."""
+def grade_challenge(spot_json: str, action: str, answer: str | None = None) -> dict:
+    """Grada a ação do jogador contra o spot VETADO — pelo mix selado na aprovação, quando
+    existe; senão pela re-grade ao vivo com o `answer` aprovado como PISO.
+
+    ── O que originou (29/08) ──────────────────────────────────────────────────────────────
+    O gabarito passa por 5 camadas (nó limpo, faixa, triangulação, voto adversarial, admin) e
+    esta função re-gradava AO VIVO, ignorando tudo. Quando a fonte de estratégia divergiu
+    entre ambientes, o jogador foldou 54o contra 3-bet, o card disse "Não foi a melhor" e o
+    teaching — escrito para o gabarito vetado — explicou por que fold é óbvio. Duas políticas
+    de veredito na mesma tela (a mesma família do lista×card de 26/08).
+
+    Spots aprovados ANTES do selo não têm o mix gravado; para eles vale o piso: quem joga o
+    `answer` vetado nunca é marcado errado, e a divergência vai para o log com nome, para a
+    re-curadoria — não para a tela do jogador."""
     spot = json.loads(spot_json) if isinstance(spot_json, str) else spot_json
-    g = grade_canonical_spot(spot, action)
-    strat = g.get('gto_strategy') or []
-    best = g.get('best_action') or (strat[0]['action'] if strat else '')
-    mix = ', '.join(f"{s['action']} {round(float(s['freq'])*100)}%" for s in strat[:3])
     played = _norm(action)
+    vetada = spot.get('gto_strategy_vetada') or None
+
+    if vetada:
+        # Fonte ÚNICA com o teaching: o mix que as camadas aprovaram.
+        freq = {_norm(s.get('action')): float(s.get('freq') or 0) for s in vetada}
+        strat = [{'action': a, 'freq': round(f, 4)}
+                 for a, f in sorted(freq.items(), key=lambda x: -x[1]) if f > 0.01]
+        pf = freq.get(played, 0.0)
+        if pf >= CORRECT_FREQ:
+            tier, correct, mixed = 'correct', True, False
+        elif pf >= MIN_CREDITABLE:
+            tier, correct, mixed = 'correct', True, True
+        else:
+            tier, correct, mixed = 'error', False, False
+        g = {'is_correct': correct, 'gto_tier': tier, 'mixed': mixed}
+    else:
+        g = grade_canonical_spot(spot, action)
+        strat = g.get('gto_strategy') or []
+        if answer and _norm(answer) == played and not g.get('is_correct'):
+            # PISO: a re-grade contradisse o gabarito que humano+LLM aprovaram. O jogador que
+            # jogou o gabarito não paga por isso; o log aciona a re-curadoria do spot.
+            _log.warning(
+                'DESAFIO: re-grade ao vivo diverge do gabarito vetado '
+                '(pos=%s vs=%s stack=%s hand=%s | answer=%s, live disse %s/%s)',
+                spot.get('position'), spot.get('vs_position'), spot.get('stack_bb'),
+                spot.get('hand'), _norm(answer), g.get('gto_tier'), g.get('best_action'))
+            g = {**g, 'is_correct': True, 'gto_tier': 'correct', 'mixed': True}
+
+    best = (strat[0]['action'] if strat else '') or g.get('best_action') or ''
+    mix = ', '.join(f"{s['action']} {round(float(s['freq'])*100)}%" for s in strat[:3])
     if g.get('is_correct'):
         head = "Correto." if not g.get('mixed') else "Aceitável (o GTO mistura aqui)."
     else:

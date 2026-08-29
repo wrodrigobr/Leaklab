@@ -22,7 +22,51 @@
     "sparring": "Sparring",
     "training": "Training",
     "leaderboard": "Leaderboard",
-    "academy": "Academy"
+    "academy": "Academy",
+    "grupos": {
+      "meuJogo": "My game",
+      "treinar": "Train",
+      "estudar": "Study",
+      "comunidade": "Community"
+    },
+    "comparar": "Compare tournaments",
+    "evolucao": "Progress",
+    "rating": "Your rating",
+    "treinos": "All drills",
+    "maoCompleta": "Full hand",
+    "ranges": "Ranges",
+    "meusLeaks": "Train my leaks",
+    "academia": "Academy",
+    "handBuilder": "Build a hand",
+    "docs": "How it works",
+    "motivo": {
+      "ghost": "Spaced repetition of YOUR own hands",
+      "leak_targeted": "Trains the mistakes measured in your history",
+      "ai_coach_chat": "Talk to the AI about your hands",
+      "advanced_insights": "Deeper analysis of your game"
+    },
+    "tudo": "Everything in GrindLab",
+    "fechar": "Close",
+    "menu": "Menu",
+    "desc": {
+      "dashboard": "Your leaks, your progress and your study plan",
+      "tournaments": "Every imported tournament, hand by hand",
+      "comparar": "Two tournaments side by side",
+      "evolucao": "Your progress by leak family",
+      "rating": "Your rating and the weekly league",
+      "treinos": "Preflop and postflop drill catalog",
+      "maoCompleta": "Play real hands start to finish",
+      "ranges": "Look up the matrix for any spot",
+      "meusLeaks": "Drills built from your measured mistakes",
+      "ghost": "Replay your hands blind to the result",
+      "study": "Your personalized study plan",
+      "academia": "MTT strategy lessons",
+      "handBuilder": "Build and analyze a hand from scratch",
+      "docs": "How GrindLab measures and grades",
+      "leaderboard": "League player rankings",
+      "coaches": "Find a coach to review your game",
+      "coach": "Chat with the AI Coach about your game"
+    }
   },
   "notifications": {
     "title": "Notifications",

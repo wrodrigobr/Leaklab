@@ -22,7 +22,51 @@
     "sparring": "Sparring",
     "training": "Treinos",
     "leaderboard": "Ranking",
-    "academy": "Academia"
+    "academy": "Academia",
+    "grupos": {
+      "meuJogo": "Meu jogo",
+      "treinar": "Treinar",
+      "estudar": "Estudar",
+      "comunidade": "Comunidade"
+    },
+    "comparar": "Comparar torneios",
+    "evolucao": "Evolução",
+    "rating": "Seu rating",
+    "treinos": "Todos os treinos",
+    "maoCompleta": "Mão completa",
+    "ranges": "Ranges",
+    "meusLeaks": "Treinar meus leaks",
+    "academia": "Academia",
+    "handBuilder": "Montar uma mão",
+    "docs": "Como funciona",
+    "motivo": {
+      "ghost": "Revisão espaçada das SUAS mãos",
+      "leak_targeted": "Treina os erros medidos no seu histórico",
+      "ai_coach_chat": "Conversa com a IA sobre as suas mãos",
+      "advanced_insights": "Análises aprofundadas do seu jogo"
+    },
+    "tudo": "Tudo no GrindLab",
+    "fechar": "Fechar",
+    "menu": "Menu",
+    "desc": {
+      "dashboard": "Seus leaks, sua evolução e seu plano de estudo",
+      "tournaments": "Todos os torneios importados, mão a mão",
+      "comparar": "Dois torneios lado a lado",
+      "evolucao": "Seu progresso por família de leak",
+      "rating": "Seu rating e a liga semanal",
+      "treinos": "Catálogo de drills preflop e postflop",
+      "maoCompleta": "Jogue mãos reais do início ao fim",
+      "ranges": "Consulte a matriz de qualquer spot",
+      "meusLeaks": "Treina exatamente os erros que você comete",
+      "ghost": "Reviva suas mãos sem saber o resultado",
+      "study": "Seu plano de estudo personalizado",
+      "academia": "Aulas de estratégia MTT",
+      "handBuilder": "Monte e analise uma mão do zero",
+      "docs": "Como o GrindLab mede e avalia",
+      "leaderboard": "Ranking dos jogadores da liga",
+      "coaches": "Encontre um coach para revisar seu jogo",
+      "coach": "Converse com o AI Coach sobre seu jogo"
+    }
   },
   "notifications": {
     "title": "Notificações",
