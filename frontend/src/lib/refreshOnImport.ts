@@ -35,6 +35,10 @@ import type { QueryClient } from "@tanstack/react-query";
 
 /** Deriva de torneio: tem que recarregar quando um import termina. */
 export const CHAVES_DE_TORNEIO = [
+  // ritual da sessão (30/08): o FOCO sai do leak mais caro (muda quando entra torneio) e é o
+  // import que dispara o DEBRIEFING — a razão de existir do laço.
+  "session-ritual",
+  "session-debrief",
   "bankroll-evolution",
   "progression-status",
   "progression-missions",
@@ -65,6 +69,9 @@ export const CHAVES_NAO_DERIVADAS = [
   // catálogo de treinos: os números vêm de `training_skill_progress`, que só muda quando o jogador
   // PRATICA. Importar torneio não move nenhum deles — recarregar aqui seria custo sem mudança.
   "training-catalog",
+  // feed de mãos compartilhadas: muda quando alguém COMPARTILHA, não quando o jogador importa
+  // torneio — recarregar no import seria custo sem mudança.
+  "shared-feed",
   // plano e cobrança: o cadeado do menu lê daqui (`limits`), e o plano NÃO muda por importar
   // torneio -- muda por pagamento, que chega por webhook e por uma tela propria. Recarregar a
   // cada import seria custo sem mudanca, e ainda faria o cadeado piscar.

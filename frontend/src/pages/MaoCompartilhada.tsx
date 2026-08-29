@@ -122,6 +122,11 @@ export default function MaoCompartilhada() {
               {t("sharedHand.perguntaDoDono")}
             </p>
             <p className="mt-1 text-[15px] font-medium text-foreground">{dados.pergunta}</p>
+            {dados.autor && (
+              <p className="mt-1 font-mono text-[10px] text-muted-foreground">
+                {t("sharedHand.por")} <span className="text-primary">{dados.autor}</span>
+              </p>
+            )}
           </div>
         )}
 

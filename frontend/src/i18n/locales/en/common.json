@@ -255,7 +255,8 @@
     "pronto": "Link ready. Paste it in your group:",
     "copiar": "Copy link",
     "erro": "Could not create the link.",
-    "anonimo": "The page shows no nick, tournament name, or dates."
+    "anonimo": "Your poker nick and the tournament never appear. Your GrindLab name shows unless you check the anonymous option.",
+    "anonimoOpcao": "Share without showing my name"
   },
   "sharedHand": {
     "naoExiste": "This link does not exist or was revoked by its owner.",
@@ -276,7 +277,8 @@
       "call": "Call",
       "raise": "Raise",
       "allin": "All-in"
-    }
+    },
+    "por": "by"
   },
   "feedbackPico": {
     "pergunta": "Did this help?",
@@ -304,6 +306,7 @@
     "ver": "View and vote",
     "compartilhou": "shared a hand",
     "votos": "{{n}} votes",
-    "comentarios": "{{n}} comments"
+    "comentarios": "{{n}} comments",
+    "anonimo": "Anonymous"
   }
 }

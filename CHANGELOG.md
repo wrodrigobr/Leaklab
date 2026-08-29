@@ -15,6 +15,12 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
   a página do link pede o voto ANTES de revelar, e um feed que entrega a resposta mataria o
   mecanismo; e o autor é o username GrindLab de quem ESCOLHEU compartilhar — a regra de
   anonimato protege nick de POKER (quem não consentiu), que segue invisível em toda superfície.
+- **Anonimato virou opção de quem compartilha** (decisão do dono): checkbox "compartilhar sem
+  mostrar meu nome" no popover; anônimo esconde o username no feed E na página do link, com
+  guarda que varre o payload nos dois modos. A copy do rodapé foi corrigida junto — dizia "não
+  mostra seu nick" sem distinguir nick de poker (nunca sai) de nome GrindLab (sai por padrão).
+- As 3 queryKeys novas passaram pela catraca de classificação do refreshOnImport: o ritual
+  recarrega no import (é o gatilho do debriefing); o feed não (muda por compartilhar).
 
 ---
 

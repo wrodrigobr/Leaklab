@@ -51,7 +51,10 @@ function CardDoFeed({ item }: { item: FeedItem }) {
       className="flex flex-col gap-2.5 rounded-xl border border-border bg-hud-surface p-4 transition-colors hover:border-primary/40"
     >
       <div className="flex items-baseline justify-between gap-2">
-        <span className="truncate font-mono text-[12px] font-bold text-primary">{item.autor}</span>
+        <span className={cn("truncate font-mono text-[12px] font-bold",
+                            item.autor ? "text-primary" : "text-muted-foreground")}>
+          {item.autor ?? t("sharedFeed.anonimo")}
+        </span>
         <span className="shrink-0 font-mono text-[10px] text-muted-foreground/70">{quando}</span>
       </div>
 

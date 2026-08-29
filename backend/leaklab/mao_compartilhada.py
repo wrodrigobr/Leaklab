@@ -72,6 +72,8 @@ def _tabela(conn) -> None:
         # o passo e escreve a dúvida; o visitante vota nela antes de ver o veredito.
         "ALTER TABLE shared_hands ADD COLUMN step_idx INTEGER",
         "ALTER TABLE shared_hands ADD COLUMN pergunta TEXT",
+        # 30/08, decisao do dono: nome de quem compartilha aparece POR PADRAO; anonimo e opcao.
+        "ALTER TABLE shared_hands ADD COLUMN anonimo INTEGER DEFAULT 0",
         # Voto AGREGADO por token+ação: nenhum visitante identificável é gravado.
         """CREATE TABLE IF NOT EXISTS shared_hand_votes (
                 token   TEXT NOT NULL,
@@ -104,7 +106,8 @@ def _sqlite(conn) -> bool:
 
 
 def criar(user_id: int, tournament_id: int, hand_id: str,
-          step_idx: Optional[int] = None, pergunta: Optional[str] = None) -> Optional[str]:
+          step_idx: Optional[int] = None, pergunta: Optional[str] = None,
+          anonimo: bool = False) -> Optional[str]:
     """Cria (ou devolve) o link da mão. `None` se a mão não é do usuário.
 
     A conferência de dono não é formalidade: sem ela qualquer um compartilharia a mão de qualquer
@@ -128,16 +131,18 @@ def criar(user_id: int, tournament_id: int, hand_id: str,
                 # Compartilhar de novo com pergunta nova ATUALIZA o link existente: o link é da
                 # mão, a pergunta é o estado atual da dúvida do dono.
                 conn.execute(_adapt(
-                    'UPDATE shared_hands SET step_idx = ?, pergunta = ? WHERE token = ?'),
-                    (step_idx, (pergunta or '')[:280] or None, token))
+                    'UPDATE shared_hands SET step_idx = ?, pergunta = ?, anonimo = ? '
+                    'WHERE token = ?'),
+                    (step_idx, (pergunta or '')[:280] or None, 1 if anonimo else 0, token))
                 conn.commit()
             return token
         # 16 bytes = 128 bits. Aleatório, não derivado: ver o docblock.
         token = secrets.token_urlsafe(16)
         conn.execute(_adapt(
-            'INSERT INTO shared_hands (token, user_id, tournament_id, hand_id, step_idx, pergunta) '
-            'VALUES (?, ?, ?, ?, ?, ?)'),
-            (token, user_id, tournament_id, hand_id, step_idx, (pergunta or '')[:280] or None))
+            'INSERT INTO shared_hands (token, user_id, tournament_id, hand_id, step_idx, pergunta, anonimo) '
+            'VALUES (?, ?, ?, ?, ?, ?, ?)'),
+            (token, user_id, tournament_id, hand_id, step_idx, (pergunta or '')[:280] or None,
+             1 if anonimo else 0))
         conn.commit()
         return token
     finally:
@@ -168,13 +173,23 @@ def _limpa(valor):
     return valor
 
 
+def _username(user_id) -> Optional[str]:
+    conn = get_conn()
+    try:
+        r = conn.execute(_adapt('SELECT username FROM users WHERE id = ?'),
+                         (user_id,)).fetchone()
+        return dict(r)['username'] if r else None
+    finally:
+        conn.close()
+
+
 def ler(token: str) -> Optional[dict]:
     """O payload PÚBLICO da mão, ou `None` se o link não existe ou foi revogado."""
     conn = get_conn()
     try:
         _tabela(conn)
         row = conn.execute(_adapt(
-            'SELECT tournament_id, hand_id, step_idx, pergunta FROM shared_hands '
+            'SELECT tournament_id, hand_id, step_idx, pergunta, anonimo, user_id FROM shared_hands '
             'WHERE token = ? AND revoked_at IS NULL'), (token,)).fetchone()
         if not row:
             return None
@@ -205,6 +220,9 @@ def ler(token: str) -> Optional[dict]:
         passos.append({k: _limpa(v) for k, v in linha.items() if k in CAMPOS_PUBLICOS})
     return {'passos': passos, 'n': len(passos),
             'pergunta': r.get('pergunta'), 'passo_marcado': r.get('step_idx'),
+            # 30/08, decisao do dono: quem ESCOLHEU compartilhar com nome aparece; anonimo
+            # e opcao no popover. Nick de POKER segue invisivel em qualquer modo.
+            'autor': (None if r.get('anonimo') else _username(r.get('user_id'))),
             'votos': votos, 'comentarios': comentarios}
 
 
@@ -318,7 +336,7 @@ def listar_feed(ordenar: str = 'recentes', posicao: Optional[str] = None,
                       "SELECT 1 FROM shared_hand_comments c WHERE c.token = sh.token "
                       "AND c.deleted_at IS NULL)")
         rows = conn.execute(_adapt(
-            'SELECT sh.token, sh.pergunta, sh.step_idx, sh.created_at, sh.views, '
+            'SELECT sh.token, sh.pergunta, sh.step_idx, sh.created_at, sh.views, sh.anonimo AS _anon, '
             '       sh.tournament_id AS _tid, sh.hand_id AS _hid, u.username AS autor, '
             '       (SELECT COALESCE(SUM(n), 0) FROM shared_hand_votes v '
             '        WHERE v.token = sh.token) AS votos, '
@@ -330,6 +348,8 @@ def listar_feed(ordenar: str = 'recentes', posicao: Optional[str] = None,
         feed = []
         for r in rows:
             d = dict(r)
+            if d.pop('_anon', 0):
+                d['autor'] = None                      # anonimo por escolha do dono do link
             decisoes = conn.execute(_adapt(
                 'SELECT * FROM decisions WHERE tournament_id = ? AND hand_id = ? ORDER BY id'),
                 (d.pop('_tid'), d.pop('_hid'))).fetchall()

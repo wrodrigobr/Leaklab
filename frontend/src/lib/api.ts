@@ -534,6 +534,7 @@ export interface SharedHandComment {
   created_at: string;
 }
 export interface SharedHandPayload {
+  autor?: string | null;
   passos: SharedHandStep[];
   n: number;
   pergunta?: string | null;
@@ -587,7 +588,7 @@ export const ritual = {
 
 export interface FeedItem {
   token: string;
-  autor: string;
+  autor: string | null;
   pergunta?: string | null;
   created_at?: string | null;
   views?: number;
@@ -603,12 +604,14 @@ export const sharedHandFeed = (sort: string, position?: string) =>
     `/shared-hands/feed?sort=${encodeURIComponent(sort)}${position ? `&position=${encodeURIComponent(position)}` : ""}`);
 
 export const sharedHand = {
-  criar: (tournamentId: string | number, handId: string, stepIdx?: number, question?: string) =>
+  criar: (tournamentId: string | number, handId: string, stepIdx?: number, question?: string,
+          anonymous?: boolean) =>
     request<{ token: string }>("/replay/share", {
       method: "POST",
       body: JSON.stringify({
         tournament_id: tournamentId, hand_id: handId,
         step_idx: stepIdx, question: question || undefined,
+        anonymous: anonymous || undefined,
       }),
     }),
   revogar: (token: string) =>

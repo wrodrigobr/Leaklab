@@ -14,7 +14,9 @@ import { cn } from "@/lib/utils";
  * O link abre focado nela, e quem clica vota antes de ver o veredito — é o que faz o link ser
  * uma conversa, e não um print. A decisão marcada é a que está NA TELA na hora do clique.
  *
- * O payload público é whitelist no backend: nick de ninguém sai, nem o do dono.
+ * O payload público é whitelist no backend: nick de POKER de ninguém sai, nunca. O nome
+ * GrindLab de quem compartilha aparece por padrão (30/08, decisão do dono) — anônimo é a
+ * opção logo abaixo da pergunta.
  */
 
 interface Props {
@@ -28,6 +30,7 @@ export function CompartilharMao({ tournamentId, handId, stepIdx }: Props) {
   const { t } = useTranslation("common");
   const [aberto, setAberto] = useState(false);
   const [pergunta, setPergunta] = useState("");
+  const [anonimo, setAnonimo] = useState(false);
   const [link, setLink] = useState("");
   const [copiado, setCopiado] = useState(false);
   const [erro, setErro] = useState("");
@@ -37,7 +40,7 @@ export function CompartilharMao({ tournamentId, handId, stepIdx }: Props) {
     setGerando(true);
     setErro("");
     try {
-      const r = await sharedHand.criar(tournamentId, handId, stepIdx, pergunta.trim() || undefined);
+      const r = await sharedHand.criar(tournamentId, handId, stepIdx, pergunta.trim() || undefined, anonimo);
       setLink(`${window.location.origin}/h/${r.token}`);
     } catch (e: unknown) {
       setErro(e instanceof Error ? e.message : t("share.erro"));
@@ -91,6 +94,14 @@ export function CompartilharMao({ tournamentId, handId, stepIdx }: Props) {
                 rows={2}
                 className="mb-2 w-full resize-none rounded-lg border border-border bg-background/50 px-2.5 py-2 text-[12px] text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-1 focus:ring-primary"
               />
+              {/* 30/08, decisao do dono: nome por padrao (compartilhar e ato publico);
+                  anonimo e OPCAO de quem compartilha. */}
+              <label className="mb-2 flex cursor-pointer items-center gap-2 text-[11.5px] text-muted-foreground">
+                <input type="checkbox" checked={anonimo}
+                       onChange={(e) => setAnonimo(e.target.checked)}
+                       className="size-3.5 accent-[hsl(var(--primary))]" />
+                {t("share.anonimoOpcao")}
+              </label>
               {erro && <p className="mb-2 text-[11px] text-destructive">{erro}</p>}
               <button
                 type="button"

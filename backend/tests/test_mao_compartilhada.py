@@ -207,11 +207,34 @@ def test_comentario_exige_conta_e_assina_username():
     d = ler(t)
     assert len(d['comentarios']) == 1
     assert d['comentarios'][0]['autor'].startswith('outro_'), 'o autor nao veio assinado'
-    # O guarda de anonimato do DONO continua valendo com os comentarios no payload.
+    # POLITICA 30/08 (decisao do dono): o username GrindLab de quem compartilhou COM NOME
+    # aparece; o que segue proibido em QUALQUER modo e o nick de POKER.
     bruto = json.dumps(d, ensure_ascii=False)
-    assert 'nick_do_dono' not in bruto and 'dono_' not in bruto, (
-        'as camadas novas vazaram a identidade do dono da mao')
+    assert 'nick_do_dono' not in bruto, 'nick de POKER vazou no payload'
     print('OK  test_comentario_exige_conta_e_assina_username')
+
+
+def test_anonimo_e_opcao_e_esconde_o_username():
+    """30/08: nome por padrao (escolha de compartilhar e publica), anonimo por OPCAO no
+    popover. Anonimo esconde o username no payload E no feed; nick de poker some sempre."""
+    _banco()
+    import json
+    from leaklab.mao_compartilhada import criar, ler, listar_feed
+    a, _b, tid, hid = _semeia()
+    t = criar(a, tid, hid, pergunta='sou timido', anonimo=True)
+    d = ler(t)
+    assert d['autor'] is None, 'compartilhamento anonimo veio com autor'
+    bruto = json.dumps(d, ensure_ascii=False)
+    assert 'dono_' not in bruto and 'nick_do_dono' not in bruto, (
+        'anonimo vazou identidade: %s' % bruto[:200])
+    item = next((f for f in listar_feed('recentes') if f['token'] == t), None)
+    assert item and item['autor'] is None, 'anonimo com nome no feed'
+    # e o modo COM nome mostra o username (a contraprova da politica)
+    t2 = criar(a, tid, hid, pergunta='mudei de ideia', anonimo=False)
+    assert t2 == t, 'recompartilhar criou outro link'
+    assert ler(t)['autor'] and ler(t)['autor'].startswith('dono_'), (
+        'com nome nao mostrou o username')
+    print('OK  test_anonimo_e_opcao_e_esconde_o_username')
 
 
 def test_apagar_comentario_autor_ou_dono():

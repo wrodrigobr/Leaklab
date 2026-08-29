@@ -6566,7 +6566,8 @@ def criar_link_da_mao():
     step = body.get('step_idx')
     step = int(step) if isinstance(step, (int, float)) and int(step) >= 0 else None
     token = criar(g.user_id, tid, hid, step_idx=step,
-                  pergunta=str(body.get('question') or '').strip() or None)
+                  pergunta=str(body.get('question') or '').strip() or None,
+                  anonimo=bool(body.get('anonymous')))
     if not token:
         # 404 e nao 403: dizer "existe mas nao e sua" ja e informacao sobre a mao de outro.
         return jsonify({'error': 'mao nao encontrada'}), 404
