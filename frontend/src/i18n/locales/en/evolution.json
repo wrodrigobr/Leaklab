@@ -80,5 +80,10 @@
     "noteIcm": "Bubble and final table, what is called the ICM zone, are left out. The right play there changes because of the prize, and the reference we use is in chips, not in money.",
     "noteFrozen": "These numbers are from the moment the file was generated and do not update on their own. For today's reading, open the report on the site."
   },
-  "celulaTitulo": "{{pos}} · {{bucket}} · {{bb}}bb/100 · {{n}} decisions"
+  "celulaTitulo": "{{pos}} · {{bucket}} · {{bb}}bb/100 · {{n}} decisions",
+  "pro": {
+    "titulo": "Evolution reports are a Pro feature",
+    "sub": "AI compares your periods and shows where you truly improved. Subscribe to unlock.",
+    "cta": "See Pro"
+  }
 }

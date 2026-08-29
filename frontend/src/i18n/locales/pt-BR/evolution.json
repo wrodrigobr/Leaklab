@@ -80,5 +80,10 @@
     "noteIcm": "Bolha e mesa final, o que se chama de zona de ICM, ficam fora da conta. Lá a jogada certa muda por causa do prêmio, e a referência que usamos é de fichas, não de dinheiro.",
     "noteFrozen": "Os números são do momento em que o arquivo foi gerado e não se atualizam sozinhos. Para a leitura de hoje, abra o relatório no site."
   },
-  "celulaTitulo": "{{pos}} · {{bucket}} · {{bb}}bb/100 · {{n}} decisões"
+  "celulaTitulo": "{{pos}} · {{bucket}} · {{bb}}bb/100 · {{n}} decisões",
+  "pro": {
+    "titulo": "Os relatórios de evolução são do plano Pro",
+    "sub": "A IA compara os seus períodos e mostra onde você melhorou de verdade. Assine para destravar.",
+    "cta": "Conhecer o Pro"
+  }
 }

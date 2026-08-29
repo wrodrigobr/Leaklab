@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 // `Map as MapIcon` NÃO é preferência de estilo: importar `Map` cru sombreia o construtor global,
 // e o `new Map(...)` do heatmap vira "TypeError: Map is not a constructor" — em RUNTIME, com a
 // tela em branco. Nem o `tsc` nem o build pegam, porque o nome é válido nos dois mundos.
-import { TrendingDown, TrendingUp, Minus, ArrowRight, ArrowLeft, ChevronRight, Camera, Download, Map as MapIcon } from "lucide-react";
+import { ArrowLeft, ArrowRight, Camera, ChevronRight, Download, Lock, Map as MapIcon, Minus, TrendingDown, TrendingUp } from "lucide-react";
 import { HudLayout } from "@/components/hud/HudLayout";
 import { evolution, training, type EvolutionReport, type TrainingProofItem } from "@/lib/api";
 import { useSpotLabel } from "@/lib/spotLabel";
@@ -52,6 +52,12 @@ export default function Evolution() {
     enabled: congelado,
   });
 
+  // Pro (30/08, decisão do dono): os relatórios de evolução são gerados por IA. O 402 do
+  // backend vira upsell, não erro.
+  const ehPro402 = (q: { error: unknown }) =>
+    (q.error as { status?: number } | null)?.status === 402;
+  const upsellPro = congelado ? ehPro402(retrato) : (ehPro402(vivo) || ehPro402(proofVivo));
+
   const data = congelado ? retrato.data?.snapshot : vivo.data;
   const proof = (congelado ? retrato.data?.snapshot?.proof : proofVivo.data?.proof) ?? [];
   const isLoading = congelado ? retrato.isLoading : vivo.isLoading;
@@ -62,6 +68,19 @@ export default function Evolution() {
 
   return (
     <HudLayout eyebrow={t("eyebrow")} title={t("title")} description={t("subtitle")}>
+      {upsellPro ? (
+        <div className="flex flex-col items-center gap-3 py-20 text-center">
+          <span className="flex size-12 items-center justify-center rounded-xl bg-amber-400/10">
+            <Lock className="size-5 text-amber-400" aria-hidden />
+          </span>
+          <p className="max-w-sm text-sm font-medium text-foreground">{t("pro.titulo")}</p>
+          <p className="max-w-xs text-xs text-muted-foreground">{t("pro.sub")}</p>
+          <Link to="/subscription"
+                className="mt-2 rounded-lg bg-primary px-4 py-2.5 font-mono text-[11px] font-bold uppercase tracking-wider text-primary-foreground transition-opacity hover:opacity-90">
+            {t("pro.cta")}
+          </Link>
+        </div>
+      ) : (
       <div className="space-y-4">
 
         {/* Voltar no TOPO. O link para o treino já existia no rodapé, mas esta é uma tela longa
@@ -224,6 +243,7 @@ export default function Evolution() {
           </Link>
         )}
       </div>
+      )}
     </HudLayout>
   );
 }

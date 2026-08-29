@@ -85,7 +85,7 @@ const SECOES_MEU_JOGO: SecaoDeMenu[] = [
     { to: "/tournaments/compare", chave: "nav.comparar", desc: "nav.desc.comparar", icone: GitCompareArrows, cor: "blue" },
   ]},
   { chave: "nav.secoes.progresso", itens: [
-    { to: "/evolucao", chave: "nav.evolucao", desc: "nav.desc.evolucao", icone: TrendingUp, cor: "teal" },
+    { to: "/evolucao", chave: "nav.evolucao", desc: "nav.desc.evolucao", icone: TrendingUp, cor: "teal", exige: "advanced_insights" },
     { to: "/rating", chave: "nav.rating", desc: "nav.desc.rating", icone: Medal, cor: "amber" },
   ]},
 ];
@@ -168,7 +168,7 @@ export const GRUPO_COACH: GrupoDeMenu = {
     // de tempos em tempos (/evolucao) — não os cards do dashboard.
     { chave: "nav.secoes.relatorios", itens: [
       { to: "/evolucao", chave: "nav.relEvolucao", desc: "nav.desc.relEvolucao",
-        icone: TrendingUp, cor: "teal" },
+        icone: TrendingUp, cor: "teal", exige: "advanced_insights" },
     ]},
   ],
   itens: [],

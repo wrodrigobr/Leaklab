@@ -1741,6 +1741,10 @@ def player_evolution():
     """Relatório de evolução: EV perdido por torneio, spots mais caros e a matriz posição ×
     profundidade. Ranqueia por CUSTO — a validação estatística (melhorou?) vem do
     `/player/training-proof`, que mede taxa de erro. São perguntas diferentes de propósito."""
+    # Pro (30/08, decisão do dono): os relatórios de evolução são gerados por IA.
+    gate = _check_advanced_insights(g.user_id)
+    if gate:
+        return gate
     from database.repositories import get_evolution_report
     return jsonify(get_evolution_report(g.user_id))
 
@@ -1750,6 +1754,10 @@ def player_evolution():
 def player_evolution_reports():
     """Histórico de retratos datados. O valor de congelar é poder comparar julho com agosto —
     um número que muda sozinho não serve para comparação."""
+    # Pro (30/08, decisão do dono): os relatórios de evolução são gerados por IA.
+    gate = _check_advanced_insights(g.user_id)
+    if gate:
+        return gate
     from database.repositories import list_evolution_reports
     return jsonify({'reports': list_evolution_reports(g.user_id)})
 
@@ -1757,6 +1765,10 @@ def player_evolution_reports():
 @app.route('/player/evolution/reports/<int:report_id>', methods=['GET'])
 @require_auth
 def player_evolution_report(report_id):
+    # Pro (30/08, decisão do dono): os relatórios de evolução são gerados por IA.
+    gate = _check_advanced_insights(g.user_id)
+    if gate:
+        return gate
     from database.repositories import get_evolution_report_by_id
     r = get_evolution_report_by_id(g.user_id, report_id)
     if not r:

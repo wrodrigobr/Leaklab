@@ -5,6 +5,22 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## Relatórios de evolução viram Pro, e os retoques finais dos ícones (30/08)
+
+### Adicionado
+- **Relatórios de evolução agora são Pro** (decisão do dono): porta 402 nas três rotas
+  `/player/evolution*` (o gráfico do dashboard em `/history/evolution` segue livre), cadeado
+  nos DOIS itens de menu que apontam para `/evolucao` (travar só um seria decoração), e a tela
+  mostra o convite em vez de erro para o Free.
+
+### Corrigido
+- **A mira do Meus leaks era cortada pela borda** (o dono viu): as linhas alcançam
+  coordenadas fora do viewBox original — viewBox alargado para conter o desenho.
+- **As cartas do leque eram retângulos brancos**: entraram os naipes (♠ ♥ ♣), como na
+  lembrança do dono sobre a proposta.
+
+---
+
 ## Cartas pretas, checkout largo, e os relatórios certos no menu da IA (30/08)
 
 ### Corrigido

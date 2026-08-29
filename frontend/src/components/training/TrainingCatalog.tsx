@@ -50,7 +50,9 @@ function IlustracaoLeaks() {
   /* Redesenho 29/08: as barras sozinhas liam como "grafico qualquer". A MIRA sobre a barra
      mais alta e o que o drill faz: aponta o erro mais caro e treina ele primeiro. */
   return (
-    <svg viewBox="0 0 56 56" className="h-full w-full" aria-hidden>
+    /* viewBox alargado (30/08, o dono viu o alvo CORTADO): as linhas da mira alcançam
+       x=-4 e y=0.5, fora do 0 0 56 56 original. */
+    <svg viewBox="-6 -2 64 60" className="h-full w-full" aria-hidden>
       {[
         { x: 6,  h: 34, alvo: true },
         { x: 20, h: 24, alvo: false },
@@ -145,9 +147,18 @@ function IlustracaoMemorizar() {
 function IlustracaoMaoCompleta() {
   return (
     <svg viewBox="0 0 64 64" className="h-full w-full" aria-hidden>
-      <rect x="14" y="14" width="16" height="23" rx="2.5" fill="#E3E8EC" transform="rotate(-14 22 25)" />
-      <rect x="24" y="11" width="16" height="23" rx="2.5" fill="#E3E8EC" />
-      <rect x="34" y="14" width="16" height="23" rx="2.5" fill="#E3E8EC" transform="rotate(14 42 25)" />
+      <g transform="rotate(-14 22 25)">
+        <rect x="14" y="14" width="16" height="23" rx="2.5" fill="#E3E8EC" />
+        <text x="22" y="30" textAnchor="middle" fontSize="12" fill="#0A0E1A">♠</text>
+      </g>
+      <g>
+        <rect x="24" y="11" width="16" height="23" rx="2.5" fill="#E3E8EC" />
+        <text x="32" y="27" textAnchor="middle" fontSize="12" fill="#F87171">♥</text>
+      </g>
+      <g transform="rotate(14 42 25)">
+        <rect x="34" y="14" width="16" height="23" rx="2.5" fill="#E3E8EC" />
+        <text x="42" y="30" textAnchor="middle" fontSize="12" fill="#0A0E1A">♣</text>
+      </g>
       {/* as 4 streets como pontos: preflop, flop, turn e o river ainda por vir */}
       <g fill="#2DD4BF">
         <circle cx="17" cy="50" r="3.4" /><circle cx="27" cy="50" r="3.4" />
