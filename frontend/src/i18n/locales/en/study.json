@@ -168,5 +168,10 @@
     "posicoesForaDoCenario": "Greyed-out positions have no such scenario.",
     "substituicao": "These are the {{balde}} ranges: we have no chart for this scenario at the depth you picked.",
     "flutuante": "Open over the table"
+  },
+  "pro": {
+    "titulo": "The study plan is a Pro feature",
+    "sub": "AI analyzes your measured leaks and builds your weekly plan. Subscribe to unlock.",
+    "cta": "See Pro"
   }
 }

@@ -168,5 +168,10 @@
     "posicoesForaDoCenario": "As posições apagadas não têm este cenário.",
     "substituicao": "Estas são as ranges de {{balde}}: não temos este cenário na profundidade escolhida.",
     "flutuante": "Abrir na mesa"
+  },
+  "pro": {
+    "titulo": "O plano de estudo é do plano Pro",
+    "sub": "A IA analisa os seus leaks medidos e monta o plano da semana. Assine para destravar.",
+    "cta": "Conhecer o Pro"
   }
 }

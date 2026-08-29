@@ -341,6 +341,23 @@ def test_ddl_por_backend_e_sem_heuristica():
     print('OK  test_ddl_por_backend_e_sem_heuristica')
 
 
+
+def test_editar_comentario_SO_o_autor():
+    """30/08 (tela do replay): editar e do AUTOR; o dono da mao modera APAGANDO, nao
+    reescrevendo a fala alheia."""
+    _banco()
+    from leaklab.mao_compartilhada import comentar, criar, editar_comentario, ler
+    a, b, tid, hid = _semeia()
+    t = criar(a, tid, hid)
+    cid = comentar(t, b, 'primeira versao')
+    assert editar_comentario(cid, b, 'versao corrigida') is True
+    assert ler(t)['comentarios'][0]['texto'] == 'versao corrigida'
+    assert editar_comentario(cid, a, 'dono reescrevendo') is False, (
+        'o dono da mao reescreveu fala alheia')
+    assert editar_comentario(cid, b, '   ') is False, 'texto vazio foi aceito'
+    print('OK  test_editar_comentario_SO_o_autor')
+
+
 if __name__ == '__main__':
     falhas = 0
     testes = [v for k, v in sorted(globals().items()) if k.startswith('test_')]

@@ -625,6 +625,14 @@ export const sharedHand = {
     request<{ id: number }>(`/h/${token}/comment`, {
       method: "POST", body: JSON.stringify({ text }),
     }),
+  editarComentario: (token: string, commentId: number, text: string) =>
+    request<{ ok: boolean }>(`/h/${token}/comment/${commentId}`, {
+      method: "PATCH", body: JSON.stringify({ text }),
+    }),
+  apagarComentario: (token: string, commentId: number) =>
+    request<{ ok: boolean }>(`/h/${token}/comment/${commentId}`, { method: "DELETE" }),
+  /** o replay ANONIMIZADO da mão — todo nick de poker vira posição no backend */
+  replay: (token: string) => request<ReplayData>(`/h/${token}/replay`),
 };
 
 export const tournaments = {

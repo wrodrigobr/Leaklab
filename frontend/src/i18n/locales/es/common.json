@@ -42,7 +42,7 @@
       "ghost": "Repetición espaciada de TUS propias manos",
       "leak_targeted": "Entrena los errores medidos en tu historial",
       "ai_coach_chat": "Conversá con la IA sobre tus manos",
-      "advanced_insights": "Análisis profundo de tu juego"
+      "advanced_insights": "Pro — la IA arma el plan con tus leaks medidos"
     },
     "tudo": "Todo en GrindLab",
     "fechar": "Cerrar",
@@ -293,7 +293,14 @@
     "proxima": "Siguiente decisión",
     "terminar": "Ver el resumen",
     "resumo": "Coincidiste con el GTO en {{acertos}} de {{total}} decisiones",
-    "reverTudo": "Repasar la mano entera"
+    "reverTudo": "Repasar la mano entera",
+    "oQueDisse": "Lo que dijo GrindLab",
+    "anterior": "Anterior",
+    "semComentarios": "Sé el primero en comentar después de ver.",
+    "editar": "Editar",
+    "excluir": "Eliminar",
+    "cancelar": "Cancelar",
+    "salvar": "Guardar"
   },
   "feedbackPico": {
     "pergunta": "¿Te ayudó?",

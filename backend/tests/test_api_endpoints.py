@@ -534,6 +534,44 @@ def test_share_aceita_id_do_site_MESMO_numerico():
     print("OK  test_share_aceita_id_do_site_MESMO_numerico")
 
 
+
+def test_replay_publico_anonimizado():
+    """30/08: o link abre a mao no REPLAYER, e o payload publico nao pode carregar nick de
+    poker NENHUM — a varredura e no JSON inteiro, nao campo a campo (a licao dos 43 nicks)."""
+    hh = _hh_small()
+    if not hh:
+        print("OK  test_replay_publico_anonimizado | SKIP sem fixture")
+        return
+    import json as _json
+    import re as _re
+    c = _make_client()
+    token = _register_and_login(c, 'pubrep')
+    imp = c.post('/analyze', json={'content': hh}, headers=_auth_headers(token))
+    tid = imp.get_json().get('tournament_db_id')
+    assert tid
+    # uma mao qualquer do torneio importado
+    det = c.get('/history/tournament/%s' % imp.get_json()['tournament_id'],
+                headers=_auth_headers(token)).get_json()
+    hid = det['decisions'][0]['hand_id']
+    share = c.post('/replay/share', json={'tournament_id': tid, 'hand_id': hid},
+                   headers=_auth_headers(token))
+    assert share.status_code == 200, share.get_data(as_text=True)[:120]
+    tok = share.get_json()['token']
+    r = c.get('/h/%s/replay' % tok)
+    assert r.status_code == 200, r.get_data(as_text=True)[:200]
+    bruto = r.get_data(as_text=True)
+    # os nicks REAIS da fixture: extrai do proprio HH (Seat N: nome (chips))
+    nicks = set(_re.findall(r'Seat \d+: (.+?) \(', hh))
+    assert nicks, 'controle: a fixture nao tem seats — o teste nao mede nada'
+    vazados = [n for n in nicks if n in bruto]
+    assert not vazados, 'nick de poker no replay publico: %s' % vazados
+    dados = _json.loads(bruto)
+    assert dados.get('hero') == 'Hero'
+    assert dados.get('timeline'), 'replay publico sem timeline nao abre mesa nenhuma'
+    assert 'hand_id' not in dados and 'tournament_id' not in dados
+    print("OK  test_replay_publico_anonimizado")
+
+
 # ── /analyze/replay-coach ─────────────────────────────────────────────────────
 
 def test_replay_coach_requires_auth():
@@ -583,9 +621,20 @@ def test_study_plan_requires_auth():
     print("OK  test_study_plan_requires_auth")
 
 
+def test_study_plan_exige_pro():
+    """30/08, decisao do dono: o plano de estudo e gerado por IA — Pro. Gate no backend."""
+    c = _make_client()
+    token = _register_and_login(c, 'spgate')
+    r = c.get('/study/plan', headers=_auth_headers(token))
+    assert r.status_code == 402, f"free deveria bater no 402, veio {r.status_code}"
+    assert r.get_json().get('feature') == 'advanced_insights'
+    print("OK  test_study_plan_exige_pro")
+
+
 def test_study_plan_no_data_returns_400():
     c = _make_client()
     token = _register_and_login(c, 'sp0')
+    _vira_pro(c, token)
     r = c.get('/study/plan', headers={'Authorization': f'Bearer {token}'})
     assert r.status_code in (400, 200), f"Unexpected: {r.status_code}"
     print(f"OK  test_study_plan_no_data_returns_400 | status={r.status_code}")
@@ -599,6 +648,7 @@ def test_study_plan_with_data_returns_structure():
         return
     c = _make_client()
     token = _register_and_login(c, 'spd')
+    _vira_pro(c, token)
     c.post('/analyze', json={'content': hh}, headers=_auth_headers(token))
     r = c.get('/study/plan', headers={'Authorization': f'Bearer {token}'})
     # Sempre 200 (mesmo sem API key, retorna fallback)

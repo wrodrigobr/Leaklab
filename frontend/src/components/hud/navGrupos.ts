@@ -108,7 +108,7 @@ const SECOES_TREINAR: SecaoDeMenu[] = [
 
 const SECOES_ESTUDAR: SecaoDeMenu[] = [
   { chave: "nav.secoes.aprender", itens: [
-    { to: "/study", chave: "nav.study", desc: "nav.desc.study", icone: BookOpen, cor: "teal" },
+    { to: "/study", chave: "nav.study", desc: "nav.desc.study", icone: BookOpen, cor: "teal", exige: "advanced_insights" },
     { to: "/academy", chave: "nav.academia", desc: "nav.desc.academia", icone: GraduationCap, cor: "purple" },
   ]},
   { chave: "nav.secoes.ferramentas", itens: [

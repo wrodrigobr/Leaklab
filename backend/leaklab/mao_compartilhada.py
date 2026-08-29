@@ -283,6 +283,24 @@ def comentar(token: str, user_id: int, texto: str) -> Optional[int]:
         conn.close()
 
 
+def editar_comentario(comment_id: int, user_id: int, texto: str) -> bool:
+    """Edição é SÓ do autor (o dono da mão modera apagando, não reescrevendo a fala alheia)."""
+    texto = (texto or '').strip()[:1000]
+    if not texto:
+        return False
+    conn = get_conn()
+    try:
+        _tabela(conn)
+        cur = conn.execute(_adapt(
+            'UPDATE shared_hand_comments SET texto = ? '
+            'WHERE id = ? AND user_id = ? AND deleted_at IS NULL'),
+            (texto, comment_id, user_id))
+        conn.commit()
+        return bool(getattr(cur, 'rowcount', 0))
+    finally:
+        conn.close()
+
+
 def apagar_comentario(comment_id: int, user_id: int) -> bool:
     """Soft-delete. Quem pode: o AUTOR do comentário ou o DONO da mão (moderação mínima)."""
     conn = get_conn()
@@ -367,3 +385,47 @@ def listar_feed(ordenar: str = 'recentes', posicao: Optional[str] = None,
         return feed
     finally:
         conn.close()
+
+
+def alvo(token: str) -> Optional[dict]:
+    """(tournament_id interno, hand_id) de um link vivo — para o replay público."""
+    conn = get_conn()
+    try:
+        _tabela(conn)
+        r = conn.execute(_adapt(
+            'SELECT tournament_id, hand_id FROM shared_hands '
+            'WHERE token = ? AND revoked_at IS NULL'), (token,)).fetchone()
+        return dict(r) if r else None
+    finally:
+        conn.close()
+
+
+def anonimizar_replay(replay: dict, hero: str) -> dict:
+    """Troca TODO nick de poker por rótulo de posição no payload do replay.
+
+    ── Por que por VARREDURA e não campo a campo (30/08) ────────────────────────────────────
+    O payload do replayer carrega nomes em seats, timeline, descrições e reveals — listar
+    campos é a blacklist que vaza o campo de amanhã. Aqui: mapeia cada nome de assento para o
+    rótulo (Hero / posição), remove os blocos que são inerentemente por-nick
+    (opponent_profiles, villain_reveals, coach_annotations) e faz a substituição no JSON
+    SERIALIZADO inteiro — o mesmo espírito do guarda que varre o payload procurando nicks.
+    """
+    limpo = dict(replay)
+    for chave in ('opponent_profiles', 'villain_reveals', 'coach_annotations',
+                  'tournament_id', 'hand_id'):
+        limpo.pop(chave, None)
+    mapa: dict = {}
+    for seat in (limpo.get('seats') or {}).values():
+        nome = (seat or {}).get('player')
+        if not nome:
+            continue
+        mapa[nome] = 'Hero' if nome == hero else str((seat or {}).get('pos') or 'Vilão')
+    if hero and hero not in mapa:
+        mapa[hero] = 'Hero'
+    bruto = json.dumps(limpo, ensure_ascii=False, default=str)
+    # nomes mais longos primeiro: "joao2" antes de "joao" para não sobrar sufixo
+    for nome in sorted(mapa, key=len, reverse=True):
+        bruto = bruto.replace(json.dumps(nome, ensure_ascii=False)[1:-1], mapa[nome])
+    out = json.loads(bruto)
+    out['hero'] = 'Hero'
+    return out

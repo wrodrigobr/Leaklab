@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { useSearchParams, Link } from "react-router-dom";
+import { Link as RouterLink } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
   ArrowRight,
@@ -149,7 +150,7 @@ function KpiTile({
 
 // ── Page ─────────────────────────────────────────────────────────────────────
 
-type LoadState = "idle" | "loading" | "error";
+type LoadState = "idle" | "loading" | "error" | "pro";
 
 const StudyPlanPage = () => {
   const { user } = useAuth();
@@ -220,11 +221,18 @@ const StudyPlanPage = () => {
       setLoadState("idle");
       if (force) toast.success(t("toolbar.regenerated"));
     } catch (e: unknown) {
+      // Pro (30/08): o 402 do gate nao e erro — e a porta. Upsell, nunca stack trace.
+      if ((e as { status?: number })?.status === 402) {
+        setLoadState("pro");
+        return;
+      }
       const msg = e instanceof Error ? e.message : "Erro ao gerar plano";
       setErrorMsg(msg);
       setLoadState("error");
     }
   };
+
+  const upsellPro = loadState === "pro";
 
   // Fetch on mount
   useMemo(() => { fetchPlan(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -359,6 +367,22 @@ const StudyPlanPage = () => {
           <Loader2 className="size-6 animate-spin text-primary" />
           <span className="font-mono text-xs uppercase tracking-wider">{t("loading.analyzing")}</span>
           <p className="text-xs text-center max-w-xs">{t("loading.firstTime")}</p>
+        </div>
+      )}
+
+      {/* Pro (30/08, decisao do dono): o plano e gerado por IA sobre as SUAS maos.
+          A porta e o 402 do backend; isto e a dobradica com o convite. */}
+      {upsellPro && (
+        <div className="flex flex-col items-center justify-center gap-3 py-24 text-center">
+          <span className="flex size-12 items-center justify-center rounded-xl bg-amber-400/10">
+            <Lock className="size-5 text-amber-400" aria-hidden />
+          </span>
+          <p className="max-w-sm text-sm font-medium text-foreground">{t("pro.titulo")}</p>
+          <p className="max-w-xs text-xs text-muted-foreground">{t("pro.sub")}</p>
+          <RouterLink to="/subscription"
+                className="mt-2 rounded-lg bg-primary px-4 py-2.5 font-mono text-[11px] font-bold uppercase tracking-wider text-primary-foreground transition-opacity hover:opacity-90">
+            {t("pro.cta")}
+          </RouterLink>
         </div>
       )}
 

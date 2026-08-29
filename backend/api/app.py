@@ -6152,7 +6152,11 @@ def _gen_study_plan(leaks, evolution, icm, *, hero, user_id, force_new,
 @app.route('/study/plan', methods=['GET'])
 @require_auth
 def study_plan():
-    """Gera plano de estudos personalizado via LLM baseado nos leaks reais."""
+    """Gera plano de estudos personalizado via LLM baseado nos leaks reais.
+    Pro (30/08, decisão do dono): é gerado por IA sobre as SUAS mãos — insight avançado."""
+    gate = _check_advanced_insights(g.user_id)
+    if gate:
+        return gate
     try:
         from leaklab.llm_explainer import generate_study_plan
         from database.repositories import get_leak_ranking_gto_first
@@ -6625,12 +6629,59 @@ def comentar_mao_compartilhada(token):
     return jsonify({'id': cid})
 
 
+@app.route('/h/<token>/comment/<int:comment_id>', methods=['PATCH'])
+@require_auth
+def editar_comentario_mao(token, comment_id):
+    """Edição só do AUTOR (30/08): o dono da mão modera apagando, não reescrevendo."""
+    from leaklab.mao_compartilhada import editar_comentario
+    texto = (request.get_json(silent=True) or {}).get('text', '')
+    return jsonify({'ok': editar_comentario(comment_id, g.user_id, texto)})
+
+
 @app.route('/h/<token>/comment/<int:comment_id>', methods=['DELETE'])
 @require_auth
 def apagar_comentario_mao(token, comment_id):
     """Autor apaga o que escreveu; dono da mão modera a própria página."""
     from leaklab.mao_compartilhada import apagar_comentario
     return jsonify({'ok': apagar_comentario(comment_id, g.user_id)})
+
+
+@app.route('/h/<token>/replay', methods=['GET'])
+@limiter.limit("30 per minute")
+def replay_publico_da_mao(token):
+    """PÚBLICO (30/08, decisão do dono): o link abre a mão no REPLAYER, anonimizada — todo
+    nick de poker vira rótulo de posição, e os blocos por-nick (HUD de vilão, reveals,
+    anotações de coach) saem inteiros."""
+    from database.repositories import get_decisions
+    from leaklab.mao_compartilhada import alvo, anonimizar_replay
+    from database.schema import get_conn
+    from database.repositories import _adapt
+    alvo_ = alvo(str(token))
+    if not alvo_:
+        return jsonify({'error': 'link invalido ou revogado'}), 404
+    conn = get_conn()
+    try:
+        row = conn.execute(_adapt('SELECT * FROM tournaments WHERE id = ?'),
+                           (alvo_['tournament_id'],)).fetchone()
+    finally:
+        conn.close()
+    if not row:
+        return jsonify({'error': 'link invalido ou revogado'}), 404
+    t = dict(row)
+    raw_text = t.get('raw_text')
+    if not raw_text:
+        return jsonify({'error': 'replay indisponivel para esta mao'}), 404
+    try:
+        hands = parse_pokerstars_file_from_text(raw_text)
+    except Exception:
+        return jsonify({'error': 'replay indisponivel para esta mao'}), 404
+    hand_id = alvo_['hand_id']
+    target = next((h for h in hands if str(h.hand_id) == str(hand_id)), None)
+    if not target:
+        return jsonify({'error': 'replay indisponivel para esta mao'}), 404
+    decisions_db = [d for d in get_decisions(t['id']) if str(d.get('hand_id')) == str(hand_id)]
+    replay = _build_replay_data(target, decisions_db, t.get('hero', target.hero))
+    return jsonify(anonimizar_replay(replay, t.get('hero') or target.hero or ''))
 
 
 @app.route('/h/<token>', methods=['GET'])

@@ -5,6 +5,26 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## A mão compartilhada abre no replayer de verdade, e o plano de estudo virou Pro (30/08)
+
+### Mudado
+- **A página pública da mão, v3 (desenho do dono, substitui o jogar/ver do mesmo dia):** o
+  link abre a mão NO REPLAYER — a mesa real, com controles de passo — e o replay é
+  ANONIMIZADO no backend (`/h/<token>/replay`): todo nick de poker vira posição, e os blocos
+  por-nick (HUD de vilão, reveals, anotações de coach) saem inteiros; a varredura é no JSON
+  serializado, não campo a campo, com teste que extrai os nicks da própria fixture e exige
+  zero no payload. Comentários na coluna da direita: textbox no topo para quem assiste,
+  **editar/excluir quando o comentário é seu** (editar é SÓ do autor; o dono da mão modera
+  apagando, não reescrevendo fala alheia — rota PATCH nova). Abaixo da mesa, o que o GrindLab
+  disse de cada decisão.
+
+### Adicionado
+- **Plano de estudo agora é Pro** (decisão do dono: é gerado por IA sobre as suas mãos):
+  porta 402 no backend + cadeado no menu (com o motivo) + a tela mostra o convite em vez do
+  plano para o Free. Testes do miolo viram Pro; o gate tem teste próprio.
+
+---
+
 ## A página da mão em dois modos: jogar ou ver (30/08)
 
 ### Corrigido
