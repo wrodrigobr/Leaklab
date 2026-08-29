@@ -279,9 +279,21 @@
       "fold": "Fold",
       "call": "Call",
       "raise": "Raise",
-      "allin": "All-in"
+      "allin": "All-in",
+      "check": "Check",
+      "bet": "Bet"
     },
-    "por": "por"
+    "por": "por",
+    "comoQuer": "Como você quer estudar esta mão?",
+    "jogarMao": "Jogar a mão",
+    "verMao": "Ver a mão",
+    "pote": "pote {{n}}bb",
+    "enfrenta": "enfrenta {{n}}bb",
+    "vocEscolheu": "Você escolheu",
+    "proxima": "Próxima decisão",
+    "terminar": "Ver o resumo",
+    "resumo": "Você bateu com o GTO em {{acertos}} de {{total}} decisões",
+    "reverTudo": "Rever a mão inteira"
   },
   "feedbackPico": {
     "pergunta": "Isso te ajudou?",

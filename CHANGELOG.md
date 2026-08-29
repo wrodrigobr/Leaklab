@@ -5,6 +5,22 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## A página da mão em dois modos: jogar ou ver (30/08)
+
+### Corrigido
+- **A página pública da mão confundia** (feedback do dono): perguntava "o que você faz aqui?"
+  sem história — e mostrava o BOARD INTEIRO num passo de preflop, porque `decisions.board`
+  guarda o board final. Spoiler e confusão juntos.
+
+### Adicionado
+- **Dois modos, no desenho do dono**: **Jogar a mão** (passo a passo, board FATIADO pela
+  street — preflop 0, flop 3, turn 4, river 5, a lição do hash do solver —, contexto de
+  pote/aposta enfrentada, veredito de cada passo só depois da escolha, e no passo marcado a
+  escolha vira voto com o placar da comunidade; resumo final "bateu com o GTO em X de N") e
+  **Ver a mão** (leitura direta, tudo revelado).
+
+---
+
 ## A segunda mina do share, e o cadeado do modo coach (30/08)
 
 ### Corrigido

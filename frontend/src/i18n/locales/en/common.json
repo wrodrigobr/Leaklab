@@ -279,9 +279,21 @@
       "fold": "Fold",
       "call": "Call",
       "raise": "Raise",
-      "allin": "All-in"
+      "allin": "All-in",
+      "check": "Check",
+      "bet": "Bet"
     },
-    "por": "by"
+    "por": "by",
+    "comoQuer": "How do you want to study this hand?",
+    "jogarMao": "Play the hand",
+    "verMao": "View the hand",
+    "pote": "pot {{n}}bb",
+    "enfrenta": "facing {{n}}bb",
+    "vocEscolheu": "You chose",
+    "proxima": "Next decision",
+    "terminar": "See the summary",
+    "resumo": "You matched GTO on {{acertos}} of {{total}} decisions",
+    "reverTudo": "Review the whole hand"
   },
   "feedbackPico": {
     "pergunta": "Did this help?",
