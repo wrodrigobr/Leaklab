@@ -65,6 +65,10 @@ export const CHAVES_NAO_DERIVADAS = [
   // catálogo de treinos: os números vêm de `training_skill_progress`, que só muda quando o jogador
   // PRATICA. Importar torneio não move nenhum deles — recarregar aqui seria custo sem mudança.
   "training-catalog",
+  // plano e cobrança: o cadeado do menu lê daqui (`limits`), e o plano NÃO muda por importar
+  // torneio -- muda por pagamento, que chega por webhook e por uma tela propria. Recarregar a
+  // cada import seria custo sem mudanca, e ainda faria o cadeado piscar.
+  "subscription-status",
   // conta, perfil, mensagens, suporte
   "me", "player-profile", "my-demographics", "player-messages-unread", "player-coach-messages",
   "my-support-tickets", "my-support-unread", "admin-support-count",

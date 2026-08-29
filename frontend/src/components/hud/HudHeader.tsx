@@ -1,4 +1,4 @@
-import { Activity, Bot, Dumbbell, GraduationCap, Globe, LayoutDashboard, Medal, Shield, Swords, Trophy, UploadCloud, Users, UserCircle, MessageSquare, LifeBuoy, X } from "lucide-react";
+import { Menu as MenuIcon, Lock, Activity, Bot, Dumbbell, GraduationCap, Globe, LayoutDashboard, Medal, Shield, Swords, Trophy, UploadCloud, Users, UserCircle, MessageSquare, LifeBuoy, X } from "lucide-react";
 import logoHorizontal from "@/assets/brand/grindlab_final_horizontal.svg";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { useEffect, useRef, useState } from "react";
@@ -10,7 +10,10 @@ import { AccountMenu } from "@/components/hud/AccountMenu";
 import { CoachMessagesPanel } from "@/components/hud/CoachMessagesPanel";
 import { SupportModal } from "@/components/hud/SupportModal";
 import { NotificationBell } from "@/components/hud/NotificationBell";
-import { playerMessages, support, coaches, training } from "@/lib/api";
+import { playerMessages, support, coaches, training, subscription } from "@/lib/api";
+import { GRUPOS, ITEM_COACH } from "./navGrupos";
+import { MenuDeGrupo } from "./MenuDeGrupo";
+import { FolhaDeMenu } from "./FolhaDeMenu";
 
 interface HudHeaderProps {
   onUpload?: () => void;
@@ -117,29 +120,49 @@ export function HudHeader({ onUpload }: HudHeaderProps) {
   });
   const lessonPending = !!dailyStatus?.lesson_pending;
 
+  // ── As capacidades vem do BACKEND, nao de uma lista no front (28/08) ────────────────────
+  //
+  // `/subscription/status` devolve `limits` com `ghost`, `leak_targeted`, `ai_coach_chat`. O menu
+  // pergunta a ele onde vai cadeado. Recriar aqui a regra de "o que e Pro" seria a segunda fonte
+  // de verdade sobre o plano -- o padrao que este projeto passou o dia inteiro consertando: o
+  // preco estava escrito a mao em seis lugares.
+  //
+  // 5 minutos de cache: plano nao muda a cada clique, e um cadeado que pisca e pior que nenhum.
+  const { data: quota } = useQuery({
+    queryKey: ["subscription-status"],
+    queryFn: subscription.status,
+    staleTime: 300_000,
+    enabled: user?.role === "player",
+  });
+  const capacidades = quota?.limits as
+    Record<string, boolean | number | null | undefined> | undefined;
+
+  // A barra antiga tinha 11 links para 47 rotas de jogador. Os grupos vivem em `navGrupos.ts`;
+  // aqui fica so a decisao de QUEM ve o que. Ver o cabecalho daquele arquivo.
+  const [folhaAberta, setFolhaAberta] = useState(false);
+  const ocultarNoMenu = hasCoaches ? [] : ["/coaches"];
+
+  // A barra inferior do mobile mostra a RAIZ de cada grupo, derivada da mesma lista. Cinco botoes
+  // nao cabem 47 rotas, e o painel com subitens nao cabe numa barra de icones -- mas duas
+  // declaracoes do que existe divergiriam no primeiro item novo (regra 5).
+  // ── A barra do celular guarda os DESTINOS DIARIOS, nao as raizes dos grupos ────────────
+  //
+  // A 1a versao derivava a barra dos GRUPOS: quatro botoes apontando para as raizes. Medido, isso
+  // TIROU acesso -- Torneios perdeu o toque direto, o AI Coach sumiu da barra -- e nao devolveu
+  // nada, porque os subitens so existiam no painel do desktop. O dono perguntou se no celular nao
+  // era melhor manter como estava, e estava certo.
+  //
+  // Reverter tambem nao resolveria: as 47 rotas seguem invisiveis no celular. A saida e barra +
+  // folha -- aqui ficam os quatro de uso diario, e o botao "Menu" abre `FolhaDeMenu` com o
+  // produto inteiro e os mesmos cadeados.
   const playerNavItems: NavItem[] = [
     { label: t("nav.dashboard"),   mobileLabel: t("nav.dashboard"),   to: "/dashboard",   icon: LayoutDashboard },
     { label: t("nav.tournaments"), mobileLabel: t("nav.tournaments"), to: "/tournaments", icon: Trophy },
-    { label: t("nav.leaderboard"), mobileLabel: t("nav.leaderboard"), to: "/leaderboard", icon: Medal },
-    {
-      label: t("nav.study"), mobileLabel: t("nav.study"), to: "/study", icon: GraduationCap,
-      // A Academia mudou para Estudos (19/08); a família dela acende a mesma aba.
-      activePaths: ["/study", "/academy"],
-    },
-    {
-      label: t("nav.training"), mobileLabel: t("nav.training"),
-      to: "/training",
-      icon: Dumbbell,
-      // Costura 14 da auditoria: a FAMÍLIA de treino acende a aba — antes /leak-trainer e
-      // /training-v2 não acendiam nada e o jogador ficava sem "onde estou" na nav.
-      activePaths: ["/training", "/training-v2", "/ghost", "/leak-trainer"],
-      dot: lessonPending,
-    },
-    { label: t("nav.coach"),   mobileLabel: t("nav.coach"),   to: "/coach",   icon: Bot },
-    ...(hasCoaches
-      ? [{ label: t("nav.coaches"), mobileLabel: t("nav.coaches"), to: "/coaches", icon: Users }]
-      : []),
+    { label: t("nav.training"),    mobileLabel: t("nav.training"),    to: "/training",    icon: Dumbbell,
+      dot: lessonPending, activePaths: ["/training", "/leak-trainer", "/ghost", "/grind"] },
+    { label: t("nav.coach"),       mobileLabel: t("nav.coach"),       to: "/coach",       icon: Bot },
   ];
+
 
   const coachNavItems: NavItem[] = [
     { label: t("nav.coachDashboard"), mobileLabel: t("nav.coachDashboard"), to: "/coach-dashboard",         icon: Users,       end: true },
@@ -167,6 +190,11 @@ export function HudHeader({ onUpload }: HudHeaderProps) {
   };
   const inPlayerWorkspace = dualRole && workspace === "player";
   const canUpload = user?.role === "player" || inPlayerWorkspace;
+
+  // Grupos so no espaco de JOGADOR: coach e admin tem meia duzia de telas cada, e dar
+  // painel a eles seria enfeite. Declarado AQUI, depois de isAdmin/isCoach/inPlayerWorkspace
+  // -- as tres nascem algumas linhas acima e usa-las antes da TDZ.
+  const mostraGrupos = !isAdmin && (!isCoach || inPlayerWorkspace);
 
   const navItems = (
     inPlayerWorkspace ? playerNavItems :
@@ -208,7 +236,36 @@ export function HudHeader({ onUpload }: HudHeaderProps) {
               className="hidden lg:flex items-center gap-1 min-w-0 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
               aria-label="Primary"
             >
-              {navItems.map((item) => {
+              {/* ── Jogador ve GRUPOS; coach e admin seguem com a barra simples ─────────
+                  O menu com painel existe porque o produto de jogador tem 47 rotas e a barra
+                  oferecia 11. Coach e admin tem meia duzia de telas cada: dar painel a eles seria
+                  enfeite. */}
+              {mostraGrupos
+                ? (
+                  <>
+                    {GRUPOS.map((g) => (
+                      <MenuDeGrupo key={g.to} grupo={g} capacidades={capacidades}
+                                   ocultar={ocultarNoMenu} />
+                    ))}
+                    <NavLink
+                      to={ITEM_COACH.to}
+                      className={() =>
+                        `relative flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-md px-3 py-1.5 text-xs font-medium uppercase tracking-wide transition-colors ${
+                          location.pathname.startsWith("/coach") && !location.pathname.startsWith("/coaches")
+                            ? "text-primary" : "text-muted-foreground hover:text-foreground"
+                        }`
+                      }
+                    >
+                      <Bot className="size-3.5" aria-hidden />
+                      {t(ITEM_COACH.chave)}
+                      {capacidades && capacidades[ITEM_COACH.exige!] === false && (
+                        <Lock className="size-2.5 text-primary" aria-hidden />
+                      )}
+                    </NavLink>
+                  </>
+                )
+                : navItems.map((item) => {
+
                 const activePaths = item.activePaths ?? [item.to];
                 // Por PREFIXO (costura 14): /academy/math acende Estudos, /training-v2 acende
                 // Treinos. Fronteira de segmento ("/" ou fim) evita /coach casar /coaches.
@@ -349,8 +406,32 @@ export function HudHeader({ onUpload }: HudHeaderProps) {
                 </NavLink>
               );
             })}
+            {/* O 5o botao: abre o produto INTEIRO. Sem ele o celular fica com quatro destinos e
+                as outras 43 rotas invisiveis -- foi o que a 1a versao do menu causou. */}
+            {mostraGrupos && (
+              <button
+                type="button"
+                onClick={() => setFolhaAberta(true)}
+                aria-label={t("nav.menu")}
+                className="relative flex flex-1 flex-col items-center justify-center rounded-md px-1 py-1.5 text-muted-foreground transition-colors active:text-primary"
+              >
+                <MenuIcon className="size-5 shrink-0" aria-hidden />
+                <span className="mt-0.5 w-full truncate text-center font-mono text-[8px] uppercase leading-none tracking-wide">
+                  {t("nav.menu")}
+                </span>
+              </button>
+            )}
           </div>
         </nav>
+      )}
+
+      {mostraGrupos && (
+        <FolhaDeMenu
+          aberta={folhaAberta}
+          aoFechar={() => setFolhaAberta(false)}
+          capacidades={capacidades}
+          ocultar={ocultarNoMenu}
+        />
       )}
 
       {/* ── Mobile FAB — import ───────────────────────────────────────────────── */}

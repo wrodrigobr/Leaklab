@@ -3000,6 +3000,20 @@ export interface QuotaStatus {
   limits: {
     tournaments: number | null;
     ai_calls: number | null;
+    /* ── As CAPACIDADES, que o tipo não declarava (28/08) ─────────────────────────────────
+     *
+     * O backend já devolvia todas; o tipo parava em `tournaments` e `ai_calls`, então o front
+     * não tinha como perguntar "este usuário tem Ghost Table?" sem recriar a regra do plano no
+     * cliente — que seria a segunda fonte de verdade sobre o que é Pro.
+     *
+     * O menu lê daqui para decidir onde vai cadeado. Nenhuma lista de "isto é Pro" mora no
+     * front. */
+    ghost?: boolean;
+    leak_targeted?: boolean;
+    ai_coach_chat?: boolean;
+    advanced_insights?: boolean;
+    training_spots_per_day?: number | null;
+    solves?: number | null;
   };
 }
 

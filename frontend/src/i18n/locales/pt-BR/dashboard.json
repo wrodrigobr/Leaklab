@@ -809,5 +809,33 @@
   },
   "infoAria": "Informação",
   "mesaAria": "Mesa de 9 lugares, posição {{posicao}} em destaque",
-  "mesaNaoDefinida": "não definida"
+  "mesaNaoDefinida": "não definida",
+  "nav": {
+    "grupos": {
+      "meuJogo": "Meu jogo",
+      "treinar": "Treinar",
+      "estudar": "Estudar",
+      "comunidade": "Comunidade"
+    },
+    "comparar": "Comparar torneios",
+    "evolucao": "Evolução",
+    "rating": "Seu rating",
+    "treinos": "Todos os treinos",
+    "maoCompleta": "Mão completa",
+    "ranges": "Ranges",
+    "meusLeaks": "Treinar meus leaks",
+    "ghost": "Ghost Table",
+    "academia": "Academia",
+    "handBuilder": "Montar uma mão",
+    "docs": "Como funciona",
+    "motivo": {
+      "ghost": "Revisão espaçada das SUAS mãos",
+      "leak_targeted": "Treina os erros medidos no seu histórico",
+      "ai_coach_chat": "Conversa com a IA sobre as suas mãos",
+      "advanced_insights": "Análises aprofundadas do seu jogo"
+    },
+    "tudo": "Tudo no GrindLab",
+    "fechar": "Fechar",
+    "menu": "Menu"
+  }
 }

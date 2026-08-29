@@ -5,6 +5,59 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## O produto tinha 47 telas e a navegacao oferecia 11 (28/08)
+
+Ultimo item do benchmark, e o que estava travado ate hoje: o menu so podia ganhar cadeado depois
+de decidirmos o que e Pro -- decisao tomada nesta mesma sessao.
+
+### A medicao
+
+**47 rotas de jogador. 11 na barra de navegacao.** Ficavam sem porta de entrada `/ranges`
+(construida na vespera justamente porque a matriz de ranges so abria presa a um passo),
+`/evolucao`, `/ghost`, `/grind`, `/leak-trainer`, `/hand-builder`, `/rating`, `/docs` e **23 aulas
+da Academia**. E a Academia tem conteudo de verdade: mediana de 9.429 caracteres por aula, minimo
+4.027 (o glossario, formato diferente). Construimos e escondemos.
+
+### O cadeado, e de onde vem a verdade
+
+Cada item declara a CAPACIDADE de que depende (`ghost`, `leak_targeted`, `ai_coach_chat`), e o
+menu pergunta ao backend (`/subscription/status` -> `limits`) se o usuario a tem. **Nenhuma lista
+de "isto e Pro" mora no front** -- se morasse, seria a segunda fonte de verdade sobre o plano, que
+e o padrao que custou o dia inteiro quando o preco apareceu escrito a mao em seis lugares.
+
+O item travado continua CLICAVEL, e o cadeado carrega o motivo: "Pro" sozinho irrita, *"Pro --
+treina os erros medidos no seu historico"* vende. Esconder faria o jogador descobrir o paywall
+depois de investir tempo, que e o dano que a landing causou de manha.
+
+### O erro que o dono pegou: eu piorei o celular
+
+Ao trocar a barra do desktop pelos grupos, derivei a barra do CELULAR das mesmas raizes: quatro
+botoes. Medido, isso **tirou acesso** -- Torneios perdeu o toque direto, o AI Coach sumiu da barra
+-- e **nao devolveu nada**, porque os subitens so existiam no painel do desktop.
+
+Ele perguntou se no celular nao era melhor manter como estava. Estava certo. Reverter tambem nao
+resolveria: as 47 rotas seguem invisiveis la. A saida foi **barra + folha**: a barra volta aos
+quatro destinos diarios, e um quinto botao abre uma folha com o produto inteiro e os mesmos
+cadeados. Folha e o que o dedo espera; o menu do benchmark e hover, e hover nao existe em tela
+sensivel ao toque.
+
+### Tres guardas ANTIGOS me pegaram, e os tres estavam certos
+
+- **Toda `queryKey` precisa ser classificada** quanto a atualizar apos importacao. `subscription-status`
+  entrou como nao-derivada: plano nao muda por importar torneio, e recarregar faria o cadeado piscar.
+- **Toda rota do menu tem de existir** no `App.tsx`.
+- **Icone do lucide nao pode sombrear global**: `Menu` sombreia o elemento `<menu>` do DOM, e o
+  guarda exigiu alias.
+
+E um guarda MEU passou verde na varredura: ele procurava as rotas presentes num TRECHO do arquivo,
+e a mutacao que derivava a barra dos grupos deixava o array antigo ao lado como variavel morta --
+as rotas continuavam no texto. Reancorado na ATRIBUICAO. Presenca nao e cobertura.
+
+### Verificado
+
+Backend **2.589 / 2.589**, frontend **437 / 437**, tsc limpo. 8 mutacoes plantadas nos guardas do
+menu, 8 detectadas.
+
 ## A jornada de pagamento inteira estava quebrada, e a suite passava verde (28/08)
 
 O dono pediu para testar o fluxo completo de pagamento e estorno antes de mexer no preco. Foi o
