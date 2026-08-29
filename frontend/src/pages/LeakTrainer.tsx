@@ -22,6 +22,7 @@ import { leaktrainer, progression } from "@/lib/api";
 import type { LeakTrainerSpot, LeakTrainerGrade, LeakTrainerState, ReplayStep,
   ProgressionPlan, SessionSize, FullHand, LeakTrainerFocus } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { BoletimDaSessao } from "@/components/training/BoletimDaSessao";
 
 // `probe` = sondagem de range: a tela pergunta a fatia de mãos do VILÃO antes de revelar as
 // cartas do herói. A ordem da informação é o conteúdo aqui — quem vê a própria mão primeiro
@@ -150,6 +151,7 @@ export default function LeakTrainer() {
   const [selected, setSelected]         = useState<string | null>(null);
   const [submitting, setSubmitting]     = useState(false);
   const [streak, setStreak]             = useState(0);
+  const [melhorSequencia, setMelhorSequencia] = useState(0);
   const [totalDone, setTotalDone]       = useState(0);
   const [totalCorrect, setTotalCorrect] = useState(0);
   const [xpEarned, setXpEarned]         = useState(0);
@@ -306,6 +308,7 @@ export default function LeakTrainer() {
   const finishSession = () => setPhase("summary");
   const newSession = () => {
     setSessionStats({}); setTotalDone(0); setTotalCorrect(0); setStreak(0); setXpEarned(0);
+    setMelhorSequencia(0);
     setMasteryByCat({}); setUnlockedAch([]);
     // grind: zera o recap de erros, o flash e a pré-carga (spot velho não vaza p/ a sessão nova)
     setGrindMisses([]); setGrindFlash(null);
@@ -595,7 +598,10 @@ export default function LeakTrainer() {
           hand_freq: {}, xp_awarded: 0,
         } as unknown as LeakTrainerGrade);
         setTotalDone((n) => n + 1);
-        if (r.is_correct) { setTotalCorrect((n) => n + 1); setStreak((s) => s + 1); } else setStreak(0);
+        if (r.is_correct) {
+          setTotalCorrect((n) => n + 1);
+          setStreak((s) => { const v = s + 1; setMelhorSequencia((m) => Math.max(m, v)); return v; });
+        } else setStreak(0);
         setSessionStats((s) => {
           const c = s["fh:full_hand"] || { label: t("leakTrainer.catalogo.full_hand"), hits: 0, misses: 0 };
           return { ...s, "fh:full_hand": { ...c, hits: c.hits + (r.is_correct ? 1 : 0), misses: c.misses + (r.is_correct ? 0 : 1) } };
@@ -639,7 +645,10 @@ export default function LeakTrainer() {
         const got = g.training_achievements;
         setUnlockedAch((prev) => Array.from(new Set([...prev, ...got])));
       }
-      if (g.is_correct) { setStreak((s) => s + 1); setTotalCorrect((n) => n + 1); }
+      if (g.is_correct) {
+        setStreak((s) => { const v = s + 1; setMelhorSequencia((m) => Math.max(m, v)); return v; });
+        setTotalCorrect((n) => n + 1);
+      }
       else setStreak(0);
       // MODO GRIND: sem a fase de feedback — flash discreto e o próximo spot. O erro vai
       // para o recap do fim (grindMisses); pontuar cada mão na tela quebra o ritmo, que é
@@ -780,6 +789,16 @@ export default function LeakTrainer() {
 
   // recap: melhor categoria (mais acertos) e a mais difícil (mais erros) desta sessão
   const statList = Object.values(sessionStats);
+  // O que o Pro destrava, para o boletim. Vem do gate do backend (`targeted_locked`), e nao de
+  // uma lista escrita aqui -- lista no front seria a segunda fonte de verdade sobre o plano.
+  const travadosNoFree = targetedLocked
+    ? [t("boletim.travado.mirado"), t("boletim.travado.ghost"), t("boletim.travado.postflop")]
+    : [];
+  // `null` de propósito: o corretor do treino NAO devolve custo em bb, porque os spots sao
+  // sinteticos. O concorrente mostra "EV deixado na mesa: 0.0" nesse mesmo lugar; preencher com
+  // zero seria afirmar que o jogador nao perdeu nada, quando a verdade e que nao medimos AQUI.
+  // O bb medido existe, mas na analise do torneio -- que e onde ele significa alguma coisa.
+  const bbNaMesaDaSessao: number | null = null;
   const bestCat = statList.filter((s) => s.hits > 0).sort((a, b) => b.hits - a.hits)[0];
   const toughCat = statList.filter((s) => s.misses > 0).sort((a, b) => b.misses - a.misses)[0];
   // categoria PRINCIPAL da lição (mais tentativas) + seu domínio antes→depois (eixo de treino)
@@ -1587,15 +1606,30 @@ export default function LeakTrainer() {
         )}
 
         {/* Gate freemium: cap diário atingido → upsell Pro (treino ilimitado + mirado) */}
+        {/* ── BOLETIM, e nao parede (28/08) ──────────────────────────────────────────────
+            Esta fase chamava-se `paywall` e mostrava exatamente isso: uma frase de limite e um
+            card de upsell. O concorrente fecha o dia com um relatorio -- precisao, sequencia,
+            acerto por cenario, dias seguidos -- e so entao convida, dizendo quando o jogador
+            volta. Mesma restricao, e a diferenca inteira esta na embalagem.
+            E ha um numero que eles mostram ZERADO ("EV deixado na mesa: 0.0") porque treinam
+            spots sinteticos: nos medimos nas maos reais. Ver `BoletimDaSessao`. */}
         {phase === "paywall" && (
-          <div className="mx-auto flex max-w-md flex-col items-center gap-4 py-8">
-            <p className="text-center text-sm text-muted-foreground">
-              {t("leakTrainer.gate.capDone", { used: gateInfo?.used ?? gateInfo?.cap ?? "", cap: gateInfo?.cap ?? "" })}
-            </p>
-            <ProLockCard feature={t("leakTrainer.gate.capFeature")} />
-            <button onClick={newSession} className="font-mono text-[11px] uppercase tracking-wider text-muted-foreground hover:text-foreground">
-              {t("leakTrainer.gate.back")}
-            </button>
+          <div className="py-6">
+            <BoletimDaSessao
+              totalFeito={totalDone}
+              totalCerto={totalCorrect}
+              melhorSequencia={melhorSequencia}
+              /* Dias seguidos NAO esta nesta tela: o streak de dias vive em `/metrics/level`, e
+                 `statusResumo` e o gate da categoria, que nao o carrega. Passa null e a linha
+                 some -- inventar um numero de sequencia num boletim seria o mesmo defeito do
+                 "EV 0.0" que critiquei no concorrente. Buscar esse dado e trabalho a parte. */
+              diasSeguidos={null}
+              bbNaMesa={bbNaMesaDaSessao}
+              categorias={statList}
+              travados={travadosNoFree}
+              cap={gateInfo?.cap ?? null}
+              aoTreinarDeNovo={newSession}
+            />
           </div>
         )}
 

@@ -194,7 +194,12 @@ export function HudHeader({ onUpload }: HudHeaderProps) {
   // Grupos so no espaco de JOGADOR: coach e admin tem meia duzia de telas cada, e dar
   // painel a eles seria enfeite. Declarado AQUI, depois de isAdmin/isCoach/inPlayerWorkspace
   // -- as tres nascem algumas linhas acima e usa-las antes da TDZ.
-  const mostraGrupos = !isAdmin && (!isCoach || inPlayerWorkspace);
+  // O menu de grupos e do espaco de JOGADOR. Admin e coach tem meia duzia de telas cada.
+  //
+  // A 1a versao excluia o admin por completo -- e o DONO e admin, entao ele nunca viu o menu que
+  // acabara de pedir. "Nao esta funcionando" era isso: nao havia o que abrir. O admin so perde os
+  // grupos quando esta de fato no espaco de admin; no dashboard de jogador ele e jogador.
+  const mostraGrupos = !isCoach || inPlayerWorkspace;
 
   const navItems = (
     inPlayerWorkspace ? playerNavItems :
@@ -233,7 +238,14 @@ export function HudHeader({ onUpload }: HudHeaderProps) {
             {/* Nav no topo só a partir de lg (1024): abaixo disso (incl. celular deitado, 768–1024)
                 o nav fica FIXO embaixo (md→lg evita o scroll lateral cramped do header). */}
             <nav
-              className="hidden lg:flex items-center gap-1 min-w-0 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+              /* ── Sem `overflow-x-auto` (28/08) ────────────────────────────────────────
+                 Ele existia para rolar 11 links. Com 5 grupos nao e mais preciso, e ele
+                 QUEBRAVA o menu: `overflow: auto` cria contexto de recorte, entao o painel do
+                 grupo -- que e filho absoluto -- era cortado fora da barra. O painel existia no
+                 DOM, mas o mouse nunca chegava nele: o container recebia `mouseleave` e fechava.
+                 Medido: `elementFromPoint` 2px abaixo do titulo devolvia uma DIV do cabecalho.
+                 `flex-wrap` cobre o caso de a barra nao caber, sem recortar nada. */
+              className="hidden lg:flex flex-wrap items-center gap-1 min-w-0"
               aria-label="Primary"
             >
               {/* ── Jogador ve GRUPOS; coach e admin seguem com a barra simples ─────────

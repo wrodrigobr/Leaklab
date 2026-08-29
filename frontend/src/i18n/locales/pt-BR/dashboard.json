@@ -837,5 +837,25 @@
     "tudo": "Tudo no GrindLab",
     "fechar": "Fechar",
     "menu": "Menu"
+  },
+  "boletim": {
+    "titulo": "Boletim da sessão",
+    "sub": "Você completou seu treino grátis de hoje. Veja como foi:",
+    "precisao": "Precisão",
+    "sequencia": "Melhor sequência",
+    "bbNaMesa": "EV deixado na mesa (bb)",
+    "diasSeguidos": "{{n}} dias seguidos",
+    "porCenario": "Acerto por cenário",
+    "noPro": "No Pro você treina também:",
+    "proDiz": "Treino ilimitado, e o diagnóstico sai das SUAS mãos reais.",
+    "assinar": "Assinar o Pro",
+    "volteAmanha": "Ou volte amanhã para mais {{n}} grátis.",
+    "volteAmanhaSemNumero": "Ou volte amanhã para treinar de novo.",
+    "voltar": "Voltar ao treino",
+    "travado": {
+      "mirado": "Treino mirado no seu leak",
+      "ghost": "Ghost Table",
+      "postflop": "Spots pós-flop"
+    }
   }
 }

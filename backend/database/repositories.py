@@ -4181,7 +4181,13 @@ PLAN_LIMITS: dict = {
     # Custo medido: 125 KB de `raw_text` por torneio. 30/mes por usuario sao 3,7 MB.
     'free':    {'tournaments': 30,  'ai_calls': 15,  'ai_coach_chat': False, 'solves': 5,    'advanced_insights': False,
                 'ai_chat_per_day': 0,  'solves_per_day': None, 'max_pending_solves': 3,
-                'training_spots_per_day': None, 'leak_targeted': False, 'ghost': False},
+                # 20 spots/dia no Free, igual ao benchmark. Eu tinha DESLIGADO o teto em
+                # 28/08 ao abrir o treino de fundamentos, e o dono corrigiu: o concorrente
+                # limita treino tambem, e limite diario nao e so paywall -- e gancho de
+                # retorno ("volte amanha para mais 20"). O que decide se ele irrita ou
+                # engaja e a EMBALAGEM: eles fecham a sessao com um boletim, nao com uma
+                # parede. Ver `BoletimDaSessao` no front.
+                'training_spots_per_day': 20, 'leak_targeted': False, 'ghost': False},
     'pro':     {'tournaments': 200, 'ai_calls': 300, 'ai_coach_chat': True,  'solves': None, 'advanced_insights': True,
                 'ai_chat_per_day': 50, 'solves_per_day': 20,   'max_pending_solves': 10,
                 'training_spots_per_day': None, 'leak_targeted': True, 'ghost': True},

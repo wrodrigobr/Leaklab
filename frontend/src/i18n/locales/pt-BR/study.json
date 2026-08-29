@@ -166,6 +166,7 @@
     "combos": "combos",
     "erroCarregar": "não foi possível carregar",
     "posicoesForaDoCenario": "As posições apagadas não têm este cenário.",
-    "substituicao": "Estas são as ranges de {{balde}}: não temos este cenário na profundidade escolhida."
+    "substituicao": "Estas são as ranges de {{balde}}: não temos este cenário na profundidade escolhida.",
+    "flutuante": "Abrir na mesa"
   }
 }

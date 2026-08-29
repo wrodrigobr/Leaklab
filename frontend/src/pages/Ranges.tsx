@@ -35,6 +35,8 @@ import { getPreflopRanges } from "@/lib/api";
 import { resumoDoSpot, ROTULO_ACAO, type RangeSet, type RangeType, type AcaoDaCelula } from "@/data/ranges";
 import { ACTION_COLORS } from "@/lib/actionColors";
 import { cn } from "@/lib/utils";
+import { JanelaFlutuante, suportaJanelaFlutuante } from "@/components/ranges/JanelaFlutuante";
+import { ConsultaCompacta } from "@/components/ranges/ConsultaCompacta";
 
 // As 14 profundidades que a carta REALMENTE tem. Lista fixa de propósito: um seletor que oferece
 // profundidade sem carta manda o jogador para uma tela vazia sem dizer por quê.
@@ -200,10 +202,36 @@ export default function Ranges() {
     <div className="min-h-dvh bg-background text-foreground">
       <HudHeader />
       <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
-        <h1 className="font-heading text-2xl font-bold tracking-tight">{t("ranges.title")}</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          {t("ranges.subtitle")}
-        </p>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h1 className="font-heading text-2xl font-bold tracking-tight">{t("ranges.title")}</h1>
+            <p className="mt-1 text-sm text-muted-foreground">{t("ranges.subtitle")}</p>
+          </div>
+          {/* A janela flutuante e a UNICA parte deste produto que serve DURANTE a mao: tudo o mais
+              e pos-sessao. Ela so aparece onde a API existe (Chrome); oferecer e falhar faria o
+              jogador concluir que o produto esta quebrado. Ver `JanelaFlutuante`. */}
+          {suportaJanelaFlutuante() && (
+            <JanelaFlutuante
+              rotulo={t("ranges.flutuante")}
+              largura={380}
+              altura={470}
+              className="shrink-0 rounded-lg border border-primary/40 bg-primary/[0.07] px-3 py-2 font-mono text-[11px] font-bold uppercase tracking-wider text-primary transition-colors hover:bg-primary/15"
+            >
+              <ConsultaCompacta
+                range={range}
+                carregando={carregando}
+                cenarios={CENARIOS.map((c) => ({
+                  id: c.id, rotulo: t(`ranges.cen.${c.id}`), posicoes: c.posicoes, raso: c.raso,
+                }))}
+                stacks={STACKS}
+                stackRasoMax={STACK_RASO_MAX}
+                cenarioId={cenarioId} setCenarioId={setCenarioId}
+                stack={stack} setStack={setStack}
+                posicao={posicao} setPosicao={setPosicao}
+              />
+            </JanelaFlutuante>
+          )}
+        </div>
 
         <div className="mt-5 flex flex-col gap-2.5 rounded-xl border border-border bg-hud-surface/40 p-3.5">
           <Linha>

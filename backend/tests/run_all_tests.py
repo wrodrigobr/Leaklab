@@ -38,6 +38,7 @@ SUITES = {
                   'test_familia_spot.py',
                   'test_perguntas_de_range.py',
                   'test_perguntas_de_board.py',
+                  'test_perguntas_de_trinca.py',
                   'test_equity_flop_turn.py',
                   'test_tendencia_do_leak.py',
                   'test_equity_nao_condena_fold.py',

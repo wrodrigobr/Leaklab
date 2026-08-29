@@ -166,6 +166,7 @@
     "combos": "combos",
     "erroCarregar": "could not load",
     "posicoesForaDoCenario": "Greyed-out positions have no such scenario.",
-    "substituicao": "These are the {{balde}} ranges: we have no chart for this scenario at the depth you picked."
+    "substituicao": "These are the {{balde}} ranges: we have no chart for this scenario at the depth you picked.",
+    "flutuante": "Open over the table"
   }
 }

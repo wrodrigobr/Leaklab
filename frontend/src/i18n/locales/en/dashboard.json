@@ -837,5 +837,25 @@
     "tudo": "Everything in GrindLab",
     "fechar": "Close",
     "menu": "Menu"
+  },
+  "boletim": {
+    "titulo": "Session report",
+    "sub": "You finished today's free training. Here is how it went:",
+    "precisao": "Accuracy",
+    "sequencia": "Best streak",
+    "bbNaMesa": "EV left on the table (bb)",
+    "diasSeguidos": "{{n}} days in a row",
+    "porCenario": "Accuracy by spot",
+    "noPro": "With Pro you also train:",
+    "proDiz": "Unlimited training, and the diagnosis comes from YOUR own hands.",
+    "assinar": "Get Pro",
+    "volteAmanha": "Or come back tomorrow for {{n}} more, free.",
+    "volteAmanhaSemNumero": "Or come back tomorrow to train again.",
+    "voltar": "Back to training",
+    "travado": {
+      "mirado": "Training aimed at your leak",
+      "ghost": "Ghost Table",
+      "postflop": "Postflop spots"
+    }
   }
 }

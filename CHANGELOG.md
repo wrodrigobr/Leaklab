@@ -5,6 +5,77 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## Treino de trinca, janela flutuante, e o menu que o dono nunca viu (28/08)
+
+Tres frentes do benchmark fechadas, e um defeito meu que so apareceu porque ele reclamou.
+
+### Set mining: o unico treino com resposta EXATA
+
+`perguntas_de_trinca.py`. Medindo antes de construir: a Academia **ja ensinava** implied odds num
+capitulo inteiro e `academy_questions` ja tinha uma pergunta sobre quando elas nao valem. Faltava o
+treino repetivel, com os numeros mudando.
+
+Aqui a resposta nao e estimativa: `1 - C(48,3)/C(50,3) = 11,7551%`, conferido pela formula E pela
+enumeracao dos 19.600 flops (2.304 acertam). Os dois caminhos entram no teste, para o numero nunca
+virar literal arredondado.
+
+**O que eu recusei vender como matematica:** empatar exige ganhar **8,5x** -- isso e teorema. Os
+**15x** da regua de mesa sao convencao, porque o vilao nem sempre paga. As explicacoes dizem isso,
+e um guarda quebra se a justificativa sumir.
+
+Dois guardas existem porque um treino pode estar certo e ser inutil: os casos nunca nascem colados
+na fronteira (o mais proximo fica a 30% do limite), e a resposta certa nao pode ficar sempre na
+mesma posicao. E a pergunta de frequencia -- que NAO varia, porque e constante do baralho -- caiu
+para 8% dos sorteios: pergunta estatica vira memorizacao, nao treino.
+
+### Janela flutuante: a unica parte do produto que serve DURANTE a mao
+
+`documentPictureInPicture` abre uma janela real, sempre por cima, fora do navegador. O concorrente
+resolve isso com aplicativo desktop.
+
+**A armadilha, medida antes de escrever a primeira linha:** a janela **nao herda o CSS**
+(`styleSheets.length === 0`). Sem copiar as folhas, a grade abre sem formatacao -- nao gera erro,
+nao quebra teste, e so aparece para quem olha. Metade do componente e isso. E copiar de UM jeito
+nao bastaria: em producao o Vite emite `<link>`, no dev injeta `<style>`, e quem revisa esta no dev.
+
+Verificado ao vivo: 169 celulas, tema escuro, e o estado e o MESMO da pagina -- mudei a posicao na
+janela e a pagina acompanhou.
+
+### O menu que o dono nunca viu
+
+Ele reportou "o hover nao funciona". Eram **dois defeitos somados**, e nenhum apareceu nos testes:
+
+1. **A conta dele e `admin`**, e eu escrevi `mostraGrupos = !isAdmin`. Nao e que o hover falhava --
+   nao havia o que abrir. O dono do produto foi o unico a nao receber o que pediu.
+2. **A barra recortava o painel.** O `<nav>` tinha `overflow-x-auto`, heranca de quando eram 11
+   links. `overflow: auto` cria contexto de recorte: o painel existia no DOM e o mouse nunca o
+   alcancava. Medido, `elementFromPoint` 2px abaixo do titulo devolvia uma DIV do cabecalho.
+
+Havia um terceiro que sozinho ja bastaria: 12px de vao (`mt-3`) entre o titulo e o painel. Virou
+padding, dentro da area sensivel.
+
+**Por que meus testes passaram verdes:** eles exercitavam o CLIQUE, e o defeito estava no TRAJETO
+do mouse. Abrir e sobreviver ao caminho sao coisas diferentes.
+
+### Boletim no lugar da parede, e o numero que eu NAO preenchi
+
+O dono mostrou que o concorrente limita treino (20/dia) e tipo. Eu tinha desligado nosso teto
+diario nesta mesma sessao, sem ninguem pedir. Restaurado em 20.
+
+Mas o que o print ensina nao e o limite: e a EMBALAGEM. Nossa fase chamava-se `paywall` e mostrava
+uma frase de limite com um card de upsell. Agora fecha o dia com precisao, melhor sequencia,
+acerto por cenario, o que o Pro destrava, e o gancho de retorno com o numero.
+
+**E aqui eu me corrigi.** Propus preencher "EV deixado na mesa" -- que no print deles aparece
+**0.0** -- como nosso diferencial. Ao checar, o nosso corretor de treino **tambem nao devolve bb**:
+os spots de treino sao sinteticos aqui tambem. O boletim OMITE o numero. Zero afirmaria que o
+jogador nao perdeu nada; ausencia diz que nao medimos ali.
+
+### Verificado
+
+Backend **2.597 / 2.597**, frontend **454 / 454**, tsc limpo. 20 mutacoes plantadas nas quatro
+frentes, 20 detectadas.
+
 ## O produto tinha 47 telas e a navegacao oferecia 11 (28/08)
 
 Ultimo item do benchmark, e o que estava travado ate hoje: o menu so podia ganhar cadeado depois

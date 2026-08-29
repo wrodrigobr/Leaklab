@@ -123,6 +123,51 @@ describe("o menu mostra o produto e o cadeado vem do backend", () => {
     expect(folha.includes("nav.motivo."), "a folha mostra cadeado sem o motivo").toBe(true);
   });
 
+  it("o painel ENCOSTA no titulo, sem vao que mate o hover", () => {
+    // ── O defeito que o dono viu (28/08) ───────────────────────────────────────────────────
+    //
+    // Ele reportou "o menu nao abre no hover". Eram DOIS defeitos somados, e nenhum apareceu nos
+    // testes porque eles exercitavam o CLIQUE, e o defeito estava no TRAJETO do mouse.
+    //
+    // O painel tinha `mt-3`: 12px de vao entre o titulo e ele. Ao descer, o ponteiro saia do
+    // container, `onMouseLeave` disparava, e o painel fechava antes de o mouse chegar. O
+    // afastamento virou `padding` do proprio painel -- mesmo visual, mas a area e sensivel.
+    const fonte = fs.readFileSync(path.join(__dirname, "MenuDeGrupo.tsx"), "utf-8");
+    const painel = fonte.slice(fonte.indexOf("absolute left-0 top-full"));
+    expect(
+      /top-full[^"]*mt-\d/.test(painel),
+      "o painel voltou a ter margem no topo: isso cria um vao que fecha o menu no meio do caminho",
+    ).toBe(false);
+    expect(painel.includes("pt-3"), "o afastamento precisa ser padding, dentro da area sensivel")
+      .toBe(true);
+  });
+
+  it("a barra NAO recorta o painel", () => {
+    // O segundo defeito, e o que realmente matava: o <nav> tinha `overflow-x-auto` (heranca de
+    // quando a barra tinha 11 links). `overflow: auto` cria contexto de RECORTE, entao o painel
+    // -- filho absoluto -- era cortado fora da barra. Ele existia no DOM e o mouse nunca o
+    // alcancava: medido, `elementFromPoint` 2px abaixo do titulo devolvia uma DIV do cabecalho.
+    const header = fs.readFileSync(path.join(__dirname, "HudHeader.tsx"), "utf-8");
+    const i = header.indexOf('aria-label="Primary"');
+    const nav = header.slice(Math.max(0, i - 700), i);
+    expect(
+      /overflow-[xy]?-?(auto|hidden|scroll)/.test(nav),
+      "a barra de navegacao voltou a recortar: o painel do grupo some fora dela e o hover morre",
+    ).toBe(false);
+  });
+
+  it("o menu de grupos aparece para o ADMIN no espaco de jogador", () => {
+    // O dono e admin, e a 1a versao escrevia `mostraGrupos = !isAdmin && ...` -- ele NUNCA viu o
+    // menu que tinha acabado de pedir. "Nao esta funcionando" era isso: nao havia o que abrir.
+    // Admin no dashboard de jogador e jogador.
+    const header = fs.readFileSync(path.join(__dirname, "HudHeader.tsx"), "utf-8");
+    const linha = header.split("\n").find((l) => l.includes("const mostraGrupos")) ?? "";
+    expect(
+      /!\s*isAdmin/.test(linha),
+      "o menu voltou a excluir o admin, e o dono do produto e admin: " + linha.trim(),
+    ).toBe(false);
+  });
+
   it("nenhuma lista de 'isto é Pro' mora no front", () => {
     // O DEFEITO que este guarda existe para impedir. Se o front decidir sozinho o que é Pro,
     // vira a segunda fonte de verdade sobre o plano — o padrão que custou o dia inteiro quando o

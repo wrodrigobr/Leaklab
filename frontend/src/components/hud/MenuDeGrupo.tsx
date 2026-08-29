@@ -107,7 +107,15 @@ export function MenuDeGrupo({ grupo, capacidades, ocultar = [] }: Props) {
       </div>
 
       {aberto && (
-        <div className="absolute left-0 top-full z-50 mt-3 min-w-[248px] rounded-xl border border-border bg-hud-surface p-1.5 shadow-elevated">
+        /* ── O VAO mata o hover (28/08) ────────────────────────────────────────────────────
+           A 1a versao punha `mt-3` aqui: 12px de espaco entre o titulo e o painel. Ao mover o
+           mouse para baixo, o ponteiro saia do container, `onMouseLeave` disparava e o painel
+           fechava ANTES de o mouse chegar nele. Medido: abre no hover, e some no vao.
+
+           O afastamento agora e `padding` do proprio painel (`pt-3` no wrapper), que faz parte da
+           area sensivel. O visual e o mesmo; a diferenca e que o mouse nunca sai. */
+        <div className="absolute left-0 top-full z-50 pt-3">
+        <div className="min-w-[248px] rounded-xl border border-border bg-hud-surface p-1.5 shadow-elevated">
           {itens.map((item) => {
             const ok = liberado(item, capacidades);
             return (
@@ -142,6 +150,7 @@ export function MenuDeGrupo({ grupo, capacidades, ocultar = [] }: Props) {
               </NavLink>
             );
           })}
+        </div>
         </div>
       )}
     </div>
