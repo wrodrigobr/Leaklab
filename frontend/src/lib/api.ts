@@ -585,6 +585,23 @@ export const ritual = {
     }),
 };
 
+export interface FeedItem {
+  token: string;
+  autor: string;
+  pergunta?: string | null;
+  created_at?: string | null;
+  views?: number;
+  votos: number;
+  comentarios: number;
+  n_passos: number;
+  previa: { street?: string; position?: string; vs_position?: string | null;
+            hero_cards?: string | null; board?: string[] | string | null;
+            stack_bb?: number | null; pot_bb?: number | null };
+}
+export const sharedHandFeed = (sort: string, position?: string) =>
+  request<{ feed: FeedItem[] }>(
+    `/shared-hands/feed?sort=${encodeURIComponent(sort)}${position ? `&position=${encodeURIComponent(position)}` : ""}`);
+
 export const sharedHand = {
   criar: (tournamentId: string | number, handId: string, stepIdx?: number, question?: string) =>
     request<{ token: string }>("/replay/share", {

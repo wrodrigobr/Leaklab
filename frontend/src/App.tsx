@@ -11,6 +11,7 @@ import { CookieConsent } from "@/components/hud/CookieConsent";
 import { UploadQueueProvider } from "@/components/hud/UploadQueue";
 import Landing from "./pages/Landing.tsx";
 import MaoCompartilhada from "./pages/MaoCompartilhada.tsx";
+import FeedDeMaos from "./pages/FeedDeMaos.tsx";
 import Privacy from "./pages/Privacy.tsx";
 import Index from "./pages/Index.tsx";
 import Login from "./pages/Login.tsx";
@@ -377,6 +378,7 @@ const App = () => (
                 forma, senão o que salta aos olhos é a diferença do desenho, não a do jogo. */}
             <Route path="/evolucao/:reportId" element={<ProtectedRoute><Evolution /></ProtectedRoute>} />
             <Route path="/ranges" element={<ProtectedRoute><Ranges /></ProtectedRoute>} />
+            <Route path="/maos" element={<ProtectedRoute><FeedDeMaos /></ProtectedRoute>} />
             <Route path="/academy" element={<ProtectedRoute><Academy /></ProtectedRoute>} />
             <Route path="/academy/math" element={<ProtectedRoute><AcademyMath /></ProtectedRoute>} />
             <Route path="/academy/math/intermediate" element={<ProtectedRoute><AcademyMathIntermediate /></ProtectedRoute>} />

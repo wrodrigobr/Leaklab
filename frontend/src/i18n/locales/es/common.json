@@ -65,7 +65,8 @@
       "docs": "Cómo GrindLab mide y evalúa",
       "leaderboard": "Ranking de jugadores de la liga",
       "coaches": "Encuentra un coach para revisar tu juego",
-      "coach": "Habla con el AI Coach sobre tu juego"
+      "coach": "Habla con el AI Coach sobre tu juego",
+      "maosCompartilhadas": "Las manos que la comunidad compartió para estudiar"
     },
     "secoes": {
       "resultados": "Resultados",
@@ -75,7 +76,8 @@
       "consulta": "Consulta",
       "aprender": "Aprender",
       "ferramentas": "Herramientas"
-    }
+    },
+    "maosCompartilhadas": "Manos compartidas"
   },
   "notifications": {
     "title": "Notificaciones",
@@ -285,5 +287,23 @@
     "enviar": "Enviar",
     "pular": "Omitir",
     "obrigado": "Gracias por el feedback"
+  },
+  "sharedFeed": {
+    "titulo": "Manos compartidas",
+    "sub": "Las manos que la comunidad compartió para estudiar. Vota, comenta y aprende junto.",
+    "sort": {
+      "recentes": "Recientes",
+      "comentadas": "Más comentadas",
+      "votadas": "Más votadas",
+      "sem_resposta": "Sin respuesta"
+    },
+    "posicao": "Todas las posiciones",
+    "vazio": "Aún no hay manos compartidas. Comparte una desde el replayer y empieza la conversación.",
+    "vazioSort": "Nada aquí con este filtro.",
+    "passos": "{{n}} decisiones",
+    "ver": "Ver y votar",
+    "compartilhou": "compartió una mano",
+    "votos": "{{n}} votos",
+    "comentarios": "{{n}} comentarios"
   }
 }

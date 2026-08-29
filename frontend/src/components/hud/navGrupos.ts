@@ -31,7 +31,7 @@
 
 import {
   BookOpen, BookText, Bot, Blocks, Crosshair, Dumbbell, GitCompareArrows, Ghost,
-  Grid3x3, GraduationCap, LayoutDashboard, Medal, Spade, TrendingUp, Trophy, Users,
+  Grid3x3, GraduationCap, LayoutDashboard, Medal, MessagesSquare, Spade, TrendingUp, Trophy, Users,
 } from "lucide-react";
 
 /** Chave de capacidade em `QuotaStatus.limits`. `undefined` = livre para todos. */
@@ -119,6 +119,7 @@ const SECOES_ESTUDAR: SecaoDeMenu[] = [
 
 const SECOES_COMUNIDADE: SecaoDeMenu[] = [
   { chave: "nav.grupos.comunidade", itens: [
+    { to: "/maos", chave: "nav.maosCompartilhadas", desc: "nav.desc.maosCompartilhadas", icone: MessagesSquare, cor: "teal" },
     { to: "/leaderboard", chave: "nav.leaderboard", desc: "nav.desc.leaderboard", icone: Medal, cor: "amber" },
     { to: "/coaches", chave: "nav.coaches", desc: "nav.desc.coaches", icone: Users, cor: "teal" },
   ]},
@@ -144,7 +145,7 @@ export const GRUPOS: GrupoDeMenu[] = [
   },
   {
     chave: "nav.grupos.comunidade", icone: Medal, to: "/leaderboard",
-    acende: ["/leaderboard", "/coaches"],
+    acende: ["/leaderboard", "/coaches", "/maos"],
     secoes: SECOES_COMUNIDADE, itens: _itens(SECOES_COMUNIDADE),
   },
 ];

@@ -245,6 +245,55 @@ def test_link_revogado_nao_aceita_voto_nem_comentario():
     print('OK  test_link_revogado_nao_aceita_voto_nem_comentario')
 
 
+
+def test_feed_mostra_autor_e_NAO_mostra_veredito():
+    """As duas regras do feed (30/08): o username GrindLab de quem ESCOLHEU compartilhar
+    aparece (identidade de plataforma; a regra de 28/08 protege nick de POKER, e esses
+    continuam invisíveis); o veredito NÃO aparece no card — quem clica vota antes de ver."""
+    _banco()
+    import json
+    from leaklab.mao_compartilhada import criar, listar_feed
+    a, _b, tid, hid = _semeia()
+    criar(a, tid, hid, step_idx=0, pergunta='call ou fold?')
+    feed = listar_feed('recentes')
+    meu = next((f for f in feed if f.get('pergunta') == 'call ou fold?'), None)
+    assert meu, 'o link nao apareceu no feed'
+    assert meu['autor'].startswith('dono_'), 'o autor (username GrindLab) nao aparece'
+    bruto = json.dumps(meu, ensure_ascii=False)
+    assert 'nick_do_dono' not in bruto, 'nick de POKER vazou no feed'
+    for campo in ('label', 'best_action', 'gto_label', 'gto_strategy', 'ev_loss_bb'):
+        assert campo not in meu['previa'], (
+            'o card do feed entrega o veredito (%s) que a pagina pede para votar' % campo)
+    assert meu['previa'].get('hero_cards'), 'a previa nao mostra a mao'
+    print('OK  test_feed_mostra_autor_e_NAO_mostra_veredito')
+
+
+def test_feed_revogado_some_e_ordenacoes_validas():
+    _banco()
+    from leaklab.mao_compartilhada import criar, listar_feed, revogar
+    a, _b, tid, hid = _semeia()
+    t = criar(a, tid, hid)
+    assert any(f['token'] == t for f in listar_feed('recentes'))
+    revogar(a, t)
+    assert not any(f['token'] == t for f in listar_feed('recentes')), 'revogado segue no feed'
+    # ordenacao desconhecida nao explode nem vira SQL: cai em recentes
+    assert isinstance(listar_feed('DROP TABLE'), list)
+    print('OK  test_feed_revogado_some_e_ordenacoes_validas')
+
+
+def test_feed_sem_resposta_e_pergunta_sem_comentario():
+    _banco()
+    from leaklab.mao_compartilhada import comentar, criar, listar_feed
+    a, b, tid, hid = _semeia()
+    t = criar(a, tid, hid, step_idx=0, pergunta='e agora?')
+    assert any(f['token'] == t for f in listar_feed('sem_resposta')), (
+        'pergunta sem comentario nao apareceu em sem_resposta')
+    comentar(t, b, 'fold tranquilo')
+    assert not any(f['token'] == t for f in listar_feed('sem_resposta')), (
+        'pergunta JA respondida continua em sem_resposta')
+    print('OK  test_feed_sem_resposta_e_pergunta_sem_comentario')
+
+
 if __name__ == '__main__':
     falhas = 0
     testes = [v for k, v in sorted(globals().items()) if k.startswith('test_')]

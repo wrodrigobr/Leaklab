@@ -5,6 +5,19 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## O feed da comunidade (30/08)
+
+### Adicionado
+- **Mãos compartilhadas viraram feed** (`/maos`, no menu Comunidade — benchmark trazido pelo
+  dono): cards com autor, pergunta, cartas e placar; ordenações recentes / mais comentadas /
+  mais votadas / **sem resposta** (pergunta feita que ninguém respondeu); filtro de posição.
+  **As duas diferenças deliberadas do benchmark:** o card NÃO mostra veredito nem resultado —
+  a página do link pede o voto ANTES de revelar, e um feed que entrega a resposta mataria o
+  mecanismo; e o autor é o username GrindLab de quem ESCOLHEU compartilhar — a regra de
+  anonimato protege nick de POKER (quem não consentiu), que segue invisível em toda superfície.
+
+---
+
 ## O share que respondia "mão não encontrada" para todo torneio do Stars (30/08)
 
 ### Corrigido

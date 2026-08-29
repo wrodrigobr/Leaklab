@@ -283,3 +283,71 @@ def apagar_comentario(comment_id: int, user_id: int) -> bool:
         return bool(getattr(cur, 'rowcount', 0))
     finally:
         conn.close()
+
+
+# ── O feed da comunidade (30/08): as mãos compartilhadas, num lugar só ───────────────────────
+
+#: ordenações do feed — cada uma um SQL DECLARADO (nada de concatenar entrada do usuário)
+_ORDENACOES = {
+    'recentes':    'sh.created_at DESC',
+    'comentadas':  'comentarios DESC, sh.created_at DESC',
+    'votadas':     'votos DESC, sh.created_at DESC',
+    'sem_resposta': 'sh.created_at DESC',
+}
+
+
+def listar_feed(ordenar: str = 'recentes', posicao: Optional[str] = None,
+                limit: int = 30, offset: int = 0) -> list[dict]:
+    """Os links vivos, com autor (username GrindLab), pergunta, prévia da mão e placar.
+
+    A distinção de anonimato que este feed fixa: a regra de 28/08 protege NICK DE POKER
+    (pessoas que não consentiram); o username GrindLab de quem ESCOLHEU compartilhar é
+    identidade de plataforma — os comentários já assinam assim. A prévia sai da MESMA
+    whitelist do payload público, e o veredito fica de fora do card: quem clica vota antes
+    de ver (o mecanismo que faz o link valer).
+    """
+    ordenar = ordenar if ordenar in _ORDENACOES else 'recentes'
+    limit = max(1, min(int(limit or 30), 60))
+    conn = get_conn()
+    try:
+        _tabela(conn)
+        where = 'sh.revoked_at IS NULL'
+        if ordenar == 'sem_resposta':
+            # a aba do benchmark que faz sentido aqui: pergunta feita, ninguém respondeu ainda
+            where += (" AND sh.pergunta IS NOT NULL AND NOT EXISTS ("
+                      "SELECT 1 FROM shared_hand_comments c WHERE c.token = sh.token "
+                      "AND c.deleted_at IS NULL)")
+        rows = conn.execute(_adapt(
+            'SELECT sh.token, sh.pergunta, sh.step_idx, sh.created_at, sh.views, '
+            '       sh.tournament_id AS _tid, sh.hand_id AS _hid, u.username AS autor, '
+            '       (SELECT COALESCE(SUM(n), 0) FROM shared_hand_votes v '
+            '        WHERE v.token = sh.token) AS votos, '
+            '       (SELECT COUNT(*) FROM shared_hand_comments c '
+            '        WHERE c.token = sh.token AND c.deleted_at IS NULL) AS comentarios '
+            'FROM shared_hands sh JOIN users u ON u.id = sh.user_id '
+            'WHERE ' + where + ' ORDER BY ' + _ORDENACOES[ordenar] +
+            ' LIMIT ? OFFSET ?'), (limit, max(0, int(offset or 0)))).fetchall()
+        feed = []
+        for r in rows:
+            d = dict(r)
+            decisoes = conn.execute(_adapt(
+                'SELECT * FROM decisions WHERE tournament_id = ? AND hand_id = ? ORDER BY id'),
+                (d.pop('_tid'), d.pop('_hid'))).fetchall()
+            if not decisoes:
+                continue
+            idx = d.get('step_idx')
+            alvo = dict(decisoes[idx]) if isinstance(idx, int) and 0 <= idx < len(decisoes)                 else dict(decisoes[0])
+            # prévia SEM veredito: cartas/posição/street saem; label/best_action ficam — o
+            # card não pode entregar a resposta que a página pede para votar.
+            previa = {k: _limpa(v) for k, v in alvo.items()
+                      if k in CAMPOS_PUBLICOS and k not in (
+                          'label', 'gto_label', 'best_action', 'gto_strategy',
+                          'recommended', 'ev_loss_bb', 'verdict_source', 'verdict_has_cost')}
+            if posicao and str(previa.get('position') or '').upper() != posicao.upper():
+                continue
+            d['previa'] = previa
+            d['n_passos'] = len(decisoes)
+            feed.append(d)
+        return feed
+    finally:
+        conn.close()

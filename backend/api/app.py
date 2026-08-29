@@ -6581,6 +6581,22 @@ def revogar_link_da_mao(token):
     return jsonify({'ok': revogar(g.user_id, str(token))})
 
 
+@app.route('/shared-hands/feed', methods=['GET'])
+@require_auth
+def feed_de_maos_compartilhadas():
+    """O feed da comunidade (30/08, benchmark do dono): links vivos com autor, pergunta,
+    prévia SEM veredito e placar. Ordenações declaradas no módulo."""
+    from leaklab.mao_compartilhada import listar_feed
+    try:
+        offset = max(0, int(request.args.get('offset', 0) or 0))
+    except (TypeError, ValueError):
+        offset = 0
+    return jsonify({'feed': listar_feed(
+        ordenar=str(request.args.get('sort') or 'recentes'),
+        posicao=str(request.args.get('position') or '').strip() or None,
+        offset=offset)})
+
+
 @app.route('/h/<token>/vote', methods=['POST'])
 @limiter.limit("30 per hour")
 def votar_mao_compartilhada(token):

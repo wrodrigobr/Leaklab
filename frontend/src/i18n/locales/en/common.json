@@ -65,7 +65,8 @@
       "docs": "How GrindLab measures and grades",
       "leaderboard": "League player rankings",
       "coaches": "Find a coach to review your game",
-      "coach": "Chat with the AI Coach about your game"
+      "coach": "Chat with the AI Coach about your game",
+      "maosCompartilhadas": "Hands the community shared for study"
     },
     "secoes": {
       "resultados": "Results",
@@ -75,7 +76,8 @@
       "consulta": "Reference",
       "aprender": "Learn",
       "ferramentas": "Tools"
-    }
+    },
+    "maosCompartilhadas": "Shared hands"
   },
   "notifications": {
     "title": "Notifications",
@@ -285,5 +287,23 @@
     "enviar": "Send",
     "pular": "Skip",
     "obrigado": "Thanks for the feedback"
+  },
+  "sharedFeed": {
+    "titulo": "Shared hands",
+    "sub": "Hands the community shared for study. Vote, comment and learn together.",
+    "sort": {
+      "recentes": "Recent",
+      "comentadas": "Most commented",
+      "votadas": "Most voted",
+      "sem_resposta": "Unanswered"
+    },
+    "posicao": "All positions",
+    "vazio": "No shared hands yet. Share one from the replayer and start the conversation.",
+    "vazioSort": "Nothing here with this filter.",
+    "passos": "{{n}} decisions",
+    "ver": "View and vote",
+    "compartilhou": "shared a hand",
+    "votos": "{{n}} votes",
+    "comentarios": "{{n}} comments"
   }
 }
