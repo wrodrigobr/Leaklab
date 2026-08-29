@@ -317,6 +317,30 @@ def test_feed_sem_resposta_e_pergunta_sem_comentario():
     print('OK  test_feed_sem_resposta_e_pergunta_sem_comentario')
 
 
+
+def test_ddl_por_backend_e_sem_heuristica():
+    """30/08, Sentry em prod (UndefinedTable shared_hand_comments): a heuristica
+    hasattr(conn,'row_factory') detectava PG como SQLite — o wrapper TEM a propriedade — e o
+    AUTOINCREMENT quebrava o CREATE calado no bloco isolado. Este guarda afirma os DOIS lados
+    do DDL sem precisar de um Postgres, e bane a heuristica dos dois modulos."""
+    import io as _io
+    from leaklab.mao_compartilhada import _stmts
+    from leaklab.ritual_da_sessao import _ddl
+    pg = ' '.join(_stmts(True)) + _ddl(True)
+    lite = ' '.join(_stmts(False)) + _ddl(False)
+    assert 'AUTOINCREMENT' not in pg, 'AUTOINCREMENT indo para o Postgres — o bug do Sentry'
+    assert 'SERIAL' in pg and 'shared_hand_comments' in pg and 'session_checkins' in pg
+    assert 'SERIAL' not in lite and 'AUTOINCREMENT' in lite
+    for mod in ('leaklab/mao_compartilhada.py', 'leaklab/ritual_da_sessao.py'):
+        fonte = _io.open(os.path.join(os.path.dirname(__file__), '..', mod),
+                         encoding='utf-8').read()
+        # bane o CODIGO da heuristica (a funcao), nao a palavra — o docstring pode citar a licao
+        assert 'def _sqlite' not in fonte, (
+            '%s voltou a detectar backend por heuristica em vez de USE_POSTGRES' % mod)
+        assert 'USE_POSTGRES' in fonte, '%s nao usa a flag verdadeira' % mod
+    print('OK  test_ddl_por_backend_e_sem_heuristica')
+
+
 if __name__ == '__main__':
     falhas = 0
     testes = [v for k, v in sorted(globals().items()) if k.startswith('test_')]

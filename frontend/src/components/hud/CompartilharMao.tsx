@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link as RouterLink } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { Check, Copy, Share2, X } from "lucide-react";
 
@@ -109,11 +110,20 @@ export function CompartilharMao({ tournamentId, handId, stepIdx }: Props) {
                 disabled={gerando}
                 className="w-full rounded-lg bg-primary px-3 py-2 font-mono text-[11px] font-bold uppercase tracking-wider text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-50"
               >
-                {gerando ? t("share.gerando") : t("share.gerar")}
+                {gerando ? t("share.gerando") : t("share.publicar")}
               </button>
             </>
           ) : (
             <>
+              {/* 30/08, o dono estranhou "gerar link": o ATO e publicar na comunidade; o
+                  link e o bonus para colar num grupo. A tela agora diz isso nessa ordem. */}
+              <p className="mb-1 flex items-center gap-1.5 text-[12px] font-medium text-foreground">
+                <Check className="size-3.5 text-primary" aria-hidden /> {t("share.publicado")}
+              </p>
+              <RouterLink to="/maos"
+                    className="mb-2 inline-block font-mono text-[10.5px] uppercase tracking-wider text-primary hover:underline">
+                {t("share.verNoFeed")}
+              </RouterLink>
               <p className="mb-2 text-[11px] leading-snug text-muted-foreground">
                 {t("share.pronto")}
               </p>

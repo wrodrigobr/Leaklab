@@ -248,15 +248,18 @@
   "share": {
     "botao": "Compartilhar mão",
     "titulo": "Compartilhar mão",
-    "explica": "Gera um link público desta mão, sem expor seu nick nem o torneio. Quem abrir vota na decisão antes de ver o veredito.",
+    "explica": "Publica esta mão em Mãos compartilhadas e gera um link para colar em grupos. Seu nick de poker e o torneio nunca aparecem; quem abrir vota na decisão antes de ver o veredito.",
     "perguntaPlaceholder": "Sua dúvida (opcional): \"call ou jam aqui?\"",
     "gerar": "Gerar link",
     "gerando": "Gerando...",
-    "pronto": "Link pronto. Cole no grupo:",
+    "pronto": "O link, se quiser colar num grupo:",
     "copiar": "Copiar link",
     "erro": "Não foi possível gerar o link.",
     "anonimo": "Seu nick de poker e o torneio nunca aparecem. Seu nome GrindLab aparece, a menos que você marque a opção anônima.",
-    "anonimoOpcao": "Compartilhar sem mostrar meu nome"
+    "anonimoOpcao": "Compartilhar sem mostrar meu nome",
+    "publicar": "Publicar na comunidade",
+    "publicado": "Publicada em Mãos compartilhadas",
+    "verNoFeed": "Ver no feed"
   },
   "sharedHand": {
     "naoExiste": "Este link não existe ou foi revogado por quem compartilhou.",

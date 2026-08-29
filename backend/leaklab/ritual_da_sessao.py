@@ -28,7 +28,7 @@ from __future__ import annotations
 from typing import Optional
 
 from database.repositories import _adapt, _fetchall, _fetchone, get_leak_summary
-from database.schema import get_conn
+from database.schema import USE_POSTGRES, get_conn
 
 #: amostra mínima do leak para virar foco sugerido — abaixo disso a "correção" é ruído
 FOCO_MIN_AMOSTRA = 5
@@ -36,39 +36,30 @@ FOCO_MIN_AMOSTRA = 5
 _ERROS = ('small_mistake', 'clear_mistake')
 
 
+def _ddl(postgres: bool) -> str:
+    """DDL por backend, como função testável (mesma lição do UndefinedTable de 30/08)."""
+    pk = 'SERIAL PRIMARY KEY' if postgres else 'INTEGER PRIMARY KEY AUTOINCREMENT'
+    return """
+            CREATE TABLE IF NOT EXISTS session_checkins (
+                id            %s,
+                user_id       INTEGER NOT NULL,
+                created_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                bankroll_ok   INTEGER,
+                foco_spot     TEXT,
+                base_n        INTEGER,
+                base_erros    INTEGER,
+                debrief_tid   INTEGER,
+                debriefed_at  TIMESTAMP
+            )""" % pk
+
+
 def _tabela(conn) -> None:
     """Bloco isolado (ver reference_pg_migration_abort_proof)."""
     try:
-        conn.execute(_adapt("""
-            CREATE TABLE IF NOT EXISTS session_checkins (
-                id            INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id       INTEGER NOT NULL,
-                created_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                bankroll_ok   INTEGER,
-                foco_spot     TEXT,
-                base_n        INTEGER,
-                base_erros    INTEGER,
-                debrief_tid   INTEGER,
-                debriefed_at  TIMESTAMP
-            )""" if _sqlite(conn) else """
-            CREATE TABLE IF NOT EXISTS session_checkins (
-                id            SERIAL PRIMARY KEY,
-                user_id       INTEGER NOT NULL,
-                created_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                bankroll_ok   INTEGER,
-                foco_spot     TEXT,
-                base_n        INTEGER,
-                base_erros    INTEGER,
-                debrief_tid   INTEGER,
-                debriefed_at  TIMESTAMP
-            )"""))
+        conn.execute(_adapt(_ddl(USE_POSTGRES)))
         conn.commit()
     except Exception:                                          # noqa: BLE001
         conn.rollback()
-
-
-def _sqlite(conn) -> bool:
-    return 'sqlite' in type(conn).__module__.lower() or hasattr(conn, 'row_factory')
 
 
 def _spot_stats(conn, user_id: int, spot: str, tournament_id: Optional[int] = None) -> dict:

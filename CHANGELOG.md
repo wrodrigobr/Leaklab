@@ -5,6 +5,22 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## O Sentry pagou o investimento: a tabela que nunca nasceu em prod (30/08)
+
+### Corrigido
+- **`UndefinedTable: shared_hand_comments` em prod** (Sentry + "Erro interno" na tela do dono):
+  a detecção de backend usava `hasattr(conn, 'row_factory')` — e o wrapper de Postgres TEM a
+  propriedade (compatibilidade), então prod era tratado como SQLite, o `AUTOINCREMENT` ia para
+  o PG e o CREATE falhava CALADO no bloco isolado. `session_checkins` (ritual) tinha a mesma
+  mina. **Conserto:** a flag `USE_POSTGRES` do schema é a verdade única; o DDL virou função
+  testável por backend, com guarda afirmando os DOIS lados sem precisar de um Postgres e
+  banindo a função-heurística dos módulos.
+- **"Gerar link" virou "Publicar na comunidade"** (o dono estranhou, com razão): o ato é
+  publicar em Mãos compartilhadas; o link é o bônus para colar em grupo. A tela agora diz
+  isso nessa ordem, com atalho "ver no feed".
+
+---
+
 ## O feed da comunidade (30/08)
 
 ### Adicionado

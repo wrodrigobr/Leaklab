@@ -36,7 +36,7 @@ import secrets
 from typing import Optional
 
 from database.repositories import _adapt
-from database.schema import get_conn
+from database.schema import USE_POSTGRES, get_conn
 
 #: Campos que podem sair no payload público. WHITELIST -- ver o docblock.
 CAMPOS_PUBLICOS = {
@@ -54,11 +54,13 @@ CAMPOS_PROIBIDOS = {
 }
 
 
-def _tabela(conn) -> None:
-    """Cria as tabelas na primeira chamada. CADA statement em bloco isolado: em PG um `CREATE`
-    que falha aborta a transação e todo statement seguinte falha calado
-    (ver `reference_pg_migration_abort_proof`)."""
-    stmts = (
+def _stmts(postgres: bool) -> tuple:
+    """Os statements por backend, como FUNÇÃO para o teste poder afirmar sobre os dois lados
+    sem precisar de um Postgres de verdade (30/08: a heurística hasattr(conn,'row_factory')
+    detectava PG como SQLite — o wrapper tem a propriedade — e o AUTOINCREMENT quebrava o
+    CREATE calado; o Sentry acusou UndefinedTable em prod)."""
+    pk = 'SERIAL PRIMARY KEY' if postgres else 'INTEGER PRIMARY KEY AUTOINCREMENT'
+    return (
         """CREATE TABLE IF NOT EXISTS shared_hands (
                 token          TEXT PRIMARY KEY,
                 user_id        INTEGER NOT NULL,
@@ -68,41 +70,35 @@ def _tabela(conn) -> None:
                 revoked_at     TIMESTAMP,
                 views          INTEGER DEFAULT 0
             )""",
-        # A pergunta do dono: o link quase sempre existe POR CAUSA de uma decisão. O dono marca
-        # o passo e escreve a dúvida; o visitante vota nela antes de ver o veredito.
         "ALTER TABLE shared_hands ADD COLUMN step_idx INTEGER",
         "ALTER TABLE shared_hands ADD COLUMN pergunta TEXT",
-        # 30/08, decisao do dono: nome de quem compartilha aparece POR PADRAO; anonimo e opcao.
         "ALTER TABLE shared_hands ADD COLUMN anonimo INTEGER DEFAULT 0",
-        # Voto AGREGADO por token+ação: nenhum visitante identificável é gravado.
         """CREATE TABLE IF NOT EXISTS shared_hand_votes (
                 token   TEXT NOT NULL,
                 action  TEXT NOT NULL,
                 n       INTEGER NOT NULL DEFAULT 0,
                 PRIMARY KEY (token, action)
             )""",
-        # Comentário exige CONTA (anônimo vota, não escreve): spam e autoria ficam tratáveis.
         """CREATE TABLE IF NOT EXISTS shared_hand_comments (
-                id         INTEGER PRIMARY KEY AUTOINCREMENT,
+                id         %s,
                 token      TEXT NOT NULL,
                 user_id    INTEGER NOT NULL,
                 texto      TEXT NOT NULL,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 deleted_at TIMESTAMP
-            )""",
+            )""" % pk,
     )
-    for st in stmts:
+
+
+def _tabela(conn) -> None:
+    """CADA statement em bloco isolado: em PG um erro aborta a transação e o seguinte
+    falharia calado sem o rollback (ver reference_pg_migration_abort_proof)."""
+    for st in _stmts(USE_POSTGRES):
         try:
-            conn.execute(_adapt(st.replace('AUTOINCREMENT', 'AUTOINCREMENT')
-                                if _sqlite(conn) else
-                                st.replace('INTEGER PRIMARY KEY AUTOINCREMENT', 'SERIAL PRIMARY KEY')))
+            conn.execute(_adapt(st))
             conn.commit()
         except Exception:                                      # noqa: BLE001
             conn.rollback()
-
-
-def _sqlite(conn) -> bool:
-    return 'sqlite' in type(conn).__module__.lower() or hasattr(conn, 'row_factory')
 
 
 def criar(user_id: int, tournament_id: int, hand_id: str,

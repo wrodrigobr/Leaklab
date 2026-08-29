@@ -248,15 +248,18 @@
   "share": {
     "botao": "Share hand",
     "titulo": "Share hand",
-    "explica": "Creates a public link for this hand, without exposing your nick or the tournament. Visitors vote on the decision before seeing the verdict.",
+    "explica": "Posts this hand to Shared hands and creates a link you can paste in groups. Your poker nick and the tournament never appear; visitors vote on the decision before seeing the verdict.",
     "perguntaPlaceholder": "Your question (optional): \"call or jam here?\"",
     "gerar": "Create link",
     "gerando": "Creating...",
-    "pronto": "Link ready. Paste it in your group:",
+    "pronto": "The link, if you want to paste it somewhere:",
     "copiar": "Copy link",
     "erro": "Could not create the link.",
     "anonimo": "Your poker nick and the tournament never appear. Your GrindLab name shows unless you check the anonymous option.",
-    "anonimoOpcao": "Share without showing my name"
+    "anonimoOpcao": "Share without showing my name",
+    "publicar": "Post to the community",
+    "publicado": "Posted to Shared hands",
+    "verNoFeed": "View in feed"
   },
   "sharedHand": {
     "naoExiste": "This link does not exist or was revoked by its owner.",
