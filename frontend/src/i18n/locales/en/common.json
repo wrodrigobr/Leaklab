@@ -233,5 +233,38 @@
   },
   "suporte": {
     "semMensagens": "No messages sent yet."
+  },
+  "share": {
+    "botao": "Share hand",
+    "titulo": "Share hand",
+    "explica": "Creates a public link for this hand, without exposing your nick or the tournament. Visitors vote on the decision before seeing the verdict.",
+    "perguntaPlaceholder": "Your question (optional): \"call or jam here?\"",
+    "gerar": "Create link",
+    "gerando": "Creating...",
+    "pronto": "Link ready. Paste it in your group:",
+    "copiar": "Copy link",
+    "erro": "Could not create the link.",
+    "anonimo": "The page shows no nick, tournament name, or dates."
+  },
+  "sharedHand": {
+    "naoExiste": "This link does not exist or was revoked by its owner.",
+    "conhecer": "Discover GrindLab",
+    "analisarMinhas": "Analyze my hands",
+    "perguntaDoDono": "The sharer wants to know",
+    "oQueVoceFaz": "What do you do here?",
+    "jogou": "Played",
+    "melhorEra": "GTO prefers",
+    "votos": "{{n}} votes",
+    "comentarios": "Comments",
+    "comentarPlaceholder": "Comment on the hand...",
+    "enviar": "Send",
+    "entrarParaComentar": "Log in to comment",
+    "cta": "Analyze your hands on GrindLab",
+    "acao": {
+      "fold": "Fold",
+      "call": "Call",
+      "raise": "Raise",
+      "allin": "All-in"
+    }
   }
 }

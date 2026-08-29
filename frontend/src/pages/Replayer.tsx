@@ -6,6 +6,7 @@ import logoHorizontal from "@/assets/brand/grindlab_final_horizontal.svg";
 import { useMutation } from "@tanstack/react-query";
 import { HudLayout } from "@/components/hud/HudLayout";
 import { HudHeader } from "@/components/hud/HudHeader";
+import { CompartilharMao } from "@/components/hud/CompartilharMao";
 import { PokerTableV3 } from "@/components/hud/PokerTableV3";
 import { useTableOrientation } from "@/hooks/use-table-orientation";
 import { useIsLandscapeMobile } from "@/hooks/use-is-landscape-mobile";
@@ -801,6 +802,10 @@ const Replayer = () => {
               >
                 PKO
               </span>
+            )}
+            {/* Compartilhar (29/08): a mao vira link publico com a pergunta do dono. */}
+            {!studentId && tournamentId && handId && (
+              <CompartilharMao tournamentId={tournamentId} handId={handId} stepIdx={stepIdx} />
             )}
             {/* Modo coach: pula os folds pré-flop óbvios e comenta cada mão que vale revisão. */}
             {!studentId && (

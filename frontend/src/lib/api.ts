@@ -508,6 +508,62 @@ export interface HeroHudResponse {
   stats?: Record<string, HeroHudStat>;
 }
 
+// ── Mão compartilhada (29/08): link público, pergunta do dono, voto e comentários ──────────
+export interface SharedHandStep {
+  street: string;
+  position: string;
+  vs_position?: string | null;
+  stack_bb?: number | null;
+  pot_bb?: number | null;
+  facing_bb?: number | null;
+  board?: string[] | string | null;
+  hero_cards?: string | null;
+  action_taken: string;
+  best_action?: string | null;
+  label?: string | null;
+  gto_label?: string | null;
+  ev_loss_bb?: number | null;
+  verdict_source?: string | null;
+  gto_strategy?: string | null;
+  recommended?: string | null;
+}
+export interface SharedHandComment {
+  id: number;
+  autor: string;
+  texto: string;
+  created_at: string;
+}
+export interface SharedHandPayload {
+  passos: SharedHandStep[];
+  n: number;
+  pergunta?: string | null;
+  passo_marcado?: number | null;
+  votos: Record<string, number>;
+  comentarios: SharedHandComment[];
+}
+
+export const sharedHand = {
+  criar: (tournamentId: string | number, handId: string, stepIdx?: number, question?: string) =>
+    request<{ token: string }>("/replay/share", {
+      method: "POST",
+      body: JSON.stringify({
+        tournament_id: tournamentId, hand_id: handId,
+        step_idx: stepIdx, question: question || undefined,
+      }),
+    }),
+  revogar: (token: string) =>
+    request<{ ok: boolean }>(`/replay/share/${token}`, { method: "DELETE" }),
+  ler: (token: string) => request<SharedHandPayload>(`/h/${token}`),
+  votar: (token: string, action: string) =>
+    request<{ votos: Record<string, number> }>(`/h/${token}/vote`, {
+      method: "POST", body: JSON.stringify({ action }),
+    }),
+  comentar: (token: string, text: string) =>
+    request<{ id: number }>(`/h/${token}/comment`, {
+      method: "POST", body: JSON.stringify({ text }),
+    }),
+};
+
 export const tournaments = {
   list: () => request<TournamentsResponse>("/history/tournaments"),
 

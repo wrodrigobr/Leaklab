@@ -233,5 +233,38 @@
   },
   "suporte": {
     "semMensagens": "Todavía no has enviado mensajes."
+  },
+  "share": {
+    "botao": "Compartir mano",
+    "titulo": "Compartir mano",
+    "explica": "Crea un enlace público de esta mano, sin exponer tu nick ni el torneo. Quien lo abre vota la decisión antes de ver el veredicto.",
+    "perguntaPlaceholder": "Tu duda (opcional): \"¿call o jam aquí?\"",
+    "gerar": "Crear enlace",
+    "gerando": "Creando...",
+    "pronto": "Enlace listo. Pégalo en tu grupo:",
+    "copiar": "Copiar enlace",
+    "erro": "No se pudo crear el enlace.",
+    "anonimo": "La página no muestra tu nick, el nombre del torneo ni fechas."
+  },
+  "sharedHand": {
+    "naoExiste": "Este enlace no existe o fue revocado por quien lo compartió.",
+    "conhecer": "Conocer GrindLab",
+    "analisarMinhas": "Analizar mis manos",
+    "perguntaDoDono": "La duda de quien compartió",
+    "oQueVoceFaz": "¿Qué haces aquí?",
+    "jogou": "Jugó",
+    "melhorEra": "el GTO prefiere",
+    "votos": "{{n}} votos",
+    "comentarios": "Comentarios",
+    "comentarPlaceholder": "Comenta la mano...",
+    "enviar": "Enviar",
+    "entrarParaComentar": "Entra para comentar",
+    "cta": "Analiza tus manos en GrindLab",
+    "acao": {
+      "fold": "Fold",
+      "call": "Call",
+      "raise": "Raise",
+      "allin": "All-in"
+    }
   }
 }

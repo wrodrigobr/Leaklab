@@ -10,6 +10,7 @@ import { FeedbackWidget } from "@/components/hud/FeedbackWidget";
 import { CookieConsent } from "@/components/hud/CookieConsent";
 import { UploadQueueProvider } from "@/components/hud/UploadQueue";
 import Landing from "./pages/Landing.tsx";
+import MaoCompartilhada from "./pages/MaoCompartilhada.tsx";
 import Privacy from "./pages/Privacy.tsx";
 import Index from "./pages/Index.tsx";
 import Login from "./pages/Login.tsx";
@@ -162,6 +163,8 @@ const App = () => (
           <Routes>
             <Route path="/" element={<PublicRoute><Landing /></PublicRoute>} />
             <Route path="/privacidade" element={<Privacy />} />
+            {/* Mao compartilhada (29/08): PUBLICA — o link e a unica coisa do produto que sai dele */}
+            <Route path="/h/:token" element={<MaoCompartilhada />} />
             {/* Demonstração pública: sem login, para quem ainda não tem dado nenhum. */}
             <Route path="/demo" element={<Demo />} />
             <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
