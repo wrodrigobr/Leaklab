@@ -5,6 +5,18 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## A mesa protagonista: replay largo, curtir, voltar (30/08)
+
+### Mudado
+- **Página do replay, v4** (feedback do dono na tela): página larga com a mesa como
+  protagonista e comentários fixos em 300px; controles ganharam PLAY com autoplay; o CTA de
+  rodapé saiu (o do cabeçalho basta); entrou o botão VOLTAR (histórico; sem histórico, feed
+  para logado e home para visitante) e o **curtir** — a curtida usa o mesmo agregado anônimo
+  dos votos ('like' na whitelist), o coração do feed soma, e o clique é otimista com trava
+  local contra duplo-like.
+
+---
+
 ## A mão compartilhada abre no replayer de verdade, e o plano de estudo virou Pro (30/08)
 
 ### Mudado

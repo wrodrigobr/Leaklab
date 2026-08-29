@@ -300,7 +300,11 @@
     "editar": "Editar",
     "excluir": "Excluir",
     "cancelar": "Cancelar",
-    "salvar": "Salvar"
+    "salvar": "Salvar",
+    "voltar": "Voltar",
+    "curtir": "Curtir",
+    "pausar": "Pausar",
+    "reproduzir": "Reproduzir"
   },
   "feedbackPico": {
     "pergunta": "Isso te ajudou?",

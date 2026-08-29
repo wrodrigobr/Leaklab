@@ -225,7 +225,9 @@ def ler(token: str) -> Optional[dict]:
 # ── Voto e comentário (29/08): o que faz o link não ser copy-paste ───────────────────────────
 
 #: Ações votáveis — o menu do treino. Whitelist: voto fora disso é descartado, não gravado.
-ACOES_VOTAVEIS = {'fold', 'call', 'raise', 'allin', 'check', 'bet'}
+# 'like' entrou em 30/08: a curtida da pagina do replay usa o MESMO agregado anonimo dos
+# votos (nenhum visitante identificavel), e o coracao do feed ja soma tudo.
+ACOES_VOTAVEIS = {'fold', 'call', 'raise', 'allin', 'check', 'bet', 'like'}
 
 
 def votar(token: str, acao: str) -> Optional[dict]:
