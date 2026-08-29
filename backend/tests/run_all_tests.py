@@ -42,6 +42,7 @@ SUITES = {
                   'test_desafio_gabarito_vetado.py',
                   'test_mao_compartilhada.py',
                   'test_hud_do_torneio.py',
+                  'test_ritual_da_sessao.py',
                   'test_equity_flop_turn.py',
                   'test_tendencia_do_leak.py',
                   'test_equity_nao_condena_fold.py',

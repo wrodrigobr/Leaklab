@@ -830,5 +830,35 @@
       "ghost": "Ghost Table",
       "postflop": "Spots pós-flop"
     }
+  },
+  "ritual": {
+    "titulo": "Antes de jogar",
+    "banca": "A banca cobre o stake de hoje?",
+    "sim": "Sim",
+    "nao": "Não",
+    "bancaNao": "Considere descer de stake hoje. A decisão é sua, o registro fica.",
+    "focoHoje": "Foco de hoje:",
+    "focoLivre": "jogar sólido (sem leak medido com amostra)",
+    "medidoEm": "medido em {{n}} decisões",
+    "certoEra": "quando o certo era",
+    "vouJogar": "Vou jogar",
+    "aquecer": "Aquecer no foco",
+    "emSessao": "Sessão aberta. Foco:",
+    "debriefQuandoImportar": "o balanço aparece quando você importar o torneio.",
+    "street": {
+      "preflop": "Preflop",
+      "flop": "Flop",
+      "turn": "Turn",
+      "river": "River"
+    },
+    "debrief": {
+      "titulo": "Balanço da sessão",
+      "prometeu": "Você prometeu atenção em",
+      "semSpot": "Não apareceu spot do seu foco nesta sessão. A promessa segue para a próxima.",
+      "deErro": "de erro em {{n}} spots do foco",
+      "contraBase": "contra os seus {{pct}}% de sempre.",
+      "gatilho": "A mão que mais custou:",
+      "fechar": "Fechar o balanço"
+    }
   }
 }

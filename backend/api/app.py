@@ -3758,6 +3758,59 @@ def _challenge_day() -> str:
     return datetime.utcnow().strftime('%Y-%m-%d')
 
 
+@app.route('/player/session/ritual', methods=['GET'])
+@require_auth
+def session_ritual():
+    """O estado do ritual (30/08): check-in aberto (se houver) + foco sugerido do leak mais
+    caro com amostra. Nunca bloqueia o dashboard: falha degrada para indisponível."""
+    from leaklab.ritual_da_sessao import checkin_aberto, sugerir_foco
+    try:
+        return jsonify({'available': True,
+                        'checkin': checkin_aberto(g.user_id),
+                        'foco_sugerido': sugerir_foco(g.user_id)})
+    except Exception:
+        app.logger.exception('session/ritual falhou; degradando')
+        return jsonify({'available': False})
+
+
+@app.route('/player/session/checkin', methods=['POST'])
+@require_auth
+def session_checkin():
+    """Abre o check-in SELANDO a linha de base do foco (o princípio do gabarito vetado:
+    o debriefing compara contra a régua do momento da promessa)."""
+    from leaklab.ritual_da_sessao import abrir_checkin
+    body = request.get_json(silent=True) or {}
+    bk = body.get('bankroll_ok')
+    ck = abrir_checkin(g.user_id,
+                       None if bk is None else bool(bk),
+                       str(body.get('foco_spot') or '').strip() or None)
+    return jsonify({'checkin': ck})
+
+
+@app.route('/player/session/debrief/<int:tid>', methods=['GET'])
+@require_auth
+def session_debrief(tid):
+    """O balanço da sessão: execução do foco vs base selada + mão gatilho + mãos caras.
+    LER não fecha o check-in — fechar é ato explícito (POST abaixo)."""
+    from leaklab.ritual_da_sessao import debrief
+    d = debrief(g.user_id, tid)
+    if d is None:
+        return jsonify({'error': 'Torneio não encontrado'}), 404
+    return jsonify(d)
+
+
+@app.route('/player/session/checkin/<int:checkin_id>/close', methods=['POST'])
+@require_auth
+def session_checkin_close(checkin_id):
+    from leaklab.ritual_da_sessao import fechar_checkin
+    body = request.get_json(silent=True) or {}
+    try:
+        tid = int(body.get('tournament_id') or 0)
+    except (TypeError, ValueError):
+        tid = 0
+    return jsonify({'ok': fechar_checkin(g.user_id, checkin_id, tid)})
+
+
 @app.route('/player/daily-challenge', methods=['GET'])
 @require_auth
 def player_daily_challenge():

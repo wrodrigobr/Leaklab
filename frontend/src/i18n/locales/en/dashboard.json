@@ -830,5 +830,35 @@
       "ghost": "Ghost Table",
       "postflop": "Postflop spots"
     }
+  },
+  "ritual": {
+    "titulo": "Before you play",
+    "banca": "Does your bankroll cover today’s stake?",
+    "sim": "Yes",
+    "nao": "No",
+    "bancaNao": "Consider moving down in stakes today. Your call; the answer is recorded.",
+    "focoHoje": "Today’s focus:",
+    "focoLivre": "play solid (no measured leak with sample)",
+    "medidoEm": "measured over {{n}} decisions",
+    "certoEra": "when the right play was",
+    "vouJogar": "Start session",
+    "aquecer": "Warm up on the focus",
+    "emSessao": "Session open. Focus:",
+    "debriefQuandoImportar": "the debriefing appears when you import the tournament.",
+    "street": {
+      "preflop": "Preflop",
+      "flop": "Flop",
+      "turn": "Turn",
+      "river": "River"
+    },
+    "debrief": {
+      "titulo": "Session debriefing",
+      "prometeu": "You promised attention on",
+      "semSpot": "No spot from your focus came up this session. The promise carries over.",
+      "deErro": "error rate over {{n}} focus spots",
+      "contraBase": "against your usual {{pct}}%.",
+      "gatilho": "The hand that cost the most:",
+      "fechar": "Close debriefing"
+    }
   }
 }

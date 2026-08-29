@@ -5,6 +5,24 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## O ritual da sessão: a promessa selada e o laço que fecha (30/08)
+
+### Adicionado
+- **Ritual da sessão** (último item do benchmark): check-in antes de jogar — a banca cobre o
+  stake? (auto-resposta gravada; o produto não conhece a banca e fingir cálculo seria pior),
+  foco do dia vindo do SEU leak mais caro medido (amostra mínima 5; sem ela, foco livre em vez
+  de correção inventada), botão de aquecer no treino — e debriefing quando o torneio seguinte
+  é importado: execução do foco na sessão CONTRA A LINHA DE BASE SELADA no check-in (o
+  princípio do gabarito vetado: a régua da promessa não se move), mão gatilho e mãos mais
+  caras com link para o replay. **Por quê:** o concorrente pergunta e devolve zero; nós
+  tínhamos leaks medidos, plano e EV por mão parados sem essa costura — e o funil mostra 50%
+  de retorno, que é exatamente o que um balanço por sessão ataca.
+- Honestidades fixadas em teste (7 guardas, selo quebrado de propósito): sessão sem spot do
+  foco devolve "não apareceu", nunca 0%; ler o balanço não fecha o check-in (fechar é ato);
+  novo check-in substitui promessa antiga em vez de acumular dívida.
+
+---
+
 ## Os ícones que o dono escolheu, e o menu com a arquitetura à mostra (30/08)
 
 ### Adicionado

@@ -9,6 +9,7 @@ import { HudHeader } from "@/components/hud/HudHeader";
 import { DashboardV2 } from "@/components/hud/DashboardV2";
 import { KpiCard } from "@/components/hud/KpiCard";
 import { EmptyDashboard } from "@/components/hud/EmptyDashboard";
+import { RitualDaSessao } from "@/components/hud/RitualDaSessao";
 import { PlayerStatsCard } from "@/components/hud/PlayerStatsCard";
 import { AcceptCoachModal } from "@/components/hud/AcceptCoachModal";
 import { OnboardingModal } from "@/components/hud/OnboardingModal";
@@ -383,6 +384,15 @@ const Index = () => {
 
 
         {user?.role === "player" && <ProfileCompletionCard />}
+
+        {/* Ritual da sessão (30/08): check-in antes de jogar, debriefing no import seguinte.
+            O torneio mais recente decide se o laço fecha. */}
+        {user?.role === "player" && hasData && (
+          <RitualDaSessao
+            ultimoTorneioId={tourns[0]?.id ?? null}
+            ultimoImportadoEm={tourns[0]?.imported_at ?? null}
+          />
+        )}
 
         {tournsLoaded && !hasData ? (
           <EmptyDashboard onComplete={handleUpload} />

@@ -542,6 +542,49 @@ export interface SharedHandPayload {
   comentarios: SharedHandComment[];
 }
 
+// ── Ritual da sessão (30/08): check-in com base selada + debriefing ────────────────────────
+export interface RitualCheckin {
+  id: number;
+  created_at?: string | null;
+  bankroll_ok?: number | null;
+  foco_spot?: string | null;
+  base_n?: number;
+  base_erros?: number;
+}
+export interface RitualDebrief {
+  tournament_id: number;
+  checkin_id?: number;
+  foco?: {
+    spot: string;
+    sessao: { n: number; erros: number };
+    base: { n: number; erros: number; taxa: number | null };
+    taxa_sessao: number | null;
+  };
+  mao_gatilho?: {
+    hand_id: string; street: string; action_taken: string; best_action?: string | null;
+    ev_loss_bb?: number | null;
+  } | null;
+  maos_caras: Array<{ hand_id: string; street: string; action_taken: string;
+                      ev_loss_bb?: number | null }>;
+}
+
+export const ritual = {
+  estado: () => request<{ available: boolean; checkin?: RitualCheckin | null;
+                          foco_sugerido?: { spot: string; n: number } | null }>(
+    "/player/session/ritual"),
+  checkin: (bankrollOk: boolean | null, focoSpot: string | null) =>
+    request<{ checkin: RitualCheckin }>("/player/session/checkin", {
+      method: "POST",
+      body: JSON.stringify({ bankroll_ok: bankrollOk, foco_spot: focoSpot }),
+    }),
+  debrief: (tournamentDbId: number) =>
+    request<RitualDebrief>(`/player/session/debrief/${tournamentDbId}`),
+  fechar: (checkinId: number, tournamentDbId: number) =>
+    request<{ ok: boolean }>(`/player/session/checkin/${checkinId}/close`, {
+      method: "POST", body: JSON.stringify({ tournament_id: tournamentDbId }),
+    }),
+};
+
 export const sharedHand = {
   criar: (tournamentId: string | number, handId: string, stepIdx?: number, question?: string) =>
     request<{ token: string }>("/replay/share", {
