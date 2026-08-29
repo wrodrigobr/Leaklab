@@ -7,7 +7,7 @@ import { PlayingCard, type CardData } from "@/components/hud/PlayingCard";
 import { sharedHand, type SharedHandPayload } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { cn } from "@/lib/utils";
-import logoHorizontal from "@/assets/brand/grindlab-logo-horizontal.svg";
+import logoHorizontal from "@/assets/brand/grindlab_final_horizontal.svg";
 
 /**
  * A página PÚBLICA de uma mão compartilhada — a única tela do produto que sai dele.
