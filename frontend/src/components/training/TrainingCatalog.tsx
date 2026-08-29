@@ -1,7 +1,6 @@
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowRight, ArrowUpRight, Brain, Flame, Shield, Sparkles, type LucideIcon } from "lucide-react";
 import { training } from "@/lib/api";
 import { MiniRange } from "./MiniRange";
 import { cn } from "@/lib/utils";
@@ -72,72 +71,100 @@ function IlustracaoLeaks() {
 }
 
 /** Mesa com duas cartas: diz "mao completa" sem a frase "do preflop ao river". */
-function IlustracaoMesa() {
-  /* Redesenho 29/08 (pedido do dono: "mais criativos e profissionais"): a elipse chapada de
-     traco fino sumia no card. Feltro com profundidade (gradiente radial + borda dupla), board
-     de 3 cartas no meio e o ASSENTO DO HEROI aceso com as duas cartas -- a hierarquia visual
-     conta a historia: voce, suas cartas, a mao inteira pela frente. */
+/* ── Ícones dos drills — decisão do dono em 30/08 ─────────────────────────────────────────
+   Conjunto A ("objetos do jogo": ficha, escudo, torre, carta), escolhido sobre as propostas
+   renderizadas; a EXCEÇÃO é Meus leaks, que mantém a mira da direção C já no ar. As matrizes
+   de range saíram dos cards nomeados (a 68px viravam massa de cor); `bvb`/`short` seguem com
+   a MiniRange até terem proposta própria. Cada ícone: um objeto, uma cor de intenção. */
+
+function IlustracaoAbrir() {
   return (
-    <svg viewBox="0 0 120 68" className="w-full" aria-hidden>
-      <defs>
-        <radialGradient id="feltro" cx="50%" cy="42%" r="70%">
-          <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity="0.16" />
-          <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity="0.03" />
-        </radialGradient>
-      </defs>
-      <ellipse cx="60" cy="32" rx="50" ry="26" fill="url(#feltro)"
-               stroke="hsl(var(--primary))" strokeOpacity="0.5" strokeWidth="1.8" />
-      <ellipse cx="60" cy="32" rx="43" ry="20.5" fill="none"
-               stroke="hsl(var(--primary))" strokeOpacity="0.15" strokeWidth="1" />
-      {[46, 56, 66].map((x) => (
-        <rect key={x} x={x} y="25" width="8" height="11" rx="1.5"
-              className="fill-card-face" opacity="0.9" />
-      ))}
-      <circle cx="60" cy="7"  r="4" className="fill-muted" opacity="0.7" />
-      <circle cx="104" cy="32" r="4" className="fill-muted" opacity="0.7" />
-      <circle cx="16" cy="32" r="4" className="fill-muted" opacity="0.7" />
-      <circle cx="88" cy="12" r="3.2" className="fill-muted" opacity="0.5" />
-      <circle cx="32" cy="12" r="3.2" className="fill-muted" opacity="0.5" />
-      <circle cx="60" cy="57" r="5.5" fill="hsl(var(--primary))" />
-      <circle cx="60" cy="57" r="8.5" fill="none" stroke="hsl(var(--primary))"
-              strokeOpacity="0.35" strokeWidth="1.5" />
-      <g transform="rotate(-8 53 46)">
-        <rect x="49" y="41" width="9" height="12.5" rx="1.5" className="fill-card-face"
-              stroke="hsl(var(--primary))" strokeOpacity="0.6" strokeWidth="0.8" />
-      </g>
-      <g transform="rotate(8 67 46)">
-        <rect x="62" y="41" width="9" height="12.5" rx="1.5" className="fill-card-face"
-              stroke="hsl(var(--primary))" strokeOpacity="0.6" strokeWidth="0.8" />
-      </g>
+    <svg viewBox="0 0 64 64" className="h-full w-full" aria-hidden>
+      <circle cx="32" cy="40" r="13" fill="#2DD4BF" />
+      <circle cx="32" cy="40" r="13" fill="none" stroke="#0A0E1A" strokeWidth="2" strokeDasharray="4 5" />
+      <circle cx="32" cy="40" r="6" fill="#0A0E1A" opacity=".35" />
+      <path d="M32 22 V8 M32 8 l-6 7 M32 8 l6 7" stroke="#2DD4BF" strokeWidth="3.4"
+            fill="none" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M18 26 a18 18 0 0 1 28 0" stroke="#2DD4BF" strokeWidth="2" fill="none"
+            opacity=".35" strokeLinecap="round" />
     </svg>
   );
 }
 
-/** O selo que separa cards de matriz parecidos entre si: um glifo por INTENCAO do drill.
- *  As grades de range sao deliberadamente a MESMA linguagem (a imagem carrega a range real);
- *  o selo devolve a identidade sem inventar desenho -- abrir=seta, defender=escudo,
- *  3-bet=chama, memorizar=cerebro. */
-const SELO_DO_DRILL: Record<string, { Icone: LucideIcon; cor: string }> = {
-  fund_rfi:      { Icone: ArrowUpRight, cor: "#2DD4BF" },
-  fund_vs_rfi:   { Icone: Shield,       cor: "#60A5FA" },
-  pf_bb_defense: { Icone: Shield,       cor: "#60A5FA" },
-  fund_vs_3bet:  { Icone: Flame,        cor: "#F87171" },
-  pf_bb_3bet:    { Icone: Flame,        cor: "#F87171" },
-  range_grid:    { Icone: Brain,        cor: "#C084FC" },
-};
-
-function SeloDoDrill({ id }: { id: string }) {
-  const selo = SELO_DO_DRILL[id];
-  if (!selo) return null;
+function IlustracaoDefender() {
   return (
-    <span
-      className="absolute -bottom-1 -right-1 flex size-5 items-center justify-center rounded-md border border-border bg-hud-surface shadow-sm"
-      aria-hidden
-    >
-      <selo.Icone className="size-3" style={{ color: selo.cor }} />
-    </span>
+    <svg viewBox="0 0 64 64" className="h-full w-full" aria-hidden>
+      <rect x="20" y="10" width="12" height="17" rx="2" className="fill-card-face" transform="rotate(-10 26 18)" />
+      <rect x="32" y="10" width="12" height="17" rx="2" className="fill-card-face" transform="rotate(10 38 18)" />
+      <path d="M32 20 L50 27 V40 C50 50 42 56 32 59 C22 56 14 50 14 40 V27 Z" fill="#60A5FA" />
+      <path d="M32 26 L44 31 V40 C44 46 39 50 32 52 C25 50 20 46 20 40 V31 Z" fill="#0A0E1A" opacity=".3" />
+      <path d="M26 40 l4.5 4.5 L39 36" stroke="#E3E8EC" strokeWidth="3.2" fill="none"
+            strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
   );
 }
+
+function Ilustracao3Bet() {
+  return (
+    <svg viewBox="0 0 64 64" className="h-full w-full" aria-hidden>
+      <g stroke="#0A0E1A" strokeWidth="1.6">
+        <ellipse cx="32" cy="48" rx="16" ry="6" fill="#F87171" />
+        <ellipse cx="32" cy="41" rx="16" ry="6" fill="#F87171" />
+        <ellipse cx="32" cy="34" rx="16" ry="6" fill="#F87171" />
+        <ellipse cx="32" cy="34" rx="16" ry="6" fill="none" strokeDasharray="5 6" />
+      </g>
+      <text x="32" y="21" textAnchor="middle" fill="#F87171"
+            className="font-mono" fontSize="15" fontWeight="700">3×</text>
+    </svg>
+  );
+}
+
+function IlustracaoMemorizar() {
+  return (
+    <svg viewBox="0 0 64 64" className="h-full w-full" aria-hidden>
+      <rect x="14" y="8" width="36" height="48" rx="5" className="fill-card-face" />
+      <g fill="#C084FC">
+        <rect x="20" y="14" width="7" height="7" rx="1.5" />
+        <rect x="29" y="14" width="7" height="7" rx="1.5" />
+        <rect x="38" y="14" width="7" height="7" rx="1.5" opacity=".55" />
+        <rect x="20" y="23" width="7" height="7" rx="1.5" />
+        <rect x="29" y="23" width="7" height="7" rx="1.5" opacity=".55" />
+        <rect x="38" y="23" width="7" height="7" rx="1.5" opacity=".25" />
+        <rect x="20" y="32" width="7" height="7" rx="1.5" opacity=".55" />
+        <rect x="29" y="32" width="7" height="7" rx="1.5" opacity=".25" />
+      </g>
+      <text x="40" y="50" textAnchor="middle" fill="#C084FC"
+            className="font-mono" fontSize="14" fontWeight="700">?</text>
+    </svg>
+  );
+}
+
+function IlustracaoMaoCompleta() {
+  return (
+    <svg viewBox="0 0 64 64" className="h-full w-full" aria-hidden>
+      <rect x="14" y="14" width="16" height="23" rx="2.5" className="fill-card-face" transform="rotate(-14 22 25)" />
+      <rect x="24" y="11" width="16" height="23" rx="2.5" className="fill-card-face" />
+      <rect x="34" y="14" width="16" height="23" rx="2.5" className="fill-card-face" transform="rotate(14 42 25)" />
+      {/* as 4 streets como pontos: preflop, flop, turn e o river ainda por vir */}
+      <g fill="#2DD4BF">
+        <circle cx="17" cy="50" r="3.4" /><circle cx="27" cy="50" r="3.4" />
+        <circle cx="37" cy="50" r="3.4" /><circle cx="47" cy="50" r="3.4" opacity=".4" />
+      </g>
+      <path d="M20 50 h4 M30 50 h4 M40 50 h4" stroke="#2DD4BF" strokeWidth="1.6" opacity=".5" />
+    </svg>
+  );
+}
+
+/** id do drill → ícone. Fora do mapa: MiniRange (bvb/short, sem proposta ainda). */
+const ILUSTRACAO_POR_DRILL: Record<string, () => JSX.Element> = {
+  fund_rfi:      IlustracaoAbrir,
+  fund_vs_rfi:   IlustracaoDefender,
+  pf_bb_defense: IlustracaoDefender,
+  fund_vs_3bet:  Ilustracao3Bet,
+  pf_bb_3bet:    Ilustracao3Bet,
+  range_grid:    IlustracaoMemorizar,
+  full_hand:     IlustracaoMaoCompleta,
+};
 
 export function TrainingCatalog() {
   const { t } = useTranslation("training");
@@ -177,15 +204,12 @@ export function TrainingCatalog() {
                     A ilustracao e a razao de o card existir: o formato da range diz o que o drill
                     e mais rapido que a descricao, e e o mesmo desenho que o jogador encontra
                     treinando. Ancorada a esquerda, ela vira a primeira coisa que o olho pega. */}
-                <span className="relative flex size-[68px] shrink-0 items-center justify-center rounded-lg bg-background/50 p-1.5">
-                  <span className="flex h-full w-full items-center justify-center overflow-hidden">
-                    {d.destaque
-                      ? <IlustracaoLeaks />
-                      : d.ilustracao === "mesa"
-                        ? <IlustracaoMesa />
-                        : <MiniRange id={d.ilustracao ?? ""} />}
-                  </span>
-                  <SeloDoDrill id={d.id} />
+                <span className="flex size-[68px] shrink-0 items-center justify-center overflow-hidden rounded-lg bg-background/50 p-1.5">
+                  {(() => {
+                    if (d.destaque) return <IlustracaoLeaks />;
+                    const Icone = ILUSTRACAO_POR_DRILL[d.id];
+                    return Icone ? <Icone /> : <MiniRange id={d.ilustracao ?? ""} />;
+                  })()}
                 </span>
 
                 <span className="flex min-w-0 flex-1 flex-col gap-1">

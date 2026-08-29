@@ -37,6 +37,10 @@ import {
 /** Chave de capacidade em `QuotaStatus.limits`. `undefined` = livre para todos. */
 export type Capacidade = "ghost" | "leak_targeted" | "ai_coach_chat" | "advanced_insights";
 
+/** Cor de INTENÇÃO do item — a mesma linguagem dos ícones do catálogo de treino (30/08):
+ *  teal=fazer, amber=resultado, blue=consultar/defender, red=seus erros, purple=memória. */
+export type CorDeItem = "teal" | "amber" | "blue" | "red" | "purple";
+
 export interface ItemDeMenu {
   to: string;
   /** chave i18n do rótulo, em `common:nav.*` */
@@ -45,8 +49,18 @@ export interface ItemDeMenu {
   desc: string;
   /** ícone do item (o painel estilo mega-menu dá um tile por item) */
   icone: typeof LayoutDashboard;
+  /** cor de intenção do tile; sem ela, teal */
+  cor?: CorDeItem;
   /** capacidade exigida; sem ela o item aparece com cadeado e o motivo */
   exige?: Capacidade;
+}
+
+/** Coluna TITULADA do mega-menu (v2, 30/08): a arquitetura do grupo aparece antes dos itens —
+ *  a diferença nº 1 medida contra o benchmark. */
+export interface SecaoDeMenu {
+  /** chave i18n do título da seção (`common:nav.secoes.*`) */
+  chave: string;
+  itens: ItemDeMenu[];
 }
 
 export interface GrupoDeMenu {
@@ -54,6 +68,8 @@ export interface GrupoDeMenu {
   chave: string;
   /** para onde o próprio título leva (o grupo continua clicável, não só passável) */
   to: string;
+  /** as colunas do painel. `itens` (abaixo) é DERIVADO delas — fonte única é a seção. */
+  secoes: SecaoDeMenu[];
   itens: ItemDeMenu[];
   /** prefixos que acendem o grupo; ver a lógica de "acende por PREFIXO" no HudHeader */
   acende: string[];
@@ -62,48 +78,74 @@ export interface GrupoDeMenu {
   icone: typeof LayoutDashboard;
 }
 
+const SECOES_MEU_JOGO: SecaoDeMenu[] = [
+  { chave: "nav.secoes.resultados", itens: [
+    { to: "/dashboard", chave: "nav.dashboard", desc: "nav.desc.dashboard", icone: LayoutDashboard, cor: "teal" },
+    { to: "/tournaments", chave: "nav.tournaments", desc: "nav.desc.tournaments", icone: Trophy, cor: "amber" },
+    { to: "/tournaments/compare", chave: "nav.comparar", desc: "nav.desc.comparar", icone: GitCompareArrows, cor: "blue" },
+  ]},
+  { chave: "nav.secoes.progresso", itens: [
+    { to: "/evolucao", chave: "nav.evolucao", desc: "nav.desc.evolucao", icone: TrendingUp, cor: "teal" },
+    { to: "/rating", chave: "nav.rating", desc: "nav.desc.rating", icone: Medal, cor: "amber" },
+  ]},
+];
+
+const SECOES_TREINAR: SecaoDeMenu[] = [
+  { chave: "nav.secoes.praticar", itens: [
+    { to: "/training", chave: "nav.treinos", desc: "nav.desc.treinos", icone: Dumbbell, cor: "teal" },
+    // O acervo é COMPARTILHADO e anonimizado: livre de propósito, e é o que faz o import valer.
+    { to: "/grind", chave: "nav.maoCompleta", desc: "nav.desc.maoCompleta", icone: Spade, cor: "teal" },
+  ]},
+  // A coluna que explica o preço: é onde mora o PRO, e o título diz o porquê.
+  { chave: "nav.secoes.errosMedidos", itens: [
+    { to: "/leak-trainer", chave: "nav.meusLeaks", desc: "nav.desc.meusLeaks", icone: Crosshair, cor: "red", exige: "leak_targeted" },
+    { to: "/ghost", chave: "nav.ghost", desc: "nav.desc.ghost", icone: Ghost, cor: "purple", exige: "ghost" },
+  ]},
+  { chave: "nav.secoes.consulta", itens: [
+    { to: "/ranges", chave: "nav.ranges", desc: "nav.desc.ranges", icone: Grid3x3, cor: "blue" },
+  ]},
+];
+
+const SECOES_ESTUDAR: SecaoDeMenu[] = [
+  { chave: "nav.secoes.aprender", itens: [
+    { to: "/study", chave: "nav.study", desc: "nav.desc.study", icone: BookOpen, cor: "teal" },
+    { to: "/academy", chave: "nav.academia", desc: "nav.desc.academia", icone: GraduationCap, cor: "purple" },
+  ]},
+  { chave: "nav.secoes.ferramentas", itens: [
+    { to: "/hand-builder", chave: "nav.handBuilder", desc: "nav.desc.handBuilder", icone: Blocks, cor: "blue" },
+    { to: "/docs", chave: "nav.docs", desc: "nav.desc.docs", icone: BookText, cor: "amber" },
+  ]},
+];
+
+const SECOES_COMUNIDADE: SecaoDeMenu[] = [
+  { chave: "nav.grupos.comunidade", itens: [
+    { to: "/leaderboard", chave: "nav.leaderboard", desc: "nav.desc.leaderboard", icone: Medal, cor: "amber" },
+    { to: "/coaches", chave: "nav.coaches", desc: "nav.desc.coaches", icone: Users, cor: "teal" },
+  ]},
+];
+
+const _itens = (secoes: SecaoDeMenu[]) => secoes.flatMap((sec) => sec.itens);
+
 export const GRUPOS: GrupoDeMenu[] = [
   {
     chave: "nav.grupos.meuJogo", icone: LayoutDashboard, to: "/dashboard",
     acende: ["/dashboard", "/tournaments", "/evolucao", "/replayer", "/rating"],
-    itens: [
-      { to: "/dashboard", chave: "nav.dashboard", desc: "nav.desc.dashboard", icone: LayoutDashboard },
-      { to: "/tournaments", chave: "nav.tournaments", desc: "nav.desc.tournaments", icone: Trophy },
-      { to: "/tournaments/compare", chave: "nav.comparar", desc: "nav.desc.comparar", icone: GitCompareArrows },
-      { to: "/evolucao", chave: "nav.evolucao", desc: "nav.desc.evolucao", icone: TrendingUp },
-      { to: "/rating", chave: "nav.rating", desc: "nav.desc.rating", icone: Medal },
-    ],
+    secoes: SECOES_MEU_JOGO, itens: _itens(SECOES_MEU_JOGO),
   },
   {
     chave: "nav.grupos.treinar", icone: Dumbbell, to: "/training",
     acende: ["/training", "/leak-trainer", "/ghost", "/grind", "/ranges"],
-    itens: [
-      { to: "/training", chave: "nav.treinos", desc: "nav.desc.treinos", icone: Dumbbell },
-      // O acervo é COMPARTILHADO e anonimizado: livre de propósito, e é o que faz o import valer.
-      { to: "/grind", chave: "nav.maoCompleta", desc: "nav.desc.maoCompleta", icone: Spade },
-      { to: "/ranges", chave: "nav.ranges", desc: "nav.desc.ranges", icone: Grid3x3 },
-      // Estes dois trabalham sobre as SUAS mãos medidas — é a tese do produto, e o que se paga.
-      { to: "/leak-trainer", chave: "nav.meusLeaks", desc: "nav.desc.meusLeaks", icone: Crosshair, exige: "leak_targeted" },
-      { to: "/ghost", chave: "nav.ghost", desc: "nav.desc.ghost", icone: Ghost, exige: "ghost" },
-    ],
+    secoes: SECOES_TREINAR, itens: _itens(SECOES_TREINAR),
   },
   {
     chave: "nav.grupos.estudar", icone: GraduationCap, to: "/study",
     acende: ["/study", "/academy", "/docs", "/hand-builder"],
-    itens: [
-      { to: "/study", chave: "nav.study", desc: "nav.desc.study", icone: BookOpen },
-      { to: "/academy", chave: "nav.academia", desc: "nav.desc.academia", icone: GraduationCap },
-      { to: "/hand-builder", chave: "nav.handBuilder", desc: "nav.desc.handBuilder", icone: Blocks },
-      { to: "/docs", chave: "nav.docs", desc: "nav.desc.docs", icone: BookText },
-    ],
+    secoes: SECOES_ESTUDAR, itens: _itens(SECOES_ESTUDAR),
   },
   {
     chave: "nav.grupos.comunidade", icone: Medal, to: "/leaderboard",
     acende: ["/leaderboard", "/coaches"],
-    itens: [
-      { to: "/leaderboard", chave: "nav.leaderboard", desc: "nav.desc.leaderboard", icone: Medal },
-      { to: "/coaches", chave: "nav.coaches", desc: "nav.desc.coaches", icone: Users },
-    ],
+    secoes: SECOES_COMUNIDADE, itens: _itens(SECOES_COMUNIDADE),
   },
 ];
 

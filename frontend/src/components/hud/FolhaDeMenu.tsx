@@ -90,6 +90,8 @@ export function FolhaDeMenu({ aberta, aoFechar, capacidades, ocultar = [] }: Pro
                 <h2 className="px-1.5 pb-1 font-mono text-[10px] font-bold uppercase tracking-widest text-muted-foreground/70">
                   {t(grupo.chave)}
                 </h2>
+                {/* v2: no celular as seções não viram colunas (não cabem); a ordem dos itens
+                    já vem das seções, então a leitura é a mesma do desktop. */}
                 <div className="grid grid-cols-2 gap-1.5">
                   {itens.map((item) => {
                     const ok = liberado(item, capacidades);

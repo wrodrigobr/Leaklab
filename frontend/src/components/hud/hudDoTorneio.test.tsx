@@ -15,10 +15,10 @@ afterEach(cleanup);
 const HUD = {
   available: true, hands: 42, archetype: null,
   stats: {
-    vpip:     { value: 31, num: 13, den: 42, band: "low_sample", healthy: [18, 24] as [number, number] },
-    pfr:      { value: 20, num: 8,  den: 42, band: "low_sample", healthy: [15, 21] as [number, number] },
+    vpip:     { value: 31, num: 13, den: 42, band: "low_sample" as const, healthy: [18, 24] as [number, number] },
+    pfr:      { value: 20, num: 8,  den: 42, band: "low_sample" as const, healthy: [15, 21] as [number, number] },
     // cbet SEM faixa no fixture: exercita o caminho neutro numa celula que RENDERIZA
-    cbet:     { value: 50, num: 1,  den: 2,  band: "low_sample", healthy: null },
+    cbet:     { value: 50, num: 1,  den: 2,  band: "low_sample" as const, healthy: null },
     fold3bet: { value: null, num: 0, den: 0, band: "no_opportunity" as const, healthy: null },
   },
 };

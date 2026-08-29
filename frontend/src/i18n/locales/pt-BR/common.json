@@ -66,6 +66,15 @@
       "leaderboard": "Ranking dos jogadores da liga",
       "coaches": "Encontre um coach para revisar seu jogo",
       "coach": "Converse com o AI Coach sobre seu jogo"
+    },
+    "secoes": {
+      "resultados": "Resultados",
+      "progresso": "Progresso",
+      "praticar": "Praticar",
+      "errosMedidos": "Seus erros medidos",
+      "consulta": "Consulta",
+      "aprender": "Aprender",
+      "ferramentas": "Ferramentas"
     }
   },
   "notifications": {

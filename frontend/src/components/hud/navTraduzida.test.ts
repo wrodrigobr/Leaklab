@@ -68,6 +68,7 @@ function chavesDoMenu(): string[] {
   const exigidas = new Set<Capacidade>(itens.map((i) => i.exige).filter(Boolean) as Capacidade[]);
   return [
     ...GRUPOS.map((g) => g.chave),
+    ...GRUPOS.flatMap((g) => g.secoes.map((sec) => sec.chave)),
     ...itens.map((i) => i.chave),
     ...itens.map((i) => i.desc),
     ...[...exigidas].map((c) => `nav.motivo.${c}`),

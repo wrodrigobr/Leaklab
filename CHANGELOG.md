@@ -5,6 +5,24 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## Os ícones que o dono escolheu, e o menu com a arquitetura à mostra (30/08)
+
+### Adicionado
+- **Ícones do catálogo de treino — conjunto A** (objetos do jogo), escolhido pelo dono sobre
+  três propostas RENDERIZADAS em artefato antes de qualquer código: ficha com seta (abrir),
+  escudo com cartas (defender), torre de fichas 3× (3-bet), carta de células apagando
+  (memorizar), leque com as 4 streets (mão completa). Exceção decidida por ele: Meus leaks
+  mantém a mira da direção C que já estava no ar. As matrizes saíram dos cards nomeados — a
+  68px viravam massa de cor; `bvb`/`short` seguem com a MiniRange até terem proposta.
+- **Mega-menu v2**, aprovado sobre proposta renderizada comparando com o benchmark: colunas
+  TITULADAS por grupo (Praticar / Seus erros medidos / Consulta...), cor de intenção por item
+  (a mesma língua dos ícones do catálogo), pill PRO inline junto do nome, gatilho com ícone e
+  fundo preenchido no grupo ativo. **Fonte única preservada:** as seções moram na declaração
+  (`navGrupos.ts`) e `itens` é derivado delas; o guarda de i18n varre também os títulos de
+  seção nos 3 idiomas.
+
+---
+
 ## A faixa esperada no HUD do torneio (30/08)
 
 ### Adicionado

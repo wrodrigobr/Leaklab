@@ -3,7 +3,16 @@ import { NavLink, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { ChevronDown, Lock } from "lucide-react";
 
-import type { GrupoDeMenu, ItemDeMenu } from "./navGrupos";
+import type { CorDeItem, GrupoDeMenu, ItemDeMenu } from "./navGrupos";
+
+/** cor de intenção → classes do tile (a mesma língua dos ícones do catálogo) */
+const COR_DO_TILE: Record<CorDeItem, string> = {
+  teal:   "bg-primary/10 text-primary",
+  amber:  "bg-amber-400/10 text-amber-400",
+  blue:   "bg-sky-400/10 text-sky-400",
+  red:    "bg-red-400/10 text-red-400",
+  purple: "bg-purple-400/10 text-purple-400",
+};
 import { cn } from "@/lib/utils";
 
 /**
@@ -53,7 +62,6 @@ export function MenuDeGrupo({ grupo, capacidades, ocultar = [] }: Props) {
   const [aberto, setAberto] = useState(false);
   const caixa = useRef<HTMLDivElement>(null);
 
-  const itens = grupo.itens.filter((i) => !ocultar.includes(i.to));
   const aceso = grupo.acende.some(
     (p) => location.pathname === p || location.pathname.startsWith(p + "/"),
   );
@@ -83,15 +91,20 @@ export function MenuDeGrupo({ grupo, capacidades, ocultar = [] }: Props) {
       onMouseEnter={() => setAberto(true)}
       onMouseLeave={() => setAberto(false)}
     >
+      {/* v2 (30/08): gatilho com ícone + PILL de estado — o sublinhado fino quase não
+          registrava; o fundo preenchido é o que dá presença ao grupo aberto/ativo. */}
       <div className="flex items-center">
         <NavLink
           to={grupo.to}
           className={cn(
-            "flex items-center gap-1.5 whitespace-nowrap rounded-md px-3 py-1.5 text-xs font-medium uppercase tracking-wide transition-colors",
+            "flex items-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-1.5 text-[12.5px] font-semibold transition-colors",
             "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-            aceso ? "text-primary" : "text-muted-foreground hover:text-foreground",
+            (aceso || aberto)
+              ? "bg-primary/10 text-primary"
+              : "text-muted-foreground hover:text-foreground",
           )}
         >
+          <grupo.icone className="size-[15px]" aria-hidden />
           {t(grupo.chave)}
         </NavLink>
         <button
@@ -99,11 +112,10 @@ export function MenuDeGrupo({ grupo, capacidades, ocultar = [] }: Props) {
           aria-expanded={aberto}
           aria-label={t(grupo.chave)}
           onClick={() => setAberto((v) => !v)}
-          className="-ml-1.5 rounded p-1 text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="-ml-1 rounded p-1 text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           <ChevronDown className={cn("size-3 transition-transform", aberto && "rotate-180")} aria-hidden />
         </button>
-        {aceso && <span className="absolute -bottom-[17px] left-2 right-4 h-0.5 bg-primary" />}
       </div>
 
       {aberto && (
@@ -115,14 +127,19 @@ export function MenuDeGrupo({ grupo, capacidades, ocultar = [] }: Props) {
            O afastamento agora e `padding` do proprio painel (`pt-3` no wrapper), que faz parte da
            area sensivel. O visual e o mesmo; a diferenca e que o mouse nunca sai. */
         <div className="absolute left-0 top-full z-50 pt-3">
-        {/* Mega-menu (29/08, pedido do dono): tile de ícone por item + descrição SEMPRE visível,
-            como GTO Wizard. A descrição deixou de ser exclusiva do cadeado: item livre também
-            explica o que é — é o painel fazendo o papel de tour. */}
-        <div className="w-[340px] rounded-xl border border-border bg-hud-surface p-2 shadow-elevated">
-          <p className="px-2.5 pb-1.5 pt-1 font-mono text-[9.5px] font-bold uppercase tracking-widest text-muted-foreground/70">
-            {t(grupo.chave)}
-          </p>
-          {itens.map((item) => {
+        {/* Mega-menu v2 (30/08, aprovado sobre a proposta renderizada): colunas TITULADAS —
+            a arquitetura do grupo aparece antes dos itens, que é a diferença nº 1 medida
+            contra o benchmark. A descrição segue sempre visível (v1 de 29/08). */}
+        <div className="flex gap-6 rounded-xl border border-border bg-hud-surface p-4 shadow-elevated">
+          {grupo.secoes.map((secao) => {
+            const daSecao = secao.itens.filter((i) => !ocultar.includes(i.to));
+            if (!daSecao.length) return null;
+            return (
+              <div key={secao.chave} className="min-w-[218px]">
+                <p className="px-2 pb-2 font-mono text-[9.5px] font-bold uppercase tracking-widest text-muted-foreground/70">
+                  {t(secao.chave)}
+                </p>
+                {daSecao.map((item) => {
             const ok = liberado(item, capacidades);
             const Icone = item.icone;
             return (
@@ -135,31 +152,34 @@ export function MenuDeGrupo({ grupo, capacidades, ocultar = [] }: Props) {
                 )}
               >
                 <span className={cn(
-                  "flex size-9 shrink-0 items-center justify-center rounded-lg border transition-colors",
-                  ok
-                    ? "border-primary/20 bg-primary/[0.08] text-primary group-hover/item:bg-primary/15"
-                    : "border-border bg-background/40 text-muted-foreground",
+                  "flex size-9 shrink-0 items-center justify-center rounded-lg transition-colors",
+                  ok ? COR_DO_TILE[item.cor ?? "teal"] : "bg-background/40 text-muted-foreground",
                 )}>
                   <Icone className="size-4" aria-hidden />
                 </span>
                 <span className="flex min-w-0 flex-1 flex-col gap-px">
-                  <span className={cn("text-[13px] font-semibold leading-tight",
+                  {/* PRO inline: lê na mesma fixação do rótulo — na borda direita exigia um
+                      segundo olhar (a diferença nº 3 do benchmark). */}
+                  <span className={cn("flex items-center gap-1.5 text-[13px] font-semibold leading-tight",
                                       ok ? "text-foreground" : "text-muted-foreground")}>
                     {t(item.chave)}
+                    {!ok && (
+                      <span className="flex shrink-0 items-center gap-1 rounded bg-amber-400/10 px-1 py-0.5">
+                        <Lock className="size-2.5 text-amber-400" aria-hidden />
+                        <span className="font-mono text-[8px] font-bold uppercase tracking-wider text-amber-400">
+                          Pro
+                        </span>
+                      </span>
+                    )}
                   </span>
                   <span className="truncate text-[10.5px] leading-snug text-muted-foreground/80">
                     {ok ? t(item.desc) : t(`nav.motivo.${item.exige}`)}
                   </span>
                 </span>
-                {!ok && (
-                  <span className="flex shrink-0 items-center gap-1 rounded bg-primary/10 px-1.5 py-0.5">
-                    <Lock className="size-2.5 text-primary" aria-hidden />
-                    <span className="font-mono text-[9px] font-bold uppercase tracking-wider text-primary">
-                      Pro
-                    </span>
-                  </span>
-                )}
               </NavLink>
+                );
+                })}
+              </div>
             );
           })}
         </div>

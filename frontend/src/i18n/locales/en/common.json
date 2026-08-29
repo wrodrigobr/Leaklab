@@ -66,6 +66,15 @@
       "leaderboard": "League player rankings",
       "coaches": "Find a coach to review your game",
       "coach": "Chat with the AI Coach about your game"
+    },
+    "secoes": {
+      "resultados": "Results",
+      "progresso": "Progress",
+      "praticar": "Practice",
+      "errosMedidos": "Your measured mistakes",
+      "consulta": "Reference",
+      "aprender": "Learn",
+      "ferramentas": "Tools"
     }
   },
   "notifications": {
