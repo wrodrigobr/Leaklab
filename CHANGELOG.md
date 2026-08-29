@@ -5,6 +5,18 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## O share que respondia "mão não encontrada" para todo torneio do Stars (30/08)
+
+### Corrigido
+- **Compartilhar mão falhava em prod** (pego pelo dono no primeiro uso): o id de torneio do
+  PokerStars é NUMÉRICO ('4027551847'), então o parse por `int()` "sucedia" e buscava o id
+  INTERNO errado — 404 para todo torneio do Stars. **Por quê do conserto:** a resolução dual
+  (interno, depois site) já existia no `/replay`; virou a função única `_torneio_do_usuario`
+  usada pelos dois (regra 5). Teste forja o caso de prod nos DOIS caminhos e exige o MESMO
+  link; mutação para o parse ingênuo é acusada.
+
+---
+
 ## O ritual da sessão: a promessa selada e o laço que fecha (30/08)
 
 ### Adicionado

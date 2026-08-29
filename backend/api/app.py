@@ -6556,13 +6556,10 @@ def criar_link_da_mao():
     """Cria o link público de uma mão do PRÓPRIO usuário."""
     from leaklab.mao_compartilhada import criar
     body = request.get_json(silent=True) or {}
-    bruto = body.get('tournament_id')
-    # Aceita o id INTERNO (int) e o id do SITE (string, que é o que o replay carrega).
-    try:
-        tid = int(bruto or 0)
-    except (TypeError, ValueError):
-        t = get_tournament(g.user_id, str(bruto or ''))
-        tid = int(t['id']) if t else 0
+    # Id interno OU do site — a MESMA resolução do /replay (função única; o int() sozinho
+    # errava: id do Stars é numérico e caía na busca por id interno).
+    t = _torneio_do_usuario(g.user_id, body.get('tournament_id'))
+    tid = int(t['id']) if t else 0
     hid = str(body.get('hand_id') or '').strip()
     if not tid or not hid:
         return jsonify({'error': 'tournament_id e hand_id sao obrigatorios'}), 400
@@ -6653,17 +6650,30 @@ def tournament_hero_hud(tid):
     return jsonify({'available': True, **hud})
 
 
+def _torneio_do_usuario(user_id: int, bruto) -> dict | None:
+    """Resolve um identificador de torneio que pode ser o id INTERNO ou o id do SITE.
+
+    A ordem importa e o int() sozinho NÃO decide: o id do PokerStars é numérico
+    ('4027551847'), então "parseou como int" não significa "é o id interno" — foi exatamente
+    assim que o /replay/share respondeu 'mão não encontrada' em prod (30/08) para todo torneio
+    do Stars. Tenta o interno primeiro, cai para o site. Função ÚNICA (regra 5): o /replay e o
+    share resolvem IGUAL."""
+    t = None
+    bruto = str(bruto or '')
+    if bruto.isdigit():
+        t = get_tournament_by_db_id(user_id, int(bruto))
+    if not t:
+        t = get_tournament(user_id, bruto)
+    return t
+
+
 @app.route('/replay/<tournament_id>/<hand_id>', methods=['GET'])
 @require_auth
 def get_replay(tournament_id, hand_id):
     """Constrói dados de replay para uma mão específica."""
     import re as _re
 
-    t = None
-    if tournament_id.isdigit():
-        t = get_tournament_by_db_id(g.user_id, int(tournament_id))
-    if not t:
-        t = get_tournament(g.user_id, tournament_id)
+    t = _torneio_do_usuario(g.user_id, tournament_id)
     if not t:
         return jsonify({'error': 'Torneio não encontrado'}), 404
 

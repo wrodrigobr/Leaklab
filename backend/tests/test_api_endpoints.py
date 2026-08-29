@@ -489,6 +489,51 @@ def test_tournament_summary_with_real_data():
     print(f"OK  test_tournament_summary_with_real_data | has_summary={'summary' in data}")
 
 
+
+def test_share_aceita_id_do_site_MESMO_numerico():
+    """30/08, direto de prod: o id do PokerStars e NUMERICO ('4027551847'), o parse por int()
+    'sucedia' e buscava o id INTERNO errado — todo share de torneio do Stars respondia 'mao
+    nao encontrada'. A resolucao agora e a MESMA do /replay (interno, depois site), em funcao
+    unica (regra 5)."""
+    import uuid
+    import jwt as _jwt
+    from database.auth import SECRET_KEY
+    from database.repositories import _adapt
+    from database.schema import get_conn
+    c = _make_client()
+    token = _register_and_login(c, 'shr')
+    uid = _jwt.decode(token, SECRET_KEY, algorithms=['HS256'])['user_id']
+    site_id = '4' + uuid.uuid4().hex[:8].encode().hex()[:9]      # numerico e unico
+    site_id = str(4000000000 + uid)                              # numerico, estavel por user
+    conn = get_conn()
+    try:
+        conn.execute(_adapt(
+            "INSERT INTO tournaments (user_id, tournament_id, site, hero) VALUES (?,?,?,?)"),
+            (uid, site_id, 'PokerStars', 'nick'))
+        tid_db = dict(conn.execute(_adapt(
+            'SELECT id FROM tournaments WHERE tournament_id = ? AND user_id = ?'),
+            (site_id, uid)).fetchone())['id']
+        conn.execute(_adapt(
+            "INSERT INTO decisions (tournament_id, hand_id, street, position, hero_cards, "
+            "action_taken, best_action, label, score) VALUES (?,?,?,?,?,?,?,?,?)"),
+            (tid_db, 'H261898', 'preflop', 'CO', 'AhKd', 'fold', 'fold', 'correct', 0.0))
+        conn.commit()
+    finally:
+        conn.close()
+    # o caminho de prod: o replayer manda o id do SITE (numerico)
+    r = c.post('/replay/share', json={'tournament_id': site_id, 'hand_id': 'H261898'},
+               headers=_auth_headers(token))
+    assert r.status_code == 200, 'share com id do site falhou: %s %s' % (
+        r.status_code, r.get_data(as_text=True)[:120])
+    tok1 = r.get_json()['token']
+    # e o id INTERNO continua valendo — mesma funcao, mesmos dois caminhos do /replay
+    r2 = c.post('/replay/share', json={'tournament_id': tid_db, 'hand_id': 'H261898'},
+                headers=_auth_headers(token))
+    assert r2.status_code == 200 and r2.get_json()['token'] == tok1, (
+        'os dois caminhos nao resolvem para o MESMO link')
+    print("OK  test_share_aceita_id_do_site_MESMO_numerico")
+
+
 # ── /analyze/replay-coach ─────────────────────────────────────────────────────
 
 def test_replay_coach_requires_auth():
