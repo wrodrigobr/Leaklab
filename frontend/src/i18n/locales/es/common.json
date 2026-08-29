@@ -266,5 +266,15 @@
       "raise": "Raise",
       "allin": "All-in"
     }
+  },
+  "feedbackPico": {
+    "pergunta": "¿Te ayudó?",
+    "sim": "Ayudó",
+    "nao": "No ayudó",
+    "detalheBom": "¿Qué fue lo más útil? (opcional)",
+    "detalheRuim": "¿Qué faltó? (opcional)",
+    "enviar": "Enviar",
+    "pular": "Omitir",
+    "obrigado": "Gracias por el feedback"
   }
 }

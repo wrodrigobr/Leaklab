@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
 import { cn } from "@/lib/utils";
+import { FeedbackNoPico } from "@/components/hud/FeedbackNoPico";
 
 /**
  * O fim do treino grátis do dia: um boletim, e não uma parede.
@@ -152,6 +153,10 @@ export function BoletimDaSessao({
       >
         {t("boletim.assinar")}
       </Link>
+
+      {/* Feedback no PICO (30/08): o fim da sessão é onde o jogador responde de verdade — o
+          FAB global mediu zero uso em um mês. Mesmo canal (support_tickets), momento certo. */}
+      <FeedbackNoPico contexto="boletim" />
 
       {/* O gancho de RETORNO, que é metade do valor do limite: o jogador sai sabendo quando volta.
           Sem isto o teto vira só uma porta fechada. */}

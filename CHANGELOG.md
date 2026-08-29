@@ -5,6 +5,20 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## Feedback no pico, e o uso por jogador na tela do admin (30/08)
+
+### Adicionado
+- **Feedback no PICO** (aprovado pelo dono): "isso te ajudou? 👍👎" no fim do boletim de sessão
+  e no fim da análise IA do torneio. **Por quê:** o FAB global de feedback mediu ZERO uso em um
+  mês — o problema era o momento do pedido, não a falta de formulário. Contratos fixados em
+  teste: um toque já registra (texto é opcional e vem depois), tudo vai para o MESMO canal do
+  FAB (support_tickets, contexto no assunto — nenhuma segunda inbox), e falha de rede nunca
+  vira erro na cara de quem acabou de treinar.
+- **Aba Uso do admin ganhou a tabela por jogador**: username, plano, top 3 features + total,
+  do recorte que o backend já devolvia desde 29/08.
+
+---
+
 ## Certeza GTO vale para o acervo, e o piso nao inventa mistura (30/08)
 
 ### Corrigido

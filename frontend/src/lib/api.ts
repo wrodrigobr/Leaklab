@@ -3568,6 +3568,9 @@ export const adminDashboard = {
   featureUsage: (days = 30) => request<{
     days: number;
     features: Array<{ feature_key: string; users: number; hits: number }>;
+    /** recorte POR JOGADOR (29/08): mesma tabela instrumentada, ordenado por total desc */
+    users: Array<{ user_id: number; username: string; plan: string;
+                   features: Record<string, number>; total: number }>;
     dau: number;
     wau: number;
     mau: number;

@@ -6,6 +6,7 @@ import { Brain, ChevronDown, Loader2, Lock, Sparkles, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { subscription, tournaments } from "@/lib/api";
 import { AiText } from "@/components/ui/AiText";
+import { FeedbackNoPico } from "@/components/hud/FeedbackNoPico";
 
 interface Props {
   tournamentName: string;
@@ -106,7 +107,12 @@ export function TournamentAiReport({ tournamentName, tournamentDbId, existingSum
               ) : error ? (
                 <ErrorState message={error} />
               ) : summary ? (
-                <SummaryContent text={summary} />
+                <>
+                  <SummaryContent text={summary} />
+                  {/* Feedback no PICO (30/08): quem acabou de ler a analise responde; o FAB
+                      global mediu zero uso. Mesmo canal (support_tickets). */}
+                  <FeedbackNoPico contexto="analise-ia" className="mt-5" />
+                </>
               ) : null}
             </div>
           </div>

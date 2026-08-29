@@ -185,6 +185,55 @@ function UsageTab() {
         )}
       </div>
 
+      {/* Por JOGADOR (29/08, pedido do dono): quem usa o quê. Top 3 features de cada um; o
+          resto colapsa em "+n" para a linha caber. Mesma fonte instrumentada do ranking acima. */}
+      <div className="rounded-xl border border-border bg-hud-surface">
+        <div className="flex items-center justify-between border-b border-border px-5 py-3">
+          <h3 className="font-mono text-[11px] font-bold uppercase tracking-widest-2 text-foreground">
+            Uso por jogador
+          </h3>
+          <span className="font-mono text-[10px] text-muted-foreground">
+            {(data?.users ?? []).length} jogador{(data?.users ?? []).length === 1 ? "" : "es"} · {days}d
+          </span>
+        </div>
+        {!isLoading && !(data?.users ?? []).length ? (
+          <p className="px-5 py-8 text-center text-sm text-muted-foreground">
+            Nenhum jogador com uso registrado na janela.
+          </p>
+        ) : (
+          <div className="divide-y divide-border">
+            {(data?.users ?? []).slice(0, 40).map((u) => {
+              const tops = Object.entries(u.features).sort((x, y) => y[1] - x[1]);
+              const resto = tops.length - 3;
+              return (
+                <div key={u.user_id} className="flex items-center gap-3 px-5 py-2.5">
+                  <div className="min-w-0 flex-1">
+                    <span className="truncate text-sm font-medium text-foreground">{u.username}</span>
+                    <span className={cn(
+                      "ml-2 rounded-sm px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase",
+                      u.plan === "pro" ? "bg-primary/10 text-primary" : "bg-hud-elevated text-muted-foreground",
+                    )}>{u.plan}</span>
+                  </div>
+                  <div className="flex min-w-0 shrink flex-wrap items-center justify-end gap-1">
+                    {tops.slice(0, 3).map(([k, n]) => (
+                      <span key={k} className="rounded bg-hud-elevated px-1.5 py-0.5 font-mono text-[9.5px] tabular-nums text-muted-foreground">
+                        {FEATURE_LABELS[k] ?? k} {n}
+                      </span>
+                    ))}
+                    {resto > 0 && (
+                      <span className="font-mono text-[9.5px] text-muted-foreground/60">+{resto}</span>
+                    )}
+                  </div>
+                  <span className="w-12 shrink-0 text-right font-mono text-[11px] font-bold tabular-nums text-foreground">
+                    {u.total}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
       <p className="font-mono text-[10px] leading-relaxed text-muted-foreground">
         Usuários únicos = adoção (quantas pessoas usam). Acessos = intensidade. % = fração dos usuários ativos da janela que tocaram a feature.
         O uso é medido pelas chamadas de backend de cada funcionalidade (agregado por dia, sem guardar conteúdo).
