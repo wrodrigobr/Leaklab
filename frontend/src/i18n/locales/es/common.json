@@ -66,7 +66,11 @@
       "leaderboard": "Ranking de jugadores de la liga",
       "coaches": "Encuentra un coach para revisar tu juego",
       "coach": "Habla con el AI Coach sobre tu juego",
-      "maosCompartilhadas": "Las manos que la comunidad compartió para estudiar"
+      "maosCompartilhadas": "Las manos que la comunidad compartió para estudiar",
+      "relTwin": "Cómo juegas, resumido por la IA",
+      "relCognitivo": "Los patrones mentales detrás de tus errores",
+      "relCausal": "Qué leak alimenta cuál",
+      "relCarreira": "Cuándo llegas al siguiente nivel"
     },
     "secoes": {
       "resultados": "Resultados",
@@ -75,9 +79,15 @@
       "errosMedidos": "Tus errores medidos",
       "consulta": "Consulta",
       "aprender": "Aprender",
-      "ferramentas": "Herramientas"
+      "ferramentas": "Herramientas",
+      "conversa": "Chat",
+      "relatorios": "Informes del jugador"
     },
-    "maosCompartilhadas": "Manos compartidas"
+    "maosCompartilhadas": "Manos compartidas",
+    "relTwin": "Gemelo estratégico",
+    "relCognitivo": "Fallos cognitivos",
+    "relCausal": "Mapa causal de leaks",
+    "relCarreira": "Proyección de carrera"
   },
   "notifications": {
     "title": "Notificaciones",

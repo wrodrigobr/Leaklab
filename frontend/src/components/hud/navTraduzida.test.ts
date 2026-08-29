@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 
-import { GRUPOS, ITEM_COACH, type Capacidade } from "./navGrupos";
+import { GRUPOS, GRUPO_COACH, ITEM_COACH, type Capacidade } from "./navGrupos";
 
 /**
  * Nenhuma chave `nav.*` chega crua à tela, em nenhum idioma.
@@ -64,11 +64,12 @@ function chavesLiterais(fonte: string): string[] {
 
 /** Tudo que o MENU manda para o t(), derivado da declaração — cobre o caminho interpolado. */
 function chavesDoMenu(): string[] {
-  const itens = [...GRUPOS.flatMap((g) => g.itens), ITEM_COACH];
+  const itens = [...GRUPOS.flatMap((g) => g.itens), ...GRUPO_COACH.itens, ITEM_COACH];
   const exigidas = new Set<Capacidade>(itens.map((i) => i.exige).filter(Boolean) as Capacidade[]);
   return [
     ...GRUPOS.map((g) => g.chave),
     ...GRUPOS.flatMap((g) => g.secoes.map((sec) => sec.chave)),
+    ...GRUPO_COACH.secoes.map((sec) => sec.chave),
     ...itens.map((i) => i.chave),
     ...itens.map((i) => i.desc),
     ...[...exigidas].map((c) => `nav.motivo.${c}`),

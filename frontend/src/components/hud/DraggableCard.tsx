@@ -21,8 +21,9 @@ export function DraggableCard({ id, children, className }: DraggableCardProps) {
     zIndex: isDragging ? 10 : undefined,
   };
 
+  // id de DOM = id do card: o submenu do AI Coach deep-linka /dashboard#twin etc.
   return (
-    <div ref={setNodeRef} style={style} className={`group relative ${className ?? ""}`}>
+    <div ref={setNodeRef} id={id} style={style} className={`group relative ${className ?? ""}`}>
       <button
         {...attributes}
         {...listeners}

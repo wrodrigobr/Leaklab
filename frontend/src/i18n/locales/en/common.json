@@ -66,7 +66,11 @@
       "leaderboard": "League player rankings",
       "coaches": "Find a coach to review your game",
       "coach": "Chat with the AI Coach about your game",
-      "maosCompartilhadas": "Hands the community shared for study"
+      "maosCompartilhadas": "Hands the community shared for study",
+      "relTwin": "How you play, summarized by AI",
+      "relCognitivo": "The mental patterns behind your mistakes",
+      "relCausal": "Which leak feeds which",
+      "relCarreira": "When you reach the next level"
     },
     "secoes": {
       "resultados": "Results",
@@ -75,9 +79,15 @@
       "errosMedidos": "Your measured mistakes",
       "consulta": "Reference",
       "aprender": "Learn",
-      "ferramentas": "Tools"
+      "ferramentas": "Tools",
+      "conversa": "Chat",
+      "relatorios": "Player reports"
     },
-    "maosCompartilhadas": "Shared hands"
+    "maosCompartilhadas": "Shared hands",
+    "relTwin": "Strategic twin",
+    "relCognitivo": "Cognitive failures",
+    "relCausal": "Leak causal map",
+    "relCarreira": "Career projection"
   },
   "notifications": {
     "title": "Notifications",

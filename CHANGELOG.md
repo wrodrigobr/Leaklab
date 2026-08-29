@@ -5,6 +5,31 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## Os ícones que não subiram, o coach com relatórios, e o plano-exemplo (30/08)
+
+### Corrigido
+- **Os ícones do conjunto A NÃO estavam no ar** (o dono pegou na tela): o mapa usava os ids de
+  `leak_trainer.CATALOGO_TREINOS` (`fund_rfi`...) mas a API serve os de
+  `trainer_catalog.CATALOGO` (`abrir`, `defender`, `vs_3bet`, `ranges`, `grind`) — o mapa
+  nunca casava e tudo caía na matriz. Suposição sobre o nosso próprio produto morrendo na
+  conferência, de novo. **Guarda novo lê os ids do PRÓPRIO arquivo do backend**: drill servido
+  sem ícone falha no CI, não na tela; id morto no mapa também.
+- **"Carregando plano de estudos" + botão Gerar em cima do upsell Pro** (o dono pegou): o Free
+  não está carregando nada — a toolbar some no estado Pro.
+
+### Adicionado
+- **AI Coach virou grupo no menu** (pedido do dono): Conversa (o chat) + Relatórios do jogador
+  (Gêmeo estratégico, Falhas cognitivas, Mapa causal, Projeção de carreira) — os relatórios
+  são cards do dashboard e o link é âncora (#twin etc.); o dashboard rola até o card quando
+  ele renderizar (os dados são async, o scroll espera o alvo existir).
+- **Plano-exemplo no upsell do plano de estudo** (pedido do dono): o Free vê COMO é o
+  resultado — três cards ilustrativos ROTULADOS como exemplo, com a nota de que o plano real
+  sai das mãos dele. Nunca se passa por análise real.
+- **Hand Builder saiu do menu** (decisão do dono: ferramenta interna de montar hand history,
+  não serve ao jogador). A rota continua viva para acesso direto.
+
+---
+
 ## A mesa protagonista: replay largo, curtir, voltar (30/08)
 
 ### Mudado

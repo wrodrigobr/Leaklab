@@ -233,6 +233,8 @@ const StudyPlanPage = () => {
   };
 
   const upsellPro = loadState === "pro";
+  // 30/08, o dono pegou na tela: "Carregando plano de estudos" + botao Gerar em cima do
+  // upsell — o Free nao esta carregando nada. Toolbar e loading somem no estado pro.
 
   // Fetch on mount
   useMemo(() => { fetchPlan(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -307,7 +309,9 @@ const StudyPlanPage = () => {
         <ArrowRight className="size-4 shrink-0 text-primary" aria-hidden />
       </Link>
 
-      {/* Toolbar */}
+      {/* Toolbar — some no estado Pro: "Carregando plano" + Gerar em cima do upsell era
+          mentira na tela do Free (o dono pegou). */}
+      {!upsellPro && (
       <section className="flex flex-col gap-4 rounded-xl border border-border bg-hud-surface p-5 md:flex-row md:items-center md:justify-between">
         <div className="flex items-start gap-3">
           <span className="flex size-10 items-center justify-center rounded-md bg-primary/15 text-primary">
@@ -360,6 +364,7 @@ const StudyPlanPage = () => {
           </button>
         )}
       </section>
+      )}
 
       {/* Loading state */}
       {loadState === "loading" && !plan && (
@@ -373,14 +378,46 @@ const StudyPlanPage = () => {
       {/* Pro (30/08, decisao do dono): o plano e gerado por IA sobre as SUAS maos.
           A porta e o 402 do backend; isto e a dobradica com o convite. */}
       {upsellPro && (
-        <div className="flex flex-col items-center justify-center gap-3 py-24 text-center">
+        <div className="flex flex-col items-center gap-4 py-10">
           <span className="flex size-12 items-center justify-center rounded-xl bg-amber-400/10">
             <Lock className="size-5 text-amber-400" aria-hidden />
           </span>
-          <p className="max-w-sm text-sm font-medium text-foreground">{t("pro.titulo")}</p>
-          <p className="max-w-xs text-xs text-muted-foreground">{t("pro.sub")}</p>
+          <div className="text-center">
+            <p className="max-w-sm text-sm font-medium text-foreground">{t("pro.titulo")}</p>
+            <p className="mx-auto mt-1 max-w-xs text-xs text-muted-foreground">{t("pro.sub")}</p>
+          </div>
+
+          {/* O EXEMPLO (30/08, pedido do dono): o Free ve COMO e o resultado antes de assinar.
+              Conteudo estatico e rotulado — nunca se passa por analise das maos dele. */}
+          <div className="w-full max-w-lg rounded-xl border border-border bg-hud-surface p-4">
+            <p className="mb-3 flex items-center justify-between font-mono text-[9.5px] font-bold uppercase tracking-widest text-muted-foreground">
+              {t("pro.exemploTitulo")}
+              <span className="rounded bg-amber-400/10 px-1.5 py-0.5 text-amber-400">
+                {t("pro.exemploSelo")}
+              </span>
+            </p>
+            <div className="flex flex-col gap-2.5">
+              {([0, 1, 2] as const).map((i) => (
+                <div key={i} className="rounded-lg border border-border/70 bg-background/40 p-3">
+                  <p className="text-[13px] font-semibold text-foreground">
+                    {t(`pro.exemplo.${i}.leak`)}
+                  </p>
+                  <p className="mt-0.5 text-[11.5px] leading-snug text-muted-foreground">
+                    {t(`pro.exemplo.${i}.porque`)}
+                  </p>
+                  <p className="mt-1 font-mono text-[10px] uppercase tracking-wider text-primary">
+                    {t(`pro.exemplo.${i}.treino`)}
+                  </p>
+                </div>
+              ))}
+            </div>
+            <p className="mt-3 text-[10.5px] leading-snug text-muted-foreground/70">
+              {t("pro.exemploNota")}
+            </p>
+          </div>
+
           <RouterLink to="/subscription"
-                className="mt-2 rounded-lg bg-primary px-4 py-2.5 font-mono text-[11px] font-bold uppercase tracking-wider text-primary-foreground transition-opacity hover:opacity-90">
+                className="rounded-lg bg-primary px-4 py-2.5 font-mono text-[11px] font-bold uppercase tracking-wider text-primary-foreground transition-opacity hover:opacity-90">
             {t("pro.cta")}
           </RouterLink>
         </div>

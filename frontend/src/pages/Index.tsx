@@ -225,6 +225,21 @@ const Index = () => {
   // O mapa de cards vive em `dashboardCards` desde que a tela de demonstração passou a precisar
   // dos MESMOS cards com dados de outra origem. Cópia de vitrine mente sozinha quando um card
   // muda, sem quebrar nada.
+  // Ancora do submenu do AI Coach (30/08): os cards carregam async, entao o scroll espera o
+  // alvo EXISTIR no DOM em vez de disparar no mount e mirar no vazio.
+  useEffect(() => {
+    const alvo = window.location.hash.slice(1);
+    if (!alvo) return;
+    let tentativas = 0;
+    const tenta = () => {
+      const el = document.getElementById(alvo);
+      if (el) { el.scrollIntoView({ behavior: "smooth", block: "start" }); return; }
+      if (tentativas++ < 20) setTimeout(tenta, 250);
+    };
+    tenta();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const renderCard = makeRenderCard({
     evo, leakRoi, leakSource, pressureData, dnaData, leakGraph, careerData, cognitiveData,
     twinData, sessionData, gtoQualityData, gtoPositionData, resultsVsGtoData, leakFinderData,

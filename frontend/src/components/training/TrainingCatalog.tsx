@@ -156,14 +156,16 @@ function IlustracaoMaoCompleta() {
 }
 
 /** id do drill → ícone. Fora do mapa: MiniRange (bvb/short, sem proposta ainda). */
+/* Os ids vêm de backend/leaklab/trainer_catalog.py — NÃO do CATALOGO_TREINOS do
+   leak_trainer, que é outro catálogo (30/08: mapeei o arquivo errado, o mapa nunca casava e
+   os cards ficaram na matriz em prod; o guarda em trainingCatalogIcones.test.ts agora lê os
+   ids do PRÓPRIO backend). */
 const ILUSTRACAO_POR_DRILL: Record<string, () => JSX.Element> = {
-  fund_rfi:      IlustracaoAbrir,
-  fund_vs_rfi:   IlustracaoDefender,
-  pf_bb_defense: IlustracaoDefender,
-  fund_vs_3bet:  Ilustracao3Bet,
-  pf_bb_3bet:    Ilustracao3Bet,
-  range_grid:    IlustracaoMemorizar,
-  full_hand:     IlustracaoMaoCompleta,
+  abrir:    IlustracaoAbrir,
+  defender: IlustracaoDefender,
+  vs_3bet:  Ilustracao3Bet,
+  ranges:   IlustracaoMemorizar,
+  grind:    IlustracaoMaoCompleta,
 };
 
 export function TrainingCatalog() {

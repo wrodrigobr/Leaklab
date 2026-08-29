@@ -172,6 +172,26 @@
   "pro": {
     "titulo": "El plan de estudio es del plan Pro",
     "sub": "La IA analiza tus leaks medidos y arma tu plan semanal. Suscríbete para desbloquear.",
-    "cta": "Conocer Pro"
+    "cta": "Conocer Pro",
+    "exemploTitulo": "Cómo se ve un plan",
+    "exemploSelo": "Ejemplo",
+    "exemploNota": "Este es un ejemplo ilustrativo. Tu plan lo arma la IA con los leaks medidos en TUS manos, priorizados por costo en bb.",
+    "exemplo": [
+      {
+        "leak": "Foldear de más contra 3-bet fuera de posición",
+        "porque": "Costo estimado de 2,1bb por ocurrencia: abandonas manos que defienden con ganancia.",
+        "treino": "Drill: Enfrentar 3-bet · 15 spots"
+      },
+      {
+        "leak": "Call de river sin odds",
+        "porque": "Pagas apuestas grandes con bluff-catchers débiles cuando el rango del villano es solo valor.",
+        "treino": "Drill: Mis leaks (river) · 10 spots"
+      },
+      {
+        "leak": "Open demasiado amplio en HJ a 20bb",
+        "porque": "Abres manos que no aguantan la presión de shove detrás.",
+        "treino": "Drill: Abrir el bote · 12 spots"
+      }
+    ]
   }
 }

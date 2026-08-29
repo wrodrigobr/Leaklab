@@ -112,7 +112,6 @@ const SECOES_ESTUDAR: SecaoDeMenu[] = [
     { to: "/academy", chave: "nav.academia", desc: "nav.desc.academia", icone: GraduationCap, cor: "purple" },
   ]},
   { chave: "nav.secoes.ferramentas", itens: [
-    { to: "/hand-builder", chave: "nav.handBuilder", desc: "nav.desc.handBuilder", icone: Blocks, cor: "blue" },
     { to: "/docs", chave: "nav.docs", desc: "nav.desc.docs", icone: BookText, cor: "amber" },
   ]},
 ];
@@ -140,7 +139,7 @@ export const GRUPOS: GrupoDeMenu[] = [
   },
   {
     chave: "nav.grupos.estudar", icone: GraduationCap, to: "/study",
-    acende: ["/study", "/academy", "/docs", "/hand-builder"],
+    acende: ["/study", "/academy", "/docs"],
     secoes: SECOES_ESTUDAR, itens: _itens(SECOES_ESTUDAR),
   },
   {
@@ -150,7 +149,30 @@ export const GRUPOS: GrupoDeMenu[] = [
   },
 ];
 
-/** O AI Coach fica fora dos grupos: é uma conversa, não uma seção. */
+/** O AI Coach fica fora dos grupos: é uma conversa, não uma seção. (A barra mobile ainda usa.) */
 export const ITEM_COACH: ItemDeMenu = {
   to: "/coach", chave: "nav.coach", desc: "nav.desc.coach", icone: Bot, exige: "ai_coach_chat",
 };
+
+/** O AI Coach como GRUPO (30/08, pedido do dono): a conversa + os RELATÓRIOS que a IA gera do
+ *  jogador. Os relatórios são cards do dashboard — o link é âncora (#twin etc.), e o Index
+ *  rola até o card quando ele existir. */
+export const GRUPO_COACH: GrupoDeMenu = {
+  chave: "nav.coach", icone: Bot, to: "/coach",
+  acende: ["/coach"],
+  secoes: [
+    { chave: "nav.secoes.conversa", itens: [ITEM_COACH] },
+    { chave: "nav.secoes.relatorios", itens: [
+      { to: "/dashboard#twin", chave: "nav.relTwin", desc: "nav.desc.relTwin",
+        icone: TrendingUp, cor: "teal", exige: "advanced_insights" },
+      { to: "/dashboard#cognitive", chave: "nav.relCognitivo", desc: "nav.desc.relCognitivo",
+        icone: Crosshair, cor: "red", exige: "advanced_insights" },
+      { to: "/dashboard#causal_map", chave: "nav.relCausal", desc: "nav.desc.relCausal",
+        icone: Grid3x3, cor: "purple", exige: "advanced_insights" },
+      { to: "/dashboard#career", chave: "nav.relCarreira", desc: "nav.desc.relCarreira",
+        icone: Medal, cor: "amber", exige: "advanced_insights" },
+    ]},
+  ],
+  itens: [],
+};
+GRUPO_COACH.itens = GRUPO_COACH.secoes.flatMap((sec) => sec.itens);

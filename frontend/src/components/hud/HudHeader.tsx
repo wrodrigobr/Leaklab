@@ -11,7 +11,7 @@ import { CoachMessagesPanel } from "@/components/hud/CoachMessagesPanel";
 import { SupportModal } from "@/components/hud/SupportModal";
 import { NotificationBell } from "@/components/hud/NotificationBell";
 import { playerMessages, support, coaches, training, subscription } from "@/lib/api";
-import { GRUPOS, ITEM_COACH } from "./navGrupos";
+import { GRUPOS, GRUPO_COACH, ITEM_COACH } from "./navGrupos";
 import { MenuDeGrupo } from "./MenuDeGrupo";
 import { FolhaDeMenu } from "./FolhaDeMenu";
 
@@ -259,21 +259,8 @@ export function HudHeader({ onUpload }: HudHeaderProps) {
                       <MenuDeGrupo key={g.to} grupo={g} capacidades={capacidades}
                                    ocultar={ocultarNoMenu} />
                     ))}
-                    <NavLink
-                      to={ITEM_COACH.to}
-                      className={() =>
-                        `relative flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-md px-3 py-1.5 text-xs font-medium uppercase tracking-wide transition-colors ${
-                          location.pathname.startsWith("/coach") && !location.pathname.startsWith("/coaches")
-                            ? "text-primary" : "text-muted-foreground hover:text-foreground"
-                        }`
-                      }
-                    >
-                      <Bot className="size-3.5" aria-hidden />
-                      {t(ITEM_COACH.chave)}
-                      {capacidades && capacidades[ITEM_COACH.exige!] === false && (
-                        <Lock className="size-2.5 text-primary" aria-hidden />
-                      )}
-                    </NavLink>
+                    {/* 30/08: o AI Coach virou grupo — conversa + relatórios (âncoras do dashboard). */}
+                    <MenuDeGrupo grupo={GRUPO_COACH} capacidades={capacidades} ocultar={ocultarNoMenu} />
                   </>
                 )
                 : navItems.map((item) => {

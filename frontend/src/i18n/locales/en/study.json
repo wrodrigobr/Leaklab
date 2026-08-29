@@ -172,6 +172,26 @@
   "pro": {
     "titulo": "The study plan is a Pro feature",
     "sub": "AI analyzes your measured leaks and builds your weekly plan. Subscribe to unlock.",
-    "cta": "See Pro"
+    "cta": "See Pro",
+    "exemploTitulo": "What a plan looks like",
+    "exemploSelo": "Example",
+    "exemploNota": "This is an illustrative example. Your plan is built by AI from the leaks measured in YOUR hands, prioritized by bb cost.",
+    "exemplo": [
+      {
+        "leak": "Overfolding to 3-bets out of position",
+        "porque": "Estimated 2.1bb per occurrence: you give up hands that defend profitably.",
+        "treino": "Drill: Facing 3-bet · 15 spots"
+      },
+      {
+        "leak": "River calls without odds",
+        "porque": "Paying big bets with weak bluff-catchers when the villain range is value-only.",
+        "treino": "Drill: My leaks (river) · 10 spots"
+      },
+      {
+        "leak": "Opening too wide from HJ at 20bb",
+        "porque": "Opens hands that cannot stand shove pressure behind.",
+        "treino": "Drill: Open the pot · 12 spots"
+      }
+    ]
   }
 }
