@@ -330,5 +330,6 @@
     "semLeaks": "Sem leaks recorrentes",
     "legendaCompartilhado": "Leak presente em múltiplos torneios"
   },
-  "selecionarComparar": "Selecionar para comparar"
+  "selecionarComparar": "Selecionar para comparar",
+  "compareGuia": "Marque dois ou mais torneios na lista e clique em Comparar."
 }

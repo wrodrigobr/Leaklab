@@ -67,7 +67,9 @@ describe("cobertura de i18n das chaves literais", () => {
     // existe em lugar NENHUM.
     const nss = todosNs();
     // só o `t(` puro: aliases (tr, tc...) apontam para OUTRO namespace declarado à parte
-    for (const mm of texto.matchAll(/[^a-zA-Z_.]t\(\s*"([A-Za-z0-9_.]+)"/g)) {
+    // exige fechamento logo após a string: t("chave" + sufixo) é COMPOSIÇÃO dinâmica
+    // (card.cost + qualificador) e não uma chave completa — era o falso positivo.
+    for (const mm of texto.matchAll(/[^a-zA-Z_.]t\(\s*"([A-Za-z0-9_.]+)"\s*[),]/g)) {
       casos.push({ onde: path.relative(SRC, f), ns: [...nss, "common"], chave: mm[1] });
     }
   }

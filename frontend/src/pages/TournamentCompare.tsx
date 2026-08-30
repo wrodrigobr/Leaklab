@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useSearchParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, Loader2, TrendingUp, TrendingDown, Minus } from "lucide-react";
 import { HudLayout } from "@/components/hud/HudLayout";
 import { cn } from "@/lib/utils";
@@ -52,6 +52,7 @@ function QualityBar({ value, max = 100 }: { value: number | null; max?: number }
 export default function TournamentCompare() {
   const { t } = useTranslation("tournaments");
   const [params] = useSearchParams();
+  const navigate = useNavigate();
   const ids = (params.get("ids") ?? "").split(",").filter(Boolean);
 
   const [loading, setLoading] = useState(true);
@@ -60,7 +61,11 @@ export default function TournamentCompare() {
   const [narrative, setNarrative] = useState("");
 
   useEffect(() => {
-    if (ids.length < 2) { setError(t("compare.min2")); setLoading(false); return; }
+    if (ids.length < 2) {
+      // 30/08: beco vira redirecionamento — a lista com o guia é onde se seleciona.
+      navigate("/tournaments?comparar=1", { replace: true });
+      return;
+    }
     tournamentsApi.compare(ids)
       .then((r) => { setItems(r.items); setNarrative(r.narrative); })
       .catch((e) => setError(e.message ?? "Erro ao carregar comparativo"))

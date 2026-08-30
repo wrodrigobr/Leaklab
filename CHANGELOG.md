@@ -5,6 +5,21 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## O Comparar sem beco (30/08)
+
+### Mudado
+- **"Comparar" no menu abre a LISTA de torneios em modo guiado** (`/tournaments?comparar=1`,
+  ideia do dono): banner "marque dois ou mais e clique Comparar" em cima do fluxo de seleção
+  que já existia. `/tournaments/compare` sem ids deixa de ser beco ("selecione e volte") e
+  REDIRECIONA para a lista guiada.
+- Dois guardas da casa me pegaram no caminho e foram refinados com a lição: o de rotas do
+  menu aprende a ignorar query/hash, e o de i18n aprende que `t("prefixo" + sufixo)` é
+  composição, não chave. E a lição operacional: nas duas rodadas anteriores eu li só o
+  "passed" da suíte sem conferir o "failed" — o mesmo zero tranquilizador que persigo nos
+  instrumentos, no meu próprio ritual.
+
+---
+
 ## Termos de Uso (30/08, pré-lançamento)
 
 ### Adicionado

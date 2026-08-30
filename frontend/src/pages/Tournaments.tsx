@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { HudLayout } from "@/components/hud/HudLayout";
-import { Search, Filter, ArrowUpDown, CheckCircle2, Clock, Loader2, Trash2, AlertTriangle, GraduationCap, BarChart2, FileUp } from "lucide-react";
+import { AlertTriangle, ArrowUpDown, BarChart2, CheckCircle2, Clock, FileUp, Filter, GitCompareArrows, GraduationCap, Loader2, Search, Trash2 } from "lucide-react";
 import { SiteLogo } from "@/components/hud/SiteLogo";
 import { cn } from "@/lib/utils";
 import { tournaments as tournamentsApi, Tournament } from "@/lib/api";
@@ -39,6 +39,8 @@ function TournamentDate({ playedAt, importedAt }: { playedAt: string | null; imp
 
 const Tournaments = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const modoComparar = searchParams.get("comparar") === "1";
   const { t } = useTranslation("tournaments");
   // `t` fica SOMBREADO dentro dos `.map((t) => ...)` (ali `t` e o torneio):
   // o alias garante o tradutor mesmo dentro do laco.
@@ -283,6 +285,14 @@ const Tournaments = () => {
       title={t("title")}
       description={t("subtitle")}
     >
+      {/* 30/08: quem clicou "Comparar" no menu cai AQUI com o guia, em vez do beco em
+          /tournaments/compare. O fluxo de seleção (checkbox + botão) já existia. */}
+      {modoComparar && (
+        <div className="mb-4 flex items-center gap-2.5 rounded-xl border border-primary/40 bg-primary/[0.07] px-4 py-3">
+          <GitCompareArrows className="size-4 shrink-0 text-primary" aria-hidden />
+          <p className="text-[13px] text-foreground">{t("compareGuia")}</p>
+        </div>
+      )}
       {/* input escondido pro upload do arquivo de resultados (ACR/WPN .ots) */}
       <input ref={fileRef} type="file" multiple accept=".ots,.txt,application/json" onChange={onResultsFile} className="hidden" />
       {uploading && (

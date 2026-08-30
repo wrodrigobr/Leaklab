@@ -82,7 +82,9 @@ const SECOES_MEU_JOGO: SecaoDeMenu[] = [
   { chave: "nav.secoes.resultados", itens: [
     { to: "/dashboard", chave: "nav.dashboard", desc: "nav.desc.dashboard", icone: LayoutDashboard, cor: "teal" },
     { to: "/tournaments", chave: "nav.tournaments", desc: "nav.desc.tournaments", icone: Trophy, cor: "amber" },
-    { to: "/tournaments/compare", chave: "nav.comparar", desc: "nav.desc.comparar", icone: GitCompareArrows, cor: "blue" },
+    // 30/08, o dono: /tournaments/compare sem ids era beco ("selecione 2 e volte"). O menu
+    // agora abre a LISTA em modo guiado — o banner pede os 2+ e o botão de comparar já existe lá.
+    { to: "/tournaments?comparar=1", chave: "nav.comparar", desc: "nav.desc.comparar", icone: GitCompareArrows, cor: "blue" },
   ]},
   { chave: "nav.secoes.progresso", itens: [
     { to: "/evolucao", chave: "nav.evolucao", desc: "nav.desc.evolucao", icone: TrendingUp, cor: "teal", exige: "advanced_insights" },

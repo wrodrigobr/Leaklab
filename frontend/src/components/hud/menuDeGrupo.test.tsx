@@ -200,7 +200,9 @@ describe("o menu mostra o produto e o cadeado vem do backend", () => {
     // Item que leva a 404 é pior que item ausente: quebra a confiança na navegação inteira.
     const app = fs.readFileSync(path.resolve(__dirname, "..", "..", "App.tsx"), "utf-8");
     const rotas = new Set([...app.matchAll(/path="([^"]+)"/g)].map((m) => m[1]));
+    // a query nao faz parte da rota: /tournaments?comparar=1 vive em path="/tournaments"
     const faltando = GRUPOS.flatMap((g) => [g.to, ...g.itens.map((i) => i.to)])
+      .map((r) => r.split("?")[0].split("#")[0])
       .filter((r) => !rotas.has(r));
     expect(faltando, `rotas no menu que não existem no App.tsx: ${faltando}`).toEqual([]);
   });

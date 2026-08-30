@@ -330,5 +330,6 @@
     "semLeaks": "No recurring leaks",
     "legendaCompartilhado": "Leak present in more than one tournament"
   },
-  "selecionarComparar": "Select to compare"
+  "selecionarComparar": "Select to compare",
+  "compareGuia": "Check two or more tournaments in the list and click Compare."
 }
