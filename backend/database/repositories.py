@@ -4220,9 +4220,15 @@ PLAN_LIMITS: dict = {
 
 
 def get_quota_status(user_id: int) -> dict:
-    """Retorna plano, contadores e limites do usuário."""
+    """Retorna plano, contadores e limites do usuário.
+
+    30/08: chama o reset ANTES de ler. Sem isso, quem fechou o mês no teto lia o contador
+    velho no mês novo, o 402 barrava antes de qualquer increment (que é quem resetava), e o
+    usuário ficava preso no limite PARA SEMPRE — deadlock de virada de mês."""
     conn = get_conn()
     try:
+        _maybe_reset_quota(conn, user_id)
+        conn.commit()
         row = _fetchone(
             conn,
             """SELECT plan, plan_source, plan_expires_at,

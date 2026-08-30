@@ -78,7 +78,7 @@ SUITES = {
                   'test_bet_intent.py', 'test_opponent_stats.py', 'test_sizing_advisor.py',
                   'test_hu_position.py', 'test_posicao_botao_morto.py', 'test_parser_bounty.py',
                   'test_stack_buckets.py'],
-    'database':  ['test_database.py', 'test_score_alinhado_no_insert.py', 'test_google_auth.py', 'test_exclusao_de_usuario.py', 'test_coach_system.py', 'test_notifications.py',
+    'database':  ['test_database.py', 'test_score_alinhado_no_insert.py', 'test_google_auth.py', 'test_exclusao_de_usuario.py', 'test_quota_mensal.py', 'test_coach_system.py', 'test_notifications.py',
                   'test_solve_quota.py', 'test_coach_adherence_multiway.py', 'test_coach_invites.py',
                   'test_coach_trial.py', 'test_coach_referral.py', 'test_coach_replay.py',
                   'test_anotacao_sobrevive_reprocesso.py',

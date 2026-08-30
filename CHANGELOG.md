@@ -5,6 +5,19 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## A cota mensal que prendia para sempre quem fechou no teto (30/08)
+
+### Corrigido
+- **Deadlock da virada de mês nas cotas do Free** (achado ao GARANTIR, a pedido do dono, que
+  as "15 explicações de IA/mês" contam de verdade): o reset da virada morava só nos
+  INCREMENTS, mas o bloqueio (402) lê `get_quota_status` ANTES de incrementar — quem fechou o
+  mês no teto lia o contador velho no mês novo, era barrado, e o increment que zeraria nunca
+  rodava. Valia para as três cotas (IA, torneios, solves). O reset agora roda NA LEITURA;
+  provado por forja (usuário 15/15+30/30+5/5 com mês virado lê zeros) e por mutação (reset
+  removido → teste acusa). Ponta a ponta: 15 passam, a 16ª leva 402 com `quota_exceeded`.
+
+---
+
 ## A vitrine que mentia sobre o Free, e o guarda que lê os limites do backend (30/08)
 
 ### Corrigido
