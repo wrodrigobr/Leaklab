@@ -155,7 +155,9 @@
       "transferencia": {
         "label": "Transfer",
         "desc": "the same spot at another depth (proves you did not memorise)"
-      }
+      },
+      "targetedTitle": "Leak-targeted training is a Pro feature",
+      "targetedDesc": "Free trains the fundamentals. Targeted mode picks every spot from the mistakes measured in YOUR hands. Subscribe to unlock."
     },
     "weakSpot": "Training your weak spot",
     "prompt": "What's the GTO action?",
@@ -177,7 +179,10 @@
       "gateTitle": "Mastery gate",
       "gateFaltam": "{{n}} criteria left to master this leak.",
       "gateFechado": "Gate closed! Leak mastered. Prove it in real games.",
-      "verNaTrilha": "See the medal on the path"
+      "verNaTrilha": "See the medal on the path",
+      "spread": "{{count}} categories trained",
+      "spreadTitle": "Spread-out session",
+      "spreadDesc": "You went through {{count}} categories. Spreading warms you up; to truly move a leak, focus the next session on one."
     },
     "vCorrect": "Correct",
     "vMixed": "Acceptable",
@@ -3216,5 +3221,12 @@
   "poolDone": {
     "title": "You completed every exercise in this lesson",
     "hint": "This lesson has a fixed number of exercises and you went through all of them. Repeating the same ones would waste your time without teaching anything new. For real variety, use the Leak Trainer or Ghost Table: there the spots come from your own hands."
+  },
+  "boletim": {
+    "travado": {
+      "mirado": "Leak-targeted training",
+      "ghost": "Ghost Table",
+      "postflop": "Postflop spots from your hands"
+    }
   }
 }

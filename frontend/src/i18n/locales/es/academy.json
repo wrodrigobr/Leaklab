@@ -155,7 +155,9 @@
       "transferencia": {
         "label": "Transferencia",
         "desc": "el mismo spot a otra profundidad (prueba que no memorizaste)"
-      }
+      },
+      "targetedTitle": "El entrenamiento dirigido por tus leaks es del plan Pro",
+      "targetedDesc": "El Free entrena los fundamentos. El dirigido elige cada spot con los errores medidos en TUS manos. Suscríbete para desbloquear."
     },
     "weakSpot": "Entrenando tu punto débil",
     "prompt": "¿Cuál es la acción GTO?",
@@ -177,7 +179,10 @@
       "gateTitle": "Gate de dominio",
       "gateFaltam": "Faltan {{n}} criterios para dominar este leak.",
       "gateFechado": "¡Gate cerrado! Leak dominado. Compruébalo en juego real.",
-      "verNaTrilha": "Ver la medalla en la ruta"
+      "verNaTrilha": "Ver la medalla en la ruta",
+      "spread": "{{count}} categorías entrenadas",
+      "spreadTitle": "Sesión dispersa",
+      "spreadDesc": "Pasaste por {{count}} categorías. Dispersar calienta; para mover un leak de verdad, concentra la próxima sesión en una."
     },
     "vCorrect": "Correcto",
     "vMixed": "Aceptable",
@@ -3216,5 +3221,12 @@
   "poolDone": {
     "title": "Completaste todos los ejercicios de esta lección",
     "hint": "Esta lección tiene un número fijo de ejercicios y ya pasaste por todos. Repetir los mismos gastaría tu tiempo sin enseñar nada nuevo. Para variedad real, usa el Leak Trainer o el Ghost Table: allí los spots vienen de tus propias manos."
+  },
+  "boletim": {
+    "travado": {
+      "mirado": "Entrenamiento dirigido por tus leaks",
+      "ghost": "Ghost Table",
+      "postflop": "Spots postflop de tus manos"
+    }
   }
 }

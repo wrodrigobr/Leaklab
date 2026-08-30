@@ -5,6 +5,25 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## A terceira chave crua, e o guarda que fecha a família inteira (30/08)
+
+### Corrigido
+- **`LEAKTRAINER.GATE.TARGETEDTITLE` cru na tela** (o dono, terceira ocorrência da família):
+  o cadeado do treino dirigido foi escrito com chaves que NUNCA foram criadas. Criadas nos 3
+  idiomas — e a varredura nova achou mais 6 fantasmas esperando para aparecer
+  (`boletim.travado.*`, os nomes dos travados do boletim de sessão, e
+  `leakTrainer.summary.spread*`), todos criados.
+
+### Adicionado
+- **Guarda GLOBAL de i18n** (`i18nCobertura.test.ts`): varre todo `.tsx`, extrai toda chave
+  literal de `t("...")` e exige que exista em ALGUM namespace, nos 3 idiomas — com suporte a
+  pluralização (`_one`/`_other`). Rede assumidamente mais frouxa que por-namespace (o `t`
+  viaja por prop entre arquivos e o namespace estático não decide), e ainda assim pegou as 3
+  ocorrências reais: o bug típico é a chave que não existe em lugar NENHUM. Quebrado de
+  propósito para provar que acusa.
+
+---
+
 ## Relatórios de evolução viram Pro, e os retoques finais dos ícones (30/08)
 
 ### Adicionado
