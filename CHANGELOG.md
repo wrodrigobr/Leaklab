@@ -5,6 +5,17 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## O fornecedor sai da vitrine (30/08, véspera de lançamento)
+
+### Corrigido
+- **"Powered by Claude AI" na landing** (o dono achou, e a regra JÁ EXISTIA — branding é
+  "GTO Solver"; quem vende "IA" é o concorrente): a pílula do hero virou "Vereditos por GTO
+  Solver" e o rótulo do chat virou "GTO Solver + IA", nos 3 idiomas. Regra sem guarda é
+  pedido, não regra: entrou o guarda que varre i18n e telas por nome de fornecedor
+  (Claude/Anthropic/"powered by"), quebrado de propósito.
+
+---
+
 ## O Contra na janela fixada (30/08)
 
 ### Corrigido
