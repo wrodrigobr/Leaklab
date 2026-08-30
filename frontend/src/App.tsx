@@ -11,6 +11,7 @@ import { CookieConsent } from "@/components/hud/CookieConsent";
 import { UploadQueueProvider } from "@/components/hud/UploadQueue";
 import Landing from "./pages/Landing.tsx";
 import MaoCompartilhada from "./pages/MaoCompartilhada.tsx";
+import Termos from "./pages/Termos.tsx";
 import FeedDeMaos from "./pages/FeedDeMaos.tsx";
 import Privacy from "./pages/Privacy.tsx";
 import Index from "./pages/Index.tsx";
@@ -164,6 +165,7 @@ const App = () => (
           <Routes>
             <Route path="/" element={<PublicRoute><Landing /></PublicRoute>} />
             <Route path="/privacidade" element={<Privacy />} />
+            <Route path="/termos" element={<Termos />} />
             {/* Mao compartilhada (29/08): PUBLICA — o link e a unica coisa do produto que sai dele */}
             <Route path="/h/:token" element={<MaoCompartilhada />} />
             {/* Demonstração pública: sem login, para quem ainda não tem dado nenhum. */}

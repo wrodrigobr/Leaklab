@@ -727,6 +727,12 @@ function Footer() {
             {t("footer.privacy")}
           </Link>
           <Link
+            to="/termos"
+            className="text-muted-foreground transition-colors hover:text-foreground"
+          >
+            {t("footer.termos")}
+          </Link>
+          <Link
             to="/login"
             className="inline-flex items-center py-2 font-mono text-[10px] uppercase tracking-widest-2 text-muted-foreground transition-colors hover:text-foreground"
           >

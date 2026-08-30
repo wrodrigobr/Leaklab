@@ -88,7 +88,8 @@
   "footer": {
     "copyright": "© 2026 GrindLab · Tactical Tournament Intelligence",
     "login": "Log in →",
-    "privacy": "Privacy"
+    "privacy": "Privacy",
+    "termos": "Terms of Use"
   },
   "demo": {
     "b1": "A clear verdict per hand.",

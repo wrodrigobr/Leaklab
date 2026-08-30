@@ -88,7 +88,8 @@
   "footer": {
     "copyright": "© 2026 GrindLab · Tactical Tournament Intelligence",
     "login": "Iniciar sesión →",
-    "privacy": "Privacidad"
+    "privacy": "Privacidad",
+    "termos": "Términos de Uso"
   },
   "demo": {
     "b1": "Un veredicto claro por mano.",

@@ -752,7 +752,8 @@
     "mesesGratis": "{{n}} meses grátis",
     "porMes": "{{valor}}/mês",
     "porAno": "{{valor}}/ano",
-    "recorrencia": "Ao assinar, você autoriza a GrindLab Poker a cobrar {{preco}} de forma recorrente, no ciclo escolhido. Cancele quando quiser na tela de assinatura: sem multa, e o acesso vale até o fim do período já pago."
+    "recorrencia": "Ao assinar, você autoriza a GrindLab Poker a cobrar {{preco}} de forma recorrente, no ciclo escolhido. Cancele quando quiser na tela de assinatura: sem multa, e o acesso vale até o fim do período já pago.",
+    "verTermos": "Termos de Uso"
   },
   "perfil": {
     "titulo": "Complete seu perfil",

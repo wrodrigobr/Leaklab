@@ -5,6 +5,19 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## Termos de Uso (30/08, pré-lançamento)
+
+### Adicionado
+- **Termos de Uso em `/termos`** (direção do dono: simples, é SaaS): acesso pago por período
+  (30 dias / 12 meses), renovação automática até cancelar, cancelamento sem multa com acesso
+  até o fim do ciclo, arrependimento de 7 dias do CDC na primeira compra, uso educativo (não
+  é aposta nem promessa de ganho), responsabilidade sobre regras das salas, foro do
+  consumidor. Linkado no rodapé da landing e no aviso de recorrência do checkout. Mesma
+  exceção de idioma da Privacidade (pt-BR). Ponto de partida honesto — revisar com advogado
+  antes de escalar.
+
+---
+
 ## O fornecedor sai da vitrine (30/08, véspera de lançamento)
 
 ### Corrigido

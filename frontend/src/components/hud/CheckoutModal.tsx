@@ -349,6 +349,9 @@ export function CheckoutModal({ plan, onClose, onSuccess }: Props) {
                   })}
                 </button>
                 <p className="text-[10px] leading-snug text-muted-foreground">
+                  <a href="/termos" target="_blank" rel="noreferrer" className="text-primary hover:underline">
+                    {t("checkout.verTermos")}
+                  </a>{" · "}
                   {t("checkout.recorrencia", {
                     preco: billing === "annual"
                       ? t("checkout.porAno", { valor: brl(anual?.price) })
