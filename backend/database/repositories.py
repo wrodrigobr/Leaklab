@@ -5843,39 +5843,11 @@ def update_user_admin(user_id: int, plan: str = None, suspended: bool = None) ->
 
 
 def delete_user_admin(user_id: int) -> None:
-    """Deletes a user and all their data (cascade). Do NOT call without admin password verification."""
-    conn = get_conn()
-    try:
-        # remove all decisions + tournaments + related data before removing the user
-        tournament_ids = [r['id'] for r in _fetchall(conn, "SELECT id FROM tournaments WHERE user_id = ?", (user_id,))]
-        conn.execute("DELETE FROM drill_sessions WHERE user_id = ?", (user_id,))   # SRS — sem ON DELETE CASCADE
-        for tid in tournament_ids:
-            conn.execute("DELETE FROM decisions WHERE tournament_id = ?", (tid,))
-            try:
-                conn.execute("DELETE FROM gto_hand_requests WHERE tournament_id = ?", (tid,))
-            except Exception:
-                pass
-        if tournament_ids:
-            placeholders = ",".join("?" * len(tournament_ids))
-            conn.execute(f"DELETE FROM tournaments WHERE id IN ({placeholders})", tournament_ids)
-        conn.execute("DELETE FROM llm_cache WHERE user_id = ?", (user_id,))
-        conn.execute("DELETE FROM support_tickets WHERE user_id = ?", (user_id,))
-        # Refs a users SEM ON DELETE CASCADE — no Postgres a exclusão falha se não forem
-        # limpas antes (no SQLite passa). Cada uma defensiva (coluna/tabela pode não existir).
-        for _stmt in (
-            "UPDATE coach_invites SET used_by = NULL WHERE used_by = ?",   # convite resgatado por ele
-            "UPDATE users SET coach_id = NULL WHERE coach_id = ?",         # se era coach de alguém
-            "UPDATE users SET referral_coach_id = NULL WHERE referral_coach_id = ?",  # se indicou alguém
-        ):
-            try:
-                conn.execute(_adapt(_stmt), (user_id,))
-            except Exception:
-                pass
-        conn.execute("DELETE FROM users WHERE id = ?", (user_id,))
-        conn.commit()
-    finally:
-        conn.close()
-
+    """DEPRECIADA em 30/08 — a limpeza mora em leaklab.exclusao_de_usuario (lista declarada
+    com guarda N+1). Esta função delega para lá; a lista parcial antiga deixava órfãos nas
+    tabelas novas e vivia aqui como segunda fonte."""
+    from leaklab.exclusao_de_usuario import excluir_usuario
+    excluir_usuario(user_id, executado_por=-1)
 
 def get_coaches_with_payout_status(period: str) -> list:
     """Coaches com contagem de alunos ativos e status de repasse para o período."""

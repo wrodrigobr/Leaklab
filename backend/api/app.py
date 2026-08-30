@@ -9192,8 +9192,16 @@ def admin_delete_user(uid):
     target = get_user_by_id(uid)
     if not target:
         return jsonify({'error': 'Usuário não encontrado'}), 404
-    delete_user_admin(uid)
-    return jsonify({'ok': True, 'deleted_id': uid})
+    # 30/08: a limpeza virou o MÓDULO de lista declarada (leaklab/exclusao_de_usuario) — a
+    # antiga delete_user_admin cobria uma lista parcial de 2 meses atrás e deixava órfãos
+    # nas tabelas novas (shared_hands, ritual, feature_usage...). Fonte única + guarda N+1.
+    from leaklab.exclusao_de_usuario import excluir_usuario
+    try:
+        placar = excluir_usuario(uid, executado_por=g.user_id)
+    except ValueError as e:
+        return jsonify({'error': str(e)}), 400
+    return jsonify({'ok': True, 'deleted_id': uid,
+                    'deleted': {k: v for k, v in placar.items() if v not in (0, 'ausente')}})
 
 
 @app.route('/admin/users/<int:uid>/clear-handle', methods=['POST'])

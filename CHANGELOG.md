@@ -5,6 +5,22 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## Exclusão de usuário com lista declarada (30/08)
+
+### Mudado
+- **Excluir usuário no admin agora limpa TUDO, por lista declarada.** O fluxo já existia
+  (botão + modal com senha do admin + rota) — a lição da lista de pendências: conferir antes
+  de construir; minha rota nova duplicada foi removida. O problema real era a limpeza: a
+  `delete_user_admin` antiga cobria uma lista parcial de meses atrás e deixava órfãos nas
+  tabelas novas (shared_hands, ritual, feature_usage, relatórios...). **Por quê lista
+  declarada e não CASCADE:** o CASCADE já apagou 71 anotações caladas neste projeto; o que
+  some agora está ESCRITO (36 tabelas), com guarda N+1 que varre o schema e acusa tabela nova
+  com user_id fora das listas — e o guarda já pagou na primeira rodada, pegando o comentário
+  de terceiro órfão no link do excluído. Recusas da V1: admin, coach (transfira antes) e a
+  própria conta. A rota devolve o placar do que saiu.
+
+---
+
 ## Continuar com Google (30/08)
 
 ### Adicionado
