@@ -202,6 +202,7 @@ CORS origins are controlled by the `ALLOWED_ORIGINS` env var (comma-separated). 
 | `PORT` | HTTP port (defaults to 5000) |
 | `STRIPE_SECRET_KEY` | Stripe secret key |
 | `STRIPE_WEBHOOK_SECRET` | Stripe webhook signing secret |
+| `GOOGLE_CLIENT_ID` | OAuth Client ID do login com Google (backend valida o ID token). Sem ela, `/auth/google` responde 503 e o front esconde o botão. Frontend usa o MESMO valor em `VITE_GOOGLE_CLIENT_ID` (Cloudflare Pages) |
 | `SENTRY_DSN` | Sentry DSN para error tracking no backend (opcional — sem a var, Sentry é no-op) |
 | `ENVIRONMENT` | `production` / `development` — usado pelo Sentry para separar ambientes |
 | `ENGAGEMENT_EMAIL_ENABLED` | Liga a cobrança por e-mail (Fase 2). **OFF por padrão** — sem ela o worker sobe e não envia nada |

@@ -598,6 +598,37 @@ def coach_apply():
         return jsonify({'error': 'Erro interno ao criar candidatura'}), 500
 
 
+@app.route('/auth/google', methods=['POST'])
+@limiter.limit("15 per minute")
+def auth_google():
+    """Login/cadastro com Google (30/08): valida o ID token do botão, vincula por e-mail
+    verificado (nunca duplica), cria com username do prefixo quando não existe, e emite o
+    NOSSO JWT — a sessão não muda em nada. Sem GOOGLE_CLIENT_ID no ambiente, 503 e o front
+    nem mostra o botão."""
+    from leaklab.google_auth import entrar_com_google
+    data = request.get_json(silent=True) or {}
+    credential = str(data.get('credential') or '').strip()
+    if not credential:
+        return jsonify({'error': 'credential obrigatoria'}), 400
+    try:
+        u = entrar_com_google(credential, ref=data.get('ref'))
+    except ValueError as e:
+        msg = str(e)
+        if 'indisponivel' in msg:
+            return jsonify({'error': 'Login com Google indisponível'}), 503
+        app.logger.info('auth/google recusado: %s', msg)
+        return jsonify({'error': 'Não foi possível entrar com o Google'}), 401
+    touch_activity(u['id'])
+    token = generate_token(u['id'], u.get('role') or 'player')
+    return jsonify({
+        'token':    token,
+        'user_id':  u['id'],
+        'username': u['username'],
+        'role':     u.get('role') or 'player',
+        'created':  bool(u.get('criado')),
+    })
+
+
 @app.route('/auth/login', methods=['POST'])
 @limiter.limit("15 per minute")
 def login():

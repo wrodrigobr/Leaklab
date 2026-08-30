@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate, Link, useSearchParams } from "react-router-dom";
 import { Loader2, GraduationCap, User, MailCheck, ArrowLeft } from "lucide-react";
 import logoHorizontal from "@/assets/brand/grindlab_final_horizontal.svg";
+import { BotaoGoogle } from "@/components/hud/BotaoGoogle";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/lib/auth";
 import { auth as authApi } from "@/lib/api";
@@ -15,9 +16,10 @@ const Login = () => {
   const [username, setUsername] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const { login, register, verifyEmail, user } = useAuth();
+  const { login, entrarComToken, register, verifyEmail, user } = useAuth();
   const navigate = useNavigate();
   const { t } = useTranslation("auth");
+  const { t: tc } = useTranslation("common");
   const [searchParams, setSearchParams] = useSearchParams();
   const ref = searchParams.get("ref");
   const [linkedCoach, setLinkedCoach] = useState<string | null>(null);
@@ -585,6 +587,22 @@ const Login = () => {
                   : (tab === "login" ? t("login.submit") : t("register.submit"))}
               </button>
             </form>
+
+            {/* Continuar com Google (30/08): um botão para as DUAS abas — o backend vincula
+                por e-mail ou cria, então login e cadastro são o mesmo gesto. O componente
+                some sozinho sem VITE_GOOGLE_CLIENT_ID no build. */}
+            <div className="mt-4 flex flex-col gap-3">
+              <div className="flex items-center gap-3">
+                <span className="h-px flex-1 bg-border" />
+                <span className="font-mono text-[10px] uppercase text-muted-foreground">{tc("googleLogin.ou")}</span>
+                <span className="h-px flex-1 bg-border" />
+              </div>
+              <BotaoGoogle
+                refConvite={ref}
+                aoEntrar={async ({ token }) => { await entrarComToken(token); }}
+                aoFalhar={(m) => setError(m)}
+              />
+            </div>
           </div>
         )}
 

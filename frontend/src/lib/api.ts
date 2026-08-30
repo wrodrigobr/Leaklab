@@ -110,6 +110,11 @@ export const profile = {
 };
 
 export const auth = {
+  /** Login com Google (30/08): manda o ID token do botão GIS; volta o NOSSO JWT. */
+  google: (credential: string, ref?: string) =>
+    request<{ token: string; user_id: number; username: string; role: string; created: boolean }>(
+      "/auth/google", { method: "POST", body: JSON.stringify({ credential, ref }) }),
+
   // `founderApply` viaja SEPARADO de `acquisition_source`: um diz de onde a pessoa veio
   // (instagram), o outro diz o que ela está pedindo (entrar no programa). Misturar os dois
   // numa chave só apagaria a origem — e é a origem que mede se a campanha funcionou.

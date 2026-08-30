@@ -12,6 +12,7 @@ interface AuthState {
   user: UserProfile | null;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
+  entrarComToken: (token: string) => Promise<void>;
   register: (username: string, email: string, password: string, role?: "player" | "coach", ref?: string | null, founderApply?: boolean) => Promise<RegisterResult>;
   verifyEmail: (email: string, code: string) => Promise<string | null>;
   logout: () => void;
@@ -40,6 +41,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = async (email: string, password: string) => {
     const res = await auth.login(email, password);
     sessionStorage.setItem("ll_token", res.token);
+    const profile = await auth.me();
+    setUser(profile);
+  };
+
+  /** Fecha a sessão a partir de um token já emitido (login com Google): o MESMO caminho do
+   *  login por senha a partir do token — nada de segunda lógica de sessão. */
+  const entrarComToken = async (token: string) => {
+    sessionStorage.setItem("ll_token", token);
     const profile = await auth.me();
     setUser(profile);
   };
@@ -77,7 +86,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, register, verifyEmail, logout, refreshUser }}>
+    <AuthContext.Provider value={{ user, isLoading, login, entrarComToken, register, verifyEmail, logout, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );

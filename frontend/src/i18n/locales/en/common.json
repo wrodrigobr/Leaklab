@@ -338,5 +338,10 @@
     "votos": "{{n}} votes",
     "comentarios": "{{n}} comments",
     "anonimo": "Anonymous"
+  },
+  "googleLogin": {
+    "erro": "Could not sign in with Google. Try again or use email and password.",
+    "nota": "No password, no verification code: your Google email arrives confirmed.",
+    "ou": "or"
   }
 }

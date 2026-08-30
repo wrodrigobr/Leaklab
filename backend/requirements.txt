@@ -12,3 +12,5 @@ pydyf==0.10.0
 python-dotenv==1.0.1
 sentry-sdk[flask]==2.19.2
 eval7==0.1.10
+# Login com Google (30/08): validacao do ID token do botao GIS
+google-auth==2.35.0

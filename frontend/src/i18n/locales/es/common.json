@@ -338,5 +338,10 @@
     "votos": "{{n}} votos",
     "comentarios": "{{n}} comentarios",
     "anonimo": "Anónimo"
+  },
+  "googleLogin": {
+    "erro": "No se pudo entrar con Google. Inténtalo de nuevo o usa correo y contraseña.",
+    "nota": "Sin contraseña ni código: tu correo de Google llega confirmado.",
+    "ou": "o"
   }
 }

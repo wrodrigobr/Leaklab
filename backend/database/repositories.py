@@ -330,6 +330,28 @@ def mark_winback_sent(user_id: int, stage: int) -> None:
         conn.close()
 
 
+def get_user_by_google_sub(sub: str) -> Optional[dict]:
+    """Usuário vinculado a esta identidade Google (coluna google_sub)."""
+    conn = get_conn()
+    try:
+        row = _fetchone(conn, _adapt('SELECT * FROM users WHERE google_sub = ?'), (sub,))
+        return dict(row) if row else None
+    finally:
+        conn.close()
+
+
+def vincular_google_sub(user_id: int, sub: str) -> None:
+    """Grava o vínculo Google na conta (e marca o e-mail como verificado: o Google atesta)."""
+    conn = get_conn()
+    try:
+        conn.execute(_adapt(
+            'UPDATE users SET google_sub = ?, email_verified = 1 WHERE id = ?'),
+            (sub, user_id))
+        conn.commit()
+    finally:
+        conn.close()
+
+
 def get_user_by_email(email: str) -> Optional[dict]:
     conn = get_conn()
     try:

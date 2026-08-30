@@ -5,6 +5,25 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## Continuar com Google (30/08)
+
+### Adicionado
+- **Login/cadastro com Google** (`POST /auth/google` + botão GIS nas duas abas da tela de
+  entrada). **Por quê:** o gargalo do funil é antes do produto, e uma perda documentada foi a
+  fricção de cadastro (7 contas presas na verificação de e-mail). As três regras que evitam
+  dor: (1) conta existente com o e-mail é VINCULADA (google_sub na conta, senha antiga segue
+  valendo — a UNIQUE do banco segura junto, provado por mutação); (2) username nasce do
+  prefixo do e-mail com sufixo em colisão, sem tela extra; (3) o Google só autentica — o JWT
+  emitido é o NOSSO, mesma sessão, mesmas rotas (`entrarComToken` no front reusa o caminho do
+  login por senha). E-mail não verificado no Google é recusado; `ref` de coach é preservado
+  como no cadastro por senha; conta nova nasce `email_verified=1` e
+  `acquisition_source='google'`.
+- Liga por configuração: `GOOGLE_CLIENT_ID` no servidor + `VITE_GOOGLE_CLIENT_ID` no Pages.
+  Sem elas, 503 no backend e botão ausente no front — nunca um botão que falha ao clicar.
+  Dependência nova: `google-auth`.
+
+---
+
 ## A terceira chave crua, e o guarda que fecha a família inteira (30/08)
 
 ### Corrigido
