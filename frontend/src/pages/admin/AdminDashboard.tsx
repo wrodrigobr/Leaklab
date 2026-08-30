@@ -579,7 +579,7 @@ function UsersTab() {
                 <tr><td colSpan={11} className="py-12 text-center text-muted-foreground">Nenhum usuário encontrado.</td></tr>
               ) : users.map(u => (
                 <tr key={u.id} className={cn("transition-colors hover:bg-primary/5", u.suspended && "opacity-50")}>
-                  <td className="px-4 py-3">
+                  <td className="min-w-[240px] px-4 py-3">
                     <p className="font-medium text-foreground">{u.display_name || u.username}</p>
                     {u.display_name && <p className="font-mono text-[10px] text-muted-foreground">@{u.username}</p>}
                     <p className="font-mono text-[10px] text-muted-foreground">{u.email}</p>
@@ -1855,7 +1855,9 @@ const AdminDashboard = () => {
   return (
     <div className="min-h-dvh bg-background hud-scanline">
       <HudHeader />
-      <main className="mx-auto max-w-[1440px] px-4 pt-8 pb-28 md:px-8 lg:pb-8 animate-fade-in">
+      {/* 30/08, o dono: "aproveitar o espaço" — admin é ferramenta de trabalho, o teto de
+          1440px deixava um terço do monitor vazio com a tabela espremida. */}
+      <main className="mx-auto max-w-[1880px] px-4 pt-8 pb-28 md:px-8 lg:pb-8 animate-fade-in">
         <div className="flex flex-col gap-6 lg:flex-row lg:gap-8">
           <AdminSidebar groups={groups} active={section} onSelect={setSection} />
 
