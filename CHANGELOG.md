@@ -5,6 +5,18 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## O Contra na janela fixada (30/08)
+
+### Corrigido
+- **A janela flutuante de ranges perdia o seletor de vilão** (o dono pegou): sem o CONTRA, o
+  "vs Abertura" consultava o confronto default e a carta exibida era de OUTRO spot — a
+  janela dizia "A4o: Fold 100%" enquanto a página mostrava o nó certo. O seletor entrou,
+  compartilhando o mesmo estado da página.
+- **"Abrir na mesa" virou "Fixar na tela"** (o dono estranhou o nome): o rótulo agora diz o
+  que a janela faz — fica por cima de qualquer aplicativo.
+
+---
+
 ## Exclusão de usuário com lista declarada (30/08)
 
 ### Mudado

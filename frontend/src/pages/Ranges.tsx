@@ -228,6 +228,8 @@ export default function Ranges() {
                 cenarioId={cenarioId} setCenarioId={setCenarioId}
                 stack={stack} setStack={setStack}
                 posicao={posicao} setPosicao={setPosicao}
+                viloes={viloes} vilaoAtivo={vilaoAtivo} setContra={setContra}
+                rotuloContra={t(cenario.contra === "3bettor" ? "ranges.tresBetDe" : "ranges.contra")}
               />
             </JanelaFlutuante>
           )}

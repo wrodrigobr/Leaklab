@@ -34,6 +34,12 @@ interface Props {
   cenarioId: string; setCenarioId: (v: string) => void;
   stack: number; setStack: (v: number) => void;
   posicao: string; setPosicao: (v: string) => void;
+  /* 30/08, o dono pegou: sem o CONTRA, o "vs Abertura" da janela consulta OUTRO nó (o
+     confronto default) e a carta exibida é de outro spot. Mesmo estado da página. */
+  viloes: string[];
+  vilaoAtivo: string | null;
+  setContra: (v: string) => void;
+  rotuloContra: string;
 }
 
 const CAIXA = "h-7 rounded-md border border-border bg-background/60 px-1.5 text-[11px] " +
@@ -42,6 +48,7 @@ const CAIXA = "h-7 rounded-md border border-border bg-background/60 px-1.5 text-
 export function ConsultaCompacta({
   range, carregando, cenarios, stacks, stackRasoMax,
   cenarioId, setCenarioId, stack, setStack, posicao, setPosicao,
+  viloes, vilaoAtivo, setContra, rotuloContra,
 }: Props) {
   const cenario = cenarios.find((c) => c.id === cenarioId) ?? cenarios[0];
 
@@ -63,6 +70,12 @@ export function ConsultaCompacta({
         <select value={posicao} onChange={(e) => setPosicao(e.target.value)} className={CAIXA}>
           {cenario.posicoes.map((p) => <option key={p} value={p}>{p}</option>)}
         </select>
+        {viloes.length > 0 && (
+          <select value={vilaoAtivo ?? ""} onChange={(e) => setContra(e.target.value)}
+                  className={CAIXA} aria-label={rotuloContra}>
+            {viloes.map((v) => <option key={v} value={v}>{rotuloContra} {v}</option>)}
+          </select>
+        )}
       </div>
 
       <div className={cn("min-h-0 flex-1", carregando && "opacity-40")}>

@@ -167,7 +167,7 @@
     "erroCarregar": "no se pudo cargar",
     "posicoesForaDoCenario": "Las posiciones apagadas no tienen ese escenario.",
     "substituicao": "Estas son las ranges de {{balde}}: no tenemos este escenario en la profundidad elegida.",
-    "flutuante": "Abrir sobre la mesa"
+    "flutuante": "Fijar en pantalla"
   },
   "pro": {
     "titulo": "El plan de estudio es del plan Pro",

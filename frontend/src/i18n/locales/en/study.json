@@ -167,7 +167,7 @@
     "erroCarregar": "could not load",
     "posicoesForaDoCenario": "Greyed-out positions have no such scenario.",
     "substituicao": "These are the {{balde}} ranges: we have no chart for this scenario at the depth you picked.",
-    "flutuante": "Open over the table"
+    "flutuante": "Pin on screen"
   },
   "pro": {
     "titulo": "The study plan is a Pro feature",
