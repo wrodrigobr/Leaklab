@@ -5,6 +5,25 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## A vitrine que mentia sobre o Free, e o guarda que lê os limites do backend (30/08)
+
+### Corrigido
+- **O card Free anunciava "treino sem limite diário"** (o dono desconfiou, com razão): foi
+  verdade por UM dia (o teto desligado por engano em 28/08) e mentira desde a paridade de
+  20/dia. A linha agora diz "20 spots por dia". As demais afirmações foram conferidas no
+  código: 30 torneios ✓, 15 explicações de IA por mão ✓ (o que virou Pro foi análise de
+  torneio/plano/relatórios), 5 solves ✓.
+- **"Marketplace de coaches" saiu do card Pro** (decisão do dono) — da landing e da lista do
+  checkout, nos 3 idiomas.
+
+### Adicionado
+- **Guarda vitrine×PLAN_LIMITS**: lê os números do PRÓPRIO backend e exige que a copy dos 3
+  idiomas os carregue — e bane "sem limite" enquanto o teto existir. Quebrado de propósito.
+  (Duas emboscadas no caminho, registradas: PLAN_LIMITS mora no repositories, não no app.py
+  que só importa; e `\s` em template literal vira "s" e a regex falha CALADA.)
+
+---
+
 ## O Comparar sem beco (30/08)
 
 ### Mudado

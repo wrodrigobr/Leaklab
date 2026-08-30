@@ -536,7 +536,9 @@ function PricingSection() {
       period: t("plans.period"),
       highlight: true,
       badge: t("plans.grinder") as string | null,
-      features: [t("plans.proF1"), t("plans.proF2"), t("plans.proF7"), t("plans.proF8"), t("plans.proF3"), t("plans.proF4"), t("plans.proF5"), t("plans.proF6")],
+      // proF5 (marketplace) fora por decisao do dono em 30/08: some da vitrine ate o
+      // marketplace ter trilha propria de valor.
+      features: [t("plans.proF1"), t("plans.proF2"), t("plans.proF7"), t("plans.proF8"), t("plans.proF3"), t("plans.proF4"), t("plans.proF6")],
       cta: t("plans.ctaSubscribe", { name: "Pro" }),
       // Era um `mailto:` para o e-mail pessoal do dono — sobra de quando a assinatura ainda não
       // existia. Desde 2026-06-17 o Stripe está no ar, e o botão mandava o interessado escrever
