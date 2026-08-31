@@ -3938,9 +3938,25 @@ def admin_daily_challenge_generate():
     # gabarito antes de o candidato chegar à sua fila de aprovação. Ligado por padrão — o motivo
     # de cada descarte vai pro log do container.
     verify = bool(body.get('verify', True))
-    cands = build_candidates(n, difficulty=diff, verify=verify)
-    added = add_challenge_candidates(cands)
-    return jsonify({'generated': added, 'difficulty': diff, 'verified': verify})
+
+    # 31/08, Sentry em prod (SystemExit no meio do _call_llm_api): 10 candidatos x (voto
+    # adversarial + explicação + retry) = dezenas de chamadas de LLM SEQUENCIAIS dentro do
+    # request — o gunicorn mata o worker por timeout e o SystemExit não é capturável. A
+    # geração agora roda em THREAD: a resposta volta na hora e os candidatos pingam no pool
+    # (o admin atualiza a lista). Mesmo padrão de dor do opponent_profiles do CoinPoker.
+    import threading
+
+    def _gerar():
+        try:
+            cands = build_candidates(n, difficulty=diff, verify=verify)
+            added = add_challenge_candidates(cands)
+            app.logger.info('desafio: geração em fundo concluída — %s candidato(s) no pool '
+                            '(dificuldade=%s, verify=%s)', added, diff, verify)
+        except Exception:
+            app.logger.exception('desafio: geração em fundo FALHOU')
+
+    threading.Thread(target=_gerar, daemon=True, name='gera-desafios').start()
+    return jsonify({'started': True, 'n': n, 'difficulty': diff, 'verified': verify}), 202
 
 
 @app.route('/admin/daily-challenge/revalidate', methods=['POST'])

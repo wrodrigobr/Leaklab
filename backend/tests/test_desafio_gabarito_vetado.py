@@ -234,6 +234,52 @@ def test_agendado_aposentado_re_sorteia_SO_sem_tentativa():
     print('OK  test_agendado_aposentado_re_sorteia_SO_sem_tentativa')
 
 
+
+def test_geracao_de_candidatos_nao_bloqueia_o_request():
+    """31/08, Sentry em prod: dezenas de chamadas de LLM sequenciais DENTRO do request — o
+    gunicorn matava o worker (SystemExit incapturável). O contrato agora: a rota responde
+    202 IMEDIATAMENTE e a geração roda em fundo. O teste segura a geração com um evento e
+    exige a resposta antes de soltá-la."""
+    import threading
+    import api.app as A
+    from database.schema import init_db
+    init_db()
+    from database.auth import generate_token
+    from database.repositories import create_user, _adapt
+    from database.schema import get_conn
+    import uuid
+    m = uuid.uuid4().hex[:8]
+    uid = create_user('admger_' + m, f'admger_{m}@t.local', 'x' * 12)
+    conn = get_conn()
+    try:
+        conn.execute(_adapt("UPDATE users SET role = 'admin' WHERE id = ?"), (uid,))
+        conn.commit()
+    finally:
+        conn.close()
+
+    trava = threading.Event()
+    chamado = threading.Event()
+    import leaklab.daily_challenge as dc
+    original = dc.build_candidates
+    def lenta(*a, **k):
+        chamado.set()
+        assert trava.wait(timeout=10), 'a trava nunca foi solta'
+        return []
+    dc.build_candidates = lenta
+    try:
+        c = A.app.test_client()
+        r = c.post('/admin/daily-challenge/generate', json={'n': 3, 'verify': True},
+                   headers={'Authorization': 'Bearer ' + generate_token(uid, 'admin')})
+        # a resposta chegou COM a geração ainda presa na trava = não bloqueia o request
+        assert r.status_code == 202, r.get_data(as_text=True)[:150]
+        assert r.get_json().get('started') is True
+        assert chamado.wait(timeout=5), 'a geração em fundo nem começou'
+    finally:
+        trava.set()
+        dc.build_candidates = original
+    print('OK  test_geracao_de_candidatos_nao_bloqueia_o_request')
+
+
 if __name__ == '__main__':
     falhas = 0
     testes = [v for k, v in sorted(globals().items()) if k.startswith('test_')]

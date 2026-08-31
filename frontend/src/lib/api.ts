@@ -3656,7 +3656,7 @@ export const adminDashboard = {
 
   // ── Desafio do Dia (#42) — curadoria ────────────────────────────────────────
   challengeGenerate: (n = 10) =>
-    request<{ generated: number }>(`/admin/daily-challenge/generate`, {
+    request<{ started: boolean; n: number }>(`/admin/daily-challenge/generate`, {
       method: "POST",
       body: JSON.stringify({ n }),
     }),

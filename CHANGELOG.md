@@ -5,6 +5,19 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## A geração de desafios sai do request (31/08, Sentry na noite do lançamento)
+
+### Corrigido
+- **`SystemExit` ao gerar candidatos do desafio** (Sentry, com o dono usando o painel):
+  dezenas de chamadas de LLM sequenciais (10 candidatos × voto adversarial + explicação +
+  retry) dentro do request — o gunicorn matava o worker por timeout, e o SystemExit do
+  timeout não é capturável (mesmo padrão documentado do opponent_profiles). A geração agora
+  roda em THREAD: a rota responde 202 na hora, os candidatos pingam no pool e o toast do
+  admin diz a verdade ("iniciada — atualize em 1-2 min"). Teste segura a geração com um
+  evento e exige a resposta antes de soltá-la.
+
+---
+
 ## Cancelamento self-service provado (31/08, régua de lançamento)
 
 ### Corrigido

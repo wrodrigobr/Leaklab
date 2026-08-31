@@ -953,9 +953,11 @@ function ChallengeTab() {
   const gen = useMutation({
     mutationFn: () => adminDashboard.challengeGenerate(n),
     onSuccess: (r) => {
-      toast.success(`${r.generated} candidato(s) gerado(s)`);
+      // 31/08: a geração virou fundo (o request morria por timeout no meio das chamadas de
+      // LLM). O toast diz a verdade: começou; os candidatos pingam no pool em ~1-2 min.
+      toast.success(`Geração de ${r.n} candidato(s) iniciada — atualize a lista em 1-2 min`);
       setStatus("pending");
-      qc.invalidateQueries({ queryKey: ["admin-challenge-pool"] });
+      setTimeout(() => qc.invalidateQueries({ queryKey: ["admin-challenge-pool"] }), 90_000);
     },
     onError: () => toast.error("Falha ao gerar candidatos"),
   });
