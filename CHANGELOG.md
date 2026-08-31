@@ -5,6 +5,19 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## A matriz que aprendeu a se explicar (31/08)
+
+### Mudado
+- **Posição × profundidade compactada e com leitura automática** (o dono: "muito grande e com
+  pouca explicação"): as colunas `1fr` esticavam a célula a ~250px na tela larga — agora têm
+  teto de 104px e a grade não preenche o monitor. E a matriz INTERPRETA: o pior cruzamento
+  com amostra decente (piso de 30 decisões — abaixo disso a taxa é ruído) vira frase em
+  destaque ("Seu cruzamento mais caro: HJ com 35-60bb — 17,5bb/100 em 105 decisões. É por
+  aqui que o treino rende mais.") com anel âmbar na célula. Número sem leitura obriga o
+  jogador a fazer o trabalho do produto.
+
+---
+
 ## A geração de desafios sai do request (31/08, Sentry na noite do lançamento)
 
 ### Corrigido

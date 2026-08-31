@@ -21,7 +21,8 @@
     "keyBottom": "quantas decisões foram medidas ali. Poucas decisões, leitura frágil.",
     "keyEmpty": "sem amostra nessa combinação. Não quer dizer que você acertou.",
     "legend": "A cor acompanha o número de cima: quanto mais forte, mais cara é aquela posição naquela profundidade.",
-    "empty": "—"
+    "empty": "—",
+    "leitura": "Seu cruzamento mais caro: {{pos}} com {{bucket}} — {{bb}}bb perdidos a cada 100 decisões, medido em {{n}} decisões. É por aqui que o treino rende mais."
   },
   "proof": {
     "title": "Antes e depois do treino",

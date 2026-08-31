@@ -473,6 +473,15 @@ function Matriz({ matriz }: { matriz: EvolutionReport["matriz"] }) {
   const posicoes = ORDEM.filter((p) => matriz.some((c) => c.position === p));
   const max = Math.max(...matriz.map((c) => c.bb_100 ?? 0), 1);
 
+  // 31/08, o dono: "muito grande e com pouca explicação". A matriz agora INTERPRETA: o pior
+  // cruzamento com amostra decente vira uma frase e ganha anel na célula — número sem
+  // leitura obriga o jogador a fazer o trabalho do produto. Piso de amostra: 30 decisões
+  // (abaixo disso a taxa é ruído e apontar seria acusação frágil).
+  const MIN_LEITURA = 30;
+  const pior = matriz
+    .filter((c) => c.bb_100 != null && c.n >= MIN_LEITURA)
+    .sort((a2, b2) => (b2.bb_100 ?? 0) - (a2.bb_100 ?? 0))[0] ?? null;
+
   const tom = (v: number) => {
     // Escala sequencial de UMA cor. Nunca arco-íris: aqui a cor codifica magnitude, e magnitude
     // tem ordem.
@@ -522,15 +531,25 @@ function Matriz({ matriz }: { matriz: EvolutionReport["matriz"] }) {
         </div>
       </div>
 
+      {pior && (
+        <p className="mb-3 rounded-lg border border-amber-400/30 bg-amber-400/[0.06] px-3 py-2 text-[12px] leading-snug text-foreground">
+          {t("matrix.leitura", { pos: pior.position, bucket: pior.bucket,
+                                 bb: pior.bb_100?.toFixed(1), n: pior.n })}
+        </p>
+      )}
       <div className="overflow-x-auto">
-        <div className="grid gap-1"
-          style={{ gridTemplateColumns: `60px repeat(${buckets.length}, minmax(58px, 1fr))`, minWidth: 420 }}>
+        {/* teto de 104px por coluna: com 1fr, a célula virava um cartão de ~250px na tela
+            larga — o mapa é para ESCANEAR, não para preencher o monitor. */}
+        <div className="grid w-fit gap-1"
+          style={{ gridTemplateColumns: `60px repeat(${buckets.length}, minmax(58px, 104px))`, minWidth: 420 }}>
           <div />
           {buckets.map((b) => (
             <div key={b} className="pb-1 text-center font-mono text-[10px] text-muted-foreground">{b}</div>
           ))}
           {posicoes.map((p) => (
-            <FragmentRow key={p} pos={p} buckets={buckets} grade={grade} tom={tom} vazio={t("matrix.empty")} />
+            <FragmentRow key={p} pos={p} buckets={buckets} grade={grade} tom={tom}
+                         vazio={t("matrix.empty")}
+                         destaque={pior && pior.position === p ? pior.bucket : null} />
           ))}
         </div>
       </div>
@@ -539,10 +558,11 @@ function Matriz({ matriz }: { matriz: EvolutionReport["matriz"] }) {
   );
 }
 
-function FragmentRow({ pos, buckets, grade, tom, vazio }: {
+function FragmentRow({ pos, buckets, grade, tom, vazio, destaque }: {
   pos: string; buckets: string[];
   grade: Map<string, EvolutionReport["matriz"][number]>;
   tom: (v: number) => React.CSSProperties; vazio: string;
+  destaque?: string | null;
 }) {
   const { t } = useTranslation("evolution");
   return (
@@ -553,7 +573,8 @@ function FragmentRow({ pos, buckets, grade, tom, vazio }: {
         return c && c.bb_100 != null ? (
           <div key={b} style={tom(c.bb_100)}
             title={t("celulaTitulo", { pos, bucket: b, bb: c.bb_100, n: c.n })}
-            className="flex aspect-[1.9] flex-col items-center justify-center rounded-md">
+            className={"flex aspect-[1.9] flex-col items-center justify-center rounded-md" +
+                       (destaque === b ? " ring-2 ring-amber-400/80" : "")}>
             <span className="font-mono text-[12px] font-bold text-foreground">{c.bb_100.toFixed(1)}</span>
             {/* `foreground/70` e NÃO `muted-foreground`: aquele cinza (L 47%) é calibrado contra o
                 fundo da PÁGINA, e aqui o fundo é um preenchimento teal. O contraste ficava perto
