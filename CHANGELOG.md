@@ -5,6 +5,22 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## Cancelamento self-service provado (31/08, régua de lançamento)
+
+### Corrigido
+- **O teste do downgrade do webhook mentia**: `test_webhook_subscription_deleted_downgrades`
+  prometia downgrade no nome e só conferia o 200 (o comentário até admitia "evento
+  ignorado"). Agora ativa um Pro real, dispara o `customer.subscription.deleted`, e exige
+  plan=free com o motivo do churn gravado — mutação no webhook acusada.
+
+### Adicionado
+- **Teste do caminho que os Termos prometem**: cancelar assinatura recorrente agenda o fim no
+  Stripe (`at_period_end=True`, verificado na chamada) e o Pro CONTINUA até o fim do ciclo —
+  o clique não rebaixa; o webhook rebaixa depois. A cadeia inteira do cancelamento
+  (botão com confirmação → endpoint → Stripe → webhook → downgrade) agora tem prova em cada elo.
+
+---
+
 ## A leva do Instagram entra com 3 meses (30/08)
 
 ### Mudado

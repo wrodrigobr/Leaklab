@@ -343,15 +343,49 @@ def test_webhook_no_secret_allowed():
 
 
 def test_webhook_subscription_deleted_downgrades():
-    """Evento desconhecido (customer.subscription.deleted) é ignorado graciosamente → 200."""
+    """31/08 (régua de lançamento): este teste PROMETIA downgrade no nome e só conferia o
+    200 — o comentário até admitia "evento ignorado". Agora prova o que promete: o webhook
+    deleted rebaixa o usuário REAL para free, com o motivo do churn gravado."""
     c = _make_client()
-    # The webhook endpoint only handles payment_intent.succeeded; unknown events return 200 silently
+    token = _register_and_login(c, 'subdel')
+    import jwt as _jwt
+    from database.auth import SECRET_KEY
+    from database.repositories import apply_stripe_subscription, get_user_by_id
+    uid = _jwt.decode(token, SECRET_KEY, algorithms=['HS256'])['user_id']
+    apply_stripe_subscription(uid, 'active', '2099-01-01', 'sub_DELETEME')
+    assert get_user_by_id(uid).get('plan') == 'pro', 'controle: a ativacao nao pegou'
     payload = json.dumps({'type': 'customer.subscription.deleted',
-                          'data': {'object': {'metadata': {'user_id': '1'}}}}).encode()
+                          'data': {'object': {'id': 'sub_DELETEME',
+                                              'metadata': {'user_id': str(uid)},
+                                              'cancellation_details': {'reason': 'cancellation_requested'}}}}).encode()
     with patch('api.app.STRIPE_WEBHOOK_SECRET', ''):
         r = c.post('/subscription/webhook', data=payload, content_type='application/json')
-    assert r.status_code == 200, f"Expected 200, got {r.status_code}: {r.get_data(as_text=True)}"
+    assert r.status_code == 200, r.get_data(as_text=True)[:200]
+    u = get_user_by_id(uid)
+    assert u.get('plan') == 'free', 'webhook deleted NAO rebaixou: plan=%s' % u.get('plan')
+    assert (u.get('cancel_reason') or '') == 'cancellation_requested', u.get('cancel_reason')
     print("OK  test_webhook_subscription_deleted_downgrades")
+
+
+def test_cancel_recorrente_mantem_pro_ate_o_fim():
+    """O caminho que os Termos prometem: cancelar assinatura sub_ agenda o fim (Stripe
+    at_period_end) e o Pro CONTINUA até lá — o downgrade é do webhook, não do clique."""
+    c = _make_client()
+    token = _register_and_login(c, 'cancrec')
+    import jwt as _jwt
+    from database.auth import SECRET_KEY
+    from database.repositories import apply_stripe_subscription, get_user_by_id
+    uid = _jwt.decode(token, SECRET_KEY, algorithms=['HS256'])['user_id']
+    apply_stripe_subscription(uid, 'active', '2099-01-01', 'sub_RECORRENTE')
+    with patch('api.app.cancel_subscription', return_value=True) as m:
+        r = c.post('/subscription/cancel', headers=_auth(token))
+    assert r.status_code == 200, r.get_data(as_text=True)[:200]
+    d = r.get_json()
+    assert d.get('cancel_at_period_end') is True, d
+    m.assert_called_once_with('sub_RECORRENTE', at_period_end=True)
+    assert get_user_by_id(uid).get('plan') == 'pro', (
+        'o clique de cancelar rebaixou NA HORA — os Termos prometem acesso ate o fim do ciclo')
+    print("OK  test_cancel_recorrente_mantem_pro_ate_o_fim")
 
 
 def test_webhook_invalid_signature_rejected():
