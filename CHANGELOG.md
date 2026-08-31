@@ -5,6 +5,15 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## A leva do Instagram entra com 3 meses (30/08)
+
+### Mudado
+- **Fundadores: default de 3 meses** (decisão do dono para a campanha de aquisição via
+  Instagram; a 1ª leva teve 6). A concessão continua parametrizada no admin (1-24); mudou o
+  padrão do backend, do painel e a copy da página `/fundadores` nos 3 idiomas.
+
+---
+
 ## A cota mensal que prendia para sempre quem fechou no teto (30/08)
 
 ### Corrigido

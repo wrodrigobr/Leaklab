@@ -1,7 +1,7 @@
 {
   "eyebrow": "Founding partner programme",
-  "titulo": "Pro free for 6 months, for people who will actually use it",
-  "subtitulo": "We are opening the first founding partner spots. You get the full Pro plan at no cost for 6 months. In return you play, import your tournaments and tell us what is broken. That is it: no fine print, no card, no auto-renew.",
+  "titulo": "Pro free for 3 months, for people who will actually use it",
+  "subtitulo": "We are opening the first founding partner spots. You get the full Pro plan at no cost for 3 months. In return you play, import your tournaments and tell us what is broken. That is it: no fine print, no card, no auto-renew.",
   "compromisso": {
     "jogar": {
       "titulo": "Play",
@@ -23,7 +23,7 @@
   "recebe": {
     "titulo": "What you get",
     "itens": [
-      "The full Pro plan for 6 months, renewable while the programme makes sense for both sides",
+      "The full Pro plan for 3 months, renewable while the programme makes sense for both sides",
       "Every decision analysed against a GTO Solver, with the EV lost in big blinds",
       "Training aimed at your leaks, built from your own hands",
       "A direct channel to report problems and ask for what is missing"

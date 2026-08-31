@@ -1,7 +1,7 @@
 {
   "eyebrow": "Programa de socios fundadores",
-  "titulo": "Pro gratis durante 6 meses para quien lo va a usar de verdad",
-  "subtitulo": "Estamos abriendo las primeras plazas de socio fundador. Recibes el plan Pro completo, sin pagar, durante 6 meses. A cambio juegas, importas tus torneos y cuentas qué está roto. Eso es todo: sin letra pequeña, sin tarjeta, sin renovación automática.",
+  "titulo": "Pro gratis durante 3 meses para quien lo va a usar de verdad",
+  "subtitulo": "Estamos abriendo las primeras plazas de socio fundador. Recibes el plan Pro completo, sin pagar, durante 3 meses. A cambio juegas, importas tus torneos y cuentas qué está roto. Eso es todo: sin letra pequeña, sin tarjeta, sin renovación automática.",
   "compromisso": {
     "jogar": {
       "titulo": "Jugar",
@@ -23,7 +23,7 @@
   "recebe": {
     "titulo": "Qué recibes",
     "itens": [
-      "El plan Pro completo durante 6 meses, renovable mientras el programa tenga sentido para ambas partes",
+      "El plan Pro completo durante 3 meses, renovable mientras el programa tenga sentido para ambas partes",
       "Cada decisión analizada contra un GTO Solver, con el EV perdido en big blinds",
       "Entrenamiento dirigido a tus leaks, montado a partir de tus propias manos",
       "Un canal directo para reportar problemas y pedir lo que falta"

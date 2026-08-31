@@ -8644,7 +8644,7 @@ def get_founder_candidates(limit: int = 200) -> list:
         conn.close()
 
 
-def grant_founder(user_ids: list, meses: int = 6) -> dict:
+def grant_founder(user_ids: list, meses: int = 3) -> dict:
     """Concede Pro de fundador a vários usuários de uma vez. Retorna o que mudou de fato.
 
     Não sobrescreve assinante pagante: quem tem `plan_source='stripe_sub'` é pulado, senão

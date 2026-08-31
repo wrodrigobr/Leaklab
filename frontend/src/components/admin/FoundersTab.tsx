@@ -67,7 +67,7 @@ function EstadoDoTrato({ f }: { f: Founder }) {
 
 function Convidar({ onPronto }: { onPronto: () => void }) {
   const [busca, setBusca] = useState("");
-  const [meses, setMeses] = useState(6);
+  const [meses, setMeses] = useState(3);
   const [escolhidos, setEscolhidos] = useState<AdminUser[]>([]);
 
   // Sem filtro de papel DE PROPÓSITO. A primeira versão filtrava `role: "player"` e sumia
@@ -207,7 +207,7 @@ function Convidar({ onPronto }: { onPronto: () => void }) {
  */
 function Fila({ onAprovado }: { onAprovado: () => void }) {
   const qc = useQueryClient();
-  const [meses, setMeses] = useState(6);
+  const [meses, setMeses] = useState(3);
   const { data, isLoading } = useQuery({
     queryKey: ["admin-founder-candidates"],
     queryFn: adminDashboard.founderCandidates,

@@ -9760,7 +9760,7 @@ def admin_founders():
 @app.route('/admin/founders', methods=['POST'])
 @require_admin
 def admin_grant_founders():
-    """Concede Pro de fundador em lote. `{user_ids: [...], meses: 6}`.
+    """Concede Pro de fundador em lote. `{user_ids: [...], meses: 3}`.
 
     Assinante pagante é PULADO, não sobrescrito — e volta na resposta, para a concessão
     não sumir com o caso em silêncio."""
@@ -9773,11 +9773,12 @@ def admin_grant_founders():
         ids = [int(i) for i in ids]
     except (TypeError, ValueError):
         return jsonify({'error': 'user_ids deve conter inteiros'}), 400
-    meses = data.get('meses', 6)
+    # 30/08, decisao do dono: a leva do Instagram entra com 3 meses (a 1a leva teve 6)
+    meses = data.get('meses', 3)
     try:
         meses = int(meses)
     except (TypeError, ValueError):
-        meses = 6
+        meses = 3
     if not 1 <= meses <= 24:
         return jsonify({'error': 'meses deve estar entre 1 e 24'}), 400
     res = grant_founder(ids, meses)
