@@ -5,6 +5,18 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## O badge que apontava a porta errada (01/09)
+
+### Corrigido
+- **O dono enviou um elogio e "não recebeu" no admin**: a mensagem estava gravada e a aba
+  Feedback a mostrava — mas o BADGE somava todos os tickets abertos e pendurava só em
+  "Tickets", puxando para a porta errada (elogio renderiza em "Feedback"). O count agora vem
+  POR CATEGORIA e os dois badges derivam da MESMA partição que a listagem usa
+  (`FEEDBACK_CATEGORIES`, num lugar só). Auditoria de tabela: `Feedback + Tickets` cobrem
+  `support_tickets` inteira — não há terceiro lugar para mensagem se esconder.
+
+---
+
 ## A matriz que aprendeu a se explicar (31/08)
 
 ### Mudado

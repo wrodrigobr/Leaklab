@@ -9843,13 +9843,19 @@ def complete_onboarding():
 @app.route('/admin/support-tickets/count', methods=['GET'])
 @require_admin
 def admin_support_tickets_count():
+    # 01/09, o dono nao achou o proprio elogio: o badge somava TODOS os abertos e pendurava
+    # so em "Tickets", puxando para a porta errada (praise renderiza em "Feedback"). O count
+    # agora vem POR CATEGORIA e o front deriva os dois badges da MESMA particao que usa para
+    # listar — a regra de "o que e feedback" continua morando num lugar so.
     from database.schema import get_conn as _gc
     conn = _gc()
     try:
-        row = conn.execute(
-            "SELECT COUNT(*) AS n FROM support_tickets WHERE status = 'open'"
-        ).fetchone()
-        return jsonify({'open': row['n'] if row else 0})
+        rows = conn.execute(
+            "SELECT category, COUNT(*) AS n FROM support_tickets "
+            "WHERE status = 'open' GROUP BY category"
+        ).fetchall()
+        por = {str(r['category'] or 'other'): int(r['n']) for r in rows}
+        return jsonify({'open': sum(por.values()), 'by_category': por})
     finally:
         conn.close()
 

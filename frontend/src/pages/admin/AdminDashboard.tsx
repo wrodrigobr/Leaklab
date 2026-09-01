@@ -1815,7 +1815,12 @@ const AdminDashboard = () => {
   });
   const founderDot = (founders?.resumo?.vencendo_em_30d ?? 0) > 0;
 
-  const openTickets = supportCount?.open ?? 0;
+  // 01/09: o badge somava tudo e pendurava só em Tickets — o dono não achou o próprio
+  // elogio. Os DOIS badges derivam da MESMA partição da listagem (FEEDBACK_CATEGORIES).
+  const porCategoria = supportCount?.by_category ?? {};
+  const openFeedback = Object.entries(porCategoria)
+    .filter(([c]) => FEEDBACK_CATEGORIES.has(c)).reduce((a2, [, n]) => a2 + n, 0);
+  const openTickets = (supportCount?.open ?? 0) - openFeedback;
   const pendingCount = pendingApps?.applications?.length ?? 0;
   const financeDot = (dunning?.past_due?.length ?? 0) > 0 || (dunning?.recent_failed?.length ?? 0) > 0;
   const workerDot = worker ? (worker.worker.state === "down" || worker.recent_errors.length > 0) : false;
@@ -1836,7 +1841,7 @@ const AdminDashboard = () => {
       label: "Suporte",
       items: [
         { id: "support",      label: "Tickets",      icon: MessageSquarePlus, badge: openTickets },
-        { id: "feedback",     label: "Feedback",     icon: Lightbulb },
+        { id: "feedback",     label: "Feedback",     icon: Lightbulb, badge: openFeedback },
         { id: "messages",     label: "Mensagens",    icon: Send },
         { id: "candidaturas", label: "Candidaturas", icon: Shield, badge: pendingCount },
       ],

@@ -572,6 +572,41 @@ def test_replay_publico_anonimizado():
     print("OK  test_replay_publico_anonimizado")
 
 
+
+def test_contagem_de_tickets_por_categoria():
+    """01/09, o dono nao achou o proprio elogio: o badge somava todos os abertos e pendurava
+    so em Tickets, enquanto praise renderiza em Feedback. O count agora vem por categoria e
+    os DOIS badges derivam da mesma particao da listagem."""
+    import uuid
+    c = _make_client()
+    token = _register_and_login(c, 'tkcat')
+    m = uuid.uuid4().hex[:6]
+    for cat, subj in (('praise', 'Elogio ' + m), ('bug', 'Suporte ' + m)):
+        r = c.post('/support/contact', json={'category': cat, 'subject': subj,
+                                             'message': 'x'}, headers=_auth_headers(token))
+        assert r.status_code in (200, 201), (cat, r.get_data(as_text=True)[:120])
+    adm = _register_and_login(c, 'tkadm')
+    _vira_admin = __import__('database.repositories', fromlist=['_adapt'])._adapt
+    import jwt as _jwt
+    from database.auth import SECRET_KEY
+    from database.schema import get_conn
+    uid = _jwt.decode(adm, SECRET_KEY, algorithms=['HS256'])['user_id']
+    conn = get_conn()
+    try:
+        conn.execute(_vira_admin("UPDATE users SET role = 'admin' WHERE id = ?"), (uid,))
+        conn.commit()
+    finally:
+        conn.close()
+    r = c.get('/admin/support-tickets/count', headers=_auth_headers(adm))
+    assert r.status_code == 200
+    d = r.get_json()
+    por = d.get('by_category') or {}
+    assert por.get('praise', 0) >= 1, 'praise nao aparece na contagem por categoria: %s' % por
+    assert por.get('bug', 0) >= 1, por
+    assert d['open'] == sum(por.values()), 'open nao e a soma das categorias: %s' % d
+    print("OK  test_contagem_de_tickets_por_categoria")
+
+
 # ── /analyze/replay-coach ─────────────────────────────────────────────────────
 
 def test_replay_coach_requires_auth():

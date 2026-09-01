@@ -4096,7 +4096,7 @@ export const support = {
     request<{ tickets: unknown[] }>("/admin/support-tickets"),
 
   unreadCount: () =>
-    request<{ open: number }>("/admin/support-tickets/count"),
+    request<{ open: number; by_category?: Record<string, number> }>("/admin/support-tickets/count"),
 
   replyTicket: (ticketId: number, reply: string) =>
     request<{ ok: boolean }>(`/admin/support-tickets/${ticketId}/reply`, {
