@@ -1120,22 +1120,38 @@ def _analyze_impl():
         name='label-reconcile',
     ).start()
 
-    # Enfileirar spots postflop novos para o solver GTO em background
-    threading.Thread(
-        target=_enqueue_postflop_spots,
-        # g.user_id capturado AQUI (contexto do request); dentro da thread o `g` já morreu.
-        args=(results, t_db_id, g.user_id),
-        daemon=True,
-        name='gto-upload-enqueue',
-    ).start()
+    # ── Fila de análise por plano (02/09, decisão do dono) ─────────────────────────────────
+    # O upload SEMPRE entra; a camada GTO espera a vez: free = 3 torneios em análise por vez,
+    # o resto aguarda em gto_analysis_waitlist e o consumer promove quando uma vaga abre
+    # ("a fila é inteligência nossa"). Falha na consulta degrada para "analisa já" — a fila
+    # é otimização de recurso, nunca pode derrubar ou prender um upload.
+    _aguarda_analise = False
+    try:
+        from leaklab.fila_de_analise import deve_esperar, entrar_na_espera
+        _aguarda_analise = deve_esperar(g.user_id)
+        if _aguarda_analise:
+            entrar_na_espera(t_db_id, g.user_id)
+    except Exception:
+        _aguarda_analise = False
+        log.exception('fila de analise falhou; seguindo com analise imediata')
 
-    # Auto-enfileirar análise GTO para todas as mãos postflop do torneio
-    threading.Thread(
-        target=_auto_queue_gto_for_tournament,
-        args=(t_db_id, results, g.user_id),
-        daemon=True,
-        name='gto-hand-autoqueue',
-    ).start()
+    if not _aguarda_analise:
+        # Enfileirar spots postflop novos para o solver GTO em background
+        threading.Thread(
+            target=_enqueue_postflop_spots,
+            # g.user_id capturado AQUI (contexto do request); dentro da thread o `g` já morreu.
+            args=(results, t_db_id, g.user_id),
+            daemon=True,
+            name='gto-upload-enqueue',
+        ).start()
+
+        # Auto-enfileirar análise GTO para todas as mãos postflop do torneio
+        threading.Thread(
+            target=_auto_queue_gto_for_tournament,
+            args=(t_db_id, results, g.user_id),
+            daemon=True,
+            name='gto-hand-autoqueue',
+        ).start()
 
     # Warm-up cache GW pra spots preflop multiway (squeeze, cold-callers) —
     # spots fora do escopo HU do lookup_gto local. Antecipa a captura pra
@@ -1206,6 +1222,9 @@ def _analyze_impl():
     import uuid
     return jsonify({
         'session_id':       str(uuid.uuid4()),
+        # Fila de análise por plano: o front mostra "na fila, 3 por vez no Free" em vez de
+        # prometer análise imediata que não vai acontecer.
+        'analysis_waitlisted': _aguarda_analise,
         'proximo_passo':    _passo_pos_upload,
         'tournament_db_id': t_db_id,
         'hero':             hero,
@@ -12410,6 +12429,14 @@ def _solver_queue_worker_loop():
             _pr = _f1(conn, "SELECT COUNT(*) AS n FROM gto_solver_queue WHERE status='pending'")
             pending = (dict(_pr).get('n', 0) if _pr else 0) or 0
             conn.close()
+            # Promoção RODA A CADA TICK, não só com a fila global vazia: com tráfego Pro a fila
+            # nunca drena por completo, mas os 3 torneios de um free podem ter drenado — a vaga
+            # dele abre agora. Barato com a waitlist vazia (um SELECT DISTINCT).
+            try:
+                from leaklab.fila_de_analise import promover_aguardando
+                promover_aguardando()
+            except Exception:
+                log.exception("promover analises aguardando error")
             if pending > 0:
                 tick += 1
                 log.info("Solver queue [tick %s]: pending=%s conc=%s", tick, pending, _conc)

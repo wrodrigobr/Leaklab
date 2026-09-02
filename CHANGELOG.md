@@ -5,6 +5,24 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## A fila e inteligencia nossa (02/09)
+
+### Adicionado
+- **Fila de analise GTO por plano** (`leaklab/fila_de_analise.py`): o upload SEMPRE entra
+  (barrar upload atacaria a ativacao, o gargalo medido do funil) — o que espera a vez e a
+  camada GTO. Free roda 3 analises simultaneas; o resto aguarda em `gto_analysis_waitlist` e
+  o consumer promove o mais antigo a cada tick quando abre vaga ("quando cai um dos 3, entra
+  o proximo" — dono). Pro nao espera. Dois sinais contam vaga ocupada (spots na fila ativa OU
+  request de mao nao-terminal — sem o segundo, o promotor via vaga falsa na janela pos-promocao
+  e soltava mais de 3), ambos com stale de 24h para solver caido nao prender ninguem. Feedback
+  visual em tres lugares: nota no painel de upload, selo "Na fila de analise" na lista (Clock
+  estatico, nao spinner: nada esta rodando), tooltip explicando a regra — 3 idiomas. Falha na
+  consulta degrada para "analisa ja": a fila e otimizacao, nunca pode derrubar um upload.
+  O primeiro desenho (402 barrando o envio) foi construido e DESCARTADO na mesma tarde pela
+  correcao do dono; ficou so o que protege sem atrapalhar.
+
+---
+
 ## Homologacao local antes de publicar (02/09)
 
 ### Adicionado

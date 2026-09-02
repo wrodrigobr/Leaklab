@@ -954,6 +954,8 @@ _GTO_STALE_HOURS = 24  # request 'solver_queued' há mais que isto (solver caíd
                        # contar como "em andamento" — evita banner/lista presos eternamente.
 
 
+
+
 def get_tournaments(user_id: int, limit: int = 50) -> List[dict]:
     conn = get_conn()
     try:
@@ -1007,9 +1009,17 @@ def get_tournaments(user_id: int, limit: int = 50) -> List[dict]:
         # é global, sem dono). Agora o sinal é o vínculo torneio↔spot da importação (gto_tq_busy):
         # um spot DESTE torneio está na fila ativa → imune a terceiros, e assenta quando os spots
         # dele terminam.
+        # Selo "Na fila de análise": torneio aguardando vaga na fila por plano (free = 3
+        # análises por vez). Consulta à parte, não JOIN: a tabela é criada lazy pelo módulo.
+        try:
+            from leaklab.fila_de_analise import em_espera_ids
+            _aguardando = set(em_espera_ids(user_id))
+        except Exception:
+            _aguardando = set()
         result = []
         for r in rows:
             t = dict(r)
+            t['analysis_waitlisted'] = t.get('id') in _aguardando
             tot = t.pop('total_decisions_count', 0) or 0
             wg = t.pop('with_gto_count', 0) or 0
             t['gto_coverage_pct'] = round(wg * 100.0 / tot, 1) if tot else 0.0
@@ -4203,6 +4213,11 @@ PLAN_LIMITS: dict = {
     # Custo medido: 125 KB de `raw_text` por torneio. 30/mes por usuario sao 3,7 MB.
     'free':    {'tournaments': 30,  'ai_calls': 15,  'ai_coach_chat': False, 'solves': 5,    'advanced_insights': False,
                 'ai_chat_per_day': 0,  'solves_per_day': None, 'max_pending_solves': 3,
+                # 02/09 (decisao do dono, 2a iteracao): o upload SEMPRE entra (barrar upload
+                # ataca a ativacao); o que espera a vez e a ANALISE GTO — 3 torneios por vez
+                # no free, promocao automatica quando uma vaga abre ("a fila e inteligencia
+                # nossa"). Ver leaklab/fila_de_analise.py.
+                'simultaneous_analyses': 3,
                 # 20 spots/dia no Free, igual ao benchmark. Eu tinha DESLIGADO o teto em
                 # 28/08 ao abrir o treino de fundamentos, e o dono corrigiu: o concorrente
                 # limita treino tambem, e limite diario nao e so paywall -- e gancho de
@@ -4212,9 +4227,11 @@ PLAN_LIMITS: dict = {
                 'training_spots_per_day': 20, 'leak_targeted': False, 'ghost': False},
     'pro':     {'tournaments': 200, 'ai_calls': 300, 'ai_coach_chat': True,  'solves': None, 'advanced_insights': True,
                 'ai_chat_per_day': 50, 'solves_per_day': 20,   'max_pending_solves': 10,
+                'simultaneous_analyses': None,
                 'training_spots_per_day': None, 'leak_targeted': True, 'ghost': True},
     'coach':   {'tournaments': None, 'ai_calls': 1500, 'ai_coach_chat': True, 'solves': None, 'advanced_insights': True,
                 'ai_chat_per_day': None, 'solves_per_day': None, 'max_pending_solves': None,
+                'simultaneous_analyses': None,
                 'training_spots_per_day': None, 'leak_targeted': True, 'ghost': True},  # interno
 }
 

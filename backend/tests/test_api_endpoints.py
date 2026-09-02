@@ -607,6 +607,7 @@ def test_contagem_de_tickets_por_categoria():
     print("OK  test_contagem_de_tickets_por_categoria")
 
 
+
 # ── /analyze/replay-coach ─────────────────────────────────────────────────────
 
 def test_replay_coach_requires_auth():

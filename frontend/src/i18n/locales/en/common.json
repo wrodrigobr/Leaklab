@@ -136,7 +136,9 @@
     "pro": "PRO",
     "coach": "Coach",
     "new": "NEW",
-    "alpha": "ALPHA"
+    "alpha": "ALPHA",
+    "naFila": "Queued for analysis",
+    "naFilaTooltip": "Waiting for a slot: the Free plan runs 3 GTO analyses at a time. It starts automatically when one finishes."
   },
   "labels": {
     "date": "Date",
@@ -244,7 +246,8 @@
     "fileMissing": "File not found in the queue",
     "genericError": "Could not process ({{raw}}). Check whether the server is up to date.",
     "errorFallback": "error",
-    "gtoNotice": "The hands are already in your history. The <1>GTO analysis</1> runs in the background and can take a few minutes on a large tournament. You can close this, tournaments show the <2>Analysing</2> badge until it finishes."
+    "gtoNotice": "The hands are already in your history. The <1>GTO analysis</1> runs in the background and can take a few minutes on a large tournament. You can close this, tournaments show the <2>Analysing</2> badge until it finishes.",
+    "analiseNaFila": "Tournament imported. GTO analysis queued: Free runs 3 at a time, yours starts when a slot opens."
   },
   "suporte": {
     "semMensagens": "No messages sent yet."

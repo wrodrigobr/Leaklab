@@ -216,6 +216,7 @@ export interface Tournament {
   preflop_coverage_pct?: number | null;
   postflop_coverage_pct?: number | null;
   solver_analyzing?: boolean;   // postflop descoberto + solver trabalhando → "analisando" (não crava %)
+  analysis_waitlisted?: boolean; // aguardando vaga na fila de análise por plano (free = 3 por vez)
 }
 
 export interface TournamentsResponse {
@@ -659,6 +660,8 @@ export const tournaments = {
       /** A prescrição pós-upload (spec cobranca-proximo-passo.md §3): a dor e o remédio na
        *  mesma tela. Sempre presente quando há passo; a notificação é que só sai se mudou. */
       proximo_passo?: ProximoPasso | null;
+      /** true = análise GTO aguardando vaga (fila por plano; free = 3 por vez) */
+      analysis_waitlisted?: boolean;
       tournament_db_id?: number;
       hero?: string;
       total_hands?: number;

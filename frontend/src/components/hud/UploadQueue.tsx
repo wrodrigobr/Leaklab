@@ -224,6 +224,11 @@ export function UploadQueueProvider({ children }: { children: React.ReactNode })
             ? t("uploadQueue.summaryWithField", { n: r.field_size })
             : t("uploadQueue.summaryPlain");
           dispatch({ type: "SET_STATUS", id: next.id, status: "done", note });
+        } else if (r?.analysis_waitlisted) {
+          // Fila de análise por plano (free = 3 por vez): o torneio ENTROU, só a camada GTO
+          // aguarda vaga. Nota informativa, não erro — a lista mostra "Na fila de análise".
+          dispatch({ type: "SET_STATUS", id: next.id, status: "done", note: t("uploadQueue.analiseNaFila") });
+          metrics.addXp("tournament_imported").catch(() => null);
         } else {
           dispatch({ type: "SET_STATUS", id: next.id, status: "done" });
           metrics.addXp("tournament_imported").catch(() => null);
