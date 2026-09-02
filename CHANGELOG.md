@@ -5,6 +5,20 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## Quem pagou nao espera atras do backlog (02/09)
+
+### Melhorado
+- **Prioridade Pro na fila do solver**: com 1.822 spots pendentes entrando num unico dia
+  (jogadores novos da campanha), o spot de um assinante Pro agora fura a fila — boost +10 no
+  `_priority` poe qualquer street de Pro acima de qualquer street de free, preservando o
+  shortest-job-first dentro de cada classe. Vale no enfileiramento do upload E no pedido
+  direto do replay; falha na consulta do plano degrada para "sem boost", nunca derruba o
+  enqueue. Licao da regra 2 ao vivo: o teste-guarda anexado ao FIM do arquivo caiu DEPOIS do
+  bloco `__main__` do runner e passou verde com o boost zerado — movido para antes do runner,
+  a quebra proposital passou a acusar (37 -> 36+1 FAIL -> 37).
+
+---
+
 ## A falha que ja tinha sido paga (02/09)
 
 ### Melhorado

@@ -1123,7 +1123,8 @@ def _analyze_impl():
     # Enfileirar spots postflop novos para o solver GTO em background
     threading.Thread(
         target=_enqueue_postflop_spots,
-        args=(results, t_db_id),
+        # g.user_id capturado AQUI (contexto do request); dentro da thread o `g` já morreu.
+        args=(results, t_db_id, g.user_id),
         daemon=True,
         name='gto-upload-enqueue',
     ).start()
@@ -11582,7 +11583,8 @@ def method_not_allowed(_): return jsonify({'error': 'Método não permitido'}), 
 def not_found(_): return jsonify({'error': 'Rota não encontrada'}), 404
 
 
-def _enfileirar_spot_da_decisao(di: dict, facing: float, tournament_db_id=None) -> bool:
+def _enfileirar_spot_da_decisao(di: dict, facing: float, tournament_db_id=None,
+                                user_id: int = None) -> bool:
     """Enfileira o spot postflop desta decisão no solver. True se ele está de fato na fila.
 
     Existe porque o contador `queued` do processador de pedidos MENTIA. O ramo do mismatch
@@ -11642,7 +11644,16 @@ def _enfileirar_spot_da_decisao(di: dict, facing: float, tournament_db_id=None) 
         if not montado:
             return False
         h, payload = montado
-        return bool(enqueue_solver_spot(h, payload, priority=_priority(street),
+        # Pedido direto do jogador (botão do replay): Pro fura a fila. Falha na consulta
+        # degrada para "sem boost", nunca derruba o enqueue.
+        _plano = None
+        if user_id is not None:
+            try:
+                from database.repositories import get_user_by_id as _gubi
+                _plano = ((_gubi(user_id) or {}).get('plan'))
+            except Exception:
+                _plano = None
+        return bool(enqueue_solver_spot(h, payload, priority=_priority(street, _plano),
                                         tournament_id=tournament_db_id))
     except Exception:
         log.exception('falha ao enfileirar spot da decisao (street=%s)', di.get('street'))
@@ -11776,7 +11787,8 @@ def _process_gto_hand_request(req: dict) -> tuple[str, str | None]:
                     # Enfileira o spot correto (com facing real) pelo MESMO caminho do outro
                     # ramo: este bloco era uma segunda cópia da montagem do payload, e a cópia
                     # que ficou para trás foi justamente a que esqueceu de enfileirar.
-                    _entrou = _enfileirar_spot_da_decisao(di, _facing, req.get('tournament_id'))
+                    _entrou = _enfileirar_spot_da_decisao(di, _facing, req.get('tournament_id'),
+                                                          user_id=req.get('requested_by'))
                     if _entrou:
                         queued += 1   # só conta o que entrou na fila de verdade
                     continue
@@ -11836,7 +11848,8 @@ def _process_gto_hand_request(req: dict) -> tuple[str, str | None]:
                 # "dá para solvar rápido", não "alguém pediu o solve" — usá-la como prova de
                 # enfileiramento foi o que fez o pedido 13 esperar 24h por nada.
                 if _solvavel and _enfileirar_spot_da_decisao(di, _facing2,
-                                                             req.get('tournament_id')):
+                                                             req.get('tournament_id'),
+                                                             user_id=req.get('requested_by')):
                     queued += 1
 
         # ENQUANTO HOUVER spot enfileirado (queued>0), o request NÃO está pronto — fica 'solver_queued'
@@ -12198,7 +12211,16 @@ def _auto_queue_gto_for_tournament(t_db_id: int, results: list, user_id: int) ->
         log.exception("GTO auto-queue falhou para t_db=%d", t_db_id)
 
 
-def _enqueue_postflop_spots(results: list, tournament_id: int = None) -> None:
+def _enqueue_postflop_spots(results: list, tournament_id: int = None, user_id: int = None) -> None:
+    # Plano resolvido UMA vez, fora do loop: jogador Pro fura a fila do solver (boost no
+    # _priority). Falha na consulta degrada para "sem boost", nunca derruba o enqueue.
+    _plano = None
+    if user_id is not None:
+        try:
+            from database.repositories import get_user_by_id as _gubi
+            _plano = ((_gubi(user_id) or {}).get('plan'))
+        except Exception:
+            _plano = None
     """
     Enfileira na gto_solver_queue todos os spots postflop do upload que ainda
     não existam em gto_nodes. Roda em background — não bloqueia a resposta ao usuário.
@@ -12285,7 +12307,7 @@ def _enqueue_postflop_spots(results: list, tournament_id: int = None) -> None:
                           'street': d['street'], 'board': board},
             }, sort_keys=True)
 
-            if enqueue_solver_spot(spot_hash, payload, priority=_priority(d['street']), tournament_id=tournament_id):
+            if enqueue_solver_spot(spot_hash, payload, priority=_priority(d['street'], _plano), tournament_id=tournament_id):
                 enqueued += 1
 
             # AUTOMÁTICO DEEP: spot postflop FUNDO (>35bb) → ALÉM do real, enfileira a variante
@@ -12318,7 +12340,7 @@ def _enqueue_postflop_spots(results: list, tournament_id: int = None) -> None:
                                   'approx_of_stack': stack, 'deep_approx': True,
                                   'street': d['street'], 'board': board},
                     }, sort_keys=True)
-                    if enqueue_solver_spot(_h30, _pay30, priority=_priority(d['street']), tournament_id=tournament_id):
+                    if enqueue_solver_spot(_h30, _pay30, priority=_priority(d['street'], _plano), tournament_id=tournament_id):
                         enqueued += 1
         except Exception:
             pass

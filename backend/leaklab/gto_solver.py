@@ -910,11 +910,17 @@ def lookup_gto(
     }
 
 
-def _priority(street: str) -> int:
+def _priority(street: str, plan: str = None) -> int:
     # Fase 2 (plano solver): shortest-job-first — river/turn solvem em segundos,
     # flop fundo leva minutos. Processar os baratos primeiro minimiza a espera
     # média da fila (antes flop>turn>river: os caros bloqueavam os baratos).
-    return {'preflop': 8, 'river': 7, 'turn': 6, 'flop': 5}.get(street, 5)
+    #
+    # 02/09 (1º dia com pagante real e 1.8k spots de backlog): jogador PRO fura a fila —
+    # boost +10 põe QUALQUER street de Pro acima de QUALQUER street de free (o maior
+    # base é 8), preservando o shortest-job-first DENTRO de cada classe. Quem pagou
+    # não espera atrás do backlog de quem não pagou.
+    base = {'preflop': 8, 'river': 7, 'turn': 6, 'flop': 5}.get(street, 5)
+    return base + (10 if (plan or '').lower() == 'pro' else 0)
 
 
 def is_simple_spot(street: str, board: list[str], stack_bb: float, facing_size_bb: float = 0.0) -> bool:

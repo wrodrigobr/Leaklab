@@ -262,6 +262,20 @@ def test_score_always_0_to_1():
         assert 0.0 <= s <= 1.0, f"Score {s} out of bounds for {action}"
     print("OK  test_score_always_0_to_1")
 
+
+def test_prioridade_pro_fura_a_fila():
+    """02/09 (1º pagante real, 1.8k spots de backlog): Pro fura a fila do solver.
+    Boost +10 põe qualquer street de Pro acima de qualquer street de free (maior base: 8),
+    preservando o shortest-job-first dentro de cada classe."""
+    from leaklab.gto_solver import _priority
+    assert _priority('flop') == 5 and _priority('preflop') == 8, 'bases do SJF mudaram'
+    assert _priority('flop', 'pro') == 15 and _priority('river', 'pro') == 17
+    assert min(_priority(st, 'pro') for st in ('flop', 'turn', 'river', 'preflop')) >            max(_priority(st) for st in ('flop', 'turn', 'river', 'preflop')),         'existe street de free na frente de street de Pro'
+    assert _priority('flop', 'free') == 5 and _priority('flop', None) == 5, 'free/None nao ganham boost'
+    print("OK  test_prioridade_pro_fura_a_fila")
+
+
+
 if __name__ == '__main__':
     tests = [v for k, v in sorted(globals().items()) if k.startswith('test_')]
     passed = failed = 0
