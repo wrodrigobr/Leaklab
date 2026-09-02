@@ -1,0 +1,61 @@
+# Homologação LOCAL — réplica de produção na máquina do dev (02/09/2026).
+#
+# Por que existe: com pagantes reais, deploy ruim custa dinheiro. A suíte roda em SQLite e o
+# dialeto do Postgres já escondeu defeito mais de uma vez (%, migração abortada). Aqui sobe a
+# MESMA imagem baked de prod contra um Postgres de verdade, ANTES de tocar o servidor.
+#
+# Uso (da raiz do repo):
+#   docker compose -f deploy/docker-compose.homolog.yml --env-file deploy/.env.homolog up -d --build
+#   docker compose -f deploy/docker-compose.homolog.yml exec web python /app/scripts/portao_pos_deploy.py
+#   docker compose -f deploy/docker-compose.homolog.yml down          # -v para zerar o banco
+#
+# API em http://localhost:5001 (sem nginx: TLS/CDN não é o que se homologa aqui).
+# Banco: restaurar o dump do Neon no serviço `db` — ver deploy/homolog.md. NUNCA apontar
+# DATABASE_URL desta stack para o Neon de prod.
+
+services:
+  web:
+    build:
+      context: ../backend
+      args: { GIT_SHA: "${GIT_SHA:-homolog}" }
+    env_file: .env.homolog
+    environment:
+      - DATABASE_URL=postgresql://leaklab:homolog@db:5432/leaklab
+    ports: ["5001:5000"]
+    depends_on:
+      db:
+        condition: service_healthy
+
+  solver-consumer:
+    build:
+      context: ../backend
+      args: { GIT_SHA: "${GIT_SHA:-homolog}" }
+    env_file: .env.homolog
+    environment:
+      - DATABASE_URL=postgresql://leaklab:homolog@db:5432/leaklab
+      - GTO_SOLVER_CONCURRENCY=1
+    command: python run_solver_consumer.py
+    healthcheck:
+      test: ["CMD", "python", "-c", "import sys; sys.exit(0)"]
+      interval: 60s
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    image: postgres:16-alpine
+    environment:
+      - POSTGRES_USER=leaklab
+      - POSTGRES_PASSWORD=homolog
+      - POSTGRES_DB=leaklab
+    ports: ["5442:5432"]   # psql local: psql -h localhost -p 5442 -U leaklab
+    volumes:
+      - homolog_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "leaklab"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  homolog_pgdata:

@@ -110,3 +110,6 @@ backend/.gw_profile/
 # Logs arquivados pelo deploy (deploy.sh salva o log do container antes de recriá-lo).
 # Fora do git de propósito: log de produção carrega e-mail de usuário e id de sessão.
 logs/
+
+# homologacao local: o exemplo e versionado, o preenchido nunca
+deploy/.env.homolog

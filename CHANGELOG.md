@@ -5,6 +5,18 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## Homologacao local antes de publicar (02/09)
+
+### Adicionado
+- **Stack de homologacao no repo** (`deploy/docker-compose.homolog.yml` + `.env.homolog.example`
+  + `homolog.md`): com pagante real na base, deploy de backend nao-trivial passa antes por uma
+  replica local — a MESMA imagem baked de prod contra Postgres 16 de verdade (a suite roda em
+  SQLite, e o dialeto ja escondeu defeito: `%` com parametros, migracao abortada). O portao e a
+  varredura de invariantes de prod rodam identicos contra a replica. Sem segredos versionados:
+  o `.env.homolog` preenchido esta no .gitignore; cobranca e solver ficam de fora por desenho.
+
+---
+
 ## Quem pagou nao espera atras do backlog (02/09)
 
 ### Melhorado
