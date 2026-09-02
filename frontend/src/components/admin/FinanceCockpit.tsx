@@ -223,7 +223,12 @@ function LedgerExpander() {
                     </td>
                     <td className="px-4 py-2.5 font-mono text-muted-foreground">{p.plan}</td>
                     <td className="px-4 py-2.5 font-mono tabular-nums font-bold text-foreground">{fmt(p.amount_cents)}</td>
-                    <td className="px-4 py-2.5"><StatusBadge kind={p.status} /></td>
+                    <td className="px-4 py-2.5">
+                      <div className="flex items-center gap-1.5">
+                        <StatusBadge kind={p.status} />
+                        {p.status === "failed" && !!p.recovered && <StatusBadge kind="recovered" />}
+                      </div>
+                    </td>
                     <td className="px-4 py-2.5 font-mono text-[10px] text-muted-foreground">{p.gateway}</td>
                     <td className="px-4 py-2.5 font-mono text-[10px] text-muted-foreground truncate max-w-[140px]">{p.gateway_id || "—"}</td>
                     <td className="px-4 py-2.5 font-mono text-[10px] text-muted-foreground whitespace-nowrap">{p.created_at ? new Date(p.created_at).toLocaleDateString("pt-BR") : "—"}</td>

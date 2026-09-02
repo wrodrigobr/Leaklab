@@ -21,6 +21,8 @@ const KIND_MAP: Record<string, { tone: Tone; label: string }> = {
   paying:    { tone: "emerald", label: "Em dia" },
   "em dia":  { tone: "emerald", label: "Em dia" },
   done:      { tone: "emerald", label: "Concluído" },
+  // falha que o mesmo pagante resolveu depois (tentou de novo e aprovou)
+  recovered: { tone: "emerald", label: "Pago depois" },
   // amber
   pending:   { tone: "amber", label: "Pendente" },
   past_due:  { tone: "amber", label: "Atrasado" },

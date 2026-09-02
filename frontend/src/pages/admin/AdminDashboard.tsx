@@ -1822,7 +1822,9 @@ const AdminDashboard = () => {
     .filter(([c]) => FEEDBACK_CATEGORIES.has(c)).reduce((a2, [, n]) => a2 + n, 0);
   const openTickets = (supportCount?.open ?? 0) - openFeedback;
   const pendingCount = pendingApps?.applications?.length ?? 0;
-  const financeDot = (dunning?.past_due?.length ?? 0) > 0 || (dunning?.recent_failed?.length ?? 0) > 0;
+  // Falha recuperada (o mesmo pagante aprovou depois) e atrito, nao risco: nao acende o ponto.
+  const financeDot = (dunning?.past_due?.length ?? 0) > 0
+    || (dunning?.recent_failed ?? []).some((f) => !f.recovered);
   const workerDot = worker ? (worker.worker.state === "down" || worker.recent_errors.length > 0) : false;
 
   const groups: NavGroup[] = [

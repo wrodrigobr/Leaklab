@@ -3303,6 +3303,8 @@ export interface AdminPayment {
   amount_cents: number;
   currency: string;
   status: string;
+  /** falha antiga do mesmo pagante que depois aprovou (1/0 do backend) */
+  recovered?: number | boolean;
   gateway: string;
   gateway_id: string | null;
   period_start: string | null;
@@ -3743,7 +3745,7 @@ export interface FinanceCalendar {
 export interface Dunning {
   past_due: Array<{ id: number; username: string; email: string; plan: string; past_due_since: string | null; plan_expires_at: string | null }>;
   recent_canceled: Array<{ id: number; username: string; email: string; canceled_at: string | null; cancel_reason: string | null; churn_type: "voluntary" | "involuntary" }>;
-  recent_failed: Array<{ user_id: number; username: string; amount_cents: number; gateway: string; created_at: string }>;
+  recent_failed: Array<{ user_id: number; username: string; amount_cents: number; gateway: string; created_at: string; recovered?: number | boolean }>;
   duplicates: Array<{ gateway_id: string; n: number; total_cents: number }>;
 }
 

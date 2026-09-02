@@ -4605,8 +4605,16 @@ def admin_list_payments(status: str = None, gateway: str = None, search: str = N
         total = _fetchone(conn, _adapt(
             f"SELECT COUNT(*) AS n FROM payments p JOIN users u ON u.id = p.user_id {wsql}"),
             tuple(params))['n']
+        # `recovered`: falha do PASSADO do mesmo pagante que depois aprovou. O 1o pagamento real
+        # (02/09) falhou 4x antes de entrar, e o admin so mostrava a metade assustadora — o dono
+        # abriu incidente para um dinheiro que ja estava na conta. A falha fica (historico de
+        # atrito serve ao suporte), mas declara o desfecho.
         rows = conn.execute(_adapt(
-            f"""SELECT p.*, u.username, u.email
+            f"""SELECT p.*, u.username, u.email,
+                       CASE WHEN p.status = 'failed' AND EXISTS (
+                            SELECT 1 FROM payments p2 WHERE p2.user_id = p.user_id
+                              AND p2.status = 'approved' AND p2.created_at > p.created_at)
+                       THEN 1 ELSE 0 END AS recovered
                 FROM payments p JOIN users u ON u.id = p.user_id
                 {wsql} ORDER BY p.created_at DESC LIMIT ? OFFSET ?"""),
             tuple(params) + (limit, offset)).fetchall()
@@ -4908,8 +4916,13 @@ def admin_dunning() -> dict:
         _involuntary = {'payment_failure', 'unpaid', 'incomplete_expired', 'payment_disputed'}
         for _c in canceled:
             _c['churn_type'] = 'involuntary' if (_c.get('cancel_reason') in _involuntary) else 'voluntary'
+        # `recovered` = o mesmo pagante aprovou DEPOIS da falha: atrito, nao risco. So a falha
+        # sem aprovacao posterior deve acender alarme (mesma regra do ledger em admin_list_payments).
         recent_failed = _fetchall(conn, _adapt(
-            "SELECT p.user_id, u.username, p.amount_cents, p.gateway, p.created_at "
+            "SELECT p.user_id, u.username, p.amount_cents, p.gateway, p.created_at, "
+            "CASE WHEN EXISTS (SELECT 1 FROM payments p2 WHERE p2.user_id = p.user_id "
+            "  AND p2.status='approved' AND p2.created_at > p.created_at) "
+            "THEN 1 ELSE 0 END AS recovered "
             "FROM payments p JOIN users u ON u.id=p.user_id WHERE p.status='failed' "
             f"AND p.created_at >= {interval_sql(14)} ORDER BY p.created_at DESC"))
         return _jsonable({

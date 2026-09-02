@@ -9,10 +9,13 @@ export function DunningPanel({ data, isLoading }: { data: Dunning | undefined; i
   const [showMore, setShowMore] = useState(false);
   const pastDue = data?.past_due ?? [];
   const failed = data?.recent_failed ?? [];
+  // Falha "recuperada": o mesmo pagante aprovou depois. Fica no historico (serve ao suporte
+  // quando o jogador reclama do atrito), mas nao conta como risco nem pinta o painel de vermelho.
+  const failedOpen = failed.filter((f) => !f.recovered);
   const canceled = data?.recent_canceled ?? [];
   const dups = data?.duplicates ?? [];
 
-  const clean = !isLoading && pastDue.length === 0 && failed.length === 0 && dups.length === 0;
+  const clean = !isLoading && pastDue.length === 0 && failedOpen.length === 0 && dups.length === 0;
 
   if (clean) {
     return (
@@ -21,6 +24,11 @@ export function DunningPanel({ data, isLoading }: { data: Dunning | undefined; i
         <div>
           <p className="font-mono text-[11px] font-bold uppercase tracking-widest-2 text-primary">Cobrança</p>
           <p className="text-sm text-foreground">Nenhum pagamento em risco, tudo em dia.</p>
+          {failed.length > 0 && (
+            <p className="font-mono text-[10px] text-muted-foreground">
+              {failed.length} falha(s) recuperada(s): o jogador tentou de novo e pagou.
+            </p>
+          )}
         </div>
       </div>
     );
@@ -34,7 +42,7 @@ export function DunningPanel({ data, isLoading }: { data: Dunning | undefined; i
           Cobrança em risco
         </span>
         <span className="ml-auto font-mono text-[10px] text-destructive">
-          {pastDue.length} atrasado(s) · {failed.length} falha(s){dups.length ? ` · ${dups.length} duplicado(s)` : ""}
+          {pastDue.length} atrasado(s) · {failedOpen.length} falha(s){dups.length ? ` · ${dups.length} duplicado(s)` : ""}
         </span>
       </div>
 
@@ -79,9 +87,12 @@ export function DunningPanel({ data, isLoading }: { data: Dunning | undefined; i
                 <div className="space-y-1">
                   <p className="font-mono text-[9px] uppercase tracking-wider text-muted-foreground">Pagamentos falhos</p>
                   {failed.map((f, i) => (
-                    <div key={i} className="flex items-center justify-between text-xs">
-                      <span className="text-foreground">@{f.username} <span className="font-mono text-[10px] text-muted-foreground">· {f.gateway}</span></span>
-                      <span className="font-mono tabular-nums text-destructive">{fmt(f.amount_cents)}</span>
+                    <div key={i} className="flex items-center justify-between gap-2 text-xs">
+                      <span className="text-foreground truncate">@{f.username} <span className="font-mono text-[10px] text-muted-foreground">· {f.gateway}</span></span>
+                      <span className="flex items-center gap-1.5 shrink-0">
+                        {!!f.recovered && <StatusBadge kind="recovered" />}
+                        <span className={cn("font-mono tabular-nums", f.recovered ? "text-muted-foreground" : "text-destructive")}>{fmt(f.amount_cents)}</span>
+                      </span>
                     </div>
                   ))}
                 </div>

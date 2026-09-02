@@ -5,6 +5,19 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## A falha que ja tinha sido paga (02/09)
+
+### Melhorado
+- **Falha "recuperada" no financeiro do admin**: o 1º pagamento real da plataforma falhou 4
+  vezes (cartão recusado) antes de entrar — e o admin mostrava só a metade assustadora, o que
+  abriu um incidente para dinheiro que já estava na conta. Agora toda falha cujo pagante tem
+  aprovação POSTERIOR ganha o selo "Pago depois" (ledger e painel de cobrança), sai da
+  contagem de risco e não acende o ponto vermelho do menu. O histórico fica: atrito de
+  checkout é insumo de suporte quando o jogador reclamar da dificuldade. Guarda quebrado de
+  propósito (EXISTS mirando status inexistente → 2 FAIL) e restaurado.
+
+---
+
 ## O badge que apontava a porta errada (01/09)
 
 ### Corrigido

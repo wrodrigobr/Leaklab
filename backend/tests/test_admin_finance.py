@@ -16,7 +16,7 @@ schema.init_db()
 from database.repositories import (
     get_conn, create_expense, list_expenses, update_expense, delete_expense,
     admin_cockpit_summary, admin_finance_calendar, admin_dunning,
-    admin_revenue_timeseries, _current_month, _month_bounds,
+    admin_revenue_timeseries, _current_month, _month_bounds, admin_list_payments,
 )
 
 passed = 0
@@ -78,6 +78,27 @@ check(len(ts) == 3 and ts[-1]['month'] == mon, "timeseries 3 meses terminando no
 # ── delete ───────────────────────────────────────────────────────────────────
 delete_expense(e1)
 check(len(list_expenses()) == 2, "delete_expense remove")
+
+
+# ── falha recuperada (02/09: o 1o pagamento real falhou 4x antes de entrar e o admin
+#    so mostrava a metade assustadora — a falha fica, mas declara o desfecho) ──────────
+from datetime import datetime, timedelta
+_now = datetime.utcnow()
+c = get_conn()
+c.execute("INSERT INTO payments (user_id,plan,amount_cents,currency,status,gateway,created_at) "
+          "VALUES (1,'pro',9900,'BRL','failed','stripe',?)", ((_now - timedelta(hours=2)).isoformat(),))
+c.execute("INSERT INTO payments (user_id,plan,amount_cents,currency,status,gateway,created_at) "
+          "VALUES (2,'pro',9900,'BRL','failed','stripe',?)", (_now.isoformat(),))
+c.commit()
+c.close()
+d2 = admin_dunning()
+_rec = {(f['user_id'], bool(f['recovered'])) for f in d2['recent_failed']}
+check((1, True) in _rec, "dunning: falha de quem aprovou depois vem recovered=1")
+check((2, False) in _rec, "dunning: falha sem aprovacao posterior vem recovered=0 (risco real)")
+_lp = admin_list_payments(status='failed')['payments']
+_by = {p['user_id']: bool(p.get('recovered')) for p in _lp}
+check(_by.get(1) is True and _by.get(2) is False,
+      "ledger: recovered SO na falha com aprovacao posterior do mesmo pagante")
 
 if os.path.exists('_admin_fin_test.db'):
     try:
