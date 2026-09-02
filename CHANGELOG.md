@@ -5,6 +5,21 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## Solver sob demanda: nasce no pico, morre ao drenar (02/09)
+
+### Adicionado
+- **Burst do solver por hora na Hetzner** (`scripts/burst_do_solver.py` + `leaklab/burst_solver.py`
+  + `deploy/burst-solver.md`): um box extra criado do snapshot-base quando `pending >= 400`,
+  destruido quando `<= 50` (cobranca por hora PARA no delete; desligado continua cobrando).
+  A DECISAO e logica pura com teste na suite (histerese + anti-flapping de 20min + teto de 1
+  burst) — a regra que gasta dinheiro e a que poderia destruir server errado sao as testadas:
+  DELETE exige label `burst=leaklab` E prefixo `burst-solver-`, dupla marca que a base nao tem.
+  O clone nasce SEM IP publico (so rede privada), o consumer extra aponta nele e a fila
+  compartilhada no Postgres (claim atomico) garante zero trabalho duplicado. Pendencias do
+  dono no runbook: HETZNER_API_TOKEN no .env do host e `systemctl enable` do solver no box base.
+
+---
+
 ## A fila e inteligencia nossa (02/09)
 
 ### Adicionado
