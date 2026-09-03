@@ -367,6 +367,42 @@ def test_webhook_subscription_deleted_downgrades():
     print("OK  test_webhook_subscription_deleted_downgrades")
 
 
+def test_assinatura_abandonada_nao_derruba_a_ativa():
+    """03/09, bug real em producao: micheldienstmann25 pagou, tinha uma assinatura Stripe
+    ATIVA (sub_1UB50G...) — e mais tarde abriu um SEGUNDO checkout (confusao/engano) que
+    criou sub_1UBcWy..., nunca completado. Quando essa segunda expirou, o Stripe mandou
+    'deleted' pra ELA, e `apply_stripe_subscription` derrubava o usuario pra free sem checar
+    se o sub_id do evento era o mesmo gravado como atual — a assinatura REAL continuava
+    active no Stripe, mas o usuario virava free no nosso banco.
+
+    O guarda: so derruba se sub_id do evento == mp_subscription_id atual do usuario."""
+    c = _make_client()
+    token = _register_and_login(c, 'duassub')
+    import jwt as _jwt
+    from database.auth import SECRET_KEY
+    from database.repositories import apply_stripe_subscription, get_user_by_id
+    uid = _jwt.decode(token, SECRET_KEY, algorithms=['HS256'])['user_id']
+
+    # Assinatura REAL, paga, ativa.
+    apply_stripe_subscription(uid, 'active', '2099-01-01', 'sub_REAL')
+    assert get_user_by_id(uid).get('plan') == 'pro', 'controle: ativacao nao pegou'
+
+    # Uma SEGUNDA assinatura (checkout abandonado) expira — 'deleted' chega pra ELA, nao a real.
+    acao = apply_stripe_subscription(uid, 'canceled', None, 'sub_ABANDONADA',
+                                     cancel_reason='incomplete_expired')
+    assert acao == 'ignored_stale_sub', f'devia ignorar a assinatura abandonada, veio {acao!r}'
+    u = get_user_by_id(uid)
+    assert u.get('plan') == 'pro', f'a assinatura REAL foi derrubada por engano: plan={u.get("plan")!r}'
+    assert u.get('mp_subscription_id') == 'sub_REAL', 'nao pode ter trocado o id gravado'
+
+    # CONTROLE: a assinatura REAL sendo cancelada de verdade AINDA precisa derrubar.
+    acao2 = apply_stripe_subscription(uid, 'canceled', None, 'sub_REAL',
+                                      cancel_reason='cancellation_requested')
+    assert acao2 == 'downgraded', f'cancelamento da assinatura REAL devia derrubar, veio {acao2!r}'
+    assert get_user_by_id(uid).get('plan') == 'free', 'cancelamento real nao aplicado'
+    print("OK  test_assinatura_abandonada_nao_derruba_a_ativa")
+
+
 def test_cancel_recorrente_mantem_pro_ate_o_fim():
     """O caminho que os Termos prometem: cancelar assinatura sub_ agenda o fim (Stripe
     at_period_end) e o Pro CONTINUA até lá — o downgrade é do webhook, não do clique."""

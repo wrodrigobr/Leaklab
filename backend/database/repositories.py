@@ -5069,11 +5069,29 @@ def apply_stripe_subscription(user_id: int, status: str, plan_expires_at: Option
             # recuperou: limpa marca de atraso/cancelamento.
             conn.execute(_adapt(
                 "UPDATE users SET plan='pro', plan_source='stripe_sub', subscription_status='active', "
-                "past_due_since=NULL, canceled_at=NULL, mp_subscription_id=?, plan_expires_at=? WHERE id=?"),
+                "past_due_since=NULL, canceled_at=NULL, cancel_reason=NULL, mp_subscription_id=?, plan_expires_at=? WHERE id=?"),
                 (sub_id, plan_expires_at, user_id))
             conn.commit()
             return 'activated'
         if status in ('canceled', 'unpaid', 'incomplete_expired'):
+            # GUARDA (03/09, achado real em produção): esta função é chamada com o `sub_id` da
+            # assinatura que MUDOU — não necessariamente a que está gravada em
+            # `mp_subscription_id`. Um usuário pode ter DUAS assinaturas no Stripe (ex.: abriu
+            # um segundo checkout por engano/confusão enquanto já era Pro, criando uma segunda
+            # `sub_...` "incomplete" que nunca foi paga) — se ESSA segunda expira e o Stripe
+            # manda `customer.subscription.deleted` pra ela, a versão antiga desta função
+            # derrubava o usuário pra free mesmo com a assinatura REAL (a que ele paga) ativa.
+            # Medido: micheldienstmann25 pagou, tinha `sub_1UB50G...` ACTIVE no Stripe, e uma
+            # segunda `sub_1UBcWy...` (nunca completada) expirou e o derrubou pra free.
+            # Só derruba se o sub_id do evento É o que está gravado como o atual — senão, essa
+            # notificação é sobre uma assinatura ABANDONADA, não a que vale.
+            _atual = _fetchone(conn, _adapt("SELECT mp_subscription_id FROM users WHERE id=?"), (user_id,))
+            _sub_atual = _atual.get('mp_subscription_id') if _atual else None
+            if _sub_atual and sub_id and _sub_atual != sub_id:
+                log.info('apply_stripe_subscription: ignorado — sub_id=%s do evento não é a '
+                        'assinatura atual do usuário %s (%s); provável checkout abandonado',
+                        sub_id, user_id, _sub_atual)
+                return 'ignored_stale_sub'
             # churn no tempo: grava canceled_at (1ª vez) p/ bucketizar churn por período.
             # Motivo: Stripe (cancellation_requested=voluntário, payment_failure=involuntário).
             # Sem motivo explícito, infere involuntário se já estava em atraso (dunning).

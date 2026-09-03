@@ -18,6 +18,28 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## Assinatura fantasma derrubava o jogador que estava pagando (03/09)
+
+### Corrigido
+- **micheldienstmann25 pagou, tinha assinatura ATIVA no Stripe, e constava free no banco**:
+  ele pagou dia 02/09 (`sub_1UB50G...`, valida ate 02/10, confirmada ATIVA direto no Stripe).
+  Depois, abriu um SEGUNDO checkout (engano/confusao) que criou `sub_1UBcWy...`, nunca
+  completado. Quando essa segunda expirou, o Stripe mandou `customer.subscription.deleted`
+  pra ELA — e `apply_stripe_subscription` derrubava o usuario pra free sem checar se o
+  `sub_id` do evento era o mesmo gravado como atual. A assinatura REAL continuava valendo no
+  Stripe; o usuario virou free no nosso banco.
+- **Risco sistemico, nao so deste jogador**: qualquer conta que abra um segundo checkout
+  enquanto ja e Pro (double-click, confusao, ida e volta na pagina de precos) ficava exposta
+  ao mesmo downgrade fantasma quando o checkout abandonado expirasse.
+- **Conserto**: so derruba se o `sub_id` do evento bater com o `mp_subscription_id` GRAVADO
+  como atual — senao, e notificacao sobre assinatura abandonada, ignorada (log, sem tocar o
+  plano). De quebra, reativacao ('active') agora tambem limpa `cancel_reason` (ficava com o
+  motivo antigo grudado mesmo com o usuario ja reativado). Guarda quebrado de proposito (a
+  quebra reproduz o bug real: derruba mesmo com a assinatura verdadeira intacta) e restaurado.
+  micheldienstmann25 restaurado pra Pro manualmente, batendo com o Stripe real.
+
+---
+
 ## "De onde vem esse numero" — linha fixa no card de sangria (03/09)
 
 ### Adicionado
