@@ -155,6 +155,17 @@ def cmd_up():
     rede = next((n for n in _api('/networks').get('networks', []) if n['name'] == REDE), None)
     if not rede:
         sys.exit(f'rede privada {REDE} não encontrada.')
+    # Códigos que significam "não dá NESTA combinação, tenta a próxima" — não um erro real:
+    # 412 resource_unavailable = sem capacidade agora; 422 invalid_input com essa mensagem =
+    # o tipo simplesmente não é vendido naquele datacenter (config da Hetzner, não da fila).
+    # Qualquer OUTRO código (auth, limite de conta, etc.) aborta de verdade.
+    def _pulavel(e) -> bool:
+        if e.code == 412:
+            return True
+        if e.code == 422:
+            return e.corpo_json.get('error', {}).get('message') == 'unsupported location for server type'
+        return False
+
     nome = f'{PREFIXO}{int(time.time())}'
     r = None
     tentadas = []
@@ -172,15 +183,17 @@ def cmd_up():
                     abortar_em_erro=False)
                 break
             except urllib.error.HTTPError as e:
-                tentadas.append(f'{tipo}@{loc}: {e.code} {e.corpo_json.get("error", {}).get("code", "")}')
-                if e.code == 412:   # resource_unavailable — capacidade, tenta a próxima combinação
+                cod = e.corpo_json.get('error', {}).get('code', '')
+                tentadas.append(f'{tipo}@{loc}: HTTP {e.code} {cod}')
+                if _pulavel(e):
                     continue
-                sys.exit(f'API Hetzner {e.code} em POST /servers ({tipo}@{loc}):\n'
-                        f'{json.dumps(e.corpo_json)}')
+                sys.exit('API Hetzner recusou (erro real, não capacidade):\n  ' + '\n  '.join(tentadas)
+                        + f'\n\nÚltimo corpo: {json.dumps(e.corpo_json)}')
         if r:
             break
     if not r:
         sys.exit('nenhuma combinação (tipo, local) teve capacidade agora:\n  ' + '\n  '.join(tentadas))
+    print(f'  conseguiu: {tipo}@{loc}' + (f' (tentativas antes: {len(tentadas)})' if tentadas else ''))
     sid = r['server']['id']
     ip = None
     for _ in range(60):   # até 5min para boot + solver_api
