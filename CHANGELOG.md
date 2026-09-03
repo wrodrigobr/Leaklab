@@ -18,6 +18,32 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## O best_action que ficou congelado no palpite de antes do solve (03/09, achada pela varredura pos-deploy)
+
+### Corrigido
+- **Card mostrava "Erro" com "o ideal era exatamente isso que voce fez"**: 20 decisoes do
+  Rullian (0,05% do acervo, tudo importado no lote de ontem) tinham `label` de erro
+  (`clear_mistake`/`small_mistake`) com `best_action == action_taken`. Achado pela varredura
+  de invariantes rodada apos o deploy de hoje — **nao causado por ele** (o portao de aceite,
+  que testa um torneio de referencia limpo, passou 12/12; a contradicao ja existia nos dados
+  desde o import de ontem, so nunca tinha sido varrida).
+- **Causa raiz, apos investigacao completa**: no ramo "no parcial" de `evaluate_decision`, o
+  `best_action` so e sobrescrito pelo veredito GTO quando `gto_label=='gto_critical'` — pra
+  `gto_minor_deviation`/`gto_mixed` ele fica CONGELADO no palpite heuristico de quando o no
+  ainda nao tinha `strategy_json` completo. `reconcile_tournament_labels` (que roda depois,
+  quando o solve chega) so reescreve `label`/`score` — nunca `best_action`. Resultado: o
+  `label` fica atualizado e correto, o `best_action` exibido fica preso no passado. Provado
+  linha a linha: a coluna `gto_action` (sinal bruto, separada) SEMPRE estava certa nos 3 casos
+  auditados — so `best_action` divergia.
+- **Conserto cirurgico**: `reconcile_tournament_labels` ganhou uma segunda passada que realinha
+  `best_action` a `gto_action` SO na contradicao exata (severidade de erro >= small_mistake E
+  best_action==action_taken E gto_action diferente) — nunca toca um best_action que ja
+  divergia da jogada, nem casos de severidade marginal, nem decisoes sem gto_action. Guarda
+  provado com 4 controles negativos (nada mexido onde nao devia) + quebra proposital no caso
+  positivo (1 FAIL) + restauracao.
+
+---
+
 ## O eixo era a data do UPLOAD, nao a do JOGO (03/09, mesma tarde)
 
 ### Corrigido

@@ -11556,7 +11556,7 @@ def reconcile_tournament_labels(tournament_id: int, only_ids=None) -> int:
     conn = get_conn()
     try:
         rows = _fetchall(conn, _adapt("""
-            SELECT id, label, gto_label, stack_bb, street, action_taken, gto_action, score,
+            SELECT id, label, gto_label, stack_bb, street, action_taken, gto_action, best_action, score,
                    ev_loss_bb,
                    ev_loss_bb, ev_loss_source, estimated_equity, pot_size, facing_bet
             FROM decisions
@@ -11570,6 +11570,8 @@ def reconcile_tournament_labels(tournament_id: int, only_ids=None) -> int:
             rows = [r for r in rows if int(r['id']) in _alvo]
 
         changes = []
+        acao_changes = []
+        from leaklab.decision_engine_v11 import _norm_gto_action
         for r in rows:
             new = _reconcile_label(
                 r['label'], r['gto_label'],
@@ -11586,10 +11588,31 @@ def reconcile_tournament_labels(tournament_id: int, only_ids=None) -> int:
             if new != r['label'] or abs(new_score - float(r['score'] or 0)) > 1e-6:
                 changes.append((new, new_score, r['id']))
 
+            # AUTO (03/09, achado pela varredura de invariantes): `best_action` pode ter
+            # congelado num palpite heurístico de quando o nó GTO ainda não tinha
+            # strategy_json completo (o ramo "nó parcial" de `evaluate_decision` só
+            # sobrescreve best_action quando gto_label=='gto_critical' — minor_deviation e
+            # mixed ficam com o heurístico antigo pra sempre, porque NADA além deste
+            # reconcile toca best_action depois do save inicial). `gto_action` (coluna
+            # separada) é o sinal bruto e SEMPRE reflete o nó atual — nunca fica stale.
+            # Contradição self-evidente: label acusa erro (severidade >= small_mistake) E
+            # best_action == action_taken == "o que ele fez" — o card mostra "✗ Erro" ao
+            # lado de "o ideal era exatamente isso". Realinha SÓ esse caso exato: nunca
+            # sobrescreve um best_action que já é diferente da jogada (nada quebrado ali).
+            _severidade = _LABEL_SEVERITY.get(new, 0)
+            if (_severidade >= 2 and r['gto_action']
+                    and _norm_gto_action(r['best_action'] or '') == _norm_gto_action(r['action_taken'] or '')
+                    and _norm_gto_action(r['gto_action']) != _norm_gto_action(r['action_taken'] or '')):
+                acao_changes.append((r['gto_action'], r['id']))
+
         for new_label, new_score, dec_id in changes:
             conn.execute(_adapt(
                 "UPDATE decisions SET label=?, score=? WHERE id=?"
             ), (new_label, new_score, dec_id))
+        for new_best_action, dec_id in acao_changes:
+            conn.execute(_adapt(
+                "UPDATE decisions SET best_action=? WHERE id=?"
+            ), (new_best_action, dec_id))
 
         # Alinha o score à banda do label para TODAS as decisões do torneio (inclui as SEM gto_label,
         # heurística pura, fora do loop acima) — score poluído (ex.: standard com 0.89) divergia das
@@ -11631,10 +11654,10 @@ def reconcile_tournament_labels(tournament_id: int, only_ids=None) -> int:
         else:
             conn.commit()
         log.info(
-            "reconcile_tournament_labels: tournament_id=%s changes=%d",
-            tournament_id, len(changes),
+            "reconcile_tournament_labels: tournament_id=%s changes=%d acao_changes=%d",
+            tournament_id, len(changes), len(acao_changes),
         )
-        return len(changes)
+        return len(changes) + len(acao_changes)
     except Exception as e:
         log.exception(
             "reconcile_tournament_labels FAILED tournament_id=%s err=%s",
