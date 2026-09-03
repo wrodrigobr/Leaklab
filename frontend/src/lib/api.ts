@@ -3376,6 +3376,15 @@ export interface GtoWorkerStatus {
       max_solves?: number | null;
       rayon_threads?: number | null;
     };
+    /** Burst (03/09): servers extras sob demanda na Hetzner + instâncias solvando em cada um */
+    burst?: {
+      token: boolean;
+      servers: Array<{
+        name: string; id: number; ip: string | null; created: string | null;
+        reachable: boolean; active_solves: number | null; max_solves: number | null;
+        load: number[] | null;
+      }>;
+    };
   };
   throughput: Array<{ hour: string; count: number }>;
   coverage: Record<string, number>;

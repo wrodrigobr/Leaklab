@@ -5,6 +5,17 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## A frota no painel (03/09)
+
+### Adicionado
+- **Monitor da frota do solver no admin**: o card do worker GTO agora mostra quantos servers
+  estao ativos (base + bursts da Hetzner, pela mesma dupla marca do script) e quantas
+  instancias estao solvando em cada um (active/max do /health, load, desde quando). Sem
+  token no ambiente ou API fora, o painel declara o motivo em vez de quebrar. O token entra
+  no container no proximo deploy (env_file so injeta na recriacao).
+
+---
+
 ## O burst validado ao vivo (03/09)
 
 ### Corrigido

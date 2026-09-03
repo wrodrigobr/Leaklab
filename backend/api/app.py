@@ -10982,6 +10982,42 @@ def admin_gto_worker_status():
         pass
     solver_health['server'] = _server
 
+    # ── Burst (03/09): servers extras criados sob demanda na Hetzner + instâncias solvando ──
+    # Tudo best-effort: sem token no ambiente (container antigo) ou API fora, o painel mostra
+    # o motivo em vez de quebrar. Mesma dupla marca do script: label burst=leaklab + prefixo.
+    _burst = {'token': False, 'servers': []}
+    try:
+        import os as _os4, json as _j4, urllib.request as _u4
+        _tok = _os4.environ.get('HETZNER_API_TOKEN', '')
+        _burst['token'] = bool(_tok)
+        if _tok:
+            _req = _u4.Request(
+                'https://api.hetzner.cloud/v1/servers?label_selector=burst%3Dleaklab',
+                headers={'Authorization': f'Bearer {_tok}'})
+            with _u4.urlopen(_req, timeout=5) as _r4:
+                _srvs = _j4.loads(_r4.read()).get('servers', [])
+            for _s in _srvs:
+                if not _s.get('name', '').startswith('burst-solver-'):
+                    continue
+                _ip = next((n.get('ip') for n in _s.get('private_net', [])), None)
+                _linha = {'name': _s['name'], 'id': _s['id'], 'ip': _ip,
+                          'created': _s.get('created'), 'reachable': False,
+                          'active_solves': None, 'max_solves': None, 'load': None}
+                if _ip:
+                    try:
+                        with _u4.urlopen(f'http://{_ip}:8765/health', timeout=4) as _h4:
+                            _hb = _j4.loads(_h4.read())
+                        _linha['reachable'] = True
+                        _linha['active_solves'] = _hb.get('active_solves')
+                        _linha['max_solves'] = _hb.get('max_solves')
+                        _linha['load'] = _hb.get('load')
+                    except Exception:
+                        pass
+                _burst['servers'].append(_linha)
+    except Exception:
+        log.warning('burst: consulta a Hetzner falhou (painel segue sem a linha)', exc_info=True)
+    solver_health['burst'] = _burst
+
     # ── Estado do worker (3 níveis, p/ não confundir "ocioso normal" com "caiu") ──
     # O worker é CRON (drena de ~5 em 5 min), então fica fora de um job na maior parte do tempo.
     #   working = processando agora (is_active);

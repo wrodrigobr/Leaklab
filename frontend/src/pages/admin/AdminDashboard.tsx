@@ -1610,6 +1610,42 @@ function GtoWorkerTab() {
                 )}
               </div>
             </div>
+
+            {/* Burst (03/09): servers extras da Hetzner criados no pico. Resumo = base + N,
+                e a soma das instâncias solvando em cada um. */}
+            {(() => {
+              const burst = sh.burst;
+              const vivos = burst?.servers ?? [];
+              const totalServers = 1 + vivos.length;
+              const instAtivas = (srv.active_solves ?? 0) + vivos.reduce((a, b) => a + (b.active_solves ?? 0), 0);
+              const instMax = (srv.max_solves ?? 0) + vivos.reduce((a, b) => a + (b.max_solves ?? 0), 0);
+              return (
+                <div className={cn("mt-3 rounded-xl border p-4",
+                  vivos.length > 0 ? "border-primary/30 bg-primary/5" : "border-border bg-hud-surface")}>
+                  <p className="font-mono text-[11px] font-bold uppercase tracking-wider text-foreground">
+                    Frota do solver: {totalServers} server{totalServers > 1 ? "s" : ""} ativo{totalServers > 1 ? "s" : ""}
+                    {" · "}{instAtivas}/{instMax || "?"} instância{instMax === 1 ? "" : "s"} solvando
+                  </p>
+                  {vivos.length === 0 ? (
+                    <p className="mt-1 font-mono text-[10px] text-muted-foreground">
+                      {burst?.token
+                        ? "Nenhum burst ativo. Sobe automático com a fila cheia (400+); cai ao drenar."
+                        : "Burst: token da Hetzner ainda não visível no container (aplica no próximo deploy)."}
+                    </p>
+                  ) : (
+                    vivos.map((b) => (
+                      <p key={b.id} className="mt-1 font-mono text-[10px] text-muted-foreground">
+                        <span className="text-primary">{b.name}</span> · {b.ip ?? "sem ip"} ·{" "}
+                        {b.reachable
+                          ? <>solves {b.active_solves ?? "?"}/{b.max_solves ?? "?"}{b.load ? ` · load ${b.load[0]}` : ""}</>
+                          : <span className="text-amber-400">sem resposta no /health</span>}
+                        {b.created && ` · desde ${new Date(b.created).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`}
+                      </p>
+                    ))
+                  )}
+                </div>
+              );
+            })()}
           </div>
         );
       })()}
