@@ -60,8 +60,13 @@ def _api(caminho: str, metodo: str = 'GET', corpo: dict = None) -> dict:
         API + caminho, method=metodo,
         data=json.dumps(corpo).encode() if corpo else None,
         headers={'Authorization': f'Bearer {_token()}', 'Content-Type': 'application/json'})
-    with urllib.request.urlopen(req, timeout=30) as r:
-        return json.loads(r.read() or '{}')
+    try:
+        with urllib.request.urlopen(req, timeout=30) as r:
+            return json.loads(r.read() or '{}')
+    except urllib.error.HTTPError as e:
+        # Sem isto o 422 vira traceback mudo — a API SEMPRE manda o motivo no corpo.
+        corpo_erro = e.read().decode(errors='replace')
+        sys.exit(f'API Hetzner {e.code} em {metodo} {caminho}:\n{corpo_erro}')
 
 
 def _pending() -> int:
