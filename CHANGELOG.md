@@ -5,6 +5,19 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## O burst validado ao vivo (03/09)
+
+### Corrigido
+- **Burst do solver: tipo padrao vira cx43** apos o teste ponta a ponta em producao: o
+  cpx41 devolve 422 "unsupported location" em fsn1 (a lista de PRECOS inclui o datacenter,
+  mas disponibilidade real e outra tabela) e os cax* baratos sao ARM — snapshot x86 nao
+  sobe. cx43 = 8 cores x86 a EUR 0,03/h, metade do preco. Validado: up → clone 10.0.0.4
+  sem IP publico → /health ok → consumer extra drenando → down destruiu e encerrou a
+  cobranca, ~1 minuto do create ao operando. De quebra, o 422 mudo do urllib agora imprime
+  o corpo do erro da API — foi ele que escondeu o motivo na primeira tentativa.
+
+---
+
 ## Solver sob demanda: nasce no pico, morre ao drenar (02/09)
 
 ### Adicionado

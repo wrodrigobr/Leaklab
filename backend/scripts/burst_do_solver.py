@@ -37,7 +37,10 @@ from leaklab.burst_solver import decidir  # noqa: E402
 API = 'https://api.hetzner.cloud/v1'
 IP_BASE_SOLVER = os.environ.get('LEAKLAB_SOLVER_PRIV_IP', '10.0.0.3')
 REDE = os.environ.get('LEAKLAB_HETZNER_NET', 'grindlab-net')
-TIPO_BURST = os.environ.get('LEAKLAB_BURST_TYPE', 'cpx41')   # 8 vCPU, como a base
+# cx43: 8 cores x86, €0,03/h — validado ponta a ponta em 03/09. O cpx41 devolve 422
+# "unsupported location for server type" em fsn1 (a lista de PREÇOS inclui fsn1, mas
+# disponibilidade real é outra tabela); e os cax* baratos são ARM — snapshot x86 não sobe.
+TIPO_BURST = os.environ.get('LEAKLAB_BURST_TYPE', 'cx43')
 PREFIXO = 'burst-solver-'
 LABEL = 'burst=leaklab'
 LABEL_SNAPSHOT = 'leaklab-burst-base'

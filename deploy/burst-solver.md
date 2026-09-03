@@ -54,5 +54,10 @@ app não têm nenhuma das duas. O teste da suíte quebra a regra de decisão de 
 
 ## Custo
 
-`cpx41` ≈ €0,05/h. Um pico de 6h de burst ≈ €0,30. O snapshot cobra pelo tamanho
-(~€0,01/GB/mês) — um custo fixo pequeno para ter o clone a 5 minutos de distância.
+`cx43` (8 cores x86) ≈ **€0,03/h** — um pico de 6h de burst ≈ €0,18. O snapshot-base tem
+1,5GB (~€0,02/mês). Validado ponta a ponta em 03/09: up → health ok → consumer extra →
+down, ~1 minuto do create ao operando.
+
+Armadilhas de tipo já pisadas: `cpx41` devolve 422 "unsupported location" em fsn1 (a lista
+de preços inclui fsn1, mas disponibilidade real é outra tabela); `cax*` são ARM e o
+snapshot x86 não sobe neles.
