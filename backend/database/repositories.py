@@ -67,31 +67,41 @@ def _build_tournament_filter(user_id: int, days: int = 90, last_n: int | None = 
     """
     Retorna (where_clause, params) para filtrar torneios por volume ou por data.
 
-    - last_n=N (N>0) → últimos N torneios IMPORTADOS do usuário (independente de data de jogo)
+    - last_n=N (N>0) → últimos N torneios JOGADOS do usuário
     - last_n=0        → HISTÓRICO genuíno: toda a conta, sem teto de dias nem de contagem
-    - last_n=None     → torneios importados nos últimos `days` dias
+    - last_n=None     → torneios JOGADOS nos últimos `days` dias
 
-    03/09 (achado do dono, auditoria do dashboard): antes desta função só tinha DOIS modos, e o
-    front usava `last_n=None` pra rotular o botão "Todos" — só que None cai no fallback de
-    `days` (90), então "Todos" secretamente significava "últimos 90 dias", e não existia
-    NENHUM jeito de ver o histórico de verdade em nenhum dos ~14 lugares que chamam esta
-    função. `last_n=0` é o sentinela explícito pra isso — flui sozinho pelos chamadores
-    existentes (eles só repassam o que receberam), sem precisar tocar em cada um (regra 5).
+    03/09 (2º achado do dono, mesma auditoria): o eixo era `imported_at` (data do UPLOAD), de
+    propósito — "mostra torneios antigos que você acabou de subir". Fazia sentido pro caso de
+    uso original (upload logo após jogar, os dois relógios andam juntos), mas quebra na cara
+    quando alguém importa um LOTE histórico de uma vez: o Rullian subiu 280 torneios jogados
+    entre 21/05 e 01/09 (3+ meses), todos com `imported_at` espremido em 25 HORAS (o script
+    processava por T# do arquivo, não por data de jogo). Sob o eixo antigo, "últimos 50" seria
+    uma fatia arbitrária da ORDEM DO SCRIPT — nada a ver com "como ele está jogando agora", que
+    é a pergunta que o filtro existe pra responder. Trocado pra `played_at` (0 nulos em 479
+    torneios na base inteira, medido antes de trocar) — já é o eixo usado pra ORDENAR os
+    gráficos (get_evolution_metrics, get_decisions_for_elo_curve); agora também FILTRA.
 
-    NB: a JANELA/seleção é por imported_at (mostra os uploads recentes, inclusive torneios antigos
-    que você acabou de subir). A ORDEM do eixo X (cronológica de JOGO) é por played_at, aplicada no
-    ORDER BY de cada gráfico (get_evolution_metrics, get_decisions_for_elo_curve).
+    (1º achado, mesma auditoria): antes só tinha DOIS modos, e "Todos" mandava `last_n=None`
+    — que cai no fallback de `days` (90), então "Todos" secretamente significava "últimos 90
+    dias", sem jeito nenhum de ver o histórico de verdade em nenhum dos ~14 chamadores.
+    `last_n=0` é o sentinela pra isso — flui sozinho pelos chamadores existentes (regra 5).
     """
+    # COALESCE p/ played_at nulo (0 casos medidos em produção — mas fixtures de teste antigas
+    # e qualquer torneio futuro sem data de jogo extraída não podem SUMIR do filtro por causa
+    # disso: `played_at >= since` com NULL não é verdadeiro em SQL nenhum, o torneio evapora
+    # em silêncio de toda tela com janela. Regra 6: sem prova de recência, cai no que existe.
     if last_n == 0:
         return "t.user_id = ?", (user_id,)
     if last_n is not None:
         return (
-            "t.id IN (SELECT id FROM tournaments WHERE user_id = ? ORDER BY imported_at DESC LIMIT ?)",
+            "t.id IN (SELECT id FROM tournaments WHERE user_id = ? "
+            "ORDER BY COALESCE(played_at, imported_at) DESC LIMIT ?)",
             (user_id, last_n),
         )
     from datetime import datetime, timedelta
-    since = (datetime.utcnow() - timedelta(days=days)).strftime('%Y-%m-%d %H:%M:%S')
-    return "t.user_id = ? AND t.imported_at >= ?", (user_id, since)
+    since = (datetime.utcnow() - timedelta(days=days)).strftime('%Y-%m-%d')
+    return "t.user_id = ? AND COALESCE(t.played_at, t.imported_at) >= ?", (user_id, since)
 
 
 def _jsonable(v):
@@ -10772,8 +10782,8 @@ def get_ev_summary(user_id: int, last_n: int | None = 50) -> dict:
     que já regia os outros 8 cards do dashboard): sem corte, o headline e a "sangria por
     street" somavam a conta INTEIRA desde sempre — um jogador que era ruim há meses e evoluiu
     carregava esse passado pra sempre, o número nunca refletia o nível ATUAL. Mesmo parâmetro,
-    mesmo helper (`_build_tournament_filter`) e mesmo eixo de recência (imported_at) dos
-    outros cards — `last_n=N` últimos N torneios, `last_n=0` histórico genuíno (ver o
+    mesmo helper (`_build_tournament_filter`) e mesmo eixo de recência (played_at — data de
+    JOGO, não de upload) dos outros cards — `last_n=N` últimos N torneios, `last_n=0` histórico genuíno (ver o
     docstring de `_build_tournament_filter` pro porquê do sentinela). Default 50 — nunca
     silencioso: o front sempre manda um valor explícito (inclusive 0 pra histórico); este
     default só cobre chamada direta (script, teste) sem argumento.
@@ -10799,12 +10809,13 @@ def get_ev_summary(user_id: int, last_n: int | None = 50) -> dict:
     conn = get_conn()
     try:
         # MESMO helper que filtra os outros 8 cards do dashboard — last_n=0 é histórico
-        # genuíno, last_n=N os N mais recentes por imported_at. Sem corte separado aqui.
+        # genuíno, last_n=N os N mais recentes por DATA DE JOGO. Sem corte separado aqui.
         _tf, _tp = _build_tournament_filter(user_id, last_n=last_n)
         # ORDER BY explícito: tids[:5]/tids[5:10]/tids[:12] abaixo (tendência e sparkline)
         # dependem de "mais recente primeiro" — sem isto a ordem do SELECT não é garantida.
+        # played_at (JOGO), não imported_at (upload) — mesmo eixo do _build_tournament_filter.
         tids = [r['id'] for r in _fetchall(conn, _adapt(
-            f"SELECT id FROM tournaments t WHERE {_tf} ORDER BY t.imported_at DESC"), _tp)]
+            f"SELECT id FROM tournaments t WHERE {_tf} ORDER BY COALESCE(t.played_at, t.imported_at) DESC"), _tp)]
         if not tids:
             return {'has_data': False}
 

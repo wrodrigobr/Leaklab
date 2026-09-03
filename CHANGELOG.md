@@ -18,6 +18,32 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## O eixo era a data do UPLOAD, nao a do JOGO (03/09, mesma tarde)
+
+### Corrigido
+- **"Ultimos 40" nao eram os ultimos 40 JOGADOS — eram os ultimos 40 IMPORTADOS.** Achado do
+  dono, provado com dado real: o Rullian importou 280 torneios jogados entre 21/05 e 01/09
+  (3+ meses), mas `imported_at` de TODOS ficou espremido em 25 horas (a ordem que o script de
+  lote processava o arquivo, nao a ordem que ele jogou). Sob o eixo antigo, "ultimos 40" seria
+  uma fatia arbitraria da ordem do script — nada a ver com "como ele esta jogando agora", que
+  e a pergunta que o filtro existe pra responder. `_build_tournament_filter` (os 14 chamadores,
+  incluindo `get_ev_summary`) trocou o eixo pra `played_at` (data do JOGO) — 0 nulos medidos
+  em 479 torneios da base inteira antes de trocar.
+- **Regressao pega no caminho, corrigida no mesmo commit**: fixtures de teste antigas (e
+  qualquer torneio futuro sem data extraida) nao tem `played_at` — sem rede de seguranca,
+  `played_at >= since` com NULL nunca e verdadeiro em SQL nenhum, e o torneio SOME em silencio
+  de toda tela com janela (regra 6). `COALESCE(played_at, imported_at)` cobre isso: joga tem
+  prioridade, upload e so fallback pra quando joga falta. Guarda dupla, cada uma quebrada de
+  proposito e restaurada: o eixo (played_at vs imported_at, com played_at/imported_at em
+  ordem DELIBERADAMENTE invertida no teste — uma regressao ao eixo errado sai com resultado
+  TROCADO, nao so impreciso) e o COALESCE (sem ele, um teste dedicado com torneio sem
+  played_at estoura com excecao, nao so falha).
+- **Nota operacional**: no meio do trabalho, um `git checkout` sem checar `git status` primeiro
+  descartou a troca de eixo ainda nao commitada (o teste sobreviveu, isolado). Refeito na hora;
+  registrado aqui pela disciplina de nunca rodar operacao destrutiva sem conferir o estado antes.
+
+---
+
 ## Unificacao: um so filtro de periodo pro dashboard inteiro (03/09)
 
 ### Corrigido
