@@ -597,6 +597,8 @@
     "covPost": "Postflop",
     "covNote": "El postflop crece solo: la cola del solver resuelve los spots a medida que revisas manos.",
     "streetTitle": "Dónde sangras (bb por street)",
+    "streetScopeN": "basado en tus últimos {{n}} torneos",
+    "streetScopeAll": "basado en tu historial completo",
     "streetSpots": "{{n}} spots",
     "aiTitle": "Insight de la IA",
     "aiTwin": "Strategic Twin",

@@ -16,10 +16,19 @@ export function V2StreetEvCard({ evSummary }: { evSummary: EvSummary | null }) {
   if (!rows.length) return null;
   const max = Math.max(...rows.map((r) => r.loss_bb), 0.1);
 
+  // Linha fixa (não tooltip, de propósito — 03/09: a confusão que motivou isto foi "não sei
+  // de onde vem o número", e algo escondido em hover não resolve quem nem sabe que precisa
+  // passar o mouse). last_n=0 é o sentinela de histórico genuíno (ver _build_tournament_filter).
+  const lastN = evSummary?.last_n;
+  const escopo = lastN === 0 ? t("v2.streetScopeAll") : t("v2.streetScopeN", { n: lastN ?? 50 });
+
   return (
     <div className="rounded-xl ring-1 ring-border bg-card/60 p-4">
-      <div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground mb-3">
+      <div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
         {t("v2.streetTitle")}
+      </div>
+      <div className="font-mono text-[9px] text-muted-foreground/60 mb-3">
+        {escopo}
       </div>
       <div className="space-y-2.5">
         {rows.map((r) => (

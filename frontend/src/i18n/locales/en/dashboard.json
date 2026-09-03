@@ -597,6 +597,8 @@
     "covPost": "Postflop",
     "covNote": "Postflop grows on its own: the solver queue resolves spots as you review hands.",
     "streetTitle": "Where you bleed (bb by street)",
+    "streetScopeN": "based on your last {{n}} tournaments",
+    "streetScopeAll": "based on your full history",
     "streetSpots": "{{n}} spots",
     "aiTitle": "AI Insight",
     "aiTwin": "Strategic Twin",

@@ -18,6 +18,17 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## "De onde vem esse numero" — linha fixa no card de sangria (03/09)
+
+### Adicionado
+- **"Onde voce sangra (bb por street)" agora declara o escopo**: linha fixa abaixo do titulo
+  ("baseado nos ultimos 50 torneios" / "baseado no historico completo"), lendo `last_n` que
+  o backend ja devolve. Decisao de UX (pedido do dono): linha SEMPRE visivel, nao tooltip —
+  a confusao que originou isto foi "nao sei de onde vem o numero"; algo escondido em hover
+  nao ajuda quem nem sabe que precisa passar o mouse.
+
+---
+
 ## O filtro que ninguem via, e o "teimoso" que vazava em ingles (03/09)
 
 ### Corrigido
