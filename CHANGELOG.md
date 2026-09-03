@@ -5,6 +5,25 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## Assinatura Stripe so nasce ao confirmar, nao ao abrir o modal (03/09)
+
+### Corrigido
+- **Cada abertura do checkout, e cada troca mensal↔anual, criava uma assinatura Stripe DE
+  VERDADE**: `CheckoutModal` chamava `subscription.checkout()` num `useEffect` disparado ao
+  montar e a cada troca de ciclo, so pra ter o `client_secret` que monta o formulario de
+  cartao. Resultado: o dono via uma trilha de `Incompleto`/`Cancelado` no dashboard do Stripe
+  so de jogador olhando o preco ou testando os dois planos — nada a ver com dificuldade de
+  digitar cartao ou pagamento recusado (a suspeita inicial), era ruido de navegacao.
+- **Conserto**: o Payment Element agora monta em modo *deferred* do Stripe (`mode: "subscription"`
+  + `amount`/`currency`, sem `clientSecret`) — o cartao pode ser digitado sem que nenhuma
+  assinatura exista ainda. Trocar de ciclo so recria esse objeto local (`elements()`), zero
+  chamada de rede. A assinatura real (`subscription.checkout()`) so nasce dentro do submit,
+  logo antes de `confirmPayment` — ou seja, so quando o jogador clica "Assinar" de verdade.
+  Guarda quebrado de proposito (reintroduzida a chamada no mount) e os 3 testes nao so
+  falharam — **os 3** acusaram, confirmando que o teste detecta o padrao antigo; restaurado.
+
+---
+
 ## O burst sem capacidade num datacenter so (03/09)
 
 ### Corrigido

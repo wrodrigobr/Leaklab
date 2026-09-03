@@ -76,8 +76,6 @@ export function CheckoutModal({ plan, onClose, onSuccess }: Props) {
   // não chegam, os valores ficam VAZIOS em vez de mostrar um número de reserva: preço provisório
   // na tela é a forma mais cara possível de "quase certo".
   const [planos, setPlanos] = useState<PlanoDaApi | null>(null);
-  const [clientSecret,   setClientSecret]   = useState<string | null>(null);
-  const [subscriptionId, setSubscriptionId] = useState<string | null>(null);
   const [stripeInstance, setStripeInstance] = useState<Stripe | null>(null);
   const [formMounted,    setFormMounted]     = useState(false);
   const [submitting,     setSubmitting]      = useState(false);
@@ -86,8 +84,6 @@ export function CheckoutModal({ plan, onClose, onSuccess }: Props) {
 
   const elementsRef = useRef<StripeElements | null>(null);
 
-  // Phase 1: load Stripe.js + create subscription intent in parallel.
-  // Re-runs quando o ciclo (mensal/anual) muda → novo PaymentIntent com o valor certo.
   // Busca os planos ao montar. Falha em silencio de proposito: sem preco a tela mostra o rotulo
   // sem numero, que e honesto -- inventar um valor de reserva seria anunciar o que talvez nao se
   // cobre, que e exatamente o defeito que este dia inteiro perseguiu.
@@ -104,39 +100,35 @@ export function CheckoutModal({ plan, onClose, onSuccess }: Props) {
 
   const mensal = planos?.billing?.monthly;
   const anual  = planos?.billing?.annual;
+  const valorCentavos = billing === "annual" ? anual?.price : mensal?.price;
 
+  // Carrega só o Stripe.js ao montar. NÃO cria assinatura aqui: até 03/09 este efeito chamava
+  // subscription.checkout() a cada abertura de modal e a cada troca de ciclo, e cada chamada
+  // criava uma assinatura Stripe DE VERDADE ("Incompleto" no dashboard) mesmo que o jogador só
+  // estivesse navegando. A assinatura real só nasce no submit (handleSubmit), quando o jogador
+  // confirma.
   useEffect(() => {
     let active = true;
-    setClientSecret(null);
-    setSubscriptionId(null);
-    setFormMounted(false);
-    setError(null);
-    (async () => {
-      try {
-        const [intentResult, stripe] = await Promise.all([
-          subscription.checkout(plan, billing),
-          loadStripe(STRIPE_KEY),
-        ]);
-        if (!active) return;
-        if (!stripe) throw new Error(t("checkout.erroSdk"));
-        setStripeInstance(stripe);
-        setClientSecret(intentResult.client_secret);
-        setSubscriptionId(intentResult.subscription_id);
-      } catch (e) {
-        if (!active) return;
-        setError(e instanceof Error ? e.message : "Erro ao iniciar pagamento.");
-      }
-    })();
+    loadStripe(STRIPE_KEY).then((stripe) => {
+      if (!active) return;
+      if (!stripe) { setError(t("checkout.erroSdk")); return; }
+      setStripeInstance(stripe);
+    });
     return () => { active = false; };
-  }, [plan, billing]);
+  }, [t]);
 
-  // Phase 2: mount PaymentElement once stripe + clientSecret are ready
+  // PaymentElement em modo "deferred" (mode/amount/currency, sem clientSecret): o Stripe deixa
+  // coletar os dados do cartão sem que exista PaymentIntent nenhum ainda. Trocar de ciclo só
+  // recria este objeto local — nenhuma chamada à API do Stripe ou ao backend.
   useEffect(() => {
-    if (!stripeInstance || !clientSecret) return;
+    if (!stripeInstance || !valorCentavos) return;
     let active = true;
+    setFormMounted(false);
 
     elementsRef.current = stripeInstance.elements({
-      clientSecret,
+      mode: "subscription",
+      amount: valorCentavos,
+      currency: "brl",
       locale: "pt-BR",
       appearance: {
         theme: "night",
@@ -165,16 +157,24 @@ export function CheckoutModal({ plan, onClose, onSuccess }: Props) {
       try { paymentEl.unmount(); } catch { /* ignore */ }
       elementsRef.current = null;
     };
-  }, [stripeInstance, clientSecret]);
+  }, [stripeInstance, billing, valorCentavos]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!stripeInstance || !elementsRef.current || !subscriptionId) return;
+    if (!stripeInstance || !elementsRef.current) return;
     setSubmitting(true);
     setError(null);
     try {
+      const { error: submitError } = await elementsRef.current.submit();
+      if (submitError) throw new Error(submitError.message || "Dados de pagamento inválidos.");
+
+      // A assinatura Stripe nasce AQUI, só quando o jogador confirma — não mais ao abrir o
+      // modal ou trocar de ciclo (03/09).
+      const intentResult = await subscription.checkout(plan, billing);
+
       const { error: stripeError, paymentIntent } = await stripeInstance.confirmPayment({
         elements: elementsRef.current,
+        clientSecret: intentResult.client_secret,
         redirect: "if_required",
         confirmParams: { return_url: `${window.location.origin}/dashboard` },
       });
@@ -182,7 +182,7 @@ export function CheckoutModal({ plan, onClose, onSuccess }: Props) {
         throw new Error(stripeError.message || "Pagamento recusado.");
       }
       if (paymentIntent?.status === "succeeded") {
-        await subscription.activate(plan, paymentIntent.id, subscriptionId, billing);
+        await subscription.activate(plan, paymentIntent.id, intentResult.subscription_id, billing);
         // Conversão de compra (upgrade Pro). amount vem em centavos da moeda.
         trackPurchase(
           plan,
@@ -202,7 +202,7 @@ export function CheckoutModal({ plan, onClose, onSuccess }: Props) {
     }
   };
 
-  const isLoading = !clientSecret && !error;
+  const isLoading = !stripeInstance && !error;
 
   return createPortal(
     <div
@@ -306,7 +306,7 @@ export function CheckoutModal({ plan, onClose, onSuccess }: Props) {
             <Loader2 className="size-6 animate-spin text-muted-foreground" />
           </div>
 
-        ) : error && !clientSecret ? (
+        ) : error && !stripeInstance ? (
           <div className="flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2.5">
             <AlertCircle className="size-4 shrink-0 text-destructive mt-0.5" />
             <p className="text-xs text-destructive">{error}</p>
