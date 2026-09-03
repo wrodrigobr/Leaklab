@@ -608,6 +608,66 @@ def test_contagem_de_tickets_por_categoria():
 
 
 
+
+def test_lote_isenta_rate_limit_do_analyze():
+    """03/09: o import de lote (importar_lote_pt4.py) manda centenas de requests via
+    test_client em sequencia (sem rede real) — nao e abuso, e o script processando um
+    export multi-torneio. Sem a isencao, 189 de 280 torneios do Rullian falharam com 429.
+    LEAKLAB_IMPORT_LOTE isenta SO no processo que a define.
+
+    `app.testing=True` ja isenta TODO rate limit globalmente (_exempt_in_testing) — por
+    isso o teste desliga essa isencao de proposito para exercitar o exempt_when de verdade,
+    e restaura no finally (nao pode vazar pros demais testes do arquivo)."""
+    import os
+    from api.app import app as _flask_app
+    c = _make_client()
+    tok = _register_and_login(c, 'lotelimit')
+
+    def _hand(i):
+        linhas = [
+            "PokerStars Hand #%d: Tournament #%d, $1+$1 USD Hold'em No Limit - Level I (10/20) - 2026/01/01 0:00:00 ET" % (900000000 + i, 700000 + i),
+            "Table '%d 1' 2-max Seat #1 is the button" % (700000 + i),
+            "Seat 1: lotelimit (1000 in chips)",
+            "Seat 2: vilao (1000 in chips)",
+            "lotelimit: posts small blind 10",
+            "vilao: posts big blind 20",
+            "*** HOLE CARDS ***",
+            "Dealt to lotelimit [Ah Kh]",
+            "lotelimit: folds",
+            "Uncalled bet (10) returned to vilao",
+            "vilao collected 20 from pot",
+            "*** SUMMARY ***",
+            "Total pot 20 | Rake 0",
+            "Board []",
+            "Seat 1: lotelimit (button) (small blind) folded before Flop",
+            "Seat 2: vilao (big blind) collected (20)",
+        ]
+        return chr(10).join(linhas)
+
+    def _sobe(n):
+        vistos = set()
+        for i in range(n):
+            r = c.post('/analyze', json={'content': _hand(i)}, headers=_auth_headers(tok))
+            vistos.add(r.status_code)
+        return vistos
+
+    _flask_app.testing = False   # sem isto _exempt_in_testing isenta tudo e o 429 nunca aparece
+    try:
+        # sem a env: 32 uploads batem no limite de 30/h — algum 429 aparece
+        status_sem_isencao = _sobe(32)
+        assert 429 in status_sem_isencao, 'rate limit nao pegou sem isencao: %s' % status_sem_isencao
+        # com a env: mais 10 uploads NAO devem 429 (mesmo ja tendo estourado o limite acima)
+        os.environ['LEAKLAB_IMPORT_LOTE'] = '1'
+        try:
+            status_com_isencao = _sobe(10)
+        finally:
+            del os.environ['LEAKLAB_IMPORT_LOTE']
+        assert 429 not in status_com_isencao, 'lote NAO foi isento do rate limit: %s' % status_com_isencao
+    finally:
+        _flask_app.testing = True
+    print("OK  test_lote_isenta_rate_limit_do_analyze")
+
+
 # ── /analyze/replay-coach ─────────────────────────────────────────────────────
 
 def test_replay_coach_requires_auth():

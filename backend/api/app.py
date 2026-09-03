@@ -801,7 +801,12 @@ def unlink_coach():
 
 @app.route('/analyze', methods=['POST'])
 @require_auth
-@limiter.limit("30 per hour")
+# Import de LOTE (scripts/importar_lote_pt4.py): não é abuso, é o próprio processo mandando
+# centenas de requests em sequência via test_client (sem rede real). Isento pela MESMA env
+# que isenta quota e priorização (LEAKLAB_IMPORT_LOTE) — vale só no processo do script.
+# 03/09: o lote do Rullian bateu neste limite sem isto — 91 de 280 torneios entraram, 189
+# falharam com 429. Descoberto pelo PLACAR do script, não escondido.
+@limiter.limit("30 per hour", exempt_when=lambda: bool(os.environ.get('LEAKLAB_IMPORT_LOTE')))
 def analyze():
     try:
         return _analyze_impl()

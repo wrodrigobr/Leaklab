@@ -5,6 +5,20 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## O rate limit que barrou o proprio importador (03/09)
+
+### Corrigido
+- **Import de lote batendo no rate limit anti-abuso**: `/analyze` tem `30 per hour` contra
+  jogador mandando upload demais — o script de lote, sem rede real (test_client em processo),
+  disparou centenas de requests em sequencia e foi tratado como abuso. Resultado medido:
+  **91 de 280 torneios do Rullian entraram, 189 falharam com 429**, descoberto pelo PLACAR
+  do proprio script, nao escondido. `exempt_when=lambda: bool(LEAKLAB_IMPORT_LOTE)` isenta
+  SO o processo do script. Guarda: como `app.testing=True` ja isenta rate limit globalmente
+  (padrao correto pre-existente do arquivo), o teste desliga essa isencao de proposito para
+  exercitar o exempt_when de verdade — provado quebrando-o (1 FAIL) e restaurando.
+
+---
+
 ## O lote do parceiro: importador pela rota real (03/09)
 
 ### Adicionado
