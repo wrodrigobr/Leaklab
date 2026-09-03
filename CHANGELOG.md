@@ -5,6 +5,19 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## O burst sem capacidade num datacenter so (03/09)
+
+### Corrigido
+- **Cron do burst detectou o pico e falhou em silencio no admin**: o tick achou `pending=3836`,
+  tentou criar o `cx43` em `fsn1` e a Hetzner recusou com `412 resource_unavailable` (sem
+  estoque daquele tipo naquele datacenter no momento — rotina da nuvem, nao erro nosso).
+  O script antigo so tentava fsn1 e `sys.exit`ava no primeiro 412, entao nada nascia e o
+  admin ficava mudo. Agora tenta (tipo, local) em cascata — cx43 depois cpx41, em fsn1/
+  nbg1/hel1 (mesma network zone eu-central, a rede privada funciona em qualquer um) — so
+  desiste de verdade se NENHUMA combinacao tiver vaga.
+
+---
+
 ## O rate limit que barrou o proprio importador (03/09)
 
 ### Corrigido

@@ -41,6 +41,12 @@ REDE = os.environ.get('LEAKLAB_HETZNER_NET', 'grindlab-net')
 # "unsupported location for server type" em fsn1 (a lista de PREÇOS inclui fsn1, mas
 # disponibilidade real é outra tabela); e os cax* baratos são ARM — snapshot x86 não sobe.
 TIPO_BURST = os.environ.get('LEAKLAB_BURST_TYPE', 'cx43')
+# Fallback de PLACAR: um datacenter sem capacidade de um tipo é rotina na Hetzner, não erro
+# nosso (visto em prod 03/09: 412 resource_unavailable em fsn1/cx43 duas vezes seguidas). Os
+# três ficam na mesma network zone (eu-central) — o clone enxerga a MESMA rede privada em
+# qualquer um. Tenta combinações (local, tipo) em ordem até uma aceitar.
+LOCATIONS = [l.strip() for l in os.environ.get('LEAKLAB_BURST_LOCATIONS', 'fsn1,nbg1,hel1').split(',') if l.strip()]
+TIPOS_FALLBACK = [t.strip() for t in os.environ.get('LEAKLAB_BURST_TYPE_FALLBACK', f'{TIPO_BURST},cpx41').split(',') if t.strip()]
 PREFIXO = 'burst-solver-'
 LABEL = 'burst=leaklab'
 LABEL_SNAPSHOT = 'leaklab-burst-base'
@@ -58,7 +64,10 @@ def _token() -> str:
     return tok
 
 
-def _api(caminho: str, metodo: str = 'GET', corpo: dict = None) -> dict:
+def _api(caminho: str, metodo: str = 'GET', corpo: dict = None, abortar_em_erro: bool = True) -> dict:
+    """abortar_em_erro=False: NÃO sai do processo — relança o HTTPError com o corpo já lido
+    (`e.corpo_json`), para o chamador decidir (usado no fallback de local/tipo do `up`, onde
+    'sem capacidade' num datacenter é esperado e não deve matar o tick)."""
     req = urllib.request.Request(
         API + caminho, method=metodo,
         data=json.dumps(corpo).encode() if corpo else None,
@@ -69,6 +78,9 @@ def _api(caminho: str, metodo: str = 'GET', corpo: dict = None) -> dict:
     except urllib.error.HTTPError as e:
         # Sem isto o 422 vira traceback mudo — a API SEMPRE manda o motivo no corpo.
         corpo_erro = e.read().decode(errors='replace')
+        if not abortar_em_erro:
+            e.corpo_json = json.loads(corpo_erro or '{}')
+            raise
         sys.exit(f'API Hetzner {e.code} em {metodo} {caminho}:\n{corpo_erro}')
 
 
@@ -144,13 +156,31 @@ def cmd_up():
     if not rede:
         sys.exit(f'rede privada {REDE} não encontrada.')
     nome = f'{PREFIXO}{int(time.time())}'
-    print(f'criando {nome} ({TIPO_BURST}) do snapshot #{snap["id"]}...')
-    r = _api('/servers', 'POST', {
-        'name': nome, 'server_type': TIPO_BURST, 'image': snap['id'],
-        'location': 'fsn1', 'networks': [rede['id']],
-        'labels': {'burst': 'leaklab'},
-        # Sem IP público: o burst só conversa na rede privada. Menos superfície, sem custo de IPv4.
-        'public_net': {'enable_ipv4': False, 'enable_ipv6': False}})
+    r = None
+    tentadas = []
+    for tipo in TIPOS_FALLBACK:
+        for loc in LOCATIONS:
+            try:
+                print(f'criando {nome} ({tipo}) em {loc} do snapshot #{snap["id"]}...')
+                r = _api('/servers', 'POST', {
+                    'name': nome, 'server_type': tipo, 'image': snap['id'],
+                    'location': loc, 'networks': [rede['id']],
+                    'labels': {'burst': 'leaklab'},
+                    # Sem IP público: o burst só conversa na rede privada. Menos superfície,
+                    # sem custo de IPv4.
+                    'public_net': {'enable_ipv4': False, 'enable_ipv6': False}},
+                    abortar_em_erro=False)
+                break
+            except urllib.error.HTTPError as e:
+                tentadas.append(f'{tipo}@{loc}: {e.code} {e.corpo_json.get("error", {}).get("code", "")}')
+                if e.code == 412:   # resource_unavailable — capacidade, tenta a próxima combinação
+                    continue
+                sys.exit(f'API Hetzner {e.code} em POST /servers ({tipo}@{loc}):\n'
+                        f'{json.dumps(e.corpo_json)}')
+        if r:
+            break
+    if not r:
+        sys.exit('nenhuma combinação (tipo, local) teve capacidade agora:\n  ' + '\n  '.join(tentadas))
     sid = r['server']['id']
     ip = None
     for _ in range(60):   # até 5min para boot + solver_api
