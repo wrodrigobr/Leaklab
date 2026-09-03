@@ -1560,9 +1560,17 @@ def player_level():
 @app.route('/player/ev-summary', methods=['GET'])
 @require_auth
 def player_ev_summary():
-    """UX-1: hero do DashboardV2 — EV/100, tendência, % sólidas e top leaks por CUSTO."""
-    from database.repositories import get_ev_summary
-    return jsonify(get_ev_summary(g.user_id))
+    """UX-1: hero do DashboardV2 — EV/100, tendência, % sólidas e top leaks por CUSTO.
+
+    ?window=10|40|all (03/09): filtro de período que o jogador escolhe. Chave INVÁLIDA ou
+    ausente cai no default (40) — nunca em 'all' por acidente, que é o modo que reintroduz o
+    viés de recência que a janela existe pra evitar.
+    """
+    from database.repositories import get_ev_summary, EV_WINDOW_OPTIONS, EV_WINDOW_DEFAULT
+    chave = request.args.get('window', EV_WINDOW_DEFAULT)
+    if chave not in EV_WINDOW_OPTIONS:
+        chave = EV_WINDOW_DEFAULT
+    return jsonify(get_ev_summary(g.user_id, window_tournaments=EV_WINDOW_OPTIONS[chave]))
 
 
 @app.route('/player/leak-roi', methods=['GET'])

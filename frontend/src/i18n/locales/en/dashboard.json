@@ -607,7 +607,10 @@
     "trendAvgLabel": "Trend",
     "trendRawLabel": "Each tournament",
     "trendAvgRef": "your average: {{medio}}bb",
-    "trendHintUp": "line going up = improving"
+    "trendHintUp": "line going up = improving",
+    "windowLabel": "Period",
+    "windowN": "last {{n}}",
+    "windowAll": "all-time"
   },
   "coachReferral": {
     "referredTitle": "Referred students",

@@ -10755,8 +10755,21 @@ def get_tree_strategy(tree_hash: str) -> Optional[dict]:
         conn.close()
 
 
-def get_ev_summary(user_id: int) -> dict:
+#: Opções do filtro de período do dashboard — chave usada na query string e no front.
+#: None = histórico (conta inteira); número = últimos N torneios. 40 é o MESMO corte de
+#: `get_evolution_report(limite_torneios=40)` — regra 5, um número, não dois que divergem.
+EV_WINDOW_OPTIONS: dict[str, int | None] = {'10': 10, '40': 40, 'all': None}
+EV_WINDOW_DEFAULT = '40'
+
+
+def get_ev_summary(user_id: int, window_tournaments: int | None = 40) -> dict:
     """UX-1 (plano pós-solver): resumo de EV para o hero do DashboardV2.
+
+    `window_tournaments` (03/09, achado pelo dono no próprio card): sem corte, o headline e a
+    "sangria por street" somavam a conta INTEIRA desde sempre — um jogador que era ruim há
+    meses e evoluiu carregava esse passado pra sempre, o número nunca refletia o nível ATUAL.
+    Default 40 (mesmo corte do relatório de evolução); None = histórico, explícito, nunca
+    default silencioso — ver `EV_WINDOW_OPTIONS`.
 
     EV/100 = bb perdidos por 100 decisões ANALISADAS (com ev_loss_bb — solver
     hand-aware postflop + overlay preflop). Tendência: últimos 5 torneios vs os
@@ -10782,6 +10795,12 @@ def get_ev_summary(user_id: int) -> dict:
             "SELECT id FROM tournaments WHERE user_id = ? ORDER BY id DESC"), (user_id,))]
         if not tids:
             return {'has_data': False}
+
+        # window_tournaments=None → histórico (conta inteira, explícito). Com número, corta —
+        # abaixo do corte a janela É a conta inteira (fatia não muda nada), então contas
+        # pequenas não sentem a mudança; só cresce a partir de ~40 torneios.
+        if window_tournaments is not None:
+            tids = tids[:window_tournaments]
 
         ph_all = ','.join('?' * len(tids))
 
@@ -10893,6 +10912,7 @@ def get_ev_summary(user_id: int) -> dict:
             'coverage':          {'preflop_pct': coverage.get('pre'),
                                   'postflop_pct': coverage.get('post')},
             'by_street':         by_street,
+            'window_tournaments': window_tournaments,   # None = histórico; front usa pra rotular
         }
     finally:
         conn.close()

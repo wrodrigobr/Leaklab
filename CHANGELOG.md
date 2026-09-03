@@ -18,6 +18,22 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## O passado ruim nao pode mentir sobre o presente (03/09)
+
+### Adicionado
+- **Filtro de periodo no dashboard "Hoje"** (`?window=10|40|all` em `/player/ev-summary`):
+  o headline "EV perdido/100", a "sangria por street", "leak mais caro" e "decisoes solidas"
+  somavam a conta INTEIRA desde sempre — achado pelo dono no proprio card. Consequencia real:
+  um jogador que era ruim ha meses e evoluiu carregava esse passado pra sempre no numero, o
+  card nunca refletia o nivel ATUAL (o oposto do que um produto de evolucao deveria mostrar).
+  Agora e filtro explicito — ultimos 10 / ultimos 40 (default, mesmo corte do relatorio de
+  evolucao, regra 5) / historico — nunca "historico" por acidente (rota valida a chave da
+  query string). Uma escolha rege 5 cards de uma vez, porque todos vem da MESMA lista
+  filtrada (o proprio codigo ja documentava isso desde a correcao de 10/08). Guarda: quebrado
+  de proposito (corte desligado → 2 FAIL) e restaurado.
+
+---
+
 ## O rate limit que barrou o proprio importador (03/09)
 
 ### Corrigido

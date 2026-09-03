@@ -2243,10 +2243,16 @@ export interface EvSummary {
   series?: { tournament_id: number; name: string; ev_per_100: number | null }[];
   coverage?: { preflop_pct: number | null; postflop_pct: number | null };
   by_street?: { street: string; count: number; loss_bb: number }[];
+  /** null = histórico (conta inteira); número = janela aplicada, em torneios */
+  window_tournaments?: number | null;
 }
 
+/** Chaves aceitas por /player/ev-summary?window=... — espelha EV_WINDOW_OPTIONS do backend. */
+export type EvWindow = "10" | "40" | "all";
+
 export const metrics = {
-  evSummary: () => request<EvSummary>(`/player/ev-summary`),
+  evSummary: (window: EvWindow = "40") =>
+    request<EvSummary>(`/player/ev-summary?window=${window}`),
 
   leaderboard: (period = 90) =>
     request<LeaderboardResponse>(`/metrics/leaderboard?period=${period}`),

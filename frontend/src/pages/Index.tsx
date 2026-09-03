@@ -19,7 +19,7 @@ import { DraggableCard } from "@/components/hud/DraggableCard";
 import { useDashboardLayout, DashSection, SECTION_SPAN } from "@/hooks/useDashboardLayout";
 import { useMasonryRows } from "@/hooks/useMasonryRows";
 import { makeRenderCard } from "@/components/hud/dashboardCards";
-import { metrics, tournaments, support, EvolutionResponse, Tournament, PlayerStatsResponse, LeakRoiData, PressureProfile, ConfidenceDrift, PlayerDnaResponse, LeakGraphResponse, CareerProjection, CognitiveFailureData, StrategicTwinProfile, GtoAlignmentData, GtoPositionData, GtoQualityData, ResultsVsGtoData, LeakFinderData, SessionContextData } from "@/lib/api";
+import { metrics, tournaments, support, EvolutionResponse, EvWindow, Tournament, PlayerStatsResponse, LeakRoiData, PressureProfile, ConfidenceDrift, PlayerDnaResponse, LeakGraphResponse, CareerProjection, CognitiveFailureData, StrategicTwinProfile, GtoAlignmentData, GtoPositionData, GtoQualityData, ResultsVsGtoData, LeakFinderData, SessionContextData } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { shouldShowDrift, readDriftSeen, writeDriftSeen } from "@/lib/driftDismiss";
 
@@ -135,9 +135,14 @@ const Index = () => {
   // código latente (não renderizado) — sem toggle. useState mantém dashV2 como variável de
   // runtime (não literal) p/ o branch do clássico não virar código inalcançável no lint.
   const [dashV2] = useState<boolean>(true);
+  // Filtro de período do bloco "Hoje" (03/09): default 40, NUNCA "all" — histórico mistura o
+  // jogador de meses atrás com o de hoje e esconde evolução real. Uma escolha rege 5 cards
+  // (headline, sólidas, leak mais caro, tendência, sangria por street), por isso mora aqui e
+  // desce como prop em vez de cada card buscar por conta própria.
+  const [evWindow, setEvWindow] = useState<EvWindow>("40");
   const { data: evSummary } = useQuery({
-    queryKey: ["ev-summary", refreshKey],
-    queryFn: metrics.evSummary,
+    queryKey: ["ev-summary", refreshKey, evWindow],
+    queryFn: () => metrics.evSummary(evWindow),
     staleTime: 120_000,
     enabled: dashV2,
   });
@@ -286,6 +291,8 @@ const Index = () => {
       <DashboardV2
         onUpload={handleUpload}
         evSummary={evSummary ?? null}
+        evWindow={evWindow}
+        onEvWindowChange={setEvWindow}
         hasData={hasData}
         renderCard={renderCard}
         gtoQuality={gtoQualityData}

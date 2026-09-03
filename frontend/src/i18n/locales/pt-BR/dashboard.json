@@ -607,7 +607,10 @@
     "trendAvgLabel": "Tendência",
     "trendRawLabel": "Cada torneio",
     "trendAvgRef": "sua média: {{medio}}bb",
-    "trendHintUp": "linha subindo = melhorando"
+    "trendHintUp": "linha subindo = melhorando",
+    "windowLabel": "Período",
+    "windowN": "últ. {{n}}",
+    "windowAll": "histórico"
   },
   "coachReferral": {
     "referredTitle": "Alunos indicados",
