@@ -276,6 +276,22 @@ def test_prioridade_pro_fura_a_fila():
 
 
 
+
+def test_prioridade_de_porao_no_import_de_lote():
+    """03/09 (lote PT4 do parceiro): com LEAKLAB_IMPORT_LOTE no ambiente, TODO enqueue sai
+    em prioridade 1 — abaixo de qualquer orgânico (free 5-8, pro 15-18). O lote só consome
+    capacidade ociosa; a env existe só no processo do script de import."""
+    import os
+    from leaklab.gto_solver import _priority
+    os.environ['LEAKLAB_IMPORT_LOTE'] = '1'
+    try:
+        assert _priority('flop') == 1 and _priority('preflop', 'pro') == 1, 'lote nao foi pro porao'
+    finally:
+        del os.environ['LEAKLAB_IMPORT_LOTE']
+    assert _priority('flop') == 5 and _priority('flop', 'pro') == 15, 'sem a env, prioridades normais'
+    print("OK  test_prioridade_de_porao_no_import_de_lote")
+
+
 if __name__ == '__main__':
     tests = [v for k, v in sorted(globals().items()) if k.startswith('test_')]
     passed = failed = 0

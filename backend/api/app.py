@@ -328,6 +328,10 @@ init_db()
 
 def _check_upload_quota(user_id: int):
     """Retorna resposta 402 se usuário Free atingiu o limite mensal de torneios, None caso contrário."""
+    # Import de LOTE (script importar_lote_pt4.py, processo próprio): 364 torneios de uma vez
+    # estouram até o Pro (200/mês). A env vale só no processo do script — o web nunca a tem.
+    if os.environ.get('LEAKLAB_IMPORT_LOTE'):
+        return None
     status = get_quota_status(user_id)
     limit  = status['limits'].get('tournaments')
     if limit is not None and status['tournaments_used'] >= limit:

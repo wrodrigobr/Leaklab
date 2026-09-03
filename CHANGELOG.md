@@ -5,6 +5,20 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## O lote do parceiro: importador pela rota real (03/09)
+
+### Adicionado
+- **Importador de lote PT4** (`scripts/importar_lote_pt4.py`): fatia o export do PokerTracker
+  por torneio e envia cada fatia a rota /analyze via test_client COM O TOKEN DO USUARIO DONO
+  — mesma rota, mesmos gates, mesmo merge por T#; associacao por construcao. Dry-run por
+  padrao, idempotente, --max para amostra. Dois desvios sob env LEAKLAB_IMPORT_LOTE (so no
+  processo do script): quota isenta (364 torneios estouram ate o Pro) e _priority() no PORAO
+  (1) — qualquer spot organico fura o lote inteiro; provado no gravado do smoke: 3 torneios,
+  486 decisoes, 185 spots TODOS em prioridade 1. Smoke pegou dois defeitos meus antes de
+  prod: a rota nao le corpo cru (400) e generate_token recebe ROLE, nao username.
+
+---
+
 ## A frota no painel (03/09)
 
 ### Adicionado

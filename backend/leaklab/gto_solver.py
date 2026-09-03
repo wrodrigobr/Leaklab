@@ -919,6 +919,11 @@ def _priority(street: str, plan: str = None) -> int:
     # boost +10 põe QUALQUER street de Pro acima de QUALQUER street de free (o maior
     # base é 8), preservando o shortest-job-first DENTRO de cada classe. Quem pagou
     # não espera atrás do backlog de quem não pagou.
+    # Import de LOTE: prioridade de PORÃO (1). Qualquer spot orgânico (free 5-8, pro 15-18)
+    # fura o lote inteiro — o lote só consome capacidade ociosa. A env vale só no processo
+    # do script de import; o web/consumer nunca a têm.
+    if os.environ.get('LEAKLAB_IMPORT_LOTE'):
+        return 1
     base = {'preflop': 8, 'river': 7, 'turn': 6, 'flop': 5}.get(street, 5)
     return base + (10 if (plan or '').lower() == 'pro' else 0)
 
