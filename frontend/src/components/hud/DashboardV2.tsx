@@ -7,7 +7,7 @@ import { HudHeader } from "@/components/hud/HudHeader";
 import { EmptyDashboard } from "@/components/hud/EmptyDashboard";
 import { ProximoPassoBanner } from "@/components/hud/ProximoPassoBanner";
 import { PlayerStatsCard } from "@/components/hud/PlayerStatsCard";
-import { EvSummary, EvWindow, GtoQualityData, GtoPositionData, progression, type EvolutionResponse } from "@/lib/api";
+import { EvSummary, GtoQualityData, GtoPositionData, progression, type EvolutionResponse } from "@/lib/api";
 import { useMasonryRows } from "@/hooks/useMasonryRows";
 import { formatAction } from "@/lib/utils";
 import { useSpotLabel } from "@/lib/spotLabel";
@@ -29,21 +29,9 @@ import { V2BankrollCard } from "@/components/hud/V2BankrollCard";
  * Index — zero duplicação de dados ou de componentes.
  */
 
-const EV_WINDOWS: { key: EvWindow; label: string }[] = [
-  { key: "10", label: "10" },
-  { key: "40", label: "40" },
-  { key: "all", label: "hist" },
-];
-
 interface Props {
   onUpload: () => void;
   evSummary: EvSummary | null;
-  /** Filtro de período do bloco "Hoje" (headline + tendência + sangria + leaks) — 03/09,
-      achado do dono: sem janela, quem melhorou ao longo dos meses carregava o passado ruim
-      pra sempre no número. Estado mora no pai (Index) porque UMA escolha rege VÁRIOS cards.
-      Opcional: a tela de Demo (dados fixos, sem refetch real) não precisa fornecer. */
-  evWindow?: EvWindow;
-  onEvWindowChange?: (w: EvWindow) => void;
   hasData: boolean;
   renderCard: (id: string, opts?: { v2?: boolean }) => React.ReactNode;
   gtoQuality?: GtoQualityData | null;
@@ -71,7 +59,7 @@ const CARD_ORDER = [
   "results", "dna", "twin", "pressure", "cognitive", "career", "causal_map",
 ];
 
-export function DashboardV2({ onUpload, evSummary, evWindow = "40", onEvWindowChange = () => {}, hasData, renderCard, gtoQuality = null, gtoPosition = null, pendingGto = 0, aiInsights = [], aiLocked = false, showEmpty = false, evolution, kpis, playerStats = null, drift = null, onDismissDrift }: Props) {
+export function DashboardV2({ onUpload, evSummary, hasData, renderCard, gtoQuality = null, gtoPosition = null, pendingGto = 0, aiInsights = [], aiLocked = false, showEmpty = false, evolution, kpis, playerStats = null, drift = null, onDismissDrift }: Props) {
   const { t } = useTranslation("dashboard");
   // Masonry real (mesmo hook do dashboard clássico): cards curtos liberam o vão
   // vertical e o grid-flow-dense empacota — sem blocos vazios na grade.
@@ -158,30 +146,6 @@ export function DashboardV2({ onUpload, evSummary, evWindow = "40", onEvWindowCh
             </div>
           </div>
         )}
-
-        {/* Filtro de período — rege headline, sólidas, leak mais caro, tendência E sangria por
-            street (todos vêm do mesmo evSummary). "hist" existe, mas nunca é o default: mistura
-            o jogador de meses atrás com o de hoje, escondendo evolução real. */}
-        <div className="flex items-center justify-end gap-1.5 -mb-1">
-          <span className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground/60">
-            {t("v2.windowLabel")}
-          </span>
-          <div className="flex gap-1">
-            {EV_WINDOWS.map((w) => (
-              <button
-                key={w.key}
-                onClick={() => onEvWindowChange(w.key)}
-                className={`rounded px-1.5 py-0.5 font-mono text-[9px] uppercase transition-colors ${
-                  evWindow === w.key
-                    ? "bg-teal-400/15 text-teal-300 ring-1 ring-teal-400/30"
-                    : "text-muted-foreground/60 hover:text-foreground"
-                }`}
-              >
-                {w.key === "all" ? t("v2.windowAll") : t("v2.windowN", { n: w.label })}
-              </button>
-            ))}
-          </div>
-        </div>
 
         {/* ── HERO "Hoje" ───────────────────────────────────────────────── */}
         <section data-tour="hero" className="grid gap-3 md:grid-cols-3">

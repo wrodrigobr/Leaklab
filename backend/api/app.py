@@ -1562,15 +1562,16 @@ def player_level():
 def player_ev_summary():
     """UX-1: hero do DashboardV2 — EV/100, tendência, % sólidas e top leaks por CUSTO.
 
-    ?window=10|40|all (03/09): filtro de período que o jogador escolhe. Chave INVÁLIDA ou
-    ausente cai no default (40) — nunca em 'all' por acidente, que é o modo que reintroduz o
-    viés de recência que a janela existe pra evitar.
+    ?last_n=N (03/09, unificado com o filtro "Volume" que já regia os outros 8 cards do
+    dashboard — mesmo nome de parâmetro, mesmo helper `_build_tournament_filter`): N>0 são os
+    N torneios mais recentes; N=0 é histórico genuíno. Ausente cai no default de
+    `get_ev_summary` (50) — mas o front sempre manda um valor explícito.
     """
-    from database.repositories import get_ev_summary, EV_WINDOW_OPTIONS, EV_WINDOW_DEFAULT
-    chave = request.args.get('window', EV_WINDOW_DEFAULT)
-    if chave not in EV_WINDOW_OPTIONS:
-        chave = EV_WINDOW_DEFAULT
-    return jsonify(get_ev_summary(g.user_id, window_tournaments=EV_WINDOW_OPTIONS[chave]))
+    from database.repositories import get_ev_summary
+    raw = request.args.get('last_n')
+    if raw:
+        return jsonify(get_ev_summary(g.user_id, last_n=int(raw)))
+    return jsonify(get_ev_summary(g.user_id))
 
 
 @app.route('/player/leak-roi', methods=['GET'])

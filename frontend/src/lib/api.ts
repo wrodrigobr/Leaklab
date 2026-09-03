@@ -2243,16 +2243,15 @@ export interface EvSummary {
   series?: { tournament_id: number; name: string; ev_per_100: number | null }[];
   coverage?: { preflop_pct: number | null; postflop_pct: number | null };
   by_street?: { street: string; count: number; loss_bb: number }[];
-  /** null = histórico (conta inteira); número = janela aplicada, em torneios */
-  window_tournaments?: number | null;
+  /** 0 = histórico (conta inteira); número = janela aplicada, em torneios */
+  last_n?: number | null;
 }
 
-/** Chaves aceitas por /player/ev-summary?window=... — espelha EV_WINDOW_OPTIONS do backend. */
-export type EvWindow = "10" | "40" | "all";
-
 export const metrics = {
-  evSummary: (window: EvWindow = "40") =>
-    request<EvSummary>(`/player/ev-summary?window=${window}`),
+  /** Mesmo parâmetro `last_n` do filtro "Volume" que já rege os outros cards do dashboard
+      (evolution/playerStats/leakRoi/gtoQuality/...) — 0 = histórico, N = últimos N torneios. */
+  evSummary: (lastN?: number) =>
+    request<EvSummary>(`/player/ev-summary${lastN != null ? `?last_n=${lastN}` : ""}`),
 
   leaderboard: (period = 90) =>
     request<LeaderboardResponse>(`/metrics/leaderboard?period=${period}`),

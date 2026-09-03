@@ -67,13 +67,23 @@ def _build_tournament_filter(user_id: int, days: int = 90, last_n: int | None = 
     """
     Retorna (where_clause, params) para filtrar torneios por volume ou por data.
 
-    - last_n=N  → últimos N torneios IMPORTADOS do usuário (independente de data de jogo)
-    - last_n=None → torneios importados nos últimos `days` dias
+    - last_n=N (N>0) → últimos N torneios IMPORTADOS do usuário (independente de data de jogo)
+    - last_n=0        → HISTÓRICO genuíno: toda a conta, sem teto de dias nem de contagem
+    - last_n=None     → torneios importados nos últimos `days` dias
+
+    03/09 (achado do dono, auditoria do dashboard): antes desta função só tinha DOIS modos, e o
+    front usava `last_n=None` pra rotular o botão "Todos" — só que None cai no fallback de
+    `days` (90), então "Todos" secretamente significava "últimos 90 dias", e não existia
+    NENHUM jeito de ver o histórico de verdade em nenhum dos ~14 lugares que chamam esta
+    função. `last_n=0` é o sentinela explícito pra isso — flui sozinho pelos chamadores
+    existentes (eles só repassam o que receberam), sem precisar tocar em cada um (regra 5).
 
     NB: a JANELA/seleção é por imported_at (mostra os uploads recentes, inclusive torneios antigos
     que você acabou de subir). A ORDEM do eixo X (cronológica de JOGO) é por played_at, aplicada no
     ORDER BY de cada gráfico (get_evolution_metrics, get_decisions_for_elo_curve).
     """
+    if last_n == 0:
+        return "t.user_id = ?", (user_id,)
     if last_n is not None:
         return (
             "t.id IN (SELECT id FROM tournaments WHERE user_id = ? ORDER BY imported_at DESC LIMIT ?)",
@@ -10755,21 +10765,18 @@ def get_tree_strategy(tree_hash: str) -> Optional[dict]:
         conn.close()
 
 
-#: Opções do filtro de período do dashboard — chave usada na query string e no front.
-#: None = histórico (conta inteira); número = últimos N torneios. 40 é o MESMO corte de
-#: `get_evolution_report(limite_torneios=40)` — regra 5, um número, não dois que divergem.
-EV_WINDOW_OPTIONS: dict[str, int | None] = {'10': 10, '40': 40, 'all': None}
-EV_WINDOW_DEFAULT = '40'
-
-
-def get_ev_summary(user_id: int, window_tournaments: int | None = 40) -> dict:
+def get_ev_summary(user_id: int, last_n: int | None = 50) -> dict:
     """UX-1 (plano pós-solver): resumo de EV para o hero do DashboardV2.
 
-    `window_tournaments` (03/09, achado pelo dono no próprio card): sem corte, o headline e a
-    "sangria por street" somavam a conta INTEIRA desde sempre — um jogador que era ruim há
-    meses e evoluiu carregava esse passado pra sempre, o número nunca refletia o nível ATUAL.
-    Default 40 (mesmo corte do relatório de evolução); None = histórico, explícito, nunca
-    default silencioso — ver `EV_WINDOW_OPTIONS`.
+    `last_n` (03/09, achado pelo dono no próprio card, depois UNIFICADO com o filtro "Volume"
+    que já regia os outros 8 cards do dashboard): sem corte, o headline e a "sangria por
+    street" somavam a conta INTEIRA desde sempre — um jogador que era ruim há meses e evoluiu
+    carregava esse passado pra sempre, o número nunca refletia o nível ATUAL. Mesmo parâmetro,
+    mesmo helper (`_build_tournament_filter`) e mesmo eixo de recência (imported_at) dos
+    outros cards — `last_n=N` últimos N torneios, `last_n=0` histórico genuíno (ver o
+    docstring de `_build_tournament_filter` pro porquê do sentinela). Default 50 — nunca
+    silencioso: o front sempre manda um valor explícito (inclusive 0 pra histórico); este
+    default só cobre chamada direta (script, teste) sem argumento.
 
     EV/100 = bb perdidos por 100 decisões ANALISADAS (com ev_loss_bb — solver
     hand-aware postflop + overlay preflop). Tendência: últimos 5 torneios vs os
@@ -10791,16 +10798,15 @@ def get_ev_summary(user_id: int, window_tournaments: int | None = 40) -> dict:
     from leaklab.decision_engine_v11 import ev_loss_trustworthy
     conn = get_conn()
     try:
+        # MESMO helper que filtra os outros 8 cards do dashboard — last_n=0 é histórico
+        # genuíno, last_n=N os N mais recentes por imported_at. Sem corte separado aqui.
+        _tf, _tp = _build_tournament_filter(user_id, last_n=last_n)
+        # ORDER BY explícito: tids[:5]/tids[5:10]/tids[:12] abaixo (tendência e sparkline)
+        # dependem de "mais recente primeiro" — sem isto a ordem do SELECT não é garantida.
         tids = [r['id'] for r in _fetchall(conn, _adapt(
-            "SELECT id FROM tournaments WHERE user_id = ? ORDER BY id DESC"), (user_id,))]
+            f"SELECT id FROM tournaments t WHERE {_tf} ORDER BY t.imported_at DESC"), _tp)]
         if not tids:
             return {'has_data': False}
-
-        # window_tournaments=None → histórico (conta inteira, explícito). Com número, corta —
-        # abaixo do corte a janela É a conta inteira (fatia não muda nada), então contas
-        # pequenas não sentem a mudança; só cresce a partir de ~40 torneios.
-        if window_tournaments is not None:
-            tids = tids[:window_tournaments]
 
         ph_all = ','.join('?' * len(tids))
 
@@ -10912,7 +10918,7 @@ def get_ev_summary(user_id: int, window_tournaments: int | None = 40) -> dict:
             'coverage':          {'preflop_pct': coverage.get('pre'),
                                   'postflop_pct': coverage.get('post')},
             'by_street':         by_street,
-            'window_tournaments': window_tournaments,   # None = histórico; front usa pra rotular
+            'last_n': last_n,   # 0 = histórico; front usa pra sincronizar o botão ativo
         }
     finally:
         conn.close()

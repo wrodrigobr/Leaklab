@@ -18,6 +18,31 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## Unificacao: um so filtro de periodo pro dashboard inteiro (03/09)
+
+### Corrigido
+- **O filtro "Volume" (Todos/20/50/100) que ja regia 8 cards tinha o MESMO vies** que acabamos
+  de corrigir no card "Hoje" — so que mais antigo e mais silencioso. O botao "Todos" mandava
+  `last_n=None`, que caia num fallback de **90 dias**, nao "todo o historico" — ou seja, **nao
+  existia NENHUM jeito de ver o historico de verdade** em evolution/playerStats/leakRoi/
+  gto-quality/gto-alignment/gto-position/results-vs-gto/leak-finder (14 pontos de chamada do
+  helper compartilhado `_build_tournament_filter`). Achado numa auditoria pedida pelo dono
+  depois de perceber que o card do EV tinha ficado sozinho com filtro de verdade.
+- **`_build_tournament_filter` ganhou um sentinela real: `last_n=0` = historico genuino**,
+  sem teto de dias nem de contagem. Como os 14 chamadores so repassam o parametro que
+  recebem, a correcao propagou sozinha pra todos (regra 5) — provado no teste com DOIS
+  consumidores independentes (`get_ev_summary` e `get_gto_quality_breakdown`), nao so o que
+  motivou o achado.
+- **`get_ev_summary` foi religado no MESMO helper** (era uma janela paralela e separada,
+  criada horas antes) — mesmo parametro (`last_n`), mesmo eixo de recencia (`imported_at`),
+  um so filtro na tela (o seletor "10/40/hist" que tinha acabado de nascer no card foi
+  removido — virou redundante). Default do filtro "Volume" mudou de "Todos" (que mentia,
+  90 dias) para **50 torneios recentes**; "Todos" agora e uma escolha explicita e HONESTA.
+  Guarda quebrado de proposito (sentinela desligado → `get_ev_summary` estoura com
+  `has_data:False`, prova ainda mais forte que um FAIL comum) e restaurado.
+
+---
+
 ## O passado ruim nao pode mentir sobre o presente (03/09)
 
 ### Adicionado

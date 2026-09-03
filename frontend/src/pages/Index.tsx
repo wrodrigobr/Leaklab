@@ -19,7 +19,7 @@ import { DraggableCard } from "@/components/hud/DraggableCard";
 import { useDashboardLayout, DashSection, SECTION_SPAN } from "@/hooks/useDashboardLayout";
 import { useMasonryRows } from "@/hooks/useMasonryRows";
 import { makeRenderCard } from "@/components/hud/dashboardCards";
-import { metrics, tournaments, support, EvolutionResponse, EvWindow, Tournament, PlayerStatsResponse, LeakRoiData, PressureProfile, ConfidenceDrift, PlayerDnaResponse, LeakGraphResponse, CareerProjection, CognitiveFailureData, StrategicTwinProfile, GtoAlignmentData, GtoPositionData, GtoQualityData, ResultsVsGtoData, LeakFinderData, SessionContextData } from "@/lib/api";
+import { metrics, tournaments, support, EvolutionResponse, Tournament, PlayerStatsResponse, LeakRoiData, PressureProfile, ConfidenceDrift, PlayerDnaResponse, LeakGraphResponse, CareerProjection, CognitiveFailureData, StrategicTwinProfile, GtoAlignmentData, GtoPositionData, GtoQualityData, ResultsVsGtoData, LeakFinderData, SessionContextData } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { shouldShowDrift, readDriftSeen, writeDriftSeen } from "@/lib/driftDismiss";
 
@@ -78,7 +78,11 @@ const Index = () => {
   const [loading, setLoading]             = useState(true);
   const [tournsLoaded, setTournsLoaded]   = useState(_cachedTourns !== null);
   const [refreshKey, setRefreshKey]       = useState(0);
-  const [volumeLimit, setVolumeLimit]     = useState<number | null>(null); // null = Todos
+  // 03/09 (unificação pós-auditoria): default RECENTE (50), não "Todos" — sem isto, quem
+  // melhorou ao longo dos meses carregava o passado ruim pra sempre nos números. `0` = botão
+  // "Histórico", explícito (não é mais o default silencioso). `null` só existe transitoriamente
+  // (nunca setado pela UI) e cai no fallback de 90 dias do backend.
+  const [volumeLimit, setVolumeLimit]     = useState<number | null>(50);
 
   // A marca d'água é por USUÁRIO (não por detecção), então só precisa reler quando o usuário muda.
   useEffect(() => { setDriftSeen(readDriftSeen(user?.user_id)); }, [user?.user_id]);
@@ -135,14 +139,12 @@ const Index = () => {
   // código latente (não renderizado) — sem toggle. useState mantém dashV2 como variável de
   // runtime (não literal) p/ o branch do clássico não virar código inalcançável no lint.
   const [dashV2] = useState<boolean>(true);
-  // Filtro de período do bloco "Hoje" (03/09): default 40, NUNCA "all" — histórico mistura o
-  // jogador de meses atrás com o de hoje e esconde evolução real. Uma escolha rege 5 cards
-  // (headline, sólidas, leak mais caro, tendência, sangria por street), por isso mora aqui e
-  // desce como prop em vez de cada card buscar por conta própria.
-  const [evWindow, setEvWindow] = useState<EvWindow>("40");
+  // Bloco "Hoje" (headline, sólidas, leak mais caro, tendência, sangria por street) agora usa
+  // o MESMO `volumeLimit` do filtro "Volume" que já regia os outros cards — 03/09, unificação
+  // pós-auditoria (antes eram dois controles fazendo a mesma coisa com convenções diferentes).
   const { data: evSummary } = useQuery({
-    queryKey: ["ev-summary", refreshKey, evWindow],
-    queryFn: () => metrics.evSummary(evWindow),
+    queryKey: ["ev-summary", refreshKey, volumeLimit],
+    queryFn: () => metrics.evSummary(volumeLimit ?? undefined),
     staleTime: 120_000,
     enabled: dashV2,
   });
@@ -291,8 +293,6 @@ const Index = () => {
       <DashboardV2
         onUpload={handleUpload}
         evSummary={evSummary ?? null}
-        evWindow={evWindow}
-        onEvWindowChange={setEvWindow}
         hasData={hasData}
         renderCard={renderCard}
         gtoQuality={gtoQualityData}
@@ -334,10 +334,11 @@ const Index = () => {
             </div>
             {hasData && (
               <div className="flex items-center gap-2">
-                {/* Volume filter */}
+                {/* Volume filter — 0 = histórico genuíno (03/09: antes era `null`, que
+                    secretamente caía no fallback de 90 dias do backend; "Todos" mentia). */}
                 <div className="flex items-center gap-px rounded-md ring-1 ring-border overflow-hidden">
-                  {([null, 20, 50, 100] as (number | null)[]).map((val) => {
-                    const label = val === null ? t("volumeFilter.all")
+                  {([20, 50, 100, 0] as number[]).map((val) => {
+                    const label = val === 0 ? t("volumeFilter.all")
                       : val === 20 ? t("volumeFilter.last20")
                       : val === 50 ? t("volumeFilter.last50")
                       : t("volumeFilter.last100");
