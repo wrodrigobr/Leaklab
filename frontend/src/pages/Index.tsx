@@ -293,6 +293,8 @@ const Index = () => {
       <DashboardV2
         onUpload={handleUpload}
         evSummary={evSummary ?? null}
+        volumeLimit={volumeLimit}
+        onVolumeLimitChange={setVolumeLimit}
         hasData={hasData}
         renderCard={renderCard}
         gtoQuality={gtoQualityData}

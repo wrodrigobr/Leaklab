@@ -257,7 +257,7 @@
     "last20": "Last 20",
     "last50": "Last 50",
     "last100": "Last 100",
-    "all": "All"
+    "all": "History"
   },
   "form": {
     "title": "Recent Form",
@@ -375,6 +375,23 @@
     "noStats": "no data",
     "noData": "Import tournaments to calculate your playing profile.",
     "refMtt": "MTT Ref {{range}}",
+    "flags": {
+      "auto-cbet": "auto-cbet",
+      "bluff-happy": "bluff-happy",
+      "folds-too-much": "folds too much",
+      "loose": "loose",
+      "maniac": "maniac",
+      "nit": "nit",
+      "nitty": "nitty",
+      "over-fold": "over-fold",
+      "passive": "passive",
+      "pays-too-much": "pays too much",
+      "station": "station",
+      "stubborn": "stubborn",
+      "tight": "tight",
+      "value-only": "value only",
+      "wide": "wide"
+    },
     "tooltip": {
       "vpip": "Voluntarily Put money In Pot, % of hands the player entered voluntarily (call/raise preflop). MTT target: 12–22%. Below 12% is very tight; above 25% is very loose.",
       "pfr": "PreFlop Raise, % of hands the player opened or re-raised preflop. MTT target: 9–18%. PFR close to VPIP means an aggressive game; a wide gap means passivity.",

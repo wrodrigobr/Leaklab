@@ -211,7 +211,11 @@ function StatCell({ def, value, flag, compact }: { def: StatDef; value: number |
         </span>
         {flag && flag.flag && (flag.band === "above" || flag.band === "below") && (
           <span className="font-mono text-[9px] font-bold uppercase tracking-wide text-yellow-400" title={t("playerStats.tendenciaDirecional")}>
-            {flag.band === "above" ? "↑" : "↓"} {flag.flag}
+            {/* 03/09: o backend manda uma CHAVE (stubborn/passive/...), não texto de tela —
+                antes ia cru pra tela e vazava português mesmo com o idioma em inglês.
+                defaultValue = a própria chave, rede de segurança se um flag novo ainda
+                não tiver tradução (nunca crasha, nunca mostra "playerStats.flags.x" literal). */}
+            {flag.band === "above" ? "↑" : "↓"} {t(`playerStats.flags.${flag.flag}`, { defaultValue: flag.flag })}
           </span>
         )}
         {def.soon && (

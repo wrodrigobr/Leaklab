@@ -36,16 +36,23 @@ MIN_HANDS_FOR_TYPE = 100         # mínimo de mãos vistas p/ arriscar um arqué
 # amostra. Os flags são DIRECIONAIS (tendência de exploit, não veredito): perto da faixa
 # = equilibrado; quanto mais fora, mais forte a tendência. Unidade '%' (taxa) ou 'x' (AF).
 # Valores em % (taxa) / ratio (af). 'below'/'above' = (cutoff, flag_curto).
+# 03/09 (achado do dono): os flags SÃO chaves i18n, não texto de tela — o frontend agora
+# traduz cada um (`playerStats.flags.<slug>` em dashboard.json, 3 locales). Antes 6 delas
+# eram literal texto em português ('teimoso', 'passivo'...) e vazavam CRUAS pra tela mesmo
+# com o idioma em inglês, porque nunca passavam por tradução nenhuma. Slugs neutros em
+# inglês pros termos DESCRITIVOS (stubborn, passive...); os que já eram jargão de poker
+# (nit, loose, maniac, station, nitty, tight, bluff-happy, over-fold, auto-cbet) mantidos —
+# jargão de poker fica em inglês nos 3 idiomas por convenção do produto (não traduzir).
 STAT_REFERENCES = {
     'vpip':         {'healthy': (18, 24), 'below': (15, 'nit'),         'above': (28, 'loose'),       'min': 100,  'unit': '%'},
-    'pfr':          {'healthy': (15, 21), 'below': (15, 'passivo'),      'above': (25, 'maniac'),      'min': 100,  'unit': '%'},
-    'af':           {'healthy': (2, 3),   'below': (1, 'passivo'),       'above': (4, 'bluff-happy'),  'min': 500,  'unit': 'x'},
-    'wtsd':         {'healthy': (25, 30), 'below': (23, 'folda demais'), 'above': (34, 'station'),     'min': 1000, 'unit': '%'},
-    'w_at_sd':      {'healthy': (49, 54), 'below': (47, 'paga demais'),  'above': (57, 'nitty'),       'min': 2000, 'unit': '%'},
-    'cbet_pct':     {'healthy': (55, 75), 'below': (50, 'só value'),     'above': (80, 'auto-cbet'),   'min': 500,  'unit': '%'},
-    'three_bet':    {'healthy': (5, 10),  'below': (4, 'tight'),         'above': (13, 'largo'),       'min': 750,  'unit': '%'},
-    'fold_to_3bet': {'healthy': (50, 60), 'below': (40, 'teimoso'),      'above': (65, 'over-fold'),   'min': 750,  'unit': '%'},
-    'steal_pct':    {'healthy': (30, 40), 'below': (30, 'passivo'),      'above': (45, 'loose'),       'min': 500,  'unit': '%'},
+    'pfr':          {'healthy': (15, 21), 'below': (15, 'passive'),     'above': (25, 'maniac'),      'min': 100,  'unit': '%'},
+    'af':           {'healthy': (2, 3),   'below': (1, 'passive'),      'above': (4, 'bluff-happy'),  'min': 500,  'unit': 'x'},
+    'wtsd':         {'healthy': (25, 30), 'below': (23, 'folds-too-much'), 'above': (34, 'station'),  'min': 1000, 'unit': '%'},
+    'w_at_sd':      {'healthy': (49, 54), 'below': (47, 'pays-too-much'), 'above': (57, 'nitty'),     'min': 2000, 'unit': '%'},
+    'cbet_pct':     {'healthy': (55, 75), 'below': (50, 'value-only'),  'above': (80, 'auto-cbet'),   'min': 500,  'unit': '%'},
+    'three_bet':    {'healthy': (5, 10),  'below': (4, 'tight'),        'above': (13, 'wide'),        'min': 750,  'unit': '%'},
+    'fold_to_3bet': {'healthy': (50, 60), 'below': (40, 'stubborn'),    'above': (65, 'over-fold'),   'min': 750,  'unit': '%'},
+    'steal_pct':    {'healthy': (30, 40), 'below': (30, 'passive'),     'above': (45, 'loose'),       'min': 500,  'unit': '%'},
 }
 
 
@@ -79,7 +86,7 @@ def player_stat_flags(stats: dict) -> dict:
     if vpip is not None and pfr is not None and sample >= 100:
         gap = round(vpip - pfr, 1)
         band = 'above' if gap > 9 else 'healthy'
-        out['gap'] = {'band': band, 'flag': ('passivo' if gap > 9 else None),
+        out['gap'] = {'band': band, 'flag': ('passive' if gap > 9 else None),
                       'value': gap, 'healthy': (3, 5)}
     return out
 

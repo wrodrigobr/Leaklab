@@ -18,6 +18,28 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## O filtro que ninguem via, e o "teimoso" que vazava em ingles (03/09)
+
+### Corrigido
+- **O filtro "Volume" (Ultimos 20/50/100/Historico) nunca apareceu na tela real**: quando o
+  card "Hoje" ganhou seu proprio seletor de periodo mais cedo hoje, descobri um filtro mais
+  antigo que ja regia 8 cards e decidi unificar nele — mas o CONTROLE VISUAL desse filtro
+  antigo vivia no branch CLASSICO do dashboard (`Index.tsx`), codigo latente que nunca
+  renderiza desde que o DashboardV2 virou padrao. O dono nunca via o filtro, mesmo com a
+  logica por baixo funcionando perfeitamente. Movido pro componente que de fato aparece —
+  mesmo lugar do "Hoje", ao lado do rotulo. "Todos" virou "Historico" (mais honesto: agora
+  realmente e).
+- **"teimoso" na tela mesmo com idioma em ingles**: `opponent_stats.STAT_REFERENCES` guardava
+  os flags do HUD de oponente como TEXTO LITERAL em portugues (teimoso, passivo, folda
+  demais, paga demais, so value, largo) — o front renderizava cru, sem nenhum `t()`. Sweep
+  (regra 5) achou uma SEGUNDA ocorrencia solta fora da tabela (gap VPIP-PFR). Os flags viraram
+  chaves neutras (stubborn/passive/...) traduzidas nos 3 idiomas; jargao que ja era ingles
+  (nit/loose/maniac/station/nitty/tight/bluff-happy/over-fold/auto-cbet) mantido sem traduzir,
+  por convencao do produto. Guarda novo le o backend de verdade e prova cobertura nos 3
+  locales + que nenhum flag e texto solto (acento/espaco) — quebrado de proposito, restaurado.
+
+---
+
 ## O best_action que ficou congelado no palpite de antes do solve (03/09, achada pela varredura pos-deploy)
 
 ### Corrigido

@@ -257,7 +257,7 @@
     "last20": "Últimos 20",
     "last50": "Últimos 50",
     "last100": "Últimos 100",
-    "all": "Todos"
+    "all": "Histórico"
   },
   "form": {
     "title": "Forma Recente",
@@ -375,6 +375,23 @@
     "noStats": "sem dados",
     "noData": "Importe torneios para calcular seu perfil de jogo.",
     "refMtt": "Ref MTT {{range}}",
+    "flags": {
+      "auto-cbet": "auto-cbet",
+      "bluff-happy": "bluff-happy",
+      "folds-too-much": "folda demais",
+      "loose": "loose",
+      "maniac": "maniac",
+      "nit": "nit",
+      "nitty": "nitty",
+      "over-fold": "over-fold",
+      "passive": "passivo",
+      "pays-too-much": "paga demais",
+      "station": "station",
+      "stubborn": "teimoso",
+      "tight": "tight",
+      "value-only": "só value",
+      "wide": "largo"
+    },
     "tooltip": {
       "vpip": "Voluntarily Put money In Pot, % de mãos em que o jogador entrou voluntariamente (call/raise pré-flop). MTT ideal: 12–22%. Abaixo de 12% = muito tight; acima de 25% = muito loose.",
       "pfr": "PreFlop Raise, % de mãos em que o jogador abriu ou re-raised pré-flop. MTT ideal: 9–18%. PFR próximo ao VPIP indica jogo agressivo; diferença grande indica passividade.",

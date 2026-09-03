@@ -32,6 +32,13 @@ import { V2BankrollCard } from "@/components/hud/V2BankrollCard";
 interface Props {
   onUpload: () => void;
   evSummary: EvSummary | null;
+  /** Filtro "Volume" (03/09): já regia 8 cards via prop drilling em Index.tsx, mas o
+      controle visual (pastilhas) vivia no branch CLÁSSICO do dashboard — código latente,
+      nunca renderizado desde que o V2 virou padrão. O dono nunca via o filtro. Renderizado
+      aqui agora, no componente que de fato aparece na tela. 0 = histórico genuíno. */
+  /** Opcional: a tela de Demo (dados fixos, sem refetch real) não precisa fornecer. */
+  volumeLimit?: number | null;
+  onVolumeLimitChange?: (v: number | null) => void;
   hasData: boolean;
   renderCard: (id: string, opts?: { v2?: boolean }) => React.ReactNode;
   gtoQuality?: GtoQualityData | null;
@@ -59,7 +66,7 @@ const CARD_ORDER = [
   "results", "dna", "twin", "pressure", "cognitive", "career", "causal_map",
 ];
 
-export function DashboardV2({ onUpload, evSummary, hasData, renderCard, gtoQuality = null, gtoPosition = null, pendingGto = 0, aiInsights = [], aiLocked = false, showEmpty = false, evolution, kpis, playerStats = null, drift = null, onDismissDrift }: Props) {
+export function DashboardV2({ onUpload, evSummary, volumeLimit = 50, onVolumeLimitChange = () => {}, hasData, renderCard, gtoQuality = null, gtoPosition = null, pendingGto = 0, aiInsights = [], aiLocked = false, showEmpty = false, evolution, kpis, playerStats = null, drift = null, onDismissDrift }: Props) {
   const { t } = useTranslation("dashboard");
   // Masonry real (mesmo hook do dashboard clássico): cards curtos liberam o vão
   // vertical e o grid-flow-dense empacota — sem blocos vazios na grade.
@@ -99,6 +106,34 @@ export function DashboardV2({ onUpload, evSummary, hasData, renderCard, gtoQuali
             <span className="size-1.5 rounded-full bg-primary animate-pulse" aria-hidden />
             {t("v2.eyebrow")}
           </div>
+          {hasData && (
+            <div className="flex items-center gap-2">
+              <span className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground/60">
+                {t("volumeFilter.label")}
+              </span>
+              <div className="flex items-center gap-px rounded-md ring-1 ring-border overflow-hidden">
+                {([20, 50, 100, 0] as number[]).map((val) => {
+                  const label = val === 0 ? t("volumeFilter.all")
+                    : val === 20 ? t("volumeFilter.last20")
+                    : val === 50 ? t("volumeFilter.last50")
+                    : t("volumeFilter.last100");
+                  return (
+                    <button
+                      key={val}
+                      onClick={() => onVolumeLimitChange(val)}
+                      className={`px-2 py-1 font-mono text-[9px] uppercase tracking-widest transition-colors ${
+                        volumeLimit === val
+                          ? "bg-primary/20 text-primary"
+                          : "text-muted-foreground hover:text-foreground hover:bg-muted/30"
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
 
         {showEmpty ? (
