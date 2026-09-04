@@ -767,6 +767,8 @@
       "5 on-demand GTO solves/month",
       "Fundamentals training: 20 spots per day"
     ],
+    "finalizar": "Complete your subscription",
+    "pagar": "Pay {{preco}}",
     "gratis": "Free",
     "planoAtual": "Your current plan",
     "recomendado": "Recommended",
@@ -777,7 +779,6 @@
     "erroSdk": "Could not load the payment SDK.",
     "sucesso": "Subscription activated.",
     "processando": "Processing…",
-    "assinar": "Subscribe to {{plano}} · {{preco}}",
     "seguro": "Secure payment via Stripe · Cancel whenever you want",
     "economia": "Save {{valor}} per year",
     "mesesGratis": "{{n}} months free",

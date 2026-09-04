@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { createPortal } from "react-dom";
 import { loadStripe, type Stripe, type StripeElements } from "@stripe/stripe-js";
-import { X, Loader2, CreditCard, CheckCircle2, AlertCircle, Zap, ArrowLeft, Check } from "lucide-react";
+import { X, Loader2, CreditCard, CheckCircle2, AlertCircle, Zap, ArrowLeft, Check, Lock, ShieldCheck } from "lucide-react";
+import logoHorizontal from "@/assets/brand/grindlab_final_horizontal.svg";
 import { subscription } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { trackPurchase } from "@/lib/analytics";
@@ -225,16 +226,32 @@ export function CheckoutModal({ plan, onClose, onSuccess }: Props) {
         step === "plano" ? "max-w-md md:max-w-2xl" : "max-w-md"
       )}>
 
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <CreditCard className="size-5 text-primary" />
-            <h2 className="font-semibold text-foreground">Assinar {info.label}</h2>
+        {/* Header. No passo do plano é a barra de sempre; no pagamento a marca assume o topo —
+            é a tela onde o jogador digita o número do cartão, e reconhecer de quem é a página
+            é parte de confiar nela. */}
+        {step === "plano" ? (
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <CreditCard className="size-5 text-primary" />
+              <h2 className="font-semibold text-foreground">Assinar {info.label}</h2>
+            </div>
+            <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition-colors" aria-label="Fechar">
+              <X className="size-4" />
+            </button>
           </div>
-          <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition-colors" aria-label="Fechar">
-            <X className="size-4" />
-          </button>
-        </div>
+        ) : (
+          <div className="relative flex flex-col items-center gap-3 pt-1">
+            <button
+              onClick={onClose}
+              className="absolute right-0 top-0 text-muted-foreground hover:text-foreground transition-colors"
+              aria-label="Fechar"
+            >
+              <X className="size-4" />
+            </button>
+            <img src={logoHorizontal} alt="GrindLab" className="h-7 w-auto" />
+            <h2 className="font-heading text-base font-bold text-foreground">{t("checkout.finalizar")}</h2>
+          </div>
+        )}
 
         {step === "plano" ? (
         <div className="space-y-4">
@@ -349,17 +366,25 @@ export function CheckoutModal({ plan, onClose, onSuccess }: Props) {
         </div>
         ) : (
         <div className="space-y-4">
+        {/* Resumo do que está sendo comprado, com o preço à direita: o jogador acabou de
+            escolher noutra tela, e chegar no cartão sem ver o valor de novo é onde a dúvida
+            ("qual mesmo eu escolhi?") vira desistência. Clicar volta pro passo do plano. */}
         {!success && (
           <button
             type="button"
             onClick={voltarParaPlano}
-            className="flex items-center gap-1.5 font-mono text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+            className="group flex w-full items-center justify-between gap-2 rounded-lg border border-border bg-background/40 px-4 py-3 text-left transition-colors hover:border-primary/40"
           >
-            <ArrowLeft className="size-3" />
-            {info.label} · {t(BILLING[billing].labelKey)} · {billing === "annual"
-              ? t("checkout.porAno", { valor: brl(anual?.price) })
-              : t("checkout.porMes", { valor: brl(mensal?.price) })}
-            <span className="text-primary underline">{t("checkout.trocarPlano")}</span>
+            <span className="flex items-center gap-1.5 font-mono text-xs text-muted-foreground">
+              <ArrowLeft className="size-3 shrink-0 opacity-0 transition-opacity group-hover:opacity-100" />
+              {info.label} · {t(BILLING[billing].labelKey)}
+              <span className="text-primary underline">{t("checkout.trocarPlano")}</span>
+            </span>
+            <span className="font-mono text-sm font-bold text-primary">
+              {billing === "annual"
+                ? t("checkout.porAno", { valor: brl(anual?.price) })
+                : t("checkout.porMes", { valor: brl(mensal?.price) })}
+            </span>
           </button>
         )}
 
@@ -386,17 +411,25 @@ export function CheckoutModal({ plan, onClose, onSuccess }: Props) {
 
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Stripe PaymentElement mounts here — keep always in DOM */}
-            <div
-              id="stripe-payment-element"
-              className={formMounted ? "" : "invisible h-0 overflow-hidden"}
-            />
+            {/* O formulário do Stripe dentro de um bloco com rótulo próprio: solto na tela ele
+                parece um pedaço de outro site coladoaqui, que é justamente a hora em que o
+                jogador hesita em digitar o cartão. */}
+            <div className="rounded-lg border border-border bg-background/40 p-4">
+              {/* Sem rótulo próprio: o PaymentElement já traz o dele ("Cartão"), e dois títulos
+                  iguais empilhados era ruído. */}
 
-            {!formMounted && (
-              <div className="flex items-center justify-center py-8">
-                <Loader2 className="size-6 animate-spin text-muted-foreground" />
-              </div>
-            )}
+              {/* Stripe PaymentElement mounts here — keep always in DOM */}
+              <div
+                id="stripe-payment-element"
+                className={formMounted ? "" : "invisible h-0 overflow-hidden"}
+              />
+
+              {!formMounted && (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="size-6 animate-spin text-muted-foreground" />
+                </div>
+              )}
+            </div>
 
             {error && (
               <div className="flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2.5">
@@ -407,19 +440,6 @@ export function CheckoutModal({ plan, onClose, onSuccess }: Props) {
 
             {formMounted && (
               <>
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-md bg-primary font-mono text-xs font-bold uppercase tracking-widest-2 text-primary-foreground transition-all hover:opacity-90 disabled:opacity-50"
-                >
-                  {submitting && <Loader2 className="size-4 animate-spin" />}
-                  {submitting ? t("checkout.processando") : t("checkout.assinar", {
-                    plano: info.label,
-                    preco: billing === "annual"
-                      ? t("checkout.porAno", { valor: brl(anual?.price) })
-                      : t("checkout.porMes", { valor: brl(mensal?.price) }),
-                  })}
-                </button>
                 <p className="text-[10px] leading-snug text-muted-foreground">
                   <a href="/termos" target="_blank" rel="noreferrer" className="text-primary hover:underline">
                     {t("checkout.verTermos")}
@@ -430,7 +450,23 @@ export function CheckoutModal({ plan, onClose, onSuccess }: Props) {
                       : t("checkout.porMes", { valor: brl(mensal?.price) }),
                   })}
                 </p>
-                <p className="text-center font-mono text-[9px] text-muted-foreground">
+                {/* O botão diz o VALOR, não "assinar": é o último ponto antes do débito, e é
+                    onde o número tem de estar sem ambiguidade. O cadeado acompanha. */}
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-md bg-primary font-mono text-sm font-bold uppercase tracking-widest-2 text-primary-foreground shadow-glow transition-all hover:opacity-90 disabled:opacity-50"
+                >
+                  {submitting
+                    ? <><Loader2 className="size-4 animate-spin" />{t("checkout.processando")}</>
+                    : <><Lock className="size-4" aria-hidden />{t("checkout.pagar", {
+                        preco: billing === "annual"
+                          ? t("checkout.porAno", { valor: brl(anual?.price) })
+                          : t("checkout.porMes", { valor: brl(mensal?.price) }),
+                      })}</>}
+                </button>
+                <p className="flex items-center justify-center gap-1.5 font-mono text-[9px] text-muted-foreground">
+                  <ShieldCheck className="size-3 shrink-0" aria-hidden />
                   {t("checkout.seguro")}
                 </p>
               </>

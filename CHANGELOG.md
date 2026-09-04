@@ -5,6 +5,28 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## A tela de pagamento passou a parecer nossa (03/09)
+
+### Modificado
+- **A marca assume o topo no passo do pagamento**: logo do GrindLab e "Finalizar assinatura"
+  no lugar da barra generica. E a unica tela do produto onde o jogador digita numero de cartao;
+  reconhecer de quem e a pagina faz parte de confiar nela. No passo do plano a barra segue
+  como era.
+- **Resumo do que esta sendo comprado, com o preco a direita**: "Pro · Mensal" de um lado,
+  o valor do outro, num bloco clicavel que volta pro passo do plano ("Trocar plano"). O
+  jogador escolheu numa tela e digita o cartao noutra; chegar no cartao sem rever o valor e
+  onde a duvida ("qual mesmo eu escolhi?") vira desistencia.
+- **O formulario do Stripe ganhou um bloco proprio**, em vez de solto na tela parecendo
+  pedaco de outro site colado ali.
+- **O botao diz o VALOR, com cadeado**: "Pagar R$ 39,90/mes" no lugar de "Assinar Pro · R$…",
+  maior e com o brilho da marca. E o ultimo ponto antes do debito, e e onde o numero tem de
+  estar sem ambiguidade. A recorrencia subiu pra ANTES do botao (se autoriza lendo, nao
+  depois de clicar) e o "pagamento seguro via Stripe" ganhou o icone de escudo.
+- **Sem rotulo "Cartao" nosso** (pedido do dono): o PaymentElement ja traz o dele, e dois
+  titulos iguais empilhados era ruido. A chave saiu dos 3 idiomas junto.
+
+---
+
 ## Escolher o plano virou um passo ANTES do pagamento (03/09)
 
 ### Adicionado

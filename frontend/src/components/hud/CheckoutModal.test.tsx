@@ -92,7 +92,7 @@ async function irParaPagamento() {
   const continuar = await abrirNoPassoDoPlano();
   fireEvent.click(continuar);
   await waitFor(() => expect(elementsCreate).toHaveBeenCalled());
-  await screen.findByText("checkout.assinar");
+  await screen.findByText("checkout.pagar");
 }
 
 describe("checkout — plano é um passo separado do pagamento", () => {
@@ -120,7 +120,7 @@ describe("checkout — plano é um passo separado do pagamento", () => {
     await irParaPagamento();
     fireEvent.click(screen.getByText("checkout.trocarPlano"));
     await screen.findByText("checkout.assinarCurto");
-    expect(screen.queryByText("checkout.assinar")).toBeNull();
+    expect(screen.queryByText("checkout.pagar")).toBeNull();
   });
 });
 
@@ -130,9 +130,9 @@ describe("checkout — assinatura só nasce ao confirmar", () => {
     fireEvent.click(screen.getByText("checkout.ciclo.mensal")); // escolhe ANTES de continuar
     fireEvent.click(continuar);
     await waitFor(() => expect(elementsCreate).toHaveBeenCalled());
-    await screen.findByText("checkout.assinar");
+    await screen.findByText("checkout.pagar");
 
-    fireEvent.click(screen.getByText("checkout.assinar"));
+    fireEvent.click(screen.getByText("checkout.pagar"));
 
     await waitFor(() => expect(checkout).toHaveBeenCalledTimes(1));
     expect(checkout).toHaveBeenCalledWith("pro", "monthly");

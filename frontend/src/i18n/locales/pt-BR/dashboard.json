@@ -767,6 +767,8 @@
       "5 solves GTO sob demanda/mês",
       "Treino de fundamentos: 20 spots por dia"
     ],
+    "finalizar": "Finalizar assinatura",
+    "pagar": "Pagar {{preco}}",
     "gratis": "Grátis",
     "planoAtual": "Seu plano atual",
     "recomendado": "Recomendado",
@@ -777,7 +779,6 @@
     "erroSdk": "Falha ao carregar SDK de pagamento.",
     "sucesso": "Assinatura ativada com sucesso!",
     "processando": "Processando…",
-    "assinar": "Assinar {{plano}} · {{preco}}",
     "seguro": "Pagamento seguro via Stripe · Cancele quando quiser",
     "economia": "Economize {{valor}} por ano",
     "mesesGratis": "{{n}} meses grátis",
