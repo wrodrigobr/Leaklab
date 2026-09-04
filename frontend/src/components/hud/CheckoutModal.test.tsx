@@ -10,6 +10,11 @@ import { CheckoutModal } from "./CheckoutModal";
  * Até aqui, abrir o modal OU trocar mensal↔anual chamava subscription.checkout() — cada chamada
  * cria uma assinatura Stripe DE VERDADE ("Incompleto" no dashboard), mesmo que o jogador só
  * estivesse olhando o preço. O dono notou o ruído no Stripe e pediu: criar só ao confirmar.
+ *
+ * Depois (mesmo dia), um segundo pedido: escolher plano/ciclo é um passo separado do pagamento,
+ * ANTES de o Stripe.js sequer carregar — não só a assinatura, o SDK inteiro só entra em cena
+ * quando o jogador clica em "Assinar Pro" (o CTA vive dentro do card do Pro, ao lado do card
+ * Free informativo — mesmo formato do card de planos da landing).
  */
 
 const checkout = vi.fn().mockResolvedValue({
@@ -35,10 +40,12 @@ vi.mock("@/lib/api", () => ({ subscription: {
 } }));
 vi.mock("@/lib/auth", () => ({ useAuth: () => ({ refreshUser: vi.fn().mockResolvedValue(undefined) }) }));
 vi.mock("@/lib/analytics", () => ({ trackPurchase: vi.fn() }));
+// t precisa ser uma referência ESTÁVEL entre renders (como no react-i18next de verdade) —
+// senão o efeito que depende de `t` (carrega o Stripe.js) reroda a cada render por engano,
+// e o teste mediria um bug do mock, não do componente.
+const tEstavel = (k: string, opts?: { returnObjects?: boolean }) => (opts?.returnObjects ? [] : k);
 vi.mock("react-i18next", () => ({
-  useTranslation: () => ({
-    t: (k: string, opts?: { returnObjects?: boolean }) => (opts?.returnObjects ? [] : k),
-  }),
+  useTranslation: () => ({ t: tEstavel }),
 }));
 
 const paymentElementHandlers: Record<string, () => void> = {};
@@ -55,7 +62,8 @@ const confirmPayment = vi.fn().mockResolvedValue({
 });
 const stripeElements = vi.fn(() => fakeElements);
 const fakeStripe = { elements: stripeElements, confirmPayment };
-vi.mock("@stripe/stripe-js", () => ({ loadStripe: vi.fn(() => Promise.resolve(fakeStripe)) }));
+const loadStripe = vi.fn((..._a: unknown[]) => Promise.resolve(fakeStripe));
+vi.mock("@stripe/stripe-js", () => ({ loadStripe: (...a: unknown[]) => loadStripe(...a) }));
 
 afterEach(() => {
   cleanup();
@@ -65,31 +73,63 @@ afterEach(() => {
   elementsSubmit.mockClear();
   elementsCreate.mockClear();
   stripeElements.mockClear();
+  loadStripe.mockClear();
 });
 
-async function montarEEsperarForm() {
+/** Abre o modal, espera o CTA do card Pro ("Assinar Pro") ficar disponível (preços carregados). */
+async function abrirNoPassoDoPlano() {
   render(<CheckoutModal plan="pro" onClose={() => {}} />);
+  const continuar = await screen.findByText("checkout.assinarCurto");
+  await waitFor(() => {
+    const btn = continuar.closest("button") as HTMLButtonElement;
+    expect(btn.disabled).toBe(false);
+  });
+  return continuar;
+}
+
+/** Continua pro passo de pagamento e espera o PaymentElement montar. */
+async function irParaPagamento() {
+  const continuar = await abrirNoPassoDoPlano();
+  fireEvent.click(continuar);
   await waitFor(() => expect(elementsCreate).toHaveBeenCalled());
   await screen.findByText("checkout.assinar");
 }
 
+describe("checkout — plano é um passo separado do pagamento", () => {
+  it("abrir o modal NÃO carrega o Stripe.js e NÃO cria assinatura", async () => {
+    await abrirNoPassoDoPlano();
+    expect(loadStripe).not.toHaveBeenCalled();
+    expect(checkout).not.toHaveBeenCalled();
+  });
+
+  it("trocar de ciclo (mensal ↔ anual) no passo do plano NÃO toca o Stripe", async () => {
+    await abrirNoPassoDoPlano();
+    fireEvent.click(screen.getByText("checkout.ciclo.mensal"));
+    fireEvent.click(screen.getByText("checkout.ciclo.anual"));
+    expect(loadStripe).not.toHaveBeenCalled();
+    expect(checkout).not.toHaveBeenCalled();
+  });
+
+  it("Continuar carrega o Stripe.js (só agora) e AINDA não cria assinatura", async () => {
+    await irParaPagamento();
+    expect(loadStripe).toHaveBeenCalledTimes(1);
+    expect(checkout).not.toHaveBeenCalled();
+  });
+
+  it("voltar pro passo do plano desmonta o formulário do cartão", async () => {
+    await irParaPagamento();
+    fireEvent.click(screen.getByText("checkout.trocarPlano"));
+    await screen.findByText("checkout.assinarCurto");
+    expect(screen.queryByText("checkout.assinar")).toBeNull();
+  });
+});
+
 describe("checkout — assinatura só nasce ao confirmar", () => {
-  it("abrir o modal NÃO cria assinatura no Stripe", async () => {
-    await montarEEsperarForm();
-    expect(checkout).not.toHaveBeenCalled();
-  });
-
-  it("trocar de ciclo (mensal ↔ anual) NÃO cria assinatura", async () => {
-    await montarEEsperarForm();
-    fireEvent.click(screen.getByText("checkout.ciclo.mensal"));
-    await waitFor(() => expect(stripeElements).toHaveBeenCalledTimes(2)); // recriou o Elements local
-    expect(checkout).not.toHaveBeenCalled();
-  });
-
-  it("confirmar cria a assinatura EXATAMENTE uma vez, com o ciclo escolhido", async () => {
-    await montarEEsperarForm();
-    fireEvent.click(screen.getByText("checkout.ciclo.mensal"));
-    await waitFor(() => expect(stripeElements).toHaveBeenCalledTimes(2));
+  it("confirmar cria a assinatura EXATAMENTE uma vez, com o ciclo escolhido no passo do plano", async () => {
+    const continuar = await abrirNoPassoDoPlano();
+    fireEvent.click(screen.getByText("checkout.ciclo.mensal")); // escolhe ANTES de continuar
+    fireEvent.click(continuar);
+    await waitFor(() => expect(elementsCreate).toHaveBeenCalled());
     await screen.findByText("checkout.assinar");
 
     fireEvent.click(screen.getByText("checkout.assinar"));

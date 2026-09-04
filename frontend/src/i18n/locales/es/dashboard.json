@@ -761,6 +761,19 @@
       "AI Coach Chat (conversación contextual)",
       "Plan de estudios personalizado"
     ],
+    "freeFeatures": [
+      "30 torneos por mes",
+      "15 explicaciones de la IA por mes",
+      "5 solves GTO bajo demanda/mes",
+      "Entrenamiento de fundamentos: 20 spots al día"
+    ],
+    "gratis": "Gratis",
+    "planoAtual": "Tu plan actual",
+    "recomendado": "Recomendado",
+    "assinarCurto": "Suscribirme a {{plano}}",
+    "porMesSufixo": "/mes",
+    "continuar": "Continuar",
+    "trocarPlano": "Cambiar plan",
     "erroSdk": "No se pudo cargar el SDK de pago.",
     "sucesso": "Suscripción activada.",
     "processando": "Procesando…",

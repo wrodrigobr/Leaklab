@@ -5,6 +5,35 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## Escolher o plano virou um passo ANTES do pagamento (03/09)
+
+### Adicionado
+- **Card do Free ao lado do Pro, no formato da vitrine da landing**: preco grande, lista com
+  check, selo "Recomendado" no Pro e o CTA dentro do proprio card. Quem abre o modal ja e Free,
+  e ver o que tem hoje (30 torneios, 15 explicacoes de IA, 5 solves, 20 spots/dia) ao lado do
+  que ganha e o que sustenta a decisao. O card do Free e informativo: no lugar do botao ele
+  mostra "Seu plano atual".
+
+### Modificado
+- **O Stripe.js so carrega quando o jogador clica em "Assinar Pro"**: antes, o SDK subia ao
+  abrir o modal e o formulario do cartao remontava a CADA troca de mensal↔anual — o dono
+  reclamou da lentidao pra trocar de plano. Agora ciclo e plano se decidem num passo proprio,
+  sem tocar em rede nenhuma, e o pagamento so entra em cena depois. Do passo de pagamento da
+  pra voltar ("Trocar plano"), que desmonta o formulario.
+- **Investigacao da lentidao, antes de mexer**: rodei o fluxo ANTIGO (o que esta em producao)
+  lado a lado no mesmo navegador — mesma demora. A causa e a rede do dono bloqueando
+  `m.stripe.com`/`r.stripe.com` (telemetria/antifraude do proprio Stripe, ~48 tentativas
+  falhando), e nao o modo *deferred* que entrou hoje. Nao mexi nisso: e trade-off de
+  antifraude do Stripe, e um formulario proprio de cartao ainda dependeria do mesmo SDK **e**
+  levaria o produto de PCI SAQ A pra um nivel de conformidade muito mais pesado.
+
+### Corrigido
+- **Um `R$0` cravado no card do Free**: o guarda `precoNaoEhCravado` pegou na hora — preco
+  escrito a mao na tela e exatamente o defeito que ele existe pra impedir. Virou
+  `checkout.gratis` nos 3 idiomas.
+
+---
+
 ## Assinatura Stripe so nasce ao confirmar, nao ao abrir o modal (03/09)
 
 ### Corrigido

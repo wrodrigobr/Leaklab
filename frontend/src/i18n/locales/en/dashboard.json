@@ -761,6 +761,19 @@
       "AI Coach Chat (contextual conversation)",
       "A study plan built for you"
     ],
+    "freeFeatures": [
+      "30 tournaments per month",
+      "15 AI explanations per month",
+      "5 on-demand GTO solves/month",
+      "Fundamentals training: 20 spots per day"
+    ],
+    "gratis": "Free",
+    "planoAtual": "Your current plan",
+    "recomendado": "Recommended",
+    "assinarCurto": "Subscribe to {{plano}}",
+    "porMesSufixo": "/mo",
+    "continuar": "Continue",
+    "trocarPlano": "Change plan",
     "erroSdk": "Could not load the payment SDK.",
     "sucesso": "Subscription activated.",
     "processando": "Processing…",

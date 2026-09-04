@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { createPortal } from "react-dom";
 import { loadStripe, type Stripe, type StripeElements } from "@stripe/stripe-js";
-import { X, Loader2, CreditCard, CheckCircle2, AlertCircle, Zap } from "lucide-react";
+import { X, Loader2, CreditCard, CheckCircle2, AlertCircle, Zap, ArrowLeft, Check } from "lucide-react";
 import { subscription } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { trackPurchase } from "@/lib/analytics";
@@ -54,7 +54,6 @@ type BillingCycle = keyof typeof BILLING;
 const PLAN_INFO = {
   pro: {
     label: "Pro",
-    colorClass: "text-primary border-primary/30 bg-primary/5",
     featuresKey: "checkout.features",
   },
 } as const;
@@ -71,6 +70,11 @@ export function CheckoutModal({ plan, onClose, onSuccess }: Props) {
   const info = PLAN_INFO[plan];
 
 
+  // Escolha do plano/ciclo é um passo separado do pagamento (03/09, pedido do dono): antes,
+  // trocar mensal/anual DENTRO da tela de pagamento remontava o formulário do Stripe a cada
+  // clique. Agora o ciclo se decide aqui, e o Stripe só começa a carregar (loadStripe, abaixo)
+  // quando o passo vira "pagamento" — nunca antes disso.
+  const [step,           setStep]           = useState<"plano" | "pagamento">("plano");
   const [billing,        setBilling]        = useState<BillingCycle>("annual");
   // Os preços vêm do backend, que os deriva de UMA constante conferida contra o Stripe. Enquanto
   // não chegam, os valores ficam VAZIOS em vez de mostrar um número de reserva: preço provisório
@@ -102,12 +106,13 @@ export function CheckoutModal({ plan, onClose, onSuccess }: Props) {
   const anual  = planos?.billing?.annual;
   const valorCentavos = billing === "annual" ? anual?.price : mensal?.price;
 
-  // Carrega só o Stripe.js ao montar. NÃO cria assinatura aqui: até 03/09 este efeito chamava
-  // subscription.checkout() a cada abertura de modal e a cada troca de ciclo, e cada chamada
-  // criava uma assinatura Stripe DE VERDADE ("Incompleto" no dashboard) mesmo que o jogador só
-  // estivesse navegando. A assinatura real só nasce no submit (handleSubmit), quando o jogador
-  // confirma.
+  // Carrega o Stripe.js só ao ENTRAR no passo de pagamento — nunca antes, e nunca de novo por
+  // causa do ciclo (que já está fixo nesse ponto). NÃO cria assinatura aqui: até 03/09 este
+  // efeito chamava subscription.checkout() a cada abertura de modal e a cada troca de ciclo, e
+  // cada chamada criava uma assinatura Stripe DE VERDADE ("Incompleto" no dashboard) mesmo que
+  // o jogador só estivesse navegando. A assinatura real só nasce no submit (handleSubmit).
   useEffect(() => {
+    if (step !== "pagamento") return;
     let active = true;
     loadStripe(STRIPE_KEY).then((stripe) => {
       if (!active) return;
@@ -115,7 +120,7 @@ export function CheckoutModal({ plan, onClose, onSuccess }: Props) {
       setStripeInstance(stripe);
     });
     return () => { active = false; };
-  }, [t]);
+  }, [t, step]);
 
   // PaymentElement em modo "deferred" (mode/amount/currency, sem clientSecret): o Stripe deixa
   // coletar os dados do cartão sem que exista PaymentIntent nenhum ainda. Trocar de ciclo só
@@ -158,6 +163,13 @@ export function CheckoutModal({ plan, onClose, onSuccess }: Props) {
       elementsRef.current = null;
     };
   }, [stripeInstance, billing, valorCentavos]);
+
+  const voltarParaPlano = () => {
+    setStep("plano");
+    setStripeInstance(null);
+    setFormMounted(false);
+    setError(null);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -208,7 +220,10 @@ export function CheckoutModal({ plan, onClose, onSuccess }: Props) {
     <div
       className="fixed inset-0 z-[200] flex items-center justify-center bg-background/80 backdrop-blur-sm p-4"
     >
-      <div className="w-full max-w-md md:max-w-3xl rounded-xl border border-border bg-hud-surface p-6 shadow-elevated space-y-4 overflow-y-auto max-h-[calc(100vh-2rem)]">
+      <div className={cn(
+        "w-full rounded-xl border border-border bg-hud-surface p-6 shadow-elevated space-y-4 overflow-y-auto max-h-[calc(100vh-2rem)]",
+        step === "plano" ? "max-w-md md:max-w-2xl" : "max-w-md"
+      )}>
 
         {/* Header */}
         <div className="flex items-center justify-between">
@@ -221,12 +236,8 @@ export function CheckoutModal({ plan, onClose, onSuccess }: Props) {
           </button>
         </div>
 
-        {/* 30/08, o dono: "popup estreito e confuso". No desktop vira 2 colunas — plano à
-            esquerda, pagamento à direita — e o modal alarga. No celular empilha como antes. */}
-        <div className="grid gap-4 md:grid-cols-5 md:items-start">
-        <div className="space-y-4 md:col-span-2">
-        {/* Toggle de ciclo (mensal / anual) — só faz sentido antes do sucesso */}
-        {!success && (
+        {step === "plano" ? (
+        <div className="space-y-4">
           <div className="grid grid-cols-2 gap-px overflow-hidden rounded-lg border border-border bg-border">
             {(Object.keys(BILLING) as BillingCycle[]).map((c) => (
               <button
@@ -267,30 +278,91 @@ export function CheckoutModal({ plan, onClose, onSuccess }: Props) {
               </button>
             ))}
           </div>
+
+          {/* Free ao lado do Pro, no mesmo formato do card de planos da landing (preço grande,
+              lista com check, CTA dentro do card) — pedido do dono (03/09): quem abre este
+              modal já é Free, e ver o que tem hoje ao lado do que ganha ajuda a decisão. */}
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="flex flex-col rounded-xl border border-border bg-background p-5 order-2 sm:order-1">
+              <span className="font-mono text-[10px] font-bold uppercase tracking-widest-2 text-muted-foreground">
+                Free
+              </span>
+              <div className="mt-4 flex items-baseline gap-1.5">
+                <span className="text-2xl font-semibold text-foreground">{t("checkout.gratis")}</span>
+              </div>
+              <ul className="mt-4 flex-1 space-y-2">
+                {(t("checkout.freeFeatures", { returnObjects: true }) as string[]).map((f) => (
+                  <li key={f} className="flex items-start gap-2 text-xs text-muted-foreground">
+                    <Check className="mt-0.5 size-3.5 shrink-0" aria-hidden />
+                    {f}
+                  </li>
+                ))}
+              </ul>
+              <div className="mt-5 rounded-md border border-border px-4 py-2.5 text-center font-mono text-[10px] font-bold uppercase tracking-widest-2 text-muted-foreground">
+                {t("checkout.planoAtual")}
+              </div>
+            </div>
+
+            <div className="relative flex flex-col rounded-xl border border-primary/50 bg-primary/5 p-5 shadow-glow order-1 sm:order-2">
+              <span className="absolute -top-2.5 left-1/2 inline-flex -translate-x-1/2 items-center gap-1 rounded-sm bg-primary px-2 py-0.5 font-mono text-[9px] font-bold uppercase tracking-widest-2 text-primary-foreground">
+                <Zap className="size-2.5" aria-hidden />
+                {t("checkout.recomendado")}
+              </span>
+              <span className="font-mono text-[10px] font-bold uppercase tracking-widest-2 text-primary">
+                {info.label}
+              </span>
+              <div className="mt-4 flex items-baseline gap-1.5">
+                <span className="text-2xl font-semibold text-foreground">
+                  {billing === "annual" ? brl(anual?.monthly_equiv) : brl(mensal?.price)}
+                </span>
+                <span className="font-mono text-xs text-muted-foreground">{t("checkout.porMesSufixo")}</span>
+              </div>
+              {billing === "annual" && anual && (
+                <span className="mt-1 font-mono text-[10px] text-primary">
+                  {t("checkout.economia", { valor: brl(anual.full_price - anual.price) })}
+                  {" · "}
+                  {t("checkout.mesesGratis", { n: anual.months_free })}
+                </span>
+              )}
+              <ul className="mt-4 flex-1 space-y-2">
+                {(t(info.featuresKey, { returnObjects: true }) as string[]).map((f) => (
+                  <li key={f} className="flex items-start gap-2 text-xs text-foreground/90">
+                    <Check className="mt-0.5 size-3.5 shrink-0 text-primary" aria-hidden />
+                    {f}
+                  </li>
+                ))}
+              </ul>
+              {/* Só entra na tela de pagamento (e só aí carrega o Stripe.js) ao confirmar o
+                  plano/ciclo aqui — pedido do dono (03/09): assim trocar mensal/anual nunca mais
+                  remonta o formulário do cartão. */}
+              <button
+                type="button"
+                onClick={() => setStep("pagamento")}
+                disabled={!mensal && !anual}
+                className="mt-5 inline-flex h-10 items-center justify-center gap-1.5 rounded-md bg-primary font-mono text-[10px] font-bold uppercase tracking-widest-2 text-primary-foreground transition-all hover:opacity-90 disabled:opacity-50"
+              >
+                <Zap className="size-3.5" aria-hidden />
+                {t("checkout.assinarCurto", { plano: info.label })}
+              </button>
+            </div>
+          </div>
+        </div>
+        ) : (
+        <div className="space-y-4">
+        {!success && (
+          <button
+            type="button"
+            onClick={voltarParaPlano}
+            className="flex items-center gap-1.5 font-mono text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <ArrowLeft className="size-3" />
+            {info.label} · {t(BILLING[billing].labelKey)} · {billing === "annual"
+              ? t("checkout.porAno", { valor: brl(anual?.price) })
+              : t("checkout.porMes", { valor: brl(mensal?.price) })}
+            <span className="text-primary underline">{t("checkout.trocarPlano")}</span>
+          </button>
         )}
 
-        {/* Plan badge */}
-        <div className={cn("rounded-lg border px-4 py-3 space-y-1.5", info.colorClass)}>
-          <div className="flex items-center justify-between">
-            <span className="font-mono text-sm font-bold uppercase tracking-wider flex items-center gap-1.5">
-              {plan === "pro" && <Zap className="size-3.5" />}
-              {info.label} · {t(BILLING[billing].labelKey)}
-            </span>
-            <span className="font-mono text-sm font-bold">
-              {billing === "annual"
-                ? t("checkout.porAno", { valor: brl(anual?.price) })
-                : t("checkout.porMes", { valor: brl(mensal?.price) })}
-            </span>
-          </div>
-          <ul className="space-y-0.5">
-            {(t(info.featuresKey, { returnObjects: true }) as string[]).map((f) => (
-              <li key={f} className="font-mono text-[10px] opacity-75">• {f}</li>
-            ))}
-          </ul>
-        </div>
-        </div>
-
-        <div className="md:col-span-3">
         {/* Success */}
         {success ? (
           <div className="flex flex-col items-center gap-3 py-6">
@@ -366,7 +438,7 @@ export function CheckoutModal({ plan, onClose, onSuccess }: Props) {
           </form>
         )}
         </div>
-        </div>
+        )}
       </div>
     </div>,
     document.body
