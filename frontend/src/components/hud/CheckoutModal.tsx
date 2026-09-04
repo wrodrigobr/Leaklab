@@ -179,7 +179,7 @@ export function CheckoutModal({ plan, onClose, onSuccess }: Props) {
     setError(null);
     try {
       const { error: submitError } = await elementsRef.current.submit();
-      if (submitError) throw new Error(submitError.message || "Dados de pagamento inválidos.");
+      if (submitError) throw new Error(submitError.message || t("checkout.erroDadosCartao"));
 
       // A assinatura Stripe nasce AQUI, só quando o jogador confirma — não mais ao abrir o
       // modal ou trocar de ciclo (03/09).

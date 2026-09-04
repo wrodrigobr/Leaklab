@@ -777,6 +777,7 @@
     "continuar": "Continuar",
     "trocarPlano": "Trocar plano",
     "erroSdk": "Falha ao carregar SDK de pagamento.",
+    "erroDadosCartao": "Dados de pagamento inválidos.",
     "sucesso": "Assinatura ativada com sucesso!",
     "processando": "Processando…",
     "seguro": "Pagamento seguro via Stripe · Cancele quando quiser",

@@ -777,6 +777,7 @@
     "continuar": "Continue",
     "trocarPlano": "Change plan",
     "erroSdk": "Could not load the payment SDK.",
+    "erroDadosCartao": "Invalid payment details.",
     "sucesso": "Subscription activated.",
     "processando": "Processing…",
     "seguro": "Secure payment via Stripe · Cancel whenever you want",
