@@ -5,6 +5,39 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## As duas invariantes que acusaram DEPOIS do deploy (04/09)
+
+### Corrigido
+- **AUTO 68 -> 0.** Decisao acusada de erro em que a "acao ideal" do card e a propria jogada
+  do jogador. Todas do Rullian, criadas em 03/09, **zero nas ultimas 6h** — nao vieram do
+  deploy: nasceram enquanto o solver drenava o acervo. Ele termina o spot, `gto_action` e
+  `label` sao reconciliados, e `best_action` fica parado no valor anterior.
+- **A causa de ainda existirem era a minha remediacao da manha**, nao o deploy. Eu selecionei
+  os torneios com igualdade LITERAL (`LOWER(TRIM(best_action)) = LOWER(TRIM(action_taken))`),
+  que acha `bet`/`bet` e **perde `shove`/`jam`**. As invariantes AUTO e GRAFIA normalizam as
+  duas; a consulta de selecao nao. `scripts/reconcilia_best_action.py` usa `_norm_gto_action`
+  importado do MOTOR — a mesma funcao que as invariantes usam para medir, nao uma 2a copia.
+
+### O dry-run segurou um dano que o bug nao causava
+O 1o dry-run achou **259 linhas em vez de 72**, porque eu tinha filtrado por
+`label <> 'standard'` — que inclui `marginal`. Eram 191 linhas que **nao violam invariante
+nenhuma**, em 6 usuarios alem do dono do caso. O criterio agora e a UNIAO EXATA do que AUTO e
+GRAFIA acusam, e nada alem. Regra 7 funcionando na pratica.
+
+### Fica aberto: GRAFIA = 1
+A decisao `364518` (shove vs jam) caiu de `small_mistake` para `marginal` e ficou ABAIXO do
+corte de severidade do `reconcile`, que so reescreve `best_action` quando severidade `>= 2`.
+A acusacao diminuiu; a incoerencia ficou. Consertar isso mexe no corte do motor de veredito e
+afeta todos os usuarios — pede teste proprio e ritual completo, nao remendo no fim de um
+deploy. Detalhe em `project_backlog_future`.
+
+### Estado final de producao
+SHA `da6e624f`, containers healthy, portao de aceite 12/12, **12 das 13 invariantes em zero**,
+e o HUD batendo com o PokerTracker no acervo do Rullian: VPIP 24,3/24,34 · PFR 17,3/17,59 ·
+WTSD 40,2/40,35 · W$SD 54,6/54,68 (estava 69,6).
+
+---
+
 ## O 8o defeito do HUD, e dois que quase foram para producao com a suite verde (04/09)
 
 ### Corrigido
