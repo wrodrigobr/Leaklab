@@ -5,6 +5,57 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## O HUD nao batia com o PokerTracker: 6 defeitos (04/09)
+
+O Rullian, fundador que tem PT4 do lado, mostrou que os nossos numeros divergiam dos dele.
+**Os 10 indicadores agora batem**, conferidos contra um relatorio do PT4 do mesmo recorte.
+
+### Corrigido
+- **Todo all-in preflop era invisivel.** O parser grava `shove`; 8 consultas do HUD
+  procuravam `jam`, que nao aparece UMA VEZ no acervo. Sozinho, escondia 1.005 all-ins do
+  Rullian e derrubava VPIP, PFR, AF, c-bet, fold-to-3bet, BB defense e steal. Em torneio o
+  shove e acao central e o erro cresce com o stack curto, entao o HUD subestimava justamente
+  o jogador agressivo. Virou vocabulario unico (regra 5), com varredura que proibe lista crua.
+- **WTSD media a pergunta errada**: "chegou ao river" em vez de "foi a showdown". Sao coisas
+  diferentes (da para apostar no river e todo mundo foldar). 18pp de diferenca, sob um
+  comentario que ja admitia "approx". Passou a usar `showdown_result`, a MESMA fonte que o
+  W$SD ao lado ja usava e que sempre bateu com o PT4.
+- **"Viu o flop" ignorava all-in preflop**: quem esta all-in VE o flop sem ter o que decidir,
+  e so gravamos linha onde ha decisao. Eram 23 maos de 163.
+- **Fold to 3Bet era outra stat.** Exigiamos que o heroi tivesse aberto, o que e a
+  `Fold to PF 3Bet After Raise` do PT4. A `Fold to PF 3Bet` conta folder a um 3bet
+  **independente da acao anterior**: se o BTN abre e o SB da 3bet, o BB enfrenta um 3bet sem
+  nunca ter agido. 41,4% -> 76,5% (PT4: 76,81%).
+- **C-Bet chamava de agressor quem deu raise em ALGUM momento**, e nao quem tem a iniciativa:
+  abriu, levou 3bet e pagou nao e oportunidade de c-bet dele. Mais o numerador cego a c-bet
+  de shove. 59,3% -> 71,0% (PT4: 71,01%).
+- **Steal contava raise sobre limp**, que o PT4 nao conta porque o limpador ja abriu o pote.
+  33,3% -> 45,4% (PT4: 45,37%).
+
+### Adicionado
+- `scripts/comparar_hud_com_pt4.py`: compara qualquer pasta de hand history contra um
+  gabarito do PT4, em banco descartavel. "Bate com o PT4" virou numero na tela.
+- `tests/test_hud_bate_com_pokertracker.py`: torneio real de 402 maos, anonimizado, com o
+  gabarito do PT4 congelado. Roda na suite (2713 testes verdes). O torneio e um recorte
+  INDEPENDENTE dos 6 usados para consertar, e bate nos 10 — os consertos generalizam.
+
+### O metodo, que foi o mais caro de acertar
+Duas fontes de verdade, e confundi-las custa caro: **o PT4 e o padrao de DEFINICAO** (o que a
+metrica significa, e e o que o jogador reconhece) e **o historico cru e o oraculo de
+ARITMETICA** (se calculamos aquela definicao direito). Cheguei a concluir que o PT4 estava
+errado no Fold to 3Bet porque o meu oraculo dava 40% contra os 76,81% dele. O oraculo estava
+certo; errada estava a definicao que EU assumi ao escreve-lo. Com a definicao real do PT4, o
+mesmo oraculo devolve 77,14%. **Oraculo herda a definicao de quem o escreve** — e sem a
+insistencia do dono em ler a documentacao deles, eu teria fechado o caso declarando correto o
+que estava errado.
+
+Nenhum dos 6 precisou de coluna nova nem de reprocessar historico: `preflop_raises_faced`,
+`hero_was_aggressor`, `facing_limp` e `showdown_result` ja estavam gravados. Cheguei a criar
+uma coluna e a desfiz ao ver que ela nasceria com zero em todo o acervo — dado errado
+disfarcado de dado novo.
+
+---
+
 ## Os 3 guardas de copy que estavam vermelhos EM PRODUCAO (04/09)
 
 ### Corrigido

@@ -2223,6 +2223,28 @@ def get_breakdown(user_id: int, days: int = 90) -> dict:
         conn.close()
 
 
+# ── O vocabulário de ação agressiva, num lugar só ────────────────────────────────────────
+#
+# Medido em 04/09 no acervo do Rullian (fundador, que comparou com o PokerTracker dele):
+# o parser grava **`shove`** para all-in, e as consultas do HUD procuravam **`jam`**, que
+# NÃO APARECE UMA VEZ no acervo inteiro. Resultado: 1.005 all-ins preflop invisíveis para
+# VPIP, PFR, AF, C-bet, fold-to-3bet, BB defense e steal — 8 consultas com a mesma cópia
+# da mesma regra. Em torneio o shove é ação central, e o erro cresce com o stack curto,
+# então o HUD subestimava justamente o jogador agressivo.
+#
+# A aritmética que fechou o diagnóstico: PFR ia de 13,85% para 17,63% somando os shoves,
+# contra 17,59% do PT4.
+#
+# Regra 5 do CLAUDE.md: regra aplicada em N lugares vira UMA definição, com teste que varre
+# os N+1 (`tests/test_vocabulario_de_acao.py`). O projeto já tinha normalizadores para isto
+# (`card_verdict._norm`, `coach_adherence`), mas o SQL passava por fora deles.
+_ACOES_ALLIN       = ('jam', 'shove', 'allin', 'all-in', 'all_in')
+_SQL_ALLIN         = ', '.join("'%s'" % a for a in _ACOES_ALLIN)
+_SQL_RAISE_OU_JAM  = "'raise', " + _SQL_ALLIN          # PFR, steal, 3bet, fold-to-3bet
+_SQL_VOLUNTARIO    = "'call', 'raise', " + _SQL_ALLIN   # VPIP, BB defense
+_SQL_AGRESSIVO     = "'bet', 'raise', " + _SQL_ALLIN    # AF pós-flop
+
+
 def get_player_stats(user_id: int, days: int = 90, last_n: int | None = None) -> dict:
     """Computes poker HUD stats from stored decisions."""
     tf, tp = _build_tournament_filter(user_id, days, last_n)
@@ -2232,8 +2254,8 @@ def get_player_stats(user_id: int, days: int = 90, last_n: int | None = None) ->
         preflop = conn.execute(_adapt(f"""
             SELECT
                 COUNT(DISTINCT d.hand_id) AS total_hands,
-                COUNT(DISTINCT CASE WHEN d.action_taken IN ('call','raise','jam') THEN d.hand_id END) AS vpip_hands,
-                COUNT(DISTINCT CASE WHEN d.action_taken IN ('raise','jam') THEN d.hand_id END) AS pfr_hands
+                COUNT(DISTINCT CASE WHEN d.action_taken IN ({_SQL_VOLUNTARIO}) THEN d.hand_id END) AS vpip_hands,
+                COUNT(DISTINCT CASE WHEN d.action_taken IN ({_SQL_RAISE_OU_JAM}) THEN d.hand_id END) AS pfr_hands
             FROM decisions d
             JOIN tournaments t ON t.id = d.tournament_id
             WHERE {tf} AND d.street = 'preflop'
@@ -2242,57 +2264,86 @@ def get_player_stats(user_id: int, days: int = 90, last_n: int | None = None) ->
         # ── Postflop aggression (AF) ─────────────────────────────────────────
         postflop = conn.execute(_adapt(f"""
             SELECT
-                COUNT(CASE WHEN d.action_taken IN ('bet','raise','jam') THEN 1 END) AS aggressive,
+                COUNT(CASE WHEN d.action_taken IN ({_SQL_AGRESSIVO}) THEN 1 END) AS aggressive,
                 COUNT(CASE WHEN d.action_taken = 'call' THEN 1 END) AS passive
             FROM decisions d
             JOIN tournaments t ON t.id = d.tournament_id
             WHERE {tf} AND d.street != 'preflop'
         """), tp).fetchone()
 
-        # ── C-bet: first flop bet as preflop aggressor / PFA hands seeing flop ─
+        # ── C-Bet flop, na definição do PokerTracker ─────────────────────────
+        #
+        # Duas correções, medidas contra o histórico cru do Rullian em 04/09 (alvo 71,01%):
+        #
+        # 1. AGRESSOR é quem tem a INICIATIVA, não quem deu raise em algum momento. Se o herói
+        #    abriu, levou 3bet e pagou, o agressor pré-flop é o vilão — a mão não é
+        #    oportunidade de c-bet dele. `hero_was_aggressor` na linha do flop já carrega a
+        #    iniciativa. Isso levou o denominador de 73 para 69, que é o número do oráculo.
+        #
+        # 2. OPORTUNIDADE exige a ação chegar sem aposta na frente (`facing_bet = 0`): com
+        #    aposta na frente não existe c-bet, no máximo raise.
+        #
+        # O numerador aceita all-in porque c-bet de stack curto é shove, não `bet` — mesma
+        # família do defeito que escondia 1.005 all-ins do VPIP/PFR.
         cbet_row = conn.execute(_adapt(f"""
             SELECT
-                COUNT(DISTINCT CASE WHEN flop_d.action_taken = 'bet' THEN sub.hand_id END) AS cbet_n,
-                COUNT(DISTINCT sub.hand_id) AS cbet_opp
-            FROM (
-                SELECT d.hand_id,
-                       MIN(CASE WHEN d.street = 'flop' THEN d.id END) AS first_flop_id
-                FROM decisions d
-                JOIN tournaments t ON t.id = d.tournament_id
-                WHERE {tf}
-                GROUP BY d.hand_id
-                HAVING MAX(CASE WHEN d.street = 'preflop' AND d.action_taken IN ('raise','jam') THEN 1 ELSE 0 END) = 1
-                   AND MIN(CASE WHEN d.street = 'flop' THEN d.id END) IS NOT NULL
-            ) sub
-            JOIN decisions flop_d ON flop_d.id = sub.first_flop_id
+                COUNT(*) AS cbet_opp,
+                SUM(CASE WHEN d.action_taken IN ('bet', {_SQL_ALLIN}) THEN 1 ELSE 0 END) AS cbet_n
+            FROM decisions d
+            JOIN tournaments t ON t.id = d.tournament_id
+            WHERE {tf}
+              AND d.street = 'flop'
+              AND COALESCE(d.facing_bet, 0) = 0
+              AND d.hero_was_aggressor
+              AND d.id = (SELECT MIN(x.id) FROM decisions x
+                           WHERE x.hand_id = d.hand_id AND x.street = 'flop')
         """), tp).fetchone()
 
-        # ── Fold-to-3BET: hands where hero raised preflop THEN folded ────────
+        # ── Fold to 3Bet, na definição do PokerTracker ───────────────────────
+        #
+        # Fazíamos "o herói deu raise e depois foldou", que é a stat `Fold to PF 3Bet AFTER
+        # RAISE` deles — outra coisa. O `Fold to PF 3Bet` conta folder a um 3bet
+        # **independente da ação anterior**: se o BTN abre e o SB dá 3bet, o BB está
+        # enfrentando um 3bet mesmo sem nunca ter agido. Medido em 04/09 no acervo do
+        # Rullian: 41,4% pela conta antiga contra 76,8% do PT4, e o histórico cru confirmou
+        # o PT4 (77,1%). Eu tinha acusado a ferramenta de errada; errada estava a definição
+        # que eu assumi ao escrever o oráculo.
+        #
+        # "Enfrentando um 3bet" = houve exatamente 2 raises antes da ação do herói, contando
+        # o dele. Os dois campos já existiam gravados, então isto NÃO precisou de coluna nova
+        # nem de reprocessar histórico.
         f3b_row = conn.execute(_adapt(f"""
             SELECT
-                SUM(CASE WHEN sub.first_raise_id IS NOT NULL
-                          AND sub.fold_after_raise_id IS NOT NULL
-                          AND sub.fold_after_raise_id > sub.first_raise_id
-                     THEN 1 ELSE 0 END) AS fold_to_3bet_n,
-                COUNT(*) AS faced_3bet_n
-            FROM (
-                SELECT d.hand_id,
-                       MIN(CASE WHEN d.action_taken IN ('raise','jam') THEN d.id END) AS first_raise_id,
-                       MIN(CASE WHEN d.action_taken = 'fold' THEN d.id END)            AS fold_after_raise_id
-                FROM decisions d
-                JOIN tournaments t ON t.id = d.tournament_id
-                WHERE {tf} AND d.street = 'preflop'
-                GROUP BY d.hand_id
-                HAVING COUNT(*) > 1
-                   AND MIN(CASE WHEN d.action_taken IN ('raise','jam') THEN d.id END) IS NOT NULL
-            ) sub
+                COUNT(*) AS faced_3bet_n,
+                SUM(CASE WHEN d.action_taken = 'fold' THEN 1 ELSE 0 END) AS fold_to_3bet_n
+            FROM decisions d
+            JOIN tournaments t ON t.id = d.tournament_id
+            WHERE {tf} AND d.street = 'preflop'
+              AND (COALESCE(d.preflop_raises_faced, 0)
+                   + CASE WHEN d.hero_was_aggressor THEN 1 ELSE 0 END) = 2
         """), tp).fetchone()
 
-        # ── WTSD approx: hands reaching river / hands seeing flop ────────────
+        # ── WTSD: mãos que foram a SHOWDOWN / mãos que viram o flop ──────────
+        #
+        # Era `street='river' / street='flop'`, com o próprio comentário admitindo "approx".
+        # Não é aproximação, é outra pergunta: chegar ao river e ir a showdown são coisas
+        # diferentes — dá para apostar no river e todo mundo foldar. Medido em 04/09 contra o
+        # histórico cru do Rullian: "viu river/viu flop" dá 56,44%, "showdown/viu flop" dá
+        # **38,04%**, e o PokerTracker diz **38,04%**. A aproximação inflava em 18 pontos.
+        #
+        # `showdown_result` é a MESMA fonte que o W$SD logo abaixo já usa (e que bate com o
+        # PT4 na casa decimal). Duas perguntas sobre showdown, uma fonte só.
         wtsd_row = conn.execute(_adapt(f"""
             SELECT
-                COUNT(DISTINCT CASE WHEN d.street = 'flop'  THEN d.hand_id END) AS saw_flop,
-                COUNT(DISTINCT CASE WHEN d.street = 'river' THEN d.hand_id END) AS saw_river
+                -- "viu o flop" nao e "teve decisao no flop": all-in no preflop VE o flop
+                -- sem ter o que decidir, e nos so gravamos linha onde ha decisao. Medido:
+                -- 140 com decisao de flop + 23 que so aparecem no showdown = 163, que e
+                -- exatamente o que o historico cru conta. Quem chega ao showdown viu o
+                -- flop por definicao, entao a uniao e segura (all-in que ganha sem
+                -- showdown nao tem flop distribuido).
+                COUNT(DISTINCT CASE WHEN d.street = 'flop' OR d.showdown_result IS NOT NULL
+                                    THEN d.hand_id END) AS saw_flop,
+                COUNT(DISTINCT CASE WHEN d.showdown_result IS NOT NULL THEN d.hand_id END) AS went_sd
             FROM decisions d
             JOIN tournaments t ON t.id = d.tournament_id
             WHERE {tf}
@@ -2334,7 +2385,7 @@ def get_player_stats(user_id: int, days: int = 90, last_n: int | None = None) ->
         # ── BB Defense Rate: BB call+3bet vs preflop open ─────────────────────
         bb_def_row = conn.execute(_adapt(f"""
             SELECT
-                COUNT(CASE WHEN d.action_taken IN ('call','raise','jam') THEN 1 END) AS bb_def_n,
+                COUNT(CASE WHEN d.action_taken IN ({_SQL_VOLUNTARIO}) THEN 1 END) AS bb_def_n,
                 COUNT(*) AS bb_def_total
             FROM decisions d
             JOIN tournaments t ON t.id = d.tournament_id
@@ -2342,16 +2393,20 @@ def get_player_stats(user_id: int, days: int = 90, last_n: int | None = None) ->
               AND d.street = 'preflop' AND d.position = 'BB' AND d.facing_bet > 0
         """), tp).fetchone()
 
-        # ── Steal%: raise/shove from BTN/CO/SB when not facing a raise ────────
+        # ── Att to Steal: open raise de CO/BTN/SB com o pote NAO ABERTO ───────
         steal_row = conn.execute(_adapt(f"""
             SELECT
-                COUNT(CASE WHEN d.action_taken IN ('raise','jam') THEN 1 END) AS steal_n,
+                COUNT(CASE WHEN d.action_taken IN ({_SQL_RAISE_OU_JAM}) THEN 1 END) AS steal_n,
                 COUNT(*) AS steal_total
             FROM decisions d
             JOIN tournaments t ON t.id = d.tournament_id
             WHERE {tf}
               AND d.street = 'preflop' AND d.position IN ('BTN','CO','SB')
               AND (d.facing_bet IS NULL OR d.facing_bet = 0)
+              -- PT4: steal e OPEN raise com o pote NAO ABERTO. Raise por cima de limp nao
+              -- conta, e o limpador ja abriu o pote. `facing_bet = 0` sozinho nao pega isso,
+              -- porque o limp nao aumenta o custo de entrar. Media: 41,7% -> alvo 45,37%.
+              AND NOT COALESCE(d.facing_limp, FALSE)
         """), tp).fetchone()
 
         # ── Open Limp%: preflop calls without a raise in front (non-BB) ────────
@@ -2390,7 +2445,7 @@ def get_player_stats(user_id: int, days: int = 90, last_n: int | None = None) ->
         f3b_n       = f3b.get('fold_to_3bet_n', 0) or 0
         faced_3b_n  = f3b.get('faced_3bet_n', 0) or 0
         saw_flop    = wt.get('saw_flop', 0) or 0
-        saw_river   = wt.get('saw_river', 0) or 0
+        went_sd     = wt.get('went_sd', 0) or 0
         three_bet_n   = tb.get('three_bet_n', 0) or 0
         three_bet_opp = tb.get('opp_n', 0) or 0
         sd_won      = wsd.get('sd_won', 0) or 0
@@ -2411,7 +2466,7 @@ def get_player_stats(user_id: int, days: int = 90, last_n: int | None = None) ->
             'af':               round(aggressive / passive, 2)          if passive > 0     else None,
             'cbet_pct':         round(cbet_n / cbet_opp * 100, 1)      if cbet_opp > 0    else None,
             'fold_to_3bet':     round(f3b_n / faced_3b_n * 100, 1)    if faced_3b_n > 0  else None,
-            'wtsd':             round(saw_river / saw_flop * 100, 1)   if saw_flop > 0    else None,
+            'wtsd':             round(went_sd / saw_flop * 100, 1)   if saw_flop > 0    else None,
             'three_bet':        round(three_bet_n / three_bet_opp * 100, 1) if three_bet_opp >= 12 else None,
             'three_bet_opp':    three_bet_opp,
             'w_at_sd':          round(sd_won / sd_total * 100, 1)      if sd_total > 0    else None,

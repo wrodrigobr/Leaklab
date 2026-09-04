@@ -1,0 +1,14 @@
+{
+  "_fonte": "PokerTracker 4, ReportExport.csv de 04/09/2026, linha \"MTT PROGBOUNT\" (402 maos)",
+  "_torneio": "PokerStars #4002468231, heroi anonimizado como Hero",
+  "hands": 402,
+  "vpip": 31.14,
+  "pfr": 23.16,
+  "three_bet": 10.29,
+  "wtsd": 35.37,
+  "w_at_sd": 65.52,
+  "af": 3.52,
+  "cbet_pct": 82.05,
+  "steal_pct": 46.88,
+  "fold_to_3bet": 76.92
+}
