@@ -150,6 +150,37 @@ def test_CONTRAPROVA_o_teste_acha_um_desvio_plantado():
     print("OK  test_CONTRAPROVA_o_teste_acha_um_desvio_plantado")
 
 
+def test_vitoria_sem_descricao_da_mao_NAO_e_showdown():
+    """A regra do CoinPoker, testada na FUNCAO — porque o fixture nao a alcanca.
+
+    Descoberto quebrando de proposito (regra 2): gravei sem querer um byte de backspace na
+    regex, deixando-a incapaz de casar, e **os 5 testes acima continuaram verdes**. O motivo
+    e que `api/app.py` tem um FALLBACK: quando o parser devolve None, ele tenta de novo pela
+    linha de acao (`Hero: shows` + `Hero collected`) e devolve 'won'. No PokerStars, que e o
+    fixture, essa linha existe em 24 maos e restaura o veredito — mascarando a quebra. No
+    CoinPoker ela aparece em **0 de 1.068**, e por isso a regra vale la.
+
+    Ou seja: o fixture de ponta a ponta nao consegue provar esta regra, e teste que nao falha
+    quando deveria conta como cobertura sem dar cobertura. Este aqui bate na funcao direto.
+    """
+    from leaklab.parser import _extract_showdown_result as f
+    casos = [
+        # CoinPoker: escreve `*** SHOWDOWN ***` em TODA mao e revela a carta do heroi mesmo
+        # quando o pote foi levado sem oposicao. A descricao da mao vencedora e o que separa.
+        ('Seat 6: Hero showed [6c 5h] and won (9,450)', None),
+        ('Seat 6: Hero showed [6c 5h] and won (9,450) with Two Pair', 'won'),
+        ('Seat 6: Hero showed [5h As] and lost with One Pair', 'lost'),
+        # PokerStars: sempre traz a descricao, entao a regra nao muda um numero sequer la.
+        ('Seat 4: Hero (small blind) showed [As 9s] and won (228416) with a flush, Ace high', 'won'),
+        ('Seat 4: Hero (big blind) showed [Qs Qc] and lost with a pair of Queens', 'lost'),
+        ('Seat 4: Hero mucked [5c Qc]', 'lost'),
+    ]
+    erros = ['%r -> %r (esperado %r)' % (l, f(l, 'Hero'), e)
+             for l, e in casos if f(l, 'Hero') != e]
+    assert not erros, 'formas de showdown quebradas:\n  ' + '\n  '.join(erros)
+    print("OK  test_vitoria_sem_descricao_da_mao_NAO_e_showdown (%d formas)" % len(casos))
+
+
 def test_o_vocabulario_de_acao_cobre_all_in():
     """Regra 5: a definicao de acao agressiva vive num lugar so, e inclui `shove`.
 

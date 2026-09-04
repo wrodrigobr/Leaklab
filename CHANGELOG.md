@@ -5,6 +5,41 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## O 7o defeito do HUD: pote levado sem oposicao virava showdown ganho (04/09)
+
+### Corrigido
+- **W$SD inflado em 26 pontos no CoinPoker.** Ele escreve `*** SHOWDOWN ***` em TODAS as
+  9.274 maos, inclusive as que todo mundo foldou no preflop, e revela a carta do heroi mesmo
+  em pote levado sem oposicao (o historico e dele). Duas formas convivem no SUMMARY, e so a
+  descricao da mao vencedora separa showdown de pote nao disputado:
+
+      Seat 6: Hero showed [..] and won (9450) with Two Pair   <- showdown
+      Seat 6: Hero showed [..] and won (9450)                 <- todos foldaram
+
+  O teste que decidiu foi independente: nas 413 linhas COM descricao, um vilao tambem mostrou
+  carta em **89,6%**; nas 1.068 SEM descricao, em **0,0%**. Zero de 1.068 nao e margem.
+  W$SD do CoinPoker: 81,9% -> 55,8%. Global do acervo: 69,6% -> perto dos 54,68% do PT4.
+- **PokerStars nao muda**: as 4.954 linhas de vitoria no acervo tem descricao, todas. O PS
+  sozinho ja dava 54,4% contra 54,68% do PT4 — foi o que apontou o CoinPoker como culpado.
+
+### O guarda que nao guardava
+Ao quebrar de proposito (regra 2), gravei sem querer um **byte de backspace** no lugar de
+`\b`, deixando a regex incapaz de casar. **Os 5 testes do HUD continuaram verdes.** A causa:
+`api/app.py` tem um FALLBACK que, quando o parser devolve None, tenta de novo pela linha de
+acao (`Hero: shows` + `Hero collected`). No PokerStars, que e o fixture, essa linha existe em
+24 maos e restaura o veredito, mascarando a quebra; no CoinPoker aparece em **0 de 1.068**, e
+por isso a regra vale la.
+
+Ou seja: **o fixture de ponta a ponta nao alcanca esta regra**, e um conserto que nao
+consertava nada teria entrado com a suite verde para provar. Entrou um 6o teste que bate na
+FUNCAO direto, com as 6 formas dos dois dialetos — esse acusa, os outros cinco nao acusavam.
+Duas fontes para o mesmo fato, de novo: a lista dessa familia so cresce.
+
+**Ainda nao aplicado ao acervo:** isto muda `showdown_result` ja gravado, entao pede
+reprocesso com dry-run e varredura de invariantes antes e depois (regra 7).
+
+---
+
 ## O HUD nao batia com o PokerTracker: 6 defeitos (04/09)
 
 O Rullian, fundador que tem PT4 do lado, mostrou que os nossos numeros divergiam dos dele.

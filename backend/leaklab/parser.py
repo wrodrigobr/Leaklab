@@ -398,6 +398,10 @@ def parse_hand(raw_text: str, id_re: re.Pattern | None = None, site: str = "poke
 #
 # O `(?:\([^)]*\)\s+)?` come o "(button)"/"(small blind)" que metade das linhas traz. O nome do
 # jogador pode ter espaço ("Andrew Willian"), por isso `.+?` preguiçoso ancorado no verbo.
+# "and won (N) **with Two Pair**": a descricao da mao vencedora e o que distingue pote
+# disputado de pote levado sem oposicao. Ver _extract_showdown_result.
+_SD_COM_MAO_RE = re.compile(r"\bwith\s+\w", re.IGNORECASE)
+
 _SD_SUMMARY_RE = re.compile(
     r"^Seat\s+\d+:\s+(?P<player>.+?)\s+(?:\([^)]*\)\s+)?(?P<verbo>showed|mucked)\s+"
     r"\[(?P<cards>[^\]]+)\]", re.IGNORECASE
@@ -450,6 +454,28 @@ def _extract_showdown_result(raw_text: str, hero: str | None) -> Optional[str]:
                 return "lost"
             low = line.lower()
             if "and won" in low or "won (" in low:
+                # **Vitória sem descrição da mão não é showdown** (04/09). O CoinPoker
+                # escreve `*** SHOWDOWN ***` em TODAS as mãos, inclusive as que todo mundo
+                # foldou no preflop, e revela as cartas do herói mesmo quando o pote foi
+                # levado sem oposição — porque o histórico é dele. Duas formas convivem:
+                #
+                #   Seat 6: Hero showed [..] and won (9450) with Two Pair   <- showdown
+                #   Seat 6: Hero showed [..] and won (9450)                 <- todos foldaram
+                #
+                # O teste que separou as duas: em 413 linhas COM descrição, um vilão também
+                # mostrou carta em 89,6% delas; nas 1.068 SEM descrição, em **0,0%**. Zero de
+                # 1.068 não é margem, é outra coisa.
+                #
+                # Efeito medido no acervo do Rullian: o W$SD do CoinPoker caía de 81,9% para
+                # 55,8%, e o global de 69,6% para perto dos 54,68% do PokerTracker. Contar
+                # pote não disputado como showdown ganho só erra para cima, exatamente como o
+                # `mucked` que ficava de fora antes de 05/08 só errava para cima.
+                #
+                # PokerStars NÃO é afetado: 4.954 linhas de "showed ... won" no acervo, todas
+                # com descrição. A regra não muda um número sequer lá, e o PS já batia com o
+                # PT4 na casa decimal (54,4% contra 54,68%).
+                if not _SD_COM_MAO_RE.search(line):
+                    return None
                 return "won"
             if "and lost" in low or " lost " in low:
                 return "lost"
