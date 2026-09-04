@@ -22,7 +22,7 @@
     "keyEmpty": "sin muestra en esa combinación. No significa que acertaste.",
     "legend": "El color sigue al número de arriba: cuanto más fuerte, más cara es esa posición en esa profundidad.",
     "empty": "—",
-    "leitura": "Tu cruce más caro: {{pos}} con {{bucket}} — {{bb}}bb perdidos por cada 100 decisiones, medido en {{n}} decisiones. Aquí es donde el entrenamiento rinde más."
+    "leitura": "Tu cruce más caro: {{pos}} con {{bucket}}. Son {{bb}}bb perdidos por cada 100 decisiones, medido en {{n}} decisiones. Aquí es donde el entrenamiento rinde más."
   },
   "proof": {
     "title": "Antes y después del entrenamiento",

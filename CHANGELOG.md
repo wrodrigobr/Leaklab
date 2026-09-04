@@ -5,6 +5,27 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## Os 3 guardas de copy que estavam vermelhos EM PRODUCAO (04/09)
+
+### Corrigido
+- **Travessao na copy, em 4 lugares.** `Termos.tsx` (3 frases, pagina LEGAL publica),
+  o toast do `AdminDashboard`, e as chaves `common.json:nav.motivo.advanced_insights` e
+  `evolution.json:matrix.leitura` nos 3 idiomas. Trocados por virgula, dois-pontos ou ponto
+  conforme a frase; nos Termos nenhuma obrigacao, prazo ou direito mudou, so a pontuacao.
+- **"largo" como decalque de "wide"**, na flag do HUD de oponente e no exemplo do plano de
+  estudo. Achado no caminho: o **espanhol ja estava certo** ("amplio"); so o portugues tinha
+  o decalque. Virou "range amplo" e "Open amplo demais", alinhando os 3 idiomas.
+
+### Por que estavam no ar
+Nao foram deste deploy: conferi em worktree no SHA de producao que ja falhavam la. Entraram
+entre 30/08 e 04/09, ou seja **depois** do CI do GitHub Actions travar por billing (31/07).
+Os guardas funcionavam o tempo todo e ninguem os executava; o proprio commit que introduziu
+uma das violacoes tem travessao ate na mensagem. Guarda que ninguem roda vale o mesmo que
+guarda que nao existe. Enquanto o CI nao voltar, rodar a suite do backend a mao antes de
+todo deploy e o unico portao. Guardas agora em 14/14 e 8/8, verdes pela 1a vez desde 30/08.
+
+---
+
 ## A tela de pagamento passou a parecer nossa (03/09)
 
 ### Modificado

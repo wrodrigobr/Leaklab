@@ -22,7 +22,7 @@
     "keyEmpty": "no sample for that combination. It does not mean you got it right.",
     "legend": "Colour follows the top number: the stronger it is, the more that position costs at that depth.",
     "empty": "—",
-    "leitura": "Your most expensive spot: {{pos}} at {{bucket}} — {{bb}}bb lost per 100 decisions, measured over {{n}} decisions. This is where training pays the most."
+    "leitura": "Your most expensive spot: {{pos}} at {{bucket}}. That's {{bb}}bb lost per 100 decisions, measured over {{n}} decisions. This is where training pays the most."
   },
   "proof": {
     "title": "Before and after training",

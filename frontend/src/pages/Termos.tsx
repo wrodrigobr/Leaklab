@@ -93,12 +93,12 @@ export default function Termos() {
           <p>
             Você pode cancelar a qualquer momento na tela de assinatura. O cancelamento
             interrompe as próximas cobranças e o acesso Pro permanece ativo até o fim do período
-            já pago — sem multa e sem burocracia.
+            já pago, sem multa e sem burocracia.
           </p>
           <p>
             Na primeira contratação, você pode se arrepender em até 7 dias corridos (art. 49 do
             CDC) e receber reembolso integral: basta pedir pelo suporte. Após esse prazo, e nas
-            renovações, não há reembolso proporcional do período em curso — o acesso segue até o
+            renovações, não há reembolso proporcional do período em curso: o acesso segue até o
             fim do ciclo pago.
           </p>
         </Section>
@@ -126,7 +126,7 @@ export default function Termos() {
         <Section title="7. Encerramento e exclusão de dados">
           <p>
             Você pode parar de usar a qualquer momento. Para excluir sua conta e todos os dados
-            associados (históricos, análises, treinos), solicite pelo suporte — a exclusão é
+            associados (históricos, análises, treinos), solicite pelo suporte. A exclusão é
             completa e definitiva. Detalhes sobre tratamento de dados estão na{" "}
             <Link to="/privacidade" className="text-primary hover:underline">Política de Privacidade</Link>.
           </p>

@@ -955,7 +955,7 @@ function ChallengeTab() {
     onSuccess: (r) => {
       // 31/08: a geração virou fundo (o request morria por timeout no meio das chamadas de
       // LLM). O toast diz a verdade: começou; os candidatos pingam no pool em ~1-2 min.
-      toast.success(`Geração de ${r.n} candidato(s) iniciada — atualize a lista em 1-2 min`);
+      toast.success(`Geração de ${r.n} candidato(s) iniciada. Atualize a lista em 1-2 min`);
       setStatus("pending");
       setTimeout(() => qc.invalidateQueries({ queryKey: ["admin-challenge-pool"] }), 90_000);
     },

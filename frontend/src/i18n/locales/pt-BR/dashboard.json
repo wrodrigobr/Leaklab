@@ -390,7 +390,7 @@
       "stubborn": "teimoso",
       "tight": "tight",
       "value-only": "só value",
-      "wide": "largo"
+      "wide": "range amplo"
     },
     "tooltip": {
       "vpip": "Voluntarily Put money In Pot, % de mãos em que o jogador entrou voluntariamente (call/raise pré-flop). MTT ideal: 12–22%. Abaixo de 12% = muito tight; acima de 25% = muito loose.",
