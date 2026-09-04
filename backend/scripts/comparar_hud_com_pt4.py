@@ -78,6 +78,11 @@ def _banco_descartavel(nome: str = 'grindlab_pt4_compare', zerar: bool = False):
 
 
 def importar(pasta: str, usuario: str) -> None:
+    # /analyze tem rate limit de 30/hora, e a rota ja expoe a isencao para importacao em
+    # lote (`exempt_when` no decorator). Sem isto, um acervo grande importa 30 torneios e
+    # devolve 429 no resto — e o comparador mostraria percentual de um recorte de 10%,
+    # que e exatamente o erro de denominador que este script existe para evitar.
+    os.environ['LEAKLAB_IMPORT_LOTE'] = '1'
     import database.schema as sch
     import database.repositories as repo
     sch.init_db()

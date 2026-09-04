@@ -2243,6 +2243,17 @@ _SQL_ALLIN         = ', '.join("'%s'" % a for a in _ACOES_ALLIN)
 _SQL_RAISE_OU_JAM  = "'raise', " + _SQL_ALLIN          # PFR, steal, 3bet, fold-to-3bet
 _SQL_VOLUNTARIO    = "'call', 'raise', " + _SQL_ALLIN   # VPIP, BB defense
 _SQL_AGRESSIVO     = "'bet', 'raise', " + _SQL_ALLIN    # AF pós-flop
+# Quantos raises houve antes da acao do heroi, contando o dele. 1 = ele enfrenta o OPEN
+# (oportunidade de 3bet); 2 = enfrenta um 3bet (oportunidade de 4bet, e o denominador do
+# Fold to 3Bet). Os dois campos ja eram gravados — nao precisou de coluna nova.
+# `hero_was_aggressor` e `facing_limp` sao INTEGER no Postgres, nao boolean (so `is_3bet`
+# e boolean de verdade). O PG recusa inteiro em contexto booleano; o SQLite aceita, entao
+# `CASE WHEN d.hero_was_aggressor THEN` passa verde em TODA a suite local e quebra o HUD
+# inteiro em producao. Medido no PG em 04/09, 3 das 4 expressoes que eu tinha escrito
+# quebravam. Por isso a comparacao e sempre EXPLICITA (`<> 0`, `= 0`).
+_SQL_RAISES_ANTES  = ("(COALESCE(d.preflop_raises_faced, 0) "
+                      "+ CASE WHEN COALESCE(d.hero_was_aggressor, 0) <> 0 THEN 1 ELSE 0 END)")
+_SQL_ENFRENTA_OPEN = _SQL_RAISES_ANTES + " = 1"
 
 
 def get_player_stats(user_id: int, days: int = 90, last_n: int | None = None) -> dict:
@@ -2294,7 +2305,7 @@ def get_player_stats(user_id: int, days: int = 90, last_n: int | None = None) ->
             WHERE {tf}
               AND d.street = 'flop'
               AND COALESCE(d.facing_bet, 0) = 0
-              AND d.hero_was_aggressor
+              AND COALESCE(d.hero_was_aggressor, 0) <> 0
               AND d.id = (SELECT MIN(x.id) FROM decisions x
                            WHERE x.hand_id = d.hand_id AND x.street = 'flop')
         """), tp).fetchone()
@@ -2320,7 +2331,7 @@ def get_player_stats(user_id: int, days: int = 90, last_n: int | None = None) ->
             JOIN tournaments t ON t.id = d.tournament_id
             WHERE {tf} AND d.street = 'preflop'
               AND (COALESCE(d.preflop_raises_faced, 0)
-                   + CASE WHEN d.hero_was_aggressor THEN 1 ELSE 0 END) = 2
+                   + CASE WHEN COALESCE(d.hero_was_aggressor, 0) <> 0 THEN 1 ELSE 0 END) = 2
         """), tp).fetchone()
 
         # ── WTSD: mãos que foram a SHOWDOWN / mãos que viram o flop ──────────
@@ -2349,13 +2360,28 @@ def get_player_stats(user_id: int, days: int = 90, last_n: int | None = None) ->
             WHERE {tf}
         """), tp).fetchone()
 
-        # ── 3BET%: hands where hero 3-bet / OPORTUNIDADES (preflop enfrentando um
-        # raise). Denominador padrão HM/PT = faced-a-raise (facing_bet>0), NÃO todas
-        # as mãos preflop — usar todas dilui o número ~3-5× e mascara overaggression.
+        # ── 3Bet%: 3bets / oportunidades de DAR 3BET ─────────────────────────
+        #
+        # O denominador era `facing_bet > 0`, ou seja "enfrentou qualquer aposta" — e isso
+        # inclui enfrentar um 3bet, que é oportunidade de **4bet**, não de 3bet. O PokerTracker
+        # separa as duas (tem coluna `4Bet+ PF` própria), e o efeito da mistura CRESCIA por
+        # dialeto: medido em 04/09, erro de 0,00pp no PokerStars, 0,74 no CoinPoker e 2,02 no
+        # ACR. Foi essa variação por site que denunciou o defeito — se fosse só divergência de
+        # definição, o erro seria igual nos três.
+        #
+        # A 3ª aposta da mão é o 3bet, então a oportunidade é enfrentar **exatamente um** raise.
+        # É a mesma contagem que o Fold to 3Bet usa (lá o alvo é 2), com os mesmos campos já
+        # gravados. O numerador carrega a mesma condição: `is_3bet` sozinho aceitaria um 4bet.
+        #
+        # Balanço nos 5 recortes conferidos contra relatorio do PT4 (soma dos erros absolutos
+        # 4,76 -> 1,44): CoinPoker 8,53 vs 8,54; ACR 10,78 vs 11,22 e 6,52 vs 7,21; PokerStars
+        # 9,42 vs 9,60 e 10,17 vs 10,29. O "exato" que o PS tinha antes era coincidência de
+        # dois erros se cancelando.
         tbet_row = conn.execute(_adapt(f"""
             SELECT
-                COUNT(DISTINCT CASE WHEN d.is_3bet = TRUE THEN d.hand_id END) AS three_bet_n,
-                COUNT(DISTINCT CASE WHEN d.facing_bet > 0 THEN d.hand_id END) AS opp_n
+                COUNT(DISTINCT CASE WHEN d.is_3bet = TRUE AND {_SQL_ENFRENTA_OPEN}
+                                    THEN d.hand_id END) AS three_bet_n,
+                COUNT(DISTINCT CASE WHEN {_SQL_ENFRENTA_OPEN} THEN d.hand_id END) AS opp_n
             FROM decisions d
             JOIN tournaments t ON t.id = d.tournament_id
             WHERE {tf} AND d.street = 'preflop'
@@ -2394,6 +2420,15 @@ def get_player_stats(user_id: int, days: int = 90, last_n: int | None = None) ->
         """), tp).fetchone()
 
         # ── Att to Steal: open raise de CO/BTN/SB com o pote NAO ABERTO ───────
+        #
+        # Medido em 04/09 contra o PokerTracker: 41,7 para 45,37 (o alvo dele).
+        #
+        # ATENCAO: nada de sinal de porcentagem DENTRO do SQL, nem em comentario `--`.
+        # O psycopg2 le `%` como marcador de parametro quando a query leva parametros, e a
+        # query quebra com "tuple index out of range". O SQLite ignora, entao a suite local
+        # inteira passa verde. Foi assim que este numero, escrito como comentario explicativo,
+        # derrubou `get_player_stats` e o endpoint `/metrics/player-stats` no smoke de Postgres.
+        # Ver `reference_percent_sql_postgres`.
         steal_row = conn.execute(_adapt(f"""
             SELECT
                 COUNT(CASE WHEN d.action_taken IN ({_SQL_RAISE_OU_JAM}) THEN 1 END) AS steal_n,
@@ -2405,8 +2440,8 @@ def get_player_stats(user_id: int, days: int = 90, last_n: int | None = None) ->
               AND (d.facing_bet IS NULL OR d.facing_bet = 0)
               -- PT4: steal e OPEN raise com o pote NAO ABERTO. Raise por cima de limp nao
               -- conta, e o limpador ja abriu o pote. `facing_bet = 0` sozinho nao pega isso,
-              -- porque o limp nao aumenta o custo de entrar. Media: 41,7% -> alvo 45,37%.
-              AND NOT COALESCE(d.facing_limp, FALSE)
+              -- porque o limp nao aumenta o custo de entrar.
+              AND COALESCE(d.facing_limp, 0) = 0
         """), tp).fetchone()
 
         # ── Open Limp%: preflop calls without a raise in front (non-BB) ────────

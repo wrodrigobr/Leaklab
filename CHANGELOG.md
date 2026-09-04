@@ -5,6 +5,52 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## O 8o defeito do HUD, e dois que quase foram para producao com a suite verde (04/09)
+
+### Corrigido
+- **3Bet contava oportunidade de 4bet como se fosse de 3bet.** O denominador era
+  `facing_bet > 0` ("enfrentou qualquer aposta"), e isso inclui enfrentar um 3bet — que e
+  oportunidade de **4bet**. O PokerTracker separa as duas (tem coluna `4Bet+ PF` propria). A
+  3a aposta da mao e o 3bet, entao a oportunidade e enfrentar **exatamente um** raise: a
+  mesma contagem que o Fold to 3Bet ja usava, com os mesmos campos gravados.
+
+  **O que denunciou foi o padrao por dialeto**: erro de 0,00pp no PokerStars, 0,74 no
+  CoinPoker e 2,02 no ACR. Divergencia de definicao seria uniforme; crescer por site apontava
+  outra coisa. Soma dos erros absolutos nos 5 recortes: 4,76 -> 1,44. O "exato" que o
+  PokerStars marcava antes (9,60 vs 9,60) era coincidencia de dois erros se cancelando —
+  tratar aquilo como prova de correcao teria escondido o defeito.
+
+### Dois defeitos que a suite INTEIRA (2714 testes) nao viu
+Ambos passariam verdes e derrubariam o HUD de **todos** os usuarios em producao, porque toda
+a suite roda em SQLite e os dois sao coisas que o SQLite aceita e o Postgres recusa:
+
+- **`hero_was_aggressor` e `facing_limp` sao INTEGER, nao boolean** (so `is_3bet` e boolean de
+  verdade, apesar dos nomes). O PG recusa inteiro em contexto booleano: 3 das 4 expressoes que
+  eu tinha escrito quebravam. Agora a comparacao e explicita (`COALESCE(col, 0) <> 0`).
+- **Um `%` dentro do SQL, ate em comentario `--`**: escrevi "Media: 41,7% -> alvo 45,37%" como
+  comentario explicativo e o psycopg2 leu como marcador de parametro, matando
+  `get_player_stats` e `/metrics/player-stats` com `tuple index out of range`.
+
+**O guarda ja existia**: `tests/test_postgres_smoke.py` cobre `get_player_stats` nominalmente
+e o cabecalho dele diz "a lacuna que deixou 7 bugs SQLite-PG chegarem em prod". Ele so nunca
+rodava porque vivia no CI, morto desde 31/07. **Terceira vez no mesmo dia** que a resposta e
+"o guarda existia e ninguem o executava". A maquina do dono ja tem PostgreSQL 17 rodando, e o
+smoke passou a fazer parte do ritual de deploy (199 checks, ~2min). Detalhe em
+`project_ci_billing_bloqueado`.
+
+### Validado no acervo REAL, sem deploy
+Os 280 torneios do Rullian (26.852 maos) importados num SQLite descartavel com o codigo novo,
+comparados com o print do PT4 dele: **VPIP 24,3 vs 24,34 · PFR 17,3 vs 17,59 · 3Bet 7,8 vs
+7,92 · WTSD 40,2 vs 40,35 · W$SD 54,6 vs 54,68**. O W$SD estava em 69,6 antes.
+
+Duas armadilhas na propria validacao: (1) na 1a tentativa 250 dos 280 falharam com HTTP 429
+(rate limit de /analyze) e a tabela mostrou percentuais calculados sobre 10% do acervo — so
+nao engoli porque o comparador poe a contagem de maos na 1a linha e ela gritou FORA; (2) dois
+indicadores "fora" eram erro meu de leitura do print: peguei `Fold to Steal` achando que era
+`Fold to PF 3Bet`, e `4Bet+ Ratio` achando que era `Total AF`.
+
+---
+
 ## O 7o defeito do HUD: pote levado sem oposicao virava showdown ganho (04/09)
 
 ### Corrigido
