@@ -65,11 +65,31 @@ Linhas de assento ficaram so com o numero; a linha TOTAL manteve a regua pintada
 visual passou a CARREGAR significado: onde ha trilho, ha veredito; onde nao ha, e descricao.
 De quebra a grade estreitou muito, o que ajuda o problema de rolagem horizontal.
 
-### A legenda errou DUAS vezes, e nenhum guarda acusou
-Ela prometia "faixa verde = referencia MTT" depois que a faixa saiu, e depois "o tracinho
-marca o seu numero" depois que o tracinho saiu. **Copy que descreve desenho removido e a
-versao que CHEGA AO JOGADOR do comentario desatualizado.** As duas foram pegas relendo, nao
-por teste: nao existe guarda que ligue a copy ao que o componente de fato renderiza.
+### A regua saiu do TOTAL tambem, e o card virou tabela
+O dono, com o print do celular: *"a linha de total tem que ser unica, ela esta empurrando as
+colunas pra ter uma largura muito grande. A referencia mtt ja tem no HUD"*. Na tela, so o VPIP
+cabia — o trilho da linha TOTAL dimensionava a largura de TODAS as colunas.
+
+E o argumento de produto e o que decide: a referencia MTT ja vive no card do HUD principal.
+Repeti-la aqui duplicava o veredito em duas superficies, que e como duas superficies passam a
+discordar. Agora o veredito tem UM lugar so.
+
+Coluna 3rem -> 2,4rem, bloco minimo 520px -> 400px, gap apertado: as tres medidas existiam
+para caber trilhos que sumiram. A linha TOTAL ficou marcada so pelo peso visual (cor
+primaria), como ANCORA de conferencia e nao como julgamento.
+
+### A legenda errou TRES vezes, e nenhum guarda acusou
+Prometeu "faixa verde = referencia MTT" depois que a faixa saiu; "o tracinho marca o seu
+numero" depois que o tracinho saiu; e "a referencia aparece na linha Total" depois que a regua
+saiu de la. **Copy que descreve desenho removido e a versao que CHEGA AO JOGADOR do comentario
+desatualizado.** As tres foram pegas relendo, nao por teste: nao existe guarda que ligue a copy
+ao que o componente de fato renderiza.
+
+Tres vezes na mesma tarde deixa de ser descuido e vira padrao. Retifico o que eu tinha dito
+sobre nao valer como padrao de auditoria: o defeito nao e "copy desatualizada" em abstrato, e
+**copy que descreve um ELEMENTO VISUAL especifico** (faixa, ponto, trilho, cor, coluna). Esse
+vocabulario e pequeno e enumeravel, entao o detector e viavel — procurar essas palavras na copy
+e exigir que o componente que a consome ainda contenha o elemento. Registrado como P7 no AY-9.
 
 ### Sobre o jogo do dono, com o ruido fora
 Dos 4 vermelhos, 3 eram acusacao falsa. Sobra o **SB com 50,4%** — real, e o maior da base

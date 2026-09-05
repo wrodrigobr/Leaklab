@@ -902,7 +902,7 @@
   "posProfile": {
     "title": "Profile by position",
     "tooltip": "How you play from EACH seat. The green band is the healthy MTT reference; the dot is you. Outside it is not automatically a mistake: it is where to look. Each seat only classifies what its own sample supports.",
-    "legend": "The grid shows your number in each seat without judging: the MTT reference applies to the whole game and appears in the Total row. Hover to compare a seat with your whole game.",
+    "legend": "Your number in each seat. The Total row is the main HUD number, weighted by each seat volume, not a simple average of the rows.",
     "hands": "{{n}} hands",
     "handsShort": "hands",
     "seat": "seat",
@@ -955,7 +955,6 @@
       ]
     },
     "total": "Total",
-    "totalHint": "The Total row is the same number as the main HUD, weighted by each seat volume. It is not a simple average of the rows.",
     "outsideGrid": "Total includes {{n}} hands in positions outside the 8 shown.",
     "yourGame": "Your whole game",
     "vsYourGame": "{{delta}}{{unit}} versus your whole game.",

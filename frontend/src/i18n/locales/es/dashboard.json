@@ -902,7 +902,7 @@
   "posProfile": {
     "title": "Perfil por posición",
     "tooltip": "Cómo jugás desde CADA asiento. La franja verde es la referencia sana de MTT; el punto sos vos. Fuera de ella no es error automático: es donde vale mirar. Cada asiento solo clasifica lo que su propia muestra sostiene.",
-    "legend": "La grilla muestra tu número en cada asiento sin juzgar: la referencia MTT vale para todo el juego y aparece en la fila Total. Pasa el mouse para comparar el asiento con todo tu juego.",
+    "legend": "Tu número en cada asiento. La fila Total es la del HUD principal, ponderada por el volumen de cada asiento, no el promedio simple de las filas.",
     "hands": "{{n}} manos",
     "handsShort": "manos",
     "seat": "asiento",
@@ -955,7 +955,6 @@
       ]
     },
     "total": "Total",
-    "totalHint": "La fila Total es el mismo número del HUD principal, ponderado por el volumen de cada asiento. No es el promedio simple de las filas.",
     "outsideGrid": "El total incluye {{n}} manos en posiciones fuera de las 8 mostradas.",
     "yourGame": "Todo tu juego",
     "vsYourGame": "{{delta}}{{unit}} respecto a todo tu juego.",

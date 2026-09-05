@@ -4,7 +4,7 @@ import { Info, ChevronDown } from "lucide-react";
 import { HudTooltip } from "./HudTooltip";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-import type { PlayerStatFlag, PlayerStatsResponse, PositionProfileResponse, PositionStatCell } from "@/lib/api";
+import type { PlayerStatsResponse, PositionProfileResponse, PositionStatCell } from "@/lib/api";
 
 /**
  * V2PositionProfileCard — o perfil do jogador em CADA assento.
@@ -36,16 +36,6 @@ import type { PlayerStatFlag, PlayerStatsResponse, PositionProfileResponse, Posi
  * é ler a mão acontecendo.
  */
 
-/** Cor da banda. Mesma paleta do V2PositionCard, para as duas grades de posição falarem
- *  a mesma língua a três centímetros uma da outra. */
-const COR_BANDA: Record<string, string> = {
-  healthy: "#10b981",
-  below:   "#f59e0b",
-  above:   "#f59e0b",
-  /** desvio de mais de ~1,2 largura de banda deixa de ser ajuste fino e vira leak */
-  far:     "#ef4444",
-};
-
 /** Rótulo de cada coluna. Jargão de poker fica em INGLÊS nos 3 idiomas, por convenção do
  *  produto — é o que o `PlayerStatsCard` ao lado já faz. Criar chave de i18n para "VPIP"
  *  seria triplicar uma string que não se traduz. */
@@ -61,24 +51,6 @@ const ROTULO: Record<string, string> = {
   w_at_sd: "W$SD",
 };
 
-/** Escala de cada stat, para a régua ter um domínio fixo por coluna. Sem isto, cada célula
- *  desenharia a própria escala e a comparação entre assentos deixaria de valer. */
-const ESCALA: Record<string, [number, number]> = {
-  vpip:         [0, 60],
-  pfr:          [0, 45],
-  three_bet:    [0, 20],
-  fold_to_3bet: [0, 100],
-  af:           [0, 8],
-  cbet_pct:     [0, 100],
-  steal_pct:    [0, 70],
-  wtsd:         [0, 60],
-  w_at_sd:      [0, 100],
-};
-
-function pct(v: number, [min, max]: [number, number]): number {
-  return Math.max(0, Math.min(100, ((v - min) / (max - min)) * 100));
-}
-
 /**
  * Uma célula. Só o EXCESSO ganha cor.
  *
@@ -87,85 +59,15 @@ function pct(v: number, [min, max]: [number, number]): number {
  * olho encontra o vazamento sem varrer célula por célula — e, ao mesmo tempo, a escala segue
  * absoluta, então dá para ver que um VPIP está no TOPO da faixa e não apenas dentro dela.
  */
-/** A celula da linha TOTAL. **Esta** mantem a regua pintada, porque `STAT_REFERENCES` e a
- *  referencia do JOGO INTEIRO e e exatamente aqui que ela se aplica. E a mesma banda que o
- *  HUD principal ja usa, entao as duas superficies nao podem discordar. */
-function CelulaTotal({ chave, valor, marcador, maos }: {
-  chave: string; valor: number; marcador: PlayerStatFlag; maos: number;
-}) {
-  const { t } = useTranslation("dashboard");
-  const escala = ESCALA[chave] ?? [0, 100];
-  const faixa = marcador.healthy ?? [0, 0];
-  const dentro = marcador.band === "healthy";
-  const baixa = marcador.band === "low_sample";
-  const acima = marcador.band === "above";
-  const larg = Math.max(faixa[1] - faixa[0], 0.1);
-  const d = dentro || baixa ? 0
-    : acima ? (valor - faixa[1]) / larg : (faixa[0] - valor) / larg;
-  const cor = baixa ? "#64748B" : dentro ? COR_BANDA.healthy : (d > 1.2 ? COR_BANDA.far : COR_BANDA.out);
-
-  const ini = pct(faixa[0], escala);
-  const fim = pct(faixa[1], escala);
-  const marca = pct(valor, escala);
-  const excInicio = acima ? fim : marca;
-  const excFim = acima ? marca : ini;
-  const unidade = chave === "af" ? "x" : "%";
-
-  return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <div className="flex flex-col gap-1 cursor-default">
-          <span className="font-mono text-[11px] font-bold tabular-nums leading-none" style={{ color: cor }}>
-            {valor}
-          </span>
-          <div className="relative h-1.5 w-full overflow-hidden rounded-full bg-muted/15">
-            <div className="absolute inset-y-0 rounded-full bg-emerald-500/25"
-                 style={{ left: `${ini}%`, width: `${Math.max(3, fim - ini)}%`, opacity: baixa ? 0.4 : 1 }} />
-            {!baixa && !dentro && (
-              <div className="absolute inset-y-0 rounded-full"
-                   style={{ left: `${excInicio}%`, width: `${Math.max(2, excFim - excInicio)}%`,
-                            backgroundColor: cor, opacity: 0.85 }} />
-            )}
-            <div className="absolute top-1/2 size-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full ring-1 ring-background"
-                 style={{ left: `${marca}%`, backgroundColor: cor }} />
-          </div>
-        </div>
-      </TooltipTrigger>
-      <TooltipContent side="top" className="w-[210px] p-3">
-        <div className="mb-2 font-mono text-[9px] uppercase tracking-widest text-primary">
-          {ROTULO[chave] ?? chave} · {t("posProfile.total")}
-        </div>
-        <div className="flex items-baseline justify-between gap-3 py-0.5">
-          <span className="text-[11px] text-muted-foreground">{t("posProfile.you")}</span>
-          <span className="font-mono text-xs font-bold tabular-nums" style={{ color: cor }}>{valor}{unidade}</span>
-        </div>
-        <div className="flex items-baseline justify-between gap-3 py-0.5">
-          <span className="text-[11px] text-muted-foreground">{t("posProfile.recommended")}</span>
-          <span className="font-mono text-xs font-bold tabular-nums text-emerald-500">
-            {faixa[0]}–{faixa[1]}{unidade}
-          </span>
-        </div>
-        <div className="my-1.5 h-px bg-border" />
-        <p className="text-[11px] leading-snug text-muted-foreground">
-          {baixa ? t("posProfile.lowSampleLong")
-                 : dentro ? t("posProfile.inBand")
-                 : t(`posProfile.read.${chave}.${acima ? 1 : 0}`, { defaultValue: "" })}
-        </p>
-        <p className="mt-1.5 font-mono text-[9px] text-muted-foreground/70">
-          {t("posProfile.handsHere", { n: maos })}
-        </p>
-      </TooltipContent>
-    </Tooltip>
-  );
-}
-
-function Celula({ chave, cel, posicao, maos, ancora }: {
+function Celula({ chave, cel, posicao, maos, ancora, destaque }: {
   chave: string;
   cel: PositionStatCell;
   posicao: string;
   maos: number;
   /** O valor do jogador no JOGO TODO. Ancora honesta: nao e regua externa, e ele mesmo. */
   ancora?: number | null;
+  /** A linha TOTAL. So muda o peso visual: ela e a ANCORA de conferencia, nao um veredito. */
+  destaque?: boolean;
 }) {
   const { t } = useTranslation("dashboard");
   const baixa = cel.band === "low_sample";
@@ -185,7 +87,7 @@ function Celula({ chave, cel, posicao, maos, ancora }: {
         <span
           className={cn(
             "cursor-default font-mono text-[11px] font-bold tabular-nums leading-none",
-            baixa ? "text-muted-foreground/50" : "text-foreground"
+            baixa ? "text-muted-foreground/50" : destaque ? "text-primary" : "text-foreground"
           )}
         >
           {baixa ? "—" : cel.value}
@@ -273,12 +175,11 @@ export function V2PositionProfileCard({
 
   const totalCels = useMemo(() => {
     if (!geral) return null;
-    const out: Record<string, { valor: number; marcador: PlayerStatFlag }> = {};
+    const out: Record<string, PositionStatCell> = {};
     for (const k of colunas) {
       const v = (geral as unknown as Record<string, number | null>)[k];
-      const f = geral.flags?.[k];
-      if (v == null || !f) continue;
-      out[k] = { valor: v, marcador: f };
+      if (v == null) continue;
+      out[k] = { value: v, band: "ok" };
     }
     return Object.keys(out).length ? out : null;
   }, [geral, colunas]);
@@ -318,17 +219,16 @@ export function V2PositionProfileCard({
       {/* A legenda vem ANTES da grade: sem ela o verde no meio da régua é decoração. */}
       <p className="mb-3 font-mono text-[9px] leading-snug text-muted-foreground/70">
         {t("posProfile.legend")}
-        {geral ? <> {t("posProfile.totalHint")}</> : null}
       </p>
 
       {/* overflow-x próprio: a grade é larga e o corpo da página não pode rolar de lado */}
       {/* UM provider para a grade toda: um por célula seriam dezenas de contextos. */}
       <TooltipProvider delayDuration={200}>
       <div className="overflow-x-auto -mx-1 px-1">
-        <div className="min-w-[520px]">
+        <div className="min-w-[400px]">
           <div
-            className="grid items-end gap-x-3 pb-1.5 mb-1.5 border-b border-border/50"
-            style={{ gridTemplateColumns: `3.25rem 2.75rem repeat(${colunas.length}, minmax(3rem, 1fr))` }}
+            className="grid items-end gap-x-2 pb-1.5 mb-1.5 border-b border-border/50"
+            style={{ gridTemplateColumns: `3.25rem 2.75rem repeat(${colunas.length}, minmax(2.4rem, 1fr))` }}
           >
             <span className="font-mono text-[9px] uppercase tracking-wider text-muted-foreground/60">
               {t("posProfile.seat")}
@@ -347,8 +247,8 @@ export function V2PositionProfileCard({
             {linhas.map((linha) => (
               <div
                 key={linha.position}
-                className="grid items-center gap-x-3"
-                style={{ gridTemplateColumns: `3.25rem 2.75rem repeat(${colunas.length}, minmax(3rem, 1fr))` }}
+                className="grid items-center gap-x-2"
+                style={{ gridTemplateColumns: `3.25rem 2.75rem repeat(${colunas.length}, minmax(2.4rem, 1fr))` }}
               >
                 <span className="font-mono text-[10px] font-bold uppercase text-foreground">
                   {linha.position}
@@ -374,8 +274,8 @@ export function V2PositionProfileCard({
               volume, nao media das linhas (ver `totalCels`). */}
           {totalCels && (
             <div
-              className="mt-2.5 grid items-center gap-x-3 border-t border-border/60 pt-2.5"
-              style={{ gridTemplateColumns: `3.25rem 2.75rem repeat(${colunas.length}, minmax(3rem, 1fr))` }}
+              className="mt-2.5 grid items-center gap-x-2 border-t border-border/60 pt-2.5"
+              style={{ gridTemplateColumns: `3.25rem 2.75rem repeat(${colunas.length}, minmax(2.4rem, 1fr))` }}
             >
               <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-primary">
                 {t("posProfile.total")}
@@ -385,12 +285,13 @@ export function V2PositionProfileCard({
               </span>
               {colunas.map((k) =>
                 totalCels[k] ? (
-                  <CelulaTotal
+                  <Celula
                     key={k}
                     chave={k}
-                    valor={totalCels[k].valor}
-                    marcador={totalCels[k].marcador}
+                    cel={totalCels[k]}
+                    posicao={t("posProfile.total")}
                     maos={geral?.total_hands ?? 0}
+                    destaque
                   />
                 ) : (
                   <span key={k} className="font-mono text-[11px] text-muted-foreground/25">—</span>
