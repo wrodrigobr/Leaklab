@@ -76,6 +76,7 @@ SUITES = {
                   'test_grade_por_posicao.py',
                   'test_rebaixamento_de_plano.py',
                   'test_suite_completa.py',
+                  'test_sentinela_do_historico.py',
                   'test_ritual_da_sessao.py',
                   'test_equity_flop_turn.py',
                   'test_tendencia_do_leak.py',

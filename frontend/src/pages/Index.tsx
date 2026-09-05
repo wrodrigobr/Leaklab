@@ -83,7 +83,13 @@ const Index = () => {
   // melhorou ao longo dos meses carregava o passado ruim pra sempre nos números. `0` = botão
   // "Histórico", explícito (não é mais o default silencioso). `null` só existe transitoriamente
   // (nunca setado pela UI) e cai no fallback de 90 dias do backend.
-  const [volumeLimit, setVolumeLimit]     = useState<number | null>(50);
+  // HISTORICO por padrao (05/09, decisao do dono). `0` e o sentinela de acervo inteiro, o
+  // mesmo que `_build_tournament_filter` usa — nao e "sem filtro", e uma escolha explicita.
+  // Antes abria em "ultimos 50": o dashboard descrevia uma fatia recente como se fosse o
+  // jogador, e quem sobe acervo antigo (o perfil de quem chega novo) via 50 torneios de um
+  // acervo de centenas sem perceber. Trocar exigiu ensinar o sentinela ao
+  // `get_evolution_metrics`, que caia em `LIMIT 0` e devolvia o bankroll VAZIO.
+  const [volumeLimit, setVolumeLimit]     = useState<number | null>(0);
 
   // A marca d'água é por USUÁRIO (não por detecção), então só precisa reler quando o usuário muda.
   useEffect(() => { setDriftSeen(readDriftSeen(user?.user_id)); }, [user?.user_id]);

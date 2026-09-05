@@ -5,6 +5,42 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## O dashboard abre em HISTORICO, e o sentinela que faltava numa das duas janelas (05/09)
+
+Decisao do dono: *"vamos manter o filtro do dash por padrao o historico, nao os ultimos
+torneios"*. Antes de trocar, medi como cada card se comporta com `last_n=0`:
+
+    funcao                     last_n=None   last_n=50   last_n=0
+    get_evolution_metrics      78            50          0        <-- VAZIO
+    get_player_stats           3969          2041        3969
+    get_gto_leak_ranking       10            10          10
+    get_leak_roi_impact        10            10          10
+    get_ev_leaks               10            10          10
+    get_ev_summary             12            12          12
+
+**Bug vivo, independente da troca:** quem escolhesse "Historico" hoje via o grafico de evolucao
+do bankroll VAZIO enquanto todos os outros cards traziam o acervo inteiro. Se eu tivesse
+trocado o default sem medir, TODO usuario abriria o dashboard com o bankroll zerado.
+
+A causa e a regra 5 pela quarta vez em dois dias: a janela de tempo tem duas implementacoes —
+`_build_tournament_filter` e a consulta propria do `get_evolution_metrics` — e o sentinela
+`last_n=0` ("historico genuino") so foi ensinado a uma delas. Como `0` nao e `None`, ele caia
+no ramo de VOLUME e virava `LIMIT 0`.
+
+**O guarda e a invariante, nao o caso:** historico nunca pode devolver MENOS que a janela
+padrao, em NENHUMA funcao que aceite `last_n`. Funcao nova que esqueca o sentinela cai ali sem
+ninguem precisar lembrar. Com duas contraprovas: a semeadura tem torneios de 2024 que a janela
+curta PRECISA excluir (senao a comparacao nao mede nada), e `last_n=N` tem de continuar
+cortando (senao o "conserto" teria sido desligar o recurso). Os dois sentinelas foram quebrados
+de proposito, um a um, e os dois acusaram.
+
+Sobre a escolha em si: abrir em "ultimos 50" fazia o dashboard descrever uma fatia recente como
+se fosse o jogador. Quem sobe acervo antigo — o perfil de quem chega novo — via 50 torneios de
+um acervo de centenas sem perceber. Com a faixa de escopo agora declarando o recorte em frase,
+o custo de abrir no historico e zero: o jogador LE o que esta vendo.
+
+---
+
 ## Nenhum veredito sem regua: a grade por assento para de acusar (05/09)
 
 ### O que o dono viu

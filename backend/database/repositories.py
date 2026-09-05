@@ -1185,7 +1185,16 @@ def get_evolution_metrics(user_id: int, days: int = 90, last_n: int | None = Non
     aparecia). Só o /history/evolution passa True. Os OUTROS consumidores (study plan, coach, presença de
     dados) mantêm imported_at (default) — senão um torneio jogado há >90 dias, importado agora, some do
     check de presença e quebra o plano de estudo."""
-    if last_n is not None:
+    if last_n == 0:
+        # `last_n=0` e o sentinela de HISTORICO GENUINO, o mesmo que `_build_tournament_filter`
+        # usa. Aqui ele nao existia, e como 0 nao e None caia no ramo de baixo virando
+        # `LIMIT 0` — **zero linhas**. Medido em 05/09: com "Historico" no filtro do dashboard,
+        # o grafico de evolucao do bankroll vinha VAZIO enquanto todos os outros cards traziam
+        # o acervo inteiro. Regra 5: a janela tem duas implementacoes, e o sentinela so foi
+        # ensinado a uma delas.
+        where = "user_id = ?"
+        params = (user_id,)
+    elif last_n is not None:
         _ord = "COALESCE(played_at, imported_at)" if by_played else "imported_at"
         where = f"id IN (SELECT id FROM tournaments WHERE user_id = ? ORDER BY {_ord} DESC LIMIT ?)"
         params = (user_id, last_n)
