@@ -257,7 +257,10 @@
     "last20": "Últimos 20",
     "last50": "Últimos 50",
     "last100": "Últimos 100",
-    "all": "Histórico"
+    "all": "Histórico",
+    "scopeLastN": "Estos números son de tus últimos {{n}} torneos",
+    "scopeAll": "Estos números son de todo tu historial, {{tourneys}} torneos",
+    "sample": "{{hands}} manos"
   },
   "form": {
     "title": "Forma Reciente",
@@ -950,6 +953,9 @@
         "ganás menos showdowns que la referencia",
         "ganás más showdowns que la referencia"
       ]
-    }
+    },
+    "total": "Total",
+    "totalHint": "La fila Total es el mismo número del HUD principal, ponderado por el volumen de cada asiento. No es el promedio simple de las filas.",
+    "outsideGrid": "El total incluye {{n}} manos en posiciones fuera de las 8 mostradas."
   }
 }

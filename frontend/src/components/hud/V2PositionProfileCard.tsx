@@ -4,7 +4,7 @@ import { Info, ChevronDown } from "lucide-react";
 import { HudTooltip } from "./HudTooltip";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-import type { PositionProfileResponse, PositionStatCell } from "@/lib/api";
+import type { PlayerStatsResponse, PositionProfileResponse, PositionStatCell } from "@/lib/api";
 
 /**
  * V2PositionProfileCard — o perfil do jogador em CADA assento.
@@ -182,7 +182,18 @@ function Celula({ chave, cel, posicao, maos }: {
   );
 }
 
-export function V2PositionProfileCard({ data }: { data?: PositionProfileResponse | null }) {
+export function V2PositionProfileCard({
+  data,
+  geral,
+}: {
+  data?: PositionProfileResponse | null;
+  /** O payload do HUD PRINCIPAL, para a linha TOTAL. Deliberadamente NAO recalculado aqui:
+   *  a linha existe para o jogador conferir que a grade reconcilia com o numero grande da
+   *  tela, e reconstruir a conta abriria a porta para as duas discordarem — foi exatamente
+   *  isso (duas fontes para a mesma estatistica) que quebrou o HUD do torneio em 05/09.
+   *  Vindo do mesmo payload, elas nao TEM como divergir. */
+  geral?: PlayerStatsResponse | null;
+}) {
   const { t } = useTranslation("dashboard");
   const [aberto, setAberto] = useState(false);
 
@@ -200,6 +211,30 @@ export function V2PositionProfileCard({ data }: { data?: PositionProfileResponse
 
   const linhas = data?.positions ?? [];
   const colunas = aberto ? [...colunasBase, ...colunasExtra] : [...colunasBase, ...colunasExtra.slice(0, 3)];
+
+  /** Celulas do TOTAL, montadas do payload do HUD principal (valor + a flag que ele ja
+   *  traz). Nao e a MEDIA das linhas: media simples de percentual entre assentos de volume
+   *  diferente da outro numero, e ai a linha mentiria justamente onde deveria provar
+   *  coerencia. E o agregado ponderado, que e o que o HUD grande mostra. */
+  /** Maos que o backend contou mas que nao cairam em nenhum dos 8 assentos da grade
+   *  (rotulos MP/MP1/MP2/LJ de alguns historicos). Diferenca declarada, nunca escondida. */
+  const forasDaGrade = useMemo(() => {
+    if (!geral?.total_hands || linhas.length === 0) return 0;
+    const soma = linhas.reduce((acc, l) => acc + (l.hands || 0), 0);
+    return Math.max(0, geral.total_hands - soma);
+  }, [geral, linhas]);
+
+  const totalCels = useMemo(() => {
+    if (!geral) return null;
+    const out: Record<string, PositionStatCell> = {};
+    for (const k of colunas) {
+      const v = (geral as unknown as Record<string, number | null>)[k];
+      const f = geral.flags?.[k];
+      if (v == null || !f) continue;
+      out[k] = { value: v, band: f.band, flag: f.flag, healthy: (f.healthy ?? [0, 0]) as [number, number] };
+    }
+    return Object.keys(out).length ? out : null;
+  }, [geral, colunas]);
   const escondidas = colunasExtra.length - Math.min(colunasExtra.length, 3);
 
   if (!data || linhas.length === 0) {
@@ -236,6 +271,7 @@ export function V2PositionProfileCard({ data }: { data?: PositionProfileResponse
       {/* A legenda vem ANTES da grade: sem ela o verde no meio da régua é decoração. */}
       <p className="mb-3 font-mono text-[9px] leading-snug text-muted-foreground/70">
         {t("posProfile.legend")}
+        {geral ? <> {t("posProfile.totalHint")}</> : null}
       </p>
 
       {/* overflow-x próprio: a grade é larga e o corpo da página não pode rolar de lado */}
@@ -283,9 +319,49 @@ export function V2PositionProfileCard({ data }: { data?: PositionProfileResponse
               </div>
             ))}
           </div>
+
+          {/* TOTAL: o mesmo numero do HUD principal, na mesma regua. Serve de conferencia
+              — o jogador ve a grade fechar com o numero grande da tela. Ponderado por
+              volume, nao media das linhas (ver `totalCels`). */}
+          {totalCels && (
+            <div
+              className="mt-2.5 grid items-center gap-x-3 border-t border-border/60 pt-2.5"
+              style={{ gridTemplateColumns: `3.25rem 2.75rem repeat(${colunas.length}, minmax(3rem, 1fr))` }}
+            >
+              <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-primary">
+                {t("posProfile.total")}
+              </span>
+              <span className="font-mono text-[9px] text-muted-foreground tabular-nums text-right">
+                {geral?.total_hands ?? ""}
+              </span>
+              {colunas.map((k) =>
+                totalCels[k] ? (
+                  <Celula
+                    key={k}
+                    chave={k}
+                    cel={totalCels[k]}
+                    posicao={t("posProfile.total")}
+                    maos={geral?.total_hands ?? 0}
+                  />
+                ) : (
+                  <span key={k} className="font-mono text-[11px] text-muted-foreground/25">—</span>
+                )
+              )}
+            </div>
+          )}
         </div>
       </div>
       </TooltipProvider>
+
+      {/* A grade tem 8 assentos; o parser tambem emite MP/MP1/MP2/LJ em alguns historicos, e
+          essas maos nao entram em linha nenhuma. Medido em 05/09: 13 de 26.588 no acervo do
+          Rullian (0,05%). Some CALADO — e ausencia muda e o pior tipo, porque o jogador soma
+          os assentos, nao fecha com o Total, e nao tem como saber por que. Declarada aqui. */}
+      {forasDaGrade > 0 && (
+        <p className="mt-2 font-mono text-[9px] text-muted-foreground/70">
+          {t("posProfile.outsideGrid", { n: forasDaGrade.toLocaleString() })}
+        </p>
+      )}
 
       {escondidas > 0 && (
         <button

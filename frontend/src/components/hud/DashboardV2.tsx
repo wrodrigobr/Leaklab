@@ -107,40 +107,71 @@ export function DashboardV2({ onUpload, evSummary, volumeLimit = 50, onVolumeLim
       <HudHeader onUpload={onUpload} />
       <main className="mx-auto max-w-[1440px] space-y-6 px-4 pt-6 pb-28 md:px-8 lg:pb-8 animate-fade-in">
 
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-widest-2 text-primary">
-            <span className="size-1.5 rounded-full bg-primary animate-pulse" aria-hidden />
-            {t("v2.eyebrow")}
-          </div>
-          {hasData && (
-            <div className="flex items-center gap-2">
-              <span className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground/60">
-                {t("volumeFilter.label")}
-              </span>
-              <div className="flex items-center gap-px rounded-md ring-1 ring-border overflow-hidden">
-                {([20, 50, 100, 0] as number[]).map((val) => {
-                  const label = val === 0 ? t("volumeFilter.all")
-                    : val === 20 ? t("volumeFilter.last20")
-                    : val === 50 ? t("volumeFilter.last50")
-                    : t("volumeFilter.last100");
-                  return (
-                    <button
-                      key={val}
-                      onClick={() => onVolumeLimitChange(val)}
-                      className={`px-2 py-1 font-mono text-[9px] uppercase tracking-widest transition-colors ${
-                        volumeLimit === val
-                          ? "bg-primary/20 text-primary"
-                          : "text-muted-foreground hover:text-foreground hover:bg-muted/30"
-                      }`}
-                    >
-                      {label}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          )}
+        <div className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-widest-2 text-primary">
+          <span className="size-1.5 rounded-full bg-primary animate-pulse" aria-hidden />
+          {t("v2.eyebrow")}
         </div>
+
+        {/* ── Escopo dos dados (05/09) ──────────────────────────────────────────────
+            Achado do dono: "este filtro esta muito escondido, temos que pensar uma
+            forma de ficar mais evidente para o jogador ver que os dados sao com base
+            neste filtro". Estava em 9px mono a 60% de opacidade, no canto OPOSTO ao
+            conteudo que ele rege, e nenhum card dizia de onde vinham os numeros.
+
+            O conserto nao e aumentar o widget: e trocar o widget por uma AFIRMACAO.
+            A frase diz o escopo em linguagem corrida ("estes numeros sao dos seus
+            ultimos 50 torneios") e declara a AMOSTRA junto, que e a informacao que
+            faltava — filtro sem amostra ainda deixa o jogador sem saber sobre quantas
+            maos esta olhando. O controle fica ao lado, como ajuste da frase.
+
+            Faixa propria, largura inteira, logo abaixo do eyebrow: o escopo vale para
+            a pagina toda, entao ele nao pode morar num canto. */}
+        {hasData && (
+          <div
+            data-tour="volume"
+            className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2
+                       rounded-lg border border-primary/25 bg-primary/[0.06] px-4 py-2.5"
+          >
+            <p className="text-[13px] leading-snug text-foreground">
+              {volumeLimit
+                ? t("volumeFilter.scopeLastN", { n: volumeLimit })
+                : t("volumeFilter.scopeAll", { tourneys: (kpis?.totalEvents ?? 0).toLocaleString() })}
+              {!!kpis?.totalHands && (
+                <span className="text-muted-foreground">
+                  {" · "}
+                  {t("volumeFilter.sample", { hands: kpis.totalHands.toLocaleString() })}
+                </span>
+              )}
+            </p>
+            <div
+              role="group"
+              aria-label={t("volumeFilter.label")}
+              className="flex items-center gap-px overflow-hidden rounded-md bg-background/50 ring-1 ring-border"
+            >
+              {([20, 50, 100, 0] as number[]).map((val) => {
+                const label = val === 0 ? t("volumeFilter.all")
+                  : val === 20 ? t("volumeFilter.last20")
+                  : val === 50 ? t("volumeFilter.last50")
+                  : t("volumeFilter.last100");
+                const ativo = volumeLimit === val;
+                return (
+                  <button
+                    key={val}
+                    onClick={() => onVolumeLimitChange(val)}
+                    aria-pressed={ativo}
+                    className={`px-2.5 py-1.5 font-mono text-[10px] uppercase tracking-widest transition-colors ${
+                      ativo
+                        ? "bg-primary text-primary-foreground font-bold"
+                        : "text-muted-foreground hover:bg-muted/40 hover:text-foreground"
+                    }`}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {showEmpty ? (
           <EmptyDashboard onComplete={onUpload} />
@@ -361,10 +392,13 @@ export function DashboardV2({ onUpload, evSummary, volumeLimit = 50, onVolumeLim
             {/* A grade de PERFIL fica colada na de ALINHAMENTO de proposito: uma diz de
                 onde o jogador erra mais, a outra qual e o perfil dele ali. Perguntas
                 vizinhas, respostas vizinhas. */}
-            <div className="lg:col-span-12">
+            {/* col-span-full, nao lg:col-span-12: a grade e larga em QUALQUER largura, e
+                fora do breakpoint lg ela dividia a linha com outro card e forcava rolagem
+                horizontal (achado do dono, 05/09). Linha inteira sempre. */}
+            <div className="col-span-full">
               {positionProfileLocked
                 ? <ProLockCard feature={t("posProfile.title")} v2 />
-                : <V2PositionProfileCard data={positionProfile} />}
+                : <V2PositionProfileCard data={positionProfile} geral={playerStats} />}
             </div>
             <div className="lg:col-span-6"><V2BankrollCard data={evolution} /></div>
             {CARD_ORDER.map((id) => {

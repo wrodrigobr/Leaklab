@@ -12,6 +12,37 @@ import sys, os, subprocess, time, argparse
 sys.path.insert(0, os.path.dirname(__file__))
 
 SUITES = {
+    # ── Recuperados em 05/09 ────────────────────────────────────────────────────────
+    # 30 dos 269 arquivos de teste NAO estavam em lista nenhuma: nunca rodavam, e a
+    # suite anunciava "zero regressoes" com 11% dos arquivos de fora. Destes, 24
+    # estavam VERDES — cobertura pronta, parada. O guarda em `test_suite_completa.py`
+    # existe para o buraco nao voltar: arquivo novo tem de estar numa suite ou
+    # DECLARADO em FORA_DA_SUITE com motivo.
+    'recuperados': [
+        'test_acr_replay.py',
+        'test_api.py',
+        'test_bb_iso_limp.py',
+        'test_best_action_congelado.py',
+        'test_email_verification.py',
+        'test_ev_insumos_canonicos.py',
+        'test_facing_allin_display.py',
+        'test_feature_usage.py',
+        'test_freemium_training.py',
+        'test_gg_blinds_thousands.py',
+        'test_gto_insert_guard.py',
+        'test_label_coherence_audit.py',
+        'test_label_reconcile_phase2.py',
+        'test_no_fora_de_escala.py',
+        'test_no_vazio_guard.py',
+        'test_password_reset.py',
+        'test_pote_implausivel.py',
+        'test_preflop_heuristic_audit.py',
+        'test_profile_save.py',
+        'test_raise_equivale_jam.py',
+        'test_reanalyze_scoping.py',
+        'test_training_league.py',
+        'test_winback.py',
+    ],
     'engine':    ['test_decision_engine.py', 'test_pote_do_solve.py', 'test_acusacao_precisa_de_base.py', 'test_coerencia_da_recomendacao.py', 'test_equity_vs_random_nao_condena_fold.py', 'test_procedencia_da_camada_viva.py', 'test_recusa_de_gto_declara_motivo.py', 'test_severidade_sem_custo.py', 'test_carta_rasa_3_a_7bb.py', 'test_procedencia_do_veredito.py', 'test_evaluators.py', 'test_pipeline.py',
                   'test_draw_detector.py', 'test_backdoor_so_no_flop.py', 'test_postflop_evaluator.py', 'test_mtt_context.py',
                   'test_preflop_gto_quality.py', 'test_recent_regressions.py', 'test_icm.py',
@@ -42,6 +73,9 @@ SUITES = {
                   'test_desafio_gabarito_vetado.py',
                   'test_mao_compartilhada.py',
                   'test_hud_do_torneio.py',
+                  'test_grade_por_posicao.py',
+                  'test_rebaixamento_de_plano.py',
+                  'test_suite_completa.py',
                   'test_ritual_da_sessao.py',
                   'test_equity_flop_turn.py',
                   'test_tendencia_do_leak.py',
@@ -177,6 +211,25 @@ SUITES = {
 }
 
 BASE = os.path.dirname(__file__)
+
+#: Arquivos de teste que ficam FORA da suite, com o motivo. O guarda de
+#: `test_suite_completa.py` exige que todo `test_*.py` esteja numa suite OU aqui — sem
+#: terceira opcao, que era o estado ate 05/09 (30 arquivos simplesmente esquecidos).
+FORA_DA_SUITE = {
+    'test_postgres_smoke.py':
+        'roda contra Postgres real (DATABASE_URL); a suite e SQLite. Chamado a parte no deploy.',
+    'test_suite_completa.py':
+        'e o proprio guarda; roda com a suite mas nao se lista.',
+    # ── 4 arquivos VERMELHOS achados em 05/09, 11 testes falhando ──────────────────────
+    # Nao registrados ainda de proposito: registrar sem investigar deixaria a suite
+    # vermelha e treinaria todo mundo a ignora-la. Cada um pode ser bug real OU teste
+    # velho — o precedente de 28/08 teve os dois (3 e 3), e eu quase "consertei" o certo.
+    'test_daily_challenge.py':            '1 falha, nao investigada (AY-10)',
+    'test_engine_internal_consistency.py': '3 falhas, nao investigadas (AY-10)',
+    'test_stripe_integration.py':          '6 falhas, nao investigadas (AY-10)',
+    'test_upload_quota.py':                '1 falha, nao investigada (AY-10)',
+}
+
 
 def run_suite(name: str, files: list, fast: bool = False) -> tuple[int,int,list]:
     passed = failed = 0

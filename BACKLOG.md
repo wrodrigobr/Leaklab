@@ -143,6 +143,20 @@ mexa. Padrao que nao consegue produzir um caso positivo conhecido nao esta pront
 **O que NAO e escopo:** achar bug novo por leitura. Se o padrao nao tem detector automatizavel,
 ele sai da lista em vez de virar tarefa de inspecao manual.
 
+**[AY-10] OS 4 ARQUIVOS DE TESTE VERMELHOS** (achados em 05/09, 11 testes falhando)
+
+`test_daily_challenge.py` (1), `test_engine_internal_consistency.py` (3),
+`test_stripe_integration.py` (6), `test_upload_quota.py` (1). Estavam FORA da suite — nunca
+rodavam, entao ninguem viu. Declarados em `FORA_DA_SUITE` com motivo ate serem investigados.
+
+**Nao registrar antes de investigar:** suite vermelha treina todo mundo a ignora-la. E cada um
+pode ser bug REAL ou teste VELHO — no precedente de 28/08 foram tres de cada, e o conserto
+quase caiu no lado certo. Investigar um a um, decidir, e so entao registrar.
+
+O `test_stripe_integration.py` com 6 falhas merece prioridade dentro do item: e a area que
+acabou de produzir 10 rebaixamentos indevidos, e um guarda vermelho ali e o pior lugar
+possivel para ter cobertura que ninguem le.
+
 **DIVIDAS DE ARVORE (limpar, nao esquecer)**
 
 - `stash@{0}` "WIP analytics intencao vs trafego (04/09)" toca `api.ts` e `Index.tsx` — os MESMOS arquivos do perfil por posicao. **Vai conflitar.** Ao aplicar, o `playerStatsByPosition` precisa recuperar a flag `auto`.

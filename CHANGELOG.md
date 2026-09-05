@@ -5,6 +5,69 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## O escopo virou frase, e o assento que faltava na mesa (05/09)
+
+### O filtro que ninguem via
+Pedido do dono: *"este filtro esta muito escondido, temos que pensar uma forma de ficar mais
+evidente para o jogador ver que os dados sao com base neste filtro"*. Estava em **9px mono a
+60% de opacidade**, no canto OPOSTO ao conteudo que ele rege.
+
+O conserto nao foi aumentar o widget: foi **troca-lo por uma afirmacao**. Faixa de largura
+inteira logo abaixo do eyebrow, com o escopo em linguagem corrida e a AMOSTRA junto:
+
+> Estes numeros sao dos seus ultimos 50 torneios · 6.027 maos
+
+A amostra e a parte que faltava — filtro sem ela ainda deixa o jogador sem saber sobre
+quantas maos esta olhando. E o escopo vale para a pagina toda, entao nao pode morar num canto.
+
+### A linha TOTAL, e por que ela NAO recalcula
+Pedido do dono: *"faz sentido ter uma linha de totalizador embaixo igual PT4 pro usuario ver
+que na media cai no valor que e mostrado no HUD principal?"*.
+
+Ela vem do **payload do HUD principal**, nao de uma conta nova. Recalcular criaria uma
+SEGUNDA fonte para a mesma estatistica — o defeito que quebrou o HUD do torneio no mesmo dia.
+Vindo do mesmo payload, as duas nao TEM como divergir.
+
+E nao e a media das linhas: media simples de percentual entre assentos de volume diferente da
+outro numero, e ai a linha mentiria justamente onde deveria provar coerencia. Conferido com o
+acervo real: **9 de 9 stats caem dentro da faixa dos assentos**.
+
+### O assento que faltava
+Ao conferir a reconciliacao: 26.588 maos no total, 26.575 somando os assentos. Treze de
+diferenca. Eu escrevi uma nota declarando a sobra, e o dono cortou: *"Nao entendi. Estamos
+justificando ao inves de corrigir?"*. Estava.
+
+**A grade nasceu com OITO assentos e a mesa 9-max tem NOVE: faltava o LJ.** O
+`hand_state_builder` rotula a 4a acao de mesa cheia como `MP1`, que e o mesmo assento com
+outro nome — **334 decisoes em 70 torneios na base inteira, e `LJ` nao aparece uma unica vez.**
+
+O agravante: `gto_utils._POSITION_NORM` ja mapeia `MP1->LJ` desde que spots postflop nesses
+assentos eram REJEITADOS no insert do no. O motor traduzia; a consulta da grade comparava o
+rotulo cru. **Regra 5 pela terceira vez no dia** — e eu cai nela no mesmo dia em que escrevi
+o padrao P1 da auditoria dirigida.
+
+A nota continua no card, mas mudou de funcao: agora so dispara para rotulo que ninguem
+mapeou. Alarme, nao desculpa.
+
+### 30 arquivos de teste que nunca rodavam
+Ao registrar o teste novo, descobri que o `run_all_tests.py` tem lista FIXA e que **30 dos
+269 arquivos de teste nao estavam em lista nenhuma**. A suite anunciava "2719 ok, zero
+regressoes" com **11% dos arquivos de fora** — inclusive os 9 testes de rebaixamento de plano
+escritos horas antes, que nunca entraram na contagem citada naquele commit.
+
+Medidos um a um: **24 estavam VERDES**, cobertura pronta parada ha meses. 23 registrados
+(o `postgres_smoke` fica fora com motivo, roda contra Postgres). Suite: **2719 -> 2845**.
+
+Os outros 4 estao vermelhos (11 testes). **Nao registrados de proposito:** suite vermelha
+treina todo mundo a ignora-la, e cada um pode ser bug real OU teste velho — o precedente de
+28/08 teve tres de cada, e eu quase "consertei" o correto. Declarados em `FORA_DA_SUITE` com
+motivo, para o AY-10.
+
+`test_suite_completa.py` fecha o buraco: todo `test_*.py` tem de estar numa suite OU declarado
+com motivo, sem terceira opcao. Com contraprova que exige a varredura achar um arquivo forjado.
+
+---
+
 ## A SEGUNDA fonte das mesmas estatisticas (05/09)
 
 ### A pergunta que abriu isto

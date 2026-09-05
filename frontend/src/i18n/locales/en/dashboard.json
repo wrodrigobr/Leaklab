@@ -257,7 +257,10 @@
     "last20": "Last 20",
     "last50": "Last 50",
     "last100": "Last 100",
-    "all": "History"
+    "all": "History",
+    "scopeLastN": "These numbers come from your last {{n}} tournaments",
+    "scopeAll": "These numbers come from your full history, {{tourneys}} tournaments",
+    "sample": "{{hands}} hands"
   },
   "form": {
     "title": "Recent Form",
@@ -950,6 +953,9 @@
         "you win fewer showdowns than the reference",
         "you win more showdowns than the reference"
       ]
-    }
+    },
+    "total": "Total",
+    "totalHint": "The Total row is the same number as the main HUD, weighted by each seat volume. It is not a simple average of the rows.",
+    "outsideGrid": "Total includes {{n}} hands in positions outside the 8 shown."
   }
 }

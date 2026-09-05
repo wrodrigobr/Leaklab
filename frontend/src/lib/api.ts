@@ -994,8 +994,17 @@ export interface PositionProfileResponse {
   com_volume: string[];
 }
 
+/** Flag direcional do backend (fonte unica `STAT_REFERENCES`, gateada por amostra). */
+export interface PlayerStatFlag {
+  band: "below" | "healthy" | "above" | "low_sample";
+  flag: string | null;
+  healthy?: [number, number];
+}
+
 export interface PlayerStatsResponse {
   total_hands: number;
+  /** Por stat: banda + tendencia. O backend anexa em `/metrics/player-stats`. */
+  flags?: Record<string, PlayerStatFlag>;
   vpip: number | null;
   pfr: number | null;
   af: number | null;

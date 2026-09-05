@@ -8,6 +8,7 @@ import json
 import hashlib
 import logging
 from contextlib import contextmanager
+from leaklab.gto_utils import _POSITION_NORM
 from decimal import Decimal as _Decimal
 from typing import Optional, List, Dict
 
@@ -2261,7 +2262,28 @@ _SQL_ENFRENTA_OPEN = _SQL_RAISES_ANTES + " = 1"
 # (ranges, treino, PositionMap) — decisão do dono em 04/09 de manter o nosso em vez de adotar
 # o agrupamento do PokerTracker, que junta assentos (o "MP" dele = nosso UTG+UTG+1). Trocar
 # criaria duas linguagens dentro da mesma ferramenta.
-POSICOES_NA_ORDEM = ('UTG', 'UTG+1', 'UTG+2', 'HJ', 'CO', 'BTN', 'SB', 'BB')
+POSICOES_NA_ORDEM = ('UTG', 'UTG+1', 'UTG+2', 'LJ', 'HJ', 'CO', 'BTN', 'SB', 'BB')
+
+# ── O assento que faltava, e o mesmo assento com dois nomes (05/09) ─────────────────────
+#
+# A grade nasceu com OITO assentos e a mesa 9-max tem NOVE: faltava o LJ. O efeito não foi
+# uma linha vazia — foi pior. O `hand_state_builder` rotula a 4ª ação de mesa cheia como
+# `MP1`, e `decisions.position` guarda esse rótulo cru: **334 decisões em 70 torneios na base
+# inteira, e `LJ` não aparece uma única vez.** Sem o assento e sem a tradução, essas mãos não
+# caíam em linha nenhuma e sumiam CALADAS — o jogador somava os assentos, não fechava com o
+# total, e não tinha como saber por quê.
+#
+# `MP1→LJ` não é convenção nova: `gto_utils._POSITION_NORM` já normaliza assim desde que
+# spots postflop em MP1/MP2 eram REJEITADOS no insert do nó. O que faltava era esta consulta
+# usar a MESMA tradução em vez de comparar o rótulo cru — regra 5, terceira vez no dia.
+_ALIASES_DE_POSICAO: dict = {}
+for _cru, _canon in _POSITION_NORM.items():
+    _ALIASES_DE_POSICAO.setdefault(_canon, []).append(_cru)
+
+
+def rotulos_do_assento(pos: str) -> tuple:
+    """Todos os rótulos crus que representam este assento em `decisions.position`."""
+    return (pos,) + tuple(_ALIASES_DE_POSICAO.get(pos, ()))
 
 # O que a grade mostra em CADA célula, e o que só aparece quando o assento tem volume.
 # Medido em prod 04/09: com o corte de amostra atual, a grade completa do PT4 só funciona
@@ -2333,8 +2355,10 @@ def get_player_stats(user_id: int, days: int = 90, last_n: int | None = None,
     """
     tf, tp = _build_tournament_filter(user_id, days, last_n)
     if position:
-        tf = '(%s) AND d.position = ?' % tf
-        tp = tuple(tp) + (position,)
+        # Aceita os ALIASES do assento (MP1 é LJ). Comparar o rótulo cru perdia 334 decisões.
+        rotulos = rotulos_do_assento(position)
+        tf = '(%s) AND d.position IN (%s)' % (tf, ', '.join(['?'] * len(rotulos)))
+        tp = tuple(tp) + rotulos
     conn = get_conn()
     try:
         # ── Preflop basics (VPIP, PFR) ───────────────────────────────────────
