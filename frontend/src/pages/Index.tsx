@@ -112,14 +112,14 @@ const Index = () => {
       isFree ? Promise.resolve(null)
              : metrics.playerStatsByPosition(90, ln).then(setPosProfile).catch(() => null),
       metrics.leakRoi(90, ln).then((r) => { setLeakRoi(r.leaks); setLeakSource(r.source); }).catch(() => null),
-      metrics.pressureProfile(90).then(setPressureData).catch(() => null),
-      metrics.confidenceDrift(30).then(setDriftData).catch(() => null),
+      metrics.pressureProfile(90, ln).then(setPressureData).catch(() => null),
+      metrics.confidenceDrift(30, ln).then(setDriftData).catch(() => null),
       tournaments.list().then((r) => { _cachedTourns = r.tournaments; setTourns(r.tournaments); setTournsLoaded(true); }).catch(() => null),
-      metrics.dna(90).then(setDnaData).catch(() => null),
-      metrics.leakGraph(90, i18n.language).then(setLeakGraph).catch(() => null),
-      metrics.career(i18n.language).then(setCareerData).catch(() => null),
-      metrics.cognitiveFailures(i18n.language).then(setCognitiveData).catch(() => null),
-      metrics.strategicTwin(i18n.language).then(setTwinData).catch(() => null),
+      metrics.dna(90, ln).then(setDnaData).catch(() => null),
+      metrics.leakGraph(90, i18n.language, ln).then(setLeakGraph).catch(() => null),
+      metrics.career(i18n.language, ln).then(setCareerData).catch(() => null),
+      metrics.cognitiveFailures(i18n.language, ln).then(setCognitiveData).catch(() => null),
+      metrics.strategicTwin(i18n.language, ln).then(setTwinData).catch(() => null),
       metrics.sessionContext().then(setSessionData).catch(() => null),
     ]).finally(() => setLoading(false));
   }, [refreshKey, volumeLimit]);
@@ -128,10 +128,14 @@ const Index = () => {
   const langMounted = useRef(false);
   useEffect(() => {
     if (!langMounted.current) { langMounted.current = true; return; }
-    metrics.leakGraph(90, i18n.language).then(setLeakGraph).catch(() => null);
-    metrics.career(i18n.language).then(setCareerData).catch(() => null);
-    metrics.cognitiveFailures(i18n.language).then(setCognitiveData).catch(() => null);
-    metrics.strategicTwin(i18n.language).then(setTwinData).catch(() => null);
+    // O mesmo recorte do filtro "Volume": o refetch por idioma nao pode devolver os cards
+    // num escopo diferente do que a faixa de escopo declara. `volumeLimit` fica fora das
+    // deps de proposito — o efeito principal ja refaz tudo quando o filtro muda.
+    const ln = volumeLimit ?? undefined;
+    metrics.leakGraph(90, i18n.language, ln).then(setLeakGraph).catch(() => null);
+    metrics.career(i18n.language, ln).then(setCareerData).catch(() => null);
+    metrics.cognitiveFailures(i18n.language, ln).then(setCognitiveData).catch(() => null);
+    metrics.strategicTwin(i18n.language, ln).then(setTwinData).catch(() => null);
   }, [i18n.language]);
 
   const handleUpload = () => setRefreshKey((k) => k + 1);

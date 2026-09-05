@@ -2313,8 +2313,8 @@ export const metrics = {
   evolution: (days = 90, lastN?: number) =>
     request<EvolutionResponse>(`/history/evolution?days=${days}${lastN != null ? `&last_n=${lastN}` : ""}`),
 
-  breakdown: (days = 90) =>
-    request<BreakdownResponse>(`/history/breakdown?days=${days}`),
+  breakdown: (days = 90, lastN?: number) =>
+    request<BreakdownResponse>(`/history/breakdown?days=${days}${lastN != null ? `&last_n=${lastN}` : ""}`),
 
   playerStats: (days = 90, lastN?: number) =>
     request<PlayerStatsResponse>(`/metrics/player-stats?days=${days}${lastN != null ? `&last_n=${lastN}` : ""}`),
@@ -2325,8 +2325,8 @@ export const metrics = {
     request<PositionProfileResponse>(
       `/metrics/player-stats/by-position?days=${days}${lastN != null ? `&last_n=${lastN}` : ""}`),
 
-  level: () =>
-    request<PlayerLevel>(`/metrics/level`),
+  level: (lastN?: number) =>
+    request<PlayerLevel>(`/metrics/level${lastN != null ? `?last_n=${lastN}` : ""}`),
 
   leakRoi: (days = 90, lastN?: number) =>
     request<{ source: 'gto' | 'heuristic'; leaks: LeakRoiData[] }>(
@@ -2336,11 +2336,11 @@ export const metrics = {
   drillStats: (days = 30) =>
     request<DrillStats>(`/player/drill-stats?days=${days}`),
 
-  pressureProfile: (days = 90) =>
-    request<PressureProfile>(`/player/pressure-profile?days=${days}`),
+  pressureProfile: (days = 90, lastN?: number) =>
+    request<PressureProfile>(`/player/pressure-profile?days=${days}${lastN != null ? `&last_n=${lastN}` : ""}`),
 
-  confidenceDrift: (days = 30) =>
-    request<ConfidenceDrift>(`/player/confidence-drift?days=${days}`),
+  confidenceDrift: (days = 30, lastN?: number) =>
+    request<ConfidenceDrift>(`/player/confidence-drift?days=${days}${lastN != null ? `&last_n=${lastN}` : ""}`),
 
   pendingGtoCount: () =>
     request<{ pending: number }>(`/player/pending-gto-count`),
@@ -2369,23 +2369,23 @@ export const metrics = {
   leakFinder: (lastN?: number) =>
     request<LeakFinderData>(`/player/leak-finder${lastN != null ? `?last_n=${lastN}` : ""}`),
 
-  dna: (days = 90) =>
-    request<PlayerDnaResponse>(`/player/dna?days=${days}`),
+  dna: (days = 90, lastN?: number) =>
+    request<PlayerDnaResponse>(`/player/dna?days=${days}${lastN != null ? `&last_n=${lastN}` : ""}`),
 
-  leakGraph: (days = 90, lang = "pt-BR") =>
-    request<LeakGraphResponse>(`/player/leak-graph?days=${days}&lang=${encodeURIComponent(lang)}`),
+  leakGraph: (days = 90, lang = "pt-BR", lastN?: number) =>
+    request<LeakGraphResponse>(`/player/leak-graph?days=${days}&lang=${encodeURIComponent(lang)}${lastN != null ? `&last_n=${lastN}` : ""}`),
 
-  career: (lang = "pt-BR") =>
-    request<CareerProjection>(`/player/career?lang=${encodeURIComponent(lang)}`),
+  career: (lang = "pt-BR", lastN?: number) =>
+    request<CareerProjection>(`/player/career?lang=${encodeURIComponent(lang)}${lastN != null ? `&last_n=${lastN}` : ""}`),
 
-  cognitiveFailures: (lang = "pt-BR", days = 90) =>
-    request<CognitiveFailureData>(`/player/cognitive-failures?lang=${encodeURIComponent(lang)}&days=${days}`),
+  cognitiveFailures: (lang = "pt-BR", days = 90, lastN?: number) =>
+    request<CognitiveFailureData>(`/player/cognitive-failures?lang=${encodeURIComponent(lang)}&days=${days}${lastN != null ? `&last_n=${lastN}` : ""}`),
 
   sessionContext: () =>
     request<SessionContextData>(`/player/session-context`),
 
-  strategicTwin: (lang = "pt-BR", days = 180) =>
-    request<StrategicTwinProfile>(`/player/strategic-twin?lang=${encodeURIComponent(lang)}&days=${days}`),
+  strategicTwin: (lang = "pt-BR", days = 180, lastN?: number) =>
+    request<StrategicTwinProfile>(`/player/strategic-twin?lang=${encodeURIComponent(lang)}&days=${days}${lastN != null ? `&last_n=${lastN}` : ""}`),
 
 
 

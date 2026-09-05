@@ -1535,18 +1535,30 @@ def history_tournament_report_pdf(tournament_id):
         )
 
 
+def _last_n_da_query():
+    """O `last_n` do filtro "Volume" do dashboard, ou None. `0` e HISTORICO genuino e tem de
+    sobreviver: por isso a checagem e por presenca do parametro, nao por truthiness — `"0"` e
+    string nao-vazia, entao `int("0")` = 0 chega inteiro ao `_build_tournament_filter`.
+
+    05/09: esta linha vivia copiada em 11 endpoints, e 24 funcoes de analise nem recebiam o
+    parametro — o filtro da tela nao as alcancava. Regra 5: um lugar, e os endpoints novos
+    chamam aqui em vez de copiar."""
+    raw = request.args.get('last_n')
+    return int(raw) if raw else None
+
+
 @app.route('/history/evolution', methods=['GET'])
 @require_auth
 def history_evolution():
     from database.repositories import get_leak_ranking_gto_first
     days   = int(request.args.get('days', 30))
-    last_n = int(request.args.get('last_n')) if request.args.get('last_n') else None
+    last_n = _last_n_da_query()
     leak_data = get_leak_ranking_gto_first(g.user_id, days, last_n=last_n)
     return jsonify({
         'evolution':    get_evolution_metrics(g.user_id, days, last_n=last_n, by_played=True),
         'leaks':        leak_data['leaks'],
         'leak_source':  leak_data['source'],
-        'icm':          get_icm_performance(g.user_id, days),
+        'icm':          get_icm_performance(g.user_id, days, last_n=last_n),
     })
 
 
@@ -1554,14 +1566,14 @@ def history_evolution():
 @require_auth
 def history_breakdown():
     days = int(request.args.get('days', 90))
-    return jsonify(get_breakdown(g.user_id, days))
+    return jsonify(get_breakdown(g.user_id, days, last_n=_last_n_da_query()))
 
 
 @app.route('/metrics/player-stats', methods=['GET'])
 @require_auth
 def player_stats():
     days   = int(request.args.get('days', 90))
-    last_n = int(request.args.get('last_n')) if request.args.get('last_n') else None
+    last_n = _last_n_da_query()
     stats = get_player_stats(g.user_id, days, last_n=last_n)
     # Flags direcionais (banda saudável/abaixo/acima vs referências MTT, gateados por amostra).
     from leaklab.opponent_stats import player_stat_flags
@@ -1585,14 +1597,14 @@ def player_stats_by_position():
         return gate
     from database.repositories import get_player_stats_by_position
     days   = int(request.args.get('days', 90))
-    last_n = int(request.args.get('last_n')) if request.args.get('last_n') else None
+    last_n = _last_n_da_query()
     return jsonify(get_player_stats_by_position(g.user_id, days, last_n=last_n))
 
 
 @app.route('/metrics/level', methods=['GET'])
 @require_auth
 def player_level():
-    return jsonify(get_player_level(g.user_id))
+    return jsonify(get_player_level(g.user_id, last_n=_last_n_da_query()))
 
 
 @app.route('/player/ev-summary', methods=['GET'])
@@ -1620,7 +1632,7 @@ def player_leak_roi():
     """
     from database.repositories import get_gto_leak_ranking
     days   = int(request.args.get('days', 90))
-    last_n = int(request.args.get('last_n')) if request.args.get('last_n') else None
+    last_n = _last_n_da_query()
     leaks = get_gto_leak_ranking(g.user_id, days, last_n=last_n)
     if leaks:
         source = 'gto'
@@ -1637,7 +1649,7 @@ def player_ev_leaks():
     Finder: prioriza pelo total de big blinds deixados na mesa, não por contagem."""
     from database.repositories import get_ev_leaks
     days   = int(request.args.get('days', 90))
-    last_n = int(request.args.get('last_n')) if request.args.get('last_n') else None
+    last_n = _last_n_da_query()
     return jsonify(get_ev_leaks(g.user_id, days, last_n=last_n))
 
 
@@ -1648,7 +1660,7 @@ def player_leak_finder():
     com severidade e o top leak em destaque. Carro-chefe da síntese 'LeakLab'."""
     from database.repositories import get_consolidated_leak_report
     days   = int(request.args.get('days', 90))
-    last_n = int(request.args.get('last_n')) if request.args.get('last_n') else None
+    last_n = _last_n_da_query()
     return jsonify(get_consolidated_leak_report(g.user_id, days, last_n=last_n))
 
 
@@ -1657,7 +1669,7 @@ def player_leak_finder():
 def player_pressure_profile():
     """PERF-004 — Perfil de colapso técnico sob pressão ICM."""
     days = int(request.args.get('days', 90))
-    return jsonify(get_pressure_profile(g.user_id, days))
+    return jsonify(get_pressure_profile(g.user_id, days, last_n=_last_n_da_query()))
 
 
 @app.route('/player/confidence-drift', methods=['GET'])
@@ -1665,7 +1677,7 @@ def player_pressure_profile():
 def player_confidence_drift():
     """PERF-005 — Detecta sessões com possível tilt/drift de confiança."""
     days = int(request.args.get('days', 30))
-    return jsonify(get_confidence_drift(g.user_id, days))
+    return jsonify(get_confidence_drift(g.user_id, days, last_n=_last_n_da_query()))
 
 
 @app.route('/player/elo', methods=['GET'])
@@ -1900,7 +1912,7 @@ def player_pending_gto_count():
 def player_gto_quality():
     """Distribuição de gto_label para o jogador nos últimos 90 dias."""
     from database.repositories import get_gto_quality_breakdown
-    last_n = int(request.args.get('last_n')) if request.args.get('last_n') else None
+    last_n = _last_n_da_query()
     return jsonify(get_gto_quality_breakdown(g.user_id, last_n=last_n))
 
 
@@ -1909,7 +1921,7 @@ def player_gto_quality():
 def player_gto_alignment():
     """GTO alignment breakdown by street — preflop/flop/turn/river."""
     from database.repositories import get_gto_alignment_by_street
-    last_n = int(request.args.get('last_n')) if request.args.get('last_n') else None
+    last_n = _last_n_da_query()
     return jsonify(get_gto_alignment_by_street(g.user_id, last_n=last_n))
 
 
@@ -1918,7 +1930,7 @@ def player_gto_alignment():
 def player_gto_position():
     """GTO alignment breakdown by position — BTN/CO/HJ/MP/UTG/SB/BB."""
     from database.repositories import get_gto_alignment_by_position
-    last_n = int(request.args.get('last_n')) if request.args.get('last_n') else None
+    last_n = _last_n_da_query()
     return jsonify(get_gto_alignment_by_position(g.user_id, last_n=last_n))
 
 
@@ -1927,7 +1939,7 @@ def player_gto_position():
 def player_gto_alignment_matrix():
     """GTO alignment heatmap matrix — posicao (EP/MP/CO/BTN/SB/BB) x street."""
     from database.repositories import get_gto_alignment_matrix
-    last_n = int(request.args.get('last_n')) if request.args.get('last_n') else None
+    last_n = _last_n_da_query()
     return jsonify(get_gto_alignment_matrix(g.user_id, last_n=last_n))
 
 
@@ -1937,7 +1949,7 @@ def player_results_vs_gto():
     """Insight #5 'ganhei mas joguei errado' — erros de GTO escondidos atrás de
     vitorias (resultado != processo)."""
     from database.repositories import get_results_vs_gto
-    last_n = int(request.args.get('last_n')) if request.args.get('last_n') else None
+    last_n = _last_n_da_query()
     return jsonify(get_results_vs_gto(g.user_id, last_n=last_n))
 
 
@@ -2469,7 +2481,7 @@ def player_drill_stats_only():
 def player_dna():
     """Sprint L — Assinatura estratégica do jogador (Decision DNA)."""
     days = int(request.args.get('days', 90))
-    return jsonify(get_player_dna(g.user_id, days=days))
+    return jsonify(get_player_dna(g.user_id, days=days, last_n=_last_n_da_query()))
 
 
 @app.route('/player/leak-graph', methods=['GET'])
@@ -2480,7 +2492,7 @@ def player_leak_graph():
         return gate
     days = int(request.args.get('days', 90))
     lang = request.args.get('lang', 'pt-BR')
-    return jsonify(get_leak_graph_data(g.user_id, days=days, lang=lang))
+    return jsonify(get_leak_graph_data(g.user_id, days=days, lang=lang, last_n=_last_n_da_query()))
 
 
 @app.route('/player/career', methods=['GET'])
@@ -2491,7 +2503,7 @@ def player_career():
         return gate
     from leaklab.llm_explainer import generate_career_narrative
     lang       = request.args.get('lang', 'pt-BR')
-    projection = get_career_projection(g.user_id)
+    projection = get_career_projection(g.user_id, last_n=_last_n_da_query())
     if not projection.get("insufficient_data"):
         projection["narrative"] = generate_career_narrative(projection, lang=lang)
     return jsonify(projection)
@@ -2506,7 +2518,7 @@ def player_cognitive_failures():
     from leaklab.llm_explainer import generate_cognitive_narrative
     lang   = request.args.get('lang', 'pt-BR')
     days   = int(request.args.get('days', 90))
-    report = get_cognitive_failure_report(g.user_id, days=days)
+    report = get_cognitive_failure_report(g.user_id, days=days, last_n=_last_n_da_query())
     if not report.get("insufficient_data") and report.get("patterns"):
         report["narrative"] = generate_cognitive_narrative(report["patterns"], lang=lang)
     return jsonify(report)
@@ -3811,7 +3823,7 @@ def player_strategic_twin():
     from leaklab.llm_explainer import generate_twin_narrative
     lang    = request.args.get('lang', 'pt-BR')
     days    = int(request.args.get('days', 180))
-    profile = get_strategic_twin_profile(g.user_id, days=days)
+    profile = get_strategic_twin_profile(g.user_id, days=days, last_n=_last_n_da_query())
     if not profile.get("insufficient_data") and profile.get("costly_spots"):
         profile["narrative"] = generate_twin_narrative(profile, lang=lang)
     return jsonify(profile)

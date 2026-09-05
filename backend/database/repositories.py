@@ -1321,7 +1321,7 @@ def get_leak_roi_impact(user_id: int, days: int = 90, last_n: int | None = None)
                    COUNT(*) AS n
             FROM decisions d
             JOIN tournaments t ON t.id = d.tournament_id
-            WHERE t.user_id = ? AND t.imported_at >= ?
+            WHERE t.user_id = ? AND COALESCE(t.played_at, t.imported_at) >= ?
               AND d.label IN ('small_mistake','clear_mistake')
             GROUP BY spot
         """), (user_id, recent_since)).fetchall()
@@ -1334,7 +1334,7 @@ def get_leak_roi_impact(user_id: int, days: int = 90, last_n: int | None = None)
                    COUNT(*) AS n
             FROM decisions d
             JOIN tournaments t ON t.id = d.tournament_id
-            WHERE t.user_id = ? AND t.imported_at >= ? AND t.imported_at < ?
+            WHERE t.user_id = ? AND COALESCE(t.played_at, t.imported_at) >= ? AND COALESCE(t.played_at, t.imported_at) < ?
               AND d.label IN ('small_mistake','clear_mistake')
             GROUP BY spot
         """), (user_id, prev_since, recent_since)).fetchall()
@@ -1683,12 +1683,12 @@ def get_gto_leak_ranking(user_id: int, days: int = 90, last_n: int | None = None
                        COUNT(*) AS n
                 FROM decisions d
                 JOIN tournaments t ON t.id = d.tournament_id
-                WHERE t.user_id = ? AND t.imported_at >= ?
+                WHERE t.user_id = ? AND COALESCE(t.played_at, t.imported_at) >= ?
                   AND d.gto_label IN ('gto_critical', 'gto_minor_deviation')
             """
             params = [user_id, since_val]
             if until_val:
-                q += " AND t.imported_at < ?"
+                q += " AND COALESCE(t.played_at, t.imported_at) < ?"
                 params.append(until_val)
             q += " GROUP BY spot"
             return {r['spot']: (float(r['avg_score'] or 0), int(r['n'] or 0))
@@ -1733,14 +1733,14 @@ def get_gto_leak_ranking(user_id: int, days: int = 90, last_n: int | None = None
         conn.close()
 
 
-def get_pressure_profile(user_id: int, days: int = 90) -> dict:
+def get_pressure_profile(user_id: int, days: int = 90, last_n: int | None = None) -> dict:
     """PERF-004 — Detecta colapso técnico sob pressão ICM."""
     from datetime import datetime, timedelta
-    since = (datetime.utcnow() - timedelta(days=days)).strftime('%Y-%m-%d %H:%M:%S')
+    tf, tp = _build_tournament_filter(user_id, days, last_n)
     conn = get_conn()
     try:
         # Per-pressure avg_score (baseline = all decisions, not just mistakes)
-        rows = conn.execute(_adapt("""
+        rows = conn.execute(_adapt(f"""
             SELECT
                 COALESCE(d.icm_pressure, 'none') AS pressure,
                 COUNT(*)                          AS n,
@@ -1748,19 +1748,19 @@ def get_pressure_profile(user_id: int, days: int = 90) -> dict:
                 AVG(CASE WHEN d.label='standard' THEN 1.0 ELSE 0.0 END) AS standard_rate
             FROM decisions d
             JOIN tournaments t ON t.id = d.tournament_id
-            WHERE t.user_id = ? AND t.imported_at >= ?
+            WHERE {tf}
             GROUP BY pressure
             HAVING COUNT(*) >= 3
-        """), (user_id, since)).fetchall()
+        """), tp).fetchall()
 
         pressure_map = {r['pressure']: dict(r) for r in rows}
 
-        baseline_row = conn.execute(_adapt("""
+        baseline_row = conn.execute(_adapt(f"""
             SELECT AVG(d.score) AS avg_score, COUNT(*) AS n
             FROM decisions d
             JOIN tournaments t ON t.id = d.tournament_id
-            WHERE t.user_id = ? AND t.imported_at >= ?
-        """), (user_id, since)).fetchone()
+            WHERE {tf}
+        """), tp).fetchone()
 
         baseline_score = baseline_row['avg_score'] if baseline_row else None
 
@@ -1797,7 +1797,7 @@ DRIFT_MIN_ABS       = 0.02   # piso ABSOLUTO de degradação — mata o "30% de 
 DRIFT_MAX_SHARE     = 0.40   # se quase tudo é "anômalo", o anômalo é o baseline, não a sessão
 
 
-def get_confidence_drift(user_id: int, days: int = 30) -> dict:
+def get_confidence_drift(user_id: int, days: int = 30, last_n: int | None = None) -> dict:
     """PERF-005 — Detecta sessões com degradação técnica (possível tilt).
 
     Uma sessão só é marcada se passar nas TRÊS peneiras: amostra suficiente, distância
@@ -1806,14 +1806,14 @@ def get_confidence_drift(user_id: int, days: int = 30) -> dict:
     """
     from datetime import datetime, timedelta
     import statistics as _st
-    since = (datetime.utcnow() - timedelta(days=days)).strftime('%Y-%m-%d %H:%M:%S')
+    tf, tp = _build_tournament_filter(user_id, days, last_n)
     conn = get_conn()
     try:
         vazio = {'drift_detected': False, 'affected_sessions': 0, 'severity': None,
                  'sessions': [], 'latest_flagged_id': 0}
         # Per-tournament avg_score. O mínimo de decisões subiu de 3 para DRIFT_MIN_DECISIONS:
         # uma sessão de 3 mãos vira "tilt" com um único spot ruim.
-        tourn_rows = conn.execute(_adapt("""
+        tourn_rows = conn.execute(_adapt(f"""
             SELECT
                 t.id              AS tournament_id,
                 t.tournament_name AS name,
@@ -1822,11 +1822,11 @@ def get_confidence_drift(user_id: int, days: int = 30) -> dict:
                 AVG(d.score)      AS avg_score
             FROM decisions d
             JOIN tournaments t ON t.id = d.tournament_id
-            WHERE t.user_id = ? AND t.imported_at >= ?
+            WHERE {tf}
             GROUP BY t.id
             HAVING COUNT(d.id) >= ?
             ORDER BY t.played_at DESC
-        """), (user_id, since, DRIFT_MIN_DECISIONS)).fetchall()
+        """), tuple(tp) + (DRIFT_MIN_DECISIONS,)).fetchall()
 
         if not tourn_rows:
             return dict(vazio)
@@ -2155,13 +2155,12 @@ def get_decision_hand_context(user_id: int, decision_id: int) -> dict | None:
         conn.close()
 
 
-def get_icm_performance(user_id: int, days: int = 90) -> dict:
+def get_icm_performance(user_id: int, days: int = 90, last_n: int | None = None) -> dict:
     """Performance separada por nível de ICM pressure."""
-    from datetime import datetime, timedelta
-    since = (datetime.utcnow() - timedelta(days=days)).strftime('%Y-%m-%d %H:%M:%S')
+    tf, tp = _build_tournament_filter(user_id, days, last_n)
     conn = get_conn()
     try:
-        rows = conn.execute("""
+        rows = conn.execute(f"""
             SELECT
                 d.icm_pressure,
                 COUNT(*)          AS n,
@@ -2169,24 +2168,22 @@ def get_icm_performance(user_id: int, days: int = 90) -> dict:
                 AVG(CASE WHEN d.label='standard' THEN 1.0 ELSE 0.0 END) AS standard_rate
             FROM decisions d
             JOIN tournaments t ON t.id = d.tournament_id
-            WHERE t.user_id = ?
-              AND t.imported_at >= ?
+            WHERE {tf}
             GROUP BY d.icm_pressure
-        """, (user_id, since)).fetchall()
+        """, tp).fetchall()
         return _jsonable({r['icm_pressure']: dict(r) for r in rows if r['icm_pressure']})
     finally:
         conn.close()
 
-def get_breakdown(user_id: int, days: int = 90) -> dict:
+def get_breakdown(user_id: int, days: int = 90, last_n: int | None = None) -> dict:
     """Agrega decisões por street, posição e label para os HUDs do dashboard."""
-    from datetime import datetime, timedelta
-    since = (datetime.utcnow() - timedelta(days=days)).strftime('%Y-%m-%d %H:%M:%S')
+    tf, tp = _build_tournament_filter(user_id, days, last_n)
     conn = get_conn()
     try:
-        base = """
+        base = f"""
             FROM decisions d
             JOIN tournaments t ON t.id = d.tournament_id
-            WHERE t.user_id = ? AND t.imported_at >= ?
+            WHERE {tf}
         """
         by_street = conn.execute(f"""
             SELECT d.street,
@@ -2195,7 +2192,7 @@ def get_breakdown(user_id: int, days: int = 90) -> dict:
                    AVG(CASE WHEN d.label='standard' THEN 1.0 ELSE 0.0 END) AS standard_rate
             {base} AND d.street IS NOT NULL
             GROUP BY d.street
-        """, (user_id, since)).fetchall()
+        """, tp).fetchall()
 
         by_position = conn.execute(f"""
             SELECT d.position,
@@ -2205,19 +2202,19 @@ def get_breakdown(user_id: int, days: int = 90) -> dict:
             {base} AND d.position IS NOT NULL
             GROUP BY d.position
             ORDER BY standard_rate DESC
-        """, (user_id, since)).fetchall()
+        """, tp).fetchall()
 
         by_label = conn.execute(f"""
             SELECT d.label, COUNT(*) AS n
             {base}
             GROUP BY d.label
-        """, (user_id, since)).fetchall()
+        """, tp).fetchall()
 
         gto_row = conn.execute(f"""
             SELECT COUNT(*) AS total,
                    SUM(CASE WHEN d.gto_label IS NOT NULL AND d.gto_label != '' THEN 1 ELSE 0 END) AS with_gto
             {base}
-        """, (user_id, since)).fetchone()
+        """, tp).fetchone()
         total_dec = gto_row['total'] if gto_row else 0
         with_gto = gto_row['with_gto'] if gto_row else 0
         gto_coverage_pct = round(with_gto * 100.0 / total_dec, 1) if total_dec else 0.0
@@ -2658,7 +2655,7 @@ def get_player_stats(user_id: int, days: int = 90, last_n: int | None = None,
         conn.close()
 
 
-def get_player_level(user_id: int, min_tournaments: int = 5, days: int = 30) -> dict:
+def get_player_level(user_id: int, min_tournaments: int = 5, days: int = 30, last_n: int | None = None) -> dict:
     """
     Nível de gamificação do jogador — UNIFICADO com o ELO (2026-05-28).
 
@@ -2671,7 +2668,7 @@ def get_player_level(user_id: int, min_tournaments: int = 5, days: int = 30) -> 
     """
     from datetime import datetime, timedelta
     from leaklab.elo_engine import BANDS, band_full, compute_player_elo_from_decisions
-    since = (datetime.utcnow() - timedelta(days=days)).strftime('%Y-%m-%d %H:%M:%S')
+    tf, tp = _build_tournament_filter(user_id, days, last_n)
 
     conn = get_conn()
     try:
@@ -2687,7 +2684,7 @@ def get_player_level(user_id: int, min_tournaments: int = 5, days: int = 30) -> 
         std_rows = conn.execute("""
             SELECT standard_pct FROM tournaments
             WHERE user_id = ? AND standard_pct IS NOT NULL
-            ORDER BY imported_at DESC LIMIT 5
+            ORDER BY COALESCE(played_at, imported_at) DESC LIMIT 5
         """, (user_id,)).fetchall()
         std_values = [r['standard_pct'] for r in std_rows if r['standard_pct'] is not None]
         avg_std = round(sum(std_values) / len(std_values), 2) if std_values else None
@@ -2727,20 +2724,19 @@ def get_player_level(user_id: int, min_tournaments: int = 5, days: int = 30) -> 
     # Top leaks que bloqueiam o avanço (spots com mais erros)
     conn = get_conn()
     try:
-        top_leaks_rows = conn.execute("""
+        top_leaks_rows = conn.execute(f"""
             SELECT d.street || '/' || d.best_action AS spot,
                    COUNT(*) AS n,
                    AVG(d.score) AS avg_score
             FROM decisions d
             JOIN tournaments t ON t.id = d.tournament_id
-            WHERE t.user_id = ?
+            WHERE {tf}
               AND d.label IN ('small_mistake', 'clear_mistake')
-              AND t.imported_at >= ?
             GROUP BY spot
             HAVING COUNT(*) >= 2
             ORDER BY n DESC
             LIMIT 3
-        """, (user_id, since)).fetchall()
+        """, tp).fetchall()
     finally:
         conn.close()
 
@@ -2766,24 +2762,24 @@ def get_player_level(user_id: int, min_tournaments: int = 5, days: int = 30) -> 
     }
 
 
-def get_player_action_frequencies(user_id: int, days: int = 90) -> dict:
+def get_player_action_frequencies(user_id: int, days: int = 90, last_n: int | None = None) -> dict:
     """
     Agrega frequências de ação por street e por posição (preflop).
     Retorna dicionário com percentuais prontos para injetar no contexto do AI Coach.
     """
     from datetime import datetime, timedelta
-    since = (datetime.utcnow() - timedelta(days=days)).strftime('%Y-%m-%d %H:%M:%S')
+    tf, tp = _build_tournament_filter(user_id, days, last_n)
     conn  = get_conn()
     try:
         # ── Frequências por street ─────────────────────────────────────────────
-        rows = conn.execute("""
+        rows = conn.execute(f"""
             SELECT d.street, d.action_taken, COUNT(*) AS n
             FROM decisions d
             JOIN tournaments t ON d.tournament_id = t.id
-            WHERE t.user_id = ? AND t.imported_at >= ?
+            WHERE {tf}
               AND d.action_taken IS NOT NULL AND d.action_taken != ''
             GROUP BY d.street, d.action_taken
-        """, (user_id, since)).fetchall()
+        """, tp).fetchall()
 
         by_street: dict = {}
         for r in rows:
@@ -2803,16 +2799,16 @@ def get_player_action_frequencies(user_id: int, days: int = 90) -> dict:
             }
 
         # ── Frequências preflop por posição ───────────────────────────────────
-        pos_rows = conn.execute("""
+        pos_rows = conn.execute(f"""
             SELECT d.position, d.action_taken, COUNT(*) AS n
             FROM decisions d
             JOIN tournaments t ON d.tournament_id = t.id
-            WHERE t.user_id = ? AND t.imported_at >= ?
+            WHERE {tf}
               AND d.street = 'preflop'
               AND d.action_taken IS NOT NULL AND d.action_taken != ''
               AND d.position IS NOT NULL AND d.position != ''
             GROUP BY d.position, d.action_taken
-        """, (user_id, since)).fetchall()
+        """, tp).fetchall()
 
         by_pos: dict = {}
         for r in pos_rows:
@@ -2835,7 +2831,7 @@ def get_player_action_frequencies(user_id: int, days: int = 90) -> dict:
         conn.close()
 
 
-def get_career_projection(user_id: int) -> dict:
+def get_career_projection(user_id: int, days: int = 90, last_n: int | None = None) -> dict:
     """
     Projeta a trajetória de carreira do jogador — UNIFICADO com ELO (2026-05-28).
     Regressão linear sobre a CURVA DE ELO (torneio-a-torneio) → data estimada
@@ -2866,11 +2862,11 @@ def get_career_projection(user_id: int) -> dict:
     conn = get_conn()
     try:
         trows = conn.execute(_adapt(
-            "SELECT id, imported_at FROM tournaments WHERE user_id = ?"
+            "SELECT id, COALESCE(played_at, imported_at) AS data FROM tournaments WHERE user_id = ?"
         ), (user_id,)).fetchall()
     finally:
         conn.close()
-    date_by_tid = {r["id"]: r["imported_at"] for r in trows}
+    date_by_tid = {r["id"]: r["data"] for r in trows}
 
     elos = [p["elo"] for p in curve]
     n = len(elos)
@@ -2949,18 +2945,17 @@ def get_career_projection(user_id: int) -> dict:
     # Blocking leaks (from get_player_level logic)
     conn2 = get_conn()
     try:
-        since = (datetime.utcnow() - timedelta(days=90)).isoformat()
-        blocking_rows = conn2.execute(_adapt("""
+        tf, tp = _build_tournament_filter(user_id, days, last_n)
+        blocking_rows = conn2.execute(_adapt(f"""
             SELECT d.street || '/' || d.best_action AS spot,
                    COUNT(*) AS n, AVG(d.score) AS avg_score
             FROM decisions d
             JOIN tournaments t ON t.id = d.tournament_id
-            WHERE t.user_id = ?
+            WHERE {tf}
               AND d.label IN ('small_mistake','clear_mistake')
-              AND t.imported_at >= ?
             GROUP BY spot HAVING COUNT(*) >= 2
             ORDER BY n DESC LIMIT 3
-        """), (user_id, since)).fetchall()
+        """), tp).fetchall()
     finally:
         conn2.close()
 
@@ -2998,7 +2993,7 @@ def get_career_projection(user_id: int) -> dict:
     }
 
 
-def get_cognitive_failure_report(user_id: int, days: int = 90) -> dict:
+def get_cognitive_failure_report(user_id: int, days: int = 90, last_n: int | None = None) -> dict:
     """
     Sprint AQ — Detecta padrões de falha cognitivo-emocional nas decisões do jogador.
     Analisa janelas deslizantes sobre a sequência cronológica de decisões por torneio.
@@ -3006,19 +3001,19 @@ def get_cognitive_failure_report(user_id: int, days: int = 90) -> dict:
     from datetime import datetime, timedelta
     from leaklab.cognitive_mapper import analyze_cognitive_failures
 
-    cutoff = (datetime.utcnow() - timedelta(days=days)).strftime("%Y-%m-%d %H:%M:%S")
+    tf, tp = _build_tournament_filter(user_id, days, last_n)
 
     conn = get_conn()
     try:
-        rows = conn.execute(_adapt("""
+        rows = conn.execute(_adapt(f"""
             SELECT d.id, d.tournament_id, d.hand_id, d.street,
                    d.action_taken, d.best_action, d.label, d.score,
                    d.position, d.m_ratio, d.icm_pressure, d.icm_tax_pct, d.stack_bb
             FROM decisions d
             JOIN tournaments t ON t.id = d.tournament_id
-            WHERE t.user_id = ? AND t.imported_at >= ?
+            WHERE {tf}
             ORDER BY d.tournament_id, d.id
-        """), (user_id, cutoff)).fetchall()
+        """), tp).fetchall()
     finally:
         conn.close()
 
@@ -3044,35 +3039,35 @@ def get_cognitive_failure_report(user_id: int, days: int = 90) -> dict:
     return analyze_cognitive_failures(decisions)
 
 
-def get_strategic_twin_profile(user_id: int, days: int = 180) -> dict:
+def get_strategic_twin_profile(user_id: int, days: int = 180, last_n: int | None = None) -> dict:
     """
     Sprint AR — Agrega spots de alta frequência e erro para o Personal Strategic Twin.
     Retorna taxa média de erro, spots de maior volume e spots mais custosos.
     """
     from datetime import datetime, timedelta
-    cutoff = (datetime.utcnow() - timedelta(days=days)).strftime("%Y-%m-%d %H:%M:%S")
+    tf, tp = _build_tournament_filter(user_id, days, last_n)
 
     conn = get_conn()
     try:
-        total_row = conn.execute(_adapt("""
+        total_row = conn.execute(_adapt(f"""
             SELECT COUNT(*) as total,
                    SUM(CASE WHEN d.label IN ('small_mistake', 'clear_mistake') THEN 1 ELSE 0 END) as mistakes
             FROM decisions d
             JOIN tournaments t ON t.id = d.tournament_id
-            WHERE t.user_id = ? AND t.imported_at >= ?
-        """), (user_id, cutoff)).fetchone()
+            WHERE {tf}
+        """), tp).fetchone()
 
-        spot_rows = conn.execute(_adapt("""
+        spot_rows = conn.execute(_adapt(f"""
             SELECT d.street, d.best_action, d.icm_pressure,
                    COUNT(*) as total,
                    SUM(CASE WHEN d.label IN ('small_mistake', 'clear_mistake') THEN 1 ELSE 0 END) as mistakes
             FROM decisions d
             JOIN tournaments t ON t.id = d.tournament_id
-            WHERE t.user_id = ? AND t.imported_at >= ?
+            WHERE {tf}
             GROUP BY d.street, d.best_action, d.icm_pressure
             HAVING COUNT(*) >= 3
             ORDER BY total DESC
-        """), (user_id, cutoff)).fetchall()
+        """), tp).fetchall()
     finally:
         conn.close()
 
@@ -3832,7 +3827,7 @@ def get_coach_impact_metrics(coach_id: int, days: int = 30) -> dict:
                 MAX(t.imported_at)  as last_activity
             FROM users u
             LEFT JOIN tournaments t ON t.user_id = u.id
-              AND t.imported_at >= datetime('now', '-30 days')
+              AND COALESCE(t.played_at, t.imported_at) >= datetime('now', '-30 days')
             WHERE u.id IN ({placeholders})
             GROUP BY u.id
         """, student_ids)
@@ -3844,8 +3839,8 @@ def get_coach_impact_metrics(coach_id: int, days: int = 30) -> dict:
                 AVG(t.avg_score) as prev_avg_score
             FROM users u
             LEFT JOIN tournaments t ON t.user_id = u.id
-              AND t.imported_at < ?
-              AND t.imported_at >= ?
+              AND COALESCE(t.played_at, t.imported_at) < ?
+              AND COALESCE(t.played_at, t.imported_at) >= ?
             WHERE u.id IN ({placeholders})
             GROUP BY u.id
         """, [since, since2] + student_ids).fetchall()
@@ -3860,7 +3855,7 @@ def get_coach_impact_metrics(coach_id: int, days: int = 30) -> dict:
             FROM decisions d
             JOIN tournaments t ON t.id = d.tournament_id
             WHERE t.user_id IN ({placeholders})
-              AND t.imported_at >= ?
+              AND COALESCE(t.played_at, t.imported_at) >= ?
               AND d.label IN ('small_mistake','clear_mistake')
             GROUP BY spot
             HAVING COUNT(*) >= 1
@@ -4255,7 +4250,7 @@ def get_common_leaks(coach_id: int, days: int = 30) -> List[dict]:
                 FROM decisions d
                 JOIN tournaments t ON t.id = d.tournament_id
                 WHERE t.user_id IN ({placeholders})
-                  AND t.imported_at >= {interval_sql(days)}
+                  AND COALESCE(t.played_at, t.imported_at) >= {interval_sql(days)}
                   AND d.label IN ('small_mistake','clear_mistake')
                 GROUP BY spot, t.user_id
                 ORDER BY avg_score DESC""",
@@ -6616,27 +6611,26 @@ def get_coach_effectiveness_report(coach_id: int) -> dict:
     }
 
 
-def get_leak_graph_data(user_id: int, days: int = 90, lang: str = 'pt-BR') -> dict:
+def get_leak_graph_data(user_id: int, days: int = 90, lang: str = 'pt-BR', last_n: int | None = None) -> dict:
     """Sprint S — Retorna grafo causal de leaks: nós, arestas e narrativa LLM."""
     from datetime import datetime, timedelta
     from leaklab.leak_causal_graph import build_leak_graph
     from leaklab.llm_explainer import explain_leak_causality
 
-    cutoff = (datetime.utcnow() - timedelta(days=days)).isoformat()
+    tf, tp = _build_tournament_filter(user_id, days, last_n)
     conn = get_conn()
     try:
-        rows = conn.execute(_adapt("""
+        rows = conn.execute(_adapt(f"""
             SELECT
                 t.id                                                                AS tournament_id,
                 COALESCE(d.position, '?') || '|' || d.street || '/' || d.best_action AS spot,
                 d.score
             FROM decisions d
             JOIN tournaments t ON t.id = d.tournament_id
-            WHERE t.user_id = ?
+            WHERE {tf}
               AND (d.label IN ('small_mistake','clear_mistake')
                    OR d.gto_label IN ('gto_critical','gto_minor_deviation'))
-              AND t.imported_at >= ?
-        """), (user_id, cutoff)).fetchall()
+        """), tp).fetchall()
     finally:
         conn.close()
 
@@ -6668,7 +6662,7 @@ def get_leak_graph_data(user_id: int, days: int = 90, lang: str = 'pt-BR') -> di
     return {**graph, 'narrative': narrative}
 
 
-def get_player_dna(user_id: int, days: int = 90) -> dict:
+def get_player_dna(user_id: int, days: int = 90, last_n: int | None = None) -> dict:
     """
     Computa a assinatura estratégica do jogador a partir dos padrões de decisão.
     Retorna métricas normalizadas 0-100 + arquétipo classificado.
@@ -6676,14 +6670,14 @@ def get_player_dna(user_id: int, days: int = 90) -> dict:
     from datetime import datetime, timedelta
     conn = get_conn()
     try:
-        cutoff = (datetime.utcnow() - timedelta(days=days)).isoformat()
-        rows = _fetchall(conn, _adapt("""
+        tf, tp = _build_tournament_filter(user_id, days, last_n)
+        rows = _fetchall(conn, _adapt(f"""
             SELECT d.action_taken, d.street, d.position, d.is_3bet,
                    d.label, d.icm_pressure
             FROM decisions d
             JOIN tournaments t ON t.id = d.tournament_id
-            WHERE t.user_id = ? AND t.imported_at >= ?
-        """), (user_id, cutoff))
+            WHERE {tf}
+        """), tp)
 
         total = len(rows)
         if total < 10:
@@ -7278,7 +7272,7 @@ def _category_adherence(conn, user_id, category_key, imported_after=None, only_t
            "WHERE t.user_id = ? AND " + where)
     args = [user_id] + params
     if imported_after is not None:
-        sql += " AND t.imported_at > ?"; args.append(imported_after)
+        sql += " AND COALESCE(t.played_at, t.imported_at) > ?"; args.append(imported_after)
     if only_tournament is not None:
         sql += " AND t.id = ?"; args.append(only_tournament)
     row = _fetchone(conn, _adapt(sql), tuple(args))
@@ -7329,7 +7323,7 @@ def _category_action_breakdown(conn, user_id, category_key, after=None, cache=No
            "AND COALESCE(d.icm_pressure,'') <> ? AND " + where)
     args = [user_id, _ICM_EXCLUDED] + params
     if after is not None:
-        sql += " AND t.imported_at > ?"
+        sql += " AND COALESCE(t.played_at, t.imported_at) > ?"
         args.append(after)
     sql += " GROUP BY d.action_taken ORDER BY COUNT(*) DESC"
     return [{'acao': _norm_acao(r['act']), 'n': int(r['n'] or 0), 'erros': int(r['erros'] or 0)}
@@ -7367,7 +7361,7 @@ def _category_purity_breakdown(conn, user_id, category_key, after=None, cache=No
            "AND COALESCE(d.icm_pressure,'') <> ? AND " + where)
     args = [PURE_STRATEGY_MIN_FREQ, user_id, _ICM_EXCLUDED] + params
     if after is not None:
-        sql += " AND t.imported_at > ?"
+        sql += " AND COALESCE(t.played_at, t.imported_at) > ?"
         args.append(after)
     sql += " GROUP BY 1"
     out = {}
@@ -7396,9 +7390,9 @@ def _category_error_counts(conn, user_id, category_key, before=None, after=None,
            "AND COALESCE(d.icm_pressure,'') <> ? AND " + where)
     args = [user_id, _ICM_EXCLUDED] + params
     if before is not None:
-        sql += " AND t.imported_at <= ?"; args.append(before)
+        sql += " AND COALESCE(t.played_at, t.imported_at) <= ?"; args.append(before)
     if after is not None:
-        sql += " AND t.imported_at > ?"; args.append(after)
+        sql += " AND COALESCE(t.played_at, t.imported_at) > ?"; args.append(after)
     row = _fetchone(conn, _adapt(sql), tuple(args))
     return (int((row or {}).get('erros') or 0), int((row or {}).get('n') or 0))
 
@@ -7817,10 +7811,10 @@ def get_training_proof(user_id: int) -> list:
             last = _memo(memo, ('ultimo', where, tuple(wparams), user_id, pr['baseline_at']),
                          lambda: _fetchone(conn, _adapt(
                              "SELECT t.id, t.tournament_id FROM tournaments t "
-                             "WHERE t.user_id=? AND t.imported_at > ? "
+                             "WHERE t.user_id=? AND COALESCE(t.played_at, t.imported_at) > ? "
                              "AND EXISTS (SELECT 1 FROM decisions d "
                              "WHERE d.tournament_id=t.id AND " + where + ") "
-                             "ORDER BY t.imported_at DESC LIMIT 1"),
+                             "ORDER BY COALESCE(t.played_at, t.imported_at) DESC LIMIT 1"),
                              tuple([user_id, pr['baseline_at']] + wparams)))
             snap = None
             if last:
@@ -10043,7 +10037,7 @@ def get_leaderboard_metrics(period_days: int = 90,
         sql = ("SELECT DISTINCT u.id AS id, u.username AS username, "
                "       u.leaderboard_opt_in AS opt_in, u.leaderboard_handle AS handle "
                "FROM users u JOIN tournaments t ON t.user_id = u.id "
-               "WHERE t.imported_at >= ?")
+               "WHERE COALESCE(t.played_at, t.imported_at) >= ?")
         params: list = [cutoff]
         if user_ids:
             ph = ",".join(["?"] * len(user_ids))
@@ -10056,7 +10050,7 @@ def get_leaderboard_metrics(period_days: int = 90,
             uid = u["id"]
             tt = _fetchone(conn, _adapt(
                 "SELECT COALESCE(SUM(hands_count),0) AS hands, COUNT(*) AS tournaments "
-                "FROM tournaments WHERE user_id = ? AND imported_at >= ?"
+                "FROM tournaments WHERE user_id = ? AND COALESCE(played_at, imported_at) >= ?"
             ), (uid, cutoff))
             drills_row = _fetchone(conn, _adapt(
                 "SELECT COUNT(*) AS n FROM drill_sessions WHERE user_id = ? AND drilled_at >= ?"
@@ -10065,8 +10059,8 @@ def get_leaderboard_metrics(period_days: int = 90,
                 "SELECT d.street AS street, d.gto_label AS gto_label, d.label AS label, "
                 "d.created_at AS created_at, d.id AS id FROM decisions d "
                 "JOIN tournaments t ON t.id = d.tournament_id "
-                "WHERE t.user_id = ? AND t.imported_at >= ? AND d.gto_label IS NOT NULL "
-                "ORDER BY t.imported_at, d.id"
+                "WHERE t.user_id = ? AND COALESCE(t.played_at, t.imported_at) >= ? AND d.gto_label IS NOT NULL "
+                "ORDER BY COALESCE(t.played_at, t.imported_at), d.id"
             ), (uid, cutoff))
             labels = [r["gto_label"] for r in drows]
 

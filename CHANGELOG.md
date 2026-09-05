@@ -5,6 +5,78 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## AY-4: o eixo de tempo — 27 funcoes por data de UPLOAD, 24 sem o filtro da tela (05/09)
+
+### O que era
+Em 03/09 o dono achou que "ultimos 50 torneios" era por data de UPLOAD: o Rullian subiu 280
+torneios de 3 meses em 25 horas e o recorte virava uma fatia da ordem do script. Foi consertado
+no `_build_tournament_filter` — e so ali. **27 funcoes** continuavam em `t.imported_at >= ?`.
+
+A 2a camada apareceu respondendo a uma hipotese do dono (*"o novo padrao e o historico, entao
+ele nao percebe, certo?"*): **24 das 27 nem aceitavam `last_n`**. Usavam `days` fixo, sempre.
+O filtro da tela nao as alcancava em posicao nenhuma — e a faixa de escopo que subiu de manha
+afirmava "estes numeros sao de todo o seu historico" sobre cards que ignoravam o escopo.
+
+### Os tres baldes, DECLARADOS
+Nao e um `sed`: `imported_at` e a resposta certa para algumas perguntas. A classificacao vive
+em `test_eixo_de_tempo.py` como tabela, e o guarda N+1 nasce dela — a 28a funcao que alguem
+escrever cai no teste.
+
+- **ANALISE (21)**: "como voce joga" -> data de JOGO, e aceita `last_n`. Gemeo estrategico,
+  falhas cognitivas, mapa causal, DNA, pressao, deriva, ICM, breakdown, nivel, carreira,
+  frequencias do coach IA, tendencias dos dois rankings de leak, leaderboard, coach
+  (impacto e leaks em comum) e a PROVA DE TREINO — "melhorou depois de treinar" so faz sentido
+  por data de jogo; mao jogada antes do treino e importada depois nao e evidencia de nada.
+- **PRESENCA / ADMIN (6)**: data de upload de proposito, cada uma com o motivo — check de
+  presenca do plano de estudos, atividade do solver, cadencia de engajamento, revenue share,
+  coach ativo, painel admin.
+
+### O que saiu no caminho
+- **A projecao de carreira usava `imported_at` como eixo X da regressao do ELO.** Para quem
+  importa em lote, todos os pontos colapsavam em ~25h e a projecao era lixo.
+- **11 copias** da linha de parse do `last_n` no `app.py` viraram `_last_n_da_query()`. `"0"`
+  e string nao-vazia, entao o sentinela de historico sobrevive ao `int()`.
+- 10 endpoints do jogador passaram a receber o filtro; `api.ts` e `Index.tsx` propagam.
+
+### Provado em dev antes de subir (pedido do dono)
+Usuario forjado como o michel: 24 torneios, um por mes, TODOS importados hoje.
+
+    card                 days=90   last_n=0   last_n=5
+    (esperado)               120        960        200
+    strategic_twin           120        960        200   exato
+    cognitive_failures       120        960        200   exato
+    player_dna               120        960        200   exato
+    icm_performance          120        960        200   exato
+    pressure_profile         120        960        200   exato
+    breakdown                120        960        200   exato
+    leak_graph                 3         24          5   exato (torneios por no)
+    confidence_drift  so devolve sessoes MARCADAS: provado pela varredura de codigo
+
+Tres "falhas" na 1a rodada eram do MEU extrator (forma de retorno nao reconhecida), nao dos
+cards — conferido inspecionando o retorno antes de concluir. O guarda foi quebrado nos dois
+sentidos (eixo de volta para upload; `last_n` removido) e acusou nos dois.
+
+### O que muda na tela, medido em producao — e e MENOS do que eu tinha enquadrado
+Eu falei em "13.878 -> 1.318 para o michel". Isso e a janela de DIAS, que o dashboard nao usa
+por padrao: ele abre em Historico e o filtro so tem opcoes de volume. Medido o que o dashboard
+de fato mostra: os cards de 90/180 dias ficam **iguais** para todos (os imports de todo mundo
+cabem em 90 dias).
+
+**E eu errei de novo ao dizer que "o nivel passa a usar o historico"** — o dono perguntou e a
+conferencia mostrou: o card de nivel NAO esta no dashboard (so no plano de estudos e na visao
+do coach), a janela de 30d governa so a sublista "3 leaks que travam" (o nivel vem do ELO, com
+janela propria), e ninguem manda `last_n` para esse endpoint. A mudanca real ali e: os 3 leaks
+passam a vir de 30 dias de JOGO em vez de 30 dias de IMPORT. So isso. Eu medi a consulta e nao
+medi quem a chama — sexta vez no dia, mesma familia.
+
+A correcao de 10,5x e real e aparece em tres lugares que nao sao o dashboard padrao: quem
+escolher "ultimos 20/50/100" (antes os 24 cards ignoravam o filtro), quem importar acervo
+antigo daqui para frente, e os endpoints por dias fora do dashboard.
+
+Postgres smoke 200/200 (COALESCE sobre TIMESTAMP em 21 consultas novas). Frontend 497/497.
+
+---
+
 ## AY-11: eu errei o tamanho DUAS vezes, e a medicao me corrigiu as duas (05/09)
 
 4.062 decisoes em producao com o score fora da faixa do proprio label. O que este item virou
