@@ -86,124 +86,142 @@ def test_stripe_prices_configured():
     assert pro.startswith("price_"), f"STRIPE_PRICE_PRO inválido: {pro}"
     print(f"OK  test_stripe_prices_configured | pro={pro}")
 
-# ── Gateway direto ───────────────────────────────────────────────────────────
+# ── O contrato ATUAL: assinatura recorrente, nao PaymentIntent avulso ────────
+#
+# 05/09: seis destes testes estavam vermelhos, e NENHUM era bug. Todos afirmavam
+# `pi_...` (PaymentIntent unico por ciclo) e o codigo cria `sub_...` desde a PAY-04,
+# quando o modelo virou Subscription recorrente. Testes congelados na era anterior.
+#
+# Como o arquivo estava FORA da suite (achado no mesmo dia: 30 de 269 arquivos de
+# teste nao rodavam em lugar nenhum), ninguem viu por meses.
 
-def test_gateway_create_payment_intent_pro():
-    """create_subscription cria PaymentIntent real no Stripe e retorna client_secret."""
+def _pi_do_client_secret(client_secret: str) -> str:
+    """`pi_xxx_secret_yyy` -> `pi_xxx`. Deriva o PaymentIntent da 1a fatura sem depender da
+    versao da API: o campo mudou de `latest_invoice.payment_intent` para
+    `latest_invoice.confirmation_secret`, mas o FORMATO do secret nao mudou."""
+    return client_secret.split("_secret_")[0]
+
+
+def test_gateway_cria_ASSINATURA_recorrente():
+    """PAY-04: `create_subscription` cria Subscription real, nao PaymentIntent avulso."""
     from leaklab.stripe_gateway import create_subscription
-    result = create_subscription(
-        plan_name="pro",
-        payer_email="test@integration.test",
-        user_id=99998,
-    )
-    assert result["subscription_id"].startswith("pi_"), \
-        f"subscription_id deveria ser pi_xxx, got: {result['subscription_id']}"
-    assert result["client_secret"], "client_secret vazio"
-    assert "_secret_" in result["client_secret"]
-    print(f"OK  test_gateway_create_payment_intent_pro | pi={result['subscription_id']}")
+    r = create_subscription(plan_name="pro", payer_email="test@integration.test", user_id=99998)
+    assert r["subscription_id"].startswith("sub_"), (
+        "esperava assinatura recorrente (sub_), veio: %s" % r["subscription_id"])
+    assert r.get("recurring") is True, "assinatura deveria vir marcada como recorrente"
+    assert "_secret_" in (r.get("client_secret") or ""), "client_secret da 1a fatura ausente"
+    print("OK  test_gateway_cria_ASSINATURA_recorrente | sub=%s" % r["subscription_id"])
 
-def test_gateway_get_payment_returns_dict():
-    """get_payment retorna dict (não StripeObject) com campo status."""
-    from leaklab.stripe_gateway import create_subscription, get_payment
-    pi_id = create_subscription("pro", "test@integration.test", 99997)["subscription_id"]
-    pi = get_payment(pi_id)
-    assert isinstance(pi, dict), f"get_payment deveria retornar dict, got {type(pi)}"
-    assert "status" in pi, f"campo status ausente: {list(pi.keys())[:10]}"
-    assert "client_secret" in pi, "campo client_secret ausente"
-    print(f"OK  test_gateway_get_payment_returns_dict | status={pi['status']}")
 
-def test_gateway_confirm_and_get_succeeded():
-    """Confirma PaymentIntent com pm_card_visa e verifica status=succeeded."""
-    from leaklab.stripe_gateway import create_subscription, get_payment
-    pi_id = create_subscription("pro", "test@integration.test", 99996)["subscription_id"]
+def test_gateway_get_subscription_devolve_dict():
+    """`get_subscription` devolve dict (nao StripeObject) com o status."""
+    from leaklab.stripe_gateway import create_subscription, get_subscription
+    sid = create_subscription("pro", "test@integration.test", 99997)["subscription_id"]
+    sub = get_subscription(sid)
+    assert isinstance(sub, dict), "esperava dict, veio %s" % type(sub)
+    assert sub.get("status") == "incomplete", (
+        "assinatura nova nasce incomplete, veio %s" % sub.get("status"))
+    print("OK  test_gateway_get_subscription_devolve_dict | status=%s" % sub["status"])
 
-    # Confirma com cartão de teste do Stripe (sempre aprova)
-    _stripe.PaymentIntent.confirm(
-        pi_id,
-        payment_method="pm_card_visa",
-        return_url="http://localhost:8080/dashboard",
-    )
 
-    pi = get_payment(pi_id)
-    assert pi["status"] == "succeeded", f"Esperado succeeded, got: {pi['status']}"
-    print(f"OK  test_gateway_confirm_and_get_succeeded | status={pi['status']}")
-    return pi_id
+def test_confirmar_a_1a_fatura_ATIVA_a_assinatura():
+    """O fluxo real do frontend: confirma o PI da 1a fatura e a assinatura vira `active`."""
+    from leaklab.stripe_gateway import create_subscription, get_subscription
+    r = create_subscription("pro", "test@integration.test", 99996)
+    sid = r["subscription_id"]
+    _stripe.PaymentIntent.confirm(_pi_do_client_secret(r["client_secret"]),
+                                  payment_method="pm_card_visa",
+                                  return_url="http://localhost:8080/dashboard")
+    sub = get_subscription(sid)
+    assert sub["status"] == "active", "esperava active apos pagar, veio %s" % sub["status"]
+    print("OK  test_confirmar_a_1a_fatura_ATIVA_a_assinatura | status=%s" % sub["status"])
+
 
 # ── Endpoint /subscription/checkout ─────────────────────────────────────────
 
-def test_endpoint_checkout_returns_client_secret():
-    """POST /subscription/checkout retorna client_secret e subscription_id reais."""
+def test_endpoint_checkout_devolve_ASSINATURA():
     c = _make_client()
-    token, _ = _register_and_login(c, '1')
-    r = c.post('/subscription/checkout', json={'plan': 'pro'}, headers=_auth(token))
-    assert r.status_code == 200, f"Expected 200, got {r.status_code}: {r.get_data(as_text=True)}"
-    data = r.get_json()
-    assert data.get('client_secret'), "client_secret ausente"
-    assert data.get('subscription_id', '').startswith('pi_'), \
-        f"subscription_id inválido: {data.get('subscription_id')}"
-    print(f"OK  test_endpoint_checkout_returns_client_secret | pi={data['subscription_id']}")
-    return data
+    token, _ = _register_and_login(c, "1")
+    r = c.post("/subscription/checkout", json={"plan": "pro"}, headers=_auth(token))
+    assert r.status_code == 200, (
+        "esperava 200, veio %s: %s" % (r.status_code, r.get_data(as_text=True)))
+    d = r.get_json()
+    assert d.get("subscription_id", "").startswith("sub_"), (
+        "esperava sub_, veio: %s" % d.get("subscription_id"))
+    assert "_secret_" in (d.get("client_secret") or ""), "client_secret ausente"
+    print("OK  test_endpoint_checkout_devolve_ASSINATURA | sub=%s" % d["subscription_id"])
+    return d
+
 
 def test_endpoint_checkout_rejects_invalid_plan():
     """POST /subscription/checkout com plan=free ou plan=starter retorna 400."""
     c = _make_client()
-    token, _ = _register_and_login(c, '4')
-    for bad_plan in ('free', 'starter', 'random'):
-        r = c.post('/subscription/checkout', json={'plan': bad_plan}, headers=_auth(token))
-        assert r.status_code == 400, f"Esperado 400 para plan={bad_plan}, got {r.status_code}"
+    token, _ = _register_and_login(c, "4")
+    for bad_plan in ("free", "starter", "random"):
+        r = c.post("/subscription/checkout", json={"plan": bad_plan}, headers=_auth(token))
+        assert r.status_code == 400, "Esperado 400 para plan=%s, got %s" % (bad_plan, r.status_code)
     print("OK  test_endpoint_checkout_rejects_invalid_plan")
+
 
 # ── Endpoint /subscription/activate ─────────────────────────────────────────
 
-def test_endpoint_activate_with_real_pi():
-    """Fluxo completo: checkout → confirma PI via Stripe API → activate → plano atualizado."""
+def test_activate_com_assinatura_PAGA_concede_pro():
+    """Fluxo completo: checkout -> confirma a 1a fatura -> activate -> Pro no banco."""
     c = _make_client()
-    token, _ = _register_and_login(c, '2')
-
-    # 1. Cria intent
-    r = c.post('/subscription/checkout', json={'plan': 'pro'}, headers=_auth(token))
-    assert r.status_code == 200, f"checkout falhou: {r.get_data(as_text=True)}"
-    checkout_data = r.get_json()
-    pi_id  = checkout_data['subscription_id']
-    sub_id = pi_id
-
-    # 2. Confirma PI direto via Stripe (simula o frontend)
-    _stripe.PaymentIntent.confirm(
-        pi_id,
-        payment_method="pm_card_visa",
-        return_url="http://localhost:8080/dashboard",
-    )
-
-    # 3. Ativa o plano
-    r = c.post('/subscription/activate',
-               json={'plan': 'pro', 'payment_intent_id': pi_id, 'subscription_id': sub_id},
+    token, _ = _register_and_login(c, "2")
+    d = c.post("/subscription/checkout", json={"plan": "pro"}, headers=_auth(token)).get_json()
+    sid = d["subscription_id"]
+    _stripe.PaymentIntent.confirm(_pi_do_client_secret(d["client_secret"]),
+                                  payment_method="pm_card_visa",
+                                  return_url="http://localhost:8080/dashboard")
+    r = c.post("/subscription/activate",
+               json={"plan": "pro", "payment_intent_id": sid, "subscription_id": sid},
                headers=_auth(token))
-    assert r.status_code == 200, f"activate falhou: {r.get_data(as_text=True)}"
-    data = r.get_json()
-    assert data.get('ok') is True
-    assert data.get('plan') == 'pro'
+    assert r.status_code == 200, "activate falhou: %s" % r.get_data(as_text=True)
+    body = r.get_json()
+    assert body.get("plan") == "pro", body
+    me = c.get("/auth/me", headers=_auth(token)).get_json()
+    assert me.get("plan") == "pro", "plano nao atualizou no banco: %s" % me.get("plan")
+    print("OK  test_activate_com_assinatura_PAGA_concede_pro | sub=%s" % sid)
 
-    # 4. Verifica que plano foi atualizado no banco
-    me = c.get('/auth/me', headers={'Authorization': f'Bearer {token}'})
-    assert me.get_json().get('plan') == 'pro', \
-        f"Plano não atualizado: {me.get_json().get('plan')}"
 
-    print(f"OK  test_endpoint_activate_with_real_pi | pi={pi_id} plan=pro")
+def test_activate_com_assinatura_INCOMPLETE_nao_concede_pro():
+    """**O guarda que vale dinheiro.** Assinatura criada e NAO paga nao pode virar Pro.
 
-def test_endpoint_activate_rejects_unconfirmed_pi():
-    """activate rejeita PaymentIntent não confirmado (status != succeeded)."""
+    O teste antigo exigia HTTP 400 e por isso ficou vermelho: sob assinaturas, "ainda nao
+    pagou" e PENDENCIA, nao erro — o frontend precisa distinguir as duas para nao mostrar
+    falha num fluxo que esta correto, e o webhook `invoice.paid` confirma depois.
+
+    O que importa nao e o codigo HTTP, e o EFEITO. Conferido em 05/09 rodando o caso: plano
+    intacto e ZERO pagamentos gravados. Ancorar no status HTTP era ancorar no efeito colateral
+    em vez da condicao, e foi assim que este arquivo passou meses vermelho por nada.
+    """
     c = _make_client()
-    token, _ = _register_and_login(c, '3')
+    token, email = _register_and_login(c, "3")
+    d = c.post("/subscription/checkout", json={"plan": "pro"}, headers=_auth(token)).get_json()
+    sid = d["subscription_id"]
 
-    r = c.post('/subscription/checkout', json={'plan': 'pro'}, headers=_auth(token))
-    pi_id = r.get_json()['subscription_id']
-
-    # Tenta ativar SEM confirmar o PI
-    r = c.post('/subscription/activate',
-               json={'plan': 'pro', 'payment_intent_id': pi_id, 'subscription_id': pi_id},
+    r = c.post("/subscription/activate",                       # SEM confirmar a fatura
+               json={"plan": "pro", "payment_intent_id": sid, "subscription_id": sid},
                headers=_auth(token))
-    assert r.status_code == 400, f"Deveria rejeitar PI não confirmado, got {r.status_code}"
-    print(f"OK  test_endpoint_activate_rejects_unconfirmed_pi | status={r.status_code}")
+    body = r.get_json() or {}
+    assert body.get("pending") is True, "deveria declarar pendencia: %s" % body
+    assert body.get("plan") != "pro", "concedeu Pro sem pagamento: %s" % body
+
+    me = c.get("/auth/me", headers=_auth(token)).get_json()
+    assert me.get("plan") == "free", (
+        "plano virou %s sem pagamento confirmado" % me.get("plan"))
+
+    # Pelo e-mail: `/auth/me` nao devolve `id`, e inventar a chave seria testar o payload
+    # em vez do efeito.
+    conn = schema.get_conn()
+    n = dict(conn.execute(repositories._adapt(
+        "SELECT COUNT(*) AS n FROM payments p JOIN users u ON u.id = p.user_id "
+        "WHERE u.email = ?"), (email,)).fetchone())["n"]
+    conn.close()
+    assert n == 0, "gravou %s pagamento(s) sem cobranca confirmada" % n
+    print("OK  test_activate_com_assinatura_INCOMPLETE_nao_concede_pro | plano intacto, 0 pagamentos")
+
 
 # ── runner ───────────────────────────────────────────────────────────────────
 

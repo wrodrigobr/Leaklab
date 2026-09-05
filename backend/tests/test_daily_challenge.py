@@ -58,24 +58,41 @@ def _player(sfx):
 
 
 def test_endpoint_flow_generate_approve_play():
+    """O fluxo do JOGADOR: aprovado -> ve sem gabarito -> responde -> 2a tentativa barrada.
+
+    05/09: este teste esperava `generated` na resposta do /generate e ficou vermelho quando a
+    geracao virou THREAD em 31/08 (dezenas de chamadas de LLM sequenciais dentro do request
+    faziam o gunicorn matar o worker por timeout; o SystemExit nem era capturavel). O endpoint
+    passou a devolver `202 {started: True}`. Como o arquivo estava FORA da suite, ninguem viu.
+
+    Alem de destravar, o teste deixou de DEPENDER do LLM: o contrato assincrono e conferido a
+    parte, e o pool e semeado direto pelo repositorio. Teste de fluxo que chama modelo e lento,
+    caro e intermitente — e a intermitencia treina todo mundo a ignorar o vermelho.
+    """
     h = _admin()
-    # admin gera candidatos
+    # 1) o contrato ATUAL do generate: acusa recebimento e trabalha em thread
     r = client.post('/admin/daily-challenge/generate', headers=h, json={'n': 4})
-    assert r.status_code == 200 and r.get_json()['generated'] >= 1, r.get_json()
-    pool = client.get('/admin/daily-challenge/pool?status=pending', headers=h).get_json()['pool']
-    assert pool, "pool vazio"
-    pid = pool[0]['id']; answer = pool[0]['answer']
-    # aprova
-    assert client.post(f'/admin/daily-challenge/{pid}/status', headers=h, json={'status': 'approved'}).status_code == 200
+    assert r.status_code == 202, "esperava 202 (assincrono), veio %s" % r.status_code
+    body = r.get_json()
+    assert body.get('started') is True, body
+    assert 'generated' not in body, "voltou a ser sincrono? o teste precisa ser revisto: %s" % body
+
+    # 2) o fluxo do jogador, sem depender da thread nem do LLM
+    conn = repo.get_conn()
+    conn.execute("DELETE FROM daily_challenge_pool"); conn.execute("DELETE FROM daily_challenge_schedule")
+    conn.commit(); conn.close()
+    repo.add_challenge_candidates(build_candidates(1, with_explanation=False))
+    cand = repo.list_challenge_candidates('pending')[0]
+    pid, answer = cand['id'], cand['answer']
+    assert client.post(f'/admin/daily-challenge/{pid}/status', headers=h,
+                       json={'status': 'approved'}).status_code == 200
 
     ph, _uid = _player('A')
     got = client.get('/player/daily-challenge', headers=ph).get_json()
     assert got['available'] and not got['answered'], got
-    assert 'options' in got['spot'] and 'answer' not in got['spot']   # NÃO vaza o gabarito
-    # responde o gabarito → correto
+    assert 'options' in got['spot'] and 'answer' not in got['spot']   # NAO vaza o gabarito
     sub = client.post('/player/daily-challenge/submit', headers=ph, json={'action': answer})
     assert sub.status_code == 200 and sub.get_json()['result']['is_correct'], sub.get_json()
-    # 2a tentativa no mesmo dia → 409
     again = client.post('/player/daily-challenge/submit', headers=ph, json={'action': 'fold'})
     assert again.status_code == 409, again.status_code
     print("OK  test_endpoint_flow_generate_approve_play")

@@ -5,6 +5,52 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## AY-10: os 11 testes vermelhos que ninguem via — e o que apareceu atras deles (05/09)
+
+Quatro arquivos de teste estavam FORA da suite e vermelhos. Investigados um a um, porque o
+precedente de 28/08 teve tres bugs reais e tres testes velhos, e naquela vez eu quase
+"consertei" o correto.
+
+**Veredito: 11 vermelhos, ZERO bugs.** Todos eram teste congelado numa decisao anterior:
+
+| arquivo | o que afirmava | o que mudou | destino |
+|---|---|---|---|
+| `stripe_integration` (6) | `pi_...` (PaymentIntent avulso) | PAY-04 trocou por Subscription (`sub_...`) | **fora**: integracao real, exige credencial e rede |
+| `engine_internal_consistency` (3) | 3 invariantes do acervo | 2 nao existem em prod; 1 virou o AY-11 | **fora**: e AUDITORIA, le o banco real |
+| `upload_quota` (1) | teto Free = 2 | subiu para 30 em 28/08 ("importar nao e custo, e aquisicao") | **dentro** |
+| `daily_challenge` (1) | `generate` sincrono | virou THREAD em 31/08 (gunicorn matava o worker por timeout) | **dentro** |
+
+Suite: **2851 -> 2857**.
+
+### O 200 que parecia furo de cobranca, e nao era
+`activate` devolvia 200 para assinatura nao paga, e o teste exigia 400. Parecia conceder Pro
+sem pagamento. **Nao concede** — provado rodando o caso: plano intacto (`free`), ZERO pagamentos
+gravados, `pending: true`. Sob assinaturas "ainda nao pagou" e PENDENCIA, nao erro; o frontend
+precisa distinguir as duas para nao mostrar falha num fluxo correto.
+
+O teste reescrito ancora no EFEITO (plano + pagamentos), nao no status HTTP. Quando forcei o
+`/activate` a conceder Pro sem cobranca, ele acusou. Ancorar no HTTP era ancorar no efeito
+colateral em vez da condicao — e foi assim que o arquivo passou meses vermelho sem informar nada.
+
+### Testes que envelhecem porque CRAVAM o numero
+O `upload_quota` congelava `2`. Reescrito para ler `PLAN_LIMITS['free']['tournaments']`: agora
+acompanha a decisao de negocio em vez de exigir que alguem lembre de atualizar o teste. E o
+`daily_challenge` deixou de DEPENDER do LLM — o contrato assincrono e conferido a parte e o pool
+e semeado direto pelo repositorio. Teste de fluxo que chama modelo e lento, caro e intermitente,
+e intermitencia treina todo mundo a ignorar o vermelho.
+
+### A mutacao que me enganou (4a vez no dia)
+Para provar o guarda da cota, subi o teto de 30 para 999999 — e o teste PASSOU. Quase registrei
+como guarda silencioso. Nao era: o teste le o teto da mesma fonte que o codigo, entao acompanha,
+que e o comportamento certo. Eu tinha mutado o PARAMETRO em vez do MECANISMO. Desligando o `if`
+que barra, ele acusou na hora.
+
+Quarta vez no dia que um verificador meu deu resposta errada, e as quatro na mesma direcao:
+**testei a forma em vez do efeito** (`FALHOU` vs `FAIL`, caminho errado no vitest, substring com
+aspas, e agora o parametro no lugar do mecanismo).
+
+---
+
 ## O dashboard abre em HISTORICO, e o sentinela que faltava numa das duas janelas (05/09)
 
 Decisao do dono: *"vamos manter o filtro do dash por padrao o historico, nao os ultimos

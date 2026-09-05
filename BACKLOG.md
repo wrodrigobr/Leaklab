@@ -116,6 +116,37 @@ a posicao — item sem medicao fica embaixo de proposito.
 | AY-7 | **Recompute `opponent_profiles`** — ver item proprio no Backlog Futuro. | 43 celulas. Baixo, e ja medido. |
 | AY-8 | **Ranges JSON: runtime x versionado** — ver item proprio no Backlog Futuro. | nao afeta usuario hoje; afeta o que a gente perde a cada deploy. |
 
+**[AY-11] O VEREDITO CAI, O SCORE FICA — e o score ordena o plano de estudos**
+
+Achado em 05/09 investigando os vermelhos do AY-10. O motor CAPEIA o label quando o GTO valida
+a acao (`gto_correct`/`gto_mixed` -> teto `marginal`, linha ~201 do `decision_engine_v11`), mas
+**nao baixa o `score` junto**. O resultado sao decisoes assim, reais em producao:
+
+    id=329031  turn  BB  fold->fold  score=0.350  gto=gto_correct  label=standard
+
+A acao esta CERTA (o proprio GTO diz), o label reflete isso, e o score continua 0,350 — que e
+faixa de `small_mistake`.
+
+**Escala e tendencia (prod, 05/09):** 4.062 decisoes com label fora da faixa do proprio score
+(`_LABEL_MAX_SCORE`: standard 0,08 / marginal 0,18 / small_mistake 0,35). Por mes: 8,6% em
+junho, 7,6% em julho, 7,7% em agosto, **5,2% em setembro sobre 57.987 decisoes**. Diminuindo,
+mas VIVO — nao e residuo historico.
+
+**Por que importa:** `priority_score = COUNT(*) * AVG(d.score)` ORDENA o ranking de leaks
+(`repositories.py` ~1307), e o ranking alimenta o plano de estudos via
+`get_leak_ranking_gto_first`. Ou seja: **o plano manda o jogador estudar um spot que o motor
+julgou correto.** O `avg_score` tambem entra na curva de evolucao por torneio.
+
+Isto e exatamente o que a v0.168 tentou estabelecer ("quem muda veredito carrega recomendacao e
+score junto") aplicado pela metade: o caminho do CAP por GTO ficou de fora.
+
+**Ao atacar (regra 7):** baixar o score muda o ranking de leaks de TODOS os usuarios e, por
+tabela, o plano de estudos ja gerado. Precisa de dry-run com o antes/depois do ranking por
+usuario antes de qualquer UPDATE, e decidir se o acervo e reprocessado ou so o motor muda daqui
+para frente. Ha tambem a pergunta de desenho: o `score` deve ser a opiniao da HEURISTICA
+(e ai o label diverge por construcao) ou o veredito FINAL? Hoje ele e as duas coisas conforme o
+caminho, e e essa ambiguidade que produz os 4.062.
+
 **[AY-9] AUDITORIA DIRIGIDA POR MODO DE FALHA**
 
 Nao e revisao de modulo, e varredura por PADRAO. Justificativa medida: dos 8 itens desta
@@ -144,19 +175,14 @@ mexa. Padrao que nao consegue produzir um caso positivo conhecido nao esta pront
 **O que NAO e escopo:** achar bug novo por leitura. Se o padrao nao tem detector automatizavel,
 ele sai da lista em vez de virar tarefa de inspecao manual.
 
-**[AY-10] OS 4 ARQUIVOS DE TESTE VERMELHOS** (achados em 05/09, 11 testes falhando)
+**[AY-10] OS 4 ARQUIVOS DE TESTE VERMELHOS** — ✅ **ENTREGUE 05/09**
 
-`test_daily_challenge.py` (1), `test_engine_internal_consistency.py` (3),
-`test_stripe_integration.py` (6), `test_upload_quota.py` (1). Estavam FORA da suite — nunca
-rodavam, entao ninguem viu. Declarados em `FORA_DA_SUITE` com motivo ate serem investigados.
-
-**Nao registrar antes de investigar:** suite vermelha treina todo mundo a ignora-la. E cada um
-pode ser bug REAL ou teste VELHO — no precedente de 28/08 foram tres de cada, e o conserto
-quase caiu no lado certo. Investigar um a um, decidir, e so entao registrar.
-
-O `test_stripe_integration.py` com 6 falhas merece prioridade dentro do item: e a area que
-acabou de produzir 10 rebaixamentos indevidos, e um guarda vermelho ali e o pior lugar
-possivel para ter cobertura que ninguem le.
+11 vermelhos, ZERO bugs: todos eram teste congelado numa decisao anterior (PAY-04 trocou
+PaymentIntent por Subscription; teto Free subiu de 2 para 30 em 28/08; a geracao de desafio
+virou thread em 31/08). `upload_quota` e `daily_challenge` reescritos e REGISTRADOS na suite
+(2851 -> 2857); `stripe_integration` (integracao real, exige credencial) e
+`engine_internal_consistency` (auditoria: le o banco real) declarados em FORA_DA_SUITE com o
+motivo verdadeiro. Guardas quebrados no MECANISMO e acusados. O achado do caminho virou o AY-11.
 
 **DIVIDAS DE ARVORE (limpar, nao esquecer)**
 

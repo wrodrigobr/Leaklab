@@ -1,5 +1,5 @@
 """
-Quota de upload de torneios (Free = 2/mês) + correção do bug de re-import:
+Quota de upload de torneios (teto Free vem de PLAN_LIMITS) + correção do bug de re-import:
 merge do MESMO torneio não consome quota nem é barrado; só torneio NOVO conta.
 Reusa o setup/fixture do test_api_endpoints (DB SQLite isolado por client).
 """
@@ -46,19 +46,35 @@ def test_merge_not_counted_and_block_at_two():
     assert imp(j10).status_code == 200
     assert used() == 1, f"merge não deveria incrementar, used={used()}"
 
-    # 3) segundo torneio DISTINTO conta → chega no limite (2)
+    # 3) segundo torneio DISTINTO conta
     assert imp(j5.replace(orig, '9000000001')).status_code == 200
     assert used() == 2, used()
 
-    # 4) terceiro torneio novo é BARRADO (402)
-    r = imp(j5.replace(orig, '9000000002'))
-    assert r.status_code == 402 and r.get_json().get('quota_exceeded'), r.status_code
+    # ── O teto vem da FONTE UNICA, nunca cravado (05/09) ────────────────────────────────
+    # Este teste cravava `2` e ficou vermelho quando o corte Free subiu para 30 em 28/08
+    # (decisao de negocio: "importar nao e custo, e aquisicao"). Como o arquivo estava FORA
+    # da suite, ninguem viu — parecia bug de cota e era teste velho. Lendo de `PLAN_LIMITS`,
+    # ele acompanha a decisao em vez de congelar o numero de ontem.
+    teto = repo.PLAN_LIMITS['free']['tournaments']
+    conn = repo.get_conn()
+    conn.execute(repo._adapt("UPDATE users SET tournaments_this_month = ? WHERE id = ?"),
+                 (teto - 1, uid))
+    conn.commit(); conn.close()
 
-    # 5) mas re-import (merge) de um torneio EXISTENTE passa mesmo no limite
-    j15 = '\n\n\n'.join(blocks[:15])   # T# original, +5 mãos novas
-    assert imp(j15).status_code == 200, "merge no limite não deveria ser barrado"
-    assert used() == 2, used()
-    print("OK  test_merge_not_counted_and_block_at_two")
+    # 4) o torneio que ENCOSTA no teto passa
+    assert imp(j5.replace(orig, '9000000002')).status_code == 200, "o ultimo do teto foi barrado"
+    assert used() == teto, used()
+
+    # 5) o SEGUINTE e barrado (402)
+    r = imp(j5.replace(orig, '9000000003'))
+    assert r.status_code == 402 and r.get_json().get('quota_exceeded'), (
+        "teto %d nao barrou o torneio seguinte: HTTP %s" % (teto, r.status_code))
+
+    # 6) mas re-import (merge) de um torneio EXISTENTE passa mesmo no teto
+    j15 = '\n\n\n'.join(blocks[:15])   # T# original, +5 maos novas
+    assert imp(j15).status_code == 200, "merge no teto nao deveria ser barrado"
+    assert used() == teto, used()
+    print("OK  test_merge_not_counted_and_block_at_two | teto=%d" % teto)
 
 
 if __name__ == '__main__':

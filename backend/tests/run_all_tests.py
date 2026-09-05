@@ -77,6 +77,8 @@ SUITES = {
                   'test_rebaixamento_de_plano.py',
                   'test_suite_completa.py',
                   'test_sentinela_do_historico.py',
+                  'test_daily_challenge.py',
+                  'test_upload_quota.py',
                   'test_ritual_da_sessao.py',
                   'test_equity_flop_turn.py',
                   'test_tendencia_do_leak.py',
@@ -225,10 +227,21 @@ FORA_DA_SUITE = {
     # Nao registrados ainda de proposito: registrar sem investigar deixaria a suite
     # vermelha e treinaria todo mundo a ignora-la. Cada um pode ser bug real OU teste
     # velho — o precedente de 28/08 teve os dois (3 e 3), e eu quase "consertei" o certo.
-    'test_daily_challenge.py':            '1 falha, nao investigada (AY-10)',
-    'test_engine_internal_consistency.py': '3 falhas, nao investigadas (AY-10)',
-    'test_stripe_integration.py':          '6 falhas, nao investigadas (AY-10)',
-    'test_upload_quota.py':                '1 falha, nao investigada (AY-10)',
+    'test_engine_internal_consistency.py':
+        'AUDITORIA DO ACERVO, nao teste de codigo: le o banco REAL (`get_conn` sem banco '
+        'descartavel), entao o resultado depende dos DADOS de quem roda, nao do codigo. '
+        'Em suite viraria vermelho ou verde conforme a maquina. Rodar a mao para auditar '
+        'o acervo. Investigado em 05/09: das 3 invariantes, DUAS nao existem em producao '
+        '(0 casos; o vermelho local era residuo do banco de dev) e a terceira virou o '
+        'AY-11 — 4.062 decisoes com label fora da faixa do proprio score, porque o cap '
+        'por GTO baixa o veredito e nao baixa o score.',
+    'test_stripe_integration.py':
+        'INTEGRACAO REAL: bate na API do Stripe (test mode) e exige STRIPE_* no .env. Fica de '
+        'fora porque suite que quebra quando o Stripe esta lento ou a credencial falta treina '
+        'todo mundo a ignorar a suite. Rodar A MAO antes de mexer em pagamento: '
+        '`python tests/test_stripe_integration.py`. Os 6 vermelhos de 05/09 eram TESTE VELHO, '
+        'nao bug — afirmavam `pi_...` e o codigo cria `sub_...` desde a PAY-04. Reescritos '
+        'para o contrato de assinatura; 9/9 em 05/09.',
 }
 
 
