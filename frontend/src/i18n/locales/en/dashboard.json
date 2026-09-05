@@ -902,7 +902,7 @@
   "posProfile": {
     "title": "Profile by position",
     "tooltip": "How you play from EACH seat. The green band is the healthy MTT reference; the dot is you. Outside it is not automatically a mistake: it is where to look. Each seat only classifies what its own sample supports.",
-    "legend": "The tick marks your whole-game number; the dot, this seat. The grid describes each seat without judging: the MTT reference applies to the whole game and appears in the Total row.",
+    "legend": "The grid shows your number in each seat without judging: the MTT reference applies to the whole game and appears in the Total row. Hover to compare a seat with your whole game.",
     "hands": "{{n}} hands",
     "handsShort": "hands",
     "seat": "seat",

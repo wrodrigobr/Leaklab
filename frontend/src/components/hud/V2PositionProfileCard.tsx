@@ -168,44 +168,28 @@ function Celula({ chave, cel, posicao, maos, ancora }: {
   ancora?: number | null;
 }) {
   const { t } = useTranslation("dashboard");
-  const escala = ESCALA[chave] ?? [0, 100];
   const baixa = cel.band === "low_sample";
-  const marca = pct(cel.value, escala);
-  const marcaAncora = ancora != null ? pct(ancora, escala) : null;
   const unidade = chave === "af" ? "x" : "%";
   const delta = ancora != null ? cel.value - ancora : null;
 
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <div className="flex flex-col gap-1 cursor-default">
-          <span
-            className={cn(
-              "font-mono text-[11px] font-bold tabular-nums leading-none",
-              baixa ? "text-muted-foreground/50" : "text-foreground"
-            )}
-          >
-            {baixa ? "—" : cel.value}
-          </span>
-          {/* Sem banda pintada: a grade descreve, nao acusa. O tracinho e o SEU numero do
-              jogo todo, entao o olho le a FORMA (de onde voce sobe e de onde voce desce)
-              sem que nada precise virar vermelho. */}
-          <div className="relative h-1.5 w-full overflow-hidden rounded-full bg-muted/15">
-            {marcaAncora != null && (
-              <div
-                className="absolute inset-y-0 w-px bg-muted-foreground/40"
-                style={{ left: `${marcaAncora}%` }}
-                aria-hidden
-              />
-            )}
-            {!baixa && (
-              <div
-                className="absolute top-1/2 size-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary ring-1 ring-background"
-                style={{ left: `${marca}%` }}
-              />
-            )}
-          </div>
-        </div>
+        {/* SO o numero (decisao do dono, 05/09). O trilho saiu junto com o veredito, e nao
+            por economia de tinta: um trilho sem referencia tem a APARENCIA de instrumento de
+            medida, entao o olho procura o alvo que nao existe — a mesma linguagem visual que
+            acabamos de remover, convidando o leitor a inferir uma regua que decidimos nao
+            ter. A escala tambem era arbitraria: VPIP desenhado em 0-60 e AF em 0-8 pareciam
+            o mesmo widget sem serem comparaveis. A comparacao honesta (este assento contra o
+            seu jogo todo) vive no tooltip, em frase, onde nao vira grafico sem eixo. */}
+        <span
+          className={cn(
+            "cursor-default font-mono text-[11px] font-bold tabular-nums leading-none",
+            baixa ? "text-muted-foreground/50" : "text-foreground"
+          )}
+        >
+          {baixa ? "—" : cel.value}
+        </span>
       </TooltipTrigger>
 
       <TooltipContent side="top" className="w-[210px] p-3">
@@ -359,7 +343,7 @@ export function V2PositionProfileCard({
             ))}
           </div>
 
-          <div className="space-y-2.5">
+          <div className="space-y-2">
             {linhas.map((linha) => (
               <div
                 key={linha.position}

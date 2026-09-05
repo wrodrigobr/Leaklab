@@ -902,7 +902,7 @@
   "posProfile": {
     "title": "Perfil por posición",
     "tooltip": "Cómo jugás desde CADA asiento. La franja verde es la referencia sana de MTT; el punto sos vos. Fuera de ella no es error automático: es donde vale mirar. Cada asiento solo clasifica lo que su propia muestra sostiene.",
-    "legend": "La marca indica tu número de todo el juego; el punto, el de este asiento. La grilla describe cada asiento sin juzgar: la referencia MTT vale para todo el juego y aparece en la fila Total.",
+    "legend": "La grilla muestra tu número en cada asiento sin juzgar: la referencia MTT vale para todo el juego y aparece en la fila Total. Pasa el mouse para comparar el asiento con todo tu juego.",
     "hands": "{{n}} manos",
     "handsShort": "manos",
     "seat": "asiento",

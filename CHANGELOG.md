@@ -53,6 +53,24 @@ regua — com contraprova propria para nao sumir junto.
 Disciplina do produto levada um passo adiante: era "nenhum read sem amostra", virou tambem
 **nenhum veredito sem regua**.
 
+### O trilho saiu junto
+O dono, depois de ver a grade descritiva: *"se nao temos regua por posicao, podemos remover a
+regua e deixar apenas os valores?"*. Sim, e por um motivo mais forte que economia de tinta:
+**um trilho sem referencia tem a APARENCIA de instrumento de medida**, entao o olho procura o
+alvo que nao existe — a mesma linguagem visual que a mudanca acabara de remover, convidando o
+leitor a inferir uma regua que decidimos nao ter. A escala tambem era arbitraria: VPIP
+desenhado em 0-60 e AF em 0-8 pareciam o mesmo widget sem serem comparaveis.
+
+Linhas de assento ficaram so com o numero; a linha TOTAL manteve a regua pintada. A diferenca
+visual passou a CARREGAR significado: onde ha trilho, ha veredito; onde nao ha, e descricao.
+De quebra a grade estreitou muito, o que ajuda o problema de rolagem horizontal.
+
+### A legenda errou DUAS vezes, e nenhum guarda acusou
+Ela prometia "faixa verde = referencia MTT" depois que a faixa saiu, e depois "o tracinho
+marca o seu numero" depois que o tracinho saiu. **Copy que descreve desenho removido e a
+versao que CHEGA AO JOGADOR do comentario desatualizado.** As duas foram pegas relendo, nao
+por teste: nao existe guarda que ligue a copy ao que o componente de fato renderiza.
+
 ### Sobre o jogo do dono, com o ruido fora
 Dos 4 vermelhos, 3 eram acusacao falsa. Sobra o **SB com 50,4%** — real, e o maior da base
 nesse assento (os outros cinco ficam entre 25 e 33).

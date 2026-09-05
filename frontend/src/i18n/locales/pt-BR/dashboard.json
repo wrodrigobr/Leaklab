@@ -902,7 +902,7 @@
   "posProfile": {
     "title": "Perfil por posição",
     "tooltip": "Como você joga em CADA assento. A faixa verde é a referência saudável de MTT; o ponto é você. Fora dela não é erro automático: é onde vale olhar. Cada assento só classifica o que a própria amostra sustenta.",
-    "legend": "O tracinho marca o seu número no jogo todo; o ponto, o deste assento. A grade descreve cada assento, sem julgar: a referência MTT vale para o jogo todo e aparece na linha Total.",
+    "legend": "A grade mostra o seu número em cada assento, sem julgar: a referência MTT vale para o jogo todo e aparece na linha Total. Passe o mouse para comparar o assento com o seu jogo todo.",
     "hands": "{{n}} mãos",
     "handsShort": "mãos",
     "seat": "assento",
