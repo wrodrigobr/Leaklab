@@ -5,6 +5,60 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## Nenhum veredito sem regua: a grade por assento para de acusar (05/09)
+
+### O que o dono viu
+*"Da uma conferida no meu vpip por posicao, estou com muitos setores vermelhos."*
+
+Antes de responder sobre o jogo dele, a conferencia que separa "voce joga assim" de "nossa
+regua esta errada": os MESMOS assentos estao vermelhos para os outros jogadores?
+
+```
+jogador              UTG    UTG+1  UTG+2  LJ     HJ     CO     BTN    SB     BB
+rulliansiqueira      17.3   16.2   17.6   15.4   21.4   22.5   24.1   30.9!  37.4!
+micheldienstmann25   19.6   19.3   22.1   17.5   22.7   24.8   27.6   29.8!  39.3!
+wrodrigo             20.1   14.5n  20.4   27.6   22.3   30.1!  40.1!  50.4!  33.2!
+aguiard109           21.8   20.0   16.8   20.8   23.2   28.8!  24.6   26.6   42.7!
+CSM96                17.3   15.8   19.1   40.0   17.1   23.7   20.1   32.5!  36.6!
+Luciper              17.4   14.2n  11.2n  16.7   16.0   23.0   25.0   25.4   23.9
+
+acusados de LOOSE:   UTG..HJ: 0 de 6      SB: 4 de 6      BB: 5 de 6
+```
+
+**Zero acusacoes do UTG ao HJ, cinco de seis no BB.** Nao sao cinco jogadores soltos.
+
+### A causa
+`STAT_REFERENCES` e a regua do **jogo inteiro** (VPIP saudavel 18-24), e a grade a aplicava
+assento a assento. E impossivel de satisfazer por construcao: o VPIP global e a media
+PONDERADA dos posicionais — com UTG ~17 e BB ~37 o global cai em ~24, que e saudavel. Exigir
+18-24 em TODO assento so seria satisfeito por quem joga igual de todas as posicoes, que e
+exatamente o leak que a ferramenta deveria achar.
+
+Pior: acusava de solto justo onde abrir mais e correto. No BB ha desconto de preco para
+defender; no BTN ha posicao. O BB do dono (33,2%) e mais TIGHT que o do Rullian (37,4) e o do
+aguiard (42,7), e aparecia vermelho.
+
+### O conserto (decisao do dono: nao criar regua por assento)
+A grade **descreve, nao julga**. Cada celula traz o numero, a amostra, e um tracinho marcando
+o proprio numero do jogador no jogo todo — ancora honesta, porque nao e referencia externa, e
+ele mesmo. O tooltip diz "+17,9% em relacao ao seu jogo todo" em vez de acusar.
+
+O veredito ficou so na linha TOTAL, unico nivel onde a referencia vale — e la e a MESMA banda
+do HUD principal, entao as duas superficies nao podem discordar.
+
+O backend parou de emitir `flag` e `healthy` por assento: deixar a acusacao no payload seria
+espera-la de volta. `low_sample` SOBREVIVE, porque e afirmacao sobre a AMOSTRA e nao sobre a
+regua — com contraprova propria para nao sumir junto.
+
+Disciplina do produto levada um passo adiante: era "nenhum read sem amostra", virou tambem
+**nenhum veredito sem regua**.
+
+### Sobre o jogo do dono, com o ruido fora
+Dos 4 vermelhos, 3 eram acusacao falsa. Sobra o **SB com 50,4%** — real, e o maior da base
+nesse assento (os outros cinco ficam entre 25 e 33).
+
+---
+
 ## O escopo virou frase, e o assento que faltava na mesa (05/09)
 
 ### O filtro que ninguem via

@@ -972,11 +972,13 @@ export interface LeakFinderData {
 
 /** Uma celula da grade por posicao: o valor E o veredito de banda, juntos.
  *  `band='low_sample'` nao e falha — e a resposta honesta de um assento sem volume. */
+/** Celula da grade por assento. **Sem veredito de proposito** (05/09): `STAT_REFERENCES` e a
+ *  regua do JOGO INTEIRO, e aplica-la assento a assento acusava 5 de 6 jogadores de `loose`
+ *  no BB contra 0 de 6 do UTG ao HJ. `band` guarda so o gate de AMOSTRA, que continua valendo
+ *  porque e afirmacao sobre a amostra, nao sobre a regua. O veredito vive na linha TOTAL. */
 export interface PositionStatCell {
   value: number;
-  band: "below" | "healthy" | "above" | "low_sample";
-  flag: string | null;
-  healthy: [number, number];
+  band: "ok" | "low_sample";
 }
 
 export interface PositionProfileRow {

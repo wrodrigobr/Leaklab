@@ -902,7 +902,7 @@
   "posProfile": {
     "title": "Perfil por posição",
     "tooltip": "Como você joga em CADA assento. A faixa verde é a referência saudável de MTT; o ponto é você. Fora dela não é erro automático: é onde vale olhar. Cada assento só classifica o que a própria amostra sustenta.",
-    "legend": "Faixa verde = referência MTT. O ponto marca onde você está nela.",
+    "legend": "O tracinho marca o seu número no jogo todo; o ponto, o deste assento. A grade descreve cada assento, sem julgar: a referência MTT vale para o jogo todo e aparece na linha Total.",
     "hands": "{{n}} mãos",
     "handsShort": "mãos",
     "seat": "assento",
@@ -956,6 +956,9 @@
     },
     "total": "Total",
     "totalHint": "A linha Total é o mesmo número do HUD principal, ponderado pelo volume de cada assento. Não é a média simples das linhas.",
-    "outsideGrid": "Total inclui {{n}} mãos em posições fora das 8 da grade."
+    "outsideGrid": "Total inclui {{n}} mãos em posições fora das 8 da grade.",
+    "yourGame": "Seu jogo todo",
+    "vsYourGame": "{{delta}}{{unit}} em relação ao seu jogo todo.",
+    "descriptive": "A grade descreve o seu perfil em cada assento. A referência vale para o jogo todo, na linha Total."
   }
 }

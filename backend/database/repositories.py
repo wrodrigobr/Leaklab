@@ -2304,9 +2304,25 @@ def get_player_stats_by_position(user_id: int, days: int = 90,
     Responde outra pergunta que os cards de posição já existentes: eles dizem *de onde você
     erra mais* (alinhamento GTO); esta diz *qual é o seu perfil ali* (VPIP, PFR, 3bet...).
 
-    Cada célula declara a própria amostra e só classifica o que aquele assento sustenta —
-    `band='low_sample'` não é falha, é a resposta honesta. Reusa `get_player_stats` inteiro
-    por posição, então as definições conferidas contra o PokerTracker valem aqui sem cópia.
+    ── Por que a grade DESCREVE e não JULGA (05/09) ────────────────────────────────────
+
+    Cada célula saía com banda e flag, classificadas por `STAT_REFERENCES` — que é a régua do
+    **jogo inteiro**. Aplicá-la assento a assento produz acusação falsa, e a medição não deixa
+    dúvida: dos 6 jogadores com volume, **5 de 6 foram acusados de `loose` no BB e 4 de 6 no
+    SB, contra 0 de 6 do UTG ao HJ**. Não são cinco jogadores soltos; é a régua no lugar errado.
+
+    E é impossível de satisfazer por construção: o VPIP global é a média PONDERADA dos
+    posicionais. Com UTG ~17 e BB ~37 o global cai em ~24, que é saudável — exigir que todo
+    assento fique em 18-24 só seria satisfeito por quem joga igual de todas as posições, que é
+    exatamente o leak. Pior: acusava de solto justo onde abrir mais é correto (no BB há
+    desconto de preço; no BTN há posição).
+
+    Decisão do dono: **não criar régua por assento.** Então a grade não emite veredito por
+    assento — mostra o número e a amostra, e o veredito fica na linha TOTAL, único nível onde
+    a referência é válida. Mesma disciplina de [[project_opponent_hud]] levada um passo
+    adiante: lá era "nenhum read sem amostra", aqui é **nenhum veredito sem régua**.
+
+    `low_sample` PERMANECE, porque é afirmação sobre a AMOSTRA, não sobre a régua.
     """
     from leaklab.opponent_stats import classify_stat
 
@@ -2324,7 +2340,12 @@ def get_player_stats_by_position(user_id: int, days: int = 90,
             c = classify_stat(chave, valor, maos)
             if c is None:
                 continue
-            celula['stats'][chave] = {'value': valor, **c}
+            # Só o gate de amostra sobrevive. Devolver `flag`/`healthy` aqui seria deixar a
+            # acusação no payload esperando alguém voltar a pintá-la.
+            celula['stats'][chave] = {
+                'value': valor,
+                'band': 'low_sample' if c.get('band') == 'low_sample' else 'ok',
+            }
         linhas.append(celula)
 
     total = sum(l['hands'] for l in linhas)

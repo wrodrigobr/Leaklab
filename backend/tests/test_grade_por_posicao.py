@@ -126,6 +126,42 @@ def test_os_aliases_saem_da_fonte_unica():
         assert cru in rotulos_do_assento(canon)
 
 
+def test_a_grade_NAO_emite_veredito_por_assento():
+    """05/09 — a regua de `STAT_REFERENCES` e do JOGO INTEIRO, e aplica-la assento a assento
+    produzia acusacao falsa: dos 6 jogadores com volume em producao, **5 de 6 acusados de
+    `loose` no BB e 4 de 6 no SB, contra 0 de 6 do UTG ao HJ**. Nao eram cinco jogadores
+    soltos; era a regua no lugar errado.
+
+    E impossivel de satisfazer por construcao: o VPIP global e a media PONDERADA dos
+    posicionais, entao exigir 18-24 em TODO assento so seria satisfeito por quem joga igual
+    de todas as posicoes — que e exatamente o leak. Decisao do dono: nao criar regua por
+    assento; a grade descreve e o veredito fica na linha TOTAL.
+
+    A celula so pode carregar `value` e o gate de AMOSTRA. `flag` ou `healthy` de volta no
+    payload e a acusacao esperando alguem repinta-la.
+    """
+    uid = _semeia(list(POSICOES_NA_ORDEM))
+    grade = get_player_stats_by_position(uid, days=3650, last_n=0)
+
+    proibidos, bandas = set(), set()
+    for linha in grade['positions']:
+        for chave, cel in linha['stats'].items():
+            proibidos |= ({'flag', 'healthy'} & set(cel))
+            bandas.add(cel.get('band'))
+
+    assert not proibidos, 'a celula por assento voltou a carregar veredito: %s' % sorted(proibidos)
+    assert bandas <= {'ok', 'low_sample'}, 'banda de veredito por assento: %s' % sorted(bandas)
+
+
+def test_o_gate_de_amostra_SOBREVIVE():
+    """Contraprova da anterior: se `low_sample` sumisse junto, a grade passaria a afirmar
+    numero sem amostra — que e o erro oposto e igualmente caro."""
+    uid = _semeia(['BTN'])            # 120 maos: passa o min de VPIP (100), nao o de 3bet (750)
+    grade = get_player_stats_by_position(uid, days=3650, last_n=0)
+    bandas = {c['band'] for l in grade['positions'] for c in l['stats'].values()}
+    assert 'low_sample' in bandas or 'ok' in bandas, bandas
+
+
 if __name__ == '__main__':
     falhas = 0
     testes = [v for k, v in sorted(globals().items()) if k.startswith('test_')]

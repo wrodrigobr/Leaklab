@@ -4,7 +4,7 @@ import { Info, ChevronDown } from "lucide-react";
 import { HudTooltip } from "./HudTooltip";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-import type { PlayerStatsResponse, PositionProfileResponse, PositionStatCell } from "@/lib/api";
+import type { PlayerStatFlag, PlayerStatsResponse, PositionProfileResponse, PositionStatCell } from "@/lib/api";
 
 /**
  * V2PositionProfileCard — o perfil do jogador em CADA assento.
@@ -79,17 +79,6 @@ function pct(v: number, [min, max]: [number, number]): number {
   return Math.max(0, Math.min(100, ((v - min) / (max - min)) * 100));
 }
 
-/** Desvio em LARGURAS DE BANDA. 0 = dentro; 1 = uma faixa saudável inteira fora.
- *  Serve só para escolher a intensidade da cor: acima de ~1,2 o desvio deixa de ser ajuste
- *  fino e vira leak, e a célula passa de âmbar para vermelho. */
-function desvio(cel: PositionStatCell): number {
-  const [lo, hi] = cel.healthy;
-  const largura = Math.max(hi - lo, 0.1);
-  if (cel.value < lo) return (lo - cel.value) / largura;
-  if (cel.value > hi) return (cel.value - hi) / largura;
-  return 0;
-}
-
 /**
  * Uma célula. Só o EXCESSO ganha cor.
  *
@@ -98,81 +87,155 @@ function desvio(cel: PositionStatCell): number {
  * olho encontra o vazamento sem varrer célula por célula — e, ao mesmo tempo, a escala segue
  * absoluta, então dá para ver que um VPIP está no TOPO da faixa e não apenas dentro dela.
  */
-function Celula({ chave, cel, posicao, maos }: {
-  chave: string; cel: PositionStatCell; posicao: string; maos: number;
+/** A celula da linha TOTAL. **Esta** mantem a regua pintada, porque `STAT_REFERENCES` e a
+ *  referencia do JOGO INTEIRO e e exatamente aqui que ela se aplica. E a mesma banda que o
+ *  HUD principal ja usa, entao as duas superficies nao podem discordar. */
+function CelulaTotal({ chave, valor, marcador, maos }: {
+  chave: string; valor: number; marcador: PlayerStatFlag; maos: number;
 }) {
   const { t } = useTranslation("dashboard");
   const escala = ESCALA[chave] ?? [0, 100];
-  const baixa = cel.band === "low_sample";
-  const dentro = cel.band === "healthy";
-  const d = desvio(cel);
+  const faixa = marcador.healthy ?? [0, 0];
+  const dentro = marcador.band === "healthy";
+  const baixa = marcador.band === "low_sample";
+  const acima = marcador.band === "above";
+  const larg = Math.max(faixa[1] - faixa[0], 0.1);
+  const d = dentro || baixa ? 0
+    : acima ? (valor - faixa[1]) / larg : (faixa[0] - valor) / larg;
   const cor = baixa ? "#64748B" : dentro ? COR_BANDA.healthy : (d > 1.2 ? COR_BANDA.far : COR_BANDA.out);
 
-  const ini = pct(cel.healthy[0], escala);
-  const fim = pct(cel.healthy[1], escala);
-  const marca = pct(cel.value, escala);
-
-  // o trecho pintado: da borda da faixa ate o valor, no lado em que ele saiu
-  const acima = cel.band === "above";
+  const ini = pct(faixa[0], escala);
+  const fim = pct(faixa[1], escala);
+  const marca = pct(valor, escala);
   const excInicio = acima ? fim : marca;
   const excFim = acima ? marca : ini;
-
   const unidade = chave === "af" ? "x" : "%";
-  const leitura = baixa
-    ? t("posProfile.lowSampleLong")
-    : dentro
-      ? t("posProfile.inBand")
-      : t(`posProfile.read.${chave}.${acima ? 1 : 0}`, { defaultValue: "" });
 
   return (
     <Tooltip>
       <TooltipTrigger asChild>
         <div className="flex flex-col gap-1 cursor-default">
-          <span className="font-mono text-[11px] font-bold tabular-nums leading-none"
-                style={{ color: baixa ? "rgba(100,116,139,.55)" : cor }}>
-            {baixa ? "—" : cel.value}
+          <span className="font-mono text-[11px] font-bold tabular-nums leading-none" style={{ color: cor }}>
+            {valor}
           </span>
-          <div className="relative h-1.5 w-full rounded-full bg-muted/15 overflow-hidden">
+          <div className="relative h-1.5 w-full overflow-hidden rounded-full bg-muted/15">
             <div className="absolute inset-y-0 rounded-full bg-emerald-500/25"
-                 style={{ left: `${ini}%`, width: `${Math.max(3, fim - ini)}%`,
-                          opacity: baixa ? 0.4 : 1 }} />
+                 style={{ left: `${ini}%`, width: `${Math.max(3, fim - ini)}%`, opacity: baixa ? 0.4 : 1 }} />
             {!baixa && !dentro && (
               <div className="absolute inset-y-0 rounded-full"
                    style={{ left: `${excInicio}%`, width: `${Math.max(2, excFim - excInicio)}%`,
                             backgroundColor: cor, opacity: 0.85 }} />
             )}
+            <div className="absolute top-1/2 size-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full ring-1 ring-background"
+                 style={{ left: `${marca}%`, backgroundColor: cor }} />
+          </div>
+        </div>
+      </TooltipTrigger>
+      <TooltipContent side="top" className="w-[210px] p-3">
+        <div className="mb-2 font-mono text-[9px] uppercase tracking-widest text-primary">
+          {ROTULO[chave] ?? chave} · {t("posProfile.total")}
+        </div>
+        <div className="flex items-baseline justify-between gap-3 py-0.5">
+          <span className="text-[11px] text-muted-foreground">{t("posProfile.you")}</span>
+          <span className="font-mono text-xs font-bold tabular-nums" style={{ color: cor }}>{valor}{unidade}</span>
+        </div>
+        <div className="flex items-baseline justify-between gap-3 py-0.5">
+          <span className="text-[11px] text-muted-foreground">{t("posProfile.recommended")}</span>
+          <span className="font-mono text-xs font-bold tabular-nums text-emerald-500">
+            {faixa[0]}–{faixa[1]}{unidade}
+          </span>
+        </div>
+        <div className="my-1.5 h-px bg-border" />
+        <p className="text-[11px] leading-snug text-muted-foreground">
+          {baixa ? t("posProfile.lowSampleLong")
+                 : dentro ? t("posProfile.inBand")
+                 : t(`posProfile.read.${chave}.${acima ? 1 : 0}`, { defaultValue: "" })}
+        </p>
+        <p className="mt-1.5 font-mono text-[9px] text-muted-foreground/70">
+          {t("posProfile.handsHere", { n: maos })}
+        </p>
+      </TooltipContent>
+    </Tooltip>
+  );
+}
+
+function Celula({ chave, cel, posicao, maos, ancora }: {
+  chave: string;
+  cel: PositionStatCell;
+  posicao: string;
+  maos: number;
+  /** O valor do jogador no JOGO TODO. Ancora honesta: nao e regua externa, e ele mesmo. */
+  ancora?: number | null;
+}) {
+  const { t } = useTranslation("dashboard");
+  const escala = ESCALA[chave] ?? [0, 100];
+  const baixa = cel.band === "low_sample";
+  const marca = pct(cel.value, escala);
+  const marcaAncora = ancora != null ? pct(ancora, escala) : null;
+  const unidade = chave === "af" ? "x" : "%";
+  const delta = ancora != null ? cel.value - ancora : null;
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <div className="flex flex-col gap-1 cursor-default">
+          <span
+            className={cn(
+              "font-mono text-[11px] font-bold tabular-nums leading-none",
+              baixa ? "text-muted-foreground/50" : "text-foreground"
+            )}
+          >
+            {baixa ? "—" : cel.value}
+          </span>
+          {/* Sem banda pintada: a grade descreve, nao acusa. O tracinho e o SEU numero do
+              jogo todo, entao o olho le a FORMA (de onde voce sobe e de onde voce desce)
+              sem que nada precise virar vermelho. */}
+          <div className="relative h-1.5 w-full overflow-hidden rounded-full bg-muted/15">
+            {marcaAncora != null && (
+              <div
+                className="absolute inset-y-0 w-px bg-muted-foreground/40"
+                style={{ left: `${marcaAncora}%` }}
+                aria-hidden
+              />
+            )}
             {!baixa && (
-              <div className="absolute top-1/2 size-1.5 -translate-y-1/2 -translate-x-1/2 rounded-full ring-1 ring-background"
-                   style={{ left: `${marca}%`, backgroundColor: cor }} />
+              <div
+                className="absolute top-1/2 size-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary ring-1 ring-background"
+                style={{ left: `${marca}%` }}
+              />
             )}
           </div>
         </div>
       </TooltipTrigger>
 
-      {/* O tooltip poe os dois numeros um debaixo do outro e traduz a diferenca em uma frase.
-          "25,1 contra 18-24" exige que o jogador faca a conta; a frase entrega a leitura. */}
       <TooltipContent side="top" className="w-[210px] p-3">
-        <div className="font-mono text-[9px] uppercase tracking-widest text-primary mb-2">
+        <div className="mb-2 font-mono text-[9px] uppercase tracking-widest text-primary">
           {ROTULO[chave] ?? chave} · {posicao}
         </div>
         <div className="flex items-baseline justify-between gap-3 py-0.5">
           <span className="text-[11px] text-muted-foreground">{t("posProfile.you")}</span>
-          <span className="font-mono text-xs font-bold tabular-nums" style={{ color: cor }}>
+          <span className="font-mono text-xs font-bold tabular-nums text-foreground">
             {baixa ? "—" : `${cel.value}${unidade}`}
           </span>
         </div>
-        <div className="flex items-baseline justify-between gap-3 py-0.5">
-          <span className="text-[11px] text-muted-foreground">{t("posProfile.recommended")}</span>
-          <span className="font-mono text-xs font-bold tabular-nums text-emerald-500">
-            {cel.healthy[0]}–{cel.healthy[1]}{unidade}
-          </span>
-        </div>
+        {ancora != null && (
+          <div className="flex items-baseline justify-between gap-3 py-0.5">
+            <span className="text-[11px] text-muted-foreground">{t("posProfile.yourGame")}</span>
+            <span className="font-mono text-xs tabular-nums text-muted-foreground">
+              {ancora}{unidade}
+            </span>
+          </div>
+        )}
         <div className="my-1.5 h-px bg-border" />
         <p className="text-[11px] leading-snug text-muted-foreground">
-          {leitura}
-          {cel.flag && !dentro && !baixa && (
-            <> {t("posProfile.profile", { flag: t(`playerStats.flags.${cel.flag}`, { defaultValue: cel.flag }) })}</>
-          )}
+          {baixa
+            ? t("posProfile.lowSampleLong")
+            : delta != null
+              ? t("posProfile.vsYourGame", {
+                  delta: `${delta > 0 ? "+" : ""}${delta.toFixed(1)}`,
+                  unit: unidade,
+                })
+              : t("posProfile.descriptive")}
         </p>
         <p className="mt-1.5 font-mono text-[9px] text-muted-foreground/70">
           {t("posProfile.handsHere", { n: maos })}
@@ -226,12 +289,12 @@ export function V2PositionProfileCard({
 
   const totalCels = useMemo(() => {
     if (!geral) return null;
-    const out: Record<string, PositionStatCell> = {};
+    const out: Record<string, { valor: number; marcador: PlayerStatFlag }> = {};
     for (const k of colunas) {
       const v = (geral as unknown as Record<string, number | null>)[k];
       const f = geral.flags?.[k];
       if (v == null || !f) continue;
-      out[k] = { value: v, band: f.band, flag: f.flag, healthy: (f.healthy ?? [0, 0]) as [number, number] };
+      out[k] = { valor: v, marcador: f };
     }
     return Object.keys(out).length ? out : null;
   }, [geral, colunas]);
@@ -311,7 +374,9 @@ export function V2PositionProfileCard({
                 </span>
                 {colunas.map((k) =>
                   linha.stats[k] ? (
-                    <Celula key={k} chave={k} cel={linha.stats[k]} posicao={linha.position} maos={linha.hands} />
+                    <Celula key={k} chave={k} cel={linha.stats[k]} posicao={linha.position}
+                            maos={linha.hands}
+                            ancora={(geral as unknown as Record<string, number | null>)?.[k] ?? null} />
                   ) : (
                     <span key={k} className="font-mono text-[11px] text-muted-foreground/25">—</span>
                   )
@@ -336,11 +401,11 @@ export function V2PositionProfileCard({
               </span>
               {colunas.map((k) =>
                 totalCels[k] ? (
-                  <Celula
+                  <CelulaTotal
                     key={k}
                     chave={k}
-                    cel={totalCels[k]}
-                    posicao={t("posProfile.total")}
+                    valor={totalCels[k].valor}
+                    marcador={totalCels[k].marcador}
                     maos={geral?.total_hands ?? 0}
                   />
                 ) : (
