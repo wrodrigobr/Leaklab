@@ -2288,10 +2288,24 @@ def rotulos_do_assento(pos: str) -> tuple:
 # O que a grade mostra em CADA célula, e o que só aparece quando o assento tem volume.
 # Medido em prod 04/09: com o corte de amostra atual, a grade completa do PT4 só funciona
 # para 2 dos 9 jogadores com volume — `W$SD` pede 2.000 mãos, `WTSD` 1.000, `3Bet` 750, e
-# dividir o acervo por 8 assentos derruba quase todo mundo. Baixar o corte para preencher a
-# tela seria inventar leitura, contra o princípio de [[project_opponent_hud]].
+# dividir o acervo por 9 assentos derruba quase todo mundo.
 #
 # Por isso a grade é PROGRESSIVA: nasce com o que quase todos têm e cresce com o jogador.
+#
+# ── O motivo mudou, a decisão ficou (05/09) ─────────────────────────────────────────────
+# A justificativa original era "baixar o corte seria inventar LEITURA" — argumento sobre o
+# VEREDITO, que saiu da grade em 05/09 (ver `get_player_stats_by_position`). Com a grade
+# apenas descrevendo, e com a amostra declarada em cada linha, descrição sem volume deixou de
+# ser perigosa e passou a ser só imprecisa: o argumento antigo enfraqueceu.
+#
+# O dono reavaliou e MANTEVE os cortes, sobre o que ainda se sustenta: número sobre 30 mãos
+# engana o leitor que não pesa a amostra, mesmo declarada, e ter duas disciplinas de corte
+# dentro da mesma ferramenta é pior que ter uma severa. O custo aceito e conhecido: com 2.041
+# mãos o card mostra 2 colunas de 9 (medido no acervo do próprio dono).
+#
+# Registrado porque o comentário antigo passaria a explicar o corte por uma razão que já não
+# existe — e comentário que descreve o passado vira explicação plausível para outro estado
+# (regra 8).
 _GRADE_SEMPRE = ('vpip', 'pfr')                       # min 100 mãos
 _GRADE_COM_VOLUME = ('three_bet', 'fold_to_3bet', 'af', 'cbet_pct', 'steal_pct',
                      'wtsd', 'w_at_sd')

@@ -225,10 +225,10 @@ export function V2PositionProfileCard({
       {/* UM provider para a grade toda: um por célula seriam dezenas de contextos. */}
       <TooltipProvider delayDuration={200}>
       <div className="overflow-x-auto -mx-1 px-1">
-        <div className="min-w-[400px]">
+        <div className="w-max min-w-full">
           <div
             className="grid items-end gap-x-2 pb-1.5 mb-1.5 border-b border-border/50"
-            style={{ gridTemplateColumns: `3.25rem 2.75rem repeat(${colunas.length}, minmax(2.4rem, 1fr))` }}
+            style={{ gridTemplateColumns: `3.25rem 2.75rem repeat(${colunas.length}, minmax(2.4rem, 3.5rem)) 1fr` }}
           >
             <span className="font-mono text-[9px] uppercase tracking-wider text-muted-foreground/60">
               {t("posProfile.seat")}
@@ -248,7 +248,7 @@ export function V2PositionProfileCard({
               <div
                 key={linha.position}
                 className="grid items-center gap-x-2"
-                style={{ gridTemplateColumns: `3.25rem 2.75rem repeat(${colunas.length}, minmax(2.4rem, 1fr))` }}
+                style={{ gridTemplateColumns: `3.25rem 2.75rem repeat(${colunas.length}, minmax(2.4rem, 3.5rem)) 1fr` }}
               >
                 <span className="font-mono text-[10px] font-bold uppercase text-foreground">
                   {linha.position}
@@ -275,7 +275,7 @@ export function V2PositionProfileCard({
           {totalCels && (
             <div
               className="mt-2.5 grid items-center gap-x-2 border-t border-border/60 pt-2.5"
-              style={{ gridTemplateColumns: `3.25rem 2.75rem repeat(${colunas.length}, minmax(2.4rem, 1fr))` }}
+              style={{ gridTemplateColumns: `3.25rem 2.75rem repeat(${colunas.length}, minmax(2.4rem, 3.5rem)) 1fr` }}
             >
               <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-primary">
                 {t("posProfile.total")}

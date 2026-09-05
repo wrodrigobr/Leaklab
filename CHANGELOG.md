@@ -78,6 +78,30 @@ Coluna 3rem -> 2,4rem, bloco minimo 520px -> 400px, gap apertado: as tres medida
 para caber trilhos que sumiram. A linha TOTAL ficou marcada so pelo peso visual (cor
 primaria), como ANCORA de conferencia e nao como julgamento.
 
+### O layout: as colunas estavam ESPALHADAS, nao largas
+Segundo print do dono, agora no desktop: VPIP e PFR ocupando meia tela cada, com um vao enorme
+entre o rotulo e o numero. Causa: `minmax(2.4rem, 1fr)` — o `1fr` faz cada coluna esticar para
+preencher o card, e com duas colunas num card de largura inteira cada uma engole metade.
+
+Coluna ganhou TETO (`minmax(2.4rem, 3.5rem)`) e a sobra vai para um espacador `1fr` no fim. E
+o `min-w-[400px]` saiu: com poucas colunas o grid natural tem ~210px, entao a largura minima
+fixa forcava rolagem onde nao havia necessidade. Virou `w-max min-w-full`, que cresce com o
+conteudo e nunca encolhe abaixo do card.
+
+### O motivo do corte de amostra mudou; a decisao ficou
+O card do dono mostra 2 colunas de 9: com 2.041 maos divididas por 9 assentos, nenhum chega aos
+500 que `AF`/`C-Bet`/`Steal` pedem. Nao e bug, e a grade PROGRESSIVA.
+
+Mas a justificativa registrada no codigo era *"baixar o corte seria inventar LEITURA"* —
+argumento sobre o VEREDITO, que saiu da grade hoje. Com a grade so descrevendo, e com a amostra
+declarada em cada linha, descricao sem volume deixou de ser perigosa e passou a ser imprecisa.
+
+O dono reavaliou e **manteve** os cortes, sobre o que ainda se sustenta: numero sobre 30 maos
+engana quem nao pesa a amostra mesmo declarada, e ter duas disciplinas de corte na mesma
+ferramenta e pior que ter uma severa. Registrado no codigo porque o comentario antigo passaria
+a explicar o corte por uma razao que ja nao existe — comentario que descreve o passado vira
+explicacao plausivel para outro estado (regra 8).
+
 ### A legenda errou TRES vezes, e nenhum guarda acusou
 Prometeu "faixa verde = referencia MTT" depois que a faixa saiu; "o tracinho marca o seu
 numero" depois que o tracinho saiu; e "a referencia aparece na linha Total" depois que a regua
