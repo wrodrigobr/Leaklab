@@ -116,36 +116,57 @@ a posicao — item sem medicao fica embaixo de proposito.
 | AY-7 | **Recompute `opponent_profiles`** — ver item proprio no Backlog Futuro. | 43 celulas. Baixo, e ja medido. |
 | AY-8 | **Ranges JSON: runtime x versionado** — ver item proprio no Backlog Futuro. | nao afeta usuario hoje; afeta o que a gente perde a cada deploy. |
 
-**[AY-11] O VEREDITO CAI, O SCORE FICA — e o score ordena o plano de estudos**
+**[AY-11] `score` faz DOIS trabalhos incompativeis** — ⏸ decisao do dono: fica como esta, e a
+separacao vira estudo proprio
 
-Achado em 05/09 investigando os vermelhos do AY-10. O motor CAPEIA o label quando o GTO valida
-a acao (`gto_correct`/`gto_mixed` -> teto `marginal`, linha ~201 do `decision_engine_v11`), mas
-**nao baixa o `score` junto**. O resultado sao decisoes assim, reais em producao:
+Achado em 05/09 investigando os vermelhos do AY-10. Em producao, **4.062 decisoes com o score
+fora da faixa do proprio label** (`_LABEL_MAX_SCORE`: standard 0,08 / marginal 0,18 /
+small_mistake 0,35). Ainda 5,2% das 57.987 importadas em setembro — nao e residuo.
 
-    id=329031  turn  BB  fold->fold  score=0.350  gto=gto_correct  label=standard
+**ERREI O TAMANHO DUAS VEZES, e as duas a medicao me corrigiu. Fica registrado.**
 
-A acao esta CERTA (o proprio GTO diz), o label reflete isso, e o score continua 0,350 — que e
-faixa de `small_mistake`.
+*1o erro — inflei.* Afirmei que contaminava o plano de estudos, olhando
+`priority_score = COUNT(*) * AVG(d.score)` e **sem ler o `WHERE` quatro linhas abaixo**:
+`AND d.label IN ('small_mistake','clear_mistake')`. Os dois rankings selecionam por LABEL, e os
+incoerentes sao `standard` (795) e `marginal` (3.255) — ficam de FORA. O `get_gto_leak_ranking`
+nem usa score (peso fixo por `gto_label`). **O plano NAO e contaminado.**
 
-**Escala e tendencia (prod, 05/09):** 4.062 decisoes com label fora da faixa do proprio score
-(`_LABEL_MAX_SCORE`: standard 0,08 / marginal 0,18 / small_mistake 0,35). Por mes: 8,6% em
-junho, 7,6% em julho, 7,7% em agosto, **5,2% em setembro sobre 57.987 decisoes**. Diminuindo,
-mas VIVO — nao e residuo historico.
+*2o erro — "consertei" o que nao era defeito.* Escrevi uma trava final
+(`min(score, teto[label])`) e ela quebrou dois testes: `test_street_multipliers_river_gt_preflop`
+e `test_icm_tax_raises_required_equity_for_thin_call`. **Os dois estavam certos.** Medido: o
+mesmo spot da 0,551 no preflop e 0,694 no river, ambos `small_mistake`; a trava colapsava os
+quatro em 0,35 e apagava o multiplicador de street e a ordenacao dentro da banda. Revertido.
 
-**Por que importa:** `priority_score = COUNT(*) * AVG(d.score)` ORDENA o ranking de leaks
-(`repositories.py` ~1307), e o ranking alimenta o plano de estudos via
-`get_leak_ranking_gto_first`. Ou seja: **o plano manda o jogador estudar um spot que o motor
-julgou correto.** O `avg_score` tambem entra na curva de evolucao por torneio.
+**O que de fato existe:** o `score` faz dois trabalhos incompativeis.
 
-Isto e exatamente o que a v0.168 tentou estabelecer ("quem muda veredito carrega recomendacao e
-score junto") aplicado pela metade: o caminho do CAP por GTO ficou de fora.
+| consumidor | quer |
+|---|---|
+| card / veredito | score coerente com o label |
+| ranking e curva de evolucao | resolucao, inclusive ACIMA da banda |
 
-**Ao atacar (regra 7):** baixar o score muda o ranking de leaks de TODOS os usuarios e, por
-tabela, o plano de estudos ja gerado. Precisa de dry-run com o antes/depois do ranking por
-usuario antes de qualquer UPDATE, e decidir se o acervo e reprocessado ou so o motor muda daqui
-para frente. Ha tambem a pergunta de desenho: o `score` deve ser a opiniao da HEURISTICA
-(e ai o label diverge por construcao) ou o veredito FINAL? Hoje ele e as duas coisas conforme o
-caminho, e e essa ambiguidade que produz os 4.062.
+Quando uma regra rebaixa o label (GTO valida a acao, gate de ICM, teto de pote limpado), os
+dois querem coisas opostas. Hoje o motor atende o segundo.
+
+**DECISAO (dono, 05/09): fica como esta.** O contrato foi DECLARADO no codigo, em cima de
+`_LABEL_MAX_SCORE` — score acima do teto e por desenho, quem encontrar um nao achou bug.
+Efeito aceito e medido: a curva de evolucao fica levemente PESSIMISTA (−0,7% a −11,9% conforme
+o usuario). Sem isso, a proxima pessoa redescobre como defeito pela terceira vez.
+
+**A ESTUDAR (pedido do dono): a opcao 2 — separar `score_heuristico` de `score_do_veredito`.**
+Levantar beneficios e impactos antes de decidir:
+  - *beneficio*: acaba a ambiguidade na raiz; cada consumidor le o campo que lhe serve; a curva
+    de evolucao deixa de ser pessimista sem perder a ordenacao do ranking;
+  - *impacto a medir*: coluna nova em `decisions` (migracao + backfill de 71 mil linhas);
+    quais dos ~14 pontos do motor escrevem cada campo; todo consumidor de `score` (curva,
+    ranking, priority_score, ELO?, card, replayer, revalidacao) tem de ser reclassificado um a
+    um; e o acervo antigo fica com so um dos dois campos — decidir se reprocessa ou convive.
+  - *alternativa a comparar*: reescalar o score proporcionalmente dentro da nova banda quando o
+    label cai, em vez de dois campos. Preserva ordenacao e coerencia com UM campo, mas a conta
+    de reescala e arbitraria e precisa de justificativa.
+
+**Gap menor, no mesmo lugar:** `_LABEL_MAX_SCORE['small_mistake'] = 0.35` e `_label_from_score`
+usa `score <= 0.36`. Duas constantes discordando em 0,01, responsaveis por 12 das 4.062. Nao
+unificado de proposito — mexer em fronteira de banda muda veredito de todo mundo.
 
 **[AY-9] AUDITORIA DIRIGIDA POR MODO DE FALHA**
 

@@ -5,6 +5,58 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## AY-11: eu errei o tamanho DUAS vezes, e a medicao me corrigiu as duas (05/09)
+
+4.062 decisoes em producao com o score fora da faixa do proprio label. O que este item virou
+importa menos que COMO ele foi parar aqui.
+
+### 1o erro: inflei a gravidade
+Afirmei ao dono que "o plano de estudos manda estudar um spot que o motor julgou correto",
+olhando `priority_score = COUNT(*) * AVG(d.score)` e **sem ler o `WHERE` da mesma consulta**,
+quatro linhas abaixo: `AND d.label IN ('small_mistake','clear_mistake')`. Os rankings selecionam
+por LABEL; os incoerentes sao `standard` e `marginal` e ficam de FORA. O plano nao e contaminado.
+
+O dono disse "o 11 parece critico" — porque **eu** tinha posto "critico" na cabeca dele. Se ele
+mandasse atacar, eu teria mexido no ranking de leaks de todos os usuarios por um problema que
+nao estava la.
+
+### 2o erro: "consertei" o que nao era defeito
+Escrevi uma trava final (`min(score, teto[label])`). Ela quebrou dois testes —
+`test_street_multipliers_river_gt_preflop` e `test_icm_tax_raises_required_equity_for_thin_call`.
+**Os dois estavam certos.** Medido: o mesmo spot da 0,551 no preflop e 0,694 no river, ambos
+`small_mistake`; a trava colapsava os quatro em 0,35 e apagava o multiplicador de street e a
+ordenacao dentro da banda. O score acima do teto **e informacao**, nao lixo. Revertido.
+
+### E o meu proprio teste passava VAZIO
+A 1a versao do guarda tinha `except: continue` na varredura, e TODA chamada estourava com
+`KeyError: street` — eu tinha inventado a forma de entrada em vez de copiar a que ja funciona.
+O teste principal dizia OK sobre ZERO casos. Quem acusou foi a contraprova (`Vistos: []`), e
+depois ela acusou de novo: a varredura so tinha pares divergentes, entao nunca produzia
+`standard` e media um lado so.
+
+### O que ficou (decisao do dono: opcao 1)
+Nao "deixar quieto": o motor passou a **declarar o contrato** em cima de `_LABEL_MAX_SCORE` —
+score acima do teto e por DESENHO, com o numero que sustenta, o efeito aceito (curva de
+evolucao levemente pessimista, −0,7% a −11,9%) e o que NAO acontece. Sem isso o item volta como
+"defeito critico" pela terceira vez, e as duas primeiras fui eu.
+
+A separacao `score_heuristico` x `score_do_veredito` virou ESTUDO no backlog, com beneficios e
+impactos a levantar. Gap menor registrado no mesmo lugar: `_LABEL_MAX_SCORE['small_mistake']`
+= 0,35 contra `score <= 0.36` na funcao de label — 0,01 de discordancia, 12 das 4.062.
+
+### A licao, que o dono nomeou
+*"Estas conclusoes precipitadas tem se tornado recorrente, e preciso avaliar antes de da-las."*
+Cinco vezes no dia, todas do mesmo jeito: **eu publiquei a conclusao no instante em que tive o
+primeiro sinal, antes de checar se o sinal media o que eu achava** — e a checagem custava um
+comando. Quatro para MENOS (`FALHOU` vs `FAIL`; caminho do componente no vitest; substring sem
+as aspas; mutar o PARAMETRO em vez do MECANISMO) e uma para MAIS (o `AVG` sem o `WHERE`).
+
+Regra que ficou: antes de afirmar algo que mude o que o dono vai fazer, dizer qual medicao
+sustenta e o que a FALSIFICARIA. Nao sabendo dizer o que a tornaria falsa, ela nao foi medida —
+foi lida. E ler fragmento nunca e evidencia sobre comportamento.
+
+---
+
 ## AY-10: os 11 testes vermelhos que ninguem via — e o que apareceu atras deles (05/09)
 
 Quatro arquivos de teste estavam FORA da suite e vermelhos. Investigados um a um, porque o

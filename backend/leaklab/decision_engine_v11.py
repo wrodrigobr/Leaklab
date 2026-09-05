@@ -341,6 +341,35 @@ def _preflop_gto_label_adjust(label: str, quality: str, ev_loss_bb: float | None
 # NÃO toca o gto_label (frequência é fato do solver); só a severidade do veredito.
 _EV_CEIL_MARGINAL_BB = 0.30
 _EV_CEIL_SMALL_BB    = 1.50
+# ── O que `score` É, e o que ele NÃO é (declarado em 05/09) ─────────────────────────────
+#
+# Esta tabela é usada de DUAS formas, e confundi-las custou meio dia:
+#
+#   (a) como TETO deliberado — `min(score, _LABEL_MAX_SCORE[label])` em ~10 pontos que
+#       rebaixam o label e trazem o score junto;
+#   (b) como a faixa em que cada veredito mora.
+#
+# **O score PODE ficar acima do teto do seu label, e isso é por desenho.** Quando uma regra
+# rebaixa o label (o GTO valida a ação, o gate de ICM, o teto de pote limpado), o score
+# continua carregando a opinião da heurística — e é ela que ORDENA a severidade dentro da
+# banda e que faz o multiplicador de street existir. Medido: o mesmo spot dá 0,551 no preflop
+# e 0,694 no river, os dois com label `small_mistake`. Travar no teto colapsa os dois em 0,35
+# e apaga a ordenação (`test_street_multipliers_river_gt_preflop` e
+# `test_icm_tax_raises_required_equity_for_thin_call` acusaram na hora — os dois estavam
+# certos, e a "trava final" que eu tinha escrito era que estava errada).
+#
+# Consequência aceita, medida em 05/09: 4.062 decisões em produção com o score fora da faixa
+# do próprio label. Isso deixa a curva de evolução (`avg_score` por torneio) levemente
+# PESSIMISTA — de −0,7% a −11,9% conforme o usuário. NÃO contamina o ranking de leaks nem o
+# plano de estudos: as duas consultas selecionam por `label`, não por score.
+#
+# A ambiguidade é real e fica registrada no backlog (AY-11): o certo no longo prazo é separar
+# `score_heuristico` (ordena) de `score_do_veredito` (coerente com o label). Enquanto isso não
+# acontece, **quem ler um score acima do teto NÃO achou um bug** — achou este contrato.
+#
+# Gap conhecido: aqui `small_mistake` termina em 0,35 e `_label_from_score` usa `score <= 0.36`.
+# São 0,01 de discordância entre duas constantes, responsáveis por 12 das 4.062. Não unificado
+# de propósito: mexer em fronteira de banda muda veredito de todo mundo e pede ritual próprio.
 _LABEL_MAX_SCORE = {'standard': 0.08, 'marginal': 0.18, 'small_mistake': 0.35, 'clear_mistake': 1.0}
 
 
