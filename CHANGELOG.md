@@ -34,8 +34,19 @@ destroi nao e guarda; e um para-raios de uso unico.
 
 ### Corrigido
 - **`incomplete_expired` nao rebaixa ninguem** (a raiz).
-- **O handler parava de contar a verdade**: forcava `status='canceled'` em todo evento
-  `deleted`, e o status real morria antes de chegar na politica.
+- **O handler forcava `status='canceled'` em todo evento `deleted`**, destruindo o status
+  real antes de a politica poder decidir. **Correcao do relato (05/09, conferido no log de
+  eventos do Stripe): NAO foi este o caminho que disparou.** Os 10 rebaixamentos chegaram
+  como `customer.subscription.updated` com `status='incomplete_expired'` — o Stripe nunca
+  emitiu `deleted` para assinatura incompleta. O conserto do handler e um defeito LATENTE
+  achado na investigacao, nao a causa; quem cobre o caso real e o no-op na raiz, porque o
+  `updated` entrega o status verdadeiro. Registrado para nao virar credito indevido: eu
+  supus o evento em vez de perguntar ao Stripe, e so descobri porque o dono perguntou ate
+  quando os fantasmas continuariam chegando.
+
+  **Cadencia medida:** assinatura nasce `incomplete` e expira exatamente **23h depois**
+  (01:16 -> 00:16; 15:26 -> 14:26). Zero assinaturas em `incomplete` hoje: nenhum fantasma
+  pendente.
 - **2a trava por PROCEDENCIA**, que nao se apaga: assinatura do Stripe nao tem autoridade
   sobre Pro concedido por fora (fundador, cortesia de coach, painel do admin).
 - **`update_user_admin` grava estado coerente** (`plan_source='admin'`, vigencia limpa). A
