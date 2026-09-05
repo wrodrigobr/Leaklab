@@ -373,6 +373,24 @@ def _check_advanced_insights(user_id: int):
         }), 402
     return None
 
+def _check_stats_by_position(user_id: int):
+    """402 se o plano nao inclui o perfil por ASSENTO (Pro). None caso contrario.
+
+    Helper proprio em vez de reusar `_check_advanced_insights`: a mensagem daquele diz
+    "Insights avancados de IA sao exclusivos do Pro", e isto nao e IA nem insight — e a
+    quebra do HUD por posicao. Copy que mente para quem clicou e defeito, nao economia.
+    """
+    status = get_quota_status(user_id)
+    if not status['limits'].get('stats_by_position', False):
+        return jsonify({
+            'error': 'O perfil por posicao e exclusivo do plano Pro.',
+            'upgrade_required': True,
+            'feature': 'stats_by_position',
+            'plan': status['plan'],
+        }), 402
+    return None
+
+
 # ── Auth ──────────────────────────────────────────────────────────────────────
 
 def _email_verification_enabled() -> bool:
@@ -1549,6 +1567,26 @@ def player_stats():
     from leaklab.opponent_stats import player_stat_flags
     stats['flags'] = player_stat_flags(stats)
     return jsonify(stats)
+
+
+@app.route('/metrics/player-stats/by-position', methods=['GET'])
+@require_auth
+def player_stats_by_position():
+    """Perfil do jogador em CADA assento — a grade do dashboard.
+
+    Responde outra pergunta que `/player/gto-position`: aquele diz de ONDE o jogador erra
+    mais (alinhamento GTO); este diz QUAL o perfil dele ali (VPIP, PFR, 3bet...).
+
+    Cada celula carrega a propria amostra e o proprio veredito de banda. Celula sem amostra
+    volta com `band='low_sample'` em vez de um numero sem lastro.
+    """
+    gate = _check_stats_by_position(g.user_id)
+    if gate:
+        return gate
+    from database.repositories import get_player_stats_by_position
+    days   = int(request.args.get('days', 90))
+    last_n = int(request.args.get('last_n')) if request.args.get('last_n') else None
+    return jsonify(get_player_stats_by_position(g.user_id, days, last_n=last_n))
 
 
 @app.route('/metrics/level', methods=['GET'])
@@ -8866,7 +8904,15 @@ def subscription_webhook():
             # Mudança de status (active/past_due/canceled). deleted → downgrade p/ free.
             from database.repositories import get_user_by_subscription, apply_stripe_subscription
             sub_id  = obj.get('id')
-            status  = 'canceled' if event_type.endswith('deleted') else obj.get('status')
+            # `deleted` NAO e sinonimo de `canceled`. O Stripe apaga tambem a assinatura que
+            # nunca foi paga (`incomplete_expired`, o checkout abandonado) e, ao forcar o
+            # status aqui, a verdade se perdia antes de chegar na politica: o rebaixamento
+            # decidia sobre uma assinatura que jamais esteve ativa. Preserva o status REAL
+            # do objeto e deixa apply_stripe_subscription decidir (10 rebaixamentos indevidos
+            # em producao ate 05/09, 3 deles fundadores e 1 o unico pagante).
+            _st_real = obj.get('status')
+            status  = (_st_real if event_type.endswith('deleted') and _st_real == 'incomplete_expired'
+                       else ('canceled' if event_type.endswith('deleted') else _st_real))
             per_end = _ts_to_str(_fim_do_periodo(obj))
             smeta   = obj.get('metadata') or {}
             uid     = int(smeta.get('user_id', 0) or 0)
@@ -9222,7 +9268,7 @@ def admin_update_user(uid):
     suspended = data.get('suspended')
     if plan is None and suspended is None:
         return jsonify({'error': 'Nenhum campo para atualizar'}), 400
-    update_user_admin(uid, plan=plan, suspended=suspended)
+    update_user_admin(uid, plan=plan, suspended=suspended, por=getattr(g, 'user_id', None))
     return jsonify({'ok': True})
 
 

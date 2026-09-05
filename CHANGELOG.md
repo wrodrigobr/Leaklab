@@ -5,6 +5,65 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## `incomplete_expired` nao e cancelamento: 10 rebaixamentos indevidos (05/09)
+
+### O que o dono viu
+"Mais uma vez o nosso unico pagante foi rebaixado para plano free." Minutos depois, o mesmo
+com o `aguiard109`, que e FUNDADOR. Duas procedencias de plano diferentes caindo juntas ja
+descartava as rotinas especificas de cada uma.
+
+### A causa
+`apply_stripe_subscription` tratava `incomplete_expired` como cancelamento. Ela nao e: e a
+assinatura CRIADA e nunca paga, que o Stripe expira ~24h depois e apaga. Nunca esteve ativa,
+entao nao ha o que cancelar.
+
+Medido em producao: **10 rebaixamentos, 100% deles `incomplete_expired`. Nenhuma cancelacao
+real na tabela inteira** — o ramo de downgrade, como estava escrito, nunca acertou. Tres dos
+atingidos eram fundadores; um era o unico assinante pagante, cuja assinatura seguia `active`
+no Stripe enquanto o nosso banco o mandava para Free.
+
+O amplificador foi o CheckoutModal criando uma assinatura por abertura do modal (corrigido
+mais cedo no mesmo dia): no Stripe, um usuario acumulou **8 assinaturas em 11 segundos**.
+
+### Por que voltava "mais uma vez"
+A guarda de 03/09 (ignorar evento de assinatura que nao e a atual) depende de
+`mp_subscription_id` — e **o proprio downgrade apaga esse campo**. O conserto pelo painel do
+admin escrevia so a coluna `plan` e nao o restaurava, entao a guarda ficava permanentemente
+desarmada e o evento seguinte derrubava de novo. Guarda cuja pre-condicao a propria falha
+destroi nao e guarda; e um para-raios de uso unico.
+
+### Corrigido
+- **`incomplete_expired` nao rebaixa ninguem** (a raiz).
+- **O handler parava de contar a verdade**: forcava `status='canceled'` em todo evento
+  `deleted`, e o status real morria antes de chegar na politica.
+- **2a trava por PROCEDENCIA**, que nao se apaga: assinatura do Stripe nao tem autoridade
+  sobre Pro concedido por fora (fundador, cortesia de coach, painel do admin).
+- **`update_user_admin` grava estado coerente** (`plan_source='admin'`, vigencia limpa). A
+  linha contraditoria que ele deixava quebrava as duas pontas: desarmava a guarda, e fazia
+  `get_quota_status` devolver 'free' na leitura com o banco dizendo 'pro'.
+- **`plan_audit`**: trilha de mudanca de plano com ANTES e DEPOIS. A ausencia dela foi metade
+  do custo deste diagnostico — o banco sabia o estado final e nada sobre como chegou nele.
+
+Os cinco guardas foram quebrados de proposito, um a um, e **todos acusaram** antes de eu
+restaurar (regra 2). Postgres: 200/200.
+
+### O achado de tabela ao lado: fundador entrava no MRR
+Acrescentar `plan_source='admin'` ia fazer concessao do admin contar como assinante pagante,
+porque a pergunta "este Pro e receita?" vivia copiada em **6 consultas** — e `'founder'`
+(criado em 03/09) nunca tinha entrado em nenhuma delas. **Fundador ja estava sendo contado
+como pagante no MRR desde entao.** Virou funcao unica (`_sql_pro_pagante`) com teste de
+varredura; foi ele que achou a 6a copia, num `--dry-run` cujo filtro era mais frouxo que o da
+execucao real — preview que descreve outra operacao e pior que preview nenhum.
+
+### O que o reparo do dado NAO faz
+`scripts/repara_rebaixamentos_fantasma.py` religa a assinatura ativa de quem paga, da
+procedencia a quem esta Pro sem ela, e apaga as marcas de churn falso. **Nao devolve Pro a
+ninguem que esteja Free hoje**: cinco dos atingidos podem ja estar Free antes do evento, e
+nao existe registro para distinguir — a trilha nasceu desta investigacao e so vale daqui para
+frente. Conceder por suposicao seria inventar assinante (regra 7).
+
+---
+
 ## As duas invariantes que acusaram DEPOIS do deploy (04/09)
 
 ### Corrigido

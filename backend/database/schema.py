@@ -1093,6 +1093,12 @@ def _run_migrations(conn):
             """)
             conn.execute("CREATE INDEX IF NOT EXISTS idx_support_status ON support_tickets(status)")
         except Exception: pass
+        # plan_audit (05/09) — trilha de MUDANÇA DE PLANO. Nasceu de um caso que só foi
+        # diagnosticado por reprodução, porque não havia log nenhum: 10 usuários (3 deles
+        # fundadores, 1 pagante) foram rebaixados por assinaturas de checkout ABANDONADO
+        # expirando no Stripe, e a única pergunta que ninguém conseguia responder era
+        # "quem rebaixou, e quando". Guarda o ANTES e o DEPOIS: sem o antes não dá para
+        # distinguir "não mudou nada" de "mudou e voltou".
         # migrate support_tickets: add missing columns (Postgres)
         for sql in [
             "ALTER TABLE support_tickets ADD COLUMN IF NOT EXISTS admin_reply TEXT",
@@ -2044,6 +2050,25 @@ def _run_migrations(conn):
             )
         """)
         conn.execute("CREATE INDEX IF NOT EXISTS idx_support_status ON support_tickets(status)")
+
+        # plan_audit (05/09) — ver a nota no bloco do Postgres.
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS plan_audit (
+                id            INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id       INTEGER REFERENCES users(id) ON DELETE CASCADE,
+                origem        TEXT    NOT NULL,
+                detalhe       TEXT,
+                plan_antes    TEXT,
+                plan_depois   TEXT,
+                source_antes  TEXT,
+                source_depois TEXT,
+                sub_antes     TEXT,
+                sub_depois    TEXT,
+                at            TEXT    NOT NULL DEFAULT (datetime('now'))
+            )
+        """)
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_plan_audit_user ON plan_audit(user_id, id)")
+
         # migrate support_tickets: add missing columns
         st_existing = {r[1] for r in conn.execute('PRAGMA table_info(support_tickets)').fetchall()}
         for col, sql in [
@@ -2465,6 +2490,23 @@ def _run_migrations(conn):
                 paid_at       TIMESTAMP
             )""",
             "CREATE INDEX IF NOT EXISTS idx_coach_commissions_coach ON coach_commissions(coach_id)",
+            # plan_audit (05/09): trilha de mudanca de plano. Na lista SAVEPOINT pela regra
+            # dura — um try/except NAO sobrevive a transacao abortada, e uma trilha que nasce
+            # ausente e pior que trilha nenhuma: o codigo grava achando que registra.
+            """CREATE TABLE IF NOT EXISTS plan_audit (
+                id            SERIAL PRIMARY KEY,
+                user_id       INTEGER REFERENCES users(id) ON DELETE CASCADE,
+                origem        TEXT      NOT NULL,
+                detalhe       TEXT,
+                plan_antes    TEXT,
+                plan_depois   TEXT,
+                source_antes  TEXT,
+                source_depois TEXT,
+                sub_antes     TEXT,
+                sub_depois    TEXT,
+                at            TIMESTAMP NOT NULL DEFAULT NOW()
+            )""",
+            "CREATE INDEX IF NOT EXISTS idx_plan_audit_user ON plan_audit(user_id, id)",
             # Protocolo de Progressão: tentativas COM ESTRATO — abort-proof.
             # Confirmado em PROD (2026-07-26): a tabela NÃO foi criada pelo bloco regular
             # (transação abortada por uma migração anterior), e o painel do protocolo ficava

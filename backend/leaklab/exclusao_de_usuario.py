@@ -60,6 +60,11 @@ TABELAS_DO_USUARIO: tuple = (
     # dinheiro (histórico fiscal fica? decisão V1: some junto — LGPD manda; extrato real vive
     # no Stripe, que é a fonte fiscal)
     ('payments', ['user_id']),
+    # trilha de mudança de plano: mesma decisão do `payments` — LGPD manda, e o extrato real
+    # vive no Stripe. Declarada aqui, e não deixada para o `ON DELETE CASCADE` da FK, porque
+    # CASCADE apaga CALADO: o relatório que o admin lê depois da exclusão não contaria estas
+    # linhas, e "sumiu sem ninguém apagar" já custou 71 anotações de coach uma vez.
+    ('plan_audit', ['user_id']),
     # relação com coach QUANDO O EXCLUÍDO É O ALUNO
     ('coach_baselines', ['student_id']),
     ('coach_commissions', ['student_id']),

@@ -20,22 +20,8 @@ import argparse
 
 sys.path.insert(0, ".")
 
-from database.schema import init_db, get_conn
-from database.repositories import expire_subscriptions, _adapt, _now_str
-
-
-def _preview():
-    conn = get_conn()
-    try:
-        now = _now_str()
-        rows = conn.execute(_adapt(
-            "SELECT id, username, plan_expires_at FROM users WHERE plan='pro' "
-            "AND plan_expires_at IS NOT NULL AND plan_expires_at < ? "
-            "AND (plan_source IS NULL OR plan_source NOT IN ('coach_trial','coach_earned'))"),
-            (now,)).fetchall()
-        return [(r['id'], r['username'], r['plan_expires_at']) for r in rows]
-    finally:
-        conn.close()
+from database.schema import init_db
+from database.repositories import expire_subscriptions
 
 
 def main():
@@ -46,10 +32,11 @@ def main():
     init_db()
 
     if args.dry_run:
-        prev = _preview()
+        # MESMA consulta da execucao real (o preview tinha a sua propria, mais frouxa).
+        prev = expire_subscriptions(dry_run=True)['alvos']
         print(f"Assinaturas vencidas: {len(prev)}")
-        for uid, name, exp in prev:
-            print(f"  user#{uid} {name}: venceu {exp}")
+        for a in prev:
+            print(f"  user#{a['id']} {a['username']}: venceu {a['plan_expires_at']}")
         print("DRY-RUN (nada alterado)")
         return
 

@@ -7,6 +7,7 @@ from __future__ import annotations
 import json
 import hashlib
 import logging
+from contextlib import contextmanager
 from decimal import Decimal as _Decimal
 from typing import Optional, List, Dict
 
@@ -2256,9 +2257,84 @@ _SQL_RAISES_ANTES  = ("(COALESCE(d.preflop_raises_faced, 0) "
 _SQL_ENFRENTA_OPEN = _SQL_RAISES_ANTES + " = 1"
 
 
-def get_player_stats(user_id: int, days: int = 90, last_n: int | None = None) -> dict:
-    """Computes poker HUD stats from stored decisions."""
+# Ordem de fala na mesa, do primeiro ao último. É o vocabulário do RESTO do produto
+# (ranges, treino, PositionMap) — decisão do dono em 04/09 de manter o nosso em vez de adotar
+# o agrupamento do PokerTracker, que junta assentos (o "MP" dele = nosso UTG+UTG+1). Trocar
+# criaria duas linguagens dentro da mesma ferramenta.
+POSICOES_NA_ORDEM = ('UTG', 'UTG+1', 'UTG+2', 'HJ', 'CO', 'BTN', 'SB', 'BB')
+
+# O que a grade mostra em CADA célula, e o que só aparece quando o assento tem volume.
+# Medido em prod 04/09: com o corte de amostra atual, a grade completa do PT4 só funciona
+# para 2 dos 9 jogadores com volume — `W$SD` pede 2.000 mãos, `WTSD` 1.000, `3Bet` 750, e
+# dividir o acervo por 8 assentos derruba quase todo mundo. Baixar o corte para preencher a
+# tela seria inventar leitura, contra o princípio de [[project_opponent_hud]].
+#
+# Por isso a grade é PROGRESSIVA: nasce com o que quase todos têm e cresce com o jogador.
+_GRADE_SEMPRE = ('vpip', 'pfr')                       # min 100 mãos
+_GRADE_COM_VOLUME = ('three_bet', 'fold_to_3bet', 'af', 'cbet_pct', 'steal_pct',
+                     'wtsd', 'w_at_sd')
+
+
+def get_player_stats_by_position(user_id: int, days: int = 90,
+                                 last_n: int | None = None) -> dict:
+    """Perfil do jogador em CADA assento, para a grade do dashboard.
+
+    Responde outra pergunta que os cards de posição já existentes: eles dizem *de onde você
+    erra mais* (alinhamento GTO); esta diz *qual é o seu perfil ali* (VPIP, PFR, 3bet...).
+
+    Cada célula declara a própria amostra e só classifica o que aquele assento sustenta —
+    `band='low_sample'` não é falha, é a resposta honesta. Reusa `get_player_stats` inteiro
+    por posição, então as definições conferidas contra o PokerTracker valem aqui sem cópia.
+    """
+    from leaklab.opponent_stats import classify_stat
+
+    linhas = []
+    for pos in POSICOES_NA_ORDEM:
+        s = get_player_stats(user_id, days, last_n, position=pos)
+        maos = s.get('total_hands') or 0
+        if not maos:
+            continue                      # assento que o jogador nunca ocupou: some da grade
+        celula = {'position': pos, 'hands': maos, 'stats': {}}
+        for chave in _GRADE_SEMPRE + _GRADE_COM_VOLUME:
+            valor = s.get(chave)
+            if valor is None:
+                continue                  # sem denominador naquele assento (steal fora de BTN/CO/SB)
+            c = classify_stat(chave, valor, maos)
+            if c is None:
+                continue
+            celula['stats'][chave] = {'value': valor, **c}
+        linhas.append(celula)
+
+    total = sum(l['hands'] for l in linhas)
+    return {
+        'positions': linhas,
+        'total_hands': total,
+        # O front usa isto para explicar a tela vazia em vez de mostrar uma grade de tracinhos.
+        'sempre': list(_GRADE_SEMPRE),
+        'com_volume': list(_GRADE_COM_VOLUME),
+    }
+
+
+def get_player_stats(user_id: int, days: int = 90, last_n: int | None = None,
+                    position: str | None = None) -> dict:
+    """Computes poker HUD stats from stored decisions.
+
+    `position` recorta TUDO num assento só (BTN, BB, UTG...). Existe para a grade por
+    posição do dashboard **reusar estas mesmas consultas** em vez de ganhar cópias próprias.
+
+    Escrever SQL novo para a grade seria uma 2ª definição das 8 regras que 04/09 passou o dia
+    consertando contra o PokerTracker — `shove` vs `jam`, showdown vs river, oportunidade de
+    3bet vs de 4bet, iniciativa no c-bet, pote não aberto no steal. Duas cópias divergem, e
+    aqui divergiriam para pior: a grade mostraria 6 linhas erradas em vez de 1. Regra 5.
+
+    A posição do herói não muda dentro da mão, então o filtro vale igual em preflop e pós.
+    Stats que só existem em certos assentos (steal em BTN/CO/SB, bb_defense no BB) devolvem
+    None nos outros por denominador vazio — é o comportamento certo, não um buraco.
+    """
     tf, tp = _build_tournament_filter(user_id, days, last_n)
+    if position:
+        tf = '(%s) AND d.position = ?' % tf
+        tp = tuple(tp) + (position,)
     conn = get_conn()
     try:
         # ── Preflop basics (VPIP, PFR) ───────────────────────────────────────
@@ -4322,6 +4398,11 @@ PLAN_LIMITS: dict = {
     #
     # Custo medido: 125 KB de `raw_text` por torneio. 30/mes por usuario sao 3,7 MB.
     'free':    {'tournaments': 30,  'ai_calls': 15,  'ai_coach_chat': False, 'solves': 5,    'advanced_insights': False,
+                # Perfil por ASSENTO (04/09). O agregado do HUD fica no free; a quebra por
+                # posicao e Pro. O corte casa com o dado, nao so com a tabela de preco:
+                # medido em prod, so 2 de 9 jogadores com volume tem amostra para a grade
+                # completa — quem consegue usar e quem joga muito, que e quem paga.
+                'stats_by_position': False,
                 'ai_chat_per_day': 0,  'solves_per_day': None, 'max_pending_solves': 3,
                 # 02/09 (decisao do dono, 2a iteracao): o upload SEMPRE entra (barrar upload
                 # ataca a ativacao); o que espera a vez e a ANALISE GTO — 3 torneios por vez
@@ -4336,10 +4417,12 @@ PLAN_LIMITS: dict = {
                 # parede. Ver `BoletimDaSessao` no front.
                 'training_spots_per_day': 20, 'leak_targeted': False, 'ghost': False},
     'pro':     {'tournaments': 200, 'ai_calls': 300, 'ai_coach_chat': True,  'solves': None, 'advanced_insights': True,
+                'stats_by_position': True,
                 'ai_chat_per_day': 50, 'solves_per_day': 20,   'max_pending_solves': 10,
                 'simultaneous_analyses': None,
                 'training_spots_per_day': None, 'leak_targeted': True, 'ghost': True},
     'coach':   {'tournaments': None, 'ai_calls': 1500, 'ai_coach_chat': True, 'solves': None, 'advanced_insights': True,
+                'stats_by_position': True,
                 'ai_chat_per_day': None, 'solves_per_day': None, 'max_pending_solves': None,
                 'simultaneous_analyses': None,
                 'training_spots_per_day': None, 'leak_targeted': True, 'ghost': True},  # interno
@@ -4770,7 +4853,7 @@ def admin_revenue_summary() -> dict:
         paying_pro = _fetchone(conn, f"""
             SELECT COUNT(*) AS n FROM users
             WHERE plan='pro' AND {_no_admin_usr}
-              AND (plan_source IS NULL OR plan_source NOT IN ('coach_trial','coach_earned'))
+              AND {_sql_pro_pagante()}
         """)['n']
         coach_perk = _fetchone(conn, f"""
             SELECT COUNT(*) AS n FROM users
@@ -4827,13 +4910,13 @@ def _preco_mensal_cents() -> int:
 def _real_mrr_cents(conn) -> int:
     """MRR REAL: soma o último pagamento aprovado de cada pagante-pro ativo, normalizando
     anual->/12 pelo span do período (não o proxy headcount x 9900)."""
-    rows = _fetchall(conn, """
+    rows = _fetchall(conn, f"""
         SELECT p.user_id, p.amount_cents, p.period_start, p.period_end, p.created_at
         FROM payments p
         JOIN users u ON u.id = p.user_id
         WHERE p.status='approved' AND u.plan='pro'
           AND COALESCE(u.role,'') != 'admin'
-          AND (u.plan_source IS NULL OR u.plan_source NOT IN ('coach_trial','coach_earned'))
+          AND {_sql_pro_pagante('u.')}
     """)
     from datetime import datetime
     latest = {}
@@ -4958,7 +5041,7 @@ def admin_cockpit_summary(month: str = None) -> dict:
         mrr = _real_mrr_cents(conn)
         paying = _fetchone(conn, _adapt(
             "SELECT COUNT(*) n FROM users WHERE plan='pro' "
-            "AND (plan_source IS NULL OR plan_source NOT IN ('coach_trial','coach_earned'))"))['n']
+            f"AND {_sql_pro_pagante()}"))['n']
         perk = _fetchone(conn, _adapt(
             "SELECT COUNT(*) n FROM users WHERE plan='pro' AND plan_source IN ('coach_trial','coach_earned')"))['n']
         # DUNNING: pro em atraso (em risco) + churn do mês
@@ -5003,7 +5086,7 @@ def admin_finance_calendar(month: str = None) -> dict:
             "SELECT u.id, u.username, u.plan_expires_at AS date, u.plan FROM users u "
             "WHERE u.plan='pro' AND u.plan_expires_at IS NOT NULL "
             "AND u.plan_expires_at >= ? AND u.plan_expires_at < ? "
-            "AND (u.plan_source IS NULL OR u.plan_source NOT IN ('coach_trial','coach_earned')) "
+            f"AND {_sql_pro_pagante('u.')} "
             "ORDER BY u.plan_expires_at"), (start, end))
         # due_at é TIMESTAMP no Postgres; COALESCE(timestamp, texto) quebra lá. Pega cru e
         # resolve o fallback (fim do mês) em Python, normalizando p/ string ISO.
@@ -5142,28 +5225,111 @@ def link_subscription_id(user_id: int, sub_id: str) -> None:
         conn.close()
 
 
+#: Procedências de Pro que NÃO são receita — Pro concedido, não vendido.
+#:
+#: Fonte ÚNICA (05/09). A mesma pergunta — "este Pro entrou dinheiro?" — vivia copiada em
+#: cinco consultas (MRR, pagantes, renovações, receita do admin, resumo financeiro), e as
+#: procedências criadas DEPOIS nunca foram para nenhuma delas: `founder` (03/09) contava
+#: como assinante pagante e inflava o MRR desde então. Foi o padrão da regra 5 aparecendo
+#: de novo — e a lista só é confiável enquanto for um lugar só.
+PLAN_SOURCES_SEM_RECEITA = ('coach_trial', 'coach_earned', 'admin', 'founder')
+
+
+def _sql_pro_pagante(alias: str = '') -> str:
+    """Cláusula SQL de "este Pro é receita". `alias` é o prefixo da tabela ('u.' ou '')."""
+    col = '%splan_source' % alias
+    lista = ', '.join("'%s'" % s for s in PLAN_SOURCES_SEM_RECEITA)
+    return "(%s IS NULL OR %s NOT IN (%s))" % (col, col, lista)
+
+
+#: Colunas que, juntas, DEFINEM o plano. Se qualquer uma muda, a mudança é auditável —
+#: `plan` sozinho não basta: foi justamente uma linha com `plan='pro'` e `plan_source`/
+#: `mp_subscription_id` nulos que deixou a guarda do Stripe desarmada em 04/09.
+_COLUNAS_DO_PLANO = ('plan', 'plan_source', 'mp_subscription_id')
+
+
+def _snapshot_plano(conn, user_id: int) -> dict:
+    row = _fetchone(conn, _adapt(
+        "SELECT plan, plan_source, mp_subscription_id FROM users WHERE id = ?"), (user_id,))
+    return dict(row) if row else {}
+
+
+@contextmanager
+def auditar_plano(conn, user_id: int, origem: str, detalhe: Optional[str] = None):
+    """Registra em `plan_audit` a mudança de plano que o bloco fizer — ou nada, se não mudou.
+
+    Context manager de propósito: captura o ANTES antes de você escrever e o DEPOIS depois,
+    então não dá para instrumentar pela metade. Grava só quando alguma das colunas do plano
+    mudou de fato, para a trilha não virar ruído de UPDATE que não mexeu em nada.
+
+    `origem` é QUEM mexeu ('stripe_webhook', 'admin', 'founder', 'coach_trial', 'refund'),
+    `detalhe` é o porquê (o status do evento, o sub_id, o admin que clicou). Foi a ausência
+    exata desses dois campos que fez o caso de 04/09 precisar de reprodução para ser
+    diagnosticado: o banco sabia o estado final e nada sobre como chegou nele.
+    """
+    antes = _snapshot_plano(conn, user_id)
+    yield
+    depois = _snapshot_plano(conn, user_id)
+    if not antes or antes == depois:
+        return
+    try:
+        conn.execute(_adapt(
+            "INSERT INTO plan_audit (user_id, origem, detalhe, plan_antes, plan_depois, "
+            "source_antes, source_depois, sub_antes, sub_depois, at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"),
+            (user_id, origem, detalhe,
+             antes.get('plan'), depois.get('plan'),
+             antes.get('plan_source'), depois.get('plan_source'),
+             antes.get('mp_subscription_id'), depois.get('mp_subscription_id'),
+             _now_str()))
+    except Exception:                                          # noqa: BLE001
+        # A trilha nunca pode derrubar a operação que ela observa: perder o registro é ruim,
+        # perder o downgrade legítimo (ou a ativação de quem pagou) é pior.
+        log.exception('plan_audit: falhou ao registrar (user=%s origem=%s)', user_id, origem)
+
+
 def apply_stripe_subscription(user_id: int, status: str, plan_expires_at: Optional[str],
                               sub_id: Optional[str], cancel_reason: Optional[str] = None) -> str:
     """PAY-04: aplica o estado de uma Subscription do Stripe ao plano do usuário.
     Fonte da verdade da recorrência = status da assinatura (não plan_expires_at manual).
       active/trialing → pro (plan_source='stripe_sub', vigência = current_period_end), status='active'
-      canceled/unpaid/incomplete_expired → free, status='canceled'
+      canceled/unpaid → free, status='canceled'
+      incomplete_expired → NADA (ver abaixo)
       past_due → mantém pro (Stripe em retry/dunning) MAS grava status='past_due' p/ coach/admin
                  distinguirem pagante-em-dia de atrasado (régua da comissão).
-    Retorna a ação tomada ('activated' | 'downgraded' | 'kept')."""
+    Retorna a ação tomada ('activated' | 'downgraded' | 'kept' | 'ignored_*').
+
+    ── `incomplete_expired` NÃO é cancelamento (05/09) ──────────────────────────────────
+
+    Uma Subscription `incomplete` é a que foi CRIADA e nunca paga; o Stripe a expira ~24h
+    depois e manda `customer.subscription.deleted`. Ela nunca esteve ativa, então não tem
+    o que cancelar. Estava na mesma lista de `canceled` e derrubava o usuário.
+
+    Medido em produção: **10 rebaixamentos, 100% deles `incomplete_expired`** — nenhuma
+    cancelação real na tabela inteira. Três eram FUNDADORES e um era o único assinante
+    pagante, que continuou com a assinatura ACTIVE no Stripe enquanto o nosso banco o
+    mandava para free. O amplificador foi o CheckoutModal, que criava uma assinatura a
+    cada abertura do modal (um usuário acumulou 8 em 11 segundos); cada fantasma virava
+    um downgrade 24h depois."""
     from datetime import datetime
     conn = get_conn()
     try:
         _now = datetime.utcnow().isoformat()
         if status in ('active', 'trialing'):
             # recuperou: limpa marca de atraso/cancelamento.
-            conn.execute(_adapt(
-                "UPDATE users SET plan='pro', plan_source='stripe_sub', subscription_status='active', "
-                "past_due_since=NULL, canceled_at=NULL, cancel_reason=NULL, mp_subscription_id=?, plan_expires_at=? WHERE id=?"),
-                (sub_id, plan_expires_at, user_id))
+            with auditar_plano(conn, user_id, 'stripe_webhook', 'status=%s sub=%s' % (status, sub_id)):
+                conn.execute(_adapt(
+                    "UPDATE users SET plan='pro', plan_source='stripe_sub', subscription_status='active', "
+                    "past_due_since=NULL, canceled_at=NULL, cancel_reason=NULL, mp_subscription_id=?, plan_expires_at=? WHERE id=?"),
+                    (sub_id, plan_expires_at, user_id))
             conn.commit()
             return 'activated'
-        if status in ('canceled', 'unpaid', 'incomplete_expired'):
+        if status == 'incomplete_expired':
+            # Checkout abandonado expirando. Nunca esteve ativa → não derruba ninguém.
+            log.info('apply_stripe_subscription: ignorado — sub=%s do usuário %s expirou sem '
+                     'nunca ter sido paga (checkout abandonado)', sub_id, user_id)
+            return 'ignored_never_active'
+        if status in ('canceled', 'unpaid'):
             # GUARDA (03/09, achado real em produção): esta função é chamada com o `sub_id` da
             # assinatura que MUDOU — não necessariamente a que está gravada em
             # `mp_subscription_id`. Um usuário pode ter DUAS assinaturas no Stripe (ex.: abriu
@@ -5175,13 +5341,27 @@ def apply_stripe_subscription(user_id: int, status: str, plan_expires_at: Option
             # segunda `sub_1UBcWy...` (nunca completada) expirou e o derrubou pra free.
             # Só derruba se o sub_id do evento É o que está gravado como o atual — senão, essa
             # notificação é sobre uma assinatura ABANDONADA, não a que vale.
-            _atual = _fetchone(conn, _adapt("SELECT mp_subscription_id FROM users WHERE id=?"), (user_id,))
+            _atual = _fetchone(conn, _adapt(
+                "SELECT mp_subscription_id, plan_source FROM users WHERE id=?"), (user_id,))
             _sub_atual = _atual.get('mp_subscription_id') if _atual else None
+            _origem_do_pro = _atual.get('plan_source') if _atual else None
             if _sub_atual and sub_id and _sub_atual != sub_id:
                 log.info('apply_stripe_subscription: ignorado — sub_id=%s do evento não é a '
                         'assinatura atual do usuário %s (%s); provável checkout abandonado',
                         sub_id, user_id, _sub_atual)
                 return 'ignored_stale_sub'
+            # 2ª TRAVA (05/09): a de cima só arma quando `mp_subscription_id` existe — e o
+            # downgrade logo abaixo APAGA esse campo. Depois do primeiro acidente a guarda
+            # ficava desarmada, e todo evento seguinte derrubava o usuário de novo; era isso
+            # que o dono via como "rebaixado mais uma vez". Esta pergunta é outra e não se
+            # apaga: de onde veio o Pro. Assinatura do Stripe não tem autoridade nenhuma
+            # sobre Pro concedido POR FORA — fundador, cortesia de coach, painel do admin.
+            # `None` continua passando: é o pagante LEGADO, que de fato depende do Stripe.
+            if _origem_do_pro not in (None, 'stripe_sub'):
+                log.info('apply_stripe_subscription: ignorado — usuário %s é Pro por %r, não '
+                         'por assinatura; evento sub=%s não o rebaixa',
+                         user_id, _origem_do_pro, sub_id)
+                return 'ignored_non_stripe_plan'
             # churn no tempo: grava canceled_at (1ª vez) p/ bucketizar churn por período.
             # Motivo: Stripe (cancellation_requested=voluntário, payment_failure=involuntário).
             # Sem motivo explícito, infere involuntário se já estava em atraso (dunning).
@@ -5190,11 +5370,13 @@ def apply_stripe_subscription(user_id: int, status: str, plan_expires_at: Option
             _reason = cancel_reason or status  # 'unpaid'/'incomplete_expired' já indicam falha
             if not cancel_reason and _was_pastdue:
                 _reason = 'payment_failure'
-            conn.execute(_adapt(
-                "UPDATE users SET plan='free', plan_source=NULL, subscription_status='canceled', "
-                "canceled_at=COALESCE(canceled_at, ?), cancel_reason=COALESCE(cancel_reason, ?), "
-                "mp_subscription_id=NULL, plan_expires_at=NULL WHERE id=?"),
-                (_now, _reason, user_id))
+            with auditar_plano(conn, user_id, 'stripe_webhook',
+                               'status=%s sub=%s motivo=%s' % (status, sub_id, _reason)):
+                conn.execute(_adapt(
+                    "UPDATE users SET plan='free', plan_source=NULL, subscription_status='canceled', "
+                    "canceled_at=COALESCE(canceled_at, ?), cancel_reason=COALESCE(cancel_reason, ?), "
+                    "mp_subscription_id=NULL, plan_expires_at=NULL WHERE id=?"),
+                    (_now, _reason, user_id))
             conn.commit()
             return 'downgraded'
         if status == 'past_due':
@@ -5494,11 +5676,17 @@ def backfill_coach_trials() -> dict:
         conn.close()
 
 
-def expire_subscriptions() -> dict:
+def expire_subscriptions(dry_run: bool = False) -> dict:
     """PAY-02 (job diário): persiste o downgrade de assinaturas Pro com vigência vencida
     (`plan_expires_at < agora`), exceto o Pro de cortesia do coach (governado à parte).
     O get_quota_status já trata como free na leitura; este job consolida no banco
-    (p/ contadores/MRR corretos). Retorna ids downgradados."""
+    (p/ contadores/MRR corretos). Retorna ids downgradados.
+
+    `dry_run` existe aqui, e não no script, de propósito (05/09): o `--dry-run` tinha uma
+    consulta PRÓPRIA, com um filtro mais frouxo que o da execução real, então o preview
+    listava fundadores que o job jamais tocaria. Diagnóstico que descreve outra operação é
+    pior que nenhum — ele encerra a investigação com a resposta errada.
+    """
     conn = get_conn()
     try:
         try:
@@ -5507,18 +5695,24 @@ def expire_subscriptions() -> dict:
             pass
         now = _now_str()
         # PAY-04: só o LEGADO-PI (plan_source NULL) expira por data. Assinantes Stripe
-        # (stripe_sub) e perks de coach são governados pelos seus próprios mecanismos.
+        # (stripe_sub), fundador, concessão do admin e perks de coach são governados pelos
+        # seus próprios mecanismos.
         rows = conn.execute(_adapt(
-            "SELECT id FROM users WHERE plan = 'pro' AND plan_expires_at IS NOT NULL "
-            "AND plan_expires_at < ? AND plan_source IS NULL"),
+            "SELECT id, username, plan_expires_at FROM users WHERE plan = 'pro' "
+            "AND plan_expires_at IS NOT NULL AND plan_expires_at < ? AND plan_source IS NULL"),
             (now,)).fetchall()
-        ids = [r['id'] if isinstance(r, dict) or hasattr(r, 'keys') else r[0] for r in rows]
+        alvos = [dict(r) for r in rows]
+        ids = [a['id'] for a in alvos]
+        if dry_run:
+            return {'downgraded': [], 'alvos': alvos, 'checked': len(ids), 'at': now,
+                    'dry_run': True}
         for uid in ids:
-            conn.execute(_adapt(
-                "UPDATE users SET plan = 'free', plan_expires_at = NULL, mp_subscription_id = NULL WHERE id = ?"),
-                (uid,))
+            with auditar_plano(conn, uid, 'expiracao_de_vigencia', 'vencida em %s' % now):
+                conn.execute(_adapt(
+                    "UPDATE users SET plan = 'free', plan_expires_at = NULL, mp_subscription_id = NULL WHERE id = ?"),
+                    (uid,))
         conn.commit()
-        return {'downgraded': ids, 'checked': len(ids), 'at': now}
+        return {'downgraded': ids, 'alvos': alvos, 'checked': len(ids), 'at': now}
     finally:
         conn.close()
 
@@ -5745,10 +5939,10 @@ def get_admin_dashboard_stats() -> dict:
         # Antes era 4900 (R$49), subestimando o MRR pela metade. (PAY-01)
         # COACH-02: exclui o Pro de CORTESIA do coach (coach_trial/coach_earned) — não é receita.
         # Exclui também ADMIN (Pro de teste do dono, não é receita) — mesma regra do admin_revenue_summary.
-        paying_pro = _fetchone(conn, """
+        paying_pro = _fetchone(conn, f"""
             SELECT COUNT(*) AS n FROM users
             WHERE plan = 'pro'
-              AND (plan_source IS NULL OR plan_source NOT IN ('coach_trial', 'coach_earned'))
+              AND {_sql_pro_pagante()}
               AND COALESCE(role,'') != 'admin'
         """)['n']
         # Fonte única, como os outros dois cálculos. Estava `paying_pro * 9900`, e depois de o
@@ -5994,13 +6188,41 @@ def get_tournament_raw_admin(tournament_db_id: int) -> dict | None:
         conn.close()
 
 
-def update_user_admin(user_id: int, plan: str = None, suspended: bool = None) -> None:
+def update_user_admin(user_id: int, plan: str = None, suspended: bool = None,
+                      por: Optional[int] = None) -> None:
+    """Admin muda plano/suspensão de um usuário.
+
+    ── Por que isto escreve mais que a coluna `plan` (05/09) ────────────────────────────
+
+    Escrevia SÓ `plan`, e deixava `plan_source`, `plan_expires_at` e `mp_subscription_id`
+    exatamente como o acidente anterior os havia deixado. O resultado era uma linha que se
+    contradizia, e ela quebrava as duas pontas:
+
+      - `plan='pro'` com `plan_source=NULL` e sub nula desarmava a guarda do webhook, e o
+        próximo evento do Stripe rebaixava o usuário DE NOVO — o conserto durava até o
+        evento seguinte;
+      - `plan='pro'` com uma `plan_expires_at` vencida fazia `get_quota_status` devolver
+        'free' na leitura: o banco dizia Pro e o produto entregava Free.
+
+    Conceder Pro pelo painel agora declara a procedência (`plan_source='admin'`) e limpa a
+    vigência herdada. Sem procedência explícita não há como distinguir concessão do admin
+    de pagante legado, e é essa distinção que a guarda do Stripe passou a usar.
+    """
     conn = get_conn()
     try:
         if plan is not None:
-            conn.execute("UPDATE users SET plan = ? WHERE id = ?", (plan, user_id))
+            with auditar_plano(conn, user_id, 'admin', 'plan=%s por=%s' % (plan, por)):
+                if plan == 'pro':
+                    conn.execute(_adapt(
+                        "UPDATE users SET plan = 'pro', plan_source = 'admin', "
+                        "plan_expires_at = NULL WHERE id = ?"), (user_id,))
+                else:
+                    conn.execute(_adapt(
+                        "UPDATE users SET plan = ?, plan_source = NULL, plan_expires_at = NULL "
+                        "WHERE id = ?"), (plan, user_id))
         if suspended is not None:
-            conn.execute("UPDATE users SET suspended = ? WHERE id = ?", (bool(suspended), user_id))
+            conn.execute(_adapt("UPDATE users SET suspended = ? WHERE id = ?"),
+                         (bool(suspended), user_id))
         conn.commit()
     finally:
         conn.close()
