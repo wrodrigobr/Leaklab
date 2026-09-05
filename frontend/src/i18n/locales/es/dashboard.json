@@ -895,5 +895,61 @@
       "gatilho": "La mano que más costó:",
       "fechar": "Cerrar el balance"
     }
+  },
+  "posProfile": {
+    "title": "Perfil por posición",
+    "tooltip": "Cómo jugás desde CADA asiento. La franja verde es la referencia sana de MTT; el punto sos vos. Fuera de ella no es error automático: es donde vale mirar. Cada asiento solo clasifica lo que su propia muestra sostiene.",
+    "legend": "Franja verde = referencia MTT. El punto marca dónde estás en ella.",
+    "hands": "{{n}} manos",
+    "handsShort": "manos",
+    "seat": "asiento",
+    "lowSample": "muestra baja en este asiento",
+    "healthyRange": "sano {{min}} a {{max}}",
+    "showMore": "ver {{n}} más",
+    "showLess": "ver menos",
+    "you": "Vos",
+    "recommended": "Recomendado",
+    "inBand": "Dentro de la referencia. Nada que corregir acá.",
+    "lowSampleLong": "Muestra insuficiente en este asiento. El número existe, pero todavía no es lectura confiable.",
+    "handsHere": "{{n}} manos en este asiento",
+    "profile": "Perfil: {{flag}}.",
+    "read": {
+      "vpip": [
+        "entrás con menos manos que la referencia",
+        "entrás con más manos que la referencia"
+      ],
+      "pfr": [
+        "abrís menos que la referencia",
+        "abrís más que la referencia"
+      ],
+      "three_bet": [
+        "das 3bet menos que la referencia",
+        "das 3bet más que la referencia"
+      ],
+      "fold_to_3bet": [
+        "soltás menos al 3bet que la referencia",
+        "soltás más al 3bet que la referencia"
+      ],
+      "af": [
+        "jugás más pasivo que la referencia",
+        "jugás más agresivo que la referencia"
+      ],
+      "cbet_pct": [
+        "hacés menos c-bet que la referencia",
+        "hacés más c-bet que la referencia"
+      ],
+      "steal_pct": [
+        "robás menos los blinds que la referencia",
+        "robás más los blinds que la referencia"
+      ],
+      "wtsd": [
+        "vas a showdown menos que la referencia",
+        "vas a showdown más que la referencia"
+      ],
+      "w_at_sd": [
+        "ganás menos showdowns que la referencia",
+        "ganás más showdowns que la referencia"
+      ]
+    }
   }
 }

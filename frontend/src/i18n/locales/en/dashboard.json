@@ -895,5 +895,61 @@
       "gatilho": "The hand that cost the most:",
       "fechar": "Close debriefing"
     }
+  },
+  "posProfile": {
+    "title": "Profile by position",
+    "tooltip": "How you play from EACH seat. The green band is the healthy MTT reference; the dot is you. Outside it is not automatically a mistake: it is where to look. Each seat only classifies what its own sample supports.",
+    "legend": "Green band = MTT reference. The dot marks where you sit in it.",
+    "hands": "{{n}} hands",
+    "handsShort": "hands",
+    "seat": "seat",
+    "lowSample": "low sample in this seat",
+    "healthyRange": "healthy {{min}} to {{max}}",
+    "showMore": "show {{n}} more",
+    "showLess": "show less",
+    "you": "You",
+    "recommended": "Recommended",
+    "inBand": "Within the reference. Nothing to fix here.",
+    "lowSampleLong": "Not enough sample in this seat. The number exists, but it is not a reliable read yet.",
+    "handsHere": "{{n}} hands in this seat",
+    "profile": "Profile: {{flag}}.",
+    "read": {
+      "vpip": [
+        "you enter with fewer hands than the reference",
+        "you enter with more hands than the reference"
+      ],
+      "pfr": [
+        "you open less than the reference",
+        "you open more than the reference"
+      ],
+      "three_bet": [
+        "you 3bet less than the reference",
+        "you 3bet more than the reference"
+      ],
+      "fold_to_3bet": [
+        "you fold to 3bet less than the reference",
+        "you fold to 3bet more than the reference"
+      ],
+      "af": [
+        "you play more passively than the reference",
+        "you play more aggressively than the reference"
+      ],
+      "cbet_pct": [
+        "you c-bet less than the reference",
+        "you c-bet more than the reference"
+      ],
+      "steal_pct": [
+        "you steal the blinds less than the reference",
+        "you steal the blinds more than the reference"
+      ],
+      "wtsd": [
+        "you go to showdown less than the reference",
+        "you go to showdown more than the reference"
+      ],
+      "w_at_sd": [
+        "you win fewer showdowns than the reference",
+        "you win more showdowns than the reference"
+      ]
+    }
   }
 }

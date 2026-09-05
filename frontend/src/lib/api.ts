@@ -970,6 +970,30 @@ export interface LeakFinderData {
   has_ev: boolean;
 }
 
+/** Uma celula da grade por posicao: o valor E o veredito de banda, juntos.
+ *  `band='low_sample'` nao e falha — e a resposta honesta de um assento sem volume. */
+export interface PositionStatCell {
+  value: number;
+  band: "below" | "healthy" | "above" | "low_sample";
+  flag: string | null;
+  healthy: [number, number];
+}
+
+export interface PositionProfileRow {
+  position: string;
+  hands: number;
+  stats: Record<string, PositionStatCell>;
+}
+
+export interface PositionProfileResponse {
+  positions: PositionProfileRow[];
+  total_hands: number;
+  /** stats que quase todo jogador sustenta (min 100 maos) */
+  sempre: string[];
+  /** stats que so aparecem quando o ASSENTO tem volume proprio */
+  com_volume: string[];
+}
+
 export interface PlayerStatsResponse {
   total_hands: number;
   vpip: number | null;
@@ -2283,6 +2307,12 @@ export const metrics = {
 
   playerStats: (days = 90, lastN?: number) =>
     request<PlayerStatsResponse>(`/metrics/player-stats?days=${days}${lastN != null ? `&last_n=${lastN}` : ""}`),
+
+  /** Perfil por ASSENTO. Pergunta diferente do gtoPosition: aquele diz de onde o jogador
+   *  erra mais, este diz qual e o perfil dele ali. */
+  playerStatsByPosition: (days = 90, lastN?: number) =>
+    request<PositionProfileResponse>(
+      `/metrics/player-stats/by-position?days=${days}${lastN != null ? `&last_n=${lastN}` : ""}`),
 
   level: () =>
     request<PlayerLevel>(`/metrics/level`),

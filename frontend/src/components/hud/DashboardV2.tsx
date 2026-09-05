@@ -17,6 +17,8 @@ import { V2StreetEvCard } from "@/components/hud/V2StreetEvCard";
 import { V2AiInsightsCard, AiInsight } from "@/components/hud/V2AiInsightsCard";
 import { V2QualityCard } from "@/components/hud/V2QualityCard";
 import { V2PositionCard } from "@/components/hud/V2PositionCard";
+import { V2PositionProfileCard } from "@/components/hud/V2PositionProfileCard";
+import { ProLockCard } from "@/components/hud/ProLockCard";
 import { V2BankrollCard } from "@/components/hud/V2BankrollCard";
 
 /**
@@ -43,6 +45,10 @@ interface Props {
   renderCard: (id: string, opts?: { v2?: boolean }) => React.ReactNode;
   gtoQuality?: GtoQualityData | null;
   gtoPosition?: GtoPositionData | null;
+  /** Perfil por assento (VPIP/PFR/3bet por posicao). Opcional: a /demo nao passa. */
+  positionProfile?: React.ComponentProps<typeof V2PositionProfileCard>["data"];
+  /** Free ve o lock com o motivo, nao um card vazio: card vazio parece produto quebrado. */
+  positionProfileLocked?: boolean;
   pendingGto?: number;
   aiInsights?: AiInsight[];
   aiLocked?: boolean;
@@ -66,7 +72,7 @@ const CARD_ORDER = [
   "results", "dna", "twin", "pressure", "cognitive", "career", "causal_map",
 ];
 
-export function DashboardV2({ onUpload, evSummary, volumeLimit = 50, onVolumeLimitChange = () => {}, hasData, renderCard, gtoQuality = null, gtoPosition = null, pendingGto = 0, aiInsights = [], aiLocked = false, showEmpty = false, evolution, kpis, playerStats = null, drift = null, onDismissDrift }: Props) {
+export function DashboardV2({ onUpload, evSummary, volumeLimit = 50, onVolumeLimitChange = () => {}, hasData, renderCard, gtoQuality = null, gtoPosition = null, positionProfile = null, positionProfileLocked = false, pendingGto = 0, aiInsights = [], aiLocked = false, showEmpty = false, evolution, kpis, playerStats = null, drift = null, onDismissDrift }: Props) {
   const { t } = useTranslation("dashboard");
   // Masonry real (mesmo hook do dashboard clássico): cards curtos liberam o vão
   // vertical e o grid-flow-dense empacota — sem blocos vazios na grade.
@@ -352,6 +358,14 @@ export function DashboardV2({ onUpload, evSummary, volumeLimit = 50, onVolumeLim
             {/* UX-2 onda 3 — medição GTO (anel + barras) e resultado financeiro */}
             <div data-tour="qualidade" className="lg:col-span-6"><V2QualityCard data={gtoQuality} pendingGto={pendingGto} /></div>
             <div className="lg:col-span-6"><V2PositionCard data={gtoPosition} /></div>
+            {/* A grade de PERFIL fica colada na de ALINHAMENTO de proposito: uma diz de
+                onde o jogador erra mais, a outra qual e o perfil dele ali. Perguntas
+                vizinhas, respostas vizinhas. */}
+            <div className="lg:col-span-12">
+              {positionProfileLocked
+                ? <ProLockCard feature={t("posProfile.title")} v2 />
+                : <V2PositionProfileCard data={positionProfile} />}
+            </div>
             <div className="lg:col-span-6"><V2BankrollCard data={evolution} /></div>
             {CARD_ORDER.map((id) => {
               const card = renderCard(id, { v2: true });

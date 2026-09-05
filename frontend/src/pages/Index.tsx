@@ -19,7 +19,7 @@ import { DraggableCard } from "@/components/hud/DraggableCard";
 import { useDashboardLayout, DashSection, SECTION_SPAN } from "@/hooks/useDashboardLayout";
 import { useMasonryRows } from "@/hooks/useMasonryRows";
 import { makeRenderCard } from "@/components/hud/dashboardCards";
-import { metrics, tournaments, support, EvolutionResponse, Tournament, PlayerStatsResponse, LeakRoiData, PressureProfile, ConfidenceDrift, PlayerDnaResponse, LeakGraphResponse, CareerProjection, CognitiveFailureData, StrategicTwinProfile, GtoAlignmentData, GtoPositionData, GtoQualityData, ResultsVsGtoData, LeakFinderData, SessionContextData } from "@/lib/api";
+import { metrics, tournaments, support, EvolutionResponse, Tournament, PlayerStatsResponse, PositionProfileResponse, LeakRoiData, PressureProfile, ConfidenceDrift, PlayerDnaResponse, LeakGraphResponse, CareerProjection, CognitiveFailureData, StrategicTwinProfile, GtoAlignmentData, GtoPositionData, GtoQualityData, ResultsVsGtoData, LeakFinderData, SessionContextData } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { shouldShowDrift, readDriftSeen, writeDriftSeen } from "@/lib/driftDismiss";
 
@@ -58,6 +58,7 @@ const Index = () => {
 
   const [evo, setEvo]                     = useState<EvolutionResponse | null>(null);
   const [playerStats, setPlayerStats]     = useState<PlayerStatsResponse | null>(null);
+  const [posProfile, setPosProfile]       = useState<PositionProfileResponse | null>(null);
   const [tourns, setTourns]               = useState<Tournament[]>(_cachedTourns ?? []);
   const [leakRoi, setLeakRoi]             = useState<LeakRoiData[]>([]);
   const [leakSource, setLeakSource]       = useState<'gto' | 'heuristic' | null>(null);
@@ -100,6 +101,10 @@ const Index = () => {
     Promise.all([
       metrics.evolution(90, ln).then(setEvo).catch(() => null),
       metrics.playerStats(90, ln).then(setPlayerStats).catch(() => null),
+      // Pro: nem chama quando e free — o backend responderia 402 e a UI ja mostra o
+      // lock pelo plano do usuario. Request que se sabe que vai falhar e ruido.
+      isFree ? Promise.resolve(null)
+             : metrics.playerStatsByPosition(90, ln).then(setPosProfile).catch(() => null),
       metrics.leakRoi(90, ln).then((r) => { setLeakRoi(r.leaks); setLeakSource(r.source); }).catch(() => null),
       metrics.pressureProfile(90).then(setPressureData).catch(() => null),
       metrics.confidenceDrift(30).then(setDriftData).catch(() => null),
@@ -303,6 +308,8 @@ const Index = () => {
         showEmpty={tournsLoaded && !hasData}
         kpis={{ roi, itmPct, totalEvents, totalHands, roiLowSample, netProfit }}
         playerStats={playerStats}
+        positionProfile={posProfile}
+        positionProfileLocked={isFree}
         drift={showDrift && driftData
           ? { detected: true, sessions: driftData.affected_sessions }
           : null}
