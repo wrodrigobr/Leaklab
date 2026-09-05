@@ -98,12 +98,12 @@ Ao concluir uma sprint, mover os itens para o CHANGELOG com o número da versão
 Ordenado por RISCO PARA O USUARIO, nao por esforco. Cada item carrega o numero que justifica
 a posicao — item sem medicao fica embaixo de proposito.
 
-**EM VOO — fechar antes de abrir qualquer coisa nova**
+**ENTREGUES 05/09**
 
 | # | item | estado |
 |---|---|---|
-| AY-1 | **HUD do acumulador** (`opponent_stats`): 5 defeitos, erro somado contra o PT4 41,08pp -> 0,39pp. 7 mutacoes aplicadas, 7 acusadas. | codigo pronto, CHANGELOG escrito, **aguardando a suite completa** -> commit -> deploy |
-| AY-2 | **Frontend do perfil por posicao** (`V2PositionProfileCard` A4 + tooltip, wiring em `DashboardV2`/`Index`, i18n 3 locales). Backend ja subiu em `6ef9b86a`, inerte sem isto. | na arvore, **falta rodar a suite do frontend + `tsc -p tsconfig.app.json`** |
+| AY-1 | **HUD do acumulador** (`opponent_stats`): 5 defeitos, erro somado contra o PT4 41,08pp -> 0,39pp. 7 mutacoes aplicadas, 7 acusadas. | ✅ **ENTREGUE 05/09** — `2933936e`, suite 2719/2719, deploy verificado DENTRO do container em torneio real de producao |
+| AY-2 | **Frontend do perfil por posicao** (`V2PositionProfileCard` A4 + tooltip, wiring em `DashboardV2`/`Index`, i18n 3 locales). | ✅ **ENTREGUE 05/09** — `7317cc6f`, frontend 493/493, `tsc -p tsconfig.app.json` limpo, endpoint conferido em prod (Rullian: 26.575 maos, 8 assentos, 7-9 stats classificados por assento) |
 
 **FILA — por impacto medido**
 
