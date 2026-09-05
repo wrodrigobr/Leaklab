@@ -115,8 +115,14 @@ def _process_hand(hand) -> dict:
     acúmulo global mantém a lógica 'uma vez por mão' (VPIP etc.) limpa."""
     out: dict = defaultdict(_blank)
     players = list(hand.players or [])
+    # Denominador de VPIP/PFR = mao com DECISAO, nao assento ocupado. Quem esta sentado e nao
+    # age (sitting out) recebia `hands=1` e afundava a taxa: 402 contra os 395 que o
+    # get_player_stats — validado contra o PT4 — conta no mesmo torneio. Sao 0,55pp em VPIP.
+    agiu = {a.player for a in hand.actions
+            if a.action not in ('posts', 'shows', 'mucks')}
     for p in players:
-        out[p]['hands'] = 1
+        if p in agiu:
+            out[p]['hands'] = 1
 
     by_street: dict = {'preflop': [], 'flop': [], 'turn': [], 'river': []}
     for a in hand.actions:
@@ -125,31 +131,36 @@ def _process_hand(hand) -> dict:
             by_street[st].append(a)
 
     folded_pre: set = set()       # foldou no preflop
-    folded_post: set = set()      # foldou em flop/turn/river
 
     # ── PREFLOP: VPIP, PFR, 3-bet (+opp), fold-to-3bet (+opp) ────────────────────
     n_raises = 0
     first_raiser: Optional[str] = None
     acted: set = set()            # já tomou a 1ª decisão voluntária/fold
-    threebet_seen = False         # houve um 3-bet (2º raise)
-    awaiting_open_resp = False    # esperando a resposta do opener ao 3-bet
+    respondeu_3bet: set = set()   # já teve a sua chance de responder ao 3-bet
 
     for a in by_street['preflop']:
         p, act = a.player, a.action
         if act == 'posts':
             continue
 
-        # Resposta do opener ao 3-bet (fold-to-3bet) — antes de processar como nova ação
-        if awaiting_open_resp and p == first_raiser:
+        # fold-to-3bet: oportunidade = agir enfrentando EXATAMENTE dois raises (o 3-bet),
+        # seja você o opener ou um cold-caller que pagou o open. Contar só o opener é a stat
+        # `After Raise`, que no PokerTracker tem coluna PRÓPRIA — era o defeito nº 4 de 04/09,
+        # e estava vivo aqui também. Medido no torneio-alvo: das 26 oportunidades que o motor
+        # (validado contra o PT4) enxerga, 14 são de quem NÃO abriu o pote.
+        if n_raises == 2 and p not in respondeu_3bet:
+            respondeu_3bet.add(p)
             out[p]['fold3bet_opp'] = 1
             if act == 'folds':
                 out[p]['fold3bet'] = 1
-            awaiting_open_resp = False
 
         first_action = p not in acted
 
-        # 3-bet: oportunidade = 1ª ação do jogador enfrentando ≥1 raise (um open)
-        if first_action and n_raises >= 1:
+        # 3-bet: oportunidade = 1ª ação do jogador enfrentando EXATAMENTE um raise (um open).
+        # `>= 1` contava também quem age depois de um 3-bet ou 4-bet — aquilo é oportunidade
+        # de 4-bet, não de 3-bet, e inflar o denominador afunda a taxa. Mesma definição do
+        # PT4 e do `_SQL_ENFRENTA_OPEN` que o get_player_stats passou a usar em 04/09.
+        if first_action and n_raises == 1:
             out[p]['threebet_opp'] = 1
             if act in ('raises', 'all-in'):
                 out[p]['threebet'] = 1
@@ -160,9 +171,6 @@ def _process_hand(hand) -> dict:
             n_raises += 1
             if n_raises == 1:
                 first_raiser = p
-            elif n_raises == 2:
-                threebet_seen = True
-                awaiting_open_resp = True   # o opener ainda vai responder ao 3-bet
         elif act == 'calls':
             out[p]['vpip'] = 1
         elif act == 'folds':
@@ -178,29 +186,42 @@ def _process_hand(hand) -> dict:
             pfr_aggressor = a.player
 
     flop = by_street['flop']
-    saw_flop = bool(flop)
+    # "Viu o flop" é o flop ter sido DISTRIBUÍDO com ele vivo — inclusive quem foi all-in no
+    # preflop, que vê o flop sem ter o que decidir e por isso não deixa ação nenhuma na street.
+    # Medir por `bool(flop)` perdia essas mãos (74 em vez de 82 no torneio-alvo) e o WTSD saía
+    # sobre o denominador errado. É o mesmo defeito nº 3 de 04/09, na outra implementação.
+    saw_flop = bool(flop) or bool(getattr(hand, 'board', None))
 
     # quem viu o flop = estava na mão (não foldou preflop)
     live_at_flop = [p for p in players if p not in folded_pre] if saw_flop else []
 
-    # c-bet: agressor preflop apostou primeiro no flop?
+    # c-bet: o agressor preflop apostou primeiro no flop?
+    # O PT4 exige que a ação CHEGUE nele sem aposta na frente: se alguém apostou antes (donk),
+    # não houve oportunidade de c-bet. Marcar oportunidade só por ele estar vivo — inclusive
+    # quando ele está all-in do preflop e não age — infla o denominador e afunda a taxa
+    # (medido: 75,6% contra 82,05% do PT4 no torneio-alvo). E o c-bet pode sair como `all-in`,
+    # que é a mesma ação com outro nome: era o defeito nº 1 de 04/09 (`shove` invisível).
     cbet_player = None
     if saw_flop and pfr_aggressor and pfr_aggressor in live_at_flop:
-        out[pfr_aggressor]['cbet_opp'] = 1
-        # primeira aposta do flop pelo agressor
         for a in flop:
-            if a.action == 'bets':
-                if a.player == pfr_aggressor:
+            if a.player == pfr_aggressor:
+                out[pfr_aggressor]['cbet_opp'] = 1
+                if a.action in ('bets', 'all-in'):
                     out[pfr_aggressor]['cbet'] = 1
                     cbet_player = pfr_aggressor
-                break  # só a primeira aposta conta como "o c-bet"
+                break            # só a 1ª ação dele no flop decide se houve c-bet
+            if a.action in ('bets', 'all-in', 'raises'):
+                break            # aposta na frente: sem oportunidade de c-bet
 
     # fold-to-cbet: quem agiu DEPOIS do c-bet no flop
     if cbet_player:
         seen_cbet = False
         for a in flop:
             if not seen_cbet:
-                if a.player == cbet_player and a.action == 'bets':
+                # `all-in` junto de `bets` pela mesma razão do c-bet acima: se o agressor
+                # continuou jogando tudo, o marco nunca era encontrado e a mão inteira saía
+                # SEM oportunidade de fold-to-cbet para ninguém.
+                if a.player == cbet_player and a.action in ('bets', 'all-in'):
                     seen_cbet = True
                 continue
             # ações após o c-bet
@@ -209,7 +230,7 @@ def _process_hand(hand) -> dict:
                 if a.action == 'folds':
                     out[a.player]['foldcbet'] = 1
 
-    # AF + folds postflop + WTSD
+    # AF (agressões / calls postflop)
     for st in _POSTFLOP:
         for a in by_street[st]:
             p, act = a.player, a.action
@@ -217,13 +238,19 @@ def _process_hand(hand) -> dict:
                 out[p]['pf_aggr'] += 1
             elif act == 'calls':
                 out[p]['pf_calls'] += 1
-            elif act == 'folds':
-                folded_post.add(p)
 
+    # WTSD = FOI A SHOWDOWN. Media "viu o flop e não foldou depois", o que inclui as mãos em
+    # que ele levou o pote porque os OUTROS foldaram — isso não é showdown. No torneio-alvo
+    # dava 68,9% contra 35,37% do PokerTracker: 33,5pp de erro, o maior do acervo.
+    #
+    # `shows`/`mucks` é o sinal por JOGADOR. O parser só extrai `showdown_result` para o
+    # herói, e este acumulador atende todo mundo (o HUD de oponente sai daqui). Conferido
+    # antes de adotar: as duas fontes concordam em 402 de 402 mãos do torneio-alvo.
+    foi_showdown = {a.player for a in hand.actions if a.action in ('shows', 'mucks')}
     if saw_flop:
         for p in live_at_flop:
             out[p]['saw_flop'] = 1
-            if p not in folded_post:
+            if p in foi_showdown:
                 out[p]['wtsd'] = 1
 
     return out

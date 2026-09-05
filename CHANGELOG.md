@@ -5,6 +5,76 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## A SEGUNDA fonte das mesmas estatisticas (05/09)
+
+### A pergunta que abriu isto
+O dono, olhando o card "SEU HUD NESTE TORNEIO": *"este hud esta corrigido tambem nos mesmos
+moldes das alteracoes de hoje? possuem a mesma fonte de calculos?"*
+
+Nao possuiam. O HUD do torneio tem implementacao PROPRIA (`leaklab/opponent_stats.py`, lida
+do TEXTO CRU) e nao passa pelo `get_player_stats`. Ficou de fora dos 8 consertos de 04/09 e
+seguiu errado depois de o dashboard ja bater com o PokerTracker — duas telas do mesmo produto
+dando numeros diferentes para a mesma estatistica, que e pior que uma errada sozinha.
+
+Logo depois: *"na mesa do replayer tambem temos uma opcao de exibir o hud dos jogadores..."*
+— sim, e e o MESMO acumulador (`build_profiles` -> `finalize(accumulate(hands))`). Uma fonte,
+tres telas.
+
+### Corrigido — erro somado contra o PT4: 41,08pp -> 0,39pp
+
+| stat | antes | agora | PT4 | o que era |
+|---|---|---|---|---|
+| WTSD | 68,9 | **35,4** | 35,37 | media "nao foldou depois do flop" — o que conta as maos em que ele levou o pote porque os OUTROS foldaram. Isso nao e showdown. |
+| C-Bet | 75,6 | **82,1** | 82,05 | marcava oportunidade so por ele estar vivo, sem checar aposta na frente nem se ele chega a agir; e `all-in` do agressor nao contava como c-bet |
+| 3Bet | — | **10,2** | 10,29 | oportunidade era "enfrentar >= 1 raise", o que inclui enfrentar 3bet (isso e oportunidade de 4bet) |
+| Fold3Bet | — | **76,9** | 76,92 | so o opener contava. E a stat `After Raise`, que no PT4 tem coluna propria. Das 26 oportunidades do torneio-alvo, **14 sao de quem apenas pagou o open**. |
+| VPIP/PFR | 30,6 | **31,1** | 31,14 | denominador era assento ocupado, nao mao com DECISAO (402 contra 395) |
+
+### O gate de amostra pagou o seguro
+Antes de propor reprocesso, medi o estrago real nos perfis gravados: dos **14.458**, apenas
+**31 exibem WTSD** (0,21%), 9 exibem c-bet, 3 exibem fold-to-3bet, e **99% tem arquetipo
+`unknown`**. A disciplina de "nenhum read sem amostra" absorveu quase tudo no HUD de oponente.
+
+Quem sentiu foi o HUD do TORNEIO, que por design **nao tem gate** (e descricao da sessao, nao
+read de exploit) — e esse e calculado ao vivo do texto cru, entao o deploy conserta sem
+reprocesso. O recompute dos perfis foi para o backlog com o escopo medido, e com o aviso de
+que o script NAO tem a guarda de CoinPoker que o `/analyze` tem.
+
+### A varredura que a pergunta do dono provocou
+*"Outros indicadores do dash usam este tipo de dado, por exemplo perfil estrategico. Ele se
+auto corrige agora? Algum outro indicador pode estar incorreto?"*
+
+Varri por CONCEITO, nao por nome de funcao. So existem **duas** contas de VPIP/PFR/WTSD/C-Bet
+no codigo — `get_player_stats` (consertada 04/09) e `opponent_stats` (agora). Nao ha terceira;
+o `llm_explainer` so formata e consome.
+
+**O perfil estrategico nao usa nenhuma das duas** — agrega direto de `decisions`. Nao foi
+afetado. Mas avalia-lo por conta propria achou outro defeito, de outra linhagem (registrado no
+backlog): ele filtra por `t.imported_at`, a data do UPLOAD, e nao por data de JOGO. Para o
+assinante pagante isso significa **13.878 decisoes contra 1.318** na janela de 180 dias — o
+card descreve o jogador de mais de 180 dias atras como perfil atual. **27 funcoes** estao
+nesse eixo; o conserto de 03/09 foi aplicado onde o defeito apareceu, nao onde ele vive.
+
+**O que NAO se autocorrige:** o plano de estudos EMBUTE os numeros do HUD no texto, e o cache
+do banco usa `db_key='study_plan_current'` — chave estavel por aluno, independente dos stats.
+Pior, `_study_plan_drift_sig` olha so os top-3 leaks e a contagem de torneios: **mudanca de
+VPIP ou WTSD nunca dispara regeneracao**. Sao 5 planos em producao, gerados entre 28/06 e
+31/08, todos anteriores aos consertos. Incluir `player_stats` no drift ficou para uma frente
+propria, por decisao do dono.
+
+### Testes
+7 mutacoes aplicadas de proposito, 7 acusadas. O guarda com gabarito do PT4 pega **todas as
+7**; os unitarios pegam 3. Dois testes antigos falharam e **nao eram regressao**: as maos
+sinteticas iam ao river no check ("vai a showdown", dizia o proprio comentario) mas omitiam as
+linhas `shows`/`mucks` que um historico real sempre traz — fixture infiel, que por isso
+passava com a definicao errada. Tornados fieis, mais 3 guardas novos.
+
+**A varredura de mutacao mentiu primeiro:** eu procurava `FALHOU` na saida e este arquivo
+imprime `FAIL`, entao reportei que so um teste acusava. Trocado por leitura da linha
+`Failed: N`. Verificador que nao detecta a propria falha e a versao meta do zero tranquilizador.
+
+---
+
 ## `incomplete_expired` nao e cancelamento: 10 rebaixamentos indevidos (05/09)
 
 ### O que o dono viu

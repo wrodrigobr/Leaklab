@@ -100,6 +100,66 @@ def test_heroi_ausente_devolve_None():
     print('OK  test_heroi_ausente_devolve_None')
 
 
+# ── O gabarito externo (05/09) ──────────────────────────────────────────────────────────────
+#
+# Este HUD tem implementacao PROPRIA (`opponent_stats.accumulate`), lida do texto cru, e nao
+# passa pelo `get_player_stats`. Por isso ficou de fora dos 8 consertos de 04/09 e seguiu
+# errado por semanas depois de o dashboard ja bater com o PokerTracker — era uma SEGUNDA
+# fonte para as mesmas estatisticas. O dono perguntou "possuem a mesma fonte de calculos?" e
+# a resposta era nao.
+#
+# Erro somado dos 7 stats contra o PT4 no mesmo torneio: 41,08pp -> 0,39pp.
+#   WTSD     68,9 -> 35,4  (PT4 35,37)  media "nao foldou", nao "foi a showdown"
+#   C-Bet    75,6 -> 82,1  (PT4 82,05)  oportunidade sem checar aposta na frente; all-in conta
+#   3Bet        - -> 10,2  (PT4 10,29)  oportunidade e enfrentar EXATAMENTE um raise
+#   Fold3Bet    - -> 76,9  (PT4 76,92)  vale para quem enfrenta o 3-bet, nao so o opener
+#   VPIP/PFR 30,6 -> 31,1  (PT4 31,14)  denominador e mao com DECISAO, nao assento ocupado
+#
+# O mesmo acumulador alimenta o HUD de oponente do replayer. Uma fonte, tres telas.
+
+_FIXTURE_PT4 = os.path.join(os.path.dirname(__file__), 'fixtures', 'hud_pt4')
+_TOLERANCIA_PP = 0.5
+
+
+def _hud_do_fixture():
+    import io as _io, json as _json
+    from leaklab.parser import parse_hand_history
+    bruto = _io.open(os.path.join(_FIXTURE_PT4, 'torneio_402_maos.txt'),
+                     encoding='utf-8', errors='ignore').read()
+    alvo = _json.load(_io.open(os.path.join(_FIXTURE_PT4, 'alvo_pt4.json'), encoding='utf-8'))
+    return hud_do_heroi(parse_hand_history(bruto), 'Hero'), alvo
+
+
+def test_hud_do_torneio_bate_com_o_pokertracker():
+    """NAO ajuste o alvo para o teste passar: ele e o oraculo externo. Divergir significa
+    que o nosso calculo mudou ou que a definicao mudou — as duas pedem investigacao."""
+    hud, alvo = _hud_do_fixture()
+    pares = [('vpip', 'vpip'), ('pfr', 'pfr'), ('threebet', 'three_bet'),
+             ('fold3bet', 'fold_to_3bet'), ('cbet', 'cbet_pct'), ('wtsd', 'wtsd')]
+    fora = []
+    for chave, alvo_k in pares:
+        cel = (hud.get('stats') or {}).get(chave) or {}
+        v, esperado = cel.get('value'), alvo[alvo_k]
+        if v is None:
+            fora.append('%s: nao calculou (PT4 %.2f)' % (chave, esperado)); continue
+        if abs(v - esperado) > _TOLERANCIA_PP:
+            fora.append('%s: %.1f vs PT4 %.2f (%+.2fpp)' % (chave, v, esperado, v - esperado))
+    af = (hud.get('stats') or {}).get('af') or {}
+    if af.get('value') is None or abs(af['value'] - alvo['af']) > 0.15:
+        fora.append('af: %s vs PT4 %.2f' % (af.get('value'), alvo['af']))
+    assert not fora, 'HUD do torneio divergiu do PokerTracker: ' + '; '.join(fora)
+    print('OK  test_hud_do_torneio_bate_com_o_pokertracker (7 stats)')
+
+
+def test_denominador_e_mao_com_decisao():
+    """395, nao 402. As 7 de diferenca sao mãos em que o heroi nao agiu — o mesmo numero que
+    o `get_player_stats` (validado contra o PT4) conta neste torneio."""
+    hud, _ = _hud_do_fixture()
+    assert hud['hands'] == 395, 'denominador virou %s' % hud['hands']
+    print('OK  test_denominador_e_mao_com_decisao')
+
+
+
 if __name__ == '__main__':
     falhas = 0
     testes = [v for k, v in sorted(globals().items()) if k.startswith('test_')]

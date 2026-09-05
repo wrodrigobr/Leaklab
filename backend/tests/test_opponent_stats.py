@@ -104,9 +104,13 @@ def test_wtsd_and_af():
         ('B', 'turn', 'checks'),
         ('A', 'river', 'checks'),
         ('B', 'river', 'checks'),
+        # Um river no check VAI a showdown, e o histórico real sempre traz estas linhas. O
+        # fixture as omitia, e por isso passava com a definição errada de WTSD ("não foldou").
+        ('A', 'river', 'shows'),
+        ('B', 'river', 'mucks'),
     ])
     o = _process_hand(h)
-    assert o['A']['wtsd'] == 1 and o['B']['wtsd'] == 1     # ninguém foldou postflop
+    assert o['A']['wtsd'] == 1 and o['B']['wtsd'] == 1     # os dois FORAM a showdown
     assert o['A']['saw_flop'] == 1 and o['B']['saw_flop'] == 1
     assert o['A']['pf_aggr'] == 1 and o['A']['pf_calls'] == 0   # 1 bet
     assert o['B']['pf_calls'] == 1 and o['B']['pf_aggr'] == 0   # 1 call
@@ -138,7 +142,9 @@ def test_finalize_calling_station():
             ('X', 'turn', 'checks'),
             ('STN', 'turn', 'checks'),
             ('X', 'river', 'checks'),
-            ('STN', 'river', 'checks'),         # vai a showdown
+            ('STN', 'river', 'checks'),
+            ('X', 'river', 'shows'),            # vai a showdown — e o histórico real diz isso
+            ('STN', 'river', 'shows'),
         ]))
     prof = build_profiles(hands)
     s = prof['STN']
@@ -147,6 +153,54 @@ def test_finalize_calling_station():
     assert s['archetype'] == 'calling_station', s['archetype']
     assert s['confidence'] == 'high'
     print("OK  test_finalize_calling_station")
+
+
+
+def test_levar_o_pote_sem_showdown_NAO_e_wtsd():
+    """O defeito que custou 33,5pp contra o PokerTracker (05/09).
+
+    WTSD media "viu o flop e não foldou depois" — o que conta as mãos em que ele levou o
+    pote porque os OUTROS foldaram. Isso não é ir a showdown. No torneio-alvo dava 68,9%
+    contra 35,37% do PT4, o maior erro do acervo.
+    """
+    h = _h(['A', 'B'], [
+        ('A', 'preflop', 'raises', 3),
+        ('B', 'preflop', 'calls', 3),
+        ('A', 'flop', 'bets', 4),
+        ('B', 'flop', 'folds'),          # B desiste; A leva SEM mostrar
+    ])
+    o = _process_hand(h)
+    assert o['A']['saw_flop'] == 1, 'A viu o flop'
+    assert o['A']['wtsd'] == 0, 'levar o pote sem mostrar virou showdown'
+    assert o['B']['wtsd'] == 0
+
+
+def test_fold_to_3bet_conta_quem_NAO_abriu_o_pote():
+    """Contar só o opener é a stat `After Raise`, que no PT4 tem coluna própria. Medido no
+    torneio-alvo: das 26 oportunidades, 14 são de quem apenas pagou o open."""
+    h = _h(['OPEN', 'CALL', 'TRES'], [
+        ('OPEN', 'preflop', 'raises', 3),
+        ('CALL', 'preflop', 'calls', 3),     # cold-caller
+        ('TRES', 'preflop', 'raises', 9),    # o 3-bet
+        ('OPEN', 'preflop', 'folds'),
+        ('CALL', 'preflop', 'folds'),
+    ])
+    o = _process_hand(h)
+    assert o['OPEN']['fold3bet_opp'] == 1 and o['OPEN']['fold3bet'] == 1
+    assert o['CALL']['fold3bet_opp'] == 1, 'cold-caller que enfrenta o 3-bet ficou de fora'
+    assert o['CALL']['fold3bet'] == 1
+    assert o['TRES']['fold3bet_opp'] == 0, 'quem DEU o 3-bet nao enfrenta 3-bet'
+
+
+def test_quem_nao_age_na_mao_nao_entra_no_denominador():
+    """Assento ocupado nao e mao com decisao: sitting out afundava VPIP/PFR (0,55pp)."""
+    h = _h(['A', 'B', 'AUSENTE'], [
+        ('A', 'preflop', 'raises', 3),
+        ('B', 'preflop', 'folds'),
+    ])
+    o = _process_hand(h)
+    assert o['A']['hands'] == 1 and o['B']['hands'] == 1
+    assert o['AUSENTE']['hands'] == 0, 'quem nao agiu entrou no denominador'
 
 
 # ── Fase 3: exploit ──────────────────────────────────────────────────────────────
