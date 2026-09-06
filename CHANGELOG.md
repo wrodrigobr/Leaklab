@@ -5,6 +5,25 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## AY-6: o plano de estudos regenera quando o PERFIL muda de banda (05/09)
+
+O cache do plano tem chave estavel por aluno e a assinatura de drift ignorava o HUD. Quando o
+HUD foi consertado contra o PokerTracker (WTSD 69 -> 35), os 5 planos em producao ficaram com
+o contexto antigo e nada os regenerava.
+
+O dono descartou a ideia original (comparar periodos dentro do plano): isso ja existe no
+relatorio de evolucao, e o plano deve focar nos leaks. Sobrou o certo — `_study_plan_drift_sig`
+passa a incluir a BANDA de cada stat (`player_stat_flags`), nunca o valor. "Saiu de loose para
+saudavel" regenera; "VPIP foi de 24,3 para 24,9" nao, porque regenerar por ruido e churn.
+
+Sem `player_stats` a assinatura e a de antes: os planos cacheados nao regeneram por causa deste
+commit — so quando a banda mudar de fato. 6 testes, incluindo o caso que originou (WTSD 69 -> 27
+invalida) e a contraprova de retrocompatibilidade. Guarda quebrado, 3 acusaram.
+
+Pendente, decisao do dono: regenerar os 5 planos antigos uma vez (`force_new`).
+
+---
+
 ## AY-4: o eixo de tempo — 27 funcoes por data de UPLOAD, 24 sem o filtro da tela (05/09)
 
 ### O que era

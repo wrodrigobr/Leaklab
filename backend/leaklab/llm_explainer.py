@@ -1220,7 +1220,23 @@ def _recover_truncated_plan_json(raw: str) -> str | None:
 # Flutuação pequena (mesma faixa de torneios, mesmos leaks) NÃO regenera → estabilidade do plano.
 _STUDY_PLAN_DRIFT_TOURNEYS = 10
 
-def _study_plan_drift_sig(leaks: list, evolution: list) -> str:
+def _study_plan_drift_sig(leaks: list, evolution: list, player_stats: dict | None = None) -> str:
+    """Assinatura de drift do plano: quando ela muda, o plano cacheado esta velho e regenera.
+
+    Tudo aqui e QUALITATIVO de proposito — identidade dos top-3 leaks, bucket de torneios, e
+    (05/09) a BANDA de cada stat do HUD, nunca o valor. bb, contagem e VPIP flutuam a cada
+    torneio; regenerar por isso seria churn: o jogador perde o plano que estava seguindo e paga
+    uma chamada de LLM por nada.
+
+    ── Por que a banda entrou (AY-6) ─────────────────────────────────────────────────────
+    O cache do banco tem chave estavel por aluno (`study_plan_current`) e a assinatura ignorava
+    o HUD por completo. Em 05/09 o HUD foi consertado contra o PokerTracker (WTSD 69 -> 35, por
+    exemplo) e os 5 planos em producao continuaram com o contexto antigo, sem nada que os
+    fizesse regenerar. Mudanca de BANDA e o sinal certo: "saiu de loose para saudavel" e o
+    perfil mudando; "VPIP foi de 24,3 para 24,9" e ruido.
+
+    Sem `player_stats`, a assinatura e a de antes — os chamadores antigos continuam validos.
+    """
     import hashlib
     n_bucket = len(evolution or []) // max(1, _STUDY_PLAN_DRIFT_TOURNEYS)
     # Identidade QUALITATIVA dos top-3 leaks (sem magnitude — bb/contagem flutuam e não devem regerar).
@@ -1231,6 +1247,11 @@ def _study_plan_drift_sig(leaks: list, evolution: list) -> str:
             parts.append('|'.join(f"{k}={l[k]}" for k in _QUAL if l.get(k) is not None))
         else:
             parts.append(str(l))
+    if player_stats:
+        from leaklab.opponent_stats import player_stat_flags
+        bandas = player_stat_flags(player_stats)
+        # so a banda, em ordem estavel; `low_sample` conta como banda (sair dela E mudanca)
+        parts.append('hud:' + ','.join(f"{k}={v.get('band')}" for k, v in sorted(bandas.items())))
     sig = hashlib.md5('|'.join(parts).encode()).hexdigest()[:8]
     return f"t{n_bucket}_{sig}"
 
@@ -1263,7 +1284,7 @@ def generate_study_plan(leaks: list, evolution: list, icm: dict,
     ).hexdigest()
     # Chave DB estável (1 linha/aluno); o fingerprint de drift fica no VALOR.
     db_key = 'study_plan_current'
-    drift_sig = _study_plan_drift_sig(leaks, evolution)
+    drift_sig = _study_plan_drift_sig(leaks, evolution, player_stats)
 
     if not force_new:
         # Cache em memória
@@ -1890,7 +1911,7 @@ def generate_study_plan_agentic(leaks: list, evolution: list, icm: dict,
                     'source': leak_source, 'ev': ev_leaks or []}, sort_keys=True, default=str).encode()
     ).hexdigest()
     db_key = 'study_plan_current'   # mesmo do legado — plano canônico único por aluno
-    drift_sig = _study_plan_drift_sig(leaks, evolution)
+    drift_sig = _study_plan_drift_sig(leaks, evolution, player_stats)
 
     if not force_new:
         if mem_key in _cache:
