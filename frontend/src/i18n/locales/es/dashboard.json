@@ -908,8 +908,6 @@
     "seat": "asiento",
     "lowSample": "muestra baja en este asiento",
     "healthyRange": "sano {{min}} a {{max}}",
-    "showMore": "ver {{n}} más",
-    "showLess": "ver menos",
     "you": "Vos",
     "recommended": "Recomendado",
     "inBand": "Dentro de la referencia. Nada que corregir acá.",

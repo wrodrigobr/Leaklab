@@ -375,6 +375,18 @@ export function DashboardV2({ onUpload, evSummary, volumeLimit = 50, onVolumeLim
             quando a query atrasa fazia ele "sumir" do V2. ─────────────────── */}
         {hasData && <PlayerStatsCard stats={playerStats} v2 />}
 
+        {/* ── Perfil por posicao: COLADO no HUD (decisao do dono, 06/09). A grade e o
+            HUD aberto por assento — as mesmas 12 colunas, na mesma ordem, e a linha
+            TOTAL e o proprio HUD. Ler um logo abaixo do outro e o que faz a grade fechar
+            com o numero grande da tela; no meio do masonry ela ficava a 4 cards de
+            distancia do que confere. Fora do grid porque e linha inteira sempre (fora do
+            breakpoint lg ela dividia a linha e forcava rolagem, achado de 05/09). ── */}
+        {hasData && (
+          positionProfileLocked
+            ? <ProLockCard feature={t("posProfile.title")} v2 />
+            : <V2PositionProfileCard data={positionProfile} geral={playerStats} />
+        )}
+
         {/* ── Cards existentes em ordem fixa (reuso via renderCard) ─────── */}
         {hasData && (
           <section
@@ -389,17 +401,6 @@ export function DashboardV2({ onUpload, evSummary, volumeLimit = 50, onVolumeLim
             {/* UX-2 onda 3 — medição GTO (anel + barras) e resultado financeiro */}
             <div data-tour="qualidade" className="lg:col-span-6"><V2QualityCard data={gtoQuality} pendingGto={pendingGto} /></div>
             <div className="lg:col-span-6"><V2PositionCard data={gtoPosition} /></div>
-            {/* A grade de PERFIL fica colada na de ALINHAMENTO de proposito: uma diz de
-                onde o jogador erra mais, a outra qual e o perfil dele ali. Perguntas
-                vizinhas, respostas vizinhas. */}
-            {/* col-span-full, nao lg:col-span-12: a grade e larga em QUALQUER largura, e
-                fora do breakpoint lg ela dividia a linha com outro card e forcava rolagem
-                horizontal (achado do dono, 05/09). Linha inteira sempre. */}
-            <div className="col-span-full">
-              {positionProfileLocked
-                ? <ProLockCard feature={t("posProfile.title")} v2 />
-                : <V2PositionProfileCard data={positionProfile} geral={playerStats} />}
-            </div>
             <div className="lg:col-span-6"><V2BankrollCard data={evolution} /></div>
             {CARD_ORDER.map((id) => {
               const card = renderCard(id, { v2: true });

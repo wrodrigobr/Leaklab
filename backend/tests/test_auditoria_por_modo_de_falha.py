@@ -146,11 +146,7 @@ _P3_PARES = (
 _P3_ARQUIVOS = ('database/repositories.py', 'api/app.py', 'leaklab/decision_engine_v11.py')
 
 _P3_ACEITOS = {
-    ('normalize_position / rotulos_do_assento', 'database/repositories.py', 'get_player_dna'):
-        'ACHADO 05/09, aberto (AY-13): conjunto EP/LP proprio do DNA com MP1/MP2/MP3 e SEM LJ.',
-    ('normalize_position / rotulos_do_assento', 'database/repositories.py', 'get_gto_alignment_matrix'):
-        'ACHADO 05/09, aberto (AY-13): `pos_bucket` poe MP1 em "MP" e LJ em "EP" — o mesmo '
-        'assento em baldes diferentes. Latente (decisions grava MP1), mas incoerente.',
+    # (AY-13 fechado em 06/09: `get_player_dna` e `pos_bucket` passaram a usar `grupo_posicional`.)
     ('_build_tournament_filter', 'database/repositories.py', 'get_evolution_metrics'):
         'PRESENCA de dados (ver test_eixo_de_tempo): o ramo default e o check do plano de estudos.',
 }
@@ -171,8 +167,15 @@ def _p3_achados():
 
 
 def test_p3_o_detector_acha_literal_cru():
-    achados = _p3_achados()
-    assert any(h.startswith('normalize_position') for h, _, _ in achados), achados
+    """Forjado. A 1a versao apontava para o `'MP1'` do DNA — e o AY-13 o removeu no dia
+    seguinte, derrubando a prova. Mesma licao do P7: prova que depende de um caso que um commit
+    conserta nao e prova."""
+    forjado = "def f():\n    ep = {'UTG', 'MP1', 'HJ'}\n    q = \"WHERE t.imported_at >= ?\"\n"
+    _, cru_pos, isenta_pos = _P3_PARES[1]
+    _, cru_eixo, isenta_eixo = _P3_PARES[2]
+    assert re.search(cru_pos, forjado) and not re.search(isenta_pos, forjado)
+    assert re.search(cru_eixo, forjado) and not re.search(isenta_eixo, forjado)
+    assert _p3_achados(), 'a varredura nao acha nada: o detector morreu'
 
 
 def test_p3_literal_cru_esta_declarado():

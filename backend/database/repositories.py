@@ -978,12 +978,19 @@ _GTO_STALE_HOURS = 24  # request 'solver_queued' há mais que isto (solver caíd
 
 
 
-def get_tournaments(user_id: int, limit: int = 50) -> List[dict]:
+def get_tournaments(user_id: int, limit: int | None = None) -> List[dict]:
+    """Torneios do usuário, do importado mais recente ao mais antigo.
+
+    `limit=None` (padrão) devolve TODOS. Até 06/09 o padrão era 50, e a tela de histórico
+    chamava sem `limit`: a faixa "torneios / investido / lucro / ROI" e os KPIs do dashboard
+    somavam os últimos 50 importados e apresentavam como histórico. O dono estranhou o "50"
+    cravado. Teto continua disponível para quem PEDE (HUD do torneio pede 1, coach pede 5).
+    """
     conn = get_conn()
     try:
         from datetime import datetime, timedelta
         _gto_cutoff = (datetime.utcnow() - timedelta(hours=_GTO_STALE_HOURS)).strftime('%Y-%m-%d %H:%M:%S')
-        rows = conn.execute("""
+        rows = conn.execute(f"""
             SELECT t.id, t.tournament_id, t.site, t.tournament_name, t.hero, t.played_at, t.imported_at,
                    t.hands_count, t.decisions_count, t.avg_score,
                    t.standard_pct, t.clear_pct, t.result, t.place, t.llm_summary,
@@ -1024,8 +1031,8 @@ def get_tournaments(user_id: int, limit: int = 50) -> List[dict]:
             WHERE t.user_id = ?
             GROUP BY t.id
             ORDER BY t.imported_at DESC
-            LIMIT ?
-        """, (_gto_cutoff, _gto_cutoff, user_id, limit)).fetchall()
+            {'LIMIT ?' if limit else ''}
+        """, (_gto_cutoff, _gto_cutoff, user_id) + ((limit,) if limit else ())).fetchall()
         # "Analisando" é POR TORNEIO. Antes usava a fila GLOBAL como proxy (_recent_import E fila
         # ativa), o que acendia o torneio recente de um usuário quando OUTRO subia torneios (a fila
         # é global, sem dono). Agora o sinal é o vínculo torneio↔spot da importação (gto_tq_busy):
@@ -2291,6 +2298,36 @@ def rotulos_do_assento(pos: str) -> tuple:
     """Todos os rótulos crus que representam este assento em `decisions.position`."""
     return (pos,) + tuple(_ALIASES_DE_POSICAO.get(pos, ()))
 
+
+def grupo_posicional(pos) -> str:
+    """Grupo de um rótulo de posição, DEPOIS de normalizar: EP / MP / CO / BTN / SB / BB / OTHER.
+
+    ── Por que existe (06/09, AY-13) ────────────────────────────────────────────────────
+    A auditoria (P3) achou dois mapas de posição a mais, cada um com o próprio conjunto de
+    rótulos crus. O `pos_bucket` da matriz de alinhamento punha `MP1` em "MP" e `LJ` em "EP" —
+    o MESMO assento em baldes diferentes, porque `MP1` é como o 9-max grava o LJ. O DNA tinha
+    um conjunto EP com `MP3` (que ninguém emite) e sem `LJ`. Foi esse defeito, na grade por
+    posição, que escondia 114 mãos do pagante um dia antes.
+
+    Um lugar só: normaliza pelo mapa do motor (`MP1->LJ`, `MP2->HJ`, `MP->LJ`) e agrupa pela
+    ordem canônica. `UTG1`/`UTG2` ficam declarados aqui porque o `_POSITION_NORM` não os cobre
+    e estendê-lo mudaria hashes de nós GTO já resolvidos.
+    """
+    from leaklab.gto_utils import normalize_position
+    u = normalize_position(pos)
+    if u in ('UTG', 'UTG+1', 'UTG+2', 'UTG1', 'UTG2'):
+        return 'EP'
+    if u in ('LJ', 'HJ'):
+        return 'MP'
+    if u in ('CO', 'BTN', 'SB', 'BB'):
+        return u
+    return 'OTHER'
+
+
+#: Para leituras binárias cedo/tarde (DNA): antes do CO é cedo; CO e BTN é tarde.
+GRUPOS_CEDO = ('EP', 'MP')
+GRUPOS_TARDE = ('CO', 'BTN')
+
 # O que a grade mostra em CADA célula, e o que só aparece quando o assento tem volume.
 # Medido em prod 04/09: com o corte de amostra atual, a grade completa do PT4 só funciona
 # para 2 dos 9 jogadores com volume — `W$SD` pede 2.000 mãos, `WTSD` 1.000, `3Bet` 750, e
@@ -2312,9 +2349,34 @@ def rotulos_do_assento(pos: str) -> tuple:
 # Registrado porque o comentário antigo passaria a explicar o corte por uma razão que já não
 # existe — e comentário que descreve o passado vira explicação plausível para outro estado
 # (regra 8).
+#
+# ── Todos os indicadores do HUD, na ordem do HUD (06/09) ────────────────────────────────
+# O dono olhou a grade com 5 colunas e pediu "todos os indicadores que temos no HUD". A grade
+# emitia 9 dos 12 (os 3 sem entrada em `STAT_REFERENCES` caíam no `classify_stat -> None`) e
+# o front escondia toda coluna que nenhum assento atingia — WTSD/W$SD/3Bet sumiam da linha
+# TOTAL também, embora o HUD principal os tivesse. A coluna passa a existir SEMPRE; o que
+# continua progressivo é a célula (o corte de amostra, mantido pelo dono).
+#
+# Ordem = a do `PlayerStatsCard`, para os dois cards lerem igual. `test_grade_por_posicao`
+# varre: todo stat numérico do HUD principal tem coluna aqui e tem corte declarado.
 _GRADE_SEMPRE = ('vpip', 'pfr')                       # min 100 mãos
-_GRADE_COM_VOLUME = ('three_bet', 'fold_to_3bet', 'af', 'cbet_pct', 'steal_pct',
-                     'wtsd', 'w_at_sd')
+_GRADE_COM_VOLUME = ('af', 'cbet_pct', 'fold_to_flop_bet', 'bb_defense', 'steal_pct',
+                     'open_limp_pct', 'fold_to_3bet', 'wtsd', 'three_bet', 'w_at_sd')
+
+# Corte de amostra dos stats que o HUD mostra mas `STAT_REFERENCES` não classifica (não têm
+# régua MTT no produto). 500 mãos: a mesma classe de AF/C-Bet/Steal — postflop ou com
+# denominador restrito a um assento — e uma disciplina só de corte (ver acima).
+_GRADE_MIN_SEM_REFERENCIA = {'fold_to_flop_bet': 500, 'bb_defense': 500, 'open_limp_pct': 500}
+
+
+def minimo_da_grade(chave: str):
+    """Mãos que um assento precisa ter para a célula deste stat sair de `low_sample`.
+    Fonte única: a régua do produto quando existe, senão o corte declarado acima."""
+    from leaklab.opponent_stats import STAT_REFERENCES
+    ref = STAT_REFERENCES.get(chave)
+    if ref is not None:
+        return ref['min']
+    return _GRADE_MIN_SEM_REFERENCIA.get(chave)
 
 
 def get_player_stats_by_position(user_id: int, days: int = 90,
@@ -2344,8 +2406,6 @@ def get_player_stats_by_position(user_id: int, days: int = 90,
 
     `low_sample` PERMANECE, porque é afirmação sobre a AMOSTRA, não sobre a régua.
     """
-    from leaklab.opponent_stats import classify_stat
-
     linhas = []
     for pos in POSICOES_NA_ORDEM:
         s = get_player_stats(user_id, days, last_n, position=pos)
@@ -2357,14 +2417,14 @@ def get_player_stats_by_position(user_id: int, days: int = 90,
             valor = s.get(chave)
             if valor is None:
                 continue                  # sem denominador naquele assento (steal fora de BTN/CO/SB)
-            c = classify_stat(chave, valor, maos)
-            if c is None:
-                continue
+            minimo = minimo_da_grade(chave)
+            if minimo is None:
+                continue                  # stat sem corte declarado: o teste N+1 acusa
             # Só o gate de amostra sobrevive. Devolver `flag`/`healthy` aqui seria deixar a
             # acusação no payload esperando alguém voltar a pintá-la.
             celula['stats'][chave] = {
                 'value': valor,
-                'band': 'low_sample' if c.get('band') == 'low_sample' else 'ok',
+                'band': 'low_sample' if maos < minimo else 'ok',
             }
         linhas.append(celula)
 
@@ -6699,10 +6759,12 @@ def get_player_dna(user_id: int, days: int = 90, last_n: int | None = None) -> d
         three_bet_pct = round(n_3bet / len(pf) * 100, 1) if pf else 0.0
 
         # Positional awareness: aggression% in LP vs EP
-        lp = {'BTN', 'CO'}
-        ep = {'UTG', 'UTG+1', 'UTG+2', 'MP1', 'MP2', 'MP3', 'HJ'}
-        lp_nf = [r for r in rows if (r['position'] or '') in lp and (r['action_taken'] or '').lower() not in _fold]
-        ep_nf = [r for r in rows if (r['position'] or '') in ep and (r['action_taken'] or '').lower() not in _fold]
+        # Cedo x tarde pelo grupo CANÔNICO (06/09): o conjunto cru daqui tinha `MP3` (que
+        # ninguém emite) e não tinha `LJ` — ver `grupo_posicional`.
+        lp_nf = [r for r in rows if grupo_posicional(r['position']) in GRUPOS_TARDE
+                 and (r['action_taken'] or '').lower() not in _fold]
+        ep_nf = [r for r in rows if grupo_posicional(r['position']) in GRUPOS_CEDO
+                 and (r['action_taken'] or '').lower() not in _fold]
         lp_aggr = sum(1 for r in lp_nf if (r['action_taken'] or '').lower() in _agg)
         ep_aggr = sum(1 for r in ep_nf if (r['action_taken'] or '').lower() in _agg)
         lp_pct = (lp_aggr / len(lp_nf) * 100) if lp_nf else aggr_idx
@@ -10831,12 +10893,9 @@ def get_gto_alignment_matrix(user_id: int, since_days: int = 90, last_n: int | N
         """), tp)
 
         # Bucket de posição canônico (mantém heatmap legível com 6 linhas)
-        def pos_bucket(p: str) -> str:
-            u = (p or '').upper()
-            if u in ('UTG', 'UTG+1', 'UTG+2', 'UTG1', 'UTG2', 'LJ'): return 'EP'
-            if u in ('HJ', 'MP', 'MP1', 'MP2'):                       return 'MP'
-            if u in ('CO', 'BTN', 'SB', 'BB'):                        return u
-            return 'OTHER'
+        # 06/09: era um mapa cru próprio que punha MP1 em "MP" e LJ em "EP" — o mesmo assento
+        # em baldes diferentes. Agora é a fonte única.
+        pos_bucket = grupo_posicional
 
         STREETS = ['preflop', 'flop', 'turn', 'river']
         POS_ORDER = ['EP', 'MP', 'CO', 'BTN', 'SB', 'BB']

@@ -5,6 +5,86 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## O historico era os ultimos 50, e "ultimos N" eram os N mais antigos (06/09)
+
+O dono viu "TORNEIOS 50" na tela de historico: *"acho que tenho mais de 50... suspeito que
+este numero esteja cravado"*. Estava, em dois lugares que se somavam:
+
+1. `get_tournaments` tinha `limit=50` por padrao e `/history/tournaments` repetia o 50; a tela
+   chamava sem `limit`. A faixa "torneios / investido / lucro / ROI" somava os ultimos 50
+   importados e apresentava como historico. O dashboard le a MESMA lista: os KPIs de ROI,
+   lucro, ITM e maos — inclusive com o filtro em "Historico", que virou padrao ontem — eram 50.
+2. No dashboard, "ultimos N" era `tourns.slice(-N)` sobre uma lista ordenada por importacao
+   DESC: o FIM da lista sao os mais ANTIGOS. "Ultimos 30" eram os 30 mais velhos dos 50 que
+   chegaram, enquanto os cards (AY-4) cortam os 30 mais recentes por data de JOGO. Dois cortes
+   diferentes na mesma tela, sob a mesma frase de escopo.
+
+**O que mudou:** sem `limit`, vem tudo; teto so para quem pede (HUD do torneio pede 1, coach
+pede 5). `ultimosTorneios()` corta os N mais recentes por `played_at || imported_at`, o mesmo
+COALESCE do backend, sem mexer na lista original (`tourns[0]` continua o ultimo IMPORTADO, que
+e o que o HUD do torneio quer). Custo: a consulta ja era uma so com GROUP BY; devolver 300
+linhas em vez de 50 nao muda a forma.
+
+**Guardas:** `test_historico_sem_teto` (3) semeia 73 torneios e exige 73 sem `limit` e 10 com
+`limit=10`, no repositorio e no endpoint; `ultimosTorneios.test.ts` (4) tem o mais recente por
+jogo no MEIO da lista de importacao. Quatro mutacoes (teto de volta no repo, no endpoint, e
+`slice(-n)` de volta), todas acusadas.
+
+---
+
+## Perfil por posicao: as 12 colunas do HUD, sempre, e colado no HUD (06/09)
+
+O dono olhou a grade com 5 colunas: *"deveriamos ter todos os indicadores que temos no HUD,
+nao so alguns"*. Medido: o HUD principal devolve 12 stats; a grade emitia 9 (os 3 sem entrada
+em `STAT_REFERENCES` — Fold vs Bet, BB Defense, Open Limp — caiam calados em
+`classify_stat -> None`) e o front escondia toda coluna que nenhum assento atingia. Com 3.969
+maos, WTSD/W$SD/3Bet/Fold 3Bet sumiam da linha TOTAL tambem, embora ela venha do HUD e TENHA o
+numero. O HUD grande mostrava o que a grade dizia nao existir.
+
+**O que mudou:** a coluna existe sempre — as 12 do HUD, na ordem do `PlayerStatsCard`, para
+os dois cards lerem igual. O que continua progressivo e a CELULA: o corte de amostra fica
+(decisao do dono de 05/09). O corte sai de um lugar so, `minimo_da_grade`: a regua do produto
+quando existe, senao um corte declarado — 500 maos para os 3 sem regua, a mesma classe de
+AF/C-Bet/Steal. Recolher "ver mais N" saiu junto com a filtragem (chaves `showMore`/`showLess`
+removidas dos 3 idiomas). E o card foi para logo ABAIXO do HUD, fora do masonry: e o HUD
+aberto por assento, e a linha TOTAL e o proprio HUD — a 4 cards de distancia nao conferia nada.
+
+**Guardas:** `test_grade_por_posicao` ganhou a varredura N+1 (todo stat numerico do HUD tem
+coluna e tem corte; stat novo sem coluna acusa). Tres mutacoes, tres acusadas — depois de uma
+rodada em que as tres passaram em SILENCIO: os testes novos estavam abaixo do bloco
+`__main__`, que coleta `globals()` antes de eles existirem. Total ficou em 6 e eu quase li como
+verde. Front: coluna que nenhum assento atinge aparece no cabecalho com o numero do HUD no
+Total; ordem segue o payload (6/6). `tsc -p tsconfig.app.json` limpo.
+
+---
+
+## AY-13: um assento, um grupo — os dois mapas de posicao a mais viraram `grupo_posicional` (06/09)
+
+O detector P3 do AY-9 achou dois mapas de posicao com conjunto cru proprio. O `pos_bucket` da
+matriz de alinhamento punha `MP1` em "MP" e `LJ` em "EP" — o MESMO assento em baldes
+diferentes, porque `MP1` e como o 9-max grava o LJ. O DNA tinha um conjunto EP com `MP3`, que
+ninguem emite, e sem `LJ`. E a forma exata do defeito que um dia antes escondia 114 maos do
+pagante na grade por posicao: cada leitor com a propria ideia de quais rotulos sao o assento.
+
+**O que mudou:** `grupo_posicional(pos)` em `repositories.py` normaliza pelo mapa do motor
+(`normalize_position`) e agrupa pela ordem canonica; `GRUPOS_CEDO`/`GRUPOS_TARDE` declaram a
+leitura binaria do DNA. Os dois consumidores passaram a usa-la. `UTG1`/`UTG2` ficam declarados
+no helper porque estender `_POSITION_NORM` mudaria hashes de nos GTO ja resolvidos.
+
+**Efeito em producao:** `MP1` ja caia em MP na matriz e em "cedo" no DNA — nao muda. O que
+muda e o rotulo `LJ`: sai de EP para MP na matriz e passa a contar como "cedo" no DNA, onde
+antes nao contava em lado nenhum. A prova e por invariante (todo alias do `_POSITION_NORM` cai
+no grupo do canonico), nao por caso.
+
+**O teste que passava em silencio:** a 1a versao do teste do DNA punha 100% raise no assento e
+0% no BTN. O indice de consciencia posicional satura em 0 dos dois lados, e a mutacao "conjunto
+cru sem LJ" passou sem acusar. Semente refeita com proporcoes dentro da escala (20% x 30%,
+indice 70; com o assento fora do grupo o fallback da 60), e a assercao ancora no VALOR. Quatro
+mutacoes (DNA cedo, DNA tarde, matriz com mapa cru, helper sem normalizar), quatro acusadas.
+`test_grupo_posicional.py`, 6 testes, na suite; allowlist do P3 encolhida e a prova refeita.
+
+---
+
 ## AY-9: a auditoria virou detector, e achou quatro coisas na primeira rodada (05/09)
 
 Seis dos oito defeitos da sprint nasceram de perguntas do dono; nenhum apareceu num diff. Todos

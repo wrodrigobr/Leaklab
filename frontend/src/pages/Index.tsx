@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { EVENTO_LOTE } from "@/lib/refreshOnImport";
 import { useQuery } from "@tanstack/react-query";
 import { Coins, Layers, Percent, Target, GraduationCap, Brain, RotateCcw, Loader2 } from "lucide-react";
@@ -20,6 +20,7 @@ import { useDashboardLayout, DashSection, SECTION_SPAN } from "@/hooks/useDashbo
 import { useMasonryRows } from "@/hooks/useMasonryRows";
 import { makeRenderCard } from "@/components/hud/dashboardCards";
 import { metrics, tournaments, support, EvolutionResponse, Tournament, PlayerStatsResponse, PositionProfileResponse, LeakRoiData, PressureProfile, ConfidenceDrift, PlayerDnaResponse, LeakGraphResponse, CareerProjection, CognitiveFailureData, StrategicTwinProfile, GtoAlignmentData, GtoPositionData, GtoQualityData, ResultsVsGtoData, LeakFinderData, SessionContextData } from "@/lib/api";
+import { ultimosTorneios } from "@/lib/ultimosTorneios";
 import { useAuth } from "@/lib/auth";
 import { shouldShowDrift, readDriftSeen, writeDriftSeen } from "@/lib/driftDismiss";
 
@@ -182,8 +183,9 @@ const Index = () => {
     if (from !== -1 && to !== -1) updateSections(arrayMove(sections, from, to));
   };
 
-  // KPIs derived from tourns — slice to last N when volumeLimit is set
-  const visibleTourns = volumeLimit ? tourns.slice(-volumeLimit) : tourns;
+  // KPIs derivados de tourns, no MESMO recorte dos cards: os N mais recentes por data de jogo
+  // (ver `ultimosTorneios` — o `slice(-N)` antigo pegava os mais ANTIGOS).
+  const visibleTourns = useMemo(() => ultimosTorneios(tourns, volumeLimit), [tourns, volumeLimit]);
   // ROI: numerador e denominador sobre o MESMO conjunto (só torneios com buy-in conhecido),
   // senão lucro de torneio sem buy_in entra sem o investimento e infla o ROI.
   const ratedTourns   = visibleTourns.filter((t) => (t.buy_in ?? 0) > 0);

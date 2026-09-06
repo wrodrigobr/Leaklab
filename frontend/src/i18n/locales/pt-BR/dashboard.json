@@ -908,8 +908,6 @@
     "seat": "assento",
     "lowSample": "amostra baixa neste assento",
     "healthyRange": "saudável {{min}} a {{max}}",
-    "showMore": "ver mais {{n}}",
-    "showLess": "ver menos",
     "you": "Você",
     "recommended": "Recomendado",
     "inBand": "Dentro da referência. Nada a corrigir aqui.",

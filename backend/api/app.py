@@ -1366,7 +1366,9 @@ def tournament_summary():
 @app.route('/history/tournaments', methods=['GET'])
 @require_auth
 def history_tournaments():
-    limit = int(request.args.get('limit', 50))
+    # Sem `limit` = histórico inteiro (06/09). O padrão 50 fazia a tela de histórico e os KPIs
+    # do dashboard somarem os últimos 50 importados como se fossem tudo.
+    limit = int(request.args.get('limit', 0)) or None
     tournaments = get_tournaments(g.user_id, limit)
     reviewed_ids = get_reviewed_tournament_ids(g.user_id)
     for t in tournaments:

@@ -908,8 +908,6 @@
     "seat": "seat",
     "lowSample": "low sample in this seat",
     "healthyRange": "healthy {{min}} to {{max}}",
-    "showMore": "show {{n}} more",
-    "showLess": "show less",
     "you": "You",
     "recommended": "Recommended",
     "inBand": "Within the reference. Nothing to fix here.",

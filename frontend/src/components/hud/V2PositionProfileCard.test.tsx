@@ -90,3 +90,42 @@ describe("maos fora da grade", () => {
     expect(screen.queryByText(/posProfile\.outsideGrid/)).toBeNull();
   });
 });
+
+/**
+ * Colunas FIXAS (06/09). O dono viu 5 colunas de 12 e pediu todos os indicadores do HUD. O
+ * card filtrava as colunas pelas que "algum assento atinge" — e a linha TOTAL, que vem do
+ * HUD principal e TEM o numero, perdia WTSD/W$SD/3Bet junto. O fixture abaixo tem uma coluna
+ * que nenhum assento atinge: ela tem de aparecer no cabecalho, com "—" nos assentos e o
+ * numero do HUD no Total.
+ */
+describe("colunas", () => {
+  const baixa = { value: 31, band: "low_sample" as const };
+  const grade = {
+    ...GRADE,
+    positions: [
+      { position: "UTG", hands: 900, stats: { vpip: cel(20), wtsd: baixa } },
+      { position: "BB", hands: 100, stats: { vpip: cel(40) } },
+    ],
+    com_volume: ["wtsd"],
+  } as unknown as PositionProfileResponse;
+  const hud = { ...HUD_PRINCIPAL, wtsd: 27.5 } as unknown as PlayerStatsResponse;
+
+  it("mostra a coluna mesmo quando nenhum assento a atinge, e o Total traz o numero do HUD", () => {
+    render(<V2PositionProfileCard data={grade} geral={hud} />);
+    expect(screen.getByText("WTSD")).toBeTruthy();
+    const total = screen.getByText("posProfile.total").closest("div")!;
+    expect(within(total).getByText("27.5")).toBeTruthy();
+    // o assento sem volume nao mostra 31: mostra o traco
+    expect(screen.queryByText("31")).toBeNull();
+  });
+
+  it("segue a ordem do payload, que e a ordem do HUD principal", () => {
+    const ordenada = { ...grade, sempre: ["vpip", "pfr"], com_volume: ["af", "wtsd"] } as unknown as PositionProfileResponse;
+    render(<V2PositionProfileCard data={ordenada} geral={hud} />);
+    const cabecalhos = ["VPIP", "PFR", "AF", "WTSD"].map((r) => screen.getByText(r));
+    const pos = cabecalhos.map((el) => el.compareDocumentPosition(cabecalhos[0]));
+    // cada cabecalho seguinte vem DEPOIS do primeiro no documento
+    expect(pos.slice(1).every((p) => p & Node.DOCUMENT_POSITION_PRECEDING)).toBe(true);
+    expect(screen.queryByText(/posProfile\.showMore/)).toBeNull();
+  });
+});

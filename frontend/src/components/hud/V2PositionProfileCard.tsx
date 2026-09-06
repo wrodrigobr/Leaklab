@@ -1,6 +1,6 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { Info, ChevronDown } from "lucide-react";
+import { Info } from "lucide-react";
 import { HudTooltip } from "./HudTooltip";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
@@ -22,14 +22,16 @@ import type { PlayerStatsResponse, PositionProfileResponse, PositionStatCell } f
  * a faixa saudável aparece desenhada e o marcador mostra onde o jogador está nela. Quem não
  * decorou que "VPIP saudável de MTT é 18–24" lê a mesma informação na posição do ponto.
  *
- * ── Por que a grade é PROGRESSIVA ────────────────────────────────────────────────────────
+ * ── As colunas são FIXAS; as células são progressivas ────────────────────────────────────
  *
- * Medido em produção antes de desenhar: com o corte de amostra do produto, a grade completa
- * só funcionaria para 2 dos 9 jogadores com volume — `W$SD` pede 2.000 mãos, `WTSD` 1.000,
- * e dividir o acervo por 8 assentos derruba quase todo mundo. Baixar o corte para encher a
- * tela seria inventar leitura. Então VPIP e PFR aparecem para quase todos, e o resto **surge
- * por assento** conforme aquele assento ganha volume: a tela cresce com o jogador em vez de
- * nascer vazia.
+ * A grade é o HUD principal aberto por assento: as MESMAS 12 colunas, na MESMA ordem, sempre
+ * (decisão do dono, 06/09, ao ver 5 colunas: "deveríamos ter todos os indicadores que temos
+ * no HUD"). Antes o card escondia toda coluna que nenhum assento atingia, e com isso a
+ * linha TOTAL perdia WTSD/W$SD/3Bet mesmo tendo o número — o HUD grande mostrava o que a
+ * grade dizia não existir. Agora a coluna existe, e o que continua progressivo é a CÉLULA:
+ * medido em produção, `W$SD` pede 2.000 mãos e `WTSD` 1.000, e dividir o acervo por 9
+ * assentos derruba quase todo mundo. Baixar o corte para encher a tela seria inventar
+ * leitura (corte mantido pelo dono). Célula sem volume mostra "—" e explica no tooltip.
  *
  * As linhas seguem a ORDEM DE FALA na mesa (UTG primeiro, BB por último), não a ordem
  * alfabética nem a de volume: a posição relativa é a informação, e ler de cima para baixo
@@ -42,12 +44,15 @@ import type { PlayerStatsResponse, PositionProfileResponse, PositionStatCell } f
 const ROTULO: Record<string, string> = {
   vpip: "VPIP",
   pfr: "PFR",
-  three_bet: "3Bet",
-  fold_to_3bet: "Fold 3Bet",
   af: "AF",
   cbet_pct: "C-Bet",
+  fold_to_flop_bet: "Fold vs Bet",
+  bb_defense: "BB Defense",
   steal_pct: "Steal",
+  open_limp_pct: "Open Limp",
+  fold_to_3bet: "Fold 3Bet",
   wtsd: "WTSD",
+  three_bet: "3Bet",
   w_at_sd: "W$SD",
 };
 
@@ -144,22 +149,16 @@ export function V2PositionProfileCard({
   geral?: PlayerStatsResponse | null;
 }) {
   const { t } = useTranslation("dashboard");
-  const [aberto, setAberto] = useState(false);
 
-  /** Colunas que valem a pena mostrar: só as que ALGUM assento consegue classificar. Uma
-   *  coluna inteira de "—" ocupa espaço e não informa nada. */
-  const { colunasBase, colunasExtra } = useMemo(() => {
-    const linhas = data?.positions ?? [];
-    const temDado = (k: string) =>
-      linhas.some((l) => l.stats[k] && l.stats[k].band !== "low_sample");
-    return {
-      colunasBase: (data?.sempre ?? []).filter((k) => linhas.some((l) => l.stats[k])),
-      colunasExtra: (data?.com_volume ?? []).filter(temDado),
-    };
-  }, [data]);
+  /** TODAS as colunas do payload, sempre, na ordem em que o backend as declara (a ordem do
+   *  HUD principal). Filtrar pelas que "algum assento atinge" era o que escondia da linha
+   *  TOTAL um numero que o HUD grande mostrava. */
+  const colunas = useMemo(
+    () => [...(data?.sempre ?? []), ...(data?.com_volume ?? [])],
+    [data],
+  );
 
   const linhas = data?.positions ?? [];
-  const colunas = aberto ? [...colunasBase, ...colunasExtra] : [...colunasBase, ...colunasExtra.slice(0, 3)];
 
   /** Celulas do TOTAL, montadas do payload do HUD principal (valor + a flag que ele ja
    *  traz). Nao e a MEDIA das linhas: media simples de percentual entre assentos de volume
@@ -183,7 +182,6 @@ export function V2PositionProfileCard({
     }
     return Object.keys(out).length ? out : null;
   }, [geral, colunas]);
-  const escondidas = colunasExtra.length - Math.min(colunasExtra.length, 3);
 
   if (!data || linhas.length === 0) {
     return (
@@ -228,7 +226,7 @@ export function V2PositionProfileCard({
         <div className="w-max min-w-full">
           <div
             className="grid items-end gap-x-2 pb-1.5 mb-1.5 border-b border-border/50"
-            style={{ gridTemplateColumns: `3.25rem 2.75rem repeat(${colunas.length}, minmax(2.4rem, 3.5rem)) 1fr` }}
+            style={{ gridTemplateColumns: `3.25rem 2.75rem repeat(${colunas.length}, minmax(2.4rem, 4rem)) 1fr` }}
           >
             <span className="font-mono text-[9px] uppercase tracking-wider text-muted-foreground/60">
               {t("posProfile.seat")}
@@ -248,7 +246,7 @@ export function V2PositionProfileCard({
               <div
                 key={linha.position}
                 className="grid items-center gap-x-2"
-                style={{ gridTemplateColumns: `3.25rem 2.75rem repeat(${colunas.length}, minmax(2.4rem, 3.5rem)) 1fr` }}
+                style={{ gridTemplateColumns: `3.25rem 2.75rem repeat(${colunas.length}, minmax(2.4rem, 4rem)) 1fr` }}
               >
                 <span className="font-mono text-[10px] font-bold uppercase text-foreground">
                   {linha.position}
@@ -275,7 +273,7 @@ export function V2PositionProfileCard({
           {totalCels && (
             <div
               className="mt-2.5 grid items-center gap-x-2 border-t border-border/60 pt-2.5"
-              style={{ gridTemplateColumns: `3.25rem 2.75rem repeat(${colunas.length}, minmax(2.4rem, 3.5rem)) 1fr` }}
+              style={{ gridTemplateColumns: `3.25rem 2.75rem repeat(${colunas.length}, minmax(2.4rem, 4rem)) 1fr` }}
             >
               <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-primary">
                 {t("posProfile.total")}
@@ -311,17 +309,6 @@ export function V2PositionProfileCard({
         <p className="mt-2 font-mono text-[9px] text-muted-foreground/70">
           {t("posProfile.outsideGrid", { n: forasDaGrade.toLocaleString() })}
         </p>
-      )}
-
-      {escondidas > 0 && (
-        <button
-          type="button"
-          onClick={() => setAberto((v) => !v)}
-          className="mt-3 inline-flex items-center gap-1 font-mono text-[9px] uppercase tracking-wider text-muted-foreground hover:text-primary transition-colors"
-        >
-          <ChevronDown className={cn("size-3 transition-transform", aberto && "rotate-180")} />
-          {aberto ? t("posProfile.showLess") : t("posProfile.showMore", { n: escondidas })}
-        </button>
       )}
     </div>
   );
