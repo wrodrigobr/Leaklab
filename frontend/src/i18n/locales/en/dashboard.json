@@ -902,7 +902,7 @@
   "posProfile": {
     "title": "Profile by position",
     "tooltip": "How you play in EACH seat, on the three preflop decisions that have a chart: opening (RFI), 3-betting and folding to a 3-bet after opening. The green band is the solver at your stack depths. The other HUD stats stay in the HUD: there is no per-seat reference for them.",
-    "legend": "You against the solver, seat by seat. Green band = the solver at your stack depths; VPIP and PFR are context, no band.",
+    "legend": "You against the solver, seat by seat. Green band = what the solver would do with your hands, in the seats, stacks and against the opponents you faced; color only when the value leaves it.",
     "hands": "{{n}} hands",
     "handsShort": "hands",
     "seat": "seat",
@@ -984,7 +984,18 @@
       "generic": {
         "above": "{{delta}} points above the solver from here.",
         "below": "{{delta}} points below the solver from here."
+      },
+      "vpip": {
+        "above": "You enter {{delta}} points more than the solver would with your hands.",
+        "below": "You enter {{delta}} points less than the solver would with your hands."
+      },
+      "pfr": {
+        "above": "You raise {{delta}} points more than the solver would with your hands.",
+        "below": "You raise {{delta}} points less than the solver would with your hands."
       }
-    }
+    },
+    "solverYourHands": "Solver, with your hands",
+    "bandMean": "solver's average over your hands, with {{pp}} points of statistical slack",
+    "youCovered": "on the hands with a chart, you: {{value}}%"
   }
 }

@@ -902,7 +902,7 @@
   "posProfile": {
     "title": "Perfil por posição",
     "tooltip": "Como você joga em CADA assento, nas três decisões preflop que têm chart: abrir (RFI), dar 3-bet e folder ao 3-bet depois de abrir. A faixa verde é o solver nas profundidades das suas mãos. Os outros stats do HUD ficam no HUD: não há referência por assento para eles.",
-    "legend": "Você contra o solver, por assento. Faixa verde = o solver nas profundidades das suas mãos; VPIP e PFR são contexto, sem régua.",
+    "legend": "Você contra o solver, por assento. Faixa verde = o que o solver faria nas suas mãos, nas posições, stacks e contra os oponentes que você enfrentou; cor só quando o valor sai dela.",
     "hands": "{{n}} mãos",
     "handsShort": "mãos",
     "seat": "assento",
@@ -984,7 +984,18 @@
       "generic": {
         "above": "{{delta}} pontos acima do solver daqui.",
         "below": "{{delta}} pontos abaixo do solver daqui."
+      },
+      "vpip": {
+        "above": "Você entra {{delta}} pontos a mais que o solver entraria com as suas mãos.",
+        "below": "Você entra {{delta}} pontos a menos que o solver entraria com as suas mãos."
+      },
+      "pfr": {
+        "above": "Você dá raise {{delta}} pontos a mais que o solver daria com as suas mãos.",
+        "below": "Você dá raise {{delta}} pontos a menos que o solver daria com as suas mãos."
       }
-    }
+    },
+    "solverYourHands": "Solver, nas suas mãos",
+    "bandMean": "média do solver nas suas mãos, com {{pp}} pontos de folga estatística",
+    "youCovered": "nas mãos com chart, você: {{value}}%"
   }
 }

@@ -34,6 +34,32 @@ const GRADE = {
 } as unknown as PositionProfileResponse;
 const HUD = { total_hands: 900, rfi: 28, three_bet: 8, fold_to_3bet_open: 57 } as unknown as PlayerStatsResponse;
 
+describe("fase 3: VPIP e PFR com a media do solver", () => {
+  const media = (value: number, lo: number, hi: number, valor_coberto: number, cobertura = 88) =>
+    ({ value, band: "ok" as const, ref: { lo, hi, folga: 3.3, pesos: { "50bb": 40, "40bb vs UTG": 30 }, cobertura, tipo: "media" as const, valor_coberto } });
+  const grade = {
+    ...GRADE,
+    sempre: ["vpip", "pfr", "rfi"],
+    positions: [{ position: "BTN", hands: 855, stats: { vpip: media(25.1, 29, 36.1, 26.2), pfr: media(20.4, 19.3, 25.5, 22), rfi: cel(51.9, 47.9, 58) } }],
+  } as unknown as PositionProfileResponse;
+
+  it("VPIP e PFR ganham regua quando o backend manda ref de tipo media", () => {
+    render(<V2PositionProfileCard data={grade} geral={HUD} />);
+    expect(screen.getByTestId("regua-vpip").getAttribute("data-fora")).toBe("below");
+    expect(screen.getByTestId("regua-pfr").getAttribute("data-fora")).toBe("in");
+  });
+
+  it("o tooltip da media diz que e media nas suas maos e compara igual com igual", async () => {
+    render(<V2PositionProfileCard data={grade} geral={HUD} />);
+    fireEvent.pointerMove(screen.getByText("25.1"));
+    fireEvent.focus(screen.getByText("25.1"));
+    expect((await screen.findAllByText(/posProfile[.]vsSolver[.]vpip[.]below:3[.]9/)).length).toBeGreaterThan(0);
+    expect((await screen.findAllByText(/posProfile[.]bandMean:3[.]3/)).length).toBeGreaterThan(0);
+    expect((await screen.findAllByText(/posProfile[.]youCovered:26[.]2/)).length).toBeGreaterThan(0);
+    expect((await screen.findAllByText(/posProfile[.]solverYourHands/)).length).toBeGreaterThan(0);
+  });
+});
+
 describe("fase 2", () => {
   it("as tres colunas tem regua, cada uma na propria escala", () => {
     render(<V2PositionProfileCard data={GRADE} geral={HUD} />);

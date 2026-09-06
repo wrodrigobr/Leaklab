@@ -987,6 +987,11 @@ export interface PositionStatRef {
   pesos: Record<string, number>;
   /** % das oportunidades com carta; abaixo de 100 o tooltip diz que a referencia fala por parte */
   cobertura?: number;
+  /** 'media' (VPIP/PFR: o que o solver faria nas maos do jogador, folga estatistica) ou ausente
+   *  (RFI/3-Bet/Fold: percentil P20-P80 das oportunidades) */
+  tipo?: "media";
+  /** so em 'media': o VPIP/PFR do proprio jogador nas maos COM carta, para comparar igual com igual */
+  valor_coberto?: number;
 }
 
 export interface PositionStatCell {

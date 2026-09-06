@@ -2294,10 +2294,17 @@ def _filtro_do_hud(user_id: int, days: int, last_n, position=None, stack_band=No
         lo, hi = FAIXAS_DE_STACK[stack_band]      # KeyError = faixa desconhecida; endpoint valida
         conds, params = [], []
         if lo is not None:
-            conds.append('d.effective_stack_bb >= ?'); params.append(lo)
+            conds.append('p.effective_stack_bb >= ?'); params.append(lo)
         if hi is not None:
-            conds.append('d.effective_stack_bb < ?'); params.append(hi)
-        tf = '(%s) AND %s' % (tf, ' AND '.join(conds))
+            conds.append('p.effective_stack_bb < ?'); params.append(hi)
+        # A faixa e da MAO, decidida pela PRIMEIRA decisao preflop, e vale para todas as
+        # decisoes dela. Filtrar decisao a decisao punha a mesma mao em duas faixas quando o
+        # stack efetivo mudava entre o open e o 3-bet (outro vilao): 84 de 6.029 maos no
+        # acervo de dev, e as faixas somavam mais que "todos".
+        tf = ('(%s) AND EXISTS (SELECT 1 FROM decisions p WHERE p.tournament_id = d.tournament_id '
+              'AND p.hand_id = d.hand_id AND p.street = \'preflop\' AND %s '
+              'AND p.id = (SELECT MIN(q.id) FROM decisions q WHERE q.tournament_id = p.tournament_id '
+              'AND q.hand_id = p.hand_id AND q.street = \'preflop\'))') % (tf, ' AND '.join(conds))
         tp = tuple(tp) + tuple(params)
     return tf, tuple(tp)
 
@@ -2466,7 +2473,7 @@ def get_player_stats_by_position(user_id: int, days: int = 90,
     VPIP/PFR e postflop seguem sem régua: não há referência por assento defensável.
     """
     from leaklab.preflop_gto_ranges import (referencia_3bet_por_assento, referencia_fold3bet_por_assento,
-                                            referencia_rfi_por_assento)
+                                            referencia_rfi_por_assento, referencia_vpip_pfr_por_assento)
     # coluna -> (tipo de oportunidade, função de referência). Um lugar só; a célula ganha `ref`
     # quando o chart fala pelo conjunto que o stat mediu.
     referencias = {
@@ -2500,6 +2507,14 @@ def get_player_stats_by_position(user_id: int, days: int = 90,
                 ref = funcao(pos, _oportunidades_do_assento(user_id, days, last_n, pos, stack_band, tipo))
                 if ref:
                     celula['stats'][chave]['ref'] = ref
+        # VPIP e PFR: a media do solver nas maos do jogador (fase 3). `ref` so com cobertura;
+        # os dois tipos de regua se distinguem por `ref.tipo` ('media' x percentil).
+        if 'vpip' in celula['stats'] or 'pfr' in celula['stats']:
+            refs = referencia_vpip_pfr_por_assento(pos, _primeiras_decisoes_do_assento(
+                user_id, days, last_n, pos, stack_band))
+            for chave in ('vpip', 'pfr'):
+                if chave in celula['stats'] and refs.get(chave):
+                    celula['stats'][chave]['ref'] = refs[chave]
         linhas.append(celula)
 
     total = sum(l['hands'] for l in linhas)
@@ -2521,6 +2536,39 @@ _SQL_OPORTUNIDADE = {
     '3bet':              _SQL_ENFRENTA_OPEN,
     'fold_to_3bet_open': _SQL_RAISES_ANTES + " = 2 AND COALESCE(d.hero_was_aggressor, 0) <> 0",
 }
+
+
+def _primeiras_decisoes_do_assento(user_id, days, last_n, position, stack_band):
+    """[(situacao, entrou, deu_raise)] da PRIMEIRA decisao preflop de cada mao do assento: o
+    insumo da referencia de VPIP/PFR. O MESMO filtro do stat (`_filtro_do_hud`), e a mesma
+    definicao de "entrou" (`_SQL_VOLUNTARIO`) e "raise" (`_SQL_RAISE_OU_JAM`), senao a
+    regua mediria outro conjunto. Uma mao pode ter 2 decisoes preflop (abriu, levou 3-bet);
+    a segunda so existe se entrou na primeira, entao a primeira decide VPIP e quase todo PFR."""
+    tf, tp = _filtro_do_hud(user_id, days, last_n, position, stack_band)
+    conn = get_conn()
+    try:
+        rows = conn.execute(_adapt(f"""
+            SELECT d.hand_id, d.id, d.action_taken, d.facing_bet, d.facing_limp,
+                   d.preflop_raises_faced, d.hero_was_aggressor, d.vs_position, d.effective_stack_bb
+            FROM decisions d
+            JOIN tournaments t ON t.id = d.tournament_id
+            WHERE {tf} AND d.street = 'preflop'
+            ORDER BY d.hand_id, d.id
+        """), tp).fetchall()
+    finally:
+        conn.close()
+    voluntario = set(a.strip("'") for a in _SQL_VOLUNTARIO.split(', '))
+    raise_ou_jam = set(a.strip("'") for a in _SQL_RAISE_OU_JAM.split(', '))
+    out, vistas = [], set()
+    for r in rows:
+        if r[0] in vistas:
+            continue
+        vistas.add(r[0])
+        acao = (r[2] or '').lower()
+        out.append(({'facing_bet': r[3], 'facing_limp': r[4], 'preflop_raises_faced': r[5],
+                     'hero_was_aggressor': r[6], 'vs_position': r[7], 'effective_stack_bb': r[8]},
+                    acao in voluntario, acao in raise_ou_jam))
+    return out
 
 
 def _oportunidades_do_assento(user_id, days, last_n, position, stack_band, tipo):

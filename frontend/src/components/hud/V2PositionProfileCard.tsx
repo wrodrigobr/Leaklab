@@ -69,14 +69,14 @@ const ROTULO_DA_FAIXA: Record<string, string> = { "40+": "40bb+", "20-40": "20�
 
 /** Topo da escala da régua, por stat. Escala absoluta por coluna, para o ponto ser comparável
  *  entre assentos: BTN abre metade das mãos, UTG um sexto. Só tem régua quem está aqui. */
-const ESCALA: Record<string, number> = { rfi: 60, three_bet: 30, fold_to_3bet_open: 100 };
+const ESCALA: Record<string, number> = { vpip: 60, pfr: 50, rfi: 60, three_bet: 30, fold_to_3bet_open: 100 };
 
 /** Colunas que dependem de ABRIR o pote: a BB nunca abre, entao a celula e "n/a" por regra. */
 const SEM_CHART_NA_BB = new Set(["rfi", "fold_to_3bet_open"]);
 
 /** Verbo do tooltip, por stat: "abre", "dá 3-bet", "folda ao 3-bet". A chave de i18n leva o
  *  stat; sem entrada, cai no genérico. */
-const VERBO: Record<string, string> = { rfi: "rfi", three_bet: "threeBet", fold_to_3bet_open: "fold3bet" };
+const VERBO: Record<string, string> = { vpip: "vpip", pfr: "pfr", rfi: "rfi", three_bet: "threeBet", fold_to_3bet_open: "fold3bet" };
 
 /** Régua de uma célula com `ref`: faixa verde do chart, ponto no valor, tinta só no excesso
  *  (entre a borda da faixa e o ponto). Quem está dentro não gasta tinta. */
@@ -167,7 +167,9 @@ function Celula({ chave, cel, posicao, maos, ancora, destaque, stack }: {
         {ref ? (
           <div className="flex items-baseline justify-between gap-3 py-0.5">
             <span className="text-[11px] text-muted-foreground">
-              {stack ? t("posProfile.solverBand", { band: ROTULO_DA_FAIXA[stack] ?? stack }) : t("posProfile.solverHere")}
+              {ref.tipo === "media"
+                ? t("posProfile.solverYourHands")
+                : stack ? t("posProfile.solverBand", { band: ROTULO_DA_FAIXA[stack] ?? stack }) : t("posProfile.solverHere")}
             </span>
             <span className="font-mono text-xs font-bold tabular-nums text-emerald-400">
               {ref.lo}–{ref.hi}%
@@ -203,7 +205,13 @@ function Celula({ chave, cel, posicao, maos, ancora, destaque, stack }: {
             {t("posProfile.charts")}: {pesos.map(([b, w]) => `${b} ${w}%`).join(" · ")}
             {outros > 0 ? ` · ${t("posProfile.chartsOthers", { pct: outros })}` : ""}
             <br />
-            {t("posProfile.band", { pp: ref.folga })}
+            {ref.tipo === "media" ? t("posProfile.bandMean", { pp: ref.folga }) : t("posProfile.band", { pp: ref.folga })}
+            {ref.tipo === "media" && ref.valor_coberto != null && ref.cobertura != null && ref.cobertura < 100 && (
+              <>
+                <br />
+                {t("posProfile.youCovered", { value: ref.valor_coberto })}
+              </>
+            )}
             {ref.cobertura != null && ref.cobertura < 100 && (
               <>
                 <br />
@@ -352,8 +360,7 @@ export function V2PositionProfileCard({
               {t("posProfile.handsShort")}
             </span>
             {colunas.map((k) => (
-              <span key={k} className={cn("whitespace-nowrap font-mono text-[10px] uppercase tracking-wider",
-                                           ESCALA[k] ? "text-muted-foreground" : "text-muted-foreground/50")}>
+              <span key={k} className="whitespace-nowrap font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
                 {ROTULO[k] ?? k}
               </span>
             ))}

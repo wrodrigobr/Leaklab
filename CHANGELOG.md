@@ -5,6 +5,60 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## Conferencia dos numeros da previa: faixa de stack e da MAO, pesos somam 100, e o servidor de dev rodava uma mutacao (06/09)
+
+O dono pediu para conferir se os numeros da previa faziam sentido. Sete invariantes rodadas
+sobre o JSON: soma das faixas x "todos", grade x HUD, VPIP >= PFR, BB sem RFI, valores em
+0-100, pesos somando 100, corte de amostra x band, e a faixa de RFI crescendo de UTG a BTN.
+Tres achados, dois consertados e um que era o proprio servidor.
+
+1. **As faixas somavam 6.113 maos e "todos" 6.029.** 84 maos apareciam em duas faixas: o
+   stack efetivo muda entre o open e o 3-bet (outro vilao), e o filtro era por DECISAO. A
+   faixa passa a ser da MAO, pela primeira decisao preflop, e vale para todas as decisoes
+   dela. Teste com a mao aberta a 41bb e decidida a 39bb; mutacao acusada.
+2. **Pesos do tooltip somavam 94 e 104** com muitas chaves pequenas (arredondamento
+   individual), e o "outros N%" errava. Maior resto: somam 100 sempre.
+3. **A BB nao tinha referencia de VPIP na previa, e tinha na chamada direta (cobertura 71%).**
+   O servidor de dev (reloader do Flask) reiniciou durante as mutacoes, importou o fonte
+   mutado ("todas as decisoes, nao so a primeira") e ficou com o pyc dele — a segunda vitima
+   do bytecode envenenado no mesmo dia. Servidor reiniciado com cache limpo e
+   `PYTHONDONTWRITEBYTECODE=1`; previa refeita.
+
+O resto fechou: grade = HUD em todas as faixas, UTG com VPIP = PFR = RFI (nunca paga, so
+abre), RFI do solver crescendo UTG 15 -> BTN 48, e 3-bet entre 3 e 10 por assento.
+
+---
+
+## AY-15 fase 3: VPIP e PFR ganham regua — o que o solver faria nas SUAS maos (06/09, LOCAL)
+
+O dono perguntou duas vezes "VPIP e PFR nao tem referencia?" e depois "com isto teremos uma
+referencia confiavel?". Tem, com duas travas, e e confiavel no que afirma.
+
+**A referencia.** Para a PRIMEIRA decisao preflop de cada mao do assento, o classificador
+(`solver_na_primeira_decisao`) le a carta da situacao que o jogador enfrentou: pote intacto ->
+chart de abertura (no SB o limp conta como VPIP); enfrentando um open -> `vs_RFI` de quem
+abriu, no stack da mao. A referencia e a MEDIA de P(entrar) e P(raise) do solver nessas maos,
+nao percentil: VPIP agrega situacoes diferentes e o percentil daria 15-55. A pergunta
+respondida e "com as maos que voce recebeu, quanto o solver entraria?".
+
+**As duas travas.** (1) Cobertura: limp na frente, 3-bet a frio e squeeze nao tem carta;
+abaixo de 70% das maos com carta a referencia se cala (BB a 20-40bb no acervo de dev: 68%,
+sem regua). (2) Folga estatistica: 2 desvios binomiais da amostra coberta, piso 2pp — com
+300 maos o VPIP oscila +-5pp por acaso e folga fixa acusaria ruido. O tooltip compara igual
+com igual: alem do numero do assento, "nas maos com chart voce: X".
+
+**Prova em dev** (`grade_demo`): UTG 18,1 em 12,9-18,0 (cobertura 100%); BTN VPIP 25,1
+contra 29-36 (o RFI dele bate com o solver, e o que falta e defender contra open); BB 37,3
+contra 71-78 — os charts mandam defender ~70% contra open a 40bb (vs UTG e 68%). Ressalva
+que vale para toda a regua: os charts sao ChipEV e assumem o sizing de open do solver; contra
+open maior, defender menos e correto, e a regua nao sabe.
+
+**Guardas.** 3 testes novos (classificador, media+folga+cobertura, grade); 6 mutacoes, 6
+acusadas, com o harness sem gravar bytecode. Card: regua em VPIP/PFR so com `ref.tipo=media`,
+tooltip com "media nas suas maos" e "nas maos com chart voce" (2 testes).
+
+---
+
 ## Perfil por posicao: redesenho do card, VPIP/PFR de volta como contexto, filtro de stack consertado (06/09, LOCAL)
 
 O dono olhou a grade de 3 colunas: *"terrivelmente ruim de olhar. Onde esta o VPIP? Por que

@@ -239,6 +239,20 @@ def fold3bet_pct_do_chart(hero: str, tresbettor: str, balde: str) -> Optional[fl
     return round(float(r.get('fold_pct') or 0) * 100, 1)
 
 
+def _pesos_que_somam_100(contagens) -> dict:
+    """{chave: %} arredondado pelo maior resto, para somar exatamente 100. Arredondar cada
+    um separado dava 94 e 104 com muitas chaves pequenas, e o "outros N%" do tooltip errava."""
+    total = sum(contagens.values())
+    if not total:
+        return {}
+    brutos = {k: c * 100.0 / total for k, c in contagens.items()}
+    base = {k: int(v) for k, v in brutos.items()}
+    sobra = 100 - sum(base.values())
+    for k, _ in sorted(brutos.items(), key=lambda kv: -(kv[1] - int(kv[1])))[:sobra]:
+        base[k] += 1
+    return dict(sorted(base.items(), key=lambda kv: -kv[1]))
+
+
 def _faixa_dos_charts(oportunidades) -> Optional[dict]:
     """A regra da faixa, uma vez so, para RFI, 3-Bet e Fold 3-Bet.
 
@@ -270,12 +284,11 @@ def _faixa_dos_charts(oportunidades) -> Optional[dict]:
         return com_carta[lo][0] + (com_carta[hi][0] - com_carta[lo][0]) * (pos - lo)
 
     cont = Counter(k for _, k in com_carta)
-    pesos = sorted(cont.items(), key=lambda kv: -kv[1])
     return {
         'lo': round(max(0.0, percentil(0.20) - FOLGA_DA_REFERENCIA_PP), 1),
         'hi': round(min(100.0, percentil(0.80) + FOLGA_DA_REFERENCIA_PP), 1),
         'folga': FOLGA_DA_REFERENCIA_PP,
-        'pesos': {k: round(c * 100 / n) for k, c in pesos},
+        'pesos': _pesos_que_somam_100(cont),
         'cobertura': round(n * 100.0 / total) if total else 0,
     }
 
@@ -325,6 +338,96 @@ def referencia_fold3bet_por_assento(pos: str, oportunidades) -> Optional[dict]:
         balde = _stack_bucket(float(s))
         ops.append(('%s vs %s' % (balde, _norm_pos(tresbettor)), fold3bet_pct_do_chart(pos, tresbettor, balde)))
     return _faixa_dos_charts(ops) if ops else None
+
+
+#: Abaixo desta fracao de maos com chart, a referencia de VPIP/PFR nao vale: a BB defende
+#: contra limp sem carta, e uma regua sobre 40% das maos fala de outro conjunto.
+COBERTURA_MINIMA_VPIP_PFR = 0.70
+#: Piso da folga estatistica, em pontos: mesmo com amostra enorme o solver mistura.
+FOLGA_MINIMA_PP = 2.0
+
+
+def solver_na_primeira_decisao(pos: str, situacao: dict) -> Optional[dict]:
+    """O que o solver faria na PRIMEIRA decisao preflop de uma mao do jogador em `pos`:
+    {'chave', 'p_vpip', 'p_pfr'} em fracao 0-1, ou None quando nao ha carta para a situacao.
+
+    `situacao`: facing_bet, facing_limp, preflop_raises_faced, hero_was_aggressor, vs_position,
+    effective_stack_bb — os campos que a decisao ja grava. Duas situacoes tem carta:
+    - pote INTACTO (sem aposta nem limp na frente), fora da BB: secao RFI. No SB o limp conta
+      como VPIP (call_pct), como o stat conta.
+    - enfrentando exatamente UM raise, sem ter agido: secao vs_RFI do abridor.
+    Sem carta (declarado, nao inventado): limp na frente, 3-bet a frio, squeeze, e a BB com o
+    pote intacto (nao existe: se todos foldam, a mao acaba).
+    """
+    s = situacao
+    stack = float(s.get('effective_stack_bb') or 0)
+    if stack <= 0:
+        return None
+    raises = int(s.get('preflop_raises_faced') or 0) + (1 if s.get('hero_was_aggressor') else 0)
+    p = _norm_pos(pos)
+    if raises == 0 and not (s.get('facing_bet') or 0) and not (s.get('facing_limp') or 0):
+        if p == 'BB':
+            return None
+        balde = balde_rfi(stack)
+        r = ((_load().get('ranges') or {}).get(balde) or {}).get('RFI', {}).get(p)
+        if not r:
+            return None
+        raise_ = float(r.get('raise_pct') or 0) + float(r.get('allin_pct') or 0)
+        return {'chave': balde, 'p_vpip': raise_ + float(r.get('call_pct') or 0), 'p_pfr': raise_}
+    if raises == 1 and not s.get('hero_was_aggressor') and s.get('vs_position'):
+        balde = _stack_bucket(stack)
+        abridor = _norm_pos(s['vs_position'])
+        r = (((_load().get('ranges') or {}).get(balde) or {}).get('vs_RFI', {}).get(abridor) or {}).get(p)
+        if not r:
+            return None
+        raise_ = float(r.get('raise_pct') or 0) + float(r.get('allin_pct') or 0)
+        return {'chave': '%s vs %s' % (balde, abridor), 'p_vpip': raise_ + float(r.get('call_pct') or 0), 'p_pfr': raise_}
+    return None
+
+
+def referencia_vpip_pfr_por_assento(pos: str, maos) -> dict:
+    """Referencia de VPIP e PFR de um assento = MEDIA do que o solver faria nas maos do jogador
+    ali, com folga ESTATISTICA (06/09, AY-15 fase 3).
+
+    `maos` = [(situacao_da_1a_decisao, entrou: bool, deu_raise: bool)], uma por mao. A media e
+    sobre as maos COM carta; `cobertura` e a fracao delas. Abaixo de `COBERTURA_MINIMA_VPIP_PFR`
+    nao ha referencia (devolve {'vpip': None, 'pfr': None, 'cobertura': ...}): regua sobre
+    metade das maos falaria de outro conjunto.
+
+    Por que media e nao percentil (a regra do RFI/3-Bet): aqueles sao condicionais a UMA
+    situacao e a faixa mostra a dispersao por stack/oponente. VPIP e PFR agregam situacoes
+    diferentes (abrir do BTN, enfrentar open do UTG); o percentil daria 15-55 e nao diria nada.
+    A pergunta certa e "com as maos que voce recebeu, quanto o solver entraria?" — uma media.
+
+    Folga = 2 desvios-padrao binomiais da amostra coberta (piso `FOLGA_MINIMA_PP`): com 300
+    maos o VPIP oscila +-5pp por acaso, e folga fixa acusaria ruido. `valor_coberto` e o VPIP/PFR
+    do proprio jogador nas maos com carta, para o tooltip comparar igual com igual.
+    """
+    import math
+    total = len(maos)
+    com = [(solver_na_primeira_decisao(pos, s), entrou, raise_) for s, entrou, raise_ in maos]
+    com = [(r, e, x) for r, e, x in com if r is not None]
+    n = len(com)
+    cobertura = round(n * 100.0 / total) if total else 0
+    out = {'vpip': None, 'pfr': None, 'cobertura': cobertura, 'n': n}
+    if not n or n < total * COBERTURA_MINIMA_VPIP_PFR:
+        return out
+    from collections import Counter
+    pesos = _pesos_que_somam_100(Counter(r['chave'] for r, _, _ in com))
+    for stat, campo, proprio in (('vpip', 'p_vpip', 1), ('pfr', 'p_pfr', 2)):
+        media = sum(r[campo] for r, _, _ in com) / n
+        folga = max(FOLGA_MINIMA_PP, 2 * math.sqrt(media * (1 - media) / n) * 100)
+        valor_coberto = sum(1 for tup in com if tup[proprio]) * 100.0 / n
+        out[stat] = {
+            'lo': round(max(0.0, media * 100 - folga), 1),
+            'hi': round(min(100.0, media * 100 + folga), 1),
+            'folga': round(folga, 1),
+            'pesos': pesos,
+            'cobertura': cobertura,
+            'tipo': 'media',
+            'valor_coberto': round(valor_coberto, 1),
+        }
+    return out
 
 
 def balde_rfi_ou_none(stack_bb: float) -> Optional[str]:

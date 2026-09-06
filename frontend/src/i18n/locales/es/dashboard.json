@@ -902,7 +902,7 @@
   "posProfile": {
     "title": "Perfil por posición",
     "tooltip": "Cómo juegas en CADA asiento, en las tres decisiones preflop que tienen chart: abrir (RFI), hacer 3-bet y foldear al 3-bet después de abrir. La franja verde es el solver en las profundidades de tus manos. Los demás stats del HUD quedan en el HUD: no hay referencia por asiento para ellos.",
-    "legend": "Tú contra el solver, asiento por asiento. Franja verde = el solver en las profundidades de tus manos; VPIP y PFR son contexto, sin franja.",
+    "legend": "Tú contra el solver, asiento por asiento. Franja verde = lo que haría el solver con tus manos, en las posiciones, stacks y contra los rivales que enfrentaste; color solo cuando el valor sale de ella.",
     "hands": "{{n}} manos",
     "handsShort": "manos",
     "seat": "asiento",
@@ -984,7 +984,18 @@
       "generic": {
         "above": "{{delta}} puntos por encima del solver desde aquí.",
         "below": "{{delta}} puntos por debajo del solver desde aquí."
+      },
+      "vpip": {
+        "above": "Entras {{delta}} puntos más de lo que entraría el solver con tus manos.",
+        "below": "Entras {{delta}} puntos menos de lo que entraría el solver con tus manos."
+      },
+      "pfr": {
+        "above": "Haces raise {{delta}} puntos más de lo que haría el solver con tus manos.",
+        "below": "Haces raise {{delta}} puntos menos de lo que haría el solver con tus manos."
       }
-    }
+    },
+    "solverYourHands": "Solver, con tus manos",
+    "bandMean": "media del solver en tus manos, con {{pp}} puntos de holgura estadística",
+    "youCovered": "en las manos con chart, tú: {{value}}%"
   }
 }

@@ -38,11 +38,12 @@ import database.repositories as repo                                           #
 from database.repositories import (FAIXAS_DE_STACK, _GRADE_COM_VOLUME,         # noqa: E402
                                    _GRADE_SEMPRE, _adapt, get_player_stats,
                                    get_player_stats_by_position)
-from leaklab.preflop_gto_ranges import (FOLGA_DA_REFERENCIA_PP, _stack_bucket,  # noqa: E402
-                                        balde_rfi, fold3bet_pct_do_chart,
-                                        referencia_3bet_por_assento,
+from leaklab.preflop_gto_ranges import (COBERTURA_MINIMA_VPIP_PFR, FOLGA_DA_REFERENCIA_PP,  # noqa: E402
+                                        FOLGA_MINIMA_PP, _stack_bucket, balde_rfi,
+                                        fold3bet_pct_do_chart, referencia_3bet_por_assento,
                                         referencia_fold3bet_por_assento,
-                                        referencia_rfi_por_assento, rfi_pct_do_chart,
+                                        referencia_rfi_por_assento, referencia_vpip_pfr_por_assento,
+                                        rfi_pct_do_chart, solver_na_primeira_decisao,
                                         tresbet_pct_do_chart)
 
 
@@ -63,7 +64,7 @@ def _semeia(maos):
                             "best_action,score,label,facing_bet,facing_limp,effective_stack_bb,"
                             "preflop_raises_faced,hero_was_aggressor,vs_position,is_3bet) "
                             "VALUES (1,?,'preflop',?,?,'raise',0.1,'standard',?,?,?,?,?,?,?)"),
-                     ('H%d' % i, m['position'], m['action_taken'], m.get('facing_bet', 0), m.get('facing_limp', 0),
+                     (m.get('hand_id', 'H%d' % i), m['position'], m['action_taken'], m.get('facing_bet', 0), m.get('facing_limp', 0),
                       m.get('effective_stack_bb', 30), m.get('preflop_raises_faced', 0),
                       m.get('hero_was_aggressor', 0), m.get('vs_position'), m.get('is_3bet', 0)))
     conn.commit(); conn.close()
@@ -210,6 +211,98 @@ def test_o_endpoint_aceita_faixa_conhecida_e_rejeita_desconhecida():
     r = c.get('/metrics/player-stats?stack=<20', headers=h)
     assert r.status_code == 200 and r.get_json()['rfi'] is None
 
+
+
+# ── Fase 3: VPIP e PFR = a media do solver nas maos do jogador ─────────────────────────
+
+def test_o_solver_na_primeira_decisao_le_a_carta_certa_ou_se_cala():
+    """Pote intacto -> chart de abertura (no SB o limp conta como VPIP); enfrentando um open
+    -> vs_RFI do abridor; limp na frente, 3-bet a frio e BB com pote intacto -> None."""
+    intacto = {'facing_bet': 0, 'facing_limp': 0, 'preflop_raises_faced': 0, 'hero_was_aggressor': 0, 'effective_stack_bb': 40}
+    r = solver_na_primeira_decisao('BTN', intacto)
+    assert r and r['chave'] == balde_rfi(40) and abs(r['p_pfr'] * 100 - rfi_pct_do_chart('BTN', balde_rfi(40))) < 0.11, r
+    assert r['p_vpip'] >= r['p_pfr']
+    sb = solver_na_primeira_decisao('SB', intacto)
+    assert sb and sb['p_vpip'] > sb['p_pfr'] + 0.2, sb          # o limp do SB e VPIP, nao PFR
+    assert solver_na_primeira_decisao('BB', intacto) is None      # a BB nao tem pote intacto
+    vs_open = {'facing_bet': 2.5, 'facing_limp': 0, 'preflop_raises_faced': 1, 'hero_was_aggressor': 0, 'vs_position': 'UTG', 'effective_stack_bb': 40}
+    r = solver_na_primeira_decisao('BB', vs_open)
+    assert r and r['chave'] == '%s vs UTG' % _stack_bucket(40) and abs(r['p_pfr'] * 100 - tresbet_pct_do_chart('BB', 'UTG', _stack_bucket(40))) < 0.11, r
+    vs_btn = solver_na_primeira_decisao('BB', dict(vs_open, vs_position='BTN'))
+    assert vs_btn['chave'].endswith('vs BTN') and vs_btn['p_vpip'] != r['p_vpip'], (vs_btn, r)   # quem abriu importa
+    assert solver_na_primeira_decisao('BTN', dict(intacto, facing_limp=1)) is None           # limp na frente
+    assert solver_na_primeira_decisao('BB', dict(vs_open, preflop_raises_faced=2)) is None    # 3-bet a frio
+    assert solver_na_primeira_decisao('BTN', dict(intacto, effective_stack_bb=None)) is None
+
+
+def test_a_referencia_de_vpip_pfr_e_a_media_com_folga_estatistica_e_cala_sem_cobertura():
+    intacto = {'facing_bet': 0, 'facing_limp': 0, 'preflop_raises_faced': 0, 'hero_was_aggressor': 0, 'effective_stack_bb': 100}
+    p = solver_na_primeira_decisao('BTN', intacto)
+    import math
+    ref = referencia_vpip_pfr_por_assento('BTN', [(intacto, i % 2 == 0, i % 4 == 0) for i in range(400)])
+    folga = max(FOLGA_MINIMA_PP, 2 * math.sqrt(p['p_pfr'] * (1 - p['p_pfr']) / 400) * 100)
+    assert ref['cobertura'] == 100 and ref['pfr']['tipo'] == 'media'
+    assert abs(ref['pfr']['lo'] - (p['p_pfr'] * 100 - folga)) < 0.11 and abs(ref['pfr']['hi'] - (p['p_pfr'] * 100 + folga)) < 0.11, ref['pfr']
+    assert ref['pfr']['valor_coberto'] == 25.0 and ref['vpip']['valor_coberto'] == 50.0
+    ref40 = referencia_vpip_pfr_por_assento('BTN', [(intacto, True, True)] * 40)
+    assert ref40['pfr']['folga'] > ref['pfr']['folga']                # amostra menor, folga maior
+    limp = dict(intacto, facing_limp=1)
+    ref = referencia_vpip_pfr_por_assento('BTN', [(intacto, True, True)] * 60 + [(limp, True, False)] * 40)
+    assert ref['vpip'] is None and ref['pfr'] is None and ref['cobertura'] == 60, ref
+    ref = referencia_vpip_pfr_por_assento('BTN', [(intacto, True, True)] * 75 + [(limp, True, False)] * 25)
+    assert ref['vpip'] and ref['cobertura'] == 75
+
+
+def test_a_grade_emite_ref_de_vpip_e_pfr_so_com_cobertura():
+    uid = _semeia([_m('BTN', 'raise' if i % 2 else 'fold', effective_stack_bb=50) for i in range(120)])
+    btn = next(l for l in get_player_stats_by_position(uid, days=3650, last_n=0)['positions'] if l['position'] == 'BTN')['stats']
+    assert btn['vpip'].get('ref', {}).get('tipo') == 'media' and btn['pfr'].get('ref', {}).get('tipo') == 'media', btn
+    assert btn['vpip']['ref']['cobertura'] == 100
+    uid = _semeia([_m('BTN', 'raise' if i % 2 else 'fold', effective_stack_bb=50, facing_limp=1 if i % 5 < 2 else 0) for i in range(120)])
+    btn = next(l for l in get_player_stats_by_position(uid, days=3650, last_n=0)['positions'] if l['position'] == 'BTN')['stats']
+    assert 'ref' not in btn['vpip'] and 'ref' not in btn['pfr'], btn
+    assert COBERTURA_MINIMA_VPIP_PFR == 0.70
+
+
+def test_so_a_primeira_decisao_da_mao_alimenta_a_referencia():
+    """120 maos no BTN: em 60 o heroi abre e leva 3-bet (2a decisao: fold, enfrentando 2
+    raises, SEM carta). Se a 2a decisao entrasse, a cobertura cairia para 67% e a referencia
+    se calaria; contando so a primeira, cobertura 100% e `n` = 120 maos."""
+    maos = []
+    for i in range(120):
+        maos.append(_m('BTN', 'raise' if i % 2 else 'fold', effective_stack_bb=50, hand_id='H%d' % i))
+        if i % 2:
+            maos.append(_m('BTN', 'fold', effective_stack_bb=50, hand_id='H%d' % i, facing_bet=8,
+                           preflop_raises_faced=1, hero_was_aggressor=1, vs_position='BB'))
+    uid = _semeia(maos)
+    btn = next(l for l in get_player_stats_by_position(uid, days=3650, last_n=0)['positions'] if l['position'] == 'BTN')['stats']
+    assert btn['vpip'].get('ref', {}).get('cobertura') == 100, btn['vpip']
+    assert btn['vpip']['ref']['valor_coberto'] == 50.0, btn['vpip']['ref']
+
+
+def test_a_faixa_de_stack_e_da_MAO_pela_primeira_decisao():
+    """Mao aberta a 41bb que leva 3-bet e e decidida a 39bb (outro vilao): e UMA mao, na
+    faixa 40+. Filtrar por decisao punha a mesma mao em duas faixas (84 de 6.029 em dev) e as
+    faixas somavam mais que "todos"."""
+    uid = _semeia([
+        _m('CO', 'raise', effective_stack_bb=41, hand_id='H1'),
+        _m('CO', 'fold', effective_stack_bb=39, hand_id='H1', facing_bet=8, preflop_raises_faced=1, hero_was_aggressor=1, vs_position='BTN'),
+        _m('CO', 'fold', effective_stack_bb=30, hand_id='H2'),
+    ])
+    todos = get_player_stats(uid, days=3650, last_n=0, position='CO')['total_hands']
+    por_faixa = {b: get_player_stats(uid, days=3650, last_n=0, position='CO', stack_band=b)['total_hands'] for b in FAIXAS_DE_STACK}
+    assert todos == 2 and por_faixa == {'40+': 1, '20-40': 1, '<20': 0}, (todos, por_faixa)
+    # e o fold ao 3-bet da mao H1 fica na faixa da MAO (40+), nao na da decisao (20-40)
+    assert get_player_stats(uid, days=3650, last_n=0, position='CO', stack_band='40+')['fold_to_3bet_open'] == 100.0
+    assert get_player_stats(uid, days=3650, last_n=0, position='CO', stack_band='20-40')['fold_to_3bet_open'] is None
+
+
+def test_os_pesos_do_tooltip_somam_100():
+    from leaklab.preflop_gto_ranges import _pesos_que_somam_100
+    p = _pesos_que_somam_100({'a': 1, 'b': 1, 'c': 1, 'd': 1, 'e': 1, 'f': 1, 'g': 1})
+    assert sum(p.values()) == 100 and len(p) == 7, p
+    p = _pesos_que_somam_100({'a': 997, 'b': 1, 'c': 1, 'd': 1})
+    assert sum(p.values()) == 100 and p['a'] >= 97, p
 
 if __name__ == '__main__':
     falhas = 0
