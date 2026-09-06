@@ -187,7 +187,7 @@ def test_todo_stat_do_hud_esta_na_grade_OU_declarado_fora_com_motivo():
 def test_o_corte_vem_da_regua_quando_existe_e_do_declarado_quando_nao():
     assert minimo_da_grade('three_bet') == 750        # STAT_REFERENCES
     assert minimo_da_grade('rfi') == 100              # sem regua no produto: corte declarado
-    assert minimo_da_grade('fold_to_3bet_open') == 750
+    assert minimo_da_grade('fold_to_3bet') == 750      # STAT_REFERENCES, a regua da After Raise
     assert minimo_da_grade('nao_existe') is None
 
 

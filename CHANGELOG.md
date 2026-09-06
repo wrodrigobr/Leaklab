@@ -5,6 +5,33 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## AY-18: Fold to 3-Bet do HUD e a After Raise; a geral do PT4 vira `fold_to_3bet_any` (06/09, LOCAL)
+
+O Rullian: *"tem algo errado no Fold to 3-Bet, meu valor esta muito alto, +80%"*. Nao estava
+errado; estava a stat errada contra a regua certa. Em 04/09 o HUD passou para a `Fold to PF
+3Bet` GERAL do PT4 (qualquer um enfrentando 3-bet, inclusive a frio: BB depois de open +
+3-bet sem ter agido, que se folda quase sempre) e bateu com o relatorio (76,5 x 76,81). Mas a
+regua (`STAT_REFERENCES` 50-60), a referencia do card (55-72) e a propria copy do tooltip
+("apos abrir e enfrentar um 3-bet") sao da `Fold to PF 3Bet After Raise` — a que o jogador
+olha no HUD do PT4. Resultado: vermelho para todo mundo. Dev: geral 80,9, After Raise 56,9.
+
+**O que mudou:** `fold_to_3bet` (HUD do heroi, HUD do oponente, HUD do torneio, replayer —
+a mesma fonte, `accumulate`) e a After Raise: o OPENER enfrentando o 3-bet. A geral continua
+calculada como `fold_to_3bet_any` / `fold3bet_any`, so para o gabarito congelado do PT4 (que
+so tem essa coluna, 76,92) e declarada fora da grade. A grade perdeu o `fold_to_3bet_open`: e
+o proprio `fold_to_3bet` agora. Efeito colateral esperado: a banda do Fold to 3-Bet muda para
+quase todo usuario (over-fold -> saudavel) e o plano de estudos regenera por banda (AY-6).
+
+**Guardas:** os dois testes congelados do PT4 passam a comparar a coluna geral com
+`fold_to_3bet_any` (e acusam se o gabarito for alterado); `test_opponent_stats` exige que o
+cold-caller entre na geral e NAO na After Raise; `test_hud_do_torneio` exige After Raise <=
+geral e opener como subconjunto. 4 mutacoes acusadas. Frontend so renomeia a chave (116/116).
+
+**Validar com o Rullian:** os dois numeros do PT4 dele contra os nossos dois na conta dele em
+prod (a medir com ssh).
+
+---
+
 ## Perfil por posicao: painel "contra quem" no 3-Bet e no Fold 3-Bet (06/09, LOCAL)
 
 A faixa de 3-Bet e Fold 3-Bet e larga em "todos" por natureza: o solver da 3-bet 5% contra

@@ -1050,8 +1050,8 @@ export interface PlayerStatsResponse {
   flags?: Record<string, PlayerStatFlag>;
   /** raise first in: open raise com o pote intacto / oportunidades (AY-15) */
   rfi?: number | null;
-  /** fold ao 3-bet quando VOCE abriu (a grade por assento; o `fold_to_3bet` do PT4 conta 3-bet a frio) */
-  fold_to_3bet_open?: number | null;
+  /** a Fold to PF 3Bet GERAL do PT4 (inclui 3-bet a frio); so para conferencia, nao vai para a tela */
+  fold_to_3bet_any?: number | null;
   vpip: number | null;
   pfr: number | null;
   af: number | null;

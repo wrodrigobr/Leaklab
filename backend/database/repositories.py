@@ -2408,9 +2408,9 @@ GRUPOS_TARDE = ('CO', 'BTN')
 # VPIP"): quem abre 51% no BTN com VPIP 25 é outra história de quem abre 51% com VPIP 45. O
 # front desenha régua só na célula que traz `ref`; estas duas nunca trazem.
 _GRADE_SEMPRE = ('vpip', 'pfr', 'rfi')                # min 100 mãos
-_GRADE_COM_VOLUME = ('three_bet', 'fold_to_3bet_open')   # min 750 (a régua do produto)
+_GRADE_COM_VOLUME = ('three_bet', 'fold_to_3bet')   # min 750 (a régua do produto)
 _FORA_DA_GRADE_SEM_CHART = {
-    'fold_to_3bet': 'PT4 conta 3-bet a frio; só o abridor tem carta -> a grade usa fold_to_3bet_open',
+    'fold_to_3bet_any': 'a Fold to PF 3Bet GERAL do PT4 (inclui 3-bet a frio); só para o teste congelado do PT4, não vai para a tela',
     'af': 'postflop: sem referência por assento', 'cbet_pct': 'postflop: sem referência por assento',
     'fold_to_flop_bet': 'postflop: sem referência por assento', 'wtsd': 'postflop: sem referência por assento',
     'w_at_sd': 'postflop: sem referência por assento', 'bb_defense': 'só BB; a régua do HUD é do jogo inteiro',
@@ -2422,8 +2422,7 @@ _FORA_DA_GRADE_SEM_CHART = {
 # régua MTT no produto). 500 mãos: a mesma classe de AF/C-Bet/Steal — postflop ou com
 # denominador restrito a um assento — e uma disciplina só de corte (ver acima).
 _GRADE_MIN_SEM_REFERENCIA = {'fold_to_flop_bet': 500, 'bb_defense': 500, 'open_limp_pct': 500,
-                             'rfi': 100,             # preflop, como VPIP/PFR; a régua vem do chart
-                             'fold_to_3bet_open': 750}  # o mesmo corte do fold_to_3bet do produto
+                             'rfi': 100}             # preflop, como VPIP/PFR; a régua vem do chart
 
 
 def minimo_da_grade(chave: str):
@@ -2479,7 +2478,7 @@ def get_player_stats_by_position(user_id: int, days: int = 90,
     referencias = {
         'rfi':               ('rfi', lambda pos, ops: referencia_rfi_por_assento(pos, [s for _, s in ops])),
         'three_bet':         ('3bet', referencia_3bet_por_assento),
-        'fold_to_3bet_open': ('fold_to_3bet_open', referencia_fold3bet_por_assento),
+        'fold_to_3bet':      ('fold_to_3bet', referencia_fold3bet_por_assento),
     }
 
     linhas = []
@@ -2534,7 +2533,9 @@ def get_player_stats_by_position(user_id: int, days: int = 90,
 _SQL_OPORTUNIDADE = {
     'rfi':               "d.position <> 'BB' AND " + _SQL_POTE_INTACTO,
     '3bet':              _SQL_ENFRENTA_OPEN,
-    'fold_to_3bet_open': _SQL_RAISES_ANTES + " = 2 AND COALESCE(d.hero_was_aggressor, 0) <> 0",
+    'fold_to_3bet':      _SQL_RAISES_ANTES + " = 2 AND COALESCE(d.hero_was_aggressor, 0) <> 0",
+    # a GERAL do PT4: qualquer um enfrentando exatamente dois raises (inclui 3-bet a frio)
+    'fold_to_3bet_any':  _SQL_RAISES_ANTES + " = 2",
 }
 
 
@@ -2579,7 +2580,7 @@ MINIMO_DO_DETALHE = 30
 _DETALHE = {
     # stat da grade -> (tipo de oportunidade, coluna do numerador, funcao de referencia)
     'three_bet':         ('3bet', 'is_3bet', 'referencia_3bet_por_assento'),
-    'fold_to_3bet_open': ('fold_to_3bet_open', 'fold', 'referencia_fold3bet_por_assento'),
+    'fold_to_3bet':      ('fold_to_3bet', 'fold', 'referencia_fold3bet_por_assento'),
 }
 
 
@@ -2740,9 +2741,7 @@ def get_player_stats(user_id: int, days: int = 90, last_n: int | None = None,
                 SUM(CASE WHEN d.action_taken = 'fold' THEN 1 ELSE 0 END) AS fold_to_3bet_n
             FROM decisions d
             JOIN tournaments t ON t.id = d.tournament_id
-            WHERE {tf} AND d.street = 'preflop'
-              AND (COALESCE(d.preflop_raises_faced, 0)
-                   + CASE WHEN COALESCE(d.hero_was_aggressor, 0) <> 0 THEN 1 ELSE 0 END) = 2
+            WHERE {tf} AND d.street = 'preflop' AND {_SQL_OPORTUNIDADE['fold_to_3bet_any']}
         """), tp).fetchone()
 
         # ── WTSD: mãos que foram a SHOWDOWN / mãos que viram o flop ──────────
@@ -2874,7 +2873,7 @@ def get_player_stats(user_id: int, days: int = 90, last_n: int | None = None,
                 SUM(CASE WHEN d.action_taken = 'fold' THEN 1 ELSE 0 END) AS folds
             FROM decisions d
             JOIN tournaments t ON t.id = d.tournament_id
-            WHERE {tf} AND d.street = 'preflop' AND {_SQL_OPORTUNIDADE['fold_to_3bet_open']}
+            WHERE {tf} AND d.street = 'preflop' AND {_SQL_OPORTUNIDADE['fold_to_3bet']}
         """), tp).fetchone()
 
         # ── Open Limp%: preflop calls without a raise in front (non-BB) ────────
@@ -2939,7 +2938,9 @@ def get_player_stats(user_id: int, days: int = 90, last_n: int | None = None,
             'pfr':              round(pfr_h  / total * 100, 1)         if total > 0       else None,
             'af':               round(aggressive / passive, 2)          if passive > 0     else None,
             'cbet_pct':         round(cbet_n / cbet_opp * 100, 1)      if cbet_opp > 0    else None,
-            'fold_to_3bet':     round(f3b_n / faced_3b_n * 100, 1)    if faced_3b_n > 0  else None,
+            # AY-18 (06/09): `fold_to_3bet` e a After Raise (voce abriu e levou 3-bet), a stat
+            # que a regua e a copy descrevem; a geral do PT4 fica em `fold_to_3bet_any`.
+            'fold_to_3bet_any': round(f3b_n / faced_3b_n * 100, 1)    if faced_3b_n > 0  else None,
             'wtsd':             round(went_sd / saw_flop * 100, 1)   if saw_flop > 0    else None,
             'three_bet':        round(three_bet_n / three_bet_opp * 100, 1) if three_bet_opp >= 12 else None,
             'three_bet_opp':    three_bet_opp,
@@ -2949,7 +2950,7 @@ def get_player_stats(user_id: int, days: int = 90, last_n: int | None = None,
             'steal_pct':        round(steal_n / steal_t * 100, 1)     if steal_t > 0     else None,
             'open_limp_pct':    round(limp_n / limp_t * 100, 1)       if limp_t > 0      else None,
             'rfi':              round(rfi_n / rfi_t * 100, 1)         if rfi_t > 0       else None,
-            'fold_to_3bet_open': round(f3bo_n / f3bo_t * 100, 1)      if f3bo_t > 0      else None,
+            'fold_to_3bet':     round(f3bo_n / f3bo_t * 100, 1)      if f3bo_t > 0      else None,
         }
     finally:
         conn.close()

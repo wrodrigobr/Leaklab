@@ -135,7 +135,7 @@ def test_hud_do_torneio_bate_com_o_pokertracker():
     que o nosso calculo mudou ou que a definicao mudou — as duas pedem investigacao."""
     hud, alvo = _hud_do_fixture()
     pares = [('vpip', 'vpip'), ('pfr', 'pfr'), ('threebet', 'three_bet'),
-             ('fold3bet', 'fold_to_3bet'), ('cbet', 'cbet_pct'), ('wtsd', 'wtsd')]
+             ('fold3bet_any', 'fold_to_3bet'), ('cbet', 'cbet_pct'), ('wtsd', 'wtsd')]   # gabarito = geral
     fora = []
     for chave, alvo_k in pares:
         cel = (hud.get('stats') or {}).get(chave) or {}
@@ -159,6 +159,17 @@ def test_denominador_e_mao_com_decisao():
     print('OK  test_denominador_e_mao_com_decisao')
 
 
+
+
+def test_a_after_raise_do_heroi_e_um_subconjunto_da_geral():
+    """A After Raise (a da tela) nao tem coluna no gabarito do PT4; o que da para exigir sem
+    inventar numero: ela existe, o opener e um subconjunto de quem enfrenta 3-bet, e folda
+    menos que a geral (o cold-caller e a BB a frio foldam quase sempre)."""
+    hud, _ = _hud_do_fixture()
+    st = hud['stats']
+    assert st['fold3bet']['value'] is not None and st['fold3bet_any']['value'] is not None, st
+    assert 0 < st['fold3bet']['den'] <= st['fold3bet_any']['den'], (st['fold3bet'], st['fold3bet_any'])
+    assert st['fold3bet']['value'] <= st['fold3bet_any']['value'], (st['fold3bet'], st['fold3bet_any'])
 
 if __name__ == '__main__':
     falhas = 0

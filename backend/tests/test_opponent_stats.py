@@ -186,10 +186,14 @@ def test_fold_to_3bet_conta_quem_NAO_abriu_o_pote():
         ('CALL', 'preflop', 'folds'),
     ])
     o = _process_hand(h)
+    # a GERAL (`fold3bet_any`, o gabarito do PT4) conta o cold-caller; a After Raise
+    # (`fold3bet`, a da tela) conta so o opener — AY-18, 06/09
+    assert o['OPEN']['fold3bet_any_opp'] == 1 and o['OPEN']['fold3bet_any'] == 1
+    assert o['CALL']['fold3bet_any_opp'] == 1, 'cold-caller que enfrenta o 3-bet ficou de fora da geral'
+    assert o['CALL']['fold3bet_any'] == 1
     assert o['OPEN']['fold3bet_opp'] == 1 and o['OPEN']['fold3bet'] == 1
-    assert o['CALL']['fold3bet_opp'] == 1, 'cold-caller que enfrenta o 3-bet ficou de fora'
-    assert o['CALL']['fold3bet'] == 1
-    assert o['TRES']['fold3bet_opp'] == 0, 'quem DEU o 3-bet nao enfrenta 3-bet'
+    assert o['CALL']['fold3bet_opp'] == 0, 'cold-caller entrou na After Raise'
+    assert o['TRES']['fold3bet_any_opp'] == 0 and o['TRES']['fold3bet_opp'] == 0, 'quem DEU o 3-bet nao enfrenta 3-bet'
 
 
 def test_quem_nao_age_na_mao_nao_entra_no_denominador():

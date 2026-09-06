@@ -24,15 +24,15 @@ const cel = (value: number, lo: number, hi: number, cobertura = 100) =>
 
 const GRADE = {
   positions: [
-    { position: "CO", hands: 900, stats: { rfi: cel(39, 34, 42), three_bet: cel(8.5, 2.5, 13), fold_to_3bet_open: cel(58.8, 88, 97, 91) } },
+    { position: "CO", hands: 900, stats: { rfi: cel(39, 34, 42), three_bet: cel(8.5, 2.5, 13), fold_to_3bet: cel(58.8, 88, 97, 91) } },
   ],
   total_hands: 900,
   sempre: ["rfi"],
-  com_volume: ["three_bet", "fold_to_3bet_open"],
+  com_volume: ["three_bet", "fold_to_3bet"],
   stack_band: null,
   faixas: ["40+", "20-40", "<20"],
 } as unknown as PositionProfileResponse;
-const HUD = { total_hands: 900, rfi: 28, three_bet: 8, fold_to_3bet_open: 57 } as unknown as PlayerStatsResponse;
+const HUD = { total_hands: 900, rfi: 28, three_bet: 8, fold_to_3bet: 57 } as unknown as PlayerStatsResponse;
 
 describe("fase 3: VPIP e PFR com a media do solver", () => {
   const media = (value: number, lo: number, hi: number, valor_coberto: number, cobertura = 88) =>
@@ -65,7 +65,7 @@ describe("fase 2", () => {
     render(<V2PositionProfileCard data={GRADE} geral={HUD} />);
     expect(screen.getByTestId("regua-rfi").getAttribute("data-fora")).toBe("in");
     expect(screen.getByTestId("regua-three_bet").getAttribute("data-fora")).toBe("in");
-    expect(screen.getByTestId("regua-fold_to_3bet_open").getAttribute("data-fora")).toBe("below");
+    expect(screen.getByTestId("regua-fold_to_3bet").getAttribute("data-fora")).toBe("below");
     // o cabecalho nao repete "Fold 3Bet" do HUD com outro nome
     expect(screen.getAllByText("Fold 3Bet")).toHaveLength(1);
   });

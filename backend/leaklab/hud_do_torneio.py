@@ -30,6 +30,9 @@ _STATS = (
     ('pfr',       'pfr',       'hands',        'pfr',          100.0),
     ('threebet',  'threebet',  'threebet_opp', 'three_bet',    100.0),
     ('fold3bet',  'fold3bet',  'fold3bet_opp', 'fold_to_3bet', 100.0),
+    # a Fold to PF 3Bet GERAL do PT4 (inclui 3-bet a frio): so para o gabarito congelado; a
+    # tela nao lista (AY-18, 06/09). Sem regua: a de STAT_REFERENCES e da After Raise.
+    ('fold3bet_any', 'fold3bet_any', 'fold3bet_any_opp', None, 100.0),
     ('cbet',      'cbet',      'cbet_opp',     'cbet_pct',     100.0),
     ('foldcbet',  'foldcbet',  'foldcbet_opp', None,           100.0),
     ('wtsd',      'wtsd',      'saw_flop',     'wtsd',         100.0),

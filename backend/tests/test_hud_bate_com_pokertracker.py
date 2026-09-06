@@ -75,7 +75,7 @@ _CAMPOS = [
     ('vpip', 'vpip'), ('pfr', 'pfr'), ('three_bet', 'three_bet'),
     ('wtsd', 'wtsd'), ('w_at_sd', 'w_at_sd'), ('af', 'af'),
     ('cbet_pct', 'cbet_pct'), ('steal_pct', 'steal_pct'),
-    ('fold_to_3bet', 'fold_to_3bet'),
+    ('fold_to_3bet', 'fold_to_3bet_any'),   # o gabarito e a Fold to PF 3Bet GERAL do PT4
 ]
 
 _stats_cache = {}

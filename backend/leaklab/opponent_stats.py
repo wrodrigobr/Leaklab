@@ -26,7 +26,7 @@ from typing import Optional
 # ~100; agressão/3-bet precisam de centenas; showdown (WTSD/W$SD) de milhares. Mostrar
 # uma taxa abaixo disso é ruído, não read. (Bandas/arquétipos = frente seguinte.)
 GATES = {
-    'vpip': 100, 'pfr': 100, 'threebet': 750, 'fold3bet': 750,
+    'vpip': 100, 'pfr': 100, 'threebet': 750, 'fold3bet': 750, 'fold3bet_any': 750,
     'cbet': 500, 'foldcbet': 500, 'af': 500, 'wtsd': 1000,
 }
 MIN_HANDS_FOR_TYPE = 100         # mínimo de mãos vistas p/ arriscar um arquétipo (≈ VPIP estável)
@@ -143,16 +143,24 @@ def _process_hand(hand) -> dict:
         if act == 'posts':
             continue
 
-        # fold-to-3bet: oportunidade = agir enfrentando EXATAMENTE dois raises (o 3-bet),
-        # seja você o opener ou um cold-caller que pagou o open. Contar só o opener é a stat
-        # `After Raise`, que no PokerTracker tem coluna PRÓPRIA — era o defeito nº 4 de 04/09,
-        # e estava vivo aqui também. Medido no torneio-alvo: das 26 oportunidades que o motor
-        # (validado contra o PT4) enxerga, 14 são de quem NÃO abriu o pote.
+        # fold-to-3bet, DUAS stats (06/09, AY-18):
+        # - `fold3bet` = `Fold to PF 3Bet After Raise` do PT4: o OPENER enfrentando o 3-bet.
+        #   E a que o jogador olha, a que a regua (50-60) e a copy do card descrevem, e a que
+        #   o Rullian comparou ("+80% esta errado"): o HUD mostrava a geral contra a regua da
+        #   After Raise, vermelho para todo mundo.
+        # - `fold3bet_any` = `Fold to PF 3Bet` geral: qualquer um enfrentando EXATAMENTE dois
+        #   raises, inclusive o cold-caller e a BB a frio (que foldam quase sempre). Foi a stat
+        #   validada contra o PT4 em 04/09 (76,5 x 76,81) e continua calculada para o teste
+        #   congelado; nao vai para a tela.
         if n_raises == 2 and p not in respondeu_3bet:
             respondeu_3bet.add(p)
-            out[p]['fold3bet_opp'] = 1
+            out[p]['fold3bet_any_opp'] = 1
             if act == 'folds':
-                out[p]['fold3bet'] = 1
+                out[p]['fold3bet_any'] = 1
+            if p == first_raiser:
+                out[p]['fold3bet_opp'] = 1
+                if act == 'folds':
+                    out[p]['fold3bet'] = 1
 
         first_action = p not in acted
 
@@ -317,6 +325,7 @@ def finalize(acc: dict) -> dict:
             'pfr_pct':      _rate(c.get('pfr', 0), hands, GATES['pfr']),
             'threebet_pct': _rate(c.get('threebet', 0), c.get('threebet_opp', 0), GATES['threebet']),
             'fold3bet_pct': _rate(c.get('fold3bet', 0), c.get('fold3bet_opp', 0), GATES['fold3bet']),
+            'fold3bet_any_pct': _rate(c.get('fold3bet_any', 0), c.get('fold3bet_any_opp', 0), GATES['fold3bet_any']),
             'cbet_pct':     _rate(c.get('cbet', 0), c.get('cbet_opp', 0), GATES['cbet']),
             'foldcbet_pct': _rate(c.get('foldcbet', 0), c.get('foldcbet_opp', 0), GATES['foldcbet']),
             'af':           af,
@@ -324,7 +333,7 @@ def finalize(acc: dict) -> dict:
             # denominadores expostos (a UI mostra a amostra)
             'opps': {
                 'hands': hands, 'threebet': c.get('threebet_opp', 0),
-                'fold3bet': c.get('fold3bet_opp', 0), 'cbet': c.get('cbet_opp', 0),
+                'fold3bet': c.get('fold3bet_opp', 0), 'fold3bet_any': c.get('fold3bet_any_opp', 0), 'cbet': c.get('cbet_opp', 0),
                 'foldcbet': c.get('foldcbet_opp', 0), 'af': af_den, 'wtsd': c.get('saw_flop', 0),
             },
         }

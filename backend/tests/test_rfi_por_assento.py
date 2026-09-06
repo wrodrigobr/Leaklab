@@ -18,8 +18,8 @@ chart. Fica: coluna entra quando existe carta para ela.
 2. A faixa de stack recorta pela `effective_stack_bb` da decisao; NULL so entra em "todos".
 3. A referencia vem do chart nas profundidades (e, no 3-bet e no fold, contra QUEM) das maos
    do jogador, como percentil P20-P80 com folga declarada; a cauda nao alarga a faixa.
-4. Fold 3-Bet da grade e o do OPEN (`fold_to_3bet_open`): so o abridor tem carta. O
-   `fold_to_3bet` do PT4 (que conta 3-bet a frio) fica no HUD.
+4. Fold 3-Bet e o do OPEN (`fold_to_3bet`, a After Raise do PT4): so o abridor tem carta. A
+   geral do PT4 (que conta 3-bet a frio) e `fold_to_3bet_any`, so para o teste congelado.
 5. A grade so tem colunas com `ref`, e o endpoint rejeita faixa desconhecida em vez de
    devolver "todos" sob o rotulo errado.
 """
@@ -101,16 +101,16 @@ def test_a_BB_nao_tem_RFI_e_o_SB_tem():
 
 def test_fold_3bet_do_open_e_so_quando_o_heroi_abriu():
     """Hero abre do CO e leva 3-bet do BTN 2x (folda 1): 50%. A BB enfrentando open + 3-bet a
-    frio entra no fold_to_3bet do PT4 (HUD), mas NAO no da grade: so o abridor tem carta."""
+    frio entra na geral do PT4 (`fold_to_3bet_any`), mas NAO na da tela: so o abridor tem carta."""
     uid = _semeia([
         _m('CO', 'fold', facing_bet=7, preflop_raises_faced=1, hero_was_aggressor=1, vs_position='BTN'),
         _m('CO', 'call', facing_bet=7, preflop_raises_faced=1, hero_was_aggressor=1, vs_position='BTN'),
         _m('BB', 'fold', facing_bet=7, preflop_raises_faced=2, hero_was_aggressor=0, vs_position='BTN'),  # a frio
     ])
     hud = get_player_stats(uid, days=3650, last_n=0)
-    assert hud['fold_to_3bet_open'] == 50.0, hud['fold_to_3bet_open']
-    assert hud['fold_to_3bet'] == round(2 / 3 * 100, 1), hud['fold_to_3bet']     # PT4: 3 oportunidades
-    assert get_player_stats(uid, days=3650, last_n=0, position='BB')['fold_to_3bet_open'] is None
+    assert hud['fold_to_3bet'] == 50.0, hud['fold_to_3bet']
+    assert hud['fold_to_3bet_any'] == round(2 / 3 * 100, 1), hud['fold_to_3bet_any']     # PT4 geral: 3 oportunidades
+    assert get_player_stats(uid, days=3650, last_n=0, position='BB')['fold_to_3bet'] is None
 
 
 def test_a_faixa_de_stack_recorta_pela_effective_stack_bb():
@@ -183,9 +183,9 @@ def test_a_grade_tem_as_3_colunas_com_ref_e_VPIP_PFR_como_contexto():
                        hero_was_aggressor=1, vs_position='SB'))
     uid = _semeia(maos)
     grade = get_player_stats_by_position(uid, days=3650, last_n=0)
-    assert grade['sempre'] + grade['com_volume'] == ['vpip', 'pfr', 'rfi', 'three_bet', 'fold_to_3bet_open'], grade['sempre']
+    assert grade['sempre'] + grade['com_volume'] == ['vpip', 'pfr', 'rfi', 'three_bet', 'fold_to_3bet'], grade['sempre']
     btn = next(l for l in grade['positions'] if l['position'] == 'BTN')['stats']
-    for k in ('rfi', 'three_bet', 'fold_to_3bet_open'):
+    for k in ('rfi', 'three_bet', 'fold_to_3bet'):
         assert k in btn and btn[k]['band'] == 'ok' and 'ref' in btn[k], (k, btn.get(k))
     for k in ('vpip', 'pfr'):          # contexto: numero sem regua
         assert k in btn and 'ref' not in btn[k], (k, btn.get(k))
@@ -293,8 +293,8 @@ def test_a_faixa_de_stack_e_da_MAO_pela_primeira_decisao():
     por_faixa = {b: get_player_stats(uid, days=3650, last_n=0, position='CO', stack_band=b)['total_hands'] for b in FAIXAS_DE_STACK}
     assert todos == 2 and por_faixa == {'40+': 1, '20-40': 1, '<20': 0}, (todos, por_faixa)
     # e o fold ao 3-bet da mao H1 fica na faixa da MAO (40+), nao na da decisao (20-40)
-    assert get_player_stats(uid, days=3650, last_n=0, position='CO', stack_band='40+')['fold_to_3bet_open'] == 100.0
-    assert get_player_stats(uid, days=3650, last_n=0, position='CO', stack_band='20-40')['fold_to_3bet_open'] is None
+    assert get_player_stats(uid, days=3650, last_n=0, position='CO', stack_band='40+')['fold_to_3bet'] == 100.0
+    assert get_player_stats(uid, days=3650, last_n=0, position='CO', stack_band='20-40')['fold_to_3bet'] is None
 
 
 def test_os_pesos_do_tooltip_somam_100():
@@ -335,9 +335,9 @@ def test_o_detalhe_do_fold_3bet_e_por_quem_deu_o_3bet_e_respeita_a_faixa_de_stac
         maos.append(_m('CO', 'fold' if i < 20 else 'call', facing_bet=8, preflop_raises_faced=1, hero_was_aggressor=1, vs_position='BTN', effective_stack_bb=60, hand_id='A%d' % i))
         maos.append(_m('CO', 'fold' if i < 10 else 'call', facing_bet=8, preflop_raises_faced=1, hero_was_aggressor=1, vs_position='BB', effective_stack_bb=25, hand_id='B%d' % i))
     uid = _semeia(maos)
-    d = get_position_stat_detail(uid, 'CO', 'fold_to_3bet_open', days=3650, last_n=0)
+    d = get_position_stat_detail(uid, 'CO', 'fold_to_3bet', days=3650, last_n=0)
     assert {r['vs']: r['value'] for r in d['rows']} == {'BTN': round(20 / 30 * 100, 1), 'BB': round(10 / 30 * 100, 1)}, d['rows']
-    d = get_position_stat_detail(uid, 'CO', 'fold_to_3bet_open', days=3650, last_n=0, stack_band='40+')
+    d = get_position_stat_detail(uid, 'CO', 'fold_to_3bet', days=3650, last_n=0, stack_band='40+')
     assert [r['vs'] for r in d['rows']] == ['BTN'] and d['stack_band'] == '40+', d
 
 

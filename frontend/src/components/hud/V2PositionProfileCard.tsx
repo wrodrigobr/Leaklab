@@ -59,7 +59,6 @@ const ROTULO: Record<string, string> = {
   steal_pct: "Steal",
   open_limp_pct: "Open Limp",
   fold_to_3bet: "Fold 3Bet",
-  fold_to_3bet_open: "Fold 3Bet",
   wtsd: "WTSD",
   three_bet: "3Bet",
   w_at_sd: "W$SD",
@@ -70,13 +69,13 @@ const ROTULO_DA_FAIXA: Record<string, string> = { "40+": "40bb+", "20-40": "20�
 
 /** Topo da escala da régua, por stat. Escala absoluta por coluna, para o ponto ser comparável
  *  entre assentos: BTN abre metade das mãos, UTG um sexto. Só tem régua quem está aqui. */
-const ESCALA: Record<string, number> = { vpip: 60, pfr: 50, rfi: 60, three_bet: 30, fold_to_3bet_open: 100 };
+const ESCALA: Record<string, number> = { vpip: 60, pfr: 50, rfi: 60, three_bet: 30, fold_to_3bet: 100 };
 
 /** Colunas que dependem de ABRIR o pote: a BB nunca abre, entao a celula e "n/a" por regra. */
-const SEM_CHART_NA_BB = new Set(["rfi", "fold_to_3bet_open"]);
+const SEM_CHART_NA_BB = new Set(["rfi", "fold_to_3bet"]);
 
 /** Colunas com o painel "contra quem". Sao as que misturam oponentes na media do assento. */
-const COM_DETALHE = new Set(["three_bet", "fold_to_3bet_open"]);
+const COM_DETALHE = new Set(["three_bet", "fold_to_3bet"]);
 
 /** O painel "contra quem": uma linha por oponente, com oportunidades, o seu numero, a faixa
  *  do solver e a regua. Ocupa a largura da grade (col-span total), logo abaixo do assento. */
@@ -132,7 +131,7 @@ function Detalhe({ stat, position, dados, erro, onFechar }: {
 
 /** Verbo do tooltip, por stat: "abre", "dá 3-bet", "folda ao 3-bet". A chave de i18n leva o
  *  stat; sem entrada, cai no genérico. */
-const VERBO: Record<string, string> = { vpip: "vpip", pfr: "pfr", rfi: "rfi", three_bet: "threeBet", fold_to_3bet_open: "fold3bet" };
+const VERBO: Record<string, string> = { vpip: "vpip", pfr: "pfr", rfi: "rfi", three_bet: "threeBet", fold_to_3bet: "fold3bet" };
 
 /** Régua de uma célula com `ref`: faixa verde do chart, ponto no valor, tinta só no excesso
  *  (entre a borda da faixa e o ponto). Quem está dentro não gasta tinta. */

@@ -64,9 +64,9 @@ describe("régua do RFI", () => {
   it("a BB mostra n/a nas colunas de abertura, não o traço de amostra baixa", () => {
     const comFold = {
       ...GRADE,
-      com_volume: ["fold_to_3bet_open"],
+      com_volume: ["fold_to_3bet"],
       positions: [...GRADE.positions.slice(0, 2),
-                  { position: "BB", hands: 450, stats: { vpip: ok(35), pfr: ok(10), fold_to_3bet_open: ok(100) } }],
+                  { position: "BB", hands: 450, stats: { vpip: ok(35), pfr: ok(10), fold_to_3bet: ok(100) } }],
     } as unknown as PositionProfileResponse;
     render(<V2PositionProfileCard data={comFold} geral={HUD} />);
     expect(screen.getAllByText("n/a")).toHaveLength(2);      // RFI e Fold 3-Bet do open
