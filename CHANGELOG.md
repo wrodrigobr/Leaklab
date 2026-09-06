@@ -5,6 +5,32 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## AY-9: a auditoria virou detector, e achou quatro coisas na primeira rodada (05/09)
+
+Seis dos oito defeitos da sprint nasceram de perguntas do dono; nenhum apareceu num diff. Todos
+eram ausencia ou divergencia entre dois lugares — nao ha linha errada para ler. Entao a
+auditoria e por PADRAO, com um detector por padrao, e cada detector tem de PROVAR que acha o
+caso que o originou antes de valer (regra 1). Achado aceito e declarado com motivo; achado novo
+falha o teste. `test_auditoria_por_modo_de_falha.py`, 14 testes, na suite.
+
+**O que saiu:** P6 na forma larga flagrava 29 scripts legitimos — script ter SELECT proprio e
+normal. Ficou so a forma estreita (`_preview` com SELECT). Padrao sem detector confiavel nao
+vira inspecao manual: isso e o que ja nao funcionava.
+
+**O que os detectores acharam:**
+- P7: `posProfile.tooltip` descrevendo faixa verde e ponto removidos na vespera. Quarta vez a
+  legenda desse card — e a primeira em que o detector pegou antes do dono. Reescrito.
+- P1: `d.label IN ('small_mistake','clear_mistake')` em 8 funcoes; `critical` nao esta em
+  nenhuma. A forma do `founder` fora do MRR (AY-12).
+- P3: dois mapas de posicao a mais, um deles pondo MP1 e LJ em baldes diferentes (AY-13).
+- P6: `_preview` com SELECT proprio em 2 scripts, a forma do `expire_subscriptions` (AY-14).
+
+Tres detectores quebrados de proposito, todos acusaram. O P5 aprendeu com um falso positivo:
+`cmp_` e `causal_v4_` eram prefixos concatenados, nao chave constante — o regex passou a exigir
+literal inteiro, e a prova exige que prefixo NAO seja achado.
+
+---
+
 ## AY-6: o plano de estudos regenera quando o PERFIL muda de banda (05/09)
 
 O cache do plano tem chave estavel por aluno e a assinatura de drift ignorava o HUD. Quando o

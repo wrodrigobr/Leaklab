@@ -168,42 +168,33 @@ Levantar beneficios e impactos antes de decidir:
 usa `score <= 0.36`. Duas constantes discordando em 0,01, responsaveis por 12 das 4.062. Nao
 unificado de proposito — mexer em fronteira de banda muda veredito de todo mundo.
 
-**[AY-9] AUDITORIA DIRIGIDA POR MODO DE FALHA**
+**[AY-9] AUDITORIA DIRIGIDA POR MODO DE FALHA** — ✅ **ENTREGUE 05/09** como
+`test_auditoria_por_modo_de_falha.py` (14 testes, na suite). Sete padroes, cada um com detector
+que PROVA achar o caso conhecido (regra 1) e allowlist com motivo: P1 regra copiada, P2 guarda
+que se desarma, P3 literal cru com helper canonico, P4 arquivo versionado escrito em runtime,
+P5 chave de cache constante, P6 (so a forma estreita: `_preview` com SELECT proprio — a versao
+larga flagrava 29 scripts legitimos e SAIU, pela regra de "sem detector confiavel nao entra"),
+P7 copy com palavra de desenho. Tres detectores quebrados de proposito, todos acusaram. O
+detector P5 aprendeu com um falso positivo (prefixo `cmp_` nao e chave constante).
 
-Nao e revisao de modulo, e varredura por PADRAO. Justificativa medida: dos 8 itens desta
-sprint, **6 nasceram de perguntas do dono** — "possuem a mesma fonte de calculos?", "o perfil
-estrategico esta confiavel?", "essa subida nao vai subir junto?". Nenhum apareceu num diff.
-O que eles tem em comum e serem **ausencias ou divergencias entre dois lugares**, nunca uma
-linha errada que se le isolada. Por isso revisao de codigo nao acha: nao ha o que ler.
+**Achou na 1a rodada, antes do dono:** `posProfile.tooltip` descrevendo faixa verde e ponto
+removidos na vespera — 4a vez a legenda desse card, 1a em que o detector pegou primeiro.
+Reescrito nos 3 idiomas. E tres frentes novas, abaixo.
 
-Cada padrao abaixo entrega um **detector** (script ou teste que varre), nao um parecer. Sem
-detector, a auditoria vale uma vez; com detector, ela vira guarda permanente.
+**[AY-12] `d.label IN ('small_mistake','clear_mistake')` em 8 funcoes** (achado P1). "O que
+conta como erro" copiado 8 vezes. `critical` existe em `verdict._SEV` e nao esta em nenhuma —
+latente (0 em prod), mas e a forma EXATA do `founder` fora do MRR. Virar `_SQL_ACUSADO` (fonte
+unica) com varredura N+1, como `_sql_pro_pagante`. Trabalho mecanico, baixo risco.
 
-| padrao | como se manifesta | detector proposto | instancias JA conhecidas |
-|---|---|---|---|
-| **P1 — a mesma regra escrita duas vezes** | duas telas do mesmo produto dando numeros diferentes para a mesma pergunta | varrer por CONCEITO (nao por nome de funcao) e contar implementacoes independentes de cada regra de dominio | HUD (2: `get_player_stats` + `opponent_stats`); corte de board por street (3); ranges (4 caminhos); coluna por posicao (29 pontos); piso por direcao (2) |
-| **P2 — guarda que se desarma sozinha** | "aconteceu **de novo**" | para cada guarda com saida antecipada, perguntar o que o caminho de FALHA escreve; acusar quando a falha apaga a pre-condicao da guarda | guarda do Stripe (o downgrade apagava `mp_subscription_id`, do qual ela dependia) |
-| **P3 — conserto local de defeito global** | o defeito volta noutro card | onde existe helper canonico (`_build_tournament_filter`, `_sql_pro_pagante`, `_norm_gto_action`), varrer quem usa a coluna CRUA em vez dele | eixo de tempo (27 funcoes fora do helper); `founder` fora da regra de receita (6 copias) |
-| **P4 — artefato versionado escrito em runtime** | some no deploy em prod, suja o git em dev, e um worker apaga o do outro | listar arquivos rastreados pelo git que o codigo da aplicacao abre para ESCRITA | `docs/leaklab_gto_ranges.json` |
-| **P5 — saida cacheada que embute numero** | o motor melhora e a tela continua citando o valor velho | achar chave de cache CONSTANTE cujo conteudo depende de entradas que nao estao na chave nem no drift | plano de estudos (`db_key='study_plan_current'`, drift ignora `player_stats`) |
-| **P7 — copy que descreve desenho removido** | a legenda promete um elemento visual que o componente nao tem mais; e a versao que CHEGA AO JOGADOR do comentario desatualizado | vocabulario de DESENHO e pequeno e enumeravel (faixa, banda, trilho, ponto, marcador, cor, coluna, linha): varrer a copy por esses termos e exigir que o componente que consome a chave ainda contenha o elemento | a legenda do perfil por posicao errou TRES vezes em 05/09, e as tres so apareceram relendo |
-| **P6 — duas politicas para a mesma pergunta** | o preview descreve outra operacao; a lista discorda do card | comparar o filtro do dry-run com o do apply, e o da lista com o do detalhe, em cada par | `expire_subscriptions` (preview mais frouxo que a execucao); lista x card do /replay |
+**[AY-13] Dois mapas de posicao a mais** (achado P3). `get_player_dna` tem conjunto EP/LP
+proprio com MP1/MP2/MP3 e SEM LJ; `pos_bucket` (matriz de alinhamento) poe MP1 em "MP" e LJ em
+"EP" — o MESMO assento em baldes diferentes. Latente hoje (decisions grava MP1), incoerente por
+construcao. Unificar sobre `normalize_position` + `POSICOES_NA_ORDEM`.
 
-**Como conduzir, para nao virar leitura de codigo:** cada padrao comeca por uma MEDICAO em
-producao que prove que o detector acharia (regra 1) — forjar o caso, exigir que o numero se
-mexa. Padrao que nao consegue produzir um caso positivo conhecido nao esta pronto para varrer.
-
-**O que NAO e escopo:** achar bug novo por leitura. Se o padrao nao tem detector automatizavel,
-ele sai da lista em vez de virar tarefa de inspecao manual.
-
-**[AY-10] OS 4 ARQUIVOS DE TESTE VERMELHOS** — ✅ **ENTREGUE 05/09**
-
-11 vermelhos, ZERO bugs: todos eram teste congelado numa decisao anterior (PAY-04 trocou
-PaymentIntent por Subscription; teto Free subiu de 2 para 30 em 28/08; a geracao de desafio
-virou thread em 31/08). `upload_quota` e `daily_challenge` reescritos e REGISTRADOS na suite
-(2851 -> 2857); `stripe_integration` (integracao real, exige credencial) e
-`engine_internal_consistency` (auditoria: le o banco real) declarados em FORA_DA_SUITE com o
-motivo verdadeiro. Guardas quebrados no MECANISMO e acusados. O achado do caminho virou o AY-11.
+**[AY-14] `_preview` com SELECT proprio em `backfill_coach_trials` e `expire_coach_trials`**
+(achado P6). A forma exata do `expire_subscriptions`, cujo dry-run listava fundadores que a
+execucao nao tocava. Conferir se o filtro do preview e o MESMO da execucao; o certo e o dry-run
+chamar a mesma funcao com `dry_run=True`.
 
 **DIVIDAS DE ARVORE (limpar, nao esquecer)**
 

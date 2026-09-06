@@ -81,6 +81,7 @@ SUITES = {
                   'test_upload_quota.py',
                   'test_eixo_de_tempo.py',
                   'test_drift_do_plano_por_banda.py',
+                  'test_auditoria_por_modo_de_falha.py',
                   'test_ritual_da_sessao.py',
                   'test_equity_flop_turn.py',
                   'test_tendencia_do_leak.py',

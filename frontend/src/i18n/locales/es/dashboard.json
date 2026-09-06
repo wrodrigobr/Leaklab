@@ -901,7 +901,7 @@
   },
   "posProfile": {
     "title": "Perfil por posición",
-    "tooltip": "Cómo jugás desde CADA asiento. La franja verde es la referencia sana de MTT; el punto sos vos. Fuera de ella no es error automático: es donde vale mirar. Cada asiento solo clasifica lo que su propia muestra sostiene.",
+    "tooltip": "Cómo juegas en CADA asiento: tu número en cada posición, con la muestra al lado. La grilla describe sin juzgar. La fila Total es la del HUD principal, ponderada por el volumen de cada asiento.",
     "legend": "Tu número en cada asiento. La fila Total es la del HUD principal, ponderada por el volumen de cada asiento, no el promedio simple de las filas.",
     "hands": "{{n}} manos",
     "handsShort": "manos",
