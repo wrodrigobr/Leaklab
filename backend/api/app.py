@@ -1611,6 +1611,27 @@ def player_stats_by_position():
     return jsonify(get_player_stats_by_position(g.user_id, days, last_n=last_n, stack_band=stack))
 
 
+@app.route('/metrics/player-stats/by-position/detail', methods=['GET'])
+@require_auth
+def player_stats_by_position_detail():
+    """"Contra quem": 3-Bet ou Fold 3-Bet de um assento aberto por oponente (AY-15).
+    Mesmo gate da grade (Pro)."""
+    gate = _check_stats_by_position(g.user_id)
+    if gate:
+        return gate
+    from database.repositories import POSICOES_NA_ORDEM, _DETALHE, get_position_stat_detail
+    position = (request.args.get('position') or '').strip()
+    stat = (request.args.get('stat') or '').strip()
+    if position not in POSICOES_NA_ORDEM or stat not in _DETALHE:
+        return jsonify({'error': 'position ou stat invalido', 'positions': list(POSICOES_NA_ORDEM),
+                        'stats': list(_DETALHE)}), 400
+    stack, erro = _faixa_de_stack_da_query()
+    if erro:
+        return erro
+    return jsonify(get_position_stat_detail(g.user_id, position, stat, int(request.args.get('days', 90)),
+                                            last_n=_last_n_da_query(), stack_band=stack))
+
+
 def _faixa_de_stack_da_query():
     """`?stack=` do perfil por posicao: uma das `FAIXAS_DE_STACK` ou nada (= todos).
     Faixa desconhecida e 400, nao silencio: devolver "todos" para um filtro que o cliente

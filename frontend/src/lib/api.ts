@@ -1021,6 +1021,22 @@ export interface PositionProfileResponse {
 /** `?stack=` do perfil por posicao e do HUD: uma das `faixas` do backend, ou nada. */
 export type StackBand = "40+" | "20-40" | "<20";
 
+/** "Contra quem": uma linha por oponente do detalhe de 3-Bet / Fold 3-Bet de um assento. */
+export interface PositionDetailRow {
+  vs: string;
+  n: number;
+  value: number;
+  band: "ok" | "low_sample";
+  ref: PositionStatRef | null;
+}
+export interface PositionDetailResponse {
+  position: string;
+  stat: string;
+  stack_band: string | null;
+  minimo: number;
+  rows: PositionDetailRow[];
+}
+
 /** Flag direcional do backend (fonte unica `STAT_REFERENCES`, gateada por amostra). */
 export interface PlayerStatFlag {
   band: "below" | "healthy" | "above" | "low_sample";
@@ -2351,6 +2367,11 @@ export const metrics = {
 
   /** Perfil por ASSENTO. Pergunta diferente do gtoPosition: aquele diz de onde o jogador
    *  erra mais, este diz qual e o perfil dele ali. */
+  /** "Contra quem": o 3-Bet ou o Fold 3-Bet de um assento aberto por oponente (AY-15). */
+  playerStatsByPositionDetail: (position: string, stat: string, days = 90, lastN?: number, stack?: StackBand | null) =>
+    request<PositionDetailResponse>(
+      `/metrics/player-stats/by-position/detail?position=${encodeURIComponent(position)}&stat=${encodeURIComponent(stat)}&days=${days}${lastN != null ? `&last_n=${lastN}` : ""}${stack ? `&stack=${encodeURIComponent(stack)}` : ""}`),
+
   playerStatsByPosition: (days = 90, lastN?: number, stack?: StackBand | null) =>
     request<PositionProfileResponse>(
       `/metrics/player-stats/by-position?days=${days}${lastN != null ? `&last_n=${lastN}` : ""}${stack ? `&stack=${encodeURIComponent(stack)}` : ""}`),

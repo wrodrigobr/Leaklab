@@ -2571,6 +2571,71 @@ def _primeiras_decisoes_do_assento(user_id, days, last_n, position, stack_band):
     return out
 
 
+#: Oportunidades minimas para uma linha do detalhe "contra quem" sair de `low_sample`. Menor
+#: que o corte do stat (750 maos no assento) de proposito: e uma linha de estudo, com a amostra
+#: escrita ao lado, e 30 e onde o numero para de virar com uma mao.
+MINIMO_DO_DETALHE = 30
+
+_DETALHE = {
+    # stat da grade -> (tipo de oportunidade, coluna do numerador, funcao de referencia)
+    'three_bet':         ('3bet', 'is_3bet', 'referencia_3bet_por_assento'),
+    'fold_to_3bet_open': ('fold_to_3bet_open', 'fold', 'referencia_fold3bet_por_assento'),
+}
+
+
+def get_position_stat_detail(user_id: int, position: str, stat: str, days: int = 90,
+                             last_n: int | None = None, stack_band: str | None = None) -> dict:
+    """"Contra quem": o stat de um assento aberto por oponente (06/09, AY-15).
+
+    A faixa de 3-Bet e Fold 3-Bet e larga em "todos" por natureza — o solver da 3-bet 5%
+    contra open de UTG e 20% contra open de BTN, e a celula mistura tudo numa media do
+    assento. Aqui cada linha e UM oponente (quem abriu, no 3-bet; quem deu o 3-bet, no fold),
+    com a mesma definicao de oportunidade do stat (`_SQL_OPORTUNIDADE`) e a mesma funcao de
+    referencia, que agora fica estreita porque so varia com o stack.
+
+    Linhas na ordem da mesa; `low_sample` abaixo de `MINIMO_DO_DETALHE` oportunidades.
+    """
+    from leaklab import preflop_gto_ranges as pgr
+    from leaklab.gto_utils import normalize_position
+    tipo, numerador, nome_ref = _DETALHE[stat]        # KeyError = stat sem detalhe; endpoint valida
+    funcao = getattr(pgr, nome_ref)
+    tf, tp = _filtro_do_hud(user_id, days, last_n, position, stack_band)
+    conn = get_conn()
+    try:
+        rows = conn.execute(_adapt(f"""
+            SELECT d.vs_position, d.effective_stack_bb, d.action_taken, d.is_3bet
+            FROM decisions d
+            JOIN tournaments t ON t.id = d.tournament_id
+            WHERE {tf} AND d.street = 'preflop' AND {_SQL_OPORTUNIDADE[tipo]}
+        """), tp).fetchall()
+    finally:
+        conn.close()
+    grupos: dict = {}
+    for vs, stack, acao, is_3bet in rows:
+        chave = normalize_position(vs) if vs else None
+        if not chave:
+            continue
+        g = grupos.setdefault(chave, {'n': 0, 'hits': 0, 'ops': []})
+        g['n'] += 1
+        if numerador == 'is_3bet':
+            g['hits'] += 1 if is_3bet else 0
+        else:
+            g['hits'] += 1 if (acao or '').lower() == 'fold' else 0
+        g['ops'].append((chave, stack))
+    ordem = {p: i for i, p in enumerate(POSICOES_NA_ORDEM)}
+    linhas = []
+    for vs, g in sorted(grupos.items(), key=lambda kv: ordem.get(kv[0], 99)):
+        linhas.append({
+            'vs': vs,
+            'n': g['n'],
+            'value': round(g['hits'] * 100.0 / g['n'], 1),
+            'band': 'low_sample' if g['n'] < MINIMO_DO_DETALHE else 'ok',
+            'ref': funcao(position, g['ops']),
+        })
+    return {'position': position, 'stat': stat, 'stack_band': stack_band,
+            'minimo': MINIMO_DO_DETALHE, 'rows': linhas}
+
+
 def _oportunidades_do_assento(user_id, days, last_n, position, stack_band, tipo):
     """[(vs_position, effective_stack_bb)] de cada oportunidade de `tipo` do assento: o insumo
     da referência do chart. `vs_position` é o abridor (3-bet) ou quem deu o 3-bet (fold)."""

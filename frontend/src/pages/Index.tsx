@@ -359,6 +359,7 @@ const Index = () => {
         positionProfileGeral={posStack ? posGeral : null}
         positionStack={posStack}
         onPositionStack={setPosStack}
+        positionLastN={volumeLimit}
         drift={showDrift && driftData
           ? { detected: true, sessions: driftData.affected_sessions }
           : null}

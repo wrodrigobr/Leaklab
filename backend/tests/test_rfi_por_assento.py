@@ -35,9 +35,9 @@ os.environ.pop('DATABASE_URL', None)
 
 from database.schema import get_conn, init_db                                  # noqa: E402
 import database.repositories as repo                                           # noqa: E402
-from database.repositories import (FAIXAS_DE_STACK, _GRADE_COM_VOLUME,         # noqa: E402
-                                   _GRADE_SEMPRE, _adapt, get_player_stats,
-                                   get_player_stats_by_position)
+from database.repositories import (FAIXAS_DE_STACK, MINIMO_DO_DETALHE,         # noqa: E402
+                                   _GRADE_COM_VOLUME, _GRADE_SEMPRE, _adapt, get_player_stats,
+                                   get_player_stats_by_position, get_position_stat_detail)
 from leaklab.preflop_gto_ranges import (COBERTURA_MINIMA_VPIP_PFR, FOLGA_DA_REFERENCIA_PP,  # noqa: E402
                                         FOLGA_MINIMA_PP, _stack_bucket, balde_rfi,
                                         fold3bet_pct_do_chart, referencia_3bet_por_assento,
@@ -303,6 +303,55 @@ def test_os_pesos_do_tooltip_somam_100():
     assert sum(p.values()) == 100 and len(p) == 7, p
     p = _pesos_que_somam_100({'a': 997, 'b': 1, 'c': 1, 'd': 1})
     assert sum(p.values()) == 100 and p['a'] >= 97, p
+
+
+# ── Item 1: "contra quem" ───────────────────────────────────────────────────────────────
+
+def test_o_detalhe_abre_o_3bet_por_quem_abriu_com_a_mesma_definicao_do_stat():
+    """BB enfrenta 40 opens de UTG (da 3-bet em 4) e 40 de BTN (em 12): 10% e 30%, na ordem
+    da mesa, cada um com a propria faixa do chart. Um open de MP1 e o mesmo assento que LJ."""
+    maos = []
+    for i in range(40):
+        maos.append(_m('BB', 'raise' if i < 4 else 'call', facing_bet=2.5, preflop_raises_faced=1, vs_position='UTG', is_3bet=1 if i < 4 else 0, effective_stack_bb=40))
+        maos.append(_m('BB', 'raise' if i < 12 else 'call', facing_bet=2.5, preflop_raises_faced=1, vs_position='BTN', is_3bet=1 if i < 12 else 0, effective_stack_bb=40))
+    maos.append(_m('BB', 'call', facing_bet=2.5, preflop_raises_faced=1, vs_position='MP1', effective_stack_bb=40))
+    maos.append(_m('BB', 'fold', facing_bet=7, preflop_raises_faced=2, vs_position='BTN', effective_stack_bb=40))   # 3-bet a frio: nao e oportunidade
+    uid = _semeia(maos)
+    d = get_position_stat_detail(uid, 'BB', 'three_bet', days=3650, last_n=0)
+    assert [r['vs'] for r in d['rows']] == ['UTG', 'LJ', 'BTN'], d['rows']
+    utg, lj, btn = d['rows']
+    assert (utg['n'], utg['value'], utg['band']) == (40, 10.0, 'ok'), utg
+    assert (btn['n'], btn['value']) == (40, 30.0) and lj['band'] == 'low_sample', (btn, lj)
+    assert utg['ref'] and btn['ref'] and utg['ref']['hi'] < btn['ref']['lo'], (utg['ref'], btn['ref'])   # o solver 3-beta mais contra BTN
+    assert d['minimo'] == MINIMO_DO_DETALHE == 30
+    # o total do detalhe fecha com o stat do assento (mesma definicao de oportunidade)
+    hud = get_player_stats(uid, days=3650, last_n=0, position='BB')
+    assert round(sum(r['n'] * r['value'] for r in d['rows']) / sum(r['n'] for r in d['rows']), 1) == hud['three_bet'] or hud['three_bet'] is None
+
+
+def test_o_detalhe_do_fold_3bet_e_por_quem_deu_o_3bet_e_respeita_a_faixa_de_stack():
+    maos = []
+    for i in range(30):
+        maos.append(_m('CO', 'fold' if i < 20 else 'call', facing_bet=8, preflop_raises_faced=1, hero_was_aggressor=1, vs_position='BTN', effective_stack_bb=60, hand_id='A%d' % i))
+        maos.append(_m('CO', 'fold' if i < 10 else 'call', facing_bet=8, preflop_raises_faced=1, hero_was_aggressor=1, vs_position='BB', effective_stack_bb=25, hand_id='B%d' % i))
+    uid = _semeia(maos)
+    d = get_position_stat_detail(uid, 'CO', 'fold_to_3bet_open', days=3650, last_n=0)
+    assert {r['vs']: r['value'] for r in d['rows']} == {'BTN': round(20 / 30 * 100, 1), 'BB': round(10 / 30 * 100, 1)}, d['rows']
+    d = get_position_stat_detail(uid, 'CO', 'fold_to_3bet_open', days=3650, last_n=0, stack_band='40+')
+    assert [r['vs'] for r in d['rows']] == ['BTN'] and d['stack_band'] == '40+', d
+
+
+def test_o_endpoint_do_detalhe_valida_assento_e_stat():
+    uid = _semeia([_m('BB', 'call', facing_bet=2.5, preflop_raises_faced=1, vs_position='UTG', effective_stack_bb=40)])
+    conn = get_conn(); conn.execute(_adapt("UPDATE users SET plan='pro' WHERE id=?"), (uid,)); conn.commit(); conn.close()   # mesmo gate da grade
+    from api.app import app
+    from database.auth import generate_token
+    h = {'Authorization': 'Bearer %s' % generate_token(uid, 'player')}
+    c = app.test_client()
+    r = c.get('/metrics/player-stats/by-position/detail?position=BB&stat=three_bet', headers=h)
+    assert r.status_code == 200 and r.get_json()['rows'][0]['vs'] == 'UTG', r.get_data(as_text=True)[:200]
+    assert c.get('/metrics/player-stats/by-position/detail?position=BB&stat=vpip', headers=h).status_code == 400
+    assert c.get('/metrics/player-stats/by-position/detail?position=XX&stat=three_bet', headers=h).status_code == 400
 
 if __name__ == '__main__':
     falhas = 0

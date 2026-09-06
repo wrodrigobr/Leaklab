@@ -317,6 +317,7 @@ _P7_CONFERIDAS = {
     'posProfile.stackHands':  'faixa = faixa de STACK (intervalo em bb), nao desenho',
     'posProfile.band':        'faixa = a faixa verde da regua (RFI, 3-Bet, Fold 3-Bet), existe; explica o P20-P80 e a folga',
     'posProfile.coverage':    'faixa = a mesma faixa verde; diz por quantas oportunidades ela fala',
+    'posProfile.detail.note': 'faixa = a faixa verde da regua no painel contra quem (Detalhe em V2PositionProfileCard), existe',
 }
 
 

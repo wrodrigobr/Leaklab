@@ -1,10 +1,11 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Info } from "lucide-react";
+import { Info, X } from "lucide-react";
 import { HudTooltip } from "./HudTooltip";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-import type { PlayerStatsResponse, PositionProfileResponse, PositionStatCell, StackBand } from "@/lib/api";
+import { metrics } from "@/lib/api";
+import type { PlayerStatsResponse, PositionDetailResponse, PositionProfileResponse, PositionStatCell, StackBand } from "@/lib/api";
 
 /**
  * V2PositionProfileCard — o perfil do jogador em CADA assento.
@@ -74,6 +75,61 @@ const ESCALA: Record<string, number> = { vpip: 60, pfr: 50, rfi: 60, three_bet: 
 /** Colunas que dependem de ABRIR o pote: a BB nunca abre, entao a celula e "n/a" por regra. */
 const SEM_CHART_NA_BB = new Set(["rfi", "fold_to_3bet_open"]);
 
+/** Colunas com o painel "contra quem". Sao as que misturam oponentes na media do assento. */
+const COM_DETALHE = new Set(["three_bet", "fold_to_3bet_open"]);
+
+/** O painel "contra quem": uma linha por oponente, com oportunidades, o seu numero, a faixa
+ *  do solver e a regua. Ocupa a largura da grade (col-span total), logo abaixo do assento. */
+function Detalhe({ stat, position, dados, erro, onFechar }: {
+  stat: string; position: string; dados: PositionDetailResponse | null; erro: boolean; onFechar: () => void;
+}) {
+  const { t } = useTranslation("dashboard");
+  const titulo = t(`posProfile.detail.${stat === "three_bet" ? "threeBet" : "fold3bet"}`, { pos: position });
+  return (
+    <div className="col-span-full mt-1 mb-1 rounded-lg border border-border/60 bg-card/80 p-3" data-testid={`detalhe-${stat}-${position}`}>
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <span className="font-mono text-[10px] uppercase tracking-widest text-primary">{titulo}</span>
+        <button type="button" onClick={onFechar} aria-label={t("posProfile.detail.close")}
+                className="text-muted-foreground hover:text-foreground"><X className="size-3.5" /></button>
+      </div>
+      {erro ? (
+        <p className="text-[11px] text-muted-foreground">{t("posProfile.detail.error")}</p>
+      ) : !dados ? (
+        <p className="font-mono text-[10px] text-muted-foreground/60">…</p>
+      ) : dados.rows.length === 0 ? (
+        <p className="text-[11px] text-muted-foreground">{t("posProfile.detail.empty")}</p>
+      ) : (
+        <div className="grid items-center gap-x-3 gap-y-2" style={{ gridTemplateColumns: "4rem 4rem 3.5rem 5.5rem minmax(8rem, 1fr)" }}>
+          <span className="font-mono text-[9px] uppercase tracking-wider text-muted-foreground/60">{t("posProfile.detail.vs")}</span>
+          <span className="font-mono text-[9px] uppercase tracking-wider text-muted-foreground/60 text-right">{t("posProfile.detail.opps")}</span>
+          <span className="font-mono text-[9px] uppercase tracking-wider text-muted-foreground/60">{t("posProfile.you")}</span>
+          <span className="font-mono text-[9px] uppercase tracking-wider text-muted-foreground/60">{t("posProfile.detail.solver")}</span>
+          <span />
+          {dados.rows.map((r) => {
+            const baixa = r.band === "low_sample";
+            return (
+              <div key={r.vs} className="contents" data-testid={`detalhe-linha-${r.vs}`}>
+                <span className="font-mono text-[10px] font-bold uppercase text-foreground">{r.vs}</span>
+                <span className="font-mono text-[9px] tabular-nums text-muted-foreground/70 text-right">{r.n}</span>
+                <span className={cn("font-mono text-[12px] font-bold tabular-nums", baixa ? "text-muted-foreground/40" : "text-foreground")}>
+                  {baixa ? "—" : r.value}
+                </span>
+                <span className="font-mono text-[10px] tabular-nums text-emerald-400/90">
+                  {r.ref ? `${r.ref.lo}–${r.ref.hi}` : "—"}
+                </span>
+                <span className="pr-2">
+                  {r.ref && !baixa && <Regua chave={stat} valor={r.value} lo={r.ref.lo} hi={r.ref.hi} />}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+      <p className="mt-2 font-mono text-[9px] text-muted-foreground/60">{t("posProfile.detail.note", { n: dados?.minimo ?? 30 })}</p>
+    </div>
+  );
+}
+
 /** Verbo do tooltip, por stat: "abre", "dá 3-bet", "folda ao 3-bet". A chave de i18n leva o
  *  stat; sem entrada, cai no genérico. */
 const VERBO: Record<string, string> = { vpip: "vpip", pfr: "pfr", rfi: "rfi", three_bet: "threeBet", fold_to_3bet_open: "fold3bet" };
@@ -107,7 +163,7 @@ function Regua({ chave, valor, lo, hi }: { chave: string; valor: number; lo: num
  * o trecho **entre a borda da faixa e o valor** é pintado. Sem `ref`: só o número, e a
  * comparação honesta (este assento contra o seu jogo todo) vive no tooltip, em frase.
  */
-function Celula({ chave, cel, posicao, maos, ancora, destaque, stack }: {
+function Celula({ chave, cel, posicao, maos, ancora, destaque, stack, onDetalhe, aberto }: {
   chave: string;
   cel: PositionStatCell;
   posicao: string;
@@ -118,6 +174,9 @@ function Celula({ chave, cel, posicao, maos, ancora, destaque, stack }: {
   destaque?: boolean;
   /** faixa de stack em vigor, para o tooltip dizer de qual chart a referencia veio */
   stack?: StackBand | null;
+  /** abre/fecha o painel "contra quem"; so nas colunas que tem detalhe */
+  onDetalhe?: () => void;
+  aberto?: boolean;
 }) {
   const { t } = useTranslation("dashboard");
   const baixa = cel.band === "low_sample";
@@ -132,14 +191,16 @@ function Celula({ chave, cel, posicao, maos, ancora, destaque, stack }: {
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        {/* SO o numero (decisao do dono, 05/09). O trilho saiu junto com o veredito, e nao
-            por economia de tinta: um trilho sem referencia tem a APARENCIA de instrumento de
-            medida, entao o olho procura o alvo que nao existe — a mesma linguagem visual que
-            acabamos de remover, convidando o leitor a inferir uma regua que decidimos nao
-            ter. A escala tambem era arbitraria: VPIP desenhado em 0-60 e AF em 0-8 pareciam
-            o mesmo widget sem serem comparaveis. A comparacao honesta (este assento contra o
-            seu jogo todo) vive no tooltip, em frase, onde nao vira grafico sem eixo. */}
-        <span className="flex min-h-[30px] w-full cursor-default flex-col pr-4">
+        {/* Numero + regua SO onde o backend manda `ref` (06/09). O trilho tinha saido em 05/09
+            por nao ter referencia; voltou quando a referencia passou a vir do chart. Celula
+            com detalhe ("contra quem") abre o painel no clique; o hover segue com o tooltip. */}
+        <span
+          className={cn("flex min-h-[30px] w-full flex-col pr-4", onDetalhe ? "cursor-pointer" : "cursor-default")}
+          onClick={onDetalhe}
+          role={onDetalhe ? "button" : undefined}
+          aria-expanded={onDetalhe ? aberto : undefined}
+          data-testid={onDetalhe ? `celula-${chave}-${posicao}` : undefined}
+        >
           {/* UMA tinta: a regua carrega a cor. Numero vermelho + ponto vermelho + trecho
               vermelho era a mesma informacao tres vezes. */}
           <span
@@ -149,6 +210,9 @@ function Celula({ chave, cel, posicao, maos, ancora, destaque, stack }: {
             )}
           >
             {baixa ? "—" : cel.value}
+            {onDetalhe && !baixa && (
+              <span className={cn("ml-1 inline-block text-[9px] text-muted-foreground/60 transition-transform", aberto && "rotate-90")}>▸</span>
+            )}
           </span>
           {ref && !baixa && !destaque && <Regua chave={chave} valor={cel.value} lo={ref.lo} hi={ref.hi} />}
         </span>
@@ -233,11 +297,14 @@ export function V2PositionProfileCard({
   geral,
   stack = null,
   onStack,
+  lastN = null,
 }: {
   data?: PositionProfileResponse | null;
   /** faixa de stack em vigor (null = todos) e o setter, que mora no Index */
   stack?: StackBand | null;
   onStack?: (s: StackBand | null) => void;
+  /** o recorte de volume da tela, para o detalhe pedir o MESMO conjunto da grade */
+  lastN?: number | null;
   /** O payload do HUD PRINCIPAL, para a linha TOTAL. Deliberadamente NAO recalculado aqui:
    *  a linha existe para o jogador conferir que a grade reconcilia com o numero grande da
    *  tela, e reconstruir a conta abriria a porta para as duas discordarem — foi exatamente
@@ -246,6 +313,26 @@ export function V2PositionProfileCard({
   geral?: PlayerStatsResponse | null;
 }) {
   const { t } = useTranslation("dashboard");
+
+  /** Painel "contra quem" (06/09): a faixa de 3-Bet e Fold 3-Bet e larga em "todos" por
+   *  natureza (o solver da 3-bet 5% contra UTG e 20% contra BTN); aberta por oponente, a
+   *  regua estreita e passa a acusar. Um painel por vez; o mesmo clique fecha. */
+  const [detalhe, setDetalhe] = useState<{ position: string; stat: string } | null>(null);
+  const [detalheDados, setDetalheDados] = useState<PositionDetailResponse | null>(null);
+  const [detalheErro, setDetalheErro] = useState(false);
+  useEffect(() => {
+    if (!detalhe) { setDetalheDados(null); return; }
+    let vivo = true;
+    setDetalheDados(null); setDetalheErro(false);
+    metrics.playerStatsByPositionDetail(detalhe.position, detalhe.stat, 90, lastN ?? undefined, stack)
+      .then((d) => { if (vivo) setDetalheDados(d); })
+      .catch(() => { if (vivo) setDetalheErro(true); });
+    return () => { vivo = false; };
+  }, [detalhe, stack, lastN]);
+  // trocar a faixa de stack fecha o painel: o detalhe e da faixa em que foi aberto
+  useEffect(() => { setDetalhe(null); }, [stack]);
+  const alternaDetalhe = (position: string, stat: string) =>
+    setDetalhe((d) => (d && d.position === position && d.stat === stat ? null : { position, stat }));
 
   /** TODAS as colunas do payload, sempre, na ordem em que o backend as declara (a ordem do
    *  HUD principal). Filtrar pelas que "algum assento atinge" era o que escondia da linha
@@ -392,10 +479,21 @@ export function V2PositionProfileCard({
                   ) : linha.stats[k] ? (
                     <Celula key={k} chave={k} cel={linha.stats[k]} posicao={linha.position}
                             maos={linha.hands} stack={stack}
-                            ancora={(geral as unknown as Record<string, number | null>)?.[k] ?? null} />
+                            ancora={(geral as unknown as Record<string, number | null>)?.[k] ?? null}
+                            onDetalhe={COM_DETALHE.has(k) && linha.stats[k].band !== "low_sample" ? () => alternaDetalhe(linha.position, k) : undefined}
+                            aberto={detalhe?.position === linha.position && detalhe?.stat === k} />
                   ) : (
                     <span key={k} className="min-h-[30px] font-mono text-[13px] leading-none text-muted-foreground/25">—</span>
                   )
+                )}
+                {detalhe?.position === linha.position && (
+                  <Detalhe
+                    stat={detalhe.stat}
+                    position={linha.position}
+                    dados={detalheDados}
+                    erro={detalheErro}
+                    onFechar={() => setDetalhe(null)}
+                  />
                 )}
               </div>
             ))}

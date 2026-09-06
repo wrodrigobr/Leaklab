@@ -996,6 +996,17 @@
     },
     "solverYourHands": "Solver, with your hands",
     "bandMean": "solver's average over your hands, with {{pp}} points of statistical slack",
-    "youCovered": "on the hands with a chart, you: {{value}}%"
+    "youCovered": "on the hands with a chart, you: {{value}}%",
+    "detail": {
+      "threeBet": "{{pos}} 3-bet, by who opened",
+      "fold3bet": "Fold to 3-bet after opening from {{pos}}, by who 3-bet",
+      "vs": "vs",
+      "opps": "opps",
+      "solver": "solver",
+      "close": "close",
+      "empty": "No opportunities in this slice.",
+      "error": "Could not load the detail.",
+      "note": "Rows with fewer than {{n}} opportunities show the sample only. The solver band here varies only with stack, so it is narrower than the cell's."
+    }
   }
 }

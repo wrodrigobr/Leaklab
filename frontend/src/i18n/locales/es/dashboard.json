@@ -996,6 +996,17 @@
     },
     "solverYourHands": "Solver, con tus manos",
     "bandMean": "media del solver en tus manos, con {{pp}} puntos de holgura estadística",
-    "youCovered": "en las manos con chart, tú: {{value}}%"
+    "youCovered": "en las manos con chart, tú: {{value}}%",
+    "detail": {
+      "threeBet": "3-bet desde {{pos}}, según quién abrió",
+      "fold3bet": "Fold al 3-bet tras abrir desde {{pos}}, según quién hizo 3-bet",
+      "vs": "contra",
+      "opps": "oport.",
+      "solver": "solver",
+      "close": "cerrar",
+      "empty": "Sin oportunidades en este recorte.",
+      "error": "No pude cargar el detalle.",
+      "note": "Las filas con menos de {{n}} oportunidades muestran solo la muestra. La franja del solver aquí varía solo con el stack, por eso es más estrecha que la de la celda."
+    }
   }
 }

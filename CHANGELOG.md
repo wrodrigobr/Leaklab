@@ -5,6 +5,33 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## Perfil por posicao: painel "contra quem" no 3-Bet e no Fold 3-Bet (06/09, LOCAL)
+
+A faixa de 3-Bet e Fold 3-Bet e larga em "todos" por natureza: o solver da 3-bet 5% contra
+open de UTG e 20% contra open de BTN, folda ao 3-bet 45% a 30bb e 100% a 10bb, e a celula
+mistura tudo numa media do assento — quase qualquer valor cai "dentro". O dono escolheu o
+painel ao clicar: uma linha por oponente (quem abriu, no 3-Bet; quem deu o 3-bet, no Fold),
+com oportunidades, o seu numero, a faixa do solver e a regua, que agora estreita porque so
+varia com o stack.
+
+**Backend:** `get_position_stat_detail` + `/metrics/player-stats/by-position/detail`
+(mesmo gate Pro da grade). A MESMA definicao de oportunidade do stat (`_SQL_OPORTUNIDADE`) e
+a mesma funcao de referencia; `vs_position` normalizado (MP1 e LJ na mesma linha); linhas
+na ordem da mesa; corte proprio de 30 oportunidades por linha (`MINIMO_DO_DETALHE`), menor
+que o do stat de proposito: e linha de estudo com a amostra escrita ao lado.
+
+**Card:** celula de 3-Bet/Fold 3-Bet vira botao (caret depois do numero); o painel abre na
+largura da grade logo abaixo do assento, pede ao backend o MESMO recorte (stack e last_n) da
+grade, o mesmo clique fecha, e trocar a faixa de stack fecha (o detalhe e da faixa em que
+abriu). RFI/VPIP/PFR nao abrem: nao misturam oponentes. O comentario da celula que ainda
+descrevia "so o numero, o trilho saiu" (05/09) foi reescrito (regra 8).
+
+**Guardas.** 3 testes backend (3-bet por abridor com a definicao do stat, fold por 3-bettor
+com faixa de stack, endpoint valida assento/stat) e 5 mutacoes acusadas; 2 testes no card e
+3 mutacoes acusadas.
+
+---
+
 ## Conferencia dos numeros da previa: faixa de stack e da MAO, pesos somam 100, e o servidor de dev rodava uma mutacao (06/09)
 
 O dono pediu para conferir se os numeros da previa faziam sentido. Sete invariantes rodadas
