@@ -902,7 +902,7 @@
   "posProfile": {
     "title": "Perfil por posição",
     "tooltip": "Como você joga em CADA assento: o seu número em cada posição, com a amostra ao lado. A grade descreve, sem julgar. A linha Total é a do HUD principal, ponderada pelo volume de cada assento.",
-    "legend": "Seu número em cada assento. A linha Total é a do HUD principal, ponderada pelo volume de cada assento, e não a média simples das linhas.",
+    "legend": "Seu número em cada assento. Faixa verde = o que o solver abre daquele assento, nas profundidades das suas mãos; cor só quando o valor sai dela. A linha Total é a do HUD principal, ponderada pelo volume de cada assento.",
     "hands": "{{n}} mãos",
     "handsShort": "mãos",
     "seat": "assento",
@@ -956,6 +956,18 @@
     "outsideGrid": "Total inclui {{n}} mãos em posições fora das 8 da grade.",
     "yourGame": "Seu jogo todo",
     "vsYourGame": "{{delta}}{{unit}} em relação ao seu jogo todo.",
-    "descriptive": "A grade descreve o seu perfil em cada assento. A referência vale para o jogo todo, na linha Total."
+    "descriptive": "A grade descreve o seu perfil em cada assento. A referência vale para o jogo todo, na linha Total.",
+    "stack": "stack",
+    "stackAll": "todos",
+    "stackHands": "{{n}} mãos nesta faixa",
+    "solverHere": "Solver, nas suas profundidades",
+    "solverBand": "Solver a {{band}}",
+    "charts": "Charts",
+    "chartsOthers": "outros {{pct}}%",
+    "tolerance": "faixa com {{pp}} pontos de folga: o solver mistura, ninguém bate a frequência exata",
+    "aboveSolver": "Você abre {{delta}} pontos a mais que o solver daqui.",
+    "belowSolver": "Você abre {{delta}} pontos a menos que o solver daqui.",
+    "inSolver": "Dentro do que o solver faz daqui.",
+    "rfiNaBB": "A BB não abre pote: se todos foldam, a mão acaba."
   }
 }

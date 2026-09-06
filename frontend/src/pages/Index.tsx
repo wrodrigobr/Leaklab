@@ -19,7 +19,7 @@ import { DraggableCard } from "@/components/hud/DraggableCard";
 import { useDashboardLayout, DashSection, SECTION_SPAN } from "@/hooks/useDashboardLayout";
 import { useMasonryRows } from "@/hooks/useMasonryRows";
 import { makeRenderCard } from "@/components/hud/dashboardCards";
-import { metrics, tournaments, support, EvolutionResponse, Tournament, PlayerStatsResponse, PositionProfileResponse, LeakRoiData, PressureProfile, ConfidenceDrift, PlayerDnaResponse, LeakGraphResponse, CareerProjection, CognitiveFailureData, StrategicTwinProfile, GtoAlignmentData, GtoPositionData, GtoQualityData, ResultsVsGtoData, LeakFinderData, SessionContextData } from "@/lib/api";
+import { metrics, tournaments, support, EvolutionResponse, Tournament, PlayerStatsResponse, PositionProfileResponse, StackBand, LeakRoiData, PressureProfile, ConfidenceDrift, PlayerDnaResponse, LeakGraphResponse, CareerProjection, CognitiveFailureData, StrategicTwinProfile, GtoAlignmentData, GtoPositionData, GtoQualityData, ResultsVsGtoData, LeakFinderData, SessionContextData } from "@/lib/api";
 import { ultimosTorneios } from "@/lib/ultimosTorneios";
 import { useAuth } from "@/lib/auth";
 import { shouldShowDrift, readDriftSeen, writeDriftSeen } from "@/lib/driftDismiss";
@@ -60,6 +60,11 @@ const Index = () => {
   const [evo, setEvo]                     = useState<EvolutionResponse | null>(null);
   const [playerStats, setPlayerStats]     = useState<PlayerStatsResponse | null>(null);
   const [posProfile, setPosProfile]       = useState<PositionProfileResponse | null>(null);
+  // Faixa de stack do perfil por posicao (AY-15). Fica aqui, nao no card, porque a linha
+  // TOTAL e o HUD na MESMA faixa: os dois pedidos saem juntos, ou a conferencia compara
+  // conjuntos diferentes. null = todos, e ai o Total e o `playerStats` da tela.
+  const [posStack, setPosStack]           = useState<StackBand | null>(null);
+  const [posGeral, setPosGeral]           = useState<PlayerStatsResponse | null>(null);
   const [tourns, setTourns]               = useState<Tournament[]>(_cachedTourns ?? []);
   const [leakRoi, setLeakRoi]             = useState<LeakRoiData[]>([]);
   const [leakSource, setLeakSource]       = useState<'gto' | 'heuristic' | null>(null);
@@ -124,6 +129,24 @@ const Index = () => {
       metrics.sessionContext().then(setSessionData).catch(() => null),
     ]).finally(() => setLoading(false));
   }, [refreshKey, volumeLimit]);
+
+  // A faixa de stack refaz SO a grade por posicao e o HUD da faixa. Em "todos" nao ha
+  // pedido: a grade ja veio no carregamento e o Total e o HUD da tela.
+  useEffect(() => {
+    if (isFree) return;
+    if (!posStack) { setPosGeral(null); return; }
+    const ln = volumeLimit ?? undefined;
+    let vivo = true;
+    Promise.all([
+      metrics.playerStatsByPosition(90, ln, posStack),
+      metrics.playerStats(90, ln, posStack),
+    ]).then(([grade, hud]) => {
+      if (!vivo) return;
+      setPosProfile(grade);
+      setPosGeral(hud);
+    }).catch(() => null);
+    return () => { vivo = false; };
+  }, [refreshKey, volumeLimit, posStack, isFree]);
 
   // Re-fetch only language-sensitive AI narratives when locale changes
   const langMounted = useRef(false);
@@ -322,6 +345,9 @@ const Index = () => {
         playerStats={playerStats}
         positionProfile={posProfile}
         positionProfileLocked={isFree}
+        positionProfileGeral={posStack ? posGeral : null}
+        positionStack={posStack}
+        onPositionStack={setPosStack}
         drift={showDrift && driftData
           ? { detected: true, sessions: driftData.affected_sessions }
           : null}

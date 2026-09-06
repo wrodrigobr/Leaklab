@@ -2269,6 +2269,37 @@ _SQL_AGRESSIVO     = "'bet', 'raise', " + _SQL_ALLIN    # AF pós-flop
 _SQL_RAISES_ANTES  = ("(COALESCE(d.preflop_raises_faced, 0) "
                       "+ CASE WHEN COALESCE(d.hero_was_aggressor, 0) <> 0 THEN 1 ELSE 0 END)")
 _SQL_ENFRENTA_OPEN = _SQL_RAISES_ANTES + " = 1"
+# Pote INTACTO ao chegar no hero: sem aposta E sem limp na frente. PT4: steal e RFI sao open
+# raise com o pote nao aberto; raise por cima de limp nao conta, e `facing_bet = 0` sozinho nao
+# pega o limp porque o limp nao aumenta o custo de entrar. Uma definicao para steal, RFI e para
+# os stacks das oportunidades de RFI (a referencia do chart).
+_SQL_POTE_INTACTO  = "(d.facing_bet IS NULL OR d.facing_bet = 0) AND COALESCE(d.facing_limp, 0) = 0"
+
+# Faixas de stack do perfil por posicao (06/09, AY-15). Casadas com as profundidades dos charts:
+# 40bb+ le 40/50/75/100, 20-40 le 20/30/40, <20 le 10/14/17. Pela `effective_stack_bb` da
+# decisao; NULL so entra em "todos". A ordem e a dos chips na tela.
+FAIXAS_DE_STACK = {'40+': (40.0, None), '20-40': (20.0, 40.0), '<20': (None, 20.0)}
+
+
+def _filtro_do_hud(user_id: int, days: int, last_n, position=None, stack_band=None):
+    """O WHERE do HUD: torneios do recorte, opcionalmente um assento (com aliases) e uma faixa
+    de stack. Fonte unica para `get_player_stats` e para a grade por posicao."""
+    tf, tp = _build_tournament_filter(user_id, days, last_n)
+    if position:
+        # Aceita os ALIASES do assento (MP1 e LJ). Comparar o rotulo cru perdia 334 decisoes.
+        rotulos = rotulos_do_assento(position)
+        tf = '(%s) AND d.position IN (%s)' % (tf, ', '.join(['?'] * len(rotulos)))
+        tp = tuple(tp) + rotulos
+    if stack_band:
+        lo, hi = FAIXAS_DE_STACK[stack_band]      # KeyError = faixa desconhecida; endpoint valida
+        conds, params = [], []
+        if lo is not None:
+            conds.append('d.effective_stack_bb >= ?'); params.append(lo)
+        if hi is not None:
+            conds.append('d.effective_stack_bb < ?'); params.append(hi)
+        tf = '(%s) AND %s' % (tf, ' AND '.join(conds))
+        tp = tuple(tp) + tuple(params)
+    return tf, tuple(tp)
 
 
 # Ordem de fala na mesa, do primeiro ao último. É o vocabulário do RESTO do produto
@@ -2359,14 +2390,15 @@ GRUPOS_TARDE = ('CO', 'BTN')
 #
 # Ordem = a do `PlayerStatsCard`, para os dois cards lerem igual. `test_grade_por_posicao`
 # varre: todo stat numérico do HUD principal tem coluna aqui e tem corte declarado.
-_GRADE_SEMPRE = ('vpip', 'pfr')                       # min 100 mãos
+_GRADE_SEMPRE = ('vpip', 'pfr', 'rfi')                # min 100 mãos
 _GRADE_COM_VOLUME = ('af', 'cbet_pct', 'fold_to_flop_bet', 'bb_defense', 'steal_pct',
                      'open_limp_pct', 'fold_to_3bet', 'wtsd', 'three_bet', 'w_at_sd')
 
 # Corte de amostra dos stats que o HUD mostra mas `STAT_REFERENCES` não classifica (não têm
 # régua MTT no produto). 500 mãos: a mesma classe de AF/C-Bet/Steal — postflop ou com
 # denominador restrito a um assento — e uma disciplina só de corte (ver acima).
-_GRADE_MIN_SEM_REFERENCIA = {'fold_to_flop_bet': 500, 'bb_defense': 500, 'open_limp_pct': 500}
+_GRADE_MIN_SEM_REFERENCIA = {'fold_to_flop_bet': 500, 'bb_defense': 500, 'open_limp_pct': 500,
+                             'rfi': 100}   # preflop, como VPIP/PFR; a regua vem do chart, por assento
 
 
 def minimo_da_grade(chave: str):
@@ -2380,7 +2412,8 @@ def minimo_da_grade(chave: str):
 
 
 def get_player_stats_by_position(user_id: int, days: int = 90,
-                                 last_n: int | None = None) -> dict:
+                                 last_n: int | None = None,
+                                 stack_band: str | None = None) -> dict:
     """Perfil do jogador em CADA assento, para a grade do dashboard.
 
     Responde outra pergunta que os cards de posição já existentes: eles dizem *de onde você
@@ -2405,10 +2438,20 @@ def get_player_stats_by_position(user_id: int, days: int = 90,
     adiante: lá era "nenhum read sem amostra", aqui é **nenhum veredito sem régua**.
 
     `low_sample` PERMANECE, porque é afirmação sobre a AMOSTRA, não sobre a régua.
+
+    ── A régua voltou, só onde há chart (06/09, AY-15) ──────────────────────────────────
+    O dono queria a régua e trouxe uma tabela de VPIP por assento; medida contra os nossos
+    charts, era mais tight que o solver em todo assento (folclore). A referência que dá para
+    defender é o próprio chart: **RFI** ganha `ref` = faixa do chart de abertura nas
+    profundidades das mãos do jogador naquele assento (`referencia_rfi_por_assento`). E o card
+    ganhou `stack_band`: escolhida a faixa, números E referência são daquela profundidade.
+    VPIP/PFR e postflop seguem sem régua: não há referência por assento defensável.
     """
+    from leaklab.preflop_gto_ranges import referencia_rfi_por_assento
+
     linhas = []
     for pos in POSICOES_NA_ORDEM:
-        s = get_player_stats(user_id, days, last_n, position=pos)
+        s = get_player_stats(user_id, days, last_n, position=pos, stack_band=stack_band)
         maos = s.get('total_hands') or 0
         if not maos:
             continue                      # assento que o jogador nunca ocupou: some da grade
@@ -2426,6 +2469,11 @@ def get_player_stats_by_position(user_id: int, days: int = 90,
                 'value': valor,
                 'band': 'low_sample' if maos < minimo else 'ok',
             }
+        if 'rfi' in celula['stats']:
+            ref = referencia_rfi_por_assento(pos, _stacks_das_oportunidades_de_rfi(
+                user_id, days, last_n, pos, stack_band))
+            if ref:
+                celula['stats']['rfi']['ref'] = ref
         linhas.append(celula)
 
     total = sum(l['hands'] for l in linhas)
@@ -2435,11 +2483,30 @@ def get_player_stats_by_position(user_id: int, days: int = 90,
         # O front usa isto para explicar a tela vazia em vez de mostrar uma grade de tracinhos.
         'sempre': list(_GRADE_SEMPRE),
         'com_volume': list(_GRADE_COM_VOLUME),
+        'stack_band': stack_band,
+        'faixas': list(FAIXAS_DE_STACK),
     }
 
 
+def _stacks_das_oportunidades_de_rfi(user_id, days, last_n, position, stack_band):
+    """Stack efetivo de cada oportunidade de RFI do assento: o insumo da referência.
+    O MESMO WHERE do stat (`_SQL_POTE_INTACTO`), senão a régua mediria outro conjunto."""
+    tf, tp = _filtro_do_hud(user_id, days, last_n, position, stack_band)
+    conn = get_conn()
+    try:
+        rows = conn.execute(_adapt(f"""
+            SELECT d.effective_stack_bb
+            FROM decisions d
+            JOIN tournaments t ON t.id = d.tournament_id
+            WHERE {tf} AND d.street = 'preflop' AND d.position <> 'BB' AND {_SQL_POTE_INTACTO}
+        """), tp).fetchall()
+        return [r[0] for r in rows]
+    finally:
+        conn.close()
+
+
 def get_player_stats(user_id: int, days: int = 90, last_n: int | None = None,
-                    position: str | None = None) -> dict:
+                    position: str | None = None, stack_band: str | None = None) -> dict:
     """Computes poker HUD stats from stored decisions.
 
     `position` recorta TUDO num assento só (BTN, BB, UTG...). Existe para a grade por
@@ -2454,12 +2521,7 @@ def get_player_stats(user_id: int, days: int = 90, last_n: int | None = None,
     Stats que só existem em certos assentos (steal em BTN/CO/SB, bb_defense no BB) devolvem
     None nos outros por denominador vazio — é o comportamento certo, não um buraco.
     """
-    tf, tp = _build_tournament_filter(user_id, days, last_n)
-    if position:
-        # Aceita os ALIASES do assento (MP1 é LJ). Comparar o rótulo cru perdia 334 decisões.
-        rotulos = rotulos_do_assento(position)
-        tf = '(%s) AND d.position IN (%s)' % (tf, ', '.join(['?'] * len(rotulos)))
-        tp = tuple(tp) + rotulos
+    tf, tp = _filtro_do_hud(user_id, days, last_n, position, stack_band)
     conn = get_conn()
     try:
         # ── Preflop basics (VPIP, PFR) ───────────────────────────────────────
@@ -2638,11 +2700,21 @@ def get_player_stats(user_id: int, days: int = 90, last_n: int | None = None,
             JOIN tournaments t ON t.id = d.tournament_id
             WHERE {tf}
               AND d.street = 'preflop' AND d.position IN ('BTN','CO','SB')
-              AND (d.facing_bet IS NULL OR d.facing_bet = 0)
-              -- PT4: steal e OPEN raise com o pote NAO ABERTO. Raise por cima de limp nao
-              -- conta, e o limpador ja abriu o pote. `facing_bet = 0` sozinho nao pega isso,
-              -- porque o limp nao aumenta o custo de entrar.
-              AND COALESCE(d.facing_limp, 0) = 0
+              AND {_SQL_POTE_INTACTO}
+        """), tp).fetchone()
+
+        # ── RFI%: raise first in / oportunidades com o pote INTACTO (06/09, AY-15) ──────
+        # PFR nao serve para o estudo por posicao: inclui 3-bet e squeeze. RFI e o open
+        # raise quando ninguem entrou; a BB nao tem (se todos foldam, a mao acaba).
+        rfi_row = conn.execute(_adapt(f"""
+            SELECT
+                COUNT(CASE WHEN d.action_taken IN ({_SQL_RAISE_OU_JAM}) THEN 1 END) AS rfi_n,
+                COUNT(*) AS rfi_total
+            FROM decisions d
+            JOIN tournaments t ON t.id = d.tournament_id
+            WHERE {tf}
+              AND d.street = 'preflop' AND d.position <> 'BB'
+              AND {_SQL_POTE_INTACTO}
         """), tp).fetchone()
 
         # ── Open Limp%: preflop calls without a raise in front (non-BB) ────────
@@ -2694,6 +2766,9 @@ def get_player_stats(user_id: int, days: int = 90, last_n: int | None = None,
         steal_t     = st.get('steal_total', 0) or 0
         limp_n      = lp.get('limp_n', 0) or 0
         limp_t      = lp.get('limp_total', 0) or 0
+        rf          = dict(rfi_row) if rfi_row else {}
+        rfi_n       = rf.get('rfi_n', 0) or 0
+        rfi_t       = rf.get('rfi_total', 0) or 0
 
         return {
             'total_hands':      total,
@@ -2710,6 +2785,7 @@ def get_player_stats(user_id: int, days: int = 90, last_n: int | None = None,
             'bb_defense':       round(bb_def_n / bb_def_t * 100, 1)   if bb_def_t > 0    else None,
             'steal_pct':        round(steal_n / steal_t * 100, 1)     if steal_t > 0     else None,
             'open_limp_pct':    round(limp_n / limp_t * 100, 1)       if limp_t > 0      else None,
+            'rfi':              round(rfi_n / rfi_t * 100, 1)         if rfi_t > 0       else None,
         }
     finally:
         conn.close()

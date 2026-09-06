@@ -200,6 +200,58 @@ def balde_rfi(stack_bb: float) -> str:
     return balde_rfi_ou_none(stack_bb) or _stack_bucket(stack_bb)
 
 
+#: Folga em pontos percentuais em volta da faixa dos charts. O solver mistura (abre AJo em
+#: 60% das vezes); ninguem bate a frequencia exata. Declarada aqui para o tooltip dizer.
+FOLGA_DA_REFERENCIA_PP = 3.0
+#: Um balde so entra na faixa se responde por pelo menos esta fracao das maos do assento.
+PESO_MINIMO_DO_BALDE = 0.10
+
+
+def rfi_pct_do_chart(pos: str, balde: str) -> Optional[float]:
+    """% de combos que a carta de `balde` ABRE (raise + all-in) do assento `pos`. Limp do SB
+    fica fora: e VPIP, nao RFI. None sem carta (BB nunca tem: nao abre pote).
+
+    balde_rfi nao se aplica: o balde chega ESCOLHIDO pela porta, em `referencia_rfi_por_assento`,
+    stack a stack. Esta funcao so le a celula.
+    """
+    bk = (_load().get('ranges') or {}).get(balde) or {}
+    r = (bk.get('RFI') or {}).get(_norm_pos(pos))
+    if not r:
+        return None
+    return round((float(r.get('raise_pct') or 0) + float(r.get('allin_pct') or 0)) * 100, 1)
+
+
+def referencia_rfi_por_assento(pos: str, stacks_bb) -> Optional[dict]:
+    """Faixa de referencia de RFI de um assento, a partir dos stacks das OPORTUNIDADES do
+    jogador ali (06/09, AY-15).
+
+    O solver abre 55% no BTN a 100bb e 38% a 14bb: faixa fixa acusaria quem joga certo. Entao
+    cada stack vai a carta da propria profundidade (`balde_rfi`, a mesma porta do veredito), os
+    baldes que pesam >= 10% das maos definem a faixa [menor chart, maior chart], e a faixa
+    ganha `FOLGA_DA_REFERENCIA_PP` de cada lado. Serve igual para "todos" (os stacks do assento
+    inteiro) e para uma faixa de stack escolhida (so os stacks dela): uma definicao, nao duas.
+
+    Devolve {'lo', 'hi', 'folga', 'pesos': {balde: % das maos}} ou None sem stack/sem carta.
+    """
+    stacks = [float(s) for s in (stacks_bb or []) if s is not None and float(s) > 0]
+    if not stacks:
+        return None
+    from collections import Counter
+    cont = Counter(balde_rfi(s) for s in stacks)
+    total = sum(cont.values())
+    pesos = {b: n / total for b, n in cont.items()}
+    relevantes = [b for b, w in pesos.items() if w >= PESO_MINIMO_DO_BALDE] or list(pesos)
+    valores = [v for v in (rfi_pct_do_chart(pos, b) for b in relevantes) if v is not None]
+    if not valores:
+        return None
+    return {
+        'lo': round(max(0.0, min(valores) - FOLGA_DA_REFERENCIA_PP), 1),
+        'hi': round(min(100.0, max(valores) + FOLGA_DA_REFERENCIA_PP), 1),
+        'folga': FOLGA_DA_REFERENCIA_PP,
+        'pesos': {b: round(w * 100) for b, w in sorted(pesos.items(), key=lambda kv: -kv[1])},
+    }
+
+
 def balde_rfi_ou_none(stack_bb: float) -> Optional[str]:
     """Balde que PODE falar pela RFI deste stack, ou None quando nenhum pode.
 

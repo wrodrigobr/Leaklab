@@ -1576,7 +1576,12 @@ def history_breakdown():
 def player_stats():
     days   = int(request.args.get('days', 90))
     last_n = _last_n_da_query()
-    stats = get_player_stats(g.user_id, days, last_n=last_n)
+    # `?stack=`: a linha TOTAL do perfil por posicao precisa do HUD na MESMA faixa de stack
+    # que a grade, senao a conferencia (grade fecha com o Total) compara conjuntos diferentes.
+    stack, erro = _faixa_de_stack_da_query()
+    if erro:
+        return erro
+    stats = get_player_stats(g.user_id, days, last_n=last_n, stack_band=stack)
     # Flags direcionais (banda saudável/abaixo/acima vs referências MTT, gateados por amostra).
     from leaklab.opponent_stats import player_stat_flags
     stats['flags'] = player_stat_flags(stats)
@@ -1600,7 +1605,21 @@ def player_stats_by_position():
     from database.repositories import get_player_stats_by_position
     days   = int(request.args.get('days', 90))
     last_n = _last_n_da_query()
-    return jsonify(get_player_stats_by_position(g.user_id, days, last_n=last_n))
+    stack, erro = _faixa_de_stack_da_query()
+    if erro:
+        return erro
+    return jsonify(get_player_stats_by_position(g.user_id, days, last_n=last_n, stack_band=stack))
+
+
+def _faixa_de_stack_da_query():
+    """`?stack=` do perfil por posicao: uma das `FAIXAS_DE_STACK` ou nada (= todos).
+    Faixa desconhecida e 400, nao silencio: devolver "todos" para um filtro que o cliente
+    acha que aplicou seria o numero certo sob o rotulo errado."""
+    from database.repositories import FAIXAS_DE_STACK
+    stack = (request.args.get('stack') or '').strip() or None
+    if stack and stack not in FAIXAS_DE_STACK:
+        return None, (jsonify({'error': 'stack invalido', 'faixas': list(FAIXAS_DE_STACK)}), 400)
+    return stack, None
 
 
 @app.route('/metrics/level', methods=['GET'])

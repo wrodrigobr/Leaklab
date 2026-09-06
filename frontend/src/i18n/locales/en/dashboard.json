@@ -902,7 +902,7 @@
   "posProfile": {
     "title": "Profile by position",
     "tooltip": "How you play in EACH seat: your number in each position, with the sample next to it. The grid describes without judging. The Total row is the main HUD number, weighted by each seat volume.",
-    "legend": "Your number in each seat. The Total row is the main HUD number, weighted by each seat volume, not a simple average of the rows.",
+    "legend": "Your number in each seat. Green band = what the solver opens from that seat at your stack depths; color only when the value leaves it. The Total row is the main HUD, weighted by each seat's volume.",
     "hands": "{{n}} hands",
     "handsShort": "hands",
     "seat": "seat",
@@ -956,6 +956,18 @@
     "outsideGrid": "Total includes {{n}} hands in positions outside the 8 shown.",
     "yourGame": "Your whole game",
     "vsYourGame": "{{delta}}{{unit}} versus your whole game.",
-    "descriptive": "The grid describes your profile in each seat. The reference applies to the whole game, in the Total row."
+    "descriptive": "The grid describes your profile in each seat. The reference applies to the whole game, in the Total row.",
+    "stack": "stack",
+    "stackAll": "all",
+    "stackHands": "{{n}} hands in this range",
+    "solverHere": "Solver, at your depths",
+    "solverBand": "Solver at {{band}}",
+    "charts": "Charts",
+    "chartsOthers": "other {{pct}}%",
+    "tolerance": "band with {{pp}} points of slack: the solver mixes, nobody hits the exact frequency",
+    "aboveSolver": "You open {{delta}} points more than the solver from here.",
+    "belowSolver": "You open {{delta}} points less than the solver from here.",
+    "inSolver": "Within what the solver does from here.",
+    "rfiNaBB": "The BB never opens: if everyone folds, the hand is over."
   }
 }

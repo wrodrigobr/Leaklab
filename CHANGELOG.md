@@ -5,6 +5,41 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## AY-15 fase 1: RFI por assento com a regua do CHART, e filtro de stack (06/09, LOCAL)
+
+Ainda nao deployado: o dono pediu implementar e provar localmente antes. Frontend e backend
+sobem JUNTOS — o front manda `?stack=` e desenha a coluna RFI; sem o backend novo, a faixa
+escolhida voltaria os numeros de "todos" sob o rotulo errado.
+
+**De onde veio.** O dono queria a regua de volta na grade por posicao e trouxe uma tabela de
+VPIP por assento. Medida contra os nossos charts (`docs/leaklab_gto_ranges.json`), a tabela e
+mais tight que o solver em todo assento (BTN 38-48 x 51-55; CO 25-32 x 38): folclore. A
+referencia que da para defender e o proprio chart de abertura, e a metrica que o Rullian usa
+nos estudos e RFI, nao PFR (PFR inclui 3-bet e squeeze).
+
+**O que entrou.**
+- `rfi` no HUD e na grade: open raise / oportunidades com o pote INTACTO (`_SQL_POTE_INTACTO`,
+  a mesma definicao do steal, que era copia e virou fonte unica). BB nao tem.
+- `ref` na celula de RFI: `referencia_rfi_por_assento` leva cada oportunidade a carta da
+  propria profundidade (`balde_rfi`, a porta do veredito), os baldes com >= 10% das maos
+  definam a faixa [menor chart, maior chart], com 3pp de folga declarada. Serve igual para
+  "todos" e para uma faixa de stack: uma definicao.
+- `?stack=` (`40+` / `20-40` / `<20`, pela `effective_stack_bb`) nos dois endpoints, porque a
+  linha TOTAL precisa do HUD na MESMA faixa que a grade. Faixa desconhecida e 400.
+- Card: regua so onde ha `ref`; tinta so no excesso; tooltip com a faixa do solver, os pesos
+  dos charts e a folga; chips de stack com estado no `Index` (os dois pedidos saem juntos).
+
+**Prova em dev** (`grade_demo`, 6.029 maos): BTN "todos" 51,9 em 47,9-58,0; a 20-40bb a faixa
+estreita para os charts 20/30/40 (38,9-56,4) e o BTN abre 48,2; a <20bb o SB abre 62,8 contra
+27,5-53,5. RFI do HUD (28,4) > PFR (17,8), como tem de ser: o denominador e so oportunidade.
+Custo: 5,6s para a grade em SQLite (9 assentos x ~12 consultas; ja era assim).
+
+**Guardas.** `test_rfi_por_assento` (6): pote intacto, BB/SB, fronteira `[lo, hi)`, folga,
+regra dos 10%, `ref` so no RFI, endpoint. 7 mutacoes, 7 acusadas. Card: `regua-<stat>` com
+`data-fora`, chips, n/a da BB.
+
+---
+
 ## O historico era os ultimos 50, e "ultimos N" eram os N mais antigos (06/09)
 
 O dono viu "TORNEIOS 50" na tela de historico: *"acho que tenho mais de 50... suspeito que

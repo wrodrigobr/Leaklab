@@ -4,7 +4,7 @@ import { Info } from "lucide-react";
 import { HudTooltip } from "./HudTooltip";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-import type { PlayerStatsResponse, PositionProfileResponse, PositionStatCell } from "@/lib/api";
+import type { PlayerStatsResponse, PositionProfileResponse, PositionStatCell, StackBand } from "@/lib/api";
 
 /**
  * V2PositionProfileCard — o perfil do jogador em CADA assento.
@@ -15,12 +15,18 @@ import type { PlayerStatsResponse, PositionProfileResponse, PositionStatCell } f
  * Este diz *qual é o seu perfil ali*: VPIP, PFR, 3bet, WTSD por assento. São perguntas
  * diferentes, e a segunda o produto não tinha.
  *
- * ── Por que não é a grade do PokerTracker ────────────────────────────────────────────────
+ * ── A régua: só onde há chart (06/09, AY-15) ─────────────────────────────────────────────
  *
- * A ideia nasceu de um print do PT4 (04/09), mas copiar as 20 colunas de percentual cru
- * seria despejo de dado para quem já sabe o que procurar. Aqui **cada célula é uma régua**:
- * a faixa saudável aparece desenhada e o marcador mostra onde o jogador está nela. Quem não
- * decorou que "VPIP saudável de MTT é 18–24" lê a mesma informação na posição do ponto.
+ * A régua por assento saiu em 05/09 por não ter referência (a régua do jogo inteiro acusava
+ * 5 de 6 jogadores no BB). Voltou em 06/09 SÓ na coluna que tem referência defensável: **RFI**,
+ * com a faixa vinda do chart de abertura nas profundidades das mãos do jogador naquele assento
+ * (`ref` no payload; o backend calcula, aqui só se desenha). O dono trouxe uma tabela de VPIP
+ * por assento; medida contra os charts era mais tight que o solver em todo assento. Folclore
+ * não vira régua. VPIP/PFR e o postflop ficam só com o número.
+ *
+ * E o filtro de stack: escolhida a faixa, os números são das mãos nela e a referência é o
+ * chart daquela profundidade. O estado mora no `Index`, porque a linha TOTAL precisa do HUD na
+ * MESMA faixa.
  *
  * ── As colunas são FIXAS; as células são progressivas ────────────────────────────────────
  *
@@ -44,6 +50,7 @@ import type { PlayerStatsResponse, PositionProfileResponse, PositionStatCell } f
 const ROTULO: Record<string, string> = {
   vpip: "VPIP",
   pfr: "PFR",
+  rfi: "RFI",
   af: "AF",
   cbet_pct: "C-Bet",
   fold_to_flop_bet: "Fold vs Bet",
@@ -56,15 +63,45 @@ const ROTULO: Record<string, string> = {
   w_at_sd: "W$SD",
 };
 
+/** Rótulo dos chips de stack. Jargão fica em inglês/numérico nos 3 idiomas. */
+const ROTULO_DA_FAIXA: Record<string, string> = { "40+": "40bb+", "20-40": "20–40bb", "<20": "<20bb" };
+
+/** Topo da escala da régua, por stat. Só RFI tem régua hoje; a escala é absoluta (0–60) para
+ *  o ponto ser comparável entre assentos: BTN abre metade das mãos, UTG um sexto. */
+const ESCALA: Record<string, number> = { rfi: 60 };
+
+/** Régua de uma célula com `ref`: faixa verde do chart, ponto no valor, tinta só no excesso
+ *  (entre a borda da faixa e o ponto). Quem está dentro não gasta tinta. */
+function Regua({ chave, valor, lo, hi, baixa }: { chave: string; valor: number; lo: number; hi: number; baixa: boolean }) {
+  const topo = ESCALA[chave] ?? 100;
+  const pct = (v: number) => Math.max(0, Math.min(100, (v / topo) * 100));
+  const fora = valor < lo ? "below" : valor > hi ? "above" : "in";
+  const tinta = fora === "below" ? [pct(valor), pct(lo)] : fora === "above" ? [pct(hi), pct(valor)] : null;
+  return (
+    <div className="relative mt-[5px] h-1 w-full rounded-sm bg-muted/30" data-testid={`regua-${chave}`} data-fora={fora}>
+      <div className="absolute top-0 h-1 rounded-sm bg-emerald-500/45" style={{ left: `${pct(lo)}%`, width: `${pct(hi) - pct(lo)}%` }} />
+      {!baixa && tinta && (
+        <div className="absolute top-0 h-1 rounded-sm bg-red-500/75" style={{ left: `${tinta[0]}%`, width: `${tinta[1] - tinta[0]}%` }} />
+      )}
+      {!baixa && (
+        <div
+          className={cn("absolute -top-0.5 size-2 -translate-x-1/2 rounded-full ring-2 ring-card",
+                        fora === "in" ? "bg-emerald-500" : "bg-red-500")}
+          style={{ left: `${pct(valor)}%` }}
+        />
+      )}
+    </div>
+  );
+}
+
 /**
- * Uma célula. Só o EXCESSO ganha cor.
+ * Uma célula. Só o EXCESSO ganha cor, e só onde há régua.
  *
- * A faixa saudável está sempre desenhada em verde; quando o valor sai dela, o trecho **entre
- * a borda da faixa e o valor** é pintado. Quem está dentro não gasta tinta nenhuma, então o
- * olho encontra o vazamento sem varrer célula por célula — e, ao mesmo tempo, a escala segue
- * absoluta, então dá para ver que um VPIP está no TOPO da faixa e não apenas dentro dela.
+ * Com `ref` (RFI): a faixa do chart está sempre desenhada em verde; quando o valor sai dela,
+ * o trecho **entre a borda da faixa e o valor** é pintado. Sem `ref`: só o número, e a
+ * comparação honesta (este assento contra o seu jogo todo) vive no tooltip, em frase.
  */
-function Celula({ chave, cel, posicao, maos, ancora, destaque }: {
+function Celula({ chave, cel, posicao, maos, ancora, destaque, stack }: {
   chave: string;
   cel: PositionStatCell;
   posicao: string;
@@ -73,11 +110,18 @@ function Celula({ chave, cel, posicao, maos, ancora, destaque }: {
   ancora?: number | null;
   /** A linha TOTAL. So muda o peso visual: ela e a ANCORA de conferencia, nao um veredito. */
   destaque?: boolean;
+  /** faixa de stack em vigor, para o tooltip dizer de qual chart a referencia veio */
+  stack?: StackBand | null;
 }) {
   const { t } = useTranslation("dashboard");
   const baixa = cel.band === "low_sample";
   const unidade = chave === "af" ? "x" : "%";
   const delta = ancora != null ? cel.value - ancora : null;
+  const ref = cel.ref;
+  const foraDaRef = ref && !baixa ? (cel.value < ref.lo ? cel.value - ref.lo : cel.value > ref.hi ? cel.value - ref.hi : 0) : null;
+  /** Só os baldes que definem a faixa (>= 10%) aparecem nomeados; o resto vira "outros N%". */
+  const pesos = ref ? Object.entries(ref.pesos).filter(([, w]) => w >= 10) : [];
+  const outros = ref ? Object.values(ref.pesos).reduce((s, w) => s + w, 0) - pesos.reduce((s, [, w]) => s + w, 0) : 0;
 
   return (
     <Tooltip>
@@ -89,13 +133,20 @@ function Celula({ chave, cel, posicao, maos, ancora, destaque }: {
             ter. A escala tambem era arbitraria: VPIP desenhado em 0-60 e AF em 0-8 pareciam
             o mesmo widget sem serem comparaveis. A comparacao honesta (este assento contra o
             seu jogo todo) vive no tooltip, em frase, onde nao vira grafico sem eixo. */}
-        <span
-          className={cn(
-            "cursor-default font-mono text-[11px] font-bold tabular-nums leading-none",
-            baixa ? "text-muted-foreground/50" : destaque ? "text-primary" : "text-foreground"
-          )}
-        >
-          {baixa ? "—" : cel.value}
+        <span className="flex min-h-[20px] w-full cursor-default flex-col pr-2">
+          <span
+            className={cn(
+              "font-mono text-[11px] font-bold tabular-nums leading-none",
+              baixa ? "text-muted-foreground/50"
+                : destaque ? "text-primary"
+                : foraDaRef ? "text-red-400"
+                : ref ? "text-emerald-400"
+                : "text-foreground"
+            )}
+          >
+            {baixa ? "—" : cel.value}
+          </span>
+          {ref && !destaque && <Regua chave={chave} valor={cel.value} lo={ref.lo} hi={ref.hi} baixa={baixa} />}
         </span>
       </TooltipTrigger>
 
@@ -109,7 +160,16 @@ function Celula({ chave, cel, posicao, maos, ancora, destaque }: {
             {baixa ? "—" : `${cel.value}${unidade}`}
           </span>
         </div>
-        {ancora != null && (
+        {ref ? (
+          <div className="flex items-baseline justify-between gap-3 py-0.5">
+            <span className="text-[11px] text-muted-foreground">
+              {stack ? t("posProfile.solverBand", { band: ROTULO_DA_FAIXA[stack] ?? stack }) : t("posProfile.solverHere")}
+            </span>
+            <span className="font-mono text-xs font-bold tabular-nums text-emerald-400">
+              {ref.lo}–{ref.hi}%
+            </span>
+          </div>
+        ) : ancora != null && (
           <div className="flex items-baseline justify-between gap-3 py-0.5">
             <span className="text-[11px] text-muted-foreground">{t("posProfile.yourGame")}</span>
             <span className="font-mono text-xs tabular-nums text-muted-foreground">
@@ -121,6 +181,12 @@ function Celula({ chave, cel, posicao, maos, ancora, destaque }: {
         <p className="text-[11px] leading-snug text-muted-foreground">
           {baixa
             ? t("posProfile.lowSampleLong")
+            : ref && foraDaRef != null
+              ? foraDaRef > 0
+                ? t("posProfile.aboveSolver", { delta: foraDaRef.toFixed(1) })
+                : foraDaRef < 0
+                  ? t("posProfile.belowSolver", { delta: (-foraDaRef).toFixed(1) })
+                  : t("posProfile.inSolver")
             : delta != null
               ? t("posProfile.vsYourGame", {
                   delta: `${delta > 0 ? "+" : ""}${delta.toFixed(1)}`,
@@ -128,6 +194,14 @@ function Celula({ chave, cel, posicao, maos, ancora, destaque }: {
                 })
               : t("posProfile.descriptive")}
         </p>
+        {ref && (
+          <p className="mt-1.5 font-mono text-[9px] leading-snug text-muted-foreground/70">
+            {t("posProfile.charts")}: {pesos.map(([b, w]) => `${b} ${w}%`).join(" · ")}
+            {outros > 0 ? ` · ${t("posProfile.chartsOthers", { pct: outros })}` : ""}
+            <br />
+            {t("posProfile.tolerance", { pp: ref.folga })}
+          </p>
+        )}
         <p className="mt-1.5 font-mono text-[9px] text-muted-foreground/70">
           {t("posProfile.handsHere", { n: maos })}
         </p>
@@ -139,8 +213,13 @@ function Celula({ chave, cel, posicao, maos, ancora, destaque }: {
 export function V2PositionProfileCard({
   data,
   geral,
+  stack = null,
+  onStack,
 }: {
   data?: PositionProfileResponse | null;
+  /** faixa de stack em vigor (null = todos) e o setter, que mora no Index */
+  stack?: StackBand | null;
+  onStack?: (s: StackBand | null) => void;
   /** O payload do HUD PRINCIPAL, para a linha TOTAL. Deliberadamente NAO recalculado aqui:
    *  a linha existe para o jogador conferir que a grade reconcilia com o numero grande da
    *  tela, e reconstruir a conta abriria a porta para as duas discordarem — foi exatamente
@@ -159,6 +238,11 @@ export function V2PositionProfileCard({
   );
 
   const linhas = data?.positions ?? [];
+
+  /** Largura das colunas. A coluna com regua (RFI) precisa de trilho legivel; as outras cabem
+   *  no rotulo mais longo sem quebrar ("Fold vs Bet"). A 1a versao dava 4rem a todas e a
+   *  regua, com 78px fixos, invadia a coluna vizinha. */
+  const trilhas = `3.25rem 2.75rem ${colunas.map((k) => (ESCALA[k] ? "6rem" : "minmax(2.6rem, 4.75rem)")).join(" ")} 1fr`;
 
   /** Celulas do TOTAL, montadas do payload do HUD principal (valor + a flag que ele ja
    *  traz). Nao e a MEDIA das linhas: media simples de percentual entre assentos de volume
@@ -209,8 +293,31 @@ export function V2PositionProfileCard({
           </span>
           <HudTooltip content={t("posProfile.tooltip")} />
         </div>
+        {onStack && (
+          <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label={t("posProfile.stack")}>
+            <span className="mr-1 font-mono text-[9px] uppercase tracking-widest text-muted-foreground/60">
+              {t("posProfile.stack")}
+            </span>
+            {[null, ...((data.faixas ?? []) as StackBand[])].map((f) => (
+              <button
+                key={f ?? "all"}
+                type="button"
+                aria-pressed={stack === f}
+                onClick={() => onStack(f)}
+                className={cn(
+                  "rounded-md border px-2 py-1 font-mono text-[9px] uppercase tracking-wider transition-colors",
+                  stack === f
+                    ? "border-primary bg-primary/10 text-primary"
+                    : "border-border text-muted-foreground hover:text-foreground"
+                )}
+              >
+                {f ? ROTULO_DA_FAIXA[f] ?? f : t("posProfile.stackAll")}
+              </button>
+            ))}
+          </div>
+        )}
         <span className="font-mono text-[9px] text-muted-foreground/70 tabular-nums">
-          {t("posProfile.hands", { n: data.total_hands })}
+          {stack ? t("posProfile.stackHands", { n: data.total_hands }) : t("posProfile.hands", { n: data.total_hands })}
         </span>
       </div>
 
@@ -226,7 +333,7 @@ export function V2PositionProfileCard({
         <div className="w-max min-w-full">
           <div
             className="grid items-end gap-x-2 pb-1.5 mb-1.5 border-b border-border/50"
-            style={{ gridTemplateColumns: `3.25rem 2.75rem repeat(${colunas.length}, minmax(2.4rem, 4rem)) 1fr` }}
+            style={{ gridTemplateColumns: trilhas }}
           >
             <span className="font-mono text-[9px] uppercase tracking-wider text-muted-foreground/60">
               {t("posProfile.seat")}
@@ -235,7 +342,7 @@ export function V2PositionProfileCard({
               {t("posProfile.handsShort")}
             </span>
             {colunas.map((k) => (
-              <span key={k} className="font-mono text-[9px] uppercase tracking-wider text-muted-foreground/60">
+              <span key={k} className="whitespace-nowrap font-mono text-[9px] uppercase tracking-wider text-muted-foreground/60">
                 {ROTULO[k] ?? k}
               </span>
             ))}
@@ -245,8 +352,8 @@ export function V2PositionProfileCard({
             {linhas.map((linha) => (
               <div
                 key={linha.position}
-                className="grid items-center gap-x-2"
-                style={{ gridTemplateColumns: `3.25rem 2.75rem repeat(${colunas.length}, minmax(2.4rem, 4rem)) 1fr` }}
+                className="grid items-start gap-x-2"
+                style={{ gridTemplateColumns: trilhas }}
               >
                 <span className="font-mono text-[10px] font-bold uppercase text-foreground">
                   {linha.position}
@@ -257,10 +364,18 @@ export function V2PositionProfileCard({
                 {colunas.map((k) =>
                   linha.stats[k] ? (
                     <Celula key={k} chave={k} cel={linha.stats[k]} posicao={linha.position}
-                            maos={linha.hands}
+                            maos={linha.hands} stack={stack}
                             ancora={(geral as unknown as Record<string, number | null>)?.[k] ?? null} />
+                  ) : k === "rfi" && linha.position === "BB" ? (
+                    // A BB nao abre pote. "n/a" e nao "—": traco e amostra baixa, isto e regra.
+                    <Tooltip key={k}>
+                      <TooltipTrigger asChild>
+                        <span className="inline-block min-h-[20px] cursor-default font-mono text-[9px] leading-[11px] text-muted-foreground/40">n/a</span>
+                      </TooltipTrigger>
+                      <TooltipContent side="top" className="max-w-[200px] p-2 text-[11px]">{t("posProfile.rfiNaBB")}</TooltipContent>
+                    </Tooltip>
                   ) : (
-                    <span key={k} className="font-mono text-[11px] text-muted-foreground/25">—</span>
+                    <span key={k} className="min-h-[20px] font-mono text-[11px] leading-none text-muted-foreground/25">—</span>
                   )
                 )}
               </div>
@@ -272,8 +387,8 @@ export function V2PositionProfileCard({
               volume, nao media das linhas (ver `totalCels`). */}
           {totalCels && (
             <div
-              className="mt-2.5 grid items-center gap-x-2 border-t border-border/60 pt-2.5"
-              style={{ gridTemplateColumns: `3.25rem 2.75rem repeat(${colunas.length}, minmax(2.4rem, 4rem)) 1fr` }}
+              className="mt-2.5 grid items-start gap-x-2 border-t border-border/60 pt-2.5"
+              style={{ gridTemplateColumns: trilhas }}
             >
               <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-primary">
                 {t("posProfile.total")}
@@ -292,7 +407,7 @@ export function V2PositionProfileCard({
                     destaque
                   />
                 ) : (
-                  <span key={k} className="font-mono text-[11px] text-muted-foreground/25">—</span>
+                  <span key={k} className="min-h-[20px] font-mono text-[11px] leading-none text-muted-foreground/25">—</span>
                 )
               )}
             </div>

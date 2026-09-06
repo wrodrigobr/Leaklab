@@ -976,9 +976,20 @@ export interface LeakFinderData {
  *  regua do JOGO INTEIRO, e aplica-la assento a assento acusava 5 de 6 jogadores de `loose`
  *  no BB contra 0 de 6 do UTG ao HJ. `band` guarda so o gate de AMOSTRA, que continua valendo
  *  porque e afirmacao sobre a amostra, nao sobre a regua. O veredito vive na linha TOTAL. */
+/** Referencia do CHART para uma celula (so RFI, AY-15): faixa [lo, hi] do que o solver faz
+ *  deste assento nas profundidades das maos do jogador, com `folga` pp de cada lado, e o
+ *  peso (% das maos) de cada balde de stack. */
+export interface PositionStatRef {
+  lo: number;
+  hi: number;
+  folga: number;
+  pesos: Record<string, number>;
+}
+
 export interface PositionStatCell {
   value: number;
   band: "ok" | "low_sample";
+  ref?: PositionStatRef;
 }
 
 export interface PositionProfileRow {
@@ -994,7 +1005,13 @@ export interface PositionProfileResponse {
   sempre: string[];
   /** stats que so aparecem quando o ASSENTO tem volume proprio */
   com_volume: string[];
+  /** faixa de stack aplicada (null = todos) e as faixas que o backend aceita, na ordem dos chips */
+  stack_band: string | null;
+  faixas: string[];
 }
+
+/** `?stack=` do perfil por posicao e do HUD: uma das `faixas` do backend, ou nada. */
+export type StackBand = "40+" | "20-40" | "<20";
 
 /** Flag direcional do backend (fonte unica `STAT_REFERENCES`, gateada por amostra). */
 export interface PlayerStatFlag {
@@ -1007,6 +1024,8 @@ export interface PlayerStatsResponse {
   total_hands: number;
   /** Por stat: banda + tendencia. O backend anexa em `/metrics/player-stats`. */
   flags?: Record<string, PlayerStatFlag>;
+  /** raise first in: open raise com o pote intacto / oportunidades (AY-15) */
+  rfi?: number | null;
   vpip: number | null;
   pfr: number | null;
   af: number | null;
@@ -2316,14 +2335,15 @@ export const metrics = {
   breakdown: (days = 90, lastN?: number) =>
     request<BreakdownResponse>(`/history/breakdown?days=${days}${lastN != null ? `&last_n=${lastN}` : ""}`),
 
-  playerStats: (days = 90, lastN?: number) =>
-    request<PlayerStatsResponse>(`/metrics/player-stats?days=${days}${lastN != null ? `&last_n=${lastN}` : ""}`),
+  playerStats: (days = 90, lastN?: number, stack?: StackBand | null) =>
+    request<PlayerStatsResponse>(
+      `/metrics/player-stats?days=${days}${lastN != null ? `&last_n=${lastN}` : ""}${stack ? `&stack=${encodeURIComponent(stack)}` : ""}`),
 
   /** Perfil por ASSENTO. Pergunta diferente do gtoPosition: aquele diz de onde o jogador
    *  erra mais, este diz qual e o perfil dele ali. */
-  playerStatsByPosition: (days = 90, lastN?: number) =>
+  playerStatsByPosition: (days = 90, lastN?: number, stack?: StackBand | null) =>
     request<PositionProfileResponse>(
-      `/metrics/player-stats/by-position?days=${days}${lastN != null ? `&last_n=${lastN}` : ""}`),
+      `/metrics/player-stats/by-position?days=${days}${lastN != null ? `&last_n=${lastN}` : ""}${stack ? `&stack=${encodeURIComponent(stack)}` : ""}`),
 
   level: (lastN?: number) =>
     request<PlayerLevel>(`/metrics/level${lastN != null ? `?last_n=${lastN}` : ""}`),
