@@ -1618,7 +1618,10 @@ def _faixa_de_stack_da_query():
     from database.repositories import FAIXAS_DE_STACK
     stack = (request.args.get('stack') or '').strip() or None
     if stack and stack not in FAIXAS_DE_STACK:
-        return None, (jsonify({'error': 'stack invalido', 'faixas': list(FAIXAS_DE_STACK)}), 400)
+        # O valor recebido vai na resposta e no log: um 400 mudo custou uma tarde em 06/09
+        # (o front engolia o erro e o filtro "nao mudava nada").
+        log.warning('stack invalido no filtro por posicao: %r', stack)
+        return None, (jsonify({'error': 'stack invalido', 'recebido': stack, 'faixas': list(FAIXAS_DE_STACK)}), 400)
     return stack, None
 
 

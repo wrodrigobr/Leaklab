@@ -983,7 +983,10 @@ export interface PositionStatRef {
   lo: number;
   hi: number;
   folga: number;
+  /** % das oportunidades por contexto (balde de stack, e "vs <posicao>" no 3-bet/fold) */
   pesos: Record<string, number>;
+  /** % das oportunidades com carta; abaixo de 100 o tooltip diz que a referencia fala por parte */
+  cobertura?: number;
 }
 
 export interface PositionStatCell {
@@ -1026,6 +1029,8 @@ export interface PlayerStatsResponse {
   flags?: Record<string, PlayerStatFlag>;
   /** raise first in: open raise com o pote intacto / oportunidades (AY-15) */
   rfi?: number | null;
+  /** fold ao 3-bet quando VOCE abriu (a grade por assento; o `fold_to_3bet` do PT4 conta 3-bet a frio) */
+  fold_to_3bet_open?: number | null;
   vpip: number | null;
   pfr: number | null;
   af: number | null;

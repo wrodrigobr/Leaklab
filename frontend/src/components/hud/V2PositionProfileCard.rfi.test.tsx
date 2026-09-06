@@ -61,9 +61,24 @@ describe("régua do RFI", () => {
     expect(within(total).queryByTestId("regua-rfi")).toBeNull();
   });
 
-  it("a BB mostra n/a no RFI, não o traço de amostra baixa", () => {
-    render(<V2PositionProfileCard data={GRADE} geral={HUD} />);
-    expect(screen.getByText("n/a")).toBeTruthy();
+  it("a BB mostra n/a nas colunas de abertura, não o traço de amostra baixa", () => {
+    const comFold = {
+      ...GRADE,
+      com_volume: ["fold_to_3bet_open"],
+      positions: [...GRADE.positions.slice(0, 2),
+                  { position: "BB", hands: 450, stats: { vpip: ok(35), pfr: ok(10), fold_to_3bet_open: ok(100) } }],
+    } as unknown as PositionProfileResponse;
+    render(<V2PositionProfileCard data={comFold} geral={HUD} />);
+    expect(screen.getAllByText("n/a")).toHaveLength(2);      // RFI e Fold 3-Bet do open
+    expect(screen.queryByText("100")).toBeNull();            // o "100" sem chart nao aparece
+  });
+
+  it("amostra baixa nao desenha regua nenhuma, so o traco", () => {
+    const baixa = { value: 31, band: "low_sample" as const, ref: { lo: 12, hi: 19, folga: 3, pesos: {} } };
+    const grade = { ...GRADE, positions: [{ position: "LJ", hands: 2, stats: { vpip: ok(1), pfr: ok(1), rfi: baixa } }] } as unknown as PositionProfileResponse;
+    render(<V2PositionProfileCard data={grade} geral={{ ...HUD, rfi: 29 } as PlayerStatsResponse} />);
+    expect(screen.queryByTestId("regua-rfi")).toBeNull();
+    expect(screen.queryByText("31")).toBeNull();      // o valor nao aparece; so o traco (o Total mostra 29)
   });
 });
 

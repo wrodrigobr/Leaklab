@@ -901,8 +901,8 @@
   },
   "posProfile": {
     "title": "Perfil por posición",
-    "tooltip": "Cómo juegas en CADA asiento: tu número en cada posición, con la muestra al lado. La grilla describe sin juzgar. La fila Total es la del HUD principal, ponderada por el volumen de cada asiento.",
-    "legend": "Tu número en cada asiento. Franja verde = lo que el solver abre desde ese asiento, en las profundidades de tus manos; color solo cuando el valor sale de ella. La línea Total es la del HUD principal, ponderada por el volumen de cada asiento.",
+    "tooltip": "Cómo juegas en CADA asiento, en las tres decisiones preflop que tienen chart: abrir (RFI), hacer 3-bet y foldear al 3-bet después de abrir. La franja verde es el solver en las profundidades de tus manos. Los demás stats del HUD quedan en el HUD: no hay referencia por asiento para ellos.",
+    "legend": "Tú contra el solver, asiento por asiento. Franja verde = el solver en las profundidades de tus manos; VPIP y PFR son contexto, sin franja.",
     "hands": "{{n}} manos",
     "handsShort": "manos",
     "seat": "asiento",
@@ -964,10 +964,27 @@
     "solverBand": "Solver a {{band}}",
     "charts": "Charts",
     "chartsOthers": "otros {{pct}}%",
-    "tolerance": "franja con {{pp}} puntos de holgura: el solver mezcla, nadie clava la frecuencia exacta",
-    "aboveSolver": "Abres {{delta}} puntos más que el solver desde aquí.",
-    "belowSolver": "Abres {{delta}} puntos menos que el solver desde aquí.",
     "inSolver": "Dentro de lo que hace el solver desde aquí.",
-    "rfiNaBB": "La BB no abre bote: si todos foldean, la mano termina."
+    "rfiNaBB": "La BB no abre bote: si todos foldean, la mano termina. Por eso no tiene RFI ni fold al 3-bet tras abrir.",
+    "band": "franja donde el solver pone el 60% de tus oportunidades, con {{pp}} puntos de holgura",
+    "coverage": "el {{pct}}% de las oportunidades tiene chart; la franja habla por esas",
+    "vsSolver": {
+      "rfi": {
+        "above": "Abres {{delta}} puntos más que el solver desde aquí.",
+        "below": "Abres {{delta}} puntos menos que el solver desde aquí."
+      },
+      "threeBet": {
+        "above": "Haces 3-bet {{delta}} puntos más que el solver desde aquí.",
+        "below": "Haces 3-bet {{delta}} puntos menos que el solver desde aquí."
+      },
+      "fold3bet": {
+        "above": "Foldeas al 3-bet {{delta}} puntos más que el solver desde aquí.",
+        "below": "Foldeas al 3-bet {{delta}} puntos menos que el solver desde aquí."
+      },
+      "generic": {
+        "above": "{{delta}} puntos por encima del solver desde aquí.",
+        "below": "{{delta}} puntos por debajo del solver desde aquí."
+      }
+    }
   }
 }

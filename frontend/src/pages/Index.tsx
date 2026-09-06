@@ -65,6 +65,13 @@ const Index = () => {
   // conjuntos diferentes. null = todos, e ai o Total e o `playerStats` da tela.
   const [posStack, setPosStack]           = useState<StackBand | null>(null);
   const [posGeral, setPosGeral]           = useState<PlayerStatsResponse | null>(null);
+  // O carregamento geral (upload, evento de refresh) tambem busca a grade, e tem de buscar na
+  // faixa em vigor: a 1a versao buscava sem `stack` e SOBRESCREVIA a grade filtrada com a de
+  // "todos" a cada refresh — "o filtro nao muda os indicadores" (dono, 06/09). Ref, nao dep:
+  // trocar de faixa nao pode refazer a tela inteira.
+  const posStackRef = useRef<StackBand | null>(null);
+  posStackRef.current = posStack;
+  const jaFiltrou = useRef(false);
   const [tourns, setTourns]               = useState<Tournament[]>(_cachedTourns ?? []);
   const [leakRoi, setLeakRoi]             = useState<LeakRoiData[]>([]);
   const [leakSource, setLeakSource]       = useState<'gto' | 'heuristic' | null>(null);
@@ -116,7 +123,9 @@ const Index = () => {
       // Pro: nem chama quando e free — o backend responderia 402 e a UI ja mostra o
       // lock pelo plano do usuario. Request que se sabe que vai falhar e ruido.
       isFree ? Promise.resolve(null)
-             : metrics.playerStatsByPosition(90, ln).then(setPosProfile).catch(() => null),
+             : metrics.playerStatsByPosition(90, ln, posStackRef.current).then(setPosProfile).catch(() => null),
+      isFree || !posStackRef.current ? Promise.resolve(null)
+             : metrics.playerStats(90, ln, posStackRef.current).then(setPosGeral).catch(() => null),
       metrics.leakRoi(90, ln).then((r) => { setLeakRoi(r.leaks); setLeakSource(r.source); }).catch(() => null),
       metrics.pressureProfile(90, ln).then(setPressureData).catch(() => null),
       metrics.confidenceDrift(30, ln).then(setDriftData).catch(() => null),
@@ -130,23 +139,25 @@ const Index = () => {
     ]).finally(() => setLoading(false));
   }, [refreshKey, volumeLimit]);
 
-  // A faixa de stack refaz SO a grade por posicao e o HUD da faixa. Em "todos" nao ha
-  // pedido: a grade ja veio no carregamento e o Total e o HUD da tela.
+  // Trocar a faixa de stack refaz SO a grade por posicao e o HUD da faixa. Voltar para
+  // "todos" refaz a grade sem `stack` (a 1a versao nao refazia e os numeros ficavam presos na
+  // ultima faixa). No 1o render nao ha pedido: a grade ja vem no carregamento geral.
   useEffect(() => {
     if (isFree) return;
-    if (!posStack) { setPosGeral(null); return; }
+    if (!posStack && !jaFiltrou.current) return;
+    jaFiltrou.current = true;
     const ln = volumeLimit ?? undefined;
     let vivo = true;
     Promise.all([
       metrics.playerStatsByPosition(90, ln, posStack),
-      metrics.playerStats(90, ln, posStack),
+      posStack ? metrics.playerStats(90, ln, posStack) : Promise.resolve(null),
     ]).then(([grade, hud]) => {
       if (!vivo) return;
       setPosProfile(grade);
       setPosGeral(hud);
-    }).catch(() => null);
+    }).catch((e) => { console.error("perfil por posicao: filtro de stack falhou", e); });
     return () => { vivo = false; };
-  }, [refreshKey, volumeLimit, posStack, isFree]);
+  }, [posStack, isFree]);   // eslint-disable-line react-hooks/exhaustive-deps -- volumeLimit/refresh passam pelo efeito geral
 
   // Re-fetch only language-sensitive AI narratives when locale changes
   const langMounted = useRef(false);

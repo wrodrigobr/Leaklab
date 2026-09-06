@@ -58,6 +58,7 @@ const ROTULO: Record<string, string> = {
   steal_pct: "Steal",
   open_limp_pct: "Open Limp",
   fold_to_3bet: "Fold 3Bet",
+  fold_to_3bet_open: "Fold 3Bet",
   wtsd: "WTSD",
   three_bet: "3Bet",
   w_at_sd: "W$SD",
@@ -66,30 +67,35 @@ const ROTULO: Record<string, string> = {
 /** Rótulo dos chips de stack. Jargão fica em inglês/numérico nos 3 idiomas. */
 const ROTULO_DA_FAIXA: Record<string, string> = { "40+": "40bb+", "20-40": "20–40bb", "<20": "<20bb" };
 
-/** Topo da escala da régua, por stat. Só RFI tem régua hoje; a escala é absoluta (0–60) para
- *  o ponto ser comparável entre assentos: BTN abre metade das mãos, UTG um sexto. */
-const ESCALA: Record<string, number> = { rfi: 60 };
+/** Topo da escala da régua, por stat. Escala absoluta por coluna, para o ponto ser comparável
+ *  entre assentos: BTN abre metade das mãos, UTG um sexto. Só tem régua quem está aqui. */
+const ESCALA: Record<string, number> = { rfi: 60, three_bet: 30, fold_to_3bet_open: 100 };
+
+/** Colunas que dependem de ABRIR o pote: a BB nunca abre, entao a celula e "n/a" por regra. */
+const SEM_CHART_NA_BB = new Set(["rfi", "fold_to_3bet_open"]);
+
+/** Verbo do tooltip, por stat: "abre", "dá 3-bet", "folda ao 3-bet". A chave de i18n leva o
+ *  stat; sem entrada, cai no genérico. */
+const VERBO: Record<string, string> = { rfi: "rfi", three_bet: "threeBet", fold_to_3bet_open: "fold3bet" };
 
 /** Régua de uma célula com `ref`: faixa verde do chart, ponto no valor, tinta só no excesso
  *  (entre a borda da faixa e o ponto). Quem está dentro não gasta tinta. */
-function Regua({ chave, valor, lo, hi, baixa }: { chave: string; valor: number; lo: number; hi: number; baixa: boolean }) {
+function Regua({ chave, valor, lo, hi }: { chave: string; valor: number; lo: number; hi: number }) {
   const topo = ESCALA[chave] ?? 100;
   const pct = (v: number) => Math.max(0, Math.min(100, (v / topo) * 100));
   const fora = valor < lo ? "below" : valor > hi ? "above" : "in";
   const tinta = fora === "below" ? [pct(valor), pct(lo)] : fora === "above" ? [pct(hi), pct(valor)] : null;
   return (
-    <div className="relative mt-[5px] h-1 w-full rounded-sm bg-muted/30" data-testid={`regua-${chave}`} data-fora={fora}>
-      <div className="absolute top-0 h-1 rounded-sm bg-emerald-500/45" style={{ left: `${pct(lo)}%`, width: `${pct(hi) - pct(lo)}%` }} />
-      {!baixa && tinta && (
-        <div className="absolute top-0 h-1 rounded-sm bg-red-500/75" style={{ left: `${tinta[0]}%`, width: `${tinta[1] - tinta[0]}%` }} />
+    <div className="relative mt-2 h-1.5 w-full rounded-full bg-muted/25" data-testid={`regua-${chave}`} data-fora={fora}>
+      <div className="absolute top-0 h-1.5 rounded-full bg-emerald-500/40" style={{ left: `${pct(lo)}%`, width: `${pct(hi) - pct(lo)}%` }} />
+      {tinta && (
+        <div className="absolute top-0 h-1.5 rounded-full bg-red-500/70" style={{ left: `${tinta[0]}%`, width: `${tinta[1] - tinta[0]}%` }} />
       )}
-      {!baixa && (
-        <div
-          className={cn("absolute -top-0.5 size-2 -translate-x-1/2 rounded-full ring-2 ring-card",
-                        fora === "in" ? "bg-emerald-500" : "bg-red-500")}
-          style={{ left: `${pct(valor)}%` }}
-        />
-      )}
+      <div
+        className={cn("absolute -top-[3px] size-3 -translate-x-1/2 rounded-full ring-2 ring-card",
+                      fora === "in" ? "bg-emerald-400" : "bg-red-400")}
+        style={{ left: `${pct(valor)}%` }}
+      />
     </div>
   );
 }
@@ -119,8 +125,8 @@ function Celula({ chave, cel, posicao, maos, ancora, destaque, stack }: {
   const delta = ancora != null ? cel.value - ancora : null;
   const ref = cel.ref;
   const foraDaRef = ref && !baixa ? (cel.value < ref.lo ? cel.value - ref.lo : cel.value > ref.hi ? cel.value - ref.hi : 0) : null;
-  /** Só os baldes que definem a faixa (>= 10%) aparecem nomeados; o resto vira "outros N%". */
-  const pesos = ref ? Object.entries(ref.pesos).filter(([, w]) => w >= 10) : [];
+  /** Os 3 contextos com mais peso aparecem nomeados; o resto vira "outros N%". */
+  const pesos = ref ? Object.entries(ref.pesos).slice(0, 3) : [];
   const outros = ref ? Object.values(ref.pesos).reduce((s, w) => s + w, 0) - pesos.reduce((s, [, w]) => s + w, 0) : 0;
 
   return (
@@ -133,20 +139,18 @@ function Celula({ chave, cel, posicao, maos, ancora, destaque, stack }: {
             ter. A escala tambem era arbitraria: VPIP desenhado em 0-60 e AF em 0-8 pareciam
             o mesmo widget sem serem comparaveis. A comparacao honesta (este assento contra o
             seu jogo todo) vive no tooltip, em frase, onde nao vira grafico sem eixo. */}
-        <span className="flex min-h-[20px] w-full cursor-default flex-col pr-2">
+        <span className="flex min-h-[30px] w-full cursor-default flex-col pr-4">
+          {/* UMA tinta: a regua carrega a cor. Numero vermelho + ponto vermelho + trecho
+              vermelho era a mesma informacao tres vezes. */}
           <span
             className={cn(
-              "font-mono text-[11px] font-bold tabular-nums leading-none",
-              baixa ? "text-muted-foreground/50"
-                : destaque ? "text-primary"
-                : foraDaRef ? "text-red-400"
-                : ref ? "text-emerald-400"
-                : "text-foreground"
+              "font-mono text-[13px] font-bold tabular-nums leading-none",
+              baixa ? "text-muted-foreground/40" : destaque ? "text-primary" : "text-foreground"
             )}
           >
             {baixa ? "—" : cel.value}
           </span>
-          {ref && !destaque && <Regua chave={chave} valor={cel.value} lo={ref.lo} hi={ref.hi} baixa={baixa} />}
+          {ref && !baixa && !destaque && <Regua chave={chave} valor={cel.value} lo={ref.lo} hi={ref.hi} />}
         </span>
       </TooltipTrigger>
 
@@ -183,9 +187,9 @@ function Celula({ chave, cel, posicao, maos, ancora, destaque, stack }: {
             ? t("posProfile.lowSampleLong")
             : ref && foraDaRef != null
               ? foraDaRef > 0
-                ? t("posProfile.aboveSolver", { delta: foraDaRef.toFixed(1) })
+                ? t(`posProfile.vsSolver.${VERBO[chave] ?? "generic"}.above`, { delta: foraDaRef.toFixed(1) })
                 : foraDaRef < 0
-                  ? t("posProfile.belowSolver", { delta: (-foraDaRef).toFixed(1) })
+                  ? t(`posProfile.vsSolver.${VERBO[chave] ?? "generic"}.below`, { delta: (-foraDaRef).toFixed(1) })
                   : t("posProfile.inSolver")
             : delta != null
               ? t("posProfile.vsYourGame", {
@@ -199,7 +203,13 @@ function Celula({ chave, cel, posicao, maos, ancora, destaque, stack }: {
             {t("posProfile.charts")}: {pesos.map(([b, w]) => `${b} ${w}%`).join(" · ")}
             {outros > 0 ? ` · ${t("posProfile.chartsOthers", { pct: outros })}` : ""}
             <br />
-            {t("posProfile.tolerance", { pp: ref.folga })}
+            {t("posProfile.band", { pp: ref.folga })}
+            {ref.cobertura != null && ref.cobertura < 100 && (
+              <>
+                <br />
+                {t("posProfile.coverage", { pct: ref.cobertura })}
+              </>
+            )}
           </p>
         )}
         <p className="mt-1.5 font-mono text-[9px] text-muted-foreground/70">
@@ -242,7 +252,7 @@ export function V2PositionProfileCard({
   /** Largura das colunas. A coluna com regua (RFI) precisa de trilho legivel; as outras cabem
    *  no rotulo mais longo sem quebrar ("Fold vs Bet"). A 1a versao dava 4rem a todas e a
    *  regua, com 78px fixos, invadia a coluna vizinha. */
-  const trilhas = `3.25rem 2.75rem ${colunas.map((k) => (ESCALA[k] ? "6rem" : "minmax(2.6rem, 4.75rem)")).join(" ")} 1fr`;
+  const trilhas = `3.5rem 3rem ${colunas.map((k) => (ESCALA[k] ? "minmax(8rem, 1.6fr)" : "minmax(4rem, 1fr)")).join(" ")}`;
 
   /** Celulas do TOTAL, montadas do payload do HUD principal (valor + a flag que ele ja
    *  traz). Nao e a MEDIA das linhas: media simples de percentual entre assentos de volume
@@ -330,7 +340,7 @@ export function V2PositionProfileCard({
       {/* UM provider para a grade toda: um por célula seriam dezenas de contextos. */}
       <TooltipProvider delayDuration={200}>
       <div className="overflow-x-auto -mx-1 px-1">
-        <div className="w-max min-w-full">
+        <div className="w-full min-w-max">
           <div
             className="grid items-end gap-x-2 pb-1.5 mb-1.5 border-b border-border/50"
             style={{ gridTemplateColumns: trilhas }}
@@ -342,13 +352,14 @@ export function V2PositionProfileCard({
               {t("posProfile.handsShort")}
             </span>
             {colunas.map((k) => (
-              <span key={k} className="whitespace-nowrap font-mono text-[9px] uppercase tracking-wider text-muted-foreground/60">
+              <span key={k} className={cn("whitespace-nowrap font-mono text-[10px] uppercase tracking-wider",
+                                           ESCALA[k] ? "text-muted-foreground" : "text-muted-foreground/50")}>
                 {ROTULO[k] ?? k}
               </span>
             ))}
           </div>
 
-          <div className="space-y-2">
+          <div className="space-y-2.5">
             {linhas.map((linha) => (
               <div
                 key={linha.position}
@@ -362,20 +373,21 @@ export function V2PositionProfileCard({
                   {linha.hands}
                 </span>
                 {colunas.map((k) =>
-                  linha.stats[k] ? (
-                    <Celula key={k} chave={k} cel={linha.stats[k]} posicao={linha.position}
-                            maos={linha.hands} stack={stack}
-                            ancora={(geral as unknown as Record<string, number | null>)?.[k] ?? null} />
-                  ) : k === "rfi" && linha.position === "BB" ? (
-                    // A BB nao abre pote. "n/a" e nao "—": traco e amostra baixa, isto e regra.
+                  SEM_CHART_NA_BB.has(k) && linha.position === "BB" ? (
+                    // A BB nao abre pote: nem RFI nem fold ao 3-bet do open. "n/a" e nao "—":
+                    // traco e amostra baixa, isto e regra.
                     <Tooltip key={k}>
                       <TooltipTrigger asChild>
-                        <span className="inline-block min-h-[20px] cursor-default font-mono text-[9px] leading-[11px] text-muted-foreground/40">n/a</span>
+                        <span className="inline-block min-h-[30px] cursor-default font-mono text-[10px] leading-[13px] text-muted-foreground/40">n/a</span>
                       </TooltipTrigger>
                       <TooltipContent side="top" className="max-w-[200px] p-2 text-[11px]">{t("posProfile.rfiNaBB")}</TooltipContent>
                     </Tooltip>
+                  ) : linha.stats[k] ? (
+                    <Celula key={k} chave={k} cel={linha.stats[k]} posicao={linha.position}
+                            maos={linha.hands} stack={stack}
+                            ancora={(geral as unknown as Record<string, number | null>)?.[k] ?? null} />
                   ) : (
-                    <span key={k} className="min-h-[20px] font-mono text-[11px] leading-none text-muted-foreground/25">—</span>
+                    <span key={k} className="min-h-[30px] font-mono text-[13px] leading-none text-muted-foreground/25">—</span>
                   )
                 )}
               </div>
@@ -407,7 +419,7 @@ export function V2PositionProfileCard({
                     destaque
                   />
                 ) : (
-                  <span key={k} className="min-h-[20px] font-mono text-[11px] leading-none text-muted-foreground/25">—</span>
+                  <span key={k} className="min-h-[30px] font-mono text-[13px] leading-none text-muted-foreground/25">—</span>
                 )
               )}
             </div>

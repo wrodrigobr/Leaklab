@@ -2390,15 +2390,33 @@ GRUPOS_TARDE = ('CO', 'BTN')
 #
 # Ordem = a do `PlayerStatsCard`, para os dois cards lerem igual. `test_grade_por_posicao`
 # varre: todo stat numérico do HUD principal tem coluna aqui e tem corte declarado.
+#
+# ── Só o que tem CHART (06/09, fase 2) ──────────────────────────────────────────────────
+# Depois de ver as 12 colunas com uma régua só, o dono perguntou se não ficava mais limpo
+# mostrar só o que tem referência dos charts. Fica: o bloco vira "você contra o solver, por
+# assento", e coluna entra quando existe carta para ela. O resto do HUD continua no HUD, onde
+# a régua do jogo inteiro vale. `_FORA_DA_GRADE_SEM_CHART` declara cada stat que ficou de fora
+# e por quê; `test_grade_por_posicao` exige que todo stat do HUD esteja num dos dois lados.
+# VPIP e PFR voltaram como CONTEXTO, sem régua (06/09, depois de o dono perguntar "onde está o
+# VPIP"): quem abre 51% no BTN com VPIP 25 é outra história de quem abre 51% com VPIP 45. O
+# front desenha régua só na célula que traz `ref`; estas duas nunca trazem.
 _GRADE_SEMPRE = ('vpip', 'pfr', 'rfi')                # min 100 mãos
-_GRADE_COM_VOLUME = ('af', 'cbet_pct', 'fold_to_flop_bet', 'bb_defense', 'steal_pct',
-                     'open_limp_pct', 'fold_to_3bet', 'wtsd', 'three_bet', 'w_at_sd')
+_GRADE_COM_VOLUME = ('three_bet', 'fold_to_3bet_open')   # min 750 (a régua do produto)
+_FORA_DA_GRADE_SEM_CHART = {
+    'fold_to_3bet': 'PT4 conta 3-bet a frio; só o abridor tem carta -> a grade usa fold_to_3bet_open',
+    'af': 'postflop: sem referência por assento', 'cbet_pct': 'postflop: sem referência por assento',
+    'fold_to_flop_bet': 'postflop: sem referência por assento', 'wtsd': 'postflop: sem referência por assento',
+    'w_at_sd': 'postflop: sem referência por assento', 'bb_defense': 'só BB; a régua do HUD é do jogo inteiro',
+    'steal_pct': 'é o RFI de BTN/CO/SB; a grade já mostra RFI por assento',
+    'open_limp_pct': 'sem carta de limp fora do SB',
+}
 
 # Corte de amostra dos stats que o HUD mostra mas `STAT_REFERENCES` não classifica (não têm
 # régua MTT no produto). 500 mãos: a mesma classe de AF/C-Bet/Steal — postflop ou com
 # denominador restrito a um assento — e uma disciplina só de corte (ver acima).
 _GRADE_MIN_SEM_REFERENCIA = {'fold_to_flop_bet': 500, 'bb_defense': 500, 'open_limp_pct': 500,
-                             'rfi': 100}   # preflop, como VPIP/PFR; a regua vem do chart, por assento
+                             'rfi': 100,             # preflop, como VPIP/PFR; a régua vem do chart
+                             'fold_to_3bet_open': 750}  # o mesmo corte do fold_to_3bet do produto
 
 
 def minimo_da_grade(chave: str):
@@ -2447,7 +2465,15 @@ def get_player_stats_by_position(user_id: int, days: int = 90,
     ganhou `stack_band`: escolhida a faixa, números E referência são daquela profundidade.
     VPIP/PFR e postflop seguem sem régua: não há referência por assento defensável.
     """
-    from leaklab.preflop_gto_ranges import referencia_rfi_por_assento
+    from leaklab.preflop_gto_ranges import (referencia_3bet_por_assento, referencia_fold3bet_por_assento,
+                                            referencia_rfi_por_assento)
+    # coluna -> (tipo de oportunidade, função de referência). Um lugar só; a célula ganha `ref`
+    # quando o chart fala pelo conjunto que o stat mediu.
+    referencias = {
+        'rfi':               ('rfi', lambda pos, ops: referencia_rfi_por_assento(pos, [s for _, s in ops])),
+        'three_bet':         ('3bet', referencia_3bet_por_assento),
+        'fold_to_3bet_open': ('fold_to_3bet_open', referencia_fold3bet_por_assento),
+    }
 
     linhas = []
     for pos in POSICOES_NA_ORDEM:
@@ -2469,11 +2495,11 @@ def get_player_stats_by_position(user_id: int, days: int = 90,
                 'value': valor,
                 'band': 'low_sample' if maos < minimo else 'ok',
             }
-        if 'rfi' in celula['stats']:
-            ref = referencia_rfi_por_assento(pos, _stacks_das_oportunidades_de_rfi(
-                user_id, days, last_n, pos, stack_band))
-            if ref:
-                celula['stats']['rfi']['ref'] = ref
+        for chave, (tipo, funcao) in referencias.items():
+            if chave in celula['stats']:
+                ref = funcao(pos, _oportunidades_do_assento(user_id, days, last_n, pos, stack_band, tipo))
+                if ref:
+                    celula['stats'][chave]['ref'] = ref
         linhas.append(celula)
 
     total = sum(l['hands'] for l in linhas)
@@ -2488,19 +2514,28 @@ def get_player_stats_by_position(user_id: int, days: int = 90,
     }
 
 
-def _stacks_das_oportunidades_de_rfi(user_id, days, last_n, position, stack_band):
-    """Stack efetivo de cada oportunidade de RFI do assento: o insumo da referência.
-    O MESMO WHERE do stat (`_SQL_POTE_INTACTO`), senão a régua mediria outro conjunto."""
+# O WHERE de cada oportunidade, UMA vez: o stat (em `get_player_stats`) e a referência (aqui)
+# têm de medir o MESMO conjunto, senão a régua fala de outra coisa.
+_SQL_OPORTUNIDADE = {
+    'rfi':               "d.position <> 'BB' AND " + _SQL_POTE_INTACTO,
+    '3bet':              _SQL_ENFRENTA_OPEN,
+    'fold_to_3bet_open': _SQL_RAISES_ANTES + " = 2 AND COALESCE(d.hero_was_aggressor, 0) <> 0",
+}
+
+
+def _oportunidades_do_assento(user_id, days, last_n, position, stack_band, tipo):
+    """[(vs_position, effective_stack_bb)] de cada oportunidade de `tipo` do assento: o insumo
+    da referência do chart. `vs_position` é o abridor (3-bet) ou quem deu o 3-bet (fold)."""
     tf, tp = _filtro_do_hud(user_id, days, last_n, position, stack_band)
     conn = get_conn()
     try:
         rows = conn.execute(_adapt(f"""
-            SELECT d.effective_stack_bb
+            SELECT d.vs_position, d.effective_stack_bb
             FROM decisions d
             JOIN tournaments t ON t.id = d.tournament_id
-            WHERE {tf} AND d.street = 'preflop' AND d.position <> 'BB' AND {_SQL_POTE_INTACTO}
+            WHERE {tf} AND d.street = 'preflop' AND {_SQL_OPORTUNIDADE[tipo]}
         """), tp).fetchall()
-        return [r[0] for r in rows]
+        return [(r[0], r[1]) for r in rows]
     finally:
         conn.close()
 
@@ -2713,8 +2748,20 @@ def get_player_stats(user_id: int, days: int = 90, last_n: int | None = None,
             FROM decisions d
             JOIN tournaments t ON t.id = d.tournament_id
             WHERE {tf}
-              AND d.street = 'preflop' AND d.position <> 'BB'
-              AND {_SQL_POTE_INTACTO}
+              AND d.street = 'preflop' AND {_SQL_OPORTUNIDADE['rfi']}
+        """), tp).fetchone()
+
+        # ── Fold to 3-Bet do OPEN: o jogador abriu e levou 3-bet (06/09, fase 2) ─────────
+        # O `fold_to_3bet` acima e o do PT4 e conta 3-bet a frio (BB enfrentando open + 3-bet
+        # sem ter agido). So o ABRIDOR tem carta (`vs_3bet`), entao a grade por assento mede
+        # este conjunto, o mesmo da referencia. No acervo de dev, 37% das oportunidades.
+        f3bo_row = conn.execute(_adapt(f"""
+            SELECT
+                COUNT(*) AS n,
+                SUM(CASE WHEN d.action_taken = 'fold' THEN 1 ELSE 0 END) AS folds
+            FROM decisions d
+            JOIN tournaments t ON t.id = d.tournament_id
+            WHERE {tf} AND d.street = 'preflop' AND {_SQL_OPORTUNIDADE['fold_to_3bet_open']}
         """), tp).fetchone()
 
         # ── Open Limp%: preflop calls without a raise in front (non-BB) ────────
@@ -2769,6 +2816,9 @@ def get_player_stats(user_id: int, days: int = 90, last_n: int | None = None,
         rf          = dict(rfi_row) if rfi_row else {}
         rfi_n       = rf.get('rfi_n', 0) or 0
         rfi_t       = rf.get('rfi_total', 0) or 0
+        fo          = dict(f3bo_row) if f3bo_row else {}
+        f3bo_n      = fo.get('folds', 0) or 0
+        f3bo_t      = fo.get('n', 0) or 0
 
         return {
             'total_hands':      total,
@@ -2786,6 +2836,7 @@ def get_player_stats(user_id: int, days: int = 90, last_n: int | None = None,
             'steal_pct':        round(steal_n / steal_t * 100, 1)     if steal_t > 0     else None,
             'open_limp_pct':    round(limp_n / limp_t * 100, 1)       if limp_t > 0      else None,
             'rfi':              round(rfi_n / rfi_t * 100, 1)         if rfi_t > 0       else None,
+            'fold_to_3bet_open': round(f3bo_n / f3bo_t * 100, 1)      if f3bo_t > 0      else None,
         }
     finally:
         conn.close()

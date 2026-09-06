@@ -5,6 +5,65 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## Perfil por posicao: redesenho do card, VPIP/PFR de volta como contexto, filtro de stack consertado (06/09, LOCAL)
+
+O dono olhou a grade de 3 colunas: *"terrivelmente ruim de olhar. Onde esta o VPIP? Por que
+nao usar mais espaco?"*. Avaliacao, na ordem do dano: regua de 4px x 96px ilegivel e metade
+do card vazia (um `1fr` de sobra na grade); regua desenhada em celula sem valor (parecia
+quebrada); numero vermelho + ponto vermelho + trecho vermelho (uma informacao, tres tintas);
+BB com "100" sem regua ao lado de "n/a"; legenda de duas linhas cortada na borda. E o corte
+"so o que tem chart" tirou VPIP e PFR, que sao o CONTEXTO do RFI: abrir 51% no BTN com VPIP
+25 e outra historia de abrir 51% com VPIP 45.
+
+**O que mudou:** 5 colunas na largura toda (VPIP e PFR como numero, mais leves; RFI, 3-Bet e
+Fold 3-Bet com regua de 6px na largura da coluna e ponto de 12px); numero branco e maior, a
+regua carrega a cor; amostra baixa e so "—", sem regua; a BB e "n/a" em toda coluna que
+depende de abrir (RFI e Fold 3-Bet do open); legenda de uma linha.
+
+**Filtro de stack "nao muda os indicadores".** Medido: o backend de dev honra `?stack=`
+(6.029 -> 1.629 / 1.126 / 3.358 maos), e o log tinha um 400 mudo que o front engolia. Dois
+defeitos no front: voltar para "todos" nao refazia a grade (numeros presos na ultima faixa),
+e o carregamento geral (upload, evento de refresh) buscava a grade SEM stack e sobrescrevia a
+filtrada. Agora o efeito geral busca na faixa em vigor (ref, nao dep) e "todos" refaz. O 400
+passou a devolver e logar o valor recebido; o front loga no console em vez de engolir.
+
+---
+
+## AY-15 fase 2: a grade vira "voce contra o solver, por assento" (06/09, LOCAL)
+
+Depois de ver as 12 colunas com uma regua so, o dono perguntou se nao ficava mais limpo
+mostrar so o que tem referencia dos charts. Fica. A grade tem 3 colunas: **RFI**, **3-Bet**
+e **Fold 3-Bet do open**, cada uma com a faixa do chart; o resto do HUD continua no HUD, onde
+a regua do jogo inteiro vale. `_FORA_DA_GRADE_SEM_CHART` declara cada stat que ficou de fora e
+por que, e `test_grade_por_posicao` exige que todo stat do HUD esteja num dos dois lados.
+
+**Fold 3-Bet e o do OPEN, nao o do PT4.** Medido no acervo de dev: das 544 vezes que o
+jogador enfrentou 3-bet, so 202 (37%) foram depois de ele abrir; o resto e 3-bet a frio
+(BB/SB sem ter agido), e so o abridor tem carta (`vs_3bet`). Comparar o stat do PT4 com uma
+referencia de 37% do conjunto seria regua sobre outro conjunto. Entao a grade mede
+`fold_to_3bet_open` com o MESMO where da referencia; o `fold_to_3bet` do PT4 fica no HUD.
+
+**A faixa virou percentil.** A regra "chaves com >= 10% do peso" quase nunca disparava com 9
+profundidades x 7 oponentes, e o fallback juntava contextos incompativeis (a 10bb o fold ao
+3-bet jam e 100%, a 30bb e 45%): o UTG saia com 40-100. Agora a faixa e o P20-P80 ponderado
+dos valores do chart das oportunidades do jogador ("onde o solver poe 60% das suas
+oportunidades") + folga, uma regra para as tres colunas. **A faixa de 3-Bet e Fold 3-Bet
+continua larga em "todos"** (BTN 3-bet 2,4-14,2; HJ fold 28,7-98,3), e isso e verdade, nao
+defeito: o solver varia muito com quem abriu e com o stack. O tooltip mostra os 3 contextos
+de mais peso; o filtro de stack e o que estreita; uma 2a dimensao ("vs quem") fica registrada.
+
+**Bytecode envenenado no harness de mutacao.** `shutil.copy` + escrita da mutacao no mesmo
+segundo deixam o `.pyc` da versao MUTADA com o mtime do fonte restaurado; o Python carrega o
+pyc velho e `inspect` mostra o fonte certo. Um teste "falhava no codigo restaurado" ate apagar
+o cache. Harness passa a rodar com `PYTHONDONTWRITEBYTECODE=1`.
+
+**Guardas.** `test_rfi_por_assento` (9): fold do open x a frio, 3-bet ponderado por quem
+abriu, percentil (a cauda nao alarga), grade so com colunas com `ref`. 5 mutacoes, 5
+acusadas. Card: 3 reguas em escalas proprias, verbo por stat no tooltip, cobertura so quando
+parcial (2 testes). P7 declarou `band`/`coverage`.
+
+---
+
 ## AY-15 fase 1: RFI por assento com a regua do CHART, e filtro de stack (06/09, LOCAL)
 
 Ainda nao deployado: o dono pediu implementar e provar localmente antes. Frontend e backend

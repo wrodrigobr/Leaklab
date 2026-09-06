@@ -901,8 +901,8 @@
   },
   "posProfile": {
     "title": "Profile by position",
-    "tooltip": "How you play in EACH seat: your number in each position, with the sample next to it. The grid describes without judging. The Total row is the main HUD number, weighted by each seat volume.",
-    "legend": "Your number in each seat. Green band = what the solver opens from that seat at your stack depths; color only when the value leaves it. The Total row is the main HUD, weighted by each seat's volume.",
+    "tooltip": "How you play in EACH seat, on the three preflop decisions that have a chart: opening (RFI), 3-betting and folding to a 3-bet after opening. The green band is the solver at your stack depths. The other HUD stats stay in the HUD: there is no per-seat reference for them.",
+    "legend": "You against the solver, seat by seat. Green band = the solver at your stack depths; VPIP and PFR are context, no band.",
     "hands": "{{n}} hands",
     "handsShort": "hands",
     "seat": "seat",
@@ -964,10 +964,27 @@
     "solverBand": "Solver at {{band}}",
     "charts": "Charts",
     "chartsOthers": "other {{pct}}%",
-    "tolerance": "band with {{pp}} points of slack: the solver mixes, nobody hits the exact frequency",
-    "aboveSolver": "You open {{delta}} points more than the solver from here.",
-    "belowSolver": "You open {{delta}} points less than the solver from here.",
     "inSolver": "Within what the solver does from here.",
-    "rfiNaBB": "The BB never opens: if everyone folds, the hand is over."
+    "rfiNaBB": "The BB never opens: if everyone folds, the hand is over. So it has no RFI and no fold to 3-bet after opening.",
+    "band": "band where the solver puts 60% of your opportunities, with {{pp}} points of slack",
+    "coverage": "{{pct}}% of the opportunities have a chart; the band speaks for those",
+    "vsSolver": {
+      "rfi": {
+        "above": "You open {{delta}} points more than the solver from here.",
+        "below": "You open {{delta}} points less than the solver from here."
+      },
+      "threeBet": {
+        "above": "You 3-bet {{delta}} points more than the solver from here.",
+        "below": "You 3-bet {{delta}} points less than the solver from here."
+      },
+      "fold3bet": {
+        "above": "You fold to 3-bets {{delta}} points more than the solver from here.",
+        "below": "You fold to 3-bets {{delta}} points less than the solver from here."
+      },
+      "generic": {
+        "above": "{{delta}} points above the solver from here.",
+        "below": "{{delta}} points below the solver from here."
+      }
+    }
   }
 }

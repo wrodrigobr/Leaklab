@@ -203,8 +203,6 @@ def balde_rfi(stack_bb: float) -> str:
 #: Folga em pontos percentuais em volta da faixa dos charts. O solver mistura (abre AJo em
 #: 60% das vezes); ninguem bate a frequencia exata. Declarada aqui para o tooltip dizer.
 FOLGA_DA_REFERENCIA_PP = 3.0
-#: Um balde so entra na faixa se responde por pelo menos esta fracao das maos do assento.
-PESO_MINIMO_DO_BALDE = 0.10
 
 
 def rfi_pct_do_chart(pos: str, balde: str) -> Optional[float]:
@@ -221,35 +219,112 @@ def rfi_pct_do_chart(pos: str, balde: str) -> Optional[float]:
     return round((float(r.get('raise_pct') or 0) + float(r.get('allin_pct') or 0)) * 100, 1)
 
 
+def tresbet_pct_do_chart(hero: str, opener: str, balde: str) -> Optional[float]:
+    """% de combos com que `hero` da 3-BET (raise + all-in) contra a abertura de `opener`, na
+    carta de `balde` (secao `vs_RFI`). None quando o par nao tem carta."""
+    bk = (_load().get('ranges') or {}).get(balde) or {}
+    r = ((bk.get('vs_RFI') or {}).get(_norm_pos(opener)) or {}).get(_norm_pos(hero))
+    if not r:
+        return None
+    return round((float(r.get('raise_pct') or 0) + float(r.get('allin_pct') or 0)) * 100, 1)
+
+
+def fold3bet_pct_do_chart(hero: str, tresbettor: str, balde: str) -> Optional[float]:
+    """% de combos com que `hero`, que ABRIU, FOLDA ao 3-bet de `tresbettor`, na carta de
+    `balde` (secao `vs_3bet`). None quando o par nao tem carta."""
+    bk = (_load().get('ranges') or {}).get(balde) or {}
+    r = ((bk.get('vs_3bet') or {}).get(_norm_pos(hero)) or {}).get(_norm_pos(tresbettor))
+    if not r:
+        return None
+    return round(float(r.get('fold_pct') or 0) * 100, 1)
+
+
+def _faixa_dos_charts(oportunidades) -> Optional[dict]:
+    """A regra da faixa, uma vez so, para RFI, 3-Bet e Fold 3-Bet.
+
+    `oportunidades` = [(chave, valor_do_chart | None)], uma por oportunidade do jogador. A
+    faixa e o intervalo entre os percentis ponderados P20 e P80 dos valores do chart das
+    oportunidades COM carta ("onde o solver poe 60% das suas oportunidades"), + folga.
+
+    Por que percentil e nao [menor, maior] das chaves relevantes: a 1a versao pegava as
+    chaves com >= 10% do peso, e com 9 profundidades x 7 oponentes (3-bet, fold) quase
+    nenhuma chegava la; o fallback juntava contextos incompativeis (a 10bb o fold ao 3-bet
+    e 100%, a 30bb e 45%) e o UTG saia com 40-100. O percentil deixa a cauda de fora sem
+    inventar corte por chave, e a faixa ainda fica larga quando o jogador de fato vive em
+    contextos diferentes: ai o filtro de stack e o que estreita, e e para isso que ele existe.
+
+    Devolve tambem `pesos` (% das oportunidades por chave, para o tooltip) e `cobertura` (%
+    das oportunidades com carta: o tooltip diz quando a referencia fala por parte do conjunto).
+    """
+    from collections import Counter
+    total = len(oportunidades)
+    com_carta = sorted(((v, k) for k, v in oportunidades if v is not None), key=lambda kv: kv[0])
+    if not com_carta:
+        return None
+    n = len(com_carta)
+
+    def percentil(p):
+        # posicao fracionaria na lista ordenada, interpolada entre vizinhos
+        pos = p * (n - 1)
+        lo, hi = int(pos), min(int(pos) + 1, n - 1)
+        return com_carta[lo][0] + (com_carta[hi][0] - com_carta[lo][0]) * (pos - lo)
+
+    cont = Counter(k for _, k in com_carta)
+    pesos = sorted(cont.items(), key=lambda kv: -kv[1])
+    return {
+        'lo': round(max(0.0, percentil(0.20) - FOLGA_DA_REFERENCIA_PP), 1),
+        'hi': round(min(100.0, percentil(0.80) + FOLGA_DA_REFERENCIA_PP), 1),
+        'folga': FOLGA_DA_REFERENCIA_PP,
+        'pesos': {k: round(c * 100 / n) for k, c in pesos},
+        'cobertura': round(n * 100.0 / total) if total else 0,
+    }
+
+
 def referencia_rfi_por_assento(pos: str, stacks_bb) -> Optional[dict]:
     """Faixa de referencia de RFI de um assento, a partir dos stacks das OPORTUNIDADES do
     jogador ali (06/09, AY-15).
 
     O solver abre 55% no BTN a 100bb e 38% a 14bb: faixa fixa acusaria quem joga certo. Entao
-    cada stack vai a carta da propria profundidade (`balde_rfi`, a mesma porta do veredito), os
-    baldes que pesam >= 10% das maos definem a faixa [menor chart, maior chart], e a faixa
-    ganha `FOLGA_DA_REFERENCIA_PP` de cada lado. Serve igual para "todos" (os stacks do assento
-    inteiro) e para uma faixa de stack escolhida (so os stacks dela): uma definicao, nao duas.
-
-    Devolve {'lo', 'hi', 'folga', 'pesos': {balde: % das maos}} ou None sem stack/sem carta.
+    cada stack vai a carta da propria profundidade (`balde_rfi`, a mesma porta do veredito) e
+    a faixa sai de `_faixa_dos_charts`. Serve igual para "todos" (os stacks do assento inteiro)
+    e para uma faixa de stack escolhida (so os stacks dela): uma definicao, nao duas.
     """
     stacks = [float(s) for s in (stacks_bb or []) if s is not None and float(s) > 0]
     if not stacks:
         return None
-    from collections import Counter
-    cont = Counter(balde_rfi(s) for s in stacks)
-    total = sum(cont.values())
-    pesos = {b: n / total for b, n in cont.items()}
-    relevantes = [b for b, w in pesos.items() if w >= PESO_MINIMO_DO_BALDE] or list(pesos)
-    valores = [v for v in (rfi_pct_do_chart(pos, b) for b in relevantes) if v is not None]
-    if not valores:
-        return None
-    return {
-        'lo': round(max(0.0, min(valores) - FOLGA_DA_REFERENCIA_PP), 1),
-        'hi': round(min(100.0, max(valores) + FOLGA_DA_REFERENCIA_PP), 1),
-        'folga': FOLGA_DA_REFERENCIA_PP,
-        'pesos': {b: round(w * 100) for b, w in sorted(pesos.items(), key=lambda kv: -kv[1])},
-    }
+    ops = []
+    for s in stacks:
+        balde = balde_rfi(s)
+        ops.append((balde, rfi_pct_do_chart(pos, balde)))
+    return _faixa_dos_charts(ops)
+
+
+def referencia_3bet_por_assento(pos: str, oportunidades) -> Optional[dict]:
+    """Faixa de referencia de 3-BET de um assento. `oportunidades` = [(abridor, stack_bb)] de
+    cada vez que o jogador enfrentou UM open ali. A chave e `<balde> vs <abridor>`: o 3-bet da
+    BB contra UTG nao e o mesmo que contra BTN, entao a referencia e ponderada por quem abriu
+    alem do stack. Baldes de `_stack_bucket` (a secao vs_RFI nao tem carta rasa)."""
+    ops = []
+    for abridor, s in (oportunidades or []):
+        if not abridor or s is None or float(s) <= 0:
+            continue
+        balde = _stack_bucket(float(s))
+        ops.append(('%s vs %s' % (balde, _norm_pos(abridor)), tresbet_pct_do_chart(pos, abridor, balde)))
+    return _faixa_dos_charts(ops) if ops else None
+
+
+def referencia_fold3bet_por_assento(pos: str, oportunidades) -> Optional[dict]:
+    """Faixa de referencia de FOLD ao 3-bet quando o jogador ABRIU do assento. `oportunidades`
+    = [(quem_deu_3bet, stack_bb)]. So o abridor tem carta (`vs_3bet`); por isso a grade mede
+    `fold_to_3bet_open`, o mesmo conjunto, e nao o `fold_to_3bet` do PT4 (que inclui 3-bet a
+    frio, 63% das oportunidades no acervo de dev)."""
+    ops = []
+    for tresbettor, s in (oportunidades or []):
+        if not tresbettor or s is None or float(s) <= 0:
+            continue
+        balde = _stack_bucket(float(s))
+        ops.append(('%s vs %s' % (balde, _norm_pos(tresbettor)), fold3bet_pct_do_chart(pos, tresbettor, balde)))
+    return _faixa_dos_charts(ops) if ops else None
 
 
 def balde_rfi_ou_none(stack_bb: float) -> Optional[str]:

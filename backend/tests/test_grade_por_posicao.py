@@ -40,8 +40,8 @@ os.environ.pop('DATABASE_URL', None)
 from database.schema import get_conn, init_db                          # noqa: E402
 import database.repositories as repo                                   # noqa: E402
 from database.repositories import (                                    # noqa: E402
-    POSICOES_NA_ORDEM, _GRADE_COM_VOLUME, _GRADE_SEMPRE, _adapt, get_player_stats,
-    get_player_stats_by_position, minimo_da_grade, rotulos_do_assento,
+    POSICOES_NA_ORDEM, _FORA_DA_GRADE_SEM_CHART, _GRADE_COM_VOLUME, _GRADE_SEMPRE, _adapt,
+    get_player_stats, get_player_stats_by_position, minimo_da_grade, rotulos_do_assento,
 )
 from leaklab.gto_utils import _POSITION_NORM, normalize_position       # noqa: E402
 
@@ -163,41 +163,45 @@ def test_o_gate_de_amostra_SOBREVIVE():
 
 
 
-def test_a_grade_tem_TODOS_os_indicadores_do_hud_principal_com_corte_declarado():
-    """O dono viu 5 colunas e pediu todos (06/09). A grade emitia 9 dos 12: os 3 sem entrada
-    em `STAT_REFERENCES` caiam calados no `classify_stat -> None`. Varredura N+1: todo stat
-    numerico que o HUD principal devolve tem coluna na grade E tem corte de amostra; um stat
-    novo no HUD sem coluna aqui acusa, e coluna sem corte tambem.
+def test_todo_stat_do_hud_esta_na_grade_OU_declarado_fora_com_motivo():
+    """A grade so tem colunas com chart (decisao do dono, 06/09, fase 2). Mas um stat novo no
+    HUD nao pode simplesmente nao aparecer: ou entra na grade (com corte declarado) ou entra
+    em `_FORA_DA_GRADE_SEM_CHART` com o motivo. Varredura N+1 nos dois sentidos.
     """
     uid = _semeia(['BTN'])
     geral = get_player_stats(uid, days=3650, last_n=0)
     stats_do_hud = sorted(k for k in geral if k not in ('total_hands', 'three_bet_opp'))
     colunas = _GRADE_SEMPRE + _GRADE_COM_VOLUME
-    faltam = [k for k in stats_do_hud if k not in colunas]
-    assert not faltam, 'stat do HUD sem coluna na grade: %s' % faltam
-    sobram = [k for k in colunas if k not in stats_do_hud]
-    assert not sobram, 'coluna da grade que o HUD nao devolve: %s' % sobram
+    sem_lado = [k for k in stats_do_hud if k not in colunas and k not in _FORA_DA_GRADE_SEM_CHART]
+    assert not sem_lado, 'stat do HUD nem na grade nem declarado fora: %s' % sem_lado
+    nos_dois = [k for k in colunas if k in _FORA_DA_GRADE_SEM_CHART]
+    assert not nos_dois, 'coluna da grade tambem declarada fora: %s' % nos_dois
+    fantasmas = [k for k in list(colunas) + list(_FORA_DA_GRADE_SEM_CHART) if k not in stats_do_hud]
+    assert not fantasmas, 'declarado mas o HUD nao devolve: %s' % fantasmas
     sem_corte = [k for k in colunas if not minimo_da_grade(k)]
     assert not sem_corte, 'coluna sem corte de amostra declarado: %s' % sem_corte
+    for k, motivo in _FORA_DA_GRADE_SEM_CHART.items():
+        assert motivo and len(motivo) > 10, 'motivo vazio para %s' % k
 
 
 def test_o_corte_vem_da_regua_quando_existe_e_do_declarado_quando_nao():
-    assert minimo_da_grade('vpip') == 100          # STAT_REFERENCES
-    assert minimo_da_grade('w_at_sd') == 2000      # STAT_REFERENCES
-    assert minimo_da_grade('bb_defense') == 500    # sem regua no produto: corte declarado
+    assert minimo_da_grade('three_bet') == 750        # STAT_REFERENCES
+    assert minimo_da_grade('rfi') == 100              # sem regua no produto: corte declarado
+    assert minimo_da_grade('fold_to_3bet_open') == 750
     assert minimo_da_grade('nao_existe') is None
 
 
 def test_a_celula_respeita_o_corte():
-    """120 maos no BTN: VPIP (corte 100) sai `ok`; qualquer stat de corte 500 sai `low_sample`."""
+    """120 maos no BTN: RFI (corte 100) sai `ok`; 3-bet (corte 750) nao aparece ou sai `low_sample`."""
     uid = _semeia(['BTN'])
     grade = get_player_stats_by_position(uid, days=3650, last_n=0)
     btn = next(l for l in grade['positions'] if l['position'] == 'BTN')
-    assert btn['stats']['vpip']['band'] == 'ok', btn['stats']
+    assert btn['stats']['rfi']['band'] == 'ok', btn['stats']
     baixas = {k for k, c in btn['stats'].items() if c['band'] == 'low_sample'}
     altas = {k for k, c in btn['stats'].items() if c['band'] == 'ok'}
     assert all(minimo_da_grade(k) > 120 for k in baixas), baixas
     assert all(minimo_da_grade(k) <= 120 for k in altas), altas
+
 
 if __name__ == '__main__':
     falhas = 0
