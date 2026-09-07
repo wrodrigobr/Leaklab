@@ -247,7 +247,9 @@
     "genericError": "Could not process ({{raw}}). Check whether the server is up to date.",
     "errorFallback": "error",
     "gtoNotice": "The hands are already in your history. The <1>GTO analysis</1> runs in the background and can take a few minutes on a large tournament. You can close this, tournaments show the <2>Analysing</2> badge until it finishes.",
-    "analiseNaFila": "Tournament imported. GTO analysis queued: Free runs 3 at a time, yours starts when a slot opens."
+    "analiseNaFila": "Tournament imported. GTO analysis queued: Free runs 3 at a time, yours starts when a slot opens.",
+    "rateLimit": "You went over the limit of {{limite}} tournaments per hour. The accepted files are already in your history; try again in {{count}} minute.",
+    "rateLimit_plural": "You went over the limit of {{limite}} tournaments per hour. The accepted files are already in your history; try again in {{count}} minutes."
   },
   "suporte": {
     "semMensagens": "No messages sent yet."

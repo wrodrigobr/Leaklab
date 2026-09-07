@@ -817,14 +817,28 @@ def unlink_coach():
 
 # ── Análise + persistência ────────────────────────────────────────────────────
 
+#: Uploads por hora, por USUARIO (07/09). Era "30 por hora por IP": um fundador subindo o mes
+#: inteiro de historico levou 712 recusas num dia (120 aceitas), e em 03/09 o lote do Rullian
+#: tinha perdido 189 de 280 pelo mesmo teto. Subir muitos torneios de uma vez e o uso que o
+#: produto mais quer, nao abuso; o solve ja espera a vez na fila por plano (gto_analysis_waitlist),
+#: e a cota mensal por plano continua sendo o freio real. 300 e anti-bot, nao anti-jogador.
+LIMITE_DE_UPLOADS_POR_HORA = 300
+
+
+def _chave_do_upload():
+    """Por usuario quando ha token (dois jogadores na mesma rede nao dividem o teto); por IP
+    so onde nao ha usuario."""
+    uid = getattr(g, 'user_id', None)
+    return 'user:%s' % uid if uid else get_remote_address()
+
+
 @app.route('/analyze', methods=['POST'])
 @require_auth
 # Import de LOTE (scripts/importar_lote_pt4.py): não é abuso, é o próprio processo mandando
 # centenas de requests em sequência via test_client (sem rede real). Isento pela MESMA env
 # que isenta quota e priorização (LEAKLAB_IMPORT_LOTE) — vale só no processo do script.
-# 03/09: o lote do Rullian bateu neste limite sem isto — 91 de 280 torneios entraram, 189
-# falharam com 429. Descoberto pelo PLACAR do script, não escondido.
-@limiter.limit("30 per hour", exempt_when=lambda: bool(os.environ.get('LEAKLAB_IMPORT_LOTE')))
+@limiter.limit(lambda: "%d per hour" % LIMITE_DE_UPLOADS_POR_HORA, key_func=_chave_do_upload,
+               exempt_when=lambda: bool(os.environ.get('LEAKLAB_IMPORT_LOTE')))
 def analyze():
     try:
         return _analyze_impl()
@@ -11751,6 +11765,29 @@ def internal_error(e):
 
 @app.errorhandler(413)
 def too_large(_): return jsonify({'error': 'Arquivo muito grande (limite: 5MB)'}), 413
+
+
+@app.errorhandler(429)
+def limite_excedido(_):
+    """O 429 do limitador vinha como TEXTO ("429 Too Many Requests: 30 per 1 hour"), e a fila
+    de upload mostrava "Erro do servidor (HTTP 429)" (dono, 07/09: "a mensagem tem que ser
+    honesta"). Aqui vira JSON com o que aconteceu e quanto esperar; o front compoe a frase no
+    idioma do jogador a partir de `code`, `limite` e `retry_after`."""
+    import math, time
+    atual = limiter.current_limit
+    segundos = max(1, int(math.ceil((atual.reset_at - time.time()))) if atual and atual.reset_at else 60)
+    minutos = max(1, int(math.ceil(segundos / 60.0)))
+    if request.path == '/analyze':
+        corpo = {'code': 'upload_rate_limit', 'limite': LIMITE_DE_UPLOADS_POR_HORA, 'retry_after': segundos,
+                 'error': 'Você ultrapassou o limite de %d torneios por hora. Tente de novo em %d minuto%s.'
+                          % (LIMITE_DE_UPLOADS_POR_HORA, minutos, '' if minutos == 1 else 's')}
+    else:
+        corpo = {'code': 'rate_limit', 'retry_after': segundos,
+                 'error': 'Muitas requisições. Tente de novo em %d minuto%s.' % (minutos, '' if minutos == 1 else 's')}
+    resp = jsonify(corpo)
+    resp.status_code = 429
+    resp.headers['Retry-After'] = str(segundos)
+    return resp
 
 @app.errorhandler(405)
 def method_not_allowed(_): return jsonify({'error': 'Método não permitido'}), 405
