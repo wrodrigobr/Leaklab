@@ -402,6 +402,44 @@ def test_a_grade_em_uma_consulta_da_IGUAL_ao_hud_assento_a_assento_e_faixa_a_fai
                 v = linha['stats'].get(k, {}).get('value')
                 assert v == h[k], (band, linha['position'], k, v, h[k])
 
+
+# ── C-Bet IP / OOP no HUD do dashboard (AY-19) ─────────────────────────────────────────
+
+def test_cbet_ip_oop_no_hud_pela_posicao_relativa_e_so_heads_up():
+    """BTN (IP contra BB) c-beta 3 em 4; SB (OOP contra BTN) c-beta 1 em 2; multiway fica fora
+    dos dois mas dentro do C-Bet geral. Mesma oportunidade do C-Bet (`_SQL_OPORTUNIDADE`)."""
+    def flop(pos, vs, acao, n_opp, hid):
+        return dict(position=pos, action_taken=acao, street='flop', hand_id=hid, facing_bet=0,
+                    hero_was_aggressor=1, vs_position=vs, n_active_opponents=n_opp)
+    maos = [flop('BTN', 'BB', 'bet', 1, 'A1'), flop('BTN', 'BB', 'bet', 1, 'A2'), flop('BTN', 'BB', 'bet', 1, 'A3'), flop('BTN', 'BB', 'check', 1, 'A4'),
+            flop('SB', 'BTN', 'bet', 1, 'B1'), flop('SB', 'BTN', 'check', 1, 'B2'),
+            flop('CO', 'BB', 'bet', 2, 'C1')]
+    uid = _semeia_flop(maos)
+    h = get_player_stats(uid, days=3650, last_n=0)
+    assert h['cbet_pct'] == round(5 / 7 * 100, 1), h['cbet_pct']          # 7 oportunidades no total
+    assert (h['cbet_ip'], h['cbet_ip_opp']) == (75.0, 4), (h['cbet_ip'], h['cbet_ip_opp'])
+    assert (h['cbet_oop'], h['cbet_oop_opp']) == (50.0, 2), (h['cbet_oop'], h['cbet_oop_opp'])
+
+
+def _semeia_flop(maos):
+    init_db()
+    conn = get_conn()
+    for t in ('decisions', 'tournaments', 'users'):
+        conn.execute('DELETE FROM %s' % t)
+    conn.commit(); conn.close()
+    uid = repo.create_user('cbet', 'cbet@t.local', 'senha12345', 'player')
+    conn = get_conn()
+    conn.execute(_adapt("INSERT INTO tournaments (id,user_id,tournament_id,site,hero,played_at,imported_at) "
+                        "VALUES (1,?,'T1','pokerstars','Hero','2026-09-01','2026-09-01')"), (uid,))
+    for m in maos:
+        conn.execute(_adapt("INSERT INTO decisions (tournament_id,hand_id,street,position,action_taken,best_action,score,label,"
+                            "facing_bet,hero_was_aggressor,vs_position,n_active_opponents,effective_stack_bb) "
+                            "VALUES (1,?,?,?,?,'bet',0.1,'standard',?,?,?,?,30)"),
+                     (m['hand_id'], m['street'], m['position'], m['action_taken'], m['facing_bet'],
+                      m['hero_was_aggressor'], m['vs_position'], m['n_active_opponents']))
+    conn.commit(); conn.close()
+    return uid
+
 if __name__ == '__main__':
     falhas = 0
     testes = [v for k, v in sorted(globals().items()) if k.startswith('test_')]

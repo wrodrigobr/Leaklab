@@ -1059,6 +1059,11 @@ export interface PlayerStatsResponse {
   pfr: number | null;
   af: number | null;
   cbet_pct: number | null;
+  /** C-Bet IP / OOP: heads-up no flop, pela posicao relativa (AY-19); amostra junto */
+  cbet_ip?: number | null;
+  cbet_oop?: number | null;
+  cbet_ip_opp?: number;
+  cbet_oop_opp?: number;
   fold_to_3bet: number | null;
   wtsd: number | null;
   three_bet: number | null;

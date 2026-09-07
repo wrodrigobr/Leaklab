@@ -2456,6 +2456,9 @@ _FORA_DA_GRADE_SEM_CHART = {
     'w_at_sd': 'postflop: sem referência por assento', 'bb_defense': 'só BB; a régua do HUD é do jogo inteiro',
     'steal_pct': 'é o RFI de BTN/CO/SB; a grade já mostra RFI por assento',
     'open_limp_pct': 'sem carta de limp fora do SB',
+    'cbet_ip': 'postflop, heads-up: sem referência por assento; vive no tooltip do C-Bet',
+    'cbet_oop': 'postflop, heads-up: sem referência por assento; vive no tooltip do C-Bet',
+    'cbet_ip_opp': 'amostra do cbet_ip, não é stat', 'cbet_oop_opp': 'amostra do cbet_oop, não é stat',
 }
 
 # Corte de amostra dos stats que o HUD mostra mas `STAT_REFERENCES` não classifica (não têm
@@ -2678,7 +2681,25 @@ _SQL_OPORTUNIDADE = {
     'fold_to_3bet':      _SQL_RAISES_ANTES + " = 2 AND COALESCE(d.hero_was_aggressor, 0) <> 0",
     # a GERAL do PT4: qualquer um enfrentando exatamente dois raises (inclui 3-bet a frio)
     'fold_to_3bet_any':  _SQL_RAISES_ANTES + " = 2",
+    # c-bet no flop: o heroi tem a INICIATIVA e a acao chega sem aposta na frente; so a 1a
+    # linha do flop da mao decide (ver o comentario do `cbet_row` em get_player_stats)
+    'cbet':              ("d.street = 'flop' AND COALESCE(d.facing_bet, 0) = 0 "
+                          "AND COALESCE(d.hero_was_aggressor, 0) <> 0 "
+                          "AND d.id = (SELECT MIN(x.id) FROM decisions x WHERE x.hand_id = d.hand_id AND x.street = 'flop')"),
 }
+
+# Ordem de acao POS-FLOP, do primeiro ao ultimo: quem esta depois do vilao age depois dele
+# (IP). Vocabulario 9-max dos charts; o assento ja vem pelo botao (`sql_assento`).
+_ORDEM_POSFLOP = ('SB', 'BB', 'UTG', 'UTG+1', 'UTG+2', 'LJ', 'HJ', 'CO', 'BTN')
+
+
+def em_posicao(hero_pos, vs_pos):
+    """True se o heroi age DEPOIS do vilao no pos-flop (in position). None se algum dos dois
+    nao esta na ordem (rotulo desconhecido)."""
+    try:
+        return _ORDEM_POSFLOP.index(hero_pos) > _ORDEM_POSFLOP.index(vs_pos)
+    except ValueError:
+        return None
 
 
 def _primeiras_decisoes_do_assento(user_id, days, last_n, position, stack_band):
@@ -2857,13 +2878,29 @@ def get_player_stats(user_id: int, days: int = 90, last_n: int | None = None,
                 SUM(CASE WHEN d.action_taken IN ('bet', {_SQL_ALLIN}) THEN 1 ELSE 0 END) AS cbet_n
             FROM decisions d
             JOIN tournaments t ON t.id = d.tournament_id
-            WHERE {tf}
-              AND d.street = 'flop'
-              AND COALESCE(d.facing_bet, 0) = 0
-              AND COALESCE(d.hero_was_aggressor, 0) <> 0
-              AND d.id = (SELECT MIN(x.id) FROM decisions x
-                           WHERE x.hand_id = d.hand_id AND x.street = 'flop')
+            WHERE {tf} AND {_SQL_OPORTUNIDADE['cbet']}
         """), tp).fetchone()
+
+        # ── C-Bet IP / OOP (07/09, AY-19, sugestao do Rullian) ───────────────────────────
+        # A MESMA oportunidade do C-Bet, separada por posicao no flop: heads-up so
+        # (`n_active_opponents = 1`); multiway fica declarado fora, porque "em posicao" contra
+        # dois vilaos nao e uma coisa so. IP = o heroi age depois do vilao (`vs_position` e o
+        # caller do open, ja pelo botao). Sem regua: nao ha chart de c-bet por posicao.
+        cbet_ip_n = cbet_ip_opp = cbet_oop_n = cbet_oop_opp = 0
+        for r in conn.execute(_adapt(f"""
+            SELECT {sql_assento()} AS pos, {sql_assento('d.vs_position')} AS vs,
+                   CASE WHEN d.action_taken IN ('bet', {_SQL_ALLIN}) THEN 1 ELSE 0 END AS apostou
+            FROM decisions d
+            JOIN tournaments t ON t.id = d.tournament_id
+            WHERE {tf} AND {_SQL_OPORTUNIDADE['cbet']} AND COALESCE(d.n_active_opponents, 0) = 1
+        """), tp).fetchall():
+            ip = em_posicao(r['pos'], r['vs'])
+            if ip is None:
+                continue
+            if ip:
+                cbet_ip_opp += 1; cbet_ip_n += r['apostou'] or 0
+            else:
+                cbet_oop_opp += 1; cbet_oop_n += r['apostou'] or 0
 
         # ── Fold to 3Bet, na definição do PokerTracker ───────────────────────
         #
@@ -3094,6 +3131,11 @@ def get_player_stats(user_id: int, days: int = 90, last_n: int | None = None,
             'open_limp_pct':    round(limp_n / limp_t * 100, 1)       if limp_t > 0      else None,
             'rfi':              round(rfi_n / rfi_t * 100, 1)         if rfi_t > 0       else None,
             'fold_to_3bet':     round(f3bo_n / f3bo_t * 100, 1)      if f3bo_t > 0      else None,
+            # C-Bet IP / OOP: heads-up no flop; a amostra vai junto para o tooltip
+            'cbet_ip':          round(cbet_ip_n / cbet_ip_opp * 100, 1)   if cbet_ip_opp > 0  else None,
+            'cbet_oop':         round(cbet_oop_n / cbet_oop_opp * 100, 1) if cbet_oop_opp > 0 else None,
+            'cbet_ip_opp':      cbet_ip_opp,
+            'cbet_oop_opp':     cbet_oop_opp,
         }
     finally:
         conn.close()

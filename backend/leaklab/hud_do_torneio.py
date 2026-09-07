@@ -34,6 +34,9 @@ _STATS = (
     # tela nao lista (AY-18, 06/09). Sem regua: a de STAT_REFERENCES e da After Raise.
     ('fold3bet_any', 'fold3bet_any', 'fold3bet_any_opp', None, 100.0),
     ('cbet',      'cbet',      'cbet_opp',     'cbet_pct',     100.0),
+    # C-Bet IP / OOP (AY-19): heads-up no flop; sem regua propria, vive no tooltip do C-Bet
+    ('cbet_ip',   'cbet_ip',   'cbet_ip_opp',  None,           100.0),
+    ('cbet_oop',  'cbet_oop',  'cbet_oop_opp', None,           100.0),
     ('foldcbet',  'foldcbet',  'foldcbet_opp', None,           100.0),
     ('wtsd',      'wtsd',      'saw_flop',     'wtsd',         100.0),
 )

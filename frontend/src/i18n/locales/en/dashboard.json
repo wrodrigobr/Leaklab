@@ -419,7 +419,9 @@
       "mediaTooltip": "{{n}} hands, typical CI of ±5pp. Trends are reliable but absolute values still move. Reach 1000+ hands for solid benchmarking.",
       "robustaLabel": "Robust sample",
       "robustaTooltip": "{{n}} hands, CI under ±3pp. Statistically reliable numbers for comparison against benchmarks."
-    }
+    },
+    "cbetSplit": "In position (IP): {{ip}} over {{nip}} opportunities · out of position (OOP): {{oop}} over {{noop}}. Heads-up flops only; with two or more opponents it counts in neither.",
+    "cbetSplitNone": "IP / OOP show up once there are heads-up flops."
   },
   "dna": {
     "title": "Strategic Profile",

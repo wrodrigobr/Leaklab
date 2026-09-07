@@ -274,6 +274,29 @@ def test_exploit_none_when_no_match():
     print("OK  test_exploit_none_when_no_match")
 
 
+
+def test_cbet_ip_e_oop_pela_ordem_das_acoes_no_flop_heads_up():
+    """OOP: o agressor age primeiro no flop. IP: o vilao checa antes. Multiway: fora dos dois."""
+    oop = _h(['A', 'B'], [
+        ('A', 'preflop', 'raises', 3), ('B', 'preflop', 'calls', 3),
+        ('A', 'flop', 'bets', 4), ('B', 'flop', 'folds'),
+    ])
+    o = _process_hand(oop)
+    assert o['A']['cbet_opp'] == 1 and o['A']['cbet'] == 1
+    assert o['A']['cbet_oop_opp'] == 1 and o['A']['cbet_oop'] == 1 and o['A']['cbet_ip_opp'] == 0
+    ip = _h(['A', 'B'], [
+        ('A', 'preflop', 'raises', 3), ('B', 'preflop', 'calls', 3),
+        ('B', 'flop', 'checks'), ('A', 'flop', 'checks'),
+    ])
+    o = _process_hand(ip)
+    assert o['A']['cbet_ip_opp'] == 1 and o['A']['cbet_ip'] == 0 and o['A']['cbet_oop_opp'] == 0
+    multi = _h(['A', 'B', 'C'], [
+        ('A', 'preflop', 'raises', 3), ('B', 'preflop', 'calls', 3), ('C', 'preflop', 'calls', 3),
+        ('B', 'flop', 'checks'), ('C', 'flop', 'checks'), ('A', 'flop', 'bets', 4),
+    ])
+    o = _process_hand(multi)
+    assert o['A']['cbet_opp'] == 1 and o['A']['cbet_ip_opp'] == 0 and o['A']['cbet_oop_opp'] == 0
+
 if __name__ == '__main__':
     tests = [(k, v) for k, v in sorted(globals().items()) if k.startswith('test_')]
     passed = failed = 0

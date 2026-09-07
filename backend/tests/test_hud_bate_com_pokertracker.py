@@ -196,6 +196,22 @@ def test_o_vocabulario_de_acao_cobre_all_in():
     print("OK  test_o_vocabulario_de_acao_cobre_all_in")
 
 
+
+def test_cbet_ip_oop_das_duas_fontes_batem_no_torneio_congelado():
+    """O HUD do dashboard le decisoes (posicao relativa, `n_active_opponents`); o HUD do torneio
+    le as acoes cruas (quem checou antes). Duas implementacoes de "em posicao" — este teste e
+    o que impede que divirjam (regra 5): no mesmo torneio, as oportunidades IP e OOP tem de
+    bater, e a soma das duas nao passa do C-Bet heads-up."""
+    from leaklab.hud_do_torneio import hud_do_heroi
+    from leaklab.parser import parse_hand_history
+    stats = _stats()
+    bruto = io.open(os.path.join(_FIXTURE, 'torneio_402_maos.txt'), encoding='utf-8').read()
+    hero = 'Hero'
+    hud = hud_do_heroi(parse_hand_history(bruto), hero)['stats']
+    assert (stats['cbet_ip_opp'], stats['cbet_oop_opp']) == (hud['cbet_ip']['den'], hud['cbet_oop']['den']), (
+        'IP/OOP divergem: dashboard %s/%s x torneio %s/%s' % (stats['cbet_ip_opp'], stats['cbet_oop_opp'], hud['cbet_ip']['den'], hud['cbet_oop']['den']))
+    assert stats['cbet_ip_opp'] + stats['cbet_oop_opp'] > 0
+
 if __name__ == '__main__':
     tests = [v for k, v in sorted(globals().items()) if k.startswith('test_')]
     passed = failed = 0

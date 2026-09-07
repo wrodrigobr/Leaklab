@@ -27,7 +27,7 @@ from typing import Optional
 # uma taxa abaixo disso é ruído, não read. (Bandas/arquétipos = frente seguinte.)
 GATES = {
     'vpip': 100, 'pfr': 100, 'threebet': 750, 'fold3bet': 750, 'fold3bet_any': 750,
-    'cbet': 500, 'foldcbet': 500, 'af': 500, 'wtsd': 1000,
+    'cbet': 500, 'cbet_ip': 500, 'cbet_oop': 500, 'foldcbet': 500, 'af': 500, 'wtsd': 1000,
 }
 MIN_HANDS_FOR_TYPE = 100         # mínimo de mãos vistas p/ arriscar um arquétipo (≈ VPIP estável)
 
@@ -211,15 +211,27 @@ def _process_hand(hand) -> dict:
     # que é a mesma ação com outro nome: era o defeito nº 1 de 04/09 (`shove` invisível).
     cbet_player = None
     if saw_flop and pfr_aggressor and pfr_aggressor in live_at_flop:
+        alguem_checou_antes = False
         for a in flop:
             if a.player == pfr_aggressor:
                 out[pfr_aggressor]['cbet_opp'] = 1
-                if a.action in ('bets', 'all-in'):
+                apostou = a.action in ('bets', 'all-in')
+                if apostou:
                     out[pfr_aggressor]['cbet'] = 1
                     cbet_player = pfr_aggressor
+                # IP / OOP (AY-19), so heads-up: no flop, quem age primeiro esta OOP. Se
+                # alguem checou antes do agressor, ele age depois: esta IP. Nao precisa da
+                # posicao do assento — a ORDEM das acoes ja diz, e o parser nao expoe assentos.
+                if len(live_at_flop) == 2:
+                    chave = 'cbet_ip' if alguem_checou_antes else 'cbet_oop'
+                    out[pfr_aggressor][chave + '_opp'] = 1
+                    if apostou:
+                        out[pfr_aggressor][chave] = 1
                 break            # só a 1ª ação dele no flop decide se houve c-bet
             if a.action in ('bets', 'all-in', 'raises'):
                 break            # aposta na frente: sem oportunidade de c-bet
+            if a.action == 'checks':
+                alguem_checou_antes = True
 
     # fold-to-cbet: quem agiu DEPOIS do c-bet no flop
     if cbet_player:
@@ -327,6 +339,8 @@ def finalize(acc: dict) -> dict:
             'fold3bet_pct': _rate(c.get('fold3bet', 0), c.get('fold3bet_opp', 0), GATES['fold3bet']),
             'fold3bet_any_pct': _rate(c.get('fold3bet_any', 0), c.get('fold3bet_any_opp', 0), GATES['fold3bet_any']),
             'cbet_pct':     _rate(c.get('cbet', 0), c.get('cbet_opp', 0), GATES['cbet']),
+            'cbet_ip_pct':  _rate(c.get('cbet_ip', 0), c.get('cbet_ip_opp', 0), GATES['cbet_ip']),
+            'cbet_oop_pct': _rate(c.get('cbet_oop', 0), c.get('cbet_oop_opp', 0), GATES['cbet_oop']),
             'foldcbet_pct': _rate(c.get('foldcbet', 0), c.get('foldcbet_opp', 0), GATES['foldcbet']),
             'af':           af,
             'wtsd_pct':     _rate(c.get('wtsd', 0), c.get('saw_flop', 0), GATES['wtsd']),
@@ -334,6 +348,7 @@ def finalize(acc: dict) -> dict:
             'opps': {
                 'hands': hands, 'threebet': c.get('threebet_opp', 0),
                 'fold3bet': c.get('fold3bet_opp', 0), 'fold3bet_any': c.get('fold3bet_any_opp', 0), 'cbet': c.get('cbet_opp', 0),
+                'cbet_ip': c.get('cbet_ip_opp', 0), 'cbet_oop': c.get('cbet_oop_opp', 0),
                 'foldcbet': c.get('foldcbet_opp', 0), 'af': af_den, 'wtsd': c.get('saw_flop', 0),
             },
         }

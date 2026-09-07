@@ -5,6 +5,27 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## AY-19: C-Bet IP / OOP no hover do C-Bet (07/09, LOCAL)
+
+Sugestao do Rullian: *"colocar o C-Bet IP e OOP, tipo passar o mouse em cima e aparecer as
+duas"*. Sem coluna nova: o tooltip do C-Bet ganha "Em posicao (IP): 91,2% em 215 · fora de
+posicao (OOP): 73,4% em 94" (numeros do acervo de dev). So potes heads-up no flop; com dois ou
+mais oponentes nao entra em nenhum dos dois, e o tooltip diz isso.
+
+**Duas fontes, uma definicao provada igual.** O HUD do dashboard le decisoes: a MESMA
+oportunidade do C-Bet (`_SQL_OPORTUNIDADE['cbet']`, que virou fragmento compartilhado), com
+`n_active_opponents = 1` e IP = o heroi age depois do vilao na ordem pos-flop, pelos assentos
+relativos ao botao (`sql_assento`). O HUD do torneio/oponente/replayer le as acoes cruas, sem
+assento: IP = alguem checou antes do agressor. `test_cbet_ip_oop_das_duas_fontes_batem` roda
+os dois no torneio congelado do PT4 e exige as mesmas oportunidades IP e OOP; inverter o IP em
+uma fonte so acusa. 5 mutacoes acusadas (IP invertido nas duas, multiway entrando nas duas, e
+a divergencia entre fontes).
+
+Sem regua: nao ha chart de c-bet por posicao. As chaves novas do HUD ficam declaradas fora da
+grade por posicao (`_FORA_DA_GRADE_SEM_CHART`).
+
+---
+
 ## Perfil por posicao: a regua sai, a cor fica no numero; e o convite do coach fecha (07/09, LOCAL)
 
 O dono, comparando as duas telas: *"ocupamos muito espaco e fica poluido; que tal so os

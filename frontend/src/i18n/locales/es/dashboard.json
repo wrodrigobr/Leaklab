@@ -419,7 +419,9 @@
       "mediaTooltip": "{{n}} manos, IC típico de ±5pp. Las tendencias son confiables pero los valores absolutos aún fluctúan. Llega a 1000+ manos para un benchmarking firme.",
       "robustaLabel": "Muestra robusta",
       "robustaTooltip": "{{n}} manos, IC por debajo de ±3pp. Números estadísticamente confiables para comparar con las referencias."
-    }
+    },
+    "cbetSplit": "En posición (IP): {{ip}} en {{nip}} oportunidades · fuera de posición (OOP): {{oop}} en {{noop}}. Solo botes heads-up en el flop; con dos o más rivales no entra en ninguno.",
+    "cbetSplitNone": "IP / OOP aparecen cuando haya botes heads-up en el flop."
   },
   "dna": {
     "title": "Perfil Estratégico",

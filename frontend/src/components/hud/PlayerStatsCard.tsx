@@ -11,6 +11,10 @@ interface PlayerStats {
   pfr: number | null;
   af: number | null;
   cbet_pct: number | null;
+  cbet_ip?: number | null;
+  cbet_oop?: number | null;
+  cbet_ip_opp?: number;
+  cbet_oop_opp?: number;
   fold_to_3bet: number | null;
   wtsd: number | null;
   three_bet: number | null;
@@ -164,7 +168,7 @@ const BAR_COLORS: Record<Status, string> = {
   na:     "bg-transparent",
 };
 
-function StatCell({ def, value, flag, compact }: { def: StatDef; value: number | null; flag?: StatFlag; compact?: boolean }) {
+function StatCell({ def, value, flag, compact, stats }: { def: StatDef; value: number | null; flag?: StatFlag; compact?: boolean; stats?: PlayerStats | null }) {
   const { t } = useTranslation("dashboard");
   // Flag do backend (refs MTT corrigidas + gate de amostra) tem prioridade sobre o range
   // inline. above/below = tendência (warn, direcional — não "danger"); healthy = ok.
@@ -185,6 +189,16 @@ function StatCell({ def, value, flag, compact }: { def: StatDef; value: number |
   const displayValue = value !== null && !def.soon
     ? def.unit === "x" ? `${value.toFixed(1)}x` : `${value.toFixed(1)}%`
     : "—";
+  /* C-Bet IP / OOP (AY-19, sugestao do Rullian): so no hover do C-Bet, com a amostra, para
+     nao abrir mais uma coluna no HUD. Heads-up no flop; multiway fica fora dos dois. */
+  const cbetSplit = def.key === "cbet_pct" && stats
+    ? (stats.cbet_ip == null && stats.cbet_oop == null
+        ? t("playerStats.cbetSplitNone")
+        : t("playerStats.cbetSplit", {
+            ip: stats.cbet_ip == null ? "—" : `${stats.cbet_ip.toFixed(1)}%`, nip: stats.cbet_ip_opp ?? 0,
+            oop: stats.cbet_oop == null ? "—" : `${stats.cbet_oop.toFixed(1)}%`, noop: stats.cbet_oop_opp ?? 0,
+          }))
+    : "";
 
   return (
     <div className={cn(
@@ -198,7 +212,7 @@ function StatCell({ def, value, flag, compact }: { def: StatDef; value: number |
         )}>
           {def.label}
         </span>
-        <HudTooltip content={t(def.tooltipKey)} />
+        <HudTooltip content={def.key === "cbet_pct" ? `${t(def.tooltipKey)} ${cbetSplit}` : t(def.tooltipKey)} />
       </div>
 
       <div className="flex items-baseline gap-2">
@@ -318,21 +332,21 @@ export function PlayerStatsCard({ stats, v2 = false }: Props) {
           {/* Row 1 — 4 computed stats */}
           <div className="grid grid-cols-2 divide-x divide-border md:grid-cols-4">
             {ROW1.map((def) => (
-              <StatCell key={String(def.key)} def={def} value={stats[def.key] as number | null} flag={stats.flags?.[def.key as string]} />
+              <StatCell key={String(def.key)} def={def} value={stats[def.key] as number | null} flag={stats.flags?.[def.key as string]} stats={stats} />
             ))}
           </div>
 
           {/* Row 2 — fold to 3bet, wtsd, 3bet, w$sd */}
           <div className="grid grid-cols-2 divide-x divide-border/60 border-t border-border/60 md:grid-cols-4">
             {ROW2.map((def) => (
-              <StatCell key={String(def.key)} def={def} value={stats[def.key] as number | null} flag={stats.flags?.[def.key as string]} compact />
+              <StatCell key={String(def.key)} def={def} value={stats[def.key] as number | null} flag={stats.flags?.[def.key as string]} stats={stats} compact />
             ))}
           </div>
 
           {/* Row 3 — defense & positional stats */}
           <div className="grid grid-cols-2 divide-x divide-border/40 border-t border-border/40 md:grid-cols-4">
             {ROW3.map((def) => (
-              <StatCell key={String(def.key)} def={def} value={stats[def.key] as number | null} flag={stats.flags?.[def.key as string]} compact />
+              <StatCell key={String(def.key)} def={def} value={stats[def.key] as number | null} flag={stats.flags?.[def.key as string]} stats={stats} compact />
             ))}
           </div>
         </>
