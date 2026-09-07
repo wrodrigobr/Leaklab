@@ -62,6 +62,24 @@ describe("fase 3: VPIP e PFR com a media do solver", () => {
   });
 });
 
+describe("veredito em texto", () => {
+  it("dentro da faixa nao ha frase; fora, a frase traz o tamanho do desvio", async () => {
+    const grade = {
+      ...GRADE,
+      positions: [{ position: "CO", hands: 900, stats: { rfi: cel(39, 34, 42), three_bet: cel(16, 2.5, 13) } }],
+    } as unknown as PositionProfileResponse;
+    render(<V2PositionProfileCard data={grade} geral={HUD} />);
+    fireEvent.pointerMove(screen.getByText("39"));
+    fireEvent.focus(screen.getByText("39"));
+    expect((await screen.findAllByText(/posProfile[.]solverHere/)).length).toBeGreaterThan(0);
+    expect(screen.queryByText(/posProfile[.]inSolver/)).toBeNull();          // dentro: sem frase
+    expect(screen.queryByText(/posProfile[.]vsSolver/)).toBeNull();
+    fireEvent.pointerMove(screen.getByText("16"));
+    fireEvent.focus(screen.getByText("16"));
+    expect((await screen.findAllByText(/posProfile[.]vsSolver[.]threeBet[.]above:3[.]0/)).length).toBeGreaterThan(0);
+  });
+});
+
 describe("fase 2", () => {
   it("as tres colunas tem regua, cada uma na propria escala", () => {
     render(<V2PositionProfileCard data={GRADE} geral={HUD} />);

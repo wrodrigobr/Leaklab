@@ -962,7 +962,6 @@
     "stackHands": "{{n}} hands in this range",
     "solverHere": "Solver, at your depths",
     "solverBand": "Solver at {{band}}",
-    "inSolver": "Within what the solver does from here.",
     "rfiNaBB": "The BB never opens: if everyone folds, the hand is over. So it has no RFI and no fold to 3-bet after opening.",
     "vsSolver": {
       "rfi": {

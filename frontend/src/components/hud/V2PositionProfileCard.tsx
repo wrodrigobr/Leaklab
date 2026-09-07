@@ -244,15 +244,16 @@ function Celula({ chave, cel, posicao, maos, ancora, destaque, stack, onDetalhe,
           </div>
         )}
         <div className="my-1.5 h-px bg-border" />
+        {/* A frase do veredito so quando ha DESVIO: dentro da faixa o ponto verde ja diz tudo, e
+            "dentro do que o solver faz daqui" soava estranho (dono, 07/09). */}
+        {ref && !baixa && foraDaRef === 0 ? null : (
         <p className="text-[11px] leading-snug text-muted-foreground">
           {baixa
             ? t("posProfile.lowSampleLong")
             : ref && foraDaRef != null
               ? foraDaRef > 0
                 ? t(`posProfile.vsSolver.${VERBO[chave] ?? "generic"}.above`, { delta: foraDaRef.toFixed(1) })
-                : foraDaRef < 0
-                  ? t(`posProfile.vsSolver.${VERBO[chave] ?? "generic"}.below`, { delta: (-foraDaRef).toFixed(1) })
-                  : t("posProfile.inSolver")
+                : t(`posProfile.vsSolver.${VERBO[chave] ?? "generic"}.below`, { delta: (-foraDaRef).toFixed(1) })
             : delta != null
               ? t("posProfile.vsYourGame", {
                   delta: `${delta > 0 ? "+" : ""}${delta.toFixed(1)}`,
@@ -260,6 +261,7 @@ function Celula({ chave, cel, posicao, maos, ancora, destaque, stack, onDetalhe,
                 })
               : t("posProfile.descriptive")}
         </p>
+        )}
         <p className="mt-1.5 font-mono text-[9px] text-muted-foreground/70">
           {t("posProfile.handsHere", { n: maos })}
         </p>
