@@ -24,6 +24,13 @@ conta dele em prod (26.588 maos, 99% das dele):
 | CBet F | 75,69 | 75,8 |
 | Total AF | 2,87 | 2,97 |
 
+**A definicao "todas as streets" foi calculada** (07/09), porque o dono nao aceitou a hipotese
+After Raise sem prova: oraculo independente sobre o `raw_text` dos 280 torneios dele (26.852
+maos, o numero EXATO do PT4), contando o 3-bet como 3a aposta da street. CoinPoker: preflop
+geral 637/780 = 81,7 (igual ao motor); pos-flop 7/18 (raro); TODAS AS STREETS 80,7. Ou seja, a
+definicao que ele colou tambem nao da 65; das stats do PT4, so a After Raise (62,5) chega la.
+Falta ele dizer QUAL coluna esta lendo.
+
 O RFI, que nasceu ontem, bate no total e por assento ate a segunda casa: a definicao (pote
 intacto, raise ou all-in, BB fora) e a do PT4. E o "cerca de 65% na Coin" que ele lembra do
 Fold to 3-Bet: a After Raise dele no CoinPoker e 62,5% (198/317); a geral, 81,7%. Fecha a
