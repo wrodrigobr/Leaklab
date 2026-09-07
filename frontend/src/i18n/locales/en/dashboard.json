@@ -404,7 +404,7 @@
       "bbDefense": "BB Defense Rate, % of the time you defended the Big Blind (call or 3-bet) facing a preflop open. MTT target: 35–55%. Below 30% means overfolding the BB, handing out free fold equity.",
       "steal": "Steal%, % of the time you opened (raise/shove) from the BTN, CO or SB when the action folded to you. MTT target: 25–45%. Below 20% wastes your positional edge and leaves equity in the pot; above 50% is exploitable overaggression.",
       "openLimp": "Open Limp%, % of the time you entered the pot with a call (no raise in front) from a non-BB seat. MTT target: 0–5%. Limping preflop kills fold equity, builds multiway pots out of position and is exploitable by any BTN/BB squeeze. Above 8% is a serious leak.",
-      "foldTo3bet": "Fold to 3-Bet: % of the time you folded to a preflop 3-bet after making the first raise (PokerTracker's \"Fold to PF 3Bet After Raise\"). Formula: folds to a 3-bet after opening ÷ times you opened and faced a 3-bet. MTT target: 55–72%. The version that counts cold 3-bets goes above 80 and is not this one.",
+      "foldTo3bet": "Fold to 3-Bet: % of the time you folded to a preflop 3-bet after making the first raise. Formula: folds to a 3-bet after opening ÷ times you opened and faced a 3-bet. MTT target: 55–72%.",
       "wtsd": "Went to Deep Streets, % of hands that saw a flop and reached a decision on the river. An approximation of WTSD (showdown data is not available). MTT target: 25–35%.",
       "threeBet": "3-Bet: % of the time you 3-bet when facing exactly one open. Formula: 3-bets ÷ times you acted facing exactly one raise (facing a 3-bet is a 4-bet opportunity and doesn't count). MTT target: 4–8%.",
       "wAtSd": "Won money at ShowDown, % of showdowns won. Target: above 50% to be +EV in these confrontations. Computed from the hands that reached showdown in the hand history."
@@ -962,12 +962,8 @@
     "stackHands": "{{n}} hands in this range",
     "solverHere": "Solver, at your depths",
     "solverBand": "Solver at {{band}}",
-    "charts": "Charts",
-    "chartsOthers": "other {{pct}}%",
     "inSolver": "Within what the solver does from here.",
     "rfiNaBB": "The BB never opens: if everyone folds, the hand is over. So it has no RFI and no fold to 3-bet after opening.",
-    "band": "band where the solver puts 60% of your opportunities, with {{pp}} points of slack",
-    "coverage": "{{pct}}% of the opportunities have a chart; the band speaks for those",
     "vsSolver": {
       "rfi": {
         "above": "You open {{delta}} points more than the solver from here.",
@@ -995,8 +991,6 @@
       }
     },
     "solverYourHands": "Solver, with your hands",
-    "bandMean": "solver's average over your hands, with {{pp}} points of statistical slack",
-    "youCovered": "on the hands with a chart, you: {{value}}%",
     "detail": {
       "threeBet": "{{pos}} 3-bet, by who opened",
       "fold3bet": "Fold to 3-bet after opening from {{pos}}, by who 3-bet",

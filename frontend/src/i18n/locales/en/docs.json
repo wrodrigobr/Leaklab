@@ -571,7 +571,7 @@
   },
   "hud_defs": {
     "title": "How each HUD stat is computed",
-    "intro": "Definition and formula for each stat, in the same format as PokerTracker, so you can compare with what you see there. All of them count only hands where you had a decision; a \"3-bet\" is the second aggressive action preflop (the open is the first), and an \"unopened pot\" means nobody bet or limped before you.",
+    "intro": "Definition and formula for each stat. All of them count only hands where you had a decision; a \"3-bet\" is the second aggressive action preflop (the open is the first), and an \"unopened pot\" means nobody bet or limped before you.",
     "col_stat": "Stat",
     "col_def": "Definition",
     "col_formula": "Formula",
@@ -587,7 +587,7 @@
     },
     "rfi": {
       "name": "RFI (Raise First In)",
-      "def": "% of the time you opened the pot with a raise when nobody had entered before you. The BB has no RFI. Same as PT4's \"Raise First\".",
+      "def": "% of the time you opened the pot with a raise when nobody had entered before you. The BB has no RFI.",
       "formula": "raises in an unopened pot ÷ times you acted in an unopened pot"
     },
     "three_bet": {
@@ -597,13 +597,8 @@
     },
     "fold_to_3bet": {
       "name": "Fold to 3-Bet",
-      "def": "% of the time you folded to a preflop 3-bet after making the first raise. This is PT4's \"Fold to PF 3Bet After Raise\", the study stat (\"I opened, got 3-bet, how often do I give up\").",
+      "def": "% of the time you folded to a preflop 3-bet after making the first raise (\"I opened, got 3-bet, how often do I give up\").",
       "formula": "folds to a 3-bet after opening ÷ times you opened and faced a 3-bet"
-    },
-    "fold_to_3bet_any": {
-      "name": "Fold to 3-Bet (any situation)",
-      "def": "Not shown on screen. This is PT4's \"Fold to PF 3Bet\": it also counts cold 3-bets (BB/SB after an open + 3-bet, without having acted), which are folded almost always; that's why it goes above 80. Kept for cross-checking with PT4.",
-      "formula": "folds to a 3-bet ÷ times you acted facing exactly one 3-bet, opener or not"
     },
     "steal": {
       "name": "Steal",

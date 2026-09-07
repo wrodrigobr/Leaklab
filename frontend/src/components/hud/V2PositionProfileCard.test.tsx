@@ -71,6 +71,14 @@ describe("linha TOTAL", () => {
     expect(within(linha).queryByText("30")).toBeNull();
   });
 
+  it("usa o `total` da grade quando o backend manda (mesmas linhas e definicoes), sem pedir o HUD", () => {
+    const comTotal = { ...GRADE, total: { total_hands: 1000, vpip: 21.5 } } as unknown as PositionProfileResponse;
+    render(<V2PositionProfileCard data={comTotal} geral={HUD_PRINCIPAL} />);
+    const linha = screen.getByText("posProfile.total").closest("div")!;
+    expect(within(linha).getByText("21.5")).toBeTruthy();     // a grade
+    expect(within(linha).queryByText("22")).toBeNull();        // nao o HUD
+  });
+
   it("nao aparece sem o payload do HUD principal", () => {
     render(<V2PositionProfileCard data={GRADE} />);
     expect(screen.queryByText("posProfile.total")).toBeNull();

@@ -571,7 +571,7 @@
   },
   "hud_defs": {
     "title": "Cómo se calcula cada stat del HUD",
-    "intro": "Definición y fórmula de cada stat, en el mismo formato que PokerTracker, para que compares con lo que ves allí. Todas cuentan solo manos en las que tuviste una decisión; un \"3-bet\" es la segunda acción agresiva del preflop (el open es la primera), y \"bote intacto\" es que nadie apostó ni limpeó antes de ti.",
+    "intro": "Definición y fórmula de cada stat. Todas cuentan solo manos en las que tuviste una decisión; un \"3-bet\" es la segunda acción agresiva del preflop (el open es la primera), y \"bote intacto\" es que nadie apostó ni limpeó antes de ti.",
     "col_stat": "Stat",
     "col_def": "Definición",
     "col_formula": "Fórmula",
@@ -587,7 +587,7 @@
     },
     "rfi": {
       "name": "RFI (Raise First In)",
-      "def": "% de veces en que abriste el bote con raise cuando nadie había entrado antes. La BB no tiene RFI. Igual al \"Raise First\" del PT4.",
+      "def": "% de veces en que abriste el bote con raise cuando nadie había entrado antes. La BB no tiene RFI.",
       "formula": "raises con el bote intacto ÷ veces en que actuaste con el bote intacto"
     },
     "three_bet": {
@@ -597,13 +597,8 @@
     },
     "fold_to_3bet": {
       "name": "Fold to 3-Bet",
-      "def": "% de veces en que foldeaste a un 3-bet preflop después de haber hecho el primer raise. Es el \"Fold to PF 3Bet After Raise\" del PT4, la stat de estudio (\"abrí, me hicieron 3-bet, cuánto suelto\").",
+      "def": "% de veces en que foldeaste a un 3-bet preflop después de haber hecho el primer raise (\"abrí, me hicieron 3-bet, cuánto suelto\").",
       "formula": "folds a 3-bet tras abrir ÷ veces en que abriste y enfrentaste un 3-bet"
-    },
-    "fold_to_3bet_any": {
-      "name": "Fold to 3-Bet (cualquier situación)",
-      "def": "No aparece en pantalla. Es el \"Fold to PF 3Bet\" del PT4: cuenta también el 3-bet en frío (BB/SB tras open + 3-bet, sin haber actuado), que se foldea casi siempre; por eso pasa de 80. Queda calculada para cotejar con el PT4.",
-      "formula": "folds a 3-bet ÷ veces en que actuaste enfrentando exactamente un 3-bet, hayas abierto o no"
     },
     "steal": {
       "name": "Steal",

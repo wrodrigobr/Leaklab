@@ -5,6 +5,51 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## Perfil por posicao: 149 consultas viraram 1 — 14,5s -> 0,8s, e 28,9s -> 0,2s com faixa (07/09, LOCAL)
+
+O dono: *"ao mudar o filtro de stack demora muito; a consulta esta extremamente lenta"*. Medido
+em dev: a grade chamava `get_player_stats(position=...)` por assento — 13 consultas x 9
+assentos + referencias = **149 varreduras** das decisoes do usuario, 14,5s; com a faixa de stack
+a subconsulta correlacionada (EXISTS com MIN(id) por linha) dobrava para 28,9s. Em prod, com a
+latencia do Neon por consulta, pior.
+
+**O que mudou:**
+- As 5 colunas sao preflop, entao as decisoes preflop do recorte vem em UMA consulta, com as
+  flags calculadas pelos MESMOS fragmentos SQL do HUD (`_SQL_VOLUNTARIO`, `_SQL_POTE_INTACTO`,
+  `_SQL_ENFRENTA_OPEN`, `_SQL_RAISES_ANTES`), e a agregacao por assento e em Python. A faixa de
+  stack e da mao (stack da 1a decisao), decidida na mesma passada: as 4 faixas nao custam mais
+  que "todos".
+- A faixa de stack em `_filtro_do_hud` (HUD e detalhe) virou subconsulta NAO correlacionada
+  (conjunto das maos da faixa montado uma vez, IN por (torneio, mao)).
+- A grade devolve `total` (mesmas linhas e definicoes) e o front deixou de pedir o HUD inteiro a
+  cada faixa so para a linha Total.
+
+**Regra 5, provada:** `test_a_grade_em_uma_consulta_da_IGUAL_ao_hud...` semeia um acervo
+variado (aliases, maos com 2 decisoes em faixas diferentes, 3-bet a frio, limp, stack NULL) e
+exige, para todo assento, toda faixa e as 5 stats, grade == `get_player_stats(position=...)`, e
+`total` == HUD. Acusou na 1a rodada: o HUD so publica 3-Bet com 12+ oportunidades (um literal) e a
+grade nao — virou `MIN_OPORTUNIDADES_3BET`, usado nos dois. 5 mutacoes (RFI com BB, fold
+geral, 3-bet sem minimo, faixa por decisao, PFR com call), 5 acusadas.
+
+Dev (grade_demo, 6.029 maos): grade 0,80s em "todos", 0,23s a 20-40bb; totais iguais ao HUD
+nas 5 stats nas 3 faixas.
+
+**Copy:** o dono nao quis mencao a outras ferramentas no tooltip nem na /docs: ficou so o que a
+stat e e a formula; a linha "Fold to 3-Bet (qualquer situacao)" saiu da doc.
+
+**Achados da suite:** o guarda de vocabulario pegou "quanto largo" na doc nova (decalque; virou
+"com que frequencia eu desisto"); e `test_training_league` falhava so as segundas-feiras: semeava
+"hoje" e "segunda" como dois dias, que numa segunda sao o mesmo (UNIQUE). Passava 6 dias por
+semana desde que nasceu. Semente movida para terca.
+
+**Tooltip da celula do perfil por posicao:** o diagnostico interno ("Charts: 100bb vs UTG 9% ·
+outros 80%", "faixa onde o solver poe 60% das suas oportunidades, com 3 pontos de folga",
+cobertura, "nas maos com chart voce") saiu. Fica: Voce, Solver (faixa), a frase do veredito e as
+maos no assento. Os pesos, a folga e a cobertura continuam no payload (`ref`) para auditoria;
+6 chaves de i18n mortas removidas dos 3 idiomas; o teste do card exige que NAO aparecam.
+
+---
+
 ## Cada stat do HUD com definicao e formula, no formato do PokerTracker (07/09, LOCAL)
 
 O dono: *"nao podemos esquecer de detalhar como o indicador e calculado"*, com a definicao do

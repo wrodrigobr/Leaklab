@@ -124,8 +124,6 @@ const Index = () => {
       // lock pelo plano do usuario. Request que se sabe que vai falhar e ruido.
       isFree ? Promise.resolve(null)
              : metrics.playerStatsByPosition(90, ln, posStackRef.current).then(setPosProfile).catch(() => null),
-      isFree || !posStackRef.current ? Promise.resolve(null)
-             : metrics.playerStats(90, ln, posStackRef.current).then(setPosGeral).catch(() => null),
       metrics.leakRoi(90, ln).then((r) => { setLeakRoi(r.leaks); setLeakSource(r.source); }).catch(() => null),
       metrics.pressureProfile(90, ln).then(setPressureData).catch(() => null),
       metrics.confidenceDrift(30, ln).then(setDriftData).catch(() => null),
@@ -146,15 +144,14 @@ const Index = () => {
     if (isFree) return;
     if (!posStack && !jaFiltrou.current) return;
     jaFiltrou.current = true;
+    setPosGeral(null);
     const ln = volumeLimit ?? undefined;
     let vivo = true;
-    Promise.all([
-      metrics.playerStatsByPosition(90, ln, posStack),
-      posStack ? metrics.playerStats(90, ln, posStack) : Promise.resolve(null),
-    ]).then(([grade, hud]) => {
+    // So a grade: a linha TOTAL vem nela (`total`), das mesmas linhas e definicoes. A 1a
+    // versao pedia o HUD inteiro na faixa (13 consultas a mais, 3,7s em dev) so para o Total.
+    metrics.playerStatsByPosition(90, ln, posStack).then((grade) => {
       if (!vivo) return;
       setPosProfile(grade);
-      setPosGeral(hud);
     }).catch((e) => { console.error("perfil por posicao: filtro de stack falhou", e); });
     return () => { vivo = false; };
   }, [posStack, isFree]);   // eslint-disable-line react-hooks/exhaustive-deps -- volumeLimit/refresh passam pelo efeito geral

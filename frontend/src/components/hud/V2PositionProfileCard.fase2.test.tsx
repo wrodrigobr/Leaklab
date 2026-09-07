@@ -49,14 +49,16 @@ describe("fase 3: VPIP e PFR com a media do solver", () => {
     expect(screen.getByTestId("regua-pfr").getAttribute("data-fora")).toBe("in");
   });
 
-  it("o tooltip da media diz que e media nas suas maos e compara igual com igual", async () => {
+  it("o tooltip da media diz que e media nas suas maos, sem o diagnostico interno", async () => {
     render(<V2PositionProfileCard data={grade} geral={HUD} />);
     fireEvent.pointerMove(screen.getByText("25.1"));
     fireEvent.focus(screen.getByText("25.1"));
     expect((await screen.findAllByText(/posProfile[.]vsSolver[.]vpip[.]below:3[.]9/)).length).toBeGreaterThan(0);
-    expect((await screen.findAllByText(/posProfile[.]bandMean:3[.]3/)).length).toBeGreaterThan(0);
-    expect((await screen.findAllByText(/posProfile[.]youCovered:26[.]2/)).length).toBeGreaterThan(0);
     expect((await screen.findAllByText(/posProfile[.]solverYourHands/)).length).toBeGreaterThan(0);
+    // o diagnostico interno (pesos dos charts, folga, cobertura) NAO vai para o jogador (dono, 07/09)
+    expect(screen.queryByText(/posProfile[.]bandMean/)).toBeNull();
+    expect(screen.queryByText(/posProfile[.]youCovered/)).toBeNull();
+    expect(screen.queryByText(/posProfile[.]charts/)).toBeNull();
   });
 });
 
@@ -70,13 +72,12 @@ describe("fase 2", () => {
     expect(screen.getAllByText("Fold 3Bet")).toHaveLength(1);
   });
 
-  it("o tooltip usa o verbo do stat e so mostra cobertura quando e parcial", async () => {
+  it("o tooltip usa o verbo do stat e nao expoe o diagnostico interno", async () => {
     render(<V2PositionProfileCard data={GRADE} geral={HUD} />);
     fireEvent.pointerMove(screen.getByText("58.8"));
     fireEvent.focus(screen.getByText("58.8"));
     const frase = await screen.findAllByText(/posProfile\.vsSolver\.fold3bet\.below:29\.2/);
     expect(frase.length).toBeGreaterThan(0);
-    expect((await screen.findAllByText(/posProfile\.coverage:91/)).length).toBeGreaterThan(0);
-    expect(screen.queryByText(/posProfile\.coverage:100/)).toBeNull();
+    expect(screen.queryByText(/posProfile\.coverage/)).toBeNull();     // cobertura e diagnostico interno
   });
 });

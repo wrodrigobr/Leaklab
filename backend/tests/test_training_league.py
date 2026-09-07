@@ -26,6 +26,10 @@ client = A.app.test_client()
 
 _TODAY = datetime.utcnow().date()
 _MONDAY = (_TODAY - timedelta(days=_TODAY.weekday())).strftime('%Y-%m-%d')
+# 2o dia da semana para o segundo treino: era `_TODAY`, e numa segunda-feira e o MESMO dia que
+# `_MONDAY` (UNIQUE em user_id, day). Achado em 07/09/2026, uma segunda: o teste passava 6 dias
+# por semana. Terca esta sempre dentro da janela segunda..domingo.
+_TERCA = (_TODAY - timedelta(days=_TODAY.weekday()) + timedelta(days=1)).strftime('%Y-%m-%d')
 
 
 def _seed_training(user_id, day, spots, correct):
@@ -60,7 +64,7 @@ def test_get_training_league_aggregates_week():
     repo.set_leaderboard_prefs(u2, True, None)
     # u1 treina 2 dias na semana; u2 um dia
     _seed_training(u1, _MONDAY, spots=6, correct=4)
-    _seed_training(u1, (_TODAY).strftime('%Y-%m-%d'), spots=3, correct=3)
+    _seed_training(u1, _TERCA, spots=3, correct=3)
     _seed_training(u2, _MONDAY, spots=10, correct=7)
     sunday = (_TODAY - timedelta(days=_TODAY.weekday()) + timedelta(days=6)).strftime('%Y-%m-%d')
     players = {p['user_id']: p for p in repo.get_training_league(_MONDAY, sunday)}

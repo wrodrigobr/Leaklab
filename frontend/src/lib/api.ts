@@ -1016,6 +1016,9 @@ export interface PositionProfileResponse {
   /** faixa de stack aplicada (null = todos) e as faixas que o backend aceita, na ordem dos chips */
   stack_band: string | null;
   faixas: string[];
+  /** a linha TOTAL, das MESMAS linhas e definicoes da grade (o backend prova que e igual ao HUD);
+   *  vem aqui para o front nao pedir o HUD de novo a cada faixa de stack */
+  total?: { total_hands: number } & Record<string, number | null>;
 }
 
 /** `?stack=` do perfil por posicao e do HUD: uma das `faixas` do backend, ou nada. */

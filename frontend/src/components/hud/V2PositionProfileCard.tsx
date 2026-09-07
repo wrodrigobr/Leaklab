@@ -183,9 +183,6 @@ function Celula({ chave, cel, posicao, maos, ancora, destaque, stack, onDetalhe,
   const delta = ancora != null ? cel.value - ancora : null;
   const ref = cel.ref;
   const foraDaRef = ref && !baixa ? (cel.value < ref.lo ? cel.value - ref.lo : cel.value > ref.hi ? cel.value - ref.hi : 0) : null;
-  /** Os 3 contextos com mais peso aparecem nomeados; o resto vira "outros N%". */
-  const pesos = ref ? Object.entries(ref.pesos).slice(0, 3) : [];
-  const outros = ref ? Object.values(ref.pesos).reduce((s, w) => s + w, 0) - pesos.reduce((s, [, w]) => s + w, 0) : 0;
 
   return (
     <Tooltip>
@@ -263,26 +260,6 @@ function Celula({ chave, cel, posicao, maos, ancora, destaque, stack, onDetalhe,
                 })
               : t("posProfile.descriptive")}
         </p>
-        {ref && (
-          <p className="mt-1.5 font-mono text-[9px] leading-snug text-muted-foreground/70">
-            {t("posProfile.charts")}: {pesos.map(([b, w]) => `${b} ${w}%`).join(" · ")}
-            {outros > 0 ? ` · ${t("posProfile.chartsOthers", { pct: outros })}` : ""}
-            <br />
-            {ref.tipo === "media" ? t("posProfile.bandMean", { pp: ref.folga }) : t("posProfile.band", { pp: ref.folga })}
-            {ref.tipo === "media" && ref.valor_coberto != null && ref.cobertura != null && ref.cobertura < 100 && (
-              <>
-                <br />
-                {t("posProfile.youCovered", { value: ref.valor_coberto })}
-              </>
-            )}
-            {ref.cobertura != null && ref.cobertura < 100 && (
-              <>
-                <br />
-                {t("posProfile.coverage", { pct: ref.cobertura })}
-              </>
-            )}
-          </p>
-        )}
         <p className="mt-1.5 font-mono text-[9px] text-muted-foreground/70">
           {t("posProfile.handsHere", { n: maos })}
         </p>
@@ -360,16 +337,19 @@ export function V2PositionProfileCard({
     return Math.max(0, geral.total_hands - soma);
   }, [geral, linhas]);
 
+  /** Fonte da linha TOTAL: a propria grade quando o backend manda `total` (mesmas linhas e
+   *  definicoes; o backend prova que e igual ao HUD), senao o payload do HUD principal. */
+  const fonteDoTotal = (data?.total ?? geral) as unknown as Record<string, number | null> | null;
   const totalCels = useMemo(() => {
-    if (!geral) return null;
+    if (!fonteDoTotal) return null;
     const out: Record<string, PositionStatCell> = {};
     for (const k of colunas) {
-      const v = (geral as unknown as Record<string, number | null>)[k];
+      const v = fonteDoTotal[k];
       if (v == null) continue;
       out[k] = { value: v, band: "ok" };
     }
     return Object.keys(out).length ? out : null;
-  }, [geral, colunas]);
+  }, [fonteDoTotal, colunas]);
 
   if (!data || linhas.length === 0) {
     return (
@@ -510,7 +490,7 @@ export function V2PositionProfileCard({
                 {t("posProfile.total")}
               </span>
               <span className="font-mono text-[9px] text-muted-foreground tabular-nums text-right">
-                {geral?.total_hands ?? ""}
+                {fonteDoTotal?.total_hands ?? ""}
               </span>
               {colunas.map((k) =>
                 totalCels[k] ? (
@@ -519,7 +499,7 @@ export function V2PositionProfileCard({
                     chave={k}
                     cel={totalCels[k]}
                     posicao={t("posProfile.total")}
-                    maos={geral?.total_hands ?? 0}
+                    maos={fonteDoTotal?.total_hands ?? 0}
                     destaque
                   />
                 ) : (

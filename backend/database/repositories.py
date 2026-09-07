@@ -2269,6 +2269,9 @@ _SQL_AGRESSIVO     = "'bet', 'raise', " + _SQL_ALLIN    # AF pós-flop
 _SQL_RAISES_ANTES  = ("(COALESCE(d.preflop_raises_faced, 0) "
                       "+ CASE WHEN COALESCE(d.hero_was_aggressor, 0) <> 0 THEN 1 ELSE 0 END)")
 _SQL_ENFRENTA_OPEN = _SQL_RAISES_ANTES + " = 1"
+# O 3-Bet% so e publicado com este minimo de oportunidades (era um literal no HUD; a grade em
+# uma consulta precisou do MESMO corte, e o teste de igualdade acusou a diferenca).
+MIN_OPORTUNIDADES_3BET = 12
 # Pote INTACTO ao chegar no hero: sem aposta E sem limp na frente. PT4: steal e RFI sao open
 # raise com o pote nao aberto; raise por cima de limp nao conta, e `facing_bet = 0` sozinho nao
 # pega o limp porque o limp nao aumenta o custo de entrar. Uma definicao para steal, RFI e para
@@ -2301,11 +2304,17 @@ def _filtro_do_hud(user_id: int, days: int, last_n, position=None, stack_band=No
         # decisoes dela. Filtrar decisao a decisao punha a mesma mao em duas faixas quando o
         # stack efetivo mudava entre o open e o 3-bet (outro vilao): 84 de 6.029 maos no
         # acervo de dev, e as faixas somavam mais que "todos".
-        tf = ('(%s) AND EXISTS (SELECT 1 FROM decisions p WHERE p.tournament_id = d.tournament_id '
-              'AND p.hand_id = d.hand_id AND p.street = \'preflop\' AND %s '
-              'AND p.id = (SELECT MIN(q.id) FROM decisions q WHERE q.tournament_id = p.tournament_id '
-              'AND q.hand_id = p.hand_id AND q.street = \'preflop\'))') % (tf, ' AND '.join(conds))
-        tp = tuple(tp) + tuple(params)
+        #
+        # Subconsulta NAO correlacionada (07/09): a 1a versao era um EXISTS com MIN(id) por
+        # linha, avaliado para cada decisao; com o filtro a grade levava 28,9s em dev. Aqui o
+        # conjunto das maos da faixa e montado uma vez por consulta (GROUP BY) e o resto e
+        # um IN por (torneio, mao).
+        tf = ('(%s) AND (d.tournament_id, d.hand_id) IN ('
+              'SELECT p.tournament_id, p.hand_id FROM decisions p '
+              'WHERE p.id IN (SELECT MIN(q.id) FROM decisions q JOIN tournaments tq ON tq.id = q.tournament_id '
+              'WHERE tq.user_id = ? AND q.street = \'preflop\' GROUP BY q.tournament_id, q.hand_id) '
+              'AND %s)') % (tf, ' AND '.join(conds))
+        tp = tuple(tp) + (user_id,) + tuple(params)
     return tf, tuple(tp)
 
 
@@ -2473,53 +2482,115 @@ def get_player_stats_by_position(user_id: int, days: int = 90,
     """
     from leaklab.preflop_gto_ranges import (referencia_3bet_por_assento, referencia_fold3bet_por_assento,
                                             referencia_rfi_por_assento, referencia_vpip_pfr_por_assento)
-    # coluna -> (tipo de oportunidade, função de referência). Um lugar só; a célula ganha `ref`
-    # quando o chart fala pelo conjunto que o stat mediu.
-    referencias = {
-        'rfi':               ('rfi', lambda pos, ops: referencia_rfi_por_assento(pos, [s for _, s in ops])),
-        'three_bet':         ('3bet', referencia_3bet_por_assento),
-        'fold_to_3bet':      ('fold_to_3bet', referencia_fold3bet_por_assento),
-    }
+
+    # ── Uma consulta, nao 149 (07/09) ───────────────────────────────────────────────────
+    # A 1a versao chamava `get_player_stats(position=...)` por assento: 13 consultas x 9
+    # assentos + referencias = 149 varreduras das decisoes do usuario, 14,5s em dev (28,9s com
+    # a faixa de stack). As 5 colunas sao preflop; entao as decisoes preflop do recorte vem em
+    # UMA consulta, com as flags calculadas pelos MESMOS fragmentos SQL do HUD
+    # (`_SQL_VOLUNTARIO`, `_SQL_POTE_INTACTO`, `_SQL_ENFRENTA_OPEN`, `_SQL_RAISES_ANTES`), e a
+    # agregacao por assento e em Python. A definicao continua num lugar so (os fragmentos);
+    # `test_rfi_por_assento` exige assento a assento e faixa a faixa que a grade de igual a
+    # `get_player_stats(position=...)`, e que o `total` de igual ao HUD.
+    linhas_todas = _linhas_preflop_do_recorte(user_id, days, last_n)
+    if stack_band:
+        lo, hi = FAIXAS_DE_STACK[stack_band]
+        def _na_faixa(r):
+            s0 = r['stack_da_mao']
+            return s0 is not None and (lo is None or s0 >= lo) and (hi is None or s0 < hi)
+        linhas_todas = [r for r in linhas_todas if _na_faixa(r)]
+
+    assento_do_rotulo = {}
+    for pos in POSICOES_NA_ORDEM:
+        for cru in rotulos_do_assento(pos):
+            assento_do_rotulo[cru] = pos
+
+    def _stats_de(rows):
+        """As 5 stats da grade sobre um conjunto de linhas preflop, com as definicoes do HUD:
+        VPIP/PFR por MAO (distinct), RFI/Fold por LINHA (COUNT(*)), 3-Bet por MAO distinta."""
+        maos = {}
+        for r in rows:
+            m = maos.setdefault(r['hand_id'], {'vol': False, 'agg': False, 'opp3': False, 'tb': False})
+            m['vol'] |= bool(r['voluntario']); m['agg'] |= bool(r['agressivo'])
+            if r['enfrenta_open']:
+                m['opp3'] = True
+                m['tb'] |= bool(r['is_3bet'])
+        n = len(maos)
+        rfi = [r for r in rows if r['intacto'] and r['position_raw'] != 'BB']
+        f3b = [r for r in rows if r['raises_antes'] == 2 and r['aggressor']]
+        opp3 = sum(1 for m in maos.values() if m['opp3'])
+        pct = lambda a, b: round(a * 100.0 / b, 1) if b else None
+        return {
+            'total_hands': n,
+            'vpip': pct(sum(1 for m in maos.values() if m['vol']), n),
+            'pfr': pct(sum(1 for m in maos.values() if m['agg']), n),
+            'rfi': pct(sum(1 for r in rfi if r['agressivo']), len(rfi)),
+            'three_bet': pct(sum(1 for m in maos.values() if m['tb']), opp3) if opp3 >= MIN_OPORTUNIDADES_3BET else None,
+            'fold_to_3bet': pct(sum(1 for r in f3b if r['fold']), len(f3b)),
+        }
+
+    def _referencias_de(pos, rows, celula):
+        # RFI: stacks das oportunidades; 3-Bet: (abridor, stack); Fold: (3-bettor, stack)
+        if 'rfi' in celula['stats']:
+            ref = referencia_rfi_por_assento(pos, [r['stack'] for r in rows if r['intacto'] and r['position_raw'] != 'BB'])
+            if ref:
+                celula['stats']['rfi']['ref'] = ref
+        if 'three_bet' in celula['stats']:
+            ref = referencia_3bet_por_assento(pos, [(r['vs_position'], r['stack']) for r in rows if r['enfrenta_open']])
+            if ref:
+                celula['stats']['three_bet']['ref'] = ref
+        if 'fold_to_3bet' in celula['stats']:
+            ref = referencia_fold3bet_por_assento(pos, [(r['vs_position'], r['stack']) for r in rows if r['raises_antes'] == 2 and r['aggressor']])
+            if ref:
+                celula['stats']['fold_to_3bet']['ref'] = ref
+        if 'vpip' in celula['stats'] or 'pfr' in celula['stats']:
+            primeiras = [r for r in rows if r['primeira']]
+            refs = referencia_vpip_pfr_por_assento(pos, [({
+                'facing_bet': r['facing_bet'], 'facing_limp': r['facing_limp'],
+                'preflop_raises_faced': r['preflop_raises_faced'], 'hero_was_aggressor': r['aggressor'],
+                'vs_position': r['vs_position'], 'effective_stack_bb': r['stack'],
+            }, bool(r['voluntario']), bool(r['agressivo'])) for r in primeiras])
+            for chave in ('vpip', 'pfr'):
+                if chave in celula['stats'] and refs.get(chave):
+                    celula['stats'][chave]['ref'] = refs[chave]
+
+    por_assento = {}
+    for r in linhas_todas:
+        pos = assento_do_rotulo.get(r['position_raw'])
+        if pos:
+            por_assento.setdefault(pos, []).append(r)
 
     linhas = []
     for pos in POSICOES_NA_ORDEM:
-        s = get_player_stats(user_id, days, last_n, position=pos, stack_band=stack_band)
-        maos = s.get('total_hands') or 0
-        if not maos:
+        rows = por_assento.get(pos)
+        if not rows:
             continue                      # assento que o jogador nunca ocupou: some da grade
+        st = _stats_de(rows)
+        maos = st['total_hands']
         celula = {'position': pos, 'hands': maos, 'stats': {}}
         for chave in _GRADE_SEMPRE + _GRADE_COM_VOLUME:
-            valor = s.get(chave)
+            valor = st.get(chave)
             if valor is None:
-                continue                  # sem denominador naquele assento (steal fora de BTN/CO/SB)
+                continue                  # sem denominador naquele assento (RFI na BB)
             minimo = minimo_da_grade(chave)
             if minimo is None:
                 continue                  # stat sem corte declarado: o teste N+1 acusa
-            # Só o gate de amostra sobrevive. Devolver `flag`/`healthy` aqui seria deixar a
-            # acusação no payload esperando alguém voltar a pintá-la.
+            # So o gate de amostra sobrevive. Devolver `flag`/`healthy` aqui seria deixar a
+            # acusacao no payload esperando alguem voltar a pinta-la.
             celula['stats'][chave] = {
                 'value': valor,
                 'band': 'low_sample' if maos < minimo else 'ok',
             }
-        for chave, (tipo, funcao) in referencias.items():
-            if chave in celula['stats']:
-                ref = funcao(pos, _oportunidades_do_assento(user_id, days, last_n, pos, stack_band, tipo))
-                if ref:
-                    celula['stats'][chave]['ref'] = ref
-        # VPIP e PFR: a media do solver nas maos do jogador (fase 3). `ref` so com cobertura;
-        # os dois tipos de regua se distinguem por `ref.tipo` ('media' x percentil).
-        if 'vpip' in celula['stats'] or 'pfr' in celula['stats']:
-            refs = referencia_vpip_pfr_por_assento(pos, _primeiras_decisoes_do_assento(
-                user_id, days, last_n, pos, stack_band))
-            for chave in ('vpip', 'pfr'):
-                if chave in celula['stats'] and refs.get(chave):
-                    celula['stats'][chave]['ref'] = refs[chave]
+        _referencias_de(pos, rows, celula)
         linhas.append(celula)
 
     total = sum(l['hands'] for l in linhas)
     return {
         'positions': linhas,
         'total_hands': total,
+        # A linha TOTAL da grade, das MESMAS linhas e definicoes (o teste exige igual ao HUD).
+        # Vem aqui para o front nao pedir o HUD de novo a cada faixa de stack.
+        'total': _stats_de(linhas_todas),
         # O front usa isto para explicar a tela vazia em vez de mostrar uma grade de tracinhos.
         'sempre': list(_GRADE_SEMPRE),
         'com_volume': list(_GRADE_COM_VOLUME),
@@ -2528,8 +2599,47 @@ def get_player_stats_by_position(user_id: int, days: int = 90,
     }
 
 
-# O WHERE de cada oportunidade, UMA vez: o stat (em `get_player_stats`) e a referência (aqui)
-# têm de medir o MESMO conjunto, senão a régua fala de outra coisa.
+def _linhas_preflop_do_recorte(user_id, days, last_n):
+    """Todas as decisoes preflop do recorte (sem faixa de stack), uma linha por decisao, com as
+    flags do HUD calculadas em SQL pelos MESMOS fragmentos que `get_player_stats` usa, e o
+    stack da PRIMEIRA decisao da mao (`stack_da_mao`) para a faixa ser da mao."""
+    tf, tp = _filtro_do_hud(user_id, days, last_n)
+    conn = get_conn()
+    try:
+        rows = conn.execute(_adapt(f"""
+            SELECT d.id, d.hand_id, d.tournament_id, d.position AS position_raw, d.vs_position,
+                   d.effective_stack_bb AS stack, d.facing_bet, d.facing_limp,
+                   d.preflop_raises_faced, d.is_3bet,
+                   CASE WHEN COALESCE(d.hero_was_aggressor, 0) <> 0 THEN 1 ELSE 0 END AS aggressor,
+                   CASE WHEN d.action_taken IN ({_SQL_VOLUNTARIO}) THEN 1 ELSE 0 END AS voluntario,
+                   CASE WHEN d.action_taken IN ({_SQL_RAISE_OU_JAM}) THEN 1 ELSE 0 END AS agressivo,
+                   CASE WHEN d.action_taken = 'fold' THEN 1 ELSE 0 END AS fold,
+                   CASE WHEN {_SQL_POTE_INTACTO} THEN 1 ELSE 0 END AS intacto,
+                   CASE WHEN {_SQL_ENFRENTA_OPEN} THEN 1 ELSE 0 END AS enfrenta_open,
+                   {_SQL_RAISES_ANTES} AS raises_antes
+            FROM decisions d
+            JOIN tournaments t ON t.id = d.tournament_id
+            WHERE {tf} AND d.street = 'preflop'
+            ORDER BY d.tournament_id, d.hand_id, d.id
+        """), tp).fetchall()
+    finally:
+        conn.close()
+    out, chave_anterior, stack_da_mao = [], None, None
+    for r in rows:
+        r = dict(r)
+        chave = (r['tournament_id'], r['hand_id'])
+        primeira = chave != chave_anterior
+        if primeira:
+            chave_anterior = chave
+            stack_da_mao = r['stack']
+        r['primeira'] = primeira
+        r['stack_da_mao'] = stack_da_mao
+        out.append(r)
+    return out
+
+
+# O WHERE de cada oportunidade, UMA vez: o stat (em `get_player_stats`), a grade, o detalhe
+# "contra quem" e a referencia tem de medir o MESMO conjunto, senao a regua fala de outra coisa.
 _SQL_OPORTUNIDADE = {
     'rfi':               "d.position <> 'BB' AND " + _SQL_POTE_INTACTO,
     '3bet':              _SQL_ENFRENTA_OPEN,
@@ -2942,7 +3052,7 @@ def get_player_stats(user_id: int, days: int = 90, last_n: int | None = None,
             # que a regua e a copy descrevem; a geral do PT4 fica em `fold_to_3bet_any`.
             'fold_to_3bet_any': round(f3b_n / faced_3b_n * 100, 1)    if faced_3b_n > 0  else None,
             'wtsd':             round(went_sd / saw_flop * 100, 1)   if saw_flop > 0    else None,
-            'three_bet':        round(three_bet_n / three_bet_opp * 100, 1) if three_bet_opp >= 12 else None,
+            'three_bet':        round(three_bet_n / three_bet_opp * 100, 1) if three_bet_opp >= MIN_OPORTUNIDADES_3BET else None,
             'three_bet_opp':    three_bet_opp,
             'w_at_sd':          round(sd_won / sd_total * 100, 1)      if sd_total > 0    else None,
             'fold_to_flop_bet': round(ftfb_n / ftfb_total * 100, 1)   if ftfb_total > 0  else None,

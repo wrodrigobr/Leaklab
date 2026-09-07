@@ -404,7 +404,7 @@
       "bbDefense": "BB Defense Rate, % de veces que defendiste la Big Blind (call o 3-bet) enfrentando una apertura preflop. Ideal MTT: 35–55%. Por debajo de 30% foldeas la BB en exceso y regalas fold equity.",
       "steal": "Steal%, % de veces que abriste (raise/shove) desde el BTN, CO o SB cuando la acción llegó sin apuesta previa. Ideal MTT: 25–45%. Por debajo de 20% pierdes ventaja posicional y dejas equity en el bote; por encima de 50% es overaggression explotable.",
       "openLimp": "Open Limp%, % de veces que entraste al bote con call (sin raise por delante) desde una posición que no es la BB. Ideal MTT: 0–5%. El limp preflop elimina la fold equity, crea botes multiway fuera de posición y es explotable por cualquier squeeze del BTN/BB. Por encima de 8% es un leak serio.",
-      "foldTo3bet": "Fold to 3-Bet: % de veces en que foldeaste a un 3-bet preflop después de haber hecho el primer raise (el \"Fold to PF 3Bet After Raise\" del PokerTracker). Fórmula: folds a 3-bet tras abrir ÷ veces en que abriste y enfrentaste un 3-bet. MTT ideal: 55–72%. La versión que cuenta el 3-bet en frío pasa de 80 y no es esta.",
+      "foldTo3bet": "Fold to 3-Bet: % de veces en que foldeaste a un 3-bet preflop después de haber hecho el primer raise. Fórmula: folds a 3-bet tras abrir ÷ veces en que abriste y enfrentaste un 3-bet. MTT ideal: 55–72%.",
       "wtsd": "Went to Deep Streets, % de manos que vieron flop y llegaron a una decisión en el river. Aproximación de WTSD (no hay showdown data). Ideal MTT: 25–35%.",
       "threeBet": "3-Bet: % de veces en que hiciste 3-bet cuando enfrentabas exactamente un open. Fórmula: 3-bets ÷ veces en que actuaste enfrentando exactamente un raise (enfrentar un 3-bet es oportunidad de 4-bet y no cuenta). MTT ideal: 4–8%.",
       "wAtSd": "Won money at ShowDown, % de showdowns ganados. Meta: más de 50% para ser +EV en los enfrentamientos. Calculado a partir de las manos que llegaron al showdown en el hand history."
@@ -962,12 +962,8 @@
     "stackHands": "{{n}} manos en este rango",
     "solverHere": "Solver, en tus profundidades",
     "solverBand": "Solver a {{band}}",
-    "charts": "Charts",
-    "chartsOthers": "otros {{pct}}%",
     "inSolver": "Dentro de lo que hace el solver desde aquí.",
     "rfiNaBB": "La BB no abre bote: si todos foldean, la mano termina. Por eso no tiene RFI ni fold al 3-bet tras abrir.",
-    "band": "franja donde el solver pone el 60% de tus oportunidades, con {{pp}} puntos de holgura",
-    "coverage": "el {{pct}}% de las oportunidades tiene chart; la franja habla por esas",
     "vsSolver": {
       "rfi": {
         "above": "Abres {{delta}} puntos más que el solver desde aquí.",
@@ -995,8 +991,6 @@
       }
     },
     "solverYourHands": "Solver, con tus manos",
-    "bandMean": "media del solver en tus manos, con {{pp}} puntos de holgura estadística",
-    "youCovered": "en las manos con chart, tú: {{value}}%",
     "detail": {
       "threeBet": "3-bet desde {{pos}}, según quién abrió",
       "fold3bet": "Fold al 3-bet tras abrir desde {{pos}}, según quién hizo 3-bet",

@@ -353,6 +353,55 @@ def test_o_endpoint_do_detalhe_valida_assento_e_stat():
     assert c.get('/metrics/player-stats/by-position/detail?position=BB&stat=vpip', headers=h).status_code == 400
     assert c.get('/metrics/player-stats/by-position/detail?position=XX&stat=three_bet', headers=h).status_code == 400
 
+
+# ── A grade em uma consulta tem de dar IGUAL ao HUD por assento (regra 5) ──────────────
+
+def _acervo_variado():
+    """Assentos misturados, aliases (MP1 = LJ), maos com 2 decisoes preflop em faixas de stack
+    diferentes, 3-bet a frio, limp na frente, stack NULL: tudo que ja mordeu uma vez."""
+    maos = []
+    k = 0
+    for pos in ('UTG', 'MP1', 'HJ', 'CO', 'BTN', 'SB', 'BB'):
+        for i in range(40):
+            k += 1; hid = 'H%d' % k
+            stack = (100, 41, 30, 12, None)[i % 5]
+            if pos == 'BB':
+                maos.append(_m(pos, ('raise', 'call', 'fold')[i % 3], hand_id=hid, facing_bet=2.5, preflop_raises_faced=1,
+                               vs_position=('UTG', 'BTN', 'CO')[i % 3], is_3bet=1 if i % 3 == 0 else 0, effective_stack_bb=stack))
+                if i % 7 == 0:   # 3-bet a frio
+                    maos.append(_m(pos, 'fold', hand_id='C%d' % k, facing_bet=8, preflop_raises_faced=2, vs_position='BTN', effective_stack_bb=stack))
+            else:
+                acao = ('raise', 'fold', 'call', 'raise')[i % 4]
+                maos.append(_m(pos, acao, hand_id=hid, facing_limp=1 if i % 9 == 0 else 0, effective_stack_bb=stack))
+                if acao == 'raise' and i % 3 == 0:      # abriu e levou 3-bet, com OUTRO stack
+                    maos.append(_m(pos, 'fold' if i % 2 else 'call', hand_id=hid, facing_bet=8, preflop_raises_faced=1,
+                                   hero_was_aggressor=1, vs_position='BB', effective_stack_bb=39 if stack == 41 else stack))
+                if i % 5 == 1:                          # enfrentou um open
+                    k += 1
+                    maos.append(_m(pos, 'raise' if i % 4 == 1 else 'call', hand_id='O%d' % k, facing_bet=2.5, preflop_raises_faced=1,
+                                   vs_position='UTG', is_3bet=1 if i % 4 == 1 else 0, effective_stack_bb=stack))
+    return _semeia(maos)
+
+
+def test_a_grade_em_uma_consulta_da_IGUAL_ao_hud_assento_a_assento_e_faixa_a_faixa():
+    """A grade deixou de chamar `get_player_stats` por assento (149 consultas -> 1). A
+    definicao continua nos fragmentos SQL do HUD, e este teste e o que impede as duas contas
+    de divergirem: para todo assento, toda faixa e as 5 stats, grade == HUD do assento; e o
+    `total` da grade == HUD do recorte."""
+    uid = _acervo_variado()
+    for band in [None] + list(FAIXAS_DE_STACK):
+        grade = get_player_stats_by_position(uid, days=3650, last_n=0, stack_band=band)
+        hud = get_player_stats(uid, days=3650, last_n=0, stack_band=band)
+        assert grade['total']['total_hands'] == hud['total_hands'] == grade['total_hands'], (band, grade['total'], hud['total_hands'])
+        for k in ('vpip', 'pfr', 'rfi', 'three_bet', 'fold_to_3bet'):
+            assert grade['total'][k] == hud[k], ('total', band, k, grade['total'][k], hud[k])
+        for linha in grade['positions']:
+            h = get_player_stats(uid, days=3650, last_n=0, position=linha['position'], stack_band=band)
+            assert linha['hands'] == h['total_hands'], (band, linha['position'], linha['hands'], h['total_hands'])
+            for k in ('vpip', 'pfr', 'rfi', 'three_bet', 'fold_to_3bet'):
+                v = linha['stats'].get(k, {}).get('value')
+                assert v == h[k], (band, linha['position'], k, v, h[k])
+
 if __name__ == '__main__':
     falhas = 0
     testes = [v for k, v in sorted(globals().items()) if k.startswith('test_')]
