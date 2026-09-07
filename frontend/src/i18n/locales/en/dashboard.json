@@ -138,7 +138,8 @@
   },
   "linkCoach": {
     "message": "Have a coach? Link your profile to share your history.",
-    "action": "Link"
+    "action": "Link",
+    "dismiss": "close"
   },
   "aiConfidence": {
     "title": "AI Confidence",
@@ -901,8 +902,8 @@
   },
   "posProfile": {
     "title": "Profile by position",
-    "tooltip": "How you play in EACH seat, on the three preflop decisions that have a chart: opening (RFI), 3-betting and folding to a 3-bet after opening. The green band is the solver at your stack depths. The other HUD stats stay in the HUD: there is no per-seat reference for them.",
-    "legend": "You against the solver, seat by seat. Green band = what the solver would do with your hands, in the seats, stacks and against the opponents you faced; color only when the value leaves it.",
+    "tooltip": "How you play in EACH seat, on the five preflop decisions that have a chart: entering (VPIP), raising (PFR), opening (RFI), 3-betting and folding to a 3-bet after opening. The color compares with what the solver would do with your hands, in the seats, stacks and against the opponents you faced; each number's tooltip shows the band and the gap.",
+    "legend": "You against the solver, seat by seat. Green = within what the solver would do with your hands; red = outside (▲ more, ▼ less). Hover to see the band and the gap.",
     "hands": "{{n}} hands",
     "handsShort": "hands",
     "seat": "seat",
@@ -1000,6 +1001,8 @@
       "empty": "No opportunities in this slice.",
       "error": "Could not load the detail.",
       "note": "Rows with fewer than {{n}} opportunities show the sample only. The solver band here varies only with stack, so it is narrower than the cell's."
-    }
+    },
+    "above": "above the solver",
+    "below": "below the solver"
   }
 }

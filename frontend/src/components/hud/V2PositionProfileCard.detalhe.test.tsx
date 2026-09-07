@@ -49,10 +49,10 @@ describe("painel contra quem", () => {
     const utg = within(painel).getByTestId("detalhe-linha-UTG");
     expect(within(utg).getByText("5.1")).toBeTruthy();
     expect(within(utg).getByText("2–8")).toBeTruthy();
-    expect(within(utg).getByTestId("regua-three_bet")).toBeTruthy();
+    expect(within(utg).getByTestId("detalhe-valor-UTG")).toBeTruthy();
     const btn = within(painel).getByTestId("detalhe-linha-BTN");
     expect(within(btn).getByText("—")).toBeTruthy();                 // amostra baixa: sem numero
-    expect(within(btn).queryByTestId("regua-three_bet")).toBeNull();
+    expect(within(btn).getByTestId("detalhe-valor-BTN").getAttribute("data-fora")).toBeNull();   // sem cor
     fireEvent.click(screen.getByTestId("celula-three_bet-BB"));
     expect(screen.queryByTestId("detalhe-three_bet-BB")).toBeNull();
   });

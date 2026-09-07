@@ -5,6 +5,50 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## Perfil por posicao: a regua sai, a cor fica no numero; e o convite do coach fecha (07/09, LOCAL)
+
+O dono, comparando as duas telas: *"ocupamos muito espaco e fica poluido; que tal so os
+numeros, vermelho fora e verde dentro, e o comparativo no tooltip"*. Feito: verde = dentro do
+que o solver faria com as suas maos; vermelho = fora, com ▲/▼ (a direcao custava abrir o
+tooltip; um glifo resolve); branco = sem referencia; "—" = amostra baixa. A faixa do solver e
+o tamanho do desvio ficam no tooltip. Sem regua, as 5 colunas cabem sem rolagem e a coluna se
+le de uma vez, como na grade antiga. O painel "contra quem" segue o mesmo desenho (numero
+colorido + faixa em texto). `Regua` e `ESCALA` sairam do codigo. Testes ancoram em
+`data-fora` do NUMERO (21/21); P7 atualizado (verde/vermelho = a cor do numero, existe).
+
+**Convite "Tem um coach? Vincule seu perfil" fechavel e lembrado por usuario** (dono: "senao
+vai ficar no header sempre"): X no convite, `localStorage` por usuario, mesmo padrao do aviso
+de drift. Teste do helper.
+
+---
+
+## AY-20: o assento e nomeado pela distancia ao botao (07/09, LOCAL)
+
+O Rullian, olhando a grade em prod: *"tem bem pouca amostra pro Lojack; como ele determina
+entre Lojack e UTG+2?"*. O parser nomeia contando a partir do UTG, entao "LJ" so existe em
+mesa de 9; ele jogou 107 maos em mesa de 9 e 20 mil em mesas de 7 e 8. Em mesa de 8, o que
+chamavamos de "UTG+2" tem HJ, CO e BTN atras: e o Lojack. A linha "UTG+2" da grade misturava
+o UTG+2 de mesa 9 (4 atras) com o LJ de mesa 8 (3 atras), com a regua do chart errado (RFI
+20 do UTG+2 em vez de 24 do LJ). Ele resumiu certo: "em uma mesa sempre temos o LoJack, mas
+nem sempre temos o UTG+2".
+
+O motor de veredito ja pareava por jogadores atras (`_mapa_da_mesa`, por isso o chart bate
+nas acusacoes); a grade, o HUD por assento, o detalhe, as referencias, o DNA e a matriz liam
+o rotulo cru. **`sql_assento()`** e um CASE em SQL gerado do MESMO mapa (fonte unica), por
+(`num_players`, rotulo): mesa de 8 -> UTG e UTG+1, UTG+1 e UTG+2, UTG+2 e LJ; mesa de 7 ->
+UTG e UTG+2, UTG+1 e LJ; mesa de 6 -> UTG e LJ; mesa de 5 -> UTG e HJ; mesa de 9 e sem
+`num_players` -> como esta (MP1 -> LJ). BTN/CO/HJ/SB/BB nunca mudam. Aplicado tambem ao
+VILAO (`vs_position`): a referencia de 3-bet da BB contra o "UTG+2" de mesa 8 e a carta vs LJ.
+
+Guardas: `test_assento_pela_distancia_ao_botao` (5): o CASE e o mapa para toda mesa de 2 a 9
+(varredura N+1), grade/HUD/detalhe/DNA/matriz leem o assento pelo botao, sem `num_players` o
+rotulo cru vale. 3 mutacoes acusadas. Frontend sem mudanca: o rotulo vem do backend.
+
+Ideia registrada (AY-21): opcao "agrupado" EP/MP como no PT4, que o Rullian acha que
+simplifica mas "fica ruim de estudar".
+
+---
+
 ## Perfil por posicao: 149 consultas viraram 1 — 14,5s -> 0,8s, e 28,9s -> 0,2s com faixa (07/09, LOCAL)
 
 O dono: *"ao mudar o filtro de stack demora muito; a consulta esta extremamente lenta"*. Medido

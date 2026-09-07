@@ -46,12 +46,15 @@ const HUD = { total_hands: 1350, vpip: 27, pfr: 17, rfi: 31 } as unknown as Play
 describe("régua do RFI", () => {
   it("desenha régua SÓ na célula com ref, e pinta o excesso para o lado certo", () => {
     render(<V2PositionProfileCard data={GRADE} geral={HUD} />);
-    const reguas = screen.getAllByTestId("regua-rfi");
-    expect(reguas).toHaveLength(2);                       // UTG e BTN; BB não tem RFI
-    expect(screen.queryByTestId("regua-vpip")).toBeNull();
-    expect(screen.queryByTestId("regua-pfr")).toBeNull();
-    expect(reguas[0].getAttribute("data-fora")).toBe("above");   // UTG 22 > 19
-    expect(reguas[1].getAttribute("data-fora")).toBe("below");   // BTN 40 < 48
+    // a cor (data-fora) so onde ha ref: UTG e BTN no RFI; VPIP/PFR sem ref ficam brancos
+    const comCor = screen.getAllByTestId(/^valor-rfi-/).filter((e) => e.getAttribute("data-fora"));
+    expect(comCor).toHaveLength(2);                       // UTG e BTN; BB nao tem RFI; Total nao tem cor
+    expect(screen.getAllByTestId(/^valor-vpip-/).every((e) => !e.getAttribute("data-fora"))).toBe(true);
+    expect(screen.getAllByTestId(/^valor-pfr-/).every((e) => !e.getAttribute("data-fora"))).toBe(true);
+    expect(comCor[0].getAttribute("data-fora")).toBe("above");   // UTG 22 > 19
+    expect(comCor[1].getAttribute("data-fora")).toBe("below");   // BTN 40 < 48
+    expect(comCor[0].textContent).toContain("▲");
+    expect(comCor[1].textContent).toContain("▼");
   });
 
   it("a linha TOTAL mostra o RFI do HUD sem régua", () => {
@@ -77,8 +80,10 @@ describe("régua do RFI", () => {
     const baixa = { value: 31, band: "low_sample" as const, ref: { lo: 12, hi: 19, folga: 3, pesos: {} } };
     const grade = { ...GRADE, positions: [{ position: "LJ", hands: 2, stats: { vpip: ok(1), pfr: ok(1), rfi: baixa } }] } as unknown as PositionProfileResponse;
     render(<V2PositionProfileCard data={grade} geral={{ ...HUD, rfi: 29 } as PlayerStatsResponse} />);
-    expect(screen.queryByTestId("regua-rfi")).toBeNull();
-    expect(screen.queryByText("31")).toBeNull();      // o valor nao aparece; so o traco (o Total mostra 29)
+    const lj = screen.getByTestId("valor-rfi-LJ");
+    expect(lj.getAttribute("data-fora")).toBeNull();      // sem cor
+    expect(lj.textContent).toBe("—");                     // so o traco (o Total mostra 29)
+    expect(screen.queryByText("31")).toBeNull();
   });
 });
 

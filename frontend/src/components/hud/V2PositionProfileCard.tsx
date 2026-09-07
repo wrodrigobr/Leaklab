@@ -67,10 +67,6 @@ const ROTULO: Record<string, string> = {
 /** Rótulo dos chips de stack. Jargão fica em inglês/numérico nos 3 idiomas. */
 const ROTULO_DA_FAIXA: Record<string, string> = { "40+": "40bb+", "20-40": "20–40bb", "<20": "<20bb" };
 
-/** Topo da escala da régua, por stat. Escala absoluta por coluna, para o ponto ser comparável
- *  entre assentos: BTN abre metade das mãos, UTG um sexto. Só tem régua quem está aqui. */
-const ESCALA: Record<string, number> = { vpip: 60, pfr: 50, rfi: 60, three_bet: 30, fold_to_3bet: 100 };
-
 /** Colunas que dependem de ABRIR o pote: a BB nunca abre, entao a celula e "n/a" por regra. */
 const SEM_CHART_NA_BB = new Set(["rfi", "fold_to_3bet"]);
 
@@ -98,26 +94,29 @@ function Detalhe({ stat, position, dados, erro, onFechar }: {
       ) : dados.rows.length === 0 ? (
         <p className="text-[11px] text-muted-foreground">{t("posProfile.detail.empty")}</p>
       ) : (
-        <div className="grid items-center gap-x-3 gap-y-2" style={{ gridTemplateColumns: "4rem 4rem 3.5rem 5.5rem minmax(8rem, 1fr)" }}>
+        <div className="grid items-center gap-x-3 gap-y-2" style={{ gridTemplateColumns: "4rem 4rem 3.5rem 5.5rem" }}>
           <span className="font-mono text-[9px] uppercase tracking-wider text-muted-foreground/60">{t("posProfile.detail.vs")}</span>
           <span className="font-mono text-[9px] uppercase tracking-wider text-muted-foreground/60 text-right">{t("posProfile.detail.opps")}</span>
           <span className="font-mono text-[9px] uppercase tracking-wider text-muted-foreground/60">{t("posProfile.you")}</span>
           <span className="font-mono text-[9px] uppercase tracking-wider text-muted-foreground/60">{t("posProfile.detail.solver")}</span>
-          <span />
           {dados.rows.map((r) => {
             const baixa = r.band === "low_sample";
+            const lado = r.ref && !baixa ? foraDaFaixa(r.value, r.ref.lo, r.ref.hi) : null;
             return (
               <div key={r.vs} className="contents" data-testid={`detalhe-linha-${r.vs}`}>
                 <span className="font-mono text-[10px] font-bold uppercase text-foreground">{r.vs}</span>
                 <span className="font-mono text-[9px] tabular-nums text-muted-foreground/70 text-right">{r.n}</span>
-                <span className={cn("font-mono text-[12px] font-bold tabular-nums", baixa ? "text-muted-foreground/40" : "text-foreground")}>
+                <span
+                  data-testid={`detalhe-valor-${r.vs}`}
+                  data-fora={lado ?? undefined}
+                  className={cn("font-mono text-[12px] font-bold tabular-nums",
+                                baixa ? "text-muted-foreground/40" : lado === "in" ? "text-emerald-400" : lado ? "text-red-400" : "text-foreground")}
+                >
                   {baixa ? "—" : r.value}
+                  {lado && lado !== "in" ? <span className="ml-0.5 align-top text-[9px]">{lado === "above" ? "▲" : "▼"}</span> : null}
                 </span>
-                <span className="font-mono text-[10px] tabular-nums text-emerald-400/90">
+                <span className="font-mono text-[10px] tabular-nums text-muted-foreground">
                   {r.ref ? `${r.ref.lo}–${r.ref.hi}` : "—"}
-                </span>
-                <span className="pr-2">
-                  {r.ref && !baixa && <Regua chave={stat} valor={r.value} lo={r.ref.lo} hi={r.ref.hi} />}
                 </span>
               </div>
             );
@@ -133,34 +132,18 @@ function Detalhe({ stat, position, dados, erro, onFechar }: {
  *  stat; sem entrada, cai no genérico. */
 const VERBO: Record<string, string> = { vpip: "vpip", pfr: "pfr", rfi: "rfi", three_bet: "threeBet", fold_to_3bet: "fold3bet" };
 
-/** Régua de uma célula com `ref`: faixa verde do chart, ponto no valor, tinta só no excesso
- *  (entre a borda da faixa e o ponto). Quem está dentro não gasta tinta. */
-function Regua({ chave, valor, lo, hi }: { chave: string; valor: number; lo: number; hi: number }) {
-  const topo = ESCALA[chave] ?? 100;
-  const pct = (v: number) => Math.max(0, Math.min(100, (v / topo) * 100));
-  const fora = valor < lo ? "below" : valor > hi ? "above" : "in";
-  const tinta = fora === "below" ? [pct(valor), pct(lo)] : fora === "above" ? [pct(hi), pct(valor)] : null;
-  return (
-    <div className="relative mt-2 h-1.5 w-full rounded-full bg-muted/25" data-testid={`regua-${chave}`} data-fora={fora}>
-      <div className="absolute top-0 h-1.5 rounded-full bg-emerald-500/40" style={{ left: `${pct(lo)}%`, width: `${pct(hi) - pct(lo)}%` }} />
-      {tinta && (
-        <div className="absolute top-0 h-1.5 rounded-full bg-red-500/70" style={{ left: `${tinta[0]}%`, width: `${tinta[1] - tinta[0]}%` }} />
-      )}
-      <div
-        className={cn("absolute -top-[3px] size-3 -translate-x-1/2 rounded-full ring-2 ring-card",
-                      fora === "in" ? "bg-emerald-400" : "bg-red-400")}
-        style={{ left: `${pct(valor)}%` }}
-      />
-    </div>
-  );
+/** Direcao do desvio: "in" dentro da faixa do solver, "above"/"below" fora. */
+function foraDaFaixa(valor: number, lo: number, hi: number): "in" | "above" | "below" {
+  return valor < lo ? "below" : valor > hi ? "above" : "in";
 }
 
 /**
- * Uma célula. Só o EXCESSO ganha cor, e só onde há régua.
+ * Uma célula: SO o numero, colorido (07/09, decisao do dono: a regua ocupava espaco e poluia).
  *
- * Com `ref` (RFI): a faixa do chart está sempre desenhada em verde; quando o valor sai dela,
- * o trecho **entre a borda da faixa e o valor** é pintado. Sem `ref`: só o número, e a
- * comparação honesta (este assento contra o seu jogo todo) vive no tooltip, em frase.
+ * Verde = dentro do que o solver faria com as suas maos; vermelho = fora, com um glifo de
+ * direcao (▲ acima, ▼ abaixo) para nao precisar abrir o tooltip so para saber o lado. Branco =
+ * sem referencia; "—" = amostra baixa. O tamanho do desvio e a faixa do solver ficam no
+ * tooltip. Sem regua desenhada a grade cabe sem rolagem e a coluna se le de uma vez.
  */
 function Celula({ chave, cel, posicao, maos, ancora, destaque, stack, onDetalhe, aberto }: {
   chave: string;
@@ -183,6 +166,7 @@ function Celula({ chave, cel, posicao, maos, ancora, destaque, stack, onDetalhe,
   const delta = ancora != null ? cel.value - ancora : null;
   const ref = cel.ref;
   const foraDaRef = ref && !baixa ? (cel.value < ref.lo ? cel.value - ref.lo : cel.value > ref.hi ? cel.value - ref.hi : 0) : null;
+  const lado = ref && !baixa && !destaque ? foraDaFaixa(cel.value, ref.lo, ref.hi) : null;
 
   return (
     <Tooltip>
@@ -191,7 +175,7 @@ function Celula({ chave, cel, posicao, maos, ancora, destaque, stack, onDetalhe,
             por nao ter referencia; voltou quando a referencia passou a vir do chart. Celula
             com detalhe ("contra quem") abre o painel no clique; o hover segue com o tooltip. */}
         <span
-          className={cn("flex min-h-[30px] w-full flex-col pr-4", onDetalhe ? "cursor-pointer" : "cursor-default")}
+          className={cn("flex w-full flex-col pr-3", onDetalhe ? "cursor-pointer" : "cursor-default")}
           onClick={onDetalhe}
           role={onDetalhe ? "button" : undefined}
           aria-expanded={onDetalhe ? aberto : undefined}
@@ -200,17 +184,27 @@ function Celula({ chave, cel, posicao, maos, ancora, destaque, stack, onDetalhe,
           {/* UMA tinta: a regua carrega a cor. Numero vermelho + ponto vermelho + trecho
               vermelho era a mesma informacao tres vezes. */}
           <span
+            data-testid={`valor-${chave}-${posicao}`}
+            data-fora={lado ?? undefined}
             className={cn(
               "font-mono text-[13px] font-bold tabular-nums leading-none",
-              baixa ? "text-muted-foreground/40" : destaque ? "text-primary" : "text-foreground"
+              baixa ? "text-muted-foreground/40"
+                : destaque ? "text-primary"
+                : lado === "in" ? "text-emerald-400"
+                : lado ? "text-red-400"
+                : "text-foreground"
             )}
           >
             {baixa ? "—" : cel.value}
+            {lado && lado !== "in" && (
+              <span className="ml-0.5 align-top text-[9px]" aria-label={t(lado === "above" ? "posProfile.above" : "posProfile.below")}>
+                {lado === "above" ? "▲" : "▼"}
+              </span>
+            )}
             {onDetalhe && !baixa && (
               <span className={cn("ml-1 inline-block text-[9px] text-muted-foreground/60 transition-transform", aberto && "rotate-90")}>▸</span>
             )}
           </span>
-          {ref && !baixa && !destaque && <Regua chave={chave} valor={cel.value} lo={ref.lo} hi={ref.hi} />}
         </span>
       </TooltipTrigger>
 
@@ -325,7 +319,7 @@ export function V2PositionProfileCard({
   /** Largura das colunas. A coluna com regua (RFI) precisa de trilho legivel; as outras cabem
    *  no rotulo mais longo sem quebrar ("Fold vs Bet"). A 1a versao dava 4rem a todas e a
    *  regua, com 78px fixos, invadia a coluna vizinha. */
-  const trilhas = `3.5rem 3rem ${colunas.map((k) => (ESCALA[k] ? "minmax(8rem, 1.6fr)" : "minmax(4rem, 1fr)")).join(" ")}`;
+  const trilhas = `3.5rem 3rem ${colunas.map(() => "minmax(4.5rem, 1fr)").join(" ")}`;
 
   /** Celulas do TOTAL, montadas do payload do HUD principal (valor + a flag que ele ja
    *  traz). Nao e a MEDIA das linhas: media simples de percentual entre assentos de volume
@@ -428,13 +422,13 @@ export function V2PositionProfileCard({
               {t("posProfile.handsShort")}
             </span>
             {colunas.map((k) => (
-              <span key={k} className="whitespace-nowrap font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
+              <span key={k} className="whitespace-nowrap font-mono text-[9px] uppercase tracking-wider text-muted-foreground/70">
                 {ROTULO[k] ?? k}
               </span>
             ))}
           </div>
 
-          <div className="space-y-2.5">
+          <div className="space-y-2">
             {linhas.map((linha) => (
               <div
                 key={linha.position}
@@ -453,7 +447,7 @@ export function V2PositionProfileCard({
                     // traco e amostra baixa, isto e regra.
                     <Tooltip key={k}>
                       <TooltipTrigger asChild>
-                        <span className="inline-block min-h-[30px] cursor-default font-mono text-[10px] leading-[13px] text-muted-foreground/40">n/a</span>
+                        <span className="inline-block cursor-default font-mono text-[10px] leading-[13px] text-muted-foreground/40">n/a</span>
                       </TooltipTrigger>
                       <TooltipContent side="top" className="max-w-[200px] p-2 text-[11px]">{t("posProfile.rfiNaBB")}</TooltipContent>
                     </Tooltip>
@@ -464,7 +458,7 @@ export function V2PositionProfileCard({
                             onDetalhe={COM_DETALHE.has(k) && linha.stats[k].band !== "low_sample" ? () => alternaDetalhe(linha.position, k) : undefined}
                             aberto={detalhe?.position === linha.position && detalhe?.stat === k} />
                   ) : (
-                    <span key={k} className="min-h-[30px] font-mono text-[13px] leading-none text-muted-foreground/25">—</span>
+                    <span key={k} className="font-mono text-[13px] leading-none text-muted-foreground/25">—</span>
                   )
                 )}
                 {detalhe?.position === linha.position && (
@@ -505,7 +499,7 @@ export function V2PositionProfileCard({
                     destaque
                   />
                 ) : (
-                  <span key={k} className="min-h-[30px] font-mono text-[13px] leading-none text-muted-foreground/25">—</span>
+                  <span key={k} className="font-mono text-[13px] leading-none text-muted-foreground/25">—</span>
                 )
               )}
             </div>

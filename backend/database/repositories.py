@@ -2290,8 +2290,9 @@ def _filtro_do_hud(user_id: int, days: int, last_n, position=None, stack_band=No
     tf, tp = _build_tournament_filter(user_id, days, last_n)
     if position:
         # Aceita os ALIASES do assento (MP1 e LJ). Comparar o rotulo cru perdia 334 decisoes.
+        # E o assento e o da DISTANCIA AO BOTAO (AY-20): o "UTG+2" de mesa 8 e LJ.
         rotulos = rotulos_do_assento(position)
-        tf = '(%s) AND d.position IN (%s)' % (tf, ', '.join(['?'] * len(rotulos)))
+        tf = '(%s) AND %s IN (%s)' % (tf, sql_assento(), ', '.join(['?'] * len(rotulos)))
         tp = tuple(tp) + rotulos
     if stack_band:
         lo, hi = FAIXAS_DE_STACK[stack_band]      # KeyError = faixa desconhecida; endpoint valida
@@ -2339,6 +2340,36 @@ POSICOES_NA_ORDEM = ('UTG', 'UTG+1', 'UTG+2', 'LJ', 'HJ', 'CO', 'BTN', 'SB', 'BB
 _ALIASES_DE_POSICAO: dict = {}
 for _cru, _canon in _POSITION_NORM.items():
     _ALIASES_DE_POSICAO.setdefault(_canon, []).append(_cru)
+
+
+_SQL_ASSENTO_CACHE: dict = {}
+
+
+def sql_assento(coluna: str = 'd.position') -> str:
+    """Expressao SQL que devolve o assento pela DISTANCIA AO BOTAO, no vocabulario 9-max dos
+    charts, a partir de (`d.num_players`, rotulo cru).
+
+    ── Por que existe (07/09, AY-20, achado do Rullian) ──────────────────────────────────
+    O parser nomeia contando a partir do UTG: em mesa de 8 o 4o assento se chama "UTG+2", e
+    em mesa de 9 o 4o e "LJ". So que o "UTG+2" de mesa 8 tem HJ, CO e BTN atras — e o Lojack,
+    pela convencao que todo jogador usa e que os charts usam. A grade por assento misturava o
+    UTG+2 de mesa 9 (4 atras) com o LJ de mesa 8 (3 atras) na mesma linha, com a regua do
+    chart errado; o Rullian tinha 13 maos em "LJ" e 1.115 em "UTG+2" jogando 8-max.
+
+    O motor de veredito ja pareia por jogadores atras (`_mapa_da_mesa` em preflop_gto_ranges,
+    por isso o chart bate). Este CASE e o MESMO mapa, para o SQL do HUD/grade/detalhe/DNA/
+    matriz nao ganhar uma 2a copia. `num_players` NULL ou mesa de 9: o rotulo cru vale (com
+    MP1 -> LJ pelo proprio mapa). BTN/CO/HJ/SB/BB nunca mudam de nome.
+    """
+    if coluna not in _SQL_ASSENTO_CACHE:
+        from leaklab.preflop_gto_ranges import _mapa_da_mesa
+        ramos = []
+        for n in range(2, 10):
+            for cru, nome in sorted(_mapa_da_mesa(n).items()):
+                if cru != nome:
+                    ramos.append("WHEN d.num_players = %d AND %s = '%s' THEN '%s'" % (n, coluna, cru, nome))
+        _SQL_ASSENTO_CACHE[coluna] = "(CASE %s ELSE %s END)" % (' '.join(ramos), coluna)
+    return _SQL_ASSENTO_CACHE[coluna]
 
 
 def rotulos_do_assento(pos: str) -> tuple:
@@ -2607,7 +2638,8 @@ def _linhas_preflop_do_recorte(user_id, days, last_n):
     conn = get_conn()
     try:
         rows = conn.execute(_adapt(f"""
-            SELECT d.id, d.hand_id, d.tournament_id, d.position AS position_raw, d.vs_position,
+            SELECT d.id, d.hand_id, d.tournament_id, {sql_assento()} AS position_raw,
+                   {sql_assento('d.vs_position')} AS vs_position,
                    d.effective_stack_bb AS stack, d.facing_bet, d.facing_limp,
                    d.preflop_raises_faced, d.is_3bet,
                    CASE WHEN COALESCE(d.hero_was_aggressor, 0) <> 0 THEN 1 ELSE 0 END AS aggressor,
@@ -2660,7 +2692,8 @@ def _primeiras_decisoes_do_assento(user_id, days, last_n, position, stack_band):
     try:
         rows = conn.execute(_adapt(f"""
             SELECT d.hand_id, d.id, d.action_taken, d.facing_bet, d.facing_limp,
-                   d.preflop_raises_faced, d.hero_was_aggressor, d.vs_position, d.effective_stack_bb
+                   d.preflop_raises_faced, d.hero_was_aggressor, {sql_assento('d.vs_position')} AS vs_position,
+                   d.effective_stack_bb
             FROM decisions d
             JOIN tournaments t ON t.id = d.tournament_id
             WHERE {tf} AND d.street = 'preflop'
@@ -2714,7 +2747,7 @@ def get_position_stat_detail(user_id: int, position: str, stat: str, days: int =
     conn = get_conn()
     try:
         rows = conn.execute(_adapt(f"""
-            SELECT d.vs_position, d.effective_stack_bb, d.action_taken, d.is_3bet
+            SELECT {sql_assento('d.vs_position')} AS vs_position, d.effective_stack_bb, d.action_taken, d.is_3bet
             FROM decisions d
             JOIN tournaments t ON t.id = d.tournament_id
             WHERE {tf} AND d.street = 'preflop' AND {_SQL_OPORTUNIDADE[tipo]}
@@ -2754,7 +2787,7 @@ def _oportunidades_do_assento(user_id, days, last_n, position, stack_band, tipo)
     conn = get_conn()
     try:
         rows = conn.execute(_adapt(f"""
-            SELECT d.vs_position, d.effective_stack_bb
+            SELECT {sql_assento('d.vs_position')} AS vs_position, d.effective_stack_bb
             FROM decisions d
             JOIN tournaments t ON t.id = d.tournament_id
             WHERE {tf} AND d.street = 'preflop' AND {_SQL_OPORTUNIDADE[tipo]}
@@ -7083,7 +7116,7 @@ def get_player_dna(user_id: int, days: int = 90, last_n: int | None = None) -> d
     try:
         tf, tp = _build_tournament_filter(user_id, days, last_n)
         rows = _fetchall(conn, _adapt(f"""
-            SELECT d.action_taken, d.street, d.position, d.is_3bet,
+            SELECT d.action_taken, d.street, {sql_assento()} AS position, d.is_3bet,
                    d.label, d.icm_pressure
             FROM decisions d
             JOIN tournaments t ON t.id = d.tournament_id
@@ -11231,7 +11264,7 @@ def get_gto_alignment_matrix(user_id: int, since_days: int = 90, last_n: int | N
     try:
         rows = _fetchall(conn, _adapt(f"""
             SELECT
-                d.position,
+                {sql_assento()} AS position,
                 d.street,
                 d.gto_label,
                 COUNT(*) AS n
@@ -11240,7 +11273,7 @@ def get_gto_alignment_matrix(user_id: int, since_days: int = 90, last_n: int | N
             WHERE {tf}
               AND d.position IS NOT NULL
               AND d.street IS NOT NULL
-            GROUP BY d.position, d.street, d.gto_label
+            GROUP BY {sql_assento()}, d.street, d.gto_label
         """), tp)
 
         # Bucket de posição canônico (mantém heatmap legível com 6 linhas)

@@ -45,8 +45,8 @@ describe("fase 3: VPIP e PFR com a media do solver", () => {
 
   it("VPIP e PFR ganham regua quando o backend manda ref de tipo media", () => {
     render(<V2PositionProfileCard data={grade} geral={HUD} />);
-    expect(screen.getByTestId("regua-vpip").getAttribute("data-fora")).toBe("below");
-    expect(screen.getByTestId("regua-pfr").getAttribute("data-fora")).toBe("in");
+    expect(screen.getByTestId("valor-vpip-BTN").getAttribute("data-fora")).toBe("below");
+    expect(screen.getByTestId("valor-pfr-BTN").getAttribute("data-fora")).toBe("in");
   });
 
   it("o tooltip da media diz que e media nas suas maos, sem o diagnostico interno", async () => {
@@ -83,9 +83,9 @@ describe("veredito em texto", () => {
 describe("fase 2", () => {
   it("as tres colunas tem regua, cada uma na propria escala", () => {
     render(<V2PositionProfileCard data={GRADE} geral={HUD} />);
-    expect(screen.getByTestId("regua-rfi").getAttribute("data-fora")).toBe("in");
-    expect(screen.getByTestId("regua-three_bet").getAttribute("data-fora")).toBe("in");
-    expect(screen.getByTestId("regua-fold_to_3bet").getAttribute("data-fora")).toBe("below");
+    expect(screen.getByTestId("valor-rfi-CO").getAttribute("data-fora")).toBe("in");
+    expect(screen.getByTestId("valor-three_bet-CO").getAttribute("data-fora")).toBe("in");
+    expect(screen.getByTestId("valor-fold_to_3bet-CO").getAttribute("data-fora")).toBe("below");
     // o cabecalho nao repete "Fold 3Bet" do HUD com outro nome
     expect(screen.getAllByText("Fold 3Bet")).toHaveLength(1);
   });

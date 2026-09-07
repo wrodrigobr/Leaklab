@@ -310,9 +310,9 @@ _P7_CONFERIDAS = {
     'sessionContext.footnote':'barra = barra de progresso da sessao, existe',
     'perfil.faixaBuyin':      'faixa = faixa de buy-in (intervalo), nao desenho',
     'heatmap.ajuda':          'verde/vermelho = celulas do heatmap, existe',
-    'posProfile.tooltip':     'REESCRITO 05/09: descrevia faixa verde e ponto removidos na vespera (4a vez a legenda desse card). Agora descreve so numero, amostra e Total.',
+    'posProfile.tooltip':     'REESCRITO 07/09: a cor do numero compara com o solver (verde dentro, vermelho fora); nao ha mais faixa desenhada',
     # 06/09 (AY-15): a faixa verde VOLTOU, so na celula do RFI (`Regua` em V2PositionProfileCard, `data-testid=regua-rfi`).
-    'posProfile.legend':      'faixa verde = a regua do RFI, existe (Regua, so onde ha `ref`)',
+    'posProfile.legend':      'verde/vermelho = a cor do NUMERO da celula (07/09: a regua saiu, a cor ficou no numero), existe',
     'posProfile.tolerance':   'faixa = a mesma faixa verde do RFI, existe; "folga" e a FOLGA_DA_REFERENCIA_PP do backend',
     'posProfile.stackHands':  'faixa = faixa de STACK (intervalo em bb), nao desenho',
     'posProfile.detail.note': 'faixa = a faixa verde da regua no painel contra quem (Detalhe em V2PositionProfileCard), existe',

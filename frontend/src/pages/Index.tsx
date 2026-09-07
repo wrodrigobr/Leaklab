@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { EVENTO_LOTE } from "@/lib/refreshOnImport";
 import { useQuery } from "@tanstack/react-query";
-import { Coins, Layers, Percent, Target, GraduationCap, Brain, RotateCcw, Loader2 } from "lucide-react";
+import { Coins, Layers, Percent, Target, GraduationCap, Brain, RotateCcw, Loader2, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, rectSortingStrategy, arrayMove, sortableKeyboardCoordinates } from "@dnd-kit/sortable";
@@ -23,6 +23,7 @@ import { metrics, tournaments, support, EvolutionResponse, Tournament, PlayerSta
 import { ultimosTorneios } from "@/lib/ultimosTorneios";
 import { useAuth } from "@/lib/auth";
 import { shouldShowDrift, readDriftSeen, writeDriftSeen } from "@/lib/driftDismiss";
+import { conviteCoachFechado, fecharConviteCoach } from "@/lib/conviteCoachDismiss";
 
 // Module-level cache — survives unmount/remount during SPA navigation
 let _cachedTourns: Tournament[] | null = null;
@@ -83,6 +84,7 @@ const Index = () => {
   // quando a janela de 30 dias deslizava e a composição das sessões marcadas mudava — o jogador
   // fechava e o alerta voltava sem nada ter sido detectado.
   const [driftSeen, setDriftSeen] = useState(() => readDriftSeen(user?.user_id));
+  const [conviteFechado, setConviteFechado] = useState(() => conviteCoachFechado(user?.user_id));
   const [dnaData, setDnaData]             = useState<PlayerDnaResponse | null>(null);
   const [leakGraph, setLeakGraph]         = useState<LeakGraphResponse | null>(null);
   const [careerData, setCareerData]       = useState<CareerProjection | null>(null);
@@ -105,7 +107,7 @@ const Index = () => {
   const [volumeLimit, setVolumeLimit]     = useState<number | null>(0);
 
   // A marca d'água é por USUÁRIO (não por detecção), então só precisa reler quando o usuário muda.
-  useEffect(() => { setDriftSeen(readDriftSeen(user?.user_id)); }, [user?.user_id]);
+  useEffect(() => { setDriftSeen(readDriftSeen(user?.user_id)); setConviteFechado(conviteCoachFechado(user?.user_id)); }, [user?.user_id]);
 
   const showDrift = shouldShowDrift(
     !!driftData?.drift_detected, driftData?.latest_flagged_id, driftSeen);
@@ -305,18 +307,29 @@ const Index = () => {
      `setShowLinkCoach(true)` só existia dentro do return clássico, que nunca roda desde que o
      V2 virou padrão. O modal `AcceptCoachModal` já estava nos dois ramos; faltava quem o
      abrisse. Agora o gatilho mora aqui, junto dos modais, e serve os dois. */
-  const convitePraCoach = user?.role === "player" && !user?.coach_id ? (
-    <div className="flex items-center justify-between gap-3 rounded-lg border border-primary/20 bg-primary/5 px-4 py-3">
+  // Fechavel e lembrado por usuario (07/09): sem isso ficava no topo em toda visita.
+  const convitePraCoach = user?.role === "player" && !user?.coach_id && !conviteFechado ? (
+    <div className="flex items-center justify-between gap-3 rounded-lg border border-primary/20 bg-primary/5 px-4 py-3" data-testid="convite-coach">
       <div className="flex items-center gap-2 text-sm text-foreground">
         <GraduationCap className="size-4 shrink-0 text-primary" />
         <span>{t("linkCoach.message")}</span>
       </div>
-      <button
-        onClick={() => setShowLinkCoach(true)}
-        className="shrink-0 font-mono text-[10px] font-bold uppercase tracking-widest-2 text-primary hover:underline"
-      >
-        {t("linkCoach.action")}
-      </button>
+      <div className="flex shrink-0 items-center gap-3">
+        <button
+          onClick={() => setShowLinkCoach(true)}
+          className="font-mono text-[10px] font-bold uppercase tracking-widest-2 text-primary hover:underline"
+        >
+          {t("linkCoach.action")}
+        </button>
+        <button
+          type="button"
+          aria-label={t("linkCoach.dismiss")}
+          onClick={() => { fecharConviteCoach(user?.user_id); setConviteFechado(true); }}
+          className="text-muted-foreground hover:text-foreground"
+        >
+          <X className="size-3.5" />
+        </button>
+      </div>
     </div>
   ) : null;
 

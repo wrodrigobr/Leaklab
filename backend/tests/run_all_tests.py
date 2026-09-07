@@ -85,6 +85,7 @@ SUITES = {
                   'test_grupo_posicional.py',
                   'test_historico_sem_teto.py',
                   'test_rfi_por_assento.py',
+                  'test_assento_pela_distancia_ao_botao.py',
                   'test_ritual_da_sessao.py',
                   'test_equity_flop_turn.py',
                   'test_tendencia_do_leak.py',
