@@ -214,6 +214,18 @@ def _norm_action_fe(a: str) -> str:
     return s
 
 
+def _acao_dominante_ok(items, ga, tol=1e-6):
+    """True se `ga` (gto_action armazenado) é a ação dominante da strategy OU empata com ela
+    em frequência. `items` = [(ação, freq)]."""
+    if not items:
+        return True
+    top_freq = max(f for _, f in items)
+    for a, f in items:
+        if _norm_pf(a) == _norm_pf(ga):
+            return f >= top_freq - tol
+    return False
+
+
 def scan_postflop(verbose=False) -> list[Violation]:
     from database.schema import get_conn
     import json as _json
@@ -250,9 +262,12 @@ def scan_postflop(verbose=False) -> list[Violation]:
             continue
         # argmax (ação dominante)
         top_act, top_freq = max(items, key=lambda x: x[1])
-        # INV-P2 gto_action armazenado == ação dominante da strategy (normalizado)
+        # INV-P2 gto_action armazenado == ação dominante da strategy (normalizado). EMPATE de
+        # frequência é OK: o solver desempata por combos (check 12825 vs bet 12820 a 0,50/0,50)
+        # e o argmax daqui pega o 1º do dict. Apareceu em 07/09 com os nós reais do acervo do
+        # Rullian copiados para o dev: 3 "violações", todas empates exatos.
         ga = d.get('gto_action')
-        if ga and _norm_pf(ga) != _norm_pf(top_act):
+        if ga and not _acao_dominante_ok(items, ga):
             V('pf_action_not_dominant', f'gto_action={ga} mas dominante={top_act}({top_freq:.2f})')
         # INV-P3 jogar a AÇÃO DOMINANTE não pode dar veredito crítico
         if _effective_label_pf(items, top_act) == 'gto_critical':

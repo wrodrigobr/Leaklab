@@ -640,6 +640,6 @@
       "def": "% of showdowns you won.",
       "formula": "showdowns won ÷ showdowns"
     },
-    "p1": "The references (\"MTT target\") are for your whole game. In the <b>Position profile</b> the reference is different: what the solver would do with your hands, in that seat at that depth; each cell's tooltip explains it."
+    "p1": "The references (\"MTT target\") are for your whole game. In the <b>Position profile</b> the reference is different: what the solver would do with your hands, in that seat at that depth; each cell's tooltip explains it. For C-Bet, the in-position (IP) and out-of-position (OOP) rates carry the solver reference in your own spots: the P20–P80 range of how often the solver range bets in each of them."
   }
 }

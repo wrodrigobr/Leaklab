@@ -29,6 +29,8 @@ beforeEach(() => {
       { vs: "UTG", n: 120, value: 5.1, band: "ok", ref: { lo: 2, hi: 8, folga: 3, pesos: { "40bb vs UTG": 100 } } },
       { vs: "BTN", n: 12, value: 25, band: "low_sample", ref: { lo: 15, hi: 22, folga: 3, pesos: {} } },
     ],
+    // o total e o numero da celula (8.5 em 132), fora da faixa 2-8: vermelho, seta para cima
+    total: { n: 132, value: 8.5, ref: { lo: 2, hi: 8, folga: 3, pesos: {} } },
   });
 });
 
@@ -46,6 +48,13 @@ describe("painel contra quem", () => {
     fireEvent.click(screen.getByTestId("celula-three_bet-BB"));
     expect(detail).toHaveBeenCalledWith("BB", "three_bet", 90, 30, "20-40");
     const painel = await screen.findByTestId("detalhe-three_bet-BB");
+    // a linha Total vem PRIMEIRO, com o numero da celula, a soma das oportunidades e a cor
+    const total = within(painel).getByTestId("detalhe-linha-total");
+    expect(within(total).getByText("8.5")).toBeTruthy();
+    expect(within(total).getByText("132")).toBeTruthy();
+    expect(within(total).getByText("2–8")).toBeTruthy();
+    expect(within(painel).getByTestId("detalhe-valor-total").getAttribute("data-fora")).toBe("above");
+    expect(painel.querySelector("[data-testid^=detalhe-linha-]")!.getAttribute("data-testid")).toBe("detalhe-linha-total");
     const utg = within(painel).getByTestId("detalhe-linha-UTG");
     expect(within(utg).getByText("5.1")).toBeTruthy();
     expect(within(utg).getByText("2–8")).toBeTruthy();

@@ -5,6 +5,53 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## Varredura de invariantes: empate de frequencia nao e "acao nao dominante" (07/09, LOCAL)
+
+- Com os 6.312 nos reais do acervo do Rullian no dev, `test_card_invariants` acusou 3 nos
+  `pf_action_not_dominant`. Os tres eram EMPATES exatos (check 0,50 / bet_50pct 0,50; call
+  0,447 / fold 0,447): o solver desempata por combos e o argmax da varredura pegava o 1o do
+  dict. Falso positivo, nao dado errado.
+- `_acao_dominante_ok(items, ga)`: a acao armazenada vale se empata com a dominante (tol 1e-6).
+  Teste com os tres casos reais e com um mismatch de verdade, que continua acusado.
+- Suite completa do backend antes deste conserto: 2.929 de 2.930 (a unica falha era esta);
+  o arquivo corrigido roda 7/7. Frontend 532/532.
+
+---
+
+## Modal "contra quem": linha Total no topo, o numero da celula (07/09, LOCAL)
+
+- O dono clicou no Fold to 3-Bet do UTG (47,3) e o modal mostrava 41,8: era o CO, o unico
+  oponente com 30+ oportunidades; as outras sete linhas escondiam o valor pela regra da
+  amostra, e a media ponderada das oito da exatamente 47,3. Nada errado nos numeros, mas o
+  modal parecia contradizer a tabela.
+- O endpoint do detalhe devolve `total` (oportunidades, valor e a referencia sobre TODAS as
+  oportunidades do assento), e o modal o mostra na 1a linha. Teste prova que o total do modal
+  e igual a celula da grade, com e sem filtro de stack.
+
+---
+
+## AY-23: C-Bet IP/OOP com a referencia do SOLVER nos proprios spots (07/09, LOCAL)
+
+- O dono: "podemos colocar estas referencias no modal pra cada uma das situacoes de IP e OOP?".
+  A referencia e o que o solver faria em CADA spot de c-bet do jogador: o no entra pelo
+  `spot_hash` (a estrategia da range no flop), e a faixa e P20-P80 da frequencia de aposta,
+  a MESMA regra do RFI/3-Bet (`_faixa_dos_charts`), com folga. Piso de cobertura 50%
+  (`COBERTURA_MINIMA_CBET`); abaixo dele o tooltip diz so quanto o solver cobre.
+- Por que a range e nao a mao: e a definicao de C-Bet % (frequencia da range no no), esta no
+  banco (848 dos 1.037 spots do Rullian) e nao depende do servidor do solver. A acao principal
+  (`gto_action`) nao serve: esconde a mistura, OOP dava 14% quando a frequencia da 34%.
+- Medido no acervo do Rullian (copia em dev, iguala prod contador a contador): IP 48,9-88,5
+  (cobre 86%), OOP 15,2-49,0 (cobre 56%); ele c-beta 89,5 IP e 68,5 OOP. Acima nos dois,
+  muito mais fora de posicao. A 40+bb OOP fica sem referencia (cobertura abaixo do piso).
+- Guardas: `freq_de_aposta_da_estrategia` (soma as apostas de qualquer tamanho, normaliza),
+  `referencia_cbet` (P20-P80, piso) e o HUD com nos forjados por `spot_hash`. Quebrado de
+  proposito duas vezes: 'bet_50pct' deixando de contar (2 testes acusam) e a juncao com os
+  nos sumindo (1 acusa). Frontend: a cor do numero compara com a faixa, a cobertura e dita
+  quando nao e 100%, e sem referencia o numero fica sem cor.
+- /docs: a secao do HUD explica a referencia de IP/OOP.
+
+---
+
 ## C-Bet: a oportunidade sumia quando OUTRO usuario tinha a mesma mao (07/09, LOCAL)
 
 - `_SQL_OPORTUNIDADE['cbet']` escolhia a 1a linha do flop por `hand_id` sem escopar pelo

@@ -1038,6 +1038,9 @@ export interface PositionDetailResponse {
   stack_band: string | null;
   minimo: number;
   rows: PositionDetailRow[];
+  /** a soma das linhas: o MESMO numero da celula da grade (dono, 07/09: o modal parecia
+   *  contradizer a tabela porque so uma linha tinha amostra para mostrar o valor) */
+  total: { n: number; value: number | null; ref: PositionStatRef | null };
 }
 
 /** Flag direcional do backend (fonte unica `STAT_REFERENCES`, gateada por amostra). */
@@ -1064,6 +1067,12 @@ export interface PlayerStatsResponse {
   cbet_oop?: number | null;
   cbet_ip_opp?: number;
   cbet_oop_opp?: number;
+  /** referencia do solver NOS PROPRIOS spots de c-bet (AY-23): P20-P80 da frequencia de aposta
+   *  da range; null abaixo do piso de cobertura. `*_cobertura` = % dos spots com solve */
+  cbet_ip_ref?: PositionStatRef | null;
+  cbet_oop_ref?: PositionStatRef | null;
+  cbet_ip_cobertura?: number;
+  cbet_oop_cobertura?: number;
   fold_to_3bet: number | null;
   wtsd: number | null;
   three_bet: number | null;

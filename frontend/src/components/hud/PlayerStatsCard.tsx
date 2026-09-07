@@ -1,6 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { HudTooltip } from "./HudTooltip";
+import type { PositionStatRef } from "@/lib/api";
 
 /** Tradutor injetado nas funcoes de modulo (fora da arvore do React, sem `useTranslation`). */
 type Traduz = (chave: string, opcoes?: Record<string, unknown>) => string;
@@ -15,6 +16,10 @@ interface PlayerStats {
   cbet_oop?: number | null;
   cbet_ip_opp?: number;
   cbet_oop_opp?: number;
+  cbet_ip_ref?: SolverRef | null;
+  cbet_oop_ref?: SolverRef | null;
+  cbet_ip_cobertura?: number;
+  cbet_oop_cobertura?: number;
   fold_to_3bet: number | null;
   wtsd: number | null;
   three_bet: number | null;
@@ -25,6 +30,9 @@ interface PlayerStats {
   open_limp_pct: number | null;
   flags?: Record<string, StatFlag>;
 }
+
+/** Referencia do solver nos proprios spots (AY-23): P20-P80 da frequencia de aposta da range. */
+type SolverRef = PositionStatRef;
 
 // Flag direcional vindo do backend (fonte única STAT_REFERENCES, gateado por amostra).
 interface StatFlag {
@@ -48,9 +56,9 @@ interface StatDef {
   soon?: true;
 }
 
-// Sem referencia para C-Bet IP/OOP (07/09): os 60-75 / 45-60 que entraram nao tinham fonte, e o
-// dono duvidou com razao (o agressor em posicao c-beta muito no solver moderno). A referencia
-// certa e a do solver nos PROPRIOS spots do jogador (AY-23). Ate la: numero e amostra, sem cor.
+// C-Bet IP/OOP (07/09): os 60-75 / 45-60 que chegaram a entrar nao tinham fonte, e o dono duvidou
+// com razao. A referencia e a do solver nos PROPRIOS spots do jogador (AY-23), que vem do backend
+// com a cobertura; sem ela, numero e amostra, sem cor.
 
 // Row 1 — 4 fully computed stats
 const ROW1: StatDef[] = [
@@ -224,15 +232,29 @@ function StatCell({ def, value, flag, compact, stats }: { def: StatDef; value: n
             <p className="text-[11px] leading-snug text-muted-foreground">{t("playerStats.cbetSplitNone")}</p>
           ) : (
             <>
-              {([["cbetSplitIp", stats.cbet_ip, stats.cbet_ip_opp], ["cbetSplitOop", stats.cbet_oop, stats.cbet_oop_opp]] as const).map(([k, v, n]) => (
-                <div key={k} className="flex items-baseline justify-between gap-3 py-0.5">
-                  <span className="text-[11px] text-muted-foreground">{t(`playerStats.${k}`)}</span>
-                  <span className="whitespace-nowrap font-mono text-xs tabular-nums text-foreground">
-                    <b>{v == null ? "—" : `${v.toFixed(1)}%`}</b>
-                    <span className="ml-1.5 text-[9px] text-muted-foreground/70">{t("playerStats.cbetSplitOpps", { n: n ?? 0 })}</span>
-                  </span>
-                </div>
-              ))}
+              {([["cbetSplitIp", stats.cbet_ip, stats.cbet_ip_opp, stats.cbet_ip_ref, stats.cbet_ip_cobertura],
+                 ["cbetSplitOop", stats.cbet_oop, stats.cbet_oop_opp, stats.cbet_oop_ref, stats.cbet_oop_cobertura]] as const).map(([k, v, n, ref, cob]) => {
+                // a cor do numero compara com o solver, como no perfil por posicao: fora = vermelho
+                const fora = ref && v != null ? (v < ref.lo || v > ref.hi) : null;
+                return (
+                  <div key={k} className="py-0.5" data-testid={`cbet-${k}`}>
+                    <div className="flex items-baseline justify-between gap-3">
+                      <span className="text-[11px] text-muted-foreground">{t(`playerStats.${k}`)}</span>
+                      <span className="whitespace-nowrap font-mono text-xs tabular-nums text-foreground">
+                        <b className={fora == null ? "" : fora ? "text-red-400" : "text-emerald-400"}>{v == null ? "—" : `${v.toFixed(1)}%`}</b>
+                        <span className="ml-1.5 text-[9px] text-muted-foreground/70">{t("playerStats.cbetSplitOpps", { n: n ?? 0 })}</span>
+                      </span>
+                    </div>
+                    <div className="flex items-baseline justify-between gap-3 text-[10px]">
+                      <span className="text-muted-foreground/80">{t("playerStats.cbetSolver")}</span>
+                      <span className="whitespace-nowrap font-mono tabular-nums text-foreground/90">
+                        {ref ? `${ref.lo}–${ref.hi}%` : t("playerStats.cbetSolverNone", { pct: cob ?? 0 })}
+                        {ref && (cob ?? 100) < 100 && <span className="ml-1 text-[9px] text-muted-foreground/60">{t("playerStats.cbetSolverCoverage", { pct: cob })}</span>}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
               <p className="mt-1.5 font-mono text-[9px] leading-snug text-muted-foreground/70">{t("playerStats.cbetSplitNote")}</p>
             </>
           )}

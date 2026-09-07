@@ -22,6 +22,10 @@ const STATS = {
   total_hands: 6029, vpip: 25.3, pfr: 17.8, af: 3.2, cbet_pct: 77.4, fold_to_flop_bet: 40, bb_defense: 38,
   steal_pct: 44, open_limp_pct: 3.7, fold_to_3bet: 56.9, wtsd: 38, three_bet: 8, w_at_sd: 54,
   cbet_ip: 91.2, cbet_oop: 73.4, cbet_ip_opp: 215, cbet_oop_opp: 94,
+  // a referencia do solver nos proprios spots (AY-23): IP fora (91,2 > 88,5), OOP dentro
+  cbet_ip_ref: { lo: 48.9, hi: 88.5, folga: 3, pesos: { "20-40 vs BB": 100 }, cobertura: 86 },
+  cbet_oop_ref: { lo: 60.0, hi: 80.0, folga: 3, pesos: { "20-40 vs BB": 100 }, cobertura: 100 },
+  cbet_ip_cobertura: 86, cbet_oop_cobertura: 100,
   flags: { vpip: { band: "above", flag: "loose", healthy: [18, 24] } },
 };
 
@@ -67,7 +71,7 @@ describe("tooltip estruturado do HUD", () => {
     expect(tip.textContent).toContain("2.0–4.0x");
   });
 
-  it("o C-Bet acrescenta IP e OOP com a amostra, sem referencia inventada", async () => {
+  it("o C-Bet acrescenta IP e OOP com a amostra e a referencia do SOLVER nos proprios spots", async () => {
     render(<PlayerStatsCard stats={STATS as never} v2 />);
     const tip = await abre("C-Bet", "tooltip-cbet_pct");
     const txt = tip.textContent!;
@@ -78,8 +82,25 @@ describe("tooltip estruturado do HUD", () => {
     expect(txt).toContain("playerStats.cbetSplitOop");
     expect(txt).toContain("73.4%");
     expect(txt).toContain("playerStats.cbetSplitOpps:94");
-    expect(txt).not.toMatch(/60–75|45–60/);
-    expect(tip.querySelectorAll("[class*=emerald], [class*=red-400]")).toHaveLength(0);
+    expect(txt).not.toMatch(/60–75|45–60/);                       // nada inventado
+    // a referencia vem do backend, e a cor do numero compara com ela
+    const ip = tip.querySelector("[data-testid=cbet-cbetSplitIp]")!;
+    expect(ip.textContent).toContain("playerStats.cbetSolver");
+    expect(ip.textContent).toContain("48.9–88.5%");
+    expect(ip.textContent).toContain("playerStats.cbetSolverCoverage:86");   // cobre 86%: dito
+    expect(ip.querySelector("b")!.className).toContain("text-red-400");      // 91,2 > 88,5
+    const oop = tip.querySelector("[data-testid=cbet-cbetSplitOop]")!;
+    expect(oop.textContent).toContain("60–80%");
+    expect(oop.textContent).not.toContain("playerStats.cbetSolverCoverage");  // 100%: nao repete
+    expect(oop.querySelector("b")!.className).toContain("text-emerald-400");  // 73,4 dentro
+  });
+
+  it("sem referencia (cobertura abaixo do piso), o numero fica sem cor e o tooltip diz a cobertura", async () => {
+    render(<PlayerStatsCard stats={{ ...STATS, cbet_oop_ref: null, cbet_oop_cobertura: 41 } as never} v2 />);
+    const tip = await abre("C-Bet", "tooltip-cbet_pct");
+    const oop = tip.querySelector("[data-testid=cbet-cbetSplitOop]")!;
+    expect(oop.textContent).toContain("playerStats.cbetSolverNone:41");
+    expect(oop.querySelector("b")!.className).not.toMatch(/emerald|red-400/);
   });
 
   it("sem potes heads-up, o C-Bet diz que IP/OOP aparecem depois", async () => {

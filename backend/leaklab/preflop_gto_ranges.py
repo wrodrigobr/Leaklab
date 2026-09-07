@@ -406,6 +406,60 @@ def solver_na_primeira_decisao(pos: str, situacao: dict) -> Optional[dict]:
     return None
 
 
+#: Piso de cobertura da referencia de c-bet (07/09, AY-23). Mais baixo que o do VPIP/PFR porque
+#: o solve pos-flop e por spot e OOP cobre menos (62% no acervo do Rullian); abaixo disto a
+#: referencia falaria de outro conjunto e o tooltip diz so a cobertura.
+COBERTURA_MINIMA_CBET = 0.50
+
+_ACOES_DE_APOSTA = ('bet', 'raise', 'allin', 'all-in', 'shove', 'jam')
+
+
+def freq_de_aposta_da_estrategia(strategy_json) -> Optional[float]:
+    """% da RANGE que o solver aposta no no (soma das acoes de aposta, qualquer tamanho), ou
+    None sem estrategia. `strategy_json` e o dict {acao: {frequency, combos}} do gto_nodes;
+    'bet_50pct' e 'allin' contam como aposta, 'check' nao. Normaliza pela soma (os nos
+    guardam frequencias que nem sempre somam 1.0)."""
+    import json
+    if not strategy_json:
+        return None
+    try:
+        st = json.loads(strategy_json) if isinstance(strategy_json, str) else strategy_json
+    except (TypeError, ValueError):
+        return None
+    if not isinstance(st, dict) or not st:
+        return None
+    total = 0.0; aposta = 0.0
+    for acao, dados in st.items():
+        f = float((dados or {}).get('frequency', 0) or 0) if isinstance(dados, dict) else 0.0
+        total += f
+        if str(acao).lower().split('_')[0] in _ACOES_DE_APOSTA:
+            aposta += f
+    if total <= 0:
+        return None
+    return round(aposta / total * 100, 2)
+
+
+def referencia_cbet(spots) -> dict:
+    """Referencia de C-Bet (IP ou OOP) = o que o solver faria NOS PROPRIOS spots do jogador
+    (07/09, AY-23; o dono: "com base no que o solver faria em cada caso").
+
+    `spots` = [(chave, strategy_json | None)], um por oportunidade de c-bet. A faixa e a MESMA
+    regra do RFI/3-Bet (`_faixa_dos_charts`: P20-P80 das frequencias de aposta da range do
+    solver, + folga), porque a pergunta e condicional a cada spot e a dispersao por stack e
+    oponente e informacao. Abaixo de `COBERTURA_MINIMA_CBET` nao ha referencia; a cobertura
+    volta mesmo assim, para o tooltip dizer por que.
+
+    Medido no acervo do Rullian: IP 69% (P20-P80 52-85), OOP 34% (19-46); ele apostava 90 e 68.
+    """
+    total = len(spots)
+    valores = [(chave, freq_de_aposta_da_estrategia(sj)) for chave, sj in spots]
+    n = sum(1 for _, v in valores if v is not None)
+    cobertura = round(n * 100.0 / total) if total else 0
+    if not n or n < total * COBERTURA_MINIMA_CBET:
+        return {'ref': None, 'cobertura': cobertura, 'n': n}
+    return {'ref': _faixa_dos_charts(valores), 'cobertura': cobertura, 'n': n}
+
+
 def referencia_vpip_pfr_por_assento(pos: str, maos) -> dict:
     """Referencia de VPIP e PFR de um assento = MEDIA do que o solver faria nas maos do jogador
     ali, com folga ESTATISTICA (06/09, AY-15 fase 3).

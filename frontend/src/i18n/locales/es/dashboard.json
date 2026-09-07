@@ -415,7 +415,10 @@
     "cbetSplitIp": "En posición (IP)",
     "cbetSplitOop": "Fuera de posición (OOP)",
     "cbetSplitOpps": "{{n}} oportunidades",
-    "cbetSplitNote": "Solo botes heads-up en el flop; con dos o más rivales no entra en ninguno."
+    "cbetSplitNote": "Solo botes heads-up en el flop; con dos o más rivales no entra en ninguno de los dos. La referencia es lo que el solver haría en cada uno de tus spots (P20–P80 de su frecuencia de apuesta).",
+    "cbetSolver": "Solver, en tus spots",
+    "cbetSolverNone": "sin referencia (el solver cubre {{pct}}% de los spots)",
+    "cbetSolverCoverage": "· cubre {{pct}}%"
   },
   "dna": {
     "title": "Perfil Estratégico",
@@ -997,7 +1000,8 @@
       "error": "No pude cargar el detalle.",
       "note": "Las filas con menos de {{n}} oportunidades muestran solo la muestra. La franja del solver aquí varía solo con el stack, por eso es más estrecha que la de la celda.",
       "description": "Una fila por rival, con oportunidades, tu número y la franja del solver.",
-      "open": "Ver detalle por rival"
+      "open": "Ver detalle por rival",
+      "total": "Total"
     },
     "above": "por encima del solver",
     "below": "por debajo del solver",

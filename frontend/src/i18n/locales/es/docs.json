@@ -640,6 +640,6 @@
       "def": "% de showdowns que ganaste.",
       "formula": "showdowns ganados ÷ showdowns"
     },
-    "p1": "Las referencias (\"MTT ideal\") son del juego entero. En el <b>Perfil por posición</b> la referencia es otra: lo que haría el solver con tus manos, en ese asiento y a esa profundidad; el tooltip de cada celda lo explica."
+    "p1": "Las referencias (\"MTT ideal\") son del juego entero. En el <b>Perfil por posición</b> la referencia es otra: lo que haría el solver con tus manos, en ese asiento y a esa profundidad; el tooltip de cada celda lo explica. En el C-Bet, las tasas en posición (IP) y fuera de posición (OOP) llevan la referencia del solver en tus propios spots: el intervalo P20–P80 de la frecuencia con que la range del solver apuesta en cada uno."
   }
 }

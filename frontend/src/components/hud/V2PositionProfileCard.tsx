@@ -94,6 +94,26 @@ function Detalhe({ stat, position, dados, erro }: {
           <span className="font-mono text-[9px] uppercase tracking-wider text-muted-foreground/60 text-right">{t("posProfile.detail.opps")}</span>
           <span className="font-mono text-[9px] uppercase tracking-wider text-muted-foreground/60">{t("posProfile.you")}</span>
           <span className="font-mono text-[9px] uppercase tracking-wider text-muted-foreground/60">{t("posProfile.detail.solver")}</span>
+          {/* Total no topo: o numero da celula, para o leitor ver que as linhas o decompoem
+              (dono, 07/09: clicou no 47,3 e o modal so mostrava 41,8, do unico oponente com amostra). */}
+          {dados.total && dados.total.value != null && (() => {
+            const ladoT = dados.total.ref ? foraDaFaixa(dados.total.value, dados.total.ref.lo, dados.total.ref.hi) : null;
+            return (
+              <div className="contents" data-testid="detalhe-linha-total">
+                <span className="border-b border-border/60 pb-1.5 font-mono text-[10px] font-bold uppercase text-primary">{t("posProfile.detail.total")}</span>
+                <span className="border-b border-border/60 pb-1.5 font-mono text-[9px] tabular-nums text-muted-foreground/70 text-right">{dados.total.n}</span>
+                <span data-testid="detalhe-valor-total" data-fora={ladoT ?? undefined}
+                      className={cn("border-b border-border/60 pb-1.5 font-mono text-[12px] font-bold tabular-nums",
+                                    ladoT === "in" ? "text-emerald-400" : ladoT ? "text-red-400" : "text-foreground")}>
+                  {dados.total.value}
+                  {ladoT && ladoT !== "in" ? <span className="ml-0.5 align-top text-[9px]">{ladoT === "above" ? "▲" : "▼"}</span> : null}
+                </span>
+                <span className="border-b border-border/60 pb-1.5 font-mono text-[10px] tabular-nums text-muted-foreground">
+                  {dados.total.ref ? `${dados.total.ref.lo}–${dados.total.ref.hi}` : "—"}
+                </span>
+              </div>
+            );
+          })()}
           {dados.rows.map((r) => {
             const baixa = r.band === "low_sample";
             const lado = r.ref && !baixa ? foraDaFaixa(r.value, r.ref.lo, r.ref.hi) : null;

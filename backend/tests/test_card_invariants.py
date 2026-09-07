@@ -66,6 +66,19 @@ def test_hand_tree_card_invariants_all_zero():
     print("OK  test_hand_tree_card_invariants_all_zero (0 violações)")
 
 
+def test_empate_de_frequencia_nao_e_violacao_da_dominante():
+    """Nós reais (07/09): check 0,50 / bet_50pct 0,50 com gto_action=check; call 0,447 / fold
+    0,447 com gto_action=fold. O solver desempata por combos; a varredura não pode acusar.
+    Um mismatch de verdade continua acusado."""
+    from scripts.scan_card_invariants import _acao_dominante_ok
+    assert _acao_dominante_ok([('bet_50pct', 0.5), ('check', 0.5)], 'check')
+    assert _acao_dominante_ok([('call', 0.447), ('fold', 0.447), ('allin', 0.098)], 'fold')
+    assert _acao_dominante_ok([('bet', 0.7), ('check', 0.3)], 'bet')
+    assert not _acao_dominante_ok([('bet', 0.7), ('check', 0.3)], 'check')
+    assert not _acao_dominante_ok([('bet', 0.5), ('check', 0.5)], 'fold')       # ação que não existe na strategy
+    print('OK  test_empate_de_frequencia_nao_e_violacao_da_dominante')
+
+
 def test_verdict_from_hand_not_range():
     """Bug da mão 5: o card julgava pela ação modal do RANGE agregado em vez da MÃO.
     Trava a regra: havendo estratégia da mão, o veredito vem DELA. Espelha a

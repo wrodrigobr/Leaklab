@@ -341,6 +341,25 @@ def test_o_detalhe_do_fold_3bet_e_por_quem_deu_o_3bet_e_respeita_a_faixa_de_stac
     assert [r['vs'] for r in d['rows']] == ['BTN'] and d['stack_band'] == '40+', d
 
 
+def test_o_total_do_detalhe_e_o_numero_da_celula_da_grade():
+    """CO abriu e levou 3-bet 60 vezes (30 do BTN, 30 da BB): a celula da grade diz 50,0 e o
+    modal tem de dizer o MESMO no topo, com as 60 oportunidades e a mesma referencia; as
+    linhas (66,7 e 33,3) sao a decomposicao. Tambem com o filtro de stack."""
+    maos = []
+    for i in range(30):
+        maos.append(_m('CO', 'fold' if i < 20 else 'call', facing_bet=8, preflop_raises_faced=1, hero_was_aggressor=1, vs_position='BTN', effective_stack_bb=60, hand_id='A%d' % i))
+        maos.append(_m('CO', 'fold' if i < 10 else 'call', facing_bet=8, preflop_raises_faced=1, hero_was_aggressor=1, vs_position='BB', effective_stack_bb=25, hand_id='B%d' % i))
+    uid = _semeia(maos)
+    for band in (None, '40+'):
+        d = get_position_stat_detail(uid, 'CO', 'fold_to_3bet', days=3650, last_n=0, stack_band=band)
+        g = get_player_stats_by_position(uid, days=3650, last_n=0, stack_band=band)
+        cel = next(l for l in g['positions'] if l['position'] == 'CO')['stats']['fold_to_3bet']
+        assert d['total']['n'] == sum(r['n'] for r in d['rows']) == (60 if band is None else 30), (band, d['total'])
+        assert d['total']['value'] == cel['value'] == (50.0 if band is None else round(20 / 30 * 100, 1)), (band, d['total'], cel)
+        assert (d['total']['ref']['lo'], d['total']['ref']['hi']) == (cel['ref']['lo'], cel['ref']['hi']), (band, d['total']['ref'], cel['ref'])
+    assert get_position_stat_detail(uid, 'BB', 'fold_to_3bet', days=3650, last_n=0)['total'] == {'n': 0, 'value': None, 'ref': None}
+
+
 def test_o_endpoint_do_detalhe_valida_assento_e_stat():
     uid = _semeia([_m('BB', 'call', facing_bet=2.5, preflop_raises_faced=1, vs_position='UTG', effective_stack_bb=40)])
     conn = get_conn(); conn.execute(_adapt("UPDATE users SET plan='pro' WHERE id=?"), (uid,)); conn.commit(); conn.close()   # mesmo gate da grade
@@ -433,10 +452,10 @@ def _semeia_flop(maos):
                         "VALUES (1,?,'T1','pokerstars','Hero','2026-09-01','2026-09-01')"), (uid,))
     for m in maos:
         conn.execute(_adapt("INSERT INTO decisions (tournament_id,hand_id,street,position,action_taken,best_action,score,label,"
-                            "facing_bet,hero_was_aggressor,vs_position,n_active_opponents,effective_stack_bb) "
-                            "VALUES (1,?,?,?,?,'bet',0.1,'standard',?,?,?,?,30)"),
+                            "facing_bet,hero_was_aggressor,vs_position,n_active_opponents,effective_stack_bb,spot_hash) "
+                            "VALUES (1,?,?,?,?,'bet',0.1,'standard',?,?,?,?,30,?)"),
                      (m['hand_id'], m['street'], m['position'], m['action_taken'], m['facing_bet'],
-                      m['hero_was_aggressor'], m['vs_position'], m['n_active_opponents']))
+                      m['hero_was_aggressor'], m['vs_position'], m['n_active_opponents'], m.get('spot_hash')))
     conn.commit(); conn.close()
     return uid
 
@@ -466,6 +485,64 @@ def test_a_oportunidade_de_cbet_nao_some_quando_outro_usuario_tem_a_mesma_mao():
     assert (h['cbet_pct'], h['cbet_ip'], h['cbet_ip_opp']) == (50.0, 50.0, 2), (h['cbet_pct'], h['cbet_ip'], h['cbet_ip_opp'])
     # e o outro usuario nao ganha oportunidade que nao e dele (ele nao era o agressor)
     assert get_player_stats(outro, days=3650, last_n=0)['cbet_pct'] is None
+
+
+# ── Referencia de C-Bet IP/OOP pelo solver nos proprios spots (AY-23, 07/09) ─────────────
+
+def test_freq_de_aposta_da_estrategia_soma_as_apostas_e_normaliza():
+    from leaklab.preflop_gto_ranges import freq_de_aposta_da_estrategia as f
+    assert f('{"bet_50pct": {"frequency": 0.438}, "check": {"frequency": 0.562}}') == 43.8
+    assert f('{"check": {"frequency": 0.2}, "bet_33pct": {"frequency": 0.3}, "allin": {"frequency": 0.5}}') == 80.0
+    assert f('{"check": {"frequency": 0.5}, "bet": {"frequency": 1.5}}') == 75.0      # nao soma 1: normaliza
+    assert f(None) is None and f('') is None and f('{}') is None and f('nao e json') is None
+    assert f('{"check": {"frequency": 0}, "bet": {"frequency": 0}}') is None
+
+
+def test_referencia_cbet_e_P20_P80_dos_proprios_spots_com_piso_de_cobertura():
+    from leaklab.preflop_gto_ranges import referencia_cbet, COBERTURA_MINIMA_CBET, FOLGA_DA_REFERENCIA_PP
+    def no(p): return '{"bet": {"frequency": %s}, "check": {"frequency": %s}}' % (p, 1 - p)
+    spots = [('20-40 vs BB', no(0.5)), ('20-40 vs BB', no(0.6)), ('<20 vs BB', no(0.7)), ('40+ vs SB', no(0.8)), ('40+ vs SB', None)]
+    r = referencia_cbet(spots)
+    assert r['cobertura'] == 80 and r['n'] == 4
+    # P20 e P80 interpolados de [50, 60, 70, 80]: 56 e 74, com a folga
+    assert (r['ref']['lo'], r['ref']['hi']) == (56.0 - FOLGA_DA_REFERENCIA_PP, 74.0 + FOLGA_DA_REFERENCIA_PP), r['ref']
+    assert sum(r['ref']['pesos'].values()) == 100
+    # abaixo do piso: sem referencia, mas a cobertura volta (o tooltip diz por que)
+    r = referencia_cbet([('x', no(0.5))] + [('x', None)] * 2)
+    assert r['ref'] is None and r['cobertura'] == 33 and COBERTURA_MINIMA_CBET == 0.5
+    assert referencia_cbet([]) == {'ref': None, 'cobertura': 0, 'n': 0}
+
+
+def test_hud_traz_a_referencia_do_solver_de_cbet_por_spot_e_por_lado():
+    """BTN vs BB (IP) com 3 spots, 2 com no do solver (67%): referencia dos dois; SB vs BTN (OOP)
+    com 2 spots e 1 no (50%, no piso): referencia; CO vs BB multiway fica fora. O no entra pelo
+    `spot_hash`; spot sem no nao entra na referencia mas conta na oportunidade."""
+    def flop(pos, vs, acao, n_opp, hid, hash_):
+        return dict(position=pos, action_taken=acao, street='flop', hand_id=hid, facing_bet=0,
+                    hero_was_aggressor=1, vs_position=vs, n_active_opponents=n_opp, spot_hash=hash_)
+    maos = [flop('BTN', 'BB', 'bet', 1, 'A1', 'h_ip_1'), flop('BTN', 'BB', 'bet', 1, 'A2', 'h_ip_2'), flop('BTN', 'BB', 'check', 1, 'A3', 'h_sem_no'),
+            flop('SB', 'BTN', 'bet', 1, 'B1', 'h_oop_1'), flop('SB', 'BTN', 'check', 1, 'B2', 'h_oop_sem'),
+            flop('CO', 'BB', 'bet', 2, 'C1', 'h_multi')]
+    uid = _semeia_flop(maos)
+    conn = get_conn()
+    for h, sj in (('h_ip_1', '{"bet_50pct": {"frequency": 0.7}, "check": {"frequency": 0.3}}'),
+                  ('h_ip_2', '{"bet_50pct": {"frequency": 0.9}, "check": {"frequency": 0.1}}'),
+                  ('h_oop_1', '{"check": {"frequency": 0.8}, "bet_33pct": {"frequency": 0.2}}'),
+                  ('h_multi', '{"bet": {"frequency": 1.0}}')):
+        conn.execute(_adapt("INSERT INTO gto_nodes (spot_hash, street, position, board, hero_hand, stack_bucket, gto_action, gto_freq, strategy_json) "
+                            "VALUES (?, 'flop', 'BTN', 'AsKd2c', 'QQ', '30bb', 'bet', 0.7, ?)"), (h, sj))
+    conn.commit(); conn.close()
+    h = get_player_stats(uid, days=3650, last_n=0)
+    assert (h['cbet_ip'], h['cbet_ip_opp'], h['cbet_ip_cobertura']) == (round(2 / 3 * 100, 1), 3, 67), (h['cbet_ip'], h['cbet_ip_opp'], h['cbet_ip_cobertura'])
+    ip = h['cbet_ip_ref']
+    assert (ip['lo'], ip['hi']) == (70 + 0.2 * 20 - 3, 70 + 0.8 * 20 + 3), ip            # P20-P80 de [70, 90] + folga
+    assert ip['pesos'] == {'20-40 vs BB': 100}, ip['pesos']                              # 30bb: faixa 20-40
+    assert (h['cbet_oop'], h['cbet_oop_opp'], h['cbet_oop_cobertura']) == (50.0, 2, 50)
+    assert (h['cbet_oop_ref']['lo'], h['cbet_oop_ref']['hi']) == (17.0, 23.0), h['cbet_oop_ref']   # um spot: P20 = P80 = 20
+    # o spot sem no derruba a cobertura abaixo do piso quando e maioria
+    conn = get_conn(); conn.execute("DELETE FROM gto_nodes WHERE spot_hash = 'h_ip_2'"); conn.commit(); conn.close()
+    h = get_player_stats(uid, days=3650, last_n=0)
+    assert h['cbet_ip_ref'] is None and h['cbet_ip_cobertura'] == 33 and h['cbet_ip_opp'] == 3
 
 
 def test_celula_vazia_do_chart_e_sem_carta_nao_zero():

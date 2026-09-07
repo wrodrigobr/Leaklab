@@ -2284,6 +2284,17 @@ _SQL_POTE_INTACTO  = "(d.facing_bet IS NULL OR d.facing_bet = 0) AND COALESCE(d.
 FAIXAS_DE_STACK = {'40+': (40.0, None), '20-40': (20.0, 40.0), '<20': (None, 20.0)}
 
 
+def faixa_de_stack(stack_bb):
+    """Rotulo de FAIXAS_DE_STACK de um stack em bb (None sem stack). A mesma regra do filtro
+    do HUD (`_filtro_do_hud`), em Python, para chavear pesos por faixa."""
+    if stack_bb is None:
+        return None
+    for nome, (lo, hi) in FAIXAS_DE_STACK.items():
+        if (lo is None or stack_bb >= lo) and (hi is None or stack_bb < hi):
+            return nome
+    return None
+
+
 def _filtro_do_hud(user_id: int, days: int, last_n, position=None, stack_band=None):
     """O WHERE do HUD: torneios do recorte, opcionalmente um assento (com aliases) e uma faixa
     de stack. Fonte unica para `get_player_stats` e para a grade por posicao."""
@@ -2470,6 +2481,10 @@ _FORA_DA_GRADE_SEM_CHART = {
     'w_at_sd': 'postflop: sem referência por assento', 'bb_defense': 'só BB; a régua do HUD é do jogo inteiro',
     'steal_pct': 'é o RFI de BTN/CO/SB; a grade já mostra RFI por assento',
     'open_limp_pct': 'sem carta de limp fora do SB',
+    'cbet_ip_ref': 'referência do solver do C-Bet IP (AY-23); vive no tooltip do HUD, junto do número',
+    'cbet_oop_ref': 'referência do solver do C-Bet OOP (AY-23); vive no tooltip do HUD, junto do número',
+    'cbet_ip_cobertura': 'cobertura da referência do C-Bet IP; só o tooltip do HUD lê',
+    'cbet_oop_cobertura': 'cobertura da referência do C-Bet OOP; só o tooltip do HUD lê',
     'cbet_ip': 'postflop, heads-up: sem referência por assento; vive no tooltip do C-Bet',
     'cbet_oop': 'postflop, heads-up: sem referência por assento; vive no tooltip do C-Bet',
     'cbet_ip_opp': 'amostra do cbet_ip, não é stat', 'cbet_oop_opp': 'amostra do cbet_oop, não é stat',
@@ -2822,8 +2837,17 @@ def get_position_stat_detail(user_id: int, position: str, stat: str, days: int =
             'band': 'low_sample' if g['n'] < MINIMO_DO_DETALHE else 'ok',
             'ref': funcao(position, g['ops']),
         })
+    # O TOTAL e o numero da celula da grade (mesmas oportunidades, mesma referencia): o dono
+    # clicou no 47,3 e o modal so mostrava 41,8, do unico oponente com amostra, e pareceu
+    # contradicao. A linha Total no topo diz que as linhas sao a decomposicao dele.
+    n_total = sum(g['n'] for g in grupos.values())
+    hits_total = sum(g['hits'] for g in grupos.values())
+    ops_total = [op for g in grupos.values() for op in g['ops']]
+    total = {'n': n_total,
+             'value': round(hits_total * 100.0 / n_total, 1) if n_total else None,
+             'ref': funcao(position, ops_total) if ops_total else None}
     return {'position': position, 'stat': stat, 'stack_band': stack_band,
-            'minimo': MINIMO_DO_DETALHE, 'rows': linhas}
+            'minimo': MINIMO_DO_DETALHE, 'rows': linhas, 'total': total}
 
 
 def _oportunidades_do_assento(user_id, days, last_n, position, stack_band, tipo):
@@ -2911,21 +2935,33 @@ def get_player_stats(user_id: int, days: int = 90, last_n: int | None = None,
         # (`n_active_opponents = 1`); multiway fica declarado fora, porque "em posicao" contra
         # dois vilaos nao e uma coisa so. IP = o heroi age depois do vilao (`vs_position` e o
         # caller do open, ja pelo botao). Sem regua: nao ha chart de c-bet por posicao.
+        # Referencia (07/09, AY-23): o que o solver faria em CADA um destes spots. O no do
+        # solver entra pelo `spot_hash` (a estrategia da range no flop, `strategy_json`); a
+        # faixa P20-P80 e a mesma regra do RFI/3-Bet, e a chave do peso e a faixa de stack
+        # e o oponente, como no perfil por posicao.
+        from leaklab.preflop_gto_ranges import referencia_cbet
         cbet_ip_n = cbet_ip_opp = cbet_oop_n = cbet_oop_opp = 0
+        spots_ip, spots_oop = [], []
         for r in conn.execute(_adapt(f"""
             SELECT {sql_assento()} AS pos, {sql_assento('d.vs_position')} AS vs,
-                   CASE WHEN d.action_taken IN ('bet', {_SQL_ALLIN}) THEN 1 ELSE 0 END AS apostou
+                   CASE WHEN d.action_taken IN ('bet', {_SQL_ALLIN}) THEN 1 ELSE 0 END AS apostou,
+                   d.effective_stack_bb AS stack, n.strategy_json AS estrategia
             FROM decisions d
             JOIN tournaments t ON t.id = d.tournament_id
+            LEFT JOIN gto_nodes n ON n.spot_hash = d.spot_hash
             WHERE {tf} AND {_SQL_OPORTUNIDADE['cbet']} AND COALESCE(d.n_active_opponents, 0) = 1
         """), tp).fetchall():
             ip = em_posicao(r['pos'], r['vs'])
             if ip is None:
                 continue
+            chave = '%s vs %s' % (faixa_de_stack(r['stack']) or '?', r['vs'])
             if ip:
                 cbet_ip_opp += 1; cbet_ip_n += r['apostou'] or 0
+                spots_ip.append((chave, r['estrategia']))
             else:
                 cbet_oop_opp += 1; cbet_oop_n += r['apostou'] or 0
+                spots_oop.append((chave, r['estrategia']))
+        ref_ip, ref_oop = referencia_cbet(spots_ip), referencia_cbet(spots_oop)
 
         # ── Fold to 3Bet, na definição do PokerTracker ───────────────────────
         #
@@ -3161,6 +3197,11 @@ def get_player_stats(user_id: int, days: int = 90, last_n: int | None = None,
             'cbet_oop':         round(cbet_oop_n / cbet_oop_opp * 100, 1) if cbet_oop_opp > 0 else None,
             'cbet_ip_opp':      cbet_ip_opp,
             'cbet_oop_opp':     cbet_oop_opp,
+            # a referencia do solver nos proprios spots (None abaixo do piso de cobertura)
+            'cbet_ip_ref':      ref_ip['ref'],
+            'cbet_oop_ref':     ref_oop['ref'],
+            'cbet_ip_cobertura':  ref_ip['cobertura'],
+            'cbet_oop_cobertura': ref_oop['cobertura'],
         }
     finally:
         conn.close()
