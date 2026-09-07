@@ -205,7 +205,8 @@ function Celula({ chave, cel, posicao, maos, ancora, destaque, stack, onDetalhe,
         </span>
       </TooltipTrigger>
 
-      <TooltipContent side="top" className="w-[210px] p-3">
+      {/* 260px (era 210): "Solver, nas suas profundidades" + "8,4–34%" quebravam em duas linhas (dono, 07/09). */}
+      <TooltipContent side="top" className="w-[260px] p-3">
         <div className="mb-2 font-mono text-[9px] uppercase tracking-widest text-primary">
           {ROTULO[chave] ?? chave} · {posicao}
         </div>
@@ -222,7 +223,7 @@ function Celula({ chave, cel, posicao, maos, ancora, destaque, stack, onDetalhe,
                 ? t("posProfile.solverYourHands")
                 : stack ? t("posProfile.solverBand", { band: ROTULO_DA_FAIXA[stack] ?? stack }) : t("posProfile.solverHere")}
             </span>
-            <span className="font-mono text-xs font-bold tabular-nums text-emerald-400">
+            <span className="whitespace-nowrap font-mono text-xs font-bold tabular-nums text-emerald-400">
               {ref.lo}–{ref.hi}%
             </span>
           </div>
