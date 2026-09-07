@@ -5,6 +5,27 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## HOTFIX: upload em lote nao leva mais 429; quando leva, a mensagem e honesta (07/09)
+
+- Um fundador subiu o mes inteiro de historico e viu "Erro do servidor (HTTP 429)" em dezenas
+  de arquivos: nas 12 horas, 120 uploads aceitos e 712 recusados. O teto de `/analyze` era 30
+  por hora POR IP, e o limitador respondia texto, que a fila do front nao sabe ler. Em 03/09 o
+  lote do Rullian ja tinha perdido 189 de 280 pelo mesmo teto, e a "solucao" isentou so o
+  script de importacao, nao o jogador.
+- Decisao do dono: o upload e absorvido; o que espera quando extrapola e o SOLVE, e isso a
+  fila de analise por plano (`gto_analysis_waitlist`) ja faz desde 02/09. Entao o teto vira
+  `LIMITE_DE_UPLOADS_POR_HORA = 300`, por USUARIO (dois jogadores na mesma rede nao dividem),
+  anti-bot e nao anti-jogador; a cota mensal por plano continua sendo o freio real.
+- O 429 vira JSON (`code`, `limite`, `retry_after`, header Retry-After) e a fila compoe a frase
+  no idioma do jogador: "Voce ultrapassou o limite de 300 torneios por hora. Os arquivos
+  aceitos ja estao no historico; tente de novo em X minutos".
+- Guardas: 3 testes novos (por usuario + JSON honesto; 120 de uma vez passam; com o teto
+  antigo o 31o cai, provando que o limitador conta). Quebrado de proposito: chave por IP de
+  novo, o teste do "outro usuario passa" acusa. O teste antigo da isencao do lote passou a
+  ancorar na constante em vez do literal 30.
+- Torneios recusados NAO entraram; reenviar e seguro (torneio ja importado e ignorado).
+
+---
 ## O historico era os ultimos 50, e "ultimos N" eram os N mais antigos (06/09)
 
 O dono viu "TORNEIOS 50" na tela de historico: *"acho que tenho mais de 50... suspeito que

@@ -651,10 +651,17 @@ def test_lote_isenta_rate_limit_do_analyze():
             vistos.add(r.status_code)
         return vistos
 
+    import api.app as _app_module
+    from api.app import limiter as _limiter
     _flask_app.testing = False   # sem isto _exempt_in_testing isenta tudo e o 429 nunca aparece
+    # 07/09: o teto virou 300 por usuario (LIMITE_DE_UPLOADS_POR_HORA); baixar aqui para 5 mantem
+    # o teste barato e ancorado na CONSTANTE, nao num literal que o hotfix tornou falso
+    _teto_original = _app_module.LIMITE_DE_UPLOADS_POR_HORA
+    _app_module.LIMITE_DE_UPLOADS_POR_HORA = 5
+    _limiter.reset()
     try:
-        # sem a env: 32 uploads batem no limite de 30/h — algum 429 aparece
-        status_sem_isencao = _sobe(32)
+        # sem a env: 7 uploads batem no teto de 5 — algum 429 aparece
+        status_sem_isencao = _sobe(7)
         assert 429 in status_sem_isencao, 'rate limit nao pegou sem isencao: %s' % status_sem_isencao
         # com a env: mais 10 uploads NAO devem 429 (mesmo ja tendo estourado o limite acima)
         os.environ['LEAKLAB_IMPORT_LOTE'] = '1'
@@ -665,6 +672,8 @@ def test_lote_isenta_rate_limit_do_analyze():
         assert 429 not in status_com_isencao, 'lote NAO foi isento do rate limit: %s' % status_com_isencao
     finally:
         _flask_app.testing = True
+        _app_module.LIMITE_DE_UPLOADS_POR_HORA = _teto_original
+        _limiter.reset()
     print("OK  test_lote_isenta_rate_limit_do_analyze")
 
 

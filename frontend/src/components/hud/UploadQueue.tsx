@@ -4,6 +4,7 @@ import { EVENTO_LOTE, invalidarAposImport } from "@/lib/refreshOnImport";
 import { useTranslation, Trans } from "react-i18next";
 import { CheckCircle2, AlertTriangle, Clock, Loader2, X, UploadCloud, Info } from "lucide-react";
 import { tournaments, metrics } from "@/lib/api";
+import { mensagemDeErroDeUpload } from "@/lib/mensagemDeUpload";
 import { cn } from "@/lib/utils";
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -235,12 +236,8 @@ export function UploadQueueProvider({ children }: { children: React.ReactNode })
         }
         window.dispatchEvent(new CustomEvent("leaklab:tournament-imported"));
       } catch (e: unknown) {
-        const raw = e instanceof Error ? e.message : "";
-        // Nunca mostra "HTTP 404" cru: usa a msg real do backend, senão um genérico legível.
-        const msg = raw && !/^HTTP \d+$/.test(raw)
-          ? raw
-          : t("uploadQueue.genericError", { raw: raw || t("uploadQueue.errorFallback") });
-        dispatch({ type: "SET_STATUS", id: next.id, status: "error", error: msg });
+        // A frase honesta (limite por hora + minutos) ou a msg do backend; nunca "HTTP 404" cru.
+        dispatch({ type: "SET_STATUS", id: next.id, status: "error", error: mensagemDeErroDeUpload(e, t) });
       } finally {
         processing.current = false;
       }
