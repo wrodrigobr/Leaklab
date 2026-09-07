@@ -5,6 +5,32 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## Validacao do HUD contra o relatorio posicional do PT4 do Rullian (07/09)
+
+O Rullian mandou o relatorio por posicao do PT4 dele (26.852 maos) achando que a ultima
+coluna era o Fold to 3-Bet. Nao e: "Fold to F 3Bet" e fold ao 3-bet no FLOP (BTN 0,00 e CO
+100,00 com 3.900 maos so cabem em amostra de meia duzia). A stat preflop ("Fold to PF 3Bet"
+/ "...After Raise") nao esta no relatorio. Mas o print validou o resto do HUD de graca, na
+conta dele em prod (26.588 maos, 99% das dele):
+
+| stat | PT4 | GrindLab |
+|---|---|---|
+| VPIP | 24,34 | 24,3 |
+| PFR | 17,59 | 17,3 |
+| Raise First (RFI) | 26,90 | **26,90** |
+| RFI BTN / CO / EP(UTG) | 45,31 / 34,05 / 17,18 | **45,31** / 34,03 / **17,18** |
+| 3Bet PF | 7,92 | 7,8 |
+| WTSD / WSD | 40,35 / 54,68 | 40,2 / 54,6 |
+| CBet F | 75,69 | 75,8 |
+| Total AF | 2,87 | 2,97 |
+
+O RFI, que nasceu ontem, bate no total e por assento ate a segunda casa: a definicao (pote
+intacto, raise ou all-in, BB fora) e a do PT4. E o "cerca de 65% na Coin" que ele lembra do
+Fold to 3-Bet: a After Raise dele no CoinPoker e 62,5% (198/317); a geral, 81,7%. Fecha a
+causa do AY-18 pelo lado dele tambem.
+
+---
+
 ## AY-18: Fold to 3-Bet do HUD e a After Raise; a geral do PT4 vira `fold_to_3bet_any` (06/09, LOCAL)
 
 O Rullian: *"tem algo errado no Fold to 3-Bet, meu valor esta muito alto, +80%"*. Nao estava
