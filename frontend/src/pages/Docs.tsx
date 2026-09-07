@@ -224,6 +224,21 @@ export default function Docs() {
               <p dangerouslySetInnerHTML={{ __html: t("indicators.p1") }} />
             </Section>
 
+            {/* Como cada stat do HUD e calculada: definicao + formula, no formato do PokerTracker,
+                para o jogador comparar com o que ve la (pedido do dono, 07/09, depois do Fold to
+                3-Bet do Rullian). Jargao em ingles por convencao do produto. */}
+            <Section id="hud_defs" title={t("hud_defs.title")}>
+              <p>{t("hud_defs.intro")}</p>
+              <Table
+                headers={[t("hud_defs.col_stat"), t("hud_defs.col_def"), t("hud_defs.col_formula")]}
+                rows={(["vpip", "pfr", "rfi", "three_bet", "fold_to_3bet", "fold_to_3bet_any", "steal", "open_limp", "bb_defense",
+                        "cbet", "fold_to_flop_bet", "af", "wtsd", "w_at_sd"] as const).map((k) => [
+                  t(`hud_defs.${k}.name`), t(`hud_defs.${k}.def`), t(`hud_defs.${k}.formula`),
+                ])}
+              />
+              <p dangerouslySetInnerHTML={{ __html: t("hud_defs.p1") }} />
+            </Section>
+
             {/* Resumo de Hoje (Hero do dashboard) */}
             <Section id="today" title={t("today.title")}>
               <p dangerouslySetInnerHTML={{ __html: t("today.p1") }} />

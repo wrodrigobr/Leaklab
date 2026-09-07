@@ -5,6 +5,23 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## Cada stat do HUD com definicao e formula, no formato do PokerTracker (07/09, LOCAL)
+
+O dono: *"nao podemos esquecer de detalhar como o indicador e calculado"*, com a definicao do
+PT4 da Fold to PF 3Bet After Raise como modelo. Dois lugares:
+
+- **/docs, secao nova "Como cada stat do HUD e calculada"**: tabela stat / definicao / formula
+  para VPIP, PFR, RFI, 3-Bet, Fold to 3-Bet (After Raise), Fold to 3-Bet geral (nao vai para a
+  tela, fica declarada), Steal, Open Limp, BB Defense, C-Bet, Fold vs Bet, AF, WTSD, W$SD. Abre
+  dizendo o que e "3-bet" (2a acao agressiva do preflop) e "pote intacto", e fecha dizendo que
+  a referencia do Perfil por posicao e outra (o solver nas suas maos).
+- **Tooltips do HUD** (VPIP, PFR, 3-Bet, Fold to 3-Bet): definicao + formula + referencia. O do
+  Fold to 3-Bet diz qual stat do PT4 e, e avisa que a versao com 3-bet a frio passa de 80.
+
+3 idiomas. Sem codigo de calculo: so copy, e a copy agora descreve a conta que existe.
+
+---
+
 ## Validacao do HUD contra o relatorio posicional do PT4 do Rullian (07/09)
 
 O Rullian mandou o relatorio por posicao do PT4 dele (26.852 maos) achando que a ultima

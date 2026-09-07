@@ -568,5 +568,83 @@
     "out_ev_why": "Cuando la cuenta de costo sale de un rango plausible, se descarta en vez de sumarse. Eso hace que el número sea un piso: la pérdida real es igual o mayor, nunca menor.",
     "out_icm": "Burbuja y mesa final",
     "out_icm_why": "Es la zona de ICM. Allí la jugada correcta cambia por causa del premio, y la referencia que usamos es de fichas. Medir sin eso describiría una decisión que no enfrentaste."
+  },
+  "hud_defs": {
+    "title": "Cómo se calcula cada stat del HUD",
+    "intro": "Definición y fórmula de cada stat, en el mismo formato que PokerTracker, para que compares con lo que ves allí. Todas cuentan solo manos en las que tuviste una decisión; un \"3-bet\" es la segunda acción agresiva del preflop (el open es la primera), y \"bote intacto\" es que nadie apostó ni limpeó antes de ti.",
+    "col_stat": "Stat",
+    "col_def": "Definición",
+    "col_formula": "Fórmula",
+    "vpip": {
+      "name": "VPIP",
+      "def": "% de manos en las que pusiste dinero en el bote voluntariamente en el preflop (call, raise o all-in; las ciegas no cuentan).",
+      "formula": "manos con call/raise preflop ÷ manos jugadas"
+    },
+    "pfr": {
+      "name": "PFR",
+      "def": "% de manos en las que hiciste raise en el preflop, en cualquier situación (open, 3-bet, 4-bet).",
+      "formula": "manos con raise preflop ÷ manos jugadas"
+    },
+    "rfi": {
+      "name": "RFI (Raise First In)",
+      "def": "% de veces en que abriste el bote con raise cuando nadie había entrado antes. La BB no tiene RFI. Igual al \"Raise First\" del PT4.",
+      "formula": "raises con el bote intacto ÷ veces en que actuaste con el bote intacto"
+    },
+    "three_bet": {
+      "name": "3-Bet",
+      "def": "% de veces en que hiciste 3-bet cuando enfrentabas exactamente un open. Enfrentar un 3-bet es oportunidad de 4-bet y no cuenta.",
+      "formula": "3-bets ÷ veces en que actuaste enfrentando exactamente un raise"
+    },
+    "fold_to_3bet": {
+      "name": "Fold to 3-Bet",
+      "def": "% de veces en que foldeaste a un 3-bet preflop después de haber hecho el primer raise. Es el \"Fold to PF 3Bet After Raise\" del PT4, la stat de estudio (\"abrí, me hicieron 3-bet, cuánto suelto\").",
+      "formula": "folds a 3-bet tras abrir ÷ veces en que abriste y enfrentaste un 3-bet"
+    },
+    "fold_to_3bet_any": {
+      "name": "Fold to 3-Bet (cualquier situación)",
+      "def": "No aparece en pantalla. Es el \"Fold to PF 3Bet\" del PT4: cuenta también el 3-bet en frío (BB/SB tras open + 3-bet, sin haber actuado), que se foldea casi siempre; por eso pasa de 80. Queda calculada para cotejar con el PT4.",
+      "formula": "folds a 3-bet ÷ veces en que actuaste enfrentando exactamente un 3-bet, hayas abierto o no"
+    },
+    "steal": {
+      "name": "Steal",
+      "def": "% de veces en que abriste con raise desde CO, BTN o SB con el bote intacto. Es el RFI de esos tres asientos.",
+      "formula": "raises con bote intacto desde CO/BTN/SB ÷ veces en que actuaste con bote intacto desde CO/BTN/SB"
+    },
+    "open_limp": {
+      "name": "Open Limp",
+      "def": "% de veces en que entraste solo pagando la ciega, sin raise delante, fuera de la BB.",
+      "formula": "calls sin raise delante (fuera de la BB) ÷ veces en que actuaste sin raise delante (fuera de la BB)"
+    },
+    "bb_defense": {
+      "name": "BB Defense",
+      "def": "% de veces en que, en la BB, pagaste o hiciste 3-bet enfrentando un raise.",
+      "formula": "calls + raises de la BB enfrentando raise ÷ veces en que la BB enfrentó raise"
+    },
+    "cbet": {
+      "name": "C-Bet",
+      "def": "% de veces en que apostaste en el flop siendo el último agresor del preflop, cuando la acción llegó a ti sin apuesta delante.",
+      "formula": "c-bets ÷ oportunidades de c-bet en el flop"
+    },
+    "fold_to_flop_bet": {
+      "name": "Fold vs Bet",
+      "def": "% de veces en que foldeaste enfrentando una apuesta en el flop.",
+      "formula": "folds en el flop enfrentando apuesta ÷ veces en que enfrentaste apuesta en el flop"
+    },
+    "af": {
+      "name": "AF",
+      "def": "Factor de agresión postflop: cuántas apuestas y raises hiciste por cada call.",
+      "formula": "(bets + raises postflop) ÷ calls postflop"
+    },
+    "wtsd": {
+      "name": "WTSD",
+      "def": "% de manos en las que fuiste al showdown, entre las manos en las que viste el flop (un all-in preflop cuenta como ver el flop).",
+      "formula": "manos con showdown ÷ manos en las que viste el flop"
+    },
+    "w_at_sd": {
+      "name": "W$SD",
+      "def": "% de showdowns que ganaste.",
+      "formula": "showdowns ganados ÷ showdowns"
+    },
+    "p1": "Las referencias (\"MTT ideal\") son del juego entero. En el <b>Perfil por posición</b> la referencia es otra: lo que haría el solver con tus manos, en ese asiento y a esa profundidad; el tooltip de cada celda lo explica."
   }
 }
