@@ -999,12 +999,13 @@
       "vs": "vs",
       "opps": "opps",
       "solver": "solver",
-      "close": "close",
       "empty": "No opportunities in this slice.",
       "error": "Could not load the detail.",
-      "note": "Rows with fewer than {{n}} opportunities show the sample only. The solver band here varies only with stack, so it is narrower than the cell's."
+      "note": "Rows with fewer than {{n}} opportunities show the sample only. The solver band here varies only with stack, so it is narrower than the cell's.",
+      "description": "One row per opponent, with opportunities, your number and the solver band."
     },
     "above": "above the solver",
-    "below": "below the solver"
+    "below": "below the solver",
+    "clickable": "3-Bet and Fold 3-Bet (underlined) open the per-opponent detail on click."
   }
 }

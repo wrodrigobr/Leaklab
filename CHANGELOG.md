@@ -5,6 +5,18 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## Perfil por posicao: o "contra quem" vira modal, e o que e clicavel fica evidente (07/09, LOCAL)
+
+O dono: *"abrir um modal em vez de uma nova linha na tabela, e ter uma visao mais clara do
+que e clicavel"*. A linha inline empurrava a grade e sumia ao trocar a faixa; agora e um
+`Dialog` (um por vez; fecha pelo X, pelo Esc ou clicando fora), com o titulo no cabecalho do
+modal e a tabela por oponente dentro. Clicavel = numero com sublinhado pontilhado, fundo no
+hover e o caret; a legenda diz quais colunas abrem o detalhe ("3-Bet e Fold 3-Bet,
+sublinhados, abrem o detalhe por oponente"). Testes: abre e fecha pelo X do modal; so a
+celula clicavel e sublinhada (25/25).
+
+---
+
 ## AY-19: C-Bet IP / OOP no hover do C-Bet (07/09, LOCAL)
 
 Sugestao do Rullian: *"colocar o C-Bet IP e OOP, tipo passar o mouse em cima e aparecer as

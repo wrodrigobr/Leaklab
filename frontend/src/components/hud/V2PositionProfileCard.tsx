@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Info, X } from "lucide-react";
+import { Info } from "lucide-react";
 import { HudTooltip } from "./HudTooltip";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { metrics } from "@/lib/api";
 import type { PlayerStatsResponse, PositionDetailResponse, PositionProfileResponse, PositionStatCell, StackBand } from "@/lib/api";
@@ -75,18 +76,12 @@ const COM_DETALHE = new Set(["three_bet", "fold_to_3bet"]);
 
 /** O painel "contra quem": uma linha por oponente, com oportunidades, o seu numero, a faixa
  *  do solver e a regua. Ocupa a largura da grade (col-span total), logo abaixo do assento. */
-function Detalhe({ stat, position, dados, erro, onFechar }: {
-  stat: string; position: string; dados: PositionDetailResponse | null; erro: boolean; onFechar: () => void;
+function Detalhe({ stat, position, dados, erro }: {
+  stat: string; position: string; dados: PositionDetailResponse | null; erro: boolean;
 }) {
   const { t } = useTranslation("dashboard");
-  const titulo = t(`posProfile.detail.${stat === "three_bet" ? "threeBet" : "fold3bet"}`, { pos: position });
   return (
-    <div className="col-span-full mt-1 mb-1 rounded-lg border border-border/60 bg-card/80 p-3" data-testid={`detalhe-${stat}-${position}`}>
-      <div className="mb-2 flex items-center justify-between gap-2">
-        <span className="font-mono text-[10px] uppercase tracking-widest text-primary">{titulo}</span>
-        <button type="button" onClick={onFechar} aria-label={t("posProfile.detail.close")}
-                className="text-muted-foreground hover:text-foreground"><X className="size-3.5" /></button>
-      </div>
+    <div className="mt-2" data-testid={`detalhe-${stat}-${position}`}>
       {erro ? (
         <p className="text-[11px] text-muted-foreground">{t("posProfile.detail.error")}</p>
       ) : !dados ? (
@@ -175,7 +170,7 @@ function Celula({ chave, cel, posicao, maos, ancora, destaque, stack, onDetalhe,
             por nao ter referencia; voltou quando a referencia passou a vir do chart. Celula
             com detalhe ("contra quem") abre o painel no clique; o hover segue com o tooltip. */}
         <span
-          className={cn("flex w-full flex-col pr-3", onDetalhe ? "cursor-pointer" : "cursor-default")}
+          className={cn("flex w-full flex-col pr-3 rounded-sm", onDetalhe ? "cursor-pointer hover:bg-primary/5" : "cursor-default")}
           onClick={onDetalhe}
           role={onDetalhe ? "button" : undefined}
           aria-expanded={onDetalhe ? aberto : undefined}
@@ -188,6 +183,8 @@ function Celula({ chave, cel, posicao, maos, ancora, destaque, stack, onDetalhe,
             data-fora={lado ?? undefined}
             className={cn(
               "font-mono text-[13px] font-bold tabular-nums leading-none",
+              // clicavel = sublinhado pontilhado (a convencao de "tem mais" sem virar link)
+              onDetalhe && !baixa && "underline decoration-dotted decoration-muted-foreground/50 underline-offset-4",
               baixa ? "text-muted-foreground/40"
                 : destaque ? "text-primary"
                 : lado === "in" ? "text-emerald-400"
@@ -403,7 +400,7 @@ export function V2PositionProfileCard({
 
       {/* A legenda vem ANTES da grade: sem ela o verde no meio da régua é decoração. */}
       <p className="mb-3 font-mono text-[9px] leading-snug text-muted-foreground/70">
-        {t("posProfile.legend")}
+        {t("posProfile.legend")} {t("posProfile.clickable")}
       </p>
 
       {/* overflow-x próprio: a grade é larga e o corpo da página não pode rolar de lado */}
@@ -461,15 +458,6 @@ export function V2PositionProfileCard({
                     <span key={k} className="font-mono text-[13px] leading-none text-muted-foreground/25">—</span>
                   )
                 )}
-                {detalhe?.position === linha.position && (
-                  <Detalhe
-                    stat={detalhe.stat}
-                    position={linha.position}
-                    dados={detalheDados}
-                    erro={detalheErro}
-                    onFechar={() => setDetalhe(null)}
-                  />
-                )}
               </div>
             ))}
           </div>
@@ -507,6 +495,22 @@ export function V2PositionProfileCard({
         </div>
       </div>
       </TooltipProvider>
+
+      {/* O detalhe "contra quem" e um MODAL (07/09): a linha inline empurrava a grade e sumia
+          ao trocar a faixa. Um por vez; fechar pelo X, pelo Esc ou clicando fora. */}
+      <Dialog open={!!detalhe} onOpenChange={(aberto) => { if (!aberto) setDetalhe(null); }}>
+        <DialogContent className="max-w-xl">
+          {detalhe && (
+            <>
+              <DialogTitle className="font-mono text-[11px] uppercase tracking-widest text-primary">
+                {t(`posProfile.detail.${detalhe.stat === "three_bet" ? "threeBet" : "fold3bet"}`, { pos: detalhe.position })}
+              </DialogTitle>
+              <DialogDescription className="sr-only">{t("posProfile.detail.description")}</DialogDescription>
+              <Detalhe stat={detalhe.stat} position={detalhe.position} dados={detalheDados} erro={detalheErro} />
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* A grade tem 8 assentos; o parser tambem emite MP/MP1/MP2/LJ em alguns historicos, e
           essas maos nao entram em linha nenhuma. Medido em 05/09: 13 de 26.588 no acervo do

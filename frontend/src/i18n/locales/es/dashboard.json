@@ -999,12 +999,13 @@
       "vs": "contra",
       "opps": "oport.",
       "solver": "solver",
-      "close": "cerrar",
       "empty": "Sin oportunidades en este recorte.",
       "error": "No pude cargar el detalle.",
-      "note": "Las filas con menos de {{n}} oportunidades muestran solo la muestra. La franja del solver aquí varía solo con el stack, por eso es más estrecha que la de la celda."
+      "note": "Las filas con menos de {{n}} oportunidades muestran solo la muestra. La franja del solver aquí varía solo con el stack, por eso es más estrecha que la de la celda.",
+      "description": "Una fila por rival, con oportunidades, tu número y la franja del solver."
     },
     "above": "por encima del solver",
-    "below": "por debajo del solver"
+    "below": "por debajo del solver",
+    "clickable": "3-Bet y Fold 3-Bet (subrayados) abren el detalle por rival al hacer clic."
   }
 }

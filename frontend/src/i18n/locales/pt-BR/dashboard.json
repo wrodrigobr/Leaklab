@@ -999,12 +999,13 @@
       "vs": "contra",
       "opps": "oportun.",
       "solver": "solver",
-      "close": "fechar",
       "empty": "Nenhuma oportunidade neste recorte.",
       "error": "Não consegui carregar o detalhe.",
-      "note": "Linha com menos de {{n}} oportunidades mostra só a amostra. A faixa do solver aqui varia só com o stack, por isso é mais estreita que a da célula."
+      "note": "Linha com menos de {{n}} oportunidades mostra só a amostra. A faixa do solver aqui varia só com o stack, por isso é mais estreita que a da célula.",
+      "description": "Uma linha por oponente, com oportunidades, o seu número e a faixa do solver."
     },
     "above": "acima do solver",
-    "below": "abaixo do solver"
+    "below": "abaixo do solver",
+    "clickable": "3-Bet e Fold 3-Bet (sublinhados) abrem o detalhe por oponente ao clicar."
   }
 }

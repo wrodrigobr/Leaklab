@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, afterEach, beforeEach } from "vitest";
-import { render, screen, cleanup, fireEvent, within } from "@testing-library/react";
+import { render, screen, cleanup, fireEvent, within, waitFor } from "@testing-library/react";
 import { V2PositionProfileCard } from "./V2PositionProfileCard";
 import type { PlayerStatsResponse, PositionProfileResponse } from "@/lib/api";
 
@@ -9,7 +9,7 @@ import type { PlayerStatsResponse, PositionProfileResponse } from "@/lib/api";
  * natureza; aberta por oponente ela estreita. O que um refactor quebra em silencio:
  * 1. So 3-Bet e Fold 3-Bet abrem painel; RFI/VPIP nao (nao misturam oponentes).
  * 2. O painel pede ao backend o MESMO recorte (stack e last_n) da grade.
- * 3. O mesmo clique fecha; trocar a faixa de stack fecha.
+ * 3. E um modal: fecha pelo X; trocar a faixa de stack fecha.
  */
 const detail = vi.fn();
 vi.mock("@/lib/api", () => ({ metrics: { playerStatsByPositionDetail: (...a: unknown[]) => detail(...a) } }));
@@ -41,7 +41,7 @@ const GRADE = {
 const HUD = { total_hands: 800, vpip: 25, rfi: 28, three_bet: 8 } as unknown as PlayerStatsResponse;
 
 describe("painel contra quem", () => {
-  it("abre no clique do 3-Bet com o recorte da grade, lista por oponente e fecha no mesmo clique", async () => {
+  it("abre no clique do 3-Bet com o recorte da grade, lista por oponente num modal e fecha pelo X", async () => {
     render(<V2PositionProfileCard data={GRADE} geral={HUD} stack="20-40" lastN={30} onStack={() => {}} />);
     fireEvent.click(screen.getByTestId("celula-three_bet-BB"));
     expect(detail).toHaveBeenCalledWith("BB", "three_bet", 90, 30, "20-40");
@@ -53,13 +53,16 @@ describe("painel contra quem", () => {
     const btn = within(painel).getByTestId("detalhe-linha-BTN");
     expect(within(btn).getByText("—")).toBeTruthy();                 // amostra baixa: sem numero
     expect(within(btn).getByTestId("detalhe-valor-BTN").getAttribute("data-fora")).toBeNull();   // sem cor
-    fireEvent.click(screen.getByTestId("celula-three_bet-BB"));
-    expect(screen.queryByTestId("detalhe-three_bet-BB")).toBeNull();
+    // e um modal: fecha pelo X (o "Close" do DialogContent), nao pelo mesmo clique
+    fireEvent.click(screen.getByText("Close"));
+    await waitFor(() => expect(screen.queryByTestId("detalhe-three_bet-BB")).toBeNull());
   });
 
-  it("RFI e VPIP nao abrem painel", () => {
+  it("RFI e VPIP nao abrem painel, e so a celula clicavel e sublinhada", () => {
     render(<V2PositionProfileCard data={GRADE} geral={HUD} />);
     expect(screen.queryByTestId("celula-rfi-BB")).toBeNull();
     expect(screen.queryByTestId("celula-vpip-BB")).toBeNull();
+    expect(screen.getByTestId("valor-three_bet-BB").className).toContain("underline");
+    expect(screen.getByTestId("valor-vpip-BB").className).not.toContain("underline");   // a BB nao tem RFI (n/a)
   });
 });

@@ -315,7 +315,8 @@ _P7_CONFERIDAS = {
     'posProfile.legend':      'verde/vermelho = a cor do NUMERO da celula (07/09: a regua saiu, a cor ficou no numero), existe',
     'posProfile.tolerance':   'faixa = a mesma faixa verde do RFI, existe; "folga" e a FOLGA_DA_REFERENCIA_PP do backend',
     'posProfile.stackHands':  'faixa = faixa de STACK (intervalo em bb), nao desenho',
-    'posProfile.detail.note': 'faixa = a faixa verde da regua no painel contra quem (Detalhe em V2PositionProfileCard), existe',
+    'posProfile.detail.note': 'faixa = a faixa do solver em texto no modal contra quem (Detalhe em V2PositionProfileCard), existe',
+    'posProfile.detail.description': 'descricao sr-only do modal contra quem: "linha" = linha da tabela, "faixa" = a faixa do solver em texto (lo–hi), existem',
 }
 
 
