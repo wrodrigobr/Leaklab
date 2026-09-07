@@ -440,6 +440,19 @@ def _semeia_flop(maos):
     conn.commit(); conn.close()
     return uid
 
+
+def test_celula_vazia_do_chart_e_sem_carta_nao_zero():
+    """`40bb vs_3bet UTG+1 vs BTN` veio vazio da captura (0 maos, tudo 0). Zero nao e resposta:
+    a regua do fold ao 3-bet virava 0-3. Celula vazia devolve None em todos os leitores."""
+    from leaklab.preflop_gto_ranges import _celula_vazia, fold3bet_pct_do_chart
+    vazia = {'raise_pct': 0.0, 'allin_pct': 0.0, 'call_pct': 0.0, 'check_pct': 0.0, 'fold_pct': 0.0, 'actions': [], 'fold_hands': ''}
+    cheia = {'raise_pct': 0.0, 'allin_pct': 0.0, 'call_pct': 0.0, 'check_pct': 0.0, 'fold_pct': 0.97, 'actions': ['F']}
+    assert _celula_vazia(vazia) and not _celula_vazia(cheia) and _celula_vazia(None)
+    # o buraco real, enquanto existir: sem carta, nao 0.0 (se a captura for refeita, este assert
+    # passa a valer para a celula cheia e o teste continua verde)
+    v = fold3bet_pct_do_chart('UTG+1', 'BTN', '40bb')
+    assert v is None or v > 50, v
+
 if __name__ == '__main__':
     falhas = 0
     testes = [v for k, v in sorted(globals().items()) if k.startswith('test_')]

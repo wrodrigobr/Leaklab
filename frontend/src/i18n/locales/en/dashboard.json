@@ -396,19 +396,10 @@
       "value-only": "value only",
       "wide": "wide"
     },
-    "tooltip": {
-      "vpip": "VPIP: % of hands where you voluntarily put money in the pot preflop (call, raise or all-in; blinds don't count). Formula: hands with a preflop call/raise ÷ hands played. MTT target: 12–22%.",
-      "pfr": "PFR: % of hands where you raised preflop, in any situation (open, 3-bet, 4-bet). Formula: hands with a preflop raise ÷ hands played. MTT target: 9–18%. PFR close to VPIP = aggressive; a wide gap = passive.",
-      "af": "Aggression Factor, the ratio of aggressive actions (bet/raise) to passive ones (call) postflop. MTT target: 2.0–4.0x. Below 1.5 is too passive; above 6 is overaggressive.",
-      "cbet": "Continuation Bet, % of the time you bet the flop as the preflop aggressor (opener/raiser). Denominator: hands where you opened or 3-bet preflop and saw a flop. MTT target: 50–75%.",
-      "foldVsBet": "Fold to Flop Bet, a proxy for Fold to C-Bet. % of the time you folded the flop facing a bet. MTT target: 40–55%. Above 65% is too passive (giving up early); below 35% is too sticky (calling without enough equity).",
-      "bbDefense": "BB Defense Rate, % of the time you defended the Big Blind (call or 3-bet) facing a preflop open. MTT target: 35–55%. Below 30% means overfolding the BB, handing out free fold equity.",
-      "steal": "Steal%, % of the time you opened (raise/shove) from the BTN, CO or SB when the action folded to you. MTT target: 25–45%. Below 20% wastes your positional edge and leaves equity in the pot; above 50% is exploitable overaggression.",
-      "openLimp": "Open Limp%, % of the time you entered the pot with a call (no raise in front) from a non-BB seat. MTT target: 0–5%. Limping preflop kills fold equity, builds multiway pots out of position and is exploitable by any BTN/BB squeeze. Above 8% is a serious leak.",
-      "foldTo3bet": "Fold to 3-Bet: % of the time you folded to a preflop 3-bet after making the first raise. Formula: folds to a 3-bet after opening ÷ times you opened and faced a 3-bet. MTT target: 55–72%.",
-      "wtsd": "Went to Deep Streets, % of hands that saw a flop and reached a decision on the river. An approximation of WTSD (showdown data is not available). MTT target: 25–35%.",
-      "threeBet": "3-Bet: % of the time you 3-bet when facing exactly one open. Formula: 3-bets ÷ times you acted facing exactly one raise (facing a 3-bet is a 4-bet opportunity and doesn't count). MTT target: 4–8%.",
-      "wAtSd": "Won money at ShowDown, % of showdowns won. Target: above 50% to be +EV in these confrontations. Computed from the hands that reached showdown in the hand history."
+    "tip": {
+      "formula": "Formula",
+      "you": "You",
+      "ref": "MTT ref"
     },
     "tendenciaDirecional": "Directional trend vs the MTT benchmark",
     "hudResumo": "Tactical indicators of your playing profile. Row 1: VPIP, PFR, AF, C-Bet. Row 2: Fold to 3BET, WTSD, 3BET%, W$SD. Row 3: Fold vs Flop Bet (FtCB proxy), BB Defense, Steal%, Open Limp%.",
@@ -420,8 +411,11 @@
       "robustaLabel": "Robust sample",
       "robustaTooltip": "{{n}} hands, CI under ±3pp. Statistically reliable numbers for comparison against benchmarks."
     },
-    "cbetSplit": "In position (IP): {{ip}} over {{nip}} opportunities · out of position (OOP): {{oop}} over {{noop}}. Heads-up flops only; with two or more opponents it counts in neither.",
-    "cbetSplitNone": "IP / OOP show up once there are heads-up flops."
+    "cbetSplitNone": "IP / OOP show up once there are heads-up flops.",
+    "cbetSplitIp": "In position (IP)",
+    "cbetSplitOop": "Out of position (OOP)",
+    "cbetSplitOpps": "{{n}} opportunities",
+    "cbetSplitNote": "Heads-up flops only; with two or more opponents it counts in neither."
   },
   "dna": {
     "title": "Strategic Profile",
@@ -1002,7 +996,8 @@
       "empty": "No opportunities in this slice.",
       "error": "Could not load the detail.",
       "note": "Rows with fewer than {{n}} opportunities show the sample only. The solver band here varies only with stack, so it is narrower than the cell's.",
-      "description": "One row per opponent, with opportunities, your number and the solver band."
+      "description": "One row per opponent, with opportunities, your number and the solver band.",
+      "open": "See detail by opponent"
     },
     "above": "above the solver",
     "below": "below the solver",

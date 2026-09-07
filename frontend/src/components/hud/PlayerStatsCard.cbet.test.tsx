@@ -4,8 +4,10 @@ import { render, screen, cleanup, fireEvent } from "@testing-library/react";
 import { PlayerStatsCard } from "./PlayerStatsCard";
 
 /**
- * C-Bet IP / OOP no hover do C-Bet (AY-19, sugestao do Rullian). Sem coluna nova: as duas
- * taxas e a amostra vao no tooltip do C-Bet, e so dele.
+ * Tooltip estruturado em TODOS os stats do HUD (dono, 07/09: "o mesmo padrao do C-Bet"):
+ * definicao e formula lidas de `docs:hud_defs` (a mesma fonte da pagina /docs), "Voce" com o
+ * numero, "Ref MTT" com a referencia. O C-Bet e o unico que acrescenta IP / OOP com a amostra
+ * (AY-19, sugestao do Rullian), e SEM referencia: os 60-75 / 45-60 nao tinham fonte.
  */
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
@@ -19,28 +21,70 @@ afterEach(cleanup);
 const STATS = {
   total_hands: 6029, vpip: 25.3, pfr: 17.8, af: 3.2, cbet_pct: 77.4, fold_to_flop_bet: 40, bb_defense: 38,
   steal_pct: 44, open_limp_pct: 3.7, fold_to_3bet: 56.9, wtsd: 38, three_bet: 8, w_at_sd: 54,
-  cbet_ip: 91.2, cbet_oop: 73.4, cbet_ip_opp: 215, cbet_oop_opp: 94, flags: {},
+  cbet_ip: 91.2, cbet_oop: 73.4, cbet_ip_opp: 215, cbet_oop_opp: 94,
+  flags: { vpip: { band: "above", flag: "loose", healthy: [18, 24] } },
 };
 
-describe("C-Bet IP / OOP", () => {
-  it("o tooltip do C-Bet traz IP e OOP com a amostra; o do VPIP nao", async () => {
+async function abre(rotulo: string, testid: string) {
+  const botao = screen.getByText(rotulo).parentElement!.querySelector("button")!;
+  fireEvent.pointerMove(botao); fireEvent.focus(botao);
+  return (await screen.findAllByTestId(testid))[0];   // o Radix duplica o conteudo para leitor de tela
+}
+
+describe("tooltip estruturado do HUD", () => {
+  it("VPIP: definicao e formula de docs:hud_defs, Voce com o numero, Ref MTT com a faixa do backend", async () => {
     render(<PlayerStatsCard stats={STATS as never} v2 />);
-    // so um tooltip aberto por vez: foca SO o botao de info do tile do C-Bet
-    const botaoCbet = screen.getByText("C-Bet").parentElement!.querySelector("button")!;
-    fireEvent.pointerMove(botaoCbet); fireEvent.focus(botaoCbet);
-    expect((await screen.findAllByText(/playerStats\.cbetSplit:91\.2%,215,73\.4%,94/)).length).toBeGreaterThan(0);
-    cleanup();
-    render(<PlayerStatsCard stats={STATS as never} v2 />);
-    const botaoVpip = screen.getByText("VPIP").parentElement!.querySelector("button")!;
-    fireEvent.pointerMove(botaoVpip); fireEvent.focus(botaoVpip);
-    await screen.findAllByText(/playerStats\.tooltip\.vpip/);
-    expect(screen.queryByText(/cbetSplit/)).toBeNull();
+    const tip = await abre("VPIP", "tooltip-vpip");
+    const txt = tip.textContent!;
+    expect(txt).toContain("docs:hud_defs.vpip.def");
+    expect(txt).toContain("docs:hud_defs.vpip.formula");
+    expect(txt).toContain("playerStats.tip.formula");
+    expect(txt).toContain("playerStats.tip.you");
+    expect(txt).toContain("25.3%");
+    expect(txt).toContain("playerStats.tip.ref");
+    expect(txt).toContain("18–24%");                    // a faixa corrigida do backend, nao a inline
+    expect(txt).not.toContain("playerStats.cbetSplitIp");
   });
 
-  it("sem potes heads-up, o tooltip diz que IP/OOP aparecem depois", async () => {
+  it("cada stat le a SUA definicao (a chave do hud_defs, nao a do card)", async () => {
+    const pares: [string, string, string][] = [
+      ["AF", "tooltip-af", "af"], ["Fold vs Bet", "tooltip-fold_to_flop_bet", "fold_to_flop_bet"],
+      ["Fold to 3BET", "tooltip-fold_to_3bet", "fold_to_3bet"], ["W$SD", "tooltip-w_at_sd", "w_at_sd"],
+    ];
+    for (const [rotulo, testid, chave] of pares) {
+      render(<PlayerStatsCard stats={STATS as never} v2 />);
+      const tip = await abre(rotulo, testid);
+      expect(tip.textContent).toContain(`docs:hud_defs.${chave}.def`);
+      expect(tip.textContent).toContain(`docs:hud_defs.${chave}.formula`);
+      cleanup();
+    }
+  });
+
+  it("AF mostra a unidade x e a faixa inline quando o backend nao manda flag", async () => {
+    render(<PlayerStatsCard stats={STATS as never} v2 />);
+    const tip = await abre("AF", "tooltip-af");
+    expect(tip.textContent).toContain("3.2x");
+    expect(tip.textContent).toContain("2.0–4.0x");
+  });
+
+  it("o C-Bet acrescenta IP e OOP com a amostra, sem referencia inventada", async () => {
+    render(<PlayerStatsCard stats={STATS as never} v2 />);
+    const tip = await abre("C-Bet", "tooltip-cbet_pct");
+    const txt = tip.textContent!;
+    expect(txt).toContain("docs:hud_defs.cbet.def");
+    expect(txt).toContain("playerStats.cbetSplitIp");
+    expect(txt).toContain("91.2%");
+    expect(txt).toContain("playerStats.cbetSplitOpps:215");
+    expect(txt).toContain("playerStats.cbetSplitOop");
+    expect(txt).toContain("73.4%");
+    expect(txt).toContain("playerStats.cbetSplitOpps:94");
+    expect(txt).not.toMatch(/60–75|45–60/);
+    expect(tip.querySelectorAll("[class*=emerald], [class*=red-400]")).toHaveLength(0);
+  });
+
+  it("sem potes heads-up, o C-Bet diz que IP/OOP aparecem depois", async () => {
     render(<PlayerStatsCard stats={{ ...STATS, cbet_ip: null, cbet_oop: null, cbet_ip_opp: 0, cbet_oop_opp: 0 } as never} v2 />);
-    const botaoCbet = screen.getByText("C-Bet").parentElement!.querySelector("button")!;
-    fireEvent.pointerMove(botaoCbet); fireEvent.focus(botaoCbet);
-    expect((await screen.findAllByText(/playerStats\.cbetSplitNone/)).length).toBeGreaterThan(0);
+    const tip = await abre("C-Bet", "tooltip-cbet_pct");
+    expect(tip.textContent).toContain("playerStats.cbetSplitNone");
   });
 });

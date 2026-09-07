@@ -396,19 +396,10 @@
       "value-only": "só value",
       "wide": "range amplo"
     },
-    "tooltip": {
-      "vpip": "VPIP: % das mãos em que você pôs dinheiro no pote voluntariamente no preflop (call, raise ou all-in; blinds não contam). Fórmula: mãos com call/raise preflop ÷ mãos jogadas. MTT ideal: 12–22%.",
-      "pfr": "PFR: % das mãos em que você deu raise no preflop, em qualquer situação (open, 3-bet, 4-bet). Fórmula: mãos com raise preflop ÷ mãos jogadas. MTT ideal: 9–18%. PFR colado no VPIP = agressivo; distância grande = passivo.",
-      "af": "Aggression Factor, razão entre ações agressivas (bet/raise) e passivas (call) no pós-flop. MTT ideal: 2.0–4.0x. Abaixo de 1.5 = passivo demais; acima de 6 = overaggressive.",
-      "cbet": "Continuation Bet, % de vezes que apostou no flop como agressor pré-flop (opener/raiser). Denominador: mãos em que abriu ou 3-betou pré e viu o flop. MTT ideal: 50–75%.",
-      "foldVsBet": "Fold to Flop Bet, proxy para Fold to C-Bet. % de vezes que deu fold no flop ao enfrentar uma aposta. MTT ideal: 40–55%. Acima de 65% = passivo demais (desiste muito cedo); abaixo de 35% = too sticky (chama sem equity suficiente).",
-      "bbDefense": "BB Defense Rate, % de vezes que defendeu a Big Blind (call ou 3-bet) ao enfrentar uma abertura pré-flop. MTT ideal: 35–55%. Abaixo de 30% = folda BB em excesso, dando fold equity gratuita aos opponents.",
-      "steal": "Steal%, % de vezes que abriu (raise/shove) do BTN, CO ou SB quando a ação chegou sem aposta anterior. MTT ideal: 25–45%. Abaixo de 20% = perde vantagem posicional e deixa equity no pote; acima de 50% = overaggression exploitável.",
-      "openLimp": "Open Limp%, % de vezes que entrou no pote com call (sem raise em frente) de posição non-BB. MTT ideal: 0–5%. Limp preflop remove fold equity, cria potes multiway fora de posição e é exploitável por qualquer squeeze do BTN/BB. Acima de 8% = leak sério.",
-      "foldTo3bet": "Fold to 3-Bet: % das vezes em que você foldou a um 3-bet preflop depois de ter feito o primeiro raise. Fórmula: folds a 3-bet após abrir ÷ vezes em que abriu e enfrentou um 3-bet. MTT ideal: 55–72%.",
-      "wtsd": "Went to Deep Streets, % de mãos que viram flop e chegaram a ter decisão no river. Aproximação de WTSD (showdown data não disponível). MTT ideal: 25–35%.",
-      "threeBet": "3-Bet: % das vezes em que você deu 3-bet quando enfrentava exatamente um open. Fórmula: 3-bets ÷ vezes em que agiu enfrentando exatamente um raise (enfrentar um 3-bet é oportunidade de 4-bet, não entra). MTT ideal: 4–8%.",
-      "wAtSd": "Won money at ShowDown, % de showdowns vencidos. Meta: > 50% para ser +EV nos confrontos. Calculado a partir das mãos que chegaram ao showdown no hand history."
+    "tip": {
+      "formula": "Fórmula",
+      "you": "Você",
+      "ref": "Ref MTT"
     },
     "tendenciaDirecional": "Tendência direcional vs referência MTT",
     "hudResumo": "Indicadores táticos do seu perfil de jogo. Row 1: VPIP, PFR, AF, C-Bet. Row 2: Fold to 3BET, WTSD, 3BET%, W$SD. Row 3: Fold vs Flop Bet (proxy FtCB), BB Defense, Steal%, Open Limp%.",
@@ -420,8 +411,11 @@
       "robustaLabel": "Amostra robusta",
       "robustaTooltip": "{{n}} mãos, IC < ±3pp. Números estatisticamente confiáveis para comparação com referências."
     },
-    "cbetSplit": "Em posição (IP): {{ip}} em {{nip}} oportunidades · fora de posição (OOP): {{oop}} em {{noop}}. Só potes heads-up no flop; com dois ou mais oponentes não entra em nenhum dos dois.",
-    "cbetSplitNone": "IP / OOP aparecem quando houver potes heads-up no flop."
+    "cbetSplitNone": "IP / OOP aparecem quando houver potes heads-up no flop.",
+    "cbetSplitIp": "Em posição (IP)",
+    "cbetSplitOop": "Fora de posição (OOP)",
+    "cbetSplitOpps": "{{n}} oportunidades",
+    "cbetSplitNote": "Só potes heads-up no flop; com dois ou mais oponentes não entra em nenhum dos dois."
   },
   "dna": {
     "title": "Perfil Estratégico",
@@ -1002,7 +996,8 @@
       "empty": "Nenhuma oportunidade neste recorte.",
       "error": "Não consegui carregar o detalhe.",
       "note": "Linha com menos de {{n}} oportunidades mostra só a amostra. A faixa do solver aqui varia só com o stack, por isso é mais estreita que a da célula.",
-      "description": "Uma linha por oponente, com oportunidades, o seu número e a faixa do solver."
+      "description": "Uma linha por oponente, com oportunidades, o seu número e a faixa do solver.",
+      "open": "Ver detalhes por oponente"
     },
     "above": "acima do solver",
     "below": "abaixo do solver",

@@ -205,6 +205,17 @@ def balde_rfi(stack_bb: float) -> str:
 FOLGA_DA_REFERENCIA_PP = 3.0
 
 
+def _celula_vazia(r) -> bool:
+    """Celula do chart sem dado: captura que veio vazia (todas as frequencias 0 e nenhuma mao).
+    Achada em 07/09: `40bb vs_3bet UTG+1 vs BTN` estava assim e o leitor devolvia 0,0 como se
+    fosse resposta — a regua do fold ao 3-bet virava 0-3. Celula vazia e "sem carta", None."""
+    if not r:
+        return True
+    if r.get('actions'):
+        return False
+    return not any(float(r.get(k) or 0) for k in ('raise_pct', 'allin_pct', 'call_pct', 'check_pct', 'fold_pct'))
+
+
 def rfi_pct_do_chart(pos: str, balde: str) -> Optional[float]:
     """% de combos que a carta de `balde` ABRE (raise + all-in) do assento `pos`. Limp do SB
     fica fora: e VPIP, nao RFI. None sem carta (BB nunca tem: nao abre pote).
@@ -214,7 +225,7 @@ def rfi_pct_do_chart(pos: str, balde: str) -> Optional[float]:
     """
     bk = (_load().get('ranges') or {}).get(balde) or {}
     r = (bk.get('RFI') or {}).get(_norm_pos(pos))
-    if not r:
+    if _celula_vazia(r):
         return None
     return round((float(r.get('raise_pct') or 0) + float(r.get('allin_pct') or 0)) * 100, 1)
 
@@ -224,7 +235,7 @@ def tresbet_pct_do_chart(hero: str, opener: str, balde: str) -> Optional[float]:
     carta de `balde` (secao `vs_RFI`). None quando o par nao tem carta."""
     bk = (_load().get('ranges') or {}).get(balde) or {}
     r = ((bk.get('vs_RFI') or {}).get(_norm_pos(opener)) or {}).get(_norm_pos(hero))
-    if not r:
+    if _celula_vazia(r):
         return None
     return round((float(r.get('raise_pct') or 0) + float(r.get('allin_pct') or 0)) * 100, 1)
 
@@ -234,7 +245,7 @@ def fold3bet_pct_do_chart(hero: str, tresbettor: str, balde: str) -> Optional[fl
     `balde` (secao `vs_3bet`). None quando o par nao tem carta."""
     bk = (_load().get('ranges') or {}).get(balde) or {}
     r = ((bk.get('vs_3bet') or {}).get(_norm_pos(hero)) or {}).get(_norm_pos(tresbettor))
-    if not r:
+    if _celula_vazia(r):
         return None
     return round(float(r.get('fold_pct') or 0) * 100, 1)
 
@@ -302,13 +313,19 @@ def referencia_rfi_por_assento(pos: str, stacks_bb) -> Optional[dict]:
     a faixa sai de `_faixa_dos_charts`. Serve igual para "todos" (os stacks do assento inteiro)
     e para uma faixa de stack escolhida (so os stacks dela): uma definicao, nao duas.
     """
-    stacks = [float(s) for s in (stacks_bb or []) if s is not None and float(s) > 0]
-    if not stacks:
+    # cada oportunidade pode trazer o assento do CHART dela: (pos_chart, stack). Um numero so
+    # e o stack, com o assento da linha (`pos`).
+    pares = []
+    for item in (stacks_bb or []):
+        pc, s = item if isinstance(item, (tuple, list)) else (pos, item)
+        if s is not None and float(s) > 0:
+            pares.append((pc or pos, float(s)))
+    if not pares:
         return None
     ops = []
-    for s in stacks:
+    for pc, s in pares:
         balde = balde_rfi(s)
-        ops.append((balde, rfi_pct_do_chart(pos, balde)))
+        ops.append((balde, rfi_pct_do_chart(pc, balde)))
     return _faixa_dos_charts(ops)
 
 
@@ -318,11 +335,13 @@ def referencia_3bet_por_assento(pos: str, oportunidades) -> Optional[dict]:
     BB contra UTG nao e o mesmo que contra BTN, entao a referencia e ponderada por quem abriu
     alem do stack. Baldes de `_stack_bucket` (a secao vs_RFI nao tem carta rasa)."""
     ops = []
-    for abridor, s in (oportunidades or []):
+    for item in (oportunidades or []):
+        abridor, s = item[0], item[1]
+        pc = item[2] if len(item) > 2 and item[2] else pos      # assento do CHART do heroi nesta mao
         if not abridor or s is None or float(s) <= 0:
             continue
         balde = _stack_bucket(float(s))
-        ops.append(('%s vs %s' % (balde, _norm_pos(abridor)), tresbet_pct_do_chart(pos, abridor, balde)))
+        ops.append(('%s vs %s' % (balde, _norm_pos(abridor)), tresbet_pct_do_chart(pc, abridor, balde)))
     return _faixa_dos_charts(ops) if ops else None
 
 
@@ -332,11 +351,13 @@ def referencia_fold3bet_por_assento(pos: str, oportunidades) -> Optional[dict]:
     `fold_to_3bet_open`, o mesmo conjunto, e nao o `fold_to_3bet` do PT4 (que inclui 3-bet a
     frio, 63% das oportunidades no acervo de dev)."""
     ops = []
-    for tresbettor, s in (oportunidades or []):
+    for item in (oportunidades or []):
+        tresbettor, s = item[0], item[1]
+        pc = item[2] if len(item) > 2 and item[2] else pos
         if not tresbettor or s is None or float(s) <= 0:
             continue
         balde = _stack_bucket(float(s))
-        ops.append(('%s vs %s' % (balde, _norm_pos(tresbettor)), fold3bet_pct_do_chart(pos, tresbettor, balde)))
+        ops.append(('%s vs %s' % (balde, _norm_pos(tresbettor)), fold3bet_pct_do_chart(pc, tresbettor, balde)))
     return _faixa_dos_charts(ops) if ops else None
 
 
@@ -370,7 +391,7 @@ def solver_na_primeira_decisao(pos: str, situacao: dict) -> Optional[dict]:
             return None
         balde = balde_rfi(stack)
         r = ((_load().get('ranges') or {}).get(balde) or {}).get('RFI', {}).get(p)
-        if not r:
+        if _celula_vazia(r):
             return None
         raise_ = float(r.get('raise_pct') or 0) + float(r.get('allin_pct') or 0)
         return {'chave': balde, 'p_vpip': raise_ + float(r.get('call_pct') or 0), 'p_pfr': raise_}
@@ -378,7 +399,7 @@ def solver_na_primeira_decisao(pos: str, situacao: dict) -> Optional[dict]:
         balde = _stack_bucket(stack)
         abridor = _norm_pos(s['vs_position'])
         r = (((_load().get('ranges') or {}).get(balde) or {}).get('vs_RFI', {}).get(abridor) or {}).get(p)
-        if not r:
+        if _celula_vazia(r):
             return None
         raise_ = float(r.get('raise_pct') or 0) + float(r.get('allin_pct') or 0)
         return {'chave': '%s vs %s' % (balde, abridor), 'p_vpip': raise_ + float(r.get('call_pct') or 0), 'p_pfr': raise_}
@@ -405,7 +426,8 @@ def referencia_vpip_pfr_por_assento(pos: str, maos) -> dict:
     """
     import math
     total = len(maos)
-    com = [(solver_na_primeira_decisao(pos, s), entrou, raise_) for s, entrou, raise_ in maos]
+    # o assento do CHART pode vir na situacao (`pos_chart`); sem ele, o da linha
+    com = [(solver_na_primeira_decisao(s.get('pos_chart') or pos, s), entrou, raise_) for s, entrou, raise_ in maos]
     com = [(r, e, x) for r, e, x in com if r is not None]
     n = len(com)
     cobertura = round(n * 100.0 / total) if total else 0

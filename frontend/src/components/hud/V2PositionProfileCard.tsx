@@ -257,6 +257,16 @@ function Celula({ chave, cel, posicao, maos, ancora, destaque, stack, onDetalhe,
         <p className="mt-1.5 font-mono text-[9px] text-muted-foreground/70">
           {t("posProfile.handsHere", { n: maos })}
         </p>
+        {onDetalhe && !baixa && (
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); onDetalhe(); }}
+            className="mt-2 w-full rounded-md border border-primary/40 px-2 py-1 font-mono text-[10px] font-bold uppercase tracking-wider text-primary hover:bg-primary/10"
+            data-testid={`ver-detalhes-${chave}-${posicao}`}
+          >
+            {t("posProfile.detail.open")}
+          </button>
+        )}
       </TooltipContent>
     </Tooltip>
   );

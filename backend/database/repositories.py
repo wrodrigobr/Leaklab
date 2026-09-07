@@ -2344,32 +2344,46 @@ for _cru, _canon in _POSITION_NORM.items():
 
 _SQL_ASSENTO_CACHE: dict = {}
 
+# Rotulo do assento pela CONVENCAO dos jogadores (07/09, AY-20b, depois de o dono apontar que
+# "UTG sempre tem na mesa; o que as vezes nao tem e o UTG+2"): UTG e sempre o primeiro a
+# falar, LJ/HJ/CO/BTN contam do botao para tras, e quando a mesa encolhe some o MEIO. O parser
+# nomeia a partir do UTG e so usa LJ em mesa de 9; este mapa renomeia o que muda:
+#   9: UTG UTG+1 UTG+2 LJ HJ CO BTN   8: UTG UTG+1 LJ HJ CO BTN (some o UTG+2)
+#   7: UTG LJ HJ CO BTN (some o UTG+1) 6: UTG HJ CO BTN         5: UTG CO BTN
+# (os aliases do 9-max, MP1 -> LJ e MP2 -> HJ, continuam em `rotulos_do_assento`)
+ROTULO_POR_MESA = {
+    (8, 'UTG+2'): 'LJ',                      # o 4o assento de mesa 8 e o Lojack
+    (7, 'UTG+1'): 'LJ',                      # o 2o assento de mesa 7 e o Lojack
+}
+
 
 def sql_assento(coluna: str = 'd.position') -> str:
-    """Expressao SQL que devolve o assento pela DISTANCIA AO BOTAO, no vocabulario 9-max dos
-    charts, a partir de (`d.num_players`, rotulo cru).
+    """Expressao SQL do ROTULO do assento (a convencao acima) a partir de (`d.num_players`,
+    rotulo cru). E o que a tela mostra e o que o filtro por assento do HUD usa. Sem
+    `num_players` o rotulo cru vale (MP1 -> LJ pelos aliases em `rotulos_do_assento`)."""
+    chave = ('rotulo', coluna)
+    if chave not in _SQL_ASSENTO_CACHE:
+        ramos = ["WHEN d.num_players = %d AND %s = '%s' THEN '%s'" % (n, coluna, cru, nome)
+                 for (n, cru), nome in sorted(ROTULO_POR_MESA.items())]
+        _SQL_ASSENTO_CACHE[chave] = "(CASE %s ELSE %s END)" % (' '.join(ramos), coluna)
+    return _SQL_ASSENTO_CACHE[chave]
 
-    ── Por que existe (07/09, AY-20, achado do Rullian) ──────────────────────────────────
-    O parser nomeia contando a partir do UTG: em mesa de 8 o 4o assento se chama "UTG+2", e
-    em mesa de 9 o 4o e "LJ". So que o "UTG+2" de mesa 8 tem HJ, CO e BTN atras — e o Lojack,
-    pela convencao que todo jogador usa e que os charts usam. A grade por assento misturava o
-    UTG+2 de mesa 9 (4 atras) com o LJ de mesa 8 (3 atras) na mesma linha, com a regua do
-    chart errado; o Rullian tinha 13 maos em "LJ" e 1.115 em "UTG+2" jogando 8-max.
 
-    O motor de veredito ja pareia por jogadores atras (`_mapa_da_mesa` em preflop_gto_ranges,
-    por isso o chart bate). Este CASE e o MESMO mapa, para o SQL do HUD/grade/detalhe/DNA/
-    matriz nao ganhar uma 2a copia. `num_players` NULL ou mesa de 9: o rotulo cru vale (com
-    MP1 -> LJ pelo proprio mapa). BTN/CO/HJ/SB/BB nunca mudam de nome.
-    """
-    if coluna not in _SQL_ASSENTO_CACHE:
+def sql_assento_chart(coluna: str = 'd.position') -> str:
+    """Expressao SQL do assento do CHART, por jogadores atras, no vocabulario 9-max — o MESMO
+    mapa que o motor de veredito usa (`_mapa_da_mesa`): o UTG de mesa 8 tem 5 atras, como o
+    UTG+1 de mesa 9, entao e comparado com a carta do UTG+1. Serve as REFERENCIAS (RFI, 3-bet,
+    fold, VPIP/PFR) e ao chart do vilao; nunca ao rotulo da tela."""
+    chave = ('chart', coluna)
+    if chave not in _SQL_ASSENTO_CACHE:
         from leaklab.preflop_gto_ranges import _mapa_da_mesa
         ramos = []
         for n in range(2, 10):
             for cru, nome in sorted(_mapa_da_mesa(n).items()):
                 if cru != nome:
                     ramos.append("WHEN d.num_players = %d AND %s = '%s' THEN '%s'" % (n, coluna, cru, nome))
-        _SQL_ASSENTO_CACHE[coluna] = "(CASE %s ELSE %s END)" % (' '.join(ramos), coluna)
-    return _SQL_ASSENTO_CACHE[coluna]
+        _SQL_ASSENTO_CACHE[chave] = "(CASE %s ELSE %s END)" % (' '.join(ramos), coluna)
+    return _SQL_ASSENTO_CACHE[chave]
 
 
 def rotulos_do_assento(pos: str) -> tuple:
@@ -2565,16 +2579,18 @@ def get_player_stats_by_position(user_id: int, days: int = 90,
 
     def _referencias_de(pos, rows, celula):
         # RFI: stacks das oportunidades; 3-Bet: (abridor, stack); Fold: (3-bettor, stack)
+        # As referencias usam o assento do CHART de cada mao (pos_chart / vs_chart), nao o
+        # rotulo da linha: o "UTG" de mesa 8 e comparado com a carta do UTG+1.
         if 'rfi' in celula['stats']:
-            ref = referencia_rfi_por_assento(pos, [r['stack'] for r in rows if r['intacto'] and r['position_raw'] != 'BB'])
+            ref = referencia_rfi_por_assento(pos, [(r['pos_chart'], r['stack']) for r in rows if r['intacto'] and r['position_raw'] != 'BB'])
             if ref:
                 celula['stats']['rfi']['ref'] = ref
         if 'three_bet' in celula['stats']:
-            ref = referencia_3bet_por_assento(pos, [(r['vs_position'], r['stack']) for r in rows if r['enfrenta_open']])
+            ref = referencia_3bet_por_assento(pos, [(r['vs_chart'], r['stack'], r['pos_chart']) for r in rows if r['enfrenta_open']])
             if ref:
                 celula['stats']['three_bet']['ref'] = ref
         if 'fold_to_3bet' in celula['stats']:
-            ref = referencia_fold3bet_por_assento(pos, [(r['vs_position'], r['stack']) for r in rows if r['raises_antes'] == 2 and r['aggressor']])
+            ref = referencia_fold3bet_por_assento(pos, [(r['vs_chart'], r['stack'], r['pos_chart']) for r in rows if r['raises_antes'] == 2 and r['aggressor']])
             if ref:
                 celula['stats']['fold_to_3bet']['ref'] = ref
         if 'vpip' in celula['stats'] or 'pfr' in celula['stats']:
@@ -2582,7 +2598,7 @@ def get_player_stats_by_position(user_id: int, days: int = 90,
             refs = referencia_vpip_pfr_por_assento(pos, [({
                 'facing_bet': r['facing_bet'], 'facing_limp': r['facing_limp'],
                 'preflop_raises_faced': r['preflop_raises_faced'], 'hero_was_aggressor': r['aggressor'],
-                'vs_position': r['vs_position'], 'effective_stack_bb': r['stack'],
+                'vs_position': r['vs_chart'], 'effective_stack_bb': r['stack'], 'pos_chart': r['pos_chart'],
             }, bool(r['voluntario']), bool(r['agressivo'])) for r in primeiras])
             for chave in ('vpip', 'pfr'):
                 if chave in celula['stats'] and refs.get(chave):
@@ -2642,7 +2658,9 @@ def _linhas_preflop_do_recorte(user_id, days, last_n):
     try:
         rows = conn.execute(_adapt(f"""
             SELECT d.id, d.hand_id, d.tournament_id, {sql_assento()} AS position_raw,
+                   {sql_assento_chart()} AS pos_chart,
                    {sql_assento('d.vs_position')} AS vs_position,
+                   {sql_assento_chart('d.vs_position')} AS vs_chart,
                    d.effective_stack_bb AS stack, d.facing_bet, d.facing_limp,
                    d.preflop_raises_faced, d.is_3bet,
                    CASE WHEN COALESCE(d.hero_was_aggressor, 0) <> 0 THEN 1 ELSE 0 END AS aggressor,
@@ -2713,8 +2731,8 @@ def _primeiras_decisoes_do_assento(user_id, days, last_n, position, stack_band):
     try:
         rows = conn.execute(_adapt(f"""
             SELECT d.hand_id, d.id, d.action_taken, d.facing_bet, d.facing_limp,
-                   d.preflop_raises_faced, d.hero_was_aggressor, {sql_assento('d.vs_position')} AS vs_position,
-                   d.effective_stack_bb
+                   d.preflop_raises_faced, d.hero_was_aggressor, {sql_assento_chart('d.vs_position')} AS vs_position,
+                   d.effective_stack_bb, {sql_assento_chart()} AS pos_chart
             FROM decisions d
             JOIN tournaments t ON t.id = d.tournament_id
             WHERE {tf} AND d.street = 'preflop'
@@ -2731,7 +2749,8 @@ def _primeiras_decisoes_do_assento(user_id, days, last_n, position, stack_band):
         vistas.add(r[0])
         acao = (r[2] or '').lower()
         out.append(({'facing_bet': r[3], 'facing_limp': r[4], 'preflop_raises_faced': r[5],
-                     'hero_was_aggressor': r[6], 'vs_position': r[7], 'effective_stack_bb': r[8]},
+                     'hero_was_aggressor': r[6], 'vs_position': r[7], 'effective_stack_bb': r[8],
+                     'pos_chart': r[9]},
                     acao in voluntario, acao in raise_ou_jam))
     return out
 
@@ -2768,7 +2787,8 @@ def get_position_stat_detail(user_id: int, position: str, stat: str, days: int =
     conn = get_conn()
     try:
         rows = conn.execute(_adapt(f"""
-            SELECT {sql_assento('d.vs_position')} AS vs_position, d.effective_stack_bb, d.action_taken, d.is_3bet
+            SELECT {sql_assento('d.vs_position')} AS vs_position, {sql_assento_chart('d.vs_position')} AS vs_chart,
+                   {sql_assento_chart()} AS pos_chart, d.effective_stack_bb, d.action_taken, d.is_3bet
             FROM decisions d
             JOIN tournaments t ON t.id = d.tournament_id
             WHERE {tf} AND d.street = 'preflop' AND {_SQL_OPORTUNIDADE[tipo]}
@@ -2776,7 +2796,7 @@ def get_position_stat_detail(user_id: int, position: str, stat: str, days: int =
     finally:
         conn.close()
     grupos: dict = {}
-    for vs, stack, acao, is_3bet in rows:
+    for vs, vs_chart, pos_chart, stack, acao, is_3bet in rows:
         chave = normalize_position(vs) if vs else None
         if not chave:
             continue
@@ -2786,7 +2806,7 @@ def get_position_stat_detail(user_id: int, position: str, stat: str, days: int =
             g['hits'] += 1 if is_3bet else 0
         else:
             g['hits'] += 1 if (acao or '').lower() == 'fold' else 0
-        g['ops'].append((chave, stack))
+        g['ops'].append((vs_chart, stack, pos_chart))
     ordem = {p: i for i, p in enumerate(POSICOES_NA_ORDEM)}
     linhas = []
     for vs, g in sorted(grupos.items(), key=lambda kv: ordem.get(kv[0], 99)):
@@ -2808,12 +2828,12 @@ def _oportunidades_do_assento(user_id, days, last_n, position, stack_band, tipo)
     conn = get_conn()
     try:
         rows = conn.execute(_adapt(f"""
-            SELECT {sql_assento('d.vs_position')} AS vs_position, d.effective_stack_bb
+            SELECT {sql_assento_chart('d.vs_position')} AS vs_position, d.effective_stack_bb, {sql_assento_chart()} AS pos_chart
             FROM decisions d
             JOIN tournaments t ON t.id = d.tournament_id
             WHERE {tf} AND d.street = 'preflop' AND {_SQL_OPORTUNIDADE[tipo]}
         """), tp).fetchall()
-        return [(r[0], r[1]) for r in rows]
+        return [(r[0], r[1], r[2]) for r in rows]
     finally:
         conn.close()
 

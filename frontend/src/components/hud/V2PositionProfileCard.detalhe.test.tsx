@@ -58,6 +58,16 @@ describe("painel contra quem", () => {
     await waitFor(() => expect(screen.queryByTestId("detalhe-three_bet-BB")).toBeNull());
   });
 
+  it("o tooltip da celula clicavel tem o botao Ver detalhes, que abre o modal", async () => {
+    render(<V2PositionProfileCard data={GRADE} geral={HUD} stack={null} lastN={0} onStack={() => {}} />);
+    const cel = screen.getByTestId("celula-three_bet-BB");
+    fireEvent.pointerMove(cel); fireEvent.focus(cel);
+    const botao = (await screen.findAllByTestId("ver-detalhes-three_bet-BB"))[0];
+    fireEvent.click(botao);
+    expect(await screen.findByTestId("detalhe-three_bet-BB")).toBeTruthy();
+    expect(detail).toHaveBeenCalledWith("BB", "three_bet", 90, 0, null);
+  });
+
   it("RFI e VPIP nao abrem painel, e so a celula clicavel e sublinhada", () => {
     render(<V2PositionProfileCard data={GRADE} geral={HUD} />);
     expect(screen.queryByTestId("celula-rfi-BB")).toBeNull();

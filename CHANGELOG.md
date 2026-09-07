@@ -5,6 +5,59 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## HUD: tooltip estruturado em TODOS os stats, C-Bet IP/OOP sem referencia inventada, refMtt restaurado (07/09, LOCAL)
+
+- O tooltip do C-Bet virou estruturado como o do perfil por posicao (cabecalho, descricao,
+  IP e OOP em linhas com o numero e a amostra, nota do heads-up). O dono achou o texto
+  corrido ruim; tinha razao.
+- Entraram referencias 60-75 (IP) / 45-60 (OOP) sem fonte, e o dono duvidou: no solver moderno
+  o agressor em posicao c-beta muito. Sairam. A referencia certa e a do solver nos proprios
+  spots do jogador (gto_label/gto_action no flop); em dev nao ha solve pos-flop, entao fica
+  para medir em prod (AY-23). Ate la: numero e amostra, sem cor.
+- Ao acrescentar a referencia, sobrescrevi a chave `playerStats.refMtt` que o rodape de TODOS
+  os cards usava com outro parametro: a tela mostrou "REF MTT {{min}}-{{max}}%" (o dono viu).
+  Restaurada do HEAD nos 3 idiomas. Licao: chave de i18n existente nao se reescreve sem
+  procurar quem a consome.
+- Tooltip da celula do perfil por posicao ganhou o botao "Ver detalhes por oponente", que
+  abre o mesmo modal do clique.
+- Dono: "vc deixou apenas o tooltip do cbet bonito, quero que altere de todos os outros
+  indicadores do hud usando o mesmo padrao". Os 12 stats agora abrem o mesmo tooltip:
+  cabecalho, definicao, formula, "Voce" (o numero, na cor do status) e "Ref MTT". Definicao e
+  formula vem de `docs:hud_defs`, a MESMA fonte da pagina /docs: as 12 chaves
+  `playerStats.tooltip.*` sairam dos 3 idiomas (uma delas, o WTSD, ainda descrevia "decisao
+  no river", que deixou de ser o calculo em 04/09; o /docs ja estava certo). Regra 5.
+- Guardas: teste com mock prova que cada stat le a SUA chave (quebrado de proposito: todo
+  stat lendo a do VPIP, 2 testes acusam); teste com o i18n REAL prova que o prefixo `docs:`
+  resolve nos 3 idiomas (um namespace errado cai em silencio no texto cru da chave).
+
+---
+
+## AY-20b: rotulo do assento pela convencao dos jogadores; o chart continua por distancia (07/09, LOCAL)
+
+O dono, olhando a prova da 1a versao: *"UTG cai de 3.690 para 13? UTG sempre tem na mesa; o
+que as vezes nao tem e o UTG+2"*. Verdade. O mapa por jogadores atras e o certo para escolher
+o CHART (o UTG de mesa 8 tem 5 atras, como o UTG+1 de mesa 9), mas eu o usei como ROTULO e o
+UTG do Rullian virou "UTG+1". Convencao confirmada com o dono: UTG e sempre o primeiro a
+falar, LJ/HJ/CO/BTN contam do botao, e quando a mesa encolhe some o meio — mesa 8: UTG UTG+1
+LJ HJ CO BTN; mesa 7: UTG LJ HJ CO BTN; mesa 6: UTG HJ CO BTN; mesa 5: UTG CO BTN.
+
+**Duas colunas, dois usos.** `sql_assento()` e o rotulo (a tela, o filtro por assento do HUD,
+o detalhe, o DNA, a matriz); `sql_assento_chart()` e o assento do chart, por distancia, o
+mesmo mapa das ranges. A grade em uma consulta traz os dois, do heroi e do vilao, e cada
+referencia e calculada MAO A MAO pelo assento do chart: a linha "UTG" de mesa 8 e comparada
+com a carta do UTG+1 (17%), o vilao "UTG" de mesa 8 e a carta vs UTG+1. Rullian em prod com a
+convencao: UTG 3.690 (RFI 17,2), UTG+1 1.208, LJ 2.662 (20,7), HJ 3.504 (27,9), UTG+2 13.
+
+**Achado no caminho:** a celula `40bb vs_3bet UTG+1 vs BTN` do chart esta VAZIA (0 maos,
+frequencias 0), e os leitores devolviam 0,0 como resposta — a regua do fold ao 3-bet virava
+0-3 para quem abre do UTG em mesa 8 a 40bb. `_celula_vazia` trata celula sem dado como "sem
+carta" (None) nos 4 leitores. E o unico buraco do JSON; registrado para recaptura.
+
+Guardas: 7 testes (rotulo x chart, incl. o heroi cujo chart difere do rotulo), 6 mutacoes
+acusadas (uma passou em silencio na 1a rodada porque o heroi era a BB, que nao muda).
+
+---
+
 ## Perfil por posicao: o "contra quem" vira modal, e o que e clicavel fica evidente (07/09, LOCAL)
 
 O dono: *"abrir um modal em vez de uma nova linha na tabela, e ter uma visao mais clara do

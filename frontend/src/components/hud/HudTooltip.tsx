@@ -1,10 +1,12 @@
+import type React from "react";
 import { Info } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 
 interface Props {
-  content: string;
+  /** texto, ou um no estruturado (cabecalho, linhas, nota) como o tooltip do perfil por posicao */
+  content: React.ReactNode;
   className?: string;
 }
 
@@ -22,7 +24,7 @@ export function HudTooltip({ content, className }: Props) {
             <Info className="size-3.5" />
           </button>
         </TooltipTrigger>
-        <TooltipContent side="top" className="max-w-[220px] text-xs leading-relaxed">
+        <TooltipContent side="top" className="max-w-[280px] text-xs leading-relaxed">
           {content}
         </TooltipContent>
       </Tooltip>

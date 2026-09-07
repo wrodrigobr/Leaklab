@@ -43,9 +43,14 @@ interface StatDef {
   label: string;
   unit: "%" | "x";
   range: { min: number; max: number; label: string };
-  tooltipKey: string;
+  /** chave em `docs:hud_defs.*`: a MESMA definicao e formula que a pagina /docs mostra */
+  def: string;
   soon?: true;
 }
+
+// Sem referencia para C-Bet IP/OOP (07/09): os 60-75 / 45-60 que entraram nao tinham fonte, e o
+// dono duvidou com razao (o agressor em posicao c-beta muito no solver moderno). A referencia
+// certa e a do solver nos PROPRIOS spots do jogador (AY-23). Ate la: numero e amostra, sem cor.
 
 // Row 1 — 4 fully computed stats
 const ROW1: StatDef[] = [
@@ -54,28 +59,28 @@ const ROW1: StatDef[] = [
     label: "VPIP",
     unit: "%",
     range: { min: 12, max: 22, label: "12–22%" },
-    tooltipKey: "playerStats.tooltip.vpip",
+    def: "vpip",
   },
   {
     key: "pfr",
     label: "PFR",
     unit: "%",
     range: { min: 9, max: 18, label: "9–18%" },
-    tooltipKey: "playerStats.tooltip.pfr",
+    def: "pfr",
   },
   {
     key: "af",
     label: "AF",
     unit: "x",
     range: { min: 2.0, max: 4.0, label: "2.0–4.0x" },
-    tooltipKey: "playerStats.tooltip.af",
+    def: "af",
   },
   {
     key: "cbet_pct",
     label: "C-Bet",
     unit: "%",
     range: { min: 50, max: 75, label: "50–75%" },
-    tooltipKey: "playerStats.tooltip.cbet",
+    def: "cbet",
   },
 ];
 
@@ -86,28 +91,28 @@ const ROW3: StatDef[] = [
     label: "Fold vs Bet",
     unit: "%",
     range: { min: 40, max: 55, label: "40–55%" },
-    tooltipKey: "playerStats.tooltip.foldVsBet",
+    def: "fold_to_flop_bet",
   },
   {
     key: "bb_defense",
     label: "BB Defense",
     unit: "%",
     range: { min: 35, max: 55, label: "35–55%" },
-    tooltipKey: "playerStats.tooltip.bbDefense",
+    def: "bb_defense",
   },
   {
     key: "steal_pct",
     label: "Steal",
     unit: "%",
     range: { min: 25, max: 45, label: "25–45%" },
-    tooltipKey: "playerStats.tooltip.steal",
+    def: "steal",
   },
   {
     key: "open_limp_pct",
     label: "Open Limp",
     unit: "%",
     range: { min: 0, max: 5, label: "0–5%" },
-    tooltipKey: "playerStats.tooltip.openLimp",
+    def: "open_limp",
   },
 ];
 
@@ -118,28 +123,28 @@ const ROW2: StatDef[] = [
     label: "Fold to 3BET",
     unit: "%",
     range: { min: 55, max: 72, label: "55–72%" },
-    tooltipKey: "playerStats.tooltip.foldTo3bet",
+    def: "fold_to_3bet",
   },
   {
     key: "wtsd",
     label: "WTSD",
     unit: "%",
     range: { min: 25, max: 35, label: "25–35%" },
-    tooltipKey: "playerStats.tooltip.wtsd",
+    def: "wtsd",
   },
   {
     key: "three_bet",
     label: "3BET",
     unit: "%",
     range: { min: 4, max: 8, label: "4–8%" },
-    tooltipKey: "playerStats.tooltip.threeBet",
+    def: "three_bet",
   },
   {
     key: "w_at_sd",
     label: "W$SD",
     unit: "%",
     range: { min: 50, max: 60, label: "50–60%" },
-    tooltipKey: "playerStats.tooltip.wAtSd",
+    def: "w_at_sd",
   },
 ];
 
@@ -189,16 +194,52 @@ function StatCell({ def, value, flag, compact, stats }: { def: StatDef; value: n
   const displayValue = value !== null && !def.soon
     ? def.unit === "x" ? `${value.toFixed(1)}x` : `${value.toFixed(1)}%`
     : "—";
-  /* C-Bet IP / OOP (AY-19, sugestao do Rullian): so no hover do C-Bet, com a amostra, para
-     nao abrir mais uma coluna no HUD. Heads-up no flop; multiway fica fora dos dois. */
-  const cbetSplit = def.key === "cbet_pct" && stats
-    ? (stats.cbet_ip == null && stats.cbet_oop == null
-        ? t("playerStats.cbetSplitNone")
-        : t("playerStats.cbetSplit", {
-            ip: stats.cbet_ip == null ? "—" : `${stats.cbet_ip.toFixed(1)}%`, nip: stats.cbet_ip_opp ?? 0,
-            oop: stats.cbet_oop == null ? "—" : `${stats.cbet_oop.toFixed(1)}%`, noop: stats.cbet_oop_opp ?? 0,
-          }))
-    : "";
+  const refLabel = flag?.healthy ? `${flag.healthy[0]}–${flag.healthy[1]}${def.unit === "x" ? "x" : "%"}` : def.range.label;
+
+  /* Tooltip estruturado para TODOS os stats (dono, 07/09: "o mesmo padrao do C-Bet"), no
+     formato do perfil por posicao: cabecalho, a definicao, a formula, e as linhas "Voce" e
+     "Ref MTT" com o numero a direita. Definicao e formula vem de `docs:hud_defs`, a MESMA
+     fonte da pagina /docs (regra 5: uma definicao, dois consumidores). O C-Bet acrescenta
+     IP / OOP com a amostra (AY-19); heads-up no flop, multiway fica fora dos dois. */
+  const tooltip = (
+    <div className="w-[260px]" data-testid={`tooltip-${def.key}`}>
+      <div className="mb-2 font-mono text-[9px] uppercase tracking-widest text-primary">{def.label}</div>
+      <p className="text-[11px] leading-snug text-muted-foreground">{t(`docs:hud_defs.${def.def}.def`)}</p>
+      <div className="my-2 h-px bg-border" />
+      <div className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground/60">{t("playerStats.tip.formula")}</div>
+      <p className="mt-0.5 font-mono text-[10px] leading-snug text-foreground/90">{t(`docs:hud_defs.${def.def}.formula`)}</p>
+      <div className="my-2 h-px bg-border" />
+      <div className="flex items-baseline justify-between gap-3 py-0.5">
+        <span className="text-[11px] text-muted-foreground">{t("playerStats.tip.you")}</span>
+        <b className={cn("font-mono text-xs tabular-nums", STATUS_COLORS[status])}>{displayValue}</b>
+      </div>
+      <div className="flex items-baseline justify-between gap-3 py-0.5">
+        <span className="text-[11px] text-muted-foreground">{t("playerStats.tip.ref")}</span>
+        <span className="font-mono text-xs tabular-nums text-foreground">{refLabel}</span>
+      </div>
+      {def.key === "cbet_pct" && stats && (
+        <>
+          <div className="my-2 h-px bg-border" />
+          {stats.cbet_ip == null && stats.cbet_oop == null ? (
+            <p className="text-[11px] leading-snug text-muted-foreground">{t("playerStats.cbetSplitNone")}</p>
+          ) : (
+            <>
+              {([["cbetSplitIp", stats.cbet_ip, stats.cbet_ip_opp], ["cbetSplitOop", stats.cbet_oop, stats.cbet_oop_opp]] as const).map(([k, v, n]) => (
+                <div key={k} className="flex items-baseline justify-between gap-3 py-0.5">
+                  <span className="text-[11px] text-muted-foreground">{t(`playerStats.${k}`)}</span>
+                  <span className="whitespace-nowrap font-mono text-xs tabular-nums text-foreground">
+                    <b>{v == null ? "—" : `${v.toFixed(1)}%`}</b>
+                    <span className="ml-1.5 text-[9px] text-muted-foreground/70">{t("playerStats.cbetSplitOpps", { n: n ?? 0 })}</span>
+                  </span>
+                </div>
+              ))}
+              <p className="mt-1.5 font-mono text-[9px] leading-snug text-muted-foreground/70">{t("playerStats.cbetSplitNote")}</p>
+            </>
+          )}
+        </>
+      )}
+    </div>
+  );
 
   return (
     <div className={cn(
@@ -212,7 +253,7 @@ function StatCell({ def, value, flag, compact, stats }: { def: StatDef; value: n
         )}>
           {def.label}
         </span>
-        <HudTooltip content={def.key === "cbet_pct" ? `${t(def.tooltipKey)} ${cbetSplit}` : t(def.tooltipKey)} />
+        <HudTooltip content={tooltip} />
       </div>
 
       <div className="flex items-baseline gap-2">
@@ -256,7 +297,7 @@ function StatCell({ def, value, flag, compact, stats }: { def: StatDef; value: n
         "font-mono text-[9px] uppercase tracking-widest",
         def.soon ? "text-muted-foreground/50" : "text-muted-foreground/60"
       )}>
-        {t("playerStats.refMtt", { range: flag?.healthy ? `${flag.healthy[0]}–${flag.healthy[1]}${def.unit === "x" ? "x" : "%"}` : def.range.label })}
+        {t("playerStats.refMtt", { range: refLabel })}
       </span>
     </div>
   );
