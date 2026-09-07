@@ -441,6 +441,33 @@ def _semeia_flop(maos):
     return uid
 
 
+def test_a_oportunidade_de_cbet_nao_some_quando_outro_usuario_tem_a_mesma_mao():
+    """`hand_id` nao e unico entre usuarios: dois jogadores no mesmo torneio importam as mesmas
+    maos. A 1a linha do flop tem de ser a 1a DO TORNEIO do heroi; sem escopo, a do outro usuario
+    (id menor) ganhava e a oportunidade sumia. Achado em 07/09 na copia do acervo do Rullian para
+    o dev: 1.211 oportunidades em vez de 1.672, porque o grade_demo ja tinha as mesmas maos."""
+    def flop(pos, vs, acao, n_opp, hid):
+        return dict(position=pos, action_taken=acao, street='flop', hand_id=hid, facing_bet=0,
+                    hero_was_aggressor=1, vs_position=vs, n_active_opponents=n_opp)
+    maos = [flop('BTN', 'BB', 'bet', 1, 'H1'), flop('BTN', 'BB', 'check', 1, 'H2')]
+    uid = _semeia_flop(maos)
+    # OUTRO usuario, OUTRO torneio, as MESMAS hand_ids, inseridas ANTES (ids menores)
+    outro = repo.create_user('outro', 'outro@t.local', 'senha12345', 'player')
+    conn = get_conn()
+    conn.execute(_adapt("INSERT INTO tournaments (id,user_id,tournament_id,site,hero,played_at,imported_at) "
+                        "VALUES (2,?,'T1','pokerstars','Vilao','2026-09-01','2026-09-01')"), (outro,))
+    for hid in ('H1', 'H2'):
+        conn.execute(_adapt("INSERT INTO decisions (id,tournament_id,hand_id,street,position,action_taken,best_action,score,label,"
+                            "facing_bet,hero_was_aggressor,vs_position,n_active_opponents,effective_stack_bb) "
+                            "VALUES (?,2,?,'flop','BB','check','bet',0.1,'standard',0,0,'BTN',1,30)"),
+                     ({'H1': -1, 'H2': -2}[hid], hid))
+    conn.commit(); conn.close()
+    h = get_player_stats(uid, days=3650, last_n=0)
+    assert (h['cbet_pct'], h['cbet_ip'], h['cbet_ip_opp']) == (50.0, 50.0, 2), (h['cbet_pct'], h['cbet_ip'], h['cbet_ip_opp'])
+    # e o outro usuario nao ganha oportunidade que nao e dele (ele nao era o agressor)
+    assert get_player_stats(outro, days=3650, last_n=0)['cbet_pct'] is None
+
+
 def test_celula_vazia_do_chart_e_sem_carta_nao_zero():
     """`40bb vs_3bet UTG+1 vs BTN` veio vazio da captura (0 maos, tudo 0). Zero nao e resposta:
     a regua do fold ao 3-bet virava 0-3. Celula vazia devolve None em todos os leitores."""

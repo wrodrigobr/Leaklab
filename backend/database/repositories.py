@@ -2701,9 +2701,14 @@ _SQL_OPORTUNIDADE = {
     'fold_to_3bet_any':  _SQL_RAISES_ANTES + " = 2",
     # c-bet no flop: o heroi tem a INICIATIVA e a acao chega sem aposta na frente; so a 1a
     # linha do flop da mao decide (ver o comentario do `cbet_row` em get_player_stats)
+    # `hand_id` NAO e unico entre usuarios (dois jogadores no mesmo torneio importam as mesmas
+    # maos): sem `x.tournament_id = d.tournament_id`, a 1a linha do flop podia ser a de OUTRO
+    # usuario, e a oportunidade sumia. Achado em 07/09 ao copiar o acervo do Rullian para o
+    # dev, onde o grade_demo ja tinha as mesmas maos: 1.211 oportunidades em vez de 1.672.
     'cbet':              ("d.street = 'flop' AND COALESCE(d.facing_bet, 0) = 0 "
                           "AND COALESCE(d.hero_was_aggressor, 0) <> 0 "
-                          "AND d.id = (SELECT MIN(x.id) FROM decisions x WHERE x.hand_id = d.hand_id AND x.street = 'flop')"),
+                          "AND d.id = (SELECT MIN(x.id) FROM decisions x WHERE x.hand_id = d.hand_id "
+                          "AND x.tournament_id = d.tournament_id AND x.street = 'flop')"),
 }
 
 # Ordem de acao POS-FLOP, do primeiro ao ultimo: quem esta depois do vilao age depois dele

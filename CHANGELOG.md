@@ -5,6 +5,22 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## C-Bet: a oportunidade sumia quando OUTRO usuario tinha a mesma mao (07/09, LOCAL)
+
+- `_SQL_OPORTUNIDADE['cbet']` escolhia a 1a linha do flop por `hand_id` sem escopar pelo
+  torneio, e `hand_id` nao e unico entre usuarios (dois jogadores no mesmo torneio importam
+  as mesmas maos). A linha de id menor, de OUTRO usuario, ganhava, e a oportunidade do heroi
+  sumia do C-Bet, do C-Bet IP/OOP e da grade por posicao.
+- Achado ao copiar o acervo do Rullian para o dev, onde o grade_demo ja tinha as mesmas
+  maos: 1.211 oportunidades em vez de 1.672. Em prod hoje custa zero (nenhuma colisao),
+  mas seria a primeira coisa a quebrar com um time importando o mesmo torneio.
+- Conserto: `x.tournament_id = d.tournament_id` na subconsulta. Teste forja a colisao (outro
+  usuario, ids menores, as mesmas hand_ids); quebrado de proposito, acusa `(None, None, 0)`.
+  Depois do conserto a copia em dev bate com prod em todos os contadores
+  (1.672 / 1.184 / 1.037 / 755 / 281).
+
+---
+
 ## HUD: tooltip estruturado em TODOS os stats, C-Bet IP/OOP sem referencia inventada, refMtt restaurado (07/09, LOCAL)
 
 - O tooltip do C-Bet virou estruturado como o do perfil por posicao (cabecalho, descricao,
