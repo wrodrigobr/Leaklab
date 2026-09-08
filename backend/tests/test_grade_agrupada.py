@@ -44,9 +44,9 @@ def _semeia(maos):
         conn.execute(_adapt("INSERT INTO decisions (tournament_id,hand_id,street,position,num_players,action_taken,"
                             "best_action,score,label,facing_bet,facing_limp,effective_stack_bb,"
                             "preflop_raises_faced,hero_was_aggressor,vs_position,is_3bet,gto_label) "
-                            "VALUES (1,?,'preflop',?,9,?,'raise',0.1,'standard',?,0,?,?,?,?,0,'gto_correct')"),
+                            "VALUES (1,?,'preflop',?,9,?,'raise',0.1,'standard',?,0,?,?,?,?,?,'gto_correct')"),
                      ('H%d' % i, m['position'], m['action_taken'], m.get('facing_bet', 0), m.get('effective_stack_bb', 30),
-                      m.get('preflop_raises_faced', 0), m.get('hero_was_aggressor', 0), m.get('vs_position')))
+                      m.get('preflop_raises_faced', 0), m.get('hero_was_aggressor', 0), m.get('vs_position'), False))
     conn.commit(); conn.close()
     return uid
 

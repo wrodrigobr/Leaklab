@@ -77,7 +77,7 @@ def _semeia(rotulo):
         else:
             pos, acao = 'BTN', ('raise' if i % 20 in (0, 2, 4) else 'call')      # 3 de 10 pares: 30%
         conn.execute(_adapt("INSERT INTO decisions (tournament_id,hand_id,street,position,action_taken,"
-                            "best_action,score,label,is_3bet) VALUES (1,?,'preflop',?,?,'raise',0.1,'standard',0)"),
+                            "best_action,score,label,is_3bet) VALUES (1,?,'preflop',?,?,'raise',0.1,'standard',FALSE)"),
                      ('H%d' % i, pos, acao))
     conn.commit(); conn.close()
     return uid

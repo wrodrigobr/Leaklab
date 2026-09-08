@@ -58,7 +58,7 @@ def _semeia(maos):
                      (m.get('hand_id', 'H%d' % i), m.get('street', 'preflop'), m['position'], m.get('num_players'),
                       m['action_taken'], m.get('facing_bet', 0), m.get('facing_limp', 0), m.get('effective_stack_bb', 30),
                       m.get('preflop_raises_faced', 0), m.get('hero_was_aggressor', 0), m.get('vs_position'),
-                      m.get('is_3bet', 0), m.get('gto_label', 'gto_correct')))
+                      bool(m.get('is_3bet', 0)), m.get('gto_label', 'gto_correct')))
     conn.commit(); conn.close()
     return uid
 

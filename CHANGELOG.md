@@ -5,6 +5,25 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## Homologacao em Postgres (07/09): linha de banco por NOME, nunca por indice
+
+- Sem Docker nesta maquina, a homologacao rodou no host: a imagem do release contra um
+  Postgres 16 descartavel (`docker-compose.homolog.yml`, projeto `homolog`). O smoke de
+  Postgres passou (201 checks, 179 rotas GET). As suites novas, rodadas contra o mesmo
+  Postgres, acusaram TRES funcoes novas quebradas: `get_position_stat_detail` desempacotava a
+  linha (`for vs, vs_chart, ... in rows`) e `_primeiras_decisoes_do_assento` /
+  `_oportunidades_do_assento` liam `r[0]`. No Postgres a linha e um dict (RealDictCursor):
+  desempacotar itera as CHAVES e o modal "contra quem" dava 500 ("could not convert string
+  to float: 'effective_stack_bb'"). No SQLite os dois funcionam, e a suite inteira passou
+  verde. Classe de bug numero 8 da lista "SQLite tolera, Postgres rejeita".
+- Consertadas por nome. Guarda novo `test_linha_de_banco_por_nome`: varre `repositories.py`
+  e acusa `r[N]`/`row[N]` sem `isinstance` e `for a, b, ... in rows`; prova que acha os tres
+  trechos reais forjados.
+- Os seeds dos testes passavam 0/1 em `is_3bet` (BOOLEAN no Postgres) e nao limpavam
+  `gto_nodes` (UNIQUE em `spot_hash`): consertados, para as suites novas rodarem nos dois.
+
+---
+
 ## AY-21: grade por posicao com a visao AGRUPADA (EP / MP / CO / BTN / SB / BB) (07/09, LOCAL)
 
 - O Rullian: o PokerTracker junta tudo antes do CO em EP e MP, "simplifica, mas fica ruim de

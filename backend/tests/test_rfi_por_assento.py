@@ -66,7 +66,7 @@ def _semeia(maos):
                             "VALUES (1,?,'preflop',?,?,'raise',0.1,'standard',?,?,?,?,?,?,?)"),
                      (m.get('hand_id', 'H%d' % i), m['position'], m['action_taken'], m.get('facing_bet', 0), m.get('facing_limp', 0),
                       m.get('effective_stack_bb', 30), m.get('preflop_raises_faced', 0),
-                      m.get('hero_was_aggressor', 0), m.get('vs_position'), m.get('is_3bet', 0)))
+                      m.get('hero_was_aggressor', 0), m.get('vs_position'), bool(m.get('is_3bet', 0))))
     conn.commit(); conn.close()
     return uid
 
@@ -443,7 +443,7 @@ def test_cbet_ip_oop_no_hud_pela_posicao_relativa_e_so_heads_up():
 def _semeia_flop(maos):
     init_db()
     conn = get_conn()
-    for t in ('decisions', 'tournaments', 'users'):
+    for t in ('decisions', 'tournaments', 'users', 'gto_nodes'):     # gto_nodes: spot_hash e UNIQUE (Postgres acusou)
         conn.execute('DELETE FROM %s' % t)
     conn.commit(); conn.close()
     uid = repo.create_user('cbet', 'cbet@t.local', 'senha12345', 'player')

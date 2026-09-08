@@ -2792,14 +2792,16 @@ def _primeiras_decisoes_do_assento(user_id, days, last_n, position, stack_band):
     voluntario = set(a.strip("'") for a in _SQL_VOLUNTARIO.split(', '))
     raise_ou_jam = set(a.strip("'") for a in _SQL_RAISE_OU_JAM.split(', '))
     out, vistas = [], set()
+    # Por NOME, nunca por indice: no Postgres a linha e um dict (RealDictCursor) e `r[0]` e
+    # KeyError; no SQLite os dois funcionam, e foi assim que isto passou pela suite (07/09).
     for r in rows:
-        if r[0] in vistas:
+        if r['hand_id'] in vistas:
             continue
-        vistas.add(r[0])
-        acao = (r[2] or '').lower()
-        out.append(({'facing_bet': r[3], 'facing_limp': r[4], 'preflop_raises_faced': r[5],
-                     'hero_was_aggressor': r[6], 'vs_position': r[7], 'effective_stack_bb': r[8],
-                     'pos_chart': r[9]},
+        vistas.add(r['hand_id'])
+        acao = (r['action_taken'] or '').lower()
+        out.append(({'facing_bet': r['facing_bet'], 'facing_limp': r['facing_limp'], 'preflop_raises_faced': r['preflop_raises_faced'],
+                     'hero_was_aggressor': r['hero_was_aggressor'], 'vs_position': r['vs_position'], 'effective_stack_bb': r['effective_stack_bb'],
+                     'pos_chart': r['pos_chart']},
                     acao in voluntario, acao in raise_ou_jam))
     return out
 
@@ -2845,7 +2847,11 @@ def get_position_stat_detail(user_id: int, position: str, stat: str, days: int =
     finally:
         conn.close()
     grupos: dict = {}
-    for vs, vs_chart, pos_chart, stack, acao, is_3bet in rows:
+    for r in rows:
+        # por nome, nao desempacotando: no Postgres iterar a linha (dict) devolve as CHAVES, e o
+        # modal "contra quem" dava 500 ("could not convert string to float: 'effective_stack_bb'")
+        vs, vs_chart, pos_chart, stack, acao, is_3bet = (r['vs_position'], r['vs_chart'], r['pos_chart'],
+                                                         r['effective_stack_bb'], r['action_taken'], r['is_3bet'])
         chave = normalize_position(vs) if vs else None
         if not chave:
             continue
@@ -2891,7 +2897,7 @@ def _oportunidades_do_assento(user_id, days, last_n, position, stack_band, tipo)
             JOIN tournaments t ON t.id = d.tournament_id
             WHERE {tf} AND d.street = 'preflop' AND {_SQL_OPORTUNIDADE[tipo]}
         """), tp).fetchall()
-        return [(r[0], r[1], r[2]) for r in rows]
+        return [(r['vs_position'], r['effective_stack_bb'], r['pos_chart']) for r in rows]   # por nome: no Postgres a linha e dict
     finally:
         conn.close()
 
