@@ -51,6 +51,7 @@ export function MatrizDeAbertura({ position, stack, dados, erro, posicoes, faixa
   // maos que o jogador nunca recebeu deste assento: apagadas na grade dele (nao e fold)
   const nuncaRecebidas = useMemo(() => new Set(dados ? Object.entries(dados.cells).filter(([, c]) => c.n === 0).map(([h]) => h) : []), [dados]);
   const solver = useMemo(() => (dados ? comoRange(dados.cells, "solver", "solver") : null), [dados]);
+  const solverPct = dados?.solver_pct_todas ?? dados?.solver_pct ?? null;
   const chip = (ativo: boolean, onClick: (() => void) | undefined, rotulo: string, testid: string) => (
     <button type="button" key={testid} data-testid={testid} aria-pressed={ativo} onClick={onClick} disabled={!onClick}
             className={cn("rounded-md border px-2 py-0.5 font-mono text-[9px] uppercase tracking-wider transition-colors",
@@ -80,7 +81,11 @@ export function MatrizDeAbertura({ position, stack, dados, erro, posicoes, faixa
         <div data-testid="matriz-voce">
           <div className="mb-1.5 flex items-baseline justify-between gap-2">
             <span className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground">{t("posProfile.you")}</span>
-            <span className="font-heading text-sm font-bold text-foreground">{t("posProfile.matrix.opened", { pct: dados.voce_pct ?? "—" })}</span>
+            <span className="font-heading text-sm font-bold text-foreground" data-testid="matriz-voce-pct">
+              {dados.voce_pct == null
+                ? t("posProfile.matrix.lowSampleShort")
+                : t("posProfile.matrix.opened", { pct: dados.voce_pct })}
+            </span>
           </div>
           <RangeGrid range={voce} compacta semDado={nuncaRecebidas} rotuloSemDado={t("posProfile.matrix.neverDealt")} />
         </div>
@@ -89,13 +94,28 @@ export function MatrizDeAbertura({ position, stack, dados, erro, posicoes, faixa
           <div className="mb-1.5 flex items-baseline justify-between gap-2">
             <span className="truncate whitespace-nowrap font-mono text-[9px] uppercase tracking-widest text-muted-foreground">{t("posProfile.matrix.solver")}</span>
             <span className="whitespace-nowrap font-heading text-sm font-bold text-foreground">
-              {dados.solver_pct == null ? t("posProfile.matrix.noChart") : t("posProfile.matrix.wouldOpen", { pct: dados.solver_pct })}
-              {dados.solver_pct != null && dados.cobertura < 100 && (
+              {/* O range do CENARIO (as 169 maos), nao a media nas maos que cairam: com 10
+                  oportunidades o segundo dava 7,2% ao lado de uma grade que desenha 20% —
+                  o cabecalho contradizia a propria tela (report de fundador, 08/09). */}
+              {solverPct == null ? t("posProfile.matrix.noChart") : t("posProfile.matrix.wouldOpen", { pct: solverPct })}
+              {solverPct != null && dados.cobertura < 100 && (
                 <span className="ml-1.5 font-mono text-[9px] font-normal text-muted-foreground/70">{t("posProfile.matrix.covers", { pct: dados.cobertura })}</span>
               )}
             </span>
           </div>
           <RangeGrid range={solver} compacta />
+          {dados.voce_pct == null && dados.amostra_minima != null && (
+            <p className="mt-1.5 font-mono text-[9px] leading-snug text-muted-foreground/70" data-testid="matriz-amostra">
+              {t("posProfile.lowSampleMatrix", { n: dados.amostra_minima })}
+            </p>
+          )}
+          {!dados.mesa && (dados.composicao ?? []).length > 1 && (
+            <p className="mt-1.5 font-mono text-[9px] leading-snug text-muted-foreground/70" data-testid="matriz-mistura">
+              {t("posProfile.tableMix", {
+                mix: (dados.composicao ?? []).slice(0, 3).map((c) => `${c.mesa}-max ${c.pct}%`).join(", "),
+              })}
+            </p>
+          )}
         </div>
 
         <div className="min-w-0 overflow-x-hidden rounded-lg border border-border/50 bg-card/40 p-3">

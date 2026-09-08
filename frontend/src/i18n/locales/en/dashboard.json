@@ -963,6 +963,22 @@
     "descriptive": "The grid describes your profile in each seat. The reference applies to the whole game, in the Total row.",
     "stack": "stack",
     "stackAll": "all",
+    "table": "table",
+    "tableAll": "all",
+    "tableSize": {
+      "9max": "9-max",
+      "8max": "8-max",
+      "7max": "7-max",
+      "6max": "6-max",
+      "curta": "5 or fewer"
+    },
+    "tableShare": "{{pct}}% of your hands ({{n}} opportunities)",
+    "tableNote": "Showing {{mesa}} tables, the format you play most. Each table size is a different seat: at 6-max the UTG has 5 players behind, at 9-max it has 8.",
+    "tableNoteAll": "Adding up every table size. One row mixes different seats, so comparing rows says nothing: pick a table size for that.",
+    "solverScenario": "Solver, in this spot",
+    "yourHands": "in your hands",
+    "lowSampleMatrix": "Small sample: fewer than {{n}} opportunities. Your number is hidden; the solver reference is not, because it does not depend on the hands you were dealt.",
+    "tableMix": "This row comes from: {{mix}}.",
     "stackHands": "{{n}} hands in this range",
     "solverHere": "Solver, at your depths",
     "solverBand": "Solver at {{band}}",
@@ -1031,7 +1047,8 @@
       "solverShort": "Solver",
       "divergencesNote": "Hands with {{n}} or more occurrences and {{pp}} points or more from the solver.",
       "covers": "covers {{pct}}%",
-      "neverDealt": "never dealt this hand"
+      "neverDealt": "never dealt this hand",
+      "lowSampleShort": "Small sample"
     }
   }
 }

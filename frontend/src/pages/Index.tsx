@@ -19,7 +19,7 @@ import { DraggableCard } from "@/components/hud/DraggableCard";
 import { useDashboardLayout, DashSection, SECTION_SPAN } from "@/hooks/useDashboardLayout";
 import { useMasonryRows } from "@/hooks/useMasonryRows";
 import { makeRenderCard } from "@/components/hud/dashboardCards";
-import { metrics, tournaments, support, EvolutionResponse, Tournament, PlayerStatsResponse, PositionProfileResponse, StackBand, LeakRoiData, PressureProfile, ConfidenceDrift, PlayerDnaResponse, LeakGraphResponse, CareerProjection, CognitiveFailureData, StrategicTwinProfile, GtoAlignmentData, GtoPositionData, GtoQualityData, ResultsVsGtoData, LeakFinderData, SessionContextData } from "@/lib/api";
+import { metrics, tournaments, support, EvolutionResponse, Tournament, PlayerStatsResponse, PositionProfileResponse, StackBand, TableSize, LeakRoiData, PressureProfile, ConfidenceDrift, PlayerDnaResponse, LeakGraphResponse, CareerProjection, CognitiveFailureData, StrategicTwinProfile, GtoAlignmentData, GtoPositionData, GtoQualityData, ResultsVsGtoData, LeakFinderData, SessionContextData } from "@/lib/api";
 import { ultimosTorneios } from "@/lib/ultimosTorneios";
 import { useAuth } from "@/lib/auth";
 import { shouldShowDrift, readDriftSeen, writeDriftSeen } from "@/lib/driftDismiss";
@@ -65,6 +65,9 @@ const Index = () => {
   // TOTAL e o HUD na MESMA faixa: os dois pedidos saem juntos, ou a conferencia compara
   // conjuntos diferentes. null = todos, e ai o Total e o `playerStats` da tela.
   const [posStack, setPosStack]           = useState<StackBand | null>(null);
+  // `null` = ainda nao escolhido: o backend abre na mesa MAIS JOGADA e DECLARA qual aplicou.
+  // "todas" e escolha explicita do jogador, e ai a grade soma tamanhos de mesa diferentes.
+  const [posMesa, setPosMesa]             = useState<TableSize | "todas" | null>(null);
   const [posGeral, setPosGeral]           = useState<PlayerStatsResponse | null>(null);
   // O carregamento geral (upload, evento de refresh) tambem busca a grade, e tem de buscar na
   // faixa em vigor: a 1a versao buscava sem `stack` e SOBRESCREVIA a grade filtrada com a de
@@ -72,6 +75,8 @@ const Index = () => {
   // trocar de faixa nao pode refazer a tela inteira.
   const posStackRef = useRef<StackBand | null>(null);
   posStackRef.current = posStack;
+  const posMesaRef = useRef<TableSize | "todas" | null>(null);
+  posMesaRef.current = posMesa;
   // AY-21: detalhado (assento a assento) ou agrupado (EP / MP / CO / BTN / SB / BB)
   const [posAgrupado, setPosAgrupado]     = useState(false);
   const posAgrupadoRef = useRef(false);
@@ -129,7 +134,7 @@ const Index = () => {
       // Pro: nem chama quando e free — o backend responderia 402 e a UI ja mostra o
       // lock pelo plano do usuario. Request que se sabe que vai falhar e ruido.
       isFree ? Promise.resolve(null)
-             : metrics.playerStatsByPosition(90, ln, posStackRef.current, posAgrupadoRef.current).then(setPosProfile).catch(() => null),
+             : metrics.playerStatsByPosition(90, ln, posStackRef.current, posAgrupadoRef.current, posMesaRef.current).then(setPosProfile).catch(() => null),
       metrics.leakRoi(90, ln).then((r) => { setLeakRoi(r.leaks); setLeakSource(r.source); }).catch(() => null),
       metrics.pressureProfile(90, ln).then(setPressureData).catch(() => null),
       metrics.confidenceDrift(30, ln).then(setDriftData).catch(() => null),
@@ -148,19 +153,19 @@ const Index = () => {
   // ultima faixa). No 1o render nao ha pedido: a grade ja vem no carregamento geral.
   useEffect(() => {
     if (isFree) return;
-    if (!posStack && !posAgrupado && !jaFiltrou.current) return;
+    if (!posStack && !posAgrupado && !posMesa && !jaFiltrou.current) return;
     jaFiltrou.current = true;
     setPosGeral(null);
     const ln = volumeLimit ?? undefined;
     let vivo = true;
     // So a grade: a linha TOTAL vem nela (`total`), das mesmas linhas e definicoes. A 1a
     // versao pedia o HUD inteiro na faixa (13 consultas a mais, 3,7s em dev) so para o Total.
-    metrics.playerStatsByPosition(90, ln, posStack, posAgrupado).then((grade) => {
+    metrics.playerStatsByPosition(90, ln, posStack, posAgrupado, posMesa).then((grade) => {
       if (!vivo) return;
       setPosProfile(grade);
     }).catch((e) => { console.error("perfil por posicao: filtro de stack falhou", e); });
     return () => { vivo = false; };
-  }, [posStack, posAgrupado, isFree]);   // eslint-disable-line react-hooks/exhaustive-deps -- volumeLimit/refresh passam pelo efeito geral
+  }, [posStack, posAgrupado, posMesa, isFree]);   // eslint-disable-line react-hooks/exhaustive-deps -- volumeLimit/refresh passam pelo efeito geral
 
   // Re-fetch only language-sensitive AI narratives when locale changes
   const langMounted = useRef(false);
@@ -373,6 +378,8 @@ const Index = () => {
         positionProfileGeral={posStack ? posGeral : null}
         positionStack={posStack}
         onPositionStack={setPosStack}
+        positionTable={posMesa}
+        onPositionTable={setPosMesa}
         positionGrouped={posAgrupado}
         onPositionGrouped={setPosAgrupado}
         positionLastN={volumeLimit}

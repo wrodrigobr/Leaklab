@@ -2311,10 +2311,33 @@ def faixa_de_stack(stack_bb):
     return None
 
 
-def _filtro_do_hud(user_id: int, days: int, last_n, position=None, stack_band=None):
-    """O WHERE do HUD: torneios do recorte, opcionalmente um assento (com aliases) e uma faixa
-    de stack. Fonte unica para `get_player_stats` e para a grade por posicao."""
+#: Tamanhos de mesa oferecidos no seletor. `None` = todas. A chave e o rotulo da API; o valor
+#: e (minimo, maximo) de `decisions.num_players`, inclusive nos dois lados.
+#:
+#: POR QUE EXISTE (08/09, report do Rullian): a linha da grade e o ROTULO da sala (a convencao
+#: de 07/09: UTG e sempre o primeiro a falar, e some o MEIO quando a mesa encolhe). Isso e certo
+#: para nomear UMA mao e errado para SOMAR mesas diferentes: o UTG de 9-max tem 8 jogadores
+#: atras e o de 6-max tem 5, que sao ranges diferentes. Somados na mesma linha, o percentual do
+#: solver deixa de crescer em direcao ao botao e o jogador conclui, com razao, que a ferramenta
+#: esta errada. Dentro de UM tamanho de mesa, a linha e um assento so e a ordem volta.
+TAMANHOS_DE_MESA = {
+    '9max': (9, 9),
+    '8max': (8, 8),
+    '7max': (7, 7),
+    '6max': (6, 6),
+    'curta': (2, 5),      # 5 ou menos: mesa final, bolha de SNG, heads-up
+}
+
+
+def _filtro_do_hud(user_id: int, days: int, last_n, position=None, stack_band=None, mesa=None):
+    """O WHERE do HUD: torneios do recorte, opcionalmente um assento (com aliases), uma faixa
+    de stack e um tamanho de mesa. Fonte unica para `get_player_stats` e para a grade por
+    posicao."""
     tf, tp = _build_tournament_filter(user_id, days, last_n)
+    if mesa:
+        lo, hi = TAMANHOS_DE_MESA[mesa]           # KeyError = tamanho desconhecido; endpoint valida
+        tf = '(%s) AND d.num_players BETWEEN ? AND ?' % tf
+        tp = tuple(tp) + (lo, hi)
     if position:
         # Aceita os ALIASES do assento (MP1 e LJ). Comparar o rotulo cru perdia 334 decisoes.
         # E o assento e o da DISTANCIA AO BOTAO (AY-20): o "UTG+2" de mesa 8 e LJ.
@@ -2544,10 +2567,48 @@ def minimo_da_grade(chave: str):
     return _GRADE_MIN_SEM_REFERENCIA.get(chave)
 
 
+def mesas_do_jogador(user_id: int, days: int = 90, last_n: int | None = None) -> dict:
+    """{'mesas': [{'mesa','n','pct'}], 'sugerida': <a mais jogada ou None>} nas oportunidades de
+    RFI do recorte. E o insumo do seletor de tamanho de mesa: o default e a mesa que o jogador
+    MAIS joga, porque e nela que a grade responde por um assento so.
+
+    Medido em prod (90 dias, 32.969 oportunidades): mesa 8 45%, mesa 7 28%, mesa 6 12%, mesa 9
+    5%. Nenhum jogador se concentra num tamanho: o mais concentrado joga 64% num tamanho e o
+    menos 21%, e todos passam por 6 a 8 tamanhos. Por isso o seletor existe, e por isso "todas"
+    continua disponivel."""
+    tf, tp = _build_tournament_filter(user_id, days, last_n)
+    conn = get_conn()
+    try:
+        rows = _fetchall(conn, _adapt(f"""
+            SELECT d.num_players AS mesa, COUNT(*) AS n
+            FROM decisions d JOIN tournaments t ON t.id = d.tournament_id
+            WHERE {tf} AND d.street = 'preflop' AND {_SQL_OPORTUNIDADE['rfi']}
+            GROUP BY d.num_players
+        """), tp) or []
+    finally:
+        conn.close()
+    baldes: dict = {}
+    for r in rows:
+        m = r['mesa']
+        if m is None:
+            continue
+        for chave, (lo, hi) in TAMANHOS_DE_MESA.items():
+            if lo <= int(m) <= hi:
+                baldes[chave] = baldes.get(chave, 0) + int(r['n'] or 0)
+                break
+    total = sum(baldes.values())
+    ordem = list(TAMANHOS_DE_MESA)
+    lista = [{'mesa': k, 'n': baldes[k], 'pct': round(100.0 * baldes[k] / total)}
+             for k in ordem if baldes.get(k)]
+    sugerida = max(lista, key=lambda x: x['n'])['mesa'] if lista else None
+    return {'mesas': lista, 'sugerida': sugerida, 'n': total}
+
+
 def get_player_stats_by_position(user_id: int, days: int = 90,
                                  last_n: int | None = None,
                                  stack_band: str | None = None,
-                                 agrupado: bool = False) -> dict:
+                                 agrupado: bool = False,
+                                 mesa: str | None = None) -> dict:
     """Perfil do jogador em CADA assento, para a grade do dashboard.
 
     Responde outra pergunta que os cards de posição já existentes: eles dizem *de onde você
@@ -2594,6 +2655,11 @@ def get_player_stats_by_position(user_id: int, days: int = 90,
     # `test_rfi_por_assento` exige assento a assento e faixa a faixa que a grade de igual a
     # `get_player_stats(position=...)`, e que o `total` de igual ao HUD.
     linhas_todas = _linhas_preflop_do_recorte(user_id, days, last_n)
+    if mesa:
+        # Filtro em Python, como o da faixa de stack: as linhas ja vieram numa consulta so.
+        lo_m, hi_m = TAMANHOS_DE_MESA[mesa]
+        linhas_todas = [r for r in linhas_todas
+                        if r['mesa'] is not None and lo_m <= int(r['mesa']) <= hi_m]
     if stack_band:
         lo, hi = FAIXAS_DE_STACK[stack_band]
         def _na_faixa(r):
@@ -2709,6 +2775,8 @@ def get_player_stats_by_position(user_id: int, days: int = 90,
         'com_volume': list(_GRADE_COM_VOLUME),
         'stack_band': stack_band,
         'faixas': list(FAIXAS_DE_STACK),
+        'mesa': mesa,
+        'mesas': list(TAMANHOS_DE_MESA),
         'agrupado': bool(agrupado),
         'grupos': {k: list(v) for k, v in GRUPOS_DA_GRADE.items()},
     }
@@ -2726,7 +2794,7 @@ def _linhas_preflop_do_recorte(user_id, days, last_n):
                    {sql_assento_chart()} AS pos_chart,
                    {sql_assento('d.vs_position')} AS vs_position,
                    {sql_assento_chart('d.vs_position')} AS vs_chart,
-                   d.effective_stack_bb AS stack, d.facing_bet, d.facing_limp,
+                   d.effective_stack_bb AS stack, d.facing_bet, d.facing_limp, d.num_players AS mesa,
                    d.preflop_raises_faced, d.is_3bet,
                    CASE WHEN COALESCE(d.hero_was_aggressor, 0) <> 0 THEN 1 ELSE 0 END AS aggressor,
                    CASE WHEN d.action_taken IN ({_SQL_VOLUNTARIO}) THEN 1 ELSE 0 END AS voluntario,
@@ -2840,7 +2908,8 @@ _DETALHE = {
 
 
 def get_position_stat_detail(user_id: int, position: str, stat: str, days: int = 90,
-                             last_n: int | None = None, stack_band: str | None = None) -> dict:
+                             last_n: int | None = None, stack_band: str | None = None,
+                             mesa: str | None = None) -> dict:
     """"Contra quem": o stat de um assento aberto por oponente (06/09, AY-15).
 
     A faixa de 3-Bet e Fold 3-Bet e larga em "todos" por natureza — o solver da 3-bet 5%
@@ -2855,7 +2924,7 @@ def get_position_stat_detail(user_id: int, position: str, stat: str, days: int =
     from leaklab.gto_utils import normalize_position
     tipo, numerador, nome_ref = _DETALHE[stat]        # KeyError = stat sem detalhe; endpoint valida
     funcao = getattr(pgr, nome_ref)
-    tf, tp = _filtro_do_hud(user_id, days, last_n, position, stack_band)
+    tf, tp = _filtro_do_hud(user_id, days, last_n, position, stack_band, mesa)
     conn = get_conn()
     try:
         rows = conn.execute(_adapt(f"""
@@ -2912,8 +2981,22 @@ MINIMO_MAOS_DIVERGENCIA = 8
 DIVERGENCIA_MINIMA = 0.30
 
 
+#: Abaixo disto o resumo do JOGADOR nao sai (o do solver sai: ele nao depende do sorteio).
+#: 30 oportunidades: com 10 maos, "voce abriu 0%" e ruido, e foi o que o Rullian viu no UTG+2.
+MINIMO_MAOS_DO_RESUMO = 30
+
+_RANKS_DA_GRADE = 'AKQJT98765432'
+_TODAS_AS_MAOS = tuple(
+    (a + b) if i == j else ((a + b + 's') if i < j else (b + a + 'o'))
+    for i, a in enumerate(_RANKS_DA_GRADE) for j, b in enumerate(_RANKS_DA_GRADE)
+)
+#: combos de cada mao: par 6, suited 4, offsuit 12 (soma 1.326, o total de maos iniciais)
+_COMBOS_DA_MAO = {m: (6 if len(m) == 2 else (4 if m.endswith('s') else 12)) for m in _TODAS_AS_MAOS}
+
+
 def get_position_open_matrix(user_id: int, position: str, days: int = 90,
-                             last_n: int | None = None, stack_band: str | None = None) -> dict:
+                             last_n: int | None = None, stack_band: str | None = None,
+                             mesa: str | None = None) -> dict:
     """As maos que o jogador ABRIU de um assento, contra o que o solver abriria com as mesmas
     maos, nos mesmos stacks (07/09, AY-15 c; a sugestao do Rullian: "o conjunto de maos que
     voce abriu de cada posicao").
@@ -2935,11 +3018,11 @@ def get_position_open_matrix(user_id: int, position: str, days: int = 90,
     """
     from leaklab.street_math_engine import _canon_hand
     from leaklab.preflop_gto_ranges import villain_open_range, balde_rfi_ou_none
-    tf, tp = _filtro_do_hud(user_id, days, last_n, position, stack_band)
+    tf, tp = _filtro_do_hud(user_id, days, last_n, position, stack_band, mesa)
     conn = get_conn()
     try:
         rows = conn.execute(_adapt(f"""
-            SELECT d.hero_cards, CASE WHEN d.action_taken IN ({_SQL_RAISE_OU_JAM}) THEN 1 ELSE 0 END AS abriu,
+            SELECT d.hero_cards, d.num_players AS mesa, CASE WHEN d.action_taken IN ({_SQL_RAISE_OU_JAM}) THEN 1 ELSE 0 END AS abriu,
                    CASE WHEN d.action_taken = 'call' THEN 1 ELSE 0 END AS limpou,
                    d.effective_stack_bb AS stack, {sql_assento_chart()} AS pos_chart
             FROM decisions d
@@ -3008,12 +3091,40 @@ def get_position_open_matrix(user_id: int, position: str, days: int = 90,
          for mao, v in cells.items()
          if v['solver'] is not None and v['n'] >= MINIMO_MAOS_DIVERGENCIA and abs(v['voce'] - v['solver']) >= DIVERGENCIA_MINIMA),
         key=lambda d: -abs(d['delta']))[:10]
+    # O que o solver abriria NO CENARIO, sobre as 169 maos e nao so sobre as que o jogador
+    # recebeu (dono, 08/09: "pensando como um todo e nao somente com as maos do jogador").
+    # Ponderado por combos, porque range e fracao de combos: AA vale 6, AKs 4, AKo 12.
+    #
+    # POR QUE: `solver_pct` (nas suas maos) depende de QUAIS maos cairam. Com 10 oportunidades
+    # o Rullian viu "solver abriria 7,2%" no UTG+2 ao lado de uma grade que desenha o range
+    # inteiro — o cabecalho contradizia a propria tela. Este numero nao depende do sorteio:
+    # nas mesmas 10 oportunidades ele da 20,1%, que e o range daquele assento e stack.
+    solver_todas = None
+    if peso_total:
+        soma = 0.0
+        for k, npeso in contextos.items():
+            rng = cache[k]
+            soma += sum(float(rng.get(m, 0.0)) * _COMBOS_DA_MAO[m] for m in _TODAS_AS_MAOS) / 1326.0 * npeso
+        solver_todas = round(soma * 100.0 / peso_total, 1)
+    # Composicao da linha: em que tamanho de mesa e em que assento do CHART ela caiu. E o que
+    # explica, quando o filtro esta em "todas", por que a ordem entre as linhas nao cresce.
+    comp: dict = {}
+    for r in rows:
+        m = r['mesa']
+        if m is not None:
+            comp[int(m)] = comp.get(int(m), 0) + 1
+    composicao = [{'mesa': k, 'n': v, 'pct': round(100.0 * v / total)} for k, v in sorted(comp.items(), key=lambda x: -x[1])] if total else []
     return {
-        'position': position, 'stack_band': stack_band,
+        'position': position, 'stack_band': stack_band, 'mesa': mesa,
         'n': total,
-        'voce_pct': round(abriu_total * 100.0 / total, 1) if total else None,
+        'voce_pct': round(abriu_total * 100.0 / total, 1) if total >= MINIMO_MAOS_DO_RESUMO else None,
+        # `solver_pct` (nas suas maos) fica para a analise de divergencia; o resumo mostra
+        # `solver_pct_todas`, que nao depende de quais maos cairam.
         'solver_pct': round(chart_soma * 100.0 / chart_n, 1) if chart_n else None,
+        'solver_pct_todas': solver_todas,
         'cobertura': round(chart_n * 100.0 / total) if total else 0,
+        'amostra_minima': MINIMO_MAOS_DO_RESUMO,
+        'composicao': composicao,
         'cells': cells,
         'divergencias': divergencias,
         'minimo_maos': MINIMO_MAOS_DIVERGENCIA,

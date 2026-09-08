@@ -57,7 +57,7 @@ describe("matriz das maos abertas", () => {
     monta();
     expect(screen.getByTestId("valor-rfi-UTG").className).toContain("underline");
     fireEvent.click(screen.getByTestId("celula-rfi-UTG"));
-    expect(hands).toHaveBeenCalledWith("UTG", 90, 30, "20-40");
+    expect(hands).toHaveBeenCalledWith("UTG", 90, 30, "20-40", "todas");   // sem mesa no payload = o jogador nao filtrou
     const modal = await screen.findByTestId("matriz-UTG");
     expect(modal.textContent).toContain("posProfile.matrix.opps:1.211");
     expect(modal.textContent).toContain("posProfile.matrix.opened:17.2");
@@ -97,11 +97,11 @@ describe("matriz das maos abertas", () => {
     expect(within(sel).queryByTestId("matriz-pos-BB")).toBeNull();                // a BB nao abre pote
     expect(within(sel).getByTestId("matriz-stack-20-40").getAttribute("aria-pressed")).toBe("true");
     fireEvent.click(within(sel).getByTestId("matriz-stack-40+"));
-    await waitFor(() => expect(hands).toHaveBeenLastCalledWith("UTG", 90, 30, "40+"));
+    await waitFor(() => expect(hands).toHaveBeenLastCalledWith("UTG", 90, 30, "40+", "todas"));
     fireEvent.click(within(await screen.findByTestId("matriz-seletores")).getByTestId("matriz-pos-HJ"));
-    await waitFor(() => expect(hands).toHaveBeenLastCalledWith("HJ", 90, 30, "40+"));
+    await waitFor(() => expect(hands).toHaveBeenLastCalledWith("HJ", 90, 30, "40+", "todas"));
     fireEvent.click(within(await screen.findByTestId("matriz-seletores")).getByTestId("matriz-stack-todos"));
-    await waitFor(() => expect(hands).toHaveBeenLastCalledWith("HJ", 90, 30, null));
+    await waitFor(() => expect(hands).toHaveBeenLastCalledWith("HJ", 90, 30, null, "todas"));
   });
 
   it("a BB nao tem RFI nem matriz; o 3-Bet continua abrindo o contra quem", () => {

@@ -963,6 +963,22 @@
     "descriptive": "A grade descreve o seu perfil em cada assento. A referência vale para o jogo todo, na linha Total.",
     "stack": "stack",
     "stackAll": "todos",
+    "table": "mesa",
+    "tableAll": "todas",
+    "tableSize": {
+      "9max": "9-max",
+      "8max": "8-max",
+      "7max": "7-max",
+      "6max": "6-max",
+      "curta": "5 ou menos"
+    },
+    "tableShare": "{{pct}}% das suas mãos ({{n}} oportunidades)",
+    "tableNote": "Mostrando mesas de {{mesa}}, o formato que você mais joga. Cada tamanho de mesa é um assento diferente: no 6-max o UTG tem 5 jogadores atrás, no 9-max tem 8.",
+    "tableNoteAll": "Somando todos os tamanhos de mesa. Uma linha junta assentos diferentes, então comparar uma linha com a outra não diz nada: escolha um tamanho de mesa para isso.",
+    "solverScenario": "Solver, no cenário",
+    "yourHands": "nas suas mãos",
+    "lowSampleMatrix": "Amostra pequena: menos de {{n}} oportunidades. O seu número não aparece; a referência do solver sim, porque não depende das mãos que caíram.",
+    "tableMix": "Esta linha vem de: {{mix}}.",
     "stackHands": "{{n}} mãos nesta faixa",
     "solverHere": "Solver, nas suas profundidades",
     "solverBand": "Solver a {{band}}",
@@ -1031,7 +1047,8 @@
       "solverShort": "Solver",
       "divergencesNote": "Mãos com {{n}} ou mais ocorrências e {{pp}} pontos ou mais de distância do solver.",
       "covers": "cobre {{pct}}%",
-      "neverDealt": "não recebeu esta mão"
+      "neverDealt": "não recebeu esta mão",
+      "lowSampleShort": "Amostra pequena"
     }
   }
 }

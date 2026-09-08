@@ -4113,6 +4113,44 @@ None`). Quem lia sem checar era a exibição.
 
 ## [Unreleased]
 
+### fix(grade): seletor de tamanho de mesa, e o solver do CENARIO em vez do solver das suas maos
+
+> **Por que:** um fundador reportou "o UTG esta abrindo mais maos do que o UTG+1, deveria ser o
+> inverso; o range tem que expandir quanto mais perto do button". Ele estava certo, e a causa
+> nao era o chart nem a traducao de assento. As duas foram conferidas contra o proprio GTO
+> Wizard dele: filtrando a conta para mesa de 8 com 40bb ou mais, o nosso solver da 17,1% no
+> UTG e 19,9% no UTG+1, contra 17,1% e 19,5% do GTOW 8-max 60bb, e a sequencia cresce ate o
+> botao (23,7 / 28,9 / 37,8 / 54,6).
+>
+> **A causa e a AGREGACAO.** A linha da grade e o rotulo da sala (a convencao de 07/09: o UTG e
+> sempre o primeiro a falar, e some o MEIO quando a mesa encolhe). Isso e certo para nomear UMA
+> mao e errado para SOMAR mesas de tamanhos diferentes: o UTG de 9-max tem 8 jogadores atras e
+> o de 6-max tem 5, que sao ranges diferentes. Na conta dele, a linha "UTG" era 41% mesa de 7,
+> 31% mesa de 8, 20% mesa de 6 e 7% mesa de 5 — quatro assentos estrategicos numa linha so. Com
+> as linhas assim, a ordem entre elas nao significa nada, e concluir que a ferramenta esta
+> errada e a leitura razoavel.
+>
+> **O que entra:**
+> - **Seletor de tamanho de mesa** (9-max / 8-max / 7-max / 6-max / 5 ou menos / todas) ao lado
+>   do de stack, na grade e nos paineis que ela abre. Sem `?mesa=`, a grade abre na mesa que o
+>   jogador MAIS joga, e o payload sempre DECLARA qual esta em vigor. Medido em prod (90 dias,
+>   32.969 oportunidades): mesa 8 45%, mesa 7 28%, mesa 6 12%, mesa 9 5%; nenhum jogador se
+>   concentra num tamanho (o mais concentrado joga 64% num deles), e por isso "todas" continua
+>   disponivel, agora com a mistura DECLARADA na tela.
+> - **`solver_pct_todas`: o que o solver abriria NO CENARIO**, sobre as 169 maos ponderadas por
+>   combos, e nao a media nas maos que cairam (ideia do dono: "pensando como um todo e nao
+>   somente com as maos do jogador"). O resumo antigo dependia do sorteio: com 10 oportunidades
+>   o fundador viu "solver abriria 7,2%" ao lado de uma grade desenhando 20%. O numero novo da
+>   20,1% nas MESMAS 10 oportunidades.
+> - **Piso de amostra (30 oportunidades)** para o numero do JOGADOR. A referencia do solver
+>   continua saindo: ela nao depende de quais maos cairam.
+>
+> **Guardas (5 testes, `test_seletor_de_mesa.py`), com 3 mutacoes conferidas:** trocar
+> `solver_pct_todas` pela media nas maos que cairam derruba 2 testes; tirar o filtro de mesa da
+> grade derruba 1; tirar o piso de amostra derruba 1. O guarda central e "o solver do cenario
+> nao depende das maos que cairam": dois seeds com os MESMOS contextos e maos opostas (AA/KK
+> contra 72o/83o) tem de dar o mesmo `solver_pct_todas` e `solver_pct` diferente.
+
 ### feat(solver): veredito por semelhanca, passo 2 — gravado e medido, sem mostrar (AY-28)
 
 > **Por que:** o acervo de nos e chaveado pelo board carta a carta e o reaproveitamento por

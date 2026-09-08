@@ -95,6 +95,7 @@ SUITES = {
                   'test_assinatura_do_spot.py',
                   'test_aproveitamento_do_solver.py',
                   'test_semelhanca.py',
+                  'test_seletor_de_mesa.py',
                   'test_assento_pela_distancia_ao_botao.py',
                   'test_ritual_da_sessao.py',
                   'test_equity_flop_turn.py',

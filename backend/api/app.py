@@ -1629,9 +1629,25 @@ def player_stats_by_position():
     stack, erro = _faixa_de_stack_da_query()
     if erro:
         return erro
+    mesa, erro_mesa = _tamanho_de_mesa_da_query()
+    if erro_mesa:
+        return erro_mesa
     # `?group=1`: EP / MP / CO / BTN / SB / BB (AY-21). Qualquer outro valor e "detalhado".
     agrupado = (request.args.get('group') or '').strip() == '1'
-    return jsonify(get_player_stats_by_position(g.user_id, days, last_n=last_n, stack_band=stack, agrupado=agrupado))
+    from database.repositories import mesas_do_jogador
+    distribuicao = mesas_do_jogador(g.user_id, days, last_n=last_n)
+    # SEM `?mesa=`, a grade abre na mesa MAIS JOGADA (08/09). Nao e capricho de default: somar
+    # tamanhos de mesa junta assentos estrategicamente diferentes, e a linha deixa de crescer
+    # em direcao ao botao — foi o que um fundador reportou como erro, com razao. `?mesa=todas`
+    # desliga o filtro de proposito, e o payload sempre DECLARA qual mesa esta em vigor.
+    auto = 'mesa' not in request.args
+    if auto:
+        mesa = distribuicao.get('sugerida')
+    payload = get_player_stats_by_position(g.user_id, days, last_n=last_n, stack_band=stack,
+                                           agrupado=agrupado, mesa=mesa)
+    payload['distribuicao_de_mesas'] = distribuicao
+    payload['mesa_auto'] = bool(auto and mesa)
+    return jsonify(payload)
 
 
 @app.route('/metrics/player-stats/by-position/detail', methods=['GET'])
@@ -1653,8 +1669,11 @@ def player_stats_by_position_detail():
     stack, erro = _faixa_de_stack_da_query()
     if erro:
         return erro
+    mesa, erro_mesa = _tamanho_de_mesa_da_query()
+    if erro_mesa:
+        return erro_mesa
     return jsonify(get_position_stat_detail(g.user_id, position, stat, int(request.args.get('days', 90)),
-                                            last_n=_last_n_da_query(), stack_band=stack))
+                                            last_n=_last_n_da_query(), stack_band=stack, mesa=mesa))
 
 
 @app.route('/metrics/player-stats/by-position/hands', methods=['GET'])
@@ -1673,8 +1692,27 @@ def player_stats_by_position_hands():
     stack, erro = _faixa_de_stack_da_query()
     if erro:
         return erro
+    mesa, erro_mesa = _tamanho_de_mesa_da_query()
+    if erro_mesa:
+        return erro_mesa
     return jsonify(get_position_open_matrix(g.user_id, position, int(request.args.get('days', 90)),
-                                            last_n=_last_n_da_query(), stack_band=stack))
+                                            last_n=_last_n_da_query(), stack_band=stack, mesa=mesa))
+
+
+def _tamanho_de_mesa_da_query():
+    """`?mesa=` da grade por assento: um dos `TAMANHOS_DE_MESA` ou nada (= todas).
+
+    Tamanho desconhecido e 400 pela MESMA razao da faixa de stack: devolver "todas" para um
+    filtro que o cliente acha que aplicou e o numero certo sob o rotulo errado. E o filtro
+    existe porque a linha da grade e o rotulo da sala: somar mesas de tamanhos diferentes junta
+    assentos estrategicamente diferentes (o UTG de 9-max tem 8 atras; o de 6-max, 5)."""
+    from database.repositories import TAMANHOS_DE_MESA
+    mesa = (request.args.get('mesa') or '').strip() or None
+    if mesa == 'todas':                      # explicito: o jogador PEDIU todas as mesas
+        return None, None
+    if mesa and mesa not in TAMANHOS_DE_MESA:
+        return None, (jsonify({'error': 'mesa invalida', 'mesas': list(TAMANHOS_DE_MESA) + ['todas']}), 400)
+    return mesa, None
 
 
 def _faixa_de_stack_da_query():

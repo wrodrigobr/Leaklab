@@ -46,7 +46,7 @@ describe("painel contra quem", () => {
   it("abre no clique do 3-Bet com o recorte da grade, lista por oponente num modal e fecha pelo X", async () => {
     render(<V2PositionProfileCard data={GRADE} geral={HUD} stack="20-40" lastN={30} onStack={() => {}} />);
     fireEvent.click(screen.getByTestId("celula-three_bet-BB"));
-    expect(detail).toHaveBeenCalledWith("BB", "three_bet", 90, 30, "20-40");
+    expect(detail).toHaveBeenCalledWith("BB", "three_bet", 90, 30, "20-40", "todas");   // sem mesa no payload = o jogador nao filtrou
     const painel = await screen.findByTestId("detalhe-three_bet-BB");
     // a linha Total vem PRIMEIRO, com o numero da celula, a soma das oportunidades e a cor
     const total = within(painel).getByTestId("detalhe-linha-total");
@@ -74,7 +74,7 @@ describe("painel contra quem", () => {
     const botao = (await screen.findAllByTestId("ver-detalhes-three_bet-BB"))[0];
     fireEvent.click(botao);
     expect(await screen.findByTestId("detalhe-three_bet-BB")).toBeTruthy();
-    expect(detail).toHaveBeenCalledWith("BB", "three_bet", 90, 0, null);
+    expect(detail).toHaveBeenCalledWith("BB", "three_bet", 90, 0, null, "todas");
   });
 
   it("RFI e VPIP nao abrem painel, e so a celula clicavel e sublinhada", () => {

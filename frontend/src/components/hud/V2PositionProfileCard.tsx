@@ -6,7 +6,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { metrics } from "@/lib/api";
-import type { PlayerStatsResponse, PositionDetailResponse, PositionOpenMatrixResponse, PositionProfileResponse, PositionStatCell, StackBand } from "@/lib/api";
+import type { PlayerStatsResponse, PositionDetailResponse, PositionOpenMatrixResponse, PositionProfileResponse, PositionStatCell, StackBand, TableSize } from "@/lib/api";
 import { MatrizDeAbertura } from "./MatrizDeAbertura";
 
 /**
@@ -299,6 +299,8 @@ export function V2PositionProfileCard({
   geral,
   stack = null,
   onStack,
+  mesa = null,
+  onMesa,
   agrupado = false,
   onAgrupado,
   lastN = null,
@@ -307,6 +309,10 @@ export function V2PositionProfileCard({
   /** faixa de stack em vigor (null = todos) e o setter, que mora no Index */
   stack?: StackBand | null;
   onStack?: (s: StackBand | null) => void;
+  /** tamanho de mesa em vigor ("todas" desliga o filtro) e o setter, que mora no Index.
+   *  Sem ele a linha soma mesas de tamanhos diferentes, que sao assentos diferentes. */
+  mesa?: TableSize | "todas" | null;
+  onMesa?: (m: TableSize | "todas") => void;
   /** AY-21: grade agrupada (EP / MP / CO / BTN / SB / BB) em vez de assento a assento */
   agrupado?: boolean;
   onAgrupado?: (v: boolean) => void;
@@ -325,6 +331,9 @@ export function V2PositionProfileCard({
    *  natureza (o solver da 3-bet 5% contra UTG e 20% contra BTN); aberta por oponente, a
    *  regua estreita e passa a acusar. Um painel por vez; o mesmo clique fecha. */
   // `stack` so na matriz (RFI): o modal troca assento e faixa sem voltar ao dashboard (dono, 08/09)
+  // A mesa que VALE e a que o backend declara ter aplicado: sem `?mesa=` ele escolhe a mais
+  // jogada sozinho, e o painel tem de pedir o MESMO recorte que a grade esta mostrando.
+  const mesaEmVigor: TableSize | "todas" | null = mesa ?? (data?.mesa ?? (data?.mesa_auto ? null : "todas"));
   const [detalhe, setDetalhe] = useState<{ position: string; stat: string; stack?: StackBand | null } | null>(null);
   const [detalheDados, setDetalheDados] = useState<PositionDetailResponse | null>(null);
   const [matrizDados, setMatrizDados] = useState<PositionOpenMatrixResponse | null>(null);
@@ -335,13 +344,13 @@ export function V2PositionProfileCard({
     setDetalheDados(null); setMatrizDados(null); setDetalheErro(false);
     // RFI abre a matriz das maos abertas (outro endpoint, mesmo recorte); os outros, o "contra quem"
     const pedido = detalhe.stat === "rfi"
-      ? metrics.playerStatsByPositionHands(detalhe.position, 90, lastN ?? undefined, detalhe.stack ?? null).then((d) => { if (vivo) setMatrizDados(d); })
-      : metrics.playerStatsByPositionDetail(detalhe.position, detalhe.stat, 90, lastN ?? undefined, stack).then((d) => { if (vivo) setDetalheDados(d); });
+      ? metrics.playerStatsByPositionHands(detalhe.position, 90, lastN ?? undefined, detalhe.stack ?? null, mesaEmVigor).then((d) => { if (vivo) setMatrizDados(d); })
+      : metrics.playerStatsByPositionDetail(detalhe.position, detalhe.stat, 90, lastN ?? undefined, stack, mesaEmVigor).then((d) => { if (vivo) setDetalheDados(d); });
     pedido.catch(() => { if (vivo) setDetalheErro(true); });
     return () => { vivo = false; };
-  }, [detalhe, stack, lastN]);
-  // trocar a faixa de stack fecha o painel: o detalhe e da faixa em que foi aberto
-  useEffect(() => { setDetalhe(null); }, [stack]);
+  }, [detalhe, stack, lastN, mesaEmVigor]);
+  // trocar a faixa de stack ou o tamanho de mesa fecha o painel: ele e do recorte em que abriu
+  useEffect(() => { setDetalhe(null); }, [stack, mesaEmVigor]);
   const alternaDetalhe = (position: string, stat: string) =>
     setDetalhe((d) => (d && d.position === position && d.stat === stat ? null : { position, stat, stack: stat === "rfi" ? stack ?? null : undefined }));
 
@@ -430,6 +439,33 @@ export function V2PositionProfileCard({
             ))}
           </div>
         )}
+        {onMesa && (data.mesas ?? []).length > 0 && (
+          <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label={t("posProfile.table")} data-testid="chips-mesa">
+            <span className="mr-1 font-mono text-[9px] uppercase tracking-widest text-muted-foreground/60">
+              {t("posProfile.table")}
+            </span>
+            {[...((data.mesas ?? []) as TableSize[]).filter((m) => (data.distribuicao_de_mesas?.mesas ?? []).some((d) => d.mesa === m)), "todas" as const].map((m) => {
+              const info = (data.distribuicao_de_mesas?.mesas ?? []).find((d) => d.mesa === m);
+              const ativo = m === "todas" ? !data.mesa : data.mesa === m;
+              return (
+                <button
+                  key={m}
+                  type="button"
+                  aria-pressed={ativo}
+                  onClick={() => onMesa(m)}
+                  data-testid={`chip-mesa-${m}`}
+                  title={info ? t("posProfile.tableShare", { pct: info.pct, n: info.n.toLocaleString() }) : undefined}
+                  className={cn(
+                    "rounded-md border px-2 py-1 font-mono text-[9px] uppercase tracking-wider transition-colors",
+                    ativo ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  {m === "todas" ? t("posProfile.tableAll") : t(`posProfile.tableSize.${m}`)}
+                </button>
+              );
+            })}
+          </div>
+        )}
         {onStack && (
           <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label={t("posProfile.stack")}>
             <span className="mr-1 font-mono text-[9px] uppercase tracking-widest text-muted-foreground/60">
@@ -461,6 +497,14 @@ export function V2PositionProfileCard({
       {/* A legenda vem ANTES da grade: sem ela o verde no meio da régua é decoração. */}
       <p className="mb-3 font-mono text-[9px] leading-snug text-muted-foreground/70">
         {t("posProfile.legend")} {t("posProfile.clickable")}
+      </p>
+      {/* Por que o filtro de mesa existe. Sem esta linha, o jogador que ve "todas" conclui que a
+          ferramenta esta errada quando o assento mais perto do botao abre menos — e a conclusao
+          seria razoavel: as linhas somam mesas de tamanhos diferentes. */}
+      <p className="mb-3 font-mono text-[9px] leading-snug text-muted-foreground/70" data-testid="nota-mesa">
+        {data.mesa
+          ? t("posProfile.tableNote", { mesa: t(`posProfile.tableSize.${data.mesa}`) })
+          : t("posProfile.tableNoteAll")}
       </p>
 
       {/* overflow-x próprio: a grade é larga e o corpo da página não pode rolar de lado */}

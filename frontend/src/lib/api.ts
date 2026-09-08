@@ -1010,6 +1010,9 @@ export interface PositionProfileRow {
   members?: string[];
 }
 
+/** Tamanhos de mesa do seletor da grade. "todas" nao entra aqui: e o valor que DESLIGA o filtro. */
+export type TableSize = "9max" | "8max" | "7max" | "6max" | "curta";
+
 export interface PositionProfileResponse {
   positions: PositionProfileRow[];
   total_hands: number;
@@ -1020,6 +1023,14 @@ export interface PositionProfileResponse {
   /** faixa de stack aplicada (null = todos) e as faixas que o backend aceita, na ordem dos chips */
   stack_band: string | null;
   faixas: string[];
+  /** tamanho de mesa em vigor (null = todas) e os que o backend aceita, na ordem dos chips.
+   *  Existe porque a linha da grade e o rotulo da sala: somar mesas de tamanhos diferentes
+   *  junta assentos estrategicamente diferentes (o UTG de 9-max tem 8 atras; o de 6-max, 5). */
+  mesa?: TableSize | null;
+  mesas?: TableSize[];
+  /** true quando o backend escolheu a mesa MAIS JOGADA por conta propria (nenhum `?mesa=`) */
+  mesa_auto?: boolean;
+  distribuicao_de_mesas?: { mesas: Array<{ mesa: TableSize; n: number; pct: number }>; sugerida: TableSize | null; n: number };
   /** AY-21: true quando as linhas sao grupos (EP, MP, CO, BTN, SB, BB); `grupos` diz os assentos de cada um */
   agrupado?: boolean;
   grupos?: Record<string, string[]>;
@@ -1036,9 +1047,18 @@ export interface PositionOpenDivergence { hand: string; n: number; voce: number;
 export interface PositionOpenMatrixResponse {
   position: string;
   stack_band: string | null;
+  /** tamanho de mesa em vigor (null = todas) */
+  mesa?: TableSize | null;
   n: number;
+  /** null abaixo de `amostra_minima`: com 10 oportunidades, "voce abriu 0%" e ruido */
   voce_pct: number | null;
+  /** o que o solver abriria NAS MAOS QUE CAIRAM — usado na analise de divergencia */
   solver_pct: number | null;
+  /** o que o solver abriria NO CENARIO, sobre as 169 maos: nao depende de quais maos cairam */
+  solver_pct_todas?: number | null;
+  amostra_minima?: number;
+  /** em que tamanhos de mesa esta linha caiu; explica a mistura quando o filtro esta em "todas" */
+  composicao?: Array<{ mesa: number; n: number; pct: number }>;
   cobertura: number;
   cells: Record<string, PositionOpenCell>;
   divergencias: PositionOpenDivergence[];
@@ -2412,18 +2432,18 @@ export const metrics = {
   /** Perfil por ASSENTO. Pergunta diferente do gtoPosition: aquele diz de onde o jogador
    *  erra mais, este diz qual e o perfil dele ali. */
   /** "Contra quem": o 3-Bet ou o Fold 3-Bet de um assento aberto por oponente (AY-15). */
-  playerStatsByPositionDetail: (position: string, stat: string, days = 90, lastN?: number, stack?: StackBand | null) =>
+  playerStatsByPositionDetail: (position: string, stat: string, days = 90, lastN?: number, stack?: StackBand | null, mesa?: TableSize | "todas" | null) =>
     request<PositionDetailResponse>(
-      `/metrics/player-stats/by-position/detail?position=${encodeURIComponent(position)}&stat=${encodeURIComponent(stat)}&days=${days}${lastN != null ? `&last_n=${lastN}` : ""}${stack ? `&stack=${encodeURIComponent(stack)}` : ""}`),
+      `/metrics/player-stats/by-position/detail?position=${encodeURIComponent(position)}&stat=${encodeURIComponent(stat)}&days=${days}${lastN != null ? `&last_n=${lastN}` : ""}${stack ? `&stack=${encodeURIComponent(stack)}` : ""}${mesa ? `&mesa=${encodeURIComponent(mesa)}` : ""}`),
 
   /** Matriz 13x13 das maos abertas de um assento (ou grupo), voce x solver (AY-15 c). */
-  playerStatsByPositionHands: (position: string, days = 90, lastN?: number, stack?: StackBand | null) =>
+  playerStatsByPositionHands: (position: string, days = 90, lastN?: number, stack?: StackBand | null, mesa?: TableSize | "todas" | null) =>
     request<PositionOpenMatrixResponse>(
-      `/metrics/player-stats/by-position/hands?position=${encodeURIComponent(position)}&days=${days}${lastN != null ? `&last_n=${lastN}` : ""}${stack ? `&stack=${encodeURIComponent(stack)}` : ""}`),
+      `/metrics/player-stats/by-position/hands?position=${encodeURIComponent(position)}&days=${days}${lastN != null ? `&last_n=${lastN}` : ""}${stack ? `&stack=${encodeURIComponent(stack)}` : ""}${mesa ? `&mesa=${encodeURIComponent(mesa)}` : ""}`),
 
-  playerStatsByPosition: (days = 90, lastN?: number, stack?: StackBand | null, agrupado = false) =>
+  playerStatsByPosition: (days = 90, lastN?: number, stack?: StackBand | null, agrupado = false, mesa?: TableSize | "todas" | null) =>
     request<PositionProfileResponse>(
-      `/metrics/player-stats/by-position?days=${days}${lastN != null ? `&last_n=${lastN}` : ""}${stack ? `&stack=${encodeURIComponent(stack)}` : ""}${agrupado ? "&group=1" : ""}`),
+      `/metrics/player-stats/by-position?days=${days}${lastN != null ? `&last_n=${lastN}` : ""}${stack ? `&stack=${encodeURIComponent(stack)}` : ""}${agrupado ? "&group=1" : ""}${mesa ? `&mesa=${encodeURIComponent(mesa)}` : ""}`),
 
   level: (lastN?: number) =>
     request<PlayerLevel>(`/metrics/level${lastN != null ? `?last_n=${lastN}` : ""}`),
