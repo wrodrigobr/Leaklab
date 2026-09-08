@@ -5,6 +5,15 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## Landing: o FAQ dizia "2 torneios por mes" no Free; o backend da 30 (08/09)
+
+- O card do plano foi atualizado em 28/08 (2 -> 30) e o FAQ (q5/a5) nao, nos 3 idiomas. Achado
+  pelo agente que comparou o produto com o concorrente grindlab.gg, nao por alguem olhando a
+  tela. Corrigido nos 3 idiomas.
+- Guarda `test_copy_dos_planos_bate_com_os_limites`: todo "N torneios por mes" da landing tem
+  de ser um limite de `PLAN_LIMITS`; quebrado de proposito com o FAQ antigo, acusa.
+
+---
 ## DEPLOY 07/09/2026, 23:40: o pacote de setembro esta em producao
 
 - `origin/main` d01374b3 (host vinha de b25c7962, tres commits atras do proprio origin/main).

@@ -76,7 +76,7 @@
     "q4": "¿Cómo sé que el diagnóstico no es una suposición de la IA?",
     "a4": "Porque no es una opinión: es conteo de errores en tu propio historial. Un leak solo pasa a \"comprobado\" cuando la mejora sobrevive al intervalo de confianza, y vuelve a abrirse solo si el error reaparece en tus manos reales.",
     "q5": "¿Puedo probarlo sin pagar?",
-    "a5": "Sí. El plan Free es permanente y no pide tarjeta: 2 torneos por mes, 15 análisis y 5 solves GTO bajo demanda. Un torneo ya basta para que aparezca el primer leak.",
+    "a5": "Sí. El plan Free es permanente y no pide tarjeta: 30 torneos por mes, 15 análisis y 5 solves GTO bajo demanda. Un torneo ya basta para que aparezca el primer leak.",
     "q6": "¿Sirve para cash game?",
     "a6": "El foco es el torneo. ICM, M-ratio, etapa y burbuja entran en la evaluación de cada decisión, y ese contexto es justamente lo que cambia la respuesta correcta respecto al cash."
   },
