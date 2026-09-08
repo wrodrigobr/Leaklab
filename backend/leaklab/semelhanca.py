@@ -136,12 +136,13 @@ def _relacoes_da_arvore(conn, tree_hash: str) -> Optional[dict]:
     except ValueError:
         return None
     rel = estrategia_por_relacao(arvore)
-    try:
-        conn.execute(_adapt("DELETE FROM gto_tree_relacoes WHERE tree_hash = ?"), (tree_hash,))
-        conn.execute(_adapt("INSERT INTO gto_tree_relacoes (tree_hash, relacoes_json, n_relacoes) VALUES (?, ?, ?)"),
-                     (tree_hash, json.dumps(rel), len(rel)))
-    except Exception:                                   # noqa: BLE001 - e cache; a leitura ja aconteceu
-        log.debug("gto_tree_relacoes: nao guardou %s", tree_hash)
+    # SEM try/except: na homologacao de 08/09 o INSERT falhava no Postgres (a tabela tem chave
+    # natural e o wrapper acrescentava RETURNING id), o except engolia, e a transacao abortada
+    # derrubava tudo que vinha depois com "current transaction is aborted". Erro de cache e bug;
+    # tem de aparecer no log do thread, nao sumir.
+    conn.execute(_adapt("DELETE FROM gto_tree_relacoes WHERE tree_hash = ?"), (tree_hash,))
+    conn.execute(_adapt("INSERT INTO gto_tree_relacoes (tree_hash, relacoes_json, n_relacoes) VALUES (?, ?, ?)"),
+                 (tree_hash, json.dumps(rel), len(rel)))
     return rel
 
 

@@ -103,15 +103,15 @@ def _semeia_vizinhos():
     """T1 tem duas decisoes COM no e arvore em boards A-seco-2tone (vizinhas); T2 tem uma decisao
     sem no na mesma assinatura (AK em A83 2tone, top pair) e uma preflop."""
     conn = _limpa()
-    _dec(conn, 1, 1, 'spot_a', '["Ah","7h","2c"]', 'AdKd', 'bet', ASS_A)
-    _dec(conn, 2, 1, 'spot_b', '["As","9s","4d"]', 'AhKh', 'check', ASS_A)
+    _dec(conn, 9001, 1, 'spot_a', '["Ah","7h","2c"]', 'AdKd', 'bet', ASS_A)
+    _dec(conn, 9002, 1, 'spot_b', '["As","9s","4d"]', 'AhKh', 'check', ASS_A)
     _arvore_no_banco(conn, 'arv_a', 'spot_a', '["Ah","7h","2c"]',
                      [{'hand': 'AdKd', 'weight': 100, 'freqs': [0.2, 0.8], 'evs': [1, 2]}])
     _arvore_no_banco(conn, 'arv_b', 'spot_b', '["As","9s","4d"]',
                      [{'hand': 'AhKh', 'weight': 100, 'freqs': [0.6, 0.4], 'evs': [1, 2]}])
     # T2: top pair em A83 2tone, sem no; jogou check
-    _dec(conn, 3, 2, 'spot_c', '["Ac","8c","3d"]', 'AsKh', 'check', ASS_A)
-    _dec(conn, 4, 2, 'spot_pf', '[]', 'AsKh', 'raise', None, street='preflop')
+    _dec(conn, 9003, 2, 'spot_c', '["Ac","8c","3d"]', 'AsKh', 'check', ASS_A)
+    _dec(conn, 9004, 2, 'spot_pf', '[]', 'AsKh', 'raise', None, street='preflop')
     conn.commit(); conn.close()
 
 
@@ -120,7 +120,7 @@ def test_provisorio_vem_so_das_arvores_vizinhas_e_nao_existe_sem_vizinho():
     assert sm.gravar_provisorios(2) == 1
     conn = get_conn()
     v = dict(conn.execute("SELECT * FROM vereditos_por_semelhanca").fetchone())
-    assert (v['decision_id'], v['tournament_id'], v['vizinhos']) == (3, 2, 2), v
+    assert (v['decision_id'], v['tournament_id'], v['vizinhos']) == (9003, 2, 2), v
     # media das duas arvores para top pair: bet (0.8+0.4)/2 = 0.6; jogou check -> 0.4 -> gto_mixed
     assert (v['acao'], v['freq_jogada'], v['rotulo']) == ('bet', 0.4, 'gto_mixed'), v
     assert v['comparado_em'] is None
@@ -131,7 +131,7 @@ def test_provisorio_vem_so_das_arvores_vizinhas_e_nao_existe_sem_vizinho():
     conn = get_conn()
     assert conn.execute("SELECT COUNT(*) AS n FROM vereditos_por_semelhanca").fetchone()['n'] == 1
     # quebrado de proposito: sem vizinho (outra assinatura de board) nao ha veredito
-    conn.execute("UPDATE decisions SET spot_assinatura='flop|CO|20-35bb|no_bet|3-K-par-rainbow-desconectado|top_pair-sem_flush-sem_straight' WHERE id=3")
+    conn.execute("UPDATE decisions SET spot_assinatura='flop|CO|20-35bb|no_bet|3-K-par-rainbow-desconectado|top_pair-sem_flush-sem_straight' WHERE id=9003")
     conn.execute("DELETE FROM vereditos_por_semelhanca"); conn.commit(); conn.close()
     assert sm.gravar_provisorios(2) == 0
 
@@ -142,7 +142,7 @@ def test_comparacao_com_o_exato_grava_os_tres_acordos_e_nao_reabre():
     assert sm.comparar_com_exato(2) == 0, 'sem exato ainda, nada a comparar'
     conn = get_conn()
     # o exato chega: solver diz bet 0.9, jogou check (0.1) -> erro; acao igual; rotulo diferente (critical vs mixed)
-    conn.execute("UPDATE decisions SET gto_action='bet_50pct', gto_played_freq=0.1, gto_top_freq=0.9, gto_label='gto_critical' WHERE id=3")
+    conn.execute("UPDATE decisions SET gto_action='bet_50pct', gto_played_freq=0.1, gto_top_freq=0.9, gto_label='gto_critical' WHERE id=9003")
     conn.commit(); conn.close()
     assert sm.comparar_com_exato(2) == 1
     conn = get_conn()
@@ -150,7 +150,7 @@ def test_comparacao_com_o_exato_grava_os_tres_acordos_e_nao_reabre():
     assert (bool(v['acao_igual']), bool(v['erro_igual']), bool(v['rotulo_igual'])) == (True, False, False), v
     assert v['exato_acao'] == 'bet_50pct' and v['exato_rotulo'] == 'gto_critical' and v['comparado_em']
     # nao reabre: mudar o exato depois nao muda a comparacao, e gravar_provisorios nao apaga linha comparada
-    conn.execute("UPDATE decisions SET gto_played_freq=0.5 WHERE id=3"); conn.commit(); conn.close()
+    conn.execute("UPDATE decisions SET gto_played_freq=0.5 WHERE id=9003"); conn.commit(); conn.close()
     assert sm.comparar_com_exato(2) == 0
     assert sm.gravar_provisorios(2) == 1
     conn = get_conn()
@@ -162,7 +162,7 @@ def test_o_gancho_da_fila_drenada_compara_os_provisorios():
     _semeia_vizinhos()
     sm.gravar_provisorios(2)
     conn = get_conn()
-    conn.execute("UPDATE decisions SET gto_action='bet', gto_played_freq=0.1, gto_top_freq=0.9, gto_label='gto_critical', label='clear_mistake', best_action='bet' WHERE id=3")
+    conn.execute("UPDATE decisions SET gto_action='bet', gto_played_freq=0.1, gto_top_freq=0.9, gto_label='gto_critical', label='clear_mistake', best_action='bet' WHERE id=9003")
     conn.execute(_adapt("INSERT INTO gto_tournament_queue (tournament_id, spot_hash) VALUES (2, 'spot_c')"))
     conn.execute(_adapt("INSERT INTO gto_solver_queue (spot_hash, spot_json, status, priority, requested_at, solved_at) "
                         "VALUES ('spot_c', '{}', 'done', 0, '2026-09-02 00:00:00', '2026-09-03 00:00:00')"))
@@ -170,7 +170,7 @@ def test_o_gancho_da_fila_drenada_compara_os_provisorios():
     from api.app import _reconcile_drained_tournaments
     _reconcile_drained_tournaments()
     conn = get_conn()
-    v = dict(conn.execute("SELECT comparado_em, acao_igual FROM vereditos_por_semelhanca WHERE decision_id=3").fetchone())
+    v = dict(conn.execute("SELECT comparado_em, acao_igual FROM vereditos_por_semelhanca WHERE decision_id=9003").fetchone())
     conn.close()
     assert v['comparado_em'] and bool(v['acao_igual']), v
 
@@ -196,19 +196,19 @@ def test_o_upload_grava_a_assinatura_e_o_gancho_grava_o_provisorio():
 def test_a_curva_do_admin_le_a_comparacao_e_a_meta_exige_duas_semanas():
     _semeia_vizinhos()
     conn = get_conn()
-    conn.execute("DELETE FROM decisions WHERE id=4")
+    conn.execute("DELETE FROM decisions WHERE id=9004")
     agora = datetime.utcnow()
     def v(i, dec, viz, acao, erro, rot, dias):
         conn.execute(_adapt("INSERT INTO vereditos_por_semelhanca (id,decision_id,tournament_id,assinatura,vizinhos,acao,freq_jogada,rotulo,"
                             "acao_igual,erro_igual,rotulo_igual,comparado_em) VALUES (?,?,?,?,?,'bet',0.5,'gto_mixed',?,?,?,?)"),
                      (i, dec, 1, ASS_A, viz, acao, erro, rot, (agora - timedelta(days=dias)).strftime('%Y-%m-%d %H:%M:%S')))
-    v(1, 1, 3, True, True, True, 1)
-    v(2, 2, 3, False, True, False, 1)
-    v(3, 3, 1, False, False, False, 1)      # 1 vizinho: fora do recorte da meta
-    v(4, 1, 3, True, True, True, 8)         # semana anterior
+    v(1, 9001, 3, True, True, True, 1)
+    v(2, 9002, 3, False, True, False, 1)
+    v(3, 9003, 1, False, False, False, 1)      # 1 vizinho: fora do recorte da meta
+    v(4, 9001, 3, True, True, True, 8)         # semana anterior
     conn.execute(_adapt("INSERT INTO vereditos_por_semelhanca (id,decision_id,tournament_id,assinatura,vizinhos,acao,freq_jogada,rotulo) "
-                        "VALUES (5,2,1,?,2,'bet',0.5,'gto_mixed')"), (ASS_A,))   # aberto
-    conn.execute("UPDATE decisions SET street='turn' WHERE id=3")
+                        "VALUES (5,9002,1,?,2,'bet',0.5,'gto_mixed')"), (ASS_A,))   # aberto
+    conn.execute("UPDATE decisions SET street='turn' WHERE id=9003")
     conn.commit(); conn.close()
     c = repo.get_aproveitamento_do_solver(dias=56)['semelhanca']['curva']
     assert c['total'] == {'comparadas': 4, 'acao_pct': 50, 'erro_pct': 75, 'rotulo_pct': 50}, c['total']

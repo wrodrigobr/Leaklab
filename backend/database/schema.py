@@ -2861,11 +2861,13 @@ class _AdaptedConn:
     # `tests/test_no_id_tables.py` audita esta lista contra o schema real — se você criar uma
     # tabela de chave natural e esquecer daqui, o teste cai antes de ir pra prod.
     # Chave natural: `telegram_intros` é chaveada pelo telegram_user_id, que é o único
-    # identificador que existe quando a conversa do bot começa.
+    # identificador que existe quando a conversa do bot começa. `gto_tree_relacoes` (AY-28,
+    # 08/09) é chaveada pelo tree_hash: a homologação no Postgres achou o INSERT falhando
+    # antes deste registro.
     _NO_ID_TABLES = {'revalidation_llm_cache', 'gto_preflop_capture', 'gto_tree_strategies',
                      'shared_hands', 'shared_hand_votes',
                      'daily_challenge_schedule', 'gto_tournament_queue', 'feature_usage',
-                     'telegram_intros'}
+                     'telegram_intros', 'gto_tree_relacoes'}
 
     def _pg_insert_returning(self, sql: str) -> str:
         """Postgres não popula lastrowid. Para INSERTs em tabelas com `id`, acrescenta
