@@ -54,6 +54,23 @@ def test_assinatura_junta_estrutura_e_ignora_a_carta_exata():
     assert assinatura('flop', 'CO', 28.0, 0.0, ['Ah', '7h'], ['Kh', 'Qh']) is None
 
 
+def test_a_assinatura_corta_o_board_na_street_da_decisao():
+    """O banco guarda o board COMPLETO em toda decisao (59% das linhas de flop em dev tem 4 ou 5
+    cartas). Sem cortar, duas decisoes no MESMO flop teriam assinaturas diferentes conforme a mao
+    tenha ido ao river, e a textura descreveria um board que o heroi nao viu. Achado em 08/09
+    validando o passo 2 com acervo real: uma decisao de FLOP com 5 cartas virou '5-QJ-par-2tone'
+    e nao achou nenhum vizinho. Mesma familia do bug de 28/07 (ver gto_utils.board_for_street)."""
+    completo = ['Ah', '7h', '2c', '9d', 'Js']
+    assert assinatura('flop', 'CO', 28.0, 0.0, completo, ['Kh', 'Qh']) == assinatura('flop', 'CO', 28.0, 0.0, ['Ah', '7h', '2c'], ['Kh', 'Qh'])
+    assert assinatura('turn', 'CO', 28.0, 0.0, completo, ['Kh', 'Qh']) == assinatura('turn', 'CO', 28.0, 0.0, ['Ah', '7h', '2c', '9d'], ['Kh', 'Qh'])
+    assert assinatura('flop', 'CO', 28.0, 0.0, completo, ['Kh', 'Qh']).split('|')[4].startswith('3-')   # 3 cartas, nao 5
+    assert assinatura('turn', 'CO', 28.0, 0.0, completo, ['Kh', 'Qh']).split('|')[4].startswith('4-')
+    assert assinatura('river', 'CO', 28.0, 0.0, completo, ['Kh', 'Qh']).split('|')[4].startswith('5-')
+    # e a relacao da mao tambem olha so o board da street: KQ de copas e draw no flop, nao no river
+    assert 'flush_draw' in assinatura('flop', 'CO', 28.0, 0.0, completo, ['Kh', 'Qh'])
+    assert 'flush_draw' not in assinatura('river', 'CO', 28.0, 0.0, completo, ['Kh', 'Qh'])
+
+
 def test_os_tres_formatos_de_cartas_dao_o_mesmo():
     assert relacao_da_mao('Ah7h2c', 'KhQh') == relacao_da_mao(['Ah', '7h', '2c'], ['Kh', 'Qh']) == relacao_da_mao('["Ah","7h","2c"]', '["Kh","Qh"]')
     assert textura('["ah","7H","2c"]') == textura(['Ah', '7h', '2c'])

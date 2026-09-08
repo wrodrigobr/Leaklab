@@ -21,7 +21,7 @@ e provisorio e nunca acusa com severidade; o exato substitui.
 from collections import Counter
 from typing import Optional
 
-from leaklab.gto_utils import stack_bucket, bet_bucket, normalize_position
+from leaklab.gto_utils import stack_bucket, bet_bucket, normalize_position, board_for_street
 
 RANKS = '23456789TJQKA'
 _RV = {r: i for i, r in enumerate(RANKS)}
@@ -127,6 +127,12 @@ def relacao_da_mao(board, hand) -> Optional[str]:
 def assinatura(street, position, stack_bb, facing_bet_bb, board, hand=None) -> Optional[str]:
     """A chave de semelhanca: 'flop|CO|20-35bb|no_bet|3-A-seco-2tone-desconectado|top_pair-flush_draw-sem_straight'.
     Sem a mao, e a assinatura do BOARD (para achar arvores vizinhas); com a mao, a do spot."""
+    # O banco guarda o board COMPLETO da mao em TODA decisao: 59% das linhas de flop em dev
+    # carregam 4 ou 5 cartas. Sem cortar, duas decisoes no MESMO flop teriam assinaturas
+    # diferentes conforme a mao tenha ido longe ou nao, e a textura descreveria um board que o
+    # heroi nao tinha visto. E exatamente o bug de 28/07 (ver gto_utils.board_for_street, que e
+    # a fonte unica desta fatia e a mesma que alimenta o compute_spot_hash).
+    board = board_for_street(_cartas(board), (street or '').lower())
     tx = textura(board)
     if not tx or not street or (street or '').lower() == 'preflop':
         return None

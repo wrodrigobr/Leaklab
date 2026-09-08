@@ -4162,6 +4162,26 @@ None`). Quem lia sem checar era a exibição.
 > da allowlist; eu nao o tinha rodado isolado. Registrada em `_NO_ID_TABLES`, `try/except`
 > removido (erro de cache e bug, tem de aparecer), seed do teste fora dos ids 1..4 para nao
 > colidir com a sequence.
+>
+> **A assinatura nao cortava o board na street, e isso e o bug de 28/07 outra vez.** Achado
+> validando o passo 2 com acervo real de prod trazido para o dev: uma decisao de FLOP com o
+> board completo gravado (`["Jd","7d","Qs","2h","Js"]`) virava textura `5-QJ-par-2tone-semi`,
+> descrevia um board que o heroi nao tinha visto e nao casava com vizinho nenhum. O banco guarda
+> o board COMPLETO da mao em toda decisao: **59% das linhas de flop em dev tem 4 ou 5 cartas**
+> (2.870 com 3, 1.321 com 4, 3.593 com 5). A fatia canonica ja existia em
+> `gto_utils.board_for_street` e alimenta o `compute_spot_hash`; a assinatura agora usa a MESMA.
+> Guarda novo em `test_assinatura_do_spot` (mesmo flop, com 3 e com 5 cartas, tem de dar a mesma
+> assinatura; KQ de copas e flush draw no flop e nao no river), quebrado de proposito para
+> confirmar que acusa. Efeito medido em dev depois do re-backfill: cobertura por vizinho de
+> **19% para 24%** das decisoes sem no.
+>
+> **Validacao ponta a ponta com upload real (dev, 08/09):** trazidos de prod, so leitura, 1.695
+> nos e 1.654 arvores dos spots da conta do dono (acervo de dev: 2.012 arvores). Upload de um
+> hand history pela API na conta `upload_teste@dev.local`: 34 decisoes pos-flop, **34 com
+> assinatura**, 8 sem no exato, e o gancho gravou **3 provisorios** (as outras 5 nao tem vizinho
+> com aquela relacao, que e o comportamento correto). Um segundo upload, de torneio cujos spots
+> ja tinham no, gravou 0 provisorios, tambem correto: onde ha exato, semelhanca nao entra.
+
 
 ### fix(i18n): copy do plano de estudo traduzida, e o campo MORTO de `ranges.ts` removido
 
