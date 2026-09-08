@@ -11285,6 +11285,123 @@ def upsert_gw_raw_cache(
         conn.close()
 
 
+def get_aproveitamento_do_solver(dias: int = 56) -> dict:
+    """Quanto do acervo de nos e reaproveitado por torneio novo, e quanto vai ao solver
+    (08/09, AY-28). Agrupamento em Python, por semana de import: SQLite e Postgres nao
+    compartilham date_trunc, e o card e do admin, nao do caminho quente.
+
+    Por decisao pos-flop com spot: "reaproveitada" = o no ja existia quando o torneio foi
+    importado; "resolvida depois" = o no nasceu depois do import (o solver correu por ela);
+    "sem no" = ainda nao ha no. Medido em prod em 08/09: reaproveitamento de 3% (24.805
+    spots distintos em 24.814 decisoes), porque a chave e o board carta a carta.
+
+    `semelhanca`: das decisoes SEM no dos ultimos 30 dias, quantas tem uma arvore resolvida de
+    board com a mesma assinatura (`leaklab.assinatura_do_spot`, sem a mao): e a cobertura que
+    um veredito provisorio por semelhanca daria hoje (60% em prod em 08/09).
+    """
+    from datetime import datetime, timedelta, date
+    from collections import Counter, defaultdict
+    from leaklab.assinatura_do_spot import assinatura
+
+    def _dt(v):
+        if v is None:
+            return None
+        if isinstance(v, datetime):
+            return v.replace(tzinfo=None)
+        s = str(v)[:19].replace('T', ' ')
+        try:
+            return datetime.strptime(s, '%Y-%m-%d %H:%M:%S')
+        except ValueError:
+            try:
+                return datetime.strptime(s[:10], '%Y-%m-%d')
+            except ValueError:
+                return None
+
+    desde = (datetime.utcnow() - timedelta(days=dias)).strftime('%Y-%m-%d %H:%M:%S')
+    desde_30 = (datetime.utcnow() - timedelta(days=30)).strftime('%Y-%m-%d %H:%M:%S')
+    conn = get_conn()
+    try:
+        acervo = dict(_fetchone(conn, "SELECT COUNT(*) AS nos FROM gto_nodes") or {'nos': 0})
+        acervo['arvores'] = (dict(_fetchone(conn, "SELECT COUNT(*) AS n FROM gto_tree_strategies") or {'n': 0}))['n']
+        fila = {r['status']: r['n'] for r in (_fetchall(conn, "SELECT status, COUNT(*) AS n FROM gto_solver_queue GROUP BY status") or [])}
+        esperas = []
+        for r in _fetchall(conn, _adapt("SELECT requested_at, solved_at FROM gto_solver_queue WHERE status='done' AND solved_at >= ?"), (desde_30,)) or []:
+            a, b = _dt(r['requested_at']), _dt(r['solved_at'])
+            if a and b and b >= a:
+                esperas.append((b - a).total_seconds() / 3600.0)
+        esperas.sort()
+        espera = {'n': len(esperas),
+                  'media_h': round(sum(esperas) / len(esperas), 1) if esperas else None,
+                  'mediana_h': round(esperas[len(esperas) // 2], 1) if esperas else None}
+        rows = _fetchall(conn, _adapt("""
+            SELECT t.imported_at, d.spot_hash, n.created_at AS no_em, d.street, d.position, d.board,
+                   d.stack_bb, d.facing_bet, d.hero_cards
+            FROM decisions d
+            JOIN tournaments t ON t.id = d.tournament_id
+            LEFT JOIN gto_nodes n ON n.spot_hash = d.spot_hash
+            WHERE d.street <> 'preflop' AND d.spot_hash IS NOT NULL AND t.imported_at >= ?
+        """), (desde,)) or []
+        enviados = defaultdict(int)
+        for r in _fetchall(conn, _adapt("""
+            SELECT t.imported_at, COUNT(*) AS n FROM gto_tournament_queue gtq
+            JOIN tournaments t ON t.id = gtq.tournament_id WHERE t.imported_at >= ? GROUP BY t.imported_at
+        """), (desde,)) or []:
+            imp = _dt(r['imported_at'])
+            if imp:
+                enviados[(imp - timedelta(days=imp.weekday())).date().isoformat()] += int(r['n'] or 0)
+        # arvores de board conhecidas (para a semelhanca): assinatura SEM a mao das decisoes com no
+        assinaturas_com_no = set()
+        for r in _fetchall(conn, _adapt("""
+            SELECT d.street, d.position, d.board, d.stack_bb, d.facing_bet
+            FROM decisions d JOIN gto_nodes n ON n.spot_hash = d.spot_hash
+            JOIN gto_tree_strategies s ON s.tree_hash = n.tree_hash
+            WHERE d.street <> 'preflop' AND d.board IS NOT NULL
+        """), ()) or []:
+            a = assinatura(r['street'], r['position'], r['stack_bb'], r['facing_bet'], r['board'])
+            if a:
+                assinaturas_com_no.add(a)
+    finally:
+        conn.close()
+
+    semanas: dict = defaultdict(lambda: {'decisoes': 0, 'spots': set(), 'reaproveitadas': 0, 'resolvidas_depois': 0, 'sem_no': 0})
+    sem_no_30 = com_vizinho_30 = 0
+    for r in rows:
+        imp = _dt(r['imported_at'])
+        if not imp:
+            continue
+        chave = (imp - timedelta(days=imp.weekday())).date().isoformat()
+        s = semanas[chave]
+        s['decisoes'] += 1; s['spots'].add(r['spot_hash'])
+        no_em = _dt(r['no_em'])
+        if r['no_em'] is None:
+            s['sem_no'] += 1
+            if imp >= _dt(desde_30):
+                sem_no_30 += 1
+                a = assinatura(r['street'], r['position'], r['stack_bb'], r['facing_bet'], r['board'])
+                if a and a in assinaturas_com_no:
+                    com_vizinho_30 += 1
+        elif no_em and no_em < imp:
+            s['reaproveitadas'] += 1
+        else:
+            s['resolvidas_depois'] += 1
+    serie = []
+    for chave in sorted(semanas):
+        s = semanas[chave]
+        serie.append({'semana': chave, 'decisoes': s['decisoes'], 'spots': len(s['spots']),
+                      'reaproveitadas': s['reaproveitadas'], 'resolvidas_depois': s['resolvidas_depois'],
+                      'sem_no': s['sem_no'], 'enviados': enviados.get(chave, 0),
+                      'pct_reaproveitado': round(100.0 * s['reaproveitadas'] / s['decisoes']) if s['decisoes'] else 0})
+    return {
+        'acervo': acervo,
+        'fila': {k: int(v) for k, v in fila.items()},
+        'espera': espera,
+        'semanas': serie,
+        'semelhanca': {'sem_no': sem_no_30, 'com_vizinho': com_vizinho_30,
+                       'pct': round(100.0 * com_vizinho_30 / sem_no_30) if sem_no_30 else 0,
+                       'assinaturas_conhecidas': len(assinaturas_com_no)},
+    }
+
+
 def get_gto_stats() -> dict:
     """Retorna estatísticas da base gto_nodes."""
     conn = get_conn()

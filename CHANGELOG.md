@@ -5,6 +5,26 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## AY-28: assinatura do spot, medicao da semelhanca e o card "Aproveitamento do solver" (08/09, LOCAL)
+
+- O dono: "quanto reaproveitamos da base?" e depois "vamos fazer algo mais inteligente:
+  textura, conexao, naipes, a relacao com as nossas cartas, veredito rapido no upload, e o
+  solver exato continua e vai refinando". Tres entregas:
+- `leaklab/assinatura_do_spot.py`: textura do board (carta alta, par, naipes, conexao) e
+  relacao da mao (set, dois pares, trinca, top pair, par medio/baixo, overpair, underpair,
+  overcards; flush, flush draw, backdoor; straight, straight draw), mais rua, posicao, faixa
+  de stack e de aposta. 4 testes, com os nomes que o coach usa.
+- Medido em prod, leave-one-out em 896 decisoes com solve exato: a semelhanca (mesma
+  assinatura de board, mao com a mesma relacao na arvore vizinha, ate 8 vizinhos) acerta a
+  acao recomendada em 75%, erro/nao-erro em 79%, o rotulo em 4 faixas em 60%; "critico"
+  exato virando "correto" por semelhanca: 3%. Das decisoes sem no dos ultimos 30 dias, 60%
+  ja teriam vizinho. Regra que sai disso: semelhanca nunca acusa; o exato substitui.
+- Card do admin (aba do worker): reaproveitado na semana, cobertura por semelhanca, fila,
+  espera mediana, e a tabela semanal (decisoes, spots, reaproveitadas, resolvidas depois,
+  sem no, enviados). Agrupamento em Python (sem date_trunc). 2 testes de backend (mutacao
+  acusa), 2 de tela.
+
+---
 ## AY-26: o gancho da fila drenada nao reconciliava; 62 cards acusavam erro recomendando a propria jogada (08/09)
 
 - Diagnostico em prod, sem chutar: as 62 decisoes (AUTO) tinham `gto_action` correto (o no

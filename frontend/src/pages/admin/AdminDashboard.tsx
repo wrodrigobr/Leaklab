@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
 import { HudHeader } from "@/components/hud/HudHeader";
+import { AproveitamentoDoSolver } from "@/components/admin/AproveitamentoDoSolver";
 import { cn } from "@/lib/utils";
 import { adminDashboard, AdminUser, AdminCoachStudent, CoachApplication, support } from "@/lib/api";
 import { toast } from "sonner";
@@ -1583,6 +1584,9 @@ function GtoWorkerTab() {
         <KpiTile label="Decisions Cobertas"  value={String(coverageTotal)} sub={`nodes: ${(cov['solver_cli'] ?? 0) + (cov['gto_wizard'] ?? 0)} · preflop: ${cov['preflop_ranges'] ?? 0}`} icon={BarChart2} accent={coverageTotal > 0} />
         <KpiTile label="Nós por fonte"  value={String(coverageWizard)} sub={`GW · solver_cli: ${coverageSolver}`} icon={Activity} />
       </div>
+
+      {/* AY-28: reaproveitamento do acervo e cobertura por semelhanca, semana a semana */}
+      <AproveitamentoDoSolver />
 
       {/* Saúde do Solver (Fase 1) — tempo, vazão, backlog, erro, servidor */}
       {data.solver_health && (() => {

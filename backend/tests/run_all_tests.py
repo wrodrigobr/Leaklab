@@ -92,6 +92,8 @@ SUITES = {
                   'test_matriz_de_abertura.py',
                   'test_teto_de_torneios_por_usuario.py',
                   'test_reconcile_apos_drenar.py',
+                  'test_assinatura_do_spot.py',
+                  'test_aproveitamento_do_solver.py',
                   'test_assento_pela_distancia_ao_botao.py',
                   'test_ritual_da_sessao.py',
                   'test_equity_flop_turn.py',

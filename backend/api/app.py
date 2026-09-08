@@ -10432,6 +10432,16 @@ def admin_gto_stats():
     return jsonify(get_gto_stats())
 
 
+@app.route('/admin/solver/aproveitamento', methods=['GET'])
+@require_admin
+def admin_solver_aproveitamento():
+    """Quanto do acervo de nos e reaproveitado por torneio novo, semana a semana, e a
+    cobertura que a semelhanca daria (AY-28)."""
+    from database.repositories import get_aproveitamento_do_solver
+    dias = min(max(int(request.args.get('dias', 56)), 7), 365)
+    return jsonify(get_aproveitamento_do_solver(dias=dias))
+
+
 @app.route('/admin/gto/missing-spots', methods=['GET'])
 @require_admin
 def admin_gto_missing_spots():

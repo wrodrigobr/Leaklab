@@ -3498,6 +3498,14 @@ export interface CoachPaymentRecord {
   created_at: string;
 }
 
+export interface SolverAproveitamento {
+  acervo: { nos: number; arvores: number };
+  fila: Record<string, number>;
+  espera: { n: number; media_h: number | null; mediana_h: number | null };
+  semanas: Array<{ semana: string; decisoes: number; spots: number; reaproveitadas: number; resolvidas_depois: number; sem_no: number; enviados: number; pct_reaproveitado: number }>;
+  semelhanca: { sem_no: number; com_vizinho: number; pct: number; assinaturas_conhecidas: number };
+}
+
 export interface GtoWorkerStatus {
   worker: {
     active: boolean;
@@ -3833,6 +3841,8 @@ export const adminDashboard = {
     }),
 
   gtoWorkerStatus: () => request<GtoWorkerStatus>("/admin/gto/worker-status"),
+  /** AY-28: reaproveitamento do acervo por torneio novo, semana a semana, e cobertura por semelhanca */
+  solverAproveitamento: (dias = 56) => request<SolverAproveitamento>(`/admin/solver/aproveitamento?dias=${dias}`),
   gtoHandQueue: () => request<{ queue: GtoHandRequest[]; counts: Record<string, number> }>("/admin/gto/hand-queue"),
   reanalyzeGtoLabels: () => request<{
     checked: number;
