@@ -67,7 +67,7 @@ export function MatrizDeAbertura({ position, stack, dados, erro }: {
 
         <div data-testid="matriz-solver">
           <div className="mb-1.5 flex items-baseline justify-between gap-2">
-            <span className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground">{t("posProfile.matrix.solver")}</span>
+            <span className="truncate whitespace-nowrap font-mono text-[9px] uppercase tracking-widest text-muted-foreground">{t("posProfile.matrix.solver")}</span>
             <span className="whitespace-nowrap font-heading text-sm font-bold text-foreground">
               {dados.solver_pct == null ? t("posProfile.matrix.noChart") : t("posProfile.matrix.wouldOpen", { pct: dados.solver_pct })}
               {dados.solver_pct != null && dados.cobertura < 100 && (

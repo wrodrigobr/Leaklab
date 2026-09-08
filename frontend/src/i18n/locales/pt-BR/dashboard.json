@@ -1018,7 +1018,7 @@
       "description": "Duas grades: as mãos que você abriu deste assento e o que o solver abriria com as mesmas mãos e stacks; embaixo, as maiores divergências.",
       "open": "Ver mãos abertas",
       "opps": "{{n}} vezes com o pote intacto",
-      "solver": "Solver, nas mesmas mãos e stacks",
+      "solver": "Solver, nas suas mãos",
       "opened": "abriu {{pct}}%",
       "wouldOpen": "abriria {{pct}}%",
       "noChart": "sem carta para este recorte",
