@@ -324,7 +324,8 @@ export function V2PositionProfileCard({
   /** Painel "contra quem" (06/09): a faixa de 3-Bet e Fold 3-Bet e larga em "todos" por
    *  natureza (o solver da 3-bet 5% contra UTG e 20% contra BTN); aberta por oponente, a
    *  regua estreita e passa a acusar. Um painel por vez; o mesmo clique fecha. */
-  const [detalhe, setDetalhe] = useState<{ position: string; stat: string } | null>(null);
+  // `stack` so na matriz (RFI): o modal troca assento e faixa sem voltar ao dashboard (dono, 08/09)
+  const [detalhe, setDetalhe] = useState<{ position: string; stat: string; stack?: StackBand | null } | null>(null);
   const [detalheDados, setDetalheDados] = useState<PositionDetailResponse | null>(null);
   const [matrizDados, setMatrizDados] = useState<PositionOpenMatrixResponse | null>(null);
   const [detalheErro, setDetalheErro] = useState(false);
@@ -334,7 +335,7 @@ export function V2PositionProfileCard({
     setDetalheDados(null); setMatrizDados(null); setDetalheErro(false);
     // RFI abre a matriz das maos abertas (outro endpoint, mesmo recorte); os outros, o "contra quem"
     const pedido = detalhe.stat === "rfi"
-      ? metrics.playerStatsByPositionHands(detalhe.position, 90, lastN ?? undefined, stack).then((d) => { if (vivo) setMatrizDados(d); })
+      ? metrics.playerStatsByPositionHands(detalhe.position, 90, lastN ?? undefined, detalhe.stack ?? null).then((d) => { if (vivo) setMatrizDados(d); })
       : metrics.playerStatsByPositionDetail(detalhe.position, detalhe.stat, 90, lastN ?? undefined, stack).then((d) => { if (vivo) setDetalheDados(d); });
     pedido.catch(() => { if (vivo) setDetalheErro(true); });
     return () => { vivo = false; };
@@ -342,7 +343,7 @@ export function V2PositionProfileCard({
   // trocar a faixa de stack fecha o painel: o detalhe e da faixa em que foi aberto
   useEffect(() => { setDetalhe(null); }, [stack]);
   const alternaDetalhe = (position: string, stat: string) =>
-    setDetalhe((d) => (d && d.position === position && d.stat === stat ? null : { position, stat }));
+    setDetalhe((d) => (d && d.position === position && d.stat === stat ? null : { position, stat, stack: stat === "rfi" ? stack ?? null : undefined }));
 
   /** TODAS as colunas do payload, sempre, na ordem em que o backend as declara (a ordem do
    *  HUD principal). Filtrar pelas que "algum assento atinge" era o que escondia da linha
@@ -571,7 +572,10 @@ export function V2PositionProfileCard({
                 {t("posProfile.matrix.title", { pos: detalhe.position })}
               </DialogTitle>
               <DialogDescription className="sr-only">{t("posProfile.matrix.description")}</DialogDescription>
-              <MatrizDeAbertura position={detalhe.position} stack={stack} dados={matrizDados} erro={detalheErro} />
+              <MatrizDeAbertura position={detalhe.position} stack={detalhe.stack ?? null} dados={matrizDados} erro={detalheErro}
+                                posicoes={(data?.positions ?? []).map((l) => l.position).filter((p) => p !== "BB")}
+                                faixas={(data?.faixas ?? []) as StackBand[]}
+                                onMudar={(position, novoStack) => setDetalhe({ position, stat: "rfi", stack: novoStack })} />
             </>
           )}
           {detalhe && detalhe.stat !== "rfi" && (

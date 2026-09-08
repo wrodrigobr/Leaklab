@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { RangeGrid } from "@/components/replayer/RangeGrid";
 import type { RangeSet } from "@/data/ranges";
 import type { PositionOpenMatrixResponse, StackBand } from "@/lib/api";
+import { cn } from "@/lib/utils";
 
 /**
  * Matriz 13x13 das maos que o jogador ABRIU de um assento, contra o que o solver abriria com
@@ -40,24 +41,40 @@ const pct = (v: number | null | undefined) => (v == null ? "—" : `${(v * 100).
 const CABECALHO = "border-b border-border/60 pb-1 font-mono text-[9px] uppercase tracking-wider text-muted-foreground/60";
 const CELULA = "border-b border-border/30 py-1";
 
-export function MatrizDeAbertura({ position, stack, dados, erro }: {
+export function MatrizDeAbertura({ position, stack, dados, erro, posicoes, faixas, onMudar }: {
   position: string; stack?: StackBand | null; dados: PositionOpenMatrixResponse | null; erro: boolean;
+  /** assentos da grade (sem a BB) e faixas de stack: os chips do modal trocam os dois sem sair dele (dono, 08/09) */
+  posicoes?: string[]; faixas?: StackBand[]; onMudar?: (position: string, stack: StackBand | null) => void;
 }) {
   const { t } = useTranslation("dashboard");
   const voce = useMemo(() => (dados ? comoRange(dados.cells, "voce", "voce") : null), [dados]);
   // maos que o jogador nunca recebeu deste assento: apagadas na grade dele (nao e fold)
   const nuncaRecebidas = useMemo(() => new Set(dados ? Object.entries(dados.cells).filter(([, c]) => c.n === 0).map(([h]) => h) : []), [dados]);
   const solver = useMemo(() => (dados ? comoRange(dados.cells, "solver", "solver") : null), [dados]);
-  if (erro) return <p className="text-[11px] text-muted-foreground">{t("posProfile.detail.error")}</p>;
-  if (!dados || !voce || !solver) return <p className="font-mono text-[10px] text-muted-foreground/60">…</p>;
-  if (dados.n === 0) return <p className="text-[11px] text-muted-foreground">{t("posProfile.detail.empty")}</p>;
+  const chip = (ativo: boolean, onClick: (() => void) | undefined, rotulo: string, testid: string) => (
+    <button type="button" key={testid} data-testid={testid} aria-pressed={ativo} onClick={onClick} disabled={!onClick}
+            className={cn("rounded-md border px-2 py-0.5 font-mono text-[9px] uppercase tracking-wider transition-colors",
+                          ativo ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground hover:text-foreground",
+                          !onClick && "cursor-default")}>
+      {rotulo}
+    </button>
+  );
+  const seletores = (
+    <div className="mb-2 flex flex-wrap items-center gap-1.5" data-testid="matriz-seletores">
+      {(posicoes && posicoes.length ? posicoes : [position]).map((p) => chip(p === position, onMudar ? () => onMudar(p, stack ?? null) : undefined, p, `matriz-pos-${p}`))}
+      <span className="mx-1 h-3 w-px bg-border" />
+      {[null, ...(faixas ?? [])].map((f) => chip((stack ?? null) === f, onMudar ? () => onMudar(position, f) : undefined, f ? ROTULO_DA_FAIXA[f] ?? f : t("posProfile.stackAll"), `matriz-stack-${f ?? "todos"}`))}
+      {dados && dados.n > 0 && (
+        <span className="rounded-md border border-border px-2 py-0.5 font-mono text-[9px] uppercase tracking-wider text-muted-foreground">{t("posProfile.matrix.opps", { n: dados.n.toLocaleString() })}</span>
+      )}
+    </div>
+  );
+  if (erro) return <div>{seletores}<p className="text-[11px] text-muted-foreground">{t("posProfile.detail.error")}</p></div>;
+  if (!dados || !voce || !solver) return <div>{seletores}<p className="font-mono text-[10px] text-muted-foreground/60">…</p></div>;
+  if (dados.n === 0) return <div>{seletores}<p className="text-[11px] text-muted-foreground">{t("posProfile.detail.empty")}</p></div>;
   return (
     <div className="mt-1" data-testid={`matriz-${position}`}>
-      <div className="mb-2 flex flex-wrap items-center gap-1.5 font-mono text-[9px] uppercase tracking-wider text-muted-foreground">
-        <span className="rounded-md border border-primary/40 px-2 py-0.5 text-primary">{position}</span>
-        <span className="rounded-md border border-primary/40 px-2 py-0.5 text-primary">{stack ? ROTULO_DA_FAIXA[stack] ?? stack : t("posProfile.stackAll")}</span>
-        <span className="rounded-md border border-border px-2 py-0.5">{t("posProfile.matrix.opps", { n: dados.n.toLocaleString() })}</span>
-      </div>
+      {seletores}
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-[1fr_1fr_17rem]">
         <div data-testid="matriz-voce">

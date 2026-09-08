@@ -9,7 +9,7 @@ import { render, screen, cleanup, fireEvent, waitFor } from "@testing-library/re
  * alarme falso. O teste de onboarding existente (`Index.onboarding.test.tsx`) MOCKA o modal
  * inteiro, entao o X nunca foi exercitado por teste nenhum.
  *
- * O caminho do X: `complete()` -> await completeOnboarding() -> await refreshUser() -> onClose().
+ * O caminho do X (08/09): `complete()` -> onClose() NA HORA -> completeOnboarding() e refreshUser() por tras.
  * Tres cenarios, porque o sintoma depende do que a API faz:
  *   1. API responde     -> fecha
  *   2. API falha        -> fecha mesmo assim (o catch engole; o estado sincroniza no proximo login)
@@ -54,17 +54,17 @@ describe("o X do onboarding", () => {
     await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
   });
 
-  it("NAO fecha enquanto a API nao responde — o unico jeito de reproduzir o sintoma", async () => {
+  it("fecha NA HORA mesmo com a API pendurada, e grava uma vez so (08/09: fechamento otimista)", async () => {
     completeOnboarding.mockReturnValue(new Promise(() => {}));   // pendura para sempre
     const onClose = vi.fn();
     render(<OnboardingModal onClose={onClose} />);
     clicaNoX();
-    await new Promise((r) => setTimeout(r, 50));
-    expect(onClose).not.toHaveBeenCalled();
-    // e um 2o clique e ignorado pelo `if (saving) return`: nao ha como o usuario forcar
+    expect(onClose).toHaveBeenCalledTimes(1);                   // sincrono: nao espera rede
+    // um 2o clique nao dispara outro POST nem outro fechamento
     clicaNoX();
-    await new Promise((r) => setTimeout(r, 50));
+    await new Promise((r) => setTimeout(r, 30));
     expect(completeOnboarding).toHaveBeenCalledTimes(1);
-    expect(onClose).not.toHaveBeenCalled();
+    expect(onClose).toHaveBeenCalledTimes(1);
   });
+
 });

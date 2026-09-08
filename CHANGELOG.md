@@ -5,6 +5,20 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## Onboarding fecha na hora; a matriz troca assento e stack sem sair do modal (08/09)
+
+- Dono, na conta de dev: "o botao fechar do onboarding nao responde de primeira". O X esperava
+  o POST de conclusao E o refreshUser, os dois na fila atras das 13 consultas do dashboard
+  que disparam juntas (medido no dev: player-stats 1,7 s em paralelo, o POST 0,4 s atras
+  delas). Agora o fechamento e otimista: fecha e navega na hora, grava por tras; se falhar,
+  volta no proximo login, que e o que ja acontecia. O teste que travava "NAO fecha enquanto
+  a API nao responde" virou o oposto, de proposito.
+- Dono: "as informacoes da posicao e stack poderiam ser alteraveis". Os chips do modal da
+  matriz viraram seletores: todos os assentos da grade (sem a BB) e as faixas de stack; trocar
+  pede a matriz de novo sem voltar ao dashboard. Teste do fluxo (UTG 20-40 -> 40+ -> HJ ->
+  todos).
+
+---
 ## Matriz: limp nao e fold (08/09)
 
 - O dono, na propria conta: "33% de fold com AA no BTN?". Eram 3 vezes com AA e o pote

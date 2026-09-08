@@ -34,21 +34,22 @@ export function OnboardingModal({ onClose }: Props) {
   const isFirst = step === 0;
 
   // completeOnboarding roda em QUALQUER saída (X, Esc, os 2 CTAs) → não reabre no próximo login.
-  const complete = async (dest?: "import" | "sample" | "demo") => {
+  //
+  // 08/09: o fechamento é OTIMISTA. Antes o X esperava o POST e o refreshUser, e os dois
+  // entravam na fila atrás das 13 consultas do dashboard que disparam junto; medido no dev, o
+  // POST levou segundos e o botão parecia morto (dono: "o botão fechar não responde de
+  // primeira"). Fechar é local e imediato; a gravação segue por trás e, se falhar, o
+  // onboarding volta no próximo login, que é o mesmo que acontecia antes.
+  const complete = (dest?: "import" | "sample" | "demo") => {
     if (saving) return;
     setSaving(true);
-    try {
-      await authApi.completeOnboarding();
-      await refreshUser();
-    } catch {
-      // proceed regardless — onboarding state will sync on next login
-    } finally {
-      setSaving(false);
-    }
     onClose();
     if (dest === "import") navigate("/dashboard");
     else if (dest === "demo") navigate("/demo");
     else if (dest === "sample") navigate("/dashboard?onboarding=sample");
+    authApi.completeOnboarding()
+      .then(() => refreshUser())
+      .catch(() => { /* sincroniza no próximo login */ });
   };
 
   // a11y: Esc fecha (= pular) + foco inicial no painel. O modal atual não tinha nenhum dos dois.

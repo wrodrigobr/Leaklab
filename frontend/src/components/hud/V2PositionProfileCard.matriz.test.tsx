@@ -41,6 +41,7 @@ const ok = (value: number, lo?: number, hi?: number) =>
 const GRADE = {
   positions: [
     { position: "UTG", hands: 1211, stats: { vpip: ok(15), rfi: ok(17.2, 15, 25), three_bet: ok(4, 2, 8) } },
+    { position: "HJ", hands: 700, stats: { vpip: ok(22), rfi: ok(27.9, 20, 32) } },
     { position: "BB", hands: 900, stats: { vpip: ok(37), three_bet: ok(8.5, 2, 19) } },
   ],
   total_hands: 2111, sempre: ["vpip", "rfi"], com_volume: ["three_bet"], stack_band: "20-40", faixas: ["40+", "20-40", "<20"],
@@ -86,6 +87,21 @@ describe("matriz das maos abertas", () => {
     // fecha pelo X
     fireEvent.click(screen.getByText("Close"));
     await waitFor(() => expect(screen.queryByTestId("matriz-UTG")).toBeNull());
+  });
+
+  it("os chips do modal trocam assento e stack sem sair dele, e pedem a matriz de novo", async () => {
+    monta();
+    fireEvent.click(screen.getByTestId("celula-rfi-UTG"));
+    const sel = await screen.findByTestId("matriz-seletores");
+    expect(within(sel).getByTestId("matriz-pos-UTG").getAttribute("aria-pressed")).toBe("true");
+    expect(within(sel).queryByTestId("matriz-pos-BB")).toBeNull();                // a BB nao abre pote
+    expect(within(sel).getByTestId("matriz-stack-20-40").getAttribute("aria-pressed")).toBe("true");
+    fireEvent.click(within(sel).getByTestId("matriz-stack-40+"));
+    await waitFor(() => expect(hands).toHaveBeenLastCalledWith("UTG", 90, 30, "40+"));
+    fireEvent.click(within(await screen.findByTestId("matriz-seletores")).getByTestId("matriz-pos-HJ"));
+    await waitFor(() => expect(hands).toHaveBeenLastCalledWith("HJ", 90, 30, "40+"));
+    fireEvent.click(within(await screen.findByTestId("matriz-seletores")).getByTestId("matriz-stack-todos"));
+    await waitFor(() => expect(hands).toHaveBeenLastCalledWith("HJ", 90, 30, null));
   });
 
   it("a BB nao tem RFI nem matriz; o 3-Bet continua abrindo o contra quem", () => {
