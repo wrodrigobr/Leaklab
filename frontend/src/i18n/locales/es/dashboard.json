@@ -1030,7 +1030,8 @@
       "study": "Estudiar esta range",
       "solverShort": "Solver",
       "divergencesNote": "Manos con {{n}} o más ocurrencias y {{pp}} puntos o más de distancia del solver.",
-      "covers": "cubre {{pct}}%"
+      "covers": "cubre {{pct}}%",
+      "neverDealt": "no recibiste esta mano"
     }
   }
 }

@@ -24,6 +24,10 @@ interface Props {
   /** matriz do perfil por posicao (08/09): fonte menor e sem a legenda de leitura, porque duas
    *  grades lado a lado num modal nao tem espaco para ela, e a comparacao ja se explica */
   compacta?: boolean;
+  /** maos SEM DADO (a matriz do perfil: nunca recebidas): pintadas apagadas e com o aviso no
+   *  tooltip, para "nunca recebeu" nao parecer "recebeu e foldou" (08/09) */
+  semDado?: Set<string>;
+  rotuloSemDado?: string;
 }
 
 function buildGradient(hand: string, range: RangeSet): string {
@@ -60,7 +64,7 @@ function textColor(hand: string, range: RangeSet): string {
   return active > 0.3 ? 'rgba(255,255,255,0.95)' : 'rgba(120,120,120,0.5)';
 }
 
-export function RangeGrid({ range, heroHand, compacta = false }: Props) {
+export function RangeGrid({ range, heroHand, compacta = false, semDado, rotuloSemDado }: Props) {
   const { combos, pct } = rangeStats(range);
   const present = rangeActionPresence(range);
 
@@ -85,7 +89,8 @@ export function RangeGrid({ range, heroHand, compacta = false }: Props) {
             if (f.allin && f.allin > 0.001) tipParts.push(`Shove ${(f.allin*100).toFixed(0)}%`);
             const totalActive = tipParts.length ? ((f.raise ?? 0) + (f.call ?? 0) + (f.allin ?? 0)) : 0;
             if (totalActive < 0.999) tipParts.push(`Fold ${((1-totalActive)*100).toFixed(0)}%`);
-            const tooltip = `${hand}: ${tipParts.join(' · ')}`;
+            const semDadoAqui = semDado?.has(hand) ?? false;
+            const tooltip = semDadoAqui ? `${hand}: ${rotuloSemDado ?? '—'}` : `${hand}: ${tipParts.join(' · ')}`;
             return (
               <div
                 key={`${row}-${col}`}
@@ -99,7 +104,9 @@ export function RangeGrid({ range, heroHand, compacta = false }: Props) {
                   // diagonal, que ninguém faz olhando.
                   row === col && 'ring-1 ring-inset ring-white/25',
                   isHero && 'ring-2 ring-yellow-400 ring-offset-[1px] ring-offset-background relative z-10',
+                  semDadoAqui && 'opacity-30',
                 )}
+                data-sem-dado={semDadoAqui ? 'true' : undefined}
                 style={{ background: gradient, color: txtColor }}
               >
                 <HandCellLabel row={row} col={col} hand={hand} />

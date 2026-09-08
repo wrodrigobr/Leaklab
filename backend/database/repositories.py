@@ -2962,6 +2962,26 @@ def get_position_open_matrix(user_id: int, position: str, days: int = 90,
     for mao, c in celulas.items():
         cells[mao] = {'n': c['n'], 'voce': round(c['abriu'] / c['n'], 3),
                       'solver': round(c['chart'] / c['n_chart'], 3) if c['n_chart'] else None}
+    # As 169 maos, sempre (08/09): a conta demo nunca recebeu AKs do UTG em 788 vezes, e a grade
+    # do solver ficava cinza em AKs, como se o solver nao abrisse. Mao nunca recebida entra com
+    # n=0, `voce` None e o `solver` = a carta nas MESMAS profundidades e assentos do chart em
+    # que o jogador teve o pote intacto, ponderada por quantas vezes esteve em cada um. O resumo
+    # (`solver_pct`) continua sendo so sobre as maos recebidas, para comparar com `voce_pct`.
+    contextos: dict = {}
+    for r in rows:
+        stack = float(r['stack']) if r['stack'] is not None else 0.0
+        chave = (r['pos_chart'], balde_rfi_ou_none(stack) if stack > 0 else None)
+        if chave[1] and cache.get(chave):
+            contextos[chave] = contextos.get(chave, 0) + 1
+    peso_total = sum(contextos.values())
+    if peso_total:
+        for hi in 'AKQJT98765432':
+            for lo in 'AKQJT98765432':
+                for mao in ((hi + lo,) if hi == lo else ((hi + lo + 's', hi + lo + 'o') if 'AKQJT98765432'.index(hi) < 'AKQJT98765432'.index(lo) else ())):
+                    if mao in cells:
+                        continue
+                    f = sum(float(cache[k].get(mao, 0.0)) * n for k, n in contextos.items()) / peso_total
+                    cells[mao] = {'n': 0, 'voce': None, 'solver': round(f, 3)}
     divergencias = sorted(
         ({'hand': mao, 'n': v['n'], 'voce': v['voce'], 'solver': v['solver'], 'delta': round(v['voce'] - v['solver'], 3)}
          for mao, v in cells.items()

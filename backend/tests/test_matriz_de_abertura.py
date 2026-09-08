@@ -75,7 +75,10 @@ def test_celulas_voce_e_solver_e_o_resumo_bate_com_a_grade():
     assert m['cells']['AKs'] == {'n': 10, 'voce': 1.0, 'solver': round(float(villain_open_range('UTG', 40).get('AKs', 0.0)), 3)}
     assert m['cells']['72o']['voce'] == 0.0 and m['cells']['72o']['solver'] == 0.0
     assert m['cells']['T9s']['voce'] == 0.3
-    assert set(m['cells']) == {'AKs', '72o', 'T9s'}
+    # as 169 maos existem; as nunca recebidas vem com n=0, sem `voce`, e com a carta do solver
+    assert len(m['cells']) == 169 and {h for h, c in m['cells'].items() if c['n'] > 0} == {'AKs', '72o', 'T9s'}
+    assert m['cells']['AQs'] == {'n': 0, 'voce': None, 'solver': round(float(villain_open_range('UTG', 40).get('AQs', 0.0)), 3)}
+    assert m['cells']['AQs']['solver'] > 0.9, 'AQs nunca recebida continua sendo abertura do solver'
     assert m['voce_pct'] == round(13 / 34 * 100, 1)
     # o resumo e o RFI da grade no mesmo recorte (mesma oportunidade, mesma definicao)
     g = get_player_stats_by_position(uid, days=3650, last_n=0)
@@ -99,6 +102,8 @@ def test_divergencias_so_com_amostra_e_distancia_e_da_maior_para_a_menor():
     assert [d['hand'] for d in m['divergencias']] == ['T9s'], m['divergencias']
     d = m['divergencias'][0]
     assert d['n'] == 10 and d['voce'] == 0.0 and d['solver'] == round(carta_t9s, 3) and d['delta'] == round(-carta_t9s, 3)
+    # mao nunca recebida NAO entra nas divergencias (n=0), mesmo com a carta abrindo sempre
+    assert m['cells']['AKo']['n'] == 0 and 'AKo' not in [x['hand'] for x in m['divergencias']]
 
 
 def test_grupo_faixa_de_stack_e_sem_stack():
@@ -111,6 +116,10 @@ def test_grupo_faixa_de_stack_e_sem_stack():
     uid = _semeia(maos)
     ep = get_position_open_matrix(uid, 'EP', days=3650, last_n=0)
     assert ep['n'] == 17 and ep['cells']['AKs']['n'] == 17 and ep['cobertura'] == round(15 * 100 / 17)
+    from leaklab.preflop_gto_ranges import balde_rfi
+    esperado = (5 * float(villain_open_range('UTG', 40).get('T9s', 0)) + 5 * float(villain_open_range('UTG+1', 40).get('T9s', 0))
+                + 5 * float(villain_open_range('UTG', 12).get('T9s', 0))) / 15
+    assert abs(ep['cells']['T9s']['solver'] - esperado) < 0.002 and ep['cells']['T9s']['n'] == 0, (ep['cells']['T9s'], esperado)
     curto = get_position_open_matrix(uid, 'UTG', days=3650, last_n=0, stack_band='<20')
     assert curto['n'] == 5 and curto['cells']['AKs']['voce'] == 0.0 and curto['stack_band'] == '<20'
     # mesa de 8: o "UTG" e comparado com a carta do UTG+1 (chart pela distancia ao botao)

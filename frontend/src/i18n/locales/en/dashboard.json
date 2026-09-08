@@ -1030,7 +1030,8 @@
       "study": "Study this range",
       "solverShort": "Solver",
       "divergencesNote": "Hands with {{n}} or more occurrences and {{pp}} points or more from the solver.",
-      "covers": "covers {{pct}}%"
+      "covers": "covers {{pct}}%",
+      "neverDealt": "never dealt this hand"
     }
   }
 }

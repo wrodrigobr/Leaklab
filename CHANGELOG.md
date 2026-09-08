@@ -5,6 +5,21 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## Matriz: mao nunca recebida nao e fold, e o solver mostra as 169 (08/09)
+
+- O dono, no relatorio: "nas matrizes esta falando que nao abrimos com AKs, AQs e AJs. Errado
+  ne?". A conta demo nunca recebeu AKs, AQs nem AJs do UTG em 788 vezes (azar de amostra; a
+  proporcao suited/offsuit/pares esta normal). A grade pintava "nunca recebeu" igual a
+  "recebeu e foldou", e a grade do solver ficava cinza em AKs, como se o solver nao abrisse.
+- Backend: as 169 maos sempre vem; mao nunca recebida entra com n=0, sem `voce`, e com o
+  solver = a carta nos MESMOS assentos do chart e profundidades em que o jogador teve o pote
+  intacto, ponderada por quantas vezes esteve em cada um. Nao entra nas divergencias nem no
+  resumo (`solver_pct` segue sobre as maos recebidas, comparavel a `voce_pct`).
+- Frontend: `RangeGrid` ganha `semDado`: a celula fica apagada, com "nao recebeu esta mao"
+  no tooltip, e nunca e confundida com fold. Testes nos dois lados (AQs nunca recebida:
+  apagada na sua grade, 100% raise na do solver; 72o recebida e foldada continua fold).
+
+---
 ## DEPLOY 08/09/2026, 08:20: matriz, teto por usuario e FAQ em producao
 
 - `origin/main` 7b83c309. Build de web e solver-consumer; os dois respondem

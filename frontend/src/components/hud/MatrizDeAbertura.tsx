@@ -44,6 +44,8 @@ export function MatrizDeAbertura({ position, stack, dados, erro }: {
 }) {
   const { t } = useTranslation("dashboard");
   const voce = useMemo(() => (dados ? comoRange(dados.cells, "voce", "voce") : null), [dados]);
+  // maos que o jogador nunca recebeu deste assento: apagadas na grade dele (nao e fold)
+  const nuncaRecebidas = useMemo(() => new Set(dados ? Object.entries(dados.cells).filter(([, c]) => c.n === 0).map(([h]) => h) : []), [dados]);
   const solver = useMemo(() => (dados ? comoRange(dados.cells, "solver", "solver") : null), [dados]);
   if (erro) return <p className="text-[11px] text-muted-foreground">{t("posProfile.detail.error")}</p>;
   if (!dados || !voce || !solver) return <p className="font-mono text-[10px] text-muted-foreground/60">…</p>;
@@ -62,7 +64,7 @@ export function MatrizDeAbertura({ position, stack, dados, erro }: {
             <span className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground">{t("posProfile.you")}</span>
             <span className="font-heading text-sm font-bold text-foreground">{t("posProfile.matrix.opened", { pct: dados.voce_pct ?? "—" })}</span>
           </div>
-          <RangeGrid range={voce} compacta />
+          <RangeGrid range={voce} compacta semDado={nuncaRecebidas} rotuloSemDado={t("posProfile.matrix.neverDealt")} />
         </div>
 
         <div data-testid="matriz-solver">

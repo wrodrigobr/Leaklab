@@ -30,7 +30,7 @@ beforeEach(() => {
   hands.mockReset();
   hands.mockResolvedValue({
     position: "UTG", stack_band: "20-40", n: 1211, voce_pct: 17.2, solver_pct: 18.5, cobertura: 98,
-    cells: { AKs: { n: 12, voce: 1, solver: 1 }, T9s: { n: 9, voce: 0.444, solver: 1 }, "72o": { n: 10, voce: 0, solver: 0 } },
+    cells: { AKs: { n: 12, voce: 1, solver: 1 }, T9s: { n: 9, voce: 0.444, solver: 1 }, "72o": { n: 10, voce: 0, solver: 0 }, AQs: { n: 0, voce: null, solver: 1 } },
     divergencias: [{ hand: "T9s", n: 9, voce: 0.444, solver: 1, delta: -0.556 }],
     minimo_maos: 8, divergencia_minima: 0.3,
   });
@@ -68,6 +68,11 @@ describe("matriz das maos abertas", () => {
     expect(within(screen.getByTestId("matriz-voce")).getAllByTitle(/^AKs:|^T9s:|^72o:|^AA:/).length).toBeGreaterThanOrEqual(4);
     expect(within(screen.getByTestId("matriz-solver")).getByTitle(/^T9s: Raise 100%/)).toBeTruthy();
     expect(within(screen.getByTestId("matriz-voce")).getByTitle(/^T9s: Raise 44%/)).toBeTruthy();
+    // AQs nunca recebida: apagada na SUA grade com o aviso, e 100% raise na do solver (nao e fold)
+    const aqs = within(screen.getByTestId("matriz-voce")).getByTitle("AQs: posProfile.matrix.neverDealt");
+    expect(aqs.getAttribute("data-sem-dado")).toBe("true");
+    expect(within(screen.getByTestId("matriz-solver")).getByTitle(/^AQs: Raise 100%/).getAttribute("data-sem-dado")).toBeNull();
+    expect(within(screen.getByTestId("matriz-voce")).getByTitle(/^72o: Fold 100%/).getAttribute("data-sem-dado")).toBeNull();   // recebeu e foldou
     // a lista de divergencias
     const linha = within(screen.getByTestId("matriz-divergencias")).getByTestId("divergencia-T9s");
     expect(linha.textContent).toContain("T9s");
