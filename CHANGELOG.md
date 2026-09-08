@@ -4113,6 +4113,42 @@ None`). Quem lia sem checar era a exibição.
 
 ## [Unreleased]
 
+### fix(grade): o filtro conta JOGADORES NA MAO, vira dropdown, e a grade para de inventar assento
+
+> **Por que:** o dono, olhando o filtro que subiu horas antes: "eu so jogo 9max... quando filtrei
+> 9max e como se eu nao tivesse amostras suficientes". Ele estava certo e o erro era meu, de
+> ROTULO. O campo (`num_players`) conta quantos jogadores receberam cartas NAQUELA MAO, e eu
+> escrevi "9-max", que promete FORMATO de mesa. Em torneio a mesa esvazia: nos torneios dele o
+> formato e 9-max em todos (o maximo observado e 9 em cada um), e mesmo assim so 11% das maos
+> foram distribuidas para nove pessoas. O numero estava certo sob o nome errado, que e o defeito
+> que este projeto ja pagou varias vezes.
+>
+> **O que entra:**
+> - O filtro agora se chama **"jogadores na mao"**, com as opcoes 9, 8, 7, 6 e "5 ou menos", e a
+>   fatia do volume no proprio rotulo ("7 · 41%").
+> - Os dois filtros viraram **dropdown** ("economizamos espaco na tela"): eram 10 chips numa
+>   linha que empurrava a grade para baixo. `select` nativo de proposito — o cabecalho e dado,
+>   nao formulario, e o nativo ja e operavel por teclado e leitor de tela sem codigo nosso.
+> - **A grade nao inventa assento que nao existe.** Com um numero de jogadores escolhido, so
+>   entram os assentos possiveis ali (dono: "em 7 jogadores nao era nem pra exibir o utg+2
+>   mesmo"): 9 tem UTG UTG+1 UTG+2 LJ HJ CO BTN; 8 perde o UTG+2; 7 perde tambem o UTG+1; 6 fica
+>   com UTG HJ CO BTN. Medido no acervo: 1,07% das decisoes preflop carregam assento impossivel
+>   para a mesa da mao, e nos tamanhos que o filtro isola sao 14 maos. Elas NAO somem caladas:
+>   seguem no total e o rodape "fora das 8 da grade" as declara. O balde "5 ou menos" nao filtra
+>   assento, porque junta varios tamanhos e ali o proprio parser nomeia diferente (304 maos com
+>   `CO` em mesa de 4).
+> - **A convencao de assento nao muda.** O dono a reafirmou: "o primeiro a agir e sempre o UTG
+>   (no pre-flop)"; "em mesas de 8 nao existe o utg+2, em mesas de 7 nao existe nem utg+1 nem
+>   utg+2". E exatamente o que `ROTULO_POR_MESA` ja fazia. Cheguei a escrever o patch que
+>   invertia isso e ele me corrigiu antes de aplicar; nada foi mexido.
+> - **Rodape consertado:** ele comparava as linhas com o total do HUD INTEIRO, entao com o filtro
+>   ligado dizia "Total inclui 15.905 maos em posicoes fora das 8 da grade". Agora compara com o
+>   total do RECORTE, e diz 3.
+>
+> **Guarda novo, quebrado de proposito:** com 7 jogadores a grade nao lista UTG+2, mas as 3 maos
+> impossiveis continuam no total (a diferenca e o que o rodape declara); com 9 jogadores o UTG+2
+> aparece, porque ali ele existe.
+
 ### fix(grade): seletor de tamanho de mesa, e o solver do CENARIO em vez do solver das suas maos
 
 > **Por que:** um fundador reportou "o UTG esta abrindo mais maos do que o UTG+1, deveria ser o

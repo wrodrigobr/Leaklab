@@ -128,6 +128,27 @@ def test_a_grade_respeita_o_filtro_e_a_distribuicao_sugere_a_mesa_mais_jogada():
     assert grade_8['mesas'] == list(TAMANHOS_DE_MESA)
 
 
+def test_com_um_numero_de_jogadores_a_grade_nao_inventa_assento_que_nao_existe():
+    """Dono, 08/09: "em 7 jogadores nao era nem pra exibir o utg+2 mesmo". O UTG e sempre o
+    primeiro a agir; o que some quando a mesa esvazia e o UTG+2 e depois o UTG+1. Medido no
+    acervo: 14 decisoes carregam assento impossivel nos tamanhos que o filtro isola (dado de
+    borda do parser). Elas NAO somem caladas: continuam no total, e o rodape as declara."""
+    _semeia([(7, 'UTG', 40, MAOS_FRACAS), (7, 'LJ', 40, MAOS_FRACAS), (7, 'BTN', 40, MAOS_FRACAS),
+             (7, 'UTG+2', 3, MAOS_FRACAS),          # impossivel em mesa de 7: o parser errou
+             (9, 'UTG+2', 40, MAOS_FRACAS)])        # em mesa de 9 o UTG+2 existe
+    g7 = get_player_stats_by_position(1, days=3650, mesa='7max')
+    assert [l['position'] for l in g7['positions']] == ['UTG', 'LJ', 'BTN'], [l['position'] for l in g7['positions']]
+    # as 3 maos impossiveis seguem no TOTAL do recorte: a diferenca e o que o rodape declara
+    assert g7['total']['total_hands'] == 123, g7['total']['total_hands']
+    assert sum(l['hands'] for l in g7['positions']) == 120
+    # com 9 jogadores o UTG+2 e assento de verdade e aparece
+    g9 = get_player_stats_by_position(1, days=3650, mesa='9max')
+    assert [l['position'] for l in g9['positions']] == ['UTG+2'], [l['position'] for l in g9['positions']]
+    # sem filtro, nada e escondido (o balde "todas" nao tem um tamanho so para validar)
+    todas = get_player_stats_by_position(1, days=3650, mesa=None)
+    assert 'UTG+2' in [l['position'] for l in todas['positions']]
+
+
 def test_o_endpoint_recusa_mesa_desconhecida_e_abre_na_mais_jogada():
     _semeia([(9, 'UTG', 10, MAOS_FRACAS), (8, 'UTG', 30, MAOS_FRACAS)])
     from api.app import app

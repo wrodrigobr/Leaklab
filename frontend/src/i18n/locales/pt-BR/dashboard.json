@@ -963,22 +963,22 @@
     "descriptive": "A grade descreve o seu perfil em cada assento. A referência vale para o jogo todo, na linha Total.",
     "stack": "stack",
     "stackAll": "todos",
-    "table": "mesa",
+    "table": "jogadores na mão",
     "tableAll": "todas",
     "tableSize": {
-      "9max": "9-max",
-      "8max": "8-max",
-      "7max": "7-max",
-      "6max": "6-max",
+      "9max": "9",
+      "8max": "8",
+      "7max": "7",
+      "6max": "6",
       "curta": "5 ou menos"
     },
     "tableShare": "{{pct}}% das suas mãos ({{n}} oportunidades)",
-    "tableNote": "Mostrando mesas de {{mesa}}, o formato que você mais joga. Cada tamanho de mesa é um assento diferente: no 6-max o UTG tem 5 jogadores atrás, no 9-max tem 8.",
-    "tableNoteAll": "Somando todos os tamanhos de mesa. Uma linha junta assentos diferentes, então comparar uma linha com a outra não diz nada: escolha um tamanho de mesa para isso.",
+    "tableNote": "Mostrando as mãos com {{mesa}} jogadores, o mais frequente no seu volume. BTN, CO, HJ e LJ contam do botão e não mudam. O UTG é quem fala primeiro, então com menos gente na mesa ele vira outra posição: com 9 jogadores tem 8 atrás, com 6 tem 5.",
+    "tableNoteAll": "Somando mãos com qualquer número de jogadores. BTN, CO, HJ e LJ contam do botão e são sempre a mesma situação; o UTG é quem fala primeiro, então a linha dele junta posições diferentes. Escolha um número de jogadores para comparar as linhas entre si.",
     "solverScenario": "Solver, no cenário",
     "yourHands": "nas suas mãos",
     "lowSampleMatrix": "Amostra pequena: menos de {{n}} oportunidades. O seu número não aparece; a referência do solver sim, porque não depende das mãos que caíram.",
-    "tableMix": "Esta linha vem de: {{mix}}.",
+    "tableMix": "Esta linha vem de mãos com: {{mix}}.",
     "stackHands": "{{n}} mãos nesta faixa",
     "solverHere": "Solver, nas suas profundidades",
     "solverBand": "Solver a {{band}}",
@@ -1049,6 +1049,7 @@
       "covers": "cobre {{pct}}%",
       "neverDealt": "não recebeu esta mão",
       "lowSampleShort": "Amostra pequena"
-    }
+    },
+    "tablePlayers": "{{n}} jogadores"
   }
 }

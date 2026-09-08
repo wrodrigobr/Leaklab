@@ -963,22 +963,22 @@
     "descriptive": "The grid describes your profile in each seat. The reference applies to the whole game, in the Total row.",
     "stack": "stack",
     "stackAll": "all",
-    "table": "table",
+    "table": "players dealt",
     "tableAll": "all",
     "tableSize": {
-      "9max": "9-max",
-      "8max": "8-max",
-      "7max": "7-max",
-      "6max": "6-max",
+      "9max": "9",
+      "8max": "8",
+      "7max": "7",
+      "6max": "6",
       "curta": "5 or fewer"
     },
     "tableShare": "{{pct}}% of your hands ({{n}} opportunities)",
-    "tableNote": "Showing {{mesa}} tables, the format you play most. Each table size is a different seat: at 6-max the UTG has 5 players behind, at 9-max it has 8.",
-    "tableNoteAll": "Adding up every table size. One row mixes different seats, so comparing rows says nothing: pick a table size for that.",
+    "tableNote": "Showing hands dealt to {{mesa}} players, the most frequent in your volume. BTN, CO, HJ and LJ are counted from the button and do not change. UTG is whoever acts first, so with fewer players it becomes a different position: with 9 dealt it has 8 behind, with 6 it has 5.",
+    "tableNoteAll": "Adding up hands with any number of players. BTN, CO, HJ and LJ are counted from the button and are always the same spot; UTG is whoever acts first, so its row mixes different positions. Pick a number of players to compare rows with each other.",
     "solverScenario": "Solver, in this spot",
     "yourHands": "in your hands",
     "lowSampleMatrix": "Small sample: fewer than {{n}} opportunities. Your number is hidden; the solver reference is not, because it does not depend on the hands you were dealt.",
-    "tableMix": "This row comes from: {{mix}}.",
+    "tableMix": "This row comes from hands with: {{mix}}.",
     "stackHands": "{{n}} hands in this range",
     "solverHere": "Solver, at your depths",
     "solverBand": "Solver at {{band}}",
@@ -1049,6 +1049,7 @@
       "covers": "covers {{pct}}%",
       "neverDealt": "never dealt this hand",
       "lowSampleShort": "Small sample"
-    }
+    },
+    "tablePlayers": "{{n}} players"
   }
 }

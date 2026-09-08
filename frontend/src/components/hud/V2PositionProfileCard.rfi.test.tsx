@@ -88,25 +88,27 @@ describe("régua do RFI", () => {
 });
 
 describe("filtro de stack", () => {
-  it("os chips vêm das faixas do backend e chamam onStack; todos é null", () => {
+  it("as faixas vêm do backend e chamam onStack; todos é null (dropdown desde 08/09)", () => {
     const onStack = vi.fn();
     render(<V2PositionProfileCard data={GRADE} geral={HUD} stack={null} onStack={onStack} />);
-    fireEvent.click(screen.getByText("20–40bb"));
+    const sel = screen.getByTestId("select-stack") as HTMLSelectElement;
+    expect(Array.from(sel.options).map((o) => o.textContent)).toEqual(["posProfile.stackAll", "40bb+", "20–40bb", "<20bb"]);
+    fireEvent.change(sel, { target: { value: "20-40" } });
     expect(onStack).toHaveBeenCalledWith("20-40");
-    fireEvent.click(screen.getByText("posProfile.stackAll"));
+    fireEvent.change(sel, { target: { value: "todos" } });
     expect(onStack).toHaveBeenCalledWith(null);
-    expect(screen.getByText("40bb+").getAttribute("aria-pressed")).toBe("false");
+    expect(sel.value).toBe("todos");                       // sem faixa escolhida, o dropdown mostra "todos"
   });
 
-  it("sem onStack não há chips (card em modo só leitura)", () => {
+  it("sem onStack não há filtro (card em modo só leitura)", () => {
     render(<V2PositionProfileCard data={GRADE} geral={HUD} />);
-    expect(screen.queryByText("20–40bb")).toBeNull();
+    expect(screen.queryByTestId("select-stack")).toBeNull();
   });
 
   it("com faixa escolhida o cabeçalho diz que as mãos são da faixa", () => {
     render(<V2PositionProfileCard data={{ ...GRADE, stack_band: "20-40" } as PositionProfileResponse}
                                   geral={HUD} stack="20-40" onStack={() => {}} />);
     expect(screen.getByText("posProfile.stackHands:1350")).toBeTruthy();
-    expect(screen.getByText("20–40bb").getAttribute("aria-pressed")).toBe("true");
+    expect((screen.getByTestId("select-stack") as HTMLSelectElement).value).toBe("20-40");
   });
 });

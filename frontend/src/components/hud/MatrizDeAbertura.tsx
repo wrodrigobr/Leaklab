@@ -112,7 +112,7 @@ export function MatrizDeAbertura({ position, stack, dados, erro, posicoes, faixa
           {!dados.mesa && (dados.composicao ?? []).length > 1 && (
             <p className="mt-1.5 font-mono text-[9px] leading-snug text-muted-foreground/70" data-testid="matriz-mistura">
               {t("posProfile.tableMix", {
-                mix: (dados.composicao ?? []).slice(0, 3).map((c) => `${c.mesa}-max ${c.pct}%`).join(", "),
+                mix: (dados.composicao ?? []).slice(0, 3).map((c) => `${t("posProfile.tablePlayers", { n: c.mesa })} ${c.pct}%`).join(", "),
               })}
             </p>
           )}

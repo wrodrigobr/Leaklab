@@ -963,22 +963,22 @@
     "descriptive": "La grilla describe tu perfil en cada asiento. La referencia vale para todo el juego, en la fila Total.",
     "stack": "stack",
     "stackAll": "todos",
-    "table": "mesa",
+    "table": "jugadores en la mano",
     "tableAll": "todas",
     "tableSize": {
-      "9max": "9-max",
-      "8max": "8-max",
-      "7max": "7-max",
-      "6max": "6-max",
+      "9max": "9",
+      "8max": "8",
+      "7max": "7",
+      "6max": "6",
       "curta": "5 o menos"
     },
     "tableShare": "{{pct}}% de tus manos ({{n}} oportunidades)",
-    "tableNote": "Mostrando mesas de {{mesa}}, el formato que más juegas. Cada tamaño de mesa es un asiento distinto: en 6-max el UTG tiene 5 jugadores detrás, en 9-max tiene 8.",
-    "tableNoteAll": "Sumando todos los tamaños de mesa. Una fila junta asientos distintos, así que comparar una fila con otra no dice nada: elige un tamaño de mesa para eso.",
+    "tableNote": "Mostrando las manos con {{mesa}} jugadores, lo más frecuente en tu volumen. BTN, CO, HJ y LJ se cuentan desde el botón y no cambian. El UTG es quien habla primero, así que con menos jugadores pasa a ser otra posición: con 9 tiene 8 detrás, con 6 tiene 5.",
+    "tableNoteAll": "Sumando manos con cualquier número de jugadores. BTN, CO, HJ y LJ se cuentan desde el botón y son siempre la misma situación; el UTG es quien habla primero, así que su fila junta posiciones distintas. Elige un número de jugadores para comparar las filas entre sí.",
     "solverScenario": "Solver, en el escenario",
     "yourHands": "en tus manos",
     "lowSampleMatrix": "Muestra pequeña: menos de {{n}} oportunidades. Tu número no aparece; la referencia del solver sí, porque no depende de las manos que te tocaron.",
-    "tableMix": "Esta fila viene de: {{mix}}.",
+    "tableMix": "Esta fila viene de manos con: {{mix}}.",
     "stackHands": "{{n}} manos en este rango",
     "solverHere": "Solver, en tus profundidades",
     "solverBand": "Solver a {{band}}",
@@ -1049,6 +1049,7 @@
       "covers": "cubre {{pct}}%",
       "neverDealt": "no recibiste esta mano",
       "lowSampleShort": "Muestra pequeña"
-    }
+    },
+    "tablePlayers": "{{n}} jugadores"
   }
 }

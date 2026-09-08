@@ -59,15 +59,27 @@ const grade = (mesa: string | null, auto: boolean) => ({
 const HUD = { total_hands: 2061, vpip: 25, rfi: 28 } as unknown as PlayerStatsResponse;
 
 describe("seletor de tamanho de mesa", () => {
-  it("mostra so as mesas que o jogador joga, marca a que esta em vigor e chama o setter", () => {
+  it("o dropdown lista so os numeros de jogadores que aparecem no volume dele, e chama o setter", () => {
     const onMesa = vi.fn();
     render(<MemoryRouter><V2PositionProfileCard data={grade("8max", true)} geral={HUD} onStack={() => {}} onMesa={onMesa} /></MemoryRouter>);
-    const chips = screen.getByTestId("chips-mesa");
-    expect(within(chips).getByTestId("chip-mesa-8max").getAttribute("aria-pressed")).toBe("true");
-    expect(within(chips).getByTestId("chip-mesa-todas").getAttribute("aria-pressed")).toBe("false");
-    expect(within(chips).queryByTestId("chip-mesa-9max")).toBeNull();       // ele nao joga 9-max
-    fireEvent.click(within(chips).getByTestId("chip-mesa-todas"));
+    const sel = screen.getByTestId("select-mesa") as HTMLSelectElement;
+    expect(sel.value).toBe("8max");
+    const valores = Array.from(sel.options).map((o) => o.value);
+    expect(valores).toEqual(["8max", "7max", "todas"]);          // 9max nao aparece: ele nao jogou
+    expect(sel.options[0].textContent).toContain("45%");          // a fatia do volume vai no rotulo
+    fireEvent.change(sel, { target: { value: "todas" } });
     expect(onMesa).toHaveBeenCalledWith("todas");
+  });
+
+  it("o stack tambem e dropdown, e todos volta null", () => {
+    const onStack = vi.fn();
+    render(<MemoryRouter><V2PositionProfileCard data={grade("8max", true)} geral={HUD} stack="20-40" onStack={onStack} onMesa={() => {}} /></MemoryRouter>);
+    const sel = screen.getByTestId("select-stack") as HTMLSelectElement;
+    expect(sel.value).toBe("20-40");
+    fireEvent.change(sel, { target: { value: "todos" } });
+    expect(onStack).toHaveBeenCalledWith(null);
+    fireEvent.change(sel, { target: { value: "40+" } });
+    expect(onStack).toHaveBeenCalledWith("40+");
   });
 
   it("a nota explica o recorte, e muda quando o filtro esta desligado", () => {
@@ -100,11 +112,13 @@ describe("seletor de tamanho de mesa", () => {
     expect(screen.getByTestId("matriz-voce-pct").textContent).toContain("posProfile.matrix.lowSampleShort");
     expect(modal.textContent).toContain("posProfile.matrix.wouldOpen:20.1");   // a referencia SAI
     expect(screen.getByTestId("matriz-amostra").textContent).toContain("posProfile.lowSampleMatrix:30");
-    expect(screen.getByTestId("matriz-mistura").textContent).toContain("7-max 60%, 8-max 40%");
+    // a mistura agora fala em JOGADORES NA MAO, nao em formato de mesa (o campo conta quem recebeu cartas)
+    expect(screen.getByTestId("matriz-mistura").textContent).toContain("posProfile.tablePlayers:7 60%, posProfile.tablePlayers:8 40%");
   });
 
-  it("sem o setter, nenhum chip de mesa aparece (o card fora do dashboard segue como era)", () => {
+  it("sem o setter, nenhum filtro aparece (o card fora do dashboard segue como era)", () => {
     render(<MemoryRouter><V2PositionProfileCard data={grade(null, false)} geral={HUD} /></MemoryRouter>);
-    expect(screen.queryByTestId("chips-mesa")).toBeNull();
+    expect(screen.queryByTestId("select-mesa")).toBeNull();
+    expect(screen.queryByTestId("select-stack")).toBeNull();
   });
 });

@@ -294,6 +294,37 @@ function Celula({ chave, cel, posicao, maos, ancora, destaque, stack, onDetalhe,
   );
 }
 
+/**
+ * Filtro do cabecalho da grade: um `select` NATIVO. Nao e preciosismo — o cabecalho ja carrega
+ * o alternador de visao, a contagem de maos e a legenda, e 10 chips numa linha empurravam a
+ * grade para baixo (dono, 08/09: "economizamos espaco na tela"). O nativo tambem e o unico que
+ * o teclado e o leitor de tela do celular ja sabem operar sem codigo nosso.
+ */
+function Filtro({ rotulo, valor, opcoes, onMuda, testid }: {
+  rotulo: string;
+  valor: string;
+  opcoes: Array<{ valor: string; texto: string }>;
+  onMuda: (v: string) => void;
+  testid: string;
+}) {
+  return (
+    <label className="flex items-center gap-1.5">
+      <span className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground/60">{rotulo}</span>
+      <select
+        data-testid={testid}
+        aria-label={rotulo}
+        value={valor}
+        onChange={(e) => onMuda(e.target.value)}
+        className="rounded-md border border-border bg-transparent px-1.5 py-1 font-mono text-[9px] uppercase tracking-wider text-foreground outline-none transition-colors hover:border-primary/50 focus-visible:border-primary"
+      >
+        {opcoes.map((o) => (
+          <option key={o.valor} value={o.valor} className="bg-hud-elevated text-foreground">{o.texto}</option>
+        ))}
+      </select>
+    </label>
+  );
+}
+
 export function V2PositionProfileCard({
   data,
   geral,
@@ -376,10 +407,15 @@ export function V2PositionProfileCard({
   /** Maos que o backend contou mas que nao cairam em nenhum dos 8 assentos da grade
    *  (rotulos MP/MP1/MP2/LJ de alguns historicos). Diferenca declarada, nunca escondida. */
   const forasDaGrade = useMemo(() => {
-    if (!geral?.total_hands || linhas.length === 0) return 0;
+    // Contra o total DO RECORTE (`data.total`), nunca contra o HUD inteiro: com um filtro de
+    // jogadores ou de stack em vigor, o HUD conta maos que a grade nem deveria mostrar, e a
+    // linha diria que milhares de maos "ficaram fora dos assentos" quando so estao fora do
+    // filtro. Achado em 08/09, no proprio print da tela: dizia 15.905 com o filtro de 7.
+    const base = (data?.total as { total_hands?: number } | undefined)?.total_hands ?? geral?.total_hands;
+    if (!base || linhas.length === 0) return 0;
     const soma = linhas.reduce((acc, l) => acc + (l.hands || 0), 0);
-    return Math.max(0, geral.total_hands - soma);
-  }, [geral, linhas]);
+    return Math.max(0, base - soma);
+  }, [data, geral, linhas]);
 
   /** Fonte da linha TOTAL: a propria grade quando o backend manda `total` (mesmas linhas e
    *  definicoes; o backend prova que e igual ao HUD), senao o payload do HUD principal. */
@@ -440,54 +476,33 @@ export function V2PositionProfileCard({
           </div>
         )}
         {onMesa && (data.mesas ?? []).length > 0 && (
-          <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label={t("posProfile.table")} data-testid="chips-mesa">
-            <span className="mr-1 font-mono text-[9px] uppercase tracking-widest text-muted-foreground/60">
-              {t("posProfile.table")}
-            </span>
-            {[...((data.mesas ?? []) as TableSize[]).filter((m) => (data.distribuicao_de_mesas?.mesas ?? []).some((d) => d.mesa === m)), "todas" as const].map((m) => {
-              const info = (data.distribuicao_de_mesas?.mesas ?? []).find((d) => d.mesa === m);
-              const ativo = m === "todas" ? !data.mesa : data.mesa === m;
-              return (
-                <button
-                  key={m}
-                  type="button"
-                  aria-pressed={ativo}
-                  onClick={() => onMesa(m)}
-                  data-testid={`chip-mesa-${m}`}
-                  title={info ? t("posProfile.tableShare", { pct: info.pct, n: info.n.toLocaleString() }) : undefined}
-                  className={cn(
-                    "rounded-md border px-2 py-1 font-mono text-[9px] uppercase tracking-wider transition-colors",
-                    ativo ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground hover:text-foreground"
-                  )}
-                >
-                  {m === "todas" ? t("posProfile.tableAll") : t(`posProfile.tableSize.${m}`)}
-                </button>
-              );
-            })}
-          </div>
+          <Filtro
+            rotulo={t("posProfile.table")}
+            testid="select-mesa"
+            valor={data.mesa ?? "todas"}
+            onMuda={(v) => onMesa(v as TableSize | "todas")}
+            opcoes={[
+              ...((data.mesas ?? []) as TableSize[])
+                .filter((m) => (data.distribuicao_de_mesas?.mesas ?? []).some((d) => d.mesa === m))
+                .map((m) => {
+                  const info = (data.distribuicao_de_mesas?.mesas ?? []).find((d) => d.mesa === m);
+                  return { valor: m, texto: t("posProfile.tableSize." + m) + (info ? ` · ${info.pct}%` : "") };
+                }),
+              { valor: "todas", texto: t("posProfile.tableAll") },
+            ]}
+          />
         )}
         {onStack && (
-          <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label={t("posProfile.stack")}>
-            <span className="mr-1 font-mono text-[9px] uppercase tracking-widest text-muted-foreground/60">
-              {t("posProfile.stack")}
-            </span>
-            {[null, ...((data.faixas ?? []) as StackBand[])].map((f) => (
-              <button
-                key={f ?? "all"}
-                type="button"
-                aria-pressed={stack === f}
-                onClick={() => onStack(f)}
-                className={cn(
-                  "rounded-md border px-2 py-1 font-mono text-[9px] uppercase tracking-wider transition-colors",
-                  stack === f
-                    ? "border-primary bg-primary/10 text-primary"
-                    : "border-border text-muted-foreground hover:text-foreground"
-                )}
-              >
-                {f ? ROTULO_DA_FAIXA[f] ?? f : t("posProfile.stackAll")}
-              </button>
-            ))}
-          </div>
+          <Filtro
+            rotulo={t("posProfile.stack")}
+            testid="select-stack"
+            valor={stack ?? "todos"}
+            onMuda={(v) => onStack(v === "todos" ? null : (v as StackBand))}
+            opcoes={[
+              { valor: "todos", texto: t("posProfile.stackAll") },
+              ...((data.faixas ?? []) as StackBand[]).map((f) => ({ valor: f, texto: ROTULO_DA_FAIXA[f] ?? f })),
+            ]}
+          />
         )}
         <span className="font-mono text-[9px] text-muted-foreground/70 tabular-nums">
           {stack ? t("posProfile.stackHands", { n: data.total_hands }) : t("posProfile.hands", { n: data.total_hands })}

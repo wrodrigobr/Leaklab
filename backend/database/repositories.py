@@ -2406,6 +2406,30 @@ ROTULO_POR_MESA = {
     (7, 'UTG+1'): 'LJ',                      # o 2o assento de mesa 7 e o Lojack
 }
 
+#: Que assentos EXISTEM com N jogadores na mao, pela mesma convencao (dono, 08/09: "em 7
+#: jogadores nao era nem pra exibir o utg+2 mesmo"). O UTG e sempre o primeiro a agir; do outro
+#: lado, BTN/CO/HJ/LJ contam do botao; o que some quando a mesa esvazia e o MEIO, na ordem
+#: UTG+2 e depois UTG+1.
+#:
+#: So os tamanhos que o filtro isola sozinhos entram. "5 ou menos" e um balde de varios
+#: tamanhos, e ali o proprio parser nomeia de formas diferentes (304 maos com `CO` em mesa de
+#: 4) — impor validade num balde misto trocaria uma imprecisao por outra, entao ele nao filtra.
+ASSENTOS_POR_MESA = {
+    9: ('UTG', 'UTG+1', 'UTG+2', 'LJ', 'HJ', 'CO', 'BTN', 'SB', 'BB'),
+    8: ('UTG', 'UTG+1',           'LJ', 'HJ', 'CO', 'BTN', 'SB', 'BB'),
+    7: ('UTG',                    'LJ', 'HJ', 'CO', 'BTN', 'SB', 'BB'),
+    6: ('UTG',                          'HJ', 'CO', 'BTN', 'SB', 'BB'),
+}
+
+
+def assentos_da_mesa(mesa) -> tuple:
+    """Assentos que a grade pode mostrar para o filtro `mesa` ('8max'...). Fora dos tamanhos
+    isolados, todos valem — e o que mantem a decisao num lugar so."""
+    faixa = TAMANHOS_DE_MESA.get(mesa or '')
+    if not faixa or faixa[0] != faixa[1]:
+        return POSICOES_NA_ORDEM
+    return ASSENTOS_POR_MESA.get(faixa[0], POSICOES_NA_ORDEM)
+
 
 def sql_assento(coluna: str = 'd.position') -> str:
     """Expressao SQL do ROTULO do assento (a convencao acima) a partir de (`d.num_players`,
@@ -2667,6 +2691,10 @@ def get_player_stats_by_position(user_id: int, days: int = 90,
             return s0 is not None and (lo is None or s0 >= lo) and (hi is None or s0 < hi)
         linhas_todas = [r for r in linhas_todas if _na_faixa(r)]
 
+    # Com um numero de jogadores escolhido, so os assentos que EXISTEM ali viram linha. As maos
+    # de assento impossivel (dado de borda do parser) NAO somem: seguem no `total_hands`, e o
+    # rodape "fora das 8 da grade" as declara.
+    assentos_visiveis = assentos_da_mesa(mesa)
     assento_do_rotulo = {}
     for pos in POSICOES_NA_ORDEM:
         for cru in rotulos_do_assento(pos):
@@ -2738,7 +2766,7 @@ def get_player_stats_by_position(user_id: int, days: int = 90,
             if rows:
                 recortes.append((grupo, rows, [p for p in assentos if por_assento.get(p)]))
     else:
-        recortes = [(pos, por_assento[pos], None) for pos in POSICOES_NA_ORDEM if por_assento.get(pos)]
+        recortes = [(pos, por_assento[pos], None) for pos in assentos_visiveis if por_assento.get(pos)]
 
     linhas = []
     for pos, rows, membros in recortes:
