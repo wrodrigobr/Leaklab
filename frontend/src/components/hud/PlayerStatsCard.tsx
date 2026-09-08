@@ -244,7 +244,7 @@ function StatCell({ def, value: valueProp, flag, compact, stats }: { def: StatDe
         <span className="font-mono text-xs tabular-nums text-foreground">{refLabel}</span>
       </div>
       {def.solverRef && (
-        <p className="mt-1 text-[10px] leading-snug text-muted-foreground/80" data-testid="rfi-por-assento">
+        <p className="mt-1 text-[10px] leading-snug text-muted-foreground/80" data-testid="rfi-solver-note">
           {solverRef ? t("playerStats.tip.solverSeatsNote", { n: solverRef.n ?? 0, pct: solverRef.cobertura ?? 0 }) : t("playerStats.tip.solverSeatsNone")}
         </p>
       )}

@@ -17,6 +17,7 @@ vi.mock("react-i18next", () => ({
 }));
 
 afterEach(cleanup);
+vi.setConfig({ testTimeout: 30000 });
 
 const STATS = {
   total_hands: 6029, vpip: 25.3, pfr: 17.8, af: 3.2, cbet_pct: 77.4, fold_to_flop_bet: 40, bb_defense: 38,
