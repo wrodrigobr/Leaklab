@@ -973,8 +973,8 @@
       "curta": "5 o menos"
     },
     "tableShare": "{{pct}}% de tus manos ({{n}} oportunidades)",
-    "tableNote": "Mostrando las manos con {{mesa}} jugadores, lo más frecuente en tu volumen. BTN, CO, HJ y LJ se cuentan desde el botón y no cambian. El UTG es quien habla primero, así que con menos jugadores pasa a ser otra posición: con 9 tiene 8 detrás, con 6 tiene 5.",
-    "tableNoteAll": "Sumando manos con cualquier número de jugadores. BTN, CO, HJ y LJ se cuentan desde el botón y son siempre la misma situación; el UTG es quien habla primero, así que su fila junta posiciones distintas. Elige un número de jugadores para comparar las filas entre sí.",
+    "tableNote": "Mostrando las manos con {{mesa}} jugadores, lo más frecuente en tu volumen. El asiento es el mismo, pero con menos jugadores detrás el solver abre más.",
+    "tableNoteAll": "Sumando manos con cualquier número de jugadores. Elige un número para comparar las filas entre sí: con menos jugadores detrás, el mismo asiento abre más.",
     "solverScenario": "Solver, en el escenario",
     "yourHands": "en tus manos",
     "lowSampleMatrix": "Muestra pequeña: menos de {{n}} oportunidades. Tu número no aparece; la referencia del solver sí, porque no depende de las manos que te tocaron.",

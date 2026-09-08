@@ -973,8 +973,8 @@
       "curta": "5 or fewer"
     },
     "tableShare": "{{pct}}% of your hands ({{n}} opportunities)",
-    "tableNote": "Showing hands dealt to {{mesa}} players, the most frequent in your volume. BTN, CO, HJ and LJ are counted from the button and do not change. UTG is whoever acts first, so with fewer players it becomes a different position: with 9 dealt it has 8 behind, with 6 it has 5.",
-    "tableNoteAll": "Adding up hands with any number of players. BTN, CO, HJ and LJ are counted from the button and are always the same spot; UTG is whoever acts first, so its row mixes different positions. Pick a number of players to compare rows with each other.",
+    "tableNote": "Showing hands dealt to {{mesa}} players, the most frequent in your volume. Same seat, but with fewer players behind the solver opens wider.",
+    "tableNoteAll": "Adding up hands with any number of players. Pick a number to compare rows with each other: with fewer players behind, the same seat opens wider.",
     "solverScenario": "Solver, in this spot",
     "yourHands": "in your hands",
     "lowSampleMatrix": "Small sample: fewer than {{n}} opportunities. Your number is hidden; the solver reference is not, because it does not depend on the hands you were dealt.",
