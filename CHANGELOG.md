@@ -5,6 +5,22 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## DEPLOY 07/09/2026, 23:40: o pacote de setembro esta em producao
+
+- `origin/main` d01374b3 (host vinha de b25c7962, tres commits atras do proprio origin/main).
+  Build de web E solver-consumer; os dois containers respondem `LIMITE_DE_UPLOADS_POR_HORA =
+  300`. Health ok; portao pos-deploy APROVADO nas 12 portas (torneio 72, 604 registros).
+- Varredura de invariantes: AUTO 0 -> 62 e GRAFIA 0 -> 1. Conferido antes de concluir: todas
+  as 62 decisoes nasceram entre 03/09 e 07/09 17:14 (usuarios 62, 65 e 40), ANTES do deploy;
+  a linha de base era anterior a esses imports. Nao e regressao deste release; e um estado
+  que ja existia e a varredura so viu agora. Registrado como AY-26 (card acusa erro com
+  `best_action` igual a jogada; o solver recomenda outra acao).
+- Homologacao previa no host (Postgres 16 descartavel): smoke 201/201, suites novas verdes,
+  stack derrubada depois do deploy. Suites finais: backend 2941/2942 (a falha era o guarda
+  de i18n num testid, corrigido), frontend 539/539, build ok.
+- Relatorio de novidades para os fundadores publicado (AY-24).
+
+---
 ## HUD: o RFI entra, o AF sai, tres linhas por rua (07/09, LOCAL)
 
 - Sugestao do Rullian (RFI no HUD) e avaliacao externa (AF e heranca de HUD de cash, mal
