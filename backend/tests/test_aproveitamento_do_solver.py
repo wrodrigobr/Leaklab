@@ -68,7 +68,8 @@ def test_semana_reaproveitada_resolvida_depois_sem_no_enviados_espera_e_semelhan
     s = r['semanas'][0]
     assert (s['decisoes'], s['spots'], s['reaproveitadas'], s['resolvidas_depois'], s['sem_no'], s['enviados'], s['pct_reaproveitado']) == (5, 5, 2, 1, 2, 2, 40), s
     # semelhanca: das 2 sem no, a 'nada2' (A-seco-2tone, CO, 20-35bb, sem aposta) tem arvore de board igual (a do 'antigo'); a 'nada' (Q alto) nao
-    assert r['semelhanca'] == {'sem_no': 2, 'com_vizinho': 1, 'pct': 50, 'assinaturas_conhecidas': 1}, r['semelhanca']
+    sem_curva = {k: v for k, v in r['semelhanca'].items() if k != 'curva'}     # a curva (passo 2) tem teste proprio
+    assert sem_curva == {'sem_no': 2, 'com_vizinho': 1, 'pct': 50, 'assinaturas_conhecidas': 1}, sem_curva
 
 
 def test_o_endpoint_e_so_do_admin():

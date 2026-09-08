@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { adminDashboard } from "@/lib/api";
+import { adminDashboard, type CurvaDaSemelhanca } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
 /**
@@ -62,9 +62,75 @@ export function AproveitamentoDoSolver() {
           </tbody>
         </table>
       </div>
+      <CurvaDaSemelhancaBloco curva={data.semelhanca.curva} />
       <p className="font-mono text-[10px] leading-snug text-muted-foreground/70">
         Reaproveitada = o nó já existia quando o torneio entrou. Resolvida depois = o solver correu por ela. Semelhança = decisão sem nó cuja assinatura de board (rua, posição, stack, aposta, textura) já tem árvore resolvida.
       </p>
+    </div>
+  );
+}
+
+const pct = (v: number | null) => (v == null ? "—" : `${v}%`);
+
+/**
+ * Curva do veredito por semelhança (passo 2): quanto o provisório bateu com o exato quando o
+ * solver chegou. A meta (85% de acordo erro/não-erro com 3+ vizinhos, duas semanas seguidas) é
+ * o critério de saída para discutir o passo 3 (mostrar ao jogador). Semana sem comparação não
+ * aparece; sem nenhuma, o bloco diz isso em vez de mostrar zeros.
+ */
+function CurvaDaSemelhancaBloco({ curva }: { curva?: CurvaDaSemelhanca }) {
+  if (!curva) return null;
+  const m = curva.com_3_vizinhos;
+  const ok = curva.meta.atingida;
+  return (
+    <div className="space-y-2 rounded-xl border border-border p-4" data-testid="curva-semelhanca">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <span className="font-mono text-[10px] font-bold uppercase tracking-widest-2 text-muted-foreground">Veredito por semelhança × exato</span>
+        <span className={cn("rounded-md border px-2 py-0.5 font-mono text-[10px] uppercase tracking-wider",
+                            ok ? "border-primary/40 text-primary" : "border-amber-500/30 text-amber-400")} data-testid="meta-semelhanca">
+          {ok ? "meta atingida" : "meta aberta"} · {curva.meta.pct}% erro/não-erro com {curva.meta.min_vizinhos}+ vizinhos
+        </span>
+      </div>
+      {curva.total.comparadas === 0 ? (
+        <p className="text-xs text-muted-foreground" data-testid="curva-vazia">
+          Nenhum provisório comparado ainda{curva.abertos > 0 ? ` (${curva.abertos} esperando o solver)` : ""}.
+        </p>
+      ) : (
+        <>
+          <div className="grid grid-cols-3 gap-3 text-xs" data-testid="curva-total">
+            <div><span className="text-muted-foreground">ação igual</span><p className="font-mono text-lg font-bold">{pct(curva.total.acao_pct)}</p></div>
+            <div><span className="text-muted-foreground">erro/não-erro igual</span><p className="font-mono text-lg font-bold">{pct(curva.total.erro_pct)}</p></div>
+            <div><span className="text-muted-foreground">rótulo igual</span><p className="font-mono text-lg font-bold">{pct(curva.total.rotulo_pct)}</p></div>
+          </div>
+          <p className="font-mono text-[10px] text-muted-foreground" data-testid="curva-recorte">
+            {curva.total.comparadas} comparadas · {curva.abertos} abertas · com 3+ vizinhos: {m.comparadas} comparadas, erro/não-erro {pct(m.erro_pct)}
+            {Object.keys(curva.ruas).length > 0 && " · por rua: " + Object.entries(curva.ruas).map(([r, b]) => `${r} ${pct(b.erro_pct)} (${b.comparadas})`).join(", ")}
+          </p>
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead className="border-b border-border">
+                <tr>
+                  {["Semana", "Comparadas", "Ação", "Erro/não-erro", "Rótulo", "3+ vizinhos: erro/não-erro"].map((h) => (
+                    <th key={h} className="px-2 py-1 text-left font-mono text-[10px] font-bold uppercase tracking-wider text-muted-foreground whitespace-nowrap">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {curva.semanas.map((s) => (
+                  <tr key={s.semana} className="border-b border-border/40" data-testid={`curva-${s.semana}`}>
+                    <td className="px-2 py-1 font-mono">{s.semana}</td>
+                    <td className="px-2 py-1 font-mono tabular-nums">{s.comparadas}</td>
+                    <td className="px-2 py-1 font-mono tabular-nums">{pct(s.acao_pct)}</td>
+                    <td className={cn("px-2 py-1 font-mono tabular-nums font-bold", (s.erro_pct ?? 0) >= curva.meta.pct ? "text-primary" : "text-amber-400")}>{pct(s.erro_pct)}</td>
+                    <td className="px-2 py-1 font-mono tabular-nums">{pct(s.rotulo_pct)}</td>
+                    <td className="px-2 py-1 font-mono tabular-nums">{pct(s.com_3_vizinhos.erro_pct)} ({s.com_3_vizinhos.comparadas})</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
     </div>
   );
 }

@@ -3504,7 +3504,18 @@ export interface SolverAproveitamento {
   fila: Record<string, number>;
   espera: { n: number; media_h: number | null; mediana_h: number | null };
   semanas: Array<{ semana: string; decisoes: number; spots: number; reaproveitadas: number; resolvidas_depois: number; sem_no: number; enviados: number; pct_reaproveitado: number }>;
-  semelhanca: { sem_no: number; com_vizinho: number; pct: number; assinaturas_conhecidas: number };
+  semelhanca: { sem_no: number; com_vizinho: number; pct: number; assinaturas_conhecidas: number; curva: CurvaDaSemelhanca };
+}
+
+/** Acordo do veredito provisorio por semelhanca com o exato (AY-28 passo 2). pct null = sem comparacao. */
+export interface BlocoDeAcordo { comparadas: number; acao_pct: number | null; erro_pct: number | null; rotulo_pct: number | null }
+export interface CurvaDaSemelhanca {
+  total: BlocoDeAcordo;
+  com_3_vizinhos: BlocoDeAcordo;
+  semanas: Array<BlocoDeAcordo & { semana: string; com_3_vizinhos: BlocoDeAcordo }>;
+  ruas: Record<string, BlocoDeAcordo>;
+  meta: { pct: number; min_vizinhos: number; atingida: boolean };
+  abertos: number;
 }
 
 export interface GtoWorkerStatus {

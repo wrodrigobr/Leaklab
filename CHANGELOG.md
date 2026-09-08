@@ -4113,6 +4113,47 @@ None`). Quem lia sem checar era a exibição.
 
 ## [Unreleased]
 
+### feat(solver): veredito por semelhanca, passo 2 — gravado e medido, sem mostrar (AY-28)
+
+> **Por que:** o acervo de nos e chaveado pelo board carta a carta e o reaproveitamento por
+> torneio novo e 3% (card do admin, 08/09). A simulacao mostrou que a ESTRUTURA do spot (rua,
+> assento, faixa de stack e de aposta, textura do board, relacao da mao com ele) ja tem arvore
+> resolvida para 60% das decisoes sem no, e que o veredito lido dessas arvores vizinhas bate com
+> o exato em 75% da acao e 79% do erro/nao-erro (leave-one-out, 896 decisoes). Numero de
+> simulacao nao e numero de producao: antes de mostrar qualquer coisa ao jogador, o produto
+> precisa MEDIR a semelhanca contra o exato continuamente, no fluxo real. Este passo e so isso.
+>
+> **O que entra:**
+> - `decisions.spot_assinatura`, gravada em `save_decisions` pela mesma funcao do backfill
+>   (`leaklab/assinatura_do_spot.assinatura`; NULL no preflop e em board incompleto). Indice
+>   proprio: o vizinho e procurado por prefixo da assinatura de board a cada upload.
+> - `leaklab/semelhanca.py`: vizinhos = arvores resolvidas de decisoes que ja tem no e a mesma
+>   assinatura de board (ate 8, mais recentes primeiro); em cada arvore, media ponderada pelo
+>   peso das maos com a MESMA relacao com o board, por familia de acao (o sizing da vizinha
+>   nao entra); media simples entre arvores. Cache por arvore em `gto_tree_relacoes` para nao
+>   reparsear 1.300 maos por upload.
+> - `vereditos_por_semelhanca`: o provisorio de cada decisao sem no, gravado no thread de
+>   pos-upload; quando a fila drena, o gancho `_reconcile_drained_tournaments` compara com o
+>   exato (`gto_action`, `gto_played_freq`, `gto_label`) e grava acao igual, erro/nao-erro
+>   igual, rotulo igual. Linha comparada nunca reabre.
+> - Card do admin: curva por semana e por rua, recorte com 3+ vizinhos, e a META declarada
+>   (85% de acordo erro/nao-erro com 3+ vizinhos, duas semanas seguidas) como criterio de
+>   saida para discutir o passo 3. Semana sem comparacao nao aparece; sem nenhuma, o bloco diz
+>   isso e quantas esperam o solver, em vez de mostrar zeros.
+> - `scripts/backfill_spot_assinatura.py` (seco por padrao): assinatura nas decisoes antigas e,
+>   com `--provisorios DIAS`, o provisorio dos torneios recentes com solve pendente, para a curva
+>   comecar a andar antes do proximo upload. Em dev: 14.176 assinaturas em 15 s.
+>
+> **O que NAO entra:** nada disto chega ao jogador. Card, replay e invariante "semelhanca nunca
+> acusa" sao o passo 3, condicionado a curva.
+>
+> **Guardas (8 testes, `test_semelhanca.py`):** media ponderada (sem ponderar o numero muda),
+> familia ignora sizing, provisorio so com vizinho (assinatura de board diferente = zero),
+> idempotencia, comparacao com os tres acordos e sem reabrir, gancho da fila drenada comparando,
+> `save_decisions` gravando a assinatura (preflop NULL), e a curva com a meta exigindo as duas
+> semanas (uma abaixo de 85% derruba). `test_aproveitamento_do_solver` ignora a `curva` porque
+> ela tem teste proprio.
+
 ### fix(i18n): copy do plano de estudo traduzida, e o campo MORTO de `ranges.ts` removido
 
 > **Por que:** varrendo travessao achei `planBuilder.ts` e `ranges.ts` com portugues cravado

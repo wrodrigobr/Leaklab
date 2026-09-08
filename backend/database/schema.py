@@ -1866,6 +1866,43 @@ def _run_migrations(conn):
                 pass   # SQLite nao tem IF NOT EXISTS em ADD COLUMN
         conn.execute("CREATE INDEX IF NOT EXISTS idx_dec_family ON decisions(spot_family_key)")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_dec_spot_hash ON decisions(spot_hash)")
+        # Assinatura do spot + tabelas da semelhanca (AY-28 passo 2; espelha a lista SAVEPOINT do PG)
+        try:
+            conn.execute("ALTER TABLE decisions ADD COLUMN spot_assinatura TEXT")
+        except Exception:
+            pass
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_dec_assinatura ON decisions(spot_assinatura)")
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS gto_tree_relacoes (
+                tree_hash     TEXT PRIMARY KEY,
+                relacoes_json TEXT NOT NULL,
+                n_relacoes    INTEGER NOT NULL DEFAULT 0,
+                created_at    TEXT NOT NULL DEFAULT (datetime('now'))
+            )
+        """)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS vereditos_por_semelhanca (
+                id                INTEGER PRIMARY KEY AUTOINCREMENT,
+                decision_id       INTEGER NOT NULL REFERENCES decisions(id) ON DELETE CASCADE,
+                tournament_id     INTEGER NOT NULL,
+                assinatura        TEXT    NOT NULL,
+                vizinhos          INTEGER NOT NULL,
+                acao              TEXT    NOT NULL,
+                freq_jogada       REAL    NOT NULL,
+                rotulo            TEXT    NOT NULL,
+                estrategia_json   TEXT,
+                criado_em         TEXT NOT NULL DEFAULT (datetime('now')),
+                exato_acao        TEXT,
+                exato_freq_jogada REAL,
+                exato_rotulo      TEXT,
+                acao_igual        INTEGER,
+                erro_igual        INTEGER,
+                rotulo_igual      INTEGER,
+                comparado_em      TEXT
+            )
+        """)
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_vps_torneio ON vereditos_por_semelhanca(tournament_id, comparado_em)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_vps_decisao ON vereditos_por_semelhanca(decision_id)")
         # Colocacao final por jogador (espelha a lista SAVEPOINT do PG)
         conn.execute("""
             CREATE TABLE IF NOT EXISTS tournament_finishes (
@@ -2456,6 +2493,48 @@ def _run_migrations(conn):
             "ALTER TABLE decisions ADD COLUMN IF NOT EXISTS spot_hash TEXT",
             "CREATE INDEX IF NOT EXISTS idx_dec_family ON decisions(spot_family_key)",
             "CREATE INDEX IF NOT EXISTS idx_dec_spot_hash ON decisions(spot_hash)",
+            # Assinatura do spot (AY-28 passo 2, 08/09): rua|posicao|faixa de stack|faixa de
+            # aposta|textura do board|relacao da mao (leaklab/assinatura_do_spot.py). E por ela
+            # que uma decisao SEM no acha arvores de board parecido. Materializada porque o
+            # vizinho e procurado por LIKE 'assinatura de board|%' a cada upload.
+            "ALTER TABLE decisions ADD COLUMN IF NOT EXISTS spot_assinatura TEXT",
+            # text_pattern_ops: sem ele o btree nao serve ao LIKE 'prefixo%' fora da collation C,
+            # e cada upload faria um seq scan em decisions por decisao sem no.
+            "CREATE INDEX IF NOT EXISTS idx_dec_assinatura ON decisions(spot_assinatura text_pattern_ops)",
+            # Cache por arvore: {relacao da mao: {familia de acao: freq}} (leaklab/semelhanca.py).
+            # Sem ela, cada upload reparsearia a hand_table (1.300 maos) de cada arvore vizinha.
+            """CREATE TABLE IF NOT EXISTS gto_tree_relacoes (
+                tree_hash     TEXT PRIMARY KEY,
+                relacoes_json TEXT NOT NULL,
+                n_relacoes    INTEGER NOT NULL DEFAULT 0,
+                created_at    TIMESTAMP NOT NULL DEFAULT NOW()
+            )""",
+            # Veredito PROVISORIO por semelhanca de cada decisao sem no, gravado no upload, e a
+            # comparacao com o exato quando o solver chega. Nada disto vai ao jogador no passo 2:
+            # e a medicao que decide se o passo 3 (mostrar) acontece. CASCADE de proposito: um
+            # reprocesso apaga as decisoes e o gancho regrava os provisorios (as comparacoes
+            # daquele torneio se perdem; reprocesso e raro e do admin).
+            """CREATE TABLE IF NOT EXISTS vereditos_por_semelhanca (
+                id                SERIAL PRIMARY KEY,
+                decision_id       INTEGER NOT NULL REFERENCES decisions(id) ON DELETE CASCADE,
+                tournament_id     INTEGER NOT NULL,
+                assinatura        TEXT    NOT NULL,
+                vizinhos          INTEGER NOT NULL,
+                acao              TEXT    NOT NULL,
+                freq_jogada       REAL    NOT NULL,
+                rotulo            TEXT    NOT NULL,
+                estrategia_json   TEXT,
+                criado_em         TIMESTAMP NOT NULL DEFAULT NOW(),
+                exato_acao        TEXT,
+                exato_freq_jogada REAL,
+                exato_rotulo      TEXT,
+                acao_igual        BOOLEAN,
+                erro_igual        BOOLEAN,
+                rotulo_igual      BOOLEAN,
+                comparado_em      TIMESTAMP
+            )""",
+            "CREATE INDEX IF NOT EXISTS idx_vps_torneio ON vereditos_por_semelhanca(tournament_id, comparado_em)",
+            "CREATE INDEX IF NOT EXISTS idx_vps_decisao ON vereditos_por_semelhanca(decision_id)",
             # Colocacao final de CADA jogador do torneio (vem do arquivo de resumo, nao do hand
             # history). E o que permite detectar MESA FINAL de MTT: quando restam S jogadores no
             # torneio, as colocacoes deles sao exatamente 1..S — entao a mesa e a final quando a

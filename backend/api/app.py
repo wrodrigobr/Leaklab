@@ -1153,6 +1153,13 @@ def _analyze_impl():
             _log.info("preflop_sync_and_reconcile done tournament_id=%s reconciled=%d", tid, n)
         except Exception as _e:
             _log.exception("reconcile FAILED tournament_id=%s err=%s", tid, _e)
+        try:
+            # AY-28 passo 2: veredito PROVISORIO por semelhanca das decisoes sem no. So medicao;
+            # nada vai ao jogador. Comparado com o exato em `_reconcile_drained_tournaments`.
+            from leaklab.semelhanca import gravar_provisorios
+            _log.info("semelhanca: torneio %s, %d provisorios gravados", tid, gravar_provisorios(tid))
+        except Exception as _e:
+            _log.exception("semelhanca provisorios FAILED tournament_id=%s err=%s", tid, _e)
 
     threading.Thread(
         target=_preflop_sync_and_reconcile,
@@ -12644,6 +12651,13 @@ def _reconcile_drained_tournaments():
             # de erro com `best_action` igual a jogada (o card dizia "Erro" ao lado de "o
             # ideal era exatamente isso"). Roda SEMPRE depois do resync, no mesmo gancho.
             reconcile_tournament_labels(tid)
+            # AY-28 passo 2: o exato chegou; fecha a comparacao dos vereditos provisorios por
+            # semelhanca deste torneio (so medicao, alimenta a curva do card do admin).
+            try:
+                from leaklab.semelhanca import comparar_com_exato
+                log.info("semelhanca: torneio %s, %d provisorios comparados", tid, comparar_com_exato(tid))
+            except Exception:
+                log.exception("semelhanca comparar torneio %s falhou", tid)
             _c2 = _gc()
             try:
                 _c2.execute("UPDATE tournaments SET labels_reconciled_at = datetime('now') WHERE id = ?", (tid,))

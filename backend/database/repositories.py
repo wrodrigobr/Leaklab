@@ -747,6 +747,16 @@ def _chaves(r: dict) -> tuple:
         return (None, None)
 
 
+def _assinatura_do_spot(street, position, stack_bb, facing_bet_bb, board, hero_cards):
+    """Assinatura do spot para a gravacao. Delega a `leaklab.assinatura_do_spot` e nunca derruba
+    a gravacao: assinatura ausente e cobertura a menos, nao decisao a menos."""
+    try:
+        from leaklab.assinatura_do_spot import assinatura
+        return assinatura(street, position, stack_bb, facing_bet_bb, board, hero_cards)
+    except Exception:
+        return None
+
+
 def _purity(r: dict) -> tuple:
     """Frequências (jogada, modal) da decisão. Delega ao engine — a definição de 'frequência' mora
     lá, e ter uma segunda aqui é o erro que este projeto já pagou caro várias vezes."""
@@ -940,6 +950,12 @@ def save_decisions(tournament_db_id: int, results: List[dict]):
                 # `DatatypeMismatch`. O SQLite aceita True/False normalmente, então o teste local
                 # passava e só produção quebraria — o backfill pegou isto antes do primeiro upload.
                 bool(r.get('verdictHasCost')),
+                # Assinatura do spot (AY-28 passo 2): o que torna esta decisao PARECIDA com outra.
+                # Calculada aqui, na gravacao, pelo MESMO caminho que o backfill e o vizinho usam
+                # (leaklab/assinatura_do_spot.assinatura). NULL no preflop e em board incompleto.
+                # Stack = `stack_bb` da linha (heroStackBb), a mesma coluna que o card do admin le.
+                _assinatura_do_spot(r.get('street'), r.get('position'), ctx.get('heroStackBb'),
+                                    facing_bet_bb, r.get('board', []), r.get('hero_cards')),
             ))
         conn.executemany("""
             INSERT INTO decisions
@@ -953,8 +969,8 @@ def save_decisions(tournament_db_id: int, results: List[dict]):
                ev_loss_bb, ev_loss_source, n_active_opponents, raise_to_bb, facing_to_call_bb,
                effective_stack_bb, facing_limp, hero_was_aggressor,
                gto_played_freq, gto_top_freq, spot_family_key, spot_hash,
-               verdict_source, verdict_has_cost)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+               verdict_source, verdict_has_cost, spot_assinatura)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
         """, rows)
         _religa_anotacoes(conn, tournament_db_id, _anot_guardadas)
         conn.commit()
@@ -11354,6 +11370,13 @@ def get_aproveitamento_do_solver(dias: int = 56) -> dict:
             imp = _dt(r['imported_at'])
             if imp:
                 enviados[(imp - timedelta(days=imp.weekday())).date().isoformat()] += int(r['n'] or 0)
+        # curva do veredito por semelhanca (passo 2): acordo com o exato, por semana da comparacao
+        curva_rows = _fetchall(conn, _adapt("""
+            SELECT v.comparado_em, v.vizinhos, v.acao_igual, v.erro_igual, v.rotulo_igual, d.street
+            FROM vereditos_por_semelhanca v JOIN decisions d ON d.id = v.decision_id
+            WHERE v.comparado_em IS NOT NULL AND v.comparado_em >= ?
+        """), (desde,)) or []
+        abertos = (dict(_fetchone(conn, "SELECT COUNT(*) AS n FROM vereditos_por_semelhanca WHERE comparado_em IS NULL") or {'n': 0}))['n']
         # arvores de board conhecidas (para a semelhanca): assinatura SEM a mao das decisoes com no
         assinaturas_com_no = set()
         for r in _fetchall(conn, _adapt("""
@@ -11396,6 +11419,8 @@ def get_aproveitamento_do_solver(dias: int = 56) -> dict:
                       'reaproveitadas': s['reaproveitadas'], 'resolvidas_depois': s['resolvidas_depois'],
                       'sem_no': s['sem_no'], 'enviados': enviados.get(chave, 0),
                       'pct_reaproveitado': round(100.0 * s['reaproveitadas'] / s['decisoes']) if s['decisoes'] else 0})
+    curva = _curva_da_semelhanca(curva_rows, _dt)
+    curva['abertos'] = int(abertos or 0)
     return {
         'acervo': acervo,
         'fila': {k: int(v) for k, v in fila.items()},
@@ -11403,8 +11428,57 @@ def get_aproveitamento_do_solver(dias: int = 56) -> dict:
         'semanas': serie,
         'semelhanca': {'sem_no': sem_no_30, 'com_vizinho': com_vizinho_30,
                        'pct': round(100.0 * com_vizinho_30 / sem_no_30) if sem_no_30 else 0,
-                       'assinaturas_conhecidas': len(assinaturas_com_no)},
+                       'assinaturas_conhecidas': len(assinaturas_com_no),
+                       'curva': curva},
     }
+
+
+#: acordo erro/nao-erro exigido, com pelo menos MIN_VIZINHOS_DA_META vizinhos, por duas semanas
+#: seguidas, para o passo 3 (mostrar ao jogador) ser discutido. Decidido no plano AY-28 (08/09).
+META_DE_ACORDO_PCT = 85
+MIN_VIZINHOS_DA_META = 3
+
+
+def _curva_da_semelhanca(rows, _dt) -> dict:
+    """Acordo do veredito por semelhanca com o exato: por semana da comparacao, por rua, e o
+    recorte com >= MIN_VIZINHOS_DA_META vizinhos (o que a meta olha). Agrupado em Python pela
+    mesma razao do restante do card. Semana sem comparacao NAO aparece: zero mudo e o pior
+    resultado de uma medicao."""
+    from collections import defaultdict
+    from datetime import timedelta
+
+    def _bloco():
+        return {'comparadas': 0, 'acao': 0, 'erro': 0, 'rotulo': 0}
+
+    def _soma(b, r):
+        b['comparadas'] += 1
+        b['acao'] += 1 if r['acao_igual'] else 0
+        b['erro'] += 1 if r['erro_igual'] else 0
+        b['rotulo'] += 1 if r['rotulo_igual'] else 0
+
+    def _pct(b, k):
+        return round(100.0 * b[k] / b['comparadas']) if b['comparadas'] else None
+
+    def _fecha(b):
+        return {'comparadas': b['comparadas'], 'acao_pct': _pct(b, 'acao'), 'erro_pct': _pct(b, 'erro'), 'rotulo_pct': _pct(b, 'rotulo')}
+
+    semanas, ruas, total, com_meta = defaultdict(_bloco), defaultdict(_bloco), _bloco(), _bloco()
+    semanas_meta = defaultdict(_bloco)
+    for r in rows:
+        em = _dt(r['comparado_em'])
+        if not em:
+            continue
+        chave = (em - timedelta(days=em.weekday())).date().isoformat()
+        _soma(semanas[chave], r); _soma(ruas[(r['street'] or '?').lower()], r); _soma(total, r)
+        if int(r['vizinhos'] or 0) >= MIN_VIZINHOS_DA_META:
+            _soma(com_meta, r); _soma(semanas_meta[chave], r)
+    serie = [dict(semana=k, **_fecha(semanas[k]), com_3_vizinhos=_fecha(semanas_meta[k])) for k in sorted(semanas)]
+    # a meta: as duas ultimas semanas com comparacao, no recorte >= 3 vizinhos, ambas >= 85% de erro/nao-erro
+    ultimas = [s['com_3_vizinhos'] for s in serie[-2:]]
+    meta_ok = len(ultimas) == 2 and all(u['comparadas'] > 0 and (u['erro_pct'] or 0) >= META_DE_ACORDO_PCT for u in ultimas)
+    return {'total': _fecha(total), 'com_3_vizinhos': _fecha(com_meta),
+            'semanas': serie, 'ruas': {k: _fecha(v) for k, v in sorted(ruas.items())},
+            'meta': {'pct': META_DE_ACORDO_PCT, 'min_vizinhos': MIN_VIZINHOS_DA_META, 'atingida': bool(meta_ok)}}
 
 
 def get_gto_stats() -> dict:
