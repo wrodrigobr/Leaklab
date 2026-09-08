@@ -1022,16 +1022,15 @@
       "opened": "abriste {{pct}}%",
       "wouldOpen": "abriría {{pct}}%",
       "noChart": "sin carta para este recorte",
-      "legendYou": "Color de la celda = con qué frecuencia abriste con la mano. Gris = nunca la recibiste o nunca abriste.",
-      "legendSolver": "Color de la celda = frecuencia de apertura de la carta, en tus stacks. Cubre {{pct}}% de tus manos.",
-      "divergences": "Donde más divergés (manos con {{n}}+ ocurrencias)",
+      "divergences": "Donde más divergés",
       "noDivergence": "Ninguna mano con {{n}}+ ocurrencias queda a {{pp}} puntos o más del solver.",
       "hand": "Mano",
       "times": "Veces",
       "diff": "Dif.",
-      "note": "El total puede coincidir con el solver y la composición no: eso es lo que la matriz muestra y la celda esconde.",
       "study": "Estudiar esta range",
-      "solverShort": "Solver"
+      "solverShort": "Solver",
+      "divergencesNote": "Manos con {{n}} o más ocurrencias y {{pp}} puntos o más de distancia del solver.",
+      "covers": "cubre {{pct}}%"
     }
   }
 }

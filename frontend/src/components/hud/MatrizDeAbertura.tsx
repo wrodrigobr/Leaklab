@@ -62,8 +62,7 @@ export function MatrizDeAbertura({ position, stack, dados, erro }: {
             <span className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground">{t("posProfile.you")}</span>
             <span className="font-heading text-sm font-bold text-foreground">{t("posProfile.matrix.opened", { pct: dados.voce_pct ?? "—" })}</span>
           </div>
-          <RangeGrid range={voce} />
-          <p className="mt-1.5 font-mono text-[9px] leading-snug text-muted-foreground/70">{t("posProfile.matrix.legendYou")}</p>
+          <RangeGrid range={voce} compacta />
         </div>
 
         <div data-testid="matriz-solver">
@@ -71,15 +70,17 @@ export function MatrizDeAbertura({ position, stack, dados, erro }: {
             <span className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground">{t("posProfile.matrix.solver")}</span>
             <span className="whitespace-nowrap font-heading text-sm font-bold text-foreground">
               {dados.solver_pct == null ? t("posProfile.matrix.noChart") : t("posProfile.matrix.wouldOpen", { pct: dados.solver_pct })}
+              {dados.solver_pct != null && dados.cobertura < 100 && (
+                <span className="ml-1.5 font-mono text-[9px] font-normal text-muted-foreground/70">{t("posProfile.matrix.covers", { pct: dados.cobertura })}</span>
+              )}
             </span>
           </div>
-          <RangeGrid range={solver} />
-          <p className="mt-1.5 font-mono text-[9px] leading-snug text-muted-foreground/70">{t("posProfile.matrix.legendSolver", { pct: dados.cobertura })}</p>
+          <RangeGrid range={solver} compacta />
         </div>
 
         <div className="min-w-0 overflow-x-hidden rounded-lg border border-border/50 bg-card/40 p-3">
           <div className="mb-1.5 font-mono text-[9px] uppercase tracking-widest text-primary">
-            {t("posProfile.matrix.divergences", { n: dados.minimo_maos })}
+            {t("posProfile.matrix.divergences")}
           </div>
           {dados.divergencias.length === 0 ? (
             <p className="text-[11px] text-muted-foreground">{t("posProfile.matrix.noDivergence", { n: dados.minimo_maos, pp: Math.round(dados.divergencia_minima * 100) })}</p>
@@ -106,11 +107,13 @@ export function MatrizDeAbertura({ position, stack, dados, erro }: {
               </div>
             </div>
           )}
+          <p className="mt-2 font-mono text-[9px] leading-snug text-muted-foreground/60">
+            {t("posProfile.matrix.divergencesNote", { n: dados.minimo_maos, pp: Math.round(dados.divergencia_minima * 100) })}
+          </p>
         </div>
       </div>
 
-      <div className="mt-3 flex items-center justify-between gap-3">
-        <p className="text-[10px] leading-snug text-muted-foreground/80">{t("posProfile.matrix.note")}</p>
+      <div className="mt-3 flex items-center justify-end gap-3">
         <Link to="/ranges" className="shrink-0 rounded-md border border-primary/40 px-2 py-1 font-mono text-[10px] font-bold uppercase tracking-wider text-primary hover:bg-primary/10">
           {t("posProfile.matrix.study")}
         </Link>

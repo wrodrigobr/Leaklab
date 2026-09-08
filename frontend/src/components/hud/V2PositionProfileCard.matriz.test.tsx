@@ -61,7 +61,9 @@ describe("matriz das maos abertas", () => {
     expect(modal.textContent).toContain("posProfile.matrix.opps:1.211");
     expect(modal.textContent).toContain("posProfile.matrix.opened:17.2");
     expect(modal.textContent).toContain("posProfile.matrix.wouldOpen:18.5");
-    expect(modal.textContent).toContain("posProfile.matrix.legendSolver:98");
+    expect(modal.textContent).toContain("posProfile.matrix.covers:98");        // cobertura no titulo, sem legenda
+    expect(modal.textContent).toContain("posProfile.matrix.divergencesNote:8,30");
+    expect(modal.textContent).not.toContain("legendYou");
     // duas grades de 169 celulas, a mesma RangeGrid de /ranges
     expect(within(screen.getByTestId("matriz-voce")).getAllByTitle(/^AKs:|^T9s:|^72o:|^AA:/).length).toBeGreaterThanOrEqual(4);
     expect(within(screen.getByTestId("matriz-solver")).getByTitle(/^T9s: Raise 100%/)).toBeTruthy();

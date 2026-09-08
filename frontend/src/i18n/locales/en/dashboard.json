@@ -1022,16 +1022,15 @@
       "opened": "opened {{pct}}%",
       "wouldOpen": "would open {{pct}}%",
       "noChart": "no chart for this cut",
-      "legendYou": "Cell shade = how often you opened with the hand. Grey = never dealt or never opened.",
-      "legendSolver": "Cell shade = the chart\\u2019s opening frequency, at your stacks. Covers {{pct}}% of your hands.",
-      "divergences": "Where you diverge most (hands with {{n}}+ occurrences)",
+      "divergences": "Where you diverge most",
       "noDivergence": "No hand with {{n}}+ occurrences sits {{pp}} points or more from the solver.",
       "hand": "Hand",
       "times": "Times",
       "diff": "Diff",
-      "note": "The total can match the solver while the composition does not: that is what the matrix shows and the cell hides.",
       "study": "Study this range",
-      "solverShort": "Solver"
+      "solverShort": "Solver",
+      "divergencesNote": "Hands with {{n}} or more occurrences and {{pp}} points or more from the solver.",
+      "covers": "covers {{pct}}%"
     }
   }
 }

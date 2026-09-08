@@ -21,6 +21,9 @@ const COLORS = {
 interface Props {
   range: RangeSet;
   heroHand?: string | null;
+  /** matriz do perfil por posicao (08/09): fonte menor e sem a legenda de leitura, porque duas
+   *  grades lado a lado num modal nao tem espaco para ela, e a comparacao ja se explica */
+  compacta?: boolean;
 }
 
 function buildGradient(hand: string, range: RangeSet): string {
@@ -57,7 +60,7 @@ function textColor(hand: string, range: RangeSet): string {
   return active > 0.3 ? 'rgba(255,255,255,0.95)' : 'rgba(120,120,120,0.5)';
 }
 
-export function RangeGrid({ range, heroHand }: Props) {
+export function RangeGrid({ range, heroHand, compacta = false }: Props) {
   const { combos, pct } = rangeStats(range);
   const present = rangeActionPresence(range);
 
@@ -90,7 +93,7 @@ export function RangeGrid({ range, heroHand }: Props) {
                 className={cn(
                   'aspect-square flex items-center justify-center rounded-[2px]',
                   'font-mono leading-none select-none transition-colors',
-                  CLASSE_FONTE_CELULA,
+                  compacta ? 'text-[8px] sm:text-[10px]' : CLASSE_FONTE_CELULA,
                   // Contorno na diagonal: separa visualmente os dois triângulos. Sem isto, saber
                   // se uma célula é suited ou offsuit dependia de contar a distância até a
                   // diagonal, que ninguém faz olhando.
@@ -139,11 +142,13 @@ export function RangeGrid({ range, heroHand }: Props) {
           Era 8px a 60% de opacidade, e carregava sozinha a única indicação de suited × offsuit.
           Agora a célula se descreve, então esta linha volta a ser o que deveria: um lembrete da
           geometria, legível. */}
+      {!compacta && (
       <p className="font-mono text-[10px] leading-relaxed text-muted-foreground text-center">
         <span className="text-foreground">s</span> = suited (acima da diagonal) ·{' '}
         <span className="text-foreground">o</span> = offsuit (abaixo) ·{' '}
         diagonal = pares
       </p>
+      )}
     </div>
   );
 }
