@@ -5,6 +5,22 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## AY-21: grade por posicao com a visao AGRUPADA (EP / MP / CO / BTN / SB / BB) (07/09, LOCAL)
+
+- O Rullian: o PokerTracker junta tudo antes do CO em EP e MP, "simplifica, mas fica ruim de
+  estudar". A grade ganha os chips "Por assento" e "Agrupado"; a detalhada continua a padrao.
+- Um grupo e a UNIAO das linhas dos assentos (`GRUPOS_DA_GRADE`, derivado de
+  `grupo_posicional`, para nao nascer um 2o mapa): stats e referencias saem das mesmas linhas
+  e funcoes, nao de media de medias (UTG 10% em 100 maos + UTG+2 50% em 20 = EP 16,7%, nao
+  30). `members` diz os assentos que o jogador ocupou; o modal "contra quem" do grupo le as
+  mesmas maos (`rotulos_do_assento('EP')` e a uniao). `?group=1` no endpoint; o detalhe
+  aceita EP/MP.
+- Guardas: 4 testes (grupos cobrem os 9 assentos sem repetir; uniao vs media; detalhe do
+  grupo = celula; endpoint). Quebrado de proposito (grupo lendo so o 1o assento): 3 acusam.
+  Frontend: 3 testes dos chips e dos membros.
+
+---
+
 ## HOTFIX: upload em lote nao leva mais 429; quando leva, a mensagem e honesta (07/09)
 
 - Um fundador subiu o mes inteiro de historico e viu "Erro do servidor (HTTP 429)" em dezenas

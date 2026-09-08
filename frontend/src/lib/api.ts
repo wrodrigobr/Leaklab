@@ -1004,6 +1004,8 @@ export interface PositionProfileRow {
   position: string;
   hands: number;
   stats: Record<string, PositionStatCell>;
+  /** so na grade agrupada: os assentos que o jogador ocupou dentro do grupo */
+  members?: string[];
 }
 
 export interface PositionProfileResponse {
@@ -1016,6 +1018,9 @@ export interface PositionProfileResponse {
   /** faixa de stack aplicada (null = todos) e as faixas que o backend aceita, na ordem dos chips */
   stack_band: string | null;
   faixas: string[];
+  /** AY-21: true quando as linhas sao grupos (EP, MP, CO, BTN, SB, BB); `grupos` diz os assentos de cada um */
+  agrupado?: boolean;
+  grupos?: Record<string, string[]>;
   /** a linha TOTAL, das MESMAS linhas e definicoes da grade (o backend prova que e igual ao HUD);
    *  vem aqui para o front nao pedir o HUD de novo a cada faixa de stack */
   total?: { total_hands: number } & Record<string, number | null>;
@@ -2389,9 +2394,9 @@ export const metrics = {
     request<PositionDetailResponse>(
       `/metrics/player-stats/by-position/detail?position=${encodeURIComponent(position)}&stat=${encodeURIComponent(stat)}&days=${days}${lastN != null ? `&last_n=${lastN}` : ""}${stack ? `&stack=${encodeURIComponent(stack)}` : ""}`),
 
-  playerStatsByPosition: (days = 90, lastN?: number, stack?: StackBand | null) =>
+  playerStatsByPosition: (days = 90, lastN?: number, stack?: StackBand | null, agrupado = false) =>
     request<PositionProfileResponse>(
-      `/metrics/player-stats/by-position?days=${days}${lastN != null ? `&last_n=${lastN}` : ""}${stack ? `&stack=${encodeURIComponent(stack)}` : ""}`),
+      `/metrics/player-stats/by-position?days=${days}${lastN != null ? `&last_n=${lastN}` : ""}${stack ? `&stack=${encodeURIComponent(stack)}` : ""}${agrupado ? "&group=1" : ""}`),
 
   level: (lastN?: number) =>
     request<PlayerLevel>(`/metrics/level${lastN != null ? `?last_n=${lastN}` : ""}`),

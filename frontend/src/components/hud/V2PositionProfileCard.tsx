@@ -297,12 +297,17 @@ export function V2PositionProfileCard({
   geral,
   stack = null,
   onStack,
+  agrupado = false,
+  onAgrupado,
   lastN = null,
 }: {
   data?: PositionProfileResponse | null;
   /** faixa de stack em vigor (null = todos) e o setter, que mora no Index */
   stack?: StackBand | null;
   onStack?: (s: StackBand | null) => void;
+  /** AY-21: grade agrupada (EP / MP / CO / BTN / SB / BB) em vez de assento a assento */
+  agrupado?: boolean;
+  onAgrupado?: (v: boolean) => void;
   /** o recorte de volume da tela, para o detalhe pedir o MESMO conjunto da grade */
   lastN?: number | null;
   /** O payload do HUD PRINCIPAL, para a linha TOTAL. Deliberadamente NAO recalculado aqui:
@@ -401,6 +406,24 @@ export function V2PositionProfileCard({
           </span>
           <HudTooltip content={t("posProfile.tooltip")} />
         </div>
+        {onAgrupado && (
+          <div className="flex items-center gap-1" role="group" aria-label={t("posProfile.view")} data-testid="grade-visao">
+            {([false, true] as const).map((v) => (
+              <button
+                key={String(v)}
+                type="button"
+                aria-pressed={agrupado === v}
+                onClick={() => onAgrupado(v)}
+                className={cn(
+                  "rounded-md border px-2 py-1 font-mono text-[9px] uppercase tracking-wider transition-colors",
+                  agrupado === v ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground hover:text-foreground"
+                )}
+              >
+                {v ? t("posProfile.grouped") : t("posProfile.detailed")}
+              </button>
+            ))}
+          </div>
+        )}
         {onStack && (
           <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label={t("posProfile.stack")}>
             <span className="mr-1 font-mono text-[9px] uppercase tracking-widest text-muted-foreground/60">
@@ -465,6 +488,11 @@ export function V2PositionProfileCard({
               >
                 <span className="font-mono text-[10px] font-bold uppercase text-foreground">
                   {linha.position}
+                  {linha.members && linha.members.length > 1 && (
+                    <span className="ml-1 font-mono text-[8px] normal-case tracking-normal text-muted-foreground/60" data-testid={`membros-${linha.position}`}>
+                      {linha.members.join(" · ")}
+                    </span>
+                  )}
                 </span>
                 <span className="font-mono text-[9px] text-muted-foreground/70 tabular-nums text-right">
                   {linha.hands}

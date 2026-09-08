@@ -1005,6 +1005,9 @@
     },
     "above": "above the solver",
     "below": "below the solver",
-    "clickable": "3-Bet and Fold 3-Bet (underlined) open the per-opponent detail on click."
+    "clickable": "3-Bet and Fold 3-Bet (underlined) open the per-opponent detail on click.",
+    "view": "View",
+    "detailed": "By seat",
+    "grouped": "Grouped"
   }
 }

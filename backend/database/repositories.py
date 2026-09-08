@@ -2398,7 +2398,15 @@ def sql_assento_chart(coluna: str = 'd.position') -> str:
 
 
 def rotulos_do_assento(pos: str) -> tuple:
-    """Todos os rótulos crus que representam este assento em `decisions.position`."""
+    """Todos os rótulos crus que representam este assento em `decisions.position`. Um GRUPO da
+    grade (EP, MP) e a uniao dos rotulos dos assentos dele: o modal "contra quem" do grupo le
+    as mesmas maos que a linha agrupada."""
+    grupo = GRUPOS_DA_GRADE.get(pos)          # definido mais abaixo no modulo; resolvido na chamada
+    if grupo and pos not in POSICOES_NA_ORDEM:
+        out = ()
+        for p in grupo:
+            out += rotulos_do_assento(p)
+        return out
     return (pos,) + tuple(_ALIASES_DE_POSICAO.get(pos, ()))
 
 
@@ -2430,6 +2438,14 @@ def grupo_posicional(pos) -> str:
 #: Para leituras binárias cedo/tarde (DNA): antes do CO é cedo; CO e BTN é tarde.
 GRUPOS_CEDO = ('EP', 'MP')
 GRUPOS_TARDE = ('CO', 'BTN')
+
+#: A grade AGRUPADA (AY-21, 07/09; o Rullian: o PT4 junta tudo antes do CO em EP e MP). Um grupo
+#: e a UNIAO das linhas dos assentos: stats e referencias saem das mesmas linhas, nao de media
+#: de medias. Derivado de `grupo_posicional`, para nao nascer um 2o mapa.
+GRUPOS_DA_GRADE = {}
+for _p in POSICOES_NA_ORDEM:
+    GRUPOS_DA_GRADE.setdefault(grupo_posicional(_p), []).append(_p)
+GRUPOS_DA_GRADE = {k: tuple(v) for k, v in GRUPOS_DA_GRADE.items()}
 
 # O que a grade mostra em CADA célula, e o que só aparece quando o assento tem volume.
 # Medido em prod 04/09: com o corte de amostra atual, a grade completa do PT4 só funciona
@@ -2509,7 +2525,8 @@ def minimo_da_grade(chave: str):
 
 def get_player_stats_by_position(user_id: int, days: int = 90,
                                  last_n: int | None = None,
-                                 stack_band: str | None = None) -> dict:
+                                 stack_band: str | None = None,
+                                 agrupado: bool = False) -> dict:
     """Perfil do jogador em CADA assento, para a grade do dashboard.
 
     Responde outra pergunta que os cards de posição já existentes: eles dizem *de onde você
@@ -2625,14 +2642,24 @@ def get_player_stats_by_position(user_id: int, days: int = 90,
         if pos:
             por_assento.setdefault(pos, []).append(r)
 
+    # Agrupado (AY-21): a linha e a UNIAO das linhas dos assentos do grupo; `members` diz
+    # quais assentos o jogador de fato ocupou. Stats e referencias vem das mesmas funcoes.
+    if agrupado:
+        recortes = []
+        for grupo, assentos in GRUPOS_DA_GRADE.items():
+            rows = [r for p in assentos for r in por_assento.get(p, ())]
+            if rows:
+                recortes.append((grupo, rows, [p for p in assentos if por_assento.get(p)]))
+    else:
+        recortes = [(pos, por_assento[pos], None) for pos in POSICOES_NA_ORDEM if por_assento.get(pos)]
+
     linhas = []
-    for pos in POSICOES_NA_ORDEM:
-        rows = por_assento.get(pos)
-        if not rows:
-            continue                      # assento que o jogador nunca ocupou: some da grade
+    for pos, rows, membros in recortes:
         st = _stats_de(rows)
         maos = st['total_hands']
         celula = {'position': pos, 'hands': maos, 'stats': {}}
+        if membros is not None:
+            celula['members'] = membros
         for chave in _GRADE_SEMPRE + _GRADE_COM_VOLUME:
             valor = st.get(chave)
             if valor is None:
@@ -2661,6 +2688,8 @@ def get_player_stats_by_position(user_id: int, days: int = 90,
         'com_volume': list(_GRADE_COM_VOLUME),
         'stack_band': stack_band,
         'faixas': list(FAIXAS_DE_STACK),
+        'agrupado': bool(agrupado),
+        'grupos': {k: list(v) for k, v in GRUPOS_DA_GRADE.items()},
     }
 
 

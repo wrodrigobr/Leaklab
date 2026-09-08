@@ -1622,7 +1622,9 @@ def player_stats_by_position():
     stack, erro = _faixa_de_stack_da_query()
     if erro:
         return erro
-    return jsonify(get_player_stats_by_position(g.user_id, days, last_n=last_n, stack_band=stack))
+    # `?group=1`: EP / MP / CO / BTN / SB / BB (AY-21). Qualquer outro valor e "detalhado".
+    agrupado = (request.args.get('group') or '').strip() == '1'
+    return jsonify(get_player_stats_by_position(g.user_id, days, last_n=last_n, stack_band=stack, agrupado=agrupado))
 
 
 @app.route('/metrics/player-stats/by-position/detail', methods=['GET'])
@@ -1633,11 +1635,13 @@ def player_stats_by_position_detail():
     gate = _check_stats_by_position(g.user_id)
     if gate:
         return gate
-    from database.repositories import POSICOES_NA_ORDEM, _DETALHE, get_position_stat_detail
+    from database.repositories import POSICOES_NA_ORDEM, GRUPOS_DA_GRADE, _DETALHE, get_position_stat_detail
     position = (request.args.get('position') or '').strip()
     stat = (request.args.get('stat') or '').strip()
-    if position not in POSICOES_NA_ORDEM or stat not in _DETALHE:
-        return jsonify({'error': 'position ou stat invalido', 'positions': list(POSICOES_NA_ORDEM),
+    # um assento, ou um GRUPO da grade agrupada (EP, MP...; AY-21)
+    validas = tuple(POSICOES_NA_ORDEM) + tuple(GRUPOS_DA_GRADE)
+    if position not in validas or stat not in _DETALHE:
+        return jsonify({'error': 'position ou stat invalido', 'positions': list(validas),
                         'stats': list(_DETALHE)}), 400
     stack, erro = _faixa_de_stack_da_query()
     if erro:

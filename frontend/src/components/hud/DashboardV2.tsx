@@ -52,6 +52,8 @@ interface Props {
   positionStack?: React.ComponentProps<typeof V2PositionProfileCard>["stack"];
   positionLastN?: React.ComponentProps<typeof V2PositionProfileCard>["lastN"];
   onPositionStack?: React.ComponentProps<typeof V2PositionProfileCard>["onStack"];
+  positionGrouped?: boolean;
+  onPositionGrouped?: (v: boolean) => void;
   /** Free ve o lock com o motivo, nao um card vazio: card vazio parece produto quebrado. */
   positionProfileLocked?: boolean;
   pendingGto?: number;
@@ -77,7 +79,7 @@ const CARD_ORDER = [
   "results", "dna", "twin", "pressure", "cognitive", "career", "causal_map",
 ];
 
-export function DashboardV2({ onUpload, evSummary, volumeLimit = 50, onVolumeLimitChange = () => {}, hasData, renderCard, gtoQuality = null, gtoPosition = null, positionProfile = null, positionProfileLocked = false, positionProfileGeral = null, positionStack = null, onPositionStack, positionLastN = null, pendingGto = 0, aiInsights = [], aiLocked = false, showEmpty = false, evolution, kpis, playerStats = null, drift = null, onDismissDrift }: Props) {
+export function DashboardV2({ onUpload, evSummary, volumeLimit = 50, onVolumeLimitChange = () => {}, hasData, renderCard, gtoQuality = null, gtoPosition = null, positionProfile = null, positionProfileLocked = false, positionProfileGeral = null, positionStack = null, onPositionStack, positionGrouped = false, onPositionGrouped, positionLastN = null, pendingGto = 0, aiInsights = [], aiLocked = false, showEmpty = false, evolution, kpis, playerStats = null, drift = null, onDismissDrift }: Props) {
   const { t } = useTranslation("dashboard");
   // Masonry real (mesmo hook do dashboard clássico): cards curtos liberam o vão
   // vertical e o grid-flow-dense empacota — sem blocos vazios na grade.
@@ -390,7 +392,7 @@ export function DashboardV2({ onUpload, evSummary, volumeLimit = 50, onVolumeLim
           positionProfileLocked
             ? <ProLockCard feature={t("posProfile.title")} v2 />
             : <V2PositionProfileCard data={positionProfile} geral={positionProfileGeral ?? playerStats}
-                                     stack={positionStack ?? null} onStack={onPositionStack} lastN={positionLastN} />
+                                     stack={positionStack ?? null} onStack={onPositionStack} agrupado={positionGrouped} onAgrupado={onPositionGrouped} lastN={positionLastN} />
         )}
 
         {/* ── Cards existentes em ordem fixa (reuso via renderCard) ─────── */}

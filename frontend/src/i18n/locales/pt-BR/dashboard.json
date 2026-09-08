@@ -1005,6 +1005,9 @@
     },
     "above": "acima do solver",
     "below": "abaixo do solver",
-    "clickable": "3-Bet e Fold 3-Bet (sublinhados) abrem o detalhe por oponente ao clicar."
+    "clickable": "3-Bet e Fold 3-Bet (sublinhados) abrem o detalhe por oponente ao clicar.",
+    "view": "Visão",
+    "detailed": "Por assento",
+    "grouped": "Agrupado"
   }
 }

@@ -72,6 +72,10 @@ const Index = () => {
   // trocar de faixa nao pode refazer a tela inteira.
   const posStackRef = useRef<StackBand | null>(null);
   posStackRef.current = posStack;
+  // AY-21: detalhado (assento a assento) ou agrupado (EP / MP / CO / BTN / SB / BB)
+  const [posAgrupado, setPosAgrupado]     = useState(false);
+  const posAgrupadoRef = useRef(false);
+  posAgrupadoRef.current = posAgrupado;
   const jaFiltrou = useRef(false);
   const [tourns, setTourns]               = useState<Tournament[]>(_cachedTourns ?? []);
   const [leakRoi, setLeakRoi]             = useState<LeakRoiData[]>([]);
@@ -125,7 +129,7 @@ const Index = () => {
       // Pro: nem chama quando e free — o backend responderia 402 e a UI ja mostra o
       // lock pelo plano do usuario. Request que se sabe que vai falhar e ruido.
       isFree ? Promise.resolve(null)
-             : metrics.playerStatsByPosition(90, ln, posStackRef.current).then(setPosProfile).catch(() => null),
+             : metrics.playerStatsByPosition(90, ln, posStackRef.current, posAgrupadoRef.current).then(setPosProfile).catch(() => null),
       metrics.leakRoi(90, ln).then((r) => { setLeakRoi(r.leaks); setLeakSource(r.source); }).catch(() => null),
       metrics.pressureProfile(90, ln).then(setPressureData).catch(() => null),
       metrics.confidenceDrift(30, ln).then(setDriftData).catch(() => null),
@@ -144,19 +148,19 @@ const Index = () => {
   // ultima faixa). No 1o render nao ha pedido: a grade ja vem no carregamento geral.
   useEffect(() => {
     if (isFree) return;
-    if (!posStack && !jaFiltrou.current) return;
+    if (!posStack && !posAgrupado && !jaFiltrou.current) return;
     jaFiltrou.current = true;
     setPosGeral(null);
     const ln = volumeLimit ?? undefined;
     let vivo = true;
     // So a grade: a linha TOTAL vem nela (`total`), das mesmas linhas e definicoes. A 1a
     // versao pedia o HUD inteiro na faixa (13 consultas a mais, 3,7s em dev) so para o Total.
-    metrics.playerStatsByPosition(90, ln, posStack).then((grade) => {
+    metrics.playerStatsByPosition(90, ln, posStack, posAgrupado).then((grade) => {
       if (!vivo) return;
       setPosProfile(grade);
     }).catch((e) => { console.error("perfil por posicao: filtro de stack falhou", e); });
     return () => { vivo = false; };
-  }, [posStack, isFree]);   // eslint-disable-line react-hooks/exhaustive-deps -- volumeLimit/refresh passam pelo efeito geral
+  }, [posStack, posAgrupado, isFree]);   // eslint-disable-line react-hooks/exhaustive-deps -- volumeLimit/refresh passam pelo efeito geral
 
   // Re-fetch only language-sensitive AI narratives when locale changes
   const langMounted = useRef(false);
@@ -369,6 +373,8 @@ const Index = () => {
         positionProfileGeral={posStack ? posGeral : null}
         positionStack={posStack}
         onPositionStack={setPosStack}
+        positionGrouped={posAgrupado}
+        onPositionGrouped={setPosAgrupado}
         positionLastN={volumeLimit}
         drift={showDrift && driftData
           ? { detected: true, sessions: driftData.affected_sessions }
