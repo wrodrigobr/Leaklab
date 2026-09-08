@@ -45,8 +45,10 @@ def _semeia():
     dec(2, 'novo', '["Ks","8s","3d"]')              # no criado DEPOIS: resolvida depois
     dec(3, 'nada', '["Qs","9s","4d"]')              # sem no; mas ha arvore de board com a MESMA assinatura (spot 'antigo': A-seco-2tone? nao: Q alto)
     dec(4, 'nada2', '["Ad","8d","3c"]')             # sem no; assinatura igual a do 'antigo' (A-seco-2tone-desconectado, CO, 20-35bb, no_bet) -> vizinho
+    dec(5, 'antigo2', '["Jh","6c","2d"]')           # 2o no antigo: o seed e ASSIMETRICO (2 antigos, 1 novo) para trocar a regra mudar os numeros
     conn.execute(_adapt("INSERT INTO gto_nodes (spot_hash,street,position,board,hero_hand,stack_bucket,gto_action,gto_freq,tree_hash,created_at) VALUES ('antigo','flop','CO','Ah7h2c','AhKh','20-35bb','bet',0.7,'arv1',?)"), (_ts(10),))
     conn.execute(_adapt("INSERT INTO gto_nodes (spot_hash,street,position,board,hero_hand,stack_bucket,gto_action,gto_freq,tree_hash,created_at) VALUES ('novo','flop','CO','Ks8s3d','AhKh','20-35bb','bet',0.7,'arv2',?)"), (_ts(1),))
+    conn.execute(_adapt("INSERT INTO gto_nodes (spot_hash,street,position,board,hero_hand,stack_bucket,gto_action,gto_freq,tree_hash,created_at) VALUES ('antigo2','flop','CO','Jh6c2d','AhKh','20-35bb','bet',0.7,'arv3',?)"), (_ts(20),))
     conn.execute(_adapt("INSERT INTO gto_tree_strategies (tree_hash,board,actions,hand_table) VALUES ('arv1','[\"Ah\",\"7h\",\"2c\"]','[\"check\",\"bet\"]','[]')"))
     conn.execute(_adapt("INSERT INTO gto_tournament_queue (tournament_id, spot_hash) VALUES (1,'novo')"))
     conn.execute(_adapt("INSERT INTO gto_tournament_queue (tournament_id, spot_hash) VALUES (1,'nada')"))
@@ -59,12 +61,12 @@ def _semeia():
 def test_semana_reaproveitada_resolvida_depois_sem_no_enviados_espera_e_semelhanca():
     _semeia()
     r = get_aproveitamento_do_solver(dias=56)
-    assert r['acervo'] == {'nos': 2, 'arvores': 1}, r['acervo']
+    assert r['acervo'] == {'nos': 3, 'arvores': 1}, r['acervo']
     assert r['fila'] == {'done': 1, 'pending': 1}, r['fila']
     assert r['espera'] == {'n': 1, 'media_h': 3.0, 'mediana_h': 3.0}, r['espera']
     assert len(r['semanas']) == 1, r['semanas']
     s = r['semanas'][0]
-    assert (s['decisoes'], s['spots'], s['reaproveitadas'], s['resolvidas_depois'], s['sem_no'], s['enviados'], s['pct_reaproveitado']) == (4, 4, 1, 1, 2, 2, 25), s
+    assert (s['decisoes'], s['spots'], s['reaproveitadas'], s['resolvidas_depois'], s['sem_no'], s['enviados'], s['pct_reaproveitado']) == (5, 5, 2, 1, 2, 2, 40), s
     # semelhanca: das 2 sem no, a 'nada2' (A-seco-2tone, CO, 20-35bb, sem aposta) tem arvore de board igual (a do 'antigo'); a 'nada' (Q alto) nao
     assert r['semelhanca'] == {'sem_no': 2, 'com_vizinho': 1, 'pct': 50, 'assinaturas_conhecidas': 1}, r['semelhanca']
 
