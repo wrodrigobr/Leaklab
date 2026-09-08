@@ -3421,6 +3421,9 @@ export interface AdminUser {
   subscription_status?: "active" | "past_due" | "canceled" | null;
   plan_expires_at?: string | null;
   link_status?: "approved" | "pending" | "rejected" | null;
+  /** torneios importados no mes corrente e o teto proprio deste jogador (null = o do plano) */
+  tournaments_this_month?: number;
+  tournaments_limit_override?: number | null;
 }
 
 export interface AdminCoachStudent {
@@ -3695,7 +3698,7 @@ export const adminDashboard = {
       body: JSON.stringify({ title, body, ...opts }),
     }),
 
-  updateUser: (id: number, data: { plan?: string; suspended?: boolean }) =>
+  updateUser: (id: number, data: { plan?: string; suspended?: boolean; tournaments_limit_override?: number | null }) =>
     request<{ ok: boolean }>(`/admin/users/${id}`, {
       method: "PATCH",
       body: JSON.stringify(data),

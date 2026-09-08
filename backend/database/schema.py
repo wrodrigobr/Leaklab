@@ -1012,6 +1012,8 @@ def _run_migrations(conn):
             # Programa de fundadores: quando entrou (o fim vive em plan_expires_at).
             ("founder_since",       "ALTER TABLE users ADD COLUMN IF NOT EXISTS founder_since       TIMESTAMP"),
             ("founder_applied_at",  "ALTER TABLE users ADD COLUMN IF NOT EXISTS founder_applied_at  TIMESTAMP"),
+            # Teto de torneios/mes por USUARIO (08/09): NULL = o do plano; numero = vale sobre o plano.
+            ("tournaments_limit_override", "ALTER TABLE users ADD COLUMN IF NOT EXISTS tournaments_limit_override INTEGER"),
         ]:
             _pg_exec_isolated(conn, _sql)
         try:
@@ -1939,6 +1941,7 @@ def _run_migrations(conn):
             ("winback_sent_at",            "ALTER TABLE users ADD COLUMN winback_sent_at            TEXT"),
             ("founder_since",              "ALTER TABLE users ADD COLUMN founder_since              TIMESTAMP"),
             ("founder_applied_at",         "ALTER TABLE users ADD COLUMN founder_applied_at         TIMESTAMP"),
+            ("tournaments_limit_override", "ALTER TABLE users ADD COLUMN tournaments_limit_override INTEGER"),
             ("birth_year",                "ALTER TABLE users ADD COLUMN birth_year                INTEGER"),
             ("country",                   "ALTER TABLE users ADD COLUMN country                   TEXT"),
             ("state_province",            "ALTER TABLE users ADD COLUMN state_province            TEXT"),
@@ -2685,6 +2688,7 @@ def _run_migrations(conn):
             # fatos, e enfiar os dois na mesma coluna apagaria o primeiro. Além disso é este
             # campo que dá a ORDEM DE CHEGADA — o "os 20 primeiros" da publicação.
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS founder_applied_at TIMESTAMP",
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS tournaments_limit_override INTEGER",
             # Bot de boas-vindas dos fundadores no Telegram. A chave é o telegram_user_id
             # porque é o único identificador que existe quando a conversa começa: a ligação
             # com a conta do GrindLab (`user_id`) só acontece se a pessoa der o e-mail, e é

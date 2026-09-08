@@ -9361,9 +9361,21 @@ def admin_update_user(uid):
     data      = request.get_json() or {}
     plan      = data.get('plan')
     suspended = data.get('suspended')
-    if plan is None and suspended is None:
+    # teto de torneios/mes deste jogador: chave presente com null = volta ao do plano
+    tem_teto  = 'tournaments_limit_override' in data
+    teto      = data.get('tournaments_limit_override')
+    if plan is None and suspended is None and not tem_teto:
         return jsonify({'error': 'Nenhum campo para atualizar'}), 400
-    update_user_admin(uid, plan=plan, suspended=suspended, por=getattr(g, 'user_id', None))
+    if tem_teto and teto is not None:
+        try:
+            teto = int(teto)
+            if teto < 0 or teto > 100000:
+                raise ValueError
+        except (TypeError, ValueError):
+            return jsonify({'error': 'tournaments_limit_override invalido (0 a 100000, ou null)'}), 400
+    from database.repositories import _NAO_MEXE
+    update_user_admin(uid, plan=plan, suspended=suspended, por=getattr(g, 'user_id', None),
+                      tournaments_limit_override=teto if tem_teto else _NAO_MEXE)
     return jsonify({'ok': True})
 
 

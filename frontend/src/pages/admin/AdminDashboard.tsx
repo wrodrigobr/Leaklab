@@ -495,6 +495,10 @@ function CoachStudentsModal({ coachId, coachName, onClose }: {
 
 // ── Users Tab ─────────────────────────────────────────────────────────────────
 
+/** Teto de torneios/mes de cada plano, o mesmo PLAN_LIMITS do backend (free 30, pro 200); so para o
+ *  placeholder e o vermelho de "bateu no teto" na tabela do admin. */
+const PLAN_TETO: Record<string, number> = { free: 30, pro: 200, coach: 200 };
+
 function UsersTab() {
   const qc = useQueryClient();
   const [search, setSearch]       = useState("");
@@ -513,7 +517,7 @@ function UsersTab() {
   });
 
   const updateMut = useMutation({
-    mutationFn: ({ id, data }: { id: number; data: { plan?: string; suspended?: boolean } }) =>
+    mutationFn: ({ id, data }: { id: number; data: { plan?: string; suspended?: boolean; tournaments_limit_override?: number | null } }) =>
       adminDashboard.updateUser(id, data),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["admin-users"] }); toast.success("Usuário atualizado"); },
   });
@@ -567,7 +571,7 @@ function UsersTab() {
           <table className="w-full text-xs text-left">
             <thead className="border-b border-border bg-hud-elevated/40">
               <tr>
-                {["Usuário", "Role", "Plano", "Pagamento", "Coach", "Torneios", "Último import", "Última atividade", "Cadastro", "Ações", ""].map(h => (
+                {["Usuário", "Role", "Plano", "Pagamento", "Coach", "Torneios", "Teto/mês", "Último import", "Última atividade", "Cadastro", "Ações", ""].map(h => (
                   <th key={h} className="px-4 py-3 font-mono text-[10px] font-bold uppercase tracking-wider text-muted-foreground whitespace-nowrap">{h}</th>
                 ))}
               </tr>
@@ -631,6 +635,29 @@ function UsersTab() {
                     )}
                   </td>
                   <td className="px-4 py-3 font-mono tabular-nums text-foreground">{u.tournament_count}</td>
+                  {/* Teto de torneios/mes deste jogador (08/09): "usados no mes / teto". Vazio = o do
+                      plano; um numero vale sobre o plano; apagar volta ao plano. Fundador ganha 1.000. */}
+                  <td className="px-4 py-3 font-mono tabular-nums text-muted-foreground whitespace-nowrap">
+                    <span className={cn(u.tournaments_limit_override == null && (u.tournaments_this_month ?? 0) >= PLAN_TETO[u.plan] ? "text-destructive" : "")}>
+                      {u.tournaments_this_month ?? 0}
+                    </span>
+                    <span className="mx-1 text-muted-foreground/50">/</span>
+                    <input
+                      type="number" min={0} max={100000}
+                      defaultValue={u.tournaments_limit_override ?? ""}
+                      placeholder={String(PLAN_TETO[u.plan] ?? "")}
+                      title="Teto de torneios por mês deste jogador. Vazio = o do plano."
+                      onBlur={e => {
+                        const v = e.target.value.trim();
+                        const novo = v === "" ? null : Number(v);
+                        if (novo === (u.tournaments_limit_override ?? null)) return;
+                        updateMut.mutate({ id: u.id, data: { tournaments_limit_override: novo } });
+                      }}
+                      className={cn("w-16 rounded border border-border bg-background px-1.5 py-0.5 font-mono text-[10px] text-foreground focus:outline-none",
+                                    u.tournaments_limit_override != null && "border-primary/60 text-primary")}
+                      data-testid={`teto-${u.id}`}
+                    />
+                  </td>
                   <td className="px-4 py-3 font-mono text-muted-foreground whitespace-nowrap">{fmtDate(u.last_import)}</td>
                   {/* "Última atividade", não "último login": a coluna é atualizada a cada dia
                       de USO (require_auth), não só quando a pessoa digita a senha. Chamar de

@@ -5,6 +5,24 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## Teto de torneios por mes ajustavel por USUARIO, pelo admin; fundadores com 1.000 (08/09, LOCAL)
+
+- Um fundador bateu nos 200 do Pro no 4o dia do mes (21 mil maos); o outro tinha 280 pelo
+  script de lote. O dono: "para um pro isso e pouco? ... liberar por usuario ... os
+  fundadores eu preciso permitir".
+- `users.tournaments_limit_override` (NULL = o teto do plano; numero = vale sobre o plano),
+  nos tres blocos de migracao (PG abort-proof, SQLite, boot). `get_quota_status` aplica o
+  teto sem mutar PLAN_LIMITS (compartilhado); o 402 do upload segue a cota.
+- Admin: PATCH /admin/users/<id> aceita `tournaments_limit_override` (inteiro 0..100000 ou
+  null = volta ao plano; lixo e negativo dao 400), com auditoria; a lista mostra usados no
+  mes e o teto; na tabela, coluna "Teto/mes" com "usados / [campo]" e vermelho quando bateu
+  no teto do plano.
+- `grant_founder` da `FOUNDER_TOURNAMENTS_LIMIT = 1000` sem rebaixar um teto maior ja dado.
+  Os 4 fundadores atuais recebem 1.000 no deploy (renovar a concessao ou PATCH).
+- Guardas: 3 testes (teto vale e null volta; fundador 1.000 sem rebaixar; PATCH e lista).
+  Quebrado de proposito (cota ignora o teto): 3 acusam. Sem teste de tela do campo do admin.
+
+---
 ## AY-15 c: matriz 13x13 das maos abertas por assento, voce x solver (08/09, LOCAL)
 
 - Sugestao do Rullian ("o conjunto de maos que voce abriu de cada posicao"); rascunho

@@ -5199,7 +5199,7 @@ def get_quota_status(user_id: int) -> dict:
             conn,
             """SELECT plan, plan_source, plan_expires_at,
                       tournaments_this_month, ai_calls_this_month,
-                      solves_this_month, quota_reset_at
+                      solves_this_month, quota_reset_at, tournaments_limit_override
                FROM users WHERE id = ?""",
             (user_id,),
         )
@@ -5225,6 +5225,13 @@ def get_quota_status(user_id: int) -> dict:
         plan = 'free'
         expired = True
     limits = PLAN_LIMITS.get(plan, PLAN_LIMITS['free'])
+    # Teto de torneios por USUARIO (08/09): um fundador estourou os 200 do Pro no 4o dia
+    # do mes (dono: "para um pro isso e pouco?"). O admin ajusta por jogador
+    # (`tournaments_limit_override`); NULL = o do plano. Copia do dict: PLAN_LIMITS e
+    # compartilhado e mutar o original mudaria o limite de TODO mundo.
+    override = row.get('tournaments_limit_override')
+    if override is not None and not expired:
+        limits = dict(limits, tournaments=int(override))
     return {
         'plan':             plan,
         'tournaments_used': row.get('tournaments_this_month') or 0,
@@ -5233,6 +5240,7 @@ def get_quota_status(user_id: int) -> dict:
         'limits':           limits,
         'plan_expires_at':  row.get('plan_expires_at'),
         'expired':          expired,
+        'tournaments_limit_override': override,
     }
 
 
@@ -6736,6 +6744,7 @@ def get_all_users(limit: int = 50, offset: int = 0, plan: str = None,
         rows = _fetchall(conn, f"""
             SELECT u.id, u.username, u.email, u.role, u.plan,
                    u.plan_source, u.subscription_status, u.plan_expires_at, u.link_status,
+                   u.tournaments_this_month, u.tournaments_limit_override,
                    u.created_at, u.last_login, u.suspended, u.leaderboard_handle,
                    c.username AS coach_username,
                    cp.display_name,
@@ -6944,8 +6953,16 @@ def get_tournament_raw_admin(tournament_db_id: int) -> dict | None:
         conn.close()
 
 
+#: Teto de torneios/mes que um FUNDADOR recebe ao ser concedido (08/09). Fundador testa a
+#: plataforma com o historico inteiro; 200 e o teto do Pro pagante.
+FOUNDER_TOURNAMENTS_LIMIT = 1000
+
+#: Sentinela do PATCH do admin: "campo ausente" (nao mexe) e diferente de None (volta ao plano).
+_NAO_MEXE = object()
+
+
 def update_user_admin(user_id: int, plan: str = None, suspended: bool = None,
-                      por: Optional[int] = None) -> None:
+                      por: Optional[int] = None, tournaments_limit_override=_NAO_MEXE) -> None:
     """Admin muda plano/suspensão de um usuário.
 
     ── Por que isto escreve mais que a coluna `plan` (05/09) ────────────────────────────
@@ -6979,6 +6996,11 @@ def update_user_admin(user_id: int, plan: str = None, suspended: bool = None,
         if suspended is not None:
             conn.execute(_adapt("UPDATE users SET suspended = ? WHERE id = ?"),
                          (bool(suspended), user_id))
+        if tournaments_limit_override is not _NAO_MEXE:
+            # None = volta ao teto do plano; inteiro >= 0 = teto proprio deste jogador
+            valor = None if tournaments_limit_override is None else max(0, int(tournaments_limit_override))
+            with auditar_plano(conn, user_id, 'admin', 'tournaments_limit_override=%s por=%s' % (valor, por)):
+                conn.execute(_adapt("UPDATE users SET tournaments_limit_override = ? WHERE id = ?"), (valor, user_id))
         conn.commit()
     finally:
         conn.close()
@@ -9809,8 +9831,10 @@ def grant_founder(user_ids: list, meses: int = 3) -> dict:
             # Renovação mantém o founder_since original: é ele que diz "está no 2º ciclo".
             cur = conn.execute(_adapt(
                 "UPDATE users SET plan = 'pro', plan_source = ?, plan_expires_at = ?, "
-                "founder_since = COALESCE(founder_since, ?) WHERE id = ?"),
-                (FOUNDER_SOURCE, expira, agora, uid))
+                "founder_since = COALESCE(founder_since, ?), "
+                "tournaments_limit_override = CASE WHEN COALESCE(tournaments_limit_override, 0) < ? THEN ? "
+                "ELSE tournaments_limit_override END WHERE id = ?"),
+                (FOUNDER_SOURCE, expira, agora, FOUNDER_TOURNAMENTS_LIMIT, FOUNDER_TOURNAMENTS_LIMIT, uid))
             # rowcount honesto: UPDATE que não casou linha nenhuma não é sucesso (regra 6).
             afetadas = getattr(cur, 'rowcount', None)
             if afetadas == 0:
