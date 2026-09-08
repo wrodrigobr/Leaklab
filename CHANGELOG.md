@@ -4153,6 +4153,15 @@ None`). Quem lia sem checar era a exibição.
 > `save_decisions` gravando a assinatura (preflop NULL), e a curva com a meta exigindo as duas
 > semanas (uma abaixo de 85% derruba). `test_aproveitamento_do_solver` ignora a `curva` porque
 > ela tem teste proprio.
+>
+> **Homologacao no Postgres (host, 08/09):** smoke 203/203; `test_semelhanca` 8/8 so na 3a
+> rodada. A 1a caiu num literal `0` em coluna BOOLEAN do seed; a 2a revelou o que importava:
+> `gto_tree_relacoes` e de chave natural, o wrapper acrescentava `RETURNING id`, e o
+> `try/except` do cache engolia o erro e deixava a transacao abortada, derrubando tudo depois
+> com "current transaction is aborted". O guarda `test_no_id_tables` ja acusava a tabela fora
+> da allowlist; eu nao o tinha rodado isolado. Registrada em `_NO_ID_TABLES`, `try/except`
+> removido (erro de cache e bug, tem de aparecer), seed do teste fora dos ids 1..4 para nao
+> colidir com a sequence.
 
 ### fix(i18n): copy do plano de estudo traduzida, e o campo MORTO de `ranges.ts` removido
 
