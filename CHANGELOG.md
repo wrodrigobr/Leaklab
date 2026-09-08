@@ -5,6 +5,24 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## AY-26: o gancho da fila drenada nao reconciliava; 62 cards acusavam erro recomendando a propria jogada (08/09)
+
+- Diagnostico em prod, sem chutar: as 62 decisoes (AUTO) tinham `gto_action` correto (o no
+  do solver diz check 93%, o jogador apostou) e `best_action` igual a jogada. O realinhamento
+  existia desde 03/09 em `reconcile_tournament_labels`, mas o gancho que roda quando a fila
+  do solver drena (`_reconcile_drained_tournaments`) chamava so `resync_tournament_postflop`,
+  que e FILL-ONLY, e depois gravava `labels_reconciled_at`, encerrando o assunto. Reproduzido
+  no dev com a copia do Rullian: a avaliacao fresca da mesma decisao da best=check.
+- Conserto: o gancho chama `reconcile_tournament_labels(tid)` depois do resync. Guarda
+  `test_reconcile_apos_drenar` (fila drenada + a contradicao exata -> best_action = gto_action;
+  sem solve novo nao reprocessa); quebrado de proposito, acusa.
+- Reparo em prod com a propria funcao: 413 decisoes em 46 torneios; varredura AUTO 62 -> 0.
+- Fora do escopo, registrado: 32 "marginal" com best = jogada (a regra de 03/09 realinha so
+  severidade >= small_mistake, decisao anterior), 14 delas "bet" x "bet_50pct" com gto_label
+  critical apesar de played_freq 0,6 (o matcher antigo nao casava tamanho), e 1 GRAFIA (shove
+  x jam, played_freq 1,0 pela mao e minor_deviation pela range). AY-26b.
+
+---
 ## Matriz: mao nunca recebida nao e fold, e o solver mostra as 169 (08/09)
 
 - O dono, no relatorio: "nas matrizes esta falando que nao abrimos com AKs, AQs e AJs. Errado
