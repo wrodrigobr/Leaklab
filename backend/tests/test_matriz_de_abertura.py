@@ -66,18 +66,19 @@ def test_celulas_voce_e_solver_e_o_resumo_bate_com_a_grade():
     3x (30%); e 4 folds com cartas malformadas ('??') que nao viram celula."""
     maos = ([_m('UTG', 'AsKs', 'raise') for _ in range(10)]
             + [_m('UTG', '7h2d', 'fold') for _ in range(10)]
-            + [_m('UTG', 'Ts9s', 'raise' if i < 3 else 'fold') for i in range(10)]
+            + [_m('UTG', 'Ts9s', 'raise' if i < 3 else ('call' if i < 5 else 'fold')) for i in range(10)]   # 3 raises, 2 limps, 5 folds
             + [_m('UTG', '??', 'fold') for _ in range(4)])
     uid = _semeia(maos)
     m = get_position_open_matrix(uid, 'UTG', days=3650, last_n=0)
     # as 4 maos ilegiveis entram no total (e o denominador do RFI da grade), nao nas celulas
     assert m['n'] == 34 and m['cobertura'] == round(30 * 100 / 34), (m['n'], m['cobertura'])
-    assert m['cells']['AKs'] == {'n': 10, 'voce': 1.0, 'solver': round(float(villain_open_range('UTG', 40).get('AKs', 0.0)), 3)}
+    assert m['cells']['AKs'] == {'n': 10, 'voce': 1.0, 'limp': 0.0, 'solver': round(float(villain_open_range('UTG', 40).get('AKs', 0.0)), 3)}
+    assert m['cells']['T9s']['limp'] == 0.2, 'limp nao e fold: 2 dos 10 T9s foram limp'
     assert m['cells']['72o']['voce'] == 0.0 and m['cells']['72o']['solver'] == 0.0
     assert m['cells']['T9s']['voce'] == 0.3
     # as 169 maos existem; as nunca recebidas vem com n=0, sem `voce`, e com a carta do solver
     assert len(m['cells']) == 169 and {h for h, c in m['cells'].items() if c['n'] > 0} == {'AKs', '72o', 'T9s'}
-    assert m['cells']['AQs'] == {'n': 0, 'voce': None, 'solver': round(float(villain_open_range('UTG', 40).get('AQs', 0.0)), 3)}
+    assert m['cells']['AQs'] == {'n': 0, 'voce': None, 'limp': None, 'solver': round(float(villain_open_range('UTG', 40).get('AQs', 0.0)), 3)}
     assert m['cells']['AQs']['solver'] > 0.9, 'AQs nunca recebida continua sendo abertura do solver'
     assert m['voce_pct'] == round(13 / 34 * 100, 1)
     # o resumo e o RFI da grade no mesmo recorte (mesma oportunidade, mesma definicao)

@@ -97,7 +97,7 @@ export const CHAVES_NAO_DERIVADAS = [
   "admin-users", "admin-stats", "admin-logs", "admin-payments", "admin-expenses",
   "admin-tournaments", "admin-demographics", "admin-feature-usage", "admin-msg-users",
   "admin-coach-students", "admin-coach-applications", "admin-challenge-pool",
-  "admin-gto-hand-queue", "admin-gto-worker-status", "admin-support-tickets",
+  "admin-gto-hand-queue", "admin-gto-worker-status", "admin-solver-aproveitamento", "admin-support-tickets",
   "admin-finance-coaches", "admin-finance-cockpit", "admin-finance-calendar",
   "admin-finance-dunning", "admin-finance-timeseries",
   // programa de fundadores: o painel mede o uso DOS FUNDADORES, não o import de quem está com a

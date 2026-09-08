@@ -1030,7 +1030,8 @@ export interface PositionProfileResponse {
 
 /** Uma celula da matriz de abertura: vezes que recebeu a mao, fracao em que abriu, e a
  *  frequencia media com que a carta do solver abre a mesma mao nos mesmos stacks (null sem carta). */
-export interface PositionOpenCell { n: number; voce: number; solver: number | null }
+/** `limp`: fracao em que entrou so pagando (nao e fold; o dono viu "33% de fold com AA" que era um limp) */
+export interface PositionOpenCell { n: number; voce: number | null; limp: number | null; solver: number | null }
 export interface PositionOpenDivergence { hand: string; n: number; voce: number; solver: number; delta: number }
 export interface PositionOpenMatrixResponse {
   position: string;

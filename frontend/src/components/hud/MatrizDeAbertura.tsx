@@ -28,7 +28,8 @@ function comoRange(cells: PositionOpenMatrixResponse["cells"], lado: "voce" | "s
   for (const [hand, c] of Object.entries(cells)) {
     const f = lado === "voce" ? c.voce : c.solver;
     if (f == null) continue;
-    frequencies[hand] = { raise: f };
+    // na SUA grade o limp aparece como call (azul), separado do fold: limpar AA nao e foldar AA
+    frequencies[hand] = lado === "voce" && c.limp ? { raise: f, call: c.limp } : { raise: f };
     if (f > 0.001) raise.add(hand);
   }
   return { raise, label, frequencies };

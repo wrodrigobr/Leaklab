@@ -2924,6 +2924,7 @@ def get_position_open_matrix(user_id: int, position: str, days: int = 90,
     try:
         rows = conn.execute(_adapt(f"""
             SELECT d.hero_cards, CASE WHEN d.action_taken IN ({_SQL_RAISE_OU_JAM}) THEN 1 ELSE 0 END AS abriu,
+                   CASE WHEN d.action_taken = 'call' THEN 1 ELSE 0 END AS limpou,
                    d.effective_stack_bb AS stack, {sql_assento_chart()} AS pos_chart
             FROM decisions d
             JOIN tournaments t ON t.id = d.tournament_id
@@ -2950,17 +2951,21 @@ def get_position_open_matrix(user_id: int, position: str, days: int = 90,
         if chave not in cache:
             cache[chave] = villain_open_range(r['pos_chart'], stack) if chave[1] else {}
         rng = cache[chave]
-        c = celulas.setdefault(mao, {'n': 0, 'abriu': 0, 'chart': 0.0, 'n_chart': 0})
+        c = celulas.setdefault(mao, {'n': 0, 'abriu': 0, 'limp': 0, 'chart': 0.0, 'n_chart': 0})
         c['n'] += 1
         if r['abriu']:
             c['abriu'] += 1
+        elif r['limpou']:
+            # Limp com o pote intacto NAO e fold (08/09: o dono viu "33% de fold com AA no BTN";
+            # era um limp de AA a 11bb, 3-handed). A grade mostra o limp como call.
+            c['limp'] += 1
         if rng:
             f = float(rng.get(mao, 0.0))
             c['chart'] += f; c['n_chart'] += 1
             chart_soma += f; chart_n += 1
     cells = {}
     for mao, c in celulas.items():
-        cells[mao] = {'n': c['n'], 'voce': round(c['abriu'] / c['n'], 3),
+        cells[mao] = {'n': c['n'], 'voce': round(c['abriu'] / c['n'], 3), 'limp': round(c['limp'] / c['n'], 3),
                       'solver': round(c['chart'] / c['n_chart'], 3) if c['n_chart'] else None}
     # As 169 maos, sempre (08/09): a conta demo nunca recebeu AKs do UTG em 788 vezes, e a grade
     # do solver ficava cinza em AKs, como se o solver nao abrisse. Mao nunca recebida entra com
@@ -2981,7 +2986,7 @@ def get_position_open_matrix(user_id: int, position: str, days: int = 90,
                     if mao in cells:
                         continue
                     f = sum(float(cache[k].get(mao, 0.0)) * n for k, n in contextos.items()) / peso_total
-                    cells[mao] = {'n': 0, 'voce': None, 'solver': round(f, 3)}
+                    cells[mao] = {'n': 0, 'voce': None, 'limp': None, 'solver': round(f, 3)}
     divergencias = sorted(
         ({'hand': mao, 'n': v['n'], 'voce': v['voce'], 'solver': v['solver'], 'delta': round(v['voce'] - v['solver'], 3)}
          for mao, v in cells.items()

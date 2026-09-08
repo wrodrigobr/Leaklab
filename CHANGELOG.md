@@ -5,6 +5,15 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## Matriz: limp nao e fold (08/09)
+
+- O dono, na propria conta: "33% de fold com AA no BTN?". Eram 3 vezes com AA e o pote
+  intacto: 2 raises e 1 LIMP (3-handed, 10,85 bb, PokerStars). A matriz contava so raise como
+  "abriu" e a grade pintava o resto como fold. Agora a celula traz `limp` separado e a sua
+  grade mostra o limp como call (azul), com o tooltip "AA: Raise 67% · Call 33%". Testes nos
+  dois lados.
+
+---
 ## AY-28: assinatura do spot, medicao da semelhanca e o card "Aproveitamento do solver" (08/09, LOCAL)
 
 - O dono: "quanto reaproveitamos da base?" e depois "vamos fazer algo mais inteligente:

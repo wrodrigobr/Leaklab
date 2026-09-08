@@ -30,7 +30,7 @@ beforeEach(() => {
   hands.mockReset();
   hands.mockResolvedValue({
     position: "UTG", stack_band: "20-40", n: 1211, voce_pct: 17.2, solver_pct: 18.5, cobertura: 98,
-    cells: { AKs: { n: 12, voce: 1, solver: 1 }, T9s: { n: 9, voce: 0.444, solver: 1 }, "72o": { n: 10, voce: 0, solver: 0 }, AQs: { n: 0, voce: null, solver: 1 } },
+    cells: { AKs: { n: 12, voce: 1, limp: 0, solver: 1 }, T9s: { n: 9, voce: 0.444, limp: 0, solver: 1 }, "72o": { n: 10, voce: 0, limp: 0, solver: 0 }, AQs: { n: 0, voce: null, limp: null, solver: 1 }, AA: { n: 3, voce: 0.667, limp: 0.333, solver: 1 } },
     divergencias: [{ hand: "T9s", n: 9, voce: 0.444, solver: 1, delta: -0.556 }],
     minimo_maos: 8, divergencia_minima: 0.3,
   });
@@ -73,6 +73,8 @@ describe("matriz das maos abertas", () => {
     expect(aqs.getAttribute("data-sem-dado")).toBe("true");
     expect(within(screen.getByTestId("matriz-solver")).getByTitle(/^AQs: Raise 100%/).getAttribute("data-sem-dado")).toBeNull();
     expect(within(screen.getByTestId("matriz-voce")).getByTitle(/^72o: Fold 100%/).getAttribute("data-sem-dado")).toBeNull();   // recebeu e foldou
+    // AA: 2 raises e 1 limp; o limp aparece como Call, nunca como Fold
+    expect(within(screen.getByTestId("matriz-voce")).getByTitle(/^AA: Raise 67% · Call 33%$/)).toBeTruthy();
     // a lista de divergencias
     const linha = within(screen.getByTestId("matriz-divergencias")).getByTestId("divergencia-T9s");
     expect(linha.textContent).toContain("T9s");
@@ -97,7 +99,7 @@ describe("matriz das maos abertas", () => {
 
   it("sem carta para o recorte, o lado do solver diz isso em vez de um numero", async () => {
     hands.mockResolvedValue({ position: "UTG", stack_band: null, n: 20, voce_pct: 10, solver_pct: null, cobertura: 0,
-      cells: { AKs: { n: 20, voce: 0.1, solver: null } }, divergencias: [], minimo_maos: 8, divergencia_minima: 0.3 });
+      cells: { AKs: { n: 20, voce: 0.1, limp: 0, solver: null } }, divergencias: [], minimo_maos: 8, divergencia_minima: 0.3 });
     monta();
     fireEvent.click(screen.getByTestId("celula-rfi-UTG"));
     const modal = await screen.findByTestId("matriz-UTG");
