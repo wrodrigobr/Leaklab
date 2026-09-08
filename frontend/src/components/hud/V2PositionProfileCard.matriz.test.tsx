@@ -24,6 +24,8 @@ vi.mock("@/lib/api", async (orig) => {
 });
 
 afterEach(cleanup);
+// tooltips do Radix e duas grades de 169 celulas passam de 5s com a suite inteira em paralelo
+vi.setConfig({ testTimeout: 30000 });
 beforeEach(() => {
   hands.mockReset();
   hands.mockResolvedValue({

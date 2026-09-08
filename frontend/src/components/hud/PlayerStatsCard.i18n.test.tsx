@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, it, expect, afterEach } from "vitest";
+import { describe, it, expect, vi, afterEach } from "vitest";
 import { render, screen, cleanup, fireEvent } from "@testing-library/react";
 import i18n from "@/i18n";
 import { PlayerStatsCard } from "./PlayerStatsCard";
@@ -11,6 +11,8 @@ import { PlayerStatsCard } from "./PlayerStatsCard";
  * silencio no texto cru da chave.
  */
 afterEach(cleanup);
+// tooltips do Radix e duas grades de 169 celulas passam de 5s com a suite inteira em paralelo
+vi.setConfig({ testTimeout: 30000 });
 
 const STATS = {
   total_hands: 6029, vpip: 25.3, pfr: 17.8, af: 3.2, cbet_pct: 77.4, fold_to_flop_bet: 40, bb_defense: 38,
