@@ -84,6 +84,9 @@ SEM_FILTRO_DA_TELA = {
 
 #: Data de UPLOAD e a resposta certa. Cada uma com o motivo — sem motivo, nao entra.
 PRESENCA_OU_ADMIN = {
+    'get_aproveitamento_do_solver':
+        'card do ADMIN (AY-28): quanto do acervo de nos e reaproveitado quando um torneio ENTRA; '
+        'o eixo certo e a data de import, porque a pergunta e sobre o upload, nao sobre o jogo.',
     'get_evolution_metrics':
         'o ramo default e o CHECK DE PRESENCA de dados do plano de estudos: torneio jogado ha '
         '>90 dias e importado agora tem de contar como "ha dado novo" (nota na propria funcao). '

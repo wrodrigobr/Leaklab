@@ -149,6 +149,8 @@ _P3_ACEITOS = {
     # (AY-13 fechado em 06/09: `get_player_dna` e `pos_bucket` passaram a usar `grupo_posicional`.)
     ('_build_tournament_filter', 'database/repositories.py', 'get_evolution_metrics'):
         'PRESENCA de dados (ver test_eixo_de_tempo): o ramo default e o check do plano de estudos.',
+    ('_build_tournament_filter', 'database/repositories.py', 'get_aproveitamento_do_solver'):
+        'card do ADMIN sobre TODOS os usuarios (AY-28), por data de import; o helper e por usuario e por jogo.',
 }
 
 
