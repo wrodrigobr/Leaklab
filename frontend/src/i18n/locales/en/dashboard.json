@@ -399,10 +399,13 @@
     "tip": {
       "formula": "Formula",
       "you": "You",
-      "ref": "MTT ref"
+      "ref": "MTT ref",
+      "solverSeats": "Solver, in your seats and stacks",
+      "solverSeatsNote": "Average of what the solver would open in the {{n}} times you had an unopened pot (covers {{pct}}%). An aggregate can hide a wrong seat: see the Position profile.",
+      "solverSeatsNone": "No reference: the solver covers less than 70% of your opportunities. See the Position profile."
     },
     "tendenciaDirecional": "Directional trend vs the MTT benchmark",
-    "hudResumo": "Tactical indicators of your playing profile. Row 1: VPIP, PFR, AF, C-Bet. Row 2: Fold to 3BET, WTSD, 3BET%, W$SD. Row 3: Fold vs Flop Bet (FtCB proxy), BB Defense, Steal%, Open Limp%.",
+    "hudResumo": "Your playing profile in three rows: preflop initiative (VPIP, PFR, RFI, 3-Bet), preflop situations (Fold to 3-Bet, Steal, Open Limp, BB Defense) and postflop (C-Bet, Fold vs Bet, WTSD, W$SD).",
     "amostra": {
       "baixaLabel": "Small sample",
       "baixaTooltip": "{{n}} hands, wide confidence interval (over ±10pp on VPIP/PFR). With a small sample the numbers are DIRECTIONAL: they show the trend (more tight/loose/passive), not exact values, and a few points either way do not change the read. Aim for 200+ hands for a reliable read; 1000+ for benchmarking.",
@@ -418,7 +421,8 @@
     "cbetSplitNote": "Heads-up pots on the flop only; with two or more opponents it counts in neither. The reference is what the solver would do in each of your spots (P20–P80 of its bet frequency).",
     "cbetSolver": "Solver, in your spots",
     "cbetSolverNone": "no reference (solver covers {{pct}}% of spots)",
-    "cbetSolverCoverage": "· covers {{pct}}%"
+    "cbetSolverCoverage": "· covers {{pct}}%",
+    "refSolver": "Solver {{range}}"
   },
   "dna": {
     "title": "Strategic Profile",

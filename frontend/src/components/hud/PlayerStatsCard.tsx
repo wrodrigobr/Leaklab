@@ -18,6 +18,8 @@ interface PlayerStats {
   cbet_oop_opp?: number;
   cbet_ip_ref?: SolverRef | null;
   cbet_oop_ref?: SolverRef | null;
+  rfi?: number | null;
+  rfi_ref?: SolverRef | null;
   cbet_ip_cobertura?: number;
   cbet_oop_cobertura?: number;
   fold_to_3bet: number | null;
@@ -53,6 +55,9 @@ interface StatDef {
   range: { min: number; max: number; label: string };
   /** chave em `docs:hud_defs.*`: a MESMA definicao e formula que a pagina /docs mostra */
   def: string;
+  /** campo de `stats` com a referencia do SOLVER (media nos assentos do jogador); quando presente,
+   *  ela substitui a faixa fixa e o flag do backend na cor, na barra e no rodape */
+  solverRef?: "rfi_ref";
   soon?: true;
 }
 
@@ -60,7 +65,10 @@ interface StatDef {
 // com razao. A referencia e a do solver nos PROPRIOS spots do jogador (AY-23), que vem do backend
 // com a cobertura; sem ela, numero e amostra, sem cor.
 
-// Row 1 — 4 fully computed stats
+// 07/09: as tres linhas agrupadas por RUA (iniciativa preflop, situacoes preflop, pos-flop).
+// O AF saiu: heranca de HUD de cash, mal correlacionado com decisao em MTT (avaliacao externa,
+// o dono concordou). O RFI entrou no lugar, com a referencia do SOLVER nos assentos do jogador.
+// Row 1 — preflop, iniciativa
 const ROW1: StatDef[] = [
   {
     key: "vpip",
@@ -77,36 +85,32 @@ const ROW1: StatDef[] = [
     def: "pfr",
   },
   {
-    key: "af",
-    label: "AF",
-    unit: "x",
-    range: { min: 2.0, max: 4.0, label: "2.0–4.0x" },
-    def: "af",
+    key: "rfi",
+    label: "RFI",
+    unit: "%",
+    // sem faixa fixa: a referencia vem do solver (`rfi_ref`); este range so serve de fallback
+    // para a barra quando o backend nao manda referencia (cobertura baixa)
+    range: { min: 15, max: 35, label: "15–35%" },
+    def: "rfi",
+    solverRef: "rfi_ref",
   },
   {
-    key: "cbet_pct",
-    label: "C-Bet",
+    key: "three_bet",
+    label: "3BET",
     unit: "%",
-    range: { min: 50, max: 75, label: "50–75%" },
-    def: "cbet",
+    range: { min: 4, max: 8, label: "4–8%" },
+    def: "three_bet",
   },
 ];
 
-// Row 3 — defense & positional stats
-const ROW3: StatDef[] = [
+// Row 2 — preflop, situacoes
+const ROW2: StatDef[] = [
   {
-    key: "fold_to_flop_bet",
-    label: "Fold vs Bet",
+    key: "fold_to_3bet",
+    label: "Fold to 3BET",
     unit: "%",
-    range: { min: 40, max: 55, label: "40–55%" },
-    def: "fold_to_flop_bet",
-  },
-  {
-    key: "bb_defense",
-    label: "BB Defense",
-    unit: "%",
-    range: { min: 35, max: 55, label: "35–55%" },
-    def: "bb_defense",
+    range: { min: 55, max: 72, label: "55–72%" },
+    def: "fold_to_3bet",
   },
   {
     key: "steal_pct",
@@ -122,16 +126,30 @@ const ROW3: StatDef[] = [
     range: { min: 0, max: 5, label: "0–5%" },
     def: "open_limp",
   },
+  {
+    key: "bb_defense",
+    label: "BB Defense",
+    unit: "%",
+    range: { min: 35, max: 55, label: "35–55%" },
+    def: "bb_defense",
+  },
 ];
 
-// Row 2 — 2 derived + 2 upcoming
-const ROW2: StatDef[] = [
+// Row 3 — pos-flop
+const ROW3: StatDef[] = [
   {
-    key: "fold_to_3bet",
-    label: "Fold to 3BET",
+    key: "cbet_pct",
+    label: "C-Bet",
     unit: "%",
-    range: { min: 55, max: 72, label: "55–72%" },
-    def: "fold_to_3bet",
+    range: { min: 50, max: 75, label: "50–75%" },
+    def: "cbet",
+  },
+  {
+    key: "fold_to_flop_bet",
+    label: "Fold vs Bet",
+    unit: "%",
+    range: { min: 40, max: 55, label: "40–55%" },
+    def: "fold_to_flop_bet",
   },
   {
     key: "wtsd",
@@ -139,13 +157,6 @@ const ROW2: StatDef[] = [
     unit: "%",
     range: { min: 25, max: 35, label: "25–35%" },
     def: "wtsd",
-  },
-  {
-    key: "three_bet",
-    label: "3BET",
-    unit: "%",
-    range: { min: 4, max: 8, label: "4–8%" },
-    def: "three_bet",
   },
   {
     key: "w_at_sd",
@@ -181,14 +192,19 @@ const BAR_COLORS: Record<Status, string> = {
   na:     "bg-transparent",
 };
 
-function StatCell({ def, value, flag, compact, stats }: { def: StatDef; value: number | null; flag?: StatFlag; compact?: boolean; stats?: PlayerStats | null }) {
+function StatCell({ def, value: valueProp, flag, compact, stats }: { def: StatDef; value: number | null | undefined; flag?: StatFlag; compact?: boolean; stats?: PlayerStats | null }) {
   const { t } = useTranslation("dashboard");
+  const value = valueProp ?? null;      // stat ausente no payload (backend antigo) = sem numero, nao crash
   // Flag do backend (refs MTT corrigidas + gate de amostra) tem prioridade sobre o range
   // inline. above/below = tendência (warn, direcional — não "danger"); healthy = ok.
-  const status: Status = flag
+  // Referencia do solver (RFI): vale sobre a faixa fixa e sobre o flag do backend.
+  const solverRef = def.solverRef && stats ? (stats[def.solverRef] ?? null) : null;
+  const status: Status = solverRef && value != null
+    ? (value >= solverRef.lo && value <= solverRef.hi ? "ok" : "warn")
+    : flag
     ? (flag.band === "healthy" ? "ok" : flag.band === "low_sample" ? "na" : "warn")
     : getStatus(value, def.range, def.soon);
-  const { min, max } = def.range;
+  const { min, max } = solverRef ? { min: solverRef.lo, max: solverRef.hi } : def.range;
   const margin = (max - min) * 0.35;
   const lo = min - margin;
   const hi = max + margin;
@@ -202,7 +218,9 @@ function StatCell({ def, value, flag, compact, stats }: { def: StatDef; value: n
   const displayValue = value !== null && !def.soon
     ? def.unit === "x" ? `${value.toFixed(1)}x` : `${value.toFixed(1)}%`
     : "—";
-  const refLabel = flag?.healthy ? `${flag.healthy[0]}–${flag.healthy[1]}${def.unit === "x" ? "x" : "%"}` : def.range.label;
+  const refLabel = solverRef
+    ? `${solverRef.lo}–${solverRef.hi}%`
+    : flag?.healthy ? `${flag.healthy[0]}–${flag.healthy[1]}${def.unit === "x" ? "x" : "%"}` : def.range.label;
 
   /* Tooltip estruturado para TODOS os stats (dono, 07/09: "o mesmo padrao do C-Bet"), no
      formato do perfil por posicao: cabecalho, a definicao, a formula, e as linhas "Voce" e
@@ -222,9 +240,14 @@ function StatCell({ def, value, flag, compact, stats }: { def: StatDef; value: n
         <b className={cn("font-mono text-xs tabular-nums", STATUS_COLORS[status])}>{displayValue}</b>
       </div>
       <div className="flex items-baseline justify-between gap-3 py-0.5">
-        <span className="text-[11px] text-muted-foreground">{t("playerStats.tip.ref")}</span>
+        <span className="text-[11px] text-muted-foreground">{solverRef ? t("playerStats.tip.solverSeats") : t("playerStats.tip.ref")}</span>
         <span className="font-mono text-xs tabular-nums text-foreground">{refLabel}</span>
       </div>
+      {def.solverRef && (
+        <p className="mt-1 text-[10px] leading-snug text-muted-foreground/80" data-testid="rfi-por-assento">
+          {solverRef ? t("playerStats.tip.solverSeatsNote", { n: solverRef.n ?? 0, pct: solverRef.cobertura ?? 0 }) : t("playerStats.tip.solverSeatsNone")}
+        </p>
+      )}
       {def.key === "cbet_pct" && stats && (
         <>
           <div className="my-2 h-px bg-border" />
@@ -319,7 +342,7 @@ function StatCell({ def, value, flag, compact, stats }: { def: StatDef; value: n
         "font-mono text-[9px] uppercase tracking-widest",
         def.soon ? "text-muted-foreground/50" : "text-muted-foreground/60"
       )}>
-        {t("playerStats.refMtt", { range: refLabel })}
+        {solverRef ? t("playerStats.refSolver", { range: refLabel }) : t("playerStats.refMtt", { range: refLabel })}
       </span>
     </div>
   );

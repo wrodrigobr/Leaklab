@@ -545,6 +545,32 @@ def test_hud_traz_a_referencia_do_solver_de_cbet_por_spot_e_por_lado():
     assert h['cbet_ip_ref'] is None and h['cbet_ip_cobertura'] == 33 and h['cbet_ip_opp'] == 3
 
 
+def test_referencia_rfi_media_e_a_media_do_chart_nas_oportunidades_com_folga():
+    """RFI no HUD (07/09): media do que o solver abriria em cada oportunidade (assento do chart
+    x stack), 2 desvios binomiais de folga (piso 2pp), None abaixo de 70% de cobertura."""
+    from leaklab.preflop_gto_ranges import referencia_rfi_media, balde_rfi, rfi_pct_do_chart, FOLGA_MINIMA_PP
+    ops = [('UTG', 40)] * 50 + [('BTN', 40)] * 50
+    r = referencia_rfi_media(ops)
+    esperado = (rfi_pct_do_chart('UTG', balde_rfi(40)) + rfi_pct_do_chart('BTN', balde_rfi(40))) / 2
+    assert r['tipo'] == 'media' and r['n'] == 100 and r['cobertura'] == 100
+    assert abs((r['lo'] + r['hi']) / 2 - esperado) < 0.11, (r, esperado)
+    assert r['folga'] >= FOLGA_MINIMA_PP and abs((r['hi'] - r['lo']) - 2 * r['folga']) < 0.11, r
+    # stack ausente nao entra; com 6 de 10 cobertas (60% < 70%) nao ha referencia
+    assert referencia_rfi_media([('UTG', 40)] * 6 + [('UTG', None)] * 4) is None
+    assert referencia_rfi_media([('UTG', 40)] * 8 + [('UTG', None)] * 2)['cobertura'] == 80
+    assert referencia_rfi_media([]) is None
+
+
+def test_o_hud_traz_rfi_ref_pela_media_e_a_grade_continua_por_assento():
+    uid = _semeia([_m('UTG', 'raise' if i % 5 == 0 else 'fold', effective_stack_bb=40, hand_id='U%d' % i) for i in range(50)]
+                  + [_m('BTN', 'raise' if i % 2 == 0 else 'fold', effective_stack_bb=40, hand_id='B%d' % i) for i in range(50)])
+    h = get_player_stats(uid, days=3650, last_n=0)
+    assert h['rfi'] == 35.0 and h['rfi_ref']['tipo'] == 'media' and h['rfi_ref']['n'] == 100, (h['rfi'], h['rfi_ref'])
+    from leaklab.preflop_gto_ranges import referencia_rfi_media
+    assert h['rfi_ref'] == referencia_rfi_media([('UTG', 40)] * 50 + [('BTN', 40)] * 50)
+    assert get_player_stats(uid, days=3650, last_n=0, position='BB')['rfi_ref'] is None      # BB nao tem RFI
+
+
 def test_celula_vazia_do_chart_e_sem_carta_nao_zero():
     """`40bb vs_3bet UTG+1 vs BTN` veio vazio da captura (0 maos, tudo 0). Zero nao e resposta:
     a regua do fold ao 3-bet virava 0-3. Celula vazia devolve None em todos os leitores."""

@@ -5,6 +5,27 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## HUD: o RFI entra, o AF sai, tres linhas por rua (07/09, LOCAL)
+
+- Sugestao do Rullian (RFI no HUD) e avaliacao externa (AF e heranca de HUD de cash, mal
+  correlacionado com decisao em MTT; o agregado esconde leak). O dono: "se removermos o AF,
+  teremos 12 indicadores e a distribuicao dos boxes fica mais normalizada" e "vamos
+  implementar o rfi".
+- Linhas por rua: iniciativa preflop (VPIP, PFR, RFI, 3-Bet), situacoes preflop (Fold to
+  3-Bet, Steal, Open Limp, BB Defense), pos-flop (C-Bet, Fold vs Bet, WTSD, W$SD).
+- Referencia do RFI = `referencia_rfi_media`: MEDIA do que o solver abriria em cada
+  oportunidade do jogador (assento do chart x stack), 2 desvios binomiais de folga, None
+  abaixo de 70% de cobertura. Nao e a faixa P20-P80 do RFI por assento: no HUD o RFI mistura
+  assentos e a faixa daria 17-40. No Rullian: 26,0-30,0 contra 26,9. O tooltip diz que um
+  agregado pode esconder assento errado e manda para o Perfil por posicao (AY-25 leva isso
+  adiante: "N de M assentos fora").
+- Guardas: teste da media (chart UTG+BTN, folga, cobertura), HUD `rfi_ref` igual a funcao,
+  BB sem RFI; quebrado de proposito (rfi_ref sempre None), 1 acusa. Front: AF ausente, 12
+  rotulos, tooltip do RFI com "Solver, nos seus assentos e stacks", sem referencia quando a
+  cobertura e baixa. Stat ausente no payload (backend antigo) vira "sem numero", nao crash.
+
+---
+
 ## Homologacao em Postgres (07/09): linha de banco por NOME, nunca por indice
 
 - Sem Docker nesta maquina, a homologacao rodou no host: a imagem do release contra um

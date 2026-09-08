@@ -460,6 +460,37 @@ def referencia_cbet(spots) -> dict:
     return {'ref': _faixa_dos_charts(valores), 'cobertura': cobertura, 'n': n}
 
 
+def referencia_rfi_media(oportunidades) -> Optional[dict]:
+    """Referencia do RFI AGREGADO (o HUD, 07/09): MEDIA do que o solver abriria em cada
+    oportunidade do jogador, com folga estatistica (2 desvios binomiais, piso FOLGA_MINIMA_PP).
+
+    `oportunidades` = [(pos_chart, stack_bb)], uma por vez que o jogador agiu com o pote intacto.
+    Por que media e nao a faixa P20-P80 (a regra do RFI por assento): no HUD o RFI mistura
+    assentos, e o solver abre 17% do UTG e 45% do BTN; a faixa dessas oportunidades da 17-40 e
+    nao diz nada. A pergunta do agregado e "nos assentos e stacks em que voce esteve, quanto o
+    solver abriria?", e isso e uma media. A avaliacao externa de 07/09 esta certa: um agregado
+    na media pode esconder assentos errados; por isso o tooltip manda para a grade por assento.
+    Devolve None abaixo de COBERTURA_MINIMA_VPIP_PFR.
+    """
+    import math
+    total = len(oportunidades)
+    vals = []
+    for pc, s in oportunidades:
+        if s is None or float(s) <= 0:
+            continue
+        v = rfi_pct_do_chart(pc, balde_rfi(float(s)))
+        if v is not None:
+            vals.append(v)
+    n = len(vals)
+    cobertura = round(n * 100.0 / total) if total else 0
+    if not n or n < total * COBERTURA_MINIMA_VPIP_PFR:
+        return None
+    media = sum(vals) / n
+    folga = max(FOLGA_MINIMA_PP, 2 * math.sqrt(media / 100 * (1 - media / 100) / n) * 100)
+    return {'lo': round(max(0.0, media - folga), 1), 'hi': round(min(100.0, media + folga), 1),
+            'folga': round(folga, 1), 'pesos': {}, 'cobertura': cobertura, 'tipo': 'media', 'n': n}
+
+
 def referencia_vpip_pfr_por_assento(pos: str, maos) -> dict:
     """Referencia de VPIP e PFR de um assento = MEDIA do que o solver faria nas maos do jogador
     ali, com folga ESTATISTICA (06/09, AY-15 fase 3).

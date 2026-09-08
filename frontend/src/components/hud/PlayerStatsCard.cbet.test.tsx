@@ -26,6 +26,8 @@ const STATS = {
   cbet_ip_ref: { lo: 48.9, hi: 88.5, folga: 3, pesos: { "20-40 vs BB": 100 }, cobertura: 86 },
   cbet_oop_ref: { lo: 60.0, hi: 80.0, folga: 3, pesos: { "20-40 vs BB": 100 }, cobertura: 100 },
   cbet_ip_cobertura: 86, cbet_oop_cobertura: 100,
+  // RFI no HUD (07/09): referencia do solver = media nos assentos e stacks do jogador
+  rfi: 26.9, rfi_ref: { lo: 26.0, hi: 30.0, folga: 2, pesos: {}, cobertura: 100, tipo: "media", n: 12460 },
   flags: { vpip: { band: "above", flag: "loose", healthy: [18, 24] } },
 };
 
@@ -52,7 +54,7 @@ describe("tooltip estruturado do HUD", () => {
 
   it("cada stat le a SUA definicao (a chave do hud_defs, nao a do card)", async () => {
     const pares: [string, string, string][] = [
-      ["AF", "tooltip-af", "af"], ["Fold vs Bet", "tooltip-fold_to_flop_bet", "fold_to_flop_bet"],
+      ["RFI", "tooltip-rfi", "rfi"], ["Fold vs Bet", "tooltip-fold_to_flop_bet", "fold_to_flop_bet"],
       ["Fold to 3BET", "tooltip-fold_to_3bet", "fold_to_3bet"], ["W$SD", "tooltip-w_at_sd", "w_at_sd"],
     ];
     for (const [rotulo, testid, chave] of pares) {
@@ -64,11 +66,24 @@ describe("tooltip estruturado do HUD", () => {
     }
   });
 
-  it("AF mostra a unidade x e a faixa inline quando o backend nao manda flag", async () => {
+  it("o AF saiu do HUD e o RFI entrou, com a referencia do solver nos assentos do jogador", async () => {
     render(<PlayerStatsCard stats={STATS as never} v2 />);
-    const tip = await abre("AF", "tooltip-af");
-    expect(tip.textContent).toContain("3.2x");
-    expect(tip.textContent).toContain("2.0–4.0x");
+    expect(screen.queryByText("AF")).toBeNull();
+    expect(screen.getAllByText(/Fold to 3BET|Steal|Open Limp|BB Defense|C-Bet|Fold vs Bet|WTSD|W\$SD|VPIP|PFR|RFI|3BET/)).toHaveLength(12);
+    const tip = await abre("RFI", "tooltip-rfi");
+    expect(tip.textContent).toContain("playerStats.tip.solverSeats");
+    expect(tip.textContent).toContain("26–30%");
+    expect(tip.textContent).toContain("playerStats.tip.solverSeatsNote:12460,100");   // n e cobertura
+    expect(tip.textContent).not.toContain("playerStats.tip.ref");                       // nao e a faixa fixa
+    // o rodape da celula diz Solver, e o numero esta dentro (26,9 em 26-30): cor ok (primary)
+    expect(screen.getAllByText("playerStats.refSolver:26–30%").length).toBeGreaterThan(0);
+  });
+
+  it("RFI sem referencia do solver (cobertura baixa): numero sem veredito e o tooltip diz por que", async () => {
+    render(<PlayerStatsCard stats={{ ...STATS, rfi: 40, rfi_ref: null } as never} v2 />);
+    const tip = await abre("RFI", "tooltip-rfi");
+    expect(tip.textContent).toContain("playerStats.tip.solverSeatsNone");
+    expect(screen.queryByText(/playerStats.refSolver/)).toBeNull();
   });
 
   it("o C-Bet acrescenta IP e OOP com a amostra e a referencia do SOLVER nos proprios spots", async () => {

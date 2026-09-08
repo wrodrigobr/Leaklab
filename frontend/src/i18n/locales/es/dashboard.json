@@ -399,10 +399,13 @@
     "tip": {
       "formula": "Fórmula",
       "you": "Tú",
-      "ref": "Ref MTT"
+      "ref": "Ref MTT",
+      "solverSeats": "Solver, en tus asientos y stacks",
+      "solverSeatsNote": "Promedio de lo que el solver abriría en las {{n}} veces que tuviste el bote sin abrir (cubre {{pct}}%). Un agregado puede esconder un asiento errado: mira el Perfil por posición.",
+      "solverSeatsNone": "Sin referencia: el solver cubre menos del 70% de tus oportunidades. Mira el Perfil por posición."
     },
     "tendenciaDirecional": "Tendencia direccional vs la referencia MTT",
-    "hudResumo": "Indicadores tácticos de tu perfil de juego. Row 1: VPIP, PFR, AF, C-Bet. Row 2: Fold to 3BET, WTSD, 3BET%, W$SD. Row 3: Fold vs Flop Bet (proxy FtCB), BB Defense, Steal%, Open Limp%.",
+    "hudResumo": "Indicadores de tu perfil de juego, en tres filas: iniciativa preflop (VPIP, PFR, RFI, 3-Bet), situaciones preflop (Fold to 3-Bet, Steal, Open Limp, BB Defense) y postflop (C-Bet, Fold vs Bet, WTSD, W$SD).",
     "amostra": {
       "baixaLabel": "Muestra baja",
       "baixaTooltip": "{{n}} manos, intervalo de confianza amplio (más de ±10pp en VPIP/PFR). Con poca muestra los números son DIRECCIONALES: indican la tendencia (más tight/loose/pasivo), no valores exactos, y unos pocos puntos no cambian el read. Apunta a 200+ manos para una lectura confiable; 1000+ para benchmarking.",
@@ -418,7 +421,8 @@
     "cbetSplitNote": "Solo botes heads-up en el flop; con dos o más rivales no entra en ninguno de los dos. La referencia es lo que el solver haría en cada uno de tus spots (P20–P80 de su frecuencia de apuesta).",
     "cbetSolver": "Solver, en tus spots",
     "cbetSolverNone": "sin referencia (el solver cubre {{pct}}% de los spots)",
-    "cbetSolverCoverage": "· cubre {{pct}}%"
+    "cbetSolverCoverage": "· cubre {{pct}}%",
+    "refSolver": "Solver {{range}}"
   },
   "dna": {
     "title": "Perfil Estratégico",

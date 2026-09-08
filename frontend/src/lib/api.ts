@@ -992,6 +992,8 @@ export interface PositionStatRef {
   tipo?: "media";
   /** so em 'media': o VPIP/PFR do proprio jogador nas maos COM carta, para comparar igual com igual */
   valor_coberto?: number;
+  /** so em 'media' do RFI do HUD: quantas oportunidades entraram na media */
+  n?: number;
 }
 
 export interface PositionStatCell {
@@ -1076,6 +1078,8 @@ export interface PlayerStatsResponse {
    *  da range; null abaixo do piso de cobertura. `*_cobertura` = % dos spots com solve */
   cbet_ip_ref?: PositionStatRef | null;
   cbet_oop_ref?: PositionStatRef | null;
+  /** referencia do solver do RFI agregado: media nos assentos e stacks do jogador (tipo 'media') */
+  rfi_ref?: PositionStatRef | null;
   cbet_ip_cobertura?: number;
   cbet_oop_cobertura?: number;
   fold_to_3bet: number | null;

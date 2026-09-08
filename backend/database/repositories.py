@@ -2442,10 +2442,14 @@ GRUPOS_TARDE = ('CO', 'BTN')
 #: A grade AGRUPADA (AY-21, 07/09; o Rullian: o PT4 junta tudo antes do CO em EP e MP). Um grupo
 #: e a UNIAO das linhas dos assentos: stats e referencias saem das mesmas linhas, nao de media
 #: de medias. Derivado de `grupo_posicional`, para nao nascer um 2o mapa.
-GRUPOS_DA_GRADE = {}
-for _p in POSICOES_NA_ORDEM:
-    GRUPOS_DA_GRADE.setdefault(grupo_posicional(_p), []).append(_p)
-GRUPOS_DA_GRADE = {k: tuple(v) for k, v in GRUPOS_DA_GRADE.items()}
+def _grupos_da_grade() -> dict:
+    grupos: dict = {}
+    for _p in POSICOES_NA_ORDEM:
+        grupos.setdefault(grupo_posicional(_p), []).append(_p)
+    return {k: tuple(v) for k, v in grupos.items()}
+
+
+GRUPOS_DA_GRADE = _grupos_da_grade()
 
 # O que a grade mostra em CADA célula, e o que só aparece quando o assento tem volume.
 # Medido em prod 04/09: com o corte de amostra atual, a grade completa do PT4 só funciona
@@ -2497,6 +2501,7 @@ _FORA_DA_GRADE_SEM_CHART = {
     'w_at_sd': 'postflop: sem referência por assento', 'bb_defense': 'só BB; a régua do HUD é do jogo inteiro',
     'steal_pct': 'é o RFI de BTN/CO/SB; a grade já mostra RFI por assento',
     'open_limp_pct': 'sem carta de limp fora do SB',
+    'rfi_ref': 'referência do solver do RFI agregado (media nos assentos do jogador); só o HUD lê, a grade tem a dela por assento',
     'cbet_ip_ref': 'referência do solver do C-Bet IP (AY-23); vive no tooltip do HUD, junto do número',
     'cbet_oop_ref': 'referência do solver do C-Bet OOP (AY-23); vive no tooltip do HUD, junto do número',
     'cbet_ip_cobertura': 'cobertura da referência do C-Bet IP; só o tooltip do HUD lê',
@@ -3138,6 +3143,16 @@ def get_player_stats(user_id: int, days: int = 90, last_n: int | None = None,
             WHERE {tf}
               AND d.street = 'preflop' AND {_SQL_OPORTUNIDADE['rfi']}
         """), tp).fetchone()
+        # Referencia do RFI no HUD (07/09): media do que o solver abriria em CADA oportunidade,
+        # pelo assento do CHART (distancia ao botao) e pelo stack da vez. Por nome, nao indice.
+        from leaklab.preflop_gto_ranges import referencia_rfi_media
+        rfi_ref = referencia_rfi_media([(r['pos_chart'], r['stack']) for r in conn.execute(_adapt(f"""
+            SELECT {sql_assento_chart()} AS pos_chart, d.effective_stack_bb AS stack
+            FROM decisions d
+            JOIN tournaments t ON t.id = d.tournament_id
+            WHERE {tf}
+              AND d.street = 'preflop' AND {_SQL_OPORTUNIDADE['rfi']}
+        """), tp).fetchall()])
 
         # ── Fold to 3-Bet do OPEN: o jogador abriu e levou 3-bet (06/09, fase 2) ─────────
         # O `fold_to_3bet` acima e o do PT4 e conta 3-bet a frio (BB enfrentando open + 3-bet
@@ -3226,6 +3241,7 @@ def get_player_stats(user_id: int, days: int = 90, last_n: int | None = None,
             'steal_pct':        round(steal_n / steal_t * 100, 1)     if steal_t > 0     else None,
             'open_limp_pct':    round(limp_n / limp_t * 100, 1)       if limp_t > 0      else None,
             'rfi':              round(rfi_n / rfi_t * 100, 1)         if rfi_t > 0       else None,
+            'rfi_ref':          rfi_ref if rfi_t > 0 else None,
             'fold_to_3bet':     round(f3bo_n / f3bo_t * 100, 1)      if f3bo_t > 0      else None,
             # C-Bet IP / OOP: heads-up no flop; a amostra vai junto para o tooltip
             'cbet_ip':          round(cbet_ip_n / cbet_ip_opp * 100, 1)   if cbet_ip_opp > 0  else None,
