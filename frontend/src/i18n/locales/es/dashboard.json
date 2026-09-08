@@ -1018,7 +1018,7 @@
       "description": "Dos cuadrículas: las manos que abriste desde este asiento y lo que el solver abriría con las mismas manos y stacks; debajo, las mayores divergencias.",
       "open": "Ver manos abiertas",
       "opps": "{{n}} veces con el bote sin abrir",
-      "solver": "Solver, en tus manos",
+      "solver": "Solver",
       "opened": "abriste {{pct}}%",
       "wouldOpen": "abriría {{pct}}%",
       "noChart": "sin carta para este recorte",
