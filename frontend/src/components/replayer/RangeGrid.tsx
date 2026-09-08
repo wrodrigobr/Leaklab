@@ -142,7 +142,10 @@ export function RangeGrid({ range, heroHand, compacta = false, semDado, rotuloSe
             </span>
           )}
         </div>
-        <span>{pct}% · {combos} combos</span>
+        {/* Na matriz do perfil (compacta) o "% de combos" contradiz o cabecalho: la o numero e a
+            frequencia nas vezes em que a mao FOI recebida, aqui e combos de celulas com raise.
+            Dois numeros para "quanto abre" na mesma tela confundem (dono, 08/09). */}
+        {!compacta && <span>{pct}% · {combos} combos</span>}
       </div>
 
       {/* Legenda de LEITURA da grade, não de cores.
