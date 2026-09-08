@@ -89,6 +89,7 @@ SUITES = {
                   'test_limite_de_upload.py',
                   'test_linha_de_banco_por_nome.py',
                   'test_copy_dos_planos_bate_com_os_limites.py',
+                  'test_matriz_de_abertura.py',
                   'test_assento_pela_distancia_ao_botao.py',
                   'test_ritual_da_sessao.py',
                   'test_equity_flop_turn.py',

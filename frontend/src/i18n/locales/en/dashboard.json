@@ -1009,9 +1009,28 @@
     },
     "above": "above the solver",
     "below": "below the solver",
-    "clickable": "3-Bet and Fold 3-Bet (underlined) open the per-opponent detail on click.",
+    "clickable": "RFI, 3-Bet and Fold 3-Bet (underlined) open the detail on click: the opened hands for RFI, the opponent for the other two.",
     "view": "View",
     "detailed": "By seat",
-    "grouped": "Grouped"
+    "grouped": "Grouped",
+    "matrix": {
+      "title": "Hands opened from {{pos}}, against the solver",
+      "description": "Two grids: the hands you opened from this seat and what the solver would open with the same hands and stacks; below, the largest divergences.",
+      "open": "See opened hands",
+      "opps": "{{n}} times with an unopened pot",
+      "solver": "Solver, same hands and stacks",
+      "opened": "opened {{pct}}%",
+      "wouldOpen": "would open {{pct}}%",
+      "noChart": "no chart for this cut",
+      "legendYou": "Cell shade = how often you opened with the hand. Grey = never dealt or never opened.",
+      "legendSolver": "Cell shade = the chart\\u2019s opening frequency, at your stacks. Covers {{pct}}% of your hands.",
+      "divergences": "Where you diverge most (hands with {{n}}+ occurrences)",
+      "noDivergence": "No hand with {{n}}+ occurrences sits {{pp}} points or more from the solver.",
+      "hand": "Hand",
+      "times": "Times",
+      "diff": "Difference",
+      "note": "The total can match the solver while the composition does not: that is what the matrix shows and the cell hides.",
+      "study": "Study this range"
+    }
   }
 }

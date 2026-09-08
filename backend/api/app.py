@@ -1650,6 +1650,26 @@ def player_stats_by_position_detail():
                                             last_n=_last_n_da_query(), stack_band=stack))
 
 
+@app.route('/metrics/player-stats/by-position/hands', methods=['GET'])
+@require_auth
+def player_stats_by_position_hands():
+    """Matriz 13x13 das maos abertas de um assento (ou grupo), contra o solver (AY-15 c).
+    Mesmo gate da grade (Pro). A BB nao abre pote: 400, como o n/a da grade."""
+    gate = _check_stats_by_position(g.user_id)
+    if gate:
+        return gate
+    from database.repositories import POSICOES_NA_ORDEM, GRUPOS_DA_GRADE, get_position_open_matrix
+    position = (request.args.get('position') or '').strip()
+    validas = tuple(p for p in POSICOES_NA_ORDEM if p != 'BB') + tuple(gr for gr in GRUPOS_DA_GRADE if gr != 'BB')
+    if position not in validas:
+        return jsonify({'error': 'position invalida (a BB nao tem RFI)', 'positions': list(validas)}), 400
+    stack, erro = _faixa_de_stack_da_query()
+    if erro:
+        return erro
+    return jsonify(get_position_open_matrix(g.user_id, position, int(request.args.get('days', 90)),
+                                            last_n=_last_n_da_query(), stack_band=stack))
+
+
 def _faixa_de_stack_da_query():
     """`?stack=` do perfil por posicao: uma das `FAIXAS_DE_STACK` ou nada (= todos).
     Faixa desconhecida e 400, nao silencio: devolver "todos" para um filtro que o cliente

@@ -5,6 +5,33 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## AY-15 c: matriz 13x13 das maos abertas por assento, voce x solver (08/09, LOCAL)
+
+- Sugestao do Rullian ("o conjunto de maos que voce abriu de cada posicao"); rascunho
+  aprovado em 07/09. A celula RFI do Perfil por posicao passa a abrir um modal com DUAS grades
+  (a mesma `RangeGrid` de /ranges): as maos que voce abriu daquele assento e o que o solver
+  abriria com as mesmas maos, nos mesmos stacks; embaixo, as maiores divergencias (maos com
+  8+ ocorrencias e 30+ pontos de distancia). Herda o assento (ou grupo EP/MP) e a faixa de
+  stack da grade; botao "Estudar esta range" leva a /ranges.
+- Backend `get_position_open_matrix`: uma linha por oportunidade de RFI (a MESMA definicao do
+  HUD e da grade), mao canonica por `_canon_hand`, frequencia da carta do assento do CHART na
+  profundidade da vez (`villain_open_range`, a range que o motor ja usa para o vilao). O
+  total (`voce_pct`) conta toda oportunidade, com carta legivel ou nao, para bater com a
+  celula RFI da grade; mao ilegivel fica fora das celulas e da cobertura. Endpoint
+  `/metrics/player-stats/by-position/hands`, gate Pro, BB recusada (nao tem RFI).
+- Conferido no dev com a copia do Rullian: UTG 3.690 oportunidades, voce 17,2 contra solver
+  18,5, cobertura 98%; divergencias T9s (44% contra 100%), J9s, K8s, Q9s, K7s. Os numeros do
+  rascunho, agora vindos do endpoint.
+- Guardas: 4 testes de backend (celulas e resumo = RFI da grade, divergencias com amostra e
+  distancia, grupo/faixa/sem stack/chart pela distancia ao botao, endpoint); quebrado de
+  proposito (toda mao contando como aberta): 3 acusam. Frontend: 3 testes (RFI clicavel abre
+  a matriz no recorte da grade com as duas grades e a lista; BB sem matriz; sem carta o
+  lado do solver diz isso).
+- Por que modal e nao item de menu: a matriz so faz sentido com assento e stack escolhidos,
+  e a leitura que importa ("o total bate com o solver, a composicao nao") so aparece ao lado
+  da celula.
+
+---
 ## Landing: o FAQ dizia "2 torneios por mes" no Free; o backend da 30 (08/09)
 
 - O card do plano foi atualizado em 28/08 (2 -> 30) e o FAQ (q5/a5) nao, nos 3 idiomas. Achado

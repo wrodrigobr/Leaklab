@@ -1009,9 +1009,28 @@
     },
     "above": "por encima del solver",
     "below": "por debajo del solver",
-    "clickable": "3-Bet y Fold 3-Bet (subrayados) abren el detalle por rival al hacer clic.",
+    "clickable": "RFI, 3-Bet y Fold 3-Bet (subrayados) abren el detalle al hacer clic: las manos abiertas en el RFI, el rival en los otros dos.",
     "view": "Vista",
     "detailed": "Por asiento",
-    "grouped": "Agrupado"
+    "grouped": "Agrupado",
+    "matrix": {
+      "title": "Manos abiertas desde {{pos}}, contra el solver",
+      "description": "Dos cuadrículas: las manos que abriste desde este asiento y lo que el solver abriría con las mismas manos y stacks; debajo, las mayores divergencias.",
+      "open": "Ver manos abiertas",
+      "opps": "{{n}} veces con el bote sin abrir",
+      "solver": "Solver, mismas manos y stacks",
+      "opened": "abriste {{pct}}%",
+      "wouldOpen": "abriría {{pct}}%",
+      "noChart": "sin carta para este recorte",
+      "legendYou": "Color de la celda = con qué frecuencia abriste con la mano. Gris = nunca la recibiste o nunca abriste.",
+      "legendSolver": "Color de la celda = frecuencia de apertura de la carta, en tus stacks. Cubre {{pct}}% de tus manos.",
+      "divergences": "Donde más divergés (manos con {{n}}+ ocurrencias)",
+      "noDivergence": "Ninguna mano con {{n}}+ ocurrencias queda a {{pp}} puntos o más del solver.",
+      "hand": "Mano",
+      "times": "Veces",
+      "diff": "Diferencia",
+      "note": "El total puede coincidir con el solver y la composición no: eso es lo que la matriz muestra y la celda esconde.",
+      "study": "Estudiar esta range"
+    }
   }
 }

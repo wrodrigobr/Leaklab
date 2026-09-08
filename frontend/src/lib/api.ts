@@ -1028,6 +1028,23 @@ export interface PositionProfileResponse {
   total?: { total_hands: number } & Record<string, number | null>;
 }
 
+/** Uma celula da matriz de abertura: vezes que recebeu a mao, fracao em que abriu, e a
+ *  frequencia media com que a carta do solver abre a mesma mao nos mesmos stacks (null sem carta). */
+export interface PositionOpenCell { n: number; voce: number; solver: number | null }
+export interface PositionOpenDivergence { hand: string; n: number; voce: number; solver: number; delta: number }
+export interface PositionOpenMatrixResponse {
+  position: string;
+  stack_band: string | null;
+  n: number;
+  voce_pct: number | null;
+  solver_pct: number | null;
+  cobertura: number;
+  cells: Record<string, PositionOpenCell>;
+  divergencias: PositionOpenDivergence[];
+  minimo_maos: number;
+  divergencia_minima: number;
+}
+
 /** `?stack=` do perfil por posicao e do HUD: uma das `faixas` do backend, ou nada. */
 export type StackBand = "40+" | "20-40" | "<20";
 
@@ -2397,6 +2414,11 @@ export const metrics = {
   playerStatsByPositionDetail: (position: string, stat: string, days = 90, lastN?: number, stack?: StackBand | null) =>
     request<PositionDetailResponse>(
       `/metrics/player-stats/by-position/detail?position=${encodeURIComponent(position)}&stat=${encodeURIComponent(stat)}&days=${days}${lastN != null ? `&last_n=${lastN}` : ""}${stack ? `&stack=${encodeURIComponent(stack)}` : ""}`),
+
+  /** Matriz 13x13 das maos abertas de um assento (ou grupo), voce x solver (AY-15 c). */
+  playerStatsByPositionHands: (position: string, days = 90, lastN?: number, stack?: StackBand | null) =>
+    request<PositionOpenMatrixResponse>(
+      `/metrics/player-stats/by-position/hands?position=${encodeURIComponent(position)}&days=${days}${lastN != null ? `&last_n=${lastN}` : ""}${stack ? `&stack=${encodeURIComponent(stack)}` : ""}`),
 
   playerStatsByPosition: (days = 90, lastN?: number, stack?: StackBand | null, agrupado = false) =>
     request<PositionProfileResponse>(

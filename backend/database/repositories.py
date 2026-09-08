@@ -2890,6 +2890,96 @@ def get_position_stat_detail(user_id: int, position: str, stat: str, days: int =
             'minimo': MINIMO_DO_DETALHE, 'rows': linhas, 'total': total}
 
 
+#: Matriz de abertura (AY-15 c): uma mao entra na lista de divergencias com pelo menos este
+#: numero de ocorrencias e esta distancia entre a sua frequencia e a do solver.
+MINIMO_MAOS_DIVERGENCIA = 8
+DIVERGENCIA_MINIMA = 0.30
+
+
+def get_position_open_matrix(user_id: int, position: str, days: int = 90,
+                             last_n: int | None = None, stack_band: str | None = None) -> dict:
+    """As maos que o jogador ABRIU de um assento, contra o que o solver abriria com as mesmas
+    maos, nos mesmos stacks (07/09, AY-15 c; a sugestao do Rullian: "o conjunto de maos que
+    voce abriu de cada posicao").
+
+    Uma linha por oportunidade de RFI do assento (a MESMA `_SQL_OPORTUNIDADE['rfi']` do HUD e
+    da grade, o mesmo filtro de stack): a mao canonica (`_canon_hand`: 'AsKd' -> 'AKo'), se
+    abriu (`_SQL_RAISE_OU_JAM`), e a frequencia com que a carta do assento do CHART
+    (distancia ao botao) na profundidade da vez abre aquela mao (`villain_open_range`, a mesma
+    range que o motor usa para o vilao). Por celula: `n` (vezes que recebeu), `voce` (fracao
+    em que abriu), `solver` (media da frequencia da carta nas vezes em que havia carta, ou
+    None). O resumo e o RFI do recorte (bate com a celula da grade) e o RFI que o solver teria
+    com as mesmas maos; `cobertura` e a fracao das oportunidades com carta.
+
+    Por que "nas suas maos" e nao a carta inteira: o total pode bater com o solver e a
+    composicao nao (medido no acervo do Rullian, UTG: 17,2 contra 18,5 no total, mas T9s
+    aberto 44% onde o solver abre 100%). E isso que a matriz mostra e a celula esconde.
+    `divergencias` lista as maos com >= MINIMO_MAOS_DIVERGENCIA ocorrencias e distancia
+    >= DIVERGENCIA_MINIMA, da maior para a menor. Aceita grupo da grade (EP, MP) como assento.
+    """
+    from leaklab.street_math_engine import _canon_hand
+    from leaklab.preflop_gto_ranges import villain_open_range, balde_rfi_ou_none
+    tf, tp = _filtro_do_hud(user_id, days, last_n, position, stack_band)
+    conn = get_conn()
+    try:
+        rows = conn.execute(_adapt(f"""
+            SELECT d.hero_cards, CASE WHEN d.action_taken IN ({_SQL_RAISE_OU_JAM}) THEN 1 ELSE 0 END AS abriu,
+                   d.effective_stack_bb AS stack, {sql_assento_chart()} AS pos_chart
+            FROM decisions d
+            JOIN tournaments t ON t.id = d.tournament_id
+            WHERE {tf} AND d.street = 'preflop' AND {_SQL_OPORTUNIDADE['rfi']}
+        """), tp).fetchall()
+    finally:
+        conn.close()
+    cache: dict = {}
+    celulas: dict = {}
+    total = abriu_total = 0
+    chart_soma = 0.0; chart_n = 0
+    for r in rows:                                         # por NOME: no Postgres a linha e dict
+        # `n` e `voce_pct` contam TODA oportunidade, com carta legivel ou nao: e o mesmo
+        # denominador do RFI da grade, e o resumo tem de bater com a celula. Mao ilegivel
+        # fica fora das celulas e da cobertura, nunca do total.
+        total += 1
+        if r['abriu']:
+            abriu_total += 1
+        mao = _canon_hand(r['hero_cards'])
+        if not mao:
+            continue
+        stack = float(r['stack']) if r['stack'] is not None else 0.0
+        chave = (r['pos_chart'], balde_rfi_ou_none(stack) if stack > 0 else None)
+        if chave not in cache:
+            cache[chave] = villain_open_range(r['pos_chart'], stack) if chave[1] else {}
+        rng = cache[chave]
+        c = celulas.setdefault(mao, {'n': 0, 'abriu': 0, 'chart': 0.0, 'n_chart': 0})
+        c['n'] += 1
+        if r['abriu']:
+            c['abriu'] += 1
+        if rng:
+            f = float(rng.get(mao, 0.0))
+            c['chart'] += f; c['n_chart'] += 1
+            chart_soma += f; chart_n += 1
+    cells = {}
+    for mao, c in celulas.items():
+        cells[mao] = {'n': c['n'], 'voce': round(c['abriu'] / c['n'], 3),
+                      'solver': round(c['chart'] / c['n_chart'], 3) if c['n_chart'] else None}
+    divergencias = sorted(
+        ({'hand': mao, 'n': v['n'], 'voce': v['voce'], 'solver': v['solver'], 'delta': round(v['voce'] - v['solver'], 3)}
+         for mao, v in cells.items()
+         if v['solver'] is not None and v['n'] >= MINIMO_MAOS_DIVERGENCIA and abs(v['voce'] - v['solver']) >= DIVERGENCIA_MINIMA),
+        key=lambda d: -abs(d['delta']))[:10]
+    return {
+        'position': position, 'stack_band': stack_band,
+        'n': total,
+        'voce_pct': round(abriu_total * 100.0 / total, 1) if total else None,
+        'solver_pct': round(chart_soma * 100.0 / chart_n, 1) if chart_n else None,
+        'cobertura': round(chart_n * 100.0 / total) if total else 0,
+        'cells': cells,
+        'divergencias': divergencias,
+        'minimo_maos': MINIMO_MAOS_DIVERGENCIA,
+        'divergencia_minima': DIVERGENCIA_MINIMA,
+    }
+
+
 def _oportunidades_do_assento(user_id, days, last_n, position, stack_band, tipo):
     """[(vs_position, effective_stack_bb)] de cada oportunidade de `tipo` do assento: o insumo
     da referência do chart. `vs_position` é o abridor (3-bet) ou quem deu o 3-bet (fold)."""

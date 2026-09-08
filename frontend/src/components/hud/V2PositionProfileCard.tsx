@@ -6,7 +6,8 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { metrics } from "@/lib/api";
-import type { PlayerStatsResponse, PositionDetailResponse, PositionProfileResponse, PositionStatCell, StackBand } from "@/lib/api";
+import type { PlayerStatsResponse, PositionDetailResponse, PositionOpenMatrixResponse, PositionProfileResponse, PositionStatCell, StackBand } from "@/lib/api";
+import { MatrizDeAbertura } from "./MatrizDeAbertura";
 
 /**
  * V2PositionProfileCard â€” o perfil do jogador em CADA assento.
@@ -72,7 +73,8 @@ const ROTULO_DA_FAIXA: Record<string, string> = { "40+": "40bb+", "20-40": "20â€
 const SEM_CHART_NA_BB = new Set(["rfi", "fold_to_3bet"]);
 
 /** Colunas com o painel "contra quem". Sao as que misturam oponentes na media do assento. */
-const COM_DETALHE = new Set(["three_bet", "fold_to_3bet"]);
+// "rfi" abre a MATRIZ das maos abertas (AY-15 c); 3-Bet e Fold abrem o "contra quem"
+const COM_DETALHE = new Set(["rfi", "three_bet", "fold_to_3bet"]);
 
 /** O painel "contra quem": uma linha por oponente, com oportunidades, o seu numero, a faixa
  *  do solver e a regua. Ocupa a largura da grade (col-span total), logo abaixo do assento. */
@@ -284,7 +286,7 @@ function Celula({ chave, cel, posicao, maos, ancora, destaque, stack, onDetalhe,
             className="mt-2 w-full rounded-md border border-primary/40 px-2 py-1 font-mono text-[10px] font-bold uppercase tracking-wider text-primary hover:bg-primary/10"
             data-testid={`ver-detalhes-${chave}-${posicao}`}
           >
-            {t("posProfile.detail.open")}
+            {chave === "rfi" ? t("posProfile.matrix.open") : t("posProfile.detail.open")}
           </button>
         )}
       </TooltipContent>
@@ -324,14 +326,17 @@ export function V2PositionProfileCard({
    *  regua estreita e passa a acusar. Um painel por vez; o mesmo clique fecha. */
   const [detalhe, setDetalhe] = useState<{ position: string; stat: string } | null>(null);
   const [detalheDados, setDetalheDados] = useState<PositionDetailResponse | null>(null);
+  const [matrizDados, setMatrizDados] = useState<PositionOpenMatrixResponse | null>(null);
   const [detalheErro, setDetalheErro] = useState(false);
   useEffect(() => {
-    if (!detalhe) { setDetalheDados(null); return; }
+    if (!detalhe) { setDetalheDados(null); setMatrizDados(null); return; }
     let vivo = true;
-    setDetalheDados(null); setDetalheErro(false);
-    metrics.playerStatsByPositionDetail(detalhe.position, detalhe.stat, 90, lastN ?? undefined, stack)
-      .then((d) => { if (vivo) setDetalheDados(d); })
-      .catch(() => { if (vivo) setDetalheErro(true); });
+    setDetalheDados(null); setMatrizDados(null); setDetalheErro(false);
+    // RFI abre a matriz das maos abertas (outro endpoint, mesmo recorte); os outros, o "contra quem"
+    const pedido = detalhe.stat === "rfi"
+      ? metrics.playerStatsByPositionHands(detalhe.position, 90, lastN ?? undefined, stack).then((d) => { if (vivo) setMatrizDados(d); })
+      : metrics.playerStatsByPositionDetail(detalhe.position, detalhe.stat, 90, lastN ?? undefined, stack).then((d) => { if (vivo) setDetalheDados(d); });
+    pedido.catch(() => { if (vivo) setDetalheErro(true); });
     return () => { vivo = false; };
   }, [detalhe, stack, lastN]);
   // trocar a faixa de stack fecha o painel: o detalhe e da faixa em que foi aberto
@@ -558,8 +563,17 @@ export function V2PositionProfileCard({
       {/* O detalhe "contra quem" e um MODAL (07/09): a linha inline empurrava a grade e sumia
           ao trocar a faixa. Um por vez; fechar pelo X, pelo Esc ou clicando fora. */}
       <Dialog open={!!detalhe} onOpenChange={(aberto) => { if (!aberto) setDetalhe(null); }}>
-        <DialogContent className="max-w-xl">
-          {detalhe && (
+        <DialogContent className={detalhe?.stat === "rfi" ? "max-w-4xl" : "max-w-xl"}>
+          {detalhe && detalhe.stat === "rfi" && (
+            <>
+              <DialogTitle className="font-mono text-[11px] uppercase tracking-widest text-primary">
+                {t("posProfile.matrix.title", { pos: detalhe.position })}
+              </DialogTitle>
+              <DialogDescription className="sr-only">{t("posProfile.matrix.description")}</DialogDescription>
+              <MatrizDeAbertura position={detalhe.position} stack={stack} dados={matrizDados} erro={detalheErro} />
+            </>
+          )}
+          {detalhe && detalhe.stat !== "rfi" && (
             <>
               <DialogTitle className="font-mono text-[11px] uppercase tracking-widest text-primary">
                 {t(`posProfile.detail.${detalhe.stat === "three_bet" ? "threeBet" : "fold3bet"}`, { pos: detalhe.position })}
