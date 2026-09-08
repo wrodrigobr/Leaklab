@@ -218,7 +218,7 @@ def test_a_curva_do_admin_le_a_comparacao_e_a_meta_exige_duas_semanas():
     assert len(c['semanas']) == 2 and c['semanas'][-1]['comparadas'] == 3 and c['semanas'][-1]['com_3_vizinhos']['erro_pct'] == 100, c['semanas']
     assert c['meta'] == {'pct': 85, 'min_vizinhos': 3, 'atingida': True}, c['meta']
     # quebrado de proposito: a semana anterior cai abaixo de 85% -> meta nao atingida
-    conn = get_conn(); conn.execute("UPDATE vereditos_por_semelhanca SET erro_igual=0 WHERE id=4"); conn.commit(); conn.close()
+    conn = get_conn(); conn.execute("UPDATE vereditos_por_semelhanca SET erro_igual=FALSE WHERE id=4"); conn.commit(); conn.close()
     assert repo.get_aproveitamento_do_solver(dias=56)['semelhanca']['curva']['meta']['atingida'] is False
     # e sem nenhuma comparacao a curva nao inventa zero
     conn = get_conn(); conn.execute("DELETE FROM vereditos_por_semelhanca"); conn.commit(); conn.close()
