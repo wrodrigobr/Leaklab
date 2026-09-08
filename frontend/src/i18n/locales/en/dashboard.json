@@ -1028,9 +1028,10 @@
       "noDivergence": "No hand with {{n}}+ occurrences sits {{pp}} points or more from the solver.",
       "hand": "Hand",
       "times": "Times",
-      "diff": "Difference",
+      "diff": "Diff",
       "note": "The total can match the solver while the composition does not: that is what the matrix shows and the cell hides.",
-      "study": "Study this range"
+      "study": "Study this range",
+      "solverShort": "Solver"
     }
   }
 }

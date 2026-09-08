@@ -1028,9 +1028,10 @@
       "noDivergence": "Ninguna mano con {{n}}+ ocurrencias queda a {{pp}} puntos o más del solver.",
       "hand": "Mano",
       "times": "Veces",
-      "diff": "Diferencia",
+      "diff": "Dif.",
       "note": "El total puede coincidir con el solver y la composición no: eso es lo que la matriz muestra y la celda esconde.",
-      "study": "Estudiar esta range"
+      "study": "Estudiar esta range",
+      "solverShort": "Solver"
     }
   }
 }

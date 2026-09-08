@@ -563,7 +563,8 @@ export function V2PositionProfileCard({
       {/* O detalhe "contra quem" e um MODAL (07/09): a linha inline empurrava a grade e sumia
           ao trocar a faixa. Um por vez; fechar pelo X, pelo Esc ou clicando fora. */}
       <Dialog open={!!detalhe} onOpenChange={(aberto) => { if (!aberto) setDetalhe(null); }}>
-        <DialogContent className={detalhe?.stat === "rfi" ? "max-w-4xl" : "max-w-xl"}>
+        {/* a matriz: largo (3 colunas: voce, solver, divergencias) e nunca mais alto que a tela (dono, 08/09) */}
+        <DialogContent className={detalhe?.stat === "rfi" ? "max-w-5xl max-h-[92vh] overflow-y-auto" : "max-w-xl"}>
           {detalhe && detalhe.stat === "rfi" && (
             <>
               <DialogTitle className="font-mono text-[11px] uppercase tracking-widest text-primary">
