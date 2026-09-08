@@ -5,6 +5,15 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## DEPLOY 08/09/2026, tarde: card do admin, assinatura do spot, limp na matriz, chips do modal, onboarding
+
+- `origin/main` 07db4ab8; web e consumer reconstruidos, health ok, portao APROVADO nas 12
+  portas, varredura AUTO 0 (GRAFIA 1 anterior, AY-26b). Suites: backend 2956/2958 (as duas
+  eram os guardas de eixo e de filtro cru, declarados e verdes), frontend 545/545.
+- O card em prod, no Neon: cobertura por semelhanca 61% (5.370 de 8.772 sem no, 7.678
+  assinaturas conhecidas); semana de 07/09: 7.310 decisoes, 3% reaproveitadas, 10.858 enviadas.
+
+---
 ## Onboarding fecha na hora; a matriz troca assento e stack sem sair do modal (08/09)
 
 - Dono, na conta de dev: "o botao fechar do onboarding nao responde de primeira". O X esperava
