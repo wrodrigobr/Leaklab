@@ -5,6 +5,19 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## DEPLOY 08/09/2026, 08:20: matriz, teto por usuario e FAQ em producao
+
+- `origin/main` 7b83c309. Build de web e solver-consumer; os dois respondem
+  `FOUNDER_TOURNAMENTS_LIMIT = 1000`; a coluna `tournaments_limit_override` existe no Neon
+  (migracao abort-proof). Health ok, portao APROVADO nas 12 portas, varredura igual a de
+  07/09 (AUTO 62 e GRAFIA 1, anteriores ao deploy, AY-26). Bundle do Pages com a matriz e o
+  campo do admin.
+- Os 4 fundadores (35, 62, 65, 69) passaram a 1.000 torneios/mes; a cota do 65 (200 usados)
+  voltou a aceitar upload.
+- Relatorio de novidades de 08/09 para os fundadores, com prints da conta demo (matriz, HUD
+  com o tooltip do RFI, perfil por posicao).
+
+---
 ## Teto de torneios por mes ajustavel por USUARIO, pelo admin; fundadores com 1.000 (08/09, LOCAL)
 
 - Um fundador bateu nos 200 do Pro no 4o dia do mes (21 mil maos); o outro tinha 280 pelo
