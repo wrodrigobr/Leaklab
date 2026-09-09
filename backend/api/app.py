@@ -1700,18 +1700,22 @@ def player_stats_by_position_hands():
 
 
 def _tamanho_de_mesa_da_query():
-    """`?mesa=` da grade por assento: um dos `TAMANHOS_DE_MESA` ou nada (= todas).
+    """`?mesa=` da grade por assento: um dos `TAMANHOS_DE_MESA`. Ausente = a mais jogada.
 
     Tamanho desconhecido e 400 pela MESMA razao da faixa de stack: devolver "todas" para um
     filtro que o cliente acha que aplicou e o numero certo sob o rotulo errado. E o filtro
     existe porque a linha da grade e o rotulo da sala: somar mesas de tamanhos diferentes junta
-    assentos estrategicamente diferentes (o UTG de 9-max tem 8 atras; o de 6-max, 5)."""
+    assentos estrategicamente diferentes (o UTG de 9-max tem 8 atras; o de 6-max, 5).
+
+    `mesa=todas` foi ACEITO ate 09/09 e deixou de ser (decisao do dono, depois de medir): a
+    linha "UTG" do acervo do Rullian somava CINCO assentos diferentes, comparados com cartas
+    que abrem de 15,8% a 28,0%, e o cabecalho virava uma media que nao descreve situacao
+    nenhuma. Nao ha valor honesto para "todas" nesta grade, entao ele sai em vez de continuar
+    disponivel com um aviso."""
     from database.repositories import TAMANHOS_DE_MESA
     mesa = (request.args.get('mesa') or '').strip() or None
-    if mesa == 'todas':                      # explicito: o jogador PEDIU todas as mesas
-        return None, None
     if mesa and mesa not in TAMANHOS_DE_MESA:
-        return None, (jsonify({'error': 'mesa invalida', 'mesas': list(TAMANHOS_DE_MESA) + ['todas']}), 400)
+        return None, (jsonify({'error': 'mesa invalida', 'mesas': list(TAMANHOS_DE_MESA)}), 400)
     return mesa, None
 
 

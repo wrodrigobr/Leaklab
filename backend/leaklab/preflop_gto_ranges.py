@@ -701,6 +701,20 @@ _ORDEM_GW_9MAX = ('UTG', 'UTG+1', 'UTG+2', 'LJ', 'HJ', 'CO', 'BTN', 'SB', 'BB')
 # quantos agem DEPOIS na primeira órbita: UTG=8 … BTN=2, SB=1, BB=0
 _GW_POR_ATRAS = {len(_ORDEM_GW_9MAX) - 1 - i: p for i, p in enumerate(_ORDEM_GW_9MAX)}
 _ATRAS_MAX_GW = max(_GW_POR_ATRAS)
+#: nome do assento GW -> quantos agem DEPOIS dele. Inverso de `_GW_POR_ATRAS`.
+_ATRAS_DO_ASSENTO = {p: a for a, p in _GW_POR_ATRAS.items()}
+
+
+def jogadores_atras(assento_gw: str):
+    """Quantos jogadores ainda agem depois deste assento na primeira orbita preflop.
+
+    E o unico numero que explica a carta para o jogador. O rotulo da TELA e o assento da SALA
+    (o primeiro a agir e sempre o UTG, convencao do dono), e o assento da CARTA e outro nome no
+    vocabulario 9-max — em mesa de 7 o primeiro a agir e comparado com a carta do UTG+2. Dizer
+    "UTG+2" na tela e trocar uma duvida por outra; dizer "6 atras" fecha a pergunta.
+    Nasceu da duvida do Rullian (09/09): "tô achando essa porcentagem do solver alta, de onde
+    vem esse valor?" — vinha da carta certa, so que a tela nao dizia qual."""
+    return _ATRAS_DO_ASSENTO.get((assento_gw or '').upper().strip())
 
 # Apelidos de dialeto que não são posição nova, só grafia (v2 legado / genérico).
 _POS_ALIAS = {'UTG1': 'UTG+1', 'UTG2': 'UTG+2', 'MP': 'LJ'}

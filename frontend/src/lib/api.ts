@@ -1010,7 +1010,8 @@ export interface PositionProfileRow {
   members?: string[];
 }
 
-/** Tamanhos de mesa do seletor da grade. "todas" nao entra aqui: e o valor que DESLIGA o filtro. */
+/** Tamanhos de mesa do seletor da grade. Ausencia = a mais jogada, escolhida pelo backend.
+ *  Nao existe "todas" desde 09/09 — ver `_tamanho_de_mesa_da_query` no backend. */
 export type TableSize = "9max" | "8max" | "7max" | "6max" | "curta";
 
 export interface PositionProfileResponse {
@@ -1056,8 +1057,13 @@ export interface PositionOpenMatrixResponse {
   solver_pct: number | null;
   /** o que o solver abriria NO CENARIO, sobre as 169 maos: nao depende de quais maos cairam */
   solver_pct_todas?: number | null;
+  /** Assento do CHART 9-max de onde veio `solver_pct_todas`, e quantos jogadores agem depois
+   *  dele. Nulo quando o recorte mistura mais de uma carta — ai nao ha referencia unica. */
+  assento_da_carta?: string | null;
+  jogadores_atras?: number | null;
   amostra_minima?: number;
-  /** em que tamanhos de mesa esta linha caiu; explica a mistura quando o filtro esta em "todas" */
+  /** em que tamanhos de mesa esta linha caiu; so tem mais de um item em conta sem mao suficiente
+   *  para o backend escolher um tamanho */
   composicao?: Array<{ mesa: number; n: number; pct: number }>;
   cobertura: number;
   cells: Record<string, PositionOpenCell>;
@@ -2461,16 +2467,16 @@ export const metrics = {
   /** Perfil por ASSENTO. Pergunta diferente do gtoPosition: aquele diz de onde o jogador
    *  erra mais, este diz qual e o perfil dele ali. */
   /** "Contra quem": o 3-Bet ou o Fold 3-Bet de um assento aberto por oponente (AY-15). */
-  playerStatsByPositionDetail: (position: string, stat: string, days = 90, lastN?: number, stack?: StackBand | null, mesa?: TableSize | "todas" | null) =>
+  playerStatsByPositionDetail: (position: string, stat: string, days = 90, lastN?: number, stack?: StackBand | null, mesa?: TableSize | null) =>
     request<PositionDetailResponse>(
       `/metrics/player-stats/by-position/detail?position=${encodeURIComponent(position)}&stat=${encodeURIComponent(stat)}&days=${days}${lastN != null ? `&last_n=${lastN}` : ""}${stack ? `&stack=${encodeURIComponent(stack)}` : ""}${mesa ? `&mesa=${encodeURIComponent(mesa)}` : ""}`),
 
   /** Matriz 13x13 das maos abertas de um assento (ou grupo), voce x solver (AY-15 c). */
-  playerStatsByPositionHands: (position: string, days = 90, lastN?: number, stack?: StackBand | null, mesa?: TableSize | "todas" | null) =>
+  playerStatsByPositionHands: (position: string, days = 90, lastN?: number, stack?: StackBand | null, mesa?: TableSize | null) =>
     request<PositionOpenMatrixResponse>(
       `/metrics/player-stats/by-position/hands?position=${encodeURIComponent(position)}&days=${days}${lastN != null ? `&last_n=${lastN}` : ""}${stack ? `&stack=${encodeURIComponent(stack)}` : ""}${mesa ? `&mesa=${encodeURIComponent(mesa)}` : ""}`),
 
-  playerStatsByPosition: (days = 90, lastN?: number, stack?: StackBand | null, agrupado = false, mesa?: TableSize | "todas" | null) =>
+  playerStatsByPosition: (days = 90, lastN?: number, stack?: StackBand | null, agrupado = false, mesa?: TableSize | null) =>
     request<PositionProfileResponse>(
       `/metrics/player-stats/by-position?days=${days}${lastN != null ? `&last_n=${lastN}` : ""}${stack ? `&stack=${encodeURIComponent(stack)}` : ""}${agrupado ? "&group=1" : ""}${mesa ? `&mesa=${encodeURIComponent(mesa)}` : ""}`),
 

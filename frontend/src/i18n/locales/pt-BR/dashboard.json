@@ -977,7 +977,6 @@
     "stack": "stack",
     "stackAll": "todos",
     "table": "jogadores na mão",
-    "tableAll": "todas",
     "tableSize": {
       "9max": "9",
       "8max": "8",
@@ -1061,7 +1060,10 @@
       "divergencesNote": "Mãos com {{n}} ou mais ocorrências e {{pp}} pontos ou mais de distância do solver.",
       "covers": "cobre {{pct}}%",
       "neverDealt": "não recebeu esta mão",
-      "lowSampleShort": "Amostra pequena"
+      "lowSampleShort": "Amostra pequena",
+      "reference": "Referência: carta do assento com {{atras}} jogadores atrás, sobre as 169 mãos possíveis.",
+      "referenceMixed": "Referência: mistura de cartas, porque o recorte junta assentos com números diferentes de jogadores atrás.",
+      "inYourHands": "Só nas mãos que você recebeu, seria {{pct}}%."
     },
     "tablePlayers": "{{n}} jogadores"
   }

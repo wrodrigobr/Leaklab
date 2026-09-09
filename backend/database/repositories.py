@@ -3046,6 +3046,7 @@ def get_position_open_matrix(user_id: int, position: str, days: int = 90,
     """
     from leaklab.street_math_engine import _canon_hand
     from leaklab.preflop_gto_ranges import villain_open_range, balde_rfi_ou_none
+    from leaklab.preflop_gto_ranges import jogadores_atras as _jog_atras
     tf, tp = _filtro_do_hud(user_id, days, last_n, position, stack_band, mesa)
     conn = get_conn()
     try:
@@ -3137,11 +3138,14 @@ def get_position_open_matrix(user_id: int, position: str, days: int = 90,
     # Composicao da linha: em que tamanho de mesa e em que assento do CHART ela caiu. E o que
     # explica, quando o filtro esta em "todas", por que a ordem entre as linhas nao cresce.
     comp: dict = {}
+    cartas_usadas: dict = {}
     for r in rows:
         m = r['mesa']
         if m is not None:
             comp[int(m)] = comp.get(int(m), 0) + 1
+        cartas_usadas[r['pos_chart']] = cartas_usadas.get(r['pos_chart'], 0) + 1
     composicao = [{'mesa': k, 'n': v, 'pct': round(100.0 * v / total)} for k, v in sorted(comp.items(), key=lambda x: -x[1])] if total else []
+    assento_da_carta = next(iter(cartas_usadas)) if len(cartas_usadas) == 1 else None
     return {
         'position': position, 'stack_band': stack_band, 'mesa': mesa,
         'n': total,
@@ -3152,6 +3156,13 @@ def get_position_open_matrix(user_id: int, position: str, days: int = 90,
         'solver_pct_todas': solver_todas,
         'cobertura': round(chart_n * 100.0 / total) if total else 0,
         'amostra_minima': MINIMO_MAOS_DO_RESUMO,
+        # De qual carta veio `solver_pct_todas`, e o unico numero que a explica: quantos
+        # jogadores agem DEPOIS deste assento. So sai quando o recorte tem UMA carta so —
+        # com mais de uma o numero e mistura e a tela nao pode prometer uma referencia.
+        # Duvida do Rullian (09/09): 20% no "UTG" parecia alto, e era a carta do UTG+2,
+        # porque o UTG de mesa 7 tem 6 atras e nao 8. A conta estava certa e muda a tela.
+        'assento_da_carta': assento_da_carta,
+        'jogadores_atras': _jog_atras(assento_da_carta) if assento_da_carta else None,
         'composicao': composicao,
         'cells': cells,
         'divergencias': divergencias,

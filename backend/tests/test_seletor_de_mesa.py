@@ -24,7 +24,17 @@ contradizia a propria tela.
    com maos diferentes, tem o mesmo numero (e o `solver_pct` deles difere — e a prova de que o
    teste sabe distinguir os dois);
 3. abaixo do piso de amostra, o numero do JOGADOR nao sai e o do solver sai;
-4. o endpoint recusa tamanho desconhecido e, sem `?mesa=`, abre na mesa MAIS JOGADA.
+4. o endpoint recusa tamanho desconhecido e, sem `?mesa=`, abre na mesa MAIS JOGADA;
+5. a matriz DECLARA de qual carta veio o numero do solver, em jogadores atras (AY-34).
+
+── O que o item 5 conserta (09/09) ────────────────────────────────────────────────────────
+
+Duvida do mesmo fundador: "em relacao ao UTG, to achando essa porcentagem que o solver abriria
+um tanto quanto alta, de onde vem esse valor?". Vinha da carta CERTA: o UTG dele era de mesa 7,
+que tem 6 jogadores atras, e a carta de 6 atras abre 20,0% contra 15,8% da de 8 atras. A conta
+estava certa e a tela nao dizia qual carta era. Dizer o nome do assento no vocabulario 9-max
+("UTG+2") troca uma duvida por outra, porque a tela chama esse mesmo assento de UTG; o unico
+numero que fecha a pergunta e QUANTOS AGEM DEPOIS.
 """
 import os
 import sys
@@ -149,6 +159,32 @@ def test_com_um_numero_de_jogadores_a_grade_nao_inventa_assento_que_nao_existe()
     assert 'UTG+2' in [l['position'] for l in todas['positions']]
 
 
+def test_a_matriz_declara_de_qual_carta_veio_o_numero_do_solver():
+    """`assento_da_carta` + `jogadores_atras`: sem isso o jogador nao tem como saber que o
+    "UTG" da tela e comparado com a carta de OUTRO assento, e conclui que o solver abre alto.
+
+    A segunda metade e o que impede a promessa falsa: num recorte que MISTURA cartas (sem
+    filtro de mesa, conta com mais de um tamanho) nao existe referencia unica, e a tela tem de
+    dizer isso em vez de escolher uma das cartas e apresenta-la como se fosse a do numero."""
+    _semeia([(7, 'UTG', 40, MAOS_FRACAS), (9, 'UTG', 40, MAOS_FRACAS)])
+
+    m7 = get_position_open_matrix(1, 'UTG', days=3650, mesa='7max')
+    # o primeiro a agir em mesa de 7 tem 6 atras -> no vocabulario 9-max isso e o UTG+2
+    assert m7['assento_da_carta'] == 'UTG+2', m7['assento_da_carta']
+    assert m7['jogadores_atras'] == 6, m7['jogadores_atras']
+
+    m9 = get_position_open_matrix(1, 'UTG', days=3650, mesa='9max')
+    assert m9['assento_da_carta'] == 'UTG' and m9['jogadores_atras'] == 8, (m9['assento_da_carta'], m9['jogadores_atras'])
+
+    # o MESMO rotulo de tela, duas cartas diferentes: e a prova de que o numero muda de origem
+    assert m7['solver_pct_todas'] > m9['solver_pct_todas'], (m7['solver_pct_todas'], m9['solver_pct_todas'])
+
+    # recorte que junta os dois tamanhos: nao ha carta unica, entao a tela nao promete uma
+    misto = get_position_open_matrix(1, 'UTG', days=3650, mesa=None)
+    assert misto['assento_da_carta'] is None and misto['jogadores_atras'] is None, misto['assento_da_carta']
+    assert misto['n'] == 80, misto['n']
+
+
 def test_o_endpoint_recusa_mesa_desconhecida_e_abre_na_mais_jogada():
     _semeia([(9, 'UTG', 10, MAOS_FRACAS), (8, 'UTG', 30, MAOS_FRACAS)])
     from api.app import app
@@ -159,14 +195,19 @@ def test_o_endpoint_recusa_mesa_desconhecida_e_abre_na_mais_jogada():
     d = r.get_json()
     assert r.status_code == 200 and d['mesa'] == '8max' and d['mesa_auto'] is True, (r.status_code, d.get('mesa'))
     assert d['distribuicao_de_mesas']['sugerida'] == '8max'
-    # "todas" e escolha explicita: desliga o filtro e o payload DECLARA que nao ha mesa em vigor
-    d2 = c.get('/metrics/player-stats/by-position?days=3650&mesa=todas', headers=h).get_json()
-    assert d2['mesa'] is None and d2['mesa_auto'] is False
-    assert next(l['hands'] for l in d2['positions'] if l['position'] == 'UTG') == 40
-    # tamanho desconhecido e 400, nunca "todas" caladamente
+    # "todas" DEIXOU de existir (dono, 09/09). Ele foi aceito ate aqui e desligava o filtro; a
+    # medicao que o matou: a linha "UTG" do acervo do Rullian somava CINCO assentos, comparados
+    # com cartas que abrem de 15,8% a 28,0%, e o cabecalho virava uma media que nao descreve
+    # situacao nenhuma. Agora ele e um tamanho invalido como qualquer outro, e o 400 tem de
+    # ACUSAR: aceitar de volta em silencio devolveria a media sem ninguem notar.
+    recusa = c.get('/metrics/player-stats/by-position?days=3650&mesa=todas', headers=h)
+    assert recusa.status_code == 400, (recusa.status_code, recusa.get_data(as_text=True)[:200])
+    assert 'todas' not in recusa.get_json()['mesas'], recusa.get_json()
+    # tamanho desconhecido e 400 tambem, nunca "a mais jogada" caladamente sob o rotulo errado
     ruim = c.get('/metrics/player-stats/by-position?days=3650&mesa=10max', headers=h)
     assert ruim.status_code == 400 and 'mesas' in ruim.get_json(), ruim.get_data(as_text=True)[:200]
     assert c.get('/metrics/player-stats/by-position/hands?position=UTG&mesa=10max', headers=h).status_code == 400
+    assert c.get('/metrics/player-stats/by-position/hands?position=UTG&mesa=todas', headers=h).status_code == 400
 
 
 if __name__ == '__main__':

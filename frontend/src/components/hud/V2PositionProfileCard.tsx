@@ -340,10 +340,12 @@ export function V2PositionProfileCard({
   /** faixa de stack em vigor (null = todos) e o setter, que mora no Index */
   stack?: StackBand | null;
   onStack?: (s: StackBand | null) => void;
-  /** tamanho de mesa em vigor ("todas" desliga o filtro) e o setter, que mora no Index.
+  /** tamanho de mesa em vigor e o setter, que mora no Index. NAO existe "todas" (dono,
+   *  09/09): a linha "UTG" somando mesas de tamanhos diferentes junta ate CINCO assentos
+   *  estrategicamente distintos, comparados com cartas que abrem de 15,8% a 28,0%.
    *  Sem ele a linha soma mesas de tamanhos diferentes, que sao assentos diferentes. */
-  mesa?: TableSize | "todas" | null;
-  onMesa?: (m: TableSize | "todas") => void;
+  mesa?: TableSize | null;
+  onMesa?: (m: TableSize) => void;
   /** AY-21: grade agrupada (EP / MP / CO / BTN / SB / BB) em vez de assento a assento */
   agrupado?: boolean;
   onAgrupado?: (v: boolean) => void;
@@ -364,7 +366,9 @@ export function V2PositionProfileCard({
   // `stack` so na matriz (RFI): o modal troca assento e faixa sem voltar ao dashboard (dono, 08/09)
   // A mesa que VALE e a que o backend declara ter aplicado: sem `?mesa=` ele escolhe a mais
   // jogada sozinho, e o painel tem de pedir o MESMO recorte que a grade esta mostrando.
-  const mesaEmVigor: TableSize | "todas" | null = mesa ?? (data?.mesa ?? (data?.mesa_auto ? null : "todas"));
+  // Sem `?mesa=` o backend escolhe a mais jogada e DECLARA qual usou; o painel tem de pedir o
+  // MESMO recorte que a grade esta mostrando. Nulo so quando nao ha mao nenhuma.
+  const mesaEmVigor: TableSize | null = mesa ?? data?.mesa ?? null;
   const [detalhe, setDetalhe] = useState<{ position: string; stat: string; stack?: StackBand | null } | null>(null);
   const [detalheDados, setDetalheDados] = useState<PositionDetailResponse | null>(null);
   const [matrizDados, setMatrizDados] = useState<PositionOpenMatrixResponse | null>(null);
@@ -479,8 +483,8 @@ export function V2PositionProfileCard({
           <Filtro
             rotulo={t("posProfile.table")}
             testid="select-mesa"
-            valor={data.mesa ?? "todas"}
-            onMuda={(v) => onMesa(v as TableSize | "todas")}
+            valor={data.mesa ?? ""}
+            onMuda={(v) => onMesa(v as TableSize)}
             opcoes={[
               ...((data.mesas ?? []) as TableSize[])
                 .filter((m) => (data.distribuicao_de_mesas?.mesas ?? []).some((d) => d.mesa === m))
@@ -488,7 +492,6 @@ export function V2PositionProfileCard({
                   const info = (data.distribuicao_de_mesas?.mesas ?? []).find((d) => d.mesa === m);
                   return { valor: m, texto: t("posProfile.tableSize." + m) + (info ? ` · ${info.pct}%` : "") };
                 }),
-              { valor: "todas", texto: t("posProfile.tableAll") },
             ]}
           />
         )}
@@ -513,9 +516,8 @@ export function V2PositionProfileCard({
       <p className="mb-3 font-mono text-[9px] leading-snug text-muted-foreground/70">
         {t("posProfile.legend")} {t("posProfile.clickable")}
       </p>
-      {/* Por que o filtro de mesa existe. Sem esta linha, o jogador que ve "todas" conclui que a
-          ferramenta esta errada quando o assento mais perto do botao abre menos — e a conclusao
-          seria razoavel: as linhas somam mesas de tamanhos diferentes. */}
+      {/* Por que a grade esta presa a UM tamanho de mesa. Sem esta linha, o jogador nao sabe
+          que o recorte foi escolhido por nos, e compara linhas achando que ve todo o volume. */}
       <p className="mb-3 font-mono text-[9px] leading-snug text-muted-foreground/70" data-testid="nota-mesa">
         {data.mesa
           ? t("posProfile.tableNote", { mesa: t(`posProfile.tableSize.${data.mesa}`) })

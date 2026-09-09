@@ -65,10 +65,14 @@ describe("seletor de tamanho de mesa", () => {
     const sel = screen.getByTestId("select-mesa") as HTMLSelectElement;
     expect(sel.value).toBe("8max");
     const valores = Array.from(sel.options).map((o) => o.value);
-    expect(valores).toEqual(["8max", "7max", "todas"]);          // 9max nao aparece: ele nao jogou
+    // Nao ha "todas" (dono, 09/09): somar tamanhos de mesa junta assentos estrategicamente
+    // diferentes na mesma linha — a linha "UTG" do acervo de um fundador juntava CINCO, com
+    // cartas que abrem de 15,8% a 28,0%. O dropdown so oferece recortes que descrevem algo.
+    expect(valores).toEqual(["8max", "7max"]);                    // 9max nao aparece: ele nao jogou
+    expect(valores).not.toContain("todas");
     expect(sel.options[0].textContent).toContain("45%");          // a fatia do volume vai no rotulo
-    fireEvent.change(sel, { target: { value: "todas" } });
-    expect(onMesa).toHaveBeenCalledWith("todas");
+    fireEvent.change(sel, { target: { value: "7max" } });
+    expect(onMesa).toHaveBeenCalledWith("7max");
   });
 
   it("o stack tambem e dropdown, e todos volta null", () => {

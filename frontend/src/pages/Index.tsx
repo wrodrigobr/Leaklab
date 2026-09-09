@@ -66,8 +66,9 @@ const Index = () => {
   // conjuntos diferentes. null = todos, e ai o Total e o `playerStats` da tela.
   const [posStack, setPosStack]           = useState<StackBand | null>(null);
   // `null` = ainda nao escolhido: o backend abre na mesa MAIS JOGADA e DECLARA qual aplicou.
-  // "todas" e escolha explicita do jogador, e ai a grade soma tamanhos de mesa diferentes.
-  const [posMesa, setPosMesa]             = useState<TableSize | "todas" | null>(null);
+  // Nulo = o backend escolhe a mesa mais jogada. Nao ha "todas" (dono, 09/09): somar tamanhos
+  // de mesa junta assentos estrategicamente diferentes na mesma linha.
+  const [posMesa, setPosMesa]             = useState<TableSize | null>(null);
   const [posGeral, setPosGeral]           = useState<PlayerStatsResponse | null>(null);
   // O carregamento geral (upload, evento de refresh) tambem busca a grade, e tem de buscar na
   // faixa em vigor: a 1a versao buscava sem `stack` e SOBRESCREVIA a grade filtrada com a de
@@ -75,7 +76,7 @@ const Index = () => {
   // trocar de faixa nao pode refazer a tela inteira.
   const posStackRef = useRef<StackBand | null>(null);
   posStackRef.current = posStack;
-  const posMesaRef = useRef<TableSize | "todas" | null>(null);
+  const posMesaRef = useRef<TableSize | null>(null);
   posMesaRef.current = posMesa;
   // AY-21: detalhado (assento a assento) ou agrupado (EP / MP / CO / BTN / SB / BB)
   const [posAgrupado, setPosAgrupado]     = useState(false);

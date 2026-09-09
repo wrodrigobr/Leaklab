@@ -57,7 +57,9 @@ describe("matriz das maos abertas", () => {
     monta();
     expect(screen.getByTestId("valor-rfi-UTG").className).toContain("underline");
     fireEvent.click(screen.getByTestId("celula-rfi-UTG"));
-    expect(hands).toHaveBeenCalledWith("UTG", 90, 30, "20-40", "todas");   // sem mesa no payload = o jogador nao filtrou
+    // Sem mesa no payload (conta sem volume para o backend escolher uma), o pedido vai SEM
+    // recorte de mesa. Ate 09/09 ia como "todas", que o endpoint agora recusa com 400.
+    expect(hands).toHaveBeenCalledWith("UTG", 90, 30, "20-40", null);
     const modal = await screen.findByTestId("matriz-UTG");
     expect(modal.textContent).toContain("posProfile.matrix.opps:1.211");
     expect(modal.textContent).toContain("posProfile.matrix.opened:17.2");
@@ -97,11 +99,50 @@ describe("matriz das maos abertas", () => {
     expect(within(sel).queryByTestId("matriz-pos-BB")).toBeNull();                // a BB nao abre pote
     expect(within(sel).getByTestId("matriz-stack-20-40").getAttribute("aria-pressed")).toBe("true");
     fireEvent.click(within(sel).getByTestId("matriz-stack-40+"));
-    await waitFor(() => expect(hands).toHaveBeenLastCalledWith("UTG", 90, 30, "40+", "todas"));
+    await waitFor(() => expect(hands).toHaveBeenLastCalledWith("UTG", 90, 30, "40+", null));
     fireEvent.click(within(await screen.findByTestId("matriz-seletores")).getByTestId("matriz-pos-HJ"));
-    await waitFor(() => expect(hands).toHaveBeenLastCalledWith("HJ", 90, 30, "40+", "todas"));
+    await waitFor(() => expect(hands).toHaveBeenLastCalledWith("HJ", 90, 30, "40+", null));
     fireEvent.click(within(await screen.findByTestId("matriz-seletores")).getByTestId("matriz-stack-todos"));
-    await waitFor(() => expect(hands).toHaveBeenLastCalledWith("HJ", 90, 30, null, "todas"));
+    await waitFor(() => expect(hands).toHaveBeenLastCalledWith("HJ", 90, 30, null, null));
+  });
+
+  /**
+   * AY-34. Duvida de um fundador em 09/09: "to achando essa porcentagem que o solver abriria um
+   * tanto quanto alta, de onde vem esse valor?". Vinha da carta CERTA: o "UTG" dele era de mesa
+   * de 7, que tem 6 jogadores atras, e a carta de 6 atras abre bem mais que a de 8. O numero
+   * estava certo e a tela nao dizia de onde vinha, nem que os dois lados do cabecalho olham
+   * conjuntos diferentes (o dele so as maos que recebeu, o do solver o range inteiro).
+   *
+   * Dizer o nome do assento no vocabulario 9-max NAO resolve: a tela chama esse mesmo assento de
+   * UTG, entao escrever "UTG+2" troca uma duvida por outra. O que fecha e quantos agem depois.
+   */
+  it("o solver declara de qual carta veio o numero, e o que o numero das SUAS maos seria", async () => {
+    hands.mockResolvedValue({
+      position: "UTG", stack_band: null, n: 1519, voce_pct: 17.5, solver_pct: 19.4,
+      solver_pct_todas: 20.0, cobertura: 98, assento_da_carta: "UTG+2", jogadores_atras: 6,
+      cells: { AA: { n: 3, voce: 1, limp: 0, solver: 1 } }, divergencias: [],
+      minimo_maos: 8, divergencia_minima: 0.3,
+    });
+    render(<MemoryRouter><V2PositionProfileCard data={GRADE} geral={HUD} stack="20-40" lastN={30} onStack={() => {}} /></MemoryRouter>);
+    fireEvent.click(screen.getByTestId("celula-rfi-UTG"));
+    const ref = await screen.findByTestId("matriz-referencia");
+    expect(ref.textContent).toContain("posProfile.matrix.reference:6");        // 6 ATRAS, nao "UTG+2"
+    expect(ref.textContent).toContain("posProfile.matrix.inYourHands:19.4");   // o outro denominador
+    expect(ref.textContent).not.toContain("referenceMixed");
+  });
+
+  it("recorte que mistura cartas nao promete referencia unica", async () => {
+    hands.mockResolvedValue({
+      position: "UTG", stack_band: null, n: 3690, voce_pct: 17.2, solver_pct: 18.5,
+      solver_pct_todas: 20.4, cobertura: 98, assento_da_carta: null, jogadores_atras: null,
+      cells: { AA: { n: 3, voce: 1, limp: 0, solver: 1 } }, divergencias: [],
+      minimo_maos: 8, divergencia_minima: 0.3,
+    });
+    render(<MemoryRouter><V2PositionProfileCard data={GRADE} geral={HUD} stack="20-40" lastN={30} onStack={() => {}} /></MemoryRouter>);
+    fireEvent.click(screen.getByTestId("celula-rfi-UTG"));
+    const ref = await screen.findByTestId("matriz-referencia");
+    expect(ref.textContent).toContain("posProfile.matrix.referenceMixed");
+    expect(ref.textContent).not.toContain("posProfile.matrix.reference:");
   });
 
   it("a BB nao tem RFI nem matriz; o 3-Bet continua abrindo o contra quem", () => {

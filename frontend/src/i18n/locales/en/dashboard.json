@@ -977,7 +977,6 @@
     "stack": "stack",
     "stackAll": "all",
     "table": "players dealt",
-    "tableAll": "all",
     "tableSize": {
       "9max": "9",
       "8max": "8",
@@ -1061,7 +1060,10 @@
       "divergencesNote": "Hands with {{n}} or more occurrences and {{pp}} points or more from the solver.",
       "covers": "covers {{pct}}%",
       "neverDealt": "never dealt this hand",
-      "lowSampleShort": "Small sample"
+      "lowSampleShort": "Small sample",
+      "reference": "Reference: chart for the seat with {{atras}} players behind, over all 169 possible hands.",
+      "referenceMixed": "Reference: a mix of charts, because this cut spans seats with different numbers of players behind.",
+      "inYourHands": "Over just the hands you were dealt, it would be {{pct}}%."
     },
     "tablePlayers": "{{n}} players"
   }

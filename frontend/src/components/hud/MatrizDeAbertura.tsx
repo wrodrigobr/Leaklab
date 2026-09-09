@@ -104,6 +104,20 @@ export function MatrizDeAbertura({ position, stack, dados, erro, posicoes, faixa
             </span>
           </div>
           <RangeGrid range={solver} compacta />
+          {/* De onde vem o numero. Sem esta linha o jogador compara 17,5% com 20% achando que
+              os dois olham as mesmas maos, e conclui que o solver "abre alto demais" — foi
+              exatamente a duvida de um fundador em 09/09. Os dois nao tem o mesmo denominador:
+              o dele e sobre as maos que RECEBEU, o do solver e o range inteiro daquele assento.
+              E o assento da CARTA nao e o rotulo da tela: o primeiro a agir em mesa de 7 tem 6
+              jogadores atras, entao a carta certa e a de 6 atras, que abre mais que a de 8. */}
+          {solverPct != null && (
+            <p className="mt-1.5 font-mono text-[9px] leading-snug text-muted-foreground/70" data-testid="matriz-referencia">
+              {dados.jogadores_atras != null
+                ? t("posProfile.matrix.reference", { atras: dados.jogadores_atras })
+                : t("posProfile.matrix.referenceMixed")}
+              {dados.solver_pct != null && ` ${t("posProfile.matrix.inYourHands", { pct: dados.solver_pct })}`}
+            </p>
+          )}
           {dados.voce_pct == null && dados.amostra_minima != null && (
             <p className="mt-1.5 font-mono text-[9px] leading-snug text-muted-foreground/70" data-testid="matriz-amostra">
               {t("posProfile.lowSampleMatrix", { n: dados.amostra_minima })}

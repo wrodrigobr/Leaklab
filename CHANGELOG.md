@@ -4,6 +4,39 @@ Todas as mudanÃ§as notÃ¡veis neste projeto serÃ£o documentadas aqui.
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
+## A matriz diz de qual carta veio o numero, e a grade perde o "todas" (09/09)
+
+- Duvida do Rullian: *"em relacao ao UTG, to achando essa porcentagem que o solver abriria um
+  tanto quanto alta, de onde vem esse valor?"*. Reproduzido no acervo dele: 1.519
+  oportunidades, ele 17,5%, solver 20,0%, cobertura 98. **O numero estava certo.** O "UTG"
+  daquele recorte era mesa de 7, que tem 6 jogadores atras, e a carta de 6 atras abre 20,0%
+  contra 15,8% da de 8 atras. A tela e que nao dizia de qual carta o numero saiu.
+- **Hipotese que a medicao matou antes de virar conserto:** o suspeito obvio era mistura de
+  stack raso. Nao era. So 2% das oportunidades dele no UTG estao abaixo de 7bb, e todos os
+  baldes de 10bb a 100bb abrem entre 13,9% e 16,4%. O que explicava era o assento.
+- A matriz passou a devolver `assento_da_carta` e `jogadores_atras`, e a tela declara **quantos
+  agem depois**, nao o nome do assento no vocabulario 9-max. Escrever "UTG+2" trocaria uma
+  duvida por outra, porque a propria tela chama esse assento de UTG (o primeiro a agir e sempre
+  o UTG, convencao do dono). Num recorte que mistura cartas ela diz que mistura, em vez de
+  escolher uma e apresenta-la como a origem do numero.
+- A mesma linha declara o **segundo denominador**: o 17,5% e sobre as maos que ele recebeu, o
+  20,0% e o range inteiro. Sem isso os dois numeros parecem comparaveis e nao sao.
+- **`mesa=todas` deixou de existir** (decisao do dono, com o numero na mao): a linha "UTG" do
+  acervo dele somava CINCO assentos estrategicamente diferentes — mesa 9, 8, 7, 6 e 5 —
+  comparados com cartas que abrem de 15,8% a 28,0%. Nao ha valor honesto para "todas" nesta
+  grade, entao ele sai em vez de continuar disponivel com um aviso. O endpoint agora responde
+  400, como para qualquer tamanho desconhecido.
+- Suites: backend 2992/2994 e frontend 559/559. **As 2 falhas do backend sao anteriores** e
+  foram provadas assim: com as mudancas guardadas no stash, `test_perguntas_de_board.py::
+  test_a_sondagem_SE_CALA_em_pote_3bet` e `test_leak_trainer.py::test_generate_postflop_spot`
+  falham igual. Os quatro guardas novos foram quebrados de proposito, um a um, e os quatro
+  acusaram.
+- **Nao entrou:** unificar o rotulo gravado em `decisions.position` com o da tela. Esta medido
+  e registrado em AY-35, e nao e renomeacao neutra — mexe em balde de agrupamento, em duas
+  heuristicas de posicao e no hash do no do solver (810 decisoes pos-flop voltariam para a
+  fila). Vai junto com o conserto do hash, senao paga-se o re-solve duas vezes.
+
+---
 
 ## DEPLOY 08/09/2026, tarde: card do admin, assinatura do spot, limp na matriz, chips do modal, onboarding
 
