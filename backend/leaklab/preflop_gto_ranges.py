@@ -7,6 +7,8 @@ Cobre três cenários:
   vs_3bet — respondendo a um re-raise após sua abertura
 """
 from __future__ import annotations
+
+from functools import lru_cache
 import json, logging, os
 from typing import Optional
 
@@ -594,10 +596,21 @@ def _balde_da_carta(stack_bb: float) -> Optional[str]:
     return label if _profundidade_compativel(depth, stack_bb) else None
 
 
-def _expand_range(notation: str) -> set[str]:
-    """Expande notação de range separada por vírgula em conjunto de hand_types."""
+@lru_cache(maxsize=4096)
+def _expand_range(notation: str) -> frozenset:
+    """Expande notação de range separada por vírgula em conjunto de hand_types.
+
+    CACHEADA (08/09): função pura de uma string, e as notações vêm dos charts, que são um
+    conjunto fechado. Medido no perfil do `test_condicoes_da_pergunta`: 367 mil chamadas a esta
+    função e **21 milhões** a `expand_range_notation` por dentro, 358s dos 527s do arquivo. Não
+    é custo de teste: o caminho é `analyze_preflop` -> `_in_range` -> aqui, que roda por decisão
+    preflop em TODO import. Devolve `frozenset` de propósito: o objeto agora é compartilhado
+    entre chamadores, e mutar um resultado cacheado corromperia os outros — com `set` a corrupção
+    seria silenciosa, com `frozenset` é `AttributeError` na hora. Nenhum chamador muta hoje
+    (conferido nos 11 pontos); os que precisam de cópia já fazem `set(...)`.
+    """
     if not notation or 'N/A' in notation.upper():
-        return set()
+        return frozenset()
     from leaklab.gto_utils import expand_range_notation
     hands: set[str] = set()
     for part in notation.split(','):
@@ -612,7 +625,7 @@ def _expand_range(notation: str) -> set[str]:
                 hands.add(h + 'o')
             else:
                 hands.add(h)
-    return hands
+    return frozenset(hands)
 
 
 def _in_range(hand_type: str, notation: str) -> bool:

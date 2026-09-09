@@ -136,6 +136,34 @@ def test_provisorio_vem_so_das_arvores_vizinhas_e_nao_existe_sem_vizinho():
     assert sm.gravar_provisorios(2) == 0
 
 
+def test_dois_uploads_ao_mesmo_tempo_nao_brigam_pelo_cache_da_arvore():
+    """ERRO EM PRODUCAO (08/09): `UniqueViolation` em `gto_tree_relacoes_pkey`. Dois uploads
+    simultaneos leem o cache vazio para a MESMA arvore e os dois gravam; o segundo estourava e
+    derrubava os provisorios do torneio inteiro (`semelhanca provisorios FAILED tournament_id=1030`).
+
+    A corrida e simulada de forma determinista: `_fetchone` devolve None mesmo com a linha ja
+    gravada, que e exatamente o que o perdedor da corrida enxerga."""
+    _semeia_vizinhos()
+    from database.schema import get_conn as _gc
+    conn = _gc()
+    primeiro = sm._relacoes_da_arvore(conn, 'arv_a')
+    conn.commit()
+    assert primeiro, 'a primeira gravacao tem de funcionar'
+    assert conn.execute("SELECT COUNT(*) AS n FROM gto_tree_relacoes WHERE tree_hash='arv_a'").fetchone()['n'] == 1
+    # agora o SEGUNDO processo: le o cache e nao acha (perdeu a corrida), e tenta gravar de novo
+    import database.repositories as _repo
+    original = _repo._fetchone
+    _repo._fetchone = lambda c, sql, p=(): (None if 'gto_tree_relacoes' in sql else original(c, sql, p))
+    try:
+        segundo = sm._relacoes_da_arvore(conn, 'arv_a')       # nao pode estourar
+        conn.commit()
+    finally:
+        _repo._fetchone = original
+    assert segundo == primeiro, 'a arvore e a mesma: o conteudo tem de ser identico'
+    assert conn.execute("SELECT COUNT(*) AS n FROM gto_tree_relacoes WHERE tree_hash='arv_a'").fetchone()['n'] == 1,         'a linha continua unica: o segundo INSERT e ignorado, nao duplicado'
+    conn.close()
+
+
 def test_comparacao_com_o_exato_grava_os_tres_acordos_e_nao_reabre():
     _semeia_vizinhos()
     sm.gravar_provisorios(2)

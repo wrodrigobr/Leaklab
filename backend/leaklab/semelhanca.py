@@ -136,12 +136,17 @@ def _relacoes_da_arvore(conn, tree_hash: str) -> Optional[dict]:
     except ValueError:
         return None
     rel = estrategia_por_relacao(arvore)
-    # SEM try/except: na homologacao de 08/09 o INSERT falhava no Postgres (a tabela tem chave
-    # natural e o wrapper acrescentava RETURNING id), o except engolia, e a transacao abortada
-    # derrubava tudo que vinha depois com "current transaction is aborted". Erro de cache e bug;
-    # tem de aparecer no log do thread, nao sumir.
-    conn.execute(_adapt("DELETE FROM gto_tree_relacoes WHERE tree_hash = ?"), (tree_hash,))
-    conn.execute(_adapt("INSERT INTO gto_tree_relacoes (tree_hash, relacoes_json, n_relacoes) VALUES (?, ?, ?)"),
+    # INSERT OR IGNORE, e sem DELETE antes (08/09, erro em producao): dois uploads simultaneos
+    # leem o cache vazio para a MESMA arvore e os dois tentam gravar — o segundo estourava
+    # `UniqueViolation` em `gto_tree_relacoes_pkey` e derrubava os provisorios do torneio
+    # inteiro. Ganhar ou perder a corrida nao muda nada aqui: `estrategia_por_relacao` e funcao
+    # pura da arvore, entao as duas gravariam o MESMO conteudo. O DELETE saiu junto porque so
+    # servia para reescrever o identico; se um dia a formula mudar, a invalidacao tem de ser
+    # explicita (versao na linha), nao um delete que abre janela de corrida.
+    #
+    # Continua SEM try/except: erro de cache aqui e bug e tem de aparecer no log. Na
+    # homologacao foi assim que apareceu a tabela de chave natural fora de `_NO_ID_TABLES`.
+    conn.execute(_adapt("INSERT OR IGNORE INTO gto_tree_relacoes (tree_hash, relacoes_json, n_relacoes) VALUES (?, ?, ?)"),
                  (tree_hash, json.dumps(rel), len(rel)))
     return rel
 

@@ -4113,6 +4113,42 @@ None`). Quem lia sem checar era a exibição.
 
 ## [Unreleased]
 
+### fix(solver): reconciliacao para de esperar a fila global zerar, e o cache da arvore para de brigar
+
+> **Achado 1, medido em prod (08/09):** 150 torneios cuja fila JA tinha drenado esperavam a
+> reconciliacao ha **11 horas na mediana, 21 no pior**, com **5.614 decisoes pos-flop sem
+> veredito**. O gancho existia desde o AY-26, mas so era ALCANCADO quando `pending == 0` no
+> ciclo: com fila pendente o laco do consumidor faz `continue` antes dele, e com upload entrando
+> a fila global quase nunca zera (a ultima vez tinha sido a meia-noite). O torneio drena ANTES
+> da fila — os spots dele ficam prontos enquanto os de outros seguem pendentes — entao a decisao
+> tem de ser por TORNEIO, que a consulta de candidatos ja fazia. Agora o gancho roda tambem no
+> meio do trabalho, com teto de tempo por passagem (`RECONCILE_TETO_S`, 60s) para nao roubar o
+> solver. Dois guardas novos: torneio drenado reconcilia com a fila global cheia, e o teto nao
+> derruba a reconciliacao.
+>
+> **Achado 2, erro em producao no passo 2:** `UniqueViolation` em `gto_tree_relacoes_pkey`
+> derrubando os provisorios de um torneio inteiro. Dois uploads simultaneos leem o cache vazio
+> para a MESMA arvore e os dois gravam. Ganhar ou perder a corrida nao muda nada, porque
+> `estrategia_por_relacao` e funcao pura da arvore e as duas gravariam o mesmo conteudo: virou
+> `INSERT OR IGNORE`, e o `DELETE` que vinha antes saiu (so reescrevia o identico e abria a
+> janela da corrida). Continua sem `try/except`: foi assim que o erro apareceu, e e assim que o
+> proximo aparece. O guarda simula a corrida de forma determinista, e com o `INSERT` antigo ele
+> reproduz o erro de prod.
+
+### perf(preflop): `_expand_range` cacheada — 21 milhoes de chamadas viravam 358s num arquivo so
+
+> **Por que:** perfilando o teste mais lento da suite (8,7 min), o tempo nao estava no teste:
+> 367 mil chamadas a `_expand_range` e **21 milhoes** a `expand_range_notation` por dentro dela.
+> O caminho e `analyze_preflop` -> `_in_range` -> `_expand_range`, que roda por decisao preflop
+> em TODO import — **o cache acelera a importacao do jogador, nao so a suite**. A funcao e pura
+> de uma string, e as notacoes vem dos charts, que sao conjunto fechado.
+>
+> O arquivo caiu de **521s para 47s** (11x). O retorno virou `frozenset` de proposito: o objeto
+> passa a ser compartilhado entre chamadores, e mutar um resultado cacheado corromperia os
+> outros — com `set` em silencio, com `frozenset` e `AttributeError` na hora. Conferidos os 11
+> pontos que chamam: ninguem muta, e quem precisa de copia ja faz `set(...)`. Quatro guardas,
+> incluindo um que recalcula do zero e compara; quebrado de proposito.
+
 ### perf(testes): a suite roda em paralelo e o bytecode volta a ser cacheado (38 min -> 23 min)
 
 > **Por que:** o dono perguntou por que a suite demora tanto, e a resposta so apareceu medindo.

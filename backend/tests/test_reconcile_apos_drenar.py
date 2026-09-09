@@ -70,6 +70,43 @@ def test_o_gancho_da_fila_drenada_reconcilia_o_best_action():
     assert d2['best_action'] == 'bet', 'sem solve novo o gancho nao deve reprocessar'
 
 
+def test_o_torneio_drenado_e_reconciliado_mesmo_com_a_fila_global_cheia():
+    """Achado em prod (08/09): o gancho so era ALCANCADO quando a fila global zerava, porque com
+    `pending > 0` o laco do consumidor fazia `continue` antes dele. Com upload entrando, a fila
+    quase nunca zera: 150 torneios drenados esperavam 11h na mediana (21h no pior), com 5.614
+    decisoes pos-flop sem veredito. O torneio drena ANTES da fila, e e por torneio que a
+    reconciliacao tem de decidir."""
+    _semeia()
+    conn = get_conn()
+    # OUTRO torneio, com spot ainda pendente: a fila GLOBAL nao esta vazia
+    conn.execute(_adapt("INSERT INTO tournaments (id, user_id, tournament_id, tournament_name, hero) "
+                        "VALUES (2, 1, 'T2', 'Torneio 2', 'Hero')"))
+    conn.execute(_adapt("INSERT INTO gto_tournament_queue (tournament_id, spot_hash) VALUES (2, 'spot2')"))
+    conn.execute(_adapt("INSERT INTO gto_solver_queue (spot_hash, spot_json, status, priority, requested_at) "
+                        "VALUES ('spot2', '{}', 'pending', 0, '2026-09-02 00:00:00')"))
+    conn.commit(); conn.close()
+    from api.app import _reconcile_drained_tournaments
+    _reconcile_drained_tournaments(limite_s=30)
+    conn = get_conn()
+    d = dict(conn.execute("SELECT best_action FROM decisions WHERE id=1").fetchone())
+    pend = conn.execute("SELECT COUNT(*) AS n FROM gto_solver_queue WHERE status='pending'").fetchone()
+    conn.close()
+    assert dict(pend)['n'] == 1, 'a fila global tem de continuar com pendencia neste teste'
+    assert d['best_action'] == 'check', 'o torneio 1 drenou e tem de ser reconciliado mesmo assim'
+
+
+def test_o_teto_de_tempo_nao_derruba_a_reconciliacao():
+    """O teto existe para nao roubar o consumidor; com teto generoso o comportamento e o mesmo."""
+    _semeia()
+    from api.app import _reconcile_drained_tournaments
+    _reconcile_drained_tournaments(limite_s=0.0)     # teto zerado: nao processa nenhum
+    conn = get_conn(); d = dict(conn.execute("SELECT best_action FROM decisions WHERE id=1").fetchone()); conn.close()
+    assert d['best_action'] == 'bet', 'com teto 0 o gancho nao deve ter reconciliado nada'
+    _reconcile_drained_tournaments(limite_s=60)
+    conn = get_conn(); d = dict(conn.execute("SELECT best_action FROM decisions WHERE id=1").fetchone()); conn.close()
+    assert d['best_action'] == 'check'
+
+
 if __name__ == '__main__':
     falhas = 0
     testes = [v for k, v in sorted(globals().items()) if k.startswith('test_')]

@@ -12652,7 +12652,13 @@ def _enqueue_postflop_spots(results: list, tournament_id: int = None, user_id: i
     log.info("Upload GTO enqueue: %s novos spots enfileirados, %s já resolvidos", enqueued, already)
 
 
-def _reconcile_drained_tournaments():
+#: Teto de tempo de UMA passagem da reconciliação quando ainda há fila. Sem ele, um lote de
+#: torneios drenados seguraria o consumidor e a fila cresceria. Com ele, o resto fica para a
+#: próxima volta (a consulta de candidatos é guardada por `labels_reconciled_at`).
+RECONCILE_TETO_S = float(os.environ.get('RECONCILE_TETO_S', '60') or 60)
+
+
+def _reconcile_drained_tournaments(limite_s: float | None = None):
     """Re-anexa o gto_label das decisões de torneios cuja fila do solver JÁ drenou (todos os
     spots 'done') e cujo solve é mais novo que a última reconciliação. Corrige a cobertura
     artificialmente baixa pós-import: o solve termina DEPOIS do import, então as decisões ficam
@@ -12678,7 +12684,12 @@ def _reconcile_drained_tournaments():
         return
     from scripts.resync_postflop_gto import resync_tournament_postflop
     from database.repositories import reconcile_tournament_labels
+    _t0 = time.time()
     for r in cands:
+        if limite_s is not None and (time.time() - _t0) >= limite_s:
+            log.info("reconcile: teto de %.0fs atingido, %d torneios ficam para a proxima volta",
+                     limite_s, len(cands) - cands.index(r))
+            break
         tid = dict(r)['tid']
         try:
             n = resync_tournament_postflop(tid, apply=True)
@@ -12742,12 +12753,20 @@ def _solver_queue_worker_loop():
                 log.info("Solver queue [tick %s]: pending=%s conc=%s", tick, pending, _conc)
                 result = run_solver_worker_pool(max_jobs=min(pending, 50), concurrency=_conc)
                 log.info("Solver queue pool resultado: %s", result)
+                # A reconciliação NÃO espera a fila global zerar (08/09). O torneio drena antes
+                # dela: os spots dele ficam prontos enquanto os de outros seguem pendentes.
+                # Medido em prod: 150 torneios já drenados esperando 11h na mediana (21h no
+                # pior), com 5.614 decisões pós-flop sem veredito, porque com `pending > 0` o
+                # `continue` abaixo pulava o gancho e a fila global raramente zera. Teto de
+                # tempo por passagem para não roubar o solver.
+                try:
+                    _reconcile_drained_tournaments(limite_s=RECONCILE_TETO_S)
+                except Exception:
+                    log.exception("reconcile drained tournaments error (meio da fila)")
                 continue   # re-checa JÁ: drena enquanto houver fila, sem esperar os 60s
         except Exception:
             log.exception("Solver queue worker loop error")
-        # Fila drenou → re-anexa labels dos torneios que acabaram de ser solvados (corrige a
-        # cobertura artificialmente baixa pós-import). Guardado por labels_reconciled_at, então
-        # é barato quando não há nada novo (query de candidatos volta vazia).
+        # Fila vazia: aqui não há teto — é o momento de fechar o que sobrou.
         try:
             _reconcile_drained_tournaments()
         except Exception:
