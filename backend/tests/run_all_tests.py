@@ -9,6 +9,9 @@ Uso:
     python3 tests/run_all_tests.py --suite api  # só um grupo
 """
 import sys, os, subprocess, time, argparse
+import io
+import re
+import concurrent.futures as cf
 sys.path.insert(0, os.path.dirname(__file__))
 
 SUITES = {
@@ -263,7 +266,109 @@ FORA_DA_SUITE = {
 }
 
 
-def run_suite(name: str, files: list, fast: bool = False) -> tuple[int,int,list]:
+def _ambiente_do_filho() -> dict:
+    """Env dos processos de teste. Tira `PYTHONDONTWRITEBYTECODE`: sem o cache de bytecode cada
+    um dos ~286 processos recompila o projeto inteiro do zero, e o import do app sai de 1,6s
+    para 3-10s. A regra de apagar cache vale para harness de MUTACAO (onde .pyc velho engana),
+    nao para a rodada normal — misturar as duas foi o que inflou a suite em 08/09."""
+    env = dict(os.environ)
+    env.pop('PYTHONDONTWRITEBYTECODE', None)
+    return env
+
+
+_ESCRITA_NO_BANCO = re.compile(r"INSERT\s|UPDATE\s|DELETE\s|init_db\(|\.commit\(|CREATE TABLE|DROP TABLE", re.I)
+
+
+def _pode_paralelo(fpath: str) -> bool:
+    """Um arquivo pode correr junto com os outros quando NAO escreve no banco compartilhado.
+
+    Tres casos, medidos em 08/09:
+      - fixa o proprio banco (`LEAKLAB_DB`/`DATABASE_URL`): 61 arquivos, isolados por definicao;
+      - usa o `data/leaklab.db` de dev mas so LE: leitura concorrente em SQLite e segura, e e
+        onde estao os arquivos mais caros (o de 8,7 min so consulta ranges);
+      - usa o banco de dev e ESCREVE: 54 arquivos. Esses vao para uma fila em serie. Deixa-los
+        concorrer trocaria tempo por resultado que depende de quem gravou primeiro.
+    """
+    try:
+        texto = io.open(fpath, encoding='utf-8', errors='replace').read()
+    except OSError:
+        return False
+    if 'LEAKLAB_DB' in texto or 'DATABASE_URL' in texto:
+        return True
+    usa_banco = ('get_conn' in texto or 'repositories' in texto or 'api.app' in texto)
+    return not (usa_banco and bool(_ESCRITA_NO_BANCO.search(texto)))
+
+
+def _roda_um(fname: str):
+    """Executa um arquivo e devolve (fname, passed, failed, falhas, erro_de_import)."""
+    fpath = os.path.join(BASE, fname)
+    r = subprocess.run(
+        [sys.executable, fpath],
+        capture_output=True, text=True, encoding='utf-8',
+        cwd=os.path.join(BASE, '..'), env=_ambiente_do_filho()
+    )
+    lines = (r.stdout + r.stderr).strip().split('\n')
+    summary = [l for l in lines if 'Total:' in l and 'Passed:' in l]
+    fails = [l for l in lines if l.startswith('FAIL') or l.startswith('FALHOU')]
+    if summary:
+        s = summary[-1]
+        p = int(s.split('Passed:')[1].split('|')[0].strip())
+        f = int(s.split('Failed:')[1].strip())
+        if f > 0 and not fails:
+            fails = [f"{f} falha(s) sem linha FAIL/FALHOU capturada — ver saida do arquivo"]
+        return fname, p, f, fails, None
+    err = '\n'.join(l for l in lines if 'Error' in l or 'error' in l)[:120]
+    return fname, 0, 0, [], err
+
+
+def run_suite(name: str, files: list, fast: bool = False, jobs: int = 1) -> tuple[int,int,list]:
+    passed = failed = 0
+    failures = []
+    existentes = []
+    for fname in files:
+        fpath = os.path.join(BASE, fname)
+        if not os.path.exists(fpath):
+            print(f"  ⚠️  {fname} — arquivo não encontrado, pulando")
+            continue
+        existentes.append(fname)
+
+    if jobs > 1:
+        # Os que tem banco proprio vao para o pool; os que compartilham `data/leaklab.db` vao
+        # para uma FILA UNICA, que ocupa um lugar do pool e corre em serie la dentro.
+        proprios = [f for f in existentes if _pode_paralelo(os.path.join(BASE, f))]
+        partilhados = [f for f in existentes if f not in set(proprios)]
+
+        def _serie(lista):
+            return [_roda_um(f) for f in lista]
+
+        resultados = {}
+        with cf.ThreadPoolExecutor(max_workers=jobs) as pool:
+            futuros = {pool.submit(_roda_um, f): f for f in proprios}
+            fut_serie = pool.submit(_serie, partilhados) if partilhados else None
+            for fut in cf.as_completed(list(futuros) + ([fut_serie] if fut_serie else [])):
+                saida = fut.result()
+                for res in (saida if fut is fut_serie else [saida]):
+                    resultados[res[0]] = res
+        ordenados = [resultados[f] for f in existentes if f in resultados]
+    else:
+        ordenados = [_roda_um(f) for f in existentes]
+
+    for fname, p, f, fails, err in ordenados:
+        if err is not None:
+            print(f"  ⚠️  {fname:<42} IMPORT/RUNTIME ERROR: {err}")
+            failures.append(f"[{fname}] IMPORT/RUNTIME ERROR: {err}")
+            continue
+        passed += p; failed += f
+        mark = '✅' if f == 0 else f'❌ {f}×'
+        print(f"  {mark:<8} {fname:<42} {p+f:>3} testes")
+        for fail in fails:
+            failures.append(f"[{fname}] {fail}")
+            print(f"           ↳ {fail}")
+    return passed, failed, failures
+
+
+def _run_suite_legado(name: str, files: list, fast: bool = False) -> tuple[int,int,list]:
+    """Versao sequencial original, preservada para comparacao (nao e mais chamada)."""
     passed = failed = 0
     failures = []
     for fname in files:
@@ -306,6 +411,9 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--fast', action='store_true', help='Pular testes com fixture real')
     parser.add_argument('--suite', default=None, help='Executar só uma suite: engine|database|llm|api|regression')
+    parser.add_argument('--jobs', type=int, default=max(1, (os.cpu_count() or 2) - 1),
+                        help='arquivos em paralelo (1 = sequencial, como antes). Os que compartilham '
+                             'o banco de dev correm em serie mesmo com --jobs > 1.')
     args = parser.parse_args()
 
     suites = {args.suite: SUITES[args.suite]} if args.suite and args.suite in SUITES else SUITES
@@ -320,7 +428,7 @@ def main():
 
     for suite_name, files in suites.items():
         print(f"\n── {suite_name.upper()} ──")
-        p, f, fails = run_suite(suite_name, files, fast=args.fast)
+        p, f, fails = run_suite(suite_name, files, fast=args.fast, jobs=args.jobs)
         total_p += p; total_f += f
         all_failures.extend(fails)
 

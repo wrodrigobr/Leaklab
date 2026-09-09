@@ -4113,6 +4113,30 @@ None`). Quem lia sem checar era a exibição.
 
 ## [Unreleased]
 
+### perf(testes): a suite roda em paralelo e o bytecode volta a ser cacheado (38 min -> 23 min)
+
+> **Por que:** o dono perguntou por que a suite demora tanto, e a resposta so apareceu medindo.
+> Nao era o Flask por arquivo, como eu supus: com o cache de bytecode quente, importar `api.app`
+> custa 1,6s; sem ele, de 3 a 10s. **Eu mesmo rodava apagando `__pycache__` e com
+> `PYTHONDONTWRITEBYTECODE=1`** — uma regra que vale para harness de MUTACAO (onde `.pyc` velho
+> engana) e que eu estava aplicando em rodada normal. O runner agora tira essa variavel do
+> ambiente dos filhos.
+>
+> **Onde o tempo esta, medido arquivo a arquivo:** metade em 8 arquivos de 286; o pior leva 8,7
+> min sozinho; os 170 mais rapidos somam 3,3 min. Paralelizar era o passo obvio, mas o criterio
+> importa: pelo primeiro que escrevi ("tem banco proprio"), **1.511s dos 12 mais pesados caiam na
+> fila em serie**, incluindo o de 8,7 min. Medi antes de aceitar e troquei o criterio para quem
+> ESCREVE no banco compartilhado: leitura concorrente em SQLite e segura, e e onde estao os
+> caros. O split passou de 61/225 para 237 no pool e 49 em serie.
+>
+> **Resultado, mesma maquina, `--jobs 3`:** 2306s -> 1379s, com contagem identica (2.973 testes,
+> 2.971 verdes, as MESMAS 2 falhas conhecidas). `--jobs 1` restaura o comportamento anterior.
+>
+> **O que NAO entra no pool:** os 49 arquivos que escrevem no `data/leaklab.db` de dev. Deixa-los
+> concorrer trocaria tempo por resultado que depende de quem gravou primeiro. O proximo ganho
+> real nao e mais paralelismo, e sim os 8 arquivos pesados — o campeao sorteia centenas de casos
+> em laco, um deles com 600 iteracoes.
+
 ### fix(grade): o filtro conta JOGADORES NA MAO, vira dropdown, e a grade para de inventar assento
 
 > **Por que:** o dono, olhando o filtro que subiu horas antes: "eu so jogo 9max... quando filtrei
