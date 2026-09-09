@@ -70,6 +70,39 @@ def test_sem_resumo_nao_quebra():
     assert _desaninha_resumo({'resumo': '', 'cards': []})['resumo'] == ''
 
 
+def test_secao_que_veio_como_texto_vira_lista_e_nao_derruba_a_tela():
+    """Achado auditando producao: o plano do aluno 22 tinha `nao_focar_agora` como STRING com
+    JSON dentro. A tela testa `.length > 0` (numa string, conta caracteres, entao passa) e
+    depois chama `.map` (que string nao tem): a tela de plano DAQUELE aluno quebrava."""
+    from leaklab.llm_explainer import _normaliza_secoes_do_plano
+    como_texto = '[{"item": "VPIP", "motivo": "amostra pequena"}]'
+    p = _normaliza_secoes_do_plano({'nao_focar_agora': como_texto, 'observar_mais_dados': [], 'cards': []})
+    assert isinstance(p['nao_focar_agora'], list) and p['nao_focar_agora'][0]['item'] == 'VPIP', p
+    # o que nao parseia sai do plano: secao ausente e melhor que secao que derruba a tela
+    p2 = _normaliza_secoes_do_plano({'nao_focar_agora': 'texto solto que nao e json', 'cards': []})
+    assert p2['nao_focar_agora'] == [], p2
+    # lista continua lista, e None nao vira []
+    p3 = _normaliza_secoes_do_plano({'nao_focar_agora': [{'item': 'x'}], 'observar_mais_dados': None, 'cards': []})
+    assert p3['nao_focar_agora'] == [{'item': 'x'}] and p3['observar_mais_dados'] is None
+
+
+def test_o_plano_respeita_um_intervalo_minimo_entre_geracoes():
+    """Dono, 09/09: "1x por mes ou algo assim, ao inves de mudar a todo momento que um indicador
+    altere... pra pessoas com muito volume devemos estar consumindo muitos tokens".
+
+    O drift decide SE o plano ficou velho; o intervalo decide QUANDO vale pagar a conta de LLM.
+    Plano sem data (os antigos) segue a regra de antes: so o drift."""
+    import datetime as dt
+    from leaklab.llm_explainer import _plano_novo_demais, STUDY_PLAN_INTERVALO_DIAS
+    agora = dt.datetime.utcnow()
+    ontem = (agora - dt.timedelta(days=1)).isoformat(timespec='seconds')
+    velho = (agora - dt.timedelta(days=STUDY_PLAN_INTERVALO_DIAS + 1)).isoformat(timespec='seconds')
+    assert _plano_novo_demais({'_em': ontem}) is True, 'plano de ontem nao regenera so porque driftou'
+    assert _plano_novo_demais({'_em': velho}) is False, 'passado o intervalo, o drift volta a mandar'
+    assert _plano_novo_demais({}) is False, 'plano antigo (sem data) segue so o drift'
+    assert _plano_novo_demais({'_em': 'data podre'}) is False, 'data ilegivel nao pode travar a regeracao'
+
+
 if __name__ == '__main__':
     falhas = 0
     testes = [v for k, v in sorted(globals().items()) if k.startswith('test_')]

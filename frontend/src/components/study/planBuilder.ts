@@ -134,7 +134,12 @@ export function buildStudyPlan(backend: StudyPlanResponse, t: Traduz): StudyPlan
     diagnosis: { summary: backend.resumo ?? "", leaks },
     weeks: generateWeeks(cards, t),
     resourcesByLeak,
-    observar: backend.observar_mais_dados ?? [],
-    naoFocar: backend.nao_focar_agora ?? [],
+    // `Array.isArray` e nao `?? []`: em 09/09 um plano em producao trouxe `nao_focar_agora` como
+    // STRING com JSON dentro. `?? []` deixa a string passar, o `.length > 0` da secao conta
+    // CARACTERES (entao passa) e o `.map` seguinte nao existe em string: a tela do plano
+    // daquele aluno quebrava. O backend agora normaliza; aqui a tela se defende sozinha, porque
+    // a resposta do modelo nao e contrato.
+    observar: Array.isArray(backend.observar_mais_dados) ? backend.observar_mais_dados : [],
+    naoFocar: Array.isArray(backend.nao_focar_agora) ? backend.nao_focar_agora : [],
   };
 }

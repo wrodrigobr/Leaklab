@@ -1297,7 +1297,15 @@ def generate_study_plan(leaks: list, evolution: list, icm: dict,
                 cached = get_llm_cache(user_id, db_key)
                 if cached:
                     _obj = json.loads(cached)
-                    if isinstance(_obj, dict) and 'plan' in _obj and _obj.get('_drift') == drift_sig:
+                    if isinstance(_obj, dict) and 'plan' in _obj and (
+                            _obj.get('_drift') == drift_sig or _plano_novo_demais(_obj)):
+                        # Driftou mas ainda esta dentro do intervalo: o plano fica. Regerar aqui
+                        # custaria tokens e trocaria o plano debaixo de quem esta seguindo ele.
+                        if _obj.get('_drift') != drift_sig:
+                            import logging as _lg
+                            _lg.getLogger('llm_guard').info(
+                                "study_plan: driftou mas esta dentro do intervalo de %sd; mantido",
+                                STUDY_PLAN_INTERVALO_DIAS)
                         _cache[mem_key] = json.dumps(_obj['plan'], ensure_ascii=False)
                         return _obj['plan']
                     # formato antigo (sem _drift) ou driftou → cai pra regenerar
@@ -1476,7 +1484,7 @@ Responda APENAS com JSON válido, sem texto adicional, no formato:
                 result = json.loads(recovered)
             else:
                 raise
-        result = _sanitize_study_resources(_desaninha_resumo(result))
+        result = _sanitize_study_resources(_normaliza_secoes_do_plano(_desaninha_resumo(result)))
         result['source'] = leak_source
         result_str = json.dumps(result, ensure_ascii=False)
         _cache[mem_key] = result_str
@@ -1484,7 +1492,7 @@ Responda APENAS com JSON válido, sem texto adicional, no formato:
         if user_id is not None:
             try:
                 from database.repositories import set_llm_cache
-                set_llm_cache(user_id, db_key, json.dumps({'_drift': drift_sig, 'plan': result}, ensure_ascii=False))
+                set_llm_cache(user_id, db_key, json.dumps({'_drift': drift_sig, '_em': __import__('datetime').datetime.utcnow().isoformat(timespec='seconds'), 'plan': result}, ensure_ascii=False))
             except Exception:
                 pass
         return result
@@ -1768,6 +1776,33 @@ def _fix_cadence_label(s: str) -> str:
     return f"{_CADENCE_PT.get(m.group(1).lower().replace('biweekly', 'bi-weekly'), m.group(1))}: " + s[m.end():]
 
 
+#: Intervalo MINIMO entre duas geracoes do plano, em dias (dono, 09/09: "1x por mes ou algo
+#: assim, ao inves de mudar a todo momento que um indicador altere... pra pessoas com muito
+#: volume devemos estar consumindo muitos tokens").
+#:
+#: O drift decide SE o plano ficou velho; o intervalo decide QUANDO vale pagar a conta. Quem
+#: importa 30 torneios por semana muda de banda com frequencia, e regenerar a cada vez custa
+#: tokens e troca o plano debaixo de quem estava seguindo ele. `?new=1` (o botao do jogador)
+#: continua furando o intervalo: pedido explicito e outra coisa.
+STUDY_PLAN_INTERVALO_DIAS = float(os.environ.get('STUDY_PLAN_INTERVALO_DIAS', '30') or 30)
+
+
+def _plano_novo_demais(obj: dict) -> bool:
+    """True quando o plano cacheado ainda esta dentro do intervalo minimo (logo, driftar nao
+    justifica regerar). Sem `_em` (planos antigos) devolve False: quem nao tem data segue a
+    regra de antes, so o drift."""
+    import datetime as _dt
+    em = (obj or {}).get('_em')
+    if not em:
+        return False
+    try:
+        quando = _dt.datetime.fromisoformat(str(em).replace('Z', ''))
+    except ValueError:
+        return False
+    idade = (_dt.datetime.utcnow() - quando).total_seconds() / 86400.0
+    return 0 <= idade < STUDY_PLAN_INTERVALO_DIAS
+
+
 #: Teto do resumo do plano. O contrato pede "2-3 frases"; acima disto nao e resumo, e despejo.
 LIMITE_DO_RESUMO = 600
 
@@ -1828,6 +1863,38 @@ def _desaninha_resumo(plan: dict) -> dict:
             _logging.getLogger('llm_guard').info(
                 "study_plan: recuperados do resumo: %s", [k for k in extra if k in _CHAVES_DO_PLANO])
             break
+    return plan
+
+
+def _normaliza_secoes_do_plano(plan: dict) -> dict:
+    """Garante que as secoes de lista SEJAM listas (09/09).
+
+    Achado auditando os 7 planos em producao: o do aluno 22 tinha `nao_focar_agora` como STRING
+    com um JSON dentro. A tela faz `plan.naoFocar.length > 0` (numa string, e a contagem de
+    caracteres, entao passa) e depois `.map` (que numa string nao existe) — ou seja, a tela de
+    plano de estudos daquele aluno quebrava. Mesma familia do resumo com JSON: aceitamos o que
+    o modelo devolveu sem conferir a forma.
+
+    String que parseia como lista vira lista; o que nao parseia sai do plano, com log. Secao
+    ausente e melhor que secao que derruba a tela.
+    """
+    import json as _json
+    import logging as _logging
+    for chave in ('nao_focar_agora', 'observar_mais_dados', 'cards'):
+        valor = plan.get(chave)
+        if valor is None or isinstance(valor, list):
+            continue
+        recuperado = None
+        if isinstance(valor, str):
+            try:
+                lido = _json.loads(valor)
+                recuperado = lido if isinstance(lido, list) else None
+            except Exception:                                   # noqa: BLE001
+                recuperado = None
+        _logging.getLogger('llm_guard').warning(
+            "study_plan: '%s' veio como %s; %s", chave, type(valor).__name__,
+            'convertido para lista' if recuperado is not None else 'descartado')
+        plan[chave] = recuperado if recuperado is not None else []
     return plan
 
 
@@ -1993,7 +2060,15 @@ def generate_study_plan_agentic(leaks: list, evolution: list, icm: dict,
                 cached = get_llm_cache(user_id, db_key)
                 if cached:
                     _obj = json.loads(cached)
-                    if isinstance(_obj, dict) and 'plan' in _obj and _obj.get('_drift') == drift_sig:
+                    if isinstance(_obj, dict) and 'plan' in _obj and (
+                            _obj.get('_drift') == drift_sig or _plano_novo_demais(_obj)):
+                        # Driftou mas ainda esta dentro do intervalo: o plano fica. Regerar aqui
+                        # custaria tokens e trocaria o plano debaixo de quem esta seguindo ele.
+                        if _obj.get('_drift') != drift_sig:
+                            import logging as _lg
+                            _lg.getLogger('llm_guard').info(
+                                "study_plan: driftou mas esta dentro do intervalo de %sd; mantido",
+                                STUDY_PLAN_INTERVALO_DIAS)
                         _cache[mem_key] = json.dumps(_obj['plan'], ensure_ascii=False)
                         return _obj['plan']
                     # formato antigo ou driftou → regenera
@@ -2001,14 +2076,14 @@ def generate_study_plan_agentic(leaks: list, evolution: list, icm: dict,
                 pass
 
     def _finalize(plan: dict) -> dict:
-        plan = _sanitize_study_resources(_desaninha_resumo(dict(plan)))
+        plan = _sanitize_study_resources(_normaliza_secoes_do_plano(_desaninha_resumo(dict(plan))))
         plan['source'] = leak_source
         result_str = json.dumps(plan, ensure_ascii=False)
         _cache[mem_key] = result_str
         if user_id is not None:
             try:
                 from database.repositories import set_llm_cache
-                set_llm_cache(user_id, db_key, json.dumps({'_drift': drift_sig, 'plan': plan}, ensure_ascii=False))
+                set_llm_cache(user_id, db_key, json.dumps({'_drift': drift_sig, '_em': __import__('datetime').datetime.utcnow().isoformat(timespec='seconds'), 'plan': plan}, ensure_ascii=False))
             except Exception:
                 pass
         return plan

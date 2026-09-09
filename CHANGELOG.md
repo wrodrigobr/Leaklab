@@ -4113,6 +4113,25 @@ None`). Quem lia sem checar era a exibição.
 
 ## [Unreleased]
 
+### fix(plano): secao que veio como texto quebrava a tela, e a regeracao ganha intervalo minimo
+
+> **Auditoria dos 7 planos em producao (09/09), depois do vazamento do resumo:** so 1 tinha o
+> JSON no resumo. Mas apareceu outro defeito da mesma familia: o plano do aluno 22 trazia
+> `nao_focar_agora` como **STRING** com um JSON dentro. A tela testa `.length > 0` — numa string
+> isso conta CARACTERES, entao passa — e depois chama `.map`, que string nao tem: **a tela de
+> plano daquele aluno quebrava.** Consertado nos dois lados: o backend normaliza a forma antes de
+> gravar (string que parseia vira lista; o que nao parseia sai, porque secao ausente e melhor que
+> secao que derruba a tela), e o `planBuilder` passa a exigir `Array.isArray` em vez de `?? []`.
+> Resposta de modelo nao e contrato, e a tela tem de se defender sozinha.
+>
+> **Intervalo minimo entre geracoes (dono):** *"1x por mes ou algo assim, ao inves de mudar a
+> todo momento que um indicador altere... pra pessoas com muito volume devemos estar consumindo
+> muitos tokens"*. Agora o drift decide SE o plano ficou velho e o intervalo decide QUANDO vale
+> pagar a conta: `STUDY_PLAN_INTERVALO_DIAS` (30 por padrao). Quem importa muito torneio muda de
+> banda toda semana, e regerar a cada vez custa tokens E troca o plano debaixo de quem estava
+> seguindo ele. O `?new=1` do jogador continua furando o intervalo: pedido explicito e outra
+> coisa. Plano antigo (sem data gravada) segue so o drift, e data ilegivel nao trava a regeracao.
+
 ### fix(plano): o resumo mostrava JSON ao jogador, e nos aceitavamos sem conferir
 
 > **Por que:** o dono abriu o proprio plano em PRODUCAO e disse "achei bem confuso". Era pior
