@@ -633,7 +633,20 @@
     "trendAvgLabel": "Tendencia",
     "trendRawLabel": "Cada torneo",
     "trendAvgRef": "tu promedio: {{medio}}bb",
-    "trendHintUp": "línea subiendo = mejorando"
+    "trendHintUp": "línea subiendo = mejorando",
+    "leakHandsTitle": "{{n}} manos · {{bb}}bb perdidos",
+    "leakHandsPartial": "mostrando {{n}} de {{total}}",
+    "leakHandsMismatch": "La lista tiene {{lista}} manos y la fila dice {{linha}}. Algo está fuera de lugar, y el número de la fila es el que vale.",
+    "leakHandsEmpty": "Ninguna mano con costo medido en este spot.",
+    "leakHandsError": "No se pudieron cargar las manos de este leak.",
+    "leakHandsOpen": "replay",
+    "leakHandsCol": {
+      "hand": "mano",
+      "seat": "asiento",
+      "stack": "stack",
+      "cost": "costo",
+      "date": "cuándo"
+    }
   },
   "coachReferral": {
     "referredTitle": "Alumnos referidos",

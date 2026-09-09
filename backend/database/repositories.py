@@ -12238,6 +12238,73 @@ def get_tree_strategy(tree_hash: str) -> Optional[dict]:
         conn.close()
 
 
+def get_maos_do_leak(user_id: int, street: str, action_taken: str, best_action: str,
+                     last_n: int | None = 50, limit: int = 100, offset: int = 0) -> dict:
+    """As MAOS por tras de uma linha do card "Leaks por custo" (AY-32, 09/09).
+
+    Pedido de um fundador: "e possivel cada uma dessas linhas ser clicavel, e mostrar a lista de
+    maos em que esta situacao ocorreu? e nesta lista conseguirmos abrir o replayer?".
+
+    ── Por que esta funcao existe, em vez de reusar a do plano de estudos ──────────────────
+
+    `get_decisions_for_spot` parecia pronta e nao serve: ela agrupa por (street, ASSENTO), sem o
+    par de acoes; aceita mao por `gto_label` mesmo sem custo em bb; e nao passa pela regua
+    `ev_loss_trustworthy`. Ligada na tela, traria maos de OUTROS pares de acao, incluiria maos
+    sem custo, e a lista nao fecharia com o `count` da linha em direcao nenhuma.
+
+    Aqui a lista sai do MESMO recorte (`_build_tournament_filter` com o mesmo `last_n`), do
+    MESMO corte (`ev > 0.05`) e da MESMA regua do card. O `total` devolvido tem de bater com o
+    `count` da linha e o `loss_bb` com o dela — e e isso que o teste exige. Sem essa amarra, a
+    tela viraria a segunda politica para a mesma pergunta, que e como o card ja publicou
+    7.669 bb/100 onde o numero honesto era 9,8 (ver `get_ev_summary`).
+    """
+    from leaklab.decision_engine_v11 import ev_loss_trustworthy
+    conn = get_conn()
+    try:
+        _tf, _tp = _build_tournament_filter(user_id, last_n=last_n)
+        tids = [r['id'] for r in _fetchall(conn, _adapt(
+            f"SELECT id FROM tournaments t WHERE {_tf} ORDER BY COALESCE(t.played_at, t.imported_at) DESC"), _tp)]
+        if not tids:
+            return {'total': 0, 'loss_bb': 0.0, 'hands': [], 'limit': limit, 'offset': offset}
+        ph = ','.join('?' * len(tids))
+        linhas = _fetchall(conn, _adapt(f"""
+            SELECT d.id, d.tournament_id AS tid, d.hand_id, d.street, d.position, d.hero_cards,
+                   d.board, d.action_taken, d.best_action, d.ev_loss_bb AS ev, d.ev_loss_source AS src,
+                   d.stack_bb, d.estimated_equity AS equity, d.pot_size AS pot, d.facing_bet AS facing,
+                   d.gto_label, d.label, d.num_players, t.tournament_name, t.played_at
+            FROM decisions d JOIN tournaments t ON t.id = d.tournament_id
+            WHERE d.tournament_id IN ({ph}) AND d.ev_loss_bb IS NOT NULL
+              AND d.street = ? AND d.action_taken = ? AND d.best_action = ?
+        """), tuple(tids) + (street, action_taken, best_action)) or []
+        # A regua e o corte, na ordem do card: primeiro confiavel, depois > 0.05bb.
+        boas = [r for r in linhas
+                if ev_loss_trustworthy(r['ev'], r['stack_bb'], r['src'], action=r['action_taken'],
+                                       equity=r['equity'], pot_bb=r['pot'], facing_bb=r['facing'])
+                and float(r['ev']) > 0.05]
+        boas.sort(key=lambda r: float(r['ev']), reverse=True)
+        total = len(boas)
+        loss = round(sum(float(r['ev']) for r in boas), 1)
+        pagina = boas[offset:offset + limit] if limit else boas
+        maos = [{
+            'decision_id':   r['id'],
+            'tournament_id': r['tid'],
+            'tournament':    r['tournament_name'],
+            'hand_id':       r['hand_id'],
+            'played_at':     str(r['played_at'])[:10] if r['played_at'] else None,
+            'position':      r['position'],
+            'hero_cards':    r['hero_cards'],
+            'board':         r['board'],
+            'stack_bb':      r['stack_bb'],
+            'ev_loss_bb':    round(float(r['ev']), 2),
+            'gto_label':     r['gto_label'],
+            'label':         r['label'],
+        } for r in pagina]
+        return {'total': total, 'loss_bb': loss, 'hands': maos, 'limit': limit, 'offset': offset,
+                'street': street, 'action_taken': action_taken, 'best_action': best_action}
+    finally:
+        conn.close()
+
+
 def get_ev_summary(user_id: int, last_n: int | None = 50) -> dict:
     """UX-1 (plano pós-solver): resumo de EV para o hero do DashboardV2.
 

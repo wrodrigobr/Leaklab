@@ -1,5 +1,5 @@
-import React, { useRef } from "react";
-import { Link } from "react-router-dom";
+import React, { useEffect, useRef, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import { TrendingDown, Target, Zap, Brain, Loader2 } from "lucide-react";
@@ -7,7 +7,7 @@ import { HudHeader } from "@/components/hud/HudHeader";
 import { EmptyDashboard } from "@/components/hud/EmptyDashboard";
 import { ProximoPassoBanner } from "@/components/hud/ProximoPassoBanner";
 import { PlayerStatsCard } from "@/components/hud/PlayerStatsCard";
-import { EvSummary, GtoQualityData, GtoPositionData, progression, type EvolutionResponse } from "@/lib/api";
+import { EvSummary, GtoQualityData, GtoPositionData, progression, metrics, type EvolutionResponse, type LeakHands } from "@/lib/api";
 import { useMasonryRows } from "@/hooks/useMasonryRows";
 import { formatAction } from "@/lib/utils";
 import { useSpotLabel } from "@/lib/spotLabel";
@@ -18,6 +18,7 @@ import { V2AiInsightsCard, AiInsight } from "@/components/hud/V2AiInsightsCard";
 import { V2QualityCard } from "@/components/hud/V2QualityCard";
 import { V2PositionCard } from "@/components/hud/V2PositionCard";
 import { V2PositionProfileCard } from "@/components/hud/V2PositionProfileCard";
+import { MaosDoLeak } from "@/components/hud/MaosDoLeak";
 import { ProLockCard } from "@/components/hud/ProLockCard";
 import { V2BankrollCard } from "@/components/hud/V2BankrollCard";
 
@@ -93,6 +94,8 @@ export function DashboardV2({ onUpload, evSummary, volumeLimit = 50, onVolumeLim
       ? s.ev_per_100_recent - s.ev_per_100_prev
       : null;
   const topLeak = s?.top_leaks?.[0] ?? null;
+  /** Qual linha do card de leaks esta aberta (AY-32). Uma por vez: o mesmo clique fecha. */
+  const [leakAberto, setLeakAberto] = useState<string | null>(null);
 
   // A AÇÃO do hero é a missão do protocolo, não o leak mais caro.
   // O leak mais caro é DIAGNÓSTICO e frequentemente é postflop ("flop −65.9bb"); mandar
@@ -355,26 +358,41 @@ export function DashboardV2({ onUpload, evSummary, volumeLimit = 50, onVolumeLim
               {t("v2.leaksTitle")}
             </div>
             <div className="space-y-2">
-              {s.top_leaks.map((l, i) => (
-                <div key={i} className="flex items-center gap-3">
-                  <span className="font-mono text-base font-bold text-muted-foreground/60 w-5">{i + 1}</span>
-                  <div className="flex-1 min-w-0">
-                    <div className="text-[13px]">
-                      <span className="font-mono font-bold uppercase">{formatAction(l.action_taken)}</span>
-                      <span className="text-muted-foreground"> → </span>
-                      <span className="font-mono font-bold uppercase text-teal-300">{formatAction(l.best_action)}</span>
-                      <span className="text-muted-foreground text-[11px]"> · {l.street} · {t("v2.leakSpots", { n: l.count })}</span>
+              {s.top_leaks.map((l, i) => {
+                const chave = `${l.street}|${l.action_taken}|${l.best_action}`;
+                const aberto = leakAberto === chave;
+                return (
+                <div key={i}>
+                  <button
+                    type="button"
+                    aria-expanded={aberto}
+                    data-testid={`leak-linha-${i}`}
+                    onClick={() => setLeakAberto(aberto ? null : chave)}
+                    className="flex w-full items-center gap-3 rounded-md px-1 py-0.5 text-left transition-colors hover:bg-muted/10 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                  >
+                    <span className="font-mono text-base font-bold text-muted-foreground/60 w-5">{i + 1}</span>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-[13px]">
+                        <span className="font-mono font-bold uppercase">{formatAction(l.action_taken)}</span>
+                        <span className="text-muted-foreground"> → </span>
+                        <span className="font-mono font-bold uppercase text-teal-300">{formatAction(l.best_action)}</span>
+                        <span className="text-muted-foreground text-[11px]"> · {l.street} · {t("v2.leakSpots", { n: l.count })}</span>
+                      </div>
+                      <div className="mt-1 h-1 rounded-full bg-muted/20 overflow-hidden">
+                        <div className="h-full rounded-full bg-red-400/70" style={{ width: `${Math.min(100, l.share_pct)}%` }} />
+                      </div>
                     </div>
-                    <div className="mt-1 h-1 rounded-full bg-muted/20 overflow-hidden">
-                      <div className="h-full rounded-full bg-red-400/70" style={{ width: `${Math.min(100, l.share_pct)}%` }} />
+                    <div className="text-right shrink-0">
+                      <div className="font-mono text-[13px] font-bold text-red-400">−{l.loss_bb.toFixed(1)}bb</div>
+                      <div className="font-mono text-[9px] text-muted-foreground">{t("v2.leakShare", { pct: l.share_pct })}</div>
                     </div>
-                  </div>
-                  <div className="text-right shrink-0">
-                    <div className="font-mono text-[13px] font-bold text-red-400">−{l.loss_bb.toFixed(1)}bb</div>
-                    <div className="font-mono text-[9px] text-muted-foreground">{t("v2.leakShare", { pct: l.share_pct })}</div>
-                  </div>
+                  </button>
+                  {aberto && (
+                    <MaosDoLeak street={l.street} actionTaken={l.action_taken} bestAction={l.best_action}
+                                esperado={l.count} lastN={volumeLimit} />
+                  )}
                 </div>
-              ))}
+              );})}
             </div>
           </section>
         )}

@@ -1781,6 +1781,28 @@ def player_ev_leaks():
     return jsonify(get_ev_leaks(g.user_id, days, last_n=last_n))
 
 
+@app.route('/player/ev-leaks/hands', methods=['GET'])
+@require_auth
+def player_ev_leak_hands():
+    """As maos por tras de UMA linha do card "Leaks por custo" (AY-32).
+
+    Mesma chave da linha: street + acao jogada + acao ideal. O recorte de torneios e o mesmo
+    `last_n` do card, senao a lista responderia por um periodo e o numero por outro."""
+    from database.repositories import get_maos_do_leak
+    street = (request.args.get('street') or '').strip()
+    jogada = (request.args.get('action_taken') or '').strip()
+    ideal  = (request.args.get('best_action') or '').strip()
+    if not (street and jogada and ideal):
+        return jsonify({'error': 'informe street, action_taken e best_action'}), 400
+    try:
+        limit  = max(1, min(500, int(request.args.get('limit', 100))))
+        offset = max(0, int(request.args.get('offset', 0)))
+    except ValueError:
+        return jsonify({'error': 'limit/offset invalidos'}), 400
+    return jsonify(get_maos_do_leak(g.user_id, street, jogada, ideal,
+                                    last_n=_last_n_da_query(), limit=limit, offset=offset))
+
+
 @app.route('/player/leak-finder', methods=['GET'])
 @require_auth
 def player_leak_finder():

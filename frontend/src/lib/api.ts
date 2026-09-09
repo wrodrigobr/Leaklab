@@ -2375,6 +2375,28 @@ export interface EvLeak {
   street: string; action_taken: string; best_action: string;
   count: number; loss_bb: number; share_pct: number;
 }
+/** Uma mao por tras de uma linha do card "Leaks por custo" (AY-32). */
+export interface LeakHand {
+  decision_id: number;
+  tournament_id: number;
+  tournament: string | null;
+  hand_id: string;
+  played_at: string | null;
+  position: string | null;
+  hero_cards: string | null;
+  board: string | null;
+  stack_bb: number | null;
+  ev_loss_bb: number;
+  gto_label: string | null;
+  label: string | null;
+}
+/** `total` e `loss_bb` reconciliam com o `count` e o `loss_bb` da linha: mesma consulta, mesma regua. */
+export interface LeakHands {
+  total: number; loss_bb: number; hands: LeakHand[];
+  limit: number; offset: number;
+  street: string; action_taken: string; best_action: string;
+}
+
 export interface EvSummary {
   has_data: boolean;
   decisions_with_ev?: number;
@@ -2396,6 +2418,13 @@ export const metrics = {
       (evolution/playerStats/leakRoi/gtoQuality/...) — 0 = histórico, N = últimos N torneios. */
   evSummary: (lastN?: number) =>
     request<EvSummary>(`/player/ev-summary${lastN != null ? `?last_n=${lastN}` : ""}`),
+
+  /** As maos de UMA linha do card de leaks. A chave e a mesma da linha: street + jogada + ideal. */
+  evLeakHands: (street: string, actionTaken: string, bestAction: string, lastN?: number, limit = 100, offset = 0) =>
+    request<LeakHands>(
+      `/player/ev-leaks/hands?street=${encodeURIComponent(street)}&action_taken=${encodeURIComponent(actionTaken)}` +
+      `&best_action=${encodeURIComponent(bestAction)}&limit=${limit}&offset=${offset}` +
+      (lastN != null ? `&last_n=${lastN}` : "")),
 
   leaderboard: (period = 90) =>
     request<LeaderboardResponse>(`/metrics/leaderboard?period=${period}`),

@@ -4113,6 +4113,34 @@ None`). Quem lia sem checar era a exibição.
 
 ## [Unreleased]
 
+### feat(leaks): a linha do card vira a lista de maos, e cada mao abre o replayer (AY-32)
+
+> **Por que:** pergunta de um fundador com o print do card na mao: *"e possivel cada uma dessas
+> linhas ser clicavel, e mostrar a lista de maos em que esta situacao ocorreu? e nesta lista
+> conseguirmos abrir o replayer pra ver o que fizemos, e os vereditos do solver?"*.
+>
+> **O atalho que pareceria pronto e estaria errado.** `get_decisions_for_spot` ja existe e
+> alimenta o plano de estudos. Nao serve por tres motivos: agrupa por (street, ASSENTO) e nao
+> pelo par de acoes, entao a linha "FOLD -> CALL no flop" traria tambem as maos de
+> "FOLD -> SHOVE no flop"; aceita mao por `gto_label` mesmo sem custo em bb; e nao passa pela
+> regua `ev_loss_trustworthy`. A lista nao fecharia com o `count` da linha em direcao nenhuma.
+>
+> O dono perguntou direto se nao bastava tirar o limite de 8. Nao bastava: o limite era o menor
+> dos tres problemas. **Lista e card com duas politicas para a mesma pergunta** e defeito que
+> este projeto ja pagou caro — sem a regua, este MESMO card publicou 7.669 bb/100 onde o numero
+> honesto era 9,8, com um leak de 222.929 bb no topo.
+>
+> **O que entra:** `get_maos_do_leak` usa o MESMO recorte de torneios (`last_n` do card), o MESMO
+> corte (`ev > 0.05`) e a MESMA regua, so que sem agregar; endpoint `/player/ev-leaks/hands` com
+> paginacao; a linha vira botao e abre a tabela (mao, assento, stack, custo, data) com link por
+> mao para `/replayer`. Quando o total NAO bate com o numero da linha, a tela declara a
+> divergencia em vez de deixar o jogador concluir que faltou dado.
+>
+> **Guardas:** 5 no backend, sendo o central a reconciliacao de TODA linha do card com a lista
+> (mesmo numero de maos e mesma soma de bb), mais a armadilha do par de acao e a paginacao que
+> nao repete mao; 3 no front. Validado em dev pelo dono antes de qualquer deploy: linha de 8
+> spots e 217,5bb abrindo exatamente 8 maos que somam 217,5bb.
+
 ### fix(plano): o saneamento passa a valer na LEITURA do cache (o deploy anterior nao bastou)
 
 > **Medido em prod logo depois do deploy, pelo caminho do produto:** o plano do dono CONTINUAVA

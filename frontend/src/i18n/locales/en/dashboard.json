@@ -633,7 +633,20 @@
     "trendAvgLabel": "Trend",
     "trendRawLabel": "Each tournament",
     "trendAvgRef": "your average: {{medio}}bb",
-    "trendHintUp": "line going up = improving"
+    "trendHintUp": "line going up = improving",
+    "leakHandsTitle": "{{n}} hands · {{bb}}bb lost",
+    "leakHandsPartial": "showing {{n}} of {{total}}",
+    "leakHandsMismatch": "The list has {{lista}} hands and the row says {{linha}}. Something is off, and the row number is the one that counts.",
+    "leakHandsEmpty": "No hand with measured cost in this spot.",
+    "leakHandsError": "Could not load the hands for this leak.",
+    "leakHandsOpen": "replay",
+    "leakHandsCol": {
+      "hand": "hand",
+      "seat": "seat",
+      "stack": "stack",
+      "cost": "cost",
+      "date": "when"
+    }
   },
   "coachReferral": {
     "referredTitle": "Referred students",
