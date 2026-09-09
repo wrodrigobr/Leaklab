@@ -1306,8 +1306,15 @@ def generate_study_plan(leaks: list, evolution: list, icm: dict,
                             _lg.getLogger('llm_guard').info(
                                 "study_plan: driftou mas esta dentro do intervalo de %sd; mantido",
                                 STUDY_PLAN_INTERVALO_DIAS)
-                        _cache[mem_key] = json.dumps(_obj['plan'], ensure_ascii=False)
-                        return _obj['plan']
+                        # Saneia na SAIDA tambem, nao so na geracao (09/09). Medido em prod logo
+                        # apos o deploy: o plano do dono continuava servindo o JSON vazado, porque
+                        # o conserto so valia para planos NOVOS e o cacheado era entregue como
+                        # estava — e o intervalo de 30 dias, criado no mesmo dia, ainda segurava
+                        # o plano ruim por um mes. Sanear na leitura conserta o acervo inteiro
+                        # sem gastar um token.
+                        _plano = _normaliza_secoes_do_plano(_desaninha_resumo(dict(_obj['plan'])))
+                        _cache[mem_key] = json.dumps(_plano, ensure_ascii=False)
+                        return _plano
                     # formato antigo (sem _drift) ou driftou → cai pra regenerar
             except Exception:
                 pass
@@ -2069,8 +2076,15 @@ def generate_study_plan_agentic(leaks: list, evolution: list, icm: dict,
                             _lg.getLogger('llm_guard').info(
                                 "study_plan: driftou mas esta dentro do intervalo de %sd; mantido",
                                 STUDY_PLAN_INTERVALO_DIAS)
-                        _cache[mem_key] = json.dumps(_obj['plan'], ensure_ascii=False)
-                        return _obj['plan']
+                        # Saneia na SAIDA tambem, nao so na geracao (09/09). Medido em prod logo
+                        # apos o deploy: o plano do dono continuava servindo o JSON vazado, porque
+                        # o conserto so valia para planos NOVOS e o cacheado era entregue como
+                        # estava — e o intervalo de 30 dias, criado no mesmo dia, ainda segurava
+                        # o plano ruim por um mes. Sanear na leitura conserta o acervo inteiro
+                        # sem gastar um token.
+                        _plano = _normaliza_secoes_do_plano(_desaninha_resumo(dict(_obj['plan'])))
+                        _cache[mem_key] = json.dumps(_plano, ensure_ascii=False)
+                        return _plano
                     # formato antigo ou driftou → regenera
             except Exception:
                 pass

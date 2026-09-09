@@ -103,6 +103,23 @@ def test_o_plano_respeita_um_intervalo_minimo_entre_geracoes():
     assert _plano_novo_demais({'_em': 'data podre'}) is False, 'data ilegivel nao pode travar a regeracao'
 
 
+def test_o_plano_ja_cacheado_e_saneado_na_LEITURA_tambem():
+    """Medido em prod logo apos o deploy do conserto: o plano do dono CONTINUAVA servindo o JSON
+    vazado. O conserto valia so na geracao, e o cacheado era entregue como estava — e o intervalo
+    de 30 dias, criado no mesmo dia, ainda seguraria o plano ruim por um mes. Sanear na saida
+    conserta o acervo inteiro sem gastar um token."""
+    import inspect
+    from leaklab import llm_explainer as m
+    for fn in (m.generate_study_plan, m.generate_study_plan_agentic):
+        fonte = inspect.getsource(fn)
+        # duas vezes: uma no caminho do CACHE (leitura) e uma no da GERACAO (escrita). Uma so
+        # significa que um dos dois lados voltou a servir o que o modelo mandou, sem conferir.
+        assert fonte.count('_desaninha_resumo') >= 2, (
+            '%s: o saneamento tem de valer na LEITURA do cache e na geracao' % fn.__name__)
+        assert fonte.count('_normaliza_secoes_do_plano') >= 2, (
+            '%s: a normalizacao de forma tem de valer nos dois caminhos' % fn.__name__)
+
+
 if __name__ == '__main__':
     falhas = 0
     testes = [v for k, v in sorted(globals().items()) if k.startswith('test_')]

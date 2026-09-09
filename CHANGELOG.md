@@ -4113,6 +4113,23 @@ None`). Quem lia sem checar era a exibição.
 
 ## [Unreleased]
 
+### fix(plano): o saneamento passa a valer na LEITURA do cache (o deploy anterior nao bastou)
+
+> **Medido em prod logo depois do deploy, pelo caminho do produto:** o plano do dono CONTINUAVA
+> servindo o JSON vazado. O conserto valia so na geracao, e o plano cacheado era entregue como
+> estava. Pior: o intervalo de 30 dias criado no mesmo dia iria SEGURAR o plano ruim por um mes —
+> uma mudanca minha prolongando o defeito de outra mudanca minha. Se eu tivesse parado no verde
+> do deploy, ficava assim.
+>
+> Agora `_desaninha_resumo` + `_normaliza_secoes_do_plano` rodam tambem quando o plano sai do
+> cache. Isso limpa o acervo INTEIRO sem gastar um token: todo plano ja gravado passa a ser
+> servido sem JSON no texto e com as secoes na forma certa. Guarda: o saneamento tem de aparecer
+> nos DOIS caminhos (leitura e geracao); devolvendo o cache cru, o teste acusa.
+>
+> **Correcao do que eu afirmei antes:** eu disse que a tela do aluno 22 estava quebrada. O
+> endpoint devolve `upgrade_required` para ele — nao e Pro, nao alcanca a tela. O defeito e real
+> para qualquer assinante com plano malformado, mas ninguem estava com a tela quebrada.
+
 ### fix(plano): secao que veio como texto quebrava a tela, e a regeracao ganha intervalo minimo
 
 > **Auditoria dos 7 planos em producao (09/09), depois do vazamento do resumo:** so 1 tinha o
