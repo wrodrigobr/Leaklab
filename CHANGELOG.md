@@ -31,6 +31,11 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
   test_a_sondagem_SE_CALA_em_pote_3bet` e `test_leak_trainer.py::test_generate_postflop_spot`
   falham igual. Os quatro guardas novos foram quebrados de proposito, um a um, e os quatro
   acusaram.
+- **Duas politicas para a mesma pergunta, achadas ao conferir o endpoint com o acervo real:** a
+  grade abria na mesa mais jogada sem `?mesa=`, e a matriz caia no recorte MISTURADO. Na tela
+  nao aparecia, porque o front repassa a mesa que a grade declarou — e era exatamente por isso
+  que valia consertar: quem chamasse o endpoint direto recebia um numero somando ate cinco
+  assentos, sem nada no payload dizendo isso. As duas seguem a mesma politica agora.
 - **Nao entrou:** unificar o rotulo gravado em `decisions.position` com o da tela. Esta medido
   e registrado em AY-35, e nao e renomeacao neutra — mexe em balde de agrupamento, em duas
   heuristicas de posicao e no hash do no do solver (810 decisoes pos-flop voltariam para a

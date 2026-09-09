@@ -1695,6 +1695,15 @@ def player_stats_by_position_hands():
     mesa, erro_mesa = _tamanho_de_mesa_da_query()
     if erro_mesa:
         return erro_mesa
+    # MESMA politica da grade: sem `?mesa=`, abre na mesa mais jogada. Ate 09/09 so a grade
+    # fazia isso, e a matriz caia no recorte MISTURADO — duas politicas para a mesma pergunta.
+    # Na tela nao aparecia (o front repassa a mesa que a grade declarou), e era exatamente por
+    # isso que valia consertar: o defeito so apareceria em quem chamasse o endpoint direto, e
+    # ai como um numero que mistura ate cinco assentos sem dizer.
+    if 'mesa' not in request.args:
+        from database.repositories import mesas_do_jogador
+        days_ = int(request.args.get('days', 90))
+        mesa = mesas_do_jogador(g.user_id, days_, last_n=_last_n_da_query()).get('sugerida')
     return jsonify(get_position_open_matrix(g.user_id, position, int(request.args.get('days', 90)),
                                             last_n=_last_n_da_query(), stack_band=stack, mesa=mesa))
 

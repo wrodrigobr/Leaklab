@@ -208,6 +208,15 @@ def test_o_endpoint_recusa_mesa_desconhecida_e_abre_na_mais_jogada():
     assert ruim.status_code == 400 and 'mesas' in ruim.get_json(), ruim.get_data(as_text=True)[:200]
     assert c.get('/metrics/player-stats/by-position/hands?position=UTG&mesa=10max', headers=h).status_code == 400
     assert c.get('/metrics/player-stats/by-position/hands?position=UTG&mesa=todas', headers=h).status_code == 400
+    # A MATRIZ segue a MESMA politica da grade: sem `?mesa=`, abre na mesa mais jogada. Ate
+    # 09/09 so a grade fazia isso e a matriz caia no recorte misturado — duas politicas para a
+    # mesma pergunta. Nao aparecia na tela (o front repassa a mesa que a grade declarou), e era
+    # por isso que valia consertar: quem chamasse o endpoint direto recebia um numero que
+    # mistura assentos, sem nada no payload dizendo isso.
+    mat = c.get('/metrics/player-stats/by-position/hands?position=UTG&days=3650', headers=h).get_json()
+    assert mat['mesa'] == '8max', mat['mesa']                      # a mais jogada, como a grade
+    assert mat['assento_da_carta'] is not None, mat                # recorte unico => tem referencia
+    assert mat['n'] == 30, mat['n']                                # so as maos de mesa 8, nao as 40
 
 
 if __name__ == '__main__':
