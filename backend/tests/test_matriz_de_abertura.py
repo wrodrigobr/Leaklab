@@ -129,6 +129,100 @@ def test_grupo_faixa_de_stack_e_sem_stack():
     assert m['cells']['T9s']['solver'] == round(float(villain_open_range('UTG+1', 40).get('T9s', 0.0)), 3)
 
 
+def test_o_stack_e_filtro_obrigatorio_e_abre_na_faixa_com_mais_maos():
+    """Dono, 09/09: "no GTO Wizard somos obrigados a definir o stack, entao nao faz sentido o
+    todos". A carta de abertura e funcao de assento, jogadores atras E profundidade; sem a
+    profundidade fixa o numero do solver e uma media entre cartas.
+
+    Tres coisas defendidas aqui: (1) `faixas_do_jogador` conta a faixa da MAO pela primeira
+    decisao preflop e sugere a de mais maos, DENTRO da mesa em vigor; (2) sem `?stack=` os
+    tres endpoints da grade abrem nessa faixa e DECLARAM (`stack_auto`); (3) `stack=todos` e
+    400 como qualquer faixa desconhecida — aceitar de volta em silencio devolveria a media."""
+    from database.repositories import faixas_do_jogador
+    # mesa 8: 6 maos a 45bb (40+) e 3 a 25bb (20-40); mesa 6: 10 maos a 12bb (<20).
+    # (10 e nao 9: empate de mesas desempata pela ordem 9,8,7,6 e o teste ficaria ambiguo)
+    uid = _semeia([_m('CO', 'AsKs', 'raise', stack=45, num_players=8) for _ in range(6)]
+                  + [_m('CO', 'AsKs', 'raise', stack=25, num_players=8) for _ in range(3)]
+                  + [_m('CO', 'AsKs', 'raise', stack=12, num_players=6) for _ in range(10)])
+    todas = faixas_do_jogador(uid, days=3650, last_n=0)
+    assert todas['sugerida'] == '<20' and todas['n'] == 19, todas      # no total, a mesa 6 pesa mais
+    mesa8 = faixas_do_jogador(uid, days=3650, last_n=0, mesa='8max')
+    assert mesa8['sugerida'] == '40+' and mesa8['n'] == 9, mesa8       # DENTRO da mesa 8, e 40+
+    assert [f['faixa'] for f in mesa8['faixas']] == ['40+', '20-40'], mesa8['faixas']
+
+    from api.app import app
+    from database.auth import generate_token
+    h = {'Authorization': 'Bearer %s' % generate_token(uid, 'player')}
+    c = app.test_client()
+    # sem filtros: mesa mais jogada (6) e, dentro dela, a faixa com mais maos (<20)
+    m = c.get('/metrics/player-stats/by-position/hands?position=CO&days=3650', headers=h).get_json()
+    assert m['mesa'] == '6max' and m['stack_band'] == '<20' and m['stack_auto'] is True, (m['mesa'], m['stack_band'])
+    assert m['n'] == 10, m['n']
+    assert [f['faixa'] for f in m['distribuicao_de_stacks']['faixas']] == ['<20']
+    # mesa fixada em 8: a faixa sugerida muda junto, porque e calculada dentro da mesa
+    m8 = c.get('/metrics/player-stats/by-position/hands?position=CO&days=3650&mesa=8max', headers=h).get_json()
+    assert m8['stack_band'] == '40+' and m8['stack_auto'] is True and m8['n'] == 6, (m8['stack_band'], m8['n'])
+    # stack explicito vence e o payload diz que nao foi automatico
+    m8b = c.get('/metrics/player-stats/by-position/hands?position=CO&days=3650&mesa=8max&stack=20-40', headers=h).get_json()
+    assert m8b['stack_band'] == '20-40' and m8b['stack_auto'] is False and m8b['n'] == 3
+    # a grade e o "contra quem" seguem a MESMA politica (uma funcao para os tres)
+    g = c.get('/metrics/player-stats/by-position?days=3650', headers=h).get_json()
+    assert g['mesa'] == '6max' and g['stack_band'] == '<20' and g['stack_auto'] is True, (g['mesa'], g['stack_band'])
+    # "todos" nao existe
+    for url in ('/metrics/player-stats/by-position?days=3650&stack=todos',
+                '/metrics/player-stats/by-position/hands?position=CO&stack=todos',
+                '/metrics/player-stats/by-position/detail?position=CO&stat=three_bet&stack=todos'):
+        r = c.get(url, headers=h)
+        assert r.status_code == 400, (url, r.status_code)
+
+
+def test_acima_do_teto_a_carta_de_100bb_fala_e_abaixo_do_piso_continua_muda():
+    """AY-36 (dono, 09/09): "podemos usar a carta de 100bb nessa condicao de stack > 100bb?".
+    Sim, e so nessa ponta. As duas pontas eram simetricas e a simetria custava: KQs a 262bb saia
+    "sem carta" e a grade a desenhava como fold; 341 oportunidades de RFI do acervo (2,2%)
+    ficavam sem range de vilao. A ponta RASA continua recusando: a 0,2bb a carta de 10bb e outro
+    regime e ja produziu acusacao falsa medida.
+
+    O guarda olha as DUAS pontas de proposito: saturar a rasa junto seria o conserto que causa
+    dano que o defeito nao causava (regra 7)."""
+    from leaklab.preflop_gto_ranges import balde_rfi_ou_none, _balde_da_carta, _stack_bucket
+    fundo = _stack_bucket(10_000.0)
+    for s in (133, 163, 262, 304, 1_000):
+        assert balde_rfi_ou_none(s) == fundo, (s, balde_rfi_ou_none(s))     # acima do teto: a mais funda
+    assert balde_rfi_ou_none(100) == fundo and balde_rfi_ou_none(120) == fundo
+    for s in (0.2, 1.0, 2.0):
+        assert _balde_da_carta(s) is None, (s, _balde_da_carta(s))          # abaixo do piso: muda
+    # e a matriz deixa de ter "sem carta" por profundidade funda: KQs a 262bb ganha a carta de
+    # 100bb DELA, nao a do recorte, e entra na cobertura
+    uid = _semeia([_m('UTG', 'AsKs', 'raise', stack=40) for _ in range(9)]
+                  + [_m('UTG', 'KhQh', 'raise', stack=262)])
+    m = get_position_open_matrix(uid, 'UTG', days=3650, last_n=0)
+    assert m['cobertura'] == 100, m['cobertura']
+    assert m['cells']['KQs']['solver'] == round(float(villain_open_range('UTG', 262).get('KQs', 0.0)), 3)
+
+
+def test_mao_recebida_sem_carta_mostra_a_carta_do_recorte_e_nao_um_fold():
+    """Dono, 09/09, no UTG de mesa 8 a 40bb+: "me parece bem estranho o solver nao abrir KQs e
+    A6s". O solver abre as duas 100%. KQs tinha caido UMA vez, a 262bb, acima do teto da carta:
+    a celula saia `solver=None` e a grade pinta None igual a 0% — "sem carta" virava "o solver
+    folda". Agora a mao recebida sem carta mostra a carta do RECORTE, como a mao nunca
+    recebida; a cobertura segue contando-a como sem carta (ela nao entra no `solver_pct`)."""
+    from leaklab.preflop_gto_ranges import balde_rfi_ou_none
+    # 09/09, mais tarde no mesmo dia: 262bb PASSOU a ter carta (AY-36). A mao sem carta agora e a
+    # de stack abaixo do piso, que continua recusada de proposito.
+    assert balde_rfi_ou_none(1.0) is None, 'o teste precisa de uma profundidade SEM carta'
+    uid = _semeia([_m('UTG', 'AsKs', 'raise', stack=40) for _ in range(9)]
+                  + [_m('UTG', 'KhQh', 'raise', stack=1.0)])          # a unica KQs, sem carta
+    m = get_position_open_matrix(uid, 'UTG', days=3650, last_n=0)
+    kqs = m['cells']['KQs']
+    esperado = round(float(villain_open_range('UTG', 40).get('KQs', 0.0)), 3)
+    assert esperado > 0, 'o teste precisa de uma mao que a carta do UTG a 40bb abra'
+    assert kqs['n'] == 1 and kqs['voce'] == 1.0, kqs
+    assert kqs['solver'] == esperado, (kqs['solver'], esperado)            # a carta do recorte, nao None
+    assert m['cobertura'] == 90, m['cobertura']                             # 9 de 10 com carta: honesto
+    assert all(c['solver'] is not None for c in m['cells'].values())
+
+
 def test_o_endpoint_aceita_assento_e_grupo_e_recusa_a_BB():
     uid = _semeia([_m('CO', 'AsKs', 'raise') for _ in range(3)])
     from api.app import app

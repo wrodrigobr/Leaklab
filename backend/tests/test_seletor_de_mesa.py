@@ -185,6 +185,56 @@ def test_a_matriz_declara_de_qual_carta_veio_o_numero_do_solver():
     assert misto['n'] == 80, misto['n']
 
 
+def test_a_grade_declara_os_assentos_que_nao_existem_na_mesa():
+    """Dono, 09/09, na grade de 7 do Rullian: "ta faltando o UTG+1". Nao faltava: com 7 na mao
+    o segundo a agir e o LJ. Mas sumir em silencio parece esquecimento — a grade DECLARA os
+    ausentes e o front os mostra desligados com o motivo. Vazio na grade agrupada."""
+    _semeia([(7, 'UTG', 40, MAOS_FRACAS), (7, 'UTG+1', 40, MAOS_FRACAS)])   # o UTG+1 cru de mesa 7 E o LJ
+    g = get_player_stats_by_position(1, days=3650, mesa='7max')
+    assert g['assentos_ausentes'] == ['UTG+1', 'UTG+2'], g['assentos_ausentes']
+    assert [l['position'] for l in g['positions'] if l['hands']] == ['UTG', 'LJ'], [l['position'] for l in g['positions'] if l['hands']]
+    g9 = get_player_stats_by_position(1, days=3650, mesa='9max')
+    assert g9['assentos_ausentes'] == [], g9['assentos_ausentes']
+    ga = get_player_stats_by_position(1, days=3650, mesa='7max', agrupado=True)
+    assert ga['assentos_ausentes'] == [], ga['assentos_ausentes']
+
+
+def test_com_a_lista_de_validacao_so_quem_esta_nela_ve_o_perfil_por_posicao():
+    """Dono, 09/09: "apenas o rullian visualizar este bloco ate que ele seja completamente
+    validado". `STATS_BY_POSITION_USERS` setada: quem nao esta nela recebe 403 `em_validacao`
+    (o front some com o bloco); quem esta segue a regra normal. Ausente: so a regra do plano.
+
+    O 403 e distinto do 402 do plano DE PROPOSITO: 402 vira cadeado "exclusivo do Pro", e um
+    Pro fora da lista lendo isso seria a tela mentindo."""
+    import os
+    _semeia([(8, 'UTG', 30, MAOS_FRACAS)])
+    conn = get_conn()
+    conn.execute(_adapt("INSERT INTO users (id, username, email, password_hash, plan) VALUES (2,'v','v@e.st','h','pro')"))
+    conn.commit(); conn.close()
+    from api.app import app
+    from database.auth import generate_token
+    c = app.test_client()
+    h1 = {'Authorization': 'Bearer %s' % generate_token(1, 'player')}
+    h2 = {'Authorization': 'Bearer %s' % generate_token(2, 'player')}
+    antes = os.environ.pop('STATS_BY_POSITION_USERS', None)
+    try:
+        os.environ['STATS_BY_POSITION_USERS'] = ' 1 , 999 '        # espacos e id inexistente nao atrapalham
+        for url in ('/metrics/player-stats/by-position?days=3650',
+                    '/metrics/player-stats/by-position/hands?position=UTG&days=3650',
+                    '/metrics/player-stats/by-position/detail?position=UTG&stat=three_bet&days=3650'):
+            assert c.get(url, headers=h1).status_code == 200, url
+            r2 = c.get(url, headers=h2)
+            assert r2.status_code == 403 and r2.get_json()['code'] == 'em_validacao', (url, r2.status_code)
+            assert 'upgrade_required' not in r2.get_json()                # nao e cadeado de plano
+        os.environ['STATS_BY_POSITION_USERS'] = ''                       # vazia = ninguem barrado
+        assert c.get('/metrics/player-stats/by-position?days=3650', headers=h2).status_code == 200
+    finally:
+        if antes is None:
+            os.environ.pop('STATS_BY_POSITION_USERS', None)
+        else:
+            os.environ['STATS_BY_POSITION_USERS'] = antes
+
+
 def test_o_endpoint_recusa_mesa_desconhecida_e_abre_na_mais_jogada():
     _semeia([(9, 'UTG', 10, MAOS_FRACAS), (8, 'UTG', 30, MAOS_FRACAS)])
     from api.app import app

@@ -141,7 +141,9 @@ def test_sem_cobertura_devolve_None_em_vez_de_inventar():
     """Profundidade sem carta não vira pergunta com número chutado. É a mesma regra do resto do
     produto: ausência declara ausência."""
     from leaklab.perguntas_de_board import fracao_que_continua, gerar
-    assert fracao_que_continua('CO', 999.0, ['Kd', '7c', '2h']) is None, (
+    # 09/09 (AY-36): profundidade FUNDA passou a ter carta (a de 100bb); a que segue sem carta,
+    # de proposito, e a rasa abaixo do piso
+    assert fracao_que_continua('CO', 1.0, ['Kd', '7c', '2h']) is None, (
         'inventou uma fração para uma profundidade sem carta')
     assert gerar(random.Random(1), pos='POSICAO_QUE_NAO_EXISTE', stack=30.0) is None
     print('OK  test_sem_cobertura_devolve_None_em_vez_de_inventar')

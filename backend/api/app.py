@@ -380,6 +380,16 @@ def _check_stats_by_position(user_id: int):
     "Insights avancados de IA sao exclusivos do Pro", e isto nao e IA nem insight — e a
     quebra do HUD por posicao. Copy que mente para quem clicou e defeito, nao economia.
     """
+    # Em VALIDACAO com poucos olhos (dono, 09/09): "apenas o rullian visualizar este bloco ate
+    # que ele seja completamente validado". `STATS_BY_POSITION_USERS="62,1"` libera so esses
+    # ids; os outros recebem 403 com `code: em_validacao` e o front SOME com o bloco — nem
+    # cadeado nem promessa, porque nao e plano, e obra em andamento. Variavel ausente ou vazia
+    # = comportamento normal (so a regra do plano). Lida a cada chamada, de proposito: ligar e
+    # desligar e mexer no `.env` do host e reiniciar, sem deploy.
+    permitidos = {p.strip() for p in (os.environ.get('STATS_BY_POSITION_USERS') or '').split(',') if p.strip()}
+    if permitidos and str(user_id) not in permitidos:
+        return jsonify({'error': 'O perfil por posicao esta em validacao.',
+                        'code': 'em_validacao', 'feature': 'stats_by_position'}), 403
     status = get_quota_status(user_id)
     if not status['limits'].get('stats_by_position', False):
         return jsonify({
@@ -1626,27 +1636,14 @@ def player_stats_by_position():
     from database.repositories import get_player_stats_by_position
     days   = int(request.args.get('days', 90))
     last_n = _last_n_da_query()
-    stack, erro = _faixa_de_stack_da_query()
+    recorte, erro = _recorte_da_grade()
     if erro:
         return erro
-    mesa, erro_mesa = _tamanho_de_mesa_da_query()
-    if erro_mesa:
-        return erro_mesa
     # `?group=1`: EP / MP / CO / BTN / SB / BB (AY-21). Qualquer outro valor e "detalhado".
     agrupado = (request.args.get('group') or '').strip() == '1'
-    from database.repositories import mesas_do_jogador
-    distribuicao = mesas_do_jogador(g.user_id, days, last_n=last_n)
-    # SEM `?mesa=`, a grade abre na mesa MAIS JOGADA (08/09). Nao e capricho de default: somar
-    # tamanhos de mesa junta assentos estrategicamente diferentes, e a linha deixa de crescer
-    # em direcao ao botao — foi o que um fundador reportou como erro, com razao. `?mesa=todas`
-    # desliga o filtro de proposito, e o payload sempre DECLARA qual mesa esta em vigor.
-    auto = 'mesa' not in request.args
-    if auto:
-        mesa = distribuicao.get('sugerida')
-    payload = get_player_stats_by_position(g.user_id, days, last_n=last_n, stack_band=stack,
-                                           agrupado=agrupado, mesa=mesa)
-    payload['distribuicao_de_mesas'] = distribuicao
-    payload['mesa_auto'] = bool(auto and mesa)
+    payload = get_player_stats_by_position(g.user_id, days, last_n=last_n, stack_band=recorte['stack'],
+                                           agrupado=agrupado, mesa=recorte['mesa'])
+    payload.update({k: recorte[k] for k in ('mesa_auto', 'stack_auto', 'distribuicao_de_mesas', 'distribuicao_de_stacks')})
     return jsonify(payload)
 
 
@@ -1666,14 +1663,11 @@ def player_stats_by_position_detail():
     if position not in validas or stat not in _DETALHE:
         return jsonify({'error': 'position ou stat invalido', 'positions': list(validas),
                         'stats': list(_DETALHE)}), 400
-    stack, erro = _faixa_de_stack_da_query()
+    recorte, erro = _recorte_da_grade()
     if erro:
         return erro
-    mesa, erro_mesa = _tamanho_de_mesa_da_query()
-    if erro_mesa:
-        return erro_mesa
     return jsonify(get_position_stat_detail(g.user_id, position, stat, int(request.args.get('days', 90)),
-                                            last_n=_last_n_da_query(), stack_band=stack, mesa=mesa))
+                                            last_n=_last_n_da_query(), stack_band=recorte['stack'], mesa=recorte['mesa']))
 
 
 @app.route('/metrics/player-stats/by-position/hands', methods=['GET'])
@@ -1689,23 +1683,55 @@ def player_stats_by_position_hands():
     validas = tuple(p for p in POSICOES_NA_ORDEM if p != 'BB') + tuple(gr for gr in GRUPOS_DA_GRADE if gr != 'BB')
     if position not in validas:
         return jsonify({'error': 'position invalida (a BB nao tem RFI)', 'positions': list(validas)}), 400
-    stack, erro = _faixa_de_stack_da_query()
+    recorte, erro = _recorte_da_grade()
     if erro:
         return erro
-    mesa, erro_mesa = _tamanho_de_mesa_da_query()
-    if erro_mesa:
-        return erro_mesa
-    # MESMA politica da grade: sem `?mesa=`, abre na mesa mais jogada. Ate 09/09 so a grade
-    # fazia isso, e a matriz caia no recorte MISTURADO — duas politicas para a mesma pergunta.
-    # Na tela nao aparecia (o front repassa a mesa que a grade declarou), e era exatamente por
-    # isso que valia consertar: o defeito so apareceria em quem chamasse o endpoint direto, e
-    # ai como um numero que mistura ate cinco assentos sem dizer.
-    if 'mesa' not in request.args:
-        from database.repositories import mesas_do_jogador
-        days_ = int(request.args.get('days', 90))
-        mesa = mesas_do_jogador(g.user_id, days_, last_n=_last_n_da_query()).get('sugerida')
-    return jsonify(get_position_open_matrix(g.user_id, position, int(request.args.get('days', 90)),
-                                            last_n=_last_n_da_query(), stack_band=stack, mesa=mesa))
+    payload = get_position_open_matrix(g.user_id, position, int(request.args.get('days', 90)),
+                                       last_n=_last_n_da_query(), stack_band=recorte['stack'], mesa=recorte['mesa'])
+    # o modal tem os tres filtros e precisa saber onde ha mao para desenhar os chips, e quais
+    # assentos EXISTEM na mesa em vigor (convencao do dono: mesa 8 tem UTG+1, mesa 6 nao tem
+    # LJ). A regra mora em `assentos_da_mesa`; o front nao a copia. A BB fica fora: nao abre pote.
+    from database.repositories import assentos_da_mesa
+    payload.update({k: recorte[k] for k in ('mesa_auto', 'stack_auto', 'distribuicao_de_mesas', 'distribuicao_de_stacks')})
+    payload['assentos'] = [p for p in assentos_da_mesa(recorte['mesa']) if p != 'BB']
+    return jsonify(payload)
+
+
+def _recorte_da_grade():
+    """Mesa E stack da grade por assento, resolvidos num lugar so para os TRES endpoints
+    (grade, "contra quem", matriz). Devolve (recorte, erro); `recorte` e um dict com `mesa`,
+    `stack`, `mesa_auto`, `stack_auto`, `distribuicao_de_mesas`, `distribuicao_de_stacks`.
+
+    A politica e a mesma para os dois filtros (dono, 09/09): ausente = onde o jogador tem MAIS
+    maos, e o payload DECLARA o que aplicou. Nao existe "todas" nem "todos" — a carta de
+    abertura e funcao de assento, jogadores atras e profundidade, e sem os tres fixos o numero
+    do solver e uma media entre cartas, que muda com o VOLUME do jogador e nao com o jogo.
+
+    Por que uma funcao e nao tres copias: ate 09/09 a grade escolhia a mesa mais jogada e a
+    matriz caia no recorte misturado — duas politicas para a mesma pergunta, invisiveis na
+    tela porque o front repassava a mesa da grade. O stack vai pelo mesmo caminho, e o stack
+    sugerido e calculado DENTRO da mesa em vigor, senao a faixa mais jogada de "todas as mesas"
+    pode nao ter mao nenhuma na mesa escolhida."""
+    mesa, erro = _tamanho_de_mesa_da_query()
+    if erro:
+        return None, erro
+    stack, erro = _faixa_de_stack_da_query()
+    if erro:
+        return None, erro
+    from database.repositories import mesas_do_jogador, faixas_do_jogador
+    days = int(request.args.get('days', 90))
+    last_n = _last_n_da_query()
+    mesa_auto = 'mesa' not in request.args
+    dist_mesas = mesas_do_jogador(g.user_id, days, last_n=last_n)
+    if mesa_auto:
+        mesa = dist_mesas.get('sugerida')
+    stack_auto = 'stack' not in request.args
+    dist_stacks = faixas_do_jogador(g.user_id, days, last_n=last_n, mesa=mesa)
+    if stack_auto:
+        stack = dist_stacks.get('sugerida')
+    return {'mesa': mesa, 'stack': stack, 'mesa_auto': bool(mesa_auto and mesa),
+            'stack_auto': bool(stack_auto and stack),
+            'distribuicao_de_mesas': dist_mesas, 'distribuicao_de_stacks': dist_stacks}, None
 
 
 def _tamanho_de_mesa_da_query():

@@ -32,7 +32,7 @@ afterEach(cleanup);
 vi.setConfig({ testTimeout: 30000 });
 
 const MATRIZ = {
-  position: "UTG", stack_band: null, mesa: "8max", n: 1161, voce_pct: 16.0,
+  position: "UTG", stack_band: "40+", mesa: "8max", n: 1161, voce_pct: 16.0,
   solver_pct: 14.8, solver_pct_todas: 17.4, amostra_minima: 30, cobertura: 98,
   composicao: [{ mesa: 8, n: 1161, pct: 100 }],
   cells: { AKs: { n: 12, voce: 1, limp: 0, solver: 1 }, "72o": { n: 10, voce: 0, limp: 0, solver: 0 } },
@@ -75,13 +75,12 @@ describe("seletor de tamanho de mesa", () => {
     expect(onMesa).toHaveBeenCalledWith("7max");
   });
 
-  it("o stack tambem e dropdown, e todos volta null", () => {
+  it("o stack tambem e dropdown, sem todos (dono, 09/09)", () => {
     const onStack = vi.fn();
     render(<MemoryRouter><V2PositionProfileCard data={grade("8max", true)} geral={HUD} stack="20-40" onStack={onStack} onMesa={() => {}} /></MemoryRouter>);
     const sel = screen.getByTestId("select-stack") as HTMLSelectElement;
     expect(sel.value).toBe("20-40");
-    fireEvent.change(sel, { target: { value: "todos" } });
-    expect(onStack).toHaveBeenCalledWith(null);
+    expect(Array.from(sel.options).map((o) => o.value)).toEqual(["40+", "20-40", "<20"]);
     fireEvent.change(sel, { target: { value: "40+" } });
     expect(onStack).toHaveBeenCalledWith("40+");
   });
@@ -94,30 +93,48 @@ describe("seletor de tamanho de mesa", () => {
     expect(screen.getByTestId("nota-mesa").textContent).toContain("posProfile.tableNoteAll");
   });
 
-  it("a mesa em vigor viaja para a matriz, e o cabecalho do solver e o range do CENARIO", async () => {
+  it("a mesa em vigor viaja para a matriz, e a comparacao e sobre AS MESMAS maos", async () => {
     render(<MemoryRouter><V2PositionProfileCard data={grade("8max", true)} geral={HUD} lastN={30} onStack={() => {}} onMesa={() => {}} /></MemoryRouter>);
     fireEvent.click(screen.getByTestId("celula-rfi-UTG"));
     await waitFor(() => expect(hands).toHaveBeenCalledWith("UTG", 90, 30, null, "8max"));
-    const modal = await screen.findByTestId("matriz-UTG");
-    // 17,4 (as 169 maos) e NAO 14,8 (a media nas maos que cairam): com amostra pequena o
-    // segundo contradiz a propria grade ao lado
-    expect(modal.textContent).toContain("posProfile.matrix.wouldOpen:17.4");
-    expect(modal.textContent).not.toContain("posProfile.matrix.wouldOpen:14.8");
-    expect(screen.getByTestId("matriz-voce-pct").textContent).toContain("posProfile.matrix.opened:16");
-    expect(screen.queryByTestId("matriz-mistura")).toBeNull();     // mesa filtrada: nao ha mistura a declarar
+    await screen.findByTestId("matriz-UTG");
+    // 16,0 contra 14,8: os dois sobre as maos que cairam. O 17,4 (as 169 maos) NAO e comparavel
+    // com o do jogador e vira legenda da grade do solver — o tamanho do desenho, so isso.
+    expect(screen.getByTestId("matriz-voce-pct").textContent).toBe("16.0%");
+    expect(screen.getByTestId("matriz-solver-pct").textContent).toBe("14.8%");
+    expect(screen.getByTestId("matriz-range-size").textContent).toContain("posProfile.matrix.rangeSize:17.4");
+    expect(screen.getByTestId("matriz-delta").textContent).toContain("posProfile.matrix.deltaOk");   // 1,2 ponto: folga
   });
 
-  it("amostra pequena esconde o numero do jogador, mantem o do solver e declara a mistura", async () => {
-    hands.mockResolvedValue({ ...MATRIZ, mesa: null, n: 10, voce_pct: null, solver_pct: 7.2, solver_pct_todas: 20.1,
-                              composicao: [{ mesa: 7, n: 6, pct: 60 }, { mesa: 8, n: 4, pct: 40 }] });
-    render(<MemoryRouter><V2PositionProfileCard data={grade(null, false)} geral={HUD} lastN={30} onStack={() => {}} onMesa={() => {}} /></MemoryRouter>);
+  it("amostra pequena esconde OS DOIS numeros e mantem as grades", async () => {
+    // Com 10 maos os dois lados sao ruido: foi assim que "solver 7,2%" apareceu ao lado de uma
+    // grade cheia em 08/09. O tamanho do range do solver continua como legenda, porque nao
+    // depende das maos que cairam.
+    hands.mockResolvedValue({ ...MATRIZ, n: 10, voce_pct: null, solver_pct: 7.2, solver_pct_todas: 20.1 });
+    render(<MemoryRouter><V2PositionProfileCard data={grade("8max", true)} geral={HUD} lastN={30} onStack={() => {}} onMesa={() => {}} /></MemoryRouter>);
     fireEvent.click(screen.getByTestId("celula-rfi-UTG"));
-    const modal = await screen.findByTestId("matriz-UTG");
-    expect(screen.getByTestId("matriz-voce-pct").textContent).toContain("posProfile.matrix.lowSampleShort");
-    expect(modal.textContent).toContain("posProfile.matrix.wouldOpen:20.1");   // a referencia SAI
-    expect(screen.getByTestId("matriz-amostra").textContent).toContain("posProfile.lowSampleMatrix:30");
-    // a mistura agora fala em JOGADORES NA MAO, nao em formato de mesa (o campo conta quem recebeu cartas)
-    expect(screen.getByTestId("matriz-mistura").textContent).toContain("posProfile.tablePlayers:7 60%, posProfile.tablePlayers:8 40%");
+    await screen.findByTestId("matriz-UTG");
+    expect(screen.getByTestId("matriz-amostra").textContent).toContain("posProfile.matrix.smallSample:30");
+    expect(screen.queryByTestId("matriz-voce-pct")).toBeNull();
+    expect(screen.queryByTestId("matriz-solver-pct")).toBeNull();
+    expect(screen.getByTestId("matriz-range-size").textContent).toContain("posProfile.matrix.rangeSize:20.1");
+    expect(screen.getByTestId("matriz-voce")).toBeTruthy();
+  });
+
+  it("assento que nao existe com N jogadores aparece DESLIGADO com o motivo, e o rodape conta as linhas de verdade", () => {
+    // Dono, 09/09, na grade de 7 do Rullian: "ta faltando o UTG+1". Nao faltava — com 7 na mao o
+    // segundo a agir e o LJ. Mas sumir em silencio parece esquecimento (mesma licao da BB no modal).
+    const data = { ...grade("7max", true), assentos_ausentes: ["UTG+1", "UTG+2"],
+                   total: { total_hands: 2064 } } as unknown as PositionProfileResponse;
+    render(<MemoryRouter><V2PositionProfileCard data={data} geral={HUD} onStack={() => {}} onMesa={() => {}} /></MemoryRouter>);
+    const ausente = screen.getByTestId("linha-ausente-UTG+1");
+    expect(ausente.textContent).toContain("UTG+1");
+    expect(ausente.textContent).toContain("posProfile.seatAbsent:posProfile.tableSize.7max");
+    expect(screen.getByTestId("linha-ausente-UTG+2")).toBeTruthy();
+    // a linha desligada nao e clicavel: nenhuma celula, nenhum detalhe
+    expect(ausente.querySelector("button")).toBeNull();
+    // o rodape diz "fora das 2 da grade" (a grade tem 2 linhas: UTG e BB), nao "das 8"
+    expect(screen.getByText(/posProfile\.outsideGrid:3,2/)).toBeTruthy();
   });
 
   it("sem o setter, nenhum filtro aparece (o card fora do dashboard segue como era)", () => {

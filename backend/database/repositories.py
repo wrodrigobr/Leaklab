@@ -2598,8 +2598,10 @@ def mesas_do_jogador(user_id: int, days: int = 90, last_n: int | None = None) ->
 
     Medido em prod (90 dias, 32.969 oportunidades): mesa 8 45%, mesa 7 28%, mesa 6 12%, mesa 9
     5%. Nenhum jogador se concentra num tamanho: o mais concentrado joga 64% num tamanho e o
-    menos 21%, e todos passam por 6 a 8 tamanhos. Por isso o seletor existe, e por isso "todas"
-    continua disponivel."""
+    menos 21%, e todos passam por 6 a 8 tamanhos. Por isso o seletor existe. "Todas" deixou de
+    existir em 09/09 (dono): a linha "UTG" somando tamanhos juntava ate cinco assentos
+    estrategicamente diferentes, e a referencia virava uma media que nao descreve situacao
+    nenhuma."""
     tf, tp = _build_tournament_filter(user_id, days, last_n)
     conn = get_conn()
     try:
@@ -2626,6 +2628,49 @@ def mesas_do_jogador(user_id: int, days: int = 90, last_n: int | None = None) ->
              for k in ordem if baldes.get(k)]
     sugerida = max(lista, key=lambda x: x['n'])['mesa'] if lista else None
     return {'mesas': lista, 'sugerida': sugerida, 'n': total}
+
+
+def faixas_do_jogador(user_id: int, days: int = 90, last_n: int | None = None,
+                      mesa: str | None = None) -> dict:
+    """{'faixas': [{'faixa','n','pct'}], 'sugerida': <a faixa com mais maos ou None>} nas
+    oportunidades de RFI do recorte, dentro de `mesa` quando ela ja esta em vigor.
+
+    Irma de `mesas_do_jogador`, pela mesma razao (dono, 09/09): "no GTO Wizard somos obrigados
+    a definir o stack, entao nao faz sentido o todos". A carta de abertura e uma funcao de
+    assento, jogadores atras E profundidade; sem a profundidade fixa o numero do solver e uma
+    media entre cartas. O custo medido de deixar "todos": entre 10 e 100bb a carta do mesmo
+    assento varia 2,5 pontos, mas abaixo de 7bb ela salta para push/fold (23% a 30%).
+
+    A faixa e a da MAO, decidida pela PRIMEIRA decisao preflop dela — a MESMA regra do filtro
+    (`_filtro_do_hud`), senao a distribuicao e o recorte contariam maos diferentes."""
+    tf, tp = _filtro_do_hud(user_id, days, last_n, None, None, mesa)
+    conn = get_conn()
+    try:
+        rows = _fetchall(conn, _adapt(f"""
+            SELECT p.effective_stack_bb AS s
+            FROM decisions d JOIN tournaments t ON t.id = d.tournament_id
+            JOIN decisions p ON p.id = (SELECT MIN(q.id) FROM decisions q
+                                        WHERE q.tournament_id = d.tournament_id AND q.hand_id = d.hand_id
+                                          AND q.street = 'preflop')
+            WHERE {tf} AND d.street = 'preflop' AND {_SQL_OPORTUNIDADE['rfi']}
+        """), tp) or []
+    finally:
+        conn.close()
+    baldes: dict = {}
+    for r in rows:
+        s = r['s']
+        if s is None:
+            continue
+        s = float(s)
+        for chave, (lo, hi) in FAIXAS_DE_STACK.items():
+            if (lo is None or s >= lo) and (hi is None or s < hi):
+                baldes[chave] = baldes.get(chave, 0) + 1
+                break
+    total = sum(baldes.values())
+    lista = [{'faixa': k, 'n': baldes[k], 'pct': round(100.0 * baldes[k] / total)}
+             for k in FAIXAS_DE_STACK if baldes.get(k)]
+    sugerida = max(lista, key=lambda x: x['n'])['faixa'] if lista else None
+    return {'faixas': lista, 'sugerida': sugerida, 'n': total}
 
 
 def get_player_stats_by_position(user_id: int, days: int = 90,
@@ -2805,6 +2850,12 @@ def get_player_stats_by_position(user_id: int, days: int = 90,
         'faixas': list(FAIXAS_DE_STACK),
         'mesa': mesa,
         'mesas': list(TAMANHOS_DE_MESA),
+        # Assentos que NAO existem com este numero de jogadores (dono, 09/09: "ta faltando o
+        # UTG+1", na grade de 7 — nao faltava, nao existe; com 7 o segundo a agir e o LJ). A
+        # grade os mostra desligados, com o motivo, em vez de sumir com eles. Vazio na grade
+        # agrupada (os grupos existem em toda mesa) e sem mesa isolada.
+        'assentos_ausentes': ([] if agrupado else
+                              [p for p in POSICOES_NA_ORDEM if p not in assentos_visiveis]),
         'agrupado': bool(agrupado),
         'grupos': {k: list(v) for k, v in GRUPOS_DA_GRADE.items()},
     }
@@ -3111,10 +3162,17 @@ def get_position_open_matrix(user_id: int, position: str, days: int = 90,
         for hi in 'AKQJT98765432':
             for lo in 'AKQJT98765432':
                 for mao in ((hi + lo,) if hi == lo else ((hi + lo + 's', hi + lo + 'o') if 'AKQJT98765432'.index(hi) < 'AKQJT98765432'.index(lo) else ())):
-                    if mao in cells:
-                        continue
                     f = sum(float(cache[k].get(mao, 0.0)) * n for k, n in contextos.items()) / peso_total
-                    cells[mao] = {'n': 0, 'voce': None, 'limp': None, 'solver': round(f, 3)}
+                    if mao not in cells:
+                        cells[mao] = {'n': 0, 'voce': None, 'limp': None, 'solver': round(f, 3)}
+                    elif cells[mao]['solver'] is None:
+                        # Mao RECEBIDA, mas so em profundidade sem carta (09/09: KQs uma vez, a
+                        # 262bb, acima do teto). Sem isto a celula saia None e a grade pintava
+                        # None igual a 0% — "sem carta" desenhado como "o solver folda", e o dono
+                        # perguntou como o solver nao abria KQs. Vale a carta do RECORTE, a mesma
+                        # das maos nunca recebidas: e o que o solver faz ali. A cobertura continua
+                        # contando a mao como sem carta, porque no numero de comparacao ela nao entra.
+                        cells[mao]['solver'] = round(f, 3)
     divergencias = sorted(
         ({'hand': mao, 'n': v['n'], 'voce': v['voce'], 'solver': v['solver'], 'delta': round(v['voce'] - v['solver'], 3)}
          for mao, v in cells.items()

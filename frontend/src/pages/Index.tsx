@@ -62,13 +62,20 @@ const Index = () => {
   const [playerStats, setPlayerStats]     = useState<PlayerStatsResponse | null>(null);
   const [posProfile, setPosProfile]       = useState<PositionProfileResponse | null>(null);
   // Faixa de stack do perfil por posicao (AY-15). Fica aqui, nao no card, porque a linha
-  // TOTAL e o HUD na MESMA faixa: os dois pedidos saem juntos, ou a conferencia compara
-  // conjuntos diferentes. null = todos, e ai o Total e o `playerStats` da tela.
+  // TOTAL e o HUD na MESMA faixa. null = ainda nao escolhida: o backend abre na faixa com mais
+  // maos dentro da mesa em vigor e DECLARA qual aplicou. Nao existe "todos" (dono, 09/09).
   const [posStack, setPosStack]           = useState<StackBand | null>(null);
   // `null` = ainda nao escolhido: o backend abre na mesa MAIS JOGADA e DECLARA qual aplicou.
   // Nulo = o backend escolhe a mesa mais jogada. Nao ha "todas" (dono, 09/09): somar tamanhos
   // de mesa junta assentos estrategicamente diferentes na mesma linha.
   const [posMesa, setPosMesa]             = useState<TableSize | null>(null);
+  // Em VALIDACAO com poucos olhos (dono, 09/09): o backend responde 403 `em_validacao` para
+  // quem nao esta em `STATS_BY_POSITION_USERS`, e o bloco SOME — nem cadeado nem promessa.
+  const [posHidden, setPosHidden]         = useState(false);
+  const escondeSeEmValidacao = (e: unknown) => {
+    if ((e as { code?: string } | null)?.code === "em_validacao") setPosHidden(true);
+    return null;
+  };
   const [posGeral, setPosGeral]           = useState<PlayerStatsResponse | null>(null);
   // O carregamento geral (upload, evento de refresh) tambem busca a grade, e tem de buscar na
   // faixa em vigor: a 1a versao buscava sem `stack` e SOBRESCREVIA a grade filtrada com a de
@@ -135,7 +142,7 @@ const Index = () => {
       // Pro: nem chama quando e free — o backend responderia 402 e a UI ja mostra o
       // lock pelo plano do usuario. Request que se sabe que vai falhar e ruido.
       isFree ? Promise.resolve(null)
-             : metrics.playerStatsByPosition(90, ln, posStackRef.current, posAgrupadoRef.current, posMesaRef.current).then(setPosProfile).catch(() => null),
+             : metrics.playerStatsByPosition(90, ln, posStackRef.current, posAgrupadoRef.current, posMesaRef.current).then(setPosProfile).catch(escondeSeEmValidacao),
       metrics.leakRoi(90, ln).then((r) => { setLeakRoi(r.leaks); setLeakSource(r.source); }).catch(() => null),
       metrics.pressureProfile(90, ln).then(setPressureData).catch(() => null),
       metrics.confidenceDrift(30, ln).then(setDriftData).catch(() => null),
@@ -164,7 +171,7 @@ const Index = () => {
     metrics.playerStatsByPosition(90, ln, posStack, posAgrupado, posMesa).then((grade) => {
       if (!vivo) return;
       setPosProfile(grade);
-    }).catch((e) => { console.error("perfil por posicao: filtro de stack falhou", e); });
+    }).catch((e) => { if (!escondeSeEmValidacao(e)) console.error("perfil por posicao: filtro de stack falhou", e); });
     return () => { vivo = false; };
   }, [posStack, posAgrupado, posMesa, isFree]);   // eslint-disable-line react-hooks/exhaustive-deps -- volumeLimit/refresh passam pelo efeito geral
 
@@ -376,6 +383,7 @@ const Index = () => {
         playerStats={playerStats}
         positionProfile={posProfile}
         positionProfileLocked={isFree}
+        positionProfileHidden={posHidden}
         positionProfileGeral={posStack ? posGeral : null}
         positionStack={posStack}
         onPositionStack={setPosStack}

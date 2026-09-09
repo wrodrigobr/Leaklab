@@ -585,7 +585,17 @@ def _balde_da_carta(stack_bb: float) -> Optional[str]:
     Este é o mesmo seletor que o caminho HU já usa via `_profundidade_compativel`, e por isso a
     resposta aqui é a mesma de lá: **null honesto**. Quem não passa cai no vs-random, que é
     exatamente o comportamento que esses spots tinham antes de existir range nenhuma — não é
-    perda de veredito, é parar de fingir precisão que a carta não tem."""
+    perda de veredito, é parar de fingir precisão que a carta não tem.
+
+    **As duas pontas deixaram de ser simétricas em 09/09 (AY-36, decisão do dono).** Na ponta
+    RASA a recusa continua: a 0,2bb a carta de 10bb é outro regime, e foi ela que produziu
+    acusações falsas medidas. Na ponta FUNDA a carta mais funda passa a falar por qualquer
+    stack acima dela: de 100bb para cima a range de abertura quase não muda, e é o que o GTO
+    Wizard faz. O custo de recusar era real e apareceu na tela: KQs e A6s jogadas a 262bb e
+    163bb saíam "sem carta", desenhadas como se o solver as foldasse, e 341 oportunidades de
+    RFI do acervo de dev (2,2%) ficavam sem range de vilão, caindo em equity contra range
+    aleatória. Medido antes de mudar: a carta de 100bb acusaria 34 das 341; 233 já tinham
+    veredito pelo nó do solver, que satura sozinho."""
     label = _stack_bucket(stack_bb)
     try:
         depth = float(str(label).replace('bb', ''))
@@ -593,7 +603,15 @@ def _balde_da_carta(stack_bb: float) -> Optional[str]:
         # Rótulo não-numérico só existe no `stack_buckets` do JSON v2 (custom). Sem depth para
         # conferir, mantém o comportamento antigo em vez de derrubar cobertura por não saber.
         return label
-    return label if _profundidade_compativel(depth, stack_bb) else None
+    if _profundidade_compativel(depth, stack_bb):
+        return label
+    # só a ponta FUNDA satura: o balde mais fundo fala por tudo acima dele
+    return label if float(stack_bb or 0) > depth and label == _balde_mais_fundo() else None
+
+
+def _balde_mais_fundo() -> str:
+    """O rótulo do balde mais fundo que a carta tem (o de `_stack_bucket` para um stack enorme)."""
+    return _stack_bucket(10_000.0)
 
 
 @lru_cache(maxsize=4096)

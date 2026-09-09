@@ -59,6 +59,8 @@ interface Props {
   onPositionGrouped?: (v: boolean) => void;
   /** Free ve o lock com o motivo, nao um card vazio: card vazio parece produto quebrado. */
   positionProfileLocked?: boolean;
+  /** true quando o backend disse `em_validacao`: o bloco nao aparece para este usuario */
+  positionProfileHidden?: boolean;
   pendingGto?: number;
   aiInsights?: AiInsight[];
   aiLocked?: boolean;
@@ -82,7 +84,7 @@ const CARD_ORDER = [
   "results", "dna", "twin", "pressure", "cognitive", "career", "causal_map",
 ];
 
-export function DashboardV2({ onUpload, evSummary, volumeLimit = 50, onVolumeLimitChange = () => {}, hasData, renderCard, gtoQuality = null, gtoPosition = null, positionProfile = null, positionProfileLocked = false, positionProfileGeral = null, positionStack = null, onPositionStack, positionTable = null, onPositionTable, positionGrouped = false, onPositionGrouped, positionLastN = null, pendingGto = 0, aiInsights = [], aiLocked = false, showEmpty = false, evolution, kpis, playerStats = null, drift = null, onDismissDrift }: Props) {
+export function DashboardV2({ onUpload, evSummary, volumeLimit = 50, onVolumeLimitChange = () => {}, hasData, renderCard, gtoQuality = null, gtoPosition = null, positionProfile = null, positionProfileLocked = false, positionProfileHidden = false, positionProfileGeral = null, positionStack = null, onPositionStack, positionTable = null, onPositionTable, positionGrouped = false, onPositionGrouped, positionLastN = null, pendingGto = 0, aiInsights = [], aiLocked = false, showEmpty = false, evolution, kpis, playerStats = null, drift = null, onDismissDrift }: Props) {
   const { t } = useTranslation("dashboard");
   // Masonry real (mesmo hook do dashboard clássico): cards curtos liberam o vão
   // vertical e o grid-flow-dense empacota — sem blocos vazios na grade.
@@ -408,7 +410,7 @@ export function DashboardV2({ onUpload, evSummary, volumeLimit = 50, onVolumeLim
             com o numero grande da tela; no meio do masonry ela ficava a 4 cards de
             distancia do que confere. Fora do grid porque e linha inteira sempre (fora do
             breakpoint lg ela dividia a linha e forcava rolagem, achado de 05/09). ── */}
-        {hasData && (
+        {hasData && !positionProfileHidden && (
           positionProfileLocked
             ? <ProLockCard feature={t("posProfile.title")} v2 />
             : <V2PositionProfileCard data={positionProfile} geral={positionProfileGeral ?? playerStats}

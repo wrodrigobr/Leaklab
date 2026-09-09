@@ -59,12 +59,16 @@ def test_a_regra_e_relativa_e_vale_nos_dois_sentidos():
     assert _profundidade_compativel(0, 0) is False
 
 
-def test_o_balde_so_e_recusado_nas_duas_pontas_que_saturam():
+def test_o_balde_so_e_recusado_na_ponta_rasa_e_satura_na_funda():
     """Controle do conserto: os baldes do MEIO tem fronteiras dentro da janela, entao nenhum deles
-    pode perder cobertura. Se este teste falhar, o guarda esta cortando quem nao devia."""
+    pode perder cobertura. Se este teste falhar, o guarda esta cortando quem nao devia.
+
+    ATUALIZADO 09/09 (AY-36, decisao do dono): as duas pontas deixaram de ser simetricas. Acima
+    do teto a carta mais funda FALA (de 100bb para cima a range quase nao muda; KQs a 262bb saia
+    "sem carta" e a grade a desenhava como fold). Abaixo do piso continua recusando."""
     for label, lo, hi in _DEFAULT_BUCKETS:
         for s in (lo + 1e-6, (lo + min(hi, 250.0)) / 2, min(hi, 250.0) - 1e-6):
-            esperado = None if (s < _PISO or s > _TETO) else _stack_bucket(s)
+            esperado = None if s < _PISO else _stack_bucket(s)
             assert _balde_da_carta(s) == esperado, (
                 f'balde {label} em {s:.4f}bb: esperava {esperado}, veio {_balde_da_carta(s)}')
 
@@ -81,16 +85,18 @@ def test_range_de_open_some_no_stack_raso_e_no_profundo_e_fica_no_meio():
     """
     assert villain_open_range('BTN', 0.2, 9) == {}
     assert villain_open_range('BTN', 2.0, 9) == {}
-    assert villain_open_range('BTN', 195.0, 9) == {}
-    for s in (5.0, 7.6, 10.0, 30.0, 100.0, 133.0):
+    # 09/09 (AY-36): 195bb saiu dos vazios — acima do teto vale a carta de 100bb
+    assert villain_open_range('BTN', 195.0, 9) == villain_open_range('BTN', 100.0, 9)
+    for s in (5.0, 7.6, 10.0, 30.0, 100.0, 133.0, 195.0, 262.0):
         assert villain_open_range('BTN', s, 9), f'perdeu a range de open a {s}bb'
 
 
 def test_range_de_reraise_segue_o_mesmo_seletor():
     """Nao adianta consertar so uma das duas: as duas alimentam o mesmo `villain_range`."""
     assert villain_reraise_range('BB', 'BTN', 0.2, 9) == {}
-    assert villain_reraise_range('BB', 'BTN', 195.0, 9) == {}
-    for s in (7.6, 10.0, 30.0, 100.0, 133.0):
+    # 09/09 (AY-36): a ponta funda segue o mesmo seletor, entao 195bb tem a range de 100bb
+    assert villain_reraise_range('BB', 'BTN', 195.0, 9) == villain_reraise_range('BB', 'BTN', 100.0, 9)
+    for s in (7.6, 10.0, 30.0, 100.0, 133.0, 195.0):
         assert villain_reraise_range('BB', 'BTN', s, 9), f'perdeu a range de 3-bet a {s}bb'
 
 

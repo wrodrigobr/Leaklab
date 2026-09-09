@@ -206,6 +206,7 @@ CORS origins are controlled by the `ALLOWED_ORIGINS` env var (comma-separated). 
 | `SENTRY_DSN` | Sentry DSN para error tracking no backend (opcional — sem a var, Sentry é no-op) |
 | `ENVIRONMENT` | `production` / `development` — usado pelo Sentry para separar ambientes |
 | `ENGAGEMENT_EMAIL_ENABLED` | Liga a cobrança por e-mail (Fase 2). **OFF por padrão** — sem ela o worker sobe e não envia nada |
+| `STATS_BY_POSITION_USERS` | Ids de usuário (separados por vírgula) que veem o **perfil por posição** enquanto ele está em validação. Setada, os demais recebem 403 `em_validacao` e o bloco some do dashboard deles. Ausente ou vazia = só a regra do plano (Pro). Lida a cada chamada: mudar no `.env` do host e reiniciar o container, sem deploy |
 
 ## Deployment
 

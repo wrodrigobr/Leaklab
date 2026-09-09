@@ -1021,9 +1021,13 @@ export interface PositionProfileResponse {
   sempre: string[];
   /** stats que so aparecem quando o ASSENTO tem volume proprio */
   com_volume: string[];
-  /** faixa de stack aplicada (null = todos) e as faixas que o backend aceita, na ordem dos chips */
+  /** faixa de stack em vigor e as faixas que o backend aceita, na ordem dos chips. Nao existe
+   *  "todos" (dono, 09/09: "no GTO Wizard somos obrigados a definir o stack"): sem `?stack=` o
+   *  backend abre na faixa com mais maos DENTRO da mesa em vigor e declara (`stack_auto`). */
   stack_band: string | null;
   faixas: string[];
+  stack_auto?: boolean;
+  distribuicao_de_stacks?: { faixas: Array<{ faixa: StackBand; n: number; pct: number }>; sugerida: StackBand | null; n: number };
   /** tamanho de mesa em vigor (null = todas) e os que o backend aceita, na ordem dos chips.
    *  Existe porque a linha da grade e o rotulo da sala: somar mesas de tamanhos diferentes
    *  junta assentos estrategicamente diferentes (o UTG de 9-max tem 8 atras; o de 6-max, 5). */
@@ -1031,6 +1035,9 @@ export interface PositionProfileResponse {
   mesas?: TableSize[];
   /** true quando o backend escolheu a mesa MAIS JOGADA por conta propria (nenhum `?mesa=`) */
   mesa_auto?: boolean;
+  /** assentos que NAO existem com este numero de jogadores (com 7 na mao nao ha UTG+1: o 2o a
+   *  agir e o LJ). A grade os mostra desligados com o motivo, em vez de sumir com eles. */
+  assentos_ausentes?: string[];
   distribuicao_de_mesas?: { mesas: Array<{ mesa: TableSize; n: number; pct: number }>; sugerida: TableSize | null; n: number };
   /** AY-21: true quando as linhas sao grupos (EP, MP, CO, BTN, SB, BB); `grupos` diz os assentos de cada um */
   agrupado?: boolean;
@@ -1048,8 +1055,15 @@ export interface PositionOpenDivergence { hand: string; n: number; voce: number;
 export interface PositionOpenMatrixResponse {
   position: string;
   stack_band: string | null;
-  /** tamanho de mesa em vigor (null = todas) */
+  /** tamanho de mesa em vigor; nulo so numa conta sem mao para o backend escolher um */
   mesa?: TableSize | null;
+  mesa_auto?: boolean;
+  stack_auto?: boolean;
+  /** onde ha mao, para os chips do modal; a mesma forma que na grade */
+  distribuicao_de_mesas?: { mesas: Array<{ mesa: TableSize; n: number; pct: number }>; sugerida: TableSize | null; n: number };
+  distribuicao_de_stacks?: { faixas: Array<{ faixa: StackBand; n: number; pct: number }>; sugerida: StackBand | null; n: number };
+  /** assentos que EXISTEM na mesa em vigor, sem a BB (mesa 8 tem UTG+1; mesa 6 nao tem LJ) */
+  assentos?: string[];
   n: number;
   /** null abaixo de `amostra_minima`: com 10 oportunidades, "voce abriu 0%" e ruido */
   voce_pct: number | null;

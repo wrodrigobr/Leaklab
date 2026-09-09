@@ -30,6 +30,7 @@ beforeEach(() => {
   hands.mockReset();
   hands.mockResolvedValue({
     position: "UTG", stack_band: "20-40", n: 1211, voce_pct: 17.2, solver_pct: 18.5, cobertura: 98,
+    assentos: ["UTG", "LJ", "HJ", "CO", "BTN", "SB"],
     cells: { AKs: { n: 12, voce: 1, limp: 0, solver: 1 }, T9s: { n: 9, voce: 0.444, limp: 0, solver: 1 }, "72o": { n: 10, voce: 0, limp: 0, solver: 0 }, AQs: { n: 0, voce: null, limp: null, solver: 1 }, AA: { n: 3, voce: 0.667, limp: 0.333, solver: 1 } },
     divergencias: [{ hand: "T9s", n: 9, voce: 0.444, solver: 1, delta: -0.556 }],
     minimo_maos: 8, divergencia_minima: 0.3,
@@ -61,10 +62,13 @@ describe("matriz das maos abertas", () => {
     // recorte de mesa. Ate 09/09 ia como "todas", que o endpoint agora recusa com 400.
     expect(hands).toHaveBeenCalledWith("UTG", 90, 30, "20-40", null);
     const modal = await screen.findByTestId("matriz-UTG");
-    expect(modal.textContent).toContain("posProfile.matrix.opps:1.211");
-    expect(modal.textContent).toContain("posProfile.matrix.opened:17.2");
-    expect(modal.textContent).toContain("posProfile.matrix.wouldOpen:18.5");
-    expect(modal.textContent).toContain("posProfile.matrix.covers:98");        // cobertura no titulo, sem legenda
+    // A comparacao e UM par de numeros sobre AS MESMAS maos (dono, 09/09: dois numeros de
+    // solver era um a mais). 17,2 contra 18,5 = 1,3 ponto: dentro da folga, "no alvo".
+    expect(screen.getByTestId("matriz-recorte").textContent).toContain("posProfile.matrix.recorte:UTG");
+    expect(screen.getByTestId("matriz-voce-pct").textContent).toBe("17.2%");
+    expect(screen.getByTestId("matriz-solver-pct").textContent).toBe("18.5%");
+    expect(screen.getByTestId("matriz-delta").textContent).toContain("posProfile.matrix.deltaOk");
+    expect(modal.textContent).toContain("posProfile.matrix.sameHandsCovered:1.211,98");   // cobertura na frase, nao no titulo
     expect(modal.textContent).toContain("posProfile.matrix.divergencesNote:8,30");
     expect(modal.textContent).not.toContain("legendYou");
     // duas grades de 169 celulas, a mesma RangeGrid de /ranges
@@ -96,14 +100,55 @@ describe("matriz das maos abertas", () => {
     fireEvent.click(screen.getByTestId("celula-rfi-UTG"));
     const sel = await screen.findByTestId("matriz-seletores");
     expect(within(sel).getByTestId("matriz-pos-UTG").getAttribute("aria-pressed")).toBe("true");
-    expect(within(sel).queryByTestId("matriz-pos-BB")).toBeNull();                // a BB nao abre pote
+    // a BB nao abre pote: DESLIGADA e com o motivo, nao ausente (ausencia parecia esquecimento)
+    const bb = within(sel).getByTestId("matriz-pos-BB") as HTMLButtonElement;
+    expect(bb.disabled).toBe(true);
+    expect(bb.title).toBe("posProfile.matrix.bbNoRfi");
     expect(within(sel).getByTestId("matriz-stack-20-40").getAttribute("aria-pressed")).toBe("true");
     fireEvent.click(within(sel).getByTestId("matriz-stack-40+"));
     await waitFor(() => expect(hands).toHaveBeenLastCalledWith("UTG", 90, 30, "40+", null));
     fireEvent.click(within(await screen.findByTestId("matriz-seletores")).getByTestId("matriz-pos-HJ"));
     await waitFor(() => expect(hands).toHaveBeenLastCalledWith("HJ", 90, 30, "40+", null));
-    fireEvent.click(within(await screen.findByTestId("matriz-seletores")).getByTestId("matriz-stack-todos"));
-    await waitFor(() => expect(hands).toHaveBeenLastCalledWith("HJ", 90, 30, null, null));
+    // nao existe chip "todos" de stack
+    expect(within(await screen.findByTestId("matriz-seletores")).queryByTestId("matriz-stack-todos")).toBeNull();
+  });
+
+  it("o tamanho da mesa e o terceiro filtro do modal, e os assentos seguem a mesa", async () => {
+    // Ate 09/09 a mesa vinha herdada da grade sem aparecer no modal, e foi por isso que um
+    // fundador nao sabia que olhava mesa de 7. Agora e chip, com a fatia do volume.
+    hands.mockResolvedValue({
+      position: "UTG", stack_band: "20-40", mesa: "8max", n: 1161, voce_pct: 16.0, solver_pct: 14.8, solver_pct_todas: 17.4,
+      cobertura: 98, assentos: ["UTG", "UTG+1", "LJ", "HJ", "CO", "BTN", "SB"], jogadores_atras: 7,
+      distribuicao_de_mesas: { mesas: [{ mesa: "8max", n: 3985, pct: 45 }, { mesa: "7max", n: 2500, pct: 28 }], sugerida: "8max", n: 6485 },
+      distribuicao_de_stacks: { faixas: [{ faixa: "40+", n: 500, pct: 43 }, { faixa: "20-40", n: 661, pct: 57 }], sugerida: "20-40", n: 1161 },
+      cells: { AKs: { n: 12, voce: 1, limp: 0, solver: 1 } }, divergencias: [], minimo_maos: 8, divergencia_minima: 0.3,
+    });
+    monta();
+    fireEvent.click(screen.getByTestId("celula-rfi-UTG"));
+    const sel = await screen.findByTestId("matriz-seletores");
+    // mesa de 8 na mao: o UTG+1 EXISTE (convencao do dono); o chip da mesa mostra a fatia
+    expect(within(sel).getByTestId("matriz-pos-UTG+1")).toBeTruthy();
+    expect(within(sel).getByTestId("matriz-mesa-8max").getAttribute("aria-pressed")).toBe("true");
+    expect(within(sel).getByTestId("matriz-mesa-8max").textContent).toContain("45%");
+    expect(within(sel).getByTestId("matriz-stack-20-40").textContent).toContain("661");   // maos na faixa
+    // a frase do recorte diz o que esta sendo comparado, e a linha do solver diz por que
+    expect(screen.getByTestId("matriz-recorte").textContent).toContain("posProfile.matrix.recorte:UTG,posProfile.tableSize.8max,posProfile.matrix.stackWords.20-40,1.161");
+    expect(screen.getByTestId("matriz-referencia").textContent).toContain("posProfile.matrix.behind:7");
+    expect(screen.getByTestId("matriz-range-size").textContent).toContain("posProfile.matrix.rangeSize:17.4");
+    // trocar a mesa pede a matriz de novo, sem fechar o modal
+    fireEvent.click(within(sel).getByTestId("matriz-mesa-7max"));
+    await waitFor(() => expect(hands).toHaveBeenLastCalledWith("UTG", 90, 30, "20-40", "7max"));
+  });
+
+  it("assento que nao existe na mesa nova volta para o UTG em vez de mostrar recorte vazio", async () => {
+    // UTG+1 some com 7 na mao, LJ some com 6: o modal nao pode ficar num assento que a mesa nao tem
+    hands.mockResolvedValueOnce({
+      position: "HJ", stack_band: "20-40", mesa: "curta", n: 0, voce_pct: null, solver_pct: null, cobertura: 0,
+      assentos: ["UTG", "CO", "BTN", "SB"], cells: {}, divergencias: [], minimo_maos: 8, divergencia_minima: 0.3,
+    });
+    monta();
+    fireEvent.click(screen.getByTestId("celula-rfi-HJ"));
+    await waitFor(() => expect(hands).toHaveBeenLastCalledWith("UTG", 90, 30, "20-40", "curta"));
   });
 
   /**
@@ -118,7 +163,7 @@ describe("matriz das maos abertas", () => {
    */
   it("o solver declara de qual carta veio o numero, e o que o numero das SUAS maos seria", async () => {
     hands.mockResolvedValue({
-      position: "UTG", stack_band: null, n: 1519, voce_pct: 17.5, solver_pct: 19.4,
+      position: "UTG", stack_band: "40+", mesa: "7max", n: 1519, voce_pct: 17.5, solver_pct: 19.4,
       solver_pct_todas: 20.0, cobertura: 98, assento_da_carta: "UTG+2", jogadores_atras: 6,
       cells: { AA: { n: 3, voce: 1, limp: 0, solver: 1 } }, divergencias: [],
       minimo_maos: 8, divergencia_minima: 0.3,
@@ -126,12 +171,15 @@ describe("matriz das maos abertas", () => {
     render(<MemoryRouter><V2PositionProfileCard data={GRADE} geral={HUD} stack="20-40" lastN={30} onStack={() => {}} /></MemoryRouter>);
     fireEvent.click(screen.getByTestId("celula-rfi-UTG"));
     const ref = await screen.findByTestId("matriz-referencia");
-    expect(ref.textContent).toContain("posProfile.matrix.reference:6");        // 6 ATRAS, nao "UTG+2"
-    expect(ref.textContent).toContain("posProfile.matrix.inYourHands:19.4");   // o outro denominador
-    expect(ref.textContent).not.toContain("referenceMixed");
+    expect(ref.textContent).toContain("posProfile.matrix.behind:6");           // 6 por agir, nao "UTG+2"
+    expect(ref.textContent).not.toContain("behindMixed");
+    // o par comparavel: 17,5 contra 19,4 sobre AS MESMAS maos; o 20,0 (range inteiro) e so legenda
+    expect(screen.getByTestId("matriz-voce-pct").textContent).toBe("17.5%");
+    expect(screen.getByTestId("matriz-solver-pct").textContent).toBe("19.4%");
+    expect(screen.getByTestId("matriz-range-size").textContent).toContain("posProfile.matrix.rangeSize:20.0");
   });
 
-  it("recorte que mistura cartas nao promete referencia unica", async () => {
+  it("recorte sem carta unica nao promete referencia", async () => {
     hands.mockResolvedValue({
       position: "UTG", stack_band: null, n: 3690, voce_pct: 17.2, solver_pct: 18.5,
       solver_pct_todas: 20.4, cobertura: 98, assento_da_carta: null, jogadores_atras: null,
@@ -141,8 +189,8 @@ describe("matriz das maos abertas", () => {
     render(<MemoryRouter><V2PositionProfileCard data={GRADE} geral={HUD} stack="20-40" lastN={30} onStack={() => {}} /></MemoryRouter>);
     fireEvent.click(screen.getByTestId("celula-rfi-UTG"));
     const ref = await screen.findByTestId("matriz-referencia");
-    expect(ref.textContent).toContain("posProfile.matrix.referenceMixed");
-    expect(ref.textContent).not.toContain("posProfile.matrix.reference:");
+    expect(ref.textContent).toContain("posProfile.matrix.behindMixed");
+    expect(ref.textContent).not.toContain("posProfile.matrix.behind:");
   });
 
   it("a BB nao tem RFI nem matriz; o 3-Bet continua abrindo o contra quem", () => {

@@ -12,7 +12,9 @@ import type { PlayerStatsResponse, PositionProfileResponse } from "@/lib/api";
  *    acusar por assento com a régua do jogo inteiro, o defeito de 05/09.
  * 2. A tinta vai para o lado certo: valor ABAIXO da faixa pinta entre o valor e `lo`; ACIMA,
  *    entre `hi` e o valor. Trocar os lados passa verde em qualquer snapshot.
- * 3. Os chips chamam `onStack` com a faixa do backend (`faixas`), e "todos" é null.
+ * 3. O dropdown chama `onStack` com a faixa do backend (`faixas`). Não existe "todos" (dono,
+ *    09/09: "no GTO Wizard somos obrigados a definir o stack"): sem pedido vale a faixa que o
+ *    backend declarou em `stack_band`.
  * 4. A BB mostra "n/a" no RFI, não "—": traço é amostra baixa, isto é regra.
  */
 vi.mock("react-i18next", () => ({
@@ -88,16 +90,15 @@ describe("régua do RFI", () => {
 });
 
 describe("filtro de stack", () => {
-  it("as faixas vêm do backend e chamam onStack; todos é null (dropdown desde 08/09)", () => {
+  it("as faixas vêm do backend e chamam onStack; não existe todos (dono, 09/09)", () => {
     const onStack = vi.fn();
-    render(<V2PositionProfileCard data={GRADE} geral={HUD} stack={null} onStack={onStack} />);
+    render(<V2PositionProfileCard data={{ ...GRADE, stack_band: "20-40" }} geral={HUD} stack={null} onStack={onStack} />);
     const sel = screen.getByTestId("select-stack") as HTMLSelectElement;
-    expect(Array.from(sel.options).map((o) => o.textContent)).toEqual(["posProfile.stackAll", "40bb+", "20–40bb", "<20bb"]);
-    fireEvent.change(sel, { target: { value: "20-40" } });
-    expect(onStack).toHaveBeenCalledWith("20-40");
-    fireEvent.change(sel, { target: { value: "todos" } });
-    expect(onStack).toHaveBeenCalledWith(null);
-    expect(sel.value).toBe("todos");                       // sem faixa escolhida, o dropdown mostra "todos"
+    expect(Array.from(sel.options).map((o) => o.textContent)).toEqual(["40bb+", "20–40bb", "<20bb"]);
+    expect(Array.from(sel.options).map((o) => o.value)).not.toContain("todos");
+    expect(sel.value).toBe("20-40");                       // sem pedido, vale o que o backend DECLAROU
+    fireEvent.change(sel, { target: { value: "40+" } });
+    expect(onStack).toHaveBeenCalledWith("40+");
   });
 
   it("sem onStack não há filtro (card em modo só leitura)", () => {

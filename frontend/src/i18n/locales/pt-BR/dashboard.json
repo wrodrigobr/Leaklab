@@ -970,12 +970,11 @@
       ]
     },
     "total": "Total",
-    "outsideGrid": "Total inclui {{n}} mãos em posições fora das 8 da grade.",
+    "outsideGrid": "Total inclui {{n}} mãos em posições fora das {{rows}} da grade.",
     "yourGame": "Seu jogo todo",
     "vsYourGame": "{{delta}}{{unit}} em relação ao seu jogo todo.",
     "descriptive": "A grade descreve o seu perfil em cada assento. A referência vale para o jogo todo, na linha Total.",
     "stack": "stack",
-    "stackAll": "todos",
     "table": "jogadores na mão",
     "tableSize": {
       "9max": "9",
@@ -1047,9 +1046,7 @@
       "open": "Ver mãos abertas",
       "opps": "{{n}} vezes com o pote intacto",
       "solver": "Solver",
-      "opened": "abriu {{pct}}%",
-      "wouldOpen": "abriria {{pct}}%",
-      "noChart": "sem carta para este recorte",
+      "noChart": "sem range do solver para este recorte",
       "divergences": "Onde você mais diverge",
       "noDivergence": "Nenhuma mão com {{n}}+ ocorrências fica a {{pp}} pontos ou mais do solver.",
       "hand": "Mão",
@@ -1058,13 +1055,32 @@
       "study": "Estudar esta range",
       "solverShort": "Solver",
       "divergencesNote": "Mãos com {{n}} ou mais ocorrências e {{pp}} pontos ou mais de distância do solver.",
-      "covers": "cobre {{pct}}%",
       "neverDealt": "não recebeu esta mão",
-      "lowSampleShort": "Amostra pequena",
-      "reference": "Referência: carta do assento com {{atras}} jogadores atrás, sobre as 169 mãos possíveis.",
-      "referenceMixed": "Referência: mistura de cartas, porque o recorte junta assentos com números diferentes de jogadores atrás.",
-      "inYourHands": "Só nas mãos que você recebeu, seria {{pct}}%."
+      "behind_one": "Em mesas de {{mesa}}, ainda age só {{count}} jogador depois de você. Quanto menos gente por agir, mais o solver abre.",
+      "behind_other": "Em mesas de {{mesa}}, ainda agem {{count}} jogadores depois de você. Quanto menos gente por agir, mais o solver abre.",
+      "behindMixed": "Neste recorte, a quantidade de jogadores que ainda agem depois de você varia de mão para mão. Quanto menos gente por agir, mais o solver abre.",
+      "seat": "assento",
+      "recorte": "Você no {{pos}}, em mesas de {{mesa}} jogadores, com {{stack}}. {{n}} vezes com o pote intacto.",
+      "stackWords": {
+        "40+": "40bb ou mais",
+        "20-40": "20 a 40bb",
+        "<20": "menos de 20bb"
+      },
+      "bbNoRfi": "A BB não abre o pote: quando todos foldam, ela leva os blinds sem agir. Por isso não tem RFI nem matriz.",
+      "youOpened": "Você abriu",
+      "solverWouldOpen": "O solver abriria",
+      "sameHands": "Os dois números são sobre as mesmas {{n}} mãos que você recebeu neste recorte.",
+      "sameHandsCovered": "Os dois números são sobre as mesmas {{n}} mãos que você recebeu neste recorte, nas {{pct}}% em que há range do solver.",
+      "deltaOk": "no alvo",
+      "deltaLess": "{{pp}} pontos a menos",
+      "deltaMore": "{{pp}} pontos a mais",
+      "smallSample": "Amostra pequena: menos de {{n}} oportunidades neste recorte. Os números não aparecem; as grades e a lista de divergências, sim.",
+      "noChartCompare": "Sem range do solver para este recorte, então não há com o que comparar.",
+      "yourHands": "Suas mãos",
+      "solverRange": "Range do solver",
+      "rangeSize": "abre {{pct}}% de todas as mãos possíveis"
     },
-    "tablePlayers": "{{n}} jogadores"
+    "tablePlayers": "{{n}} jogadores",
+    "seatAbsent": "Não existe com {{mesa}} jogadores na mão. Quem agiu nessa vez da fila está no assento seguinte."
   }
 }

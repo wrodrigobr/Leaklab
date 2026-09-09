@@ -970,12 +970,11 @@
       ]
     },
     "total": "Total",
-    "outsideGrid": "Total includes {{n}} hands in positions outside the 8 shown.",
+    "outsideGrid": "Total includes {{n}} hands in positions outside the {{rows}} shown.",
     "yourGame": "Your whole game",
     "vsYourGame": "{{delta}}{{unit}} versus your whole game.",
     "descriptive": "The grid describes your profile in each seat. The reference applies to the whole game, in the Total row.",
     "stack": "stack",
-    "stackAll": "all",
     "table": "players dealt",
     "tableSize": {
       "9max": "9",
@@ -1047,9 +1046,7 @@
       "open": "See opened hands",
       "opps": "{{n}} times with an unopened pot",
       "solver": "Solver",
-      "opened": "opened {{pct}}%",
-      "wouldOpen": "would open {{pct}}%",
-      "noChart": "no chart for this cut",
+      "noChart": "no chart for this slice",
       "divergences": "Where you diverge most",
       "noDivergence": "No hand with {{n}}+ occurrences sits {{pp}} points or more from the solver.",
       "hand": "Hand",
@@ -1058,13 +1055,32 @@
       "study": "Study this range",
       "solverShort": "Solver",
       "divergencesNote": "Hands with {{n}} or more occurrences and {{pp}} points or more from the solver.",
-      "covers": "covers {{pct}}%",
       "neverDealt": "never dealt this hand",
-      "lowSampleShort": "Small sample",
-      "reference": "Reference: chart for the seat with {{atras}} players behind, over all 169 possible hands.",
-      "referenceMixed": "Reference: a mix of charts, because this cut spans seats with different numbers of players behind.",
-      "inYourHands": "Over just the hands you were dealt, it would be {{pct}}%."
+      "behind_one": "At {{mesa}}-handed tables, only {{count}} player still acts after you. The fewer players left to act, the wider the solver opens.",
+      "behind_other": "At {{mesa}}-handed tables, {{count}} players still act after you. The fewer players left to act, the wider the solver opens.",
+      "behindMixed": "In this slice, the number of players still acting after you varies from hand to hand. The fewer players left to act, the wider the solver opens.",
+      "seat": "seat",
+      "recorte": "You in the {{pos}}, at {{mesa}}-handed tables, with {{stack}}. {{n}} times with an unopened pot.",
+      "stackWords": {
+        "40+": "40bb or more",
+        "20-40": "20 to 40bb",
+        "<20": "under 20bb"
+      },
+      "bbNoRfi": "The BB never opens the pot: when everyone folds, it takes the blinds without acting. So it has no RFI and no matrix.",
+      "youOpened": "You opened",
+      "solverWouldOpen": "The solver would open",
+      "sameHands": "Both numbers are over the same {{n}} hands you were dealt in this slice.",
+      "sameHandsCovered": "Both numbers are over the same {{n}} hands you were dealt in this slice, on the {{pct}}% that have a solver range.",
+      "deltaOk": "on target",
+      "deltaLess": "{{pp}} points under",
+      "deltaMore": "{{pp}} points over",
+      "smallSample": "Small sample: fewer than {{n}} opportunities in this slice. The numbers are hidden; the grids and the divergence list are not.",
+      "noChartCompare": "No solver range for this slice, so there is nothing to compare against.",
+      "yourHands": "Your hands",
+      "solverRange": "Solver's range",
+      "rangeSize": "opens {{pct}}% of every possible hand"
     },
-    "tablePlayers": "{{n}} players"
+    "tablePlayers": "{{n}} players",
+    "seatAbsent": "Does not exist with {{mesa}} players dealt in. Whoever acted in that turn of the order is in the next seat."
   }
 }

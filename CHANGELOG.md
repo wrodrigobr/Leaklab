@@ -4,6 +4,51 @@ Todas as mudanÃ§as notÃ¡veis neste projeto serÃ£o documentadas aqui.
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
+## Perfil por posicao: tres filtros obrigatorios, comparacao sobre as mesmas maos, e um portao para validar com poucos olhos (09/09, noite)
+
+- Um dia inteiro de conversa com o dono, a partir da duvida do Rullian ("de onde vem esse 20%?"),
+  terminou num desenho unico para a grade por assento e para a matriz de abertura. O ponto de
+  virada foi ele: *"no GTO Wizard somos obrigados a definir o stack, entao nao faz sentido o
+  todos"*. A carta de abertura e funcao de assento, jogadores na mesa e stack; sem os tres fixos
+  o numero do solver e uma media entre cartas, que muda com o VOLUME do jogador e nao com o jogo.
+- **Mesa e stack viraram filtros obrigatorios nos tres endpoints da grade**, resolvidos numa
+  funcao so (`_recorte_da_grade`): sem `?mesa=`/`?stack=` o backend abre onde ha mais maos, o
+  stack DENTRO da mesa em vigor, e declara (`mesa_auto`, `stack_auto`, distribuicoes). "Todas" e
+  "todos" respondem 400. Ate aqui so a grade escolhia a mesa e a matriz caia no recorte
+  misturado: duas politicas para a mesma pergunta.
+- **A matriz foi reescrita.** Tres filtros no topo (o de jogadores na mesa nao aparecia; foi por
+  isso que o Rullian nao sabia que olhava mesa de 7). Uma frase de recorte. **Um par de numeros
+  so, sobre AS MESMAS maos:** "voce abriu X% das maos que recebeu; o solver abriria Y% com essas
+  mesmas maos". O tamanho do range inteiro virou legenda da grade, porque nao e comparavel com o
+  do jogador (56,4% "abrindo mais" que 54,6% era 56,4% contra 59,0%). Abaixo do piso de amostra
+  nenhum dos dois sai. A linha sob a grade explica por que o range e o que e: "ainda agem 6
+  jogadores depois do UTG; quanto menos gente por agir, mais o solver abre" (sem "atras", que o
+  dono leu ao contrario, e sem "UTG+2", que trocaria uma duvida por outra).
+- **Assento que nao existe aparece desligado, com o motivo, nunca some.** A BB no modal (nao
+  abre pote). UTG+1 e UTG+2 na grade de 7 (dono, na tela de prod: "ta faltando o UTG+1"; nao
+  faltava, com 7 na mao o segundo a agir e o LJ, mas sumir em silencio parece esquecimento). O
+  backend declara `assentos` na matriz e `assentos_ausentes` na grade; o front nao copia a regra.
+  O rodape "fora das 8 da grade" passou a contar as linhas de verdade.
+- **Mao recebida sem carta deixou de aparecer como fold do solver.** Dono: "me parece bem
+  estranho o solver nao abrir KQs e A6s". O solver abre as duas 100%; KQs tinha caido UMA vez, a
+  262bb, acima do teto da carta, e a celula saia `None`, que a grade pinta igual a 0%.
+- **AY-36 (decisao do dono): acima do teto, a carta de 100bb fala; abaixo do piso continua
+  muda.** Medido antes: 341 oportunidades de RFI do acervo (2,2%) acima de 125bb; a carta de
+  100bb acusaria 34, e 233 ja tinham veredito pelo no do solver. Efeito: cobertura do UTG de
+  mesa 8 a 40bb+ de 94% para 100%, range do vilao a 262bb de 0 para 112 maos. Quatro testes que
+  guardavam a recusa simetrica foram atualizados para a politica nova; o guarda novo olha as
+  DUAS pontas, e a mutacao que satura a rasa junto acusou (regra 7).
+- **Portao para validar com poucos olhos:** `STATS_BY_POSITION_USERS="62"` no `.env` do host
+  libera o bloco so para esses ids; os demais recebem 403 `em_validacao` e o bloco SOME do
+  dashboard, sem cadeado nem promessa. Ausente = so a regra do plano. Provado no servidor de
+  dev: copia do Rullian 200, phpro 403. **Vai no ambiente do processo, nao no `.env` do repo de
+  dev**, senao a suite inteira e barrada.
+- Todos os guardas novos (4 no backend, 3 no front, mais o do portao e o do teto) foram
+  quebrados de proposito, um a um, e acusaram. Suites com a arvore final: **backend 2997/2999**
+  (as 2 falhas sao anteriores, `test_generate_postflop_spot` e `test_a_sondagem_SE_CALA_em_pote_3bet`,
+  provadas no codigo limpo via stash) e **frontend 562/562**.
+
+---
 ## A matriz diz de qual carta veio o numero, e a grade perde o "todas" (09/09)
 
 - Duvida do Rullian: *"em relacao ao UTG, to achando essa porcentagem que o solver abriria um

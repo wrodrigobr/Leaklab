@@ -337,9 +337,10 @@ export function V2PositionProfileCard({
   lastN = null,
 }: {
   data?: PositionProfileResponse | null;
-  /** faixa de stack em vigor (null = todos) e o setter, que mora no Index */
+  /** faixa de stack PEDIDA (null = o backend escolhe a de mais maos e declara em
+   *  `data.stack_band`) e o setter, que mora no Index. Nao existe "todos" (dono, 09/09). */
   stack?: StackBand | null;
-  onStack?: (s: StackBand | null) => void;
+  onStack?: (s: StackBand) => void;
   /** tamanho de mesa em vigor e o setter, que mora no Index. NAO existe "todas" (dono,
    *  09/09): a linha "UTG" somando mesas de tamanhos diferentes junta ate CINCO assentos
    *  estrategicamente distintos, comparados com cartas que abrem de 15,8% a 28,0%.
@@ -369,7 +370,12 @@ export function V2PositionProfileCard({
   // Sem `?mesa=` o backend escolhe a mais jogada e DECLARA qual usou; o painel tem de pedir o
   // MESMO recorte que a grade esta mostrando. Nulo so quando nao ha mao nenhuma.
   const mesaEmVigor: TableSize | null = mesa ?? data?.mesa ?? null;
-  const [detalhe, setDetalhe] = useState<{ position: string; stat: string; stack?: StackBand | null } | null>(null);
+  // Mesma regra para o stack: o que VALE e o que o backend declarou. Sem `?stack=` ele abre na
+  // faixa com mais maos dentro da mesa em vigor.
+  const stackEmVigor: StackBand | null = stack ?? (data?.stack_band as StackBand | null) ?? null;
+  // O modal da matriz tem os TRES filtros e troca os tres sem sair dele; por isso o painel
+  // guarda a sua propria mesa e o seu proprio stack, e so herda os da grade ao abrir.
+  const [detalhe, setDetalhe] = useState<{ position: string; stat: string; stack?: StackBand | null; mesa?: TableSize | null } | null>(null);
   const [detalheDados, setDetalheDados] = useState<PositionDetailResponse | null>(null);
   const [matrizDados, setMatrizDados] = useState<PositionOpenMatrixResponse | null>(null);
   const [detalheErro, setDetalheErro] = useState(false);
@@ -379,15 +385,17 @@ export function V2PositionProfileCard({
     setDetalheDados(null); setMatrizDados(null); setDetalheErro(false);
     // RFI abre a matriz das maos abertas (outro endpoint, mesmo recorte); os outros, o "contra quem"
     const pedido = detalhe.stat === "rfi"
-      ? metrics.playerStatsByPositionHands(detalhe.position, 90, lastN ?? undefined, detalhe.stack ?? null, mesaEmVigor).then((d) => { if (vivo) setMatrizDados(d); })
-      : metrics.playerStatsByPositionDetail(detalhe.position, detalhe.stat, 90, lastN ?? undefined, stack, mesaEmVigor).then((d) => { if (vivo) setDetalheDados(d); });
+      ? metrics.playerStatsByPositionHands(detalhe.position, 90, lastN ?? undefined, detalhe.stack ?? null, detalhe.mesa ?? mesaEmVigor).then((d) => { if (vivo) setMatrizDados(d); })
+      : metrics.playerStatsByPositionDetail(detalhe.position, detalhe.stat, 90, lastN ?? undefined, stackEmVigor, mesaEmVigor).then((d) => { if (vivo) setDetalheDados(d); });
     pedido.catch(() => { if (vivo) setDetalheErro(true); });
     return () => { vivo = false; };
-  }, [detalhe, stack, lastN, mesaEmVigor]);
-  // trocar a faixa de stack ou o tamanho de mesa fecha o painel: ele e do recorte em que abriu
-  useEffect(() => { setDetalhe(null); }, [stack, mesaEmVigor]);
+  }, [detalhe, stackEmVigor, lastN, mesaEmVigor]);
+  // trocar a faixa de stack ou o tamanho de mesa NA GRADE fecha o painel: ele e do recorte em
+  // que abriu. Trocar DENTRO do modal nao passa por aqui (e o `detalhe` que muda).
+  useEffect(() => { setDetalhe(null); }, [stackEmVigor, mesaEmVigor]);
   const alternaDetalhe = (position: string, stat: string) =>
-    setDetalhe((d) => (d && d.position === position && d.stat === stat ? null : { position, stat, stack: stat === "rfi" ? stack ?? null : undefined }));
+    setDetalhe((d) => (d && d.position === position && d.stat === stat ? null
+      : { position, stat, stack: stat === "rfi" ? stackEmVigor : undefined, mesa: stat === "rfi" ? mesaEmVigor : undefined }));
 
   /** TODAS as colunas do payload, sempre, na ordem em que o backend as declara (a ordem do
    *  HUD principal). Filtrar pelas que "algum assento atinge" era o que escondia da linha
@@ -499,16 +507,16 @@ export function V2PositionProfileCard({
           <Filtro
             rotulo={t("posProfile.stack")}
             testid="select-stack"
-            valor={stack ?? "todos"}
-            onMuda={(v) => onStack(v === "todos" ? null : (v as StackBand))}
-            opcoes={[
-              { valor: "todos", texto: t("posProfile.stackAll") },
-              ...((data.faixas ?? []) as StackBand[]).map((f) => ({ valor: f, texto: ROTULO_DA_FAIXA[f] ?? f })),
-            ]}
+            valor={stackEmVigor ?? ""}
+            onMuda={(v) => onStack(v as StackBand)}
+            opcoes={((data.faixas ?? []) as StackBand[]).map((f) => {
+              const info = (data.distribuicao_de_stacks?.faixas ?? []).find((d) => d.faixa === f);
+              return { valor: f, texto: (ROTULO_DA_FAIXA[f] ?? f) + (info ? ` · ${info.pct}%` : "") };
+            })}
           />
         )}
         <span className="font-mono text-[9px] text-muted-foreground/70 tabular-nums">
-          {stack ? t("posProfile.stackHands", { n: data.total_hands }) : t("posProfile.hands", { n: data.total_hands })}
+          {stackEmVigor ? t("posProfile.stackHands", { n: data.total_hands }) : t("posProfile.hands", { n: data.total_hands })}
         </span>
       </div>
 
@@ -576,7 +584,7 @@ export function V2PositionProfileCard({
                     </Tooltip>
                   ) : linha.stats[k] ? (
                     <Celula key={k} chave={k} cel={linha.stats[k]} posicao={linha.position}
-                            maos={linha.hands} stack={stack}
+                            maos={linha.hands} stack={stackEmVigor}
                             ancora={(geral as unknown as Record<string, number | null>)?.[k] ?? null}
                             onDetalhe={COM_DETALHE.has(k) && linha.stats[k].band !== "low_sample" ? () => alternaDetalhe(linha.position, k) : undefined}
                             aberto={detalhe?.position === linha.position && detalhe?.stat === k} />
@@ -584,6 +592,19 @@ export function V2PositionProfileCard({
                     <span key={k} className="font-mono text-[13px] leading-none text-muted-foreground/25">—</span>
                   )
                 )}
+              </div>
+            ))}
+            {/* Assento que NAO existe com este numero de jogadores (dono, 09/09, na grade de 7:
+                "ta faltando o UTG+1"). Nao faltava: com 7 na mao o segundo a agir e o LJ, e as
+                maos dele estao la. Mas sumir em silencio parece esquecimento — mesma licao da
+                BB no modal da matriz: desligado com o motivo, nunca ausente. */}
+            {(data.assentos_ausentes ?? []).map((pos) => (
+              <div key={`ausente-${pos}`} className="grid items-start gap-x-2 opacity-50" style={{ gridTemplateColumns: trilhas }}
+                   data-testid={`linha-ausente-${pos}`}>
+                <span className="font-mono text-[10px] font-bold uppercase text-muted-foreground/60 line-through">{pos}</span>
+                <span className="col-span-full -mt-0.5 font-mono text-[9px] leading-snug text-muted-foreground/70" style={{ gridColumn: "2 / -1" }}>
+                  {t("posProfile.seatAbsent", { mesa: data.mesa ? t(`posProfile.tableSize.${data.mesa}`) : "?" })}
+                </span>
               </div>
             ))}
           </div>
@@ -633,10 +654,11 @@ export function V2PositionProfileCard({
                 {t("posProfile.matrix.title", { pos: detalhe.position })}
               </DialogTitle>
               <DialogDescription className="sr-only">{t("posProfile.matrix.description")}</DialogDescription>
-              <MatrizDeAbertura position={detalhe.position} stack={detalhe.stack ?? null} dados={matrizDados} erro={detalheErro}
-                                posicoes={(data?.positions ?? []).map((l) => l.position).filter((p) => p !== "BB")}
+              <MatrizDeAbertura position={detalhe.position} stack={detalhe.stack ?? null} mesa={detalhe.mesa ?? mesaEmVigor}
+                                dados={matrizDados} erro={detalheErro}
                                 faixas={(data?.faixas ?? []) as StackBand[]}
-                                onMudar={(position, novoStack) => setDetalhe({ position, stat: "rfi", stack: novoStack })} />
+                                mesas={data?.distribuicao_de_mesas?.mesas}
+                                onMudar={(position, novoStack, novaMesa) => setDetalhe({ position, stat: "rfi", stack: novoStack, mesa: novaMesa })} />
             </>
           )}
           {detalhe && detalhe.stat !== "rfi" && (
@@ -657,7 +679,7 @@ export function V2PositionProfileCard({
           os assentos, nao fecha com o Total, e nao tem como saber por que. Declarada aqui. */}
       {forasDaGrade > 0 && (
         <p className="mt-2 font-mono text-[9px] text-muted-foreground/70">
-          {t("posProfile.outsideGrid", { n: forasDaGrade.toLocaleString() })}
+          {t("posProfile.outsideGrid", { n: forasDaGrade.toLocaleString(), rows: linhas.length })}
         </p>
       )}
     </div>
