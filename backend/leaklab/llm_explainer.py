@@ -1393,6 +1393,10 @@ REGRAS DE PRIORIZAÇÃO E AMOSTRA (siga à risca):
 - NÃO force 6 cards. Se só há N leaks acionáveis e CONFIÁVEIS, entregue N (entre 1 e 6). NÃO invente leaks que os dados não mostram.
 - Leaks marcados "confiança baixa" (amostra pequena): se incluir, sinalize a incerteza no diagnóstico e rebaixe a prioridade. Itens fracos/ruidosos vão em "nao_focar_agora".
 - Use o "Nível estimado (ELO)" como referência para o campo "nivel".
+- RESUMO: no máximo 3 frases e DOIS números. O resumo diz o PADRÃO e o CAMINHO; quem carrega
+  número é o card, que tem o contexto ao lado. Um resumo com dez números e três unidades
+  diferentes (% de acerto, bb, bb/100) não é resumo, é despejo — e o jogador fecha a tela.
+- NUNCA escreva JSON, chave ou colchete dentro de um campo de texto. Cada seção tem o seu campo.
 
 Cada card deve ter:
 1. Título direto e específico ao leak (máx 6 palavras)
@@ -1407,7 +1411,7 @@ ESTILO: nos textos (diagnóstico, conceitos, exercício, resumo) NUNCA use trave
 Responda APENAS com JSON válido, sem texto adicional, no formato:
 {{
   "nivel": "iniciante|intermediario|avancado",
-  "resumo": "2-3 frases: perfil de erros, padrões principais e caminho de evolução",
+  "resumo": "NO MÁXIMO 3 frases, escritas para o jogador ler. No máximo DOIS números no texto inteiro, e nunca dois de unidades diferentes na mesma frase (bb total, bb/100 e % de acerto são réguas diferentes). O detalhe numérico vai nos cards, não aqui. Sem termo técnico em inglês fora do jargão de poker consagrado. Diga o padrão e o caminho, não a planilha.",
   "cards": [
     {{
       "prioridade": "p1",
@@ -1472,7 +1476,7 @@ Responda APENAS com JSON válido, sem texto adicional, no formato:
                 result = json.loads(recovered)
             else:
                 raise
-        result = _sanitize_study_resources(result)
+        result = _sanitize_study_resources(_desaninha_resumo(result))
         result['source'] = leak_source
         result_str = json.dumps(result, ensure_ascii=False)
         _cache[mem_key] = result_str
@@ -1764,6 +1768,69 @@ def _fix_cadence_label(s: str) -> str:
     return f"{_CADENCE_PT.get(m.group(1).lower().replace('biweekly', 'bi-weekly'), m.group(1))}: " + s[m.end():]
 
 
+#: Teto do resumo do plano. O contrato pede "2-3 frases"; acima disto nao e resumo, e despejo.
+LIMITE_DO_RESUMO = 600
+
+#: Campos que o modelo as vezes escreve DENTRO da string do resumo em vez de como chave.
+_CHAVES_DO_PLANO = ('nao_focar_agora', 'observar_mais_dados', 'cards', 'nivel')
+
+
+def _desaninha_resumo(plan: dict) -> dict:
+    """Tira do `resumo` o JSON que o modelo escreveu dentro dele, e devolve os campos ao lugar.
+
+    ── O que originou (09/09) ──────────────────────────────────────────────────────────────
+    O dono leu o proprio plano em producao e achou confuso. Era pior que confuso: o `resumo`
+    tinha 2.401 caracteres e terminava com o JSON de `nao_focar_agora` e `observar_mais_dados`
+    em texto cru, com chaves e colchetes na tela. Os dois campos NAO existiam no plano — o
+    modelo fechou a aspas do resumo so no fim, e o JSON continuou valido, entao `json.loads`
+    aceitou e nos gravamos e exibimos.
+
+    O defeito e nosso, nao do modelo: resposta de LLM e entrada nao confiavel, e nao havia
+    conferencia nenhuma entre `json.loads` e o cache. Aqui a resposta passa a ser validada.
+    O que da para recuperar volta ao lugar; o que sobra e cortado, com log — plano truncado e
+    ruim, plano com JSON na cara e vergonhoso.
+    """
+    import json as _json
+    import logging as _logging
+    import re as _re
+    resumo = plan.get('resumo')
+    if not isinstance(resumo, str) or not resumo:
+        return plan
+    # onde comeca o vazamento: a primeira chave conhecida aparecendo COMO chave dentro do texto
+    corte = None
+    for chave in _CHAVES_DO_PLANO:
+        m = _re.search(r'[,{]?\s*"%s"\s*:' % chave, resumo)
+        if m and (corte is None or m.start() < corte):
+            corte = m.start()
+    if corte is None:
+        # sem vazamento: so o teto
+        if len(resumo) > LIMITE_DO_RESUMO:
+            cortado = resumo[:LIMITE_DO_RESUMO]
+            ponto = cortado.rfind('. ')
+            plan['resumo'] = (cortado[:ponto + 1] if ponto > 120 else cortado).strip()
+            _logging.getLogger('llm_guard').warning(
+                "study_plan: resumo com %d caracteres, cortado no teto de %d", len(resumo), LIMITE_DO_RESUMO)
+        return plan
+    cauda = resumo[corte:].lstrip().lstrip(',')
+    plan['resumo'] = resumo[:corte].rstrip().rstrip(',').rstrip('"').strip()
+    _logging.getLogger('llm_guard').warning(
+        "study_plan: o modelo escreveu JSON dentro do resumo (%d caracteres); recuperando", len(resumo))
+    # tenta reconstruir o objeto que ficou preso na string
+    for tentativa in ('{%s}' % cauda, '{%s' % cauda.rstrip().rstrip('}')  + '}'):
+        try:
+            extra = _json.loads(tentativa)
+        except Exception:                                       # noqa: BLE001
+            continue
+        if isinstance(extra, dict):
+            for k, v in extra.items():
+                if k in _CHAVES_DO_PLANO and not plan.get(k):
+                    plan[k] = v
+            _logging.getLogger('llm_guard').info(
+                "study_plan: recuperados do resumo: %s", [k for k in extra if k in _CHAVES_DO_PLANO])
+            break
+    return plan
+
+
 def _sanitize_study_resources(plan: dict) -> dict:
     """Saneia o conteúdo do plano: (1) tira títulos/marcas/concorrentes dos recursos (só tipo+
     conceito); (2) traduz rótulo de frequência em inglês no começo dos campos de texto (Weekly:→Semanal:)."""
@@ -1850,7 +1917,11 @@ _STUDY_TOOLS = [
             'type': 'object',
             'properties': {
                 'nivel':  {'type': 'string', 'enum': ['iniciante', 'intermediario', 'avancado']},
-                'resumo': {'type': 'string', 'description': '2-3 frases sobre o perfil de erros e o caminho de evolução.'},
+                'resumo': {'type': 'string', 'description': (
+                    'No maximo 3 frases, para o jogador ler. No maximo DOIS numeros no texto todo, e nunca '
+                    'dois de unidades diferentes na mesma frase (bb total, bb/100 e % de acerto sao reguas '
+                    'distintas). O detalhe numerico vai nos cards. Sem jargao em ingles fora dos termos de '
+                    'poker consagrados.')},
                 'cards':  {'type': 'array', 'items': _STUDY_PLAN_CARD_SCHEMA,
                            'description': '1 a 6 cards ACIONÁVEIS, na ordem do EV ponderado.'},
                 'observar_mais_dados': {'type': 'array', 'description': 'HUD stats abaixo da amostra confiável — não acionar ainda.',
@@ -1930,7 +2001,7 @@ def generate_study_plan_agentic(leaks: list, evolution: list, icm: dict,
                 pass
 
     def _finalize(plan: dict) -> dict:
-        plan = _sanitize_study_resources(dict(plan))
+        plan = _sanitize_study_resources(_desaninha_resumo(dict(plan)))
         plan['source'] = leak_source
         result_str = json.dumps(plan, ensure_ascii=False)
         _cache[mem_key] = result_str

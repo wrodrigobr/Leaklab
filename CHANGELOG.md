@@ -4113,6 +4113,33 @@ None`). Quem lia sem checar era a exibição.
 
 ## [Unreleased]
 
+### fix(plano): o resumo mostrava JSON ao jogador, e nos aceitavamos sem conferir
+
+> **Por que:** o dono abriu o proprio plano em PRODUCAO e disse "achei bem confuso". Era pior
+> que confuso: o campo `resumo` tinha **2.401 caracteres** e terminava com o JSON de
+> `nao_focar_agora` e `observar_mais_dados` em texto cru — chaves, colchetes e aspas na tela.
+> E os dois campos **nao existiam** no plano: o modelo fechou a aspas do resumo so no fim, o
+> JSON continuou VALIDO, `json.loads` aceitou, e nos gravamos e exibimos.
+>
+> Eu primeiro respondi que ele devia ter colado o payload cru, porque a tela renderiza as duas
+> secoes separadamente. Ele corrigiu: era a tela. Estava certo — as secoes existem no front e
+> nunca receberam nada, porque o conteudo delas estava preso dentro do texto.
+>
+> **O defeito e nosso, nao do modelo.** Resposta de LLM e entrada nao confiavel, e entre o
+> `json.loads` e o cache nao havia validacao nenhuma. Agora ha: `_desaninha_resumo` corta o JSON
+> vazado, devolve ao lugar o que da para recuperar (as secoes voltam a aparecer em vez de
+> sumir), aplica teto de tamanho com corte em fim de frase, e LOGA quando acontece — para
+> sabermos a frequencia em vez de descobrir por acaso de novo.
+>
+> **E o contrato do resumo apertou**, que era a queixa original: no maximo 3 frases e DOIS
+> numeros, nunca duas unidades diferentes na mesma frase (bb total, bb/100 e % de acerto sao
+> reguas distintas), numero detalhado vai nos cards, e proibicao explicita de escrever JSON
+> dentro de campo de texto. O resumo que ele leu tinha doze numeros e tres unidades.
+>
+> **Guardas (4):** o JSON sai do resumo e volta a ser campo (com a estrutura exata do caso de
+> producao), resumo honesto passa intacto, resumo comprido corta em fronteira de frase, e
+> ausencia de resumo nao quebra.
+
 ### fix(solver): a reconciliacao ganha thread PROPRIA (o 1o conserto nao funcionou)
 
 > **O log de producao derrubou o meu conserto.** Coloquei a reconciliacao dentro do laco do
