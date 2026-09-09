@@ -18,6 +18,7 @@ na contradicao exata: depois do gancho, `best_action` = `gto_action`, e `labels_
 gravado. Sem raw_text de proposito: o resync devolve 0 e o que conserta e o reconcile.
 Quebrado de proposito (gancho sem o reconcile), o teste acusa.
 """
+import io
 import os
 import sys
 import tempfile
@@ -105,6 +106,24 @@ def test_o_teto_de_tempo_nao_derruba_a_reconciliacao():
     _reconcile_drained_tournaments(limite_s=60)
     conn = get_conn(); d = dict(conn.execute("SELECT best_action FROM decisions WHERE id=1").fetchone()); conn.close()
     assert d['best_action'] == 'check'
+
+
+def test_a_reconciliacao_tem_thread_propria_e_nao_depende_do_lote_do_solver():
+    """Achado no LOG de producao (09/09), depois de a 1a versao do conserto nao funcionar: com o
+    gancho dentro do laco do consumidor, a passagem entrou as 01:20 com 740 pendentes e seguia
+    dentro de `run_solver_worker_pool` 25 min depois (50 jobs, concorrencia 2, ~50s por solve).
+    Amarrada ali, a reconciliacao rodava no maximo uma vez por lote — e nas 25 min medidas nao
+    rodou nenhuma. Reconciliar nao faz parte de solvar; aqui isso vira estrutura, nao comentario."""
+    import inspect
+    import api.app as app
+    assert hasattr(app, '_reconcile_loop'), 'a reconciliacao precisa de laco proprio'
+    fonte_loop = inspect.getsource(app._solver_queue_worker_loop)
+    antes_do_continue = fonte_loop.split('continue   # re-checa')[0]
+    assert '_reconcile_drained_tournaments' not in antes_do_continue,         'a reconciliacao NAO pode voltar para dentro do laco do solver: la ela fica refem do lote'
+    # e o consumidor de producao sobe a thread
+    raiz = os.path.join(os.path.dirname(__file__), '..')
+    consumidor = io.open(os.path.join(raiz, 'run_solver_consumer.py'), encoding='utf-8').read()
+    assert '_reconcile_loop' in consumidor and 'Thread(target=_reconcile_loop' in consumidor,         'o consumidor de producao tem de iniciar a thread de reconciliacao'
 
 
 if __name__ == '__main__':

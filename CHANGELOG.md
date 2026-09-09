@@ -4113,6 +4113,22 @@ None`). Quem lia sem checar era a exibição.
 
 ## [Unreleased]
 
+### fix(solver): a reconciliacao ganha thread PROPRIA (o 1o conserto nao funcionou)
+
+> **O log de producao derrubou o meu conserto.** Coloquei a reconciliacao dentro do laco do
+> consumidor, logo depois do lote do solver, e subi. Medi depois: os candidatos SUBIRAM (153 ->
+> 158 torneios, 4.011 -> 4.087 decisoes) e o log nao tinha uma linha de reconcile em 25 minutos.
+> A causa estava a vista: `Solver queue [tick 1]: pending=740` as 01:20, e o processo ainda
+> dentro de `run_solver_worker_pool` 25 min depois — 50 jobs com concorrencia 2 e ~50s por solve
+> dao ~20 min de lote. Amarrada ali, a reconciliacao rodava no maximo uma vez por lote.
+>
+> **A raiz e de desenho, nao de posicao no arquivo:** reconciliar nao faz parte de solvar.
+> Enquanto dividiam a mesma thread, a cadencia de um era refem do outro — mover a chamada duas
+> linhas acima so trocaria "uma vez a cada 20 min" por "uma vez a cada 20 min, mais cedo". Agora
+> ela tem laco proprio (`_reconcile_loop`, a cada 120s), iniciado pelo consumidor, e o teto por
+> passagem deixou de fazer sentido. Guarda novo: a reconciliacao NAO pode voltar para dentro do
+> laco do solver, e o consumidor TEM de subir a thread.
+
 ### fix(solver): reconciliacao para de esperar a fila global zerar, e o cache da arvore para de brigar
 
 > **Achado 1, medido em prod (08/09):** 150 torneios cuja fila JA tinha drenado esperavam a

@@ -12656,6 +12656,9 @@ def _enqueue_postflop_spots(results: list, tournament_id: int = None, user_id: i
 #: torneios drenados seguraria o consumidor e a fila cresceria. Com ele, o resto fica para a
 #: próxima volta (a consulta de candidatos é guardada por `labels_reconciled_at`).
 RECONCILE_TETO_S = float(os.environ.get('RECONCILE_TETO_S', '60') or 60)
+#: Intervalo da thread de reconciliação. Curto de propósito: a consulta de candidatos é guardada
+#: por `labels_reconciled_at` e volta vazia quando não há nada novo.
+RECONCILE_INTERVALO_S = float(os.environ.get('RECONCILE_INTERVALO_S', '120') or 120)
 
 
 def _reconcile_drained_tournaments(limite_s: float | None = None):
@@ -12718,6 +12721,28 @@ def _reconcile_drained_tournaments(limite_s: float | None = None):
             log.exception("reconcile tournament %s falhou", tid)
 
 
+def _reconcile_loop():
+    """Reconciliação em thread PRÓPRIA, com cadência própria (09/09).
+
+    A 1a tentativa foi chamar o gancho dentro do laço do consumidor, logo depois do lote do
+    solver. **O log de produção mostrou que não funciona:** a passagem entrou às 01:20 com 740
+    pendentes e ainda estava dentro de `run_solver_worker_pool` 25 minutos depois — 50 jobs com
+    concorrência 2 e ~50s por solve dão ~20 min de lote. Amarrada ali, a reconciliação rodava no
+    máximo uma vez a cada lote, e nas 25 min medidas não rodou nenhuma.
+
+    A raiz é de desenho: reconciliar não faz parte de solvar. Enquanto os dois dividiam a mesma
+    thread, a cadência de um era refém do outro. Aqui ela tem a própria, e o teto por passagem
+    deixa de existir: nada mais depende dela terminar rápido.
+    """
+    time.sleep(20)          # deixa o app subir antes da primeira passagem
+    while True:
+        try:
+            _reconcile_drained_tournaments()
+        except Exception:
+            log.exception("reconcile loop error")
+        time.sleep(RECONCILE_INTERVALO_S)
+
+
 def _solver_queue_worker_loop():
     """Consumidor da fila do solver: EVENT-DRIVEN (acorda no instante do enqueue) + DRENA ATÉ
     ESVAZIAR, com CONCORRÊNCIA = GTO_SOLVER_CONCURRENCY (satura os MAX_SOLVES do solver, em vez
@@ -12753,16 +12778,6 @@ def _solver_queue_worker_loop():
                 log.info("Solver queue [tick %s]: pending=%s conc=%s", tick, pending, _conc)
                 result = run_solver_worker_pool(max_jobs=min(pending, 50), concurrency=_conc)
                 log.info("Solver queue pool resultado: %s", result)
-                # A reconciliação NÃO espera a fila global zerar (08/09). O torneio drena antes
-                # dela: os spots dele ficam prontos enquanto os de outros seguem pendentes.
-                # Medido em prod: 150 torneios já drenados esperando 11h na mediana (21h no
-                # pior), com 5.614 decisões pós-flop sem veredito, porque com `pending > 0` o
-                # `continue` abaixo pulava o gancho e a fila global raramente zera. Teto de
-                # tempo por passagem para não roubar o solver.
-                try:
-                    _reconcile_drained_tournaments(limite_s=RECONCILE_TETO_S)
-                except Exception:
-                    log.exception("reconcile drained tournaments error (meio da fila)")
                 continue   # re-checa JÁ: drena enquanto houver fila, sem esperar os 60s
         except Exception:
             log.exception("Solver queue worker loop error")

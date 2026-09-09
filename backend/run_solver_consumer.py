@@ -43,7 +43,8 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(mess
 if __name__ == '__main__':
     # Importa os loops do app (define as rotas no import, mas o bloco __main__ do app NÃO roda).
     from api.app import (_solver_queue_worker_loop, _gto_hand_worker_loop,
-                         _evolution_report_worker_loop, _cobranca_email_worker_loop)
+                         _evolution_report_worker_loop, _cobranca_email_worker_loop,
+                         _reconcile_loop)
     log = logging.getLogger(__name__)
 
     if os.environ.get('EVOLUTION_REPORT_WORKER', '1') != '0':
@@ -70,4 +71,7 @@ if __name__ == '__main__':
                     "o aviso 'spots sendo validados' vai ficar preso no dashboard")
 
     log.info("solver-consumer: iniciando consumidor event-driven da fila do SOLVER")
+    # Reconciliação em thread própria: amarrada ao laço do solver ela ficava refém do lote
+    # (medido em 09/09: 25 min dentro de um lote sem reconciliar nada).
+    threading.Thread(target=_reconcile_loop, daemon=True, name='reconcile').start()
     _solver_queue_worker_loop()
