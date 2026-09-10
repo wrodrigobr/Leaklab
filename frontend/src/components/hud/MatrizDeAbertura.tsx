@@ -143,9 +143,12 @@ export function MatrizDeAbertura({ position, stack, mesa, dados, erro, faixas, m
   if (!dados || !voce || !solver) return <div>{seletores}<p className="font-mono text-[10px] text-muted-foreground/60">…</p></div>;
   if (dados.n === 0) return <div>{seletores}<p className="text-[11px] text-muted-foreground">{t("posProfile.detail.empty")}</p></div>;
 
+  // SEM tamanho de mesa (10/09): o recorte soma todos os tamanhos desde que o filtro de
+  // jogadores saiu, e a frase continuava pedindo `mesa` — sem filtro em vigor, a tela mostrava
+  // "em mesas de ? jogadores". Quem declara a variacao de assento e a linha da grade do solver
+  // (`composicao_da_carta`), que diz a FAIXA de jogadores por agir e o peso de cada uma.
   const recorte = t("posProfile.matrix.recorte", {
     pos: position,
-    mesa: mesaEmVigor ? t(`posProfile.tableSize.${mesaEmVigor}`) : "?",
     stack: stackEmVigor ? t(`posProfile.matrix.stackWords.${stackEmVigor}`) : "?",
     n: dados.n.toLocaleString(),
   });

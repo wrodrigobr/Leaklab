@@ -1056,7 +1056,7 @@
       "divergencesNote": "Hands with {{n}} or more occurrences and {{pp}} points or more from the solver.",
       "neverDealt": "never dealt this hand",
       "seat": "seat",
-      "recorte": "You in the {{pos}}, at {{mesa}}-handed tables, with {{stack}}. {{n}} times with an unopened pot.",
+      "recorte": "You in the {{pos}}, with {{stack}}. {{n}} times with an unopened pot.",
       "stackWords": {
         "40+": "40bb or more",
         "20-40": "20 to 40bb",

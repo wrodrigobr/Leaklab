@@ -1056,7 +1056,7 @@
       "divergencesNote": "Mãos com {{n}} ou mais ocorrências e {{pp}} pontos ou mais de distância do solver.",
       "neverDealt": "não recebeu esta mão",
       "seat": "assento",
-      "recorte": "Você no {{pos}}, em mesas de {{mesa}} jogadores, com {{stack}}. {{n}} vezes com o pote intacto.",
+      "recorte": "Você no {{pos}}, com {{stack}}. {{n}} vezes com o pote intacto.",
       "stackWords": {
         "40+": "40bb ou mais",
         "20-40": "20 a 40bb",

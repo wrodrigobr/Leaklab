@@ -64,7 +64,12 @@ describe("matriz das maos abertas", () => {
     const modal = await screen.findByTestId("matriz-UTG");
     // A comparacao e UM par de numeros sobre AS MESMAS maos (dono, 09/09: dois numeros de
     // solver era um a mais). 17,2 contra 18,5 = 1,3 ponto: dentro da folga, "no alvo".
-    expect(screen.getByTestId("matriz-recorte").textContent).toContain("posProfile.matrix.recorte:UTG");
+    // A frase do recorte NAO fala de tamanho de mesa (dono, 10/09: "o texto nao pode conter o
+    // numero de jogadores"). O mock concatena os valores interpolados, entao a assercao e sobre
+    // eles: assento, palavra do stack e volume, nada mais. Com o `mesa` de volta, o texto traria
+    // um valor a mais e o `toBe` acusa — ancorado na CONDICAO, nao no efeito de nao ver "?".
+    expect(screen.getByTestId("matriz-recorte").textContent).toBe(
+      "posProfile.matrix.recorte:UTG,posProfile.matrix.stackWords.20-40,1.211");
     expect(screen.getByTestId("matriz-voce-pct").textContent).toBe("17.2%");
     expect(screen.getByTestId("matriz-solver-pct").textContent).toBe("18.5%");
     expect(screen.getByTestId("matriz-delta").textContent).toContain("posProfile.matrix.deltaOk");
