@@ -33,7 +33,7 @@ Uso:
     python scripts/resync_postflop_gto.py --street preflop --apply
     python scripts/resync_postflop_gto.py --street all --apply
 """
-import sys, os, argparse
+import sys, os, argparse, json, io
 from collections import defaultdict, Counter
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
@@ -132,6 +132,28 @@ def diferencas(s, f):
     if _f4(f.get('top')) != _f4(s.get('gto_top_freq')):             d.append('top_freq')
     if _f4(f.get('ev')) != _f4(s.get('ev_loss_bb')):                d.append('ev_loss')
     return d
+
+
+def linha_do_dump(s, f, nat, diffs, tid, uid, key):
+    """A linha do `--dump`: o ANTES da linha gravada e o DEPOIS da avaliacao fresca.
+
+    Funcao separada porque e aqui que uma troca de lados passaria calada: o arquivo e a base da
+    DECISAO de reparo e o registro para desfazer, e um dump com 'de' e 'para' invertidos faria a
+    medicao dizer o contrario do que ha, e o rollback gravar o defeito de volta.
+    """
+    return {
+        'id': s['id'], 'tid': tid, 'user_id': uid,
+        'hand_id': key[0], 'street': key[1], 'acao': key[2],
+        'natureza': nat, 'diffs': diffs,
+        'de': {'label': s['label'], 'best': s['best_action'],
+               'gto_label': _norm(s['gto_label']), 'gto_action': _norm(s['gto_action']),
+               'played': s.get('gto_played_freq'), 'top': s.get('gto_top_freq'),
+               'ev': s.get('ev_loss_bb'), 'ev_src': s.get('ev_loss_source')},
+        'para': {'label': f['label'], 'best': f['best'],
+                 'gto_label': f['gto_label'], 'gto_action': f['gto_action'],
+                 'played': f.get('played'), 'top': f.get('top'),
+                 'ev': f.get('ev'), 'ev_src': f.get('ev_src')},
+    }
 
 
 def _avaliacao_fresca(r):
@@ -261,6 +283,11 @@ def main():
                     help="nao remove cobertura de quem ja tem gto_label; corrige drift e preenche")
     ap.add_argument("--tid", type=int, default=None,
                     help="reconcilia SÓ este torneio (id interno) — rápido, por torneio")
+    # --dump: uma linha JSON por decisão candidata, com o ANTES e o DEPOIS dos 7 campos. É o
+    # artefato de medição (a passagem é cara, e cada pergunta nova não pode custar outra) e o
+    # registro para desfazer uma escrita em massa.
+    ap.add_argument("--dump", default=None, metavar="ARQUIVO",
+                    help="grava o antes/depois de cada linha candidata em JSONL")
     args = ap.parse_args()
     # As flags do CLI e o gancho automatico escolhem entre os MESMOS tres modos.
     modo = MODO_FILL if args.fill_only else (MODO_PRESERVA if args.sem_vanished else MODO_TOTAL)
@@ -280,13 +307,14 @@ def main():
         except Exception:
             pass
 
-    _tq = ("SELECT id FROM tournaments WHERE raw_text IS NOT NULL "
+    _tq = ("SELECT id, user_id FROM tournaments WHERE raw_text IS NOT NULL "
            "AND tournament_id NOT LIKE 'FAKE-%'")
     if args.tid:
         _tq += f" AND id = {int(args.tid)}"
     _tq += " ORDER BY id"
     tournaments = conn.execute(_tq).fetchall()
 
+    dump = io.open(args.dump, 'w', encoding='utf-8', newline='\n') if args.dump else None
     changes = Counter()           # por campo
     kinds = Counter()             # vanished/appeared/label_drift/action_only
     tela = Counter()              # o que o JOGADOR passa a ver: acusacao que sai/entra
@@ -294,6 +322,7 @@ def main():
     examples = []
     for trow in tournaments:
         tid = dict(trow)['id']
+        uid = dict(trow).get('user_id')
         raw = conn.execute("SELECT raw_text FROM tournaments WHERE id=?", (tid,)).fetchone()
         # acesso por CHAVE (Postgres usa RealDictCursor → row[0] dá KeyError; SQLite aceita ambos)
         raw_text = dict(raw).get('raw_text') if raw else None
@@ -370,6 +399,12 @@ def main():
                     tela['acusacao_entra'] += 1
                 elif _de != _para and _de and _para:
                     tela['severidade_muda'] += 1
+                # O dump sai ANTES do filtro de modo nao ser: aqui ja passou por `grava_esta`,
+                # e o arquivo tem de descrever o que ESTA passagem faria. Para ver o que os
+                # OUTROS modos fariam, `natureza` esta na linha e a conta se faz no arquivo.
+                if dump is not None:
+                    dump.write(json.dumps(
+                        linha_do_dump(s, f, nat, diffs, tid, uid, key), default=str) + "\n")
                 updated += 1
                 for d in diffs:
                     changes[d] += 1
@@ -389,6 +424,9 @@ def main():
     if args.apply:
         conn.commit()
     conn.close()
+    if dump is not None:
+        dump.close()
+        print('dump: %s' % args.dump)
     print(f"\nReconciliados: {updated} | pulados (ambíguo): {skipped}")
     print("Por campo:", dict(changes))
     print("Natureza :", dict(kinds))

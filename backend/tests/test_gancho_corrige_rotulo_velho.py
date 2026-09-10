@@ -201,6 +201,37 @@ def test_a_natureza_e_a_regra_de_gravacao_sao_uma_funcao_so():
         raise AssertionError('modo desconhecido tem de estourar, nao virar default silencioso')
 
 
+def test_o_dump_nao_troca_o_antes_pelo_depois():
+    """O `--dump` grava o antes/depois de cada linha candidata, e nele se decide o reparo.
+
+    Existe porque uma troca de lados passaria calada: o arquivo e a base da medicao (quantas
+    acusacoes saem da tela) E o registro para desfazer. Com 'de' e 'para' invertidos, a medicao
+    diria o contrario do que ha, e o rollback gravaria o defeito de volta. Ancorado na CONDICAO
+    (cada campo do lado certo), nao em "o arquivo tem N linhas".
+    """
+    banco = {'id': 7, 'label': 'clear_mistake', 'best_action': 'check',
+             'gto_label': 'gto_critical', 'gto_action': 'check',
+             'gto_played_freq': 0.02, 'gto_top_freq': 0.9, 'ev_loss_bb': 1.4,
+             'ev_loss_source': 'solver_hand'}
+    fresco = {'label': 'correct', 'best': 'bet', 'gto_label': 'gto_correct', 'gto_action': 'bet',
+              'played': 0.71, 'top': 0.71, 'ev': 0.0, 'ev_src': 'solver_hand'}
+    linha = rs.linha_do_dump(banco, fresco, 'label_drift', ['label', 'gto_label'],
+                             tid=9001, uid=62, key=('H1', 'turn', 'bet'))
+    assert linha['de']['gto_label'] == 'gto_critical', linha       # o que ESTA gravado
+    assert linha['para']['gto_label'] == 'gto_correct', linha      # o que a avaliacao diz
+    assert linha['de']['label'] == 'clear_mistake' and linha['para']['label'] == 'correct', linha
+    assert linha['de']['best'] == 'check' and linha['para']['best'] == 'bet', linha
+    assert linha['de']['ev'] == 1.4 and linha['para']['ev'] == 0.0, linha
+    assert linha['de']['played'] == 0.02 and linha['para']['played'] == 0.71, linha
+    assert (linha['id'], linha['tid'], linha['user_id']) == (7, 9001, 62), linha
+    assert linha['natureza'] == 'label_drift' and linha['street'] == 'turn', linha
+    # '' e None sao a MESMA ausencia: sem normalizar, uma linha sem cobertura sairia do dump
+    # como se tivesse veredito vazio, e a contagem de `appeared` mudaria de sentido.
+    vazio = rs.linha_do_dump(dict(banco, gto_label='', gto_action=''), fresco, 'appeared', [],
+                             tid=1, uid=1, key=('H2', 'flop', 'check'))
+    assert vazio['de']['gto_label'] is None and vazio['de']['gto_action'] is None, vazio
+
+
 def test_o_gancho_da_fila_drenada_usa_o_modo_que_corrige_o_drift():
     """O caminho de producao inteiro: o gancho acha o torneio drenado e o rotulo velho sai."""
     _semeia()
