@@ -48,13 +48,10 @@ interface Props {
   gtoPosition?: GtoPositionData | null;
   /** Perfil por assento (VPIP/PFR/3bet por posicao). Opcional: a /demo nao passa. */
   positionProfile?: React.ComponentProps<typeof V2PositionProfileCard>["data"];
-  /** HUD na faixa de stack escolhida (linha TOTAL da grade); null em "todos" */
+  /** HUD que serve de linha TOTAL da grade. A grade nao filtra mais por jogadores nem por
+   *  stack (dono, 09/09): essa lente vive so no modal da matriz. */
   positionProfileGeral?: React.ComponentProps<typeof V2PositionProfileCard>["geral"];
-  positionStack?: React.ComponentProps<typeof V2PositionProfileCard>["stack"];
   positionLastN?: React.ComponentProps<typeof V2PositionProfileCard>["lastN"];
-  onPositionStack?: React.ComponentProps<typeof V2PositionProfileCard>["onStack"];
-  positionTable?: React.ComponentProps<typeof V2PositionProfileCard>["mesa"];
-  onPositionTable?: React.ComponentProps<typeof V2PositionProfileCard>["onMesa"];
   positionGrouped?: boolean;
   onPositionGrouped?: (v: boolean) => void;
   /** Free ve o lock com o motivo, nao um card vazio: card vazio parece produto quebrado. */
@@ -84,7 +81,7 @@ const CARD_ORDER = [
   "results", "dna", "twin", "pressure", "cognitive", "career", "causal_map",
 ];
 
-export function DashboardV2({ onUpload, evSummary, volumeLimit = 50, onVolumeLimitChange = () => {}, hasData, renderCard, gtoQuality = null, gtoPosition = null, positionProfile = null, positionProfileLocked = false, positionProfileHidden = false, positionProfileGeral = null, positionStack = null, onPositionStack, positionTable = null, onPositionTable, positionGrouped = false, onPositionGrouped, positionLastN = null, pendingGto = 0, aiInsights = [], aiLocked = false, showEmpty = false, evolution, kpis, playerStats = null, drift = null, onDismissDrift }: Props) {
+export function DashboardV2({ onUpload, evSummary, volumeLimit = 50, onVolumeLimitChange = () => {}, hasData, renderCard, gtoQuality = null, gtoPosition = null, positionProfile = null, positionProfileLocked = false, positionProfileHidden = false, positionProfileGeral = null, positionGrouped = false, onPositionGrouped, positionLastN = null, pendingGto = 0, aiInsights = [], aiLocked = false, showEmpty = false, evolution, kpis, playerStats = null, drift = null, onDismissDrift }: Props) {
   const { t } = useTranslation("dashboard");
   // Masonry real (mesmo hook do dashboard clássico): cards curtos liberam o vão
   // vertical e o grid-flow-dense empacota — sem blocos vazios na grade.
@@ -414,8 +411,6 @@ export function DashboardV2({ onUpload, evSummary, volumeLimit = 50, onVolumeLim
           positionProfileLocked
             ? <ProLockCard feature={t("posProfile.title")} v2 />
             : <V2PositionProfileCard data={positionProfile} geral={positionProfileGeral ?? playerStats}
-                                     stack={positionStack ?? null} onStack={onPositionStack}
-                                     mesa={positionTable ?? null} onMesa={onPositionTable}
                                      agrupado={positionGrouped} onAgrupado={onPositionGrouped} lastN={positionLastN} />
         )}
 

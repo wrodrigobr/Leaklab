@@ -50,7 +50,7 @@ const GRADE = {
 const HUD = { total_hands: 2111, vpip: 25, rfi: 28, three_bet: 8 } as unknown as PlayerStatsResponse;
 
 function monta() {
-  return render(<MemoryRouter><V2PositionProfileCard data={GRADE} geral={HUD} stack="20-40" lastN={30} onStack={() => {}} /></MemoryRouter>);
+  return render(<MemoryRouter><V2PositionProfileCard data={GRADE} geral={HUD} lastN={30} /></MemoryRouter>);
 }
 
 describe("matriz das maos abertas", () => {
@@ -58,9 +58,9 @@ describe("matriz das maos abertas", () => {
     monta();
     expect(screen.getByTestId("valor-rfi-UTG").className).toContain("underline");
     fireEvent.click(screen.getByTestId("celula-rfi-UTG"));
-    // Sem mesa no payload (conta sem volume para o backend escolher uma), o pedido vai SEM
-    // recorte de mesa. Ate 09/09 ia como "todas", que o endpoint agora recusa com 400.
-    expect(hands).toHaveBeenCalledWith("UTG", 90, 30, "20-40", null);
+    // O modal nao herda recorte da grade (ela nao tem mais filtro): pede sem stack e sem mesa,
+    // e o BACKEND escolhe onde ha mais maos e declara no payload.
+    expect(hands).toHaveBeenCalledWith("UTG", 90, 30, null, null);
     const modal = await screen.findByTestId("matriz-UTG");
     // A comparacao e UM par de numeros sobre AS MESMAS maos (dono, 09/09: dois numeros de
     // solver era um a mais). 17,2 contra 18,5 = 1,3 ponto: dentro da folga, "no alvo".
@@ -168,7 +168,7 @@ describe("matriz das maos abertas", () => {
       cells: { AA: { n: 3, voce: 1, limp: 0, solver: 1 } }, divergencias: [],
       minimo_maos: 8, divergencia_minima: 0.3,
     });
-    render(<MemoryRouter><V2PositionProfileCard data={GRADE} geral={HUD} stack="20-40" lastN={30} onStack={() => {}} /></MemoryRouter>);
+    render(<MemoryRouter><V2PositionProfileCard data={GRADE} geral={HUD} lastN={30} /></MemoryRouter>);
     fireEvent.click(screen.getByTestId("celula-rfi-UTG"));
     const ref = await screen.findByTestId("matriz-referencia");
     expect(ref.textContent).toContain("posProfile.matrix.behind:6");           // 6 por agir, nao "UTG+2"
@@ -186,7 +186,7 @@ describe("matriz das maos abertas", () => {
       cells: { AA: { n: 3, voce: 1, limp: 0, solver: 1 } }, divergencias: [],
       minimo_maos: 8, divergencia_minima: 0.3,
     });
-    render(<MemoryRouter><V2PositionProfileCard data={GRADE} geral={HUD} stack="20-40" lastN={30} onStack={() => {}} /></MemoryRouter>);
+    render(<MemoryRouter><V2PositionProfileCard data={GRADE} geral={HUD} lastN={30} /></MemoryRouter>);
     fireEvent.click(screen.getByTestId("celula-rfi-UTG"));
     const ref = await screen.findByTestId("matriz-referencia");
     expect(ref.textContent).toContain("posProfile.matrix.behindMixed");

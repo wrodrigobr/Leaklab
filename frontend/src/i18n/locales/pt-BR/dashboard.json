@@ -918,8 +918,8 @@
   },
   "posProfile": {
     "title": "Perfil por posição",
-    "tooltip": "Como você joga em CADA assento, nas cinco decisões preflop que têm chart: entrar (VPIP), dar raise (PFR), abrir (RFI), dar 3-bet e foldar ao 3-bet depois de abrir. A cor compara com o que o solver faria nas suas mãos, nas posições, stacks e contra os oponentes que você enfrentou; o tooltip de cada número mostra a faixa e o desvio.",
-    "legend": "Você contra o solver, por assento. Verde = dentro do que o solver faria com as suas mãos; vermelho = fora (▲ a mais, ▼ a menos). Passe o mouse para ver a faixa e o desvio.",
+    "tooltip": "Como você joga em CADA assento, nas cinco decisões preflop que têm chart: entrar (VPIP), dar raise (PFR), abrir (RFI), dar 3-bet e foldar ao 3-bet depois de abrir. A cor compara com o que o solver faria nas suas mãos, nas posições, stacks e contra os oponentes que você enfrentou; o tooltip de cada número mostra a faixa e o desvio. A grade soma todas as suas mãos, de qualquer número de jogadores e qualquer stack, e por isso a referência é uma faixa: o solver abre mais com menos gente por agir. Para a leitura fina, com jogadores e stack fixos, clique no RFI.",
+    "legend": "Verde = dentro do que o solver faria; vermelho = fora (▲ a mais, ▼ a menos). Clique no RFI, no 3-Bet ou no Fold 3-Bet para abrir o detalhe.",
     "hands": "{{n}} mãos",
     "handsShort": "mãos",
     "seat": "assento",
@@ -1036,7 +1036,6 @@
     },
     "above": "acima do solver",
     "below": "abaixo do solver",
-    "clickable": "RFI, 3-Bet e Fold 3-Bet (sublinhados) abrem o detalhe ao clicar: as mãos abertas no RFI, o oponente nos outros dois.",
     "view": "Visão",
     "detailed": "Por assento",
     "grouped": "Agrupado",
@@ -1081,6 +1080,8 @@
       "rangeSize": "abre {{pct}}% de todas as mãos possíveis"
     },
     "tablePlayers": "{{n}} jogadores",
-    "seatAbsent": "Não existe com {{mesa}} jogadores na mão. Quem agiu nessa vez da fila está no assento seguinte."
+    "seatAbsent": "Não existe com {{mesa}} jogadores na mão. Quem agiu nessa vez da fila está no assento seguinte.",
+    "tableAll": "todas",
+    "stackAll": "todos"
   }
 }

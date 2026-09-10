@@ -4,6 +4,46 @@ Todas as mudanÃ§as notÃ¡veis neste projeto serÃ£o documentadas aqui.
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
+## A grade soma tudo, os filtros vao para o modal, e a exclusao fica com o admin (09/09, noite)
+
+- **Correcao de rumo do meu proprio conserto da tarde.** Fixar mesa e stack nos TRES endpoints
+  da grade deixou o dono com a tela vazia: *"tenho mtos numeros vazios, da uma conferida"*.
+  Medido no acervo dele em prod: 8 jogadores + 40bb+ = 214 maos e **0 de 29 celulas**; sem os
+  filtros = 3.231 maos e 23 de 43. O piso por assento e 100 maos (VPIP/PFR/RFI) e 750
+  (3-Bet/Fold 3-Bet), entao os dois filtros dividiam o volume por quinze. Pior, incoerente: a
+  linha TOTAL passava o piso e mostrava numero, os assentos nao.
+- **Duas politicas, de proposito.** A GRADE compara com uma FAIXA de referencia, que alarga
+  honestamente quando o recorte e amplo, e por isso soma tudo. A MATRIZ mostra UM numero, e um
+  numero exige assento, jogadores e stack fixos. A recusa de "todas"/"todos" na matriz e
+  EXPLICITA, porque os validadores compartilhados os traduzem para nulo e nulo ali voltaria a
+  somar contextos em silencio.
+- **Os filtros sairam da grade** (dono: *"agora e desnecessario o filtro de jogador e stack...
+  vamos manter so na matriz"*). Efeito colateral bom: a confusao que abriu o dia some pela raiz
+  — "ta faltando o UTG+1" so acontecia porque a grade estava presa a 7 jogadores.
+- **A legenda virou UMA linha** (*"e mto texto para ficar como comentario do card"*). Fica so o
+  que muda a leitura do que esta abaixo; o porque da faixa foi para o tooltip do titulo.
+- **Os contadores dos chips do modal contam O ASSENTO.** Dono, em BTN / 9 jogadores / 40bb+:
+  *"imagino que eu deveria ter algumas maos aqui... pq nao aparecem?"*. O chip dizia 114 e o
+  recorte entregou 1 — os 114 eram de todos os assentos com 9 jogadores. No botao, abrir com o
+  pote intacto exige seis folds antes. Medido no acervo dele (9 jogadores, 40bb+): UTG 40,
+  UTG+1 28, LJ 14, UTG+2 12, HJ 11, CO 8, BTN 1. Agora o modal tambem abre no melhor recorte
+  DAQUELE assento, nao no do anterior.
+- **Exclusao de torneio e "limpar tudo" viraram `@require_admin`**, e os botoes sairam da tela
+  do jogador. O que originou: a coluna de cota no admin mostrava "30 / 30" em vermelho para um
+  jogador com 7 torneios. O contador (`users.tournaments_this_month`) sobe no import e nunca
+  desce na exclusao, entao subir e apagar queima o mes. Medido em prod: 7 contas com o contador
+  inflado e **uma BLOQUEADA** (free, 30 no contador, 7 torneios de verdade, conta de 02/09).
+  Decisao do dono: tirar a exclusao em vez de descontar do contador — descontar abriria "subir,
+  apagar, subir de novo" sem teto. O unico consumidor legitimo era o Hand Builder, que apaga o
+  proprio rascunho para reanalisar, e ele e uso do dono.
+- **O admin nunca e barrado pelo portao de validacao** (`_e_admin`), sem depender de estar na
+  variavel: ter de lembrar do proprio id foi o que aconteceu no dia.
+- Suites: **backend 2998/3000** (as 2 falhas sao anteriores, provadas no codigo limpo via
+  stash) e **frontend 559/559**. Os guardas novos foram quebrados de proposito, um a um, e
+  acusaram: grade somando tudo, matriz recusando "todas"/"todos", chips por assento, portao do
+  admin, e as duas pontas do teto de stack.
+
+---
 ## Perfil por posicao: tres filtros obrigatorios, comparacao sobre as mesmas maos, e um portao para validar com poucos olhos (09/09, noite)
 
 - Um dia inteiro de conversa com o dono, a partir da duvida do Rullian ("de onde vem esse 20%?"),

@@ -235,7 +235,15 @@ def test_com_a_lista_de_validacao_so_quem_esta_nela_ve_o_perfil_por_posicao():
             os.environ['STATS_BY_POSITION_USERS'] = antes
 
 
-def test_o_endpoint_recusa_mesa_desconhecida_e_abre_na_mais_jogada():
+def test_a_grade_soma_tudo_e_a_matriz_exige_o_recorte():
+    """As duas politicas, lado a lado (09/09 noite). A GRADE soma tudo por default e aceita
+    "todas"/"todos": ela compara com uma FAIXA de referencia, que alarga honestamente quando o
+    recorte e amplo. A MATRIZ exige assento, jogadores e stack: ela mostra UM numero.
+
+    Tentei exigir nos dois na tarde do mesmo dia e esvaziei a grade do dono — o piso e 100 maos
+    por assento e o recorte tinha 36, entao 3.231 maos viraram zero celulas preenchidas. A
+    recusa da matriz e EXPLICITA porque os validadores compartilhados traduzem "todas" para
+    None, e None ali voltaria a somar contextos em silencio."""
     _semeia([(9, 'UTG', 10, MAOS_FRACAS), (8, 'UTG', 30, MAOS_FRACAS)])
     from api.app import app
     from database.auth import generate_token
@@ -243,30 +251,35 @@ def test_o_endpoint_recusa_mesa_desconhecida_e_abre_na_mais_jogada():
     h = {'Authorization': 'Bearer %s' % generate_token(1, 'player')}
     r = c.get('/metrics/player-stats/by-position?days=3650', headers=h)
     d = r.get_json()
-    assert r.status_code == 200 and d['mesa'] == '8max' and d['mesa_auto'] is True, (r.status_code, d.get('mesa'))
+    # sem filtro a grade NAO escolhe mesa: soma as 40 maos das duas
+    assert r.status_code == 200 and d['mesa'] is None and d['mesa_auto'] is False, (r.status_code, d.get('mesa'))
+    assert next(l['hands'] for l in d['positions'] if l['position'] == 'UTG') == 40
+    # a distribuicao continua vindo, para os chips oferecerem a lente
     assert d['distribuicao_de_mesas']['sugerida'] == '8max'
-    # "todas" DEIXOU de existir (dono, 09/09). Ele foi aceito ate aqui e desligava o filtro; a
-    # medicao que o matou: a linha "UTG" do acervo do Rullian somava CINCO assentos, comparados
-    # com cartas que abrem de 15,8% a 28,0%, e o cabecalho virava uma media que nao descreve
-    # situacao nenhuma. Agora ele e um tamanho invalido como qualquer outro, e o 400 tem de
-    # ACUSAR: aceitar de volta em silencio devolveria a media sem ninguem notar.
-    recusa = c.get('/metrics/player-stats/by-position?days=3650&mesa=todas', headers=h)
-    assert recusa.status_code == 400, (recusa.status_code, recusa.get_data(as_text=True)[:200])
-    assert 'todas' not in recusa.get_json()['mesas'], recusa.get_json()
+    # Os dois lugares tem politicas DIFERENTES, e isso e o desenho (09/09 noite). Na GRADE
+    # "todas" e "todos" existem e desligam o filtro: ela compara com uma FAIXA de referencia,
+    # que alarga honestamente quando o recorte e amplo. Exigir os dois aqui esvaziou a grade do
+    # dono — piso de 100 maos por assento contra 36 no recorte, 3.231 maos e zero celulas.
+    for q in ('mesa=todas', 'stack=todos', ''):
+        r = c.get('/metrics/player-stats/by-position?days=3650&%s' % q, headers=h)
+        assert r.status_code == 200, (q, r.status_code)
+        assert r.get_json()['mesa'] is None or q == '', (q, r.get_json()['mesa'])
+    # na MATRIZ, nao: ela mostra UM numero, e um numero precisa dos tres fixos
+    assert c.get('/metrics/player-stats/by-position/hands?position=UTG&mesa=todas', headers=h).status_code == 400
+    assert c.get('/metrics/player-stats/by-position/hands?position=UTG&stack=todos', headers=h).status_code == 400
     # tamanho desconhecido e 400 tambem, nunca "a mais jogada" caladamente sob o rotulo errado
     ruim = c.get('/metrics/player-stats/by-position?days=3650&mesa=10max', headers=h)
     assert ruim.status_code == 400 and 'mesas' in ruim.get_json(), ruim.get_data(as_text=True)[:200]
     assert c.get('/metrics/player-stats/by-position/hands?position=UTG&mesa=10max', headers=h).status_code == 400
     assert c.get('/metrics/player-stats/by-position/hands?position=UTG&mesa=todas', headers=h).status_code == 400
-    # A MATRIZ segue a MESMA politica da grade: sem `?mesa=`, abre na mesa mais jogada. Ate
-    # 09/09 so a grade fazia isso e a matriz caia no recorte misturado — duas politicas para a
-    # mesma pergunta. Nao aparecia na tela (o front repassa a mesa que a grade declarou), e era
-    # por isso que valia consertar: quem chamasse o endpoint direto recebia um numero que
-    # mistura assentos, sem nada no payload dizendo isso.
+    # A MATRIZ, sem `?mesa=`, abre na mesa mais jogada e DECLARA. A grade nao: ela soma tudo.
     mat = c.get('/metrics/player-stats/by-position/hands?position=UTG&days=3650', headers=h).get_json()
-    assert mat['mesa'] == '8max', mat['mesa']                      # a mais jogada, como a grade
+    assert mat['mesa'] == '8max', mat['mesa']                      # a mais jogada
     assert mat['assento_da_carta'] is not None, mat                # recorte unico => tem referencia
     assert mat['n'] == 30, mat['n']                                # so as maos de mesa 8, nao as 40
+    grade = c.get('/metrics/player-stats/by-position?days=3650', headers=h).get_json()
+    assert grade['mesa'] is None and grade['mesa_auto'] is False, (grade['mesa'], grade['mesa_auto'])
+    assert next(l['hands'] for l in grade['positions'] if l['position'] == 'UTG') == 40
 
 
 if __name__ == '__main__':

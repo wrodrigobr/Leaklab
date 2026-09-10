@@ -165,15 +165,47 @@ def test_o_stack_e_filtro_obrigatorio_e_abre_na_faixa_com_mais_maos():
     # stack explicito vence e o payload diz que nao foi automatico
     m8b = c.get('/metrics/player-stats/by-position/hands?position=CO&days=3650&mesa=8max&stack=20-40', headers=h).get_json()
     assert m8b['stack_band'] == '20-40' and m8b['stack_auto'] is False and m8b['n'] == 3
-    # a grade e o "contra quem" seguem a MESMA politica (uma funcao para os tres)
+    # A GRADE nao segue esta politica: ela SOMA TUDO (09/09 noite). Exigir os dois filtros la
+    # esvaziou a grade do dono: piso de 100 maos por assento contra 36 no recorte.
     g = c.get('/metrics/player-stats/by-position?days=3650', headers=h).get_json()
-    assert g['mesa'] == '6max' and g['stack_band'] == '<20' and g['stack_auto'] is True, (g['mesa'], g['stack_band'])
-    # "todos" nao existe
+    assert g['mesa'] is None and g['stack_band'] is None, (g['mesa'], g['stack_band'])
+    assert g['stack_auto'] is False and g['mesa_auto'] is False
+    assert g['total_hands'] == 19, g['total_hands']            # as 19 maos, nao as 10 da mesa 6
+    # "todos" existe na grade e no painel dela, e NAO existe na matriz
     for url in ('/metrics/player-stats/by-position?days=3650&stack=todos',
-                '/metrics/player-stats/by-position/hands?position=CO&stack=todos',
                 '/metrics/player-stats/by-position/detail?position=CO&stat=three_bet&stack=todos'):
-        r = c.get(url, headers=h)
-        assert r.status_code == 400, (url, r.status_code)
+        assert c.get(url, headers=h).status_code == 200, url
+    assert c.get('/metrics/player-stats/by-position/hands?position=CO&stack=todos', headers=h).status_code == 400
+
+
+def test_os_chips_do_modal_contam_O_ASSENTO_e_nao_a_mesa_toda():
+    """Dono, 09/09, no modal em BTN / 9 jogadores / 40bb+: "eu geralmente jogo sit and go de
+    9max, imagino que eu deveria ter algumas maos aqui na abertura com 9 jogadores... pq nao
+    aparecem?". O chip de stack dizia 114 e o recorte entregou 1: os 114 eram de TODOS os
+    assentos com 9 jogadores. No botao, abrir com o pote intacto exige seis folds antes.
+
+    Contador que promete volume que o recorte nao tem manda o jogador clicar no vazio. Agora as
+    duas distribuicoes filtram pelo assento, e o recorte automatico e o melhor DAQUELE assento."""
+    from api.app import app
+    from database.auth import generate_token
+    # UTG so em mesa de 9 a 45bb; BTN so em mesa de 6 a 12bb. Nenhum dos dois tem mao no
+    # recorte do outro, e e isso que os chips tem de mostrar.
+    uid = _semeia([_m('UTG', 'AsKs', 'raise', stack=45, num_players=9) for _ in range(7)]
+                  + [_m('BTN', 'AsKs', 'raise', stack=12, num_players=6) for _ in range(4)])
+    c = app.test_client()
+    h = {'Authorization': 'Bearer %s' % generate_token(uid, 'player')}
+
+    u = c.get('/metrics/player-stats/by-position/hands?position=UTG&days=3650', headers=h).get_json()
+    assert u['mesa'] == '9max' and u['stack_band'] == '40+' and u['n'] == 7, (u['mesa'], u['stack_band'], u['n'])
+    assert [(x['mesa'], x['n']) for x in u['distribuicao_de_mesas']['mesas']] == [('9max', 7)], u['distribuicao_de_mesas']
+    assert [(x['faixa'], x['n']) for x in u['distribuicao_de_stacks']['faixas']] == [('40+', 7)], u['distribuicao_de_stacks']
+
+    b = c.get('/metrics/player-stats/by-position/hands?position=BTN&days=3650', headers=h).get_json()
+    # o modal do BTN abre no recorte DELE, nao no do UTG (que tem mais volume no total)
+    assert b['mesa'] == '6max' and b['stack_band'] == '<20' and b['n'] == 4, (b['mesa'], b['stack_band'], b['n'])
+    assert [(x['mesa'], x['n']) for x in b['distribuicao_de_mesas']['mesas']] == [('6max', 4)], b['distribuicao_de_mesas']
+    # e o chip NAO oferece a mesa de 9, onde o BTN nao tem mao nenhuma
+    assert '9max' not in [x['mesa'] for x in b['distribuicao_de_mesas']['mesas']]
 
 
 def test_acima_do_teto_a_carta_de_100bb_fala_e_abaixo_do_piso_continua_muda():

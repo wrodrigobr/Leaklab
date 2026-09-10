@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useAuth } from "@/lib/auth";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { HudLayout } from "@/components/hud/HudLayout";
@@ -55,6 +56,12 @@ const Tournaments = () => {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [clearConfirm, setClearConfirm] = useState(false);
   const [clearing, setClearing] = useState(false);
+  // Exclusao de torneio e "limpar tudo" sairam da tela do jogador (dono, 09/09). O contador de
+  // cota (`tournaments_this_month`) sobe no import e nunca desce na exclusao, entao subir e
+  // apagar queimava o mes: medido em prod, 7 contas com o contador inflado e uma BLOQUEADA
+  // (free, 30 no contador, 7 torneios de verdade). O backend tambem recusa: `@require_admin`.
+  const { user } = useAuth();
+  const podeExcluir = user?.role === "admin";
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [page, setPage] = useState(1);
 
@@ -404,7 +411,7 @@ const Tournaments = () => {
                 </button>
               )}
 
-              {data.length > 0 && (
+              {data.length > 0 && podeExcluir && (
                 <div>
                   {clearConfirm ? (
                     <div className="flex items-center gap-2">
@@ -497,6 +504,7 @@ const Tournaments = () => {
                       )}>
                         {renderProfitOrUpload(t.site, profit, positive)}
                       </span>
+                      {podeExcluir && (
                       <button
                         onClick={(e) => handleDelete(e, t.tournament_id)}
                         disabled={isDeleting}
@@ -505,6 +513,7 @@ const Tournaments = () => {
                       >
                         {isDeleting ? <Loader2 className="size-3 animate-spin" /> : <Trash2 className="size-3" />}
                       </button>
+                      )}
                     </div>
                   </li>
                 );
@@ -671,6 +680,7 @@ const Tournaments = () => {
                           </div>
                         </td>
                         <td className="px-4 py-3.5">
+                          {podeExcluir && (
                           <button
                             onClick={(e) => handleDelete(e, t.tournament_id)}
                             disabled={isDeleting}
@@ -683,6 +693,7 @@ const Tournaments = () => {
                               : <Trash2 className="size-3.5" />
                             }
                           </button>
+                          )}
                         </td>
                       </tr>
                     );

@@ -373,6 +373,19 @@ def _check_advanced_insights(user_id: int):
         }), 402
     return None
 
+def _e_admin(user_id: int) -> bool:
+    """`role='admin'` no banco. Fonte unica para portoes que o dono nunca deve encontrar."""
+    from database.schema import get_conn as _gc
+    conn = _gc()
+    try:
+        row = conn.execute("SELECT role FROM users WHERE id = ?", (user_id,)).fetchone()
+        return bool(row) and (row['role'] if not isinstance(row, (list, tuple)) else row[0]) == 'admin'
+    except Exception:
+        return False
+    finally:
+        conn.close()
+
+
 def _check_stats_by_position(user_id: int):
     """402 se o plano nao inclui o perfil por ASSENTO (Pro). None caso contrario.
 
@@ -386,8 +399,11 @@ def _check_stats_by_position(user_id: int):
     # cadeado nem promessa, porque nao e plano, e obra em andamento. Variavel ausente ou vazia
     # = comportamento normal (so a regra do plano). Lida a cada chamada, de proposito: ligar e
     # desligar e mexer no `.env` do host e reiniciar, sem deploy.
+    # O ADMIN nunca e barrado: a lista existe para segurar a feature enquanto ela e validada,
+    # e quem valida e o dono. Ter de lembrar do proprio id na variavel foi exatamente o que
+    # aconteceu no dia (dono: "precisa estar para mim tbm que sou admin").
     permitidos = {p.strip() for p in (os.environ.get('STATS_BY_POSITION_USERS') or '').split(',') if p.strip()}
-    if permitidos and str(user_id) not in permitidos:
+    if permitidos and str(user_id) not in permitidos and not _e_admin(user_id):
         return jsonify({'error': 'O perfil por posicao esta em validacao.',
                         'code': 'em_validacao', 'feature': 'stats_by_position'}), 403
     status = get_quota_status(user_id)
@@ -1636,14 +1652,25 @@ def player_stats_by_position():
     from database.repositories import get_player_stats_by_position
     days   = int(request.args.get('days', 90))
     last_n = _last_n_da_query()
-    recorte, erro = _recorte_da_grade()
+    # A grade SOMA TUDO por default: ausente = todos os tamanhos de mesa e todas as faixas. Os
+    # filtros existem como LENTE opcional. Fixa-los por default esvaziou a grade do dono em
+    # 09/09 (piso de 100 maos por assento contra 36 no recorte). A referencia da celula e uma
+    # faixa, que declara a variacao do contexto — quem precisa de UM numero e a matriz.
+    mesa, erro = _tamanho_de_mesa_da_query()
+    if erro:
+        return erro
+    stack, erro = _faixa_de_stack_da_query()
     if erro:
         return erro
     # `?group=1`: EP / MP / CO / BTN / SB / BB (AY-21). Qualquer outro valor e "detalhado".
     agrupado = (request.args.get('group') or '').strip() == '1'
-    payload = get_player_stats_by_position(g.user_id, days, last_n=last_n, stack_band=recorte['stack'],
-                                           agrupado=agrupado, mesa=recorte['mesa'])
-    payload.update({k: recorte[k] for k in ('mesa_auto', 'stack_auto', 'distribuicao_de_mesas', 'distribuicao_de_stacks')})
+    from database.repositories import mesas_do_jogador, faixas_do_jogador
+    payload = get_player_stats_by_position(g.user_id, days, last_n=last_n, stack_band=stack,
+                                           agrupado=agrupado, mesa=mesa)
+    payload['distribuicao_de_mesas'] = mesas_do_jogador(g.user_id, days, last_n=last_n)
+    payload['distribuicao_de_stacks'] = faixas_do_jogador(g.user_id, days, last_n=last_n, mesa=mesa)
+    payload['mesa_auto'] = False
+    payload['stack_auto'] = False
     return jsonify(payload)
 
 
@@ -1663,11 +1690,15 @@ def player_stats_by_position_detail():
     if position not in validas or stat not in _DETALHE:
         return jsonify({'error': 'position ou stat invalido', 'positions': list(validas),
                         'stats': list(_DETALHE)}), 400
-    recorte, erro = _recorte_da_grade()
+    # Segue a GRADE, nao a matriz: e um painel dela, aberto no mesmo recorte (pode ser "todas").
+    mesa, erro = _tamanho_de_mesa_da_query()
+    if erro:
+        return erro
+    stack, erro = _faixa_de_stack_da_query()
     if erro:
         return erro
     return jsonify(get_position_stat_detail(g.user_id, position, stat, int(request.args.get('days', 90)),
-                                            last_n=_last_n_da_query(), stack_band=recorte['stack'], mesa=recorte['mesa']))
+                                            last_n=_last_n_da_query(), stack_band=stack, mesa=mesa))
 
 
 @app.route('/metrics/player-stats/by-position/hands', methods=['GET'])
@@ -1683,7 +1714,7 @@ def player_stats_by_position_hands():
     validas = tuple(p for p in POSICOES_NA_ORDEM if p != 'BB') + tuple(gr for gr in GRUPOS_DA_GRADE if gr != 'BB')
     if position not in validas:
         return jsonify({'error': 'position invalida (a BB nao tem RFI)', 'positions': list(validas)}), 400
-    recorte, erro = _recorte_da_grade()
+    recorte, erro = _recorte_da_matriz(position)
     if erro:
         return erro
     payload = get_position_open_matrix(g.user_id, position, int(request.args.get('days', 90)),
@@ -1697,21 +1728,33 @@ def player_stats_by_position_hands():
     return jsonify(payload)
 
 
-def _recorte_da_grade():
-    """Mesa E stack da grade por assento, resolvidos num lugar so para os TRES endpoints
-    (grade, "contra quem", matriz). Devolve (recorte, erro); `recorte` e um dict com `mesa`,
-    `stack`, `mesa_auto`, `stack_auto`, `distribuicao_de_mesas`, `distribuicao_de_stacks`.
+def _recorte_da_matriz(position: str | None = None):
+    """Mesa E stack da MATRIZ de abertura. Devolve (recorte, erro); `recorte` e um dict com
+    `mesa`, `stack`, `mesa_auto`, `stack_auto`, `distribuicao_de_mesas`,
+    `distribuicao_de_stacks`.
 
-    A politica e a mesma para os dois filtros (dono, 09/09): ausente = onde o jogador tem MAIS
-    maos, e o payload DECLARA o que aplicou. Nao existe "todas" nem "todos" — a carta de
-    abertura e funcao de assento, jogadores atras e profundidade, e sem os tres fixos o numero
-    do solver e uma media entre cartas, que muda com o VOLUME do jogador e nao com o jogo.
+    Aqui os dois filtros sao OBRIGATORIOS: ausente = onde o jogador tem MAIS maos, e o payload
+    DECLARA o que aplicou. Nao existe "todas" nem "todos" — a carta de abertura e funcao de
+    assento, jogadores por agir e profundidade, e a matriz mostra UM numero. Sem os tres fixos
+    esse numero e uma media entre cartas, que muda com o VOLUME do jogador e nao com o jogo (a
+    linha "UTG" de um fundador somava cinco assentos, com cartas de 15,8% a 28,0%).
 
-    Por que uma funcao e nao tres copias: ate 09/09 a grade escolhia a mesa mais jogada e a
-    matriz caia no recorte misturado — duas politicas para a mesma pergunta, invisiveis na
-    tela porque o front repassava a mesa da grade. O stack vai pelo mesmo caminho, e o stack
-    sugerido e calculado DENTRO da mesa em vigor, senao a faixa mais jogada de "todas as mesas"
-    pode nao ter mao nenhuma na mesa escolhida."""
+    **So a matriz.** Ate a tarde de 09/09 esta funcao servia tambem a grade e o "contra quem", e
+    foi erro meu: o piso por assento e 100 maos, e fixar os dois filtros dividia o volume por
+    quinze — a grade do dono ficou com 3.231 maos e ZERO celulas preenchidas. A grade compara
+    com uma FAIXA, que alarga honestamente quando o recorte e amplo, entao ela pode somar tudo.
+    Ver a docstring do modulo do patch e o CHANGELOG de 09/09.
+
+    O stack sugerido e calculado DENTRO da mesa em vigor: a faixa mais jogada de "todas as
+    mesas" pode nao ter mao nenhuma na mesa escolhida."""
+    # "todas"/"todos" nao existem AQUI, e a recusa tem de ser explicita: os validadores
+    # compartilhados os traduzem para None, e None na matriz voltaria a somar contextos em
+    # silencio — o defeito que ela existe para nao ter. Ver `_tamanho_de_mesa_da_query`.
+    for chave, proibido in (('mesa', 'todas'), ('stack', 'todos')):
+        if (request.args.get(chave) or '').strip() == proibido:
+            return None, (jsonify({'error': '%s=%s nao vale na matriz: ela mostra UM numero, '
+                                            'e um numero precisa de assento, jogadores e stack fixos.'
+                                            % (chave, proibido), 'code': 'recorte_obrigatorio'}), 400)
     mesa, erro = _tamanho_de_mesa_da_query()
     if erro:
         return None, erro
@@ -1721,12 +1764,15 @@ def _recorte_da_grade():
     from database.repositories import mesas_do_jogador, faixas_do_jogador
     days = int(request.args.get('days', 90))
     last_n = _last_n_da_query()
+    # As distribuicoes contam O ASSENTO em vigor: os chips existem para dizer onde ha mao, e
+    # contar todos os assentos junto os fazia prometer volume que o recorte nao tem (dono,
+    # 09/09: o chip dizia 114 e o BTN de 9 jogadores tinha 1).
     mesa_auto = 'mesa' not in request.args
-    dist_mesas = mesas_do_jogador(g.user_id, days, last_n=last_n)
+    dist_mesas = mesas_do_jogador(g.user_id, days, last_n=last_n, position=position)
     if mesa_auto:
         mesa = dist_mesas.get('sugerida')
     stack_auto = 'stack' not in request.args
-    dist_stacks = faixas_do_jogador(g.user_id, days, last_n=last_n, mesa=mesa)
+    dist_stacks = faixas_do_jogador(g.user_id, days, last_n=last_n, mesa=mesa, position=position)
     if stack_auto:
         stack = dist_stacks.get('sugerida')
     return {'mesa': mesa, 'stack': stack, 'mesa_auto': bool(mesa_auto and mesa),
@@ -1742,29 +1788,38 @@ def _tamanho_de_mesa_da_query():
     existe porque a linha da grade e o rotulo da sala: somar mesas de tamanhos diferentes junta
     assentos estrategicamente diferentes (o UTG de 9-max tem 8 atras; o de 6-max, 5).
 
-    `mesa=todas` foi ACEITO ate 09/09 e deixou de ser (decisao do dono, depois de medir): a
-    linha "UTG" do acervo do Rullian somava CINCO assentos diferentes, comparados com cartas
-    que abrem de 15,8% a 28,0%, e o cabecalho virava uma media que nao descreve situacao
-    nenhuma. Nao ha valor honesto para "todas" nesta grade, entao ele sai em vez de continuar
-    disponivel com um aviso."""
+    `todas` DESLIGA o filtro, e ausente tambem. Isto vale para a GRADE e o "contra quem"; a
+    MATRIZ nao passa por aqui sem `_recorte_da_matriz`, que escolhe a mesa mais jogada e recusa
+    "todas" — porque ela mostra UM numero e a grade mostra uma faixa. Tentei aplicar a
+    obrigatoriedade nos dois na tarde de 09/09 e esvaziei a grade do dono: 3.231 maos, zero
+    celulas, porque o piso por assento e 100 maos."""
     from database.repositories import TAMANHOS_DE_MESA
     mesa = (request.args.get('mesa') or '').strip() or None
+    if mesa == 'todas':                      # explicito: o jogador PEDIU todos os tamanhos
+        return None, None
     if mesa and mesa not in TAMANHOS_DE_MESA:
-        return None, (jsonify({'error': 'mesa invalida', 'mesas': list(TAMANHOS_DE_MESA)}), 400)
+        return None, (jsonify({'error': 'mesa invalida', 'mesas': list(TAMANHOS_DE_MESA) + ['todas']}), 400)
     return mesa, None
 
 
 def _faixa_de_stack_da_query():
-    """`?stack=` do perfil por posicao: uma das `FAIXAS_DE_STACK` ou nada (= todos).
+    """`?stack=`: uma das `FAIXAS_DE_STACK`, ou nada/`todos` (= todas as faixas).
     Faixa desconhecida e 400, nao silencio: devolver "todos" para um filtro que o cliente
-    acha que aplicou seria o numero certo sob o rotulo errado."""
+    acha que aplicou seria o numero certo sob o rotulo errado.
+
+    Vale para o HUD geral, para a GRADE por assento e para o painel "contra quem". So a MATRIZ
+    exige uma faixa, e ela nao passa por aqui sem `_recorte_da_matriz`: um numero unico precisa
+    de profundidade fixa, uma faixa de referencia nao. Tentei exigir nos dois na tarde de 09/09
+    e esvaziei a grade do dono (piso de 100 maos por assento contra 36 no recorte)."""
     from database.repositories import FAIXAS_DE_STACK
     stack = (request.args.get('stack') or '').strip() or None
+    if stack == 'todos':                     # explicito: o jogador PEDIU todas as faixas
+        return None, None
     if stack and stack not in FAIXAS_DE_STACK:
         # O valor recebido vai na resposta e no log: um 400 mudo custou uma tarde em 06/09
         # (o front engolia o erro e o filtro "nao mudava nada").
         log.warning('stack invalido no filtro por posicao: %r', stack)
-        return None, (jsonify({'error': 'stack invalido', 'recebido': stack, 'faixas': list(FAIXAS_DE_STACK)}), 400)
+        return None, (jsonify({'error': 'stack invalido', 'recebido': stack, 'faixas': list(FAIXAS_DE_STACK) + ['todos']}), 400)
     return stack, None
 
 
@@ -6628,9 +6683,22 @@ def replay_coach():
 
 
 @app.route('/history/tournament/<tournament_id>', methods=['DELETE'])
-@require_auth
+@require_admin
 def delete_tournament(tournament_id):
-    """Deleta um torneio específico do usuário (e suas decisões via CASCADE)."""
+    """Deleta um torneio do PRÓPRIO admin (e suas decisões via CASCADE). SÓ admin (09/09).
+
+    Era `@require_auth`. O jogador tinha o botão na tela de torneios, e a exclusão criava um
+    buraco na cota: `users.tournaments_this_month` sobe no import e nunca desce aqui, então
+    subir e apagar queimava o mês. Medido em prod no dia da mudança: 7 contas com o contador
+    inflado e uma BLOQUEADA (free, 30 no contador, 7 torneios de verdade).
+
+    Decisão do dono: tirar a exclusão do jogador em vez de descontar do contador — descontar
+    abriria "subir, apagar, subir de novo" sem teto. O único consumidor legítimo era o Hand
+    Builder, que apaga o próprio rascunho para reanalisar sem 409, e ele é uso do dono.
+
+    Continua ESCOPADO ao próprio usuário (`WHERE user_id = g.user_id`): admin apaga o que é
+    dele, não o de terceiros. Apagar dado de outra pessoa é outra decisão, e não foi tomada.
+    """
     from database.schema import get_conn as _gc
     conn = _gc()
     try:
@@ -6687,11 +6755,16 @@ def debug_tournaments():
         conn.close()
 
 @app.route('/admin/reset-my-data', methods=['POST'])
-@require_auth
+@require_admin
 def reset_my_data():
     """
     Deleta TODOS os dados do usuário logado (torneios, decisões, cache LLM).
     Útil para testes. NÃO deleta o usuário em si.
+
+    SÓ admin desde 09/09, pela mesma razão do delete de um torneio: o botão "limpar tudo"
+    estava na tela do jogador e apagava o acervo sem devolver a cota do mês. A rota sempre
+    esteve sob `/admin/`, mas exigia só `@require_auth` — o prefixo prometia um gate que não
+    existia.
     """
     from database.schema import get_conn
     conn = get_conn()

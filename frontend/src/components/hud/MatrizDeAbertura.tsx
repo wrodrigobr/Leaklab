@@ -84,8 +84,13 @@ export function MatrizDeAbertura({ position, stack, mesa, dados, erro, faixas, m
   const stackEmVigor: StackBand | null = (stack ?? (dados?.stack_band as StackBand | null) ?? null);
   const mesaEmVigor: TableSize | null = mesa ?? dados?.mesa ?? null;
   const assentos = dados?.assentos ?? [position];
-  const mesasChips = mesas ?? dados?.distribuicao_de_mesas?.mesas ?? [];
-  const faixasChips = (faixas ?? (dados?.distribuicao_de_stacks?.faixas ?? []).map((f) => f.faixa)) as StackBand[];
+  // A distribuicao do PROPRIO modal vem primeiro, e ela conta o ASSENTO em vigor (dono,
+  // 09/09: o chip dizia 114 maos e o recorte de BTN entregou 1 — os 114 eram de todos os
+  // assentos com 9 jogadores). As props sao so fallback para quem monta o modal sem elas.
+  const mesasProprias = dados?.distribuicao_de_mesas?.mesas ?? [];
+  const faixasProprias = (dados?.distribuicao_de_stacks?.faixas ?? []).map((f) => f.faixa);
+  const mesasChips = mesasProprias.length ? mesasProprias : (mesas ?? []);
+  const faixasChips = (faixasProprias.length ? faixasProprias : (faixas ?? [])) as StackBand[];
   const maosNaFaixa = (f: StackBand) => (dados?.distribuicao_de_stacks?.faixas ?? []).find((x) => x.faixa === f)?.n ?? null;
 
   // O assento pedido pode NAO existir na mesa que passou a valer (UTG+1 some com 7 na mao, LJ

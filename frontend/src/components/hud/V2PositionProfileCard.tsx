@@ -328,25 +328,11 @@ function Filtro({ rotulo, valor, opcoes, onMuda, testid }: {
 export function V2PositionProfileCard({
   data,
   geral,
-  stack = null,
-  onStack,
-  mesa = null,
-  onMesa,
   agrupado = false,
   onAgrupado,
   lastN = null,
 }: {
   data?: PositionProfileResponse | null;
-  /** faixa de stack PEDIDA (null = o backend escolhe a de mais maos e declara em
-   *  `data.stack_band`) e o setter, que mora no Index. Nao existe "todos" (dono, 09/09). */
-  stack?: StackBand | null;
-  onStack?: (s: StackBand) => void;
-  /** tamanho de mesa em vigor e o setter, que mora no Index. NAO existe "todas" (dono,
-   *  09/09): a linha "UTG" somando mesas de tamanhos diferentes junta ate CINCO assentos
-   *  estrategicamente distintos, comparados com cartas que abrem de 15,8% a 28,0%.
-   *  Sem ele a linha soma mesas de tamanhos diferentes, que sao assentos diferentes. */
-  mesa?: TableSize | null;
-  onMesa?: (m: TableSize) => void;
   /** AY-21: grade agrupada (EP / MP / CO / BTN / SB / BB) em vez de assento a assento */
   agrupado?: boolean;
   onAgrupado?: (v: boolean) => void;
@@ -369,12 +355,9 @@ export function V2PositionProfileCard({
   // jogada sozinho, e o painel tem de pedir o MESMO recorte que a grade esta mostrando.
   // Sem `?mesa=` o backend escolhe a mais jogada e DECLARA qual usou; o painel tem de pedir o
   // MESMO recorte que a grade esta mostrando. Nulo so quando nao ha mao nenhuma.
-  const mesaEmVigor: TableSize | null = mesa ?? data?.mesa ?? null;
-  // Mesma regra para o stack: o que VALE e o que o backend declarou. Sem `?stack=` ele abre na
-  // faixa com mais maos dentro da mesa em vigor.
-  const stackEmVigor: StackBand | null = stack ?? (data?.stack_band as StackBand | null) ?? null;
-  // O modal da matriz tem os TRES filtros e troca os tres sem sair dele; por isso o painel
-  // guarda a sua propria mesa e o seu proprio stack, e so herda os da grade ao abrir.
+  // A grade nao filtra por jogadores nem por stack (dono, 09/09). O modal da matriz filtra, e
+  // guarda a SUA propria mesa e o seu proprio stack; ao abrir ele nao herda nada, e o backend
+  // escolhe o recorte com mais maos e DECLARA qual aplicou.
   const [detalhe, setDetalhe] = useState<{ position: string; stat: string; stack?: StackBand | null; mesa?: TableSize | null } | null>(null);
   const [detalheDados, setDetalheDados] = useState<PositionDetailResponse | null>(null);
   const [matrizDados, setMatrizDados] = useState<PositionOpenMatrixResponse | null>(null);
@@ -385,17 +368,13 @@ export function V2PositionProfileCard({
     setDetalheDados(null); setMatrizDados(null); setDetalheErro(false);
     // RFI abre a matriz das maos abertas (outro endpoint, mesmo recorte); os outros, o "contra quem"
     const pedido = detalhe.stat === "rfi"
-      ? metrics.playerStatsByPositionHands(detalhe.position, 90, lastN ?? undefined, detalhe.stack ?? null, detalhe.mesa ?? mesaEmVigor).then((d) => { if (vivo) setMatrizDados(d); })
-      : metrics.playerStatsByPositionDetail(detalhe.position, detalhe.stat, 90, lastN ?? undefined, stackEmVigor, mesaEmVigor).then((d) => { if (vivo) setDetalheDados(d); });
+      ? metrics.playerStatsByPositionHands(detalhe.position, 90, lastN ?? undefined, detalhe.stack ?? null, detalhe.mesa ?? null).then((d) => { if (vivo) setMatrizDados(d); })
+      : metrics.playerStatsByPositionDetail(detalhe.position, detalhe.stat, 90, lastN ?? undefined, null, null).then((d) => { if (vivo) setDetalheDados(d); });
     pedido.catch(() => { if (vivo) setDetalheErro(true); });
     return () => { vivo = false; };
-  }, [detalhe, stackEmVigor, lastN, mesaEmVigor]);
-  // trocar a faixa de stack ou o tamanho de mesa NA GRADE fecha o painel: ele e do recorte em
-  // que abriu. Trocar DENTRO do modal nao passa por aqui (e o `detalhe` que muda).
-  useEffect(() => { setDetalhe(null); }, [stackEmVigor, mesaEmVigor]);
+  }, [detalhe, lastN]);
   const alternaDetalhe = (position: string, stat: string) =>
-    setDetalhe((d) => (d && d.position === position && d.stat === stat ? null
-      : { position, stat, stack: stat === "rfi" ? stackEmVigor : undefined, mesa: stat === "rfi" ? mesaEmVigor : undefined }));
+    setDetalhe((d) => (d && d.position === position && d.stat === stat ? null : { position, stat }));
 
   /** TODAS as colunas do payload, sempre, na ordem em que o backend as declara (a ordem do
    *  HUD principal). Filtrar pelas que "algum assento atinge" era o que escondia da linha
@@ -487,49 +466,23 @@ export function V2PositionProfileCard({
             ))}
           </div>
         )}
-        {onMesa && (data.mesas ?? []).length > 0 && (
-          <Filtro
-            rotulo={t("posProfile.table")}
-            testid="select-mesa"
-            valor={data.mesa ?? ""}
-            onMuda={(v) => onMesa(v as TableSize)}
-            opcoes={[
-              ...((data.mesas ?? []) as TableSize[])
-                .filter((m) => (data.distribuicao_de_mesas?.mesas ?? []).some((d) => d.mesa === m))
-                .map((m) => {
-                  const info = (data.distribuicao_de_mesas?.mesas ?? []).find((d) => d.mesa === m);
-                  return { valor: m, texto: t("posProfile.tableSize." + m) + (info ? ` · ${info.pct}%` : "") };
-                }),
-            ]}
-          />
-        )}
-        {onStack && (
-          <Filtro
-            rotulo={t("posProfile.stack")}
-            testid="select-stack"
-            valor={stackEmVigor ?? ""}
-            onMuda={(v) => onStack(v as StackBand)}
-            opcoes={((data.faixas ?? []) as StackBand[]).map((f) => {
-              const info = (data.distribuicao_de_stacks?.faixas ?? []).find((d) => d.faixa === f);
-              return { valor: f, texto: (ROTULO_DA_FAIXA[f] ?? f) + (info ? ` · ${info.pct}%` : "") };
-            })}
-          />
-        )}
+        {/* Sem filtro de jogadores nem de stack aqui (dono, 09/09): a grade quer VOLUME e
+            compara com uma faixa de referencia, que alarga honestamente quando o recorte e
+            amplo. A lente fina mora no modal da matriz, que mostra UM numero e por isso exige
+            assento, jogadores e stack fixos. Ter a mesma lente nos dois so dava ao jogador uma
+            forma de esvaziar a propria tela: o piso e 100 maos por assento, e o recorte de 8
+            jogadores a 40bb+ deixava 36. */}
         <span className="font-mono text-[9px] text-muted-foreground/70 tabular-nums">
-          {stackEmVigor ? t("posProfile.stackHands", { n: data.total_hands }) : t("posProfile.hands", { n: data.total_hands })}
+          {t("posProfile.hands", { n: data.total_hands })}
         </span>
       </div>
 
-      {/* A legenda vem ANTES da grade: sem ela o verde no meio da régua é decoração. */}
-      <p className="mb-3 font-mono text-[9px] leading-snug text-muted-foreground/70">
-        {t("posProfile.legend")} {t("posProfile.clickable")}
-      </p>
-      {/* Por que a grade esta presa a UM tamanho de mesa. Sem esta linha, o jogador nao sabe
-          que o recorte foi escolhido por nos, e compara linhas achando que ve todo o volume. */}
+      {/* UMA linha antes da grade, nao tres (dono, 09/09: "e mto texto para ficar como
+          comentario do card"). Fica so o que muda a LEITURA do que esta logo abaixo: o que a
+          cor significa e o que o clique abre. O porque da faixa de referencia e o resto da
+          explicacao vivem no tooltip do titulo, que quem quiser abre. */}
       <p className="mb-3 font-mono text-[9px] leading-snug text-muted-foreground/70" data-testid="nota-mesa">
-        {data.mesa
-          ? t("posProfile.tableNote", { mesa: t(`posProfile.tableSize.${data.mesa}`) })
-          : t("posProfile.tableNoteAll")}
+        {t("posProfile.legend")}
       </p>
 
       {/* overflow-x próprio: a grade é larga e o corpo da página não pode rolar de lado */}
@@ -584,7 +537,7 @@ export function V2PositionProfileCard({
                     </Tooltip>
                   ) : linha.stats[k] ? (
                     <Celula key={k} chave={k} cel={linha.stats[k]} posicao={linha.position}
-                            maos={linha.hands} stack={stackEmVigor}
+                            maos={linha.hands}
                             ancora={(geral as unknown as Record<string, number | null>)?.[k] ?? null}
                             onDetalhe={COM_DETALHE.has(k) && linha.stats[k].band !== "low_sample" ? () => alternaDetalhe(linha.position, k) : undefined}
                             aberto={detalhe?.position === linha.position && detalhe?.stat === k} />
@@ -654,10 +607,9 @@ export function V2PositionProfileCard({
                 {t("posProfile.matrix.title", { pos: detalhe.position })}
               </DialogTitle>
               <DialogDescription className="sr-only">{t("posProfile.matrix.description")}</DialogDescription>
-              <MatrizDeAbertura position={detalhe.position} stack={detalhe.stack ?? null} mesa={detalhe.mesa ?? mesaEmVigor}
+              <MatrizDeAbertura position={detalhe.position} stack={detalhe.stack ?? null} mesa={detalhe.mesa ?? null}
                                 dados={matrizDados} erro={detalheErro}
                                 faixas={(data?.faixas ?? []) as StackBand[]}
-                                mesas={data?.distribuicao_de_mesas?.mesas}
                                 onMudar={(position, novoStack, novaMesa) => setDetalhe({ position, stat: "rfi", stack: novoStack, mesa: novaMesa })} />
             </>
           )}

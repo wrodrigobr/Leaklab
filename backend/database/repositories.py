@@ -2591,10 +2591,16 @@ def minimo_da_grade(chave: str):
     return _GRADE_MIN_SEM_REFERENCIA.get(chave)
 
 
-def mesas_do_jogador(user_id: int, days: int = 90, last_n: int | None = None) -> dict:
+def mesas_do_jogador(user_id: int, days: int = 90, last_n: int | None = None,
+                     position: str | None = None) -> dict:
     """{'mesas': [{'mesa','n','pct'}], 'sugerida': <a mais jogada ou None>} nas oportunidades de
     RFI do recorte. E o insumo do seletor de tamanho de mesa: o default e a mesa que o jogador
     MAIS joga, porque e nela que a grade responde por um assento so.
+
+    `position` restringe ao ASSENTO, e o modal da matriz sempre passa (dono, 09/09): o chip
+    dizia 114 maos e o recorte de BTN entregou 1. Os 114 eram de todos os assentos com 9
+    jogadores — no botao, abrir com o pote intacto exige seis folds antes. Contador que promete
+    volume que o recorte nao tem manda o jogador clicar no vazio.
 
     Medido em prod (90 dias, 32.969 oportunidades): mesa 8 45%, mesa 7 28%, mesa 6 12%, mesa 9
     5%. Nenhum jogador se concentra num tamanho: o mais concentrado joga 64% num tamanho e o
@@ -2602,7 +2608,9 @@ def mesas_do_jogador(user_id: int, days: int = 90, last_n: int | None = None) ->
     existir em 09/09 (dono): a linha "UTG" somando tamanhos juntava ate cinco assentos
     estrategicamente diferentes, e a referencia virava uma media que nao descreve situacao
     nenhuma."""
-    tf, tp = _build_tournament_filter(user_id, days, last_n)
+    # `_filtro_do_hud` com so o assento: a MESMA expressao de assento (e os mesmos aliases) da
+    # grade e do filtro, em vez de uma segunda copia da regra aqui.
+    tf, tp = _filtro_do_hud(user_id, days, last_n, position)
     conn = get_conn()
     try:
         rows = _fetchall(conn, _adapt(f"""
@@ -2631,9 +2639,12 @@ def mesas_do_jogador(user_id: int, days: int = 90, last_n: int | None = None) ->
 
 
 def faixas_do_jogador(user_id: int, days: int = 90, last_n: int | None = None,
-                      mesa: str | None = None) -> dict:
+                      mesa: str | None = None, position: str | None = None) -> dict:
     """{'faixas': [{'faixa','n','pct'}], 'sugerida': <a faixa com mais maos ou None>} nas
-    oportunidades de RFI do recorte, dentro de `mesa` quando ela ja esta em vigor.
+    oportunidades de RFI do recorte, dentro de `mesa` e de `position` quando ja estao em vigor.
+
+    O assento importa tanto quanto a mesa: no acervo do dono, 9 jogadores a 40bb+ tem 40
+    oportunidades no UTG e 1 no BTN. Sem ele o chip promete o volume do assento errado.
 
     Irma de `mesas_do_jogador`, pela mesma razao (dono, 09/09): "no GTO Wizard somos obrigados
     a definir o stack, entao nao faz sentido o todos". A carta de abertura e uma funcao de
@@ -2643,7 +2654,7 @@ def faixas_do_jogador(user_id: int, days: int = 90, last_n: int | None = None,
 
     A faixa e a da MAO, decidida pela PRIMEIRA decisao preflop dela — a MESMA regra do filtro
     (`_filtro_do_hud`), senao a distribuicao e o recorte contariam maos diferentes."""
-    tf, tp = _filtro_do_hud(user_id, days, last_n, None, None, mesa)
+    tf, tp = _filtro_do_hud(user_id, days, last_n, position, None, mesa)
     conn = get_conn()
     try:
         rows = _fetchall(conn, _adapt(f"""

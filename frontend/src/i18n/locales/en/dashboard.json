@@ -918,8 +918,8 @@
   },
   "posProfile": {
     "title": "Profile by position",
-    "tooltip": "How you play in EACH seat, on the five preflop decisions that have a chart: entering (VPIP), raising (PFR), opening (RFI), 3-betting and folding to a 3-bet after opening. The color compares with what the solver would do with your hands, in the seats, stacks and against the opponents you faced; each number's tooltip shows the band and the gap.",
-    "legend": "You against the solver, seat by seat. Green = within what the solver would do with your hands; red = outside (▲ more, ▼ less). Hover to see the band and the gap.",
+    "tooltip": "How you play in EACH seat, on the five preflop decisions that have a chart: entering (VPIP), raising (PFR), opening (RFI), 3-betting and folding to a 3-bet after opening. The color compares with what the solver would do with your hands, in the seats, stacks and against the opponents you faced; each number's tooltip shows the band and the gap. The grid adds up all your hands, at any table size and any stack, so the reference is a range: the solver opens wider with fewer players left to act. For the close-up, with table size and stack fixed, click the RFI.",
+    "legend": "Green = within what the solver would do; red = outside (▲ more, ▼ less). Click RFI, 3-Bet or Fold 3-Bet to open the detail.",
     "hands": "{{n}} hands",
     "handsShort": "hands",
     "seat": "seat",
@@ -1036,7 +1036,6 @@
     },
     "above": "above the solver",
     "below": "below the solver",
-    "clickable": "RFI, 3-Bet and Fold 3-Bet (underlined) open the detail on click: the opened hands for RFI, the opponent for the other two.",
     "view": "View",
     "detailed": "By seat",
     "grouped": "Grouped",
@@ -1081,6 +1080,8 @@
       "rangeSize": "opens {{pct}}% of every possible hand"
     },
     "tablePlayers": "{{n}} players",
-    "seatAbsent": "Does not exist with {{mesa}} players dealt in. Whoever acted in that turn of the order is in the next seat."
+    "seatAbsent": "Does not exist with {{mesa}} players dealt in. Whoever acted in that turn of the order is in the next seat.",
+    "tableAll": "all",
+    "stackAll": "all"
   }
 }

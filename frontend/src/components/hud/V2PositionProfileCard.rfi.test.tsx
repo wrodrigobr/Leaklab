@@ -12,9 +12,8 @@ import type { PlayerStatsResponse, PositionProfileResponse } from "@/lib/api";
  *    acusar por assento com a régua do jogo inteiro, o defeito de 05/09.
  * 2. A tinta vai para o lado certo: valor ABAIXO da faixa pinta entre o valor e `lo`; ACIMA,
  *    entre `hi` e o valor. Trocar os lados passa verde em qualquer snapshot.
- * 3. O dropdown chama `onStack` com a faixa do backend (`faixas`). Não existe "todos" (dono,
- *    09/09: "no GTO Wizard somos obrigados a definir o stack"): sem pedido vale a faixa que o
- *    backend declarou em `stack_band`.
+ * 3. A grade NÃO tem filtro de stack nem de jogadores (dono, 09/09): ela quer volume e compara
+ *    com uma faixa de referência. A lente fina vive no modal da matriz, que mostra um número.
  * 4. A BB mostra "n/a" no RFI, não "—": traço é amostra baixa, isto é regra.
  */
 vi.mock("react-i18next", () => ({
@@ -90,26 +89,17 @@ describe("régua do RFI", () => {
 });
 
 describe("filtro de stack", () => {
-  it("as faixas vêm do backend e chamam onStack; não existe todos (dono, 09/09)", () => {
-    const onStack = vi.fn();
-    render(<V2PositionProfileCard data={{ ...GRADE, stack_band: "20-40" }} geral={HUD} stack={null} onStack={onStack} />);
-    const sel = screen.getByTestId("select-stack") as HTMLSelectElement;
-    expect(Array.from(sel.options).map((o) => o.textContent)).toEqual(["40bb+", "20–40bb", "<20bb"]);
-    expect(Array.from(sel.options).map((o) => o.value)).not.toContain("todos");
-    expect(sel.value).toBe("20-40");                       // sem pedido, vale o que o backend DECLAROU
-    fireEvent.change(sel, { target: { value: "40+" } });
-    expect(onStack).toHaveBeenCalledWith("40+");
-  });
-
-  it("sem onStack não há filtro (card em modo só leitura)", () => {
-    render(<V2PositionProfileCard data={GRADE} geral={HUD} />);
+  it("a grade nao tem filtro de stack: ele vive so no modal da matriz (dono, 09/09)", () => {
+    // A grade compara com uma FAIXA de referencia e quer VOLUME; a matriz mostra UM numero e
+    // por isso exige assento, jogadores e stack fixos. Exigir aqui esvaziou a tela do dono:
+    // piso de 100 maos por assento contra 36 no recorte de 8 jogadores a 40bb+.
+    render(<V2PositionProfileCard data={{ ...GRADE, stack_band: "20-40" } as PositionProfileResponse} geral={HUD} />);
     expect(screen.queryByTestId("select-stack")).toBeNull();
+    expect(screen.queryByTestId("select-mesa")).toBeNull();
   });
 
-  it("com faixa escolhida o cabeçalho diz que as mãos são da faixa", () => {
-    render(<V2PositionProfileCard data={{ ...GRADE, stack_band: "20-40" } as PositionProfileResponse}
-                                  geral={HUD} stack="20-40" onStack={() => {}} />);
-    expect(screen.getByText("posProfile.stackHands:1350")).toBeTruthy();
-    expect((screen.getByTestId("select-stack") as HTMLSelectElement).value).toBe("20-40");
+  it("o cabecalho conta as maos do acervo inteiro, sem recorte", () => {
+    render(<V2PositionProfileCard data={GRADE} geral={HUD} />);
+    expect(screen.getByText("posProfile.hands:1350")).toBeTruthy();
   });
 });

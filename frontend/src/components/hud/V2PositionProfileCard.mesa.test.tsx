@@ -59,44 +59,11 @@ const grade = (mesa: string | null, auto: boolean) => ({
 const HUD = { total_hands: 2061, vpip: 25, rfi: 28 } as unknown as PlayerStatsResponse;
 
 describe("seletor de tamanho de mesa", () => {
-  it("o dropdown lista so os numeros de jogadores que aparecem no volume dele, e chama o setter", () => {
-    const onMesa = vi.fn();
-    render(<MemoryRouter><V2PositionProfileCard data={grade("8max", true)} geral={HUD} onStack={() => {}} onMesa={onMesa} /></MemoryRouter>);
-    const sel = screen.getByTestId("select-mesa") as HTMLSelectElement;
-    expect(sel.value).toBe("8max");
-    const valores = Array.from(sel.options).map((o) => o.value);
-    // Nao ha "todas" (dono, 09/09): somar tamanhos de mesa junta assentos estrategicamente
-    // diferentes na mesma linha — a linha "UTG" do acervo de um fundador juntava CINCO, com
-    // cartas que abrem de 15,8% a 28,0%. O dropdown so oferece recortes que descrevem algo.
-    expect(valores).toEqual(["8max", "7max"]);                    // 9max nao aparece: ele nao jogou
-    expect(valores).not.toContain("todas");
-    expect(sel.options[0].textContent).toContain("45%");          // a fatia do volume vai no rotulo
-    fireEvent.change(sel, { target: { value: "7max" } });
-    expect(onMesa).toHaveBeenCalledWith("7max");
-  });
-
-  it("o stack tambem e dropdown, sem todos (dono, 09/09)", () => {
-    const onStack = vi.fn();
-    render(<MemoryRouter><V2PositionProfileCard data={grade("8max", true)} geral={HUD} stack="20-40" onStack={onStack} onMesa={() => {}} /></MemoryRouter>);
-    const sel = screen.getByTestId("select-stack") as HTMLSelectElement;
-    expect(sel.value).toBe("20-40");
-    expect(Array.from(sel.options).map((o) => o.value)).toEqual(["40+", "20-40", "<20"]);
-    fireEvent.change(sel, { target: { value: "40+" } });
-    expect(onStack).toHaveBeenCalledWith("40+");
-  });
-
-  it("a nota explica o recorte, e muda quando o filtro esta desligado", () => {
-    const { unmount } = render(<MemoryRouter><V2PositionProfileCard data={grade("8max", true)} geral={HUD} onStack={() => {}} onMesa={() => {}} /></MemoryRouter>);
-    expect(screen.getByTestId("nota-mesa").textContent).toContain("posProfile.tableNote");
-    unmount();
-    render(<MemoryRouter><V2PositionProfileCard data={grade(null, false)} geral={HUD} onStack={() => {}} onMesa={() => {}} /></MemoryRouter>);
-    expect(screen.getByTestId("nota-mesa").textContent).toContain("posProfile.tableNoteAll");
-  });
-
-  it("a mesa em vigor viaja para a matriz, e a comparacao e sobre AS MESMAS maos", async () => {
-    render(<MemoryRouter><V2PositionProfileCard data={grade("8max", true)} geral={HUD} lastN={30} onStack={() => {}} onMesa={() => {}} /></MemoryRouter>);
+  it("o modal pede sem recorte, e a comparacao e sobre AS MESMAS maos", async () => {
+    render(<MemoryRouter><V2PositionProfileCard data={grade("8max", true)} geral={HUD} lastN={30} /></MemoryRouter>);
     fireEvent.click(screen.getByTestId("celula-rfi-UTG"));
-    await waitFor(() => expect(hands).toHaveBeenCalledWith("UTG", 90, 30, null, "8max"));
+    // sem stack e sem mesa: quem escolhe o recorte e o backend, e o modal desenha o que voltou
+    await waitFor(() => expect(hands).toHaveBeenCalledWith("UTG", 90, 30, null, null));
     await screen.findByTestId("matriz-UTG");
     // 16,0 contra 14,8: os dois sobre as maos que cairam. O 17,4 (as 169 maos) NAO e comparavel
     // com o do jogador e vira legenda da grade do solver — o tamanho do desenho, so isso.
@@ -111,7 +78,7 @@ describe("seletor de tamanho de mesa", () => {
     // grade cheia em 08/09. O tamanho do range do solver continua como legenda, porque nao
     // depende das maos que cairam.
     hands.mockResolvedValue({ ...MATRIZ, n: 10, voce_pct: null, solver_pct: 7.2, solver_pct_todas: 20.1 });
-    render(<MemoryRouter><V2PositionProfileCard data={grade("8max", true)} geral={HUD} lastN={30} onStack={() => {}} onMesa={() => {}} /></MemoryRouter>);
+    render(<MemoryRouter><V2PositionProfileCard data={grade("8max", true)} geral={HUD} lastN={30} /></MemoryRouter>);
     fireEvent.click(screen.getByTestId("celula-rfi-UTG"));
     await screen.findByTestId("matriz-UTG");
     expect(screen.getByTestId("matriz-amostra").textContent).toContain("posProfile.matrix.smallSample:30");
@@ -126,7 +93,7 @@ describe("seletor de tamanho de mesa", () => {
     // segundo a agir e o LJ. Mas sumir em silencio parece esquecimento (mesma licao da BB no modal).
     const data = { ...grade("7max", true), assentos_ausentes: ["UTG+1", "UTG+2"],
                    total: { total_hands: 2064 } } as unknown as PositionProfileResponse;
-    render(<MemoryRouter><V2PositionProfileCard data={data} geral={HUD} onStack={() => {}} onMesa={() => {}} /></MemoryRouter>);
+    render(<MemoryRouter><V2PositionProfileCard data={data} geral={HUD} /></MemoryRouter>);
     const ausente = screen.getByTestId("linha-ausente-UTG+1");
     expect(ausente.textContent).toContain("UTG+1");
     expect(ausente.textContent).toContain("posProfile.seatAbsent:posProfile.tableSize.7max");
@@ -137,7 +104,21 @@ describe("seletor de tamanho de mesa", () => {
     expect(screen.getByText(/posProfile\.outsideGrid:3,2/)).toBeTruthy();
   });
 
-  it("sem o setter, nenhum filtro aparece (o card fora do dashboard segue como era)", () => {
+  it("a grade nao oferece filtro de jogadores nem de stack, e diz que soma tudo", () => {
+    // Dono, 09/09 noite: "no perfil por posicao, agora e desnecessario o filtro de jogador e
+    // stack... vamos manter so na matriz". A grade quer VOLUME e compara com uma FAIXA de
+    // referencia; a matriz quer PRECISAO e mostra UM numero. A mesma lente nos dois so dava ao
+    // jogador uma forma de esvaziar a propria tela: o piso e 100 maos por assento, e o recorte
+    // de 8 jogadores a 40bb+ deixava 36 — 3.231 maos viravam zero celulas preenchidas.
+    render(<MemoryRouter><V2PositionProfileCard data={grade(null, false)} geral={HUD} /></MemoryRouter>);
+    expect(screen.queryByTestId("select-mesa")).toBeNull();
+    expect(screen.queryByTestId("select-stack")).toBeNull();
+    // UMA linha antes da grade, nao tres (dono, 09/09: "e mto texto"). Fica so o que muda a
+    // leitura do que esta abaixo; o resto vive no tooltip do titulo.
+    expect(screen.getByTestId("nota-mesa").textContent).toBe("posProfile.legend");
+  });
+
+  it("o card fora do dashboard segue como era", () => {
     render(<MemoryRouter><V2PositionProfileCard data={grade(null, false)} geral={HUD} /></MemoryRouter>);
     expect(screen.queryByTestId("select-mesa")).toBeNull();
     expect(screen.queryByTestId("select-stack")).toBeNull();

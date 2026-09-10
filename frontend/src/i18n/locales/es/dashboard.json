@@ -918,8 +918,8 @@
   },
   "posProfile": {
     "title": "Perfil por posición",
-    "tooltip": "Cómo juegas en CADA asiento, en las cinco decisiones preflop que tienen chart: entrar (VPIP), hacer raise (PFR), abrir (RFI), hacer 3-bet y foldear al 3-bet tras abrir. El color compara con lo que haría el solver con tus manos, en las posiciones, stacks y contra los rivales que enfrentaste; el tooltip de cada número muestra la franja y la diferencia.",
-    "legend": "Tú contra el solver, asiento por asiento. Verde = dentro de lo que haría el solver con tus manos; rojo = fuera (▲ de más, ▼ de menos). Pasa el ratón para ver la franja y la diferencia.",
+    "tooltip": "Cómo juegas en CADA asiento, en las cinco decisiones preflop que tienen chart: entrar (VPIP), hacer raise (PFR), abrir (RFI), hacer 3-bet y foldear al 3-bet tras abrir. El color compara con lo que haría el solver con tus manos, en las posiciones, stacks y contra los rivales que enfrentaste; el tooltip de cada número muestra la franja y la diferencia. La grilla suma todas tus manos, con cualquier cantidad de jugadores y cualquier stack, así que la referencia es un rango: el solver abre más con menos jugadores por actuar. Para la lectura fina, con jugadores y stack fijos, hacé clic en el RFI.",
+    "legend": "Verde = dentro de lo que haría el solver; rojo = fuera (▲ de más, ▼ de menos). Hacé clic en RFI, 3-Bet o Fold 3-Bet para abrir el detalle.",
     "hands": "{{n}} manos",
     "handsShort": "manos",
     "seat": "asiento",
@@ -1036,7 +1036,6 @@
     },
     "above": "por encima del solver",
     "below": "por debajo del solver",
-    "clickable": "RFI, 3-Bet y Fold 3-Bet (subrayados) abren el detalle al hacer clic: las manos abiertas en el RFI, el rival en los otros dos.",
     "view": "Vista",
     "detailed": "Por asiento",
     "grouped": "Agrupado",
@@ -1081,6 +1080,8 @@
       "rangeSize": "abre el {{pct}}% de todas las manos posibles"
     },
     "tablePlayers": "{{n}} jugadores",
-    "seatAbsent": "No existe con {{mesa}} jugadores en la mano. Quien actuó en ese turno está en el asiento siguiente."
+    "seatAbsent": "No existe con {{mesa}} jugadores en la mano. Quien actuó en ese turno está en el asiento siguiente.",
+    "tableAll": "todas",
+    "stackAll": "todos"
   }
 }
