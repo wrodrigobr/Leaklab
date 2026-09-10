@@ -4,6 +4,40 @@ Todas as mudanÃ§as notÃ¡veis neste projeto serÃ£o documentadas aqui.
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
+## O gancho da fila drenada corrige rotulo velho, e nunca apaga veredito (10/09)
+
+- **Como apareceu:** o CONTROLE da amostra do AY-29 falhou em 21 de 50, com padrao claro —
+  decisoes marcadas `gto_critical` com o proprio no gravado dizendo `gto_correct`. O controle usa
+  o no como esta, entao a falha nao era do assento: era do rotulo GRAVADO.
+- **A causa, medida:** `_reconcile_drained_tournaments` chamava `resync_tournament_postflop`, que
+  era FILL-ONLY por desenho — preenche quem estava sem veredito e nunca toca em quem ja tem. O
+  `label_drift` (no que JA existia e mudou de resposta ao ser re-solvado) e exatamente o caso
+  pulado, e o gancho gravava `labels_reconciled_at` em seguida, encerrando o assunto.
+- **Tamanho na base inteira** (sonda com controle em 97%, comparando `gto_label` com o que
+  `hand_view_for_spot` produz hoje): 8.267 decisoes pos-flop comparaveis, **1.179 (14,3%) com
+  rotulo que o no de hoje nao produz mais**, **166 delas ACUSANDO na tela** sem o no sustentar, e
+  **92% com o no mais novo que a decisao**. Numero anterior meu de 42% estava errado: vinha de um
+  subconjunto enviesado, e a base inteira o derrubou.
+- **Tres modos, uma funcao** (`grava_esta`): `fill` so preenche; `preserva` preenche E corrige
+  rotulo velho, mas NUNCA apaga veredito; `total` espelha o motor, inclusive removendo. O gancho
+  usa `MODO_PRESERVA`; o CLI mapeia `--fill-only`, `--sem-vanished` e o default para os mesmos
+  tres, e imprime qual modo rodou.
+- **Por que `preserva` e nao `total` no gancho:** corrigir rotulo velho devolve a verdade do no;
+  APAGAR veredito tira informacao da tela de quem nao pediu nada, e continua sendo decisao de
+  produto (as 727 `vanished` medidas), nao de gancho automatico.
+- **Regra dos N lugares:** `natureza_da_mudanca` e `diferencas` sao fonte unica. A regra vivia em
+  dois lugares com leituras diferentes de "mudou" — o CLI comparava 7 campos, o resync por
+  torneio olhava so `gto_label` — e foi essa duplicidade que deixou o gancho no modo mais
+  conservador dos tres sem ninguem ter escolhido isso.
+- **Guardas** (`test_gancho_corrige_rotulo_velho.py`, 5): as tres naturezas semeadas no mesmo
+  torneio, com a avaliacao fresca dublada de proposito (o que esta sob teste e a REGRA DE
+  GRAVACAO, nao o motor). Quebrado nas duas direcoes: voltando a fill-only, 3 testes acusam;
+  deixando apagar veredito, 4 acusam.
+- **Reparo do acervo NAO foi feito** — o gancho impede o numero de crescer, e o que ja esta
+  gravado espera decisao (corrigir o drift sem apagar nada, ou apply completo, que remove
+  veredito de 727 decisoes).
+
+---
 ## A matriz perde o filtro de jogadores: sobram assento e stack, e o UTG declara a faixa (10/09)
 
 - **Pedido do Rullian, com o PokerTracker como argumento:** *"essa quantidade de informacoes na

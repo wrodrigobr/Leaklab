@@ -12803,7 +12803,8 @@ def _reconcile_drained_tournaments(limite_s: float | None = None):
     spots 'done') e cujo solve é mais novo que a última reconciliação. Corrige a cobertura
     artificialmente baixa pós-import: o solve termina DEPOIS do import, então as decisões ficam
     com gto_label NULL até um resync. Guarda o progresso em tournaments.labels_reconciled_at
-    (não reprocessa até um novo solve). Fill-only: nunca remove/muda cobertura existente."""
+    (não reprocessa até um novo solve). `MODO_PRESERVA`: preenche o que faltava E corrige o
+    rótulo que o nó não sustenta mais; nunca APAGA veredito existente."""
     from database.schema import get_conn as _gc
     from database.repositories import _fetchall as _fa
     conn = _gc()
@@ -12822,7 +12823,7 @@ def _reconcile_drained_tournaments(limite_s: float | None = None):
         conn.close()
     if not cands:
         return
-    from scripts.resync_postflop_gto import resync_tournament_postflop
+    from scripts.resync_postflop_gto import resync_tournament_postflop, MODO_PRESERVA
     from database.repositories import reconcile_tournament_labels
     _t0 = time.time()
     for r in cands:
@@ -12832,9 +12833,14 @@ def _reconcile_drained_tournaments(limite_s: float | None = None):
             break
         tid = dict(r)['tid']
         try:
-            n = resync_tournament_postflop(tid, apply=True)
-            # AY-26 (08/09): o resync acima e FILL-ONLY (so preenche gto em quem nao tinha) e
-            # NAO re-deriva label/score/best_action de quem ja tinha gto. Quem faz isso e
+            # MODO_PRESERVA, explicito (10/09): o fill-only pulava o `label_drift` — no que ja
+            # existia e mudou de resposta ao ser re-solvado. Medido na base inteira: 1.179
+            # rotulos que o no de hoje nao produz mais, 166 deles ACUSANDO na tela, 92% com o no
+            # mais novo que a decisao. Reparar a mao sem consertar o gancho so adia: o numero
+            # volta a crescer a cada re-solve. Apagar veredito (`vanished`) segue fora do gancho.
+            n = resync_tournament_postflop(tid, apply=True, modo=MODO_PRESERVA)
+            # AY-26 (08/09): o resync acima alcanca so quem o pareamento por ordem prova, e nao
+            # re-deriva score. Quem realinha o resto e
             # `reconcile_tournament_labels` (inclusive o realinhamento AUTO de 03/09), e
             # ninguem o chamava depois da fila drenar: 62 decisoes em prod ficaram acusadas
             # de erro com `best_action` igual a jogada (o card dizia "Erro" ao lado de "o

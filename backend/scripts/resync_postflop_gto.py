@@ -70,6 +70,70 @@ def _norm(v):
     return v if v else None
 
 
+#: Os tres modos de gravacao. Antes eram uma flag do CLI e um `if` cravado dentro do resync por
+#: torneio, e foi essa duplicidade que produziu o furo: o gancho ficou no modo mais conservador
+#: dos tres para sempre, sem que ninguem escolhesse isso.
+MODO_FILL = 'fill'            # so preenche quem nao tinha veredito ('appeared')
+MODO_PRESERVA = 'preserva'    # preenche E corrige rotulo velho, mas NUNCA apaga veredito
+MODO_TOTAL = 'total'          # espelha o motor, inclusive removendo veredito sem no ('vanished')
+
+
+def natureza_da_mudanca(s, f):
+    """'appeared' | 'vanished' | 'label_drift' | 'action_only' | None (nada mudou no gto).
+
+    FONTE UNICA da classificacao: o CLI conta por aqui e o gancho decide por aqui. Enquanto
+    foram duas, o relatorio do CLI dizia `label_drift: 1390` e o gancho nao tinha o conceito.
+    """
+    s_gl, f_gl = _norm(s.get('gto_label')), _norm(f.get('gto_label'))
+    if s_gl and not f_gl:
+        return 'vanished'
+    if f_gl and not s_gl:
+        return 'appeared'
+    if s_gl != f_gl:
+        return 'label_drift'
+    if _norm(f.get('gto_action')) != _norm(s.get('gto_action')):
+        return 'action_only'
+    return None
+
+
+def grava_esta(natureza, modo):
+    """Este par deve ser gravado neste modo?
+
+    `MODO_PRESERVA` e o do gancho automatico: corrigir um rotulo velho e devolver a verdade do
+    no; APAGAR veredito e outra coisa, tira informacao da tela de quem nao pediu nada, e
+    continua sendo decisao de produto (as 727 `vanished` medidas em 10/09), nao de gancho.
+    """
+    if modo == MODO_TOTAL:
+        return True
+    if modo == MODO_FILL:
+        return natureza == 'appeared'
+    if modo == MODO_PRESERVA:
+        return natureza != 'vanished'
+    raise ValueError('modo de resync desconhecido: %r' % (modo,))
+
+
+def diferencas(s, f):
+    """Campos em que o recalculo difere da linha gravada -- os 7 que a gravacao reescreve.
+
+    Regra dos N lugares: o CLI montava esta lista inline e o resync por torneio olhava so
+    `gto_label`. Com uma funcao, "mudou" quer dizer a mesma coisa nos dois caminhos.
+    """
+    def _f4(v):
+        try:
+            return round(float(v), 4)
+        except (TypeError, ValueError):
+            return None
+    d = []
+    if f['label'] != s['label']:                                    d.append('label')
+    if f['best'] != s['best_action']:                               d.append('best_action')
+    if _norm(f['gto_label']) != _norm(s['gto_label']):              d.append('gto_label')
+    if _norm(f['gto_action']) != _norm(s['gto_action']):            d.append('gto_action')
+    if _f4(f.get('played')) != _f4(s.get('gto_played_freq')):       d.append('played_freq')
+    if _f4(f.get('top')) != _f4(s.get('gto_top_freq')):             d.append('top_freq')
+    if _f4(f.get('ev')) != _f4(s.get('ev_loss_bb')):                d.append('ev_loss')
+    return d
+
+
 def _avaliacao_fresca(r):
     """Dict fresco da avaliacao — FONTE UNICA dos dois passos (gancho automatico e CLI).
 
@@ -95,11 +159,16 @@ def _avaliacao_fresca(r):
     }
 
 
-def resync_tournament_postflop(tid, apply=True):
-    """Re-anexa o gto (label/best/gto_label/gto_action) das decisões POSTFLOP de UM torneio,
-    modo FILL-ONLY: só rotula uncovered que ganhou nó ('appeared'); nunca remove nem muda
-    cobertura existente. É o re-attach usado pelo gancho automático quando a fila do torneio
-    drena (corrige a cobertura artificialmente baixa pós-import). Retorna nº de decisões atualizadas.
+def resync_tournament_postflop(tid, apply=True, modo=MODO_PRESERVA):
+    """Re-anexa o gto (label/best/gto_label/gto_action + freq/ev) das decisões POSTFLOP de UM
+    torneio. É o re-attach usado pelo gancho automático quando a fila do torneio drena (corrige
+    a cobertura artificialmente baixa pós-import). Retorna nº de decisões atualizadas.
+
+    O `modo` decide o que pode ser gravado (ver `grava_esta`). O default mudou em 10/09 de
+    fill-only para `MODO_PRESERVA`: o fill-only preenchia o que faltava e deixava intacto o
+    rótulo que o nó não sustentava mais, e o nó muda toda vez que é re-solvado. Medido: 1.179
+    decisões com rótulo velho, 166 acusando na tela sem respaldo, 92% com nó mais novo que a
+    decisão. Apagar veredito (`vanished`) continua fora do alcance do gancho, nos três modos.
 
     Self-contained (abre/fecha a própria conexão) pra ser chamável do worker do solver."""
     conn = get_conn()
@@ -140,7 +209,11 @@ def resync_tournament_postflop(tid, apply=True):
 
         stored = defaultdict(list)
         for r in conn.execute(
-            "SELECT id, hand_id, street, action_taken, label, best_action, gto_label, gto_action "
+            "SELECT id, hand_id, street, action_taken, label, best_action, gto_label, gto_action, "
+            # freq/ev entram no SELECT porque `diferencas` compara os 7 campos que a gravação
+            # reescreve: sem eles a linha-quimera de 12/08 (4 campos novos, freq/ev velhos)
+            # nunca seria detectada por aqui.
+            "gto_played_freq, gto_top_freq, ev_loss_bb, ev_loss_source "
             # ORDER BY id é PRÉ-REQUISITO do pareamento por ordem abaixo. Sem ele o Postgres não
             # garante ordem nenhuma, e parear duas listas cuja ordem não foi provada é como se
             # grava um solve no `decision_id` errado.
@@ -153,8 +226,9 @@ def resync_tournament_postflop(tid, apply=True):
         updated = 0
         for key, srows in stored.items():
             for s, f in _pares_por_ordem(srows, fresh.get(key, [])):
-                # FILL-ONLY: só 'appeared' (era uncovered e ganhou nó). Nunca toca o que já tem gto.
-                if _norm(s['gto_label']) or not f['gto_label']:
+                if not diferencas(s, f):
+                    continue
+                if not grava_esta(natureza_da_mudanca(s, f), modo):
                     continue
                 if apply:
                     conn.execute(
@@ -179,9 +253,17 @@ def main():
     # nem muda veredito de spot já coberto (label_drift). É o re-lookup seguro pro cron noturno.
     ap.add_argument("--fill-only", action="store_true",
                     help="só rotula uncovered que ganhou nó; não mexe no que já tem gto_label")
+    # --sem-vanished: aplica 'appeared' e 'label_drift', mas NUNCA remove cobertura de quem ja
+    # tem veredito. E o meio entre o --fill-only (que ignora o drift, causa do descompasso medido
+    # em 10/09: 1.179 rotulos velhos, 166 acusando na tela sem o no sustentar) e o apply completo
+    # (que tiraria veredito de 727 decisoes de uma vez — defensavel, mas decisao de produto).
+    ap.add_argument("--sem-vanished", action="store_true",
+                    help="nao remove cobertura de quem ja tem gto_label; corrige drift e preenche")
     ap.add_argument("--tid", type=int, default=None,
                     help="reconcilia SÓ este torneio (id interno) — rápido, por torneio")
     args = ap.parse_args()
+    # As flags do CLI e o gancho automatico escolhem entre os MESMOS tres modos.
+    modo = MODO_FILL if args.fill_only else (MODO_PRESERVA if args.sem_vanished else MODO_TOTAL)
 
     def _in_scope(st):
         if args.street == "all":
@@ -207,6 +289,7 @@ def main():
 
     changes = Counter()           # por campo
     kinds = Counter()             # vanished/appeared/label_drift/action_only
+    tela = Counter()              # o que o JOGADOR passa a ver: acusacao que sai/entra
     updated = skipped = 0
     examples = []
     for trow in tournaments:
@@ -267,32 +350,26 @@ def main():
                 continue
             for s, f in pares:
                 s_gl, s_ga = _norm(s['gto_label']), _norm(s['gto_action'])
-                diffs = []
-                if f['label'] != s['label']:      diffs.append('label')
-                if f['best'] != s['best_action']: diffs.append('best_action')
-                if f['gto_label'] != s_gl:        diffs.append('gto_label')
-                if f['gto_action'] != s_ga:       diffs.append('gto_action')
-                # Freq e EV tambem detectam mudanca — sem isto, uma linha cujos 4 campos ja
-                # batem mas cujo freq/ev ficou de outra avaliacao (a quimera de 12/08) nunca
-                # seria reescrita, e a proxima rodada nao a consertaria.
-                def _f4(v):
-                    try: return round(float(v), 4)
-                    except (TypeError, ValueError): return None
-                if _f4(f.get('played')) != _f4(s.get('gto_played_freq')): diffs.append('played_freq')
-                if _f4(f.get('top')) != _f4(s.get('gto_top_freq')):       diffs.append('top_freq')
-                if _f4(f.get('ev')) != _f4(s.get('ev_loss_bb')):          diffs.append('ev_loss')
+                diffs = diferencas(s, f)
                 if not diffs:
                     continue
-                # classifica a natureza da mudança de gto (conta TODOS pra o relatório, inclusive
-                # os que o --fill-only vai pular — assim você vê quantos vanished/drift existem).
-                is_appeared = (not s_gl) and bool(f['gto_label'])   # era uncovered, ganhou nó
-                if s_gl and not f['gto_label']:        kinds['vanished'] += 1
-                elif is_appeared:                      kinds['appeared'] += 1
-                elif s_gl != f['gto_label']:           kinds['label_drift'] += 1
-                elif 'gto_action' in diffs:            kinds['action_only'] += 1
-                # --fill-only: só processa os 'appeared' (nunca remove/muda cobertura existente).
-                if args.fill_only and not is_appeared:
+                # A natureza conta TODOS para o relatorio, inclusive os que o modo vai pular —
+                # e assim que se ve quantos vanished/drift existem antes de escolher o modo.
+                nat = natureza_da_mudanca(s, f)
+                if nat:
+                    kinds[nat] += 1
+                if not grava_esta(nat, modo):
                     continue
+                # Efeito NA TELA, que e o que decide se o reparo vale: sem isto o relatorio conta
+                # linhas TOCADAS e nao diz o que o jogador passa a ver.
+                _ACUSA = ('gto_critical', 'gto_minor_deviation')
+                _de, _para = s_gl, f['gto_label']
+                if _de in _ACUSA and _para not in _ACUSA:
+                    tela['acusacao_sai'] += 1
+                elif _de not in _ACUSA and _para in _ACUSA:
+                    tela['acusacao_entra'] += 1
+                elif _de != _para and _de and _para:
+                    tela['severidade_muda'] += 1
                 updated += 1
                 for d in diffs:
                     changes[d] += 1
@@ -315,8 +392,10 @@ def main():
     print(f"\nReconciliados: {updated} | pulados (ambíguo): {skipped}")
     print("Por campo:", dict(changes))
     print("Natureza :", dict(kinds))
+    print("Efeito NA TELA:", dict(tela))
     if examples:
         print("Exemplos:\n" + "\n".join(examples))
+    print(f"Modo     : {modo}")
     print(f"\n{'APLICADO' if args.apply else 'DRY-RUN (use --apply)'}")
 
 
