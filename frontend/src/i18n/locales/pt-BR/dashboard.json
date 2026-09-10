@@ -1055,9 +1055,6 @@
       "solverShort": "Solver",
       "divergencesNote": "Mãos com {{n}} ou mais ocorrências e {{pp}} pontos ou mais de distância do solver.",
       "neverDealt": "não recebeu esta mão",
-      "behind_one": "Em mesas de {{mesa}}, ainda age só {{count}} jogador depois de você. Quanto menos gente por agir, mais o solver abre.",
-      "behind_other": "Em mesas de {{mesa}}, ainda agem {{count}} jogadores depois de você. Quanto menos gente por agir, mais o solver abre.",
-      "behindMixed": "Neste recorte, a quantidade de jogadores que ainda agem depois de você varia de mão para mão. Quanto menos gente por agir, mais o solver abre.",
       "seat": "assento",
       "recorte": "Você no {{pos}}, em mesas de {{mesa}} jogadores, com {{stack}}. {{n}} vezes com o pote intacto.",
       "stackWords": {
@@ -1077,7 +1074,10 @@
       "noChartCompare": "Sem range do solver para este recorte, então não há com o que comparar.",
       "yourHands": "Suas mãos",
       "solverRange": "Range do solver",
-      "rangeSize": "abre {{pct}}% de todas as mãos possíveis"
+      "rangeSize": "abre {{pct}}% de todas as mãos possíveis",
+      "behindOne": "Neste assento ainda agem {{count}} jogadores depois de você. Quanto menos gente por agir, mais o solver abre.",
+      "behindRange": "Aqui você é o primeiro a agir em mesas de tamanhos diferentes, então o número de jogadores por agir varia de {{min}} a {{max}}, e na maioria das mãos ({{pct}}%) são {{top}}. Quanto menos gente por agir, mais o solver abre.",
+      "behindUnknown": "Quanto menos gente por agir depois de você, mais o solver abre."
     },
     "tablePlayers": "{{n}} jogadores",
     "seatAbsent": "Não existe com {{mesa}} jogadores na mão. Quem agiu nessa vez da fila está no assento seguinte.",

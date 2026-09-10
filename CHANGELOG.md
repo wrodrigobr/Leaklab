@@ -4,6 +4,35 @@ Todas as mudanÃ§as notÃ¡veis neste projeto serÃ£o documentadas aqui.
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
+## A matriz perde o filtro de jogadores: sobram assento e stack, e o UTG declara a faixa (10/09)
+
+- **Pedido do Rullian, com o PokerTracker como argumento:** *"essa quantidade de informacoes na
+  tela complicaram demais a interface... essa parte de selecionar numero de jogadores e estranha.
+  Considerando o PokerTracker, nao existe essa separacao por numero de jogadores. Ele consegue
+  encaixar a mao na posicao especifica e trazer essa stat de maneira geral."*
+- **Medido no acervo dele ANTES de tirar** (21 linhas, do UTG ao SB, nas 3 faixas de stack),
+  comparando o recorte com mesa fixa contra somar tudo: diferenca no numero do JOGADOR mediana
+  0,9 pp (p90 3,1 / max 4,2); no numero do SOLVER mediana 0,6 pp (p90 3,0 / max 3,9); e a
+  **amostra por linha multiplica por 2,3 na mediana, ate 3,5**.
+- **Por que custa tao pouco: o problema e inteiramente do UTG.** Do LJ para o botao o assento e
+  contado a partir do botao e nao muda com o tamanho da mesa — a amplitude da carta e ZERO em LJ,
+  HJ, CO, BTN e SB. O UTG+1 so existe em mesa 8 e 9, com duas cartas vizinhas (18,4% e 21,1%,
+  2,7 pp) e 98% do volume dele numa so. O UTG e o unico assento que existe em TODA mesa: cinco
+  cartas possiveis, de 16,4% a 29,5%, 13,1 pp. **Um assento com AVISO, em vez de um filtro em
+  toda tela.**
+- `composicao_da_carta` no payload da matriz: quais cartas o recorte usou e com que peso. A linha
+  sob a grade do solver deixa de calar quando ha mais de uma e passa a DECLARAR a faixa ("o
+  numero de jogadores por agir varia de 4 a 7, e na maioria das maos, 39%, sao 7").
+- **Defeito que apareceu escrevendo:** `Math.min()` de lista vazia e Infinity, e a linha ia
+  mostrar "de Infinity a -Infinity" quando o payload nao trouxesse a composicao. Agora cala e diz
+  so a regra. Guarda no teste.
+- `?mesa=` continua ACEITO na API para quem quiser o recorte; so saiu da tela. E `stack` segue
+  OBRIGATORIO: profundidade muda a carta em todo assento, nao so no UTG.
+- Guardas novos quebrados de proposito, os dois acusaram: a matriz voltando a fixar a mesa, e a
+  tela parando de declarar a faixa. Suites dos arquivos afetados verdes (matriz 9/9, seletor 9/9,
+  rfi 28/28, agrupada 4/4, balde 6/6, carta rasa 9/9) e HUD do front 147/147.
+
+---
 ## A grade soma tudo, os filtros vao para o modal, e a exclusao fica com o admin (09/09, noite)
 
 - **Correcao de rumo do meu proprio conserto da tarde.** Fixar mesa e stack nos TRES endpoints

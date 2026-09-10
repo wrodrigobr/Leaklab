@@ -264,19 +264,24 @@ def test_a_grade_soma_tudo_e_a_matriz_exige_o_recorte():
         r = c.get('/metrics/player-stats/by-position?days=3650&%s' % q, headers=h)
         assert r.status_code == 200, (q, r.status_code)
         assert r.get_json()['mesa'] is None or q == '', (q, r.get_json()['mesa'])
-    # na MATRIZ, nao: ela mostra UM numero, e um numero precisa dos tres fixos
-    assert c.get('/metrics/player-stats/by-position/hands?position=UTG&mesa=todas', headers=h).status_code == 400
+    # Na MATRIZ o STACK segue obrigatorio (profundidade muda a carta em TODO assento), mas o
+    # filtro de jogadores saiu em 10/09 (Rullian: "essa parte de selecionar numero de jogadores
+    # e estranha... o PokerTracker nao tem essa separacao"). Medido antes: somar os tamanhos
+    # custa mediana 0,6 pp no numero do solver e multiplica a amostra por 2,3, e o custo esta
+    # concentrado no UTG — o unico assento que existe em toda mesa.
     assert c.get('/metrics/player-stats/by-position/hands?position=UTG&stack=todos', headers=h).status_code == 400
+    assert c.get('/metrics/player-stats/by-position/hands?position=UTG&days=3650&mesa=todas', headers=h).status_code == 200
     # tamanho desconhecido e 400 tambem, nunca "a mais jogada" caladamente sob o rotulo errado
     ruim = c.get('/metrics/player-stats/by-position?days=3650&mesa=10max', headers=h)
     assert ruim.status_code == 400 and 'mesas' in ruim.get_json(), ruim.get_data(as_text=True)[:200]
     assert c.get('/metrics/player-stats/by-position/hands?position=UTG&mesa=10max', headers=h).status_code == 400
-    assert c.get('/metrics/player-stats/by-position/hands?position=UTG&mesa=todas', headers=h).status_code == 400
     # A MATRIZ, sem `?mesa=`, abre na mesa mais jogada e DECLARA. A grade nao: ela soma tudo.
     mat = c.get('/metrics/player-stats/by-position/hands?position=UTG&days=3650', headers=h).get_json()
-    assert mat['mesa'] == '8max', mat['mesa']                      # a mais jogada
-    assert mat['assento_da_carta'] is not None, mat                # recorte unico => tem referencia
-    assert mat['n'] == 30, mat['n']                                # so as maos de mesa 8, nao as 40
+    assert mat['mesa'] is None, mat['mesa']                        # a matriz nao fixa mais a mesa
+    assert mat['n'] == 40, mat['n']                                # soma as duas mesas (10 + 30)
+    # o UTG de mesa 9 e o de mesa 8 usam cartas diferentes: a tela DECLARA a faixa
+    assert mat['assento_da_carta'] is None, mat['assento_da_carta']
+    assert sorted(x['assento'] for x in mat['composicao_da_carta']) == ['UTG', 'UTG+1'], mat['composicao_da_carta']
     grade = c.get('/metrics/player-stats/by-position?days=3650', headers=h).get_json()
     assert grade['mesa'] is None and grade['mesa_auto'] is False, (grade['mesa'], grade['mesa_auto'])
     assert next(l['hands'] for l in grade['positions'] if l['position'] == 'UTG') == 40

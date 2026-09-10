@@ -1747,10 +1747,13 @@ def _recorte_da_matriz(position: str | None = None):
 
     O stack sugerido e calculado DENTRO da mesa em vigor: a faixa mais jogada de "todas as
     mesas" pode nao ter mao nenhuma na mesa escolhida."""
-    # "todas"/"todos" nao existem AQUI, e a recusa tem de ser explicita: os validadores
-    # compartilhados os traduzem para None, e None na matriz voltaria a somar contextos em
-    # silencio — o defeito que ela existe para nao ter. Ver `_tamanho_de_mesa_da_query`.
-    for chave, proibido in (('mesa', 'todas'), ('stack', 'todos')):
+    # So o STACK e obrigatorio aqui. O filtro de JOGADORES saiu em 10/09 (Rullian: "essa parte
+    # de selecionar numero de jogadores e estranha... o PokerTracker nao tem essa separacao"),
+    # depois de medir que somar mesas custa mediana 0,6 pp no numero do solver e multiplica a
+    # amostra por 2,3. O custo real esta concentrado no UTG (5 cartas, 13,1 pp de amplitude), e
+    # ali a tela DECLARA a faixa via `composicao_da_carta` em vez de pedir um filtro.
+    # `stack=todos` continua recusado: profundidade muda a carta em todo assento.
+    for chave, proibido in (('stack', 'todos'),):
         if (request.args.get(chave) or '').strip() == proibido:
             return None, (jsonify({'error': '%s=%s nao vale na matriz: ela mostra UM numero, '
                                             'e um numero precisa de assento, jogadores e stack fixos.'
@@ -1767,10 +1770,10 @@ def _recorte_da_matriz(position: str | None = None):
     # As distribuicoes contam O ASSENTO em vigor: os chips existem para dizer onde ha mao, e
     # contar todos os assentos junto os fazia prometer volume que o recorte nao tem (dono,
     # 09/09: o chip dizia 114 e o BTN de 9 jogadores tinha 1).
-    mesa_auto = 'mesa' not in request.args
+    # A matriz NAO fixa mais o tamanho de mesa: `?mesa=` segue aceito para quem quiser o
+    # recorte, mas ausente = todos os tamanhos (era: a mais jogada). O stack continua obrigatorio.
+    mesa_auto = False
     dist_mesas = mesas_do_jogador(g.user_id, days, last_n=last_n, position=position)
-    if mesa_auto:
-        mesa = dist_mesas.get('sugerida')
     stack_auto = 'stack' not in request.args
     dist_stacks = faixas_do_jogador(g.user_id, days, last_n=last_n, mesa=mesa, position=position)
     if stack_auto:

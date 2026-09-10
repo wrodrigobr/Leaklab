@@ -1055,9 +1055,6 @@
       "solverShort": "Solver",
       "divergencesNote": "Manos con {{n}} o más ocurrencias y {{pp}} puntos o más de distancia del solver.",
       "neverDealt": "no recibiste esta mano",
-      "behind_one": "En mesas de {{mesa}}, queda solo {{count}} jugador por actuar después de vos. Cuantos menos jugadores por actuar, más abre el solver.",
-      "behind_other": "En mesas de {{mesa}}, quedan {{count}} jugadores por actuar después de vos. Cuantos menos jugadores por actuar, más abre el solver.",
-      "behindMixed": "En este recorte, la cantidad de jugadores que todavía actúan después de vos varía de mano en mano. Cuantos menos jugadores por actuar, más abre el solver.",
       "seat": "asiento",
       "recorte": "Vos en {{pos}}, en mesas de {{mesa}} jugadores, con {{stack}}. {{n}} veces con el bote sin abrir.",
       "stackWords": {
@@ -1077,7 +1074,10 @@
       "noChartCompare": "Sin range del solver para este recorte, así que no hay con qué comparar.",
       "yourHands": "Tus manos",
       "solverRange": "Range del solver",
-      "rangeSize": "abre el {{pct}}% de todas las manos posibles"
+      "rangeSize": "abre el {{pct}}% de todas las manos posibles",
+      "behindRange": "Acá sos el primero en actuar en mesas de distinto tamaño, así que la cantidad de jugadores por actuar va de {{min}} a {{max}}, y en la mayoría de las manos ({{pct}}%) son {{top}}. Cuantos menos jugadores por actuar, más abre el solver.",
+      "behindOne": "En este asiento quedan {{count}} jugadores por actuar después de vos. Cuantos menos jugadores por actuar, más abre el solver.",
+      "behindUnknown": "Cuantos menos jugadores por actuar después de vos, más abre el solver."
     },
     "tablePlayers": "{{n}} jugadores",
     "seatAbsent": "No existe con {{mesa}} jugadores en la mano. Quien actuó en ese turno está en el asiento siguiente.",

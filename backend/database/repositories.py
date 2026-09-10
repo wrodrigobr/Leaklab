@@ -3215,6 +3215,15 @@ def get_position_open_matrix(user_id: int, position: str, days: int = 90,
         cartas_usadas[r['pos_chart']] = cartas_usadas.get(r['pos_chart'], 0) + 1
     composicao = [{'mesa': k, 'n': v, 'pct': round(100.0 * v / total)} for k, v in sorted(comp.items(), key=lambda x: -x[1])] if total else []
     assento_da_carta = next(iter(cartas_usadas)) if len(cartas_usadas) == 1 else None
+    # Quando o recorte usa MAIS DE UMA carta (so acontece no UTG na pratica), a tela declara a
+    # FAIXA em vez de calar: [{atras, n, pct}], da mais usada para a menos. Medido em 10/09 no
+    # acervo do fundador: o UTG dele passa por 5 cartas (16,4% a 29,5%), o UTG+1 por 2 vizinhas
+    # (18,4% e 21,1%) e do LJ para o botao por UMA so. Por isso o aviso e do UTG, nao da tela.
+    _n_carta = sum(cartas_usadas.values()) or 1
+    composicao_da_carta = [
+        {'assento': k, 'atras': _jog_atras(k), 'n': v, 'pct': round(100.0 * v / _n_carta)}
+        for k, v in sorted(cartas_usadas.items(), key=lambda x: -x[1])
+    ]
     return {
         'position': position, 'stack_band': stack_band, 'mesa': mesa,
         'n': total,
@@ -3232,6 +3241,7 @@ def get_position_open_matrix(user_id: int, position: str, days: int = 90,
         # porque o UTG de mesa 7 tem 6 atras e nao 8. A conta estava certa e muda a tela.
         'assento_da_carta': assento_da_carta,
         'jogadores_atras': _jog_atras(assento_da_carta) if assento_da_carta else None,
+        'composicao_da_carta': composicao_da_carta,
         'composicao': composicao,
         'cells': cells,
         'divergencias': divergencias,

@@ -87,9 +87,7 @@ export function MatrizDeAbertura({ position, stack, mesa, dados, erro, faixas, m
   // A distribuicao do PROPRIO modal vem primeiro, e ela conta o ASSENTO em vigor (dono,
   // 09/09: o chip dizia 114 maos e o recorte de BTN entregou 1 — os 114 eram de todos os
   // assentos com 9 jogadores). As props sao so fallback para quem monta o modal sem elas.
-  const mesasProprias = dados?.distribuicao_de_mesas?.mesas ?? [];
   const faixasProprias = (dados?.distribuicao_de_stacks?.faixas ?? []).map((f) => f.faixa);
-  const mesasChips = mesasProprias.length ? mesasProprias : (mesas ?? []);
   const faixasChips = (faixasProprias.length ? faixasProprias : (faixas ?? [])) as StackBand[];
   const maosNaFaixa = (f: StackBand) => (dados?.distribuicao_de_stacks?.faixas ?? []).find((x) => x.faixa === f)?.n ?? null;
 
@@ -111,7 +109,6 @@ export function MatrizDeAbertura({ position, stack, mesa, dados, erro, faixas, m
       {rotulo}
     </button>
   );
-  const mesaRotulo = (m: TableSize) => t("posProfile.tablePlayers", { n: t(`posProfile.tableSize.${m}`) });
   const seletores = (
     <div className="mb-2 flex flex-wrap items-start gap-x-5 gap-y-2" data-testid="matriz-seletores">
       <div className="flex flex-col gap-1">
@@ -123,15 +120,11 @@ export function MatrizDeAbertura({ position, stack, mesa, dados, erro, faixas, m
           {chip(false, undefined, "BB", "matriz-pos-BB", { title: t("posProfile.matrix.bbNoRfi"), desligado: true })}
         </div>
       </div>
-      {mesasChips.length > 0 && (
-        <div className="flex flex-col gap-1">
-          <span className={ROTULO_GRUPO}>{t("posProfile.table")}</span>
-          <div className="flex flex-wrap gap-1.5">
-            {mesasChips.map((m) => chip(m.mesa === mesaEmVigor, onMudar ? () => onMudar(position, stackEmVigor, m.mesa) : undefined,
-              <>{mesaRotulo(m.mesa)}<span className="ml-1 normal-case tracking-normal opacity-60">{m.pct}%</span></>, `matriz-mesa-${m.mesa}`))}
-          </div>
-        </div>
-      )}
+      {/* Sem chip de jogadores (Rullian, 10/09: "essa parte de selecionar numero de jogadores e
+          estranha... o PokerTracker nao tem essa separacao"). Medido antes de tirar, no acervo
+          dele: somar os tamanhos custa mediana 0,6 pp no numero do solver e multiplica a amostra
+          por 2,3. O custo real e SO do UTG, o unico assento que existe em toda mesa — e ali a
+          linha abaixo da grade declara a faixa em vez de pedir um filtro. */}
       {faixasChips.length > 0 && (
         <div className="flex flex-col gap-1">
           <span className={ROTULO_GRUPO}>{t("posProfile.stack")}</span>
@@ -219,9 +212,18 @@ export function MatrizDeAbertura({ position, stack, mesa, dados, erro, faixas, m
           <RangeGrid range={solver} compacta />
           {dados.solver_pct_todas != null && (
             <p className="mt-1.5 font-mono text-[9px] leading-snug text-muted-foreground/70" data-testid="matriz-referencia">
-              {dados.jogadores_atras != null && mesaEmVigor
-                ? t("posProfile.matrix.behind", { count: dados.jogadores_atras, mesa: t(`posProfile.tableSize.${mesaEmVigor}`) })
-                : t("posProfile.matrix.behindMixed")}
+              {(() => {
+                if (dados.jogadores_atras != null) return t("posProfile.matrix.behindOne", { count: dados.jogadores_atras });
+                // `Math.min()` de lista vazia e Infinity, e a tela mostrava "de Infinity a
+                // -Infinity". Sem composicao nao ha o que declarar: cala em vez de inventar.
+                const atras = (dados.composicao_da_carta ?? []).map((x) => x.atras).filter((x): x is number => x != null);
+                if (!atras.length) return t("posProfile.matrix.behindUnknown");
+                return t("posProfile.matrix.behindRange", {
+                  min: Math.min(...atras), max: Math.max(...atras),
+                  pct: dados.composicao_da_carta?.[0]?.pct ?? 0,
+                  top: dados.composicao_da_carta?.[0]?.atras ?? 0,
+                });
+              })()}
             </p>
           )}
         </div>

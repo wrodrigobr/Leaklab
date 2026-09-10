@@ -1064,6 +1064,10 @@ export interface PositionOpenMatrixResponse {
   distribuicao_de_stacks?: { faixas: Array<{ faixa: StackBand; n: number; pct: number }>; sugerida: StackBand | null; n: number };
   /** assentos que EXISTEM na mesa em vigor, sem a BB (mesa 8 tem UTG+1; mesa 6 nao tem LJ) */
   assentos?: string[];
+  /** Quais cartas do solver o recorte usou, e com que peso. Tem mais de um item so quando o
+   *  assento existe em mesas de tamanhos diferentes — na pratica, so o UTG. Serve para a tela
+   *  DECLARAR a faixa de jogadores por agir em vez de pedir um filtro de numero de jogadores. */
+  composicao_da_carta?: Array<{ assento: string; atras: number | null; n: number; pct: number }>;
   n: number;
   /** null abaixo de `amostra_minima`: com 10 oportunidades, "voce abriu 0%" e ruido */
   voce_pct: number | null;

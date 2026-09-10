@@ -154,12 +154,14 @@ def test_o_stack_e_filtro_obrigatorio_e_abre_na_faixa_com_mais_maos():
     from database.auth import generate_token
     h = {'Authorization': 'Bearer %s' % generate_token(uid, 'player')}
     c = app.test_client()
-    # sem filtros: mesa mais jogada (6) e, dentro dela, a faixa com mais maos (<20)
+    # Sem filtros a matriz NAO fixa mais o tamanho de mesa (10/09, Rullian): ela soma tudo e so
+    # escolhe a faixa de stack, que e a que muda a carta em todo assento. A faixa com mais maos
+    # do CO somando as duas mesas e <20 (10 maos de mesa 6 contra 9 de mesa 8).
     m = c.get('/metrics/player-stats/by-position/hands?position=CO&days=3650', headers=h).get_json()
-    assert m['mesa'] == '6max' and m['stack_band'] == '<20' and m['stack_auto'] is True, (m['mesa'], m['stack_band'])
+    assert m['mesa'] is None and m['stack_band'] == '<20' and m['stack_auto'] is True, (m['mesa'], m['stack_band'])
     assert m['n'] == 10, m['n']
-    assert [f['faixa'] for f in m['distribuicao_de_stacks']['faixas']] == ['<20']
-    # mesa fixada em 8: a faixa sugerida muda junto, porque e calculada dentro da mesa
+    assert [f['faixa'] for f in m['distribuicao_de_stacks']['faixas']] == ['40+', '20-40', '<20']
+    # `?mesa=` continua ACEITO para quem quiser o recorte, e ai a faixa sugerida muda junto
     m8 = c.get('/metrics/player-stats/by-position/hands?position=CO&days=3650&mesa=8max', headers=h).get_json()
     assert m8['stack_band'] == '40+' and m8['stack_auto'] is True and m8['n'] == 6, (m8['stack_band'], m8['n'])
     # stack explicito vence e o payload diz que nao foi automatico
@@ -176,6 +178,47 @@ def test_o_stack_e_filtro_obrigatorio_e_abre_na_faixa_com_mais_maos():
                 '/metrics/player-stats/by-position/detail?position=CO&stat=three_bet&stack=todos'):
         assert c.get(url, headers=h).status_code == 200, url
     assert c.get('/metrics/player-stats/by-position/hands?position=CO&stack=todos', headers=h).status_code == 400
+
+
+def test_a_matriz_soma_os_tamanhos_de_mesa_e_DECLARA_a_faixa_de_jogadores_por_agir():
+    """Rullian, 10/09: "essa parte de selecionar numero de jogadores e estranha... considerando o
+    PokerTracker, nao existe essa separacao por numero de jogadores".
+
+    Medido no acervo dele ANTES de tirar (21 linhas, do UTG ao SB, 3 faixas de stack): somar os
+    tamanhos custa mediana 0,6 pp no numero do solver (max 3,9) e MULTIPLICA a amostra por 2,3.
+    O custo esta concentrado no UTG, o unico assento que existe em TODA mesa: 5 cartas possiveis,
+    de 16,4% a 29,5%. Do LJ para o botao a carta e UMA so (o assento conta do botao), e o UTG+1
+    so existe em mesa 8 e 9, com duas cartas vizinhas.
+
+    Entao a tela declara a faixa NO UTG em vez de pedir um filtro em toda parte. `stack` continua
+    obrigatorio: profundidade muda a carta em todo assento."""
+    from api.app import app
+    from database.auth import generate_token
+    # o mesmo UTG em mesa 9 (8 por agir) e em mesa 6 (5 por agir), e um BTN de controle
+    uid = _semeia([_m('UTG', 'AsKs', 'raise', stack=45, num_players=9) for _ in range(6)]
+                  + [_m('UTG', 'AsKs', 'raise', stack=45, num_players=6) for _ in range(4)]
+                  + [_m('BTN', 'AsKs', 'raise', stack=45, num_players=6) for _ in range(5)])
+    c = app.test_client()
+    h = {'Authorization': 'Bearer %s' % generate_token(uid, 'player')}
+
+    u = c.get('/metrics/player-stats/by-position/hands?position=UTG&days=3650', headers=h).get_json()
+    assert u['mesa'] is None, u['mesa']                       # nao fixa mais o tamanho
+    assert u['n'] == 10, u['n']                               # soma as duas mesas
+    assert u['assento_da_carta'] is None                      # mais de uma carta: nao promete uma
+    comp = {x['assento']: x for x in u['composicao_da_carta']}
+    assert set(comp) == {'UTG', 'LJ'}, comp                   # mesa 9 -> UTG; mesa 6 -> LJ
+    assert comp['UTG']['atras'] == 8 and comp['LJ']['atras'] == 5, comp
+    assert comp['UTG']['n'] == 6 and comp['LJ']['n'] == 4, comp
+
+    # o BTN nao mistura: o assento conta do botao e a carta e uma so
+    b = c.get('/metrics/player-stats/by-position/hands?position=BTN&days=3650', headers=h).get_json()
+    assert b['assento_da_carta'] == 'BTN' and b['jogadores_atras'] == 2, (b['assento_da_carta'], b['jogadores_atras'])
+    assert len(b['composicao_da_carta']) == 1, b['composicao_da_carta']
+
+    # o stack SEGUE obrigatorio, e `?mesa=` continua aceito para quem quiser o recorte
+    assert c.get('/metrics/player-stats/by-position/hands?position=UTG&stack=todos', headers=h).status_code == 400
+    fix = c.get('/metrics/player-stats/by-position/hands?position=UTG&days=3650&mesa=9max', headers=h).get_json()
+    assert fix['n'] == 6 and fix['assento_da_carta'] == 'UTG', (fix['n'], fix['assento_da_carta'])
 
 
 def test_os_chips_do_modal_contam_O_ASSENTO_e_nao_a_mesa_toda():
@@ -196,13 +239,14 @@ def test_os_chips_do_modal_contam_O_ASSENTO_e_nao_a_mesa_toda():
     h = {'Authorization': 'Bearer %s' % generate_token(uid, 'player')}
 
     u = c.get('/metrics/player-stats/by-position/hands?position=UTG&days=3650', headers=h).get_json()
-    assert u['mesa'] == '9max' and u['stack_band'] == '40+' and u['n'] == 7, (u['mesa'], u['stack_band'], u['n'])
+    # a mesa nao e mais fixada (10/09); o stack sim, e os chips contam o ASSENTO
+    assert u['mesa'] is None and u['stack_band'] == '40+' and u['n'] == 7, (u['mesa'], u['stack_band'], u['n'])
     assert [(x['mesa'], x['n']) for x in u['distribuicao_de_mesas']['mesas']] == [('9max', 7)], u['distribuicao_de_mesas']
     assert [(x['faixa'], x['n']) for x in u['distribuicao_de_stacks']['faixas']] == [('40+', 7)], u['distribuicao_de_stacks']
 
     b = c.get('/metrics/player-stats/by-position/hands?position=BTN&days=3650', headers=h).get_json()
-    # o modal do BTN abre no recorte DELE, nao no do UTG (que tem mais volume no total)
-    assert b['mesa'] == '6max' and b['stack_band'] == '<20' and b['n'] == 4, (b['mesa'], b['stack_band'], b['n'])
+    # o modal do BTN abre na FAIXA dele, nao na do UTG (que tem mais volume no total)
+    assert b['mesa'] is None and b['stack_band'] == '<20' and b['n'] == 4, (b['mesa'], b['stack_band'], b['n'])
     assert [(x['mesa'], x['n']) for x in b['distribuicao_de_mesas']['mesas']] == [('6max', 4)], b['distribuicao_de_mesas']
     # e o chip NAO oferece a mesa de 9, onde o BTN nao tem mao nenhuma
     assert '9max' not in [x['mesa'] for x in b['distribuicao_de_mesas']['mesas']]

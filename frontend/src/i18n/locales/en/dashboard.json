@@ -1055,9 +1055,6 @@
       "solverShort": "Solver",
       "divergencesNote": "Hands with {{n}} or more occurrences and {{pp}} points or more from the solver.",
       "neverDealt": "never dealt this hand",
-      "behind_one": "At {{mesa}}-handed tables, only {{count}} player still acts after you. The fewer players left to act, the wider the solver opens.",
-      "behind_other": "At {{mesa}}-handed tables, {{count}} players still act after you. The fewer players left to act, the wider the solver opens.",
-      "behindMixed": "In this slice, the number of players still acting after you varies from hand to hand. The fewer players left to act, the wider the solver opens.",
       "seat": "seat",
       "recorte": "You in the {{pos}}, at {{mesa}}-handed tables, with {{stack}}. {{n}} times with an unopened pot.",
       "stackWords": {
@@ -1077,7 +1074,10 @@
       "noChartCompare": "No solver range for this slice, so there is nothing to compare against.",
       "yourHands": "Your hands",
       "solverRange": "Solver's range",
-      "rangeSize": "opens {{pct}}% of every possible hand"
+      "rangeSize": "opens {{pct}}% of every possible hand",
+      "behindOne": "In this seat, {{count}} players still act after you. The fewer players left to act, the wider the solver opens.",
+      "behindRange": "Here you act first at tables of different sizes, so the number of players left to act ranges from {{min}} to {{max}}, and in most hands ({{pct}}%) it is {{top}}. The fewer players left to act, the wider the solver opens.",
+      "behindUnknown": "The fewer players left to act after you, the wider the solver opens."
     },
     "tablePlayers": "{{n}} players",
     "seatAbsent": "Does not exist with {{mesa}} players dealt in. Whoever acted in that turn of the order is in the next seat.",
