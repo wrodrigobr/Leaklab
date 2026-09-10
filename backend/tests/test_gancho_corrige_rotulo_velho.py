@@ -92,31 +92,31 @@ def _semeia():
     for t in ('decisions', 'tournaments', 'users', 'gto_tournament_queue', 'gto_solver_queue'):
         conn.execute('DELETE FROM %s' % t)
     conn.execute(_adapt("INSERT INTO users (id, username, email, password_hash) "
-                        "VALUES (1,'u','u@e.st','h')"))
+                        "VALUES (9001,'u','u@e.st','h')"))
     conn.execute(_adapt("INSERT INTO tournaments (id, user_id, tournament_id, tournament_name, "
                         "hero, raw_text, labels_reconciled_at) "
-                        "VALUES (1, 1, 'T1', 'Torneio 1', 'Hero', 'texto qualquer', "
+                        "VALUES (9001, 9001, 'T1', 'Torneio 1', 'Hero', 'texto qualquer', "
                         "'2026-09-01 00:00:00')"))
     linhas = [
         # DRIFT: o no de hoje diz gto_correct, a tela ainda acusa gto_critical
-        (1, 'H1', 'turn',  'bet',   'clear_mistake', 'check', 'gto_critical', 'check'),
+        (9001, 'H1', 'turn',  'bet',   'clear_mistake', 'check', 'gto_critical', 'check'),
         # VANISHED: a avaliacao fresca nao tem gto; o veredito NAO pode ser apagado pelo gancho
-        (2, 'H2', 'flop',  'check', 'correct',       'check', 'gto_correct',  'check'),
+        (9002, 'H2', 'flop',  'check', 'correct',       'check', 'gto_correct',  'check'),
         # APPEARED: sem veredito no banco (mas COM label do caminho sem gto, que e NOT NULL),
         # e com no agora
-        (3, 'H3', 'river', 'call',  'correct',       'call',  None,           None),
+        (9003, 'H3', 'river', 'call',  'correct',       'call',  None,           None),
     ]
     for did, hid, st, act, label, best, gl, ga in linhas:
         conn.execute(_adapt(
             "INSERT INTO decisions (id, tournament_id, hand_id, street, hero_cards, board, "
             "action_taken, best_action, gto_action, label, gto_label, score, position, "
             "vs_position, stack_bb, pot_size, facing_bet, estimated_equity, num_players, "
-            "spot_hash) VALUES (?, 1, ?, ?, 'QsTs', '[\"3c\",\"Js\",\"Th\"]', ?, ?, ?, ?, ?, "
+            "spot_hash) VALUES (?, 9001, ?, ?, 'QsTs', '[\"3c\",\"Js\",\"Th\"]', ?, ?, ?, ?, ?, "
             "0.9, 'BB', 'BTN', 23.7, 5.4, 0.0, 0.5, 9, 'spot1')"),
             (did, hid, st, act, best, ga, label, gl))
     # a fila do torneio drenou DEPOIS da ultima reconciliacao (o gancho precisa disto para achar)
     conn.execute(_adapt("INSERT INTO gto_tournament_queue (tournament_id, spot_hash) "
-                        "VALUES (1, 'spot1')"))
+                        "VALUES (9001, 'spot1')"))
     conn.execute(_adapt("INSERT INTO gto_solver_queue (spot_hash, spot_json, status, priority, "
                         "requested_at, solved_at) VALUES ('spot1', '{}', 'done', 0, "
                         "'2026-09-02 00:00:00', '2026-09-03 00:00:00')"))
@@ -124,9 +124,10 @@ def _semeia():
 
 
 def _gto():
+    """O gto gravado, indexado por HAND_ID: o teste fala de maos, nao de ids de linha."""
     conn = get_conn()
-    rows = {dict(r)['id']: dict(r) for r in conn.execute(
-        "SELECT id, gto_label, gto_action, label, best_action, gto_played_freq, ev_loss_bb "
+    rows = {dict(r)['hand_id']: dict(r) for r in conn.execute(
+        "SELECT hand_id, gto_label, gto_action, label, best_action, gto_played_freq, ev_loss_bb "
         "FROM decisions ORDER BY id").fetchall()}
     conn.close()
     return rows
@@ -136,15 +137,15 @@ def test_o_resync_corrige_o_rotulo_que_o_no_nao_sustenta_mais():
     _semeia()
     restaura = _instala_duble()
     try:
-        n = rs.resync_tournament_postflop(1, apply=True)
+        n = rs.resync_tournament_postflop(9001, apply=True)
     finally:
         restaura()
     d = _gto()
-    assert d[1]['gto_label'] == 'gto_correct', d[1]     # drift corrigido: a acusacao SAI da tela
-    assert d[1]['gto_action'] == 'bet', d[1]            # os campos viajam juntos
-    assert d[1]['label'] == 'correct', d[1]
-    assert round(float(d[1]['gto_played_freq']), 2) == 0.71, d[1]
-    assert d[3]['gto_label'] == 'gto_mixed', d[3]       # appeared continua sendo preenchido
+    assert d['H1']['gto_label'] == 'gto_correct', d['H1']     # drift corrigido: a acusacao SAI da tela
+    assert d['H1']['gto_action'] == 'bet', d['H1']            # os campos viajam juntos
+    assert d['H1']['label'] == 'correct', d['H1']
+    assert round(float(d['H1']['gto_played_freq']), 2) == 0.71, d['H1']
+    assert d['H3']['gto_label'] == 'gto_mixed', d['H3']       # appeared continua sendo preenchido
     assert n == 2, ('drift + appeared, e nada mais', n)
 
 
@@ -155,12 +156,12 @@ def test_o_resync_nunca_apaga_veredito_existente():
     _semeia()
     restaura = _instala_duble()
     try:
-        rs.resync_tournament_postflop(1, apply=True)
+        rs.resync_tournament_postflop(9001, apply=True)
     finally:
         restaura()
     d = _gto()
-    assert d[2]['gto_label'] == 'gto_correct', ('vanished: o veredito tem de ficar', d[2])
-    assert d[2]['gto_action'] == 'check', d[2]
+    assert d['H2']['gto_label'] == 'gto_correct', ('vanished: o veredito tem de ficar', d['H2'])
+    assert d['H2']['gto_action'] == 'check', d['H2']
 
 
 def test_o_modo_fill_continua_existindo_e_pula_o_drift():
@@ -169,12 +170,12 @@ def test_o_modo_fill_continua_existindo_e_pula_o_drift():
     _semeia()
     restaura = _instala_duble()
     try:
-        n = rs.resync_tournament_postflop(1, apply=True, modo=rs.MODO_FILL)
+        n = rs.resync_tournament_postflop(9001, apply=True, modo=rs.MODO_FILL)
     finally:
         restaura()
     d = _gto()
-    assert d[1]['gto_label'] == 'gto_critical', ('fill-only nao mexe em quem tem veredito', d[1])
-    assert d[3]['gto_label'] == 'gto_mixed', d[3]
+    assert d['H1']['gto_label'] == 'gto_critical', ('fill-only nao mexe em quem tem veredito', d['H1'])
+    assert d['H3']['gto_label'] == 'gto_mixed', d['H3']
     assert n == 1, ('so o appeared', n)
 
 
@@ -210,11 +211,11 @@ def test_o_gancho_da_fila_drenada_usa_o_modo_que_corrige_o_drift():
     finally:
         restaura()
     d = _gto()
-    assert d[1]['gto_label'] == 'gto_correct', ('o gancho tem de corrigir o drift', d[1])
-    assert d[2]['gto_label'] == 'gto_correct', ('e nao pode apagar veredito', d[2])
-    assert d[3]['gto_label'] == 'gto_mixed', d[3]
+    assert d['H1']['gto_label'] == 'gto_correct', ('o gancho tem de corrigir o drift', d['H1'])
+    assert d['H2']['gto_label'] == 'gto_correct', ('e nao pode apagar veredito', d['H2'])
+    assert d['H3']['gto_label'] == 'gto_mixed', d['H3']
     conn = get_conn()
-    t = dict(conn.execute("SELECT labels_reconciled_at FROM tournaments WHERE id=1").fetchone())
+    t = dict(conn.execute("SELECT labels_reconciled_at FROM tournaments WHERE id=9001").fetchone())
     conn.close()
     assert t['labels_reconciled_at'] and str(t['labels_reconciled_at']) > '2026-09-03', t
 
