@@ -26,12 +26,25 @@ def test_action_family():
 
 
 def test_generate_postflop_spot():
+    """A forma do spot, sem congelar a STREET.
+
+    O assert original exigia `street == 'flop'` e board de 3 cartas, de quando o catalogo
+    estatico (31 spots, todos flop) era a fonte. Desde o backlog #41 a fonte e o acervo de nos
+    solvados, que serve flop, turn e river — e o teste passou a acusar a feature, nao um defeito.
+    O que continua valendo e a COERENCIA: o board tem de ter o tamanho da street que ele diz ter.
+    """
     import random
+    _CARTAS_DA_STREET = {'flop': 3, 'turn': 4, 'river': 5}
     cat = {'kind': 'postflop', 'catalog': 'bb_defense', 'key': 'pf:bb_defense'}
     sp = generate_postflop_spot(cat, random.Random(3))
-    assert sp and sp['kind'] == 'postflop' and sp['street'] == 'flop'
-    assert len(sp['board']) == 3 and len(sp['hero_hand']) == 2
-    assert sp['options'] == ['fold', 'call', 'raise']
+    assert sp and sp['kind'] == 'postflop' and sp['street'] in _CARTAS_DA_STREET, sp
+    assert len(sp['board']) == _CARTAS_DA_STREET[sp['street']], (sp['street'], sp['board'])
+    assert len(sp['hero_hand']) == 2
+    # As opcoes acompanham o spot: com aposta na frente e fold/call/raise, sem aposta e
+    # check/bet. O assert antigo fixava o 1o par porque o catalogo estatico era todo "BB defende
+    # vs c-bet"; o acervo tambem serve decisoes em que o heroi age primeiro.
+    _enfrenta = float(sp.get('facing_size_bb') or 0) > 0
+    assert sp['options'] == (['fold', 'call', 'raise'] if _enfrenta else ['check', 'bet']), sp['options']
     # NÃO vaza a resposta
     for leak in ('hand_strategy', 'gto_strategy', 'best_action', 'recommended'):
         assert leak not in sp, f"vazou {leak}"

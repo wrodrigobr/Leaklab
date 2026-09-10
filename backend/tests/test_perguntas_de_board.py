@@ -173,21 +173,33 @@ def test_a_sondagem_SE_CALA_em_pote_3bet():
     import leaklab.leak_trainer as lt
 
     rng = _r.Random(4)
-    tres_bet = [c for c in lt._postflop_pilot_cats() if c['key'] == 'pf:bb_3bet_pot']
-    assert tres_bet, 'não achei a categoria de pote 3-bet: o teste não exercita nada'
+
+    # O spot e FORJADO, e a 1a versao deste teste ensina por que. Ela pedia o spot a
+    # `generate_postflop_spot(categoria de pote 3-bet)` e conferia `pot_type == '3bet'` antes de
+    # exercitar o guarda. Desde o backlog #41 esse gerador serve o ACERVO de nos solvados antes
+    # do catalogo, e o spot do acervo nao carrega `pot_type` nenhum: a pre-condicao deixou de
+    # valer e o guarda parou de ser exercitado por qualquer teste. Forjar aqui e o unico jeito de
+    # a CONDICAO ficar sob teste, independente de qual fonte o gerador escolher hoje.
+    base = {'kind': 'postflop', 'street': 'flop', 'position': 'BB', 'vs_position': 'BTN',
+            'board': ['Ah', '7d', '2c'], 'hand': 'KsQs', 'stack_bb': 29.0,
+            'facing_size_bb': 7.5, 'pot_bb': 22.5, 'category': 'pf:bb_3bet_pot'}
+    for pot in ('3bet', '4bet'):
+        spot = dict(base, pot_type=pot, opener='BTN', threebettor='BB')
+        assert not spot_e_elegivel(spot), '%s passou pela elegibilidade' % pot
+        assert sondagem_do_board(spot, rng) is None, (
+            'perguntou a range de ABERTURA num pote %s, onde ela nao e a range dele' % pot)
+
+    # E o controle que prova que o teste ACHARIA: o MESMO spot em pote de um aumento passa.
+    srp = dict(base, pot_type='srp', category='pf:bb_defense')
+    assert spot_e_elegivel(srp), 'o controle tem de ser elegivel, senao o assert acima e vazio'
+
+    # O catalogo estatico continua carregando `pot_type`, e e por ele que a fonte que AINDA
+    # declara pote 3-bet fica sob teste.
     vistos = 0
-    for cat in tres_bet:
-        for _ in range(10):
-            spot = lt.generate_postflop_spot(cat, rng)
-            if not spot:
-                continue
-            vistos += 1
-            assert spot.get('pot_type') == '3bet', 'a categoria mudou de forma'
-            assert not spot_e_elegivel(spot), 'pote 3-bet passou pela elegibilidade'
-            assert sondagem_do_board(spot, rng) is None, (
-                'perguntou a range de ABERTURA num pote 3-bet, onde ela não é a range dele')
-    assert vistos >= 5, 'só %d spots de pote 3-bet: o teste não exercitou nada' % vistos
-    print('OK  test_a_sondagem_SE_CALA_em_pote_3bet (%d spots)' % vistos)
+    for s in (lt.POSTFLOP_CATALOG.get('bb_3bet_pot') or []):
+        vistos += 1
+    assert vistos >= 1, 'o catalogo de pote 3-bet sumiu: o teste nao exercita a fonte declarada'
+    print('OK  test_a_sondagem_SE_CALA_em_pote_3bet (2 forjados + %d no catalogo)' % vistos)
 
 
 def test_a_sondagem_SE_CALA_quando_o_HEROI_foi_quem_abriu():
