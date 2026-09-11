@@ -219,6 +219,29 @@ def parse_pokerstars_file(path: str) -> List[ParsedHand]:
     return parse_hand_history(content)
 
 
+def heroi_das_maos(maos, padrao: str = 'Hero') -> str:
+    """O nome do heroi de um ARQUIVO, pela mao que tem nome — nao pela primeira.
+
+    `hands[0].hero or 'Hero'` custou 21 torneios em 11/09: quando a primeira mao nao tem a linha
+    `Dealt to` (jogador sentado fora, export comecando no meio), o torneio inteiro ficava com o
+    literal 'Hero'. Medido no t242: o nome estava em 266 das 274 maos, e foi jogado fora.
+
+    Pega o mais FREQUENTE, nao o primeiro com nome: arquivo que mistura maos de dois jogadores
+    (acontece — `hand_id` nao e unico entre usuarios) tem de responder pelo dono do arquivo, e o
+    dono e quem aparece em mais maos.
+
+    Devolve `padrao` quando NENHUMA mao tem nome. Isso nao e falha: CoinPoker e GGPoker escrevem
+    'Hero' no proprio arquivo (122 torneios do acervo), e ali 'Hero' e a resposta correta.
+    """
+    from collections import Counter
+    nomes = Counter()
+    for m in (maos or []):
+        n = (getattr(m, 'hero', None) or '').strip()
+        if n:
+            nomes[n] += 1
+    return nomes.most_common(1)[0][0] if nomes else padrao
+
+
 def parse_hand_history(text: str) -> List[ParsedHand]:
     """Parseia hand history de qualquer site suportado (PokerStars, GGPoker, 888poker, PartyPoker)."""
     site = _detect_site(text)

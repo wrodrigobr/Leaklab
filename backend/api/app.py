@@ -64,6 +64,7 @@ from flask_limiter.util import get_remote_address
 
 from leaklab.parser import parse_pokerstars_file_from_text
 from leaklab.parser import raise_total_from_raw as _raise_total_from_raw
+from leaklab.parser import heroi_das_maos
 from leaklab.pipeline import build_decision_inputs_for_hand
 from leaklab.decision_engine_v11 import evaluate_decision, facing_allin_row
 from leaklab.pareamento_decisoes import BaldeDeDecisoes, balde_de_gto_do_banco
@@ -1042,7 +1043,9 @@ def _analyze_impl():
     metrics = build_session_metrics(results)
     leaks   = correlate_leaks(results)
 
-    hero          = hands[0].hero or 'Hero'
+    # Pela mao que TEM nome, nao pela primeira (11/09): a primeira mao sem `Dealt to` deixava
+    # o torneio inteiro como 'Hero', e com isso sem colocacao e sem premio. Ver `heroi_das_maos`.
+    hero          = heroi_das_maos(hands)
     tournament_id = hands[0].tournament_id or ''
     # Sem identificador de torneio (ex.: cash game ou formato sem "Tournament #"):
     # não persistir — um tournament_id vazio quebra abrir/excluir no frontend
@@ -1367,7 +1370,7 @@ def tournament_summary():
             results, _, _ = _analyze_hands(hands)
             if not results:
                 return jsonify({'error': 'Nenhuma decisão encontrada'}), 400
-            hero = hands[0].hero or 'Hero'
+            hero = heroi_das_maos(hands)
             n_hands = len(hands)
             t_db_id = None
 
@@ -4774,7 +4777,7 @@ def analyze_guest():
     import uuid
     return jsonify({
         'session_id':  str(uuid.uuid4()),
-        'hero':        hands[0].hero or 'Hero',
+        'hero':        heroi_das_maos(hands),
         'tournament_id': hands[0].tournament_id or '',
         'total_hands': len(hands),
         'parse_errors':len(errors),
@@ -4991,6 +4994,8 @@ def _analyze_hands(hands, field_size=None, colocacoes=None):
             mtt    = build_mtt_context(hand, field_size=field_size, colocacoes=colocacoes)
             inputs = build_decision_inputs_for_hand(hand, field_size=field_size,
                                                     colocacoes=colocacoes)
+            # POR MAO, de proposito: aqui o heroi e o daquela mao. O bug de 11/09 era no
+            # nivel do TORNEIO (`heroi_das_maos`), nao aqui.
             hero   = hand.hero or 'Hero'
             sd_result = _detect_showdown(hand.raw_text or '', hero)
             hero_won  = _detect_hand_won(hand.raw_text or '', hero)

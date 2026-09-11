@@ -98,6 +98,7 @@ SUITES = {
                   'test_gancho_corrige_rotulo_velho.py',
                   'test_reparo_das_divergencias.py',
                   'test_reverter_do_dump.py',
+                  'test_heroi_do_arquivo.py',
                   'test_assinatura_do_spot.py',
                   'test_aproveitamento_do_solver.py',
                   'test_semelhanca.py',
