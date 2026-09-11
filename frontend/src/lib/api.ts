@@ -1067,7 +1067,9 @@ export interface PositionOpenMatrixResponse {
   /** Quais cartas do solver o recorte usou, e com que peso. Tem mais de um item so quando o
    *  assento existe em mesas de tamanhos diferentes — na pratica, so o UTG. Serve para a tela
    *  DECLARAR a faixa de jogadores por agir em vez de pedir um filtro de numero de jogadores. */
-  composicao_da_carta?: Array<{ assento: string; atras: number | null; n: number; pct: number }>;
+  composicao_da_carta?: Array<{ assento: string; atras: number | null; profundidade?: string | null; n: number; pct: number }>;
+  /** profundidades das cartas que entraram na referencia; >1 item = media entre cartas */
+  profundidades_da_carta?: Array<{ profundidade: string; n: number; pct: number }>;
   n: number;
   /** null abaixo de `amostra_minima`: com 10 oportunidades, "voce abriu 0%" e ruido */
   voce_pct: number | null;

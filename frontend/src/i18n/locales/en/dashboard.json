@@ -1060,7 +1060,8 @@
       "stackWords": {
         "40+": "40bb or more",
         "20-40": "20 to 40bb",
-        "<20": "under 20bb"
+        "<20": "under 20bb",
+        "todas": "All"
       },
       "bbNoRfi": "The BB never opens the pot: when everyone folds, it takes the blinds without acting. So it has no RFI and no matrix.",
       "youOpened": "You opened",
@@ -1077,7 +1078,9 @@
       "rangeSize": "opens {{pct}}% of every possible hand",
       "behindOne": "In this seat, {{count}} players still act after you. The fewer players left to act, the wider the solver opens.",
       "behindRange": "Here you act first at tables of different sizes, so the number of players left to act ranges from {{min}} to {{max}}, and in most hands ({{pct}}%) it is {{top}}. The fewer players left to act, the wider the solver opens.",
-      "behindUnknown": "The fewer players left to act after you, the wider the solver opens."
+      "behindUnknown": "The fewer players left to act after you, the wider the solver opens.",
+      "recorteTodas": "You in the {{pos}}, across all stack depths. {{n}} times with an unopened pot.",
+      "depthMix": "The solver reference mixes charts from different depths ({{lista}}). Pick a stack range to see the exact chart."
     },
     "tablePlayers": "{{n}} players",
     "seatAbsent": "Does not exist with {{mesa}} players dealt in. Whoever acted in that turn of the order is in the next seat.",

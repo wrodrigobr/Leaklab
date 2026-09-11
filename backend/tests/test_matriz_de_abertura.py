@@ -12,8 +12,10 @@ composicao nao (T9s aberto 44% onde o solver abre 100%). A celula esconde, a mat
 1. Uma linha por oportunidade de RFI do assento (a MESMA definicao do HUD e da grade); a mao
    canonica ('AsKd' -> 'AKo'); `voce` = fracao em que abriu; `solver` = frequencia da carta
    do assento do CHART na profundidade da vez (a mesma range do motor), media nas ocorrencias.
-2. O resumo (`voce_pct`) e igual ao RFI da grade no mesmo recorte; `cobertura` e a fracao com
-   carta; sem stack nao ha carta (entra em `n`, nao na cobertura).
+2. O resumo (`voce_pct`) e igual ao RFI da grade no mesmo recorte, e desde 11/09 a matriz ABRE
+   nesse recorte (todas as faixas de stack), porque abrir numa faixa fazia a tela seguinte
+   contradizer a porta de entrada (Rullian: 17,2% na grade, 19,8% na matriz). `cobertura` e a
+   fracao com carta; sem stack nao ha carta (entra em `n`, nao na cobertura).
 3. `divergencias`: so maos com >= 8 ocorrencias e distancia >= 0,30, da maior para a menor.
 4. Grupo (EP) e faixa de stack funcionam; o endpoint recusa BB e assento desconhecido.
 """
@@ -129,55 +131,80 @@ def test_grupo_faixa_de_stack_e_sem_stack():
     assert m['cells']['T9s']['solver'] == round(float(villain_open_range('UTG+1', 40).get('T9s', 0.0)), 3)
 
 
-def test_o_stack_e_filtro_obrigatorio_e_abre_na_faixa_com_mais_maos():
-    """Dono, 09/09: "no GTO Wizard somos obrigados a definir o stack, entao nao faz sentido o
-    todos". A carta de abertura e funcao de assento, jogadores atras E profundidade; sem a
-    profundidade fixa o numero do solver e uma media entre cartas.
+def test_a_matriz_abre_com_TODAS_as_faixas_e_o_numero_BATE_com_a_grade():
+    """O achado do Rullian (11/09): "em perfil por posicao ta mostrando um valor pra RFI na tela
+    inicial, mas quando clico na posicao pra ver o spot detalhado o valor e diferente. RFI de
+    17.2% pro UTG, clicando no spot o RFI esta 19.8%".
 
-    Tres coisas defendidas aqui: (1) `faixas_do_jogador` conta a faixa da MAO pela primeira
-    decisao preflop e sugere a de mais maos, DENTRO da mesa em vigor; (2) sem `?stack=` os
-    tres endpoints da grade abrem nessa faixa e DECLARAM (`stack_auto`); (3) `stack=todos` e
-    400 como qualquer faixa desconhecida — aceitar de volta em silencio devolveria a media."""
+    Reproduzido exato no acervo dele: 17,2% em 3.690 oportunidades na GRADE (soma as
+    profundidades) contra 19,8% em 1.557 na MATRIZ (so 40bb+, que era a faixa sugerida como
+    padrao). Nao era erro de conta — com o mesmo recorte as duas batem na casa decimal.
+
+    Este guarda inverte a politica de 09/09 (stack obrigatorio) e ancora na CONDICAO que
+    importa: **ao abrir sem filtro, o numero da matriz e o mesmo da grade.** Dois numeros para a
+    mesma coisa, um na porta de entrada e outro na tela seguinte, custa mais confianca do que
+    uma media entre cartas custa em precisao — desde que a tela DECLARE a mistura, o que a
+    ultima assercao exige.
+
+    Quebrado de proposito (voltando a sugerir a faixa por padrao), o `voce_pct` deixa de bater
+    com o `rfi` da grade e o teste acusa com os dois numeros no erro."""
     from database.repositories import faixas_do_jogador
     # mesa 8: 6 maos a 45bb (40+) e 3 a 25bb (20-40); mesa 6: 10 maos a 12bb (<20).
-    # (10 e nao 9: empate de mesas desempata pela ordem 9,8,7,6 e o teste ficaria ambiguo)
-    uid = _semeia([_m('CO', 'AsKs', 'raise', stack=45, num_players=8) for _ in range(6)]
-                  + [_m('CO', 'AsKs', 'raise', stack=25, num_players=8) for _ in range(3)]
-                  + [_m('CO', 'AsKs', 'raise', stack=12, num_players=6) for _ in range(10)])
+    # As 19 maos sao do CO, e 13 delas abrem: o numero da grade nao pode depender da faixa.
+    # Acima do piso de 100 maos do resumo: com amostra menor o `voce_pct` volta None de
+    # proposito (a matriz nao afirma um numero que a amostra nao sustenta) e a comparacao com a
+    # grade ficaria vazia. 60 a 45bb (40+), 30 a 25bb (20-40) e 30 a 12bb (<20) = 120.
+    uid = _semeia([_m('CO', 'AsKs', 'raise', stack=45, num_players=8) for _ in range(60)]
+                  + [_m('CO', 'AsKs', 'fold', stack=25, num_players=8) for _ in range(30)]
+                  + [_m('CO', 'AsKs', 'raise', stack=12, num_players=6) for _ in range(20)]
+                  + [_m('CO', 'AsKs', 'fold', stack=12, num_players=6) for _ in range(10)])
+    # A sugestao continua existindo: os chips precisam dizer onde ha mao. O que mudou e que ela
+    # NAO e aplicada sozinha.
     todas = faixas_do_jogador(uid, days=3650, last_n=0)
-    assert todas['sugerida'] == '<20' and todas['n'] == 19, todas      # no total, a mesa 6 pesa mais
+    assert todas['sugerida'] == '40+' and todas['n'] == 120, todas
     mesa8 = faixas_do_jogador(uid, days=3650, last_n=0, mesa='8max')
-    assert mesa8['sugerida'] == '40+' and mesa8['n'] == 9, mesa8       # DENTRO da mesa 8, e 40+
-    assert [f['faixa'] for f in mesa8['faixas']] == ['40+', '20-40'], mesa8['faixas']
+    assert mesa8['sugerida'] == '40+' and mesa8['n'] == 90, mesa8
 
     from api.app import app
     from database.auth import generate_token
     h = {'Authorization': 'Bearer %s' % generate_token(uid, 'player')}
     c = app.test_client()
-    # Sem filtros a matriz NAO fixa mais o tamanho de mesa (10/09, Rullian): ela soma tudo e so
-    # escolhe a faixa de stack, que e a que muda a carta em todo assento. A faixa com mais maos
-    # do CO somando as duas mesas e <20 (10 maos de mesa 6 contra 9 de mesa 8).
-    m = c.get('/metrics/player-stats/by-position/hands?position=CO&days=3650', headers=h).get_json()
-    assert m['mesa'] is None and m['stack_band'] == '<20' and m['stack_auto'] is True, (m['mesa'], m['stack_band'])
-    assert m['n'] == 10, m['n']
-    assert [f['faixa'] for f in m['distribuicao_de_stacks']['faixas']] == ['40+', '20-40', '<20']
-    # `?mesa=` continua ACEITO para quem quiser o recorte, e ai a faixa sugerida muda junto
-    m8 = c.get('/metrics/player-stats/by-position/hands?position=CO&days=3650&mesa=8max', headers=h).get_json()
-    assert m8['stack_band'] == '40+' and m8['stack_auto'] is True and m8['n'] == 6, (m8['stack_band'], m8['n'])
-    # stack explicito vence e o payload diz que nao foi automatico
-    m8b = c.get('/metrics/player-stats/by-position/hands?position=CO&days=3650&mesa=8max&stack=20-40', headers=h).get_json()
-    assert m8b['stack_band'] == '20-40' and m8b['stack_auto'] is False and m8b['n'] == 3
-    # A GRADE nao segue esta politica: ela SOMA TUDO (09/09 noite). Exigir os dois filtros la
-    # esvaziou a grade do dono: piso de 100 maos por assento contra 36 no recorte.
+
     g = c.get('/metrics/player-stats/by-position?days=3650', headers=h).get_json()
-    assert g['mesa'] is None and g['stack_band'] is None, (g['mesa'], g['stack_band'])
-    assert g['stack_auto'] is False and g['mesa_auto'] is False
-    assert g['total_hands'] == 19, g['total_hands']            # as 19 maos, nao as 10 da mesa 6
-    # "todos" existe na grade e no painel dela, e NAO existe na matriz
-    for url in ('/metrics/player-stats/by-position?days=3650&stack=todos',
-                '/metrics/player-stats/by-position/detail?position=CO&stat=three_bet&stack=todos'):
-        assert c.get(url, headers=h).status_code == 200, url
-    assert c.get('/metrics/player-stats/by-position/hands?position=CO&stack=todos', headers=h).status_code == 400
+    linha = next(p for p in g['positions'] if p['position'] == 'CO')
+    rfi_da_grade = linha['stats']['rfi']['value']
+
+    m = c.get('/metrics/player-stats/by-position/hands?position=CO&days=3650', headers=h).get_json()
+    assert m['stack_band'] is None and m['stack_auto'] is False, (m['stack_band'], m['stack_auto'])
+    assert m['n'] == 120, m['n']                      # TODAS as maos, nao so as da faixa sugerida
+    assert m['voce_pct'] == rfi_da_grade, (
+        'a matriz aberta sem filtro tem de mostrar o MESMO numero da grade',
+        m['voce_pct'], rfi_da_grade)
+
+    # `stack=todos` explicito e a mesma coisa, e nao mais um 400
+    mt = c.get('/metrics/player-stats/by-position/hands?position=CO&days=3650&stack=todos',
+               headers=h)
+    assert mt.status_code == 200, mt.status_code
+    assert mt.get_json()['voce_pct'] == rfi_da_grade, mt.get_json()['voce_pct']
+
+    # e estreitar por profundidade continua sendo escolha do jogador, com o numero mudando
+    m40 = c.get('/metrics/player-stats/by-position/hands?position=CO&days=3650&stack=40%2B',
+                headers=h).get_json()
+    assert m40['stack_band'] == '40+' and m40['n'] == 60, (m40['stack_band'], m40['n'])
+    assert m40['voce_pct'] == 100.0, m40['voce_pct']   # as 60 de 45bb abriram todas
+    assert m40['voce_pct'] != rfi_da_grade             # e por isso o padrao nao podia ser este
+
+    # A MISTURA tem de ser declarada: com todas as faixas a referencia do solver e media entre
+    # cartas de profundidades diferentes, e a legenda precisa poder dizer isso. Ausencia calada
+    # aqui seria o mesmo defeito do filtro obrigatorio, so que silencioso.
+    profs = m.get('profundidades_da_carta') or []
+    assert len(profs) >= 2, ('a composicao tem de declarar as profundidades misturadas', profs)
+    assert sum(p['n'] for p in profs) <= m['n'], profs
+    assert all(p.get('profundidade') for p in profs), profs
+    # e a composicao por assento continua respondendo pela outra dimensao
+    assert m.get('composicao_da_carta'), m.get('composicao_da_carta')
+    print('OK  test_a_matriz_abre_com_TODAS_as_faixas_e_o_numero_BATE_com_a_grade (grade %s%%)'
+          % rfi_da_grade)
 
 
 def test_a_matriz_soma_os_tamanhos_de_mesa_e_DECLARA_a_faixa_de_jogadores_por_agir():
@@ -190,8 +217,11 @@ def test_a_matriz_soma_os_tamanhos_de_mesa_e_DECLARA_a_faixa_de_jogadores_por_ag
     de 16,4% a 29,5%. Do LJ para o botao a carta e UMA so (o assento conta do botao), e o UTG+1
     so existe em mesa 8 e 9, com duas cartas vizinhas.
 
-    Entao a tela declara a faixa NO UTG em vez de pedir um filtro em toda parte. `stack` continua
-    obrigatorio: profundidade muda a carta em todo assento."""
+    Entao a tela declara a faixa NO UTG em vez de pedir um filtro em toda parte. O `stack`
+    tambem deixou de ser obrigatorio em 11/09 (ver
+    `test_a_matriz_abre_com_TODAS_as_faixas_e_o_numero_BATE_com_a_grade`): a matriz abre no
+    recorte da grade e a profundidade vira escolha, com a mistura DECLARADA em
+    `profundidades_da_carta`."""
     from api.app import app
     from database.auth import generate_token
     # o mesmo UTG em mesa 9 (8 por agir) e em mesa 6 (5 por agir), e um BTN de controle
@@ -215,8 +245,9 @@ def test_a_matriz_soma_os_tamanhos_de_mesa_e_DECLARA_a_faixa_de_jogadores_por_ag
     assert b['assento_da_carta'] == 'BTN' and b['jogadores_atras'] == 2, (b['assento_da_carta'], b['jogadores_atras'])
     assert len(b['composicao_da_carta']) == 1, b['composicao_da_carta']
 
-    # o stack SEGUE obrigatorio, e `?mesa=` continua aceito para quem quiser o recorte
-    assert c.get('/metrics/player-stats/by-position/hands?position=UTG&stack=todos', headers=h).status_code == 400
+    # `stack=todos` e 200 desde 11/09 (e o padrao), e `?mesa=` continua aceito para quem
+    # quiser o recorte
+    assert c.get('/metrics/player-stats/by-position/hands?position=UTG&stack=todos', headers=h).status_code == 200
     fix = c.get('/metrics/player-stats/by-position/hands?position=UTG&days=3650&mesa=9max', headers=h).get_json()
     assert fix['n'] == 6 and fix['assento_da_carta'] == 'UTG', (fix['n'], fix['assento_da_carta'])
 
@@ -238,14 +269,19 @@ def test_os_chips_do_modal_contam_O_ASSENTO_e_nao_a_mesa_toda():
     c = app.test_client()
     h = {'Authorization': 'Bearer %s' % generate_token(uid, 'player')}
 
-    u = c.get('/metrics/player-stats/by-position/hands?position=UTG&days=3650', headers=h).get_json()
-    # a mesa nao e mais fixada (10/09); o stack sim, e os chips contam o ASSENTO
+    # O stack vai EXPLICITO porque o padrao deixou de ser automatico em 11/09 (a matriz abre
+    # em todas as faixas, para bater com a grade). O que este teste defende segue igual: os
+    # chips contam o ASSENTO, nao a mesa toda.
+    u = c.get('/metrics/player-stats/by-position/hands?position=UTG&days=3650&stack=40%2B',
+              headers=h).get_json()
     assert u['mesa'] is None and u['stack_band'] == '40+' and u['n'] == 7, (u['mesa'], u['stack_band'], u['n'])
     assert [(x['mesa'], x['n']) for x in u['distribuicao_de_mesas']['mesas']] == [('9max', 7)], u['distribuicao_de_mesas']
     assert [(x['faixa'], x['n']) for x in u['distribuicao_de_stacks']['faixas']] == [('40+', 7)], u['distribuicao_de_stacks']
 
-    b = c.get('/metrics/player-stats/by-position/hands?position=BTN&days=3650', headers=h).get_json()
-    # o modal do BTN abre na FAIXA dele, nao na do UTG (que tem mais volume no total)
+    b = c.get('/metrics/player-stats/by-position/hands?position=BTN&days=3650&stack=%3C20',
+              headers=h).get_json()
+    # os chips do BTN falam do BTN: a faixa <20 tem as 4 maos dele, e a mesa 9 (onde ele nao tem
+    # mao nenhuma) nao aparece nem como opcao
     assert b['mesa'] is None and b['stack_band'] == '<20' and b['n'] == 4, (b['mesa'], b['stack_band'], b['n'])
     assert [(x['mesa'], x['n']) for x in b['distribuicao_de_mesas']['mesas']] == [('6max', 4)], b['distribuicao_de_mesas']
     # e o chip NAO oferece a mesa de 9, onde o BTN nao tem mao nenhuma

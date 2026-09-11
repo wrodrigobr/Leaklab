@@ -1747,17 +1747,19 @@ def _recorte_da_matriz(position: str | None = None):
 
     O stack sugerido e calculado DENTRO da mesa em vigor: a faixa mais jogada de "todas as
     mesas" pode nao ter mao nenhuma na mesa escolhida."""
-    # So o STACK e obrigatorio aqui. O filtro de JOGADORES saiu em 10/09 (Rullian: "essa parte
-    # de selecionar numero de jogadores e estranha... o PokerTracker nao tem essa separacao"),
-    # depois de medir que somar mesas custa mediana 0,6 pp no numero do solver e multiplica a
-    # amostra por 2,3. O custo real esta concentrado no UTG (5 cartas, 13,1 pp de amplitude), e
-    # ali a tela DECLARA a faixa via `composicao_da_carta` em vez de pedir um filtro.
-    # `stack=todos` continua recusado: profundidade muda a carta em todo assento.
-    for chave, proibido in (('stack', 'todos'),):
-        if (request.args.get(chave) or '').strip() == proibido:
-            return None, (jsonify({'error': '%s=%s nao vale na matriz: ela mostra UM numero, '
-                                            'e um numero precisa de assento, jogadores e stack fixos.'
-                                            % (chave, proibido), 'code': 'recorte_obrigatorio'}), 400)
+    # NENHUM filtro e obrigatorio aqui desde 11/09. O de JOGADORES saiu em 10/09 (Rullian:
+    # "essa parte de selecionar numero de jogadores e estranha... o PokerTracker nao tem essa
+    # separacao"), depois de medir que somar mesas custa mediana 0,6 pp no numero do solver e
+    # multiplica a amostra por 2,3.
+    #
+    # E o de STACK deixou de ser obrigatorio no dia seguinte, pelo achado do Rullian: a grade
+    # dizia RFI 17,2% no UTG e a matriz, aberta a partir dela, dizia 19,8%. Reproduzido exato no
+    # acervo dele — 17,2% em 3.690 oportunidades somando profundidades, 19,8% em 1.557 so com
+    # 40bb+, que era a faixa sugerida como padrao. Dois numeros para a mesma coisa na porta de
+    # entrada e na tela seguinte custa mais confianca do que uma media entre cartas custa em
+    # precisao, DESDE QUE a tela declare a mistura (`composicao_da_carta` agora carrega a
+    # profundidade). Decisao do dono: "voltar a ter Todas as Stacks, selecionada por padrao, pra
+    # o usuario ter o mesmo numero que foi exibido na lista por posicao".
     mesa, erro = _tamanho_de_mesa_da_query()
     if erro:
         return None, erro
@@ -1774,10 +1776,11 @@ def _recorte_da_matriz(position: str | None = None):
     # recorte, mas ausente = todos os tamanhos (era: a mais jogada). O stack continua obrigatorio.
     mesa_auto = False
     dist_mesas = mesas_do_jogador(g.user_id, days, last_n=last_n, position=position)
-    stack_auto = 'stack' not in request.args
+    # Ausente = TODAS as faixas (era: a mais jogada). E o que faz a matriz abrir com o mesmo
+    # numero da grade, que e de onde o jogador clicou. `stack_auto` fica False: nao ha mais
+    # escolha automatica para declarar, o padrao e simplesmente nao filtrar.
+    stack_auto = False
     dist_stacks = faixas_do_jogador(g.user_id, days, last_n=last_n, mesa=mesa, position=position)
-    if stack_auto:
-        stack = dist_stacks.get('sugerida')
     return {'mesa': mesa, 'stack': stack, 'mesa_auto': bool(mesa_auto and mesa),
             'stack_auto': bool(stack_auto and stack),
             'distribuicao_de_mesas': dist_mesas, 'distribuicao_de_stacks': dist_stacks}, None

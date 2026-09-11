@@ -183,6 +183,50 @@ describe("matriz das maos abertas", () => {
     expect(screen.getByTestId("matriz-range-size").textContent).toContain("posProfile.matrix.rangeSize:20.0");
   });
 
+  it("abre em TODAS as profundidades e DECLARA a mistura de cartas", async () => {
+    // Achado do Rullian (11/09): a grade dizia RFI 17,2% no UTG e a matriz, aberta a partir
+    // dela, dizia 19,8%. Os dois certos, recortes diferentes. O padrao passou a ser o recorte
+    // da grade (todas as profundidades), e o chip "Todas" fica ativo.
+    hands.mockResolvedValue({
+      position: "UTG", stack_band: null, mesa: null, n: 3690, voce_pct: 17.2, solver_pct: 18.4,
+      solver_pct_todas: 20.4, cobertura: 98, assento_da_carta: "UTG", jogadores_atras: 8,
+      composicao_da_carta: [{ assento: "UTG", atras: 8, profundidade: "30bb", n: 1254, pct: 34 }],
+      profundidades_da_carta: [{ profundidade: "30bb", n: 1254, pct: 34 },
+                               { profundidade: "50bb", n: 1157, pct: 31 },
+                               { profundidade: "14bb", n: 879, pct: 24 }],
+      distribuicao_de_stacks: { faixas: [{ faixa: "40+", n: 1557, pct: 42 }, { faixa: "20-40", n: 1254, pct: 34 }], sugerida: "40+", n: 3690 },
+      cells: { AA: { n: 3, voce: 1, limp: 0, solver: 1 } }, divergencias: [],
+      minimo_maos: 8, divergencia_minima: 0.3,
+    });
+    render(<MemoryRouter><V2PositionProfileCard data={GRADE} geral={HUD} lastN={30} /></MemoryRouter>);
+    fireEvent.click(screen.getByTestId("celula-rfi-UTG"));
+    // o numero e o da grade, e a frase NAO mostra "?" nem fala de faixa nenhuma
+    expect((await screen.findByTestId("matriz-voce-pct")).textContent).toBe("17.2%");
+    expect(screen.getByTestId("matriz-recorte").textContent).toBe(
+      "posProfile.matrix.recorteTodas:UTG,3.690");
+    // o chip "Todas" existe e esta ATIVO (aria-pressed), e as faixas seguem como escolha
+    const todas = screen.getByTestId("matriz-stack-todas");
+    expect(todas.getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByTestId("matriz-stack-40+").getAttribute("aria-pressed")).toBe("false");
+    // e a MISTURA de profundidades e declarada: sem isso o numero do solver seria media entre
+    // 14bb e 50bb sem avisar
+    expect(screen.getByTestId("matriz-mistura-de-profundidade").textContent)
+      .toContain("posProfile.matrix.depthMix:30bb 34%, 50bb 31%, 14bb 24%");
+    cleanup();
+    // com UMA profundidade so, nao ha mistura para declarar: a linha nem aparece
+    hands.mockResolvedValue({
+      position: "UTG", stack_band: "40+", mesa: null, n: 1557, voce_pct: 19.8, solver_pct: 18.7,
+      solver_pct_todas: 20.4, cobertura: 98, assento_da_carta: "UTG", jogadores_atras: 8,
+      profundidades_da_carta: [{ profundidade: "50bb", n: 1557, pct: 100 }],
+      cells: { AA: { n: 3, voce: 1, limp: 0, solver: 1 } }, divergencias: [],
+      minimo_maos: 8, divergencia_minima: 0.3,
+    });
+    monta();
+    fireEvent.click(screen.getByTestId("celula-rfi-UTG"));
+    await screen.findByTestId("matriz-recorte");
+    expect(screen.queryByTestId("matriz-mistura-de-profundidade")).toBeNull();
+  });
+
   it("recorte com MAIS DE UMA carta declara a faixa, e sem composicao cala", async () => {
     hands.mockResolvedValue({
       position: "UTG", stack_band: null, n: 3690, voce_pct: 17.2, solver_pct: 18.5,

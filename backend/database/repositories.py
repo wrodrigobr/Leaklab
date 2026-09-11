@@ -3212,17 +3212,36 @@ def get_position_open_matrix(user_id: int, position: str, days: int = 90,
         m = r['mesa']
         if m is not None:
             comp[int(m)] = comp.get(int(m), 0) + 1
-        cartas_usadas[r['pos_chart']] = cartas_usadas.get(r['pos_chart'], 0) + 1
+        # Chave (assento, profundidade): com "todas as stacks" o MESMO assento le cartas de
+        # 10bb, 30bb e 100bb, e uma composicao so por assento diria "uma carta" escondendo a
+        # media entre tres. A legenda precisa poder declarar as duas dimensoes.
+        _st_row = float(r['stack']) if r['stack'] is not None else 0.0
+        _balde_row = balde_rfi_ou_none(_st_row) if _st_row > 0 else None
+        _k = (r['pos_chart'], _balde_row)
+        cartas_usadas[_k] = cartas_usadas.get(_k, 0) + 1
     composicao = [{'mesa': k, 'n': v, 'pct': round(100.0 * v / total)} for k, v in sorted(comp.items(), key=lambda x: -x[1])] if total else []
-    assento_da_carta = next(iter(cartas_usadas)) if len(cartas_usadas) == 1 else None
+    _assentos_distintos = {k[0] for k in cartas_usadas}
+    assento_da_carta = next(iter(_assentos_distintos)) if len(_assentos_distintos) == 1 else None
     # Quando o recorte usa MAIS DE UMA carta (so acontece no UTG na pratica), a tela declara a
     # FAIXA em vez de calar: [{atras, n, pct}], da mais usada para a menos. Medido em 10/09 no
     # acervo do fundador: o UTG dele passa por 5 cartas (16,4% a 29,5%), o UTG+1 por 2 vizinhas
     # (18,4% e 21,1%) e do LJ para o botao por UMA so. Por isso o aviso e do UTG, nao da tela.
     _n_carta = sum(cartas_usadas.values()) or 1
     composicao_da_carta = [
-        {'assento': k, 'atras': _jog_atras(k), 'n': v, 'pct': round(100.0 * v / _n_carta)}
+        {'assento': k[0], 'atras': _jog_atras(k[0]), 'profundidade': k[1],
+         'n': v, 'pct': round(100.0 * v / _n_carta)}
         for k, v in sorted(cartas_usadas.items(), key=lambda x: -x[1])
+    ]
+    # Profundidades distintas, para a legenda dizer que a referencia e media entre cartas. Sem
+    # isto, "todas as stacks" (o padrao desde 11/09) mostraria um numero de solver que mistura
+    # 10bb com 100bb sem avisar — o defeito que o filtro obrigatorio existia para evitar, so que
+    # calado em vez de contraditorio.
+    profundidades_da_carta = [
+        {'profundidade': p, 'n': n, 'pct': round(100.0 * n / _n_carta)}
+        for p, n in sorted(
+            ((p, sum(v for k, v in cartas_usadas.items() if k[1] == p))
+             for p in {k[1] for k in cartas_usadas} if p),
+            key=lambda x: -x[1])
     ]
     return {
         'position': position, 'stack_band': stack_band, 'mesa': mesa,
@@ -3242,6 +3261,7 @@ def get_position_open_matrix(user_id: int, position: str, days: int = 90,
         'assento_da_carta': assento_da_carta,
         'jogadores_atras': _jog_atras(assento_da_carta) if assento_da_carta else None,
         'composicao_da_carta': composicao_da_carta,
+        'profundidades_da_carta': profundidades_da_carta,
         'composicao': composicao,
         'cells': cells,
         'divergencias': divergencias,

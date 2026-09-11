@@ -1060,7 +1060,8 @@
       "stackWords": {
         "40+": "40bb ou mais",
         "20-40": "20 a 40bb",
-        "<20": "menos de 20bb"
+        "<20": "menos de 20bb",
+        "todas": "Todas"
       },
       "bbNoRfi": "A BB não abre o pote: quando todos foldam, ela leva os blinds sem agir. Por isso não tem RFI nem matriz.",
       "youOpened": "Você abriu",
@@ -1077,7 +1078,9 @@
       "rangeSize": "abre {{pct}}% de todas as mãos possíveis",
       "behindOne": "Neste assento ainda agem {{count}} jogadores depois de você. Quanto menos gente por agir, mais o solver abre.",
       "behindRange": "Aqui você é o primeiro a agir em mesas de tamanhos diferentes, então o número de jogadores por agir varia de {{min}} a {{max}}, e na maioria das mãos ({{pct}}%) são {{top}}. Quanto menos gente por agir, mais o solver abre.",
-      "behindUnknown": "Quanto menos gente por agir depois de você, mais o solver abre."
+      "behindUnknown": "Quanto menos gente por agir depois de você, mais o solver abre.",
+      "recorteTodas": "Você no {{pos}}, somando todas as profundidades. {{n}} vezes com o pote intacto.",
+      "depthMix": "A referência do solver mistura cartas de profundidade diferente ({{lista}}). Escolha uma faixa de stack para ver a carta exata."
     },
     "tablePlayers": "{{n}} jogadores",
     "seatAbsent": "Não existe com {{mesa}} jogadores na mão. Quem agiu nessa vez da fila está no assento seguinte.",

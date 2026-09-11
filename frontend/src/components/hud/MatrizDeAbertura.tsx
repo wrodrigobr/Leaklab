@@ -129,6 +129,14 @@ export function MatrizDeAbertura({ position, stack, mesa, dados, erro, faixas, m
         <div className="flex flex-col gap-1">
           <span className={ROTULO_GRUPO}>{t("posProfile.stack")}</span>
           <div className="flex flex-wrap gap-1.5">
+            {/* "Todas" e o PADRAO desde 11/09: a matriz abre no mesmo recorte da grade, senao a
+                tela seguinte contradiz a porta de entrada (Rullian: 17,2% na grade, 19,8% aqui,
+                os dois certos, recortes diferentes). Estreitar por profundidade e escolha. */}
+            {chip(stackEmVigor == null, onMudar ? () => onMudar(position, null, mesaEmVigor) : undefined,
+              <>{t("posProfile.matrix.stackWords.todas")}
+                {dados?.distribuicao_de_stacks?.n != null && (
+                  <span className="ml-1 normal-case tracking-normal opacity-60">{dados.distribuicao_de_stacks.n.toLocaleString()}</span>
+                )}</>, "matriz-stack-todas")}
             {faixasChips.map((f) => {
               const n = maosNaFaixa(f);
               return chip(f === stackEmVigor, onMudar ? () => onMudar(position, f, mesaEmVigor) : undefined,
@@ -147,11 +155,15 @@ export function MatrizDeAbertura({ position, stack, mesa, dados, erro, faixas, m
   // jogadores saiu, e a frase continuava pedindo `mesa` — sem filtro em vigor, a tela mostrava
   // "em mesas de ? jogadores". Quem declara a variacao de assento e a linha da grade do solver
   // (`composicao_da_carta`), que diz a FAIXA de jogadores por agir e o peso de cada uma.
-  const recorte = t("posProfile.matrix.recorte", {
-    pos: position,
-    stack: stackEmVigor ? t(`posProfile.matrix.stackWords.${stackEmVigor}`) : "?",
-    n: dados.n.toLocaleString(),
-  });
+  // Sem faixa em vigor a frase NAO mostra "?": ela diz que soma as profundidades, que e o
+  // recorte de onde o jogador veio (a grade).
+  const recorte = stackEmVigor
+    ? t("posProfile.matrix.recorte", {
+        pos: position,
+        stack: t(`posProfile.matrix.stackWords.${stackEmVigor}`),
+        n: dados.n.toLocaleString(),
+      })
+    : t("posProfile.matrix.recorteTodas", { pos: position, n: dados.n.toLocaleString() });
   const delta = dados.voce_pct != null && dados.solver_pct != null ? dados.voce_pct - dados.solver_pct : null;
   const deltaClasse = delta == null ? "" : Math.abs(delta) < FOLGA_PP ? "border-primary/40 text-primary" : delta < 0 ? "border-amber-400/40 text-amber-400" : "border-red-400/40 text-red-400";
   const deltaTexto = delta == null ? "" : Math.abs(delta) < FOLGA_PP ? t("posProfile.matrix.deltaOk")
@@ -227,6 +239,17 @@ export function MatrizDeAbertura({ position, stack, mesa, dados, erro, faixas, m
                   top: dados.composicao_da_carta?.[0]?.atras ?? 0,
                 });
               })()}
+            </p>
+          )}
+          {/* A MISTURA de profundidades, declarada. Com "Todas" em vigor a referencia e media
+              entre cartas de 10bb, 30bb e 100bb; calar sobre isso seria o mesmo defeito que o
+              filtro obrigatorio evitava, so que silencioso. Uma carta so: nada a dizer. */}
+          {(dados.profundidades_da_carta?.length ?? 0) > 1 && (
+            <p className="mt-1 font-mono text-[9px] leading-snug text-amber-400/80" data-testid="matriz-mistura-de-profundidade">
+              {t("posProfile.matrix.depthMix", {
+                lista: (dados.profundidades_da_carta ?? [])
+                  .map((x) => `${x.profundidade} ${x.pct}%`).join(", "),
+              })}
             </p>
           )}
         </div>
