@@ -249,25 +249,34 @@ def resync_tournament_postflop(tid, apply=True, modo=MODO_PRESERVA, dump=None):
             stored[(d['hand_id'], (d['street'] or '').lower(),
                     (d['action_taken'] or '').lower())].append(d)
 
+        # Os pares de TODAS as chaves, ordenados por `decisions.id` CRESCENTE. A ordem
+        # importa FORA desta funcao: dois escritores concorrentes que travam as linhas na
+        # MESMA ordem nao formam ciclo. Iterar o dict por (hand_id, street, acao) dava ordem
+        # arbitraria em relacao ao id, e em 11/09 duas threads do gancho se travaram no
+        # Postgres ("DeadlockDetected ... while updating tuple in relation decisions").
+        # O pareamento POSICIONAL segue por chave (e o que prova a correspondencia); o que
+        # muda e so a ORDEM em que as linhas ja pareadas sao gravadas.
+        pares = [(s, f, key) for key, srows in stored.items()
+                 for s, f in _pares_por_ordem(srows, fresh.get(key, []))]
+        pares.sort(key=lambda p: p[0]['id'])
         updated = 0
-        for key, srows in stored.items():
-            for s, f in _pares_por_ordem(srows, fresh.get(key, [])):
-                diffs = diferencas(s, f)
-                if not diffs:
-                    continue
-                nat = natureza_da_mudanca(s, f)
-                if not grava_esta(nat, modo):
-                    continue
-                if dump is not None:
-                    dump.write(json.dumps(
-                        linha_do_dump(s, f, nat, diffs, tid, None, key), default=str) + "\n")
-                if apply:
-                    conn.execute(
-                        "UPDATE decisions SET label=?, best_action=?, gto_label=?, gto_action=?, "
-                        "gto_played_freq=?, gto_top_freq=?, ev_loss_bb=?, ev_loss_source=? WHERE id=?",
-                        (f['label'], f['best'], f['gto_label'], f['gto_action'],
-                         f.get('played'), f.get('top'), f.get('ev'), f.get('ev_src'), s['id']))
-                updated += 1
+        for s, f, key in pares:
+            diffs = diferencas(s, f)
+            if not diffs:
+                continue
+            nat = natureza_da_mudanca(s, f)
+            if not grava_esta(nat, modo):
+                continue
+            if dump is not None:
+                dump.write(json.dumps(
+                    linha_do_dump(s, f, nat, diffs, tid, None, key), default=str) + "\n")
+            if apply:
+                conn.execute(
+                    "UPDATE decisions SET label=?, best_action=?, gto_label=?, gto_action=?, "
+                    "gto_played_freq=?, gto_top_freq=?, ev_loss_bb=?, ev_loss_source=? WHERE id=?",
+                    (f['label'], f['best'], f['gto_label'], f['gto_action'],
+                     f.get('played'), f.get('top'), f.get('ev'), f.get('ev_src'), s['id']))
+            updated += 1
         if apply:
             conn.commit()
         return updated

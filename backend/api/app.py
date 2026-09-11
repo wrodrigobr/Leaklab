@@ -12806,6 +12806,15 @@ RECONCILE_TETO_S = float(os.environ.get('RECONCILE_TETO_S', '60') or 60)
 RECONCILE_INTERVALO_S = float(os.environ.get('RECONCILE_INTERVALO_S', '120') or 120)
 
 
+#: Uma passagem de reconciliacao por vez. Existem DOIS chamadores, em threads diferentes do
+#: mesmo processo: `_reconcile_loop` (a cada `RECONCILE_INTERVALO_S`) e
+#: `_solver_queue_worker_loop` quando a fila esvazia. Em 11/09 os dois pegaram o mesmo torneio
+#: drenado e o Postgres acusou `DeadlockDetected ... while updating tuple in relation
+#: "decisions"`. Ficou provavel porque o `MODO_PRESERVA` (10/09) escreve centenas de linhas por
+#: torneio, onde o fill-only escrevia quase nada.
+_RECONCILE_EM_CURSO = threading.Lock()
+
+
 def _reconcile_drained_tournaments(limite_s: float | None = None):
     """Re-anexa o gto_label das decisões de torneios cuja fila do solver JÁ drenou (todos os
     spots 'done') e cujo solve é mais novo que a última reconciliação. Corrige a cobertura
@@ -12813,6 +12822,22 @@ def _reconcile_drained_tournaments(limite_s: float | None = None):
     com gto_label NULL até um resync. Guarda o progresso em tournaments.labels_reconciled_at
     (não reprocessa até um novo solve). `MODO_PRESERVA`: preenche o que faltava E corrige o
     rótulo que o nó não sustenta mais; nunca APAGA veredito existente."""
+    # NAO bloqueia: se outra thread ja esta reconciliando, esta volta desiste. Bloquear
+    # serializaria as duas e a segunda refaria o mesmo trabalho do zero; desistir nao perde
+    # nada, porque a lista de candidatos e guardada por `labels_reconciled_at` e o que sobrar
+    # entra na volta seguinte.
+    if not _RECONCILE_EM_CURSO.acquire(blocking=False):
+        log.info("reconcile: outra passagem em curso, esta volta desiste")
+        return
+    try:
+        _reconcile_drained_impl(limite_s)
+    finally:
+        _RECONCILE_EM_CURSO.release()
+
+
+def _reconcile_drained_impl(limite_s: float | None = None):
+    """O corpo da reconciliacao. Separado so para o lock ficar num lugar unico, com `finally`,
+    em vez de espalhado pelos varios `return` do caminho."""
     from database.schema import get_conn as _gc
     from database.repositories import _fetchall as _fa
     conn = _gc()
