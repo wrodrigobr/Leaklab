@@ -1,6 +1,6 @@
 from __future__ import annotations
 import re
-from typing import List, Optional
+from typing import Dict, List, Optional
 from .models import ParsedHand, ParsedAction
 
 # ── Timestamp da mão (todas as salas): "2025/12/11 14:27:59 ET" / "... -05" / sem TZ ──
@@ -82,8 +82,11 @@ COIN_TOURN_RE  = re.compile(r"Tournament\s+'[^']*'\s+'(\w+)'")
 # bem diferente do PokerStars/GGPoker. Header e cada linha de ação mudam.
 #   888:   ***** 888poker Hand History for Game 655462938 *****
 #   Party: ***** Hand History for Game 13165152578 *****
-PG_SPLIT_RE   = re.compile(r"(?=\*\*\*\*\* (?:888poker )?Hand History for Game)")
-PG_ID_RE      = re.compile(r"Hand History for Game (\d+)")
+# `For` com F maiusculo e id ALFANUMERICO sao do dialeto novo do PartyPoker (medido em 11/09:
+# 3.482 de 3.482 cabecalhos do arquivo real, id tipo `1789081437700muevx600gf`). O antigo era
+# `for` minusculo com id numerico, e por isso o arquivo inteiro saia como site `unknown`.
+PG_SPLIT_RE   = re.compile(r"(?=\*\*\*\*\* (?:888poker )?Hand History [Ff]or Game)")
+PG_ID_RE      = re.compile(r"Hand History [Ff]or Game (\S+)")
 PG_TOURN_RE   = re.compile(r"Tournament #(\d+)|Trny:\s*(\d+)", re.IGNORECASE)
 PG_BUTTON_RE  = re.compile(r"Seat (\d+) is the button")
 PG_SEAT_RE    = re.compile(r"^Seat (\d+): (.+?) \(")
@@ -93,14 +96,59 @@ PG_DEALT_RE   = re.compile(r"Dealt to (\S+) \[\s*([^\]]+?)\s*\]")
 PG_BLINDS_AB_RE  = re.compile(r"Blinds-Antes\(([\d ,]+)/([\d ,]+)")
 PG_BLINDS_P_RE   = re.compile(r"Blinds\(([\d ,]+)/([\d ,]+)\)")
 PG_BLINDS_DOLLAR_RE = re.compile(r"\$([\d.,]+)/\$([\d.,]+)")
+# Dialeto novo: o par vem no INICIO da linha do cabecalho, sem parenteses e sem `$` —
+#   "12500/25000 Tourney Texas Holdem Game Table (NL) (MTT Tournament #422627148) ..."
+# Este e o PORTAO do parser (ver `reference_parser_bb_extraction_gate`): sem bb, stack e pote
+# ficam em FICHAS e os nos do solver degeneram. Conferido no arquivo real: o bb daqui bate com o
+# blind POSTADO em 3.476 das 3.482 maos.
+PG_BLINDS_TOURNEY_RE = re.compile(r"^([\d, ]+)/([\d, ]+)\s+Tourney", re.MULTILINE)
+# Ante e blinds postados, em PARENTESES (23.421 + 6.877 linhas no arquivo real). O ante e dead
+# money no pote e o motor conta com ele; sem captura, o pote de MTT sai menor do que e.
+PG_ANTE_RE  = re.compile(r"^(?P<player>.+?) posts ante \((?P<amount>[\d, ]+)\)", re.IGNORECASE)
+PG_POST_RE  = re.compile(r"^(?P<player>.+?) posts (?P<qual>small|big) blind \((?P<amount>[\d, ]+)\)",
+                         re.IGNORECASE)
+# Assento COM stack inicial: o dialeto novo escreve "Seat 1: Player1 (698456)". O stack inicial e
+# a base da mesa fiel do Ghost Table e do stack efetivo.
+PG_SEAT_STACK_RE = re.compile(r"^Seat (\d+): (.+?) \(([\d, ]+)\)\s*$")
+# Cartas reveladas, na linha de balance do summary:
+#   "Player1 balance 1187071, bet 448615, collected 937230, net +488615[ As, Kh ] [ a pair ... ]"
+# O PRIMEIRO par de colchetes e as cartas; o segundo e a descricao da mao. 2.159 linhas no
+# arquivo real — era tudo o que sabiamos do vilao e ia para o lixo.
+PG_REVEAL_RE = re.compile(r"^(?P<player>.+?) balance [\d, ]+,.*?\[\s*(?P<cards>[2-9TJQKA][cdhs](?:[ ,]+[2-9TJQKA][cdhs])+)\s*\]")
 # Ações (sem ":" — diferença central vs PokerStars). Valor opcional em [ ... ].
 PG_ACTION_RE  = re.compile(
     r"^(?P<player>\S+) (?P<action>folds|checks|calls|bets|raises|shows)"
     r"(?: \[\s*(?P<amount>[^\]]+?)\s*\])?",
     re.IGNORECASE,
 )
-# All-in tem sintaxe própria: "Player is all-In  [425]"
-PG_ALLIN_RE   = re.compile(r"^(?P<player>\S+) is all-In\s*\[\s*(?P<amount>[^\]]+?)\s*\]", re.IGNORECASE)
+# O dialeto NOVO escreve o valor em parenteses (`calls (395615)`, `bets (24000)`) ou na forma
+# `raises X to Y`, onde o que vale e o TOTAL (o Y). A regex acima le colchetes, do dialeto antigo;
+# `_pg_valor_da_acao` tenta as tres formas, na ordem, num lugar so.
+PG_AMOUNT_PAREN_RE = re.compile(r"\((?P<amount>[\d, ]+)\)")
+# All-in: o dialeto antigo trazia o valor ("Player is all-In  [425]"), o novo nao ("Hero is
+# all-In."). Medido: em 1.369 de 1.377 linhas do arquivo real e MARCADOR da acao anterior do
+# MESMO jogador, e o valor esta nela. As 8 restantes sao all-in involuntario pelo ante/blind (5
+# vem logo depois de "** Dealing down cards **"), onde nao houve acao voluntaria para registrar.
+PG_ALLIN_RE   = re.compile(r"^(?P<player>\S+) is all-In\s*(?:\[\s*(?P<amount>[^\]]+?)\s*\])?\s*\.?\s*$",
+                           re.IGNORECASE)
+
+
+def _pg_valor_da_acao(linha: str, casada) -> float | None:
+    """O valor de uma linha de acao PartyGaming, nas TRES formas que os dialetos usam.
+
+    Ordem: `raises X to Y` (vale o TOTAL), depois parenteses (dialeto novo), depois colchetes
+    (dialeto antigo). Num lugar so porque a mesma pergunta aparece na acao e no all-in, e valor
+    perdido e pior que linha perdida: o motor calcula pote e `facing_bet` com zero.
+    """
+    total = raise_total_from_raw(linha)
+    if total is not None:
+        return total
+    m = PG_AMOUNT_PAREN_RE.search(linha)
+    if m:
+        return _pg_num(m.group("amount"))
+    if casada is not None and casada.groupdict().get("amount"):
+        return _pg_num(casada.group("amount"))
+    return None
 
 # ── Shared patterns ───────────────────────────────────────────────────────────
 TOURN_RE        = re.compile(r"Tournament #(\d+)")
@@ -169,11 +217,21 @@ PKO_KEYWORD_RE = re.compile(
 )
 
 
-# Suporte a 888poker/PartyPoker (dialeto PartyGaming) — DESATIVADO por ora.
-# Foco atual: PokerStars/GGPoker. O parser PartyGaming permanece todo no código
-# (funções _parse_partygaming_*, regexes, extração financeira) e seus testes
-# continuam validando-o; basta voltar esta flag para True para reativar a
-# detecção/roteamento. Ver CHANGELOG "desabilita detecção 888/PartyPoker".
+# Suporte ao dialeto PartyGaming, agora em DUAS flags, porque as duas salas tem evidencia
+# diferente (11/09). O parser e compartilhado; o que muda e se a deteccao roteia para ele.
+#
+# PartyPoker: LIGADO. Validado contra o export real de um fundador — 3.482 maos, 36 torneios,
+# 157 mil linhas. Medido depois do conserto: 100% das maos com sb/bb (o portao), 11.699 acoes com
+# valor e zero sem, e o pipeline devolvendo 548 decisoes em 400 maos com stack mediano de 28,9bb,
+# sem posicao invalida. Ver `test_partygaming_parser.py`.
+#
+# 888poker: DESLIGADO, e nao por desconfianca do codigo — por falta de arquivo real. O que existe
+# sao fixtures de referencia de terceiro, e ligar uma sala sem ter visto um export de verdade foi
+# exatamente o que custou caro no PartyPoker (o cabecalho mudou de `for` para `For` e o site saia
+# `unknown`). Quando aparecer um arquivo de 888, e so medir e virar esta flag.
+PARTYPOKER_ENABLED = True
+POKER888_ENABLED = False
+#: Liga as DUAS de uma vez. Existe para os testes do dialeto, que validam os dois com fixtures.
 PARTYGAMING_ENABLED = False
 
 
@@ -187,12 +245,14 @@ def _detect_site(text: str) -> str:
         return "ggpoker"
     if "Game Hand #" in text:            # ACR/WPN: "Game Hand #... - Tournament #..."
         return "acr"
-    if PARTYGAMING_ENABLED:
-        # 888 antes de PartyPoker: o header do 888 também contém "Hand History for Game".
-        if "888poker" in text:
-            return "888poker"
-        if "Hand History for Game" in text:
-            return "partypoker"
+    # 888 antes de PartyPoker: o header do 888 também contém "Hand History for Game".
+    if (POKER888_ENABLED or PARTYGAMING_ENABLED) and "888poker" in text:
+        return "888poker"
+    # Case-insensitive: o dialeto NOVO escreve "For" com F maiusculo. Este `in` literal era o
+    # PRIMEIRO portao fechado — com ele, o arquivo real saia `unknown` e dava 0 maos mesmo com a
+    # flag ligada e as regexes corrigidas.
+    if (PARTYPOKER_ENABLED or PARTYGAMING_ENABLED) and "hand history for game" in text.lower():
+        return "partypoker"
     return "unknown"
 
 
@@ -551,8 +611,10 @@ def _pg_cards(s: str) -> List[str]:
 
 
 def _parse_partygaming_hands(text: str, site: str) -> List[ParsedHand]:
+    # As DUAS grafias: o dialeto novo escreve "For" com F maiusculo. Este filtro tambem olhava
+    # so a minuscula, e era o segundo portao fechado (o primeiro era a deteccao do site).
     chunks = [c.strip() for c in PG_SPLIT_RE.split(text)
-              if "Hand History for Game" in c]
+              if "hand history for game" in c.lower()]
     return [_parse_partygaming_hand(c, site) for c in chunks]
 
 
@@ -575,12 +637,16 @@ def _parse_partygaming_hand(raw_text: str, site: str) -> ParsedHand:
     sb = bb = None
     mb = (PG_BLINDS_AB_RE.search(raw_text)
           or PG_BLINDS_P_RE.search(raw_text)
+          or PG_BLINDS_TOURNEY_RE.search(raw_text)
           or PG_BLINDS_DOLLAR_RE.search(raw_text))
     if mb:
         sb = _pg_num(mb.group(1))
         bb = _pg_num(mb.group(2))
 
     players: List[str] = []
+    seats: List[dict] = []
+    antes: Dict[str, float] = {}
+    reveals: Dict[str, list] = {}
     actions: List[ParsedAction] = []
     street = "preflop"
     board: List[str] = []
@@ -605,21 +671,55 @@ def _parse_partygaming_hand(raw_text: str, site: str) -> ParsedHand:
             board = board + _extract_board(line)
             continue
 
+        # Assento COM stack quando o dialeto o traz ("Seat 1: Player1 (698456)"); senao, o
+        # nome sozinho, como antes. `seats` alimenta a mesa fiel e o stack efetivo.
+        mss = PG_SEAT_STACK_RE.match(line)
+        if mss:
+            nome = mss.group(2).strip()
+            players.append(nome)
+            seats.append({'seat': int(mss.group(1)), 'name': nome,
+                          'stack': _pg_num(mss.group(3)) or 0.0})
+            continue
         ms = PG_SEAT_RE.match(line)
         if ms:
             players.append(ms.group(2).strip())
             continue
 
-        # All-in tem sintaxe própria; tentar antes das ações normais.
+        # Ante: dead money no pote, NAO acao. 23.421 linhas no arquivo real, e sem elas o pote
+        # de MTT sai menor do que e (o motor conta o ante).
+        man = PG_ANTE_RE.match(line)
+        if man:
+            _q = man.group("player").strip()
+            antes[_q] = (antes.get(_q) or 0.0) + (_pg_num(man.group("amount")) or 0.0)
+            continue
+
+        # Blind postado: tambem nao e acao voluntaria. Fica fora de `actions` pela mesma razao
+        # que no PokerStars, e o valor do blind ja veio do cabecalho.
+        if PG_POST_RE.match(line):
+            continue
+
+        # `X is all-In.` sem valor e MARCADOR da acao anterior DO MESMO jogador (1.369 de 1.377
+        # no arquivo real): o valor esta na linha de cima. Sem isto, o all-in virava uma acao a
+        # mais, com valor nenhum, e a mao ganhava uma decisao que nao existiu.
         mai = PG_ALLIN_RE.match(line)
         if mai:
-            actions.append(ParsedAction(
-                player=mai.group("player").strip(),
-                street=street,
-                action="all-in",
-                amount=_pg_num(mai.group("amount")),
-                raw=line,
-            ))
+            quem = mai.group("player").strip()
+            valor = _pg_valor_da_acao(line, mai)
+            anterior = next((a for a in reversed(actions) if a.player == quem), None)
+            if valor is None and anterior is not None:
+                anterior.action = "all-in"           # marcador: mantem o valor da acao real
+            elif valor is not None:
+                actions.append(ParsedAction(player=quem, street=street, action="all-in",
+                                            amount=valor, raw=line))
+            # sem valor e sem acao anterior: all-in involuntario pelo ante/blind (8 casos no
+            # arquivo real, 5 deles logo depois de "** Dealing down cards **"). Nao houve acao
+            # voluntaria para registrar, e inventar uma seria pior que nao ter.
+            continue
+
+        # Cartas reveladas no summary (2.159 linhas): e tudo o que se sabe do vilao.
+        mrv = PG_REVEAL_RE.match(line)
+        if mrv:
+            reveals[mrv.group("player").strip()] = _pg_cards(mrv.group("cards"))
             continue
 
         ma = PG_ACTION_RE.match(line)
@@ -632,7 +732,7 @@ def _parse_partygaming_hand(raw_text: str, site: str) -> ParsedHand:
                 player=ma.group("player").strip(),
                 street=street,
                 action=action_str,
-                amount=_pg_num(ma.group("amount")),
+                amount=_pg_valor_da_acao(line, ma),
                 raw=line,
             ))
 
@@ -650,13 +750,16 @@ def _parse_partygaming_hand(raw_text: str, site: str) -> ParsedHand:
         hero_cards=hero_cards,
         board=board,
         players=players,
+        seats=seats,
+        antes=antes,
         actions=actions,
         raw_text=raw_text,
         bounties={},
         is_pko=is_pko,
-        # Dialeto PartyGaming: se houver seção SUMMARY no formato conhecido, aproveita; senão
-        # devolve {} sem reclamar. Revelação é dado opcional.
-        reveals=reveals_do_summary(raw_text),
+        # Duas fontes de revelacao, na ordem: a secao SUMMARY no formato antigo (se houver) e as
+        # linhas de `balance` do dialeto novo, lidas no laco acima. Revelacao e dado opcional, e
+        # nenhuma das duas reclama quando nao acha — mas as duas juntas cobrem os dois dialetos.
+        reveals=(reveals_do_summary(raw_text) or reveals),
     )
 
 

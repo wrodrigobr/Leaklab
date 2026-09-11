@@ -1,0 +1,163 @@
+***** Hand History For Game 1789080917076n9u7twfk01 *****
+12500/25000 Tourney Texas Holdem Game Table (NL) (MTT Tournament #422627148) (Buyin $5.0 + $0.5) - Thu Sep 10 18:54:46 EDT 2026
+Table (422627148) Table #12 (Real Money) -- Seat 5 is the button
+Total number of players : 7/7
+Seat 1: Player1 (773956)
+Seat 2: Hero (336615)
+Seat 3: Player3 (695443)
+Seat 4: Player4 (282610)
+Seat 5: Player5 (223544)
+Seat 6: Player6 (548507)
+Seat 7: Player7 (1042932)
+Player1 posts ante (3000)
+Hero posts ante (3000)
+Player3 posts ante (3000)
+Player4 posts ante (3000)
+Player5 posts ante (3000)
+Player6 posts ante (3000)
+Player7 posts ante (3000)
+Player6 posts small blind (12500)
+Player7 posts big blind (25000)
+** Dealing down cards **
+Dealt to Hero [ 9h, 8c ]
+Player1 folds 
+Hero folds 
+Player3 folds 
+Player4 raises 279610 to 279610
+Player4 is all-In.
+Player5 folds 
+Player6 folds 
+Player7 folds 
+** Summary **
+Main Pot: 83500 
+Player1 balance 770956, lost 3000 (folded)
+Hero balance 333615, lost 3000 (folded)
+Player3 balance 692443, lost 3000 (folded)
+Player4 balance 338110, bet 282610, collected 338110, net +55500
+Player5 balance 220544, lost 3000 (folded)
+Player6 balance 533007, lost 15500 (folded)
+Player7 balance 1014932, lost 28000 (folded)
+
+***** Hand History For Game 1789078860212w8hbmd36c3d *****
+5000/10000 Tourney Texas Holdem Game Table (NL) (MTT Tournament #422627148) (Buyin $5.0 + $0.5) - Thu Sep 10 18:20:22 EDT 2026
+Table (422627148) Table #12 (Real Money) -- Seat 5 is the button
+Total number of players : 6/7
+Seat 1: Player1 (181708)
+Seat 2: Hero (209221)
+Seat 3: Player3 (295736)
+Seat 4: Player4 (90555)
+Seat 5: Player5 (202647)
+Seat 7: Player6 (64049)
+Player1 posts ante (1250)
+Hero posts ante (1250)
+Player3 posts ante (1250)
+Player4 posts ante (1250)
+Player5 posts ante (1250)
+Player6 posts ante (1250)
+Player6 posts big blind (10000)
+** Dealing down cards **
+Dealt to Hero [ 5c, Ad ]
+Player1 calls (10000)
+Hero folds 
+Player3 folds 
+Player4 folds 
+Player5 folds 
+Player6 folds 
+** Summary **
+Main Pot: 27500 
+Player1 balance 197958, bet 11250, collected 27500, net +16250
+Hero balance 207971, lost 1250 (folded)
+Player3 balance 294486, lost 1250 (folded)
+Player4 balance 89305, lost 1250 (folded)
+Player5 balance 201397, lost 1250 (folded)
+Player6 balance 52799, lost 11250 (folded)
+
+***** Hand History For Game 1789077234060fulrf35wy88 *****
+2500/5000 Tourney Texas Holdem Game Table (NL) (MTT Tournament #422627148) (Buyin $5.0 + $0.5) - Thu Sep 10 17:53:19 EDT 2026
+Table (422627148) Table #12 (Real Money) -- Seat 1 is the button
+Total number of players : 6/7
+Seat 1: Player1 (35121)
+Seat 2: Hero (136893)
+Seat 3: Player3 (188576)
+Seat 4: Player4 (112805)
+Seat 5: Player5 (196689)
+Seat 6: Player6 (73832)
+Player1 posts ante (625)
+Hero posts ante (625)
+Player3 posts ante (625)
+Player4 posts ante (625)
+Player5 posts ante (625)
+Player6 posts ante (625)
+Hero posts small blind (2500)
+Player3 posts big blind (5000)
+** Dealing down cards **
+Dealt to Hero [ Td, Tc ]
+Player4 folds 
+Player5 folds 
+Player6 raises 73207 to 73207
+Player6 is all-In.
+Player1 calls (34496)
+Player1 is all-In.
+Hero raises 133768 to 136268
+Hero is all-In.
+Player3 folds 
+Creating Main Pot with  112238 with Player1
+Creating Side Pot 1 with 77422 with Player6
+** Dealing Flop ** :  [ 7c, 4c, 2c ]
+** Dealing Turn ** :  [ 9d ]
+** Dealing River ** :  [ Qs ]
+** Summary **
+Main Pot: 112238 Side Pot 1: 77422 
+Board: [ 7c, 4c, 2c, 9d, Qs ]
+Player1 balance 0, lost 35121[ 4s, 6s ] [ a pair of fours -- Qs,9d,7c,4s,4c ]
+Hero balance 252721, bet 136893, collected 252721, net +115828[ Td, Tc ] [ a pair of tens -- Qs,Td,Tc,9d,7c ]
+Player3 balance 182951, lost 5625 (folded)
+Player4 balance 112180, lost 625 (folded)
+Player5 balance 196064, lost 625 (folded)
+Player6 balance 0, lost 73832[ Ts, Ks ] [ high card king -- Ks,Qs,Ts,9d,7c ]
+
+***** Hand History For Game 1789080674269xklgs9iczh *****
+10000/20000 Tourney Texas Holdem Game Table (NL) (MTT Tournament #422627148) (Buyin $5.0 + $0.5) - Thu Sep 10 18:50:23 EDT 2026
+Table (422627148) Table #12 (Real Money) -- Seat 7 is the button
+Total number of players : 6/7
+Seat 2: Hero (357115)
+Seat 3: Player2 (617443)
+Seat 4: Player3 (343110)
+Seat 5: Player4 (266544)
+Seat 6: Player5 (373007)
+Seat 7: Player6 (1079432)
+Hero posts ante (2500)
+Player2 posts ante (2500)
+Player3 posts ante (2500)
+Player4 posts ante (2500)
+Player5 posts ante (2500)
+Player6 posts ante (2500)
+Hero posts small blind (10000)
+Player2 posts big blind (20000)
+** Dealing down cards **
+Dealt to Hero [ Kd, 7c ]
+Player3 folds 
+Player4 folds 
+Player5 folds 
+Player6 raises 40000 to 40000
+Hero folds 
+Player2 calls (20000)
+** Dealing Flop ** :  [ Ac, Ah, Ad ]
+Player2 checks 
+Player6 checks 
+** Dealing Turn ** :  [ 4d ]
+Player2 checks 
+Player6 checks 
+** Dealing River ** :  [ Qh ]
+Player2 checks 
+Player6 bets (73500)
+Player2 folds 
+** Summary **
+Main Pot: 105000 
+Board: [ Ac, Ah, Ad, 4d, Qh ]
+Hero balance 344615, lost 12500 (folded)
+Player2 balance 574943, lost 42500 (folded)
+Player3 balance 340610, lost 2500 (folded)
+Player4 balance 264044, lost 2500 (folded)
+Player5 balance 370507, lost 2500 (folded)
+Player6 balance 1141932, bet 116000, collected 178500, net +62500

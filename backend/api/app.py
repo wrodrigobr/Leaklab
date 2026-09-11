@@ -5218,10 +5218,18 @@ def _extract_financials(raw: str, hero: str, site: str | None = None, filename: 
                     # 'won/lost X' = resultado líquido; prize derivado (bruto = buy-in + líquido)
                     result['prize'] = round(bi + net if ms.group(2).lower() == 'won'
                                             else max(bi - net, 0.0), 2)
-        else:  # partypoker — "NL Texas Hold'em $215 USD Buy-in ..." / "$1 USD Buy-in"
-            m = re.search(r'\$(\d+\.?\d*)\s+USD Buy-in', raw)
+        else:  # partypoker — dois dialetos de buy-in
+            # Dialeto NOVO (export de torneio, medido em 11/09): o cabecalho traz
+            # "(Buyin $5.0 + $0.5)" — buy-in + rake, somados, como nas outras salas. Seis
+            # variacoes no arquivo real, nenhuma com tres parcelas (nao ha PKO ali).
+            m = re.search(r'\(Buyin\s*\$(\d+\.?\d*)\s*\+\s*\$(\d+\.?\d*)\)', raw)
             if m:
-                result['buy_in'] = float(m.group(1))
+                result['buy_in'] = round(float(m.group(1)) + float(m.group(2)), 2)
+            else:
+                # Dialeto ANTIGO: "NL Texas Hold'em $215 USD Buy-in ..." / "$1 USD Buy-in"
+                m = re.search(r'\$(\d+\.?\d*)\s+USD Buy-in', raw)
+                if m:
+                    result['buy_in'] = float(m.group(1))
 
             if hero:
                 # PartyPoker grava o resultado no próprio HH:
