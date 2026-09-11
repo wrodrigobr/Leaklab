@@ -4,6 +4,42 @@ Todas as mudanÃ§as notÃ¡veis neste projeto serÃ£o documentadas aqui.
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
+## Reparo das divergencias CONCLUIDO nas cinco contas com material (11/09)
+
+- **12.960 linhas gravadas** em cinco etapas, uma conta por vez, com conferencia entre elas:
+  Luciper (237), wrodrigo (168), rullian (6.670), michel (2.358), aguiard (3.527).
+- **Efeito NA TELA, somado:** **1.154 acusacoes sairam, 838 entraram, 4.868 mudaram de grau.**
+  As que entraram vem com custo medido em bb; sao desvios que a tela escondia.
+- **Verificado pelo caminho do proprio produto**, torneio a torneio: `label_drift` e `action_only`
+  em ZERO em todas as contas. O que sobra e (a) o churn do AY-42 (diferenca so no `label`, sempre
+  `standard` gravado contra `marginal` do motor, em linha `gto_mixed`) e (b) a familia `vanished`,
+  que o modo conservador nao toca de proposito. Varredura de invariantes limpa nas 13.
+- **A explicacao macro, medida e nao suposta:** em 100% das linhas o solve do spot chegou DEPOIS
+  do veredito ter sido gravado (mediana de 17h na familia do rotulo velho, 3h nas que estavam
+  mudas). O veredito nasce no upload, com o solver ainda trabalhando; o gancho fill-only depois
+  preenchia o vazio e nunca corrigia o que mudou.
+- **O gancho consertado JA protege o que entra**, provado nos 8 torneios subidos na noite de
+  10/09 (5 do michel, 3 do dono): todos reconciliados entre 1h30 e 3h40 depois do import, quando
+  o solve chegou, e todos com ZERO candidatos na conferencia.
+- **Mas ele NAO alcanca o acervo antigo, e isso foi um erro meu de afirmacao.** Eu disse que ele
+  limparia sozinho conforme os torneios fossem re-solvados. O gatilho dele e `MAX(solved_at) >
+  labels_reconciled_at`: torneio cujo solve terminou dias atras nunca mais e visitado. Medido:
+  **os 806 torneios da base estavam fora do alcance dele**. Por isso as etapas a mao eram o unico
+  caminho, e por isso o reparo foi manual.
+- **Cuidado de medicao que atrasou o diagnostico:** `reconcile_tournament_labels` estampa
+  `labels_reconciled_at` SEMPRE, inclusive quando chamado pelo reparo. Logo essa data nao
+  distingue "o gancho passou" de "eu passei"; quem distingue e a data do IMPORT.
+- **E outro, do meu proprio medidor:** a checagem de processo em shell casava com a propria linha
+  de comando dela (o nome do script aparecia ali) e reportou "2 processos vivos" por 13 minutos
+  com o reparo ja terminado. Medidor que se acha fabrica trabalho em andamento; a versao nova
+  exige `python` com o script em `argv[1]` e imprime quantos processos olhou.
+- **Registro para desfazer das cinco contas salvo FORA do container** (`~/rollback/` no host e
+  no scratchpad). O container foi recriado no deploy das 01:43 e o `/tmp` dele foi apagado: os
+  arquivos do Luciper e do dono so existem porque foram copiados na hora.
+- **Falta, e e opcional:** 4 contas pequenas somando 90 linhas, todas invisiveis na tela (so
+  frequencia e custo internos).
+
+---
 ## O registro do reparo cobria metade da escrita (10/09, achado na etapa 2)
 
 - **Como apareceu:** depois de aplicar a etapa 2 (minha conta, 168 decisoes), o dry-run passou a
