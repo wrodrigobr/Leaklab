@@ -235,15 +235,21 @@ def test_com_a_lista_de_validacao_so_quem_esta_nela_ve_o_perfil_por_posicao():
             os.environ['STATS_BY_POSITION_USERS'] = antes
 
 
-def test_a_grade_soma_tudo_e_a_matriz_exige_o_recorte():
-    """As duas politicas, lado a lado (09/09 noite). A GRADE soma tudo por default e aceita
-    "todas"/"todos": ela compara com uma FAIXA de referencia, que alarga honestamente quando o
-    recorte e amplo. A MATRIZ exige assento, jogadores e stack: ela mostra UM numero.
+def test_a_grade_e_a_matriz_abrem_no_MESMO_recorte():
+    """As duas politicas convergiram em 11/09, pelo achado do Rullian: a grade dizia RFI 17,2%
+    no UTG e a matriz, aberta a partir dela, dizia 19,8% — os dois certos, recortes diferentes
+    (a matriz abria na faixa de stack mais jogada).
 
-    Tentei exigir nos dois na tarde do mesmo dia e esvaziei a grade do dono — o piso e 100 maos
-    por assento e o recorte tinha 36, entao 3.231 maos viraram zero celulas preenchidas. A
-    recusa da matriz e EXPLICITA porque os validadores compartilhados traduzem "todas" para
-    None, e None ali voltaria a somar contextos em silencio."""
+    Historico, porque o caminho importa: em 09/09 a matriz exigia assento, jogadores E stack,
+    para mostrar UM numero em vez de uma media entre cartas. Exigir os tres na GRADE tambem
+    esvaziou a grade do dono no mesmo dia (piso de 100 maos por assento contra 36 no recorte:
+    3.231 maos, zero celulas). Em 10/09 saiu o filtro de jogadores (Rullian: "essa parte de
+    selecionar numero de jogadores e estranha"), e em 11/09 saiu a obrigatoriedade do stack.
+
+    O que este teste defende agora: os dois lugares ABREM no mesmo recorte, e a matriz aceita
+    "todos" em vez de recusar. Estreitar por profundidade e escolha do jogador, com a mistura
+    de cartas DECLARADA (ver `test_a_matriz_abre_com_TODAS_as_faixas_e_o_numero_BATE_com_a_grade`,
+    que ancora no numero)."""
     _semeia([(9, 'UTG', 10, MAOS_FRACAS), (8, 'UTG', 30, MAOS_FRACAS)])
     from api.app import app
     from database.auth import generate_token
@@ -264,20 +270,21 @@ def test_a_grade_soma_tudo_e_a_matriz_exige_o_recorte():
         r = c.get('/metrics/player-stats/by-position?days=3650&%s' % q, headers=h)
         assert r.status_code == 200, (q, r.status_code)
         assert r.get_json()['mesa'] is None or q == '', (q, r.get_json()['mesa'])
-    # Na MATRIZ o STACK segue obrigatorio (profundidade muda a carta em TODO assento), mas o
+    # Na MATRIZ nenhum dos dois e obrigatorio: "todos" e ACEITO e e o padrao (11/09), e o
     # filtro de jogadores saiu em 10/09 (Rullian: "essa parte de selecionar numero de jogadores
-    # e estranha... o PokerTracker nao tem essa separacao"). Medido antes: somar os tamanhos
-    # custa mediana 0,6 pp no numero do solver e multiplica a amostra por 2,3, e o custo esta
-    # concentrado no UTG — o unico assento que existe em toda mesa.
-    assert c.get('/metrics/player-stats/by-position/hands?position=UTG&stack=todos', headers=h).status_code == 400
+    # e estranha... o PokerTracker nao tem essa separacao"). Medido antes de tirar: somar os
+    # tamanhos custa mediana 0,6 pp no numero do solver e multiplica a amostra por 2,3, e o
+    # custo esta concentrado no UTG — o unico assento que existe em toda mesa.
+    assert c.get('/metrics/player-stats/by-position/hands?position=UTG&days=3650&stack=todos',
+                 headers=h).status_code == 200
     assert c.get('/metrics/player-stats/by-position/hands?position=UTG&days=3650&mesa=todas', headers=h).status_code == 200
     # tamanho desconhecido e 400 tambem, nunca "a mais jogada" caladamente sob o rotulo errado
     ruim = c.get('/metrics/player-stats/by-position?days=3650&mesa=10max', headers=h)
     assert ruim.status_code == 400 and 'mesas' in ruim.get_json(), ruim.get_data(as_text=True)[:200]
     assert c.get('/metrics/player-stats/by-position/hands?position=UTG&mesa=10max', headers=h).status_code == 400
-    # A MATRIZ, sem `?mesa=`, abre na mesa mais jogada e DECLARA. A grade nao: ela soma tudo.
+    # A MATRIZ, sem filtro, abre no MESMO recorte da grade: soma mesas E profundidades.
     mat = c.get('/metrics/player-stats/by-position/hands?position=UTG&days=3650', headers=h).get_json()
-    assert mat['mesa'] is None, mat['mesa']                        # a matriz nao fixa mais a mesa
+    assert mat['mesa'] is None and mat['stack_band'] is None, (mat['mesa'], mat['stack_band'])
     assert mat['n'] == 40, mat['n']                                # soma as duas mesas (10 + 30)
     # o UTG de mesa 9 e o de mesa 8 usam cartas diferentes: a tela DECLARA a faixa
     assert mat['assento_da_carta'] is None, mat['assento_da_carta']
