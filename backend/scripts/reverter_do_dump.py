@@ -127,12 +127,25 @@ def main():
                                    x['para']['label'], x['para']['gto_label']))
             continue
         if args.apply:
-            conn.execute(_adapt(
-                "UPDATE decisions SET label=?, best_action=?, gto_label=?, gto_action=?, "
-                "gto_played_freq=?, gto_top_freq=?, ev_loss_bb=?, ev_loss_source=? "
-                "WHERE id=?"),
-                (x['de']['label'], x['de']['best'], x['de']['gto_label'], x['de']['gto_action'],
-                 x['de']['played'], x['de']['top'], x['de']['ev'], x['de']['ev_src'], did))
+            # O `score` viaja JUNTO quando a linha o carrega (as do `reconcile`, que o
+            # re-deriva do label). Devolver o rotulo antigo com a nota nova produziria a
+            # linha-quimera de 12/08: veredito de uma avaliacao e numero de outra.
+            if 'score' in (x['de'] or {}):
+                conn.execute(_adapt(
+                    "UPDATE decisions SET label=?, best_action=?, gto_label=?, gto_action=?, "
+                    "gto_played_freq=?, gto_top_freq=?, ev_loss_bb=?, ev_loss_source=?, score=? "
+                    "WHERE id=?"),
+                    (x['de']['label'], x['de']['best'], x['de']['gto_label'],
+                     x['de']['gto_action'], x['de']['played'], x['de']['top'], x['de']['ev'],
+                     x['de']['ev_src'], x['de']['score'], did))
+            else:
+                conn.execute(_adapt(
+                    "UPDATE decisions SET label=?, best_action=?, gto_label=?, gto_action=?, "
+                    "gto_played_freq=?, gto_top_freq=?, ev_loss_bb=?, ev_loss_source=? "
+                    "WHERE id=?"),
+                    (x['de']['label'], x['de']['best'], x['de']['gto_label'],
+                     x['de']['gto_action'], x['de']['played'], x['de']['top'], x['de']['ev'],
+                     x['de']['ev_src'], did))
         revertidas += 1
     if args.apply:
         conn.commit()

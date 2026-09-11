@@ -160,6 +160,33 @@ def test_o_reconcile_roda_depois_do_resync():
     assert d['best_action'] == 'check', ('o reconcile tem de realinhar o best_action', d)
 
 
+def test_o_registro_cobre_tambem_o_que_o_reconcile_mudou():
+    """O furo achado em 10/09 aplicando na minha propria conta: o resync gravou 168 linhas e o
+    `reconcile_tournament_labels` mexeu em ~180 OUTRAS, que o registro nao cobria. Registro que
+    cobre metade da escrita nao e registro, e reverter deixaria o resto no meio do caminho.
+
+    A decisao 9204 esta na contradicao do AY-26 e o resync NAO a alcanca (a mao/acao dela nao vem
+    na avaliacao fresca): quem a conserta e o reconcile. Entao ela e a prova — tem de aparecer no
+    arquivo com `natureza='reconcile'` e com o ANTES do lado certo.
+    """
+    _semeia()
+    restaura = _instala_duble()
+    try:
+        _roda('--user', '9001', '--apply', '--dump-dir', _DUMPDIR)
+    finally:
+        restaura()
+    caminho = os.path.join(_DUMPDIR, 'u9001_preserva.jsonl')
+    linhas = [json.loads(l) for l in io.open(caminho, encoding='utf-8') if l.strip()]
+    rec = [x for x in linhas if x['id'] == 9204]
+    assert rec, ('a linha que SO o reconcile mexeu ficou fora do registro', [x['id'] for x in linhas])
+    x = rec[0]
+    assert x['natureza'] == 'reconcile', x
+    assert x['de']['best'] == 'bet', ('o ANTES tem de ser o estado anterior ao reconcile', x)
+    assert x['para']['best'] == 'check', x
+    assert 'score' in x['de'] and 'score' in x['para'], (
+        'o score viaja junto: o reconcile o re-deriva do label', x)
+
+
 def test_dry_run_nao_escreve_e_nao_exige_registro():
     _semeia()
     restaura = _instala_duble()

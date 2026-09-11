@@ -141,6 +141,33 @@ def test_reverte_a_linha_intacta_e_nao_toca_a_que_mudou_depois():
     assert ja['gto_label'] == 'gto_mixed', ja                   # segue no antigo, sem toque
 
 
+def test_o_score_volta_junto_quando_a_linha_o_carrega():
+    """As linhas do `reconcile` carregam `score`, porque ele e re-derivado do label.
+
+    Devolver o rotulo antigo e deixar a nota nova e a linha-quimera de 12/08: veredito de uma
+    avaliacao com o numero de outra. Quem muda veredito carrega a nota junto, na ida e na volta.
+    """
+    _semeia()
+    did = _CASOS['intacta'][0]
+    conn = get_conn()
+    conn.execute(_adapt("UPDATE decisions SET score=? WHERE id=?"), (0.11, did))
+    conn.commit(); conn.close()
+    # a MESMA linha do dump, agora com score nos dois lados (como o reconcile grava)
+    linhas = [json.loads(l) for l in io.open(_ARQ, encoding='utf-8') if l.strip()]
+    with io.open(_ARQ, 'w', encoding='utf-8', newline=chr(10)) as fh:
+        for x in linhas:
+            if x['id'] == did:
+                x['natureza'] = 'reconcile'
+                x['de']['score'] = 0.93
+                x['para']['score'] = 0.11
+            fh.write(json.dumps(x) + chr(10))
+    _roda('--apply')
+    conn = get_conn()
+    sc = dict(conn.execute(_adapt("SELECT score FROM decisions WHERE id=?"), (did,)).fetchone())
+    conn.close()
+    assert round(float(sc['score']), 2) == 0.93, ('o score tem de voltar junto', sc)
+
+
 def test_dry_run_nao_escreve():
     _semeia()
     _roda()

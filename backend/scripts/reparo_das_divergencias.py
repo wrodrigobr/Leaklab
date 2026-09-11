@@ -26,6 +26,7 @@ Uso:
 """
 import argparse
 import io
+import json
 import os
 import sys
 
@@ -34,7 +35,60 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 from database.schema import get_conn                                          # noqa: E402
 from database.repositories import _adapt, reconcile_tournament_labels         # noqa: E402
 from scripts.resync_postflop_gto import (resync_tournament_postflop,          # noqa: E402
-                                         MODO_PRESERVA, MODO_TOTAL, MODO_FILL)
+                                         linha_do_dump, MODO_PRESERVA, MODO_TOTAL, MODO_FILL)
+
+#: Os campos que o reconcile pode reescrever, junto com os do resync. `score` entra porque o
+#: reconcile o re-deriva do label, e sem ele a volta devolveria o rotulo antigo com a nota nova.
+_CAMPOS_RECONCILE = ('label', 'best_action', 'gto_label', 'gto_action', 'gto_played_freq',
+                     'gto_top_freq', 'ev_loss_bb', 'ev_loss_source', 'score')
+
+
+def _estado_do_torneio(tid: int) -> dict:
+    """{id: linha} das decisoes que o reconcile pode reescrever (as que tem gto_label).
+
+    Existe porque o `reconcile_tournament_labels` alcanca linhas que o resync NAO tocou, e sem
+    este retrato elas ficariam fora do registro para desfazer. Medido em 10/09 na minha propria
+    conta: o resync gravou 168 linhas e o reconcile mexeu em ~180 OUTRAS, que eu nao teria como
+    reverter. Registro que cobre metade da escrita nao e registro.
+    """
+    conn = get_conn()
+    try:
+        rows = conn.execute(_adapt(
+            "SELECT id, hand_id, street, action_taken, %s FROM decisions "
+            "WHERE tournament_id = ? AND gto_label IS NOT NULL AND gto_label <> ''"
+            % ', '.join(_CAMPOS_RECONCILE)), (tid,)).fetchall()
+        return {dict(r)['id']: dict(r) for r in rows}
+    finally:
+        conn.close()
+
+
+def _grava_o_que_o_reconcile_mudou(dump, tid: int, antes: dict) -> int:
+    """Compara o retrato com o estado de agora e grava as linhas que o reconcile mexeu.
+
+    Usa `linha_do_dump`, a MESMA funcao do resync: o registro nao pode ter dois formatos, senao
+    a ferramenta de reverter entende um e o outro nao.
+    """
+    depois = _estado_do_torneio(tid)
+    n = 0
+    for did, a in antes.items():
+        d = depois.get(did)
+        if not d:
+            continue
+        if all(a.get(c) == d.get(c) for c in _CAMPOS_RECONCILE):
+            continue
+        # o formato que `linha_do_dump` espera do lado "depois"
+        f = {'label': d['label'], 'best': d['best_action'], 'gto_label': d['gto_label'],
+             'gto_action': d['gto_action'], 'played': d['gto_played_freq'],
+             'top': d['gto_top_freq'], 'ev': d['ev_loss_bb'], 'ev_src': d['ev_loss_source']}
+        key = (a.get('hand_id'), a.get('street'), a.get('action_taken'))
+        linha = linha_do_dump(a, f, 'reconcile', ['reconcile'], tid, None, key)
+        # `score` nao esta nos 8 campos do resync, e o reconcile o re-deriva: viaja fora deles
+        linha['de']['score'] = a.get('score')
+        linha['para']['score'] = d.get('score')
+        if dump is not None:
+            dump.write(json.dumps(linha, default=str) + "\n")
+        n += 1
+    return n
 
 MODOS = {'preserva': MODO_PRESERVA, 'total': MODO_TOTAL, 'fill': MODO_FILL}
 
@@ -87,16 +141,22 @@ def main():
 
     gravadas = 0
     reconciliadas = 0
+    tocadas_pelo_reconcile = 0
     try:
         for tid in tids:
             n = resync_tournament_postflop(tid, apply=args.apply, modo=modo, dump=dump)
             gravadas += n
             if args.apply:
+                # Retrato ANTES do reconcile: ele reescreve linhas que o resync nao tocou, e sem
+                # isto elas ficariam fora do registro para desfazer (achado em 10/09: 168
+                # gravadas pelo resync, ~180 OUTRAS mexidas pelo reconcile).
+                antes = _estado_do_torneio(tid)
                 # Na ordem do gancho: primeiro o gto, depois o realinhamento de label/score/best.
                 try:
                     reconciliadas += int(reconcile_tournament_labels(tid) or 0)
                 except Exception as e:                                  # noqa: BLE001
                     print('  ATENCAO: reconcile do torneio %s falhou: %s' % (tid, e))
+                tocadas_pelo_reconcile += _grava_o_que_o_reconcile_mudou(dump, tid, antes)
             if n:
                 print('  tid %-6s %4d decisoes' % (tid, n))
     finally:
@@ -106,7 +166,8 @@ def main():
     print()
     print('decisoes gravadas pelo resync : %d' % gravadas)
     if args.apply:
-        print('linhas realinhadas pelo reconcile: %d' % reconciliadas)
+        print('linhas realinhadas pelo reconcile: %d (no registro: %d)'
+              % (reconciliadas, tocadas_pelo_reconcile))
         print('registro para desfazer        : %s' % caminho)
         print('   reverter: python scripts/reverter_do_dump.py %s --apply' % caminho)
     print('\n%s' % ('APLICADO' if args.apply else 'DRY-RUN (use --apply)'))

@@ -4,6 +4,33 @@ Todas as mudanÃ§as notÃ¡veis neste projeto serÃ£o documentadas aqui.
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
+## O registro do reparo cobria metade da escrita (10/09, achado na etapa 2)
+
+- **Como apareceu:** depois de aplicar a etapa 2 (minha conta, 168 decisoes), o dry-run passou a
+  acusar **348** candidatos, mais do que antes do reparo. Numero que sobe depois de um conserto e
+  sinal de oscilacao, e foi investigado antes de seguir para os fundadores.
+- **A causa nao era o reparo:** os candidatos novos tem diferenca SO no `label`, sempre `standard`
+  gravado contra `marginal` fresco, sempre em linha `gto_mixed`. Nenhuma das linhas conferidas
+  estava no registro do que o resync gravou — quem as mudou foi o `reconcile_tournament_labels`,
+  que o reparo chama depois (na ordem do gancho), e ele esta aplicando uma politica DECLARADA no
+  codigo: `gto_correct`/`gto_mixed` viram `standard` sem condicao, load-bearing para o solve que
+  chega tarde. Registrado como AY-42.
+- **O furo de verdade era meu, e no registro:** o reconcile alcanca linhas que o resync NAO tocou
+  (na minha conta, ~180 alem das 168), e elas ficavam fora do arquivo para desfazer. Registro que
+  cobre metade da escrita nao e registro.
+- **Fechado:** o reparo agora tira um retrato do torneio ANTES de chamar o reconcile e grava, no
+  MESMO formato e pela MESMA funcao (`linha_do_dump`), toda linha que o reconcile mexeu, com
+  `natureza='reconcile'`. O relatorio passa a dizer quantas linhas o reconcile mexeu E quantas
+  entraram no registro.
+- **E o `score` volta junto.** As linhas do reconcile carregam `score` porque ele e re-derivado do
+  label; devolver o rotulo antigo com a nota nova seria a linha-quimera de 12/08. Guarda proprio,
+  quebrado de proposito (a volta esquecendo o score: acusa).
+- **Limitacao declarada:** as duas etapas JA aplicadas (Luciper e minha conta) tem registro so das
+  linhas do resync. As do reconcile mudaram `marginal` para `standard` (menos acusacao, nao mais),
+  e o gancho aplicaria a mesma politica no proximo torneio que drenasse. Nao ha como reconstruir o
+  antes delas, e reconstruir por inferencia seria registro falso.
+
+---
 ## O reparo das divergencias: medido antes, aplicado em etapas, com volta pronta (10/09)
 
 - **A medicao, numa passagem so.** `--dump` grava o ANTES e o DEPOIS dos 7 campos de cada
