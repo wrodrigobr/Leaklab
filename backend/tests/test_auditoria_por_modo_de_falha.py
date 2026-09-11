@@ -319,6 +319,10 @@ _P7_CONFERIDAS = {
     'posProfile.stackHands':  'faixa = faixa de STACK (intervalo em bb), nao desenho',
     'posProfile.detail.note': 'faixa = a faixa do solver em texto no modal contra quem (Detalhe em V2PositionProfileCard), existe',
     'posProfile.detail.description': 'descricao sr-only do modal contra quem: "linha" = linha da tabela, "faixa" = a faixa do solver em texto (lo–hi), existem',
+    # 11/09: a matriz voltou a abrir em "todas as stacks" (achado do Rullian: 17,2% na grade
+    # contra 19,8% na matriz), e com isso a referencia do solver pode misturar cartas de
+    # profundidades diferentes. A linha declara a mistura e oferece estreitar.
+    'posProfile.matrix.depthMix': 'faixa = faixa de STACK (intervalo em bb), nao desenho; os chips de faixa existem no seletor do modal (data-testid matriz-stack-*)',
 }
 
 
