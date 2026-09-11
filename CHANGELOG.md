@@ -4,6 +4,49 @@ Todas as mudanÃ§as notÃ¡veis neste projeto serÃ£o documentadas aqui.
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
+## O reparo das divergencias: medido antes, aplicado em etapas, com volta pronta (10/09)
+
+- **A medicao, numa passagem so.** `--dump` grava o ANTES e o DEPOIS dos 7 campos de cada
+  decisao candidata, com a natureza e o usuario. A passagem custa 25 a 45 min na base inteira, e
+  cada pergunta nova sairia dela de novo; com o artefato, ela rodou UMA vez (7.259 linhas) e
+  todas as medicoes vieram do arquivo. Ele e tambem o registro para desfazer.
+- **Efeito NA TELA, no modo conservador** (nao apaga veredito de ninguem): **768 acusacoes saem,
+  191 entram, 1.856 mudam de grau**, com **637 absolvendo contra 60 agravando**. No modo completo:
+  962 saem, 222 entram, 1.925 mudam de grau.
+- **A estranheza que o dono apontou, e que era maior do que eu dizia:** o `/replay` serve a
+  manchete do BANCO e monta a tabela do solver por lookup AO VIVO. Com o no re-solvado, o card
+  mostra "erro grave" em cima e, embaixo, a tabela dizendo que a jogada e a mais frequente. Nao
+  sao dois vereditos: e um veredito gravado brigando com a tabela da propria tela.
+- **As 727 `vanished` nao deixam o card mudo:** 423 ja eram "sem erro" e continuam; das 235 que
+  acusam, 72 seguem acusadas por outra evidencia. O modo completo tira 163 acusacoes a mais e nao
+  poe nenhuma. Nenhuma das 727 tem custo em bb, nem antes nem depois. Fica como decisao de
+  produto (o que o card diz sem gabarito), nao de conserto.
+- **Por que o novo e melhor e nao so diferente:** na amostra de auditoria o padrao e
+  `clear_mistake -> standard` com `ev None -> 0,21` — a linha velha acusava SEM custo medido (a
+  familia da severidade sem custo) e a nova traz o custo. Do outro lado, as 102 que passam a
+  acusar vem com 4,58bb, 2,03bb, 1,51bb: desvios reais que a tela esconde hoje.
+- **Cinco pessoas concentram tudo**, duas delas fundadores (62 com 5.160 linhas, 65 com 1.510).
+  Por isso `reparo_das_divergencias.py --user` existe: etapas com conferencia entre elas, em vez
+  de uma escrita na base toda.
+- **Etapa 1 APLICADA (Luciper, conta free, 237 decisoes).** Verificado pelo caminho do proprio
+  produto, torneio a torneio: **`label_drift` 108 -> 0 e `action_only` 12 -> 0**, sobrando so as
+  37 `vanished` que o modo conservador nao toca de proposito. Na sonda da tela, a contradicao
+  visivel caiu de 41 para 5 e a concordancia subiu de 265 para 301; as 5 estao explicadas (3 sao
+  `vanished`, 2 sao a sonda lendo um no diferente do que o motor escolhe, por causa do `JOIN`).
+- **A volta existe de verdade:** `reverter_do_dump.py` so reverte a linha cujo estado ATUAL e
+  exatamente o que o reparo gravou. Se alguem escreveu ali depois (solve novo, reconcile,
+  reanalise), ela sai como `mudou_depois` e nao e tocada — o rollback nao pode apagar escrita
+  mais nova. E numero em texto compara igual a numero: o `ev_loss_bb` do Postgres viaja como
+  '1.4' no dump, e sem normalizar TODA linha cairia em `mudou_depois`, com a reversao dizendo
+  "tudo bem" sem reverter nada.
+- **O registro e pre-requisito do `--apply`**, nao um extra. Quebrado de proposito: sem o
+  reconcile depois do resync, 1 teste acusa; sem o filtro de usuario, 3 acusam.
+- **A varredura de invariantes depois do reparo:** GRAFIA 0 -> 1 (decisao 364518). NAO e do
+  reparo — a decisao e de outro usuario, de torneio reconciliado em 04/09, e nao esta no registro
+  do que foi gravado. E um caso novo da familia AY-30 (algo reescreve `best_action` sem
+  realinhar), com ferramenta propria (`reconcilia_best_action.py`).
+
+---
 ## O gancho da fila drenada corrige rotulo velho, e nunca apaga veredito (10/09)
 
 - **Como apareceu:** o CONTROLE da amostra do AY-29 falhou em 21 de 50, com padrao claro —

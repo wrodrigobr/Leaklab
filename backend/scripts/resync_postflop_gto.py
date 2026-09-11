@@ -181,7 +181,7 @@ def _avaliacao_fresca(r):
     }
 
 
-def resync_tournament_postflop(tid, apply=True, modo=MODO_PRESERVA):
+def resync_tournament_postflop(tid, apply=True, modo=MODO_PRESERVA, dump=None):
     """Re-anexa o gto (label/best/gto_label/gto_action + freq/ev) das decisões POSTFLOP de UM
     torneio. É o re-attach usado pelo gancho automático quando a fila do torneio drena (corrige
     a cobertura artificialmente baixa pós-import). Retorna nº de decisões atualizadas.
@@ -191,6 +191,10 @@ def resync_tournament_postflop(tid, apply=True, modo=MODO_PRESERVA):
     rótulo que o nó não sustentava mais, e o nó muda toda vez que é re-solvado. Medido: 1.179
     decisões com rótulo velho, 166 acusando na tela sem respaldo, 92% com nó mais novo que a
     decisão. Apagar veredito (`vanished`) continua fora do alcance do gancho, nos três modos.
+
+    `dump` (arquivo aberto) recebe uma linha JSON por decisão gravada, com o ANTES e o DEPOIS —
+    o MESMO formato e a MESMA função do `--dump` do CLI, porque é o registro para desfazer e não
+    pode ter duas versões.
 
     Self-contained (abre/fecha a própria conexão) pra ser chamável do worker do solver."""
     conn = get_conn()
@@ -248,10 +252,15 @@ def resync_tournament_postflop(tid, apply=True, modo=MODO_PRESERVA):
         updated = 0
         for key, srows in stored.items():
             for s, f in _pares_por_ordem(srows, fresh.get(key, [])):
-                if not diferencas(s, f):
+                diffs = diferencas(s, f)
+                if not diffs:
                     continue
-                if not grava_esta(natureza_da_mudanca(s, f), modo):
+                nat = natureza_da_mudanca(s, f)
+                if not grava_esta(nat, modo):
                     continue
+                if dump is not None:
+                    dump.write(json.dumps(
+                        linha_do_dump(s, f, nat, diffs, tid, None, key), default=str) + "\n")
                 if apply:
                     conn.execute(
                         "UPDATE decisions SET label=?, best_action=?, gto_label=?, gto_action=?, "
