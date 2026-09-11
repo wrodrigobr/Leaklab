@@ -95,11 +95,24 @@ Seat 2: outro showed [Ac Kc] and lost
 
 
 def test_o_parser_expoe_no_ParsedHand():
-    """FIACAO: extrair e nao anexar deixaria a funcao sem consumidor, e o dado seguiria perdido."""
+    """FIACAO: extrair e nao anexar deixaria a funcao sem consumidor, e o dado seguiria perdido.
+
+    Ancora na CONDICAO, nao no texto: TODO `reveals=` do parser tem de referenciar
+    `reveals_do_summary`. A versao anterior contava a string literal
+    `reveals=reveals_do_summary(raw_text)` e exigia duas — em 11/09 o dialeto novo do PartyPoker
+    passou a ler revelacao tambem das linhas de `balance` e virou
+    `reveals=(reveals_do_summary(raw_text) or reveals)`. O guarda acusou uma fiacao que estava
+    INTACTA, so escrita de outro jeito. Contar texto e fragil; o que importa e que nenhum
+    construtor esqueca as revelacoes."""
+    import re as _re
     caminho = os.path.join(os.path.dirname(__file__), '..', 'leaklab', 'parser.py')
     src = open(caminho, encoding='utf-8').read()
-    assert src.count('reveals=reveals_do_summary(raw_text)') >= 2, (
-        'algum construtor de ParsedHand parou de anexar as revelacoes')
+    passagens = _re.findall(r'reveals=([^\n]+)', src)
+    assert len(passagens) >= 2, ('algum construtor de ParsedHand parou de anexar as revelacoes: '
+                                 'so %d passagem(ns) de `reveals=`' % len(passagens))
+    sem_fonte = [p for p in passagens if 'reveals_do_summary' not in p]
+    assert not sem_fonte, ('construtor anexando revelacao sem passar por `reveals_do_summary`',
+                           sem_fonte)
 
 
 if __name__ == '__main__':
