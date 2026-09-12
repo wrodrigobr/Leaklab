@@ -4,6 +4,40 @@ Todas as mudanÃ§as notÃ¡veis neste projeto serÃ£o documentadas aqui.
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
+## Correcao de uma afirmacao minha: o autocapture de preflop (12/09)
+
+Nos commits `6cb4cbaf` e `c648900f` eu escrevi que `leaklab/preflop_autocapture.py` lia a linha
+por posicao (`row[0]`), que isso estourava `KeyError: 0` no Postgres e que **por isso** a captura
+automatica de preflop nunca capturou nada em producao.
+
+**A primeira metade e verdade; a causa nao.** Perguntando ao ambiente:
+
+    docker compose exec -T web python -c "...run_autocapture(1186)"
+    {'skipped': 'gw_disabled'}
+
+`run_autocapture` sai na PRIMEIRA linha (`if not gw._enabled()`), porque o GTO Wizard esta
+descontinuado — fato que o BACKLOG ja registrava — e nunca alcanca a funcao que eu consertei. O
+`row[0]` era real e esta corrigido, mas era **inalcancavel**: o conserto e PREVENTIVO (vale se o
+GW voltar, ou se alguem chamar a funcao direto), nao corretivo, e nao destravou nada.
+
+Os "13 pares cobriveis" que eu apresentei como prova de que a captura voltou a funcionar mostram
+que a FUNCAO responde quando EU a chamo. Nao provam que o produto a chama. Chamar a funcao na mao
+e ver numero bonito nao e evidencia de comportamento do sistema.
+
+O mesmo cuidado vale para `scripts/run_gto_worker.py`: consertei `queue_stats` pelo mesmo padrao,
+mas o container do solver roda `run_solver_consumer.py` e o cron roda `burst_do_solver.py`. Nao
+confirmei que aquela funcao executa em producao, entao nao afirmo que era bug vivo.
+
+**O que foi bug VIVO e observado:** `scripts/limpa_perfis_sem_identidade.py` quebrando em
+producao com `KeyError: 0`, com o traceback na tela do dono, depois do `DELETE` ja commitado — o
+dado ficou certo e quem morreu foi a linha que existia para CONFERIR o dado. Esse foi o achado
+que iniciou a varredura, e ele se sustenta.
+
+Nota de rastreabilidade: a mensagem do commit `c5643a8a` diz "corrigida a entrada do autocapture
+no CHANGELOG". Nao havia entrada a corrigir — eu nunca a escrevi, a afirmacao viveu na mensagem
+de commit e nas minhas respostas. Esta e a entrada, escrita depois.
+
+---
 ## A QUARTA porta do score, e os tres furos do guarda que a protegia (11/09)
 
 Achado como efeito colateral do conserto do deadlock: a validacao que eu pus em
