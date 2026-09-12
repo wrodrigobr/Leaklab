@@ -153,7 +153,12 @@ def test_nenhum_update_em_massa_em_decisions():
     ordem do plano do Postgres. Nenhuma ordenacao no resto do codigo compensa isso."""
     registro = _roda_reconcile()
     assert registro, 'o reconcile nao gravou nada: a semente nao exercita o caminho de escrita'
-    sem_id = [sql for sql, _ in registro if not re.search(r'where\s+id\s*=\s*\?', sql, re.I)]
+    # OS DOIS placeholders. `_adapt` troca `?` por `%s` no Postgres, entao o SQL que chega ao
+    # banco tem forma diferente em cada backend. A primeira versao olhava so `?`: passava em
+    # SQLite e acusava FALSAMENTE na homologacao contra o Postgres, com o codigo correto. Guarda
+    # que inspeciona SQL executado tem de conhecer os dois dialetos, ou ele mede o adapter.
+    sem_id = [sql for sql, _ in registro
+              if not re.search(r'where\s+id\s*=\s*(?:\?|%s)', sql, re.I)]
     assert not sem_id, ('UPDATE em massa em decisions (sem WHERE id): ordem de trava '
                         'imprevisivel', sem_id)
 
