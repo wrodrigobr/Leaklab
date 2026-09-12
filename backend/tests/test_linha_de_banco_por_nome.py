@@ -41,6 +41,11 @@ import re
 import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+sys.path.insert(0, os.path.dirname(__file__))
+# FONTE UNICA da leitura "so codigo": `test_row_access` varre o MESMO padrao e usava outra
+# varredura; em 12/09 so uma das duas aprendeu a ignorar comentario, e a outra acusou os
+# comentarios do proprio conserto. Ver `tests/_fonte.py`.
+from _fonte import so_codigo as _so_codigo                                     # noqa: E402
 _RAIZ = os.path.join(os.path.dirname(__file__), '..')
 
 #: Os arquivos varridos. Ate 12/09 a varredura olhava SO `repositories.py`, e o bug voltou num
@@ -71,45 +76,6 @@ def _arquivos():
         if nome.endswith('.py') and nome not in _SCRIPTS_FORA:
             alvos.append(('scripts/' + nome, os.path.join(pasta, nome)))
     return alvos
-
-
-def _so_codigo(fonte: str) -> dict:
-    """As linhas do arquivo com COMENTARIOS e STRINGS apagados, por numero de linha.
-
-    Grep em fonte le tudo: comentario, docstring, mensagem de erro. Em 12/09 isso me custou
-    tres falsos resultados no mesmo dia — um comentario com `score` + `=` + `?` ABSOLVEU uma
-    porta no guarda do score, um comentario com "`reveals=`" ACUSOU uma fiacao intacta, e a
-    docstring de `um_numero`, que cita `fetchone()[0]` para explicar o bug, foi acusada por
-    ESTE guarda. Tokenizar resolve os tres de uma vez: o que nao e codigo nao e evidencia, em
-    nenhuma das duas direcoes.
-
-    Cuidado que custou uma quebra de proposito: apagar a LINHA INTEIRA por ela conter uma
-    string mata a deteccao justamente onde o bug vive — `conn.execute("SELECT ...").fetchone()[0]`
-    tem SQL inline na mesma linha do indice. A primeira versao fazia isso e ficou cega: o teste
-    de quebra criou um script com exatamente essa forma e o varredor nao viu nada. Agora so o
-    TRECHO do token e apagado, por coluna; linha inteira sai apenas quando o token abrange
-    varias linhas (docstring).
-    """
-    import io as _io
-    import tokenize as _tk
-    linhas = {n: l for n, l in enumerate(fonte.splitlines(), 1)}
-    try:
-        toks = list(_tk.generate_tokens(_io.StringIO(fonte).readline))
-    except (_tk.TokenError, IndentationError, SyntaxError):
-        return linhas                              # arquivo que nao tokeniza: varre cru
-    for t in toks:
-        if t.type not in (_tk.COMMENT, _tk.STRING):
-            continue
-        if t.start[0] == t.end[0]:                 # token numa linha so: apaga o TRECHO
-            n = t.start[0]
-            if n in linhas:
-                l = linhas[n]
-                linhas[n] = l[:t.start[1]] + ' ' * (t.end[1] - t.start[1]) + l[t.end[1]:]
-        else:                                      # docstring: as linhas cobertas saem
-            for n in range(t.start[0], t.end[0] + 1):
-                if n in linhas:
-                    linhas[n] = ''
-    return linhas
 
 
 def _ocorrencias():

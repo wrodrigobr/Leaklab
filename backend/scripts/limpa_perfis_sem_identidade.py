@@ -34,7 +34,8 @@ except Exception:
     pass
 
 from database.schema import get_conn                                          # noqa: E402
-from database.repositories import _adapt, um_numero                           # noqa: E402
+from database.repositories import _adapt                                      # noqa: E402
+from database.rowutil import first_value                                      # noqa: E402
 from leaklab.opponent_stats import SALAS_SEM_IDENTIDADE_DE_VILAO              # noqa: E402
 
 
@@ -92,13 +93,14 @@ def main():
     conn.commit()
     # Conferencia EXPLICITA: `DELETE` que nao casa nada nao levanta erro nenhum (regra 6).
     #
-    # Esta linha ja quebrou em producao (12/09): era `...fetchone()[0]`, e no Postgres a linha e
-    # um dict — `KeyError: 0`. O DELETE tinha commitado, entao o dado ficou certo e quem morreu
-    # foi a CONFERENCIA. `um_numero` le agregado nos dois backends.
-    resta = um_numero(conn,
-                      "SELECT COUNT(*) FROM opponent_profiles p "
-                      "JOIN tournaments t ON t.id = p.tournament_id "
-                      "WHERE lower(t.site) IN (%s)" % marcas, salas)
+    # Esta linha ja quebrou EM PRODUCAO (12/09) lendo a coluna por POSICAO: no Postgres a linha
+    # e um dict e o indice zero estoura. O DELETE tinha commitado, entao o dado ficou certo e
+    # quem morreu foi a CONFERENCIA. `first_value` (database/rowutil.py) le nos dois bancos; ela
+    # ja existia, e eu cheguei a escrever uma segunda igual antes de achar esta.
+    resta = first_value(conn.execute(_adapt(
+        "SELECT COUNT(*) AS n FROM opponent_profiles p "
+        "JOIN tournaments t ON t.id = p.tournament_id "
+        "WHERE lower(t.site) IN (%s)" % marcas), tuple(salas)).fetchone())
     conn.close()
     print('\nAPAGADOS. Restam %d perfis dessas salas (esperado: 0).' % resta)
     return 0 if resta == 0 else 1

@@ -13178,29 +13178,6 @@ def resync_gto_labels_for_node(spot_hash: str) -> int:
         conn.close()
 
 
-def um_numero(conn, sql: str, params=()) -> float:
-    """O primeiro valor da primeira linha de um `SELECT COUNT(*)`/agregado, em qualquer backend.
-
-    Existe por causa de uma quebra EM PRODUCAO (12/09): a conferencia final de
-    `scripts/limpa_perfis_sem_identidade.py` fazia `...fetchone()[0]` e estourou `KeyError: 0`
-    no Postgres, onde a linha e um dict (RealDictCursor). Em SQLite (`sqlite3.Row`) o indice
-    funciona, e por isso o ensaio local passou verde. E a classe de bug numero 8 da lista
-    "SQLite tolera, Postgres rejeita" (ver `project_production_live`).
-
-    O `DELETE` tinha commitado antes, entao o dado ficou correto e o script morreu na linha que
-    existia justamente para CONFERIR o dado. Conferencia que quebra e pior que conferencia
-    ausente: ela deixa o operador sem saber se a escrita pegou.
-    """
-    linha = conn.execute(_adapt(sql), tuple(params)).fetchone()
-    if linha is None:
-        return 0
-    # Os dois backends NA MESMA linha, de proposito: `test_linha_de_banco_por_nome` exige o
-    # `isinstance` junto do indice, e com o teste em duas linhas ele acusa (acusou, aqui mesmo).
-    # A guarda esta certa em ser literal: indice solto e o defeito, e "tem um isinstance por
-    # perto" nao e evidencia de que ele cobre ESTE indice.
-    return list(linha.values())[0] if isinstance(linha, dict) else linha[0]
-
-
 def grava_decisions_em_ordem(conn, por_id: dict) -> int:
     """Aplica UPDATEs em `decisions` SEMPRE em ordem crescente de `id`, um id por UPDATE.
 

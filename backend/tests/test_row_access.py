@@ -23,6 +23,8 @@ Este teste é o que avisa, no momento em que o décimo é escrito.
 import os, re, sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+sys.path.insert(0, os.path.dirname(__file__))
+from _fonte import so_codigo                                                   # noqa: E402
 
 _BACKEND = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 
@@ -80,11 +82,17 @@ def test_ninguem_le_coluna_por_posicao_no_fetchone():
     vistos = 0
     for caminho in _relevantes():
         vistos += 1
-        with open(caminho, encoding='utf-8') as f:
-            for n, linha in enumerate(f, 1):
-                if _PADRAO.search(linha):
-                    rel = os.path.relpath(caminho, _BACKEND).replace('\\', '/')
-                    violacoes.append(f"{rel}:{n}  {linha.strip()[:88]}")
+        fonte = open(caminho, encoding='utf-8').read()
+        cru = {n: l for n, l in enumerate(fonte.splitlines(), 1)}
+        # SO CODIGO. Em 12/09 este guarda ficou vermelho acusando os COMENTARIOS do proprio
+        # conserto: as linhas que explicam o bug precisam CITAR o padrao para nomea-lo, e texto
+        # que descreve a cicatriz nao e a cicatriz. Ver `tests/_fonte.py` — e a mesma leitura
+        # usada por `test_linha_de_banco_por_nome`, que varre este mesmo padrao. Antes cada um
+        # dos dois guardas tinha a sua varredura, e so um aprendeu a ignorar texto.
+        for n, codigo in sorted(so_codigo(fonte).items()):
+            if _PADRAO.search(codigo):
+                rel = os.path.relpath(caminho, _BACKEND).replace('\\', '/')
+                violacoes.append(f"{rel}:{n}  {cru[n].strip()[:88]}")
 
     assert vistos > 50, f"varredura não encontrou arquivos suficientes ({vistos}) — caminho errado?"
     assert not violacoes, (

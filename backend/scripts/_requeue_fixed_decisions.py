@@ -3,7 +3,8 @@ import sys, os, json
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from dotenv import load_dotenv
 load_dotenv(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), '.env'))
-from database.repositories import get_conn, um_numero
+from database.repositories import get_conn
+from database.rowutil import first_value
 
 conn = get_conn()
 
@@ -31,7 +32,8 @@ for row in rows:
     board, hero_cards, best_action = _d['board'], _d['hero_cards'], _d['best_action']
     print(f"  dec={dec_id} street={street} pos={position} facing_bet={facing_bet}bb stack={stack_bb}bb")
 
-    hand_id = um_numero(conn, "SELECT hand_id FROM decisions WHERE id=?", (dec_id,))
+    hand_id = first_value(conn.execute(
+        "SELECT hand_id AS h FROM decisions WHERE id=?", (dec_id,)).fetchone())
 
     # Verifica se já existe na fila
     existing = conn.execute(
