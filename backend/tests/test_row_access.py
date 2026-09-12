@@ -24,7 +24,7 @@ import os, re, sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 sys.path.insert(0, os.path.dirname(__file__))
-from _fonte import so_codigo                                                   # noqa: E402
+from leitura_de_fonte import so_codigo                                                   # noqa: E402
 
 _BACKEND = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 

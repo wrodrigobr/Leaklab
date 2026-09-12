@@ -45,7 +45,7 @@ sys.path.insert(0, os.path.dirname(__file__))
 # FONTE UNICA da leitura "so codigo": `test_row_access` varre o MESMO padrao e usava outra
 # varredura; em 12/09 so uma das duas aprendeu a ignorar comentario, e a outra acusou os
 # comentarios do proprio conserto. Ver `tests/_fonte.py`.
-from _fonte import so_codigo as _so_codigo                                     # noqa: E402
+from leitura_de_fonte import so_codigo as _so_codigo                                     # noqa: E402
 _RAIZ = os.path.join(os.path.dirname(__file__), '..')
 
 #: Os arquivos varridos. Ate 12/09 a varredura olhava SO `repositories.py`, e o bug voltou num
