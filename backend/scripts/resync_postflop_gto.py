@@ -38,6 +38,7 @@ from collections import defaultdict, Counter
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 from database.schema import get_conn, init_db, USE_POSTGRES
+from database.repositories import _align_score_to_label
 from leaklab.parser import parse_hand_history
 from leaklab.pipeline import build_decision_inputs_for_hand
 from leaklab.decision_engine_v11 import evaluate_decision
@@ -145,14 +146,19 @@ def linha_do_dump(s, f, nat, diffs, tid, uid, key):
         'id': s['id'], 'tid': tid, 'user_id': uid,
         'hand_id': key[0], 'street': key[1], 'acao': key[2],
         'natureza': nat, 'diffs': diffs,
+        # O `score` entrou no dump em 11/09, junto com a gravacao dele: registro para desfazer
+        # que nao cobre uma coluna gravada e pior que registro nenhum, porque parece completo.
+        # `reverter_do_dump` ja sabia restaurar `score` quando a linha o carrega.
         'de': {'label': s['label'], 'best': s['best_action'],
                'gto_label': _norm(s['gto_label']), 'gto_action': _norm(s['gto_action']),
                'played': s.get('gto_played_freq'), 'top': s.get('gto_top_freq'),
-               'ev': s.get('ev_loss_bb'), 'ev_src': s.get('ev_loss_source')},
+               'ev': s.get('ev_loss_bb'), 'ev_src': s.get('ev_loss_source'),
+               'score': s.get('score')},
         'para': {'label': f['label'], 'best': f['best'],
                  'gto_label': f['gto_label'], 'gto_action': f['gto_action'],
                  'played': f.get('played'), 'top': f.get('top'),
-                 'ev': f.get('ev'), 'ev_src': f.get('ev_src')},
+                 'ev': f.get('ev'), 'ev_src': f.get('ev_src'),
+                 'score': _align_score_to_label(f['label'], s.get('score'), f.get('ev'))},
     }
 
 
@@ -239,7 +245,7 @@ def resync_tournament_postflop(tid, apply=True, modo=MODO_PRESERVA, dump=None):
             # freq/ev entram no SELECT porque `diferencas` compara os 7 campos que a gravação
             # reescreve: sem eles a linha-quimera de 12/08 (4 campos novos, freq/ev velhos)
             # nunca seria detectada por aqui.
-            "gto_played_freq, gto_top_freq, ev_loss_bb, ev_loss_source "
+            "gto_played_freq, gto_top_freq, ev_loss_bb, ev_loss_source, score "
             # ORDER BY id é PRÉ-REQUISITO do pareamento por ordem abaixo. Sem ele o Postgres não
             # garante ordem nenhuma, e parear duas listas cuja ordem não foi provada é como se
             # grava um solve no `decision_id` errado.
@@ -260,6 +266,7 @@ def resync_tournament_postflop(tid, apply=True, modo=MODO_PRESERVA, dump=None):
                  for s, f in _pares_por_ordem(srows, fresh.get(key, []))]
         pares.sort(key=lambda p: p[0]['id'])
         updated = 0
+        por_id = {}
         for s, f, key in pares:
             diffs = diferencas(s, f)
             if not diffs:
@@ -271,13 +278,24 @@ def resync_tournament_postflop(tid, apply=True, modo=MODO_PRESERVA, dump=None):
                 dump.write(json.dumps(
                     linha_do_dump(s, f, nat, diffs, tid, None, key), default=str) + "\n")
             if apply:
-                conn.execute(
-                    "UPDATE decisions SET label=?, best_action=?, gto_label=?, gto_action=?, "
-                    "gto_played_freq=?, gto_top_freq=?, ev_loss_bb=?, ev_loss_source=? WHERE id=?",
-                    (f['label'], f['best'], f['gto_label'], f['gto_action'],
-                     f.get('played'), f.get('top'), f.get('ev'), f.get('ev_src'), s['id']))
+                # O SCORE VIAJA COM O LABEL (invariante de v0.168). Esta era a QUARTA
+                # porta a trocar o veredito sem levar o numero, e o guarda textual nao a
+                # varria: `scripts/` nao estava na lista de alvos dele. Quem achou foi a
+                # validacao de runtime de `grava_decisions_em_ordem`, criada no mesmo dia
+                # para outro motivo. A propria docstring de `_avaliacao_fresca` avisava:
+                # "os campos que DESCREVEM a avaliacao viajam juntos, ou a linha vira
+                # quimera" -- e o score estava fora da lista.
+                por_id[s['id']] = {
+                    'label': f['label'], 'best_action': f['best'], 'gto_label': f['gto_label'],
+                    'gto_action': f['gto_action'], 'gto_played_freq': f.get('played'),
+                    'gto_top_freq': f.get('top'), 'ev_loss_bb': f.get('ev'),
+                    'ev_loss_source': f.get('ev_src'),
+                    'score': _align_score_to_label(f['label'], s.get('score'), f.get('ev')),
+                }
             updated += 1
         if apply:
+            from database.repositories import grava_decisions_em_ordem
+            grava_decisions_em_ordem(conn, por_id)
             conn.commit()
         return updated
     finally:
@@ -337,6 +355,7 @@ def main():
     kinds = Counter()             # vanished/appeared/label_drift/action_only
     tela = Counter()              # o que o JOGADOR passa a ver: acusacao que sai/entra
     updated = skipped = 0
+    por_id = {}                   # id -> {coluna: valor}, gravado em ORDEM antes do commit
     examples = []
     for trow in tournaments:
         tid = dict(trow)['id']
@@ -380,7 +399,7 @@ def main():
         stored = defaultdict(list)
         for r in conn.execute(
             "SELECT id, hand_id, street, action_taken, label, best_action, "
-            "gto_label, gto_action, gto_played_freq, gto_top_freq, ev_loss_bb, ev_loss_source "
+            "gto_label, gto_action, gto_played_freq, gto_top_freq, ev_loss_bb, ev_loss_source, score "
             "FROM decisions "
             # ORDER BY id: pre-requisito do pareamento por ordem. Ver `_pares_por_ordem`.
             "WHERE tournament_id=?" + street_clause + " ORDER BY id", (tid,)).fetchall():
@@ -432,14 +451,27 @@ def main():
                         f"label {s['label']}->{f['label']} | best {s['best_action']}->{f['best']} | "
                         f"gto {s_gl}/{s_ga}->{f['gto_label']}/{f['gto_action']}")
                 if args.apply:
-                    conn.execute(
-                        "UPDATE decisions SET label=?, best_action=?, gto_label=?, gto_action=?, "
-                        "gto_played_freq=?, gto_top_freq=?, ev_loss_bb=?, ev_loss_source=? "
-                        "WHERE id=?",
-                        (f['label'], f['best'], f['gto_label'], f['gto_action'],
-                         f.get('played'), f.get('top'), f.get('ev'), f.get('ev_src'), s['id']))
+                    # O SCORE VIAJA COM O LABEL (invariante de v0.168). Esta era a QUARTA
+                    # porta a trocar o veredito sem levar o numero, e o guarda textual nao a
+                    # varria: `scripts/` nao estava na lista de alvos dele. Quem achou foi a
+                    # validacao de runtime de `grava_decisions_em_ordem`, criada no mesmo dia
+                    # para outro motivo. A propria docstring de `_avaliacao_fresca` avisava:
+                    # "os campos que DESCREVEM a avaliacao viajam juntos, ou a linha vira
+                    # quimera" -- e o score estava fora da lista.
+                    por_id[s['id']] = {
+                        'label': f['label'], 'best_action': f['best'],
+                        'gto_label': f['gto_label'], 'gto_action': f['gto_action'],
+                        'gto_played_freq': f.get('played'), 'gto_top_freq': f.get('top'),
+                        'ev_loss_bb': f.get('ev'), 'ev_loss_source': f.get('ev_src'),
+                        'score': _align_score_to_label(f['label'], s.get('score'), f.get('ev')),
+                    }
 
     if args.apply:
+        # Ordem crescente de id, como todo escritor em massa de `decisions`. Este laco e por
+        # CHAVE `(hand_id, street, acao)`, cuja ordem nao tem relacao com a dos ids — e este
+        # script rodou lado a lado com o solver-consumer no reparo do acervo de 11/09.
+        from database.repositories import grava_decisions_em_ordem
+        grava_decisions_em_ordem(conn, por_id)
         conn.commit()
     conn.close()
     if dump is not None:

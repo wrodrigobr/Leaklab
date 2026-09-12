@@ -24,7 +24,14 @@ vi.mock("react-i18next", () => ({
  *    MESA FINAL, que é onde o ICM muda a decisão certa. Só a instrução da ACR mencionava isso.
  */
 const LOCALES = ["pt-BR", "en", "es"] as const;
-const SITES = ["pokerstars", "ggpoker", "acr", "coinpoker"] as const;
+/** Lida do FONTE, nao copiada: esta era a 5a lista de salas do front, e uma copia num teste e
+ *  pior que uma copia no codigo — ela faz o guarda parar de cobrar a sala nova sem avisar. */
+const SITES: string[] = (() => {
+  const m = readFileSync("src/lib/salas.ts", "utf-8")
+    .match(/SALAS_SUPORTADAS = \[([^\]]+)\]/);
+  if (!m) throw new Error("nao achei SALAS_SUPORTADAS em src/lib/salas.ts");
+  return m[1].split(",").map((x) => x.trim().replace(/["']/g, "")).filter(Boolean);
+})();
 
 function guia(loc: string) {
   const j = JSON.parse(readFileSync(`src/i18n/locales/${loc}/onboarding.json`, "utf-8"));
@@ -76,6 +83,24 @@ describe("guia de exportação — o resumo do torneio", () => {
     const pt = guia("pt-BR").summaryWhy.toLowerCase();
     expect(pt).toContain("mesa final");
     expect(pt).toContain("roi");
+  });
+
+  it("a sala que NAO tem resumo declara isso, em vez de prometer o arquivo", () => {
+    /* O PartyPoker nao oferece o Tournament Summary para download (conferido no arquivo real do
+     * Rullian: 3.482 maos, zero linha de colocacao ou premio em 157 mil linhas, e o proprio
+     * fluxo de export da sala e "My Game -> Export Hands", que so entrega maos).
+     *
+     * O campo `summary` de cada sala e a linha que diz "envie tambem o resumo". Preenche-lo com
+     * a receita generica aqui seria mandar o jogador procurar um arquivo que nao existe, e e
+     * exatamente o defeito que a casa ja levou para a tela antes: prometer o que nao ha. Por
+     * isso o guarda cobra que a copy do Party NEGUE o resumo e diga o que se perde sem ele. */
+    for (const loc of LOCALES) {
+      const txt = guia(loc).sites.partypoker.summary.toLowerCase();
+      expect(txt, `${loc}: a copy do Party nao diz que a sala nao oferece o resumo`)
+        .toMatch(/n[ãa]o oferece|does not offer|no ofrece/);
+      expect(txt, `${loc}: a copy do Party nao diz o que se perde sem o resumo`)
+        .toContain("roi");
+    }
   });
 
   it("os caminhos verificados aparecem no texto do resumo", () => {

@@ -16,7 +16,7 @@
   "networks": {
     "eyebrow": "Redes compatibles",
     "heading": "Importá desde donde ya jugás",
-    "subtitle": "Soporte para hand histories de PokerStars, GGPoker, ACR (WPN) y CoinPoker.",
+    "subtitle": "Soporte para hand histories de PokerStars, GGPoker, ACR (WPN), CoinPoker y PartyPoker.",
     "new": "Nuevo"
   },
   "howItWorks": {
@@ -24,7 +24,7 @@
     "heading": "Del archivo HH al diagnóstico preciso",
     "levels": "7 niveles, de Principiante a Elite",
     "step1Title": "Importá tu historial",
-    "step1Desc": "Subí el archivo .txt de cualquier torneo (PokerStars, GGPoker, ACR o CoinPoker). Soporta múltiples archivos a la vez.",
+    "step1Desc": "Subí el archivo .txt de cualquier torneo (PokerStars, GGPoker, ACR, CoinPoker o PartyPoker). Soporta múltiples archivos a la vez.",
     "step2Title": "GrindLab prioriza tus errores",
     "step2Desc": "Cada decisión se evalúa por equity, posición y contexto MTT/SNG. GrindLab cruza la frecuencia del error con lo que te costó en fichas, y te muestra lo que sale más caro.",
     "step3Title": "Mejorá enfocándote en lo que importa",

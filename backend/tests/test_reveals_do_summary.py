@@ -107,6 +107,12 @@ def test_o_parser_expoe_no_ParsedHand():
     import re as _re
     caminho = os.path.join(os.path.dirname(__file__), '..', 'leaklab', 'parser.py')
     src = open(caminho, encoding='utf-8').read()
+    # SEM COMENTARIOS. Em 11/09 este guarda acusou uma fiacao INTACTA porque um comentario novo
+    # no parser citava "`reveals=`" ao explicar esta propria cicatriz, e o regex capturou o
+    # texto do comentario como se fosse uma passagem. Segunda vez no mesmo dia que um comentario
+    # meu interfere num guarda meu: comentario nao e evidencia, e tambem nao pode virar prova
+    # contraria.
+    src = '\n'.join(l.split('#')[0] for l in src.splitlines())
     passagens = _re.findall(r'reveals=([^\n]+)', src)
     assert len(passagens) >= 2, ('algum construtor de ParsedHand parou de anexar as revelacoes: '
                                  'so %d passagem(ns) de `reveals=`' % len(passagens))

@@ -13089,9 +13089,16 @@ def resync_gto_labels_for_node(spot_hash: str) -> int:
                    ev_loss_bb
             FROM decisions
             WHERE street = ? AND position = ?
+            ORDER BY id
         """), (street, position))
 
         updated = 0
+        #: id -> {coluna: valor}, gravado em ordem crescente no fim (ver
+        #: `grava_decisions_em_ordem`). Esta funcao roda no solver-consumer, OUTRO processo, e
+        #: escreve as mesmas linhas que o `reconcile_tournament_labels` do web: sem a ordem
+        #: comum, o par forma ciclo. Ela e a unica escritora em massa que cruza torneios, por
+        #: isso a ordem e a defesa certa aqui — lock por torneio nao alcancaria.
+        por_id: dict = {}
         affected_tournaments: set = set()
         for d in candidates:
             try:
@@ -13131,15 +13138,17 @@ def resync_gto_labels_for_node(spot_hash: str) -> int:
                     action_taken=d.get('action_taken'),
                     gto_action=(max(strategy, key=strategy.get) if strategy else None),
                 )
-                conn.execute(_adapt(
-                    "UPDATE decisions SET gto_label=?, gto_action=?, label=?, score=? WHERE id=?"
-                ), (new_gto_label, top_action, reconciled, _align_score_to_label(reconciled, d.get('score'),
-                                                            d.get('ev_loss_bb')), d['id']))
+                por_id[d['id']] = {
+                    'gto_label': new_gto_label, 'gto_action': top_action, 'label': reconciled,
+                    'score': _align_score_to_label(reconciled, d.get('score'), d.get('ev_loss_bb')),
+                }
                 updated += 1
                 if d.get('tournament_id'):
                     affected_tournaments.add(d['tournament_id'])
             except Exception:
                 continue
+
+        grava_decisions_em_ordem(conn, por_id)
 
         if updated:
             conn.commit()
@@ -13169,6 +13178,56 @@ def resync_gto_labels_for_node(spot_hash: str) -> int:
         conn.close()
 
 
+def grava_decisions_em_ordem(conn, por_id: dict) -> int:
+    """Aplica UPDATEs em `decisions` SEMPRE em ordem crescente de `id`, um id por UPDATE.
+
+    ── Por que esta funcao existe ──────────────────────────────────────────────────────────
+
+    Producao deu `DeadlockDetected` em `decisions` DUAS vezes em 11/09. Na primeira eu tratei
+    so um dos escritores (`resync_tournament_postflop`, que ganhou `sort` por id) e um lock de
+    thread no gancho. O lock de thread nao alcanca o segundo processo, e o deadlock voltou em
+    outro escritor:
+
+        while updating tuple (4958,33) in relation "decisions"
+          database/repositories.py in reconcile_tournament_labels
+
+    `reconcile_tournament_labels` gravava em TRES ordens diferentes na MESMA transacao: os
+    labels por id, os `best_action` por id, e um UPDATE EM MASSA por label
+    (`WHERE tournament_id=? AND label=?`), que trava as linhas na ordem que o plano do Postgres
+    escolher. Com duas transacoes cruzando essas ordens, o ciclo e questao de tempo.
+
+    Dois escritores que travam linhas na MESMA ordem nao formam ciclo: quem chega primeiro na
+    linha disputada ganha e o outro espera. Por isso a regra e a ordem, nao um lock — lock de
+    thread nao cruza processo, e advisory lock serializaria escritores que hoje rodam em
+    paralelo sem se atrapalhar.
+
+    **Todo UPDATE traz `WHERE id=?`.** UPDATE em massa sem id nao tem ordem de trava conhecida,
+    e por isso nao pode existir aqui, nem que custe uma ida por linha.
+    """
+    n = 0
+    for dec_id in sorted(por_id, key=int):
+        sets = por_id[dec_id]
+        if not sets:
+            continue
+        # EXIGE_SCORE_COM_LABEL — a invariante de v0.168 ("quem muda o veredito carrega o score
+        # junto"), agora por CONSTRUCAO. Ela era defendida por uma varredura textual que procura
+        # `label` e `score = ?` na mesma sentenca de UPDATE, e essa varredura nao alcanca uma
+        # porta generica: aqui as colunas sao dados, nao texto. Em vez de abrir excecao no
+        # guarda, a porta recusa a gravacao — vale para todo chamador, inclusive o proximo.
+        # Sem isto ficaria `label='standard'` com `score=0,9` (a banda de standard e [0; 0,08]),
+        # e `priority_score = COUNT(*) * AVG(score)` ordena o plano de estudo pelo numero.
+        if 'label' in sets and 'score' not in sets:
+            raise ValueError(
+                'grava_decisions_em_ordem: id=%s muda `label` sem `score` (invariante de '
+                'v0.168). Passe os dois juntos, via _align_score_to_label.' % (dec_id,))
+        cols = sorted(sets)
+        conn.execute(
+            _adapt("UPDATE decisions SET %s WHERE id=?" % ', '.join(c + '=?' for c in cols)),
+            tuple(sets[c] for c in cols) + (dec_id,))
+        n += 1
+    return n
+
+
 def reconcile_tournament_labels(tournament_id: int, only_ids=None) -> int:
     """
     Reconcilia label vs gto_label para as decisões de um torneio, alinha o score à banda do
@@ -13195,73 +13254,89 @@ def reconcile_tournament_labels(tournament_id: int, only_ids=None) -> int:
     """
     conn = get_conn()
     try:
+        # TODAS as decisoes do torneio, `ORDER BY id`, numa passagem so. O filtro de
+        # `gto_label`/`label` desceu para dentro do loop porque o alinhamento de score a banda
+        # vale tambem para a decisao SEM gto_label (heuristica pura) — antes ele era um UPDATE em
+        # massa por label, a terceira ordem de trava desta transacao e a raiz do deadlock. Ver
+        # `grava_decisions_em_ordem`.
         rows = _fetchall(conn, _adapt("""
             SELECT id, label, gto_label, stack_bb, street, action_taken, gto_action, best_action, score,
-                   ev_loss_bb,
                    ev_loss_bb, ev_loss_source, estimated_equity, pot_size, facing_bet
             FROM decisions
             WHERE tournament_id = ?
-              AND gto_label IS NOT NULL AND gto_label != ''
-              AND label IS NOT NULL AND label != ''
+            ORDER BY id
         """), (tournament_id,))
 
-        if only_ids is not None:
-            _alvo = {int(i) for i in only_ids}
-            rows = [r for r in rows if int(r['id']) in _alvo]
+        _alvo = None if only_ids is None else {int(i) for i in only_ids}
 
+        #: id -> {coluna: valor}. Uma linha pode receber label, score e best_action na mesma
+        #: gravacao; o UPDATE sai uma vez por id, em ordem crescente.
+        por_id: dict = {}
         changes = []
         acao_changes = []
         from leaklab.decision_engine_v11 import _norm_gto_action
         for r in rows:
-            new = _reconcile_label(
-                r['label'], r['gto_label'],
-                stack_bb=r['stack_bb'], street=r['street'], action_taken=r['action_taken'],
-                gto_action=r['gto_action'],   # RC-C: sinal de direção (GTO folda ↔ hero agride)
-                # Sem estes cinco o teto de EV do motor não roda aqui e o banco acusa mais que
-                # ele. Todos já existem na linha — era só não estarem sendo lidos.
-                ev_loss_bb=r['ev_loss_bb'], ev_loss_source=r['ev_loss_source'],
-                equity=r['estimated_equity'], pot_bb=r['pot_size'], facing_bb=r['facing_bet'],
-            )
-            # Alinha o score à banda do label (Classe C: score-vs-label) — mesmo quando o label não
-            # muda, o score pode estar fora da banda (poluição) e divergir das telas por score.
-            new_score = _align_score_to_label(new, r['score'], r['ev_loss_bb'])
-            if new != r['label'] or abs(new_score - float(r['score'] or 0)) > 1e-6:
-                changes.append((new, new_score, r['id']))
+            label_final = r['label']
+            score_final = float(r['score'] or 0)
+            # Reconcilia so quem tem OS DOIS rotulos e passa pelo filtro de `only_ids` (o
+            # caminho de ANALISE manda lista, inclusive vazia; o drain manda None = tudo). Era o
+            # WHERE do SELECT; virou condicao aqui porque a banda de score abaixo tem outro
+            # alcance: ela vale para toda decisao do torneio.
+            if (r['gto_label'] not in (None, '') and r['label'] not in (None, '')
+                    and (_alvo is None or int(r['id']) in _alvo)):
+                new = _reconcile_label(
+                    r['label'], r['gto_label'],
+                    stack_bb=r['stack_bb'], street=r['street'], action_taken=r['action_taken'],
+                    gto_action=r['gto_action'],   # RC-C: sinal de direção (GTO folda ↔ hero agride)
+                    # Sem estes cinco o teto de EV do motor não roda aqui e o banco acusa mais que
+                    # ele. Todos já existem na linha — era só não estarem sendo lidos.
+                    ev_loss_bb=r['ev_loss_bb'], ev_loss_source=r['ev_loss_source'],
+                    equity=r['estimated_equity'], pot_bb=r['pot_size'], facing_bb=r['facing_bet'],
+                )
+                # Alinha o score à banda do label (Classe C: score-vs-label) — mesmo quando o label não
+                # muda, o score pode estar fora da banda (poluição) e divergir das telas por score.
+                new_score = _align_score_to_label(new, r['score'], r['ev_loss_bb'])
+                if new != r['label'] or abs(new_score - float(r['score'] or 0)) > 1e-6:
+                    changes.append(r['id'])
+                    por_id.setdefault(r['id'], {}).update({'label': new, 'score': new_score})
+                label_final, score_final = new, float(new_score or 0)
 
-            # AUTO (03/09, achado pela varredura de invariantes): `best_action` pode ter
-            # congelado num palpite heurístico de quando o nó GTO ainda não tinha
-            # strategy_json completo (o ramo "nó parcial" de `evaluate_decision` só
-            # sobrescreve best_action quando gto_label=='gto_critical' — minor_deviation e
-            # mixed ficam com o heurístico antigo pra sempre, porque NADA além deste
-            # reconcile toca best_action depois do save inicial). `gto_action` (coluna
-            # separada) é o sinal bruto e SEMPRE reflete o nó atual — nunca fica stale.
-            # Contradição self-evidente: label acusa erro (severidade >= small_mistake) E
-            # best_action == action_taken == "o que ele fez" — o card mostra "✗ Erro" ao
-            # lado de "o ideal era exatamente isso". Realinha SÓ esse caso exato: nunca
-            # sobrescreve um best_action que já é diferente da jogada (nada quebrado ali).
-            _severidade = _LABEL_SEVERITY.get(new, 0)
-            if (_severidade >= 2 and r['gto_action']
-                    and _norm_gto_action(r['best_action'] or '') == _norm_gto_action(r['action_taken'] or '')
-                    and _norm_gto_action(r['gto_action']) != _norm_gto_action(r['action_taken'] or '')):
-                acao_changes.append((r['gto_action'], r['id']))
+                # AUTO (03/09, achado pela varredura de invariantes): `best_action` pode ter
+                # congelado num palpite heurístico de quando o nó GTO ainda não tinha
+                # strategy_json completo (o ramo "nó parcial" de `evaluate_decision` só
+                # sobrescreve best_action quando gto_label=='gto_critical' — minor_deviation e
+                # mixed ficam com o heurístico antigo pra sempre, porque NADA além deste
+                # reconcile toca best_action depois do save inicial). `gto_action` (coluna
+                # separada) é o sinal bruto e SEMPRE reflete o nó atual — nunca fica stale.
+                # Contradição self-evidente: label acusa erro (severidade >= small_mistake) E
+                # best_action == action_taken == "o que ele fez" — o card mostra "✗ Erro" ao
+                # lado de "o ideal era exatamente isso". Realinha SÓ esse caso exato: nunca
+                # sobrescreve um best_action que já é diferente da jogada (nada quebrado ali).
+                _severidade = _LABEL_SEVERITY.get(new, 0)
+                if (_severidade >= 2 and r['gto_action']
+                        and _norm_gto_action(r['best_action'] or '') == _norm_gto_action(r['action_taken'] or '')
+                        and _norm_gto_action(r['gto_action']) != _norm_gto_action(r['action_taken'] or '')):
+                    acao_changes.append(r['id'])
+                    por_id.setdefault(r['id'], {})['best_action'] = r['gto_action']
 
-        for new_label, new_score, dec_id in changes:
-            conn.execute(_adapt(
-                "UPDATE decisions SET label=?, score=? WHERE id=?"
-            ), (new_label, new_score, dec_id))
-        for new_best_action, dec_id in acao_changes:
-            conn.execute(_adapt(
-                "UPDATE decisions SET best_action=? WHERE id=?"
-            ), (new_best_action, dec_id))
+            # Alinha o score à banda do label para TODA decisão do torneio (inclui as SEM
+            # gto_label, heurística pura, e as fora de `only_ids`) — score poluído (ex.:
+            # standard com 0.89) divergia das telas por score (RecentForm/coach/avg). Clampa ao
+            # limite da banda, preservando in-banda.
+            #
+            # Era um UPDATE EM MASSA por label, e foi a raiz do deadlock de 11/09: `WHERE
+            # tournament_id=? AND label=?` trava as linhas na ordem do plano, que não é a ordem
+            # de id dos outros dois blocos desta mesma transação. Agora sai linha a linha, na
+            # mesma ordem de todo mundo. Custa uma ida por linha fora de banda, o que só
+            # acontece na primeira passagem — depois dela não há mais nada a clampar.
+            _banda = _LABEL_SCORE_BAND.get(label_final)
+            if _banda:
+                _lo, _hi = _banda
+                _clamped = _lo if score_final < _lo else (_hi if score_final > _hi else score_final)
+                if abs(_clamped - score_final) > 1e-9:
+                    por_id.setdefault(r['id'], {})['score'] = _clamped
 
-        # Alinha o score à banda do label para TODAS as decisões do torneio (inclui as SEM gto_label,
-        # heurística pura, fora do loop acima) — score poluído (ex.: standard com 0.89) divergia das
-        # telas por score (RecentForm/coach/avg). Clampa ao limite da banda, preservando in-banda.
-        for _lbl, (_lo, _hi) in _LABEL_SCORE_BAND.items():
-            conn.execute(_adapt(
-                "UPDATE decisions SET score = CASE WHEN score < ? THEN ? WHEN score > ? THEN ? ELSE score END "
-                "WHERE tournament_id = ? AND label = ? AND (score < ? OR score > ?)"
-            ), (_lo, _lo, _hi, _hi, tournament_id, _lbl, _lo, _hi))
+        grava_decisions_em_ordem(conn, por_id)
 
         # Recalcula TODOS os buckets por label (#13: antes só standard_pct era reescrito; clear/
         # marginal/small ficavam congelados pré-reconcile → lista divergia do veredito por mão).

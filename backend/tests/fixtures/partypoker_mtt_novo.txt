@@ -161,3 +161,33 @@ Player3 balance 340610, lost 2500 (folded)
 Player4 balance 264044, lost 2500 (folded)
 Player5 balance 370507, lost 2500 (folded)
 Player6 balance 1141932, bet 116000, collected 178500, net +62500
+
+***** Hand History For Game 1785806243723rgim942l6aj *****
+10/20 Tourney Texas Holdem Game Table (NL) (SNG JackPot Tournament #422764388) (Buyin $0.23 + $0.02) - Mon Aug 03 21:16:53 EDT 2026
+Table (422764388) Table #1 (Real Money) -- Seat 1 is the button
+Total number of players : 3/3
+Seat 1: Player3 (500)
+Seat 2: Hero (500)
+Seat 3: Player2 (500)
+Hero posts small blind (10)
+Player2 posts big blind (20)
+** Dealing down cards **
+Dealt to Hero [ 8d, 4d ]
+Player3 folds 
+Hero calls (10)
+Player2 checks 
+** Dealing Flop ** :  [ Kc, 5c, Tc ]
+Hero bets (20)
+Player2 calls (20)
+** Dealing Turn ** :  [ Jc ]
+Hero checks 
+Player2 checks 
+** Dealing River ** :  [ Js ]
+Hero bets (110)
+Player2 calls (110)
+** Summary **
+Main Pot: 300 
+Board: [ Kc, 5c, Tc, Jc, Js ]
+Player3 balance 500, didn't bet (folded)
+Hero balance 350, lost 150[ 8d, 4d ] [ a pair of jacks -- Kc,Jc,Js,Tc,8d ]
+Player2 balance 650, bet 150, collected 300, net +150[ Ts, 4c ] [ a flush, king high -- Kc,Jc,Tc,5c,4c ]

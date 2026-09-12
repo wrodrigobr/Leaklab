@@ -155,10 +155,17 @@ def test_dialeto_novo_e_detectado_e_todas_as_maos_saem():
     texto = _load('partypoker_mtt_novo.txt')
     assert _detect_site(texto) == 'partypoker', _detect_site(texto)
     maos = _novo()
-    assert len(maos) == 4, len(maos)
+    # A 5a mao entrou em 11/09 para dar ao guarda de showdown um caso PERDIDO (ver
+    # `test_o_showdown_do_dialeto_novo_sai_da_linha_de_balance`). Sem ela o guarda passaria com
+    # um bug que devolvesse 'won' sempre. Ela e 3-handed, sem ante e com blinds 10/20: serve
+    # tambem de controle negativo para o ante e para a escala dos blinds.
+    assert len(maos) == 5, len(maos)
     # id ALFANUMERICO (o dialeto antigo era numerico)
     assert maos[0].hand_id == '1789080917076n9u7twfk01', maos[0].hand_id
-    assert all(m.tournament_id == '422627148' for m in maos), [m.tournament_id for m in maos]
+    # DOIS torneios no mesmo arquivo, como no export de verdade (34 torneios em 3.482 maos):
+    # o export do Party e por INTERVALO DE DATAS, nao por torneio.
+    assert ([m.tournament_id for m in maos]
+            == ['422627148'] * 4 + ['422764388']), [m.tournament_id for m in maos]
     print('OK  test_dialeto_novo_e_detectado_e_todas_as_maos_saem')
 
 
@@ -169,7 +176,8 @@ def test_dialeto_novo_extrai_sb_bb_do_CABECALHO():
     bb daqui bate com o blind POSTADO em 3.476 das 3.482 maos."""
     maos = _novo()
     assert [(m.sb, m.bb) for m in maos] == [(12500.0, 25000.0), (5000.0, 10000.0),
-                                            (2500.0, 5000.0), (10000.0, 20000.0)], \
+                                            (2500.0, 5000.0), (10000.0, 20000.0),
+                                            (10.0, 20.0)], \
         [(m.sb, m.bb) for m in maos]
     assert all(m.bb and m.bb > 0 for m in maos), 'mao sem big blind: o portao nao pode passar'
     print('OK  test_dialeto_novo_extrai_sb_bb_do_CABECALHO')

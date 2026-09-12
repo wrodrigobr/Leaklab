@@ -21,11 +21,13 @@ import { readFileSync } from "node:fs";
 const LOCALES = ["pt-BR", "en", "es"] as const;
 const TELA = "src/components/hud/EmptyDashboard.tsx";
 
-/** Salas suportadas segundo o GUIA — fonte única. Se nascer uma quinta, este teste cobra a copy. */
+/** Salas suportadas segundo a FONTE UNICA (`src/lib/salas.ts`). Sala nova cobra a copy sozinha.
+ *  Lida do fonte e nao importada para o teste medir o que esta escrito no arquivo canonico, que
+ *  e o que os outros guardas tambem leem. */
 function salasSuportadas(): string[] {
-  const src = readFileSync("src/components/hud/HandExportGuide.tsx", "utf-8");
-  const m = src.match(/const SITES = \[([^\]]+)\]/);
-  expect(m, "nao achei a lista de salas no HandExportGuide").toBeTruthy();
+  const src = readFileSync("src/lib/salas.ts", "utf-8");
+  const m = src.match(/SALAS_SUPORTADAS = \[([^\]]+)\]/);
+  expect(m, "nao achei SALAS_SUPORTADAS em src/lib/salas.ts").toBeTruthy();
   return m![1].split(",").map((s) => s.trim().replace(/["']/g, "")).filter(Boolean);
 }
 

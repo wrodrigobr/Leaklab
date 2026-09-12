@@ -3,8 +3,9 @@ import { useAuth } from "@/lib/auth";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { HudLayout } from "@/components/hud/HudLayout";
-import { AlertTriangle, ArrowUpDown, BarChart2, CheckCircle2, Clock, FileUp, Filter, GitCompareArrows, GraduationCap, Loader2, Search, Trash2 } from "lucide-react";
+import { AlertTriangle, ArrowUpDown, Ban, BarChart2, CheckCircle2, Clock, FileUp, Filter, GitCompareArrows, GraduationCap, Loader2, Search, Trash2 } from "lucide-react";
 import { SiteLogo } from "@/components/hud/SiteLogo";
+import { salaSemResultado } from "@/lib/salas";
 import { cn } from "@/lib/utils";
 import { tournaments as tournamentsApi, Tournament } from "@/lib/api";
 import { Pager } from "@/components/ui/Pager";
@@ -111,6 +112,12 @@ const Tournaments = () => {
     ) : null;
   // Marca o torneio que ainda não teve o Tournament Summary carregado (sem field_size). PokerStars
   // tem o parser de texto; ACR usa o fluxo próprio (botão na coluna de prêmio).
+  //
+  // Lista POSITIVA de propósito: são as salas cujo summary a plataforma sabe ler em texto. Sala
+  // nova não entra aqui por descuido, e a pergunta oposta ("esta sala fornece resultado?") mora
+  // em `src/lib/salas.ts`, que é o que a coluna de prêmio consulta. Antes de acrescentar sala
+  // aqui, confira se o backend tem parser de summary para ela — senão o selo promete um upload
+  // que não vai a lugar nenhum.
   const needsSummary = (tt: Tournament) =>
     tt.field_size == null && (tt.site === "pokerstars" || tt.site === "ggpoker");
   // Nunca joga "HTTP 404" cru na tela: mostra a mensagem real do backend quando existe (ex.:
@@ -183,8 +190,18 @@ const Tournaments = () => {
       <FileUp className="size-3" aria-hidden /> {summaryPendingLabel}
     </button>
   );
+  // Sala que nao fornece o resumo do torneio DECLARA isso, em vez de deixar um traco sem
+  // explicacao. Sem o resumo nao ha colocacao, premio nem ROI, e a sala nao oferece o arquivo:
+  // um botao de upload aqui mandaria o jogador procurar o que nao existe. Ver `src/lib/salas.ts`.
   const renderProfitOrUpload = (site: string, profit: number | null, positive: boolean) =>
-    profit === null && site === "acr" ? (
+    profit === null && salaSemResultado(site) ? (
+      <span
+        title={t("results.semResultadoHint")}
+        className="inline-flex items-center gap-1 rounded-sm bg-secondary px-2 py-0.5 font-mono text-[10px] uppercase tracking-wider text-muted-foreground ring-1 ring-border cursor-help"
+      >
+        <Ban className="size-3" aria-hidden /> {t("results.semResultado")}
+      </span>
+    ) : profit === null && site === "acr" ? (
       <button
         onClick={(e) => { e.stopPropagation(); fileRef.current?.click(); }}
         title={resultsHint}

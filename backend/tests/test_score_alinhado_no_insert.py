@@ -174,32 +174,60 @@ def test_TODA_porta_que_muda_o_label_carrega_o_score():
     linhas do acervo, todas de solver, com o rotulo dizendo "correto" e o numero dizendo "pior
     possivel". E `priority_score = COUNT(*) * AVG(score)` ordena o plano de estudo pelo numero.
 
-    A varredura e textual porque o defeito e textual: um `UPDATE` que lista `label` e esquece
-    `score` na mesma sentenca.
+    ── A varredura foi refeita em 11/09, e a razao importa ────────────────────────────────
+
+    A versao anterior olhava uma JANELA de 32 linhas em volta de cada `UPDATE decisions SET`.
+    Quebrando-a de proposito apareceram TRES furos, todos do tipo "passa verde por nao ver":
+
+      1. **Comentario desarmava.** Um comentario meu dentro da janela continha a sequencia
+         `score` + `=` + `?` ao explicar esta propria varredura, e isso bastava para absolver a
+         porta. Comentario nao e evidencia (regra 8).
+      2. **Portas vizinhas se cobriam.** A porta da linha ~13032 de `repositories.py` era
+         absolvida por OUTRA porta dezesseis linhas acima, que tinha o `score`. Duas portas com
+         uma evidencia so: tirar o score de uma nao acusava nada.
+      3. **Porta invisivel.** Essa porta de cima escreve `UPDATE decisions` numa linha e
+         `SET gto_label = ...` na seguinte. O filtro exigia `UPDATE decisions SET` na MESMA
+         linha, entao ela nunca chegou a ser varrida -- e ainda assim desarmava a de baixo.
+
+    Agora a varredura e por SENTENCA, sobre o texto sem comentarios: do `UPDATE decisions SET`
+    ate o `WHERE`, com quebra de linha valendo espaco. Sem janela, sem vizinho, e a forma como o
+    SQL esta quebrado em linhas deixa de importar.
+
+    Porta cujas colunas sao DADOS (`grava_decisions_em_ordem` monta o SET a partir de um dict)
+    nao e alcancavel por texto nenhum: ela exige a invariante em RUNTIME, e isto e conferido
+    aqui embaixo e por comportamento em `test_escrita_de_decisions_em_ordem.py`.
     """
     import re
     raiz = os.path.join(os.path.dirname(__file__), '..')
     alvos = ['api/app.py', 'database/repositories.py', 'leaklab/preflop_autocapture.py']
-    tem_label = re.compile(r"label\s*=|[\"']label[\"']")
-    # `score = ?` (a ATRIBUICAO no SQL), nao a mencao. A primeira versao aceitava
-    # `db_row['score']` na vizinhanca e passou verde com o `sets.append("score = ?")` removido --
-    # terceira vez no dia que um guarda meu ancora no efeito em vez da condicao.
-    tem_score = re.compile(r"score\s*=\s*\?")
+    # Sentenca: do SET ate o WHERE. `re.S` porque o SQL do projeto e escrito tanto numa linha
+    # quanto em tres.
+    sentenca = re.compile(r"UPDATE\s+decisions\s+SET(?P<corpo>.*?)WHERE", re.IGNORECASE | re.S)
+    # A ATRIBUICAO da coluna, nao a mencao dela. Uma versao antiga aceitava `db_row['score']` na
+    # vizinhanca e passou verde com o `sets.append("score = ?")` removido.
+    tem_label = re.compile(r"\blabel\s*=")
+    tem_score = re.compile(r"\bscore\s*=")
     faltam = []
     for rel in alvos:
         with open(os.path.join(raiz, *rel.split('/')), encoding='utf-8') as fh:
-            linhas = fh.read().split(chr(10))
-        for i, linha in enumerate(linhas):
-            if 'UPDATE decisions SET' not in linha.split('#')[0]:
+            bruto = fh.read()
+        # Comentarios fora ANTES de qualquer coisa (furo 1).
+        limpo = chr(10).join(l.split('#')[0] for l in bruto.split(chr(10)))
+        for m in sentenca.finditer(limpo):
+            corpo = m.group('corpo')
+            if not tem_label.search(corpo) or tem_score.search(corpo):
                 continue
-            # A sentenca pode ser montada em VARIAS linhas: em `api/app.py` o `UPDATE` e uma
-            # f-string sobre uma lista `sets` construida ~25 linhas acima. Com janela de 14 o
-            # guarda nem chegava a olhar aquela porta -- passava verde por nao ver, que e pior
-            # que passar verde por engano.
-            trecho = chr(10).join(linhas[max(0, i - 32):i + 4])
-            if not tem_label.search(trecho) or tem_score.search(trecho):
+            # SET montado a partir de DADOS (`SET %s`): nenhuma coluna aparece no texto. E a
+            # porta generica, defendida em runtime — conferido depois do laco.
+            if '%s' in corpo or '{' in corpo:
                 continue
-            faltam.append('%s:%d' % (rel, i + 1))
+            faltam.append('%s:%d' % (rel, limpo[:m.start()].count(chr(10)) + 1))
+    # Sem isto, o `continue` acima seria um buraco: a porta generica ficaria de fora da
+    # invariante em vez de exigi-la por outro meio.
+    with open(os.path.join(raiz, 'database', 'repositories.py'), encoding='utf-8') as fh:
+        _repo = fh.read()
+    assert "if 'label' in sets and 'score' not in sets:" in _repo, (
+        'a porta generica `grava_decisions_em_ordem` parou de exigir o score junto com o label')
     assert not faltam, (
         'porta(s) que mudam o LABEL sem carregar o SCORE: %s -- o numero fica descrevendo o '
         'veredito anterior e ainda ordena o plano de estudo' % ', '.join(faltam))

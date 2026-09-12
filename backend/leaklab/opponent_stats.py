@@ -31,6 +31,23 @@ GATES = {
 }
 MIN_HANDS_FOR_TYPE = 100         # mínimo de mãos vistas p/ arriscar um arquétipo (≈ VPIP estável)
 
+#: Salas em que o nome do vilão NÃO identifica uma pessoa. Sem identidade entre mãos não há HUD:
+#: nenhum piso de amostra resolve, porque o que falta não é volume, é a identidade.
+#:
+#:   · CoinPoker troca o hash do jogador a CADA mão. Desligado em 04/09, por read sem sentido e
+#:     por explosão de volume (milhares de "jogadores de uma mão" derrubavam o worker).
+#:   · PartyPoker anonimiza por ASSENTO, e por isso passava folgado pelo guard por proporção.
+#:     Medido no arquivo real em 11/09: 9 nomes de vilão em 3.482 mãos e 34 torneios, com o nome
+#:     seguindo o assento (`Player1` no assento 1 em 88,6% das mãos, `Player8` no assento 8 em
+#:     88,4%). Num torneio de 322 mãos saem 9 perfis com amostra de 120 a 302 mãos e VPIP de 20%
+#:     a 38%: cada "oponente" é a média de todos os que ocuparam aquele assento, com
+#:     rebalanceamento de mesa no meio. Read gordo, confiante e falso.
+#:
+#: Fonte ÚNICA: o `/analyze` decide por aqui e `scripts/limpa_perfis_sem_identidade.py` limpa o
+#: que já foi gravado por aqui. Era `if site != 'coinpoker'` cravado no app, e foi exatamente
+#: isso que deixou a sala seguinte entrar sem ninguém notar.
+SALAS_SEM_IDENTIDADE_DE_VILAO = ('coinpoker', 'partypoker')
+
 # ── Referências MTT 9-max (fonte ÚNICA das bandas/flags) ─────────────────────────
 # Cada stat: faixa SAUDÁVEL (lo, hi) + corte ABAIXO (cutoff, flag) + corte ACIMA + min
 # amostra. Os flags são DIRECIONAIS (tendência de exploit, não veredito): perto da faixa

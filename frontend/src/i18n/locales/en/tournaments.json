@@ -28,7 +28,9 @@
     "batchNone": "No tournaments completed. {{skipped}}.",
     "batchNotImported": "{{count}} with hands not imported yet",
     "batchUnrecognized": "{{count}} not recognized",
-    "httpError": "Couldn't upload (HTTP {{status}}). Reload and try again; if it persists, the server may be out of date."
+    "httpError": "Couldn't upload (HTTP {{status}}). Reload and try again; if it persists, the server may be out of date.",
+    "semResultado": "no result",
+    "semResultadoHint": "PartyPoker does not offer the tournament summary for download. Without it there is no finish, prize or ROI. Hands and verdicts work normally."
   },
   "filters": {
     "all": "All",

@@ -28,7 +28,9 @@
     "batchNone": "Nenhum torneio completado. {{skipped}}.",
     "batchNotImported": "{{count}} ainda sem as mãos importadas",
     "batchUnrecognized": "{{count}} não reconhecidos",
-    "httpError": "Não foi possível enviar (HTTP {{status}}). Recarregue e tente de novo; se persistir, o servidor pode estar desatualizado."
+    "httpError": "Não foi possível enviar (HTTP {{status}}). Recarregue e tente de novo; se persistir, o servidor pode estar desatualizado.",
+    "semResultado": "sem resultado",
+    "semResultadoHint": "O PartyPoker não oferece o resumo do torneio para download. Sem ele não há colocação, prêmio nem ROI. As mãos e os vereditos funcionam normalmente."
   },
   "filters": {
     "all": "Todas",

@@ -65,6 +65,7 @@ from flask_limiter.util import get_remote_address
 from leaklab.parser import parse_pokerstars_file_from_text
 from leaklab.parser import raise_total_from_raw as _raise_total_from_raw
 from leaklab.parser import heroi_das_maos
+from leaklab.parser import posts_da_mao
 from leaklab.pipeline import build_decision_inputs_for_hand
 from leaklab.decision_engine_v11 import evaluate_decision, facing_allin_row
 from leaklab.pareamento_decisoes import BaldeDeDecisoes, balde_de_gto_do_banco
@@ -1132,8 +1133,23 @@ def _analyze_impl():
     # E o cálculo explode (~milhares de "jogadores" de 1 mão → 1 conexão PG cada → timeout do
     # worker → "Failed to fetch"). SystemExit do timeout nem é pego pelo except Exception abaixo.
     # Guard genérico por contagem cobre qualquer site futuro com anonimização por-mão.
+    #
+    # **PartyPoker entrou nesta lista em 11/09, e pelo motivo OPOSTO ao do CoinPoker.** Ele nao
+    # explode: anonimiza por ASSENTO, e o nome persiste entre maos. Medido no arquivo real do
+    # Rullian (3.482 maos, 34 torneios): **9 nomes de vilao no total**, e o nome segue o assento,
+    # nao a pessoa — `Player1` esta no assento 1 em 88,6% das maos, `Player8` no assento 8 em
+    # 88,4% (a variacao vem de assento vazio deslocando o rotulo). Rodando `build_profiles` num
+    # torneio de 322 maos saem 9 perfis com amostra de 120 a 302 maos e VPIP de 20% a 38%: read
+    # gordo, confiante e falso, porque cada "oponente" e a soma de todos os que ocuparam aquele
+    # assento durante o torneio, com rebalanceamento de mesa no meio.
+    #
+    # O guard anti-explosao abaixo NAO pega este caso (ele exige mais de 60 perfis; aqui sao 9),
+    # e nao ha como consertar com piso de amostra: a amostra e grande, e o problema e a
+    # IDENTIDADE. Sem identidade de vilao entre maos, nao ha HUD — e read sem lastro e passivo,
+    # nao reforco (`project_opponent_hud`: nenhum read sem amostra).
+    from leaklab.opponent_stats import SALAS_SEM_IDENTIDADE_DE_VILAO
     _profiles = {}
-    if site != 'coinpoker':
+    if site not in SALAS_SEM_IDENTIDADE_DE_VILAO:
         try:
             from leaklab.opponent_stats import build_profiles as _build_profiles
             _profiles = _build_profiles(hands)
@@ -7735,21 +7751,17 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
     #   · "the" OPCIONAL no ante: a ACR usa "posts ante", sem o artigo.
     # Os decimais (`.00`) também: `[\d,]+` parava antes do ponto e, num valor como "0.50", leria
     # zero. Agora o grupo aceita a parte decimal e a conversão passa por float.
-    antes   = []
-    blinds  = []
-    _ANTE_ANY  = _re.compile(r'^(.+?):? posts (?:the )?ante ([\d,]+(?:\.\d+)?)')
-    _BLIND_ANY = _re.compile(r'^(.+?):? posts (?:the )?(small|big) blind ([\d,]+(?:\.\d+)?)')
-    for line in hand.raw_text.split('\n'):
-        line = line.strip()
-        m_ante  = _ANTE_ANY.match(line)
-        m_blind = _BLIND_ANY.match(line)
-        if m_ante:
-            antes.append({'player': m_ante.group(1).strip(),
-                          'amount': int(float(m_ante.group(2).replace(',', '')))})
-        elif m_blind:
-            blinds.append({'player': m_blind.group(1).strip(),
-                           'type':   m_blind.group(2),
-                           'amount': int(float(m_blind.group(3).replace(',', '')))})
+    # `posts_da_mao` e a fonte unica (leaklab/parser.py) e cobre os SEIS formatos de post do
+    # acervo. As duas regexes que viviam aqui conheciam quatro: o valor entre PARENTESES do
+    # dialeto novo do PartyPoker nao casava, e a mesa aparecia sem ante, sem blind e com o pote
+    # em zero — reportado pelo dono em 11/09 num torneio real do Party.
+    _posts  = posts_da_mao(hand.raw_text)
+    #: Inteiro quando o valor e inteiro (torneio), float quando tem centavo (cash). O codigo
+    #: anterior fazia `int(float(...))` e zerava um blind de 0,10.
+    _n = lambda v: int(v) if float(v) == int(float(v)) else float(v)
+    antes   = [{'player': a['player'], 'amount': _n(a['amount'])} for a in _posts['antes']]
+    blinds  = [{'player': b['player'], 'type': b['type'], 'amount': _n(b['amount'])}
+               for b in _posts['blinds']]
 
     # Aplicar antes ao pot (sem ficha individual)
     for a in antes:
@@ -11764,6 +11776,7 @@ def admin_reanalyze_preflop_labels():
 
             seen: set = set()
             tour_changes = []   # mudanças DESTE torneio, só persistidas se o commit passar
+            tour_por_id = {}    # id -> {coluna: valor}, gravado em ORDEM antes do commit
             for hand in hands:
                 try:
                     dis = build_decision_inputs_for_hand(hand)
@@ -11815,9 +11828,9 @@ def admin_reanalyze_preflop_labels():
                     new_pos = pos or old_pos
                     new_vs  = (result.get('preflop_gto') or {}).get('vs_position') or old_vs
 
-                    sets, params = [], []
+                    sets: dict = {}
                     if new_label != old_label:
-                        sets.append("label = ?");       params.append(new_label)
+                        sets['label'] = new_label
                         # O SCORE VIAJA COM O LABEL. Esta era a terceira porta a mudar o veredito
                         # sem carregar o score junto (as outras duas ja tinham sido fechadas), e
                         # ela deixava `label='standard'` com `score=0,9` -- a banda de standard e
@@ -11825,22 +11838,20 @@ def admin_reanalyze_preflop_labels():
                         # rotulo dizendo "correto" e o numero dizendo "pior possivel". Como
                         # `priority_score = COUNT(*) * AVG(score)`, o numero orfao ainda ordenava
                         # o plano de estudo.
-                        sets.append("score = ?")
-                        params.append(_align_score_to_label(
-                            new_label, db_row['score'], db_row['ev_loss_bb']))
+                        sets['score'] = _align_score_to_label(
+                            new_label, db_row['score'], db_row['ev_loss_bb'])
                     # Só corrige posição/vs para um valor CONCRETO e realmente diferente:
                     # nunca rebaixa uma posição conhecida para UNKNOWN nem gera churn de caixa.
                     if _real(new_pos) and _diff(new_pos, old_pos):
-                        sets.append("position = ?");    params.append(new_pos)
+                        sets['position'] = new_pos
                     if _real(new_vs) and _diff(new_vs, old_vs):
-                        sets.append("vs_position = ?"); params.append(new_vs)
+                        sets['vs_position'] = new_vs
 
                     if sets:
-                        params.append(did)
-                        conn.execute(
-                            f"UPDATE decisions SET {', '.join(sets)} WHERE id = ?",
-                            tuple(params)
-                        )
+                        # Acumula e grava em ordem de id no fim do torneio: o laço aqui é por
+                        # MÃO, e a ordem das mãos não é a ordem dos ids. Esta rota já tinha
+                        # cicatriz de deadlock (ver o comentário do commit por torneio abaixo).
+                        tour_por_id[did] = sets
                         tour_changes.append({
                             'tid': tid, 'hand_id': hand_id, 'action': act,
                             'old': old_label, 'new': new_label,
@@ -11856,6 +11867,8 @@ def admin_reanalyze_preflop_labels():
             if not tour_changes:
                 continue
             try:
+                from database.repositories import grava_decisions_em_ordem
+                grava_decisions_em_ordem(conn, tour_por_id)
                 std_row = conn.execute(
                     "SELECT COUNT(CASE WHEN label='standard' THEN 1 END)*100.0/COUNT(*) AS s, "
                     "AVG(score) AS a FROM decisions WHERE tournament_id = ?", (tid,)

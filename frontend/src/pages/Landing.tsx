@@ -64,7 +64,10 @@ export const LANDING_NETWORKS = [
   { site: "pokerstars", name: "PokerStars", token: "PokerStars" },
   { site: "ggpoker",    name: "GGPoker",    token: "GGPoker" },
   { site: "acr",        name: "ACR (WPN)",  token: "ACR" },
-  { site: "coinpoker",  name: "CoinPoker",  token: "CoinPoker", isNew: true },
+  { site: "coinpoker",  name: "CoinPoker",  token: "CoinPoker" },
+  // `isNew` sai da sala anterior quando entra uma nova: selo de novidade que nunca sai deixa de
+  // significar novidade. PartyPoker entrou em 11/09.
+  { site: "partypoker", name: "PartyPoker", token: "PartyPoker", isNew: true },
 ] as const;
 
 // ── Subcomponents ─────────────────────────────────────────────────────────────

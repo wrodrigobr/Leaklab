@@ -2,8 +2,11 @@ import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { X, FileDown } from "lucide-react";
 import { SiteLogo } from "@/components/hud/SiteLogo";
+import { SALAS_SUPORTADAS } from "@/lib/salas";
 
-const SITES = ["pokerstars", "ggpoker", "acr", "coinpoker"] as const;
+// A lista canonica vive em `src/lib/salas.ts`, que e a fonte unica (o porque esta la). Aqui ela
+// e so consumida; sala nova NAO entra neste arquivo.
+const SITES = SALAS_SUPORTADAS;
 
 interface Props {
   open: boolean;

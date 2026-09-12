@@ -1,5 +1,7 @@
 import { useCallback, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { SALAS_SUPORTADAS } from "@/lib/salas";
+import { nomeDaSala } from "./SiteLogo";
 import { CheckCircle2, FileUp, Loader2, UploadCloud, XCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { tournaments } from "@/lib/api";
@@ -15,7 +17,10 @@ interface Props {
   onResult?: (result: AnalyzeResult) => void;
 }
 
-const SUPPORTED = ["PokerStars", "GGPoker", "ACR", "CoinPoker"];
+// Derivado da lista canonica do guia de exportacao (mais o nome de exibicao do SiteLogo).
+// Era uma copia a mao: a QUARTA lista de salas do front, e a unica sem guarda nenhum. Sala
+// nova entra em `SALAS_SUPORTADAS` e aparece aqui sozinha.
+const SUPPORTED = SALAS_SUPORTADAS.map(nomeDaSala);
 
 export function UploadZone({ onResult }: Props) {
   const { t } = useTranslation("dashboard");

@@ -19,7 +19,7 @@ const faviconUrl = (key: string): string | undefined => {
   return d ? `https://www.google.com/s2/favicons?domain=${d}&sz=128` : undefined;
 };
 
-const DISPLAY_NAMES: Record<string, string> = {
+export const DISPLAY_NAMES: Record<string, string> = {
   pokerstars: "PokerStars",
   ggpoker:    "GGPoker",
   "888poker": "888Poker",
@@ -28,6 +28,11 @@ const DISPLAY_NAMES: Record<string, string> = {
   acr:        "ACR",
   coinpoker:  "CoinPoker",
 };
+
+/** O nome que o JOGADOR le, a partir da chave `site` do backend. Fonte unica: o chip do
+ *  dropzone montava a lista de nomes a mao e por isso nao acompanhava sala nova. */
+export const nomeDaSala = (site: string): string =>
+  DISPLAY_NAMES[site.toLowerCase().replace(/\s+/g, "")] ?? site;
 
 function initials(site: string): string {
   return site.slice(0, 2).toUpperCase();
@@ -41,7 +46,7 @@ interface Props {
 export function SiteLogo({ site, size = 18 }: Props) {
   const key  = site.toLowerCase().replace(/\s+/g, "");
   const url  = faviconUrl(key);
-  const name = DISPLAY_NAMES[key] ?? site;
+  const name = nomeDaSala(site);
   const [failed, setFailed] = useState(false);
   const showImg = !!url && !failed;
 

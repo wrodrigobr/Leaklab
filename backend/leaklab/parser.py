@@ -485,6 +485,57 @@ def parse_hand(raw_text: str, id_re: re.Pattern | None = None, site: str = "poke
 # disputado de pote levado sem oposicao. Ver _extract_showdown_result.
 _SD_COM_MAO_RE = re.compile(r"\bwith\s+\w", re.IGNORECASE)
 
+# ── Ante e blinds postados: UMA regex para os SEIS formatos ────────────────────────────────
+#
+# Reportado pelo dono em 11/09: no replayer de um torneio do PartyPoker o post das blinds e dos
+# antes nao aparecia, mesmo com tudo isso no historico. A causa nao estava no parser (ele ja le
+# o dialeto novo): o endpoint de replay RECONSTROI antes e blinds do `raw_text` com uma regex
+# PROPRIA, e ela esperava o valor cru (`posts ante 40.00`). O Party novo escreve o valor entre
+# PARENTESES, e a regex do replay nao casava nenhuma linha — mesa sem ante, sem blind e com o
+# pote comecando em zero.
+#
+# E a regra 5 outra vez, e a mesma cicatriz do corte do board por street: a mesma pergunta lida
+# em dois lugares, e so um deles aprendeu o dialeto novo. Formatos que existem no acervo:
+#
+#   Villain3: posts big blind 20                  PokerStars / GGPoker (com ":")
+#   Hero posts ante 40.00                         ACR (sem ":", com decimais)
+#   DiSTEFANO_ posts ante [400]                   Party / 888 antigo (colchetes)
+#   SigmFreud posts small blind [$3]              888 cash (colchetes com $)
+#   angrydad4999 posts small blind [$0.10 USD].   Party cash (com moeda e ponto final)
+#   Hero posts ante (3000)                        Party novo (parenteses)
+#
+# `[^\d]*` engole qualquer abre-delimitador e simbolo de moeda entre o tipo e o numero, que e a
+# unica coisa que varia entre os seis. O nome fica no `.+?` preguicoso ancorado em " posts".
+_POSTS_RE = re.compile(
+    r"^(?P<player>.+?):?\s+posts\s+(?:the\s+)?(?P<tipo>ante|small blind|big blind)\b"
+    r"[^\d]*(?P<amount>[\d,]+(?:\.\d+)?)", re.IGNORECASE)
+
+
+def posts_da_mao(raw_text: str) -> dict:
+    """`{'antes': [...], 'blinds': [...]}` do texto cru de UMA mao, em qualquer dialeto.
+
+    Cada item traz `player` e `amount`; os blinds trazem tambem `type` ('small'|'big'). A ordem
+    e a das linhas, porque o replay desconta na ordem em que a mesa descontou.
+
+    Fonte unica de propósito: quem precisa saber quem postou o que le daqui, e nao escreve a
+    setima regex de `posts`.
+    """
+    antes: list = []
+    blinds: list = []
+    for line in (raw_text or '').splitlines():
+        m = _POSTS_RE.match(line.strip())
+        if not m:
+            continue
+        valor = float(m.group('amount').replace(',', ''))
+        quem = m.group('player').strip()
+        tipo = m.group('tipo').lower()
+        if tipo == 'ante':
+            antes.append({'player': quem, 'amount': valor})
+        else:
+            blinds.append({'player': quem, 'amount': valor,
+                           'type': 'small' if tipo.startswith('small') else 'big'})
+    return {'antes': antes, 'blinds': blinds}
+
 _SD_SUMMARY_RE = re.compile(
     r"^Seat\s+\d+:\s+(?P<player>.+?)\s+(?:\([^)]*\)\s+)?(?P<verbo>showed|mucked)\s+"
     r"\[(?P<cards>[^\]]+)\]", re.IGNORECASE
@@ -562,6 +613,25 @@ def _extract_showdown_result(raw_text: str, hero: str | None) -> Optional[str]:
                 return "won"
             if "and lost" in low or " lost " in low:
                 return "lost"
+
+        # ── Dialeto novo do PartyPoker ────────────────────────────────────────────────────
+        # Reportado pelo dono em 11/09: **o WTSD dele zerou** depois de subir um torneio do
+        # Party. A causa e aqui: o Party nao tem secao `Seat N: ... showed [..]`. O resultado
+        # mora na linha de balance do summary, e quem nao revelou carta traz "(folded)":
+        #
+        #   Player1 balance 1187071, bet 448615, collected 937230, net +488615[ As, Kh ] [...]
+        #   Hero balance 0, lost 448615[ Qh, Ad ] [ a pair of tens -- ... ]
+        #   Player3 balance 658443, lost 28000 (folded)          <- nao foi ao showdown
+        #
+        # **A CARTA REVELADA e o sinal de showdown, e ela e confiavel aqui.** Medido no arquivo
+        # real (3.482 maos): 1.024 maos tem linha de revelacao e **todas as 1.024 tem duas ou
+        # mais** — zero maos com uma revelacao so. Se a sala revelasse o heroi em pote levado sem
+        # oposicao (como faz o CoinPoker, a cicatriz logo acima), existiriam maos com exatamente
+        # uma. Nao existe nenhuma.
+        m_pg = PG_REVEAL_RE.match(line.strip())
+        if m_pg and m_pg.group("player").strip() == hero:
+            _low_pg = line.lower()
+            return "won" if ("collected" in _low_pg or "net +" in _low_pg) else "lost"
     return None
 
 
@@ -760,6 +830,12 @@ def _parse_partygaming_hand(raw_text: str, site: str) -> ParsedHand:
         # linhas de `balance` do dialeto novo, lidas no laco acima. Revelacao e dado opcional, e
         # nenhuma das duas reclama quando nao acha — mas as duas juntas cobrem os dois dialetos.
         reveals=(reveals_do_summary(raw_text) or reveals),
+        # Faltava, e o dono viu na tela: **o WTSD dele zerou** depois do primeiro torneio do
+        # PartyPoker (11/09). Este construtor nunca preencheu `showdown_result`, e o WTSD e o
+        # W$SD saem os dois dessa coluna. O outro construtor de `ParsedHand` (o do PokerStars,
+        # logo acima) sempre preencheu: o campo existia em um caminho e nao no outro, que e a
+        # mesma forma da cicatriz do `reveals=`.
+        showdown_result=_extract_showdown_result(raw_text, hero_name),
     )
 
 

@@ -46,6 +46,11 @@
         "name": "CoinPoker",
         "where": "In the client, log in and open PokerIntel (nav menu) → EV Chart page → select the date range → click 'Download Hands' to download your hand history.",
         "summary": "Download the tournament summary on the same screen too, if your client offers it."
+      },
+      "partypoker": {
+        "name": "PartyPoker",
+        "where": "In the client, open My Game → Export Hands, pick the date range and click Download. Save the file anywhere and upload it here. The room only releases hands up to the previous day, up to 40 days back and 10,000 hands at a time, so today’s tournament shows up tomorrow.",
+        "summary": "PartyPoker does not offer the tournament summary for download. Without it, the tournament has no finish, no prize and no ROI. Hands and verdicts work normally."
       }
     },
     "note": "You can upload multiple files at once. The same tournament is merged automatically when the site splits the hand history across files.",

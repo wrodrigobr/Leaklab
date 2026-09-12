@@ -28,7 +28,9 @@
     "batchNone": "Ningún torneo completado. {{skipped}}.",
     "batchNotImported": "{{count}} aún sin las manos importadas",
     "batchUnrecognized": "{{count}} no reconocidos",
-    "httpError": "No se pudo subir (HTTP {{status}}). Recarga e inténtalo de nuevo; si persiste, el servidor puede estar desactualizado."
+    "httpError": "No se pudo subir (HTTP {{status}}). Recarga e inténtalo de nuevo; si persiste, el servidor puede estar desactualizado.",
+    "semResultado": "sin resultado",
+    "semResultadoHint": "PartyPoker no ofrece el resumen del torneo para descargar. Sin él no hay posición, premio ni ROI. Las manos y los veredictos funcionan normalmente."
   },
   "filters": {
     "all": "Todas",

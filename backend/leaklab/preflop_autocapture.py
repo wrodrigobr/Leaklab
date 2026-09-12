@@ -349,6 +349,7 @@ def _regrade_tournament(conn, tournament_db_id: int) -> int:
         d = dict(r)
         stored_by_hand.setdefault(d["hand_id"], []).append(d)
     updated = 0
+    por_id: dict = {}
     for hid, srows in stored_by_hand.items():
         frows = fresh_by_hand.get(hid, [])
         if len(frows) != len(srows):
@@ -365,12 +366,17 @@ def _regrade_tournament(conn, tournament_db_id: int) -> int:
             # estudo por `COUNT(*) * AVG(score)`. Foi a varredura de portas em
             # `test_score_alinhado_no_insert.py` que achou esta, a quarta.
             from database.repositories import _align_score_to_label
-            conn.execute("UPDATE decisions SET label=?,best_action=?,gto_label=?,gto_action=?,"
-                         "score=? WHERE id=?",
-                         (f["label"], f["best"], f["gto_label"], f["gto_action"],
-                          _align_score_to_label(f["label"], s.get("score"), s.get("ev_loss_bb")),
-                          s["id"]))
+            por_id[s["id"]] = {
+                'label': f["label"], 'best_action': f["best"], 'gto_label': f["gto_label"],
+                'gto_action': f["gto_action"],
+                'score': _align_score_to_label(f["label"], s.get("score"), s.get("ev_loss_bb")),
+            }
             updated += 1
+    # Ordem crescente de id, como todo escritor em massa de `decisions` (deadlock de 11/09; ver
+    # `grava_decisions_em_ordem`). Aqui a ordem NAO saia crescente sozinha: o laco e por MAO, e
+    # os grupos de mao sao percorridos na ordem do dict, nao na dos ids.
+    from database.repositories import grava_decisions_em_ordem
+    grava_decisions_em_ordem(conn, por_id)
     return updated
 
 

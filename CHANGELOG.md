@@ -4,6 +4,180 @@ Todas as mudanÃ§as notÃ¡veis neste projeto serÃ£o documentadas aqui.
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
+## A QUARTA porta do score, e os tres furos do guarda que a protegia (11/09)
+
+Achado como efeito colateral do conserto do deadlock: a validacao que eu pus em
+`grava_decisions_em_ordem` (recusar `label` sem `score`) reprovou uma gravacao que existia desde
+sempre.
+
+- **`resync_postflop_gto` trocava o `label` sem levar o `score`.** Era a quarta porta a violar a
+  invariante de v0.168 ("quem muda o veredito carrega o score junto"), e ninguem tinha visto
+  porque o guarda textual varre tres arquivos e `scripts/` nao esta na lista dele. A propria
+  docstring de `_avaliacao_fresca` avisava: "os campos que DESCREVEM a avaliacao viajam juntos,
+  ou a linha vira quimera" — e o score estava fora da lista.
+- **O `score` entrou tambem no DUMP**, junto com a gravacao. Registro para desfazer que nao cobre
+  uma coluna gravada e pior que registro nenhum, porque parece completo. `reverter_do_dump` ja
+  sabia restaurar `score` quando a linha o carrega.
+- **A invariante agora e por CONSTRUCAO**, nao por varredura: a porta generica recusa a gravacao
+  de `label` sem `score`, e isso vale para todo chamador, inclusive o proximo. A varredura
+  textual nao alcanca uma porta cujas colunas sao DADOS.
+
+### E o guarda que defendia essa invariante tinha tres furos, todos "passa verde por nao ver"
+
+Aparecerem quebrando-o de proposito, um por um:
+
+1. **Comentario desarmava.** Um comentario MEU dentro da janela continha a sequencia
+   `score` + `=` + `?` ao explicar a propria varredura, e isso bastava para absolver a porta.
+2. **Portas vizinhas se cobriam.** A porta da linha ~13032 de `repositories.py` era absolvida por
+   OUTRA porta dezesseis linhas acima, que tinha o score. Duas portas com uma evidencia so: tirar
+   o score de uma nao acusava nada.
+3. **Porta invisivel.** Essa porta de cima escreve `UPDATE decisions` numa linha e
+   `SET gto_label = ...` na seguinte. O filtro exigia as duas palavras na MESMA linha, entao ela
+   nunca chegou a ser varrida — e ainda assim desarmava a de baixo.
+
+A varredura agora e por SENTENCA (do `SET` ao `WHERE`), sobre o fonte com os comentarios
+removidos. As tres portas acusam individualmente quando se tira o score de qualquer uma delas.
+
+**O mesmo defeito de comentario derrubou o guarda do `reveals=`**, que acusou uma fiacao INTACTA
+porque um comentario novo citava "`reveals=`" ao explicar a cicatriz. Corrigido do mesmo jeito.
+
+Duas vezes no mesmo dia um comentario meu interferiu num guarda meu, uma vez absolvendo e outra
+acusando. A regra 8 diz que comentario nao e evidencia; falta dizer que ele tambem nao pode virar
+prova, em nenhuma das duas direcoes. **Guarda que le fonte le CODIGO.**
+
+## A coluna de premio do Party DECLARA que a sala nao da resultado (11/09)
+
+Decidido pelo dono entre tres opcoes de tela. No lugar do traco, um selo discreto "sem resultado"
+com a explicacao no tooltip.
+
+- As duas saidas erradas, as duas ja vistas neste produto: **deixar o traco** (o jogador nao sabe
+  se falta arquivo, se falta processamento ou se quebrou) ou **oferecer o botao de upload** como a
+  ACR, mandando a pessoa procurar um arquivo que a sala nao gera.
+- `src/lib/salas.ts` e a fonte unica: `SALAS_SUPORTADAS` (que era copiada em QUATRO pontos do
+  front) e `SALAS_SEM_RESULTADO`. Os guardas de copy leem este arquivo.
+- Guarda com CONTROLE NEGATIVO explicito: a ACR nao pode perder o botao de `.ots`, nenhuma sala
+  com resumo pode entrar na lista, e toda sala da lista tem de ser uma sala suportada (nome
+  errado ali faz o selo nunca aparecer, calado). Sem o controle, uma funcao que devolvesse `true`
+  sempre passaria — e apagaria o premio de todo mundo.
+
+---
+## PartyPoker na TELA, e os dois defeitos que a minha validacao nao pegou (11/09)
+
+O dono jogou um torneio do Party e achou dois problemas em minutos. Os dois tem a mesma causa de
+fundo: **eu provei parser, pipeline e motor e paramos ali.** Compatibilizar uma sala nao termina
+no motor, termina nas stats e no replayer, que e onde o jogador olha.
+
+### 1. "meu wtsd esta zerado"
+
+- `wtsd` e `w_at_sd` saem os dois de `decisions.showdown_result`, e **o construtor de
+  `ParsedHand` do caminho PartyGaming nunca preencheu esse campo.** O do PokerStars sempre
+  preencheu: campo presente num caminho e ausente no outro, a mesma forma da cicatriz do
+  `reveals=`. Agora ha guarda de fiacao varrendo TODO construtor de `ParsedHand`.
+- O extrator tambem nao conhecia o formato: o Party nao tem `Seat N: ... showed [..]`, o
+  resultado mora na linha de balance do summary (`Hero balance 0, lost 448615[ Qh, Ad ]`), e
+  quem nao revelou traz `(folded)`.
+- **A carta revelada e o sinal de showdown, e isso foi medido:** no arquivo real, 1.024 maos tem
+  linha de revelacao e **todas as 1.024 tem duas ou mais**. Zero maos com uma revelacao so. Se a
+  sala revelasse o heroi em pote levado sem oposicao (como o CoinPoker faz, a cicatriz do
+  `_SD_COM_MAO_RE`), existiriam maos com exatamente uma.
+- Depois do conserto, no arquivo do dono: **266 showdowns do heroi (163 ganhos, 103 perdidos),
+  batendo na unidade** com as 266 linhas de revelacao contadas no texto cru. WTSD 39,8%,
+  W$SD 61,3%.
+- O que ja esta no banco segue nulo: `scripts/backfill_showdown_do_party.py` preenche SO essa
+  coluna, so onde esta vazia, por id e em ordem. Nao usa `reprocess_tournament` de proposito —
+  aquele e DELETE + insert, e `decisions(id)` tem FK CASCADE que apaga anotacoes CALADO.
+  Ensaiado: dry-run acha 2 de 5, `--apply` grava 2, segunda passagem acha ZERO.
+
+### 2. "no replayer nao existe o post das blinds, as antes tambem nao aparecem"
+
+- O defeito nao estava no parser: **o endpoint de replay reconstruia antes e blinds do
+  `raw_text` com duas regexes PROPRIAS**, que esperavam o valor cru ou entre colchetes. O
+  dialeto novo do Party escreve `posts ante (3000)`, entre PARENTESES: nenhuma linha casava, e a
+  mesa aparecia sem ante, sem blind e com o pote comecando em zero.
+- Regra 5 pela terceira vez no mesmo dia. Agora ha `posts_da_mao` no parser, fonte unica, e um
+  guarda que varre **os seis formatos** do acervo, um por fixture: PokerStars/GG com ":", ACR sem
+  ":", Party/888 antigo em colchetes, 888 cash com `$`, Party cash com `$` e `USD`, Party novo em
+  parenteses. A regex do replay conhecia quatro dos seis.
+- De brinde, o replay fazia `int(float(...))` e zerava um blind de 0,10 no cash.
+
+### 3. O HUD de oponente do Party estava pronto para mentir, e ninguem tinha reclamado ainda
+
+- Achado na varredura, nao por relato. O Party anonimiza por **ASSENTO**: no arquivo real,
+  **9 nomes de vilao em 3.482 maos e 34 torneios**, e o nome segue o assento, nao a pessoa
+  (`Player1` no assento 1 em 88,6% das maos, `Player8` no assento 8 em 88,4%).
+- `build_profiles` num torneio de 322 maos devolve **9 perfis com amostra de 120 a 302 maos** e
+  VPIP de 20% a 38%: read gordo, confiante e falso, porque cada "oponente" e a media de todos os
+  que ocuparam aquele assento, com rebalanceamento de mesa no meio.
+- **O guard que existia nao pega:** ele desliga por PROPORCAO (mais de 60 perfis e mais de 3x as
+  maos), desenhado para o CoinPoker, que troca o hash a cada mao. O Party tem 9 perfis e passa
+  folgado. E nenhum piso de amostra resolveria: a amostra e grande, o que falta e IDENTIDADE.
+- Virou lista nomeada (`_SEM_IDENTIDADE_DE_VILAO`) em vez de `if site != 'coinpoker'`, que foi
+  exatamente o que deixou a sala seguinte entrar sem ninguem notar. Guarda com controle negativo:
+  PokerStars, GGPoker e ACR seguem FORA da lista.
+
+### 4. A sala aparece na tela, em cinco lugares e tres idiomas
+
+- Logotipo e filtro de torneios **ja funcionavam sozinhos**: `SiteLogo` ja mapeava
+  `partypoker.com`, e o filtro da tela de torneios e derivado dos dados.
+- O que faltava era copy e lista: guia de exportacao, dropzone do dashboard vazio, chips do
+  upload, faixa de redes da landing e tabela de `/docs`, nas 3 locales.
+- **Eram QUATRO copias da lista de salas no front, e so duas tinham guarda.** Agora ha fonte
+  unica (`SALAS_SUPORTADAS`, no guia) e o chip do upload deriva dela com o nome de exibicao do
+  `SiteLogo` (que tambem era uma segunda tabela de nomes). O `SITES` copiado DENTRO do teste do
+  guia virou leitura do fonte: copia em teste e pior que copia em codigo, porque faz o guarda
+  parar de cobrar sem avisar.
+- O selo "novo" passou do CoinPoker para o PartyPoker: selo que nunca sai deixa de significar
+  novidade.
+- A copy do guia traz os limites REAIS do export, conferidos na documentacao: `My Game ->
+  Export Hands`, so ate o dia anterior, 40 dias para tras e 10.000 maos por vez. E diz, em vez
+  de esconder, que **o PartyPoker nao oferece o resumo do torneio**: sem ele nao ha colocacao,
+  premio nem ROI. Guarda novo cobra que a copy NEGUE o resumo nas 3 locales, em vez de mandar o
+  jogador procurar um arquivo que nao existe.
+
+---
+## Deadlock em `decisions`: a ordem de gravacao virou regra, e a varredura pegou os N+1 (11/09)
+
+- **O que quebrou em producao, segunda vez no mesmo dia:**
+  `DeadlockDetected ... while updating tuple (4958,33) in relation "decisions"`, agora em
+  `reconcile_tournament_labels` (na primeira vez foi o par gancho x `resync_tournament_postflop`).
+- **Por que a primeira correcao nao bastou, e o erro e meu.** Eu consertei UM escritor (o resync
+  ganhou `sort` por id) e pus um lock de thread no gancho. Lock de thread nao cruza processo, e o
+  solver-consumer e outro container. A minha propria docstring do guarda dizia que a ordem "vale
+  tambem entre PROCESSOS" e eu so a apliquei em um lugar: e a regra 5 do CLAUDE.md por extenso.
+- **A raiz, achada no codigo:** `reconcile_tournament_labels` gravava em TRES ordens diferentes
+  na MESMA transacao. Labels por id, `best_action` por id, e o alinhamento de score a banda com
+  **UPDATE EM MASSA** (`WHERE tournament_id=? AND label=?`), que trava as linhas na ordem do
+  plano do Postgres, iterando labels na ordem do dict. Do outro lado,
+  `resync_gto_labels_for_node` (solver-consumer) lia `decisions` **sem `ORDER BY`** e escrevia na
+  ordem do plano, cruzando torneios.
+- **O conserto:** `grava_decisions_em_ordem` e fonte unica. Todo UPDATE em `decisions` sai com
+  `WHERE id=?`, um por linha, em ordem crescente de id, com as colunas daquela linha juntas.
+  Dois escritores que travam na MESMA ordem nao formam ciclo, e essa e a unica defesa que
+  funciona entre processos. Aplicada nos quatro escritores que rodam junto em producao:
+  `reconcile_tournament_labels`, `resync_gto_labels_for_node`, `_regrade_tournament` do
+  `preflop_autocapture` e as duas metades do `resync_postflop_gto` (a do gancho e a do `main`,
+  que foi a que rodou lado a lado com o solver no reparo do acervo).
+- **Por que ordem e nao lock.** Lock de thread nao alcanca o outro container; advisory lock por
+  torneio nao alcanca o `resync_gto_labels_for_node`, que e o unico escritor que cruza torneios;
+  e advisory lock global serializaria escritores que hoje trabalham em paralelo sem se
+  atrapalhar. A ordem custa zero espera.
+- **Provado que nao troca veredito (regra 7).** Semente de 384 decisoes cobrindo label x
+  gto_label x banda de score x street x ev, inclusive as linhas SEM `gto_label` (as que o UPDATE
+  em massa pegava): o reconcile novo e o do HEAD devolvem 246 mudancas cada e **ZERO divergencia**
+  em `(label, score, best_action)`, linha a linha.
+- **O guarda que faltava (`test_escrita_de_decisions_em_ordem.py`, 6 casos)** observa os UPDATEs
+  que realmente chegam ao banco, em vez de reler o fonte: nenhum sem `WHERE id`, ids crescentes,
+  uma linha um UPDATE, e a varredura dos N+1 escritores.
+- **Duas licoes de guarda, achadas quebrando os proprios guardas:**
+  1. A assercao de ordem **passou com o `sorted` removido**. Ela ancorava no EFEITO, e o efeito
+     sai certo por acaso porque o `por_id` e preenchido lendo `ORDER BY id`. Agora ela tambem
+     cobra a CONDICAO (o `ORDER BY` nos dois SELECTs), senao o SQLite do teste devolveria
+     ordenado por rowid e o guarda ficaria verde enquanto o Postgres entrega a ordem do plano.
+  2. A varredura dos N+1 procurava o NOME da funcao e casava a mencao em **comentario**. Apagar a
+     chamada e deixar o comentario passava verde. Agora ela procura a chamada, com os comentarios
+     removidos antes de olhar (regra 8: comentario nao e evidencia).
+
+---
 ## Reparo das divergencias CONCLUIDO nas cinco contas com material (11/09)
 
 - **12.960 linhas gravadas** em cinco etapas, uma conta por vez, com conferencia entre elas:
