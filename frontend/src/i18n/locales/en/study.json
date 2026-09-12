@@ -150,7 +150,8 @@
       "rfi": "Open",
       "vs_rfi": "vs Open",
       "vs_3bet": "vs 3-bet",
-      "squeeze": "Squeeze"
+      "squeeze": "Squeeze",
+      "vs_4bet": "vs 4-bet"
     },
     "ou": " or ",
     "carregando": "loading the ranges…",
@@ -167,7 +168,8 @@
     "erroCarregar": "could not load",
     "posicoesForaDoCenario": "Greyed-out positions have no such scenario.",
     "substituicao": "These are the {{balde}} ranges: we have no chart for this scenario at the depth you picked.",
-    "flutuante": "Pin on screen"
+    "flutuante": "Pin on screen",
+    "quatroBetDe": "4-bet from"
   },
   "pro": {
     "titulo": "The study plan is a Pro feature",

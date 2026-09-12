@@ -150,7 +150,8 @@
       "rfi": "Abertura",
       "vs_rfi": "vs Abertura",
       "vs_3bet": "vs 3-bet",
-      "squeeze": "Squeeze"
+      "squeeze": "Squeeze",
+      "vs_4bet": "vs 4-bet"
     },
     "ou": " ou ",
     "carregando": "carregando as ranges…",
@@ -167,7 +168,8 @@
     "erroCarregar": "não foi possível carregar",
     "posicoesForaDoCenario": "As posições apagadas não têm este cenário.",
     "substituicao": "Estas são as ranges de {{balde}}: não temos este cenário na profundidade escolhida.",
-    "flutuante": "Fixar na tela"
+    "flutuante": "Fixar na tela",
+    "quatroBetDe": "4-bet de"
   },
   "pro": {
     "titulo": "O plano de estudo é do plano Pro",

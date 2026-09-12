@@ -10683,7 +10683,9 @@ def preflop_ranges():
       { position, stack_bb, stack_bucket,
         rfi: { hands: [str], pct: float } | null,
         vs_rfi: { [opener]: { call: [str], raise3bet: [str], pct_play: float } },
-        vs_3bet: { hands_4bet: [str], hands_call: [str], pct_continua: float } | null }
+        vs_3bet: { [3bettor]: grade } | null,
+        squeeze: { [opener]: grade } | null,
+        vs_4bet: { [4bettor]: grade } | null }
     """
     from leaklab.preflop_gto_ranges import _load, balde_rfi, _expand_range, _norm_pos
 
@@ -10922,6 +10924,27 @@ def preflop_ranges():
     # squeeze — hero squeeza; keyed por opener (estrutura squeeze[hero][opener]).
     squeeze = {opener: _grid_from_freqs(sp) for opener, sp in _section_for_pos('squeeze').items()} or None
 
+    # vs_4bet — o hero 3-betou e enfrenta o 4bet; keyed pelo 4bettor (vs_4bet[hero][4bettor]).
+    #
+    # A carta tem SEIS secoes e este endpoint servia QUATRO desde que a pagina /ranges nasceu: as
+    # 2.520 celulas de `vs_4bet` (36 pares fechados em 30, 40, 50, 75 e 100bb) estavam no acervo e
+    # nao chegavam a tela. O proprio `Ranges.tsx` registrava o buraco num comentario, e comentario
+    # nao conserta nada. Guarda: `test_toda_secao_da_carta_e_servida`.
+    #
+    # De quem e o range, CONFERIDO antes de servir (a chave tem dois lugares para posicao, e esta
+    # casa ja gravou solve no papel errado por supor): em `vs_4bet[SB][BTN]` a 30bb o range tem
+    # 22,2% de call e 40,5% de all-in, 62% de continuacao — assinatura de quem 3-betou e defende o
+    # topo, nao de quem abriu. O segundo nivel e sempre um assento que age ANTES do hero.
+    vs_4bet = {fourbettor: _grid_from_freqs(sp)
+               for fourbettor, sp in _section_for_pos('vs_4bet').items()} or None
+
+    # `faces_squeeze` NAO e servida de proposito: a semantica dos pares nao fechou na medicao de
+    # 12/09. Em `faces_squeeze[BB][BTN]` o hero seria o BB enfrentando um squeeze, mas NINGUEM age
+    # depois do BB. As 12 maos nao-fold (AA, KK, QQ, JJ, AKs, AKo, AQs, KQs, 77, 66, 55, A5s) estao
+    # todas contidas no que o BB joga contra o open do BTN, o que e compativel com varias leituras.
+    # Servir grade cujo PAPEL de cada posicao eu nao estabeleci seria rotular a tela errado — pior
+    # que nao servir. Ver o item no BACKLOG com o que falsifica cada hipotese.
+
     # Nada aqui depende do usuario: a carta e um JSON estatico em disco e a resposta e funcao
     # pura de (posicao, balde). O `stack_bb` viaja no corpo so como eco do pedido, entao o cache
     # publico e por URL e nao mistura resposta entre contas.
@@ -10933,6 +10956,7 @@ def preflop_ranges():
         'vs_rfi':       vs_rfi,
         'vs_3bet':      vs_3bet,
         'squeeze':      squeeze,
+        'vs_4bet':      vs_4bet,
         # so aparece quando ALGUMA secao veio de outro balde; ausente quando tudo bateu
         'substituicao': substituicao or None,
     })

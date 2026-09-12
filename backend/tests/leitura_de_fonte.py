@@ -37,6 +37,34 @@ import io as _io
 import tokenize as _tk
 
 
+def sem_comentarios(fonte: str) -> dict:
+    """Como `so_codigo`, mas PRESERVA as strings: apaga apenas comentarios.
+
+    Existe porque em 12/09 eu usei `so_codigo` para conferir se o endpoint de ranges serve cada
+    secao da carta — e os nomes das secoes SAO strings no codigo (`_section_for_pos('vs_4bet')`).
+    O guarda acusou que nada chegava a tela, inclusive o `RFI`, que chega. A ferramenta que
+    resolveu um problema criou outro quando aplicada sem pensar no que ela apaga.
+
+    Use `so_codigo` quando o padrao procurado NAO pode estar em string (indice de linha de banco,
+    por exemplo) e `sem_comentarios` quando ele vive em string de propriedade.
+    """
+    import io as _io
+    import tokenize as _tk
+    linhas = {n: l for n, l in enumerate(fonte.splitlines(), 1)}
+    try:
+        toks = list(_tk.generate_tokens(_io.StringIO(fonte).readline))
+    except (_tk.TokenError, IndentationError, SyntaxError):
+        return linhas
+    for t in toks:
+        if t.type != _tk.COMMENT:
+            continue
+        n = t.start[0]
+        if n in linhas:
+            l = linhas[n]
+            linhas[n] = l[:t.start[1]] + ' ' * (t.end[1] - t.start[1]) + l[t.end[1]:]
+    return linhas
+
+
 def so_codigo(fonte: str) -> dict:
     """`{numero_da_linha: texto_sem_comentario_nem_string}`.
 

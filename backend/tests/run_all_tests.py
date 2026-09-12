@@ -104,6 +104,7 @@ SUITES = {
                   'test_autocapture_le_linha_por_nome.py',
                   'test_repara_heroi_do_arquivo.py',
                   'test_teste_nao_importa_arquivo_fora_do_git.py',
+                  'test_toda_secao_da_carta_e_servida.py',
                   'test_wtsd_e_posts_do_party.py',
                   'test_hud_sem_identidade_de_vilao.py',
                   'test_assinatura_do_spot.py',

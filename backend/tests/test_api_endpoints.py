@@ -746,7 +746,19 @@ def test_study_plan_no_data_returns_400():
 
 
 def test_study_plan_with_data_returns_structure():
-    """Após importar torneio, plan retorna estrutura válida."""
+    """Após importar torneio, plan retorna estrutura válida.
+
+    **Sem a API key, de proposito** (12/09). O que este teste afirma e a ESTRUTURA da resposta, e
+    ela e a mesma no fallback de template. Com `ANTHROPIC_API_KEY` no ambiente o endpoint chamava
+    o modelo de verdade: 29 segundos numa suite de 3.074 casos, e uma falha intermitente que
+    passa isolada e reprova na rodada completa — exatamente o que aconteceu em 12/09 e me custou
+    duas rodadas para separar de uma regressao minha.
+
+    A casa ja tinha essa licao escrita para o `daily_challenge`: "teste de fluxo que chama modelo
+    e lento, caro e intermitente, e intermitencia treina todo mundo a ignorar o vermelho". Este
+    ficou para tras. A chave e lida em RUNTIME (`_api_key()`), entao tira-la do ambiente durante a
+    chamada forca o caminho de fallback sem tocar no codigo de producao.
+    """
     hh = _hh_small()
     if not hh:
         print("OK  test_study_plan_with_data_returns_structure | SKIP")
@@ -755,7 +767,12 @@ def test_study_plan_with_data_returns_structure():
     token = _register_and_login(c, 'spd')
     _vira_pro(c, token)
     c.post('/analyze', json={'content': hh}, headers=_auth_headers(token))
-    r = c.get('/study/plan', headers={'Authorization': f'Bearer {token}'})
+    _key = os.environ.pop('ANTHROPIC_API_KEY', None)
+    try:
+        r = c.get('/study/plan', headers={'Authorization': f'Bearer {token}'})
+    finally:
+        if _key is not None:
+            os.environ['ANTHROPIC_API_KEY'] = _key
     # Sempre 200 (mesmo sem API key, retorna fallback)
     assert r.status_code == 200, f"Got {r.status_code}: {r.get_data(as_text=True)[:200]}"
     data = r.get_json()

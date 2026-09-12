@@ -53,7 +53,7 @@ interface Cenario {
   tipo: RangeType;
   scenario?: string;
   /** precisa de um vilão (o abridor ou o 3-bettor) */
-  contra?: "abridor" | "3bettor";
+  contra?: "abridor" | "3bettor" | "4bettor";
   /** posições em que o herói pode estar neste cenário */
   posicoes: string[];
   /** existe na faixa rasa? */
@@ -68,7 +68,22 @@ const CENARIOS: Cenario[] = [
     posicoes: POSICOES.slice(0, 8), raso: false },
   { id: "squeeze", tipo: "3bet", scenario: "squeeze", contra: "abridor",
     posicoes: POSICOES.slice(1), raso: false },
+  // O heroi 3-betou e enfrenta o 4bet. A carta tem a grade FECHADA (36 pares em 30, 40, 50, 75 e
+  // 100bb) e o endpoint nao a servia: 2.520 celulas no acervo fora da tela, com o buraco
+  // registrado num comentario deste arquivo desde 28/08. As posicoes sao as 8 que podem 3-betar
+  // (todas menos o UTG, que nao tem ninguem antes para 3-betar).
+  { id: "vs_4bet", tipo: "3bet", scenario: "vs_4bet", contra: "4bettor",
+    posicoes: POSICOES.slice(1), raso: false },
 ];
+
+/** Rotulo da linha do vilao, por PAPEL. Era um ternario de duas vias repetido em DOIS lugares
+ *  (a barra flutuante e a linha do seletor); com um terceiro papel, os dois cairiam em "3-bet de"
+ *  e a tela nomearia o spot errado. Regra 5: a escolha vive numa chave so. */
+const ROTULO_DO_VILAO: Record<string, string> = {
+  abridor: "ranges.contra",
+  "3bettor": "ranges.tresBetDe",
+  "4bettor": "ranges.quatroBetDe",
+};
 
 /**
  * Gradiente do chip da categoria.
@@ -176,6 +191,7 @@ export default function Ranges() {
     if (!resp || !cenario.contra) return [];
     const fonte = cenario.id === "vs_rfi" ? resp.vs_rfi
       : cenario.id === "squeeze" ? resp.squeeze
+      : cenario.id === "vs_4bet" ? resp.vs_4bet
       : resp.vs_3bet;
     return Object.keys(fonte ?? {}).map((k) => k.replace("_open", "")).sort();
   }, [resp, cenario]);
@@ -229,7 +245,7 @@ export default function Ranges() {
                 stack={stack} setStack={setStack}
                 posicao={posicao} setPosicao={setPosicao}
                 viloes={viloes} vilaoAtivo={vilaoAtivo} setContra={setContra}
-                rotuloContra={t(cenario.contra === "3bettor" ? "ranges.tresBetDe" : "ranges.contra")}
+                rotuloContra={t(ROTULO_DO_VILAO[cenario.contra ?? "abridor"] ?? "ranges.contra")}
               />
             </JanelaFlutuante>
           )}
@@ -282,7 +298,7 @@ export default function Ranges() {
           </Linha>
           {cenario.contra && (
             <Linha>
-              <Rotulo>{t(cenario.contra === "abridor" ? "ranges.contra" : "ranges.tresBetDe")}</Rotulo>
+              <Rotulo>{t(ROTULO_DO_VILAO[cenario.contra] ?? "ranges.contra")}</Rotulo>
               {viloes.length === 0 && (
                 <span className="text-xs text-muted-foreground">
                   {carregando ? "…" : t("ranges.semVilao")}

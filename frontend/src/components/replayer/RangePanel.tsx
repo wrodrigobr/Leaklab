@@ -62,6 +62,10 @@ export interface PreflopRangesResp {
   vs_rfi: Record<string, ActionGrid>;
   vs_3bet: Record<string, ActionGrid> | null;     // keyed por 3bettor
   squeeze: Record<string, ActionGrid> | null;     // keyed por opener
+  /** keyed pelo 4bettor: o heroi 3-betou e enfrenta o 4bet. A carta tem esta secao FECHADA
+   *  (36 pares em 30, 40, 50, 75 e 100bb) e o endpoint nao a servia ate 12/09 — 2.520 celulas
+   *  no acervo que nao chegavam a tela. `null` nos baldes rasos, onde a secao nao existe. */
+  vs_4bet?: Record<string, ActionGrid> | null;
   /** Secoes servidas por OUTRO balde de stack. Ausente quando tudo veio do balde pedido.
    *  Existe desde 28/08: o fallback servia o vizinho e a resposta seguia declarando o pedido. */
   substituicao?: Record<string, string> | null;
@@ -119,15 +123,18 @@ export function buildRangeFromApi(resp: PreflopRangesResp, type: RangeType, open
   if (type === '3bet') {
     // squeeze (hero squeeza) usa resp.squeeze[opener]; vs_3bet usa resp.vs_3bet[3bettor].
     // O vilão (openerPos = gto.vs_position) é a chave em ambos.
+    // TRES fontes no mesmo ramo, e o rotulo muda com a fonte: dizer "vs X 3-bet" numa grade de
+    // vs_4bet seria nomear o spot errado na tela.
     const isSqueeze = scenario === 'squeeze';
-    const src = isSqueeze ? resp.squeeze : resp.vs_3bet;
+    const is4bet = scenario === 'vs_4bet';
+    const src = isSqueeze ? resp.squeeze : is4bet ? (resp.vs_4bet ?? null) : resp.vs_3bet;
     if (!src) return null;
     const villains = Object.keys(src);
     if (!villains.length) return null;
     const key = (openerPos && src[openerPos]) ? openerPos : villains[0];
     const g = src[key];
     return {
-      label: `${isSqueeze ? 'Squeeze vs' : 'vs'} ${key} ${isSqueeze ? 'open' : '3-bet'} · ${resp.position} (${resp.stack_bucket})`,
+      label: `${isSqueeze ? 'Squeeze vs' : 'vs'} ${key} ${isSqueeze ? 'open' : is4bet ? '4-bet' : '3-bet'} · ${resp.position} (${resp.stack_bucket})`,
       raise: new Set(g.raise3bet),
       call:  new Set(g.call),
       allin: new Set(g.allin ?? []),
