@@ -58,15 +58,55 @@ def test_equity_acima_explica_que_o_fold_vem_da_range():
     print("OK  test_equity_acima_explica_que_o_fold_vem_da_range")
 
 
+#: TODOS os pares (acao, recomendacao) que o gerador de frases distingue. A lista existe porque
+#: a varredura anterior percorria (equity, exigido) mas SO com o par default `call` x `fold` — e
+#: por isso ficou verde por meses com o ramo da AGRESSAO invertendo o sinal. Regra 5: o padrao
+#: vive em N ramos, a varredura tem de cobrir os N+1.
+_PARES = [(a, b) for a in ('call', 'fold', 'raise', 'bet', 'shove', 'jam', 'check')
+          for b in ('fold', 'call', 'raise', 'bet', 'shove', 'jam', 'check')
+          if a != b]
+
+
 def test_nenhuma_frase_inverte_o_sinal():
-    """Varredura: para qualquer par (equity, exigido), a palavra 'abaixo' só pode aparecer
-    quando a equity é REALMENTE menor que o exigido."""
+    """Varredura: para qualquer (equity, exigido, acao, recomendacao), a palavra 'abaixo' so
+    pode aparecer quando a equity e REALMENTE menor que o exigido.
+
+    Medido em producao em 12/09, ANTES do conserto: das 87 notas deste formato nas acusacoes
+    preflop sem carta, **60 tinham o sinal invertido** — todas de `shove`, o ramo que esta
+    varredura nao exercitava. O caso mais claro: equity 66,3% contra 42,5% exigidos, e o texto
+    dizendo "ficou 23,8pp abaixo" com a conclusao "a agressao nao tinha suporte matematico".
+    """
+    vistos = 0
     for eq in (0.10, 0.30, 0.45, 0.464, 0.50, 0.663, 0.90):
         for req in (0.20, 0.464, 0.70):
-            txt = _texto(eq, req)
-            if 'abaixo' in txt:
-                assert round(eq * 100, 1) < round(req * 100, 1), (eq, req, txt)
-    print("OK  test_nenhuma_frase_inverte_o_sinal")
+            for acao, best in _PARES:
+                txt = _texto(eq, req, action=acao, best=best)
+                vistos += 1
+                if 'abaixo' in txt:
+                    assert round(eq * 100, 1) < round(req * 100, 1), (acao, best, eq, req, txt)
+    # Controle: a varredura tem de ter exercitado MUITOS pares, senao ela volta a medir um ramo.
+    assert vistos >= 400, ('a varredura encolheu: %d combinacoes' % vistos)
+    print("OK  test_nenhuma_frase_inverte_o_sinal (%d combinacoes)" % vistos)
+
+
+def test_a_agressao_com_equity_ACIMA_nao_diz_que_faltou_matematica():
+    """O caso de producao, nomeado: 60 shoves acusados com a frase afirmando o contrario do
+    numero ao lado. Explicacao que contradiz a evidencia exibida e pior que nenhuma."""
+    txt = _texto(0.663, 0.425, action='shove', best='fold')
+    assert 'abaixo' not in txt, txt
+    assert 'não tinha suporte' not in txt and 'nao tinha suporte' not in txt, txt
+    # e precisa DIZER de onde vem o fold, senao so calou
+    assert 'RANGE' in txt or 'range' in txt, txt
+    assert '66.3' in txt and '42.5' in txt, txt
+    print("OK  test_a_agressao_com_equity_ACIMA_nao_diz_que_faltou_matematica")
+
+
+def test_a_agressao_com_equity_ABAIXO_continua_acusando():
+    """Controle negativo: o conserto nao pode calar o caso legitimo."""
+    txt = _texto(0.20, 0.425, action='shove', best='fold')
+    assert 'abaixo' in txt, txt
+    assert 'suporte matem' in txt, txt
+    print("OK  test_a_agressao_com_equity_ABAIXO_continua_acusando")
 
 
 if __name__ == '__main__':

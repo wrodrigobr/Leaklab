@@ -2122,11 +2122,33 @@ def build_interpretation(input_data: Dict[str, Any], label: str,
             elif action == "fold" and best in ("raise", "shove", "jam", "bet"):
                 parts.append(f"Equity de {eq_pct}% suporta {best_pt.upper()} neste spot — foldar deixou valor na mesa.")
             elif action in ("raise", "bet", "shove", "jam") and best == "fold":
-                parts.append(f"Equity de {eq_pct}% ficou {abs(diff)}pp abaixo dos {req_pct}% necessários — a agressão não tinha suporte matemático.")
+                # MESMO defeito do ramo do call, e ele ficou vivo aqui por mais tempo: o
+                # conserto de 26/08 tratou `call` e deixou a AGRESSAO com `abs(diff)` e a
+                # palavra "abaixo" fixa. Medido em producao em 12/09: das 87 notas deste
+                # formato nas acusacoes preflop sem carta, **60 tinham o sinal invertido** —
+                # a frase dizia "ficou 23,8pp abaixo dos 42,5%" para uma equity de 66,3%, e
+                # concluia que "a agressao nao tinha suporte matematico" sobre uma jogada que
+                # tinha. Explicacao que contradiz o numero impresso ao lado e pior que nenhuma.
+                #
+                # Quando a equity SUPERA o exigido, o fold recomendado nao vem do preco: vem
+                # da range do spot ou da pressao de ICM. O texto passa a dizer isso.
+                parts.append(
+                    f"Equity de {eq_pct}% ficou {abs(diff)}pp abaixo dos {req_pct}% necessários — a agressão não tinha suporte matemático."
+                    if diff < 0 else
+                    f"A matemática suportava a agressão ({eq_pct}% de equity contra {req_pct}% "
+                    f"exigidos, +{abs(diff)}pp): o fold recomendado vem da RANGE do spot e da "
+                    f"pressão de ICM, não do preço."
+                )
             elif action in ("check", "call") and best in ("bet", "raise"):
                 parts.append(f"Com equity de {eq_pct}%, {best_pt.upper()} extrai mais valor e protege melhor do que {action_pt.upper()}.")
             elif diff > 0:
                 parts.append(f"Equity de {eq_pct}% supera os {req_pct}% exigidos (+{diff}pp) — linha mais agressiva era suportada.")
+            elif diff == 0:
+                # IGUAL nao e ABAIXO. Este ramo dizia "ficou 0.0pp abaixo dos 46.4%", uma
+                # contradicao dentro da propria frase, e foi a varredura de (acao, recomendacao)
+                # x (equity, exigido) que o achou — o caso `call` x `shove` com equity exata.
+                parts.append(f"Equity de {eq_pct}% empata com os {req_pct}% exigidos: pelo preço "
+                             f"o spot é indiferente, e a decisão vem da range.")
             else:
                 parts.append(f"Equity de {eq_pct}% ficou {abs(diff)}pp abaixo dos {req_pct}% exigidos para o spot.")
         else:
