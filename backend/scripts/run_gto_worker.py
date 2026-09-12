@@ -194,10 +194,13 @@ def reset_stale_jobs() -> None:
 def queue_stats() -> dict:
     conn = get_conn()
     try:
+        # ALIAS + acesso por NOME: este worker roda em PRODUCAO, e no Postgres a linha e um
+        # dict — `r[0]` estoura `KeyError: 0` (o mesmo bug que matou em silencio a captura
+        # automatica de preflop, provado no container em 12/09).
         rows = conn.execute(
-            "SELECT status, COUNT(*) FROM gto_solver_queue GROUP BY status"
+            "SELECT status AS st, COUNT(*) AS n FROM gto_solver_queue GROUP BY status"
         ).fetchall()
-        return {r[0]: r[1] for r in rows}
+        return {dict(r)['st']: dict(r)['n'] for r in rows}
     finally:
         conn.close()
 

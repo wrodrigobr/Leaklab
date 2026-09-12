@@ -254,10 +254,16 @@ def capture_one(scenario: str, hero: str, vs: str, bucket: str) -> str:
 # ── coleta dos pares NULL cobríveis de UM torneio ────────────────────────────
 def _coverable_null_pairs(conn, tournament_db_id: int) -> set:
     row = conn.execute("SELECT raw_text FROM tournaments WHERE id=?", (tournament_db_id,)).fetchone()
-    if not row or not row[0]:
+    # Por NOME. Era `row[0]`, e no Postgres a linha e um dict: `KeyError: 0` — PROVADO no
+    # container de producao em 12/09. O erro subia para o `except Exception` de `run_autocapture`,
+    # que so escreve um warning: a captura automatica de preflop NUNCA capturou nada em prod, em
+    # silencio, desde que o Postgres entrou. Achado ampliando a varredura de
+    # `test_linha_de_banco_por_nome` para fora de `repositories.py`.
+    _raw = (dict(row).get('raw_text') if row else None)
+    if not _raw:
         return set()
     try:
-        hands = parse_hand_history(row[0])
+        hands = parse_hand_history(_raw)
     except Exception:
         return set()
     # NULLs preflop atuais deste torneio (chave por hand_id+ação)
@@ -309,10 +315,16 @@ def _regrade_tournament(conn, tournament_db_id: int) -> int:
     armazenada têm o MESMO tamanho E as ações alinham posição-a-posição (segurança
     anti-escrita-errada); senão pula a mão inteira."""
     row = conn.execute("SELECT raw_text FROM tournaments WHERE id=?", (tournament_db_id,)).fetchone()
-    if not row or not row[0]:
+    # Por NOME. Era `row[0]`, e no Postgres a linha e um dict: `KeyError: 0` — PROVADO no
+    # container de producao em 12/09. O erro subia para o `except Exception` de `run_autocapture`,
+    # que so escreve um warning: a captura automatica de preflop NUNCA capturou nada em prod, em
+    # silencio, desde que o Postgres entrou. Achado ampliando a varredura de
+    # `test_linha_de_banco_por_nome` para fora de `repositories.py`.
+    _raw = (dict(row).get('raw_text') if row else None)
+    if not _raw:
         return 0
     try:
-        hands = parse_hand_history(row[0])
+        hands = parse_hand_history(_raw)
     except Exception:
         return 0
     # frescas por mão, EM ORDEM

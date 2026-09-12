@@ -34,7 +34,7 @@ except Exception:
     pass
 
 from database.schema import get_conn                                          # noqa: E402
-from database.repositories import _adapt                                      # noqa: E402
+from database.repositories import _adapt, um_numero                           # noqa: E402
 from leaklab.opponent_stats import SALAS_SEM_IDENTIDADE_DE_VILAO              # noqa: E402
 
 
@@ -91,9 +91,14 @@ def main():
         "(SELECT id FROM tournaments WHERE lower(site) IN (%s))" % marcas), tuple(salas))
     conn.commit()
     # Conferencia EXPLICITA: `DELETE` que nao casa nada nao levanta erro nenhum (regra 6).
-    resta = conn.execute(_adapt(
-        "SELECT COUNT(*) FROM opponent_profiles p JOIN tournaments t ON t.id = p.tournament_id "
-        "WHERE lower(t.site) IN (%s)" % marcas), tuple(salas)).fetchone()[0]
+    #
+    # Esta linha ja quebrou em producao (12/09): era `...fetchone()[0]`, e no Postgres a linha e
+    # um dict — `KeyError: 0`. O DELETE tinha commitado, entao o dado ficou certo e quem morreu
+    # foi a CONFERENCIA. `um_numero` le agregado nos dois backends.
+    resta = um_numero(conn,
+                      "SELECT COUNT(*) FROM opponent_profiles p "
+                      "JOIN tournaments t ON t.id = p.tournament_id "
+                      "WHERE lower(t.site) IN (%s)" % marcas, salas)
     conn.close()
     print('\nAPAGADOS. Restam %d perfis dessas salas (esperado: 0).' % resta)
     return 0 if resta == 0 else 1

@@ -3,7 +3,7 @@ import sys, os, json
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from dotenv import load_dotenv
 load_dotenv(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), '.env'))
-from database.repositories import get_conn
+from database.repositories import get_conn, um_numero
 
 conn = get_conn()
 
@@ -22,12 +22,16 @@ rows = conn.execute("""
 print(f"Decisions a re-enfileirar: {len(rows)}")
 queued = 0
 for row in rows:
-    dec_id, tourn_id, user_id, street, position, stack_bb, facing_bet, pot_size, board, hero_cards, best_action = row
+    # Por NOME, nao desempacotando: no Postgres a linha e um dict e o desempacotamento itera as
+    # CHAVES (a classe de bug numero 8 de "SQLite tolera, Postgres rejeita").
+    _d = dict(row)
+    dec_id, tourn_id, user_id = _d['id'], _d['tournament_id'], _d['user_id']
+    street, position, stack_bb = _d['street'], _d['position'], _d['stack_bb']
+    facing_bet, pot_size = _d['facing_bet'], _d['pot_size']
+    board, hero_cards, best_action = _d['board'], _d['hero_cards'], _d['best_action']
     print(f"  dec={dec_id} street={street} pos={position} facing_bet={facing_bet}bb stack={stack_bb}bb")
 
-    hand_id = conn.execute(
-        "SELECT hand_id FROM decisions WHERE id=?", (dec_id,)
-    ).fetchone()[0]
+    hand_id = um_numero(conn, "SELECT hand_id FROM decisions WHERE id=?", (dec_id,))
 
     # Verifica se já existe na fila
     existing = conn.execute(
