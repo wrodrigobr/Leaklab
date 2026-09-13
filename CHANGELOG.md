@@ -134,6 +134,21 @@ arquivo em vez de substitui-la: um Free que sobe 36 torneios precisa saber as du
 
 Fica aberto, e e anterior a isto: a rota aceita `amount` do CLIENTE sem validacao. Registrado.
 
+### Cash junto de torneio: a divisao RECUSA, e o primeiro teste passou pelo motivo errado
+
+Regra 7. Mao de cash tem `tournament_id` vazio, entao um arquivo que misture cash e torneio
+seria dividido em dois registros — um deles com id VAZIO, coisa que o defeito original nunca fez
+(ele gravava tudo sob o id da primeira mao). Zero casos no acervo, medido nos 42 registros, mas o
+risco vive no codigo: a divisao passa a recusar esse arquivo e manter o caminho antigo. Dividir
+exigiria decidir onde ficam as maos de cash, e isso e decisao de produto.
+
+**O primeiro teste desse guarda passou verde com o guarda DESLIGADO.** Ele juntava cash do
+PartyPoker com torneio do PokerStars, e o parser nao le dois dialetos no mesmo arquivo: o
+resultado era `[]` por haver um grupo so, nao pela recusa. Ancorado no efeito, terceira vez no
+dia. O conserto foi montar o cenario no MESMO dialeto (party+party, 888+888, nas duas ordens) e
+por um CONTROLE dentro do proprio teste, que exige que o cenario tenha de fato os dois grupos
+antes de afirmar qualquer coisa. Com isso a quebra acusa.
+
 ---
 ## Correcao de uma afirmacao minha: o autocapture de preflop (12/09)
 

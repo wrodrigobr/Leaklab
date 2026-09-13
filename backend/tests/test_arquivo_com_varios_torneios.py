@@ -76,6 +76,39 @@ def test_arquivo_vazio_ou_ilegivel_NAO_divide():
         assert _pedacos_por_torneio(entrada) == [], repr(entrada)
 
 
+def test_cash_junto_de_torneio_NAO_divide():
+    """Regra 7: o conserto nao pode criar dano que o defeito nao causava.
+
+    Mao de cash tem `tournament_id` vazio. Dividir um arquivo que mistura cash e torneio criaria
+    um registro de torneio com id VAZIO — coisa que o defeito original nunca fez, porque ele
+    gravava tudo sob o id da primeira mao. Zero casos no acervo em 13/09, e a recusa mantem o
+    comportamento antigo para esse arquivo.
+    """
+    def ler(n):
+        return io.open(os.path.join(_FIX, n), encoding='utf-8', errors='replace').read()
+
+    # Os dois pedacos tem de ser do MESMO dialeto. A primeira versao deste teste juntava cash do
+    # PartyPoker com torneio do PokerStars, e passou verde com o guarda DESLIGADO: o parser nao
+    # le dois dialetos no mesmo arquivo, entao o resultado era `[]` por haver um grupo so, nao
+    # pela recusa. Teste ancorado no efeito, de novo.
+    for nome, cash, torneio in (
+            ('partypoker', 'partypoker_cash_9max.txt', 'partypoker_tourney_stt.txt'),
+            ('888',        'pp888_cash_6max.txt',      'pp888_tourney.txt')):
+        for ordem in (0, 1):
+            a, b = (cash, torneio) if ordem == 0 else (torneio, cash)
+            misto = ler(a) + chr(10) + ler(b)
+            # CONTROLE do proprio teste: o cenario precisa MESMO ter os dois grupos, senao o
+            # assert abaixo nao prova nada.
+            from leaklab.parser import parse_pokerstars_file_from_text
+            ids = {str(getattr(m, 'tournament_id', '') or '')
+                   for m in parse_pokerstars_file_from_text(misto)}
+            assert len(ids) >= 2 and '' in ids, (
+                'cenario de %s nao montou: ids=%s' % (nome, ids))
+            assert _pedacos_por_torneio(misto) == [], (
+                'arquivo de %s com cash E torneio foi dividido: um pedaco teria tournament_id '
+                'vazio (ordem %d)' % (nome, ordem))
+
+
 def test_dois_torneios_viram_dois_pedacos():
     pedacos = _pedacos_por_torneio(_dois_torneios())
     assert len(pedacos) == 2, [(t, n) for t, n, _ in pedacos]

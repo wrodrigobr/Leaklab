@@ -907,6 +907,15 @@ def _pedacos_por_torneio(content: str) -> list:
         grupos.setdefault(tid, []).append(m)
     if len(grupos) <= 1:
         return []
+    if '' in grupos:
+        # Mão SEM torneio (cash) junto de mãos de torneio. Não divide, e isso é deliberado:
+        # dividir exigiria decidir onde ficam as mãos de cash, e isso é decisão de produto, não
+        # de código. Zero casos no acervo em 13/09 (medido nos 42 registros misturados), então
+        # a recusa não deixa dano vivo — ela impede que o CONSERTO crie um registro de torneio
+        # com id vazio, que é dano que o defeito original não causava (regra 7).
+        log.info("analyze: arquivo mistura cash e torneio (%d grupos), nao dividindo",
+                 len(grupos))
+        return []
     pedacos = []
     for tid, ms in grupos.items():
         texto = chr(10).join(getattr(h, 'raw_text', '') or '' for h in ms)
