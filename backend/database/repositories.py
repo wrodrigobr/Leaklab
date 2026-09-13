@@ -13292,6 +13292,38 @@ def grava_decisions_em_ordem(conn, por_id: dict) -> int:
     return n
 
 
+def recalcula_agregados_do_torneio(conn, tournament_id: int) -> None:
+    """Reescreve `avg_score` e os quatro `*_pct` do torneio a partir das decisoes dele.
+
+    Existe como funcao porque DOIS chamadores precisam dela e um deles nao pode fazer mais nada:
+
+      - `reconcile_tournament_labels`, que reavalia label e score por linha e depois resume;
+      - o reparo de registro multi-torneio, que precisa SO do resumo.
+
+    Medido no ensaio com a copia do unico pagante: o reparo chamava o reconcile inteiro para
+    obter os agregados, e o reconcile mudou **115 decisoes de banda** (67 small_mistake ->
+    marginal, 48 no sentido inverso), reescrevendo o `score` de todas elas. O `gto_label` nao
+    mudou em nenhuma — era a politica atual sendo aplicada a linhas antigas (ver AY-42). Mudar
+    115 vereditos que o jogador ve nao e trabalho de um script que separa registros; se essas
+    linhas devem ser reconciliadas, isso e decisao propria, com dry-run propria.
+    """
+    pct_row = _fetchone(conn, _adapt(
+        "SELECT COUNT(CASE WHEN label='standard' THEN 1 END)*100.0/COUNT(*) AS s, "
+        "COUNT(CASE WHEN label='marginal' THEN 1 END)*100.0/COUNT(*) AS m, "
+        "COUNT(CASE WHEN label='small_mistake' THEN 1 END)*100.0/COUNT(*) AS sm, "
+        "COUNT(CASE WHEN label='clear_mistake' THEN 1 END)*100.0/COUNT(*) AS c, "
+        "AVG(score) AS a FROM decisions WHERE tournament_id=?"
+    ), (tournament_id,))
+    if not pct_row:
+        return
+    conn.execute(_adapt(
+        "UPDATE tournaments SET standard_pct=?, marginal_pct=?, small_pct=?, clear_pct=?, "
+        "avg_score=? WHERE id=?"
+    ), (round(pct_row['s'] or 0, 2), round(pct_row['m'] or 0, 2),
+        round(pct_row['sm'] or 0, 2), round(pct_row['c'] or 0, 2),
+        round(pct_row['a'] or 0, 4), tournament_id))
+
+
 def reconcile_tournament_labels(tournament_id: int, only_ids=None) -> int:
     """
     Reconcilia label vs gto_label para as decisões de um torneio, alinha o score à banda do
@@ -13404,20 +13436,7 @@ def reconcile_tournament_labels(tournament_id: int, only_ids=None) -> int:
 
         # Recalcula TODOS os buckets por label (#13: antes só standard_pct era reescrito; clear/
         # marginal/small ficavam congelados pré-reconcile → lista divergia do veredito por mão).
-        pct_row = _fetchone(conn, _adapt(
-            "SELECT COUNT(CASE WHEN label='standard' THEN 1 END)*100.0/COUNT(*) AS s, "
-            "COUNT(CASE WHEN label='marginal' THEN 1 END)*100.0/COUNT(*) AS m, "
-            "COUNT(CASE WHEN label='small_mistake' THEN 1 END)*100.0/COUNT(*) AS sm, "
-            "COUNT(CASE WHEN label='clear_mistake' THEN 1 END)*100.0/COUNT(*) AS c, "
-            "AVG(score) AS a FROM decisions WHERE tournament_id=?"
-        ), (tournament_id,))
-        if pct_row:
-            conn.execute(_adapt(
-                "UPDATE tournaments SET standard_pct=?, marginal_pct=?, small_pct=?, clear_pct=?, "
-                "avg_score=? WHERE id=?"
-            ), (round(pct_row['s'] or 0, 2), round(pct_row['m'] or 0, 2),
-                round(pct_row['sm'] or 0, 2), round(pct_row['c'] or 0, 2),
-                round(pct_row['a'] or 0, 4), tournament_id))
+        recalcula_agregados_do_torneio(conn, tournament_id)
 
         # Stamp the tournament as reconciled — sempre, mesmo sem mudanças,
         # para que o dashboard saiba que a análise GTO ja foi aplicada.

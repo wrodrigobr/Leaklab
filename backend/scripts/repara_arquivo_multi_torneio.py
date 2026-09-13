@@ -39,9 +39,12 @@ Nada aponta para `tournaments.id` desses 42 alem das proprias decisions (`sessio
    (`users.tournaments_this_month`) que so sobe no upload, e este script nao o toca.
 3. **`place`/`prize`/`buy_in` sao re-extraidos do texto DE CADA GRUPO**, pelo mesmo
    `_extract_financials` do produto. E o unico jeito de o resultado parar no torneio certo.
-4. **Os agregados sao recalculados pelo caminho do produto** (`reconcile_tournament_labels`), nao
-   por SQL replicado aqui: a regra de buckets e media ja vive la, e uma segunda copia divergiria
-   (regra 5, e [[reference_medir_observando_nao_reconstruindo]]).
+4. **Os agregados sao recalculados por `recalcula_agregados_do_torneio`**, a funcao do produto,
+   e NAO pelo reconcile inteiro. Medido no ensaio com a copia do unico pagante: chamar o
+   reconcile mudou **115 decisoes de banda** (67 small_mistake -> marginal, 48 no inverso) e
+   reescreveu o `score` de todas, com o `gto_label` intacto em 100% — era a politica atual
+   sendo aplicada a linhas antigas (AY-42). Separar registros NAO MUDA VEREDITO. A regra dos
+   buckets continua vivendo num lugar so (regra 5).
 5. **Dump ANTES de qualquer escrita, sempre.** `--apply` sem dump gravavel aborta.
 
 ── Uso ────────────────────────────────────────────────────────────────────────────────────────
@@ -468,15 +471,23 @@ def _aplica(planos, por_hand_cache, dump):
         tocados.add(d['id'])
         conn.commit()
 
-    conn.close()
-    # Agregados pelo caminho do PRODUTO, nunca por SQL replicado aqui (regra 5). Cada chamada
-    # abre a propria conexao, entao a de cima ja pode estar fechada.
-    from database.repositories import reconcile_tournament_labels
+    # Agregados (`avg_score` e os quatro `*_pct`) pela funcao do produto, e NAO pelo
+    # `reconcile_tournament_labels` inteiro.
+    #
+    # A primeira versao chamava o reconcile, que resume os agregados mas antes disso REAVALIA
+    # label e score de cada linha. Medido no ensaio com a copia do unico pagante: **115 decisoes
+    # trocaram de banda** (67 small_mistake -> marginal, 48 no inverso) e o `score` de todas foi
+    # reescrito, com o `gto_label` intacto em 100% delas — era a politica atual sendo aplicada a
+    # linhas antigas (AY-42). Separar registros nao pode mudar 115 vereditos que o jogador ve;
+    # se essas linhas devem ser reconciliadas, e decisao propria, com dry-run propria.
+    from database.repositories import recalcula_agregados_do_torneio
     for tid in sorted(tocados):
         try:
-            reconcile_tournament_labels(tid)
+            recalcula_agregados_do_torneio(conn, tid)
         except Exception as e:
-            print('   aviso: reconcile falhou em t%s: %s: %s' % (tid, type(e).__name__, e))
+            print('   aviso: agregados falharam em t%s: %s: %s' % (tid, type(e).__name__, e))
+    conn.commit()
+    conn.close()
     return criados, movidas, len(tocados)
 
 

@@ -257,6 +257,97 @@ def test_o_MESMO_torneio_em_DOIS_registros_faz_MERGE_e_nao_colide():
     assert total == 10, ('decisoes no fim: %s, esperado 10' % total)
 
 
+def test_o_reparo_NAO_MUDA_VEREDITO_de_decisao_nenhuma():
+    """A invariante mais importante deste script, e ela nasceu de uma violacao MEDIDA.
+
+    No ensaio com a copia do unico pagante, o reparo mudou **115 decisoes de banda** (67
+    small_mistake -> marginal, 48 no inverso) e reescreveu o `score` de todas, com o `gto_label`
+    intacto em 100% delas. Causa: ele chamava `reconcile_tournament_labels` para obter os
+    agregados, e o reconcile reavalia label e score por LINHA antes de resumir — era a politica
+    atual sendo aplicada a linhas antigas (AY-42).
+
+    Separar registros nao pode mudar veredito que o jogador ve. O reparo passou a chamar so
+    `recalcula_agregados_do_torneio`.
+
+    Este guarda compara label e score de CADA decisao, antes e depois, e nao os totais: no ensaio
+    os totais mostravam 19 de diferenca (2212 -> 2231) enquanto 115 linhas tinham mudado — as
+    trocas em sentidos opostos se cancelavam. Total igual nao prova linha igual.
+    """
+    _monta()
+    conn = get_conn()
+    antes = {dict(r)['id']: (str(dict(r)['label']), float(dict(r)['score'] or 0))
+             for r in conn.execute(_adapt(
+                 "SELECT d.id, d.label, d.score FROM decisions d JOIN tournaments t "
+                 "ON t.id=d.tournament_id WHERE t.user_id=?"), (UID,)).fetchall()}
+    conn.close()
+    assert len(antes) == 5, len(antes)
+
+    dump = tempfile.NamedTemporaryFile(suffix='.jsonl', delete=False); dump.close()
+    assert _roda('--user', str(UID), '--apply', '--dump', dump.name).returncode == 0
+
+    conn = get_conn()
+    depois = {dict(r)['id']: (str(dict(r)['label']), float(dict(r)['score'] or 0))
+              for r in conn.execute(_adapt(
+                  "SELECT d.id, d.label, d.score FROM decisions d JOIN tournaments t "
+                  "ON t.id=d.tournament_id WHERE t.user_id=?"), (UID,)).fetchall()}
+    conn.close()
+
+    assert set(antes) == set(depois), (
+        'decisoes apareceram ou desapareceram: %d antes, %d depois' % (len(antes), len(depois)))
+    trocaram = [i for i in antes if antes[i] != depois[i]]
+    assert trocaram == [], (
+        '%d decisao(oes) mudaram de veredito ou score: %s' % (
+            len(trocaram), [(i, antes[i], depois[i]) for i in trocaram[:5]]))
+
+
+def test_os_registros_novos_ganham_agregados_RECALCULADOS():
+    """O outro lado da moeda do guarda anterior: nao reconciliar nao pode virar nao resumir.
+
+    Quebrei de proposito removendo a chamada de `recalcula_agregados_do_torneio` e os 17 casos
+    passaram verdes — o guarda de fiacao ve a string no import mesmo sem a chamada, e o de
+    veredito nao olha agregado. Registro novo sem `avg_score`/`standard_pct` aparece na lista
+    com celula vazia, e no cenario deste arquivo todas as decisoes sao `standard` com score 0.8,
+    entao os tres registros tem de sair com 100% e 0.8.
+    """
+    _monta()
+    dump = tempfile.NamedTemporaryFile(suffix='.jsonl', delete=False); dump.close()
+    assert _roda('--user', str(UID), '--apply', '--dump', dump.name).returncode == 0
+    conn = get_conn()
+    linhas = [dict(r) for r in conn.execute(_adapt(
+        "SELECT tournament_id, avg_score, standard_pct, decisions_count FROM tournaments "
+        "WHERE user_id=? ORDER BY id"), (UID,)).fetchall()]
+    conn.close()
+    assert len(linhas) == 3, len(linhas)
+    for l in linhas:
+        assert l['avg_score'] is not None, (
+            '%s ficou sem avg_score: os agregados nao foram recalculados' % l['tournament_id'])
+        assert abs(float(l['avg_score']) - 0.8) < 1e-6, (l['tournament_id'], l['avg_score'])
+        assert l['standard_pct'] is not None and abs(float(l['standard_pct']) - 100.0) < 1e-6, (
+            l['tournament_id'], l['standard_pct'])
+
+
+def test_o_reparo_NAO_chama_o_reconcile_de_labels():
+    """CONDICAO, porque o teste de comportamento acima nao tem material para distinguir.
+
+    Quebrei de proposito: troquei `recalcula_agregados_do_torneio` de volta por
+    `reconcile_tournament_labels` e os 16 casos passaram VERDES. Motivo: as decisoes forjadas no
+    cenario nao tem `gto_label`, entao o reconcile nao mexe em nada e a diferenca desaparece. A
+    violacao real foi MEDIDA no ensaio com a copia do pagante (115 linhas), nao aqui.
+
+    Entao este guarda olha a CONDICAO: o script recalcula os agregados e nao reconcilia. Guarda
+    de fiacao e fraco por natureza, e nao seria suficiente sozinho — ele existe porque o de
+    comportamento, neste cenario, e cego.
+    """
+    src = io.open(_SCRIPT, encoding='utf-8').read()
+    codigo = chr(10).join(l.split('#', 1)[0] for l in src.splitlines())
+    assert 'recalcula_agregados_do_torneio' in codigo, (
+        'o reparo parou de recalcular os agregados: os registros ficam com avg_score e os *_pct '
+        'do conjunto antigo')
+    assert 'reconcile_tournament_labels' not in codigo, (
+        'o reparo voltou a chamar o reconcile inteiro, que REAVALIA label e score por linha — '
+        'no ensaio com a copia do pagante isso mudou 115 vereditos')
+
+
 def test_o_dry_run_NAO_escreve_nada():
     """CONTROLE que vale por todos os outros: se o dry-run escrevesse, cada teste abaixo estaria
     medindo um banco ja mexido."""
