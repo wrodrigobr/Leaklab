@@ -301,6 +301,40 @@ def test_o_VINCULO_com_a_fila_do_solver_acompanha_as_decisoes():
             'torneio %s: a fila tem %s, as decisoes dele tem %s' % (t, real.get(t), spots))
 
 
+def test_played_at_vem_do_TEXTO_de_cada_grupo():
+    """A data de JOGO de cada registro novo sai do texto dele, nao e herdada.
+
+    Achado ao reparar a conta do dono: o registro misturado tinha `played_at` NULO, e herdar isso
+    deixaria os quatro registros novos fora de todo filtro por data de jogo — que e o eixo de
+    tempo do produto (AY-4). O texto de cada grupo tem a data real.
+
+    E o registro que FICA so ganha data se estava vazio: se ja havia uma, ela e dado do jogador
+    e nao cabe a este script troca-la.
+    """
+    _monta()
+    conn = get_conn()
+    conn.execute(_adapt("UPDATE tournaments SET played_at=NULL WHERE id=?"), (7301,))
+    conn.commit(); conn.close()
+
+    dump = tempfile.NamedTemporaryFile(suffix='.jsonl', delete=False); dump.close()
+    assert _roda('--user', str(UID), '--apply', '--dump', dump.name).returncode == 0
+    ts, _, _ = _estado()
+    conn = get_conn()
+    datas = {}
+    for r in conn.execute(_adapt(
+            "SELECT tournament_id, played_at FROM tournaments WHERE user_id=?"),
+            (UID,)).fetchall():
+        rr = dict(r)
+        datas[rr['tournament_id']] = str(rr['played_at'] or '')[:10]
+    conn.close()
+    assert len(datas) == 3, list(datas)
+    vazias = [k for k, v in datas.items() if not v]
+    assert vazias == [], (
+        'registro(s) sem data de jogo: %s. Eles ficariam fora de todo filtro por data.' % vazias)
+    # e a data tem de vir do TEXTO, nao inventada: o fixture e de 2026
+    assert all(v.startswith('20') for v in datas.values()), datas
+
+
 def test_imported_at_herdado_e_cota_intacta():
     _monta()
     dump = tempfile.NamedTemporaryFile(suffix='.jsonl', delete=False); dump.close()

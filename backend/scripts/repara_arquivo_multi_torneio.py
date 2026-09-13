@@ -270,7 +270,7 @@ def _aplica(planos, por_hand_cache, dump):
     morre com `SSL connection has been closed unexpectedly`. Foi o que aconteceu na primeira
     tentativa no Luigi — sem dano, porque nada tinha sido commitado.
     """
-    from api.app import _extract_financials, _detect_site
+    from api.app import _extract_financials, _detect_site, _extract_date
     conn = get_conn()
     criados = 0
     movidas = 0
@@ -304,13 +304,18 @@ def _aplica(planos, por_hand_cache, dump):
             fin = _extract_financials(texto, hero, site, None)
             st, en = extract_session_times(texto)
             nome = d.get('tournament_name')
+            # `played_at` vem do texto DESTE grupo, nao herdado. Herdar seria carregar a data de
+            # outro torneio — ou `None`, como no registro da minha conta, que deixa o torneio
+            # fora de todo filtro por data de jogo (o eixo de tempo do AY-4). O herdado fica
+            # como reserva, para o caso de o dialeto nao declarar data.
+            quando = _extract_date(texto) or d.get('played_at')
             conn.execute(_adapt(
                 "INSERT INTO tournaments (user_id, tournament_id, site, tournament_name, hero, "
                 "played_at, imported_at, hands_count, decisions_count, raw_text, is_pko, "
                 "started_at, ended_at, place, prize, profit, buy_in) "
                 "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"),
                 (d['user_id'], n['tournament_id'], site, nome, hero,
-                 d.get('played_at'), d.get('imported_at'), n['n_maos'], 0, texto,
+                 quando, d.get('imported_at'), n['n_maos'], 0, texto,
                  d.get('is_pko') or False, st, en,
                  fin.get('place'), fin.get('prize'), fin.get('profit'), fin.get('buy_in')))
             novo_id = value(conn.execute(_adapt(
@@ -364,6 +369,14 @@ def _aplica(planos, por_hand_cache, dump):
         # E o registro velho solta os spots que nao tem mais nenhuma decisao dele. Um mesmo
         # spot_hash pode ser compartilhado por decisoes de torneios diferentes, entao a remocao
         # olha o que SOBROU, nao o que saiu.
+        # A data do registro que fica: preenchida so se estava VAZIA. Se ja havia uma, ela e
+        # dado do jogador e nao cabe a este script trocar — mesmo sabendo que num registro
+        # misturado ela podia ser de outra noite. Trocar seria decisao de produto.
+        if not d.get('played_at'):
+            nova_data = _extract_date(texto_fica)
+            if nova_data:
+                conn.execute(_adapt("UPDATE tournaments SET played_at=? WHERE id=?"),
+                             (nova_data, d['id']))
         ids_que_ficam = [i for h in p['fica']['hand_ids'] for i in por_hand.get(h, [])]
         spots_que_ficam = {spot_de.get(i, '') for i in ids_que_ficam}
         for sh in sorted(fila_pendente - spots_que_ficam):
