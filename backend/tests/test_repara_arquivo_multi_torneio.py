@@ -85,6 +85,14 @@ def _monta():
 
 
 def _monta_com(conn, maos, texto):
+    # A limpeza e explicita porque o SQLite nao aplica FK por padrao (`PRAGMA foreign_keys` vem
+    # OFF): apagar o torneio NAO leva a fila embora, e a segunda execucao batia no UNIQUE de
+    # (tournament_id, spot_hash) — 10 dos 11 testes morreram com esse erro antes de eu ver.
+    conn.execute(_adapt("DELETE FROM gto_tournament_queue WHERE tournament_id=?"), (7301,))
+    for t in [dict(x)['id'] for x in conn.execute(_adapt(
+            "SELECT id FROM tournaments WHERE user_id=?"), (UID,)).fetchall()]:
+        conn.execute(_adapt("DELETE FROM gto_tournament_queue WHERE tournament_id=?"), (t,))
+        conn.execute(_adapt("DELETE FROM decisions WHERE tournament_id=?"), (t,))
     conn.execute(_adapt("DELETE FROM tournaments WHERE user_id=?"), (UID,))
     conn.execute(_adapt("DELETE FROM users WHERE id=?"), (UID,))
     conn.execute(_adapt(
@@ -100,9 +108,16 @@ def _monta_com(conn, maos, texto):
     for m in maos:
         conn.execute(_adapt(
             "INSERT INTO decisions (tournament_id, hand_id, street, position, action_taken, "
-            "best_action, label, score) VALUES (?,?,?,?,?,?,?,?)"),
+            "best_action, label, score, spot_hash) VALUES (?,?,?,?,?,?,?,?,?)"),
             (7301, str(getattr(m, 'hand_id', '') or ''), 'preflop', 'BTN', 'raise',
-             'raise', 'standard', 0.8))
+             'raise', 'standard', 0.8, 'spot-' + str(getattr(m, 'hand_id', '') or '')))
+    conn.commit()
+    # A fila do solver: um vinculo (torneio, spot) por decisao. Sem povoar isto, o guarda do
+    # re-vinculo passaria por vacuidade — nao havia nada para re-vincular.
+    for m in maos:
+        conn.execute(_adapt(
+            "INSERT INTO gto_tournament_queue (tournament_id, spot_hash) VALUES (?,?)"),
+            (7301, 'spot-' + str(getattr(m, 'hand_id', '') or '')))
     conn.commit()
     # a decisao da ULTIMA mao vai mudar de torneio (ela e do 555000003)
     alvo_hand = str(getattr(maos[-1], 'hand_id', '') or '')
@@ -250,6 +265,40 @@ def test_quem_guarda_os_DOIS_campos_acompanha_a_decisao():
     assert t_ver == t_dec, (
         'o veredito por semelhanca ficou no torneio antigo (%s) enquanto a decisao foi para %s'
         % (t_ver, t_dec))
+
+
+def test_o_VINCULO_com_a_fila_do_solver_acompanha_as_decisoes():
+    """Achado no dry-run do Luigi: 12 linhas de `gto_tournament_queue` em t62, de decisoes que
+    iam para outros tres registros.
+
+    Esse vinculo (torneio, spot_hash) e o que faz o gancho reconciliar um torneio quando o solve
+    chega. Se ele nao acompanha as decisoes, os registros novos **nunca sao reconciliados** e
+    ficam com o veredito velho para sempre — dano que o defeito nao causava, porque com tudo num
+    registro so o vinculo estava certo por acidente.
+    """
+    _monta()
+    dump = tempfile.NamedTemporaryFile(suffix='.jsonl', delete=False); dump.close()
+    assert _roda('--user', str(UID), '--apply', '--dump', dump.name).returncode == 0
+    conn = get_conn()
+    # para cada torneio, os spots das decisoes que estao nele
+    esperado = {}
+    for r in conn.execute(_adapt(
+            "SELECT d.tournament_id AS t, d.spot_hash AS s FROM decisions d "
+            "JOIN tournaments x ON x.id=d.tournament_id WHERE x.user_id=?"), (UID,)).fetchall():
+        rr = dict(r)
+        esperado.setdefault(rr['t'], set()).add(rr['s'])
+    real = {}
+    for r in conn.execute(_adapt(
+            "SELECT q.tournament_id AS t, q.spot_hash AS s FROM gto_tournament_queue q "
+            "JOIN tournaments x ON x.id=q.tournament_id WHERE x.user_id=?"), (UID,)).fetchall():
+        rr = dict(r)
+        real.setdefault(rr['t'], set()).add(rr['s'])
+    conn.close()
+    # o cenario tem TRES torneios (555000001/2/3), logo tres registros com decisoes
+    assert len(esperado) == 3, ('o cenario nao separou: %s' % list(esperado))
+    for t, spots in esperado.items():
+        assert real.get(t) == spots, (
+            'torneio %s: a fila tem %s, as decisoes dele tem %s' % (t, real.get(t), spots))
 
 
 def test_imported_at_herdado_e_cota_intacta():

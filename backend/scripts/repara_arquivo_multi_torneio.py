@@ -135,6 +135,28 @@ def _planeja(conn, registro):
             'novos': novos, 'colisoes': colisoes, 'recusa': None}
 
 
+def _fila_do_torneio(conn, tournament_db_id):
+    """Os `spot_hash` que a fila do solver ainda associa a este registro.
+
+    `gto_tournament_queue` e um vinculo (tournament_id, spot_hash): "este torneio depende deste
+    spot". Quando o solve chega, o gancho reconcilia os torneios ligados ao spot. Se as decisoes
+    mudam de torneio e o vinculo nao vai com elas, os registros novos **nunca sao reconciliados**
+    — ficam com o veredito velho para sempre. Achado no dry-run do Luigi: 12 linhas apontando
+    para t62, de decisoes que iam para outros tres registros.
+    """
+    return {str(dict(r)['spot_hash']) for r in conn.execute(_adapt(
+        "SELECT spot_hash FROM gto_tournament_queue WHERE tournament_id=?"),
+        (tournament_db_id,)).fetchall()}
+
+
+def _spots_por_decisao(conn, tournament_db_id):
+    """{decision_id: spot_hash} do registro. `spot_hash` esta preenchido em 100% das decisoes."""
+    return {dict(r)['id']: str(dict(r)['spot_hash'] or '')
+            for r in conn.execute(_adapt(
+                "SELECT id, spot_hash FROM decisions WHERE tournament_id=?"),
+                (tournament_db_id,)).fetchall()}
+
+
 def _decisoes_por_hand(conn, tournament_db_id):
     """{hand_id: [decision_id, ...]} do registro. Base para mover sem depender do texto."""
     out = {}
@@ -198,7 +220,10 @@ def _relatorio(conn, planos, por_hand_cache):
                     tuple(ids_reg)).fetchone(), 'n')
             except Exception:
                 n = '?'
-            print('     %-24s %s linha(s)' % (tab, n))
+            print('     %-24s %s linha(s)%s' % (
+                tab, n,
+                '  <== o vinculo com a fila ACOMPANHA as decisoes'
+                if tab == 'gto_tournament_queue' and n else ''))
     print()
     print('  ' + '-' * 88)
     print('  registros novos a criar: %d   |   decisoes a mover: %d' % (total_novos, total_movidas))
@@ -218,6 +243,10 @@ def _aplica(conn, planos, por_hand_cache, dump):
         d = dict(conn.execute(_adapt(
             "SELECT * FROM tournaments WHERE id=?"), (p['id'],)).fetchone())
         por_hand = por_hand_cache[p['id']]
+        # A fila do solver e os spots ANTES de mexer: depois de mover, a associacao decisao ->
+        # torneio ja mudou e eu nao saberia mais de quem era cada spot.
+        fila_pendente = _fila_do_torneio(conn, p['id'])
+        spot_de = _spots_por_decisao(conn, p['id'])
 
         # registro do estado ANTERIOR do registro que fica, antes de encolher
         dump.write(json.dumps({'tipo': 'tournament_antes', 'id': d['id'],
@@ -273,6 +302,16 @@ def _aplica(conn, planos, por_hand_cache, dump):
             movidas += len(ids)
             conn.execute(_adapt("UPDATE tournaments SET decisions_count=? WHERE id=?"),
                          (len(ids), novo_id))
+            # O vinculo com a fila do solver acompanha as decisoes. Sem isto, quando o solve
+            # chegar o gancho reconcilia o registro VELHO e o novo fica com veredito velho para
+            # sempre — dano que o defeito nao causava (regra 7).
+            spots_daqui = {spot_de.get(i, '') for i in ids} & fila_pendente
+            for sh in sorted(x for x in spots_daqui if x):
+                conn.execute(_adapt(
+                    "INSERT INTO gto_tournament_queue (tournament_id, spot_hash) VALUES (?,?) "
+                    "ON CONFLICT DO NOTHING"), (novo_id, sh))
+                dump.write(json.dumps({'tipo': 'fila_vinculada', 'tournament_id': novo_id,
+                                       'spot_hash': sh}, ensure_ascii=False) + '\n')
             tocados.add(novo_id)
 
         # o registro que fica encolhe para o seu proprio grupo
@@ -286,6 +325,19 @@ def _aplica(conn, planos, por_hand_cache, dump):
             (texto_fica, p['fica']['n_maos'], n_decs, st, en,
              fin.get('place'), fin.get('prize'), fin.get('profit'), fin.get('buy_in'),
              d['id']))
+        # E o registro velho solta os spots que nao tem mais nenhuma decisao dele. Um mesmo
+        # spot_hash pode ser compartilhado por decisoes de torneios diferentes, entao a remocao
+        # olha o que SOBROU, nao o que saiu.
+        ids_que_ficam = [i for h in p['fica']['hand_ids'] for i in por_hand.get(h, [])]
+        spots_que_ficam = {spot_de.get(i, '') for i in ids_que_ficam}
+        for sh in sorted(fila_pendente - spots_que_ficam):
+            if not sh:
+                continue
+            conn.execute(_adapt(
+                "DELETE FROM gto_tournament_queue WHERE tournament_id=? AND spot_hash=?"),
+                (d['id'], sh))
+            dump.write(json.dumps({'tipo': 'fila_desvinculada', 'tournament_id': d['id'],
+                                   'spot_hash': sh}, ensure_ascii=False) + '\n')
         tocados.add(d['id'])
         conn.commit()
 
@@ -315,6 +367,16 @@ def _reverter(caminho):
                     "UPDATE %s SET tournament_id=? WHERE decision_id=?" % _tab),
                     (l['de'], l['decision_id']))
             n_dec += 1
+    conn.commit()
+    for l in linhas:
+        if l['tipo'] == 'fila_vinculada':
+            conn.execute(_adapt(
+                "DELETE FROM gto_tournament_queue WHERE tournament_id=? AND spot_hash=?"),
+                (l['tournament_id'], l['spot_hash']))
+        elif l['tipo'] == 'fila_desvinculada':
+            conn.execute(_adapt(
+                "INSERT INTO gto_tournament_queue (tournament_id, spot_hash) VALUES (?,?) "
+                "ON CONFLICT DO NOTHING"), (l['tournament_id'], l['spot_hash']))
     conn.commit()
     for l in linhas:
         if l['tipo'] == 'tournament_criado':
