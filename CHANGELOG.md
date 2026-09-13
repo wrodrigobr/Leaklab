@@ -4,6 +4,60 @@ Todas as mudanÃ§as notÃ¡veis neste projeto serÃ£o documentadas aqui.
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
+## Todo torneio do PartyPoker estava sem data de jogo (13/09)
+
+Achado reparando a conta do dono: o unico registro multi-torneio dela e do Party, e os quatro
+registros novos nasceriam sem `played_at`. Eu ia culpar o script de reparo.
+
+**O dono corrigiu minha leitura.** Eu disse que o Party novo escreve a data sem ano; ele mandou
+olhar o header de novo. O ano esta la — eu tinha lido a linha TRUNCADA no meu proprio print:
+
+    1750/3500 Tourney Texas Holdem Game Table (NL) (MTT Tournament #422629144)
+    (Buyin $2.0 + $0.2) - Fri Sep 11 16:45:51 EDT 2026
+
+### O defeito real: a mesma regra em dois lugares, cada um com uma lista PARCIAL
+
+    `_extract_date` (api/app.py)         nao conhecia o PartyPoker NOVO
+    `_HAND_TS_RE`   (leaklab/parser.py)  nao conhecia nem o Party nem o 888
+
+Ninguem tinha visto porque cada um errava num dialeto diferente. Medido em producao:
+
+    played_at nulo:   5 de 5 registros do partypoker (100%)  |  0 nas outras 4 salas
+    started_at nulo:  5 de 5 do partypoker                   |  0 nas outras
+
+`played_at` e o eixo de tempo do produto (AY-4): sem ele o torneio fica fora de todo filtro por
+periodo, do relatorio de evolucao e da projecao de carreira. E `started_at`/`ended_at` alimentam
+concorrencia, fadiga e horario — existiam SO para o dialeto PokerStars, em 7 dos 8 fixtures.
+
+### O conserto
+
+`timestamps_das_maos` no parser, fonte unica de "quando esta mao foi jogada", com os quatro
+formatos do acervo; os dois consumidores delegam a ela.
+
+    2026/05/22 18:00:00                     PokerStars, GGPoker, ACR, CoinPoker
+    Thu Sep 10 18:54:46 EDT 2026            PartyPoker novo (mes abreviado, sem virgula)
+    Sunday, July 24, 19:32:00 CEST 2016     PartyPoker antigo (mes por nome)
+    *** 08 08 2016 23:03:27                 888poker (DD MM YYYY)
+
+A data do torneio passa a ser a da mao mais ANTIGA, nao a primeira do texto: o export do Party e
+por intervalo de datas e as maos vem em qualquer ordem.
+
+### A baseline salvou o conserto de si mesmo
+
+Colhi o comportamento dos 8 fixtures ANTES de mexer, porque o risco nao era "nao consertar o
+Party" — era QUEBRAR as outras quatro salas. **A primeira versao quebrou os tres fixtures antigos
+do Party**, que perdiam a data que ja tinham. So soube porque comparei.
+
+A causa foi cara: o padrao comecava com o byte **0x08 (BACKSPACE)** em vez de `` — a barra que
+eu escrevi virou o caractere de controle no arquivo. Invisivel no `grep`, visivel no `repr`. O
+regex exigia um backspace no texto, que nunca existe, e NENHUM formato do Party casava. Virou
+guarda proprio: o teste reprova qualquer caractere de controle no padrao.
+
+Resultado final contra a baseline: **zero regressoes**, e todos ganharam janela de sessao.
+
+8 guardas, 4 quebras de proposito, 4 acusadas. Suite 3118/3120.
+
+---
 ## Um arquivo com varios torneios virava UM torneio so (13/09)
 
 Achado enquanto eu media o timeout de 120s do gunicorn, e o dano de DADO e maior que o de tempo.

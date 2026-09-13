@@ -5522,32 +5522,21 @@ _MONTHS = {
 
 
 def _extract_date(raw: str) -> str | None:
+    """A data (YYYY-MM-DD) da PRIMEIRA mão do arquivo, ou None.
+
+    Delega em `timestamps_das_maos`, a fonte única de "quando esta mão foi jogada". Antes havia
+    uma lista de formatos AQUI e outra no parser, cada uma incompleta: esta não conhecia o
+    PartyPoker novo ("Thu Sep 10 18:54:46 EDT 2026", mês abreviado e sem vírgula) e por isso
+    **os 5 registros da sala ficaram sem data de jogo** — 100% deles, medido em 13/09. A do
+    parser não conhecia nem o Party nem o 888, e por isso `started_at`/`ended_at` só existia
+    para o dialeto PokerStars.
+
+    O mínimo, e não a primeira ocorrência do texto: um arquivo de torneio pode ter as mãos em
+    qualquer ordem, e a data do torneio é a da mão mais antiga.
     """
-    Extrai a data do jogo do hand history.
-    Suporta PokerStars/GGPoker (2025/07/22), 888poker ("*** 21 06 2018", DD MM YYYY)
-    e PartyPoker ("Sunday, July 24, 19:32:00 CEST 2016", mês por nome).
-    """
-    import re
-    m = re.search(r'(\d{4})/(\d{2})/(\d{2})\s+\d{2}:\d{2}:\d{2}', raw)
-    if m:
-        return f'{m.group(1)}-{m.group(2)}-{m.group(3)}'
-    m = re.search(r'(\d{4})/(\d{2})/(\d{2})', raw)
-    if m:
-        return f'{m.group(1)}-{m.group(2)}-{m.group(3)}'
-    # 888poker: "$100/$200 Blinds No Limit Holdem - *** 08 08 2016 23:03:27" (DD MM YYYY)
-    m = re.search(r'\*\*\*\s+(\d{2}) (\d{2}) (\d{4})\b', raw)
-    if m:
-        return f'{m.group(3)}-{m.group(2)}-{m.group(1)}'
-    # PartyPoker: "... - Sunday, July 24, 19:32:00 CEST 2016" (Mês DD ... YYYY)
-    m = re.search(
-        r'\b(January|February|March|April|May|June|July|August|September|October|November|December)'
-        r'\s+(\d{1,2}),.*?(\d{4})',
-        raw, re.IGNORECASE
-    )
-    if m:
-        mo = _MONTHS[m.group(1).lower()]
-        return f'{m.group(3)}-{mo:02d}-{int(m.group(2)):02d}'
-    return None
+    from leaklab.parser import timestamps_das_maos
+    ts = timestamps_das_maos(raw or '')
+    return min(ts)[:10] if ts else None
 
 
 # ── Error handlers ────────────────────────────────────────────────────────────

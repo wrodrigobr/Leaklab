@@ -108,6 +108,7 @@ SUITES = {
                   'test_upload_nao_estoura_o_relogio.py',
                   'test_arquivo_com_varios_torneios.py',
                   'test_repara_arquivo_multi_torneio.py',
+                  'test_data_da_mao_em_todo_dialeto.py',
                   'test_wtsd_e_posts_do_party.py',
                   'test_hud_sem_identidade_de_vilao.py',
                   'test_assinatura_do_spot.py',

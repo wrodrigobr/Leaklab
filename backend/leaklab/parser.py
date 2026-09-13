@@ -7,14 +7,57 @@ from .models import ParsedHand, ParsedAction
 _HAND_TS_RE = re.compile(r"(\d{4})/(\d{2})/(\d{2})\s+(\d{2}):(\d{2}):(\d{2})")
 
 
+_MESES_ABREV = {m: i + 1 for i, m in enumerate(
+    ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'])}
+
+# ── Os QUATRO jeitos de uma mão declarar quando foi jogada ────────────────────
+# Uma função só, e não um regex por consumidor: a regra vivia em dois lugares (`_HAND_TS_RE`
+# aqui e o `_extract_date` do app.py), cada um com uma lista PARCIAL de formatos, e o resultado
+# medido em 13/09 foi: `started_at`/`ended_at` existiam SÓ para o dialeto PokerStars, e
+# `played_at` do PartyPoker novo era NULO — os 5 registros da sala, 100% deles.
+_TS_ISO_RE = re.compile(r"(\d{4})/(\d{2})/(\d{2})\s+(\d{2}):(\d{2}):(\d{2})")
+# PartyPoker novo: "- Thu Sep 10 18:54:46 EDT 2026" (mês ABREVIADO, sem vírgula, ano no FIM)
+_TS_PARTY_ABREV_RE = re.compile(
+    r"(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun)[a-z]*,?\s+"
+    r"(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s+"
+    r"(\d{1,2}),?\s+(\d{1,2}):(\d{2}):(\d{2})\s+\w+\s+(\d{4})", re.IGNORECASE)
+# 888poker: "*** 08 08 2016 23:03:27" (DD MM YYYY)
+_TS_888_RE = re.compile(r"\*\*\*\s+(\d{2})\s+(\d{2})\s+(\d{4})\s+(\d{1,2}):(\d{2}):(\d{2})")
+
+
+def timestamps_das_maos(raw_text: str) -> list:
+    """Todos os instantes declarados no texto, como 'YYYY-MM-DD HH:MM:SS', sem ordenar.
+
+    Hora LOCAL da sala; o fuso é descartado de propósito (o produto compara torneios do mesmo
+    jogador, e converter exigiria saber o fuso dele em cada data).
+
+    FONTE ÚNICA de "quando esta mão foi jogada": quem precisa da data do torneio
+    (`_extract_date`) e quem precisa da janela da sessão (`extract_session_times`) leem daqui.
+    Antes eram duas listas de formatos, e cada uma esquecia um dialeto diferente.
+    """
+    if not raw_text:
+        return []
+    fora = [f"{m[0]}-{m[1]}-{m[2]} {m[3]}:{m[4]}:{m[5]}"
+            for m in _TS_ISO_RE.findall(raw_text)]
+    for g in _TS_PARTY_ABREV_RE.findall(raw_text):
+        mes, dia, hh, mm, ss, ano = g
+        n = _MESES_ABREV.get(mes[:3].lower())
+        if n:
+            fora.append("%s-%02d-%02d %02d:%s:%s" % (ano, n, int(dia), int(hh), mm, ss))
+    # PartyPoker antigo: "Sunday, July 24, 19:32:00 CEST 2016" (mês por NOME COMPLETO). O regex
+    # abreviado acima já casa o prefixo de 3 letras ("Jul" em "July"), então este não repete.
+    for g in _TS_888_RE.findall(raw_text):
+        dia, mes, ano, hh, mm, ss = g
+        fora.append("%s-%s-%s %02d:%s:%s" % (ano, mes, dia, int(hh), mm, ss))
+    return fora
+
+
 def extract_session_times(raw_text: str):
     """(started_at, ended_at) = timestamp da 1ª e da última mão do torneio, no formato
     'YYYY-MM-DD HH:MM:SS' (hora LOCAL da sala; o sufixo de fuso é descartado). Serve de base
     para concorrência (janelas de torneio que se sobrepõem), fadiga (ordem na sessão) e horário.
     Retorna (None, None) se não houver timestamp. Formato ISO-like ordena cronologicamente."""
-    if not raw_text:
-        return None, None
-    ts = [f"{m[0]}-{m[1]}-{m[2]} {m[3]}:{m[4]}:{m[5]}" for m in _HAND_TS_RE.findall(raw_text)]
+    ts = timestamps_das_maos(raw_text)
     if not ts:
         return None, None
     return min(ts), max(ts)
