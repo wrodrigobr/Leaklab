@@ -154,6 +154,29 @@ export function useUploadQueue(): UploadQueueValue {
   return useContext(UploadQueueContext);
 }
 
+type RespostaDeUpload = {
+  torneios_no_arquivo?: number;
+  tambem_importados?: Array<{ status: number; duplicate?: boolean }>;
+} | null | undefined;
+
+/** Quantos torneios o arquivo trouxe, e o que aconteceu com cada um.
+ *
+ * Uma funcao so porque a resposta serve a DUAS coisas que precisam concordar: a frase na fila e
+ * o XP. Se cada uma contasse por si, a tela diria "6 novos" e o contador somaria 36 (regra 5).
+ *
+ * "Ja estava no historico" NAO e falha, e e o caso NORMAL da sala que motivou tudo isto: o
+ * export do PartyPoker e por intervalo de datas, entao quem reexporta uma semana reenvia a
+ * anterior inteira. Chamar isso de "ficou de fora" faz o jogador procurar dado que nao falta —
+ * achado na homologacao, com upload repetido contra o Postgres.
+ */
+export function contagemDoArquivo(r: RespostaDeUpload) {
+  const n = r?.torneios_no_arquivo ?? 1;
+  const demais = r?.tambem_importados ?? [];
+  const ja = demais.filter((o) => o.duplicate).length;
+  const fora = demais.filter((o) => o.status !== 200 && !o.duplicate).length;
+  return { n, ja, fora, ok: n - ja - fora };
+}
+
 /** A nota que a fila mostra quando UM arquivo virou VARIOS torneios.
  *
  * O export do PartyPoker e por intervalo de datas, nao por torneio: um arquivo real de fundador
@@ -165,14 +188,18 @@ export function useUploadQueue(): UploadQueueValue {
  * sem montar a fila inteira, que e onde bug de vitrine costuma se esconder.
  */
 export function notaDeVariosTorneios(
-  r: { torneios_no_arquivo?: number; tambem_importados?: Array<{ status: number }> } | null | undefined,
+  r: RespostaDeUpload,
   t: (k: string, o?: Record<string, unknown>) => string,
 ): string | undefined {
-  const n = r?.torneios_no_arquivo ?? 1;
+  const { n, ok, ja, fora } = contagemDoArquivo(r);
   if (n <= 1) return undefined;
-  const fora = (r?.tambem_importados ?? []).filter((o) => o.status !== 200).length;
-  return fora > 0
-    ? t("uploadQueue.variosTorneiosParcial", { n, ok: n - fora, fora })
+  if (fora > 0) {
+    return ja > 0
+      ? t("uploadQueue.variosTorneiosMisto", { n, ok, ja, fora })
+      : t("uploadQueue.variosTorneiosParcial", { n, ok, fora });
+  }
+  return ja > 0
+    ? t("uploadQueue.variosTorneiosJaEstavam", { n, ok, ja })
     : t("uploadQueue.variosTorneios", { n });
 }
 
@@ -247,14 +274,25 @@ export function UploadQueueProvider({ children }: { children: React.ReactNode })
             ? t("uploadQueue.summaryWithField", { n: r.field_size })
             : t("uploadQueue.summaryPlain");
           dispatch({ type: "SET_STATUS", id: next.id, status: "done", note });
-        } else if (r?.analysis_waitlisted) {
-          // Fila de análise por plano (free = 3 por vez): o torneio ENTROU, só a camada GTO
-          // aguarda vaga. Nota informativa, não erro — a lista mostra "Na fila de análise".
-          dispatch({ type: "SET_STATUS", id: next.id, status: "done", note: t("uploadQueue.analiseNaFila") });
-          metrics.addXp("tournament_imported").catch(() => null);
         } else {
-          dispatch({ type: "SET_STATUS", id: next.id, status: "done", note: notaDeVariosTorneios(r, t) });
-          metrics.addXp("tournament_imported").catch(() => null);
+          // UM ramo para todo upload de hand history, e nao dois, porque a primeira versao
+          // desta correcao deu o XP por torneio aqui e deixou o ramo da fila de analise dando
+          // um por arquivo — a mesma regra em dois lugares, com o segundo errado e calado
+          // (regra 5). A nota da fila de analise se SOMA a do arquivo em vez de substitui-la:
+          // um jogador Free que sobe 36 torneios precisa saber as duas coisas.
+          const varios = notaDeVariosTorneios(r, t);
+          const note = r?.analysis_waitlisted
+            // Fila de analise por plano (free = 3 por vez): o torneio ENTROU, so a camada GTO
+            // aguarda vaga. Nota informativa, nao erro — a lista mostra "Na fila de analise".
+            ? [varios, t("uploadQueue.analiseNaFila")].filter(Boolean).join(" ")
+            : varios;
+          dispatch({ type: "SET_STATUS", id: next.id, status: "done", note });
+          // XP por TORNEIO que entrou, nao por arquivo (decisao do dono, 13/09): quem sobe 36
+          // torneios num export do PartyPoker ganharia o mesmo de quem sobe um. Conta so os
+          // NOVOS — torneio que ja estava no historico nao e jogo novo. O valor de cada um fica
+          // no backend, aqui vai a quantidade.
+          metrics.addXp("tournament_imported", undefined,
+                        contagemDoArquivo(r).ok).catch(() => null);
         }
         window.dispatchEvent(new CustomEvent("leaklab:tournament-imported"));
       } catch (e: unknown) {

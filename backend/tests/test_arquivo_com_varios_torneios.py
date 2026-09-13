@@ -231,6 +231,139 @@ def test_multipart_de_UM_torneio_so_continua_entrando():
             pass
 
 
+def test_REEXPORTAR_o_mesmo_intervalo_nao_e_falha():
+    """O caso NORMAL da sala que motivou tudo isto, achado na homologacao contra o Postgres.
+
+    O export do PartyPoker e por INTERVALO DE DATAS. Quem reexporta uma semana reenvia a semana
+    anterior inteira, entao "torneio que ja estava" e o uso comum, nao o excepcional.
+
+    A primeira versao do orquestrador achatava os 409 `duplicate` dos pedacos num 422 generico
+    e devolvia a mensagem de UM torneio ("Torneio 999900001 ja foi importado") para um arquivo
+    que tinha varios. Duas coisas erradas de uma vez: o contrato (o caminho de um torneio so
+    responde 409 com `duplicate`) e a frase que o jogador le.
+    """
+    import tempfile
+    tmp = tempfile.NamedTemporaryFile(suffix='.db', delete=False)
+    tmp.close()
+    anterior = os.environ.get('LEAKLAB_DB')
+    os.environ['LEAKLAB_DB'] = tmp.name
+    os.environ.pop('DATABASE_URL', None)
+    try:
+        import importlib
+        from database import schema as _schema
+        importlib.reload(_schema)
+        _schema.init_db()
+        from database.schema import get_conn
+        from database.repositories import _adapt
+        from database.auth import generate_token
+        conn = get_conn()
+        conn.execute(_adapt("INSERT INTO users (id, username, email, password_hash, plan) "
+                            "VALUES (1,'u','u@e.st','h','pro')"))
+        conn.commit(); conn.close()
+
+        import api.app as _app
+        _app.app.config['TESTING'] = True
+        cliente = _app.app.test_client()
+        headers = {'Authorization': 'Bearer ' + generate_token(1, 'player')}
+
+        r1 = _por_json(cliente, headers, _dois_torneios())
+        assert r1.status_code == 200, r1.status_code
+        assert (r1.get_json() or {}).get('torneios_no_arquivo') == 2
+
+        # segunda volta: o MESMO arquivo, nenhuma mao nova
+        r2 = _por_json(cliente, headers, _dois_torneios())
+        d2 = r2.get_json() or {}
+        assert r2.status_code == 409, (
+            'reexportar o mesmo intervalo devolveu %s; o caminho de um torneio so devolve 409 '
+            'com `duplicate`, e o orquestrador nao pode achatar isso' % r2.status_code, d2)
+        assert d2.get('duplicate') is True, ('o sinal `duplicate` se perdeu na divisao', d2)
+        assert d2.get('torneios_ja_importados') == 2, d2.get('torneios_ja_importados')
+        # e a frase fala dos DOIS, nao de um
+        assert '2 torneios' in (d2.get('error') or ''), (
+            'a mensagem fala de um torneio so num arquivo que tinha 2', d2.get('error'))
+
+        # nada duplicou no banco
+        conn = get_conn()
+        n = conn.execute("SELECT COUNT(*) AS n FROM tournaments").fetchone()
+        conn.close()
+        from database.rowutil import value
+        assert value(n, 'n') == 2, ('a segunda volta criou registro', value(n, 'n'))
+    finally:
+        if anterior is not None:
+            os.environ['LEAKLAB_DB'] = anterior
+        try:
+            os.unlink(tmp.name)
+        except Exception:
+            pass
+
+
+def test_XP_por_TORNEIO_e_nao_por_arquivo():
+    """Decisao do dono, 13/09: *"acho que deveria ser por torneio"*.
+
+    O `count` existe para isso, e o VALOR unitario fica no backend de proposito — se o front
+    multiplicasse, a tabela `_XP_AMOUNTS` passaria a viver em dois lugares e o cliente decidiria
+    quanto vale cada evento (regra 5).
+    """
+    import tempfile
+    tmp = tempfile.NamedTemporaryFile(suffix='.db', delete=False)
+    tmp.close()
+    anterior = os.environ.get('LEAKLAB_DB')
+    os.environ['LEAKLAB_DB'] = tmp.name
+    os.environ.pop('DATABASE_URL', None)
+    try:
+        import importlib
+        from database import schema as _schema
+        importlib.reload(_schema)
+        _schema.init_db()
+        from database.schema import get_conn
+        from database.repositories import _adapt, add_xp, _XP_AMOUNTS
+        from database.rowutil import value
+        conn = get_conn()
+        for uid in (1, 2, 3):
+            conn.execute(_adapt("INSERT INTO users (id, username, email, password_hash) "
+                                "VALUES (?,?,?,'h')"), (uid, 'u%d' % uid, 'u%d@e.st' % uid))
+        conn.commit(); conn.close()
+
+        unit = _XP_AMOUNTS.get('tournament_imported', 10)
+
+        # sem `count`, nada muda: e o caminho de 97% dos uploads
+        r1 = add_xp(1, 'tournament_imported')
+        assert r1.get('xp_gained') == unit, (r1, unit)
+
+        # com 12 torneios, doze vezes o valor de um
+        r2 = add_xp(2, 'tournament_imported', None, count=12)
+        assert r2.get('xp_gained') == unit * 12, (r2.get('xp_gained'), unit * 12)
+
+        # e o teto protege de `count` vindo de fora
+        r3 = add_xp(3, 'tournament_imported', None, count=10 ** 9)
+        assert r3.get('xp_gained') == unit * 500, r3.get('xp_gained')
+
+        # o STREAK conta dias, nao eventos: 12 torneios de uma vez nao viram 12 dias
+        assert r2.get('streak') == 1, ('o count inflou o streak', r2.get('streak'))
+
+        conn = get_conn()
+        linha = conn.execute(_adapt("SELECT xp_total FROM users WHERE id=?"), (2,)).fetchone()
+        conn.close()
+        assert value(linha, 'xp_total') == unit * 12, value(linha, 'xp_total')
+    finally:
+        if anterior is not None:
+            os.environ['LEAKLAB_DB'] = anterior
+        try:
+            os.unlink(tmp.name)
+        except Exception:
+            pass
+
+
+def test_o_endpoint_de_xp_repassa_o_count():
+    """FIACAO: o `count` so serve se a rota o entregar a funcao."""
+    src = io.open(os.path.join(os.path.dirname(__file__), '..', 'api', 'app.py'),
+                  encoding='utf-8').read()
+    codigo = chr(10).join(l.split('#', 1)[0] for l in src.splitlines())
+    assert "count=body.get('count')" in codigo, (
+        'a rota /player/xp parou de repassar o `count`: o front manda a quantidade e o XP '
+        'volta a ser um por arquivo, calado')
+
+
 def test_o_analyze_usa_o_orquestrador():
     """FIACAO. A divisão só vale se o endpoint passar por ela."""
     src = io.open(os.path.join(os.path.dirname(__file__), '..', 'api', 'app.py'),

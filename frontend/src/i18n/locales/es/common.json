@@ -251,7 +251,9 @@
     "rateLimit": "Superaste el límite de {{limite}} torneos por hora. Los archivos aceptados ya están en tu historial; inténtalo de nuevo en {{count}} minuto.",
     "rateLimit_plural": "Superaste el límite de {{limite}} torneos por hora. Los archivos aceptados ya están en tu historial; inténtalo de nuevo en {{count}} minutos.",
     "variosTorneios": "El archivo tenía {{n}} torneos. Todos importados.",
-    "variosTorneiosParcial": "El archivo tenía {{n}} torneos. {{ok}} importados, {{fora}} quedaron fuera."
+    "variosTorneiosParcial": "El archivo tenía {{n}} torneos. {{ok}} importados, {{fora}} no entraron.",
+    "variosTorneiosJaEstavam": "El archivo tenía {{n}} torneos. {{ok}} nuevos, {{ja}} ya estaban en tu historial.",
+    "variosTorneiosMisto": "El archivo tenía {{n}} torneos. {{ok}} nuevos, {{ja}} ya estaban, {{fora}} no entraron."
   },
   "suporte": {
     "semMensagens": "Todavía no has enviado mensajes."

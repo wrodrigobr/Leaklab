@@ -97,9 +97,42 @@ algum falhar. Sem isso o jogador sobe um arquivo, ve 12 linhas novas na lista e 
 vieram. A decisao mora numa funcao pura (`notaDeVariosTorneios`) para poder ser testada sem
 montar a fila, que e onde bug de vitrine se esconde. Copy nas 3 locales.
 
-**Em aberto:** o XP continua sendo um por ARQUIVO, nao por torneio. Quem sobe 36 torneios num
-arquivo do PartyPoker ganha o mesmo que quem sobe um. Nao e regressao (antes tambem era um), mas
-agora fica visivel. Decisao de produto, registrada no backlog.
+### A homologacao pegou o caso NORMAL da sala, que os testes nao cobriam
+
+Com tudo verde e o smoke em 204/204, o upload real contra o Postgres do homolog mostrou o que
+faltava: **reexportar o mesmo intervalo devolvia 422 com a mensagem de UM torneio** ("Torneio
+999900001 ja foi importado") para um arquivo que tinha dois. O dado estava certo, nada duplicou —
+o que estava errado era a resposta.
+
+E isso nao e caso de borda: **o export do PartyPoker e por intervalo de datas**, entao quem
+reexporta uma semana reenvia a anterior inteira. Pior no caso misto: o front diria "30 ficaram de
+fora" para 30 torneios que **estao no historico**, e o jogador iria procurar dado que nao falta.
+
+O orquestrador achatava os 409 `duplicate` dos pedacos num 422 generico e perdia o sinal.
+Corrigido: cada pedaco carrega `duplicate`, a resposta traz `torneios_ja_importados`, e quando
+TODOS ja estavam a resposta e 409 com `duplicate: True` — o mesmo contrato do caminho de um
+torneio so — com a frase no plural. Na tela, quatro frases (todos novos / alguns ja estavam /
+alguns falharam / misto), porque "ja estava" e "nao entrou" sao coisas diferentes para quem le.
+
+### XP por TORNEIO (decisao do dono, no mesmo dia)
+
+*"Acho que deveria ser por torneio"*. `add_xp` ganhou `count`, a rota o repassa, e a fila manda
+quantos torneios ENTRARAM — nao os do arquivo, nao os repetidos. **O valor unitario fica no
+backend:** se o front multiplicasse, `_XP_AMOUNTS` viveria em dois lugares e o cliente decidiria
+quanto vale cada evento. A frase da fila e o XP saem da MESMA contagem, senao a tela diz "6
+novos" e o contador soma 36. Teto de 500 no `count`, que vem de fora; streak inalterado, porque
+conta DIAS. As conquistas nao precisaram de nada: `tournaments_10` e `decisions_100` contam
+LINHAS no banco, nao eventos.
+
+**E a primeira versao dessa correcao caiu na regra 5.** Eu passei a contagem no ramo normal da
+fila e deixei o ramo `analysis_waitlisted` (jogador Free, analise GTO na fila) chamando
+`addXp("tournament_imported")` sem quantidade — a mesma regra em dois lugares, com o segundo
+errado e calado. Achado varrendo os N+1, nao por teste. Os dois ramos viraram UM, o XP e
+concedido em um lugar so, e o guarda conta as chamadas no fonte (com os comentarios apagados,
+senao ele casa com a propria explicacao). De quebra, a nota da fila de analise agora se SOMA a do
+arquivo em vez de substitui-la: um Free que sobe 36 torneios precisa saber as duas coisas.
+
+Fica aberto, e e anterior a isto: a rota aceita `amount` do CLIENTE sem validacao. Registrado.
 
 ---
 ## Correcao de uma afirmacao minha: o autocapture de preflop (12/09)

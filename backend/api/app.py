@@ -951,19 +951,41 @@ def _analyze_orquestrado():
         if primeira is None and status == 200:
             primeira = (corpo, status)
             continue
+        # `duplicate` viaja adiante de propósito. "Já estava no histórico" NÃO é falha, e o
+        # export do PartyPoker é por INTERVALO DE DATAS: reexportar com sobreposição é o uso
+        # normal da sala, não o excepcional. Sem essa distinção a tela diria "30 ficaram de
+        # fora" para 30 torneios que estão lá, e o jogador concluiria que perdeu dado.
         outros.append({'tournament_id': tid, 'hands': n_maos, 'status': status,
                        'error': (dados or {}).get('error'),
+                       'duplicate': bool((dados or {}).get('duplicate')),
                        'tournament_db_id': (dados or {}).get('tournament_db_id')})
+
+    ja_estavam = sum(1 for o in outros if o.get('duplicate'))
+    falharam = sum(1 for o in outros if not o.get('duplicate'))
     if primeira is None:
-        # Nenhum torneio entrou: devolve o motivo do primeiro, que é o que o jogador precisa ler.
-        primeiro_erro = next((o for o in outros if o.get('error')), None)
+        if falharam == 0:
+            # TODOS já estavam. É o caso de reexportar o mesmo intervalo, e o 409 com
+            # `duplicate` é o MESMO contrato do caminho de um torneio só — o orquestrador não
+            # pode achatar isso num 422 genérico, nem falar de UM torneio quando eram N.
+            return jsonify({
+                'error': ('Os %d torneios deste arquivo já estão no seu histórico '
+                          '(nenhuma mão nova).' % len(pedacos)),
+                'duplicate': True,
+                'torneios_no_arquivo': len(pedacos),
+                'torneios_ja_importados': ja_estavam,
+                'tambem_importados': outros}), 409
+        primeiro_erro = next((o for o in outros
+                              if o.get('error') and not o.get('duplicate')), None)
         return jsonify({'error': (primeiro_erro or {}).get('error')
                                  or 'Nenhum torneio do arquivo pôde ser importado',
+                        'torneios_no_arquivo': len(pedacos),
+                        'torneios_ja_importados': ja_estavam,
                         'tambem_importados': outros}), 422
     corpo, status = primeira
     dados = corpo.get_json() or {}
     dados['tambem_importados'] = outros
     dados['torneios_no_arquivo'] = len(pedacos)
+    dados['torneios_ja_importados'] = ja_estavam
     return jsonify(dados), status
 
 
@@ -4224,7 +4246,9 @@ def player_get_xp():
 @require_auth
 def player_add_xp():
     body = request.get_json(force=True) or {}
-    result = add_xp(g.user_id, body.get('event_type', ''), body.get('amount'))
+    # `count`: quantas vezes o evento aconteceu (um upload pode trazer varios torneios).
+    result = add_xp(g.user_id, body.get('event_type', ''), body.get('amount'),
+                    count=body.get('count'))
     return jsonify(result)
 
 

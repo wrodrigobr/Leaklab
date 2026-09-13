@@ -9179,10 +9179,27 @@ def get_daily_missions(user_id: int, tz_offset_min: int = 0) -> list:
     return _daily_progress(int(row['spots']) if row else 0, int(row['correct']) if row else 0)
 
 
-def add_xp(user_id: int, event_type: str, amount: int | None = None) -> dict:
-    """Adiciona XP, atualiza streak e verifica conquistas."""
+def add_xp(user_id: int, event_type: str, amount: int | None = None,
+           count: int | None = None) -> dict:
+    """Adiciona XP, atualiza streak e verifica conquistas.
+
+    `count` = quantas VEZES o evento aconteceu de uma vez, e existe porque um upload pode trazer
+    varios torneios: o export do PartyPoker e por intervalo de datas, e desde 13/09 o `/analyze`
+    divide o arquivo por torneio. Sem isso quem importa 36 torneios num arquivo ganha o XP de um,
+    e quem importa os mesmos 36 em arquivos separados ganha 36 (decisao do dono, 13/09).
+
+    O valor UNITARIO fica aqui de proposito: se o chamador multiplicasse, a tabela `_XP_AMOUNTS`
+    passaria a viver em dois lugares, e o front seria o segundo (regra 5).
+
+    O teto de 500 nao e paranoia com o formato: e que `count` vem de fora. Arquivo real de
+    fundador tem 36 torneios; 500 e folga de uma ordem de grandeza.
+
+    O streak NAO muda com `count`: ele conta DIAS de atividade, nao eventos.
+    """
     from datetime import datetime, timedelta
-    xp_gain   = amount if amount is not None else _XP_AMOUNTS.get(event_type, 10)
+    unitario = amount if amount is not None else _XP_AMOUNTS.get(event_type, 10)
+    vezes    = max(1, min(500, int(count or 1)))
+    xp_gain  = unitario * vezes
     today     = datetime.now().date().isoformat()
     yesterday = (datetime.now().date() - timedelta(days=1)).isoformat()
 

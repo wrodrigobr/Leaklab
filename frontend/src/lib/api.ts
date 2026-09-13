@@ -677,12 +677,17 @@ export const tournaments = {
        *  datas, nao por torneio). O backend divide sozinho e importa cada um; o corpo acima e
        *  o do PRIMEIRO. Ausente quando o arquivo tinha um torneio so, que e o caso comum. */
       torneios_no_arquivo?: number;
+      /** Quantos dos torneios do arquivo JA estavam no historico. Nao e falha: o export do
+       *  PartyPoker e por intervalo de datas, entao reexportar com sobreposicao e o normal. */
+      torneios_ja_importados?: number;
       /** Os demais torneios do mesmo arquivo, um por linha, com o status de cada um. */
       tambem_importados?: Array<{
         tournament_id: string;
         hands: number;
         status: number;
         error?: string | null;
+        /** true = o torneio ja estava no historico (409), nao houve perda de dado. */
+        duplicate?: boolean;
         tournament_db_id?: number | null;
       }>;
     }>("/analyze", {
@@ -2579,10 +2584,13 @@ export const metrics = {
   xpStatus: () =>
     request<XpStatus>(`/player/xp`),
 
-  addXp: (event_type: string, amount?: number) =>
+  /** `count` = quantas vezes o evento aconteceu de uma vez (um upload pode trazer vários
+   *  torneios: o export do PartyPoker é por intervalo de datas). O VALOR de cada evento fica
+   *  no backend de propósito — multiplicar aqui poria a tabela de XP em dois lugares. */
+  addXp: (event_type: string, amount?: number, count?: number) =>
     request<XpStatus>(`/player/xp`, {
       method: "POST",
-      body: JSON.stringify({ event_type, amount }),
+      body: JSON.stringify({ event_type, amount, count }),
     }),
 
   achievements: () =>
