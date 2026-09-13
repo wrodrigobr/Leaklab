@@ -8,6 +8,7 @@ import json
 import hashlib
 import logging
 from contextlib import contextmanager
+import threading as _threading
 from leaklab.gto_utils import _POSITION_NORM
 from decimal import Decimal as _Decimal
 from typing import Optional, List, Dict
@@ -10521,14 +10522,54 @@ GTO_EXPLOITABILITY_THRESHOLD = (
 )
 
 
+#: Cache de nó GTO por `spot_hash`, com ESCOPO EXPLÍCITO (nunca global do processo).
+#:
+#: Medido em produção em 13/09, no maior torneio do acervo (1.519 mãos, 2.231 decisões): o motor
+#: faz **1,9 consultas a `gto_nodes` por decisão** e **59% delas repetem um hash já consultado**
+#: no mesmo upload. Cada chamada abre a PRÓPRIA conexão ao Neon, que está em Frankfurt, então
+#: 64% do tempo do motor era espera de rede: o `/analyze` desse torneio levava 132s contra o
+#: timeout de 120s do gunicorn, e o upload morria com `SystemExit` no meio de uma query qualquer
+#: (foi assim que o defeito apareceu, num traceback que acusava a query errada).
+#:
+#: **Por que escopo e não cache de processo:** o solver GRAVA nós, e um nó recém-solvado que
+#: ficasse invisível por causa do cache seria a pior troca possível — o jogador perderia um
+#: veredito que já existe. Dentro de `escopo_de_nos_gto()` quem abre o escopo declara "durante
+#: esta operação os nós não mudam"; fora dele, o comportamento é o de sempre.
+_NOS_GTO_CACHE = _threading.local()
+
+
+@contextmanager
+def escopo_de_nos_gto():
+    """Durante o bloco, `get_gto_node` responde do cache para hashes repetidos.
+
+    Reentrante: escopo dentro de escopo não invalida o de fora, e só o mais externo limpa.
+    Por THREAD, porque o `/analyze` dispara threads (autocapture, ELO) e cache compartilhado
+    entre elas faria uma requisição servir dado colhido por outra.
+    """
+    nivel = getattr(_NOS_GTO_CACHE, 'nivel', 0)
+    if nivel == 0:
+        _NOS_GTO_CACHE.dados = {}
+    _NOS_GTO_CACHE.nivel = nivel + 1
+    try:
+        yield
+    finally:
+        _NOS_GTO_CACHE.nivel = nivel
+        if nivel == 0:
+            _NOS_GTO_CACHE.dados = None
+
+
 def get_gto_node(spot_hash: str) -> Optional[dict]:
     """
     Lookup de nó GTO pelo hash.
     Retorna nós do solver com exploitability confirmada OU nós do GTO Wizard (strategy_json obrigatório).
     """
+    _cache = (getattr(_NOS_GTO_CACHE, 'dados', None)
+              if getattr(_NOS_GTO_CACHE, 'nivel', 0) else None)
+    if _cache is not None and spot_hash in _cache:
+        return _cache[spot_hash]
     conn = get_conn()
     try:
-        return _fetchone(conn, _adapt("""
+        _no = _fetchone(conn, _adapt("""
             SELECT spot_hash, tree_hash, street, position, board, hero_hand, stack_bucket,
                    gto_action, gto_freq, ev_diff, exploitability_pct, iterations, source,
                    strategy_json, is_aggregate
@@ -10539,6 +10580,12 @@ def get_gto_node(spot_hash: str) -> Optional[dict]:
                 OR (source = 'gto_wizard' AND strategy_json IS NOT NULL)
               )
         """), (spot_hash, GTO_EXPLOITABILITY_THRESHOLD))
+        if _cache is not None:
+            # Guarda o MISS também. Hash sem nó é a resposta mais repetida do acervo (spot que o
+            # solver ainda não resolveu), e sem cachear a ausência o ganho morre exatamente onde
+            # a consulta mais se repete.
+            _cache[spot_hash] = _no
+        return _no
     finally:
         conn.close()
 
@@ -13408,6 +13455,46 @@ def upsert_opponent_profile(tournament_id: int, player_name: str, profile: dict)
         conn.commit()
     finally:
         conn.close()
+
+
+def upsert_opponent_profiles(tournament_id: int, perfis: dict) -> int:
+    """Grava TODOS os perfis de um torneio numa conexao so.
+
+    Medido em producao em 13/09: `upsert_opponent_profile` abre a propria conexao ao Neon
+    (Frankfurt, ~51ms por abrir+fechar) e o `/analyze` a chama uma vez POR JOGADOR. Os torneios
+    do acervo chegam a **349 oponentes**, o que vira 349 conexoes e ~18s de um orcamento de 120s
+    do gunicorn — num upload que ja estourava o timeout por outros motivos.
+
+    A funcao de um perfil so continua existindo, para quem grava um: esta aqui e para o laco.
+    """
+    import json as _json
+    if not perfis:
+        return 0
+    conn = get_conn()
+    n = 0
+    try:
+        for nome, profile in perfis.items():
+            if not nome:
+                continue
+            conn.execute(_adapt("""
+                INSERT INTO opponent_profiles
+                    (tournament_id, player_name, hands_seen, archetype, confidence, stats_json)
+                VALUES (?, ?, ?, ?, ?, ?)
+                ON CONFLICT(tournament_id, player_name) DO UPDATE SET
+                    hands_seen = excluded.hands_seen,
+                    archetype  = excluded.archetype,
+                    confidence = excluded.confidence,
+                    stats_json = excluded.stats_json
+            """), (tournament_id, nome,
+                   int((profile or {}).get('hands', 0)),
+                   (profile or {}).get('archetype', 'unknown'),
+                   (profile or {}).get('confidence', 'insufficient'),
+                   _json.dumps(profile or {}, ensure_ascii=False)))
+            n += 1
+        conn.commit()
+    finally:
+        conn.close()
+    return n
 
 
 def get_opponent_profiles(tournament_id: int, min_hands: int = 0) -> list:

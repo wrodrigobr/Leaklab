@@ -66,6 +66,7 @@ from leaklab.parser import parse_pokerstars_file_from_text
 from leaklab.parser import raise_total_from_raw as _raise_total_from_raw
 from leaklab.parser import heroi_das_maos
 from leaklab.parser import posts_da_mao
+from database.repositories import escopo_de_nos_gto
 from leaklab.pipeline import build_decision_inputs_for_hand
 from leaklab.decision_engine_v11 import evaluate_decision, facing_allin_row
 from leaklab.pareamento_decisoes import BaldeDeDecisoes, balde_de_gto_do_banco
@@ -1035,9 +1036,19 @@ def _analyze_impl():
             return jsonify(payload), status
         return jsonify({'error': 'Nenhuma mão encontrada'}), 422
 
-    results, hand_results, errors = _analyze_hands(
-        hands, field_size=_field_size_for(g.user_id, hands[0].tournament_id),
-        colocacoes=_colocacoes_for(g.user_id, hands[0].tournament_id))
+    # ESCOPO DE NOS GTO em volta da avaliacao. Medido em producao em 13/09: o motor faz 1,9
+    # consultas a `gto_nodes` por decisao, 59% delas repetindo um hash JA consultado no mesmo
+    # upload, cada uma abrindo a propria conexao ao Neon (Frankfurt). Num torneio de 2.231
+    # decisoes isso dava 103s so de motor, e o `/analyze` inteiro passava dos 120s do timeout do
+    # gunicorn — o upload morria com `SystemExit` no meio de uma query qualquer.
+    #
+    # O escopo cobre SO a avaliacao: o enfileiramento e o resync vem depois e enxergam o banco
+    # como ele esta. Nada dentro deste bloco grava em `gto_nodes`, entao o cache nao pode
+    # esconder no recem-solvado de ninguem.
+    with escopo_de_nos_gto():
+        results, hand_results, errors = _analyze_hands(
+            hands, field_size=_field_size_for(g.user_id, hands[0].tournament_id),
+            colocacoes=_colocacoes_for(g.user_id, hands[0].tournament_id))
     if not results:
         return jsonify({'error': 'Nenhuma decisão encontrada'}), 422
 
@@ -1161,10 +1172,11 @@ def _analyze_impl():
     _per_hand_anon = len(_profiles) > 60 and len(_profiles) > 3 * max(1, len(hands))
     if _profiles and not _per_hand_anon:
         try:
-            from database.repositories import upsert_opponent_profile as _upsert_prof
-            for _pname, _prof in _profiles.items():
-                if _pname and _pname != hero:
-                    _upsert_prof(t_db_id, _pname, _prof)
+            # UMA conexao para todos os perfis. Era uma por jogador, e os torneios do acervo
+            # chegam a 349 oponentes: 349 conexoes ao Neon (Frankfurt, ~51ms cada) = ~18s de um
+            # orcamento de 120s, num upload que ja estourava o timeout.
+            from database.repositories import upsert_opponent_profiles as _upsert_lote
+            _upsert_lote(t_db_id, {n: p for n, p in _profiles.items() if n and n != hero})
         except Exception:
             log.exception("opponent_profiles: upsert falhou (não bloqueia o /analyze)")
     # Só conta na quota torneio NOVO; re-import/merge do mesmo T# não consome.
