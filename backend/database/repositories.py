@@ -13447,10 +13447,10 @@ def reconcile_tournament_labels(tournament_id: int, only_ids=None) -> int:
         except Exception:
             pass
 
-        if changes or pct_row:
-            conn.commit()
-        else:
-            conn.commit()
+        # (Aqui havia `if changes or pct_row: conn.commit() else: conn.commit()` — os dois ramos
+        # identicos. `pct_row` era a linha de agregados, que saiu daqui ao virar funcao; a
+        # referencia ficou orfa e a suite completa acusou com NameError em 3 casos.)
+        conn.commit()
         log.info(
             "reconcile_tournament_labels: tournament_id=%s changes=%d acao_changes=%d",
             tournament_id, len(changes), len(acao_changes),

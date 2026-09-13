@@ -348,6 +348,92 @@ def test_o_reparo_NAO_chama_o_reconcile_de_labels():
         'no ensaio com a copia do pagante isso mudou 115 vereditos')
 
 
+def test_labels_reconciled_at_e_HERDADO():
+    """Sem isto, o gancho reconcilia os registros novos em minutos — e muda veredito.
+
+    `_reconcile_drained_tournaments` roda em LOOP CONTINUO e seleciona por
+    `labels_reconciled_at IS NULL`. Nascendo nulo, os 168 registros novos entrariam na proxima
+    passagem e o reconcile reavaliaria label e score por linha (no ensaio com a copia do
+    pagante: 115 decisoes trocando de banda). Tirar o reconcile do reparo sem herdar a marca so
+    transferia o efeito para um momento sem dry-run e sem dump.
+
+    70 dos 71 registros do pagante ja estao reconciliados, entao o cenario coloca a marca — se
+    ficasse nula nos dois lados, o teste nao distinguiria nada.
+    """
+    _monta()
+    MARCA = '2026-09-10 11:22:33'
+    conn = get_conn()
+    conn.execute(_adapt("UPDATE tournaments SET labels_reconciled_at=? WHERE id=?"),
+                 (MARCA, 7301))
+    conn.commit(); conn.close()
+
+    dump = tempfile.NamedTemporaryFile(suffix='.jsonl', delete=False); dump.close()
+    assert _roda('--user', str(UID), '--apply', '--dump', dump.name).returncode == 0
+    conn = get_conn()
+    linhas = [dict(r) for r in conn.execute(_adapt(
+        "SELECT tournament_id, labels_reconciled_at FROM tournaments WHERE user_id=? "
+        "ORDER BY id"), (UID,)).fetchall()]
+    conn.close()
+    assert len(linhas) == 3, len(linhas)
+    nulos = [l['tournament_id'] for l in linhas if not l['labels_reconciled_at']]
+    assert nulos == [], (
+        'registro(s) com labels_reconciled_at NULO: %s. O gancho os reconciliaria na proxima '
+        'passagem, mudando veredito sem registro para desfazer.' % nulos)
+    for l in linhas:
+        assert str(l['labels_reconciled_at'])[:19] == MARCA, (
+            '%s herdou %r, esperado %r' % (l['tournament_id'], str(l['labels_reconciled_at']),
+                                           MARCA))
+
+
+def test_o_result_e_DERIVADO_do_premio_de_cada_grupo():
+    """`result` e o selo ITM que a lista le. Nascer nulo apaga o selo; herdar propaga o ITM do
+    conjunto para filhos que nao premiaram.
+
+    O cenario poe premio no registro de origem e NENHUM dos grupos declara premio no texto —
+    entao o certo e todos sairem SEM selo, e nao os tres herdando 'itm'.
+    """
+    _monta()
+    conn = get_conn()
+    conn.execute(_adapt("UPDATE tournaments SET result=?, prize=? WHERE id=?"),
+                 ('itm', 3.5, 7301))
+    conn.commit(); conn.close()
+
+    dump = tempfile.NamedTemporaryFile(suffix='.jsonl', delete=False); dump.close()
+    assert _roda('--user', str(UID), '--apply', '--dump', dump.name).returncode == 0
+    conn = get_conn()
+    linhas = [dict(r) for r in conn.execute(_adapt(
+        "SELECT tournament_id, result, prize FROM tournaments WHERE user_id=? ORDER BY id"),
+        (UID,)).fetchall()]
+    conn.close()
+    herdaram = [l['tournament_id'] for l in linhas if l['result'] and not l['prize']]
+    assert herdaram == [], (
+        'registro(s) com selo ITM e sem premio: %s. O `result` foi herdado em vez de derivado.'
+        % herdaram)
+    # e a regra vale nos dois sentidos: quem TEM premio precisa do selo
+    sem_selo = [l['tournament_id'] for l in linhas if l['prize'] and not l['result']]
+    assert sem_selo == [], ('registro(s) com premio e sem selo ITM: %s' % sem_selo)
+
+
+def test_registro_SEM_DECISAO_e_recusado():
+    """Dividir um registro sem analise cria N linhas de ZERO maos na tela, pior que a linha
+    unica de hoje. Um caso no acervo (t262: 2,43 MB, 1.500 maos, 0 decisoes), e ele precisa de
+    investigacao propria — por que perdeu a analise — nao de separacao.
+    """
+    _monta()
+    conn = get_conn()
+    conn.execute(_adapt("DELETE FROM decisions WHERE tournament_id=?"), (7301,))
+    conn.commit(); conn.close()
+
+    r = _roda('--user', str(UID))
+    assert 'sem decisao' in r.stdout, r.stdout[-400:]
+    antes = _estado()
+    dump = tempfile.NamedTemporaryFile(suffix='.jsonl', delete=False); dump.close()
+    assert _roda('--user', str(UID), '--apply', '--dump', dump.name).returncode == 0
+    ts, _, _ = _estado()
+    assert len(ts) == 1, ('o registro sem decisao foi dividido em %d linhas vazias' % len(ts))
+    assert _estado() == antes, 'o registro sem decisao foi alterado'
+
+
 def test_o_dry_run_NAO_escreve_nada():
     """CONTROLE que vale por todos os outros: se o dry-run escrevesse, cada teste abaixo estaria
     medindo um banco ja mexido."""

@@ -144,6 +144,12 @@ def _planeja(conn, registro):
         # (cash) e decisao de produto. Zero casos no acervo em 13/09.
         return {'id': d['id'], 'recusa': 'mistura cash (id vazio) e torneio'}
 
+    # Registro sem decisao nenhuma: dividir cria N linhas de ZERO maos na tela, que e pior que
+    # a linha unica de hoje. Um caso no acervo inteiro (t262: 2,43 MB, 1.500 maos, 0 decisoes),
+    # e ele precisa de investigacao propria — por que perdeu a analise — nao de separacao.
+    if not _tem_decisao(conn, d['id']):
+        return {'id': d['id'], 'recusa': 'sem decisao nenhuma (dividir criaria linhas vazias)'}
+
     gravado = str(d['tournament_id'])
     if gravado not in g:
         # Nunca aconteceu no acervo (0 de 42), mas se acontecer o registro perderia a identidade
@@ -184,6 +190,12 @@ def _maos_contadas(hand_ids, por_hand):
     tinha duas definicoes, e a minha era a que ninguem mais usava.
     """
     return sum(1 for h in hand_ids if por_hand.get(h))
+
+
+def _tem_decisao(conn, tournament_db_id):
+    return bool(value(conn.execute(_adapt(
+        "SELECT COUNT(*) AS n FROM decisions WHERE tournament_id=?"),
+        (tournament_db_id,)).fetchone(), 'n'))
 
 
 def _fila_do_torneio(conn, tournament_db_id):
@@ -339,6 +351,9 @@ def _aplica(planos, por_hand_cache, dump):
                                'place': d.get('place'), 'prize': d.get('prize'),
                                'profit': d.get('profit'), 'buy_in': d.get('buy_in'),
                                'result': d.get('result'),
+                               'labels_reconciled_at': (str(d.get('labels_reconciled_at'))
+                                                        if d.get('labels_reconciled_at')
+                                                        else None),
                                'started_at': str(d.get('started_at') or ''),
                                'ended_at': str(d.get('ended_at') or '')})
 
@@ -388,16 +403,30 @@ def _aplica(planos, por_hand_cache, dump):
             # fora de todo filtro por data de jogo (o eixo de tempo do AY-4). O herdado fica
             # como reserva, para o caso de o dialeto nao declarar data.
             quando = _extract_date(texto) or d.get('played_at')
+            # `labels_reconciled_at` HERDADO, e isso nao e detalhe: o gancho
+            # `_reconcile_drained_tournaments` roda em LOOP CONTINUO e seleciona por
+            # `labels_reconciled_at IS NULL`. Nascendo nulo, os registros novos seriam
+            # reconciliados em minutos — e o reconcile reavalia label e score por linha (no
+            # ensaio: 115 decisoes trocando de banda). Tirar o reconcile daqui sem herdar a
+            # marca so transferia o efeito para um momento em que ninguem esta olhando.
+            # 70 dos 71 registros dele ja estao reconciliados.
+            #
+            # `result` DERIVADO do premio re-extraido, com a mesma regra do `_analyze_impl`
+            # ('itm' quando ha premio). Herdar propagaria o ITM do conjunto para todos os
+            # filhos, inclusive os que nao premiaram.
             conn.execute(_adapt(
                 "INSERT INTO tournaments (user_id, tournament_id, site, tournament_name, hero, "
                 "played_at, imported_at, hands_count, decisions_count, raw_text, is_pko, "
-                "started_at, ended_at, place, prize, profit, buy_in) "
-                "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"),
+                "started_at, ended_at, place, prize, profit, buy_in, result, "
+                "labels_reconciled_at) "
+                "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"),
                 (d['user_id'], n['tournament_id'], site, nome, hero,
                  quando, d.get('imported_at'),
                  _maos_contadas(n['hand_ids'], por_hand), 0, texto,
                  d.get('is_pko') or False, st, en,
-                 fin.get('place'), fin.get('prize'), fin.get('profit'), fin.get('buy_in')))
+                 fin.get('place'), fin.get('prize'), fin.get('profit'), fin.get('buy_in'),
+                 'itm' if fin.get('prize') else None,
+                 d.get('labels_reconciled_at')))
             novo_id = value(conn.execute(_adapt(
                 "SELECT id FROM tournaments WHERE user_id=? AND tournament_id=?"),
                 (d['user_id'], n['tournament_id'])).fetchone(), 'id')
@@ -443,9 +472,11 @@ def _aplica(planos, por_hand_cache, dump):
         n_decs = sum(len(por_hand.get(h, [])) for h in p['fica']['hand_ids'])
         conn.execute(_adapt(
             "UPDATE tournaments SET raw_text=?, hands_count=?, decisions_count=?, "
-            "started_at=?, ended_at=?, place=?, prize=?, profit=?, buy_in=? WHERE id=?"),
+            "started_at=?, ended_at=?, place=?, prize=?, profit=?, buy_in=?, result=? "
+            "WHERE id=?"),
             (texto_fica, _maos_contadas(p['fica']['hand_ids'], por_hand), n_decs, st, en,
              fin.get('place'), fin.get('prize'), fin.get('profit'), fin.get('buy_in'),
+             'itm' if fin.get('prize') else None,
              d['id']))
         # E o registro velho solta os spots que nao tem mais nenhuma decisao dele. Um mesmo
         # spot_hash pode ser compartilhado por decisoes de torneios diferentes, entao a remocao
