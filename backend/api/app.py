@@ -870,10 +870,101 @@ def _chave_do_upload():
                exempt_when=lambda: bool(os.environ.get('LEAKLAB_IMPORT_LOTE')))
 def analyze():
     try:
-        return _analyze_impl()
+        return _analyze_orquestrado()
     except Exception as e:
         log.exception("unhandled error in /analyze for user %s", g.user_id)
         return jsonify({'error': f'Erro ao processar arquivo: {type(e).__name__}: {e}'}), 500
+
+
+def _pedacos_por_torneio(content: str) -> list:
+    """O arquivo em pedaços, um por torneio, na ordem em que aparecem.
+
+    A regra de "qual torneio é esta mão" já existe e mora no parser, com os cinco dialetos do
+    acervo — por isso a divisão acontece AQUI e não no front, onde seria a sexta cópia dela.
+
+    Devolve `[]` quando não há o que dividir (nenhuma mão, ou um torneio só): aí o chamador
+    segue pelo caminho de sempre, sem risco.
+
+    Nada se perde na reconstrução do pedaço, e a evidência não é o `join` daqui: o `raw_text`
+    que o `_analyze_impl` GRAVA no torneio sempre foi o mesmo `'
+'.join(h.raw_text)`. O que
+    estivesse fora das mãos (rodapé, cabeçalho do export) já era descartado antes desta mudança.
+    O Tournament Summary é o único conteúdo de arquivo que vive fora das mãos, e ele nunca passa
+    por aqui: só é lido quando o parser não achou mão nenhuma, e aí esta função devolve `[]`.
+
+    Custo: o arquivo é parseado uma vez a mais (0,6s no maior do acervo, 2,5 MB), inclusive no
+    caso de um torneio só. Contra os 131,9s do upload que motivou a mudança, é 0,5%.
+    """
+    try:
+        maos = parse_pokerstars_file_from_text(content)
+    except Exception:
+        return []
+    if not maos:
+        return []
+    grupos: dict = {}
+    for m in maos:
+        tid = str(getattr(m, 'tournament_id', '') or '')
+        grupos.setdefault(tid, []).append(m)
+    if len(grupos) <= 1:
+        return []
+    pedacos = []
+    for tid, ms in grupos.items():
+        texto = chr(10).join(getattr(h, 'raw_text', '') or '' for h in ms)
+        pedacos.append((tid, len(ms), texto))
+    return pedacos
+
+
+def _analyze_orquestrado():
+    """Um arquivo pode conter VÁRIOS torneios. Cada um vira um upload próprio.
+
+    Antes de 13/09 o `/analyze` lia `hands[0].tournament_id` e tratava o arquivo inteiro como um
+    torneio só. Dois danos, e o primeiro é pior que o segundo:
+
+      1. **DADO ERRADO.** Medido no acervo: 42 registros com mãos de 224 torneios diferentes, em
+         3 contas. Em vários deles o torneio gravado não era nem o majoritário, então a tela
+         mostrava um torneio com o nome de outro, somando mãos, colocação e field size alheios.
+      2. **TEMPO.** O export do PartyPoker é por INTERVALO DE DATAS: o arquivo real do Rullian
+         tem 3.482 mãos e 36 torneios, ~4.932 decisões, ~159s — acima dos 120s do gunicorn.
+         Dividido, cada torneio cabe folgado.
+
+    A resposta mantém o formato de sempre (a do PRIMEIRO torneio, que é o que o front já lê) e
+    acrescenta `tambem_importados` com os demais. Front antigo continua funcionando.
+    """
+    content = _extract_content(request)
+    if not content:
+        return jsonify({'error': 'Conteúdo ausente'}), 400
+    pedacos = _pedacos_por_torneio(content)
+    if not pedacos:
+        # `content_override` também aqui, e não é enfeite: em `multipart/form-data` o stream do
+        # arquivo é consumido na PRIMEIRA leitura. Sem passar o texto adiante, o `_analyze_impl`
+        # relê o request, encontra vazio e devolve 400 — regressão que `test_api.py` pegou e a
+        # suíte filtrada deste arquivo não pegaria, porque ela sobe tudo por JSON.
+        return _analyze_impl(content_override=content)
+
+    log.info("analyze: arquivo com %d torneios, dividindo (user %s)", len(pedacos), g.user_id)
+    primeira = None
+    outros = []
+    for tid, n_maos, texto in pedacos:
+        resp = _analyze_impl(content_override=texto)
+        corpo, status = (resp if isinstance(resp, tuple) else (resp, 200))
+        dados = corpo.get_json() if hasattr(corpo, 'get_json') else {}
+        if primeira is None and status == 200:
+            primeira = (corpo, status)
+            continue
+        outros.append({'tournament_id': tid, 'hands': n_maos, 'status': status,
+                       'error': (dados or {}).get('error'),
+                       'tournament_db_id': (dados or {}).get('tournament_db_id')})
+    if primeira is None:
+        # Nenhum torneio entrou: devolve o motivo do primeiro, que é o que o jogador precisa ler.
+        primeiro_erro = next((o for o in outros if o.get('error')), None)
+        return jsonify({'error': (primeiro_erro or {}).get('error')
+                                 or 'Nenhum torneio do arquivo pôde ser importado',
+                        'tambem_importados': outros}), 422
+    corpo, status = primeira
+    dados = corpo.get_json() or {}
+    dados['tambem_importados'] = outros
+    dados['torneios_no_arquivo'] = len(pedacos)
+    return jsonify(dados), status
 
 
 def _apply_tournament_summary(user_id, content, filename):
@@ -1002,11 +1093,16 @@ def tournament_results():
     return jsonify(payload), status
 
 
-def _analyze_impl():
+def _analyze_impl(content_override: str | None = None):
     # A quota é checada só DEPOIS de sabermos se é torneio novo (ver `existing` abaixo):
     # re-import/merge do mesmo T# (PokerStars quebra torneio longo em arquivos por dia)
     # não deve consumir nem ser barrado pela quota.
-    content = _extract_content(request)
+    #
+    # `content_override`: o orquestrador (`analyze`) divide o arquivo POR TORNEIO e chama esta
+    # função uma vez por torneio. Sem isso, um arquivo com vários torneios era gravado como UM
+    # só — medido em 13/09 no acervo: 42 registros continham mãos de 224 torneios diferentes,
+    # e num deles (t238) o torneio GRAVADO nem era o majoritário (40 mãos contra 231 de outro).
+    content = content_override if content_override is not None else _extract_content(request)
     if not content:
         return jsonify({'error': 'Conteúdo ausente'}), 400
     upload_filename = _extract_upload_filename(request)   # ACR: buy-in vem daqui

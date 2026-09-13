@@ -4,6 +4,104 @@ Todas as mudanÃ§as notÃ¡veis neste projeto serÃ£o documentadas aqui.
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
+## Um arquivo com varios torneios virava UM torneio so (13/09)
+
+Achado enquanto eu media o timeout de 120s do gunicorn, e o dano de DADO e maior que o de tempo.
+
+O `/analyze` lia `hands[0].tournament_id` e gravava o arquivo inteiro sob esse id. Rodando o
+parser de producao sobre o acervo:
+
+    42 registros continham maos de 224 torneios diferentes, em 3 contas
+
+E em varios deles o torneio gravado nao era nem o majoritario:
+
+    t238  gravado como T#3754315744, com 40 maos
+          mas a maioria das maos era do T#3754316163, 231 delas
+
+Ou seja, a tela mostrava um torneio com o NOME de um e as MAOS de outro, somando colocacao,
+premio e field size alheios. Todo numero derivado dali (ITM, ROI, perfil por posicao, HUD) saiu
+de uma mistura. **Isso nao e lentidao, e dado errado apresentado com confianca.**
+
+### Por que ninguem tinha visto
+
+Porque em 97% dos uploads do acervo o arquivo TEM um torneio so — o export da PokerStars e por
+torneio. O do PartyPoker e por **intervalo de datas**: o arquivo real de um dos fundadores tem
+3.482 maos e 36 torneios. A sala nova trouxe o formato que expos a suposicao.
+
+### O conserto
+
+`_pedacos_por_torneio()` agrupa as maos pelo `tournament_id` que o parser ja extrai, e
+`_analyze_orquestrado()` chama o `_analyze_impl` uma vez por torneio. **A divisao e automatica,
+no backend, e o jogador nao escolhe nada** — a regra "de qual torneio e esta mao" ja existe no
+parser com os cinco dialetos do acervo (PokerStars, GGPoker, ACR, CoinPoker, PartyGaming), e
+replica-la no front seria a sexta copia, a que quebraria calada quando um dialeto mudasse.
+
+Arquivo de um torneio so devolve `[]` e segue pelo caminho de sempre, sem tocar em nada. A
+resposta mantem o formato que o front ja le (a do primeiro torneio) e ganha `tambem_importados`
+e `torneios_no_arquivo`; front antigo continua funcionando.
+
+De quebra, resolve o timeout: 36 torneios de ~137 decisoes cada cabem folgado nos 120s, onde as
+4.932 decisoes juntas nao cabiam.
+
+### Regra 7: o conserto podia perder texto, e nao perde
+
+O pedaco e reconstruido com `'
+'.join(h.raw_text)`. A evidencia de que nada se perde nao e esse
+join: e que o `raw_text` que o `_analyze_impl` **grava** no torneio sempre foi exatamente essa
+mesma reconstrucao. O que estivesse fora das maos ja era descartado antes. O unico conteudo de
+arquivo que vive fora das maos e o Tournament Summary, e ele nunca passa por aqui — so e lido
+quando o parser nao achou mao nenhuma, e ai a divisao devolve `[]`.
+
+Custo: o arquivo e parseado uma vez a mais (0,6s no maior do acervo, 2,5 MB), inclusive no caso
+de um torneio so. Contra os 131,9s do upload que motivou a mudanca, e 0,5%.
+
+### Os guardas de TEXTO nao bastaram, e isso e o registro
+
+Quebrei a correcao de proposito tres vezes. Na primeira volta, **duas das tres passaram verdes**:
+
+    trocar a chamada por `pedacos = []`            -> 7/7 passaram
+    o agrupamento usar o PRIMEIRO id               -> acusou
+    o `_analyze_impl` ignorar o pedaco             -> 7/7 passaram
+
+Os dois guardas cegos procuravam as strings `_pedacos_por_torneio(` e `content_override` no
+fonte. Elas continuavam la — na **definicao** da funcao e na **assinatura** do parametro — depois
+de a CHAMADA e o USO terem sido removidos. Presenca de texto nao e comportamento. O conserto foi
+`test_PONTA_A_PONTA_o_upload_gera_dois_torneios`, que sobe o arquivo pela rota real, com banco
+descartavel, e CONTA os registros. Com ele as tres quebras acusam, e a terceira imprime
+literalmente o defeito de producao:
+
+    o arquivo de DOIS torneios virou 1 registro(s)
+
+### E a suite filtrada nao bastou, DE NOVO
+
+Com os 8 testes deste arquivo verdes, a suite completa acusou `test_analyze_file_upload`. O
+orquestrador lia o request para dividir e deixava o `_analyze_impl` ler **de novo**. Em
+`multipart/form-data` o stream do arquivo e consumido na primeira leitura: a segunda voltava
+vazia e o upload devolvia **400 "Conteudo ausente"**. Todo upload por multipart estava quebrado.
+
+Nao apareceu aqui porque este arquivo subia tudo por JSON — o transporte que o front usa. Um
+arquivo de teste inteiro sobre a mudanca, verde, e a quebra estava em outra suite. E a terceira
+vez que essa mesma licao aparece.
+
+Conserto: `_analyze_impl(content_override=content)` tambem no caminho que NAO divide, com o texto
+ja extraido. E dois guardas novos aqui — o mesmo caso ponta a ponta por multipart, e o upload de
+UM torneio so por multipart, que e literalmente o que quebrou. Desfazendo o conserto, o segundo
+acusa com a frase certa:
+
+    upload de UM torneio por multipart devolveu 400: o request foi lido duas vezes
+
+### Na tela
+
+A fila de upload passa a dizer quantos torneios sairam do arquivo, e quantos ficaram de fora se
+algum falhar. Sem isso o jogador sobe um arquivo, ve 12 linhas novas na lista e nao sabe de onde
+vieram. A decisao mora numa funcao pura (`notaDeVariosTorneios`) para poder ser testada sem
+montar a fila, que e onde bug de vitrine se esconde. Copy nas 3 locales.
+
+**Em aberto:** o XP continua sendo um por ARQUIVO, nao por torneio. Quem sobe 36 torneios num
+arquivo do PartyPoker ganha o mesmo que quem sobe um. Nao e regressao (antes tambem era um), mas
+agora fica visivel. Decisao de produto, registrada no backlog.
+
+---
 ## Correcao de uma afirmacao minha: o autocapture de preflop (12/09)
 
 Nos commits `6cb4cbaf` e `c648900f` eu escrevi que `leaklab/preflop_autocapture.py` lia a linha

@@ -673,6 +673,18 @@ export const tournaments = {
       kind?: "summary";
       field_size?: number | null;
       place?: number | null;
+      /** Um arquivo pode conter VARIOS torneios (o export do PartyPoker e por intervalo de
+       *  datas, nao por torneio). O backend divide sozinho e importa cada um; o corpo acima e
+       *  o do PRIMEIRO. Ausente quando o arquivo tinha um torneio so, que e o caso comum. */
+      torneios_no_arquivo?: number;
+      /** Os demais torneios do mesmo arquivo, um por linha, com o status de cada um. */
+      tambem_importados?: Array<{
+        tournament_id: string;
+        hands: number;
+        status: number;
+        error?: string | null;
+        tournament_db_id?: number | null;
+      }>;
     }>("/analyze", {
       method: "POST",
       body: JSON.stringify({ content, filename }),

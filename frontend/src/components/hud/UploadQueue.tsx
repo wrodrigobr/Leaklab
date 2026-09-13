@@ -154,6 +154,28 @@ export function useUploadQueue(): UploadQueueValue {
   return useContext(UploadQueueContext);
 }
 
+/** A nota que a fila mostra quando UM arquivo virou VARIOS torneios.
+ *
+ * O export do PartyPoker e por intervalo de datas, nao por torneio: um arquivo real de fundador
+ * tem 36 torneios. O backend divide sozinho (`_analyze_orquestrado`), e sem esta frase o jogador
+ * sobe um arquivo, ve 12 linhas novas na lista e nao sabe de onde vieram — nem se alguma ficou
+ * de fora. `undefined` no caso comum (um torneio so): nota vazia e melhor que nota obvia.
+ *
+ * Funcao pura e exportada de proposito: a decisao mora fora do componente para poder ser testada
+ * sem montar a fila inteira, que e onde bug de vitrine costuma se esconder.
+ */
+export function notaDeVariosTorneios(
+  r: { torneios_no_arquivo?: number; tambem_importados?: Array<{ status: number }> } | null | undefined,
+  t: (k: string, o?: Record<string, unknown>) => string,
+): string | undefined {
+  const n = r?.torneios_no_arquivo ?? 1;
+  if (n <= 1) return undefined;
+  const fora = (r?.tambem_importados ?? []).filter((o) => o.status !== 200).length;
+  return fora > 0
+    ? t("uploadQueue.variosTorneiosParcial", { n, ok: n - fora, fora })
+    : t("uploadQueue.variosTorneios", { n });
+}
+
 export function UploadQueueProvider({ children }: { children: React.ReactNode }) {
   const { t } = useTranslation("common");
   const [queue, dispatch] = useReducer(reducer, []);
@@ -231,7 +253,7 @@ export function UploadQueueProvider({ children }: { children: React.ReactNode })
           dispatch({ type: "SET_STATUS", id: next.id, status: "done", note: t("uploadQueue.analiseNaFila") });
           metrics.addXp("tournament_imported").catch(() => null);
         } else {
-          dispatch({ type: "SET_STATUS", id: next.id, status: "done" });
+          dispatch({ type: "SET_STATUS", id: next.id, status: "done", note: notaDeVariosTorneios(r, t) });
           metrics.addXp("tournament_imported").catch(() => null);
         }
         window.dispatchEvent(new CustomEvent("leaklab:tournament-imported"));

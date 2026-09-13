@@ -106,6 +106,7 @@ SUITES = {
                   'test_teste_nao_importa_arquivo_fora_do_git.py',
                   'test_toda_secao_da_carta_e_servida.py',
                   'test_upload_nao_estoura_o_relogio.py',
+                  'test_arquivo_com_varios_torneios.py',
                   'test_wtsd_e_posts_do_party.py',
                   'test_hud_sem_identidade_de_vilao.py',
                   'test_assinatura_do_spot.py',
