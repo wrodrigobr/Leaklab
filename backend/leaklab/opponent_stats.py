@@ -376,6 +376,37 @@ def finalize(acc: dict) -> dict:
     return profiles
 
 
+def perfis_do_torneio(hands, site: str, hero: str) -> dict:
+    """Os perfis de oponente de UM torneio, ja com as tres regras que decidem se eles existem.
+
+    Fonte unica porque DOIS chamadores precisam da regra COMPLETA e ela tem tres partes que
+    andam juntas — se uma ficar para tras num dos lados, o HUD passa a mostrar read que o outro
+    lado recusa:
+
+      1. sala SEM identidade de vilao (CoinPoker, PartyPoker) nao gera perfil nenhum: o nome
+         segue o ASSENTO, nao a pessoa, e o read sairia gordo, confiante e falso;
+      2. guard anti-explosao por PROPORCAO (anonimizacao por-mao faz os nomes unicos crescerem
+         ~linear com as maos; MTT real repete oponente na mesa);
+      3. o heroi nunca e um perfil de oponente.
+
+    Os chamadores sao o `/analyze` e o reparo de registro multi-torneio — este ultimo porque
+    `opponent_profiles` e por TORNEIO e nao tem `hand_id` para acompanhar a decisao: ao separar
+    um registro, os perfis precisam ser refeitos por grupo, ou os registros novos ficam sem HUD e
+    o que fica mantem uma amostra somada de doze torneios.
+    """
+    if site in SALAS_SEM_IDENTIDADE_DE_VILAO:
+        return {}
+    try:
+        perfis = build_profiles(hands)
+    except Exception:
+        return {}
+    if not perfis:
+        return {}
+    if len(perfis) > 60 and len(perfis) > 3 * max(1, len(hands)):
+        return {}                      # anonimizacao por-mao
+    return {n: p for n, p in perfis.items() if n and n != hero}
+
+
 def build_profiles(hands) -> dict:
     """Pipeline completo: mãos → perfis por jogador."""
     return finalize(accumulate(hands))

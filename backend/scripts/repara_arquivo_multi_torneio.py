@@ -192,6 +192,58 @@ def _maos_contadas(hand_ids, por_hand):
     return sum(1 for h in hand_ids if por_hand.get(h))
 
 
+def _refaz_perfis(conn, tournament_db_id, maos, site, hero, dump):
+    """Recalcula `opponent_profiles` do registro a partir das maos DELE.
+
+    `opponent_profiles` e por TORNEIO e nao tem `hand_id`, entao nao acompanha a decisao como as
+    outras tabelas: sem refazer, os registros novos nascem SEM HUD de oponente no replayer, e o
+    que fica mantem um perfil somado de doze torneios. Medido na conta do pagante: 5.438 perfis
+    em 70 registros, com `hands_seen` de ate 164 num vilao — amostra de doze torneios exibida
+    como de um, e o HUD tem gate por amostra (3.452 perfis passam com 10+ maos).
+
+    A regra de QUAIS perfis existem vem de `perfis_do_torneio`, a mesma que o `/analyze` usa: se
+    ela vivesse aqui tambem, o HUD passaria a mostrar read que o upload recusa (regra 5).
+
+    Apaga antes de gravar: o upsert e por (torneio, jogador), entao um vilao que nao esta mais
+    naquele grupo sobreviveria com o perfil velho.
+    """
+    from leaklab.opponent_stats import perfis_do_torneio
+    antigos = [dict(r) for r in conn.execute(_adapt(
+        "SELECT * FROM opponent_profiles WHERE tournament_id=?"),
+        (tournament_db_id,)).fetchall()]
+    for a in antigos:
+        dump.registra({'tipo': 'perfil_apagado',
+                       'linha': {k: (str(v) if hasattr(v, 'isoformat') else v)
+                                 for k, v in a.items()}})
+    conn.execute(_adapt("DELETE FROM opponent_profiles WHERE tournament_id=?"),
+                 (tournament_db_id,))
+    perfis = perfis_do_torneio(maos, site or '', hero or '')
+    if perfis:
+        from database.repositories import upsert_opponent_profiles
+        # a conexao do reparo, nao uma nova: ele esta no meio de uma transacao
+        upsert_opponent_profiles(tournament_db_id, perfis, conn=conn)
+    return len(antigos), len(perfis)
+
+
+def _maos_do_registro(conn, tournament_db_id):
+    """As maos que o `raw_text` do registro declara, na ordem cronologica por hand_id."""
+    raw = dict(conn.execute(_adapt(
+        "SELECT raw_text FROM tournaments WHERE id=?"), (tournament_db_id,)).fetchone())
+    try:
+        return parse_pokerstars_file_from_text(raw.get('raw_text') or '')
+    except Exception:
+        return []
+
+
+def _ordena_maos(maos):
+    """Uniao ORDENADA por hand_id, a mesma regra do merge do `/analyze`: o # global do
+    PokerStars e monotonico no tempo, e sem isso a sequencia segue a ordem de IMPORT."""
+    def chave(h):
+        hid = str(getattr(h, 'hand_id', '') or '')
+        return (0, int(hid)) if hid.isdigit() else (1, hid)
+    return sorted(maos, key=chave)
+
+
 def _tem_decisao(conn, tournament_db_id):
     return bool(value(conn.execute(_adapt(
         "SELECT COUNT(*) AS n FROM decisions WHERE tournament_id=?"),
@@ -380,15 +432,36 @@ def _aplica(planos, por_hand_cache, dump):
                         "VALUES (?,?) ON CONFLICT DO NOTHING"), (destino, sh))
                     dump.registra({'tipo': 'fila_vinculada', 'tournament_id': destino,
                                    'spot_hash': sh})
-                # o destino ganha maos: hands_count e decisions_count recontados do banco
-                for col, sql in (('hands_count',
-                                  "SELECT COUNT(DISTINCT hand_id) AS n FROM decisions "
-                                  "WHERE tournament_id=?"),
-                                 ('decisions_count',
-                                  "SELECT COUNT(*) AS n FROM decisions WHERE tournament_id=?")):
-                    novo_valor = value(conn.execute(_adapt(sql), (destino,)).fetchone(), 'n')
-                    conn.execute(_adapt(
-                        "UPDATE tournaments SET %s=? WHERE id=?" % col), (novo_valor, destino))
+                # O destino ganha MAOS, e nao so decisoes. O merge do `/analyze` refaz o
+                # `raw_text` com a uniao ordenada por hand_id; sem isso o destino fica com
+                # decisoes que o texto dele nao explica — e o REPLAYER le o texto, entao a mao
+                # movida nao abriria. Achado no inventario do merge, nao numa execucao.
+                dd = dict(conn.execute(_adapt(
+                    "SELECT hero, site, raw_text, played_at FROM tournaments WHERE id=?"),
+                    (destino,)).fetchone())
+                dump.registra({'tipo': 'destino_antes', 'id': destino,
+                               'raw_text': dd.get('raw_text')})
+                juntas = _ordena_maos(_maos_do_registro(conn, destino) + list(n['maos']))
+                texto_d = _texto(juntas)
+                hero_d = dd.get('hero') or ''
+                site_d = dd.get('site') or _detect_site(texto_d)
+                fin_d = _extract_financials(texto_d, hero_d, site_d, None)
+                st_d, en_d = extract_session_times(texto_d)
+                n_h = value(conn.execute(_adapt(
+                    "SELECT COUNT(DISTINCT hand_id) AS n FROM decisions WHERE tournament_id=?"),
+                    (destino,)).fetchone(), 'n')
+                n_d = value(conn.execute(_adapt(
+                    "SELECT COUNT(*) AS n FROM decisions WHERE tournament_id=?"),
+                    (destino,)).fetchone(), 'n')
+                conn.execute(_adapt(
+                    "UPDATE tournaments SET raw_text=?, hands_count=?, decisions_count=?, "
+                    "started_at=?, ended_at=?, place=?, prize=?, profit=?, buy_in=?, result=?, "
+                    "played_at=? WHERE id=?"),
+                    (texto_d, n_h, n_d, st_d, en_d, fin_d.get('place'), fin_d.get('prize'),
+                     fin_d.get('profit'), fin_d.get('buy_in'),
+                     'itm' if fin_d.get('prize') else None,
+                     _extract_date(texto_d) or dd.get('played_at'), destino))
+                _refaz_perfis(conn, destino, juntas, site_d, hero_d, dump)
                 tocados.add(destino)
                 continue
 
@@ -463,6 +536,8 @@ def _aplica(planos, por_hand_cache, dump):
                     "ON CONFLICT DO NOTHING"), (novo_id, sh))
                 dump.registra({'tipo': 'fila_vinculada', 'tournament_id': novo_id,
                                        'spot_hash': sh})
+            # HUD de oponente do registro novo, das maos DELE (ver `_refaz_perfis`).
+            _refaz_perfis(conn, novo_id, n['maos'], site, hero, dump)
             tocados.add(novo_id)
 
         # o registro que fica encolhe para o seu proprio grupo
@@ -499,6 +574,10 @@ def _aplica(planos, por_hand_cache, dump):
                 (d['id'], sh))
             dump.registra({'tipo': 'fila_desvinculada', 'tournament_id': d['id'],
                                    'spot_hash': sh})
+        # E o registro que fica perde os perfis do CONJUNTO: eles somavam a amostra de
+        # todos os torneios do arquivo. Refeitos das maos que sobraram nele.
+        _refaz_perfis(conn, d['id'], p['fica']['maos'], d.get('site') or '',
+                      d.get('hero') or '', dump)
         tocados.add(d['id'])
         conn.commit()
 
@@ -537,6 +616,21 @@ def _reverter(caminho):
                     "UPDATE %s SET tournament_id=? WHERE decision_id=?" % _tab),
                     (l['de'], l['decision_id']))
             n_dec += 1
+    conn.commit()
+    for l in linhas:
+        if l['tipo'] == 'perfil_apagado':
+            campos = [k for k in l['linha'] if k != 'id']
+            marcas = ','.join(['?'] * len(campos))
+            try:
+                conn.execute(_adapt(
+                    "INSERT INTO opponent_profiles (%s) VALUES (%s)" % (
+                        ','.join(campos), marcas)),
+                    tuple(l['linha'][k] for k in campos))
+            except Exception:
+                conn.rollback()
+        elif l['tipo'] == 'destino_antes':
+            conn.execute(_adapt("UPDATE tournaments SET raw_text=? WHERE id=?"),
+                         (l['raw_text'], l['id']))
     conn.commit()
     for l in linhas:
         if l['tipo'] == 'fila_vinculada':

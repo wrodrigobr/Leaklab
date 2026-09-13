@@ -434,6 +434,58 @@ def test_registro_SEM_DECISAO_e_recusado():
     assert _estado() == antes, 'o registro sem decisao foi alterado'
 
 
+def test_o_HUD_de_oponente_e_REFEITO_por_torneio():
+    """`opponent_profiles` e por TORNEIO e nao tem `hand_id`: nao acompanha a decisao.
+
+    Sem refazer, os registros novos nascem SEM HUD no replayer e o que fica mantem um perfil
+    somado de todos os torneios do arquivo. Medido na conta do pagante: 5.438 perfis em 70
+    registros, com `hands_seen` de ate 164 num vilao — amostra de doze torneios exibida como de
+    um, e o HUD tem gate por amostra.
+
+    O cenario poe um perfil com amostra inflada no registro de origem: se ele sobrevivesse
+    intacto, o teste nao distinguiria "refez" de "nao mexeu".
+    """
+    _monta()
+    conn = get_conn()
+    conn.execute(_adapt(
+        "INSERT INTO opponent_profiles (tournament_id, player_name, hands_seen, archetype, "
+        "confidence, stats_json) VALUES (?,?,?,?,?,?)"),
+        (7301, 'VilaoInflado', 999, 'tag', 'high', '{}'))
+    conn.commit(); conn.close()
+
+    dump = tempfile.NamedTemporaryFile(suffix='.jsonl', delete=False); dump.close()
+    assert _roda('--user', str(UID), '--apply', '--dump', dump.name).returncode == 0
+
+    conn = get_conn()
+    inflado = value(conn.execute(_adapt(
+        "SELECT COUNT(*) AS n FROM opponent_profiles WHERE player_name=? AND hands_seen=?"),
+        ('VilaoInflado', 999)).fetchone(), 'n')
+    por_reg = {}
+    for r in conn.execute(_adapt(
+            "SELECT o.tournament_id AS t, COUNT(*) AS n FROM opponent_profiles o "
+            "JOIN tournaments x ON x.id=o.tournament_id WHERE x.user_id=? GROUP BY o.tournament_id"),
+            (UID,)).fetchall():
+        rr = dict(r)
+        por_reg[rr['t']] = rr['n']
+    conn.close()
+    assert inflado == 0, (
+        'o perfil com amostra de 999 maos sobreviveu: os perfis nao foram refeitos')
+    # E os perfis NOVOS tem de existir. Sem este assert, "apagou e nao gravou" passava igual a
+    # "refez" — quebrei de proposito e os 22 casos ficaram verdes. O cenario gera 5, 5 e 4
+    # perfis nos tres grupos, entao ha material para exigir.
+    assert len(por_reg) == 3, (
+        'so %d registro(s) tem perfil; os tres deveriam ter HUD proprio: %s' % (
+            len(por_reg), por_reg))
+    for t, n in por_reg.items():
+        assert n >= 4, ('registro %s ficou com %d perfil(is)' % (t, n))
+    # e o dump guarda o que foi apagado, senao o reverter nao devolve o HUD
+    linhas = [json.loads(l) for l in io.open(dump.name, encoding='utf-8') if l.strip()]
+    apagados = [l for l in linhas if l['tipo'] == 'perfil_apagado']
+    assert apagados, 'o dump nao registrou os perfis apagados: o reverter nao os devolveria'
+    assert any(l['linha'].get('player_name') == 'VilaoInflado' for l in apagados), (
+        'o perfil inflado foi apagado sem ir para o dump')
+
+
 def test_o_dry_run_NAO_escreve_nada():
     """CONTROLE que vale por todos os outros: se o dry-run escrevesse, cada teste abaixo estaria
     medindo um banco ja mexido."""

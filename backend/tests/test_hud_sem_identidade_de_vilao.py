@@ -59,14 +59,37 @@ def test_as_duas_salas_sem_identidade_estao_na_lista():
         assert s in salas, ('%s saiu da lista: o HUD volta a inventar read' % s, salas)
 
 
-def test_o_analyze_decide_pela_lista_e_nao_por_uma_sala_cravada():
-    """A condicao no ponto de decisao. Era `if site != 'coinpoker'`, e foi exatamente por isso
-    que a sala seguinte entrou sem ninguem notar."""
-    src = io.open(_APP, encoding='utf-8').read()
-    assert 'if site not in SALAS_SEM_IDENTIDADE_DE_VILAO:' in src, \
-        'o /analyze parou de decidir pela lista'
-    assert "if site != 'coinpoker':" not in src, \
-        'voltou a condicao cravada numa sala so'
+def test_a_decisao_e_pela_LISTA_e_nao_por_uma_sala_cravada():
+    """COMPORTAMENTO, no ponto de decisao. Era `if site != coinpoker`, e foi por isso que a
+    sala seguinte entrou sem ninguem notar.
+
+    A regra mudou de LUGAR em 13/09: saiu do `_analyze_impl` e virou `perfis_do_torneio`,
+    porque o reparo de registro multi-torneio precisa dela identica — perfil e por TORNEIO e
+    nao acompanha a decisao, entao separar um registro obriga a refazer os perfis por grupo.
+
+    Este guarda passou a exercitar a FUNCAO em vez de procurar a condicao no fonte do app:
+    assim ele segue a regra onde ela estiver, e testa o que ela FAZ e nao onde mora.
+    """
+    from leaklab.opponent_stats import perfis_do_torneio, SALAS_SEM_IDENTIDADE_DE_VILAO
+    from leaklab.parser import parse_pokerstars_file_from_text
+    texto = io.open(os.path.join(_FIX, "partypoker_mtt_novo.txt"), encoding="utf-8").read()
+    maos = parse_pokerstars_file_from_text(texto)
+    assert maos, "a fixture nao parseou: o teste nao teria material"
+
+    # sala DA lista: nenhum perfil, por mais maos que haja
+    for sala in SALAS_SEM_IDENTIDADE_DE_VILAO:
+        assert perfis_do_torneio(maos, sala, "Hero") == {}, (
+            "%s esta na lista e mesmo assim gerou perfil" % sala)
+    # CONTROLE: a MESMA fixture com sala fora da lista tem de gerar. Sem isto, uma funcao que
+    # devolvesse {} sempre passaria no assert acima.
+    assert perfis_do_torneio(maos, "pokerstars", "Hero"), (
+        "sala fora da lista nao gerou perfil: o controle negativo nao tem material")
+    # e o /analyze tem de USAR a funcao, senao a regra vale so aqui
+    src = io.open(_APP, encoding="utf-8").read()
+    codigo = chr(10).join(l.split("#", 1)[0] for l in src.splitlines())
+    assert "perfis_do_torneio(" in codigo, "o /analyze parou de usar a fonte unica da regra"
+    assert "site != " + chr(39) + "coinpoker" + chr(39) not in codigo, (
+        "voltou a condicao cravada numa sala so")
 
 
 def test_pokerstars_e_ggpoker_seguem_COM_hud():

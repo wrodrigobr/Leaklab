@@ -1310,25 +1310,20 @@ def _analyze_impl(content_override: str | None = None, adiar_por_usuario: bool =
     # e nao ha como consertar com piso de amostra: a amostra e grande, e o problema e a
     # IDENTIDADE. Sem identidade de vilao entre maos, nao ha HUD — e read sem lastro e passivo,
     # nao reforco (`project_opponent_hud`: nenhum read sem amostra).
-    from leaklab.opponent_stats import SALAS_SEM_IDENTIDADE_DE_VILAO
-    _profiles = {}
-    if site not in SALAS_SEM_IDENTIDADE_DE_VILAO:
-        try:
-            from leaklab.opponent_stats import build_profiles as _build_profiles
-            _profiles = _build_profiles(hands)
-        except Exception:
-            log.exception("opponent_profiles: build falhou (não bloqueia o /analyze)")
-    # Guard anti-explosão (por PROPORÇÃO, não conta absoluta): anonimização por-mão faz os nomes
-    # únicos crescerem ~linear com as mãos (CoinPoker ~4,4 únicos/mão); MTT real repete oponentes
-    # na mesa (~0,2). Só pula quando é claramente por-mão, pra NÃO punir run profunda de PS/GG.
-    _per_hand_anon = len(_profiles) > 60 and len(_profiles) > 3 * max(1, len(hands))
-    if _profiles and not _per_hand_anon:
+    # A regra completa (sala sem identidade de vilao, guard anti-explosao por proporcao, e o
+    # heroi fora) mora em `perfis_do_torneio`, porque o reparo de registro multi-torneio precisa
+    # dela IDENTICA: `opponent_profiles` e por torneio e nao tem `hand_id` para acompanhar a
+    # decisao, entao separar um registro obriga a refazer os perfis por grupo. Duas copias da
+    # regra dariam HUD que um lado mostra e o outro recusa (regra 5).
+    from leaklab.opponent_stats import perfis_do_torneio
+    _profiles = perfis_do_torneio(hands, site, hero)
+    if _profiles:
         try:
             # UMA conexao para todos os perfis. Era uma por jogador, e os torneios do acervo
             # chegam a 349 oponentes: 349 conexoes ao Neon (Frankfurt, ~51ms cada) = ~18s de um
             # orcamento de 120s, num upload que ja estourava o timeout.
             from database.repositories import upsert_opponent_profiles as _upsert_lote
-            _upsert_lote(t_db_id, {n: p for n, p in _profiles.items() if n and n != hero})
+            _upsert_lote(t_db_id, _profiles)
         except Exception:
             log.exception("opponent_profiles: upsert falhou (não bloqueia o /analyze)")
     # Só conta na quota torneio NOVO; re-import/merge do mesmo T# não consome.

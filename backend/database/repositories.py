@@ -13493,8 +13493,14 @@ def upsert_opponent_profile(tournament_id: int, player_name: str, profile: dict)
         conn.close()
 
 
-def upsert_opponent_profiles(tournament_id: int, perfis: dict) -> int:
+def upsert_opponent_profiles(tournament_id: int, perfis: dict, conn=None) -> int:
     """Grava TODOS os perfis de um torneio numa conexao so.
+
+    `conn`: quando o chamador JA tem uma transacao aberta, ele passa a conexao dele e esta
+    funcao nao abre nem fecha nada. Sem isso o reparo de registro multi-torneio batia em
+    `database is locked` no SQLite (duas conexoes escrevendo) e no Postgres seguraria duas
+    transacoes na mesma tabela. Item de inventario que faltou: **a funcao que vou chamar abre
+    conexao propria?**
 
     Medido em producao em 13/09: `upsert_opponent_profile` abre a propria conexao ao Neon
     (Frankfurt, ~51ms por abrir+fechar) e o `/analyze` a chama uma vez POR JOGADOR. Os torneios
@@ -13506,7 +13512,9 @@ def upsert_opponent_profiles(tournament_id: int, perfis: dict) -> int:
     import json as _json
     if not perfis:
         return 0
-    conn = get_conn()
+    _minha = conn is None
+    if _minha:
+        conn = get_conn()
     n = 0
     try:
         for nome, profile in perfis.items():
@@ -13527,9 +13535,11 @@ def upsert_opponent_profiles(tournament_id: int, perfis: dict) -> int:
                    (profile or {}).get('confidence', 'insufficient'),
                    _json.dumps(profile or {}, ensure_ascii=False)))
             n += 1
-        conn.commit()
+        if _minha:
+            conn.commit()
     finally:
-        conn.close()
+        if _minha:
+            conn.close()
     return n
 
 
