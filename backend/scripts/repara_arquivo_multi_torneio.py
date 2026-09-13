@@ -154,11 +154,14 @@ def _planeja(conn, registro):
         ja = conn.execute(_adapt(
             "SELECT id FROM tournaments WHERE user_id=? AND tournament_id=?"),
             (d['user_id'], tid)).fetchone()
+        item = {'tournament_id': tid, 'maos': maos, 'n_maos': len(maos),
+                'hand_ids': _hand_ids(maos)}
         if ja:
-            colisoes.append((tid, value(ja, 'id'), len(maos)))
-            continue
-        novos.append({'tournament_id': tid, 'maos': maos, 'n_maos': len(maos),
-                      'hand_ids': _hand_ids(maos)})
+            # O torneio JA tem registro proprio: as maos vao para LA, nao para um registro
+            # novo. E o mesmo merge que o upload faz quando o T# reaparece noutro arquivo.
+            item['destino'] = value(ja, 'id')
+            colisoes.append((tid, item['destino'], len(maos)))
+        novos.append(item)
     return {'id': d['id'], 'user_id': d['user_id'], 'gravado': gravado,
             'fica': {'tournament_id': gravado, 'maos': g[gravado],
                      'n_maos': len(g[gravado]), 'hand_ids': _hand_ids(g[gravado])},
@@ -292,6 +295,28 @@ def _aplica(planos, por_hand_cache, dump):
     criados = 0
     movidas = 0
     tocados = set()
+    # (user_id, tournament_id) -> id do registro que abriga aquele torneio.
+    #
+    # Existe porque o MESMO torneio pode estar dentro de DOIS registros misturados: no acervo do
+    # michel, 6 de 239 torneios (t551 e t1177 compartilham o T#4028679584, t790 e t1179 o
+    # T#4028679610). O planejamento roda todo ANTES da primeira escrita, entao ele nao ve o
+    # registro que outro plano vai criar — e o segundo INSERT batia no UNIQUE
+    # (user_id, tournament_id). O ensaio na COPIA do michel pegou isso; Luigi e a conta do dono
+    # nao expuseram, porque neles cada torneio estava num registro so.
+    #
+    # Com o mapa, o segundo grupo MOVE as decisoes para o registro que o primeiro criou, em vez
+    # de tentar criar de novo. E o mesmo merge que o upload faz quando um T# reaparece.
+    #
+    # O mapa nasce UMA vez, aqui, e nao dentro do laco: na primeira versao desta correcao eu o
+    # reiniciava a cada plano, o que apagava justamente os registros criados nos planos
+    # anteriores — o caso que ele existe para cobrir.
+    destino_de = {}
+    for _p in planos:
+        if _p.get('recusa'):
+            continue
+        for _item in _p['novos']:
+            if _item.get('destino'):
+                destino_de[(_p['user_id'], _item['tournament_id'])] = _item['destino']
     for p in planos:
         if p.get('recusa'):
             continue
@@ -315,6 +340,40 @@ def _aplica(planos, por_hand_cache, dump):
                                'ended_at': str(d.get('ended_at') or '')})
 
         for n in p['novos']:
+            chave = (d['user_id'], n['tournament_id'])
+            destino = n.get('destino') or destino_de.get(chave)
+            if destino:
+                # MERGE: as decisoes vao para o registro que ja abriga este torneio.
+                ids = [i for h in n['hand_ids'] for i in por_hand.get(h, [])]
+                for dec_id in ids:
+                    dump.registra({'tipo': 'decision_movida', 'decision_id': dec_id,
+                                   'de': d['id'], 'para': destino})
+                    conn.execute(_adapt("UPDATE decisions SET tournament_id=? WHERE id=?"),
+                                 (destino, dec_id))
+                    for _tab in TABELAS_COM_OS_DOIS:
+                        conn.execute(_adapt(
+                            "UPDATE %s SET tournament_id=? WHERE decision_id=?" % _tab),
+                            (destino, dec_id))
+                movidas += len(ids)
+                spots_daqui = {spot_de.get(i, '') for i in ids} & fila_pendente
+                for sh in sorted(x for x in spots_daqui if x):
+                    conn.execute(_adapt(
+                        "INSERT INTO gto_tournament_queue (tournament_id, spot_hash) "
+                        "VALUES (?,?) ON CONFLICT DO NOTHING"), (destino, sh))
+                    dump.registra({'tipo': 'fila_vinculada', 'tournament_id': destino,
+                                   'spot_hash': sh})
+                # o destino ganha maos: hands_count e decisions_count recontados do banco
+                for col, sql in (('hands_count',
+                                  "SELECT COUNT(DISTINCT hand_id) AS n FROM decisions "
+                                  "WHERE tournament_id=?"),
+                                 ('decisions_count',
+                                  "SELECT COUNT(*) AS n FROM decisions WHERE tournament_id=?")):
+                    novo_valor = value(conn.execute(_adapt(sql), (destino,)).fetchone(), 'n')
+                    conn.execute(_adapt(
+                        "UPDATE tournaments SET %s=? WHERE id=?" % col), (novo_valor, destino))
+                tocados.add(destino)
+                continue
+
             texto = _texto(n['maos'])
             hero = d.get('hero') or ''
             site = d.get('site') or _detect_site(texto)
@@ -340,6 +399,7 @@ def _aplica(planos, por_hand_cache, dump):
                 "SELECT id FROM tournaments WHERE user_id=? AND tournament_id=?"),
                 (d['user_id'], n['tournament_id'])).fetchone(), 'id')
             criados += 1
+            destino_de[(d['user_id'], n['tournament_id'])] = novo_id
             dump.registra({'tipo': 'tournament_criado', 'id': novo_id,
                                    'tournament_id': n['tournament_id'],
                                    'user_id': d['user_id']})

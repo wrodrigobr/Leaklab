@@ -167,6 +167,96 @@ def _estado():
     return ts, ds, cota
 
 
+def test_o_MESMO_torneio_em_DOIS_registros_faz_MERGE_e_nao_colide():
+    """Achado no ENSAIO com a copia do pagante, e ele quebrou o script com UniqueViolation.
+
+    O mesmo `tournament_id` pode estar dentro de dois registros misturados diferentes: no acervo
+    do michel, 6 de 239 torneios (t551 e t1177 compartilham o T#4028679584). O planejamento roda
+    todo ANTES da primeira escrita, entao nao ve o registro que outro plano vai criar, e o
+    segundo INSERT batia no UNIQUE (user_id, tournament_id).
+
+    Luigi e a conta do dono nao expuseram isso, porque neles cada torneio estava num registro so
+    — e os dois reparos ja rodaram em producao sem tocar neste caminho. Foi a COPIA que pegou.
+
+    O certo e MERGE: as decisoes do segundo grupo vao para o registro que abriga aquele torneio,
+    que e o que o upload faz quando um T# reaparece noutro arquivo.
+    """
+    import re as _re
+    from leaklab.parser import parse_pokerstars_file_from_text
+    raw = io.open(os.path.join(_FIX, 'revalidation_mini.txt'), encoding='utf-8').read()
+    blocos = [b for b in _re.split(r'(?=PokerStars Hand #)', raw) if b.strip()]
+
+    def com(ids, desloca):
+        """Blocos com `Tournament #` reescrito e `hand_id` deslocado (senao o merge deduplica)."""
+        saida = []
+        for b, t in zip(blocos, ids):
+            b = _re.sub(r'Tournament #(\d+)', 'Tournament #' + t, b)
+            b = _re.sub(r'PokerStars Hand #(\d+)',
+                        lambda m: 'PokerStars Hand #%d' % (int(m.group(1)) + desloca), b)
+            saida.append(b)
+        return ''.join(saida)
+
+    # DOIS registros, e o torneio 666000002 esta nos dois
+    texto_a = com(['666000001', '666000001', '666000002', '666000002', '666000002'], 0)
+    texto_b = com(['666000003', '666000003', '666000003', '666000002', '666000002'], 900000)
+
+    conn = get_conn()
+    conn.execute(_adapt("DELETE FROM gto_tournament_queue WHERE tournament_id IN (7401,7402)"))
+    for t in (7401, 7402):
+        conn.execute(_adapt("DELETE FROM decisions WHERE tournament_id=?"), (t,))
+    conn.execute(_adapt("DELETE FROM tournaments WHERE user_id=?"), (UID,))
+    conn.execute(_adapt("DELETE FROM users WHERE id=?"), (UID,))
+    conn.execute(_adapt(
+        "INSERT INTO users (id, username, email, password_hash, plan) VALUES (?,?,?,?,?)"),
+        (UID, 'dup', 'dup@e.st', 'h', 'pro'))
+    for tid, gravado, texto in ((7401, '666000001', texto_a), (7402, '666000003', texto_b)):
+        conn.execute(_adapt(
+            "INSERT INTO tournaments (id, user_id, tournament_id, site, tournament_name, hero, "
+            "played_at, imported_at, hands_count, decisions_count, raw_text) "
+            "VALUES (?,?,?,?,?,?,?,?,?,?,?)"),
+            (tid, UID, gravado, 'pokerstars', 'N', 'HeroPlayer', '2026-09-01',
+             '2026-09-02 03:04:05', 5, 0, texto))
+        for m in parse_pokerstars_file_from_text(texto):
+            conn.execute(_adapt(
+                "INSERT INTO decisions (tournament_id, hand_id, street, position, action_taken, "
+                "best_action, label, score, spot_hash) VALUES (?,?,?,?,?,?,?,?,?)"),
+                (tid, str(getattr(m, 'hand_id', '') or ''), 'preflop', 'BTN', 'raise',
+                 'raise', 'standard', 0.8, 'sp-' + str(getattr(m, 'hand_id', '') or '')))
+    conn.commit(); conn.close()
+
+    dump = tempfile.NamedTemporaryFile(suffix='.jsonl', delete=False); dump.close()
+    r = _roda('--user', str(UID), '--apply', '--dump', dump.name)
+    assert r.returncode == 0, ('o reparo falhou: %s' % (r.stderr or r.stdout)[-500:])
+
+    conn = get_conn()
+    por_tid = {}
+    for x in conn.execute(_adapt(
+            "SELECT id, tournament_id, hands_count FROM tournaments WHERE user_id=?"),
+            (UID,)).fetchall():
+        xx = dict(x)
+        por_tid.setdefault(str(xx['tournament_id']), []).append(xx['id'])
+    # e as decisoes do torneio compartilhado, todas no MESMO registro
+    regs_do_compartilhado = {dict(x)['t'] for x in conn.execute(_adapt(
+        "SELECT DISTINCT d.tournament_id AS t FROM decisions d JOIN tournaments x "
+        "ON x.id=d.tournament_id WHERE x.user_id=? AND x.tournament_id=?"),
+        (UID, '666000002')).fetchall()}
+    conn.close()
+
+    assert por_tid.get('666000002') and len(por_tid['666000002']) == 1, (
+        'o torneio compartilhado gerou %s registro(s); deveria gerar UM' % len(
+            por_tid.get('666000002') or []))
+    assert len(regs_do_compartilhado) == 1, (
+        'as decisoes do torneio compartilhado ficaram espalhadas em %d registros'
+        % len(regs_do_compartilhado))
+    # nenhuma decisao se perdeu: 10 no cenario (5 + 5)
+    conn = get_conn()
+    total = value(conn.execute(_adapt(
+        "SELECT COUNT(*) AS n FROM decisions d JOIN tournaments t ON t.id=d.tournament_id "
+        "WHERE t.user_id=?"), (UID,)).fetchone(), 'n')
+    conn.close()
+    assert total == 10, ('decisoes no fim: %s, esperado 10' % total)
+
+
 def test_o_dry_run_NAO_escreve_nada():
     """CONTROLE que vale por todos os outros: se o dry-run escrevesse, cada teste abaixo estaria
     medindo um banco ja mexido."""
