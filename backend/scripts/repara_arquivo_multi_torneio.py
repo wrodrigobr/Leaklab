@@ -165,6 +165,21 @@ def _planeja(conn, registro):
             'novos': novos, 'colisoes': colisoes, 'recusa': None}
 
 
+def _maos_contadas(hand_ids, por_hand):
+    """`hands_count` na MESMA regua do upload: maos DISTINTAS que geraram decisao.
+
+    Nao e o numero de maos do arquivo. Medido em 13/09 com upload real das cinco salas contra o
+    Postgres do homolog: `hands_count` == maos distintas com decisao em 5 de 5 (o valor vem de
+    `metrics['total_hands']`, que conta o que foi ANALISADO, e mao sem decisao nao entra).
+
+    A primeira versao deste script gravava `len(maos)` do grupo, e o registro do PartyPoker que
+    ele criou ficou com 9 onde o upload gravaria 7 — os registros reparados apareceriam na tela
+    com mais maos que os importados normalmente, pela regua errada. Regra 5: a mesma grandeza
+    tinha duas definicoes, e a minha era a que ninguem mais usava.
+    """
+    return sum(1 for h in hand_ids if por_hand.get(h))
+
+
 def _fila_do_torneio(conn, tournament_db_id):
     """Os `spot_hash` que a fila do solver ainda associa a este registro.
 
@@ -212,14 +227,16 @@ def _relatorio(conn, planos, por_hand_cache):
         print()
         print('  t%-6s user=%-4s  %d torneios dentro' % (
             p['id'], p['user_id'], 1 + len(p['novos']) + len(p['colisoes'])))
-        print('     FICA no registro: %-14s %4d maos, %4d decisoes' % (
-            p['fica']['tournament_id'], p['fica']['n_maos'], fica_decs))
+        print('     FICA no registro: %-14s %4d maos (%d no texto), %4d decisoes' % (
+            p['fica']['tournament_id'], _maos_contadas(p['fica']['hand_ids'], por_hand),
+            p['fica']['n_maos'], fica_decs))
         for n in p['novos']:
             ndecs = sum(len(por_hand.get(h, [])) for h in n['hand_ids'])
             total_novos += 1
             total_movidas += ndecs
-            print('     registro NOVO:   %-14s %4d maos, %4d decisoes a mover' % (
-                n['tournament_id'], n['n_maos'], ndecs))
+            print('     registro NOVO:   %-14s %4d maos (%d no texto), %4d decisoes a mover' % (
+                n['tournament_id'], _maos_contadas(n['hand_ids'], por_hand), n['n_maos'],
+                ndecs))
         for tid, outro_id, nm in p['colisoes']:
             print('     COLISAO:         %-14s %4d maos ja tem o registro t%s (pulado)' % (
                 tid, nm, outro_id))
@@ -315,7 +332,8 @@ def _aplica(planos, por_hand_cache, dump):
                 "started_at, ended_at, place, prize, profit, buy_in) "
                 "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"),
                 (d['user_id'], n['tournament_id'], site, nome, hero,
-                 quando, d.get('imported_at'), n['n_maos'], 0, texto,
+                 quando, d.get('imported_at'),
+                 _maos_contadas(n['hand_ids'], por_hand), 0, texto,
                  d.get('is_pko') or False, st, en,
                  fin.get('place'), fin.get('prize'), fin.get('profit'), fin.get('buy_in')))
             novo_id = value(conn.execute(_adapt(
@@ -363,7 +381,7 @@ def _aplica(planos, por_hand_cache, dump):
         conn.execute(_adapt(
             "UPDATE tournaments SET raw_text=?, hands_count=?, decisions_count=?, "
             "started_at=?, ended_at=?, place=?, prize=?, profit=?, buy_in=? WHERE id=?"),
-            (texto_fica, p['fica']['n_maos'], n_decs, st, en,
+            (texto_fica, _maos_contadas(p['fica']['hand_ids'], por_hand), n_decs, st, en,
              fin.get('place'), fin.get('prize'), fin.get('profit'), fin.get('buy_in'),
              d['id']))
         # E o registro velho solta os spots que nao tem mais nenhuma decisao dele. Um mesmo

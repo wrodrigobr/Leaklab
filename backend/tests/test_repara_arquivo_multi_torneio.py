@@ -221,6 +221,50 @@ def test_o_reparo_SEPARA_e_cada_decisao_vai_para_a_MAO_dela():
             'decisao da mao %s foi para o torneio errado' % d['hand_id'])
 
 
+def test_hands_count_usa_a_regua_do_UPLOAD_e_nao_o_texto():
+    """`hands_count` conta maos ANALISADAS (com decisao), nao maos do arquivo.
+
+    Medido com upload real das 5 salas contra o Postgres: `hands_count` == maos distintas com
+    decisao em 5 de 5. A primeira versao deste script gravava `len(maos)` do grupo, e o registro
+    do PartyPoker que ele criou em producao ficou com 9 onde o upload gravaria 7 — os registros
+    reparados apareceriam com mais maos que os importados normalmente. Regra 5: a mesma grandeza
+    com duas definicoes, e a minha era a que ninguem mais usava.
+
+    O cenario apaga a decisao de UMA mao de proposito: sem isso, toda mao tem decisao e as duas
+    reguas dao o mesmo numero — o teste passaria sem distinguir nada.
+    """
+    _monta()
+    from leaklab.parser import parse_pokerstars_file_from_text
+    maos = parse_pokerstars_file_from_text(_texto_de_tres_torneios())
+    # a 1a mao do grupo 555000002 (indice 2) perde a decisao
+    alvo = str(getattr(maos[2], 'hand_id', '') or '')
+    conn = get_conn()
+    conn.execute(_adapt("DELETE FROM decisions WHERE tournament_id=? AND hand_id=?"),
+                 (7301, alvo))
+    conn.commit(); conn.close()
+
+    dump = tempfile.NamedTemporaryFile(suffix='.jsonl', delete=False); dump.close()
+    assert _roda('--user', str(UID), '--apply', '--dump', dump.name).returncode == 0
+    conn = get_conn()
+    por_tid = {}
+    for r in conn.execute(_adapt(
+            "SELECT id, tournament_id, hands_count FROM tournaments WHERE user_id=?"),
+            (UID,)).fetchall():
+        rr = dict(r)
+        distintas = value(conn.execute(_adapt(
+            "SELECT COUNT(DISTINCT hand_id) AS n FROM decisions WHERE tournament_id=?"),
+            (rr['id'],)).fetchone(), 'n')
+        por_tid[rr['tournament_id']] = (rr['hands_count'], distintas)
+    conn.close()
+    # o grupo 555000002 tem 2 maos no texto e agora 1 com decisao
+    assert por_tid['555000002'][0] == 1, (
+        'hands_count do 555000002 e %s; deveria ser 1 (2 maos no texto, 1 com decisao)'
+        % por_tid['555000002'][0])
+    for tid, (hc, dist) in por_tid.items():
+        assert hc == dist, (
+            '%s: hands_count=%s mas %s maos tem decisao — reguas diferentes' % (tid, hc, dist))
+
+
 def test_o_que_APONTA_na_decisao_sobrevive():
     """A razao de mover em vez de reimportar. 187 drills e 1.320 vereditos estao em jogo no
     acervo real; reimportar levaria todos por CASCADE."""
