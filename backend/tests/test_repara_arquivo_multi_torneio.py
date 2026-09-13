@@ -346,6 +346,37 @@ def test_o_reverter_volta_ao_estado_anterior():
            {d['id']: d['tournament_id'] for d in ds_a}, 'decisoes nao voltaram ao torneio de origem'
 
 
+def test_cada_linha_do_dump_vai_para_o_DISCO_na_hora():
+    """Registro que fica no buffer e registro que nao existe (regra 6).
+
+    A primeira versao do script escrevia no arquivo e chamava `flush()` so no fim. O processo
+    morreu no meio (a conexao ao Neon caiu durante o import do `api.app`) e o arquivo ficou com
+    ZERO linhas. Naquele caso nada tinha sido commitado e nao houve dano — mas se tivesse, eu
+    estaria com escrita no banco e nenhum registro para reverter.
+
+    O teste le o arquivo por um handle SEPARADO, que e o que um processo de recuperacao faria.
+    """
+    from scripts.repara_arquivo_multi_torneio import Dump
+    tmp = tempfile.NamedTemporaryFile(suffix='.jsonl', delete=False); tmp.close()
+    d = Dump(tmp.name)
+    try:
+        d.registra({'tipo': 'teste', 'i': 1})
+        # sem close, sem flush manual: o disco ja tem de ter a linha
+        lido = io.open(tmp.name, encoding='utf-8').read()
+        assert lido.strip(), 'a primeira linha nao chegou ao disco antes da proxima escrita'
+        assert json.loads(lido.strip())['i'] == 1, lido
+        d.registra({'tipo': 'teste', 'i': 2})
+        linhas = [l for l in io.open(tmp.name, encoding='utf-8').read().splitlines() if l.strip()]
+        assert len(linhas) == 2, ('o disco tem %d linha(s), deveria ter 2' % len(linhas))
+        assert d.n == 2, d.n
+    finally:
+        d.close()
+        try:
+            os.unlink(tmp.name)
+        except Exception:
+            pass
+
+
 def test_o_dump_registra_TODA_decisao_movida():
     """Registro para desfazer que nao cobre uma escrita e pior que registro nenhum, porque
     parece completo."""

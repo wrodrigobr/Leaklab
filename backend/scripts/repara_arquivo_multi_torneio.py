@@ -71,6 +71,36 @@ from leaklab.parser import parse_pokerstars_file_from_text, extract_session_time
 TABELAS_COM_OS_DOIS = ('coach_hand_annotations', 'vereditos_por_semelhanca')
 
 
+class Dump:
+    """O registro para desfazer, com garantia de estar EM DISCO antes de o banco mudar.
+
+    A primeira versao usava o arquivo direto e chamava `flush()` so no fim. Isso e um registro
+    que nao existe: o processo morreu no meio (a conexao ao Neon caiu) e o arquivo ficou com 0
+    linhas. Ali nada tinha sido commitado e nao houve dano, mas se tivesse, eu estaria com
+    escrita no banco e nenhum registro para reverter — exatamente a falha silenciosa que a
+    regra 6 descreve.
+
+    Cada linha vai para o disco na hora (`flush` + `fsync`). E mais lento e e o ponto.
+    """
+
+    def __init__(self, caminho):
+        self.f = io.open(caminho, 'w', encoding='utf-8')
+        self.n = 0
+
+    def registra(self, obj):
+        self.f.write(json.dumps(obj, ensure_ascii=False) + chr(10))
+        self.f.flush()
+        os.fsync(self.f.fileno())
+        self.n += 1
+
+    def close(self):
+        try:
+            self.f.flush()
+            os.fsync(self.f.fileno())
+        finally:
+            self.f.close()
+
+
 def _grupos(raw_text):
     """As maos por torneio, na ordem em que aparecem. `None` se o parser nao leu o texto."""
     try:
@@ -231,9 +261,17 @@ def _relatorio(conn, planos, por_hand_cache):
     print('   decisions.id, que nao muda)')
 
 
-def _aplica(conn, planos, por_hand_cache, dump):
-    """Executa. O dump ja foi aberto e validado pelo chamador."""
+def _aplica(planos, por_hand_cache, dump):
+    """Executa. O dump ja foi aberto e validado pelo chamador.
+
+    A conexao e ABERTA AQUI, depois dos imports, e nao recebida do planejamento. Motivo medido:
+    `from api.app import ...` carrega o app inteiro (60+ rotas, Sentry) e leva segundos; com a
+    conexao ao Neon aberta e ociosa nesse intervalo, o servidor a derruba e a primeira escrita
+    morre com `SSL connection has been closed unexpectedly`. Foi o que aconteceu na primeira
+    tentativa no Luigi — sem dano, porque nada tinha sido commitado.
+    """
     from api.app import _extract_financials, _detect_site
+    conn = get_conn()
     criados = 0
     movidas = 0
     tocados = set()
@@ -249,7 +287,7 @@ def _aplica(conn, planos, por_hand_cache, dump):
         spot_de = _spots_por_decisao(conn, p['id'])
 
         # registro do estado ANTERIOR do registro que fica, antes de encolher
-        dump.write(json.dumps({'tipo': 'tournament_antes', 'id': d['id'],
+        dump.registra({'tipo': 'tournament_antes', 'id': d['id'],
                                'raw_text': d.get('raw_text'),
                                'hands_count': d.get('hands_count'),
                                'decisions_count': d.get('decisions_count'),
@@ -257,8 +295,7 @@ def _aplica(conn, planos, por_hand_cache, dump):
                                'profit': d.get('profit'), 'buy_in': d.get('buy_in'),
                                'result': d.get('result'),
                                'started_at': str(d.get('started_at') or ''),
-                               'ended_at': str(d.get('ended_at') or '')},
-                              ensure_ascii=False) + '\n')
+                               'ended_at': str(d.get('ended_at') or '')})
 
         for n in p['novos']:
             texto = _texto(n['maos'])
@@ -280,15 +317,14 @@ def _aplica(conn, planos, por_hand_cache, dump):
                 "SELECT id FROM tournaments WHERE user_id=? AND tournament_id=?"),
                 (d['user_id'], n['tournament_id'])).fetchone(), 'id')
             criados += 1
-            dump.write(json.dumps({'tipo': 'tournament_criado', 'id': novo_id,
+            dump.registra({'tipo': 'tournament_criado', 'id': novo_id,
                                    'tournament_id': n['tournament_id'],
-                                   'user_id': d['user_id']}, ensure_ascii=False) + '\n')
+                                   'user_id': d['user_id']})
 
             ids = [i for h in n['hand_ids'] for i in por_hand.get(h, [])]
             for dec_id in ids:
-                dump.write(json.dumps({'tipo': 'decision_movida', 'decision_id': dec_id,
-                                       'de': d['id'], 'para': novo_id},
-                                      ensure_ascii=False) + '\n')
+                dump.registra({'tipo': 'decision_movida', 'decision_id': dec_id,
+                                       'de': d['id'], 'para': novo_id})
                 conn.execute(_adapt("UPDATE decisions SET tournament_id=? WHERE id=?"),
                              (novo_id, dec_id))
                 # DUAS tabelas guardam decision_id E tournament_id. Mover a decisao sem mexer
@@ -310,8 +346,8 @@ def _aplica(conn, planos, por_hand_cache, dump):
                 conn.execute(_adapt(
                     "INSERT INTO gto_tournament_queue (tournament_id, spot_hash) VALUES (?,?) "
                     "ON CONFLICT DO NOTHING"), (novo_id, sh))
-                dump.write(json.dumps({'tipo': 'fila_vinculada', 'tournament_id': novo_id,
-                                       'spot_hash': sh}, ensure_ascii=False) + '\n')
+                dump.registra({'tipo': 'fila_vinculada', 'tournament_id': novo_id,
+                                       'spot_hash': sh})
             tocados.add(novo_id)
 
         # o registro que fica encolhe para o seu proprio grupo
@@ -336,13 +372,14 @@ def _aplica(conn, planos, por_hand_cache, dump):
             conn.execute(_adapt(
                 "DELETE FROM gto_tournament_queue WHERE tournament_id=? AND spot_hash=?"),
                 (d['id'], sh))
-            dump.write(json.dumps({'tipo': 'fila_desvinculada', 'tournament_id': d['id'],
-                                   'spot_hash': sh}, ensure_ascii=False) + '\n')
+            dump.registra({'tipo': 'fila_desvinculada', 'tournament_id': d['id'],
+                                   'spot_hash': sh})
         tocados.add(d['id'])
         conn.commit()
 
-    dump.flush()
-    # Agregados pelo caminho do PRODUTO, nunca por SQL replicado aqui (regra 5).
+    conn.close()
+    # Agregados pelo caminho do PRODUTO, nunca por SQL replicado aqui (regra 5). Cada chamada
+    # abre a propria conexao, entao a de cima ja pode estar fechada.
     from database.repositories import reconcile_tournament_labels
     for tid in sorted(tocados):
         try:
@@ -455,12 +492,15 @@ def main():
         conn.close()
         return
 
-    dump = io.open(a.dump, 'w', encoding='utf-8')
+    # A conexao do PLANEJAMENTO fecha aqui. O `_aplica` abre a dele depois dos imports
+    # pesados — ver a docstring dele.
+    conn.close()
+    dump = Dump(a.dump)
     print()
     print('APLICANDO (dump em %s)' % a.dump)
-    criados, movidas, tocados = _aplica(conn, planos, cache, dump)
+    criados, movidas, tocados = _aplica(planos, cache, dump)
+    print('linhas no registro para desfazer: %d' % dump.n)
     dump.close()
-    conn.close()
     print('pronto: %d registros criados, %d decisoes movidas, %d torneios reconciliados' % (
         criados, movidas, tocados))
     print('para desfazer: --reverter %s' % a.dump)
