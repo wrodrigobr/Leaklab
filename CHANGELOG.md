@@ -40,8 +40,19 @@ Arquivo de um torneio so devolve `[]` e segue pelo caminho de sempre, sem tocar 
 resposta mantem o formato que o front ja le (a do primeiro torneio) e ganha `tambem_importados`
 e `torneios_no_arquivo`; front antigo continua funcionando.
 
-De quebra, resolve o timeout: 36 torneios de ~137 decisoes cada cabem folgado nos 120s, onde as
-4.932 decisoes juntas nao cabiam.
+**Sobre o timeout eu afirmei errado, e a homologacao derrubou.** Eu escrevi que dividir "resolve
+o timeout" e que "cada torneio cabe folgado nos 120s". Nao resolve: **dividir e MAIS LENTO.**
+Medido pela rota real contra o Postgres, com as mesmas 960 maos:
+
+    1 torneio ..... 6s        24 torneios ... 12s
+    6 torneios .... 7s        40 torneios ... 13s
+    12 torneios ... 9s
+
+Cerca de 0,18s de custo por torneio, porque os N torneios rodam na MESMA requisicao, em
+sequencia, cada um com seu ciclo de insert/sync/reconcile/enfileiramento. O total nao cai — ele
+sobe. O ganho de tempo que EXISTE e outro, e vale: os torneios ja processados ficam GRAVADOS,
+entao um timeout no 20o de 36 preserva os 19 primeiros, onde antes o arquivo inteiro morria
+junto. Resolver o timeout de verdade e receber, persistir e processar depois — frente propria.
 
 ### Regra 7: o conserto podia perder texto, e nao perde
 
@@ -133,6 +144,23 @@ senao ele casa com a propria explicacao). De quebra, a nota da fila de analise a
 arquivo em vez de substitui-la: um Free que sobe 36 torneios precisa saber as duas coisas.
 
 Fica aberto, e e anterior a isto: a rota aceita `amount` do CLIENTE sem validacao. Registrado.
+
+### O ELO gravava 40 pontos no grafico por um upload (dano do CONSERTO, nao do bug)
+
+Achado na homologacao: 104 snapshots em `player_elo_history` para o usuario de teste, **50 num
+minuto so** — o upload de 40 torneios. O ELO e do USUARIO, nao do torneio, e cada recalculo grava
+uma linha, que e a serie do grafico de evolucao. O orquestrador chama o `_analyze_impl` uma vez
+por torneio, entao o grafico ganhava 40 pontos identicos no mesmo instante.
+
+**O defeito original nao fazia isso** — ele gravava um torneio, logo um snapshot. Era dano
+causado pelo conserto, e e a segunda vez que a regra 7 pega algo nesta frente.
+
+`_dispara_recompute_elo` e agora o unico lugar que dispara (dois chamadores, uma funcao), o
+`_analyze_impl` aceita `adiar_por_usuario`, e o orquestrador dispara UMA vez, depois de saber que
+algum torneio entrou — nos ramos de erro nada mudou no acervo e o ponto no grafico nao teria nada
+por baixo. O guarda espera as threads terminarem antes de contar (contar antes daria zero e
+passaria verde por acidente, regra 3) e tem CONTROLE proprio: se nenhum snapshot for gravado ele
+acusa em vez de aprovar por vacuidade. Quebrado nas duas direcoes, as duas acusam.
 
 ### Cash junto de torneio: a divisao RECUSA, e o primeiro teste passou pelo motivo errado
 

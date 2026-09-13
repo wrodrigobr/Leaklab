@@ -13,9 +13,11 @@ vários deles o torneio gravado não era nem o majoritário:
 Ou seja, a tela mostrava um torneio com o nome de um e as mãos de outro, somando colocação,
 prêmio e field size alheios. **Isso é dano de DADO, não de desempenho.**
 
-O dano de desempenho vinha junto: o export do PartyPoker é por INTERVALO DE DATAS, não por
-torneio. O arquivo real do Rullian tem 3.482 mãos e 36 torneios, ~4.932 decisões, ~159s de
-processamento — acima do timeout de 120s do gunicorn. Dividido, cada torneio cabe folgado.
+Sobre DESEMPENHO eu afirmei errado, e a homologação derrubou: escrevi que dividir "resolve o
+timeout de 120s do gunicorn". **Não resolve — dividir é mais lento.** Medido pela rota real com
+960 mãos: 1 torneio 6s, 12 torneios 9s, 40 torneios 13s (~0,18s por torneio de custo), porque os
+N torneios são processados na mesma requisição, em sequência. O ganho real é que os torneios já
+processados ficam gravados, então um timeout no meio preserva o que entrou.
 
 ── Onde a divisão mora, e por quê ─────────────────────────────────────────────────────────
 
@@ -395,6 +397,74 @@ def test_o_endpoint_de_xp_repassa_o_count():
     assert "count=body.get('count')" in codigo, (
         'a rota /player/xp parou de repassar o `count`: o front manda a quantidade e o XP '
         'volta a ser um por arquivo, calado')
+
+
+def test_UM_snapshot_de_ELO_por_ARQUIVO_e_nao_por_torneio():
+    """Regra 7, achado na homologacao com upload real: 50 snapshots num minuto.
+
+    O ELO e do USUARIO, nao do torneio, e cada recalculo grava uma linha em
+    `player_elo_history`, que e a serie do grafico de evolucao. O orquestrador chama o
+    `_analyze_impl` uma vez por torneio; sem adiar, um arquivo de 40 torneios gravava 40 pontos
+    no mesmo instante. O defeito ORIGINAL nao fazia isso — ele gravava um torneio, logo um
+    snapshot. Seria dano causado pelo conserto.
+
+    O teste espera as threads terminarem antes de contar: o recalculo e assincrono, e contar
+    antes da hora daria zero e passaria verde por acidente (regra 3).
+    """
+    import tempfile
+    import threading as _th
+    import time as _time
+    tmp = tempfile.NamedTemporaryFile(suffix='.db', delete=False)
+    tmp.close()
+    anterior = os.environ.get('LEAKLAB_DB')
+    os.environ['LEAKLAB_DB'] = tmp.name
+    os.environ.pop('DATABASE_URL', None)
+    try:
+        import importlib
+        from database import schema as _schema
+        importlib.reload(_schema)
+        _schema.init_db()
+        from database.schema import get_conn
+        from database.repositories import _adapt
+        from database.auth import generate_token
+        from database.rowutil import value
+        conn = get_conn()
+        conn.execute(_adapt("INSERT INTO users (id, username, email, password_hash, plan) "
+                            "VALUES (1,'u','u@e.st','h','pro')"))
+        conn.commit(); conn.close()
+
+        import api.app as _app
+        _app.app.config['TESTING'] = True
+        cliente = _app.app.test_client()
+        headers = {'Authorization': 'Bearer ' + generate_token(1, 'player')}
+        r = _por_json(cliente, headers, _dois_torneios())
+        assert r.status_code == 200, r.status_code
+        assert (r.get_json() or {}).get('torneios_no_arquivo') == 2
+
+        # as threads de ELO sao daemon: espera as que existem, com teto
+        limite = _time.time() + 25
+        while _time.time() < limite:
+            if not [t for t in _th.enumerate() if t.name == 'elo-recompute' and t.is_alive()]:
+                break
+            _time.sleep(0.2)
+
+        conn = get_conn()
+        n = value(conn.execute("SELECT COUNT(*) AS n FROM player_elo_history").fetchone(), 'n')
+        conn.close()
+        # CONTROLE do proprio teste: se nenhum snapshot foi gravado, o assert de "<= 1" passaria
+        # por vacuidade e nao provaria nada.
+        assert n >= 1, ('nenhum snapshot foi gravado: o teste nao mede o que diz medir '
+                        '(o recalculo nao rodou, ou a tabela mudou de nome)')
+        assert n == 1, (
+            'arquivo de 2 torneios gravou %d snapshots de ELO. Um upload de 40 torneios poria '
+            '40 pontos no mesmo instante no grafico de evolucao.' % n)
+    finally:
+        if anterior is not None:
+            os.environ['LEAKLAB_DB'] = anterior
+        try:
+            os.unlink(tmp.name)
+        except Exception:
+            pass
 
 
 def test_o_analyze_usa_o_orquestrador():

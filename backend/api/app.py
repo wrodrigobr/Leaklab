@@ -876,6 +876,21 @@ def analyze():
         return jsonify({'error': f'Erro ao processar arquivo: {type(e).__name__}: {e}'}), 500
 
 
+def _dispara_recompute_elo(user_id):
+    """Unico lugar que dispara o recalculo de ELO pos-upload.
+
+    Existe como funcao porque DOIS chamadores precisam dela (o upload de um torneio e o
+    orquestrador, no fim do arquivo dividido), e duas copias divergiriam no dia em que o nome
+    da thread ou o alvo mudasse (regra 5).
+    """
+    threading.Thread(
+        target=_recompute_user_elo,
+        args=(user_id,),
+        daemon=True,
+        name='elo-recompute',
+    ).start()
+
+
 def _pedacos_por_torneio(content: str) -> list:
     """O arquivo em pedaços, um por torneio, na ordem em que aparecem.
 
@@ -932,9 +947,14 @@ def _analyze_orquestrado():
       1. **DADO ERRADO.** Medido no acervo: 42 registros com mãos de 224 torneios diferentes, em
          3 contas. Em vários deles o torneio gravado não era nem o majoritário, então a tela
          mostrava um torneio com o nome de outro, somando mãos, colocação e field size alheios.
-      2. **TEMPO.** O export do PartyPoker é por INTERVALO DE DATAS: o arquivo real do Rullian
-         tem 3.482 mãos e 36 torneios, ~4.932 decisões, ~159s — acima dos 120s do gunicorn.
-         Dividido, cada torneio cabe folgado.
+      2. **TEMPO, e aqui eu errei na primeira versão.** Eu escrevi que dividir "resolve o
+         timeout". **Não resolve: dividir é MAIS LENTO.** Medido na homologação, 960 mãos pela
+         rota real: 1 torneio 6s, 12 torneios 9s, 40 torneios 13s — cerca de 0,18s de custo por
+         torneio, porque os N torneios são processados na MESMA requisição, em sequência, cada
+         um com seu ciclo de insert/sync/reconcile. O ganho de tempo que EXISTE é outro: os
+         torneios já processados ficam GRAVADOS, então um timeout no 20º de 36 preserva os 19
+         primeiros, onde antes o arquivo inteiro morria junto. Resolver o timeout de verdade é
+         receber o arquivo, persistir e processar depois — frente própria.
 
     A resposta mantém o formato de sempre (a do PRIMEIRO torneio, que é o que o front já lê) e
     acrescenta `tambem_importados` com os demais. Front antigo continua funcionando.
@@ -954,7 +974,7 @@ def _analyze_orquestrado():
     primeira = None
     outros = []
     for tid, n_maos, texto in pedacos:
-        resp = _analyze_impl(content_override=texto)
+        resp = _analyze_impl(content_override=texto, adiar_por_usuario=True)
         corpo, status = (resp if isinstance(resp, tuple) else (resp, 200))
         dados = corpo.get_json() if hasattr(corpo, 'get_json') else {}
         if primeira is None and status == 200:
@@ -990,6 +1010,11 @@ def _analyze_orquestrado():
                         'torneios_no_arquivo': len(pedacos),
                         'torneios_ja_importados': ja_estavam,
                         'tambem_importados': outros}), 422
+    # UMA vez para o arquivo inteiro, e nao uma por torneio (ver `adiar_por_usuario`), e so
+    # DEPOIS de saber que algum torneio entrou: nos ramos de erro acima nada mudou no acervo, e
+    # gravar snapshot ali seria mais um ponto no grafico de evolucao sem nada por baixo.
+    _dispara_recompute_elo(g.user_id)
+
     corpo, status = primeira
     dados = corpo.get_json() or {}
     dados['tambem_importados'] = outros
@@ -1124,7 +1149,7 @@ def tournament_results():
     return jsonify(payload), status
 
 
-def _analyze_impl(content_override: str | None = None):
+def _analyze_impl(content_override: str | None = None, adiar_por_usuario: bool = False):
     # A quota é checada só DEPOIS de sabermos se é torneio novo (ver `existing` abaixo):
     # re-import/merge do mesmo T# (PokerStars quebra torneio longo em arquivos por dia)
     # não deve consumir nem ser barrado pela quota.
@@ -1416,12 +1441,16 @@ def _analyze_impl(content_override: str | None = None):
     # Recalcula ELO do user — processa todas as decisoes em ordem cronologica.
     # Snapshot inserido em player_elo_history. Idempotente (snapshot novo a
     # cada upload, gera serie temporal pro grafico de evolucao).
-    threading.Thread(
-        target=_recompute_user_elo,
-        args=(g.user_id,),
-        daemon=True,
-        name='elo-recompute',
-    ).start()
+    #
+    # `adiar_por_usuario`: o ELO e do USUARIO, nao do torneio, e o orquestrador chama esta
+    # funcao uma vez POR TORNEIO do arquivo. Sem adiar, um upload de 40 torneios gravava 40
+    # snapshots no mesmo minuto — medido na homologacao de 13/09: 50 num minuto so — e o
+    # grafico de evolucao ganhava 40 pontos identicos. O defeito original nao fazia isso (ele
+    # gravava um torneio, logo um snapshot), entao seria dano causado pelo CONSERTO (regra 7).
+    # Quem adia dispara UMA vez no fim: o resultado e o mesmo, porque o calculo le todas as
+    # decisoes do usuario.
+    if not adiar_por_usuario:
+        _dispara_recompute_elo(g.user_id)
 
     # Explicações LLM se solicitado
     if request.args.get('explain', '').lower() == 'true':
