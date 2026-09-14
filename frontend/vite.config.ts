@@ -14,6 +14,11 @@ export default defineConfig(({ mode }) => ({
     proxy: {
       "/auth":        { target: "http://127.0.0.1:5000", changeOrigin: true },
       "/analyze":     { target: "http://127.0.0.1:5000", changeOrigin: true },
+      // A rota do upload ASSINCRONO (14/09). Sem esta linha o dev server trata `/uploads`
+      // como rota da SPA e devolve o index.html em vez de chamar a API -- o arquivo
+      // "subiria" sem nunca chegar ao backend, e pareceria defeito do produto. Nao ha rota
+      // de tela com esse nome (conferido em App.tsx), entao o prefixo e seguro.
+      "/uploads":     { target: "http://127.0.0.1:5000", changeOrigin: true },
       "/study":       { target: "http://127.0.0.1:5000", changeOrigin: true },
       // barra final: senão o prefixo /coach captura a rota SPA /coach-replay/:id
       // (mesma pegadinha de /replay/ e /tournament/ acima). Não existe rota de API
