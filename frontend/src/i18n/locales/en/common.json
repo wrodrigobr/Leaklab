@@ -251,6 +251,9 @@
     "rateLimit": "You went over the limit of {{limite}} tournaments per hour. The accepted files are already in your history; try again in {{count}} minute.",
     "rateLimit_plural": "You went over the limit of {{limite}} tournaments per hour. The accepted files are already in your history; try again in {{count}} minutes.",
     "variosTorneios": "File had {{n}} tournaments. All imported.",
+    "recebido": "File received. We are analyzing it.",
+    "progresso": "Analyzing: {{feitos}} of {{total}} tournaments.",
+    "erroNoProcessamento": "We could not analyze this file. Your upload is saved and we will try again.",
     "variosTorneiosParcial": "File had {{n}} tournaments. {{ok}} imported, {{fora}} did not go in.",
     "variosTorneiosJaEstavam": "File had {{n}} tournaments. {{ok}} new, {{ja}} already in your history.",
     "variosTorneiosMisto": "File had {{n}} tournaments. {{ok}} new, {{ja}} already there, {{fora}} did not go in."

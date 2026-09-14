@@ -164,7 +164,8 @@ def _captured_3bet_ranges(opener: str, threebettor: str, stack_bb: float):
         return None, None
 
 
-def vale_enfileirar_postflop(hero_pos: str, vs_pos: str, facing_size_bb: float = 0.0) -> bool:
+def vale_enfileirar_postflop(hero_pos: str, vs_pos: str, facing_size_bb: float = 0.0,
+                             n_ativos=None) -> bool:
     """False para spot que o produto NÃO vai servir — não adianta solvar, e solvar faz mal.
 
     O `lookup_gto` recusa spot com o herói IP enquanto `TEXAS_HERO_IP` estiver desligada, porque
@@ -178,7 +179,34 @@ def vale_enfileirar_postflop(hero_pos: str, vs_pos: str, facing_size_bb: float =
 
     Enquanto a flag estiver desligada, o estado honesto para esses spots é "sem cobertura". Este
     gate existe para que o enfileiramento não produza o nó em primeiro lugar.
+
+    ── MULTIWAY (14/09) ──────────────────────────────────────────────────────────────────────
+
+    O solver é HEADS-UP: um `ip_range` contra um `oop_range`. Spot com 2+ oponentes ativos é
+    resolvido como se os outros não existissem, e o nó resultante vira veredito pelo mesmo
+    caminho do parágrafo acima.
+
+    O caso que trouxe isto (mão 262009780504, conta 3): flop de CINCO jogadores, aberto pelo
+    UTG+1 com cold call do HJ. O solve modelou "HJ abre, BB paga" heads-up, deu ao HJ um range
+    de ABERTURA (com AA/KK/AK, que ele 3-betaria em vez de pagar), e nesse mundo QJ tem 75% de
+    equity contra os 53% que o próprio motor calculou. Dos 75% saiu `allin 61,2%`.
+
+    Medido no acervo antes de fechar o gate: **8.953 decisões multiway (32,4% do postflop com
+    veredito de solver), 728 delas ACUSANDO o jogador, 5.254,8bb cobrados**. E o GTO Wizard, no
+    nó heads-up equivalente a 70bb, **não tem all-in no menu** — a ação de onde vinha o veredito
+    não existe em árvore padrão.
+
+    `n_ativos=None` é "não informado" e NÃO bloqueia, de propósito: `lookup_gto` e os scripts de
+    reenfileiramento chamam por caminhos que não carregam o dado, e travar tudo por omissão
+    quebraria consulta viva. Quem protege contra o esquecimento é o teste que varre cada porta
+    de enfileiramento com um spot multiway, porque guarda que depende de alguém lembrar de
+    passar o argumento protege uma vez só.
     """
+    try:
+        if n_ativos is not None and int(n_ativos) >= 2:
+            return False                  # multiway: o solver HU não modela esta mão
+    except (TypeError, ValueError):
+        pass                              # valor ilegível não é evidência de heads-up
     if not _postflop_hero_is_ip(hero_pos, vs_pos):
         return True                       # herói OOP: é o caso que o solver serve nativamente
     if not _TEXAS_HERO_IP:
@@ -231,7 +259,7 @@ def pote_implausivel(pot_bb, stack_bb, n_ativos=None) -> bool:
 
 def montar_payload_postflop(street, position, vs_position, board, hero_cards,
                             stack_bb, facing_bb, pot_bb=None, pot_type='',
-                            opener='', threebettor=''):
+                            opener='', threebettor='', n_ativos=None):
     """(spot_hash, payload_json) de um solve postflop. FONTE UNICA. None quando o gate recusa.
 
     ── Por que isto virou funcao ──────────────────────────────────────────────────────────────
@@ -259,7 +287,7 @@ def montar_payload_postflop(street, position, vs_position, board, hero_cards,
     hero = normalize_cards(hero_cards)
     if not st or not pos or not hero:
         return None
-    if not vale_enfileirar_postflop(pos, vs, facing):
+    if not vale_enfileirar_postflop(pos, vs, facing, n_ativos=n_ativos):
         return None
 
     b = board_for_street(board or [], st)

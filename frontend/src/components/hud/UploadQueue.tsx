@@ -17,11 +17,15 @@ interface QueueItem {
   status: QueueStatus;
   error?: string;
   note?: string;   // mensagem positiva (ex.: summary complementado) — não é erro
+  /** Recibo do backend. Presente quando o arquivo JA ESTA GUARDADO no servidor: dali em diante
+   *  fechar a aba nao perde nada, e a tela so acompanha o processamento. */
+  recibo?: number;
 }
 
 type Action =
   | { type: "ADD"; items: QueueItem[] }
   | { type: "SET_STATUS"; id: string; status: QueueStatus; error?: string; note?: string }
+  | { type: "SET_RECIBO"; id: string; recibo: number; note?: string }
   | { type: "DISMISS"; id: string }
   | { type: "CLEAR_DONE" };
 
@@ -29,6 +33,9 @@ function reducer(state: QueueItem[], action: Action): QueueItem[] {
   switch (action.type) {
     case "ADD":       return [...state, ...action.items];
     case "SET_STATUS": return state.map((i) => i.id === action.id ? { ...i, status: action.status, error: action.error, note: action.note } : i);
+    // O recibo NAO apaga a nota nem o erro anteriores de proposito: ele so acrescenta o
+    // "esta guardado" ao item, e a fase de acompanhamento e que decide o desfecho.
+    case "SET_RECIBO": return state.map((i) => i.id === action.id ? { ...i, status: "processing", recibo: action.recibo, note: action.note ?? i.note } : i);
     case "DISMISS":   return state.filter((i) => i.id !== action.id);
     case "CLEAR_DONE": return state.filter((i) => i.status !== "done");
     default:          return state;
@@ -177,6 +184,23 @@ export function contagemDoArquivo(r: RespostaDeUpload) {
   return { n, ja, fora, ok: n - ja - fora };
 }
 
+/** O recibo do upload assincrono na MESMA forma que `contagemDoArquivo` devolve.
+ *
+ * Existe para a frase da fila continuar saindo de `notaDeVariosTorneios`, com a copy que ja
+ * esta nas tres locales e ja passou pelo revisor. A alternativa era escrever uma segunda
+ * familia de frases para dizer a mesma coisa por outro caminho, que e como duas telas comecam
+ * a discordar sobre o mesmo arquivo.
+ */
+export function contagemDoRecibo(r: {
+  torneios_no_arquivo: number | null;
+  torneios_gravados: number;
+  torneios_ja_estavam: number;
+  torneios_com_erro: number;
+}) {
+  const n = r.torneios_no_arquivo ?? 1;
+  return { n, ja: r.torneios_ja_estavam, fora: r.torneios_com_erro, ok: r.torneios_gravados };
+}
+
 /** A nota que a fila mostra quando UM arquivo virou VARIOS torneios.
  *
  * O export do PartyPoker e por intervalo de datas, nao por torneio: um arquivo real de fundador
@@ -191,7 +215,15 @@ export function notaDeVariosTorneios(
   r: RespostaDeUpload,
   t: (k: string, o?: Record<string, unknown>) => string,
 ): string | undefined {
-  const { n, ok, ja, fora } = contagemDoArquivo(r);
+  return notaDaContagem(contagemDoArquivo(r), t);
+}
+
+/** A mesma frase, a partir da CONTAGEM. Os dois caminhos (resposta sincrona e recibo) chegam
+ *  aqui, entao a frase nao pode divergir entre eles. */
+export function notaDaContagem(
+  { n, ok, ja, fora }: { n: number; ok: number; ja: number; fora: number },
+  t: (k: string, o?: Record<string, unknown>) => string,
+): string | undefined {
   if (n <= 1) return undefined;
   if (fora > 0) {
     return ja > 0
@@ -254,6 +286,11 @@ export function UploadQueueProvider({ children }: { children: React.ReactNode })
   const dismiss   = useCallback((id: string) => { fileMap.current.delete(id); dispatch({ type: "DISMISS", id }); }, []);
   const clearDone = useCallback(() => { queue.forEach((i) => { if (i.status === "done") fileMap.current.delete(i.id); }); dispatch({ type: "CLEAR_DONE" }); }, [queue]);
 
+  // ── FASE 1: RECEBER ────────────────────────────────────────────────────────────────────
+  // Manda o arquivo e para. Nao espera processar, e essa e a mudanca inteira: a requisicao
+  // agora e curta, entao o timeout de 120s do servidor (que em producao chegou a 117,4s com um
+  // arquivo de 18 torneios) deixa de alcancar o jogador. A partir do recibo, o arquivo esta
+  // guardado: fechar a aba nao perde nada, e reenviar o mesmo arquivo devolve o MESMO recibo.
   useEffect(() => {
     const next = queue.find((i) => i.status === "queued");
     if (!next || processing.current) return;
@@ -267,34 +304,21 @@ export function UploadQueueProvider({ children }: { children: React.ReactNode })
       try {
         if (!file) throw new Error(t("uploadQueue.fileMissing"));
         const content = await file.text();
-        const r = await tournaments.analyze(content, file.name);
+        const r = await tournaments.receber(content, file.name);
         if (r?.kind === "summary") {
           // Era um Tournament Summary, não hand history: dados do torneio complementados.
           const note = r.field_size != null
             ? t("uploadQueue.summaryWithField", { n: r.field_size })
             : t("uploadQueue.summaryPlain");
           dispatch({ type: "SET_STATUS", id: next.id, status: "done", note });
+          window.dispatchEvent(new CustomEvent("leaklab:tournament-imported"));
+        } else if (r?.recibo) {
+          // GUARDADO. Dali em diante quem manda no desfecho e a fase 2, lendo o recibo.
+          dispatch({ type: "SET_RECIBO", id: next.id, recibo: r.recibo,
+                     note: t("uploadQueue.recebido") });
         } else {
-          // UM ramo para todo upload de hand history, e nao dois, porque a primeira versao
-          // desta correcao deu o XP por torneio aqui e deixou o ramo da fila de analise dando
-          // um por arquivo — a mesma regra em dois lugares, com o segundo errado e calado
-          // (regra 5). A nota da fila de analise se SOMA a do arquivo em vez de substitui-la:
-          // um jogador Free que sobe 36 torneios precisa saber as duas coisas.
-          const varios = notaDeVariosTorneios(r, t);
-          const note = r?.analysis_waitlisted
-            // Fila de analise por plano (free = 3 por vez): o torneio ENTROU, so a camada GTO
-            // aguarda vaga. Nota informativa, nao erro — a lista mostra "Na fila de analise".
-            ? [varios, t("uploadQueue.analiseNaFila")].filter(Boolean).join(" ")
-            : varios;
-          dispatch({ type: "SET_STATUS", id: next.id, status: "done", note });
-          // XP por TORNEIO que entrou, nao por arquivo (decisao do dono, 13/09): quem sobe 36
-          // torneios num export do PartyPoker ganharia o mesmo de quem sobe um. Conta so os
-          // NOVOS — torneio que ja estava no historico nao e jogo novo. O valor de cada um fica
-          // no backend, aqui vai a quantidade.
-          metrics.addXp("tournament_imported", undefined,
-                        contagemDoArquivo(r).ok).catch(() => null);
+          throw new Error(t("uploadQueue.fileMissing"));
         }
-        window.dispatchEvent(new CustomEvent("leaklab:tournament-imported"));
       } catch (e: unknown) {
         // A frase honesta (limite por hora + minutos) ou a msg do backend; nunca "HTTP 404" cru.
         dispatch({ type: "SET_STATUS", id: next.id, status: "error", error: mensagemDeErroDeUpload(e, t) });
@@ -305,6 +329,77 @@ export function UploadQueueProvider({ children }: { children: React.ReactNode })
     // `t` fica FORA das dependências de propósito: ele só compõe mensagens de erro dentro do
     // callback, e sua identidade muda ao trocar de idioma — incluí-lo re-dispararia o loop de
     // upload no meio de um envio. O idioma da mensagem é o do momento em que ela é gerada.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [queue]);
+
+  // ── FASE 2: ACOMPANHAR ────────────────────────────────────────────────────────────────
+  // Pergunta o andamento de cada recibo enquanto houver algum em curso. Um unico temporizador
+  // para a lista inteira, e nao um por arquivo: N temporizadores em paralelo multiplicariam as
+  // consultas justamente quando o servidor esta ocupado processando.
+  useEffect(() => {
+    const emCurso = queue.filter((i) => i.status === "processing" && i.recibo);
+    if (emCurso.length === 0) return;
+
+    let vivo = true;
+    const timer = setInterval(async () => {
+      for (const item of emCurso) {
+        if (!vivo) return;
+        let r;
+        try {
+          r = await tournaments.recibo(item.recibo!);
+        } catch {
+          // Falha de rede AQUI nao e falha do upload: o arquivo esta guardado. Fica em curso e
+          // a proxima volta tenta de novo. Marcar erro aqui seria repetir o defeito que esta
+          // frente existe para consertar -- dizer que falhou o que deu certo.
+          continue;
+        }
+        if (!vivo) return;
+
+        if (r.status === "erro") {
+          dispatch({ type: "SET_STATUS", id: item.id, status: "error",
+                     error: r.erro || t("uploadQueue.erroNoProcessamento") });
+          continue;
+        }
+        if (r.status !== "concluido") {
+          // Em curso: mostra o progresso real quando o worker ja dividiu o arquivo.
+          const nota = r.torneios_no_arquivo
+            ? t("uploadQueue.progresso", { feitos: r.torneios_gravados + r.torneios_ja_estavam,
+                                           total: r.torneios_no_arquivo })
+            : t("uploadQueue.recebido");
+          if (nota !== item.note) {
+            dispatch({ type: "SET_RECIBO", id: item.id, recibo: item.recibo!, note: nota });
+          }
+          continue;
+        }
+
+        // Concluido. A frase e a MESMA de sempre (`notaDaContagem`), com a copy que ja esta
+        // nas tres locales: "ja estava no historico" nao e perda de dado, e omitir isso fazia
+        // o jogador procurar torneio que nao falta.
+        //
+        // A nota da fila de analise se SOMA a do arquivo em vez de substitui-la: um jogador
+        // Free que sobe 36 torneios precisa saber as duas coisas. Na primeira versao desta
+        // frente ela desapareceu calada, e foi o teste de fiacao que pegou.
+        const varios = notaDaContagem(contagemDoRecibo(r), t);
+        const naFila = (r.detalhe ?? []).some((d) => d.analysis_waitlisted);
+        const note = naFila
+          ? [varios, t("uploadQueue.analiseNaFila")].filter(Boolean).join(" ")
+          : varios;
+        dispatch({ type: "SET_STATUS", id: item.id, status: "done", note });
+
+        // XP por TORNEIO que entrou, nao por arquivo (decisao do dono, 13/09): quem sobe 36
+        // torneios num export do PartyPoker ganharia o mesmo de quem sobe um. Conta so os
+        // NOVOS -- torneio que ja estava no historico nao e jogo novo. O valor de cada um fica
+        // no backend, aqui vai a quantidade.
+        if (r.torneios_gravados > 0) {
+          metrics.addXp("tournament_imported", undefined, r.torneios_gravados).catch(() => null);
+          window.dispatchEvent(new CustomEvent("leaklab:tournament-imported"));
+        }
+      }
+    }, 2500);
+
+    return () => { vivo = false; clearInterval(timer); };
+    // `t` fora das dependencias pela mesma razao da fase 1: trocar de idioma no meio do
+    // acompanhamento nao pode reiniciar o temporizador.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [queue]);
 

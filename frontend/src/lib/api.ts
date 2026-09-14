@@ -645,6 +645,38 @@ export const sharedHand = {
   replay: (token: string) => request<ReplayData>(`/h/${token}/replay`),
 };
 
+/** Estados do recibo de upload (`leaklab/recepcao_de_upload`). */
+export type ReciboStatus = "recebido" | "processando" | "concluido" | "erro";
+
+export interface Recibo {
+  id: number;
+  user_id: number;
+  filename: string | null;
+  bytes_total: number;
+  status: ReciboStatus;
+  tentativas: number;
+  /** null enquanto o worker nao dividiu o arquivo; depois, quantos torneios ele tem. */
+  torneios_no_arquivo: number | null;
+  torneios_gravados: number;
+  /** Ja estavam no historico. NAO e falha: export por intervalo de datas se sobrepoe. */
+  torneios_ja_estavam: number;
+  torneios_com_erro: number;
+  detalhe?: Array<{
+    tournament_id: string | null;
+    hands: number;
+    status: number;
+    duplicate: boolean;
+    error?: string | null;
+    tournament_db_id?: number | null;
+    /** O torneio ENTROU; so a camada GTO aguarda vaga (fila por plano, free = 3 por vez). */
+    analysis_waitlisted?: boolean;
+  }> | null;
+  erro: string | null;
+  recebido_em: string | null;
+  iniciado_em: string | null;
+  concluido_em: string | null;
+}
+
 export const tournaments = {
   list: () => request<TournamentsResponse>("/history/tournaments"),
 
@@ -698,6 +730,36 @@ export const tournaments = {
       method: "POST",
       body: JSON.stringify({ content, filename }),
     }),
+
+  /** RECEBE o arquivo e devolve recibo (202). NAO processa: quem processa e o consumer.
+   *
+   *  Por que existe ao lado de `analyze` e nao no lugar dele: o front vem de CDN e um navegador
+   *  com o bundle antigo em cache continuaria chamando `/analyze`. Trocar o contrato daquela
+   *  rota quebraria esse jogador no meio do deploy.
+   *
+   *  Arquivo de Tournament Summary continua SINCRONO e volta com `kind: "summary"`, igual a
+   *  hoje: ele nao tem maos para analisar, so atualiza colocacao e premio. */
+  receber: (content: string, filename?: string) =>
+    request<{
+      recibo?: number;
+      status?: ReciboStatus;
+      /** true = o mesmo arquivo do mesmo usuario; devolve o recibo que ja existia. */
+      repetido?: boolean;
+      bytes?: number;
+      /** Presentes so no ramo do summary, que segue sincrono. */
+      kind?: "summary";
+      field_size?: number | null;
+      place?: number | null;
+    }>("/uploads", {
+      method: "POST",
+      body: JSON.stringify({ content, filename }),
+    }),
+
+  /** O andamento de um recibo. A tela pergunta aqui em vez de esperar numa requisicao. */
+  recibo: (id: number) => request<Recibo>(`/uploads/${id}`),
+
+  /** Os recibos que ainda nao terminaram. Serve o F5: a lista do upload volta a aparecer. */
+  recibosPendentes: () => request<{ recibos: Recibo[] }>("/uploads"),
 
   summary: (dbId: number) =>
     request<{ summary: string; hero: string }>("/analyze/tournament-summary", {

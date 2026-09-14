@@ -876,6 +876,97 @@ def analyze():
         return jsonify({'error': f'Erro ao processar arquivo: {type(e).__name__}: {e}'}), 500
 
 
+@app.route('/uploads', methods=['POST'])
+@require_auth
+@limiter.limit(lambda: "%d per hour" % LIMITE_DE_UPLOADS_POR_HORA, key_func=_chave_do_upload,
+               exempt_when=lambda: bool(os.environ.get('LEAKLAB_IMPORT_LOTE')))
+def receber_upload():
+    """RECEBE o arquivo e devolve recibo. Não processa: quem processa é o consumer.
+
+    ── Rota NOVA, e o `/analyze` fica de pé ──────────────────────────────────────────────────
+
+    De propósito. O front é servido por CDN e um navegador com o bundle antigo em cache
+    continuaria chamando `/analyze`; trocar o contrato daquela rota quebraria esse jogador no
+    meio do deploy. Aqui o front novo passa a usar `/uploads` e o antigo segue funcionando como
+    hoje, com o risco de timeout que já conhecia. Um contrato novo em porta nova.
+
+    ── O que é síncrono e o que não é ────────────────────────────────────────────────────────
+
+    Erro de FORMATO é síncrono (422 na hora): o jogador precisa saber já que arrastou o arquivo
+    errado. Erro de PROCESSAMENTO é assíncrono e vai para o recibo, porque aí o arquivo já está
+    guardado e ele não precisa reenviar nada -- que foi exatamente o pedido do dono.
+
+    A peneira de formato é uma regex (`parece_hand_history`), não o parse: parsear 3,1 MB custa
+    9 s, e pagar isso na requisição era metade do problema desta frente.
+    """
+    conteudo = _extract_content(request)
+    if not conteudo:
+        return jsonify({'error': 'Conteúdo ausente'}), 400
+
+    # SUMMARY continua SÍNCRONO, e isto não é exceção preguiçosa: o arquivo de resultado é
+    # pequeno, não tem mãos para analisar e só atualiza colocação/prêmio de um torneio que já
+    # está lá. Adiá-lo não ganharia nada e quebraria o ramo `kind === 'summary'` da tela.
+    # `_apply_tournament_summary` devolve (None, None) quando o conteúdo NÃO é summary, então
+    # ele é o detector e o executor ao mesmo tempo — sem uma segunda regra de "isto é summary?".
+    _sm, _st = _apply_tournament_summary(g.user_id, conteudo,
+                                         _extract_upload_filename(request))
+    if _sm is not None:
+        return jsonify(_sm), (_st or 200)
+
+    from leaklab.recepcao_de_upload import parece_hand_history, receber
+    if not parece_hand_history(conteudo):
+        return jsonify({
+            'error': ('Este arquivo não parece um histórico de mãos. Exporte o hand history '
+                      'da sala e tente de novo.')}), 422
+
+    # A quota é conferida por TORNEIO no processamento (re-import do mesmo torneio não consome).
+    # Aqui só recusa quem já bateu o teto: aceitar arquivo para recusar cada torneio depois
+    # seria prometer trabalho que não vamos fazer.
+    quota_err = _check_upload_quota(g.user_id)
+    if quota_err:
+        return quota_err
+
+    r = receber(g.user_id, conteudo, _extract_upload_filename(request))
+    return jsonify({
+        'recibo': r['id'],
+        'status': r['status'],
+        'repetido': bool(r.get('repetido')),
+        'bytes': r.get('bytes_total'),
+        'torneios_no_arquivo': r.get('torneios_no_arquivo'),
+    }), 202
+
+
+@app.route('/uploads/<int:recibo_id>', methods=['GET'])
+@require_auth
+def ver_recibo(recibo_id):
+    """O andamento de UM recibo. A tela pergunta aqui em vez de esperar numa requisição."""
+    from leaklab.recepcao_de_upload import recibo
+    r = recibo(g.user_id, recibo_id)
+    if not r:
+        return jsonify({'error': 'Recibo não encontrado'}), 404
+    for k in ('recebido_em', 'iniciado_em', 'concluido_em'):
+        if r.get(k) is not None:
+            r[k] = str(r[k])
+    r.pop('sha256', None)
+    return jsonify(r)
+
+
+@app.route('/uploads', methods=['GET'])
+@require_auth
+def listar_recibos_pendentes():
+    """Os recibos que ainda não terminaram. Serve o F5: a lista do upload volta a aparecer
+    em vez de o jogador achar que o arquivo se perdeu ao recarregar a página."""
+    from leaklab.recepcao_de_upload import pendentes_do_usuario
+    fora = []
+    for r in pendentes_do_usuario(g.user_id):
+        for k in ('recebido_em', 'iniciado_em', 'concluido_em'):
+            if r.get(k) is not None:
+                r[k] = str(r[k])
+        r.pop('sha256', None)
+        fora.append(r)
+    return jsonify({'recibos': fora})
+
+
 def _dispara_recompute_elo(user_id):
     """Unico lugar que dispara o recalculo de ELO pos-upload.
 
@@ -12288,7 +12379,8 @@ def _enfileirar_spot_da_decisao(di: dict, facing: float, tournament_db_id=None,
             pot_bb      = _pot_bb,
             pot_type    = spot.get('potType', ''),
             opener      = spot.get('preflopOpener', ''),
-            threebettor = spot.get('preflop3bettor', ''))
+            threebettor = spot.get('preflop3bettor', ''),
+            n_ativos    = spot.get('nActiveOpponents'))
         if not montado:
             return False
         h, payload = montado
@@ -12916,7 +13008,10 @@ def _enqueue_postflop_spots(results: list, tournament_id: int = None, user_id: i
             # Não enfileira o que o produto não vai servir. Spot de herói-IP com a flag desligada
             # produziria um nó com a estratégia do VILÃO, e o resync automático o transformaria em
             # veredito sem passar pelo portão do lookup. Ver `vale_enfileirar_postflop`.
-            if not vale_enfileirar_postflop(pos, vs_pos, facing):
+            # `nActiveOpponents` vem do pipeline (pipeline.py:179). O gate recusa 2+ ativos:
+            # o solver e heads-up, e o no de um flop multiway vira veredito por `resync`.
+            if not vale_enfileirar_postflop(pos, vs_pos, facing,
+                                            n_ativos=spot.get('nActiveOpponents')):
                 continue
             # Ranges pela MESMA função que o lookup usa. Aqui havia duas linhas próprias que
             # punham a range do herói no lugar do IP e a do vilão no lugar do OOP — e o solver
@@ -13012,6 +13107,117 @@ RECONCILE_INTERVALO_S = float(os.environ.get('RECONCILE_INTERVALO_S', '120') or 
 #: "decisions"`. Ficou provavel porque o `MODO_PRESERVA` (10/09) escreve centenas de linhas por
 #: torneio, onde o fill-only escrevia quase nada.
 _RECONCILE_EM_CURSO = threading.Lock()
+
+
+def _processar_uploads_recebidos() -> dict:
+    """UM recibo por tick: divide o arquivo guardado e processa torneio por torneio.
+
+    ── Por que aqui e não na requisição ──────────────────────────────────────────────────────
+
+    Medido em produção com o arquivo real de um fundador (3,1 MB, 18 torneios): **117,4 s** dos
+    120 s do gunicorn, numa conta VAZIA. Com os torneios dele já presentes, estourou duas vezes e
+    a tela disse `NetworkError` enquanto 22 torneios tinham sido gravados. O tempo depende de
+    latência do Neon (8,10 ms por viagem, 311 viagens por torneio) e de contenção de CPU, então
+    nenhum orçamento dentro da requisição dá garantia. Ver `leaklab/recepcao_de_upload`.
+
+    ── Reuso, e por que não refatorei o `_analyze_impl` ──────────────────────────────────────
+
+    Ele é função de rota e lê `request` (o `filename`, de onde o ACR tira o buy-in) e `g.user_id`
+    -- conferido: é a ÚNICA coisa que ele lê de `g`. Um `test_request_context` com o mesmo corpo
+    que o front manda entrega as duas, e o caminho de análise continua sendo um só. Extrair 400
+    linhas acopladas ao Flask criaria a segunda cópia do import, que é exatamente o defeito que
+    esta casa já pagou três vezes (as ranges trocadas, o corte de board, o payload do solver).
+
+    ── Antes do solver, de propósito ─────────────────────────────────────────────────────────
+
+    Roda ANTES de drenar a fila do solver no laço do consumer. Depois dela, o arquivo do jogador
+    esperaria o solver terminar, que é trabalho de fundo -- e o import é o que ele está olhando.
+    """
+    from leaklab import recepcao_de_upload as _R
+
+    try:
+        _R.devolver_travados()
+    except Exception:
+        log.exception("devolver uploads travados")
+
+    rec = _R.reivindicar()
+    if not rec:
+        return {'recibo': None}
+    rid, uid = rec['id'], rec['user_id']
+    texto = rec.get('conteudo') or ''
+    nome = rec.get('filename')
+    log.info("upload recebido %s (user %s, %s bytes): processando", rid, uid,
+             rec.get('bytes_total'))
+
+    if not texto:
+        _R.concluir(rid, 0, 0, 0, erro='o conteúdo do arquivo não estava mais guardado')
+        return {'recibo': rid, 'erro': 'sem conteudo'}
+
+    try:
+        pedacos = _pedacos_por_torneio(texto)
+        # `[]` = um torneio só (ou cash junto de torneio, que o divisor recusa de propósito):
+        # o arquivo inteiro vai num pedaço, pelo mesmo caminho.
+        if not pedacos:
+            pedacos = [(None, 0, texto)]
+        _R.registrar_divisao(rid, len(pedacos))
+    except Exception as e:
+        log.exception("dividir upload %s", rid)
+        _R.concluir(rid, 0, 0, 0, erro='não conseguimos ler este arquivo: %s' % e)
+        return {'recibo': rid, 'erro': 'divisao'}
+
+    gravados = ja_estavam = com_erro = 0
+    detalhe = []
+    for tid, n_maos, pedaco in pedacos:
+        try:
+            with app.test_request_context(
+                    '/analyze', method='POST',
+                    json={'content': pedaco, 'filename': nome}):
+                g.user_id = uid
+                resp = _analyze_impl(content_override=pedaco, adiar_por_usuario=True)
+            corpo, status = (resp if isinstance(resp, tuple) else (resp, 200))
+            dados = corpo.get_json() if hasattr(corpo, 'get_json') else {}
+        except Exception as e:
+            log.exception("processar torneio %s do recibo %s", tid, rid)
+            status, dados = 500, {'error': str(e)}
+
+        dup = bool((dados or {}).get('duplicate'))
+        if status == 200:
+            gravados += 1
+        elif dup:
+            ja_estavam += 1
+        else:
+            com_erro += 1
+        detalhe.append({'tournament_id': tid, 'hands': n_maos, 'status': status,
+                        'duplicate': dup, 'error': (dados or {}).get('error'),
+                        'tournament_db_id': (dados or {}).get('tournament_db_id'),
+                        # Viaja de proposito: jogador Free precisa saber que o torneio ENTROU e
+                        # que so a camada GTO aguarda vaga (fila por plano, 3 por vez). A tela
+                        # somava essa frase a do arquivo, e sem o campo aqui ela desapareceria
+                        # calada -- foi o teste de fiacao do front que pegou.
+                        'analysis_waitlisted': bool((dados or {}).get('analysis_waitlisted'))})
+        # batimento: renova a vez E alimenta o "11 de 18" da tela
+        try:
+            _R.tocar(rid, gravados=gravados)
+        except Exception:
+            log.exception("tocar recibo %s", rid)
+
+    # UMA vez por arquivo, como no caminho da requisição (`adiar_por_usuario` acima), e só se
+    # algo entrou: sem isso seria mais um ponto no gráfico de evolução sem nada por baixo.
+    if gravados:
+        try:
+            _dispara_recompute_elo(uid)
+        except Exception:
+            log.exception("recompute elo do recibo %s", rid)
+
+    erro = None
+    if not gravados and not ja_estavam:
+        erro = next((d.get('error') for d in detalhe if d.get('error')),
+                    'nenhum torneio deste arquivo pôde ser importado')
+    _R.concluir(rid, gravados, ja_estavam, com_erro, detalhe=detalhe, erro=erro)
+    log.info("upload %s concluido: %d gravados, %d ja estavam, %d com erro",
+             rid, gravados, ja_estavam, com_erro)
+    return {'recibo': rid, 'gravados': gravados, 'ja_estavam': ja_estavam,
+            'com_erro': com_erro}
 
 
 def _reconcile_drained_tournaments(limite_s: float | None = None):
@@ -13148,6 +13354,14 @@ def _solver_queue_worker_loop():
                 promover_aguardando()
             except Exception:
                 log.exception("promover analises aguardando error")
+            # ANTES de drenar o solver: o import e o que o jogador esta olhando; solve e fundo.
+            # Um recibo por tick, sem teto dentro do arquivo -- aqui nao ha prazo de requisicao,
+            # que era todo o problema. O batimento em `tocar` impede que o reset de travado
+            # devolva a fila um arquivo que ainda esta sendo processado.
+            try:
+                _processar_uploads_recebidos()
+            except Exception:
+                log.exception("processar uploads recebidos error")
             if pending > 0:
                 tick += 1
                 log.info("Solver queue [tick %s]: pending=%s conc=%s", tick, pending, _conc)

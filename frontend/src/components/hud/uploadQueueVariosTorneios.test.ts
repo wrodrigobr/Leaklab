@@ -144,10 +144,12 @@ describe("nota de arquivo com vários torneios", () => {
   });
 
   it("FIACAO: o XP recebe a quantidade, e o VALOR fica no backend", () => {
+    // 14/09: o upload passou a ser assíncrono (`POST /uploads` devolve recibo e o consumer
+    // processa), então a quantidade vem do RECIBO e não da resposta síncrona. O que este guarda
+    // defende não mudou: um XP por torneio que entrou, e o VALOR de cada um fica no backend.
     const src = readFileSync("src/components/hud/UploadQueue.tsx", "utf-8");
-    // A quantidade tem de vir da contagem, não de `torneios_no_arquivo` cru (que conta repetidos).
     expect(src, "o XP voltou a ser um por arquivo")
-      .toContain("contagemDoArquivo(r).ok");
+      .toContain("r.torneios_gravados");
     // E o front não pode multiplicar por valor nenhum: a tabela `_XP_AMOUNTS` mora no backend.
     expect(src, "o front passou a calcular o VALOR do XP, que é regra do backend")
       .not.toMatch(/addXp\([^)]*\*\s*\d/);
@@ -164,25 +166,33 @@ describe("nota de arquivo com vários torneios", () => {
     expect(chamadas.length, "o XP de import voltou a ser concedido em mais de um lugar").toBe(1);
     // e a única chamada leva a quantidade, não um XP solto
     expect(src, "a única chamada de XP parou de levar a quantidade de torneios")
-      .toMatch(/addXp\([^)]*contagemDoArquivo\(r\)\.ok\)/);
+      .toMatch(/addXp\([^)]*r\.torneios_gravados\)/);
   });
 
   it("a fila de análise NÃO engole a frase dos vários torneios", () => {
     // Jogador Free que sobe um export do PartyPoker precisa das duas informações: quantos
     // torneios entraram, e que a análise GTO está na fila.
+    // Esta frase desapareceu calada na primeira versão do upload assíncrono, porque o recibo
+    // não carregava `analysis_waitlisted`. Foi este guarda que pegou.
     const src = readFileSync("src/components/hud/UploadQueue.tsx", "utf-8");
     expect(src, "a nota da fila de análise substituiu a do arquivo em vez de somar")
       .toContain('[varios, t("uploadQueue.analiseNaFila")].filter(Boolean).join(" ")');
+    expect(src, "o front parou de ler `analysis_waitlisted` do recibo, então a frase nunca sai")
+      .toContain("d.analysis_waitlisted");
   });
 
   it("FIACAO: a fila realmente usa a função na conclusão do upload", () => {
     // Função pura testada e nunca chamada é cobertura sem cobertura.
     const src = readFileSync("src/components/hud/UploadQueue.tsx", "utf-8");
     expect(src, "a fila parou de calcular a nota do arquivo")
-      .toContain("notaDeVariosTorneios(r, t)");
+      .toContain("notaDaContagem(contagemDoRecibo(r), t)");
     // e o resultado tem de CHEGAR ao dispatch de conclusão. Calcular e jogar fora é o furo que
     // já apareceu hoje: o guarda de texto passa verde porque a chamada continua no arquivo.
     expect(src, "a nota é calculada e não chega à fila")
       .toContain('status: "done", note });');
+    // O caminho síncrono (`notaDeVariosTorneios`) fica de pé: ele ainda serve o ramo do
+    // Tournament Summary e o `/analyze`, que não foi desligado por causa de bundle em cache.
+    expect(src, "a fachada síncrona da nota foi removida")
+      .toContain("export function notaDeVariosTorneios");
   });
 });

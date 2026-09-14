@@ -251,6 +251,9 @@
     "rateLimit": "Você ultrapassou o limite de {{limite}} torneios por hora. Os arquivos aceitos já estão no histórico; tente de novo em {{count}} minuto.",
     "rateLimit_plural": "Você ultrapassou o limite de {{limite}} torneios por hora. Os arquivos aceitos já estão no histórico; tente de novo em {{count}} minutos.",
     "variosTorneios": "Arquivo com {{n}} torneios. Todos importados.",
+    "recebido": "Arquivo recebido. Estamos analisando.",
+    "progresso": "Analisando: {{feitos}} de {{total}} torneios.",
+    "erroNoProcessamento": "Não conseguimos analisar este arquivo. Seu envio está guardado, vamos tentar de novo.",
     "variosTorneiosParcial": "Arquivo com {{n}} torneios. {{ok}} importados, {{fora}} não entraram.",
     "variosTorneiosJaEstavam": "Arquivo com {{n}} torneios. {{ok}} novos, {{ja}} já estavam no seu histórico.",
     "variosTorneiosMisto": "Arquivo com {{n}} torneios. {{ok}} novos, {{ja}} já estavam, {{fora}} não entraram."

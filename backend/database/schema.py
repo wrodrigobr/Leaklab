@@ -236,6 +236,17 @@ def interval_sql(days: int) -> str:
     return f"datetime('now', '-{days} days')"
 
 
+def interval_minutos_sql(minutos: int) -> str:
+    """Irmão de `interval_sql` para janelas curtas (reset de trabalho órfão).
+
+    Mora aqui, e não no módulo que precisou dele, porque aritmética de tempo nas duas gramáticas
+    já tem casa. A primeira versão da recepção de upload chamou `interval_sql(minutos * 60)`,
+    que pede DIAS: 15 minutos viraram 900 dias, e a janela nunca fecharia."""
+    if USE_POSTGRES:
+        return f"NOW() - INTERVAL '{int(minutos)} minutes'"
+    return f"datetime('now', '-{int(minutos)} minutes')"
+
+
 # ── Init ──────────────────────────────────────────────────────────────────────
 
 def init_db():
@@ -608,7 +619,31 @@ def _pg_exec_isolated(conn, sql):
             pass
 
 
+def _criar_tabelas_de_modulo(conn):
+    """Tabelas cuja DDL mora no módulo que as usa, criadas junto com o resto do schema.
+
+    Esses módulos guardam a própria DDL nas duas gramáticas para poderem ser testados sem
+    servidor, e criavam a tabela na primeira chamada, com um memo de módulo. O memo é a
+    armadilha: ele sobrevive à TROCA de banco. Na suíte, o primeiro teste criava a tabela no
+    seu SQLite temporário e marcava "criada"; do segundo em diante o banco era outro e a tabela
+    não existia mais -- nove casos morreram com `no such table`, e em produção o mesmo padrão
+    apareceria em qualquer processo que trocasse de banco em tempo de execução.
+
+    Criando aqui, a tabela nasce com `init_db()` como todas as outras, e o memo deixa de ser
+    load-bearing. A DDL continua no módulo: uma fonte só, dois lugares que a executam.
+    """
+    from leaklab.recepcao_de_upload import _stmts as _ddl_uploads
+    for sql in _ddl_uploads(USE_POSTGRES):
+        try:
+            conn.execute(sql)
+        except Exception:
+            # Bloco isolado de propósito: no Postgres uma DDL que falha aborta a transação e
+            # derrubaria as migrações seguintes (defeito já pago nesta base).
+            conn.rollback()
+
+
 def _run_migrations(conn):
+    _criar_tabelas_de_modulo(conn)
     if USE_POSTGRES:
         for sql in [
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS invite_key     TEXT UNIQUE",

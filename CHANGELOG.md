@@ -4,6 +4,98 @@ Todas as mudanÃ§as notÃ¡veis neste projeto serÃ£o documentadas aqui.
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
+## Receber o arquivo deixou de ser processar o arquivo (14/09)
+
+Um fundador tentou subir tres arquivos. Dois mostraram `NetworkError` e um passou. Nos logs de
+producao:
+
+    16:57:32 [CRITICAL] WORKER TIMEOUT (pid:8)     -> /analyze
+    16:59:34 [CRITICAL] WORKER TIMEOUT (pid:3365)  -> /analyze
+
+Os dois que a tela disse ter falhado tinham gravado **22 torneios**. Ele reenviou achando que
+havia perdido tudo, e sobrou um registro com cabecalho e zero decisao -- o worker morreu 0,4 s
+depois do commit do torneio, o mesmo padrao do t262.
+
+**O dono havia pedido esta separacao duas vezes.** Nao foi construida antes.
+
+### O ensaio, e o que ele derrubou
+
+Homologuei o arquivo real (3,1 MB, 18 torneios, 1.889 maos) e reproduzi em producao com conta
+descartavel, pela rota publica:
+
+    homologacao (Postgres no mesmo host) .....  36,1 s  HTTP 200   1,9 s por torneio
+    PRODUCAO    (Neon remoto) ................ 117,4 s  HTTP 200   6,2 s por torneio
+
+Passou **por 2,6 segundos** dos 120 s do gunicorn, e isso numa conta VAZIA. Duas hipoteses
+minhas morreram no caminho: nao e volume (a homologacao engoliu o arquivo inteiro em 36 s) e nao
+e o caminho de mesclar (reimportar o mesmo arquivo custou 13 s).
+
+O que e: rede. Medi a viagem de ida e volta ao Neon em **8,10 ms** e contei **311 viagens** por
+torneio de 123 decisoes -- entre elas as 123 do `executemany`, que no psycopg2 manda uma
+instrucao por linha. Perto de 40% do tempo.
+
+### Por que otimizar nao resolvia
+
+Agrupar as maiores (as 123 das decisoes e as 29 de `opponent_profiles`) economiza ~1,2 s por
+torneio: os 117 s virariam ~96 s. Continua a um pico de latencia de falhar, e qualquer arquivo
+maior falha de novo. **Nenhum orcamento dentro de uma requisicao HTTP da garantia sobre latencia
+de rede e contencao de CPU.** Por isso o conserto e sair da requisicao.
+
+### O conserto
+
+`POST /uploads` confere o formato, grava os bytes e devolve **202 com recibo**. O consumer, que
+ja roda em laco, divide e processa torneio por torneio pelo MESMO `_analyze_impl` de hoje.
+`GET /uploads/<id>` da o andamento; `GET /uploads` devolve os pendentes e faz a fila sobreviver
+ao F5.
+
+Quatro decisoes que valem registro:
+
+**Rota nova, e o `/analyze` fica de pe.** O front vem de CDN e um navegador com bundle antigo em
+cache continuaria chamando a rota velha. Trocar o contrato dela quebraria esse jogador no meio do
+deploy.
+
+**Erro de FORMATO e sincrono; erro de PROCESSAMENTO vai para o recibo.** Se ele arrastou o
+arquivo errado precisa saber ja. Se o processamento falhar, o arquivo esta guardado e ele nao
+reenvia nada, que era o pedido.
+
+**Idempotencia por `sha256` + `user_id`, no BANCO (UNIQUE) e nao num `if`.** Rearrastar o mesmo
+arquivo devolve o MESMO recibo. So isso teria evitado a confusao do incidente.
+
+**Batimento de coracao.** Um arquivo de 100 torneios passa dos 15 minutos do reset de travado, e
+sem batimento ele seria devolvido a fila no meio do proprio processamento, com dois passes
+concorrentes. Quem esta vivo mantem a propria vez.
+
+E o worker roda ANTES de drenar o solver: o import e o que o jogador esta olhando, solve e fundo.
+
+### Tres defeitos meus que os testes pegaram
+
+1. **O summary ia quebrar.** Arquivo de Tournament Summary nao e hand history, entao a minha
+   peneira o recusava com 422. Agora o `/uploads` tenta o summary primeiro, com o proprio
+   `_apply_tournament_summary`, que ja e detector e executor.
+2. **A frase da fila de analise desapareceu calada.** O recibo nao carregava
+   `analysis_waitlisted`, e o jogador Free perdia a informacao de que o torneio ENTROU e so a
+   camada GTO aguarda vaga. Foi o guarda de fiacao do front que acusou.
+3. **`no such table` em nove casos.** A DDL do modulo era criada na primeira chamada com um memo
+   de modulo, e o memo sobrevive a TROCA de banco: o primeiro teste criava a tabela no seu SQLite
+   e marcava "criada". Agora a tabela nasce em `_run_migrations` como todas as outras, e o memo
+   deixou de ser load-bearing.
+
+Junto: `interval_minutos_sql` ao lado de `interval_sql`, porque a primeira versao chamou
+`interval_sql(minutos * 60)` -- que pede DIAS, e 15 minutos viraram 900 dias.
+
+### Testes
+
+`test_recepcao_de_upload.py` (15) e `test_multiway_nao_vai_para_o_solver.py` (8). Os quatro
+guardas de fiacao do `uploadQueueVariosTorneios` foram atualizados para o encaixe novo em vez de
+apagados, e um deles foi quebrado de proposito para confirmar que acusa. Front 584/584.
+
+### O que continua aberto
+
+O gate de multiway no enfileiramento entra neste commit (o solver e heads-up e 8.953 decisoes
+multiway recebiam veredito dele). A parte de LEITURA daquela frente -- tirar multiway dos seis
+agregados que somam e ranqueiam -- segue pendente, com a autorizacao do dono ja dada.
+
+---
 ## 1.519 cards mandavam fazer uma coisa e recomendavam outra (14/09)
 
 Achado respondendo uma pergunta do dono sobre UMA mao: ele mandou o link do replayer da mao
