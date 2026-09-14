@@ -135,6 +135,32 @@ def _resultado(n_ativos):
     }
 
 
+def _zera_a_fila_do_solver():
+    """Limpa a fila e o acervo de nos ANTES de medir.
+
+    Sem isto o caso passava em SQLite (arquivo novo por teste) e falhava em POSTGRES, porque o
+    banco persiste ENTRE RODADAS: o spot ja estava enfileirado de uma execucao anterior, o
+    `enqueue_solver_spot` nao criava linha nova, e o teste lia "o upload deixou de enfileirar".
+    Defeito do teste, nao do produto -- e a familia de defeito que so aparece com banco
+    compartilhado, que e exatamente o que o Postgres local existe para expor.
+
+    Apagar por aqui e seguro porque este banco e descartavel. Em PRODUCAO nao seria: os spots da
+    `gto_solver_queue` sao compartilhados por HASH entre usuarios, e apagar removeria solve que
+    outra conta tambem espera.
+    """
+    from database.schema import get_conn
+    conn = get_conn()
+    try:
+        for tab in ('gto_solver_queue', 'gto_nodes'):
+            try:
+                conn.execute("DELETE FROM %s" % tab)
+                conn.commit()
+            except Exception:
+                conn.rollback()
+    finally:
+        conn.close()
+
+
 def _na_fila():
     from database.schema import get_conn
     conn = get_conn()
@@ -148,6 +174,7 @@ def _na_fila():
 def test_o_upload_nao_enfileira_multiway():
     with banco_de_teste():
         import api.app as A
+        _zera_a_fila_do_solver()
         antes = _na_fila()
         A._enqueue_postflop_spots([_resultado(2)], tournament_id=None, user_id=UID)
         assert _na_fila() == antes, 'o upload enfileirou um flop multiway'
@@ -158,6 +185,7 @@ def test_o_upload_ENFILEIRA_o_heads_up():
     no caso acima e o produto pararia de solvar qualquer coisa, calado."""
     with banco_de_teste():
         import api.app as A
+        _zera_a_fila_do_solver()
         antes = _na_fila()
         A._enqueue_postflop_spots([_resultado(1)], tournament_id=None, user_id=UID)
         assert _na_fila() > antes, 'o upload deixou de enfileirar heads-up'

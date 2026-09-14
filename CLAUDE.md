@@ -106,10 +106,22 @@ A suíte roda em SQLite por padrão, e o dialeto do Postgres já esconde defeito
 Docker é que não existe. Medido em 14/09 com um defeito real de isolamento entre casos: SQLite
 devolveu **20 de 20** e o mesmo Postgres local devolveu **9 de 20**.
 
+Rode **as suítes da sua frente**, uma a uma, e não o `run_all_tests.py`:
+
 ```bash
 cd backend
-DATABASE_URL="postgresql://postgres:postgres@127.0.0.1:5432/leaklab_suite" LEAKLAB_SECRET="dev_local_apenas_para_testes_0000000000000000"   PYTHONIOENCODING=utf-8 PYTHONDONTWRITEBYTECODE=1 python tests/run_all_tests.py
+DATABASE_URL="postgresql://postgres:postgres@127.0.0.1:5432/leaklab_suite" LEAKLAB_SECRET="dev_local_apenas_para_testes_0000000000000000"   PYTHONIOENCODING=utf-8 PYTHONDONTWRITEBYTECODE=1 python tests/test_a_sua_suite.py
 ```
+
+**A suíte INTEIRA contra Postgres não é caminho suportado hoje**, e isto é medido: ela devolve
+240 falhas de 2.872, e quase todas são artefato do harness, não defeito do produto. **65 dos 311
+arquivos de teste forçam SQLite** via `LEAKLAB_DB`, e com `USE_POSTGRES` já `True` na importação
+eles recebem SQL de Postgres num SQLite (`no such function: pg_advisory_xact_lock`); outros usam
+`PRAGMA`, que só existe em SQLite; e vários não limpam num banco compartilhado. Ler aquele 240
+como regressão é o "zero tranquilizador" ao contrário.
+
+Serve para a suíte que usa o harness agnóstico `banco_de_teste()`, que é justamente a que importa
+quando há SQL novo.
 
 Duas pegadinhas:
 
