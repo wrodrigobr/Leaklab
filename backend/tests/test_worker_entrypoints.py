@@ -30,6 +30,8 @@ _WORKERS_OBRIGATORIOS = {
                                  '"spots sendo validados" no dashboard depende dela',
     '_evolution_report_worker_loop': 'congela os retratos datados do relatório de evolução; '
                                      'sem ela a cadência automática nunca dispara',
+    '_uploads_worker_loop':      'processa os arquivos recebidos em /uploads; sem ela o jogador '
+                                 'vê "arquivo recebido" para sempre e nada é importado',
 }
 
 
