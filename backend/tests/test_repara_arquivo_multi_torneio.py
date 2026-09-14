@@ -242,6 +242,12 @@ def test_o_MESMO_torneio_em_DOIS_registros_faz_MERGE_e_nao_colide():
         (UID, '666000002')).fetchall()}
     conn.close()
 
+    # O RELATORIO tem de dizer MERGE, nao "pulado": o dono aprova o reparo lendo o dry-run, e a
+    # mensagem antiga afirmava que aquelas maos ficavam onde estavam — o oposto do que acontece.
+    assert 'MERGE em t' in r.stdout, (
+        'o relatorio nao declara o merge: %s' % r.stdout[-400:])
+    assert 'pulado' not in r.stdout, (
+        'o relatorio voltou a dizer que a colisao e "pulada", e ela faz merge')
     assert por_tid.get('666000002') and len(por_tid['666000002']) == 1, (
         'o torneio compartilhado gerou %s registro(s); deveria gerar UM' % len(
             por_tid.get('666000002') or []))

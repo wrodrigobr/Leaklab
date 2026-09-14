@@ -287,6 +287,16 @@ def _relatorio(conn, planos, por_hand_cache):
     print('=' * 92)
     print('PLANO DE SEPARACAO (dry-run: nada foi escrito)')
     print('=' * 92)
+    # Torneios que aparecem em MAIS DE UM registro: o primeiro cria, os outros fazem MERGE.
+    # O relatorio tem de declarar isso — o dono aprova o reparo lendo daqui, e um merge que nao
+    # aparece no plano e uma escrita que ele nao aprovou. No acervo do pagante sao 6 casos.
+    _vezes = {}
+    for _p in planos:
+        if _p.get('recusa'):
+            continue
+        for _i in _p['novos']:
+            _vezes.setdefault(_i['tournament_id'], []).append(_p['id'])
+    repetidos = {t: v for t, v in _vezes.items() if len(v) > 1}
     total_novos = total_movidas = 0
     for p in planos:
         if p.get('recusa'):
@@ -302,14 +312,30 @@ def _relatorio(conn, planos, por_hand_cache):
             p['fica']['n_maos'], fica_decs))
         for n in p['novos']:
             ndecs = sum(len(por_hand.get(h, [])) for h in n['hand_ids'])
+            tid_n = n['tournament_id']
+            if tid_n in repetidos and repetidos[tid_n][0] != p['id']:
+                # nao e o primeiro registro a conter este torneio: as maos vao para o que veio antes
+                print('     MERGE em t%-6s %-14s %4d maos (%d no texto), %4d decisoes a mover' % (
+                    repetidos[tid_n][0], tid_n, _maos_contadas(n['hand_ids'], por_hand),
+                    n['n_maos'], ndecs))
+                total_movidas += ndecs
+                continue
             total_novos += 1
             total_movidas += ndecs
             print('     registro NOVO:   %-14s %4d maos (%d no texto), %4d decisoes a mover' % (
                 n['tournament_id'], _maos_contadas(n['hand_ids'], por_hand), n['n_maos'],
                 ndecs))
         for tid, outro_id, nm in p['colisoes']:
-            print('     COLISAO:         %-14s %4d maos ja tem o registro t%s (pulado)' % (
-                tid, nm, outro_id))
+            # MERGE, e nao "pulado": a mensagem antiga dizia que as maos ficavam onde estao, e o
+            # dono aprova o reparo lendo ESTE relatorio. Desde o conserto do UniqueViolation o
+            # comportamento e mover as decisoes para o registro que ja abriga o torneio.
+            ndecs_m = sum(len(por_hand.get(h, []))
+                          for item in p['novos'] if item['tournament_id'] == tid
+                          for h in item['hand_ids'])
+            print('     MERGE em t%-6s %-14s %4d maos (%d no texto), %4d decisoes a mover' % (
+                outro_id, tid, _maos_contadas(
+                    [h for item in p['novos'] if item['tournament_id'] == tid
+                     for h in item['hand_ids']], por_hand), nm, ndecs_m))
         # decisoes que nao casaram com nenhum grupo: nao podem existir, e se existirem eu quero
         # saber ANTES de mover — seriam decisoes orfas do proprio registro.
         todos_hids = set(p['fica']['hand_ids'])
@@ -344,6 +370,9 @@ def _relatorio(conn, planos, por_hand_cache):
     print()
     print('  ' + '-' * 88)
     print('  registros novos a criar: %d   |   decisoes a mover: %d' % (total_novos, total_movidas))
+    if repetidos:
+        print('  torneios que aparecem em MAIS DE UM registro (fazem MERGE, nao criam): %d' %
+              len(repetidos))
     print('  (mover preserva drill_sessions e vereditos_por_semelhanca: os ponteiros sao para')
     print('   decisions.id, que nao muda)')
 
