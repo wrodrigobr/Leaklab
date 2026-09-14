@@ -13302,6 +13302,35 @@ def _processar_uploads_recebidos() -> dict:
             'com_erro': com_erro}
 
 
+def _uploads_worker_loop():
+    """Laco PROPRIO do processamento de upload. Nao mora dentro do laco do solver, e isso foi
+    um defeito meu que o pedido de testar em localhost expos.
+
+    A primeira versao chamava `_processar_uploads_recebidos()` de dentro de
+    `_solver_queue_worker_loop`. Duas consequencias, as duas ruins:
+
+      · em DEV o upload nunca era processado. Aquele laco so sobe com `LEAKLAB_LOCAL_SOLVER=1`,
+        que acende o solver Rust local e come CPU -- ou seja, para ver o proprio upload funcionar
+        era preciso ligar uma coisa que nao tem nada a ver com ele.
+      · em PRODUCAO, desligar o solver pararia os uploads junto. Sao preocupacoes diferentes:
+        solve e trabalho de fundo, import e o que o jogador esta olhando na tela.
+
+    Enquanto houver recibo, roda em sequencia sem dormir. Fila vazia dorme 5s -- e polling, e nao
+    evento, de proposito: a tabela e pequena e indexada por (status, recebido_em), e um SELECT a
+    cada 5s custa uma viagem de 8ms contra o Neon. Trocar isso por sinalizacao acoplaria a rota
+    HTTP ao worker sem ganho mensuravel.
+    """
+    time.sleep(3)
+    while True:
+        try:
+            r = _processar_uploads_recebidos() or {}
+        except Exception:
+            log.exception("processar uploads recebidos error")
+            r = {}
+        if not r.get('recibo'):
+            time.sleep(5)
+
+
 def _reconcile_drained_tournaments(limite_s: float | None = None):
     """Re-anexa o gto_label das decisões de torneios cuja fila do solver JÁ drenou (todos os
     spots 'done') e cujo solve é mais novo que a última reconciliação. Corrige a cobertura
@@ -13436,14 +13465,6 @@ def _solver_queue_worker_loop():
                 promover_aguardando()
             except Exception:
                 log.exception("promover analises aguardando error")
-            # ANTES de drenar o solver: o import e o que o jogador esta olhando; solve e fundo.
-            # Um recibo por tick, sem teto dentro do arquivo -- aqui nao ha prazo de requisicao,
-            # que era todo o problema. O batimento em `tocar` impede que o reset de travado
-            # devolva a fila um arquivo que ainda esta sendo processado.
-            try:
-                _processar_uploads_recebidos()
-            except Exception:
-                log.exception("processar uploads recebidos error")
             if pending > 0:
                 tick += 1
                 log.info("Solver queue [tick %s]: pending=%s conc=%s", tick, pending, _conc)
@@ -13471,6 +13492,10 @@ if __name__ == '__main__':
     import os as _os
     _worker = threading.Thread(target=_gto_hand_worker_loop, daemon=True, name='gto-hand-worker')
     _worker.start()
+    # Upload: sobe SEMPRE, inclusive em dev. Ele nao come CPU (le uma tabela pequena a cada 5s) e
+    # sem ele o arquivo e recebido e nunca processado -- o jogador veria "recebido" para sempre.
+    threading.Thread(target=_uploads_worker_loop, daemon=True, name='uploads-worker').start()
+    log.info("uploads-worker iniciado (processa os arquivos recebidos em /uploads)")
     # Worker do SOLVER LOCAL (Rust solver_cli): DESLIGADO por padrão em dev — ele drena a fila
     # e come CPU (derruba o PC). O solve de verdade roda no servidor dedicado (Hetzner). Este
     # bloco __main__ nem executa em prod (gunicorn). Pra solvar localmente de propósito:

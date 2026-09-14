@@ -44,7 +44,7 @@ if __name__ == '__main__':
     # Importa os loops do app (define as rotas no import, mas o bloco __main__ do app NÃO roda).
     from api.app import (_solver_queue_worker_loop, _gto_hand_worker_loop,
                          _evolution_report_worker_loop, _cobranca_email_worker_loop,
-                         _reconcile_loop)
+                         _reconcile_loop, _uploads_worker_loop)
     log = logging.getLogger(__name__)
 
     if os.environ.get('EVOLUTION_REPORT_WORKER', '1') != '0':
@@ -60,6 +60,11 @@ if __name__ == '__main__':
         log.info("solver-consumer: worker da COBRANÇA por e-mail iniciado (envio gated por "
                  "ENGAGEMENT_EMAIL_ENABLED)")
         log.info("solver-consumer: worker do RELATÓRIO de evolução iniciado")
+
+    # UPLOAD: laco proprio, e nao dentro do laco do solver. Desligar o solver nao pode parar o
+    # import, que e o que o jogador esta olhando na tela.
+    threading.Thread(target=_uploads_worker_loop, daemon=True, name='uploads-worker').start()
+    log.info("solver-consumer: worker de UPLOAD (uploads_recebidos) iniciado")
 
     if os.environ.get('GTO_HAND_WORKER', '1') != '0':
         # Thread separada de propósito: se a fila de mãos falhar, o solver segue drenando.
