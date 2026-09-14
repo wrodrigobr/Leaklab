@@ -434,8 +434,12 @@ def test_quem_NAO_tem_teto_nao_e_afetado():
         from database.schema import get_conn
         from database.repositories import _adapt
         c = get_conn()
+        # `coach` e o plano SEM teto (`tournaments=None`) -- conferido em PLAN_LIMITS. A 1a
+        # versao usou 'unlimited', que nao existe: `PLAN_LIMITS.get(plan, PLAN_LIMITS['free'])`
+        # cai em FREE, cujo teto e 30, e o teste media o oposto do que pretendia. Passou em
+        # SQLite por sorte (banco novo, contador zerado) e caiu no Postgres.
         c.execute(_adapt("UPDATE users SET plan=?, tournaments_limit_override=NULL WHERE id=?"),
-                  ('unlimited', UID))
+                  ('coach', UID))
         c.commit(); c.close()
 
         rid = cliente.post('/uploads', json={'content': _cinco_torneios_datados()},

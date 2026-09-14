@@ -175,7 +175,31 @@ def banco_de_teste():
     from database.repositories import _adapt
     from database.auth import generate_token
 
+    def limpa_opcionais():
+        """Tabelas que podem nao existir neste banco, cada uma em CONEXAO PROPRIA.
+
+        14/09: sem limpa-las as suites passavam em SQLite e caiam em POSTGRES -- aqui cada teste
+        ganha um arquivo temporario novo e o lixo do anterior nao existe; la o banco e o MESMO
+        entre os casos, e os recibos de um teste derrubavam todos os seguintes (11 de 20 falharam,
+        a maioria com 429 "espera cheia").
+
+        Conexao propria, e nao um `try/except` dentro da limpeza principal: a 1a versao fazia
+        `conn.rollback()` no except, o que desfaz a TRANSACAO INTEIRA -- os deletes de torneio e
+        decisao voltavam, e o `DELETE FROM users` seguinte estourava FOREIGN KEY. Trocar um erro
+        por outro pior e o que a regra 7 proibe.
+        """
+        for _tab in ('uploads_recebidos', 'gto_analysis_waitlist'):
+            c2 = get_conn()
+            try:
+                c2.execute(_adapt("DELETE FROM %s WHERE user_id=?" % _tab), (UID,))
+                c2.commit()
+            except Exception:
+                pass                     # tabela ainda nao criada neste banco
+            finally:
+                c2.close()
+
     def limpa():
+        limpa_opcionais()
         conn = get_conn()
         try:
             ids = [dict(x)['id'] for x in conn.execute(_adapt(
