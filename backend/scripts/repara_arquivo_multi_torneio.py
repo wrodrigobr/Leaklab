@@ -236,12 +236,30 @@ def _maos_do_registro(conn, tournament_db_id):
 
 
 def _ordena_maos(maos):
-    """Uniao ORDENADA por hand_id, a mesma regra do merge do `/analyze`: o # global do
-    PokerStars e monotonico no tempo, e sem isso a sequencia segue a ordem de IMPORT."""
+    """Uniao ORDENADA por hand_id **e sem repetir mao**, a mesma regra do merge do `/analyze`.
+
+    Duas partes, e a segunda me custou um ensaio: o `/analyze` calcula `_new_hands` (as maos que
+    NAO estao no existente) antes de unir, ou seja ele DEDUPLICA. A primeira versao daqui
+    concatenava, e como o registro misturado contem o mesmo torneio com as MESMAS maos, o texto
+    do destino ficava com cada mao DUAS vezes: o t1215 saiu do ensaio com 264 maos no texto para
+    131 distintas com decisao, e os perfis de oponente contaram `hands_seen` em dobro (258 num
+    torneio de 131 maos — impossivel, e foi o numero que me fez investigar).
+
+    A ordem por `hand_id` importa porque o # global do PokerStars e monotonico no tempo: sem
+    ela a sequencia segue a ordem de IMPORT, e importar o dia 2 antes do dia 1 embaralha.
+    """
     def chave(h):
         hid = str(getattr(h, 'hand_id', '') or '')
         return (0, int(hid)) if hid.isdigit() else (1, hid)
-    return sorted(maos, key=chave)
+    vistas, fora = set(), []
+    for h in maos:
+        hid = str(getattr(h, 'hand_id', '') or '')
+        if hid and hid in vistas:
+            continue
+        if hid:
+            vistas.add(hid)
+        fora.append(h)
+    return sorted(fora, key=chave)
 
 
 def _tem_decisao(conn, tournament_db_id):

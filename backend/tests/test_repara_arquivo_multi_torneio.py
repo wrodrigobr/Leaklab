@@ -549,6 +549,78 @@ def test_o_PLANO_anunciado_bate_com_o_EXECUTADO():
             criados, len(depois_ids - antes_ids)))
 
 
+def test_o_MERGE_nao_DUPLICA_mao_no_texto():
+    """Achado no ensaio final, e os 24 guardas anteriores passaram verdes por cima dele.
+
+    O merge acrescenta as maos ao `raw_text` do destino. Se a mao JA esta la — e esta, porque o
+    registro misturado contem o mesmo torneio com as mesmas maos — o texto fica com cada mao
+    DUAS vezes. No ensaio o t1215 saiu com **264 maos no texto para 131 distintas com decisao**,
+    e os perfis de oponente contaram `hands_seen` em dobro: 258 num torneio de 131 maos, numero
+    impossivel que foi o que me fez investigar.
+
+    O `/analyze` nao tem esse defeito: ele calcula `_new_hands` (as que nao estao no existente)
+    antes de unir. O reparo passou a deduplicar por `hand_id` igual.
+
+    Por que nenhum guarda pegava: o cenario deste arquivo desloca o `hand_id` de proposito (para
+    o merge nao deduplicar e o teste medir movimentacao), entao as maos NUNCA se repetiam. Aqui o
+    cenario e o oposto — as MESMAS maos nos dois registros, que e o caso real.
+    """
+    import re as _re
+    from leaklab.parser import parse_pokerstars_file_from_text
+    raw = io.open(os.path.join(_FIX, 'revalidation_mini.txt'), encoding='utf-8').read()
+    blocos = [b for b in _re.split(r'(?=PokerStars Hand #)', raw) if b.strip()]
+
+    def com(ids):
+        return ''.join(_re.sub(r'Tournament #(\d+)', 'Tournament #' + t, b)
+                       for b, t in zip(blocos, ids))
+
+    # t7501 tem o torneio 777000001 com as 3 primeiras maos; t7502 tem O MESMO torneio com as
+    # MESMAS maos (hand_id identico) mais duas de outro torneio.
+    texto_a = com(['777000001'] * 3 + ['777000009'] * 2)
+    texto_b = com(['777000001'] * 3 + ['777000002'] * 2)
+
+    conn = get_conn()
+    for t in (7501, 7502):
+        conn.execute(_adapt("DELETE FROM opponent_profiles WHERE tournament_id=?"), (t,))
+        conn.execute(_adapt("DELETE FROM decisions WHERE tournament_id=?"), (t,))
+    conn.execute(_adapt("DELETE FROM tournaments WHERE user_id=?"), (UID,))
+    conn.execute(_adapt("DELETE FROM users WHERE id=?"), (UID,))
+    conn.execute(_adapt(
+        "INSERT INTO users (id, username, email, password_hash, plan) VALUES (?,?,?,?,?)"),
+        (UID, 'dup2', 'dup2@e.st', 'h', 'pro'))
+    for tid, gravado, texto in ((7501, '777000001', texto_a), (7502, '777000002', texto_b)):
+        conn.execute(_adapt(
+            "INSERT INTO tournaments (id, user_id, tournament_id, site, tournament_name, hero, "
+            "played_at, imported_at, hands_count, decisions_count, raw_text) "
+            "VALUES (?,?,?,?,?,?,?,?,?,?,?)"),
+            (tid, UID, gravado, 'pokerstars', 'N', 'HeroPlayer', '2026-09-01',
+             '2026-09-02 03:04:05', 5, 0, texto))
+        for m in parse_pokerstars_file_from_text(texto):
+            conn.execute(_adapt(
+                "INSERT INTO decisions (tournament_id, hand_id, street, position, action_taken, "
+                "best_action, label, score, spot_hash) VALUES (?,?,?,?,?,?,?,?,?)"),
+                (tid, str(getattr(m, 'hand_id', '') or ''), 'preflop', 'BTN', 'raise',
+                 'raise', 'standard', 0.8, 'sp-%s-%s' % (tid, getattr(m, 'hand_id', ''))))
+    conn.commit(); conn.close()
+
+    dump = tempfile.NamedTemporaryFile(suffix='.jsonl', delete=False); dump.close()
+    r = _roda('--user', str(UID), '--apply', '--dump', dump.name)
+    assert r.returncode == 0, (r.stderr or r.stdout)[-500:]
+
+    conn = get_conn()
+    linhas = [dict(x) for x in conn.execute(_adapt(
+        "SELECT id, tournament_id, raw_text FROM tournaments WHERE user_id=? ORDER BY id"),
+        (UID,)).fetchall()]
+    conn.close()
+    for l in linhas:
+        maos = parse_pokerstars_file_from_text(l['raw_text'] or '')
+        hids = [str(getattr(m, 'hand_id', '') or '') for m in maos]
+        repetidas = [h for h in set(hids) if hids.count(h) > 1]
+        assert repetidas == [], (
+            'o registro %s tem mao(s) repetida(s) no texto: %s (%d maos, %d distintas)' % (
+                l['tournament_id'], repetidas[:3], len(hids), len(set(hids))))
+
+
 def test_o_dry_run_NAO_escreve_nada():
     """CONTROLE que vale por todos os outros: se o dry-run escrevesse, cada teste abaixo estaria
     medindo um banco ja mexido."""
