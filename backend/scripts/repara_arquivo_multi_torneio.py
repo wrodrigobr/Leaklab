@@ -313,10 +313,18 @@ def _relatorio(conn, planos, por_hand_cache):
         for n in p['novos']:
             ndecs = sum(len(por_hand.get(h, [])) for h in n['hand_ids'])
             tid_n = n['tournament_id']
-            if tid_n in repetidos and repetidos[tid_n][0] != p['id']:
-                # nao e o primeiro registro a conter este torneio: as maos vao para o que veio antes
+            # DUAS razoes para ser merge, e a primeira version deste relatorio olhava so a
+            # segunda: (a) o torneio JA tem registro proprio (`destino`, vindo do plano) — foi o
+            # caso dos 29 torneios que o jogador subiu de madrugada, ja separados; (b) o torneio
+            # aparece em mais de um registro misturado, e o primeiro deles e quem cria.
+            # Sem olhar (a), o MESMO torneio saia como "registro NOVO" numa linha e "MERGE" na
+            # outra, e o total de novos vinha inflado — numero que o dono usa para aprovar.
+            destino_rel = n.get('destino')
+            if not destino_rel and tid_n in repetidos and repetidos[tid_n][0] != p['id']:
+                destino_rel = repetidos[tid_n][0]
+            if destino_rel:
                 print('     MERGE em t%-6s %-14s %4d maos (%d no texto), %4d decisoes a mover' % (
-                    repetidos[tid_n][0], tid_n, _maos_contadas(n['hand_ids'], por_hand),
+                    destino_rel, tid_n, _maos_contadas(n['hand_ids'], por_hand),
                     n['n_maos'], ndecs))
                 total_movidas += ndecs
                 continue
@@ -370,9 +378,14 @@ def _relatorio(conn, planos, por_hand_cache):
     print()
     print('  ' + '-' * 88)
     print('  registros novos a criar: %d   |   decisoes a mover: %d' % (total_novos, total_movidas))
+    n_merge_existente = sum(1 for _p in planos if not _p.get('recusa')
+                            for _i in _p['novos'] if _i.get('destino'))
+    if n_merge_existente:
+        print('  desses, %d torneio(s) JA tem registro proprio: as maos vao para la (MERGE)' %
+              n_merge_existente)
     if repetidos:
-        print('  torneios que aparecem em MAIS DE UM registro (fazem MERGE, nao criam): %d' %
-              len(repetidos))
+        print('  e %d torneio(s) aparecem em mais de um registro misturado (o 1o cria, os outros '
+              'fazem MERGE)' % len(repetidos))
     print('  (mover preserva drill_sessions e vereditos_por_semelhanca: os ponteiros sao para')
     print('   decisions.id, que nao muda)')
 

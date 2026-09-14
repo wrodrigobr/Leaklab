@@ -492,6 +492,63 @@ def test_o_HUD_de_oponente_e_REFEITO_por_torneio():
         'o perfil inflado foi apagado sem ir para o dump')
 
 
+def test_o_PLANO_anunciado_bate_com_o_EXECUTADO():
+    """O guarda que faltava, e ele nasceu de tres defeitos que a homologacao nao pegou.
+
+    O ensaio com a copia do acervo real validou o RESULTADO — banco depois, campo a campo,
+    decisao por decisao. Nunca validou o que o RELATORIO dizia que ia acontecer. E o relatorio e
+    o que o dono le para aprovar o reparo.
+
+    Os tres que escaparam, todos achados lendo o dry-run em producao:
+      - a mensagem dizia "COLISAO (pulado)" quando o comportamento ja era MERGE;
+      - o merge entre dois registros MISTURADOS nao era declarado (6 casos no acervo);
+      - e o MESMO torneio saia como "registro NOVO" e como "MERGE", inflando o total.
+
+    Este teste compara os DOIS numeros que o dono usa para decidir: registros novos a criar e
+    decisoes a mover. Se o plano promete um e o apply faz outro, acusa — qualquer que seja a
+    causa, inclusive uma que eu ainda nao conheca.
+    """
+    import re as _re
+    _monta()
+    # o cenario tem material para as duas formas de merge: um torneio com registro proprio
+    conn = get_conn()
+    conn.execute(_adapt(
+        "INSERT INTO tournaments (id, user_id, tournament_id, site, tournament_name, hero, "
+        "played_at, imported_at, hands_count, decisions_count, raw_text) "
+        "VALUES (?,?,?,?,?,?,?,?,?,?,?)"),
+        (7398, UID, '555000003', 'pokerstars', 'N', 'HeroPlayer', '2026-09-01',
+         '2026-09-02 03:04:05', 0, 0, ''))
+    conn.commit(); conn.close()
+
+    seco = _roda('--user', str(UID))
+    assert seco.returncode == 0, seco.stderr[-400:]
+    m_novos = _re.search(r'registros novos a criar:\s*(\d+)', seco.stdout)
+    m_mov = _re.search(r'decisoes a mover:\s*(\d+)', seco.stdout)
+    assert m_novos and m_mov, seco.stdout[-400:]
+    prometido_novos = int(m_novos.group(1))
+    prometido_mov = int(m_mov.group(1))
+
+    antes_ids = {t['id'] for t in _estado()[0]}
+    dump = tempfile.NamedTemporaryFile(suffix='.jsonl', delete=False); dump.close()
+    feito = _roda('--user', str(UID), '--apply', '--dump', dump.name)
+    assert feito.returncode == 0, feito.stderr[-600:]
+    m_criados = _re.search(r'pronto:\s*(\d+) registros criados,\s*(\d+) decisoes movidas',
+                           feito.stdout)
+    assert m_criados, feito.stdout[-400:]
+    criados = int(m_criados.group(1))
+    movidas = int(m_criados.group(2))
+
+    assert criados == prometido_novos, (
+        'o plano prometeu %d registros novos e o apply criou %d' % (prometido_novos, criados))
+    assert movidas == prometido_mov, (
+        'o plano prometeu mover %d decisoes e o apply moveu %d' % (prometido_mov, movidas))
+    # e o banco confirma: os registros novos existem de fato
+    depois_ids = {t['id'] for t in _estado()[0]}
+    assert len(depois_ids - antes_ids) == criados, (
+        'o apply diz %d criados mas o banco ganhou %d registros' % (
+            criados, len(depois_ids - antes_ids)))
+
+
 def test_o_dry_run_NAO_escreve_nada():
     """CONTROLE que vale por todos os outros: se o dry-run escrevesse, cada teste abaixo estaria
     medindo um banco ja mexido."""
@@ -501,6 +558,47 @@ def test_o_dry_run_NAO_escreve_nada():
     assert r.returncode == 0, r.stderr[-600:]
     assert 'dry-run' in r.stdout, r.stdout[-400:]
     assert _estado() == antes, 'o dry-run mexeu no banco'
+
+
+def test_o_relatorio_NAO_anuncia_como_novo_o_que_vai_fazer_MERGE():
+    """O dono aprova o reparo lendo o dry-run: o numero de "registros novos" tem de ser o que
+    sera criado, nem um a mais.
+
+    Achado lendo o proprio relatorio em producao: o MESMO torneio saia como "registro NOVO" numa
+    linha e "MERGE em t1214" na outra, porque a linha de novo registro nao olhava o campo
+    `destino` do plano — so a repeticao entre planos. Os 29 torneios que o jogador subiu de
+    madrugada (ja separados, com registro proprio) caiam todos nesse caso, e o total de novos
+    vinha inflado.
+    """
+    _monta()
+    # o torneio 555000002 passa a TER registro proprio: os planos que o contem devem fazer merge
+    conn = get_conn()
+    conn.execute(_adapt(
+        "INSERT INTO tournaments (id, user_id, tournament_id, site, tournament_name, hero, "
+        "played_at, imported_at, hands_count, decisions_count, raw_text) "
+        "VALUES (?,?,?,?,?,?,?,?,?,?,?)"),
+        (7399, UID, '555000002', 'pokerstars', 'N', 'HeroPlayer', '2026-09-01',
+         '2026-09-02 03:04:05', 0, 0, ''))
+    conn.commit(); conn.close()
+
+    r = _roda('--user', str(UID))
+    assert r.returncode == 0, r.stderr[-400:]
+    linhas = [l for l in r.stdout.splitlines() if '555000002' in l]
+    assert linhas, ('o relatorio nao cita o torneio: %s' % r.stdout[-400:])
+    novos = [l for l in linhas if 'registro NOVO' in l]
+    merges = [l for l in linhas if 'MERGE em t7399' in l]
+    assert novos == [], (
+        'o torneio que JA tem registro proprio foi anunciado como novo: %s' % novos)
+    assert merges, ('o relatorio nao declara o merge no registro existente: %s' % linhas)
+    # e o total de novos nao pode contar quem faz merge
+    tot = [l for l in r.stdout.splitlines() if 'registros novos a criar' in l]
+    assert tot, r.stdout[-300:]
+    import re as _re
+    m = _re.search(r'registros novos a criar:\s*(\d+)', r.stdout)
+    assert m, r.stdout[-300:]
+    assert int(m.group(1)) == 1, (
+        'o total de novos esta inflado: %s (o 555000002 faz merge, so o 555000003 e novo)'
+        % m.group(1))
 
 
 def test_o_dry_run_ACHA_os_tres_torneios():
