@@ -307,6 +307,166 @@ def test_travado_volta_para_a_fila_e_o_batimento_impede_roubo():
         assert R.devolver_travados() == 0, 'o batimento não protegeu quem está vivo'
 
 
+# ══════════════════════════════════════════════════════════════════════════════════════════
+# 4) A COTA do mes: o que excede fica guardado, e entram os MAIS RECENTES
+# ══════════════════════════════════════════════════════════════════════════════════════════
+
+def _cinco_torneios_datados():
+    """Cinco torneios do mesmo fixture, de MAIO a SETEMBRO.
+
+    Datas diferentes de proposito: sem elas o teste provaria que tres entraram, mas nao que
+    entraram os tres que o dono pediu. Construido do fixture real porque mao forjada a mao nao
+    passa pelo parser, e um teste que nao passa pelo parser nao prova nada sobre o dialeto.
+    """
+    import io as _io
+    import re as _re
+    raw = _io.open(os.path.join(_FIX, 'revalidation_mini.txt'), encoding='utf-8').read()
+    blocos = [b for b in _re.split(r'(?=PokerStars Hand #)', raw) if b.strip()]
+    partes = []
+    for i, dia in enumerate(['2026/05/10', '2026/06/11', '2026/07/12',
+                             '2026/08/13', '2026/09/14']):
+        novo = []
+        for b in blocos:
+            b2 = _re.sub(r'Tournament #\d+', 'Tournament #6660%d' % i, b)
+            b2 = _re.sub(r'PokerStars Hand #(\d+)',
+                         lambda m: 'PokerStars Hand #%d%s' % (i + 1, m.group(1)), b2)
+            b2 = _re.sub(r'\d{4}/\d{2}/\d{2}', dia, b2)
+            novo.append(b2)
+        partes.append(''.join(novo))
+    return chr(10).join(partes)
+
+
+def _teto(conn, valor):
+    from database.repositories import _adapt as _a
+    conn.execute(_a("UPDATE users SET tournaments_limit_override=? WHERE id=?"), (valor, UID))
+    conn.commit()
+
+
+def test_cota_estourada_GUARDA_o_resto_em_vez_de_perder():
+    """Medido ANTES deste tratamento, com teto de 3 e arquivo de 5: o recibo dizia `concluido`
+    com "2 com erro" e os bytes eram APAGADOS. O jogador lia que algo quebrou (nao quebrou, ele
+    bateu o teto) e perdia dois torneios, tendo que lembrar de reenviar no mes seguinte."""
+    with banco_de_teste() as (cliente, headers):
+        import api.app as A
+        from database.schema import get_conn
+        from database.repositories import _adapt
+        c = get_conn(); _teto(c, 3); c.close()
+
+        rid = cliente.post('/uploads', json={'content': _cinco_torneios_datados()},
+                           headers=headers).get_json()['recibo']
+        A._processar_uploads_recebidos()
+        d = cliente.get('/uploads/%d' % rid, headers=headers).get_json()
+
+        assert d['status'] == 'aguardando_cota', d['status']
+        assert d['torneios_gravados'] == 3, d
+        assert d['torneios_com_erro'] == 0, ('cota virou "erro" de novo', d)
+        # o total e o do arquivo ORIGINAL: sem isto a tela passaria de "3 de 5" para "3 de 2"
+        assert d['torneios_no_arquivo'] == 5, d
+        # e o que falta continua GUARDADO
+        c = get_conn()
+        g = dict(c.execute(_adapt(
+            "SELECT conteudo FROM uploads_recebidos WHERE id=?"), (rid,)).fetchone())
+        c.close()
+        assert g['conteudo'], 'os torneios que faltam foram perdidos'
+
+
+def test_entram_os_MAIS_RECENTES():
+    """A decisao do dono. Antes entravam os tres PRIMEIROS do arquivo, que e a ordem do export
+    e nao a do calendario: o jogador ficava com o que a ferramenta dele escreveu primeiro, em
+    vez das sessoes que ele acabou de jogar."""
+    with banco_de_teste() as (cliente, headers):
+        import api.app as A
+        from database.schema import get_conn
+        from database.repositories import _adapt
+        c = get_conn(); _teto(c, 3); c.close()
+
+        cliente.post('/uploads', json={'content': _cinco_torneios_datados()}, headers=headers)
+        A._processar_uploads_recebidos()
+
+        c = get_conn()
+        entraram = [dict(r)['tournament_id'] for r in c.execute(_adapt(
+            "SELECT tournament_id FROM tournaments WHERE user_id=? ORDER BY played_at DESC"),
+            (UID,)).fetchall()]
+        c.close()
+        # setembro, agosto e julho; maio e junho esperam
+        assert entraram == ['66604', '66603', '66602'], entraram
+
+
+def test_quando_a_cota_VIRA_o_resto_entra_e_os_contadores_ACUMULAM():
+    """E o recibo tem de bater com a conta. Na primeira versao os contadores reiniciavam na
+    retomada e a tela dizia "2 de 5" com os 5 torneios ja na conta."""
+    with banco_de_teste() as (cliente, headers):
+        import api.app as A
+        from database.schema import get_conn
+        from database.repositories import _adapt
+        c = get_conn(); _teto(c, 3); c.close()
+
+        rid = cliente.post('/uploads', json={'content': _cinco_torneios_datados()},
+                           headers=headers).get_json()['recibo']
+        A._processar_uploads_recebidos()
+
+        # a cota vira (o reset e preguicoso na leitura: basta o mes gravado ser outro)
+        c = get_conn()
+        c.execute(_adapt("UPDATE users SET quota_reset_at=? WHERE id=?"), ('2020-01-01', UID))
+        c.commit(); c.close()
+
+        A._processar_uploads_recebidos()
+        d = cliente.get('/uploads/%d' % rid, headers=headers).get_json()
+        assert d['status'] == CONCLUIDO, d
+        assert d['torneios_gravados'] == 5, ('os contadores nao acumularam', d)
+        assert len(d['detalhe']) == 5, ('o detalhe nao acumulou', len(d['detalhe']))
+
+        c = get_conn()
+        n = dict(c.execute(_adapt(
+            "SELECT COUNT(*) AS n FROM tournaments WHERE user_id=?"), (UID,)).fetchone())['n']
+        g = dict(c.execute(_adapt(
+            "SELECT conteudo FROM uploads_recebidos WHERE id=?"), (rid,)).fetchone())
+        c.close()
+        assert n == 5 and d['torneios_gravados'] == n, (n, d['torneios_gravados'])
+        assert g['conteudo'] is None, 'os bytes ficaram depois de concluir'
+
+
+def test_quem_NAO_tem_teto_nao_e_afetado():
+    """O controle. Sem ele, um tratamento que pausasse sempre passaria nos casos acima e
+    pararia o upload de todo Pro no meio do arquivo."""
+    with banco_de_teste() as (cliente, headers):
+        import api.app as A
+        from database.schema import get_conn
+        from database.repositories import _adapt
+        c = get_conn()
+        c.execute(_adapt("UPDATE users SET plan=?, tournaments_limit_override=NULL WHERE id=?"),
+                  ('unlimited', UID))
+        c.commit(); c.close()
+
+        rid = cliente.post('/uploads', json={'content': _cinco_torneios_datados()},
+                           headers=headers).get_json()['recibo']
+        A._processar_uploads_recebidos()
+        d = cliente.get('/uploads/%d' % rid, headers=headers).get_json()
+        assert d['status'] == CONCLUIDO, d
+        assert d['torneios_gravados'] == 5, d
+
+
+def test_a_espera_tem_TETO_por_jogador():
+    """Aceitar e guardar e o que da valor, mas sem teto um Free empilharia arquivo sem limite e
+    nos pagariamos o armazenamento. Mesmo espirito do `max_pending_solves` dos planos."""
+    with banco_de_teste() as (cliente, headers):
+        from leaklab.recepcao_de_upload import (AGUARDANDO_COTA, ESPERA_MAX_POR_USUARIO,
+                                                em_espera_por_cota)
+        from database.schema import get_conn
+        from database.repositories import _adapt
+        c = get_conn()
+        for k in range(ESPERA_MAX_POR_USUARIO):
+            c.execute(_adapt(
+                "INSERT INTO uploads_recebidos (user_id, sha256, bytes_total, conteudo, status) "
+                "VALUES (?,?,?,?,?)"), (UID, 'falso%d' % k, 10, 'x', AGUARDANDO_COTA))
+        c.commit(); c.close()
+        assert em_espera_por_cota(UID) == ESPERA_MAX_POR_USUARIO
+
+        r = cliente.post('/uploads', json={'content': _um_torneio()}, headers=headers)
+        assert r.status_code == 429, r.status_code
+        assert (r.get_json() or {}).get('espera_cheia') is True, r.get_json()
+
+
 if __name__ == '__main__':
     falhas = 0
     testes = [v for k, v in sorted(globals().items()) if k.startswith('test_')]

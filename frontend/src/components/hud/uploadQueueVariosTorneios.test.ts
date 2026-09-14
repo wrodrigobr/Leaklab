@@ -166,7 +166,14 @@ describe("nota de arquivo com vários torneios", () => {
     expect(chamadas.length, "o XP de import voltou a ser concedido em mais de um lugar").toBe(1);
     // e a única chamada leva a quantidade, não um XP solto
     expect(src, "a única chamada de XP parou de levar a quantidade de torneios")
-      .toMatch(/addXp\([^)]*r\.torneios_gravados\)/);
+      .toMatch(/addXp\([^)]*novos\)/);
+    // 14/09: com o upload assíncrono o recibo ACUMULA `torneios_gravados` entre retomadas (um
+    // arquivo pausado por cota volta com o que já entrou). Conceder pelo total pagaria os mesmos
+    // torneios duas vezes, uma na pausa e outra na conclusão. Só o DELTA conta.
+    expect(src, "o XP voltou a ser concedido pelo total acumulado, e não pelo delta")
+      .toMatch(/const novos = gravados - \(item\.xpDado \?\? 0\)/);
+    expect(src, "o front parou de lembrar quanto XP já concedeu para este arquivo")
+      .toContain('type: "SET_XP_DADO"');
   });
 
   it("a fila de análise NÃO engole a frase dos vários torneios", () => {

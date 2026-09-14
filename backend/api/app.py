@@ -919,12 +919,21 @@ def receber_upload():
             'error': ('Este arquivo não parece um histórico de mãos. Exporte o hand history '
                       'da sala e tente de novo.')}), 422
 
-    # A quota é conferida por TORNEIO no processamento (re-import do mesmo torneio não consome).
-    # Aqui só recusa quem já bateu o teto: aceitar arquivo para recusar cada torneio depois
-    # seria prometer trabalho que não vamos fazer.
-    quota_err = _check_upload_quota(g.user_id)
-    if quota_err:
-        return quota_err
+    # COTA: aceitamos o arquivo MESMO com o teto do mês estourado, e isso é decisão de produto
+    # do dono. O que exceder fica guardado e entra quando a cota virar (ou quando ele fizer
+    # upgrade). Recusar aqui era a versão anterior desta rota, e ela devolvia o jogador ao
+    # problema que esta frente existe para acabar: guardar o arquivo em outro lugar e lembrar
+    # de reenviar depois.
+    #
+    # O que tem teto é a ESPERA, senão um Free empilharia arquivo sem limite e nós pagaríamos o
+    # armazenamento. Mesmo espírito do `max_pending_solves` dos planos.
+    from leaklab.recepcao_de_upload import ESPERA_MAX_POR_USUARIO, em_espera_por_cota
+    if em_espera_por_cota(g.user_id) >= ESPERA_MAX_POR_USUARIO:
+        return jsonify({
+            'error': ('Você já tem %d arquivos guardados esperando a renovação da sua cota. '
+                      'Eles entram automaticamente quando ela virar.'
+                      % ESPERA_MAX_POR_USUARIO),
+            'espera_cheia': True}), 429
 
     r = receber(g.user_id, conteudo, _extract_upload_filename(request))
     return jsonify({
@@ -13109,6 +13118,41 @@ RECONCILE_INTERVALO_S = float(os.environ.get('RECONCILE_INTERVALO_S', '120') or 
 _RECONCILE_EM_CURSO = threading.Lock()
 
 
+def _mais_recentes_primeiro(pedacos):
+    """Os torneios do arquivo, do mais RECENTE para o mais antigo.
+
+    ── Por que a ordem importa ───────────────────────────────────────────────────────────────
+
+    Decisão do dono: quando o arquivo tem mais torneios do que a cota do mês permite, entram os
+    mais recentes. Medido antes disto, com teto de 3 e arquivo de 5: entravam os três PRIMEIROS
+    do arquivo, que é a ordem do export e não a do calendário. O jogador ficava com o que a
+    ferramenta dele resolveu escrever primeiro, em vez das sessões que ele acabou de jogar.
+
+    A data sai de `timestamps_das_maos`, fonte única de "quando esta mão foi jogada", que conhece
+    os quatro dialetos do acervo. Derivar a data aqui com um regex próprio seria a quinta cópia
+    da mesma regra, e a que esqueceria um dialeto -- foi assim que todo torneio do PartyPoker
+    ficou sem data até 13/09.
+
+    Pedaço sem data legível vai para o FIM, e em DOIS grupos em vez de uma chave esperta: na
+    dúvida ele não ocupa a vaga de quem tem data conhecida, e a regra fica legível.
+    """
+    from leaklab.parser import timestamps_das_maos
+
+    def quando(pedaco):
+        try:
+            ts = timestamps_das_maos(pedaco[2] or '')
+            return max(ts) if ts else ''
+        except Exception:
+            return ''
+
+    com_data, sem_data = [], []
+    for p in pedacos:
+        d = quando(p)
+        (com_data if d else sem_data).append((d, p))
+    com_data.sort(key=lambda x: x[0], reverse=True)
+    return [p for _, p in com_data] + [p for _, p in sem_data]
+
+
 def _processar_uploads_recebidos() -> dict:
     """UM recibo por tick: divide o arquivo guardado e processa torneio por torneio.
 
@@ -13133,6 +13177,7 @@ def _processar_uploads_recebidos() -> dict:
     Roda ANTES de drenar a fila do solver no laço do consumer. Depois dela, o arquivo do jogador
     esperaria o solver terminar, que é trabalho de fundo -- e o import é o que ele está olhando.
     """
+    import json
     from leaklab import recepcao_de_upload as _R
 
     try:
@@ -13140,7 +13185,10 @@ def _processar_uploads_recebidos() -> dict:
     except Exception:
         log.exception("devolver uploads travados")
 
-    rec = _R.reivindicar()
+    # Primeiro o que nunca rodou; depois o que estava PARADO POR COTA e cujo jogador voltou a
+    # ter vaga (virada do mes, ou upgrade -- o caminho pergunta "tem cota agora?" e nao olha o
+    # calendario, entao pega os dois sem saber a diferenca).
+    rec = _R.reivindicar() or _R.reivindicar_com_cota_liberada()
     if not rec:
         return {'recibo': None}
     rid, uid = rec['id'], rec['user_id']
@@ -13160,14 +13208,27 @@ def _processar_uploads_recebidos() -> dict:
         if not pedacos:
             pedacos = [(None, 0, texto)]
         _R.registrar_divisao(rid, len(pedacos))
+        pedacos = _mais_recentes_primeiro(pedacos)
     except Exception as e:
         log.exception("dividir upload %s", rid)
         _R.concluir(rid, 0, 0, 0, erro='não conseguimos ler este arquivo: %s' % e)
         return {'recibo': rid, 'erro': 'divisao'}
 
-    gravados = ja_estavam = com_erro = 0
+    # Os contadores ACUMULAM entre retomadas. Um recibo pausado por cota volta aqui com o que
+    # ja entrou, e comecar do zero faria a tela dizer "2 de 5" quando os 5 estao na conta --
+    # medido: foi exatamente o que aconteceu na primeira versao deste tratamento.
+    gravados = int(rec.get('torneios_gravados') or 0)
+    ja_estavam = int(rec.get('torneios_ja_estavam') or 0)
+    com_erro = int(rec.get('torneios_com_erro') or 0)
     detalhe = []
-    for tid, n_maos, pedaco in pedacos:
+    if rec.get('detalhe'):
+        try:
+            _ant = json.loads(rec['detalhe']) if isinstance(rec['detalhe'], str) else rec['detalhe']
+            if isinstance(_ant, list):
+                detalhe = list(_ant)
+        except Exception:
+            log.exception("detalhe anterior do recibo %s", rid)
+    for i, (tid, n_maos, pedaco) in enumerate(pedacos):
         try:
             with app.test_request_context(
                     '/analyze', method='POST',
@@ -13181,6 +13242,27 @@ def _processar_uploads_recebidos() -> dict:
             status, dados = 500, {'error': str(e)}
 
         dup = bool((dados or {}).get('duplicate'))
+
+        # COTA: 402 nao e erro e nao pode custar o resto do arquivo. Para aqui, guarda os
+        # torneios que faltam e devolve o recibo para a espera. Antes desta mudanca, medido com
+        # teto de 3 e arquivo de 5: o recibo dizia `concluido` com "2 com erro" e os bytes eram
+        # APAGADOS -- o jogador lia que algo quebrou (nao quebrou, ele bateu o teto) e perdia os
+        # dois torneios.
+        if status == 402 or bool((dados or {}).get('quota_exceeded')):
+            restantes = list(pedacos[i:])
+            texto_restante = chr(10).join(x[2] for x in restantes)
+            _R.pausar_por_cota(rid, texto_restante, gravados, ja_estavam, com_erro,
+                               detalhe=detalhe)
+            log.info("upload %s PAUSADO por cota: %d gravados, %d torneios guardados",
+                     rid, gravados, len(restantes))
+            if gravados:
+                try:
+                    _dispara_recompute_elo(uid)
+                except Exception:
+                    log.exception("recompute elo do recibo %s", rid)
+            return {'recibo': rid, 'gravados': gravados, 'ja_estavam': ja_estavam,
+                    'com_erro': com_erro, 'aguardando_cota': len(restantes)}
+
         if status == 200:
             gravados += 1
         elif dup:

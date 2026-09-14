@@ -20,12 +20,17 @@ interface QueueItem {
   /** Recibo do backend. Presente quando o arquivo JA ESTA GUARDADO no servidor: dali em diante
    *  fechar a aba nao perde nada, e a tela so acompanha o processamento. */
   recibo?: number;
+  /** Quantos torneios deste arquivo JA renderam XP. O recibo ACUMULA `torneios_gravados` entre
+   *  retomadas (um arquivo pausado por cota volta com o que ja entrou), entao conceder pelo
+   *  total daria XP duas vezes: uma na pausa e outra na conclusao. Aqui so o delta conta. */
+  xpDado?: number;
 }
 
 type Action =
   | { type: "ADD"; items: QueueItem[] }
   | { type: "SET_STATUS"; id: string; status: QueueStatus; error?: string; note?: string }
   | { type: "SET_RECIBO"; id: string; recibo: number; note?: string }
+  | { type: "SET_XP_DADO"; id: string; total: number }
   | { type: "DISMISS"; id: string }
   | { type: "CLEAR_DONE" };
 
@@ -36,6 +41,7 @@ function reducer(state: QueueItem[], action: Action): QueueItem[] {
     // O recibo NAO apaga a nota nem o erro anteriores de proposito: ele so acrescenta o
     // "esta guardado" ao item, e a fase de acompanhamento e que decide o desfecho.
     case "SET_RECIBO": return state.map((i) => i.id === action.id ? { ...i, status: "processing", recibo: action.recibo, note: action.note ?? i.note } : i);
+    case "SET_XP_DADO": return state.map((i) => i.id === action.id ? { ...i, xpDado: action.total } : i);
     case "DISMISS":   return state.filter((i) => i.id !== action.id);
     case "CLEAR_DONE": return state.filter((i) => i.status !== "done");
     default:          return state;
@@ -341,6 +347,22 @@ export function UploadQueueProvider({ children }: { children: React.ReactNode })
     if (emCurso.length === 0) return;
 
     let vivo = true;
+
+    /** UM lugar que concede o XP de import, e ele concede o DELTA.
+     *
+     * A regra 5 pegou isto duas vezes hoje. Na primeira eu dei XP por arquivo num ramo e por
+     * torneio no outro; agora eu ia dar pelo TOTAL acumulado do recibo em dois ramos (pausa por
+     * cota e conclusao), o que pagaria duas vezes os mesmos torneios. O valor de cada XP fica no
+     * backend; daqui vai a quantidade.
+     */
+    const concederXp = (item: QueueItem, gravados: number) => {
+      const novos = gravados - (item.xpDado ?? 0);
+      if (novos <= 0) return;
+      metrics.addXp("tournament_imported", undefined, novos).catch(() => null);
+      dispatch({ type: "SET_XP_DADO", id: item.id, total: gravados });
+      window.dispatchEvent(new CustomEvent("leaklab:tournament-imported"));
+    };
+
     const timer = setInterval(async () => {
       for (const item of emCurso) {
         if (!vivo) return;
@@ -355,6 +377,18 @@ export function UploadQueueProvider({ children }: { children: React.ReactNode })
         }
         if (!vivo) return;
 
+        // COTA: o teto do mes acabou no meio do arquivo. NAO e erro, e dizer "erro" aqui era o
+        // defeito medido antes desta frente (o recibo marcava "2 com erro" para 2 torneios que
+        // so estavam esperando). O que sobrou esta guardado e entra sozinho quando a cota virar.
+        // A frase diz o numero, porque "sua cota acabou" sem numero nao ajuda ninguem a decidir.
+        if (r.status === "aguardando_cota") {
+          const espera = (r.torneios_no_arquivo ?? 0) - r.torneios_gravados - r.torneios_ja_estavam;
+          dispatch({ type: "SET_STATUS", id: item.id, status: "done",
+                     note: t("uploadQueue.aguardandoCota", {
+                       entraram: r.torneios_gravados, esperando: Math.max(0, espera) }) });
+          concederXp(item, r.torneios_gravados);
+          continue;
+        }
         if (r.status === "erro") {
           dispatch({ type: "SET_STATUS", id: item.id, status: "error",
                      error: r.erro || t("uploadQueue.erroNoProcessamento") });
@@ -390,10 +424,7 @@ export function UploadQueueProvider({ children }: { children: React.ReactNode })
         // torneios num export do PartyPoker ganharia o mesmo de quem sobe um. Conta so os
         // NOVOS -- torneio que ja estava no historico nao e jogo novo. O valor de cada um fica
         // no backend, aqui vai a quantidade.
-        if (r.torneios_gravados > 0) {
-          metrics.addXp("tournament_imported", undefined, r.torneios_gravados).catch(() => null);
-          window.dispatchEvent(new CustomEvent("leaklab:tournament-imported"));
-        }
+        concederXp(item, r.torneios_gravados);
       }
     }, 2500);
 

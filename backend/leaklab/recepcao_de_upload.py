@@ -56,9 +56,17 @@ RECEBIDO = 'recebido'
 PROCESSANDO = 'processando'
 CONCLUIDO = 'concluido'
 ERRO = 'erro'
+# O teto mensal do jogador acabou no meio do arquivo. NAO e erro e NAO e conclusao: o que sobrou
+# fica guardado e entra quando a cota virar (ou quando ele fizer upgrade).
+AGUARDANDO_COTA = 'aguardando_cota'
 
 TENTATIVAS_MAX = 3
 TRAVADO_APOS_MIN = 15
+
+# Teto de arquivos em espera por jogador. Aceitar e guardar e o que da valor, mas sem teto um
+# Free empilharia arquivo sem limite e nos pagariamos o armazenamento por ele. Mesmo espirito do
+# `max_pending_solves` dos planos.
+ESPERA_MAX_POR_USUARIO = 5
 
 # A peneira BARATA da recepção: o arquivo parece hand history? Uma regex sobre o texto, não o
 # parse. Os cinco dialetos do acervo, pelos cabeçalhos que o parser já reconhece.
@@ -326,14 +334,117 @@ def tocar(recibo_id: int, gravados: int | None = None) -> None:
         conn.close()
 
 
-def registrar_divisao(recibo_id: int, torneios_no_arquivo: int) -> None:
-    """Quantos torneios o arquivo tem. Gravado ANTES de processar, para a tela poder dizer
-    "11 de 18" em vez de só "processando"."""
+def em_espera_por_cota(user_id: int) -> int:
+    """Quantos arquivos deste jogador estão parados esperando a cota virar."""
+    _tabela()
+    from database.repositories import _adapt
+    conn = get_conn()
+    try:
+        return int(dict(conn.execute(_adapt(
+            "SELECT COUNT(*) AS n FROM uploads_recebidos WHERE user_id=? AND status=?"),
+            (user_id, AGUARDANDO_COTA)).fetchone())['n'])
+    finally:
+        conn.close()
+
+
+def pausar_por_cota(recibo_id: int, conteudo_restante: str, gravados: int, ja_estavam: int,
+                    com_erro: int, detalhe=None) -> None:
+    """O teto mensal acabou no meio do arquivo: guarda o que FALTA e para.
+
+    ── Por que reescrever o conteúdo ─────────────────────────────────────────────────────────
+
+    O recibo passa a guardar **só os torneios que ainda não entraram**. Três ganhos, e o
+    primeiro é o que importa: retomar não reprocessa o que já está lá (e reprocessar 30 torneios
+    para chegar no 31º gastaria a janela inteira do worker). Depois: o armazenamento encolhe a
+    cada retomada. E o "torneios_no_arquivo" continua sendo o do arquivo ORIGINAL, porque é isso
+    que a tela precisa dizer ("30 de 200").
+
+    ── Por que não é `erro` nem `concluido` ──────────────────────────────────────────────────
+
+    Medido antes desta mudança, com teto de 3 e arquivo de 5: o recibo dizia `concluido` com
+    "2 com erro" e os bytes eram APAGADOS. Ou seja, o jogador lia que algo quebrou (não quebrou,
+    ele bateu o teto) e perdia os dois torneios, tendo que lembrar de reenviar o arquivo no mês
+    seguinte -- exatamente o que separar receber de processar existia para acabar.
+    """
     from database.repositories import _adapt
     conn = get_conn()
     try:
         conn.execute(_adapt(
-            "UPDATE uploads_recebidos SET torneios_no_arquivo=? WHERE id=?"),
+            "UPDATE uploads_recebidos SET status=?, conteudo=?, torneios_gravados=?, "
+            "torneios_ja_estavam=?, torneios_com_erro=?, detalhe=?, erro=NULL, "
+            "iniciado_em=NULL, tentativas=0 WHERE id=?"),
+            (AGUARDANDO_COTA, conteudo_restante, int(gravados), int(ja_estavam),
+             int(com_erro),
+             json.dumps(detalhe, ensure_ascii=False) if detalhe is not None else None,
+             recibo_id))
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def reivindicar_com_cota_liberada():
+    """Um recibo parado por cota cujo jogador VOLTOU a ter cota. None quando não há.
+
+    A cota vira sozinha no primeiro dia do mês (`_maybe_reset_quota`, preguiçoso na leitura), e
+    também vira quando o jogador faz upgrade -- e este caminho pega os dois sem saber a
+    diferença, porque ele pergunta "tem cota agora?" em vez de olhar o calendário.
+
+    A pergunta é feita pela MESMA função que a rota usa (`get_quota_status`), senão teríamos
+    duas noções de "tem cota" e a que mora aqui seria a que ninguém conferiria.
+    """
+    _tabela()
+    from database.repositories import _adapt, get_quota_status
+    conn = get_conn()
+    try:
+        cands = [dict(x) for x in conn.execute(_adapt(
+            "SELECT id, user_id FROM uploads_recebidos WHERE status=? "
+            "ORDER BY recebido_em, id"), (AGUARDANDO_COTA,)).fetchall()]
+    finally:
+        conn.close()
+    for cand in cands:
+        try:
+            st = get_quota_status(cand['user_id'])
+            limite = st['limits'].get('tournaments')
+            if limite is not None and st['tournaments_used'] >= limite:
+                continue                     # ainda sem vaga
+        except Exception:
+            log.exception("cota do usuario %s", cand['user_id'])
+            continue
+        conn = get_conn()
+        try:
+            cur = conn.execute(_adapt(
+                "UPDATE uploads_recebidos SET status=?, iniciado_em=%s, "
+                "tentativas=tentativas+1 WHERE id=? AND status=?" % now_sql()),
+                (PROCESSANDO, cand['id'], AGUARDANDO_COTA))
+            if not int(getattr(cur, 'rowcount', 0) or 0):
+                conn.rollback()
+                continue
+            conn.commit()
+            d = _linha(conn, cand['id'])
+            raw = conn.execute(_adapt(
+                "SELECT conteudo FROM uploads_recebidos WHERE id=?"), (cand['id'],)).fetchone()
+            d['conteudo'] = dict(raw)['conteudo'] if raw else None
+            return d
+        finally:
+            conn.close()
+    return None
+
+
+def registrar_divisao(recibo_id: int, torneios_no_arquivo: int) -> None:
+    """Quantos torneios o arquivo tem. Gravado ANTES de processar, para a tela poder dizer
+    "11 de 18" em vez de só "processando".
+
+    Grava **só na primeira vez** (`IS NULL`), e isso não é detalhe: quando um recibo pausado por
+    cota é retomado, o worker divide apenas o que FALTA. Sobrescrever aqui faria o total encolher
+    a cada retomada, e a tela passaria de "30 de 200" para "30 de 170" -- número que mente sobre
+    o arquivo que o jogador mandou.
+    """
+    from database.repositories import _adapt
+    conn = get_conn()
+    try:
+        conn.execute(_adapt(
+            "UPDATE uploads_recebidos SET torneios_no_arquivo=? "
+            "WHERE id=? AND torneios_no_arquivo IS NULL"),
             (int(torneios_no_arquivo), recibo_id))
         conn.commit()
     finally:

@@ -646,7 +646,10 @@ export const sharedHand = {
 };
 
 /** Estados do recibo de upload (`leaklab/recepcao_de_upload`). */
-export type ReciboStatus = "recebido" | "processando" | "concluido" | "erro";
+/** `aguardando_cota` = o teto mensal acabou no meio do arquivo. NAO e erro: o que sobrou
+ *  fica guardado e entra quando a cota virar, ou quando ele fizer upgrade. */
+export type ReciboStatus =
+  | "recebido" | "processando" | "concluido" | "erro" | "aguardando_cota";
 
 export interface Recibo {
   id: number;

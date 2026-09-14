@@ -252,6 +252,7 @@
     "rateLimit_plural": "Superaste el límite de {{limite}} torneos por hora. Los archivos aceptados ya están en tu historial; inténtalo de nuevo en {{count}} minutos.",
     "variosTorneios": "El archivo tenía {{n}} torneos. Todos importados.",
     "recebido": "Archivo recibido. Lo estamos analizando.",
+    "aguardandoCota": "{{entraram}} torneos importados. Otros {{esperando}} entrarán cuando se renueve tu cuota mensual.",
     "progresso": "Analizando: {{feitos}} de {{total}} torneos.",
     "erroNoProcessamento": "No pudimos analizar este archivo. Tu envío está guardado y lo intentaremos de nuevo.",
     "variosTorneiosParcial": "El archivo tenía {{n}} torneos. {{ok}} importados, {{fora}} no entraron.",
