@@ -279,6 +279,10 @@ export interface TournamentDecision {
   level_bb: number | null;
   level_num: number | null;
   note: string | null;
+  // O backend RETIRA a nota quando ela manda fazer coisa diferente do que a linha recomenda
+  // hoje (`repositories.silencia_nota_desatualizada`). Aqui `note` vem null e esta flag acende,
+  // para a tela dizer o motivo no idioma do jogador em vez de simplesmente nao mostrar nada.
+  note_desatualizada?: boolean;
   has_annotation?: boolean;
   gto_label: "gto_correct" | "gto_mixed" | "gto_minor_deviation" | "gto_critical" | null;
   gto_action: string | null;
@@ -1230,6 +1234,8 @@ export interface DrillSpot {
   played_at: string | null;
   buy_in: number | null;
   note: string | null;
+  /** Nota retirada por discordar do veredito atual da linha. Ver `TournamentDecision`. */
+  note_desatualizada?: boolean;
   draw_profile: string | null;
   pot_size: number | null;
   /** TAMANHO da aposta do vilão (to-total, em bb). Identifica o nó GTO. */

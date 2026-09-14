@@ -5069,7 +5069,7 @@ def _enrich_note(row: dict) -> str:
 
     header = street_pt
     if ctx_items:
-        header += " — " + " · ".join(ctx_items)
+        header += " · " + " · ".join(ctx_items)
     parts.append(header + ".")
 
     # ── Ação ────────────────────────────────────────────────────────────────
@@ -5081,7 +5081,7 @@ def _enrich_note(row: dict) -> str:
         if "combo" in draw:
             parts.append("Board com draw combinado (flush + straight).")
         elif "flush" in draw:
-            parts.append("Board com projeto de flush — equity implícita relevante.")
+            parts.append("Board com projeto de flush, equity implícita relevante.")
         elif "straight" in draw:
             parts.append("Board com projeto de straight.")
         elif "backdoor" in draw:
@@ -5091,7 +5091,7 @@ def _enrich_note(row: dict) -> str:
     if m_ratio is not None:
         mr = round(m_ratio, 1)
         if mr < 6:
-            parts.append(f"M-Ratio {mr}: jogo push/fold — range muito estreito.")
+            parts.append(f"M-Ratio {mr}: jogo push/fold, range muito estreito.")
         elif mr < 10:
             parts.append(f"M-Ratio {mr}: zona crítica de pressão.")
         elif mr < 15:

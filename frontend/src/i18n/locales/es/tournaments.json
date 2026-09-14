@@ -88,6 +88,7 @@
     "all": "Todas",
     "heuristic": "Heurística",
     "heuristicTip": "Postflop analizado por la heurística del engine (multiway, stack corto o fuera de la cobertura del solver GTO). La mayoría no se solucionan por diseño.",
+    "noteStale": "Esta mano no tiene explicación escrita.",
     "stats": {
       "handsPlayed": "Manos jugadas",
       "criticalLeaks": "Errores",

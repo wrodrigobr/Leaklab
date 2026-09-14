@@ -20,6 +20,32 @@ def _floatify(d: dict) -> dict:
     Decimal, e float*Decimal estoura. SQLite já devolve float (no-op)."""
     return {k: (float(v) if isinstance(v, _Decimal) else v) for k, v in d.items()}
 
+
+def silencia_nota_desatualizada(d: dict) -> dict:
+    """Nota que manda fazer coisa diferente do veredito da propria linha nao sai do banco.
+
+    Aplicado AQUI, na leitura, e nao em cada rota: a nota sai por oito portas de usuario (a lista
+    do torneio, a narrativa, o PDF, as duas do coach, o replay publico por token, o /replay e o
+    resumo do upload), e `get_decisions` e `SELECT *`, entao consertar rota por rota era criar a
+    proxima regressao dos N lugares. Quem decide e `card_verdict.nota_contradiz_o_veredito`.
+
+    NAO apaga nada no banco: zera o campo na row devolvida e acende `note_desatualizada` para a
+    tela dizer, no idioma do jogador, que o texto foi retirado. Seguro porque nenhum caminho de
+    escrita le daqui -- `save_decisions` so recebe resultado fresco da pipeline (`app.py` 1290 e
+    11681), conferido antes de escrever esta funcao.
+
+    Silencio em vez de texto errado e a regra 7 do CLAUDE.md: bug que some com a resposta e
+    honesto, conserto que TROCA a resposta nao e. Regerar a nota junto com o veredito e o
+    conserto de raiz e fica como item proprio -- o resync nao tem em mao o pacote de matematica
+    da mao, e inventar o texto aqui seria exatamente a troca que a regra proibe.
+    """
+    from leaklab.card_verdict import nota_contradiz_o_veredito
+    if d.get('note') and nota_contradiz_o_veredito(
+            d.get('note'), d.get('gto_action'), d.get('best_action')):
+        d['note'] = None
+        d['note_desatualizada'] = True
+    return d
+
 try:
     import bcrypt as _bcrypt
     _BCRYPT_AVAILABLE = True
@@ -1137,7 +1163,7 @@ def get_decisions(tournament_db_id: int) -> List[dict]:
             "SELECT * FROM decisions WHERE tournament_id=? ORDER BY LENGTH(hand_id), hand_id, id",
             (tournament_db_id,)
         ).fetchall()
-        return [dict(r) for r in rows]
+        return [silencia_nota_desatualizada(dict(r)) for r in rows]
     finally:
         conn.close()
 
@@ -2018,7 +2044,7 @@ def get_drill_spots(user_id: int, limit: int = 10, street: str = None, spot: str
         now = datetime.utcnow()
         result = []
         for row in rows:
-            r = dict(row)
+            r = silencia_nota_desatualizada(dict(row))
             nda = r.get('next_drill_at')
             if nda:
                 try:
@@ -2158,7 +2184,7 @@ def get_decision_for_drill(user_id: int, decision_id: int) -> dict | None:
             JOIN tournaments t ON t.id = d.tournament_id
             WHERE d.id = ? AND t.user_id = ?
         """), (decision_id, user_id)).fetchone()
-        return dict(row) if row else None
+        return silencia_nota_desatualizada(dict(row)) if row else None
     finally:
         conn.close()
 

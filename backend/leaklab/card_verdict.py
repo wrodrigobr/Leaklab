@@ -14,6 +14,8 @@ Espelha a regra do frontend `cardLogic.verdictStrategy` + a reconciliação do a
 """
 from __future__ import annotations
 
+import re
+
 
 def norm_action(a) -> str:
     """rstrip 's' + unifica all-in/allin/jam/shove → 'allin'. Mantém sizing
@@ -31,6 +33,59 @@ def _matches(played_norm: str, act_norm: str) -> bool:
     return (act_norm == played_norm
             or played_norm.startswith(act_norm)
             or act_norm.startswith(played_norm))
+
+
+# ── A nota gravada contra o veredito de HOJE ──────────────────────────────────────────────
+#
+# A nota do card e TEXTO congelado no instante da analise. O resync do solver reescreve
+# `best_action`, `gto_action`, `label` e `ev_loss_bb` horas depois e NAO reescreve o texto.
+#
+# Medido em producao em 14/09: 1.519 decisoes servindo uma ordem no texto e exibindo outra na
+# linha, das quais 1.167 na forma pior -- o veredito ABSOLVE o jogador e o texto o acusa
+# ("Flop: Fold" com chip verde de Correto, e a nota mandando dar CALL).
+#
+# O controle que sustenta a causa: a contradicao aparece em 39,7% das linhas cujo custo veio de
+# `solver_hand` (reescritas depois) contra 0,1% das de `gw_har` (carta preflop, nunca reescrita).
+# Se o defeito fosse do gerador de texto, as duas fontes empatariam. Nao empatam.
+#
+# Por que nao basta apagar a frase final: o corpo da nota tambem e escrito em funcao de `best`,
+# em nove pontos de `decision_engine_v11` (2104, 2120, 2122, 2123, 2124, 2142, 2143, 2168, 2209).
+# Tirar so a ultima sentenca deixa um paragrafo inteiro defendendo a acao velha.
+_RE_ACAO_DECLARADA = re.compile(r'A[cç][aã]o esperada:\s*([A-Za-zÀ-ÿ\-]+)', re.IGNORECASE)
+
+
+def acao_declarada_na_nota(note) -> str:
+    """A acao que o TEXTO da nota manda fazer, normalizada. '' quando a nota nao declara nenhuma.
+
+    A ausencia da frase NAO e sinal de nada: o motor so a acrescenta quando o label e erro
+    (`decision_engine_v11:2218`); quando nao e, ele retorna antes (linha 2058) e a nota fica
+    apenas com as sentencas de contexto. Essas sentencas sao condicionadas a jogada do HEROI e a
+    forca da mao, nunca a `best` -- por isso nao envelhecem quando o veredito e reescrito.
+    Conferido no acervo: as 1.200 notas sem a frase sao todas sentenca de contexto.
+    """
+    m = _RE_ACAO_DECLARADA.search(note or '')
+    return norm_action(m.group(1)) if m else ''
+
+
+def nota_contradiz_o_veredito(note, gto_action, best_action) -> bool:
+    """A nota gravada manda fazer coisa diferente do que a linha recomenda HOJE.
+
+    Compara contra `gto_action or best_action` porque e ISSO que a tela mostra ao lado da nota
+    (`TournamentDetail.tsx:153`). Os dois divergem em 191 decisoes do acervo, e 17.430 nao tem
+    `gto_action` -- julgar pelo outro campo faria a funcao avaliar uma recomendacao que o
+    jogador nao ve.
+
+    A equivalencia sai de `_matches`, a mesma que o resto do veredito usa, para que
+    `bet` e `bet_75pct` nao contem como divergencia. Inventar uma segunda regra de equivalencia
+    aqui seria criar o proximo bug dos N lugares.
+    """
+    declarada = acao_declarada_na_nota(note)
+    if not declarada:
+        return False
+    recomendada = norm_action(gto_action) or norm_action(best_action)
+    if not recomendada:
+        return False
+    return not _matches(declarada, recomendada)
 
 
 def label_for_freq(freq: float) -> str:

@@ -54,6 +54,7 @@ interface Hand {
   leakTag?: string;
   evDelta?: number;
   note?: string;
+  noteStale?: boolean;
   stackBb?: number | null;
   mRatio?: number | null;
   icm?: string | null;
@@ -168,6 +169,7 @@ function groupByHand(decisions: TournamentDecision[]): Hand[] {
       leakTag,
       evDelta: category !== "correct" ? -Number(worst.score.toFixed(3)) : undefined,
       note: worst.note || undefined,
+      noteStale: !!worst.note_desatualizada,
       stackBb: worst.stack_bb,
       mRatio: worst.m_ratio,
       icm: worst.icm_pressure,
@@ -863,7 +865,11 @@ const TournamentDetail = () => {
                         </div>
                       )}
                       <div className="text-sm text-foreground">{h.action}</div>
-                      {h.note && <p className="max-w-xl text-xs text-muted-foreground">{h.note}</p>}
+                      {h.note
+                        ? <p className="max-w-xl text-xs text-muted-foreground">{h.note}</p>
+                        : h.noteStale
+                          ? <p className="max-w-xl text-xs italic text-muted-foreground/60">{t("detail.noteStale")}</p>
+                          : null}
                     </div>
                   </div>
 

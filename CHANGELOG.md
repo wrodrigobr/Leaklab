@@ -4,6 +4,105 @@ Todas as mudanÃ§as notÃ¡veis neste projeto serÃ£o documentadas aqui.
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
+## 1.519 cards mandavam fazer uma coisa e recomendavam outra (14/09)
+
+Achado respondendo uma pergunta do dono sobre UMA mao: ele mandou o link do replayer da mao
+`t=946&h=262009780504` e perguntou se o GTO realmente recomenda shove naquele spot postflop.
+
+**Recomenda.** Para exatamente `JcQc` no board `Q85`, a tabela por mao do solver da allin em
+61,2% e fold em **0,0%**; as 12 combinacoes de QJ dao allin no topo. O numero `0.612` gravado na
+decisao e literalmente aquela linha. O no agregado diz `fold 56,1%`, e isso quase me fez ler
+errado: o agregado descreve o RANGE, a `hand_table` descreve a MAO. Sao perguntas diferentes.
+
+O que a mao destapou foi outra coisa.
+
+### O defeito
+
+A nota do card e TEXTO congelado no instante da analise. O resync do solver reescreve
+`best_action`, `gto_action`, `label` e `ev_loss_bb` horas depois e NAO reescreve o texto. Naquela
+mesma decisao, a nota dizia "Acao esperada: CALL" ao lado de uma recomendacao de Shove.
+
+Medido no acervo:
+
+    1.519 decisoes servindo uma ordem no texto e exibindo outra na linha
+    1.167 delas na forma PIOR: o veredito ABSOLVE o jogador e o texto o ACUSA
+
+A forma pior, na tela, com dado real (dec 431286, conta 65):
+
+    Flop: Fold          [chip verde: Correto]
+    "... o call tinha valor positivo (+24.3pp) ... Acao esperada: CALL."
+
+O jogador foldou, o sistema concorda que o fold estava certo, e o texto manda dar call. Michel,
+o unico pagante, tinha 248 dessas.
+
+### O controle que apontou a causa
+
+    ev_loss_source        notas     contradizem       %
+    solver_hand           2.780        1.104        39,7%   <- reescritas depois da nota
+    sem_custo             3.311          392        11,8%
+    gw_har                1.471            1         0,1%   <- carta preflop, nunca reescrita
+
+Se o defeito fosse do gerador de texto, as duas fontes empatariam. Nao empatam. Por isso o
+conserto e na LEITURA, e nao no gerador — que ja esta certo desde `decision_engine_v11:1794`.
+
+### Por que NAO bastava apagar a frase final
+
+Foi minha primeira proposta ao dono, e ela era cosmetica. O corpo da nota tambem e escrito em
+funcao de `best`, em **nove** pontos de `decision_engine_v11` (2104, 2120, 2122, 2123, 2124,
+2142, 2143, 2168, 2209). Na dec 328599 um paragrafo inteiro defende o fold porque `best` valia
+fold quando a nota nasceu; hoje a linha recomenda Call. Tirar a ultima sentenca deixaria o
+paragrafo de pe embaixo de um chip verde de Call.
+
+### O conserto
+
+`card_verdict.nota_contradiz_o_veredito`, fonte unica, aplicada na leitura por
+`repositories.silencia_nota_desatualizada`. Compara contra `gto_action or best_action` porque e
+isso que a tela mostra ao lado da nota — os dois divergem em 191 decisoes, e 17.430 nao tem
+`gto_action`.
+
+Nada e apagado no banco: o campo e zerado na row devolvida e `note_desatualizada` acende para a
+tela dizer, no idioma do jogador, que aquela mao nao tem explicacao escrita.
+
+**O resultado saiu melhor que o desenho.** Na tela principal a nota nao desaparece: `_enrich_note`
+ve o campo vazio e **regera** a partir das colunas vivas, que o resync reescreve todas juntas,
+entao a nota nova e coerente por construcao:
+
+    "Flop · CO · 74bb · aposta 16.0bb. Voce deu FOLD, mas o esperado era ALL-IN.
+     Erro grave (score 1.000)."
+
+Mais curta que a antiga, sem a matematica de pot odds (o pacote de matematica nao esta nas
+colunas), e certa. A frase de ausencia e a rede de seguranca para as portas que nao passam por
+`_enrich_note`.
+
+Regerar a nota junto com o veredito e o conserto de raiz e fica como item proprio: o resync nao
+tem em mao o pacote de matematica da mao, e inventar o texto na leitura seria TROCAR a resposta,
+que e o que a regra 7 proibe desde o episodio do board no hash. Silencio e honesto.
+
+### A varredura que mudou o conserto duas vezes
+
+Eu tinha mapeado 3 pontos de leitura. A varredura achou **8**, e a nota sai por oito portas de
+usuario. `mao_compartilhada` (2 consultas), `mao_completa` (2) e `get_decisions_for_hand` NAO
+precisaram de conserto: montam lista explicita de campos, sem `note` — conferido, nao suposto.
+
+O revisor de copy achou a nona porta, que eu nao tinha visto: `POST /analyze/decision` serve
+`llm_cache` na chave `decision:{id}:deep` antes de gerar. Um deep-dive em cache anterior a
+reescrita devolveria o mesmo raciocinio velho por outro caminho. Medido: **zero** das 1.519 tem
+entrada em cache, com controle mostrando que a consulta acha quando ha o que achar (existem 5
+entradas `decision:*` no acervo). Nada a invalidar.
+
+Ele tambem vetou minha copy: ela dizia que o texto estava "desatualizado em relacao ao veredito",
+o que conta ao jogador que dois outputs nossos se contradisseram — e a `/docs` promete a ele que
+"nunca exibimos recomendacoes contraditorias". Ficou "Esta mao esta sem explicacao escrita", nas
+tres locales.
+
+### Testes
+
+`backend/tests/test_nota_desatualizada.py` (15) e
+`frontend/src/pages/TournamentDetail.notaDesatualizada.test.tsx` (3). Metade dos casos e o lado
+que se CALA: uma funcao que acusasse sempre apagaria 135 mil notas corretas e passaria em todo
+caso de acusacao. Guardas quebrados de proposito e restaurados.
+
+---
 ## Todo torneio do PartyPoker estava sem data de jogo (13/09)
 
 Achado reparando a conta do dono: o unico registro multi-torneio dela e do Party, e os quatro
