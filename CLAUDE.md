@@ -99,6 +99,32 @@ python tests/test_api_endpoints.py
 python tests/test_decision_engine.py
 ```
 
+#### Contra POSTGRES, na máquina do dev
+
+A suíte roda em SQLite por padrão, e o dialeto do Postgres já esconde defeito mais de uma vez.
+**Existe Postgres 17 nativo aqui** (serviço `postgresql-x64-17`, porta 5432, `postgres/postgres`);
+Docker é que não existe. Medido em 14/09 com um defeito real de isolamento entre casos: SQLite
+devolveu **20 de 20** e o mesmo Postgres local devolveu **9 de 20**.
+
+```bash
+cd backend
+DATABASE_URL="postgresql://postgres:postgres@127.0.0.1:5432/leaklab_suite" LEAKLAB_SECRET="dev_local_apenas_para_testes_0000000000000000"   PYTHONIOENCODING=utf-8 PYTHONDONTWRITEBYTECODE=1 python tests/run_all_tests.py
+```
+
+Duas pegadinhas:
+
+1. **`LEAKLAB_SECRET` vai junto.** `auth.py` trata a presença de `DATABASE_URL` como produção e
+   levanta `RuntimeError` sem um segredo de 32+ caracteres.
+2. **`USE_POSTGRES` é constante de módulo avaliada na importação.** A env precisa estar setada
+   antes de rodar o python, nunca no meio.
+
+O banco `leaklab_suite` é descartável e existe só para isto. **Nunca aponte para `PT4 DB`**, que
+tem os dados reais do PokerTracker do dono.
+
+Isto NÃO substitui a homologação no host, que é a única que mede tempo com a latência do Neon
+(117,4s em produção contra 36,1s com Postgres no mesmo host). Substitui para achar defeito de
+dialeto e de isolamento, que é o que custa rodadas.
+
 Test output ends with `Total: X Passed: Y Failed: Z`. There is no pytest — tests use a custom runner.
 
 ### Frontend
