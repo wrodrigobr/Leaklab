@@ -3542,6 +3542,9 @@ export const subscription = {
 
   plans: () =>
     request<{ plans: Array<{ id: string; name: string; price: number; features: string[];
+      // O teto de cada plano, servido do `PLAN_LIMITS` do backend. `null` = sem teto. Plano que
+      // nao aparece na lista (o `coach`, interno) tambem nao tem teto. Auditoria NLU-10.
+      currency?: string; tournaments?: number | null; ai_calls?: number | null;
       billing?: {
         monthly: { price: number; period_days: number };
         annual: { price: number; period_days: number; monthly_equiv: number;

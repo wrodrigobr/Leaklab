@@ -4,6 +4,40 @@ Todas as mudanÃ§as notÃ¡veis neste projeto serÃ£o documentadas aqui.
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
+## O front para de cravar teto de plano: os numeros vem de /subscription/plans (15/09)
+
+Dois numeros de plano viviam escritos no frontend e nenhum batia com o `PLAN_LIMITS` do
+backend. Auditoria NLU-10 (`data/auditoria/repro/NLU_9.py`).
+
+`AccountMenu` caia em `{ tournaments: 3, ai_calls: 10 }` quando o payload nao trazia
+`plan_limits`. O free do backend e 30 torneios e 15 analises: a barra desenhava "2/3 usado" em
+amarelo para quem tinha 28 torneios de folga. Agora o menu nao inventa: teto conhecido mostra o
+numero, `null` mostra "ilimitado" e ausente mostra "2/…", sem barra. Nao sabemos nao e tres.
+
+`AdminDashboard` cravava `PLAN_TETO = { free: 30, pro: 200, coach: 200 }`. O coach do backend
+tem `tournaments: None`, sem teto: o admin via um coach com 200+ torneios pintado de vermelho
+enquanto as duas portas de cota (`_check_upload_quota` e `reivindicar_com_cota_liberada`) nunca
+o barram, o que o proprio repro confere. O mapa passou a vir de `/subscription/plans`, que ja
+serve o `PLAN_LIMITS`; plano ausente da lista (o `coach`, que e interno) nao tem teto, e sem
+teto conhecido a tabela nao pinta de vermelho, porque acusar estouro sem saber o limite e
+inventar.
+
+Guardas, dois: `frontend/src/components/hud/AccountMenu.limites.test.tsx` (3 casos, no DOM: sem
+`plan_limits` mostra "2/…" e nunca "2/3"; com 30/15 mostra 2/30 e 1/15; `null` segue
+"ilimitado") e `backend/tests/test_limites_de_plano_nao_cravados_no_front.py` (4 casos: a rota
+serve `tournaments`/`ai_calls` de cada plano que lista, o coach nao tem teto no backend, e a
+varredura dos arquivos do front que exibem plano).
+
+A varredura tem uma cicatriz propria: a primeira versao exigia a palavra "PLAN" nas linhas
+vizinhas, PASSOU no caso forjado (o comentario dizia "plano") e CALOU no arquivo de verdade.
+So apareceu porque o conserto foi desfeito de proposito nos dois arquivos, e nao so num. Os
+tres quebrados de proposito agora acusam: fallback 3/10 de volta (varredura e vitest), PLAN_TETO
+literal de volta (varredura), rota sem os limites do pro (contrato). Suites: novo 4/4 em SQLite
+e Postgres (duas rodadas), `test_copy_dos_planos_bate_com_os_limites` 2/2, `test_quota_mensal`
+4/4 nos dois; `test_subscription` 48/48 em SQLite (dubla o banco com sqlite3 cru e nao roda
+contra Postgres). tsc limpo; vitest do AccountMenu 3/3.
+
+---
 ## `standard_rate` para de chegar ao front como string, e os tipos do torneio declaram o que a rota manda (15/09)
 
 Duas metades do TEL-5.

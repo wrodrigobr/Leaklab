@@ -18,12 +18,23 @@ const PLAN_COLOR: Record<string, string> = {
   coach: "text-violet-400 bg-violet-400/10 border-violet-400/30",
 };
 
-function UsageBar({ used, limit, label }: { used: number; limit: number | null; label: string }) {
+function UsageBar({ used, limit, label }: { used: number; limit?: number | null; label: string }) {
   if (limit === null) {
     return (
       <div className="flex items-center justify-between font-mono text-[10px] text-muted-foreground">
         <span>{label}</span>
         <span className="text-primary">ilimitado</span>
+      </div>
+    );
+  }
+  // `undefined` = o payload nao trouxe o teto deste plano. Nao e "ilimitado" nem "3": e nao
+  // sabemos. Mostra o usado e reticencias, sem barra, em vez de inventar um limite que faria a
+  // barra mentir. Auditoria NLU-10 (15/09).
+  if (limit === undefined) {
+    return (
+      <div className="flex items-center justify-between font-mono text-[10px] text-muted-foreground">
+        <span>{label}</span>
+        <span data-testid={`uso-sem-teto-${label}`}>{used}/…</span>
       </div>
     );
   }
@@ -81,7 +92,10 @@ export function AccountMenu({ workspace, onSwitchWorkspace }: AccountMenuProps =
   const plan      = user.plan ?? "free";
   const planLabel = PLAN_LABEL[plan] ?? plan;
   const planColor = PLAN_COLOR[plan] ?? PLAN_COLOR.free;
-  const limits    = user.plan_limits ?? { tournaments: 3, ai_calls: 10 };
+  // Sem `plan_limits` no payload, o menu NAO inventa teto. O literal antigo (3 torneios e 10
+  // analises) nao era o limite de plano nenhum: o free do backend e 30 e 15, e a barra desenhava
+  // "2/3 usado, quase no teto" para quem tinha 28 de folga. Auditoria NLU-10 (15/09).
+  const limits    = user.plan_limits;
   const isPlayer  = user.role !== "coach";
 
   const handleLogout = () => {
@@ -125,8 +139,8 @@ export function AccountMenu({ workspace, onSwitchWorkspace }: AccountMenuProps =
           {isPlayer && (
             <div className="px-4 py-3 border-b border-border space-y-2.5">
               <p className="font-mono text-[10px] uppercase tracking-widest-2 text-muted-foreground">{t("conta.usoMes")}</p>
-              <UsageBar used={user.tournaments_used ?? 0} limit={limits.tournaments} label="Torneios" />
-              <UsageBar used={user.ai_calls_used ?? 0}   limit={limits.ai_calls}    label={t("conta.analises")} />
+              <UsageBar used={user.tournaments_used ?? 0} limit={limits?.tournaments} label="Torneios" />
+              <UsageBar used={user.ai_calls_used ?? 0}   limit={limits?.ai_calls}    label={t("conta.analises")} />
               {plan === "free" && (
                 <button
                   onClick={() => { setOpen(false); setCheckoutPlan("pro"); }}

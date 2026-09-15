@@ -12,7 +12,7 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 
 import { HudHeader } from "@/components/hud/HudHeader";
 import { AproveitamentoDoSolver } from "@/components/admin/AproveitamentoDoSolver";
 import { cn } from "@/lib/utils";
-import { adminDashboard, AdminUser, AdminCoachStudent, CoachApplication, support } from "@/lib/api";
+import { adminDashboard, AdminUser, AdminCoachStudent, CoachApplication, support, subscription } from "@/lib/api";
 import { toast } from "sonner";
 import { AdminSidebar, AdminSection, NavGroup } from "@/components/admin/AdminSidebar";
 import { StatusBadge } from "@/components/admin/StatusBadge";
@@ -496,12 +496,28 @@ function CoachStudentsModal({ coachId, coachName, onClose }: {
 
 // ── Users Tab ─────────────────────────────────────────────────────────────────
 
-/** Teto de torneios/mes de cada plano, o mesmo PLAN_LIMITS do backend (free 30, pro 200); so para o
- *  placeholder e o vermelho de "bateu no teto" na tabela do admin. */
-const PLAN_TETO: Record<string, number> = { free: 30, pro: 200, coach: 200 };
+/** Teto de torneios/mes de cada plano, para o placeholder e o vermelho de "bateu no teto" na
+ *  tabela do admin. Vem de `/subscription/plans`, que serve o `PLAN_LIMITS` do backend; plano
+ *  AUSENTE da lista nao tem teto, que e o caso do `coach` (`tournaments: None` no backend).
+ *
+ *  Antes era o literal `{ free: 30, pro: 200, coach: 200 }`: o admin via um coach com 200+
+ *  torneios pintado de vermelho enquanto o backend nunca o barra. Auditoria NLU-10 (15/09). */
+function useTetoPorPlano(): Record<string, number> {
+  const { data } = useQuery({
+    queryKey: ["subscription-plans"],
+    queryFn: () => subscription.plans(),
+    staleTime: 60 * 60 * 1000,
+  });
+  const out: Record<string, number> = {};
+  for (const p of data?.plans ?? []) {
+    if (typeof p.tournaments === "number") out[p.id] = p.tournaments;
+  }
+  return out;
+}
 
 function UsersTab() {
   const qc = useQueryClient();
+  const PLAN_TETO = useTetoPorPlano();
   const [search, setSearch]       = useState("");
   const [plan,   setPlan]         = useState("");
   const [role,   setRole]         = useState("");
@@ -639,7 +655,10 @@ function UsersTab() {
                   {/* Teto de torneios/mes deste jogador (08/09): "usados no mes / teto". Vazio = o do
                       plano; um numero vale sobre o plano; apagar volta ao plano. Fundador ganha 1.000. */}
                   <td className="px-4 py-3 font-mono tabular-nums text-muted-foreground whitespace-nowrap">
-                    <span className={cn(u.tournaments_limit_override == null && (u.tournaments_this_month ?? 0) >= PLAN_TETO[u.plan] ? "text-destructive" : "")}>
+                    {/* Sem teto conhecido (coach, ou a lista de planos ainda carregando) nao
+                        pinta de vermelho: acusar estouro sem saber o limite e inventar. */}
+                    <span className={cn(u.tournaments_limit_override == null && PLAN_TETO[u.plan] != null
+                                        && (u.tournaments_this_month ?? 0) >= PLAN_TETO[u.plan] ? "text-destructive" : "")}>
                       {u.tournaments_this_month ?? 0}
                     </span>
                     <span className="mx-1 text-muted-foreground/50">/</span>
