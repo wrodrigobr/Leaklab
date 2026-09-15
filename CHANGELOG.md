@@ -4,6 +4,26 @@ Todas as mudanÃ§as notÃ¡veis neste projeto serÃ£o documentadas aqui.
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
+## LevelCard anuncia o proximo nivel em ELO, nao em "1570%" (15/09)
+
+`/metrics/level` devolve `next_pct` como LIMIAR DE ELO do proximo nivel (o backend anota
+"agora e ELO threshold" desde a troca para escala ELO), e o card interpolava esse numero em
+"{{next}} em {{pct}}%". Medido no DOM com o corpo real da rota
+(`data/auditoria/repro/TEL_3.test.tsx`, TEL-6): "Estudante em 1570%" na tela do coach
+(`/coach-dashboard/student/:id`, o unico lugar que monta o card), ao lado do progresso certo
+("97% do caminho"). Auditoria TEL-6.
+
+A copy `level.nextAt` vira "{{next}} a partir de {{elo}} ELO" (en "from", es "desde") e o
+card passa `elo: Math.round(next_pct)`. O progresso em porcentagem, que e o numero certo,
+nao muda. O campo `next_pct` do contrato fica com o nome de sempre (mudar o payload e mexer
+em `api.ts` e em todo consumidor por um rotulo).
+
+Guarda: `frontend/src/components/hud/LevelCard.nextAt.test.tsx` monta o card com o JSON real
+nas tres linguas e exige "1570 ELO" e nunca "1570%"; o repro TEL-6 deixa de achar o texto.
+Quebrado de proposito dos dois lados (card antigo com copy nova; copy antiga com card novo):
+3 de 4 acusam em cada; restaurado. tsc limpo; guarda de i18n 9/9.
+
+---
 ## "Carregando…", "importado" e os toasts do perfil passam pelo i18n, e o guarda ve palavra solta (15/09)
 
 O guarda `tests/test_i18n_copy_do_frontend.py` acusa acento ou palavra funcional; uma palavra

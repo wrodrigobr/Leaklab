@@ -362,7 +362,7 @@
     "maxLevel": "Nivel máximo alcanzado",
     "blockingLeaks": "Leaks que bloquean tu avance",
     "studyLink": "Ver plan de estudio para avanzar",
-    "nextAt": "{{next}} en {{pct}}%",
+    "nextAt": "{{next}} desde {{elo}} ELO",
     "names": {
       "beginner": "Principiante",
       "student": "Estudiante",

@@ -95,7 +95,10 @@ export function LevelCard({ data, showStudyLink = true, compact = false }: Props
             {data.next_level && nextName && (
               <span className="font-mono text-[10px] text-muted-foreground flex items-center gap-1">
                 {(() => { const Icon = LEVEL_ICONS[data.next_level]; return Icon ? <Icon size={11} /> : null; })()}
-                {t("level.nextAt", { next: nextName, pct: data.next_pct })}
+                {/* `next_pct` e o LIMIAR DE ELO do proximo nivel (repositories: "agora e ELO
+                    threshold"), nao um percentual: lido como % escrevia "Estudante em 1570%"
+                    na tela do coach. Auditoria TEL-6 (15/09). */}
+                {t("level.nextAt", { next: nextName, elo: Math.round(data.next_pct ?? 0) })}
               </span>
             )}
           </div>
