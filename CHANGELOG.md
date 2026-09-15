@@ -4,6 +4,36 @@ Todas as mudanÃ§as notÃ¡veis neste projeto serÃ£o documentadas aqui.
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
+## POST /uploads ganha teto de 40 MB em aberto por conta, em bytes e nao em arquivos (15/09)
+
+O unico teto por jogador da recepcao era `ESPERA_MAX_POR_USUARIO = 5`, e ele conta so
+`aguardando_cota`, um estado que o WORKER atribui depois do POST. Medido pela rota real
+(`data/auditoria/repro/SEG_1.py` e `SEG_4.py`): um free guardou **45 MB** em 10 POSTs de 4,5 MB
+com uma linha de cabecalho e lixo atras (tudo em `recebido`), e em rajada, que e como o front
+manda a fila, 20 arquivos entraram com teto 5. O freio efetivo era 300 requisicoes por hora
+por conta, num Postgres cobrado por armazenamento. Auditoria SEG-2 (absorve SEG-3).
+
+A grandeza que custa e byte guardado. `recepcao_de_upload.bytes_em_aberto(user_id)` soma
+`bytes_total` de tudo que ainda tem conteudo no banco (`recebido`, `processando`,
+`aguardando_cota`); `concluido` e `erro` nao contam, porque `concluir` zera os bytes. O POST
+recusa com 429 `code=upload_bytes_em_aberto` quando a soma mais o arquivo passa de
+`BYTES_EM_ABERTO_MAX_POR_USUARIO` (40 MB, 13 vezes o maior arquivo real medido, 3,1 MB), e a
+mensagem diz o que fazer: esperar o que ja esta em aberto terminar e reenviar. A recusa nao
+grava nada. `ESPERA_MAX_POR_USUARIO` fica como esta.
+
+Depois: os mesmos 10 POSTs param no 9o (36 MB em aberto). O que o SEG_1 ainda acusa e de
+proposito fora deste conserto: a peneira de formato e uma regex (um cabecalho valido seguido
+de lixo passa; parsear na requisicao era metade do problema da frente de 14/09) e a fila do
+worker e FIFO global. A contagem de ARQUIVOS em rajada (SEG-3) segue vazando pelo teto de 5,
+mas o custo que ela produzia esta limitado pelos bytes: 20 arquivos de teste somam 74 KB.
+
+Guarda em `tests/test_recepcao_de_upload.py`: tres estados em aberto somando ate o teto
+recusam o proximo arquivo com o codigo e os numeros na resposta; `concluido`/`erro` com
+bytes_total enorme NAO barram (o jogador com historico grande ja importado nao pode ficar
+preso); e uma rajada de 4 arquivos distintos com o teto quase cheio responde
+[202, 202, 429, 429]. Quebrado de proposito (conferencia desligada): 2 de 23 acusam; restaurado.
+
+---
 ## /analyze/guest ganha teto proprio: 200 KB e 50 maos, conferidos antes do parse (15/09)
 
 A rota e publica (sem login) e faz o parse e o motor inteiros dentro da requisicao. O unico

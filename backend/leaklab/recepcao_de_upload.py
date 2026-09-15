@@ -68,6 +68,17 @@ TRAVADO_APOS_MIN = 15
 # `max_pending_solves` dos planos.
 ESPERA_MAX_POR_USUARIO = 5
 
+# Teto de BYTES em aberto por jogador (auditoria SEG-2 e SEG-3, 15/09). O teto acima conta so
+# `aguardando_cota`, e quem poe nesse estado e o worker, DEPOIS do POST: em rajada (que e como o
+# front manda uma fila) 20 arquivos entraram com teto 5, e um free empilhou 45 MB de lixo com
+# uma linha de cabecalho em 10 POSTs, tudo em `recebido`. A grandeza que custa e byte, nao
+# arquivo, entao o teto e em bytes e conta TODO recibo cujo conteudo ainda esta guardado
+# (`recebido`, `processando`, `aguardando_cota`); `concluido` e `erro` zeram os bytes.
+# 40 MB e 13 vezes o maior arquivo real medido (3,1 MB, 18 torneios): folga para o mes inteiro
+# de um fundador, e o lote drena enquanto ele envia.
+BYTES_EM_ABERTO_MAX_POR_USUARIO = 40 * 1024 * 1024
+STATUS_EM_ABERTO = (RECEBIDO, PROCESSANDO, AGUARDANDO_COTA)
+
 # A peneira BARATA da recepção: o arquivo parece hand history? Uma regex sobre o texto, não o
 # parse. Os cinco dialetos do acervo, pelos cabeçalhos que o parser já reconhece.
 _PARECE_HH = re.compile(
@@ -343,6 +354,22 @@ def em_espera_por_cota(user_id: int) -> int:
         return int(dict(conn.execute(_adapt(
             "SELECT COUNT(*) AS n FROM uploads_recebidos WHERE user_id=? AND status=?"),
             (user_id, AGUARDANDO_COTA)).fetchone())['n'])
+    finally:
+        conn.close()
+
+
+def bytes_em_aberto(user_id: int) -> int:
+    """Soma de `bytes_total` dos recibos deste jogador cujo conteudo ainda esta guardado."""
+    _tabela()
+    from database.repositories import _adapt
+    conn = get_conn()
+    try:
+        marcas = ','.join('?' * len(STATUS_EM_ABERTO))
+        r = conn.execute(_adapt(
+            "SELECT COALESCE(SUM(bytes_total), 0) AS b FROM uploads_recebidos "
+            "WHERE user_id=? AND status IN (%s)" % marcas),
+            (user_id,) + tuple(STATUS_EM_ABERTO)).fetchone()
+        return int(dict(r)['b'] or 0)
     finally:
         conn.close()
 

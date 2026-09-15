@@ -471,6 +471,85 @@ def test_a_espera_tem_TETO_por_jogador():
         assert (r.get_json() or {}).get('espera_cheia') is True, r.get_json()
 
 
+def _recibo_falso(c, k, status, n_bytes):
+    from database.repositories import _adapt
+    c.execute(_adapt(
+        "INSERT INTO uploads_recebidos (user_id, sha256, bytes_total, conteudo, status) "
+        "VALUES (?,?,?,?,?)"), (UID, 'bytes%s%d' % (status, k), n_bytes, 'x', status))
+
+
+def test_os_bytes_em_aberto_tem_TETO_por_jogador():
+    """Auditoria SEG-2/SEG-3 (15/09): o teto de arquivos so ve `aguardando_cota`, que o worker
+    atribui DEPOIS do POST. Em rajada 20 arquivos entraram com teto 5, e 10 POSTs de 4,5 MB
+    guardaram 45 MB de um free. O freio que vale e em bytes, sobre tudo que ainda esta guardado."""
+    with banco_de_teste() as (cliente, headers):
+        from leaklab.recepcao_de_upload import (AGUARDANDO_COTA, BYTES_EM_ABERTO_MAX_POR_USUARIO,
+                                                PROCESSANDO, RECEBIDO, bytes_em_aberto)
+        from database.schema import get_conn
+        arquivo = _um_torneio()
+        n_arquivo = len(arquivo.encode('utf-8'))
+        c = get_conn()
+        # Tres estados em aberto somam ate faltar menos que um arquivo para o teto.
+        fatia = (BYTES_EM_ABERTO_MAX_POR_USUARIO - n_arquivo + 1) // 3
+        _recibo_falso(c, 1, RECEBIDO, fatia)
+        _recibo_falso(c, 2, PROCESSANDO, fatia)
+        _recibo_falso(c, 3, AGUARDANDO_COTA, fatia)
+        c.commit(); c.close()
+        em_aberto = bytes_em_aberto(UID)
+        assert em_aberto == 3 * fatia, em_aberto
+        assert em_aberto + n_arquivo > BYTES_EM_ABERTO_MAX_POR_USUARIO
+
+        r = cliente.post('/uploads', json={'content': arquivo}, headers=headers)
+        assert r.status_code == 429, (r.status_code, r.get_json())
+        j = r.get_json() or {}
+        assert j.get('code') == 'upload_bytes_em_aberto', j
+        assert j.get('bytes_em_aberto') == em_aberto and j.get('teto_bytes') == BYTES_EM_ABERTO_MAX_POR_USUARIO
+        assert 'envie este arquivo de novo' in j.get('error', ''), j
+        assert bytes_em_aberto(UID) == em_aberto, 'a recusa gravou o arquivo'
+
+
+def test_bytes_concluidos_NAO_contam_no_teto():
+    """O outro lado: um jogador com um historico enorme JA importado nao pode ficar barrado.
+    `concluido` e `erro` zeram o conteudo; so `bytes_total` fica como registro."""
+    with banco_de_teste() as (cliente, headers):
+        from leaklab.recepcao_de_upload import (BYTES_EM_ABERTO_MAX_POR_USUARIO, CONCLUIDO,
+                                                ERRO, RECEBIDO, bytes_em_aberto)
+        from database.schema import get_conn
+        c = get_conn()
+        _recibo_falso(c, 1, CONCLUIDO, 3 * BYTES_EM_ABERTO_MAX_POR_USUARIO)
+        _recibo_falso(c, 2, ERRO, 3 * BYTES_EM_ABERTO_MAX_POR_USUARIO)
+        c.commit(); c.close()
+        assert bytes_em_aberto(UID) == 0
+
+        r = cliente.post('/uploads', json={'content': _um_torneio()}, headers=headers)
+        assert r.status_code == 202, (r.status_code, r.get_json())
+        assert (r.get_json() or {}).get('status') == RECEBIDO
+        assert bytes_em_aberto(UID) == len(_um_torneio().encode('utf-8'))
+
+
+def test_o_teto_de_bytes_segura_a_RAJADA():
+    """O caso que o teto de arquivos deixava passar: varios POSTs antes de o worker rodar. Cada
+    arquivo diferente entra em `recebido` e soma; o que passar do teto e recusado NA HORA."""
+    with banco_de_teste() as (cliente, headers):
+        from leaklab.recepcao_de_upload import BYTES_EM_ABERTO_MAX_POR_USUARIO, bytes_em_aberto
+        base = _um_torneio()
+        n = len(base.encode('utf-8'))
+        cabem = BYTES_EM_ABERTO_MAX_POR_USUARIO // n
+        # Encurta a rajada: enche quase tudo com UM recibo falso e manda 4 arquivos distintos.
+        from database.schema import get_conn
+        c = get_conn()
+        _recibo_falso(c, 1, 'recebido', (cabem - 2) * n)
+        c.commit(); c.close()
+        codigos = []
+        for k in range(4):
+            corpo = base.replace('Tournament #', 'Tournament #%d' % (7000 + k))
+            r = cliente.post('/uploads', json={'content': corpo, 'filename': 'r%d.txt' % k},
+                             headers=headers)
+            codigos.append(r.status_code)
+        assert codigos == [202, 202, 429, 429], codigos
+        assert bytes_em_aberto(UID) <= BYTES_EM_ABERTO_MAX_POR_USUARIO
+
+
 if __name__ == '__main__':
     falhas = 0
     testes = [v for k, v in sorted(globals().items()) if k.startswith('test_')]

@@ -935,6 +935,23 @@ def receber_upload():
                       % ESPERA_MAX_POR_USUARIO),
             'espera_cheia': True}), 429
 
+    # O teto acima conta arquivos e so ve `aguardando_cota`, que o worker atribui depois; em
+    # rajada nao segura nada. O que custa e byte guardado, entao o freio real e este: a soma
+    # do que ainda esta em aberto (recebido/processando/aguardando_cota) mais este arquivo.
+    from leaklab.recepcao_de_upload import BYTES_EM_ABERTO_MAX_POR_USUARIO, bytes_em_aberto
+    n_bytes = len(conteudo.encode('utf-8', 'replace'))
+    em_aberto = bytes_em_aberto(g.user_id)
+    if em_aberto + n_bytes > BYTES_EM_ABERTO_MAX_POR_USUARIO:
+        return jsonify({
+            'error': ('Você tem %.0f MB de arquivos ainda sendo analisados ou esperando a cota. '
+                      'Espere eles terminarem e envie este arquivo de novo (limite de %d MB em '
+                      'aberto por conta).'
+                      % (em_aberto / 1048576.0, BYTES_EM_ABERTO_MAX_POR_USUARIO // 1048576)),
+            'code': 'upload_bytes_em_aberto',
+            'bytes_em_aberto': em_aberto,
+            'bytes_arquivo': n_bytes,
+            'teto_bytes': BYTES_EM_ABERTO_MAX_POR_USUARIO}), 429
+
     r = receber(g.user_id, conteudo, _extract_upload_filename(request))
     return jsonify({
         'recibo': r['id'],
