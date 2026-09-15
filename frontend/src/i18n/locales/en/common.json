@@ -254,7 +254,7 @@
     "recebido": "File received. We are analyzing it.",
     "aguardandoCota": "{{entraram}} tournaments imported. Another {{esperando}} will come in when your monthly quota renews.",
     "progresso": "Analyzing: {{feitos}} of {{total}} tournaments.",
-    "erroNoProcessamento": "We could not analyze this file. Your upload is saved and we will try again.",
+    "erroNoProcessamento": "We could not analyze this file. Check that it is a tournament hand history (MTT or SNG).",
     "variosTorneiosParcial": "File had {{n}} tournaments. {{ok}} imported, {{fora}} did not go in.",
     "variosTorneiosJaEstavam": "File had {{n}} tournaments. {{ok}} new, {{ja}} already in your history.",
     "variosTorneiosMisto": "File had {{n}} tournaments. {{ok}} new, {{ja}} already there, {{fora}} did not go in."

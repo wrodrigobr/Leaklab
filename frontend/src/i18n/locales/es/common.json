@@ -254,7 +254,7 @@
     "recebido": "Archivo recibido. Lo estamos analizando.",
     "aguardandoCota": "{{entraram}} torneos importados. Otros {{esperando}} entrarán cuando se renueve tu cuota mensual.",
     "progresso": "Analizando: {{feitos}} de {{total}} torneos.",
-    "erroNoProcessamento": "No pudimos analizar este archivo. Tu envío está guardado y lo intentaremos de nuevo.",
+    "erroNoProcessamento": "No pudimos analizar este archivo. Revisa que sea un historial de manos de torneo (MTT o SNG).",
     "variosTorneiosParcial": "El archivo tenía {{n}} torneos. {{ok}} importados, {{fora}} no entraron.",
     "variosTorneiosJaEstavam": "El archivo tenía {{n}} torneos. {{ok}} nuevos, {{ja}} ya estaban en tu historial.",
     "variosTorneiosMisto": "El archivo tenía {{n}} torneos. {{ok}} nuevos, {{ja}} ya estaban, {{fora}} no entraron."

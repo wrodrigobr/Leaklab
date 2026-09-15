@@ -4,6 +4,26 @@ Todas as mudanÃ§as notÃ¡veis neste projeto serÃ£o documentadas aqui.
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
+## A frase do erro de upload para de prometer uma retentativa que nao existe (15/09)
+
+`uploadQueue.erroNoProcessamento` dizia "Seu envio esta guardado, vamos tentar de novo" (e o
+equivalente em en e es). Medido no backend (`data/auditoria/repro/FLU_5.py`): quando o recibo
+vira `erro`, `concluir` zera os bytes e o worker nao volta a olhar para ele. A metade "nao
+conseguimos analisar" era honesta; a outra descrevia um comportamento que nao existe, e o
+jogador esperava uma retentativa que nunca vinha. Auditoria FLU-6 (fatia de copy do FLU-2).
+
+A frase agora diz so o que acontece e o que conferir: "Nao conseguimos analisar este arquivo.
+Confira se ele e um historico de maos de torneio (MTT ou SNG)." nas tres linguas. Quando o
+backend manda o motivo (`recibo.erro`), a tela ja mostrava o motivo em vez desta frase; isso
+nao mudou. A retentativa de verdade (FLU-2) fica para decisao do dono; quando existir, quem a
+fizer troca a copy e o guarda junto.
+
+Guarda: `frontend/src/i18n/copyDoErroDeUpload.test.ts` proibe a PROMESSA nas tres linguas
+(padroes de "tentar de novo", "esta guardado", "try again", "is saved", "intentaremos") e
+prova que acha: as tres frases antigas caem. Quebrado de proposito (copy pt-BR antiga
+restaurada): 1 de 4 acusa; restaurado. tsc limpo; vitest dos arquivos tocados 12/12.
+
+---
 ## Apagar o torneio (ou resetar os dados) deixa o mesmo arquivo entrar de novo (15/09)
 
 A recepcao de upload e idempotente por `(user_id, sha256)` e devolve o recibo que ja existe em
