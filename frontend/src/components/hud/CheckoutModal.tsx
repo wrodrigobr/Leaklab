@@ -209,7 +209,7 @@ export function CheckoutModal({ plan, onClose, onSuccess }: Props) {
         throw new Error(`Status inesperado: ${paymentIntent?.status ?? "unknown"}`);
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Erro ao processar pagamento.");
+      setError(e instanceof Error ? e.message : t("checkout.erroProcessar"));
     } finally {
       setSubmitting(false);
     }

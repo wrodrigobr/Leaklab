@@ -1,4 +1,5 @@
 import { ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { urlDeLoginPara, destinoSeguro } from "@/lib/destinoAposLogin";
@@ -75,13 +76,17 @@ import Subscription from "./pages/Subscription.tsx";
 
 const queryClient = new QueryClient();
 
-const LoadingScreen = () => (
-  <div className="min-h-dvh bg-background flex items-center justify-center">
-    <span className="font-mono text-xs text-muted-foreground uppercase tracking-widest-2 animate-pulse">
-      Carregando…
-    </span>
-  </div>
-);
+const LoadingScreen = () => {
+  // A tela de espera de TODA rota protegida saia "Carregando…" em en/es (auditoria TEL-8).
+  const { t } = useTranslation("common");
+  return (
+    <div className="min-h-dvh bg-background flex items-center justify-center">
+      <span className="font-mono text-xs text-muted-foreground uppercase tracking-widest-2 animate-pulse">
+        {t("actions.loading")}
+      </span>
+    </div>
+  );
+};
 
 /**
  * Rota pública: redireciona usuários já logados.

@@ -4,6 +4,33 @@ Todas as mudanÃ§as notÃ¡veis neste projeto serÃ£o documentadas aqui.
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
+## "Carregando…", "importado" e os toasts do perfil passam pelo i18n, e o guarda ve palavra solta (15/09)
+
+O guarda `tests/test_i18n_copy_do_frontend.py` acusa acento ou palavra funcional; uma palavra
+so, sem acento, passava. Medido no DOM (`data/auditoria/repro/TEL_7.test.tsx`, TEL-8): a lista
+de torneios em INGLES escrevia "importado" ao lado de "Upload summary" traduzido. Vivos na
+tela do jogador: "Carregando…" (`App.tsx`, a espera de TODA rota protegida), "importado"
+(`Tournaments.tsx`, quando `played_at` e nulo) e os tres toasts do `ProfileCompletionCard`
+("Perfil completo! Obrigado.", "Dados salvos.", "Erro ao salvar perfil."), num arquivo que
+estava na lista de "ja limpos". Auditoria TEL-8.
+
+Os cinco pontos viraram `t()` (chaves `common:actions.loading`, `tournaments:importadoEm`,
+`dashboard:perfil.{completo,salvo,erroSalvar}`) nos tres locales. O guarda ganhou um terceiro
+grupo de palavras soltas (carregando, importado, salvo, obrigado, enviar, enviado, aguarde,
+analisando, processando, "erro ao", nenhum) e passou a ignorar chave de i18n
+(`t("perfil.salvo")` contem a palavra e nao e copy). Com o guarda mais forte, quatro
+fallbacks em arquivos "ja limpos" cairam e foram traduzidos junto: "Erro ao processar
+pagamento." (CheckoutModal), "Erro ao carregar comparativo" e "Carregando comparativo…"
+(TournamentCompare) e "Erro ao analisar arquivo" (UploadZone). `App.tsx` e
+`pages/Tournaments.tsx` entraram na lista de "ja limpos". "erro" sozinho fica fora do guarda
+de proposito: `status === "erro"` compara com o valor que o backend manda.
+
+Guarda: `test_o_varredor_ACHA_palavra_solta_sem_acento` prova que os seis que escaparam caem
+e que ingles e chave de i18n nao. Quebrado de proposito (`Tournaments.tsx` antigo): o guarda
+acusa `src/pages/Tournaments.tsx:37 importado`; restaurado. tsc limpo; vitest dos arquivos
+tocados 8/8; o repro TEL-8 deixa de achar "importado" no DOM em ingles.
+
+---
 ## A frase do erro de upload para de prometer uma retentativa que nao existe (15/09)
 
 `uploadQueue.erroNoProcessamento` dizia "Seu envio esta guardado, vamos tentar de novo" (e o

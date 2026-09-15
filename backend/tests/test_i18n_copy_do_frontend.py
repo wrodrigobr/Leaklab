@@ -56,6 +56,9 @@ _SEM_PORTUGUES_CRAVADO = [
     os.path.join('components', 'hud', 'QuotaBanner.tsx'),
     os.path.join('components', 'hud', 'PositionMap.tsx'),
     os.path.join('components', 'study', 'ResourceList.tsx'),
+    # 15/09 (auditoria TEL-8): a tela de espera de TODA rota e a coluna de data da lista.
+    'App.tsx',
+    os.path.join('pages', 'Tournaments.tsx'),
 ]
 
 # CONTRAPROVA do filtro de codigo. Ele ja cegou o varredor uma vez: com `(`, `)` e `"` na
@@ -113,12 +116,23 @@ def test_as_excecoes_de_i18n_ainda_apontam_para_arquivos_REAIS():
 # A lista nasceu curta e ISSO ERA UM BURACO: a quebra deliberada com "Pro liberado por 6
 # meses" NÃO acusou, porque a frase não tem acento nem nenhuma das palavras que eu tinha
 # listado. O guarda parecia funcionar; funcionava só para o português acentuado.
+#
+# E uma palavra SOLTA sem acento tambem passava: "Carregando…" (a tela de espera de toda rota
+# protegida), "importado" (lista de torneios), "Dados salvos." (toast) e "Erro ao processar
+# pagamento." viviam em arquivos "ja limpos" e saiam em portugues para en/es (auditoria TEL-8,
+# 15/09). Por isso o terceiro grupo: as palavras soltas que a copy do produto mais usa. Nao
+# entra "erro" sozinho: `status === "erro"` compara com o VALOR que o backend manda.
 _PORTUGUES = re.compile(
     r'[áàâãéêíóôõúüçÁÀÂÃÉÊÍÓÔÕÚÜÇ]'
     r'|\b(de|da|do|das|dos|em|para|com|sem|não|uma|seu|sua|pelo|pela|você'
     r'|por|que|mais|quando|como|onde|ainda|já|ou|nos|nas|aos|isso|este|esta'
-    r'|entre|até|mas|foi|ser|tem|vai|cada|todo|toda|quem)\b',
+    r'|entre|até|mas|foi|ser|tem|vai|cada|todo|toda|quem)\b'
+    r'|\b(carregando|importado|importados|salvo|salvos|obrigado|enviar|enviado|enviados'
+    r'|aguarde|analisando|processando|erro ao|nenhum|nenhuma)\b',
     re.IGNORECASE)
+
+# `t("perfil.salvo")`: a CHAVE do i18n contem a palavra portuguesa e nao e copy.
+_CHAVE_DE_I18N = re.compile(r'^[a-zA-Z][\w-]*(\.[\w-]+)+$')
 
 _LITERAL = re.compile(r"'([^'\n]{4,})'|\"([^\"\n]{4,})\"")
 
@@ -239,7 +253,9 @@ def test_arquivos_ja_limpos_nao_tem_portugues_cravado():
         texto = _sem_comentario(_ler(caminho))
         for pos, lit in _todo_texto_de_tela(texto):
             literais += 1
-            if not _URLISH.match(lit) and _PORTUGUES.search(lit):
+            if _URLISH.match(lit) or _CHAVE_DE_I18N.match(lit) or lit in _NAO_E_COPY:
+                continue
+            if _PORTUGUES.search(lit):
                 linha = texto.count('\n', 0, pos) + 1
                 violacoes.append(f'  src/{rel}:{linha}  {lit[:80]}')
 
@@ -261,6 +277,20 @@ def test_o_varredor_de_portugues_NAO_acusa_termo_de_poker():
         lit = ruim.strip("'")
         assert _PORTUGUES.search(lit), f'deixou passar português cravado: {ruim}'
     print('OK  test_o_varredor_de_portugues_NAO_acusa_termo_de_poker')
+
+
+def test_o_varredor_ACHA_palavra_solta_sem_acento():
+    """Regra 1: os que escaparam ate 15/09 tem de cair, e a chave do i18n nao."""
+    for ruim in ('Carregando…', 'importado', 'Dados salvos.', 'Erro ao processar pagamento.',
+                 'Perfil completo! Obrigado.', 'Carregando comparativo…'):
+        assert _PORTUGUES.search(ruim), f'deixou passar palavra solta: {ruim!r}'
+    for bom in ('Loading…', 'imported', 'Saved.', 'Could not process the payment.'):
+        assert not _PORTUGUES.search(bom), f'acusou ingles: {bom!r}'
+    for chave in ('perfil.salvo', 'upload.analisando', 'compare.carregando', 'a.b-c.d'):
+        assert _CHAVE_DE_I18N.match(chave), chave
+    assert not _CHAVE_DE_I18N.match('Dados salvos.')
+    assert not _CHAVE_DE_I18N.match('carregando')
+    print('OK  test_o_varredor_ACHA_palavra_solta_sem_acento')
 
 
 def test_RangeSet_nao_tem_campo_morto_de_descricao():

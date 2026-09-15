@@ -75,6 +75,7 @@
     "netProfit": "Lucro líquido",
     "periodRoi": "ROI período"
   },
+  "importadoEm": "importado",
   "loading": "Carregando torneios…",
   "detail": {
     "eyebrow": "Torneio · {{id}}",
@@ -321,6 +322,8 @@
     "trainCta": "Treinar estes leaks"
   },
   "compare": {
+    "erroCarregar": "Erro ao carregar comparativo",
+    "carregando": "Carregando comparativo…",
     "min2": "Selecione pelo menos 2 torneios.",
     "titulo": "Comparativo de Torneios",
     "subtitulo": "Análise evolutiva lado a lado de qualidade técnica de decisão.",

@@ -770,6 +770,7 @@
     "p6desc": "Every leak found turns into spaced-repetition drills. And validation does not happen in the drill: the platform goes back to your real hands to check whether you stopped leaking."
   },
   "checkout": {
+    "erroProcessar": "Could not process the payment.",
     "ciclo": {
       "mensal": "Monthly",
       "anual": "Yearly"
@@ -809,6 +810,9 @@
     "verTermos": "Terms of Use"
   },
   "perfil": {
+    "completo": "Profile complete! Thank you.",
+    "salvo": "Saved.",
+    "erroSalvar": "Could not save your profile.",
     "titulo": "Complete your profile",
     "aviso": "Used only for aggregated, anonymised benchmarks, never shared individually.",
     "anoNascimento": "Year of birth",
@@ -839,6 +843,7 @@
     "amostraBaixa": "some cells have a small sample"
   },
   "upload": {
+    "erroAnalisar": "Could not analyze the file",
     "analisando": "Analysing the tournament…",
     "importado": "Tournament imported.",
     "erro": "Import failed",

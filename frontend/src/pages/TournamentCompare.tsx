@@ -68,7 +68,7 @@ export default function TournamentCompare() {
     }
     tournamentsApi.compare(ids)
       .then((r) => { setItems(r.items); setNarrative(r.narrative); })
-      .catch((e) => setError(e.message ?? "Erro ao carregar comparativo"))
+      .catch((e) => setError(e.message ?? t("compare.erroCarregar")))
       .finally(() => setLoading(false));
   }, [params.get("ids")]);
 
@@ -96,7 +96,7 @@ export default function TournamentCompare() {
       {loading && (
         <div className="flex items-center justify-center py-24 gap-3 text-muted-foreground">
           <Loader2 className="size-5 animate-spin text-primary" />
-          <span className="font-mono text-xs uppercase tracking-wider">Carregando comparativo…</span>
+          <span className="font-mono text-xs uppercase tracking-wider">{t("compare.carregando")}</span>
         </div>
       )}
 

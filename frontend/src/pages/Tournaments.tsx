@@ -30,11 +30,12 @@ function formatDate(iso: string | null): string {
 }
 
 function TournamentDate({ playedAt, importedAt }: { playedAt: string | null; importedAt: string }) {
+  const { t } = useTranslation("tournaments");
   if (playedAt) return <span>{formatDate(playedAt)}</span>;
   return (
     <span className="flex flex-col leading-tight">
       <span>{formatDate(importedAt)}</span>
-      <span className="text-[9px] text-muted-foreground/50 uppercase tracking-wide">importado</span>
+      <span className="text-[9px] text-muted-foreground/50 uppercase tracking-wide">{t("importadoEm")}</span>
     </span>
   );
 }

@@ -48,13 +48,13 @@ export function ProfileCompletionCard() {
       qc.setQueryData(["player-profile"], updated);
       if (updated.profile_completed_at) {
         qc.invalidateQueries({ queryKey: ["me"] });
-        toast.success("Perfil completo! Obrigado.");
+        toast.success(t("perfil.completo"));
         setOpen(false);
       } else {
-        toast.success("Dados salvos.");
+        toast.success(t("perfil.salvo"));
       }
     },
-    onError: () => toast.error("Erro ao salvar perfil."),
+    onError: () => toast.error(t("perfil.erroSalvar")),
   });
 
   const [form, setForm] = useState<Partial<DemographicProfile>>({});

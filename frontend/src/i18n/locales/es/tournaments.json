@@ -75,6 +75,7 @@
     "netProfit": "Ganancia neta",
     "periodRoi": "ROI del período"
   },
+  "importadoEm": "importado",
   "loading": "Cargando torneos…",
   "detail": {
     "eyebrow": "Torneo · {{id}}",
@@ -321,6 +322,8 @@
     "trainCta": "Entrenar estos leaks"
   },
   "compare": {
+    "erroCarregar": "No pudimos cargar la comparación",
+    "carregando": "Cargando comparativo…",
     "min2": "Selecciona al menos 2 torneos.",
     "titulo": "Comparativa de Torneos",
     "subtitulo": "Vista lado a lado de cómo evoluciona la calidad de tus decisiones.",

@@ -48,7 +48,7 @@ export function UploadZone({ onResult }: Props) {
         });
       } catch (err: unknown) {
         setStatus("error");
-        setMessage(err instanceof Error ? err.message : "Erro ao analisar arquivo");
+        setMessage(err instanceof Error ? err.message : t("upload.erroAnalisar"));
       }
     },
     [onResult]

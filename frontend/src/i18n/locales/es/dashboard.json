@@ -770,6 +770,7 @@
     "p6desc": "Cada leak encontrado se convierte en drills con repetición espaciada. Y la validación no ocurre en el ejercicio: la plataforma vuelve a tus manos reales para comprobar si dejaste de filtrar."
   },
   "checkout": {
+    "erroProcessar": "No pudimos procesar el pago.",
     "ciclo": {
       "mensal": "Mensual",
       "anual": "Anual"
@@ -809,6 +810,9 @@
     "verTermos": "Términos de Uso"
   },
   "perfil": {
+    "completo": "¡Perfil completo! Gracias.",
+    "salvo": "Datos guardados.",
+    "erroSalvar": "No pudimos guardar tu perfil.",
     "titulo": "Completa tu perfil",
     "aviso": "Se usan solo para benchmarks agregados y anonimizados, nunca se comparten de forma individual.",
     "anoNascimento": "Año de nacimiento",
@@ -839,6 +843,7 @@
     "amostraBaixa": "algunas celdas tienen muestra baja"
   },
   "upload": {
+    "erroAnalisar": "No pudimos analizar el archivo",
     "analisando": "Analizando el torneo…",
     "importado": "Torneo importado.",
     "erro": "Error al importar",

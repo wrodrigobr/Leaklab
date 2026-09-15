@@ -75,6 +75,7 @@
     "netProfit": "Net profit",
     "periodRoi": "Period ROI"
   },
+  "importadoEm": "imported",
   "loading": "Loading tournaments…",
   "detail": {
     "eyebrow": "Tournament · {{id}}",
@@ -321,6 +322,8 @@
     "trainCta": "Train these leaks"
   },
   "compare": {
+    "erroCarregar": "Could not load the comparison",
+    "carregando": "Loading comparison…",
     "min2": "Pick at least 2 tournaments.",
     "titulo": "Tournament Comparison",
     "subtitulo": "Side-by-side view of how your decision quality is evolving.",
