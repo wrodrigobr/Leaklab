@@ -4,6 +4,28 @@ Todas as mudanÃ§as notÃ¡veis neste projeto serÃ£o documentadas aqui.
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
+## Mao repetida no mesmo arquivo conta uma vez (15/09)
+
+Dois exports do PokerStars colados pelo jogador se sobrepoem por data. Medido pela rota real
+(`data/auditoria/repro/NLU_7.py`): as 3 primeiras maos do fixture, uma vez, dao 4 decisoes;
+as mesmas 3 coladas duas vezes davam `total_hands=6`, **8 decisoes** no banco e `hands_count=3`
+(que conta ids distintos). Cada mao repetida pesava em dobro em toda estatistica, ELO e plano
+de estudos, e a resposta desmentia o banco. So o REIMPORT dedupava (contra o raw ja salvo); o
+arquivo contra ele mesmo, nunca. Auditoria NLU-9.
+
+`parser.deduplicar_maos` e chamada por `parse_hand_history`, a unica porta de parse de texto:
+/analyze, o worker de upload, o guest e o merge de reimport herdam a regra sem copia (regra 5).
+Chave `(tournament_id, hand_id)`, nunca so `hand_id` (ele e unico dentro de um torneio, nao
+entre torneios do mesmo arquivo). Mao sem id nao e deduplicada. Entre blocos repetidos fica o
+mais longo (export truncado perde para o inteiro); a ordem da primeira aparicao e preservada.
+Depois: o arquivo dobrado grava as mesmas 4 decisoes, `total_hands=3`, `hands_count=3`.
+
+Guarda: `tests/test_mao_repetida_no_arquivo.py` (5 testes: ordem, bloco mais longo, torneios
+diferentes nao fundem, sem id nao dedupa, e a rota com o arquivo dobrado). Quebrado de
+proposito (parser antigo): 4 de 5 acusam; restaurado. Nenhum acervo foi reprocessado: torneio
+ja gravado com duplicata fica como esta ate o proximo reimport.
+
+---
 ## A nota regerada tambem e julgada, e o deep-dive passa pelo silenciador (15/09)
 
 Em 14/09 a nota que contradiz o veredito passou a ser retirada na leitura

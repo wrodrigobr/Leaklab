@@ -345,15 +345,50 @@ def heroi_das_maos(maos, padrao: str = 'Hero') -> str:
     return nomes.most_common(1)[0][0] if nomes else padrao
 
 
+def deduplicar_maos(hands: List[ParsedHand]) -> List[ParsedHand]:
+    """A mesma mao repetida no MESMO arquivo conta uma vez (auditoria NLU-9, 15/09).
+
+    Dois exports do PokerStars colados pelo jogador se sobrepoem por data: cada mao repetida
+    virava decisao em dobro em toda estatistica, ELO e plano de estudos, e `hands_count` (que
+    conta ids distintos) desmentia o `total_hands` da resposta. Ate aqui so o REIMPORT dedupava
+    (contra o raw ja salvo), nunca o arquivo contra ele mesmo.
+
+    Chave `(tournament_id, hand_id)`, nunca so `hand_id`: ele e unico dentro de um torneio, nao
+    entre torneios de salas diferentes no mesmo arquivo. Mao sem id ("unknown") nao e deduplicada,
+    porque ai a chave nao identifica nada. Entre blocos com a mesma chave fica o mais LONGO (um
+    export truncado no meio da mao perde para o inteiro); em empate fica o primeiro, e a ordem
+    do arquivo e preservada.
+    """
+    posicao: dict = {}                      # chave -> indice em `saida`
+    saida: List[ParsedHand] = []
+    for h in hands:
+        hid = str(getattr(h, 'hand_id', '') or '')
+        if not hid or hid == 'unknown':
+            saida.append(h)
+            continue
+        chave = (str(getattr(h, 'tournament_id', '') or ''), hid)
+        i = posicao.get(chave)
+        if i is None:
+            posicao[chave] = len(saida)
+            saida.append(h)
+        elif len(getattr(h, 'raw_text', '') or '') > len(getattr(saida[i], 'raw_text', '') or ''):
+            saida[i] = h
+    return saida
+
+
 def parse_hand_history(text: str) -> List[ParsedHand]:
-    """Parseia hand history de qualquer site suportado (PokerStars, GGPoker, 888poker, PartyPoker)."""
+    """Parseia hand history de qualquer site suportado (PokerStars, GGPoker, 888poker, PartyPoker).
+
+    Mao repetida no mesmo arquivo sai uma vez (`deduplicar_maos`); e a UNICA porta de parse de
+    texto, entao /analyze, o worker de upload, o guest e o merge de reimport herdam a regra.
+    """
     site = _detect_site(text)
     if site in ("888poker", "partypoker"):
-        return _parse_partygaming_hands(text, site)
+        return deduplicar_maos(_parse_partygaming_hands(text, site))
     id_re = (COIN_ID_RE if site == "coinpoker" else ACR_ID_RE if site == "acr"
              else GG_ID_RE if site == "ggpoker" else PS_ID_RE)
     chunks = _split_hands(text, site)
-    return [parse_hand(chunk, id_re, site) for chunk in chunks]
+    return deduplicar_maos([parse_hand(chunk, id_re, site) for chunk in chunks])
 
 
 def parse_hand(raw_text: str, id_re: re.Pattern | None = None, site: str = "pokerstars") -> ParsedHand:
