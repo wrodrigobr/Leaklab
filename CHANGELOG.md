@@ -4,6 +4,30 @@ Todas as mudanÃ§as notÃ¡veis neste projeto serÃ£o documentadas aqui.
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
+## Copy de interface em ingles dentro do pt-BR (e do es) sai do dashboard (15/09)
+
+85 chaves do pt-BR eram identicas ao en. A maioria e termo de poker e fica, por regra da
+marca. Mas havia copy de INTERFACE em ingles, e duas na primeira dobra do dashboard: medido
+no DOM com i18n real (`data/auditoria/repro/TEL_2.test.tsx`), "ITM Frequency" e "Field avg
+~18.5%" ao lado de "Historico" e "Torneios" traduzidos. Auditoria TEL-2.
+
+Traduzidas 19 chaves em pt-BR e, onde tambem estavam em ingles, em es: `kpis.itm`,
+`kpis.itmHint`, `empty.phase`, `empty.m2title`, `dna.axes.icm`, `v2.aiTwin` ("Gemeo
+Estrategico"), `elo.page.stakeHigh/Mid`, `common:engineActive`, `training:ghost.badge`,
+`docs:cognitive.patterns.*` (quatro), `profile:demo.buyinRanges.high/low/mid`,
+`handbuilder:advanced.tournamentId`, `sparring:title` ("Modo Sparring"). Ficam em ingles de
+proposito: `docs:nav.kpis` ("ROI · ITM · Volume"), "Micro (< $5)", "Hand Builder", "Hand
+History", "Showdown Value", "Blockers & Unblockers" e o resto da lista, que e termo de poker
+ou nome de produto.
+
+Guarda: `test_copy_de_interface_nao_fica_em_ingles_no_pt_e_no_es` em
+`tests/test_i18n_copy_do_frontend.py`, sobre a lista DECLARADA dessas chaves (um guarda sobre
+"tudo que e igual ao en" acusaria 60 termos de poker e seria desligado), exigindo que pt-BR e
+es difiram do en; prova que acha com um leitor forjado. Quebrado de proposito (dashboard.json
+pt-BR antigo): acusa as 8 chaves do dashboard; restaurado. O repro TEL-2 deixa de achar "ITM
+Frequency" no DOM em portugues. tsc limpo; vitest de DashboardV2 e i18n 8/8.
+
+---
 ## LevelCard anuncia o proximo nivel em ELO, nao em "1570%" (15/09)
 
 `/metrics/level` devolve `next_pct` como LIMIAR DE ELO do proximo nivel (o backend anota

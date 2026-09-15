@@ -25,7 +25,7 @@
   "advanced": {
     "title": "Avançado",
     "handId": "Hand ID",
-    "tournamentId": "Tournament ID",
+    "tournamentId": "ID do torneio",
     "buyIn": "Buy-in",
     "level": "Nível (romano)",
     "sb": "SB (fichas)",

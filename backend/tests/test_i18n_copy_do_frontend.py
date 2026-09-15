@@ -279,6 +279,47 @@ def test_o_varredor_de_portugues_NAO_acusa_termo_de_poker():
     print('OK  test_o_varredor_de_portugues_NAO_acusa_termo_de_poker')
 
 
+# Copy de INTERFACE que estava em ingles dentro do pt-BR (e do es) e chegava ao dashboard:
+# "ITM Frequency" ao lado de "Historico" traduzido (auditoria TEL-2, 15/09). Termo de poker
+# fica em ingles por regra da marca; estas chaves NAO sao termo de poker e tem de diferir do en
+# nas duas linguas. A lista e declarada (nao "tudo que e igual ao en"), porque 60 das 85 chaves
+# iguais sao termo de poker e um guarda que as acusasse seria desligado.
+_COPY_DE_INTERFACE_TRADUZIDA = [
+    ('dashboard', 'kpis.itm'), ('dashboard', 'kpis.itmHint'), ('dashboard', 'empty.phase'),
+    ('dashboard', 'empty.m2title'), ('dashboard', 'dna.axes.icm'), ('dashboard', 'v2.aiTwin'),
+    ('dashboard', 'elo.page.stakeHigh'), ('dashboard', 'elo.page.stakeMid'),
+    ('common', 'engineActive'), ('training', 'ghost.badge'),
+    ('docs', 'cognitive.patterns.compensation'), ('docs', 'cognitive.patterns.entitlement'),
+    ('docs', 'cognitive.patterns.fear'), ('docs', 'cognitive.patterns.revenge'),
+    ('profile', 'demo.buyinRanges.high'), ('profile', 'demo.buyinRanges.low'),
+    ('profile', 'demo.buyinRanges.mid'), ('handbuilder', 'advanced.tournamentId'),
+    ('sparring', 'title'),
+]
+
+
+def _valor(ns, chave, idioma):
+    with open(os.path.join(_LOCALES, idioma, ns + '.json'), encoding='utf-8') as f:
+        dados = json.load(f)
+    for parte in chave.split('.'):
+        dados = dados[parte]
+    return dados
+
+
+def _iguais_ao_en(lista, ler=_valor):
+    return [(ns, chave, idioma) for ns, chave in lista for idioma in ('pt-BR', 'es')
+            if ler(ns, chave, idioma) == ler(ns, chave, 'en')]
+
+
+def test_copy_de_interface_nao_fica_em_ingles_no_pt_e_no_es():
+    iguais = _iguais_ao_en(_COPY_DE_INTERFACE_TRADUZIDA)
+    assert not iguais, 'copy de interface identica ao en: %s' % iguais
+    # Regra 1: o medidor acha. Um leitor forjado que devolve o mesmo texto nas tres linguas.
+    forjado = _iguais_ao_en([('dashboard', 'kpis.itm')], ler=lambda ns, k, i: 'ITM Frequency')
+    assert forjado == [('dashboard', 'kpis.itm', 'pt-BR'), ('dashboard', 'kpis.itm', 'es')], forjado
+    print('OK  test_copy_de_interface_nao_fica_em_ingles_no_pt_e_no_es (%d chaves)'
+          % len(_COPY_DE_INTERFACE_TRADUZIDA))
+
+
 def test_o_varredor_ACHA_palavra_solta_sem_acento():
     """Regra 1: os que escaparam ate 15/09 tem de cair, e a chave do i18n nao."""
     for ruim in ('Carregando…', 'importado', 'Dados salvos.', 'Erro ao processar pagamento.',

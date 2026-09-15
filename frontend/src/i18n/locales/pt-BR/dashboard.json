@@ -22,8 +22,8 @@
       "byStake": "Por stake",
       "stakeMicro": "Micro (≤$5)",
       "stakeLow": "Low ($5–25)",
-      "stakeMid": "Mid ($25–100)",
-      "stakeHigh": "High (>$100)",
+      "stakeMid": "Médio ($25–100)",
+      "stakeHigh": "Alto (>$100)",
       "decs": "{{n}} decs",
       "bandsTitle": "Bandas de rating",
       "youAreHere": "← você está aqui",
@@ -120,8 +120,8 @@
     "roiDelta": "{{value}}% total",
     "netProfit": "Lucro líquido",
     "lowSample": "amostra baixa",
-    "itm": "ITM Frequency",
-    "itmHint": "Field avg ~18.5%",
+    "itm": "Frequência ITM",
+    "itmHint": "Média do field ~18,5%",
     "itmTooltip": "Percentual de torneios em que você terminou no dinheiro (in-the-money). A média do field é ~18%. Acima de 22% sugere jogo sólido ou conservador; abaixo pode indicar bust-out precoce.",
     "standard": "GTO Alinhado",
     "standardHint": "{{pct}}% cobertura GTO",
@@ -436,7 +436,7 @@
       "threeBet": "3-Bet",
       "positional": "Posicional",
       "discipline": "Disciplina",
-      "icm": "ICM Awareness"
+      "icm": "Consciência de ICM"
     },
     "archetypes": {
       "TAG": "TAG",
@@ -454,7 +454,7 @@
     }
   },
   "empty": {
-    "phase": "Phase 01 // Data acquisition",
+    "phase": "Fase 01 // Coleta de dados",
     "loading": "Analisando torneio…",
     "errorTitle": "Erro ao importar",
     "title": "Inicialize sua base tática",
@@ -470,7 +470,7 @@
     "m1title": "Detecção de leaks",
     "m1desc": "Identificação automática de padrões sub-ótimos no seu game tree, com severidade e perda de EV calculadas mão a mão.",
     "m2code": "MÓDULO 02",
-    "m2title": "Bankroll Guard",
+    "m2title": "Guarda do Bankroll",
     "m2desc": "Tracking de variância e gráfico de evolução do bankroll torneio a torneio, para decisões de stake com confiança.",
     "m3code": "MÓDULO 03",
     "m3title": "Coach Neural",
@@ -608,7 +608,7 @@
     "streetScopeAll": "baseado no histórico completo",
     "streetSpots": "{{n}} spots",
     "aiTitle": "Insight da IA",
-    "aiTwin": "Strategic Twin",
+    "aiTwin": "Gêmeo Estratégico",
     "aiCognitive": "Padrão cognitivo",
     "aiCareer": "Projeção de carreira",
     "aiCausal": "Mapa causal",

@@ -91,9 +91,9 @@
     },
     "buyinRanges": {
       "micro": "Micro (< $5)",
-      "low": "Low ($5 – $30)",
-      "mid": "Mid ($30 – $200)",
-      "high": "High (> $200)"
+      "low": "Bajo ($5 – $30)",
+      "mid": "Medio ($30 – $200)",
+      "high": "Alto (> $200)"
     },
     "phone": "Teléfono de contacto",
     "phonePlaceholder": "+54 11 9999-9999",

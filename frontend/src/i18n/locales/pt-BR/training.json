@@ -44,7 +44,7 @@
   },
   "ghost": {
     "title": "Ghost Table",
-    "badge": "Spaced Repetition",
+    "badge": "Repetição espaçada",
     "desc": "Drills focados nos seus spots de maior erro. O sistema SRS agenda revisões automáticas, reforça os padrões mais custosos antes que eles voltem a aparecer em jogo real.",
     "f1": "Spots extraídos automaticamente do seu histórico",
     "f2": "Intervalos adaptativos: 3 → 7 → 14 → 28 → 60 dias",

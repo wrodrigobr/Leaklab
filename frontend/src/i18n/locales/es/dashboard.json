@@ -22,8 +22,8 @@
       "byStake": "Por stake",
       "stakeMicro": "Micro (≤$5)",
       "stakeLow": "Low ($5–25)",
-      "stakeMid": "Mid ($25–100)",
-      "stakeHigh": "High (>$100)",
+      "stakeMid": "Medio ($25–100)",
+      "stakeHigh": "Alto (>$100)",
       "decs": "{{n}} decs",
       "bandsTitle": "Bandas de rating",
       "youAreHere": "← estás aquí",
@@ -436,7 +436,7 @@
       "threeBet": "3-Bet",
       "positional": "Posicional",
       "discipline": "Disciplina",
-      "icm": "ICM Awareness"
+      "icm": "Conciencia de ICM"
     },
     "archetypes": {
       "TAG": "TAG",
@@ -454,7 +454,7 @@
     }
   },
   "empty": {
-    "phase": "Phase 01 // Data acquisition",
+    "phase": "Fase 01 // Recopilación de datos",
     "loading": "Analizando torneo…",
     "errorTitle": "Error al importar",
     "title": "Inicializa tu base táctica",
@@ -470,7 +470,7 @@
     "m1title": "Detección de leaks",
     "m1desc": "Identificación automática de patrones sub-óptimos en tu árbol de decisiones, con severidad y pérdida de EV calculadas mano a mano.",
     "m2code": "MÓDULO 02",
-    "m2title": "Bankroll Guard",
+    "m2title": "Guardia del Bankroll",
     "m2desc": "Seguimiento de varianza y gráfico de evolución del bankroll torneo a torneo, para decisiones de stake con confianza.",
     "m3code": "MÓDULO 03",
     "m3title": "Coach Neural",
@@ -608,7 +608,7 @@
     "streetScopeAll": "basado en tu historial completo",
     "streetSpots": "{{n}} spots",
     "aiTitle": "Insight de la IA",
-    "aiTwin": "Strategic Twin",
+    "aiTwin": "Gemelo Estratégico",
     "aiCognitive": "Patrón cognitivo",
     "aiCareer": "Proyección de carrera",
     "aiCausal": "Mapa causal",
