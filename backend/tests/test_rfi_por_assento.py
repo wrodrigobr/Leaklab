@@ -547,7 +547,10 @@ def test_hud_traz_a_referencia_do_solver_de_cbet_por_spot_e_por_lado():
 
 def test_referencia_rfi_media_e_a_media_do_chart_nas_oportunidades_com_folga():
     """RFI no HUD (07/09): media do que o solver abriria em cada oportunidade (assento do chart
-    x stack), 2 desvios binomiais de folga (piso 2pp), None abaixo de 70% de cobertura."""
+    x stack), 2 desvios binomiais de folga (piso 2pp), None abaixo de 70% de cobertura.
+
+    TEL-4 (15/09): tambem None abaixo do PISO DE AMOSTRA (`minimo_de_amostra`, 30) — por isso
+    os casos de cobertura abaixo usam amostra acima do piso, senao mediriam o guarda errado."""
     from leaklab.preflop_gto_ranges import referencia_rfi_media, balde_rfi, rfi_pct_do_chart, FOLGA_MINIMA_PP
     ops = [('UTG', 40)] * 50 + [('BTN', 40)] * 50
     r = referencia_rfi_media(ops)
@@ -555,9 +558,11 @@ def test_referencia_rfi_media_e_a_media_do_chart_nas_oportunidades_com_folga():
     assert r['tipo'] == 'media' and r['n'] == 100 and r['cobertura'] == 100
     assert abs((r['lo'] + r['hi']) / 2 - esperado) < 0.11, (r, esperado)
     assert r['folga'] >= FOLGA_MINIMA_PP and abs((r['hi'] - r['lo']) - 2 * r['folga']) < 0.11, r
-    # stack ausente nao entra; com 6 de 10 cobertas (60% < 70%) nao ha referencia
-    assert referencia_rfi_media([('UTG', 40)] * 6 + [('UTG', None)] * 4) is None
-    assert referencia_rfi_media([('UTG', 40)] * 8 + [('UTG', None)] * 2)['cobertura'] == 80
+    # stack ausente nao entra; com 30 de 50 cobertas (60% < 70%) nao ha referencia
+    assert referencia_rfi_media([('UTG', 40)] * 30 + [('UTG', None)] * 20) is None
+    assert referencia_rfi_media([('UTG', 40)] * 40 + [('UTG', None)] * 10)['cobertura'] == 80
+    # abaixo do piso de amostra nao ha referencia, mesmo com cobertura cheia (TEL-4)
+    assert referencia_rfi_media([('UTG', 40)] * 8) is None
     assert referencia_rfi_media([]) is None
 
 

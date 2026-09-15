@@ -4,6 +4,40 @@ Todas as mudanÃ§as notÃ¡veis neste projeto serÃ£o documentadas aqui.
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
+## A referencia do solver no HUD so sai com amostra; abaixo de 30 o card diz "Ref MTT" (15/09)
+
+`referencia_rfi_media` acompanha o numero com uma folga binomial (2 desvios, piso de 2pp) sobre
+as oportunidades do proprio jogador, e nao tinha piso de AMOSTRA. Medido
+(`data/auditoria/repro/TEL_4.py`): com 1 oportunidade a faixa e 0-89%, com 4 e 0-87% (folga de
+54pp), com 10 e 2-60%. O HUD imprime isso como "Solver 0-87%" e todo valor cai dentro: uma
+referencia que nao exclui nada nao e referencia, e ela some sozinha quando o volume chega.
+Auditoria TEL-4.
+
+Abaixo de 30 oportunidades cobertas a funcao devolve None e `PlayerStatsCard` cai sozinho na
+faixa fixa de MTT ("Ref MTT"), que ja era o comportamento dele sem `rfi_ref` (o front nao
+mudou). O piso e o MESMO da matriz de abertura e vem de la (`MINIMO_MAOS_DO_RESUMO`), nao de um
+30 escrito outra vez: `minimo_de_amostra()` faz o import tardio, como o `_EV_MINOR_BB` ao lado
+ja fazia com o limiar do motor.
+
+O que muda para o jogador: quem tem entre 1 e 29 oportunidades de RFI passa a ver a faixa fixa
+de MTT no lugar da faixa do solver. Com 30 ou mais, nada muda, e a folga continua estreitando
+com volume (34pp no piso, 13pp com 200).
+
+Guarda: `tests/test_piso_de_amostra_da_referencia.py`, 7 casos, incluindo a igualdade entre o
+piso e a constante da matriz (pega deriva do fallback do import) e a varredura das 6 funcoes de
+referencia do modulo, que falha quando aparece uma nova sem decisao sobre o piso. Quebrado de
+proposito duas vezes (piso desligado: 2 testes acusam; piso virando copia de 30 com a matriz em
+40: a igualdade acusa) e restaurado. `test_rfi_por_assento` teve dois casos de COBERTURA
+reescritos com amostra acima do piso, senao mediriam o guarda errado. Suites em SQLite e
+Postgres (duas rodadas): novo 7/7, `test_rfi_por_assento` 28/28, `test_hud_do_torneio` 9/9,
+`test_matriz_de_abertura` 9/9, `test_seletor_de_mesa` 9/9, `test_grade_por_posicao` 9/9; vitest
+`PlayerStatsCard.cbet` 7/7.
+
+Fica anotado, sem conserto: `referencia_vpip_pfr_por_assento` tem a mesma folga binomial e o
+mesmo buraco de piso. Nao foi medido nem mexido aqui porque e outro card (o perfil por posicao,
+hoje em validacao) e a decisao de tirar a referencia dele e do dono.
+
+---
 ## O card nao diz mais "desvio caro" ao lado de "Correto" no leak de EV zero (15/09)
 
 O motor rebaixa `leak` de custo infimo: EV medido abaixo de `_PREFLOP_EV_MINOR_BB` (0,12bb) e o

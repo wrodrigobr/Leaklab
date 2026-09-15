@@ -462,6 +462,16 @@ def referencia_cbet(spots) -> dict:
     return {'ref': _faixa_dos_charts(valores), 'cobertura': cobertura, 'n': n}
 
 
+def minimo_de_amostra() -> int:
+    """Piso de amostra das referencias do HUD. **Fonte unica**: o mesmo
+    `MINIMO_MAOS_DO_RESUMO` (30) da matriz de abertura. Import tardio so para nao criar ciclo."""
+    try:
+        from database.repositories import MINIMO_MAOS_DO_RESUMO
+        return int(MINIMO_MAOS_DO_RESUMO)
+    except Exception:                                                     # pragma: no cover
+        return 30
+
+
 def referencia_rfi_media(oportunidades) -> Optional[dict]:
     """Referencia do RFI AGREGADO (o HUD, 07/09): MEDIA do que o solver abriria em cada
     oportunidade do jogador, com folga estatistica (2 desvios binomiais, piso FOLGA_MINIMA_PP).
@@ -472,7 +482,7 @@ def referencia_rfi_media(oportunidades) -> Optional[dict]:
     nao diz nada. A pergunta do agregado e "nos assentos e stacks em que voce esteve, quanto o
     solver abriria?", e isso e uma media. A avaliacao externa de 07/09 esta certa: um agregado
     na media pode esconder assentos errados; por isso o tooltip manda para a grade por assento.
-    Devolve None abaixo de COBERTURA_MINIMA_VPIP_PFR.
+    Devolve None abaixo de COBERTURA_MINIMA_VPIP_PFR e abaixo do PISO DE AMOSTRA.
     """
     import math
     total = len(oportunidades)
@@ -486,6 +496,13 @@ def referencia_rfi_media(oportunidades) -> Optional[dict]:
     n = len(vals)
     cobertura = round(n * 100.0 / total) if total else 0
     if not n or n < total * COBERTURA_MINIMA_VPIP_PFR:
+        return None
+    # Piso de amostra (TEL-4, 15/09). A folga aqui e BINOMIAL sobre as oportunidades do
+    # JOGADOR: com n=4 ela da 54pp e a faixa vira "Solver 0-87%", dentro da qual todo valor
+    # cabe. Referencia que nao exclui nada nao e referencia; o card cai no "Ref MTT", que ao
+    # menos e uma faixa fixa e honesta. O piso e o MESMO da matriz de abertura, e por isso vem
+    # de la e nao de um 30 escrito de novo aqui.
+    if n < minimo_de_amostra():
         return None
     media = sum(vals) / n
     folga = max(FOLGA_MINIMA_PP, 2 * math.sqrt(media / 100 * (1 - media / 100) / n) * 100)
