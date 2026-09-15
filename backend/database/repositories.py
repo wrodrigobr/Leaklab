@@ -1971,13 +1971,16 @@ def _drill_context(r: dict) -> dict:
     """Computa facing_desc e context_note a partir dos campos existentes de um spot de drill."""
     pos      = (r.get('position') or '').upper()
     street   = r.get('street', 'preflop')
+    # `facing_bet` JA esta em bb desde a gravacao (`save_decisions`, `facingToBb`; o fallback
+    # antigo tambem dividia por level_bb). Dividir de novo por `level_bb` aqui produzia
+    # "Raise 0.0bb" em todo spot com aposta na frente (8.0bb / 200 = 0.04). O card e a lista
+    # (`_enrich_note`) leem a mesma coluna como bb; o drill agora le igual. Auditoria NLU-1.
     facing   = float(r.get('facing_bet') or 0)
-    level_bb = float(r.get('level_bb') or 100)
     is_3bet  = bool(r.get('is_3bet'))
 
     facing_desc = None
-    if facing > 0 and level_bb > 0:
-        bb_size = round(facing / level_bb, 1)
+    if facing > 0:
+        bb_size = round(facing, 1)
         if is_3bet:
             facing_desc = f"3-Bet {bb_size}bb"
         elif street == 'preflop':

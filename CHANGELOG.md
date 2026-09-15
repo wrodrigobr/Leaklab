@@ -4,6 +4,25 @@ Todas as mudanÃ§as notÃ¡veis neste projeto serÃ£o documentadas aqui.
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
+## Ghost Table dizia "Raise 0.0bb" em todo spot com aposta na frente (15/09)
+
+`decisions.facing_bet` e gravado EM BB desde `save_decisions` (`facingToBb`; o fallback antigo
+tambem dividia por `level_bb`). O card e a lista leem a coluna como bb (`_enrich_note`:
+"aposta 8.0bb"). O drill (`_drill_context`) dividia a MESMA coluna por `level_bb` de novo:
+8.0 / 200 = 0.04, arredondado "Raise 0.0bb". O jogador treinava "defender contra raise de
+0.0bb". Auditoria NLU-1, reproduzida por `data/auditoria/repro/NLU_1.py` (prova 1).
+
+Conserto de uma linha (`bb_size = round(facing, 1)`). Nao ha caminho que grave fichas na coluna
+(o unico UPDATE fora do `save_decisions` e o `scripts/backfill_facing_bet.py`, que tambem
+escreve `facingToBb`), entao nenhuma linha antiga passa a mostrar fichas como se fossem bb.
+
+Guarda: `tests/test_facing_bet_em_bb.py`. A mesma linha pelo drill e pela nota tem de sair com
+o mesmo numero, e uma varredura estatica (AST) acusa qualquer leitor de `repositories.py` e
+`app.py` que divida um valor vindo de `facing_bet`/`pot_size` por `level_bb`. A varredura prova
+que acha: recebe o trecho antigo e acusa a linha. Quebrado de proposito (conserto desfeito):
+3 dos 4 testes acusaram; restaurado.
+
+---
 ## Multiway postflop sai de tudo que soma, ranqueia e pontua, inclusive o ELO (15/09)
 
 O solver e heads-up. Uma decisao postflop com 2+ oponentes ativos era julgada como se os
