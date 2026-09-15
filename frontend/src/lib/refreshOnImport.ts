@@ -76,6 +76,10 @@ export const CHAVES_NAO_DERIVADAS = [
   // torneio -- muda por pagamento, que chega por webhook e por uma tela propria. Recarregar a
   // cada import seria custo sem mudanca, e ainda faria o cadeado piscar.
   "subscription-status",
+  // catalogo de planos (`/subscription/plans`): e a TABELA de precos e tetos, igual para
+  // todo mundo. Nao muda por importar torneio nem por pagar; muda quando NOS mudamos o
+  // plano. Entrou em 15/09 quando o menu deixou de cravar o teto no codigo.
+  "subscription-plans",
   // conta, perfil, mensagens, suporte
   "me", "player-profile", "my-demographics", "player-messages-unread", "player-coach-messages",
   "my-support-tickets", "my-support-unread", "admin-support-count",

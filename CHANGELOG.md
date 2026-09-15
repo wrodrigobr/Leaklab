@@ -4,6 +4,34 @@ Todas as mudanÃ§as notÃ¡veis neste projeto serÃ£o documentadas aqui.
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
+## Os guardas da auditoria passam a ser CHAMADOS, e o golden aceita o rebaixamento (15/09)
+
+Fechamento dos tres vermelhos que a revalidacao da auditoria deixou no main. Nenhum deles e
+defeito de produto; os tres sao a catraca fazendo o trabalho dela depois dos 26 commits.
+
+**Treze arquivos de teste nao rodavam em suite nenhuma**, e nove eram os guardas recem criados
+nesta auditoria. Escrever o guarda e registra-lo sao dois atos, e so o segundo faz o guarda
+existir: ate aqui `run_all_tests.py` nunca chamava `test_no_valido_para_o_spot`,
+`test_rebaixamento_de_leak_barato`, `test_guest_teto` e companhia. Era cobertura sem cobertura,
+a mesma classe do quiz de 28/08. Os 13 foram rodados um a um em SQLite antes de entrar (72
+casos, todos verdes) e cada um foi para a suite da sua familia: veredito e parser em `engine`,
+SQL e DDL em `database`, rotas e contratos do front em `api`, copy em `llm`, no do solver em
+`gto`. Quem acusou foi o `test_suite_completa`, que existe desde 05/09 exatamente para isto.
+
+**A queryKey `subscription-plans` nao estava declarada.** O conserto que tirou o teto de plano
+cravado do front criou uma consulta nova, e a catraca do `refreshOnImport` exige que toda chave
+diga se recarrega no import de torneio ou nao. Esta nao recarrega: o catalogo de planos e tabela
+de precos, muda quando NOS mudamos o plano, nao quando o jogador sobe um arquivo.
+
+**O golden do /replay foi regerado, e a mudanca e de TAMANHO, nao de acusacao.** Uma linha em
+cada golden: a mao 257045975775 (A8o a 10bb, fold onde o ideal era jam) sai de `gto_critical`
+para `gto_minor_deviation`. O rotulo segue `leak` e a recomendacao segue `jam`; o que cai e a
+severidade, porque o card passou a aplicar o mesmo rebaixamento por custo infimo que o motor ja
+aplicava. Era a contradicao do VER-6: a mesma decisao chamada de critica numa superficie e de
+menor na outra. O diff foi conferido valor a valor antes de gravar, porque golden regerado sem
+olhar e a forma mais facil de carimbar uma regressao como intencional.
+
+---
 ## O mesmo init_db() para de produzir dois schemas diferentes (15/09)
 
 Auditoria DIA-8. Medido pelo `repro/DIA_8.py`, que sobe um SQLite novo num subprocesso e compara

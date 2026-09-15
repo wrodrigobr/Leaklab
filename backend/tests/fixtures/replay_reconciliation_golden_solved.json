@@ -523,7 +523,7 @@
   "fold",
   "jam",
   "jam",
-  "gto_critical",
+  "gto_minor_deviation",
   false,
   null,
   "rfi",
