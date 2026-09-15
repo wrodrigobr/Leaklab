@@ -471,6 +471,90 @@ def test_a_espera_tem_TETO_por_jogador():
         assert (r.get_json() or {}).get('espera_cheia') is True, r.get_json()
 
 
+def test_reenvio_do_que_JA_espera_devolve_o_proprio_recibo():
+    """Auditoria FLU-9 (15/09): os tetos (espera e bytes em aberto) contam o que esta EM ABERTO,
+    e o arquivo repetido JA esta contado ali. Com a espera cheia, reenviar um dos arquivos que
+    estao esperando devolvia 429 "voce ja tem 5 arquivos guardados esperando" — descrevendo o
+    arquivo dele como se fosse um sexto. `receber()` nao cria linha nem guarda byte novo para um
+    sha256 que ja existe, entao devolver o recibo nao afrouxa teto nenhum."""
+    with banco_de_teste() as (cliente, headers):
+        from leaklab.recepcao_de_upload import (AGUARDANDO_COTA, ESPERA_MAX_POR_USUARIO,
+                                                em_espera_por_cota)
+        from database.schema import get_conn
+        from database.repositories import _adapt
+        texto = _um_torneio()
+        primeiro = cliente.post('/uploads', json={'content': texto}, headers=headers).get_json()
+        assert primeiro['repetido'] is False, primeiro
+        # o dele + (teto - 1) falsos: a espera fica CHEIA com o arquivo dele dentro
+        c = get_conn()
+        c.execute(_adapt("UPDATE uploads_recebidos SET status=? WHERE id=?"),
+                  (AGUARDANDO_COTA, primeiro['recibo']))
+        for k in range(ESPERA_MAX_POR_USUARIO - 1):
+            c.execute(_adapt(
+                "INSERT INTO uploads_recebidos (user_id, sha256, bytes_total, conteudo, status) "
+                "VALUES (?,?,?,?,?)"), (UID, 'flu9_%d' % k, 10, 'x', AGUARDANDO_COTA))
+        c.commit(); c.close()
+        assert em_espera_por_cota(UID) == ESPERA_MAX_POR_USUARIO
+
+        r = cliente.post('/uploads', json={'content': texto}, headers=headers)
+        corpo = r.get_json() or {}
+        assert r.status_code == 202, (r.status_code, corpo)
+        assert corpo.get('recibo') == primeiro['recibo'], (corpo, primeiro)
+        assert corpo.get('repetido') is True, corpo
+        assert corpo.get('status') == AGUARDANDO_COTA, corpo
+        assert 'espera_cheia' not in corpo, corpo
+
+        # CONTROLE: arquivo NOVO com a mesma espera cheia continua barrado.
+        rn = cliente.post('/uploads', json={'content': texto + chr(10) * 2}, headers=headers)
+        assert rn.status_code == 429, (rn.status_code, rn.get_json())
+        assert (rn.get_json() or {}).get('espera_cheia') is True, rn.get_json()
+
+
+def test_reenvio_do_que_JA_esta_guardado_nao_bate_no_teto_de_bytes():
+    """A outra porta do mesmo FLU-9: o teto de BYTES em aberto (SEG-2) tambem vinha antes do
+    sha256. Aqui o teto esta estourado por recibos falsos e o reenvio do arquivo real passa,
+    porque ele nao acrescenta byte nenhum."""
+    with banco_de_teste() as (cliente, headers):
+        from leaklab.recepcao_de_upload import BYTES_EM_ABERTO_MAX_POR_USUARIO, RECEBIDO
+        from database.schema import get_conn
+        from database.repositories import _adapt
+        texto = _um_torneio()
+        primeiro = cliente.post('/uploads', json={'content': texto}, headers=headers).get_json()
+        c = get_conn()
+        c.execute(_adapt(
+            "INSERT INTO uploads_recebidos (user_id, sha256, bytes_total, conteudo, status) "
+            "VALUES (?,?,?,?,?)"),
+            (UID, 'flu9_bytes', BYTES_EM_ABERTO_MAX_POR_USUARIO, 'x', RECEBIDO))
+        c.commit(); c.close()
+
+        r = cliente.post('/uploads', json={'content': texto}, headers=headers)
+        corpo = r.get_json() or {}
+        assert r.status_code == 202 and corpo.get('recibo') == primeiro['recibo'], (r.status_code, corpo)
+
+        # CONTROLE: arquivo NOVO segue barrado pelo teto de bytes.
+        rn = cliente.post('/uploads', json={'content': texto + chr(10) * 2}, headers=headers)
+        assert rn.status_code == 429, (rn.status_code, rn.get_json())
+        assert (rn.get_json() or {}).get('code') == 'upload_bytes_em_aberto', rn.get_json()
+
+
+def test_o_sha256_do_conteudo_tem_uma_fonte_so():
+    """`recibo_por_conteudo` e `receber` tem de concordar sobre a identidade do arquivo; duas
+    contas de sha seriam duas identidades, e o repetido deixaria de ser repetido."""
+    import ast
+    import os as _os
+    from leaklab.recepcao_de_upload import sha_do_conteudo
+    import hashlib as _h
+    assert sha_do_conteudo('abc') == _h.sha256(b'abc').hexdigest()
+    assert sha_do_conteudo(None) == sha_do_conteudo('')
+    caminho = _os.path.join(_os.path.dirname(__file__), '..', 'leaklab', 'recepcao_de_upload.py')
+    with open(caminho, encoding='utf-8') as f:
+        arvore = ast.parse(f.read())
+    contas = [n.lineno for n in ast.walk(arvore)
+              if isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute)
+              and n.func.attr == 'sha256']
+    assert len(contas) == 1, 'sha256 calculado em %d lugares: %s' % (len(contas), contas)
+
+
 def _recibo_falso(c, k, status, n_bytes):
     from database.repositories import _adapt
     c.execute(_adapt(

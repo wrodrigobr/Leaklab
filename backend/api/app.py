@@ -919,6 +919,22 @@ def receber_upload():
             'error': ('Este arquivo não parece um histórico de mãos. Exporte o hand history '
                       'da sala e tente de novo.')}), 422
 
+    # Reenviar um arquivo que JA esta guardado nao e pedido novo: e o jogador conferindo se
+    # entrou. Os dois tetos abaixo contam o que esta EM ABERTO, e o repetido ja esta contado
+    # ali dentro, entao barra-lo com "voce ja tem 5 arquivos esperando" era descrever o arquivo
+    # dele como se fosse um sexto. Nao afrouxa teto nenhum: `receber()` nao cria linha nem
+    # guarda byte novo para um sha256 que ja existe. Auditoria FLU-9 (15/09).
+    from leaklab.recepcao_de_upload import recibo_por_conteudo
+    _ja = recibo_por_conteudo(g.user_id, conteudo)
+    if _ja:
+        return jsonify({
+            'recibo': _ja['id'],
+            'status': _ja['status'],
+            'repetido': True,
+            'bytes': _ja.get('bytes_total'),
+            'torneios_no_arquivo': _ja.get('torneios_no_arquivo'),
+        }), 202
+
     # COTA: aceitamos o arquivo MESMO com o teto do mês estourado, e isso é decisão de produto
     # do dono. O que exceder fica guardado e entra quando a cota virar (ou quando ele fizer
     # upgrade). Recusar aqui era a versão anterior desta rota, e ela devolvia o jogador ao

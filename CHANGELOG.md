@@ -4,6 +4,38 @@ Todas as mudanÃ§as notÃ¡veis neste projeto serÃ£o documentadas aqui.
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
+## Reenviar um arquivo que ja esta guardado devolve o proprio recibo, nao 429 (15/09)
+
+Os dois tetos do `POST /uploads` (5 arquivos em espera de cota, e desde o SEG-2 tambem 40 MB em
+aberto por conta) vinham ANTES de `receber()`, que e quem reconhece o arquivo repetido pelo
+sha256. Medido (`data/auditoria/repro/FLU_9.py`): com 5 arquivos esperando, reenviar o PRIMEIRO
+deles devolvia `429 espera_cheia=True` e `repetido=None`, ou seja, "voce ja tem 5 arquivos
+guardados esperando" para um arquivo que era um daqueles 5. Auditoria FLU-9.
+
+A rota passou a consultar o sha256 primeiro (`recibo_por_conteudo`) e, quando o arquivo ja esta
+la, devolve 202 com o recibo dele e `repetido: true`. Isto nao afrouxa teto nenhum, e o ponto:
+os dois tetos contam o que esta EM ABERTO, e o repetido ja esta contado ali dentro; `receber()`
+nao cria linha nem guarda byte novo para um sha256 que ja existe. O repro confere: com a espera
+cheia, arquivo NOVO segue recebendo 429, e nenhum recibo novo aparece no banco depois dos
+reenvios.
+
+O sha do conteudo virou uma funcao (`sha_do_conteudo`): duas contas de sha seriam duas
+identidades, e o repetido deixaria de ser repetido na primeira divergencia de encoding.
+
+Guardas: tres casos novos em `tests/test_recepcao_de_upload.py`, um para cada teto (cada um com
+o controle do arquivo NOVO, que precisa continuar barrado) e um que exige `sha256` calculado num
+lugar so, por AST. Quebrados de proposito duas vezes (sem a consulta na rota: os dois primeiros
+acusam com o 429 na mao; com a conta de sha duplicada: o terceiro acusa "sha256 calculado em 2
+lugares") e restaurados. Suites: `test_recepcao_de_upload` 28/28 em SQLite e em Postgres (duas
+rodadas), `test_limite_de_upload` 3/3 nos dois, `test_fila_de_analise` 17/17 e
+`test_upload_quota` 1/1 em SQLite.
+
+Anotado: `test_fila_de_analise` passa 17/17 contra Postgres na PRIMEIRA rodada e estoura
+`users_pkey` na segunda, porque cria usuarios de id baixo e nao os apaga. E o defeito de
+isolamento do harness que o CLAUDE.md ja descreve, nao tem relacao com esta mudanca, e some
+limpando o banco entre rodadas.
+
+---
 ## O FAQ e o onboarding param de negar o PartyPoker (15/09)
 
 `faq.a1` (landing) e `steps.upload.desc` (onboarding) diziam "PokerStars, GGPoker, ACR (WPN) e

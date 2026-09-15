@@ -185,6 +185,37 @@ def _linha(conn, recibo_id: int) -> Optional[dict]:
     return dict(r) if r else None
 
 
+def sha_do_conteudo(conteudo: str) -> str:
+    """A identidade de um arquivo, num lugar so. `UNIQUE(user_id, sha256)` no banco e a
+    idempotencia; quem quiser saber se o arquivo JA chegou usa esta mesma conta."""
+    return hashlib.sha256((conteudo or '').encode('utf-8', 'replace')).hexdigest()
+
+
+def recibo_por_conteudo(user_id: int, conteudo: str) -> Optional[dict]:
+    """O recibo que este usuario JA tem para este conteudo, ou None.
+
+    Existe para quem precisa decidir ANTES de gravar: reenviar um arquivo que ja esta guardado
+    nao e trabalho novo, nao ocupa byte novo e portanto nao pode bater nos tetos de espera e de
+    bytes em aberto, que contam justamente o que ja esta la dentro. Sem isto, quem reenviava
+    "para ver se entrou" com a espera cheia recebia "voce ja tem 5 arquivos esperando" para um
+    arquivo que era um daqueles 5. Auditoria FLU-9 (15/09).
+    """
+    _tabela()
+    from database.repositories import _adapt
+    conn = get_conn()
+    try:
+        ja = conn.execute(_adapt(
+            "SELECT id FROM uploads_recebidos WHERE user_id=? AND sha256=?"),
+            (user_id, sha_do_conteudo(conteudo))).fetchone()
+        if not ja:
+            return None
+        r = _linha(conn, dict(ja)['id'])
+        r['repetido'] = True
+        return r
+    finally:
+        conn.close()
+
+
 def receber(user_id: int, conteudo: str, filename: str | None = None) -> dict:
     """Grava o arquivo e devolve o recibo. NÃO processa nada.
 
@@ -194,7 +225,7 @@ def receber(user_id: int, conteudo: str, filename: str | None = None) -> dict:
     """
     _tabela()
     from database.repositories import _adapt
-    sha = hashlib.sha256((conteudo or '').encode('utf-8', 'replace')).hexdigest()
+    sha = sha_do_conteudo(conteudo)
     n_bytes = len((conteudo or '').encode('utf-8', 'replace'))
     conn = get_conn()
     try:
