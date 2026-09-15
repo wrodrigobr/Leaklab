@@ -4,6 +4,41 @@ Todas as mudanÃ§as notÃ¡veis neste projeto serÃ£o documentadas aqui.
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
+## A nota regerada tambem e julgada, e o deep-dive passa pelo silenciador (15/09)
+
+Em 14/09 a nota que contradiz o veredito passou a ser retirada na leitura
+(`silencia_nota_desatualizada`), e a rota da lista regera um texto curto a partir das colunas
+vivas. So que o resync reescreve so `gto_action`, a tela mostra `gto_action or best_action`, e
+`_enrich_note` regerava a partir de `best_action`: forjado o estado do resync numa linha real
+(`data/auditoria/repro/VER_05_nota_regenerada.py`, gto=jam, best=raise), a lista do aluno e a
+do coach serviam ideal JAM, `note_desatualizada=True` e, na mesma linha, "Voce deu FOLD, mas o
+esperado era RAISE". A regua nao lia essa frase (so "Ação esperada:"), entao a contradicao
+nova passava. E `/analyze/decision` (deep-dive) faz SELECT proprio: a nota velha chegava crua
+ao LLM (`NLU_12.py`). Auditoria VER-5, absorve NLU-13.
+
+Tres consertos, nenhum troca resposta (regra 7):
+
+- `_enrich_note` so regera quando `best_action` bate com o que a tela mostra. Se `gto_action`
+  e `best_action` discordam, devolve a nota como esta (vazia se silenciada, generica se
+  generica) e a tela mostra o aviso de nota retirada. Quando as colunas concordam, o
+  comportamento de 14/09 fica: texto curto e coerente por construcao.
+- `_RE_ACAO_DECLARADA` le as duas frases que o produto escreve ("Ação esperada: X" do motor
+  e "o esperado era X" do `_enrich_note`).
+- `/analyze/decision` passa a linha por `silencia_nota_desatualizada` antes de entregar ao LLM.
+
+Depois, as tres portas (lista, drill, deep-dive) devolvem a mesma coisa para a linha forjada:
+sem nota, `note_desatualizada=True`. O `NLU_12` ainda marca a lista quando gto e best
+CONCORDAM (nota regerada coerente ao lado da flag): e o desenho de 14/09, defendido por
+`test_a_rota_do_torneio_troca_o_texto_velho_por_um_coerente`, e a regua confirma que o texto
+nao contradiz o ideal. Nao mexi.
+
+Guarda: 5 testes novos em `tests/test_nota_desatualizada.py` (regua le a frase regerada;
+`_enrich_note` silencia quando as colunas discordam e regera quando concordam; a rota silencia
+quando o resync mexeu so no `gto_action`; o deep-dive recebe a linha silenciada, com o LLM
+substituido por capturador). Quebrado de proposito (os tres consertos desfeitos): 4 de 21
+acusam; restaurado.
+
+---
 ## POST /player/xp para de aceitar o valor do XP vindo do cliente (15/09)
 
 A rota repassava `amount` do corpo para `add_xp`, e o teto de 500 do backend e sobre `count`.

@@ -324,6 +324,91 @@ def test_a_nota_regerada_nao_tem_travessao():
         assert ' - ' not in texto, ('hifen como pontuacao (forma %d): %s' % (i, texto))
 
 
+# ══════════════════════════════════════════════════════════════════════════════════════════
+# 5) Auditoria VER-5 / NLU-13 (15/09): a nota REGERADA tambem e julgada, e nao troca a resposta
+# ══════════════════════════════════════════════════════════════════════════════════════════
+#
+# O resync reescreve so `gto_action`. A tela mostra `gto_action or best_action`. Silenciada a
+# nota velha, `_enrich_note` regerava a partir de `best_action`: "o esperado era RAISE" ao lado
+# de um ideal JAM, com `note_desatualizada` aceso na mesma linha. E a regua nao lia essa frase
+# (so "Ação esperada:"), entao a contradicao nova passava sem ser julgada. O deep-dive, com
+# SELECT proprio, recebia a nota velha crua e a repetia ao LLM.
+
+def test_a_regua_le_a_frase_que_o_enrich_note_escreve():
+    regerada = 'Pré-flop · UTG · 30bb. Você deu FOLD, mas o esperado era RAISE. Pequeno erro.'
+    assert acao_declarada_na_nota(regerada) == 'raise'
+    assert nota_contradiz_o_veredito(regerada, 'jam', 'raise') is True
+    assert nota_contradiz_o_veredito(regerada, 'raise', 'raise') is False
+    assert nota_contradiz_o_veredito(regerada, None, 'raise') is False
+
+
+def test_enrich_note_silencia_quando_gto_e_best_discordam():
+    """A opcao que nao TROCA a resposta (regra 7): sem texto, a tela mostra o aviso."""
+    from api.app import _enrich_note
+    linha = dict(street='preflop', position='UTG', stack_bb=30.0, action_taken='fold',
+                 best_action='raise', gto_action='jam', label='small_mistake', score=0.25,
+                 note=None, note_desatualizada=True)
+    assert _enrich_note(dict(linha)) == '', _enrich_note(dict(linha))
+    # nota generica com as colunas discordando: volta a generica, nao inventa texto
+    from api.app import _GENERIC_NOTES
+    generica = sorted(_GENERIC_NOTES)[0]
+    assert _enrich_note(dict(linha, note=generica, note_desatualizada=None)) == generica
+
+
+def test_enrich_note_regera_quando_as_colunas_concordam():
+    """O outro lado, e o comportamento de 14/09 que fica: colunas vivas coerentes dao texto."""
+    from api.app import _enrich_note
+    for gto in ('raise', None, 'raises'):
+        linha = dict(street='preflop', position='UTG', stack_bb=30.0, action_taken='fold',
+                     best_action='raise', gto_action=gto, label='small_mistake', score=0.25,
+                     note=None, note_desatualizada=True)
+        texto = _enrich_note(dict(linha))
+        assert 'o esperado era RAISE' in texto, (gto, texto)
+        assert not nota_contradiz_o_veredito(texto, gto, 'raise')
+
+
+def test_a_rota_do_torneio_silencia_quando_o_resync_mexeu_so_no_gto_action():
+    with banco_de_teste() as (cliente, headers):
+        # a nota velha manda CALL; o resync deixou `best_action=call` e escreveu `gto_action=jam`
+        _, _, codigo = _semeia(NOTA_VELHA, best='call', gto='jam', street='turn')
+        r = cliente.get('/history/tournament/%s' % codigo, headers=headers)
+        assert r.status_code == 200, r.status_code
+        d = r.get_json()['decisions'][0]
+        assert d.get('note_desatualizada') is True, 'a nota velha (CALL) nao foi silenciada contra o ideal JAM'
+        assert not d.get('note'), ('a rota regerou texto contra o ideal exibido', d.get('note'))
+
+
+def test_o_deep_dive_recebe_a_nota_silenciada():
+    """`/analyze/decision` faz SELECT proprio; o que chega ao LLM tem de passar pela mesma regua."""
+    import leaklab.llm_explainer as L
+    import api.app as A
+    with banco_de_teste() as (cliente, headers):
+        _, did, _ = _semeia(NOTA_VELHA, best='jam', gto='jam', street='river')
+        capturado = {}
+
+        def fake_deep(decision, user_id, **kw):
+            capturado['dec'] = dict(decision)
+            return 'analise falsa'
+
+        def fake_single(decision):
+            capturado['dec'] = dict(decision)
+            return 'analise falsa'
+
+        orig = (L.deep_dive_decision_agentic, L.analyze_single_decision, A._check_ai_quota)
+        L.deep_dive_decision_agentic, L.analyze_single_decision = fake_deep, fake_single
+        A._check_ai_quota = lambda uid: None
+        try:
+            r = cliente.post('/analyze/decision', json={'decision_id': did, 'force_new': True},
+                             headers=headers)
+        finally:
+            L.deep_dive_decision_agentic, L.analyze_single_decision, A._check_ai_quota = orig
+        assert r.status_code == 200, (r.status_code, r.get_json())
+        dec = capturado.get('dec') or {}
+        assert dec, 'o LLM nao foi chamado'
+        assert not dec.get('note'), ('a nota velha chegou crua ao LLM', dec.get('note'))
+        assert dec.get('note_desatualizada') is True
+
+
 if __name__ == '__main__':
     falhas = 0
     testes = [v for k, v in sorted(globals().items()) if k.startswith('test_')]

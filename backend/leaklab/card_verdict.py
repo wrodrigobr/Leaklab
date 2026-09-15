@@ -51,7 +51,12 @@ def _matches(played_norm: str, act_norm: str) -> bool:
 # Por que nao basta apagar a frase final: o corpo da nota tambem e escrito em funcao de `best`,
 # em nove pontos de `decision_engine_v11` (2104, 2120, 2122, 2123, 2124, 2142, 2143, 2168, 2209).
 # Tirar so a ultima sentenca deixa um paragrafo inteiro defendendo a acao velha.
-_RE_ACAO_DECLARADA = re.compile(r'A[cç][aã]o esperada:\s*([A-Za-zÀ-ÿ\-]+)', re.IGNORECASE)
+#
+# Duas formas, porque o produto escreve duas: o motor grava "Ação esperada: RAISE."
+# (`decision_engine_v11:2218`) e `_enrich_note` regera "mas o esperado era RAISE." (`app.py`).
+# Ate 15/09 a regua so lia a primeira, e a nota regerada passava sem ser julgada (VER-5).
+_RE_ACAO_DECLARADA = re.compile(
+    r'(?:A[cç][aã]o esperada:|o esperado era)\s*([A-Za-zÀ-ÿ\-]+)', re.IGNORECASE)
 
 
 def acao_declarada_na_nota(note) -> str:

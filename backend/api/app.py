@@ -5215,6 +5215,17 @@ def _enrich_note(row: dict) -> str:
     if note and note not in _GENERIC_NOTES:
         return note
 
+    # Daqui para baixo o texto e REGERADO a partir de `best_action`. A tela mostra como ideal
+    # `gto_action or best_action` (TournamentDetail.tsx:153): quando as duas colunas discordam
+    # (o resync reescreveu so `gto_action`), o texto novo diria "o esperado era RAISE" ao lado
+    # de um ideal JAM, com `note_desatualizada` aceso na mesma linha. Auditoria VER-5 (15/09).
+    # Nesse caso, silencio: e a opcao que nao TROCA a resposta (regra 7). A nota generica
+    # volta como estava; a silenciada fica vazia e a tela mostra o aviso de nota retirada.
+    from leaklab.card_verdict import norm_action as _norm, _matches as _bate
+    _g, _b = _norm(row.get('gto_action')), _norm(row.get('best_action'))
+    if _g and _b and not _bate(_b, _g):
+        return note
+
     action  = row.get('action_taken', '') or ''
     best    = row.get('best_action', '')  or ''
     street  = row.get('street', 'preflop') or 'preflop'
@@ -6726,7 +6737,11 @@ def analyze_decision():
     if not row or dict(row).get('user_id') != g.user_id:
         return jsonify({'error': 'Decisão não encontrada'}), 404
 
-    decision = dict(row)
+    # SELECT proprio, entao o silenciador de `get_decisions` nao passa por aqui sozinho: a nota
+    # que contradiz o veredito de hoje chegava CRUA ao LLM, que a repetia no deep-dive.
+    # Auditoria VER-5 / NLU-13 (15/09).
+    from database.repositories import silencia_nota_desatualizada
+    decision = silencia_nota_desatualizada(dict(row))
 
     # Deep-dive agêntico (investiga GTO real + mão completa + histórico) é o caminho
     # preferido; cache em chave própria (:deep). Flag DEEP_DIVE_AGENTIC=0 desliga;
