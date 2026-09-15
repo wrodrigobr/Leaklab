@@ -36,6 +36,7 @@ RAIZ = os.path.join(os.path.dirname(__file__), '..')
 MODULOS_LEITORES = [
     ('database', 'repositories.py'),
     ('api', 'app.py'),
+    ('leaklab', 'llm_explainer.py'),      # deep-dive (auditoria NLU-2)
 ]
 
 COLUNAS_EM_BB = ('facing_bet', 'pot_size')
@@ -72,6 +73,28 @@ def test_drill_e_nota_leem_facing_bet_com_a_mesma_unidade():
             'a mesma linha facing_bet=%.1f (level_bb=%d) sai %r no drill e %.1fbb na nota'
             % (linha['facing_bet'], linha['level_bb'], drill, n_nota))
         assert n_drill > 0.0, 'o drill voltou a dizer 0.0bb: %r' % drill
+
+
+def test_deep_dive_e_bloco_gto_procuram_o_no_no_mesmo_bucket():
+    """NLU-2: `_decision_to_gto_params` (ferramenta do agente) dividia `facing_bet` e `pot_size`
+    por `level_bb`; o bloco GTO de `analyze_single_decision` usa a coluna crua. A mesma linha
+    dava bucket 0-3bb numa porta e 3-8bb na outra, e dois hashes de no diferentes."""
+    import json
+    from leaklab.llm_explainer import _decision_to_gto_params
+    from leaklab.gto_utils import bet_bucket, compute_spot_hash
+    dec = {'street': 'flop', 'position': 'BTN', 'hero_cards': 'AhKs',
+           'board': json.dumps(['Qd', '7h', '2c']), 'level_bb': 200, 'stack_bb': 40.0,
+           'facing_bet': 8.0, 'pot_size': 12.0, 'is_3bet': 0, 'vs_position': 'BB', 'num_players': 6}
+    p = _decision_to_gto_params(dec)
+    facing_bloco_gto = float(dec['facing_bet'])          # llm_explainer, bloco GTO: coluna crua
+    assert p['facing_size_bb'] == facing_bloco_gto == 8.0, p
+    assert p['pot_bb'] == 12.0, p
+    assert bet_bucket(p['facing_size_bb']) == bet_bucket(facing_bloco_gto)
+    h_deep = compute_spot_hash('flop', 'BTN', ['Qd', '7h', '2c'], ['Ah', 'Ks'], 40.0, p['facing_size_bb'])
+    h_gto = compute_spot_hash('flop', 'BTN', ['Qd', '7h', '2c'], ['Ah', 'Ks'], 40.0, facing_bloco_gto)
+    assert h_deep == h_gto, (h_deep, h_gto)
+    # e a linha sem aposta segue sem aposta
+    assert _decision_to_gto_params(dict(dec, facing_bet=None, pot_size=None))['facing_size_bb'] == 0.0
 
 
 def test_drill_preserva_os_rotulos_por_tipo_de_spot():

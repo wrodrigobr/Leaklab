@@ -3345,10 +3345,13 @@ def _decision_to_gto_params(decision: dict) -> dict:
         board = []
     board = (board[:3] if street == 'flop' else board[:4] if street == 'turn'
              else board[:5] if street == 'river' else [])
-    level_bb     = float(decision.get('level_bb') or 0)
     stack_bb     = float(decision.get('stack_bb') or 100)
-    facing_chips = float(decision.get('facing_bet') or 0)
-    pot_chips    = float(decision.get('pot_size') or 0)
+    # `facing_bet` e `pot_size` JA estao em bb desde a gravacao (`save_decisions`, `facingToBb`).
+    # Dividir por `level_bb` de novo mandava a ferramenta `get_gto_solution` do agente procurar o
+    # no no bucket errado (8.0bb / 200 = 0.04bb, bucket "sem aposta"), enquanto o bloco GTO de
+    # `analyze_single_decision`, no mesmo arquivo, usa a coluna crua. Auditoria NLU-2 (15/09).
+    facing_bb    = float(decision.get('facing_bet') or 0)
+    pot_bb       = float(decision.get('pot_size') or 0)
     is_3bet      = bool(decision.get('is_3bet'))
     vs_position  = decision.get('vs_position') or ''
     action_seq   = 'rfi'
@@ -3362,8 +3365,8 @@ def _decision_to_gto_params(decision: dict) -> dict:
         'hero_stack_bb':  stack_bb,
         'action_seq':     action_seq,
         'vs_position':    vs_position,
-        'facing_size_bb': (facing_chips / level_bb) if level_bb else 0.0,
-        'pot_bb':         (pot_chips / level_bb) if level_bb else 0.0,
+        'facing_size_bb': facing_bb,
+        'pot_bb':         pot_bb,
         'num_players':    int(decision.get('num_players') or 9),
         'pot_type':       '3bet' if is_3bet else '',
     }
