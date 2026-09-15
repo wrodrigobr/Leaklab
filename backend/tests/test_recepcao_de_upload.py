@@ -203,10 +203,23 @@ def test_o_worker_processa_e_o_recibo_conta_certo():
         # foi o guarda de fiação do front que pegou isso.
         assert 'analysis_waitlisted' in d['detalhe'][0], d['detalhe'][0]
 
-        # e o torneio ENTROU de verdade
+        # O detalhe DESCREVE o torneio, e nao so o status. Auditoria FLU-10 (15/09): arquivo de
+        # UM torneio nao passa pelo divisor (`_pedacos_por_torneio` devolve []), o worker monta
+        # `(None, 0, texto)` e o detalhe saia `tournament_id: None, hands: 0` para um torneio que
+        # entrou com 5 maos. Contrato que mente e divida: o dia em que a tela montar "5 maos de
+        # T#999900001" a partir daqui, ela mostra "0 maos de None".
         from database.schema import get_conn
         from database.repositories import _adapt
         c = get_conn()
+        t = dict(c.execute(_adapt(
+            "SELECT tournament_id, hands_count FROM tournaments WHERE user_id=?"),
+            (UID,)).fetchone())
+        det0 = d['detalhe'][0]
+        assert str(det0.get('tournament_id')) == str(t['tournament_id']), (det0, t)
+        assert det0.get('hands') == t['hands_count'], (det0, t)
+        assert det0['hands'] > 0, det0
+
+        # e o torneio ENTROU de verdade
         n = dict(c.execute(_adapt(
             "SELECT COUNT(*) AS n FROM tournaments WHERE user_id=?"), (UID,)).fetchone())['n']
         nd = dict(c.execute(_adapt(

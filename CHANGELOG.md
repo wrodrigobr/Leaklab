@@ -4,6 +4,28 @@ Todas as mudanÃ§as notÃ¡veis neste projeto serÃ£o documentadas aqui.
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
+## O recibo de um arquivo com UM torneio para de dizer "0 maos de None" (15/09)
+
+`_pedacos_por_torneio` devolve `[]` para arquivo de um torneio so, porque nao ha o que dividir, e
+o worker monta `pedacos = [(None, 0, texto)]`. O `tournament_id` e o `hands` do `detalhe` saiam
+DESSE par: medido (`data/auditoria/repro/FLU_10.py`), o detalhe do recibo dizia
+`tournament_id: None, hands: 0` enquanto o torneio gravado era `999905300` com 5 maos e o resto
+do detalhe (status 200, `tournament_db_id`) estava certo. Auditoria FLU-10.
+
+Hoje ninguem le esses dois campos, o front so tira `analysis_waitlisted` dali. Isto e divida de
+contrato, e o conserto e barato: a resposta do `_analyze_impl` ja traz `tournament_id` e
+`total_hands` (e o 409 de duplicado tambem traz o `tournament_id`), entao ela COMPLETA o que o
+divisor nao tinha. So completa: quando o divisor sabe, o numero dele manda, porque e o do pedaco
+de verdade e nao o do torneio inteiro.
+
+Guarda: `test_o_worker_processa_e_o_recibo_conta_certo`, em
+`tests/test_recepcao_de_upload.py`, passou a exigir que `detalhe[0]` descreva o torneio
+(`tournament_id` e `hands` iguais aos da tabela `tournaments`, e `hands > 0`). Quebrado de
+proposito (detalhe voltando a ler so o par do divisor) e o teste acusou com os dois dicionarios
+lado a lado. Suites: `test_recepcao_de_upload` 28/28 e `test_arquivo_com_varios_torneios` 15/15,
+em SQLite e em Postgres, duas rodadas cada.
+
+---
 ## Reenviar um arquivo que ja esta guardado devolve o proprio recibo, nao 429 (15/09)
 
 Os dois tetos do `POST /uploads` (5 arquivos em espera de cota, e desde o SEG-2 tambem 40 MB em

@@ -13357,7 +13357,15 @@ def _processar_uploads_recebidos() -> dict:
             ja_estavam += 1
         else:
             com_erro += 1
-        detalhe.append({'tournament_id': tid, 'hands': n_maos, 'status': status,
+        # O `tid`/`n_maos` vem do DIVISOR, que nao roda quando o arquivo tem um torneio so:
+        # ali o par e `(None, 0, texto)` e o detalhe saia dizendo `tournament_id: None,
+        # hands: 0` para um torneio que entrou com 5 maos. A resposta do `_analyze_impl` sabe os
+        # dois (e o 409 de duplicado tambem manda `tournament_id`), entao ela completa o que o
+        # divisor nao tinha. So COMPLETA: quando o divisor sabe, o numero dele manda, porque e
+        # o do pedaco de verdade. Auditoria FLU-10 (15/09).
+        _d = dados or {}
+        detalhe.append({'tournament_id': tid if tid is not None else _d.get('tournament_id'),
+                        'hands': n_maos or _d.get('total_hands') or 0, 'status': status,
                         'duplicate': dup, 'error': (dados or {}).get('error'),
                         'tournament_db_id': (dados or {}).get('tournament_db_id'),
                         # Viaja de proposito: jogador Free precisa saber que o torneio ENTROU e
