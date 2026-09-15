@@ -4,6 +4,37 @@ Todas as mudanÃ§as notÃ¡veis neste projeto serÃ£o documentadas aqui.
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
+## O menu que o deep-dive entrega ao LLM passa pelo mesmo guarda do /replay (15/09)
+
+Segunda metade do NLU-2. A primeira consertou o hash: `_decision_to_gto_params` deixou de
+dividir `facing_bet`/`pot_size` por `level_bb` e a ferramenta `get_gto_solution` do agente
+passou a achar os nos certos. Achar e o problema: o guarda de FORMA do menu (RC-5/6, 17/08)
+vivia COPIADO em dois lugares de `api/app.py` (`_valid_node`, do card e do drill, e
+`_valid_node_replayer`, do /replay) e faltava nesta terceira porta, a unica que entrega o menu
+direto ao texto que o jogador le.
+
+Medido (`data/auditoria/repro/NLU_2b.py`, contra o banco proprio): com o hero enfrentando
+3.0bb no flop, um no de first-to-act gravado no hash exato do spot chega ao LLM com
+`['bet_50pct', 'check']` enquanto o /replay rejeita o MESMO no; e sem aposta no flop chega com
+`['call', 'fold']`. O deep-dive recomendaria `check` onde nao ha botao de check. Isto e dano
+que o bug do hash nao causava (regra 7): antes a porta simplesmente nao achava nada.
+
+A regra virou UMA funcao, `gto_utils.no_valido_para_o_spot` (com `acoes_do_no` e
+`menu_coerente_com_o_spot`), e as tres portas chamam ela. As duas impossibilidades continuam
+estruturais, nao estrategicas: `check` no menu com aposta na frente, `fold` no menu sem aposta
+postflop (preflop fica de fora, onde open-fold e legal). Rejeitado, o deep-dive responde
+`found=false` com `motivo`, que e o que a ferramenta ja manda o modelo tratar.
+
+Guarda: `tests/test_no_valido_para_o_spot.py`, 9 casos, com a varredura das N+1 portas por AST
+(regra 5) e um forjado que prova que a varredura acusa. Quebrado de proposito duas vezes: sem
+o guarda no deep-dive falha `test_deepdive_recusa_menu_que_nao_cabe_no_spot`; com
+`_valid_node_replayer` devolvendo o no cru falha a varredura. Restaurado. Suites: novo 9/9,
+`test_facing_bet_em_bb` 5/5, `test_gto_utils_comprehensive` 105/105, `test_card_invariants`
+7/7 em SQLite e em Postgres (duas vezes); `test_api_gto_endpoints` 44/44 e
+`test_gto_enrichment` 74/74 em SQLite (as duas forcam sqlite3 no setup, `PRAGMA` e
+`INSERT OR IGNORE`, e nao rodam contra Postgres nem antes desta mudanca).
+
+---
 ## Copy de interface em ingles dentro do pt-BR (e do es) sai do dashboard (15/09)
 
 85 chaves do pt-BR eram identicas ao en. A maioria e termo de poker e fica, por regra da

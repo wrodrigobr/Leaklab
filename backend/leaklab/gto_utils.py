@@ -425,3 +425,66 @@ def dinheiro_coerente(pot_bb, facing_bb, stack_bb):
     if 0 < f < _APOSTA_MINIMA_BB:
         return False, 'aposta_menor_que_meio_blind'
     return True, None
+
+
+# ── Guarda de FORMA do nó: o menu do nó pode ser o deste spot? ───────────────────────────────
+# RC-5/6 do Ghost Table (17/08) e o guarda de colisão do /replay viviam COPIADOS em dois lugares
+# de `api/app.py` (`_valid_node` do card, `_valid_node_replayer` do /replay) e faltavam no
+# terceiro: a ferramenta `get_gto_solution` do deep-dive, que entrega o menu direto ao LLM. Com o
+# hash consertado (NLU-2, 1a metade) essa porta passou a ACHAR nós, e achar sem este guarda é o
+# risco da regra 7: o texto do deep-dive recomendaria 'check' num spot onde não há botão de check.
+# Regra 5 da casa: a regra vira UMA função, e a varredura confere os N+1 chamadores.
+
+def acoes_do_no(node) -> set:
+    """Nomes de ação (minúsculos) do menu de um nó gravado — `strategy_json`, senão `gto_action`."""
+    if not node:
+        return set()
+    acts: set = set()
+    try:
+        sj = node.get('strategy_json')
+        if sj:
+            d = json.loads(sj) if isinstance(sj, str) else sj
+            acts = {str(k).lower() for k in d.keys()}
+    except Exception:
+        acts = set()
+    if not acts and node.get('gto_action'):
+        acts = {str(node['gto_action']).lower()}
+    return acts
+
+
+def menu_coerente_com_o_spot(acoes, street: str, facing_bb) -> tuple:
+    """`(ok, motivo)` — o menu cabe num spot com este `facing_bet`?
+
+    Duas impossibilidades ESTRUTURAIS, não julgamento estratégico:
+      - hero enfrenta aposta e o menu tem 'check': é um nó de first-to-act servido a um spot
+        vs-aposta; a recomendação seria uma ação inalcançável na mesa;
+      - postflop SEM aposta a enfrentar e o menu tem 'fold': é um nó vs-aposta. Preflop fica de
+        fora, onde open-fold é legal com facing 0.
+    """
+    try:
+        f = float(facing_bb or 0)
+    except (TypeError, ValueError):
+        f = 0.0
+    acts = {str(a).lower() for a in (acoes or set())}
+    if f > 0 and 'check' in acts:
+        return False, 'menu_de_first_to_act_em_spot_vs_aposta'
+    if f == 0 and str(street or '').lower() != 'preflop' and 'fold' in acts:
+        return False, 'menu_vs_aposta_em_spot_sem_aposta'
+    return True, None
+
+
+def no_valido_para_o_spot(node, street: str, board_for_hash, facing_bb):
+    """O nó ou `None`. Rejeita street/board divergentes (colisão de SHA256[:16]) e menu incoerente."""
+    if not node:
+        return None
+    if str(node.get('street') or '').lower() != str(street or '').lower():
+        return None
+    try:
+        nb = node.get('board')
+        node_board = sorted(json.loads(nb) if isinstance(nb, str) else (nb or []))
+        if board_for_hash and node_board and node_board != sorted(board_for_hash):
+            return None
+    except Exception:
+        pass
+    ok, _motivo = menu_coerente_com_o_spot(acoes_do_no(node), street, facing_bb)
+    return node if ok else None

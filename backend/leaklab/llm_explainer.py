@@ -3408,8 +3408,20 @@ def _run_deepdive_tool(name: str, decision: dict, user_id: int) -> str:
     from database import repositories as _repo
     if name == 'get_gto_solution':
         from leaklab.gto_solver import lookup_gto
+        from leaklab.gto_utils import menu_coerente_com_o_spot
         params = _decision_to_gto_params(decision)
         sol = lookup_gto(**params, block_remote=True, allow_remote_solve=False)
+        # Guarda de FORMA do menu, o MESMO do /replay e do card (fonte única em `gto_utils`).
+        # Com o hash consertado esta porta passou a achar nós; servir ao LLM um menu que não cabe
+        # no spot (check enfrentando aposta, fold sem aposta) faria o deep-dive recomendar ação
+        # inalcançável — dano que o bug do hash não causava. Auditoria NLU-2 (15/09).
+        _acoes = {str(a.get('action')) for a in (sol.get('strategy') or []) if isinstance(a, dict)}
+        _ok, _motivo = menu_coerente_com_o_spot(_acoes, params.get('street'),
+                                                params.get('facing_size_bb'))
+        if sol.get('found') and not _ok:
+            return json.dumps({
+                'found': False, 'source': 'no_rejeitado', 'motivo': _motivo,
+            }, ensure_ascii=False)
         return json.dumps({
             'found':              sol.get('found'),
             'source':             sol.get('source'),

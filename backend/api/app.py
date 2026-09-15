@@ -2656,38 +2656,12 @@ def _resolve_best_action_from_node(row: dict, return_strategy: bool = False):
     else:
         hero_hand = []
 
+    # Street/board + FORMA do menu (RC-5/6, 17/08) vivem em `gto_utils.no_valido_para_o_spot`:
+    # a cópia local desta regra faltava na 3a porta (a ferramenta do deep-dive) e o LLM recebia
+    # menu com 'check' em spot vs-aposta. Auditoria NLU-2 (15/09).
     def _valid_node(n):
-        """Rejeita nó se street ou board não batem — captura colisões de hash SHA256[:16]."""
-        if not n:
-            return None
-        if n.get('street', '').lower() != street.lower():
-            return None
-        try:
-            node_board = sorted(_j.loads(n.get('board') or '[]') if isinstance(n.get('board'), str) else (n.get('board') or []))
-            if board_for_hash and node_board and node_board != sorted(board_for_hash):
-                return None
-        except Exception:
-            pass
-        # Rejeita nó incompatível com o FACING do spot: se o hero enfrenta aposta (facing>0),
-        # o nó não pode ser um first-to-act (menu com 'check'). Sem isto um nó OOP check/bet
-        # casa num spot vs-bet e o card recomenda "check" sem botão de check (ação inalcançável).
-        _acts = set()
-        try:
-            _sj = n.get('strategy_json')
-            if _sj:
-                _acts = {str(k).lower() for k in (_j.loads(_sj) if isinstance(_sj, str) else _sj).keys()}
-        except Exception:
-            _acts = set()
-        if not _acts and n.get('gto_action'):
-            _acts = {str(n['gto_action']).lower()}
-        if facing_bb > 0 and 'check' in _acts:
-            return None
-        # O INVERSO (RC-5/6, 17/08): sem aposta a enfrentar POSTFLOP, nó com 'fold' no menu é
-        # um nó vs-aposta — outra forma de spot. Servi-lo faz a janela de frequência premiar
-        # fold onde fold nem existe. Preflop fica fora: open-fold é legal com facing 0.
-        if facing_bb == 0 and street.lower() != 'preflop' and 'fold' in _acts:
-            return None
-        return n
+        from leaklab.gto_utils import no_valido_para_o_spot
+        return no_valido_para_o_spot(n, street, board_for_hash, facing_bb)
 
     # RC-3: variantes de pot_type na ordem do engine ('3bet' primeiro quando a linha diz
     # is_3bet) + guarda de coerência contra o gravado (pega variante inderivável, ex. oop_pfr).
@@ -10720,34 +10694,10 @@ def get_decision_gto(decision_id):
 
     player_action = (dec.get('action_taken') or '').lower()
 
+    # Mesma fonte única do card e do deep-dive (`gto_utils.no_valido_para_o_spot`).
     def _valid_node_replayer(n):
-        """Rejeita nó se street ou board não batem — captura colisões de hash SHA256[:16]."""
-        if not n:
-            return None
-        if n.get('street', '').lower() != street.lower():
-            return None
-        try:
-            node_board = sorted(_json.loads(n.get('board') or '[]') if isinstance(n.get('board'), str) else (n.get('board') or []))
-            if board_for_hash and node_board and node_board != sorted(board_for_hash):
-                return None
-        except Exception:
-            pass
-        # Guardas de FORMA do menu (RC-5/6, 17/08) — os mesmos do drill: vs-aposta não pode
-        # ter 'check' no menu; sem aposta postflop não pode ter 'fold'.
-        _acts = set()
-        try:
-            _sj = n.get('strategy_json')
-            if _sj:
-                _acts = {str(k).lower() for k in (_json.loads(_sj) if isinstance(_sj, str) else _sj).keys()}
-        except Exception:
-            _acts = set()
-        if not _acts and n.get('gto_action'):
-            _acts = {str(n['gto_action']).lower()}
-        if facing_bb > 0 and 'check' in _acts:
-            return None
-        if facing_bb == 0 and street.lower() != 'preflop' and 'fold' in _acts:
-            return None
-        return n
+        from leaklab.gto_utils import no_valido_para_o_spot
+        return no_valido_para_o_spot(n, street, board_for_hash, facing_bb)
 
     # ── Node lookup: multiple fallback strategies ────────────────────────────
     # RC-3 (17/08): mesmas variantes de pot_type e mesmo guarda de coerência do drill
