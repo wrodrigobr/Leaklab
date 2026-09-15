@@ -4,6 +4,47 @@ Todas as mudanÃ§as notÃ¡veis neste projeto serÃ£o documentadas aqui.
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
+## Quatro suites param de ser verdes so em SQLite (15/09)
+
+Auditoria DIA-10. Nenhuma delas acusava defeito do produto: eram premissas do proprio teste que
+so valem no SQLite, e que faziam a homologacao contra Postgres nascer com 10 vermelhos falsos.
+Medido rodando a versao de HEAD contra o Postgres local, arquivo a arquivo:
+
+| suite | antes (Postgres) | depois |
+|---|---|---|
+| `test_gto_comparison` | 4 de 7 | 7 de 7 |
+| `test_mao_compartilhada` | 15 de 18 | 18 de 18 |
+| `test_invariantes_acervo` | 5 de 7 | 7 de 7 |
+| `test_mesa_final` | 16 de 18 | 18 de 18 |
+
+O que cada uma tinha:
+
+**`row[0]`** (`test_gto_comparison`): no Postgres a linha e dict e a indexacao por posicao
+estoura. Virou `dict(r)['id']`, que vale nos dois.
+
+**`cursor.description` e `json.dumps` sem `default=str`** (`test_mao_compartilhada`): o
+`_PgResult` nao expoe `description` (ler UMA linha como dict da os nomes de coluna nas duas
+gramaticas), e o Postgres devolve TIMESTAMP como `datetime`, que o `json.dumps` recusa enquanto
+o SQLite devolve string.
+
+**Banco novo por troca de `SQLITE_PATH`** (`test_invariantes_acervo`): sob `DATABASE_URL` a
+troca e ignorada, o banco e o mesmo de todo mundo, e a suite media o acervo alheio E deixava as
+forjas GRAVADAS (`hand_id='FORJA'`, `gto_nodes.spot_hash='forja-no-vazio'`, que eu encontrei no
+meu banco vindas de uma rodada anterior). Agora cada caso roda numa transacao com rollback, o
+mesmo desenho do `DIA_6.py`, e as contagens sao lidas por DELTA em vez de valor absoluto, porque
+num banco compartilhado a baseline nao e zero. Em SQLite o arquivo temporario FICA: e hermetico
+e barato, e sem ele a suite passaria a medir o banco de desenvolvimento do dono (medido: a sonda
+BOARD ja vinha em 1 e a forja nao movia nada). Conferido depois de tres rodadas contra Postgres:
+o banco fica sem nenhuma forja, sem o usuario e sem o torneio de esqueleto.
+
+**Gravar `tournament_finishes` para torneio inexistente** (`test_mesa_final`): passa no SQLite,
+que nao tem a FK, e cai no Postgres com `ForeignKeyViolation`. Os dois casos criam o torneio
+antes e o apagam no fim.
+
+Quebrados de proposito: a versao de HEAD de cada arquivo rodada contra o Postgres, que e a
+tabela acima. Depois: as quatro em SQLite e em Postgres (duas rodadas), todas cheias.
+
+---
 ## Proxy do vite: um bypass por Accept em vez de vinte excecoes de caminho (15/09)
 
 Isto e SO em dev. O dev server do vite tem dois papeis no mesmo host, servir a SPA e proxiar a

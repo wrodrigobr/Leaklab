@@ -87,7 +87,7 @@ def fetch_all_tournament_ids(user_id: int | None = None) -> list[int]:
             rows = conn.execute(
                 "SELECT id FROM tournaments ORDER BY imported_at DESC"
             ).fetchall()
-        return [r[0] for r in rows]
+        return [dict(r)['id'] for r in rows]
     finally:
         conn.close()
 
@@ -431,7 +431,7 @@ def test_gto_comparison_structure():
         return
 
     try:
-        result = compare_tournament(row[0])
+        result = compare_tournament(dict(row)['id'])
         assert 'stats_total' in result
         assert 'by_street' in result
         assert 'divergences' in result
@@ -448,13 +448,14 @@ def _ensure_test_user(conn) -> int:
     """Cria ou reutiliza um usuário de teste. Retorna o user_id."""
     row = conn.execute("SELECT id FROM users WHERE username = 'gto_test_user'").fetchone()
     if row:
-        return row[0]
+        return dict(row)['id']
     conn.execute("""
         INSERT INTO users (username, email, password_hash, role)
         VALUES ('gto_test_user', 'gto_test@test.local', 'x', 'player')
     """)
     conn.commit()
-    return conn.execute("SELECT id FROM users WHERE username = 'gto_test_user'").fetchone()[0]
+    return dict(conn.execute(
+        "SELECT id FROM users WHERE username = 'gto_test_user'").fetchone())['id']
 
 
 def test_comparison_agreement_detection():
@@ -467,9 +468,9 @@ def test_comparison_agreement_detection():
             INSERT INTO tournaments (user_id, tournament_id, site, hero, played_at, hands_count, decisions_count)
             VALUES (?, 'test_gto_cmp', 'test', 'hero_gto', '2024-01-01', 1, 1)
         """, (u_id,))
-        t_id = conn.execute(
+        t_id = dict(conn.execute(
             "SELECT id FROM tournaments WHERE tournament_id = 'test_gto_cmp'"
-        ).fetchone()[0]
+        ).fetchone())['id']
         conn.execute("""
             INSERT INTO decisions (tournament_id, hand_id, street, position, hero_cards, board,
                                    action_taken, best_action, label, score, stack_bb)
@@ -513,9 +514,9 @@ def test_comparison_divergence_detection():
             INSERT INTO tournaments (user_id, tournament_id, site, hero, played_at, hands_count, decisions_count)
             VALUES (?, 'test_gto_div', 'test', 'hero_gto', '2024-01-01', 1, 1)
         """, (u_id,))
-        t_id = conn.execute(
+        t_id = dict(conn.execute(
             "SELECT id FROM tournaments WHERE tournament_id = 'test_gto_div'"
-        ).fetchone()[0]
+        ).fetchone())['id']
         conn.execute("""
             INSERT INTO decisions (tournament_id, hand_id, street, position, hero_cards, board,
                                    action_taken, best_action, label, score, stack_bb)

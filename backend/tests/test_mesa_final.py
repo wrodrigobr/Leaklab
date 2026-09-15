@@ -235,6 +235,44 @@ def test_tres_assentos_pode_ser_ou_nao_ser_mesa_final_no_MESMO_torneio():
     assert final == (True, 'colocacoes'), final
 
 
+def _torneio_para(tid: int) -> int:
+    """Cria (uma vez) o torneio que `tournament_finishes.tournament_id` referencia.
+
+    Sem isto o INSERT viola a FK no Postgres e passa no SQLite, que nao a tem: a suite so era
+    verde num dialeto so. Auditoria DIA-10 (15/09). Usuario e torneio de id alto, apagados no
+    fim, para nao contar como acervo de ninguem."""
+    from database.schema import get_conn, init_db
+    from database.repositories import _adapt
+    init_db()
+    uid = 9801
+    conn = get_conn()
+    try:
+        if not conn.execute(_adapt("SELECT id FROM users WHERE id=?"), (uid,)).fetchone():
+            conn.execute(_adapt(
+                "INSERT INTO users (id, username, email, password_hash, plan) VALUES (?,?,?,?,?)"),
+                (uid, 'mesafinal', 'mesafinal@teste.local', 'x', 'pro'))
+        if not conn.execute(_adapt("SELECT id FROM tournaments WHERE id=?"), (tid,)).fetchone():
+            conn.execute(_adapt(
+                "INSERT INTO tournaments (id, user_id, tournament_id, hero, hands_count, "
+                "decisions_count) VALUES (?,?,?,?,0,0)"), (tid, uid, 'mf%d' % tid, 'Hero'))
+        conn.commit()
+    finally:
+        conn.close()
+    return tid
+
+
+def _apagar_torneio(tid: int) -> None:
+    from database.schema import get_conn
+    from database.repositories import _adapt
+    conn = get_conn()
+    try:
+        conn.execute(_adapt("DELETE FROM tournament_finishes WHERE tournament_id=?"), (tid,))
+        conn.execute(_adapt("DELETE FROM tournaments WHERE id=?"), (tid,))
+        conn.commit()
+    finally:
+        conn.close()
+
+
 def test_reentrada_usa_a_MELHOR_colocacao():
     """Bug meu, e do tipo que falha calado. Re-entrada da ao jogador DUAS colocacoes: no
     35598158 real, Yachtman aparece como 3o (a re-entrada, onde ele parou) E como 25o (a primeira
@@ -245,34 +283,36 @@ def test_reentrada_usa_a_MELHOR_colocacao():
     Aritmeticamente: a colocacao que conta e onde a PESSOA saiu, que e a menor.
     """
     from database.repositories import save_tournament_finishes, get_tournament_finishes
-    from database.schema import init_db
-    init_db()
-    tid = 987654
-    # ordem invertida de proposito: a linha do 25o vem ANTES da do 3o
-    save_tournament_finishes(tid, [
-        {'player': 'Yachtman', 'place': 25, 'prize': 0.0},
-        {'player': 'Yachtman', 'place': 3,  'prize': 2.17},
-        {'player': 'MusashiBR', 'place': 1, 'prize': 4.8},
-        {'player': 'JAMESHARPER', 'place': 2, 'prize': 2.9},
-    ])
-    col = get_tournament_finishes(tid)
-    assert col.get('Yachtman') == 3, col
-    assert mesa_e_o_torneio({'MusashiBR', 'JAMESHARPER', 'Yachtman'},
-                            field_size=29, colocacoes=col) == (True, 'colocacoes')
+    tid = _torneio_para(987654)
+    try:
+        # ordem invertida de proposito: a linha do 25o vem ANTES da do 3o
+        save_tournament_finishes(tid, [
+            {'player': 'Yachtman', 'place': 25, 'prize': 0.0},
+            {'player': 'Yachtman', 'place': 3,  'prize': 2.17},
+            {'player': 'MusashiBR', 'place': 1, 'prize': 4.8},
+            {'player': 'JAMESHARPER', 'place': 2, 'prize': 2.9},
+        ])
+        col = get_tournament_finishes(tid)
+        assert col.get('Yachtman') == 3, col
+        assert mesa_e_o_torneio({'MusashiBR', 'JAMESHARPER', 'Yachtman'},
+                                field_size=29, colocacoes=col) == (True, 'colocacoes')
+    finally:
+        _apagar_torneio(tid)
 
 
 def test_linha_sem_colocacao_e_descartada_e_nao_gravada_com_place_nulo():
     """Uma linha com place NULL nao prova nada e faria a regra falhar ABERTO (o `all(...)` veria
     um valor presente que na verdade e vazio)."""
     from database.repositories import save_tournament_finishes, get_tournament_finishes
-    from database.schema import init_db
-    init_db()
-    tid = 987655
-    n = save_tournament_finishes(tid, [{'player': 'a', 'place': 1},
-                                       {'player': 'sem_place', 'place': None},
-                                       {'player': '', 'place': 5}])
-    assert n == 1, n
-    assert get_tournament_finishes(tid) == {'a': 1}
+    tid = _torneio_para(987655)
+    try:
+        n = save_tournament_finishes(tid, [{'player': 'a', 'place': 1},
+                                           {'player': 'sem_place', 'place': None},
+                                           {'player': '', 'place': 5}])
+        assert n == 1, n
+        assert get_tournament_finishes(tid) == {'a': 1}
+    finally:
+        _apagar_torneio(tid)
 
 
 if __name__ == '__main__':

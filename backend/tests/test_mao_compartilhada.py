@@ -98,7 +98,9 @@ def test_o_payload_NAO_carrega_nick_de_ninguem():
     import json
     from leaklab.mao_compartilhada import criar, ler
     a, _b, tid, hid = _semeia()
-    bruto = json.dumps(ler(criar(a, tid, hid)), ensure_ascii=False)
+    # `default=str`: o Postgres devolve TIMESTAMP como `datetime`, que o json.dumps recusa;
+    # o SQLite devolve string e o teste passava so la. Auditoria DIA-10 (15/09).
+    bruto = json.dumps(ler(criar(a, tid, hid)), ensure_ascii=False, default=str)
     for proibido in ('nick_do_dono', 'PokerStars', str(tid), hid):
         assert proibido not in bruto, (
             'o payload público carrega %r. Em 28/08 uma captura saiu com 43 nicks reais; aqui o '
@@ -186,8 +188,12 @@ def test_voto_agrega_e_nao_identifica():
     from database.repositories import _adapt
     conn = get_conn()
     try:
-        cols = [d[0] for d in conn.execute(_adapt(
-            'SELECT * FROM shared_hand_votes LIMIT 1')).description]
+        # `description` e do cursor do sqlite3; o `_PgResult` nao expoe. Ler UMA linha como
+        # dict da os nomes de coluna nas duas gramaticas, e a tabela nunca esta vazia aqui
+        # (o teste acabou de votar). Auditoria DIA-10.
+        linha = conn.execute(_adapt('SELECT * FROM shared_hand_votes LIMIT 1')).fetchone()
+        assert linha is not None, 'sem voto gravado, o teste nao mediria nada'
+        cols = list(dict(linha).keys())
     finally:
         conn.close()
     assert 'user_id' not in cols and 'ip' not in cols, (
@@ -209,7 +215,7 @@ def test_comentario_exige_conta_e_assina_username():
     assert d['comentarios'][0]['autor'].startswith('outro_'), 'o autor nao veio assinado'
     # POLITICA 30/08 (decisao do dono): o username GrindLab de quem compartilhou COM NOME
     # aparece; o que segue proibido em QUALQUER modo e o nick de POKER.
-    bruto = json.dumps(d, ensure_ascii=False)
+    bruto = json.dumps(d, ensure_ascii=False, default=str)
     assert 'nick_do_dono' not in bruto, 'nick de POKER vazou no payload'
     print('OK  test_comentario_exige_conta_e_assina_username')
 
@@ -224,7 +230,7 @@ def test_anonimo_e_opcao_e_esconde_o_username():
     t = criar(a, tid, hid, pergunta='sou timido', anonimo=True)
     d = ler(t)
     assert d['autor'] is None, 'compartilhamento anonimo veio com autor'
-    bruto = json.dumps(d, ensure_ascii=False)
+    bruto = json.dumps(d, ensure_ascii=False, default=str)
     assert 'dono_' not in bruto and 'nick_do_dono' not in bruto, (
         'anonimo vazou identidade: %s' % bruto[:200])
     item = next((f for f in listar_feed('recentes') if f['token'] == t), None)
@@ -282,7 +288,7 @@ def test_feed_mostra_autor_e_NAO_mostra_veredito():
     meu = next((f for f in feed if f.get('pergunta') == 'call ou fold?'), None)
     assert meu, 'o link nao apareceu no feed'
     assert meu['autor'].startswith('dono_'), 'o autor (username GrindLab) nao aparece'
-    bruto = json.dumps(meu, ensure_ascii=False)
+    bruto = json.dumps(meu, ensure_ascii=False, default=str)
     assert 'nick_do_dono' not in bruto, 'nick de POKER vazou no feed'
     for campo in ('label', 'best_action', 'gto_label', 'gto_strategy', 'ev_loss_bb'):
         assert campo not in meu['previa'], (

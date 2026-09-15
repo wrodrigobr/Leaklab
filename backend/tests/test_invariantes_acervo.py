@@ -28,29 +28,57 @@ import tempfile
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 import database.schema as sch
+from database.repositories import _adapt
 from leaklab.invariantes_acervo import (INVARIANTES, LINHA_SA, LINHA_SA_POSTFLOP,
                                         _forjar_linha, melhorias, regressoes, varrer)
 
 _FALHAS = []
 
+#: ids altos e proprios: sob Postgres o banco e COMPARTILHADO com as outras suites, e `1` ja
+#: pertence a alguem.
+_UID, _TID = 9802, 9802
+
 
 def _banco(com_linhas_sas=True):
-    """Banco novo, schema real, com (ou sem) as duas decisões sãs."""
-    sch.SQLITE_PATH = tempfile.mktemp(suffix='.db')
+    """Conexao numa TRANSACAO ABERTA, com (ou sem) as duas decisoes sas. Nada e commitado.
+
+    Antes isto trocava `sch.SQLITE_PATH` por um arquivo novo para ganhar um banco limpo. Sob
+    `DATABASE_URL` a troca e ignorada, o banco e o mesmo de todo mundo, e a suite passava a
+    medir o acervo alheio E a deixar as forjas gravadas (`hand_id='FORJA'`,
+    `gto_nodes.spot_hash='forja-no-vazio'`). A transacao com rollback e o mesmo desenho do
+    `DIA_6.py` e funciona nas duas gramaticas. Auditoria DIA-10 (15/09).
+
+    Quem chama FECHA com `_desfazer(c)`, nunca com `c.commit()`.
+
+    Em SQLITE o arquivo novo FICA: e hermetico, e barato, e sem ele a suite passaria a medir o
+    banco de desenvolvimento do dono (medido: a sonda BOARD ja vinha em 1 e a forja nao movia
+    nada). No Postgres a troca de caminho e ignorada, e quem isola e a transacao.
+    """
+    if not sch.USE_POSTGRES:
+        sch.SQLITE_PATH = tempfile.mktemp(suffix='.db')
     sch.init_db()
     c = sch.get_conn()
-    c.execute("INSERT OR IGNORE INTO users (id, username, email, password_hash) "
-              "VALUES (1, 'u', 'u@t.st', 'x')")
-    c.execute("INSERT OR IGNORE INTO tournaments (id, user_id, tournament_id, hero) "
-              "VALUES (1, 1, 'T-INV', 'Hero')")
+    if not c.execute(_adapt("SELECT id FROM users WHERE id=?"), (_UID,)).fetchone():
+        c.execute(_adapt("INSERT INTO users (id, username, email, password_hash) "
+                         "VALUES (?,?,?,?)"), (_UID, 'inv%d' % _UID, 'inv@t.st', 'x'))
+    if not c.execute(_adapt("SELECT id FROM tournaments WHERE id=?"), (_TID,)).fetchone():
+        c.execute(_adapt("INSERT INTO tournaments (id, user_id, tournament_id, hero) "
+                         "VALUES (?,?,?,?)"), (_TID, _UID, 'T-INV', 'Hero'))
     if com_linhas_sas:
         for linha in (LINHA_SA, LINHA_SA_POSTFLOP):
-            d = dict(linha, tournament_id=1)
+            d = dict(linha, tournament_id=_TID)
             cols = ', '.join(d)
-            c.execute(f"INSERT INTO decisions ({cols}) VALUES ({', '.join('?' for _ in d)})",
-                      tuple(d.values()))
-    c.commit()
+            c.execute(_adapt(f"INSERT INTO decisions ({cols}) "
+                             f"VALUES ({', '.join('?' for _ in d)})"), tuple(d.values()))
     return c
+
+
+def _desfazer(c):
+    """Desfaz TUDO, inclusive o usuario e o torneio de esqueleto."""
+    try:
+        c.rollback()
+    finally:
+        c.close()
 
 
 def _contagens(conn):
@@ -59,9 +87,19 @@ def _contagens(conn):
 
 def test_linha_sa_nao_dispara_nenhuma_sonda():
     """CONTROLE DE BASE. Se o esqueleto já violasse algo, todo passo 2 abaixo seria vácuo."""
-    c = _banco()
-    ruidosas = {k: v for k, v in _contagens(c).items() if v}
-    c.close()
+    c = _banco(com_linhas_sas=False)
+    try:
+        antes = _contagens(c)
+        for linha in (LINHA_SA, LINHA_SA_POSTFLOP):
+            d = dict(linha, tournament_id=_TID)
+            c.execute(_adapt("INSERT INTO decisions (%s) VALUES (%s)"
+                             % (', '.join(d), ', '.join('?' for _ in d))), tuple(d.values()))
+        depois = _contagens(c)
+    finally:
+        _desfazer(c)
+    # DELTA e nao absoluto: sob Postgres o banco e compartilhado e a baseline nao e zero. A
+    # afirmacao e a mesma ("a linha sa nao dispara nada"), medida como movimento.
+    ruidosas = {k: (antes[k], depois[k]) for k in depois if depois[k] != antes[k]}
     assert not ruidosas, f'a linha sã já dispara: {ruidosas}'
     print('OK  test_linha_sa_nao_dispara_nenhuma_sonda')
 
@@ -72,11 +110,12 @@ def test_cada_sonda_enxerga_a_propria_forja():
         if inv.banco_isolado:
             continue
         c = _banco()
-        antes = _contagens(c)
-        inv.forjar(c)
-        c.commit()
-        depois = _contagens(c)
-        c.close()
+        try:
+            antes = _contagens(c)
+            inv.forjar(c)
+            depois = _contagens(c)
+        finally:
+            _desfazer(c)     # a forja NAO fica gravada: era o que sujava o banco compartilhado
 
         subiu = {k: (antes[k], depois[k]) for k in depois if depois[k] != antes[k]}
         if depois[inv.id] - antes[inv.id] != 1:
@@ -99,19 +138,20 @@ def test_sondas_de_coluna_medem_nos_dois_sentidos():
         assert inv.curar is not None, f'{inv.id} precisa de `curar` para provar o caminho de volta'
 
         c = _banco(com_linhas_sas=False)
-        if _contagens(c)[inv.id] != 0:
-            falhas.append(f'{inv.id}: acusou com a tabela VAZIA — não há coluna morta sem linha')
-
-        inv.forjar(c)
-        c.commit()
-        if _contagens(c)[inv.id] != 1:
-            falhas.append(f'{inv.id}: não acusou com a coluna morta')
-
-        inv.curar(c)
-        c.commit()
-        if _contagens(c)[inv.id] != 0:
-            falhas.append(f'{inv.id}: continuou acusando depois de uma linha viva')
-        c.close()
+        try:
+            # `decisions` vazia DENTRO da transacao (o DIA_6.py faz o mesmo): sonda de coluna
+            # olha a coluna inteira, e uma linha viva de outra suite a calaria.
+            c.execute("DELETE FROM decisions")
+            if _contagens(c)[inv.id] != 0:
+                falhas.append(f'{inv.id}: acusou com a tabela VAZIA — não há coluna morta sem linha')
+            inv.forjar(c)
+            if _contagens(c)[inv.id] != 1:
+                falhas.append(f'{inv.id}: não acusou com a coluna morta')
+            inv.curar(c)
+            if _contagens(c)[inv.id] != 0:
+                falhas.append(f'{inv.id}: continuou acusando depois de uma linha viva')
+        finally:
+            _desfazer(c)
     assert not falhas, '\n  ' + '\n  '.join(falhas)
     print('OK  test_sondas_de_coluna_medem_nos_dois_sentidos')
 
@@ -165,9 +205,11 @@ def test_a_varredura_roda_na_superficie_do_POSTGRES():
     varredura não usa nada além de `fetchall()`; não garante que o SQL é aceito pelo Postgres.
     """
     c = _banco()
-    real = _contagens(c)
-    disfarcada = {r['id']: r['medido'] for r in varrer(_ConexaoComoNoPostgres(c))}
-    c.close()
+    try:
+        real = _contagens(c)
+        disfarcada = {r['id']: r['medido'] for r in varrer(_ConexaoComoNoPostgres(c))}
+    finally:
+        _desfazer(c)
     assert disfarcada == real, f'a varredura muda de resultado conforme o driver: {disfarcada}'
     print('OK  test_a_varredura_roda_na_superficie_do_POSTGRES')
 
@@ -180,21 +222,21 @@ def test_ev_teto_preflop_enxerga_o_dinheiro_morto_dos_blinds():
     preflop, e este teste exige os DOIS sentidos: o caso real cala a sonda, e um EV acima até
     do teto com piso (1,5 + 2·stack) continua acusando. Nenhuma outra sonda pode se mover."""
     c = _banco()
-    antes = _contagens(c)
+    try:
+        antes = _contagens(c)
 
-    _forjar_linha(c, street='preflop', pot_size=None, stack_bb=0.2,
-                  effective_stack_bb=0.2, ev_loss_bb=0.669, ev_loss_source='gw_har')
-    c.commit()
-    depois = _contagens(c)
-    assert depois == antes, \
-        f'EV preflop legítimo (dinheiro morto dos blinds) moveu sonda: ' \
-        f'{ {k: (antes[k], depois[k]) for k in depois if depois[k] != antes[k]} }'
+        _forjar_linha(c, street='preflop', pot_size=None, stack_bb=0.2,
+                      effective_stack_bb=0.2, ev_loss_bb=0.669, ev_loss_source='gw_har')
+        depois = _contagens(c)
+        assert depois == antes, \
+            f'EV preflop legítimo (dinheiro morto dos blinds) moveu sonda: ' \
+            f'{ {k: (antes[k], depois[k]) for k in depois if depois[k] != antes[k]} }'
 
-    _forjar_linha(c, street='preflop', pot_size=None, stack_bb=0.2,
-                  effective_stack_bb=0.2, ev_loss_bb=2.0, ev_loss_source='gw_har')
-    c.commit()
-    depois2 = _contagens(c)
-    c.close()
+        _forjar_linha(c, street='preflop', pot_size=None, stack_bb=0.2,
+                      effective_stack_bb=0.2, ev_loss_bb=2.0, ev_loss_source='gw_har')
+        depois2 = _contagens(c)
+    finally:
+        _desfazer(c)
     esperado = dict(depois, **{'EV-TETO': depois['EV-TETO'] + 1})
     assert depois2 == esperado, \
         f'EV 2,0bb com teto-piso 1,9 devia acusar SÓ a EV-TETO: ' \
