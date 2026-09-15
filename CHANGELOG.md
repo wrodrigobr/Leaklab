@@ -4,6 +4,42 @@ Todas as mudanÃ§as notÃ¡veis neste projeto serÃ£o documentadas aqui.
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
+## Proxy do vite: um bypass por Accept em vez de vinte excecoes de caminho (15/09)
+
+Isto e SO em dev. O dev server do vite tem dois papeis no mesmo host, servir a SPA e proxiar a
+API, e o front usa `BASE=""` em dev (o `.env` tem `VITE_API_URL=` vazio, e `??` nao cai no
+default com string vazia), entao toda chamada de `lib/api.ts` passa pelo proxy. Auditoria
+NLU-11, medida no ARTEFATO: dev server no ar, backend desligado.
+
+Antes: `/coaches?limit=1`, `/coaches/62` e `/shared-hands/feed?sort=new` recebiam 404 do PROPRIO
+vite, porque nao tinham chave e o fallback da SPA so responde a `Accept: text/html`; em dev o
+diretorio de coaches, o perfil publico de coach e a tela `/maos` nao carregavam. E dar F5 em
+`/tournaments/5`, `/academy/3bet`, `/study`, `/subscription`, `/profile` ou `/admin` proxiava a
+PAGINA para o backend, e a tela virava JSON de erro.
+
+A lista certa de excecoes nao era uma lista. Oito prefixos sao API e tela ao mesmo tempo, e o
+caminho nao os separa; quem separa e o `Accept`, porque navegacao pede `text/html` e o `fetch`
+do `api.ts` nunca pede. Agora ha UM bypass, montado numa volta sobre a lista `PREFIXOS_DE_API`,
+e `/coaches`, `/shared-hands` e `/h/` entram como chaves normais. Ficam de fora de proposito
+`/debug`, `/gto` e `/telegram`, que o front nao chama.
+
+Depois, medido no mesmo artefato: as 5 chamadas de API (inclusive `/coaches` e `/h/abc123`)
+chegam ao backend, e as 10 navegacoes diretas (inclusive `/coaches`, que e o caso dificil)
+recebem a SPA. Nada disso chega a producao, onde o Cloudflare Pages serve a SPA e a API mora em
+outro dominio; o que isto evita e alguem "consertar" o produto por um sintoma do proxy.
+
+Guarda: `tests/test_proxy_do_vite_cobre_a_api.py`, 5 casos, o `NLU_10.py` da auditoria virado
+teste. Confere que toda chamada do front casa com uma chave, que o bypass existe, e que chave
+que e prefixo de rota de tela so vale com ele.
+
+Este guarda ja mentiu uma vez, no minuto em que nasceu: a primeira versao conferia a PALAVRA
+`bypass` no arquivo, e quando eu desliguei a fiacao de proposito ela passou verde, porque a
+funcao continuava definida e o comentario continuava falando dela. Agora ela olha dentro do
+corpo do `.map`, e o caso forjado inclui as duas formas de desligar (tirar o `bypass:` e
+comenta-lo). Desligada a fiacao de verdade, dois testes acusam; tiradas as chaves `/coaches` e
+`/shared-hands`, outros dois. tsc limpo.
+
+---
 ## O recibo de um arquivo com UM torneio para de dizer "0 maos de None" (15/09)
 
 `_pedacos_por_torneio` devolve `[]` para arquivo de um torneio so, porque nao ha o que dividir, e
