@@ -11,7 +11,7 @@
     },
     "upload": {
       "title": "Importe sua hand history",
-      "desc": "Exporte do PokerStars, GGPoker, ACR ou CoinPoker DOIS arquivos: o histórico de mãos e o resumo do torneio. O histórico traz cada decisão; o resumo traz colocação, prêmio, ROI e o número de inscritos, e é o que permite detectar mesa final. Pode soltar os dois de uma vez.",
+      "desc": "Exporte do PokerStars, GGPoker, ACR, CoinPoker ou PartyPoker DOIS arquivos: o histórico de mãos e o resumo do torneio. O histórico traz cada decisão; o resumo traz colocação, prêmio, ROI e o número de inscritos, e é o que permite detectar mesa final. Pode soltar os dois de uma vez.",
       "hint": "Não sabe onde achar os arquivos? Veja o guia de exportação por site."
     },
     "train": {

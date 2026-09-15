@@ -68,7 +68,7 @@
     "eyebrow": "Questions",
     "heading": "Before you upload the first file",
     "q1": "Which sites can I import from?",
-    "a1": "PokerStars, GGPoker, ACR (WPN) and CoinPoker, from the tournament .txt file. You can drop several at once. If you also send the tournament summary, finish place, prize, ROI and field size come in: that is what makes final table detection possible.",
+    "a1": "PokerStars, GGPoker, ACR (WPN), CoinPoker and PartyPoker, from the tournament .txt file. You can drop several at once. If you also send the tournament summary, finish place, prize, ROI and field size come in: that is what makes final table detection possible.",
     "q2": "Do I need to install anything?",
     "a2": "No. Everything runs in the browser, including the replayer. There is no program to install and no HUD to configure at the table.",
     "q3": "Does this replace a solver?",

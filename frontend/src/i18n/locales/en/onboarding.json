@@ -11,7 +11,7 @@
     },
     "upload": {
       "title": "Import your hand history",
-      "desc": "Export TWO files from PokerStars, GGPoker, ACR or CoinPoker: the hand history and the tournament summary. The history carries every decision; the summary carries finish place, prize, ROI and field size, and is what allows final table detection. You can drop both at once.",
+      "desc": "Export TWO files from PokerStars, GGPoker, ACR, CoinPoker or PartyPoker: the hand history and the tournament summary. The history carries every decision; the summary carries finish place, prize, ROI and field size, and is what allows final table detection. You can drop both at once.",
       "hint": "Not sure where the files are? See the export guide by site."
     },
     "train": {

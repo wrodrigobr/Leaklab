@@ -11,7 +11,7 @@
     },
     "upload": {
       "title": "Importa tu hand history",
-      "desc": "Exporta de PokerStars, GGPoker, ACR o CoinPoker DOS archivos: el historial de manos y el resumen del torneo. El historial trae cada decisión; el resumen trae colocación, premio, ROI y el número de inscritos, y es lo que permite detectar la mesa final. Puedes soltar los dos a la vez.",
+      "desc": "Exporta de PokerStars, GGPoker, ACR, CoinPoker o PartyPoker DOS archivos: el historial de manos y el resumen del torneo. El historial trae cada decisión; el resumen trae colocación, premio, ROI y el número de inscritos, y es lo que permite detectar la mesa final. Puedes soltar los dos a la vez.",
       "hint": "¿No sabes dónde están los archivos? Consulta la guía de exportación por sala."
     },
     "train": {

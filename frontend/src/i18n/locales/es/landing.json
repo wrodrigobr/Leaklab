@@ -68,7 +68,7 @@
     "eyebrow": "Dudas",
     "heading": "Antes de subir el primer archivo",
     "q1": "¿De qué sitios puedo importar?",
-    "a1": "PokerStars, GGPoker, ACR (WPN) y CoinPoker, desde el archivo .txt del torneo. Podés soltar varios a la vez. Si envías también el resumen del torneo, entran colocación, premio, ROI y el número de inscritos: es lo que permite reconocer la mesa final.",
+    "a1": "PokerStars, GGPoker, ACR (WPN), CoinPoker y PartyPoker, desde el archivo .txt del torneo. Podés soltar varios a la vez. Si envías también el resumen del torneo, entran colocación, premio, ROI y el número de inscritos: es lo que permite reconocer la mesa final.",
     "q2": "¿Necesito instalar algo?",
     "a2": "No. Todo funciona en el navegador, incluido el replayer. No hay programa que instalar ni HUD que configurar en la mesa.",
     "q3": "¿Esto sustituye a un solver?",

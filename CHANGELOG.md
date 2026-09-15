@@ -4,6 +4,39 @@ Todas as mudanÃ§as notÃ¡veis neste projeto serÃ£o documentadas aqui.
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
+## O FAQ e o onboarding param de negar o PartyPoker (15/09)
+
+`faq.a1` (landing) e `steps.upload.desc` (onboarding) diziam "PokerStars, GGPoker, ACR (WPN) e
+CoinPoker" nas tres locales, enquanto `networks.subtitle`, `howItWorks.step1Desc` e o
+`empty.desc` do dashboard ja citavam PartyPoker, que esta LIGADO no parser desde a validacao
+contra o export real de um fundador (3.482 maos, 36 torneios). Quem joga PartyPoker, que e o
+caso do fundador, lia no FAQ que a sala dele nao e suportada. Auditoria FLU-8.
+
+As duas chaves passaram a citar PartyPoker nas tres locales. Seis strings, nada de logica.
+
+Guarda: `tests/test_copy_cita_as_salas_suportadas.py`, 4 casos. A lista de salas nao e
+declarada em lugar nenhum, entao o teste PERGUNTA ao `_detect_site`, sala por sala, com o
+cabecalho de cada dialeto, e varre toda string de i18n que cite duas ou mais salas (18 hoje, 6
+chaves x 3 locales), exigindo que ela cite exatamente as reconhecidas. Nas duas direcoes: falta
+de sala ligada e o FLU-8; sobra de sala desligada e pior, porque promete o que nao entrega, e e
+o caso do 888poker, desligado de proposito por falta de arquivo real de export.
+
+A varredura achou sozinha uma sexta chave que eu nao conhecia, `tournaments.json:summary.hint`,
+que cita so PokerStars e GGPoker. Ela esta CERTA: o Tournament Summary tem parser proprio e so
+existem `parse_pokerstars_summary` e `parse_ggpoker_summary`. Por isso cada chave declara de que
+capacidade fala, com a lista medida em cada caso, e chave nova nao declarada falha o teste.
+
+Quebrado de proposito duas vezes: tirado o PartyPoker de `faq.a1` em pt-BR, acusa aquela chave;
+desligado `PARTYPOKER_ENABLED` no parser, acusa as 15 strings de hand history por SOBRA, que e a
+direcao oposta. Restaurado. Suites: novo 4/4 em SQLite e Postgres (duas rodadas),
+`test_i18n_copy_do_frontend` 10/10, `test_partygaming_parser` 16/16,
+`test_recepcao_de_upload` 25/25.
+
+Nao mexido, e anotado: `_PARECE_HH` (em `recepcao_de_upload.py`) reconhece 888poker, e o
+`_detect_site` recusa. Um arquivo de 888 passa pela recepcao e morre no parse. Nao medi o efeito
+e nao e desta lista.
+
+---
 ## O front para de cravar teto de plano: os numeros vem de /subscription/plans (15/09)
 
 Dois numeros de plano viviam escritos no frontend e nenhum batia com o `PLAN_LIMITS` do
