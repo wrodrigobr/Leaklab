@@ -4,6 +4,57 @@ Todas as mudanÃ§as notÃ¡veis neste projeto serÃ£o documentadas aqui.
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
+## A recepcao do upload recusava CoinPoker e GGPoker, que o parser le desde sempre (15/09)
+
+Reportado pelo Rullian: o import de CoinPoker "esta dando problema". Reproduzido na primeira
+tentativa com o arquivo dele pela rota real: **HTTP 422, "este arquivo nao parece um historico de
+maos"**. Defeito MEU, introduzido na frente do upload assincrono de 14/09, e em producao desde
+aquele deploy.
+
+A causa e a regra 5 da casa. Eu criei na peneira da recepcao uma SEGUNDA lista de cabecalhos de
+sala, em vez de perguntar ao `_detect_site`, que e o detector que o parser usa. As duas listas
+divergiram na hora de nascer, porque eu escrevi a minha de suposicao:
+
+```
+sala         parser (_detect_site)   peneira (regex minha)
+PokerStars   pokerstars              aceita
+ACR/WPN      acr                     aceita
+PartyPoker   partypoker              aceita
+CoinPoker    coinpoker               >> RECUSA <<
+GGPoker      ggpoker                 >> RECUSA <<
+```
+
+O molde que escrevi para o CoinPoker foi `Hand #<n> - `; o arquivo real diz
+`CoinPoker Hand #<n>:`, com dois pontos. E o GGPoker (`Poker Hand #TM...`) nao casava alternativa
+nenhuma, ou seja **uma das duas salas principais do produto estava recusada na porta**. Medido
+nos fixtures do proprio repositorio: o parser le 1.581 maos do export do Rullian e 1 mao do
+fixture de GG, e a peneira devolvia False para os dois.
+
+**Por que o teste nao pegou, que e a parte que importa:** eu o escrevi com moldes INVENTADOS por
+mim (`'Game Hand #99 - Tournament'` e companhia), os mesmos que geraram a regex. Ele media a
+regex contra a suposicao que a originou, e o CoinPoker nem tinha caso. Teste ancorado na minha
+ideia do formato, nao no formato. Agora `test_recepcao_de_upload` varre as salas do detector com
+os fixtures dos testes de parser de cada sala, que sao arquivo real, e exige tres coisas por
+sala: que o fixture seja daquela sala, que o parser tire mao dele, e so entao que a peneira
+aceite. O segundo guarda usa AST para recusar regex de sala compilada dentro da recepcao (a
+primeira versao dele procurava a palavra no texto e acusou a propria docstring que conta o
+defeito; guarda que nao distingue codigo de comentario obriga a apagar o historico para ficar
+verde).
+
+Efeito colateral medido, e a favor: a peneira custava **359 ms** sobre os 2,2 MB do arquivo real,
+porque a regex com alternativas varre o texto inteiro. O detector custa **2,2 ms**, e roda DENTRO
+da requisicao do upload.
+
+Provado no ambiente local contra Postgres, com o arquivo do Rullian pela rota: 202 em 0,38 s,
+worker concluiu **17 de 17 torneios** em ~90 s, 2.382 decisoes novas, zero sem hero_cards, zero
+sem acao, zero sem posicao, zero torneio sem decisao. Das 1.581 maos do arquivo, 1.557 gravadas e
+24 descartadas: 23 sem nenhuma acao do heroi e 1 em que ele entrou all-in pelo proprio ante (62
+fichas, ante 63), ou seja 24 descartes legitimos e nenhuma perda silenciosa.
+
+Nota de escopo: a peneira so existe no `POST /uploads`. Quem ainda tinha o bundle antigo em cache
+continuava subindo pelo `/analyze`, sem esse bloqueio, o que explica o defeito aparecer agora.
+
+---
 ## Cor de acao segue a convencao dos solvers, e passa a ter UM lugar (15/09)
 
 Pedido do Rullian, com a captura do GTO Wizard como referencia: "como muitos jogadores ja

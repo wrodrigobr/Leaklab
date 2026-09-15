@@ -896,8 +896,10 @@ def receber_upload():
     errado. Erro de PROCESSAMENTO é assíncrono e vai para o recibo, porque aí o arquivo já está
     guardado e ele não precisa reenviar nada -- que foi exatamente o pedido do dono.
 
-    A peneira de formato é uma regex (`parece_hand_history`), não o parse: parsear 3,1 MB custa
-    9 s, e pagar isso na requisição era metade do problema desta frente.
+    A peneira de formato (`parece_hand_history`) pergunta ao detector de sala do parser, não
+    faz o parse: parsear 3,1 MB custa 9 s, e pagar isso na requisição era metade do problema
+    desta frente. Ela ERA uma regex própria até 15/09, com lista de cabeçalhos paralela à do
+    parser, e recusava CoinPoker e GGPoker com 422 na cara do jogador.
     """
     conteudo = _extract_content(request)
     if not conteudo:

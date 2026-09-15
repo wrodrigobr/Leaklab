@@ -58,17 +58,79 @@ def _um_torneio():
 # 1) A peneira de formato, que é o que fica síncrono
 # ══════════════════════════════════════════════════════════════════════════════════════════
 
-def test_reconhece_os_dialetos_do_acervo():
-    """Barata de propósito: uma regex, não o parse. Parsear 3,1 MB custa 9 s, e pagar isso na
-    requisição era metade do problema desta frente."""
+def test_a_peneira_aceita_TODA_sala_que_o_parser_le():
+    """O guarda que faltava, e que custou uma sala em producao.
+
+    Ate 15/09 este teste usava moldes que EU inventei (`'Game Hand #99 - Tournament'` e
+    companhia), os mesmos que geraram a regex da peneira: ele media a regex contra a suposicao
+    que a originou, e o CoinPoker nem tinha caso. Enquanto isso o arquivo real do CoinPoker
+    (`CoinPoker Hand #<n>:`, com dois pontos, nao com ` - `) e o do GGPoker (`Poker Hand #TM`)
+    tomavam 422 na recepcao, com o parser lendo os dois desde sempre.
+
+    Agora a pergunta e a certa: para toda sala que o `_detect_site` do parser reconhece, a
+    peneira ACEITA? E o fixture e arquivo real, vindo do teste de parser de cada sala, nunca
+    texto meu."""
     assert parece_hand_history(_um_torneio()) is True
-    for molde in ('PokerStars Hand #1: Tournament #2',
-                  'PokerStars Zoom Hand #1: ',
-                  'Game Hand #99 - Tournament',
-                  '***** Hand History for Game 1 *****',
-                  'Tourney Texas Holdem Game Table (NL)',
+
+    from leaklab.parser import _detect_site, parse_hand_history
+    from test_gg_blinds_thousands import _GG_HAND
+    from test_coinpoker_parser import SAMPLE as COINPOKER
+
+    fixtures = {
+        'pokerstars': _um_torneio(),
+        'ggpoker':    _GG_HAND,
+        'coinpoker':  COINPOKER,
+    }
+    for sala, texto in fixtures.items():
+        # 1) o fixture e MESMO daquela sala (se o detector mudar, o teste avisa em vez de mentir)
+        assert _detect_site(texto) == sala, 'fixture de %s virou %s' % (sala, _detect_site(texto))
+        # 2) o parser tira mao dele, ou seja a sala funciona de verdade
+        assert len(parse_hand_history(texto)) >= 1, 'parser nao le %s' % sala
+        # 3) e so entao: a peneira deixa entrar
+        assert parece_hand_history(texto) is True, (
+            'a peneira RECUSA %s, que o parser le. Foi exatamente este o defeito de 14/09.' % sala)
+
+
+def test_a_peneira_e_o_detector_do_parser_nao_divergem():
+    """A regra 5 da casa, aplicada ao caso: a peneira NAO tem lista propria de salas.
+
+    Duas listas de cabecalho para a mesma pergunta ("isto e hand history?") foi o defeito: uma
+    delas envelheceu sozinha. Este teste falha se alguem reintroduzir a regex paralela."""
+    import ast
+    import inspect
+
+    import leaklab.recepcao_de_upload as rec
+    fonte = inspect.getsource(rec)
+    assert '_detect_site' in fonte, 'a peneira parou de perguntar ao detector do parser'
+
+    # Pelo AST, e nao por `in` no texto: a primeira versao deste guarda procurava a palavra
+    # "CoinPoker" no fonte e acusou a DOCSTRING que conta o defeito. Guarda que nao distingue
+    # codigo de comentario obriga a apagar o historico para ficar verde, e o historico e o que
+    # impede o defeito de voltar.
+    SALAS = ('pokerstars', 'coinpoker', 'ggpoker', 'poker hand', 'game hand', 'hand history',
+             'game no', 'texas holdem')
+    regex_de_sala = []
+    for no in ast.walk(ast.parse(fonte)):
+        if not (isinstance(no, ast.Call) and isinstance(no.func, ast.Attribute)):
+            continue
+        if no.func.attr != 'compile':
+            continue
+        for arg in ast.walk(no):
+            if isinstance(arg, ast.Constant) and isinstance(arg.value, str):
+                baixo = arg.value.lower()
+                if any(sala in baixo for sala in SALAS):
+                    regex_de_sala.append(arg.value[:48])
+    assert regex_de_sala == [], (
+        'voltou a existir lista de cabecalhos de sala compilada na recepcao: %s' % regex_de_sala)
+
+    # E o outro lado: sala que o detector NAO reconhece nao pode entrar, porque o worker nao
+    # conseguiria processar e o recibo viraria erro depois de aceitar o arquivo.
+    from leaklab.parser import _detect_site
+    for texto in ('Hand #123 - Tournament', '***** Hand History for Game 1 *****',
                   '#Game No : 123456'):
-        assert parece_hand_history(molde) is True, molde
+        if _detect_site(texto) == 'unknown':
+            assert parece_hand_history(texto) is False, (
+                'a peneira aceita %r que o parser nao sabe ler' % texto[:32])
 
 
 def test_recusa_o_que_nao_e_hand_history():

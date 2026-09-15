@@ -79,16 +79,7 @@ ESPERA_MAX_POR_USUARIO = 5
 BYTES_EM_ABERTO_MAX_POR_USUARIO = 40 * 1024 * 1024
 STATUS_EM_ABERTO = (RECEBIDO, PROCESSANDO, AGUARDANDO_COTA)
 
-# A peneira BARATA da recepção: o arquivo parece hand history? Uma regex sobre o texto, não o
-# parse. Os cinco dialetos do acervo, pelos cabeçalhos que o parser já reconhece.
-_PARECE_HH = re.compile(
-    r'(PokerStars\s+(Zoom\s+)?Hand\s+#'          # PokerStars, GGPoker, ACR compartilham o molde
-    r'|Game\s+Hand\s+#'                          # ACR/WPN
-    r'|Hand\s+#\d+\s+-\s+'                       # CoinPoker
-    r'|\*\*\*\*\*\s*Hand\s+History'              # PartyPoker antigo
-    r'|Tourney\s+Texas\s+Holdem\s+Game\s+Table'  # PartyPoker novo
-    r'|\#Game\s+No\s*:'                          # 888poker
-    r')', re.IGNORECASE)
+
 
 
 def _stmts(postgres: bool) -> List[str]:
@@ -167,12 +158,31 @@ def _tabela() -> None:
 def parece_hand_history(conteudo: str) -> bool:
     """A peneira da recepção: isto parece hand history de alguma das salas?
 
-    Barata de propósito. O parse completo custa 9 s nos 3,1 MB do arquivo medido, e pagar isso
-    na requisição era metade do problema que esta frente existe para resolver. Arquivo com molde
-    de sala mas conteúdo quebrado é recusado DEPOIS, pelo worker, no recibo -- e aí o usuário não
-    precisa reenviar, porque o arquivo já está guardado.
+    Pergunta ao MESMO detector que o parser usa (`_detect_site`), e não a uma lista própria de
+    cabeçalhos. Barata do mesmo jeito: o detector é uma sequência de `in` de substring, medida em
+    2,2 ms nos 2,2 MB do arquivo real, contra 9 s do parse completo. Arquivo com molde de sala
+    mas conteúdo quebrado continua sendo recusado DEPOIS, pelo worker, no recibo, e aí o jogador
+    não precisa reenviar porque o arquivo já está guardado.
+
+    ── Por que não é mais uma regex (15/09) ──────────────────────────────────────────────────
+
+    Era, e ela RECUSAVA duas salas que o parser lê desde sempre. O molde que eu escrevi para o
+    CoinPoker foi `Hand #<n> - `, de suposição; o arquivo real diz `CoinPoker Hand #<n>:`, com
+    dois pontos. E o GGPoker (`Poker Hand #TM...`) não casava alternativa nenhuma. Medido nos
+    fixtures do próprio repositório: parser lê 1.581 mãos do export de CoinPoker de um fundador,
+    peneira devolvia False, e o jogador recebia 422 "este arquivo não parece um histórico de
+    mãos". Em produção desde o deploy de 14/09.
+
+    O teste velho não pegou porque eu o escrevi com moldes INVENTADOS por mim, os mesmos que
+    geraram a regex: ele media a regex contra a suposição que a originou, e o CoinPoker nem
+    tinha caso. Agora `test_recepcao_de_upload` varre as salas do detector com os fixtures dos
+    testes de parser de cada sala, que são arquivo real.
+
+    Efeito colateral medido, e a favor: 359 ms da regex sobre 2,2 MB viraram 2,2 ms. A peneira
+    roda DENTRO da requisição do upload.
     """
-    return bool(_PARECE_HH.search(conteudo or ''))
+    from leaklab.parser import _detect_site   # import local: o parser é pesado e a recepção
+    return _detect_site(conteudo or '') != 'unknown'   # sobe no worker e na API
 
 
 def _linha(conn, recibo_id: int) -> Optional[dict]:
