@@ -34,7 +34,7 @@ function UsageBar({ used, limit, label }: { used: number; limit?: number | null;
     return (
       <div className="flex items-center justify-between font-mono text-[10px] text-muted-foreground">
         <span>{label}</span>
-        <span data-testid={`uso-sem-teto-${label}`}>{used}/…</span>
+        <span>{used}/…</span>
       </div>
     );
   }
