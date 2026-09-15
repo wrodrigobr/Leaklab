@@ -10,6 +10,11 @@ TOURNAMENT_FILE = os.path.join(os.path.dirname(__file__), '..', 'torneio_ingles.
 
 def _client():
     app.config['TESTING'] = True
+    # Esta suite usa /analyze/guest como harness do motor com o torneio inteiro (618 KB,
+    # 400 maos). A rota sem login tem teto proprio (200 KB, 50 maos; auditoria SEG-1),
+    # afrouxado AQUI de forma explicita. O teto em si e defendido por tests/test_guest_teto.py.
+    app.config['GUEST_MAX_BYTES'] = None
+    app.config['GUEST_MAX_HANDS'] = None
     return app.test_client()
 
 def _auth_client():

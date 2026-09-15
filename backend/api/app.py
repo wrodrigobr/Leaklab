@@ -5041,31 +5041,83 @@ def gto_status():
     return jsonify(s), http_code
 
 
+# Teto PROPRIO da rota sem login (auditoria SEG-1, 15/09). A rota e publica, faz o parse e o
+# motor inteiros dentro da requisicao, e o unico freio era o MAX_CONTENT_LENGTH global (5 MB)
+# mais 10 requisicoes por hora por IP, com o balde do limiter na memoria de CADA processo.
+# Medido: 4,4 MB de maos validas = 50 a 108 s de CPU por requisicao, sem login. Ninguem no
+# app chama esta rota (o front nao a usa); quem experimenta manda uma mao, nao um mes.
+# Os dois tetos vivem no config para a suite que usa a rota como harness do motor
+# (test_api.py) poder afrouxar de forma EXPLICITA; o padrao e o que roda em producao.
+GUEST_MAX_BYTES_PADRAO = 200 * 1024
+GUEST_MAX_HANDS_PADRAO = 50
+app.config.setdefault('GUEST_MAX_BYTES', GUEST_MAX_BYTES_PADRAO)
+app.config.setdefault('GUEST_MAX_HANDS', GUEST_MAX_HANDS_PADRAO)
+
+
+def _guest_recusa_por_tamanho(content: str):
+    """(resposta, status) se o corpo passa do teto da rota sem login; None se cabe.
+
+    Conferido ANTES do parse: o custo que a rota cobra e o do parse e do motor.
+    """
+    teto = app.config.get('GUEST_MAX_BYTES')
+    if not teto:
+        return None
+    tamanho = len(content.encode('utf-8', errors='replace'))
+    if tamanho <= teto:
+        return None
+    return jsonify({
+        'error': ('Arquivo grande demais para a análise sem login (máximo %d KB). '
+                  'Faça login para analisar o arquivo inteiro.' % (teto // 1024)),
+        'code': 'guest_limite_tamanho',
+        'max_bytes': teto,
+        'bytes': tamanho,
+    }), 413
+
+
 @app.route('/analyze/guest', methods=['POST'])
 @limiter.limit("10 per hour")
 def analyze_guest():
-    """Análise sem login — retorna dados mas não persiste."""
+    """Análise sem login — retorna dados mas não persiste.
+
+    Analisa no maximo GUEST_MAX_HANDS maos (as primeiras) de um corpo de ate
+    GUEST_MAX_BYTES; a resposta diz quantas ficaram de fora e manda fazer login.
+    """
     content = _extract_content(request)
     if not content:
         return jsonify({'error': 'Conteúdo ausente'}), 400
+    recusa = _guest_recusa_por_tamanho(content)
+    if recusa is not None:
+        return recusa
     try:
         hands = parse_pokerstars_file_from_text(content)
     except Exception as e:
         return jsonify({'error': str(e)}), 422
+    total_no_arquivo = len(hands)
+    teto_maos = app.config.get('GUEST_MAX_HANDS')
+    if teto_maos and total_no_arquivo > teto_maos:
+        hands = hands[:teto_maos]
     results, hand_results, errors = _analyze_hands(hands)
     if not results:
         return jsonify({'error': 'Nenhuma decisão encontrada'}), 422
     import uuid
+    maos_omitidas = total_no_arquivo - len(hands)
+    nota = 'Análise não salva. Faça login para manter histórico.'
+    if maos_omitidas:
+        nota = ('Análise não salva. Sem login analisamos só as primeiras %d mãos (%d ficaram '
+                'de fora). Faça login para analisar o arquivo inteiro.'
+                % (len(hands), maos_omitidas))
     return jsonify({
         'session_id':  str(uuid.uuid4()),
         'hero':        heroi_das_maos(hands),
         'tournament_id': hands[0].tournament_id or '',
         'total_hands': len(hands),
+        'hands_in_file': total_no_arquivo,
+        'hands_omitted': maos_omitidas,
         'parse_errors':len(errors),
         'metrics':     build_session_metrics(results),
         'leaks':       correlate_leaks(results),
         'hands':       hand_results,
-        'note':        'Análise não salva. Faça login para manter histórico.',
+        'note':        nota,
     })
 
 

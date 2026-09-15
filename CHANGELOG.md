@@ -4,6 +4,29 @@ Todas as mudanÃ§as notÃ¡veis neste projeto serÃ£o documentadas aqui.
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
+## /analyze/guest ganha teto proprio: 200 KB e 50 maos, conferidos antes do parse (15/09)
+
+A rota e publica (sem login) e faz o parse e o motor inteiros dentro da requisicao. O unico
+freio era o MAX_CONTENT_LENGTH global (5 MB) e "10 per hour" por IP, com o balde do limiter
+na memoria de CADA processo do gunicorn. Medido pela rota real (`data/auditoria/repro/SEG_10.py`):
+4,4 MB de maos validas = **54,5 s de CPU** por requisicao (107,6 s noutra maquina), acima dos
+120 s de corte do gunicorn: o worker morre e a CPU ja foi gasta. Um IP comprava ~1000 s de CPU
+por hora, e enquanto isso quem importa torneio ve NetworkError. Auditoria SEG-1.
+
+Ninguem no app chama essa rota (o front nao a usa): o teto nao alcanca nenhum jogador logado
+nem nenhum dado gravado. Corpo acima de 200 KB responde 413 com `code=guest_limite_tamanho` e a
+frase "faca login para analisar o arquivo inteiro", ANTES do parse. Arquivo com mais de 50 maos
+analisa as 50 primeiras e a resposta declara `hands_in_file`, `hands_omitted` e a nota com o
+que ficou de fora. Depois: a mesma requisicao de 4,4 MB custa 0,1 s de CPU.
+
+Os tetos vivem em `app.config` (`GUEST_MAX_BYTES`, `GUEST_MAX_HANDS`) porque `tests/test_api.py`
+usa a rota como harness do motor com o torneio inteiro (618 KB, 400 maos) e afrouxa os dois de
+forma explicita. Guarda: `tests/test_guest_teto.py` confere os padroes de producao, a recusa
+antes do parse (o parse e contado: zero chamadas), o corte de maos com a resposta que o
+declara, e prova que acha: com o teto desligado o mesmo corpo passa pelo parse. Quebrado de
+proposito (as duas conferencias desligadas): 2 de 5 testes acusam; restaurado.
+
+---
 ## Ghost Table dizia "Raise 0.0bb" em todo spot com aposta na frente (15/09)
 
 `decisions.facing_bet` e gravado EM BB desde `save_decisions` (`facingToBb`; o fallback antigo
