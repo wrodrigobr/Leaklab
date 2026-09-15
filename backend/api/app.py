@@ -8528,10 +8528,15 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
                             # CAMADA 3 (card_verdict, puro): qualidade desconhecida devolve None
                             # e a camada anterior fica de pé.
                             from leaklab.card_verdict import verdict_from_preflop as _v_pf
+                            # O EV medido do spot viaja junto: sem ele o card mapeava `leak`
+                            # direto para `gto_critical` e imprimia "desvio caro" ao lado de
+                            # "Correto", enquanto a coluna (ELO, drill) ja dizia
+                            # `gto_minor_deviation`. Fonte unica em card_verdict — VER-6.
                             is_error, reconciled_best, gto_label, gto_action, live_top_act = \
                                 _vc.apply('preflop', _v_pf(
                                     _pf.get('action_quality', 'unknown'),
-                                    preflop_override_action, _norm(action.action))).unpack()
+                                    preflop_override_action, _norm(action.action),
+                                    _pf.get('ev_loss_bb'))).unpack()
                             # (Bloco de persistência do preflop removido pelo mesmo motivo do
                             #  postflop: `_db_hand` não existe neste escopo e o NameError era
                             #  engolido. Nunca gravou nada.)

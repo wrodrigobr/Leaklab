@@ -326,7 +326,8 @@ def _preflop_gto_label_adjust(label: str, quality: str, ev_loss_bb: float | None
         # RC-A: 'major_leak' = ação FORA do range (freq GTO ~0%). EV baixo aqui NÃO é "defensável"
         # (custa pouco JUSTAMENTE porque não devia estar no pote) — nunca rebaixa por EV. Só 'leak'
         # (low-freq dentro de um mix, freq>0) mantém o softening EV-minor.
-        if quality == 'leak' and ev_loss_bb is not None and ev_loss_bb < _PREFLOP_EV_MINOR_BB:
+        from leaklab.card_verdict import leak_de_custo_infimo as _leak_barato
+        if _leak_barato(quality, ev_loss_bb):
             return _SEV_LABEL[min(cur, _LABEL_SEV['marginal'])]
         return _SEV_LABEL[max(cur, _LABEL_SEV['small_mistake'])]
     return label
@@ -1253,8 +1254,9 @@ def evaluate_decision(input_data: Dict[str, Any]) -> Dict[str, Any]:
         # de vários bb). 22 a 0.281bb fica acima do limiar e segue small_mistake.
         # RC-A: só 'leak' (freq>0, dentro de um mix) é low-cost defensável. 'major_leak' (freq~0,
         # fora do range) é erro de DIREÇÃO — nunca rebaixado por EV (mantém gto_critical, piso de label).
-        _low_cost_leak = (quality == 'leak' and _pf_evloss is not None
-                          and _pf_evloss < _PREFLOP_EV_MINOR_BB)
+        from leaklab.card_verdict import (leak_de_custo_infimo as _leak_barato,
+                                          rebaixa_gto_label_por_custo as _rebaixa_por_custo)
+        _low_cost_leak = _leak_barato(quality, _pf_evloss)
         # Consistência score/label: recalcular final_score para bater com novo label
         if quality == 'correct':
             final_score = min(final_score, 0.08)    # cap em 'standard'
@@ -1270,10 +1272,10 @@ def evaluate_decision(input_data: Dict[str, Any]) -> Dict[str, Any]:
                 'leak':                'gto_critical',
                 'major_leak':          'gto_critical',
             }
-            _gto_lbl = _QUALITY_TO_GTO_LABEL.get(quality, 'gto_critical')
-            # Tema 1: rebaixa o gto_label crítico quando o custo de EV é minúsculo.
-            if _low_cost_leak and _gto_lbl == 'gto_critical':
-                _gto_lbl = 'gto_minor_deviation'
+            # Tema 1: rebaixa o gto_label crítico quando o custo de EV é minúsculo. A regra
+            # vive em `card_verdict` (fonte única) porque o card a aplica também — VER-6.
+            _gto_lbl = _rebaixa_por_custo(_QUALITY_TO_GTO_LABEL.get(quality, 'gto_critical'),
+                                          quality, _pf_evloss)
             # EV sem fonte declarada nao sai do motor: a regua `ev_loss_trustworthy` decide
             # PELA fonte, e um numero orfao vira a violacao PROCED no acervo (5 linhas em
             # producao, todas ev=0.0 sem fonte — inofensivas na soma e erradas na proveniencia).

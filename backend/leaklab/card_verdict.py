@@ -340,10 +340,48 @@ _PF_QUALITY = {
 }
 
 
-def verdict_from_preflop(pf_quality, pf_recommended, played_norm) -> dict | None:
+def limiar_de_ev_desprezivel() -> float:
+    """O MESMO `_PREFLOP_EV_MINOR_BB` (0,12bb) do motor. Import tardio: o motor importa este
+    módulo, e o limiar é dele."""
+    try:
+        from leaklab.decision_engine_v11 import _PREFLOP_EV_MINOR_BB
+        return float(_PREFLOP_EV_MINOR_BB)
+    except Exception:                                                     # pragma: no cover
+        return 0.12
+
+
+def leak_de_custo_infimo(quality, ev_loss_bb) -> bool:
+    """`leak` (freq>0, dentro de um mix) cujo EV medido fica abaixo do limiar.
+
+    RC-A: `major_leak` (freq~0, fora do range) NUNCA entra — custa pouco justamente porque a
+    mão não devia estar no pote, e é erro de DIREÇÃO. Sem EV medido também não entra: custo não
+    declarado não vira atenuante (a régua `ev_loss_trustworthy` decide pela fonte)."""
+    if quality != 'leak' or ev_loss_bb is None:
+        return False
+    try:
+        return float(ev_loss_bb) < limiar_de_ev_desprezivel()
+    except (TypeError, ValueError):
+        return False
+
+
+def rebaixa_gto_label_por_custo(gto_label, quality, ev_loss_bb):
+    """`gto_critical` de custo ínfimo vira `gto_minor_deviation` — a regra do motor, agora UMA.
+
+    O motor já rebaixava (`_low_cost_leak`) e o card mapeava `leak` direto para `gto_critical`:
+    a mesma decisão saía `gto_minor_deviation` na coluna (ELO, drill) e `gto_critical` no card,
+    que então imprimia "desvio caro" ao lado de "Correto". Auditoria VER-6 (15/09)."""
+    if gto_label == 'gto_critical' and leak_de_custo_infimo(quality, ev_loss_bb):
+        return 'gto_minor_deviation'
+    return gto_label
+
+
+def verdict_from_preflop(pf_quality, pf_recommended, played_norm, ev_loss_bb=None) -> dict | None:
     """Camada 3 — veredito preflop pela qualidade da ação segundo as ranges.
 
-    None = qualidade que não reconhecemos ('unknown'): a camada anterior permanece de pé."""
+    None = qualidade que não reconhecemos ('unknown'): a camada anterior permanece de pé.
+
+    `ev_loss_bb` é o custo medido do spot (`preflop_gto['ev_loss_bb']`, o mesmo que o motor lê).
+    Ausente, o veredito é o de antes: sem custo declarado nada é rebaixado."""
     hit = _PF_QUALITY.get(pf_quality)
     if not hit:
         return None
@@ -351,7 +389,7 @@ def verdict_from_preflop(pf_quality, pf_recommended, played_norm) -> dict | None
     return {
         'is_error':        is_error,
         'reconciled_best': pf_recommended if is_error else played_norm,
-        'gto_label':       label,
+        'gto_label':       rebaixa_gto_label_por_custo(label, pf_quality, ev_loss_bb),
     }
 
 

@@ -4,6 +4,34 @@ Todas as mudanÃ§as notÃ¡veis neste projeto serÃ£o documentadas aqui.
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
+## O card nao diz mais "desvio caro" ao lado de "Correto" no leak de EV zero (15/09)
+
+O motor rebaixa `leak` de custo infimo: EV medido abaixo de `_PREFLOP_EV_MINOR_BB` (0,12bb) e o
+`gto_label` critico vira `gto_minor_deviation`, com o score capeado em marginal. O card nao
+recebia o EV: `verdict_from_preflop` mapeava `leak` direto para `gto_critical`. Auditoria VER-6,
+2 linhas em 150 do acervo de auditoria.
+
+O caso medido e a mao 257045975775 (A8o UTG 4,2bb, fold, a carta manda jam): a porta de
+estrategia devolve quality `leak` com `ev_loss_bb` 0,0, a coluna gravou `gto_minor_deviation` e
+o card servia `gto_critical`, o que faz `qualificadorDeCusto` imprimir "desvio caro" ao lado do
+selo Correto. ELO e drill leem a coluna (minor), o jogador le o card (critical).
+
+A condicao virou UMA funcao em `card_verdict` (`leak_de_custo_infimo`, com
+`rebaixa_gto_label_por_custo` e `limiar_de_ev_desprezivel`) e as TRES copias passaram a chama-la:
+o mapa persistido do motor, o `_preflop_gto_label_adjust` e agora o card, que recebe
+`_pf['ev_loss_bb']` no /replay. Nada mais muda (regra 7): `is_error` e a recomendacao ficam como
+estavam, `major_leak` nunca rebaixa (erro de DIRECAO, RC-A), `leak` sem EV medido tambem nao, e
+o limiar segue o mesmo numero, declarado num lugar so.
+
+Guarda: `tests/test_rebaixamento_de_leak_barato.py`, 8 casos, com grade de 6 qualidades x 8
+valores de EV exigindo o mesmo rotulo nas duas portas, o spot A8o real ponta a ponta, a
+varredura por AST de quem compara com o limiar e um forjado que prova que a varredura acusa.
+Quebrado de proposito duas vezes (sem o rebaixamento no card: 3 testes acusam; sem o EV na
+chamada de `api/app.py`: a varredura da fiacao acusa) e restaurado. Suites em SQLite e Postgres
+(duas rodadas): novo 8/8, `test_card_verdict` 33/33, `test_decision_engine` 38/38,
+`test_preflop_gto_quality` 76/76, `test_verdict_invariant` 11/11.
+
+---
 ## O menu que o deep-dive entrega ao LLM passa pelo mesmo guarda do /replay (15/09)
 
 Segunda metade do NLU-2. A primeira consertou o hash: `_decision_to_gto_params` deixou de
