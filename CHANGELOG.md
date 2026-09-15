@@ -4,6 +4,31 @@ Todas as mudanÃ§as notÃ¡veis neste projeto serÃ£o documentadas aqui.
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
+## POST /player/xp para de aceitar o valor do XP vindo do cliente (15/09)
+
+A rota repassava `amount` do corpo para `add_xp`, e o teto de 500 do backend e sobre `count`.
+Medido pela rota real com um plano free (`data/auditoria/repro/SEG_6.py`): `amount=4000000
+x count=500` concedia **+2.000.000.000 XP** numa chamada; `amount` negativo deixava
+`xp_total=-5000`; `event_type` fora do catalogo entrava com 10 por padrao; `amount=1e9 x 500`
+estourava o int4 do Postgres e subia como 500 sem tratamento; e a rota nao tinha rate limit.
+Nao alcanca o leaderboard (que nao le `xp_total`), mas nivel e conquistas deixavam de
+significar o que o produto diz. Auditoria SEG-4.
+
+So a ROTA muda, de proposito (regra 7): a academia e o drill chamam `add_xp` por dentro com
+valor proprio, e cortar `amount` na funcao os quebraria. Na rota: `amount` do corpo e
+ignorado (o unitario mora em `_XP_AMOUNTS`, a fonte unica que a docstring de `add_xp` ja
+defendia), `event_type` fora do catalogo responde 400, `count` que nao e inteiro responde 400,
+e a rota ganha o mesmo rate limit por usuario da recepcao de upload (o front concede XP uma
+vez por arquivo recebido, com `count` = torneios, entao nao ha uso honesto acima disso). Com
+`amount` fora, o estouro do int4 deixa de ser alcancavel numa chamada (teto 100 x 500).
+
+Guarda: `tests/test_xp_rota.py` (6 testes). O caminho honesto segue igual; `amount` positivo,
+negativo e gigante concede sempre unitario x count; evento fora do catalogo e `count` invalido
+respondem 400 sem conceder nada; a academia segue passando o valor por dentro; e o rate limit e
+conferido no REGISTRO do flask-limiter (`limit_manager._decorated_limits`), nao no fonte.
+Quebrado de proposito (rota antiga restaurada): 4 de 6 acusam; restaurado.
+
+---
 ## POST /uploads ganha teto de 40 MB em aberto por conta, em bytes e nao em arquivos (15/09)
 
 O unico teto por jogador da recepcao era `ESPERA_MAX_POR_USUARIO = 5`, e ele conta so

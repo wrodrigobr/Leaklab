@@ -4394,11 +4394,32 @@ def player_get_xp():
 
 @app.route('/player/xp', methods=['POST'])
 @require_auth
+# Mesmo teto e mesma chave da recepcao de upload: o front concede XP UMA vez por arquivo
+# recebido (com `count` = torneios), entao nao ha uso honesto acima disso.
+@limiter.limit(lambda: "%d per hour" % LIMITE_DE_UPLOADS_POR_HORA, key_func=_chave_do_upload,
+               exempt_when=lambda: bool(os.environ.get('LEAKLAB_IMPORT_LOTE')))
 def player_add_xp():
+    """Concede XP de um evento do catalogo. O VALOR vem do catalogo, nunca do cliente.
+
+    Auditoria SEG-4 (15/09): a rota repassava `amount` do corpo para `add_xp`, e o teto de 500
+    e sobre `count`: amount=4.000.000 x count=500 dava +2.000.000.000 XP numa chamada, amount
+    negativo afundava o proprio XP, evento fora do catalogo entrava com 10 por padrao, e
+    amount x count acima de int4 subia como NumericValueOutOfRange sem tratamento. So a ROTA
+    muda: a academia e o drill chamam `add_xp` direto, por dentro, com valor proprio.
+    """
+    from database.repositories import _XP_AMOUNTS
     body = request.get_json(force=True) or {}
+    event_type = body.get('event_type', '')
+    if event_type not in _XP_AMOUNTS:
+        return jsonify({'error': 'Evento de XP desconhecido', 'event_type': event_type}), 400
+    if body.get('count') is not None:
+        try:
+            int(body.get('count'))
+        except (TypeError, ValueError):
+            return jsonify({'error': '`count` precisa ser um inteiro'}), 400
     # `count`: quantas vezes o evento aconteceu (um upload pode trazer varios torneios).
-    result = add_xp(g.user_id, body.get('event_type', ''), body.get('amount'),
-                    count=body.get('count'))
+    # `amount` do corpo e IGNORADO de proposito: o unitario mora em `_XP_AMOUNTS`.
+    result = add_xp(g.user_id, event_type, None, count=body.get('count'))
     return jsonify(result)
 
 
