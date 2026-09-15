@@ -4,6 +4,46 @@ Todas as mudanÃ§as notÃ¡veis neste projeto serÃ£o documentadas aqui.
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
+## `standard_rate` para de chegar ao front como string, e os tipos do torneio declaram o que a rota manda (15/09)
+
+Duas metades do TEL-5.
+
+**A razao em SQL.** `AVG(CASE WHEN d.label='standard' THEN 1.0 ELSE 0.0 END) AS standard_rate`
+vira NUMERIC no Postgres e o driver entrega `Decimal`; o `dict(r)` de `get_breakdown` e de
+`get_pressure_profile` nao passava pelo `_jsonable`, a funcao da casa que converte Decimal para
+float, e o `jsonify` serializava o campo como STRING. Medido no banco de auditoria
+(`data/auditoria/repro/TEL_5.py`, rodado nas duas gramaticas): Postgres devolve
+`"standard_rate": "1.00000000000000000000"` e SQLite devolve `1.0`. `IcmBreakdown` e
+`PositionChart` sobrevivem porque `string * 100` coage em JS; um `.toFixed` direto quebraria SO
+em producao. Os dois dicionarios passaram a sair por `_jsonable`, que era a funcao certa e ja
+cobria o `get_icm_performance` ao lado.
+
+**Os tipos.** `ConfidenceDrift` prometia `baseline_score: number` (obrigatorio) que a rota
+`/player/confidence-drift` nunca manda; quem mostra baseline le o de `PressureProfile`, que e
+outra rota. E `Tournament` e `TournamentDecision` nao declaravam 36 campos que a rota entrega,
+entre eles `ev_loss_bb` e `ev_loss_source`, que sao a severidade e a procedencia que a casa usa,
+bem ao lado do `score` que a tela ja mostra. Nada quebrava hoje, porque ninguem lia: e onde a
+proxima tela erraria sem o compilador avisar. As colunas booleanas ficaram declaradas como
+`boolean | number` porque e o que elas sao: BOOLEAN no Postgres, INTEGER 0/1 no SQLite.
+
+Guardas, dois: `tests/test_media_de_razao_sai_como_numero.py` (3 casos) exige float nas duas
+rotas e varre por AST toda funcao de `repositories.py` cujo SELECT calcula razao com
+`AVG(CASE WHEN`, exigindo `_jsonable` em CADA `dict(...)` da funcao, e nao so uma mencao a
+`_jsonable` em algum lugar dela (o `get_breakdown` monta quatro dicionarios e so um estava
+coberto). `tests/test_tipos_do_api_ts_batem_com_a_rota.py` (3 casos) le as interfaces do
+`api.ts` e compara com a resposta real do `/history/tournament`, nos dois sentidos.
+
+Quebrados de proposito e restaurados: desfeito o `_jsonable`, o Postgres acusa o Decimal E a
+varredura acusa a funcao, enquanto o SQLite sozinho passaria (que e exatamente por que a
+varredura existe); tirados `ev_loss_bb`/`ev_loss_source` do tipo e devolvido o `baseline_score`,
+os dois testes de contrato acusam. Repro: "PROMETE E NAO MANDA" vai de 1 para 0 e "MANDA E O
+TIPO NAO SABE" de 55 para 19 (os 19 restantes sao `ReplayStep`, `EvolutionPoint` e outras
+interfaces fora deste item). Suites: novos 3/3 e 3/3 em SQLite e Postgres (duas rodadas),
+`test_api_endpoints` 50/50 e `test_database` 26/26 em SQLite (`test_database` dubla `get_conn`
+com sqlite3 cru e nao roda contra Postgres, nem antes desta mudanca); tsc limpo, vitest
+`handFilter` 14/14.
+
+---
 ## A referencia do solver no HUD so sai com amostra; abaixo de 30 o card diz "Ref MTT" (15/09)
 
 `referencia_rfi_media` acompanha o numero com uma folga binomial (2 desvios, piso de 2pp) sobre

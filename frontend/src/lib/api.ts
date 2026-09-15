@@ -217,6 +217,17 @@ export interface Tournament {
   postflop_coverage_pct?: number | null;
   solver_analyzing?: boolean;   // postflop descoberto + solver trabalhando → "analisando" (não crava %)
   analysis_waitlisted?: boolean; // aguardando vaga na fila de análise por plano (free = 3 por vez)
+  // ── O que /history/tournaments e /history/tournament JA mandam (auditoria TEL-5) ──────────
+  // Estavam chegando sem tipo: a próxima tela que os lesse erraria sem o compilador avisar.
+  user_id?: number;
+  small_pct?: number | null;
+  marginal_pct?: number | null;
+  clear_count?: number;         // contagem, não percentual (a lista usa as duas coisas)
+  small_count?: number;
+  is_pko?: boolean;
+  started_at?: string | null;   // início/fim pelo Tournament Summary, quando houver
+  ended_at?: string | null;
+  raw_text?: string;            // hand history inteira; pesada, só o replayer precisa dela
 }
 
 export interface TournamentsResponse {
@@ -293,6 +304,39 @@ export interface TournamentDecision {
   adherence?: "match_ok" | "match_erro" | "diverge_rigido" | "diverge_perdido" | "comentario" | null;
   coach_comment?: string | null;
   coach_action?: string | null;
+  // ── O que /history/tournament JA manda em cada decisão (auditoria TEL-5) ──────────────────
+  // Nada disso quebrava a tela, porque ninguém lia; é onde a próxima tela erraria. O custo em
+  // bb (`ev_loss_bb`) é a severidade que a casa usa, e estava sem tipo ao lado de `score`.
+  created_at?: string;
+  vs_position?: string | null;
+  spot_hash?: string | null;
+  spot_family_key?: string | null;
+  spot_assinatura?: string | null;
+  // Custo e procedência (a régua `ev_loss_trustworthy` decide PELA fonte: sem fonte, sem custo)
+  ev_loss_bb?: number | null;
+  ev_loss_source?: string | null;
+  verdict_source?: string | null;
+  verdict_has_cost?: boolean | null;
+  pode_falar_como_gto?: boolean | null;
+  // Dinheiro do spot, em bb (a coluna é gravada em bb; não dividir por level_bb de novo)
+  effective_stack_bb?: number | null;
+  pot_at_decision_bb?: number | null;
+  facing_to_call_bb?: number | null;
+  facing_bet?: number | null;
+  pot_size?: number | null;
+  raise_to_bb?: number | null;
+  estimated_equity?: number | null;
+  icm_tax_pct?: number | null;
+  preflop_raises_faced?: number | null;
+  gto_top_freq?: number | null;
+  gto_played_freq?: number | null;
+  // Colunas booleanas: BOOLEAN no Postgres, INTEGER 0/1 no SQLite — o JSON traz as duas formas
+  is_3bet?: boolean | number | null;
+  facing_limp?: boolean | number | null;
+  hero_was_aggressor?: boolean | number | null;
+  hero_won_hand?: boolean | number | null;
+  gto_depth_capped?: boolean | number | null;
+  showdown_result?: string | null;
 }
 
 export interface ReplaySeat {
@@ -1271,7 +1315,8 @@ export interface ConfidenceDrift {
   drift_detected: boolean;
   affected_sessions: number;
   severity: "mild" | "moderate" | "severe" | null;
-  baseline_score: number;
+  // `baseline_score` NAO existe aqui: a rota /player/confidence-drift nunca o manda (auditoria
+  // TEL-5). Quem mostra baseline le o de `PressureProfile`, que e outra rota e outro numero.
   sessions: { tournament_id: number; name: string; played_at: string; avg_score: number; delta_pct: number }[];
   /** maior id entre TODAS as sessões marcadas (não só as 5 exibidas) — marca d'água do dismiss */
   latest_flagged_id?: number;

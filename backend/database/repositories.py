@@ -1836,7 +1836,11 @@ def get_pressure_profile(user_id: int, days: int = 90, last_n: int | None = None
             HAVING COUNT(*) >= 3
         """), tp).fetchall()
 
-        pressure_map = {r['pressure']: dict(r) for r in rows}
+        # `_jsonable`: o `AVG(CASE ...)` vira NUMERIC no Postgres e o driver entrega
+        # `Decimal`, que o jsonify serializa como STRING ("1.00000000000000000000").
+        # No SQLite o mesmo campo e float. `string * 100` coage em JS e por isso a tela
+        # sobrevive, mas um `.toFixed` direto quebraria SO em producao. TEL-5 (15/09).
+        pressure_map = {r['pressure']: _jsonable(dict(r)) for r in rows}
 
         baseline_row = conn.execute(_adapt(f"""
             SELECT AVG(d.score) AS avg_score, COUNT(*) AS n
@@ -2306,8 +2310,10 @@ def get_breakdown(user_id: int, days: int = 90, last_n: int | None = None) -> di
         gto_coverage_pct = round(with_gto * 100.0 / total_dec, 1) if total_dec else 0.0
 
         return {
-            'by_street':   {r['street']:   dict(r) for r in by_street},
-            'by_position': {r['position']: dict(r) for r in by_position if r['position']},
+            # `_jsonable` pelo mesmo motivo do `get_pressure_profile`: `standard_rate` sai
+            # Decimal no Postgres e float no SQLite. TEL-5 (15/09).
+            'by_street':   {r['street']:   _jsonable(dict(r)) for r in by_street},
+            'by_position': {r['position']: _jsonable(dict(r)) for r in by_position if r['position']},
             'by_label':    {r['label']:    r['n']   for r in by_label   if r['label']},
             'gto_coverage_pct': gto_coverage_pct,
             'total_decisions':  total_dec,
