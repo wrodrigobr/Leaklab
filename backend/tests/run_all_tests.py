@@ -160,6 +160,7 @@ SUITES = {
                   'test_stack_buckets.py'],
     'database':  ['test_database.py', 'test_score_alinhado_no_insert.py', 'test_google_auth.py', 'test_exclusao_de_usuario.py', 'test_quota_mensal.py', 'test_fila_de_analise.py', 'test_burst_solver.py', 'test_janela_do_dashboard.py', 'test_hud_bate_com_pokertracker.py', 'test_coach_system.py', 'test_notifications.py',
                   'test_solve_quota.py', 'test_coach_adherence_multiway.py', 'test_coach_invites.py',
+                  'test_multiway_fora_dos_agregados.py',
                   'test_coach_trial.py', 'test_coach_referral.py', 'test_coach_replay.py',
                   'test_anotacao_sobrevive_reprocesso.py',
                   'test_admin_finance.py', 'test_verdict_invariant.py',

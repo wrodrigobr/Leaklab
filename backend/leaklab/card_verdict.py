@@ -88,6 +88,44 @@ def nota_contradiz_o_veredito(note, gto_action, best_action) -> bool:
     return not _matches(declarada, recomendada)
 
 
+# ── Multiway postflop: o solver nao modela esta mao ───────────────────────────────────────
+#
+# O solver e HEADS-UP: um `ip_range` contra um `oop_range`. Decisao postflop com 2+ oponentes
+# ativos e resolvida como se os outros nao existissem.
+#
+# O caso que trouxe isto (mao 262009780504): flop de CINCO, aberto pelo UTG+1 com cold call do
+# HJ. O solve modelou "HJ abre, BB paga" heads-up, deu ao HJ um range de ABERTURA (com AA/KK/AK,
+# que ele 3-betaria em vez de pagar), e nesse mundo QJ tem 75,1% de equity contra os 53,1% que o
+# proprio motor calculou. Dos 75% saiu `allin 61,2%` e uma acusacao de 37,67bb. O GTO Wizard, no
+# no heads-up equivalente a 70bb, nao tem all-in no menu.
+#
+# Medido antes de fechar: 8.953 decisoes multiway com veredito de solver (32,4% do postflop),
+# 728 acusando, 5.254,8bb cobrados. E no ranking de leaks, que ordena o PLANO DE ESTUDOS, o
+# multiway era 32,7% da massa de EV perdido do pagante.
+#
+# `n_ativos` nulo conta como NAO multiway, de proposito: e legado/reimport, e essa e a mesma
+# convencao do drill (`repositories` 2012) e do card (`app.py` 2707). Inverter aqui esconderia
+# decisao heads-up antiga sem ter evidencia de que ela e multiway.
+#
+# O GEMEO EM SQL vive em `repositories._SQL_MULTIWAY_FORA`, porque `get_breakdown` agrega em
+# GROUP BY e nao da para chamar Python de dentro do SQL. Sao duas expressoes da MESMA regra, e
+# `test_multiway_fora_dos_agregados` prova que elas concordam caso a caso -- sem esse teste
+# seriam duas regras que combinam de ser iguais.
+def multiway_sem_cobertura(street, n_ativos) -> bool:
+    """True quando a decisao e postflop com 2+ oponentes ativos, logo fora do que o solver mede.
+
+    Nao diz que o jogador acertou nem que errou: diz que NAO SABEMOS. Quem consome isto tira a
+    linha da medicao, em vez de contar como acerto -- contar como acerto e a mesma mentira na
+    direcao oposta, e a casa ja tem o invariante de que celula sem dado nunca vira 0,0.
+    """
+    if str(street or '').strip().lower() == 'preflop':
+        return False
+    try:
+        return int(n_ativos or 0) >= 2
+    except (TypeError, ValueError):
+        return False
+
+
 def label_for_freq(freq: float) -> str:
     """gto_label pela FREQUÊNCIA da ação na estratégia (mesma régua do app/frontend)."""
     if freq >= 0.60:

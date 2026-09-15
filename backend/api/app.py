@@ -6134,9 +6134,12 @@ def coach_student_worst_decisions(student_id):
         return jsonify({'error': 'Aluno não encontrado'}), 404
     limit = int(request.args.get('n', 20))
     from database.schema import get_conn as _gc
+    from database.repositories import _SQL_MULTIWAY_FORA
     conn = _gc()
     try:
-        rows = conn.execute("""
+        # Multiway postflop so entra se o COACH a rotulou (override): o veredito do solver ali
+        # nao vale, mas o julgamento humano vale (regra 7: nao apagar o que o coach escreveu).
+        rows = conn.execute(f"""
             SELECT d.id, d.hand_id, d.street, d.hero_cards, d.board,
                    d.action_taken, d.best_action, d.gto_action, d.label, d.score,
                    d.position, d.icm_pressure, d.m_ratio, d.stack_bb,
@@ -6148,6 +6151,7 @@ def coach_student_worst_decisions(student_id):
                    ON a.decision_id = d.id AND a.student_id = t.user_id AND a.coach_id = ?
             WHERE t.user_id = ?
               AND COALESCE(a.coach_override_label, d.label) IN ('clear_mistake', 'small_mistake')
+              AND (a.coach_override_label IS NOT NULL OR {_SQL_MULTIWAY_FORA})
             ORDER BY d.score DESC
             LIMIT ?
         """, (g.user_id, student_id, limit)).fetchall()

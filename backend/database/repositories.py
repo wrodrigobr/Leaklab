@@ -10,6 +10,7 @@ import logging
 from contextlib import contextmanager
 import threading as _threading
 from leaklab.gto_utils import _POSITION_NORM
+from leaklab.card_verdict import multiway_sem_cobertura
 from decimal import Decimal as _Decimal
 from typing import Optional, List, Dict
 
@@ -131,6 +132,26 @@ def _build_tournament_filter(user_id: int, days: int = 90, last_n: int | None = 
     from datetime import datetime, timedelta
     since = (datetime.utcnow() - timedelta(days=days)).strftime('%Y-%m-%d')
     return "t.user_id = ? AND COALESCE(t.played_at, t.imported_at) >= ?", (user_id, since)
+
+
+# ── Multiway postflop fica FORA de tudo que soma, ranqueia ou pontua ─────────────────────
+#
+# O gemeo em SQL de `leaklab.card_verdict.multiway_sem_cobertura`. O solver e heads-up; uma
+# decisao postflop com 2+ oponentes ativos foi julgada num mundo que nao existiu, e o front ja a
+# rebaixa a "informativa". Mas o backend seguia CONTANDO: em 15/09 a varredura VER_04 forjou uma
+# acusacao de 3bb numa decisao multiway e 23 rotas mudaram (ELO, plano de estudos, Leak Finder,
+# ranking, nivel, visao do coach...), e ZERO excluiam.
+#
+# Semantica: sai do DENOMINADOR. A decisao nao e medida; nao conta como acerto nem como erro.
+# Contar como acerto seria a mesma mentira na direcao oposta ("celula sem dado nunca vira 0,0").
+# `n_active_opponents` NULL e legado/reimport e conta como NAO multiway, a mesma convencao do
+# drill (`get_drill_spots`) e do card (`app._card_verdict_row`): inverter esconderia decisao
+# heads-up antiga sem prova de que e multiway.
+#
+# Sao duas expressoes da MESMA regra. `tests/test_multiway_fora_dos_agregados.py` prova, sobre
+# uma tabela de casos (street x n_ativos NULL/0/1/2/5), que o SQL e o Python concordam linha a
+# linha -- sem esse teste seriam duas regras que combinam de ser iguais. Use o alias `d.`.
+_SQL_MULTIWAY_FORA = "NOT (d.street <> 'preflop' AND COALESCE(d.n_active_opponents, 0) >= 2)"
 
 
 def _jsonable(v):
@@ -1070,7 +1091,9 @@ def get_tournaments(user_id: int, limit: int | None = None) -> List[dict]:
                       JOIN gto_solver_queue q ON q.spot_hash = m.spot_hash
                       WHERE m.tournament_id = t.id AND q.status IN ('pending','running')) AS gto_tq_busy
             FROM tournaments t
-            LEFT JOIN decisions d ON d.tournament_id = t.id
+            -- Multiway postflop fora de TODO agregado por decisao desta lista (erros, cobertura):
+            -- a decisao que o solver nao mediu nao existe para a medicao (`_SQL_MULTIWAY_FORA`).
+            LEFT JOIN decisions d ON d.tournament_id = t.id AND {_SQL_MULTIWAY_FORA}
             WHERE t.user_id = ?
             GROUP BY t.id
             ORDER BY t.imported_at DESC
@@ -1359,6 +1382,7 @@ def get_leak_roi_impact(user_id: int, days: int = 90, last_n: int | None = None)
             JOIN tournaments t ON t.id = d.tournament_id
             WHERE {tf}
               AND d.label IN ('small_mistake','clear_mistake')
+              AND {_SQL_MULTIWAY_FORA}
             GROUP BY spot
             HAVING COUNT(*) >= 2
             ORDER BY priority_score DESC
@@ -1366,26 +1390,28 @@ def get_leak_roi_impact(user_id: int, days: int = 90, last_n: int | None = None)
         """), tp).fetchall()
 
         # Trend comparison uses fixed 30-day windows (independent of last_n)
-        recent_rows = conn.execute(_adapt("""
+        recent_rows = conn.execute(_adapt(f"""
             SELECT d.street || '/' || d.best_action AS spot, AVG(d.score) AS avg_score,
                    COUNT(*) AS n
             FROM decisions d
             JOIN tournaments t ON t.id = d.tournament_id
             WHERE t.user_id = ? AND COALESCE(t.played_at, t.imported_at) >= ?
               AND d.label IN ('small_mistake','clear_mistake')
+              AND {_SQL_MULTIWAY_FORA}
             GROUP BY spot
         """), (user_id, recent_since)).fetchall()
         # (media, n): sem o n nao ha como pedir amostra, e a seta afirmava direcao com duas maos.
         recent_map = {r['spot']: (float(r['avg_score'] or 0), int(r['n'] or 0))
                       for r in recent_rows}
 
-        prev_rows = conn.execute(_adapt("""
+        prev_rows = conn.execute(_adapt(f"""
             SELECT d.street || '/' || d.best_action AS spot, AVG(d.score) AS avg_score,
                    COUNT(*) AS n
             FROM decisions d
             JOIN tournaments t ON t.id = d.tournament_id
             WHERE t.user_id = ? AND COALESCE(t.played_at, t.imported_at) >= ? AND COALESCE(t.played_at, t.imported_at) < ?
               AND d.label IN ('small_mistake','clear_mistake')
+              AND {_SQL_MULTIWAY_FORA}
             GROUP BY spot
         """), (user_id, prev_since, recent_since)).fetchall()
         prev_map = {r['spot']: (float(r['avg_score'] or 0), int(r['n'] or 0))
@@ -1459,7 +1485,8 @@ def get_ev_leaks(user_id: int, days: int = 90, last_n: int | None = None, limit:
             SELECT d.position AS position, d.street AS street, d.best_action AS ideal_action,
                    d.action_taken AS action_taken, d.ev_loss_bb AS ev, d.ev_loss_source AS src,
                    d.stack_bb AS stack_bb, d.estimated_equity AS equity,
-                   d.pot_size AS pot, d.facing_bet AS facing
+                   d.pot_size AS pot, d.facing_bet AS facing,
+                   d.n_active_opponents AS n_ativos
             FROM decisions d
             JOIN tournaments t ON t.id = d.tournament_id
             WHERE {tf}
@@ -1469,6 +1496,10 @@ def get_ev_leaks(user_id: int, days: int = 90, last_n: int | None = None, limit:
 
         grupos, tot_bb, tot_n = {}, 0.0, 0
         for r in rows:
+            # Multiway postflop: o solver julgou heads-up uma mao que nao era. Fora da conta,
+            # pela MESMA funcao que o card usa (ver `_SQL_MULTIWAY_FORA`).
+            if multiway_sem_cobertura(r['street'], r['n_ativos']):
+                continue
             if not ev_loss_trustworthy(r['ev'], r['stack_bb'], r['src'],
                                        action=r['action_taken'], equity=r['equity'],
                                        pot_bb=r['pot'], facing_bb=r['facing']):
@@ -1716,6 +1747,7 @@ def get_gto_leak_ranking(user_id: int, days: int = 90, last_n: int | None = None
             JOIN tournaments t ON t.id = d.tournament_id
             WHERE {tf}
               AND d.gto_label IN ('gto_critical', 'gto_minor_deviation')
+              AND {_SQL_MULTIWAY_FORA}
             GROUP BY spot
             HAVING COUNT(*) >= 2
             ORDER BY priority_score DESC
@@ -1723,7 +1755,7 @@ def get_gto_leak_ranking(user_id: int, days: int = 90, last_n: int | None = None
         """), tp).fetchall()
 
         def _proxy_rows(since_val, until_val=None):
-            q = """
+            q = f"""
                 SELECT d.street || '/' || d.best_action AS spot,
                        AVG(CASE
                            WHEN d.gto_label = 'gto_critical'        THEN 0.45
@@ -1735,6 +1767,7 @@ def get_gto_leak_ranking(user_id: int, days: int = 90, last_n: int | None = None
                 JOIN tournaments t ON t.id = d.tournament_id
                 WHERE t.user_id = ? AND COALESCE(t.played_at, t.imported_at) >= ?
                   AND d.gto_label IN ('gto_critical', 'gto_minor_deviation')
+                  AND {_SQL_MULTIWAY_FORA}
             """
             params = [user_id, since_val]
             if until_val:
@@ -1798,7 +1831,7 @@ def get_pressure_profile(user_id: int, days: int = 90, last_n: int | None = None
                 AVG(CASE WHEN d.label='standard' THEN 1.0 ELSE 0.0 END) AS standard_rate
             FROM decisions d
             JOIN tournaments t ON t.id = d.tournament_id
-            WHERE {tf}
+            WHERE {tf} AND {_SQL_MULTIWAY_FORA}
             GROUP BY pressure
             HAVING COUNT(*) >= 3
         """), tp).fetchall()
@@ -1809,7 +1842,7 @@ def get_pressure_profile(user_id: int, days: int = 90, last_n: int | None = None
             SELECT AVG(d.score) AS avg_score, COUNT(*) AS n
             FROM decisions d
             JOIN tournaments t ON t.id = d.tournament_id
-            WHERE {tf}
+            WHERE {tf} AND {_SQL_MULTIWAY_FORA}
         """), tp).fetchone()
 
         baseline_score = baseline_row['avg_score'] if baseline_row else None
@@ -2009,7 +2042,7 @@ def get_drill_spots(user_id: int, limit: int = 10, street: str = None, spot: str
               -- (Escrito por extenso de proposito: o psycopg2 nao sabe que isto e comentario SQL,
               --  varre a string inteira e trata o sinal de porcentagem como placeholder. Um numero
               --  com esse sinal AQUI derrubou o Ghost Table em producao, com IndexError.)
-              AND NOT (d.street != 'preflop' AND COALESCE(d.n_active_opponents, 0) >= 2)
+              AND {_SQL_MULTIWAY_FORA}
               {street_filter}
               {spot_filter}
             ORDER BY
@@ -2218,7 +2251,7 @@ def get_icm_performance(user_id: int, days: int = 90, last_n: int | None = None)
                 AVG(CASE WHEN d.label='standard' THEN 1.0 ELSE 0.0 END) AS standard_rate
             FROM decisions d
             JOIN tournaments t ON t.id = d.tournament_id
-            WHERE {tf}
+            WHERE {tf} AND {_SQL_MULTIWAY_FORA}
             GROUP BY d.icm_pressure
         """, tp).fetchall()
         return _jsonable({r['icm_pressure']: dict(r) for r in rows if r['icm_pressure']})
@@ -2233,7 +2266,7 @@ def get_breakdown(user_id: int, days: int = 90, last_n: int | None = None) -> di
         base = f"""
             FROM decisions d
             JOIN tournaments t ON t.id = d.tournament_id
-            WHERE {tf}
+            WHERE {tf} AND {_SQL_MULTIWAY_FORA}
         """
         by_street = conn.execute(f"""
             SELECT d.street,
@@ -3740,7 +3773,7 @@ def get_player_level(user_id: int, min_tournaments: int = 5, days: int = 30, las
                    AVG(d.score) AS avg_score
             FROM decisions d
             JOIN tournaments t ON t.id = d.tournament_id
-            WHERE {tf}
+            WHERE {tf} AND {_SQL_MULTIWAY_FORA}
               AND d.label IN ('small_mistake', 'clear_mistake')
             GROUP BY spot
             HAVING COUNT(*) >= 2
@@ -4064,7 +4097,7 @@ def get_strategic_twin_profile(user_id: int, days: int = 180, last_n: int | None
                    SUM(CASE WHEN d.label IN ('small_mistake', 'clear_mistake') THEN 1 ELSE 0 END) as mistakes
             FROM decisions d
             JOIN tournaments t ON t.id = d.tournament_id
-            WHERE {tf}
+            WHERE {tf} AND {_SQL_MULTIWAY_FORA}
         """), tp).fetchone()
 
         spot_rows = conn.execute(_adapt(f"""
@@ -4073,7 +4106,7 @@ def get_strategic_twin_profile(user_id: int, days: int = 180, last_n: int | None
                    SUM(CASE WHEN d.label IN ('small_mistake', 'clear_mistake') THEN 1 ELSE 0 END) as mistakes
             FROM decisions d
             JOIN tournaments t ON t.id = d.tournament_id
-            WHERE {tf}
+            WHERE {tf} AND {_SQL_MULTIWAY_FORA}
             GROUP BY d.street, d.best_action, d.icm_pressure
             HAVING COUNT(*) >= 3
             ORDER BY total DESC
@@ -5212,7 +5245,8 @@ def get_all_students_worst_decisions(
     conn = get_conn()
     try:
         placeholders = ','.join(['?' for _ in filtered_ids])
-        where = [f"t.user_id IN ({placeholders})", "d.label IN ('clear_mistake','small_mistake')"]
+        where = [f"t.user_id IN ({placeholders})", "d.label IN ('clear_mistake','small_mistake')",
+                 _SQL_MULTIWAY_FORA]
         params: list = list(filtered_ids)
         if street_filter:
             where.append("d.street = ?")
@@ -7659,7 +7693,7 @@ def get_leak_graph_data(user_id: int, days: int = 90, lang: str = 'pt-BR', last_
                 d.score
             FROM decisions d
             JOIN tournaments t ON t.id = d.tournament_id
-            WHERE {tf}
+            WHERE {tf} AND {_SQL_MULTIWAY_FORA}
               AND (d.label IN ('small_mistake','clear_mistake')
                    OR d.gto_label IN ('gto_critical','gto_minor_deviation'))
         """), tp).fetchall()
@@ -7705,11 +7739,15 @@ def get_player_dna(user_id: int, days: int = 90, last_n: int | None = None) -> d
         tf, tp = _build_tournament_filter(user_id, days, last_n)
         rows = _fetchall(conn, _adapt(f"""
             SELECT d.action_taken, d.street, {sql_assento()} AS position, d.is_3bet,
-                   d.label, d.icm_pressure
+                   d.label, d.icm_pressure, d.n_active_opponents AS n_ativos
             FROM decisions d
             JOIN tournaments t ON t.id = d.tournament_id
             WHERE {tf}
         """), tp)
+        # Multiway postflop fica fora do que JULGA (disciplina, consciencia de ICM): o solver
+        # nao mediu essa decisao. O que DESCREVE comportamento (fold, agressao, 3-bet) continua
+        # contando a mao, porque ela aconteceu (regra 7: descrever nao e julgar).
+        medidas = [r for r in rows if not multiway_sem_cobertura(r['street'], r['n_ativos'])]
 
         total = len(rows)
         if total < 10:
@@ -7744,12 +7782,12 @@ def get_player_dna(user_id: int, days: int = 90, last_n: int | None = None) -> d
         pos_awareness = round(min(100.0, max(0.0, 50.0 + (lp_pct - ep_pct) * 2)), 1)
 
         # Disciplina técnica — standard%
-        n_std     = sum(1 for r in rows if r['label'] == 'standard')
-        discipline = round(n_std / total * 100, 1)
+        n_std     = sum(1 for r in medidas if r['label'] == 'standard')
+        discipline = round(n_std / len(medidas) * 100, 1) if medidas else 0.0
 
         # ICM awareness — standard% sob alta pressão vs sem pressão
-        high_icm = [r for r in rows if r['icm_pressure'] == 'high']
-        no_icm   = [r for r in rows if r['icm_pressure'] == 'none']
+        high_icm = [r for r in medidas if r['icm_pressure'] == 'high']
+        no_icm   = [r for r in medidas if r['icm_pressure'] == 'none']
         hi_std   = sum(1 for r in high_icm if r['label'] == 'standard')
         no_std   = sum(1 for r in no_icm   if r['label'] == 'standard')
         if high_icm and no_icm and no_std:
@@ -8580,7 +8618,8 @@ def get_evolution_report(user_id: int, limite_torneios: int = 40) -> dict:
             "       d.vs_position AS vs_position, d.stack_bb AS stack_bb, "
             "       d.action_taken AS action_taken, d.best_action AS best_action, "
             "       d.gto_label AS gto_label, d.ev_loss_bb AS ev, d.ev_loss_source AS src, "
-            "       d.estimated_equity AS equity, d.pot_size AS pot, d.facing_bet AS facing "
+            "       d.estimated_equity AS equity, d.pot_size AS pot, d.facing_bet AS facing, "
+            "       d.n_active_opponents AS n_ativos "
             "FROM decisions d JOIN tournaments t ON t.id = d.tournament_id "
             "WHERE t.user_id = ? AND d.gto_label IS NOT NULL AND d.gto_label <> '' "
             "  AND COALESCE(d.icm_pressure,'') <> ? "
@@ -8588,7 +8627,10 @@ def get_evolution_report(user_id: int, limite_torneios: int = 40) -> dict:
 
         confiaveis, por_torneio, celulas, acoes = [], {}, {}, {}
         for r in rows:
-            ok = ev_loss_trustworthy(
+            # Multiway postflop nao e mensuravel: o solver julgou heads-up uma mao que nao era
+            # (fonte unica em `card_verdict.multiway_sem_cobertura`). Entra na mesma porta que o
+            # EV nao confiavel: o torneio segue na linha do tempo, a decisao nao soma.
+            ok = (not multiway_sem_cobertura(r['street'], r['n_ativos'])) and ev_loss_trustworthy(
                 r['ev'], r['stack_bb'], r['src'],
                 action=r['action_taken'], equity=r['equity'],
                 pot_bb=r['pot'], facing_bb=r['facing'])
@@ -11156,11 +11198,15 @@ def get_leaderboard_metrics(period_days: int = 90,
             ), (uid, cutoff))
             drows = _fetchall(conn, _adapt(
                 "SELECT d.street AS street, d.gto_label AS gto_label, d.label AS label, "
-                "d.created_at AS created_at, d.id AS id FROM decisions d "
+                "d.created_at AS created_at, d.id AS id, d.n_active_opponents AS n_ativos "
+                "FROM decisions d "
                 "JOIN tournaments t ON t.id = d.tournament_id "
                 "WHERE t.user_id = ? AND COALESCE(t.played_at, t.imported_at) >= ? AND d.gto_label IS NOT NULL "
                 "ORDER BY COALESCE(t.played_at, t.imported_at), d.id"
             ), (uid, cutoff))
+            # Multiway postflop nao entra no ranking: aderencia e ELO saem da MESMA lista, e a
+            # decisao que o solver nao mediu nao pode subir nem descer ninguem (fonte unica).
+            drows = [r for r in drows if not multiway_sem_cobertura(r["street"], r["n_ativos"])]
             labels = [r["gto_label"] for r in drows]
 
             n = len(labels)
@@ -11477,13 +11523,14 @@ def get_decisions_for_elo_by_stake(user_id: int, last_n_tournaments: Optional[in
             rows = _fetchall(conn, _adapt(
                 f"SELECT d.id, d.street, d.gto_label, d.label, d.created_at, t.buy_in "
                 f"FROM decisions d INNER JOIN tournaments t ON t.id = d.tournament_id "
-                f"WHERE d.tournament_id IN ({ph}) ORDER BY d.created_at ASC, d.id ASC"
+                f"WHERE d.tournament_id IN ({ph}) AND {_SQL_MULTIWAY_FORA} "
+                f"ORDER BY d.created_at ASC, d.id ASC"
             ), tuple(tids))
         else:
             rows = _fetchall(conn, _adapt(
-                "SELECT d.id, d.street, d.gto_label, d.label, d.created_at, t.buy_in "
-                "FROM decisions d INNER JOIN tournaments t ON t.id = d.tournament_id "
-                "WHERE t.user_id = ? ORDER BY d.created_at ASC, d.id ASC"
+                f"SELECT d.id, d.street, d.gto_label, d.label, d.created_at, t.buy_in "
+                f"FROM decisions d INNER JOIN tournaments t ON t.id = d.tournament_id "
+                f"WHERE t.user_id = ? AND {_SQL_MULTIWAY_FORA} ORDER BY d.created_at ASC, d.id ASC"
             ), (user_id,))
         return [dict(r) for r in rows]
     finally:
@@ -11497,6 +11544,12 @@ def get_decisions_for_elo(user_id: int, last_n_tournaments: Optional[int] = None
 
     last_n_tournaments: se informado, limita aos últimos N torneios (por
     imported_at) — usado pra ELO de 'forma recente'. None = histórico todo.
+
+    Multiway postflop NAO vem (`_SQL_MULTIWAY_FORA`): o ELO e a nota de decisoes que o solver
+    mediu. Medido em producao em 15/09, com e sem multiway: user 58 1825,6 -> 1859,5 (+33,9),
+    user 40 +22,8, user 3 +12,8, user 65 +12,4, user 62 -0,9; multiway era 6 a 10 por cento das
+    decisoes da janela. O filtro mora nos TRES carregadores (este, por stake e curva) porque o
+    motor do ELO e funcao pura sobre a lista que recebe.
     """
     conn = get_conn()
     try:
@@ -11513,15 +11566,16 @@ def get_decisions_for_elo(user_id: int, last_n_tournaments: Optional[int] = None
             rows = _fetchall(conn, _adapt(
                 f"SELECT d.id, d.street, d.gto_label, d.label, d.created_at "
                 f"FROM decisions d WHERE d.tournament_id IN ({placeholders}) "
+                f"AND {_SQL_MULTIWAY_FORA} "
                 f"ORDER BY d.created_at ASC, d.id ASC"
             ), tuple(tids))
         else:
             rows = _fetchall(conn, _adapt(
-                "SELECT d.id, d.street, d.gto_label, d.label, d.created_at "
-                "FROM decisions d "
-                "INNER JOIN tournaments t ON t.id = d.tournament_id "
-                "WHERE t.user_id = ? "
-                "ORDER BY d.created_at ASC, d.id ASC"
+                f"SELECT d.id, d.street, d.gto_label, d.label, d.created_at "
+                f"FROM decisions d "
+                f"INNER JOIN tournaments t ON t.id = d.tournament_id "
+                f"WHERE t.user_id = ? AND {_SQL_MULTIWAY_FORA} "
+                f"ORDER BY d.created_at ASC, d.id ASC"
             ), (user_id,))
         return [dict(r) for r in rows]
     finally:
@@ -11553,16 +11607,16 @@ def get_decisions_for_elo_curve(user_id: int, last_n_tournaments: Optional[int] 
                 f"SELECT d.id, d.tournament_id, d.street, d.gto_label, d.label "
                 f"FROM decisions d "
                 f"INNER JOIN tournaments t ON t.id = d.tournament_id "
-                f"WHERE d.tournament_id IN ({placeholders}) "
+                f"WHERE d.tournament_id IN ({placeholders}) AND {_SQL_MULTIWAY_FORA} "
                 f"ORDER BY COALESCE(t.played_at, t.imported_at) ASC, t.id ASC, d.id ASC"
             ), tuple(tids))
         else:
             rows = _fetchall(conn, _adapt(
-                "SELECT d.id, d.tournament_id, d.street, d.gto_label, d.label "
-                "FROM decisions d "
-                "INNER JOIN tournaments t ON t.id = d.tournament_id "
-                "WHERE t.user_id = ? "
-                "ORDER BY COALESCE(t.played_at, t.imported_at) ASC, t.id ASC, d.id ASC"
+                f"SELECT d.id, d.tournament_id, d.street, d.gto_label, d.label "
+                f"FROM decisions d "
+                f"INNER JOIN tournaments t ON t.id = d.tournament_id "
+                f"WHERE t.user_id = ? AND {_SQL_MULTIWAY_FORA} "
+                f"ORDER BY COALESCE(t.played_at, t.imported_at) ASC, t.id ASC, d.id ASC"
             ), (user_id,))
         return [dict(r) for r in rows]
     finally:
@@ -11897,7 +11951,7 @@ def get_gto_quality_breakdown(user_id: int, since_days: int = 90, last_n: int | 
             SELECT d.gto_label, COUNT(*) AS n
             FROM decisions d
             JOIN tournaments t ON t.id = d.tournament_id
-            WHERE {tf}
+            WHERE {tf} AND {_SQL_MULTIWAY_FORA}
               AND d.gto_label IS NOT NULL
             GROUP BY d.gto_label
         """), tp)
@@ -11906,7 +11960,7 @@ def get_gto_quality_breakdown(user_id: int, since_days: int = 90, last_n: int | 
             SELECT COUNT(*) AS n
             FROM decisions d
             JOIN tournaments t ON t.id = d.tournament_id
-            WHERE {tf}
+            WHERE {tf} AND {_SQL_MULTIWAY_FORA}
         """), tp)
 
         counts = {r['gto_label']: r['n'] for r in label_rows}
@@ -11942,7 +11996,7 @@ def get_gto_alignment_by_street(user_id: int, since_days: int = 90, last_n: int 
                 COUNT(*) AS n
             FROM decisions d
             JOIN tournaments t ON t.id = d.tournament_id
-            WHERE {tf}
+            WHERE {tf} AND {_SQL_MULTIWAY_FORA}
             GROUP BY d.street, d.gto_label
         """), tp)
 
@@ -11950,7 +12004,7 @@ def get_gto_alignment_by_street(user_id: int, since_days: int = 90, last_n: int 
             SELECT COUNT(*) AS n
             FROM decisions d
             JOIN tournaments t ON t.id = d.tournament_id
-            WHERE {tf}
+            WHERE {tf} AND {_SQL_MULTIWAY_FORA}
         """), tp)
 
         total_dec = total_row['n'] if total_row else 0
@@ -12016,7 +12070,7 @@ def get_gto_alignment_by_position(user_id: int, since_days: int = 90, last_n: in
                 COUNT(*) AS n
             FROM decisions d
             JOIN tournaments t ON t.id = d.tournament_id
-            WHERE {tf}
+            WHERE {tf} AND {_SQL_MULTIWAY_FORA}
               AND d.position IS NOT NULL
             GROUP BY d.position, d.gto_label
         """), tp)
@@ -12025,7 +12079,7 @@ def get_gto_alignment_by_position(user_id: int, since_days: int = 90, last_n: in
             SELECT COUNT(*) AS n
             FROM decisions d
             JOIN tournaments t ON t.id = d.tournament_id
-            WHERE {tf}
+            WHERE {tf} AND {_SQL_MULTIWAY_FORA}
               AND d.position IS NOT NULL
         """), tp)
 
@@ -12098,7 +12152,7 @@ def get_gto_alignment_matrix(user_id: int, since_days: int = 90, last_n: int | N
                 COUNT(*) AS n
             FROM decisions d
             JOIN tournaments t ON t.id = d.tournament_id
-            WHERE {tf}
+            WHERE {tf} AND {_SQL_MULTIWAY_FORA}
               AND d.position IS NOT NULL
               AND d.street IS NOT NULL
             GROUP BY {sql_assento()}, d.street, d.gto_label
@@ -12169,7 +12223,7 @@ def get_results_vs_gto(user_id: int, since_days: int = 90, last_n: int | None = 
             row = _fetchone(conn, _adapt(
                 "SELECT COUNT(*) AS n FROM decisions d "
                 "JOIN tournaments t ON t.id = d.tournament_id "
-                f"WHERE {tf} {extra}"), tp)
+                f"WHERE {tf} AND {_SQL_MULTIWAY_FORA} {extra}"), tp)
             return row['n'] if row else 0
 
         gto   = "AND d.gto_label IS NOT NULL AND d.gto_label != ''"
@@ -12187,7 +12241,7 @@ def get_results_vs_gto(user_id: int, since_days: int = 90, last_n: int | None = 
         rows = _fetchall(conn, _adapt(
             "SELECT d.position, d.street, d.action_taken, COUNT(*) AS n "
             "FROM decisions d JOIN tournaments t ON t.id = d.tournament_id "
-            f"WHERE {tf} {crit} {won} "
+            f"WHERE {tf} AND {_SQL_MULTIWAY_FORA} {crit} {won} "
             "GROUP BY d.position, d.street, d.action_taken "
             "ORDER BY n DESC LIMIT 6"), tp)
         top_spots = [{
@@ -12555,15 +12609,18 @@ def get_ev_summary(user_id: int, last_n: int | None = 50) -> dict:
         # lista — que já passou pela régua. O denominador do EV/100 também: uma linha cujo
         # número não se pode usar não é uma decisão "analisada", e mantê-la embaixo enquanto
         # se tira o de cima produziria uma taxa artificialmente baixa.
+        # Multiway postflop sai da lista na MESMA porta que o EV nao confiavel: o solver julgou
+        # heads-up uma mao que nao era, e o numero dele nao descreve a decisao.
         _ev_rows = [r for r in _fetchall(conn, _adapt(f"""
             SELECT d.tournament_id AS tid, d.street AS street, d.action_taken AS action_taken,
                    d.best_action AS best_action, d.ev_loss_bb AS ev, d.ev_loss_source AS src,
                    d.stack_bb AS stack_bb, d.estimated_equity AS equity,
-                   d.pot_size AS pot, d.facing_bet AS facing
+                   d.pot_size AS pot, d.facing_bet AS facing, d.n_active_opponents AS n_ativos
             FROM decisions d
             WHERE d.tournament_id IN ({ph_all}) AND d.ev_loss_bb IS NOT NULL"""), tuple(tids))
-            if ev_loss_trustworthy(r['ev'], r['stack_bb'], r['src'], action=r['action_taken'],
-                                   equity=r['equity'], pot_bb=r['pot'], facing_bb=r['facing'])]
+            if not multiway_sem_cobertura(r['street'], r['n_ativos'])
+            and ev_loss_trustworthy(r['ev'], r['stack_bb'], r['src'], action=r['action_taken'],
+                                    equity=r['equity'], pot_bb=r['pot'], facing_bb=r['facing'])]
 
         def _ev_per_100(id_list):
             if not id_list:
@@ -12580,8 +12637,8 @@ def get_ev_summary(user_id: int, last_n: int | None = 50) -> dict:
         ev100_prev, _      = _ev_per_100(tids[5:10])
         srow = _fetchone(conn, _adapt(f"""
             SELECT COUNT(*) AS total,
-                   SUM(CASE WHEN label = 'standard' THEN 1 ELSE 0 END) AS std
-            FROM decisions WHERE tournament_id IN ({ph_all})"""), tuple(tids))
+                   SUM(CASE WHEN d.label = 'standard' THEN 1 ELSE 0 END) AS std
+            FROM decisions d WHERE d.tournament_id IN ({ph_all}) AND {_SQL_MULTIWAY_FORA}"""), tuple(tids))
         standard_pct = (round(srow['std'] / srow['total'] * 100.0, 1)
                         if srow and srow['total'] else None)
 
@@ -12636,12 +12693,14 @@ def get_ev_summary(user_id: int, last_n: int | None = 50) -> dict:
         } for st, g in _por_street.items()], key=lambda x: _order.get(x['street'], 9))
 
         # Cobertura GTO por street group (% decisões com gto_label) — anéis do V2
+        # Multiway postflop fora da cobertura: o solver NAO cobre essa decisao por construcao, e
+        # deixa-la no denominador punia o anel com o que nunca teria gabarito.
         cov = _fetchall(conn, _adapt(f"""
-            SELECT CASE WHEN street = 'preflop' THEN 'pre' ELSE 'post' END AS grp,
+            SELECT CASE WHEN d.street = 'preflop' THEN 'pre' ELSE 'post' END AS grp,
                    COUNT(*) AS tot,
-                   SUM(CASE WHEN gto_label IS NOT NULL AND gto_label != '' THEN 1 ELSE 0 END) AS covd
-            FROM decisions WHERE tournament_id IN ({ph_all})
-            GROUP BY CASE WHEN street = 'preflop' THEN 'pre' ELSE 'post' END"""), tuple(tids))
+                   SUM(CASE WHEN d.gto_label IS NOT NULL AND d.gto_label != '' THEN 1 ELSE 0 END) AS covd
+            FROM decisions d WHERE d.tournament_id IN ({ph_all}) AND {_SQL_MULTIWAY_FORA}
+            GROUP BY CASE WHEN d.street = 'preflop' THEN 'pre' ELSE 'post' END"""), tuple(tids))
         coverage = {}
         for r in cov:
             coverage[r['grp']] = round(r['covd'] / r['tot'] * 100.0, 1) if r['tot'] else None
@@ -13244,22 +13303,11 @@ def resync_gto_labels_for_node(spot_hash: str) -> int:
             conn.commit()
             # Recalculate standard_pct for all affected tournaments so dashboard KPIs
             # reflect the updated labels immediately — not just on next upload.
+            # Era uma COPIA da consulta de `recalcula_agregados_do_torneio` (regra 5): quando o
+            # denominador mudou (multiway fora), a copia teria ficado com a regra velha.
             for tid in affected_tournaments:
                 try:
-                    pct_row = _fetchone(conn, _adapt(
-                        "SELECT COUNT(CASE WHEN label='standard' THEN 1 END)*100.0/COUNT(*) AS s, "
-                        "COUNT(CASE WHEN label='marginal' THEN 1 END)*100.0/COUNT(*) AS m, "
-                        "COUNT(CASE WHEN label='small_mistake' THEN 1 END)*100.0/COUNT(*) AS sm, "
-                        "COUNT(CASE WHEN label='clear_mistake' THEN 1 END)*100.0/COUNT(*) AS c, "
-                        "AVG(score) AS a FROM decisions WHERE tournament_id=?"
-                    ), (tid,))
-                    if pct_row:
-                        conn.execute(_adapt(
-                            "UPDATE tournaments SET standard_pct=?, marginal_pct=?, small_pct=?, "
-                            "clear_pct=?, avg_score=? WHERE id=?"
-                        ), (round(pct_row['s'] or 0, 2), round(pct_row['m'] or 0, 2),
-                            round(pct_row['sm'] or 0, 2), round(pct_row['c'] or 0, 2),
-                            round(pct_row['a'] or 0, 4), tid))
+                    recalcula_agregados_do_torneio(conn, tid)
                 except Exception:
                     continue
             conn.commit()
@@ -13333,12 +13381,16 @@ def recalcula_agregados_do_torneio(conn, tournament_id: int) -> None:
     115 vereditos que o jogador ve nao e trabalho de um script que separa registros; se essas
     linhas devem ser reconciliadas, isso e decisao propria, com dry-run propria.
     """
+    # Multiway postflop fora do denominador (`_SQL_MULTIWAY_FORA`): os `*_pct` do torneio
+    # alimentam o historico, o nivel e o feedback pos-torneio, e uma acusacao que o solver nao
+    # podia fazer nao pode entrar neles. O acervo gravado NAO e recomputado por aqui: ver
+    # `scripts/recomputa_standard_pct_sem_multiway.py` (com --dry-run), decisao do dono.
     pct_row = _fetchone(conn, _adapt(
-        "SELECT COUNT(CASE WHEN label='standard' THEN 1 END)*100.0/COUNT(*) AS s, "
-        "COUNT(CASE WHEN label='marginal' THEN 1 END)*100.0/COUNT(*) AS m, "
-        "COUNT(CASE WHEN label='small_mistake' THEN 1 END)*100.0/COUNT(*) AS sm, "
-        "COUNT(CASE WHEN label='clear_mistake' THEN 1 END)*100.0/COUNT(*) AS c, "
-        "AVG(score) AS a FROM decisions WHERE tournament_id=?"
+        "SELECT COUNT(CASE WHEN d.label='standard' THEN 1 END)*100.0/COUNT(*) AS s, "
+        "COUNT(CASE WHEN d.label='marginal' THEN 1 END)*100.0/COUNT(*) AS m, "
+        "COUNT(CASE WHEN d.label='small_mistake' THEN 1 END)*100.0/COUNT(*) AS sm, "
+        "COUNT(CASE WHEN d.label='clear_mistake' THEN 1 END)*100.0/COUNT(*) AS c, "
+        "AVG(d.score) AS a FROM decisions d WHERE d.tournament_id=? AND " + _SQL_MULTIWAY_FORA
     ), (tournament_id,))
     if not pct_row:
         return

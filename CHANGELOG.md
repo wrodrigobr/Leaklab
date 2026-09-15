@@ -4,7 +4,66 @@ Todas as mudanÃ§as notÃ¡veis neste projeto serÃ£o documentadas aqui.
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
-## Receber o arquivo deixou de ser processar o arquivo (14/09)
+## Multiway postflop sai de tudo que soma, ranqueia e pontua, inclusive o ELO (15/09)
+
+O solver e heads-up. Uma decisao postflop com 2+ oponentes ativos era julgada como se os
+outros nao existissem (mao 262009780504: flop de CINCO, modelado "HJ abre, BB paga", QJ com
+75% de equity num mundo que nao aconteceu, acusacao de 37,67bb). O front ja rebaixava essa
+linha a "informativa" e o /replay nao gradava. Mas o backend seguia contando: o auditor de
+vereditos (VER-4) forjou uma acusacao de 3bb em duas decisoes multiway e mediu **23 rotas
+mudando e zero excluindo**: ELO, nivel, ranking, plano de estudos, Leak Finder, os quatro
+cards de GTO, o Strategic Twin, o DNA, a visao do coach, os `*_pct` do torneio.
+
+Medido em producao, ELO com e sem multiway: user 58 1825,6 -> 1859,5 (+33,9); 40 +22,8;
+3 +12,8; 65 +12,4; 62 -0,9. Multiway e 6 a 10 por cento das decisoes da janela; o percentual
+de acerto quase nao mexe, o que mexe e a acusacao que nao podia existir.
+
+### A regra, em dois lugares que provam ser um so
+
+**Semantica decidida pelo dono: sai do DENOMINADOR.** A decisao nao e medida. Nunca vira
+acerto, porque contar como acerto e a mesma mentira na direcao oposta ("celula que nao pode
+ser medida nao existe, em vez de virar 0,0"). `n_active_opponents` NULL e legado e conta como
+NAO multiway, a convencao do drill e do card.
+
+- `card_verdict.multiway_sem_cobertura(street, n_ativos)` e a fonte em Python. Consumida por
+  quem itera linhas: ev-leaks (que ordena o plano de estudos), relatorio de evolucao,
+  ev-summary, DNA (so o que JULGA: disciplina e consciencia de ICM; fold e agressao seguem
+  descrevendo a mao, porque ela aconteceu), leaderboard, e as metricas da sessao na importacao.
+- `repositories._SQL_MULTIWAY_FORA` e o gemeo em SQL, para quem agrega em GROUP BY: breakdown,
+  os tres carregadores do ELO, gto-quality/alignment/position/matrix, results-vs-gto,
+  pressure-profile, strategic-twin, leak-roi (GTO e heuristico), leak-graph, nivel,
+  icm-performance, a lista de torneios (erros e cobertura), piores decisoes do coach, e
+  `recalcula_agregados_do_torneio`. A copia dessa consulta que vivia em
+  `resync_gto_labels_for_node` virou chamada (regra 5).
+- `tests/test_multiway_fora_dos_agregados.py` prova que os dois concordam CASO A CASO sobre
+  uma tabela (street preflop/flop/turn/vazio x n_ativos NULL/0/1/2/5). Sem esse teste seriam
+  duas regras que combinam de ser iguais.
+
+### A varredura e o controle
+
+`data/auditoria/repro/VER_04_multiway_varredura.py` e a varredura dos N+1. Antes: 23 rotas
+mudavam com a forja multiway. Depois: **so as duas listas do torneio** (que mostram a linha e o
+front rebaixa). O controle: a mesma forja numa decisao heads-up segue movendo 20 rotas (era
+19; a 20a e o leak-graph, que a varredura so pegou depois, porque o `HAVING` dele exige duas
+linhas e a forja de controle tinha uma). O teste novo repete isso pela porta, rota a rota, com
+o test_client, e exige o controle: um filtro que excluisse tudo passaria no lado multiway e
+mataria o produto.
+
+Quebrado de proposito, os dois lados: `_SQL_MULTIWAY_FORA = "1=1"` faz 2 casos acusarem (17
+portas de SQL listadas); a funcao Python devolvendo sempre False faz 4 acusarem (as 6 portas de
+Python listadas). Restaurados por checksum.
+
+### O que NAO foi feito, de proposito
+
+- O julgamento do COACH numa mao multiway (override) continua na lista dele: o veredito do
+  solver ali nao vale, o humano vale (regra 7). Testado.
+- `tournaments.standard_pct` e colunas irmas sao GRAVADAS. O acervo antigo NAO foi
+  recomputado: `scripts/recomputa_standard_pct_sem_multiway.py --dry-run` mostra o antes e o
+  depois torneio a torneio (na copia local: 150 decisoes, 8 multiway, 84,67 -> 83,80) e
+  `--aplicar` grava pela mesma funcao do resync. Rodar em producao e decisao do dono.
+- O front nao mudou: ja rebaixava multiway para exibicao.
+
+
 
 Um fundador tentou subir tres arquivos. Dois mostraram `NetworkError` e um passou. Nos logs de
 producao:

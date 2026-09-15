@@ -140,7 +140,11 @@ def test_selecao_pede_folga_para_poder_descartar():
 def test_sql_exclui_multiway_postflop():
     """O multiway sai no SQL, e nao so no Python: sem isso ele consumiria a folga da selecao."""
     trecho = _corpo_da_funcao(('database', 'repositories.py'), 'get_drill_spots')
-    assert "n_active_opponents, 0) >= 2" in trecho, 'filtro multiway ausente no SQL da selecao'
+    # 15/09: a expressao escrita a mao virou a fonte unica `_SQL_MULTIWAY_FORA` (a mesma dos
+    # agregados). O guarda confere que a selecao USA a constante e que a constante e o filtro.
+    from database.repositories import _SQL_MULTIWAY_FORA
+    assert '{_SQL_MULTIWAY_FORA}' in trecho, 'filtro multiway ausente no SQL da selecao'
+    assert "n_active_opponents, 0) >= 2" in _SQL_MULTIWAY_FORA, 'a constante deixou de filtrar multiway'
     assert 'd.n_active_opponents,' in trecho, \
         'a coluna nao vem no SELECT — o filtro em Python nao teria como conferir'
     print('OK  test_sql_exclui_multiway_postflop')
