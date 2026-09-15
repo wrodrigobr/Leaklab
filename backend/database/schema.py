@@ -1849,7 +1849,10 @@ def _run_migrations(conn):
                 motivo     TEXT    NOT NULL,
                 snapshot   TEXT    NOT NULL,
                 n_decisoes INTEGER NOT NULL DEFAULT 0,
-                created_at TEXT    NOT NULL DEFAULT (datetime('now'))
+                created_at TEXT    NOT NULL DEFAULT (datetime('now')),
+                -- A FK existia so no Postgres (DIA-8, 15/09): o mesmo `init_db()` produzia dois
+                -- schemas, e cascata ao apagar usuario era comportamento que a suite nunca via.
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
             )
         """)
         conn.execute("CREATE INDEX IF NOT EXISTS idx_evolution_reports_user "
@@ -1887,7 +1890,8 @@ def _run_migrations(conn):
                 seen           INTEGER NOT NULL DEFAULT 0,
                 last_ok        INTEGER,
                 updated_at     TEXT    NOT NULL DEFAULT (datetime('now')),
-                UNIQUE (user_id, card_key)
+                UNIQUE (user_id, card_key),
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE   -- DIA-8
             )
         """)
         conn.execute("CREATE INDEX IF NOT EXISTS idx_range_card_due "
@@ -1946,7 +1950,10 @@ def _run_migrations(conn):
                 player        TEXT    NOT NULL,
                 place         INTEGER,
                 prize         REAL,
-                UNIQUE (tournament_id, player)
+                UNIQUE (tournament_id, player),
+                -- Sem esta FK o SQLite aceitava colocacao de torneio inexistente e o Postgres
+                -- nao: `test_mesa_final` era verde num dialeto so. DIA-8.
+                FOREIGN KEY (tournament_id) REFERENCES tournaments(id) ON DELETE CASCADE
             )
         """)
         conn.execute("CREATE INDEX IF NOT EXISTS idx_tfinish_tour ON tournament_finishes(tournament_id)")
@@ -1961,7 +1968,8 @@ def _run_migrations(conn):
                 id         INTEGER PRIMARY KEY AUTOINCREMENT,
                 user_id    INTEGER NOT NULL,
                 tipo       TEXT    NOT NULL,
-                enviado_em TEXT    NOT NULL DEFAULT (datetime('now'))
+                enviado_em TEXT    NOT NULL DEFAULT (datetime('now')),
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE   -- DIA-8
             )
         """)
         conn.execute("CREATE INDEX IF NOT EXISTS idx_engagement_email_user "
@@ -2037,6 +2045,15 @@ def _run_migrations(conn):
             conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_users_lb_handle "
                          "ON users(leaderboard_handle COLLATE NOCASE) "
                          "WHERE leaderboard_handle IS NOT NULL")
+        except Exception: pass
+        # `whatsapp_phone` é UNIQUE no Postgres e não era no SQLite (DIA-8, 15/09): o `ALTER
+        # TABLE ... ADD COLUMN ... UNIQUE` que o bloco de colunas tentava é recusado pelo SQLite,
+        # e o `except` engolia. Índice único PARCIAL faz o mesmo trabalho e o SQLite aceita: a
+        # unicidade deixa de depender só da checagem no endpoint, que é onde a corrida entre
+        # duas requisições passaria.
+        try:
+            conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_users_whatsapp "
+                         "ON users(whatsapp_phone) WHERE whatsapp_phone IS NOT NULL")
         except Exception: pass
         # achievements table (SQLite) — FEAT-03
         conn.execute("""

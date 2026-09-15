@@ -4,6 +4,45 @@ Todas as mudanÃ§as notÃ¡veis neste projeto serÃ£o documentadas aqui.
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
+## O mesmo init_db() para de produzir dois schemas diferentes (15/09)
+
+Auditoria DIA-8. Medido pelo `repro/DIA_8.py`, que sobe um SQLite novo num subprocesso e compara
+com o `information_schema` do Postgres: `colunas divergentes=0; FK divergente=4; UNIQUE
+divergente=1`. Quatro tabelas tinham `REFERENCES ... ON DELETE CASCADE` so no Postgres
+(`evolution_reports`, `range_card_srs`, `tournament_finishes`, `engagement_emails`) e
+`users.whatsapp_phone` era UNIQUE so la.
+
+O efeito ja tinha aparecido: `test_mesa_final` gravava colocacao para torneio inexistente,
+passava em SQLite e caia no Postgres com `ForeignKeyViolation` (o conserto daquele teste saiu no
+commit anterior). O resto e o risco de sempre desta classe: cascata ao apagar usuario e colisao
+de telefone eram comportamentos que a suite nunca exercitava, porque no dialeto dela nao
+existiam. Depois: `FK divergente=0`.
+
+O telefone tinha uma cicatriz propria no fonte: `ALTER TABLE ... ADD COLUMN ... UNIQUE` e
+recusado pelo SQLite, o `except` engolia, e a coluna nem era criada; a solucao de entao foi tirar
+o UNIQUE e garantir no endpoint. Um indice unico PARCIAL faz o mesmo trabalho e o SQLite aceita,
+entao a unicidade volta ao banco, que e onde a corrida entre duas requisicoes seria decidida.
+
+`leaderboard_handle` fica como EQUIVALENCIA declarada, e nao como igualdade: a regra e a mesma
+(unico, sem olhar maiuscula, so para quem definiu) e cada dialeto a escreve do seu jeito
+(`COLLATE NOCASE` no SQLite, `LOWER(...)` parcial no Postgres). Quem prova que sao a mesma coisa
+e um teste de comportamento, nao a comparacao de string.
+
+Guarda: `tests/test_schema_nao_deriva_entre_dialetos.py`, 8 casos, o `DIA_8.py` virado teste. Os
+dois primeiros leem a DDL do SQLite num subprocesso e valem nas duas gramaticas; quatro medem o
+COMPORTAMENTO no dialeto da vez (a FK recusa orfao, a cascata apaga junto, o handle colide sem
+olhar maiuscula, o telefone repetido e recusado); dois rodam a comparacao estrutural inteira e,
+sob SQLite, DIZEM que nao mediram em vez de passar calados.
+
+Regra 7: so muda banco NOVO de dev. SQLite nao aplica DDL nova a tabela existente, e em producao
+as FKs ja existiam, entao nao ha ALTER nenhum a rodar. Quebrado de proposito duas vezes (FK do
+`tournament_finishes` fora: acusam a DDL e o comportamento; indice do telefone fora: acusam a DDL
+e o comportamento) e restaurado. Suites: novo 8/8 em SQLite e Postgres (duas rodadas),
+`test_database` 26/26, `test_mesa_final` 18/18, `test_profile_save` 4/4, `test_leaderboard`
+13/13, `test_evolution_report` 19/19, `test_evolution_cadence` 13/13, `test_cobranca_email`
+19/19, `test_memorizacao_range` 23/23, `test_pg_migration_isolation` 4/4.
+
+---
 ## Quatro suites param de ser verdes so em SQLite (15/09)
 
 Auditoria DIA-10. Nenhuma delas acusava defeito do produto: eram premissas do proprio teste que
