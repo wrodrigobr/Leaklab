@@ -4,6 +4,57 @@ Todas as mudanÃ§as notÃ¡veis neste projeto serÃ£o documentadas aqui.
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
+## Cor de acao segue a convencao dos solvers, e passa a ter UM lugar (15/09)
+
+Pedido do Rullian, com a captura do GTO Wizard como referencia: "como muitos jogadores ja
+utilizam outras plataformas de estudo, o ideal e que a gente siga o mesmo padrao de cores pra
+evitar confusoes". Azul folda, verde paga, vermelho agride, vinho vai com tudo.
+
+**A nossa paleta estava invertida nas duas cores que mais aparecem:** call em AZUL e raise em
+VERDE, exatamente o oposto do que o jogador aprendeu em qualquer solver. Mas a varredura do front
+achou coisa pior que a divergencia com o mercado: **CINCO mapas de acao vivos e conflitantes**.
+All-in saia em vermelho, vermelho escuro, vermelho vivo, rosa e violeta, dependendo da tela;
+raise saia em verde, vermelho e amarelo. O `SidePanels` do replayer ja pintava fold azul, call
+verde e raise vermelho, ou seja UMA tela nossa ja seguia o padrao do Rullian e contradizia a
+fonte que se diz canonica.
+
+O caso mais claro estava dentro de um arquivo so: o `SidePanels` tinha o mapa proprio em classes
+Tailwind E `ACTION_COLORS` em hex trinta linhas abaixo. Como as duas paletas discordavam, call
+saia VERDE numa barra e AZUL na outra, no mesmo painel. E a repeticao exata do defeito de 27/08,
+que era barra amarela ao lado de grade cinza.
+
+Agora `actionColors.ts` manda, e os cinco mapas foram puxados para ela: `SidePanels`,
+`PokerTableV3` (a mesa), `RangeClassesCard`, `LeakTrainer` e `AcademyGtoPreflop`. Sobra um
+declarado: o `GtoPanel`, porque ali as barras codificam VEREDITO (jogou o topo, jogou outra
+coisa) e nao acao; a cor de acao entra la junto com o destaque da jogada do jogador, em mudanca
+propria.
+
+**Fold deixou de ser neutro, e isso tem um custo que foi pago.** O motivo antigo era legitimo:
+fold ocupa 60% ou mais das celulas num spot de abertura, e cor forte compete com quem poe fichas.
+Por isso o azul e medio e nao vibrante. Mas o rank das celulas era escrito em cinza 50% para nao
+brigar com o cinza translucido, e esse cinza sobre azul solido fica ilegivel na maior parte da
+grade: o texto virou branco em toda celula. Efeito colateral do conserto, nao do bug, e a regra 7
+manda perguntar isso ANTES de trocar a cor.
+
+**O guarda que existia nao teria pegado nada disso**, porque olhava UMA cor (o rgba do fold) e a
+divergencia estava nas outras cinco. Agora sao dois: um varre o literal de qualquer cor da paleta
+fora do arquivo dela, outro varre o ARQUIVO que monta mapa de acao proprio sem ler a fonte, com
+allowlist declarada e motivo escrito. O segundo nasceu furado: usava `match` sem flag global, que
+devolve um casamento por linha, e `LeakTrainer` e `AcademyGtoPreflop` declaram o mapa inteiro
+numa linha so. Dois arquivos com mapa proprio passavam VERDES pelo guarda escrito para acha-los.
+Com `matchAll` ele acusou os cinco, que e o numero da varredura feita a mao.
+
+Os tons foram calibrados pela captura do tema escuro do GTO Wizard: fold `#3E7DC8`, check
+`#5FBA68`, call `#4CA455`, bet `#E5434A`, raise `#D2333A`, all-in `#8C2028`. Dentro da familia
+agressiva o tom FECHA conforme a agressao sobe, que e como o GW separa sizings. Check acompanha o
+call e bet acompanha o raise porque as acoes de uma familia nunca coexistem com as da outra no
+mesmo menu: com aposta na mesa ha fold, call e raise; sem aposta ha check e bet.
+
+Ressalva registrada: verde contra vermelho e o pior par para daltonismo vermelho-verde (cerca de
+8% dos homens). A convencao do mercado tem esse defeito e os solvers o compensam com rotulo de
+texto na celula e na barra, que nos temos nos dois lugares.
+
+---
 ## Os guardas da auditoria passam a ser CHAMADOS, e o golden aceita o rebaixamento (15/09)
 
 Fechamento dos tres vermelhos que a revalidacao da auditoria deixou no main. Nenhum deles e

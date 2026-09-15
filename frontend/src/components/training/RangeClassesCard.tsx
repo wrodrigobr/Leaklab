@@ -4,6 +4,7 @@ import { Loader2 } from "lucide-react";
 import { leaktrainer } from "@/lib/api";
 import type { LeakTrainerSpot, RangeClassesPanel, RangeClassRow } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { twFor } from "@/lib/actionColors";
 
 /** Painel "range por classe de mão" (17/08): o que a RANGE INTEIRA faz neste board, agrupada
  *  por classe (trinca+, top pair, draw...) com barras empilhadas por ação. Complementa a mão
@@ -13,12 +14,11 @@ import { cn } from "@/lib/utils";
  *  Sem dado o card SOME (return null), nunca renderiza vazio fingindo informação — a mesma
  *  régua do HUD de oponente ("nenhum read sem amostra"). */
 
-// Cores por família de ação. check e fold nunca coexistem num menu (com aposta não há check;
-// sem aposta não há fold), então os dois podem dividir o mesmo papel visual de "passivo".
-const FAM_COLOR: Record<string, string> = {
-  bet: "bg-emerald-500", raise: "bg-emerald-500", allin: "bg-violet-500",
-  call: "bg-sky-500", check: "bg-slate-500/70", fold: "bg-slate-700/80",
-};
+// A cor vem da paleta canônica (`actionColors`), nunca de um mapa local: até 15/09 este arquivo
+// tinha o seu, com all-in em violeta, enquanto a grade pintava vermelho e o replayer pintava
+// vermelho escuro. O raciocínio que morava aqui (check e fold nunca coexistem num menu, logo
+// podem dividir papel visual) continua valendo e agora mora na paleta, aplicado às duas
+// famílias.
 const FAM_ORDER = ["bet", "raise", "allin", "call", "check", "fold"];
 
 function Barra({ row, familias }: { row: RangeClassRow; familias: string[] }) {
@@ -26,7 +26,7 @@ function Barra({ row, familias }: { row: RangeClassRow; familias: string[] }) {
   return (
     <div className="flex h-2.5 w-full overflow-hidden rounded-full bg-background/60 ring-1 ring-border/60">
       {ordenadas.map((f) => (
-        <div key={f} className={cn("h-full", FAM_COLOR[f] ?? "bg-muted-foreground/40")}
+        <div key={f} className={cn("h-full", twFor(f).bg)}
           style={{ width: `${row.freqs[f]}%` }} title={`${f} ${row.freqs[f].toFixed(0)}%`} />
       ))}
     </div>
@@ -95,7 +95,7 @@ export function RangeClassesCard({ spot }: { spot: LeakTrainerSpot }) {
       <div className="mt-3 flex flex-wrap gap-x-3 gap-y-1">
         {FAM_ORDER.filter((f) => familias.includes(f)).map((f) => (
           <span key={f} className="flex items-center gap-1.5 font-mono text-[9px] uppercase tracking-wider text-muted-foreground">
-            <span className={cn("size-2 rounded-full", FAM_COLOR[f])} aria-hidden />
+            <span className={cn("size-2 rounded-full", twFor(f).bg)} aria-hidden />
             {famLabel(f)}
           </span>
         ))}

@@ -19,6 +19,7 @@ import {
 import { gtoPreflop } from "@/lib/api";
 import type { GtoPreflopQuestion, GtoPreflopVerdict, ReplayStep } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { twFor } from "@/lib/actionColors";
 
 type Phase = "loading" | "question" | "feedback" | "error";
 type Scenario = "mixed" | "rfi" | "vs_rfi" | "vs_3bet";
@@ -29,9 +30,7 @@ const ORDER = ["UTG", "UTG+1", "UTG+2", "LJ", "HJ", "CO", "BTN", "SB", "BB"];
 const FREQ_LABEL: Record<string, string> = {
   raise: "raise", call: "call", allin: "all-in", fold: "fold",
 };
-const FREQ_COLOR: Record<string, string> = {
-  raise: "bg-emerald-500", call: "bg-sky-500", allin: "bg-violet-500", fold: "bg-muted-foreground/40",
-};
+
 
 /** Monta um ReplayStep 9-max sintético a partir do spot da questão. */
 function buildPreflopStep(q: GtoPreflopQuestion) {
@@ -381,7 +380,7 @@ export default function AcademyGtoPreflop() {
                           <div key={act} className="flex items-center gap-2">
                             <span className="font-mono text-[10px] text-muted-foreground w-10 shrink-0">{FREQ_LABEL[act] ?? act}</span>
                             <div className="relative flex-1 h-1.5 rounded-full bg-border overflow-hidden">
-                              <div className={cn("h-full rounded-full", FREQ_COLOR[act] ?? "bg-primary")} style={{ width: `${Math.min(100, freq * 100)}%` }} />
+                              <div className={cn("h-full rounded-full", twFor(act).bg)} style={{ width: `${Math.min(100, freq * 100)}%` }} />
                             </div>
                             <span className="font-mono text-[10px] font-bold tabular-nums w-8 text-right text-foreground">{Math.round(freq * 100)}%</span>
                           </div>

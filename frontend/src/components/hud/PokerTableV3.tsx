@@ -7,6 +7,7 @@
  */
 import { useEffect, useRef } from "react";
 import type { ReplayStep } from "@/lib/api";
+import { colorFor } from "@/lib/actionColors";
 import logoWordmark from "@/assets/brand/grindlab_final_horizontal.svg";
 import logoIcon from "@/assets/brand/grindlab_icon_traced.svg";
 
@@ -66,16 +67,19 @@ if (typeof window !== "undefined") {
   }
 }
 
-const AC_COLORS: Record<string, string> = {
-  fold: "#9aa0a8", folds: "#9aa0a8",  // cinza neutro, fold é passivo, não erro
-  call: "#3aaa52", calls: "#3aaa52",
-  raise: "#c9a840", raises: "#c9a840",
-  bet: "#c9a840", bets: "#c9a840",
-  check: "#5580aa", checks: "#5580aa",
-  "all-in": "#ff4040", jam: "#ff4040",
-  muck: "#888888", mucks: "#888888",
-  show: "#3aaa52", shows: "#3aaa52",
-};
+/** Cor do balão de ação na mesa.
+ *
+ *  Vem da paleta canônica, e não de um mapa local. O mapa que morava aqui era a TERCEIRA
+ *  convenção do produto (raise amarelo, all-in vermelho vivo, check azul aço), enquanto a grade
+ *  pintava raise verde e o replayer pintava raise vermelho. A mesma mesa e o painel ao lado dela
+ *  discordavam.
+ *
+ *  `show` é o único caso que sai da paleta: revelar carta não é pôr fichas, e antes era pintado
+ *  com a cor do call. `muck` cai em fold pela normalização, que é o que ele é. */
+const COR_DE_REVELACAO = "#9b958f";
+function corDaAcaoNaMesa(raw: string): string {
+  return raw.toLowerCase().startsWith("show") ? COR_DE_REVELACAO : colorFor(raw);
+}
 // Display label — normalizes plural parser forms to singular
 const ACTION_LABEL: Record<string, string> = {
   folds: "fold", checks: "check", calls: "call",
@@ -449,7 +453,7 @@ function renderSeatsAndChips(
           ? `${actLabel.toUpperCase()} ${fmtAmt(ev.amount!, bb, unit)}`
           : actLabel.toUpperCase())
       : null;
-    const ac = rawAction ? (AC_COLORS[rawAction] ?? "#888") : null;
+    const ac = rawAction ? (corDaAcaoNaMesa(rawAction)) : null;
     const nameFill = isHero ? "#ffffff" : "#ddd8d0";
     // Stack zerado em jogador VIVO = all-in: mostrar "ALL-IN" no lugar de "0 BB". No showdown
     // volta a ser número (ali 0 significa "perdeu tudo", que é informação certa).

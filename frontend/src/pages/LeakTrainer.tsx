@@ -23,6 +23,7 @@ import type { LeakTrainerSpot, LeakTrainerGrade, LeakTrainerState, ReplayStep,
   ProgressionPlan, SessionSize, FullHand, LeakTrainerFocus } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { BoletimDaSessao } from "@/components/training/BoletimDaSessao";
+import { twFor } from "@/lib/actionColors";
 
 // `probe` = sondagem de range: a tela pergunta a fatia de mãos do VILÃO antes de revelar as
 // cartas do herói. A ordem da informação é o conteúdo aqui — quem vê a própria mão primeiro
@@ -38,9 +39,7 @@ const ORDER = ["UTG", "UTG+1", "UTG+2", "LJ", "HJ", "CO", "BTN", "SB", "BB"];
 const STATE_KEY = "leaklab_leaktrainer_state";
 
 const FREQ_LABEL: Record<string, string> = { raise: "raise", call: "call", allin: "all-in", fold: "fold" };
-const FREQ_COLOR: Record<string, string> = {
-  raise: "bg-emerald-500", call: "bg-sky-500", allin: "bg-violet-500", fold: "bg-muted-foreground/40",
-};
+
 
 /** Profundidade para LEITURA. O acervo de nós solvados guarda o stack efetivo cru
  *  (`38.2975`), e ele chegava assim na tela. Uma casa basta: ninguém decide diferente
@@ -981,7 +980,7 @@ export default function LeakTrainer() {
                 <div key={act} className="flex items-center gap-2">
                   <span className="font-mono text-[10px] text-muted-foreground w-10 shrink-0">{FREQ_LABEL[act] ?? act}</span>
                   <div className="relative flex-1 h-1.5 rounded-full bg-border overflow-hidden">
-                    <div className={cn("h-full rounded-full", FREQ_COLOR[act] ?? "bg-primary")} style={{ width: `${Math.min(100, freq * 100)}%` }} />
+                    <div className={cn("h-full rounded-full", twFor(act).bg)} style={{ width: `${Math.min(100, freq * 100)}%` }} />
                   </div>
                   <span className="font-mono text-[10px] font-bold tabular-nums w-8 text-right text-foreground">{Math.round(freq * 100)}%</span>
                 </div>

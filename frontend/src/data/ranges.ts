@@ -55,9 +55,9 @@ export type CellAction = 'r' | 'c' | 'rc' | '';
 
 // Frequency por ação (estilo solver — soma 1.0 entre raise+call+allin; resto é fold)
 export interface HandFreq {
-  raise?: number;   // 3-bet sized (verde escuro)
-  call?:  number;   // call (azul)
-  allin?: number;   // jam (vermelho/laranja)
+  raise?: number;   // 3-bet sized (vermelho fechado)
+  call?:  number;   // call (verde)
+  allin?: number;   // jam (vinho)
   fold?:  number;   // implicito = 1 - sum(outros)
 }
 
@@ -157,8 +157,8 @@ export function combosDeMaos(hands: string[]): { combos: number; pct: string } {
  *
  * Medido sobre a carta: **9 de 112 spots de RFI divergiam, todos no SB** — é a range de LIMP.
  * `buildRangeFromApi` monta `raise: new Set(resp.rfi.hands)` e o endpoint nunca lê `call_hands`
- * do registro de RFI, então as mãos de limp existem em `frequencies` (e são pintadas de azul) e
- * não existem em Set nenhum (e sumiam da conta).
+ * do registro de RFI, então as mãos de limp existem em `frequencies` (e são pintadas de VERDE,
+ * porque limp normaliza para call) e não existem em Set nenhum (e sumiam da conta).
  *
  * É o mesmo conserto que `rangeActionPresence` recebeu para a LEGENDA, com o comentário
  * explicando por quê — o contador ao lado ficou lendo os Sets.

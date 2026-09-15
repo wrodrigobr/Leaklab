@@ -12,7 +12,7 @@ import { cn } from "@/lib/utils";
 import { computeEffectiveGtoLabel } from "@/lib/gtoUtils";
 import { livePlayers as computeLivePlayers, isMultiwayPot, isPpMuted, idealActionSource, verdictStrategy, verdictLevel, clampVerdict, equityLowConfidence, EQUITY_GAP_P90, qualificadorDeCusto, mostraQualidadeEstatica } from "@/lib/cardLogic";
 import { leituraDaIniciativa, selectWhy } from "@/lib/replayWhy";
-import { ACTION_COLORS } from "@/lib/actionColors";
+import { ACTION_COLORS, twFor } from "@/lib/actionColors";
 import { coachDashboard, ReplayData, ReplayStep, CoachAnnotation, CoachOverrideLabel } from "@/lib/api";
 
 /**
@@ -288,24 +288,13 @@ export function SidePanels({
     const d = top - playerEv;
     return Math.abs(d) >= 0.05 ? d : null;
   })();
-  const actionBarColor = (action: string) => {
-    const a = action.toLowerCase();
-    if (a === "fold")                                  return "bg-blue-500";
-    if (a === "check")                                 return "bg-sky-400";
-    if (a === "call")                                  return "bg-emerald-500";
-    if (a.startsWith("bet") || a.startsWith("raise")) return "bg-red-500";
-    if (a === "allin" || a.startsWith("allin") || a === "shove") return "bg-red-600";
-    return "bg-purple-500";
-  };
-  const actionTextColor = (action: string) => {
-    const a = action.toLowerCase();
-    if (a === "fold")                                  return "text-blue-400";
-    if (a === "check")                                 return "text-sky-400";
-    if (a === "call")                                  return "text-emerald-400";
-    if (a.startsWith("bet") || a.startsWith("raise")) return "text-red-400";
-    if (a === "allin" || a.startsWith("allin") || a === "shove") return "text-red-400";
-    return "text-purple-400";
-  };
+  // Cor de ação vem da paleta canônica. Este arquivo tinha as duas coisas ao mesmo tempo até
+  // 15/09: um mapa PRÓPRIO em classes aqui, e `ACTION_COLORS` em hex nas linhas de frequência
+  // logo abaixo. Como as duas paletas discordavam, call saía verde numa barra e azul na outra,
+  // no MESMO painel. É a repetição exata do defeito de 27/08, que era barra amarela ao lado de
+  // grade cinza.
+  const actionBarColor = (action: string) => twFor(action).bg;
+  const actionTextColor = (action: string) => twFor(action).text;
   // Nome HUMANO do cenário. O que chega do motor é identificador interno (`hu_rfi`), e o card
   // imprimia isso na cara do jogador: "33 está no range hu_rfi". Os seis cenários de heads-up
   // criados em 07/08 nem tinham entrada aqui — e o fallback era `?? scenKey`, que GARANTE o

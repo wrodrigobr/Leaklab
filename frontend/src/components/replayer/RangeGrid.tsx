@@ -7,8 +7,10 @@ import { ACTION_COLORS } from "@/lib/actionColors";
  * RangeGrid estilo solver — cada célula pode ter múltiplas cores
  * proporcionais à frequência de cada ação (raise / call / allin / fold).
  *
- * Layout: stripes verticais. Ex: 88 com 70% call + 30% raise → 70% da largura
- * azul + 30% verde. Folds = zinc-500 (distintivo do fundo).
+ * Layout: stripes verticais. Ex: 88 com 70% call + 30% raise → 70% da largura VERDE (call) +
+ * 30% VERMELHA (raise), na convenção dos solvers. Fold é AZUL, e antes de 15/09 era um cinza
+ * translúcido: o comentário que estava aqui descrevia a paleta invertida (call azul, raise
+ * verde) e sobreviveria à mudança como explicação plausível para a tela errada.
  */
 
 const COLORS = {
@@ -57,11 +59,15 @@ function buildGradient(hand: string, range: RangeSet): string {
   return `linear-gradient(to right, ${parts.join(', ')})`;
 }
 
-function textColor(hand: string, range: RangeSet): string {
-  const f = getHandFreq(hand, range);
-  const active = (f.raise ?? 0) + (f.call ?? 0) + (f.allin ?? 0);
-  // Cells coloridas (>30% ativa): texto branco. Cells brancas: cinza claro.
-  return active > 0.3 ? 'rgba(255,255,255,0.95)' : 'rgba(120,120,120,0.5)';
+function textColor(_hand: string, _range: RangeSet): string {
+  // Branco em TODA célula, porque toda célula agora tem cor sólida atrás.
+  //
+  // Até 15/09 a célula sem ação era um cinza translúcido, quase o fundo, e o rank era escrito
+  // em cinza 50% para não brigar com ela. Com fold em AZUL (convenção dos solvers) esse mesmo
+  // cinza cai sobre azul sólido e o rank fica ilegível: 60% ou mais das células de um spot de
+  // abertura são fold, ou seja a maior parte da grade. Efeito colateral do conserto, não do
+  // bug; a regra 7 da casa manda perguntar isso antes de trocar a cor.
+  return 'rgba(255,255,255,0.95)';
 }
 
 export function RangeGrid({ range, heroHand, compacta = false, semDado, rotuloSemDado }: Props) {
@@ -138,7 +144,7 @@ export function RangeGrid({ range, heroHand, compacta = false, semDado, rotuloSe
           )}
           {present.fold && (
             <span className="flex items-center gap-1">
-              <span className="inline-block size-2 rounded-[1px]" style={{ background: COLORS.fold, border: '1px solid #71717a' }} />Fold
+              <span className="inline-block size-2 rounded-[1px]" style={{ background: COLORS.fold }} />Fold
             </span>
           )}
         </div>
