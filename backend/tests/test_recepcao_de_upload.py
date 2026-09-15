@@ -550,6 +550,67 @@ def test_o_teto_de_bytes_segura_a_RAJADA():
         assert bytes_em_aberto(UID) <= BYTES_EM_ABERTO_MAX_POR_USUARIO
 
 
+def _como_admin():
+    """O usuario de teste vira admin (as duas rotas de apagar sao so-admin desde 09/09)."""
+    from database.schema import get_conn
+    from database.repositories import _adapt
+    from database.auth import generate_token
+    c = get_conn()
+    c.execute(_adapt("UPDATE users SET role='admin' WHERE id=?"), (UID,))
+    c.commit(); c.close()
+    return {'Authorization': 'Bearer ' + generate_token(UID, 'admin')}
+
+
+def _status_dos_recibos():
+    from database.schema import get_conn
+    from database.repositories import _adapt
+    c = get_conn()
+    try:
+        return sorted(dict(r)['status'] for r in c.execute(_adapt(
+            "SELECT status FROM uploads_recebidos WHERE user_id=?"), (UID,)).fetchall())
+    finally:
+        c.close()
+
+
+def test_apagar_o_torneio_deixa_o_mesmo_arquivo_entrar_de_novo():
+    """Auditoria FLU-5 (15/09): a idempotencia por sha256 devolvia o recibo `concluido` de antes
+    (202 repetido=True), o worker nao o pegava, e a fila da tela dizia "Torneio enviado" para
+    um torneio que nao existia mais."""
+    with banco_de_teste() as (cliente, headers):
+        import api.app as A
+        rid = cliente.post('/uploads', json={'content': _um_torneio(), 'filename': 'a.txt'},
+                           headers=headers).get_json()['recibo']
+        assert A._processar_uploads_recebidos().get('recibo') == rid
+        adm = _como_admin()
+        r = cliente.delete('/history/tournament/999900001', headers=adm)
+        assert r.status_code == 200, (r.status_code, r.get_json())
+        assert _status_dos_recibos() == [], _status_dos_recibos()
+
+        r = cliente.post('/uploads', json={'content': _um_torneio(), 'filename': 'a.txt'},
+                         headers=headers)
+        j = r.get_json() or {}
+        assert r.status_code == 202 and j.get('repetido') is False and j.get('recibo') != rid, j
+        res = A._processar_uploads_recebidos()
+        assert res.get('recibo') == j['recibo'] and res.get('gravados') == 1, res
+        lista = (cliente.get('/history/tournaments', headers=headers).get_json() or {}).get('tournaments') or []
+        assert len(lista) == 1, 'o torneio nao voltou depois de apagar e reenviar'
+
+
+def test_reset_my_data_esquece_SO_os_recibos_terminais():
+    """`concluido` e `erro` ja tem os bytes zerados: apagar nao perde nada. `aguardando_cota`,
+    `recebido` e `processando` ainda guardam arquivo e tem de sobreviver ao reset (regra 7)."""
+    with banco_de_teste() as (cliente, headers):
+        from leaklab.recepcao_de_upload import AGUARDANDO_COTA, CONCLUIDO, ERRO, PROCESSANDO, RECEBIDO
+        from database.schema import get_conn
+        c = get_conn()
+        for k, st in enumerate((CONCLUIDO, ERRO, AGUARDANDO_COTA, RECEBIDO, PROCESSANDO)):
+            _recibo_falso(c, k, st, 10)
+        c.commit(); c.close()
+        r = cliente.post('/admin/reset-my-data', headers=_como_admin())
+        assert r.status_code == 200, (r.status_code, r.get_json())
+        assert _status_dos_recibos() == sorted([AGUARDANDO_COTA, RECEBIDO, PROCESSANDO]), _status_dos_recibos()
+
+
 if __name__ == '__main__':
     falhas = 0
     testes = [v for k, v in sorted(globals().items()) if k.startswith('test_')]

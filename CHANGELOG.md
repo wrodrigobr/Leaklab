@@ -4,6 +4,30 @@ Todas as mudanÃ§as notÃ¡veis neste projeto serÃ£o documentadas aqui.
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
+## Apagar o torneio (ou resetar os dados) deixa o mesmo arquivo entrar de novo (15/09)
+
+A recepcao de upload e idempotente por `(user_id, sha256)` e devolve o recibo que ja existe em
+QUALQUER status; o worker so pega `recebido`. Medido pela rota real
+(`data/auditoria/repro/FLU_5.py`): admin apaga um torneio (`DELETE /history/tournament`, so
+admin desde 09/09) e re-arrasta o arquivo: `202 repetido=True status=concluido`, worker `None`,
+zero torneios, e a fila da tela diz "Torneio enviado". `/admin/reset-my-data` deixava os
+recibos, entao todo arquivo ja enviado seguia "repetido" depois do reset. E o caminho que o
+dono percorre para testar. Auditoria FLU-5 (fatia segura do FLU-2, que fica para decisao).
+
+`recepcao_de_upload.esquecer_recibos_terminais(user_id)` apaga SO `concluido` e `erro` (os
+dois ja tem `conteudo` zerado por `concluir`: nada se perde) e e chamada pelas duas rotas
+depois do commit. `aguardando_cota`, `recebido` e `processando` ainda guardam arquivo e
+sobrevivem (regra 7). Depois: apagar + reenviar cria recibo novo, o worker importa, o torneio
+volta; o reset deixa so os recibos que ainda guardam arquivo.
+
+O que o FLU_5 ainda acusa e o FLU-2 (erro transitorio no worker apaga os bytes e nao retenta),
+que precisa de teto e backoff decididos pelo dono. Nao mexi.
+
+Guarda: 2 testes novos em `tests/test_recepcao_de_upload.py` (apagar e reenviar pela rota, com
+o worker; reset preserva os tres estados que guardam arquivo). Quebrado de proposito (as duas
+chamadas viraram `pass`): 2 de 25 acusam; restaurado.
+
+---
 ## Mao repetida no mesmo arquivo conta uma vez (15/09)
 
 Dois exports do PokerStars colados pelo jogador se sobrepoem por data. Medido pela rota real

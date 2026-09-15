@@ -358,6 +358,32 @@ def em_espera_por_cota(user_id: int) -> int:
         conn.close()
 
 
+def esquecer_recibos_terminais(user_id: int) -> int:
+    """Apaga os recibos `concluido`/`erro` do jogador, para o mesmo arquivo poder entrar de novo.
+
+    Auditoria FLU-5 (15/09): a idempotencia por (user_id, sha256) devolve o recibo que ja existe
+    em QUALQUER status, e o worker so pega `recebido`. Admin apagava um torneio (ou fazia
+    reset-my-data) e re-arrastava o arquivo: `202 repetido=True status=concluido`, nada entrava,
+    e a fila da tela dizia "Torneio enviado". Quem apaga o torneio chama isto.
+
+    SO os estados terminais: `concluido` e `erro` ja tem `conteudo` zerado (`concluir`), entao
+    nada se perde. `aguardando_cota`, `recebido` e `processando` ainda guardam arquivo e ficam
+    (regra 7: apagar ai descartaria envio que o jogador esta esperando).
+    """
+    _tabela()
+    from database.repositories import _adapt
+    conn = get_conn()
+    try:
+        cur = conn.execute(_adapt(
+            "DELETE FROM uploads_recebidos WHERE user_id=? AND status IN (?,?)"),
+            (user_id, CONCLUIDO, ERRO))
+        n = cur.rowcount if cur.rowcount is not None else 0
+        conn.commit()
+        return int(n)
+    finally:
+        conn.close()
+
+
 def bytes_em_aberto(user_id: int) -> int:
     """Soma de `bytes_total` dos recibos deste jogador cujo conteudo ainda esta guardado."""
     _tabela()

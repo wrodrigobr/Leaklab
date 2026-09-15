@@ -7121,11 +7121,15 @@ def delete_tournament(tournament_id):
             pass
         conn.execute("DELETE FROM tournaments WHERE id=?", (db_id,))
         conn.commit()
-        return jsonify({'ok': True, 'deleted': tournament_id})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
     finally:
         conn.close()
+    # Sem isto, re-arrastar o mesmo arquivo devolvia o recibo `concluido` de antes e nada
+    # entrava (auditoria FLU-5). Depois do commit, em conexao propria; so estados terminais.
+    from leaklab.recepcao_de_upload import esquecer_recibos_terminais
+    esquecer_recibos_terminais(g.user_id)
+    return jsonify({'ok': True, 'deleted': tournament_id})
 
 
 @app.route('/debug/tournaments', methods=['GET'])
@@ -7182,11 +7186,15 @@ def reset_my_data():
             DELETE FROM tournaments WHERE user_id = ?
         """, (g.user_id,))
         conn.commit()
-        return jsonify({'ok': True, 'message': 'Dados resetados com sucesso'})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
     finally:
         conn.close()
+    # Os recibos `concluido`/`erro` ficavam e todo arquivo ja enviado continuava "repetido"
+    # depois do reset (auditoria FLU-5). `aguardando_cota` fica: ainda guarda arquivo.
+    from leaklab.recepcao_de_upload import esquecer_recibos_terminais
+    esquecer_recibos_terminais(g.user_id)
+    return jsonify({'ok': True, 'message': 'Dados resetados com sucesso'})
 
 
 # In-memory cache do replay por (tid_db, hand_id, user_id).
