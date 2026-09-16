@@ -340,7 +340,7 @@ server {
 
   include /etc/nginx/conf.d/cloudflare-ips.conf;
   real_ip_header CF-Connecting-IP;
-  client_max_body_size 6m;
+  client_max_body_size 48m;
 
   location / {
     proxy_pass http://web:5000;

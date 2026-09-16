@@ -16,6 +16,7 @@ Duas coisas se somavam para deixar o diagnostico caro:
 
 Este arquivo trava as duas.
 """
+import io
 import os
 import sys
 
@@ -230,6 +231,78 @@ def test_o_teto_de_bytes_em_aberto_cabe_pelo_menos_UM_export_grande():
     from leaklab.recepcao_de_upload import BYTES_EM_ABERTO_MAX_POR_USUARIO
     assert BYTES_EM_ABERTO_MAX_POR_USUARIO >= app.config['MAX_CONTENT_LENGTH'], (
         BYTES_EM_ABERTO_MAX_POR_USUARIO, app.config['MAX_CONTENT_LENGTH'])
+
+
+# ── O PROXY, que e o teto que ninguem lembra (16/09, segunda rodada) ──────────────────────────
+#
+# O teto do Flask subiu para 40 MB e o Rullian foi chamado para testar. Ele recebeu
+# "NetworkError when attempting to fetch resource": o nginx na frente estava em `6m` e recusava
+# os 15 MB com 413 ANTES de a aplicacao ver a requisicao. Pior, 413 do nginx nao carrega
+# cabecalho CORS, entao o navegador nao le status nem corpo e reporta falha de rede -- o jogador
+# nao tem como saber que o problema e tamanho de arquivo.
+#
+# Classe de defeito da regra 5: o teto vive em N lugares e eu varri N-1. Estes casos varrem
+# TODOS os arquivos de deploy, e nao so o que eu me lembrei de consertar.
+
+DEPLOY = os.path.join(os.path.dirname(__file__), '..', '..', 'deploy')
+
+
+def _tetos_do_proxy():
+    """Todo `client_max_body_size` declarado em qualquer arquivo de deploy, em MB.
+
+    Varre o diretorio inteiro de proposito (a varredura N+1): um `nginx.conf.bak` restaurado por
+    engano, ou um guia de setup copiado, reintroduz o defeito sem tocar no arquivo montado.
+    """
+    import re
+    achados = []
+    for raiz, _dirs, arquivos in os.walk(DEPLOY):
+        for nome in arquivos:
+            caminho = os.path.join(raiz, nome)
+            try:
+                texto = io.open(caminho, encoding='utf-8', errors='replace').read()
+            except (IOError, OSError):
+                continue
+            for m in re.finditer(r'client_max_body_size\s+(\d+)([kKmMgG]?)', texto):
+                n, unidade = int(m.group(1)), m.group(2).lower()
+                mb = n / 1024.0 if unidade == 'k' else (n * 1024.0 if unidade == 'g' else n)
+                achados.append((os.path.relpath(caminho, DEPLOY), mb))
+    return achados
+
+
+def test_a_varredura_do_proxy_ACHA_algum_teto():
+    """Controle. Sem isto, um caminho errado ou um regex furado faz os casos abaixo passarem
+    verdes varrendo zero arquivo -- o "zero tranquilizador" da regra 1."""
+    achados = _tetos_do_proxy()
+    assert achados, 'a varredura nao achou nenhum client_max_body_size em %s' % DEPLOY
+    assert any(a[0].endswith('nginx.conf') for a in achados), achados
+
+
+def test_o_proxy_aceita_MAIS_que_o_flask():
+    """Quem recusa por tamanho tem de ser a APLICACAO, que sabe o plano e fala portugues.
+
+    Estritamente maior, e nao maior ou igual: o teto do Flask mede o corpo multipart inteiro, que
+    e o arquivo mais os delimitadores. Empatados, um arquivo de exatamente 40 MB seria recusado
+    pelo proxy, que e justamente a ponta muda.
+    """
+    for arquivo, mb in _tetos_do_proxy():
+        assert mb > MAX_UPLOAD_MB, (
+            '%s aceita %.0f MB, o Flask aceita %d MB: o proxy recusa primeiro, e o jogador ve '
+            '"NetworkError" em vez da frase do plano' % (arquivo, mb, MAX_UPLOAD_MB))
+
+
+def test_o_413_do_proxy_chega_LEGIVEL_ao_navegador():
+    """O caso residual: quando a tela nao sabe o teto (usuario ainda nao logado), ela deixa passar
+    e o servidor decide. Se o proxy recusar, a resposta precisa de CORS para o navegador poder
+    ler, senao volta a ser "NetworkError"."""
+    conf = io.open(os.path.join(DEPLOY, 'nginx.conf'), encoding='utf-8').read()
+    assert 'error_page 413' in conf, 'sem error_page 413 o nginx devolve a pagina crua dele'
+    assert '@arquivo_grande' in conf, conf[:200]
+    corpo = conf[conf.index('location @arquivo_grande'):]
+    assert 'Access-Control-Allow-Origin' in corpo, (
+        'o 413 sem CORS nao e legivel pelo navegador, e vira "NetworkError"')
+    assert '$origem_permitida' in corpo, (
+        'refletir $http_origin cru libera qualquer site a ler a resposta')
+    assert 'grande demais' in corpo, 'a mensagem precisa dizer ao jogador o que fazer'
 
 
 if __name__ == '__main__':
