@@ -54,10 +54,41 @@ def test_varredura_nao_ha_copia_da_regra():
             except OSError:
                 continue
             for i, linha in enumerate(texto.splitlines(), 1):
-                if '0.98' in linha and ('facing' in linha or 'effective_stack' in linha):
+                codigo = _sem_comentario(linha)
+                if '0.98' in codigo and ('facing' in codigo or 'effective_stack' in codigo):
                     if rel not in permitidos:
                         achados.append(f'{rel}:{i}: {linha.strip()[:100]}')
     assert not achados, 'copia(s) da regra do all-in fora da fonte unica:\n  ' + '\n  '.join(achados)
+
+
+def _sem_comentario(linha: str) -> str:
+    """A linha sem a parte comentada.
+
+    O guarda acusava COMENTARIO (16/09): `scripts/dry_run_fold_vs_allin.py` explica, em prosa, que
+    usa a fonte unica -- e para explicar cita a conta (`effective_stack_bb * 0.98`). Um comentario
+    que diz "a regra mora la" nao e copia da regra; e a documentacao que a varredura incentiva.
+    Terceira vez que um guarda de varredura desta casa tropeca em prosa.
+
+    Simples de proposito: corta no primeiro `#`. String com `#` dentro perderia o resto da linha,
+    o que so gera FALSO NEGATIVO num caso improvavel (a conta depois de um `#` dentro de string),
+    e o teste abaixo prova que a varredura continua achando codigo real.
+    """
+    return linha.split('#', 1)[0]
+
+
+def test_a_varredura_AINDA_acha_codigo_real():
+    """CONTROLE do `_sem_comentario`. Sem ele, ignorar comentario poderia desarmar a varredura
+    inteira -- o pior resultado possivel para um guarda de copia."""
+    achado = 'if facing >= efetivo * 0.98:'
+    assert '0.98' in _sem_comentario(achado)
+    assert 'facing' in _sem_comentario(achado)
+
+    prosa = '    # effective_stack_bb * 0.98). A primeira versao comparava com stack_bb'
+    assert '0.98' not in _sem_comentario(prosa), _sem_comentario(prosa)
+
+    # e o caso misto: codigo COM comentario atras continua sendo achado
+    misto = 'if facing >= efetivo * 0.98:  # a regra'
+    assert '0.98' in _sem_comentario(misto)
 
 
 if __name__ == '__main__':

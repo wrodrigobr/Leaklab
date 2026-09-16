@@ -189,7 +189,34 @@ def _plan_period(billing_cycle: str):
     return now.strftime(fmt), end.strftime(fmt)
 
 app = Flask(__name__)
-app.config['MAX_CONTENT_LENGTH'] = 5 * 1024 * 1024
+# Teto do CORPO da requisicao. O Flask recusa com 413 ANTES de qualquer rota, entao este numero
+# decide sozinho qual export entra no produto.
+#
+# 20 MB desde 16/09. Eram 5, e o Rullian ficou de fora: o export de PartyPoker dele tem 15,0 MB
+# (11.722 maos, 117 torneios). O parse e o motor NAO rodam na requisicao desde a rota `/uploads`
+# (o consumer processa um torneio por tick), entao o custo de aceitar o arquivo grande e guardar
+# bytes, nao segurar o gunicorn: medido, o arquivo dele drena em ~13 min de consumer.
+#
+# A mensagem do 413 DERIVA daqui (`errorhandler(413)`), e nao repete o numero: ela dizia "limite:
+# 5MB" cravado no texto, e um teto novo com a mensagem velha manda o jogador dividir um arquivo
+# que ja cabe.
+#
+# ── Por que o global e o teto do MAIOR plano ──────────────────────────────────────────────────
+#
+# `MAX_CONTENT_LENGTH` e verificado pelo Werkzeug na camada WSGI, ANTES de qualquer rota e antes
+# do `@require_auth`: ele nao sabe de quem e a requisicao, entao nao pode variar por plano. Se
+# valesse o teto do Free, o arquivo do Pro seria cortado sem nunca chegar na regra do plano.
+#
+# Entao: aqui mora o teto do plano mais generoso, e o teto de CADA plano e verificado na rota
+# (`_recusa_por_tamanho`), pelo header `Content-Length` -- antes de ler o corpo, para nao gastar
+# 40 MB de banda e memoria com um arquivo que vai ser recusado de qualquer forma.
+def _maior_teto_de_upload_mb() -> int:
+    from database.repositories import PLAN_LIMITS
+    return max(int(p.get('upload_mb') or 0) for p in PLAN_LIMITS.values())
+
+
+MAX_UPLOAD_MB = _maior_teto_de_upload_mb()
+app.config['MAX_CONTENT_LENGTH'] = MAX_UPLOAD_MB * 1024 * 1024
 
 # Atrás de proxy (Cloudflare/Nginx, Render): confia no X-Forwarded-For do proxy imediato
 # para que get_remote_address (rate-limiter anti-abuso) veja o IP REAL do usuário, não o do
@@ -862,6 +889,56 @@ def _chave_do_upload():
     return 'user:%s' % uid if uid else get_remote_address()
 
 
+def _recusa_por_tamanho():
+    """`(resposta, codigo)` quando o arquivo passa do teto do PLANO; `None` quando cabe.
+
+    ── Por que le o header e nao o corpo ─────────────────────────────────────────────────────
+
+    `request.content_length` chega no cabecalho, antes de qualquer byte do arquivo ser lido. Um
+    free mandando 40 MB e recusado sem que os 40 MB subam para a memoria do worker -- que e a
+    diferenca entre um teto e um teto que custa caro de aplicar.
+
+    ── Por que as DUAS rotas chamam a mesma funcao ───────────────────────────────────────────
+
+    `/uploads` e o caminho do front novo e `/analyze` continua de pe para o bundle em cache. Dois
+    tetos escritos em dois lugares divergem no primeiro ajuste, e o jogador com o bundle antigo
+    veria um limite diferente do que a tela dele anuncia. Regra 5 da casa.
+
+    A mensagem diz o tamanho DELE, o teto do plano e as duas saidas honestas. "Arquivo muito
+    grande" sozinho manda o jogador adivinhar o que fazer.
+    """
+    from database.repositories import get_quota_status
+    n_bytes = request.content_length
+    if not n_bytes:
+        return None                      # sem header nao ha o que checar; o global ainda vale
+    try:
+        st = get_quota_status(g.user_id) or {}
+        teto_mb = int((st.get('limits') or {}).get('upload_mb') or MAX_UPLOAD_MB)
+        plano = st.get('plan') or 'free'
+    except Exception:
+        # Falha ao ler o plano NAO vira recusa: barrar upload por causa de uma consulta que caiu
+        # ataca a ativacao, que e o motivo pelo qual o upload sempre entra neste produto.
+        app.logger.exception('upload: falha ao ler o plano (user=%s)', getattr(g, 'user_id', None))
+        return None
+    if n_bytes <= teto_mb * 1024 * 1024:
+        return None
+    mb = n_bytes / (1024 * 1024)
+    if plano == 'free':
+        saida = (' Exporte um período menor (uma semana, por exemplo) ou assine o Pro, que aceita '
+                 'até %dMB por arquivo.' % _teto_do_pro_mb())
+    else:
+        saida = ' Divida o export em dois períodos e mande um por vez.'
+    return jsonify({
+        'error': 'Seu arquivo tem %.1fMB e o limite do seu plano é %dMB.%s' % (mb, teto_mb, saida),
+        'erro_de_tamanho': {'bytes': n_bytes, 'limite_mb': teto_mb, 'plano': plano},
+    }), 413
+
+
+def _teto_do_pro_mb() -> int:
+    from database.repositories import PLAN_LIMITS
+    return int((PLAN_LIMITS.get('pro') or {}).get('upload_mb') or MAX_UPLOAD_MB)
+
+
 @app.route('/analyze', methods=['POST'])
 @require_auth
 # Import de LOTE (scripts/importar_lote_pt4.py): não é abuso, é o próprio processo mandando
@@ -870,6 +947,9 @@ def _chave_do_upload():
 @limiter.limit(lambda: "%d per hour" % LIMITE_DE_UPLOADS_POR_HORA, key_func=_chave_do_upload,
                exempt_when=lambda: bool(os.environ.get('LEAKLAB_IMPORT_LOTE')))
 def analyze():
+    _grande = _recusa_por_tamanho()
+    if _grande:
+        return _grande
     try:
         return _analyze_orquestrado()
     except Exception as e:
@@ -902,6 +982,11 @@ def receber_upload():
     desta frente. Ela ERA uma regex própria até 15/09, com lista de cabeçalhos paralela à do
     parser, e recusava CoinPoker e GGPoker com 422 na cara do jogador.
     """
+    # O teto do PLANO, pelo header, antes de ler o arquivo.
+    _grande = _recusa_por_tamanho()
+    if _grande:
+        return _grande
+
     conteudo = _extract_content(request)
     if not conteudo:
         return jsonify({'error': 'Conteúdo ausente'}), 400
@@ -12447,7 +12532,10 @@ def internal_error(e):
     return jsonify({'error': 'Erro interno do servidor'}), 500
 
 @app.errorhandler(413)
-def too_large(_): return jsonify({'error': 'Arquivo muito grande (limite: 5MB)'}), 413
+def too_large(_):
+    # O limite vem do config, nunca do texto: ver MAX_UPLOAD_MB.
+    mb = int(app.config.get('MAX_CONTENT_LENGTH', 0) or 0) // (1024 * 1024)
+    return jsonify({'error': 'Arquivo muito grande (limite: %dMB)' % mb}), 413
 
 
 @app.errorhandler(429)

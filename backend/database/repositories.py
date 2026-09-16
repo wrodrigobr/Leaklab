@@ -5577,17 +5577,29 @@ PLAN_LIMITS: dict = {
                 # retorno ("volte amanha para mais 20"). O que decide se ele irrita ou
                 # engaja e a EMBALAGEM: eles fecham a sessao com um boletim, nao com uma
                 # parede. Ver `BoletimDaSessao` no front.
-                'training_spots_per_day': 20, 'leak_targeted': False, 'ghost': False},
+                'training_spots_per_day': 20, 'leak_targeted': False, 'ghost': False,
+                # Teto do ARQUIVO de upload, em MB (decisao do dono, 16/09). 5 MB no free sao
+                # ~3.900 maos pelo tamanho medido no export real (1,3 KB por mao), o que cobre
+                # bem mais que os 30 torneios que ele pode importar por mes. Quem exporta o mes
+                # inteiro de uma sala grande passa disso, e e ai que a mensagem oferece as duas
+                # saidas honestas: exportar um periodo menor, ou o Pro.
+                'upload_mb': 5},
     'pro':     {'tournaments': 200, 'ai_calls': 300, 'ai_coach_chat': True,  'solves': None, 'advanced_insights': True,
                 'stats_by_position': True,
                 'ai_chat_per_day': 50, 'solves_per_day': 20,   'max_pending_solves': 10,
                 'simultaneous_analyses': None,
-                'training_spots_per_day': None, 'leak_targeted': True, 'ghost': True},
+                'training_spots_per_day': None, 'leak_targeted': True, 'ghost': True,
+                # 40 MB: o maior export real medido tem 15,0 MB (o PartyPoker do Rullian, 11.722
+                # maos em 117 torneios), e 40 da folga de 2,6x para quem exporta trimestre em vez
+                # de mes. E o teto que o `MAX_CONTENT_LENGTH` do Flask precisa acomodar, porque
+                # ele e global e aborta ANTES de saber de quem e a requisicao.
+                'upload_mb': 40},
     'coach':   {'tournaments': None, 'ai_calls': 1500, 'ai_coach_chat': True, 'solves': None, 'advanced_insights': True,
                 'stats_by_position': True,
                 'ai_chat_per_day': None, 'solves_per_day': None, 'max_pending_solves': None,
                 'simultaneous_analyses': None,
-                'training_spots_per_day': None, 'leak_targeted': True, 'ghost': True},  # interno
+                'training_spots_per_day': None, 'leak_targeted': True, 'ghost': True,
+                'upload_mb': 40},  # interno
 }
 
 
