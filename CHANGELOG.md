@@ -4,6 +4,33 @@ Todas as mudanÃ§as notÃ¡veis neste projeto serÃ£o documentadas aqui.
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
+
+## O Pro era barrado com o teto do Free no upload (16/09)
+
+Rullian, que e Pro, tentou subir 15MB e a tela recusou dizendo "o seu plano aceita ate 5MB".
+O backend estava certo: conferido dentro do container, `MAX_UPLOAD_MB = 40`, e por plano
+`{free: 5, pro: 40, coach: 40}`; para o usuario dele o teto resolvia em 40MB e o arquivo de 15MB
+entrava. Quem recusava era a TELA, antes de qualquer requisicao.
+
+**A causa.** A fila de upload comecava com o teto no valor do Free e BARRAVA com esse valor
+enquanto nao soubesse o real. O `UploadQueueProvider` envolve todas as rotas, inclusive a landing
+publica, entao ele monta antes do login: a consulta da cota voltava 401, e o efeito que a buscava
+tinha `[]` como dependencia, ou seja, nunca tentava de novo depois que o usuario entrava. O Pro
+navegava com o teto do Free pelo resto da sessao.
+
+**O conserto.** O teto agora comeca em `null`, que significa "nao sei", e nao sei NAO BARRA: a
+tela deixa passar e o backend decide. A consulta passou a depender do usuario (`[user]`), entao
+ela roda no login. Falha de leitura tambem nao barra, pelo mesmo motivo.
+
+Isto e caso da regra 7: o guarda de tamanho existe para poupar upload longo que vai ser recusado,
+e o dano de um palpite errado (barrar quem pode) e pior que o dano de nao ter palpite (subir e
+receber a recusa do servidor). Por isso o lado seguro do desconhecido e deixar passar.
+
+Tres guardas travam as pontas: a checagem so acontece com teto conhecido, o estado inicial e
+nulo, e a dependencia do efeito e o usuario. Verificados quebrando cada um.
+
+---
+
 ## Dois niveis de navegacao no replayer: as maos do leak, e os leaks (16/09)
 
 Pedido do dono, depois de ver a primeira versao: "poderiamos ter um menu de alguma forma no
