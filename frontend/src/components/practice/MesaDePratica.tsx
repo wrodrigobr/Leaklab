@@ -1,7 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { Star } from "lucide-react";
-import { PokerTableV3 } from "@/components/hud/PokerTableV3";
-import { buildDrillStep } from "@/lib/mesaDoDrill";
+import { MesaCompacta } from "@/components/practice/MesaCompacta";
 import { twFor, actionKey } from "@/lib/actionColors";
 import { nivelDoGrade, type Nivel, type Unidade } from "@/lib/pratica";
 import type { PracticeGrade, PracticeTable } from "@/lib/api";
@@ -52,14 +51,6 @@ export function MesaDePratica({
 }) {
   const { t } = useTranslation("practice");
 
-  // O caminho REAL do buildDrillStep: `table` vem do servidor com folds, botão e stacks certos.
-  // O fallback dele põe a aposta enfrentada no assento anterior ao herói, que só por acaso é o
-  // abridor -- e é por isso que a mesa do Prática é montada no servidor.
-  const { step, hero, heroCards, bb } = buildDrillStep(
-    { hero_cards: mesa.table.hero_cards, stack_bb: mesa.spot.stack_bb, street: "preflop" },
-    mesa.table,
-  );
-
   const nivel = respondida ? nivelDoGrade(grade, acaoEscolhida || "") : null;
   const freq = grade?.hand_freq || null;
   const melhores = freq
@@ -80,11 +71,13 @@ export function MesaDePratica({
         foco ? "border-primary ring-1 ring-inset ring-primary/25" : "border-border",
       )}
     >
-      {/* O spot escrito: sem isto a mesa exige que o jogador reconstrua a história dos assentos */}
+      {/* O cabeçalho ficou só com a mão e o stack: o texto do spot foi para o CENTRO da mesa,
+          onde o trilho deixa espaço de graça, e o histórico ocupa o topo do feltro. Em caixa
+          alta e na largura do card, aquele texto comia uma linha inteira de cada mesa. */}
       <div className="flex items-baseline gap-2 min-w-0">
-        <span className={cn("truncate font-mono text-[9.5px] uppercase tracking-widest-2",
+        <span className={cn("shrink-0 font-mono text-[10px] font-bold tracking-wide",
                             foco ? "text-primary" : "text-muted-foreground")}>
-          {mesa.context}
+          {mesa.hand}
         </span>
         <span className="ml-auto shrink-0 font-mono text-[9.5px] font-bold tabular-nums text-muted-foreground">
           {/* o cabeçalho segue a MESMA unidade da mesa: a mesma grandeza escrita de dois jeitos
@@ -102,15 +95,10 @@ export function MesaDePratica({
           `max-h-full` e o que impede isso de trazer a barra de rolagem de volta: quando a
           celula e mais larga que 16/10, a altura para em 100% e a largura encolhe junto. */}
       <div className="mx-auto mt-1.5 max-h-full w-full shrink-0" style={{ aspectRatio: "16 / 10" }}>
-        <PokerTableV3
-          step={step} hero={hero} heroCards={heroCards} bb={bb}
-          // a mesa mostra BB por padrão: é a régua do resto do produto (solver, leaks, EV, ELO)
-          betUnit={unidade === "bb" ? "bb" : "chips"} transparentBg
-          // compacta = 3 ou 4 mesas na tela: o HUD e o nome do vilão competem pelo espaço que
-          // decide a jogada (posição, stack, fichas na mesa), então saem.
-          showHud={!compacta}
-          fill
-        />
+        {/* `compacta` NAO chega na mesa: ela escala pelo container (cqw), entao 1 ou 4 mesas
+            usam a mesma proporcao e nada encolhe por degrau -- e o que o GTO Wizard faz. */}
+        <MesaCompacta table={mesa.table} hero="Hero" unidade={unidade}
+                      spot={mesa.resumo || mesa.context} />
       </div>
 
       {/* Os botões que ESTE spot oferece, nas cores da casa (fold azul, call verde, raise

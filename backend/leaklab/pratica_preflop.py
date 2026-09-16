@@ -162,6 +162,26 @@ def cartas_da_mao(hand: str) -> str:
     return ''.join('%s%s' % (c['rank'], c['suit']) for c in _hand_to_cards(hand or ''))
 
 
+def resumo_do_spot(spot: dict) -> str:
+    """O spot em POUCAS palavras, para caber no centro do trilho: `"LJ contra UTG1, vs Open"`.
+
+    O `context` da Academia e uma frase inteira ("Voce abriu de LJ e BTN deu 3-bet. 20.0bb
+    efetivos."), escrita para um exercicio por tela. No centro de uma mesa de um quarto de tela
+    ela vira tres linhas de texto miudo, e o dono pediu o formato curto do GTO Wizard.
+
+    Os dois convivem: a Academia segue com a frase, o Pratica usa este. O stack fica de FORA de
+    proposito -- ele ja aparece em cada assento, e repetido no centro seria a mesma grandeza
+    escrita duas vezes na mesma mesa.
+    """
+    heroi = spot.get('position') or ''
+    vilao = spot.get('vs_position') or ''
+    cenario = spot.get('scenario') or 'rfi'
+    if cenario == 'rfi' or not vilao:
+        return '%s, RFI' % heroi if heroi else 'RFI'
+    tipo = 'vs Open' if cenario == 'vs_rfi' else 'vs 3-bet' if cenario == 'vs_3bet' else cenario
+    return '%s contra %s, %s' % (heroi, vilao, tipo)
+
+
 def chave_do_spot(spot: dict) -> str:
     """Identidade do spot para nao repetir entre as mesas ABERTAS.
 
@@ -209,6 +229,8 @@ def mesas(n: int = 1, cenario: str = 'mixed', stacks=None, posicoes=None, evitar
             'spot': q['spot'],
             'scenario': q['scenario'],
             'context': q['context'],
+            # o mesmo spot em poucas palavras, para o centro da mesa
+            'resumo': resumo_do_spot(q['spot']),
             'hand': q['hand'],
             'hero_cards': q['hero_cards'],
             'options': q['options'],

@@ -1,0 +1,168 @@
+// @vitest-environment jsdom
+import { describe, it, expect, afterEach } from "vitest";
+import { render, screen, cleanup, within } from "@testing-library/react";
+import { MesaCompacta, historico, lerCartas } from "./MesaCompacta";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import type { DrillTableState } from "@/lib/api";
+
+/**
+ * A mesa do modo Prática.
+ *
+ * ── Por que ela existe, e o que este arquivo defende ──────────────────────────────────────────
+ *
+ * O dono, com quatro mesas na tela: "ja esta ficando pequeno enxergar as fichas...talvez fazer
+ * como o gto wizard faz, com mesas simples, mas funcionais", e depois "mantenha as mesmas
+ * proporcoes do gto wizard, tamanho de carta, tamanho das fontes, fichas".
+ *
+ * jsdom não faz layout, então nenhum teste aqui mede pixel. O que eles travam é o que É
+ * informação na mesa e o que não pode voltar: as cartas dele, o stack de cada assento na unidade
+ * certa, quem está fora, a ficha de quem apostou, e o histórico que resume a mão. Mais o
+ * mecanismo que mantém a proporção (`cqw` medindo o card, e não a viewport).
+ */
+afterEach(cleanup);
+
+const SEAT = (seat: number, pos: string, over: Partial<DrillTableState["seats"][0]> = {}) => ({
+  seat, pos, name: pos, stack: 2000, bet: 0, folded: false, active: true, hero: false, ...over,
+});
+
+/** UTG a CO foldaram, o BTN abriu 2,2bb, o herói é o SB. bb = 100 fichas. */
+const MESA: DrillTableState = {
+  seats: [
+    SEAT(1, "UTG", { folded: true, active: false }),
+    SEAT(2, "UTG+1", { folded: true, active: false }),
+    SEAT(3, "UTG+2", { folded: true, active: false }),
+    SEAT(4, "LJ", { folded: true, active: false }),
+    SEAT(5, "HJ", { folded: true, active: false }),
+    SEAT(6, "CO", { folded: true, active: false }),
+    SEAT(7, "BTN", { bet: 220, stack: 1780 }),
+    SEAT(8, "SB", { bet: 50, stack: 1950, hero: true, name: "Hero" }),
+    SEAT(9, "BB", { bet: 100, stack: 1900 }),
+  ],
+  button: 7, pot: 370, bb_chips: 100, street: "preflop", board: [],
+  hero_cards: "Ks7h",
+};
+
+function monta(over: Partial<DrillTableState> = {}, unidade: "bb" | "fichas" = "bb") {
+  return render(<MesaCompacta table={{ ...MESA, ...over }} hero="Hero" unidade={unidade}
+                              spot="SB contra BTN, vs Open" />);
+}
+
+describe("a mesa do Pratica", () => {
+  it("mostra AS CARTAS dele, uma por naipe", () => {
+    monta();
+    const cartas = screen.getByTestId("cartas-do-heroi");
+    expect(cartas.textContent).toBe("K7");
+    // a cor do quadrado É o naipe (baralho de 4 cores): sem isso o jogador não sabe se é suited
+    const spans = cartas.querySelectorAll("span");
+    expect(spans.length).toBe(2);
+    // jsdom normaliza hex para rgb(): comparar o hex falharia por formato, nao por defeito
+    expect(spans[0].getAttribute("style")).toContain("rgb(201, 209, 219)");   // Ks spades
+    expect(spans[1].getAttribute("style")).toContain("rgb(229, 67, 74)");     // 7h hearts
+  });
+
+  it("le a mao suited com os DOIS quadrados da mesma cor", () => {
+    monta({ hero_cards: "Kc7c" });
+    const spans = screen.getByTestId("cartas-do-heroi").querySelectorAll("span");
+    expect(spans[0].getAttribute("style")).toContain("rgb(76, 164, 85)");
+    expect(spans[1].getAttribute("style")).toContain("rgb(76, 164, 85)");
+  });
+
+  it("cada assento mostra posicao e stack, e quem foldou aparece sem numero", () => {
+    monta();
+    // o abridor, com o stack já descontado da aposta
+    expect(within(screen.getByTestId("assento-BTN")).getByText("17.8")).toBeTruthy();
+    // quem saiu não mostra stack: número de quem não está na mão é ruído com aparência de dado
+    expect(screen.getByTestId("assento-UTG").textContent).toContain("—");
+  });
+
+  it("a unidade vale para stack E aposta, com UM formatador", () => {
+    // A cicatriz mais recorrente do projeto é "fichas vs BB". Dois formatadores é como a mesa
+    // acaba mostrando a mesma grandeza de dois jeitos no mesmo desenho.
+    monta({}, "fichas");
+    expect(within(screen.getByTestId("assento-BTN")).getByText("1.780")).toBeTruthy();
+    expect(screen.getByTestId("aposta-BTN").textContent).toContain("220");
+  });
+
+  it("a ficha aparece SO para quem pos dinheiro", () => {
+    monta();
+    expect(screen.getByTestId("aposta-BTN").textContent).toContain("2.2");
+    expect(screen.getByTestId("aposta-BB").textContent).toContain("1");
+    // quem foldou antes não tem ficha na mesa
+    expect(screen.queryByTestId("aposta-UTG")).toBeNull();
+  });
+
+  it("o botao do dealer fica no assento certo", () => {
+    monta();
+    const btn = screen.getByTestId("assento-BTN");
+    expect(within(btn).getByTestId("botao-dealer")).toBeTruthy();
+    expect(within(screen.getByTestId("assento-SB")).queryByTestId("botao-dealer")).toBeNull();
+  });
+
+  it("o spot escrito no CENTRO, e curto", () => {
+    // O dono: "o texto no feltro tem que ser algo mais simples também, como por exemplo: LJ
+    // Contra UTG1, vs Open". A frase longa da Academia ("Você abriu de LJ e BTN deu 3-bet.
+    // 20.0bb efetivos.") virava três linhas de texto miúdo no meio da mesa.
+    monta();
+    expect(screen.getByText("SB contra BTN, vs Open")).toBeTruthy();
+  });
+
+  it("escala pelo CARD, e nao pela viewport", () => {
+    // O mecanismo que mantém a proporção do GTO Wizard: `cqw` mede o container. Com `vw`, uma
+    // mesa e quatro mesas dariam elementos do mesmo tamanho -- e foi tudo ficar pequeno que o
+    // dono relatou.
+    monta();
+    const raiz = screen.getByTestId("mesa-compacta");
+    expect(raiz.className).toContain("container-mesa");
+
+    // O `cqw` nao pode ser lido do DOM: o jsdom DESCARTA `clamp()` com unidade que ele nao
+    // conhece, entao `style` volta sem width/height/fontSize. O guarda le o fonte, e diz por que.
+    const fonte = readFileSync(join(import.meta.dirname, "MesaCompacta.tsx"), "utf-8");
+    const tabela = fonte.slice(fonte.indexOf("const M = {"), fonte.indexOf("} as const;"));
+    expect(tabela, "as medidas precisam ser proporcionais ao card").toContain("cqw");
+    expect(tabela, "e com piso e teto, para nem sumir nem virar cartaz").toContain("clamp(");
+  });
+});
+
+describe("o historico da mao", () => {
+  const fmt = (c: number) => {
+    const v = Math.round((c / 100) * 10) / 10;
+    return Number.isInteger(v) ? String(v) : v.toFixed(1);
+  };
+
+  it("resume quem agiu, na ordem, terminando na vez dele", () => {
+    const h = historico(MESA.seats, "Hero", fmt, 100);
+    expect(h.map((x) => `${x.pos} ${x.texto}`)).toEqual([
+      "UTG fold", "UTG+1 fold", "UTG+2 fold", "LJ fold", "HJ fold", "CO fold",
+      "BTN 2.2", "SB sua vez",
+    ]);
+    expect(h[h.length - 1].vez).toBe(true);
+  });
+
+  it("o blind do BB NAO conta como aposta", () => {
+    // O caso que engana: o `bet` de 1bb do BB é o blind POSTADO, não agressão. Contá-lo faria a
+    // faixa dizer que o BB "apostou 1" em toda mão, e o jogador leria isso como uma ação.
+    const h = historico(MESA.seats, "Hero", fmt, 100);
+    expect(h.some((x) => x.pos === "BB")).toBe(false);
+  });
+
+  it("o BB ENTRA quando ele realmente aumenta", () => {
+    // O controle do caso acima: sem ele, um filtro que simplesmente escondesse o BB passaria
+    // verde, e um 3-bet do BB desapareceria do histórico.
+    const seats = MESA.seats.map((s) => (s.pos === "BB" ? { ...s, bet: 800 } : s));
+    const h = historico(seats, "Hero", fmt, 100);
+    expect(h.find((x) => x.pos === "BB")?.texto).toBe("8");
+  });
+});
+
+describe("lerCartas", () => {
+  it("le o que o servidor manda, e ignora o resto", () => {
+    expect(lerCartas("Ks7h")).toEqual([["K", "s"], ["7", "h"]]);
+    expect(lerCartas("TdTc")).toEqual([["T", "d"], ["T", "c"]]);
+    // a CLASSE da mão não é carta: `K7s` tem uma só, e era o bug que o dono viu (as cartas não
+    // apareciam). Aqui isso fica visível em vez de silencioso.
+    expect(lerCartas("K7s")).toEqual([["7", "s"]]);
+    expect(lerCartas(null)).toEqual([]);
+    expect(lerCartas("")).toEqual([]);
+  });
+});

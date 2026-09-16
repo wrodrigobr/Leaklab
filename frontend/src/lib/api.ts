@@ -2312,6 +2312,8 @@ export interface PracticeTable {
   spot: PracticeSpot;
   scenario: string;
   context: string;
+  /** o mesmo spot em poucas palavras ("LJ contra UTG+1, vs Open"), para o centro do trilho */
+  resumo: string;
   hand: string;
   hero_cards: { rank: string; suit: string }[];
   options: PracticeOption[];

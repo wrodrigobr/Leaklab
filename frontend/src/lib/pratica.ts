@@ -36,7 +36,14 @@ export const CONFIG_PADRAO: ConfigPratica = {
   // O MTT curto é o ponto do treino, e é a faixa que a Academia não cobre de propósito.
   stacks: [10, 14, 17, 20],
   cenario: "mixed",
-  pausa: "erro",
+  // "nunca" e o padrao (decisao do dono, 16/09): ele viu o botao "continuar" aparecer depois de
+  // algumas rodadas e pediu fluxo continuo -- "a cada nova acao escolhida, cada uma das mesas
+  // puxe um novo spot". Com "erro", a mesa que ele errava ficava esperando um clique, e o grind
+  // parava justamente onde o jogador estava engajado.
+  //
+  // As outras duas seguem no painel para quem QUER parar: "erro" e o modo de estudo (segura no
+  // erro para ler o veredito com calma) e "acao" e o passo a passo.
+  pausa: "nunca",
   unidade: "bb",
 };
 

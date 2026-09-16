@@ -201,6 +201,47 @@ describe("modo Pratica", () => {
     }
   });
 
+  it("no fluxo PADRAO nao existe botao de continuar", async () => {
+    // O dono, rodando a tela: "aparece um botao continuar, e so aparecem novos spots apos clique
+    // neste botao...eu quero que seja dinamico, a cada nova acao escolhida, cada uma das mesas
+    // puxe um novo spot".
+    //
+    // A causa era o padrao `pausa: "erro"`: a mesa que ele errava ficava esperando o clique, e o
+    // grind parava onde o jogador estava engajado. O padrao agora e "nunca", e este guarda trava
+    // as duas pontas -- o valor do padrao e o efeito dele na tela, porque so o valor deixaria
+    // passar uma tela que mostrasse o botao por outro caminho.
+    expect(CONFIG_PADRAO.pausa).toBe("nunca");
+
+    vi.useFakeTimers();
+    try {
+      monta();
+      await vi.waitFor(() => expect(screen.getByTestId("pratica-mesa-m1")).toBeTruthy());
+
+      // erra de proposito nas quatro: `leak` e o nivel que a pausa "erro" segurava
+      grade.mockResolvedValue({ is_correct: false, action_quality: "leak",
+                                hand_freq: { R2: 0.9, F: 0.1 }, ev_loss_bb: -1.2 });
+      for (const id of ["m1", "m2", "m3", "m4"]) {
+        fireEvent.click(within(screen.getByTestId(`pratica-mesa-${id}`)).getByTestId("pratica-acao-fold"));
+      }
+      await vi.waitFor(() => expect(grade).toHaveBeenCalledTimes(4));
+
+      // nenhum botao de continuar, em nenhum momento
+      expect(screen.queryByTestId("pratica-continuar")).toBeNull();
+
+      // e as quatro puxam spot novo sozinhas
+      let n = 0;
+      tables.mockImplementation(() => {
+        n += 1;
+        return Promise.resolve({ tables: [MESA(`nova${n}`, "BTN", "72o", 10)], pedidas: 1, servidas: 1 });
+      });
+      await vi.advanceTimersByTimeAsync(2100);
+      await vi.waitFor(() => expect(n).toBe(4));
+      expect(screen.queryByTestId("pratica-continuar")).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('a pausa em "acao" SEGURA a mesa, e o continuar solta', async () => {
     vi.useFakeTimers();
     try {

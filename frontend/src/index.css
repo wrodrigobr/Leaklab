@@ -194,4 +194,10 @@
   .scrollbar-hud::-webkit-scrollbar-corner {
     background: transparent;
   }
+
+  /* A mesa do modo Pratica escala pelo CARD, e nao pela viewport: os `cqw` dela medem este
+   * container. Sem isto, uma mesa e quatro mesas dariam elementos do mesmo tamanho. */
+  .container-mesa {
+    container-type: inline-size;
+  }
 }
