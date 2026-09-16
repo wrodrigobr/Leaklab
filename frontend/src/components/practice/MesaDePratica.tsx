@@ -3,7 +3,7 @@ import { Star } from "lucide-react";
 import { PokerTableV3 } from "@/components/hud/PokerTableV3";
 import { buildDrillStep } from "@/lib/mesaDoDrill";
 import { twFor, actionKey } from "@/lib/actionColors";
-import { nivelDoGrade, type Nivel } from "@/lib/pratica";
+import { nivelDoGrade, type Nivel, type Unidade } from "@/lib/pratica";
 import type { PracticeGrade, PracticeTable } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
@@ -32,9 +32,12 @@ const COR_DO_NIVEL: Record<Nivel, string> = {
 };
 
 export function MesaDePratica({
-  mesa, foco, respondida, grade, acaoEscolhida, leakDoJogador, compacta, onAgir, onFocar, onDetalhe,
+  mesa, foco, respondida, grade, acaoEscolhida, leakDoJogador, compacta, unidade,
+  onAgir, onFocar, onDetalhe,
 }: {
   mesa: PracticeTable;
+  /** BB (padrão) ou fichas. Quem decide é o painel; aqui só chega a escolha. */
+  unidade: Unidade;
   foco: boolean;
   respondida: boolean;
   grade: PracticeGrade | null;
@@ -70,7 +73,10 @@ export function MesaDePratica({
       data-testid={`pratica-mesa-${mesa.id}`}
       data-foco={foco ? "1" : "0"}
       className={cn(
-        "relative rounded-lg border bg-hud-surface p-2.5 transition-colors",
+        // `h-full min-h-0 flex-col`: a mesa cabe na celula do grid, que ja divide a altura da
+        // tela. `min-h-0` e o que permite o filho encolher -- sem ele o flex usa a altura do
+        // conteudo e a grade estoura a faixa, trazendo de volta a barra de rolagem.
+        "relative flex h-full min-h-0 flex-col rounded-lg border bg-hud-surface p-2.5 transition-colors",
         foco ? "border-primary ring-1 ring-inset ring-primary/25" : "border-border",
       )}
     >
@@ -81,14 +87,25 @@ export function MesaDePratica({
           {mesa.context}
         </span>
         <span className="ml-auto shrink-0 font-mono text-[9.5px] font-bold tabular-nums text-muted-foreground">
-          {mesa.spot.stack_bb}bb
+          {/* o cabeçalho segue a MESMA unidade da mesa: a mesma grandeza escrita de dois jeitos
+              no mesmo card é como nasce o bug mais recorrente do projeto (fichas vs BB) */}
+          {unidade === "bb"
+            ? `${mesa.spot.stack_bb}bb`
+            : Math.round(mesa.spot.stack_bb * (mesa.table.bb_chips || 1)).toLocaleString("pt-BR")}
         </span>
       </div>
 
-      <div className="mt-1.5" style={{ aspectRatio: "16 / 10" }}>
+      {/* ── A mesa NO TOPO, e os botoes logo abaixo dela (pedido do dono, 16/09) ────────────
+          A altura vem da LARGURA (`aspect-ratio`), e nao de `flex-1`: com `flex-1` a mesa
+          absorvia a celula inteira e o feltro, que e um SVG centralizado, deixava um vao entre
+          a mesa e os controles -- o jogador percorria a tela para clicar no que decide a mao.
+          `max-h-full` e o que impede isso de trazer a barra de rolagem de volta: quando a
+          celula e mais larga que 16/10, a altura para em 100% e a largura encolhe junto. */}
+      <div className="mx-auto mt-1.5 max-h-full w-full shrink-0" style={{ aspectRatio: "16 / 10" }}>
         <PokerTableV3
           step={step} hero={hero} heroCards={heroCards} bb={bb}
-          betUnit="chips" transparentBg
+          // a mesa mostra BB por padrão: é a régua do resto do produto (solver, leaks, EV, ELO)
+          betUnit={unidade === "bb" ? "bb" : "chips"} transparentBg
           // compacta = 3 ou 4 mesas na tela: o HUD e o nome do vilão competem pelo espaço que
           // decide a jogada (posição, stack, fichas na mesa), então saem.
           showHud={!compacta}
@@ -98,7 +115,8 @@ export function MesaDePratica({
 
       {/* Os botões que ESTE spot oferece, nas cores da casa (fold azul, call verde, raise
           vermelho, all-in vinho — a paleta única de `actionColors`). */}
-      <div className="mt-1.5 flex gap-1">
+      {/* logo abaixo do feltro, e nao no rodape do card */}
+      <div className="mt-1 flex shrink-0 gap-1">
         {mesa.options.map((o) => {
           const k = actionKey(o.action);
           const escolhida = acaoEscolhida === o.action;
@@ -132,7 +150,7 @@ export function MesaDePratica({
           type="button"
           onClick={(e) => { e.stopPropagation(); onDetalhe(); }}
           data-testid="pratica-veredito"
-          className={cn("mt-1.5 flex w-full items-center gap-2 rounded px-2 py-1 text-left",
+          className={cn("mt-1 flex w-full shrink-0 items-center gap-2 rounded px-2 py-1 text-left",
                         COR_DO_NIVEL[nivel])}
         >
           <span className="font-mono text-[9.5px] font-bold uppercase tracking-widest-2">
@@ -157,6 +175,11 @@ export function MesaDePratica({
           )}
         </button>
       )}
+
+      {/* A sobra fica AQUI, no fim: mesa e controles ancorados no topo do card. Sem este
+          espaçador, o `justify` do flex distribuiria o vão entre os blocos e os botões
+          voltariam a flutuar longe do feltro. */}
+      <div className="min-h-0 flex-1" aria-hidden />
     </div>
   );
 }

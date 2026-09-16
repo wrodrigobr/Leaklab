@@ -21,6 +21,7 @@ vi.mock("@/lib/api", async (orig) => {
   };
 });
 
+import { CONFIG_PADRAO } from "@/lib/pratica";
 import Practice from "./Practice";
 
 /**
@@ -162,6 +163,104 @@ describe("modo Pratica", () => {
     const v = await within(m1).findByTestId("pratica-veredito");
     // fold com 80% de F no hand_freq: melhor jogada
     expect(v.textContent).toContain("nivel.melhor");
+  });
+
+  it("depois do veredito, o spot novo entra SO naquela mesa", async () => {
+    // O pedido do dono (16/09): "sempre que eu tomar uma acao em uma mesa, precisamos dar o
+    // alerta do veredito, mas apos 2 segundos, um novo spot tem que ser carregado nesta mesa".
+    //
+    // O desenho anterior esperava as QUATRO responderem para girar a rodada inteira, e isso
+    // fazia o jogador parar na mesa mais lenta -- o oposto do que quatro mesas resolvem. Trocar
+    // o modelo nao quebrou nenhum teste, o que e o sinal de que ele nao estava coberto.
+    vi.useFakeTimers();
+    try {
+      monta();
+      await vi.waitFor(() => expect(screen.getByTestId("pratica-mesa-m1")).toBeTruthy());
+
+      const m1 = screen.getByTestId("pratica-mesa-m1");
+      fireEvent.click(within(m1).getByTestId("pratica-acao-fold"));
+      await vi.waitFor(() => expect(grade).toHaveBeenCalledTimes(1));
+
+      // o veredito aparece e a mesa CONTINUA na tela: o jogador precisa lê-lo
+      await vi.waitFor(() => expect(within(screen.getByTestId("pratica-mesa-m1"))
+        .getByTestId("pratica-veredito")).toBeTruthy());
+      expect(tables).toHaveBeenCalledTimes(1);
+
+      // o servidor passa a devolver um spot diferente para a troca
+      tables.mockResolvedValue({ tables: [MESA("m9", "BTN", "72o", 10)], pedidas: 1, servidas: 1 });
+      await vi.advanceTimersByTimeAsync(2100);
+
+      // a mesa 1 virou o spot novo, e as outras tres NAO se mexeram
+      await vi.waitFor(() => expect(screen.getByTestId("pratica-mesa-m9")).toBeTruthy());
+      expect(screen.queryByTestId("pratica-mesa-m1")).toBeNull();
+      for (const id of ["m2", "m3", "m4"]) expect(screen.getByTestId(`pratica-mesa-${id}`)).toBeTruthy();
+      // e pediu UMA mesa, não a rodada inteira
+      expect(tables.mock.calls[1][0]).toBe(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('a pausa em "acao" SEGURA a mesa, e o continuar solta', async () => {
+    vi.useFakeTimers();
+    try {
+      render(<MemoryRouter initialEntries={["/practice?pausa=acao"]}><Practice /></MemoryRouter>);
+      await vi.waitFor(() => expect(screen.getByTestId("pratica-mesa-m1")).toBeTruthy());
+
+      fireEvent.click(within(screen.getByTestId("pratica-mesa-m1")).getByTestId("pratica-acao-fold"));
+      await vi.waitFor(() => expect(grade).toHaveBeenCalledTimes(1));
+
+      // passou muito mais que os 2s e a mesa NAO trocou: quem solta e o jogador
+      await vi.advanceTimersByTimeAsync(5000);
+      expect(screen.getByTestId("pratica-mesa-m1")).toBeTruthy();
+      expect(tables).toHaveBeenCalledTimes(1);
+
+      tables.mockResolvedValue({ tables: [MESA("m9", "BTN", "72o", 10)], pedidas: 1, servidas: 1 });
+      fireEvent.click(screen.getByTestId("pratica-continuar"));
+      await vi.advanceTimersByTimeAsync(2100);
+      await vi.waitFor(() => expect(screen.getByTestId("pratica-mesa-m9")).toBeTruthy());
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("a unidade da mesa e BB por padrao, e o padrao tem UMA fonte", async () => {
+    // A primeira versao deste guarda passou VERDE com o padrao invertido na lib, e o controle da
+    // quebra pegou: a pagina tinha "bb" num literal proprio, entao havia duas fontes para a
+    // mesma decisao e a da pagina ganhava sempre. Este assert amarra as duas.
+    expect(CONFIG_PADRAO.unidade).toBe("bb");
+    // A cicatriz mais recorrente do projeto e "fichas vs BB", e a regua do produto e BB: o
+    // solver, os leaks, o EV e o ELO todos falam nela. Mesa em fichas obrigaria o jogador a
+    // converter de cabeca para ligar o que ve ao que o veredito diz.
+    monta();
+    const m1 = await screen.findByTestId("pratica-mesa-m1");
+    // o cabecalho da mesa mostra o stack em bb, e nao 1.200 fichas
+    expect(m1.textContent).toContain("12bb");
+    expect(m1.textContent).not.toContain("1.200");
+  });
+
+  it("em fichas, a MESMA mesa mostra o stack convertido", async () => {
+    // O controle do caso acima: sem ele, um seletor quebrado que ignora a escolha passaria
+    // verde, porque BB e o padrao.
+    render(<MemoryRouter initialEntries={["/practice?un=fichas"]}><Practice /></MemoryRouter>);
+    const m1 = await screen.findByTestId("pratica-mesa-m1");
+    expect(m1.textContent).toContain("1.200");     // 12bb x 100 fichas
+    expect(m1.textContent).not.toContain("12bb");
+  });
+
+  it("a grade das mesas NAO rola: ela e limitada pela altura", async () => {
+    // Requisito do dono: "as 4 mesas tem que caber na tela do usuario, sem depender de barra de
+    // rolagem". jsdom nao faz layout, entao o guarda trava a ESTRUTURA que garante isso: a faixa
+    // e overflow-hidden e a grade declara as linhas (sem linhas, o grid usa a altura do
+    // conteudo e volta a estourar).
+    monta();
+    await screen.findByTestId("pratica-mesa-m1");
+    const grade = document.querySelector('[class*="grid-rows-2"]');
+    expect(grade, "a grade de 4 mesas precisa declarar as linhas").toBeTruthy();
+    expect(grade!.className).toContain("h-full");
+    const faixa = grade!.parentElement!;
+    expect(faixa.className).toContain("overflow-hidden");
+    expect(faixa.className).not.toContain("overflow-y-auto");
   });
 
   it("sem spot para o filtro, a tela DIZ, em vez de piscar vazio", async () => {

@@ -2,7 +2,7 @@ import { useTranslation } from "react-i18next";
 import { RotateCw, SlidersHorizontal, X } from "lucide-react";
 import {
   MAX_MESAS, NIVEIS, STACKS_DISPONIVEIS, type ConfigPratica, type Nivel, type Pausa,
-  type StatsPratica,
+  type StatsPratica, type Unidade,
 } from "@/lib/pratica";
 import { cn } from "@/lib/utils";
 
@@ -131,6 +131,17 @@ export function PainelDePratica({
           {(["mixed", "rfi", "vs_rfi", "vs_3bet"] as const).map((c) => (
             <Seg key={c} on={atual.cenario === c} onClick={() => muda({ cenario: c })}
                  testid={`pratica-cenario-${c}`} esquerda>{t(`cenario.${c}`)}</Seg>
+          ))}
+        </div>
+      </div>
+
+      {/* unidade da mesa — aplica na HORA: só muda como o número é escrito */}
+      <div className="border-b border-border/50 px-3 py-2.5">
+        <Rotulo>{t("painel.unidade")}</Rotulo>
+        <div className="flex gap-1">
+          {(["bb", "fichas"] as Unidade[]).map((u) => (
+            <Seg key={u} on={atual.unidade === u} onClick={() => muda({ unidade: u })}
+                 testid={`pratica-unidade-${u}`}>{t(`unidade.${u}`)}</Seg>
           ))}
         </div>
       </div>

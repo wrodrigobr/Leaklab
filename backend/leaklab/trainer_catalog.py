@@ -40,6 +40,12 @@ CATALOGO = [
     {'id': 'meus_leaks', 'foco': 'adaptive',        'prefixo': None,      'destaque': True},
     {'id': 'grind',      'foco': 'grind',           'prefixo': '',        'rota': '/grind',
      'ilustracao': 'mesa'},
+    # Modo Pratica (16/09): 1 a 4 mesas preflop ao mesmo tempo. `prefixo` vazio como o grind,
+    # porque ele nao treina UMA categoria do curriculo -- o jogador escolhe stack e tipo de spot
+    # no painel, e o historico dele nao cabe numa `category_key` so. A rota carrega a config
+    # padrao; o painel a muda e grava na URL.
+    {'id': 'pratica',    'foco': 'pratica',         'prefixo': '',        'rota': '/practice',
+     'ilustracao': 'mesa'},
     {'id': 'abrir',      'foco': 'fund:rfi',        'prefixo': 'rfi:',    'ilustracao': 'abrir'},
     {'id': 'defender',   'foco': 'fund:vs_rfi',     'prefixo': 'vs_rfi:', 'ilustracao': 'defender'},
     {'id': 'vs_3bet',    'foco': 'fund:vs_3bet',    'prefixo': 'vs_3bet:','ilustracao': 'vs_3bet'},

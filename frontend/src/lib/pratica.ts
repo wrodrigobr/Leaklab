@@ -15,12 +15,20 @@ export const MAX_MESAS = 4;
 
 export type Pausa = "nunca" | "erro" | "acao";
 
+/** Em que unidade a mesa mostra stack e apostas. */
+export type Unidade = "bb" | "fichas";
+
 export interface ConfigPratica {
   mesas: number;
   stacks: number[];
   /** "mixed" | "rfi" | "vs_rfi" | "vs_3bet" — o mesmo vocabulário do servidor */
   cenario: string;
   pausa: Pausa;
+  /** BB ou fichas na mesa. A casa tem a cicatriz mais recorrente do projeto justamente aqui
+   *  ("Fichas vs BB"), e a régua do produto é BB: o solver, os leaks, o EV e o ELO todos falam
+   *  em BB, e uma mesa em fichas obrigaria o jogador a converter de cabeça para ligar o que vê
+   *  na mesa ao que lê no veredito. Fichas fica disponível para quem quer o visual da sala. */
+  unidade: Unidade;
 }
 
 export const CONFIG_PADRAO: ConfigPratica = {
@@ -29,12 +37,13 @@ export const CONFIG_PADRAO: ConfigPratica = {
   stacks: [10, 14, 17, 20],
   cenario: "mixed",
   pausa: "erro",
+  unidade: "bb",
 };
 
 /**
- * Se a configuração nova muda o SORTEIO. Mudar `pausa` não muda: ela só decide quando a tela
- * espera o jogador, então aplica na hora. Mudar mesas, stacks ou cenário muda o que é sorteado, e
- * por isso espera a próxima rodada.
+ * Se a configuração nova muda o SORTEIO. `pausa` e `unidade` não mudam: uma decide quando a tela
+ * espera o jogador e a outra só como o número é escrito, então aplicam na hora. Mesas, stacks e
+ * cenário mudam o que é sorteado, e por isso valem do próximo spot em diante.
  *
  * Essa distinção é o conserto do que o GTO Wizard faz: lá, trocar o número de mesas reinicia a
  * sessão e descarta as respostas que o jogador já deu.

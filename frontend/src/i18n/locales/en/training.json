@@ -224,6 +224,10 @@
       "grind": {
         "name": "Full hand",
         "desc": "Walk a real hand from preflop to river, deciding on every street."
+      },
+      "pratica": {
+        "name": "Multi-table practice",
+        "desc": "Up to 4 preflop tables at once, filtered by stack and spot type."
       }
     }
   },

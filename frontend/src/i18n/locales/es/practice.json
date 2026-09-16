@@ -24,7 +24,8 @@
     "sessao": "sesión",
     "acerto": "acierto",
     "bbPerdidos": "bb perdidos",
-    "aplicaDepois": "se aplica en la próxima mano, sin descartar las que están en juego"
+    "aplicaDepois": "se aplica en la próxima mano, sin descartar las que están en juego",
+    "unidade": "unidad"
   },
   "cenario": {
     "mixed": "todo",
@@ -43,5 +44,9 @@
     "imprecisao": "imprecisión",
     "errada": "error",
     "grave": "error grave"
+  },
+  "unidade": {
+    "bb": "BB",
+    "fichas": "fichas"
   }
 }

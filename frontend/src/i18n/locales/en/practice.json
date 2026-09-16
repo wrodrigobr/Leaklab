@@ -24,7 +24,8 @@
     "sessao": "session",
     "acerto": "accuracy",
     "bbPerdidos": "bb lost",
-    "aplicaDepois": "applies next hand, without discarding the ones in play"
+    "aplicaDepois": "applies next hand, without discarding the ones in play",
+    "unidade": "unit"
   },
   "cenario": {
     "mixed": "everything",
@@ -43,5 +44,9 @@
     "imprecisao": "inaccuracy",
     "errada": "mistake",
     "grave": "blunder"
+  },
+  "unidade": {
+    "bb": "BB",
+    "fichas": "chips"
   }
 }

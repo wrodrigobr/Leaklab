@@ -34,7 +34,8 @@ from __future__ import annotations
 
 import random
 
-from leaklab.academy_gto_preflop import (_ACTION_ORDER, generate_gto_preflop_question,
+from leaklab.academy_gto_preflop import (_ACTION_ORDER, _hand_to_cards,
+                                         generate_gto_preflop_question,
                                          grade_gto_preflop_answer)
 
 #: O acervo tem carta de 3 a 100bb. O Pratica abre as faixas curtas, que e onde vive o MTT, e
@@ -147,6 +148,20 @@ def mesa_do_spot(spot: dict, hero_cards=None, bb_chips: int = BB_EM_FICHAS) -> d
     }
 
 
+def cartas_da_mao(hand: str) -> str:
+    """`'K7s'` -> `'Ks7h'`: a CLASSE da mao vira duas cartas concretas, com naipe.
+
+    Existe porque a mesa manda as cartas do heroi como STRING, e o front as le com uma regex de
+    `rank + naipe` (`parseCards`). Passar a classe crua fazia `'K7s'` casar so o `'7s'`: uma carta
+    em vez de duas, e no desenho da mesa a mao do heroi simplesmente nao aparecia.
+
+    Os naipes sao os de exibicao que a Academia ja usa (`_hand_to_cards`), e nao sorteados: o que
+    importa no preflop e a classe, e naipe aleatorio faria a MESMA mao aparecer diferente entre a
+    lista e a mesa.
+    """
+    return ''.join('%s%s' % (c['rank'], c['suit']) for c in _hand_to_cards(hand or ''))
+
+
 def chave_do_spot(spot: dict) -> str:
     """Identidade do spot para nao repetir entre as mesas ABERTAS.
 
@@ -198,7 +213,7 @@ def mesas(n: int = 1, cenario: str = 'mixed', stacks=None, posicoes=None, evitar
             'hero_cards': q['hero_cards'],
             'options': q['options'],
             'xp_value': q['xp_value'],
-            'table': mesa_do_spot(q['spot'], hero_cards=q['hand']),
+            'table': mesa_do_spot(q['spot'], hero_cards=cartas_da_mao(q['hand'])),
         })
     return saida
 

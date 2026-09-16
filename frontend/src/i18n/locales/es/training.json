@@ -224,6 +224,10 @@
       "grind": {
         "name": "Mano completa",
         "desc": "Recorre una mano real del preflop al river, decidiendo en cada street."
+      },
+      "pratica": {
+        "name": "Práctica multi-mesa",
+        "desc": "Hasta 4 mesas preflop a la vez, con filtro de stack y tipo de spot."
       }
     }
   },

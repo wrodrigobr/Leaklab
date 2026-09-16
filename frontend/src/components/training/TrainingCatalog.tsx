@@ -174,12 +174,45 @@ function IlustracaoMaoCompleta() {
    leak_trainer, que é outro catálogo (30/08: mapeei o arquivo errado, o mapa nunca casava e
    os cards ficaram na matriz em prod; o guarda em trainingCatalogIcones.test.ts agora lê os
    ids do PRÓPRIO backend). */
+/** Prática multi-mesa: quatro mesas, e uma delas com a vez.
+ *
+ *  O desenho diz o que separa este treino dos outros -- o resto do catálogo é uma mesa, ou uma
+ *  grade de mãos. A mesa destacada em teal é a que tem o foco do teclado, que é o mecanismo que
+ *  faz quatro mesas serem praticáveis em vez de só simultâneas. */
+function IlustracaoQuatroMesas() {
+  const mesas: [number, number, boolean][] = [
+    [8, 8, false], [36, 8, false], [8, 36, true], [36, 36, false],
+  ];
+  return (
+    <svg viewBox="0 0 64 64" className="h-full w-full" aria-hidden>
+      {mesas.map(([x, y, foco], i) => (
+        <g key={i}>
+          <rect x={x} y={y} width="20" height="20" rx="9"
+                fill={foco ? "#123A38" : "#151D2E"}
+                stroke={foco ? "#2DD4BF" : "#1E2839"} strokeWidth={foco ? 1.6 : 1.2} />
+          {/* os assentos, como o feltro os mostra */}
+          <g fill={foco ? "#2DD4BF" : "#3A4759"}>
+            <circle cx={x + 10} cy={y + 3.6} r="1.5" />
+            <circle cx={x + 16.4} cy={y + 10} r="1.5" />
+            <circle cx={x + 10} cy={y + 16.4} r="1.5" />
+            <circle cx={x + 3.6} cy={y + 10} r="1.5" />
+          </g>
+        </g>
+      ))}
+      {/* a mesa da vez tambem carrega a marca do teclado */}
+      <text x="18" y="50.5" textAnchor="middle" fontSize="7" fontWeight="700"
+            fontFamily="JetBrains Mono, monospace" fill="#2DD4BF">F</text>
+    </svg>
+  );
+}
+
 const ILUSTRACAO_POR_DRILL: Record<string, () => JSX.Element> = {
   abrir:    IlustracaoAbrir,
   defender: IlustracaoDefender,
   vs_3bet:  Ilustracao3Bet,
   ranges:   IlustracaoMemorizar,
   grind:    IlustracaoMaoCompleta,
+  pratica:  IlustracaoQuatroMesas,
 };
 
 export function TrainingCatalog() {
