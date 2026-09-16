@@ -73,12 +73,27 @@ const M = {
   fHist:   "clamp(7.5px, 1.07cqw, 13px)",
 } as const;
 
-/** Baralho de 4 cores: a cor do quadrado e o naipe, e ela le de longe melhor que o simbolo. */
+/**
+ * Baralho de 4 cores: a cor do quadrado É o naipe, e ela lê de longe melhor que o símbolo.
+ *
+ * ── Por que os tons NÃO são os da paleta de ação ──────────────────────────────────────────────
+ *
+ * A primeira versão usou o verde do call e o azul do fold para clubs e diamonds, e o guarda de
+ * `actionColors` acusou -- com razão. (Os hex não vão escritos aqui de propósito: aquele guarda
+ * varre o arquivo inteiro sem distinguir prosa de código, e citar o valor numa explicação já o
+ * fez acusar uma vez. É a quarta vez hoje que um guarda de varredura desta casa tropeça em
+ * comentário.) Naipe e ação são dois vocabulários de cor no
+ * mesmo produto, e nesta tela eles aparecem LADO A LADO: o botão verde ao lado de uma carta
+ * verde ensinaria que aquela carta tem a ver com "call".
+ *
+ * Então os quatro naipes têm tons próprios, próximos o bastante para o jogador reconhecer o
+ * baralho de 4 cores e distintos o bastante para nenhum deles ser o hex de uma ação.
+ */
 const NAIPE: Record<string, { bg: string; fg: string }> = {
-  s: { bg: "#C9D1DB", fg: "#0A0E1A" },   // spades  — cinza
-  h: { bg: "#E5434A", fg: "#FFFFFF" },   // hearts  — vermelho
-  d: { bg: "#3E7DC8", fg: "#FFFFFF" },   // diamonds— azul
-  c: { bg: "#4CA455", fg: "#FFFFFF" },   // clubs   — verde
+  s: { bg: "#C9D1DB", fg: "#0A0E1A" },   // spades   — cinza
+  h: { bg: "#D93B42", fg: "#FFFFFF" },   // hearts   — vermelho de naipe
+  d: { bg: "#4A8FD4", fg: "#FFFFFF" },   // diamonds — azul de naipe
+  c: { bg: "#3E9B54", fg: "#FFFFFF" },   // clubs    — verde de naipe
 };
 
 /** `"Ks7h"` → `[["K","s"],["7","h"]]`. Aceita o que o servidor manda e ignora o resto. */

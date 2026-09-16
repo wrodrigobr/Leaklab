@@ -58,14 +58,31 @@ describe("a mesa do Pratica", () => {
     expect(spans.length).toBe(2);
     // jsdom normaliza hex para rgb(): comparar o hex falharia por formato, nao por defeito
     expect(spans[0].getAttribute("style")).toContain("rgb(201, 209, 219)");   // Ks spades
-    expect(spans[1].getAttribute("style")).toContain("rgb(229, 67, 74)");     // 7h hearts
+    expect(spans[1].getAttribute("style")).toContain("rgb(217, 59, 66)");     // 7h hearts
+  });
+
+  it("a cor do naipe NUNCA e a cor de uma acao", () => {
+    // O guarda de `actionColors` pegou a primeira versao desta mesa: ela usava o verde do call e
+    // o azul do fold para clubs e diamonds. Nesta tela os dois vocabularios aparecem LADO A
+    // LADO -- botao verde ao lado de carta verde ensinaria que a carta tem a ver com "call".
+    //
+    // Este guarda le os DOIS arquivos e compara, em vez de cravar a lista de hex proibidos: uma
+    // cor nova na paleta de acao passa a ser barrada aqui sem ninguem lembrar de atualizar.
+    const fonte = readFileSync(join(import.meta.dirname, "MesaCompacta.tsx"), "utf-8");
+    const paleta = readFileSync(join(import.meta.dirname, "..", "..", "lib", "actionColors.ts"), "utf-8");
+    const hexDasAcoes = [...paleta.matchAll(/#([0-9A-Fa-f]{6})/g)].map((m) => m[1].toUpperCase());
+    const bloco = fonte.slice(fonte.indexOf("const NAIPE"), fonte.indexOf("export function lerCartas"));
+    const hexDosNaipes = [...bloco.matchAll(/#([0-9A-Fa-f]{6})/g)].map((m) => m[1].toUpperCase());
+    expect(hexDosNaipes.length).toBe(8);                       // 4 naipes x (fundo + texto)
+    const colidem = hexDosNaipes.filter((h) => hexDasAcoes.includes(h));
+    expect(colidem, `cor de acao usada como naipe: ${colidem.join(", ")}`).toEqual([]);
   });
 
   it("le a mao suited com os DOIS quadrados da mesma cor", () => {
     monta({ hero_cards: "Kc7c" });
     const spans = screen.getByTestId("cartas-do-heroi").querySelectorAll("span");
-    expect(spans[0].getAttribute("style")).toContain("rgb(76, 164, 85)");
-    expect(spans[1].getAttribute("style")).toContain("rgb(76, 164, 85)");
+    expect(spans[0].getAttribute("style")).toContain("rgb(62, 155, 84)");
+    expect(spans[1].getAttribute("style")).toContain("rgb(62, 155, 84)");
   });
 
   it("cada assento mostra posicao e stack, e quem foldou aparece sem numero", () => {
