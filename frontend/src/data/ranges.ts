@@ -164,15 +164,15 @@ export function combosDeMaos(hands: string[]): { combos: number; pct: string } {
  * explicando por quê — o contador ao lado ficou lendo os Sets.
  */
 export function rangeStats(range: RangeSet): { combos: number; pct: string } {
-  let combos = 0;
-  for (let r = 0; r < 13; r++) {
-    for (let c = 0; c < 13; c++) {
-      const f = getHandFreq(cellHand(r, c), range);
-      const ativo = (f.raise ?? 0) + (f.call ?? 0) + (f.allin ?? 0);
-      if (ativo > 0.001) combos += r === c ? 6 : r < c ? 4 : 12;
-    }
-  }
-  return { combos, pct: (combos / 1326 * 100).toFixed(1) };
+  // PONDERADO desde 15/09, e derivado de `frequenciasDoSpot` em vez de varrer por conta própria.
+  //
+  // Contava a célula INTEIRA quando ela tinha qualquer ação acima do mínimo, o que em BTN 10bb
+  // dava "43,9% · 582 combos" enquanto a soma das ações dava 39,4%. Duas respostas para "quanto
+  // este spot joga", na mesma tela, e a de cima não era a do mercado: o GTO Wizard pondera.
+  // O conserto de 28/08 já tinha unificado a FONTE da frequência (`getHandFreq`); faltava
+  // unificar a CONTA.
+  const { ativos, total } = frequenciasDoSpot(range);
+  return { combos: Math.round(ativos), pct: (ativos / total * 100).toFixed(1) };
 }
 
 // ── Resumo do spot: a mistura vira CATEGORIA com nome, não gradiente para adivinhar ──────────
@@ -213,6 +213,90 @@ const ORDEM: AcaoDaCelula[] = ['allin', 'raise', 'call', 'fold'];
 
 // Mesmo limiar de `buildGradient`: abaixo disto a ação não é pintada, então não pode ser contada.
 const MINIMO = 0.001;
+
+// ── Frequência por ação: a conta do mercado ──────────────────────────────────────────────────
+//
+// Decidido em 15/09, depois de o dono comparar o nosso BTN 10bb com o GTO Wizard. A carta é a
+// MESMA (a API já responde `allin_pct: 0.3393`, `raise_pct: 0.055`, e o GW mostra 33,5% e 5,6%),
+// mas a tela contava outra coisa: `resumoDoSpot` classifica a mão inteira por COMPORTAMENTO, e
+// uma mão que às vezes vai all-in e às vezes dá raise levava todos os seus combos para a
+// categoria "All-in ou Raise". Resultado: o nosso All-in aparecia como 24,3% onde o GW mostra
+// 33,5%, e o jogador que estuda nas duas plataformas concluiria que o nosso solver erra.
+//
+// Agora a conta principal é a PONDERADA, igual à do GW: cada combo entra em cada ação pela
+// frequência com que a joga. `99` com all-in 54,25% e raise 45,75% contribui 3,255 dos seus 6
+// combos para o all-in e 2,745 para o raise, em vez de 6 para uma categoria "mista". Daí os
+// combos fracionários, que são os mesmos que o GW imprime (443,61 e não 444).
+//
+// `resumoDoSpot` continua: ele responde "quantas mãos eu jogo de mais de um jeito?", que o GW
+// não responde. O que ele deixa de ser é o número que aparece primeiro e sozinho.
+
+export interface FrequenciaDeAcao {
+  acao:   AcaoDaCelula;
+  combos: number;   // fracionário de propósito: é a soma ponderada, não uma contagem
+  pct:    number;
+}
+
+export interface FrequenciasDoSpot {
+  acoes:  FrequenciaDeAcao[];   // só as ações presentes, na ordem de leitura
+  /** combos que NÃO são fold, ponderados: o "quanto este spot joga". */
+  ativos: number;
+  /** combos cuja mão tem estratégia mista (dois ou mais jeitos). Contagem INTEIRA, porque a
+   *  pergunta é sobre a mão e não sobre a frequência. */
+  mistos: number;
+  total:  number;               // 1.326, sempre
+}
+
+/**
+ * A frequência ponderada de cada ação no spot, que é a leitura do GTO Wizard.
+ *
+ * Fonte única das três contas que a tela mostra: as barras por ação, o "quanto abre" do rodapé
+ * da grade (`rangeStats`) e o total. Antes de 15/09 eram três caminhos diferentes e dois deles
+ * davam número diferente para a mesma pergunta: o rodapé contava a célula inteira quando ela
+ * tinha QUALQUER ação (43,9% no BTN 10bb) e a soma ponderada dava 39,4%.
+ */
+export function frequenciasDoSpot(range: RangeSet): FrequenciasDoSpot {
+  const soma: Record<AcaoDaCelula, number> = { allin: 0, raise: 0, call: 0, fold: 0 };
+  let mistos = 0;
+  let total  = 0;
+
+  for (let r = 0; r < 13; r++) {
+    for (let c = 0; c < 13; c++) {
+      const f     = getHandFreq(cellHand(r, c), range);
+      const peso  = r === c ? 6 : r < c ? 4 : 12;
+      total += peso;
+
+      let fa = f.allin ?? 0, fr = f.raise ?? 0, fc = f.call ?? 0;
+      let ativo = fa + fr + fc;
+      // Carta com frequências somando MAIS de 1 é dado suspeito, e acontece: o teste achou o
+      // caso com `allin: 0.8, raise: 0.8` na mesma mão. Sem normalizar, a soma dos combos passava
+      // de 1.326 e a tela mostrava 100,3% — número impossível, que destrói a confiança na
+      // precisão muito mais do que a imprecisão de origem. A grade já corta o excesso ao pintar
+      // (o `linear-gradient` ignora parada acima de 100%), então normalizar aqui é alinhar a
+      // conta ao que o jogador VÊ, e não esconder o problema num lugar novo.
+      if (ativo > 1) {
+        fa /= ativo; fr /= ativo; fc /= ativo;
+        ativo = 1;
+      }
+      soma.allin += peso * fa;
+      soma.raise += peso * fr;
+      soma.call  += peso * fc;
+      // Fold é o RESTO, como a célula é pintada. Ler `f.fold` daria outro número quando a soma
+      // não fecha 1.0, e a tela mostraria uma coisa e a grade outra.
+      soma.fold  += peso * Math.max(0, 1 - ativo);
+
+      const jeitos = (fa > MINIMO ? 1 : 0) + (fr > MINIMO ? 1 : 0) + (fc > MINIMO ? 1 : 0)
+                   + (1 - ativo > MINIMO ? 1 : 0);
+      if (jeitos >= 2) mistos += peso;
+    }
+  }
+
+  const acoes = ORDEM
+    .filter((a) => soma[a] > MINIMO)
+    .map((a) => ({ acao: a, combos: soma[a], pct: (soma[a] / total) * 100 }));
+
+  return { acoes, ativos: total - soma.fold, mistos, total };
+}
 
 /**
  * Agrupa as 169 células por COMBINAÇÃO de ações e devolve as categorias com combos e %.

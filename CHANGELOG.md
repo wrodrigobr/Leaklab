@@ -4,6 +4,69 @@ Todas as mudanÃ§as notÃ¡veis neste projeto serÃ£o documentadas aqui.
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
+## A tela do spot passa a contar como o mercado conta (15/09)
+
+O dono comparou o nosso BTN 10bb com o GTO Wizard: la Allin 33,5% e Raise 5,6%, aqui All-in
+24,3% e Raise 0,9%. A carta e a MESMA, e isso esta medido: a nossa API responde
+`allin_pct: 0.3393` e `raise_pct: 0.055` para esse spot. Recalculando os NOSSOS dados do jeito
+que o GW conta da 33,9% / 5,5% / 60,6% contra 33,5% / 5,6% / 61% dele, ou seja a mesma estrategia
+com 0,4 ponto de diferenca (6 combos, provavelmente versao do solve).
+
+**A diferenca era de CONTA, nao de solver.** `resumoDoSpot` classifica a mao inteira por
+COMPORTAMENTO: uma mao que as vezes vai all-in e as vezes da raise levava todos os seus combos
+para a categoria "All-in ou Raise" e desaparecia das duas colunas puras. O GW pondera: `99`, com
+all-in 54,25%, entrega 3,255 dos seus 6 combos ao all-in e 2,745 ao raise. Daí os combos
+fracionarios que ele imprime (443,61 e nao 444).
+
+Decisao do dono, e a razao importa mais que o numero: "os jogadores ja estao habituados a usar o
+gto wizard... caso contrario, podem achar que o nosso solver e mais impreciso, ou entregamos
+informacoes incorretas". Numero diferente do mercado e lido como erro nosso.
+
+Agora `frequenciasDoSpot` e a fonte unica da conta, e a tela mostra a frequencia ponderada por
+acao mais a tira proporcional. **Eram TRES contas para a mesma tela, e duas discordavam:** o
+rodape da grade (`rangeStats`) somava a celula inteira quando ela tinha qualquer acao, o que da
+43,9% no BTN 10bb, enquanto as acoes somavam 39,4%. O conserto de 28/08 tinha unificado a FONTE
+da frequencia; faltava unificar a CONTA. `rangeStats` agora deriva daqui.
+
+A categorizacao por comportamento continua, porque responde o que o GW nao responde ("quantas
+maos eu jogo de mais de um jeito?"), mas virou UMA linha, com o detalhe por combinacao no title.
+Nao uma segunda tabela de percentuais: dois numeros para a mesma pergunta na mesma tela confundem,
+e isso ja custou uma reclamacao do dono em 08/09.
+
+Achado do teste, que eu nao tinha previsto: carta com frequencias somando MAIS de 1 na mesma mao
+(o caso forjado foi `allin: 0.8, raise: 0.8`) fazia a soma passar de 1.326 e a tela mostrar
+**100,3%**. Numero impossivel destroi a confianca na precisao mais do que a imprecisao de origem,
+entao as frequencias sao normalizadas quando estouram. A grade ja cortava o excesso ao pintar (o
+`linear-gradient` ignora parada acima de 100%), logo a conta passou a concordar com o que o
+jogador VE, em vez de esconder o problema num lugar novo.
+
+Guarda quebrado de proposito: com a contagem por celula de volta, 4 dos 5 casos acusam, incluindo
+o do denominador (1.350 em vez de 1.326) e o do combo fracionario.
+
+---
+## A faixa de redes da landing deixava uma sala sozinha na segunda linha (15/09)
+
+Reportado pelo dono olhando a tela. A faixa era `grid-cols-2 md:grid-cols-4` e as salas passaram
+a ser CINCO quando o PartyPoker entrou: em desktop, o PartyPoker ficava sozinho com tres celulas
+vazias do lado, e como a faixa e desenhada em fio de cabelo (`gap-px` sobre `bg-border`), o fio
+contornava o vazio e o buraco ficava ainda mais visivel.
+
+Trocar 4 por 5 consertaria hoje e quebraria na sexta sala, que e exatamente o que acabou de
+acontecer da quarta para a quinta. Agora e `flex-wrap` com `flex-1` e base minima: os itens da
+ultima linha CRESCEM e fecham a largura, com qualquer quantidade de salas, inclusive no telefone.
+
+O guarda me corrigiu enquanto eu o escrevia: eu afirmei que `grid-cols-2 md:grid-cols-5`
+resolveria com 5 salas e ele apontou que no telefone sao 2+2+1, com o ultimo sozinho. A assercao
+ficou com o valor verdadeiro e a nota do que aconteceu. Quebrado de proposito depois: com a grade
+antiga de volta, ele acusa "grid-cols-2 e grid-cols-4 deixa item sozinho com 5 salas". Ele nao
+mede pixel (jsdom nao faz layout): le a classe e a quantidade de salas, que e o par que produziu
+o defeito.
+
+De brinde, um terceiro caso: a faixa e a frase de apoio logo abaixo dela ("Suporte a hand
+histories de...") saiam de listas diferentes, e e a mesma familia do FLU-8. O teste agora exige
+que toda sala da faixa apareca na frase.
+
+---
 ## A recepcao do upload recusava CoinPoker e GGPoker, que o parser le desde sempre (15/09)
 
 Reportado pelo Rullian: o import de CoinPoker "esta dando problema". Reproduzido na primeira

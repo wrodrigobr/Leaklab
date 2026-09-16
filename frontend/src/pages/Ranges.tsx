@@ -16,8 +16,9 @@
  * pior. A tela declara os quatro que tem, e a lacuna fica registrada aqui.
  *
  * A página não constrói motor nenhum: ela liga os seletores ao que já existe. `RangeGrid` pinta,
- * `buildRangeFromApi` monta o RangeSet (a MESMA função do replayer) e `resumoDoSpot` conta as
- * categorias. Nada aqui é uma segunda fonte.
+ * `buildRangeFromApi` monta o RangeSet (a MESMA função do replayer), `frequenciasDoSpot` dá a
+ * frequência ponderada por ação (a conta do GTO Wizard, adotada em 15/09) e `resumoDoSpot`
+ * nomeia as combinações, que ficam no detalhe. Nada aqui é uma segunda fonte.
  *
  * ── O que ela deliberadamente NÃO mostra ──────────────────────────────────────────────────
  *
@@ -32,7 +33,7 @@ import { HudHeader } from "@/components/hud/HudHeader";
 import { RangeGrid } from "@/components/replayer/RangeGrid";
 import { buildRangeFromApi, type PreflopRangesResp } from "@/components/replayer/RangePanel";
 import { getPreflopRanges } from "@/lib/api";
-import { resumoDoSpot, ROTULO_ACAO, type RangeSet, type RangeType, type AcaoDaCelula } from "@/data/ranges";
+import { frequenciasDoSpot, resumoDoSpot, ROTULO_ACAO, type RangeSet, type RangeType, type AcaoDaCelula } from "@/data/ranges";
 import { ACTION_COLORS } from "@/lib/actionColors";
 import { cn } from "@/lib/utils";
 import { JanelaFlutuante, suportaJanelaFlutuante } from "@/components/ranges/JanelaFlutuante";
@@ -207,6 +208,10 @@ export default function Ranges() {
   }, [resp, cenario, vilaoAtivo]);
 
   const categorias = useMemo(() => (range ? resumoDoSpot(range) : []), [range]);
+  // A conta PRINCIPAL (15/09): frequência ponderada por ação, que é a leitura do GTO Wizard e
+  // de todo solver. `resumoDoSpot` continua abaixo, respondendo o que o GW não responde
+  // ("quantas mãos jogo de mais de um jeito?"), mas deixou de ser o número que aparece sozinho.
+  const freqs = useMemo(() => (range ? frequenciasDoSpot(range) : null), [range]);
 
   // De qual balde a secao exibida veio de fato. `rfi` e `vs_rfi` nunca caem em vizinho; so
   // `vs_3bet` e `squeeze` tem fallback, entao o aviso so pode aparecer neles.
@@ -356,31 +361,72 @@ export default function Ranges() {
               <span>{t("ranges.resumoTitulo")}</span>
               <span className="tracking-normal text-hud-muted">{t("ranges.resumoCombos")}</span>
             </h2>
-            {categorias.length === 0 && (
+            {!freqs && (
               <p className="text-xs text-muted-foreground">{t("ranges.resumoVazio")}</p>
             )}
-            <ul className="space-y-0">
-              {categorias.map((c) => (
-                <li
-                  key={c.chave}
-                  className="flex items-center gap-2 border-b border-border/60 py-1.5 text-sm last:border-b-0"
-                >
-                  <span
-                    className="block size-2.5 flex-none rounded-[2px]"
-                    style={{ background: gradienteDa(c.acoes) }}
-                  />
-                  <span className="flex-1 text-foreground">
-                    {c.acoes.map((a) => ROTULO_ACAO[a]).join(t("ranges.ou"))}
-                  </span>
-                  <span className="font-mono text-xs tabular-nums text-muted-foreground">
-                    <b className="font-medium text-foreground">{c.combos}</b> {t("ranges.combos")} · {c.pct}%
-                  </span>
-                </li>
-              ))}
-            </ul>
-            <p className="mt-3 text-[11px] leading-relaxed text-hud-muted">
-              {t("ranges.resumoNota")}
-            </p>
+            {freqs && (
+              <>
+                {/* Frequência por ação, ponderada pelo combo: a mesma conta do GTO Wizard.
+                    Combos fracionários são o esperado, não erro de arredondamento: `99` com
+                    all-in 54,25% entrega 3,3 dos seus 6 combos ao all-in. */}
+                <ul className="space-y-0">
+                  {freqs.acoes.map((f) => (
+                    <li
+                      key={f.acao}
+                      className="flex items-center gap-2 border-b border-border/60 py-1.5 text-sm last:border-b-0"
+                    >
+                      <span
+                        className="block size-2.5 flex-none rounded-[2px]"
+                        style={{ background: gradienteDa([f.acao]) }}
+                      />
+                      <span className="flex-1 text-foreground">{ROTULO_ACAO[f.acao]}</span>
+                      <span className="font-mono text-xs tabular-nums text-muted-foreground">
+                        <b className="font-medium text-foreground">{f.pct.toFixed(1)}%</b>
+                        {" · "}
+                        {f.combos.toLocaleString(undefined, { maximumFractionDigits: 1 })}{" "}
+                        {t("ranges.combos")}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+
+                {/* A tira proporcional, como o visor do GW: a leitura de relance, antes do número. */}
+                <div className="mt-3 flex h-2 overflow-hidden rounded-[3px]">
+                  {freqs.acoes.map((f) => (
+                    <span
+                      key={f.acao}
+                      style={{ width: `${f.pct}%`, background: gradienteDa([f.acao]) }}
+                      title={`${ROTULO_ACAO[f.acao]} ${f.pct.toFixed(1)}%`}
+                    />
+                  ))}
+                </div>
+
+                {/* O que o GW não mostra, e que é nosso: quantas mãos têm estratégia mista.
+                    Uma LINHA, não uma segunda tabela de percentuais — dois números para a mesma
+                    pergunta na mesma tela confundem, e isso já custou uma reclamação em 08/09. */}
+                {freqs.mistos > 0 && (
+                  <p
+                    className="mt-3 border-t border-border/60 pt-2.5 font-mono text-[11px] tabular-nums text-hud-muted"
+                    /* O detalhe por combinação (o antigo Resumo do spot) vive aqui, no title:
+                       continua sendo informação nossa que o GW não dá, sem virar uma segunda
+                       tabela de percentuais competindo com a de cima. É também o que mantém
+                       `resumoDoSpot` com consumidor, em vez de função exportada sem uso. */
+                    title={categorias
+                      .filter((c) => c.acoes.length >= 2)
+                      .map((c) => `${c.acoes.map((a) => ROTULO_ACAO[a]).join(t("ranges.ou"))}: ${c.combos}`)
+                      .join("  ·  ")}
+                  >
+                    {t("ranges.mistas", {
+                      combos: freqs.mistos,
+                      pct: ((freqs.mistos / freqs.total) * 100).toFixed(1),
+                    })}
+                  </p>
+                )}
+                <p className="mt-2 text-[11px] leading-relaxed text-hud-muted">
+                  {t("ranges.resumoNota")}
+                </p>
+              </>
+            )}
           </div>
         </div>
       </main>
