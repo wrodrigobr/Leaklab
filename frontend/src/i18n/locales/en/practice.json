@@ -24,8 +24,9 @@
     "sessao": "session",
     "acerto": "accuracy",
     "bbPerdidos": "bb lost",
-    "aplicaDepois": "applies next hand, without discarding the ones in play",
-    "unidade": "unit"
+    "aplicaDepois": "or wait: it applies on each table next hand",
+    "unidade": "unit",
+    "aplicarAgora": "apply now"
   },
   "cenario": {
     "mixed": "everything",
@@ -39,14 +40,19 @@
     "acao": "action"
   },
   "nivel": {
-    "melhor": "best play",
     "correta": "correct",
-    "imprecisao": "inaccuracy",
+    "imprecisao": "acceptable",
     "errada": "mistake",
     "grave": "blunder"
   },
   "unidade": {
     "bb": "BB",
     "fichas": "chips"
+  },
+  "veredito": {
+    "oGtoTambem": "GTO also:",
+    "verDetalhe": "see analysis",
+    "suaJogada": "your play",
+    "oGtoJoga": "GTO plays:"
   }
 }

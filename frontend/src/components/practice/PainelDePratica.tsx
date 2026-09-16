@@ -1,8 +1,8 @@
 import { useTranslation } from "react-i18next";
 import { RotateCw, SlidersHorizontal, X } from "lucide-react";
 import {
-  MAX_MESAS, NIVEIS, STACKS_DISPONIVEIS, type ConfigPratica, type Nivel, type Pausa,
-  type StatsPratica, type Unidade,
+  MAX_MESAS, NIVEIS, SIMBOLO_DO_NIVEL, STACKS_DISPONIVEIS, type ConfigPratica, type Nivel,
+  type Pausa, type StatsPratica, type Unidade,
 } from "@/lib/pratica";
 import { cn } from "@/lib/utils";
 
@@ -22,16 +22,23 @@ import { cn } from "@/lib/utils";
  * Recolhido, sobra a aba de 36px e a grade recupera o espaço.
  */
 
+/** A cor do símbolo na legenda, alinhada com a da barra. */
+const TEXTO_DA_ESCALA: Record<Nivel, string> = {
+  correta:    "text-emerald-400",
+  imprecisao: "text-amber-400",
+  errada:     "text-red-400",
+  grave:      "text-red-600",
+};
+
 const COR_DA_BARRA: Record<Nivel, string> = {
-  melhor:     "bg-emerald-500",
-  correta:    "bg-primary",
+  correta:    "bg-emerald-500",
   imprecisao: "bg-amber-500",
   errada:     "bg-red-500",
   grave:      "bg-red-900",
 };
 
 export function PainelDePratica({
-  aberto, config, pendente, stats, onConfig, onAlternar,
+  aberto, config, pendente, stats, onConfig, onAlternar, onAplicar,
 }: {
   aberto: boolean;
   /** o que está VALENDO nas mesas abertas */
@@ -41,6 +48,8 @@ export function PainelDePratica({
   stats: StatsPratica;
   onConfig: (c: ConfigPratica) => void;
   onAlternar: (v: boolean) => void;
+  /** troca TODAS as mesas agora, com a configuração pendente */
+  onAplicar: () => void;
 }) {
   const { t } = useTranslation("practice");
   // O painel edita o PENDENTE quando há um, senão o que está valendo: sem isso, dois cliques
@@ -89,10 +98,27 @@ export function PainelDePratica({
           ))}
         </div>
         {pendente && (
-          <div data-testid="pratica-pendente"
-               className="mt-2 flex items-start gap-1.5 border-l-2 border-primary/50 bg-primary/[0.05] px-2 py-1.5">
-            <RotateCw className="mt-px size-2.5 shrink-0 text-primary/80" aria-hidden />
-            <span className="font-mono text-[9px] leading-relaxed text-primary/90">
+          <div data-testid="pratica-pendente" className="mt-2">
+            {/* ── O botao APLICAR (pedido do dono, 16/09) ────────────────────────────────────
+                "quando troco alguma configuracao, aparece esta msg...mas demora muito pra trocar
+                a configuracao....acho que poderiamos ter um botao aplicar".
+
+                A demora tem causa: com as mesas girando INDEPENDENTES, a configuracao nova so
+                entra quando CADA mesa termina a mao dela -- e com quatro mesas isso leva varias
+                rodadas. O aviso dizia a verdade e ainda assim frustrava, porque quem mexe no
+                painel quer ver o efeito.
+
+                Agora sao duas saidas, e o jogador escolhe: clicar e trocar tudo agora, ou nao
+                clicar e deixar entrar sozinho. O aviso continua embaixo explicando a segunda. */}
+            <button type="button" onClick={onAplicar}
+                    data-testid="pratica-aplicar"
+                    className="flex w-full items-center justify-center gap-1.5 rounded bg-primary px-2 py-1.5
+                               font-mono text-[10px] font-bold uppercase tracking-widest-2 text-background
+                               transition-colors hover:bg-primary-glow">
+              <RotateCw className="size-3" aria-hidden />
+              {t("painel.aplicarAgora")}
+            </button>
+            <span className="mt-1 block font-mono text-[9px] leading-relaxed text-primary/70">
               {t("painel.aplicaDepois")}
             </span>
           </div>
@@ -184,7 +210,12 @@ export function PainelDePratica({
             const pct = stats.maos ? (q / stats.maos) * 100 : 0;
             return (
               <div key={n} data-testid={`pratica-nivel-${n}`}
-                   className="grid grid-cols-[18px_1fr_auto] items-center gap-1.5 font-mono text-[9.5px] text-muted-foreground">
+                   className="grid grid-cols-[16px_18px_1fr_auto] items-center gap-1.5 font-mono text-[9.5px] text-muted-foreground">
+                {/* a MESMA escala do card do centro, de `SIMBOLO_DO_NIVEL`: duas escalas seriam
+                    duas linguagens para a mesma coisa na mesma tela */}
+                <span className={cn("text-[10px] leading-none", TEXTO_DA_ESCALA[n])}>
+                  {SIMBOLO_DO_NIVEL[n]}
+                </span>
                 <b className="font-bold text-foreground tabular-nums">{q}</b>
                 <i className="block h-1 rounded-sm bg-border">
                   <span className={cn("block h-full rounded-sm", COR_DA_BARRA[n])}

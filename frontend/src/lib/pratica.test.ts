@@ -1,7 +1,8 @@
 import { describe, it, expect } from "vitest";
 import {
   CONFIG_PADRAO, MAX_MESAS, acaoDaTecla, acumula, devePausar, mudaOSorteio,
-  nivelDoGrade, normalizaAcao, proximoFoco, STATS_ZERO, type ConfigPratica,
+  nivelDoGrade, normalizaAcao, proximoFoco, NIVEIS, SIMBOLO_DO_NIVEL, STATS_ZERO,
+  type ConfigPratica,
 } from "./pratica";
 
 /**
@@ -68,23 +69,80 @@ describe("foco", () => {
 });
 
 describe("os cinco níveis", () => {
-  it("vêm do action_quality, e não do is_correct", () => {
+  /** Os TRÊS casos reais que motivaram a régua, medidos no acervo em 16/09 (BTN, 20bb, RFI).
+   *  Os três eram `major_leak` no vocabulário da carta, com custo variando sessenta vezes. */
+  const FORA = { freq: { fold: 1, raise: 0, call: 0, allin: 0 }, acao: "raise" };
+  const raise75o = { is_correct: false, action_quality: "major_leak",
+                     hand_freq: FORA.freq, ev_loss_bb: 0.148 };
+  const foldKQs  = { is_correct: false, action_quality: "major_leak",
+                     hand_freq: { fold: 0, raise: 1, call: 0, allin: 0 }, ev_loss_bb: 1.696 };
+  const foldAA   = { is_correct: false, action_quality: "major_leak",
+                     hand_freq: { fold: 0, raise: 1, call: 0, allin: 0 }, ev_loss_bb: 9.208 };
+
+  it("o CUSTO separa o que o action_quality achatava", () => {
+    // O defeito que o dono viu: os tres abaixo recebiam o MESMO "erro grave", e a diferenca de
+    // custo entre o primeiro e o ultimo e de sessenta vezes. A frequencia nao podia separa-los
+    // (todos tem 0%), e por isso a severidade passou a vir do custo.
+    expect(nivelDoGrade(raise75o, "raise")).toBe("imprecisao");   // 0,15bb
+    expect(nivelDoGrade(foldKQs, "fold")).toBe("errada");         // 1,70bb
+    expect(nivelDoGrade(foldAA, "fold")).toBe("grave");           // 9,21bb
+  });
+
+  it("os cortes de custo, nos limites exatos", () => {
+    const fora = { is_correct: false, hand_freq: { fold: 1, raise: 0 } };
+    expect(nivelDoGrade({ ...fora, ev_loss_bb: 0.49 }, "raise")).toBe("imprecisao");
+    expect(nivelDoGrade({ ...fora, ev_loss_bb: 0.5 }, "raise")).toBe("errada");
+    expect(nivelDoGrade({ ...fora, ev_loss_bb: 3 }, "raise")).toBe("errada");
+    expect(nivelDoGrade({ ...fora, ev_loss_bb: 3.01 }, "raise")).toBe("grave");
+    // o sinal do ev_loss varia por superficie no produto: o que decide e o TAMANHO
+    expect(nivelDoGrade({ ...fora, ev_loss_bb: -9 }, "raise")).toBe("grave");
+  });
+
+  it("SEM custo medido, cai no vocabulário da carta", () => {
+    // Menos preciso, e declarado: a alternativa seria inventar severidade onde nao houve medida.
     expect(nivelDoGrade({ is_correct: true, action_quality: "correct" }, "fold")).toBe("correta");
     expect(nivelDoGrade({ is_correct: true, action_quality: "acceptable" }, "call")).toBe("imprecisao");
     expect(nivelDoGrade({ is_correct: false, action_quality: "leak" }, "call")).toBe("errada");
     expect(nivelDoGrade({ is_correct: false, action_quality: "major_leak" }, "call")).toBe("grave");
   });
 
-  it('"melhor jogada" exige ser a ação de MAIOR frequência', () => {
+  it("acertar o que o GTO faz com peso e UM nivel, e nao dois", () => {
+    // O dono fundiu "melhor jogada" e "correta": "pra mim sao a mesma coisa". A medicao explica
+    // por que a distincao rendia pouco -- 83,7% dos spots preflop do acervo sao PUROS, e a
+    // separacao so dizia algo em 5,7% deles.
     const freq = { F: 0.72, R2: 0.28 };
     expect(nivelDoGrade({ is_correct: true, action_quality: "correct", hand_freq: freq }, "fold"))
-      .toBe("melhor");
-    // mesma qualidade, mas escolheu a perna menor da mistura: correta, não melhor
+      .toBe("correta");
+    // Escolheu a perna menor (28%, logo abaixo do corte de 30%). SEM custo no veredito, o
+    // fallback usa o `action_quality` da carta, que aqui diz `correct` -- e a resposta e
+    // "correta". Isto nao e conveniencia: e a regra de nao inventar severidade sem medida.
     expect(nivelDoGrade({ is_correct: true, action_quality: "correct", hand_freq: freq }, "raise"))
       .toBe("correta");
+    // COM o custo medido, a mesma jogada e classificada pelo que ela custou
+    expect(nivelDoGrade({ is_correct: true, action_quality: "correct", hand_freq: freq,
+                          ev_loss_bb: 0.2 }, "raise")).toBe("imprecisao");
+    expect(nivelDoGrade({ is_correct: false, action_quality: "leak", hand_freq: freq,
+                          ev_loss_bb: 4.5 }, "raise")).toBe("grave");
   });
 
-  it("sem hand_freq NUNCA promove a melhor jogada", () => {
+  it("num 50/50 as DUAS pernas contam como boa", () => {
+    // Empate na maior frequencia: penalizar uma delas seria inventar uma preferencia que o
+    // solver nao tem.
+    const meioAMeio = { F: 0.5, R2: 0.5 };
+    expect(nivelDoGrade({ hand_freq: meioAMeio, is_correct: true }, "fold")).toBe("correta");
+    expect(nivelDoGrade({ hand_freq: meioAMeio, is_correct: true }, "raise")).toBe("correta");
+  });
+
+  it("a mistura com peso real conta como CORRETA", () => {
+    const freq = { F: 0.6, R2: 0.4 };
+    expect(nivelDoGrade({ hand_freq: freq, is_correct: true }, "raise")).toBe("correta");
+    // e logo abaixo do corte deixa de ser: 29% e excecao, nao mistura
+    expect(nivelDoGrade({ hand_freq: { F: 0.71, R2: 0.29 }, is_correct: true, ev_loss_bb: 0.2 },
+                        "raise")).toBe("imprecisao");
+  });
+
+  it("sem hand_freq nao ha o que comparar, e o quality manda", () => {
+    // Promover por otimismo infla o placar com o que nao se mediu.
     // Promover por otimismo infla o placar com o que não se mediu, que é a versão do
     // "zero tranquilizador" para o lado bom do número.
     expect(nivelDoGrade({ is_correct: true, action_quality: "correct" }, "fold")).toBe("correta");
@@ -108,6 +166,20 @@ describe("os cinco níveis", () => {
     expect(normalizaAcao("shove")).toBe("allin");
     expect(normalizaAcao("C")).toBe("call");
     expect(normalizaAcao("X")).toBe("check");
+  });
+});
+
+describe("a escala de simbolos", () => {
+  it("ordena os quatro niveis, e o dobro diz a intensidade", () => {
+    // Pedido do dono ("VV, V, X, XX"): o simbolo faz o que a palavra nao faz, que e ORDENAR.
+    // "imprecisao" e "errada" sao dois substantivos e o jogador precisa saber qual e pior.
+    expect(NIVEIS.map((n) => SIMBOLO_DO_NIVEL[n])).toEqual(["✓✓", "✓", "✗", "✗✗"]);
+  });
+
+  it("todo nivel TEM simbolo, e nenhum sobra", () => {
+    // Nivel novo sem simbolo apareceria sem marca na tela; simbolo de nivel que nao existe e
+    // codigo morto que engana quem le.
+    expect(Object.keys(SIMBOLO_DO_NIVEL).sort()).toEqual([...NIVEIS].sort());
   });
 });
 
@@ -139,11 +211,11 @@ describe("placar da sessão", () => {
 describe("pausar depois de", () => {
   it("nunca segue direto, ação sempre espera, erro só no erro", () => {
     expect(devePausar("nunca", "grave")).toBe(false);
-    expect(devePausar("acao", "melhor")).toBe(true);
+    expect(devePausar("acao", "correta")).toBe(true);
     expect(devePausar("erro", "errada")).toBe(true);
     expect(devePausar("erro", "grave")).toBe(true);
     // imprecisão não segura o grind: ela é uma das ações que o GTO mistura
     expect(devePausar("erro", "imprecisao")).toBe(false);
-    expect(devePausar("erro", "melhor")).toBe(false);
+    expect(devePausar("erro", "correta")).toBe(false);
   });
 });

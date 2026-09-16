@@ -6,6 +6,7 @@ import { CheckCircle2, AlertTriangle, Clock, Loader2, X, UploadCloud, Info } fro
 import { tournaments, metrics, subscription } from "@/lib/api";
 import { mensagemDeErroDeUpload } from "@/lib/mensagemDeUpload";
 import { cabeNoTeto, tetoDoPlano, TETO_PADRAO_MB } from "@/lib/tetoDeUpload";
+import { useAuth } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -276,17 +277,34 @@ export function UploadQueueProvider({ children }: { children: React.ReactNode })
   // import, como a lista de torneios.
   const qc = useQueryClient();
 
-  // O teto do ARQUIVO, do plano dele. Lido uma vez: se a consulta falhar, `tetoDoPlano` cai no
-  // menor teto (5 MB) e o servidor corrige para cima recusando -- nunca prometemos mais do que
-  // ele tem. Sem isto, o jogador esperaria 40 MB subirem para ouvir "nao cabe".
-  const [tetoMb, setTetoMb] = useState<number>(TETO_PADRAO_MB);
+  /** O teto do ARQUIVO, do plano dele. `null` = AINDA NAO SEI, e nesse estado a fila NAO BARRA.
+   *
+   * ── O bug do Rullian (16/09), e ele era meu ───────────────────────────────────────────────
+   *
+   * Ele e Pro, com teto de 40 MB, e a tela recusou o arquivo de 15 MB dizendo "o seu plano
+   * aceita ate 5MB". O backend estava certo (`/subscription/status` devolve `upload_mb: 40`); o
+   * defeito era aqui, e de DESENHO: o estado comecava em `TETO_PADRAO_MB` (5) e eu barrava com
+   * esse valor.
+   *
+   * A causa de ele nunca sair de 5: o `UploadQueueProvider` envolve TODAS as rotas, incluindo a
+   * landing publica. Ele monta antes do login, a consulta da quota volta 401, cai no catch -- e
+   * o efeito tinha `[]` como dependencia, entao nunca tentava de novo depois do login.
+   *
+   * Dois consertos, e o primeiro e o que importa: **nunca barrar por falta de informacao**. O
+   * servidor e a autoridade e tem a mensagem certa; adivinhar pessimista aqui transforma uma
+   * consulta que falhou na recusa de um arquivo que cabia. O segundo e refazer a consulta quando
+   * o login acontece, para a recusa instantanea voltar a funcionar para quem esta logado.
+   */
+  const [tetoMb, setTetoMb] = useState<number | null>(null);
+  const { user } = useAuth();
   useEffect(() => {
+    if (!user) { setTetoMb(null); return; }   // deslogado: nao se sabe, e nao se barra
     let vivo = true;
     subscription.status()
       .then((q) => { if (vivo) setTetoMb(tetoDoPlano(q)); })
-      .catch(() => { /* fica no padrao; o backend e a autoridade */ });
+      .catch(() => { if (vivo) setTetoMb(null); });   // falhou: o servidor decide
     return () => { vivo = false; };
-  }, []);
+  }, [user]);
   const tinhaFila = useRef(false);
   useEffect(() => {
     const emAndamento = queue.some((i) => i.status === "queued" || i.status === "processing");
@@ -323,16 +341,18 @@ export function UploadQueueProvider({ children }: { children: React.ReactNode })
       try {
         if (!file) throw new Error(t("uploadQueue.fileMissing"));
 
-        // ANTES de ler e enviar: o tamanho ele sabe na hora, e a frase fala do ARQUIVO dele.
-        // Medir aqui tambem evita a mentira pequena do outro lado: o envio vai como JSON, entao
-        // o corpo da requisicao e maior que o arquivo, e o backend so pode falar do corpo.
-        const v = cabeNoTeto(file.size, tetoMb);
-        if (!v.cabe) {
-          dispatch({ type: "SET_STATUS", id: next.id, status: "error",
-                     error: t(tetoMb <= TETO_PADRAO_MB ? "uploadQueue.grandeFree"
-                                                       : "uploadQueue.grandePro",
-                              { arquivo: v.arquivoMb.toFixed(1), teto: v.tetoMb }) });
-          return;
+        // ANTES de ler e enviar, MAS so quando o teto do plano e conhecido. Com `tetoMb` nulo
+        // a fila envia e deixa o servidor decidir: ele tem a autoridade e a mensagem certa, e
+        // barrar aqui por um valor que nao chegou foi o bug do Rullian.
+        if (tetoMb != null) {
+          const v = cabeNoTeto(file.size, tetoMb);
+          if (!v.cabe) {
+            dispatch({ type: "SET_STATUS", id: next.id, status: "error",
+                       error: t(tetoMb <= TETO_PADRAO_MB ? "uploadQueue.grandeFree"
+                                                         : "uploadQueue.grandePro",
+                                { arquivo: v.arquivoMb.toFixed(1), teto: v.tetoMb }) });
+            return;
+          }
         }
 
         const content = await file.text();

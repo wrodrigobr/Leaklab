@@ -2,7 +2,7 @@ import { useTranslation } from "react-i18next";
 import { Star } from "lucide-react";
 import { MesaCompacta } from "@/components/practice/MesaCompacta";
 import { twFor, actionKey } from "@/lib/actionColors";
-import { nivelDoGrade, type Nivel, type Unidade } from "@/lib/pratica";
+import { nivelDoGrade, normalizaAcao, SIMBOLO_DO_NIVEL, type Nivel, type Unidade } from "@/lib/pratica";
 import type { PracticeGrade, PracticeTable } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
@@ -22,9 +22,103 @@ import { cn } from "@/lib/utils";
  * spot não tem, e o servidor recusaria a resposta sem o jogador entender.
  */
 
+/**
+ * O card de veredito, no CENTRO da mesa (pedido do dono: "podiamos mostrar no centro da mesa",
+ * sobre o card de feedback do GTO Wizard).
+ *
+ * O modelo deles: um circulo com a pontuacao e, ao lado, a frase do nivel. Aqui a pontuacao e a
+ * frequencia com que o GTO joga a acao ESCOLHIDA, que e o numero honesto para este produto --
+ * "100%" quando a jogada e a unica que o solver faz, e a fracao quando ele mistura. Sem
+ * `hand_freq` o circulo nao aparece: inventar uma pontuacao onde nao houve medida seria o
+ * contrario do que o resto do veredito faz.
+ */
+function CardDeVeredito({ nivel, grade, acao }: {
+  nivel: Nivel;
+  grade: PracticeGrade | null;
+  acao: string;
+}) {
+  const { t } = useTranslation("practice");
+  const freq = grade?.hand_freq || null;
+  const daEscolhida = freq
+    ? Object.entries(freq).find(([a]) => normalizaAcao(a) === normalizaAcao(acao))?.[1]
+    : undefined;
+  const pct = typeof daEscolhida === "number" ? Math.round(daEscolhida * 100) : null;
+
+  // as duas outras pernas da mistura, para ele ver o que o GTO faz com o resto do tempo
+  const outras = freq
+    ? Object.entries(freq)
+        .filter(([a, v]) => typeof v === "number" && v >= 0.01
+                            && normalizaAcao(a) !== normalizaAcao(acao))
+        .sort((a, b) => (b[1] as number) - (a[1] as number))
+        .slice(0, 2)
+    : [];
+
+  return (
+    <div data-testid="pratica-veredito" className="flex items-center justify-center gap-3">
+      {pct != null && (
+        <span className={cn("flex shrink-0 flex-col items-center justify-center rounded-full border-2 leading-none",
+                            ANEL_DO_NIVEL[nivel])}
+              style={{ width: "clamp(58px, 8cqw, 104px)", height: "clamp(58px, 8cqw, 104px)" }}>
+          <b className="font-mono font-bold tabular-nums"
+             style={{ fontSize: "clamp(17px, 2.5cqw, 32px)" }}>{pct}%</b>
+          <span className="font-mono uppercase tracking-widest-2 opacity-70"
+                style={{ fontSize: "clamp(7px, 0.95cqw, 12px)" }}>
+            {/* "sua jogada", e não "GTO joga": o número É a frequência da jogada DELE, e o
+                rótulo antigo lia-se "0% GTO joga", que deixava dúvida sobre de quem é o 0%. */}
+            {t("veredito.suaJogada")}
+          </span>
+        </span>
+      )}
+      <span className="min-w-0 text-left">
+        <b className={cn("block font-heading font-bold leading-tight", TEXTO_DO_NIVEL[nivel])}
+           style={{ fontSize: "clamp(15px, 2.1cqw, 27px)" }}>
+          {/* O simbolo ORDENA (pedido do dono: "VV, V, X, XX") e a palavra NOMEIA. Os dois,
+              porque um sozinho nao faz o trabalho do outro: "imprecisao" e "errada" sao dois
+              substantivos que nao dizem qual e pior, e o simbolo sozinho nao diz o que houve. */}
+          <span className="mr-1.5 font-mono">{SIMBOLO_DO_NIVEL[nivel]}</span>
+          {t(`nivel.${nivel}`)}
+        </b>
+        {outras.length > 0 && (
+          <span className="block font-mono text-muted-foreground"
+                style={{ fontSize: "clamp(10px, 1.4cqw, 17px)" }}>
+            {/* "GTO TAMBEM" só quando a jogada DELE tem frequência: ali o GTO faz as duas
+                coisas, e "também" é a palavra certa. Com 0%, o GTO não faz a dele -- e a frase
+                virava "GTO também: fold 100%" ao lado de um raise que o solver nunca joga, que
+                foi o que o dono estranhou. Sem frequência, a frase diz o que o GTO FAZ. */}
+            {t(pct ? "veredito.oGtoTambem" : "veredito.oGtoJoga")} {outras.map(([a, v]) =>
+              `${a} ${Math.round((v as number) * 100)}%`).join(" · ")}
+          </span>
+        )}
+        {typeof grade?.ev_loss_bb === "number" && grade.ev_loss_bb !== 0 && (
+          <span className="block font-mono font-bold tabular-nums text-red-400"
+                style={{ fontSize: "clamp(11px, 1.5cqw, 18px)" }}>
+            −{Math.abs(grade.ev_loss_bb).toFixed(2)}bb
+          </span>
+        )}
+      </span>
+    </div>
+  );
+}
+
+/** O anel do circulo, por nivel. Separado do texto para o circulo poder ser mais forte. */
+const ANEL_DO_NIVEL: Record<Nivel, string> = {
+  // `correta` herdou o verde que era da "melhor jogada": fundidos, o nivel bom fica com a cor
+  // mais forte dos dois.
+  correta:    "border-emerald-400 text-emerald-300",
+  imprecisao: "border-amber-400 text-amber-300",
+  errada:     "border-red-400 text-red-300",
+  grave:      "border-red-600 text-red-400",
+};
+
+const TEXTO_DO_NIVEL: Record<Nivel, string> = {
+  correta:    "text-emerald-300",
+  imprecisao: "text-amber-300",
+  errada:     "text-red-300",
+  grave:      "text-red-400",
+};
+
 const COR_DO_NIVEL: Record<Nivel, string> = {
-  melhor:     "bg-emerald-500/10 text-emerald-300",
-  correta:    "bg-primary/10 text-primary",
+  correta:    "bg-emerald-500/10 text-emerald-300",
   imprecisao: "bg-amber-500/10 text-amber-300",
   errada:     "bg-red-500/10 text-red-300",
   grave:      "bg-red-900/25 text-red-300",
@@ -94,11 +188,24 @@ export function MesaDePratica({
           a mesa e os controles -- o jogador percorria a tela para clicar no que decide a mao.
           `max-h-full` e o que impede isso de trazer a barra de rolagem de volta: quando a
           celula e mais larga que 16/10, a altura para em 100% e a largura encolhe junto. */}
-      <div className="mx-auto mt-1.5 max-h-full w-full shrink-0" style={{ aspectRatio: "16 / 10" }}>
+      {/* ── A mesa ocupa o que SOBRA, e nao uma altura que ela exige ────────────────────────
+          Com `aspect-ratio: 16/10` e `shrink-0`, numa celula de 840px de largura ela pedia 525px
+          de altura, estourava os ~440 disponiveis e EMPURRAVA OS BOTOES para fora do card (que e
+          `overflow-hidden`) -- eles simplesmente desapareciam, e foi o que o dono viu.
+
+          Agora: `flex-1 min-h-0` aqui e `shrink-0` nos botoes, entao os controles tem a vez na
+          divisao da altura e a mesa fica com o resto. O trilho e definido em % da propria caixa,
+          entao ele ACHATA junto e fica com a proporcao do GTO Wizard (bem mais largo que alto),
+          que foi a direcao que o dono apontou com o exemplo deles. */}
+      <div className="mx-auto mt-1.5 min-h-0 w-full flex-1">
         {/* `compacta` NAO chega na mesa: ela escala pelo container (cqw), entao 1 ou 4 mesas
             usam a mesma proporcao e nada encolhe por degrau -- e o que o GTO Wizard faz. */}
         <MesaCompacta table={mesa.table} hero="Hero" unidade={unidade}
-                      spot={mesa.resumo || mesa.context} />
+                      spot={mesa.resumo || mesa.context}
+                      veredito={respondida && nivel
+                        ? <CardDeVeredito nivel={nivel} grade={grade}
+                                          acao={acaoEscolhida || ""} />
+                        : undefined} />
       </div>
 
       {/* Os botões que ESTE spot oferece, nas cores da casa (fold azul, call verde, raise
@@ -132,26 +239,22 @@ export function MesaDePratica({
         })}
       </div>
 
-      {/* O veredito em UMA linha. Clicar abre o detalhe. */}
-      {respondida && nivel && (
+      {/* A linha de veredito do rodapé SAIU: ela e o card do centro renderizavam o mesmo
+          veredito ao mesmo tempo (dois `pratica-veredito` no DOM, que o teste pegou). O dono
+          pediu no centro, e lá é melhor -- o olho já está lá, onde ele leu o pote para decidir.
+
+          O que a linha tinha e o centro não: a marca do leak dele e o clique para o detalhe.
+          Os dois viraram uma faixa própria, fina, que não repete o veredito. */}
+      {respondida && nivel && (leakDoJogador != null || grade?.explanation) && (
         <button
           type="button"
           onClick={(e) => { e.stopPropagation(); onDetalhe(); }}
-          data-testid="pratica-veredito"
-          className={cn("mt-1 flex w-full shrink-0 items-center gap-2 rounded px-2 py-1 text-left",
-                        COR_DO_NIVEL[nivel])}
+          data-testid="pratica-detalhe"
+          className="mt-1 flex w-full shrink-0 items-center gap-2 rounded px-2 py-0.5 text-left"
         >
-          <span className="font-mono text-[9.5px] font-bold uppercase tracking-widest-2">
-            {t(`nivel.${nivel}`)}
-          </span>
-          {melhores.length > 0 && (
-            <span className="min-w-0 truncate font-mono text-[9.5px] opacity-80">
-              {t("gtoFaz")} {melhores.map(([a, v]) => `${a} ${Math.round(v * 100)}%`).join(" · ")}
-            </span>
-          )}
-          {typeof grade?.ev_loss_bb === "number" && grade.ev_loss_bb !== 0 && (
-            <span className="shrink-0 font-mono text-[9.5px] font-bold tabular-nums">
-              −{Math.abs(grade.ev_loss_bb).toFixed(2)}bb
+          {grade?.explanation && (
+            <span className="font-mono text-[9px] uppercase tracking-widest-2 text-muted-foreground">
+              {t("veredito.verDetalhe")}
             </span>
           )}
           {/* O que nenhum concorrente copia sem ter o histórico do jogador. */}
@@ -164,10 +267,6 @@ export function MesaDePratica({
         </button>
       )}
 
-      {/* A sobra fica AQUI, no fim: mesa e controles ancorados no topo do card. Sem este
-          espaçador, o `justify` do flex distribuiria o vão entre os blocos e os botões
-          voltariam a flutuar longe do feltro. */}
-      <div className="min-h-0 flex-1" aria-hidden />
     </div>
   );
 }

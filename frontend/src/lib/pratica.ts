@@ -98,35 +98,120 @@ export function proximoFoco(atual: number, total: number, respondidas: Set<numbe
   return -1;
 }
 
-export type Nivel = "melhor" | "correta" | "imprecisao" | "errada" | "grave";
+/**
+ * Os QUATRO niveis do veredito.
+ *
+ * Eram cinco, com "melhor jogada" separada de "correta", e o dono fundiu as duas: "melhor jogada
+ * e correta, pra mim sao a mesma coisa".
+ *
+ * A medicao explica por que a distincao rendia tao pouco: **83,7% dos spots preflop do acervo sao
+ * PUROS** (uma acao em 100%), e so 5,7% tem uma segunda perna com 30% ou mais. Separar "acertou a
+ * de maior frequencia" de "pegou uma perna da mistura" so dizia algo em 5,7% dos casos, e nos
+ * outros 94% os dois niveis descreviam a mesma coisa com dois nomes.
+ */
+/**
+ * O identificador de cada nível. O RÓTULO que o jogador lê vem do i18n (`nivel.*`).
+ *
+ * Os rótulos passaram por "boa" e voltaram para **correta** e **aceitável** (decisão do dono),
+ * e a volta foi boa por um motivo além do gosto: eles agora batem com o `action_quality` que o
+ * servidor já usa (`correct`, `acceptable`, `leak`, `major_leak`). Um vocabulário só entre a
+ * tela e o motor é menos uma tradução para alguém errar depois.
+ */
+export type Nivel = "correta" | "imprecisao" | "errada" | "grave";
 
 /** A ordem em que o placar mostra, do melhor para o pior. */
-export const NIVEIS: Nivel[] = ["melhor", "correta", "imprecisao", "errada", "grave"];
+export const NIVEIS: Nivel[] = ["correta", "imprecisao", "errada", "grave"];
 
 /**
- * Os cinco níveis, derivados do veredito do servidor.
+ * O SÍMBOLO de cada nível, numa escala de quatro degraus.
  *
- * Quatro deles vêm direto do `action_quality` da carta. O quinto, "melhor jogada", precisa de
- * comparação: é o `correct` cuja ação escolhida É a de maior frequência no spot. Sem `hand_freq`
- * não há como distinguir, e aí `correct` fica em "correta" -- nunca promovido a "melhor" por
- * otimismo, que seria inflar o placar do jogador com o que não se mediu.
+ * Pedido do dono: "acho que o gto wizard classifica como VV, V, X, XX" -- e é isso mesmo, a
+ * captura deles mostra "✓✓ MELHOR ESCOLHA" e o painel usa a mesma escala.
+ *
+ * O símbolo faz o que a palavra não faz: ele ordena. "imprecisão" e "errada" são dois
+ * substantivos que o jogador precisa saber qual é pior; `✓` e `✗` dizem de que lado cada uma
+ * está, e o dobro diz a intensidade. A palavra fica ao lado, porque ela é que nomeia.
+ *
+ * Fonte única: o card do centro e o placar da sessão leem daqui, senão seriam duas escalas.
+ */
+export const SIMBOLO_DO_NIVEL: Record<Nivel, string> = {
+  correta:    "✓✓",
+  imprecisao: "✓",
+  errada:     "✗",
+  grave:      "✗✗",
+};
+
+/** A frequência mínima para o GTO estar MISTURANDO a ação de verdade, e não fazendo por exceção. */
+export const FREQ_DA_MISTURA = 0.3;
+
+/** Os cortes de CUSTO, em bb, que separam imprecisão de erro e de erro grave.
+ *
+ *  Calibrados nos números reais do acervo, medidos em 16/09 no BTN a 20bb: `raise` com 75o custa
+ *  **0,15bb**, `fold` com KQs custa **1,70bb** e `fold` com AA custa **9,21bb**. Os três eram
+ *  `major_leak` no vocabulário da carta -- sessenta vezes de diferença no mesmo rótulo. */
+export const CUSTO_DA_IMPRECISAO = 0.5;
+export const CUSTO_DO_ERRO_GRAVE = 3;
+
+/**
+ * Os quatro níveis: a FREQUÊNCIA decide o lado bom, o CUSTO decide a severidade.
+ *
+ * ── Por que os dois, e não um só ──────────────────────────────────────────────────────────────
+ *
+ * O dono, vendo o placar com tudo em "melhor jogada" ou "erro grave": "precisamos pensar em como
+ * classificar as jogadas de acordo com os levels que definimos".
+ *
+ * **Frequência sozinha não separa o que importa.** `raise` com 75o e `fold` com AA têm ambos 0%
+ * de frequência -- os dois são "totalmente fora" -- e custam 0,15bb e 9,21bb. Uma régua só de
+ * frequência é obrigada a dar o mesmo nível aos dois, que foi exatamente o defeito.
+ *
+ * **Custo sozinho também não basta.** Num spot que o GTO mistura 50/50, escolher a perna menor
+ * custa quase nada, mas é informação diferente de ter acertado a de maior frequência.
+ *
+ * Então cada um no seu papel, e é o que o GTO Wizard faz: a "pontuação GTOW" deles é frequência,
+ * e o painel de stats mostra "total de erros EV" e "média de EV perdida", que é custo.
+ *
+ * ── A ordem de avaliação, que é o que faz a régua funcionar ───────────────────────────────────
+ *
+ * 1. O GTO faz essa ação com peso -- a de maior frequência, ou uma perna de >= 30%? CORRETA.
+ * 2. Está fora: o CUSTO decide. Abaixo de 0,5bb é imprecisão, até 3bb é errada, acima é grave.
+ *
+ * Sem custo medido (spot sem carta), o passo 3 cai no `action_quality` da carta -- é menos
+ * preciso, e a alternativa seria inventar severidade onde não houve medida.
  */
 export function nivelDoGrade(g: PracticeGrade | null | undefined, acao: string): Nivel {
+  const freq = g?.hand_freq || null;
+  const entradas = freq
+    ? Object.entries(freq).filter(([, v]) => typeof v === "number")
+    : [];
+
+  // ── 1: o lado bom, pela frequência ──────────────────────────────────────────────────────
+  // Acertar a ação de maior frequência e pegar uma perna que o GTO mistura com peso real são o
+  // MESMO nível, por decisão do dono. O que separa "correta" de "imprecisão" é o GTO fazer
+  // aquilo com peso, e não qual das pernas ele faz mais.
+  if (entradas.length) {
+    const maior = entradas.reduce((a, b) => (b[1] > a[1] ? b : a));
+    const daEscolhida = entradas.find(([a]) => normalizaAcao(a) === normalizaAcao(acao));
+    const pct = daEscolhida ? daEscolhida[1] : 0;
+    if (pct > 0 && (pct >= maior[1] || pct >= FREQ_DA_MISTURA)) return "correta";
+  }
+
+  // ── 3: está fora da mistura, e o CUSTO decide a severidade ──────────────────────────────
+  const custo = typeof g?.ev_loss_bb === "number" ? Math.abs(g.ev_loss_bb) : null;
+  if (custo != null) {
+    if (custo < CUSTO_DA_IMPRECISAO) return "imprecisao";
+    if (custo <= CUSTO_DO_ERRO_GRAVE) return "errada";
+    return "grave";
+  }
+
+  // ── sem custo medido: o vocabulário da carta, que é o que há ─────────────────────────────
   const q = String(g?.action_quality || "").toLowerCase();
   if (q === "major_leak") return "grave";
   if (q === "leak") return "errada";
   if (q === "acceptable") return "imprecisao";
-  if (q !== "correct") {
-    // Sem qualidade legível não há veredito. `is_correct` sozinho é o que o endpoint devolve
-    // quando não houve carta, e a régua da casa manda calar em vez de afirmar.
-    return g?.is_correct ? "correta" : "errada";
-  }
-  const freq = g?.hand_freq || null;
-  if (!freq) return "correta";
-  const entradas = Object.entries(freq).filter(([, v]) => typeof v === "number");
-  if (!entradas.length) return "correta";
-  const maior = entradas.reduce((a, b) => (b[1] > a[1] ? b : a));
-  return normalizaAcao(maior[0]) === normalizaAcao(acao) ? "melhor" : "correta";
+  if (q === "correct") return "correta";
+  // Sem qualidade legível não há veredito. `is_correct` sozinho é o que o endpoint devolve
+  // quando não houve carta, e a régua da casa manda calar em vez de afirmar.
+  return g?.is_correct ? "correta" : "errada";
 }
 
 /** `F`, `R2.5`, `allin`, `jam` viram um vocabulário só, porque o `hand_freq` usa o código do nó
@@ -151,7 +236,7 @@ export interface StatsPratica {
 
 export const STATS_ZERO: StatsPratica = {
   maos: 0, acertos: 0, bbPerdidos: 0,
-  porNivel: { melhor: 0, correta: 0, imprecisao: 0, errada: 0, grave: 0 },
+  porNivel: { correta: 0, imprecisao: 0, errada: 0, grave: 0 },
 };
 
 /**
@@ -166,7 +251,7 @@ export function acumula(s: StatsPratica, g: PracticeGrade | null | undefined, ac
   const perdeu = typeof g?.ev_loss_bb === "number" ? Math.abs(g.ev_loss_bb) : 0;
   return {
     maos: s.maos + 1,
-    acertos: s.acertos + (n === "melhor" || n === "correta" ? 1 : 0),
+    acertos: s.acertos + (n === "correta" ? 1 : 0),
     bbPerdidos: Math.round((s.bbPerdidos + perdeu) * 100) / 100,
     porNivel: { ...s.porNivel, [n]: s.porNivel[n] + 1 },
   };

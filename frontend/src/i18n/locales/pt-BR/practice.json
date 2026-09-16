@@ -24,8 +24,9 @@
     "sessao": "sessão",
     "acerto": "acerto",
     "bbPerdidos": "bb perdidos",
-    "aplicaDepois": "aplica na próxima mão, sem descartar as que estão em jogo",
-    "unidade": "unidade"
+    "aplicaDepois": "ou aguarde: entra sozinho na próxima mão de cada mesa",
+    "unidade": "unidade",
+    "aplicarAgora": "aplicar agora"
   },
   "cenario": {
     "mixed": "tudo",
@@ -39,14 +40,19 @@
     "acao": "ação"
   },
   "nivel": {
-    "melhor": "melhor jogada",
     "correta": "correta",
-    "imprecisao": "imprecisão",
+    "imprecisao": "aceitável",
     "errada": "errada",
     "grave": "erro grave"
   },
   "unidade": {
     "bb": "BB",
     "fichas": "fichas"
+  },
+  "veredito": {
+    "oGtoTambem": "GTO também:",
+    "verDetalhe": "ver análise",
+    "suaJogada": "sua jogada",
+    "oGtoJoga": "o GTO joga:"
   }
 }

@@ -133,6 +133,28 @@ describe("a frase do arquivo grande", () => {
     expect(achados, `frase com codigo de status:\n  ${achados.join("\n  ")}`).toEqual([]);
   });
 
+  it("NAO barra quando o teto do plano ainda NAO se sabe", () => {
+    // O bug do Rullian (16/09): ele e Pro com 40MB e a tela recusou 15MB dizendo "o seu plano
+    // aceita ate 5MB". O backend estava certo; o defeito era o estado comecar em
+    // `TETO_PADRAO_MB` e a fila BARRAR com esse valor.
+    //
+    // A causa de nunca sair de 5: o `UploadQueueProvider` envolve TODAS as rotas, inclusive a
+    // landing publica -- ele monta antes do login, a consulta da quota volta 401, cai no catch,
+    // e o efeito tinha `[]` como dependencia.
+    //
+    // A regra que este guarda trava: **nunca barrar por falta de informacao**. O servidor e a
+    // autoridade e tem a mensagem certa. Duas pontas: a checagem e condicional ao teto ser
+    // conhecido, e o estado inicial e nulo (e nao um numero pessimista).
+    const fonte = readFileSync(
+      join(import.meta.dirname, "..", "components", "hud", "UploadQueue.tsx"), "utf-8");
+    expect(fonte, "a checagem precisa ser condicional ao teto ser conhecido")
+      .toMatch(/if \(tetoMb != null\) \{/);
+    expect(fonte, "o estado do teto comeca NULO, e nao num numero pessimista")
+      .toMatch(/useState<number \| null>\(null\)/);
+    expect(fonte, "e a consulta refaz quando o login acontece")
+      .toMatch(/\}, \[user\]\);/);
+  });
+
   it("o UploadQueue barra ANTES de enviar", () => {
     // Sem isto o jogador espera 40 MB subirem para ouvir "não cabe", e a frase do servidor só
     // pode falar do CORPO da requisição (o envio é JSON, maior que o arquivo).

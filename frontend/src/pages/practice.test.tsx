@@ -92,7 +92,12 @@ describe("modo Pratica", () => {
     monta();
     await screen.findByTestId("pratica-mesa-m1");
     fireEvent.keyDown(window, { key: "f" });
-    await waitFor(() => expect(grade).toHaveBeenCalledTimes(1));
+    // O timeout é explícito e maior que o padrão de 1s por um motivo medido: este caso falhou
+    // QUATRO vezes na suíte cheia e passou sempre isolado, com duração de ~1,4s contra ~250ms
+    // sozinho. A causa é disputa de CPU entre os 103 arquivos rodando em paralelo, e não a
+    // lógica -- mas um teste que pisca mascara regressão de verdade, e conviver com ele é pior
+    // que afrouxar o prazo. O que o caso prova (a tecla agir na mesa em foco) não mudou.
+    await waitFor(() => expect(grade).toHaveBeenCalledTimes(1), { timeout: 5000 });
     // a mao corrigida e a da mesa 1, nao a de outra
     expect(grade.mock.calls[0][0].hand).toBe("K7s");
     expect(grade.mock.calls[0][1]).toBe("fold");
@@ -103,9 +108,10 @@ describe("modo Pratica", () => {
     await screen.findByTestId("pratica-mesa-m1");
     fireEvent.keyDown(window, { key: "Tab" });
     await waitFor(() =>
-      expect(screen.getByTestId("pratica-mesa-m2").getAttribute("data-foco")).toBe("1"));
+      expect(screen.getByTestId("pratica-mesa-m2").getAttribute("data-foco")).toBe("1"),
+      { timeout: 5000 });
     fireEvent.keyDown(window, { key: "a" });
-    await waitFor(() => expect(grade).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(grade).toHaveBeenCalledTimes(1), { timeout: 5000 });
     expect(grade.mock.calls[0][0].hand).toBe("33");
     expect(grade.mock.calls[0][1]).toBe("allin");
   });
@@ -133,7 +139,7 @@ describe("modo Pratica", () => {
     fireEvent.click(fold);
     fireEvent.click(fold);
     fireEvent.keyDown(window, { key: "f" });
-    await waitFor(() => expect(grade).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(grade).toHaveBeenCalledTimes(1), { timeout: 5000 });
   });
 
   it("mudar o numero de mesas fica PENDENTE, sem descartar as em jogo", async () => {
@@ -160,9 +166,15 @@ describe("modo Pratica", () => {
     monta();
     const m1 = await screen.findByTestId("pratica-mesa-m1");
     fireEvent.click(within(m1).getByTestId("pratica-acao-fold"));
+    // o veredito agora ocupa o CENTRO da mesa (pedido do dono), e nao o rodape do card
     const v = await within(m1).findByTestId("pratica-veredito");
-    // fold com 80% de F no hand_freq: melhor jogada
-    expect(v.textContent).toContain("nivel.melhor");
+    // `melhor` e `correta` foram fundidos por decisao do dono ("pra mim sao a mesma coisa"), e
+    // o rotulo voltou a "correta" para bater com o `action_quality` do servidor.
+    expect(v.textContent).toContain("nivel.correta");
+    // a pontuacao: a frequencia com que o GTO joga a acao ESCOLHIDA (F = 80%)
+    expect(v.textContent).toContain("80%");
+    // e o SIMBOLO da escala, que e o que ORDENA os quatro niveis
+    expect(v.textContent).toContain("✓✓");
   });
 
   it("depois do veredito, o spot novo entra SO naquela mesa", async () => {
@@ -287,6 +299,33 @@ describe("modo Pratica", () => {
     const m1 = await screen.findByTestId("pratica-mesa-m1");
     expect(m1.textContent).toContain("1.200");     // 12bb x 100 fichas
     expect(m1.textContent).not.toContain("12bb");
+  });
+
+  it("os BOTOES tem a vez na altura, e a mesa fica com o resto", async () => {
+    // O defeito que o dono viu duas vezes, e o segundo relato foi "sumiram os botoes de acao".
+    //
+    // A mesa tinha `aspect-ratio: 16/10` com `shrink-0`: numa celula de 840px de largura ela
+    // EXIGIA 525px de altura, estourava os ~440 do card e empurrava os controles para fora --
+    // e o card e `overflow-hidden`, entao eles simplesmente desapareciam. Nao era a elipse ser
+    // grande: era ela exigir altura em vez de aceitar o que sobra.
+    //
+    // jsdom nao faz layout, entao o guarda trava a ESTRUTURA que impede isso de voltar: quem
+    // encolhe e a mesa, nunca os botoes.
+    monta();
+    const m1 = await screen.findByTestId("pratica-mesa-m1");
+
+    const caixaDaMesa = m1.querySelector('[data-testid="mesa-compacta"]')!.parentElement!;
+    expect(caixaDaMesa.className, "a mesa precisa ABSORVER a sobra").toContain("flex-1");
+    expect(caixaDaMesa.className, "e poder encolher").toContain("min-h-0");
+    expect(caixaDaMesa.className, "shrink-0 na mesa e o que empurrava os botoes")
+      .not.toContain("shrink-0");
+    expect(caixaDaMesa.getAttribute("style") || "",
+           "aspect-ratio na mesa faz a altura ser EXIGIDA a partir da largura")
+      .not.toContain("aspect-ratio");
+
+    // e os controles nao podem ser empurrados
+    const botoes = within(m1).getByTestId("pratica-acao-fold").parentElement!;
+    expect(botoes.className, "a faixa de botoes precisa ser shrink-0").toContain("shrink-0");
   });
 
   it("a grade das mesas NAO rola: ela e limitada pela altura", async () => {

@@ -50,6 +50,13 @@ vi.mock("@/lib/api", () => ({
   },
 }));
 
+// A fila le o plano do jogador para saber o teto de tamanho, e para isso usa `useAuth` (16/09).
+// Sem este mock o teste estoura com "useAuth must be used inside AuthProvider": o componente
+// exige o provider, e o teste monta so a fila.
+vi.mock("@/lib/auth", () => ({
+  useAuth: () => ({ user: { id: 1, email: "dev@local.test" }, entrar: vi.fn(), sair: vi.fn() }),
+}));
+
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
     // Devolve chave + argumentos: o teste procura a CHAVE, então ele falha se a tela parar de

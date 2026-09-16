@@ -243,5 +243,11 @@ def grade_gto_preflop_answer(spot: dict, action: str) -> dict:
         'recommended':    rec,
         'hand_freq':      res.get('hand_freq') or {},
         'range_pct':      res.get('range_pct'),
+        # O CUSTO da jogada, que o motor ja calcula em todo caminho de `analyze_preflop` e que
+        # esta resposta nao repassava (16/09). Sem ele, os cinco niveis do Pratica colapsavam em
+        # dois: `raise` com 75o no BTN a 20bb e `fold` com AA recebiam o MESMO `major_leak`,
+        # medindo 0,15bb e 9,21bb -- sessenta vezes de diferenca no mesmo rotulo.
+        'ev_loss_bb':     res.get('ev_loss_bb'),
+        'ev_loss_source': res.get('ev_loss_source'),
         'explanation':    _build_explanation(spot, res, action),
     }

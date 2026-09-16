@@ -267,6 +267,21 @@ export default function Practice() {
     setParams(p, { replace: true });
   };
 
+  /** Troca TODAS as mesas agora, com a configuração pendente.
+   *
+   *  Descartar as mesas abertas é o comportamento certo AQUI, e não contradiz o cuidado de
+   *  `mudaOSorteio`: lá o risco é a configuração descartar por conta própria o que o jogador
+   *  está jogando; aqui ele pediu a troca, clicando. E o que ele já respondeu continua no
+   *  placar -- o descarte é dos spots ainda não respondidos.
+   *
+   *  Os temporizadores pendentes precisam morrer junto: um `trocarSpot` agendado para a mesa 2
+   *  chegaria depois da rodada nova e substituiria uma mesa recém-sorteada. */
+  const aplicarAgora = useCallback(() => {
+    Object.values(timers.current).forEach(clearTimeout);
+    timers.current = {};
+    void novaRodada(pendente ?? config);
+  }, [pendente, config, novaRodada]);
+
   const alternarPainel = (v: boolean) => {
     setPainel(v);
     localStorage.setItem("pratica_painel", String(v));
@@ -305,7 +320,8 @@ export default function Practice() {
 
       <div className="flex min-h-0 flex-1">
         <PainelDePratica aberto={painel} config={config} pendente={pendente} stats={stats}
-                         onConfig={aoConfigurar} onAlternar={alternarPainel} />
+                         onConfig={aoConfigurar} onAlternar={alternarPainel}
+                         onAplicar={aplicarAgora} />
 
         {/* As mesas cabem na tela, SEM barra de rolagem (requisito do dono, 16/09): esta faixa
             e `overflow-hidden` e a grade abaixo e limitada por ALTURA. Um `overflow-y-auto` aqui

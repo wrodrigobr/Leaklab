@@ -52,13 +52,18 @@ describe("a mesa do Pratica", () => {
   it("mostra AS CARTAS dele, uma por naipe", () => {
     monta();
     const cartas = screen.getByTestId("cartas-do-heroi");
-    expect(cartas.textContent).toBe("K7");
-    // a cor do quadrado É o naipe (baralho de 4 cores): sem isso o jogador não sabe se é suited
-    const spans = cartas.querySelectorAll("span");
-    expect(spans.length).toBe(2);
-    // jsdom normaliza hex para rgb(): comparar o hex falharia por formato, nao por defeito
-    expect(spans[0].getAttribute("style")).toContain("rgb(201, 209, 219)");   // Ks spades
-    expect(spans[1].getAttribute("style")).toContain("rgb(217, 59, 66)");     // 7h hearts
+    // Rank E SÍMBOLO. O dono, na versão só com cor: "as cartas agora estao ruins, pq ja nao sei
+    // qual o naipe delas". A cor sozinha é o que o GTO Wizard faz, e funciona lá porque o
+    // jogador deles decorou o código; aqui ela era um enigma -- e sem o naipe ele não sabe se a
+    // mão é SUITED, que é metade da decisão preflop.
+    expect(cartas.textContent).toBe("K♠7♥");
+
+    // e a cor do quadrado segue sendo o naipe, para ler de longe
+    const quadrados = Array.from(cartas.children);
+    expect(quadrados.length).toBe(2);
+    // jsdom normaliza hex para rgb(): comparar o hex falharia por formato, não por defeito
+    expect(quadrados[0].getAttribute("style")).toContain("rgb(201, 209, 219)");   // Ks spades
+    expect(quadrados[1].getAttribute("style")).toContain("rgb(217, 59, 66)");     // 7h hearts
   });
 
   it("a cor do naipe NUNCA e a cor de uma acao", () => {
@@ -80,9 +85,12 @@ describe("a mesa do Pratica", () => {
 
   it("le a mao suited com os DOIS quadrados da mesma cor", () => {
     monta({ hero_cards: "Kc7c" });
-    const spans = screen.getByTestId("cartas-do-heroi").querySelectorAll("span");
-    expect(spans[0].getAttribute("style")).toContain("rgb(62, 155, 84)");
-    expect(spans[1].getAttribute("style")).toContain("rgb(62, 155, 84)");
+    const cartas = screen.getByTestId("cartas-do-heroi");
+    const quadrados = Array.from(cartas.children);
+    expect(quadrados[0].getAttribute("style")).toContain("rgb(62, 155, 84)");
+    expect(quadrados[1].getAttribute("style")).toContain("rgb(62, 155, 84)");
+    // e o símbolo repetido também diz suited, para quem não lê a cor
+    expect(cartas.textContent).toBe("K♣7♣");
   });
 
   it("cada assento mostra posicao e stack, e quem foldou aparece sem numero", () => {
