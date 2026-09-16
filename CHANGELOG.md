@@ -4,6 +4,46 @@ Todas as mudanÃ§as notÃ¡veis neste projeto serÃ£o documentadas aqui.
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
+## A decisao que SOME no meio nao derruba mais o torneio inteiro (16/09)
+
+Erro de producao, do Sentry, torneio 1624:
+
+```
+ForeignKeyViolation: insert or update on table "vereditos_por_semelhanca" violates foreign key
+constraint ... Key (decision_id)=(526360) is not present in table "decisions".
+```
+
+`gravar_provisorios` tira um RETRATO dos ids das decisoes sem no, e o laco leva tempo porque
+`estrategia_por_semelhanca` consulta o acervo por linha. Se um reprocesso do mesmo torneio apagar
+e regravar as decisoes nessa janela, o id do retrato ja nao existe. A cicatriz de sempre desta
+base: quem referencia `decisions(id)` desaparece com CASCADE, calado.
+
+**A consequencia era pior que uma linha perdida:** em Postgres a violacao ABORTA a transacao,
+entao o `commit()` do fim nunca acontece e o torneio inteiro fica sem provisorio, com
+"semelhanca provisorios FAILED" no log. Nada chega ao jogador (a medicao e interna, AY-28 passo
+2), mas o trabalho se perdia e o Sentry enchia.
+
+O `INSERT ... VALUES` virou `INSERT ... SELECT d.id ... FROM decisions d WHERE d.id = ?`: se a
+decisao nao existe mais, o SELECT devolve zero linhas, nada e inserido e as outras 200 sao
+gravadas. A contagem passou a sair de `rowcount`, medido nos DOIS dialetos antes de eu confiar
+nele (1 quando existe, 0 quando sumiu), senao o log diria "212 gravados" com 211 no banco.
+
+Varredura dos N+1: tres lugares fazem INSERT com FK para `decisions` dentro de laco.
+`coach_hand_annotations` ja trata ("a decisao nao existe mais: perder e honesto") e o terceiro e
+script de seed. Este era o unico que rodava automatico depois do import.
+
+**E o guarda nasceu FALSO POSITIVO, duas vezes.** Na primeira, o seed usava um torneio que nao
+existia e falhava por FK de outra coisa. Na segunda, ja verde, eu quebrei o conserto de proposito
+e o teste PASSOU: a segunda mao do seed era `AdKd`, que nao tem veredito nas arvores vizinhas,
+caia no `continue` e nunca chegava ao INSERT. O teste exercitava o caminho errado e dizia que
+estava protegido. Com uma mao de mesma relacao com o board (`AhKs`), a mutacao acusa
+`FOREIGN KEY constraint failed`, que e o erro do Sentry.
+
+Provado tambem no dialeto do erro: contra o Postgres local, 1 gravada, sem estourar, e a linha da
+decisao apagada nao entra. Suites: semelhanca 10/10, gto_insert_guard 2/2, no_id_tables 4/4,
+row_access 2/2.
+
+---
 ## A lista de maos do leak parou de acusar o nosso proprio defeito na tela (15/09)
 
 O dono, olhando producao: a linha dizia "FOLD -> CALL - river - 4 spots - -34,0bb" e, ao abrir,

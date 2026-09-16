@@ -221,6 +221,81 @@ def test_o_upload_grava_a_assinatura_e_o_gancho_grava_o_provisorio():
     assert sm.gravar_provisorios(2) == 1
 
 
+def test_a_decisao_que_SOME_no_meio_nao_derruba_o_torneio():
+    """O erro de producao (Sentry, 16/09, torneio 1624).
+
+    `ForeignKeyViolation: Key (decision_id)=(526360) is not present in table "decisions"`.
+
+    O SELECT de `gravar_provisorios` tira um RETRATO dos ids, e o laco leva tempo porque
+    `estrategia_por_semelhanca` consulta o acervo por linha. Um reprocesso do mesmo torneio
+    nessa janela apaga e regrava as decisoes, e o id do retrato ja nao existe.
+
+    A consequencia era pior que perder uma linha: em Postgres a violacao ABORTA a transacao,
+    entao o `commit()` do fim nao acontece e o torneio inteiro fica sem provisorio, com "FAILED"
+    no log. Aqui a corrida e simulada apagando a decisao DEPOIS do retrato e ANTES da gravacao,
+    que e exatamente a ordem que o erro real teve.
+    """
+    _semeia_vizinhos()
+    conn = get_conn()
+    # `_limpa` cria os torneios 1 e 2; este caso precisa de um terceiro, senao a FK de
+    # decisions -> tournaments recusa o seed e o teste falharia por motivo nenhum a ver.
+    conn.execute(_adapt("INSERT INTO tournaments (id, user_id, tournament_id, hero) VALUES (3, 1, 'T3', 'Hero')"))
+    conn.commit(); conn.close()
+    # duas decisoes sem no, ambas com assinatura de vizinho: uma vai sobreviver, a outra some
+    results = [
+        {'handId': 'HX', 'street': 'flop', 'hero_cards': 'AsKh', 'board': ['Ac', '8c', '3d'],
+         'actionTaken': 'check', 'bestAction': 'bet',
+         'evaluation': {'label': 'standard', 'mistakeScore': 0.1},
+         'context': {'heroStackBb': 27.5}, 'position': 'CO', 'spot': {'facingToBb': 0.0}},
+        # A MESMA relacao com o board da primeira (top pair), e nao outra mao qualquer: a
+        # primeira versao deste caso usava AdKd, que nao tem veredito nas arvores vizinhas, caia
+        # no `continue` e NUNCA chegava ao INSERT. O teste passava com o defeito de volta.
+        {'handId': 'HY', 'street': 'flop', 'hero_cards': 'AhKs', 'board': ['Ac', '8c', '3d'],
+         'actionTaken': 'check', 'bestAction': 'bet',
+         'evaluation': {'label': 'standard', 'mistakeScore': 0.1},
+         'context': {'heroStackBb': 27.5}, 'position': 'CO', 'spot': {'facingToBb': 0.0}},
+    ]
+    repo.save_decisions(3, results)
+
+    conn = get_conn()
+    ids = [r['id'] for r in conn.execute(
+        "SELECT id FROM decisions WHERE tournament_id=3 ORDER BY id").fetchall()]
+    conn.close()
+    assert len(ids) == 2, ids
+
+    # A CORRIDA: o retrato ja foi tirado (dentro de `gravar_provisorios`), e a segunda decisao
+    # desaparece antes da gravacao dela. Simulado por um gancho na funcao que roda POR LINHA.
+    original = sm.estrategia_por_semelhanca
+    apagou = {'feito': False}
+
+    def apaga_no_meio(conn_, assinatura, memo=None):
+        r = original(conn_, assinatura, memo=memo)
+        if not apagou['feito']:
+            apagou['feito'] = True
+            # Pela MESMA conexao do laco, e nao por uma segunda: no SQLite duas escritas
+            # concorrentes dao "database is locked" e o teste falharia por limite do dialeto, nao
+            # pelo defeito. O que ele precisa provar e o INSERT diante de uma decisao que nao
+            # existe mais, e isso e igual nos dois bancos.
+            conn_.execute(_adapt("DELETE FROM decisions WHERE id = ?"), (ids[1],))
+        return r
+
+    sm.estrategia_por_semelhanca = apaga_no_meio
+    try:
+        gravadas = sm.gravar_provisorios(3)
+    finally:
+        sm.estrategia_por_semelhanca = original
+
+    conn = get_conn()
+    linhas = [dict(r) for r in conn.execute(
+        "SELECT decision_id FROM vereditos_por_semelhanca WHERE tournament_id=3").fetchall()]
+    conn.close()
+
+    # a que sobrou foi gravada, e a que sumiu nao: o torneio nao se perde inteiro
+    assert [l['decision_id'] for l in linhas] == [ids[0]], linhas
+    # e a CONTAGEM e a real, nao "eu tentei": o log nao pode dizer 2 com 1 no banco
+    assert gravadas == 1, gravadas
+
+
 def test_a_curva_do_admin_le_a_comparacao_e_a_meta_exige_duas_semanas():
     _semeia_vizinhos()
     conn = get_conn()

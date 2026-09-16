@@ -219,12 +219,33 @@ def gravar_provisorios(tournament_id: int) -> int:
             if not v:
                 continue
             conn.execute(_adapt("DELETE FROM vereditos_por_semelhanca WHERE decision_id = ? AND comparado_em IS NULL"), (r['id'],))
-            conn.execute(_adapt("""
+            # `INSERT ... SELECT FROM decisions WHERE id = ?`, e nao `VALUES`: se a decisao nao
+            # existir mais, o SELECT devolve zero linhas e nada e inserido.
+            #
+            # ── O erro que originou (16/09, Sentry, torneio 1624) ────────────────────────────
+            #
+            # `ForeignKeyViolation: Key (decision_id)=(526360) is not present in table
+            # "decisions"`. O SELECT de cima tira um RETRATO dos ids; o laco leva tempo, porque
+            # `estrategia_por_semelhanca` consulta o acervo por linha. Se um reprocesso do mesmo
+            # torneio apagar e regravar as decisoes nessa janela, o id do retrato ja nao existe.
+            #
+            # A consequencia era pior que uma linha perdida: em Postgres a violacao ABORTA a
+            # transacao, entao o `commit()` do fim nao acontece e o torneio inteiro fica sem
+            # provisorio, com "FAILED" no log. Com o `WHERE`, a linha que sumiu simplesmente nao
+            # entra e as outras 200 sao gravadas.
+            #
+            # A contagem tambem passa a ser a REAL: `rowcount` em vez de "eu tentei", senao o log
+            # diria "212 provisorios gravados" com 211 no banco.
+            cur = conn.execute(_adapt("""
                 INSERT INTO vereditos_por_semelhanca
                     (decision_id, tournament_id, assinatura, vizinhos, acao, freq_jogada, rotulo, estrategia_json)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            """), (r['id'], tournament_id, r['spot_assinatura'], n, v['acao'], v['freq_jogada'], v['rotulo'], json.dumps(estrategia)))
-            gravadas += 1
+                SELECT d.id, ?, ?, ?, ?, ?, ?, ?
+                FROM decisions d WHERE d.id = ?
+            """), (tournament_id, r['spot_assinatura'], n, v['acao'], v['freq_jogada'], v['rotulo'],
+                   json.dumps(estrategia), r['id']))
+            # `rowcount` medido nas DUAS gramaticas antes de confiar nele: 1 quando a decisao
+            # existe, 0 quando sumiu, em SQLite e em Postgres.
+            gravadas += max(0, cur.rowcount)
         conn.commit()
         return gravadas
     finally:
