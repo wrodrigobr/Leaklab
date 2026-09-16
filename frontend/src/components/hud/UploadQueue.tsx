@@ -1,10 +1,11 @@
-import { useReducer, useEffect, useRef, useCallback, createContext, useContext } from "react";
+import { useReducer, useEffect, useRef, useState, useCallback, createContext, useContext } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { EVENTO_LOTE, invalidarAposImport } from "@/lib/refreshOnImport";
 import { useTranslation, Trans } from "react-i18next";
 import { CheckCircle2, AlertTriangle, Clock, Loader2, X, UploadCloud, Info } from "lucide-react";
-import { tournaments, metrics } from "@/lib/api";
+import { tournaments, metrics, subscription } from "@/lib/api";
 import { mensagemDeErroDeUpload } from "@/lib/mensagemDeUpload";
+import { cabeNoTeto, tetoDoPlano, TETO_PADRAO_MB } from "@/lib/tetoDeUpload";
 import { cn } from "@/lib/utils";
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -274,6 +275,18 @@ export function UploadQueueProvider({ children }: { children: React.ReactNode })
   // O `leaklab:tournament-imported` (por arquivo) continua existindo para quem quer saber de cada
   // import, como a lista de torneios.
   const qc = useQueryClient();
+
+  // O teto do ARQUIVO, do plano dele. Lido uma vez: se a consulta falhar, `tetoDoPlano` cai no
+  // menor teto (5 MB) e o servidor corrige para cima recusando -- nunca prometemos mais do que
+  // ele tem. Sem isto, o jogador esperaria 40 MB subirem para ouvir "nao cabe".
+  const [tetoMb, setTetoMb] = useState<number>(TETO_PADRAO_MB);
+  useEffect(() => {
+    let vivo = true;
+    subscription.status()
+      .then((q) => { if (vivo) setTetoMb(tetoDoPlano(q)); })
+      .catch(() => { /* fica no padrao; o backend e a autoridade */ });
+    return () => { vivo = false; };
+  }, []);
   const tinhaFila = useRef(false);
   useEffect(() => {
     const emAndamento = queue.some((i) => i.status === "queued" || i.status === "processing");
@@ -309,6 +322,19 @@ export function UploadQueueProvider({ children }: { children: React.ReactNode })
     (async () => {
       try {
         if (!file) throw new Error(t("uploadQueue.fileMissing"));
+
+        // ANTES de ler e enviar: o tamanho ele sabe na hora, e a frase fala do ARQUIVO dele.
+        // Medir aqui tambem evita a mentira pequena do outro lado: o envio vai como JSON, entao
+        // o corpo da requisicao e maior que o arquivo, e o backend so pode falar do corpo.
+        const v = cabeNoTeto(file.size, tetoMb);
+        if (!v.cabe) {
+          dispatch({ type: "SET_STATUS", id: next.id, status: "error",
+                     error: t(tetoMb <= TETO_PADRAO_MB ? "uploadQueue.grandeFree"
+                                                       : "uploadQueue.grandePro",
+                              { arquivo: v.arquivoMb.toFixed(1), teto: v.tetoMb }) });
+          return;
+        }
+
         const content = await file.text();
         const r = await tournaments.receber(content, file.name);
         if (r?.kind === "summary") {

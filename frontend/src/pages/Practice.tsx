@@ -218,7 +218,7 @@ export default function Practice() {
         <PainelDePratica aberto={painel} config={config} pendente={pendente} stats={stats}
                          onConfig={aoConfigurar} onAlternar={alternarPainel} />
 
-        <div className="min-w-0 flex-1 overflow-y-auto p-3">
+        <div className="min-w-0 flex-1 overflow-y-auto scrollbar-hud p-3">
           {carregando && !mesas.length ? (
             <div className="flex h-full items-center justify-center gap-2 text-muted-foreground">
               <Loader2 className="size-4 animate-spin" /> <span className="font-mono text-xs">{t("carregando")}</span>

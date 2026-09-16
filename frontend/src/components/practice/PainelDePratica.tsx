@@ -68,7 +68,7 @@ export function PainelDePratica({
 
   return (
     <aside data-testid="pratica-painel"
-           className="hidden lg:flex w-[clamp(180px,14vw,224px)] shrink-0 flex-col overflow-y-auto border-r border-border bg-hud-surface/60">
+           className="hidden lg:flex w-[clamp(180px,14vw,224px)] shrink-0 flex-col overflow-y-auto scrollbar-hud border-r border-border bg-hud-surface/60">
       <div className="flex items-center justify-between border-b border-border px-3 py-2">
         <span className="font-mono text-[9.5px] uppercase tracking-widest-2 text-primary">
           {t("painel.titulo")}

@@ -257,7 +257,10 @@
     "erroNoProcessamento": "No pudimos analizar este archivo. Revisa que sea un historial de manos de torneo (MTT o SNG).",
     "variosTorneiosParcial": "El archivo tenía {{n}} torneos. {{ok}} importados, {{fora}} no entraron.",
     "variosTorneiosJaEstavam": "El archivo tenía {{n}} torneos. {{ok}} nuevos, {{ja}} ya estaban en tu historial.",
-    "variosTorneiosMisto": "El archivo tenía {{n}} torneos. {{ok}} nuevos, {{ja}} ya estaban, {{fora}} no entraron."
+    "variosTorneiosMisto": "El archivo tenía {{n}} torneos. {{ok}} nuevos, {{ja}} ya estaban, {{fora}} no entraron.",
+    "grandeFree": "Este archivo tiene {{arquivo}}MB y tu plan acepta hasta {{teto}}MB. Exporta un período más corto, una semana por ejemplo, o suscríbete al Pro para enviar archivos de hasta 40MB.",
+    "grandePro": "Este archivo tiene {{arquivo}}MB y el límite es {{teto}}MB. Divide el export en dos períodos y envía uno a la vez.",
+    "grandeSemNumero": "Este archivo es demasiado grande para enviarlo de una vez. Exporta un período más corto, una semana por ejemplo, e inténtalo de nuevo."
   },
   "suporte": {
     "semMensagens": "Todavía no has enviado mensajes."

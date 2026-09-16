@@ -18,9 +18,29 @@ describe("mensagem de erro da fila de upload", () => {
     expect(mensagemDeErroDeUpload(e, t)).toContain("count=1");
   });
 
-  it("os outros erros seguem como antes: mensagem do backend, ou o genérico sem HTTP cru", () => {
-    expect(mensagemDeErroDeUpload(erro("Arquivo muito grande (limite: 5MB)", { status: 413 }), t)).toBe("Arquivo muito grande (limite: 5MB)");
-    expect(mensagemDeErroDeUpload(erro("HTTP 404", { status: 404 }), t)).toBe("uploadQueue.genericError:raw=HTTP 404");
-    expect(mensagemDeErroDeUpload(undefined, t)).toBe("uploadQueue.genericError:raw=uploadQueue.errorFallback");
+  it("no 413 a frase do FRONT manda, e não a do backend", () => {
+    // Mudou em 16/09, e este caso travava o contrário: ele exigia que a mensagem do backend
+    // ("Arquivo muito grande (limite: 5MB)") passasse inteira para a tela.
+    //
+    // Agora o 413 é tratado aqui, por três razões: a frase do front é traduzida nos três
+    // idiomas, ela diz o que FAZER (exportar período menor, ou o Pro) e ela cobre o caso em que
+    // o servidor não manda corpo nenhum -- o Werkzeug corta a conexão quando o corpo passa do
+    // teto global, e era esse caminho que produzia "Erro do servidor (HTTP 413)" na tela.
+    //
+    // A mensagem do backend segue existindo para quem chama a API fora do nosso front.
+    expect(mensagemDeErroDeUpload(erro("Arquivo muito grande (limite: 5MB)", { status: 413 }), t))
+      .toBe("uploadQueue.grandeSemNumero");
+  });
+
+  it("nenhum erro traz o código para a frase", () => {
+    // O pedido do dono: "nao podemos retornar codigo de erro para o usuario". Vale também para
+    // o que o backend devolve como texto: "HTTP 404" vindo de lá não vira frase.
+    expect(mensagemDeErroDeUpload(erro("HTTP 404", { status: 404 }), t))
+      .toBe("uploadQueue.genericError:raw=uploadQueue.errorFallback");
+    expect(mensagemDeErroDeUpload(undefined, t))
+      .toBe("uploadQueue.genericError:raw=uploadQueue.errorFallback");
+    // e a mensagem HONESTA do backend continua passando inteira: ela é melhor que a genérica
+    expect(mensagemDeErroDeUpload(erro("Você já tem 5 arquivos esperando.", { status: 429 }), t))
+      .toBe("Você já tem 5 arquivos esperando.");
   });
 });

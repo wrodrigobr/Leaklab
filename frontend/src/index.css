@@ -155,4 +155,43 @@
     border-bottom: 1px solid hsl(var(--primary) / 0.5);
     border-right: 1px solid hsl(var(--primary) / 0.5);
   }
+
+  /* ── Barra de rolagem no tema do sistema ────────────────────────────────────────────────
+   *
+   * Pedido do dono (16/09), vendo o painel de leaks do replayer: a barra nativa do Windows e
+   * uma faixa cinza clara sobre o fundo escuro, e ela era a unica coisa na tela fora da paleta.
+   *
+   * Vale para qualquer lista rolavel do produto, e nao so para aquele painel -- por isso e
+   * utilitaria e usa os TOKENS, nao hex. Trocar a paleta troca a barra junto.
+   *
+   * Os dois padroes convivem de proposito: `scrollbar-color` e o padrao (Firefox e Chrome
+   * novo) e `::-webkit-scrollbar` cobre o Chrome/Edge/Safari que ainda nao o implementam.
+   * Escrever so um deixaria metade dos navegadores com a barra do sistema.
+   */
+  .scrollbar-hud {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--border)) transparent;
+  }
+  .scrollbar-hud::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  .scrollbar-hud::-webkit-scrollbar-track {
+    /* transparente para a barra herdar o fundo do painel, qualquer que seja ele */
+    background: transparent;
+  }
+  .scrollbar-hud::-webkit-scrollbar-thumb {
+    background: hsl(var(--border));
+    border-radius: 999px;
+    /* a borda transparente afina o polegar sem mudar a area de clique, que continua os 8px */
+    border: 2px solid transparent;
+    background-clip: content-box;
+  }
+  .scrollbar-hud::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--primary) / 0.55);
+    background-clip: content-box;
+  }
+  .scrollbar-hud::-webkit-scrollbar-corner {
+    background: transparent;
+  }
 }

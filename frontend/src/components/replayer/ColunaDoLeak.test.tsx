@@ -264,6 +264,34 @@ describe("coluna do leak", () => {
       .toMatch(/focusMode \|\| leakSpot \? "max-w-none"/);
   });
 
+  it("a lista rola com a barra do TEMA, e nao a do sistema", async () => {
+    // Pedido do dono (16/09): a barra nativa do Windows era uma faixa cinza clara sobre o fundo
+    // escuro, a unica coisa da tela fora da paleta. `.scrollbar-hud` mora no `index.css` e usa
+    // os TOKENS, entao trocar a paleta troca a barra junto.
+    //
+    // jsdom nao pinta scrollbar: o guarda trava a classe estar aplicada no elemento que ROLA, e
+    // o teste abaixo confere que a classe existe de verdade no CSS.
+    monta();
+    const col = await screen.findByTestId("leak-coluna");
+    const rolavel = col.querySelector(".overflow-y-auto");
+    expect(rolavel, "a lista de maos precisa ser o elemento que rola").toBeTruthy();
+    expect(rolavel!.className).toContain("scrollbar-hud");
+  });
+
+  it("a classe da barra EXISTE no css, e usa os tokens do tema", async () => {
+    // CONTROLE do guarda de cima: uma classe aplicada e nao definida nao pinta nada, e o teste
+    // anterior passaria igual -- cobertura sem cobertura.
+    const css = readFileSync(
+      join(import.meta.dirname, "..", "..", "index.css"), "utf-8");
+    expect(css).toContain(".scrollbar-hud");
+    expect(css).toMatch(/scrollbar-hud::-webkit-scrollbar-thumb/);
+    // tokens, nunca hex: hex aqui sobreviveria a uma troca de paleta e ficaria fora do tema
+    const bloco = css.slice(css.indexOf(".scrollbar-hud"),
+                            css.indexOf(".scrollbar-hud") + 1200);
+    expect(bloco).toContain("hsl(var(--border))");
+    expect(bloco).not.toMatch(/#[0-9a-fA-F]{6}/);
+  });
+
   it("recolhido, o painel devolve a largura para a mesa", async () => {
     // O toggle é a razão pela qual um painel no fluxo é aceitável aqui. Se recolher só esconde o
     // conteúdo e mantém a coluna larga, voltamos ao aside de 20/06 com um botão decorativo.

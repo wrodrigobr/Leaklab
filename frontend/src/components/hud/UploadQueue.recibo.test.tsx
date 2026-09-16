@@ -43,6 +43,11 @@ vi.mock("@/lib/api", () => ({
   metrics: {
     addXp: (...args: unknown[]) => { estado.xp.push(args); return Promise.resolve({}); },
   },
+  // A fila le o teto de tamanho do PLANO antes de enviar (16/09). `pro` aqui para os arquivos
+  // pequenos destes casos passarem; o teto em si e coberto em `tetoDeUpload.test.ts`.
+  subscription: {
+    status: () => Promise.resolve({ plan: 'pro', limits: { upload_mb: 40 } }),
+  },
 }));
 
 vi.mock("react-i18next", () => ({

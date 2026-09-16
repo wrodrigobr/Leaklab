@@ -12,6 +12,19 @@ function authHeaders(): HeadersInit {
   return t ? { Authorization: `Bearer ${t}` } : {};
 }
 
+/** Erro de resposta ruim SEM codigo no texto: o status viaja no campo, nao na frase.
+ *
+ *  Existe porque um Error cujo texto e o proprio status acaba na tela em qualquer superficie
+ *  que exiba `message` -- foi o "Erro do servidor" com o codigo que o dono viu no upload. Quem
+ *  mostra compoe a frase; quem trata le o `status`. */
+export function semCodigo(status: number): Error & { status?: number; semCorpo?: true } {
+  const e = new Error("") as Error & { status?: number; semCorpo?: true };
+  e.status = status;
+  e.semCorpo = true;
+  return e;
+}
+
+
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   const res = await fetch(`${BASE}${path}`, {
     ...init,
@@ -27,11 +40,19 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
     try {
       data = JSON.parse(text);
     } catch {
-      throw new Error(`Erro do servidor (HTTP ${res.status})`);
+      // Resposta que não é JSON (413 do Werkzeug, 502 de proxy, HTML de erro). O `status` vai no
+      // erro para quem souber tratar; o TEXTO não carrega código, porque ele chega na tela do
+      // jogador e "Erro do servidor (HTTP 413)" não diz o que fazer. Pedido do dono, 16/09.
+      const semJson = new Error("") as Error & { status?: number; semCorpo?: true };
+      semJson.status = res.status;
+      semJson.semCorpo = true;
+      throw semJson;
     }
   }
   if (!res.ok) {
-    const err = new Error((data.error as string) ?? `HTTP ${res.status}`) as Error & {
+    // Sem `error` no corpo o texto fica VAZIO, e não "HTTP 500": quem exibe decide a frase, e
+    // uma frase com código dentro vaza para a tela em qualquer superfície que só mostre `message`.
+    const err = new Error((data.error as string) ?? "") as Error & {
       code?: string; status?: number; data?: Record<string, unknown>;
     };
     err.code = data.code as string | undefined;   // ex.: 'email_unverified', 'coach_pending'
@@ -840,8 +861,12 @@ export const tournaments = {
       headers: t ? { Authorization: `Bearer ${t}` } : {},
     });
     if (!res.ok) {
-      const msg = await res.text().catch(() => `HTTP ${res.status}`);
-      throw new Error(msg);
+      // Sem texto no corpo, o erro fica VAZIO e quem exibe compoe a frase: codigo de status
+      // na tela do jogador nao diz o que fazer (pedido do dono, 16/09).
+      const msg = await res.text().catch(() => "");
+      const err = new Error(msg) as Error & { status?: number };
+      err.status = res.status;
+      throw err;
     }
     const isPdf = (res.headers.get("content-type") ?? "").includes("application/pdf");
     const ext = isPdf ? "pdf" : "html";
@@ -3571,6 +3596,10 @@ export interface QuotaStatus {
     advanced_insights?: boolean;
     training_spots_per_day?: number | null;
     solves?: number | null;
+    /** Teto do ARQUIVO de upload, em MB (free 5, pro 40). O front barra ANTES de enviar para o
+     *  jogador saber na hora, e para a mensagem poder falar do arquivo dele; o backend recusa de
+     *  novo pelo header, e é ele a autoridade. */
+    upload_mb?: number | null;
   };
 }
 
@@ -4433,14 +4462,14 @@ export interface DashboardDemo {
 export const sample = {
   decision: async (): Promise<{ decision: ReplayStep }> => {
     const res = await fetch(`${BASE}/sample/decision`);
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    if (!res.ok) throw semCodigo(res.status);
     return res.json();
   },
 
   /** Mesma regra do `decision`: sem cabeçalho, para ser requisição simples e não gerar preflight. */
   dashboard: async (): Promise<DashboardDemo> => {
     const res = await fetch(`${BASE}/sample/dashboard`);
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    if (!res.ok) throw semCodigo(res.status);
     return res.json();
   },
 };

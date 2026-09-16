@@ -257,7 +257,10 @@
     "erroNoProcessamento": "We could not analyze this file. Check that it is a tournament hand history (MTT or SNG).",
     "variosTorneiosParcial": "File had {{n}} tournaments. {{ok}} imported, {{fora}} did not go in.",
     "variosTorneiosJaEstavam": "File had {{n}} tournaments. {{ok}} new, {{ja}} already in your history.",
-    "variosTorneiosMisto": "File had {{n}} tournaments. {{ok}} new, {{ja}} already there, {{fora}} did not go in."
+    "variosTorneiosMisto": "File had {{n}} tournaments. {{ok}} new, {{ja}} already there, {{fora}} did not go in.",
+    "grandeFree": "This file is {{arquivo}}MB and your plan accepts up to {{teto}}MB. Export a shorter period, a week for example, or go Pro to send files up to 40MB.",
+    "grandePro": "This file is {{arquivo}}MB and the limit is {{teto}}MB. Split the export into two periods and send one at a time.",
+    "grandeSemNumero": "This file is too large to send at once. Export a shorter period, a week for example, and try again."
   },
   "suporte": {
     "semMensagens": "No messages sent yet."

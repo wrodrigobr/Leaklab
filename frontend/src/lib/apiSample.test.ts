@@ -52,8 +52,15 @@ describe("decisão de exemplo — requisição simples, sem preflight", () => {
     expect(JSON.stringify(init ?? {})).not.toContain("token-de-teste");
   });
 
-  it("erro de rede/404 vira exceção para o chamador tratar", async () => {
+  it("erro vira exceção com o status NO CAMPO, e não no texto", async () => {
+    // Mudou em 16/09, e o teste velho travava justamente o que o dono proibiu: ele exigia o
+    // "404" na MENSAGEM, e mensagem com código de status chega na tela do visitante sem dizer
+    // o que fazer. Agora o status viaja no campo `status` (para quem trata) e o texto fica
+    // vazio (para quem exibe compor a frase).
     fetchEspiao({ ok: false, status: 404 });
-    await expect(sample.decision()).rejects.toThrow(/404/);
+    const erro = await sample.decision().then(() => null, (e) => e);
+    expect(erro).toBeInstanceOf(Error);
+    expect((erro as Error & { status?: number }).status).toBe(404);
+    expect((erro as Error).message).not.toMatch(/404/);
   });
 });

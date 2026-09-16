@@ -222,7 +222,8 @@ export function ColunaDoLeak({ spot, lastN, handId, hrefDaMao, hrefEmOutroLeak, 
         </div>
       )}
 
-      <div className="min-h-0 flex-1 overflow-y-auto">
+      {/* `scrollbar-hud`: a barra nativa do Windows era a unica coisa fora da paleta aqui. */}
+      <div className="min-h-0 flex-1 overflow-y-auto scrollbar-hud">
         {dados.hands.map((m, i) => {
           const atual = m.hand_id === handId;
           return (
