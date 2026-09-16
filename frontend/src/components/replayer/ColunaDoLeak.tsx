@@ -97,14 +97,14 @@ export function ColunaDoLeak({ spot, lastN, handId, hrefDaMao, aoIr }: {
               data-testid={`leak-coluna-mao-${m.decision_id}`}
               aria-current={atual ? "true" : undefined}
               className={cn(
-                "flex w-full items-center gap-2 border-b border-border/50 px-3 py-1.5 text-left transition-colors last:border-b-0",
+                "flex w-full items-center gap-2.5 border-b border-border/50 px-3 py-2 text-left transition-colors last:border-b-0",
                 atual ? "bg-primary/[0.09] shadow-[inset_2px_0_0_hsl(var(--primary))]" : "hover:bg-secondary/40",
                 // apagado = já revisto. A ordem da lista é por custo, então "antes" é "mais caro
                 // que este", e é essa a ordem em que o jogador desce.
                 !atual && idx >= 0 && i < idx && "opacity-45",
               )}
             >
-              <HeroHand cards={m.hero_cards} className="h-[20px]" />
+              <HeroHand cards={m.hero_cards} />
               <span className="min-w-0 flex-1 truncate font-mono text-[9px] text-muted-foreground">
                 {m.position ?? "—"}
                 {m.stack_bb != null ? ` · ${Math.round(m.stack_bb)}bb` : ""}

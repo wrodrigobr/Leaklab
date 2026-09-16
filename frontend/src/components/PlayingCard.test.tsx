@@ -94,6 +94,34 @@ describe("PlayingCard", () => {
     expect(/\/cards\/\$\{/.test(semComentario(codigo))).toBe(true);
   });
 
+  it("nenhuma lista encolhe a carta por conta própria", () => {
+    // O dono reprovou a primeira versão na tela: "as cartas ficaram muito pequenas". Elas estavam
+    // em 22px na lista do dashboard e 20px na coluna do leak, cada uma com o seu número. O padrão
+    // agora é `ALTURA_DA_CARTA` (36px) e mora no componente.
+    //
+    // Este guarda não julga tamanho, que é gosto: ele recusa a ALTURA SOLTA. Quem achar 36px
+    // grande muda o padrão e todas as listas acompanham, em vez de deixar cada tela com o seu
+    // número e a próxima nascer pequena de novo.
+    const comAlturaSolta: string[] = [];
+    for (const f of arquivosDeCodigo(SRC)) {
+      const codigo = readFileSync(f, "utf-8");
+      const usos = codigo.match(/<HeroHand[^>]*>/g) ?? [];
+      for (const uso of usos) {
+        if (/className=\{?"[^"]*(?:^|\s)?h-(?:\[|\d)/.test(uso)) comAlturaSolta.push(f.slice(SRC.length + 1));
+      }
+    }
+    expect(comAlturaSolta, "altura de carta cravada no uso; mude ALTURA_DA_CARTA").toEqual([]);
+  });
+
+  it("o guarda ACUSA a altura solta", () => {
+    // CONTROLE, porque uma regex errada aqui deixaria o guarda acima verde para sempre.
+    const solto = '<HeroHand cards={m.hero_cards} className="h-[22px]" />';
+    const certo = '<HeroHand cards={m.hero_cards} />';
+    const re = /className=\{?"[^"]*(?:^|\s)?h-(?:\[|\d)/;
+    expect(re.test(solto)).toBe(true);
+    expect(re.test(certo)).toBe(false);
+  });
+
   it("a varredura está de fato varrendo o repositório", () => {
     expect(arquivosDeCodigo(SRC).length).toBeGreaterThan(100);
   });

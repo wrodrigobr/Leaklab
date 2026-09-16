@@ -56,21 +56,34 @@ export function PlayingCard({ code, className }: { code: string; className?: str
 }
 
 /**
- * As duas cartas do herói, na ordem de leitura. `alt` na primeira carrega a mão inteira, para o
+ * Altura padrão da carta numa LISTA.
+ *
+ * Nasceu em 22px e o dono reprovou na tela: "as cartas ficaram muito pequenas". A carta do
+ * baralho tem proporção ~0,72, então 22px de altura davam 16px de largura, e o rank ficava
+ * menor que o texto ao lado dele. 36px é a altura em que o rank e o naipe se leem de relance,
+ * que é o motivo de desenhar a carta em vez de escrever `Qd8s`.
+ *
+ * O número vive aqui, e não em cada lista, porque a próxima lista a nascer herda a altura certa
+ * sem ninguém precisar lembrar dela.
+ */
+export const ALTURA_DA_CARTA = "h-9";
+
+/**
+ * As duas cartas do herói, na ordem de leitura. `aria-label` carrega a mão inteira, para o
  * leitor de tela não anunciar duas cartas soltas.
  */
 export function HeroHand({ cards, className, vazio = "—" }: {
   cards: string | null | undefined;
-  /** classe das CARTAS (altura); o contêiner já é um flex com folga entre elas */
+  /** sobrepõe a altura padrão (`ALTURA_DA_CARTA`); o contêiner já dá a folga entre as cartas */
   className?: string;
   vazio?: string;
 }) {
   const par = ordenarMao(cards);
   if (!par) return <span className="text-muted-foreground">{vazio}</span>;
   return (
-    <span className="inline-flex items-center gap-[2px]" aria-label={par.join(" ")}>
-      <PlayingCard code={par[0]} className={cn("h-6", className)} />
-      <PlayingCard code={par[1]} className={cn("h-6", className)} />
+    <span className="inline-flex items-center gap-[3px]" aria-label={par.join(" ")}>
+      <PlayingCard code={par[0]} className={cn(ALTURA_DA_CARTA, className)} />
+      <PlayingCard code={par[1]} className={cn(ALTURA_DA_CARTA, className)} />
     </span>
   );
 }

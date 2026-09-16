@@ -74,7 +74,7 @@ export function MaosDoLeak({ street, actionTaken, bestAction, lastN }: {
                 {/* As cartas DESENHADAS (16/09), com o mesmo baralho da mesa e do replayer.
                     Era o texto cru do parser, que mostrava `4dAd` com o quatro na frente do as
                     porque a sala escreve na ordem do assento; `HeroHand` ordena. */}
-                <td className="px-1.5 py-1"><HeroHand cards={m.hero_cards} className="h-[22px]" /></td>
+                <td className="px-1.5 py-1.5"><HeroHand cards={m.hero_cards} /></td>
                 <td className="px-1.5 py-1 font-mono">{m.position ?? "—"}</td>
                 <td className="px-1.5 py-1 font-mono tabular-nums">{m.stack_bb != null ? `${Math.round(m.stack_bb)}bb` : "—"}</td>
                 <td className="px-1.5 py-1 font-mono tabular-nums text-red-400">−{m.ev_loss_bb.toFixed(2)}bb</td>

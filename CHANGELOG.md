@@ -4,6 +4,32 @@ Todas as mudanÃ§as notÃ¡veis neste projeto serÃ£o documentadas aqui.
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
+## A carta da lista tem UMA altura, e ela nao e minuscula (16/09)
+
+Reprovado pelo dono na tela, no mesmo dia em que as cartas desenhadas subiram: "as cartas
+ficaram muito pequenas". Estavam em 22px na lista do dashboard e 20px na coluna do leak, cada
+tela com o seu numero cravado no uso. A carta do baralho tem proporcao ~0,72, entao 22px de
+altura davam 16px de largura e o rank saia menor que o texto ao lado -- ou seja, desenhar a
+carta perdia a razao de existir.
+
+Agora a altura padrao e `ALTURA_DA_CARTA` (36px) e mora no componente. Quem achar 36px grande
+muda UM numero e as duas listas acompanham, em vez de cada tela ter o seu e a proxima nascer
+pequena de novo.
+
+**O guarda nasceu CEGO, e o controle pegou.** Escrevi a varredura que recusa altura solta no uso
+de `<HeroHand>`, e ela passou verde de primeira. O caso de controle (que exige que ela ACUSE um
+uso com `className="h-[22px]"`) falhou, e o motivo estava na regex: o meu `` virou o **byte
+0x08** (backspace) na passagem por Python, um caractere que nunca casa. A varredura estava
+impossivel de disparar e dizia "nenhum arquivo encolhe a carta".
+
+E a MESMA armadilha que esta sessao ja tinha registrado num `awk` horas antes. A diferenca e que
+aqui existia um controle exigindo que o guarda acusasse; sem ele, o teste seguiria verde para
+sempre protegendo nada. Depois do conserto, quebrei de proposito: com a altura solta de volta na
+lista, ele acusa o arquivo pelo nome.
+
+Front 634/634 em 98 arquivos, tsc limpo.
+
+---
 ## Do leak para as 12 maos, sem voltar ao dashboard (16/09)
 
 O pedido mais antigo do dono, e ele existia desde antes da lista de maos do leak (AY-32, 09/09):
