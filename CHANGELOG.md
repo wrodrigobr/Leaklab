@@ -4,44 +4,48 @@ Todas as mudanÃ§as notÃ¡veis neste projeto serÃ£o documentadas aqui.
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
-## A decisao que SOME no meio nao derruba mais o torneio inteiro (16/09)
+## A carta deixa de acusar fold contra all-in quando o preco a contradiz (16/09)
 
-Erro de producao, do Sentry, torneio 1624:
+O dono abriu uma mao da lista de leaks e perguntou: "em nenhum momento indica erro na jogada,
+por que ela consta como leak?". Depois, olhando a resposta: "o call e indicado, mesmo o jogador
+tendo voltado um 3-bet allin?". A segunda pergunta derrubou a primeira resposta minha.
 
-```
-ForeignKeyViolation: insert or update on table "vereditos_por_semelhanca" violates foreign key
-constraint ... Key (decision_id)=(526360) is not present in table "decisions".
-```
+**O caso** (torneio 30, mao 157832100251): K7s no SB, 3-bet ALL-IN de 33,9bb, fold acusado em
+1,21bb. O `hand_freq` da mao dizia `call 1.0`, e eu conclui que a lista estava certa e o card
+errado. Errado: aquele `call 1.0` foi produzido por `_normalize_facing_allin`, que dobra
+`raise`+`allin` dentro de `call` porque, enfrentando um shove, a linha agressiva se executa
+PAGANDO. A carta nao diz "pague": diz "4-bet jam".
 
-`gravar_provisorios` tira um RETRATO dos ids das decisoes sem no, e o laco leva tempo porque
-`estrategia_por_semelhanca` consulta o acervo por linha. Se um reprocesso do mesmo torneio apagar
-e regravar as decisoes nessa janela, o id do retrato ja nao existe. A cicatriz de sempre desta
-base: quem referencia `decisions(id)` desaparece com CASCADE, calado.
+E a carta usada e do balde de **30bb**, declarando `raise_to_bb: 15.0` -- um 3-bet DIMENSIONADO,
+que deixaria 15bb atras para jogar o flop. Com 15bb atras, seguir com K7s se defende. Contra um
+shove nao ha flop: e equity pura. E na MESMA decisao o motor mediu:
 
-**A consequencia era pior que uma linha perdida:** em Postgres a violacao ABORTA a transacao,
-entao o `commit()` do fim nunca acontece e o torneio inteiro fica sem provisorio, com
-"semelhanca provisorios FAILED" no log. Nada chega ao jogador (a medicao e interna, AY-28 passo
-2), mas o trabalho se perdia e o Sentry enchia.
+    paga 30,39bb para um pote de 38,10bb  ->  exige 44,4%
+    K7s contra o range                    ->  43,4%
 
-O `INSERT ... VALUES` virou `INSERT ... SELECT d.id ... FROM decisions d WHERE d.id = ?`: se a
-decisao nao existe mais, o SELECT devolve zero linhas, nada e inserido e as outras 200 sao
-gravadas. A contagem passou a sair de `rowcount`, medido nos DOIS dialetos antes de eu confiar
-nele (1 quando existe, 0 quando sumiu), senao o log diria "212 gravados" com 211 no banco.
+O fold estava certo por um ponto percentual, e a carta cobrou 1,21bb. Duas fontes do nosso
+produto discordando, com a que acusava usando um sizing que nao era o do spot.
 
-Varredura dos N+1: tres lugares fazem INSERT com FK para `decisions` dentro de laco.
-`coach_hand_annotations` ja trata ("a decisao nao existe mais: perder e honesto") e o terceiro e
-script de seed. Este era o unico que rodava automatico depois do import.
+`carta_nao_acusa_fold_vs_allin` derruba a acusacao quando o preco a contradiz, e SO nesse caso:
+quando a equity alcanca a exigida, a acusacao fica de pe, porque ali a carta e o pote concordam.
+Mesma doutrina que ja vale para a carta de mesa cheia do GW ("carta vizinha absolve, nao acusa"),
+com o sizing no papel de vizinho. O `ev_loss` tambem vai a None, e nao so a qualidade: a lista
+"Leaks por custo" ranqueia por EV, entao deixar o custo de pe manteria a mao na lista depois de
+o card absolver.
 
-**E o guarda nasceu FALSO POSITIVO, duas vezes.** Na primeira, o seed usava um torneio que nao
-existia e falhava por FK de outra coisa. Na segunda, ja verde, eu quebrei o conserto de proposito
-e o teste PASSOU: a segunda mao do seed era `AdKd`, que nao tem veredito nas arvores vizinhas,
-caia no `continue` e nunca chegava ao INSERT. O teste exercitava o caminho errado e dizia que
-estava protegido. Com uma mao de mesma relacao com o board (`AhKs`), a mutacao acusa
-`FOREIGN KEY constraint failed`, que e o erro do Sentry.
+**Medido em producao com dry-run antes de gravar:** 160 folds contra all-in acusados, o preco
+contradiz 83 (29,5bb) e confirma 77. Quase todos os absolvidos tem `gto_played_freq = 0`, o que
+mostra o caminho: a carta mandava jam em 100% naquele no de 30bb. Por jogador, o efeito e A FAVOR
+deles -- user 62 (fundador) 25 decisoes e 11,1bb, user 58 27 e 10,1bb, user 65 22 e 4,7bb.
 
-Provado tambem no dialeto do erro: contra o Postgres local, 1 gravada, sem estourar, e a linha da
-decisao apagada nao entra. Suites: semelhanca 10/10, gto_insert_guard 2/2, no_id_tables 4/4,
-row_access 2/2.
+Duas correcoes minhas que os CONTROLES do proprio script pegaram: a primeira versao comparava a
+aposta com o stack do HEROI e por isso nao achava o caso que originou a frente (o dono tinha
+94,7bb e o all-in do vilao era 33,9bb; o que importa e o stack EFETIVO) -- passou a usar
+`facing_allin_row`, que e a fonte unica dessa regra na casa; e a classificacao contava como
+"mantida" quem ja nao acusava nada.
+
+Guarda quebrado de proposito: sem a comparacao de preco a regra viraria anistia geral, e dois
+casos acusam. E a catraca de ontem me pegou de novo: o teste novo nao estava em suite nenhuma.
 
 ---
 ## A lista de maos do leak parou de acusar o nosso proprio defeito na tela (15/09)

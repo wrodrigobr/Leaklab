@@ -296,6 +296,51 @@ def carta_colapsada_por_commit_total(quality, recomendadas, spot, acao_jogada):
     return 'correct', ['call'], False
 
 
+def carta_nao_acusa_fold_vs_allin(quality, ev_loss, *, facing_allin, acao_jogada,
+                                  equity, equity_exigida):
+    """A carta ABSOLVE o fold contra all-in quando o preco nao fecha: `(quality, ev_loss)`.
+
+    ── O caso do dono (16/09), torneio 30, mao 157832100251 ──────────────────────────────────
+
+    K7s no SB, 3-bet ALL-IN de 33,9bb, fold. A carta de `vs_3bet` do balde de 30bb declara
+    `raise_to_bb: 15.0`: ela modela um 3-bet DIMENSIONADO, que deixaria 15bb atras para jogar o
+    flop. Com 15bb atras, seguir com K7s se defende (fold equity, board por vir). Contra um shove
+    nao ha flop nenhum: e equity pura.
+
+    Na MESMA decisao o motor mediu equity de 43,4% contra 44,4% exigidos pelo pote, ou seja o
+    fold estava certo por um ponto percentual -- e a carta cobrou 1,21bb dele. As duas fontes do
+    nosso proprio produto discordavam, e a que acusava estava usando um sizing que nao era o do
+    spot.
+
+    ── Por que ABSOLVER e nao recalcular ────────────────────────────────────────────────────
+
+    A mesma doutrina que ja vale para a carta de mesa cheia do GW: "carta vizinha absolve, nao
+    acusa". Aqui o sizing e o vizinho. Recalcular o EV com o sizing certo exigiria um no que nao
+    temos; derrubar a acusacao quando o preco a contradiz e aditivo e nunca inventa erro novo,
+    que e o lado seguro da regra 7.
+
+    O `ev_loss` tambem vai a None, e nao so a qualidade: a lista "Leaks por custo" ranqueia por
+    EV, entao deixar o custo de pe manteria a decisao na lista de leaks depois de o card
+    absolver -- duas superficies discordando, que e o defeito que esta semana inteira consertou.
+
+    Quando o preco FECHA (equity >= exigida), a acusacao fica: ali a carta e o pote concordam.
+    """
+    if not facing_allin:
+        return quality, ev_loss
+    if str(acao_jogada or '').strip().lower() != 'fold':
+        return quality, ev_loss
+    if equity is None or equity_exigida is None:
+        return quality, ev_loss          # sem os dois numeros nao ha o que comparar
+    try:
+        if float(equity) >= float(equity_exigida):
+            return quality, ev_loss      # o preco fecha: a carta e o pote concordam
+    except (TypeError, ValueError):
+        return quality, ev_loss
+    if quality in ('correct', 'unknown'):
+        return quality, ev_loss
+    return 'correct', None
+
+
 def spot_mismatch(gto_action_norm: str, engine_best_norm: str) -> bool:
     """O nó GTO responde a um spot INCOMPATÍVEL com o que o hero enfrenta.
 

@@ -1242,6 +1242,20 @@ def evaluate_decision(input_data: Dict[str, Any]) -> Dict[str, Any]:
             preflop_gto = {**preflop_gto, 'action_quality': quality,
                            'recommended_actions': _rec_colapsada,
                            'ev_loss_bb': None, 'ev_loss_source': None}
+        # A carta nao acusa fold contra all-in quando o preco do pote contradiz a acusacao
+        # (caso do dono, 16/09): a decisao mora em `card_verdict` como funcao pura, aqui so a
+        # fiacao. Precisa vir ANTES de `_preflop_gto_label_adjust`, que usa quality e ev.
+        from leaklab.card_verdict import carta_nao_acusa_fold_vs_allin as _absolve_allin
+        quality, _ev_absolvido = _absolve_allin(
+            quality, preflop_gto.get('ev_loss_bb'),
+            facing_allin=bool(spot.get('facingAllin')),
+            acao_jogada=_acao_real,
+            equity=math.get('estimatedHandEquity'),
+            equity_exigida=threshold_pack.get('adjustedRequiredEquity'))
+        if _ev_absolvido is None and preflop_gto.get('ev_loss_bb') is not None:
+            preflop_gto = {**preflop_gto, 'action_quality': quality,
+                           'ev_loss_bb': None, 'ev_loss_source': None,
+                           'absolvido_por_preco_vs_allin': True}
         _pf_evloss = preflop_gto.get('ev_loss_bb')
         # Tema 1: a severidade do label preflop agora considera o EV perdido medido.
         label   = _preflop_gto_label_adjust(label, quality, _pf_evloss)

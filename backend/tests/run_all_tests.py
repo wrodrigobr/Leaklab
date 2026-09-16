@@ -160,6 +160,7 @@ SUITES = {
                   'test_stack_buckets.py',
                   # ── Guardas da auditoria de 15/09 ────────────────────────────────────────
                   'test_rebaixamento_de_leak_barato.py',
+                  'test_fold_vs_allin_sem_preco.py',
                   'test_facing_bet_em_bb.py',
                   'test_mao_repetida_no_arquivo.py',
                   'test_piso_de_amostra_da_referencia.py'],
