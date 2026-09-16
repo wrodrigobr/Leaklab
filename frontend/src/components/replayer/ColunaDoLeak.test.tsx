@@ -207,5 +207,19 @@ describe("coluna do leak", () => {
     expect(col.className).toContain("absolute");
     expect(col.className).toContain("hidden");
     expect(col.className).toContain("lg:flex");
+    // LADO ESQUERDO (pedido do dono, 16/09). O lado importa para o botao de reabrir aparecer
+    // onde a coluna abre: quando ela estava a direita e o botao ficou a esquerda numa versao
+    // intermediaria, o jogador clicava num canto e a lista aparecia no outro.
+    expect(col.className).toContain("left-0");
+    expect(col.className).not.toContain("right-0");
+  });
+
+  it("o botao de reabrir nasce do MESMO lado da coluna", async () => {
+    monta();
+    const col = await screen.findByTestId("leak-coluna");
+    fireEvent.click(within(col).getByRole("button", { name: "close" }));
+    const botao = await screen.findByTestId("leak-coluna-abrir");
+    expect(botao.className).toContain("left-2");
+    expect(botao.className).not.toContain("right-2");
   });
 });

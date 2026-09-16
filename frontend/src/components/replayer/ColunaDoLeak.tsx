@@ -110,7 +110,7 @@ export function ColunaDoLeak({ spot, lastN, handId, hrefDaMao, hrefEmOutroLeak, 
         type="button"
         onClick={() => alterna(true)}
         data-testid="leak-coluna-abrir"
-        className="hidden lg:inline-flex absolute right-2 top-2 z-20 items-center gap-1.5 rounded-full bg-background/80 backdrop-blur px-3 py-1.5 font-mono text-[10px] font-bold uppercase tracking-widest-2 text-primary ring-1 ring-primary/40 transition-colors hover:bg-primary/10"
+        className="hidden lg:inline-flex absolute left-2 top-2 z-20 items-center gap-1.5 rounded-full bg-background/80 backdrop-blur px-3 py-1.5 font-mono text-[10px] font-bold uppercase tracking-widest-2 text-primary ring-1 ring-primary/40 transition-colors hover:bg-primary/10"
       >
         <ListOrdered className="size-3.5" aria-hidden />
         {t("navigation.leakColunaAbrir", { n: dados.total })}
@@ -121,7 +121,7 @@ export function ColunaDoLeak({ spot, lastN, handId, hrefDaMao, hrefEmOutroLeak, 
   return (
     <aside
       data-testid="leak-coluna"
-      className="hidden lg:flex absolute right-0 top-0 z-20 w-[clamp(136px,11vw,168px)] max-h-full flex-col overflow-hidden rounded-xl border border-border bg-hud-surface/95 backdrop-blur"
+      className="hidden lg:flex absolute left-0 top-0 z-20 w-[clamp(136px,11vw,168px)] max-h-full flex-col overflow-hidden rounded-xl border border-border bg-hud-surface/95 backdrop-blur"
     >
       {/* QUAL leak, e onde ele está na lista do dashboard */}
       <div className="flex items-start justify-between gap-2 border-b border-border px-3 py-2">
