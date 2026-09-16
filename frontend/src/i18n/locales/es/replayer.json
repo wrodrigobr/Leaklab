@@ -375,6 +375,7 @@
     "leakColuna": "las {{n}} manos de este leak",
     "leakVoltar": "volver a los leaks",
     "leakColunaAbrir": "leak · {{n}}",
+    "leakColunaAba": "leaks",
     "leakColunaPe": "{{i}} de {{n}} · {{bb}}bb en el leak",
     "leakDeN": "leak {{i}} de {{n}} · {{maos}} manos",
     "leakProximo": "siguiente leak"

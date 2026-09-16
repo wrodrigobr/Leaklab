@@ -209,28 +209,38 @@ describe("coluna do leak", () => {
     expect(screen.queryByTestId("leak-proximo")).toBeNull();
   });
 
-  it("não empurra a mesa: é absolute e só aparece no desktop", async () => {
-    // O que separa esta coluna do aside de 288px removido em 20/06. `absolute` não participa do
-    // fluxo, então a mesa mantém a largura; `hidden lg:flex` a tira do telefone, onde não há
-    // espaço ocioso para ocupar.
+  it("é painel LATERAL no fluxo, e só aparece no desktop", async () => {
+    // O dono pediu menu lateral com toggle em vez de janela flutuante (16/09). Então o painel
+    // agora participa do fluxo de propósito, e o guarda mudou de alvo: ele protege o que torna
+    // isso seguro, e não mais a flutuação.
+    //
+    // A cicatriz que continua valendo é a do aside de 288px removido em 20/06, e ela tinha DUAS
+    // partes: largura reservada em toda mão, e nenhuma forma de recolher. O teste a seguir trava
+    // as duas (`shrink-0` com largura limitada aqui, aba de 36px no caso de baixo).
     monta();
     const col = await screen.findByTestId("leak-coluna");
-    expect(col.className).toContain("absolute");
+    expect(col.className).toContain("shrink-0");
     expect(col.className).toContain("hidden");
     expect(col.className).toContain("lg:flex");
-    // LADO ESQUERDO (pedido do dono, 16/09). O lado importa para o botao de reabrir aparecer
-    // onde a coluna abre: quando ela estava a direita e o botao ficou a esquerda numa versao
-    // intermediaria, o jogador clicava num canto e a lista aparecia no outro.
-    expect(col.className).toContain("left-0");
-    expect(col.className).not.toContain("right-0");
+    // não volta a flutuar por descuido: `absolute` aqui sobreporia o feltro outra vez
+    expect(col.className).not.toContain("absolute");
+    // e a largura tem teto: o aside antigo cravava 288px, este não passa de 190
+    expect(col.className).toMatch(/w-\[clamp\(\d+px,[^)]+,(1[0-9]{2})px\)\]/);
   });
 
-  it("o botao de reabrir nasce do MESMO lado da coluna", async () => {
+  it("recolhido, o painel devolve a largura para a mesa", async () => {
+    // O toggle é a razão pela qual um painel no fluxo é aceitável aqui. Se recolher só esconde o
+    // conteúdo e mantém a coluna larga, voltamos ao aside de 20/06 com um botão decorativo.
     monta();
     const col = await screen.findByTestId("leak-coluna");
     fireEvent.click(within(col).getByRole("button", { name: "close" }));
-    const botao = await screen.findByTestId("leak-coluna-abrir");
-    expect(botao.className).toContain("left-2");
-    expect(botao.className).not.toContain("right-2");
+    expect(screen.queryByTestId("leak-coluna")).toBeNull();
+
+    const aba = await screen.findByTestId("leak-coluna-fechada");
+    expect(aba.className).toContain("w-9");          // 36px, a aba
+    expect(aba.className).toContain("shrink-0");
+    expect(aba.className).not.toMatch(/w-\[clamp/); // nada de largura de painel escondida aqui
+    // e a aba continua dizendo quantas mãos esperam, senão o jogador esquece que há playlist
+    expect((await screen.findByTestId("leak-coluna-abrir")).textContent).toContain("12");
   });
 });

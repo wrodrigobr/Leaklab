@@ -976,11 +976,12 @@ const Replayer = () => {
             {/* Mesa — height-bound: cabe SEMPRE na faixa flex-1 (acima dos controles), nunca
                 rola pra baixo do menu. Aspect fixo 16/10: só landscape chega aqui — portrait
                 já retornou no ramo mobileReplayer, então o ternário por orientação era morto. */}
-            <div className="relative flex-1 min-h-0 overflow-hidden flex items-center justify-center">
-              {/* A coluna do leak ocupa o espaco que a mesa JA nao usa: ela e `absolute` neste
-                  contêiner, e a mesa (aspect 16/10, largura derivada da altura) segue centrada e
-                  do mesmo tamanho. Nao e o aside de 288px que tiramos em 20/06, que reservava
-                  largura em toda mao mesmo sem nada a mostrar; esta so existe com `?leak=`. */}
+            <div className="relative flex-1 min-h-0 overflow-hidden flex items-stretch">
+              {/* O painel do leak DIVIDE a faixa com a mesa (pedido do dono, 16/09: menu lateral
+                  com toggle, e não janela flutuante sobre o feltro). Recolhido ele vira uma aba de
+                  36px e a largura volta para a mesa, que é a diferença entre isto e o aside de
+                  288px que tiramos em 20/06: aquele reservava largura em toda mão, sem escapatória
+                  e sem nada a mostrar. Este só existe com `?leak=` e fecha num clique. */}
               {leakSpot && handId && (
                 <ColunaDoLeak
                   spot={leakSpot}
@@ -996,6 +997,9 @@ const Replayer = () => {
                   aoIr={(href) => navigate(href)}
                 />
               )}
+              {/* a mesa fica no que sobra: `min-w-0` para ela ENCOLHER quando o painel abre, em
+                  vez de estourar a faixa e sumir pela direita */}
+              <div className="flex-1 min-w-0 flex items-center justify-center">
               <div
                 className="h-full w-auto max-w-full max-h-full mx-auto"
                 style={{ aspectRatio: "16 / 10" }}
@@ -1014,6 +1018,7 @@ const Replayer = () => {
                   orientation={tableOrientation}
                   transparentBg
                 />
+              </div>
               </div>
 
               {/* Desktop: pill de veredito flutuando sobre a mesa (canto inferior-direito)

@@ -23,6 +23,14 @@ import { chaveDoLeak, mesmoLeak, type LeakSpot } from "@/lib/playlistDoLeak";
  * `hidden lg:flex`: no telefone não existe espaço ocioso, então lá a coluna não aparece e a
  * navegação é pelas setas, que é o que a playlist já resolve.
  *
+ * ── Painel lateral, e não janela flutuante (16/09, pedido do dono) ────────────────────────────
+ *
+ * A primeira versão era `absolute` sobre o feltro, para não repetir o aside de 288px que tiramos
+ * em 20/06 — aquele reservava largura em TODA mão, mesmo sem nada a mostrar. O dono pediu menu
+ * lateral com toggle, e a diferença que torna isso seguro é exatamente o toggle: recolhido, o
+ * painel vira uma aba de 36px e devolve a largura para a mesa, e ele só existe com `?leak=`.
+ * O guarda desta suíte protege isso, e não mais a flutuação.
+ *
  * ── Dois níveis de navegação (16/09, pedido do dono) ──────────────────────────────────────────
  *
  * Dentro de um leak, as mãos; entre leaks, a lista do dashboard. O cabeçalho diz QUAL leak está
@@ -105,23 +113,40 @@ export function ColunaDoLeak({ spot, lastN, handId, hrefDaMao, hrefEmOutroLeak, 
   const proximo = iLeak >= 0 && iLeak + 1 < leaks.length ? leaks[iLeak + 1] : null;
 
   if (!aberta) {
+    // Recolhida, o painel NAO desaparece: sobra a aba de 36px, que devolve a largura para a mesa
+    // e continua dizendo quantas mãos esperam. Pastilha flutuante sobre o feltro era o desenho
+    // anterior, e o dono pediu menu lateral com toggle.
     return (
-      <button
-        type="button"
-        onClick={() => alterna(true)}
-        data-testid="leak-coluna-abrir"
-        className="hidden lg:inline-flex absolute left-2 top-2 z-20 items-center gap-1.5 rounded-full bg-background/80 backdrop-blur px-3 py-1.5 font-mono text-[10px] font-bold uppercase tracking-widest-2 text-primary ring-1 ring-primary/40 transition-colors hover:bg-primary/10"
+      <aside
+        data-testid="leak-coluna-fechada"
+        className="hidden lg:flex w-9 shrink-0 flex-col items-center gap-2 border-r border-border bg-hud-surface/40 py-3"
       >
-        <ListOrdered className="size-3.5" aria-hidden />
-        {t("navigation.leakColunaAbrir", { n: dados.total })}
-      </button>
+        <button
+          type="button"
+          onClick={() => alterna(true)}
+          data-testid="leak-coluna-abrir"
+          title={t("navigation.leakColunaAbrir", { n: dados.total })}
+          aria-label={t("navigation.leakColunaAbrir", { n: dados.total })}
+          className="flex flex-col items-center gap-1.5 text-primary transition-colors hover:text-primary-glow"
+        >
+          <ListOrdered className="size-4" aria-hidden />
+          <span className="font-mono text-[10px] font-bold tabular-nums">{dados.total}</span>
+        </button>
+        {/* o rótulo na vertical, para a aba dizer o que é sem roubar largura */}
+        <span
+          className="font-mono text-[9px] uppercase tracking-widest-2 text-muted-foreground"
+          style={{ writingMode: "vertical-rl" }}
+        >
+          {t("navigation.leakColunaAba")}
+        </span>
+      </aside>
     );
   }
 
   return (
     <aside
       data-testid="leak-coluna"
-      className="hidden lg:flex absolute left-0 top-0 z-20 w-[clamp(136px,11vw,168px)] max-h-full flex-col overflow-hidden rounded-xl border border-border bg-hud-surface/95 backdrop-blur"
+      className="hidden lg:flex w-[clamp(150px,12vw,190px)] shrink-0 flex-col overflow-hidden border-r border-border bg-hud-surface/60"
     >
       {/* QUAL leak, e onde ele está na lista do dashboard */}
       <div className="flex items-start justify-between gap-2 border-b border-border px-3 py-2">
