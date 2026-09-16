@@ -20,7 +20,7 @@ import { cn } from "@/lib/utils";
 import { computeEffectiveGtoLabel } from "@/lib/gtoUtils";
 import { livePlayers as computeLivePlayers, isMultiwayPot, isPpMuted, idealActionSource, verdictStrategy, verdictLevel, clampVerdict, type VerdictLevel } from "@/lib/cardLogic";
 import { filterHandIds, parseResultFilter, type HandResultFilter } from "@/lib/handFilter";
-import { parseLeakSpot, hrefDaMao } from "@/lib/playlistDoLeak";
+import { parseLeakSpot, hrefDaMao, rotuloDoLeak } from "@/lib/playlistDoLeak";
 import { ColunaDoLeak } from "@/components/replayer/ColunaDoLeak";
 import { selectWhy } from "@/lib/replayWhy";
 
@@ -847,13 +847,14 @@ const Replayer = () => {
 
           {handList.length > 1 && handIdx >= 0 ? (
             <div className="flex flex-col items-center justify-center gap-0.5">
-              {/* O contador DECLARA de qual lista ele fala. Na playlist do leak ele conta as maos
-                  do leak, e sem esta linha ele diria "4 / 12" sem dizer 12 de que -- que foi
-                  exatamente o defeito da playlist do coach em 14/08 (a barra dizia "so os erros"
-                  e o numero era o tamanho da playlist). */}
+              {/* O contador DECLARA de qual lista ele fala, e a linha de cima diz QUAL leak:
+                  sem ela o numero seria "4 / 12" sem dizer 12 de que -- o defeito da playlist do
+                  coach em 14/08 (a barra dizia "so os erros" e o numero era o tamanho da
+                  playlist). O primeiro texto daqui, "revisando um leak", declarava a LISTA mas
+                  nao o leak, e o contador ainda repetia "do leak" embaixo. */}
               {leakSpot && (
                 <span className="font-mono text-[9px] uppercase tracking-widest text-primary/90">
-                  {t("navigation.leakPlaylist")}
+                  {t("navigation.leakPlaylist", { spot: rotuloDoLeak(leakSpot) })}
                 </span>
               )}
               <div className="flex items-center justify-center gap-2.5">
@@ -861,7 +862,7 @@ const Replayer = () => {
                 <span className="text-[9px] uppercase tracking-widest text-muted-foreground">{t("navigation.handLabel")}</span>
                 <span className="text-sm font-bold text-foreground">{handIdx + 1}</span>
                 <span className="text-[11px] text-muted-foreground">
-                  /{handList.length}{leakSpot ? ` ${t("navigation.doLeak")}` : ""}
+                  /{handList.length}
                 </span>
               </div>
               <div className="hidden sm:block h-1 w-28 overflow-hidden rounded-full bg-border">

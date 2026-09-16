@@ -17,6 +17,7 @@ vi.mock("@/lib/api", async (orig) => {
     evSummary: (...a: unknown[]) => evSummary(...a) } };
 });
 
+import { rotuloDoLeak } from "@/lib/playlistDoLeak";
 import { ColunaDoLeak } from "./ColunaDoLeak";
 
 /**
@@ -151,8 +152,18 @@ describe("coluna do leak", () => {
     // `preflop call -> fold`, que é o SEGUNDO da lista, e o cabeçalho tem de dizer isso.
     monta();
     const col = await screen.findByTestId("leak-coluna");
-    expect(col.textContent).toContain("Call");
-    expect(col.textContent).toContain("Fold");
+    // A MESMA leitura do cabeçalho do replayer. O texto não coincide caractere a caractere de
+    // propósito: aqui a street cai numa segunda linha (`block`) para a coluna caber em 150px,
+    // enquanto no cabeçalho ela vem na mesma linha depois de um "·". O que TEM de coincidir é a
+    // ordem, porque ela carrega o sentido do leak: "Call → Fold" é pagar onde o certo era
+    // foldar, e invertida a mesma frase acusa o oposto sem parecer defeito.
+    const rotulo = rotuloDoLeak({ street: "preflop", actionTaken: "call", bestAction: "fold" });
+    const txt = col.textContent ?? "";
+    const partes = rotulo.split(" · ")[0].split(" → ");          // ["Call", "Fold"]
+    expect(txt).toContain(partes[0]);
+    expect(txt).toContain("preflop");
+    expect(txt.indexOf(partes[0]), "a jogada FEITA vem antes da indicada")
+      .toBeLessThan(txt.indexOf(partes[1]));
     expect(col.textContent).toContain("navigation.leakDeN:2,5,12");   // leak 2 de 5, 12 mãos
   });
 

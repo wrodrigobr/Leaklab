@@ -1,4 +1,5 @@
 import type { HandResultFilter } from "@/lib/handFilter";
+import { formatAction } from "@/lib/utils";
 
 /**
  * A playlist do leak: percorrer no replayer as mãos de UM leak, e não as do torneio.
@@ -22,6 +23,22 @@ export interface LeakSpot {
   street: string;
   actionTaken: string;
   bestAction: string;
+}
+
+/**
+ * Como o leak se CHAMA na tela: `"Fold → Call · preflop"` (a jogada feita, a indicada, a street).
+ *
+ * Existe porque o nome do leak nasce em dois lugares, o cabeçalho do replayer e a coluna, e
+ * ordem trocada num deles ("Call → Fold" onde o outro diz "Fold → Call") inverte o sentido do
+ * leak sem parecer defeito. A coluna renderiza as partes em spans e quebra a street numa segunda
+ * linha para caber em 150px, então ela não consome a string; o que a amarra é o teste dela, que
+ * exige a mesma ORDEM.
+ *
+ * O primeiro texto desta faixa era "revisando um leak" em cima de "mão 1/46 do leak": vago em
+ * cima e repetido embaixo, sem nunca dizer QUAL leak estava aberto.
+ */
+export function rotuloDoLeak(spot: LeakSpot): string {
+  return `${formatAction(spot.actionTaken)} → ${formatAction(spot.bestAction)} · ${spot.street}`;
 }
 
 /**

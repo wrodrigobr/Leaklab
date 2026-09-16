@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { parseLeakSpot, hrefDaMao, fonteDaNavegacao } from "./playlistDoLeak";
+import { parseLeakSpot, hrefDaMao, fonteDaNavegacao, rotuloDoLeak } from "./playlistDoLeak";
 
 /**
  * A playlist do leak: as setas percorrem as mãos do LEAK, mesmo entre torneios.
@@ -72,6 +72,27 @@ describe("playlist do leak", () => {
     expect(fonteDaNavegacao({ temLeak: true,  coachMode: false })).toBe("leak");
     expect(fonteDaNavegacao({ temLeak: false, coachMode: true  })).toBe("coach");
     expect(fonteDaNavegacao({ temLeak: false, coachMode: false })).toBe("torneio");
+  });
+
+  it("o rótulo do leak diz a jogada FEITA antes da indicada", () => {
+    // A ordem carrega o sentido do leak. Invertida, o mesmo texto acusa o oposto: "Call → Fold"
+    // leria como "pagou onde devia foldar" num leak que é justamente o contrário.
+    expect(rotuloDoLeak({ street: "preflop", actionTaken: "fold", bestAction: "call" }))
+      .toBe("Fold → Call · preflop");
+    // e passa pelo formatAction da casa, que é quem traduz o vocabulário do banco para o da
+    // tela: `allin` na coluna é "Shove" em toda superfície, nunca "Allin" só aqui.
+    expect(rotuloDoLeak({ street: "flop", actionTaken: "check", bestAction: "allin" }))
+      .toBe("Check → Shove · flop");
+  });
+
+  it("o cabeçalho do replayer NOMEIA o leak, e o contador não repete a palavra", () => {
+    // O texto que o dono viu: "REVISANDO UM LEAK" em cima de "mão 1/46 do leak". A linha de cima
+    // não dizia QUAL leak, e a de baixo repetia a palavra. O guarda trava as duas pontas.
+    const fonte = readFileSync(join(import.meta.dirname, "..", "pages", "Replayer.tsx"), "utf-8");
+    expect(fonte, "o cabeçalho tem de interpolar o rótulo do leak")
+      .toMatch(/leakPlaylist", \{ spot: rotuloDoLeak\(leakSpot\) \}/);
+    expect(fonte, 'o contador não repete "do leak" depois do total')
+      .not.toMatch(/navigation\.doLeak/);
   });
 
   it("o Replayer não sobrescreve a playlist do leak com a lista do torneio", () => {
