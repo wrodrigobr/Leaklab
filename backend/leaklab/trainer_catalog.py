@@ -44,8 +44,13 @@ CATALOGO = [
     # porque ele nao treina UMA categoria do curriculo -- o jogador escolhe stack e tipo de spot
     # no painel, e o historico dele nao cabe numa `category_key` so. A rota carrega a config
     # padrao; o painel a muda e grava na URL.
-    {'id': 'pratica',    'foco': 'pratica',         'prefixo': '',        'rota': '/practice',
-     'ilustracao': 'mesa'},
+    #
+    # FORA DA VITRINE por decisao do dono (16/09): "deixar esta validacao da mesa para depois...a
+    # correcao e mais critica". A rota `/practice` existe e funciona; sem este item ninguem a
+    # encontra sem a URL, e ele valida antes de qualquer jogador ver. Reativar = descomentar (o
+    # icone, o i18n nos tres idiomas e os testes ja estao no lugar).
+    # {'id': 'pratica',    'foco': 'pratica',         'prefixo': '',        'rota': '/practice',
+    #  'ilustracao': 'mesa'},
     {'id': 'abrir',      'foco': 'fund:rfi',        'prefixo': 'rfi:',    'ilustracao': 'abrir'},
     {'id': 'defender',   'foco': 'fund:vs_rfi',     'prefixo': 'vs_rfi:', 'ilustracao': 'defender'},
     {'id': 'vs_3bet',    'foco': 'fund:vs_3bet',    'prefixo': 'vs_3bet:','ilustracao': 'vs_3bet'},
