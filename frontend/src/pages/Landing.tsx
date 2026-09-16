@@ -215,11 +215,18 @@ function SupportedNetworksSection() {
           </p>
         </div>
 
-        <div className="grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-border bg-border md:grid-cols-4">
+        {/* FLEX que embrulha, e não grade de N colunas fixas.
+            Era `grid-cols-2 md:grid-cols-4` com CINCO salas: a segunda linha ficava com o
+            PartyPoker sozinho e três buracos do lado, e o fio de cabelo desenhava o vazio.
+            Trocar 4 por 5 resolveria hoje e voltaria a quebrar quando a sexta sala entrar.
+            Aqui cada item tem uma base mínima e `flex-1`: os itens da última linha CRESCEM para
+            fechar a largura, então nunca sobra célula vazia, com qualquer quantidade de salas. */}
+        <div className="flex flex-wrap gap-px overflow-hidden rounded-xl border border-border bg-border">
           {LANDING_NETWORKS.map((n) => {
             const novo = (n as { isNew?: boolean }).isNew;
             return (
-              <div key={n.site} className="flex items-center gap-3 bg-background px-5 py-4">
+              <div key={n.site}
+                   className="flex flex-1 basis-[calc(50%-1px)] items-center gap-3 bg-background px-5 py-4 sm:basis-[190px]">
                 <SiteLogo site={n.site} size={26} />
                 <span className="flex-1 truncate font-mono text-sm font-bold text-foreground">{n.name}</span>
                 {novo && (
