@@ -110,15 +110,33 @@ def _context_text(scenario: str, pos: str, vs_pos: str, stack: int) -> str:
     return f"Você abriu de {pos} e {vs_pos} deu 3-bet. {stack}bb efetivos."
 
 
-def generate_gto_preflop_question(scenario_filter: str = 'mixed') -> dict:
-    """Gera uma questão GTO preflop SEM revelar a resposta."""
+def generate_gto_preflop_question(scenario_filter: str = 'mixed', stacks=None,
+                                  permitir_allin: bool = False, posicoes=None) -> dict:
+    """Gera uma questão GTO preflop SEM revelar a resposta.
+
+    Os três argumentos opcionais existem para o **modo Prática** (1 a 4 mesas preflop), que treina
+    o MTT curto, e por padrão não mudam nada aqui:
+
+    - `stacks`: a Academia usa `_STACKS` (30 a 100bb) de propósito, para manter fold/call/raise
+      limpos. No MTT o stack curto É o ponto do treino, e o acervo tem carta de 3 a 100bb.
+    - `permitir_allin`: a Academia descarta spot cuja ação dominante é all-in, por ser "fora do
+      escopo limpo do treino". Num treino de MTT jogar 12bb sem poder dar jam seria mentira.
+    - `posicoes`: o filtro de assento do Prática. Sem ele o sorteio é o de sempre.
+
+    Sortear aqui, e não num módulo novo, é a regra 5: o gate de premissa do vs_3bet (a mão precisa
+    estar no range de abertura) e o menu vindo do StrategyProvider já moram nesta função, e uma
+    segunda cópia deles é a receita de o treino novo ensinar spot impossível.
+    """
     pool = _SCENARIOS_BY_FILTER.get(scenario_filter, _SCENARIOS_BY_FILTER['mixed'])
+    baralho_de_stacks = list(stacks) if stacks else _STACKS
 
     chosen = None
     for _ in range(80):
         scenario = random.choice(pool)
-        stack    = random.choice(_STACKS)
+        stack    = random.choice(baralho_de_stacks)
         pos, vs_pos, facing, is_3b = _random_setup(scenario)
+        if posicoes and pos not in posicoes:
+            continue
         hand     = random.choice(_HANDS)
         # Gate de PREMISSA: no vs_3bet a história é "você abriu e levou 3-bet" — a mão precisa
         # pertencer ao range de abertura (senão a questão vira "UTG abriu 84o", premissa
@@ -135,8 +153,9 @@ def generate_gto_preflop_question(scenario_filter: str = 'mixed') -> dict:
         if not strat['available'] or strat['scenario'] != scenario:
             continue
         # Evita spots cuja ação dominante é all-in (zona push/fold, fora do escopo limpo do treino).
+        # O Prática liga `permitir_allin`: a 12bb o jam é a jogada, não um caso de borda.
         rec = strat['recommended'] or []
-        if rec and normalize_action(rec[0]) == 'allin':
+        if not permitir_allin and rec and normalize_action(rec[0]) == 'allin':
             continue
         chosen = (scenario, stack, pos, vs_pos, facing, is_3b, hand, strat['available_actions'])
         break

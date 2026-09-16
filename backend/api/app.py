@@ -211,6 +211,7 @@ def _before():
 _FEATURE_MAP = [
     ('/analyze/guest',             'analyze_guest'),
     ('/analyze',                   'import_tournament'),
+    ('/player/practice',          'pratica_multimesa'),
     ('/player/spots/drill',        'ghost_table'),
     ('/player/sparring',           'leak_trainer'),
     ('/player/training',           'leak_trainer'),
@@ -3744,6 +3745,63 @@ def academy_gto_preflop_submit():
     if result['xp_awarded']:
         add_xp(g.user_id, 'academy_gto_preflop_correct', xp_value)
     return jsonify(result)
+
+
+@app.route('/player/practice/tables', methods=['POST'])
+@require_auth
+def practice_tables():
+    """Modo Pratica: de 1 a 4 mesas preflop, com spot DIFERENTE em cada uma.
+
+    POST porque `evitar` e a lista do que o jogador ja viu na sessao, e ela cresce sem teto ao
+    longo do treino. Em query string isso bate no limite de URL depois de algumas centenas de
+    maos, silenciosamente, e o servidor passaria a repetir spot sem ninguem entender por que.
+
+    O gabarito NAO sai aqui. Ele vem so no /grade, e ha guarda de teste varrendo a resposta
+    inteira em busca dos campos de veredito.
+    """
+    from leaklab.pratica_preflop import mesas
+    body = request.get_json(silent=True) or {}
+    try:
+        n = int(body.get('n') or 1)
+    except (TypeError, ValueError):
+        n = 1
+    stacks = body.get('stacks') or None
+    if stacks:
+        try:
+            stacks = [float(x) for x in stacks][:20]
+        except (TypeError, ValueError):
+            stacks = None
+    posicoes = body.get('posicoes') or None
+    if posicoes:
+        posicoes = [str(p) for p in posicoes][:12]
+    try:
+        out = mesas(n, cenario=(body.get('cenario') or 'mixed'), stacks=stacks,
+                    posicoes=posicoes, evitar=body.get('evitar') or ())
+    except Exception:
+        app.logger.exception('practice: falha ao montar mesas (user=%s)', g.user_id)
+        return jsonify({'tables': [], 'erro': 'indisponivel'}), 503
+    # Menos mesas do que o pedido e informacao, nao acidente: com filtro estreito o pool acaba.
+    return jsonify({'tables': out, 'pedidas': max(1, min(int(n or 1), 4)), 'servidas': len(out)})
+
+
+@app.route('/player/practice/grade', methods=['POST'])
+@require_auth
+def practice_grade():
+    """Corrige UMA mesa. Mesma regua e mesmo texto do exercicio avulso da Academia."""
+    from leaklab.pratica_preflop import corrigir
+    body = request.get_json(force=True) or {}
+    spot = body.get('spot') or {}
+    acao = (body.get('action') or '').lower()
+    try:
+        res = corrigir(spot, acao)
+    except Exception:
+        app.logger.exception('practice: falha ao corrigir (user=%s)', g.user_id)
+        return jsonify({'erro': 'indisponivel'}), 503
+    xp = int(body.get('xp_value', 20) or 20)
+    res['xp_awarded'] = xp if res.get('is_correct') else 0
+    if res['xp_awarded']:
+        add_xp(g.user_id, 'practice_preflop_correct', xp)
+    return jsonify(res)
 
 
 def _training_gate_status():

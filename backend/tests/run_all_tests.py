@@ -163,7 +163,9 @@ SUITES = {
                   'test_fold_vs_allin_sem_preco.py',
                   'test_facing_bet_em_bb.py',
                   'test_mao_repetida_no_arquivo.py',
-                  'test_piso_de_amostra_da_referencia.py'],
+                  'test_piso_de_amostra_da_referencia.py',
+                  # ── Modo Pratica: 1 a 4 mesas preflop (16/09) ───────────────────────────
+                  'test_pratica_preflop.py'],
     'database':  ['test_database.py', 'test_score_alinhado_no_insert.py', 'test_google_auth.py', 'test_exclusao_de_usuario.py', 'test_quota_mensal.py', 'test_fila_de_analise.py', 'test_burst_solver.py', 'test_janela_do_dashboard.py', 'test_hud_bate_com_pokertracker.py', 'test_coach_system.py', 'test_notifications.py',
                   'test_solve_quota.py', 'test_coach_adherence_multiway.py', 'test_coach_invites.py',
                   'test_multiway_fora_dos_agregados.py',
