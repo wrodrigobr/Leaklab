@@ -17,6 +17,9 @@ vi.mock("@/lib/api", async (orig) => {
     evSummary: (...a: unknown[]) => evSummary(...a) } };
 });
 
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+
 import { rotuloDoLeak } from "@/lib/playlistDoLeak";
 import { ColunaDoLeak } from "./ColunaDoLeak";
 
@@ -226,6 +229,34 @@ describe("coluna do leak", () => {
     expect(col.className).not.toContain("absolute");
     // e a largura tem teto: o aside antigo cravava 288px, este não passa de 190
     expect(col.className).toMatch(/w-\[clamp\(\d+px,[^)]+,(1[0-9]{2})px\)\]/);
+  });
+
+  it("o painel COLA na borda, e o negativo bate com o padding da pagina", async () => {
+    // O dono, vendo o painel a 20px da borda: "por que estamos com esta margem à esquerda da
+    // página? é área útil". A margem não era do painel: é o `px-3 md:px-5` do wrapper da página
+    // inteira, e o painel apenas respeitava a moldura.
+    //
+    // O conserto cancela esse padding com margem negativa, e isso cria o problema clássico de um
+    // número em dois arquivos: mudar o padding da página deixaria o painel deslocado, sem nada
+    // acusar. Este guarda varre os DOIS e exige que batam.
+    monta();
+    const col = await screen.findByTestId("leak-coluna");
+    expect(col.className).toContain("-ml-3");
+    expect(col.className).toContain("md:-ml-5");
+
+    const replayer = readFileSync(
+      join(import.meta.dirname, "..", "..", "pages", "Replayer.tsx"), "utf-8");
+    const pad = replayer.match(/"flex-1 min-h-0 flex flex-col px-(\d+) md:px-(\d+)/);
+    expect(pad, "o wrapper da pagina mudou de forma: reveja a margem negativa do painel").toBeTruthy();
+    const neg = col.className.match(/-ml-(\d+)[\s\S]*?md:-ml-(\d+)/);
+    expect(neg?.[1]).toBe(pad?.[1]);
+    expect(neg?.[2]).toBe(pad?.[2]);
+
+    // E a moldura de largura maxima: ela centraliza a pagina no monitor largo, e a margem
+    // negativa nao alcanca esse centramento. Com `?leak=` a pagina tem de soltar a moldura,
+    // senao o conserto so funciona em tela de ate 1600px e "arrumado" seria meia verdade.
+    expect(replayer, "com playlist aberta a pagina precisa soltar o max-w")
+      .toMatch(/focusMode \|\| leakSpot \? "max-w-none"/);
   });
 
   it("recolhido, o painel devolve a largura para a mesa", async () => {

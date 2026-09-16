@@ -824,7 +824,11 @@ const Replayer = () => {
       {/* ── Outer wrapper: top-bar + [table | side-panel] + controls ── */}
       <div className={cn(
         "flex-1 min-h-0 flex flex-col px-3 md:px-5 pt-2 pb-20 md:pb-2 mx-auto w-full",
-        focusMode ? "max-w-none" : "max-w-[1600px]",
+        // A moldura de 1600px centraliza a pagina no monitor largo, e com a playlist aberta ela
+        // cobrava o preco duas vezes: o padding (que o painel cancela com margem negativa) MAIS
+        // o centramento, que a margem negativa nao alcanca. Com `?leak=` a pagina solta a
+        // moldura, igual ao modo foco, e a borda do wrapper passa a ser a borda da tela.
+        focusMode || leakSpot ? "max-w-none" : "max-w-[1600px]",
       )}>
 
         {/* Top bar */}
