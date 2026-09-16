@@ -119,7 +119,7 @@ export function ColunaDoLeak({ spot, lastN, handId, hrefDaMao, hrefEmOutroLeak, 
     return (
       <aside
         data-testid="leak-coluna-fechada"
-        className="hidden lg:flex -ml-3 md:-ml-5 w-9 shrink-0 flex-col items-center gap-2 border-r border-border bg-hud-surface/40 py-3"
+        className="hidden lg:flex w-9 shrink-0 flex-col items-center gap-2 border-r border-border bg-hud-surface/40 py-3"
       >
         <button
           type="button"
@@ -146,10 +146,11 @@ export function ColunaDoLeak({ spot, lastN, handId, hrefDaMao, hrefEmOutroLeak, 
   return (
     <aside
       data-testid="leak-coluna"
-      // `-ml-3 md:-ml-5` CANCELA o padding do wrapper da página (`px-3 md:px-5` no Replayer), e
-      // sem isso o painel nasce a 20px da borda: área útil virando moldura, que foi o que o dono
-      // viu. Os dois números são o mesmo padding em dois arquivos, e há guarda varrendo os dois.
-      className="hidden lg:flex -ml-3 md:-ml-5 w-[clamp(150px,12vw,190px)] shrink-0 flex-col overflow-hidden border-r border-border bg-hud-surface/60"
+      // O sangramento até a borda NÃO mora aqui. Tentei primeiro com margem negativa no próprio
+      // painel, e ele foi cortado: a faixa da mesa é `overflow-hidden`, então o painel saiu do
+      // pai e perdeu 20px de conteúdo pela esquerda (FOLD virou "OLD", MÃOS virou "ÃOS"). Quem
+      // desloca é a COLUNA DA MESA no Replayer, um nível acima do corte.
+      className="hidden lg:flex w-[clamp(150px,12vw,190px)] shrink-0 flex-col overflow-hidden border-r border-border bg-hud-surface/60"
     >
       {/* QUAL leak, e onde ele está na lista do dashboard */}
       <div className="flex items-start justify-between gap-2 border-b border-border px-3 py-2">

@@ -976,7 +976,13 @@ const Replayer = () => {
         <div className="flex-1 min-h-0 flex flex-col lg:flex-row gap-3">
 
           {/* Table column */}
-          <div className="flex-1 min-w-0 min-h-0 flex flex-col gap-2">
+          {/* Com a playlist aberta esta coluna se desloca para fora do padding da página, e é
+              ela que desloca, não o painel: a faixa da mesa logo abaixo é `overflow-hidden`, e
+              margem negativa no painel o jogava para FORA dela, cortando 20px do conteúdo pela
+              esquerda. O negativo aqui e o `px-3 md:px-5` do wrapper são o mesmo número, agora
+              no mesmo arquivo, e há guarda exigindo que batam. */}
+          <div className={cn("flex-1 min-w-0 min-h-0 flex flex-col gap-2",
+                             leakSpot && "-ml-3 md:-ml-5")}>
             {/* Mesa — height-bound: cabe SEMPRE na faixa flex-1 (acima dos controles), nunca
                 rola pra baixo do menu. Aspect fixo 16/10: só landscape chega aqui — portrait
                 já retornou no ramo mobileReplayer, então o ternário por orientação era morto. */}
