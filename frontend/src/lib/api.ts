@@ -2274,6 +2274,53 @@ export const grind = {
     }),
 };
 
+/** Modo Prática: 1 a 4 mesas preflop ao mesmo tempo. */
+export interface PracticeOption { action: string; label: string }
+export interface PracticeSpot {
+  position: string; vs_position: string; stack_bb: number; facing_size: number;
+  is_3bet_pot: boolean; hand: string; scenario: string;
+  hero_was_aggressor: boolean; facing_raises: number;
+}
+export interface PracticeTable {
+  /** identidade do spot: cenário, assentos, stack e mão. É o que não repete entre mesas abertas. */
+  id: string;
+  spot: PracticeSpot;
+  scenario: string;
+  context: string;
+  hand: string;
+  hero_cards: { rank: string; suit: string }[];
+  options: PracticeOption[];
+  xp_value: number;
+  /** o MESMO formato do /player/spots/drill/<id>/table, para reusar `buildDrillStep` */
+  table: DrillTableState;
+}
+export interface PracticeGrade {
+  is_correct: boolean;
+  best_action?: string | null;
+  action_quality?: string | null;
+  hand_freq?: Record<string, number> | null;
+  explanation?: string | null;
+  ev_loss_bb?: number | null;
+  xp_awarded?: number;
+  available?: boolean;
+}
+
+export const practice = {
+  /** `evitar` = ids de spot já vistos na sessão. Vai em POST porque cresce sem teto, e em query
+   *  string bateria no limite de URL calado depois de algumas centenas de mãos. */
+  tables: (n: number, opts?: { cenario?: string; stacks?: number[]; posicoes?: string[]; evitar?: string[] }) =>
+    request<{ tables: PracticeTable[]; pedidas: number; servidas: number }>("/player/practice/tables", {
+      method: "POST",
+      body: JSON.stringify({ n, cenario: opts?.cenario, stacks: opts?.stacks,
+                             posicoes: opts?.posicoes, evitar: opts?.evitar }),
+    }),
+  /** O gabarito nasce no servidor: o spot vai e volta, e a resposta certa nunca viaja antes. */
+  grade: (spot: PracticeSpot, action: string, xpValue?: number) =>
+    request<PracticeGrade>("/player/practice/grade", {
+      method: "POST", body: JSON.stringify({ spot, action, xp_value: xpValue }),
+    }),
+};
+
 export const training = {
   catalog: () => request<{ drills: TrainingDrill[] }>("/player/training/catalog"),
   overview: () => request<TrainingOverview>(`/player/training/overview?tz_offset=${tzOffsetMinutes()}`),

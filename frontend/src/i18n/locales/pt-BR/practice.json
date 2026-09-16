@@ -1,0 +1,47 @@
+{
+  "voltar": "voltar ao treino",
+  "encerrar": "encerrar e ver boletim",
+  "sessao": "prática preflop · {{maos}} mãos · {{min}}min",
+  "carregando": "montando as mesas...",
+  "continuar": "continuar",
+  "fechar": "fechar",
+  "gtoFaz": "GTO:",
+  "seuLeak": "seu leak nº {{n}}",
+  "semExplicacao": "Sem explicação para este spot.",
+  "semSpot": {
+    "titulo": "nenhum spot com este filtro",
+    "desc": "A combinação de stack e tipo de spot não tem carta no acervo. Solte um filtro no painel e o sorteio volta."
+  },
+  "painel": {
+    "titulo": "configuração",
+    "abrir": "abrir configuração",
+    "aba": "config",
+    "fechar": "fechar",
+    "mesas": "mesas",
+    "stack": "stack efetivo",
+    "spot": "spot",
+    "pausa": "pausar depois de",
+    "sessao": "sessão",
+    "acerto": "acerto",
+    "bbPerdidos": "bb perdidos",
+    "aplicaDepois": "aplica na próxima mão, sem descartar as que estão em jogo"
+  },
+  "cenario": {
+    "mixed": "tudo",
+    "rfi": "abertura (RFI)",
+    "vs_rfi": "defesa vs abertura",
+    "vs_3bet": "vs 3-bet"
+  },
+  "pausa": {
+    "nunca": "nunca",
+    "erro": "erro",
+    "acao": "ação"
+  },
+  "nivel": {
+    "melhor": "melhor jogada",
+    "correta": "correta",
+    "imprecisao": "imprecisão",
+    "errada": "errada",
+    "grave": "erro grave"
+  }
+}

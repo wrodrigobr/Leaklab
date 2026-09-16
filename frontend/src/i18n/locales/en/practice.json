@@ -1,0 +1,47 @@
+{
+  "voltar": "back to training",
+  "encerrar": "end and see report",
+  "sessao": "preflop practice · {{maos}} hands · {{min}}min",
+  "carregando": "dealing the tables...",
+  "continuar": "continue",
+  "fechar": "close",
+  "gtoFaz": "GTO:",
+  "seuLeak": "your leak #{{n}}",
+  "semExplicacao": "No explanation for this spot.",
+  "semSpot": {
+    "titulo": "no spot with this filter",
+    "desc": "This stack and spot combination has no chart in the library. Loosen a filter in the panel and the draw comes back."
+  },
+  "painel": {
+    "titulo": "settings",
+    "abrir": "open settings",
+    "aba": "config",
+    "fechar": "close",
+    "mesas": "tables",
+    "stack": "effective stack",
+    "spot": "spot",
+    "pausa": "pause after",
+    "sessao": "session",
+    "acerto": "accuracy",
+    "bbPerdidos": "bb lost",
+    "aplicaDepois": "applies next hand, without discarding the ones in play"
+  },
+  "cenario": {
+    "mixed": "everything",
+    "rfi": "open (RFI)",
+    "vs_rfi": "defend vs open",
+    "vs_3bet": "vs 3-bet"
+  },
+  "pausa": {
+    "nunca": "never",
+    "erro": "mistake",
+    "acao": "action"
+  },
+  "nivel": {
+    "melhor": "best play",
+    "correta": "correct",
+    "imprecisao": "inaccuracy",
+    "errada": "mistake",
+    "grave": "blunder"
+  }
+}

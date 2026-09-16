@@ -1,0 +1,180 @@
+// @vitest-environment jsdom
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { render, screen, cleanup, fireEvent, waitFor, within } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
+
+vi.mock("react-i18next", () => ({
+  useTranslation: () => ({
+    t: (k: string, o?: Record<string, unknown>) => (o ? `${k}:${Object.values(o).join(",")}` : k),
+  }),
+}));
+
+const tables = vi.fn();
+const grade = vi.fn();
+const evSummary = vi.fn();
+vi.mock("@/lib/api", async (orig) => {
+  const real = await orig<typeof import("@/lib/api")>();
+  return {
+    ...real,
+    practice: { tables: (...a: unknown[]) => tables(...a), grade: (...a: unknown[]) => grade(...a) },
+    metrics: { ...real.metrics, evSummary: (...a: unknown[]) => evSummary(...a) },
+  };
+});
+
+import Practice from "./Practice";
+
+/**
+ * A tela do modo Prática.
+ *
+ * ── O que ela precisa provar ──────────────────────────────────────────────────────────────────
+ *
+ * Três comportamentos que só existem com mais de uma mesa, e que a lógica pura de `lib/pratica`
+ * não alcança porque dependem da orquestração:
+ *
+ * 1. A tecla age na mesa com FOCO, e só nela. Quatro mesas com a mesma letra ativa em todas é o
+ *    defeito que transformaria o teclado numa armadilha.
+ * 2. Uma resposta não conta duas vezes. Dois cliques rápidos na mesma mesa mandariam duas
+ *    correções, e o placar da sessão contaria a mão duas vezes.
+ * 3. Mudar a configuração fica PENDENTE em vez de descartar as mesas em jogo -- o conserto do que
+ *    o GTO Wizard faz ao reiniciar a sessão.
+ */
+
+const SPOT = (pos: string, hand: string, stack: number, cenario = "rfi") => ({
+  position: pos, vs_position: "", stack_bb: stack, facing_size: 0, is_3bet_pot: false,
+  hand, scenario: cenario, hero_was_aggressor: false, facing_raises: 0,
+});
+
+const MESA = (id: string, pos: string, hand: string, stack: number) => ({
+  id, spot: SPOT(pos, hand, stack), scenario: "rfi", context: `ctx ${pos}`, hand,
+  hero_cards: [{ rank: hand[0], suit: "s" }, { rank: hand[1], suit: "h" }],
+  options: [{ action: "fold", label: "Fold" }, { action: "raise", label: "Raise 2" },
+            { action: "allin", label: `All-in ${stack}` }],
+  xp_value: 20,
+  table: {
+    seats: [
+      { seat: 1, name: "UTG", stack: 2000, bet: 0, folded: true, active: false, hero: false, pos: "UTG" },
+      { seat: 7, name: "Hero", stack: 2000, bet: 0, folded: false, active: true, hero: true, pos: pos },
+      { seat: 8, name: "SB", stack: 1950, bet: 50, folded: false, active: true, hero: false, pos: "SB" },
+      { seat: 9, name: "BB", stack: 1900, bet: 100, folded: false, active: true, hero: false, pos: "BB" },
+    ],
+    button: 7, pot: 150, bb_chips: 100, street: "preflop", board: [], hero_cards: hand,
+  },
+});
+
+const QUATRO = [MESA("m1", "BTN", "K7s", 12), MESA("m2", "CO", "33", 40),
+                MESA("m3", "SB", "A7s", 19), MESA("m4", "HJ", "QJs", 80)];
+
+function monta() {
+  return render(<MemoryRouter initialEntries={["/practice"]}><Practice /></MemoryRouter>);
+}
+
+describe("modo Pratica", () => {
+  beforeEach(() => {
+    localStorage.clear();
+    tables.mockReset(); grade.mockReset(); evSummary.mockReset();
+    tables.mockResolvedValue({ tables: QUATRO, pedidas: 4, servidas: 4 });
+    grade.mockResolvedValue({ is_correct: true, action_quality: "correct",
+                              hand_freq: { F: 0.8, R2: 0.2 }, ev_loss_bb: null, xp_awarded: 20 });
+    evSummary.mockResolvedValue({ top_leaks: [] });
+  });
+  afterEach(cleanup);
+
+  it("abre as quatro mesas, e a primeira tem o foco", async () => {
+    monta();
+    await screen.findByTestId("pratica-mesa-m1");
+    for (const id of ["m1", "m2", "m3", "m4"]) expect(screen.getByTestId(`pratica-mesa-${id}`)).toBeTruthy();
+    expect(screen.getByTestId("pratica-mesa-m1").getAttribute("data-foco")).toBe("1");
+    expect(screen.getByTestId("pratica-mesa-m2").getAttribute("data-foco")).toBe("0");
+  });
+
+  it("a tecla age na mesa com FOCO, e so nela", async () => {
+    monta();
+    await screen.findByTestId("pratica-mesa-m1");
+    fireEvent.keyDown(window, { key: "f" });
+    await waitFor(() => expect(grade).toHaveBeenCalledTimes(1));
+    // a mao corrigida e a da mesa 1, nao a de outra
+    expect(grade.mock.calls[0][0].hand).toBe("K7s");
+    expect(grade.mock.calls[0][1]).toBe("fold");
+  });
+
+  it("Tab move o foco, e a tecla passa a agir na mesa nova", async () => {
+    monta();
+    await screen.findByTestId("pratica-mesa-m1");
+    fireEvent.keyDown(window, { key: "Tab" });
+    await waitFor(() =>
+      expect(screen.getByTestId("pratica-mesa-m2").getAttribute("data-foco")).toBe("1"));
+    fireEvent.keyDown(window, { key: "a" });
+    await waitFor(() => expect(grade).toHaveBeenCalledTimes(1));
+    expect(grade.mock.calls[0][0].hand).toBe("33");
+    expect(grade.mock.calls[0][1]).toBe("allin");
+  });
+
+  it("tecla que a mesa NAO oferece nao manda nada", async () => {
+    tables.mockResolvedValue({
+      tables: [{ ...QUATRO[0], options: [{ action: "fold", label: "Fold" },
+                                         { action: "call", label: "Call" }] }],
+      pedidas: 1, servidas: 1,
+    });
+    monta();
+    await screen.findByTestId("pratica-mesa-m1");
+    fireEvent.keyDown(window, { key: "r" });      // esta mesa nao tem raise
+    fireEvent.keyDown(window, { key: "a" });      // nem all-in
+    await new Promise((r) => setTimeout(r, 30));
+    expect(grade).not.toHaveBeenCalled();
+  });
+
+  it("a MESMA mesa nao e corrigida duas vezes", async () => {
+    // Sem a trava, dois cliques rapidos mandariam duas correcoes e o placar contaria a mao duas
+    // vezes -- o percentual da sessao mentindo com o proprio dado.
+    monta();
+    const m1 = await screen.findByTestId("pratica-mesa-m1");
+    const fold = within(m1).getByTestId("pratica-acao-fold");
+    fireEvent.click(fold);
+    fireEvent.click(fold);
+    fireEvent.keyDown(window, { key: "f" });
+    await waitFor(() => expect(grade).toHaveBeenCalledTimes(1));
+  });
+
+  it("mudar o numero de mesas fica PENDENTE, sem descartar as em jogo", async () => {
+    monta();
+    await screen.findByTestId("pratica-mesa-m1");
+    expect(tables).toHaveBeenCalledTimes(1);
+    fireEvent.click(screen.getByTestId("pratica-mesas-2"));
+    // o aviso aparece, as quatro mesas continuam na tela, e NENHUMA rodada nova foi pedida
+    expect(screen.getByTestId("pratica-pendente")).toBeTruthy();
+    expect(screen.getByTestId("pratica-mesa-m4")).toBeTruthy();
+    expect(tables).toHaveBeenCalledTimes(1);
+  });
+
+  it("mudar a PAUSA aplica na hora, sem pendencia", async () => {
+    // Ela nao muda o sorteio: so decide quando a tela espera o jogador.
+    monta();
+    await screen.findByTestId("pratica-mesa-m1");
+    fireEvent.click(screen.getByTestId("pratica-pausa-nunca"));
+    expect(screen.queryByTestId("pratica-pendente")).toBeNull();
+    expect(tables).toHaveBeenCalledTimes(1);
+  });
+
+  it("o veredito aparece na mesa respondida, e nao como modal", async () => {
+    monta();
+    const m1 = await screen.findByTestId("pratica-mesa-m1");
+    fireEvent.click(within(m1).getByTestId("pratica-acao-fold"));
+    const v = await within(m1).findByTestId("pratica-veredito");
+    // fold com 80% de F no hand_freq: melhor jogada
+    expect(v.textContent).toContain("nivel.melhor");
+  });
+
+  it("sem spot para o filtro, a tela DIZ, em vez de piscar vazio", async () => {
+    tables.mockResolvedValue({ tables: [], pedidas: 4, servidas: 0 });
+    monta();
+    expect(await screen.findByText("semSpot.titulo")).toBeTruthy();
+  });
+
+  it("o servidor recebe os spots JA VISTOS, para nao repetir", async () => {
+    monta();
+    await screen.findByTestId("pratica-mesa-m1");
+    // a primeira chamada nao tem o que evitar; o que importa e o parametro existir e ser lista
+    expect(Array.isArray(tables.mock.calls[0][1].evitar)).toBe(true);
+    expect(tables.mock.calls[0][0]).toBe(4);
+  });
+});

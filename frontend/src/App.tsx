@@ -68,6 +68,7 @@ import AcademyBankroll from "./pages/AcademyBankroll.tsx";
 import AcademyBlindWar from "./pages/AcademyBlindWar.tsx";
 import LeakTrainer from "./pages/LeakTrainer.tsx";
 import Grind from "./pages/Grind.tsx";
+import Practice from "./pages/Practice.tsx";
 import TournamentCompare from "./pages/TournamentCompare.tsx";
 import CoachApply from "./pages/CoachApply.tsx";
 import Docs from "./pages/Docs.tsx";
@@ -413,6 +414,8 @@ const App = () => (
             <Route path="/academy/blind-war" element={<ProtectedRoute><AcademyBlindWar /></ProtectedRoute>} />
             <Route path="/leak-trainer" element={<ProtectedRoute><LeakTrainer /></ProtectedRoute>} />
             <Route path="/grind" element={<ProtectedRoute><Grind /></ProtectedRoute>} />
+            {/* Modo Pratica: 1 a 4 mesas preflop. A config vive na URL, entao o link e o treino. */}
+            <Route path="/practice" element={<ProtectedRoute><Practice /></ProtectedRoute>} />
             <Route path="/docs" element={<AuthRoute><Docs /></AuthRoute>} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />

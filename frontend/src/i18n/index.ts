@@ -14,6 +14,7 @@ import ptBRProfile from './locales/pt-BR/profile.json';
 import ptBRReplayer from './locales/pt-BR/replayer.json';
 import ptBRLanding from './locales/pt-BR/landing.json';
 import ptBRGhost from './locales/pt-BR/ghost.json';
+import ptBRPractice from './locales/pt-BR/practice.json';
 import ptBRDocs from './locales/pt-BR/docs.json';
 import ptBRSparring from './locales/pt-BR/sparring.json';
 import ptBRTraining from './locales/pt-BR/training.json';
@@ -34,6 +35,7 @@ import enProfile from './locales/en/profile.json';
 import enReplayer from './locales/en/replayer.json';
 import enLanding from './locales/en/landing.json';
 import enGhost from './locales/en/ghost.json';
+import enPractice from './locales/en/practice.json';
 import enDocs from './locales/en/docs.json';
 import enSparring from './locales/en/sparring.json';
 import enTraining from './locales/en/training.json';
@@ -54,6 +56,7 @@ import esProfile from './locales/es/profile.json';
 import esReplayer from './locales/es/replayer.json';
 import esLanding from './locales/es/landing.json';
 import esGhost from './locales/es/ghost.json';
+import esPractice from './locales/es/practice.json';
 import esDocs from './locales/es/docs.json';
 import esSparring from './locales/es/sparring.json';
 import esTraining from './locales/es/training.json';
@@ -80,6 +83,7 @@ i18n
         replayer: ptBRReplayer,
         landing: ptBRLanding,
         ghost: ptBRGhost,
+        practice: ptBRPractice,
         docs: ptBRDocs,
         sparring: ptBRSparring,
         training: ptBRTraining,
@@ -101,6 +105,7 @@ i18n
         replayer: enReplayer,
         landing: enLanding,
         ghost: enGhost,
+        practice: enPractice,
         docs: enDocs,
         sparring: enSparring,
         training: enTraining,
@@ -122,6 +127,7 @@ i18n
         replayer: esReplayer,
         landing: esLanding,
         ghost: esGhost,
+        practice: esPractice,
         docs: esDocs,
         sparring: esSparring,
         training: esTraining,
