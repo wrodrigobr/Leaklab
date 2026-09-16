@@ -8,6 +8,7 @@
 import { useEffect, useRef } from "react";
 import type { ReplayStep } from "@/lib/api";
 import { colorFor } from "@/lib/actionColors";
+import { cardSrc } from "@/components/PlayingCard";
 import logoWordmark from "@/assets/brand/grindlab_final_horizontal.svg";
 import logoIcon from "@/assets/brand/grindlab_icon_traced.svg";
 
@@ -53,7 +54,9 @@ let G: Geo = GEO_LANDSCAPE;
 function scaleWrap(content: string, cx: number, cy: number): string {
   return G.S === 1 ? content : `<g transform="translate(${cx},${cy}) scale(${G.S}) translate(${-cx},${-cy})">${content}</g>`;
 }
-const CARDS_BASE = "/cards/";
+// O caminho do SVG vem de `cardSrc` (PlayingCard), que e a fonte unica desde 16/09. Aqui a mesa
+// e montada de forma IMPERATIVA (string de SVG), entao usa o helper e nao o componente React.
+const CARDS_BASE = cardSrc("2c").slice(0, -"2C.svg".length);
 
 // Pré-carrega as 52 cartas no cache HTTP do browser assim que este módulo carrega (= ao abrir o
 // replayer). Os <image href="/cards/XX.svg"> renderizam instantâneo, sem lag de fetch por carta na

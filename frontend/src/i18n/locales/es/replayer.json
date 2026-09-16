@@ -370,7 +370,13 @@
     "allHands": "Todas las manos",
     "handLabel": "Mano",
     "prev": "Anterior",
-    "next": "Siguiente"
+    "next": "Siguiente",
+    "leakPlaylist": "revisando un leak",
+    "doLeak": "del leak",
+    "leakColuna": "las {{n}} manos de este leak",
+    "leakVoltar": "volver al leak",
+    "leakColunaAbrir": "leak · {{n}}",
+    "leakColunaPe": "{{i}} de {{n}} · {{bb}}bb en el leak"
   },
   "decision": {
     "title": "Evaluación de la decisión",

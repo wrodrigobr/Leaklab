@@ -8,24 +8,13 @@ import {
 import { PokerTableV3 } from "@/components/hud/PokerTableV3";
 import type { ReplayStep } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { PlayingCard } from "@/components/PlayingCard";
 
-// Baralho ATUAL do produto — os mesmos SVGs que o Replayer/PokerTableV3 usam
-// (public/cards/XX.svg). code = "Ah" | "10s" | "Kd"...  → /cards/AH.svg, 10S.svg, KD.svg
-function deckCardSrc(code: string): string {
-  const rank = code.slice(0, -1).toUpperCase();      // "T" já vira "10" abaixo
-  const suit = code.slice(-1).toUpperCase();
-  return `/cards/${rank === "T" ? "10" : rank}${suit}.svg`;
-}
-
+// Baralho ATUAL do produto: o caminho do SVG mora em `PlayingCard` desde 16/09, porque ele era
+// montado aqui E no PokerTableV3, e a lista de maos do leak seria o terceiro lugar.
+// `DeckCard` fica como o nome que as aulas ja usam, com a altura maior que elas esperam.
 export function DeckCard({ code, className }: { code: string; className?: string }) {
-  return (
-    <img
-      src={deckCardSrc(code)}
-      alt={code}
-      className={cn("h-16 w-auto rounded-md shadow-md ring-1 ring-black/20", className)}
-      draggable={false}
-    />
-  );
+  return <PlayingCard code={code} className={cn("h-16 rounded-md", className)} />;
 }
 
 /**

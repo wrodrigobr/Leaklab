@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { metrics, type LeakHands } from "@/lib/api";
+import { HeroHand } from "@/components/PlayingCard";
 
 /**
  * As maos por tras de uma linha do card "Leaks por custo" (AY-32, pedido de um fundador:
@@ -70,7 +71,10 @@ export function MaosDoLeak({ street, actionTaken, bestAction, lastN }: {
           <tbody>
             {dados.hands.map((m) => (
               <tr key={m.decision_id} className="border-t border-border/40" data-testid={`leak-mao-${m.decision_id}`}>
-                <td className="px-1.5 py-1 font-mono">{m.hero_cards ?? "—"}</td>
+                {/* As cartas DESENHADAS (16/09), com o mesmo baralho da mesa e do replayer.
+                    Era o texto cru do parser, que mostrava `4dAd` com o quatro na frente do as
+                    porque a sala escreve na ordem do assento; `HeroHand` ordena. */}
+                <td className="px-1.5 py-1"><HeroHand cards={m.hero_cards} className="h-[22px]" /></td>
                 <td className="px-1.5 py-1 font-mono">{m.position ?? "—"}</td>
                 <td className="px-1.5 py-1 font-mono tabular-nums">{m.stack_bb != null ? `${Math.round(m.stack_bb)}bb` : "—"}</td>
                 <td className="px-1.5 py-1 font-mono tabular-nums text-red-400">−{m.ev_loss_bb.toFixed(2)}bb</td>
@@ -78,7 +82,13 @@ export function MaosDoLeak({ street, actionTaken, bestAction, lastN }: {
                 <td className="px-1.5 py-1 text-right">
                   <button
                     type="button"
-                    onClick={() => navigate(`/replayer?t=${m.tournament_id}&h=${m.hand_id}`)}
+                    onClick={() => navigate(
+                      // `leak` e `ln` fazem a PLAYLIST: no replayer as setas percorrem as maos
+                      // deste leak, e nao as do torneio de origem. Sem estes dois parametros o
+                      // jogador voltava ao dashboard para cada mao (12 vezes, no leak medido).
+                      `/replayer?t=${m.tournament_id}&h=${m.hand_id}`
+                      + `&leak=${encodeURIComponent(`${street}:${actionTaken}:${bestAction}`)}`
+                      + (lastN != null ? `&ln=${lastN}` : ""))}
                     className="rounded border border-border px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-wider text-muted-foreground transition-colors hover:border-primary hover:text-primary"
                   >
                     {t("v2.leakHandsOpen")}

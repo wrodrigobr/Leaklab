@@ -4,6 +4,63 @@ Todas as mudanÃ§as notÃ¡veis neste projeto serÃ£o documentadas aqui.
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
+## Do leak para as 12 maos, sem voltar ao dashboard (16/09)
+
+O pedido mais antigo do dono, e ele existia desde antes da lista de maos do leak (AY-32, 09/09):
+"usar as laterais do replayer para mostrar as maos do leak com visao das cartas, clicaveis".
+Avaliado antes de codar, porque a casa manda UX antes de codigo, e a avaliacao achou duas coisas
+que mudaram o desenho.
+
+**Primeira: 70% do pedido ja existia**, por outro caminho. `MaosDoLeak` no dashboard ja listava
+as maos com cartas, assento, stack, custo e data, e ja abria o replayer. O que faltava era
+outra coisa, e era a parte que importa.
+
+**Segunda: eu disse que nao havia laterais, e estava errado.** Me apoiei no commit de 20/06 que
+removeu o aside de 288px e concluí que o replayer nao tinha espaco lateral. O dono mandou o
+screenshot: a mesa e um oval centrado de ~1050px numa janela de 1900px, com ~400px ociosos de
+cada lado. Ler o commit nao e ler a tela, que e o mesmo erro do "artefato publicado e um oraculo
+que o fonte nao e".
+
+### As tres etapas
+
+**1. As cartas deixaram de ser texto.** `Qd8s` em fonte mono virou o baralho do produto. No meio
+disso apareceu um defeito que o dono nao tinha pedido para consertar: a lista mostrava `4dAd`,
+com o quatro na frente do as, porque `hero_cards` guarda a ordem em que a SALA escreveu (a do
+assento). `ordenarMao` poe a carta alta primeiro, num lugar so.
+
+O caminho do SVG era montado em DOIS lugares (`LessonKit.deckCardSrc` e `PokerTableV3`), e a
+lista seria o terceiro: virou `components/PlayingCard.tsx` antes do N+1, com varredura que
+recusa quem montar `/cards/` por conta propria. O `T` que vira `10` no nome do arquivo e
+exatamente o detalhe que a terceira copia esqueceria.
+
+**2. A playlist do leak.** `?leak=street:jogada:ideal&ln=N` faz as setas percorrerem as maos do
+leak em vez das do torneio, e o contador passa a dizer "4 / 12 do leak" em vez de "42 / 84".
+Antes, quem estudava as 12 maos de um leak voltava ao dashboard 12 vezes.
+
+O custo real estava escondido aqui: **as maos de um leak atravessam torneios** (12 maos em 8
+torneios, medido no banco), e a navegacao era presa a um torneio -- `handHref` montava `t=` fixo
+e o prefetch buscava no mesmo torneio. Agora existe um mapa mao -> torneio, preenchido so na
+playlist, e a montagem do link virou `lib/playlistDoLeak`, pura e coberta: o Replayer tem 1.100
+linhas e dez dependencias de rede, e nenhum teste o monta.
+
+Cicatriz respeitada: em 14/08 a playlist do coach substituiu o filtro `&f=` CALADA e o jogador
+pousava numa mao Aceitavel com a barra rotulada "so os erros". A playlist do leak vem de outra
+fonte (entre torneios) e nao pode ser interseccionada com o filtro de um torneio, entao ela manda
+sozinha E A TELA DECLARA que esta numa playlist de leak. O efeito que restaura a lista do torneio
+ganhou um `return` para nao sobrescrever a playlist, e ha guarda para esse `return`.
+
+**3. A coluna lateral**, no espaco que ja estava vazio. Ela nao e o aside de 20/06: aquele era
+fixo e encolhia a mesa em toda mao, mesmo sem nada a mostrar. Esta so existe com `?leak=`, e
+`absolute` no conteiner da mesa (a mesa nao muda de tamanho), recolhe com memoria em
+localStorage, e some no telefone, onde nao ha espaco ocioso. Clicar numa mao usa o MESMO
+`handHref` das setas, senao seriam duas formas de montar o link e a que erra manda o jogador
+para uma mao que nao existe naquele torneio.
+
+Guardas quebrados de proposito: com o link voltando a usar o torneio da URL, 2 casos acusam; com
+o `return` removido, o guarda do efeito acusa. Front 632/632 em 98 arquivos (eram 611), tsc
+limpo. i18n nas 3 locales.
+
+---
 ## A lista de maos do leak parou de acusar o nosso proprio defeito na tela (15/09)
 
 O dono, olhando producao: a linha dizia "FOLD -> CALL - river - 4 spots - -34,0bb" e, ao abrir,
