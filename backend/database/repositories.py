@@ -1462,6 +1462,51 @@ def get_leak_roi_impact(user_id: int, days: int = 90, last_n: int | None = None)
         conn.close()
 
 
+def decisao_entra_no_leak(street, n_ativos, icm, ev, stack_bb, src,
+                          action=None, equity=None, pot_bb=None, facing_bb=None) -> bool:
+    """A decisao conta como leak? UMA regua, para a LINHA do card e para a LISTA de maos.
+
+    ── O defeito que originou (15/09) ────────────────────────────────────────────────────────
+
+    A tela do dono mostrou "FOLD -> CALL - river - 4 spots - -34,0bb" e, ao abrir, uma lista com
+    CINCO maos somando 34,2bb. A mao sobrando era `9h6d` (BB, 0,20bb), e ela e a unica do grupo
+    com `n_active_opponents = 2`: MULTIWAY.
+
+    A causa fui eu, no mesmo dia. O conserto do VER-4 tirou multiway postflop de tudo que soma e
+    ranqueia, e `get_ev_leaks` (a linha) passou a excluir. `get_maos_do_leak` (a lista) ficou de
+    fora da varredura porque ela nao soma nada -- so lista. Resultado: agregado e detalhe com
+    duas reguas, que e exatamente a familia de defeito que aquela auditoria fechou em dezenas de
+    lugares. Regra 7 da casa: o conserto causou dano que o bug nao causava.
+
+    ── Zona de ICM: a regua NAO exclui, e isso e uma escolha declarada ──────────────────────
+
+    `get_ev_leaks` (rota `/player/ev-leaks`) aplica um filtro EXTRA que o card nao aplica:
+    `icm_pressure <> 'high'`, pela razao de que ali o gabarito e chipEV puro. As duas superficies
+    portanto divergem entre si, e nao e por esquecimento desta funcao.
+
+    Medido em producao antes de decidir: **784 decisoes com ICM alto e custo acima de 0,05bb,
+    somando 590,6bb** -- 7,2% de todas as decisoes com custo. Alinhar por baixo (excluir no card
+    tambem) MUDA o numero de leak de todos os jogadores, retroativamente. Isso e veredito em
+    massa e e decisao do dono, entao a regua segue o card, que e a superficie que o jogador le, e
+    a divergencia fica registrada em vez de resolvida por conta propria.
+
+    O parametro `icm` continua na assinatura de proposito: quando a decisao for tomada, o lugar
+    de aplica-la e aqui, em um lugar so.
+
+    A ORDEM importa e e a do card: multiway, confiabilidade do EV, e por fim o corte de 0,05bb.
+    """
+    from leaklab.card_verdict import multiway_sem_cobertura
+    from leaklab.decision_engine_v11 import ev_loss_trustworthy
+    if ev is None:
+        return False
+    if multiway_sem_cobertura(street, n_ativos):
+        return False
+    if not ev_loss_trustworthy(ev, stack_bb, src, action=action, equity=equity,
+                               pot_bb=pot_bb, facing_bb=facing_bb):
+        return False
+    return float(ev) > 0.05
+
+
 def get_ev_leaks(user_id: int, days: int = 90, last_n: int | None = None, limit: int = 10) -> dict:
     """Leaks ranqueados por EV PERDIDO (bb) — #24/#25 (início do Leak Finder).
 
@@ -1496,13 +1541,14 @@ def get_ev_leaks(user_id: int, days: int = 90, last_n: int | None = None, limit:
 
         grupos, tot_bb, tot_n = {}, 0.0, 0
         for r in rows:
-            # Multiway postflop: o solver julgou heads-up uma mao que nao era. Fora da conta,
-            # pela MESMA funcao que o card usa (ver `_SQL_MULTIWAY_FORA`).
-            if multiway_sem_cobertura(r['street'], r['n_ativos']):
-                continue
-            if not ev_loss_trustworthy(r['ev'], r['stack_bb'], r['src'],
-                                       action=r['action_taken'], equity=r['equity'],
-                                       pot_bb=r['pot'], facing_bb=r['facing']):
+            # A regua e UMA, compartilhada com `get_maos_do_leak` (a lista de maos desta linha).
+            # Enquanto cada uma tinha a sua, a linha dizia 4 spots e a lista trazia 5 maos.
+            # O SQL acima ja corta ICM e `ev > 0.05`; a regua confere de novo, e isso e de
+            # proposito: quem muda a regua nao precisa lembrar de mudar dois SQLs.
+            if not decisao_entra_no_leak(
+                    r['street'], r['n_ativos'], None, r['ev'], r['stack_bb'], r['src'],
+                    action=r['action_taken'], equity=r['equity'],
+                    pot_bb=r['pot'], facing_bb=r['facing']):
                 continue
             ev = float(r['ev'])
             g = grupos.setdefault((r['position'] or '?', r['street'], r['ideal_action']),
@@ -12534,16 +12580,20 @@ def get_maos_do_leak(user_id: int, street: str, action_taken: str, best_action: 
             SELECT d.id, d.tournament_id AS tid, d.hand_id, d.street, d.position, d.hero_cards,
                    d.board, d.action_taken, d.best_action, d.ev_loss_bb AS ev, d.ev_loss_source AS src,
                    d.stack_bb, d.estimated_equity AS equity, d.pot_size AS pot, d.facing_bet AS facing,
+                   d.n_active_opponents AS n_ativos, d.icm_pressure AS icm,
                    d.gto_label, d.label, d.num_players, t.tournament_name, t.played_at
             FROM decisions d JOIN tournaments t ON t.id = d.tournament_id
             WHERE d.tournament_id IN ({ph}) AND d.ev_loss_bb IS NOT NULL
               AND d.street = ? AND d.action_taken = ? AND d.best_action = ?
         """), tuple(tids) + (street, action_taken, best_action)) or []
-        # A regua e o corte, na ordem do card: primeiro confiavel, depois > 0.05bb.
+        # A MESMA regua da linha do card (`decisao_entra_no_leak`), e nao uma copia da sequencia
+        # de filtros. A copia que morava aqui nao tinha multiway nem ICM, e foi assim que a tela
+        # passou a dizer "a lista tem 5 maos e a linha diz 4".
         boas = [r for r in linhas
-                if ev_loss_trustworthy(r['ev'], r['stack_bb'], r['src'], action=r['action_taken'],
-                                       equity=r['equity'], pot_bb=r['pot'], facing_bb=r['facing'])
-                and float(r['ev']) > 0.05]
+                if decisao_entra_no_leak(
+                    r['street'], r['n_ativos'], r['icm'], r['ev'], r['stack_bb'], r['src'],
+                    action=r['action_taken'], equity=r['equity'],
+                    pot_bb=r['pot'], facing_bb=r['facing'])]
         boas.sort(key=lambda r: float(r['ev']), reverse=True)
         total = len(boas)
         loss = round(sum(float(r['ev']) for r in boas), 1)
@@ -12627,9 +12677,9 @@ def get_ev_summary(user_id: int, last_n: int | None = 50) -> dict:
                    d.pot_size AS pot, d.facing_bet AS facing, d.n_active_opponents AS n_ativos
             FROM decisions d
             WHERE d.tournament_id IN ({ph_all}) AND d.ev_loss_bb IS NOT NULL"""), tuple(tids))
-            if not multiway_sem_cobertura(r['street'], r['n_ativos'])
-            and ev_loss_trustworthy(r['ev'], r['stack_bb'], r['src'], action=r['action_taken'],
-                                    equity=r['equity'], pot_bb=r['pot'], facing_bb=r['facing'])]
+            if decisao_entra_no_leak(r['street'], r['n_ativos'], None, r['ev'], r['stack_bb'],
+                                     r['src'], action=r['action_taken'], equity=r['equity'],
+                                     pot_bb=r['pot'], facing_bb=r['facing'])]
 
         def _ev_per_100(id_list):
             if not id_list:

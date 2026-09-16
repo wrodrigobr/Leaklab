@@ -38,10 +38,10 @@ const MAO = (id: number, cartas: string, ev: number) => ({
   stack_bb: 23.4, ev_loss_bb: ev, gto_label: "gto_critical", label: "clear_mistake",
 });
 
-function monta(esperado = 19) {
+function monta() {
   return render(
     <MemoryRouter>
-      <MaosDoLeak street="flop" actionTaken="fold" bestAction="call" esperado={esperado} lastN={50} />
+      <MaosDoLeak street="flop" actionTaken="fold" bestAction="call" lastN={50} />
     </MemoryRouter>
   );
 }
@@ -64,25 +64,33 @@ describe("mãos por trás de um leak", () => {
     const linha = within(painel).getByTestId("leak-mao-1");
     expect(linha.textContent).toContain("KhJs");
     expect(linha.textContent).toContain("−6.40bb");
-    expect(screen.queryByTestId("leak-divergencia")).toBeNull();        // total bate: sem aviso
     fireEvent.click(within(linha).getByRole("button"));
     expect(navigate).toHaveBeenCalledWith("/replayer?t=901&h=H1");
   });
 
-  it("quando a lista não bate com a linha, a tela declara em vez de calar", async () => {
+  it("a tela NUNCA expõe divergência entre a lista e a linha", async () => {
+    // Era o oposto: este caso exigia que a tela DECLARASSE "a lista tem 12 e a linha diz 19".
+    // Eu escrevi aquele aviso em 09/09 como honestidade e estava errado — divergência entre dois
+    // números nossos é defeito nosso, e jogá-la na tela transfere ao jogador um problema que ele
+    // não pode resolver. O dono viu em produção e classificou como bug.
+    //
+    // A régua agora é uma (`decisao_entra_no_leak`, no backend) e quem acusa a divergência é
+    // `test_maos_do_leak`, que semeia multiway e zona de ICM e exige a reconciliação. Aqui só
+    // garantimos que a vitrine não voltou a ter o aviso.
     evLeakHands.mockResolvedValue({
       total: 12, loss_bb: 30.0, limit: 200, offset: 0,
       street: "flop", action_taken: "fold", best_action: "call", hands: [MAO(1, "KhJs", 6.4)],
     });
-    monta(19);
-    const aviso = await screen.findByTestId("leak-divergencia");
-    expect(aviso.textContent).toContain("v2.leakHandsMismatch:12,19");
+    monta();
+    const painel = await screen.findByTestId("leak-maos");
+    expect(screen.queryByTestId("leak-divergencia")).toBeNull();
+    expect(painel.textContent).not.toContain("leakHandsMismatch");
   });
 
   it("spot sem mão medida diz isso, e erro de rede também", async () => {
     evLeakHands.mockResolvedValue({ total: 0, loss_bb: 0, limit: 200, offset: 0,
       street: "flop", action_taken: "fold", best_action: "call", hands: [] });
-    const { unmount } = monta(0);
+    const { unmount } = monta();
     expect(await screen.findByText("v2.leakHandsEmpty")).toBeTruthy();
     unmount();
     evLeakHands.mockRejectedValue(new Error("500"));

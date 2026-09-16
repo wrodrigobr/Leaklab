@@ -387,8 +387,7 @@ export function DashboardV2({ onUpload, evSummary, volumeLimit = 50, onVolumeLim
                     </div>
                   </button>
                   {aberto && (
-                    <MaosDoLeak street={l.street} actionTaken={l.action_taken} bestAction={l.best_action}
-                                esperado={l.count} lastN={volumeLimit} />
+                    <MaosDoLeak street={l.street} actionTaken={l.action_taken} bestAction={l.best_action} lastN={volumeLimit} />
                   )}
                 </div>
               );})}
