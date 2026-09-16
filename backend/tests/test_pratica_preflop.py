@@ -126,7 +126,40 @@ def test_as_mesas_abertas_NUNCA_repetem_o_spot():
     assert len(set(x['id'] for x in m)) == 4, [x['id'] for x in m]
     for x in m:
         assert x['options'] and x['table']['seats'], x['id']
-        assert x['table']['hero_cards'] == x['hand']
+
+
+def test_a_mesa_manda_CARTAS_e_nao_a_classe_da_mao():
+    """O defeito que este arquivo CONGELOU, e o dono viu na tela (16/09).
+
+    A versao anterior deste guarda afirmava `table['hero_cards'] == x['hand']`, ou seja, exigia
+    que a mesa mandasse a CLASSE (`'K7s'`). O front le as cartas com uma regex de `rank + naipe`,
+    entao `'K7s'` casava so o `'7s'`: uma carta em vez de duas, e a mao do heroi nao aparecia na
+    mesa. O teste passava verde afirmando exatamente o erro -- cobertura a favor do defeito.
+
+    Agora o guarda exige o que o front consegue LER: duas cartas com naipe.
+    """
+    import re
+    CARTA = re.compile(r'[2-9TJQKA][shdc]')
+    for x in pr.mesas(4):
+        cartas = x['table']['hero_cards']
+        achadas = CARTA.findall(cartas or '')
+        assert len(achadas) == 2, ('a mesa precisa de DUAS cartas legiveis', x['hand'], cartas)
+        # e elas sao a mao do spot: ranks iguais, na mesma ordem
+        ranks_mao = [c for c in x['hand'] if c in '23456789TJQKA']
+        assert [c[0] for c in achadas] == ranks_mao, (x['hand'], cartas)
+        # suited = MESMO naipe; offsuit e par = naipes diferentes
+        mesmo_naipe = achadas[0][1] == achadas[1][1]
+        assert mesmo_naipe == x['hand'].endswith('s'), (x['hand'], cartas)
+
+
+def test_as_cartas_saem_da_MESMA_fonte_da_academia():
+    """`cartas_da_mao` usa `_hand_to_cards`, e nao naipes proprios: naipe sorteado aqui faria a
+    mesma mao aparecer com naipes diferentes entre a lista de exercicios e a mesa."""
+    assert pr.cartas_da_mao('K7s') == 'Ks7s', pr.cartas_da_mao('K7s')
+    assert pr.cartas_da_mao('K7o') == 'Ks7h', pr.cartas_da_mao('K7o')
+    assert pr.cartas_da_mao('TT') == 'Ts Th'.replace(' ', ''), pr.cartas_da_mao('TT')
+    import inspect
+    assert '_hand_to_cards' in inspect.getsource(pr.cartas_da_mao)
 
 
 def test_o_teto_de_mesas_e_quatro():
