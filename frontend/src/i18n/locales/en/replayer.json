@@ -370,7 +370,13 @@
     "allHands": "All hands",
     "handLabel": "Hand",
     "prev": "Prev",
-    "next": "Next"
+    "next": "Next",
+    "leakPlaylist": "reviewing a leak",
+    "doLeak": "in this leak",
+    "leakColuna": "the {{n}} hands in this leak",
+    "leakVoltar": "back to leak",
+    "leakColunaAbrir": "leak · {{n}}",
+    "leakColunaPe": "{{i}} of {{n}} · {{bb}}bb in this leak"
   },
   "decision": {
     "title": "Decision evaluation",

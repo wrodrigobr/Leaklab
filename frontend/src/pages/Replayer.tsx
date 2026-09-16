@@ -20,6 +20,8 @@ import { cn } from "@/lib/utils";
 import { computeEffectiveGtoLabel } from "@/lib/gtoUtils";
 import { livePlayers as computeLivePlayers, isMultiwayPot, isPpMuted, idealActionSource, verdictStrategy, verdictLevel, clampVerdict, type VerdictLevel } from "@/lib/cardLogic";
 import { filterHandIds, parseResultFilter, type HandResultFilter } from "@/lib/handFilter";
+import { parseLeakSpot, hrefDaMao } from "@/lib/playlistDoLeak";
+import { ColunaDoLeak } from "@/components/replayer/ColunaDoLeak";
 import { selectWhy } from "@/lib/replayWhy";
 
 import { VerdictPill } from "@/components/replayer/VerdictPill";
@@ -94,6 +96,19 @@ const Replayer = () => {
   // que passam nele — avançar pula as demais (ex.: filtrou "erros" → vai direto pro próximo erro).
   // A regra de classificação é a MESMA da lista (lib/handFilter), nunca reimplementada aqui.
   const resultFilter = parseResultFilter(params.get("f"));
+  // PLAYLIST DO LEAK (16/09): `?leak=street:jogada:ideal` faz a navegacao percorrer as maos
+  // daquele leak em vez das do torneio. Quem abre e a lista do card "Leaks por custo", e o
+  // jogador que estudava 12 maos de um leak precisava voltar ao dashboard 12 vezes.
+  //
+  // As maos de um leak ATRAVESSAM torneios (12 em 8 torneios, medido no banco do dono), e a
+  // navegacao daqui era presa a um torneio so. Por isso existe `torneioDaMao` abaixo: a lista
+  // continua sendo de hand_ids, e o torneio de cada uma sai do mapa.
+  const leakParam = params.get("leak");
+  const leakSpot = parseLeakSpot(leakParam);
+  // O mesmo recorte de torneios do card que produziu a lista. Sem ele a playlist responderia
+  // por um periodo e o numero da linha por outro, que e a familia de defeito que a auditoria
+  // de 15/09 fechou em dezenas de lugares.
+  const leakLastN = params.get("ln") ? Number(params.get("ln")) : undefined;
   const [coachMode, setCoachMode] = useState<boolean>(
     () => coachParam || localStorage.getItem("replayer_coach") === "true");
   const [walkMap, setWalkMap] = useState<Record<string, CoachReplayHand>>({});
@@ -124,6 +139,8 @@ const Replayer = () => {
   const [playing, setPlaying]       = useState(false);
   const [speed, setSpeed]           = useState(1);
   const [handList, setHandList]     = useState<string[]>([]);
+  /** mao -> torneio de origem. Vazio fora da playlist de leak: ai vale o `t=` da URL. */
+  const [torneioDaMao, setTorneioDaMao] = useState<Record<string, number>>({});
   const [betUnit, setBetUnit]       = useState<"chips" | "bb">("bb");
   const [showAnalysis, setShowAnalysis] = useState(false);   // mobile: bottom-sheet do card de análise
   const [showHud, setShowHud]       = useState<boolean>(
@@ -305,9 +322,32 @@ const Replayer = () => {
     setHandList(ids.length ? ids : coachIds);
   }, [coachMode, coachIds, decisions, resultFilter]);
 
+  // A playlist do LEAK manda na navegação quando `?leak=` está na URL. Ela vem da MESMA rota
+  // que a lista do dashboard (`/player/ev-leaks/hands`), com o mesmo recorte, então "12 do leak"
+  // no contador é o mesmo 12 da linha do card.
+  useEffect(() => {
+    if (!leakSpot) { setTorneioDaMao({}); return; }
+    let vivo = true;
+    metrics.evLeakHands(leakSpot.street, leakSpot.actionTaken, leakSpot.bestAction,
+                        leakLastN, 200)
+      .then((d) => {
+        if (!vivo) return;
+        const maos = d.hands ?? [];
+        setHandList(maos.map((m) => m.hand_id));
+        setTorneioDaMao(Object.fromEntries(maos.map((m) => [m.hand_id, m.tournament_id])));
+      })
+      .catch(() => { /* sem playlist a navegação cai na do torneio, nunca morre */ });
+    return () => { vivo = false; };
+  }, [leakParam, leakLastN]);   // eslint-disable-line react-hooks/exhaustive-deps
+
   // Modo coach DESLIGADO: restaura a lista completa do torneio (todas as mãos) a partir das decisões.
   useEffect(() => {
     if (coachMode) return;
+    // ...mas NÃO por cima da playlist do leak, que é de outra fonte e atravessa torneios. Sem
+    // este `return` a lista do torneio sobrescrevia a do leak assim que as decisões chegavam,
+    // e o contador voltava a contar o torneio calado — o mesmo defeito que a playlist do coach
+    // teve em 14/08 contra o filtro `&f=`.
+    if (leakSpot) return;
     setWalkMap({});
     setCoachIds([]);
     if (decisions.length) setHandList(filterHandIds(decisions, resultFilter));
@@ -327,14 +367,20 @@ const Replayer = () => {
     }
     if (idx - 1 >= 0) toPrefetch.push(handList[idx - 1]);
     toPrefetch.forEach((h) => {
-      const k = replayCacheKey(tournamentId, h, studentId);
+      // Na playlist do leak a próxima mão pode estar em OUTRO torneio, então o torneio sai do
+      // mapa. Com `tournamentId` fixo aqui, o prefetch buscaria a mão no torneio errado e a
+      // resposta cairia no cache com a chave errada.
+      // `tournamentId` vem da URL (string) e o mapa guarda o id numerico da API: uma so forma
+      // aqui, senao a chave do cache sai diferente da que o outro caminho grava.
+      const tid = String(torneioDaMao[h] ?? tournamentId);
+      const k = replayCacheKey(tid, h, studentId);
       if (replayCacheGet(k)) return;
       const fn = studentId
-        ? coachDashboard.studentReplay(studentId, tournamentId, h)
-        : tournamentsApi.replay(tournamentId, h);
+        ? coachDashboard.studentReplay(studentId, tid, h)
+        : tournamentsApi.replay(tid, h);
       fn.then((replay) => replayCacheSet(k, replay)).catch(() => {});
     });
-  }, [tournamentId, handId, studentId, handList]);
+  }, [tournamentId, handId, studentId, handList, torneioDaMao]);
 
   const steps = replayData?.timeline ?? [];
   const step  = steps[stepIdx] as ReplayStep | undefined;
@@ -359,16 +405,23 @@ const Replayer = () => {
     }
   }
   // URL de outra mão do MESMO contexto (preserva coach-student e o modo walkthrough).
-  const handHref = (h: string) =>
-    `/replayer?t=${tournamentId}&h=${h}${studentId ? `&student=${studentId}` : ""}${coachMode ? "&coach=1" : ""}`
-    + (resultFilter !== "all" ? `&f=${resultFilter}` : "");
+  // A montagem do link mora em `lib/playlistDoLeak` e e coberta la: ela precisa levar o torneio
+  // DA MAO (na playlist do leak nao e o da URL), o modo coach, o aluno, o filtro `&f=` e o
+  // proprio leak. Perder qualquer um desses e sair do contexto no meio do estudo.
+  const handHref = (h: string) => hrefDaMao({
+    mao: h, tournamentId, torneioDaMao, studentId, coachMode, resultFilter,
+    leakParam, leakLastN,
+  });
   const walkCurrent = coachMode ? walkMap[handId] : undefined;
 
   // "Voltar" = LISTA DE MÃOS do torneio (/tournaments/:id), não a mão anterior do histórico do browser
   // (navegar entre mãos não deveria empilhar; o voltar leva de volta ao torneio). Coach (student) ou
   // sem torneio → fallback no voltar do browser.
   const goBack = () => {
-    if (tournamentId && !studentId) navigate(`/tournaments/${tournamentId}`);
+    // Na playlist do leak o "voltar" devolve para onde o jogador escolheu a mão (o dashboard),
+    // e não para o torneio, que aqui é so um detalhe de origem da mão.
+    if (leakSpot) navigate("/dashboard");
+    else if (tournamentId && !studentId) navigate(`/tournaments/${tournamentId}`);
     else navigate(-1);
   };
 
@@ -790,17 +843,30 @@ const Replayer = () => {
           </div>
 
           {handList.length > 1 && handIdx >= 0 ? (
-            <div className="flex items-center justify-center gap-2.5">
+            <div className="flex flex-col items-center justify-center gap-0.5">
+              {/* O contador DECLARA de qual lista ele fala. Na playlist do leak ele conta as maos
+                  do leak, e sem esta linha ele diria "4 / 12" sem dizer 12 de que -- que foi
+                  exatamente o defeito da playlist do coach em 14/08 (a barra dizia "so os erros"
+                  e o numero era o tamanho da playlist). */}
+              {leakSpot && (
+                <span className="font-mono text-[9px] uppercase tracking-widest text-primary/90">
+                  {t("navigation.leakPlaylist")}
+                </span>
+              )}
+              <div className="flex items-center justify-center gap-2.5">
               <div className="flex items-baseline gap-1 font-mono tabular-nums">
                 <span className="text-[9px] uppercase tracking-widest text-muted-foreground">{t("navigation.handLabel")}</span>
                 <span className="text-sm font-bold text-foreground">{handIdx + 1}</span>
-                <span className="text-[11px] text-muted-foreground">/{handList.length}</span>
+                <span className="text-[11px] text-muted-foreground">
+                  /{handList.length}{leakSpot ? ` ${t("navigation.doLeak")}` : ""}
+                </span>
               </div>
               <div className="hidden sm:block h-1 w-28 overflow-hidden rounded-full bg-border">
                 <div
                   className="h-full rounded-full bg-primary/70 transition-all duration-500 ease-out"
                   style={{ width: `${Math.max(4, ((handIdx + 1) / handList.length) * 100)}%` }}
                 />
+              </div>
               </div>
             </div>
           ) : <div />}
@@ -907,6 +973,19 @@ const Replayer = () => {
                 rola pra baixo do menu. Aspect fixo 16/10: só landscape chega aqui — portrait
                 já retornou no ramo mobileReplayer, então o ternário por orientação era morto. */}
             <div className="relative flex-1 min-h-0 overflow-hidden flex items-center justify-center">
+              {/* A coluna do leak ocupa o espaco que a mesa JA nao usa: ela e `absolute` neste
+                  contêiner, e a mesa (aspect 16/10, largura derivada da altura) segue centrada e
+                  do mesmo tamanho. Nao e o aside de 288px que tiramos em 20/06, que reservava
+                  largura em toda mao mesmo sem nada a mostrar; esta so existe com `?leak=`. */}
+              {leakSpot && handId && (
+                <ColunaDoLeak
+                  spot={leakSpot}
+                  lastN={leakLastN}
+                  handId={handId}
+                  hrefDaMao={handHref}
+                  aoIr={(href) => navigate(href)}
+                />
+              )}
               <div
                 className="h-full w-auto max-w-full max-h-full mx-auto"
                 style={{ aspectRatio: "16 / 10" }}

@@ -4,6 +4,62 @@ Todas as mudanÃ§as notÃ¡veis neste projeto serÃ£o documentadas aqui.
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
+## Do leak para as 12 maos, sem voltar ao dashboard (16/09)
+
+O pedido mais antigo do dono, e ele existia desde antes da lista de maos do leak (AY-32, 09/09):
+"usar as laterais do replayer para mostrar as maos do leak com visao das cartas, clicaveis".
+Avaliado antes de codar, porque a casa manda UX antes de codigo, e a avaliacao achou duas coisas
+que mudaram o desenho.
+
+**Primeira: 70% do pedido ja existia**, por outro caminho. `MaosDoLeak` no dashboard ja listava
+as maos com cartas, assento, stack, custo e data, e ja abria o replayer. O que faltava era
+outra coisa, e era a parte que importa.
+
+**Segunda: eu disse que nao havia laterais, e estava errado.** Me apoiei no commit de 20/06 que
+removeu o aside de 288px e concluí que o replayer nao tinha espaco lateral. O dono mandou o
+screenshot: a mesa e um oval centrado de ~1050px numa janela de 1900px, com ~400px ociosos de
+cada lado. Ler o commit nao e ler a tela, que e o mesmo erro do "artefato publicado e um oraculo
+que o fonte nao e".
+
+### As tres etapas
+
+**1. As cartas deixaram de ser texto.** `Qd8s` em fonte mono virou o baralho do produto. No meio
+disso apareceu um defeito que o dono nao tinha pedido para consertar: a lista mostrava `4dAd`,
+com o quatro na frente do as, porque `hero_cards` guarda a ordem em que a SALA escreveu (a do
+assento). `ordenarMao` poe a carta alta primeiro, num lugar so.
+
+O caminho do SVG era montado em DOIS lugares (`LessonKit.deckCardSrc` e `PokerTableV3`), e a
+lista seria o terceiro: virou `components/PlayingCard.tsx` antes do N+1, com varredura que
+recusa quem montar `/cards/` por conta propria. O `T` que vira `10` no nome do arquivo e
+exatamente o detalhe que a terceira copia esqueceria.
+
+**2. A playlist do leak.** `?leak=street:jogada:ideal&ln=N` faz as setas percorrerem as maos do
+leak em vez das do torneio, e o contador passa a dizer "4 / 12 do leak" em vez de "42 / 84".
+Antes, quem estudava as 12 maos de um leak voltava ao dashboard 12 vezes.
+
+O custo real estava escondido aqui: **as maos de um leak atravessam torneios** (12 maos em 8
+torneios, medido no banco), e a navegacao era presa a um torneio -- `handHref` montava `t=` fixo
+e o prefetch buscava no mesmo torneio. Agora existe um mapa mao -> torneio, preenchido so na
+playlist, e a montagem do link virou `lib/playlistDoLeak`, pura e coberta: o Replayer tem 1.100
+linhas e dez dependencias de rede, e nenhum teste o monta.
+
+Cicatriz respeitada: em 14/08 a playlist do coach substituiu o filtro `&f=` CALADA e o jogador
+pousava numa mao Aceitavel com a barra rotulada "so os erros". A playlist do leak vem de outra
+fonte (entre torneios) e nao pode ser interseccionada com o filtro de um torneio, entao ela manda
+sozinha E A TELA DECLARA que esta numa playlist de leak. O efeito que restaura a lista do torneio
+ganhou um `return` para nao sobrescrever a playlist, e ha guarda para esse `return`.
+
+**3. A coluna lateral**, no espaco que ja estava vazio. Ela nao e o aside de 20/06: aquele era
+fixo e encolhia a mesa em toda mao, mesmo sem nada a mostrar. Esta so existe com `?leak=`, e
+`absolute` no conteiner da mesa (a mesa nao muda de tamanho), recolhe com memoria em
+localStorage, e some no telefone, onde nao ha espaco ocioso. Clicar numa mao usa o MESMO
+`handHref` das setas, senao seriam duas formas de montar o link e a que erra manda o jogador
+para uma mao que nao existe naquele torneio.
+
+Guardas quebrados de proposito: com o link voltando a usar o torneio da URL, 2 casos acusam; com
+o `return` removido, o guarda do efeito acusa. Front 632/632 em 98 arquivos (eram 611), tsc
+limpo. i18n nas 3 locales.
+
 ## A carta deixa de acusar fold contra all-in quando o preco a contradiz (16/09)
 
 O dono abriu uma mao da lista de leaks e perguntou: "em nenhum momento indica erro na jogada,
@@ -46,6 +102,46 @@ aposta com o stack do HEROI e por isso nao achava o caso que originou a frente (
 
 Guarda quebrado de proposito: sem a comparacao de preco a regra viraria anistia geral, e dois
 casos acusam. E a catraca de ontem me pegou de novo: o teste novo nao estava em suite nenhuma.
+
+---
+## A decisao que SOME no meio nao derruba mais o torneio inteiro (16/09)
+
+Erro de producao, do Sentry, torneio 1624:
+
+```
+ForeignKeyViolation: insert or update on table "vereditos_por_semelhanca" violates foreign key
+constraint ... Key (decision_id)=(526360) is not present in table "decisions".
+```
+
+`gravar_provisorios` tira um RETRATO dos ids das decisoes sem no, e o laco leva tempo porque
+`estrategia_por_semelhanca` consulta o acervo por linha. Se um reprocesso do mesmo torneio apagar
+e regravar as decisoes nessa janela, o id do retrato ja nao existe. A cicatriz de sempre desta
+base: quem referencia `decisions(id)` desaparece com CASCADE, calado.
+
+**A consequencia era pior que uma linha perdida:** em Postgres a violacao ABORTA a transacao,
+entao o `commit()` do fim nunca acontece e o torneio inteiro fica sem provisorio, com
+"semelhanca provisorios FAILED" no log. Nada chega ao jogador (a medicao e interna, AY-28 passo
+2), mas o trabalho se perdia e o Sentry enchia.
+
+O `INSERT ... VALUES` virou `INSERT ... SELECT d.id ... FROM decisions d WHERE d.id = ?`: se a
+decisao nao existe mais, o SELECT devolve zero linhas, nada e inserido e as outras 200 sao
+gravadas. A contagem passou a sair de `rowcount`, medido nos DOIS dialetos antes de eu confiar
+nele (1 quando existe, 0 quando sumiu), senao o log diria "212 gravados" com 211 no banco.
+
+Varredura dos N+1: tres lugares fazem INSERT com FK para `decisions` dentro de laco.
+`coach_hand_annotations` ja trata ("a decisao nao existe mais: perder e honesto") e o terceiro e
+script de seed. Este era o unico que rodava automatico depois do import.
+
+**E o guarda nasceu FALSO POSITIVO, duas vezes.** Na primeira, o seed usava um torneio que nao
+existia e falhava por FK de outra coisa. Na segunda, ja verde, eu quebrei o conserto de proposito
+e o teste PASSOU: a segunda mao do seed era `AdKd`, que nao tem veredito nas arvores vizinhas,
+caia no `continue` e nunca chegava ao INSERT. O teste exercitava o caminho errado e dizia que
+estava protegido. Com uma mao de mesma relacao com o board (`AhKs`), a mutacao acusa
+`FOREIGN KEY constraint failed`, que e o erro do Sentry.
+
+Provado tambem no dialeto do erro: contra o Postgres local, 1 gravada, sem estourar, e a linha da
+decisao apagada nao entra. Suites: semelhanca 10/10, gto_insert_guard 2/2, no_id_tables 4/4,
+row_access 2/2.
 
 ---
 ## A lista de maos do leak parou de acusar o nosso proprio defeito na tela (15/09)

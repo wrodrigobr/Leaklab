@@ -62,10 +62,27 @@ describe("mãos por trás de um leak", () => {
     expect(painel.textContent).toContain("v2.leakHandsTitle:19,41.9");
     expect(painel.textContent).toContain("v2.leakHandsPartial:2,19");   // declara que mostra parte
     const linha = within(painel).getByTestId("leak-mao-1");
-    expect(linha.textContent).toContain("KhJs");
+    // As cartas sao DESENHADAS desde 16/09 (o baralho da mesa), entao a asserção olha as imagens
+    // e não o texto. E olha a ORDEM: `KhJs` sai com o rei primeiro.
+    expect(within(linha).getAllByRole("img").map((i) => i.getAttribute("alt"))).toEqual(["Kh", "Js"]);
     expect(linha.textContent).toContain("−6.40bb");
     fireEvent.click(within(linha).getByRole("button"));
-    expect(navigate).toHaveBeenCalledWith("/replayer?t=901&h=H1");
+    // O link leva o LEAK, e nao so a mao: e isso que liga a playlist no replayer, com o mesmo
+    // recorte (`ln`) da lista. Sem isso o replayer navegaria pelas maos do torneio de origem.
+    expect(navigate).toHaveBeenCalledWith(
+      "/replayer?t=901&h=H1&leak=flop%3Afold%3Acall&ln=50");
+  });
+
+  it("a carta alta vem primeiro, mesmo quando a sala escreveu ao contrário", async () => {
+    // O caso que o dono viu na tela: `4dAd`, com o quatro na frente do ás, porque o parser
+    // guarda a ordem do ASSENTO. Quem ordena é `HeroHand`, num lugar só.
+    evLeakHands.mockResolvedValue({
+      total: 1, loss_bb: 2.3, limit: 200, offset: 0,
+      street: "flop", action_taken: "fold", best_action: "call", hands: [MAO(7, "4dAd", 2.28)],
+    });
+    monta();
+    const linha = await screen.findByTestId("leak-mao-7");
+    expect(within(linha).getAllByRole("img").map((i) => i.getAttribute("alt"))).toEqual(["Ad", "4d"]);
   });
 
   it("a tela NUNCA expõe divergência entre a lista e a linha", async () => {
