@@ -374,9 +374,11 @@
     "leakPlaylist": "revisando um leak",
     "doLeak": "do leak",
     "leakColuna": "as {{n}} mãos deste leak",
-    "leakVoltar": "voltar ao leak",
+    "leakVoltar": "voltar aos leaks",
     "leakColunaAbrir": "leak · {{n}}",
-    "leakColunaPe": "{{i}} de {{n}} · {{bb}}bb no leak"
+    "leakColunaPe": "{{i}} de {{n}} · {{bb}}bb no leak",
+    "leakDeN": "leak {{i}} de {{n}} · {{maos}} mãos",
+    "leakProximo": "próximo leak"
   },
   "decision": {
     "title": "Avaliação da decisão",

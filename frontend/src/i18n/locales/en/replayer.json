@@ -374,9 +374,11 @@
     "leakPlaylist": "reviewing a leak",
     "doLeak": "in this leak",
     "leakColuna": "the {{n}} hands in this leak",
-    "leakVoltar": "back to leak",
+    "leakVoltar": "back to leaks",
     "leakColunaAbrir": "leak · {{n}}",
-    "leakColunaPe": "{{i}} of {{n}} · {{bb}}bb in this leak"
+    "leakColunaPe": "{{i}} of {{n}} · {{bb}}bb in this leak",
+    "leakDeN": "leak {{i}} of {{n}} · {{maos}} hands",
+    "leakProximo": "next leak"
   },
   "decision": {
     "title": "Decision evaluation",

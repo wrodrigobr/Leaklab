@@ -838,7 +838,10 @@ const Replayer = () => {
               onClick={goBack}
               className="inline-flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-widest-2 text-muted-foreground transition-colors hover:text-primary"
             >
-              <ArrowLeft className="size-3.5" /> {t("back")}
+              {/* O rotulo DIZ para onde vai. Na playlist do leak o voltar devolve ao dashboard
+                  (onde o jogador escolheu a mao), e nao ao torneio, que aqui e so a origem da
+                  mao: um botao "voltar" generico levava a esperar o torneio. */}
+              <ArrowLeft className="size-3.5" /> {leakSpot ? t("navigation.leakVoltar") : t("back")}
             </button>
           </div>
 
@@ -983,6 +986,12 @@ const Replayer = () => {
                   lastN={leakLastN}
                   handId={handId}
                   hrefDaMao={handHref}
+                  // Trocar de leak mantem o contexto (aluno, modo coach, filtro): quem monta e
+                  // o Replayer, que o tem, e nao a coluna.
+                  hrefEmOutroLeak={(mao, tid, chave) => hrefDaMao({
+                    mao, tournamentId: String(tid), leakParam: chave, leakLastN,
+                    studentId, coachMode, resultFilter,
+                  })}
                   aoIr={(href) => navigate(href)}
                 />
               )}

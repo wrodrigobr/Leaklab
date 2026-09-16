@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { metrics, type LeakHands } from "@/lib/api";
 import { HeroHand } from "@/components/PlayingCard";
+import { chaveDoLeak, hrefDaMao } from "@/lib/playlistDoLeak";
 
 /**
  * As maos por tras de uma linha do card "Leaks por custo" (AY-32, pedido de um fundador:
@@ -86,9 +87,12 @@ export function MaosDoLeak({ street, actionTaken, bestAction, lastN }: {
                       // `leak` e `ln` fazem a PLAYLIST: no replayer as setas percorrem as maos
                       // deste leak, e nao as do torneio de origem. Sem estes dois parametros o
                       // jogador voltava ao dashboard para cada mao (12 vezes, no leak medido).
-                      `/replayer?t=${m.tournament_id}&h=${m.hand_id}`
-                      + `&leak=${encodeURIComponent(`${street}:${actionTaken}:${bestAction}`)}`
-                      + (lastN != null ? `&ln=${lastN}` : ""))}
+                      hrefDaMao({
+                        mao: m.hand_id,
+                        tournamentId: String(m.tournament_id),
+                        leakParam: chaveDoLeak({ street, action_taken: actionTaken, best_action: bestAction }),
+                        leakLastN: lastN,
+                      }))}
                     className="rounded border border-border px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-wider text-muted-foreground transition-colors hover:border-primary hover:text-primary"
                   >
                     {t("v2.leakHandsOpen")}

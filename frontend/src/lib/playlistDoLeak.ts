@@ -35,6 +35,24 @@ export function parseLeakSpot(param: string | null | undefined): LeakSpot | null
 }
 
 /**
+ * A chave do leak na URL. Montada aqui porque ela agora nasce em dois lugares: a lista do
+ * dashboard (que abre a playlist) e a navegação ENTRE leaks dentro do replayer. Duas formas de
+ * montar a mesma chave é a receita de uma delas escapar um caractere e a outra não.
+ */
+export function chaveDoLeak(spot: { street: string; action_taken: string; best_action: string }): string {
+  return `${spot.street}:${spot.action_taken}:${spot.best_action}`;
+}
+
+/** O leak aberto é este? Compara pelos três campos que o identificam, e não pela string. */
+export function mesmoLeak(
+  a: LeakSpot | null | undefined,
+  b: { street: string; action_taken: string; best_action: string } | null | undefined,
+): boolean {
+  if (!a || !b) return false;
+  return a.street === b.street && a.actionTaken === b.action_taken && a.bestAction === b.best_action;
+}
+
+/**
  * O link de outra mão do MESMO contexto de navegação.
  *
  * Três coisas que ele não pode esquecer, e cada uma já foi defeito em alguma versão deste

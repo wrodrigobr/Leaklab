@@ -4,6 +4,41 @@ Todas as mudanÃ§as notÃ¡veis neste projeto serÃ£o documentadas aqui.
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
+## Dois niveis de navegacao no replayer: as maos do leak, e os leaks (16/09)
+
+Pedido do dono, depois de ver a primeira versao: "poderiamos ter um menu de alguma forma no
+replayer tambem pra exibir o leak que esta sendo tratado agora e um botao avancar para ir pro
+proximo leak, da mesma lista que e exibida no dash". E, sobre o voltar: "quando estamos vendo os
+leaks tem que voltar para o Dashboard".
+
+**O voltar ja ia para o dashboard**, desde a primeira versao. O que faltava era o ROTULO dizer
+isso: o botao escrevia "voltar", que num replayer aberto por uma mao de torneio significa voltar
+ao torneio. Agora escreve "voltar aos leaks" quando ha playlist. Comportamento certo com rotulo
+generico e a metade do trabalho, porque o jogador decide pelo rotulo.
+
+**O menu e o proximo leak.** O cabecalho da coluna passa a dizer QUAL leak esta aberto
+(`CALL -> FOLD · preflop`) e onde ele esta na lista do card ("leak 2 de 5 · 12 maos"). Clicando
+no cabecalho abre a MESMA lista do dashboard, na mesma ordem (por custo), com o leak aberto
+marcado e desabilitado; no pe, um botao avanca para o proximo.
+
+A lista vem de `evSummary().top_leaks` com o mesmo `last_n`, entao "2 de 5" aqui e a mesma ordem
+que o jogador viu no dashboard. O rotulo da acao sai de `formatAction`, que ja e a fonte do card:
+duas formas de escrever "FOLD -> CALL" e a receita de uma delas dizer "Shove" e a outra "Jam".
+
+Trocar de leak custa uma chamada extra, e isso e do desenho: o replayer abre por MAO, e a
+playlist do proximo leak e outra lista. O botao busca a PRIMEIRA mao daquele leak (a mais cara,
+que e a ordem da lista) e navega. Leak sem mao medida nao navega para lugar nenhum, em vez de
+abrir um replayer vazio. E no ultimo leak o botao SOME em vez de ficar apagado: botao que nao faz
+nada ensina o jogador a nao confiar no botao.
+
+Quem monta o link de outro leak e o Replayer, nao a coluna, porque e ele que tem o contexto
+(aluno, modo coach, filtro `&f=`). A chave do leak virou `chaveDoLeak` no modulo, porque ela
+agora nasce em dois lugares (a lista do dashboard e a troca dentro do replayer) e duas formas de
+montar a mesma chave e a receita de uma escapar caractere e a outra nao.
+
+Front 638/638 em 98 arquivos, tsc limpo, i18n nas 3 locales.
+
+---
 ## A carta da lista tem UMA altura, e ela nao e minuscula (16/09)
 
 Reprovado pelo dono na tela, no mesmo dia em que as cartas desenhadas subiram: "as cartas

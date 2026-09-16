@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, screen, within, fireEvent, cleanup } from "@testing-library/react";
+import { render, screen, within, fireEvent, cleanup, waitFor } from "@testing-library/react";
 
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
@@ -9,9 +9,12 @@ vi.mock("react-i18next", () => ({
   }),
 }));
 const evLeakHands = vi.fn();
+const evSummary = vi.fn();
 vi.mock("@/lib/api", async (orig) => {
   const real = await orig<typeof import("@/lib/api")>();
-  return { ...real, metrics: { ...real.metrics, evLeakHands: (...a: unknown[]) => evLeakHands(...a) } };
+  return { ...real, metrics: { ...real.metrics,
+    evLeakHands: (...a: unknown[]) => evLeakHands(...a),
+    evSummary: (...a: unknown[]) => evSummary(...a) } };
 });
 
 import { ColunaDoLeak } from "./ColunaDoLeak";
@@ -38,11 +41,22 @@ const HANDS = [MAO(1, "QhJd", 2.79, 18), MAO(2, "4dAd", 2.28, 2),
 
 const SPOT = { street: "preflop", actionTaken: "call", bestAction: "fold" };
 
+// a MESMA lista de 5 leaks que o card do dono mostra, na mesma ordem (por custo)
+const LEAKS = [
+  { street: "preflop", action_taken: "fold",  best_action: "call",  count: 46, loss_bb: 14.3, share_pct: 29 },
+  { street: "preflop", action_taken: "call",  best_action: "fold",  count: 12, loss_bb: 12.2, share_pct: 25 },
+  { street: "preflop", action_taken: "fold",  best_action: "raise", count: 19, loss_bb: 9.6,  share_pct: 19 },
+  { street: "preflop", action_taken: "fold",  best_action: "jam",   count: 18, loss_bb: 8.1,  share_pct: 16 },
+  { street: "preflop", action_taken: "shove", best_action: "fold",  count: 7,  loss_bb: 4.4,  share_pct: 9 },
+];
+
 function monta(handId = "H3") {
   const aoIr = vi.fn();
   const r = render(
     <ColunaDoLeak spot={SPOT} lastN={50} handId={handId}
-                  hrefDaMao={(h) => `/replayer?h=${h}&leak=x`} aoIr={aoIr} />);
+                  hrefDaMao={(h) => `/replayer?h=${h}&leak=x`}
+                  hrefEmOutroLeak={(mao, tid, chave) => `/replayer?t=${tid}&h=${mao}&leak=${chave}`}
+                  aoIr={aoIr} />);
   return { aoIr, ...r };
 }
 
@@ -55,6 +69,7 @@ describe("coluna do leak", () => {
       street: SPOT.street, action_taken: SPOT.actionTaken, best_action: SPOT.bestAction,
       hands: HANDS,
     });
+    evSummary.mockResolvedValue({ top_leaks: LEAKS });
   });
 
   // Sem isto o render do caso anterior fica no DOM e `findByTestId` acha dois.
@@ -111,6 +126,58 @@ describe("coluna do leak", () => {
     await new Promise((r) => setTimeout(r, 0));
     expect(screen.queryByTestId("leak-coluna")).toBeNull();
     expect(screen.queryByTestId("leak-coluna-abrir")).toBeNull();
+  });
+
+  it("diz QUAL leak está aberto e em que posição da lista do card", async () => {
+    // O pedido do dono: "exibir o leak que está sendo tratado agora". O spot montado aqui é
+    // `preflop call -> fold`, que é o SEGUNDO da lista, e o cabeçalho tem de dizer isso.
+    monta();
+    const col = await screen.findByTestId("leak-coluna");
+    expect(col.textContent).toContain("Call");
+    expect(col.textContent).toContain("Fold");
+    expect(col.textContent).toContain("navigation.leakDeN:2,5,12");   // leak 2 de 5, 12 mãos
+  });
+
+  it("o menu lista os MESMOS leaks do card, na mesma ordem, e marca o aberto", async () => {
+    monta();
+    const col = await screen.findByTestId("leak-coluna");
+    fireEvent.click(within(col).getByTestId("leak-menu-toggle"));
+    const menu = await screen.findByTestId("leak-menu");
+    // 5 linhas, e a ordem é a do card (por custo)
+    expect(within(menu).getByTestId("leak-menu-0").textContent).toContain("−14.3");
+    expect(within(menu).getByTestId("leak-menu-4").textContent).toContain("−4.4");
+    // o leak aberto não navega para si mesmo
+    // jest-dom nao esta instalado neste projeto: a propriedade do DOM diz a mesma coisa
+    expect((within(menu).getByTestId("leak-menu-1") as HTMLButtonElement).disabled).toBe(true);
+    expect((within(menu).getByTestId("leak-menu-2") as HTMLButtonElement).disabled).toBe(false);
+  });
+
+  it("avançar vai para a PRIMEIRA mão do próximo leak", async () => {
+    // Trocar de leak precisa de uma chamada extra, porque o replayer abre por MÃO e a playlist
+    // do próximo leak é outra lista. A primeira mão é a mais cara, que é a ordem da lista.
+    const { aoIr } = monta();
+    const col = await screen.findByTestId("leak-coluna");
+    evLeakHands.mockResolvedValue({
+      total: 19, loss_bb: 9.6, limit: 1, offset: 0,
+      street: "preflop", action_taken: "fold", best_action: "raise",
+      hands: [MAO(99, "KsQs", 1.9, 77)],
+    });
+    fireEvent.click(within(col).getByTestId("leak-proximo"));
+    await waitFor(() => expect(aoIr).toHaveBeenCalledWith(
+      "/replayer?t=77&h=H99&leak=preflop:fold:raise"));
+    // o próximo do SEGUNDO leak é o terceiro da lista, e não o quarto nem o primeiro
+    expect(evLeakHands).toHaveBeenLastCalledWith("preflop", "fold", "raise", 50, 1);
+  });
+
+  it("no último leak o botão de avançar não existe", async () => {
+    // Botão que não faz nada ensina o jogador a não confiar no botão.
+    cleanup();
+    const aoIr = vi.fn();
+    render(<ColunaDoLeak spot={{ street: "preflop", actionTaken: "shove", bestAction: "fold" }}
+                         lastN={50} handId="H3" hrefDaMao={(h) => `/x?h=${h}`}
+                         hrefEmOutroLeak={() => "/x"} aoIr={aoIr} />);
+    await screen.findByTestId("leak-coluna");
+    expect(screen.queryByTestId("leak-proximo")).toBeNull();
   });
 
   it("não empurra a mesa: é absolute e só aparece no desktop", async () => {
