@@ -121,7 +121,7 @@ export function ColunaDoLeak({ spot, lastN, handId, hrefDaMao, hrefEmOutroLeak, 
   return (
     <aside
       data-testid="leak-coluna"
-      className="hidden lg:flex absolute right-0 top-0 z-20 w-[clamp(240px,22vw,300px)] max-h-full flex-col overflow-hidden rounded-xl border border-border bg-hud-surface/95 backdrop-blur"
+      className="hidden lg:flex absolute right-0 top-0 z-20 w-[clamp(136px,11vw,168px)] max-h-full flex-col overflow-hidden rounded-xl border border-border bg-hud-surface/95 backdrop-blur"
     >
       {/* QUAL leak, e onde ele está na lista do dashboard */}
       <div className="flex items-start justify-between gap-2 border-b border-border px-3 py-2">
@@ -133,11 +133,13 @@ export function ColunaDoLeak({ spot, lastN, handId, hrefDaMao, hrefEmOutroLeak, 
             data-testid="leak-menu-toggle"
             className="flex w-full items-center gap-1.5 text-left disabled:cursor-default"
           >
-            <span className="min-w-0 flex-1 truncate text-[12px] font-bold">
+            {/* Duas linhas, porque em 150px "CALL -> FOLD preflop" nao cabe numa: o nome do leak
+                e a informacao que o dono pediu para ver, entao ele quebra em vez de ser cortado. */}
+            <span className="min-w-0 flex-1 text-[11px] font-bold leading-tight">
               <span className="font-mono uppercase">{formatAction(spot.actionTaken)}</span>
               <span className="text-muted-foreground"> → </span>
               <span className="font-mono uppercase text-primary">{formatAction(spot.bestAction)}</span>
-              <span className="font-mono text-[10px] font-normal text-muted-foreground"> · {spot.street}</span>
+              <span className="block font-mono text-[9px] font-normal text-muted-foreground">{spot.street}</span>
             </span>
             {leaks.length >= 2 && (
               <ChevronDown className={cn("size-3 shrink-0 text-muted-foreground transition-transform",
@@ -178,8 +180,9 @@ export function ColunaDoLeak({ spot, lastN, handId, hrefDaMao, hrefEmOutroLeak, 
                 )}
               >
                 <span className="w-3 shrink-0 font-mono text-[9px] text-muted-foreground/60">{i + 1}</span>
-                <span className="min-w-0 flex-1 truncate font-mono">
-                  {formatAction(l.action_taken)} → {formatAction(l.best_action)} · {l.street}
+                <span className="min-w-0 flex-1 truncate font-mono text-[10px]"
+                      title={`${formatAction(l.action_taken)} → ${formatAction(l.best_action)} · ${l.street} · ${l.count} spots`}>
+                  {formatAction(l.action_taken)} → {formatAction(l.best_action)}
                 </span>
                 <span className="shrink-0 font-mono text-[10px] tabular-nums text-red-400">
                   −{l.loss_bb.toFixed(1)}
@@ -199,6 +202,9 @@ export function ColunaDoLeak({ spot, lastN, handId, hrefDaMao, hrefEmOutroLeak, 
               type="button"
               onClick={() => aoIr(hrefDaMao(m.hand_id))}
               data-testid={`leak-coluna-mao-${m.decision_id}`}
+              title={`${m.hero_cards ?? "?"} · ${m.position ?? "?"}`
+                     + (m.stack_bb != null ? ` · ${Math.round(m.stack_bb)}bb` : "")
+                     + ` · −${m.ev_loss_bb.toFixed(2)}bb`}
               aria-current={atual ? "true" : undefined}
               className={cn(
                 "flex w-full items-center gap-2.5 border-b border-border/50 px-3 py-2 text-left transition-colors last:border-b-0",
@@ -208,11 +214,11 @@ export function ColunaDoLeak({ spot, lastN, handId, hrefDaMao, hrefEmOutroLeak, 
                 !atual && idx >= 0 && i < idx && "opacity-45",
               )}
             >
+              {/* So CARTAS e CUSTO (16/09, decisao do dono): a coluna cobria o assento do BB na
+                  mesa, e assento e stack ja estao NA MESA com a mao aberta -- na lista eram
+                  repeticao ocupando a largura que faltava. Seguem no title. */}
               <HeroHand cards={m.hero_cards} />
-              <span className="min-w-0 flex-1 truncate font-mono text-[9px] text-muted-foreground">
-                {m.position ?? "—"}
-                {m.stack_bb != null ? ` · ${Math.round(m.stack_bb)}bb` : ""}
-              </span>
+              <span className="flex-1" />
               <span className="font-mono text-[10px] tabular-nums text-red-400">
                 −{m.ev_loss_bb.toFixed(2)}
               </span>
@@ -221,7 +227,8 @@ export function ColunaDoLeak({ spot, lastN, handId, hrefDaMao, hrefEmOutroLeak, 
         })}
       </div>
 
-      <div className="flex items-center justify-between gap-2 border-t border-border px-3 py-1.5">
+      {/* Empilhado, nao lado a lado: em 150px os dois na mesma linha se cortavam. */}
+      <div className="flex flex-col gap-1 border-t border-border px-3 py-1.5">
         <span className="font-mono text-[9px] uppercase tracking-widest-2 text-muted-foreground">
           {t("navigation.leakColunaPe", {
             i: idx >= 0 ? idx + 1 : "—", n: dados.total, bb: dados.loss_bb.toFixed(1),

@@ -87,6 +87,24 @@ describe("coluna do leak", () => {
     expect(linha.textContent).toContain("−2.28");
   });
 
+  it("a linha mostra só cartas e custo, e o resto vai para o title", async () => {
+    // Decisão do dono (16/09) depois de ver a coluna cobrindo o assento do BB na mesa: assento e
+    // stack já estão NA MESA quando a mão está aberta, então na lista eram repetição ocupando a
+    // largura que faltava. A coluna caiu de ~300px para ~150px.
+    //
+    // O guarda não mede pixel (jsdom não faz layout): ele trava o que ENCHE a linha. Se alguém
+    // voltar a pôr assento e stack no texto, a largura volta a crescer atrás.
+    monta();
+    const col = await screen.findByTestId("leak-coluna");
+    const linha = within(col).getByTestId("leak-coluna-mao-2");
+    expect(linha.textContent).toContain("−2.28");
+    expect(linha.textContent).not.toContain("UTG");     // assento
+    expect(linha.textContent).not.toContain("bb");      // stack
+    // e a informação não se perdeu: está no title, para quem procura uma mão específica
+    expect(linha.getAttribute("title")).toContain("HJ");
+    expect(linha.getAttribute("title")).toContain("67bb");
+  });
+
   it("marca a mão atual e apaga as que já passaram", async () => {
     monta("H3");
     const col = await screen.findByTestId("leak-coluna");
