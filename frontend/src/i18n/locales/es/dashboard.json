@@ -636,7 +636,6 @@
     "trendHintUp": "línea subiendo = mejorando",
     "leakHandsTitle": "{{n}} manos · {{bb}}bb perdidos",
     "leakHandsPartial": "mostrando {{n}} de {{total}}",
-    "leakHandsMismatch": "La lista tiene {{lista}} manos y la fila dice {{linha}}. Algo está fuera de lugar, y el número de la fila es el que vale.",
     "leakHandsEmpty": "Ninguna mano con costo medido en este spot.",
     "leakHandsError": "No se pudieron cargar las manos de este leak.",
     "leakHandsOpen": "replay",

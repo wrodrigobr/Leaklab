@@ -4,6 +4,49 @@ Todas as mudanÃ§as notÃ¡veis neste projeto serÃ£o documentadas aqui.
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
+## A lista de maos do leak parou de acusar o nosso proprio defeito na tela (15/09)
+
+O dono, olhando producao: a linha dizia "FOLD -> CALL - river - 4 spots - -34,0bb" e, ao abrir,
+a lista trazia CINCO maos somando 34,2bb, com um aviso amarelo: "A lista tem 5 maos e a linha diz
+4. Alguma coisa esta fora do lugar, e o numero da linha e o que vale". Resposta dele, e ela esta
+certa: "quem autorizou uma mensagem como esta? isto e bug, e tem que ser corrigido".
+
+**Fui eu, em 09/09 (commit 3ec27e8f), e a decisao estava errada.** Escrevi o aviso como
+salvaguarda de honestidade. Divergencia entre dois numeros NOSSOS e defeito nosso, e mostra-la ao
+jogador transfere a ele um problema que ele nao pode resolver, na tela em que ele estuda.
+Deteccao de defeito nosso vive na suite, nao na vitrine. A mensagem saiu, com a chave nas 3
+locales.
+
+**A causa fui eu tambem, no MESMO dia do deploy.** O conserto do VER-4 tirou multiway postflop
+de tudo que soma e ranqueia, e o card passou a excluir. `get_maos_do_leak` (a lista) ficou de
+fora da varredura das 23 rotas porque ela nao soma nada, so lista. Medido na conta do dono em
+producao: das 9 maos do grupo, a `9h6d` (BB, 0,20bb) e a UNICA com
+`n_active_opponents = 2`, e 34,2 menos 34,0 e exatamente 0,20. Regra 7: o conserto causou dano
+que o bug nao causava.
+
+Eram **tres** implementacoes da mesma pergunta, e o teste encontrou a terceira: o card
+(`get_ev_summary`), a rota `/player/ev-leaks` (`get_ev_leaks`) e a lista. Agora existe
+`decisao_entra_no_leak`, e as tres a chamam.
+
+**A zona de ICM ficou de fora da regua, e isso e declarado.** `get_ev_leaks` aplica um filtro que
+o card nao aplica (`icm_pressure <> 'high'`, porque ali o gabarito e chipEV puro). Medi antes de
+escolher: **784 decisoes com ICM alto e custo acima de 0,05bb, somando 590,6bb**, 7,2% de todas
+as decisoes com custo. Alinhar por baixo mudaria o numero de leak de todos os jogadores
+retroativamente, o que e veredito em massa e decisao do dono. A regua segue o card, que e a
+superficie que o jogador le, e o parametro `icm` continua na assinatura para quando a decisao
+vier.
+
+**Por que o guarda que existia nao pegou:** `test_maos_do_leak` tinha o caso da reconciliacao
+desde 09/09, rodava e passava verde. O semeador gravava `n_active_opponents` e `icm_pressure`
+como NULL em TODAS as decisoes, ou seja nunca exercitou a condicao que separa a linha da lista.
+Teste ancorado no efeito, nao na condicao. O seed agora tem uma mao multiway e uma em zona de
+ICM, e quebrei o guarda de proposito: com a lista voltando a ignorar multiway, ele acusa
+exatamente o numero da tela do dono (linha 3, lista 4).
+
+Suites: test_maos_do_leak 5/5, ev_leaks 4/4, portas_do_ev 4/4, multiway_fora_dos_agregados 5/5,
+janela_do_dashboard 16/16, suite api 278/278, MaosDoLeak.test 3/3, tsc limpo.
+
+---
 ## A tela do spot passa a contar como o mercado conta (15/09)
 
 O dono comparou o nosso BTN 10bb com o GTO Wizard: la Allin 33,5% e Raise 5,6%, aqui All-in

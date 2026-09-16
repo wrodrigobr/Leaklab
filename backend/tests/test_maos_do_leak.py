@@ -36,7 +36,13 @@ from database.repositories import (_adapt, get_ev_summary, get_maos_do_leak)    
 
 
 def _semeia(decisoes):
-    """decisoes = [(street, action_taken, best_action, ev_loss_bb, stack_bb)]"""
+    """decisoes = [(street, action_taken, best_action, ev_loss_bb, stack_bb)] ou, com as duas
+    colunas que este teste NAO gravava e que deixaram o defeito de 15/09 passar verde,
+    [(street, action_taken, best_action, ev_loss_bb, stack_bb, n_ativos, icm)].
+
+    `n_active_opponents` e `icm_pressure` ficavam NULL em todas as decisoes semeadas, e a linha
+    do card exclui as duas coisas. O guarda da reconciliacao existia, rodava e nunca exercitou a
+    condicao que separa a linha da lista: teste ancorado no efeito, nao na condicao."""
     init_db()
     conn = get_conn()
     for t in ('decisions', 'tournaments', 'users'):
@@ -46,20 +52,33 @@ def _semeia(decisoes):
         conn.execute(_adapt("INSERT INTO tournaments (id, user_id, tournament_id, tournament_name, hero, played_at, imported_at) "
                             "VALUES (?, 1, ?, ?, 'Hero', datetime('now'), datetime('now'))"),
                      (tid, 'T%d' % tid, 'Torneio %d' % tid))
-    for i, (street, jogada, ideal, ev, stack) in enumerate(decisoes, start=1):
+    for i, d in enumerate(decisoes, start=1):
+        street, jogada, ideal, ev, stack = d[:5]
+        n_ativos = d[5] if len(d) > 5 else 1
+        icm      = d[6] if len(d) > 6 else 'low'
         conn.execute(_adapt("""INSERT INTO decisions
             (id, tournament_id, hand_id, street, position, hero_cards, board, action_taken, best_action,
-             score, label, ev_loss_bb, ev_loss_source, stack_bb, num_players)
-            VALUES (?, ?, ?, ?, 'BTN', 'AhKh', '[]', ?, ?, 0.4, 'small_mistake', ?, 'solver_hand', ?, 9)"""),
-            (i, 1 if i % 2 else 2, 'H%d' % i, street, jogada, ideal, ev, stack))
+             score, label, ev_loss_bb, ev_loss_source, stack_bb, num_players,
+             n_active_opponents, icm_pressure)
+            VALUES (?, ?, ?, ?, 'BTN', 'AhKh', '[]', ?, ?, 0.4, 'small_mistake', ?, 'solver_hand', ?, 9,
+                    ?, ?)"""),
+            (i, 1 if i % 2 else 2, 'H%d' % i, street, jogada, ideal, ev, stack, n_ativos, icm))
     conn.commit(); conn.close()
 
 
 #: um leak gordo, um magro, e um par de acoes DIFERENTE na mesma street (a armadilha)
+#:
+#: As duas ultimas linhas sao o defeito de 15/09, escrito como semente. A tela do dono dizia
+#: "FOLD -> CALL - river - 4 spots" e a lista abria com CINCO maos: a sobrando era multiway
+#: (`n_active_opponents = 2`), que a LINHA exclui desde o conserto do VER-4 e a LISTA nao
+#: excluia. O caso de ICM `high` e a mesma familia, e era latente.
 SEED = ([('flop', 'fold', 'call', 2.0, 40.0)] * 6
         + [('flop', 'fold', 'shove', 5.0, 40.0)] * 2
         + [('turn', 'fold', 'call', 1.0, 40.0)] * 3
-        + [('flop', 'fold', 'call', 0.01, 40.0)] * 4)      # abaixo do corte de 0,05bb
+        + [('flop', 'fold', 'call', 0.01, 40.0)] * 4       # abaixo do corte de 0,05bb
+        + [('river', 'fold', 'call', 3.0, 40.0)] * 2       # o leak de river, heads-up
+        + [('river', 'fold', 'call', 0.2, 40.0, 2, 'low')]     # MULTIWAY: fora dos dois
+        + [('river', 'fold', 'call', 1.5, 40.0, 1, 'high')])    # zona de ICM: fora dos dois
 
 
 def test_a_lista_reconcilia_com_TODA_linha_do_card():
