@@ -24,7 +24,8 @@ import sys
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 
 from database.repositories import _adapt, get_conn          # noqa: E402
-from leaklab.card_verdict import carta_nao_acusa_fold_vs_allin   # noqa: E402
+from leaklab.card_verdict import (carta_nao_acusa_fold_vs_allin,   # noqa: E402
+                                  gto_label_de_quality)
 from leaklab.decision_engine_v11 import facing_allin_row        # noqa: E402
 
 # `facing_allin_row` e a FONTE UNICA de "a aposta enfrentada e all-in" (facing_bet >=
@@ -143,8 +144,14 @@ def main():
             print('cancelado')
             return
         for d in absolvidas:
+            # TRADUZ antes de gravar: `_q1` e vocabulario da CARTA ('correct') e a coluna
+            # `gto_label` so entende o do banco ('gto_correct'). A primeira versao gravou cru
+            # em 83 decisoes de producao, e o ELO, que nao pontua valor fora do vocabulario,
+            # simplesmente descartou as 83 -- um jogador caiu 0,2 por um conserto que so
+            # removia acusacoes.
             conn.execute(_adapt("UPDATE decisions SET gto_label = ?, ev_loss_bb = NULL, "
-                                "ev_loss_source = NULL WHERE id = ?"), (d['_q1'], d['id']))
+                                "ev_loss_source = NULL WHERE id = ?"),
+                         (gto_label_de_quality(d['_q1']), d['id']))
         conn.commit()
         print('gravadas: %d' % len(absolvidas))
     finally:

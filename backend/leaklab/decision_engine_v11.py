@@ -1278,18 +1278,13 @@ def evaluate_decision(input_data: Dict[str, Any]) -> Dict[str, Any]:
             final_score = min(final_score, 0.18)    # cap em 'marginal'
         # Persistir gto_label/gto_action preflop no DB (save_decisions lê result['gto'])
         if quality and quality != 'unknown':
-            _QUALITY_TO_GTO_LABEL = {
-                'correct':             'gto_correct',
-                'acceptable':          'gto_mixed',
-                'gto_minor_deviation': 'gto_minor_deviation',
-                'minor_mistake':       'gto_minor_deviation',
-                'leak':                'gto_critical',
-                'major_leak':          'gto_critical',
-            }
+            # A traducao mora em `card_verdict` (fonte unica do vocabulario) desde 16/09: o
+            # mapa era LOCAL aqui, e um script que precisou dele gravou 'correct' cru em 83
+            # decisoes de producao, valor que o ELO nao pontua.
+            from leaklab.card_verdict import gto_label_de_quality as _lbl_de_quality
             # Tema 1: rebaixa o gto_label crítico quando o custo de EV é minúsculo. A regra
             # vive em `card_verdict` (fonte única) porque o card a aplica também — VER-6.
-            _gto_lbl = _rebaixa_por_custo(_QUALITY_TO_GTO_LABEL.get(quality, 'gto_critical'),
-                                          quality, _pf_evloss)
+            _gto_lbl = _rebaixa_por_custo(_lbl_de_quality(quality), quality, _pf_evloss)
             # EV sem fonte declarada nao sai do motor: a regua `ev_loss_trustworthy` decide
             # PELA fonte, e um numero orfao vira a violacao PROCED no acervo (5 linhas em
             # producao, todas ev=0.0 sem fonte — inofensivas na soma e erradas na proveniencia).

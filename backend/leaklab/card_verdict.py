@@ -296,6 +296,35 @@ def carta_colapsada_por_commit_total(quality, recomendadas, spot, acao_jogada):
     return 'correct', ['call'], False
 
 
+#: Vocabulario do banco para `decisions.gto_label`, e a traducao do vocabulario da CARTA
+#: (`action_quality`) para ele.
+#:
+#: ── Por que e publico (16/09) ──────────────────────────────────────────────────────────────
+#:
+#: O mapa vivia como variavel LOCAL dentro de `run_decision_engine`, e por isso o script que
+#: aplicou a absolvicao de fold vs all-in gravou `gto_label = 'correct'` em 83 decisoes de
+#: producao -- vocabulario da carta num campo que so entende `gto_correct`. Efeito medido:
+#: `decision_score` devolve None para valor fora do vocabulario, entao as 83 sairam do ELO em
+#: vez de contarem como acerto, e um jogador CAIU 0,2 de rating por um conserto que so removia
+#: acusacoes. Quem traduz agora mora aqui, e `test_vocabulario_do_gto_label` fecha a porta.
+GTO_LABELS = ('gto_correct', 'gto_mixed', 'gto_minor_deviation', 'gto_critical')
+
+QUALITY_TO_GTO_LABEL = {
+    'correct':             'gto_correct',
+    'acceptable':          'gto_mixed',
+    'gto_minor_deviation': 'gto_minor_deviation',
+    'minor_mistake':       'gto_minor_deviation',
+    'leak':                'gto_critical',
+    'major_leak':          'gto_critical',
+}
+
+
+def gto_label_de_quality(quality: str) -> str:
+    """Traduz a qualidade da CARTA para o rotulo do BANCO. Desconhecido vira `gto_critical`,
+    que e o conservador: nunca absolve por ignorancia."""
+    return QUALITY_TO_GTO_LABEL.get(quality, 'gto_critical')
+
+
 def carta_nao_acusa_fold_vs_allin(quality, ev_loss, *, facing_allin, acao_jogada,
                                   equity, equity_exigida):
     """A carta ABSOLVE o fold contra all-in quando o preco nao fecha: `(quality, ev_loss)`.

@@ -114,6 +114,47 @@ def test_a_fiacao_do_motor_passa_os_numeros_certos():
     assert "'ev_loss_bb': None" in trecho, trecho[:400]
 
 
+def test_o_vocabulario_do_gto_label_e_FECHADO():
+    """O erro que custou 83 decisoes de producao (16/09).
+
+    O script que aplicou a absolvicao gravou `gto_label = 'correct'`, que e o vocabulario da
+    CARTA (`action_quality`), num campo que so entende o do BANCO (`gto_correct`). O mapa que
+    traduz era uma variavel LOCAL dentro de `run_decision_engine`, invisivel para quem
+    escrevesse qualquer outro consumidor.
+
+    O efeito nao foi cosmetico: `decision_score` devolve None para valor fora do vocabulario,
+    entao as 83 decisoes sairam do ELO em vez de contarem como acerto -- e um jogador CAIU 0,2
+    de rating por um conserto que so removia acusacoes. Foi o sinal errado (queda onde so podia
+    subir) que me fez desconfiar.
+    """
+    from leaklab.card_verdict import (GTO_LABELS, QUALITY_TO_GTO_LABEL,
+                                      gto_label_de_quality)
+    from leaklab.elo_engine import GTO_LABEL_SCORE
+
+    # 1) tudo o que o mapa produz e pontuado pelo ELO. Sem isto, um rotulo "valido" pode sair
+    #    do rating sem ninguem notar, que e exatamente o que aconteceu.
+    for quality, rotulo in QUALITY_TO_GTO_LABEL.items():
+        assert rotulo in GTO_LABELS, (quality, rotulo)
+        assert rotulo in GTO_LABEL_SCORE, ('o ELO nao pontua %r' % rotulo, quality)
+
+    # 2) o vocabulario da carta NUNCA vale como rotulo do banco
+    for quality in ('correct', 'acceptable', 'leak', 'major_leak'):
+        assert quality not in GTO_LABELS, quality
+        assert gto_label_de_quality(quality) in GTO_LABELS, quality
+
+    # 3) desconhecido cai no conservador: nunca absolve por ignorancia
+    assert gto_label_de_quality('coisa-que-nao-existe') == 'gto_critical'
+    assert gto_label_de_quality('') == 'gto_critical'
+
+    # 4) o SCRIPT traduz antes de gravar (a fiacao, que foi onde o erro morou)
+    import inspect
+
+    from scripts import dry_run_fold_vs_allin as dry
+    fonte = inspect.getsource(dry)
+    i = fonte.index('UPDATE decisions SET gto_label')
+    assert 'gto_label_de_quality(' in fonte[i:i + 400], fonte[i:i + 300]
+
+
 if __name__ == '__main__':
     passed = failed = 0
     for nome, fn in sorted(list(globals().items())):
