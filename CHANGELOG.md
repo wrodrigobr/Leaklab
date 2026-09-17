@@ -5,6 +5,69 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## "0% SUA JOGADA" com selo de aceitavel, e o veredito que piscava (16/09)
+
+Duas queixas do dono na mesma sessao, e as duas eram a mesma familia de defeito: a tela afirmando
+o que os dados nao sustentam.
+
+**O veredito que piscava.** "ao clicar em uma acao...antes do veredito final, esta aparecendo
+rapidamente o veredito 'errada', e na sequencia aparece o veredito real". A causa nao era
+animacao: enquanto a resposta do `/grade` nao chegava, a mesa julgava com `grade` nulo, e a ultima
+linha de `nivelDoGrade` chutava `is_correct ? correta : errada` -- ou seja ERRADA, sempre. O
+comentario daquela linha ja dizia o certo ("a regua da casa manda calar em vez de afirmar")
+enquanto o codigo fazia o contrario, e um teste exigia o chute, congelando o defeito.
+
+O flash era o sintoma barato. O caro: uma falha do `/grade` deixava a acusacao inventada PARADA na
+tela. Agora `nivelDoGrade` devolve `null` sem base, a mesa mostra "avaliando" no intervalo e "sem
+avaliacao" quando a chamada falha, e a mao sem veredito nao entra no placar (contar como erro
+seria a mesma invencao; como acerto, o oposto).
+
+**"0% SUA JOGADA" com selo de aceitavel.** A captura: SB 96s a 10bb, ele limpou, o card mostrava
+"✓ aceitavel" com "o GTO joga: allin 100%" na linha de baixo. O selo endossava o que a linha
+seguinte desmentia.
+
+Medido antes de mexer, porque a primeira hipotese (o custo esta errado) era falsa:
+
+- a carta de EV e a de ESTRATEGIA concordam sobre a melhor acao em **98,1%** dos nos de RFI;
+- o custo do limp e real: pela carta, jam vale 0,4038 e limp 0,3757, diferenca de 0,028bb;
+- e ele passa na regua de confianca da casa (`ev_loss_trustworthy`).
+
+Os numeros estavam certos. O que estava errado era o VOCABULARIO: o motor chamava o mesmo lance de
+`major_leak` e o Practice de "aceitavel", **em 36,5% das combinacoes** (1.266 casos em que o motor
+acusa e o Practice endossa).
+
+A regua que o dono descreveu quando definimos os niveis tinha tres situacoes: "dentro do maior %
+gto, dentro de um % mais baixo, ou totalmente fora". A implementacao tinha duas: com frequencia
+zero o custo decidia sozinho, e custo pequeno devolvia "aceitavel". Agora a frequencia decide o
+LADO e o custo so a severidade dentro dele. Impacto medido em 3.893 combinacoes: "aceitavel" cai
+de 36,8% para 6,8% e "errada" sobe de 20% para 50% (contando TODAS as acoes que cada mesa oferece,
+e nao as escolhas de um jogador).
+
+**Dois pisos, e nenhum deles e gosto.**
+
+O de CUSTO (0,005bb) existe porque "fora e fora" chamaria de erro uma jogada que custa 0,001bb --
+medido: `HJ Q5s 50bb` abrindo custa isso. A tela mostra duas casas, entao abaixo de 0,005 ela
+exibe "-0,00bb", e chamar de erro um numero que a propria tela mostra como zero e contradicao na
+mesma linha. A primeira tentativa foi 0,05, e o teste do caso do dono a derrubou: o limp dele
+custa 0,028, ou seja o piso engoliria justamente o lance da queixa.
+
+O de FREQUENCIA (1%) apareceu por acidente: medindo se existia dado contraditorio, o medidor
+imprimiu um caso de 2,552bb com frequencia "0.0" dentro de um filtro que exigia `> 0`. Era 0,4%,
+que arredonda para zero na impressao. Sem piso, a regra "o GTO faz, mas pouco" absolveria uma
+perna que o solver joga 0,4% do tempo e que custa 2,5bb. 1% e o MESMO numero que o card usa para
+listar as outras pernas: o que nao aparece na tela nao pode justificar o veredito nela.
+
+**O que nao foi perdido.** O dono havia pedido antes que o custo separasse casos que o
+`action_quality` achatava (0,15bb e 9,21bb recebiam o mesmo "erro grave"). Com quatro niveis nao
+cabem tres faixas de custo dentro do lado ruim, e ele cortou o quinto nivel de proposito -- entao
+o rotulo da o lado e a ordem de grandeza, e o numero ao lado dele da o detalhe fino.
+
+E um dado que fechou a duvida: em 1.642 combinacoes com frequencia positiva e custo medido, **zero**
+tem custo acima de 3bb (o maior e 2,552bb, e justamente com 0,4% de frequencia). Dado contraditorio
+consigo mesmo, se aparecer, e resolvido pela frequencia.
+
+---
+
 ## Assento por assento, medido: a mesa do Practice nao sobrepoe mais nada (16/09)
 
 O dono, na terceira rodada: "melhorou mas vamos ter que ajustar assento por assento para nao

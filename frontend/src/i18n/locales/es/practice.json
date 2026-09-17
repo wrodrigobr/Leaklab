@@ -53,6 +53,10 @@
     "oGtoTambem": "GTO también:",
     "verDetalhe": "ver análisis",
     "suaJogada": "tu jugada",
-    "oGtoJoga": "el GTO juega:"
-  }
+    "oGtoJoga": "el GTO juega:",
+    "foraSemCusto": "fuera de la estrategia, y el costo es practicamente cero"
+  },
+  "avaliando": "evaluando",
+  "semAvaliacao": "sin evaluacion",
+  "semAvaliacaoDica": "no pudimos evaluar esta mano, y no entro en tu marcador"
 }

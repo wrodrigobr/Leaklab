@@ -3,6 +3,7 @@ import type { Unidade } from "@/lib/pratica";
 import { cn } from "@/lib/utils";
 import {
   FICHAS,
+  alturaDoHistoricoCss,
   arenaCss,
   FOLGA,
   LARGURA_DO_CENTRO,
@@ -165,29 +166,26 @@ export function MesaCompacta({ table, hero, unidade, spot, veredito }: {
           varrer nove assentos procurando fichas.
           Derivado do MESMO `seats` do servidor: `folded` é fold, `bet` acima do blind é aumento,
           e o herói é sempre o último, porque a vez é dele. */}
-      <div className="absolute inset-x-0 top-0 flex flex-wrap items-center justify-center gap-1"
-           style={{ fontSize: M.fHist }} data-testid="historico-da-mao">
+      <div className="absolute inset-x-0 top-0 flex items-center justify-center gap-1 overflow-hidden"
+           style={{ height: alturaDoHistoricoCss() }} data-testid="historico-da-mao">
         {historico(seats, hero, fmt, bb).map((h, i) => (
           <span key={i}
-                className={cn("inline-flex items-center gap-1 rounded px-1 py-0.5 font-mono uppercase tracking-wide",
+                className={cn("flex min-w-0 shrink-0 flex-col items-center rounded border px-1.5 py-0.5 font-mono uppercase leading-none",
                               h.vez
-                                ? "bg-primary/15 text-primary ring-1 ring-primary/40"
+                                ? "border-primary/50 bg-primary/15 text-primary"
                                 : h.fold
-                                  ? "bg-hud-surface text-muted-foreground/60"
-                                  : "bg-hud-surface text-foreground/90")}>
-            <span className="font-bold">{h.pos}</span>
-            <span>{h.texto}</span>
+                                  ? "border-border/40 bg-hud-surface/60 text-muted-foreground/55"
+                                  : "border-border bg-hud-surface text-foreground/90")}>
+            {/* a posicao em cima, a acao embaixo: o olho varre a linha de posicoes e desce so no
+                assento que interessa. Em duas colunas (o desenho anterior) cada item tinha
+                largura diferente e a linha ficava sem ritmo. */}
+            <span className="font-bold tracking-wide" style={{ fontSize: M.fHist }}>{h.pos}</span>
+            <span className="mt-px tracking-widest-2 opacity-75"
+                  style={{ fontSize: `calc(${M.fHist} * 0.88)` }}>{h.texto}</span>
           </span>
         ))}
       </div>
 
-      {/* O trilho: linha fina, sem preenchimento. Os assentos ficam SOBRE ela. */}
-      {/* O trilho e uma ELIPSE (`50%`), e nao um estadio (`rounded-full`), porque as posicoes
-          dos assentos sao calculadas por `naElipse`: com o trilho em estadio e os assentos em
-          elipse, os das pontas sairiam da linha. Uma forma, uma conta. */}
-      {/* `border-2` e a cor cheia: a borda fina de 1px desaparecia contra o fundo escuro, e o
-          dono pediu para engrossar. Ela e o unico tracco que define a mesa -- sem feltro
-          preenchido, se ela nao le, nao ha mesa. */}
       {/* ── A ARENA: a elipse e tudo o que pendura nela ─────────────────────────────────────
           Ela e o card menos as margens que os elementos EXIGEM (metade do pod, que fica sobre a
           linha, mais o botao do dealer, que sai para fora dela, mais a faixa do historico no

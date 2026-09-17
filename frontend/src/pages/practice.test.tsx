@@ -356,4 +356,45 @@ describe("modo Pratica", () => {
     expect(Array.isArray(tables.mock.calls[0][1].evitar)).toBe(true);
     expect(tables.mock.calls[0][0]).toBe(4);
   });
+
+  it("entre o clique e a resposta NAO aparece veredito nenhum", async () => {
+    // O dono: "ao clicar em uma acao...antes do veredito final, esta aparecendo rapidamente o
+    // veredito 'errada', e na sequencia aparece o veredito real".
+    //
+    // O guarda prende a resposta do servidor numa promessa que EU resolvo, e olha a tela no
+    // intervalo. Sem prender, o mock resolve no mesmo tick e o intervalo nao existe para ser
+    // medido -- o teste passaria verde sem nunca ver o momento do defeito.
+    let solta: (g: unknown) => void = () => {};
+    grade.mockImplementation(() => new Promise((res) => { solta = res; }));
+
+    monta();
+    await screen.findByTestId("pratica-mesa-m1");
+    const mesa = screen.getByTestId("pratica-mesa-m1");
+    fireEvent.click(within(mesa).getByRole("button", { name: /fold/i }));
+
+    // no intervalo: "avaliando", e NENHUM veredito
+    await waitFor(() => expect(within(mesa).queryByTestId("pratica-avaliando")).toBeTruthy(),
+                  { timeout: 5000 });
+    expect(within(mesa).queryByTestId("pratica-veredito"),
+           "veredito antes da resposta e uma acusacao sem dado").toBeNull();
+
+    solta({ is_correct: true, action_quality: "correct", hand_freq: { F: 0.9 }, ev_loss_bb: 0 });
+    await waitFor(() => expect(within(mesa).queryByTestId("pratica-veredito")).toBeTruthy(),
+                  { timeout: 5000 });
+    expect(within(mesa).queryByTestId("pratica-avaliando")).toBeNull();
+  });
+
+  it("se a avaliacao FALHA, a mesa diz que nao avaliou em vez de acusar", async () => {
+    // Antes deste conserto, `grade` nulo virava "errada" e ficava PARADO na tela: uma acusacao
+    // inventada, que e pior que o flash. A mao tambem nao pode entrar no placar.
+    grade.mockRejectedValue(new Error("500"));
+    monta();
+    await screen.findByTestId("pratica-mesa-m1");
+    const mesa = screen.getByTestId("pratica-mesa-m1");
+    fireEvent.click(within(mesa).getByRole("button", { name: /fold/i }));
+
+    await waitFor(() => expect(within(mesa).queryByTestId("pratica-sem-avaliacao")).toBeTruthy(),
+                  { timeout: 5000 });
+    expect(within(mesa).queryByTestId("pratica-veredito")).toBeNull();
+  });
 });

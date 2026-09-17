@@ -1,8 +1,9 @@
 import { useTranslation } from "react-i18next";
 import { Star } from "lucide-react";
+import { M } from "./geometriaDaMesa";
 import { MesaCompacta } from "@/components/practice/MesaCompacta";
 import { twFor, actionKey } from "@/lib/actionColors";
-import { nivelDoGrade, normalizaAcao, SIMBOLO_DO_NIVEL, type Nivel, type Unidade } from "@/lib/pratica";
+import { FREQ_MINIMA_PARA_EXISTIR, nivelDoGrade, normalizaAcao, SIMBOLO_DO_NIVEL, type Nivel, type Unidade } from "@/lib/pratica";
 import type { PracticeGrade, PracticeTable } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
@@ -47,7 +48,9 @@ function CardDeVeredito({ nivel, grade, acao }: {
   // as duas outras pernas da mistura, para ele ver o que o GTO faz com o resto do tempo
   const outras = freq
     ? Object.entries(freq)
-        .filter(([a, v]) => typeof v === "number" && v >= 0.01
+        // `FREQ_MINIMA_PARA_EXISTIR` e a MESMA constante que a regua usa para decidir se "o GTO
+        // faz" e verdade: uma perna que nao aparece aqui nao pode justificar um veredito.
+        .filter(([a, v]) => typeof v === "number" && v >= FREQ_MINIMA_PARA_EXISTIR
                             && normalizaAcao(a) !== normalizaAcao(acao))
         .sort((a, b) => (b[1] as number) - (a[1] as number))
         .slice(0, 2)
@@ -89,6 +92,17 @@ function CardDeVeredito({ nivel, grade, acao }: {
               `${a} ${Math.round((v as number) * 100)}%`).join(" · ")}
           </span>
         )}
+        {/* O buraco que sobrava: com frequencia ZERO e custo abaixo do piso de ruido, o nivel e
+            "aceitavel" -- e o selo de check ao lado de "0% SUA JOGADA" e a MESMA contradicao que
+            o dono fotografou, so num canto mais estreito. Aqui a frase diz as duas coisas: o GTO
+            nao faz, e nao custa nada. */}
+        {pct === 0 && nivel === "imprecisao" && (
+          <span data-testid="veredito-fora-sem-custo"
+                className="block leading-snug text-muted-foreground"
+                style={{ fontSize: "clamp(10px, 1.4cqw, 17px)" }}>
+            {t("veredito.foraSemCusto")}
+          </span>
+        )}
         {typeof grade?.ev_loss_bb === "number" && grade.ev_loss_bb !== 0 && (
           <span className="block font-mono font-bold tabular-nums text-red-400"
                 style={{ fontSize: "clamp(11px, 1.5cqw, 18px)" }}>
@@ -126,7 +140,7 @@ const COR_DO_NIVEL: Record<Nivel, string> = {
 
 export function MesaDePratica({
   mesa, foco, respondida, grade, acaoEscolhida, leakDoJogador, compacta, unidade,
-  onAgir, onFocar, onDetalhe,
+  avaliando, onAgir, onFocar, onDetalhe,
 }: {
   mesa: PracticeTable;
   /** BB (padrão) ou fichas. Quem decide é o painel; aqui só chega a escolha. */
@@ -134,6 +148,8 @@ export function MesaDePratica({
   foco: boolean;
   respondida: boolean;
   grade: PracticeGrade | null;
+  /** A resposta foi enviada e a avaliacao do servidor ainda nao voltou. */
+  avaliando: boolean;
   acaoEscolhida: string | null;
   /** posição deste spot na lista de leaks DELE, quando calha de ser um. `null` = não é. */
   leakDoJogador: number | null;
@@ -202,10 +218,34 @@ export function MesaDePratica({
             usam a mesma proporcao e nada encolhe por degrau -- e o que o GTO Wizard faz. */}
         <MesaCompacta table={mesa.table} hero="Hero" unidade={unidade}
                       spot={mesa.resumo || mesa.context}
-                      veredito={respondida && nivel
-                        ? <CardDeVeredito nivel={nivel} grade={grade}
-                                          acao={acaoEscolhida || ""} />
-                        : undefined} />
+                      veredito={
+                        // Tres estados, e nenhum deles inventa veredito. O "avaliando" existe
+                        // porque o clique precisa de resposta imediata: sem ele o jogador clica e
+                        // a mesa nao muda, o que parece travamento. O "sem avaliacao" existe
+                        // porque falha do `/grade` nao e erro DELE -- antes deste conserto ela
+                        // aparecia como "errada" e ficava parada assim.
+                        respondida && nivel
+                          ? <CardDeVeredito nivel={nivel} grade={grade}
+                                            acao={acaoEscolhida || ""} />
+                          : avaliando
+                            ? <span data-testid="pratica-avaliando"
+                                    className="block font-mono uppercase tracking-widest-2 text-muted-foreground animate-pulse"
+                                    style={{ fontSize: M.fSpot }}>
+                                {t("avaliando")}
+                              </span>
+                            : respondida
+                              ? <span data-testid="pratica-sem-avaliacao" className="block">
+                                  <span className="block font-mono uppercase tracking-widest-2 text-muted-foreground"
+                                        style={{ fontSize: M.fSpot }}>
+                                    {t("semAvaliacao")}
+                                  </span>
+                                  <span className="mt-0.5 block leading-snug text-muted-foreground/70"
+                                        style={{ fontSize: M.fHist }}>
+                                    {t("semAvaliacaoDica")}
+                                  </span>
+                                </span>
+                              : undefined
+                      } />
       </div>
 
       {/* Os botões que ESTE spot oferece, nas cores da casa (fold azul, call verde, raise

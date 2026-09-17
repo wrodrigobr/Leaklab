@@ -53,6 +53,10 @@
     "oGtoTambem": "GTO also:",
     "verDetalhe": "see analysis",
     "suaJogada": "your play",
-    "oGtoJoga": "GTO plays:"
-  }
+    "oGtoJoga": "GTO plays:",
+    "foraSemCusto": "outside the strategy, and the cost is practically zero"
+  },
+  "avaliando": "grading",
+  "semAvaliacao": "not graded",
+  "semAvaliacaoDica": "we could not grade this hand, and it is out of your score"
 }

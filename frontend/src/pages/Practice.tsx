@@ -72,7 +72,9 @@ export default function Practice() {
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState(false);
   const [foco, setFoco] = useState(0);
-  const [respostas, setRespostas] = useState<Record<number, { acao: string; grade: PracticeGrade | null }>>({});
+  const [respostas, setRespostas] = useState<
+    Record<number, { acao: string; grade: PracticeGrade | null; avaliando: boolean }>
+  >({});
   const [stats, setStats] = useState<StatsPratica>(STATS_ZERO);
   /** Quais mesas estão SEGURADAS pelo "pausar depois de". Por mesa, e não global: com as mesas
    *  girando independentes, um único sinalizador faria uma pausa na mesa 3 travar as outras. */
@@ -143,14 +145,17 @@ export default function Practice() {
     if (!mesa || respostas[i]) return;
     // Grava a escolha ANTES da resposta do servidor: sem isso, dois cliques rápidos na mesma
     // mesa mandariam duas correções, e a segunda contaria no placar de novo.
-    setRespostas((r) => ({ ...r, [i]: { acao, grade: null } }));
+    // `avaliando` e o que separa "a resposta nao voltou ainda" de "a resposta voltou vazia". Sem
+    // essa distincao a mesa julgava com `grade` nulo e acusava "errada" no intervalo, que foi o
+    // flash que o dono viu.
+    setRespostas((r) => ({ ...r, [i]: { acao, grade: null, avaliando: true } }));
     let grade: PracticeGrade | null = null;
     try {
       grade = await practice.grade(mesa.spot, acao, mesa.xp_value);
     } catch {
       grade = null;
     }
-    setRespostas((r) => ({ ...r, [i]: { acao, grade } }));
+    setRespostas((r) => ({ ...r, [i]: { acao, grade, avaliando: false } }));
     setStats((s) => acumula(s, grade, acao));
 
     const nivel = nivelDoGrade(grade, acao);
@@ -353,6 +358,7 @@ export default function Practice() {
                   foco={i === foco}
                   respondida={!!respostas[i]}
                   grade={respostas[i]?.grade ?? null}
+                  avaliando={!!respostas[i]?.avaliando}
                   acaoEscolhida={respostas[i]?.acao ?? null}
                   leakDoJogador={leakDoSpot(m)}
                   compacta={mesas.length >= 3}

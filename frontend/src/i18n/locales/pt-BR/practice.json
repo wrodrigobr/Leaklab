@@ -53,6 +53,10 @@
     "oGtoTambem": "GTO também:",
     "verDetalhe": "ver análise",
     "suaJogada": "sua jogada",
-    "oGtoJoga": "o GTO joga:"
-  }
+    "oGtoJoga": "o GTO joga:",
+    "foraSemCusto": "fora da estrategia, e o custo e praticamente zero"
+  },
+  "avaliando": "avaliando",
+  "semAvaliacao": "sem avaliacao",
+  "semAvaliacaoDica": "nao conseguimos avaliar esta mao agora, e ela nao entrou no seu placar"
 }

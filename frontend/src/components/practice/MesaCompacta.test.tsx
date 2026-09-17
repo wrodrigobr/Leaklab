@@ -149,6 +149,33 @@ describe("a mesa do Pratica", () => {
     expect(raiz.className).toContain("container-mesa");
   });
 
+  it("o historico tem a posicao em cima e a acao embaixo, com altura FIXA", () => {
+    // Pedido do dono: "a posicao em cima, a acao embaixo....dentro de um box pra cada posicao".
+    //
+    // A altura do container e FIXA e sai da geometria, e nao do conteudo: a arena desconta essa
+    // mesma faixa do topo, e se o box de duas linhas crescesse por conta propria ele empurraria a
+    // mesa para baixo sem ninguem ver -- as duas contas concordam por construcao.
+    monta();
+    const hist = screen.getByTestId("historico-da-mao");
+    // A altura NAO pode ser lida do DOM: o jsdom descarta `calc()` com `clamp`/`min` dentro, e
+    // `style` volta vazio. O guarda le o fonte, e diz por que.
+    const fonteMesa = semComentarios(readFileSync(join(import.meta.dirname, "MesaCompacta.tsx"), "utf-8"));
+    expect(fonteMesa, "a altura do historico precisa sair da geometria, nao do conteudo")
+      .toContain("height: alturaDoHistoricoCss()");
+    const fonteGeo = semComentarios(readFileSync(join(import.meta.dirname, "geometriaDaMesa.ts"), "utf-8"));
+    // as duas contas da MESMA faixa: a que a arena desconta e a que o container ocupa
+    expect(fonteGeo.match(/2\.6/g)?.length, "a faixa do historico tem de sair de um numero so")
+      .toBeGreaterThanOrEqual(2);
+    expect(hist.className, "sem isto um item a mais empurra a mesa").toContain("overflow-hidden");
+
+    const itens = [...hist.children];
+    expect(itens.length, "a varredura nao achou nenhum item do historico").toBeGreaterThan(1);
+    for (const item of itens) {
+      expect(item.className, "o box e uma COLUNA: posicao em cima, acao embaixo").toContain("flex-col");
+      expect(item.children.length, "duas linhas por box").toBe(2);
+    }
+  });
+
   it("o trilho e a BORDA da arena, e nao um raio cravado em %", () => {
     // O raio em % do card nao resolve as duas celulas (estoura em 4 mesas, sobra em 2), e a sobra
     // era o vazio no meio do feltro que o dono reclamou. Este guarda impede a volta do numero

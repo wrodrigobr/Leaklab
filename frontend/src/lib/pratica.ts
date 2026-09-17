@@ -149,7 +149,46 @@ export const FREQ_DA_MISTURA = 0.3;
  *  Calibrados nos números reais do acervo, medidos em 16/09 no BTN a 20bb: `raise` com 75o custa
  *  **0,15bb**, `fold` com KQs custa **1,70bb** e `fold` com AA custa **9,21bb**. Os três eram
  *  `major_leak` no vocabulário da carta -- sessenta vezes de diferença no mesmo rótulo. */
+/**
+ * O corte de "custa pouco", em bb. Vale SO quando o nó não tem estratégia nenhuma (`hand_freq`
+ * vazio): com estratégia, quem decide o lado é a frequência, e o custo só separa errada de grave.
+ */
 export const CUSTO_DA_IMPRECISAO = 0.5;
+/**
+ * Abaixo deste custo, em bb, uma jogada que o GTO NAO faz ainda nao e erro.
+ *
+ * ── Por que um piso existe, e por que ele e 0,005 ─────────────────────────────────────────────
+ *
+ * A regua diz que frequencia zero e o lado ruim ("totalmente fora", na descricao do dono). Sem
+ * piso, ela chamaria de errada uma jogada que custa 0,001bb -- medido: `HJ Q5s 50bb` abrindo
+ * custa exatamente isso pela carta de EV. Chamar 0,001bb de erro e preciosismo, e ensina o
+ * jogador a desconfiar do veredito quando ele mais precisa confiar.
+ *
+ * O numero nao e gosto: a tela mostra o custo com DUAS casas, entao tudo abaixo de 0,005 aparece
+ * como "-0,00bb". Chamar de erro um numero que a propria tela exibe como zero e contradicao na
+ * mesma linha. Acima disso o numero existe na tela, e o veredito pode falar dele.
+ *
+ * A primeira tentativa foi 0,05, e o proprio teste do caso do dono a derrubou: o limp dele custa
+ * 0,028bb, ou seja o piso engoliria justamente o lance que originou a queixa.
+ */
+export const PISO_DE_RUIDO_BB = 0.005;
+
+/**
+ * Abaixo desta frequencia, "o GTO faz" nao e verdade: e ruido da carta.
+ *
+ * ── Como este furo apareceu ───────────────────────────────────────────────────────────────────
+ *
+ * Medindo o acervo para saber se existia dado contraditorio (frequencia positiva com custo alto),
+ * o medidor imprimiu um caso com custo de 2,552bb e frequencia `0.0` -- dentro de um filtro que
+ * exigia `> 0`. Nao era bug do medidor: a frequencia era 0,4%, que arredonda para zero na
+ * impressao. Sem piso, a regra "o GTO faz, mas pouco -> aceitavel" absolveria uma perna que o
+ * solver joga 0,4% do tempo e que custa 2,5bb.
+ *
+ * 1% e o MESMO numero que o card ja usa para listar as outras pernas da mistura: uma perna que
+ * nao aparece na tela nao pode ser a justificativa de um veredito na mesma tela.
+ */
+export const FREQ_MINIMA_PARA_EXISTIR = 0.01;
+
 export const CUSTO_DO_ERRO_GRAVE = 3;
 
 /**
@@ -178,41 +217,80 @@ export const CUSTO_DO_ERRO_GRAVE = 3;
  * Sem custo medido (spot sem carta), o passo 3 cai no `action_quality` da carta -- é menos
  * preciso, e a alternativa seria inventar severidade onde não houve medida.
  */
-export function nivelDoGrade(g: PracticeGrade | null | undefined, acao: string): Nivel {
+/**
+ * O nivel de uma resposta, ou `null` quando nao ha base para julgar.
+ *
+ * ── Por que `null` existe ─────────────────────────────────────────────────────────────────────
+ *
+ * O dono viu o veredito "errada" piscar antes do veredito real. A causa: enquanto a resposta do
+ * servidor nao chega, a mesa chamava esta funcao com `grade` nulo, e a ultima linha chutava
+ * `is_correct ? correta : errada` -- ou seja ERRADA, sempre. O flash era o sintoma barato; o caro
+ * e que uma falha do `/grade` deixava a acusacao inventada PARADA na tela.
+ *
+ * Nao ha veredito sem dado. Quem chama decide o que dizer no lugar ("avaliando", "sem
+ * avaliacao"), e nenhuma das duas e uma acusacao.
+ */
+export function nivelDoGrade(g: PracticeGrade | null | undefined, acao: string): Nivel | null {
   const freq = g?.hand_freq || null;
   const entradas = freq
     ? Object.entries(freq).filter(([, v]) => typeof v === "number")
     : [];
+  const custo = typeof g?.ev_loss_bb === "number" ? Math.abs(g.ev_loss_bb) : null;
+  const daCarta = String(g?.action_quality || "").toLowerCase();
 
-  // ── 1: o lado bom, pela frequência ──────────────────────────────────────────────────────
-  // Acertar a ação de maior frequência e pegar uma perna que o GTO mistura com peso real são o
-  // MESMO nível, por decisão do dono. O que separa "correta" de "imprecisão" é o GTO fazer
-  // aquilo com peso, e não qual das pernas ele faz mais.
+  // ── A FREQUÊNCIA decide o LADO, e o custo a severidade ────────────────────────────────────
+  //
+  // O dono, quando definimos os níveis: "o gto deve validar se a acao indicada pelo jogador esta
+  // dentro do maior % gto (melhor jogada), se estiver dentro de um % mais baixo, ou se esta
+  // totalmente fora". São três situações, e "totalmente fora" é uma delas.
+  //
+  // A primeira versão não tinha esse terceiro lado: com frequência ZERO o custo decidia sozinho,
+  // e um custo pequeno devolvia "aceitável". O dono mandou a captura: "0% SUA JOGADA" ao lado de
+  // "✓ aceitável", com o texto "o GTO joga: allin 100%" logo abaixo. Ele chamou de bug, e é: o
+  // selo endossa o que a linha de baixo desmente.
+  //
+  // Medido antes de mexer: os números NÃO estavam errados. A carta de EV e a de estratégia
+  // concordam sobre a melhor ação em 98,1% dos nós, o custo de 0,028bb do limp é real, e passa na
+  // régua de confiança da casa (`ev_loss_trustworthy`). O que estava errado era o vocabulário: o
+  // motor chamava o mesmo lance de `major_leak` e o Practice de "aceitável", e isso em 36,5% das
+  // combinações.
   if (entradas.length) {
     const maior = entradas.reduce((a, b) => (b[1] > a[1] ? b : a));
     const daEscolhida = entradas.find(([a]) => normalizaAcao(a) === normalizaAcao(acao));
     const pct = daEscolhida ? daEscolhida[1] : 0;
+
+    // 1) dentro do maior %, ou numa perna que o GTO mistura com peso real
     if (pct > 0 && (pct >= maior[1] || pct >= FREQ_DA_MISTURA)) return "correta";
+    // 2) o GTO FAZ, mas pouco. `FREQ_MINIMA_PARA_EXISTIR` e o que separa "faz pouco" de ruido
+    //    da carta: uma perna de 0,4% nao e estrategia, e pode custar 2,5bb (medido).
+    if (pct >= FREQ_MINIMA_PARA_EXISTIR) return "imprecisao";
+    // 3) totalmente fora: o GTO não faz isso. O custo já não escolhe o lado, só o tamanho --
+    //    menos quando ele é indistinguível de zero (ver `PISO_DE_RUIDO_BB`).
+    if (custo != null && custo < PISO_DE_RUIDO_BB) return "imprecisao";
+    if (custo != null) return custo <= CUSTO_DO_ERRO_GRAVE ? "errada" : "grave";
+    if (daCarta === "major_leak") return "grave";
+    if (daCarta === "leak") return "errada";
+    // sem custo e sem vocabulário: o lado está decidido pela frequência, e a severidade do meio
+    // é a única que não exagera para nenhum dos dois lados.
+    return "errada";
   }
 
-  // ── 3: está fora da mistura, e o CUSTO decide a severidade ──────────────────────────────
-  const custo = typeof g?.ev_loss_bb === "number" ? Math.abs(g.ev_loss_bb) : null;
+  // ── Sem estratégia nenhuma: o custo é tudo o que há ───────────────────────────────────────
   if (custo != null) {
     if (custo < CUSTO_DA_IMPRECISAO) return "imprecisao";
     if (custo <= CUSTO_DO_ERRO_GRAVE) return "errada";
     return "grave";
   }
-
-  // ── sem custo medido: o vocabulário da carta, que é o que há ─────────────────────────────
-  const q = String(g?.action_quality || "").toLowerCase();
-  if (q === "major_leak") return "grave";
-  if (q === "leak") return "errada";
-  if (q === "acceptable") return "imprecisao";
-  if (q === "correct") return "correta";
-  // Sem qualidade legível não há veredito. `is_correct` sozinho é o que o endpoint devolve
-  // quando não houve carta, e a régua da casa manda calar em vez de afirmar.
-  return g?.is_correct ? "correta" : "errada";
+  if (daCarta === "major_leak") return "grave";
+  if (daCarta === "leak") return "errada";
+  if (daCarta === "acceptable") return "imprecisao";
+  if (daCarta === "correct") return "correta";
+  // Sem qualidade legível não há veredito. `is_correct` sozinho é o que o endpoint devolve quando
+  // não houve carta, e a régua da casa manda calar em vez de afirmar -- este comentário já dizia
+  // isto enquanto a linha abaixo dele afirmava "errada".
+  return null;
 }
+
 
 /** `F`, `R2.5`, `allin`, `jam` viram um vocabulário só, porque o `hand_freq` usa o código do nó
  *  do solver e as opções usam o nome da ação. Comparar cru daria "melhor jogada" nunca. */
@@ -248,6 +326,9 @@ export const STATS_ZERO: StatsPratica = {
  */
 export function acumula(s: StatsPratica, g: PracticeGrade | null | undefined, acao: string): StatsPratica {
   const n = nivelDoGrade(g, acao);
+  // Sem veredito ela nao entra: contar como erro seria a invencao que este conserto tirou da
+  // tela, e contar como acerto seria o oposto. A mao fica fora, e a mesa diz que ficou.
+  if (n == null) return s;
   const perdeu = typeof g?.ev_loss_bb === "number" ? Math.abs(g.ev_loss_bb) : 0;
   return {
     maos: s.maos + 1,
@@ -258,7 +339,7 @@ export function acumula(s: StatsPratica, g: PracticeGrade | null | undefined, ac
 }
 
 /** Se a tela deve ESPERAR o jogador depois desta resposta, conforme o "pausar depois de". */
-export function devePausar(pausa: Pausa, nivel: Nivel): boolean {
+export function devePausar(pausa: Pausa, nivel: Nivel | null): boolean {
   if (pausa === "acao") return true;
   if (pausa === "erro") return nivel === "errada" || nivel === "grave";
   return false;

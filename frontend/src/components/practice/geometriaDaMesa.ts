@@ -139,6 +139,13 @@ export function alturaDoHistorico(w: number, h: number): number {
   return px("fHist", w, h) * 2.6;
 }
 
+/** A MESMA faixa em CSS. O container do historico usa esta altura FIXA, e nao a altura do
+ *  conteudo: assim a conta que a arena desconta e a altura que o historico realmente ocupa, por
+ *  construcao, e um box de duas linhas nao empurra a mesa para baixo. */
+export function alturaDoHistoricoCss(): string {
+  return `calc(${M.fHist} * 2.6)`;
+}
+
 /** A margem que a arena precisa, em px: o pod fica SOBRE a linha e o botão sai para fora dela. */
 export function margemDaArena(w: number, h: number): number {
   return px("assento", w, h) / 2 + px("dealer", w, h) + FOLGA;
