@@ -4,6 +4,8 @@ import {
   ASPECTO_MIN,
   arena,
   aspectoDaMesa,
+  alturaDoHistorico,
+  margensDaArena,
   caixasDaMesa,
   direcaoDaFicha,
   direcaoDasCartas,
@@ -41,6 +43,8 @@ import {
 /** Os tamanhos que importam. Cada um entrou aqui por uma captura ou uma medição. */
 const CARDS = [
   { nome: "4 mesas (2x2) em 1680", w: 830, h: 440 },
+  { nome: "4 mesas no monitor do dono (captura 17/09)", w: 910, h: 375 },
+  { nome: "janela ACHATADA ao extremo", w: 1820, h: 260 },
   { nome: "4 mesas em 1366x768", w: 683, h: 330 },
   { nome: "2 mesas lado a lado", w: 830, h: 880 },
   { nome: "1 mesa no monitor", w: 1660, h: 880 },
@@ -136,7 +140,7 @@ describe("a geometria da mesa", () => {
     // O pedido do dono, em três recados: "em telas menores, a mesa esta achatando a um ponto que
     // fica totalmente ilegivel", "temos que ter um limite minimo de achatamento", e a captura da
     // mesa VERTICAL deles com "e se reduzir muito, ele vira pra celular".
-    expect(aspectoDaMesa(1000, 400)).toBeCloseTo(2.4, 6);   // largo: usa o próprio aspecto
+    expect(aspectoDaMesa(1000, 400)).toBeCloseTo(2.5, 6);   // largo: usa o próprio aspecto
     expect(aspectoDaMesa(400, 600)).toBeCloseTo(0.667, 3);  // alto: a mesa fica VERTICAL
     // e a faixa segura as pontas: sem ela a mesa viraria uma fita
     expect(aspectoDaMesa(1000, 50)).toBe(ASPECTO_MAX);
@@ -160,6 +164,59 @@ describe("a geometria da mesa", () => {
       expect(a.y, `${nome} saiu pelo topo`).toBeGreaterThanOrEqual(0);
       expect(a.x + a.w, `${nome} saiu pela direita`).toBeLessThanOrEqual(w + 0.001);
       expect(a.y + a.h, `${nome} saiu por baixo`).toBeLessThanOrEqual(h + 0.001);
+    }
+  });
+
+  it("a arena ENCOSTA no espaco livre: sobra so a margem que o desenho pede", () => {
+    // O bug de 17/09, nas palavras do dono: "a mesa nao esta ocupando o espaco disponivel no seu
+    // box....temos que aproveitar mais os espacos pra mesa ficar maior". No card dele (910x375) a
+    // arena era 407x170 -- 20% da area do card, com 252px sobrando de CADA lado.
+    //
+    // Duas causas, e este caso cobre as duas: a margem era um numero igual nos quatro lados (180
+    // dos 350px de altura util), e o teto do aspecto em 2,4 recusava os 3,57 que o espaco oferecia.
+    for (const card of CARDS) {
+      const a = arena(card.w, card.h);
+      const m = margensDaArena(card.w, card.h, a.aspecto, a.w, a.h);
+      const livreW = card.w - m.esq - m.dir;
+      const livreH = card.h - alturaDoHistorico(card.w, card.h) - m.topo - m.base;
+      const oferecido = livreW / livreH;
+      if (oferecido >= ASPECTO_MIN && oferecido <= ASPECTO_MAX) {
+        // dentro da faixa a mesa toma TUDO: os dois eixos encostam
+        expect(a.w, `${card.nome}: sobrou largura`).toBeGreaterThan(livreW - 2);
+        expect(a.h, `${card.nome}: sobrou altura`).toBeGreaterThan(livreH - 2);
+      } else {
+        // fora da faixa ela para de deformar, mas o eixo APERTADO ainda encosta -- e a sobra fica
+        // no outro, que é o limite mínimo de achatamento que ele pediu antes
+        const apertado = oferecido > ASPECTO_MAX ? a.h : a.w;
+        const livre = oferecido > ASPECTO_MAX ? livreH : livreW;
+        expect(apertado, `${card.nome}: nao encostou em nenhum eixo`).toBeGreaterThan(livre - 2);
+      }
+    }
+  });
+
+  it("o card do dono (910x375) usa a largura que o espaco OFERECE", () => {
+    // Este caso ancora o TETO, que o anterior nao ancora: fora da faixa ele aceita a mesa parar de
+    // deformar, e foi isso que escondeu o problema. Com o teto em 2,4 a arena media 493 de 733px
+    // livres e sobravam 209px de cada lado -- o card oferece 3,57, e o teto tem de cobrir isso.
+    const a = arena(910, 375);
+    const m = margensDaArena(910, 375, a.aspecto, a.w, a.h);
+    const livreW = 910 - m.esq - m.dir;
+    expect(a.w, "a arena recusou a largura livre").toBeGreaterThan(livreW - 2);
+    expect(
+      (a.w * a.h) / (910 * 375),
+      "a mesa voltou a ocupar pouco do card",
+    ).toBeGreaterThan(0.4);
+  });
+
+  it("a margem e medida LADO A LADO, e nao um numero igual nos quatro", () => {
+    // O que pendura de um assento depende da DIRECAO dele: na reta as cartas saem para cima ou
+    // para baixo, e pendura a ALTURA de uma carta; so na ponta elas saem para o lado, e pendura a
+    // LARGURA das duas. Reservar a largura em cima é reservar espaço para algo que nunca vai lá.
+    for (const { w, h, nome } of CARDS) {
+      const a = arena(w, h);
+      const m = margensDaArena(w, h, a.aspecto, a.w, a.h);
+      expect(m.topo, `${nome}: a margem de cima e a de lado`).toBeLessThan(m.esq);
+      expect(m.base, `${nome}: a margem de baixo e a de lado`).toBeLessThan(m.dir);
     }
   });
 

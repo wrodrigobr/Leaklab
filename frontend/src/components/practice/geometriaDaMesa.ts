@@ -84,11 +84,34 @@ export const LARGURA_DO_CENTRO = 0.46;
  * em volta -- que é o "limite mínimo de achatamento" que o dono pediu, e o que impede a mesa de
  * virar uma fita quando a janela encurta.
  *
- * 0,62 é o retrato do celular (a mesa fica vertical, como na captura do GTO Wizard em tela
- * estreita) e 2,4 é o monitor largo com quatro mesas.
+ * ── O que NÃO decide estes dois números, e por quê ────────────────────────────────────────────
+ *
+ * O medidor de colisão. Medido em 17/09, com a varredura das 81 mãos sobre os 14 tamanhos de card:
+ * ela fica LIMPA com teto em 2,4, 3, 3,6, 4,3, 6 e até 14, e com piso em 0,62, 0,55, 0,48 e 0,40.
+ * O controle em 0,1 acusa 972 mãos, então o medidor detecta. Colisão simplesmente não é o que se
+ * perde aqui -- num estádio, achatar faz as RETAS crescerem e os assentos se espalharem nelas, ao
+ * contrário da elipse, onde eles se amontoavam nas pontas. O teto de 2,4 é herança da elipse, e
+ * sobreviveu à troca de forma sem ninguém conferir se ainda protegia algo.
+ *
+ * O que decide é o aspecto que os cards REAIS oferecem, medido card a card:
+ *
+ *   desktop  1660x880 → 2,30 · 830x440 → 2,57 · 683x330 → 2,96 · 910x375 → 3,62 · 830x300 → 4,30
+ *   celular  430x620 → 0,54 · 390x480 → 0,65 · 360x522 → 0,50 · 320x460 → 0,48 · 390x700 → 0,40
+ *
+ * A faixa cobre isso com uma folga, e é por isso que ela abre: com o teto em 2,4 o card de 910x375
+ * do dono usava 493 de 733px de largura livre e ele cobrou ("a mesa nao esta ocupando o espaço
+ * disponivel no seu box"). O primeiro valor que eu escrevi aqui foi 3,6, e o guarda daquele card
+ * derrubou por 0,02: a margem nova mudou o espaço livre e com ele o aspecto oferecido, que subiu de
+ * 3,57 para 3,62. Número escolhido para um caso específico erra quando o caso se move.
+ *
+ * Acima de 3,7 a mesa PARA, porque é aí que ela deixa de parecer mesa: uma mesa só numa janela de
+ * 400px de altura oferece 6,75, e numa de 260px oferece 13,71 -- 1.820x122 é uma fita, que foi
+ * exatamente a reclamação anterior dele ("a mesa está achatando a um ponto que fica totalmente
+ * ilegível"). O card de 830x300, que é o mínimo que a configuração deixa abrir, oferece 4,30 e
+ * também para: ali sobram 51px de cada lado, de propósito.
  */
-export const ASPECTO_MIN = 0.62;
-export const ASPECTO_MAX = 2.4;
+export const ASPECTO_MIN = 0.46;
+export const ASPECTO_MAX = 3.7;
 
 export function aspectoDaMesa(livreW: number, livreH: number): number {
   const doEspaco = livreH > 0 ? livreW / livreH : ASPECTO_MAX;
@@ -101,49 +124,115 @@ export function alturaDoHistorico(w: number, h: number): number {
 }
 
 /**
- * A margem que a arena precisa, em px.
+ * ── A margem, lado por lado, medida no DESENHO ────────────────────────────────────────────────
  *
- * O pod fica SOBRE a linha, então metade dele já está fora; e o que pendura para fora do contorno
- * é a carta do herói ou o botão do dealer. Reservar a carta é o que permite que ela saia para fora
- * em vez de disputar o miolo, onde nove assentos e a ficha de cada um já não deixam espaço.
+ * A primeira versão pedia UM número e o aplicava nos quatro lados: o pior caso de tudo o que
+ * pendura, em qualquer direção. Isso custou o espaço que o dono cobrou em 17/09 ("a mesa nao esta
+ * ocupando o espaço disponivel no seu box"). Medido no card dele, 910x375: a margem gastava 180
+ * dos 350px de altura útil, mais da metade, e sobrava arena de 170px para a mesa inteira.
+ *
+ * O erro era tratar as direções como se fossem a mesma. Numa mesa larga, o assento de uma reta
+ * joga as cartas para CIMA ou para BAIXO -- e o que pendura ali é a ALTURA da carta (42px). Só o
+ * assento de uma ponta joga as cartas para o LADO, e aí pendura a LARGURA das duas (64px).
+ * Reservar 64 em cima também é reservar espaço para algo que nunca vai lá.
+ *
+ * Então a margem de cada lado é o quanto o desenho REALMENTE passa daquela borda: percorro os nove
+ * assentos, monto o pod, as cartas e o botão de cada um com as mesmas funções que o componente usa,
+ * e pergunto quanto cada caixa avança de cada lado. Nada é estimado.
  */
-export function margemDaArena(w: number, h: number): number {
-  // A LARGURA das cartas entra na conta, e não só a altura: com a mesa VERTICAL (o celular) as
-  // pontas ficam no topo e na base, e as cartas saem na horizontal -- reservar 34px para algo que
-  // ocupa 54px deixava as cartas fora do card em 36 das 81 mãos. Medido, não previsto.
-  const largura = px("cartaW", w, h) * 2 + 2;
-  const pendura = Math.max(largura, px("cartaH", w, h), px("dealer", w, h));
-  return px("assento", w, h) / 2 + pendura + FOLGA;
+export function margensDaArena(w: number, h: number, a: number, arenaW: number, arenaH: number) {
+  const pod = px("assento", w, h);
+  const cartasW = px("cartaW", w, h) * 2 + 2;
+  const cartasH = px("cartaH", w, h);
+  const dl = px("dealer", w, h);
+  const m = { esq: 0, dir: 0, topo: 0, base: 0 };
+
+  const considere = (bx: number, by: number, bw: number, bh: number) => {
+    m.esq = Math.max(m.esq, -bx);
+    m.topo = Math.max(m.topo, -by);
+    m.dir = Math.max(m.dir, bx + bw - arenaW);
+    m.base = Math.max(m.base, by + bh - arenaH);
+  };
+
+  for (let i = 0; i < 9; i++) {
+    const [pctX, pctY] = noContorno(i, a);
+    const cx = (pctX / 100) * arenaW;
+    const cy = (pctY / 100) * arenaH;
+
+    considere(cx - pod / 2, cy - pod / 2, pod, pod);
+
+    const dirCartas = direcaoDasCartas(i, a);
+    const dCartas = distancia(dirCartas, pod, cartasW, cartasH);
+    considere(
+      cx + dirCartas[0] * dCartas - cartasW / 2,
+      cy + dirCartas[1] * dCartas - cartasH / 2,
+      cartasW,
+      cartasH,
+    );
+
+    const dirD = direcaoDoDealer(i, a);
+    const dD = distanciaDoDealer(pod);
+    considere(cx + dirD[0] * dD - dl / 2, cy + dirD[1] * dD - dl / 2, dl, dl);
+  }
+
+  return {
+    esq: Math.max(0, m.esq) + FOLGA,
+    dir: Math.max(0, m.dir) + FOLGA,
+    topo: Math.max(0, m.topo) + FOLGA,
+    base: Math.max(0, m.base) + FOLGA,
+  };
 }
 
 /**
  * A arena em px: onde o estádio cabe inteiro, com tudo o que pendura nele.
  *
- * A margem PEDIDA pode não caber num card minúsculo, e aí ela cede em vez de a arena virar
- * negativa (arena de largura negativa desenha a mesa do avesso, e o medidor mediria isso como se
- * fosse mesa). A arena fica CENTRADA no espaço livre, para a sobra não virar um vazio de um lado.
+ * ── Por que um laço, e não uma conta ──────────────────────────────────────────────────────────
+ *
+ * A margem depende da ORIENTAÇÃO da mesa (numa mesa larga pendura altura de carta em cima; numa
+ * vertical, largura de carta), e a orientação depende do espaço que sobra depois da margem. Começo
+ * com a arena ocupando o card inteiro, meço a margem, refaço a arena, e repito até a largura parar
+ * de mudar.
+ *
+ * O laço tinha três passadas fixas, e o guarda do card do dono pegou o resíduo: a arena fechava em
+ * 738,9px onde havia 741,7 livres. Não é erro de conta, é convergência -- os pontos do contorno
+ * andam quando a arena cresce, e com eles a margem. Parar em `mudou < 0,25px` fecha, e o teto de
+ * seis passadas está aqui para o laço nunca ser infinito num card degenerado.
+ *
+ * A margem PEDIDA pode não caber, e aí ela cede em proporção em vez de a arena virar negativa
+ * (arena de largura negativa desenha a mesa do avesso, e o medidor mediria isso como se fosse mesa).
  */
 export function arena(w: number, h: number) {
   const hist = alturaDoHistorico(w, h);
-  const pedida = margemDaArena(w, h);
-  const m = Math.min(pedida, w * 0.4, Math.max(0, (h - hist) * 0.4));
-  const livreW = Math.max(1, w - 2 * m);
-  const livreH = Math.max(1, h - hist - 2 * m);
-  const a = aspectoDaMesa(livreW, livreH);
+  let aw = Math.max(1, w);
+  let ah = Math.max(1, h - hist);
+  let x = 0;
+  let y = hist;
+  let a = aspectoDaMesa(aw, ah);
 
-  let aw = livreW;
-  let ah = aw / a;
-  if (ah > livreH) {
-    ah = livreH;
-    aw = ah * a;
+  for (let passo = 0; passo < 6; passo++) {
+    const antes = aw;
+    const m = margensDaArena(w, h, a, aw, ah);
+    // a margem cede em PROPORÇÃO: cortar um lado só deslocaria a mesa para fora do centro
+    const cedeW = Math.min(1, (w * 0.8) / Math.max(1, m.esq + m.dir));
+    const cedeH = Math.min(1, ((h - hist) * 0.8) / Math.max(1, m.topo + m.base));
+    const esq = m.esq * cedeW;
+    const topo = m.topo * cedeH;
+    const livreW = Math.max(1, w - (m.esq + m.dir) * cedeW);
+    const livreH = Math.max(1, h - hist - (m.topo + m.base) * cedeH);
+
+    a = aspectoDaMesa(livreW, livreH);
+    aw = livreW;
+    ah = aw / a;
+    if (ah > livreH) {
+      ah = livreH;
+      aw = ah * a;
+    }
+    x = esq + (livreW - aw) / 2;
+    y = hist + topo + (livreH - ah) / 2;
+    if (passo > 0 && Math.abs(aw - antes) < 0.25) break;
   }
-  return {
-    x: m + (livreW - aw) / 2,
-    y: hist + m + (livreH - ah) / 2,
-    w: aw,
-    h: ah,
-    aspecto: a,
-  };
+
+  return { x, y, w: aw, h: ah, aspecto: a };
 }
 
 /**

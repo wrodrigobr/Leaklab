@@ -5,6 +5,47 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## A mesa agora ENCOSTA no espaco do card (17/09)
+
+O dono, com a captura de quatro mesas: "a mesa nao esta ocupando o espaço disponivel no seu
+box....temos que aproveitar mais os espacos pra mesa ficar maior". Medido no card dele (910x375): a
+arena tinha 407x170, ou 20% da area do card, com 252px sobrando de CADA lado. Agora tem 739x205, ou
+44%. Nos outros tamanhos: uma mesa no monitor 32% -> 55%, quatro mesas em 1366x768 34% -> 42%,
+celular 29% -> 37%.
+
+Duas causas, as duas do desenho anterior.
+
+**A margem era UM numero aplicado nos quatro lados.** O pior caso de tudo o que pendura, em
+qualquer direcao. Mas a direcao importa: numa mesa larga, o assento de uma reta joga as cartas para
+cima ou para baixo, e ali pendura a ALTURA de uma carta (42px); so o assento da ponta joga para o
+lado, e ai pendura a LARGURA das duas (64px). Reservar 64 em cima e reservar espaco para algo que
+nunca vai la, e no card do dono isso gastava 180 dos 350px de altura util. A margem agora e medida
+lado a lado: percorro os nove assentos, monto o pod, as cartas e o botao de cada um com as MESMAS
+funcoes que a tela usa, e pergunto quanto cada caixa avanca de cada borda. Nada e estimado.
+
+**O teto de aspecto 2,4 era heranca da elipse.** Na elipse, achatar amontoa os assentos nas pontas,
+e o teto protegia disso. No estadio, achatar faz as RETAS crescerem e os assentos se espalharem
+nelas. O teto sobreviveu a troca de forma sem ninguem conferir se ainda protegia algo -- e nao
+protegia: a varredura das 81 maos fica limpa com teto em 2,4, 3, 3,6, 4,3, 6 e ate 14 (o controle em
+0,1 acusa 972 maos, entao o medidor detecta). **Colisao nao decide este numero.** O que decide e o
+aspecto que os cards REAIS oferecem, medido card a card: desktop de 2,30 a 4,30, celular de 0,40 a
+0,65. A faixa nova e 0,46 a 3,7, e acima dela a mesa para de propósito: uma mesa so numa janela de
+260px de altura oferece 13,71, e 1.820x122 e a fita que ele reclamou antes.
+
+**O guarda que faltava, e que pegou o meu proprio numero.** Tres casos novos: a arena tem de
+ENCOSTAR no espaco livre; a margem de cima tem de ser MENOR que a de lado (a condicao do conserto,
+e nao o efeito); e o card de 910x375 tem de usar a largura que o espaco oferece -- este ultimo
+ancora o TETO, que o primeiro nao ancora, porque fora da faixa ele aceita a mesa parar. Foi ele que
+derrubou o primeiro valor que eu escrevi, 3,6, por 0,02: a margem nova mudou o espaco livre e com
+ele o aspecto oferecido, que subiu de 3,57 para 3,62. Numero escolhido para um caso especifico erra
+quando o caso se move. Os tres foram quebrados de proposito (regra 2): com o teto de volta em 2,4
+caem dois, e com a margem de volta a ser um numero unico caem tres, a varredura de colisao inclusa.
+
+Front 754/754 em 106 arquivos, tsc limpo. O card de 910x375 e a janela achatada de 1820x260 entraram
+na varredura permanente.
+
+---
+
 ## A mesa virou um ESTADIO que acompanha o espaco, e a geometria virou UMA conta (17/09)
 
 Cinco recados do dono na mesma sessao, todos sobre a mesma coisa: "em telas menores, a mesa esta
