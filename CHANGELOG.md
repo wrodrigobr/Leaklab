@@ -5,6 +5,47 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## Assento por assento, medido: a mesa do Practice nao sobrepoe mais nada (16/09)
+
+O dono, na terceira rodada: "melhorou mas vamos ter que ajustar assento por assento para nao
+haver sobreposicoes das cartas, fichas, valores".
+
+**Ajustar pela captura conserta o assento da captura.** Cada rodada anterior atacou o que estava
+na imagem e deixou de pe o que nao estava naquela mao. Entao o ajuste passou a ser MEDIDO: a
+geometria saiu do componente para `geometriaDaMesa.ts`, e `caixasDaMesa` devolve a caixa de cada
+elemento em px. O teste varre as 9 posicoes do heroi contra as 9 do botao, em quatro tamanhos de
+card, e exige zero sobreposicao e zero vazamento. Sao 81 maos por tamanho; a captura dele era uma
+delas.
+
+**Tres defeitos que a varredura achou de imediato**, todos invisiveis nas capturas anteriores:
+
+1. **O pod saia do lugar quando o heroi tinha cartas.** Pod e cartas viviam no mesmo flex
+   centrado no ponto do trilho, entao o CONJUNTO era centrado e o assento escorregava para fora
+   da elipse. Na captura do dono, o pod do UTG+2 aparece fora da linha da mesa. Agora o pod fica
+   ancorado no ponto e as cartas saem por fora do fluxo.
+2. **O botao do dealer caia sobre as cartas do heroi** nos lugares 2, 4, 6 e 8, quando o heroi era
+   o botao. A tangente tem dois sentidos e eu nao escolhia: agora o sentido e o que se afasta do
+   lado das cartas daquele lugar, e e fixo por lugar, porque um "D" que muda de lado conforme a
+   mao tira do jogador a referencia de onde procurar o botao.
+3. **A ficha de aposta dos dois lugares das pontas entrava no texto do centro**, que ficava na
+   mesma altura deles. O centro estreitou de 52% para 46%: duas linhas de texto legivel valem
+   mais que uma linha por cima da ficha.
+
+**E um erro meu que a medicao pegou:** eu usei `(-sin, cos)` como tangente, que e a tangente do
+CIRCULO. Numa elipse ela e `(-rx*sin, ry*cos)`, e com a errada o "D" apontava parcialmente para o
+centro, de onde vem a ficha. O guarda da tangente tambem estava errado pela mesma razao (exigia
+perpendicularidade ao raio, que so vale no circulo) e passou a exigir o que a intencao pede: a
+direcao nao aponta nem para o centro nem para a borda.
+
+**O guarda mais importante nao e o medidor.** A formula da distancia do botao existe duas vezes,
+em px (o medidor) e em `calc` (o que o navegador resolve), porque o componente nao sabe o tamanho
+do card. Duas escritas da mesma regra e o defeito da regra 5, entao um teste RESOLVE a string de
+CSS com valores concretos e exige que ela bata com a conta em px. Verificado quebrando: com a
+formula do CSS alterada, o medidor passou verde nas 81 maos e SO esse teste acusou. Sem ele, a
+varredura aprovaria uma mesa que o jogador nao ve.
+
+---
+
 ## A mesa do Practice media so a largura, e sobrava altura (16/09)
 
 O dono, olhando duas mesas na tela: "acho que ta tudo muito pequeno...os pods dos jogadores, a

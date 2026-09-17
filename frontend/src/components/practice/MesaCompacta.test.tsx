@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect, afterEach } from "vitest";
 import { render, screen, cleanup, within } from "@testing-library/react";
-import { MEDIDA, MesaCompacta, historico, lerCartas } from "./MesaCompacta";
+import { MesaCompacta, historico, lerCartas } from "./MesaCompacta";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import type { DrillTableState } from "@/lib/api";
@@ -140,35 +140,21 @@ describe("a mesa do Pratica", () => {
     expect(raiz.className).toContain("container-mesa");
   });
 
-  it("cada medida usa a LARGURA e a ALTURA do card, pelo menor dos dois", () => {
-    // Comportamento, e não o texto do fonte: `MEDIDA` é exportada e conferida pelo que PRODUZ.
-    //
-    // Por que as duas dimensões: com duas mesas a célula fica ~830x880 e com quatro ~830x440.
-    // A LARGURA é a mesma nos dois casos, então medir só por ela (o que esta mesa fazia até
-    // 16/09) deixava os assentos do tamanho de mesa apertada com o dobro de espaço vertical
-    // sobrando -- o "está tudo muito pequeno" do dono. A fração da ALTURA entra para o assento
-    // não estourar o trilho quando a célula é baixa.
-    expect(MEDIDA(34, 7, 13, 80)).toBe("clamp(34px, min(7cqw, 13cqh), 80px)");
-  });
-
-  it("NENHUMA medida da mesa escapa da MEDIDA", () => {
+  it("NENHUM tamanho da mesa fica cravado no componente", () => {
     // A varredura N+1 da regra 5. O botão do dealer era `size-3.5` + `text-[7px]` cravados, e
-    // ficou de fora das duas primeiras calibragens justamente porque não estava nesta tabela --
-    // o dono teve de citá-lo por nome.
+    // ficou de fora das duas primeiras calibragens justamente porque não estava na tabela de
+    // medidas -- o dono teve de citá-lo por nome. A tabela mora em `geometriaDaMesa.ts`; aqui o
+    // guarda é que o COMPONENTE não escreva tamanho nenhum por conta própria.
     const fonte = readFileSync(join(import.meta.dirname, "MesaCompacta.tsx"), "utf-8");
-    const tabela = fonte.slice(fonte.indexOf("const M = {"), fonte.indexOf("} as const;"));
-    const linhas = tabela.match(/^ {2}[A-Za-z]+:.*$/gm) ?? [];
-
-    // CONTROLE: sem isto, um recorte errado deixaria a varredura passar verde sobre zero linhas.
-    expect(linhas.length, "a varredura não achou nenhuma medida").toBeGreaterThan(10);
-    for (const l of linhas) {
-      expect(l, "medida fora da MEDIDA: não escala com o card").toContain("MEDIDA(");
-    }
-
-    // E nenhum tamanho cravado sobrou no corpo do componente (px ou classe de tamanho fixo).
     const corpo = fonte.slice(fonte.indexOf("export function MesaCompacta"));
-    expect(corpo, "tamanho de fonte cravado no JSX volta a não escalar").not.toMatch(/text-\[\d+px\]/);
-    expect(corpo, "size-N do Tailwind é tamanho fixo").not.toMatch(/size-\d/);
+
+    // CONTROLE: sem isto, um recorte errado deixaria as buscas abaixo passarem verdes sobre uma
+    // string vazia.
+    expect(corpo.length, "o recorte do componente falhou").toBeGreaterThan(2000);
+
+    expect(corpo, "tamanho de fonte cravado no JSX nao escala com o card").not.toMatch(/text-\[\d+px\]/);
+    expect(corpo, "size-N do Tailwind e tamanho fixo").not.toMatch(/size-\d/);
+    expect(corpo, "w-N/h-N do Tailwind sao tamanho fixo").not.toMatch(/[wh]-\d+(\.\d+)?/);
   });
 
   it("a `.container-mesa` expoe a ALTURA, senao toda medida cai no piso", () => {

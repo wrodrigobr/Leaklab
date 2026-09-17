@@ -1,6 +1,16 @@
 import type { DrillTableState } from "@/lib/api";
 import type { Unidade } from "@/lib/pratica";
 import { cn } from "@/lib/utils";
+import {
+  FICHAS,
+  FOLGA,
+  LARGURA_DO_CENTRO,
+  LUGARES,
+  M,
+  TRILHO,
+  deslocamentoDoDealerCss,
+  estiloDasCartas,
+} from "./geometriaDaMesa";
 
 /**
  * A mesa do modo Prática: um trilho, assentos redondos e nada mais.
@@ -36,118 +46,12 @@ import { cn } from "@/lib/utils";
  * `pratica_preflop.mesa_do_spot`. Isto é desenho, e desenho diferente para uso diferente é o
  * oposto de duplicar a verdade. A `PokerTableV3` do replayer não mudou uma linha.
  */
-
-/** Os nove lugares SOBRE o trilho, em %, com o herói embaixo e a ordem de ação girando. */
-const TRILHO = { cx: 50, cy: 50, rx: 46, ry: 41 };
-
-/**
- * ── O defeito que o pedido do dono revelou ────────────────────────────────────────────────────
- *
- * "coloque as fichas dentro da mesa, e aproxima mais todos os jogadores para a borda da mesa".
- *
- * A primeira versão tinha as posições escritas A MÃO, e elas não ficavam sobre a elipse do
- * trilho: com o trilho indo de y=12 a y=88 e assentos em y=8 e y=92, eles ficavam FORA da linha
- * -- e as fichas, deslocadas a partir deles, ainda mais para fora. Eram duas listas de números
- * descrevendo a mesma elipse, que é como elas divergem.
- *
- * Agora o trilho é um objeto e as posições são DERIVADAS dele por ângulo: mudar o trilho move os
- * assentos e as fichas junto, e eles não podem sair da linha por descuido.
- */
-
-/** Da borda do card ao trilho, em %, derivado do próprio trilho (o CSS precisa do inset). */
+/** Da borda do card ao trilho, em %, derivado do proprio trilho (o CSS precisa do inset). */
 const INSET = {
   y: `${TRILHO.cy - TRILHO.ry}%`,
   x: `${TRILHO.cx - TRILHO.rx}%`,
 };
 
-/** Os ângulos dos nove lugares, com o herói embaixo (90) e a ordem de ação girando. */
-const ANGULOS = [90, 130, 170, 210, 250, 290, 330, 10, 50] as const;
-
-/** `(x, y)` em %, sobre a elipse do trilho. `escala < 1` traz para DENTRO da mesa. */
-function naElipse(grau: number, escala = 1): [number, number] {
-  const r = (grau * Math.PI) / 180;
-  return [
-    TRILHO.cx + TRILHO.rx * escala * Math.cos(r),
-    TRILHO.cy + TRILHO.ry * escala * Math.sin(r),
-  ];
-}
-
-/** Os nove lugares, SOBRE o trilho. */
-const LUGARES: [number, number][] = ANGULOS.map((a) => naElipse(a));
-
-/** A ficha de cada assento: mesma direção, mais perto do centro -- dentro da mesa. `0.66` a
- *  deixa claramente dentro do trilho e ainda colada no assento dela, para não haver dúvida de
- *  quem apostou. */
-const FICHAS: [number, number][] = ANGULOS.map((a) => naElipse(a, 0.8));
-
-/**
- * As medidas, calibradas NA captura do GTO Wizard (o dono: "mantenha as mesmas proporcoes do gto
- * wizard, tamanho de carta, tamanho das fontes, fichas").
- *
- * Medido na tela de quatro mesas deles, onde cada mesa ocupa ~840x440: assento de 36px, carta de
- * 30x38, posicao em 9px e stack em 11px, ficha de 7px com o valor em 10px.
- *
- * Em `cqw` (a largura do CONTAINER, que e o card da mesa) e nao em px fixo: assim uma mesa so,
- * que tem celula maior, cresce na mesma proporcao em vez de ficar com elementos de miniatura no
- * meio de espaco vazio. O `clamp` poe piso e teto, para nem sumir numa tela estreita nem virar
- * cartaz num monitor largo.
- *
- * A primeira versao desta mesa usava px fixos com um degrau para "compacta", e ficou tudo pequeno
- * -- foi o que o dono viu. O GTO Wizard nao encolhe nada com quatro mesas: ele usa o mesmo
- * tamanho, e e a mesa inteira que e mais economica.
- */
-/**
- * Uma medida da mesa, em funcao do espaco que ela REALMENTE tem.
- *
- * ── O defeito que o dono viu, e que nao era "fonte pequena" ───────────────────────────────────
- *
- * "acho que ta tudo muito pequeno...os pods dos jogadores, a ficha do dealer, as fontes, os
- * nomes". Medido na captura dele: com duas mesas lado a lado cada celula fica com ~830 de largura
- * por ~880 de altura, e as medidas escalavam SO pela largura (`cqw`). Largura e a dimensao que
- * NAO muda entre duas e quatro mesas -- as duas dao ~830 --, entao os assentos ficavam do tamanho
- * de mesa apertada enquanto a elipse esticava para 880 de altura. Dai os dois sintomas juntos:
- * elemento de miniatura E aquele vazio enorme no meio do feltro.
- *
- * Agora cada medida e o MENOR entre a fracao da largura e a fracao da altura:
- *
- * - a fracao da ALTURA e quem manda quando a celula e baixa (quatro mesas numa tela de 768px),
- *   e impede que um assento grande estoure o trilho;
- * - a fracao da LARGURA e quem manda quando a celula e alta, e e o que faz a mesa aproveitar o
- *   espaco vertical que hoje ela desperdica.
- *
- * `piso` e `teto` em px seguram as pontas: numa tela estreita nada some, num monitor largo nada
- * vira cartaz. O piso tambem e a rede de seguranca se `cqh` vier 0 (container sem altura
- * resolvida), porque `min()` com zero seria zero -- e ai o `clamp` devolve o piso, que e
- * legivel, em vez de fazer a mesa desaparecer.
- *
- * Exige `container-type: size` na `.container-mesa` (a `inline-size` nao expoe `cqh`).
- */
-export function MEDIDA(piso: number, porLargura: number, porAltura: number, teto: number): string {
-  return `clamp(${piso}px, min(${porLargura}cqw, ${porAltura}cqh), ${teto}px)`;
-}
-
-const M = {
-  assento: MEDIDA(34, 7, 13, 80),
-  cartaW:  MEDIDA(30, 5.2, 9.7, 66),
-  cartaH:  MEDIDA(40, 7.1, 13.2, 90),
-  fPos:    MEDIDA(9, 1.75, 3.25, 20),
-  fStack:  MEDIDA(11, 2.1, 3.9, 24),
-  // o rank cede um degrau para o simbolo caber embaixo dele
-  fCarta:  MEDIDA(16, 3.0, 5.6, 38),
-  // O naipe fica em ~80% do rank: o rank identifica a carta, o naipe identifica a MAO (suited
-  // ou nao, que e metade da decisao preflop).
-  fNaipe:  MEDIDA(13, 2.4, 4.5, 30),
-  fSpot:   MEDIDA(10, 1.7, 3.2, 20),
-  fPote:   MEDIDA(14, 2.6, 4.8, 32),
-  // A ficha e o valor carregam a informacao que decide a jogada (quanto ha para pagar).
-  fFicha:  MEDIDA(11, 2.1, 3.9, 24),
-  ficha:   MEDIDA(9, 1.6, 3.0, 20),
-  fHist:   MEDIDA(9, 1.6, 3.0, 18),
-  // O botao do dealer era `size-3.5` com `text-[7px]` CRAVADOS, os unicos numeros da mesa que
-  // nao escalavam com nada. O dono os citou por nome: "a ficha do dealer".
-  dealer:  MEDIDA(14, 2.6, 4.8, 32),
-  fDealer: MEDIDA(8, 1.5, 2.8, 18),
-} as const;
 
 /**
  * Baralho de 4 cores: a cor do quadrado É o naipe, e ela lê de longe melhor que o símbolo.
@@ -301,7 +205,8 @@ export function MesaCompacta({ table, hero, unidade, spot, veredito }: {
 
           E o veredito aqui é melhor que o veredito no rodapé do card: o olho já está no centro,
           onde ele acabou de olhar o pote para decidir. */}
-      <div className="absolute left-1/2 top-1/2 w-[52%] -translate-x-1/2 -translate-y-1/2 text-center">
+      <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-center"
+           style={{ width: `${LARGURA_DO_CENTRO * 100}%` }}>
         {veredito ?? (
           <>
             {spot && (
@@ -353,7 +258,11 @@ export function MesaCompacta({ table, hero, unidade, spot, veredito }: {
           <div key={s.seat} data-testid={`assento-${s.pos || s.seat}`}
                className="absolute -translate-x-1/2 -translate-y-1/2"
                style={{ left: `${x}%`, top: `${y}%` }}>
-            <div className="relative flex items-center gap-1">
+            {/* O pod fica ANCORADO no ponto do trilho, e as cartas e o botão saem por fora do
+                fluxo. Antes os três viviam no mesmo flex centrado no ponto: com cartas, o
+                conjunto era centrado e o POD saía do lugar dele -- na captura do dono o assento
+                do UTG+2 aparece fora da linha da mesa. */}
+            <div className="relative" style={{ width: M.assento, height: M.assento }}>
               {/* o assento: círculo com posição e stack DENTRO */}
               <div style={{ width: M.assento, height: M.assento }}
                    className={cn(
@@ -377,7 +286,8 @@ export function MesaCompacta({ table, hero, unidade, spot, veredito }: {
 
               {/* As cartas DELE, ao lado do assento: onde o olho já está. */}
               {ehHeroi && cartas.length === 2 && (
-                <span className="flex gap-0.5" data-testid="cartas-do-heroi">
+                <span className="absolute flex gap-0.5" data-testid="cartas-do-heroi"
+                      style={estiloDasCartas((s.seat - 1) % 9)}>
                   {/* Rank grande E o SÍMBOLO do naipe. O dono, vendo a versão só com cor: "as
                       cartas agora estao ruins, pq ja nao sei qual o naipe delas".
                       A cor sozinha é o que o GTO Wizard faz, e funciona lá porque o jogador
@@ -401,9 +311,14 @@ export function MesaCompacta({ table, hero, unidade, spot, veredito }: {
               {/* o botão do dealer */}
               {table.button === s.seat && (
                 <span data-testid="botao-dealer"
-                      className="absolute -bottom-0.5 -left-1 flex items-center justify-center
+                      className="absolute left-1/2 top-1/2 flex items-center justify-center
                                  rounded-full bg-[#E3E8EC] font-mono font-bold text-[#0A0E1A]"
-                      style={{ width: M.dealer, height: M.dealer, fontSize: M.fDealer }}>
+                      style={{
+                        width: M.dealer,
+                        height: M.dealer,
+                        fontSize: M.fDealer,
+                        transform: `translate(calc(-50% + ${deslocamentoDoDealerCss((s.seat - 1) % 9).x}), calc(-50% + ${deslocamentoDoDealerCss((s.seat - 1) % 9).y}))`,
+                      }}>
                   D
                 </span>
               )}
