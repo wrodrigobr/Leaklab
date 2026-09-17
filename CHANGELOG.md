@@ -5,6 +5,39 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## A mesa do Practice media so a largura, e sobrava altura (16/09)
+
+O dono, olhando duas mesas na tela: "acho que ta tudo muito pequeno...os pods dos jogadores, a
+ficha do dealer, as fontes, os nomes...acho que vale uma revisao, pois esta muito pequeno e
+dificil de ler".
+
+**Nao era fonte pequena, era a dimensao errada.** As medidas escalavam so por `cqw`, a largura do
+card. Medido na captura dele: com duas mesas lado a lado cada celula fica com ~830 de largura por
+~880 de altura, e com quatro mesas fica ~830 por ~440. A LARGURA e a mesma nos dois casos, entao
+os assentos ficavam do tamanho de mesa apertada enquanto a elipse esticava para o dobro da altura.
+Dai os dois sintomas juntos que ele relatou: elemento de miniatura E o vazio enorme no meio do
+feltro.
+
+Agora cada medida e o MENOR entre uma fracao da largura e uma fracao da altura (`MEDIDA`, uma
+funcao). A fracao da altura manda quando a celula e baixa, e impede um assento grande de estourar
+o trilho; a fracao da largura manda quando a celula e alta, e e o que faz a mesa aproveitar o
+espaco vertical que antes desperdicava. Em numeros, na tela dele: assento de 36 para 57px, a
+posicao de 9 para 14px, o stack de 11 para 17px, o valor da aposta de 12 para 17px, a carta de
+34x46 para 43x58.
+
+**A ficha do dealer nao escalava com nada:** era `size-3.5` com `text-[7px]` cravados, os unicos
+numeros da mesa fora da tabela de medidas. Foi por isso que ela sobreviveu a duas calibragens e o
+dono precisou cita-la por nome. Agora vai a 21px com o "D" em 12px, e um guarda varre a tabela
+inteira exigindo que nenhuma medida escape (a varredura N+1 da regra 5, com controle que falha se
+ela nao achar nada).
+
+Um guarda a mais, para uma dependencia que quebraria calada: a `.container-mesa` precisa de
+`container-type: size`, porque `inline-size` expoe so `cqw`. Com `inline-size`, `min(Xcqw, Ycqh)`
+viraria `min(X, 0)` = 0 e o `clamp` devolveria o PISO em toda a mesa, reintroduzindo o sintoma a
+partir de uma linha em OUTRO arquivo. Os quatro guardas foram verificados quebrando cada um.
+
+---
+
 ## O Pro era barrado com o teto do Free no upload (16/09)
 
 Rullian, que e Pro, tentou subir 15MB e a tela recusou dizendo "o seu plano aceita ate 5MB".

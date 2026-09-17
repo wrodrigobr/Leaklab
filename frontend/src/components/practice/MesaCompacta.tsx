@@ -96,26 +96,57 @@ const FICHAS: [number, number][] = ANGULOS.map((a) => naElipse(a, 0.8));
  * -- foi o que o dono viu. O GTO Wizard nao encolhe nada com quatro mesas: ele usa o mesmo
  * tamanho, e e a mesa inteira que e mais economica.
  */
+/**
+ * Uma medida da mesa, em funcao do espaco que ela REALMENTE tem.
+ *
+ * ── O defeito que o dono viu, e que nao era "fonte pequena" ───────────────────────────────────
+ *
+ * "acho que ta tudo muito pequeno...os pods dos jogadores, a ficha do dealer, as fontes, os
+ * nomes". Medido na captura dele: com duas mesas lado a lado cada celula fica com ~830 de largura
+ * por ~880 de altura, e as medidas escalavam SO pela largura (`cqw`). Largura e a dimensao que
+ * NAO muda entre duas e quatro mesas -- as duas dao ~830 --, entao os assentos ficavam do tamanho
+ * de mesa apertada enquanto a elipse esticava para 880 de altura. Dai os dois sintomas juntos:
+ * elemento de miniatura E aquele vazio enorme no meio do feltro.
+ *
+ * Agora cada medida e o MENOR entre a fracao da largura e a fracao da altura:
+ *
+ * - a fracao da ALTURA e quem manda quando a celula e baixa (quatro mesas numa tela de 768px),
+ *   e impede que um assento grande estoure o trilho;
+ * - a fracao da LARGURA e quem manda quando a celula e alta, e e o que faz a mesa aproveitar o
+ *   espaco vertical que hoje ela desperdica.
+ *
+ * `piso` e `teto` em px seguram as pontas: numa tela estreita nada some, num monitor largo nada
+ * vira cartaz. O piso tambem e a rede de seguranca se `cqh` vier 0 (container sem altura
+ * resolvida), porque `min()` com zero seria zero -- e ai o `clamp` devolve o piso, que e
+ * legivel, em vez de fazer a mesa desaparecer.
+ *
+ * Exige `container-type: size` na `.container-mesa` (a `inline-size` nao expoe `cqh`).
+ */
+export function MEDIDA(piso: number, porLargura: number, porAltura: number, teto: number): string {
+  return `clamp(${piso}px, min(${porLargura}cqw, ${porAltura}cqh), ${teto}px)`;
+}
+
 const M = {
-  assento: "clamp(30px, 4.3cqw, 52px)",
-  cartaW:  "clamp(26px, 4.1cqw, 48px)",
-  cartaH:  "clamp(36px, 5.6cqw, 64px)",
-  fPos:    "clamp(7.5px, 1.07cqw, 13px)",
-  fStack:  "clamp(9px, 1.31cqw, 16px)",
-  // o rank cede um degrau para o simbolo caber embaixo dele, e a carta cresceu um pouco junto
-  fCarta:  "clamp(13px, 2.2cqw, 27px)",
-  // O naipe cresceu duas vezes: ele responde "e suited?", que e metade da decisao preflop, e
-  // pequeno ele nao responde nada. Fica em ~80% do rank -- o rank identifica a carta, o naipe
-  // identifica a MAO.
-  fNaipe:  "clamp(11px, 1.8cqw, 22px)",
-  fSpot:   "clamp(8.5px, 1.25cqw, 15px)",
-  fPote:   "clamp(12px, 1.9cqw, 23px)",
-  // A ficha e o valor sao o que o dono relatou duas vezes como pequeno demais, e eles carregam
-  // a informacao que decide a jogada (quanto ha para pagar). Sao os MAIORES da mesa depois das
-  // cartas dele e do pote, de proposito.
-  fFicha:  "clamp(10px, 1.5cqw, 19px)",
-  ficha:   "clamp(8px, 1.15cqw, 15px)",
-  fHist:   "clamp(7.5px, 1.07cqw, 13px)",
+  assento: MEDIDA(34, 7, 13, 80),
+  cartaW:  MEDIDA(30, 5.2, 9.7, 66),
+  cartaH:  MEDIDA(40, 7.1, 13.2, 90),
+  fPos:    MEDIDA(9, 1.75, 3.25, 20),
+  fStack:  MEDIDA(11, 2.1, 3.9, 24),
+  // o rank cede um degrau para o simbolo caber embaixo dele
+  fCarta:  MEDIDA(16, 3.0, 5.6, 38),
+  // O naipe fica em ~80% do rank: o rank identifica a carta, o naipe identifica a MAO (suited
+  // ou nao, que e metade da decisao preflop).
+  fNaipe:  MEDIDA(13, 2.4, 4.5, 30),
+  fSpot:   MEDIDA(10, 1.7, 3.2, 20),
+  fPote:   MEDIDA(14, 2.6, 4.8, 32),
+  // A ficha e o valor carregam a informacao que decide a jogada (quanto ha para pagar).
+  fFicha:  MEDIDA(11, 2.1, 3.9, 24),
+  ficha:   MEDIDA(9, 1.6, 3.0, 20),
+  fHist:   MEDIDA(9, 1.6, 3.0, 18),
+  // O botao do dealer era `size-3.5` com `text-[7px]` CRAVADOS, os unicos numeros da mesa que
+  // nao escalavam com nada. O dono os citou por nome: "a ficha do dealer".
+  dealer:  MEDIDA(14, 2.6, 4.8, 32),
+  fDealer: MEDIDA(8, 1.5, 2.8, 18),
 } as const;
 
 /**
@@ -223,11 +254,12 @@ export function MesaCompacta({ table, hero, unidade, spot, veredito }: {
   };
 
   return (
-    // `containerType: inline-size` e o que faz os `cqw` acima medirem ESTE card, e nao a
-    // viewport: com `vw`, quatro mesas e uma mesa dariam elementos do mesmo tamanho.
-    // `container-mesa` liga o `container-type: inline-size`, que faz os `cqw` acima medirem
-    // ESTE card e nao a viewport. Em CLASSE e nao inline porque o jsdom descarta a propriedade
-    // inline e o guarda nao conseguia ve-la.
+    // `container-mesa` liga o `container-type: size`, que faz as medidas do `M` acima olharem a
+    // largura E a altura DESTE card, e nao a viewport: com `vw`, quatro mesas e uma mesa dariam
+    // elementos do mesmo tamanho. O `h-full` daqui e o `flex-1 min-h-0` do pai e que resolvem a
+    // altura -- sem altura resolvida, `cqh` viria 0 e toda medida cairia no piso.
+    // Em CLASSE e nao inline porque o jsdom descarta a propriedade inline e o guarda nao
+    // conseguia ve-la.
     <div className="relative h-full w-full container-mesa" data-testid="mesa-compacta">
       {/* ── O histórico, no topo (como o GTO Wizard) ─────────────────────────────────────────
           Quem já agiu e o quê, na ordem de ação, terminando em "você". Ele responde de cabeça a
@@ -369,8 +401,9 @@ export function MesaCompacta({ table, hero, unidade, spot, veredito }: {
               {/* o botão do dealer */}
               {table.button === s.seat && (
                 <span data-testid="botao-dealer"
-                      className="absolute -bottom-0.5 -left-1 flex size-3.5 items-center justify-center
-                                 rounded-full bg-[#E3E8EC] font-mono text-[7px] font-bold text-[#0A0E1A]">
+                      className="absolute -bottom-0.5 -left-1 flex items-center justify-center
+                                 rounded-full bg-[#E3E8EC] font-mono font-bold text-[#0A0E1A]"
+                      style={{ width: M.dealer, height: M.dealer, fontSize: M.fDealer }}>
                   D
                 </span>
               )}

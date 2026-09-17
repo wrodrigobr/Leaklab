@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect, afterEach } from "vitest";
 import { render, screen, cleanup, within } from "@testing-library/react";
-import { MesaCompacta, historico, lerCartas } from "./MesaCompacta";
+import { MEDIDA, MesaCompacta, historico, lerCartas } from "./MesaCompacta";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import type { DrillTableState } from "@/lib/api";
@@ -133,19 +133,53 @@ describe("a mesa do Pratica", () => {
   });
 
   it("escala pelo CARD, e nao pela viewport", () => {
-    // O mecanismo que mantém a proporção do GTO Wizard: `cqw` mede o container. Com `vw`, uma
-    // mesa e quatro mesas dariam elementos do mesmo tamanho -- e foi tudo ficar pequeno que o
-    // dono relatou.
+    // O mecanismo que mantém a proporção do GTO Wizard: as medidas medem o CONTAINER. Com `vw`,
+    // uma mesa e quatro mesas dariam elementos do mesmo tamanho.
     monta();
     const raiz = screen.getByTestId("mesa-compacta");
     expect(raiz.className).toContain("container-mesa");
+  });
 
-    // O `cqw` nao pode ser lido do DOM: o jsdom DESCARTA `clamp()` com unidade que ele nao
-    // conhece, entao `style` volta sem width/height/fontSize. O guarda le o fonte, e diz por que.
+  it("cada medida usa a LARGURA e a ALTURA do card, pelo menor dos dois", () => {
+    // Comportamento, e não o texto do fonte: `MEDIDA` é exportada e conferida pelo que PRODUZ.
+    //
+    // Por que as duas dimensões: com duas mesas a célula fica ~830x880 e com quatro ~830x440.
+    // A LARGURA é a mesma nos dois casos, então medir só por ela (o que esta mesa fazia até
+    // 16/09) deixava os assentos do tamanho de mesa apertada com o dobro de espaço vertical
+    // sobrando -- o "está tudo muito pequeno" do dono. A fração da ALTURA entra para o assento
+    // não estourar o trilho quando a célula é baixa.
+    expect(MEDIDA(34, 7, 13, 80)).toBe("clamp(34px, min(7cqw, 13cqh), 80px)");
+  });
+
+  it("NENHUMA medida da mesa escapa da MEDIDA", () => {
+    // A varredura N+1 da regra 5. O botão do dealer era `size-3.5` + `text-[7px]` cravados, e
+    // ficou de fora das duas primeiras calibragens justamente porque não estava nesta tabela --
+    // o dono teve de citá-lo por nome.
     const fonte = readFileSync(join(import.meta.dirname, "MesaCompacta.tsx"), "utf-8");
     const tabela = fonte.slice(fonte.indexOf("const M = {"), fonte.indexOf("} as const;"));
-    expect(tabela, "as medidas precisam ser proporcionais ao card").toContain("cqw");
-    expect(tabela, "e com piso e teto, para nem sumir nem virar cartaz").toContain("clamp(");
+    const linhas = tabela.match(/^ {2}[A-Za-z]+:.*$/gm) ?? [];
+
+    // CONTROLE: sem isto, um recorte errado deixaria a varredura passar verde sobre zero linhas.
+    expect(linhas.length, "a varredura não achou nenhuma medida").toBeGreaterThan(10);
+    for (const l of linhas) {
+      expect(l, "medida fora da MEDIDA: não escala com o card").toContain("MEDIDA(");
+    }
+
+    // E nenhum tamanho cravado sobrou no corpo do componente (px ou classe de tamanho fixo).
+    const corpo = fonte.slice(fonte.indexOf("export function MesaCompacta"));
+    expect(corpo, "tamanho de fonte cravado no JSX volta a não escalar").not.toMatch(/text-\[\d+px\]/);
+    expect(corpo, "size-N do Tailwind é tamanho fixo").not.toMatch(/size-\d/);
+  });
+
+  it("a `.container-mesa` expoe a ALTURA, senao toda medida cai no piso", () => {
+    // Dependência entre arquivos, e o tipo de coisa que quebra calada: `container-type:
+    // inline-size` expõe só `cqw`. Com ele, `min(Xcqw, Ycqh)` vira `min(X, 0)` = 0 e o `clamp`
+    // devolve o PISO em toda a mesa -- que é exatamente o sintoma que este conserto atacou,
+    // reintroduzido por uma linha em outro arquivo.
+    const css = readFileSync(join(import.meta.dirname, "..", "..", "index.css"), "utf-8");
+    const bloco = css.slice(css.indexOf(".container-mesa"));
+    const fecha = bloco.indexOf("}");
+    expect(bloco.slice(0, fecha)).toContain("container-type: size");
   });
 });
 
