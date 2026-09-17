@@ -48,6 +48,15 @@ function monta(over: Partial<DrillTableState> = {}, unidade: "bb" | "fichas" = "
                               spot="SB contra BTN, vs Open" />);
 }
 
+/** O fonte sem comentarios, para guarda estrutural nao acusar a prosa que explica o defeito. */
+function semComentarios(fonte: string): string {
+  return fonte
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .split("\n")
+    .filter((l) => !l.trim().startsWith("//"))
+    .join("\n");
+}
+
 describe("a mesa do Pratica", () => {
   it("mostra AS CARTAS dele, uma por naipe", () => {
     monta();
@@ -138,6 +147,28 @@ describe("a mesa do Pratica", () => {
     monta();
     const raiz = screen.getByTestId("mesa-compacta");
     expect(raiz.className).toContain("container-mesa");
+  });
+
+  it("o trilho e a BORDA da arena, e nao um raio cravado em %", () => {
+    // O raio em % do card nao resolve as duas celulas (estoura em 4 mesas, sobra em 2), e a sobra
+    // era o vazio no meio do feltro que o dono reclamou. Este guarda impede a volta do numero
+    // cravado: a elipse e a borda de um elemento que PREENCHE a arena.
+    monta();
+    const arena = screen.getByTestId("arena-da-mesa");
+    const trilho = [...arena.children].find((el) =>
+      el.className.includes("rounded-[50%]"),
+    );
+    expect(trilho, "o trilho precisa ser filho da arena").toBeTruthy();
+    expect(trilho?.className).toContain("inset-0");
+
+    // Sem os comentarios: esta e a SEXTA vez nesta casa que um guarda estrutural acusa a propria
+    // prosa que explica o defeito (o comentario da arena cita `rx: 44` para dizer que ele saiu).
+    const fonte = readFileSync(join(import.meta.dirname, "MesaCompacta.tsx"), "utf-8");
+    const codigo = semComentarios(fonte);
+    // CONTROLE: o corte de comentarios nao pode comer o codigo.
+    expect(codigo, "o corte de comentarios apagou o componente").toContain("export function MesaCompacta");
+    expect(codigo, "o corte de comentarios nao cortou nada").not.toContain("rx: 44");
+    expect(codigo, "raio em % do card e o desenho que nao cabia").not.toMatch(/rx:\s*\d/);
   });
 
   it("NENHUM tamanho da mesa fica cravado no componente", () => {

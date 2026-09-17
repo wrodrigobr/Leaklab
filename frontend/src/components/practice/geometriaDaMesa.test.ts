@@ -1,16 +1,20 @@
 import { describe, it, expect } from "vitest";
 import {
   ANGULOS,
+  arena,
+  arenaCss,
+  ESCALA_DAS_FICHAS,
   FOLGA,
   FICHAS,
   LUGARES,
   PARAMS,
   caixasDaMesa,
+  deslocamentoDasCartasCss,
   deslocamentoDoDealerCss,
+  direcaoDasCartas,
   direcaoDoDealer,
+  distanciaDasCartas,
   distanciaDoDealer,
-  estiloDasCartas,
-  ladoDasCartas,
   M,
   medida,
   px,
@@ -41,10 +45,14 @@ const CARDS = [
  *  cresce mais e colide primeiro). */
 const APOSTAS = [
   { i: 0, texto: "0.5" },
-  { i: 2, texto: "2.2" },
-  { i: 4, texto: "19.5" },
-  { i: 6, texto: "8" },
-  { i: 8, texto: "11.7" },
+  { i: 1, texto: "2.2" },
+  { i: 2, texto: "19.5" },
+  { i: 3, texto: "8" },
+  { i: 4, texto: "11.7" },
+  { i: 5, texto: "0.5" },
+  { i: 6, texto: "2.2" },
+  { i: 7, texto: "19.5" },
+  { i: 8, texto: "1" },
 ];
 
 function conflitos(caixas: Caixa[], w: number, h: number) {
@@ -136,28 +144,22 @@ describe("a geometria da mesa", () => {
     expect(sobreposicao(a, { nome: "d", x: 10, y: 0, w: 10, h: 10 })).toBe(0);
   });
 
-  it("as cartas do heroi nunca vao para FORA da mesa", () => {
-    // Para fora elas sairiam do card, e foi por isso que a primeira versão as pendurava no flex.
-    LUGARES.forEach(([x], i) => {
-      const lado = ladoDasCartas(i);
-      if (lado === "esquerda") expect(x, `lugar ${i}`).toBeGreaterThan(50);
-      if (lado === "direita") expect(x, `lugar ${i}`).toBeLessThan(75);
-    });
-  });
-
-  it("o botao do dealer sai pela TANGENTE, nunca na direcao do centro nem da borda", () => {
-    // Na direção do centro ele brigaria com a ficha de aposta; para fora, com a borda do card.
-    LUGARES.forEach(([x, y], i) => {
+  it("o botao do dealer sai para FORA, e a ficha para DENTRO, na direcao oposta", () => {
+    // As duas ficam no eixo radial, em sentidos opostos: nunca disputam o mesmo espaco. O botao
+    // ja esteve na tangente, e la ele encontrava as cartas do assento VIZINHO nas pontas da
+    // elipse, onde os vizinhos ficam a ~111px um do outro.
+    for (let i = 0; i < 9; i++) {
+      const [x, y] = LUGARES[i];
       const [dx, dy] = direcaoDoDealer(i);
+      // Para fora = a mesma direcao do ponto, a partir do centro. Comparado por produto escalar e
+      // nao por sinal: `Math.cos(Math.PI / 2)` vale 6e-17 e nao zero, e comparar sinais fazia o
+      // guarda falhar no lugar de baixo por ruido numerico -- defeito do teste, nao do desenho.
       const n = Math.hypot(x - 50, y - 50);
-      const rx = (x - 50) / n;
-      const ry = (y - 50) / n;
-      // Numa ELIPSE a tangente nao e perpendicular ao raio (so num circulo), entao o guarda
-      // exige o que a intencao pede: a direcao do "D" nao aponta nem para o centro nem para
-      // fora. O cosseno do angulo com o radial fica bem longe de 1 e de -1.
-      const cosAngulo = Math.abs(dx * rx + dy * ry);
-      expect(cosAngulo, `lugar ${i}`).toBeLessThan(0.45);
-    });
+      expect((dx * (x - 50) + dy * (y - 50)) / n, `lugar ${i}`).toBeCloseTo(1, 6);
+      // e a ficha vai para o lado contrario
+      const [fx, fy] = FICHAS[i];
+      expect((fx - x) * dx + (fy - y) * dy, `ficha x dealer no lugar ${i}`).toBeLessThan(0);
+    }
   });
 
   it("o CSS do botao do dealer RESOLVE no mesmo numero que a conta em px", () => {
@@ -189,17 +191,40 @@ describe("a geometria da mesa", () => {
     }
   });
 
-  it("o CSS das cartas mede a folga a partir da BORDA do pod, como o medidor", () => {
-    // `calc(100% + 4px)` num filho absoluto e 100% da largura do POD, que e a borda dele. O
-    // medidor usa `pod / 2 + FOLGA` a partir do CENTRO -- a mesma coisa, e este guarda e o que
-    // impede as duas leituras de divergirem se alguem trocar o `100%` por outra referencia.
-    for (let i = 0; i < 9; i++) {
-      const e = estiloDasCartas(i);
-      const fora = `calc(100% + ${FOLGA}px)`;
-      const usadas = [e.left, e.right, e.top, e.bottom].filter((v) => v === fora);
-      expect(usadas.length, `lugar ${i}`).toBe(1);
-      // e a outra coordenada centraliza no pod
-      expect(e.transform).toMatch(/translate[XY]\(-50%\)/);
+  it("a ARENA em CSS resolve na mesma arena da conta em px", () => {
+    // A terceira regra escrita duas vezes (com a distancia do botao e a das cartas): `arena` em px
+    // para o medidor, `arenaCss` em `calc` para o navegador. Se divergirem, o medidor aprova 81
+    // maos de uma mesa que nao existe -- e a divergencia nao aparece em nenhuma captura, porque
+    // os dois desenhos sao plausiveis.
+    const resolve = (css: string, w: number, h: number) =>
+      Function(
+        `"use strict"; return (${css
+          .split(M.assento).join(String(px("assento", w, h)))
+          .split(M.dealer).join(String(px("dealer", w, h)))
+          .split(M.fHist).join(String(px("fHist", w, h)))
+          .split("calc(").join("(")
+          .split("px").join("")});`,
+      )() as number;
+
+    for (const { w, h } of CARDS) {
+      const a = arena(w, h);
+      const css = arenaCss();
+      expect(resolve(css.left, w, h), `left em ${w}x${h}`).toBeCloseTo(a.x, 6);
+      expect(resolve(css.top, w, h), `top em ${w}x${h}`).toBeCloseTo(a.y, 6);
+      // right e bottom sao margens: o que sobra tem de dar a largura e a altura da arena
+      expect(w - a.x - resolve(css.right, w, h), `largura em ${w}x${h}`).toBeCloseTo(a.w, 6);
+      expect(h - a.y - resolve(css.bottom, w, h), `altura em ${w}x${h}`).toBeCloseTo(a.h, 6);
+    }
+  });
+
+  it("a arena SEMPRE sobra espaco para o que pendura nela", () => {
+    // O piso e o teto das medidas podem, em card minusculo, deixar a margem maior que o proprio
+    // card -- e ai a arena teria largura negativa e a mesa desapareceria. O guarda cobre do card
+    // absurdo ao gigante.
+    for (const [w, h] of [[220, 140], [400, 200], [683, 330], [830, 440], [1660, 880], [3000, 2000]]) {
+      const a = arena(w, h);
+      expect(a.w, `largura da arena em ${w}x${h}`).toBeGreaterThan(0);
+      expect(a.h, `altura da arena em ${w}x${h}`).toBeGreaterThan(0);
     }
   });
 
@@ -215,6 +240,16 @@ describe("a geometria da mesa", () => {
     expect(px("assento", 200, 100)).toBe(34);
     // card enorme: o teto segura
     expect(px("assento", 4000, 4000)).toBe(76);
+  });
+
+  it("a escala das fichas esta DENTRO da janela medida", () => {
+    // A janela tem os dois lados ocupados: em 0,75 a ficha encosta no pod do proprio jogador, em
+    // 0,50 ela entra no texto do centro. O numero no meio nao e gosto, e o unico intervalo livre,
+    // e este guarda existe para a proxima pessoa nao "aproximar um pouco mais" sem rodar o
+    // medidor. A janela MUDOU quando a elipse passou a preencher a arena (o teto era 0,77), o que
+    // e a prova de que ela nao pode ser herdada de uma geometria anterior.
+    expect(ESCALA_DAS_FICHAS).toBeGreaterThanOrEqual(0.56);
+    expect(ESCALA_DAS_FICHAS).toBeLessThanOrEqual(0.74);
   });
 
   it("as fichas ficam DENTRO do trilho, e os assentos SOBRE ele", () => {

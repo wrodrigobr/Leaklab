@@ -13,47 +13,35 @@
  * card, e o teste varre as 9 posições do herói contra as 9 do botão exigindo que nada se
  * sobreponha e nada saia do card. O que a captura do dono mostrou é um caso entre 81.
  *
- * ── O defeito que ela revelou de imediato ─────────────────────────────────────────────────────
+ * ── O que a medição achou, e as capturas não ──────────────────────────────────────────────────
  *
- * O pod e as cartas do herói viviam no MESMO flex, centrado no ponto do trilho. Com cartas, o
- * conjunto inteiro era centrado, então o POD saía do lugar dele: na captura do dono, o pod do
- * UTG+2 aparece fora da linha da mesa, à esquerda dela. O pod agora fica ancorado no ponto, e as
- * cartas são posicionadas por fora do fluxo, para um lado que depende de ONDE o assento está.
+ * 1. O pod e as cartas do herói viviam no MESMO flex, centrado no ponto do trilho. Com cartas, o
+ *    conjunto era centrado e o POD saía do lugar dele: na captura do dono, o assento do UTG+2
+ *    aparece fora da linha da mesa.
+ * 2. O "D" do dealer estava no canto do pod, por cima dele.
+ * 3. As cartas e a ficha do MESMO assento iam as duas "para dentro", e se cruzavam em dois
+ *    lugares, em todas as 9 posições do botão.
+ * 4. As cartas de um assento encontravam o "D" do assento VIZINHO nas pontas da elipse, onde os
+ *    vizinhos ficam a ~124px um do outro e não aos ~244px dos lugares de cima e de baixo.
+ * 5. A ficha dos lugares das pontas entrava no bloco de texto do centro.
+ * 6. Com 0,62 do raio, as fichas ficavam ÓRFÃS no meio do feltro, longe de quem apostou.
  */
-
-/** A elipse. Tudo é derivado dela: mudar aqui move assentos, fichas e cartas juntos. */
-export const TRILHO = { cx: 50, cy: 50, rx: 44, ry: 39 };
 
 /** Os ângulos dos nove lugares. O ângulo é do ASSENTO FÍSICO (`seat`), não da ordem de ação:
  *  o herói cai em qualquer um deles, e é por isso que o layout de cada lugar tem de funcionar
  *  para ele também. */
 export const ANGULOS = [90, 130, 170, 210, 250, 290, 330, 10, 50] as const;
 
-/** `(x, y)` em %, sobre a elipse do trilho. `escala < 1` traz para DENTRO da mesa. */
-export function naElipse(grau: number, escala = 1): [number, number] {
-  const r = (grau * Math.PI) / 180;
-  return [
-    TRILHO.cx + TRILHO.rx * escala * Math.cos(r),
-    TRILHO.cy + TRILHO.ry * escala * Math.sin(r),
-  ];
-}
-
-/** Os nove lugares, SOBRE o trilho. */
-export const LUGARES: [number, number][] = ANGULOS.map((a) => naElipse(a));
-
-/** A ficha de cada assento: mesma direção, mais perto do centro, dentro da mesa. */
-export const FICHAS: [number, number][] = ANGULOS.map((a) => naElipse(a, 0.62));
-
 /**
- * ── As medidas ────────────────────────────────────────────────────────────────────────────────
+ * ── As medidas ───────────────────────────────────────────────────────────────────────────────
  *
  * `[piso, porLargura, porAltura, teto]`: o valor é o MENOR entre a fração da largura (`cqw`) e a
  * da altura (`cqh`) do card, preso entre piso e teto em px.
  *
  * Por que as duas dimensões: com duas mesas a célula fica ~830x880 e com quatro ~830x440. A
  * LARGURA é a mesma nos dois casos, então medir só por ela deixava os assentos do tamanho de
- * mesa apertada com o dobro de espaço vertical sobrando. A fração da ALTURA entra para o assento
- * não estourar o trilho quando a célula é baixa.
+ * mesa apertada com o dobro de espaço vertical sobrando -- o "está tudo muito pequeno" do dono.
+ * A fração da ALTURA entra para o assento não estourar o trilho quando a célula é baixa.
  *
  * Uma tabela, dois consumidores: `M` (as strings de CSS que o componente usa) e `px` (o valor
  * resolvido, que o medidor de colisão usa). Sem isto seriam dois números para a mesma medida.
@@ -99,125 +87,215 @@ export const M = Object.fromEntries(
 export const FOLGA = 4;
 
 /**
- * Quanto da largura o bloco de texto do centro ocupa.
+ * Quanto da arena o bloco de texto do centro ocupa.
  *
- * Era 52%, e nessa largura ele alcancava a ficha de aposta dos dois lugares das PONTAS da elipse,
+ * Era 52%, e nessa largura ele alcançava a ficha de aposta dos dois lugares das PONTAS da elipse,
  * que ficam na mesma altura dele. O texto do spot ("UTG+2 contra BTN, vs 3-bet") quebra em duas
- * linhas com 46%, e duas linhas de texto legivel valem mais que uma linha por cima da ficha.
+ * linhas com 46%, e duas linhas de texto legível valem mais que uma linha por cima da ficha.
  */
 export const LARGURA_DO_CENTRO = 0.46;
 
 /**
- * Para onde vão as cartas do herói, a partir do lugar dele.
+ * A que fração do raio fica a ficha de aposta de cada assento.
  *
- * - Nos lugares das PONTAS da elipse (`|cos|` grande) elas vão na vertical: ao lado, ali, elas
- *   entrariam no bloco de texto do centro, que ocupa a faixa do meio na mesma altura deles.
- * - Nos outros vão na horizontal, para DENTRO (o lado do centro), porque para fora sairiam do
- *   card.
- * - No lugar de baixo (`cos` zero) não há "dentro" horizontal: vão para a direita.
+ * ── Por que 0,76, e não um número escolhido a olho ───────────────────────────────────────────
+ *
+ * Com 0,62 (a primeira tentativa de fugir do texto central) as fichas ficavam ÓRFÃS no meio do
+ * feltro: na captura do dono, o `0.5` estava a uns 150px do pod do SB, e nada dizia de quem era a
+ * aposta. A janela livre foi MEDIDA com o medidor de colisão, com aposta larga nos nove lugares e
+ * nos quatro tamanhos de card:
+ *
+ *   >= 0,75       a ficha encosta no POD do próprio jogador
+ *   0,56 a 0,74   livre
+ *   <= 0,50       a ficha entra no bloco de texto do centro
+ *
+ * 0,73 é o mais perto do dono da aposta que cabe, com uma casa de folga na borda da janela. A
+ * janela foi remedida quando a elipse passou a preencher a arena: com o desenho anterior o teto
+ * era 0,77, e um número herdado de outra geometria é como se volta a ter ficha por cima de pod.
  */
-export function ladoDasCartas(i: number): "cima" | "baixo" | "esquerda" | "direita" {
+export const ESCALA_DAS_FICHAS = 0.73;
+
+/**
+ * ── A elipse não tem raio escolhido a olho: ela PREENCHE a arena ──────────────────────────────
+ *
+ * A primeira versão cravava `rx: 44, ry: 39` do card. O medidor mostrou que número fixo não
+ * resolve: com o botão do dealer saindo para FORA do trilho e o histórico ocupando a faixa do
+ * topo, 39% de altura estoura o card na célula baixa (4 mesas, 440px) e sobra demais na célula
+ * alta (2 mesas, 880px) -- e "sobra" é o vazio no meio do feltro que o dono reclamou.
+ *
+ * Agora a elipse preenche a ARENA, que é o card menos as margens que os elementos EXIGEM:
+ *
+ *   margem = metade do pod (o assento fica sobre a linha) + o botão do dealer (que sai para fora
+ *            dela) + a folga
+ *   topo   = a mesma margem, mais a faixa do histórico da mão
+ *
+ * Assim a mesa é alta quando há altura e achatada quando não há, sem nunca vazar, e o número sai
+ * das medidas em vez de ser recalibrado a cada captura.
+ */
+
+/** A faixa do histórico da mão, no topo do card. Duas linhas, porque com nove assentos ele
+ *  quebra. */
+export function alturaDoHistorico(w: number, h: number): number {
+  return px("fHist", w, h) * 2.6;
+}
+
+/** A margem que a arena precisa, em px: o pod fica SOBRE a linha e o botão sai para fora dela. */
+export function margemDaArena(w: number, h: number): number {
+  return px("assento", w, h) / 2 + px("dealer", w, h) + FOLGA;
+}
+
+/** A arena em px: onde a elipse cabe inteira, com tudo o que pendura nela. */
+export function arena(w: number, h: number) {
+  const m = margemDaArena(w, h);
+  const topo = m + alturaDoHistorico(w, h);
+  return { x: m, y: topo, w: w - 2 * m, h: h - topo - m };
+}
+
+/** A MESMA arena em CSS, para o componente. Conferida contra a de px no teste. */
+export function arenaCss() {
+  const m = `(${M.assento} / 2 + ${M.dealer} + ${FOLGA}px)`;
+  return {
+    left: `calc${m}`,
+    right: `calc${m}`,
+    bottom: `calc${m}`,
+    top: `calc(${m} + ${M.fHist} * 2.6)`,
+  };
+}
+
+/** `(x, y)` em % DA ARENA, sobre a elipse que a preenche. `escala < 1` traz para dentro. */
+export function naElipse(grau: number, escala = 1): [number, number] {
+  const r = (grau * Math.PI) / 180;
+  return [50 + 50 * escala * Math.cos(r), 50 + 50 * escala * Math.sin(r)];
+}
+
+/** Os nove lugares, SOBRE a elipse. */
+export const LUGARES: [number, number][] = ANGULOS.map((a) => naElipse(a));
+
+/** A ficha de cada assento: mesma direção do dono dela, mais perto do centro. */
+export const FICHAS: [number, number][] = ANGULOS.map((a) => naElipse(a, ESCALA_DAS_FICHAS));
+
+function versor(i: number): [number, number] {
   const r = (ANGULOS[i] * Math.PI) / 180;
-  const cos = Math.cos(r);
-  const sin = Math.sin(r);
-  if (Math.abs(cos) >= 0.8) return sin > 0 ? "cima" : "baixo";
-  if (Math.abs(cos) < 0.01) return "direita";
-  return cos > 0 ? "esquerda" : "direita";
+  return [Math.cos(r), Math.sin(r)];
 }
 
 /**
- * Para onde vai o botão do dealer: TANGENTE à elipse, nunca sobre o pod.
+ * ── Três direções por assento, e nenhuma colisão por construção ──────────────────────────────
  *
- * Ele era `-bottom-0.5 -left-1` no canto do pod, ou seja POR CIMA dele, visível na captura do
- * dono onde o "D" cobre a borda do assento do BTN e ainda disputa espaço com a ficha de aposta.
- * A tangente é a direção que não aponta nem para o centro (onde está a ficha) nem para fora
- * (onde está a borda do card).
+ * Cada assento tem três coisas em volta dele: a ficha de aposta, as cartas (se for o herói) e o
+ * botão do dealer (se for o botão). Dar a mesma direção para duas delas colide SEMPRE, e não em
+ * algum caso raro: o medidor achou as cartas por cima da ficha do próprio herói em dois lugares,
+ * nas 9 posições do botão.
+ *
+ * A ficha vai pelo raio da elipse (`FICHAS`), o botão sai para FORA em `(cos, sin)`, e as cartas
+ * pela perpendicular `(-sin, cos)`.
+ *
+ * ── Por que direções unitárias em PX, e não a tangente da elipse ─────────────────────────────
+ *
+ * A tangente exata de uma elipse depende do achatamento dela, e o achatamento sai do tamanho da
+ * arena -- que o CSS não conhece, porque quem resolve o `clamp` é o navegador. Uma direção que só
+ * o medidor sabe calcular não serve para posicionar. `(cos, sin)` e `(-sin, cos)` são unitárias e
+ * perpendiculares entre si no espaço de px, com módulo em px de verdade.
+ *
+ * O botão já esteve na tangente, e não deu: nas PONTAS da elipse os assentos vizinhos ficam a
+ * ~124px um do outro, então as cartas de um e o "D" do vizinho se encontravam no meio do caminho.
+ * Para fora do trilho ele não disputa espaço com ninguém.
  */
 export function direcaoDoDealer(i: number): [number, number] {
-  const r = (ANGULOS[i] * Math.PI) / 180;
-  // A tangente da ELIPSE, e nao a do circulo: os pontos sao (rx*cos, ry*sin), entao a derivada e
-  // (-rx*sin, ry*cos). Com a tangente do circulo (-sin, cos) a direcao apontava parcialmente
-  // para o centro nos lugares diagonais, que e de onde vem a ficha de aposta.
-  const dx = -TRILHO.rx * Math.sin(r);
-  const dy = TRILHO.ry * Math.cos(r);
-  const n = Math.hypot(dx, dy);
-  const s = sentidoDoDealer(i);
-  return [(s * dx) / n, (s * dy) / n];
+  return versor(i);
 }
 
 /**
- * Qual dos DOIS sentidos da tangente o botao do dealer usa, em cada lugar.
+ * O aspecto de referência para decidir o SENTIDO das cartas.
  *
- * A tangente e uma reta, e tem dois lados. O medidor achou o que acontece quando o lado escolhido
- * coincide com o lado das cartas: nos lugares 2, 4, 6 e 8, com o heroi SENDO o botao, o "D" caia
- * por cima das cartas dele (373px2 no pior caso). O sentido e escolhido para se AFASTAR do lado
- * das cartas daquele lugar.
+ * As cartas saem pela perpendicular, e a perpendicular tem dois sentidos: um aponta para o
+ * assento anterior, o outro para o seguinte. Nas PONTAS da elipse achatada os vizinhos não ficam
+ * à mesma distância (111px contra 153px, medido na arena de 4 mesas), então a escolha importa: o
+ * medidor achou as cartas do lugar 1 por cima do pod do lugar 2 em todas as 9 posições do botão.
  *
- * Fixo por lugar, e nao por mao: se o "D" mudasse de lado conforme quem e o heroi, o jogador
- * perderia a referencia de onde procurar o botao -- que e metade do valor de ter um botao
- * desenhado.
+ * 2,4 para 1 é o aspecto da arena no caso APERTADO (4 mesas, onde a altura é a metade). Decidir
+ * pelo caso apertado é o certo: é onde a colisão acontece, e o medidor confere os outros três
+ * tamanhos depois.
  */
-export function sentidoDoDealer(i: number): 1 | -1 {
-  const r = (ANGULOS[i] * Math.PI) / 180;
-  const tx = -TRILHO.rx * Math.sin(r);
-  const ty = TRILHO.ry * Math.cos(r);
-  const lado = ladoDasCartas(i);
-  const c: [number, number] =
-    lado === "direita" ? [1, 0] : lado === "esquerda" ? [-1, 0] : lado === "cima" ? [0, -1] : [0, 1];
-  return tx * c[0] + ty * c[1] > 0 ? -1 : 1;
+const ASPECTO_DE_REFERENCIA = 2.4;
+
+/** Qual dos dois sentidos da perpendicular aponta para o vizinho mais DISTANTE. */
+function sentidoDasCartas(i: number): 1 | -1 {
+  const ponto = (j: number): [number, number] => {
+    const [x, y] = LUGARES[(j + 9) % 9];
+    return [(x - 50) * ASPECTO_DE_REFERENCIA, y - 50];
+  };
+  const [x0, y0] = ponto(i);
+  const dist = (j: number) => {
+    const [x, y] = ponto(j);
+    return Math.hypot(x - x0, y - y0);
+  };
+  const [c, s] = versor(i);
+  // o vizinho para o lado de `(-s, c)`: o de indice seguinte na volta dos angulos
+  const seguinte = dist(i + 1);
+  const anterior = dist(i - 1);
+  const [px1, py1] = ponto(i + 1);
+  const paraSeguinte = (px1 - x0) * -s + (py1 - y0) * c > 0;
+  const maisLongeEhSeguinte = seguinte >= anterior;
+  return paraSeguinte === maisLongeEhSeguinte ? 1 : -1;
+}
+
+export function direcaoDasCartas(i: number): [number, number] {
+  const [c, s] = versor(i);
+  const k = sentidoDasCartas(i);
+  return [-s * k, c * k];
 }
 
 /**
- * A que distancia do centro do pod o botao do dealer fica, em px.
+ * A distância, do centro do pod, de algo com `w` x `h` que sai na direção `dir`.
  *
- * Nao e `(pod + dealer) / 2`: as duas caixas sao quadradas, e em direcao diagonal a separacao
- * util e a PROJECAO da distancia no eixo dominante. Com a conta simples, dois circulos que nao se
- * tocam ainda tinham as caixas se cruzando nos cantos -- 23px2 que o medidor acusou e que a olho
- * nu ninguem veria. Medir com a caixa e pessimista de proposito, porque errar para o lado de
- * acusar e o unico erro barato aqui.
+ * Não é `(pod + tamanho) / 2`: as caixas são retangulares, e em direção diagonal a separação útil
+ * é a PROJEÇÃO no eixo dominante. Com a conta simples, dois círculos que não se tocam ainda
+ * tinham as caixas se cruzando nos cantos. Medir pela caixa é pessimista de propósito, porque
+ * errar para o lado de acusar é o único erro barato aqui.
  */
+function distancia(dir: [number, number], pod: number, w: number, h: number): number {
+  const [dx, dy] = dir;
+  const horizontal = Math.abs(dx) >= Math.abs(dy);
+  const eixo = horizontal ? Math.abs(dx) : Math.abs(dy);
+  const tamanho = horizontal ? w : h;
+  return (pod + tamanho) / 2 / eixo + FOLGA;
+}
+
+export function distanciaDasCartas(i: number, pod: number, w: number, h: number): number {
+  return distancia(direcaoDasCartas(i), pod, w, h);
+}
+
 export function distanciaDoDealer(i: number, pod: number, dealer: number): number {
-  const [dx, dy] = direcaoDoDealer(i);
-  const eixo = Math.max(Math.abs(dx), Math.abs(dy));
-  return (pod + dealer) / 2 / eixo + FOLGA;
+  return distancia(direcaoDoDealer(i), pod, dealer, dealer);
 }
 
 /**
- * O deslocamento do botao do dealer como CSS, a partir do centro do pod.
+ * O deslocamento de um elemento como CSS, a partir do centro do pod.
  *
- * A MESMA conta de `distanciaDoDealer`, escrita em `calc` porque o componente nao sabe o tamanho
- * do card (quem sabe e o navegador, resolvendo o `clamp`). Duas escritas da mesma regra e
- * exatamente o que a regra 5 da casa proibe, entao `geometriaDaMesa.test.ts` RESOLVE esta string
- * com valores concretos e exige que ela bata com a conta em px. Sem esse teste, o medidor poderia
- * aprovar uma mesa que o jogador nao ve.
+ * A MESMA conta de `distancia`, escrita em `calc` porque o componente não sabe o tamanho do card.
+ * Duas escritas da mesma regra é o defeito da regra 5, então `geometriaDaMesa.test.ts` RESOLVE
+ * estas strings com valores concretos e exige que batam com a conta em px. Verificado quebrando:
+ * com a fórmula do CSS alterada, o medidor passou verde nas 81 mãos e só esse teste acusou.
  */
-export function deslocamentoDoDealerCss(i: number): { x: string; y: string } {
-  const [dx, dy] = direcaoDoDealer(i);
-  const eixo = Math.max(Math.abs(dx), Math.abs(dy));
-  const d = `((${M.assento} + ${M.dealer}) / 2 / ${eixo} + ${FOLGA}px)`;
+function deslocamentoCss(dir: [number, number], w: string, h: string): { x: string; y: string } {
+  const [dx, dy] = dir;
+  const horizontal = Math.abs(dx) >= Math.abs(dy);
+  const eixo = horizontal ? Math.abs(dx) : Math.abs(dy);
+  const tamanho = horizontal ? w : h;
+  const d = `((${M.assento} + ${tamanho}) / 2 / ${eixo} + ${FOLGA}px)`;
   return { x: `calc(${dx} * ${d})`, y: `calc(${dy} * ${d})` };
 }
 
-/** De que lado, em CSS, as cartas do heroi saem do pod. A folga e medida da BORDA do pod, que e
- *  o que `caixasDaMesa` tambem faz. */
-export function estiloDasCartas(i: number): {
-  left?: string;
-  right?: string;
-  top?: string;
-  bottom?: string;
-  transform: string;
-} {
-  const fora = `calc(100% + ${FOLGA}px)`;
-  switch (ladoDasCartas(i)) {
-    case "direita":
-      return { left: fora, top: "50%", transform: "translateY(-50%)" };
-    case "esquerda":
-      return { right: fora, top: "50%", transform: "translateY(-50%)" };
-    case "cima":
-      return { bottom: fora, left: "50%", transform: "translateX(-50%)" };
-    default:
-      return { top: fora, left: "50%", transform: "translateX(-50%)" };
-  }
+/** As duas cartas lado a lado, com o gap: é a largura que sai do pod. */
+export const LARGURA_DAS_CARTAS = `calc(${M.cartaW} * 2 + 2px)`;
+
+export function deslocamentoDasCartasCss(i: number): { x: string; y: string } {
+  return deslocamentoCss(direcaoDasCartas(i), LARGURA_DAS_CARTAS, M.cartaH);
+}
+
+export function deslocamentoDoDealerCss(i: number): { x: string; y: string } {
+  return deslocamentoCss(direcaoDoDealer(i), M.dealer, M.dealer);
 }
 
 export type Caixa = {
@@ -251,9 +329,9 @@ export type ConfigDeMedida = {
 /**
  * Toda caixa desenhada na mesa, em px, para um card de `w` por `h`.
  *
- * O componente posiciona em % e `clamp`; aqui a MESMA geometria é resolvida em px. As duas contas
- * saem das mesmas constantes (`LUGARES`, `FICHAS`, `PARAMS`), que é o que impede o medidor de
- * medir uma mesa diferente da que o jogador vê.
+ * O componente posiciona em % da arena e `clamp`; aqui a MESMA geometria é resolvida em px. As
+ * duas contas saem das mesmas constantes (`LUGARES`, `FICHAS`, `PARAMS`, `arena`), que é o que
+ * impede o medidor de medir uma mesa diferente da que o jogador vê.
  */
 export function caixasDaMesa(cfg: ConfigDeMedida): Caixa[] {
   const { w, h, heroi, botao, apostas = [], centro = true } = cfg;
@@ -264,23 +342,29 @@ export function caixasDaMesa(cfg: ConfigDeMedida): Caixa[] {
   const dl = px("dealer", w, h);
   const fichaD = px("ficha", w, h);
   const fFicha = px("fFicha", w, h);
+  const a = arena(w, h);
 
-  const ponto = (p: [number, number]): [number, number] => [(p[0] / 100) * w, (p[1] / 100) * h];
+  /** Um ponto em % DA ARENA, resolvido em px do card. */
+  const ponto = (p: [number, number]): [number, number] => [
+    a.x + (p[0] / 100) * a.w,
+    a.y + (p[1] / 100) * a.h,
+  ];
 
   LUGARES.forEach((p, i) => {
     const [cx, cy] = ponto(p);
     caixas.push({ nome: `pod:${i}`, x: cx - pod / 2, y: cy - pod / 2, w: pod, h: pod });
 
     if (i === heroi) {
-      const largura = cw * 2 + 2; // as duas cartas, lado a lado, com o gap
-      const lado = ladoDasCartas(i);
-      let x = cx - largura / 2;
-      let y = cy - ch / 2;
-      if (lado === "direita") x = cx + pod / 2 + FOLGA;
-      if (lado === "esquerda") x = cx - pod / 2 - FOLGA - largura;
-      if (lado === "cima") y = cy - pod / 2 - FOLGA - ch;
-      if (lado === "baixo") y = cy + pod / 2 + FOLGA;
-      caixas.push({ nome: `cartas:${i}`, x, y, w: largura, h: ch });
+      const largura = cw * 2 + 2;
+      const dir = direcaoDasCartas(i);
+      const d = distanciaDasCartas(i, pod, largura, ch);
+      caixas.push({
+        nome: `cartas:${i}`,
+        x: cx + dir[0] * d - largura / 2,
+        y: cy + dir[1] * d - ch / 2,
+        w: largura,
+        h: ch,
+      });
     }
 
     if (i === botao) {
@@ -309,15 +393,21 @@ export function caixasDaMesa(cfg: ConfigDeMedida): Caixa[] {
     });
   });
 
+  // O histórico da mão ocupa a faixa do topo do CARD (fora da arena), e ficou de fora da primeira
+  // versão do medidor: um esquecimento que deixaria o "D" de um assento de cima passar por baixo
+  // dele sem ninguém ver. A arena já desconta esta faixa; o guarda existe para o dia em que
+  // alguém mudar uma das duas contas e não a outra.
+  caixas.push({ nome: "historico", x: 0, y: 0, w, h: alturaDoHistorico(w, h) });
+
   if (centro) {
-    // o bloco do meio: 52% da largura, e a altura das três linhas (spot, pote, "n na mao")
+    // o bloco do meio: uma fração da arena, e a altura das três linhas (spot, pote, "n na mao")
     const alturaCentro =
       px("fSpot", w, h) * 1.35 + px("fPote", w, h) * 1.25 + px("fHist", w, h) * 1.35;
     caixas.push({
       nome: "centro",
-      x: w / 2 - (w * LARGURA_DO_CENTRO) / 2,
-      y: h / 2 - alturaCentro / 2,
-      w: w * LARGURA_DO_CENTRO,
+      x: a.x + a.w / 2 - (a.w * LARGURA_DO_CENTRO) / 2,
+      y: a.y + a.h / 2 - alturaCentro / 2,
+      w: a.w * LARGURA_DO_CENTRO,
       h: alturaCentro,
     });
   }

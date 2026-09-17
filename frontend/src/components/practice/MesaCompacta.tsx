@@ -3,13 +3,13 @@ import type { Unidade } from "@/lib/pratica";
 import { cn } from "@/lib/utils";
 import {
   FICHAS,
+  arenaCss,
   FOLGA,
   LARGURA_DO_CENTRO,
   LUGARES,
   M,
-  TRILHO,
+  deslocamentoDasCartasCss,
   deslocamentoDoDealerCss,
-  estiloDasCartas,
 } from "./geometriaDaMesa";
 
 /**
@@ -46,12 +46,6 @@ import {
  * `pratica_preflop.mesa_do_spot`. Isto é desenho, e desenho diferente para uso diferente é o
  * oposto de duplicar a verdade. A `PokerTableV3` do replayer não mudou uma linha.
  */
-/** Da borda do card ao trilho, em %, derivado do proprio trilho (o CSS precisa do inset). */
-const INSET = {
-  y: `${TRILHO.cy - TRILHO.ry}%`,
-  x: `${TRILHO.cx - TRILHO.rx}%`,
-};
-
 
 /**
  * Baralho de 4 cores: a cor do quadrado É o naipe, e ela lê de longe melhor que o símbolo.
@@ -194,8 +188,16 @@ export function MesaCompacta({ table, hero, unidade, spot, veredito }: {
       {/* `border-2` e a cor cheia: a borda fina de 1px desaparecia contra o fundo escuro, e o
           dono pediu para engrossar. Ela e o unico tracco que define a mesa -- sem feltro
           preenchido, se ela nao le, nao ha mesa. */}
-      <div className="absolute rounded-[50%] border-2 border-border"
-           style={{ top: INSET.y, bottom: INSET.y, left: INSET.x, right: INSET.x }} />
+      {/* ── A ARENA: a elipse e tudo o que pendura nela ─────────────────────────────────────
+          Ela e o card menos as margens que os elementos EXIGEM (metade do pod, que fica sobre a
+          linha, mais o botao do dealer, que sai para fora dela, mais a faixa do historico no
+          topo). Dentro dela os pontos sao % simples, porque a elipse PREENCHE a arena.
+
+          Antes o trilho tinha raio cravado em % do card (`rx: 44, ry: 39`), e numero fixo nao
+          resolve as duas celulas: estourava em 4 mesas (440px de altura) e sobrava em 2 mesas
+          (880px) -- e a sobra era o vazio no meio do feltro que o dono reclamou. */}
+      <div className="absolute" style={arenaCss()} data-testid="arena-da-mesa">
+        <div className="absolute inset-0 rounded-[50%] border-2 border-border" />
 
       {/* ── O centro do trilho: o spot ANTES de responder, o veredito DEPOIS ────────────────
           O dono, sobre o card de feedback do GTO Wizard: "podiamos mostrar no centro da mesa".
@@ -286,8 +288,10 @@ export function MesaCompacta({ table, hero, unidade, spot, veredito }: {
 
               {/* As cartas DELE, ao lado do assento: onde o olho já está. */}
               {ehHeroi && cartas.length === 2 && (
-                <span className="absolute flex gap-0.5" data-testid="cartas-do-heroi"
-                      style={estiloDasCartas((s.seat - 1) % 9)}>
+                <span className="absolute left-1/2 top-1/2 flex gap-0.5" data-testid="cartas-do-heroi"
+                      style={{
+                        transform: `translate(calc(-50% + ${deslocamentoDasCartasCss((s.seat - 1) % 9).x}), calc(-50% + ${deslocamentoDasCartasCss((s.seat - 1) % 9).y}))`,
+                      }}>
                   {/* Rank grande E o SÍMBOLO do naipe. O dono, vendo a versão só com cor: "as
                       cartas agora estao ruins, pq ja nao sei qual o naipe delas".
                       A cor sozinha é o que o GTO Wizard faz, e funciona lá porque o jogador
@@ -330,6 +334,7 @@ export function MesaCompacta({ table, hero, unidade, spot, veredito }: {
           </div>
         );
       })}
+      </div>
     </div>
   );
 }
