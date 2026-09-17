@@ -5,6 +5,67 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## Os tres estados do assento passaram a LER, e a faixa do historico saiu (17/09)
+
+O dono: "falta deixar mais evidente quem ainda esta na mao, de quem e a vez, e quem ja foldou". E
+depois, mais direto: "quem esta na mao esta parecendo tao oculto quanto quem foldou".
+
+### Nao era sutileza, era invisibilidade
+
+Medido pela razao de contraste sobre o feltro: a borda de quem estava na mao rendia **1,19** e a de
+quem saiu **1,10**. Diferenca de 0,09 -- os dois usavam o MESMO token (`border`, 14% de luminosidade
+sobre um fundo de 7%) e a unica diferenca entre eles era opacidade.
+
+Agora, tudo medido: a borda de quem esta na mao rende **3,85** (3,4x a de quem saiu), a posicao
+**7,7** contra 3,0, e o stack **14,8** contra 4,1. A vez tem borda de 2px na cor da acao mais anel,
+em 7,86.
+
+Tres decisoes que os numeros tomaram:
+
+1. **A separacao veio de SUBIR o peso de quem esta na mao, nunca de apagar mais quem saiu.** Ele ja
+   reclamou do contrario ("estamos ocultando muito o pod, e quase nao da pra ver"), e consertar um
+   pedido reabrindo o outro e a regra 7. O texto de quem foldou ficou exatamente onde estava, e ha
+   um guarda so para isso.
+2. A borda de quem esta na mao e `muted-foreground` e nao `prose-fg`, que renderia 6,25 -- ali o pod
+   de quem esta na mao passaria a competir com o de quem tem a vez.
+3. A diferenca nao e so de tom: e de ESPESSURA. 2px para quem esta na mao e para a vez, 1px para
+   quem saiu. Num pod de 47px a espessura le onde o tom nao le.
+
+### E ai a faixa do historico perdeu a razao de existir
+
+"acho que podemos tirar o historico de acoes de cima....ja da pra ficar claro pela mesa, quem foldou
+e quem esta na mao / com isto ganhamos mais espaco vertical e superior".
+
+Ele havia pedido aquela faixa DUAS vezes antes, e a reversao tem causa do mesmo dia: a faixa
+existia para **compensar o defeito acima**. Enquanto todos os pods eram iguais, ela era o unico
+lugar da tela que dizia quem tinha saido. Consertado o contraste, virou repeticao.
+
+O que ela mostrava esta todo na mesa: posicao e stack no pod, aposta na ficha, a vez no anel do
+heroi, quantos restam no centro. O exclusivo dela era a ORDEM em que se agiu, e no preflop a ordem
+e a propria posicao. Isso ficou escrito no lugar da faixa, para ninguem restaurar a faixa lendo os
+dois pedidos antigos sem saber o que mudou no meio.
+
+Saiu junto a funcao `historico()` e os tres casos dela. Um guardava um achado real -- o `bet` de 1bb
+do BB e o blind POSTADO e nao agressao -- mas aquilo so importava para o TEXTO da faixa: na mesa,
+ficha na frente do BB e o blind, que e o que uma mesa de verdade mostra.
+
+O `fHist` virou `fLegenda`: a fonte segue em uso na legenda do centro ("9 na mao"), e nome que
+descreve uma coisa que nao existe mais e o comeco da proxima confusao.
+
+### Ganho de espaco
+
+Arena no card do dono: **756x236 (51%) -> 755x257 (55%)**. Somando o dia, ela foi de 407x170 (20%)
+para 755x257 (55%).
+
+### Um guarda meu que passou verde
+
+O caso que prova o desenho conferia o atributo `data-estado` de cada assento. Quebrando de proposito
+-- forcando TODOS os assentos a desenhar com o peso de "na mao" -- ele passou: o atributo continuava
+certo e a tela estava errada. Ancorar num rotulo que o defeito nao toca e a cicatriz do teste que
+olha o efeito e nao a condicao. Agora ele confere a CLASSE aplicada em cada pod, e acusa.
+
+---
+
 ## A carta do heroi ENCOSTA no assento, e a mesa recupera altura (17/09)
 
 O dono, em dois recados: "a parte superior da mesa pode encostar mais nas infos de cima" e "a parte

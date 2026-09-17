@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect, afterEach } from "vitest";
 import { render, screen, cleanup, within } from "@testing-library/react";
-import { MesaCompacta, historico, lerCartas } from "./MesaCompacta";
+import { MesaCompacta, PESO_DO_ASSENTO, lerCartas } from "./MesaCompacta";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import type { DrillTableState } from "@/lib/api";
@@ -121,6 +121,80 @@ describe("a mesa do Pratica", () => {
     expect(utg.textContent).toMatch(/\d/);
   });
 
+  it("os TRES estados do assento se distinguem por PESO, e nao por opacidade", () => {
+    // 17/09, o dono: "falta deixar mais evidente quem ainda esta na mao, de quem e a vez, e quem
+    // ja foldou", e depois "quem esta na mao esta parecendo tao oculto quanto quem foldou".
+    //
+    // Medido: a borda de quem estava na mao rendia 1,19 de contraste sobre o feltro e a de quem
+    // saiu 1,10. Diferenca de 0,09, porque os DOIS usavam o token `border` e a unica diferenca era
+    // a opacidade. Este caso ancora na CONDICAO que quebrou -- o token de cor da borda -- e nao no
+    // efeito, que o jsdom nao calcula (ele nao resolve a cascata do Tailwind).
+    const tokenDaBorda = (classe: string) =>
+      (classe.match(/border-(?!\d)[a-z-]+(?:\/\d+)?/g) ?? []).join(" ");
+
+    const { vez, naMao, fora } = PESO_DO_ASSENTO;
+    expect(tokenDaBorda(naMao.caixa), "quem esta na mao voltou a usar a borda de quem saiu")
+      .not.toBe(tokenDaBorda(fora.caixa));
+    expect(tokenDaBorda(vez.caixa)).not.toBe(tokenDaBorda(naMao.caixa));
+
+    // e a ESPESSURA, que e o que le num pod de 47px onde o tom nao le
+    expect(naMao.caixa).toContain("border-2");
+    expect(vez.caixa).toContain("border-2");
+    expect(fora.caixa, "quem saiu com a mesma espessura de quem ficou").not.toContain("border-2");
+
+    // o texto tambem separa, nas duas linhas do pod
+    expect(naMao.pos).not.toBe(fora.pos);
+    expect(naMao.stack).not.toBe(fora.stack);
+    expect(vez.pos).not.toBe(naMao.pos);
+  });
+
+  it("a mesa APLICA o peso do estado em cada assento, e nao so o rotula", () => {
+    // O complemento do caso acima: aquele olha a tabela de pesos, este prova que a mesa usa a
+    // tabela no assento certo.
+    //
+    // A primeira versao deste caso conferia so o atributo `data-estado`, e ele PASSOU VERDE quando
+    // eu forcei todos os assentos a desenhar com o peso de "na mao": o atributo continuava certo e
+    // a tela estava errada. Ancorar num rotulo que o defeito nao toca e a cicatriz do teste que
+    // olha o efeito e nao a condicao. Agora ele confere a CLASSE que foi aplicada.
+    monta();
+    const peso = (testid: string) => screen.getByTestId(testid).className;
+    const estado = (testid: string) => screen.getByTestId(testid).getAttribute("data-estado");
+
+    expect(estado("assento-UTG")).toBe("fora");
+    expect(peso("assento-UTG"), "UTG foldou e esta desenhado como quem ficou")
+      .toContain(PESO_DO_ASSENTO.fora.caixa);
+    expect(peso("assento-UTG")).not.toContain("border-2");
+
+    expect(estado("assento-SB")).toBe("vez");
+    expect(peso("assento-SB"), "o SB e o heroi, e neste modo o heroi tem a vez")
+      .toContain(PESO_DO_ASSENTO.vez.caixa);
+
+    expect(estado("assento-BTN")).toBe("naMao");
+    expect(peso("assento-BTN"), "o BTN abriu: esta na mao, e nao e a vez dele")
+      .toContain(PESO_DO_ASSENTO.naMao.caixa);
+    expect(peso("assento-BTN")).not.toContain("border-primary");
+
+    expect(estado("assento-BB")).toBe("naMao");
+    expect(peso("assento-BB")).toContain(PESO_DO_ASSENTO.naMao.caixa);
+
+    // e o TEXTO de cada linha do pod segue o mesmo peso
+    expect(within(screen.getByTestId("assento-UTG")).getByText("20").className)
+      .toContain(PESO_DO_ASSENTO.fora.stack);
+    expect(within(screen.getByTestId("assento-BTN")).getByText("17.8").className)
+      .toContain(PESO_DO_ASSENTO.naMao.stack);
+  });
+
+  it("quem FOLDOU nao perdeu legibilidade para o conserto acima", () => {
+    // Regra 7: o conserto nao pode causar dano que o bug nao causava. O dono ja reclamou do
+    // contrario ("estamos ocultando muito o pod, e quase nao da pra ver"), entao a separacao foi
+    // feita SUBINDO o peso de quem esta na mao. O texto de quem saiu ficou onde estava.
+    const { fora } = PESO_DO_ASSENTO;
+    expect(fora.pos).toBe("text-muted-foreground/80");
+    expect(fora.stack).toBe("text-muted-foreground");
+    expect(fora.caixa, "quem saiu perdeu o fundo").toContain("bg-");
+    expect(fora.caixa, "quem saiu perdeu a borda").toContain("border-");
+  });
+
   it("a unidade vale para stack E aposta, com UM formatador", () => {
     // A cicatriz mais recorrente do projeto é "fichas vs BB". Dois formatadores é como a mesa
     // acaba mostrando a mesma grandeza de dois jeitos no mesmo desenho.
@@ -188,34 +262,6 @@ describe("a mesa do Pratica", () => {
     expect(raiz.className).toContain("relative");
   });
 
-  it("o historico e UMA linha por assento, com altura FIXA", () => {
-    // O dono pediu duas vezes, e a segunda desfez a primeira. Primeiro: "a posicao em cima, a
-    // acao embaixo....dentro de um box pra cada posicao". Depois, com a captura do GTO Wizard:
-    // "as acoes tbm deve ficar neste modelo, pra economizar espaco superior".
-    //
-    // O box de duas linhas gastava o dobro de altura, e altura e exatamente o que falta na mesa --
-    // foi a mesma escassez que achatou o trilho. Este caso trava o modelo NOVO, e existe para a
-    // proxima mudanca de desenho ser uma decisao e nao um acidente.
-    monta();
-    const hist = screen.getByTestId("historico-da-mao");
-    expect(hist.className, "sem isto um item a mais empurra a mesa").toContain("overflow-hidden");
-
-    // a altura vem da GEOMETRIA (a mesma faixa que a arena desconta do topo), e não do conteúdo
-    expect(hist.style.height, "a altura do historico precisa sair da geometria").toMatch(/px$/);
-    expect(parseFloat(hist.style.height)).toBeGreaterThan(8);
-
-    const itens = [...hist.children];
-    expect(itens.length, "a varredura nao achou nenhum item do historico").toBeGreaterThan(1);
-    for (const item of itens) {
-      expect(item.className, "o chip e uma LINHA: posicao, stack e acao lado a lado")
-        .not.toContain("flex-col");
-      // posicao + stack + acao
-      expect(item.children.length, "o chip precisa dos tres pedacos").toBe(3);
-    }
-    // e o stack aparece, como no modelo deles ("UTG 35 Fold")
-    expect(hist.textContent).toMatch(/\d/);
-  });
-
   it("o trilho e um ESTADIO, e a arena tem ASPECTO fixo", () => {
     // O pedido do dono, com a captura deles: "ideal e que as bordas superiores e inferiores da
     // mesa fiquem retas, e so curvemos as laterais...assim ganhamos espaco". Num retangulo 2:1, o
@@ -264,37 +310,6 @@ describe("a mesa do Pratica", () => {
     expect(fonte).not.toContain("container-mesa");
   });
 
-  /** O formatador que a mesa usa em BB, com o blind em 100 fichas. Ele fica aqui, e nao no
-   *  componente, porque `historico` e exportada justamente para ter teste proprio -- e o caso que
-   *  engana (o blind do BB) so aparece quando se controla o valor do blind. */
-  const fmt = (chips: number) => {
-    const v = Math.round((chips / 100) * 10) / 10;
-    return Number.isInteger(v) ? String(v) : v.toFixed(1);
-  };
-
-  it("resume quem agiu, na ordem, terminando na vez dele", () => {
-    const h = historico(MESA.seats, "Hero", fmt, 100);
-    expect(h.map((x) => `${x.pos} ${x.texto}`)).toEqual([
-      "UTG fold", "UTG+1 fold", "UTG+2 fold", "LJ fold", "HJ fold", "CO fold",
-      "BTN 2.2", "SB sua vez",
-    ]);
-    expect(h[h.length - 1].vez).toBe(true);
-  });
-
-  it("o blind do BB NAO conta como aposta", () => {
-    // O caso que engana: o `bet` de 1bb do BB é o blind POSTADO, não agressão. Contá-lo faria a
-    // faixa dizer que o BB "apostou 1" em toda mão, e o jogador leria isso como uma ação.
-    const h = historico(MESA.seats, "Hero", fmt, 100);
-    expect(h.some((x) => x.pos === "BB")).toBe(false);
-  });
-
-  it("o BB ENTRA quando ele realmente aumenta", () => {
-    // O controle do caso acima: sem ele, um filtro que simplesmente escondesse o BB passaria
-    // verde, e um 3-bet do BB desapareceria do histórico.
-    const seats = MESA.seats.map((s) => (s.pos === "BB" ? { ...s, bet: 800 } : s));
-    const h = historico(seats, "Hero", fmt, 100);
-    expect(h.find((x) => x.pos === "BB")?.texto).toBe("8");
-  });
 });
 
 describe("lerCartas", () => {

@@ -7,7 +7,6 @@ import {
   ASPECTO_MIN,
   arena,
   aspectoDaMesa,
-  alturaDoHistorico,
   margensDaArena,
   caixasDaMesa,
   direcaoDaFicha,
@@ -191,7 +190,7 @@ describe("a geometria da mesa", () => {
       const a = arena(card.w, card.h);
       const m = margensDaArena(card.w, card.h, a.aspecto, a.w, a.h);
       const livreW = card.w - m.esq - m.dir;
-      const livreH = card.h - alturaDoHistorico(card.w, card.h) - m.topo - m.base;
+      const livreH = card.h - m.topo - m.base;
       const oferecido = livreW / livreH;
       if (oferecido >= ASPECTO_MIN && oferecido <= ASPECTO_MAX) {
         // dentro da faixa a mesa toma TUDO: os dois eixos encostam

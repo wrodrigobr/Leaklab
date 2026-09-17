@@ -64,48 +64,71 @@ export function lerCartas(raw: string | null | undefined): [string, string][] {
     .slice(0, 2);
 }
 
-/** O histórico da mão, na ordem de ação.
+/**
+ * ── Os três estados que o pod precisa distinguir ──────────────────────────────────────────────
  *
- *  Exportada para ter teste próprio: derivar ação a partir de `bet` tem um caso que engana, o BB,
- *  cujo `bet` de 1bb é o blind POSTADO e não um aumento. Tratar o blind como aposta faria a faixa
- *  dizer que o BB "apostou 1" em toda mão, e o jogador leria isso como agressão.
+ * O dono, vendo a mesa: "falta deixar mais evidente quem ainda está na mão, de quem é a vez, e
+ * quem já foldou", e depois, mais direto: "quem está na mão está parecendo tao oculto quanto quem
+ * foldou".
+ *
+ * Ele está certo, e o número é contundente. Medido pela razão de contraste sobre o feltro: a borda
+ * de quem estava na mão rendia **1,19** e a de quem saiu **1,10**. Diferença de 0,09 -- os dois
+ * usavam o MESMO token (`border`, 14% de luminosidade sobre um fundo de 7%), e a única diferença
+ * era a opacidade. Não era sutil, era invisível.
+ *
+ * Agora, medido: a borda de quem está na mão rende 3,85 (3,4x a de quem saiu), a posição 7,7 contra
+ * 3,0, e o stack 14,8 contra 4,1. A borda escolhida é `muted-foreground` e não `prose-fg`, que
+ * renderia 6,25 -- aí o pod de quem está na mão passaria a competir com o de quem tem a vez.
+ *
+ * ── O limite que este conserto tem de respeitar ───────────────────────────────────────────────
+ *
+ * Ele já reclamou do CONTRÁRIO: "quando os assentos nao estao na mao, estamos ocultando muito o
+ * pod, e quase nao da pra ver". Então a diferença NÃO pode vir de apagar mais quem foldou -- isso
+ * seria consertar um pedido reabrindo o outro. Ela vem de dar PESO a quem está na mão e a quem
+ * joga: borda de 2px e fundo elevado para quem ficou, anel e tinta da cor da ação para a vez.
+ * Quem saiu perde o peso, não a legibilidade: continua com fundo, borda, posição e stack.
+ *
+ * Neste modo o herói É quem tem a vez -- o servidor monta o spot na decisão dele. Se ele aparecer
+ * fora da mão, "fora" manda: quem saiu não tem vez, e a ordem aqui diz isso.
  */
-export function historico(
-  seats: DrillTableState["seats"],
-  hero: string,
-  fmt: (chips: number) => string,
-  bbEmFichas: number,
-): { pos: string; texto: string; stack: string | null; fold: boolean; vez: boolean }[] {
-  // O blind de referência vem de `bb_chips`, e NÃO do `bet` do próprio assento. A primeira versão
-  // lia o blind do BB a partir do `bet` dele, que é exatamente o valor que muda quando ele
-  // aumenta: num 3-bet do BB a conta comparava 800 com 800, dava falso, e o aumento dele
-  // DESAPARECIA do histórico. Foi o teste do caso contrário que pegou.
-  const blindDe = (pos: string) => {
-    const p = (pos || "").toUpperCase();
-    if (p === "BB") return bbEmFichas;
-    if (p === "SB") return bbEmFichas / 2;
-    return 0;
-  };
+export type EstadoDoAssento = "vez" | "naMao" | "fora";
 
-  return seats
-    .filter((s) => {
-      const ehHeroi = s.hero || s.name === hero;
-      if (ehHeroi) return true;
-      if (s.folded) return true;
-      // aumentou de verdade = pôs mais que o próprio blind
-      return s.bet > blindDe(s.pos || "");
-    })
-    .map((s) => {
-      const ehHeroi = s.hero || s.name === hero;
-      const pos = s.pos || String(s.seat);
-      // O STACK no chip é o modelo do GTO Wizard ("UTG 35 Fold"), e ele responde de cabeça a
-      // pergunta que decide o spot: quanto tinha quem agiu antes de você.
-      const stack = fmt(s.stack);
-      if (ehHeroi) return { pos, texto: "sua vez", stack, fold: false, vez: true };
-      if (s.folded) return { pos, texto: "fold", stack, fold: true, vez: false };
-      return { pos, texto: fmt(s.bet), stack, fold: false, vez: false };
-    });
+export function estadoDoAssento(
+  s: { folded?: boolean; active?: boolean; hero?: boolean; name?: string },
+  hero: string,
+): EstadoDoAssento {
+  if (s.folded || !s.active) return "fora";
+  return s.hero || s.name === hero ? "vez" : "naMao";
 }
+
+/**
+ * O peso de cada estado, em três degraus.
+ *
+ * `border-2` nos dois primeiros e `border` no terceiro é de propósito: a ESPESSURA lê num pod de
+ * 47px onde a diferença de tom não lê. O anel do "vez" é `ring-1` e não `ring-2` porque o anel
+ * cresce para fora da caixa que o medidor conhece, e a carta do herói encosta a 10px dali.
+ */
+export const PESO_DO_ASSENTO: Record<EstadoDoAssento, {
+  caixa: string; pos: string; stack: string;
+}> = {
+  vez: {
+    caixa: "border-2 border-primary bg-primary/15 ring-1 ring-primary/40",
+    pos: "text-primary",
+    stack: "text-foreground",
+  },
+  naMao: {
+    caixa: "border-2 border-muted-foreground bg-hud-elevated",
+    pos: "text-foreground/80",
+    stack: "text-foreground",
+  },
+  // O texto de quem saiu ficou IGUAL ao que era: a separacao vem de subir o peso de quem esta na
+  // mao, e nao de baixar o de quem saiu. Baixar reabriria o pedido anterior dele.
+  fora: {
+    caixa: "border border-border/70 bg-hud-surface/70",
+    pos: "text-muted-foreground/80",
+    stack: "text-muted-foreground",
+  },
+};
 
 export function MesaCompacta({ table, hero, unidade, spot, veredito }: {
   table: DrillTableState;
@@ -183,7 +206,7 @@ export function MesaCompacta({ table, hero, unidade, spot, veredito }: {
     fPote: px("fPote", tamanho.w, tamanho.h),
     fFicha: px("fFicha", tamanho.w, tamanho.h),
     ficha: px("ficha", tamanho.w, tamanho.h),
-    fHist: px("fHist", tamanho.w, tamanho.h),
+    fLegenda: px("fLegenda", tamanho.w, tamanho.h),
     fDealer: px("fDealer", tamanho.w, tamanho.h),
   };
   const caixa = (c: { x: number; y: number; w: number; h: number }): React.CSSProperties => ({
@@ -196,30 +219,6 @@ export function MesaCompacta({ table, hero, unidade, spot, veredito }: {
 
   return (
     <div ref={caixaRef} className="relative h-full w-full" data-testid="mesa-compacta">
-      {/* ── O histórico, em UMA linha (modelo do GTO Wizard) ────────────────────────────────
-          O dono pediu duas vezes, e a segunda desfez a primeira: primeiro "a posicao em cima, a
-          acao embaixo....dentro de um box pra cada posicao", e depois, com a captura deles ao
-          lado, "as acoes tbm deve ficar neste modelo, pra economizar espaco superior". O box de
-          duas linhas gastava o dobro de altura, e altura é o que falta na mesa. */}
-      <div className="flex items-center justify-center gap-1 overflow-hidden"
-           style={caixa(L.historico)} data-testid="historico-da-mao">
-        {historico(seats, hero, fmt, bb).map((h, i) => (
-          <span key={i}
-                className={cn("flex shrink-0 items-center gap-1 rounded border px-1.5 py-0.5 font-mono uppercase leading-none",
-                              h.vez
-                                ? "border-primary/50 bg-primary/15 text-primary"
-                                : h.fold
-                                  ? "border-border/40 bg-hud-surface/60 text-muted-foreground/70"
-                                  : "border-border bg-hud-surface text-foreground/90")}>
-            <span className="font-bold tracking-wide" style={{ fontSize: M.fHist }}>{h.pos}</span>
-            {h.stack != null && (
-              <span className="tabular-nums opacity-70" style={{ fontSize: M.fHist }}>{h.stack}</span>
-            )}
-            <span className="tracking-wide opacity-90" style={{ fontSize: M.fHist }}>{h.texto}</span>
-          </span>
-        ))}
-      </div>
-
       {/* ── O contorno: um ESTÁDIO ──────────────────────────────────────────────────────────
           O dono, com a captura deles: "ideal e que as bordas superiores e inferiores da mesa
           fiquem retas, e so curvemos as laterais...assim ganhamos espaco". Ganha porque os
@@ -251,7 +250,7 @@ export function MesaCompacta({ table, hero, unidade, spot, veredito }: {
                 </span>
               </span>
               <span className="block font-mono uppercase tracking-widest-2 text-muted-foreground/60"
-                    style={{ fontSize: M.fHist }}>
+                    style={{ fontSize: M.fLegenda }}>
                 {naMao} na mao
               </span>
             </>
@@ -302,30 +301,23 @@ export function MesaCompacta({ table, hero, unidade, spot, veredito }: {
       {seats.map((s) => {
         const p = L.pods[indice(s.seat)];
         if (!p) return null;
-        const ehHeroi = s.hero || s.name === hero;
-        const fora = s.folded || !s.active;
+        const estado = estadoDoAssento(s, hero);
+        const peso = PESO_DO_ASSENTO[estado];
         return (
           <div key={s.seat} data-testid={`assento-${s.pos || s.seat}`}
+               data-estado={estado}
                style={caixa(p.caixa)}
                className={cn(
-                 "flex flex-col items-center justify-center rounded-full border text-center leading-none",
-                 fora
-                   ? "border-border/60 bg-hud-surface/50"
-                   : ehHeroi
-                     ? "border-primary bg-hud-surface"
-                     : "border-border bg-hud-surface",
+                 "flex flex-col items-center justify-center rounded-full text-center leading-none",
+                 peso.caixa,
                )}>
-            <span className={cn("font-mono uppercase tracking-tight",
-                                ehHeroi
-                                  ? "text-primary"
-                                  : fora ? "text-muted-foreground/80" : "text-muted-foreground")}
+            <span className={cn("font-mono uppercase tracking-tight", peso.pos)}
                   style={{ fontSize: M.fPos }}>
               {s.pos || s.seat}
             </span>
             {/* O STACK de quem saiu APARECE, e não um traço: era o traço que fazia o pod parecer
-                vazio. Só o tom muda. */}
-            <span className={cn("font-mono font-bold tabular-nums",
-                                fora ? "text-muted-foreground" : "text-foreground")}
+                vazio. Só o peso muda. */}
+            <span className={cn("font-mono font-bold tabular-nums", peso.stack)}
                   style={{ fontSize: M.fStack }}>
               {fmt(s.stack)}
             </span>

@@ -52,7 +52,9 @@ export const PARAMS = {
   fPote: [14, 2.6, 4.8, 32],
   fFicha: [11, 2.0, 3.7, 23],
   ficha: [9, 1.5, 2.8, 19],
-  fHist: [9, 1.6, 3.0, 18],
+  /** a legenda pequena do centro ("9 na mao"). Chamava-se `fHist` enquanto havia uma faixa de
+   *  histórico no topo do card; o nome ficou mentindo quando ela saiu, em 17/09. */
+  fLegenda: [9, 1.6, 3.0, 18],
   dealer: [14, 2.4, 4.4, 30],
   fDealer: [8, 1.4, 2.6, 17],
 } as const satisfies Record<string, readonly [number, number, number, number]>;
@@ -138,22 +140,26 @@ export function aspectoDaMesa(livreW: number, livreH: number): number {
 }
 
 /**
- * A faixa do histórico da mão, no topo do card.
+ * ── A faixa do histórico saiu (17/09) ────────────────────────────────────────────────────────
  *
- * O fator era 2,2 e virou 1,8 em 17/09: o dono pediu "se colocarmos as ações mais coladas no
- * topo, a mesa consegue crescer verticalmente, pra cima e para baixo". A faixa tinha folga acima e
- * abaixo dos chips, e folga de sobra na faixa do topo é altura tirada da mesa.
+ * Havia uma faixa no topo do card com um chip por assento ("UTG 20 FOLD"), e o dono a pediu duas
+ * vezes antes de pedir que saísse: "a posicao em cima, a acao embaixo....dentro de um box pra cada
+ * posicao", depois "as acoes tbm deve ficar neste modelo, pra economizar espaco superior", e
+ * finalmente "acho que podemos tirar o historico de acoes de cima....ja da pra ficar claro pela
+ * mesa, quem foldou e quem esta na mao / com isto ganhamos mais espaço vertical e superior".
  *
- * 1,8 não é um número escolhido a olho: o chip tem a fonte (`leading-none`, então 1,0), mais
- * `py-0.5` nos dois lados (4px) e a borda (2px) -- com a fonte mínima de 9px isso dá 15px contra
- * uma faixa de 16,2. Abaixo de 1,8 o chip começa a ser cortado.
+ * A reversão tem causa, e ela é do mesmo dia: os três estados do assento passaram a ler na mesa (a
+ * borda de quem está na mão foi de 1,19 para 3,85 de contraste). Enquanto os pods eram todos
+ * iguais, a faixa era o único lugar que dizia quem tinha saído -- ela existia para compensar um
+ * defeito, e o defeito foi consertado.
+ *
+ * Quem reabrir isto: o que a faixa mostrava está todo na mesa. Posição e stack no pod, aposta na
+ * ficha, a vez no anel do herói, quantos restam no centro. O que ela tinha de exclusivo era a
+ * ORDEM em que se agiu, e no preflop a ordem é a própria posição.
  */
-export function alturaDoHistorico(w: number, h: number): number {
-  return px("fHist", w, h) * 1.8;
-}
 
 /**
- * ── A margem, lado por lado, medida no DESENHO ────────────────────────────────────────────────
+ * ── A margem, lado por lado * ── A margem, lado por lado, medida no DESENHO ────────────────────────────────────────────────
  *
  * A primeira versão pedia UM número e o aplicava nos quatro lados: o pior caso de tudo o que
  * pendura, em qualquer direção. Isso custou o espaço que o dono cobrou em 17/09 ("a mesa nao esta
@@ -231,11 +237,10 @@ export function margensDaArena(w: number, h: number, a: number, arenaW: number, 
  * (arena de largura negativa desenha a mesa do avesso, e o medidor mediria isso como se fosse mesa).
  */
 export function arena(w: number, h: number) {
-  const hist = alturaDoHistorico(w, h);
   let aw = Math.max(1, w);
-  let ah = Math.max(1, h - hist);
+  let ah = Math.max(1, h);
   let x = 0;
-  let y = hist;
+  let y = 0;
   let a = aspectoDaMesa(aw, ah);
 
   for (let passo = 0; passo < 6; passo++) {
@@ -243,11 +248,11 @@ export function arena(w: number, h: number) {
     const m = margensDaArena(w, h, a, aw, ah);
     // a margem cede em PROPORÇÃO: cortar um lado só deslocaria a mesa para fora do centro
     const cedeW = Math.min(1, (w * 0.8) / Math.max(1, m.esq + m.dir));
-    const cedeH = Math.min(1, ((h - hist) * 0.8) / Math.max(1, m.topo + m.base));
+    const cedeH = Math.min(1, (h * 0.8) / Math.max(1, m.topo + m.base));
     const esq = m.esq * cedeW;
     const topo = m.topo * cedeH;
     const livreW = Math.max(1, w - (m.esq + m.dir) * cedeW);
-    const livreH = Math.max(1, h - hist - (m.topo + m.base) * cedeH);
+    const livreH = Math.max(1, h - (m.topo + m.base) * cedeH);
 
     a = aspectoDaMesa(livreW, livreH);
     aw = livreW;
@@ -257,7 +262,7 @@ export function arena(w: number, h: number) {
       aw = ah * a;
     }
     x = esq + (livreW - aw) / 2;
-    y = hist + topo + (livreH - ah) / 2;
+    y = topo + (livreH - ah) / 2;
     if (passo > 0 && Math.abs(aw - antes) < 0.25) break;
   }
 
@@ -460,7 +465,7 @@ export type ConfigDoLayout = {
 
 /**
  * O layout inteiro da mesa, em px: a arena, cada pod, as cartas do herói, o botão do dealer, cada
- * ficha de aposta, o bloco do centro e a faixa do histórico.
+ * ficha de aposta e o bloco do centro.
  *
  * É a ÚNICA fonte do desenho: o componente posiciona com estes números e o medidor de colisão
  * verifica estes mesmos números. Antes havia duas contas (px e `calc`) e um teste provando que
@@ -543,13 +548,11 @@ export function layoutDaMesa(cfg: ConfigDoLayout) {
       return { i, caixa };
     });
 
-  const historico: Caixa = { nome: "historico", x: 0, y: 0, w, h: alturaDoHistorico(w, h) };
-  caixas.push(historico);
 
   let miolo: Caixa | null = null;
   if (centro) {
     const altura =
-      px("fSpot", w, h) * 1.35 + px("fPote", w, h) * 1.25 + px("fHist", w, h) * 1.35;
+      px("fSpot", w, h) * 1.35 + px("fPote", w, h) * 1.25 + px("fLegenda", w, h) * 1.35;
     // A largura do centro NÃO é só uma fração da arena: ela também respeita o que as fichas
     // ocupam por dentro. Com a mesa VERTICAL (o celular), as fichas das laterais entram na
     // horizontal e a fração de 46% já alcançava o texto -- 81 mãos com problema em 360px, 162 em
@@ -568,7 +571,7 @@ export function layoutDaMesa(cfg: ConfigDoLayout) {
     caixas.push(miolo);
   }
 
-  return { arena: a, pods, cartas, dealer, fichas, historico, centro: miolo, caixas };
+  return { arena: a, pods, cartas, dealer, fichas, centro: miolo, caixas };
 }
 
 /** Só as caixas, para o medidor de colisão. */
