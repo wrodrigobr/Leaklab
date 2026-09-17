@@ -61,6 +61,11 @@ export function HudDoTorneio({ hud }: { hud: HeroHudResponse }) {
           const s = hud.stats?.[k];
           if (!s) return null;
           const semDado = s.value == null;
+          // `so_agressao` NAO e ausencia de spot: houve agressao postflop e zero call, entao a
+          // razao do AF e indefinida. A celula precisa dizer isso, e nao "sem spot" -- o dono viu
+          // um torneio com C-Bet 100% e o AF dizendo que nao houve spot, e perguntou se estava
+          // certo. Nao estava: o acumulador tinha a agressao contada e a celula a jogava fora.
+          const soAgressao = s.band === "so_agressao";
           const dentro = dentroDaFaixa(s.value, s.healthy);
           return (
             <div key={k} className="bg-hud-surface px-2.5 py-2.5">
@@ -74,10 +79,17 @@ export function HudDoTorneio({ hud }: { hud: HeroHudResponse }) {
                 {semDado ? "—" : k === "af" ? s.value.toFixed(1) : `${s.value.toFixed(0)}%`}
               </div>
               <div className="mt-1 font-mono text-[9px] tabular-nums text-muted-foreground/70">
-                {semDado ? t("detail.hud.noOpportunity") : `${s.num}/${s.den}`}
+                {/* a AMOSTRA aparece tambem no `so_agressao`: 1/0 e o fato, e e ele que explica
+                    por que nao ha numero */}
+                {semDado && !soAgressao ? t("detail.hud.noOpportunity") : `${s.num}/${s.den}`}
               </div>
-              {/* A régua na célula: sem ela a cor vira acusação sem base visível. */}
-              {!semDado && s.healthy && (
+              {/* A régua na célula: sem ela a cor vira acusação sem base visível. E no
+                  `so_agressao` nao ha regua possivel, entao o lugar dela diz o que houve. */}
+              {soAgressao ? (
+                <div className="font-mono text-[8.5px] text-amber-400/80">
+                  {t("detail.hud.soAgressao")}
+                </div>
+              ) : !semDado && s.healthy && (
                 <div className="font-mono text-[8.5px] tabular-nums text-muted-foreground/50">
                   {t("detail.hud.alvo")} {s.healthy[0]}–{s.healthy[1]}{k === "af" ? "x" : "%"}
                 </div>

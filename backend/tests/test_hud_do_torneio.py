@@ -171,6 +171,66 @@ def test_a_after_raise_do_heroi_e_um_subconjunto_da_geral():
     assert 0 < st['fold3bet']['den'] <= st['fold3bet_any']['den'], (st['fold3bet'], st['fold3bet_any'])
     assert st['fold3bet']['value'] <= st['fold3bet_any']['value'], (st['fold3bet'], st['fold3bet_any'])
 
+
+def _mao_cbet_sem_call():
+    """O caso do dono (17/09): abre, leva call, da c-bet no flop e o vilao folda.
+
+    Ele foi agressivo no postflop e NUNCA pagou. C-Bet 100% (1/1), e o AF sem denominador.
+    """
+    return [_mao('cb', ['Heroi', 'V1'], [
+        ('Heroi', 'preflop', 'raises', 3), ('V1', 'preflop', 'calls', 3),
+        ('Heroi', 'flop', 'bets', 5), ('V1', 'flop', 'folds')])]
+
+
+def test_AF_sem_call_nao_e_sem_spot():
+    """O defeito que o dono achou olhando a tela: 'C-Bet 100%, e sem AF? esta correto?'.
+
+    Nao estava. O acumulador tinha `pf_aggr=1` e `pf_calls=0`, e a celula reportava
+    `num=0, den=0, no_opportunity` -- ela CONTAVA a agressao e depois jogava fora, afirmando que
+    nao houve spot. Zero call nao e zero oportunidade.
+
+    Sao tres estados e nao dois, e este caso fixa os tres. A regra e a mesma cicatriz da casa
+    ("celula sem dado nunca vira 0") na direcao oposta: celula COM dado nao pode dizer que nao
+    tem dado.
+    """
+    af = hud_do_heroi(_mao_cbet_sem_call(), 'Heroi')['stats']['af']
+    assert af['band'] == 'so_agressao', af
+    assert af['num'] == 1, 'a agressao contada foi jogada fora: %s' % af
+    assert af['den'] == 0, af
+    # e NAO vira numero: dividir por zero numa tela nao da infinito, da valor inventado
+    assert af['value'] is None, af
+
+    # CONTROLE 1: sem acao postflop nenhuma, ai sim nao ha spot
+    nada = hud_do_heroi(_sessao_curta(), 'Heroi')['stats']['af']
+    assert nada['band'] == 'no_opportunity', nada
+    assert nada['num'] == 0 and nada['den'] == 0, nada
+
+    # CONTROLE 2: com call, a razao existe e volta a ser numero -- sem isto, um `af` que nunca
+    # calculasse nada passaria verde nos dois casos acima
+    com_call = [_mao('cc', ['Heroi', 'V1'], [
+        ('Heroi', 'preflop', 'raises', 3), ('V1', 'preflop', 'calls', 3),
+        ('Heroi', 'flop', 'bets', 5), ('V1', 'flop', 'raises', 15),
+        ('Heroi', 'flop', 'calls', 15), ('V1', 'turn', 'bets', 20),
+        ('Heroi', 'turn', 'folds')])]
+    com = hud_do_heroi(com_call, 'Heroi')['stats']['af']
+    assert com['value'] == 1.0 and com['num'] == 1 and com['den'] == 1, com
+    print('OK  test_AF_sem_call_nao_e_sem_spot')
+
+
+def test_o_ZERO_com_denominador_continua_sendo_FATO():
+    """O outro lado da pergunta dele: 'Fold to 3bet 0%, WTSD 0%... esta correto?'.
+
+    Esses SIM: o denominador e maior que zero, entao o zero descreve o que aconteceu. A regra da
+    celula cinza vale para ausencia de OPORTUNIDADE, nunca para taxa que deu zero -- confundir as
+    duas esconderia justamente o comportamento extremo.
+    """
+    h = hud_do_heroi(_mao_cbet_sem_call(), 'Heroi')['stats']
+    assert h['wtsd']['value'] == 0.0, h['wtsd']
+    assert h['wtsd']['den'] == 1, 'viu o flop uma vez: o zero precisa da amostra ao lado'
+    assert h['wtsd']['band'] != 'no_opportunity', h['wtsd']
+    print('OK  test_o_ZERO_com_denominador_continua_sendo_FATO')
+
+
 if __name__ == '__main__':
     falhas = 0
     testes = [v for k, v in sorted(globals().items()) if k.startswith('test_')]

@@ -580,7 +580,9 @@ export interface HeroHudStat {
   value: number | null;
   num: number;
   den: number;
-  band: "healthy" | "below" | "above" | "low_sample" | "no_opportunity";
+  /** `so_agressao`: houve agressao postflop e ZERO call, entao a razao e indefinida -- nao e
+   *  ausencia de spot, e divisao por zero. Ver `hud_do_torneio.py`. */
+  band: "healthy" | "below" | "above" | "low_sample" | "no_opportunity" | "so_agressao";
   healthy?: [number, number] | null;
 }
 export interface HeroHudResponse {

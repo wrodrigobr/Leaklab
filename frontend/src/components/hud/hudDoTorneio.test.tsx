@@ -43,4 +43,34 @@ describe("HUD do torneio", () => {
     expect(screen.getByText("—")).toBeTruthy();
     expect(screen.queryByText("0%")).toBeNull();
   });
+
+  it("agrediu e NUNCA pagou nao e 'sem spot': a celula mostra 1/0 e diz o que houve", () => {
+    // O defeito que o dono achou na tela (17/09): um torneio com C-Bet 100% (1/1) e o AF dizendo
+    // "sem spot". O servidor contava a agressao (`pf_aggr=1`) e a celula a jogava fora.
+    //
+    // Zero call nao e zero oportunidade. Sao tres estados: sem acao postflop (nao ha o que
+    // medir), agrediu e nunca pagou (razao indefinida) e agrediu e pagou (numero). Este caso
+    // separa os dois primeiros, que antes eram o mesmo.
+    render(<HudDoTorneio hud={{
+      ...HUD,
+      stats: { ...HUD.stats,
+        af: { value: null, num: 1, den: 0, band: "so_agressao" as const, healthy: null } },
+    }} />);
+    expect(screen.getByText("1/0"), "a amostra do AF desapareceu").toBeTruthy();
+    expect(screen.getByText("detail.hud.soAgressao")).toBeTruthy();
+    // e o AF nao pode virar numero: dividir por zero numa tela e valor inventado
+    expect(screen.queryByText("Infinity")).toBeNull();
+    expect(screen.queryByText("NaN")).toBeNull();
+  });
+
+  it("CONTROLE: 'sem spot' continua valendo para quem nao teve acao nenhuma", () => {
+    // Sem este, um componente que NUNCA mais dissesse "sem spot" passaria verde no caso acima.
+    render(<HudDoTorneio hud={{
+      ...HUD,
+      stats: { ...HUD.stats,
+        af: { value: null, num: 0, den: 0, band: "no_opportunity" as const, healthy: null } },
+    }} />);
+    expect(screen.getAllByText("detail.hud.noOpportunity").length).toBeGreaterThan(0);
+    expect(screen.queryByText("detail.hud.soAgressao")).toBeNull();
+  });
 });

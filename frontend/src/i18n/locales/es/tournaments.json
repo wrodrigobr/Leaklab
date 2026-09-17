@@ -287,6 +287,7 @@
       "hands": "{{n}} manos",
       "disclaimer": "Muestra de un torneo: léela como foto de la sesión, no como tendencia.",
       "noOpportunity": "sin spot",
+      "soAgressao": "solo agresion, sin calls",
       "stat": {
         "vpip": "VPIP",
         "pfr": "PFR",

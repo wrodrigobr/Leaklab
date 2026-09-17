@@ -287,6 +287,7 @@
       "hands": "{{n}} hands",
       "disclaimer": "One-tournament sample: read it as a session snapshot, not a trend.",
       "noOpportunity": "no spot",
+      "soAgressao": "aggression only, no calls",
       "stat": {
         "vpip": "VPIP",
         "pfr": "PFR",

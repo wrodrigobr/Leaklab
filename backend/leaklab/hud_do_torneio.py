@@ -66,14 +66,34 @@ def hud_do_heroi(hands, hero: str) -> Optional[dict]:
             'healthy': list((cls or {}).get('healthy') or ()) or None,
         }
 
-    # AF: razão, não taxa (agressões / calls preflop+postflop do acumulador).
-    af_den = c.get('pf_calls', 0)
-    if af_den > 0:
-        af = round(c.get('pf_aggr', 0) / af_den, 2)
-        cls = classify_stat('af', af, sample=af_den)
-        stats['af'] = {'value': af, 'num': c.get('pf_aggr', 0), 'den': af_den,
+    # ── AF: razão, não taxa (agressões postflop / calls postflop) ────────────────────────────
+    #
+    # Zero call NÃO é zero oportunidade, e essa confusão era um defeito: o dono olhou um torneio
+    # de 17 mãos com C-Bet 100% (1/1) e o AF dizendo "sem spot", e perguntou se estava certo. Não
+    # estava. Forjado o caso (herói abre, leva call, dá c-bet no flop e o vilão folda), o
+    # acumulador tinha `pf_aggr=1` e `pf_calls=0`, e a célula reportava `num=0, den=0,
+    # no_opportunity`: ela CONTOU a agressão e depois jogou fora, dizendo que não houve spot.
+    #
+    # São três estados, e não dois:
+    #
+    #   nenhuma ação postflop            -> não há o que medir      (`no_opportunity`)
+    #   agrediu e NUNCA pagou            -> a razão é indefinida    (`so_agressao`)
+    #   agrediu e pagou                  -> a razão existe
+    #
+    # O terceiro é o único que vira número. O segundo não pode virar número nenhum: dividir por
+    # zero não dá "infinito" numa tela, dá um valor inventado -- e a casa tem a cicatriz do
+    # "célula sem dado nunca vira 0". Aqui é a mesma regra na direção oposta: célula COM dado não
+    # pode dizer que não tem dado. Ela mostra a amostra (1/0) e a palavra.
+    aggr = c.get('pf_aggr', 0) or 0
+    calls = c.get('pf_calls', 0) or 0
+    if calls > 0:
+        af = round(aggr / calls, 2)
+        cls = classify_stat('af', af, sample=calls)
+        stats['af'] = {'value': af, 'num': aggr, 'den': calls,
                        'band': (cls or {}).get('band') or 'low_sample',
                        'healthy': list((cls or {}).get('healthy') or ()) or None}
+    elif aggr > 0:
+        stats['af'] = {'value': None, 'num': aggr, 'den': 0, 'band': 'so_agressao'}
     else:
         stats['af'] = {'value': None, 'num': 0, 'den': 0, 'band': 'no_opportunity'}
 
