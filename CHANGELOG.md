@@ -5,6 +5,47 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## O card de veredito: o defeito era SEMANTICO, nao de tamanho (17/09)
+
+O dono: "o veredito ainda nao esta premium....use o claude design para avaliar isto e propor
+melhorias". A ferramenta do Claude Design pede autorizacao que nao roda em sessao nao interativa
+(`/design-login` num terminal, e ela passa a valer), entao a avaliacao foi minha, sobre a captura.
+
+O que mais pesava nao era tamanho, e sim **cor com significado trocado**: o veredito dizia
+"aceitavel" em ambar e o custo dizia `-0.01bb` em VERMELHO, a um centimetro de distancia. Duas
+cores com significados opostos no mesmo card. Cor semantica inconsistente e o que faz uma tela
+parecer montada as pressas, e o `text-red-400` estava cravado para os quatro niveis.
+
+Cinco mudancas, em ordem de peso:
+
+1. **O custo segue o NIVEL.** Ambar na imprecisao, vermelho no erro, mais forte no grave, neutro
+   quando nao ha erro.
+2. **O card ABRACA o conteudo** (`w-fit` + `mx-auto`). Ele esticava os 347px do centro enquanto o
+   conteudo pede ~194px, e sobrava espaco morto a direita -- um `div` com `display:flex` dentro de
+   um bloco estica por padrao, e dava para ver na captura.
+3. **O anel ganhou preenchimento** no tom do nivel: so contorno ele le como borda solta, com fundo
+   ele le como selo.
+4. **Ritmo vertical declarado.** As tres linhas eram `block` sem gap, e a distancia entre elas
+   vinha do line-height de cada fonte, saindo desigual.
+5. **"sua jogada" saiu da caixa alta** e ganhou tom neutro: era o unico elemento em maiuscula do
+   card, minusculo e solto ao pe do anel. O acento e do anel, nao do rotulo. Mais fundo elevado e
+   borda no tom do nivel, para o card se separar do feltro sem gritar.
+
+### Tres coisas que passariam por "premium" e ficaram FORA
+
+- **Faixa de acento no topo do card**: e o clichê visual mais reconhecivel de interface gerada, e
+  repete em cor o que a borda ja diz.
+- **Anel maior**: ele reclamou do contrario duas rodadas antes, e o tamanho agora e medido em sete
+  tamanhos de card.
+- **Esconder o custo quando e pequeno** (`-0.01bb`): o custo e a EVIDENCIA do veredito, e a casa tem
+  a cicatriz de acusacao sem numero. O conserto certo era a cor, nao a omissao.
+
+Dois guardas, com controle: um exige que o custo de uma imprecisao NAO seja vermelho e que o card
+abrace o conteudo; o outro exige que num erro grave ele SEJA vermelho -- sem o segundo, um mapa que
+devolvesse ambar para tudo passaria verde no primeiro. Quebrados de tres formas, as tres acusam.
+
+---
+
 ## O botao "encerrar e ver boletim" prometia uma tela que nao existe (17/09)
 
 O dono: "encerrar e ver boletim ? acho que podemos remover este botao... ja temos um botao voltar e

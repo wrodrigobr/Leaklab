@@ -83,23 +83,37 @@ function CardDeVeredito({ nivel, grade, acao, m }: {
   return (
     <div data-testid="pratica-veredito"
          data-empilhado={m.empilhado ? "1" : "0"}
-         className={cn("flex justify-center rounded-lg border border-border/60 bg-hud-surface/95 shadow-lg",
-                       m.empilhado ? "flex-col items-center" : "items-center")}
+         className={cn(
+           // `w-fit` e `mx-auto`: sem eles o card estica na largura inteira do centro (347px no
+           // card de quatro mesas) enquanto o conteudo pede ~194px, e sobra espaco morto a
+           // direita -- um `div` com `display:flex` dentro de um bloco estica por padrao, e era
+           // o que o dono via na captura.
+           "mx-auto flex w-fit justify-center rounded-xl border bg-hud-surface-elevated/95 shadow-lg",
+           BORDA_DO_NIVEL[nivel],
+           m.empilhado ? "flex-col items-center" : "items-center")}
          style={{ gap: m.folga, padding: m.respiro }}>
       {pct != null && (
         <span className="flex shrink-0 flex-col items-center" style={{ width: m.anel }}>
+          {/* O anel tem PREENCHIMENTO, e nao so contorno: sem ele le como uma borda solta em vez
+              de um selo. O tom e o do nivel, fraco, para o numero seguir sendo o que se ve. */}
           <span className={cn("flex items-center justify-center rounded-full border-2 leading-none",
-                              ANEL_DO_NIVEL[nivel])}
+                              ANEL_DO_NIVEL[nivel], FUNDO_DO_ANEL[nivel])}
                 style={{ width: m.anel, height: m.anel }}>
             <b className="font-mono font-bold tabular-nums" style={{ fontSize: m.fPct }}>{pct}%</b>
           </span>
-          <span className="mt-0.5 block whitespace-nowrap font-mono uppercase tracking-widest-2 opacity-70"
-                style={{ fontSize: m.fSelo }}>
+          {/* minusculas, e nao caixa alta: era o unico elemento em caixa alta do card, e um
+              rotulo de dez caracteres em maiuscula ao pe de um anel de 50px le como etiqueta
+              perdida. O tom neutro tambem e de proposito -- o acento e do anel. */}
+          <span className="block whitespace-nowrap font-mono tracking-wide text-muted-foreground"
+                style={{ fontSize: m.fSelo, marginTop: m.fSelo * 0.35 }}>
             {t("veredito.suaJogada")}
           </span>
         </span>
       )}
-      <span className={cn("min-w-0", m.empilhado ? "text-center" : "text-left")}>
+      {/* O ritmo vertical e DECLARADO: as tres linhas eram `block` sem espacamento, entao a
+          distancia entre elas vinha do line-height de cada fonte e saia desigual. */}
+      <span className={cn("flex min-w-0 flex-col", m.empilhado ? "text-center" : "text-left")}
+            style={{ gap: m.fDetalhe * 0.35 }}>
         <b className={cn("block font-heading font-bold leading-tight", TEXTO_DO_NIVEL[nivel])}
            style={{ fontSize: m.fVeredito }}>
           {/* O simbolo ORDENA (pedido do dono: "VV, V, X, XX") e a palavra NOMEIA. Os dois,
@@ -129,8 +143,13 @@ function CardDeVeredito({ nivel, grade, acao, m }: {
             {t("veredito.foraSemCusto")}
           </span>
         )}
+        {/* ── O custo segue o NIVEL (17/09) ──────────────────────────────────────────────
+            Era `text-red-400` SEMPRE. Na captura do dono isso deu um veredito "aceitavel" em
+            ambar com o custo `-0.01bb` em VERMELHO a um centimetro de distancia: duas cores com
+            significados opostos no mesmo card. Cor semantica inconsistente e o que mais faz uma
+            tela parecer montada as pressas, e era a causa do "ainda nao esta premium". */}
         {typeof grade?.ev_loss_bb === "number" && grade.ev_loss_bb !== 0 && (
-          <span className="block font-mono font-bold tabular-nums text-red-400"
+          <span className={cn("block font-mono font-bold tabular-nums", CUSTO_DO_NIVEL[nivel])}
                 style={{ fontSize: m.fDetalhe * 1.1 }}>
             −{Math.abs(grade.ev_loss_bb).toFixed(2)}bb
           </span>
@@ -148,6 +167,30 @@ const ANEL_DO_NIVEL: Record<Nivel, string> = {
   imprecisao: "border-amber-400 text-amber-300",
   errada:     "border-red-400 text-red-300",
   grave:      "border-red-600 text-red-400",
+};
+
+/** O fundo do anel, fraco: o tom diz o nivel, o numero segue sendo o que se le. */
+const FUNDO_DO_ANEL: Record<Nivel, string> = {
+  correta:    "bg-emerald-500/12",
+  imprecisao: "bg-amber-500/12",
+  errada:     "bg-red-500/12",
+  grave:      "bg-red-600/15",
+};
+
+/** A borda do CARD, no tom do nivel: liga o card ao veredito sem gritar. */
+const BORDA_DO_NIVEL: Record<Nivel, string> = {
+  correta:    "border-emerald-500/30",
+  imprecisao: "border-amber-500/30",
+  errada:     "border-red-500/30",
+  grave:      "border-red-600/40",
+};
+
+/** A cor do CUSTO. Ela segue o nivel, e nao e vermelha sempre: ver o comentario no card. */
+const CUSTO_DO_NIVEL: Record<Nivel, string> = {
+  correta:    "text-muted-foreground",
+  imprecisao: "text-amber-400/90",
+  errada:     "text-red-400",
+  grave:      "text-red-500",
 };
 
 const TEXTO_DO_NIVEL: Record<Nivel, string> = {

@@ -181,6 +181,43 @@ describe("modo Pratica", () => {
     expect(v.textContent).toContain("✓✓");
   });
 
+  it("a COR do custo segue o nivel, e nao e vermelha sempre", async () => {
+    // 17/09, o dono: "o veredito ainda nao esta premium". Avaliando a captura dele, o defeito que
+    // mais pesava era SEMANTICO e nao de tamanho: o veredito dizia "aceitavel" em ambar e o custo
+    // dizia "-0.01bb" em VERMELHO, a um centimetro de distancia. Duas cores com significados
+    // opostos no mesmo card.
+    //
+    // O guarda ancora na CONDICAO (a cor sai do nivel) e tem os dois lados: sem o controle, um
+    // `text-red-400` cravado passaria no primeiro caso se eu tivesse escolhido outro tom.
+    grade.mockResolvedValue({ is_correct: true, action_quality: "acceptable", nivel: "imprecisao",
+                              hand_freq: { R2: 0.11, A: 0.89 }, ev_loss_bb: -0.01 });
+    monta();
+    const m1 = await screen.findByTestId("pratica-mesa-m1");
+    fireEvent.click(within(m1).getByTestId("pratica-acao-raise"));
+    const v = await within(m1).findByTestId("pratica-veredito");
+
+    const custo = within(v).getByText(/0\.01bb/);
+    expect(custo.className, "o custo de uma imprecisao saiu VERMELHO, contradizendo o veredito")
+      .not.toMatch(/text-red-[45]00(?!\/)/);
+    expect(custo.className, "o custo deixou de acompanhar o nivel").toContain("amber");
+
+    // o card tambem se liga ao nivel pela borda, e ABRACA o conteudo
+    expect(v.className, "o card voltou a esticar na largura do centro").toContain("w-fit");
+    expect(v.className).toMatch(/border-amber/);
+  });
+
+  it("CONTROLE: num erro GRAVE o custo E vermelho", async () => {
+    // Sem este, um mapa de cores que devolvesse ambar para tudo passaria verde no caso acima.
+    grade.mockResolvedValue({ is_correct: false, action_quality: "clear_mistake", nivel: "grave",
+                              hand_freq: { F: 1.0 }, ev_loss_bb: -3.4 });
+    monta();
+    const m1 = await screen.findByTestId("pratica-mesa-m1");
+    fireEvent.click(within(m1).getByTestId("pratica-acao-raise"));
+    const v = await within(m1).findByTestId("pratica-veredito");
+    expect(within(v).getByText(/3\.40bb/).className).toMatch(/text-red-500/);
+    expect(v.className).toMatch(/border-red-600/);
+  });
+
   it("depois do veredito, o spot novo entra SO naquela mesa", async () => {
     // O pedido do dono (16/09): "sempre que eu tomar uma acao em uma mesa, precisamos dar o
     // alerta do veredito, mas apos 2 segundos, um novo spot tem que ser carregado nesta mesa".
