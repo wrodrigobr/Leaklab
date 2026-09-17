@@ -154,6 +154,42 @@ def test_recusas_da_v1():
     print('OK  test_recusas_da_v1')
 
 
+def test_uma_tabela_AUSENTE_nao_derruba_a_exclusao():
+    """Tabela declarada que ainda nao existe no banco nao pode custar a exclusao inteira.
+
+    ── O defeito que este caso trava (16/09) ─────────────────────────────────────────────────
+
+    `_tabela_existe` tentava `SELECT 1 FROM <tabela>` e, no erro, fazia `conn.rollback()` -- que
+    desfaz a TRANSACAO INTEIRA. Enquanto toda tabela declarada existia em todo banco, o caminho de
+    erro nunca rodava: o defeito dormiu ate `pratica_maos` entrar na lista (ela so e criada quando
+    alguem pratica). Ai o rollback desfazia os deletes de `feature_usage` e `session_checkins`, e
+    o `DELETE FROM users` falhava com FOREIGN KEY.
+
+    O caso declara uma tabela FANTASMA de proposito: ela nunca vai existir, entao ele exercita o
+    caminho de erro para sempre, e nao so enquanto alguma tabela real estiver faltando.
+    """
+    _banco()
+    import leaklab.exclusao_de_usuario as E
+    from leaklab.exclusao_de_usuario import excluir_usuario
+
+    uid, outro, tid, token, _m = _semeia_usuario_com_rastros()
+    antes = _sobras(uid, tid, token)
+    assert antes['users'] == 1 and antes['feature_usage'] == 1, (
+        'controle quebrado: a semeadura nao criou os rastros: %s' % antes)
+
+    original = E.TABELAS_DO_USUARIO
+    E.TABELAS_DO_USUARIO = (('tabela_que_nunca_existiu', ['user_id']),) + tuple(original)
+    try:
+        placar = excluir_usuario(uid, executado_por=999999)
+    finally:
+        E.TABELAS_DO_USUARIO = original
+
+    assert placar.get('tabela_que_nunca_existiu') == 'ausente', placar
+    depois = _sobras(uid, tid, token)
+    assert all(v == 0 for v in depois.values()), (
+        'a tabela ausente derrubou a exclusao e deixou rastro: %s' % depois)
+
+
 if __name__ == '__main__':
     falhas = 0
     testes = [v for k, v in sorted(globals().items()) if k.startswith('test_')]

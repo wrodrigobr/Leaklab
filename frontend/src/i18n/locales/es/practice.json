@@ -58,5 +58,28 @@
   },
   "avaliando": "evaluando",
   "semAvaliacao": "sin evaluacion",
-  "semAvaliacaoDica": "no pudimos evaluar esta mano, y no entro en tu marcador"
+  "semAvaliacaoDica": "no pudimos evaluar esta mano, y no entro en tu marcador",
+  "relatorio": {
+    "titulo": "manos practicadas",
+    "maos": "manos",
+    "acerto": "acierto",
+    "bbPerdidos": "bb perdidos",
+    "bbPorMao": "bb por mano",
+    "semAvaliacao": "sin evaluacion",
+    "porPosicao": "por posicion",
+    "porCenario": "por escenario",
+    "mais": "cargar mas",
+    "vazio": "todavia no practicaste ninguna mano. Responde algunas mesas y el historial aparece aqui.",
+    "erro": "no pudimos cargar tu historial ahora. Intenta de nuevo en unos instantes.",
+    "col": {
+      "mao": "mano",
+      "spot": "spot",
+      "stack": "stack",
+      "suaAcao": "tu accion",
+      "gto": "gto",
+      "freq": "freq",
+      "veredito": "veredicto",
+      "custo": "costo"
+    }
+  }
 }

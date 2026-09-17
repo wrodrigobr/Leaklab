@@ -3886,7 +3886,50 @@ def practice_grade():
     res['xp_awarded'] = xp if res.get('is_correct') else 0
     if res['xp_awarded']:
         add_xp(g.user_id, 'practice_preflop_correct', xp)
+
+    # O historico grava aqui, e nao numa chamada separada do front: toda mao avaliada entra, e o
+    # que entra e o veredito que o SERVIDOR deu (`res['nivel']`), nao o que o cliente calculou.
+    # Falha ao gravar nao pode custar a resposta do jogador, que esta com quatro mesas abertas.
+    try:
+        from leaklab.historico_de_pratica import gravar
+        res['historico_id'] = gravar(g.user_id, spot, acao, res)
+    except Exception:
+        app.logger.exception('practice: falha ao gravar no historico (user=%s)', g.user_id)
+        res['historico_id'] = None
     return jsonify(res)
+
+
+@app.route('/player/practice/history', methods=['GET'])
+@require_auth
+def practice_history():
+    """As ultimas maos praticadas, mais recentes primeiro.
+
+    Pagina por `before` (o id da ultima linha que o cliente ja tem) e nao por offset: o jogador
+    pode estar praticando enquanto olha, e offset pula ou repete linha quando a base se move.
+    """
+    from leaklab.historico_de_pratica import ultimas
+    try:
+        limite = int(request.args.get('limit', 50) or 50)
+    except (TypeError, ValueError):
+        limite = 50
+    try:
+        antes = int(request.args.get('before') or 0) or None
+    except (TypeError, ValueError):
+        antes = None
+    maos = ultimas(g.user_id, limite=limite, desde_id=antes)
+    return jsonify({'maos': maos, 'proximo': (maos[-1]['id'] if maos else None)})
+
+
+@app.route('/player/practice/report', methods=['GET'])
+@require_auth
+def practice_report():
+    """O relatorio do treino: placar por nivel, custo somado, e os cortes por posicao e cenario."""
+    from leaklab.historico_de_pratica import relatorio
+    try:
+        n = int(request.args.get('last_n', 200) or 200)
+    except (TypeError, ValueError):
+        n = 200
+    return jsonify(relatorio(g.user_id, ultimas_n=n))
 
 
 def _training_gate_status():

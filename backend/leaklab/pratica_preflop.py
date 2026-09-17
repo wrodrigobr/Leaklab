@@ -240,8 +240,121 @@ def mesas(n: int = 1, cenario: str = 'mixed', stacks=None, posicoes=None, evitar
     return saida
 
 
+#: Os quatro niveis do veredito, do melhor para o pior. O dono cortou o quinto de proposito
+#: ("melhor jogada e correta, pra mim sao a mesma coisa") e escolheu os rotulos.
+NIVEIS = ('correta', 'imprecisao', 'errada', 'grave')
+
+#: A partir desta frequencia, a perna menor da mistura conta como "o GTO faz".
+FREQ_DA_MISTURA = 0.3
+
+#: Abaixo desta frequencia, "o GTO faz" nao e verdade: e ruido da carta. Medido: o acervo tem
+#: perna de 0,4% custando 2,552bb (UTG+2 QJo 14bb, allin). E 1% e o mesmo numero que o card usa
+#: para LISTAR as pernas -- o que nao aparece na tela nao pode justificar o veredito nela.
+FREQ_MINIMA_PARA_EXISTIR = 0.01
+
+#: Abaixo deste custo, em bb, uma jogada que o GTO nao faz ainda nao e erro. A tela mostra duas
+#: casas, entao abaixo de 0,005 ela exibe "-0,00bb": chamar de erro um numero que a propria tela
+#: mostra como zero e contradicao na mesma linha. A primeira tentativa foi 0,05, e o caso do dono
+#: (limp de 0,028bb) a derrubou.
+PISO_DE_RUIDO_BB = 0.005
+
+#: Fronteira errada/grave, em bb.
+CUSTO_DO_ERRO_GRAVE = 3.0
+
+#: O corte de "custa pouco". Vale SO quando o no nao tem estrategia nenhuma: com estrategia, quem
+#: decide o lado e a frequencia.
+CUSTO_DA_IMPRECISAO = 0.5
+
+
+def _normaliza_acao(a) -> str:
+    """`F`, `fold`, `C`, `R2.5`, `RAI` no MESMO vocabulario. O `hand_freq` vem com o codigo do no
+    do solver e as opcoes com o nome da acao: comparar cru daria "correta" nunca."""
+    s = str(a or '').strip().lower()
+    if s == 'f' or s.startswith('fold'):
+        return 'fold'
+    if s == 'c' or s.startswith('call'):
+        return 'call'
+    if s == 'x' or s.startswith('check'):
+        return 'check'
+    if s in ('rai', 'allin', 'jam', 'shove'):
+        return 'allin'
+    if s.startswith('r') or s.startswith('bet') or s.startswith('raise'):
+        return 'raise'
+    return s
+
+
+def nivel_do_veredito(grade: dict, acao: str):
+    """O nivel de uma resposta, ou `None` quando nao ha base para julgar.
+
+    ── Por que esta regua mora no SERVIDOR ───────────────────────────────────────────────────
+
+    Ela nasceu no front (`lib/pratica.ts`), e ficou la enquanto o Pratica so mostrava o veredito
+    na tela. O historico das maos praticadas mudou isso: para GRAVAR o veredito eu precisaria de
+    uma segunda implementacao da mesma regra, e o relatorio diria uma coisa enquanto a mesa dizia
+    outra -- a regra 5 da casa, e exatamente o defeito que este modo acabou de pagar em outra
+    dimensao (o motor chamando de `major_leak` o que o Pratica chamava de "aceitavel", em 36,5%
+    das combinacoes).
+
+    Confiar no nivel que o cliente manda tambem nao serve: o relatorio viraria adulteravel, e a
+    casa ja tem a cicatriz do submit que re-gradava ao vivo ignorando o gabarito.
+
+    ── A regua ───────────────────────────────────────────────────────────────────────────────
+
+    A FREQUENCIA decide o LADO, o CUSTO decide a severidade dentro dele. Foi como o dono
+    descreveu: "dentro do maior % gto, dentro de um % mais baixo, ou totalmente fora". A primeira
+    versao nao tinha o terceiro lado, e com frequencia zero o custo decidia sozinho: um custo
+    pequeno devolvia "aceitavel" para uma jogada que o GTO nunca faz, e o dono fotografou a
+    contradicao ("0% SUA JOGADA" ao lado de "aceitavel", com "o GTO joga: allin 100%" embaixo).
+    """
+    g = grade or {}
+    freq = {k: v for k, v in (g.get('hand_freq') or {}).items()
+            if isinstance(v, (int, float)) and not isinstance(v, bool)}
+    custo = g.get('ev_loss_bb')
+    custo = (abs(float(custo)) if isinstance(custo, (int, float))
+             and not isinstance(custo, bool) else None)
+    da_carta = str(g.get('action_quality') or '').lower()
+
+    if freq:
+        maior = max(freq.values())
+        pct = 0.0
+        for k, v in freq.items():
+            if _normaliza_acao(k) == _normaliza_acao(acao):
+                pct = v
+                break
+        # 1) dentro do maior %, ou numa perna que o GTO mistura com peso real
+        if pct > 0 and (pct >= maior or pct >= FREQ_DA_MISTURA):
+            return 'correta'
+        # 2) o GTO FAZ, mas pouco
+        if pct >= FREQ_MINIMA_PARA_EXISTIR:
+            return 'imprecisao'
+        # 3) totalmente fora: o custo ja nao escolhe o lado, so o tamanho
+        if custo is not None and custo < PISO_DE_RUIDO_BB:
+            return 'imprecisao'
+        if custo is not None:
+            return 'errada' if custo <= CUSTO_DO_ERRO_GRAVE else 'grave'
+        if da_carta == 'major_leak':
+            return 'grave'
+        if da_carta == 'leak':
+            return 'errada'
+        return 'errada'
+
+    # sem estrategia nenhuma: o custo e tudo o que ha
+    if custo is not None:
+        if custo < CUSTO_DA_IMPRECISAO:
+            return 'imprecisao'
+        return 'errada' if custo <= CUSTO_DO_ERRO_GRAVE else 'grave'
+    return {'major_leak': 'grave', 'leak': 'errada', 'acceptable': 'imprecisao',
+            'correct': 'correta'}.get(da_carta)
+
+
 def corrigir(spot: dict, acao: str) -> dict:
     """Corrige UMA mesa. Delega inteiro para a Academia: o veredito tem de ser o mesmo texto e a
     mesma regua que o jogador ve no exercicio avulso, senao temos duas verdades para o mesmo spot.
+
+    Acrescenta `nivel`, que e o veredito de quatro niveis do Pratica. Ele sai daqui e nao do
+    front porque o historico das maos praticadas o GRAVA: duas implementacoes da mesma regra
+    fariam o relatorio discordar da mesa.
     """
-    return grade_gto_preflop_answer(spot or {}, acao or '')
+    res = grade_gto_preflop_answer(spot or {}, acao or '')
+    res['nivel'] = nivel_do_veredito(res, acao or '')
+    return res

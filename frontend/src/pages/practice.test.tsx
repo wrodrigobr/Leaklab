@@ -74,7 +74,10 @@ describe("modo Pratica", () => {
     localStorage.clear();
     tables.mockReset(); grade.mockReset(); evSummary.mockReset();
     tables.mockResolvedValue({ tables: QUATRO, pedidas: 4, servidas: 4 });
-    grade.mockResolvedValue({ is_correct: true, action_quality: "correct",
+    // `nivel` vem do SERVIDOR desde 16/09: a regua saiu do front quando o historico passou a
+    // gravar o veredito, e o mock precisa falar o contrato novo. Sem ele a mesa mostra "sem
+    // avaliacao", que e o comportamento certo para uma resposta sem veredito.
+    grade.mockResolvedValue({ is_correct: true, action_quality: "correct", nivel: "correta",
                               hand_freq: { F: 0.8, R2: 0.2 }, ev_loss_bb: null, xp_awarded: 20 });
     evSummary.mockResolvedValue({ top_leaks: [] });
   });
@@ -378,7 +381,8 @@ describe("modo Pratica", () => {
     expect(within(mesa).queryByTestId("pratica-veredito"),
            "veredito antes da resposta e uma acusacao sem dado").toBeNull();
 
-    solta({ is_correct: true, action_quality: "correct", hand_freq: { F: 0.9 }, ev_loss_bb: 0 });
+    solta({ is_correct: true, action_quality: "correct", nivel: "correta",
+            hand_freq: { F: 0.9 }, ev_loss_bb: 0 });
     await waitFor(() => expect(within(mesa).queryByTestId("pratica-veredito")).toBeTruthy(),
                   { timeout: 5000 });
     expect(within(mesa).queryByTestId("pratica-avaliando")).toBeNull();

@@ -58,5 +58,28 @@
   },
   "avaliando": "grading",
   "semAvaliacao": "not graded",
-  "semAvaliacaoDica": "we could not grade this hand, and it is out of your score"
+  "semAvaliacaoDica": "we could not grade this hand, and it is out of your score",
+  "relatorio": {
+    "titulo": "hands practiced",
+    "maos": "hands",
+    "acerto": "accuracy",
+    "bbPerdidos": "bb lost",
+    "bbPorMao": "bb per hand",
+    "semAvaliacao": "not graded",
+    "porPosicao": "by position",
+    "porCenario": "by spot type",
+    "mais": "load more",
+    "vazio": "you have not practiced any hand yet. Answer a few tables and your history shows up here.",
+    "erro": "we could not load your history right now. Try again in a moment.",
+    "col": {
+      "mao": "hand",
+      "spot": "spot",
+      "stack": "stack",
+      "suaAcao": "your action",
+      "gto": "gto",
+      "freq": "freq",
+      "veredito": "verdict",
+      "custo": "cost"
+    }
+  }
 }

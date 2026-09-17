@@ -5,6 +5,62 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## O historico das maos praticadas, e a regua que mudou de lado (16/09)
+
+O dono: "seria interessante armazenar este treino, para ficar no historico das ultimas maos
+treinadas, e ter a possibilidade de gerar um relatorio como o do gto wizard".
+
+**O que entrou.** Tabela `pratica_maos` (mao, posicao, stack, cenario, a acao dele, a do GTO, a
+frequencia, o veredito e o custo), gravada pela propria rota de correcao; `/practice/history`,
+que pagina por keyset; `/practice/report`, com o placar por nivel, o custo somado e os cortes por
+posicao e por cenario; e o painel na tela do treino, que abre SOBRE as mesas para o jogador
+consultar e voltar sem perder a sessao.
+
+**A regua do veredito mudou de lado, e isso era obrigatorio.** Ela morava no front, e funcionou
+enquanto o Pratica so PINTAVA o veredito. Gravar mudou o problema: aceitar o nivel que o navegador
+manda deixaria o relatorio adulteravel, e recalcular no servidor criaria a segunda implementacao
+da mesma regra -- a regra 5 da casa, e o defeito que este modo acabou de pagar em outra dimensao
+(o motor chamando `major_leak` o que o Pratica chamava de "aceitavel", em 36,5% das combinacoes).
+
+Agora ela vive em `pratica_preflop.nivel_do_veredito`, com os casos dela em Python, e o front so
+LE `grade.nivel`. Um teste no front prova que ele NAO calcula: com `hand_freq`, `ev_loss_bb` e
+`action_quality` na mao e sem o `nivel`, ele cala. Sobrou uma constante nos dois lados (o 1% que
+decide se "o GTO faz" e verdade, e que o card usa para listar as pernas), e ela ganhou guarda
+cruzado: um teste no backend le o TypeScript e exige o mesmo numero.
+
+**O que a medicao decidiu, e nao o gosto:**
+
+- a taxa de acerto e sobre as maos JULGADAS, e nao sobre o total: dividir pelo total faria a taxa
+  cair quando o solver nao respondeu, o que nao e culpa nem merito de quem treina;
+- mao sem veredito aparece numa linha propria, fora dos quatro niveis, no relatorio e na tabela;
+- o custo soma em MODULO, porque o motor devolve o sinal e somar cru faria duas maos ruins se
+  cancelarem;
+- a pagina 2 vem por keyset (`before`), e nao por OFFSET: o jogador pode estar praticando
+  enquanto olha, e com offset cada mao nova empurra a lista e a pagina 2 repete o que a 1 mostrou.
+
+**O defeito DORMENTE que isto acordou.** Declarar `pratica_maos` na lista da exclusao de usuario
+quebrou a exclusao inteira com FOREIGN KEY. A causa nao era a tabela: `_tabela_existe` tentava
+`SELECT 1 FROM <tabela>` e, no erro, fazia `conn.rollback()` -- que desfaz a TRANSACAO INTEIRA, e
+nao a consulta. Enquanto toda tabela declarada existia em todo banco, o caminho de erro nunca
+rodava e o defeito dormia; bastou declarar uma tabela que so e criada quando alguem pratica para
+ele acordar, desfazendo os deletes anteriores e derrubando o `DELETE FROM users`.
+
+A licao ja estava escrita em OUTRO teste da casa, com estas palavras: "a 1a versao fazia
+`conn.rollback()` no except, o que desfaz a TRANSACAO INTEIRA". Ela valia para la e nao tinha
+chegado aqui. Agora a checagem pergunta ao CATALOGO do banco (que nao levanta, entao nao ha o que
+desfazer), e um teste declara uma tabela FANTASMA de proposito para exercitar o caminho de erro
+para sempre, e nao so enquanto alguma tabela real estiver faltando.
+
+**Uma teoria minha que a medicao derrubou.** O painel do relatorio abriu transparente sobre as
+mesas. Minha primeira explicacao foi que `bg-background/97` era descartada porque o token nao
+aceita alpha, e eu ja estava escrevendo o guarda dessa teoria quando medi: o projeto tem **1.164**
+usos de opacidade sobre tokens do tema, todos funcionando. O guarda teria acusado 1.164 falsos
+positivos e eu teria "consertado" o produto inteiro. O que sobra e a classe nova (`/97`, valor
+inedito no projeto) nao estar no CSS gerado no instante em que ele abriu. O painel passou a usar
+uma classe opaca que o projeto ja usa, sem valor arbitrario: nada a gerar, nada a reprocessar.
+
+---
+
 ## "0% SUA JOGADA" com selo de aceitavel, e o veredito que piscava (16/09)
 
 Duas queixas do dono na mesma sessao, e as duas eram a mesma familia de defeito: a tela afirmando

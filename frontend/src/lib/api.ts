@@ -2323,6 +2323,15 @@ export interface PracticeTable {
 }
 export interface PracticeGrade {
   is_correct: boolean;
+  /**
+   * O veredito de quatro niveis, calculado NO SERVIDOR.
+   *
+   * Ele nao e calculado aqui de proposito: o historico das maos praticadas grava este mesmo
+   * valor, e duas implementacoes da regua fariam o relatorio discordar da mesa -- a regra 5 da
+   * casa. `null` quando nao houve base para julgar, e a mesa entao diz "sem avaliacao" em vez de
+   * inventar um veredito.
+   */
+  nivel?: "correta" | "imprecisao" | "errada" | "grave" | null;
   best_action?: string | null;
   action_quality?: string | null;
   hand_freq?: Record<string, number> | null;
@@ -2346,7 +2355,48 @@ export const practice = {
     request<PracticeGrade>("/player/practice/grade", {
       method: "POST", body: JSON.stringify({ spot, action, xp_value: xpValue }),
     }),
+
+  /** As ultimas maos praticadas. `before` = o id da ultima linha que a tela ja tem (keyset, e nao
+   *  offset: o jogador pode estar praticando enquanto olha, e offset repetiria linha). */
+  history: (limit = 50, before?: number | null) =>
+    request<{ maos: PracticeHand[]; proximo: number | null }>(
+      `/player/practice/history?limit=${limit}${before ? `&before=${before}` : ""}`),
+
+  report: (lastN = 200) =>
+    request<PracticeReport>(`/player/practice/report?last_n=${lastN}`),
 };
+
+/** Uma mao praticada, como o servidor a guarda. */
+export interface PracticeHand {
+  id: number;
+  mao: string;
+  posicao?: string | null;
+  vs_posicao?: string | null;
+  stack_bb?: number | null;
+  cenario?: string | null;
+  resumo?: string | null;
+  acao: string;
+  acao_gto?: string | null;
+  freq_da_acao?: number | null;
+  freq_melhor?: number | null;
+  nivel?: "correta" | "imprecisao" | "errada" | "grave" | null;
+  ev_loss_bb?: number | null;
+  criado_em?: string | null;
+}
+
+export interface PracticeReport {
+  maos: number;
+  /** as maos que RECEBERAM veredito. A taxa de acerto e sobre estas, e nao sobre o total: sem
+   *  isso ela cairia quando o solver nao respondeu, o que nao e culpa de quem treina. */
+  julgadas: number;
+  sem_avaliacao: number;
+  por_nivel: Record<"correta" | "imprecisao" | "errada" | "grave", number>;
+  acerto: number | null;
+  bb_perdidos: number;
+  bb_por_mao: number | null;
+  por_posicao: Record<string, { maos: number; corretas: number; bb: number }>;
+  por_cenario: Record<string, { maos: number; corretas: number; bb: number }>;
+}
 
 export const training = {
   catalog: () => request<{ drills: TrainingDrill[] }>("/player/training/catalog"),

@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowLeft, Loader2, X } from "lucide-react";
+import { ArrowLeft, History as HistoryIcon, Loader2, X } from "lucide-react";
 import { metrics, practice, type EvLeak, type PracticeGrade, type PracticeTable } from "@/lib/api";
 import { MesaDePratica } from "@/components/practice/MesaDePratica";
 import { PainelDePratica } from "@/components/practice/PainelDePratica";
+import { RelatorioDePratica } from "@/components/practice/RelatorioDePratica";
 import {
   acaoDaTecla, acumula, CONFIG_PADRAO, devePausar, MAX_MESAS, mudaOSorteio, nivelDoGrade,
   proximoFoco, STATS_ZERO, type ConfigPratica, type Pausa, type StatsPratica, type Unidade,
@@ -65,6 +66,7 @@ export default function Practice() {
   const [config, setConfig] = useState<ConfigPratica>(daUrl);
   /** o que o jogador escolheu e ainda não entrou */
   const [pendente, setPendente] = useState<ConfigPratica | null>(null);
+  const [relatorio, setRelatorio] = useState(false);
   const [painel, setPainel] = useState(
     () => localStorage.getItem("pratica_painel") !== "false");
 
@@ -316,14 +318,23 @@ export default function Practice() {
             {t("sessao", { maos: stats.maos, min: minutos })}
           </span>
         </div>
+        <div className="flex shrink-0 items-center gap-1.5">
+        {/* O relatorio abre SOBRE a tela do treino, e nao em outra rota: o jogador consulta e
+            volta para as mesas que ainda estao abertas. Trocar de rota perderia a sessao. */}
+        <button onClick={() => setRelatorio(true)} data-testid="pratica-abrir-relatorio"
+                className="inline-flex items-center gap-1.5 rounded border border-border px-2.5 py-1 font-mono text-[10px] uppercase tracking-widest-2 text-muted-foreground transition-colors hover:text-primary">
+          <HistoryIcon className="size-3" /> {t("relatorio.titulo")}
+        </button>
         <button onClick={() => navigate("/training")}
                 data-testid="pratica-encerrar"
                 className="shrink-0 rounded border border-border px-2.5 py-1 font-mono text-[10px] uppercase tracking-widest-2 text-muted-foreground transition-colors hover:text-foreground">
           {t("encerrar")}
         </button>
+        </div>
       </div>
 
-      <div className="flex min-h-0 flex-1">
+      <div className="relative flex min-h-0 flex-1">
+        <RelatorioDePratica aberto={relatorio} onFechar={() => setRelatorio(false)} />
         <PainelDePratica aberto={painel} config={config} pendente={pendente} stats={stats}
                          onConfig={aoConfigurar} onAlternar={alternarPainel}
                          onAplicar={aplicarAgora} />

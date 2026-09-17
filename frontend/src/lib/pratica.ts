@@ -230,65 +230,26 @@ export const CUSTO_DO_ERRO_GRAVE = 3;
  * Nao ha veredito sem dado. Quem chama decide o que dizer no lugar ("avaliando", "sem
  * avaliacao"), e nenhuma das duas e uma acusacao.
  */
-export function nivelDoGrade(g: PracticeGrade | null | undefined, acao: string): Nivel | null {
-  const freq = g?.hand_freq || null;
-  const entradas = freq
-    ? Object.entries(freq).filter(([, v]) => typeof v === "number")
-    : [];
-  const custo = typeof g?.ev_loss_bb === "number" ? Math.abs(g.ev_loss_bb) : null;
-  const daCarta = String(g?.action_quality || "").toLowerCase();
-
-  // ── A FREQUÊNCIA decide o LADO, e o custo a severidade ────────────────────────────────────
-  //
-  // O dono, quando definimos os níveis: "o gto deve validar se a acao indicada pelo jogador esta
-  // dentro do maior % gto (melhor jogada), se estiver dentro de um % mais baixo, ou se esta
-  // totalmente fora". São três situações, e "totalmente fora" é uma delas.
-  //
-  // A primeira versão não tinha esse terceiro lado: com frequência ZERO o custo decidia sozinho,
-  // e um custo pequeno devolvia "aceitável". O dono mandou a captura: "0% SUA JOGADA" ao lado de
-  // "✓ aceitável", com o texto "o GTO joga: allin 100%" logo abaixo. Ele chamou de bug, e é: o
-  // selo endossa o que a linha de baixo desmente.
-  //
-  // Medido antes de mexer: os números NÃO estavam errados. A carta de EV e a de estratégia
-  // concordam sobre a melhor ação em 98,1% dos nós, o custo de 0,028bb do limp é real, e passa na
-  // régua de confiança da casa (`ev_loss_trustworthy`). O que estava errado era o vocabulário: o
-  // motor chamava o mesmo lance de `major_leak` e o Practice de "aceitável", e isso em 36,5% das
-  // combinações.
-  if (entradas.length) {
-    const maior = entradas.reduce((a, b) => (b[1] > a[1] ? b : a));
-    const daEscolhida = entradas.find(([a]) => normalizaAcao(a) === normalizaAcao(acao));
-    const pct = daEscolhida ? daEscolhida[1] : 0;
-
-    // 1) dentro do maior %, ou numa perna que o GTO mistura com peso real
-    if (pct > 0 && (pct >= maior[1] || pct >= FREQ_DA_MISTURA)) return "correta";
-    // 2) o GTO FAZ, mas pouco. `FREQ_MINIMA_PARA_EXISTIR` e o que separa "faz pouco" de ruido
-    //    da carta: uma perna de 0,4% nao e estrategia, e pode custar 2,5bb (medido).
-    if (pct >= FREQ_MINIMA_PARA_EXISTIR) return "imprecisao";
-    // 3) totalmente fora: o GTO não faz isso. O custo já não escolhe o lado, só o tamanho --
-    //    menos quando ele é indistinguível de zero (ver `PISO_DE_RUIDO_BB`).
-    if (custo != null && custo < PISO_DE_RUIDO_BB) return "imprecisao";
-    if (custo != null) return custo <= CUSTO_DO_ERRO_GRAVE ? "errada" : "grave";
-    if (daCarta === "major_leak") return "grave";
-    if (daCarta === "leak") return "errada";
-    // sem custo e sem vocabulário: o lado está decidido pela frequência, e a severidade do meio
-    // é a única que não exagera para nenhum dos dois lados.
-    return "errada";
-  }
-
-  // ── Sem estratégia nenhuma: o custo é tudo o que há ───────────────────────────────────────
-  if (custo != null) {
-    if (custo < CUSTO_DA_IMPRECISAO) return "imprecisao";
-    if (custo <= CUSTO_DO_ERRO_GRAVE) return "errada";
-    return "grave";
-  }
-  if (daCarta === "major_leak") return "grave";
-  if (daCarta === "leak") return "errada";
-  if (daCarta === "acceptable") return "imprecisao";
-  if (daCarta === "correct") return "correta";
-  // Sem qualidade legível não há veredito. `is_correct` sozinho é o que o endpoint devolve quando
-  // não houve carta, e a régua da casa manda calar em vez de afirmar -- este comentário já dizia
-  // isto enquanto a linha abaixo dele afirmava "errada".
-  return null;
+/**
+ * O nivel que o SERVIDOR deu a esta resposta, ou `null` quando ele nao julgou.
+ *
+ * ── Por que aqui nao ha regua nenhuma ─────────────────────────────────────────────────────────
+ *
+ * Ela existia neste arquivo, com os cortes de frequencia e de custo, e funcionou enquanto o
+ * Pratica so PINTAVA o veredito. O historico das maos praticadas mudou o problema: o servidor
+ * passou a GRAVAR o veredito, e manter a conta aqui tambem criaria duas implementacoes da mesma
+ * regra -- a regra 5 da casa, e o defeito que este modo acabou de pagar em outra dimensao (o
+ * motor chamando `major_leak` o que o Pratica chamava de "aceitavel", em 36,5% das combinacoes).
+ *
+ * A regua mora em `backend/leaklab/pratica_preflop.nivel_do_veredito`, com os casos dela em
+ * `backend/tests/test_pratica_preflop.py`. Aqui so se LE.
+ *
+ * `null` acontece em dois casos, e nenhum deles e acusacao: o servidor nao teve base para julgar,
+ * ou a resposta ainda nao voltou. A mesa diz "sem avaliacao" e "avaliando", respectivamente.
+ */
+export function nivelDoGrade(g: PracticeGrade | null | undefined, _acao?: string): Nivel | null {
+  const n = g?.nivel;
+  return n && NIVEIS.includes(n as Nivel) ? (n as Nivel) : null;
 }
 
 

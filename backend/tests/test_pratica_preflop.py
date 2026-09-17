@@ -225,6 +225,129 @@ def test_a_correcao_e_a_MESMA_da_academia():
     assert res.get('is_correct') is not True, res
 
 
+# ── A REGUA DO VEREDITO, que passou a morar aqui (16/09) ─────────────────────────────────────
+#
+# Ela nasceu no front. O historico das maos praticadas a trouxe para o servidor: para GRAVAR o
+# veredito eu precisaria de uma segunda implementacao da mesma regra, e o relatorio diria uma
+# coisa enquanto a mesa dizia outra. Os casos abaixo sao os mesmos que o front travava, e alguns
+# deles sao medicoes do acervo, nao exemplos inventados.
+
+
+def test_regua_frequencia_zero_nao_e_aceitavel():
+    """O caso que o dono fotografou: SB 96s a 10bb, ele limpou, o GTO faz allin 100%.
+
+    A tela dizia "0% SUA JOGADA" e "aceitavel" ao mesmo tempo, com "o GTO joga: allin 100%" na
+    linha de baixo -- o selo endossava o que a linha seguinte desmentia.
+    """
+    from leaklab.pratica_preflop import nivel_do_veredito
+    puro = {'hand_freq': {'fold': 0.0, 'call': 0.0, 'raise': 0.0, 'allin': 1.0},
+            'ev_loss_bb': 0.028, 'action_quality': 'major_leak'}
+    assert nivel_do_veredito(puro, 'call') == 'errada', nivel_do_veredito(puro, 'call')
+    assert nivel_do_veredito(puro, 'allin') == 'correta'
+    # o custo segue decidindo a severidade DENTRO do lado ruim
+    assert nivel_do_veredito(dict(puro, ev_loss_bb=3.0), 'call') == 'errada'
+    assert nivel_do_veredito(dict(puro, ev_loss_bb=3.01), 'call') == 'grave'
+
+
+def test_regua_piso_de_ruido():
+    """Medido: `HJ Q5s 50bb` abrindo custa 0,001bb pela carta de EV. A tela mostra duas casas,
+    entao ela exibe "-0,00bb": chamar de erro um numero que a tela mostra como zero e contradicao
+    na mesma linha."""
+    from leaklab.pratica_preflop import nivel_do_veredito
+    ruido = {'hand_freq': {'fold': 1.0, 'raise': 0.0}, 'ev_loss_bb': 0.001}
+    assert nivel_do_veredito(ruido, 'raise') == 'imprecisao'
+    assert nivel_do_veredito(dict(ruido, ev_loss_bb=0.004), 'raise') == 'imprecisao'
+    assert nivel_do_veredito(dict(ruido, ev_loss_bb=0.005), 'raise') == 'errada'
+
+
+def test_regua_piso_de_frequencia():
+    """Perna de 0,4% nao e "o GTO faz": e ruido da carta, e ela pode custar caro.
+
+    Medido no acervo: o maior custo entre as combinacoes com frequencia positiva e 2,552bb, e ele
+    acontece justamente com 0,4% de frequencia (UTG+2 QJo 14bb, allin).
+    """
+    from leaklab.pratica_preflop import nivel_do_veredito
+    minuscula = {'hand_freq': {'fold': 0.996, 'allin': 0.004}, 'ev_loss_bb': 2.552}
+    assert nivel_do_veredito(minuscula, 'allin') == 'errada'
+    existe = {'hand_freq': {'fold': 0.99, 'allin': 0.01}, 'ev_loss_bb': 2.552}
+    assert nivel_do_veredito(existe, 'allin') == 'imprecisao'
+
+
+def test_regua_a_perna_menor_da_mistura():
+    """O GTO faz, mas pouco: "aceitavel", e o custo nem entra na conta."""
+    from leaklab.pratica_preflop import nivel_do_veredito
+    mistura = {'hand_freq': {'fold': 0.85, 'raise': 0.15}, 'ev_loss_bb': 2.5}
+    assert nivel_do_veredito(mistura, 'raise') == 'imprecisao'
+    # e a de maior frequencia e sempre "correta"
+    assert nivel_do_veredito(mistura, 'fold') == 'correta'
+    # empate: as duas pernas contam como boa
+    empate = {'hand_freq': {'fold': 0.5, 'raise': 0.5}}
+    assert nivel_do_veredito(empate, 'fold') == 'correta'
+    assert nivel_do_veredito(empate, 'raise') == 'correta'
+
+
+def test_regua_sem_dado_nao_acusa():
+    """Sem base nao ha veredito: `None`, e quem chama decide o que dizer.
+
+    `is_correct` sozinho e o que o endpoint devolve quando NAO houve carta nenhuma. Julgar por ele
+    era o que fazia o veredito "errada" piscar na tela antes do veredito real.
+    """
+    from leaklab.pratica_preflop import nivel_do_veredito
+    assert nivel_do_veredito({}, 'fold') is None
+    assert nivel_do_veredito(None, 'fold') is None
+    assert nivel_do_veredito({'is_correct': True}, 'fold') is None
+    assert nivel_do_veredito({'is_correct': False}, 'fold') is None
+
+
+def test_regua_o_codigo_do_no_e_o_nome_da_acao():
+    """`hand_freq` vem com o codigo do no do solver (`F`, `R2.5`, `RAI`) e a acao vem com o nome.
+    Comparar cru daria "correta" nunca."""
+    from leaklab.pratica_preflop import nivel_do_veredito
+    g = {'hand_freq': {'F': 0.2, 'R2.5': 0.8}}
+    assert nivel_do_veredito(g, 'raise') == 'correta'
+    assert nivel_do_veredito(g, 'fold') == 'imprecisao'
+    g2 = {'hand_freq': {'F': 0.1, 'RAI': 0.9}}
+    assert nivel_do_veredito(g2, 'allin') == 'correta'
+
+
+def test_corrigir_DEVOLVE_o_nivel():
+    """O contrato que o front consome, e que o historico grava. Sem isto o front voltaria a
+    calcular por conta propria, que e a segunda regua que este modulo existe para evitar."""
+    from leaklab.pratica_preflop import corrigir
+    spot = {'position': 'SB', 'hand': '96s', 'stack_bb': 10, 'scenario': 'rfi',
+            'facing_size': 0, 'is_3bet_pot': False}
+    assert corrigir(spot, 'call').get('nivel') == 'errada'
+    assert corrigir(spot, 'allin').get('nivel') == 'correta'
+
+
+def test_o_numero_de_1_POR_CENTO_e_o_MESMO_no_front():
+    """`FREQ_MINIMA_PARA_EXISTIR` existe nos dois lados, e por um motivo honesto: a regua (aqui)
+    decide se "o GTO faz" e verdade, e o card (no front) decide se a perna aparece na tela. Sao
+    usos diferentes do MESMO numero, e o argumento do piso e justamente que eles nao podem
+    divergir -- uma perna que nao aparece na tela nao pode justificar o veredito nela.
+
+    Duas declaracoes do mesmo numero e a regra 5 da casa, entao este guarda le o TypeScript. A
+    alternativa (o servidor mandar o numero na resposta) foi descartada: o front precisaria de um
+    valor de reserva quando o campo faltasse, e o valor de reserva seria a segunda fonte de novo.
+    """
+    import io as _io
+    import os as _os
+    import re as _re
+    from leaklab.pratica_preflop import FREQ_MINIMA_PARA_EXISTIR
+
+    ts = _os.path.join(_os.path.dirname(__file__), '..', '..', 'frontend', 'src', 'lib',
+                       'pratica.ts')
+    if not _os.path.exists(ts):
+        return                      # checkout sem o front (worktree de backend)
+    fonte = _io.open(ts, encoding='utf-8').read()
+    achado = _re.search(r'FREQ_MINIMA_PARA_EXISTIR\s*=\s*([0-9.]+)', fonte)
+    # CONTROLE: sem isto, um rename no front deixaria o guarda passar verde sobre nada
+    assert achado, 'nao achei FREQ_MINIMA_PARA_EXISTIR em lib/pratica.ts'
+    assert float(achado.group(1)) == FREQ_MINIMA_PARA_EXISTIR, (
+        'o front usa %s e a regua usa %s: uma perna pode aparecer na tela e nao contar no '
+        'veredito, ou o contrario' % (achado.group(1), FREQ_MINIMA_PARA_EXISTIR))
+
+
 if __name__ == '__main__':
     passed = failed = 0
     for nome, fn in sorted(list(globals().items())):

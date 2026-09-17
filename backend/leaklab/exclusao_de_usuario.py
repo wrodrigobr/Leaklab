@@ -21,7 +21,7 @@ from __future__ import annotations
 import logging
 
 from database.repositories import _adapt
-from database.schema import get_conn
+from database.schema import USE_POSTGRES, get_conn
 
 _log = logging.getLogger(__name__)
 
@@ -79,6 +79,9 @@ TABELAS_DO_USUARIO: tuple = (
     ('decisions', []),                                # via tournament_id (especial)
     ('opponent_profiles', []),                        # via tournament_id (especial)
     ('tournaments', ['user_id']),
+    # O historico do Pratica. Entra na lista porque a tabela `uploads_recebidos` NAO entrou, e o
+    # achado e de 16/09: excluir usuario deixava recibo orfao, que o worker ainda podia reivindicar.
+    ('pratica_maos', ['user_id']),
 )
 
 #: Tabelas com colunas de usuário que a exclusão NÃO toca, com o motivo — o guarda exige que
@@ -175,9 +178,33 @@ def excluir_usuario(user_id: int, executado_por: int) -> dict:
 
 
 def _tabela_existe(conn, nome: str) -> bool:
+    """A tabela existe? Perguntando ao CATALOGO, e nao tentando um SELECT.
+
+    ── O defeito que isto conserta (16/09) ───────────────────────────────────────────────────
+
+    A versao anterior tentava `SELECT 1 FROM <tabela>` e, no erro, fazia `conn.rollback()` -- que
+    desfaz a TRANSACAO INTEIRA, e nao apenas a consulta que falhou. Enquanto todas as tabelas
+    declaradas existiam em todo banco, o caminho de erro nunca rodava e o defeito dormia.
+
+    Bastou declarar `pratica_maos` (que so e criada quando alguem pratica) para ele acordar: o
+    rollback desfazia os deletes de `feature_usage`, `session_checkins` e companhia, e o
+    `DELETE FROM users` seguinte falhava com FOREIGN KEY. A exclusao do usuario parava pela
+    metade por causa de UMA tabela ausente.
+
+    Este e o mesmo padrao que `test_arquivo_com_varios_torneios` ja documentou com estas palavras:
+    "a 1a versao fazia `conn.rollback()` no except, o que desfaz a TRANSACAO INTEIRA". A licao
+    valia para lá e não tinha chegado aqui.
+
+    O catalogo nao levanta, entao nao ha o que desfazer.
+    """
     try:
-        conn.execute(_adapt(f'SELECT 1 FROM {nome} LIMIT 1'))
-        return True
+        if USE_POSTGRES:
+            sql = ("SELECT 1 FROM information_schema.tables "
+                   "WHERE table_schema = current_schema() AND table_name = ?")
+        else:
+            sql = "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?"
+        return bool(conn.execute(_adapt(sql), (nome,)).fetchone())
     except Exception:                                          # noqa: BLE001
-        conn.rollback()
+        # Nem o catalogo respondeu: trata como ausente, e SEM mexer na transacao de quem chamou.
+        _log.exception('exclusao: nao consegui checar a existencia de %s', nome)
         return False
