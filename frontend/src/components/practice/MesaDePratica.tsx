@@ -180,22 +180,24 @@ export function MesaDePratica({
         foco ? "border-primary ring-1 ring-inset ring-primary/25" : "border-border",
       )}
     >
-      {/* O cabeçalho ficou só com a mão e o stack: o texto do spot foi para o CENTRO da mesa,
-          onde o trilho deixa espaço de graça, e o histórico ocupa o topo do feltro. Em caixa
-          alta e na largura do card, aquele texto comia uma linha inteira de cada mesa. */}
-      <div className="flex items-baseline gap-2 min-w-0">
-        <span className={cn("shrink-0 font-mono text-[10px] font-bold tracking-wide",
-                            foco ? "text-primary" : "text-muted-foreground")}>
-          {mesa.hand}
-        </span>
-        <span className="ml-auto shrink-0 font-mono text-[9.5px] font-bold tabular-nums text-muted-foreground">
-          {/* o cabeçalho segue a MESMA unidade da mesa: a mesma grandeza escrita de dois jeitos
-              no mesmo card é como nasce o bug mais recorrente do projeto (fichas vs BB) */}
-          {unidade === "bb"
-            ? `${mesa.spot.stack_bb}bb`
-            : Math.round(mesa.spot.stack_bb * (mesa.table.bb_chips || 1)).toLocaleString("pt-BR")}
-        </span>
-      </div>
+      {/* ── O cabeçalho SAIU da coluna (17/09) ─────────────────────────────────────────────
+          O dono, duas coisas no mesmo recado: "se colocarmos as ações mais coladas no topo, a
+          mesa consegue crescer verticalmente, pra cima e para baixo...ela pode ficar mais próxima
+          dos botões de ação também" e "no canto inferior esquerdo de cada box, tem as cartas em
+          texto...desnecessário".
+
+          A mão em texto ("J6s") foi embora: ela dizia com letras o que as cartas do herói já
+          mostram desenhadas na mesa, e custava uma linha inteira de altura em cada card.
+
+          O stack ficou, porque ele é o titulo do spot -- mas FLUTUANDO no canto, e não numa linha
+          própria. A linha era o que empurrava a mesa para baixo. */}
+      <span className="pointer-events-none absolute right-2.5 top-1.5 z-10 font-mono text-[9.5px] font-bold tabular-nums text-muted-foreground">
+        {/* a MESMA unidade da mesa: a mesma grandeza escrita de dois jeitos no mesmo card é como
+            nasce o bug mais recorrente do projeto (fichas vs BB) */}
+        {unidade === "bb"
+          ? `${mesa.spot.stack_bb}bb`
+          : Math.round(mesa.spot.stack_bb * (mesa.table.bb_chips || 1)).toLocaleString("pt-BR")}
+      </span>
 
       {/* ── A mesa NO TOPO, e os botoes logo abaixo dela (pedido do dono, 16/09) ────────────
           A altura vem da LARGURA (`aspect-ratio`), e nao de `flex-1`: com `flex-1` a mesa
@@ -212,7 +214,7 @@ export function MesaDePratica({
           divisao da altura e a mesa fica com o resto. O trilho e definido em % da propria caixa,
           entao ele ACHATA junto e fica com a proporcao do GTO Wizard (bem mais largo que alto),
           que foi a direcao que o dono apontou com o exemplo deles. */}
-      <div className="mx-auto mt-1.5 min-h-0 w-full flex-1">
+      <div className="mx-auto min-h-0 w-full flex-1">
         {/* `compacta` NAO chega na mesa: ela escala pelo container (cqw), entao 1 ou 4 mesas
             usam a mesma proporcao e nada encolhe por degrau -- e o que o GTO Wizard faz. */}
         <MesaCompacta table={mesa.table} hero="Hero" unidade={unidade}
@@ -250,7 +252,7 @@ export function MesaDePratica({
       {/* Os botões que ESTE spot oferece, nas cores da casa (fold azul, call verde, raise
           vermelho, all-in vinho — a paleta única de `actionColors`). */}
       {/* logo abaixo do feltro, e nao no rodape do card */}
-      <div className="mt-1.5 flex shrink-0 gap-1.5">
+      <div className="mt-1 flex shrink-0 gap-1.5">
         {mesa.options.map((o) => {
           const k = actionKey(o.action);
           const escolhida = acaoEscolhida === o.action;

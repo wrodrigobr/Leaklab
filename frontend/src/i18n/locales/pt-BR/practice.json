@@ -19,6 +19,8 @@
     "fechar": "fechar",
     "mesas": "mesas",
     "stack": "stack efetivo",
+    "posicao": "posição do herói",
+    "todas": "todas",
     "spot": "spot",
     "pausa": "pausar depois de",
     "sessao": "sessão",
@@ -82,5 +84,6 @@
       "veredito": "veredito",
       "custo": "custo"
     }
-  }
+  },
+  "filtroEstreito": "o filtro rendeu {{servidas}} de {{pedidas}} mesas: poucos spots combinam posição, stack e tipo escolhidos"
 }

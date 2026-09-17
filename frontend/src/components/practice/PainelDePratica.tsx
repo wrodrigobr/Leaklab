@@ -1,7 +1,8 @@
 import { useTranslation } from "react-i18next";
 import { RotateCw, SlidersHorizontal, X } from "lucide-react";
 import {
-  MAX_MESAS, NIVEIS, SIMBOLO_DO_NIVEL, STACKS_DISPONIVEIS, type ConfigPratica, type Nivel,
+  MAX_MESAS, NIVEIS, POSICOES_DISPONIVEIS, SIMBOLO_DO_NIVEL, STACKS_DISPONIVEIS,
+  type ConfigPratica, type Nivel,
   type Pausa, type StatsPratica, type Unidade,
 } from "@/lib/pratica";
 import { cn } from "@/lib/utils";
@@ -21,6 +22,33 @@ import { cn } from "@/lib/utils";
  * Mesmo motivo do painel do leak no replayer: com quatro mesas a largura é o recurso escasso.
  * Recolhido, sobra a aba de 36px e a grade recupera o espaço.
  */
+
+/**
+ * O clique numa posição, quando o filtro tem nove botões e começa com as nove marcadas.
+ *
+ * ── Por que não é só um liga/desliga como o stack (17/09) ─────────────────────────────────────
+ *
+ * O pedido: "podemos deixar todas selecionadas, ou escolher uma única posição, assim como é feito
+ * com o stack". Com liga/desliga puro, sair de "todas" para "só o BTN" custa OITO cliques -- e o
+ * pedido dele nomeia justamente esses dois estados. Então do estado "todas", o primeiro clique
+ * SELECIONA aquela posição em vez de tirá-la: é o unico clique que ele quer dar. Dali em diante é
+ * liga/desliga normal, e o botão "todas" volta ao início.
+ *
+ * O filtro de stack não tem esse problema porque ele não começa com todos marcados (começa com
+ * quatro de nove), então lá tirar um é o gesto natural.
+ *
+ * Nunca fica vazio: sem posição nenhuma o sorteio não tem de onde tirar mesa, e a tela ficaria
+ * pedindo mesas que nunca chegam. E a lista sai na ORDEM DE AÇÃO, nunca na ordem dos cliques --
+ * duas listas com as mesmas posições em ordens diferentes fariam `mudaOSorteio` dizer que o
+ * sorteio mudou quando nada mudou.
+ */
+export function aoClicarNaPosicao(atuais: string[], pos: string): string[] {
+  if (atuais.length === POSICOES_DISPONIVEIS.length) return [pos];
+  if (atuais.includes(pos)) {
+    return atuais.length > 1 ? atuais.filter((x) => x !== pos) : atuais;
+  }
+  return POSICOES_DISPONIVEIS.filter((x) => x === pos || atuais.includes(x));
+}
 
 /** A cor do símbolo na legenda, alinhada com a da barra. */
 const TEXTO_DA_ESCALA: Record<Nivel, string> = {
@@ -170,6 +198,44 @@ export function PainelDePratica({
                         on ? "border-primary/45 bg-primary/10 text-primary"
                            : "border-border text-muted-foreground hover:text-foreground")}>
                 {s}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* ── posição do herói ───────────────────────────────────────────────────────────────
+          Pedido do Rullian, trazido pelo dono (17/09): "a escolha de uma posição específica para
+          o treino. podemos deixar todas selecionadas, ou escolher uma única posição, assim como é
+          feito com o stack".
+
+          Na ORDEM DE AÇÃO, e não em ordem alfabética: é a ordem em que elas decidem, e é a ordem
+          em que ele as vê no histórico da mão.
+
+          O botão "todas" existe porque desmarcar oito a mão para voltar ao padrão é o tipo de
+          trabalho que faz o jogador desistir do filtro. */}
+      <div className="border-b border-border/50 px-3 py-2.5">
+        <div className="flex items-baseline justify-between gap-2">
+          <Rotulo>{t("painel.posicao")}</Rotulo>
+          {atual.posicoes.length < POSICOES_DISPONIVEIS.length && (
+            <button type="button" data-testid="pratica-posicao-todas"
+                    onClick={() => muda({ posicoes: [...POSICOES_DISPONIVEIS] })}
+                    className="mb-1 font-mono text-[9px] uppercase tracking-widest-2 text-primary/80 transition-colors hover:text-primary">
+              {t("painel.todas")}
+            </button>
+          )}
+        </div>
+        <div className="flex flex-wrap gap-1">
+          {POSICOES_DISPONIVEIS.map((pos) => {
+            const on = atual.posicoes.includes(pos);
+            return (
+              <button key={pos} type="button" data-testid={`pratica-posicao-${pos}`}
+                      aria-pressed={on}
+                      onClick={() => muda({ posicoes: aoClicarNaPosicao(atual.posicoes, pos) })}
+                      className={cn("rounded border px-1.5 py-0.5 font-mono text-[10px] transition-colors",
+                        on ? "border-primary/45 bg-primary/10 text-primary"
+                           : "border-border text-muted-foreground hover:text-foreground")}>
+                {pos}
               </button>
             );
           })}

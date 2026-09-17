@@ -118,9 +118,19 @@ export function aspectoDaMesa(livreW: number, livreH: number): number {
   return Math.min(ASPECTO_MAX, Math.max(ASPECTO_MIN, doEspaco));
 }
 
-/** A faixa do histórico da mão, no topo do card. */
+/**
+ * A faixa do histórico da mão, no topo do card.
+ *
+ * O fator era 2,2 e virou 1,8 em 17/09: o dono pediu "se colocarmos as ações mais coladas no
+ * topo, a mesa consegue crescer verticalmente, pra cima e para baixo". A faixa tinha folga acima e
+ * abaixo dos chips, e folga de sobra na faixa do topo é altura tirada da mesa.
+ *
+ * 1,8 não é um número escolhido a olho: o chip tem a fonte (`leading-none`, então 1,0), mais
+ * `py-0.5` nos dois lados (4px) e a borda (2px) -- com a fonte mínima de 9px isso dá 15px contra
+ * uma faixa de 16,2. Abaixo de 1,8 o chip começa a ser cortado.
+ */
 export function alturaDoHistorico(w: number, h: number): number {
-  return px("fHist", w, h) * 2.2;
+  return px("fHist", w, h) * 1.8;
 }
 
 /**

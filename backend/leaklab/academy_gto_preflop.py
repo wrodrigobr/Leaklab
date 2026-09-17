@@ -85,9 +85,64 @@ def _hand_to_cards(hand: str) -> list[dict]:
     return [{'rank': hi, 'suit': 's'}, {'rank': lo, 'suit': second_suit}]
 
 
-def _random_setup(scenario: str):
-    """Retorna (position, vs_position, facing_size, is_3bet_pot) para o cenário."""
+def _setup_filtrado(scenario: str, posicoes, n: int):
+    """O mesmo sorteio, mas com a posição do HERÓI tirada de dentro do filtro.
+
+    ── Por que existe (17/09) ────────────────────────────────────────────────────────────────────
+
+    O caminho de cima sorteia a posição livre e o chamador descartava a tentativa quando ela não
+    estava no filtro. Com UMA posição escolhida, isso joga fora 8 de cada 9 sorteios ANTES de
+    qualquer outra checagem: as 80 tentativas do gerador viravam ~9 efetivas, e no `vs_3bet`, que
+    ainda tem o gate de range de abertura em cima, isso não bastava.
+
+    O efeito era visível e intermitente, o pior tipo: medido em 6 repetições da varredura, três
+    combinações (`vs_3bet`/UTG, `vs_3bet`/UTG+2, `vs_rfi`/UTG+1) devolviam 4 mesas em algumas
+    rodadas e ZERO em outras, com o jogador escolhendo exatamente a mesma coisa. Ele veria "sem
+    spot para este filtro" numa rodada e quatro mesas na seguinte.
+
+    Devolve `None` quando o cenário não aceita nenhuma das posições pedidas -- e aí é impossível de
+    verdade, não falta de tentativa: o BB nunca abre primeiro, ninguém age antes do UTG, e no
+    `vs_3bet` o herói é quem ABRIU, então SB e BB estão fora.
+
+    As relações entre os assentos são as MESMAS do caminho de cima: quem defende está depois de
+    quem abriu, e quem levou 3-bet abriu antes de quem deu.
+    """
+    permitidas = set(posicoes)
+    if scenario == 'rfi':
+        # qualquer um menos o BB, que nunca abre primeiro
+        cand = [p for p in _ACTION_ORDER[:-1] if p in permitidas]
+        if not cand:
+            return None
+        return random.choice(cand), '', 0.0, False
+
+    if scenario == 'vs_rfi':
+        # o herói DEFENDE, então precisa de alguém em assento anterior para ter aberto
+        cand = [i for i in range(1, n) if _ACTION_ORDER[i] in permitidas]
+        if not cand:
+            return None
+        di = random.choice(cand)
+        oi = random.randint(0, di - 1)
+        return _ACTION_ORDER[di], _ACTION_ORDER[oi], 2.2, False
+
+    # vs_3bet: o herói ABRIU, então precisa de assento posterior para o 3-bet vir
+    cand = [i for i in range(0, n - 2) if _ACTION_ORDER[i] in permitidas]
+    if not cand:
+        return None
+    oi = random.choice(cand)
+    ti = random.randint(oi + 1, n - 1)
+    return _ACTION_ORDER[oi], _ACTION_ORDER[ti], 8.0, True
+
+
+def _random_setup(scenario: str, posicoes=None):
+    """Retorna (position, vs_position, facing_size, is_3bet_pot) para o cenário.
+
+    Com `posicoes`, delega para `_setup_filtrado`, que sorteia a posição do herói DENTRO do filtro
+    e pode devolver `None`. Sem filtro, o caminho abaixo é o de sempre, byte por byte: mudar a
+    sequência de sorteios aqui mudaria a variedade da Academia, que não pediu nada.
+    """
     n = len(_ACTION_ORDER)
+    if posicoes:
+        return _setup_filtrado(scenario, posicoes, n)
     if scenario == 'rfi':
         pos = random.choice(_ACTION_ORDER[:-1])          # qualquer um, menos BB
         return pos, '', 0.0, False
@@ -108,6 +163,15 @@ def _context_text(scenario: str, pos: str, vs_pos: str, stack: int) -> str:
     if scenario == 'vs_rfi':
         return f"{vs_pos} abre. Você está em {pos} com {stack}bb efetivos."
     return f"Você abriu de {pos} e {vs_pos} deu 3-bet. {stack}bb efetivos."
+
+
+class SpotIndisponivel(Exception):
+    """Nenhum spot atende ao filtro pedido.
+
+    Existe para o filtro do Prática poder falhar EM VOZ ALTA. Sem ela, a única saída era o
+    fallback, que devolve um spot de BTN/RFI/50bb -- e com filtro na tela isso é uma mesa que
+    contradiz a escolha do jogador, com o rótulo da escolha dele em cima.
+    """
 
 
 def generate_gto_preflop_question(scenario_filter: str = 'mixed', stacks=None,
@@ -134,7 +198,15 @@ def generate_gto_preflop_question(scenario_filter: str = 'mixed', stacks=None,
     for _ in range(80):
         scenario = random.choice(pool)
         stack    = random.choice(baralho_de_stacks)
-        pos, vs_pos, facing, is_3b = _random_setup(scenario)
+        setup = _random_setup(scenario, posicoes)
+        if setup is None:
+            # este cenario nao aceita nenhuma das posicoes pedidas; no `mixed` o proximo sorteio
+            # tenta outro cenario, e num cenario unico as 80 tentativas se esgotam e levantam
+            continue
+        pos, vs_pos, facing, is_3b = setup
+        # Cinto e suspensorio: se `_setup_filtrado` errar, o filtro ainda nao fura. O teste que
+        # varre as 9 posicoes x 4 tipos e quem prova o comportamento -- isto so garante que um erro
+        # ali vire menos mesas, e nunca a mesa errada.
         if posicoes and pos not in posicoes:
             continue
         hand     = random.choice(_HANDS)
@@ -161,7 +233,27 @@ def generate_gto_preflop_question(scenario_filter: str = 'mixed', stacks=None,
         break
 
     if chosen is None:
-        # Fallback determinístico (spot RFI clássico) — raríssimo.
+        # ── Por que o fallback NÃO vale quando há filtro (17/09) ──────────────────────────────
+        #
+        # Ele é um spot de BTN, RFI, 50bb, A5s. Enquanto o filtro era interno isso era uma rede de
+        # segurança para um caso raríssimo. Quando o filtro de posição virou CONFIGURAÇÃO na tela
+        # do Prática, ele deixou de ser raro e passou a ser garantido: medido, `rfi` com BB,
+        # `vs_rfi` com UTG e `vs_3bet` com BB caem aqui sempre -- o BB não abre primeiro e ninguém
+        # age antes do UTG.
+        #
+        # E o que ele devolvia contradizia TRÊS coisas que o jogador pediu: a posição, o tipo de
+        # spot e o stack. Ele escolhia "BB, RFI, 10bb" e recebia uma mesa de BTN a 50bb, com o
+        # rótulo da escolha dele em cima. Pior que não ter mesa.
+        #
+        # Então com filtro não há fallback: sem spot é sem spot, e a tela já sabe dizer isso.
+        # Respeitar o filtro inventando um spot de BB abrindo primeiro seria a regra 7 ao
+        # contrário -- o conserto causaria um dano que o defeito não causava, ensinando uma
+        # premissa impossível.
+        if posicoes or stacks:
+            raise SpotIndisponivel(
+                'sem spot para posicoes=%s stacks=%s cenario=%s'
+                % (posicoes, stacks, scenario_filter))
+        # Fallback determinístico (spot RFI clássico) — raríssimo, e só quando nada foi pedido.
         chosen = ('rfi', 50, 'BTN', '', 0.0, False, 'A5s',
                   preflop_strategy('BTN', 'A5s', 50.0, facing_size=0.0)['available_actions'])
 

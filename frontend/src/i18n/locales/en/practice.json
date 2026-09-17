@@ -19,6 +19,8 @@
     "fechar": "close",
     "mesas": "tables",
     "stack": "effective stack",
+    "posicao": "hero position",
+    "todas": "all",
     "spot": "spot",
     "pausa": "pause after",
     "sessao": "session",
@@ -82,5 +84,6 @@
       "veredito": "verdict",
       "custo": "cost"
     }
-  }
+  },
+  "filtroEstreito": "the filter returned {{servidas}} of {{pedidas}} tables: few spots match the chosen position, stack and type"
 }

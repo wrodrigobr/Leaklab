@@ -5,6 +5,104 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## A regra responsiva chega no DESENHO, e o filtro de posicao entra na configuracao (17/09)
+
+Tres recados do dono, e um defeito que o teste do terceiro achou.
+
+### A janela pequena mostrava quatro mesas ilegiveis
+
+A captura: janela do browser reduzida, quatro mesas na tela, cada uma um borrao. "isto nao pode
+acontecer...temos que ter os cuidados responsivos...se nao cabe com as condicoes minimas, deixamos
+apenas 1 coluna, ou algo do tipo...mas nao podemos reduzir a mesa desta forma".
+
+A regra do teto de mesas JA existia e JA dizia "duas" para aquela janela. O defeito era de
+**alcance**: ela era consultada num lugar so, quando uma rodada NASCE, e quem desenhava usava
+classes fixas (`grid-rows-2`). Reduzir a janela com quatro mesas abertas nao refazia nada.
+
+Agora quem desenha pergunta a mesma funcao (`gradeDaTela`), que devolve quantas mesas desenhar, em
+quantas colunas e linhas, e se a faixa precisa rolar. A ordem e a que ele pediu: **tira mesa,
+depois tira coluna, e so no fim deixa rolar**. Numa janela de 1353x500 o Pratica desenha duas mesas
+lado a lado; numa de 340px de altura, onde nem UMA alcanca o minimo medido de 300px, a faixa rola
+em vez de a mesa achatar -- rolar contraria um pedido dele de 16/09, e o desempate e dele mesmo:
+"nao podemos reduzir a mesa desta forma".
+
+O foco do teclado tambem passou a respeitar o que APARECE: sem isso uma tecla agiria numa mesa que
+a tela deixou de mostrar.
+
+### A mao em texto saiu, e a mesa herdou a linha
+
+"se colocarmos as acoes mais coladas no topo, a mesa consegue crescer verticalmente, pra cima e
+para baixo...ela pode ficar mais proxima dos botoes de acao tambem" e "no canto inferior esquerdo
+de cada box, tem as cartas em texto...desnecessario".
+
+O rotulo da mao ("J6s") dizia com letras o que as cartas do heroi ja mostram desenhadas, e custava
+uma linha inteira de altura em cada card. O stack ficou, mas como etiqueta flutuante no canto em
+vez de uma linha propria. A faixa do historico encolheu de 2,2 para 1,8 da fonte, que e o limite
+antes de o chip ser cortado.
+
+Isso mudou o `CHROME_DO_CARD`, de 78 para 68, e ele entra na conta de quantas mesas cabem na tela:
+mexer no card sem mexer nele faria a regra responsiva decidir por um layout que ja nao existe.
+Somando o dia, a arena no card do dono foi de **407x170 (20% da area) para 738x216 (45%)**.
+
+### O filtro de posicao, e o fallback que MENTIA
+
+Pedido do Rullian, pelo dono: "a escolha de uma posicao especifica para o treino. podemos deixar
+todas selecionadas, ou escolher uma unica posicao, assim como e feito com o stack". O backend ja
+aceitava `posicoes` de ponta a ponta, entao parecia so tela.
+
+**Nao era.** Medindo as combinacoes estreitas eu vi "1 de 4 mesas" e concluí "existe um spot so".
+Errado, e o teste derrubou: o que existia era o **fallback do gerador**, um spot fixo de BTN, RFI,
+50bb, e as quatro tentativas caiam nele -- a deduplicacao deixava uma. Quem escolhesse "BB, RFI,
+10bb" receberia uma mesa de BTN a 50bb **com o rotulo da escolha dele em cima**: posicao, tipo de
+spot e stack, os tres contrariados. O comentario dizia "raríssimo", e era verdade enquanto o filtro
+era interno; virando configuracao do jogador, passou a ser garantido.
+
+Conserto: com filtro nao ha fallback (`SpotIndisponivel`). Sem spot e sem spot, e a tela ja sabe
+dizer isso. Respeitar o filtro inventando um spot de BB abrindo primeiro seria a regra 7 ao
+contrario -- o conserto causaria um dano que o defeito nao causava, ensinando premissa impossivel.
+A Academia, que chama sem filtro, mantem a rede de seguranca, e ha CONTROLE disso.
+
+Varredura das 9 posicoes x 4 tipos: **32 das 36 combinacoes rendem mesa**, e quatro sao impossiveis
+por regra do jogo (`rfi`/BB, `vs_rfi`/UTG, `vs_3bet`/SB, `vs_3bet`/BB). Eu tinha achado tres
+amostrando; a quarta so apareceu na varredura completa.
+
+### E o sorteio desperdicava 8 de cada 9 tentativas
+
+Achado porque o meu proprio CONTROLE ficou instavel: ele exigia "32 de 36 combinacoes com mesa" e
+uma rodada devolveu 31. Guarda que oscila e pior que guarda nenhum, entao fui medir em vez de
+afrouxar o numero -- e o que estava instavel era o PRODUTO, nao o teste.
+
+Medido em 6 repeticoes da varredura: tres combinacoes (`vs_3bet`/UTG, `vs_3bet`/UTG+2,
+`vs_rfi`/UTG+1) devolviam 4 mesas em algumas rodadas e ZERO em outras, com o jogador escolhendo
+exatamente a mesma coisa. Ele veria "sem spot para este filtro" numa rodada e quatro mesas na
+seguinte, sem ter mudado nada.
+
+A causa e aritmetica: o gerador sorteava a posicao LIVRE e o codigo seguinte descartava a tentativa
+quando ela nao estava no filtro. Com uma posicao escolhida, 8 de cada 9 sorteios morriam ali antes
+de qualquer outra checagem -- as 80 tentativas viravam ~9 efetivas, e no `vs_3bet`, que ainda tem o
+gate de range de abertura em cima, isso nao bastava.
+
+Agora a posicao do heroi e sorteada DENTRO do filtro, mantendo as mesmas relacoes entre assentos
+(quem defende esta depois de quem abriu; quem levou 3-bet abriu antes de quem deu). Resultado
+medido: **zero combinacoes intermitentes**, e as 32 possiveis enchem as QUATRO mesas sempre, contra
+125 mesas somadas em 32 combinacoes antes. O caminho SEM filtro nao mudou uma linha, de proposito:
+mexer na sequencia de sorteios ali mudaria a variedade da Academia, que nao pediu nada -- e a suite
+dela (57 casos) e o controle disso.
+
+E a tela passou a **declarar** quando o filtro rende menos mesas do que o pedido. O servidor sempre
+mandou `pedidas` e `servidas`; quem nao usava era a tela, e sem isso o jogador escolhe um filtro
+estreito, ve uma mesa no lugar de quatro e le como travamento.
+
+Detalhe de uso: com as nove marcadas, escolher uma so custaria oito cliques. Do estado "todas", o
+primeiro clique SELECIONA aquela posicao; dali em diante e liga/desliga, e o botao "todas" desfaz.
+
+### Testes
+
+Sete guardas novos, todos quebrados de proposito. O painel de configuracao passou a ter arquivo de
+teste: ele nao tinha nenhum, nem o filtro de stack que ja existia, e painel e vitrine.
+
+---
+
 ## A mesa agora ENCOSTA no espaco do card (17/09)
 
 O dono, com a captura de quatro mesas: "a mesa nao esta ocupando o espaço disponivel no seu

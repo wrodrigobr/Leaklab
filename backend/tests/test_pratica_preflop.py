@@ -12,6 +12,7 @@ O que este arquivo defende, e por que cada guarda existe:
    muda comportamento silenciosamente e o defeito mais barato de evitar e mais caro de achar.
 """
 import os
+import io
 import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
@@ -195,6 +196,104 @@ def test_o_filtro_de_posicao_e_respeitado():
     assert m, 'filtro de posicao zerou o sorteio'
     for x in m:
         assert x['spot']['position'] in ('BTN', 'SB'), x['spot']['position']
+
+
+def test_o_filtro_NUNCA_devolve_posicao_diferente_da_pedida():
+    """O defeito que este caso pegou, e que eu tinha lido errado.
+
+    Em 17/09 o filtro de posicao virou configuracao na tela, e eu medi "1 de 4 mesas" em tres
+    combinacoes e li como "existe um spot so". Errado: o que existia era o FALLBACK do gerador --
+    um spot fixo de BTN, RFI, 50bb -- e as quatro tentativas caiam nele, entao a deduplicacao
+    deixava uma. O jogador escolhia "BB, RFI, 10bb" e recebia BTN a 50bb com o rotulo da escolha
+    dele em cima. Pior que nao ter mesa.
+
+    As tres combinacoes sao impossiveis por regra do jogo, nao por falta de acervo: o BB nunca
+    abre primeiro, e ninguem age antes do UTG. Zero mesa e a resposta certa, e a tela ja sabe
+    dizer "sem spot para este filtro".
+    """
+    # As quatro combinacoes sem spot, da varredura completa. Eu tinha achado TRES amostrando tres
+    # posicoes; `vs_3bet`/SB so apareceu quando varri as 9 x 4.
+    for cenario, pos in (('rfi', 'BB'), ('vs_rfi', 'UTG'), ('vs_3bet', 'SB'), ('vs_3bet', 'BB')):
+        m = pr.mesas(4, cenario, stacks=[10], posicoes=[pos])
+        assert m == [], ('%s/%s devolveu %d mesa(s): %s'
+                         % (cenario, pos, len(m),
+                            [(x['spot']['position'], x['spot']['scenario']) for x in m]))
+
+    # E o que importa mais que a contagem: NENHUMA mesa pode vir com posicao ou tipo que ele nao
+    # pediu, em nenhuma combinacao. Varredura das 9 posicoes x 4 tipos.
+    posicoes = ('UTG', 'UTG+1', 'UTG+2', 'LJ', 'HJ', 'CO', 'BTN', 'SB', 'BB')
+    com_mesa = 0
+    cheias = 0
+    for cenario in ('mixed', 'rfi', 'vs_rfi', 'vs_3bet'):
+        for pos in posicoes:
+            servidas = pr.mesas(4, cenario, stacks=[10, 20], posicoes=[pos])
+            if servidas:
+                com_mesa += 1
+            if len(servidas) == 4:
+                cheias += 1
+            for x in servidas:
+                assert x['spot']['position'] == pos, (
+                    'pedi %s/%s e vieram %s/%s' % (cenario, pos,
+                                                   x['spot']['position'], x['spot']['scenario']))
+                if cenario != 'mixed':
+                    assert x['spot']['scenario'] == cenario, (
+                        'pedi %s e veio %s' % (cenario, x['spot']['scenario']))
+                assert float(x['spot']['stack_bb']) in (10.0, 20.0), x['spot']['stack_bb']
+    # CONTROLE, e o que torna a varredura acima uma medicao: sem ele, um `mesas` que devolvesse
+    # SEMPRE lista vazia passaria verde em cada assercao de dentro do laco. 32 de 36 e medido; as
+    # 4 que faltam sao as impossiveis da lista acima.
+    assert com_mesa == 32, com_mesa
+    # E as 32 enchem as QUATRO mesas, sempre. Este numero ja foi instavel: enquanto a posicao era
+    # sorteada livre e descartada depois, 8 de cada 9 sorteios morriam no descarte e tres
+    # combinacoes devolviam 4 mesas numas rodadas e 0 em outras -- medido em 6 repeticoes. Se este
+    # caso voltar a oscilar, o sorteio voltou a desperdicar tentativa.
+    assert cheias == 32, ('%d combinacoes encheram as quatro mesas, e nao 32: o sorteio voltou a '
+                          'jogar tentativa fora' % cheias)
+
+
+def test_os_ROTULOS_de_posicao_do_front_batem_com_os_do_servidor():
+    """As duas listas de posicao sao copias em linguagens diferentes, e divergir seria CALADO.
+
+    O front manda `posicoes` como rotulo cru e o servidor compara rotulo com rotulo. Se alguem
+    renomear "LJ" para "MP" num lado so, o filtro deixa de casar e o jogador ve "sem spot para este
+    filtro" para sempre, sem erro em lugar nenhum -- e a casa ja tem a cicatriz dos tres
+    vocabularios de assento, onde o mesmo assento tem tres nomes legitimos.
+
+    Mesmo padrao do `test_tipos_do_api_ts_batem_com_a_rota`: le o arquivo do outro lado.
+    """
+    import os
+    import re
+
+    from leaklab.academy_gto_preflop import _ACTION_ORDER
+
+    caminho = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..',
+                                           'frontend', 'src', 'lib', 'pratica.ts'))
+    assert os.path.exists(caminho), caminho
+    fonte = io.open(caminho, encoding='utf-8').read()
+    m = re.search(r'POSICOES_DISPONIVEIS\s*=\s*\[(.*?)\]', fonte, re.S)
+    assert m, 'nao achei POSICOES_DISPONIVEIS em lib/pratica.ts'
+    do_front = re.findall(r'"([^"]+)"', m.group(1))
+    assert do_front == list(_ACTION_ORDER), (
+        'front %s != servidor %s' % (do_front, list(_ACTION_ORDER)))
+
+
+def test_a_ACADEMIA_nao_perde_o_fallback():
+    """CONTROLE da regra 7: o conserto acima nao pode tirar a rede de seguranca de quem nao filtra.
+
+    A Academia chama sem `posicoes` e sem `stacks`, e ali o fallback segue valendo -- ele existe
+    para o caso raro de 80 sorteios sem spot, e nesse caso nao contradiz pedido nenhum, porque
+    nenhum foi feito.
+    """
+    from leaklab import academy_gto_preflop as ac
+    for _ in range(10):
+        q = ac.generate_gto_preflop_question('mixed')
+        assert q['spot']['position'], q
+    # e com filtro ela levanta em vez de mentir
+    try:
+        ac.generate_gto_preflop_question('rfi', stacks=[10], posicoes=['BB'])
+        raise AssertionError('devolveu spot para uma combinacao impossivel')
+    except ac.SpotIndisponivel:
+        pass
 
 
 def test_a_ACADEMIA_continua_identica():

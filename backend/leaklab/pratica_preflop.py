@@ -34,7 +34,7 @@ from __future__ import annotations
 
 import random
 
-from leaklab.academy_gto_preflop import (_ACTION_ORDER, _hand_to_cards,
+from leaklab.academy_gto_preflop import (_ACTION_ORDER, SpotIndisponivel, _hand_to_cards,
                                          generate_gto_preflop_question,
                                          grade_gto_preflop_answer)
 
@@ -209,8 +209,13 @@ def mesas(n: int = 1, cenario: str = 'mixed', stacks=None, posicoes=None, evitar
     for _ in range(quantas):
         escolhido = None
         for tentativa in range(40):
-            q = generate_gto_preflop_question(cenario, stacks=stacks or STACKS_PRATICA,
-                                              permitir_allin=True, posicoes=posicoes)
+            try:
+                q = generate_gto_preflop_question(cenario, stacks=stacks or STACKS_PRATICA,
+                                                  permitir_allin=True, posicoes=posicoes)
+            except SpotIndisponivel:
+                # O filtro nao tem spot: insistir 40 vezes so gasta 3.200 sorteios para chegar na
+                # mesma resposta. Sai com menos mesas, e o endpoint declara isso em `servidas`.
+                break
             ch = chave_do_spot(q['spot'])
             if ch in abertas:
                 continue                      # nunca duas mesas iguais na tela

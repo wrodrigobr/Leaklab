@@ -8,6 +8,7 @@ import { PainelDePratica } from "@/components/practice/PainelDePratica";
 import { RelatorioDePratica } from "@/components/practice/RelatorioDePratica";
 import {
   acaoDaTecla, acumula, CONFIG_PADRAO, configNaTela, devePausar, MAX_MESAS, mudaOSorteio,
+  gradeDaTela, ALTURA_MINIMA_DO_CARD, POSICOES_DISPONIVEIS,
   nivelDoGrade, proximoFoco, STATS_ZERO, tetoDeMesas, type ConfigPratica, type Pausa,
   type StatsPratica, type Unidade,
 } from "@/lib/pratica";
@@ -47,11 +48,22 @@ export default function Practice() {
     const n = Number(params.get("mesas"));
     const stacks = (params.get("stacks") || "").split(",").map(Number).filter((x) => x > 0);
     const spot = params.get("spot") || "";
+    // A posição só entra pelo ROTULO, e um rotulo desconhecido e descartado em vez de virar
+    // filtro que nunca casa: `?posicoes=BUTTON` pediria um spot que o servidor nunca devolve, e a
+    // tela ficaria pedindo mesas para sempre sem dizer por que.
+    const pos = (params.get("posicoes") || "").split(",")
+      .map((x) => x.trim().toUpperCase())
+      .filter((x) => (POSICOES_DISPONIVEIS as readonly string[]).includes(x));
     const pausa = params.get("pausa") || "";
     const un = params.get("un") || "";
     return {
       mesas: n >= 1 && n <= MAX_MESAS ? n : CONFIG_PADRAO.mesas,
       stacks: stacks.length ? stacks.sort((a, b) => a - b) : CONFIG_PADRAO.stacks,
+      // a ORDEM DE AÇÃO, e não a ordem em que ele digitou: duas listas com as mesmas posições em
+      // ordens diferentes fariam `mudaOSorteio` dizer que mudou algo
+      posicoes: pos.length
+        ? POSICOES_DISPONIVEIS.filter((x) => pos.includes(x))
+        : CONFIG_PADRAO.posicoes,
       cenario: ["mixed", "rfi", "vs_rfi", "vs_3bet"].includes(spot) ? spot : CONFIG_PADRAO.cenario,
       pausa: (["nunca", "erro", "acao"].includes(pausa) ? pausa : CONFIG_PADRAO.pausa) as Pausa,
       // O padrao vem de `CONFIG_PADRAO`, e nao de um literal aqui: com "bb" escrito nesta
@@ -104,8 +116,27 @@ export default function Practice() {
   });
 
   const [mesas, setMesas] = useState<PracticeTable[]>([]);
+  /**
+   * A GRADE desta tela, recalculada a cada render.
+   *
+   * O teto de mesas era consultado num lugar so: na hora de BUSCAR. Quem desenhava usava classes
+   * fixas, e por isso reduzir a janela com quatro mesas abertas encolhia as quatro em vez de
+   * fechar duas. Agora quem desenha pergunta a mesma funcao, e o que nao cabe nao aparece.
+   */
+  const gradeNaTela = gradeDaTela(mesas.length, janela.w, janela.h);
+  const visiveis = mesas.slice(0, gradeNaTela.mesas);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState(false);
+  /**
+   * O filtro rendeu MENOS mesas do que o pedido.
+   *
+   * Isto e informacao, e nao acidente: medido em 17/09, tres combinacoes de posicao e tipo de spot
+   * tem um spot so e nao mais -- `rfi` com BB (o BB nunca abre primeiro), `vs_rfi` com UTG
+   * (ninguem age antes do UTG) e `vs_3bet` com BB. Sem esta linha, escolher uma delas mostraria
+   * UMA mesa no lugar de quatro e o jogador leria isso como travamento. O servidor sempre devolve
+   * `pedidas` e `servidas`; quem nao usava era a tela.
+   */
+  const [estreito, setEstreito] = useState<{ pedidas: number; servidas: number } | null>(null);
   const [foco, setFoco] = useState(0);
   const [respostas, setRespostas] = useState<
     Record<number, { acao: string; grade: PracticeGrade | null; avaliando: boolean }>
@@ -162,11 +193,13 @@ export default function Practice() {
         typeof window === "undefined" ? 900 : window.innerHeight,
       );
       const r = await practice.tables(naTela.mesas, {
-        cenario: c.cenario, stacks: c.stacks, evitar: vistos.current.slice(-400),
+        cenario: c.cenario, stacks: c.stacks, posicoes: c.posicoes,
+        evitar: vistos.current.slice(-400),
       });
       const vindas = r.tables ?? [];
       // Sem mesa nenhuma não há tela: melhor dizer que o filtro não tem spot do que piscar vazio.
       if (!vindas.length) { setErro(true); setMesas([]); return; }
+      setEstreito(r.servidas < r.pedidas ? { pedidas: r.pedidas, servidas: r.servidas } : null);
       vistos.current = [...vistos.current, ...vindas.map((m) => m.id)];
       setMesas(vindas);
       setRespostas({});
@@ -182,6 +215,32 @@ export default function Practice() {
   }, []);
 
   useEffect(() => { void novaRodada(daUrl); /* primeira rodada */ }, []);   // eslint-disable-line react-hooks/exhaustive-deps
+
+  /**
+   * A janela mudou de tamanho e o numero de mesas que CABE mudou com ela: nasce uma rodada nova.
+   *
+   * O aparo do desenho (`visiveis`) ja protege a legibilidade na hora, e este efeito e o que
+   * acerta o estado atras dele -- sem ele, quem reduz a janela fica com duas mesas desenhadas e
+   * quatro vivas (as duas escondidas ainda puxariam spot), e quem volta a maximizar nao recupera
+   * as quatro, porque o estado tem duas.
+   *
+   * O atraso existe porque arrastar a borda da janela dispara `resize` dezenas de vezes: sem ele
+   * o Pratica pediria uma rodada por quadro. E a comparacao e com o que esta ABERTO, para o efeito
+   * nao se armar sozinho -- o que ele muda e justamente o que ele compara.
+   */
+  useEffect(() => {
+    if (!mesas.length) return;
+    const cabe = configNaTela(config, janela.w, janela.h).mesas;
+    if (cabe === mesas.length) return;
+    const t = setTimeout(() => { void novaRodada(config); }, 400);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [janela.w, janela.h, mesas.length, config]);
+
+  /** O foco nunca pode ficar numa mesa que a tela deixou de mostrar. */
+  useEffect(() => {
+    if (foco >= gradeNaTela.mesas) setFoco(0);
+  }, [foco, gradeNaTela.mesas]);
 
   // ── responder uma mesa ────────────────────────────────────────────────────────────────────
   const responder = useCallback(async (i: number, acao: string) => {
@@ -205,7 +264,9 @@ export default function Practice() {
     const nivel = nivelDoGrade(grade, acao);
     setFoco((f) => {
       const respondidas = new Set([...Object.keys(respostas).map(Number), i]);
-      const prox = proximoFoco(f, mesas.length, respondidas);
+      // `grade.mesas`, e nao `mesas.length`: numa janela baixa o Pratica desenha menos mesas
+      // do que abriu, e o foco nao pode cair numa que a tela nao mostra.
+      const prox = proximoFoco(f, gradeNaTela.mesas, respondidas);
       return prox >= 0 ? prox : f;
     });
 
@@ -276,7 +337,7 @@ export default function Practice() {
       if (alvo && /^(INPUT|TEXTAREA|SELECT)$/.test(alvo.tagName)) return;
 
       if (e.key === "Tab") {
-        const prox = proximoFoco(foco, mesas.length, new Set(Object.keys(respostas).map(Number)));
+        const prox = proximoFoco(foco, gradeNaTela.mesas, new Set(Object.keys(respostas).map(Number)));
         if (prox >= 0) { e.preventDefault(); setFoco(prox); }
         return;
       }
@@ -403,7 +464,7 @@ export default function Practice() {
             deixaria a 3a e a 4a mesa abaixo da dobra em notebook, e o jogador rolaria a tela no
             meio de uma rodada de quatro mesas -- perdendo justamente o que o modo existe para
             treinar. Mesma doutrina da mesa do replayer, que e height-bound pelo mesmo motivo. */}
-        <div className="min-w-0 flex-1 overflow-hidden p-3">
+        <div className={cn("min-w-0 flex-1 p-3", gradeNaTela.rola ? "overflow-y-auto" : "overflow-hidden")}>
           {carregando && !mesas.length ? (
             <div className="flex h-full items-center justify-center gap-2 text-muted-foreground">
               <Loader2 className="size-4 animate-spin" /> <span className="font-mono text-xs">{t("carregando")}</span>
@@ -414,14 +475,29 @@ export default function Practice() {
               <p className="max-w-[46ch] text-xs text-muted-foreground">{t("semSpot.desc")}</p>
             </div>
           ) : (
-            // `h-full` + `grid-rows-*`: as linhas dividem a ALTURA disponivel, e cada mesa
-            // encolhe para caber. Sem as linhas declaradas, o grid usa a altura do conteudo e
-            // volta a estourar a faixa.
-            <div className={cn("grid h-full min-h-0 gap-3",
-              mesas.length === 1 ? "mx-auto max-w-[980px] grid-cols-1 grid-rows-1"
-                : mesas.length === 2 ? "grid-cols-1 grid-rows-2 xl:grid-cols-2 xl:grid-rows-1"
-                : "grid-cols-2 grid-rows-2")}>
-              {mesas.map((m, i) => (
+            // As colunas, as linhas e o PISO de altura de cada celula saem de `gradeDaTela`,
+            // e nao de classes fixas. Era o contrario: `grid-rows-2` cravado dividia a altura em
+            // duas e cada mesa encolhia sem piso -- numa janela baixa com quatro mesas abertas,
+            // cada uma virava um borrao de 86px, que foi a captura do dono em 17/09.
+            //
+            // Com o piso, se a celula nao alcanca o minimo a faixa ROLA em vez de achatar; antes
+            // de chegar la a grade ja tirou mesa e tirou coluna.
+            <>
+            {estreito && (
+              <p data-testid="pratica-filtro-estreito"
+                 className="mb-2 rounded border border-amber-500/30 bg-amber-500/10 px-2 py-1 font-mono text-[10px] leading-relaxed text-amber-200/90">
+                {t("filtroEstreito", { servidas: estreito.servidas, pedidas: estreito.pedidas })}
+              </p>
+            )}
+            <div className={cn("grid min-h-0 gap-3",
+                               gradeNaTela.rola ? "h-auto" : "h-full",
+                               gradeNaTela.mesas === 1 && "mx-auto max-w-[980px]")}
+                 data-testid="pratica-grade"
+                 style={{
+                   gridTemplateColumns: `repeat(${gradeNaTela.colunas}, minmax(0, 1fr))`,
+                   gridTemplateRows: `repeat(${gradeNaTela.linhas}, minmax(${ALTURA_MINIMA_DO_CARD}px, 1fr))`,
+                 }}>
+              {visiveis.map((m, i) => (
                 <MesaDePratica
                   key={m.id}
                   mesa={m}
@@ -431,7 +507,7 @@ export default function Practice() {
                   avaliando={!!respostas[i]?.avaliando}
                   acaoEscolhida={respostas[i]?.acao ?? null}
                   leakDoJogador={leakDoSpot(m)}
-                  compacta={mesas.length >= 3}
+                  compacta={visiveis.length >= 3}
                   unidade={config.unidade}
                   onAgir={(a) => void responder(i, a)}
                   onFocar={() => setFoco(i)}
@@ -439,6 +515,7 @@ export default function Practice() {
                 />
               ))}
             </div>
+            </>
           )}
 
           {/* o "pausar depois de" segurou: o jogador solta quando quiser */}

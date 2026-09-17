@@ -11,6 +11,20 @@ import type { PracticeGrade, PracticeOption } from "@/lib/api";
 /** As faixas que o acervo cobre: 3 a 100bb em 14 baldes, e estas são as que o treino oferece. */
 export const STACKS_DISPONIVEIS = [10, 14, 17, 20, 30, 40, 50, 75, 100] as const;
 
+/**
+ * As nove posições da mesa, na ORDEM DE AÇÃO, que é a ordem em que elas decidem.
+ *
+ * ── Por que este vocabulário, e não outro (17/09) ─────────────────────────────────────────────
+ *
+ * A casa tem três vocabulários de assento, e confundi-los já custou uma sessão: o rótulo da sala
+ * ("UTG"), o número de jogadores por agir (o que a carta do solver usa) e o assento físico. Estes
+ * nove são os RÓTULOS, porque é o que o `spot.position` do servidor devolve e é o que o jogador
+ * lê na mesa. O filtro compara rótulo com rótulo, e não faz conversão nenhuma.
+ */
+export const POSICOES_DISPONIVEIS = [
+  "UTG", "UTG+1", "UTG+2", "LJ", "HJ", "CO", "BTN", "SB", "BB",
+] as const;
+
 export const MAX_MESAS = 4;
 
 export type Pausa = "nunca" | "erro" | "acao";
@@ -21,6 +35,16 @@ export type Unidade = "bb" | "fichas";
 export interface ConfigPratica {
   mesas: number;
   stacks: number[];
+  /**
+   * As posições que o sorteio pode usar. NUNCA vazia, igual à lista de stacks: "todas" é a lista
+   * com as nove, e não o vazio.
+   *
+   * O servidor trata lista vazia como "sem filtro", então o vazio funcionaria -- e é justamente
+   * por isso que ele está proibido aqui. Duas representações para o mesmo estado ("todas" como
+   * `[]` e como as nove) é o tipo de ambiguidade que faz um `length !== length` dizer que o
+   * sorteio mudou quando nada mudou. Uma representação só.
+   */
+  posicoes: string[];
   /** "mixed" | "rfi" | "vs_rfi" | "vs_3bet" — o mesmo vocabulário do servidor */
   cenario: string;
   pausa: Pausa;
@@ -70,14 +94,32 @@ export const LARGURA_PARA_VARIAS_MESAS = 1024;
 export const MESA_MINIMA = { largura: 360, altura: 300 };
 
 /**
- * A altura que sobra para a MESA de cada card, dada a janela e o número de linhas.
+ * O que o CARD gasta acima e abaixo da mesa, somado classe por classe do `MesaDePratica`:
  *
- * Os descontos são o layout real, medido na tela e não estimado: 48px da barra do topo, 8px do
- * espaçamento da grade, e 78px que o card gasta acima e abaixo da mesa (o cabeçalho com a mão e o
- * stack, mais a linha de botões, que agora tem 44px de altura mínima).
+ *   `p-2.5`        10px em cima + 10px embaixo  = 20
+ *   `min-h-[44px]` a linha de botões            = 44
+ *   `mt-1`         entre a mesa e os botões     =  4
+ *                                                ──
+ *                                                 68
+ *
+ * Era 78 enquanto existia uma linha de cabeçalho com a mão em texto e o stack. Ela saiu em 17/09
+ * ("no canto inferior esquerdo de cada box, tem as cartas em texto...desnecessário"), o stack
+ * virou uma etiqueta flutuante no canto, e a mesa herdou a linha inteira. Este número entra na
+ * conta de quantas mesas cabem na tela, então mexer no card sem mexer aqui faria a regra
+ * responsiva decidir por um layout que já não existe.
  */
+export const CHROME_DO_CARD = 68;
+
+/** A barra do topo, e o espaçamento entre as células da grade. */
+const BARRA_DO_TOPO = 48;
+const ESPACO_DA_GRADE = 8;
+
+/** A altura mínima que um card precisa ter para a mesa dentro dele caber no mínimo medido. */
+export const ALTURA_MINIMA_DO_CARD = MESA_MINIMA.altura + CHROME_DO_CARD;
+
+/** A altura que sobra para a MESA de cada card, dada a janela e o número de linhas. */
 function alturaDaMesa(alturaDaTela: number, linhas: number): number {
-  return (alturaDaTela - 48) / linhas - 8 - 78;
+  return (alturaDaTela - BARRA_DO_TOPO) / linhas - ESPACO_DA_GRADE - CHROME_DO_CARD;
 }
 
 export function tetoDeMesas(larguraDaTela: number, alturaDaTela = 900): number {
@@ -99,10 +141,46 @@ export function configNaTela(c: ConfigPratica, larguraDaTela: number,
   return c.mesas <= teto ? c : { ...c, mesas: teto };
 }
 
+/**
+ * A GRADE que vale nesta tela: quantas mesas desenhar, em quantas colunas e quantas linhas, e se
+ * a faixa precisa rolar.
+ *
+ * ── Por que ela existe (17/09) ────────────────────────────────────────────────────────────────
+ *
+ * O `tetoDeMesas` já dizia o número certo, mas ele era consultado num lugar só: quando uma rodada
+ * NASCE. O dono abriu quatro mesas, reduziu a altura da janela, e mandou a captura: as quatro
+ * ficaram na tela e cada mesa virou um borrão de 86px. "isto nao pode acontecer...temos que ter os
+ * cuidados responsivos...se nao cabe com as condições minimas, deixamos apenas 1 coluna, ou algo
+ * do tipo...mas nao podemos reduzir a mesa desta forma".
+ *
+ * A regra estava certa e o defeito era de alcance: uma regra consultada em UM caminho e não no
+ * que DESENHA. Agora quem desenha pergunta a esta função, e o número de mesas que entra na busca
+ * sai dela também -- a cicatriz da regra 5 da casa.
+ *
+ * ── O que ela faz quando nada cabe ────────────────────────────────────────────────────────────
+ *
+ * Primeiro tira mesas, depois tira coluna, e só no fim deixa rolar. Rolar é o último recurso porque
+ * contraria um pedido anterior dele ("as mesas cabem na tela, sem barra de rolagem", 16/09) -- mas
+ * numa janela de 350px de altura nem UMA mesa alcança o mínimo, e entre rolar e mostrar um borrão
+ * ele já decidiu: "nao podemos reduzir a mesa desta forma".
+ */
+export function gradeDaTela(abertas: number, larguraDaTela: number, alturaDaTela = 900) {
+  const mesas = Math.max(1, Math.min(abertas, tetoDeMesas(larguraDaTela, alturaDaTela)));
+  // Duas colunas só quando as DUAS cabem na largura mínima. Uma mesa sozinha nunca divide coluna.
+  const colunas = mesas > 1 && larguraDaTela / 2 >= MESA_MINIMA.largura ? 2 : 1;
+  const linhas = Math.ceil(mesas / colunas);
+  const alturaDoCard = (alturaDaTela - BARRA_DO_TOPO) / linhas - ESPACO_DA_GRADE;
+  return { mesas, colunas, linhas, rola: alturaDoCard < ALTURA_MINIMA_DO_CARD };
+}
+
 export const CONFIG_PADRAO: ConfigPratica = {
   mesas: 4,
   // O MTT curto é o ponto do treino, e é a faixa que a Academia não cobre de propósito.
   stacks: [10, 14, 17, 20],
+  // Todas as posições. O pedido do Rullian, pelo dono (17/09): "a escolha de uma posição
+  // específica para o treino. podemos deixar todas selecionadas, ou escolher uma única posição,
+  // assim como é feito com o stack".
+  posicoes: [...POSICOES_DISPONIVEIS],
   cenario: "mixed",
   // "nunca" e o padrao (decisao do dono, 16/09): ele viu o botao "continuar" aparecer depois de
   // algumas rodadas e pediu fluxo continuo -- "a cada nova acao escolhida, cada uma das mesas
@@ -127,7 +205,12 @@ export function mudaOSorteio(a: ConfigPratica, b: ConfigPratica): boolean {
   return a.mesas !== b.mesas
     || a.cenario !== b.cenario
     || a.stacks.length !== b.stacks.length
-    || a.stacks.some((s, i) => s !== b.stacks[i]);
+    || a.stacks.some((s, i) => s !== b.stacks[i])
+    // A posição entra aqui pelo mesmo motivo que o stack: ela escolhe o spot. Deixá-la fora faria
+    // o painel aplicar o filtro na hora e as mesas abertas continuarem com o filtro velho, sem
+    // nada na tela explicando a diferença.
+    || a.posicoes.length !== b.posicoes.length
+    || a.posicoes.some((x, i) => x !== b.posicoes[i]);
 }
 
 /**

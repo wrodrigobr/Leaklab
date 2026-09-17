@@ -332,19 +332,44 @@ describe("modo Pratica", () => {
     expect(botoes.className, "a faixa de botoes precisa ser shrink-0").toContain("shrink-0");
   });
 
-  it("a grade das mesas NAO rola: ela e limitada pela altura", async () => {
-    // Requisito do dono: "as 4 mesas tem que caber na tela do usuario, sem depender de barra de
-    // rolagem". jsdom nao faz layout, entao o guarda trava a ESTRUTURA que garante isso: a faixa
-    // e overflow-hidden e a grade declara as linhas (sem linhas, o grid usa a altura do
-    // conteudo e volta a estourar).
-    monta();
-    await screen.findByTestId("pratica-mesa-m1");
-    const grade = document.querySelector('[class*="grid-rows-2"]');
-    expect(grade, "a grade de 4 mesas precisa declarar as linhas").toBeTruthy();
-    expect(grade!.className).toContain("h-full");
-    const faixa = grade!.parentElement!;
-    expect(faixa.className).toContain("overflow-hidden");
-    expect(faixa.className).not.toContain("overflow-y-auto");
+  it("a grade das mesas NAO rola quando as mesas CABEM", async () => {
+    // Requisito do dono de 16/09: "as 4 mesas tem que caber na tela do usuario, sem depender de
+    // barra de rolagem". Ele segue valendo, e agora com uma condicao: vale enquanto o minimo cabe.
+    // Em 17/09 ele decidiu o desempate para quando nao cabe ("nao podemos reduzir a mesa desta
+    // forma"), e ai rolar e melhor que achatar -- o caso seguinte cobre esse lado.
+    //
+    // jsdom nao faz layout, entao o guarda trava a ESTRUTURA: a faixa e overflow-hidden e a grade
+    // declara as linhas (sem linhas declaradas o grid usa a altura do conteudo e estoura a faixa).
+    comLargura(1440, 1000);
+    try {
+      monta();
+      await screen.findByTestId("pratica-mesa-m1");
+      const grade = screen.getByTestId("pratica-grade");
+      expect(grade.style.gridTemplateRows, "a grade precisa declarar as linhas").toBe(
+        "repeat(2, minmax(368px, 1fr))");
+      expect(grade.className).toContain("h-full");
+      const faixa = grade.parentElement!;
+      expect(faixa.className).toContain("overflow-hidden");
+      expect(faixa.className).not.toContain("overflow-y-auto");
+    } finally {
+      comLargura(1440, 1000);
+    }
+  });
+
+  it("quando nem UMA mesa alcanca o minimo, a faixa ROLA em vez de a mesa achatar", async () => {
+    // O ultimo recurso, e a ordem importa: a grade tira mesa, tira coluna, e so no fim rola. Numa
+    // janela de 340px de altura nem uma mesa alcanca os 300px que o medidor exige, e entre rolar
+    // e mostrar um borrao o dono ja decidiu.
+    comLargura(1353, 340);
+    try {
+      monta();
+      await screen.findByTestId("pratica-mesa-m1");
+      expect(screen.getAllByTestId(/^pratica-mesa-/).length, "achatou em vez de fechar mesa").toBe(1);
+      const faixa = screen.getByTestId("pratica-grade").parentElement!;
+      expect(faixa.className, "a faixa nao rolou, entao a mesa achatou").toContain("overflow-y-auto");
+    } finally {
+      comLargura(1440, 1000);
+    }
   });
 
   it("sem spot para o filtro, a tela DIZ, em vez de piscar vazio", async () => {
@@ -429,6 +454,98 @@ describe("modo Pratica", () => {
       await waitFor(() => expect(tables).toHaveBeenCalled(), { timeout: 5000 });
       // o primeiro argumento de `practice.tables` e quantas mesas
       expect(tables.mock.calls[0][0], "quatro mesas num celular").toBe(1);
+    } finally {
+      comLargura(1440, 1000);
+    }
+  });
+
+  it("a POSICAO da URL chega no pedido, em ordem de acao", async () => {
+    // Pedido do Rullian, trazido pelo dono (17/09). A ordem importa: `mudaOSorteio` compara as
+    // listas posicao a posicao, e a mesma escolha em outra ordem diria que o sorteio mudou.
+    comLargura(1440, 1000);
+    try {
+      render(<MemoryRouter initialEntries={["/practice?posicoes=co,btn&mesas=2"]}>
+               <Practice /></MemoryRouter>);
+      await waitFor(() => expect(tables).toHaveBeenCalled(), { timeout: 5000 });
+      expect(tables.mock.calls[0][1].posicoes).toEqual(["CO", "BTN"]);
+    } finally {
+      comLargura(1440, 1000);
+    }
+  });
+
+  it("rotulo de posicao DESCONHECIDO e descartado, e nao vira filtro que nunca casa", async () => {
+    // CONTROLE do caso acima, e conserto de um estado sem saida: `?posicoes=BUTTON` pediria um
+    // spot que o servidor nunca devolve, e a tela ficaria pedindo mesas para sempre.
+    comLargura(1440, 1000);
+    try {
+      render(<MemoryRouter initialEntries={["/practice?posicoes=BUTTON"]}><Practice /></MemoryRouter>);
+      await waitFor(() => expect(tables).toHaveBeenCalled(), { timeout: 5000 });
+      expect(tables.mock.calls[0][1].posicoes).toEqual(CONFIG_PADRAO.posicoes);
+    } finally {
+      comLargura(1440, 1000);
+    }
+  });
+
+  it("filtro que rende MENOS mesas do que o pedido e DECLARADO na tela", async () => {
+    // Medido no servidor em 17/09: `rfi` com BB, `vs_rfi` com UTG, `vs_3bet` com SB e `vs_3bet`
+    // com BB nao tem spot nenhum, e outras combinacoes tem pool pequeno e rendem menos de quatro.
+    // Sem esta linha, o jogador escolhe um filtro estreito, ve uma mesa no lugar de quatro e le
+    // isso como travamento -- o servidor sempre mandou `pedidas` e `servidas`, e a tela ignorava.
+    comLargura(1440, 1000);
+    try {
+      tables.mockResolvedValue({ tables: [QUATRO[0]], pedidas: 4, servidas: 1 });
+      monta();
+      const aviso = await screen.findByTestId("pratica-filtro-estreito");
+      expect(aviso.textContent).toContain("filtroEstreito");
+      expect(aviso.textContent, "a linha precisa dizer os DOIS numeros").toContain("1,4");
+    } finally {
+      comLargura(1440, 1000);
+    }
+  });
+
+  it("CONTROLE: com as mesas todas servidas, a tela NAO avisa nada", async () => {
+    comLargura(1440, 1000);
+    try {
+      tables.mockResolvedValue({ tables: QUATRO, pedidas: 4, servidas: 4 });
+      monta();
+      await screen.findByTestId("pratica-mesa-m1");
+      expect(screen.queryByTestId("pratica-filtro-estreito"),
+             "avisou de filtro estreito sem filtro estreito").toBeNull();
+    } finally {
+      comLargura(1440, 1000);
+    }
+  });
+
+  it("reduzir a JANELA fecha mesa, e nao encolhe a mesa", async () => {
+    // 17/09, a captura do dono: ele abriu quatro mesas, reduziu a altura da janela do browser, e
+    // as quatro FICARAM na tela -- cada uma um borrao ilegivel. "isto nao pode acontecer...temos
+    // que ter os cuidados responsivos...se nao cabe com as condicoes minimas, deixamos apenas 1
+    // coluna, ou algo do tipo...mas nao podemos reduzir a mesa desta forma".
+    //
+    // A regra do teto JA existia e JA dizia "duas". O defeito era de alcance: ela era consultada
+    // so na hora de BUSCAR as mesas, e quem DESENHAVA usava classes fixas (`grid-rows-2`). Este
+    // caso ancora no que aparece na tela, que e onde o defeito morava.
+    comLargura(1440, 1000);
+    try {
+      tables.mockResolvedValue({ tables: QUATRO });
+      render(<MemoryRouter initialEntries={["/practice?mesas=4"]}><Practice /></MemoryRouter>);
+      await waitFor(() => expect(screen.getAllByTestId(/^pratica-mesa-/).length).toBe(4),
+                    { timeout: 5000 });
+
+      // a janela da captura: 1353x500
+      comLargura(1353, 500);
+      fireEvent(window, new Event("resize"));
+
+      await waitFor(() => expect(
+        screen.getAllByTestId(/^pratica-mesa-/).length,
+        "as quatro continuaram na tela, encolhidas",
+      ).toBe(2), { timeout: 5000 });
+
+      // e a grade ficou em DUAS colunas e UMA linha, com piso de altura na celula
+      const g = screen.getByTestId("pratica-grade");
+      expect(g.style.gridTemplateColumns).toBe("repeat(2, minmax(0, 1fr))");
+      expect(g.style.gridTemplateRows, "a celula ficou sem piso de altura")
+        .toBe("repeat(1, minmax(368px, 1fr))");
     } finally {
       comLargura(1440, 1000);
     }
