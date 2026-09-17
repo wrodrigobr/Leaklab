@@ -5,6 +5,86 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## A mesa virou um ESTADIO que acompanha o espaco, e a geometria virou UMA conta (17/09)
+
+Cinco recados do dono na mesma sessao, todos sobre a mesma coisa: "em telas menores, a mesa esta
+achatando a um ponto que fica totalmente ilegivel"; "ideal e que as bordas superiores e inferiores
+da mesa fiquem retas, e so curvemos as laterais...assim ganhamos espaco"; "os botoes estão muito
+estreitos também, preciso ser maiores"; "temos que ter um limite minimo de achatamento"; e, com a
+captura do GTO Wizard numa janela estreita, "e se reduzir muito, ele vira pra celular".
+
+**O contorno agora e um estadio.** Na elipse, um assento afastado do centro DESCE com a curva, e
+para ele nao sair do card a elipse inteira tem de ser mais baixa. No estadio os assentos de uma
+reta ficam todos na mesma altura, e a mesa enche a mesma caixa -- e o ganho de espaco que ele
+mencionou vem dai. Os nove lugares andam pelo contorno por COMPRIMENTO DE ARCO, e nao por angulo:
+por angulo eles se amontoam nas pontas e abrem no meio das retas.
+
+**O aspecto acompanha o espaco, dentro de uma faixa (0,62 a 2,4).** Era isso que faltava: a arena
+usava toda a altura livre e num card baixo virava uma fita. Dentro da faixa a mesa usa o aspecto do
+proprio card; fora dela ela para de deformar e sobra espaco -- que e o limite que ele pediu. E como
+a faixa desce abaixo de 1, a mesa fica VERTICAL no celular, com as retas nas laterais, que e
+exatamente o que a captura deles mostra em tela estreita.
+
+**O teto de mesas passou a olhar a ALTURA.** Medido com o medidor: a mesa precisa de 300px de
+altura para nao colidir, em qualquer largura. Descontando o cabecalho e os botoes do card (78px,
+medidos no layout), uma tela de 1366x768 deixa a mesa com 274px -- entao ali o Pratica abre DUAS
+mesas em vez de quatro. Mudanca de comportamento, e ela e o conserto: com quatro, aquela tela
+mostrava as fitas que ele fotografou.
+
+**Os botoes ficaram maiores**, com 44px de altura minima (o alvo de toque confortavel) e fonte
+maior. O espaco existe porque a mesa deixou de ocupar toda a altura do card.
+
+**Quem saiu da mao voltou a ser legivel.** O pod estava em `opacity-35` sobre fundo transparente, o
+que apagava a borda junto com o texto, e o stack aparecia como um traco. O dono: "estamos ocultando
+muito o pod, e quase nao da pra ver...siga o mesmo padrao do gto wizard nisto tambem". Agora tem
+fundo, borda e o STACK de verdade, em cinza: a posicao que abriu antes de voce e o stack que ela
+tinha ainda informam, e era o traco que fazia o pod parecer vazio.
+
+**O historico voltou para UMA linha**, no modelo deles ("UTG 35 Fold"), com posicao, stack e acao
+lado a lado. Isso desfez um pedido anterior dele (posicao em cima, acao embaixo, em duas linhas) e
+o motivo esta no recado novo: "pra economizar espaco superior". O box de duas linhas gastava o dobro
+de altura, e altura e exatamente o que faltava na mesa.
+
+── A mudanca que mais importa: a geometria virou UMA conta ───────────────────────────────────
+
+A mesa media em `cqw`/`cqh` com `clamp()` e posicionava em `%` com `calc()`. Isso obrigava cada
+regra do desenho a existir DUAS vezes -- uma em aritmetica, para o medidor de colisao, e uma em
+string de CSS, para o navegador -- e a cada um dos cinco desenhos deste dia eu reescrevia as duas e
+depois escrevia um teste provando que elas concordavam. Era a regra 5 da casa por construcao.
+
+Agora o componente MEDE o proprio tamanho (`ResizeObserver`) e chama `layoutDaMesa`, que devolve a
+caixa de cada elemento em px. O medidor chama a MESMA funcao. Uma escrita, uma conta, e o teste mede
+o que o jogador ve. A duplicacao que eu tinha travado com um guarda deixou de existir -- e guarda
+que protege duas copias e sempre pior que nao ter as duas copias.
+
+── O que o medidor achou, em ordem, e o que cada achado custou ───────────────────────────────
+
+A direcao de cada elemento em volta do assento passou por cinco tentativas, e nenhuma foi escolhida
+a olho:
+
+1. perpendicular ao raio (o desenho da elipse): no estadio aponta para FORA do card nos assentos da
+   base -- 28px de vazamento em nove maos;
+2. horizontal para dentro: nas pontas a ficha tambem e quase horizontal, e as duas se cruzaram --
+   1.107px2;
+3. perpendicular a ficha, para o lado com mais espaco: 432 maos com problema cairam para 155, e
+   sobrou o celular, com as cartas invadindo o pod do vizinho (54px livres para 54px de cartas);
+4. abrir a base deslocando a distribuicao meio passo: piorou, 155 para 173;
+5. radial para fora: as fichas passaram a se encontrar no miolo, porque a margem que a carta exigia
+   comeu a arena -- 162 maos, agora por dentro.
+
+A regra que sobrou: ficha pela NORMAL ao contorno para dentro, cartas na oposta (para fora, onde a
+margem da arena reservou espaco), botao do dealer pela TANGENTE, no sentido que se afasta das
+cartas. E o botao fica ENCOSTADO no pod, como no GTO Wizard: a uma folga ele alcancava o assento
+vizinho.
+
+Tres numeros que sairam de medicao e nao de gosto: a normal em vez do raio (pelo raio as fichas de
+uma mesma reta convergem e se encostam -- 2px2 no iPhone); a largura do centro limitada pelo que as
+fichas ocupam (a fracao de 46% alcancava o texto na mesa vertical, 81 maos em 360px); e a margem da
+arena reservando a LARGURA da carta (reservar a altura para algo que ocupa 54px deixava 36 maos com
+carta fora do card).
+
+---
+
 ## O jogador preenche o resultado do torneio, quando a sala nao publica o resumo (17/09)
 
 O dono: "nao haviamos criado um meio de torneios do party poker, o usuario conseguir preencher os

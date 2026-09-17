@@ -197,10 +197,4 @@
 
   /* A mesa do modo Pratica escala pelo CARD, e nao pela viewport: os `cqw` dela medem este
    * container. Sem isto, uma mesa e quatro mesas dariam elementos do mesmo tamanho. */
-  .container-mesa {
-    /* `size`, e nao `inline-size`: as medidas da mesa (MesaCompacta) usam `cqh` para nao
-       estourar o trilho quando a celula e baixa, e `inline-size` expoe SO `cqw`. Requer altura
-       resolvida no elemento, que vem do `flex-1 min-h-0` do pai. */
-    container-type: size;
-  }
 }

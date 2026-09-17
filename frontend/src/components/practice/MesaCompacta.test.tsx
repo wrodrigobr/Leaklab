@@ -102,12 +102,23 @@ describe("a mesa do Pratica", () => {
     expect(cartas.textContent).toBe("K♣7♣");
   });
 
-  it("cada assento mostra posicao e stack, e quem foldou aparece sem numero", () => {
+  it("cada assento mostra posicao e stack, INCLUSIVE quem foldou", () => {
     monta();
     // o abridor, com o stack já descontado da aposta
     expect(within(screen.getByTestId("assento-BTN")).getByText("17.8")).toBeTruthy();
-    // quem saiu não mostra stack: número de quem não está na mão é ruído com aparência de dado
-    expect(screen.getByTestId("assento-UTG").textContent).toContain("—");
+
+    // ── Isto mudou em 17/09, e o caso dizia o contrário ────────────────────────────────────
+    //
+    // Antes o pod de quem saiu mostrava um traço, "porque número de quem não está na mão é ruído
+    // com aparência de dado". O dono viu na tela e discordou: "quando os assentos nao estao na
+    // mao, estamos ocultando muito o pod, e quase nao da pra ver...siga o mesmo padrao do gto
+    // wizard nisto tambem".
+    //
+    // Ele tem razão, e o motivo não é estético: a posição que abriu antes de você e o stack que
+    // ela tinha ainda informam. Era o traço que fazia o pod parecer vazio. Só o TOM muda.
+    const utg = screen.getByTestId("assento-UTG");
+    expect(utg.textContent, "quem saiu voltou a nao mostrar o stack").not.toContain("—");
+    expect(utg.textContent).toMatch(/\d/);
   });
 
   it("a unidade vale para stack E aposta, com UM formatador", () => {
@@ -126,11 +137,26 @@ describe("a mesa do Pratica", () => {
     expect(screen.queryByTestId("aposta-UTG")).toBeNull();
   });
 
-  it("o botao do dealer fica no assento certo", () => {
+  it("o botao do dealer fica ENCOSTADO no pod do botao", () => {
+    // Ele deixou de ser filho do assento: agora a geometria o posiciona, encostado na borda do pod
+    // (o desenho do GTO Wizard). Como filho, ele herdava o `overflow` e o tamanho do pod.
     monta();
-    const btn = screen.getByTestId("assento-BTN");
-    expect(within(btn).getByTestId("botao-dealer")).toBeTruthy();
-    expect(within(screen.getByTestId("assento-SB")).queryByTestId("botao-dealer")).toBeNull();
+    const d = screen.getByTestId("botao-dealer");
+    expect(d.textContent).toContain("D");
+
+    // e ele está SOBRE o pod do BTN, não sobre outro: as duas caixas se tocam
+    const pod = screen.getByTestId("assento-BTN").style;
+    const dealer = d.style;
+    const dist = Math.hypot(
+      parseFloat(pod.left) - parseFloat(dealer.left),
+      parseFloat(pod.top) - parseFloat(dealer.top),
+    );
+    const outro = screen.getByTestId("assento-SB").style;
+    const distOutro = Math.hypot(
+      parseFloat(outro.left) - parseFloat(dealer.left),
+      parseFloat(outro.top) - parseFloat(dealer.top),
+    );
+    expect(dist, "o D esta mais perto de outro assento que do BTN").toBeLessThan(distOutro);
   });
 
   it("o spot escrito no CENTRO, e curto", () => {
@@ -141,61 +167,74 @@ describe("a mesa do Pratica", () => {
     expect(screen.getByText("SB contra BTN, vs Open")).toBeTruthy();
   });
 
-  it("escala pelo CARD, e nao pela viewport", () => {
-    // O mecanismo que mantém a proporção do GTO Wizard: as medidas medem o CONTAINER. Com `vw`,
-    // uma mesa e quatro mesas dariam elementos do mesmo tamanho.
+  it("as medidas vem do TAMANHO MEDIDO, e nao de container query", () => {
+    // A mesa mede o próprio tamanho e posiciona em px. Antes ela media em `cqw`/`cqh` com
+    // `clamp()`, e as posições saíam em `%` com `calc()` -- o que obrigava cada regra do desenho a
+    // existir duas vezes, uma para o navegador e uma para o medidor de colisão. Cinco desenhos num
+    // dia depois, a duplicação saiu.
     monta();
     const raiz = screen.getByTestId("mesa-compacta");
-    expect(raiz.className).toContain("container-mesa");
+    const arena = screen.getByTestId("arena-da-mesa");
+    // posicionamento absoluto em px, vindo da geometria
+    expect(arena.style.position).toBe("absolute");
+    expect(arena.style.left).toMatch(/px$/);
+    expect(arena.style.width).toMatch(/px$/);
+
+    const fonte = semComentarios(readFileSync(join(import.meta.dirname, "MesaCompacta.tsx"), "utf-8"));
+    expect(fonte, "o recorte do componente falhou").toContain("export function MesaCompacta");
+    expect(fonte, "container query voltou: sao duas contas outra vez").not.toContain("cqw");
+    expect(fonte, "clamp no componente e a segunda escrita da medida").not.toContain("clamp(");
+    expect(fonte, "a mesa precisa MEDIR para saber o aspecto do espaco").toContain("ResizeObserver");
+    expect(raiz.className).toContain("relative");
   });
 
-  it("o historico tem a posicao em cima e a acao embaixo, com altura FIXA", () => {
-    // Pedido do dono: "a posicao em cima, a acao embaixo....dentro de um box pra cada posicao".
+  it("o historico e UMA linha por assento, com altura FIXA", () => {
+    // O dono pediu duas vezes, e a segunda desfez a primeira. Primeiro: "a posicao em cima, a
+    // acao embaixo....dentro de um box pra cada posicao". Depois, com a captura do GTO Wizard:
+    // "as acoes tbm deve ficar neste modelo, pra economizar espaco superior".
     //
-    // A altura do container e FIXA e sai da geometria, e nao do conteudo: a arena desconta essa
-    // mesma faixa do topo, e se o box de duas linhas crescesse por conta propria ele empurraria a
-    // mesa para baixo sem ninguem ver -- as duas contas concordam por construcao.
+    // O box de duas linhas gastava o dobro de altura, e altura e exatamente o que falta na mesa --
+    // foi a mesma escassez que achatou o trilho. Este caso trava o modelo NOVO, e existe para a
+    // proxima mudanca de desenho ser uma decisao e nao um acidente.
     monta();
     const hist = screen.getByTestId("historico-da-mao");
-    // A altura NAO pode ser lida do DOM: o jsdom descarta `calc()` com `clamp`/`min` dentro, e
-    // `style` volta vazio. O guarda le o fonte, e diz por que.
-    const fonteMesa = semComentarios(readFileSync(join(import.meta.dirname, "MesaCompacta.tsx"), "utf-8"));
-    expect(fonteMesa, "a altura do historico precisa sair da geometria, nao do conteudo")
-      .toContain("height: alturaDoHistoricoCss()");
-    const fonteGeo = semComentarios(readFileSync(join(import.meta.dirname, "geometriaDaMesa.ts"), "utf-8"));
-    // as duas contas da MESMA faixa: a que a arena desconta e a que o container ocupa
-    expect(fonteGeo.match(/2\.6/g)?.length, "a faixa do historico tem de sair de um numero so")
-      .toBeGreaterThanOrEqual(2);
     expect(hist.className, "sem isto um item a mais empurra a mesa").toContain("overflow-hidden");
+
+    // a altura vem da GEOMETRIA (a mesma faixa que a arena desconta do topo), e não do conteúdo
+    expect(hist.style.height, "a altura do historico precisa sair da geometria").toMatch(/px$/);
+    expect(parseFloat(hist.style.height)).toBeGreaterThan(8);
 
     const itens = [...hist.children];
     expect(itens.length, "a varredura nao achou nenhum item do historico").toBeGreaterThan(1);
     for (const item of itens) {
-      expect(item.className, "o box e uma COLUNA: posicao em cima, acao embaixo").toContain("flex-col");
-      expect(item.children.length, "duas linhas por box").toBe(2);
+      expect(item.className, "o chip e uma LINHA: posicao, stack e acao lado a lado")
+        .not.toContain("flex-col");
+      // posicao + stack + acao
+      expect(item.children.length, "o chip precisa dos tres pedacos").toBe(3);
     }
+    // e o stack aparece, como no modelo deles ("UTG 35 Fold")
+    expect(hist.textContent).toMatch(/\d/);
   });
 
-  it("o trilho e a BORDA da arena, e nao um raio cravado em %", () => {
-    // O raio em % do card nao resolve as duas celulas (estoura em 4 mesas, sobra em 2), e a sobra
-    // era o vazio no meio do feltro que o dono reclamou. Este guarda impede a volta do numero
-    // cravado: a elipse e a borda de um elemento que PREENCHE a arena.
+  it("o trilho e um ESTADIO, e a arena tem ASPECTO fixo", () => {
+    // O pedido do dono, com a captura deles: "ideal e que as bordas superiores e inferiores da
+    // mesa fiquem retas, e so curvemos as laterais...assim ganhamos espaco". Num retangulo 2:1, o
+    // `rounded-full` E o estadio.
+    //
+    // E o aspecto fixo e o "limite minimo de achatamento" que ele pediu no recado seguinte: sem
+    // ele a arena usava toda a altura do card e virava uma fita em tela baixa.
     monta();
     const arena = screen.getByTestId("arena-da-mesa");
-    const trilho = [...arena.children].find((el) =>
-      el.className.includes("rounded-[50%]"),
-    );
-    expect(trilho, "o trilho precisa ser filho da arena").toBeTruthy();
-    expect(trilho?.className).toContain("inset-0");
+    // a arena É o trilho: um elemento, uma borda. O `rounded-full` num retângulo é o estádio, e as
+    // retas caem no eixo maior -- a mesma borda serve para a mesa horizontal e para a vertical.
+    expect(arena.className, "o contorno voltou a ser elipse").toContain("rounded-full");
+    expect(arena.className).toContain("border-2");
 
-    // Sem os comentarios: esta e a SEXTA vez nesta casa que um guarda estrutural acusa a propria
-    // prosa que explica o defeito (o comentario da arena cita `rx: 44` para dizer que ele saiu).
-    const fonte = readFileSync(join(import.meta.dirname, "MesaCompacta.tsx"), "utf-8");
-    const codigo = semComentarios(fonte);
-    // CONTROLE: o corte de comentarios nao pode comer o codigo.
-    expect(codigo, "o corte de comentarios apagou o componente").toContain("export function MesaCompacta");
-    expect(codigo, "o corte de comentarios nao cortou nada").not.toContain("rx: 44");
-    expect(codigo, "raio em % do card e o desenho que nao cabia").not.toMatch(/rx:\s*\d/);
+    const fonte = semComentarios(readFileSync(join(import.meta.dirname, "MesaCompacta.tsx"), "utf-8"));
+    // CONTROLE: o corte de comentarios nao pode comer o codigo
+    expect(fonte).toContain("export function MesaCompacta");
+    expect(fonte, "o contorno tem de ser pill, e nao elipse").not.toContain("rounded-[50%]");
+    expect(fonte, "a arena precisa vir da geometria").toContain("layoutDaMesa");
   });
 
   it("NENHUM tamanho da mesa fica cravado no componente", () => {
@@ -215,21 +254,21 @@ describe("a mesa do Pratica", () => {
     expect(corpo, "w-N/h-N do Tailwind sao tamanho fixo").not.toMatch(/[wh]-\d+(\.\d+)?/);
   });
 
-  it("a `.container-mesa` expoe a ALTURA, senao toda medida cai no piso", () => {
-    // Dependência entre arquivos, e o tipo de coisa que quebra calada: `container-type:
-    // inline-size` expõe só `cqw`. Com ele, `min(Xcqw, Ycqh)` vira `min(X, 0)` = 0 e o `clamp`
-    // devolve o PISO em toda a mesa -- que é exatamente o sintoma que este conserto atacou,
-    // reintroduzido por uma linha em outro arquivo.
+  it("a mesa NAO depende mais de container query", () => {
+    // O caso anterior aqui exigia `container-type: size` na `.container-mesa`, porque as medidas
+    // eram `clamp()` com `cqh` e sem ele TODAS caiam no piso. A regra saiu do CSS e virou px
+    // medido, e a classe foi removida junto -- deixa-la seria CSS morto com cara de dependencia.
     const css = readFileSync(join(import.meta.dirname, "..", "..", "index.css"), "utf-8");
-    const bloco = css.slice(css.indexOf(".container-mesa"));
-    const fecha = bloco.indexOf("}");
-    expect(bloco.slice(0, fecha)).toContain("container-type: size");
+    expect(css, "a classe voltou, e agora nao tem consumidor").not.toContain(".container-mesa");
+    const fonte = semComentarios(readFileSync(join(import.meta.dirname, "MesaCompacta.tsx"), "utf-8"));
+    expect(fonte).not.toContain("container-mesa");
   });
-});
 
-describe("o historico da mao", () => {
-  const fmt = (c: number) => {
-    const v = Math.round((c / 100) * 10) / 10;
+  /** O formatador que a mesa usa em BB, com o blind em 100 fichas. Ele fica aqui, e nao no
+   *  componente, porque `historico` e exportada justamente para ter teste proprio -- e o caso que
+   *  engana (o blind do BB) so aparece quando se controla o valor do blind. */
+  const fmt = (chips: number) => {
+    const v = Math.round((chips / 100) * 10) / 10;
     return Number.isInteger(v) ? String(v) : v.toFixed(1);
   };
 

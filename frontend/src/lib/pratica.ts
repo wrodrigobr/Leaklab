@@ -53,8 +53,39 @@ export interface ConfigPratica {
  */
 export const LARGURA_PARA_VARIAS_MESAS = 1024;
 
-export function tetoDeMesas(larguraDaTela: number): number {
-  return larguraDaTela >= LARGURA_PARA_VARIAS_MESAS ? MAX_MESAS : 1;
+/**
+ * O card mínimo em que a mesa CABE, medido com o medidor de colisão da geometria.
+ *
+ * ── Por que a ALTURA entra na conta (17/09) ───────────────────────────────────────────────────
+ *
+ * O dono reduziu a altura da janela com quatro mesas abertas e mandou a captura: as mesas viraram
+ * fitas horizontais. O aspecto com faixa impede a deformação, mas não cria espaço -- com 200px de
+ * altura por card, a mesa fica com 86x36 e nada cabe nela.
+ *
+ * Medido, varrendo as 81 mãos: card de 300px de altura passa com ZERO sobreposições, 250px dá 648
+ * e 200px dá 4.824. Então o teto passou a olhar a altura: se não cabem quatro mesas, o Prática
+ * abre duas; se não cabem duas, abre uma. É o que o GTO Wizard faz -- a captura dele numa janela
+ * estreita mostra UMA mesa, vertical.
+ */
+export const MESA_MINIMA = { largura: 360, altura: 300 };
+
+/**
+ * A altura que sobra para a MESA de cada card, dada a janela e o número de linhas.
+ *
+ * Os descontos são o layout real, medido na tela e não estimado: 48px da barra do topo, 8px do
+ * espaçamento da grade, e 78px que o card gasta acima e abaixo da mesa (o cabeçalho com a mão e o
+ * stack, mais a linha de botões, que agora tem 44px de altura mínima).
+ */
+function alturaDaMesa(alturaDaTela: number, linhas: number): number {
+  return (alturaDaTela - 48) / linhas - 8 - 78;
+}
+
+export function tetoDeMesas(larguraDaTela: number, alturaDaTela = 900): number {
+  if (larguraDaTela < LARGURA_PARA_VARIAS_MESAS) return 1;
+  const caberiaNaLargura = larguraDaTela / 2 >= MESA_MINIMA.largura;
+  if (caberiaNaLargura && alturaDaMesa(alturaDaTela, 2) >= MESA_MINIMA.altura) return MAX_MESAS;
+  if (caberiaNaLargura && alturaDaMesa(alturaDaTela, 1) >= MESA_MINIMA.altura) return 2;
+  return 1;
 }
 
 /** A configuracao que VALE nesta tela: o que ele escolheu, aparado pelo que cabe.
@@ -62,8 +93,9 @@ export function tetoDeMesas(larguraDaTela: number): number {
  *  Aparar em vez de reescrever a escolha dele e deliberado: quem configurou quatro mesas no
  *  desktop e abriu no celular nao perde a preferencia -- ela volta a valer quando a tela crescer.
  */
-export function configNaTela(c: ConfigPratica, larguraDaTela: number): ConfigPratica {
-  const teto = tetoDeMesas(larguraDaTela);
+export function configNaTela(c: ConfigPratica, larguraDaTela: number,
+                             alturaDaTela = 900): ConfigPratica {
+  const teto = tetoDeMesas(larguraDaTela, alturaDaTela);
   return c.mesas <= teto ? c : { ...c, mesas: teto };
 }
 

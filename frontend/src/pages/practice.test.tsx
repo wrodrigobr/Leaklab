@@ -71,6 +71,7 @@ function monta() {
 
 describe("modo Pratica", () => {
   beforeEach(() => {
+    comLargura(1440, 1000);          // desktop folgado: os casos gerais assumem quatro mesas
     localStorage.clear();
     tables.mockReset(); grade.mockReset(); evSummary.mockReset();
     tables.mockResolvedValue({ tables: QUATRO, pedidas: 4, servidas: 4 });
@@ -413,8 +414,12 @@ describe("modo Pratica", () => {
    * O jsdom tem `window.innerWidth` de 1024 por padrao, que e exatamente o corte -- os casos
    * abaixo trocam a largura ANTES de montar, porque o teto e lido na montagem.
    */
-  function comLargura(px: number) {
+  function comLargura(px: number, altura = 1000) {
     Object.defineProperty(window, "innerWidth", { value: px, configurable: true, writable: true });
+    // A ALTURA entra no teto desde 17/09 (a mesa precisa de 300px para nao colidir), e o jsdom
+    // vem com 768 -- que pela regua nao cabe quatro mesas. Os casos que querem quatro precisam
+    // dizer que a janela e alta.
+    Object.defineProperty(window, "innerHeight", { value: altura, configurable: true, writable: true });
   }
 
   it("no celular pede UMA mesa, mesmo com 4 na URL", async () => {
@@ -425,7 +430,7 @@ describe("modo Pratica", () => {
       // o primeiro argumento de `practice.tables` e quantas mesas
       expect(tables.mock.calls[0][0], "quatro mesas num celular").toBe(1);
     } finally {
-      comLargura(1024);
+      comLargura(1440, 1000);
     }
   });
 
@@ -437,7 +442,7 @@ describe("modo Pratica", () => {
       await waitFor(() => expect(tables).toHaveBeenCalled(), { timeout: 5000 });
       expect(tables.mock.calls[0][0]).toBe(4);
     } finally {
-      comLargura(1024);
+      comLargura(1440, 1000);
     }
   });
 
@@ -462,7 +467,7 @@ describe("modo Pratica", () => {
       expect(gaveta.className).toContain("absolute");
       expect(gaveta.className).toContain("lg:static");
     } finally {
-      comLargura(1024);
+      comLargura(1440, 1000);
     }
   });
 
@@ -488,7 +493,7 @@ describe("modo Pratica", () => {
       fireEvent.click(screen.getByTestId("pratica-mesas-4"));
       expect(screen.queryByTestId("pratica-pendente")).toBeNull();
     } finally {
-      comLargura(1024);
+      comLargura(1440, 1000);
     }
   });
 });

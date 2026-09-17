@@ -76,10 +76,12 @@ export default function Practice() {
    * o celular girando e com a janela do desktop pela metade. `resize` cobre os dois; detectar
    * aparelho erraria nos dois, e erraria calado.
    */
-  const [largura, setLargura] = useState(
-    () => (typeof window === "undefined" ? 1440 : window.innerWidth));
+  const [janela, setJanela] = useState(() => ({
+    w: typeof window === "undefined" ? 1440 : window.innerWidth,
+    h: typeof window === "undefined" ? 900 : window.innerHeight,
+  }));
   useEffect(() => {
-    const aoRedimensionar = () => setLargura(window.innerWidth);
+    const aoRedimensionar = () => setJanela({ w: window.innerWidth, h: window.innerHeight });
     window.addEventListener("resize", aoRedimensionar);
     // orientationchange porque em alguns navegadores de celular o `resize` chega antes de a
     // largura nova valer, e a leitura sai com o valor velho
@@ -89,12 +91,15 @@ export default function Practice() {
       window.removeEventListener("orientationchange", aoRedimensionar);
     };
   }, []);
-  const teto = tetoDeMesas(largura);
+  // A ALTURA entra na conta: o dono reduziu a altura da janela com quatro mesas e elas viraram
+  // fitas. Medido com o medidor de colisao: card de 300px de altura passa com zero
+  // sobreposicoes, 250px da 648 e 200px da 4.824. Se nao cabem quatro, o Pratica abre duas.
+  const teto = tetoDeMesas(janela.w, janela.h);
   const [painel, setPainel] = useState(() => {
     // No celular o painel comeca FECHADO, e a preferencia guardada nao vale ali: aberto, a gaveta
     // cobre a mesa inteira, e o jogador cairia no treino sem ver o que esta treinando. No desktop
     // ele e uma coluna ao lado, e a preferencia manda.
-    if (typeof window !== "undefined" && tetoDeMesas(window.innerWidth) < MAX_MESAS) return false;
+    if (typeof window !== "undefined" && tetoDeMesas(window.innerWidth, window.innerHeight) < MAX_MESAS) return false;
     return localStorage.getItem("pratica_painel") !== "false";
   });
 
@@ -151,7 +156,11 @@ export default function Practice() {
       // (a URL com `?mesas=4`, o painel, o botao aplicar) passa por este lugar. A leitura e
       // direta da janela, e nao do estado, porque isto tambem roda dentro de temporizadores --
       // e o estado que a closure capturou pode ser de antes de o celular girar.
-      const naTela = configNaTela(c, typeof window === "undefined" ? 1440 : window.innerWidth);
+      const naTela = configNaTela(
+        c,
+        typeof window === "undefined" ? 1440 : window.innerWidth,
+        typeof window === "undefined" ? 900 : window.innerHeight,
+      );
       const r = await practice.tables(naTela.mesas, {
         cenario: c.cenario, stacks: c.stacks, evitar: vistos.current.slice(-400),
       });

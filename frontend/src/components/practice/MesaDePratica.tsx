@@ -1,6 +1,5 @@
 import { useTranslation } from "react-i18next";
 import { Star } from "lucide-react";
-import { M } from "./geometriaDaMesa";
 import { MesaCompacta } from "@/components/practice/MesaCompacta";
 import { twFor, actionKey } from "@/lib/actionColors";
 import { FREQ_MINIMA_PARA_EXISTIR, nivelDoGrade, normalizaAcao, SIMBOLO_DO_NIVEL, type Nivel, type Unidade } from "@/lib/pratica";
@@ -230,17 +229,17 @@ export function MesaDePratica({
                           : avaliando
                             ? <span data-testid="pratica-avaliando"
                                     className="block font-mono uppercase tracking-widest-2 text-muted-foreground animate-pulse"
-                                    style={{ fontSize: M.fSpot }}>
+                                    style={{ fontSize: "clamp(10px, 1.7cqw, 20px)" }}>
                                 {t("avaliando")}
                               </span>
                             : respondida
                               ? <span data-testid="pratica-sem-avaliacao" className="block">
                                   <span className="block font-mono uppercase tracking-widest-2 text-muted-foreground"
-                                        style={{ fontSize: M.fSpot }}>
+                                        style={{ fontSize: "clamp(10px, 1.7cqw, 20px)" }}>
                                     {t("semAvaliacao")}
                                   </span>
                                   <span className="mt-0.5 block leading-snug text-muted-foreground/70"
-                                        style={{ fontSize: M.fHist }}>
+                                        style={{ fontSize: "clamp(9px, 1.5cqw, 17px)" }}>
                                     {t("semAvaliacaoDica")}
                                   </span>
                                 </span>
@@ -251,7 +250,7 @@ export function MesaDePratica({
       {/* Os botões que ESTE spot oferece, nas cores da casa (fold azul, call verde, raise
           vermelho, all-in vinho — a paleta única de `actionColors`). */}
       {/* logo abaixo do feltro, e nao no rodape do card */}
-      <div className="mt-1 flex shrink-0 gap-1">
+      <div className="mt-1.5 flex shrink-0 gap-1.5">
         {mesa.options.map((o) => {
           const k = actionKey(o.action);
           const escolhida = acaoEscolhida === o.action;
@@ -263,8 +262,16 @@ export function MesaDePratica({
               data-testid={`pratica-acao-${o.action}`}
               onClick={(e) => { e.stopPropagation(); onAgir(o.action); }}
               className={cn(
-                "flex-1 rounded font-mono text-[10px] font-bold uppercase tracking-widest-2 text-white",
-                "py-1.5 transition-opacity disabled:cursor-default",
+                // ── Botoes MAIORES (17/09) ──────────────────────────────────────────────────
+                // O dono: "os botoes estão muito estreitos também, preciso ser maiores pra
+                // facilitar a visualização". Eram `py-1.5` com fonte de 10px, e no celular isso
+                // fica abaixo do alvo de toque confortavel (~44px).
+                //
+                // A altura minima e em px e nao em padding: com padding, a fonte menor no celular
+                // encolhia o botao junto. E o espaco existe porque a mesa passou a ter aspecto com
+                // faixa -- ela nao ocupa mais toda a altura do card, e o que sobra vem para ca.
+                "flex-1 rounded font-mono text-[11px] font-bold uppercase tracking-widest-2 text-white sm:text-[12px]",
+                "flex min-h-[44px] items-center justify-center py-2 transition-opacity disabled:cursor-default",
                 twFor(o.action).bg,   // `twFor` devolve {bg,text,ring}: aqui o fundo do botão
                 respondida && !escolhida && "opacity-25",
                 escolhida && "ring-2 ring-inset ring-white/60",

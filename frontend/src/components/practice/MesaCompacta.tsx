@@ -1,20 +1,11 @@
+import { useEffect, useRef, useState } from "react";
 import type { DrillTableState } from "@/lib/api";
 import type { Unidade } from "@/lib/pratica";
 import { cn } from "@/lib/utils";
-import {
-  FOLGA,
-  LARGURA_DO_CENTRO,
-  LUGARES,
-  M,
-  alturaDoHistoricoCss,
-  arenaCss,
-  deslocamentoDaFichaCss,
-  deslocamentoDasCartasCss,
-  deslocamentoDoDealerCss,
-} from "./geometriaDaMesa";
+import { layoutDaMesa, px } from "./geometriaDaMesa";
 
 /**
- * A mesa do modo Prática: um trilho, assentos redondos e nada mais.
+ * A mesa do modo Prática: um estádio, assentos redondos e nada mais.
  *
  * ── Por que ela existe, se já temos a `PokerTableV3` ──────────────────────────────────────────
  *
@@ -22,23 +13,18 @@ import {
  * gto wizard faz, com mesas simples, mas funcionais", e depois mandou a captura deles.
  *
  * A `PokerTableV3` é a mesa do replayer, e desenha o que o replayer precisa: duas cartas viradas
- * por vilão, nome do jogador, HUD, board, showdown e a marca d'água no feltro. A um quarto de tela
- * isso não encolhe bem, e pior: no preflop **nada disso informa**. O jogador nunca vê carta de
- * vilão, o nome é `V7` (anonimizado), não há board e não há HUD num spot sintético. O que decide a
- * jogada é posição, stack, o que está na mesa e as cartas DELE.
+ * por vilão, nome do jogador, HUD, board, showdown e a marca no feltro. A um quarto de tela isso
+ * não encolhe bem, e pior: no preflop **nada disso informa**. O jogador nunca vê carta de vilão, o
+ * nome é anonimizado, não há board e não há HUD num spot sintético. O que decide a jogada é
+ * posição, stack, o que está na mesa e as cartas DELE.
  *
- * ── O que o modelo do GTO Wizard faz, e por que cada escolha economiza espaço ─────────────────
+ * ── Como ela se posiciona (reescrita em 17/09) ────────────────────────────────────────────────
  *
- * - **Sem feltro preenchido.** Só uma linha fina ligando os assentos. O oval verde não carrega
- *   informação e disputava contraste com as fichas, que carregam.
- * - **Assento é um círculo** com a posição em cima e o stack embaixo, dentro dele. Compacto e
- *   sempre no mesmo lugar, então o olho aprende onde procurar.
- * - **As cartas do herói ao LADO do assento dele**, e não embaixo da mesa: elas ficam onde o olho
- *   já está, e não competem com os botões.
- * - **O spot escrito no centro**, onde sobra espaço de graça.
- * - **Carta é rank grande em quadrado colorido por naipe**, no baralho de 4 cores. A imagem de
- *   carta do `PlayingCard` é o desenho certo no replayer, mas a um quarto de tela o naipe vira um
- *   borrão; a cor do quadrado lê de longe.
+ * Ela MEDE o próprio tamanho e chama `layoutDaMesa`, que devolve a caixa de cada elemento em px.
+ * Antes as posições saíam em `%` com `calc()` e as medidas em `clamp()` com `cqw`/`cqh`, o que
+ * obrigava cada regra do desenho a existir DUAS vezes: uma para o navegador e uma para o medidor
+ * de colisão. A mesa passou por cinco desenhos num dia, e cada um custava as duas escritas mais um
+ * teste provando que elas concordavam. Agora há uma conta só, e o medidor mede o que o jogador vê.
  *
  * ── E por que isto NÃO é uma segunda fonte de verdade ─────────────────────────────────────────
  *
@@ -54,15 +40,12 @@ import {
  * ── Por que os tons NÃO são os da paleta de ação ──────────────────────────────────────────────
  *
  * A primeira versão usou o verde do call e o azul do fold para clubs e diamonds, e o guarda de
- * `actionColors` acusou -- com razão. (Os hex não vão escritos aqui de propósito: aquele guarda
- * varre o arquivo inteiro sem distinguir prosa de código, e citar o valor numa explicação já o
- * fez acusar uma vez. É a quarta vez hoje que um guarda de varredura desta casa tropeça em
- * comentário.) Naipe e ação são dois vocabulários de cor no
- * mesmo produto, e nesta tela eles aparecem LADO A LADO: o botão verde ao lado de uma carta
- * verde ensinaria que aquela carta tem a ver com "call".
+ * `actionColors` acusou -- com razão. Naipe e ação são dois vocabulários de cor no mesmo produto,
+ * e nesta tela eles aparecem LADO A LADO: o botão verde ao lado de uma carta verde ensinaria que
+ * aquela carta tem a ver com "call".
  *
  * Então os quatro naipes têm tons próprios, próximos o bastante para o jogador reconhecer o
- * baralho de 4 cores e distintos o bastante para nenhum deles ser o hex de uma ação.
+ * baralho de 4 cores e distintos o bastante para nenhum deles ser a cor de uma ação.
  */
 /** O simbolo, que e o que responde "qual o naipe?" de perto. A cor responde de longe. */
 const SIMBOLO: Record<string, string> = { s: "♠", h: "♥", d: "♦", c: "♣" };
@@ -81,20 +64,20 @@ export function lerCartas(raw: string | null | undefined): [string, string][] {
     .slice(0, 2);
 }
 
-/** O histórico da mão, na ordem de ação: `[{pos, texto, fold, vez}]`.
+/** O histórico da mão, na ordem de ação.
  *
- *  Exportada para ter teste próprio: derivar ação a partir de `bet` tem um caso que engana, o
- *  BB, cujo `bet` de 1bb é o blind POSTADO e não um aumento. Tratar o blind como aposta faria a
- *  faixa dizer que o BB "apostou 1" em toda mão, e o jogador leria isso como agressão.
+ *  Exportada para ter teste próprio: derivar ação a partir de `bet` tem um caso que engana, o BB,
+ *  cujo `bet` de 1bb é o blind POSTADO e não um aumento. Tratar o blind como aposta faria a faixa
+ *  dizer que o BB "apostou 1" em toda mão, e o jogador leria isso como agressão.
  */
 export function historico(
   seats: DrillTableState["seats"],
   hero: string,
   fmt: (chips: number) => string,
   bbEmFichas: number,
-): { pos: string; texto: string; fold: boolean; vez: boolean }[] {
-  // O blind de referência vem de `bb_chips`, e NÃO do `bet` do próprio assento. A primeira
-  // versão lia o blind do BB a partir do `bet` dele, que é exatamente o valor que muda quando ele
+): { pos: string; texto: string; stack: string | null; fold: boolean; vez: boolean }[] {
+  // O blind de referência vem de `bb_chips`, e NÃO do `bet` do próprio assento. A primeira versão
+  // lia o blind do BB a partir do `bet` dele, que é exatamente o valor que muda quando ele
   // aumenta: num 3-bet do BB a conta comparava 800 com 800, dava falso, e o aumento dele
   // DESAPARECIA do histórico. Foi o teste do caso contrário que pegou.
   const blindDe = (pos: string) => {
@@ -114,9 +97,13 @@ export function historico(
     })
     .map((s) => {
       const ehHeroi = s.hero || s.name === hero;
-      if (ehHeroi) return { pos: s.pos || String(s.seat), texto: "sua vez", fold: false, vez: true };
-      if (s.folded) return { pos: s.pos || String(s.seat), texto: "fold", fold: true, vez: false };
-      return { pos: s.pos || String(s.seat), texto: fmt(s.bet), fold: false, vez: false };
+      const pos = s.pos || String(s.seat);
+      // O STACK no chip é o modelo do GTO Wizard ("UTG 35 Fold"), e ele responde de cabeça a
+      // pergunta que decide o spot: quanto tinha quem agiu antes de você.
+      const stack = fmt(s.stack);
+      if (ehHeroi) return { pos, texto: "sua vez", stack, fold: false, vez: true };
+      if (s.folded) return { pos, texto: "fold", stack, fold: true, vez: false };
+      return { pos, texto: fmt(s.bet), stack, fold: false, vez: false };
     });
 }
 
@@ -124,13 +111,10 @@ export function MesaCompacta({ table, hero, unidade, spot, veredito }: {
   table: DrillTableState;
   /** o nome do herói no `table.seats` (o servidor manda "Hero") */
   hero: string;
-  /** o spot em uma frase, do servidor. Vai no CENTRO do trilho, como no GTO Wizard: ali sobra
-   *  espaço de graça, e no cabeçalho do card ele comia a linha do histórico. */
+  /** o spot em uma frase, do servidor. Vai no CENTRO da mesa, como no GTO Wizard. */
   spot?: string;
-  /** O card de veredito, que OCUPA o centro depois da resposta e esconde o spot.
-   *
-   *  Quem monta é a `MesaDePratica`, e não esta mesa: o veredito nasce da correção do servidor,
-   *  e a mesa não conhece nem a resposta nem a régua. Aqui ele é só um lugar na geometria. */
+  /** O card de veredito, que OCUPA o centro depois da resposta e esconde o spot. Quem monta é a
+   *  `MesaDePratica`: o veredito nasce da correção do servidor, e a mesa não conhece a régua. */
   veredito?: React.ReactNode;
   unidade: Unidade;
 }) {
@@ -139,206 +123,223 @@ export function MesaCompacta({ table, hero, unidade, spot, veredito }: {
   const cartas = lerCartas(table.hero_cards);
   const naMao = seats.filter((s) => !s.folded && s.active).length;
 
-  /** Fichas na unidade escolhida. UMA função para stack e aposta: dois formatadores é como a
-   *  mesa acaba mostrando a mesma grandeza de dois jeitos (a cicatriz "fichas vs BB"). */
+  /** Fichas na unidade escolhida. UMA função para stack e aposta: dois formatadores é como a mesa
+   *  acaba mostrando a mesma grandeza de dois jeitos (a cicatriz "fichas vs BB"). */
   const fmt = (chips: number) => {
     if (unidade === "bb") {
-      // Uma decimal quando nao for inteiro, como o GTO Wizard faz ("39.5"): arredondar 17.8
-      // para 18 apagava o desconto da aposta, e o stack DEPOIS de por fichas e o que decide o
-      // proximo movimento.
+      // Uma decimal quando não for inteiro, como o GTO Wizard faz ("39.5"): arredondar 17.8 para
+      // 18 apagava o desconto da aposta, e o stack DEPOIS de pôr fichas é o que decide o próximo
+      // movimento.
       const v = Math.round((chips / bb) * 10) / 10;
       return Number.isInteger(v) ? String(v) : v.toFixed(1);
     }
     return Math.round(chips).toLocaleString("pt-BR");
   };
 
+  // ── A medição ─────────────────────────────────────────────────────────────────────────────
+  //
+  // O `ResizeObserver` existe porque o layout é calculado em px: sem medir, a mesa não sabe se
+  // está num quarto de tela ou num celular em retrato -- e é o aspecto do espaço que decide se o
+  // estádio fica horizontal ou vertical, que foi o que o dono pediu mandando a captura do GTO
+  // Wizard em tela estreita ("e se reduzir muito, ele vira pra celular").
+  //
+  // O tamanho inicial NÃO é zero: com 0x0 o primeiro render posicionaria tudo no canto e a mesa
+  // piscaria montada errada antes da primeira medição. O palpite é um quarto de tela cheia, o
+  // caso mais comum, e ele é corrigido assim que o observer dispara.
+  const caixaRef = useRef<HTMLDivElement | null>(null);
+  const [tamanho, setTamanho] = useState({ w: 830, h: 440 });
+  useEffect(() => {
+    const el = caixaRef.current;
+    if (!el) return;
+    const medir = () => {
+      const r = el.getBoundingClientRect();
+      // O jsdom devolve 0x0 (ele não faz layout): manter o palpite deixa os testes medindo uma
+      // mesa plausível em vez de uma de tamanho zero.
+      if (r.width > 1 && r.height > 1) setTamanho({ w: r.width, h: r.height });
+    };
+    medir();
+    if (typeof ResizeObserver === "undefined") return;
+    const obs = new ResizeObserver(medir);
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, []);
+
+  const indice = (seat: number) => (seat - 1) % 9;
+  const heroiSeat = seats.find((s) => s.hero || s.name === hero);
+  const L = layoutDaMesa({
+    w: tamanho.w,
+    h: tamanho.h,
+    heroi: heroiSeat && cartas.length === 2 ? indice(heroiSeat.seat) : -1,
+    botao: table.button ? indice(table.button) : -1,
+    apostas: seats.filter((s) => s.bet > 0).map((s) => ({ i: indice(s.seat), texto: fmt(s.bet) })),
+    centro: true,
+  });
+  const M = {
+    fPos: px("fPos", tamanho.w, tamanho.h),
+    fStack: px("fStack", tamanho.w, tamanho.h),
+    fCarta: px("fCarta", tamanho.w, tamanho.h),
+    fNaipe: px("fNaipe", tamanho.w, tamanho.h),
+    fSpot: px("fSpot", tamanho.w, tamanho.h),
+    fPote: px("fPote", tamanho.w, tamanho.h),
+    fFicha: px("fFicha", tamanho.w, tamanho.h),
+    ficha: px("ficha", tamanho.w, tamanho.h),
+    fHist: px("fHist", tamanho.w, tamanho.h),
+    fDealer: px("fDealer", tamanho.w, tamanho.h),
+  };
+  const caixa = (c: { x: number; y: number; w: number; h: number }): React.CSSProperties => ({
+    position: "absolute",
+    left: c.x,
+    top: c.y,
+    width: c.w,
+    height: c.h,
+  });
+
   return (
-    // `container-mesa` liga o `container-type: size`, que faz as medidas do `M` acima olharem a
-    // largura E a altura DESTE card, e nao a viewport: com `vw`, quatro mesas e uma mesa dariam
-    // elementos do mesmo tamanho. O `h-full` daqui e o `flex-1 min-h-0` do pai e que resolvem a
-    // altura -- sem altura resolvida, `cqh` viria 0 e toda medida cairia no piso.
-    // Em CLASSE e nao inline porque o jsdom descarta a propriedade inline e o guarda nao
-    // conseguia ve-la.
-    <div className="relative h-full w-full container-mesa" data-testid="mesa-compacta">
-      {/* ── O histórico, no topo (como o GTO Wizard) ─────────────────────────────────────────
-          Quem já agiu e o quê, na ordem de ação, terminando em "você". Ele responde de cabeça a
-          pergunta que o jogador faria olhando o trilho ("quem abriu? quanto?") sem obrigá-lo a
-          varrer nove assentos procurando fichas.
-          Derivado do MESMO `seats` do servidor: `folded` é fold, `bet` acima do blind é aumento,
-          e o herói é sempre o último, porque a vez é dele. */}
-      <div className="absolute inset-x-0 top-0 flex items-center justify-center gap-1 overflow-hidden"
-           style={{ height: alturaDoHistoricoCss() }} data-testid="historico-da-mao">
+    <div ref={caixaRef} className="relative h-full w-full" data-testid="mesa-compacta">
+      {/* ── O histórico, em UMA linha (modelo do GTO Wizard) ────────────────────────────────
+          O dono pediu duas vezes, e a segunda desfez a primeira: primeiro "a posicao em cima, a
+          acao embaixo....dentro de um box pra cada posicao", e depois, com a captura deles ao
+          lado, "as acoes tbm deve ficar neste modelo, pra economizar espaco superior". O box de
+          duas linhas gastava o dobro de altura, e altura é o que falta na mesa. */}
+      <div className="flex items-center justify-center gap-1 overflow-hidden"
+           style={caixa(L.historico)} data-testid="historico-da-mao">
         {historico(seats, hero, fmt, bb).map((h, i) => (
           <span key={i}
-                className={cn("flex min-w-0 shrink-0 flex-col items-center rounded border px-1.5 py-0.5 font-mono uppercase leading-none",
+                className={cn("flex shrink-0 items-center gap-1 rounded border px-1.5 py-0.5 font-mono uppercase leading-none",
                               h.vez
                                 ? "border-primary/50 bg-primary/15 text-primary"
                                 : h.fold
-                                  ? "border-border/40 bg-hud-surface/60 text-muted-foreground/55"
+                                  ? "border-border/40 bg-hud-surface/60 text-muted-foreground/70"
                                   : "border-border bg-hud-surface text-foreground/90")}>
-            {/* a posicao em cima, a acao embaixo: o olho varre a linha de posicoes e desce so no
-                assento que interessa. Em duas colunas (o desenho anterior) cada item tinha
-                largura diferente e a linha ficava sem ritmo. */}
             <span className="font-bold tracking-wide" style={{ fontSize: M.fHist }}>{h.pos}</span>
-            <span className="mt-px tracking-widest-2 opacity-75"
-                  style={{ fontSize: `calc(${M.fHist} * 0.88)` }}>{h.texto}</span>
+            {h.stack != null && (
+              <span className="tabular-nums opacity-70" style={{ fontSize: M.fHist }}>{h.stack}</span>
+            )}
+            <span className="tracking-wide opacity-90" style={{ fontSize: M.fHist }}>{h.texto}</span>
           </span>
         ))}
       </div>
 
-      {/* ── A ARENA: a elipse e tudo o que pendura nela ─────────────────────────────────────
-          Ela e o card menos as margens que os elementos EXIGEM (metade do pod, que fica sobre a
-          linha, mais o botao do dealer, que sai para fora dela, mais a faixa do historico no
-          topo). Dentro dela os pontos sao % simples, porque a elipse PREENCHE a arena.
+      {/* ── O contorno: um ESTÁDIO ──────────────────────────────────────────────────────────
+          O dono, com a captura deles: "ideal e que as bordas superiores e inferiores da mesa
+          fiquem retas, e so curvemos as laterais...assim ganhamos espaco". Ganha porque os
+          assentos de uma reta ficam todos na MESMA altura, em vez de descerem com a curva.
 
-          Antes o trilho tinha raio cravado em % do card (`rx: 44, ry: 39`), e numero fixo nao
-          resolve as duas celulas: estourava em 4 mesas (440px de altura) e sobrava em 2 mesas
-          (880px) -- e a sobra era o vazio no meio do feltro que o dono reclamou. */}
-      <div className="absolute" style={arenaCss()} data-testid="arena-da-mesa">
-        <div className="absolute inset-0 rounded-[50%] border-2 border-border" />
+          `rounded-full` num retângulo é o estádio, e as retas caem no eixo maior -- então a mesma
+          borda serve para a mesa horizontal (desktop) e para a vertical (celular). As posições dos
+          assentos andam por ESTE contorno: uma forma, uma conta. */}
+      <div className="rounded-full border-2 border-border" style={caixa(L.arena)}
+           data-testid="arena-da-mesa" />
 
-      {/* ── O centro do trilho: o spot ANTES de responder, o veredito DEPOIS ────────────────
-          O dono, sobre o card de feedback do GTO Wizard: "podiamos mostrar no centro da mesa".
-          Ele está certo, e o motivo é geométrico: o centro é o único espaço grande e vazio que a
-          mesa tem, e depois da resposta o spot já não precisa ser lido -- o jogador acabou de
-          decidir sobre ele. Uma área, dois momentos.
-
-          E o veredito aqui é melhor que o veredito no rodapé do card: o olho já está no centro,
-          onde ele acabou de olhar o pote para decidir. */}
-      <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-center"
-           style={{ width: `${LARGURA_DO_CENTRO * 100}%` }}>
-        {veredito ?? (
-          <>
-            {spot && (
-              <span className="mb-0.5 block leading-snug text-muted-foreground"
-                    style={{ fontSize: M.fSpot }}>
-                {spot}
+      {/* ── O centro: o spot ANTES de responder, o veredito DEPOIS ──────────────────────────
+          O centro é o único espaço grande e vazio da mesa, e depois da resposta o spot já não
+          precisa ser lido -- o jogador acabou de decidir sobre ele. Uma área, dois momentos. */}
+      {L.centro && (
+        <div className="flex flex-col items-center justify-center text-center"
+             style={caixa(L.centro)}>
+          {veredito ?? (
+            <>
+              {spot && (
+                <span className="block leading-snug text-muted-foreground"
+                      style={{ fontSize: M.fSpot }}>{spot}</span>
+              )}
+              <span className="block font-mono font-bold leading-tight tabular-nums text-foreground"
+                    style={{ fontSize: M.fPote }}>
+                {fmt(table.pot ?? 0)}
+                <span className="ml-0.5 font-normal text-muted-foreground">
+                  {unidade === "bb" ? "bb" : ""}
+                </span>
               </span>
-            )}
-            <span className="block font-mono font-bold leading-tight tabular-nums text-foreground"
-                  style={{ fontSize: M.fPote }}>
-              {fmt(table.pot ?? 0)}
-              <span className="ml-0.5 font-normal text-muted-foreground">
-                {unidade === "bb" ? "bb" : ""}
+              <span className="block font-mono uppercase tracking-widest-2 text-muted-foreground/60"
+                    style={{ fontSize: M.fHist }}>
+                {naMao} na mao
               </span>
-            </span>
-            <span className="block font-mono uppercase tracking-widest-2 text-muted-foreground/60"
-                  style={{ fontSize: M.fHist }}>
-              {naMao} na mao
-            </span>
-          </>
-        )}
-      </div>
+            </>
+          )}
+        </div>
+      )}
 
-      {/* ── As fichas, DENTRO da mesa (pedido do dono) ─────────────────────────────────────
-          Camada propria, e nao penduradas no assento: a posicao de cada uma sai de `FICHAS`, que
-          e a MESMA elipse dos assentos com raio menor. Assim ela fica na direcao de quem apostou
-          e claramente dentro do trilho, e mover o trilho move as duas coisas juntas. */}
-      {seats.filter((s) => s.bet > 0).map((s) => {
-        const i = (s.seat - 1) % 9;
-        const [x, y] = LUGARES[i];
-        const d = deslocamentoDaFichaCss(i);
+      {/* ── As fichas de aposta, na frente de quem apostou ──────────────────────────────────
+          Elas saem do pod pela NORMAL ao contorno: nas retas isso as deixa PARALELAS, cada uma na
+          frente do seu dono. Pelo raio elas convergiam para o centro e se encostavam. */}
+      {L.fichas.map(({ i, caixa: c }) => {
+        const s = seats.find((x) => indice(x.seat) === i);
+        if (!s) return null;
         return (
           <span key={`ficha-${s.seat}`} data-testid={`aposta-${s.pos || s.seat}`}
-                className="absolute flex items-center gap-1 whitespace-nowrap"
-                style={{
-                  left: `${x}%`,
-                  top: `${y}%`,
-                  transform: `translate(calc(-50% + ${d.x}), calc(-50% + ${d.y}))`,
-                }}>
-            <i className="rounded-full bg-[#4A9BE8]"
+                className="flex items-center gap-1 whitespace-nowrap" style={caixa(c)}>
+            <i className="shrink-0 rounded-full bg-[#4A9BE8]"
                style={{ width: M.ficha, height: M.ficha }} />
-            <span className="font-mono font-bold tabular-nums text-foreground"
-                  style={{ fontSize: M.fFicha }}>
-              {fmt(s.bet)}
-            </span>
+            <span className="font-mono font-bold leading-none tabular-nums text-foreground"
+                  style={{ fontSize: M.fFicha }}>{fmt(s.bet)}</span>
           </span>
         );
       })}
 
+      {/* ── As cartas DELE, para FORA do contorno ───────────────────────────────────────────
+          Para fora, e não para dentro: o miolo já tem nove fichas e o texto do centro, e a margem
+          da arena reserva a carta justamente para ela poder sair. Rank grande E o símbolo do
+          naipe -- o dono, vendo a versão só com cor: "as cartas agora estao ruins, pq ja nao sei
+          qual o naipe delas". A cor lê de longe, o símbolo resolve de perto. */}
+      {L.cartas && cartas.length === 2 && (
+        <span className="flex gap-0.5" style={caixa(L.cartas)} data-testid="cartas-do-heroi">
+          {cartas.map(([r, n], i) => (
+            <span key={i}
+                  className="flex flex-1 flex-col items-center justify-center rounded font-mono font-bold leading-none"
+                  style={{ background: NAIPE[n]?.bg, color: NAIPE[n]?.fg }}>
+              <span style={{ fontSize: M.fCarta }}>{r}</span>
+              <span style={{ fontSize: M.fNaipe }} className="opacity-90">{SIMBOLO[n]}</span>
+            </span>
+          ))}
+        </span>
+      )}
+
+      {/* ── Os assentos ────────────────────────────────────────────────────────────────────
+          Quem SAIU da mão continua legível: o dono relatou que "estamos ocultando muito o pod, e
+          quase nao da pra ver...siga o mesmo padrao do gto wizard nisto tambem". No GTO Wizard o
+          pod de quem saiu tem fundo, borda e stack legíveis, em cinza -- e não é estética: a
+          posição que abriu antes de você e o stack que ela tinha ainda informam. */}
       {seats.map((s) => {
-        const [x, y] = LUGARES[(s.seat - 1) % 9];
+        const p = L.pods[indice(s.seat)];
+        if (!p) return null;
         const ehHeroi = s.hero || s.name === hero;
         const fora = s.folded || !s.active;
         return (
           <div key={s.seat} data-testid={`assento-${s.pos || s.seat}`}
-               className="absolute -translate-x-1/2 -translate-y-1/2"
-               style={{ left: `${x}%`, top: `${y}%` }}>
-            {/* O pod fica ANCORADO no ponto do trilho, e as cartas e o botão saem por fora do
-                fluxo. Antes os três viviam no mesmo flex centrado no ponto: com cartas, o
-                conjunto era centrado e o POD saía do lugar dele -- na captura do dono o assento
-                do UTG+2 aparece fora da linha da mesa. */}
-            <div className="relative" style={{ width: M.assento, height: M.assento }}>
-              {/* o assento: círculo com posição e stack DENTRO */}
-              <div style={{ width: M.assento, height: M.assento }}
-                   className={cn(
-                     "flex flex-col items-center justify-center rounded-full border text-center leading-none",
-                     fora
-                       ? "border-border/40 bg-transparent opacity-35"
-                       : ehHeroi
-                         ? "border-primary bg-hud-surface"
-                         : "border-border bg-hud-surface",
-                   )}>
-                <span className={cn("font-mono uppercase tracking-tight",
-                                    ehHeroi ? "text-primary" : "text-muted-foreground")}
-                      style={{ fontSize: M.fPos }}>
-                  {s.pos || s.seat}
-                </span>
-                <span className="font-mono font-bold tabular-nums text-foreground"
-                      style={{ fontSize: M.fStack }}>
-                  {fora ? "\u2014" : fmt(s.stack)}
-                </span>
-              </div>
-
-              {/* As cartas DELE, ao lado do assento: onde o olho já está. */}
-              {ehHeroi && cartas.length === 2 && (
-                <span className="absolute left-1/2 top-1/2 flex gap-0.5" data-testid="cartas-do-heroi"
-                      style={{
-                        transform: `translate(calc(-50% + ${deslocamentoDasCartasCss((s.seat - 1) % 9).x}), calc(-50% + ${deslocamentoDasCartasCss((s.seat - 1) % 9).y}))`,
-                      }}>
-                  {/* Rank grande E o SÍMBOLO do naipe. O dono, vendo a versão só com cor: "as
-                      cartas agora estao ruins, pq ja nao sei qual o naipe delas".
-                      A cor sozinha é o que o GTO Wizard faz, e funciona lá porque o jogador
-                      deles já decorou o código. Aqui ela seria um enigma -- e sem o naipe o
-                      jogador não sabe se a mão é SUITED, que é metade da decisão preflop.
-                      A cor fica (ela lê de longe) e o símbolo resolve de perto. */}
-                  {cartas.map(([r, n], i) => (
-                    <span key={i}
-                          className="relative flex flex-col items-center justify-center rounded font-mono font-bold leading-none"
-                          style={{ background: NAIPE[n]?.bg, color: NAIPE[n]?.fg,
-                                   width: M.cartaW, height: M.cartaH }}>
-                      <span style={{ fontSize: M.fCarta }}>{r}</span>
-                      <span style={{ fontSize: M.fNaipe }} className="opacity-90">
-                        {SIMBOLO[n]}
-                      </span>
-                    </span>
-                  ))}
-                </span>
-              )}
-
-              {/* o botão do dealer */}
-              {table.button === s.seat && (
-                <span data-testid="botao-dealer"
-                      className="absolute left-1/2 top-1/2 flex items-center justify-center
-                                 rounded-full bg-[#E3E8EC] font-mono font-bold text-[#0A0E1A]"
-                      style={{
-                        width: M.dealer,
-                        height: M.dealer,
-                        fontSize: M.fDealer,
-                        transform: `translate(calc(-50% + ${deslocamentoDoDealerCss((s.seat - 1) % 9).x}), calc(-50% + ${deslocamentoDoDealerCss((s.seat - 1) % 9).y}))`,
-                      }}>
-                  D
-                </span>
-              )}
-            </div>
-
-            {/* A ficha saiu daqui: ela tem posição PRÓPRIA na mesa, e não um deslocamento a
-                partir do assento. Pendurada no assento, ela herdava a posição dele -- e como os
-                assentos ficavam fora do trilho, ela ia para fora da mesa. */}
+               style={caixa(p.caixa)}
+               className={cn(
+                 "flex flex-col items-center justify-center rounded-full border text-center leading-none",
+                 fora
+                   ? "border-border/60 bg-hud-surface/50"
+                   : ehHeroi
+                     ? "border-primary bg-hud-surface"
+                     : "border-border bg-hud-surface",
+               )}>
+            <span className={cn("font-mono uppercase tracking-tight",
+                                ehHeroi
+                                  ? "text-primary"
+                                  : fora ? "text-muted-foreground/80" : "text-muted-foreground")}
+                  style={{ fontSize: M.fPos }}>
+              {s.pos || s.seat}
+            </span>
+            {/* O STACK de quem saiu APARECE, e não um traço: era o traço que fazia o pod parecer
+                vazio. Só o tom muda. */}
+            <span className={cn("font-mono font-bold tabular-nums",
+                                fora ? "text-muted-foreground" : "text-foreground")}
+                  style={{ fontSize: M.fStack }}>
+              {fmt(s.stack)}
+            </span>
           </div>
         );
       })}
-      </div>
+
+      {/* o botão do dealer, ENCOSTADO no pod (como no GTO Wizard) */}
+      {L.dealer && (
+        <span data-testid="botao-dealer" style={caixa(L.dealer)}
+              className="flex items-center justify-center rounded-full bg-[#E3E8EC] font-mono font-bold text-[#0A0E1A]">
+          <span style={{ fontSize: M.fDealer }}>D</span>
+        </span>
+      )}
     </div>
   );
 }

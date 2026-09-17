@@ -210,4 +210,20 @@ describe("quantas mesas caberm na tela", () => {
     expect(configNaTela(uma, 390)).toBe(uma);
     expect(configNaTela(uma, 1440)).toBe(uma);
   });
+
+  it("a ALTURA tambem manda: janela baixa abre menos mesas", () => {
+    // O dono reduziu a altura da janela com quatro mesas abertas e mandou a captura: as mesas
+    // viraram fitas. O aspecto com faixa impede a deformacao, mas nao cria espaco.
+    //
+    // Medido com o medidor de colisao da geometria: card de 300px de altura passa com ZERO
+    // sobreposicoes, 250px da 648 e 200px da 4.824. Entao o teto olha a altura.
+    // A medicao: a MESA precisa de 300px de altura para nao colidir, em qualquer largura. O que
+    // sobra para ela e a celula do grid menos o cabecalho e os botoes do card (78px, medidos).
+    expect(tetoDeMesas(1680, 900), "tela cheia cabe quatro").toBe(MAX_MESAS);
+    expect(tetoDeMesas(1366, 768), "1366x768 deixaria a mesa com 274px: abre duas").toBe(2);
+    expect(tetoDeMesas(1680, 600), "janela baixa nao cabe quatro, mas cabe duas").toBe(2);
+    expect(tetoDeMesas(1680, 420), "janela muito baixa cabe uma").toBe(1);
+    // e a largura continua mandando: no celular e uma, por alta que a tela seja
+    expect(tetoDeMesas(390, 1200)).toBe(1);
+  });
 });
