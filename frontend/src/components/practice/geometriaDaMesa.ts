@@ -57,6 +57,22 @@ export const PARAMS = {
   fLegenda: [9, 1.6, 3.0, 18],
   dealer: [14, 2.4, 4.4, 30],
   fDealer: [8, 1.4, 2.6, 17],
+  // ── O veredito, que ocupa o centro depois da resposta (17/09) ───────────────────────────────
+  //
+  // Ele era a UNICA peca da mesa ainda dimensionada em `clamp()` com `cqw`, e isso tinha uma
+  // agravante: a classe que criava o contexto de container foi removida quando a geometria virou
+  // px. Sem contexto, `cqw` resolve contra a JANELA -- entao numa tela de 1900px o anel pedia
+  // 152px (travava no teto de 104) dentro de um card cuja arena tem 257px de altura. O dono:
+  // "o veredito esta muito grande...mesmo dentro do circulo, esta mto grande e se aproximando
+  // muito das bordas".
+  //
+  // Agora sai daqui, da mesma conta do resto. O anel fica proximo do tamanho do pod: ele e o foco
+  // da tela depois da resposta, e nao precisa ser maior que a mesa para isso.
+  anel: [44, 6.0, 13.0, 80],
+  fPct: [16, 2.4, 5.0, 30],
+  fSelo: [7, 0.95, 2.0, 12],
+  fVeredito: [13, 2.0, 4.0, 24],
+  fDetalhe: [9, 1.35, 2.8, 16],
 } as const satisfies Record<string, readonly [number, number, number, number]>;
 
 export type Nome = keyof typeof PARAMS;
@@ -436,6 +452,82 @@ export function distanciaDoDealer(pod: number): number {
   return pod / 2;
 }
 
+/**
+ * As medidas do card de VEREDITO, em px, e se ele EMPILHA.
+ *
+ * ── Por que existe (17/09) ────────────────────────────────────────────────────────────────────
+ *
+ * O veredito é montado FORA da `MesaCompacta` (quem o monta é a `MesaDePratica`, que conhece a
+ * régua; a mesa de propósito não). Ele era a última peça dimensionada em `clamp()` com `cqw`, e a
+ * classe que criava o contexto de container saiu quando a geometria virou px: sem contexto, `cqw`
+ * resolve contra a JANELA, então numa tela de 1900px o anel pedia 152px dentro de um card cuja
+ * arena tem 257px de altura.
+ *
+ * ── As duas coisas que a MEDIÇÃO derrubou ─────────────────────────────────────────────────────
+ *
+ * 1. A fonte do número não pode ser escolhida à parte do anel. Eu escolhi olhando "0%", três
+ *    caracteres, e o pior caso é "100%": dava 48px de texto num anel de 50. Agora ela SAI do
+ *    anel (`anel * 0,29`), que é a conta que faz quatro caracteres caberem com folga. O mesmo
+ *    para o rótulo, que precisa caber na largura do anel.
+ * 2. Lado a lado, o bloco estourava o centro em 4 dos 5 tamanhos reais, até 209px no celular --
+ *    onde a mesa é VERTICAL e o centro tem 116px de largura contra 395 de altura. Ali ele
+ *    EMPILHA: anel em cima, texto embaixo. A mesma doutrina do resto da mesa, que segue a forma
+ *    do espaço em vez de assumir uma.
+ */
+export function medidasDoVeredito(w: number, h: number, larguraDoCentro = Infinity) {
+  const anel = px("anel", w, h);
+  const fDetalhe = px("fDetalhe", w, h);
+  // A fonte do número e a do rótulo SAEM do anel: "100%" tem quatro caracteres, e o rótulo tem
+  // dez. As duas contas usam a mesma aproximação de largura do medidor (`larguraDeTexto`).
+  // 0,62 e nao 0,72: com 0,72 o "100%" media exatamente a largura util e encostava nas bordas,
+  // que foi a reclamacao. Com 0,62 sobram ~19px de respiro num anel de 50.
+  const fPct = Math.min(px("fPct", w, h), (anel * 0.62) / (4 * 0.62));
+  const fSelo = Math.min(px("fSelo", w, h), anel / (10 * 0.62));
+  const folga = Math.max(6, anel * 0.16);
+
+  // Lado a lado exige o anel, a folga e a linha do TÍTULO, que não quebra. As linhas de detalhe
+  // podem quebrar, então não entram nesta conta -- exigir que elas caibam numa linha empilharia
+  // o veredito em toda mesa de quatro, sem necessidade.
+  const pedida = px("fVeredito", w, h);
+  const ladoALado = anel + folga + larguraDeTexto("XX imprecisao", pedida);
+  const empilhado = ladoALado > larguraDoCentro;
+
+  // EMPILHADO, o titulo tem a largura do centro para ele, e a fonte segue essa largura em vez de
+  // ficar num tamanho fixo que estoura. O piso de 10px e onde ela para: abaixo dele o texto deixa
+  // de ser legivel, e ai a resposta certa e o card passar por cima com fundo, nao encolher mais.
+  //
+  // Medido: sem este ajuste, o celular de 360px sobrepunha por 16px -- perto o bastante para ser
+  // um numero, e nao um limite. Com ele, sobra so o de 320px, que sobrepoe por 56px.
+  const respiro = Math.max(4, anel * 0.12);
+  const couber = (larguraDoCentro - respiro * 2) / (13 * 0.62);
+  const fVeredito = empilhado ? Math.max(10, Math.min(pedida, couber)) : pedida;
+
+  const alturaDoTexto = fVeredito * 1.3 + fDetalhe * 1.4 * 2;
+  const alturaDoAnel = anel + fSelo * 1.4;
+  // O card TEM fundo, e isso e o que torna o caso estreito aceitavel: num celular de 320px o
+  // centro tem 59px de largura (a mesa fica vertical e as fichas entram pelas laterais), e nada
+  // legivel cabe ali. Empilhado o bloco pede 105px, entao ele passa por cima das fichas -- com
+  // fundo opaco isso se le, sem fundo seria texto sobre ficha. Medido, e nao suposto: e o unico
+  // dos tamanhos varridos onde isso acontece.
+  const empilhadoNaoCabe = empilhado
+    && Math.max(anel, larguraDeTexto("XX imprecisao", fVeredito)) + respiro * 2 > larguraDoCentro;
+  return {
+    anel,
+    fPct,
+    fSelo,
+    fVeredito,
+    fDetalhe,
+    folga,
+    empilhado,
+    /** o que o bloco ocupa de ALTURA, e é o que o medidor reserva no centro */
+    respiro,
+    /** o bloco nao cabe no centro nem empilhado: ele passa por cima, e o fundo e o que salva */
+    sobrepoe: empilhadoNaoCabe,
+    alturaDoBloco: empilhado ? alturaDoAnel + alturaDoTexto
+                             : Math.max(alturaDoAnel, alturaDoTexto),
+  };
+}
+
 export type Caixa = {
   nome: string;
   x: number;
@@ -551,8 +643,8 @@ export function layoutDaMesa(cfg: ConfigDoLayout) {
 
   let miolo: Caixa | null = null;
   if (centro) {
-    const altura =
-      px("fSpot", w, h) * 1.35 + px("fPote", w, h) * 1.25 + px("fLegenda", w, h) * 1.35;
+    // A ORDEM importa e nao e circular: a largura do centro nao depende da altura, entao ela sai
+    // primeiro; com ela o veredito decide se empilha; e so entao a altura do bloco existe.
     // A largura do centro NÃO é só uma fração da arena: ela também respeita o que as fichas
     // ocupam por dentro. Com a mesa VERTICAL (o celular), as fichas das laterais entram na
     // horizontal e a fração de 46% já alcançava o texto -- 81 mãos com problema em 360px, 162 em
@@ -561,6 +653,12 @@ export function layoutDaMesa(cfg: ConfigDoLayout) {
     const entrada = distancia([1, 0], pod, fichaLarga, Math.max(fichaD, fFicha * 1.2));
     const sobraNoMeio = Math.max(20, a.w - 2 * (entrada + fichaLarga / 2));
     const largura = Math.min(a.w * LARGURA_DO_CENTRO, sobraNoMeio);
+    // O MAIOR dos dois conteudos que ocupam o centro: o texto do spot ANTES da resposta e o card
+    // de veredito DEPOIS. Reservar so o primeiro deixava o medidor cego para o segundo.
+    const altura = Math.max(
+      px("fSpot", w, h) * 1.35 + px("fPote", w, h) * 1.25 + px("fLegenda", w, h) * 1.35,
+      medidasDoVeredito(w, h, largura).alturaDoBloco,
+    );
     miolo = {
       nome: "centro",
       x: a.x + a.w / 2 - largura / 2,

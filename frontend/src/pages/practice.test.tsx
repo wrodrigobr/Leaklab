@@ -459,6 +459,37 @@ describe("modo Pratica", () => {
     }
   });
 
+  it("a barra tem UM caminho de saida, e nenhum rotulo promete tela que nao existe", async () => {
+    // 17/09, o dono: "encerrar e ver boletim ? acho que podemos remover este botao... ja temos um
+    // botao voltar e o botao de maos".
+    //
+    // Ele estava certo por um motivo mais forte que a repeticao: aquele botao chamava
+    // `navigate("/training")`, o MESMO que o voltar, e nunca mostrou boletim -- o
+    // `BoletimDaSessao` vive no Leak Trainer. Era rotulo prometendo tela que nao existe aqui.
+    //
+    // Este caso ancora nas DUAS coisas: a saida duplicada e a promessa. Sem a segunda, alguem
+    // reintroduz o botao com outro `data-testid` e o guarda passa.
+    comLargura(1440, 1000);
+    try {
+      monta();
+      await screen.findByTestId("pratica-mesa-m1");
+      expect(screen.queryByTestId("pratica-encerrar"),
+             "o botao de encerrar voltou").toBeNull();
+
+      // e NENHUM texto da barra fala de boletim, em nenhum idioma: o `t()` dos testes devolve a
+      // chave, entao a chave e o que se procura
+      const barra = screen.getByTestId("pratica-abrir-relatorio").closest("div")!.parentElement!;
+      expect(barra.textContent, "a barra voltou a prometer boletim").not.toMatch(/encerrar|boletim/i);
+
+      // o caminho de volta continua existindo: um so
+      const voltar = screen.getAllByRole("button")
+        .filter((b) => /voltar/i.test(b.getAttribute("aria-label") || ""));
+      expect(voltar.length, "sobrou mais de um caminho de saida, ou nenhum").toBe(1);
+    } finally {
+      comLargura(1440, 1000);
+    }
+  });
+
   it("a POSICAO da URL chega no pedido, em ordem de acao", async () => {
     // Pedido do Rullian, trazido pelo dono (17/09). A ordem importa: `mudaOSorteio` compara as
     // listas posicao a posicao, e a mesma escolha em outra ordem diria que o sorteio mudou.

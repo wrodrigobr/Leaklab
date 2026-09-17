@@ -1,6 +1,5 @@
 {
   "voltar": "volver al entrenamiento",
-  "encerrar": "terminar y ver informe",
   "sessao": "práctica preflop · {{maos}} manos · {{min}}min",
   "carregando": "repartiendo las mesas...",
   "continuar": "continuar",
@@ -53,7 +52,7 @@
     "fichas": "fichas"
   },
   "veredito": {
-    "oGtoTambem": "GTO también:",
+    "oGtoTambem": "el GTO también juega:",
     "verDetalhe": "ver análisis",
     "suaJogada": "tu jugada",
     "oGtoJoga": "el GTO juega:",

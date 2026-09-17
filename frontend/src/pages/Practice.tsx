@@ -412,10 +412,18 @@ export default function Practice() {
     <div className="flex h-dvh flex-col overflow-hidden bg-background hud-scanline">
       {/* barra */}
       {/* ── A barra ──────────────────────────────────────────────────────────────────────────
-          No celular ela estava ILEGIVEL: "voltar ao treino", "maos praticadas" e "encerrar e ver
-          boletim" somados passam de 390px, e os tres textos se sobrepunham (o dono fotografou).
-          Agora o texto de cada botao aparece a partir de `sm`, e no celular ficam os icones -- o
-          proprio rotulo vai no `title`/`aria-label`, que e o que um icone sozinho precisa. */}
+          No celular ela estava ILEGIVEL: os rotulos somados passavam de 390px e se sobrepunham (o
+          dono fotografou). O texto de cada botao aparece a partir de `sm`, e no celular ficam os
+          icones -- o proprio rotulo vai no `title`/`aria-label`, que e o que um icone sozinho
+          precisa.
+
+          ── O botao que SAIU (17/09) ──────────────────────────────────────────────────────────
+
+          Havia um terceiro, "encerrar e ver boletim". O dono: "acho que podemos remover este
+          botao... ja temos um botao voltar e o botao de maos". Ele estava certo, e por um motivo
+          mais forte do que a repeticao: aquele botao chamava `navigate("/training")`, EXATAMENTE o
+          mesmo que o voltar, e nunca mostrou boletim nenhum -- o `BoletimDaSessao` vive no Leak
+          Trainer e nao no Pratica. Era rotulo prometendo tela que nao existe aqui. */}
       <div className="flex shrink-0 items-center justify-between gap-2 border-b border-border bg-hud-surface px-2 py-2 sm:gap-4 sm:px-3">
         <div className="flex min-w-0 items-center gap-2 sm:gap-3">
           <button onClick={() => navigate("/training")} title={t("voltar")} aria-label={t("voltar")}
@@ -441,13 +449,6 @@ export default function Practice() {
                 className="inline-flex items-center gap-1.5 rounded border border-border px-2.5 py-1 font-mono text-[10px] uppercase tracking-widest-2 text-muted-foreground transition-colors hover:text-primary">
           <HistoryIcon className="size-3" />
           <span className="hidden sm:inline">{t("relatorio.titulo")}</span>
-        </button>
-        <button onClick={() => navigate("/training")}
-                data-testid="pratica-encerrar"
-                title={t("encerrar")} aria-label={t("encerrar")}
-                className="shrink-0 rounded border border-border px-2 py-1 font-mono text-[10px] uppercase tracking-widest-2 text-muted-foreground transition-colors hover:text-foreground sm:px-2.5">
-          <X className="size-3 sm:hidden" />
-          <span className="hidden sm:inline">{t("encerrar")}</span>
         </button>
         </div>
       </div>

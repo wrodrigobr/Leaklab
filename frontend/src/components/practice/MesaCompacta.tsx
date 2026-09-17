@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import type { DrillTableState } from "@/lib/api";
 import type { Unidade } from "@/lib/pratica";
 import { cn } from "@/lib/utils";
-import { layoutDaMesa, px } from "./geometriaDaMesa";
+import { layoutDaMesa, medidasDoVeredito, px } from "./geometriaDaMesa";
 
 /**
  * A mesa do modo Prática: um estádio, assentos redondos e nada mais.
@@ -136,9 +136,16 @@ export function MesaCompacta({ table, hero, unidade, spot, veredito }: {
   hero: string;
   /** o spot em uma frase, do servidor. Vai no CENTRO da mesa, como no GTO Wizard. */
   spot?: string;
-  /** O card de veredito, que OCUPA o centro depois da resposta e esconde o spot. Quem monta é a
-   *  `MesaDePratica`: o veredito nasce da correção do servidor, e a mesa não conhece a régua. */
-  veredito?: React.ReactNode;
+  /**
+   * O card de veredito, que OCUPA o centro depois da resposta e esconde o spot. Quem monta é a
+   * `MesaDePratica`: o veredito nasce da correção do servidor, e a mesa não conhece a régua.
+   *
+   * Vem como FUNÇÃO porque quem mede o card é esta mesa, e quem desenha o veredito é a outra. Ela
+   * recebe as medidas em px e usa. Antes o veredito tinha a própria conta, em `cqw`, e sem
+   * contexto de container ela resolvia contra a janela: o anel pedia 152px num card cuja arena
+   * tinha 257px de altura.
+   */
+  veredito?: React.ReactNode | ((m: ReturnType<typeof medidasDoVeredito>) => React.ReactNode);
   unidade: Unidade;
 }) {
   const bb = table.bb_chips || 1;
@@ -236,7 +243,10 @@ export function MesaCompacta({ table, hero, unidade, spot, veredito }: {
       {L.centro && (
         <div className="flex flex-col items-center justify-center text-center"
              style={caixa(L.centro)}>
-          {veredito ?? (
+          {(typeof veredito === "function"
+             // a LARGURA do centro entra na conta: e ela que decide se o veredito empilha
+             ? veredito(medidasDoVeredito(tamanho.w, tamanho.h, L.centro?.w ?? Infinity))
+             : veredito) ?? (
             <>
               {spot && (
                 <span className="block leading-snug text-muted-foreground"

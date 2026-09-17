@@ -8,6 +8,8 @@ import {
   arena,
   aspectoDaMesa,
   margensDaArena,
+  medidasDoVeredito,
+  larguraDeTexto,
   caixasDaMesa,
   direcaoDaFicha,
   direcaoDasCartas,
@@ -230,6 +232,64 @@ describe("a geometria da mesa", () => {
       expect(m.topo, `${nome}: a margem de cima e a de lado`).toBeLessThan(m.esq);
       expect(m.base, `${nome}: a margem de baixo e a de lado`).toBeLessThan(m.dir);
     }
+  });
+
+  it("o VEREDITO cabe no centro, e o numero cabe no anel", () => {
+    // 17/09, o dono: "o veredito esta muito grande...vamos caprichar mais pra ficar
+    // profissional...mesmo dentro do circulo, esta mto grande e se aproximando muito das bordas".
+    //
+    // A causa era estrutural: o veredito era a unica peca da mesa ainda em `clamp()` com `cqw`, e
+    // a classe que criava o contexto de container saiu quando a geometria virou px. Sem contexto,
+    // `cqw` resolve contra a JANELA -- numa tela de 1900px o anel pedia 152px dentro de um card
+    // cuja arena tem 257px de altura.
+    //
+    // Este caso nao existia: o medidor media a CAIXA do centro e nunca o veredito, entao a
+    // varredura dizia "limpo" com o veredito por cima das fichas. Ponto cego fechado.
+    for (const card of CARDS) {
+      const centro = layoutDaMesa({ w: card.w, h: card.h, heroi: 4, botao: 0, apostas: [] }).centro;
+      expect(centro, `${card.nome}: sem centro`).toBeTruthy();
+      const m = medidasDoVeredito(card.w, card.h, centro!.w);
+
+      // 1) o pior texto do anel e "100%", quatro caracteres -- eu tinha dimensionado olhando "0%"
+      const numero = larguraDeTexto("100%", m.fPct);
+      expect(numero, `${card.nome}: o numero encosta na borda do anel`)
+        .toBeLessThanOrEqual(m.anel * 0.7);
+      // e o rotulo, que tem dez, cabe na largura do anel
+      expect(larguraDeTexto("sua jogada", m.fSelo),
+             `${card.nome}: o rotulo estourou o anel`).toBeLessThanOrEqual(m.anel);
+
+      // 2) o bloco cabe no centro, ou DECLARA que sobrepoe (e ai tem fundo)
+      const titulo = larguraDeTexto("XX imprecisao", m.fVeredito);
+      const bloco = (m.empilhado ? Math.max(m.anel, titulo) : m.anel + m.folga + titulo)
+                    + m.respiro * 2;
+      if (!m.sobrepoe) {
+        expect(bloco, `${card.nome}: o veredito estourou o centro sem declarar`)
+          .toBeLessThanOrEqual(centro!.w + 1);
+      }
+      // 3) a altura reservada e a do BLOCO, e nao a do texto do spot que ele substitui
+      expect(centro!.h, `${card.nome}: o centro nao reservou a altura do veredito`)
+        .toBeGreaterThanOrEqual(m.alturaDoBloco - 0.5);
+    }
+  });
+
+  it("CONTROLE: o veredito EMPILHA so onde o centro e estreito", () => {
+    // Sem este, um `empilhado` cravado em `true` ou em `false` passaria verde no caso acima.
+    // Medido: o celular fica com a mesa VERTICAL e o centro com 116px, contra 347px no card de
+    // quatro mesas do dono.
+    expect(medidasDoVeredito(910, 385,
+             layoutDaMesa({ w: 910, h: 385, heroi: 4, botao: 0, apostas: [] }).centro!.w).empilhado,
+           "empilhou num centro de 347px").toBe(false);
+    expect(medidasDoVeredito(390, 480,
+             layoutDaMesa({ w: 390, h: 480, heroi: 4, botao: 0, apostas: [] }).centro!.w).empilhado,
+           "nao empilhou num centro de 116px").toBe(true);
+    // e o 320px e o UNICO dos tamanhos varridos onde nem empilhado cabe
+    const estreitos = CARDS.filter((c) => {
+      const centro = layoutDaMesa({ w: c.w, h: c.h, heroi: 4, botao: 0, apostas: [] }).centro!;
+      return medidasDoVeredito(c.w, c.h, centro.w).sobrepoe;
+    }).map((c) => c.nome);
+    // 320px e o unico que resta: o de 360 sobrepunha por 16px e passou a caber quando a fonte do
+    // titulo passou a seguir a largura do centro.
+    expect(estreitos).toEqual(["celular estreito (320)"]);
   });
 
   it("a MARGEM da arena sai da mesma conta da carta que o LAYOUT", () => {

@@ -1,6 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { Star } from "lucide-react";
 import { MesaCompacta } from "@/components/practice/MesaCompacta";
+import { medidasDoVeredito } from "@/components/practice/geometriaDaMesa";
 import { twFor, actionKey } from "@/lib/actionColors";
 import { FREQ_MINIMA_PARA_EXISTIR, nivelDoGrade, normalizaAcao, SIMBOLO_DO_NIVEL, type Nivel, type Unidade } from "@/lib/pratica";
 import type { PracticeGrade, PracticeTable } from "@/lib/api";
@@ -32,10 +33,34 @@ import { cn } from "@/lib/utils";
  * `hand_freq` o circulo nao aparece: inventar uma pontuacao onde nao houve medida seria o
  * contrario do que o resto do veredito faz.
  */
-function CardDeVeredito({ nivel, grade, acao }: {
+type MedidasDoVeredito = ReturnType<typeof medidasDoVeredito>;
+
+/**
+ * O card de veredito, no centro da mesa depois da resposta.
+ *
+ * ── Por que as medidas vêm de FORA (17/09) ────────────────────────────────────────────────────
+ *
+ * Ele era a última peça da mesa dimensionada em `clamp()` com `cqw`, e isso tinha uma agravante: a
+ * classe que criava o contexto de container saiu quando a geometria virou px. Sem contexto, `cqw`
+ * resolve contra a JANELA -- numa tela de 1900px o anel pedia 152px (travava no teto de 104)
+ * dentro de um card cuja arena tem 257px de altura. O dono: "o veredito esta muito grande...mesmo
+ * dentro do circulo, esta mto grande e se aproximando muito das bordas".
+ *
+ * Agora a `MesaCompacta` mede o card e entrega as medidas aqui. Uma conta, a mesma do resto.
+ *
+ * ── E por que o rótulo saiu de DENTRO do anel ─────────────────────────────────────────────────
+ *
+ * "sua jogada" tem dez caracteres. Na fonte mínima isso pede ~48px de largura, e o anel tem 50px
+ * -- ele encostava nas bordas por aritmética, em qualquer tamanho de tela. Dentro do anel fica só
+ * o número, que é o que se lê de longe; o rótulo desceu para baixo dele, onde tem a largura
+ * inteira. As palavras são as mesmas, e elas importam: o número É a frequência da jogada DELE, e
+ * o rótulo antigo ("GTO joga") deixava dúvida sobre de quem era o 0%.
+ */
+function CardDeVeredito({ nivel, grade, acao, m }: {
   nivel: Nivel;
   grade: PracticeGrade | null;
   acao: string;
+  m: MedidasDoVeredito;
 }) {
   const { t } = useTranslation("practice");
   const freq = grade?.hand_freq || null;
@@ -56,24 +81,27 @@ function CardDeVeredito({ nivel, grade, acao }: {
     : [];
 
   return (
-    <div data-testid="pratica-veredito" className="flex items-center justify-center gap-3">
+    <div data-testid="pratica-veredito"
+         data-empilhado={m.empilhado ? "1" : "0"}
+         className={cn("flex justify-center rounded-lg border border-border/60 bg-hud-surface/95 shadow-lg",
+                       m.empilhado ? "flex-col items-center" : "items-center")}
+         style={{ gap: m.folga, padding: m.respiro }}>
       {pct != null && (
-        <span className={cn("flex shrink-0 flex-col items-center justify-center rounded-full border-2 leading-none",
-                            ANEL_DO_NIVEL[nivel])}
-              style={{ width: "clamp(58px, 8cqw, 104px)", height: "clamp(58px, 8cqw, 104px)" }}>
-          <b className="font-mono font-bold tabular-nums"
-             style={{ fontSize: "clamp(17px, 2.5cqw, 32px)" }}>{pct}%</b>
-          <span className="font-mono uppercase tracking-widest-2 opacity-70"
-                style={{ fontSize: "clamp(7px, 0.95cqw, 12px)" }}>
-            {/* "sua jogada", e não "GTO joga": o número É a frequência da jogada DELE, e o
-                rótulo antigo lia-se "0% GTO joga", que deixava dúvida sobre de quem é o 0%. */}
+        <span className="flex shrink-0 flex-col items-center" style={{ width: m.anel }}>
+          <span className={cn("flex items-center justify-center rounded-full border-2 leading-none",
+                              ANEL_DO_NIVEL[nivel])}
+                style={{ width: m.anel, height: m.anel }}>
+            <b className="font-mono font-bold tabular-nums" style={{ fontSize: m.fPct }}>{pct}%</b>
+          </span>
+          <span className="mt-0.5 block whitespace-nowrap font-mono uppercase tracking-widest-2 opacity-70"
+                style={{ fontSize: m.fSelo }}>
             {t("veredito.suaJogada")}
           </span>
         </span>
       )}
-      <span className="min-w-0 text-left">
+      <span className={cn("min-w-0", m.empilhado ? "text-center" : "text-left")}>
         <b className={cn("block font-heading font-bold leading-tight", TEXTO_DO_NIVEL[nivel])}
-           style={{ fontSize: "clamp(15px, 2.1cqw, 27px)" }}>
+           style={{ fontSize: m.fVeredito }}>
           {/* O simbolo ORDENA (pedido do dono: "VV, V, X, XX") e a palavra NOMEIA. Os dois,
               porque um sozinho nao faz o trabalho do outro: "imprecisao" e "errada" sao dois
               substantivos que nao dizem qual e pior, e o simbolo sozinho nao diz o que houve. */}
@@ -81,12 +109,11 @@ function CardDeVeredito({ nivel, grade, acao }: {
           {t(`nivel.${nivel}`)}
         </b>
         {outras.length > 0 && (
-          <span className="block font-mono text-muted-foreground"
-                style={{ fontSize: "clamp(10px, 1.4cqw, 17px)" }}>
-            {/* "GTO TAMBEM" só quando a jogada DELE tem frequência: ali o GTO faz as duas
-                coisas, e "também" é a palavra certa. Com 0%, o GTO não faz a dele -- e a frase
-                virava "GTO também: fold 100%" ao lado de um raise que o solver nunca joga, que
-                foi o que o dono estranhou. Sem frequência, a frase diz o que o GTO FAZ. */}
+          <span className="block font-mono leading-snug text-muted-foreground"
+                style={{ fontSize: m.fDetalhe }}>
+            {/* As duas frases sao COMPLETAS, e nao rotulos. A primeira versao da variante com
+                frequencia era "GTO tambem:", e o dono: "em um deles tem a msg 'O GTO Também: ' /
+                bem ruim isso". Fragmento com dois-pontos parece texto cortado. */}
             {t(pct ? "veredito.oGtoTambem" : "veredito.oGtoJoga")} {outras.map(([a, v]) =>
               `${a} ${Math.round((v as number) * 100)}%`).join(" · ")}
           </span>
@@ -98,13 +125,13 @@ function CardDeVeredito({ nivel, grade, acao }: {
         {pct === 0 && nivel === "imprecisao" && (
           <span data-testid="veredito-fora-sem-custo"
                 className="block leading-snug text-muted-foreground"
-                style={{ fontSize: "clamp(10px, 1.4cqw, 17px)" }}>
+                style={{ fontSize: m.fDetalhe }}>
             {t("veredito.foraSemCusto")}
           </span>
         )}
         {typeof grade?.ev_loss_bb === "number" && grade.ev_loss_bb !== 0 && (
           <span className="block font-mono font-bold tabular-nums text-red-400"
-                style={{ fontSize: "clamp(11px, 1.5cqw, 18px)" }}>
+                style={{ fontSize: m.fDetalhe * 1.1 }}>
             −{Math.abs(grade.ev_loss_bb).toFixed(2)}bb
           </span>
         )}
@@ -215,33 +242,37 @@ export function MesaDePratica({
           entao ele ACHATA junto e fica com a proporcao do GTO Wizard (bem mais largo que alto),
           que foi a direcao que o dono apontou com o exemplo deles. */}
       <div className="mx-auto min-h-0 w-full flex-1">
-        {/* `compacta` NAO chega na mesa: ela escala pelo container (cqw), entao 1 ou 4 mesas
-            usam a mesma proporcao e nada encolhe por degrau -- e o que o GTO Wizard faz. */}
+        {/* `compacta` NAO chega na mesa: ela MEDE o proprio espaco, entao 1 ou 4 mesas usam a
+            mesma conta e nada encolhe por degrau -- e o que o GTO Wizard faz. */}
         <MesaCompacta table={mesa.table} hero="Hero" unidade={unidade}
                       spot={mesa.resumo || mesa.context}
-                      veredito={
+                      veredito={(m) =>
                         // Tres estados, e nenhum deles inventa veredito. O "avaliando" existe
                         // porque o clique precisa de resposta imediata: sem ele o jogador clica e
                         // a mesa nao muda, o que parece travamento. O "sem avaliacao" existe
                         // porque falha do `/grade` nao e erro DELE -- antes deste conserto ela
                         // aparecia como "errada" e ficava parada assim.
+                        //
+                        // `m` sao as medidas em px que a MESA mediu. Os tres estados usam ELAS:
+                        // deixar um deles em `cqw` traria de volta o texto dimensionado pela
+                        // janela dentro de um card que e um quarto dela.
                         respondida && nivel
                           ? <CardDeVeredito nivel={nivel} grade={grade}
-                                            acao={acaoEscolhida || ""} />
+                                            acao={acaoEscolhida || ""} m={m} />
                           : avaliando
                             ? <span data-testid="pratica-avaliando"
                                     className="block font-mono uppercase tracking-widest-2 text-muted-foreground animate-pulse"
-                                    style={{ fontSize: "clamp(10px, 1.7cqw, 20px)" }}>
+                                    style={{ fontSize: m.fDetalhe * 1.1 }}>
                                 {t("avaliando")}
                               </span>
                             : respondida
                               ? <span data-testid="pratica-sem-avaliacao" className="block">
                                   <span className="block font-mono uppercase tracking-widest-2 text-muted-foreground"
-                                        style={{ fontSize: "clamp(10px, 1.7cqw, 20px)" }}>
+                                        style={{ fontSize: m.fDetalhe * 1.1 }}>
                                     {t("semAvaliacao")}
                                   </span>
                                   <span className="mt-0.5 block leading-snug text-muted-foreground/70"
-                                        style={{ fontSize: "clamp(9px, 1.5cqw, 17px)" }}>
+                                        style={{ fontSize: m.fDetalhe }}>
                                     {t("semAvaliacaoDica")}
                                   </span>
                                 </span>

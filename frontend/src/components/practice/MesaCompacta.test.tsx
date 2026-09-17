@@ -2,7 +2,7 @@
 import { describe, it, expect, afterEach } from "vitest";
 import { render, screen, cleanup, within } from "@testing-library/react";
 import { MesaCompacta, PESO_DO_ASSENTO, lerCartas } from "./MesaCompacta";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import type { DrillTableState } from "@/lib/api";
 
@@ -298,6 +298,39 @@ describe("a mesa do Pratica", () => {
     expect(corpo, "tamanho de fonte cravado no JSX nao escala com o card").not.toMatch(/text-\[\d+px\]/);
     expect(corpo, "size-N do Tailwind e tamanho fixo").not.toMatch(/size-\d/);
     expect(corpo, "w-N/h-N do Tailwind sao tamanho fixo").not.toMatch(/[wh]-\d+(\.\d+)?/);
+  });
+
+  it("NENHUMA peca da mesa volta a medir em cqw/cqh", () => {
+    // A varredura que faltava, e ela e a regra 5: o guarda abaixo olhava a `MesaCompacta`, e o
+    // veredito, que vive na `MesaDePratica`, seguiu em `clamp()` com `cqw` por tres desenhos.
+    //
+    // Com a classe de container removida, `cqw` resolve contra a JANELA: numa tela de 1900px o
+    // anel do veredito pedia 152px dentro de um card cuja arena tem 257px de altura. Foi o que o
+    // dono fotografou ("o veredito esta muito grande...se aproximando muito das bordas").
+    //
+    // Este caso le a PASTA, entao arquivo novo entra nele sozinho.
+    const pasta = import.meta.dirname;
+    const arquivos = readdirSync(pasta)
+      .filter((f) => /\.tsx?$/.test(f) && !/\.test\./.test(f));
+    expect(arquivos.length, "a varredura nao achou arquivo nenhum").toBeGreaterThan(1);
+    let comGeometria = 0;
+    for (const f of arquivos) {
+      const fonte = semComentarios(readFileSync(join(pasta, f), "utf-8"));
+      // `cqw`/`cqh` sao proibidos em TODOS: sem contexto de container eles resolvem contra a
+      // janela, e a mesa vive num card que e um quarto dela.
+      expect(fonte, `${f} voltou a medir em container query`).not.toMatch(/\d(cqw|cqh)/);
+      // `clamp()` so e defeito em quem TEM as medidas: quem importa a geometria recebe px e usar
+      // clamp ali e a segunda escrita da mesma medida. O painel de configuracao nao importa a
+      // geometria e usa `clamp(180px, 14vw, 224px)` de largura, que e legitimo -- por isso a
+      // condicao e o IMPORT, e nao uma lista de arquivos.
+      if (/from "\.\/geometriaDaMesa"|from "@\/components\/practice\/geometriaDaMesa"/.test(fonte)) {
+        comGeometria++;
+        expect(fonte, `${f} importa a geometria e ainda usa clamp`).not.toContain("clamp(");
+      }
+    }
+    // CONTROLE: sem ele, um regex de import que nunca casasse deixaria o `clamp` passar em todos
+    expect(comGeometria, "nenhum arquivo importa a geometria: o regex do import quebrou")
+      .toBeGreaterThanOrEqual(2);
   });
 
   it("a mesa NAO depende mais de container query", () => {

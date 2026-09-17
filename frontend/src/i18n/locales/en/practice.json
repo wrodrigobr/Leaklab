@@ -1,6 +1,5 @@
 {
   "voltar": "back to training",
-  "encerrar": "end and see report",
   "sessao": "preflop practice · {{maos}} hands · {{min}}min",
   "carregando": "dealing the tables...",
   "continuar": "continue",
@@ -53,7 +52,7 @@
     "fichas": "chips"
   },
   "veredito": {
-    "oGtoTambem": "GTO also:",
+    "oGtoTambem": "GTO also plays:",
     "verDetalhe": "see analysis",
     "suaJogada": "your play",
     "oGtoJoga": "GTO plays:",

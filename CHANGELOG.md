@@ -5,6 +5,85 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## O botao "encerrar e ver boletim" prometia uma tela que nao existe (17/09)
+
+O dono: "encerrar e ver boletim ? acho que podemos remover este botao... ja temos um botao voltar e
+o botao de maos".
+
+Ele estava certo, e por um motivo mais forte que a repeticao: o botao chamava `navigate("/training")`
+-- EXATAMENTE o mesmo que o voltar -- e nunca mostrou boletim nenhum. O `BoletimDaSessao` vive no
+Leak Trainer, e o Pratica nao o usa em lugar nenhum. Era rotulo prometendo tela que nao existe ali,
+em tres idiomas: "encerrar e ver boletim", "end and see report", "terminar y ver informe".
+
+Sairam o botao e a chave de i18n nos tres locales. A barra ficou com tres: voltar, configuracao (so
+no celular) e maos praticadas.
+
+O guarda ancora nas DUAS coisas: nao pode haver segundo caminho de saida, e nenhum texto da barra
+pode falar de boletim. A segunda parte e o que importa -- sem ela, reintroduzir o botao com outro
+`data-testid` passaria verde, que e a cicatriz do dia (guarda que confere o nome e nao o efeito).
+Quebrado das duas formas, as duas acusam.
+
+---
+
+## O veredito era dimensionado pela JANELA, e nao pela mesa (17/09)
+
+O dono: "o veredito esta muito grande...vamos caprichar mais pra ficar profissional...mesmo dentro
+do circulo, esta mto grande e se aproximando muito das bordas". E, num segundo recado: "em um deles
+tem a msg 'O GTO Tambem: ' / bem ruim isso".
+
+### A causa nao era estetica
+
+O card de veredito era a UNICA peca da mesa ainda dimensionada em `clamp()` com `cqw`, e isso
+ganhou uma agravante hoje: a classe que criava o contexto de container (`container-mesa`) saiu
+quando a geometria virou px medido. Sem contexto de container, `cqw` resolve contra a JANELA.
+
+Medido: numa tela de 1900px o anel pedia 8cqw = 152px, travava no teto de 104px, e isso dentro de um
+card cuja arena tem 257px de altura. O veredito era dimensionado pelo monitor do jogador, e nao pelo
+espaco que ele tinha. Agora a `MesaCompacta` mede o card e entrega as medidas em px a quem desenha
+-- `medidasDoVeredito`, a mesma conta do resto da mesa. O anel foi de 104 para 50px no card dele.
+
+### Duas coisas que a medicao derrubou DEPOIS do primeiro conserto
+
+1. **A fonte do numero nao podia ser escolhida a parte do anel.** Eu escolhi olhando "0%", tres
+   caracteres, e o pior caso e "100%": dava 48px de texto num anel de 50, encostando nas bordas --
+   exatamente a reclamacao, agora por outro motivo. A fonte passou a SAIR do anel, e o "100%" ocupa
+   31px em 50. O mesmo para o rotulo: "sua jogada" tem dez caracteres e pedia 48px na largura
+   interna do circulo, entao ele saiu de DENTRO do anel e desceu para baixo dele, onde tem a
+   largura inteira. As palavras sao as mesmas, e elas importam (o numero e a frequencia da jogada
+   DELE).
+2. **Lado a lado o bloco estourava o centro em 4 dos 5 tamanhos**, ate 209px no celular, onde a
+   mesa e VERTICAL e o centro tem 116px de largura contra 395 de altura. Ali ele EMPILHA. E a fonte
+   do titulo passou a seguir a largura do centro com piso de 10px: sem isso o celular de 360px
+   sobrepunha por 16px, que e um numero e nao um limite.
+
+Sobrou UM caso, declarado e medido: o celular de 320px, onde o centro tem 59px e nem empilhado cabe
+(o bloco pede 115). Ali o card passa por cima das fichas, e o fundo novo e o que o torna legivel --
+texto sobre ficha seria pior. E o unico dos 14 tamanhos varridos.
+
+### O ponto cego do medidor, fechado
+
+O medidor media a CAIXA do centro e nunca o veredito: a varredura dizia "limpo" com o veredito por
+cima das fichas. Agora a caixa reserva o MAIOR dos dois conteudos que ocupam o centro (o texto do
+spot antes da resposta, o card depois), e ha guarda exigindo que o bloco caiba ou DECLARE que
+sobrepoe.
+
+A varredura de `cqw` tambem era uma lista: ela olhava a `MesaCompacta`, e o veredito vive na
+`MesaDePratica` -- por isso ele sobreviveu a tres desenhos. Agora ela le a PASTA, e arquivo novo
+entra sozinho. O `clamp()` segue permitido em quem NAO importa a geometria (o painel de
+configuracao usa `clamp(180px, 14vw, 224px)` de largura, que e legitimo): a condicao e o import, e
+nao uma lista de arquivos.
+
+### A copy
+
+"GTO tambem:" era fragmento com dois-pontos, que se le como texto cortado. Virou frase completa e
+paralela a outra: "o GTO tambem joga: call 30%" ao lado de "o GTO joga: fold 100%". Nos tres
+idiomas.
+
+Seis guardas novos ou reescritos, todos quebrados de proposito, com controle nos dois lados (um
+`empilhado` cravado em qualquer valor cai, e um regex de import que nunca casasse cai tambem).
+
+---
+
 ## O Pratica entrou na VITRINE e no menu (17/09)
 
 O dono: "podemos ja incluir no menu tambem". Ele ficou um dia fora da vitrine por decisao dele
